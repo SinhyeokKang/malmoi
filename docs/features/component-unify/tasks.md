@@ -32,7 +32,7 @@
 | B1c T3 | `ui/breadcrumb.tsx`, `ui/segmented-control.tsx`, `ui/avatar.tsx`, `globals.css`, `lib/__tests__/globals-css.test.ts`, invitation-email 테스트, focus-ring 테스트 | T2 / T3커밋 | GPT-6.1 Sol high / dead export·메일 값 대조 | 완료 `2c0f3ffd`: 소비자0·메일 값 보존, 독립 리뷰2건 수정, gate640파일/9795테스트+격리PG520 green |
 | B1d T4 | `docs/DESIGN.md`, `app/globals.css` 주석 | T3 / 문서·주석 경계 | GPT-6.1 Sol medium / 사실 교정 | 완료 `bc535749`: DESIGN·CSS 주석만, 독립 리뷰1문장 수정, gate640파일/9795테스트 green |
 | R1 리뷰·① QA | 읽기 전용 diff/스크린샷 | T4 / 커밋 없음 | GPT-6.1 Sol high 독립 리뷰 / 브라우저는 지휘자 | 완료: 6화면 1280 비교, 시각 회귀 없음. **dev push 완료 `1d5d6eae`** |
-| B2 T5–T6 | primitive 계약 테스트들, `components/__tests__/api-contract.test.ts` | R1 push 완료 / T5·T6 별도 | GPT-6.1 Sol high / 계약·허용목록 그물 | G, mutation 기록 |
+| B2 T5–T6 | primitive 계약 테스트들, `components/__tests__/api-contract.test.ts` | R1 push 완료 / T5·T6 별도 | GPT-6.1 Sol high / 계약·허용목록 그물 | T5 완료 `b9515558`: 7파일59계약·mutation7건·gate645파일/9847테스트·독립 리뷰 green. T6 진행 |
 | B3a T7 | `ui/badge.tsx`, `ui/status-badge.tsx`, `ui/panel-card.tsx`, `lib/status/canon.ts`, `lib/events/view.ts`, `logs/result-badge.tsx`, `logs/event-detail.tsx`, Badge 소비자·C | T6 / 상태축1커밋 | GPT-6 Astra high / 결과 의미·색 예외 결합 | G, Logs 성공 회색·라벨 보존 |
 | B3b T8 | `lib/tone.ts→hue.ts`, `ui/tone.ts`, avatar/image 소비자, client-graph 테스트 | T7 / hue축1커밋 | GPT-6.1 Sol medium / 이름 변경 | G, 옛 import0 |
 | B3c T9 | `ui/button.tsx`, `ui/alert.tsx`, `ui/skeleton.tsx`, 스피너 전달 `ui/file-input.tsx`·`reconnect-button.tsx`, 해당 호출부(특히 publish/workspace), C | T8 / 크기축1커밋 | GPT-6.1 Sol high / 크기·busy 렌더 계약 | G, spinnerSize 14/16·기본16 보존, 값0 |
@@ -113,7 +113,7 @@
 - **T6** `api-contract.test.ts`(design §5.2) — 규칙 = §3 행, 허용 목록 = 지금 위반 × 해소 태스크. green으로 시작.
   검증 [자동]: 허용 목록 항목 수 = design §3 "지금 어긋난 곳" 항목 수 · 허용 목록에서 한 줄 지우면 red(카나리아).
   `[commit] test(ui): primitive naming contract with an allowlist of current violations`
-- **T7** 상태 색(S6) — `EventResult`·surface status → `StateKey` 순수 함수(테스트 먼저) · ResultBadge 매핑 삭제 → `StatusBadge`(SourceStatus의 배치/시각 래퍼는 유지) · PanelRow `statusTone` · Badge 상태 이름 → design §3의 모양/색 프리셋 이름.
+- **T7** 상태 색(S6) — `EventResult`·surface status → `StateKey` 순수 함수(테스트 먼저) · ResultBadge 매핑 삭제 → `StatusBadge`(SourceStatus의 배치/시각 래퍼는 유지) · PanelRow `statusTone` · Badge 상태 이름 → design §3의 모양/색 프리셋 이름. Logs 내부 Note의 `neutral`은 같은 형의 `muted`로 바꾼다. 실상태 Badge 5호출(MCP `Expired` 2 · Logs `Archived` 1 · Sources `Waiting to apply`/`Removed from repository` 2)도 StatusBadge로 옮긴다. 개수·역할·로케일·Base/You/Most keys는 모양 축이며, 국기·sr 문구를 결합한 orphaned LocaleBadge는 기존 계약을 유지한다.
   뒤집는 테스트: `status-badge.test.tsx` · `a11y-reasons.test.tsx` · `logs-screen.test.ts` · `screens.test.ts` · canon `StateVariant` 타입 대조 테스트.
   검증 [자동]: 변환 함수 단위 테스트(키 전수) · 매핑 사본 0 스캔 · `client-graph.test.ts` 갱신 green · 허용 목록 상태 색 행 0.
 - **T8** hue 개명(Y7) — `lib/tone.ts` → `lib/hue.ts`, `toneFill` → `hueFill`, `canon.ts` 주석.
@@ -128,7 +128,7 @@
   검증 [자동]: Input·SelectTrigger·SearchInput 호출부 `className`의 `w-`·`max-w-`·`min-w-` 0 스캔.
 - **T11** 진행 · 슬롯 · a11y 철자 · className 이름 · rest props(실수요 자리) · `data-tone`(tone 가진 프리미티브).
   뒤집는 테스트: `onboarding-modal.test.tsx`(`nextPending`·`headerAction`·`footer`) · `members-screen.test.ts` · `focus-ring.test.ts` 해당 행.
-  검증 [자동]: 허용 목록 전 행 0(spec 완료 조건 4) · `pnpm typecheck`.
+  검증 [자동]: T7–T11 소유 허용 목록 행 0 · `pnpm typecheck`. `Modal.headerAction`은 명시된 삭제 태스크 T14까지 남긴다. `RowCardList.labelledBy`는 T11에서 `aria-labelledby`로 바꾸고, T12의 컴포넌트 교체와 구분한다. 전체 허용 목록 0(spec 완료 조건 4)은 design §5.2대로 단위 ③ 종료 때 확인한다.
   `[commit]` T7–T11 각각 — `refactor(ui): …`
 - **단위 ② 끝**: `/runtime-test`(화면 목록 전수 — 이름만 바뀌었으므로 기능 회귀 확인) → `/push`.
 
@@ -148,9 +148,9 @@
 - **T14** LargeModal(C2) — 개명 · `WizardFooter`(showBack·onBack·next*) · `headerAction` 삭제 · `event-dialog` 치수 상수 공유(`100svh`는 이미 완료).
   뒤집는 테스트: `components/onboarding/modal.tsx:2`(재수출) · `onboarding-modal.test.tsx` · `modal-initial-focus.test.tsx` · `focus-ring.test.ts` · `visual-system.test.ts`.
   검증 [자동]: `step` 전환 → 본문 포커스·낭독 단언 유지 · 바닥 `busy` 전환 포커스 fixup(POSTMORTEM 2026-09-20·09-24). [수동] 포커스 복귀 — LargeModal 소비자 7곳 + `event-dialog`, 열고 닫은 뒤 트리거로 복귀.
-- **T15** ButtonLink `external`·`newTab` · Link(인라인).
+- **T15** ButtonLink `external`·`newTab` · Link(인라인). NewProjectButton·NewProjectIcon의 진행 삼항도 ButtonLink 이관에 포함하고 서버 부모·`useLinkStatus` 자손 경계를 보존한다.
   검증 [자동]: `<a className={buttonClass…}>`·상수 우회(`FOOTER_LINK`) 0(여러 줄 JSX 포함) · 인라인 파랑 링크가 전부 `Link` · 포커스 링 스캔(`focus-ring.test.ts`) 확장.
-- **T16** ListRow(C6) — 누르는 행 5 · 정적 2 · 두 줄 본문 · Button 행 2 · `ListItemButton`.
+- **T16** ListRow(C6) — 누르는 행 5 · 정적 2 · 두 줄 본문 · Button 행 2 · `ListItemButton`. RowChevron의 진행 삼항은 이 행 이관에서 처리하며 서버 부모와 `useLinkStatus` 잎 경계를 보존한다. DropdownMenuItem인 SignOutItem의 진행 표시는 이 규약의 대상이 아니다(파일 전체 면제는 금지).
   뒤집는 테스트: `focus-ring.test.ts` · `translation-workspace-render.test.tsx`(`@/components/ui/list-item` mock · memo 렌더 수) · `project-row.test.tsx` · `sources-screen` · `logs-screen.test.ts`.
   검증 [자동]: 두 줄 본문 1·2번째 노드 단언(POSTMORTEM 2026-09-16) · 행 래퍼 id 포커스 복귀(`logs/page.tsx` event-row 래퍼 · `logs-card.tsx:47`) 유지 · `attention-card.tsx` :first-child>a 선택자 유지.
   [수동] `key-list` 전후 렌더 측정(5,000키 픽스처, React Profiler 커밋 시간 — 기준 대비 악화 시 멈춤) · 번역 화면 행 높이.
