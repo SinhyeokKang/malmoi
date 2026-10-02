@@ -420,3 +420,10 @@ Run **`run_0e44db2882ac`**, 기존 coordinator **`term_dd1b2d61-f22d-4409-8977-7
 - 실제43개 UI 모듈의 새/이동 경로와 잔존 PanelFacts/BannerLine, Card/Fact/ListRow/LargeModal/Popover/SelectRow/필드·검색·복사·토큰·Meter 책임을 반영했다. 루트 Geist 로더/추적 WOFF2와 Pretendard 생성물을 구분한다.
 - Sol의 읽기 전용 사실 검토에서 Geist 누락·StatusBadge/IconTile 입력 구분을 교정했다. globals.css의 옛 secondary/ListItemButton 주석은 이미 P3에서 교정됐으므로 다시 고치지 않았다. T20a는 실제 font/R3·Astra 승인으로 완료 체크했다.
 - 문서 diff 검사는 통과했다. DESIGN/global-search 정본·최종 gate/dev push/T22는 아직 미완이다. 가이드 측정은 `stale 25컷 (50건)`이며 후속 재촬영 경고로 남긴다.
+
+
+### T21 DESIGN 정본 승격
+
+- Geist→Pretendard 폴백, Radix7종, 최종 ListRow/타일/검색 경로와 ImageTile 조립, Sources Meter 폭/표시 percent의 서로 다른 소유권을 반영했다. 퇴역 ListItemButton의 중복 현행 행을 제거하고 기존 결정 배경·수치를 보존한다.
+- §8.1에 공용11축 API 규약과 실제 사본/카나리아 검사 경계를 승격했다. Sol이 지적한 IconTile의 전체 StateTone과 BannerLine/Logs Note의 부분집합을 구별했다. FieldButton·NoMatch의 미래 기능을 미리 구현하지 않는다.
+- diff 검사 통과. 최종 독립 문서 리뷰/global-search 정본·배포 HEAD gate/dev push/T22가 남았다.
