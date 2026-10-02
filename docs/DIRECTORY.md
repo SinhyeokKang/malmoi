@@ -380,7 +380,7 @@ components/
   ui/project-thumbnail.tsx
                         ProjectThumbnail — 프로젝트를 가리키는 타일(xs16/sm28/md32/lg56). 이름 기반 hueFill 폴백과 ImageTile을 조립한다.
                         ⚠️ 2026-09-17까지 화면마다 따로 구현돼 있었고 Home만 고정 bg-foreground였다(POSTMORTEM 2026-09-17).
-                        radius8은 캔버스4가 아니라 초대 카드까지 같은 값으로 모은 판정이다(DESIGN §6.63의 이탈).
+                        xs의 radius는4, sm/md/lg는8이며 초대 카드까지 같은 값으로 모은 판정이다(DESIGN §6.63의 이탈).
                         프로젝트/초대/설정·셸·목업 소비자는 이 서버 호환 타일을 사용하고 이미지 실패 상태는 ImageTile 잎에 남는다
   projects/new-project-button.tsx
                         [New project] 전용 client 버튼. 소비자가 **둘**이다 — 목록 머리와 EmptyProjects.
