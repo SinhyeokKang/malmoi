@@ -7,7 +7,7 @@ import { ReconnectButton } from "@/components/reconnect-button";
 import { Alert } from "@/components/ui/alert";
 import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Skeleton, SkeletonLine } from "@/components/ui/skeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { AccountView } from "@/lib/github-connect/account-view";
 import type { ConnectionHealth } from "@/lib/github-connect/health";
 import { connectionProblem } from "@/lib/home/state";
@@ -90,9 +90,9 @@ function ConnectionRowPending() {
   return <div className={ROW} aria-busy="true" data-connection-pending="">
     <Skeleton className="size-7 shrink-0 rounded" />
     <div className="min-w-0 flex-1 space-y-copy-gap">
-      {/* 줄 칸 높이(24 — 이름 옆 배지 · 16)는 실물 행이 든다. 글자 자리는 `SkeletonLine`이다(4-W8). */}
-      <div className="flex h-6 items-center *:flex-1"><SkeletonLine size="md" className="w-[45%]" /></div>
-      <div className="flex h-4 items-center *:flex-1"><SkeletonLine size="xs" className="w-[30%]" /></div>
+      {/* 줄 칸 높이(24 — 이름 옆 배지 · 16)는 실물 행이 든다. 글자 자리는 `Skeleton`이다(4-W8). */}
+      <div className="flex h-6 items-center *:flex-1"><Skeleton size="md" className="w-[45%]" /></div>
+      <div className="flex h-4 items-center *:flex-1"><Skeleton size="xs" className="w-[30%]" /></div>
     </div>
     <Skeleton className="h-9 w-32 shrink-0 rounded-md @max-form:col-start-2" />
   </div>;

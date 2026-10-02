@@ -326,4 +326,8 @@ Run **`run_0e44db2882ac`**, 기존 coordinator **`term_dd1b2d61-f22d-4409-8977-7
 
 - Thumbnail 후보: ui ProjectThumbnail과 실제 소비자7곳(목록/Home/스위처/사이드바/랜딩/초대/설정), xs/sm/md/lg geometry·투명 이미지·폴백·URL 재시도, 이전 모듈 제거 및 실제 base150 사본 카나리아를 같은 작은 커밋에 묶는다.
 - 독립 리뷰: Thumbnail 및 Skeleton/loading 각각 0 findings 승인. 이 항목은 Thumbnail만 포함한다.
-- 검증: Thumbnail 단독 트리 관련11파일/291테스트 통과(초기 1개 구경로 테스트 실패 후 경로 이관, 해당 파일 재통과), typecheck exit0 · diff check exit0. 전체 P3 첫 gate는 테스트6실패(exit1); 빌드/미러 미실행이며 최종 누적 gate·잔여6체크포인트·R3·T20a/T21/T22는 미완이다.
+- 검증: Thumbnail 단독 트리 관련11파일 실행은 290 passed / 구경로1 failed, 경로 이관 뒤 projects-screen 단독69/69 passed로 수정 확인(한 번의291 all-green 실행이 아님), typecheck exit0 · diff check exit0. 전체 P3 첫 gate는 테스트6실패(exit1); 빌드/미러 미실행이며 최종 누적 gate·잔여6체크포인트·R3·T20a/T21/T22는 미완이다.
+
+- Skeleton/loading 후보: Thumbnail 체크포인트 `9a5b4625821277c176c7d79ab0a9a5418da9dac5` 뒤에 size 줄 모드와 실제 8개 loading·locale skeleton·설정 카드를 이관하고 SkeletonLine export를 제거한다. 기본 radius4 및 명시 radius·U+200B/0.8em·숨지 않은 sr-only 상태 줄1개를 유지한다.
+- Skeleton 단독 RED: 새 블록/줄 렌더 검사가 이전 구현에서 실패했다. 해당 작은 트리 관련12파일/303테스트와 typecheck exit0. 실제 퇴역 Skeleton 소스·loading status 삭제·검사기 제거는 각각 RED, 소스 복원 후 검사기/loading 계약 GREEN.
+- 남은 리뷰: 선택되지 않은 MCP Scope에서 root+label 3% hover가 겹치고 선택된 All 배경 소유자도 달라진다는 추가 발견은 뒤의 SelectRow 체크포인트에서 고친다. 전체 P3 gate·R3/T20a/T21/T22는 계속 미완이다.

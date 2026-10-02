@@ -1,5 +1,5 @@
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
-import { Skeleton, SkeletonLine } from "@/components/ui/skeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 import { m } from "@/lib/i18n";
 
 /**
@@ -29,7 +29,7 @@ export default function SourcesLoading() {
       <PanelHeader aria-hidden>
         <div data-skeleton-header className="flex items-center gap-3">
           {/* 제목 폭이 실물 `Sources`(68)와 같게. */}
-          <SkeletonLine size="lg" className="w-[68px]" />
+          <Skeleton size="lg" className="w-[68px]" />
           <Skeleton className="ml-auto h-9 w-32 rounded-md" />
         </div>
       </PanelHeader>
@@ -37,18 +37,18 @@ export default function SourcesLoading() {
       <PanelBody className="space-y-4" aria-hidden>
         <div className="border-border bg-background overflow-hidden rounded-lg border">
           <div className="border-divider flex min-h-12 items-center gap-2 border-b px-4 py-3">
-            <SkeletonLine size="md" className="w-16" />
+            <Skeleton size="md" className="w-16" />
             <Skeleton className="size-5 rounded-full" />
             <div className="ml-auto w-44">
-              <SkeletonLine size="xs" className="w-full" />
+              <Skeleton size="xs" className="w-full" />
             </div>
           </div>
           <div data-skeleton-source className="flex items-center gap-3 pr-4 @max-[1016px]/panel:items-start">
             <div className="flex min-w-0 flex-1 items-center gap-3 px-4 py-row-y @max-[1016px]/panel:items-start">
               <Skeleton className="size-7 shrink-0 rounded" />
               <div className="flex min-w-0 flex-1 flex-col gap-copy-gap">
-                <SkeletonLine size="md" className="w-[42%]" />
-                <SkeletonLine size="xs" className="w-[28%]" />
+                <Skeleton size="md" className="w-[42%]" />
+                <Skeleton size="xs" className="w-[28%]" />
                 {/* 좁은 폭의 상태 — 셋째 줄(`pt-0.5` + 13px 한 줄). 넓은 폭에서는 오른쪽 블록이 대신한다. */}
                 <div className="hidden items-center pt-0.5 text-xs @max-[1016px]/panel:flex">
                   {"\u200b"}

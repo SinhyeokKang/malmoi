@@ -109,7 +109,11 @@ const RULES: Rule[] = [
 { primitive: "ProjectThumbnail", retired: [], retiredModules: ["@/components/projects/project-thumbnail"], paths: ["components/invite/project-card.tsx", "components/settings/general-card.tsx"], minimum: 7,
     handCopy: (node, file) => canonicalTag(node, file) === "ImageTile" && /hueFill/.test(node.getText(file)),
     bad: 'export const Demo = () => <ImageTile className="size-8 rounded-sm" fallback={<span className={hueFill(name)}><Box /></span>} />;',
-    good: 'import {ProjectThumbnail} from "@/components/ui/project-thumbnail"; export const Demo = () => <ProjectThumbnail size="md" name={name} />;' }
+    good: 'import {ProjectThumbnail} from "@/components/ui/project-thumbnail"; export const Demo = () => <ProjectThumbnail size="md" name={name} />;' },
+{ primitive: "Skeleton", retired: ["SkeletonLine"], paths: [], minimum: 10,
+    handCopy: () => false,
+    bad: 'import {SkeletonLine as Line} from "@/components/ui/skeleton"; export const Demo = () => <Line size="xs" />;',
+    good: 'import {Skeleton} from "@/components/ui/skeleton"; export const Demo = () => <Skeleton size="xs" />;' }
 ];
 
 function scan(source: Source, rule: Rule): string[] {
@@ -246,6 +250,11 @@ const RETIRED_P3_SOURCES = [
     "primitive": "ProjectThumbnail",
     "path": "components/invite/project-card.tsx",
     "code": "const P3RetiredProbe = () => (<ImageTile\n        src={image}\n        className=\"flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-sm text-white\"\n        fallback={<span className={hueFill(name)}><Box className=\"size-4\" /></span>}\n      />);"
+  },
+{
+    "primitive": "Skeleton",
+    "path": "app/(edit)/account/loading.tsx",
+    "code": "import { Skeleton, SkeletonLine } from \"@/components/ui/skeleton\";\nconst P3RetiredProbe = () => (<SkeletonLine size=\"lg\" className=\"w-32\" />);"
   }
 ];
 

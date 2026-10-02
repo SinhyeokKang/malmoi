@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
-import { Skeleton, SkeletonLine } from "@/components/ui/skeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 import { m } from "@/lib/i18n";
 
 /**
@@ -30,7 +30,7 @@ import { m } from "@/lib/i18n";
  * 스크린리더가 회색 블록을 읽는다 (`projects/(list)/loading.tsx`에서 실제로 둘로 갈렸다). 머리·본문 래퍼도 `aria-hidden`이고
  * 접근성 트리에는 낭독 한 줄만 남는다(4-Y17 — 형제 화면의 골격과 같은 형).
  *
- * ⚠️ **글자 줄은 `SkeletonLine`이다** (4-W8) — 줄 높이를 px로 적으면 `--text-*` 토큰이 바뀔 때 골격만 떠내려간다.
+ * ⚠️ **글자 줄은 `Skeleton`이다** (4-W8) — 줄 높이를 px로 적으면 `--text-*` 토큰이 바뀔 때 골격만 떠내려간다.
  */
 export default function AccountLoading() {
   return (
@@ -39,7 +39,7 @@ export default function AccountLoading() {
       <PanelHeader aria-hidden>
         {/* 제목 줄은 실물과 같은 min-h-9다 — 머리 높이가 안 튄다. */}
         <div className="flex items-center">
-          <SkeletonLine size="lg" className="w-32" />
+          <Skeleton size="lg" className="w-32" />
         </div>
       </PanelHeader>
 
@@ -48,7 +48,7 @@ export default function AccountLoading() {
         <SkeletonCard>
           <div className="grid grid-cols-[96px_1fr] items-center gap-x-3 gap-y-[14px] px-4 py-3.5">
             {/* 아바타 행도 라벨 열을 든다 — 실물이 그렇다. 안 그리면 아바타가 108px 왼쪽에서 출발한다. */}
-            <SkeletonLine size="xs" className="w-12" />
+            <Skeleton size="xs" className="w-12" />
             <div className="flex items-center gap-4">
               <Skeleton className="size-14 rounded-full" />
               <div className="flex flex-col gap-1.5">
@@ -56,20 +56,20 @@ export default function AccountLoading() {
                   <Skeleton className="h-9 w-32 rounded-md" />
                   <Skeleton className="h-9 w-20 rounded-md" />
                 </div>
-                <SkeletonLine size="xs" className="w-64" />
+                <Skeleton size="xs" className="w-64" />
               </div>
             </div>
 
-            <SkeletonLine size="xs" className="w-12" />
+            <Skeleton size="xs" className="w-12" />
             <div className="flex items-center gap-2">
               <Skeleton className="h-9 w-80 rounded-md" />
               <Skeleton className="h-9 w-16 rounded-md" />
             </div>
 
-            <SkeletonLine size="xs" className="w-12" />
+            <Skeleton size="xs" className="w-12" />
             <div className="flex items-center gap-3">
               <Skeleton className="h-9 w-80 rounded-md" />
-              <SkeletonLine size="xs" className="w-56" />
+              <Skeleton size="xs" className="w-56" />
             </div>
           </div>
         </SkeletonCard>
@@ -81,13 +81,13 @@ export default function AccountLoading() {
               <div key={row} className={`flex items-center gap-3 px-4 py-row-y ${row === 0 ? "" : "border-border border-t"}`}>
                 <Skeleton className="size-7 rounded" />
                 <div className="flex flex-1 flex-col gap-copy-gap">
-                  <SkeletonLine size="md" className="w-40" />
+                  <Skeleton size="md" className="w-40" />
                   {/*
                     ⚠️ **줄 수가 카드마다 다르다** — 수단 카드는 보조 줄을 안 그리고(데이터가 없다),
                     GitHub App 카드는 집계를 든다. 골격이 둘 다 두 줄이면 데이터 도착 순간 수단
                     카드만 줄어들고 그 아래 카드가 위로 밀린다.
                   */}
-                  {hint && <SkeletonLine size="xs" className="w-56" />}
+                  {hint && <Skeleton size="xs" className="w-56" />}
                 </div>
                 <Skeleton className="h-9 w-24 rounded-md" />
               </div>
@@ -107,8 +107,8 @@ function SkeletonCard({ children }: { children: ReactNode }) {
   return (
     <div className="border-border overflow-hidden rounded-lg border">
       <div className="border-divider flex min-h-12 items-center gap-2 border-b px-4 py-3">
-        <SkeletonLine size="md" className="w-28" />
-        <div className="ml-auto w-48"><SkeletonLine size="xs" className="w-full" /></div>
+        <Skeleton size="md" className="w-28" />
+        <div className="ml-auto w-48"><Skeleton size="xs" className="w-full" /></div>
       </div>
       {children}
     </div>

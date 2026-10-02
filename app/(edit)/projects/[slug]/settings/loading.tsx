@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
-import { Skeleton, SkeletonLine } from "@/components/ui/skeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 import { m } from "@/lib/i18n";
 
 /**
@@ -22,7 +22,7 @@ export default function SettingsLoading() {
       <span className="sr-only" role="status">{m.settings.loading}</span>
       <PanelHeader aria-hidden>
         <div className="flex items-center">
-          <SkeletonLine size="lg" className="w-20" />
+          <Skeleton size="lg" className="w-20" />
         </div>
       </PanelHeader>
 
@@ -36,7 +36,7 @@ export default function SettingsLoading() {
                   <Skeleton className="h-9 w-20 rounded-md" />
                   <Skeleton className="h-9 w-20 rounded-md" />
                 </div>
-                <SkeletonLine size="xs" className="w-[80%]" />
+                <Skeleton size="xs" className="w-[80%]" />
               </div>
             </div>
           </Fact>
@@ -52,10 +52,10 @@ export default function SettingsLoading() {
           <Row action />
           <div className="border-border bg-muted border-t pl-10">
             <div className="flex items-center gap-x-3 px-4 py-3.5">
-              <SkeletonLine size="sm" className="w-24" />
+              <Skeleton size="sm" className="w-24" />
               <Skeleton className="h-9 w-60 shrink-0 rounded-md" />
               <Skeleton className="h-9 w-16 shrink-0 rounded-md" />
-              <SkeletonLine size="xs" className="w-[60%]" />
+              <Skeleton size="xs" className="w-[60%]" />
             </div>
           </div>
         </Card>
@@ -66,7 +66,7 @@ export default function SettingsLoading() {
             <Row chevron />
           </div>
           <div className="border-border border-t px-4 py-row-y">
-            <SkeletonLine size="xs" className="w-[55%]" />
+            <Skeleton size="xs" className="w-[55%]" />
           </div>
         </Card>
 
@@ -74,7 +74,7 @@ export default function SettingsLoading() {
           <div className="flex items-center justify-between gap-4 px-4 py-row-y">
             <Skeleton className="size-7 shrink-0 rounded" />
             <div className="flex-1">
-              <SkeletonLine size="xs" className="w-[45%]" />
+              <Skeleton size="xs" className="w-[45%]" />
             </div>
             <Skeleton className="h-9 w-36 shrink-0 rounded-md" />
           </div>
@@ -89,10 +89,10 @@ function Card({ title, subtitle = false, children }: { title: string; subtitle?:
   return (
     <div data-skeleton-card className="border-border bg-background overflow-hidden rounded-lg border">
       <div className="border-divider flex min-h-12 items-center gap-2 border-b px-4 py-3">
-        <SkeletonLine size="md" className={title} />
+        <Skeleton size="md" className={title} />
         {subtitle && (
           <div className="ml-auto w-[48%]">
-            <SkeletonLine size="xs" className="ml-auto w-full" />
+            <Skeleton size="xs" className="ml-auto w-full" />
           </div>
         )}
       </div>
@@ -106,7 +106,7 @@ function Fact({ divided = false, children }: { divided?: boolean; children: Reac
   return (
     <div className={divided ? "border-border border-t" : undefined}>
       <div className="grid grid-cols-[96px_1fr] items-center gap-x-3 px-4 py-3.5">
-        <SkeletonLine size="xs" className="w-16" />
+        <Skeleton size="xs" className="w-16" />
         {children}
       </div>
     </div>
@@ -120,7 +120,7 @@ function Field({ button = false }: { button?: boolean }) {
       <Skeleton className="h-9 w-[320px] shrink-0 rounded-md" />
       {button && <Skeleton className="h-9 w-16 shrink-0 rounded-md" />}
       <div className="min-w-0 flex-1">
-        <SkeletonLine size="xs" className="w-[80%]" />
+        <Skeleton size="xs" className="w-[80%]" />
       </div>
     </div>
   );
@@ -132,8 +132,8 @@ function Row({ action = false, chevron = false }: { action?: boolean; chevron?: 
     <div className="flex items-center gap-3 px-4 py-row-y">
       <Skeleton className="size-7 shrink-0 rounded" />
       <div className="flex min-w-0 flex-1 flex-col gap-copy-gap">
-        <SkeletonLine size="md" className="w-[40%]" />
-        <SkeletonLine size="xs" className="w-[60%]" />
+        <Skeleton size="md" className="w-[40%]" />
+        <Skeleton size="xs" className="w-[60%]" />
       </div>
       {action && <Skeleton className="h-9 w-36 shrink-0 rounded-md" />}
       {chevron && <Skeleton className="size-4 shrink-0 rounded" />}

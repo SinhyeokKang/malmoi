@@ -6,7 +6,7 @@ import { useEffect, useId, useState, type ReactNode } from "react";
 import { LocaleBadge } from "@/components/translations/locale-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Skeleton, SkeletonLine } from "@/components/ui/skeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Textarea } from "@/components/ui/textarea";
 import { localeTextAttrs } from "@/lib/translations/text-direction";
@@ -148,18 +148,18 @@ export function LocalePanelSkeleton() {
     <div data-skeleton-detail className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="flex h-12 shrink-0 items-center gap-2 px-4">
         <Skeleton className="size-4 shrink-0 rounded" />
-        <SkeletonLine size="sm" className="w-32" />
+        <Skeleton size="sm" className="w-32" />
         <Skeleton className="ml-auto h-7 w-28 rounded-md" />
       </div>
       <div className="border-divider flex min-h-0 flex-1 flex-col overflow-hidden border-t">
         <div className="border-divider flex shrink-0 flex-col gap-1 border-b px-4 py-3.5">
           <div className="flex h-7 items-center gap-2.5">
-            {/* ⚠️ 비율 폭은 부모 폭이 있어야 선다 — flex 행의 `SkeletonLine`은 내용 폭이라 `flex-1`이 없으면 0으로 접힌다. */}
-            <div className="min-w-0 flex-1"><SkeletonLine size="md" className="w-[45%]" /></div>
+            {/* ⚠️ 비율 폭은 부모 폭이 있어야 선다 — flex 행의 `Skeleton`은 내용 폭이라 `flex-1`이 없으면 0으로 접힌다. */}
+            <div className="min-w-0 flex-1"><Skeleton size="md" className="w-[45%]" /></div>
             <Skeleton className="ml-auto h-3 w-20 rounded-md" />
             <Skeleton className="size-7 shrink-0 rounded-md" />
           </div>
-          <SkeletonLine size="xs" className="w-[60%]" />
+          <Skeleton size="xs" className="w-[60%]" />
         </div>
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           {[0, 1, 2].map(i => (
@@ -170,7 +170,7 @@ export function LocalePanelSkeleton() {
           ))}
         </div>
         <div className="border-border flex shrink-0 items-center gap-3 border-t px-4 py-3">
-          <SkeletonLine size="xs" className="w-24" />
+          <Skeleton size="xs" className="w-24" />
           <Skeleton className="ml-auto h-9 w-16 rounded-md" />
         </div>
       </div>

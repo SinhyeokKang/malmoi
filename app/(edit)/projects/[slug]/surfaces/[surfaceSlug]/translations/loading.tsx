@@ -1,4 +1,4 @@
-import { Skeleton, SkeletonLine } from "@/components/ui/skeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 import { m } from "@/lib/i18n";
 import { PANEL } from "@/lib/translations/layout";
 
@@ -21,7 +21,7 @@ export default function TranslationsLoading() {
       <div className="border-border flex shrink-0 flex-col gap-3 border-b px-4 py-3" aria-hidden>
         <div className="flex items-center gap-3">
           <div className="inline-flex items-center gap-2">
-            <SkeletonLine size="lg" className="w-28" />
+            <Skeleton size="lg" className="w-28" />
             <Skeleton className="size-5 rounded-full" />
           </div>
           <div className="ml-auto flex items-center gap-2">
@@ -49,12 +49,12 @@ export default function TranslationsLoading() {
                 <div className="flex items-center gap-2 px-2 py-[7px]">
                   <Skeleton className="size-3.5 shrink-0 rounded" />
                   <Skeleton className="size-4 shrink-0 rounded" />
-                  <SkeletonLine size="sm" className="w-[60%]" />
+                  <Skeleton size="sm" className="w-[60%]" />
                 </div>
                 {["w-[70%]", "w-[45%]", "w-[55%]", "w-[40%]"].map((width) => (
                   <div key={width} className="flex items-center gap-2 py-1.5 pr-2 pl-[30px]">
                     <Skeleton className="size-3.5 shrink-0 rounded" />
-                    <SkeletonLine size="sm" className={width} />
+                    <Skeleton size="sm" className={width} />
                   </div>
                 ))}
               </div>
@@ -69,8 +69,8 @@ export default function TranslationsLoading() {
                     className={`flex items-start gap-3 border-t px-4 py-3 ${i === 0 ? "border-divider" : "border-border"}`}
                   >
                     <div className="flex min-w-0 flex-1 flex-col gap-copy-gap">
-                      <SkeletonLine size="sm" className={i % 2 === 0 ? "w-[72%]" : "w-[55%]"} />
-                      <SkeletonLine size="xs" className={i % 2 === 0 ? "w-[40%]" : "w-[50%]"} />
+                      <Skeleton size="sm" className={i % 2 === 0 ? "w-[72%]" : "w-[55%]"} />
+                      <Skeleton size="xs" className={i % 2 === 0 ? "w-[40%]" : "w-[50%]"} />
                     </div>
                     <Skeleton className="mt-1 h-3 w-14 shrink-0 rounded-md" />
                   </div>
@@ -86,10 +86,10 @@ export default function TranslationsLoading() {
               <div className="flex w-full flex-col items-center py-12">
                 <Skeleton className="mb-3 size-10 rounded-sm" />
                 <div className="mb-1 flex w-full justify-center">
-                  <SkeletonLine size="lg" className="w-56" />
+                  <Skeleton size="lg" className="w-56" />
                 </div>
                 <div className="flex w-full justify-center">
-                  <SkeletonLine size="sm" className="w-72" />
+                  <Skeleton size="sm" className="w-72" />
                 </div>
               </div>
             </div>
@@ -104,7 +104,7 @@ export default function TranslationsLoading() {
 function PanelHead({ title, aside = false }: { title: string; aside?: boolean }) {
   return (
     <div className="flex h-12 shrink-0 items-center gap-2 px-4">
-      <SkeletonLine size="md" className={title} />
+      <Skeleton size="md" className={title} />
       <Skeleton className="size-5 rounded-full" />
       {aside && <Skeleton className="ml-auto h-3 w-24 rounded-md" />}
     </div>

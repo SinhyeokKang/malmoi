@@ -15,7 +15,10 @@ import { cn } from "@/lib/utils";
  * ⚠️ **`aria-hidden`이 여기 있다.** 호출부가 감싸는 컨테이너마다 붙이면 하나가 빠지고, 그 순간
  * 스크린리더가 회색 블록을 읽는다 (`projects/(list)/loading.tsx`에서 실제로 둘로 갈렸다).
  */
-export function Skeleton({ className }: { className?: string }) {
+export function Skeleton({ className, size }: { className?: string; size?: "xs" | "sm" | "md" | "lg" }) {
+  if (size) return <div data-skeleton-line className={cn("flex min-w-0 items-center", LINE_TEXT[size])}>
+    {"\u200b"}<Skeleton className={cn("h-[0.8em] rounded-md", className)} />
+  </div>;
   return <div aria-hidden className={cn("bg-foreground/5 motion-safe:animate-pulse rounded", className)} />;
 }
 
@@ -27,13 +30,3 @@ export function Skeleton({ className }: { className?: string }) {
  * "골격이 실물과 따로 떠내려갔다"). 블록 높이는 글자 크기의 비율이라 같은 이유로 `em`이다.
  */
 const LINE_TEXT = { xs: "text-xs", sm: "text-sm", md: "text-base", lg: "text-lg" } as const;
-
-export function SkeletonLine({ size, className }: { size: "xs" | "sm" | "md" | "lg"; className?: string }) {
-  return (
-    // `div`다 — 안의 `Skeleton`이 `div`라 `span`으로 감싸면 잘못된 중첩이다.
-    <div data-skeleton-line className={cn("flex min-w-0 items-center", LINE_TEXT[size])}>
-      {"\u200b"}
-      <Skeleton className={cn("h-[0.8em] rounded-md", className)} />
-    </div>
-  );
-}
