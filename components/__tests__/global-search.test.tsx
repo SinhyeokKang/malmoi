@@ -7,6 +7,8 @@ let SearchTrigger: typeof import("@/components/search/search-trigger").SearchTri
 import type { NavProject } from "@/lib/shell/nav";
 import type { KeyHit } from "@/lib/search/key-href";
 import { find, input, key, render } from "./helpers/dom";
+import { Toc } from "@/components/public-doc-toc";
+import { NavigationDim } from "@/components/shell/navigation-dim";
 
 vi.setConfig({ testTimeout: 20_000 });
 const mocks = vi.hoisted(() => ({ keys: vi.fn(), memberships: vi.fn(), fetch: vi.fn(), pathRead: vi.fn(), pathname: "/docs/start" }));
@@ -108,4 +110,71 @@ it("does not mount route-dependent search content before first opening", async (
   expect(mocks.pathRead).not.toHaveBeenCalled();
   await open();
   expect(mocks.pathRead).toHaveBeenCalled();
+});
+
+it("same-doc search replaces the TOC pin for successive targets and normal TOC clicks", async () => {
+  const items = [{ id: "alpha", heading: "Alpha" }, { id: "beta", heading: "Beta" }, { id: "gamma", heading: "Gamma" }];
+  mocks.fetch.mockResolvedValue({ ok: true, json: async () => ({ docs: items.map(item => ({ id: `doc:${item.id}`, title: item.heading, href: `/docs/start#${item.id}`, anchor: item.id, body: "Section" })) }) });
+  const queue: FrameRequestCallback[] = [];
+  vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => queue.push(callback));
+  vi.stubGlobal("cancelAnimationFrame", () => {});
+  const originalRect = HTMLElement.prototype.getBoundingClientRect;
+  const tops: Record<string, number> = { alpha: 200, beta: 800, gamma: 1200 };
+  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+    const top = tops[this.id];
+    return top === undefined ? originalRect.call(this) : { top: top - (this.closest<HTMLElement>("[data-public-scroller]")?.scrollTop ?? 0) } as DOMRect;
+  });
+  const flush = async () => { await act(async () => { for (let i = 0; queue.length && i < 10; i++) for (const callback of queue.splice(0)) callback(0); }); };
+  const { container } = await render(<><SearchTrigger account={null} /><div data-public-scroller>{items.map(item => <h2 key={item.id} id={item.id} tabIndex={-1}>{item.heading}</h2>)}<Toc label="On this page" items={items} /></div></>);
+  const scroller = find<HTMLElement>(container, "[data-public-scroller]");
+  Object.defineProperty(scroller, "clientHeight", { configurable: true, value: 600 });
+  // Beta도 끝에 닿는다 — 고정을 풀기만 하면 마지막 Gamma가 켜지는 짧은 절 계약이다.
+  Object.defineProperty(scroller, "scrollHeight", { configurable: true, value: 1352 });
+  scroller.scrollTo = vi.fn((options: ScrollToOptions) => { scroller.scrollTop = Math.min(options.top ?? 0, 752); scroller.dispatchEvent(new Event("scroll")); });
+  const current = () => find(container, 'nav a[aria-current="location"]').getAttribute("href");
+  await flush();
+  await act(async () => { await userEvent.setup().click(find(container, 'nav a[href="#alpha"]')); });
+  expect(current()).toBe("#alpha");
+  for (const [id, how, top] of [["beta", "pointer", 752], ["alpha", "Enter", 152]] as const) {
+    await open();
+    expect(document.activeElement).toBe(query());
+    await input(query(), id);
+    const link = find<HTMLAnchorElement>(group("Docs")!, `a[href="/docs/start#${id}"]`);
+    const clicked = vi.spyOn(link, "click");
+    if (how === "Enter") await key(query(), "Enter"); else await act(async () => link.click());
+    expect(clicked).toHaveBeenCalledOnce();
+    expect(dialog()).toBeNull();
+    await vi.waitFor(() => expect(document.activeElement?.id).toBe(id));
+    await flush();
+    expect(window.location.hash).toBe(`#${id}`);
+    expect(scroller.scrollTop).toBe(top);
+    expect(scroller.scrollTo).toHaveBeenLastCalledWith({ top: top, behavior: "smooth" });
+    expect(current()).toBe(`#${id}`);
+  }
+  await act(async () => { await userEvent.setup().click(find(container, 'nav a[href="#beta"]')); });
+  await flush();
+  expect(current()).toBe("#beta");
+  expect(document.activeElement?.id).toBe("beta");
+  await act(async () => { scroller.dispatchEvent(new Event("wheel")); });
+  await flush();
+  expect(current()).toBe("#gamma");
+});
+
+it.each(["pointer", "Enter"])("real search %s navigation reaches NavigationDim after closing", async how => {
+  await render(<><NavigationDim /><SearchTrigger account={null} /></>);
+  const dim = find(document.body, "[data-navigation-dim]");
+  expect(dim.hasAttribute("data-active")).toBe(false);
+  await open();
+  await input(query(), "changelog");
+  const link = find<HTMLAnchorElement>(group("Menus")!, 'a[href="/changelog"]');
+  const clicked = vi.spyOn(link, "click");
+  // jsdom의 목적지 렌더만 막는다 — document·window까지 실제 클릭 전파는 보존한다.
+  const prevent = (event: MouseEvent) => event.preventDefault();
+  document.addEventListener("click", prevent);
+  try {
+    if (how === "Enter") await key(query(), "Enter"); else await act(async () => link.click());
+  } finally { document.removeEventListener("click", prevent); }
+  expect(clicked).toHaveBeenCalledOnce();
+  expect(dialog()).toBeNull();
+  expect(dim.getAttribute("data-active")).toBe("true");
 });

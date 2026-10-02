@@ -25,6 +25,7 @@ vi.mock("@/app/(edit)/publish-actions", () => ({ loadPublishPreview: mocks.publi
 vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: vi.fn(), checkOpenPullRequest: vi.fn(), prepareRepositorySync: vi.fn() }));
 
 import { SearchTrigger } from "@/components/search/search-trigger";
+import { NavigationDim } from "@/components/shell/navigation-dim";
 vi.mock("@/app/search/actions", () => ({ searchKeysAction: vi.fn().mockResolvedValue({ ok: true, hits: [] }), loadSearchMembershipsAction: vi.fn() }));
 
 import { TranslationWorkspace } from "@/components/translations/workspace/workspace";
@@ -115,7 +116,10 @@ it.each(["pointer", "Enter"])("real search %s closes before the workspace leave 
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ docs: [] }) }));
   window.history.replaceState(null, "", "/projects/acme/surfaces/web/translations");
   // Workspace comes first: its document capture guard is mounted before any search item.
-  const { container } = await render(<><TranslationWorkspace {...props()} /><SearchTrigger account={{ name: "Tester", email: null, image: null }} memberships={[{ slug: "acme", name: "Acme", role: "OWNER", archived: false }]} /></>);
+  const { container } = await render(<><NavigationDim /><TranslationWorkspace {...props()} /><SearchTrigger account={{ name: "Tester", email: null, image: null }} memberships={[{ slug: "acme", name: "Acme", role: "OWNER", archived: false }]} /></>);
+  const dim = document.querySelector<HTMLElement>("[data-navigation-dim]")!;
+  expect(dim).not.toBeNull();
+  expect(dim.hasAttribute("data-active")).toBe(false);
   const user = userEvent.setup();
   await act(async () => { await user.type(area(container, "zh"), "Draft"); await user.click(document.querySelector('button[aria-label="Search"]')!); });
   const query = document.querySelector<HTMLInputElement>('[role="combobox"]')!;
@@ -130,6 +134,7 @@ it.each(["pointer", "Enter"])("real search %s closes before the workspace leave 
   expect(document.querySelectorAll('[role="dialog"]')).toHaveLength(1);
   expect(button("Keep editing")).not.toBeNull();
   expect(mocks.push).not.toHaveBeenCalled();
+  expect(dim.hasAttribute("data-active")).toBe(false);
   await act(async () => { await user.click(button("Keep editing")); });
   vi.unstubAllGlobals();
 });
