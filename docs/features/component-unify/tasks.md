@@ -33,7 +33,7 @@
 | B1d T4 | `docs/DESIGN.md`, `app/globals.css` 주석 | T3 / 문서·주석 경계 | GPT-6.1 Sol medium / 사실 교정 | 완료 `bc535749`: DESIGN·CSS 주석만, 독립 리뷰1문장 수정, gate640파일/9795테스트 green |
 | R1 리뷰·① QA | 읽기 전용 diff/스크린샷 | T4 / 커밋 없음 | GPT-6.1 Sol high 독립 리뷰 / 브라우저는 지휘자 | 완료: 6화면 1280 비교, 시각 회귀 없음. **dev push 완료 `1d5d6eae`** |
 | B2 T5–T6 | primitive 계약 테스트들, `components/__tests__/api-contract.test.ts` | R1 push 완료 / T5·T6 별도 | GPT-6.1 Sol high / 계약·허용목록 그물 | T5 완료 `b9515558`: 7파일59계약·mutation7건·gate645파일/9847테스트·독립 리뷰 green. T6 완료 `993b4190`: 111행/120회·22카나리아·독립 리뷰2건 수정·gate646파일/9869테스트 green |
-| B3a T7 | `ui/badge.tsx`, `ui/status-badge.tsx`, `ui/panel-card.tsx`, `lib/status/canon.ts`, `lib/events/view.ts`, `logs/result-badge.tsx`, `logs/event-detail.tsx`, Badge 소비자·C | T6 / 상태축1커밋 | GPT-6 Astra high / 결과 의미·색 예외 결합 | G, Logs 성공 회색·라벨 보존 |
+| B3a T7 | `ui/badge.tsx`, `ui/status-badge.tsx`, `ui/panel-card.tsx`, `lib/status/canon.ts`, `lib/events/view.ts`, `logs/result-badge.tsx`, `logs/event-detail.tsx`, Badge 소비자·C | T6 / 상태축1커밋 | GPT-6 Astra high / 결과 의미·색 예외 결합 | 완료 `17ad3852`: 41파일·상태 위반18행 해소·문구/CSS 보존·리뷰 보완·gate646파일/9951테스트+격리PG520 green |
 | B3b T8 | `lib/tone.ts→hue.ts`, `ui/tone.ts`, avatar/image 소비자, client-graph 테스트 | T7 / hue축1커밋 | GPT-6.1 Sol medium / 이름 변경 | G, 옛 import0 |
 | B3c T9 | `ui/button.tsx`, `ui/alert.tsx`, `ui/skeleton.tsx`, 스피너 전달 `ui/file-input.tsx`·`reconnect-button.tsx`, 해당 호출부(특히 publish/workspace), C | T8 / 크기축1커밋 | GPT-6.1 Sol high / 크기·busy 렌더 계약 | G, spinnerSize 14/16·기본16 보존, 값0 |
 | B3d T10 | `ui/input.tsx`, `ui/select.tsx`, `components/search-input.tsx`, design §9 폭 호출부, C | T9 / 폭축1커밋 | GPT-6.1 Sol high / responsive 폭 보존 | G, 래퍼 포함 값0 |
@@ -83,9 +83,11 @@
 - **1280×900 R1**: Home·Projects·Translations·Sources·Logs·Settings를 T0와 대조했다. Home/Logs/Sources는 픽셀 차이0, Projects5·Translations4·Settings24픽셀의 미세 렌더링 차이만 남았다. Home/Logs/Settings의 267/406/157개 보이는 HTML 요소 좌표와 계산된 CSS 14속성은 전부 같았다. 승인 밖 레이아웃·색 변화는 발견하지 않았다.
 - 최초 촬영 뒤 브라우저 스크롤바 모드가 달라져, Home/Logs/Settings는 동일 T0 SHA를 임시 디렉터리에서 같은 브라우저·Webpack dev 조건으로 재촬영했다. 상대 시간 문구·개발 도구 렌더링 표시는 안정 상태에서 구분했다. 환경 파일 복사·프로젝트 데이터 변경 없이 검증했고 서버·임시 디렉터리·브라우저 공간을 정리했다.
 - 상세 로컬 증거: `.scratch/component-unify-r1-qa.md`, `.scratch/component-unify/{before,after,baseline-current-browser,after-current-browser}/`, `dom-comparison.json`. 각 배치 인계서는 `.scratch/handoff-component-unify-b1{a,b,c,d}.md`다.
-- **단위 ② T5·T6 완료, T7 진행. T7 이후·단위 ③·T21/T22 및 전체 화면·3뷰포트·Safari 검증은 미완/미검증.** 단위 ① push 직전 `pnpm gate` exit 0(640파일/9795테스트·격리 PostgreSQL 31파일/520테스트·build·미러)을 확인했다. `aed73f32..1d5d6eae`를 dev에 푸시했으며 CI run은 `36964622111`이다(푸시 시점 queued). `pnpm guide:check`: `stale 25컷 (39건)` — 후속 재촬영 경고. 스키마·마이그레이션 변경 없음.
+- **단위 ② T5–T7 완료, T8 진행. T8 이후·단위 ③·T21/T22 및 전체 화면·3뷰포트·Safari 검증은 미완/미검증.** 단위 ① push 직전 `pnpm gate` exit 0(640파일/9795테스트·격리 PostgreSQL 31파일/520테스트·build·미러)을 확인했다. `aed73f32..1d5d6eae`를 dev에 푸시했으며 CI run은 `36964622111`이다(푸시 시점 queued). `pnpm guide:check`: `stale 25컷 (39건)` — 후속 재촬영 경고. 스키마·마이그레이션 변경 없음.
 
 - **T5·T6 계약 그물 완료.** T5 `b9515558`은 현재 프리미티브 59계약과 7개 mutation을 고정했다. T6 `993b4190`은 실제 위반 111행/120회와 해소 태스크를 기록했다. 독립 리뷰에서 발견한 상태 6건 누락·로컬 크기 타입 별칭 검출 공백을 수정했고, 22카나리아·실제 Note 허용행 삭제 red/동일 바이트 복원 green·전체 gate646파일/9869테스트·typecheck·build·미러 exit0을 통과했다. 태스크 경계 명시는 `90cc5218`이며, T7은 이 커밋을 기준으로 시작한다.
+
+- **T7 상태 통합 완료 `17ad3852`.** Badge 모양 이름과 의미 상태를 분리하고 Logs·표면 결과·PanelRow·Note·직접 상태 배지5곳을 같은 상태 정본으로 이관했다. Logs의 회색 성공·Failed 낱말과 기존 CSS·슬롯을 보존했다. 기존 API 기대값4건과 독립 리뷰의 Note 조건식 스캐너 공백을 수정했으며, 최종 gate646파일/9951테스트·격리 PostgreSQL31파일/520테스트·typecheck·build·미러 exit0 및 독립 리뷰0건을 확인했다. 실제 브라우저·AT 검증은 R2에 남아 있다.
 
 ## 단위 ① 토큰 · 정리 — 값 변화 0
 
