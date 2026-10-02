@@ -27,7 +27,7 @@
 | 배치 / 태스크 | 소유 파일(소비자는 design §4·§9의 전수 집합) | 선행 / 커밋 경계 | Codex 모델·effort / 이유 | 게이트·상태 |
 |---|---|---|---|---|
 | B0 T0 | 이 폴더 spec/design/tasks | 결정·독립 리뷰 후 문서1커밋 | GPT-6 Astra high / 선행 불일치·계약 정합 | 완료: 실측·결정·독립 리뷰2건 수정·지휘자 대조·gate green·전체 계획 알림 |
-| B1a T1 | `app/globals.css` 기존 철자 소비자, `components/__tests__/visual-system.test.ts`, 새 동치 테스트 | B0 / T1커밋 | GPT-6.1 Sol high / 여러줄 철자·CSS 동치 | G, 값0 |
+| B1a T1 | `app/globals.css` 기존 철자 소비자, `components/__tests__/visual-system.test.ts`, 새 동치 테스트 | B0 / T1커밋 | GPT-6.1 Sol high / 여러줄 철자·CSS 동치 | 완료 `3fcc9e11`: 15파일24곳·컴파일13테스트·gate639파일/9652테스트·Sol 독립 리뷰 통과. 비동치 예외는 §6.1 |
 | B1b T2 | `globals.css`, §6.2 토큰 소비자 app/components/lib/messages, DESIGN·REGISTERED 테스트 | T1 / T2커밋 | GPT-6.1 Sol high / 값0 토큰 전수치환 | G, 3파일 근거·raw0 |
 | B1c T3 | `ui/breadcrumb.tsx`, `ui/segmented-control.tsx`, `ui/avatar.tsx`, `globals.css`, `lib/__tests__/globals-css.test.ts`, invitation-email 테스트, focus-ring 테스트 | T2 / T3커밋 | GPT-6.1 Sol high / dead export·메일 값 대조 | G(postgres 자동 판정), 소비자0 |
 | B1d T4 | `docs/DESIGN.md`, `app/globals.css` 주석 | T3 / 문서·주석 경계 | GPT-6.1 Sol medium / 사실 교정 | 문구 대조+G, ① 종료 |
@@ -78,10 +78,10 @@
 
 ## 단위 ① 토큰 · 정리 — 값 변화 0
 
-- **T1** 철자 접기(design §6.1 — BannerLine 제외). 먼저 **동치 테스트**(design §5.3 — `tailwindcss` `compile`로 옛·새 철자 쌍의 선언 동일)를 쓰고, 그다음 접는다.
+- **T1** 철자 접기(design §6.1 — 모든 알파 선·링과 고정4px 제외). 먼저 **동치 테스트**(design §5.3 — `tailwindcss` `compile`로 옛·새 철자 쌍의 CSS 변수 해석 뒤 선언 동일; 색 반올림·px/rem 가정 금지)를 쓰고, 그다음 접는다.
   - `visual-system.test.ts`에 "같은 값 두 철자 0"(짝 없는 `/5`·`/6` 허용) + 카나리아.
   - 뒤집는 테스트: `mcp-connected-apps.test.tsx` · `projects-screen.test.ts` · `projects-cards.test.tsx` · `privacy-doc.test.tsx` · `b5-layout-wrap.test.tsx` · `visual-system.test.ts`.
-  검증 [자동]: 동치 테스트 green(쌍 전부) · 옛 철자 0 스캔 · `pnpm gate` green.
+  검증 [자동]: 동치 테스트 green(검증된 쌍 전부) · 비동치 예외의 반증 테스트 · 예외 밖 옛 철자 0 스캔 · `pnpm gate` green.
 - **T2** 토큰 신설(design §6.2 확정 목록). 순서: `@theme`에 토큰 → 소비자 교체 → 죽은 클래스 스캔(POSTMORTEM 2026-09-23). DESIGN §2 토큰 표·§6.2 등재·`REGISTERED`·§6.3 링크 색·§6.8 무채 계단을 **같은 커밋**에서 고친다.
   검증 [자동]: 확정 토큰 값의 raw 사용 0(`lib`·`messages` 포함, 접두 `border-t-`·`placeholder-`·`caret-`·`accent-`) · `@theme`에 없는 클래스 0 · 동치 테스트에 토큰 쌍 추가 green.
 - **T3** 소비자 0 삭제(C4) · 이메일 hex 대조.

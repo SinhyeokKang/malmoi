@@ -119,7 +119,7 @@ global-search의 `CommandDialog`가 셋째가 되면 그쪽이 판정한다. **�
 
 ### 5.3 토큰 스캔 · 동치
 - `visual-system.test.ts` 확장: 같은 값 두 철자 0, 확정 토큰 값의 raw 사용 0, `lib`·`messages`도 스캔, 접두 `border-t-`·`placeholder-`·`caret-`·`accent-` 포함, `@theme`에 없는 클래스 0.
-- **철자 동치 자동 테스트**(S10): 설치된 `tailwindcss`의 `compile`로 옛·새 철자 쌍을 `globals.css` 기준 컴파일해 선언이 같은지 대조한다. 이것이 단위 ① "값 변화 0"의 판정이다.
+- **철자 동치 자동 테스트**(S10): 설치된 `tailwindcss`의 `compile`로 옛·새 철자 쌍을 `globals.css` 기준 컴파일해 CSS 변수의 실제 선언을 해석한 뒤 대조한다. px/rem 가정·색/숫자 반올림으로 같게 만들지 않는다. 이것이 단위 ① "값 변화 0"의 판정이다.
 - **이메일 hex 대조**: `lib/invitation-email/template.ts` hex ↔ `globals.css` 토큰(hsl → hex 변환). 짝 없는 `#262626`(`lib/invitation-email/template.ts` #262626)은 사유가 붙은 예외 목록.
   `message.ts:36-43 TONE_HEX`도 범위에 넣는다. 선례 `lib/invitation-email/__tests__/message.test.ts:353-390` 옆에 둔다.
 
@@ -132,9 +132,10 @@ T5는 같은 기본 md·danger·busy 버튼의 두 실례를 API 변경 전에 �
 ## 6. 토큰 · 교정 · 문서
 
 ### 6.1 값 변화 0 (철자 접기 — 단위 ①)
-foreground `/2`·`/3`는 **0**으로 이미 정리됐다. 남은 동치 대상은 divider 철자(raw 13건에서 BannerLine 제외), `leading-[1.5]` 3건, `rounded-[4px]` 1건, `[overflow-wrap:anywhere]` 14건이다.
+foreground `/2`·`/3`는 **0**으로 이미 정리됐다. 남은 동치 대상은 `leading-[1.5]` 3건과 `[overflow-wrap:anywhere]` 14건이다.
+**T1 컴파일 반증(2026-10-02)**: 알파 선·링 13건은 `color-mix(in oklab, var(--foreground) 6%, transparent)`로 불투명 `var(--divider)`와 다르므로 모두 유지한다. `rounded-[4px]` 1건도 `rounded`의 `0.25rem`과 모든 루트 크기에서 같지 않아 유지한다. `/7`와 `/[0.07]`는 컴파일 숫자도 7%와 7.000000000000001%로 달라 정확 동치 쌍에서 제외한다(현재 이 철자 교체 소비자는 없다).
 `tracking-[..]`는 기존 토큰과 값이 같은 곳만 접고 public-doc-table의 별도 값을 보존한다. 주석을 포함한 검색 수를 실제 교체 수로 쓰지 않는다.
-**BannerLine 선은 제외**(`ui/row-card.tsx:173`): 투명 면 위의 알파 선과 불투명 divider는 값이 달라 D3이다.
+**BannerLine을 포함한 모든 알파 선이 예외**다. 범위가 정해진 기존 예외와 양성 카나리아를 테스트에 남긴다. 이는 새 시각 변경 승인이 아니라 단위 ① 값0 원칙에 따른 잘못된 동치 전제의 교정이다.
 
 ### 6.2 토큰 (C5 — 서로 다른 3파일 이상)
 

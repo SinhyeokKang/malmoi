@@ -46,9 +46,9 @@
 
 **단위 ① 토큰**
 1. 같은 값의 두 철자가 0이다 — foreground 알파는 괄호 철자(`/[0.0N]`)와 짝이 있는 bare 철자가 공존하지 않는다(**짝이 없는 `/5`·`/6`은 허용**),
-   `--divider`와 같은 불투명 선은 `border-divider`(**투명 면 위의 BannerLine 선은 제외** — design §6.1), `leading-[1.5]` → `leading-normal`,
-   `rounded-[4px]` → `rounded`, 토큰 자간을 다시 적은 `tracking-[..]` 0(`public-doc-table` 제외), `[overflow-wrap:anywhere]` → `wrap-anywhere`.
-   **렌더 결과는 바뀌지 않는다** — 옛·새 철자 쌍이 `globals.css` 기준 컴파일에서 같은 선언을 낸다는 자동 테스트(design §5.3).
+   **알파 선·링은 유지**(불투명 divider와 비동치 — design §6.1), `leading-[1.5]` → `leading-normal`,
+   **`rounded-[4px]`는 유지**(rem과 비동치), 토큰 자간을 다시 적은 `tracking-[..]` 0(`public-doc-table` 제외), `[overflow-wrap:anywhere]` → `wrap-anywhere`.
+   **렌더 결과는 바뀌지 않는다** — 옛·새 철자 쌍이 `globals.css` 기준 컴파일에서 CSS 변수 해석 뒤 같은 선언을 낸다는 자동 테스트(design §5.3). 단위·색을 반올림해 차이를 숨기지 않는다.
 2. design §6.2의 **확정 토큰 이름 목록**(3파일 이상 근거 포함)이 `@theme`에 있고, 그 값을 raw로 쓰는 곳이 0이다 — `visual-system.test.ts`가 센다.
    `@theme`에 없는 클래스 이름이 소스에 0이다(POSTMORTEM 2026-09-23 `text-link`).
 3. `Breadcrumb` · `SegmentedLinks` · `Avatar shape="square"` export가 0이고, 소비자 0인 `@theme` 색 7개와 `:root`의 짝 변수가 없다
