@@ -130,7 +130,7 @@ it("same-doc search replaces the TOC pin for successive targets and normal TOC c
   Object.defineProperty(scroller, "clientHeight", { configurable: true, value: 600 });
   // Beta도 끝에 닿는다 — 고정을 풀기만 하면 마지막 Gamma가 켜지는 짧은 절 계약이다.
   Object.defineProperty(scroller, "scrollHeight", { configurable: true, value: 1352 });
-  scroller.scrollTo = vi.fn((options: ScrollToOptions) => { scroller.scrollTop = Math.min(options.top ?? 0, 752); scroller.dispatchEvent(new Event("scroll")); });
+  scroller.scrollTo = vi.fn((options?: ScrollToOptions | number, y?: number) => { scroller.scrollTop = Math.min(typeof options === "number" ? y ?? 0 : options?.top ?? 0, 752); scroller.dispatchEvent(new Event("scroll")); });
   const current = () => find(container, 'nav a[aria-current="location"]').getAttribute("href");
   await flush();
   await act(async () => { await userEvent.setup().click(find(container, 'nav a[href="#alpha"]')); });
