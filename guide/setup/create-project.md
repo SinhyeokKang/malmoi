@@ -15,7 +15,7 @@ Before you start: Sign in with a verified email, go to **Projects**, and choose 
 
 ## Choose files {#choose-files}
 
-1. Select the detected files. Detection requires at least two languages.
+1. Select the detected files. Files with a single language are supported.
 2. If your files are not detected, choose **Set the path yourself** and enter a supported path and format. See [Supported file formats](../reference/formats.md#formats) for path examples.
 3. Review the preview, then choose **Next**.
 
