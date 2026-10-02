@@ -402,3 +402,14 @@ Run **`run_0e44db2882ac`**, 기존 coordinator **`term_dd1b2d61-f22d-4409-8977-7
 - 관련 SEO/보안 헤더/실제 폰트/글로벌 CSS4파일50테스트 GREEN 및 typecheck exit0. 테스트·이 tasks.md 두 경로 후보의 독립 리뷰/명시적 COMMIT을 기다린다. 지휘자의 실제 폰트 사용/3뷰포트와 최종 누적 gate가 남아 T20a 완료 체크는 보류한다.
 
 - 지휘자 통합: 위 두 경로 후보는 Astra 소스 리뷰0 findings 이후 워커 `c40c1273`으로 커밋됐다. root의 하네스/T21 이력을 모두 보존해 tasks 추가 부분만 병합했고 SEO 테스트 바이트는 승인된 SHA 그대로다. 최종 커밋 audit·누적 gate·R3는 계속 미완이다.
+
+
+## R3 전체 검증 실행 체크포인트 — 2026-10-02
+
+- root `97962138` 고정 상태에서 누적 `pnpm gate` 실제 exit0: generate/typecheck/667파일·10350테스트 통과(각1스킵)/build/mirror. dev DB status up to date. SEO 전체 테스트 회귀도 해소됐다.
+- R3 실제 Chromium: Projects/Home/Translations/Sources/Logs/Members/Settings/MCP/Account와 대형 모달·온보딩1–3 등20상태를1280/1440/1890×900에서 확인했다. 기본60장 + 트리 팝오버·안정된 포커스·오류 입력3장, 총63장 육안 확인. DOM 가로 넘침·중복ID·끊긴 aria 참조0; 확인된 회귀0.
+- 실제 영문 textarea Geist35glyphs·숫자907 Geist3glyphs·한글 textarea Pretendard11+Geist14glyphs를 CDP로 확인했다. Astra가 소스/자산/실제 로드/3뷰포트 근거를 대조해 T20a를 승인했다.
+- 검색 제출/지우기, 필터 빈 결과, repo 임시 선택→명시 확정, Preview/Include 분리, 포털 Tab/Escape/복귀, 트리 같은 토글/바깥클릭, Sources28px/좁은8px,36px필드·16px지시자와1px동색링을 실측했다. 잘못된 주소의 빨간 border/ring 및 제출 차단도 실제 관측했다. repo Input의 Escape 모달 닫기는 변경 전 동작이며 SearchInput의 Escape 지우기 계약과 구분한다.
+- 미검증: Safari/보조기술, 보관/zero-membership 픽스처, error.tsx 의도적 유도, 온보딩4, 실제 쓰기/진행/provider인증/시크릿 표시, 비로그인 랜딩. IME는 자동 계약 증거뿐이다. 이 제한을 전체 런타임 PASS로 바꾸지 않는다.
+- 실제 초대·프로젝트 생성·토큰 발급/회전·번역 저장은 하지 않았다. TaskSpace22를 한 번 종료하고 dev서버70496을 정지했다. 생성된 next-env 경로 변경만 복원하고 .next/dev를 정리했다.
+- 남은 일: T21 DESIGN/DIRECTORY/global-search 정본 반영·독립 리뷰 → 최종 gate/dev push → T22 종료/증거 보존·최종 gate/dev push·워커 정리. 런타임 증거 `.scratch/component-unify-r3-qa.md`; 원본 PNG/JSON은 `.scratch/component-unify/r3/`에만 보관한다.
