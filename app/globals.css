@@ -8,10 +8,10 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  /* Pretendard Variable을 sans 스택 맨 앞에 둔다. 폰트 파일은 public/fonts/pretendard/의
-     동적 서브셋이고 <link>로 layout.tsx가 불러온다(생성물 — scripts/copy-fonts.mjs).
-     폴백을 시스템 UI 폰트로 채워둬야 폰트가 404여도 한글이 깨지지 않는다. */
-  --font-sans: "Pretendard Variable", -apple-system, BlinkMacSystemFont, system-ui,
+  /* Geist는 layout.tsx의 next/font/local이 자사 호스트하고 루트에 변수를 붙인다.
+     지원하지 않는 글리프는 기존 Pretendard Variable 동적 서브셋으로 폴백한다.
+     Pretendard의 <link>·scripts/copy-fonts.mjs와 시스템 폴백은 그대로 유지한다. */
+  --font-sans: var(--font-geist), "Pretendard Variable", -apple-system, BlinkMacSystemFont, system-ui,
     "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 

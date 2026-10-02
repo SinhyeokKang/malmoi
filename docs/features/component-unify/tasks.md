@@ -288,10 +288,10 @@ Run **`run_0e44db2882ac`**, 기존 coordinator **`term_dd1b2d61-f22d-4409-8977-7
   검증 [수동]: 화면 목록 × 3 뷰포트 — 바뀐 자리가 §6.3 행과 1:1.
   `[commit] fix(ui): …`
 - [ ] **T20a — Geist 우선 폰트** (2026-10-02 사용자 추가): sans 폰트 스택을 **Geist → Pretendard Variable → 기존 시스템 폴백** 순서로 바꾼다. Geist가 지원하지 않는 글리프는 Pretendard Variable로 폴백한다. Pretendard Variable의 기존 자사 호스트 동적 서브셋과 생성/로딩 경로는 유지한다. monospace 스택은 대상이 아니다.
-  범위: `app/globals.css`의 `--font-sans`, `app/layout.tsx`의 실제 폰트 로딩 및 필요한 최소 폰트 자산/설정. 현재 스택은 Pretendard Variable 우선이다. Geist를 실제로 로드하며 CSS 이름만 앞에 추가하고 끝내지 않는다. 기존 의존성 버전을 임의로 올리지 않는다.
+  범위: `app/globals.css`의 `--font-sans`, `app/layout.tsx`의 실제 폰트 로딩 및 필요한 최소 폰트 자산/설정. 구현 후보는 `next/font/local`의 루트 `--font-geist` 변수 → Pretendard Variable → 기존 시스템 폴백이다. 공식 v1.7.2 WOFF2를 고정하고 swap/preload 및 `adjustFontFallback: false`로 실제 로드하며 자동 Arial이 Pretendard 앞에 끼지 않게 한다. 기존 의존성 버전을 임의로 올리지 않는다.
   순서/소유권: **P3의 globals.css 변경을 통합한 뒤 별도 작은 커밋**으로 수행한다. T21의 DESIGN/CLAUDE/DIRECTORY 폰트 설명과 R3는 이 최종 폰트 구성을 기준으로 한다. 기존 시각 보존 범위에 대한 사용자 승인 추가이며, 글자 폭 차이를 이유로 무관한 컴포넌트 치수를 임의로 바꾸지 않는다.
   검증 [자동]: 폰트 스택 순서·실제 로딩 연결·Pretendard 폴백 유지 계약을 먼저 테스트하고 관련 검사/typecheck 및 최종 누적 gate를 통과한다. [브라우저]: 폰트 로드 완료 후 영문/숫자의 Geist 사용과 한글의 Pretendard Variable 폴백을 확인하고, 1280/1440/1890에서 버튼·표·모달·긴 문장의 줄바꿈/넘침을 검사한다. 폰트 미로드 상태를 완료 스크린샷으로 쓰지 않는다.
-  `[commit] feat(ui): prefer Geist with Pretendard Variable fallback` — 이 tasks.md의 범위·검증·남은 작업 갱신을 함께 포함한다. **현재는 태스크 추가만 완료, 구현 미착수.**
+  `[commit] feat(ui): prefer Geist with Pretendard Variable fallback` — 이 tasks.md의 범위·검증·남은 작업 갱신을 함께 포함한다. **구현·관련 자동 검사·독립 소스 리뷰 완료 및 작은 소스 체크포인트 COMMIT 승인; 지휘자 실제 브라우저/최종 게이트 검증은 대기 중이다.**
 - **단위 ③ 끝**: `/runtime-test` — 픽스처 보관 프로젝트 · 오류 경계(`error.tsx` 유도) · 검색 0건(Logs·/projects·온보딩 repo·번역) · 포털은 트리거를 눌러 연다(Popover · LargeModal · event-dialog) · 키보드 Tab으로 필드·트리거 포커스 링(S13) → `/push`.
 
 ## F. 문서 · 종료
@@ -374,3 +374,10 @@ Run **`run_0e44db2882ac`**, 기존 coordinator **`term_dd1b2d61-f22d-4409-8977-7
 - P3 최종 승인: 전체92 논리 경로 독립 Astra 리뷰0 findings, 고정된 링18경로 명시적 COMMIT8 승인 및 리뷰 전후 drift0을 확인했다.
 - 실제 누적 `pnpm gate --base 150d221c4b70369831b46428551aea873a6202b1` exit0: db:generate → typecheck → test(666파일 통과/1스킵,10345테스트 통과/1스킵) → build(25페이지) → sync:agents:check. 실제 계획상 격리 PostgreSQL 대상 없음. 초기 실패 로그를 보존했고 최종 후보의 모든 코드/테스트/문서 바이트는 게이트 뒤 그대로다.
 - 남은 일: 지휘자의 R3 실브라우저·뷰포트 QA, T20a Geist 및 대비 판정, T21 나머지 정본 문서/미러, T22 기능 종료와 dev 통합/푸시. P3는 Pretendard를 유지했고 원격 쓰기를 하지 않는다.
+
+## T20a Geist 작은 후보 — 2026-10-02
+
+- 기준: 깨끗한 accepted P3 `c5665ff7b44f20582290f9ba210b4dbf3b2f9851` 위 별도 작은 후보. Geist 정방향 가변 WOFF2 한 파일(69,760bytes, weight100–900)과 원본 SIL OFL1.1/출처·SHA 설명을 `app/fonts/geist/`에 둔다. 공식 tag v1.7.2 commit `a73329da8fc62afc917f796555202e4997f79b7c`, 파일 SHA `2ffebe993e969069a9789d15164b7715d42491b5835516c5e3b935d5f81b05f1`.
+- 실제 Next 로컬 로더가 WOFF2를 읽고 자사 호스트 CSS/swap/preload를 생성하며 자동 Arial 폴백이 없는지 검사한다. 파일의 Latin/숫자 및100–900 가변 축, Hangul 미지원도 실제 cmap으로 검사한다. 루트 변수와 sans 순서, 기존 Pretendard 동적 서브셋 link/predev/prebuild·시스템 폴백/mono를 유지한다. 기존 connection/CSP 동작과 의존성 버전은 바꾸지 않는다.
+- 최초 테스트의 TypeScript7 직접 파서 수집 오류는 별도 초기 로그로 보존하고 저장소 기존 ts-morph 파서로 바로잡았다. 이후 실제 기준 코드에서4계약 RED를 확인했고 구현 후 관련3파일25테스트 GREEN/typecheck exit0이다. 실제 순서 역전·루트 변수 삭제·자동 Arial 삽입 각 RED, 복원 후3파일25 GREEN.
+- 고정 후보7경로 독립 Astra 소스 리뷰0 findings 및 명시적 COMMIT 승인을 받았다. 공식 폰트/라이선스 바이트 동치와 baseline/mutation RED·25 GREEN/typecheck를 독립 확인했다. 지휘자의 실제 영문/숫자 Geist·한글 Pretendard 폴백 및3뷰포트 QA와 최종 누적 gate가 남아 T20a 완료 체크는 아직 보류한다. 코드 치수·monospace·기존 생성/로드 경로·환경파일/원격은 변경하지 않았다.
