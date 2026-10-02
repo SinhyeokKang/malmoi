@@ -18,11 +18,11 @@
 - **검증**: design §9 문자열 수는 주석 포함이고 UI 호출 수는 JSX 노드다. 파일 수 기준 C5 탈락(11px·1016px·850px)을 토큰으로 만들지 않는다. 미결 칸을 완료 처리하지 않는다.
 - `[commit] docs(feature): component-unify refreshed inventory` — **지휘자 소유**, 본 T0 워커는 커밋·빌드·구현하지 않는다.
 
-### 전체 배치 계획 — 전부 Codex, 모델 선택은 사용자 위임
+### 기존 세부 범위표 — 실행 경계는 아래 병렬 재편 계획이 우선
 
 공통 게이트 **G** = 테스트 먼저 → 해당 순수/DOM 계약·사본 카나리아 → `pnpm gate --base <배치 시작 커밋>` green → 독립 리뷰 → 항목별 커밋. gate 출력은 파이프로 거르지 않는다. **T0은 수정 뒤 지휘자가 별도로 `pnpm gate --base aed73f32`를 실행해 통과했다**(638파일/9634테스트). 수정 전 baseline 결과와 구분한다.
 
-공통 파일 **C** = `components/__tests__/hand-copies.test.ts`·`api-contract.test.ts`(T6 이후)·`visual-system.test.ts`·`focus-ring.test.ts` 중 변경 규칙의 해당 테스트, `docs/DESIGN.md` 해당 규약. 매 배치는 자기 규약 행만 소유한다. **같은 C 파일을 수정하는 배치는 동시 편집 금지**이며 아래 실행 순서대로 handoff·리뷰 후 다음 편집을 시작한다. 새 파일 경로는 계획 경로이며 현재 존재를 뜻하지 않는다.
+공통 파일 **C** = `components/__tests__/hand-copies.test.ts`·`api-contract.test.ts`(T6 이후)·`visual-system.test.ts`·`focus-ring.test.ts` 중 변경 규칙의 해당 테스트, `docs/DESIGN.md` 해당 규약. 매 배치는 자기 규약 행만 소유한다. **같은 C 파일은 통합 단계에서 한 워커만 수정**한다. 독립 워크트리의 병렬 준비와 통합 순서는 아래 P1–P3 계획이 우선한다. 새 파일 경로는 계획 경로이며 현재 존재를 뜻하지 않는다.
 
 | 배치 / 태스크 | 소유 파일(소비자는 design §4·§9의 전수 집합) | 선행 / 커밋 경계 | Codex 모델·effort / 이유 | 게이트·상태 |
 |---|---|---|---|---|
@@ -58,7 +58,7 @@
 | B12 T21 | DESIGN/DIRECTORY/global-search 문서, loading glob 테스트; CLAUDE·mirror는 지휘자 창구 | R3 / 문서별커밋 | GPT-6.1 Sol medium / 정본 반영 | 문서대조+G, 원본정책 준수 |
 | B13 T22 | feature 폴더 삭제만 | T21·전단위 push/QA / 종료커밋 | GPT-6.1 Sol medium / 종료 정리 | G, 결론 정본 승격 후 삭제 |
 
-**배치 파일 겹침 행렬**(동일 셀 그룹들은 병렬 금지):
+**배치 파일 겹침 행렬**(해당 파일 편집은 아래 통합 토큰으로 직렬화):
 
 | 공유 파일/집합 | 소유 배치들 | 직렬화 이유 |
 |---|---|---|
@@ -72,7 +72,22 @@
 | onboarding/copy-button·token-modal | B9a, B10b | 이동된 export를 후행 SecretField가 소비 |
 | source-detail-modal·locale-meter | B1, B6, B10a/c | 치수·Meter·Facts의 부모 파일 공유 |
 
-**병렬 허용은 읽기 전용 독립 리뷰/인벤토리뿐**이다. 실제 코드 배치는 공유 파일이 많아 위 순서로 직렬화한다. 워커는 같은 체크아웃을 쓰고 새 워크트리는 사용자 지시나 실충돌이 있을 때만 만든다. 모델은 전부 Codex다. **2026-10-02 사용자 “Sol도 좀 쓰셈” 반영: 기본은 GPT-6.1 Sol medium/high이며 일반 구현·독립 리뷰·QA도 Sol high다. Astra high는 B0 계획·B3a 상태 매핑·B4 Card·B6 LargeModal·B7b 번역 ListRow·B9b 필드 통합에만 한정한다.**
+### 병렬 재편 — 사용자 요청 2026-10-02
+
+사용자 “워크트리 체크아웃으로 병렬 실행 가능하게 배치좀 뭉칠 수 있니?”에 따라 **T11E 다음부터 독립 워크트리 3개, 큰 구현 커밋 3개**로 실행한다. 위 B4–B10d 표는 세부 범위/검증 목록이며 직렬 선행·프리미티브별 커밋 경계는 이 계획으로 대체한다. 완료한 T0–T11의 기록과 제품 범위는 바꾸지 않는다.
+
+| 새 배치 | 포함 태스크 / 내부 순서 | 모델 | 병렬 준비 소유권 | 통합 진입 조건 |
+|---|---|---|---|---|
+| P1 카드·목록 | T12 → T13 → T16 → T19e | GPT-6 Astra high | Card/EmptyState/ListRow/Facts, row-card/panel-card/list-item 및 전용 테스트 | T11E 완료 기준에서 시작. R2 동안 자체 체크아웃만 변경; dev 반영은 R2 종료 뒤 |
+| P2 모달·링크 | T14 → T15 → T18 → T19c → T19f | GPT-6.1 Sol high | LargeModal/WizardFooter/Link/Popover/Meter/ErrorState와 modal/button/locale-meter 및 전용 테스트 | 공유 소비자·공통 테스트·DESIGN 편집 전 P1 dev 반영을 기다리고 rebase |
+| P3 입력·선택 | T17 → T19 → T19a → T19b → T19d | GPT-6.1 Sol high | SelectRow/ProjectThumbnail/SearchInput/CopyButton/Skeleton/FieldTrigger/SecretField, input/select/textarea/checkbox/radio 및 전용 테스트 | 공유 소비자·공통 테스트·DESIGN 편집 전 P2 dev 반영을 기다리고 rebase. Button/Link 링은 이 단계에서만 변경 |
+
+- **두 단계 소유권:** 세 워커가 자기 프리미티브와 새 전용 테스트를 동시에 준비한다. 기존 app/feature 소비자와 공유 테스트(C 및 기존 소비자 테스트), DESIGN은 **P1 → P2 → P3 통합 토큰** 소유자만 편집한다. P2/P3는 독립 준비를 마치면 대기하고, 앞 배치가 dev에 들어온 뒤 미커밋 변경을 안전하게 보존하여 `git rebase dev`하고 통합한다. 다른 워커의 결과를 추측해 소비자 API를 미리 바꾸지 않는다.
+- **구체적 겹침 처리:** workspace/key/tree/locale 및 home/mcp/members/logs/source-detail 소비자는 위 순서로 이관한다. source-detail은 P1 Facts 뒤 P2 Modal/Meter, onboarding/token은 P2 Modal 뒤 P3 Select/Copy/Secret, ButtonLink는 P2 뒤 P3 링이다. P1 ListRow는 현행 링크 계약을 보존하며 P2가 최종 Link 소비를 이관한다. 컴포넌트 간 선행이 새로 발견되면 독립 범위를 계속 작업하면서 해당 부분만 대기한다.
+- **커밋·검증 묶음:** 작은 태스크마다 전체 빌드를 반복하지 않는다. 태스크별 의미 있는 red/green·사본 카나리아·현재 경로 mutation은 유지하고, 실제 소비자/공통 게이트/문서를 모두 이관한 **P 배치마다 전체 `pnpm gate --base <통합 시작 dev SHA>` + 독립 리뷰 → 신설과 이관을 함께 1커밋**한다. 임시 준비만 커밋하여 dev에 올리지 않는다. 통합 충돌은 담당 워커가 해결하고 변경 후 재검증한다.
+- **리소스:** 워커는 전부 Codex. 동시에 구현 워커 최대3명이고 무거운 전체 gate/build는 한 번에1개만 실행한다. 대기 워커 슬롯은 독립 리뷰에 재사용할 수 있다. 단위② R2 브라우저 QA와 새 워크트리 구현은 병렬 가능하나 QA 중 root dev cherry-pick/build는 금지한다.
+- **마무리:** P1–P3 뒤 T20 잔여 승인 교정 → 전체 통합 gate/R3 3뷰포트 QA → dev push → T21 정본 문서 → T22 종료까지 계속한다. 프로덕션/main과 환경·비밀값은 건드리지 않는다. 독립 워크트리는 tracked clean 및 dev에 모든 커밋 반영을 확인한 뒤 정리한다.
+
 
 **원격 경계**: 2026-10-02 사용자 “push 허용”·“멈추지말고 계속 진행해”에 따라 **Codex 지휘자가 단위별 게이트·QA 후 dev push까지 수행하고 다음 단위로 계속 진행한다.** 구현 워커는 로컬 커밋까지만 맡고 원격 쓰기는 지휘자 한 창구다. 프로덕션/main·DB·비밀값 변경 없음. QA는 Codex가 제공된 브라우저 기능으로 직접 수행 가능한 항목만 측정하며, 런타임 접근이 없으면 미검증으로 남긴다.
 
@@ -83,7 +98,7 @@
 - **1280×900 R1**: Home·Projects·Translations·Sources·Logs·Settings를 T0와 대조했다. Home/Logs/Sources는 픽셀 차이0, Projects5·Translations4·Settings24픽셀의 미세 렌더링 차이만 남았다. Home/Logs/Settings의 267/406/157개 보이는 HTML 요소 좌표와 계산된 CSS 14속성은 전부 같았다. 승인 밖 레이아웃·색 변화는 발견하지 않았다.
 - 최초 촬영 뒤 브라우저 스크롤바 모드가 달라져, Home/Logs/Settings는 동일 T0 SHA를 임시 디렉터리에서 같은 브라우저·Webpack dev 조건으로 재촬영했다. 상대 시간 문구·개발 도구 렌더링 표시는 안정 상태에서 구분했다. 환경 파일 복사·프로젝트 데이터 변경 없이 검증했고 서버·임시 디렉터리·브라우저 공간을 정리했다.
 - 상세 로컬 증거: `.scratch/component-unify-r1-qa.md`, `.scratch/component-unify/{before,after,baseline-current-browser,after-current-browser}/`, `dom-comparison.json`. 각 배치 인계서는 `.scratch/handoff-component-unify-b1{a,b,c,d}.md`다.
-- **단위 ② T5–T10 완료, T11A/B/C 완료, T11D 진행. T11 이후·단위 ③·T21/T22 및 전체 화면·3뷰포트·Safari 검증은 미완/미검증.** 단위 ① push 직전 `pnpm gate` exit 0(640파일/9795테스트·격리 PostgreSQL 31파일/520테스트·build·미러)을 확인했다. `aed73f32..1d5d6eae`를 dev에 푸시했으며 CI run은 `36964622111`이다(푸시 시점 queued). `pnpm guide:check`: `stale 25컷 (39건)` — 후속 재촬영 경고. 스키마·마이그레이션 변경 없음.
+- **단위 ② T5–T10 완료, T11A/B/C/D 완료, T11E 진행. T11 이후·단위 ③·T21/T22 및 전체 화면·3뷰포트·Safari 검증은 미완/미검증.** 단위 ① push 직전 `pnpm gate` exit 0(640파일/9795테스트·격리 PostgreSQL 31파일/520테스트·build·미러)을 확인했다. `aed73f32..1d5d6eae`를 dev에 푸시했으며 CI run은 `36964622111`이다(푸시 시점 queued). `pnpm guide:check`: `stale 25컷 (39건)` — 후속 재촬영 경고. 스키마·마이그레이션 변경 없음.
 
 - **T5·T6 계약 그물 완료.** T5 `b9515558`은 현재 프리미티브 59계약과 7개 mutation을 고정했다. T6 `993b4190`은 실제 위반 111행/120회와 해소 태스크를 기록했다. 독립 리뷰에서 발견한 상태 6건 누락·로컬 크기 타입 별칭 검출 공백을 수정했고, 22카나리아·실제 Note 허용행 삭제 red/동일 바이트 복원 green·전체 gate646파일/9869테스트·typecheck·build·미러 exit0을 통과했다. 태스크 경계 명시는 `90cc5218`이며, T7은 이 커밋을 기준으로 시작한다.
 
@@ -100,6 +115,8 @@
 - **T11B 슬롯 API 통합 완료 `8aad2cc0`.** Dialog·Modal·Panel·Entity·Segment와 실제 소비자를 이관하고 담당 허용행7개를 해소했다. 관련180테스트·소비자404테스트와 검출분기/실제 래퍼·잠금 변이를 검증했으며 전체 gate649파일/10097테스트·build·미러 exit0 및 독립 리뷰0건을 확인했다. 기존 DOM 순서·조건부 래퍼·CSS·포커스·이벤트를 보존했다.
 
 - **T11C 접근성 API 통합 완료 `e03e692e`.** RowCardList·SegmentedControl의 표준 ARIA 이름과 FormGroup8곳의 실제 Input/SelectTrigger 설명 연결을 통일하고 담당 허용행3개를 해소했다. 관련178·소비자220테스트와 ID 처리/검출분기 변이를 검증했다. 첫 게이트의 Members 옛 prop 기대값2건을 같은 제목 연결 계약으로 이관한 뒤 최종 gate650파일/10107테스트·build·미러 exit0와 독립 리뷰0건을 통과했다.
+
+- **T11D className API 통합 완료 `0f5eb846`.** Modal·Radio의 실제 루트 className과 ImageTile fallback 슬롯을 실제 소비자까지 이관하고 담당 허용행3개를 해소했다. 관련119·소비자358테스트와5변이를 검증했고, Radix Slot 사용처는 실제 장식 DOM fixture로 포커스 게이트에 등록했다. 공유 이미지 훅·Avatar와 기존 크기·투명 배경·키보드/ref 계약을 보존했으며 최종 gate651파일/10121테스트·build·미러 exit0 및 독립 리뷰0건을 확인했다.
 
 ## 단위 ① 토큰 · 정리 — 값 변화 0
 
