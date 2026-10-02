@@ -475,11 +475,19 @@ describe("클라이언트 그래프", () => {
     expect(valueImports(server)).not.toContain("@/lib/search/key-href");
   });
 
-  it.each(["match", "highlight", "keys"])("검색 독립 모듈 %s는 자기 자신만 문다", (name) => {
+  it.each(["match", "highlight", "keys", "load-index"])("검색 독립 모듈 %s는 자기 자신만 문다", (name) => {
     const path = `lib/search/${name}.ts`;
     const graph = walk([join(ROOT, path)]);
     expect([...graph.files].map(file => file.slice(ROOT.length)).sort()).toEqual([path]);
     expect([...graph.packages]).toEqual([]);
+  });
+
+  it("검색 멤버십 로더는 서버 Action 스텁만 문다", () => {
+    const graph = walk([join(ROOT, "lib/search/load-memberships.ts")]);
+    expect([...graph.files].map(file => file.slice(ROOT.length)).sort()).toEqual([
+      "app/search/actions.ts", "lib/search/load-memberships.ts",
+    ]);
+    expect([...graph.packages].filter(name => !allowed(name))).toEqual([]);
   });
 
   it("검색 nav-index는 기존 클라이언트 내비와 사전만 문다", () => {

@@ -46,6 +46,8 @@ const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 
 /** 프로젝트 인가를 지나지 않아도 되는 진입점. 경로는 `app/` 기준이다. */
 const EXEMPT = new Set([
+  // 공개 Docs만 빌드 때 생성한다. 인증 없음이 정답이며 route 테스트가 세션·DB 호출을 금지한다.
+  "api/search-index/route.ts",
   "api/push/route.ts",
   /**
    * CI 파싱 실패 보고 (PRODUCT §7.8). **세션 인가가 아니라 그 프로젝트의 push 토큰이
