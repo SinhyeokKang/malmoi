@@ -9,9 +9,9 @@ import type { KeyHit } from "@/lib/search/key-href";
 import { find, input, key, render } from "./helpers/dom";
 
 vi.setConfig({ testTimeout: 20_000 });
-const mocks = vi.hoisted(() => ({ keys: vi.fn(), memberships: vi.fn(), fetch: vi.fn(), pathname: "/docs/start" }));
+const mocks = vi.hoisted(() => ({ keys: vi.fn(), memberships: vi.fn(), fetch: vi.fn(), pathRead: vi.fn(), pathname: "/docs/start" }));
 vi.mock("@/app/search/actions", () => ({ searchKeysAction: mocks.keys, loadSearchMembershipsAction: mocks.memberships }));
-vi.mock("next/navigation", () => ({ usePathname: () => mocks.pathname }));
+vi.mock("next/navigation", () => ({ usePathname: () => { mocks.pathRead(); return mocks.pathname; } }));
 const account = { name: "Tester", email: null, image: null };
 const demo: NavProject = { slug: "demo", name: "Demo", role: "OWNER", archived: false, image: null, defaultSurfaceSlug: "web" };
 const docs = [{ id: "doc:start", title: "Start", href: "/docs/start", body: "Learn settings demo and publishing" }, { id: "doc:publish", title: "Publishing", href: "/docs/start#publish", body: "Publish translations", anchor: "publish" }];
@@ -25,7 +25,7 @@ const group = (label: string) => [...document.querySelectorAll<HTMLElement>('[ro
 async function open() { await act(async () => { await userEvent.setup().click(opener()); }); }
 async function close() { await key(query(), "Escape"); await vi.waitFor(() => expect(dialog()).toBeNull()); }
 async function tick(ms = 250) { await act(async () => { await vi.advanceTimersByTimeAsync(ms); }); }
-beforeEach(async () => { vi.resetModules(); SearchTrigger = (await import("@/components/search/search-trigger")).SearchTrigger; mocks.keys.mockReset().mockResolvedValue({ ok: true, hits: [] }); mocks.memberships.mockReset().mockResolvedValue({ ok: true, memberships: [demo] }); mocks.fetch.mockReset().mockResolvedValue({ ok: true, json: async () => ({ docs }) }); vi.stubGlobal("fetch", mocks.fetch); vi.stubGlobal("matchMedia", (media: string) => ({ media, matches: false, addEventListener() {}, removeEventListener() {} })); mocks.pathname = "/docs/start"; window.history.replaceState(null, "", "/docs/start"); Object.defineProperty(navigator, "platform", { configurable: true, value: "MacIntel" }); });
+beforeEach(async () => { mocks.pathRead.mockReset(); vi.resetModules(); SearchTrigger = (await import("@/components/search/search-trigger")).SearchTrigger; mocks.keys.mockReset().mockResolvedValue({ ok: true, hits: [] }); mocks.memberships.mockReset().mockResolvedValue({ ok: true, memberships: [demo] }); mocks.fetch.mockReset().mockResolvedValue({ ok: true, json: async () => ({ docs }) }); vi.stubGlobal("fetch", mocks.fetch); vi.stubGlobal("matchMedia", (media: string) => ({ media, matches: false, addEventListener() {}, removeEventListener() {} })); mocks.pathname = "/docs/start"; window.history.replaceState(null, "", "/docs/start"); Object.defineProperty(navigator, "platform", { configurable: true, value: "MacIntel" }); });
 afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 it("capsule labels, initial input focus, preview and public anonymous boundaries", async () => {
@@ -100,4 +100,12 @@ it("StrictMode effect replay still requests public memberships once per opening"
   expect(mocks.memberships).toHaveBeenCalledTimes(1);
   await close(); await open();
   expect(mocks.memberships).toHaveBeenCalledTimes(2);
+});
+
+
+it("does not mount route-dependent search content before first opening", async () => {
+  await render(<SearchTrigger account={null} />);
+  expect(mocks.pathRead).not.toHaveBeenCalled();
+  await open();
+  expect(mocks.pathRead).toHaveBeenCalled();
 });
