@@ -10,7 +10,7 @@
 
 ## 0. 착수 전
 
-- [ ] **T0** 재확인 — 전제: `test ! -d docs/features/component-unify`.
+- [x] **T0** 재확인 — 전제: `test ! -d docs/features/component-unify`.
   - component-unify 산출물이 코드에 있는지 확인한다: `LargeModal` 치수 상수 · `Input` 글리프 슬롯 · `NoMatch`(출구 필수 형) · `components/__tests__/hand-copies.test.ts` · `ui/` `SearchInput` · 슬롯 규약(`description`·`badge`). 없으면 멈추고 사용자에게 묻는다.
   - spec·design·tasks의 file:line을 다시 잰다 — 특히 `project-list.tsx`의 `<mark>`(ListRow 이관 뒤) · `project-switcher.tsx`의 `<kbd>` · `visual-system.test.ts` `REGISTERED` · `projects-screen.test.ts` 단언 · `shell-layout`·`shell-header`·`public-shell` 테스트 줄 · `dialog.tsx`·`primitive-focus.test.tsx` 줄 · `client-graph.test.ts` 목록 줄 · `entry-points.test.ts` 맵 이름.
   — 검증: `rg -n ':[0-9]+' docs/features/global-search/*.md`로 뽑은 file:line을 한 줄씩 대조해 어긋난 것 0 · 산출물 확인 목록 전부 ✓.
@@ -19,21 +19,21 @@
 
 ## A. 순수 함수 (`/tdd interface` 진입점)
 
-- [ ] **A1** `lib/search/match.ts` — `searchTokens` · `scoreEntry` · `searchGroups` · `previewGroups`. 테스트 먼저.
+- [x] **A1** `lib/search/match.ts` — `searchTokens` · `scoreEntry` · `searchGroups` · `previewGroups`. 테스트 먼저.
   — 검증: design 표 1의 테스트(두 필드 가로지른 AND 일치 · 순위 표 · 그룹당 5 · 빈 그룹 제거 · 그룹 순서 `Projects · Menus · Docs`(Keys는 Dialog가 끼운다) · activeSlug 가산 · 안정 정렬 · 미리보기 세 경우와 `View all` 행이 상한에 안 셈) · `pnpm test` green.
-- [ ] **A2** `lib/search/highlight.ts` — `highlightSegments` · `snippet`.
+- [x] **A2** `lib/search/highlight.ts` — `highlightSegments` · `snippet`.
   — 검증: `İstanbul` 경계 테스트(POSTMORTEM 2026-09-13) · 겹침 합치기 · 서로게이트 쌍 보존 · 긴 원문/번역값 후반의 질의 전체 일치가 스니펫에 포함 · `pnpm test` green.
-- [ ] **A3** `lib/search/docs-index.ts` — `docsSearchEntries(summary, pageOf)`.
+- [x] **A3** `lib/search/docs-index.ts` — `docsSearchEntries(summary, pageOf)`.
   — 검증: 실물 `guide/SUMMARY.md`로 — 항목 수 = 서빙 페이지 수(28) + 표식 있는 H2 수 · AUTHORING·SHOOTING 0건 · 모든 `href`가 `routes.docs(page, anchor)` 모양 · 표식 없는 H2 스킵 · `pnpm test` green.
-- [ ] **A5** `lib/search/nav-index.ts` — `navSearchEntries`. 멤버십마다 `navZones(project, …)`의 프로젝트 구역을 쓴다(`nav.ts`의 비공개 `translationsHref`는 export하지 않는다).
+- [x] **A5** `lib/search/nav-index.ts` — `navSearchEntries`. 멤버십마다 `navZones(project, …)`의 프로젝트 구역을 쓴다(`nav.ts`의 비공개 `translationsHref`는 export하지 않는다).
   — 검증: OWNER만 `Settings` · 보관 포함 · `null` → 하단 둘만 · `[]` → 사용자 메뉴(`navWorkItems()` + `New project`) + 하단 · 모든 프로젝트 메뉴 href·라벨이 같은 프로젝트의 `navZones` 결과와 같다 · 기존 `lib/shell/__tests__/` 무수정 green · `pnpm test` green.
-- [ ] **A5a** `lib/shell/nav.ts` `toNavProjects` — T0에서 대조한 인라인 map을 `lib/shell/nav.ts:45-51`로 옮기고 레이아웃(`app/(edit)/layout.tsx:76`)이 그것을 부른다(동작 불변, `MembershipRow`는 `import type`).
+- [x] **A5a** `lib/shell/nav.ts` `toNavProjects` — T0에서 대조한 인라인 map을 `lib/shell/nav.ts:45-51`로 옮기고 레이아웃(`app/(edit)/layout.tsx:76`)이 그것을 부른다(동작 불변, `MembershipRow`는 `import type`).
   — 검증: 결과 키 집합 = 지금 레이아웃 map의 키 일곱(`surfaceSlug` 없음 · 초과 0) · `shell-layout` 테스트 무수정 green · `client-graph` green(`nav.ts`가 서버 그래프를 끌지 않는다) · `pnpm test` green.
-- [ ] **A7** `lib/search/keys.ts` — `isSearchShortcut` · `shouldIgnoreShortcut` · `nextActive` · `reconcileActive`.
+- [x] **A7** `lib/search/keys.ts` — `isSearchShortcut` · `shouldIgnoreShortcut` · `nextActive` · `reconcileActive`.
   — 검증: macOS Meta+K true · macOS Ctrl+K false · 그 밖 Ctrl+K true · 그 밖 Meta+K false · 조합 중(`isComposing` · `keyCode 229`) false · Shift/Alt 조합 false · `input`·`textarea`·`contenteditable` 대상이면 무시 · 문서에 열린 `[role="dialog"]`·`[role="menu"]`가 있으면 무시 · ids 0 → null · id 순환 · 질의 변경 → 첫 id · 늦은 그룹 삽입 뒤 id 불변 · 사라진 id → 첫 id · `pnpm test` green.
-- [ ] **A8** `lib/keys/search.ts`의 순수 부분 — `keySearchQuery` · `mergeKeyHits`, `lib/search/key-href.ts` `keyResultHref`(+ `KeyHit` 타입 소유). `lib/keys/translation-list.ts`의 `likePattern`을 export만 한다.
+- [x] **A8** `lib/keys/search.ts`의 순수 부분 — `keySearchQuery` · `mergeKeyHits`, `lib/search/key-href.ts` `keyResultHref`(+ `KeyHit` 타입 소유). `lib/keys/translation-list.ts`의 `likePattern`을 export만 한다.
   — 검증: 1자 → null · 공백 둘러싼 1자(`"  a "`) → null · `50%_off`·`\` 이스케이프가 번역 화면과 같은 문자열 · 201자 → 앞 200자 패턴(`Q_MAX_LENGTH`) · ①이 5건이면 ② 무시 · **같은 이름·다른 id 둘 다 남음**(중복 제거는 id) · 키 id 최종 정렬로 동점 6개 이상에서 입력 순서와 무관한 상위 5개 · href가 `translationsHref(slug, surfaceSlug, { ...DEFAULT_TRANSLATION_QUERY, ns, key: id, keySurface })`(`lib/translations/query.ts`)와 같은 문자열 · 필터 키 없음 · `lib/keys/search.ts`가 `KeyHit`을 `import type`으로만 읽음 · `pnpm test` green.
-- [ ] **A9** 의존 그래프 검사 — A1·A2·A5·A7·`key-href.ts`마다 `client-graph.test.ts`에 검사한다. 독립 모듈만 자기 자신을 단언하고, `nav-index`·`key-href`는 design에 적은 의도한 전이 파일 집합의 정확 일치와 허용 패키지를 단언한다(`lib/events/view.ts` 검사 선례). **`CLIENT_LIB_FILES` 목록은 여기서 넓히지 않는다** — 소비자가 없는 지금 더하면 정확 일치 단언(:502-505)이 초과로 red다. 목록 추가는 E2다.
+- [x] **A9** 의존 그래프 검사 — A1·A2·A5·A7·`key-href.ts`마다 `client-graph.test.ts`에 검사한다. 독립 모듈만 자기 자신을 단언하고, `nav-index`·`key-href`는 design에 적은 의도한 전이 파일 집합의 정확 일치와 허용 패키지를 단언한다(`lib/events/view.ts` 검사 선례). **`CLIENT_LIB_FILES` 목록은 여기서 넓히지 않는다** — 소비자가 없는 지금 더하면 정확 일치 단언(:502-505)이 초과로 red다. 목록 추가는 E2다.
   — 검증: 모듈별 기대 그래프가 명시되고 정상 재사용은 통과하며, 하나에 `lib/keys/translation-list.ts` 값 import를 심으면 red(뮤테이션 1회) · `pnpm test` green.
 
 ── 커밋: `feat(search): add pure matching, highlighting and index builders for global search`
