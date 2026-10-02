@@ -69,7 +69,7 @@ export function EventRow({
       )}
       <EventGlyph icon={glyph.icon} tone={glyph.tone} />
       <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
-        <span className="text-base [overflow-wrap:anywhere]">{sentence}</span>
+        <span className="text-base wrap-anywhere">{sentence}</span>
         <EventMetaLine row={row} archived={archived} />
       </span>
       {/* 결과 배지는 보조줄 밖, 행 오른쪽이다 — Logs는 172 칸의 오른쪽 끝(chevron 옆), Home 최근 로그는 시각 앞(2026-09-30 사용자). */}

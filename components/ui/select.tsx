@@ -118,7 +118,7 @@ export function SelectItem({ className, children, description, ...props }: Compo
       ) : (
         <span className="flex min-w-0 flex-col gap-0.5">
           <Primitive.ItemText>{children}</Primitive.ItemText>
-          <span className="text-muted-foreground text-xs leading-[1.5]">{description}</span>
+          <span className="text-muted-foreground text-xs leading-normal">{description}</span>
         </span>
       )}
       {/* 체크 자리는 켜질 때만 그려지고 `ml-auto`가 오른쪽으로 민다 (`DropdownMenuCheckboxItem`과 같은 형). */}

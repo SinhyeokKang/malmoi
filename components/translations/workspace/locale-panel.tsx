@@ -94,7 +94,7 @@ export function LocalePanel({ detail, draft, language, languageLocked = false, o
       <div className="border-divider flex min-h-0 flex-1 flex-col overflow-hidden border-t">
         <div className="border-divider flex shrink-0 flex-col gap-1 border-b px-4 py-3.5">
           <div className="flex items-center gap-2.5">
-            <span className="min-w-0 flex-1 text-base font-medium [overflow-wrap:anywhere]">{detail.key.key}</span>
+            <span className="min-w-0 flex-1 text-base font-medium wrap-anywhere">{detail.key.key}</span>
             <span className="text-muted-foreground shrink-0 text-xs">{w.languages(filled, total)}</span>
             <CopyLink href={copyHref} />
           </div>

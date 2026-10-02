@@ -141,7 +141,7 @@ const KeyRow = memo(function KeyRow({ row, savedOut, first, selected, tabStop, s
         <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
           <span className={cn("text-sm leading-[1.45]", savedOut && "text-muted-foreground line-through")}>{row.sourceText}</span>
           <span className="flex flex-wrap items-center gap-1.5">
-            <span className="text-muted-foreground text-xs [overflow-wrap:anywhere]">
+            <span className="text-muted-foreground text-xs wrap-anywhere">
               {showSource ? `${row.surfaceSlug} · ${row.key}` : row.key}
             </span>
             {/* 미전달은 `Badge neutral` 하나다(Q3 · 1-Y9 — 테두리 알약 `Pill`을 걷었다, 랜딩 목업·Sources와 같은 형). */}

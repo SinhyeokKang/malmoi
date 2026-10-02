@@ -195,7 +195,7 @@ export function ConnectedAppsCard({ apps, now, serverUrl }: { apps: readonly Con
                   {target.brand === null ? <McpIcon /> : <BrandLogo brand={target.brand} className="size-5" />}
                 </IconTile>
                 <div className="flex min-w-0 flex-col gap-px">
-                  <span className="text-sm font-medium [overflow-wrap:anywhere]">{target.name}</span>
+                  <span className="text-sm font-medium wrap-anywhere">{target.name}</span>
                   <span className="text-muted-foreground text-xs break-all">{target.ident}</span>
                 </div>
               </div>
@@ -228,7 +228,7 @@ function AppRow({ app, now, onDisconnect }: { app: ConnectedAppData; now: Date; 
       </IconTile>
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <div className="flex min-w-0 items-start gap-2">
-          <span className={cn("min-w-0 text-base font-medium [overflow-wrap:anywhere]", expired && "text-neutral-400")}>{app.name}</span>
+          <span className={cn("min-w-0 text-base font-medium wrap-anywhere", expired && "text-neutral-400")}>{app.name}</span>
           {expired && <Badge variant="warning" className="shrink-0">{m.mcpConnector.token.expired}</Badge>}
         </div>
         <span className="text-muted-foreground min-w-0 text-xs break-all">{app.ident}</span>

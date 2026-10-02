@@ -191,7 +191,7 @@ export function OnboardingModal({
 
           <header className="flex items-start justify-between gap-2 px-8 pt-8 pb-5">
             <div className="flex min-w-0 flex-col gap-1.5">
-              <Primitive.Title className="text-xl font-medium tracking-[0.005em]">{title}</Primitive.Title>
+              <Primitive.Title className="text-xl font-medium">{title}</Primitive.Title>
               {description !== undefined && (
                 <Primitive.Description className="text-muted-foreground text-sm text-pretty">
                   {description}

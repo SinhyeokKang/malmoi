@@ -56,7 +56,7 @@ export function PanelCard({
         <h2 id={titleId} className="text-base font-medium">{title}</h2>
         {count !== undefined && <CountBadge count={count} label={countLabel} />}
         {badge}
-        {subtitle !== undefined && <div className="text-muted-foreground ml-auto @max-[640px]:ml-0 @max-[640px]:w-full text-xs tracking-[0.02em]">{subtitle}</div>}
+        {subtitle !== undefined && <div className="text-muted-foreground ml-auto @max-[640px]:ml-0 @max-[640px]:w-full text-xs">{subtitle}</div>}
       </header>}
       {notice !== undefined && <div data-card-notice className="border-divider border-b">{notice}</div>}
       {/*
@@ -113,12 +113,12 @@ export function PanelRow({
     <li className="border-border flex items-center gap-3 border-t px-4 py-[13px] first:border-t-0">
       <IconTile>{glyph}</IconTile>
       <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
-        <span className="flex min-w-0 items-center gap-2 text-base tracking-[0.015em]">
+        <span className="flex min-w-0 items-center gap-2 text-base">
           <span className="truncate font-medium">{name}</span>
           {status !== undefined && <Badge variant={statusTone} className="shrink-0">{status}</Badge>}
         </span>
         {/* 보조 문구의 행간이 1.5다 — `text-xs` 기본(1.333)보다 한 단계 넓다. */}
-        {detail !== undefined && <span className="text-muted-foreground text-xs leading-normal tracking-[0.02em]">{detail}</span>}
+        {detail !== undefined && <span className="text-muted-foreground text-xs leading-normal">{detail}</span>}
       </div>
       {children !== undefined && <div className="flex shrink-0 items-center gap-2">{children}</div>}
     </li>

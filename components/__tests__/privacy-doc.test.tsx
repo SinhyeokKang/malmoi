@@ -177,7 +177,7 @@ describe("PrivacyDoc — 급 (DESIGN §6.616)", () => {
     expect(classes(document.getElementById(nav.getAttribute("aria-labelledby") ?? ""))).toEqual(expect.arrayContaining(["text-xs", "font-medium"]));
     const links = [...nav.querySelectorAll("a")];
     expect(links.length).toBe(privacy.sections.length);
-    for (const a of links) expect(classes(a)).toEqual(expect.arrayContaining(["text-xs", "leading-[1.5]", "py-1.5", "pr-0", "pl-3"]));
+    for (const a of links) expect(classes(a)).toEqual(expect.arrayContaining(["text-xs", "leading-normal", "py-1.5", "pr-0", "pl-3"]));
   });
 });
 

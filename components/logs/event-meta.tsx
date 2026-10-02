@@ -15,7 +15,7 @@ export function EventMetaLine({ row, archived }: { row: EventMetaRow; archived: 
   const facts = parts.filter((part) => !isBadgePart(part));
   if (parts.length === 0) return null;
   return (
-    <span data-event-meta className="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 text-xs [overflow-wrap:anywhere]">
+    <span data-event-meta className="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 text-xs wrap-anywhere">
       {badges.map((part, index) => {
         if (typeof part === "string") return null;
         if (part.kind === "roles") return <RoleBadges key={index} before={part.before} after={part.after} />;

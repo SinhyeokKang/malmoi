@@ -89,7 +89,7 @@ export function EventDetail({
             <TableBody>
               <Field label={m.logs.detail.labels.reference}>
                 <span className="flex min-w-0 items-center gap-2">
-                  <span className="[overflow-wrap:anywhere]">{row.ref}</span>
+                  <span className="wrap-anywhere">{row.ref}</span>
                   {/* 동료에게 붙여넣는 것이 링크보다 짧고 **권한과 무관**하다 — 받은 사람은 검색창에 넣는다. */}
                   <CopyButton value={row.ref} label={m.logs.detail.actions.copy} size="sm" />
                 </span>
@@ -119,7 +119,7 @@ export function EventDetail({
                 <div key={surface.surfaceSlug} className={`flex items-start gap-3 px-3.5 py-3 ${index === 0 ? "" : "border-border border-t"}`}>
                   <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
                     <span className="text-base font-medium">{surface.surfaceSlug}</span>
-                    <span className="text-muted-foreground text-xs [overflow-wrap:anywhere]">
+                    <span className="text-muted-foreground text-xs wrap-anywhere">
                       {surface.count === null ? m.logs.value.notRecorded : m.logs.meta.keys(surface.count)}
                       {surface.reason === null ? "" : ` · ${importReasonMessage(surface.reason)}`}
                     </span>
@@ -190,7 +190,7 @@ function ValueBlock({ label, value, muted }: { label: string; value: string | nu
       {state.kind === "text" ? (
         /* ⚠️ **`bg-muted`(#f5f5f5)가 아니라 #fafafa다** — 시안의 Before 면이고, 흰 After와의 대비가
            한 단계 더 연해야 두 블록이 "같은 값의 두 시점"으로 읽힌다. */
-        <div className={`border-border rounded-md border px-3 py-2.5 text-base [overflow-wrap:anywhere] whitespace-pre-wrap ${muted ? "bg-neutral-50" : ""}`}>
+        <div className={`border-border rounded-md border px-3 py-2.5 text-base wrap-anywhere whitespace-pre-wrap ${muted ? "bg-neutral-50" : ""}`}>
           {state.text}
         </div>
       ) : (
@@ -278,7 +278,7 @@ function fields(row: EventRow): [string, ReactNode][] {
   }
   if (payload?.kind === "TRANSLATION") {
     out.push([m.logs.detail.labels.source, payload.surfaceSlug]);
-    out.push([m.logs.detail.labels.key, <span className="[overflow-wrap:anywhere]">{payload.key}</span>]);
+    out.push([m.logs.detail.labels.key, <span className="wrap-anywhere">{payload.key}</span>]);
     out.push([m.logs.detail.labels.locale, payload.locale]);
   }
   if (payload?.kind === "IMPORT") {

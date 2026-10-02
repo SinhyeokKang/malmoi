@@ -15,7 +15,7 @@ export const DOC_LINK = "text-blue-600 focus-visible:ring-ring focus-visible:rin
  */
 export const SECTION_HEADING = "m-0 mt-8 text-2xl leading-[1.4] font-semibold";
 export const SUB_HEADING = "m-0 mt-5 text-xl leading-[1.4] font-medium";
-export const MINOR_HEADING = "m-0 mt-4 text-lg leading-[1.5] font-medium";
+export const MINOR_HEADING = "m-0 mt-4 text-lg leading-normal font-medium";
 export const PROSE = "text-prose mt-2 leading-[1.6] text-pretty";
 export const LIST = "text-prose mt-2 space-y-1 pl-[22px] leading-[1.6]";
 

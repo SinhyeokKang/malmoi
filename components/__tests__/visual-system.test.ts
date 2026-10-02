@@ -31,15 +31,16 @@ function sourceFiles(dir: string): string[] {
 const bare = (source: string): string =>
   source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/gm, "$1");
 
-const SOURCES = ["app", "components"]
+const ALL_SOURCES = ["app", "components", "lib", "messages"]
   .flatMap((dir) => sourceFiles(join(ROOT, dir)))
   .map((file) => ({ path: relative(ROOT, file), source: bare(readFileSync(file, "utf8")) }));
+const SOURCES = ALL_SOURCES.filter(({ path }) => /^(?:app|components)\//.test(path));
 
 const read = (path: string): string => bare(readFileSync(join(ROOT, path), "utf8"));
 
 /** 파일별로 패턴이 잡힌 토큰을 모은다. */
-function hits(pattern: RegExp): { path: string; token: string }[] {
-  return SOURCES.flatMap(({ path, source }) => [...source.matchAll(pattern)].map((match) => ({ path, token: match[0] })));
+function hits(pattern: RegExp, sources = SOURCES): { path: string; token: string }[] {
+  return sources.flatMap(({ path, source }) => [...source.matchAll(pattern)].map((match) => ({ path, token: match[0] })));
 }
 
 const PALETTE = "slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose";
@@ -248,20 +249,12 @@ describe("글자 크기·자간·radius는 스케일이 든다 (audit #45·#46·
     expect(hits(/(?<![\w-])(?:[a-z-]+:)*text-\[\d+(?:\.\d+)?px\]/g).map(({ path, token }) => `${path}: ${token}`)).toEqual([]);
   });
 
-  /**
-   * ⚠️ **남은 일곱은 §6.67의 예외다** — 계정 라벨 셋 · 공유 `PanelCard` 셋 · 모달 제목 하나. 여덟째는 `/privacy` 표의
-   * 0.015em(2026-09-26, 시안 Prototype `isPrivacy` — DESIGN §6.616, malmoi#116)이다. 번역 작업 화면의
-   * 스물하나는 크기 토큰과 같은 값을 되적거나(`text-xs tracking-[0.02em]`) 토큰 값을 덮었다(`text-sm tracking-[0.015em]`).
-   * `PanelCard` 카드 제목의 0.015em은 2026-10-01에 걷었다(4-W1 — RowCard·Home 카드 제목과 한 벌).
-   */
-  it("`tracking-*`가 등재된 여덟뿐이다 — §6.67의 일곱 + `/privacy` 표", () => {
-    const found = hits(/(?<![\w-])tracking-[\w[\].-]+/g);
+  /** 크기 토큰과 같은 자간은 접는다. 공개 문서 표의 0.015em은 text-xs/sm의 0.02em과 달라 보존한다(T1). */
+  it("`tracking-*`는 공개 문서 표의 별도 값 하나뿐이다", () => {
+    const found = hits(/(?<![\w-])tracking-[\w[\].-]+/g, ALL_SOURCES);
     const byFile: Record<string, number> = {};
     for (const { path } of found) byFile[path] = (byFile[path] ?? 0) + 1;
     expect(byFile).toEqual({
-      "app/(edit)/account/page.tsx": 3,
-      "components/ui/panel-card.tsx": 3,
-      "components/ui/modal.tsx": 1,
       "components/public-doc-table.tsx": 1,
     });
   });
@@ -428,25 +421,74 @@ describe("24px 이상은 600, 600은 24px 이상에만", () => {
   });
 });
 
-/**
- * **행 면·선의 알파 철자는 `/[0.0N]` 하나다** (DESIGN §5 · ux-drift-unify 5-Y8 · 4-W4). hover 2%(카드 안 행)·3%(캔버스·모달 위 행)·선택 7%·
- * 선 6%가 `/2`·`/3`·`/6`·`/7`과 `/[0.02]`… 두 철자로 갈려 grep 한 번으로 소비자를 셀 수 없었다. 급(2·3·7)의 판정은 화면 테스트가 들고
- * (`projects-screen` 2% · `sidebar-selection`·`public-shell` 3%), 여기는 철자만 센다. 회색 면 `/5`(Badge neutral·Skeleton·IconTile)는 이 급 밖이다.
- */
+/** 같은 유틸·알파의 두 철자만 막는다. 짝 없는 /5·/6은 허용한다(T1, Y-a). */
 describe("알파 면·선의 철자", () => {
-  const BARE_ALPHA = /\b(?:bg|border|ring)-foreground\/[2367]\b/g;
+  const duplicates = (source: string): string[] => {
+    const bracketed = new Set([...source.matchAll(/\b((?:bg|border(?:-[tblrxy])?|ring|text|fill|stroke)-foreground)\/\[(0\.\d+)\]/g)]
+      .map((match) => `${match[1]}/${Number(match[2])}`));
+    return [...source.matchAll(/\b((?:bg|border(?:-[tblrxy])?|ring|text|fill|stroke)-foreground)\/(\d+)\b/g)]
+      .filter((match) => bracketed.has(`${match[1]}/${Number(match[2]) / 100}`)).map((match) => match[0]);
+  };
 
-  it("괄호 없는 철자(`/2`·`/3`·`/6`·`/7`)가 0이다", () => {
-    expect(hits(BARE_ALPHA).map(({ path, token }) => `${path}: ${token}`)).toEqual([]);
+  it("같은 값의 두 알파 철자가 공존하지 않는다", () => {
+    expect(duplicates(ALL_SOURCES.map(({ source }) => source).join("\n"))).toEqual([]);
   });
 
-  it("판정식이 괄호 없는 철자를 잡고 정본 철자·다른 급은 놓아준다 (카나리아)", () => {
+  it("두 철자 재도입을 잡고 짝 없는 /5·/6은 허용한다 (카나리아)", () => {
     const real = SOURCES.find(({ path }) => path === "components/shell/sidebar.tsx")?.source ?? "";
     expect(real).toContain("hover:bg-foreground/[0.03]");
-    expect(real.replace("hover:bg-foreground/[0.03]", "hover:bg-foreground/3").match(BARE_ALPHA)).toHaveLength(1);
-    expect("ring-foreground/6 border-foreground/2".match(BARE_ALPHA)).toHaveLength(2);
-    expect("bg-foreground/5 bg-foreground/32 bg-foreground/[0.07]".match(BARE_ALPHA)).toBeNull();
+    expect(duplicates(`${real} hover:bg-foreground/3`)).toEqual(["bg-foreground/3"]);
+    expect(duplicates("ring-foreground/6 ring-foreground/[0.06] border-foreground/2 border-foreground/[0.02]")).toHaveLength(2);
+    expect(duplicates("bg-foreground/7 bg-foreground/[0.07]")).toEqual(["bg-foreground/7"]);
+    expect(duplicates("bg-foreground/5 ring-foreground/6 bg-foreground/32 bg-foreground/[0.07]")).toEqual([]);
     expect(SOURCES.length).toBeGreaterThan(200);
+  });
+});
+
+describe("T1 동치 철자와 값 보존 예외", () => {
+  const OBSOLETE = /leading-\[1\.5\]|\[overflow-wrap:anywhere\]/g;
+  const byFile = (pattern: RegExp): Record<string, number> => {
+    const counts: Record<string, number> = {};
+    for (const { path } of hits(pattern, ALL_SOURCES)) counts[path] = (counts[path] ?? 0) + 1;
+    return counts;
+  };
+
+  it("동치인 옛 행간·줄바꿈 철자가 전수에서 0이다", () => {
+    expect(hits(OBSOLETE, ALL_SOURCES)).toEqual([]);
+    expect(ALL_SOURCES.length).toBeGreaterThan(500);
+  });
+
+  it("실제 소비자에 옛 철자를 되살리면 잡는다 (카나리아)", () => {
+    const toc = read("components/public-doc-toc.tsx");
+    const row = read("components/logs/event-row.tsx");
+    expect(toc).toContain("leading-normal");
+    expect(row).toContain("wrap-anywhere");
+    expect(toc.replace("leading-normal", "leading-[1.5]").match(OBSOLETE)).toEqual(["leading-[1.5]"]);
+    expect(row.replace("wrap-anywhere", "[overflow-wrap:anywhere]").match(OBSOLETE)).toEqual(["[overflow-wrap:anywhere]"]);
+    expect("leading-[1.6] wrap-anywhere leading-normal".match(OBSOLETE)).toBeNull();
+  });
+
+  it("불투명 divider와 다른 알파 선은 기존 위치·수만 보존한다", () => {
+    expect(byFile(/\b(?:border(?:-[tblrxy])?|ring)-foreground\/\[0\.06\]/g)).toEqual({
+      "app/(edit)/projects/(list)/loading.tsx": 1,
+      "app/(edit)/projects/[slug]/logs/loading.tsx": 1,
+      "app/(edit)/projects/[slug]/logs/page.tsx": 1,
+      "app/(edit)/projects/[slug]/members/loading.tsx": 2,
+      "components/landing/mockup/publish.tsx": 1,
+      "components/mcp/token-card.tsx": 1,
+      "components/publish-button.tsx": 1,
+      "components/ui/row-card.tsx": 3,
+    });
+  });
+
+  it("4px와 rem은 조건부 동치라 기존 4px 한 곳을 보존한다", () => {
+    expect(byFile(/rounded-\[4px\]/g)).toEqual({ "app/(edit)/projects/(list)/loading.tsx": 1 });
+  });
+
+  it("tracking 재도입과 값 보존 예외 추가가 스캐너에 잡힌다 (카나리아)", () => {
+    const candidates = ["text-xs tracking-[0.02em]", "rounded-[4px]", "border-foreground/[0.06] ring-foreground/[0.06]"];
+    const pattern = /tracking-\[[^\]]+\]|rounded-\[4px\]|\b(?:border|ring)-foreground\/\[0\.06\]/g;
+    expect(candidates.map((source) => hits(pattern, [{ path: "lib/canary.ts", source }]).length)).toEqual([1, 1, 2]);
   });
 });
 
