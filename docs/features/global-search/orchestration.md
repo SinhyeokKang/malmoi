@@ -45,3 +45,5 @@ GS3a 증거: 원본 6ae19606, 전체 10385 passed + 기존 1 skipped, gate exit0
 - dev e1127736의 GS1+GS3a 통합 `pnpm gate` exit0, 마지막 `gate: ok` 확인(Prisma/typecheck/test/격리 PG/build/mirror). 로그 `.scratch/global-search/gate-integration-1.log`.
 - GS3b = D3·D4·D5a만 먼저 병행한다. FieldButton·dialog.tsx 형제 CommandDialog·NoMatch 선택 action 및 해당 focus/DOM tests 소유. GS2의 lib/keys·search loaders·Action/route·entry-points·client-graph와 교집합 없음. GS3b는 lib/**·client-graph·messages·문서를 편집하지 않는다. Sol/high, gate 및 독립 리뷰 필수.
 - 남은 GS3 = D5·D7이며 GS2·GS3b 모두 통합 후 수행한다. Command가 처음 keys.ts를 소비하는 정확 그래프 등록은 여기다. GS4는 그 뒤다.
+
+GS3b 증거: 원본 feedca23, 전체10444 passed + 기존1 skipped, gate exit0. 독립 리뷰 red0/yellow0, 기존 DialogContent 바이트 동일 확인. LARGE_MODAL_HEIGHT 공유 추출 수용. 로컬 통합 후 다음 통합 gate는 B3 단독 실측 종료를 기다려 실행한다.
