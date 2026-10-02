@@ -2623,3 +2623,12 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   - **`pnpm gate` 끝줄에 `retried: test`가 찍히면 통과로 읽지 않는다** — 그 run의 `This error originated in` 파일을 찾아 테스트 뒤에 살아남는 작업(끄지 않은 타이머·
     기다리지 않은 promise·복원된 console에 쓰는 로그)이 있는지 본다. 재시도는 머지를 막지 않게 할 뿐 원인을 지우지 않는다 — CI는 재시도하지 않는다.
     후속 후보: 게이트가 재시도할 때 출처 파일을 끝줄에 함께 싣는다(지금은 단계 이름뿐).
+
+
+### 2026-10-03 — 단일 언어 탐지를 열자 조상 승격이 설정 파일을 정본보다 앞세웠다
+
+- **영역**: `lib/adapters/shared.ts`의 `liftAncestors`, 단일 언어 탐지와 어댑터 실측.
+- **증상**: 최소 언어 수를 2에서 1로 낮추자 moebooru의 `config/i18n-js.yml`(2키)이 `config/locales/{locale}.yml`(7언어·1,582키)보다 먼저 추천됐다. `js`가 기존 로케일 모양 판정을 통과했다.
+- **근본 원인**: 조상 승격은 “상위 카탈로그가 정본”이라고 가정했지만, 그 가정은 최소 2언어 필터 뒤에서만 실측됐다. 후보 허용 범위를 넓히면서 기존 순위 후처리의 전제도 달라졌다.
+- **그물**: 단일 언어의 개별 탐지·등록 테스트와 정적 리뷰는 놓쳤고, 사용자 승인으로 수행한 학습 코퍼스 재측정이 잡았다. 변경 전 코드(`05d557c8`)로 같은 리포를 재측정해 회귀임을 확인했다. `detect-candidates.test.ts`의 실제 경로 모양 회귀 테스트로 red→green을 확인했다.
+- **재발 방지**: `rg -n 'liftAncestors|rankTemplateCandidates|compareTemplates' lib/adapters`로 어댑터 안과 어댑터 간 순위를 함께 확인한다. 후보 범위를 넓힐 때 새 후보와 기존 정본이 경쟁하는 입력을 `detectCandidatesAcross`에서 검증한다. 단일 언어 후보는 남기되 여러 언어 후보 위로 조상 승격하지 않는다.
