@@ -305,11 +305,11 @@ describe("Stage — 크기 변화", () => {
  * 모양이 되어 "기기 테두리"로 읽히지 않는다. 두께 12는 `-inset-3`이 든다.
  */
 describe("Stage — 베젤", () => {
-  it("대기 베젤이 흰 채움과 얇은 회색 외곽선이다", async () => {
+  it("툴바와 베젤이 흰 채움과 얇은 회색 외곽선이다", async () => {
     const { container } = await mount();
     const bezel = find<HTMLElement>(container, "[data-landing-frame] > .rounded-3xl.border");
     const classes = bezel.className.split(" ");
-    expect(classes).toEqual(expect.arrayContaining(["-inset-3", "border", "border-border", "bg-background"]));
+    expect(classes).toEqual(expect.arrayContaining(["inset-0", "border", "border-border", "bg-background"]));
     expect(classes).not.toContain("bg-canvas");
   });
 
@@ -319,7 +319,7 @@ describe("Stage — 베젤", () => {
     await flush();
     await scrollTo(scroller, STAGE_TOP + 2 * H);
     const layers = [...container.querySelectorAll<HTMLElement>("[data-landing-frame] > .rounded-3xl")];
-    expect(layers).toHaveLength(2);
+    expect(layers).toHaveLength(1);
     expect(layers.some((node) => node.className.includes("shadow-medium"))).toBe(true);
     for (const node of layers) {
       expect(node.style.opacity).toBe("");

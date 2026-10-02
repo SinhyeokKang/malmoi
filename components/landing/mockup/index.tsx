@@ -16,6 +16,6 @@ export function mockupScenes(): readonly [ReactNode, ReactNode, ReactNode, React
     <AppFrame key="2"><TranslationsView phase="typing" /></AppFrame>,
     <AppFrame key="3"><TranslationsView phase="saving" /></AppFrame>,
     <AppFrame key="4" overlay={<PreviewModal />}><TranslationsView phase="saved" /></AppFrame>,
-    <AppFrame key="5" overlay={<ResultModal />}><TranslationsView phase="saved" /></AppFrame>,
+    <AppFrame key="5" overlay={<ResultModal />}><TranslationsView phase="published" /></AppFrame>,
   ];
 }

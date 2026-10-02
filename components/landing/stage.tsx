@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, type ReactNode } from "react";
 
-import { CANVAS_H, CANVAS_W, frame as frameAt, pinnedSpan, trackHeight, typedPrefix, type Frame } from "@/lib/landing/stage";
+import { BEZEL, CANVAS_H, CANVAS_W, TOOLBAR_H, frame as frameAt, pinnedSpan, trackHeight, typedPrefix, type Frame } from "@/lib/landing/stage";
 
 type Five<T> = readonly [T, T, T, T, T];
 
@@ -13,13 +13,13 @@ type Five<T> = readonly [T, T, T, T, T];
  * 전부이고, 씬은 그 고정 구간 안에서만 움직인다. 위 히어로·아래 CTA는 재생 동안 보이지 않는다 — 그래서 CTA를 음수
  * margin으로 끌어올리지 않는다(옛 `--landing-y-pin`).
  *
- * ⚠️ **배율은 크기만의 함수다** — 스크롤 구동 확대(대기 0.8배 → 맞춤)를 걷었다. 베젤은 그 대기 모양 그대로 상시다
- * (흰 링 + 얇은 회색 외곽선 + `shadow-medium`, 2026-09-27 사용자).
+ * ⚠️ **배율은 크기만의 함수다** — 스크롤 구동 확대(대기 0.8배 → 맞춤)를 걷었다. 툴바와 베젤은 상시다
+ * (44px 툴바 + 안쪽 베젤 + 얇은 회색 외곽선 + `shadow-medium`).
  *
  * ⚠️ **프레임마다 setState하지 않는다** — 씬 DOM이 수천 노드라 재조정이 스크롤을 먹는다. 스크롤 → rAF에서
  * `frame()`(순수) → ref로 transform·opacity·`data-*`·텍스트 노드를 직접 쓴다. 이 컴포넌트는 한 번 렌더된다.
  *
- * ⚠️ **SSR·JS 없음에서는 접혀 있고 프레임이 보이지 않는다** — 배율이 없으면 1464 폭 베젤이 패널을 넘치므로 프레임·크롬이
+ * ⚠️ **SSR·JS 없음에서는 접혀 있고 프레임이 보이지 않는다** — 배율이 없으면 1440 폭 컨테이너가 패널을 넘치므로 프레임·크롬이
  * `invisible`이다. 트랙은 `data-ready`가 선 뒤에만 고정 구간 길이를 갖는다(그 전엔 패널 1개 높이 — 빈 세로 구간이 남지 않는다).
  *
  * 씬(`scenes`)은 서버 컴포넌트가 그린 정적 DOM이다. 목업이 스크롤에 반응하는 자리는 둘뿐이다 —
@@ -189,10 +189,18 @@ export function Stage({
             className="group/frame invisible absolute top-0 left-0 origin-top-left group-data-[ready]/track:visible"
             style={{ width: CANVAS_W, height: CANVAS_H }}
           >
-            {/* 베젤은 흰 두꺼운 테두리(12) + 얇은 회색 외곽선이다 (2026-09-27 사용자 — 시안). `bg-canvas`면 회색 판으로 읽힌다. 상시다. */}
-            <div className="absolute -inset-3 rounded-3xl shadow-medium" />
-            <div className="absolute -inset-3 rounded-3xl border border-border bg-background" />
-            <div className="absolute inset-0 overflow-hidden rounded-lg border border-border-subtle bg-background">
+            {/* 툴바·베젤을 컨테이너 안에 두어 바깥 윤곽까지 16:10을 유지한다. */}
+            <div className="absolute inset-0 rounded-3xl border border-border bg-background shadow-medium" />
+            <div data-landing-toolbar="" className="absolute inset-x-0 top-0 flex items-center gap-2 px-5" style={{ height: TOOLBAR_H }}>
+              <span className="size-3 translate-y-0.5 rounded-full border border-border" />
+              <span className="size-3 translate-y-0.5 rounded-full border border-border" />
+              <span className="size-3 translate-y-0.5 rounded-full border border-border" />
+            </div>
+            <div
+              data-landing-screen=""
+              className="absolute overflow-hidden rounded-lg border border-border-subtle bg-background"
+              style={{ top: TOOLBAR_H, right: BEZEL, bottom: BEZEL, left: BEZEL }}
+            >
               {scenes.map((scene, k) => (
                 <div
                   key={k}

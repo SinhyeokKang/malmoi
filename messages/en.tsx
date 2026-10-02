@@ -486,10 +486,11 @@ export const en = {
       projectCount: 3,
       memberCount: 4,
       /**
-       * 소스 트리 — 첫째가 보고 있는 소스(`source`)라 펼쳐져 있고 나머지는 접힌다(실제 `TreePanel`). 네임스페이스 합이 소스의 키 수다.
+       * 소스 트리 — slug 코드순이며 보고 있는 소스(`source`)만 펼쳐지고 나머지는 접힌다(실제 `TreePanel`). 네임스페이스 합이 소스의 키 수다.
        * 프로젝트 키 수(`keyCount`)는 소스 키 수의 합이다.
        */
       sources: [
+        { slug: "emails", keyCount: 40, namespaces: [] },
         {
           slug: "web",
           keyCount: 248,
@@ -500,10 +501,9 @@ export const en = {
             { name: "product", keyCount: 56 },
           ],
         },
-        { slug: "emails", keyCount: 40, namespaces: [] },
       ],
       /**
-       * 선택된 키 — 씬 ②에서 `fr` 값이 비어 있다가 채워진다. ⚠️ **원문 포함 값은 둘까지다** — 1440×810 안의 로케일 목록이
+       * 선택된 키 — 씬 ②에서 `fr` 값이 비어 있다가 채워진다. ⚠️ **원문 포함 값은 둘까지다** — 목업의 로케일 목록이
        * 행 셋만 담는다(넷이면 `fr` 칸이 푸터 밑으로 들어간다, #112).
        */
       selected: {

@@ -11,16 +11,16 @@ import { BEZEL, CANVAS_H, CANVAS_W, PLAY, fitScale, frame, pinnedSpan, sceneAt, 
 
 /** 스크롤러 W×H(= 뷰포트 − 공개 셸 가로 18 · 세로 98). */
 const VIEWPORTS = [
-  { name: "1280×800", W: 1262, H: 702, scale: 0.7506 },
-  { name: "1440×900", W: 1422, H: 802, scale: 0.8704 },
-  { name: "1920×1080", W: 1902, H: 982, scale: 1 },
+  { name: "1280×800", W: 1262, H: 702, scale: 0.6956 },
+  { name: "1440×900", W: 1422, H: 802, scale: 0.8066 },
+  { name: "1920×1080", W: 1902, H: 982, scale: 0.9986 },
   { name: "2560×1440", W: 2542, H: 1342, scale: 1 },
 ] as const;
 
 describe("캔버스", () => {
-  /** 1440 폭 창에서 본 제품이다(2026-09-27 사용자). 세로 810은 1440×900 화면의 브라우저 뷰포트(≈16:9)다. */
-  it("논리 캔버스는 1440×810이고 베젤은 12다", () => {
-    expect([CANVAS_W, CANVAS_H, BEZEL]).toEqual([1440, 810, 12]);
+  /** 툴바와 베젤을 포함한 바깥 컨테이너가 16:10이다. */
+  it("전체 컨테이너는 1440×900이고 내부 베젤은 8이다", () => {
+    expect([CANVAS_W, CANVAS_H, BEZEL]).toEqual([1440, 900, 8]);
   });
 });
 
@@ -43,22 +43,22 @@ describe("fitScale — 크기만이 배율을 정한다", () => {
   it("폭이 넉넉해도 베젤 + 캔버스 + 캡션 줄이 세로에 들어간다", () => {
     for (const { W, H } of [...VIEWPORTS, { W: 2542, H: 600 }]) {
       const f = fitScale({ W, H });
-      const top = f.y - BEZEL * f.scale;
+      const top = f.y;
       const bottom = f.chromeY + 28;
       expect(top).toBeGreaterThanOrEqual(0);
       expect(bottom).toBeLessThanOrEqual(H + 1e-9);
-      expect(f.x - BEZEL * f.scale).toBeGreaterThanOrEqual(f.side - 1e-9);
+      expect(f.x).toBeGreaterThanOrEqual(f.side - 1e-9);
     }
   });
 
   it("가로 가운데 · 베젤과 캡션 줄을 합친 블록이 세로 가운데다", () => {
     const { scale, x, y, chromeY } = fitScale({ W: 1902, H: 982 });
     expect(x).toBeCloseTo((1902 - CANVAS_W * scale) / 2, 10);
-    const top = y - BEZEL * scale;
+    const top = y;
     const bottom = chromeY + 28;
     expect(top).toBeCloseTo(982 - bottom, 10);
     // 캡션 줄은 베젤 아래 16이다.
-    expect(chromeY).toBeCloseTo(y + (CANVAS_H + BEZEL) * scale + 16, 10);
+    expect(chromeY).toBeCloseTo(y + CANVAS_H * scale + 16, 10);
   });
 
   it("패널이 여백보다 작으면 배율은 0이다 — 음수 배율이 거울상을 그리지 않는다", () => {

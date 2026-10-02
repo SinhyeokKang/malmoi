@@ -44,6 +44,22 @@ async function mount() {
 
 const layer = (container: HTMLElement, k: number) => find<HTMLElement>(container, `[data-landing-layer="${k}"]`);
 
+describe("목업 창", () => {
+  it("16:10 컨테이너 안에서 44px 툴바와 씬 영역이 분리된다", async () => {
+    const container = await mount();
+    const frame = find<HTMLElement>(container, "[data-landing-frame]");
+    expect(frame.style.width).toBe("1440px");
+    expect(frame.style.height).toBe("900px");
+    const toolbar = find<HTMLElement>(frame, "[data-landing-toolbar]");
+    expect(toolbar.style.height).toBe("44px");
+    expect(toolbar.children).toHaveLength(3);
+    const screen = find<HTMLElement>(frame, "[data-landing-screen]");
+    expect(screen.style.top).toBe("44px");
+    expect(screen.querySelectorAll("[data-landing-layer]")).toHaveLength(5);
+    expect(screen.contains(toolbar)).toBe(false);
+  });
+});
+
 describe("목업 — 조작 대상이 아니다", () => {
   it("프레임이 `aria-hidden`+`inert`이고 안에 인터랙티브 태그가 0개다", async () => {
     const container = await mount();
@@ -111,6 +127,19 @@ describe("목업 — 제품과 같은 구조다", () => {
     expect(kids[1]?.className).toContain("bg-border-subtle");
   });
 
+  it("모든 씬의 사이드바 맨 아래에 Collapse가 있다", async () => {
+    const container = await mount();
+    for (let k = 0; k < 5; k += 1) {
+      const footer = find(layer(container, k), '[data-landing-zone="footer"]');
+      const collapse = find<HTMLElement>(footer, "[data-landing-collapse]");
+      expect(footer.lastElementChild).toBe(collapse);
+      expect(collapse.textContent).toBe(m.common.nav.collapseSidebar);
+      expect(collapse.tagName).toBe("SPAN");
+      expect(collapse.querySelector("svg.lucide-panel-left-close")).not.toBeNull();
+      expect(collapse.className.split(" ")).toEqual(expect.arrayContaining(["h-8", "px-2", "font-normal", "justify-start"]));
+    }
+  });
+
   it("LNB 폭이 실제 셸의 기본 240이다", async () => {
     expect(find(layer(await mount(), 0), "[data-landing-lnb]").className).toContain("w-[240px]");
   });
@@ -120,7 +149,9 @@ describe("목업 — 제품과 같은 구조다", () => {
     const tree = find<HTMLElement>(scene, "[data-landing-tree]");
     expect(tree.className).toContain("w-[260px]");
     expect(tree.textContent).toContain(m.translations.workspace.tree.title);
-    const [current, ...rest] = fixture.sources;
+    const current = fixture.sources.find(source => source.slug === fixture.source);
+    const rest = fixture.sources.filter(source => source.slug !== fixture.source);
+    expect([...tree.querySelectorAll("[data-landing-source]")].map(node => node.getAttribute("data-landing-source"))).toEqual(fixture.sources.map(source => source.slug).sort());
     const open = find(tree, `[data-landing-source="${current?.slug}"]`);
     expect(open.textContent).toContain(m.translations.workspace.tree.allNamespaces);
     for (const namespace of current?.namespaces ?? []) expect(open.textContent).toContain(namespace.name);
@@ -178,6 +209,47 @@ describe("목업 — 제품과 같은 구조다", () => {
 });
 
 describe("목업 — 씬이 이야기를 든다", () => {
+  it("⑤ 전달 뒤 배경에는 미전달 표시가 없고 Publish가 꺼지며 결과를 다시 열 수 있다", async () => {
+    const scene = layer(await mount(), 4);
+    const publish = find<HTMLElement>(scene, "[data-landing-publish]");
+    expect(publish.getAttribute("aria-disabled")).toBe("true");
+    expect(publish.textContent).toBe(p.button);
+    expect(scene.textContent).toContain(p.viewResult);
+    expect(scene.textContent).not.toContain(m.translations.workspace.list.notSent);
+    expect(scene.textContent).not.toContain(m.translations.workspace.footer.savedNotSent);
+    expect(scene.textContent).not.toContain(m.translations.workspace.revert.button);
+    expect(scene.querySelector("[data-landing-hold]")).toBeNull();
+  });
+
+  it("①~④ 미전달 편집 보류 안내가 있고 ③ 저장 시 개수도 바뀐다", async () => {
+    const container = await mount();
+    for (const k of [0, 1, 2, 3]) {
+      const banner = find(layer(container, k), "[data-landing-hold]");
+      expect(banner.textContent).toContain(m.translations.banner.sendWithPublish);
+      expect(banner.textContent).toContain(m.translations.banner.paused(k === 3 ? fixture.unsentAfter : fixture.unsentBefore));
+      expect(banner.querySelector('[data-alert="neutral"]')).not.toBeNull();
+    }
+    const saving = find(layer(container, 2), "[data-landing-hold]");
+    expect(saving.querySelector('[data-landing-badge="after"]')?.textContent).toBe(m.translations.banner.paused(fixture.unsentAfter));
+  });
+
+  it("② 타이핑 입력에 실제 Textarea의 활성 링이 있다", async () => {
+    const field = find(layer(await mount(), 1), "[data-landing-typed]").parentElement!;
+    expect(field.className.split(" ")).toEqual(expect.arrayContaining(["ring-ring", "ring-2"]));
+  });
+
+  it("공통 사이드바의 머리와 행은 실제 ROW의 h-8 px-2를 따른다", async () => {
+    const scene = layer(await mount(), 0);
+    const rows = [...scene.querySelectorAll('[data-landing-nav]'), find(scene, '[data-landing-zone="project"] > p')];
+    for (const row of rows) expect(row.className.split(" ")).toEqual(expect.arrayContaining(["h-8", "px-2"]));
+  });
+
+  it("④ diff 국기에 실제 표와 같은 얇은 윤곽선이 있다", async () => {
+    const flags = layer(await mount(), 3).querySelectorAll('[data-landing-diff-flag]');
+    expect(flags).toHaveLength(fixture.diff.length);
+    for (const flag of flags) expect(flag.className.split(" ")).toEqual(expect.arrayContaining(["ring-1", "ring-foreground/[0.06]", "rounded-xs"]));
+  });
+
   it("① 번역 화면 — 실제 사전의 화면 이름·Publish·키 목록, `fr`은 비어 있다", async () => {
     const text = layer(await mount(), 0).textContent ?? "";
     expect(text).toContain(m.common.nav.translations);
@@ -222,7 +294,7 @@ describe("목업 — 씬이 이야기를 든다", () => {
   });
 });
 
-describe("목업 — 1440×810 안에 들어간다 (#112)", () => {
+describe("목업 — 화면 영역 안에 들어간다 (#112)", () => {
   /**
    * ⚠️ **jsdom은 레이아웃이 없어 높이를 못 잰다** — 1280×720 시절 실측(0.964 배율, 로케일 목록 358px)에서 행 넷(en·de·es·fr)이 약 400px라
    * `fr` 칸이 푸터 밑으로 들어갔다. 예산을 행 수로 묶고, 목록이 넘쳐도 푸터 위로 칠하지 않게 자르는지 본다.
@@ -356,7 +428,7 @@ describe("목업 — 상태 표시가 실물과 같다", () => {
 
   it("Unsent는 실물 `StatusBadge unsent`다 — 손 조립 알약이 아니다 (Q3)", async () => {
     const real = await classes(<StatusBadge state="unsent" />);
-    const scene = layer(await mount(), 4);
+    const scene = layer(await mount(), 3);
     const badges = [...scene.querySelectorAll("span")].filter((node) => node.textContent === m.translations.workspace.list.notSent && node.children.length === 0);
     expect(badges.length).toBeGreaterThan(0);
     for (const badge of badges) expect(badge.className).toBe(real);

@@ -107,7 +107,7 @@ export function PreviewModal() {
                   <KeyName name={row.key} />
                 </span>
                 <span className="border-divider flex w-[84px] shrink-0 items-start gap-2 border-r px-3 py-[11px]">
-                  <span className="mt-[5px] flex">
+                  <span data-landing-diff-flag="" className="mt-[5px] flex rounded-xs ring-1 ring-foreground/[0.06]">
                     <LocaleFlag code={row.code} />
                   </span>
                   <span className="text-xs leading-5 font-medium">{row.code}</span>

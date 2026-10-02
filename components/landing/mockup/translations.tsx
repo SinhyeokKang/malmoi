@@ -1,7 +1,8 @@
-import { ArrowDownToLine, ChevronDown, ChevronRight, FileJson2, Folder, Layers, Link2, Search, Send } from "lucide-react";
+import { ArrowDownToLine, ArrowUp, ChevronDown, ChevronRight, FileJson2, Folder, Layers, Link2, Search, Send } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { LocaleBadge } from "@/components/translations/locale-badge";
+import { Alert } from "@/components/ui/alert";
 import { buttonClass } from "@/components/ui/button";
 import { CountBadge } from "@/components/ui/count-badge";
 import { fieldClass } from "@/components/ui/input";
@@ -15,21 +16,21 @@ import { cn } from "@/lib/utils";
  * 1440 창의 폭 계약(`lib/translations/layout.ts` — 카드 영역 1142에서 트리가 접히지 않는다)이 그 배치를 정한다.
  *
  * `phase`가 씬 ①②③을 가른다: `missing`(fr 빈 칸) · `typing`(스테이지가 `[data-landing-typed]`에 접두를 쓴다) · `saving`(씬 ③ —
- * 프레임의 `data-badge`가 서는 순간 저장되고 Publish 배지가 는다) · `saved`(④⑤의 배경).
+ * 프레임의 `data-badge`가 서는 순간 저장되고 Publish 배지가 는다) · `saved`(④의 배경) · `published`(⑤ 전달 완료).
  *
  * ⚠️ 버튼·입력 모양은 클래스를 `<span>`에 입힌다 — 목업은 조작 대상이 아니다(`repository-card.tsx` 선례).
  */
-export type Phase = "missing" | "typing" | "saving" | "saved";
+export type Phase = "missing" | "typing" | "saving" | "saved" | "published";
 
 const fixture = m.landing.mockup;
 const w = m.translations.workspace;
 const count = (n: number) => n.toLocaleString("en-US");
-/** 보고 있는 소스 — 트리에서 펼쳐진 첫 항목이고 키 목록의 수가 그 소스의 키 수다(`This source`). */
-const current = fixture.sources[0];
+/** 보고 있는 소스 — 트리에서 펼쳐진 항목이고 키 목록의 수가 그 소스의 키 수다(`This source`). */
+const current = fixture.sources.find(source => source.slug === fixture.source);
 
 /** 씬 ③의 전·후 — 프레임의 `data-badge`가 1이 되는 순간 바뀐다(`group/frame`은 `components/landing/stage.tsx`). */
 function Swap({ phase, before, after, display = "inline-flex" }: { phase: Phase; before: ReactNode; after: ReactNode; display?: "inline-flex" | "flex" }) {
-  if (phase === "saved") return <>{after}</>;
+  if (phase === "saved" || phase === "published") return <>{after}</>;
   if (phase !== "saving") return <>{before}</>;
   return (
     <>
@@ -74,11 +75,12 @@ export function TranslationsView({ phase }: { phase: Phase }) {
               <ArrowDownToLine className="text-neutral-600" aria-hidden />
               {m.repositorySync.action}
             </span>
-            <span className={buttonClass({ variant: "primary" })}>
+            <span data-landing-publish="" aria-disabled={phase === "published" ? "true" : undefined} className={cn(buttonClass({ variant: "primary" }), phase === "published" && "bg-muted text-muted-foreground")}>
               <Send aria-hidden />
               {m.translations.publish.button}
-              <Swap phase={phase} before={<PublishCount n={fixture.unsentBefore} />} after={<PublishCount n={fixture.unsentAfter} />} />
+              {phase !== "published" && <Swap phase={phase} before={<PublishCount n={fixture.unsentBefore} />} after={<PublishCount n={fixture.unsentAfter} />} />}
             </span>
+            {phase === "published" && <span className={buttonClass({ variant: "default" })}>{m.translations.publish.viewResult}</span>}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -88,6 +90,13 @@ export function TranslationsView({ phase }: { phase: Phase }) {
             <span className={cn(fieldClass, "text-muted-foreground flex h-9 w-80 items-center pl-8")}>{w.filters.searchPlaceholder}</span>
           </span>
         </div>
+        {phase !== "published" && (
+          <div data-landing-hold="">
+            <Alert variant="neutral" actions={<span className={buttonClass({ variant: "default" })}>{m.translations.banner.sendWithPublish}<ArrowUp className="size-3.5" aria-hidden /></span>}>
+              <Swap phase={phase} before={m.translations.banner.paused(fixture.unsentBefore)} after={m.translations.banner.paused(fixture.unsentAfter)} />
+            </Alert>
+          </div>
+        )}
       </div>
       <div className="min-h-0 flex-1 overflow-hidden p-4">
         <div className="flex h-full min-h-0">
@@ -183,8 +192,8 @@ function KeyList({ phase }: { phase: Phase }) {
                 <span className="text-sm leading-[1.45]">{row.text}</span>
                 <span className="flex flex-wrap items-center gap-1.5">
                   <span className="text-muted-foreground text-xs">{row.key}</span>
-                  {unsent.has(row.key) && unsentBadge}
-                  {isSelected && phase !== "missing" && phase !== "typing" && <Swap phase={phase} before={null} after={unsentBadge} />}
+                  {phase !== "published" && unsent.has(row.key) && unsentBadge}
+                  {isSelected && phase !== "published" && phase !== "missing" && phase !== "typing" && <Swap phase={phase} before={null} after={unsentBadge} />}
                 </span>
               </span>
               {isSelected ? <Swap phase={phase} before={missing} after={complete} /> : row.missing > 0 ? missing : complete}
@@ -264,13 +273,13 @@ function TypedRow({ phase }: { phase: Phase }) {
   const d = w.detail;
   const notSaved = <span className="text-xs text-amber-700">{d.notSaved}</span>;
   const notSent = unsentBadge;
-  const status = phase === "missing" ? <span className="text-muted-foreground text-xs">{d.missing}</span> : phase === "typing" ? notSaved : <Swap phase={phase} before={notSaved} after={notSent} />;
+  const status = phase === "published" ? null : phase === "missing" ? <span className="text-muted-foreground text-xs">{d.missing}</span> : phase === "typing" ? notSaved : <Swap phase={phase} before={notSaved} after={notSent} />;
   return (
     <LocaleRow code={selected.typedCode} first={false} status={status}>
       {phase === "missing" ? (
         <span className="text-muted-foreground min-h-[62px] rounded-md border border-dashed border-neutral-300 p-2.5 text-sm leading-[1.55]">{selected.text}</span>
       ) : (
-        <span className="border-input bg-background min-h-[62px] rounded-md border px-2.5 py-2.5 text-sm leading-[1.55]">
+        <span className={cn("border-input bg-background min-h-[62px] rounded-md border px-2.5 py-2.5 text-sm leading-[1.55]", phase === "typing" && "ring-ring ring-2")}>
           {phase === "typing" ? <span data-landing-typed="" /> : selected.typed}
           {phase === "typing" && <span className="bg-foreground ml-px inline-block h-4 w-px translate-y-[3px]" />}
         </span>
@@ -286,7 +295,7 @@ function TypedRow({ phase }: { phase: Phase }) {
 function Footer({ phase }: { phase: Phase }) {
   const f = w.footer;
   const unsaved = <span className="text-xs text-amber-700">{f.unsaved(1)}</span>;
-  const saved = <span className="text-muted-foreground text-xs">{f.savedNotSent}</span>;
+  const saved = <span className="text-muted-foreground text-xs">{phase === "published" ? f.saved : f.savedNotSent}</span>;
   const text = phase === "missing" ? null : phase === "typing" ? unsaved : <Swap phase={phase} before={unsaved} after={saved} />;
   // 실물과 같은 `danger`다 — 편집을 버리는 동작이다(DESIGN §2.4 동작 규칙).
   const revert = <span className={buttonClass({ variant: "danger" })}>{w.revert.button}</span>;
