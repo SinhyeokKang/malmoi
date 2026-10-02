@@ -210,3 +210,14 @@ describe("단일 언어 사전 — 자동 탐지와 수동 확정", () => {
     expect(detectCandidatesAcross([path], () => content)).toEqual([]);
   });
 });
+
+it("단일 언어 조상 후보가 여러 언어의 정본을 끌어내리지 않는다 (moebooru 실측)", () => {
+  const files: Record<string, string> = {
+    "config/i18n-js.yml": "translations:\n  file: public/javascripts/translations.js\n  only: '*.js'\n",
+    "config/locales/en.yml": "en:\n  greeting: Hello\n",
+    "config/locales/ja.yml": "ja:\n  greeting: こんにちは\n",
+  };
+  const found = detectCandidatesAcross(Object.keys(files), path => files[path]);
+  expect(found[0]?.pathTemplate).toBe("config/locales/{locale}.yml");
+  expect(found.map(candidate => candidate.pathTemplate)).toContain("config/i18n-{locale}.yml");
+});
