@@ -11,7 +11,7 @@ import { render } from "./helpers/dom";
  * 전엔 기준 언어 `leading-translation`·`mt-px`, 초대 행 `CircleX`·`leading-body`, 설정 캡션 둘 `inline mr-1`로 넷이 갈렸다.
  */
 it("FormGroup의 오류 줄이 FieldError다 — 같은 id·role·글리프", async () => {
-  const { container } = await render(<FormGroup label="Path" htmlFor="path" error="Enter a path.">{null}</FormGroup>);
+  const { container } = await render(<FormGroup label="Path" htmlFor="path" error="Enter a path.">{() => null}</FormGroup>);
   const line = container.querySelector("#path-error")!;
   expect(line.getAttribute("role")).toBe("alert");
   expect(line.getAttribute("data-field-error")).toBe("");

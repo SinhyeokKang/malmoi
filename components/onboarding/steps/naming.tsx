@@ -60,7 +60,7 @@ export function NamingStep({
   onChange: (next: Partial<NamingStepState>) => void;
 }) {
   const verdict = planSlug(state.slug);
-  // slug 거부 술어는 하나다 — `aria-invalid`·`aria-describedby`·`FormGroup error`가 같은 것을 본다.
+  // 거부 상태는 aria-invalid에, 렌더된 설명의 선택은 FormGroup에 맡긴다.
   const slugRejected = state.slugTaken || verdict !== "ok";
   const { slug } = state;
 
@@ -72,11 +72,13 @@ export function NamingStep({
       <Alert variant="info">{m.newProject.naming.info(state.pathTemplate, state.branch)}</Alert>
 
       <FormGroup label={m.newProject.naming.name} htmlFor="project-name">
-        <Input width="full"
-          id="project-name"
-          value={state.name}
-          onChange={(e) => onChange({ name: e.target.value })}
-        />
+        {(describe) => (
+          <Input aria-describedby={describe()} width="full"
+            id="project-name"
+            value={state.name}
+            onChange={(e) => onChange({ name: e.target.value })}
+          />
+        )}
       </FormGroup>
 
       <FormGroup
@@ -96,19 +98,15 @@ export function NamingStep({
           <span className="text-foreground">{SYNC_BRANCH_PREFIX}{slug || "…"}</span>,
         )}
       >
-        <Input width="full"
-          id="project-slug"
-          value={slug}
-          /**
-           * ⚠️ **두 속성이 같은 술어를 쓴다** — `FormGroup`은 `error`가 있을 때만 그 `<p>`를 그리므로,
-           * 갈리면 오류가 없는 동안 **없는 id**를 가리킨다. 안정된 id는 프리미티브가 주고 잇는 것은
-           * 호출부다(DESIGN §6.4) — 안 이으면 포커스가 입력에 있는 사람에게 사유가 안 닿는다. 오류가 없는 동안은
-           * 그 자리에 선 도움말(`-help`)을 가리킨다 (audit #89).
-           */
-          aria-invalid={slugRejected ? true : undefined}
-          aria-describedby={slugRejected ? "project-slug-error" : "project-slug-help"}
-          onChange={(e) => onChange({ slug: e.target.value, slugTaken: false })}
-        />
+        {(describe) => (
+          <Input width="full"
+            id="project-slug"
+            value={slug}
+            aria-invalid={slugRejected ? true : undefined}
+            aria-describedby={describe()}
+            onChange={(e) => onChange({ slug: e.target.value, slugTaken: false })}
+          />
+        )}
       </FormGroup>
 
       {/*
@@ -187,36 +185,38 @@ function BaseLocaleFields({ state, onChange, id = "base-locale", label = m.newPr
           htmlFor={selectId}
           help={m.newProject.baseLocale.hint}
         >
-          <Select disabled={disabled} value={state.baseLocale} onValueChange={(baseLocale) => onChange({ baseLocale })}>
-            <div className="max-w-sm">
-              <SelectTrigger
-                id={`${selectId}`}
-                aria-labelledby={`${id}-select-label ${selectId}`}
-                aria-describedby={`${selectId}-help`}
-                width="full"
-              >
-                <SelectValue />
-              </SelectTrigger>
-            </div>
-            <SelectContent>
-              {locales.map((code) => (
-                <SelectItem key={code} value={code}>
-                  {/*
-                    ⚠️ **접혀도 표기가 같아야 한다** — 국기와 자국어 이름이 라디오 갈래에만 있으면 같은
-                    로케일이 로케일 수에 따라 두 가지로 보인다(DESIGN §6.1의 툴바 드롭다운이 같은 이유로
-                    국기를 들였다). **59로케일 리포가 정확히 이 갈래를 밟는다.**
-                  */}
-                  <LocaleFlag code={code} />
-                  {/* 배지 자리가 라벨로 간다 — 키 수와 `Most keys`는 **아는 언어에만** 붙는다. */}
-                  {m.newProject.naming.baseOption(
-                    languageName(code),
-                    countOf(code) === undefined ? undefined : m.newProject.files.keys(countOf(code) ?? 0),
-                    code === leader && known.length > 1,
-                  )}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {(describe) => (
+            <Select disabled={disabled} value={state.baseLocale} onValueChange={(baseLocale) => onChange({ baseLocale })}>
+              <div className="max-w-sm">
+                <SelectTrigger
+                  id={`${selectId}`}
+                  aria-labelledby={`${id}-select-label ${selectId}`}
+                  aria-describedby={describe()}
+                  width="full"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+              </div>
+              <SelectContent>
+                {locales.map((code) => (
+                  <SelectItem key={code} value={code}>
+                    {/*
+                      ⚠️ **접혀도 표기가 같아야 한다** — 국기와 자국어 이름이 라디오 갈래에만 있으면 같은
+                      로케일이 로케일 수에 따라 두 가지로 보인다(DESIGN §6.1의 툴바 드롭다운이 같은 이유로
+                      국기를 들였다). **59로케일 리포가 정확히 이 갈래를 밟는다.**
+                    */}
+                    <LocaleFlag code={code} />
+                    {/* 배지 자리가 라벨로 간다 — 키 수와 `Most keys`는 **아는 언어에만** 붙는다. */}
+                    {m.newProject.naming.baseOption(
+                      languageName(code),
+                      countOf(code) === undefined ? undefined : m.newProject.files.keys(countOf(code) ?? 0),
+                      code === leader && known.length > 1,
+                    )}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </FormGroup>
       ) : (
         <div className="flex flex-col gap-2">

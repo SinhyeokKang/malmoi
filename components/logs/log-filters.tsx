@@ -321,11 +321,17 @@ function CustomRangeDialog({ open, onOpenChange, filter, returnFocusRef, onApply
       >
         <div className="grid grid-cols-2 gap-3">
           <FormGroup label={m.logs.range.from} htmlFor={fromId}>
-            {/* 첫 포커스는 첫 날짜다 — 이 Dialog는 입력이 할 일이라 Cancel 표식(`DialogContent`)에서 빠진다. */}
-            <Input width="full" id={fromId} type="date" value={from} onChange={event => setFrom(event.target.value)}  autoFocus />
+            {(describe) => (
+              <>
+                {/* 첫 포커스는 첫 날짜다 — 이 Dialog는 입력이 할 일이라 Cancel 표식(`DialogContent`)에서 빠진다. */}
+                <Input aria-describedby={describe()} width="full" id={fromId} type="date" value={from} onChange={event => setFrom(event.target.value)}  autoFocus />
+              </>
+            )}
           </FormGroup>
           <FormGroup label={m.logs.range.to} htmlFor={toId}>
-            <Input width="full" id={toId} type="date" value={to} onChange={event => setTo(event.target.value)}  />
+            {(describe) => (
+              <Input aria-describedby={describe()} width="full" id={toId} type="date" value={to} onChange={event => setTo(event.target.value)}  />
+            )}
           </FormGroup>
         </div>
       </DialogContent>

@@ -154,7 +154,7 @@ describe("멤버 화면 — 카드", () => {
    * ⚠️ **`<ul>`이 카드 제목에 묶인다** — 카드가 둘이라 "list, N items"만으로는 어느 목록인지 안 갈린다.
    */
   it.each([LIST, PENDING])("%s가 목록을 카드 제목에 묶는다", (file) => {
-    expect(read(file)).toMatch(/labelledBy=\{headingId\}/);
+    expect(read(file)).toMatch(/aria-labelledby=\{headingId\}/);
   });
 
   /**

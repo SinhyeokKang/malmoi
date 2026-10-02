@@ -140,7 +140,7 @@ export function MemberList({
         count={members.length}
         countLabel={m.members.count(members.length)}
       >
-        <RowCardList labelledBy={headingId}>
+        <RowCardList aria-labelledby={headingId}>
           {members.map((member, index) => {
             const identity = planMemberIdentity(member);
             // 라벨이 대상을 들어야 한다 — 행마다 같은 문구면 어느 사람의 컨트롤인지 구별되지 않는다.

@@ -127,3 +127,12 @@ it("segment count requires its accessible sentence", () => {
   const content: import("@/components/ui/segmented-control").SegmentContent = { label: "All", count: 2 };
   expect(content.count).toBe(2);
 });
+
+it("forwards native aria-describedby to the actual Radix group", async () => {
+  const { container } = await render(<><p id="view-help">Choose a view</p><SegmentedControl label="View" value="general" options={options} onChange={vi.fn()} aria-describedby="view-help" /></>);
+  const group = find(container, '[role="radiogroup"]');
+  expect(group.getAttribute("aria-describedby")).toBe("view-help");
+  expect(document.getElementById(group.getAttribute("aria-describedby")!)?.textContent).toBe("Choose a view");
+  expect(group.getAttribute("aria-label")).toBe("View");
+  expect(group.querySelector('[aria-checked="true"]')?.textContent).toBe("General");
+});

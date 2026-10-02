@@ -99,7 +99,7 @@ export function RowCard({
  * 브레이크포인트는 영영 안 밟히고(가로 스크롤이 먼저 생긴다), **LNB가 200~320으로 리사이즈되므로
  * 같은 뷰포트가 두 폭을 만든다** — 실제로 변하는 것은 이 카드의 폭이다.
  */
-export function RowCardList({ children, labelledBy }: { children: ReactNode; labelledBy?: string }) {
+export function RowCardList({ children, "aria-labelledby": labelledBy }: { children: ReactNode; "aria-labelledby"?: string }) {
   return (
     <ul aria-labelledby={labelledBy} className="@container">
       {children}

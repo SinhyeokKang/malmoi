@@ -27,7 +27,7 @@ it("inset과 페이지 경고의 역할은 같고 카드 경고만 radius를 없
   expect(inset?.className).not.toMatch(/(?:^|\s)border/);
 });
 it("오류 ID는 재렌더에도 유지되고 필드 설명과 장식 아이콘을 연결한다", async () => {
-  const form = (error: string) => <FormGroup label="Name" htmlFor="name" error={error}><input id="name" aria-invalid aria-describedby="name-error" /></FormGroup>;
+  const form = (error: string) => <FormGroup label="Name" htmlFor="name" error={error}>{(describe) => <input id="name" aria-invalid aria-describedby={describe()} />}</FormGroup>;
   const { container, rerender } = await render(form("Required"));
   const error = container.querySelector('[role="alert"]');
   expect(error?.id).toBe("name-error");

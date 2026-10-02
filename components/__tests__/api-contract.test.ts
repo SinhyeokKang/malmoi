@@ -416,16 +416,13 @@ const CARDINALITY: Record<Rule, { rows: number; occurrences: number }> = {
   hue: { rows: 0, occurrences: 0 }, size: { rows: 6, occurrences: 6 },
   width: { rows: 0, occurrences: 0 }, progress: { rows: 3, occurrences: 3 },
   slots: { rows: 1, occurrences: 1 }, rest: { rows: 0, occurrences: 0 },
-  "data-tone": { rows: 1, occurrences: 1 }, aria: { rows: 3, occurrences: 3 },
+  "data-tone": { rows: 1, occurrences: 1 }, aria: { rows: 0, occurrences: 0 },
   className: { rows: 3, occurrences: 3 },
 };
 const ALLOWLIST: Debt[] = [
   { rule: "progress", path: "components/projects/new-project-button.tsx", symbol: "NewProjectButton", detail: "manual pending glyph replacement", count: 1, task: "T15" },
   { rule: "progress", path: "components/shell/new-project-icon.tsx", symbol: "NewProjectIcon", detail: "manual pending glyph replacement", count: 1, task: "T15" },
   { rule: "progress", path: "components/logs/row-chevron.tsx", symbol: "RowChevron", detail: "manual pending glyph replacement", count: 1, task: "T16" },
-  { rule: "aria", path: "components/ui/form-group.tsx", symbol: "FormGroup", detail: "unconnected children", count: 1, task: "T11" },
-  { rule: "aria", path: "components/ui/row-card.tsx", symbol: "RowCardList", detail: "labelledBy", count: 1, task: "T11" },
-  { rule: "aria", path: "components/ui/segmented-control.tsx", symbol: "SegmentedControl", detail: "describedBy", count: 1, task: "T11" },
   { rule: "className", path: "components/ui/image-tile.tsx", symbol: "ImageTile", detail: "fallbackClassName", count: 1, task: "T11" },
   { rule: "className", path: "components/ui/modal.tsx", symbol: "OnboardingModal", detail: "panelClassName", count: 1, task: "T11" },
   { rule: "className", path: "components/ui/radio.tsx", symbol: "Radio", detail: "labelClassName", count: 1, task: "T11" },
@@ -529,6 +526,20 @@ describe("primitive API contract — design §3", () => {
   });
 
   const source = (code: string, path = "components/ui/canary.tsx"): Source => ({ path, code });
+  it.each([
+    ["components/ui/row-card.tsx", "RowCardList", "labelledBy", "aria-labelledby"],
+    ["components/ui/segmented-control.tsx", "SegmentedControl", "describedBy", "aria-describedby"],
+  ])("T11C current-path aria alias %s %s", (path, symbol, old, native) => {
+    const definition = (prop: string) => source(`export function ${symbol}(props: {"${prop}"?: string}) {return <div/>;}`, path);
+    expect(scan([definition(old)])).toEqual([{rule: "aria", path, symbol, detail: old, count: 1}]);
+    expect(scan([definition(native)])).toEqual([]);
+  });
+  it("T11C current-path FormGroup requires connected render-prop children", () => {
+    const path = "components/ui/form-group.tsx";
+    expect(scan([source('export function FormGroup({children}: {children: ReactNode}) {return <div>{children}</div>;}', path)])).toEqual([{rule: "aria", path, symbol: "FormGroup", detail: "unconnected children", count: 1}]);
+    expect(scan([source('export function FormGroup({children}: {children: (describe: (ids?: string) => string | undefined) => ReactNode}) {return <div>{children(describe)}</div>;}', path)])).toEqual([]);
+  });
+
   const slotRenames = [
     ["components/ui/dialog.tsx", "DialogContent", "footer", "actions"],
     ["components/ui/modal.tsx", "OnboardingModal", "footer", "notice"],

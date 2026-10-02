@@ -174,7 +174,7 @@ export function PendingInvitations({
             inset
           />
         ) : (
-          <RowCardList labelledBy={headingId}>
+          <RowCardList aria-labelledby={headingId}>
             {invitations.map((invitation, index) => {
               /* ⚠️ **`name: null`을 박는다** — `PendingInvitation`에는 이름이 없다(`invitedByName`은
                  초대한 **다른** 사람이다). 그래서 마스킹 라벨이 1행으로 올라가고 아바타는 중립 원이다. */

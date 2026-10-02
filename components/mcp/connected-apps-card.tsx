@@ -150,7 +150,7 @@ export function ConnectedAppsCard({ apps, now, serverUrl }: { apps: readonly Con
         ) : (
           // 선의 두 급(머리↔첫 행 · 행↔행)과 목록의 이름은 프리미티브가 든다 — 이웃 카드와 같은 규칙이 한 자리에 있게. 미확인 알림이 머리
           // 아래에 서면 첫 행은 알림 다음 행이라 행↔행 선이다.
-          <RowCardList labelledBy={TITLE_ID}>
+          <RowCardList aria-labelledby={TITLE_ID}>
             {rows.map((app, index) => (
               <RowCardItem key={app.id} first={index === 0 && unconfirmed === null}>
                 <AppRow app={app} now={new Date(now)} onDisconnect={() => ask(app)} />

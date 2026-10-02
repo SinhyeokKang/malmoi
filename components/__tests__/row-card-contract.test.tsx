@@ -2,7 +2,7 @@
 import { Inbox } from "lucide-react";
 import { describe, expect, it } from "vitest";
 
-import { BannerLine, EmptyRowCard } from "@/components/ui/row-card";
+import { BannerLine, EmptyRowCard, RowCardList } from "@/components/ui/row-card";
 
 import { find, render } from "./helpers/dom";
 
@@ -69,4 +69,13 @@ describe("EmptyRowCard before the API rename", () => {
     expect(root.children).toHaveLength(2);
     expect(root.querySelector("a, button")).toBeNull();
   });
+});
+
+it("RowCardList forwards native aria-labelledby to the unchanged list", async () => {
+  const { container } = await render(<><h2 id="members">Members</h2><RowCardList aria-labelledby="members"><li>Member</li></RowCardList></>);
+  const list = find(container, "ul");
+  expect(list.getAttribute("aria-labelledby")).toBe("members");
+  expect(document.getElementById(list.getAttribute("aria-labelledby")!)?.textContent).toBe("Members");
+  expect(list.className).toBe("@container");
+  expect(list.firstElementChild?.tagName).toBe("LI");
 });

@@ -66,6 +66,8 @@ it("기간 메뉴 안에 입력 칸이 없고, 키보드로 고른 항목이 라
   const to = field(m.logs.range.to);
   expect(from.type).toBe("date");
   expect(to.type).toBe("date");
+  expect(from.hasAttribute("aria-describedby")).toBe(false);
+  expect(to.hasAttribute("aria-describedby")).toBe(false);
   await input(from, "2026-09-01");
   await input(to, "2026-09-10");
   // 칸을 바꾸는 것만으로는 이동하지 않는다 — 날짜를 한 칸씩 고치는 동안 목록이 매번 다시 그려지지 않는다.

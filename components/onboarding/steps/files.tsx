@@ -532,46 +532,52 @@ function ManualForm({
   return (
     <div className="flex flex-col gap-3">
       <FormGroup label={m.newProject.files.manual.format} labelId="manual-format-label" htmlFor="manual-format">
-        <Select disabled={pending} value={manual.adapter} onValueChange={(value) => { if (!pending) onManual({ ...manual, adapter: value as AdapterName }); }}>
-          <SelectTrigger width="full" id="manual-format" aria-labelledby="manual-format-label manual-format">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {adapters.map((c) => (
-              <SelectItem disabled={pending} key={c.adapter} value={c.adapter}>
-                {c.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {(describe) => (
+          <Select disabled={pending} value={manual.adapter} onValueChange={(value) => { if (!pending) onManual({ ...manual, adapter: value as AdapterName }); }}>
+            <SelectTrigger aria-describedby={describe()} width="full" id="manual-format" aria-labelledby="manual-format-label manual-format">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {adapters.map((c) => (
+                <SelectItem disabled={pending} key={c.adapter} value={c.adapter}>
+                  {c.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </FormGroup>
       <FormGroup
         label={m.newProject.files.manual.path}
         htmlFor="manual-path"
-        /* ⚠️ **`error`가 `help`를 대신한다**(FormGroup) — 두 속성과 `aria-describedby`가 같은 값을 본다. */
+        /* FormGroup이 오류·도움말 중 현재 렌더된 설명을 선택한다. */
         error={state.manualError === undefined ? undefined : failureText(state.manualError)}
         help={PATH_HINTS[choice?.layout ?? "per-locale"](
           <span>{choice?.layout === "multi-locale" ? "*" : "{locale}"}</span>,
         )}
       >
-        <Input width="full"
-          disabled={pending}
-          id="manual-path"
-          aria-invalid={state.manualError === undefined ? undefined : true}
-          aria-describedby={state.manualError === undefined ? "manual-path-help" : "manual-path-error"}
-          value={manual.pathTemplate}
-          onChange={(e) => onManual({ ...manual, pathTemplate: e.target.value })}
-          placeholder={choice?.example ?? m.newProject.formats["json-catalog"].example}
-        />
+        {(describe) => (
+          <Input width="full"
+            disabled={pending}
+            id="manual-path"
+            aria-invalid={state.manualError === undefined ? undefined : true}
+            aria-describedby={describe()}
+            value={manual.pathTemplate}
+            onChange={(e) => onManual({ ...manual, pathTemplate: e.target.value })}
+            placeholder={choice?.example ?? m.newProject.formats["json-catalog"].example}
+          />
+        )}
       </FormGroup>
       <FormGroup label={m.newProject.files.manual.baseLocale} htmlFor="manual-base">
-        <Input width="full"
-          disabled={pending}
-          id="manual-base"
-          value={manual.baseLocale}
-          onChange={(e) => onManual({ ...manual, baseLocale: e.target.value })}
-          placeholder={m.newProject.files.manual.baseLocalePlaceholder}
-        />
+        {(describe) => (
+          <Input aria-describedby={describe()} width="full"
+            disabled={pending}
+            id="manual-base"
+            value={manual.baseLocale}
+            onChange={(e) => onManual({ ...manual, baseLocale: e.target.value })}
+            placeholder={m.newProject.files.manual.baseLocalePlaceholder}
+          />
+        )}
       </FormGroup>
       {/* ⚠️ 이 문장은 **블록 전체**를 설명한다 — 필드의 `help`로 매달면 그 필드의 설명으로 읽힌다 */}
       {clearsSelection && <p className="text-muted-foreground text-xs">{m.newProject.files.manual.hint}</p>}

@@ -7,7 +7,7 @@ import { FilesStep, type FilesStepState } from "@/components/onboarding/steps/fi
 import type { CandidateSummary } from "@/lib/onboarding/detect";
 import { m } from "@/lib/i18n";
 
-import { render } from "./helpers/dom";
+import { input, render } from "./helpers/dom";
 
 /**
  * **"위의 선택이 지워진다"는 위에 선택이 있을 때만 참이다** (malmoi#47).
@@ -88,4 +88,30 @@ it("pending은 열린 Portal 언어 선택과 수동 필드를 직접 잠근다"
   for (const option of document.querySelectorAll('[role="option"]')) expect(option.getAttribute("aria-disabled")).toBe("true");
   expect(container.querySelector<HTMLButtonElement>('[role="combobox"]')?.disabled).toBe(true);
   expect(onLocale).not.toHaveBeenCalled();
+});
+
+it("manual controls retain native labels, Select value names, events and pending through description transitions", async () => {
+  const onManual = vi.fn();
+  const view = (manualError?: "manual-no-match", pending = false) => <FilesStep state={{...state([]), manualError}} pending={pending} onPick={noop} onLocale={noop} onManual={onManual} onRetry={noop} />;
+  const { container, rerender } = await render(view());
+  const path = container.querySelector<HTMLInputElement>("#manual-path")!;
+  const base = container.querySelector<HTMLInputElement>("#manual-base")!;
+  const format = container.querySelector<HTMLButtonElement>("#manual-format")!;
+  expect(format.getAttribute("aria-labelledby")).toBe("manual-format-label manual-format");
+  expect(format.hasAttribute("aria-describedby")).toBe(false);
+  expect(base.hasAttribute("aria-describedby")).toBe(false);
+  for (const field of [path, base, format]) expect(container.querySelector(`label[for="${field.id}"]`)).not.toBeNull();
+  expect(path.getAttribute("aria-describedby")).toBe("manual-path-help");
+  await input(path, "locales/{locale}.json");
+  expect(onManual).toHaveBeenCalledWith({adapter:"json-catalog",baseLocale:"",pathTemplate:"locales/{locale}.json"});
+  await rerender(view("manual-no-match"));
+  expect(container.querySelector("#manual-path")).toBe(path);
+  expect(path.getAttribute("aria-describedby")).toBe("manual-path-error");
+  expect(path.getAttribute("aria-invalid")).toBe("true");
+  expect(container.querySelector("#manual-path-error")?.getAttribute("role")).toBe("alert");
+  expect(container.querySelector("#manual-path-help")).toBeNull();
+  await rerender(view(undefined, true));
+  expect(path.getAttribute("aria-describedby")).toBe("manual-path-help");
+  expect(path.getAttribute("aria-invalid")).toBeNull();
+  for (const field of [path, base, format]) expect(field.disabled).toBe(true);
 });

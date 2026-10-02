@@ -35,27 +35,32 @@ export function FormGroup({
   help?: ReactNode;
   error?: ReactNode;
   optional?: boolean;
-  children: ReactNode;
+  children: (describe: (existingIds?: string) => string | undefined) => ReactNode;
 }) {
-  /**
-   * 오류·도움말 문구의 id — **소비자가 `aria-describedby`로 잇는다**(DESIGN §6.4). `htmlFor`가 있으면 그것에서
-   * 파생해 호출부가 문자열을 그대로 적을 수 있고, 없을 때만 생성한다. ⚠️ 도움말에도 id가 있어야 한다 — 없으면 경로 형식
-   * 같은 안내가 보이기만 하고 입력에 포커스한 스크린리더 사용자에게 안 닿는다 (audit #89).
-   */
+  /** describe는 현재 렌더된 설명만 잇고 기존 외부 ID 순서와 중복 제거를 보존한다. */
   const generatedId = useId();
   const base = htmlFor ?? generatedId;
   const id = `${base}-error`;
+  const helpId = `${base}-help`;
+  const activeId = error !== undefined ? id : help !== undefined ? helpId : undefined;
+  const describe = (existingIds?: string) => {
+    const ids = new Set((existingIds ?? "").split(/\s+/).filter(token =>
+      token && ((token !== id && token !== helpId) || token === activeId),
+    ));
+    if (activeId !== undefined) ids.add(activeId);
+    return ids.size > 0 ? [...ids].join(" ") : undefined;
+  };
   return (
     <div className="space-y-2">
       <label id={labelId} htmlFor={htmlFor} className="block text-sm font-medium">
         {label}
         {optional && <span className="text-muted-foreground font-normal"> (optional)</span>}
       </label>
-      {children}
+      {children(describe)}
       {error !== undefined ? (
         <FieldError id={id}>{error}</FieldError>
       ) : help !== undefined ? (
-        <p id={`${base}-help`} className="text-muted-foreground text-xs leading-prose">{help}</p>
+        <p id={helpId} className="text-muted-foreground text-xs leading-prose">{help}</p>
       ) : null}
     </div>
   );
