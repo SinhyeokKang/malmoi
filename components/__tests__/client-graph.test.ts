@@ -291,9 +291,13 @@ function walk(entries: string[]): { files: Set<string>; packages: Set<string> } 
   return { files, packages };
 }
 
-const CLIENT_ENTRIES = [...sourceFiles(join(ROOT, "components")), ...sourceFiles(join(ROOT, "app"))].filter(
-  (file) => /^["']use client["']/.test(readFileSync(file, "utf8").trimStart()),
-);
+const CLIENT_ENTRIES = [
+  ...[...sourceFiles(join(ROOT, "components")), ...sourceFiles(join(ROOT, "app"))].filter(
+    (file) => /^["']use client["']/.test(readFileSync(file, "utf8").trimStart()),
+  ),
+  // D5의 실제 클라이언트 소비자. ui/ 진입점 탐색은 생략하므로 E 조립 전에도 이 그래프를 직접 건다.
+  join(ROOT, "components/ui/command.tsx"),
+];
 
 describe("클라이언트 그래프", () => {
   it("`use client` 진입점을 실제로 찾았다 — 스캐너가 조용히 0건이 되지 않는다", () => {
