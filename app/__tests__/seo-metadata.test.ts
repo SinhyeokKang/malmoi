@@ -17,6 +17,10 @@ import { OG_IMAGE } from "@/lib/seo/site";
 vi.mock("@/auth", () => ({ signIn: vi.fn(), signOut: vi.fn() }));
 vi.mock("@/lib/db", () => ({ getPrisma: vi.fn() }));
 vi.mock("@/app/invite/actions", () => ({ acceptInvitation: vi.fn() }));
+// next/font는 Next 빌드가 변환한다. 여기서는 SEO 값만 읽고 실제 로더·글리프는 font-loading.test.ts가 검사한다.
+vi.mock("next/font/local", () => ({
+  default: () => ({ className: "geist-font-fixture", variable: "geist-variable-fixture", style: { fontFamily: "Geist" } }),
+}));
 
 type DocsMeta = (props: { params: Promise<{ slug?: string[] }> }) => Promise<Metadata>;
 async function docsMetadata(slug: string[] | undefined): Promise<Metadata> {

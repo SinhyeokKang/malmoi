@@ -394,3 +394,11 @@ Run **`run_0e44db2882ac`**, 기존 coordinator **`term_dd1b2d61-f22d-4409-8977-7
 
 - CLAUDE: 실제 `components/ui/*.tsx` 43개와 Radix Popover 포함7종, 기존 프리미티브 우선 조립/실재 사본 이관 경계, Geist 우선·Pretendard 폴백/자산 소유권을 정본에 반영한다. 기존 런타임 공통 하네스와 모델 패밀리 정책은 보존한다. AGENTS 미러를 재생성하고 일치 검사를 수행한다.
 - T20a SEO 수정안은 독립 Astra 검토0 findings로 승인되어 Sol에 작은 커밋을 지시했다. 전체 gate·실제 폰트/3뷰포트 QA·나머지 T21 정본·T22/dev push는 아직 미완이다.
+
+### T20a SEO 테스트 회귀 보정
+
+- 지휘자의 전체 테스트에서 `app/__tests__/seo-metadata.test.ts`의 layout import가 `next/font/local` 빌드 전용 호출 때문에 실패했다. 소스 체크포인트 `a0eded37`에서 실제로1 failed/11 passed RED를 재현했다. 앞의 소스 리뷰·관련25 GREEN이 전체 스위트 통과였던 것으로 바꾸지 않는다.
+- SEO 테스트 파일에만 Next가 빌드 중 제공하는 폰트 결과를 모의한다. 기존 metadata 단언과 프로덕션 폰트/레이아웃·실제 Next 로더/cmap 검사는 그대로 유지한다. 전역 Vitest 설정이나 하네스 파일을 바꾸지 않는다.
+- 관련 SEO/보안 헤더/실제 폰트/글로벌 CSS4파일50테스트 GREEN 및 typecheck exit0. 테스트·이 tasks.md 두 경로 후보의 독립 리뷰/명시적 COMMIT을 기다린다. 지휘자의 실제 폰트 사용/3뷰포트와 최종 누적 gate가 남아 T20a 완료 체크는 보류한다.
+
+- 지휘자 통합: 위 두 경로 후보는 Astra 소스 리뷰0 findings 이후 워커 `c40c1273`으로 커밋됐다. root의 하네스/T21 이력을 모두 보존해 tasks 추가 부분만 병합했고 SEO 테스트 바이트는 승인된 SHA 그대로다. 최종 커밋 audit·누적 gate·R3는 계속 미완이다.
