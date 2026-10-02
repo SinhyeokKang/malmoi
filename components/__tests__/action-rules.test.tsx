@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
+import userEvent from "@testing-library/user-event";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { act, useState, type ReactNode } from "react";
-import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -200,7 +200,7 @@ describe("확인 Dialog의 확정이 danger면 트리거도 danger다 (DESIGN §
    * 새 확인창이 목록 밖에서 태어나면 여기서 red다.
    */
   it("danger 확정을 든 확인창 파일이 전부 목록에 있다", () => {
-    const found = SOURCES.filter(({ source }) => /<(?:DialogContent|OnboardingModal)\b/.test(source) && DANGER_BUTTON.test(source)).map(({ path }) => path).sort();
+    const found = SOURCES.filter(({ source }) => /<(?:DialogContent|LargeModal)\b/.test(source) && DANGER_BUTTON.test(source)).map(({ path }) => path).sort();
     const covered = new Set([...CONFIRMS.flatMap((entry) => entry.file), ...Object.keys(NO_TRIGGER).map((key) => key.split("#")[0]), SYNC_FILE]);
     expect(found.length).toBeGreaterThan(8);
     expect(found.filter((path) => !covered.has(path))).toEqual([]);
@@ -260,6 +260,10 @@ const BLUE: { name: string; file: string; ui: () => ReactNode; open?: () => Prom
  * 셸 안 파일은 소스에서 사유를 적는다 — 새 파일이 이 목록에 들어오면 렌더 목록으로 옮기는 것이 먼저다.
  */
 const BLUE_UNRENDERED: Record<string, string> = {
+  "app/changelog/page.tsx": "public documentation navigation, outside the shell",
+  "app/docs/not-found.tsx": "public documentation navigation, outside the shell",
+  "components/changelog/release-markdown.tsx": "public documentation links, outside the shell",
+  "components/docs/guide-markdown.tsx": "public documentation links, outside the shell",
   "app/oauth/authorize/page.tsx": "public — not in the shell",
   "app/signin/page.tsx": "public — not in the shell",
   // 실행 상세의 PR 링크 둘 — `target="_blank"`(logs-events 픽스처가 무겁다)
@@ -301,7 +305,10 @@ describe("셸 안 독립·행 링크의 파랑은 새 탭 외부 링크다 (DESI
   it("파랑 링크를 그리는 파일이 전부 렌더 목록이나 사유 목록에 있다", () => {
     // `ButtonLink variant="link"`도 파랑이다(`buttonClass`의 `link` — `text-link`).
     const blue = (tag: string) => /(?<![\w-])text-link(?![\w-])/.test(tag) || (tag.startsWith("<ButtonLink") && /variant="link"/.test(tag));
-    const found = SOURCES.filter(({ source }) => openingTags(source, "a|Link|ButtonLink").some(blue)).map(({ path }) => path).sort();
+    const found = SOURCES.filter(({ source }) => {
+      const inlineNames = [...source.matchAll(/import\s*\{\s*Link(?:\s+as\s+(\w+))?\s*\}\s*from\s*["']@\/components\/ui\/link["']/g)].map(match => match[1] ?? "Link");
+      return openingTags(source, ["a", "Link", "ButtonLink", ...inlineNames].join("|")).some(tag => blue(tag) || inlineNames.some(name => tag.startsWith(`<${name} `)));
+    }).map(({ path }) => path).sort();
     const covered = new Set([...BLUE.map((entry) => entry.file), ...Object.keys(BLUE_UNRENDERED)]);
     expect(found.length).toBeGreaterThan(10);
     expect(found.filter((path) => !covered.has(path))).toEqual([]);

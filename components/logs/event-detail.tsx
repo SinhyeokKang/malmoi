@@ -1,5 +1,7 @@
+import { ButtonLink } from "@/components/ui/button";
+import { Link as InlineLink } from "@/components/ui/link";
 import { Fact } from "@/components/ui/facts";
-import Link from "next/link";
+
 import type { ReactNode } from "react";
 
 import { CopyButton } from "@/components/onboarding/copy-button";
@@ -8,7 +10,7 @@ import { Alert } from "@/components/ui/alert";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { RoleBadges } from "@/components/logs/role-badges";
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonClass } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { DialogClose } from "@/components/ui/dialog";
 import { Table, TableBody } from "@/components/ui/table";
 import { Dialog as DialogTitleSlot } from "radix-ui";
@@ -18,7 +20,7 @@ import { m } from "@/lib/i18n";
 import { relativeTime } from "@/lib/relative-time";
 import { routes } from "@/lib/routes";
 import { utcMinute } from "@/lib/utc-time";
-import { cn } from "@/lib/utils";
+
 
 /**
  * 이벤트 상세의 **본문** (캔버스 `1d`–`1f`).
@@ -243,16 +245,16 @@ function fields(row: EventRow): [string, ReactNode][] {
     const closed = row.run !== null && row.run.prUrl !== null && (row.result === "nothingToSend" || row.result === "notSent");
     if (closed && row.run?.prUrl) out.push([m.logs.detail.labels.closedPullRequest, <>
       {m.logs.detail.closedPullRequest}{" "}
-      <a href={row.run.prUrl} target="_blank" rel="noreferrer" className="text-link">{m.translations.publish.viewLink}</a>
+      <InlineLink href={row.run.prUrl} target="_blank" rel="noreferrer">{m.translations.publish.viewLink}</InlineLink>
     </>]);
     else out.push([
       m.logs.detail.labels.pullRequest,
       row.run?.prUrl == null ? (
         <span className="text-muted-foreground">{m.logs.detail.noPullRequest}</span>
       ) : (
-        <a href={row.run.prUrl} target="_blank" rel="noreferrer" className="text-link">
+        <InlineLink href={row.run.prUrl} target="_blank" rel="noreferrer">
           {m.translations.publish.viewLink}
-        </a>
+        </InlineLink>
       ),
     ]);
     // 모달의 보류 줄과 같은 수다 — 같은 `SyncRun.withheld`에서 온다(delivery-invariants D7).
@@ -293,17 +295,14 @@ function fields(row: EventRow): [string, ReactNode][] {
 
 /**
  * 시안의 푸터 버튼은 폼이 하나다 — [Close]와 목적지 링크가 `Button` `lg`로 정확히 겹친다
- * (primary — 2026-09-30 사용자 · `lg` — 1024 표면의 바닥, 3-Y6). ⚠️ **`ButtonLink`가 아니라 `buttonClass()`다** —
- * 셋 중 하나가 외부 리포로 나가는 `target="_blank"`라 `<a>`여야 하고, 그 차용은 `button.tsx`가 정한
- * 경로다(손으로 쓴 클래스 문자열은 `Button`이 받은 hover 교체 같은 갱신을 못 받는다).
+ * primary lg는 1024 표면의 다음 이동이다. ButtonLink가 형·링·외부 링크 계약을 함께 소유한다.
  */
-const FOOTER_LINK = cn(buttonClass({ variant: "primary", size: "lg" }), "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none");
 
 /** 목적지 링크 하나 — 권한이 없거나 대상이 없으면 **그리지 않는다.** */
 function destination(row: EventRow, slug: string, canOpenSettings: boolean, repoUrl: string | null, translationHref: string | null): ReactNode {
-  if (row.kind === "TRANSLATION" && translationHref !== null) return <Link href={translationHref} className={FOOTER_LINK}>{m.logs.detail.actions.openTranslation}</Link>;
-  if (row.kind === "MEMBER") return <Link href={routes.members(slug)} className={FOOTER_LINK}>{m.logs.detail.actions.openMembers}</Link>;
-  if (row.kind === "SETTINGS" && canOpenSettings) return <Link href={routes.settings(slug)} className={FOOTER_LINK}>{m.logs.detail.actions.openSettings}</Link>;
-  if (row.kind === "PUBLISH" && repoUrl !== null) return <a href={repoUrl} target="_blank" rel="noreferrer" className={FOOTER_LINK}>{m.logs.detail.actions.openRepository}</a>;
+  if (row.kind === "TRANSLATION" && translationHref !== null) return <ButtonLink variant="primary" size="lg" href={translationHref}>{m.logs.detail.actions.openTranslation}</ButtonLink>;
+  if (row.kind === "MEMBER") return <ButtonLink variant="primary" size="lg" href={routes.members(slug)} >{m.logs.detail.actions.openMembers}</ButtonLink>;
+  if (row.kind === "SETTINGS" && canOpenSettings) return <ButtonLink variant="primary" size="lg" href={routes.settings(slug)} >{m.logs.detail.actions.openSettings}</ButtonLink>;
+  if (row.kind === "PUBLISH" && repoUrl !== null) return <ButtonLink variant="primary" size="lg" external href={repoUrl} newTab rel="noreferrer">{m.logs.detail.actions.openRepository}</ButtonLink>;
   return null;
 }

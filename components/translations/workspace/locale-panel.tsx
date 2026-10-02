@@ -1,5 +1,5 @@
 "use client";
-
+import { Link as InlineLink } from "@/components/ui/link";
 import { Check, ChevronRight, FileJson2, Link2 } from "lucide-react";
 import { useEffect, useId, useState, type ReactNode } from "react";
 
@@ -105,7 +105,7 @@ export function LocalePanel({ detail, draft, language, languageLocked = false, o
                 {" · "}
                 {detail.refs[0].href === null
                   ? <span title={w.noCommit}>{`${detail.refs[0].path}:${detail.refs[0].line}`}<span className="sr-only">{` (${w.noCommit})`}</span></span>
-                  : <a href={detail.refs[0].href} target="_blank" rel="noreferrer" className="text-link">{`${lastSegment(detail.refs[0].path)}:${detail.refs[0].line}`}</a>}
+                  : <InlineLink href={detail.refs[0].href} target="_blank" rel="noreferrer">{`${lastSegment(detail.refs[0].path)}:${detail.refs[0].line}`}</InlineLink>}
                 {/* ⚠️ `title`만으로는 hover에서만 읽힌다 (audit #38) — 같은 문장을 sr-only로 겹친다. 보이는 `+N`은 숨긴다(두 번 읽힌다). */}
                 {detail.refs.length > 1 && <span title={w.referenced(detail.refs.length)}><span aria-hidden>{` +${detail.refs.length - 1}`}</span><span className="sr-only">{` · ${w.referenced(detail.refs.length)}`}</span></span>}
               </>

@@ -1,42 +1,19 @@
 "use client";
 
-import { ArrowRight } from "lucide-react";
 import { Dialog as Primitive } from "radix-ui";
-import { useEffect, useRef, useState, type RefObject, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 
-import { Button } from "@/components/ui/button";
 import { CloseButton } from "@/components/ui/close-button";
 import { m } from "@/lib/i18n";
 import type { Step } from "@/lib/onboarding/next-enabled";
 import { cn } from "@/lib/utils";
 
-/**
- * 새 프로젝트 온보딩 모달의 **껍데기** — 네 단계가 이것을 공유하고 본문만 넘긴다
- * (DESIGN §6.7).
- *
- * ⚠️ **`components/ui/dialog.tsx`를 쓰지 않는다.** 그 프리미티브로는 §8의 껍데기가 만들어지지
- * 않는다 — Overlay가 `bg-foreground/40` **고정**이고, 머리·본문·바닥 padding이 박혀 있고, 바닥이
- * `justify-end`라 왼쪽 `Step n of 4`를 못 넣는다. 고치면 초대·확인·아카이브·로그인수단 모달 **넷이
- * 함께 움직인다** — 그것이 원래 피하려던 결과라, Radix `Dialog.*`를 직접 조립한다. 프리미티브를
- * **안 쓰고 안 고치므로** 다른 화면은 그대로다.
- *
- * ⚠️ **스텝퍼를 세우지 않는다** — 네 칸이 누를 수 없는 장식이 된다. 진행은 `Step n of 4` 한 줄이다.
- *
- * ⚠️ **[Back]·[Next]를 껍데기가 소유한다.** 단계는 본문과 "다음으로 갈 수 있는가"만 넘긴다 —
- * 비활성 모양을 단계마다 다시 만들면 갈린다.
- *
- * ⚠️ **폭이 800이다 — 핸드오프 값으로 돌아왔다** (2026-09-13 사용자). 880을 거쳐 왔고, **②의 값이
- * 덜 보이는 것을 감수한 결정이다**: 좌측 240 + 표 `1fr 2fr`인 지금 값 셀이 800에서 ≈291(880에서
- * ≈344)이라 한때 960으로 올렸던 이유 — "800이면 ≈188px라 24자에서 잘린다", 그 계산의 전제는 좌측
- * 300 + `1fr 1fr`이었다 — 는 어차피 되살아나지 않는다.
- * ⚠️ **좌측 240과 `1fr 2fr`은 유지한다** — 그 둘까지 시안으로 되돌리면(300 · `1fr 1fr`) 값 셀이
- * ≈244로 내려가 그 문제가 정말로 돌아온다.
- *
- * ⚠️ **바닥 버튼이 `Button size="lg"`다.** 그 크기의 주석이 "셸 밖 카드 전용(로그인·초대 수락 둘)"인데
- * **이 모달을 그 예외에 넣었다** — dim 위에 뜬 표면이라 셸 안이 아니고, 핸드오프의 40/radius 12가
- * `lg`와 **정확히 같다**. 새 `size`를 만들면 "어느 걸 쓰나"가 매 화면 판단이 된다 (DESIGN §6.4).
- */
-export type OnboardingModalProps = {
+/** 폭·radius·dim만 공유한다. 이력 상세의 본문·머리·높이 계약은 소비자에 남는다. */
+export const LARGE_MODAL_OVERLAY = "bg-foreground/32 fixed inset-0 z-50 backdrop-blur-[6px]";
+export const LARGE_MODAL_PANEL = "bg-background fixed top-1/2 left-1/2 z-50 flex w-[calc(100%-var(--spacing-modal-gutter))] max-w-[1024px] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl shadow-medium";
+
+/** 단계 전이·비동기 도착은 live 영역 하나를 공유한다. 버튼군은 호출부가 actions로 공급한다. */
+export type LargeModalProps = {
   open: boolean;
   title: ReactNode;
   description?: ReactNode;
@@ -44,14 +21,6 @@ export type OnboardingModalProps = {
   notice?: ReactNode;
   closeLabel?: string;
   closeDisabled?: boolean;
-  /**
-   * 닫기 왼쪽의 **보조 행동** (2026-09-22 — Sources 시안 `1b`가 캔버스 `Modal`에 더한 prop).
-   *
-   * ⚠️ **값이 없으면 그리지 않는다** — 기존 다섯 단계 모달의 머리 DOM이 그대로여야 한다.
-   * ⚠️ **확정 행동을 여기 두지 않는다.** 바닥의 검정 버튼이 저장으로 읽히는 모달에서만 쓰는 자리이고,
-   * 그래서 이 슬롯의 버튼은 default다.
-   */
-  headerAction?: ReactNode;
   /** Radix Content 패널 루트의 치수·배치 클래스. */
   className?: string;
   transitionKey?: string;
@@ -63,43 +32,28 @@ export type OnboardingModalProps = {
    * Radix의 열림 자동 포커스가 소비자 effect보다 늦게 돌아 패널이 가져간다(실측). 없으면 기존 동작 그대로다.
    */
   initialFocusRef?: RefObject<HTMLElement | null>;
-  nextLabel?: string;
-  /** ③은 확정이라 화살표가 없다 — 다음이 아니라 결과다. */
-  nextArrow?: boolean;
-  nextDisabled?: boolean;
-  /** ③ 제출 중 — [Next]만 잠긴다. 본문은 그대로 서서 입력값을 보인다. */
-  busy?: boolean;
-  /** ①④는 false — ①의 닫는 길은 X·Esc·backdrop이고, ④는 되돌릴 것이 없다. */
-  showBack?: boolean;
   /** ②만 `row`. */
   bodyDirection?: "column" | "row";
   /** ②④는 `hidden` — 안쪽 요소가 스크롤한다. */
   bodyScroll?: "auto" | "hidden";
   /** 로딩→완료 같은 비동기 전이를 `sr-only` live 영역에 흘려보낸다 (DESIGN §6.7). */
   announce?: string;
-  onBack?: () => void;
   onClose: () => void;
   children: ReactNode;
-} & ({ actions?: undefined; onNext: () => void } | { actions: ReactNode; onNext?: () => void });
+  actions: ReactNode;
+};
 
-export function OnboardingModal({
+export function LargeModal({
   open,
   title,
   description,
   step,
-  nextLabel,
-  nextArrow = true,
-  nextDisabled = false,
-  busy = false,
-  showBack = false,
   bodyDirection = "column",
   bodyScroll = "auto",
   announce,
-  onNext,
-  onBack,
   onClose,
-  children, notice, actions, headerAction, closeLabel, closeDisabled = false, className, transitionKey, quiet = false, fallbackFocusRef, returnFocusRef, initialFocusRef,
-}: OnboardingModalProps) {
+  children, notice, actions, closeLabel, closeDisabled = false, className, transitionKey, quiet = false, fallbackFocusRef, returnFocusRef, initialFocusRef,
+}: LargeModalProps) {
   const bodyRef = useRef<HTMLDivElement>(null);
   /**
    * live 영역에 **지금 말할 것**만 담는다. 제목을 상시 들고 있으면 헤더와 합쳐 두 번 읽히고,
@@ -148,7 +102,7 @@ export function OnboardingModal({
           목록이 읽혀야 한다). ⚠️ **리포 최초의 `backdrop-*`다** (DESIGN §6.2 등재 대상).
         */}
         {/* ⚠️ 닫기를 막은 동안 오버레이 mousedown이 포커스를 `body`로 떨어뜨리지 않게 한다 — `Dialog`와 같은 이유다(#169). */}
-        <Primitive.Overlay className="bg-foreground/32 fixed inset-0 z-50 backdrop-blur-[6px]" onMouseDown={closeDisabled ? (event) => event.preventDefault() : undefined} />
+        <Primitive.Overlay className={LARGE_MODAL_OVERLAY} onMouseDown={closeDisabled ? (event) => event.preventDefault() : undefined} />
         <Primitive.Content
           /**
            * ⚠️ **높이를 dim padding(48×2)을 뺀 값에 물린다.** 핸드아웃의 `min-height:80vh;
@@ -176,8 +130,7 @@ export function OnboardingModal({
           }}
           data-onboarding-panel
           className={cn(
-            "bg-background fixed top-1/2 left-1/2 z-50 flex w-[calc(100%-var(--spacing-modal-gutter))] max-w-[1024px] -translate-x-1/2 -translate-y-1/2",
-            "flex-col overflow-hidden rounded-xl shadow-medium",
+            LARGE_MODAL_PANEL,
             "min-h-[min(80svh,800px,calc(100svh-var(--spacing-modal-gutter)))] max-h-[min(800px,calc(100svh-var(--spacing-modal-gutter)))]",
             className,
           )}
@@ -204,7 +157,6 @@ export function OnboardingModal({
               POSTMORTEM 2026-09-09의 지뢰다. 여기서는 Close 자신이 버튼이다.
             */}
             <div className="flex shrink-0 items-center gap-2">
-            {headerAction}
             <CloseButton type="button" label={closeLabel ?? m.newProject.modal.close} disabled={closeDisabled} onClick={onClose} />
             </div>
           </header>
@@ -239,28 +191,7 @@ export function OnboardingModal({
               ⚠️ **소비자의 `actions`도 같은 무리에 싼다** (malmoi#87) — fragment를 넘기면 버튼들이 바닥의 직계 자식이 되어
               `justify-between`이 [Cancel]을 가운데로 띄웠다. `null`(Publish의 버튼 없는 갈래)이면 빈 무리를 세우지 않는다.
             */}
-            {actions !== undefined ? (actions === null || actions === false ? null : <div className="flex items-center gap-2">{actions}</div>) : <div className="flex items-center gap-2">
-              {showBack && (
-                <Button type="button" size="lg" onClick={onBack} disabled={busy}>
-                  {m.newProject.modal.back}
-                </Button>
-              )}
-              {/*
-                ⚠️ **비활성 모양을 껍데기가 든다** — 흰 배경 + border + muted 글자 + `not-allowed`.
-                단계마다 다시 만들면 갈린다.
-              */}
-              <Button
-                type="button"
-                variant="primary"
-                size="lg"
-                onClick={onNext}
-                disabled={nextDisabled}
-                loading={busy}
-              >
-                {nextLabel ?? m.newProject.modal.next}
-                {nextArrow && <ArrowRight className="size-4" aria-hidden />}
-              </Button>
-            </div>}
+            {actions === null || actions === false ? null : <div className="flex items-center gap-2">{actions}</div>}
           </footer>
         </Primitive.Content>
       </Primitive.Portal>

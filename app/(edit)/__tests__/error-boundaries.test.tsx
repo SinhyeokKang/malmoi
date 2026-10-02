@@ -45,5 +45,6 @@ it.each([
   expect(glyph?.getAttribute("class")).toContain("lucide-circle-x");
   expect(container.textContent).toContain(title);
   expect(container.querySelectorAll("p")).toHaveLength(2);
-  expect(container.querySelector('[role="alert"]')).toBeNull();
+  expect(container.querySelectorAll('[role="alert"]')).toHaveLength(1);
+  expect(container.querySelector('[role="alert"]')?.textContent).toContain(title);
 });

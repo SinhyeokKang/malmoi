@@ -56,7 +56,7 @@ it("연결됐으면 설치 설정으로 나가는 링크와 해제 버튼이 함
   expect(links[0]!.textContent).toContain(m.account.github.installationSettings);
   // 나가는 링크는 새 탭이다 (DESIGN §6.3) — 설정을 고치러 간 사이에 이 화면을 잃지 않는다.
   expect(links[0]!.target).toBe("_blank");
-  expect(links[0]!.rel).toBe("noreferrer");
+  expect(links[0]!.rel).toBe("noreferrer noopener");
   // ⚠️ **나가는 것이 왼쪽, 파괴적인 것이 오른쪽 끝이다** — 세션 카드와 같은 순서다.
   const controls = [...container.querySelectorAll("a, button")];
   const linkAt = controls.indexOf(links[0]!);

@@ -4,16 +4,18 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { createElement as h } from "react";
 import { Button, ButtonLink } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { ImageTile } from "@/components/ui/image-tile";
-import { ListRow } from "@/components/ui/list-row";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ImageTile } from "@/components/ui/image-tile";
+import { Link } from "@/components/ui/link";
+import { Popover } from "@/components/ui/popover";
+import { Input } from "@/components/ui/input";
+import { ListRow } from "@/components/ui/list-row";
 import { Radio, RadioGroup } from "@/components/ui/radio";
 import { SegmentedControl } from "@/components/ui/segmented-control";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { createElement as h, useRef } from "react";
 import { render } from "./helpers/dom";
 
 /**
@@ -125,6 +127,13 @@ const FIXTURES = {
   "components/ui/list-row.tsx": h(ListRow, { as: "button", variant: "canvas", ringInset: true }, "common.save"),
 };
 
+const LINK_FIXTURES = { "components/ui/link.tsx": h(Link, { href: "/help" }, "Help") };
+function TreePopoverFixture() {
+  const anchor = useRef<HTMLButtonElement>(null);
+  return h("div", null, h(Button, {ref: anchor}, "Sources"), h(Popover, {open: true, onOpenChange: () => {}, anchor, id: "focus-tree", "aria-label": "Sources", children: h(Button, {"aria-current": "true"}, "Selected source")}));
+}
+const POPOVER_FIXTURES = { "components/ui/popover.tsx": h(TreePopoverFixture) };
+
 /**
  * ⚠️ **Radix로 옮긴 프리미티브는 위 목록에 안 잡힌다** — 소스에 raw 태그가 없기 때문이다
  * (`<select>`·`<input type="radio">`를 2026-09-13에 걷어냈다). 그래도 **렌더되면 포커스를 받는
@@ -159,7 +168,7 @@ const RING_FIXTURE_EXEMPT = [
   "components/ui/segmented-control.tsx",
   "components/ui/dialog.tsx",
   // Like dialog.tsx, every modal control uses Button; no native controls bypass its ring.
-  "components/ui/modal.tsx",
+  "components/ui/large-modal.tsx",
   /**
    * ⚠️ **`segmented-control.tsx`와 같은 사정이다** — `resizable.test.tsx`가 렌더해서 링 셋을
    * **실제로** 본다. 여기 픽스처로 둘 수 없는 이유는 아래 렌더 검사가
@@ -202,7 +211,7 @@ describe("포커스 링 (DESIGN §7)", () => {
       .map(rel)
       .filter((file) => !RING_FIXTURE_EXEMPT.includes(file))
       .sort();
-    expect(radixFiles).toEqual(Object.keys(RADIX_FIXTURES).sort());
+    expect(radixFiles).toEqual([...Object.keys(RADIX_FIXTURES), ...Object.keys(LINK_FIXTURES)].sort());
   });
 
   /**
@@ -215,7 +224,7 @@ describe("포커스 링 (DESIGN §7)", () => {
       .filter((file) => readFileSync(file, "utf8").includes('from "radix-ui"'))
       .map(rel)
       .sort();
-    const accounted = [...Object.keys(FIXTURES), ...Object.keys(RADIX_FIXTURES), ...Object.keys(DECORATIVE_RADIX_FIXTURES), ...RING_FIXTURE_EXEMPT];
+    const accounted = [...Object.keys(FIXTURES), ...Object.keys(RADIX_FIXTURES), ...Object.keys(DECORATIVE_RADIX_FIXTURES), ...Object.keys(POPOVER_FIXTURES), ...RING_FIXTURE_EXEMPT];
     expect(radixImporters.filter((file) => !accounted.includes(file))).toEqual([]);
   });
 
@@ -253,6 +262,19 @@ describe("포커스 링 (DESIGN §7)", () => {
         expect(RING.every((cls) => element.classList.contains(cls)), file).toBe(true);
       }
     }
+  });
+
+  it.each(Object.entries(LINK_FIXTURES))("%s puts its ring on the actual anchor", async (_file, fixture) => {
+    const {container} = await render(fixture);
+    const anchor = container.querySelector("a[href]")!;
+    expect(RING.every(cls => anchor.classList.contains(cls))).toBe(true);
+  });
+  it.each(Object.entries(POPOVER_FIXTURES))("%s keeps the portal's selected control focusable with its ring", async (_file, fixture) => {
+    await render(fixture);
+    const selected = document.querySelector('button[aria-current="true"]')!;
+    expect(document.querySelector('[role="dialog"][aria-label="Sources"]')).not.toBeNull();
+    expect(document.activeElement).toBe(selected);
+    expect(RING.every(cls => selected.classList.contains(cls))).toBe(true);
   });
 
   it("Radix segments and ButtonLink keep rings on the visible focus target", async () => {

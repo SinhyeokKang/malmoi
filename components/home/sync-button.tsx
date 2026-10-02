@@ -1,7 +1,7 @@
 "use client";
-
+import { Link as InlineLink } from "@/components/ui/link";
 import { ArrowDownToLine } from "lucide-react";
-import Link from "next/link";
+
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useLayoutEffect, useRef, useState, type RefObject } from "react";
 
@@ -337,13 +337,13 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
         */}
         {plan.recommendSend
           ? <p className="text-muted-foreground">{m.repositorySync.sendHint(shownUnsent,
-              <Link href={surfaceSlug === undefined ? routes.translations(slug) : routes.surfaceTranslations(slug, surfaceSlug)} className="focus-visible:ring-ring text-link focus-visible:ring-2 focus-visible:outline-none">{m.repositorySync.sendFirst}</Link>,
+              <InlineLink href={surfaceSlug === undefined ? routes.translations(slug) : routes.surfaceTranslations(slug, surfaceSlug)} >{m.repositorySync.sendFirst}</InlineLink>,
             )}</p>
           : pr !== undefined && pr !== null
             ? <p className="text-muted-foreground">{m.repositorySync.nothingUnsent}{" "}
-                <a href={pr.url} target="_blank" rel="noreferrer" className="focus-visible:ring-ring text-link focus-visible:ring-2 focus-visible:outline-none">
+                <InlineLink href={pr.url} target="_blank" rel="noreferrer">
                   {m.repositorySync.seeOpen}
-                </a></p>
+                </InlineLink></p>
             : null}
       </>}
       {/* 지연 문구는 Dialog 안이다 — 띠가 걷혔다(DESIGN §6.644). 둘 다 판정이 아니다. */}

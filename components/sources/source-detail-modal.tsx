@@ -1,11 +1,13 @@
 "use client";
+import { Link as InlineLink } from "@/components/ui/link";
+import { Meter } from "@/components/ui/meter";
 import { ListRow } from "@/components/ui/list-row";
 import { Fact } from "@/components/ui/facts";
-import Link from "next/link";
+
 import { ChevronRight, CircleCheck, CircleX, Info, LoaderCircle, Lock, TriangleAlert } from "lucide-react";
 import { Fragment, useState, type RefObject } from "react";
 import { useRouter } from "next/navigation";
-import { OnboardingModal } from "@/components/ui/modal";
+import { LargeModal } from "@/components/ui/large-modal";
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +17,7 @@ import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LocaleFlag } from "@/components/translations/locale-badge";
-import { MeterBar } from "@/components/locale-meter";
+
 import { relativeTime } from "@/lib/relative-time";
 import { CopyButton } from "@/components/onboarding/copy-button";
 import { canPerform, type Role } from "@/lib/auth/permission";
@@ -67,7 +69,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
     여기서는 "언제 더했나"(`createdAt`)를 따로 말한다 — 없으면 시각을 생략하고 추정하지 않는다.
   */
   const statusAt = detail === null || importStatus === null ? null : importStatus.state === "not-imported" ? detail.createdAt : importStatus.at;
-  return <OnboardingModal open={sourceSlug !== null} title={sourceSlug ?? m.sources.details} description={detail ? `${m.surfaces.sourceCounts(detail.keys, detail.locales)}${detail.connection ? ` · ${detail.connection.format ?? (detail.connection.adapterName === null ? m.sources.notConfigured : m.sources.unknownFormat)}` : ""}` : failed ? undefined : m.sources.loading}
+  return <LargeModal open={sourceSlug !== null} title={sourceSlug ?? m.sources.details} description={detail ? `${m.surfaces.sourceCounts(detail.keys, detail.locales)}${detail.connection ? ` · ${detail.connection.format ?? (detail.connection.adapterName === null ? m.sources.notConfigured : m.sources.unknownFormat)}` : ""}` : failed ? undefined : m.sources.loading}
     onClose={() => leave()} closeDisabled={busy} returnFocusRef={returnFocusRef} fallbackFocusRef={fallbackFocusRef} quiet={fieldError}
     className={cn(failed ? "min-h-0" : "min-h-[min(560px,calc(100svh-var(--spacing-modal-gutter)))] max-h-[min(800px,calc(100svh-var(--spacing-modal-gutter)))]")}
     // [Open translations]는 바닥 행동 줄의 primary다(2026-09-30 사용자 — 머리 우측에서 옮겼다). [Close]가 보조다. 목록 행의 같은 버튼은 걷혔고 이 모달이 유일한 입구다.
@@ -111,7 +113,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
               {statusFailed && !canEdit && <> {importStatus?.state === "failed-after" ? m.sources.askOwnerRerun : m.sources.askOwner}</>}
               {importStatus?.state === "failed-after" && canEdit && <> {m.settings.sources.rerun}</>}
             </span>
-            {!detail.installed && <span className="text-muted-foreground text-xs">{canEdit ? <>{m.sources.reconnectOwner} <Link className="text-link focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none" href={routes.settings(slug)}>{m.common.nav.projectSettings}</Link></> : m.sources.reconnectEditor}</span>}
+            {!detail.installed && <span className="text-muted-foreground text-xs">{canEdit ? <>{m.sources.reconnectOwner} <InlineLink href={routes.settings(slug)}>{m.common.nav.projectSettings}</InlineLink></> : m.sources.reconnectEditor}</span>}
           </span>
           {/* ⚠️ 스피너는 첫 Sync일 때만 돈다 (audit-ux #26) — 기준 언어 저장도 `busy`를 세우고, 그때는 `canRetry`가 꺼서 잠그기만 한다. */}
           {importStatus?.canRetry && canEdit && <Button className="shrink-0" loading={importing} disabled={!actions?.canRetry} onClick={onImport}>{m.settings.sources.retry}</Button>}
@@ -154,7 +156,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
               <span className={cn("flex items-baseline text-xs", row.orphaned ? "text-gray-dim" : "text-muted-foreground")}>
                 <span className={cn(!row.orphaned && "text-foreground")}>{row.percent}%</span><span className="ml-auto">{row.translated} of {row.total}</span>
               </span>
-              <MeterBar done={row.total === 0 ? 0 : (done / row.total) * 100} review={row.orphaned || row.total === 0 ? 0 : (review / row.total) * 100} dimmed={row.orphaned} />
+              <Meter done={row.total === 0 ? 0 : (done / row.total) * 100} review={row.orphaned || row.total === 0 ? 0 : (review / row.total) * 100} dimmed={row.orphaned} />
             </span>
             {/* ⚠️ **좁은 폭에서 숨기지 않고 행 아래로 내린다** (audit #42) — 숨기면 `aria-hidden` Meter의 amber 조각만 남아 검토·누락이
                 색으로만 전달됐다. 비어 있으면 줄을 만들지 않는다. */}
@@ -186,7 +188,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
           <DialogClose asChild><Button variant="danger" onClick={() => { const href = confirm.href; setConfirm(null); setDraft(null); if (href) router.push(href); else onClose(); }}>{m.sources.discardChange}</Button></DialogClose>
         </>} />
     </Dialog>}
-  </OnboardingModal>;
+  </LargeModal>;
 }
 /**
  * ⚠️ **`/` 뒤에 줄바꿈 기회를 둔다** (malmoi#89). 경로·리포 값은 공백 없는 한 낱말이라 `overflow-wrap:anywhere`만으로는 칸 끝의

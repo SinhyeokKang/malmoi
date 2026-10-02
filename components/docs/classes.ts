@@ -4,7 +4,6 @@
  */
 
 /** 본문 링크 — 내부든 외부든 파랑 · 밑줄 없음 · 포커스 링 셋(DESIGN §6.3 · §7). */
-export const DOC_LINK = "text-link focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none";
 
 /**
  * **공개 문서 셋(`/docs` 원고 · `/privacy` 방침 · `/changelog` 본문)의 글자 급과 간격** — 한 벌이다(2026-09-28 사용자 — Changelog에서

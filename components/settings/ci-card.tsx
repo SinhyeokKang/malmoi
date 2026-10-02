@@ -1,10 +1,11 @@
 "use client";
+import { Link as InlineLink } from "@/components/ui/link";
 import { ListRow } from "@/components/ui/list-row";
 import { cn } from "@/lib/utils";
-import Link from "next/link";
+
 import { routes } from "@/lib/routes";
 import { useId, useRef, useState, type ReactNode } from "react";
-import { OnboardingModal } from "@/components/ui/modal";
+import { LargeModal } from "@/components/ui/large-modal";
 import { Button } from "@/components/ui/button";
 import { FileCode2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -35,14 +36,14 @@ export function CiCard({ slug, archived, unpinned = false, stale, children }: { 
       ⚠️ **낱말 하나가 아니라 문장이다** (Sources 시안 §13-2 — 소스 카드를 걷은 자리의 안내). `Sources` 한 낱말만
       서면 무엇으로 가는 링크인지 읽히지 않았다. 워크플로 행 바로 아래라 "한 워크플로가 전부 덮는다"가 이어 읽힌다.
     */}
-    <p className="border-border text-muted-foreground border-t px-4 py-row-y text-xs">{m.settings.ci.sourcesLead} <Link className="text-link focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none" href={routes.sources(slug)}>{m.sources.title}</Link>.</p>
+    <p className="border-border text-muted-foreground border-t px-4 py-row-y text-xs">{m.settings.ci.sourcesLead} <InlineLink href={routes.sources(slug)}>{m.sources.title}</InlineLink>.</p>
     {archived && <p id={archivedId} className="text-muted-foreground px-4 pb-3.5 text-xs">{m.settings.archivedReason}</p>}
     {!archived && !children && <p id={noSourcesId} className="text-muted-foreground px-4 pb-3.5 text-xs">{m.settings.ci.noSources}</p>}
     {stale.length > 0 && <p className="text-muted-foreground px-4 pb-3.5 text-xs">{m.settings.ci.stale} {stale.join(", ")}</p>}
     {/* ⚠️ 모달 `description`을 두지 않는다 — 저장 경로 문장은 `WorkflowBlock` 머리(Copy 옆)가 든다. 온보딩 ④와 같은 형이다(#120). */}
-    <OnboardingModal open={open && !archived} onClose={() => setOpen(false)} returnFocusRef={trigger} bodyScroll="hidden" title={m.settings.ci.workflow} className="h-[min(640px,calc(100svh-var(--spacing-modal-gutter)))] min-h-0" actions={<Button size="lg" onClick={() => setOpen(false)}>{m.common.close}</Button>}>
+    <LargeModal open={open && !archived} onClose={() => setOpen(false)} returnFocusRef={trigger} bodyScroll="hidden" title={m.settings.ci.workflow} className="h-[min(640px,calc(100svh-var(--spacing-modal-gutter)))] min-h-0" actions={<Button size="lg" onClick={() => setOpen(false)}>{m.common.close}</Button>}>
       {children}
-      <p className="text-muted-foreground text-xs leading-body">{m.settings.workflow.hookHint("useTranslations()", "wrapper", <Link className="text-link focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none" href={routes.docs("setup/workflow", "workflow")}>{m.settings.workflow.hookDoc}</Link>)}</p>
-    </OnboardingModal>
+      <p className="text-muted-foreground text-xs leading-body">{m.settings.workflow.hookHint("useTranslations()", "wrapper", <InlineLink href={routes.docs("setup/workflow", "workflow")}>{m.settings.workflow.hookDoc}</InlineLink>)}</p>
+    </LargeModal>
   </Card>;
 }

@@ -1,3 +1,4 @@
+import { Link as InlineLink } from "@/components/ui/link";
 import { Fact } from "@/components/ui/facts";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
@@ -99,14 +100,14 @@ function value(row: MetaRow, now: Date, heldLater?: Promise<HoldReason | null>, 
           나머지 열이 따라왔다. 나가는 신호는 색과 `target="_blank"`가 든다.
           `home-landmarks.test.tsx`가 이 행과 아래 PR 행을 **함께** 세서 한쪽에만 되살아나지 못하게 한다.
         */
-        <a
+        <InlineLink
           href={row.href}
           target="_blank"
           rel="noreferrer"
-          className="focus-visible:ring-ring text-link focus-visible:ring-2 focus-visible:outline-none"
+
         >
           {`${row.owner}/${row.name}`}
-        </a>
+        </InlineLink>
       );
     case "branch":
       return row.branch;
@@ -159,14 +160,14 @@ function value(row: MetaRow, now: Date, heldLater?: Promise<HoldReason | null>, 
             ⚠️ **글리프 없이 색만 든다** (DESIGN §6.3 — 위 리포 행과 같은 규칙). 접근 이름이 `#127`
             하나뿐이라 앞의 `{m.home.meta.pullRequest}`가 그것이 무엇인지 말하는 몫을 진다.
           */}
-          <a
+          <InlineLink
             href={row.prUrl}
             target="_blank"
             rel="noreferrer"
-            className="focus-visible:ring-ring text-link focus-visible:ring-2 focus-visible:outline-none"
+
           >
             {m.home.meta.pr(pr)}
-          </a>
+          </InlineLink>
           {" · "}
           <TriggerBadge trigger={row.trigger} kind="PUBLISH" />
           {relativeTime(row.at, now)}

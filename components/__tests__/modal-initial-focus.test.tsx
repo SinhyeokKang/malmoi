@@ -2,7 +2,7 @@
 import { act, useRef } from "react";
 import { describe, expect, it } from "vitest";
 
-import { OnboardingModal } from "@/components/ui/modal";
+import { LargeModal } from "@/components/ui/large-modal";
 
 import { render } from "./helpers/dom";
 
@@ -16,13 +16,13 @@ import { render } from "./helpers/dom";
 function Harness() {
   const ref = useRef<HTMLInputElement | null>(null);
   return (
-    <OnboardingModal open onClose={() => {}} title="t" transitionKey="form" initialFocusRef={ref} actions={<span />}>
+    <LargeModal open onClose={() => {}} title="t" transitionKey="form" initialFocusRef={ref} actions={<span />}>
       <input data-target ref={ref} />
-    </OnboardingModal>
+    </LargeModal>
   );
 }
 
-describe("OnboardingModal initialFocusRef", () => {
+describe("LargeModal initialFocusRef", () => {
   it("열리면 그 요소에 포커스가 선다 — 패널이 아니다", async () => {
     await render(<Harness />);
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });

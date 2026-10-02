@@ -1,4 +1,5 @@
 "use client";
+import { Link as InlineLink } from "@/components/ui/link";
 import { utcMinute } from "@/lib/utc-time";
 import { flagFor } from "@/lib/keys/flag";
 import { diffWords } from "@/lib/publish/words";
@@ -11,9 +12,9 @@ import { loadPublishPreview } from "@/app/(edit)/publish-actions";
 import { Alert } from "@/components/ui/alert";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { CountBadge } from "@/components/ui/count-badge";
-import { Button, ButtonLink, buttonClass } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { OnboardingModal } from "@/components/ui/modal";
+import { LargeModal } from "@/components/ui/large-modal";
 import { m } from "@/lib/i18n";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { onboardErrorMessage, isOnboardError } from "@/lib/onboarding/message";
@@ -507,7 +508,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
       const closed = outcome.status === "skipped" && outcome.reason === "no-changes" ? outcome.closedPr : undefined;
       const closedLine = closed === undefined ? null : <p className="text-muted-foreground text-xs">
         {`${p.closedPr.line(closed.number, repo.branch)} ${role === "OWNER" ? p.closedPr.owner : p.closedPr.editor}`}{" "}
-        <a href={closed.url} target="_blank" rel="noreferrer" className="text-link">{p.closedPr.view(closed.number)}</a>
+        <InlineLink href={closed.url} target="_blank" rel="noreferrer">{p.closedPr.view(closed.number)}</InlineLink>
       </p>;
       // ⚠️ **번호를 새로 파싱하지 않는다** — origin·owner/repo 검증까지 `parseGithubPrUrl`이 든다(DESIGN §6.646).
       const number = outcome.status === "committed"
@@ -515,7 +516,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
         : null;
       const files = outcome.status === "committed" ? outcome.changed.length : 0;
       const viewPr = outcome.status === "committed"
-        ? <a className={buttonClass({ variant: "primary", size: "lg" })} href={outcome.prUrl} target="_blank" rel="noreferrer">{p.viewLink}</a>
+        ? <ButtonLink variant="primary" size="lg" external href={outcome.prUrl} newTab rel="noreferrer">{p.viewLink}</ButtonLink>
         : null;
       switch (view) {
         case "created":
@@ -582,7 +583,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
             ? <ButtonLink variant="primary" size="lg" href={routes.settings(slug)}>{p.settings}</ButtonLink>
             // 세션이 끝난 것은 역할과 무관하다 — 다시 로그인하는 것은 누구나 할 수 있다.
             : failed?.error === "unauthorized"
-              ? <a className={buttonClass({ variant: "primary", size: "lg" })} href={routes.signIn()} target="_blank" rel="noreferrer">{p.signIn}</a>
+              ? <ButtonLink variant="primary" size="lg" external href={routes.signIn()} newTab rel="noreferrer">{p.signIn}</ButtonLink>
               : null;
           body = <Stack>
             {/* ⚠️ **서버의 safe 메시지를 버리지 않는다** — 코드만 남기면 "안 된대요"가 "base-unreadable이래요"로 바뀔 뿐이다(DESIGN §6.646). 코드가 없는 갈래는 그 문장이 이미 제목이라 본문을 비운다. */}
@@ -657,8 +658,8 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
         }} />
     </Dialog>;
   }
-  return <OnboardingModal open={publish.open} onClose={publish.close} title={title} description={description} closeLabel={m.common.close}
+  return <LargeModal open={publish.open} onClose={publish.close} title={title} description={description} closeLabel={m.common.close}
     notice={footer} actions={actions} transitionKey={state.kind} quiet={quiet} returnFocusRef={publish.triggerRef} fallbackFocusRef={fallbackFocusRef}
     /* ⚠️ **안쪽 스크롤러가 있는 갈래만 `hidden`이다** — 나머지는 `shrink-0` 블록만 쌓아서, 낮은 뷰포트에서 잠그면 마지막 줄에 스크롤로도 못 닿는다. */
-    className={panel} bodyScroll={inner ? "hidden" : "auto"}>{body}</OnboardingModal>;
+    className={panel} bodyScroll={inner ? "hidden" : "auto"}>{body}</LargeModal>;
 }

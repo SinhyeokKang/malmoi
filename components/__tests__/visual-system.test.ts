@@ -100,7 +100,7 @@ const REGISTERED: Record<string, string[]> = {
   "text-amber-800": ["components/ui/badge.tsx", "components/ui/icon-tile.tsx", "components/ui/row-card.tsx"],
   "bg-amber-50": ["components/ui/alert.tsx"],
   // Sources 상세 언어 행은 `MeterBar`를 공유한다(5-Y18 — 손 사본을 걷었다).
-  "bg-amber-500": ["components/locale-meter.tsx"],
+  "bg-amber-500": ["components/ui/meter.tsx"],
   // B6 — 기준 언어 대기 테두리. `border-destructive/50`(오류)의 짝이다.
   "border-amber-500/50": ["components/sources/base-language-form.tsx"],
   // 카운트 카드 글리프 + 번역 작업 화면의 상태 글자(B6 등재) + 활동 칩
@@ -295,11 +295,13 @@ describe("같은 행동은 같은 variant다 (audit #50)", () => {
     expect(methods).toEqual(["danger", "danger"]);
   });
 
-  it("페이지의 유일한 출구인 Retry가 전부 `primary`다", () => {
-    for (const path of ["app/error.tsx", "app/(edit)/error.tsx", "app/(edit)/projects/[slug]/logs/error.tsx"]) {
-      const retry = read(path).match(/<Button\b[^>]*variant="(\w+)"[^>]*onClick=\{(?:reset|\(\) => retry\(\))\}/)?.[1];
-      expect(retry, path).toBe("primary");
+  it("페이지의 유일한 출구인 Retry가 전부 primary다", () => {
+    for (const path of ["app/(edit)/error.tsx", "app/(edit)/projects/[slug]/logs/error.tsx"]) {
+      expect(read(path), path).toContain("<ErrorState");
+      expect(read(path), path).toContain("retry={retry}");
     }
+    expect(read("app/error.tsx")).toMatch(/<Button\b[^>]*variant="primary"/);
+    expect(read("components/ui/error-state.tsx")).toMatch(/<Button\b[^>]*variant="primary"[^>]*onClick=\{\(\) => retry\(\)\}/);
   });
 
   it("Clear filters는 primary가 아니고 `RotateCcw`를 든다", () => {
@@ -509,9 +511,7 @@ describe("화면 간 불변식 — grep 규칙 (T28)", () => {
       // `DropdownMenuItem`이다 — `Button`이 아니라 메뉴 항목 형(focus-ring 게이트가 raw `<button>`을 막는다).
       "components/shell/user-menu.tsx": { count: 1, why: "menu item" },
       // 서버 헤더의 `Link` 안 `useLinkStatus` 조각 — `ButtonLink`에는 `loading`이 없고 링크 자손에서만 값이 난다.
-      "components/shell/new-project-icon.tsx": { count: 1, why: "link status glyph" },
       // `buttonClass`를 입은 `Link` + `useTransition` — `ButtonLink`는 `loading`·`onNavigate`를 받지 않는다.
-      "components/projects/new-project-button.tsx": { count: 1, why: "link with its own transition" },
       // 행 끝 chevron 자리 교체 — 버튼이 아니다(행 전체가 `Link`).
       // 상태 칸(`IconTile`) 안 글리프 교체 — 버튼이 아니다.
       "components/sources/source-detail-modal.tsx": { count: 1, why: "status tile glyph" },
@@ -532,7 +532,8 @@ describe("화면 간 불변식 — grep 규칙 (T28)", () => {
 
     it("선택자 `[&_.animate-spin]`은 세지 않고, `Button` 자신의 스피너는 센다 (카나리아)", () => {
       expect([..."[&_.animate-spin]:size-3.5".matchAll(SPIN)]).toHaveLength(0);
-      expect([...real("components/ui/button.tsx").matchAll(SPIN)]).toHaveLength(1);
+      expect([...real("components/ui/button.tsx").matchAll(SPIN)]).toHaveLength(2);
+      expect([...real("components/ui/link-progress.tsx").matchAll(SPIN)]).toHaveLength(1);
       const path = "components/home/sync-button.tsx";
       const source = real(path);
       expect(byFile([{ path, source }])).toEqual({});
@@ -548,11 +549,10 @@ describe("화면 간 불변식 — grep 규칙 (T28)", () => {
       "components/landing/mockup/app-frame.tsx",
       "components/landing/mockup/publish.tsx",
       "components/landing/stage.tsx",
-      "components/logs/event-dialog.tsx",
       "components/public-shell/public-shell.tsx",
       "components/shell/content-panel.tsx",
       "components/signin/auth-layout.tsx",
-      "components/ui/modal.tsx",
+      "components/ui/large-modal.tsx",
     ];
     const files = (entries: { path: string; source: string }[]) => entries.filter(({ source }) => /(?<![\w-])rounded-xl(?![\w-])/.test(source)).map(({ path }) => path).sort();
 

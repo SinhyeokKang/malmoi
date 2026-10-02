@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * 목업의 Publish 모달 둘 — 씬 ④ 미리보기(`preview-ready`, 열린 PR 없음)와 씬 ⑤ 결과(`created`)의 **정적 복제**다
- * (`components/publish-button.tsx`의 `PublishModal` · 껍데기는 `components/ui/modal.tsx`의 `OnboardingModal`). 제목·라벨·수 문장은
+ * (`components/publish-button.tsx`의 `PublishModal` · 껍데기는 `components/ui/modal.tsx`의 `LargeModal`). 제목·라벨·수 문장은
  * 실제 사전(`m.translations.publish`)을 읽는다.
  *
  * 치수는 껍데기의 것이다 — 폭 `min(100% − 96, 1024)`, 높이는 갈래별 하한(미리보기 620 · 결과 420), 머리 `px-8 pt-8 pb-5`, 본문 `gap-4 px-8 pb-6`,

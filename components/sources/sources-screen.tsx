@@ -1,6 +1,7 @@
 "use client";
+import { Link as InlineLink } from "@/components/ui/link";
 import { ListRow } from "@/components/ui/list-row";
-import Link from "next/link";
+
 import { useRouter } from "next/navigation";
 import { ChevronRight, FileCode2, FileJson2, Folder, Plus } from "lucide-react";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
@@ -87,7 +88,7 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
                 {index > 0 && ", "}<span className={source.failed > 0 ? "text-destructive" : undefined}>{source.surfaceSlug}</span> {source.failed > 0 ? m.sources.addedFailed : m.sources.addedOne(source.count)}
               </Fragment>)}.</p>
               <p className="text-muted-foreground text-xs">{m.sources.resultKeep}</p>
-              <p className="text-muted-foreground text-xs">{m.sources.workflow} <Link className="text-link focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none" href={routes.settings(slug)}>{m.common.nav.projectSettings}</Link></p></>}
+              <p className="text-muted-foreground text-xs">{m.sources.workflow} <InlineLink href={routes.settings(slug)}>{m.common.nav.projectSettings}</InlineLink></p></>}
           </div>
         </Alert> : undefined}>
         {data.sources.length === 0

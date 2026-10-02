@@ -12,7 +12,7 @@ import { ConnectGithubButton } from "@/components/onboarding/connect-github";
 import { GithubIcon } from "@/components/signin/brand-icons";
 import { Alert } from "@/components/ui/alert";
 import { landFocus } from "@/components/ui/focus";
-import { buttonClass } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 import type { AccountView } from "@/lib/github-connect/account-view";
 import { m } from "@/lib/i18n";
 
@@ -92,9 +92,9 @@ export function GithubSection({
                 (POSTMORTEM 2026-09-15 🔁 — 형제 프리미티브를 건드리면 소비자를 따로 세야 한다).
               */}
               {settingsUrl !== null && (
-                <a className={buttonClass()} href={settingsUrl} target="_blank" rel="noreferrer">
+                <ButtonLink external href={settingsUrl} newTab rel="noreferrer">
                   {m.account.github.installationSettings}
-                </a>
+                </ButtonLink>
               )}
               <DisconnectGithubButton onFailure={setFailure} />
             </>

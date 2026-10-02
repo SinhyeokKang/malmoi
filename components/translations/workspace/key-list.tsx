@@ -35,7 +35,7 @@ export function KeyList({ list, title, titleRef, count, savedExtra, selectedKeyI
   /** 조작의 응답을 기다린다 (audit-ux #7) — 행은 응답이 와야 바뀌므로 목록이 busy다. 선택 행은 호출부가 낙관적으로 먼저 옮긴다. */
   busy?: boolean;
   /** 트리가 접혔을 때 목록 머리에 들어가는 트리 버튼(README §7 — 아이콘 레일을 만들지 않는다). */
-  treeButton?: { open: boolean; controls: string; onToggle: () => void; breadcrumb: ReactNode };
+  treeButton?: { ref?: Ref<HTMLButtonElement>; open: boolean; controls: string; onToggle: () => void; breadcrumb: ReactNode };
   /**
    * 머리 오른쪽 끝의 필터 — 이 목록을 좁히는 Status다(2026-10-02 사용자: 패널마다 자기를 좁히는 필터를 든다 — 번역값 패널의 언어 메뉴와 같은 자리).
    * ⚠️ 좁은 폭에서 잘리는 것은 **범위 라벨 하나**다(#170 — 정렬 문구와 함께 줄었다) — 제목·수·`+n saved`·트리거는 줄지 않는다.
@@ -92,7 +92,7 @@ export function KeyList({ list, title, titleRef, count, savedExtra, selectedKeyI
     <div data-panel="list" aria-busy={busy || undefined} className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="flex h-12 shrink-0 items-center gap-2 px-4">
         {treeButton !== undefined && (
-          <Button size="icon-sm" aria-label={m.translations.workspace.tree.open} aria-expanded={treeButton.open} aria-controls={treeButton.open ? treeButton.controls : undefined} onClick={treeButton.onToggle}>
+          <Button ref={treeButton.ref} size="icon-sm" aria-haspopup="dialog" aria-label={m.translations.workspace.tree.open} aria-expanded={treeButton.open} aria-controls={treeButton.open ? treeButton.controls : undefined} onClick={treeButton.onToggle}>
             <PanelLeftOpen className="size-3.5 text-gray-strong" aria-hidden />
           </Button>
         )}

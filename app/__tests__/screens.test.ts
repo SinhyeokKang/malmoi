@@ -297,8 +297,9 @@ describe("보관 — 네 화면이 같은 갈래를 그린다 (7단계)", () => 
    */
   it("인라인 링크가 등록된 `text-link` 토큰을 쓴다", () => {
     expect(read("app/globals.css")).toMatch(/--color-link:\s*var\(--color-blue-600\)/);
+    expect(read("components/ui/link.tsx")).toContain("text-link");
     for (const path of ["components/settings/ci-card.tsx", "components/sources/source-detail-modal.tsx", "components/sources/sources-screen.tsx"]) {
-      expect(read(path), path).toContain("text-link");
+      expect(read(path), path).toContain("@/components/ui/link");
     }
   });
 
@@ -414,6 +415,6 @@ describe("설정 화면 — 진행 중이 지난 실패를 이긴다", () => {
  * 전부 같은 자리라 필드마다 `ring-inset`을 덧대는 대신 여기서 2px을 내준다.
  */
 it("온보딩 모달 본문이 포커스 링 자리를 남긴다", () => {
-  const src = read("components/ui/modal.tsx");
+  const src = read("components/ui/large-modal.tsx");
   expect(src).toContain("px-8 pt-0.5 pb-6");
 });

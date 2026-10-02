@@ -1,4 +1,5 @@
 "use client";
+import { Link as InlineLink } from "@/components/ui/link";
 import { ListRow } from "@/components/ui/list-row";
 
 import {
@@ -403,14 +404,14 @@ function BannerAction({
     </Link>
   );
   const external = (href: string, label: string) => (
-    <a
+    <InlineLink
       href={href}
       target="_blank"
       rel="noreferrer"
-      className="ml-1 shrink-0 text-link"
+      className="ml-1 shrink-0 "
     >
       {label}
-    </a>
+    </InlineLink>
   );
 
   switch (banner.kind) {

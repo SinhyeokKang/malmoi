@@ -2,10 +2,12 @@
 import { act } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-import { OnboardingModal } from "@/components/onboarding/modal";
 import { Button } from "@/components/ui/button";
+import { LargeModal, type LargeModalProps } from "@/components/ui/large-modal";
+import { WizardFooter } from "@/components/ui/wizard-footer";
+import type { ComponentProps, ReactNode } from "react";
 
-import { render, find } from "./helpers/dom";
+import { find, render } from "./helpers/dom";
 
 /**
  * 모달 껍데기 (DESIGN §6.7).
@@ -14,10 +16,14 @@ import { render, find } from "./helpers/dom";
  * 잡는다 — 그래서 실제로 렌더해 쿼리한다.
  */
 const noop = () => {};
+// 전이·포커스 회귀는 실제 껍데기와 실제 바닥을 함께 렌더해 검증한다.
+function WizardModal({ onNext = noop, onBack, showBack, nextLabel, nextArrow, nextDisabled, busy, actions, ...props }: Omit<LargeModalProps, "actions"> & Omit<ComponentProps<typeof WizardFooter>, "onNext"> & { onNext?: () => void; actions?: ReactNode }) {
+  return <LargeModal {...props} actions={actions === undefined ? <WizardFooter onNext={onNext} onBack={onBack} showBack={showBack} nextLabel={nextLabel} nextArrow={nextArrow} nextDisabled={nextDisabled} busy={busy} /> : actions} />;
+}
 
-function shell(over: Partial<Parameters<typeof OnboardingModal>[0]> = {}) {
+function shell(over: Partial<Parameters<typeof WizardModal>[0]> = {}) {
   return (
-    <OnboardingModal
+    <WizardModal
       open
       title="New project"
       step={1}
@@ -26,7 +32,7 @@ function shell(over: Partial<Parameters<typeof OnboardingModal>[0]> = {}) {
       {...over}
     >
       <p>body</p>
-    </OnboardingModal>
+    </WizardModal>
   );
 }
 
@@ -35,7 +41,7 @@ const dialog = () => find<HTMLElement>(document.body, '[role="dialog"]');
 const buttonNamed = (name: string): HTMLButtonElement | undefined =>
   [...document.body.querySelectorAll("button")].find((b) => (b.textContent ?? "").trim() === name);
 
-describe("OnboardingModal — 바닥의 진행 표시", () => {
+describe("WizardModal — 바닥의 진행 표시", () => {
   it("`Step n of 4`를 렌더한다 — 진행은 이 한 줄이다", async () => {
     await render(shell({ step: 2 }));
 
@@ -49,7 +55,7 @@ describe("OnboardingModal — 바닥의 진행 표시", () => {
   });
 });
 
-describe("OnboardingModal — [Back]이 서는 자리", () => {
+describe("WizardModal — [Back]이 서는 자리", () => {
   it("①에는 없다 — 닫는 길은 X·Esc·backdrop이다", async () => {
     await render(shell({ step: 1 }));
 
@@ -75,7 +81,7 @@ describe("OnboardingModal — [Back]이 서는 자리", () => {
   });
 });
 
-describe("OnboardingModal — [Next]는 껍데기가 소유한다", () => {
+describe("WizardModal — [Next]는 껍데기가 소유한다", () => {
   it("`nextDisabled`를 껍데기가 든다 — 단계마다 비활성 모양을 다시 만들지 않는다", async () => {
     await render(shell({ nextDisabled: true }));
 
@@ -106,7 +112,7 @@ describe("OnboardingModal — [Next]는 껍데기가 소유한다", () => {
   });
 });
 
-describe("OnboardingModal — 단계 전환이 스크린리더에 닿는다 (DESIGN §6.7)", () => {
+describe("WizardModal — 단계 전환이 스크린리더에 닿는다 (DESIGN §6.7)", () => {
   it("`aria-live` 영역이 하나 있고 단계가 바뀌면 새 제목이 거기 쓰인다", async () => {
     const { rerender } = await render(shell({ step: 1, title: "New project" }));
     const live = find<HTMLElement>(document.body, '[aria-live="polite"]');
@@ -133,7 +139,7 @@ describe("OnboardingModal — 단계 전환이 스크린리더에 닿는다 (DES
   });
 });
 
-describe("OnboardingModal — 높이가 뷰포트에 물린다 (DESIGN §6.7)", () => {
+describe("WizardModal — 높이가 뷰포트에 물린다 (DESIGN §6.7)", () => {
   it("본문 열이 `min-h-0 flex-1 overflow-y-auto`를 든다 — 없으면 바닥이 화면 밖으로 나간다", async () => {
     await render(shell());
 
@@ -180,7 +186,7 @@ describe("OnboardingModal — 높이가 뷰포트에 물린다 (DESIGN §6.7)", 
  * 제목이 두 번 나왔고 — 헤더의 `Dialog.Title`과 `sr-only` 영역 — 스크린리더가 그것을 두 번 읽는다.
  * 게다가 단계와 무관한 리렌더에도 같은 문장이 다시 낭독된다. **말해야 할 때만 담는다.**
  */
-describe("OnboardingModal — live 영역은 전이만 말한다", () => {
+describe("WizardModal — live 영역은 전이만 말한다", () => {
   it("처음 열렸을 때는 비어 있다 — 제목은 헤더가 한 번 말한다", async () => {
     await render(shell({ step: 1, title: "New project" }));
 
@@ -247,7 +253,7 @@ describe("바닥의 액션 무리 (#87)", () => {
 });
 
 /** #169 — 같은 부류: `closeDisabled` 동안 오버레이 mousedown이 포커스를 `body`로 떨어뜨리지 않는다(기본 동작을 막는다). 짝: 열려 있으면 막지 않는다. */
-describe("OnboardingModal — closeDisabled 동안 오버레이", () => {
+describe("WizardModal — closeDisabled 동안 오버레이", () => {
   const overlay = () => [...document.querySelectorAll<HTMLElement>("div[data-state='open']")].find(element => element.getAttribute("role") !== "dialog" && element.querySelector('[role="dialog"]') === null)!;
   const mousedown = (node: Element) => { const event = new MouseEvent("mousedown", { bubbles: true, cancelable: true }); node.dispatchEvent(event); return event.defaultPrevented; };
   it("mousedown 기본 동작을 막는다", async () => {

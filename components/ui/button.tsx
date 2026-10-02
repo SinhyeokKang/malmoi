@@ -1,13 +1,13 @@
 import { cva, type VariantProps } from "class-variance-authority";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
-import { Children, isValidElement, type ButtonHTMLAttributes, type MouseEventHandler, type ReactNode, type Ref } from "react";
+import { Children, isValidElement, type ButtonHTMLAttributes, type ComponentProps, type ReactNode, type Ref } from "react";
 
 import { cn } from "@/lib/utils";
 
 /**
  * 형은 DESIGN §6.4가 정본이다. **`asChild`를 두지 않는다** — 링크에 버튼 형을 입히는 자리는
- * `buttonClass()`를 빌려 쓴다(그쪽은 `<a>`라 raw 태그 넷에 들지 않는다). 쓰는 곳이 생기기 전에
+ * `ButtonLink`를 쓴다(그쪽은 `<a>`라 raw 태그 넷에 들지 않는다). 쓰는 곳이 생기기 전에
  * Slot 우회를 만들면 그 한 겹이 스캐너에서 태그를 지운다.
  *
  * 형은 DESIGN §6.4가 정본이다 — 여기 클래스는 그 표를 옮긴 것이고, 값을 바꾸려면 그 문서를 먼저 고친다.
@@ -207,7 +207,7 @@ export function Button({
  * 않는다. 표식이 없는 글리프(브랜드 마크 `GithubIcon`)는 더하는 쪽에 남는다. CSS 형제 선택자로 숨기지 않은 이유: DOM에 남으면
  * 스크린리더·테스트가 두 글리프를 보고, jsdom은 CSS를 안 태워 검증할 수 없다.
  */
-function glyphSlot(children: ReactNode, spinning: boolean): ReactNode {
+export function glyphSlot(children: ReactNode, spinning: boolean): ReactNode {
   // ⚠️ 돌지 않을 때도 배열로 낸다 — 두 상태의 key가 같아야 라벨 요소가 토글마다 다시 마운트되지 않는다.
   const all = Children.toArray(children);
   const [first, ...rest] = all;
@@ -223,30 +223,24 @@ function glyphSlot(children: ReactNode, spinning: boolean): ReactNode {
  * 그래서 링을 상수로 붙여도 방어선이 좁아지지 않는다.
  */
 export function ButtonLink({
-  href,
-  variant,
-  size,
-  className,
-  onClick,
-  children,
-}: VariantProps<typeof buttonClass> & {
+  href, variant, size, className, onClick, onNavigate, children, external = false, newTab = false,
+  rel, target, busy = false, ...props
+}: Omit<ComponentProps<typeof Link>, "href"> & VariantProps<typeof buttonClass> & {
   href: string;
-  className?: string;
-  /**
-   * ⚠️ **이동을 막는 자리에만 쓴다** (2026-09-22 — Sources 상세의 미저장 확인창). 링크는 그대로
-   * 링크여야 하므로(가운데 클릭·새 탭이 살아 있다) `onClick`에서 `preventDefault`를 하는 쪽이
-   * 버튼으로 바꾸는 것보다 잃는 것이 적다.
-   */
-  onClick?: MouseEventHandler<HTMLAnchorElement>;
-  children: ReactNode;
+  external?: boolean;
+  newTab?: boolean;
+  busy?: boolean;
 }) {
-  return (
-    <Link
-      href={href}
-      onClick={onClick}
-      className={cn(buttonClass({ variant, size }), "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none", className)}
-    >
-      {children}
-    </Link>
-  );
+  const safeRel = external || newTab || target === "_blank"
+    ? [...new Set([...(rel?.split(/\s+/).filter(Boolean) ?? []), "noopener", "noreferrer"])].join(" ") : rel;
+  const content = <>{busy && <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />}{glyphSlot(children, busy)}</>;
+  const classes = cn(buttonClass({ variant, size }), "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none", className);
+  const shared = { ...props, href, target: newTab ? "_blank" : target, rel: safeRel,
+    "aria-disabled": busy ? true : props["aria-disabled"], "aria-busy": busy ? true : props["aria-busy"] };
+  // 외부 a는 일반 클릭만 막고, Next onNavigate는 같은 탭 내부 이동만 차단한다.
+  if (external) return <a {...shared} onClick={busy ? event => {
+    if (!newTab && (!target || target === "_self") && event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) event.preventDefault();
+    else onClick?.(event);
+  } : onClick} className={classes}>{content}</a>;
+  return <Link {...shared} onClick={onClick} onNavigate={busy ? event => event.preventDefault() : onNavigate} className={classes}>{content}</Link>;
 }

@@ -1,8 +1,9 @@
+import { Link as InlineLink } from "@/components/ui/link";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 import { ENTRY_BLOCK, ReleaseEntry } from "@/components/changelog/release-entry";
-import { DOC_LINK, PROSE } from "@/components/docs/classes";
+import { PROSE } from "@/components/docs/classes";
 import { PublicShell } from "@/components/public-shell/public-shell";
 import { publicAccount } from "@/lib/auth/landing";
 import { readSession } from "@/lib/auth/read-session";
@@ -16,9 +17,9 @@ export const metadata: Metadata = pageMetadata({ title: m.changelog.title, descr
 
 /** 안내 문장 넷이 모두 받는 GitHub Releases 링크 — 새 탭 + `noreferrer`(공개 셸의 외부 링크 규칙). */
 const releases: ReactNode = (
-  <a href={GITHUB_RELEASES_URL} target="_blank" rel="noreferrer" className={DOC_LINK}>
+  <InlineLink href={GITHUB_RELEASES_URL} target="_blank" rel="noreferrer">
     {m.changelog.releases}
-  </a>
+  </InlineLink>
 );
 
 /**

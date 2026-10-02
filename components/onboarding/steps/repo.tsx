@@ -1,14 +1,15 @@
 "use client";
-
+import { ButtonLink } from "@/components/ui/button";
+import { Link as InlineLink } from "@/components/ui/link";
 import { Archive, Clock, FolderGit2, GitBranch, Link2, Search } from "lucide-react";
-import Link from "next/link";
+
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 
 import { GithubIcon } from "@/components/signin/brand-icons";
 import { useGithubConnect } from "@/components/onboarding/connect-github";
 import { Alert } from "@/components/ui/alert";
-import { Button, buttonClass } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { EmptyState, NoMatch } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Radio, RadioGroup } from "@/components/ui/radio";
@@ -283,9 +284,9 @@ function InstallHint({ installUrl }: { installUrl: string | null }) {
   return (
     <p className="text-muted-foreground shrink-0 text-xs leading-body">
       {m.newProject.repo.notListed}{" "}
-      <a href={installUrl} className="text-link">
+      <InlineLink href={installUrl} >
         {m.newProject.empty.repos.action}
-      </a>
+      </InlineLink>
     </p>
   );
 }
@@ -435,9 +436,9 @@ function Blocked({
         title={m.newProject.empty.limit.title}
         description={m.newProject.empty.limit.description(PROJECT_LIMIT)}
         action={
-          <Link href={routes.projects()} className={cn(buttonClass({ variant: "primary" }), "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none")}>
+          <ButtonLink variant="primary" href={routes.projects()} >
             {m.newProject.empty.limit.action}
-          </Link>
+          </ButtonLink>
         }
         secondary={null}
         error={null}
@@ -504,9 +505,9 @@ function Blocked({
         action={
           installUrl === null ? null : (
             // ⚠️ **같은 탭이다** (DESIGN §6.3 예외) — 저장하면 GitHub이 callback으로 되돌려 ①에 착지한다.
-            <a href={installUrl} className={cn(buttonClass({ variant: "primary" }), "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none")}>
+            <ButtonLink variant="primary" external href={installUrl} >
               {m.newProject.empty.repos.action}
-            </a>
+            </ButtonLink>
           )
         }
         secondary={null}

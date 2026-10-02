@@ -1,5 +1,6 @@
 "use client";
-
+import { Link as InlineLink } from "@/components/ui/link";
+import { Popover } from "@/components/ui/popover";
 import { ArrowDownToLine, Languages, RotateCcw } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useOptimistic, useReducer, useRef, useState, useTransition, type ReactNode } from "react";
@@ -645,6 +646,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   }
   const [treeOverlay, setTreeOverlay] = useState(false);
   const treeOverlayId = useId();
+  const treeAnchor = useRef<HTMLButtonElement>(null);
   const treeCollapsed = layout !== null && layout.tree === null;
 
   // ── 머리 ──────────────────────────────────────────────────────────────────
@@ -813,7 +815,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
               showSource={isAllSources(query) && tree.surfaces.length > 1}
               onSelect={onSelectRow}
               busy={navigating}
-              treeButton={treeCollapsed ? { open: treeOverlay, controls: treeOverlayId, onToggle: () => setTreeOverlay(v => !v), breadcrumb: <span data-range-label="" className="text-muted-foreground text-xs">{rangeLabel}</span> } : undefined}
+              treeButton={treeCollapsed ? { ref: treeAnchor, open: treeOverlay, controls: treeOverlayId, onToggle: () => setTreeOverlay(v => !v), breadcrumb: <span data-range-label="" className="text-muted-foreground text-xs">{rangeLabel}</span> } : undefined}
               empty={listEmpty}
               filter={
                 <FilterMenu axis={w.filters.state.axis} label={STATUS_LABEL[shownStatus]()} on={shownStatus !== "all"} size="sm" disabled={noKeys} align="end"
@@ -823,13 +825,13 @@ export function TranslationWorkspace(props: WorkspaceProps) {
                 />
               }
             />
-            {treeCollapsed && treeOverlay && (
-              <TreeOverlay id={treeOverlayId} onClose={() => setTreeOverlay(false)}>
+            {treeCollapsed && (
+              <Popover open={treeOverlay} onOpenChange={setTreeOverlay} anchor={treeAnchor} id={treeOverlayId} aria-label={w.tree.title}>
                 <TreePanel tree={tree} nodes={treeNodes} surfaceSlug={view.surface} ns={shown.ns} rangeAll={rangeAll} allSources={allSourcesNode}
                   // 선택한 항목이 오버레이와 함께 사라지므로 토글로 돌려준다 — 안 하면 이동이 있든 없든 body로 떨어진다(T19 실측).
-                  onSelect={(surface, ns) => { focusController(treeOverlayId); setTreeOverlay(false); selectTree(surface, ns); }}
-                  onSelectAll={() => { focusController(treeOverlayId); setTreeOverlay(false); selectAllSources(); }} />
-              </TreeOverlay>
+                  onSelect={(surface, ns) => { treeAnchor.current?.focus(); setTreeOverlay(false); selectTree(surface, ns); }}
+                  onSelectAll={() => { treeAnchor.current?.focus(); setTreeOverlay(false); selectAllSources(); }} />
+              </Popover>
             )}
           </div>
           <ResizeHandle layout={layout} onChange={rememberLeft} />
@@ -970,7 +972,7 @@ const ALERTS: Partial<Record<FooterStatus["kind"], (ctx: { onCheck: () => void; 
   session: ({ storageBlocked }) => (
     <Alert variant="danger" title={m.translations.workspace.footer.session.title}>
       {storageBlocked ? m.translations.workspace.footer.session.storageBlocked : m.translations.workspace.footer.session.body}{" "}
-      <a href={routes.signIn()} target="_blank" rel="noreferrer" className="text-link">{m.translations.workspace.footer.session.signIn}</a>
+      <InlineLink href={routes.signIn()} target="_blank" rel="noreferrer">{m.translations.workspace.footer.session.signIn}</InlineLink>
     </Alert>
   ),
   // 보관은 회색이다 — 실패가 아니다(2026-09-30 상태 통일).
@@ -1027,40 +1029,6 @@ function WorkspaceDialog({ dialog, keyName, projectName, onClose, onPreview, onR
   );
 }
 
-/** 접힌 트리를 여는 겹친 패널 280 · 최대 320 (README §7). Escape·바깥 클릭으로 닫는다. */
-/** `aria-controls`로 이 id를 가리키는 컨트롤에 포커스를 준다. `useId`의 `:`가 선택자 이스케이프를 요구해 속성값을 직접 비교한다. */
-function focusController(id: string): void {
-  [...document.querySelectorAll<HTMLElement>("[aria-controls]")].find(node => node.getAttribute("aria-controls") === id)?.focus();
-}
-
-/**
- * ⚠️ **열리면 포커스를 안으로 옮긴다** — 이 오버레이는 DOM상 키 목록 **뒤**에 붙어, 그대로 두면 키보드 사용자가 목록 전체를 Tab으로 지나야
- * 트리에 닿는다(T19 실측). ⚠️ **토글로 돌려주는 것은 Escape뿐이다** — 바깥 클릭은 사용자가 누른 곳이 포커스를 가져야 한다.
- * ⚠️ **돌아갈 곳을 마운트 때의 `activeElement`로 잡지 않는다** — dev StrictMode가 이펙트를 두 번 돌려 둘째 실행이 이미 포커스를 받은
- * 트리 항목을 잡았고, Escape가 곧 사라질 그 항목에 포커스를 줘 body로 떨어졌다(T19 실측). `aria-controls`로 이 오버레이를 가리키는 토글이 정본이다.
- */
-function TreeOverlay({ id, onClose, children }: { id: string; onClose: () => void; children: ReactNode }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    (ref.current?.querySelector<HTMLElement>('[aria-current="true"]') ?? ref.current?.querySelector<HTMLElement>("button"))?.focus();
-    const key = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      onClose();
-      focusController(id);
-    };
-    const outside = (event: PointerEvent) => { if (ref.current && !ref.current.contains(event.target as Node)) onClose(); };
-    document.addEventListener("keydown", key);
-    document.addEventListener("pointerdown", outside);
-    return () => { document.removeEventListener("keydown", key); document.removeEventListener("pointerdown", outside); };
-  }, [id, onClose]);
-  return (
-    // 팝오버 계열의 그림자다(§4.5 — DropdownMenu·Select와 같은 `shadow-md`, 5-Y17).
-    <div ref={ref} id={id} className="border-border bg-popover shadow-md absolute top-14 left-3 z-20 flex max-h-80 w-70 flex-col overflow-hidden rounded-lg border">
-      {children}
-    </div>
-  );
-}
-
 /**
  * 두 카드 사이 16px이 손잡이다 — 새 선이나 점을 그리지 않는다(README §7). hover·drag에만 4px 바가 뜨는 형은 `resizable.tsx`와 같다.
  * ⚠️ `react-resizable-panels`를 쓰지 않는다 — 이 계약은 **px**이고(목록 → 트리 → 접힘 순서), 그 라이브러리는 % 전용이다.
@@ -1114,4 +1082,3 @@ function ResizeHandle({ layout, onChange }: { layout: ReturnType<typeof planTran
     />
   );
 }
-

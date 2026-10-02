@@ -1,8 +1,9 @@
+import { Link as InlineLink } from "@/components/ui/link";
 import type { ReactNode } from "react";
 import Markdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-import { DOC_LINK, INLINE_CODE, LIST, MINOR_HEADING, PROSE, SECTION_HEADING, SUB_HEADING } from "@/components/docs/classes";
+import { INLINE_CODE, LIST, MINOR_HEADING, PROSE, SECTION_HEADING, SUB_HEADING } from "@/components/docs/classes";
 import { dropFullChangelog, imagesToLinks, shiftHeadings } from "@/lib/changelog/markdown";
 
 /**
@@ -36,13 +37,13 @@ const components: Components = {
   // 원고와 달리 hProperties를 싣는 플러그인이 없다 — 외부 판정을 여기서 한다.
   a: ({ node: _node, href = "", children }) =>
     isExternal(href) ? (
-      <a href={href} target="_blank" rel="noreferrer" className={DOC_LINK}>
+      <InlineLink href={href} target="_blank" rel="noreferrer">
         {children}
-      </a>
+      </InlineLink>
     ) : (
-      <a href={href} className={DOC_LINK}>
+      <InlineLink href={href} >
         {children}
-      </a>
+      </InlineLink>
     ),
 };
 

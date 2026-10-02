@@ -9,7 +9,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/form-group";
 import { Input } from "@/components/ui/input";
-import { OnboardingModal } from "@/components/ui/modal";
+import { LargeModal } from "@/components/ui/large-modal";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import type { Role } from "@/lib/auth/permission";
@@ -247,7 +247,7 @@ export function InviteModal({
   const status = pending ? m.members.invite.sending : nothingSent ? m.members.invite.nothingSent : m.members.invite.seatsUsed(seats.n, seats.limit);
 
   return (
-    <OnboardingModal
+    <LargeModal
       open={open}
       onClose={close}
       transitionKey="form"
@@ -392,7 +392,7 @@ export function InviteModal({
           </Button>
         </div>
       </form>
-    </OnboardingModal>
+    </LargeModal>
   );
 }
 

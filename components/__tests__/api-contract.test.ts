@@ -414,21 +414,18 @@ const REST_DEMAND: readonly { path: string; symbol: string }[] = [];
 const CARDINALITY: Record<Rule, { rows: number; occurrences: number }> = {
   state: { rows: 0, occurrences: 0 }, variant: { rows: 0, occurrences: 0 },
   hue: { rows: 0, occurrences: 0 }, size: { rows: 6, occurrences: 6 },
-  width: { rows: 0, occurrences: 0 }, progress: { rows: 2, occurrences: 2 },
-  slots: { rows: 1, occurrences: 1 }, rest: { rows: 0, occurrences: 0 },
+  width: { rows: 0, occurrences: 0 }, progress: { rows: 0, occurrences: 0 },
+  slots: { rows: 0, occurrences: 0 }, rest: { rows: 0, occurrences: 0 },
   "data-tone": { rows: 0, occurrences: 0 }, aria: { rows: 0, occurrences: 0 },
   className: { rows: 0, occurrences: 0 },
 };
 const ALLOWLIST: Debt[] = [
-  { rule: "progress", path: "components/projects/new-project-button.tsx", symbol: "NewProjectButton", detail: "manual pending glyph replacement", count: 1, task: "T15" },
-  { rule: "progress", path: "components/shell/new-project-icon.tsx", symbol: "NewProjectIcon", detail: "manual pending glyph replacement", count: 1, task: "T15" },
   { rule: "size", path: "components/shell/project-switcher.tsx", symbol: "Input", detail: "border-0", count: 1, task: "T19a" },
   { rule: "size", path: "components/shell/project-switcher.tsx", symbol: "Input", detail: "h-8", count: 1, task: "T19a" },
   { rule: "size", path: "components/translations/workspace/locale-panel.tsx", symbol: "Input", detail: "h-7", count: 1, task: "T19a" },
   { rule: "size", path: "components/translations/workspace/locale-panel.tsx", symbol: "Input", detail: "text-xs", count: 1, task: "T19a" },
   { rule: "size", path: "components/translations/workspace/tree-panel.tsx", symbol: "Input", detail: "h-8", count: 1, task: "T19a" },
   { rule: "size", path: "components/translations/workspace/tree-panel.tsx", symbol: "Input", detail: "text-xs", count: 1, task: "T19a" },
-  { rule: "slots", path: "components/ui/modal.tsx", symbol: "OnboardingModal", detail: "headerAction", count: 1, task: "T14" },
 ];
 
 function differences(actual: readonly Violation[], allowed: readonly Debt[]): { unknown: Violation[]; stale: Debt[] } {
@@ -450,15 +447,11 @@ describe("primitive API contract — design §3", () => {
     }
   });
 
-  it("T7–T11 leave zero owned debts and preserve exactly nine later-task rows", () => {
+  it("T7–T18 leave zero owned debts and preserve exactly six T19a rows", () => {
     expect(ALLOWLIST.filter(row => /^T(?:7|8|9|10|11)[a-f]?$/.test(row.task))).toEqual([]);
     expect(ALLOWLIST.map(({task, rule, symbol, count}) => [task, rule, symbol, count]).sort()).toEqual([
-      ["T14", "slots", "OnboardingModal", 1],
-      ["T15", "progress", "NewProjectButton", 1],
-      ["T15", "progress", "NewProjectIcon", 1],
       ...Array.from({length:6}, () => ["T19a", "size", "Input", 1]),
     ].sort());
-    expect(ALLOWLIST.find(row => row.task === "T14")?.detail).toBe("headerAction");
   });
 
   it("T7 leaves no component result-label or tone mapping copies", () => {
@@ -511,10 +504,10 @@ describe("primitive API contract — design §3", () => {
   });
 
   it("current Modal path distinguishes nextPending from busy", () => {
-    const path = "components/ui/modal.tsx";
-    const bad = source('export function OnboardingModal({nextPending}: {nextPending?: boolean}) {return <div/>;}', path);
-    const good = source('export function OnboardingModal({busy}: {busy?: boolean}) {return <div/>;}', path);
-    expect(scan([bad])).toEqual([{rule: "progress", path, symbol: "OnboardingModal", detail: "nextPending", count: 1}]);
+    const path = "components/ui/large-modal.tsx";
+    const bad = source('export function LargeModal({nextPending}: {nextPending?: boolean}) {return <div/>;}', path);
+    const good = source('export function LargeModal({busy}: {busy?: boolean}) {return <div/>;}', path);
+    expect(scan([bad])).toEqual([{rule: "progress", path, symbol: "LargeModal", detail: "nextPending", count: 1}]);
     expect(scan([good])).toEqual([]);
   });
 
@@ -547,7 +540,7 @@ describe("primitive API contract — design §3", () => {
   });
 
   it.each([
-    ["components/ui/modal.tsx", "OnboardingModal", "panelClassName", "className"],
+    ["components/ui/large-modal.tsx", "LargeModal", "panelClassName", "className"],
     ["components/ui/radio.tsx", "Radio", "labelClassName", "className"],
     ["components/ui/image-tile.tsx", "ImageTile", "fallbackClassName", "fallback"],
   ])("T11D current-path className %s %s", (path, symbol, old, next) => {
@@ -565,7 +558,7 @@ describe("primitive API contract — design §3", () => {
 
   const slotRenames = [
     ["components/ui/dialog.tsx", "DialogContent", "footer", "actions"],
-    ["components/ui/modal.tsx", "OnboardingModal", "footer", "notice"],
+    ["components/ui/large-modal.tsx", "LargeModal", "footer", "notice"],
     ["components/ui/card.tsx", "Card", "subtitle", "description"],
     ["components/ui/list-row.tsx", "ListRow", "detail", "description"],
     ["components/ui/list-row.tsx", "ListRow", "glyph", "icon"],

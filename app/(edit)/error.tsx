@@ -1,8 +1,10 @@
 "use client";
-import { CircleX } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
+
+
+
+
 import { m } from "@/lib/i18n";
 import { ContentPanel, PanelBody } from "@/components/shell/content-panel";
 
@@ -18,12 +20,7 @@ export default function PageError({ retry }: { error: Error & { digest?: string 
       {/* 세로 중앙은 `flex-1`이 든다 — 셸 안 not-found 둘·`ProjectArchived`와 같은 형(malmoi#162). */}
       <PanelBody className="flex flex-col">
         <div className="flex flex-1 items-center justify-center">
-          <EmptyState
-            icon={CircleX}
-            title={m.crash.title}
-            description={m.crash.description}
-            action={<Button type="button" variant="primary" onClick={() => retry()}>{m.common.retry}</Button>}
-          />
+          <ErrorState title={m.crash.title} description={m.crash.description} retry={retry} retryLabel={m.common.retry} />
         </div>
       </PanelBody>
     </ContentPanel>

@@ -7,7 +7,7 @@ import { mockupScenes } from "@/components/landing/mockup";
 import { Stage } from "@/components/landing/stage";
 import { PublicShell } from "@/components/public-shell/public-shell";
 import { GithubIcon } from "@/components/signin/brand-icons";
-import { buttonClass, ButtonLink } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 import { appVersion } from "@/lib/app-version";
 import { rootView } from "@/lib/auth/landing";
 import { readSession } from "@/lib/auth/read-session";
@@ -17,7 +17,7 @@ import { routes } from "@/lib/routes";
 import { navFooterItems } from "@/lib/shell/nav";
 import { jsonLdHtml, LANDING_LD } from "@/lib/seo/json-ld";
 import { pageMetadata } from "@/lib/seo/site";
-import { cn } from "@/lib/utils";
+
 
 /** 제목만 absolute다 — 템플릿(`%s · Malmoi`)을 지나면 브랜드가 두 번 선다. */
 export const metadata: Metadata = {
@@ -90,10 +90,10 @@ export default async function Root() {
             <p className="mt-5 max-w-[40em] text-lg leading-body text-balance">{closing.body}</p>
             <div className="mt-5 flex gap-2">
               {/* ⚠️ 외부 링크라 `ButtonLink`(next/link)가 아니라 `<a>` + `buttonClass`다(Publish 결과의 `View pull request`와 같은 형). 새 탭 · 글리프 없음(DESIGN §6.3). */}
-              <a href={GITHUB_REPO_URL} target="_blank" rel="noreferrer"
-                className={cn(buttonClass({ size: "lg" }), "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none")}>
+              <ButtonLink size={"lg"} external href={GITHUB_REPO_URL} newTab rel="noreferrer"
+                >
                 <GithubIcon />{shell.github}
-              </a>
+              </ButtonLink>
               <ButtonLink href={routes.signIn()} variant="primary" size="lg"><LogIn aria-hidden />{shell.getStarted}</ButtonLink>
             </div>
           </section>

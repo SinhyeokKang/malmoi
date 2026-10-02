@@ -243,7 +243,7 @@ it.each([
   // 세션 만료 뒤 재로그인은 새 탭이다(ux-drift-unify 3-Y7) — 이 탭을 떠나면 번역 화면의 draft가 함께 사라진다(Sync 결과·편집 화면과 같다).
   for (const a of document.querySelectorAll('[role="dialog"] a[href="/signin"]')) {
     expect(a.getAttribute("target")).toBe("_blank");
-    expect(a.getAttribute("rel")).toBe("noreferrer");
+    expect(a.getAttribute("rel")).toBe("noreferrer noopener");
   }
   expect(links).not.toContain("/projects/acme/settings");
   expect(mocks.pull).not.toHaveBeenCalled();
@@ -628,14 +628,19 @@ it("실패 시각은 <time dateTime>에 UTC 라벨로 선다", async () => {
 });
 
 });
-/**
- * **앱 안 이동은 `ButtonLink`다** (ux-drift-unify 3-⚪12) — raw `<a>` + `buttonClass`는 전체 새로고침이라 같은 "Open settings"가
- * Sync 결과·Logs(`ButtonLink`)와 다르게 움직였다. `<a>` + `buttonClass`는 새 탭 외부(`target="_blank"`)만 남는다.
- */
-it("Publish 모달의 raw <a> 버튼은 전부 새 탭 외부 링크다", () => {
+/** 내부 이동과 새 탭 외부 링크 모두 ButtonLink가 네이티브 속성과 버튼 폼을 든다. */
+it("Publish 모달은 ButtonLink로 내부 이동과 새 탭 외부 링크를 구분한다", () => {
   const source = readFileSync(join(process.cwd(), "components/publish-button.tsx"), "utf8");
-  const anchors = source.match(/<a className=\{buttonClass\([^>]*>/g) ?? [];
-  expect(anchors.length).toBeGreaterThan(0);
-  for (const anchor of anchors) expect(anchor).toContain('target="_blank"');
-  expect(source).not.toMatch(/<a [^>]*href=\{routes\.settings/);
+  const links = source.match(/<ButtonLink\b[^>]*>/g) ?? [];
+  expect(links).toHaveLength(4);
+  const external = links.filter((link) => /\bexternal\b/.test(link));
+  expect(external).toHaveLength(2);
+  for (const link of external) {
+    expect(link).toContain(" newTab");
+    expect(link).toContain('rel="noreferrer"');
+  }
+  const internal = links.filter((link) => !/\bexternal\b/.test(link));
+  expect(internal).toHaveLength(2);
+  for (const link of internal) expect(link).toContain("href={routes.settings(slug)}");
+  expect(source).not.toMatch(/<a\b[^>]*buttonClass/);
 });

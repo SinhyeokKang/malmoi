@@ -8,14 +8,14 @@ import { CopyButton } from "@/components/onboarding/copy-button";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useLandAfter } from "@/components/ui/focus";
-import { OnboardingModal } from "@/components/ui/modal";
+import { LargeModal } from "@/components/ui/large-modal";
 import { m } from "@/lib/i18n";
 import type { TokenGrant } from "@/lib/mcp/grant";
 
 import { chosenProjectIds, GRANT_ORDER, initialGrantFields, TokenGrantFields, type GrantFieldsValue, type ScopeProject } from "./token-grant-fields";
 
 /**
- * 토큰 생성·회전 모달 (핸드오프 `2a`–`2e` · `4a`). **`OnboardingModal` 2단계** — ① 폼 ② 값을 한 번 보여주기. ②에는 Back이 없다:
+ * 토큰 생성·회전 모달 (핸드오프 `2a`–`2e` · `4a`). **`LargeModal` 2단계** — ① 폼 ② 값을 한 번 보여주기. ②에는 Back이 없다:
  * 토큰은 ①의 확정에서 이미 만들어졌다. 생성과 회전이 같은 Action(`issueApiToken`)이고 회전은 경고 한 장과 현재 값 채움만 다르다.
  *
  * ⚠️ **결과를 셋으로 가른다** (design §8): 명시적 거부는 입력을 유지한 채 폼 위 danger Alert(`4a` — 같은 버튼이 재시도), 호출 자체가
@@ -101,7 +101,7 @@ export function TokenModal({
   const status = step === 2 ? m.mcpConnector.form.step(2) : emptyChoice ? m.mcpConnector.form.chooseOne : m.mcpConnector.form.step(1);
 
   return (
-    <OnboardingModal
+    <LargeModal
       open={open}
       onClose={onClose}
       title={title}
@@ -152,6 +152,6 @@ export function TokenModal({
           <TokenGrantFields value={fields} onChange={setFields} projects={projects} disabled={pending} />
         </div>
       )}
-    </OnboardingModal>
+    </LargeModal>
   );
 }

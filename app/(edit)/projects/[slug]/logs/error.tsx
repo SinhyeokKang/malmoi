@@ -1,10 +1,11 @@
 "use client";
 
-import { CircleX } from "lucide-react";
+import { ErrorState } from "@/components/ui/error-state";
+
 
 import { PanelBody } from "@/components/shell/content-panel";
-import { Button } from "@/components/ui/button";
-import { EmptyState } from "@/components/ui/empty-state";
+
+
 import { m } from "@/lib/i18n";
 
 /**
@@ -29,16 +30,7 @@ export default function LogsError({ retry }: { error: Error & { digest?: string 
     // 세로 중앙은 `flex-1`이 든다 — 셸 오류 경계·not-found 둘과 같은 형(malmoi#162).
     <PanelBody className="flex flex-col">
       <div className="flex flex-1 items-center justify-center">
-        <EmptyState
-          icon={CircleX}
-          title={m.logs.queryError.title}
-          description={m.logs.queryError.description}
-          action={
-            <Button type="button" variant="primary" onClick={() => retry()}>
-              {m.logs.queryError.retry}
-            </Button>
-          }
-        />
+        <ErrorState title={m.logs.queryError.title} description={m.logs.queryError.description} retry={retry} retryLabel={m.logs.queryError.retry} />
       </div>
     </PanelBody>
   );

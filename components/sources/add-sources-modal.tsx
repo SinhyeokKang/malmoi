@@ -8,7 +8,7 @@ import { FilesStep, failedPreview, samplePreview, type ManualEntry, type Preview
 import { failureText } from "@/components/onboarding/failure";
 import { useCommitWait } from "@/components/commit-wait";
 import { SlowNotice } from "@/components/slow-notice";
-import { OnboardingModal } from "@/components/ui/modal";
+import { LargeModal } from "@/components/ui/large-modal";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -103,7 +103,7 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
   const addReason = planAddBlock({ detecting, detectError: !!detectError, formats: selection.formats, conflicts: selection.conflicts.length });
   const addBlocked = addReason !== null;
   const manualBlocked = !manual.pathTemplate.trim() || !manual.baseLocale.trim();
-  return <OnboardingModal open={open} closeDisabled={pending} onClose={() => { if (!pending) onClose(); }} returnFocusRef={returnFocusRef}
+  return <LargeModal open={open} closeDisabled={pending} onClose={() => { if (!pending) onClose(); }} returnFocusRef={returnFocusRef}
     title={m.settings.sources.add} description={m.settings.sources.description} bodyScroll="hidden"
     className="h-[min(680px,calc(100svh-var(--spacing-modal-gutter)))] min-h-0" actions={<>
       <Button size="lg" disabled={pending} onClick={onClose}>{m.surfaces.cancel}</Button>
@@ -159,5 +159,5 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
         <SelectContent>{candidate.locales.map(code => <SelectItem disabled={pending || locked.has(picked!)} key={code} value={code}>{code}</SelectItem>)}</SelectContent>
       </Select></>}
     </div>
-  </OnboardingModal>;
+  </LargeModal>;
 }

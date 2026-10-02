@@ -207,7 +207,13 @@ describe("프로젝트 목록 — 행이 잘리지 않고 본문이 스크롤한
  * `/design-sync`가 든다.
  */
 describe("로케일 Meter — 캔버스 값 그대로", () => {
-  const METER = code("components/locale-meter.tsx");
+  const caller = code("components/locale-meter.tsx");
+  const METER = [caller, code("components/ui/meter.tsx")].join("\n");
+
+  it("로케일 계산이 공유 Meter에 전달된다", () => {
+    expect(caller).toContain('import { Meter } from "@/components/ui/meter"');
+    expect(caller).toContain("<Meter done={done} review={review}");
+  });
 
   it.each([
     ["칸 폭 100", "w-25"],

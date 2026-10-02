@@ -1,8 +1,8 @@
 import { Box, RotateCcw } from "lucide-react";
-import Link from "next/link";
+
 
 import { NewProjectButton } from "@/components/projects/new-project-button";
-import { buttonClass } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 import { EmptyState, NoMatch } from "@/components/ui/empty-state";
 import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
@@ -56,18 +56,17 @@ export function NoProjectsMatch({ query, onReset }: {
       description={m.projects.narrowed.description}
       /*
         좁힌 0건의 출구는 Logs 필터 0건과 같은 형이다(4-Y15 — `default` 버튼 + `RotateCcw`, 옛 파란 텍스트 링크). 앱 안 이동이라 파랑이 아니다.
-        ⚠️ **`ButtonLink`가 아니라 `Link` + `buttonClass`다** — 같은 탭 클릭만 로컬로 되돌리는 `onNavigate`를 `ButtonLink`가 넘기지 않는다
-        (새 탭·수정 키 클릭은 `href`로 남는다). ⚠️ **링을 직접 든다** — `focus-ring.test.ts`는 `button|input|select|textarea` 넷만 훑는다.
+        ButtonLink가 같은 탭 onNavigate를 전달하므로 수정 키·새 탭의 href는 그대로 남는다.
       */
       action={
-        <Link
+        <ButtonLink
           href={routes.projects()}
           onNavigate={onReset}
-          className={`${buttonClass()} focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none`}
+
         >
           <RotateCcw aria-hidden />
           {m.projects.narrowed.reset}
-        </Link>
+        </ButtonLink>
       }
     />
   );

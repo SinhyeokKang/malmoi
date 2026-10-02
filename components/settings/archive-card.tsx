@@ -1,5 +1,5 @@
 "use client";
-
+import { Link as InlineLink } from "@/components/ui/link";
 import { Suspense, use, useEffect, useRef, useState, useTransition } from "react";
 
 import { archiveProject, unarchiveProject, type ArchiveResult } from "@/app/(edit)/projects/actions";
@@ -161,14 +161,14 @@ function PrLine({ url }: { url: string | null | undefined }) {
   return (
     <p className="text-xs">
       {m.archive.confirm.openPr}{" "}
-      <a
+      <InlineLink
         href={url}
         target="_blank"
         rel="noreferrer"
-        className="focus-visible:ring-ring text-link focus-visible:ring-2 focus-visible:outline-none"
+
       >
         {m.archive.confirm.openPrLink}
-      </a>
+      </InlineLink>
     </p>
   );
 }
