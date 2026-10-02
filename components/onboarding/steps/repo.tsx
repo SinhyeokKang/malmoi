@@ -236,7 +236,7 @@ export function RepoStep({
                 <div className="p-3">
                   <Radio
                     value={repo.fullName}
-                    labelClassName="gap-3"
+                    className="gap-3"
                     label={
                       <>
                         {/*

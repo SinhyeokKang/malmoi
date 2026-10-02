@@ -217,7 +217,7 @@ function ScopeRow({ value, icon: Icon, label, selected, disabled }: { value: "al
     <Radio
       value={value}
       data-scope={value}
-      labelClassName={cn("gap-3 p-3", value === "all" && selected && "bg-muted", !disabled && ROW_HOVER)}
+      className={cn("gap-3 p-3", value === "all" && selected && "bg-muted", !disabled && ROW_HOVER)}
       label={
         <>
           <IconTile size="lg" className={selected ? "bg-background" : "bg-muted"}>

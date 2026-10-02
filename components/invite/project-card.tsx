@@ -45,10 +45,8 @@ export function InviteProjectCard({
       <ImageTile
         src={image}
         className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-sm text-white"
-        fallbackClassName={hueFill(name)}
-      >
-        <Box className="size-4" />
-      </ImageTile>
+        fallback={<span className={hueFill(name)}><Box className="size-4" /></span>}
+      />
       <div className="flex min-w-0 flex-1 flex-col gap-px">
         <span className="truncate text-sm">{name}</span>
         <span className="text-muted-foreground truncate text-xs">{role}</span>

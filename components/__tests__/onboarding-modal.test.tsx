@@ -298,3 +298,21 @@ it.each([undefined, null, false, <></>, <span>Hint</span>])("notice preserves nu
   expect(footer.firstElementChild?.textContent).toBe(notice == null ? "Step 1 of 4" : typeof notice === "boolean" ? "" : notice.props.children ?? "");
   expect(footer.lastElementChild?.className).toBe("flex items-center gap-2");
 });
+
+it("className overrides the same Content root while body scrolling and focus stay independent", async () => {
+  const { rerender } = await render(shell({ className: "min-h-0 h-[min(640px,calc(100svh-var(--spacing-modal-gutter)))]", bodyScroll: "hidden", transitionKey: "one" }));
+  const panel = find<HTMLElement>(document.body, "[data-onboarding-panel]");
+  const body = find<HTMLElement>(document.body, "[data-onboarding-body]");
+  expect(panel).toBe(dialog());
+  expect(panel.classList.contains("min-h-0")).toBe(true);
+  expect(panel.classList.contains("h-[min(640px,calc(100svh-var(--spacing-modal-gutter)))]")).toBe(true);
+  expect(panel.classList.contains("rounded-xl")).toBe(true);
+  expect(panel.classList.contains("max-w-[1024px]")).toBe(true);
+  expect(body.classList.contains("overflow-hidden")).toBe(true);
+  expect(body.classList.contains("min-h-0")).toBe(true);
+  expect(body.classList.contains("h-[min(640px,calc(100svh-var(--spacing-modal-gutter)))]")).toBe(false);
+  await rerender(shell({ className: "min-h-0", bodyScroll: "auto", transitionKey: "two" }));
+  expect(find(document.body, "[data-onboarding-panel]")).toBe(panel);
+  expect(body.classList.contains("overflow-y-auto")).toBe(true);
+  expect(document.activeElement).toBe(body);
+});

@@ -250,7 +250,7 @@ function BaseLocaleFields({ state, onChange, id = "base-locale", label = m.newPr
                     <div className="p-3">
                       <Radio
                         value={code}
-                        labelClassName="gap-3"
+                        className="gap-3"
                         label={
                           <>
                             <IconTile size="lg" className={active ? "bg-background" : "bg-muted"}>

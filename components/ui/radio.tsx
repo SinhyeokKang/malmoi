@@ -24,25 +24,23 @@ import { cn } from "@/lib/utils";
  * ⚠️ **`fieldset`/`legend`와 겹쳐 쓰지 않는다** — 둘 다 그룹이라 스크린리더가 그룹을 두 번 읽는다.
  * 이름은 `aria-label`이나 `aria-labelledby` **한 쪽만** 준다 (`naming.tsx`가 그 이유로 `fieldset`을 버렸다).
  *
- * ⚠️ **`labelClassName`은 행의 gap을 여는 자리다** — 온보딩 ①②③의 행이 "라디오 16 + 글리프 칩 40 +
- * 텍스트"이고 **셋 사이가 전부 12**다. `className`은 지시자로 가므로 그 자리로는 못 덮는다.
+ * className은 label 루트의 gap·행 배치를 덮고, native/ref/data/event 속성은 Radix Item에 남는다.
+ * Item과 Indicator의 치수·포커스 링은 내부 고정이다.
  */
 export const RadioGroup = Primitive.Root;
 
 export function Radio({
   label,
-  labelClassName,
   className,
   ...props
-}: ComponentProps<typeof Primitive.Item> & { label: ReactNode; labelClassName?: string }) {
+}: ComponentProps<typeof Primitive.Item> & { label: ReactNode }) {
   return (
-    <label className={cn("flex cursor-pointer items-center gap-2 text-sm", labelClassName)}>
+    <label className={cn("flex cursor-pointer items-center gap-2 text-sm", className)}>
       <Primitive.Item
         className={cn(
           "bg-background flex size-4 shrink-0 items-center justify-center rounded-full border border-gray-light",
           "data-[state=checked]:border-foreground disabled:cursor-not-allowed disabled:opacity-50",
           "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
-          className,
         )}
         {...props}
       >

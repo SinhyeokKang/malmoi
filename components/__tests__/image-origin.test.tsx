@@ -28,7 +28,7 @@ it("`Avatar`가 Blob URL을 자사 출처 경로로 그린다", async () => {
 });
 
 it("`ImageTile`이 Blob URL을 자사 출처 경로로 그린다", async () => {
-  const { container } = await render(<ImageTile src={`${BLOB}/projects/p1/n1.webp`}>M</ImageTile>);
+  const { container } = await render(<ImageTile src={`${BLOB}/projects/p1/n1.webp`} fallback={<span>M</span>} />);
   const src = find<HTMLImageElement>(container, "img").getAttribute("src");
   expect(src).toBe("/api/images/projects/p1/n1.webp");
   expect(src).not.toContain("blob.vercel-storage.com");

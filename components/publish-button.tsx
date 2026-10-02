@@ -660,5 +660,5 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
   return <OnboardingModal open={publish.open} onClose={publish.close} title={title} description={description} closeLabel={m.common.close}
     notice={footer} actions={actions} transitionKey={state.kind} quiet={quiet} returnFocusRef={publish.triggerRef} fallbackFocusRef={fallbackFocusRef}
     /* ⚠️ **안쪽 스크롤러가 있는 갈래만 `hidden`이다** — 나머지는 `shrink-0` 블록만 쌓아서, 낮은 뷰포트에서 잠그면 마지막 줄에 스크롤로도 못 닿는다. */
-    panelClassName={panel} bodyScroll={inner ? "hidden" : "auto"}>{body}</OnboardingModal>;
+    className={panel} bodyScroll={inner ? "hidden" : "auto"}>{body}</OnboardingModal>;
 }

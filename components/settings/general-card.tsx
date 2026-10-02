@@ -52,10 +52,8 @@ export function GeneralCard({ slug, name, image, archived }: { slug: string; nam
         <ImageTile
           src={image}
           className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-sm"
-          fallbackClassName={`text-white ${hueFill(name)}`}
-        >
-          <Box className="size-5" />
-        </ImageTile>
+          fallback={<span className={`text-white ${hueFill(name)}`}><Box className="size-5" /></span>}
+        />
         <div className="flex min-w-0 flex-col gap-1.5">
           <div className="flex items-center gap-2">
             <FileInput spinnerSize="sm" aria-describedby="project-image-caption" aria-invalid={shownImageError !== null} accept="image/png,image/jpeg" disabled={archived || pending} loading={pending && operation === "upload"} aria-busy={pending && operation === "upload"} onPick={file => {

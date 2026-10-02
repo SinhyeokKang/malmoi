@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { createElement as h } from "react";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ImageTile } from "@/components/ui/image-tile";
 import { ListItemButton } from "@/components/ui/list-item";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -140,6 +141,11 @@ const RADIX_FIXTURES = {
   "components/ui/radio.tsx": h(RadioGroup, { "aria-label": "Locale", defaultValue: "en" }, h(Radio, { label: "English", value: "en" })),
 };
 
+/** Slot만 쓰는 장식 타일도 실제 렌더 픽스처로 비포커스 계약을 확인한다. */
+const DECORATIVE_RADIX_FIXTURES = {
+  "components/ui/image-tile.tsx": h(ImageTile, { className: "size-7", fallback: h("span", null, h("svg")) }),
+};
+
 /**
  * 이 파일의 픽스처를 **면제**받는 `ui/` 파일. ⚠️ **둘의 사정이 다르다** (2026-09-13 리뷰 실측):
  * `segmented-control.tsx`는 자기 테스트가 링을 실제로 보고, **`dropdown-menu.tsx`는 아무 데서도
@@ -209,7 +215,7 @@ describe("포커스 링 (DESIGN §7)", () => {
       .filter((file) => readFileSync(file, "utf8").includes('from "radix-ui"'))
       .map(rel)
       .sort();
-    const accounted = [...Object.keys(FIXTURES), ...Object.keys(RADIX_FIXTURES), ...RING_FIXTURE_EXEMPT];
+    const accounted = [...Object.keys(FIXTURES), ...Object.keys(RADIX_FIXTURES), ...Object.keys(DECORATIVE_RADIX_FIXTURES), ...RING_FIXTURE_EXEMPT];
     expect(radixImporters.filter((file) => !accounted.includes(file))).toEqual([]);
   });
 
@@ -227,6 +233,15 @@ describe("포커스 링 (DESIGN §7)", () => {
     expect(tags.length).toBeGreaterThan(1);
     const offenders = tags.filter(({ tag }) => !RING.every((cls) => tag.includes(cls))).map(({ file }) => file);
     expect(offenders).toEqual([]);
+  });
+
+  it.each(Object.entries(DECORATIVE_RADIX_FIXTURES))("%s Slot fixture remains decorative and nonfocusable", async (_file, fixture) => {
+    const { container } = await render(fixture);
+    expect(container.firstElementChild?.tagName).toBe("SPAN");
+    expect(container.firstElementChild?.getAttribute("aria-hidden")).toBe("true");
+    expect(container.querySelectorAll("span")).toHaveLength(1);
+    expect(container.querySelector("span > svg")).not.toBeNull();
+    expect(container.querySelector('button,input,select,textarea,a[href],[tabindex]')).toBeNull();
   });
 
   it("네 태그 전부가 렌더된 포커스 링 셋을 든다", async () => {

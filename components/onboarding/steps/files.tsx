@@ -205,7 +205,7 @@ export function FilesStep({
                 <Button variant="ghost" type="button" aria-label={m.newProject.files.previewCandidate(c.pathTemplate)}
                   disabled={pending} className="text-foreground h-auto min-w-0 flex-1 justify-start gap-3 rounded p-0 text-left whitespace-normal"
                   onClick={() => onPick(index)}>{content}</Button>{locked && <span className="sr-only">{m.settings.sources.locked}</span>}
-              </> : <Radio disabled={pending} value={String(index)} labelClassName="gap-3" label={content} />}
+              </> : <Radio disabled={pending} value={String(index)} className="gap-3" label={content} />}
             </div>
           </li>
         );

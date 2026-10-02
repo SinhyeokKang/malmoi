@@ -52,7 +52,8 @@ export type OnboardingModalProps = {
    * 그래서 이 슬롯의 버튼은 default다.
    */
   headerAction?: ReactNode;
-  panelClassName?: string;
+  /** Radix Content 패널 루트의 치수·배치 클래스. */
+  className?: string;
   transitionKey?: string;
   quiet?: boolean;
   fallbackFocusRef?: RefObject<HTMLElement | null>;
@@ -97,7 +98,7 @@ export function OnboardingModal({
   onNext,
   onBack,
   onClose,
-  children, notice, actions, headerAction, closeLabel, closeDisabled = false, panelClassName, transitionKey, quiet = false, fallbackFocusRef, returnFocusRef, initialFocusRef,
+  children, notice, actions, headerAction, closeLabel, closeDisabled = false, className, transitionKey, quiet = false, fallbackFocusRef, returnFocusRef, initialFocusRef,
 }: OnboardingModalProps) {
   const bodyRef = useRef<HTMLDivElement>(null);
   /**
@@ -178,7 +179,7 @@ export function OnboardingModal({
             "bg-background fixed top-1/2 left-1/2 z-50 flex w-[calc(100%-var(--spacing-modal-gutter))] max-w-[1024px] -translate-x-1/2 -translate-y-1/2",
             "flex-col overflow-hidden rounded-xl shadow-medium",
             "min-h-[min(80svh,800px,calc(100svh-var(--spacing-modal-gutter)))] max-h-[min(800px,calc(100svh-var(--spacing-modal-gutter)))]",
-            panelClassName,
+            className,
           )}
         >
           {/*

@@ -67,7 +67,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
   const statusAt = detail === null || importStatus === null ? null : importStatus.state === "not-imported" ? detail.createdAt : importStatus.at;
   return <OnboardingModal open={sourceSlug !== null} title={sourceSlug ?? m.sources.details} description={detail ? `${m.surfaces.sourceCounts(detail.keys, detail.locales)}${detail.connection ? ` · ${detail.connection.format ?? (detail.connection.adapterName === null ? m.sources.notConfigured : m.sources.unknownFormat)}` : ""}` : failed ? undefined : m.sources.loading}
     onClose={() => leave()} closeDisabled={busy} returnFocusRef={returnFocusRef} fallbackFocusRef={fallbackFocusRef} quiet={fieldError}
-    panelClassName={cn(failed ? "min-h-0" : "min-h-[min(560px,calc(100svh-var(--spacing-modal-gutter)))] max-h-[min(800px,calc(100svh-var(--spacing-modal-gutter)))]")}
+    className={cn(failed ? "min-h-0" : "min-h-[min(560px,calc(100svh-var(--spacing-modal-gutter)))] max-h-[min(800px,calc(100svh-var(--spacing-modal-gutter)))]")}
     // [Open translations]는 바닥 행동 줄의 primary다(2026-09-30 사용자 — 머리 우측에서 옮겼다). [Close]가 보조다. 목록 행의 같은 버튼은 걷혔고 이 모달이 유일한 입구다.
     actions={<>
       <Button size="lg" disabled={busy} onClick={() => leave()}>{m.common.close}</Button>

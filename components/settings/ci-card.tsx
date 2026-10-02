@@ -40,7 +40,7 @@ export function CiCard({ slug, archived, unpinned = false, stale, children }: { 
     {!archived && !children && <p id={noSourcesId} className="text-muted-foreground px-4 pb-3.5 text-xs">{m.settings.ci.noSources}</p>}
     {stale.length > 0 && <p className="text-muted-foreground px-4 pb-3.5 text-xs">{m.settings.ci.stale} {stale.join(", ")}</p>}
     {/* ⚠️ 모달 `description`을 두지 않는다 — 저장 경로 문장은 `WorkflowBlock` 머리(Copy 옆)가 든다. 온보딩 ④와 같은 형이다(#120). */}
-    <OnboardingModal open={open && !archived} onClose={() => setOpen(false)} returnFocusRef={trigger} bodyScroll="hidden" title={m.settings.ci.workflow} panelClassName="h-[min(640px,calc(100svh-var(--spacing-modal-gutter)))] min-h-0" actions={<Button size="lg" onClick={() => setOpen(false)}>{m.common.close}</Button>}>
+    <OnboardingModal open={open && !archived} onClose={() => setOpen(false)} returnFocusRef={trigger} bodyScroll="hidden" title={m.settings.ci.workflow} className="h-[min(640px,calc(100svh-var(--spacing-modal-gutter)))] min-h-0" actions={<Button size="lg" onClick={() => setOpen(false)}>{m.common.close}</Button>}>
       {children}
       <p className="text-muted-foreground text-xs leading-body">{m.settings.workflow.hookHint("useTranslations()", "wrapper", <Link className="text-link focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none" href={routes.docs("setup/workflow", "workflow")}>{m.settings.workflow.hookDoc}</Link>)}</p>
     </OnboardingModal>

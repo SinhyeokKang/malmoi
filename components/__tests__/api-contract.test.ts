@@ -417,15 +417,12 @@ const CARDINALITY: Record<Rule, { rows: number; occurrences: number }> = {
   width: { rows: 0, occurrences: 0 }, progress: { rows: 3, occurrences: 3 },
   slots: { rows: 1, occurrences: 1 }, rest: { rows: 0, occurrences: 0 },
   "data-tone": { rows: 1, occurrences: 1 }, aria: { rows: 0, occurrences: 0 },
-  className: { rows: 3, occurrences: 3 },
+  className: { rows: 0, occurrences: 0 },
 };
 const ALLOWLIST: Debt[] = [
   { rule: "progress", path: "components/projects/new-project-button.tsx", symbol: "NewProjectButton", detail: "manual pending glyph replacement", count: 1, task: "T15" },
   { rule: "progress", path: "components/shell/new-project-icon.tsx", symbol: "NewProjectIcon", detail: "manual pending glyph replacement", count: 1, task: "T15" },
   { rule: "progress", path: "components/logs/row-chevron.tsx", symbol: "RowChevron", detail: "manual pending glyph replacement", count: 1, task: "T16" },
-  { rule: "className", path: "components/ui/image-tile.tsx", symbol: "ImageTile", detail: "fallbackClassName", count: 1, task: "T11" },
-  { rule: "className", path: "components/ui/modal.tsx", symbol: "OnboardingModal", detail: "panelClassName", count: 1, task: "T11" },
-  { rule: "className", path: "components/ui/radio.tsx", symbol: "Radio", detail: "labelClassName", count: 1, task: "T11" },
   { rule: "data-tone", path: "components/ui/row-card.tsx", symbol: "BannerLine", detail: "missing data-tone", count: 1, task: "T11" },
   { rule: "size", path: "components/shell/project-switcher.tsx", symbol: "Input", detail: "border-0", count: 1, task: "T19a" },
   { rule: "size", path: "components/shell/project-switcher.tsx", symbol: "Input", detail: "h-8", count: 1, task: "T19a" },
@@ -538,6 +535,16 @@ describe("primitive API contract — design §3", () => {
     const path = "components/ui/form-group.tsx";
     expect(scan([source('export function FormGroup({children}: {children: ReactNode}) {return <div>{children}</div>;}', path)])).toEqual([{rule: "aria", path, symbol: "FormGroup", detail: "unconnected children", count: 1}]);
     expect(scan([source('export function FormGroup({children}: {children: (describe: (ids?: string) => string | undefined) => ReactNode}) {return <div>{children(describe)}</div>;}', path)])).toEqual([]);
+  });
+
+  it.each([
+    ["components/ui/modal.tsx", "OnboardingModal", "panelClassName", "className"],
+    ["components/ui/radio.tsx", "Radio", "labelClassName", "className"],
+    ["components/ui/image-tile.tsx", "ImageTile", "fallbackClassName", "fallback"],
+  ])("T11D current-path className %s %s", (path, symbol, old, next) => {
+    const definition = (prop: string) => source(`export function ${symbol}(props: {${prop}?: ${prop === "fallback" ? "ReactElement" : "string"}}) {return <span/>;}`, path);
+    expect(scan([definition(old)])).toEqual([{rule: "className", path, symbol, detail: old, count: 1}]);
+    expect(scan([definition(next)])).toEqual([]);
   });
 
   const slotRenames = [

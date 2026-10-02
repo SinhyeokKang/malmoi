@@ -8,10 +8,10 @@ import { Radio, RadioGroup } from "@/components/ui/radio";
 
 import { find, key, render } from "./helpers/dom";
 
-describe("Radio before the API rename", () => {
-  it("keeps a named group, selected indicator and independent label/item classes", async () => {
+describe("Radio className contract", () => {
+  it("keeps a named group, selected indicator and root label classes", async () => {
     const { container } = await render(<RadioGroup aria-label="Repository" defaultValue="web">
-      <Radio value="web" label={<span>Web</span>} labelClassName="gap-3" className="mt-1" />
+      <Radio value="web" label={<span>Web</span>} className="gap-3 mt-1" />
       <Radio value="api" label="API" disabled />
     </RadioGroup>);
     const group = find(container, '[role="radiogroup"]');
@@ -22,7 +22,8 @@ describe("Radio before the API rename", () => {
     expect(selected?.querySelector('[data-state="checked"]')?.classList.contains("size-2")).toBe(true);
     expect(selected?.closest("label")?.textContent).toBe("Web");
     expect(selected?.closest("label")?.classList.contains("gap-3")).toBe(true);
-    expect(selected?.classList.contains("mt-1")).toBe(true);
+    expect(selected?.closest("label")?.classList.contains("mt-1")).toBe(true);
+    expect(selected?.classList.contains("mt-1")).toBe(false);
     for (const token of ["size-4", "rounded-full", "border", "border-gray-light", "data-[state=checked]:border-foreground", "focus-visible:ring-2"]) expect(selected?.classList.contains(token), token).toBe(true);
     expect(disabled?.matches(":disabled")).toBe(true);
     expect(disabled?.getAttribute("aria-checked")).toBe("false");
@@ -88,4 +89,29 @@ describe("ListItemButton before the API rename", () => {
     await act(async () => { await userEvent.setup().click(row); });
     expect(clicked).not.toHaveBeenCalled();
   });
+});
+
+it("Radio root classes leave ref, native data, aria and events on the actual Item", async () => {
+  const ref = createRef<HTMLButtonElement>();
+  const clicked = vi.fn();
+  const view = (disabled = false) => <RadioGroup aria-label="Scope" defaultValue="all"><Radio className="gap-3 p-3 bg-muted" label="All" value="all" ref={ref} id="scope-all" data-scope="all" aria-describedby="scope-help" onClick={clicked} disabled={disabled} /><p id="scope-help">Scope help</p></RadioGroup>;
+  const { container, rerender } = await render(view());
+  const item = find<HTMLButtonElement>(container, '[role="radio"]');
+  const label = item.closest("label")!;
+  expect(ref.current).toBe(item);
+  expect(item.id).toBe("scope-all");
+  expect(item.dataset.scope).toBe("all");
+  expect(item.getAttribute("aria-describedby")).toBe("scope-help");
+  expect(label.hasAttribute("data-scope")).toBe(false);
+  for (const token of ["gap-3", "p-3", "bg-muted"]) {
+    expect(label.classList.contains(token)).toBe(true);
+    expect(item.classList.contains(token)).toBe(false);
+  }
+  await act(async () => { await userEvent.setup().click(label); });
+  expect(clicked).toHaveBeenCalledOnce();
+  await rerender(view(true));
+  expect(ref.current).toBe(item);
+  expect(item.disabled).toBe(true);
+  await act(async () => { await userEvent.setup().click(item); });
+  expect(clicked).toHaveBeenCalledOnce();
 });

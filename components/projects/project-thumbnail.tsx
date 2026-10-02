@@ -45,9 +45,7 @@ export function ProjectThumbnail({ name, src, size = 28 }: { name: string; src?:
     <ImageTile
       src={src}
       className={`flex ${SIZE[size].tile} shrink-0 items-center justify-center overflow-hidden ${SIZE[size].radius}`}
-      fallbackClassName={`text-white ${hueFill(name)}`}
-    >
-      <Box className={SIZE[size].glyph} />
-    </ImageTile>
+      fallback={<span className={`text-white ${hueFill(name)}`}><Box className={SIZE[size].glyph} /></span>}
+    />
   );
 }
