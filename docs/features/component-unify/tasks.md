@@ -287,6 +287,11 @@ Run **`run_0e44db2882ac`**, 기존 coordinator **`term_dd1b2d61-f22d-4409-8977-7
 - **T20** design §6.3 남은 행(통합에 딸리지 않은 것 — token-grant-fields 역할 · 링 없는 링크 · BannerLine 선 등 — Facts는 T19e가 전담).
   검증 [수동]: 화면 목록 × 3 뷰포트 — 바뀐 자리가 §6.3 행과 1:1.
   `[commit] fix(ui): …`
+- [ ] **T20a — Geist 우선 폰트** (2026-10-02 사용자 추가): sans 폰트 스택을 **Geist → Pretendard Variable → 기존 시스템 폴백** 순서로 바꾼다. Geist가 지원하지 않는 글리프는 Pretendard Variable로 폴백한다. Pretendard Variable의 기존 자사 호스트 동적 서브셋과 생성/로딩 경로는 유지한다. monospace 스택은 대상이 아니다.
+  범위: `app/globals.css`의 `--font-sans`, `app/layout.tsx`의 실제 폰트 로딩 및 필요한 최소 폰트 자산/설정. 현재 스택은 Pretendard Variable 우선이다. Geist를 실제로 로드하며 CSS 이름만 앞에 추가하고 끝내지 않는다. 기존 의존성 버전을 임의로 올리지 않는다.
+  순서/소유권: **P3의 globals.css 변경을 통합한 뒤 별도 작은 커밋**으로 수행한다. T21의 DESIGN/CLAUDE/DIRECTORY 폰트 설명과 R3는 이 최종 폰트 구성을 기준으로 한다. 기존 시각 보존 범위에 대한 사용자 승인 추가이며, 글자 폭 차이를 이유로 무관한 컴포넌트 치수를 임의로 바꾸지 않는다.
+  검증 [자동]: 폰트 스택 순서·실제 로딩 연결·Pretendard 폴백 유지 계약을 먼저 테스트하고 관련 검사/typecheck 및 최종 누적 gate를 통과한다. [브라우저]: 폰트 로드 완료 후 영문/숫자의 Geist 사용과 한글의 Pretendard Variable 폴백을 확인하고, 1280/1440/1890에서 버튼·표·모달·긴 문장의 줄바꿈/넘침을 검사한다. 폰트 미로드 상태를 완료 스크린샷으로 쓰지 않는다.
+  `[commit] feat(ui): prefer Geist with Pretendard Variable fallback` — 이 tasks.md의 범위·검증·남은 작업 갱신을 함께 포함한다. **현재는 태스크 추가만 완료, 구현 미착수.**
 - **단위 ③ 끝**: `/runtime-test` — 픽스처 보관 프로젝트 · 오류 경계(`error.tsx` 유도) · 검색 0건(Logs·/projects·온보딩 repo·번역) · 포털은 트리거를 눌러 연다(Popover · LargeModal · event-dialog) · 키보드 Tab으로 필드·트리거 포커스 링(S13) → `/push`.
 
 ## F. 문서 · 종료
