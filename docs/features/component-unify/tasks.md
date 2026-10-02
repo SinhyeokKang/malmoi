@@ -439,3 +439,5 @@ Run **`run_0e44db2882ac`**, 기존 coordinator **`term_dd1b2d61-f22d-4409-8977-7
 - T21 global-search 추가 대조: ProjectThumbnail의 계획상 size16을 실제 심볼 API size="xs"(16px)로 고쳤다. Sol이 T20 승인표22행/38소스의 최종 이행을 읽기 전용으로 확인했고 잔여 구현 delta0이다. 추가 제품 변경을 만들지 않는다.
 
 - T21 DIRECTORY 추가 대조: ProjectThumbnail xs의 radius4와 sm/md/lg의 radius8을 명시해 현재 SIZE 맵과 맞췄다. 문서 diff 검사 통과, 주석 교정·최종 gate는 미완이다.
+
+- 앞 size 교정 체크포인트62b0027a는 치환 문자열이 실제 공백/백틱과 달라 실행 기록만 커밋됐다. 실제 global-search design 행을 이번 커밋에서 교정하고 diff로 확인했다. 앞 기록을 제품 수정의 증거로 세지 않는다.

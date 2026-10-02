@@ -153,7 +153,7 @@ CLAUDE.md는 "내부 **쓰기**는 Server Action"이고 읽기 전용 Action 선
 |---|---|---|
 | 결과 0건 | `NoMatch`(component-unify — `EmptyState` 위 `SearchX` 고정 형) | 제목 `No results for “{q}”`, 설명 한 문장, **출구 없음**(입력이 바로 위다). `NoMatch`는 `action: ReactElement` 출구 슬롯이 필수라 **출구 없는 형을 이 기능이 더한다** — 소비자가 함께 생기는 축이라 S5와 맞고, DESIGN "좁혀서 0건인 빈 상태의 출구" 규칙에 예외로 등재한다(D7) |
 | 보관 프로젝트 표시 | `Badge` (스위처·`/projects` 행과 같은 `Archived`) | |
-| 프로젝트 글리프 | `ProjectThumbnail` size 16 | 스위처와 같다 |
+| 프로젝트 글리프 | `ProjectThumbnail size="xs"`(16px) | 스위처와 같다 |
 | `View all …` 글리프 | `lib/shell/nav.ts`의 같은 목적지 `NavItem.icon` — `navWorkItems()`의 Projects 항목 · `navFooterItems()`의 Docs 항목 | 같은 목적지 = 같은 글리프 |
 | 입력 바탕 | `Input`(component-unify가 더한 글리프 슬롯) | `CommandInput`이 `Search` 글리프를 그 슬롯에 넣고 테두리를 끈다 — 글리프 배치를 새로 짜지 않는다 |
 | Dialog 첫 포커스 | `components/ui/dialog.tsx`의 `[data-initial-focus]` 규칙 | `CommandInput`이 그 표식을 단다 — 새 `onOpenAutoFocus`·새 표식(`data-command-input`)을 만들지 않는다(`primitive-focus.test.tsx`가 손 `onOpenAutoFocus` 0을 강제한다) |
