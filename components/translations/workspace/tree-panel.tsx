@@ -88,15 +88,13 @@ export function TreePanel({ tree, nodes = tree, surfaceSlug, ns, allSources = nu
       <div ref={listRef} className="border-divider flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto border-t p-2">
         {namespaceCount >= FILTER_AT && (
           <div className="relative mb-1.5">
-            <Search className="text-muted-foreground pointer-events-none absolute top-2 left-2.5 size-3.5" aria-hidden />
-            <Input width="full"
+            <Input width="full" size="sm" icon={<Search />} clearable
               type="search"
               value={filter}
               onChange={event => setFilter(event.target.value)}
               aria-label={m.translations.workspace.tree.filter}
               placeholder={m.translations.workspace.tree.filter}
               // 트리 행과 같은 폭으로 채운다.
-              className="h-8 pl-8 text-xs"
             />
           </div>
         )}

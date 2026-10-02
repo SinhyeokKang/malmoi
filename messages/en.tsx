@@ -371,6 +371,7 @@ export const en = {
     },
     /** 복사 버튼의 **라벨 교체** 셋 (DESIGN §6.4) — 실패를 삼키면 사용자가 복사된 줄 알고 떠난다. */
     copy: "Copy",
+    clearSearch: "Clear search",
     copied: "Copied",
     copyFailed: "Couldn't copy — select it yourself",
     /**
@@ -1489,7 +1490,6 @@ export const en = {
      * ⚠️ **`aria-label`은 줄임표가 없다** — 스크린리더가 읽는 **이름**이라 장식이 붙으면 안 된다.
      * 그래서 키가 둘로 갈려 있고, 값이 다르므로 "두 벌이면 하나가 낡는다"에 걸리지 않는다.
      *
-     * ⚠️ **`clear`가 없다** — 지우기는 `type="search"`의 네이티브 ✕가 든다.
      */
     search: { label: "Search projects", placeholder: "Search projects…" },
     /**

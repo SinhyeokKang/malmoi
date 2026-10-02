@@ -188,7 +188,6 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
               value={profile?.email ?? m.account.profile.none}
               readOnly
               tabIndex={-1}
-              className="bg-muted cursor-default"
             />
           </div>
           </PanelFacts>

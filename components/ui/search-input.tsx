@@ -42,15 +42,27 @@ export function SearchInput({ value, onSearch, label, placeholder = label, disab
 
   return (
     <div className={cn("relative", className)}>
-      <Search className="text-muted-foreground pointer-events-none absolute top-2.5 left-2 size-4" aria-hidden />
       <Input
         width={width}
+        icon={<Search />}
+        clearable
+        onClear={() => { submitted.current = null; setText(""); onSearch(""); }}
         type="search"
         value={text}
         disabled={disabled}
         onChange={(event) => setText(event.target.value)}
         onKeyDown={(event) => {
-          if (event.key !== "Enter" || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
+          if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
+          if (event.key === "Escape") {
+            if (text === "") return;
+            event.preventDefault();
+            event.stopPropagation();
+            submitted.current = null;
+            setText("");
+            onSearch("");
+            return;
+          }
+          if (event.key !== "Enter") return;
           event.preventDefault();
           const query = text.trim();
           // 지금 값과 같으면 URL이 안 바뀌어 응답이 없다 — 기억하면 다음 바깥 변경을 붙잡는다.
@@ -59,7 +71,6 @@ export function SearchInput({ value, onSearch, label, placeholder = label, disab
         }}
         placeholder={placeholder}
         aria-label={label}
-        className="pl-8"
       />
     </div>
   );

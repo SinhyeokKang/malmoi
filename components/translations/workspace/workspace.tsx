@@ -8,7 +8,7 @@ import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useOptimistic,
 import { previewTranslationRevert, revertTranslationKey, saveTranslationKey } from "@/app/(edit)/actions";
 import { useCommitWait } from "@/components/commit-wait";
 import { PublishButton, PublishModal, usePublish } from "@/components/publish-button";
-import { SearchInput } from "@/components/search-input";
+import { SearchInput } from "@/components/ui/search-input";
 import { SyncButton } from "@/components/home/sync-button";
 import { SyncLockBanner, SyncLockDialog } from "@/components/translations/sync-lock";
 import { BasePendingBanner } from "@/components/translations/base-pending-banner";

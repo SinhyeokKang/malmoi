@@ -172,19 +172,13 @@ export function RepoStep({
       {/* 다른 설치로 리포가 이미 보여도 요청이 사라진 것은 아니다 — 무음으로 두면 방금 한 요청이 안 먹은 것으로 읽힌다. */}
       {state.pending && <Alert variant="info">{m.newProject.empty.waiting.info}</Alert>}
 
-      {/*
-        ⚠️ **`SearchInput`을 쓰지 않는다** — 그 프리미티브는 Enter 제출형이고 폭을 `w-64`로 못 박았다
-        ("폭을 인자로 열면 툴바마다 검색창이 달라진다"). 여기는 입력 중 즉시 거르는 폭 100% 필드라
-        계약이 다르다. **글리프 자리잡기 관용구만 그 파일에서 그대로 가져온다.**
-      */}
-      <div ref={search} className="relative shrink-0">
-        <Search className="text-muted-foreground pointer-events-none absolute top-2.5 left-2.5 size-4" aria-hidden />
-        <Input width="full"
+      {/* 즉시 검색은 제출형 SearchInput 대신 Input의 글리프·지우기 슬롯을 쓴다. */}
+      <div ref={search} className="shrink-0">
+        <Input width="full" icon={<Search />} clearable
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
           placeholder={m.newProject.repo.search.placeholder}
           aria-label={m.newProject.repo.search.label}
-          className="pr-2.5 pl-8"
         />
       </div>
 

@@ -224,7 +224,7 @@ function scan(sources: readonly Source[], restDemand: readonly { path: string; s
       if (ts.isTemplateExpression(node)) return [node.head.text, ...node.templateSpans.flatMap(span => [...strings(span.expression, seen), span.literal.text])];
       return [];
     };
-    const api = path.startsWith("components/ui/") || path === "components/search-input.tsx";
+    const api = path.startsWith("components/ui/");
     const definitions = components(file);
     if (api) for (const component of definitions) {
       const { name, props, node } = component;
@@ -234,7 +234,7 @@ function scan(sources: readonly Source[], restDemand: readonly { path: string; s
         if (prop !== "className" && /ClassName$/.test(prop)) add("className", path, name, prop);
         if (["describedBy", "labelledBy", "ariaDescribedBy", "ariaLabelledBy"].includes(prop)) add("aria", path, name, prop);
         if (/^(?:nextPending|isBusy|isLoading|pending)$/.test(prop)) add("progress", path, name, prop);
-        if (prop === "text" && name === "SkeletonLine") add("size", path, name, "text");
+        if (prop === "text" && ["SkeletonLine", "Skeleton"].includes(name)) add("size", path, name, "text");
         if (prop === "size" && name !== "Avatar" && type) for (const value of axisValues(type)) {
           if (typeof value === "number") add("size", path, name, `numeric size:${value}`);
           else if (!["xs", "sm", "md", "lg", "icon-xs", "icon-sm", "icon-md", "icon-lg"].includes(value)) add("size", path, name, `size:${value}`);
@@ -352,7 +352,7 @@ function scan(sources: readonly Source[], restDemand: readonly { path: string; s
       const [namespace, member] = local.split(".");
       const imported = imports.get(local) ?? (namespace && member && imports.get(namespace)?.symbol === "*" ? origin(imports.get(namespace)!.path, member) : undefined);
       const symbol = imported?.symbol ?? local;
-      const primitive = imported?.path.startsWith("components/ui/") || imported?.path === "components/search-input.tsx";
+      const primitive = imported?.path.startsWith("components/ui/");
       const attr = (name: string): ts.JsxAttribute | undefined => node.attributes.properties.find((property): property is ts.JsxAttribute => ts.isJsxAttribute(property) && property.name.getText(file) === name);
       const classes = strings(attr("className")?.initializer).flatMap(value => value.split(/\s+/)).filter(Boolean);
       const panelClasses = strings(attr("panelClassName")?.initializer).flatMap(value => value.split(/\s+/)).filter(Boolean);
@@ -413,19 +413,13 @@ const REST_DEMAND: readonly { path: string; symbol: string }[] = [];
 // Update only the affected cells when resolving debt, alongside its exact allowlist rows.
 const CARDINALITY: Record<Rule, { rows: number; occurrences: number }> = {
   state: { rows: 0, occurrences: 0 }, variant: { rows: 0, occurrences: 0 },
-  hue: { rows: 0, occurrences: 0 }, size: { rows: 6, occurrences: 6 },
+  hue: { rows: 0, occurrences: 0 }, size: { rows: 0, occurrences: 0 },
   width: { rows: 0, occurrences: 0 }, progress: { rows: 0, occurrences: 0 },
   slots: { rows: 0, occurrences: 0 }, rest: { rows: 0, occurrences: 0 },
   "data-tone": { rows: 0, occurrences: 0 }, aria: { rows: 0, occurrences: 0 },
   className: { rows: 0, occurrences: 0 },
 };
 const ALLOWLIST: Debt[] = [
-  { rule: "size", path: "components/shell/project-switcher.tsx", symbol: "Input", detail: "border-0", count: 1, task: "T19a" },
-  { rule: "size", path: "components/shell/project-switcher.tsx", symbol: "Input", detail: "h-8", count: 1, task: "T19a" },
-  { rule: "size", path: "components/translations/workspace/locale-panel.tsx", symbol: "Input", detail: "h-7", count: 1, task: "T19a" },
-  { rule: "size", path: "components/translations/workspace/locale-panel.tsx", symbol: "Input", detail: "text-xs", count: 1, task: "T19a" },
-  { rule: "size", path: "components/translations/workspace/tree-panel.tsx", symbol: "Input", detail: "h-8", count: 1, task: "T19a" },
-  { rule: "size", path: "components/translations/workspace/tree-panel.tsx", symbol: "Input", detail: "text-xs", count: 1, task: "T19a" },
 ];
 
 function differences(actual: readonly Violation[], allowed: readonly Debt[]): { unknown: Violation[]; stale: Debt[] } {
@@ -447,11 +441,9 @@ describe("primitive API contract — design §3", () => {
     }
   });
 
-  it("T7–T18 leave zero owned debts and preserve exactly six T19a rows", () => {
-    expect(ALLOWLIST.filter(row => /^T(?:7|8|9|10|11)[a-f]?$/.test(row.task))).toEqual([]);
-    expect(ALLOWLIST.map(({task, rule, symbol, count}) => [task, rule, symbol, count]).sort()).toEqual([
-      ...Array.from({length:6}, () => ["T19a", "size", "Input", 1]),
-    ].sort());
+  it("the whole component-unify feature leaves zero API debts", () => {
+    expect(ALLOWLIST).toEqual([]);
+    expect(scan(SOURCES, REST_DEMAND)).toEqual([]);
   });
 
   it("T7 leaves no component result-label or tone mapping copies", () => {
@@ -467,10 +459,10 @@ describe("primitive API contract — design §3", () => {
     expect(ALLOWLIST.filter(row => row.task === "T7")).toEqual([]);
   });
 
-  it("T9 크기 부채는 없고 이후 Input 필드 크기 부채만 남는다", () => {
+  it("T19a resolves every remaining field size debt", () => {
     const remaining = scan(SOURCES).filter(row => row.rule === "size");
     expect(remaining.every(row => row.symbol === "Input")).toBe(true);
-    expect(remaining).toHaveLength(6);
+    expect(remaining).toEqual([]);
     expect(ALLOWLIST.filter(row => row.task === "T9")).toEqual([]);
   });
 
@@ -484,10 +476,10 @@ describe("primitive API contract — design §3", () => {
     expect(scan([good])).toEqual([]);
   });
 
-  it("현재 SkeletonLine 경로의 필수 text와 필수 size를 정확히 구분한다", () => {
-    const bad = source('export function SkeletonLine({text}: {text: "text-xs" | "text-sm" | "text-base" | "text-lg"}) {return <div className={text}/>;}', "components/ui/skeleton.tsx");
-    const good = source('export function SkeletonLine({size}: {size: "xs" | "sm" | "md" | "lg"}) {return <div/>;}', "components/ui/skeleton.tsx");
-    expect(scan([bad])).toEqual([{ rule: "size", path: "components/ui/skeleton.tsx", symbol: "SkeletonLine", detail: "text", count: 1 }]);
+  it("current Skeleton path의 필수 text와 필수 size를 정확히 구분한다", () => {
+    const bad = source('export function Skeleton({text}: {text: "text-xs" | "text-sm" | "text-base" | "text-lg"}) {return <div className={text}/>;}', "components/ui/skeleton.tsx");
+    const good = source('export function Skeleton({size}: {size: "xs" | "sm" | "md" | "lg"}) {return <div/>;}', "components/ui/skeleton.tsx");
+    expect(scan([bad])).toEqual([{ rule: "size", path: "components/ui/skeleton.tsx", symbol: "Skeleton", detail: "text", count: 1 }]);
     expect(scan([good])).toEqual([]);
   });
 
@@ -609,7 +601,7 @@ describe("primitive API contract — design §3", () => {
   it.each([
     ["Input", "components/ui/input.tsx"],
     ["SelectTrigger", "components/ui/select.tsx"],
-    ["SearchInput", "components/search-input.tsx"],
+    ["SearchInput", "components/ui/search-input.tsx"],
   ])("detects actual %s definition and consumer width violations", (symbol, path) => {
     const missing = source(`export function ${symbol}({className}: {className?: string}) {return <div/>;}`, path);
     expect(scan([missing]).filter(row => row.rule === "width")).toEqual([{rule: "width", path, symbol, detail: "missing width prop", count: 1}]);
@@ -622,13 +614,13 @@ describe("primitive API contract — design §3", () => {
   });
 
   it("detects SearchInput legacy inputClassName on its real definition and aliased consumers", () => {
-    const path = "components/search-input.tsx";
+    const path = "components/ui/search-input.tsx";
     const legacy = source('export function SearchInput({width, inputClassName}: {width?: 320; inputClassName?: string}) {return <div/>;}', path);
     expect(scan([legacy]).filter(row => row.rule === "className")).toEqual([{rule: "className", path, symbol: "SearchInput", detail: "inputClassName", count: 1}]);
-    const bad = source('import {SearchInput as Search} from "@/components/search-input"; const OLD = "w-80"; export function Screen() {return <Search inputClassName={OLD}/>;}', "components/canary.tsx");
+    const bad = source('import {SearchInput as Search} from "@/components/ui/search-input"; const OLD = "w-80"; export function Screen() {return <Search inputClassName={OLD}/>;}', "components/canary.tsx");
     expect(scan([legacy, bad]).filter(row => row.rule === "width")).toEqual([{rule: "width", path: bad.path, symbol: "SearchInput", detail: "inputClassName:w-80", count: 1}]);
     const current = source('export function SearchInput({width, className}: {width?: 320; className?: string}) {return <div/>;}', path);
-    const good = source('import {SearchInput as Search} from "@/components/search-input"; export function Screen() {return <Search width={320} className="ml-auto"/>;}', "components/canary.tsx");
+    const good = source('import {SearchInput as Search} from "@/components/ui/search-input"; export function Screen() {return <Search width={320} className="ml-auto"/>;}', "components/canary.tsx");
     expect(scan([current, good]).filter(row => row.rule === "width" || row.rule === "className")).toEqual([]);
   });
 

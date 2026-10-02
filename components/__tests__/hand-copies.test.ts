@@ -114,10 +114,18 @@ const RULES: Rule[] = [
     handCopy: (node, file) => canonicalTag(node, file) === "ImageTile" && /hueFill/.test(node.getText(file)),
     bad: 'export const Demo = () => <ImageTile className="size-8 rounded-sm" fallback={<span className={hueFill(name)}><Box /></span>} />;',
     good: 'import {ProjectThumbnail} from "@/components/ui/project-thumbnail"; export const Demo = () => <ProjectThumbnail size="md" name={name} />;' },
+{ primitive: "SearchInput", retired: [], retiredModules: ["@/components/search-input"], paths: ["components/projects/search-input.tsx"], minimum: 3,
+    handCopy: () => false,
+    bad: 'import {SearchInput as Find} from "@/components/search-input"; export const Demo = () => <Find label="Search" onSearch={search} value="" />;',
+    good: 'import {SearchInput} from "@/components/ui/search-input"; export const Demo = () => <SearchInput label="Search" onSearch={search} value="" />;' },
 { primitive: "Skeleton", retired: ["SkeletonLine"], paths: [], minimum: 10,
     handCopy: () => false,
     bad: 'import {SkeletonLine as Line} from "@/components/ui/skeleton"; export const Demo = () => <Line size="xs" />;',
-    good: 'import {Skeleton} from "@/components/ui/skeleton"; export const Demo = () => <Skeleton size="xs" />;' }
+    good: 'import {Skeleton} from "@/components/ui/skeleton"; export const Demo = () => <Skeleton size="xs" />;' },
+{ primitive: "Input", retired: [], paths: ["components/onboarding/steps/repo.tsx", "components/translations/workspace/tree-panel.tsx", "components/shell/project-switcher.tsx", "components/translations/workspace/locale-panel.tsx"], minimum: 10,
+    handCopy: (node, file) => canonicalTag(node, file) === "Search" && /absolute/.test(classes(node, file)) && /left-/.test(classes(node, file)) || canonicalTag(node, file) === "Input" && /(?:^|\s)(?:h-\d+|text-xs|border-0)(?:\s|$)/.test(classes(node, file)),
+    bad: 'export const Demo = () => <><Search className="absolute top-2 left-2.5" /><Input className="h-8 pl-8 text-xs" /></>;',
+    good: 'import {Input} from "@/components/ui/input"; export const Demo = () => <Input size="sm" icon={<Search />} clearable />;' }
 ];
 
 function scan(source: Source, rule: Rule): string[] {
@@ -261,9 +269,19 @@ const RETIRED_P3_SOURCES = [
     "code": "const P3RetiredProbe = () => (<ImageTile\n        src={image}\n        className=\"flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-sm text-white\"\n        fallback={<span className={hueFill(name)}><Box className=\"size-4\" /></span>}\n      />);"
   },
 {
+    "primitive": "SearchInput",
+    "path": "components/projects/search-input.tsx",
+    "code": "import { SearchInput } from \"@/components/search-input\";\nconst P3RetiredProbe = () => (<SearchInput\n      value={q}\n      onSearch={onSearch}\n      label={m.projects.search.label}\n      placeholder={m.projects.search.placeholder}\n    />);"
+  },
+{
     "primitive": "Skeleton",
     "path": "app/(edit)/account/loading.tsx",
     "code": "import { Skeleton, SkeletonLine } from \"@/components/ui/skeleton\";\nconst P3RetiredProbe = () => (<SkeletonLine size=\"lg\" className=\"w-32\" />);"
+  },
+{
+    "primitive": "Input",
+    "path": "components/onboarding/steps/repo.tsx",
+    "code": "const P3RetiredProbe = () => (<Search className=\"text-muted-foreground pointer-events-none absolute top-2.5 left-2.5 size-4\" aria-hidden />);"
   }
 ];
 

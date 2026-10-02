@@ -6,7 +6,7 @@ import { createRef, type ComponentProps } from "react";
 import { compile } from "tailwindcss";
 import { beforeAll, describe, expect, expectTypeOf, it, vi } from "vitest";
 
-import { SearchInput } from "@/components/search-input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -91,7 +91,7 @@ describe("field width API preserves actual dimensions", () => {
   it("SearchInput width changes only the input, while className still positions its outer flex item", async () => {
     const { container, rerender } = await render(<SearchInput width={320} className="ml-auto" label="Search" value="hello" disabled onSearch={vi.fn()} />);
     const field = find<HTMLInputElement>(container, "input");
-    const outer = field.parentElement!;
+    const outer = container.firstElementChild!;
     expect(outer.classList.contains("relative")).toBe(true);
     expect(outer.classList.contains("ml-auto")).toBe(true);
     expect(outer.classList.contains("w-80")).toBe(false);
@@ -99,7 +99,8 @@ describe("field width API preserves actual dimensions", () => {
     for (const token of ["w-80", "pl-8", "h-9"]) expect(field.classList.contains(token)).toBe(true);
     expect(field.disabled).toBe(true);
     expect(field.value).toBe("hello");
-    for (const token of ["absolute", "top-2.5", "left-2", "size-4"]) expect(find(outer, "svg").classList.contains(token)).toBe(true);
+    for (const token of ["absolute", "top-1/2", "left-2.5", "-translate-y-1/2"]) expect(find(outer, "svg").parentElement?.classList.contains(token)).toBe(true);
+    expect(find(outer, "svg").parentElement?.getAttribute("aria-hidden")).toBe("true");
     await rerender(<SearchInput width="full" className="ml-auto" label="Search" value="hello" onSearch={vi.fn()} />);
     expect(field.classList.contains("w-full")).toBe(true);
     expect(field.classList.contains("w-80")).toBe(false);

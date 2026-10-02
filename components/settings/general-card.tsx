@@ -100,7 +100,7 @@ export function GeneralCard({ slug, name, image, archived }: { slug: string; nam
       <label htmlFor="project-address" className="text-muted-foreground text-xs">{m.settings.general.address}</label>
       <div className="flex min-w-0 flex-wrap items-center gap-2">
         <div className="flex w-[320px] max-w-full @max-form:min-w-0 @max-form:flex-1">
-          <Input width="full" id="project-address" className="bg-muted text-muted-foreground" value={slug} readOnly />
+          <Input width="full" id="project-address" value={slug} readOnly />
         </div>
       </div>
     </PanelFacts></div>

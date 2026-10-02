@@ -279,7 +279,7 @@ function CopyLink({ href }: { href: string }) {
   return (
     <span className="flex shrink-0 items-center gap-1.5">
       {/* 실패하면 주소를 **선택된 채로** 준다 — 손으로 복사할 수 있어야 한다. */}
-      {state === "failed" && <Input width={192} autoFocus readOnly value={url} aria-label={w.copyFailed} onFocus={event => event.currentTarget.select()} className="h-7 text-xs" />}
+      {state === "failed" && <Input width={192} size="xs" autoFocus readOnly value={url} aria-label={w.copyFailed} onFocus={event => event.currentTarget.select()} />}
       <Button
         size="sm"
         // ⚠️ 복사된 동안은 이름을 비운다 (audit #39 · WCAG 2.5.3) — 보이는 `Copied`를 `Copy link`가 덮었다.

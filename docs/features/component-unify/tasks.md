@@ -337,3 +337,9 @@ Run **`run_0e44db2882ac`**, 기존 coordinator **`term_dd1b2d61-f22d-4409-8977-7
 
 - SelectRow 검증: Scope 중첩 hover/All 배경 소유자 RED 후 수정, 실제 DOM 및 컴파일 CSS로 라벨 한 겹3%/All 라벨 muted/Chosen 확장 부모 muted를 확인했다. 관련11파일 실행은317 passed / 신규 Slot 픽스처 누락1 failed; SelectRow의 위임된 Checkbox+aside Button 렌더 픽스처를 추가한 후 focus-ring·Scope CSS22/22 passed. 최종 typecheck exit0.
 - 실제 퇴역 SelectRow source·중첩 hover 재주입·All 부모 배경 회귀·검사기 제거가 각각 RED, 복원 후 hand-copy/Scope 계약 GREEN. 이19경로 작은 후보의 독립 리뷰0 findings와 명시적 COMMIT 승인을 받았으며 전체 누적 gate·나머지5체크포인트는 미완이다.
+
+- Input/Search 후보: 앞 체크포인트의 네 SelectRow 소비자/Scope 단일 hover는 보존한다. Input md36/sm32/xs28·bare·icon·clearable·readOnly, SearchInput ui 이동 및 실제 URL/제출/즉시검색 소비자, 이름 있는 X·native clear 제거와 API 부채6→0을 같은 작은 후보로 묶는다. 테두리 링 전환은 아직 기존ring2이며 마지막 체크포인트에서 수행한다.
+- 검증/독립 리뷰/COMMIT 대기; FieldTrigger·Copy·Secret·테두리 링과 누적 gate/R3/T20a/T21/T22는 미완이다.
+
+- Input/Search 검증: 이전 트리 dedicated fields6 failed/1 passed, 실제 ProjectSearch 지우기/Escape2 failed/1 passed로 RED. 구현 후 관련16파일473테스트·typecheck exit0. 테두리 링은 기존ring2를 유지했다.
+- 실제 base150 Input/Search 소스를 현재 경로에 넣어 parse0/RED, 추가 unrelated Input X·Escape 삭제·native clear 재노출·hand/API 검사기 제거 각각 RED; 복원 후 관련 검사 GREEN. 구 SearchInput 모듈 제거와 API 부채0, 닫기 X 예외는 정확한 Input clear 분기/이름/크기/한 자식만 허용한다. Input/Search25경로 독립 리뷰0 findings 및 명시적 COMMIT 승인을 받았다. 전체 gate는 미완이다.

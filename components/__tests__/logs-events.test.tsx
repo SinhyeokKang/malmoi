@@ -317,6 +317,8 @@ it("Logs keeps320px search inside the outer ml-auto filter flex item", async () 
   const field = container.querySelector<HTMLElement>('input[type="search"]')!;
   expect(field.classList.contains("w-80")).toBe(true);
   expect(field.classList.contains("ml-auto")).toBe(false);
-  expect(field.parentElement?.classList.contains("ml-auto")).toBe(true);
-  expect(field.parentElement).toBe(field.closest("[data-log-filter-row]")?.lastElementChild);
+  const outer = field.closest("[data-log-filter-row]")?.lastElementChild;
+  expect(outer?.contains(field)).toBe(true);
+  expect(outer?.classList.contains("ml-auto")).toBe(true);
+  expect(outer?.parentElement).toBe(field.closest("[data-log-filter-row]"));
 });

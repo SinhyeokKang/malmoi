@@ -5,7 +5,7 @@ import { expect, it, vi } from "vitest";
 
 import { render } from "./helpers/dom";
 
-import { SearchInput } from "@/components/search-input";
+import { SearchInput } from "@/components/ui/search-input";
 
 /**
  * **제출 뒤 이어 친 글자를 응답이 되돌리지 않는다** (audit-ux #15). 전엔 `value`가 바뀔 때마다 입력을 URL 값으로 덮어,
