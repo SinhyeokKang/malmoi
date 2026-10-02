@@ -160,10 +160,9 @@
   },
   {
     "repo": "Zimomo333/unreal-ui-next",
-    "correctCatalogPath": null,
-    "note": "로케일 파일이 없다",
-    "tier": "C",
-    "unsupported": "none"
+    "correctCatalogPath": "locale/lang/{locale}.ts",
+    "note": "2026-10-03 원문 확인: zh-cn.ts의 export default 객체에 UI 문자열이 있다. 단일 언어 코드 사전으로 지원한다.",
+    "tier": "C"
   },
   {
     "repo": "ajayyy/SponsorBlock",
@@ -378,10 +377,9 @@
   },
   {
     "repo": "home-assistant/frontend",
-    "correctCatalogPath": null,
-    "note": "번역을 리포에 두지 않는다 — build-scripts/gulp/download-translations.js가 빌드 때 받아온다",
-    "tier": "A",
-    "unsupported": "build-time"
+    "correctCatalogPath": "src/translations/{locale}.json",
+    "note": "2026-10-03 원문 확인: en.json에 실제 UI 문자열이 있다. 번역은 빌드 때 받아도 단일 언어 소스 사전은 지원한다.",
+    "tier": "A"
   },
   {
     "repo": "hoppscotch/hoppscotch",
@@ -394,10 +392,9 @@
   },
   {
     "repo": "huginn/huginn",
-    "correctCatalogPath": null,
-    "note": "config/locales에 en.yml·devise.en.yml 둘뿐 — 다국어 카탈로그가 없다",
-    "tier": "A",
-    "unsupported": "none"
+    "correctCatalogPath": "config/locales/{locale}.yml",
+    "note": "2026-10-03 원문 확인: en.yml의 Rails 영어 문구 사전. 단일 언어 지원에 따라 정답으로 포함한다.",
+    "tier": "A"
   },
   {
     "repo": "immich-app/immich",
@@ -609,10 +606,9 @@
   },
   {
     "repo": "sitb-software/veigar",
-    "correctCatalogPath": null,
-    "note": "로케일 파일이 없다",
-    "tier": "C",
-    "unsupported": "none"
+    "correctCatalogPath": "locale/{locale}.tsx",
+    "note": "2026-10-03 원문 확인: zh-cn.tsx의 export const lang에 inputTypePoint 문자열이 있다. 단일 언어 코드 사전으로 지원한다.",
+    "tier": "C"
   },
   {
     "repo": "siyuan-note/siyuan",

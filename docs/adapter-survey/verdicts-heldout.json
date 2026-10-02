@@ -16,7 +16,7 @@
   { "repo": "Stirling-Tools/Stirling-PDF", "correctCatalogPath": null, "unsupported": "properties", "note": "Java .properties + 번들된 pdfjs .ftl. 미탐지가 정답", "tier": "A" },
   { "repo": "AutomaApp/automa", "correctCatalogPath": "src/locales/{locale}/common.json", "alsoValid": ["src/locales/{locale}/blocks.json", "src/locales/{locale}/newtab.json", "src/locales/{locale}/popup.json"], "note": "10로케일 × 네임스페이스 4개", "tier": "B" },
   { "repo": "withastro/docs", "correctCatalogPath": "src/content/i18n/{locale}.yml", "note": "14로케일 YAML", "tier": "A" },
-  { "repo": "n8n-io/n8n", "correctCatalogPath": "packages/frontend/@n8n/i18n/src/locales/{locale}.json", "note": "지원 포맷이지만 리포에 en.json 하나뿐 — zoom-redirector와 같은 '2개 이상' 정책상 미탐지", "tier": "A" },
+  {"repo": "n8n-io/n8n", "correctCatalogPath": "packages/frontend/@n8n/i18n/src/locales/{locale}.json", "note": "2026-10-03 원문 확인: frontend와 mcp-apps의 단일 영어 사전 모두 유효하다. mcp-apps에는 workflowPreview UI 문자열이 있다.", "tier": "A", "alsoValid": ["packages/@n8n/mcp-apps/src/locales/{locale}.json"]},
   { "repo": "RSSNext/Folo", "correctCatalogPath": "locales/app/{locale}.json", "alsoValid": ["locales/ai/{locale}.json", "locales/common/{locale}.json", "locales/errors/{locale}.json", "locales/settings/{locale}.json", "locales/shortcuts/{locale}.json", "locales/native/{locale}.json", "locales/external/{locale}.json", "locales/lang/{locale}.json"], "note": "네임스페이스별 디렉터리. 어느 쪽을 잡아도 앱 카탈로그다", "tier": "A" },
   { "repo": "jitsi/jitsi-meet", "correctCatalogPath": "lang/main-{locale}.json", "note": "접두사 main-. lang/languages.json은 로케일 이름 목록이라 카탈로그가 아니다", "tier": "A" }
 ]
