@@ -92,7 +92,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | 방문 집계 | Vercel Web Analytics — **공개 페이지 페이지뷰 하나**(쿠키·커스텀 이벤트 없음). ⚠️ **`lib/seo/analytics.ts`의 추적 경로 허용 목록이 유일한 거름망이다** — 앱 URL엔 초대 토큰·slug·검색어가 실린다 |
 | 이미지 정규화 | `sharp` — 업로드 원본을 저장하지 않는다(192px 이내 WebP 재인코딩) |
 | 스타일 | Tailwind CSS 4 — **`tailwind.config.js`가 없다.** 테마는 `app/globals.css`의 `@theme` |
-| UI | **`components/ui/`를 이 리포가 소유한다** — 프리미티브 모듈 43개(`components/ui/*.tsx` 파일 기준; `.ts` 헬퍼 제외) + `radix-ui`(단일 통합 패키지)에서 DropdownMenu·Dialog·Slot·RadioGroup·Checkbox·Select·Popover 일곱. **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) |
+| UI | **`components/ui/`를 이 리포가 소유한다** — 프리미티브 모듈 47개(`components/ui/*.tsx` 파일 기준; `.ts` 헬퍼 제외) + `radix-ui`(단일 통합 패키지)에서 DropdownMenu·Dialog·Slot·RadioGroup·Checkbox·Select·Popover 일곱. **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) |
 | 토스트 | `sonner` — **루트 레이아웃이 렌더하는 유일한 서드파티 UI 컴포넌트다**(그 옆 `SiteAnalytics`는 화면이 없다) |
 | 패널 리사이즈 | `react-resizable-panels` — `resizable.tsx` 하나가 쓴다. ⚠️ **jsdom에서는 화면의 모든 클릭을 삼킨다** — `vitest.setup.ts`가 막는다 |
 | 아이콘·폰트 | `lucide-react` / **Geist Sans 우선 → Pretendard Variable 동적 서브셋 폴백, 둘 다 자사 호스트** |
@@ -138,6 +138,9 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | OAuth 동의 — Authorize·Deny | **Server Action** (`app/oauth/authorize/actions.ts`) | `/oauth/authorize` — 세션을 Action 안에서 다시 읽는다(화면을 그린 뒤 끝났을 수 있다). 판정·소비는 `lib/oauth-server/` |
 | Publish 미리보기 | **Server Action** (`app/(edit)/publish-actions.ts`) | 편집 UI — **읽기만 한다.** 그래서 `revalidatePath`를 부르지 않는다 |
 | 읽기 전용 조회 — Revert 미리보기(`previewTranslationRevert`) | **Server Action** (`app/(edit)/actions.ts`) | 편집 UI — Publish 미리보기와 같이 **`revalidatePath`를 부르지 않는다.** 인증·인가·readiness는 쓰기 Action과 같은 판정을 지난다. 키 목록은 전량이라 "다음 페이지" Action이 없다(2026-10-01, translation-filter-scope) |
+| 읽기 전용 조회 — Keys 검색(`searchKeysAction`) | **Server Action** (`app/search/actions.ts`) | 세션(`readSession`)의 userId로 코어 `searchKeys`가 **비보관 멤버 프로젝트 id를 SQL 안에서 확정**한다. q와 순위 힌트 `activeSlug`만 받고 클라이언트 프로젝트 목록을 받지 않는다. 보관·첫 적재 전 소스·orphaned 키/로케일 값 제외, 검색 코어 SQL 최대 둘. `redirect`·`revalidatePath`·검색어 로그 없음(ARCHITECTURE §6.37·§1.965) |
+| 읽기 전용 조회 — 검색 멤버십(`loadSearchMembershipsAction`) | **Server Action** (`app/search/actions.ts`) | 공개 셸용 읽기 — `readSession` → `loadMemberships(prisma, userId)` → `toNavProjects`의 일곱 필드(보관 포함). 로더는 호출마다 조회하며 성공·실패를 캐시하지 않는다. 세션 없음/장애는 union으로 반환, `redirect`·`revalidatePath` 없음(ARCHITECTURE §6.37) |
+| `/api/search-index` | Route Handler — **공개 · `force-static`** | 질의·세션·DB·쿠키 조회 없이 SUMMARY에 등재된 가이드 절 색인 `{ docs }`를 빌드 때 생성한다. 원고 실패는 빌드 실패다. Docs 로더만 성공 Promise를 탭 수명 재사용하며 실패는 다음 호출에 재시도한다(ARCHITECTURE §6.37) |
 | `/api/push` | Route Handler | GitHub Actions — Bearer가 **그 프로젝트의 토큰 원문**이다 |
 | `/api/push/failure` | Route Handler | GitHub Actions — 같은 프로젝트 토큰. **적재는 안 한다**(키·번역은 물론 `lastCommitSha`도 안 움직인다 — 전진시키면 다음 정상 push가 `stale-commit` 409를 받는다). 로케일 파일을 못 읽어 `/api/push`가 아예 안 불린 경우를 앱에 남기는 자리다 |
 | `/api/mcp` | Route Handler | CLI·코딩 에이전트 — Bearer가 **그 사용자의 개인 토큰**(`ApiToken`, `mlm_`) 또는 **OAuth access**(`OAuthConnection`, `mlo_`)이고 입구는 `resolveBearer` 하나다. **쿠키를 읽지 않는다**(CSRF 방어의 전부). 도구는 Action과 **같은 코어의 형제 껍데기**이고 Action을 부르지 않는다(ARCHITECTURE §6.45) |
