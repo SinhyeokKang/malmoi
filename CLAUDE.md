@@ -47,7 +47,7 @@
 ## 작업 원칙
 
 - **가정을 명시**: 해석이 여러 개면 조용히 하나 고르지 말고 선택지를 제시. 불확실하면 물어라.
-- **더 단순한 방법이 있으면 제안**: 200줄을 50줄로 줄일 수 있으면 줄여라. 요청하지 않은 유연성·설정 가능성·추상화 추가 금지. **확장성을 위한 선반영은 그 자체가 결함이다.**
+- **더 단순한 방법이 있으면 제안**: 200줄을 50줄로 줄일 수 있으면 줄여라. 요청하지 않은 유연성·설정 가능성·추상화 추가 금지. **확장성을 위한 선반영은 그 자체가 결함이다.** UI는 기존 프리미티브를 먼저 조립한다. 실재하는 손 사본을 같은 배치에서 새 프리미티브로 이관하는 것은 중복 제거이며, 소비자 없는 API·설정·확장성 선반영은 여전히 금지한다.
 - **외과적 변경**: 요청과 직접 관련 없는 인접 코드 개선·리팩터 금지. 기존 스타일 따르기. 기존 dead code는 언급만 하고 삭제하지 않는다 — 내 변경이 만든 고아만 제거.
 - **검증 가능한 목표로 전환**: "버그 고쳐" → "재현 테스트 작성 후 통과시켜". 멀티스텝 작업은 단계별 검증 체크를 포함한 플랜을 먼저 제시.
 - **테스트 우선**: 신규 인터페이스(함수·헬퍼·어댑터) 추가 시 테스트를 먼저 작성하고 구현한다. 기존 로직 변경 시에도 관련 순수 함수의 단위 테스트를 작성/갱신하고 `pnpm test` 통과를 확인한 뒤 작업을 마친다. 테스트 없이 코드만 변경하지 않는다.
@@ -72,10 +72,10 @@
 | 방문 집계 | Vercel Web Analytics — **공개 페이지 페이지뷰 하나**(쿠키·커스텀 이벤트 없음). ⚠️ **`lib/seo/analytics.ts`의 추적 경로 허용 목록이 유일한 거름망이다** — 앱 URL엔 초대 토큰·slug·검색어가 실린다 |
 | 이미지 정규화 | `sharp` — 업로드 원본을 저장하지 않는다(192px 이내 WebP 재인코딩) |
 | 스타일 | Tailwind CSS 4 — **`tailwind.config.js`가 없다.** 테마는 `app/globals.css`의 `@theme` |
-| UI | **`components/ui/`를 이 리포가 소유한다** — 프리미티브 30개 + `radix-ui`(단일 통합 패키지)에서 DropdownMenu·Dialog·Slot·RadioGroup·Checkbox·Select 여섯. **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) |
+| UI | **`components/ui/`를 이 리포가 소유한다** — 프리미티브 모듈 43개(`components/ui/*.tsx` 파일 기준; `.ts` 헬퍼 제외) + `radix-ui`(단일 통합 패키지)에서 DropdownMenu·Dialog·Slot·RadioGroup·Checkbox·Select·Popover 일곱. **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) |
 | 토스트 | `sonner` — **루트 레이아웃이 렌더하는 유일한 서드파티 UI 컴포넌트다**(그 옆 `SiteAnalytics`는 화면이 없다) |
 | 패널 리사이즈 | `react-resizable-panels` — `resizable.tsx` 하나가 쓴다. ⚠️ **jsdom에서는 화면의 모든 클릭을 삼킨다** — `vitest.setup.ts`가 막는다 |
-| 아이콘·폰트 | `lucide-react` / **Pretendard Variable 동적 서브셋, 자사 호스트** |
+| 아이콘·폰트 | `lucide-react` / **Geist Sans 우선 → Pretendard Variable 동적 서브셋 폴백, 둘 다 자사 호스트** |
 | 검증 | Zod 4 — `/api/push` 페이로드 등 외부 진입점 |
 | MCP 서버 | `@modelcontextprotocol/server` — **exact 고정**(`/api/mcp`, ARCHITECTURE §6.45). ⚠️ **클라이언트마다 개정이 다르다**(Claude Code 2026-07-28 · Codex 2025 handshake) — route가 둘 다 받고, SDK 기본값으로는 2025 응답이 SSE이고 `listChanged` 기본 true가 끝나지 않는 SSE를 연다. 올리기 전에 그 절을 읽는다. **OAuth AS도 이 앱이다**(`lib/oauth-server/`, §6.45.9) |
 | YAML | `yaml` — **CST 보존 수술적 치환용**(`parseDocument`) |
@@ -172,7 +172,9 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 
 **절차의 정본은 OPERATIONS "새 머신 셋업"이다**(두 대에서 작업한다 — `node_modules`·`generated/prisma`·`public/fonts`는 명령으로 복구되고 `.env.local`만 사람이 채운다). **⚠️ `.env.local`은 에이전트가 편집하지 않는다** — 편집하면 하네스가 "파일이 바뀌었다" 알림으로 **전문을 컨텍스트에 넣어** 시크릿이 트랜스크립트에 남는다(2026-09-04에 실제로 유출돼 전면 재발급했다). 구조가 필요하면 **다른 경로에 템플릿을 쓰고** 사람이 값을 채워 옮긴다. ⚠️ **`vercel env pull`로는 못 가져온다**(전부 Sensitive) — 다른 머신의 `.env.local`을 옮기는 것이 정상 경로다. ⚠️ **`vercel env add`의 성공 메시지를 근거로 삼지 않는다** — 확인 절차는 같은 절.
 
-### 폰트 — Pretendard 동적 서브셋 (생성물)
+### 폰트 — Geist 우선, Pretendard 동적 서브셋 폴백
+
+`app/fonts/geist/Geist.woff2`는 저장소가 소유하는 Geist Sans 가변 폰트(100–900)다. 출처·고정 버전·SHA와 OFL 라이선스는 같은 디렉터리에 둔다. `app/layout.tsx`의 `next/font/local`이 자사 호스트 자산과 preload를 만들고 루트 `--font-geist` 변수를 공급한다. `app/globals.css`의 sans 순서는 Geist → Pretendard Variable → 시스템 폰트다. **`adjustFontFallback: false`는 자동 Arial 폴백이 Pretendard 앞에 끼지 않도록 한다.** 영문·숫자는 Geist, Geist에 없는 한글은 Pretendard로 내려간다. monospace 스택은 별개다.
 
 `scripts/copy-fonts.mjs`가 `node_modules/pretendard`에서 `public/fonts/pretendard/`로 복사하고 `predev`·`prebuild`가 자동 실행한다. **`public/fonts/`는 생성물이라 `.gitignore`에 있다**(3.1MB, 92파일). CSS의 `url()`이 상대 경로라 **디렉터리 구조를 바꾸면 폰트가 조용히 404가 되고 시스템 폰트로 떨어진다**. `<link>`로 `app/layout.tsx`가 불러온다(`@import`로 넣으면 스타일시트 체인이 직렬화돼 폰트 요청이 한 단계 늦게 시작된다). **`.npmrc`의 `enable-pre-post-scripts=true`가 그 자동 실행을 보장한다 — 이 파일을 지우지 않는다.**
 

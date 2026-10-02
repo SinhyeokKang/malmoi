@@ -389,3 +389,8 @@ Run **`run_0e44db2882ac`**, 기존 coordinator **`term_dd1b2d61-f22d-4409-8977-7
 - Codex의 `design-sync`는 사용자에게 로컬 핸드오프 경로(README·HTML·참조 자산)를 요청한다. 제공된 경로는 다시 요구하지 않는다. DesignSync나 Claude 워커로 대체하지 않고 `ego-browser`로 실측한다. 브라우저 QA·가이드 촬영은 실제 도구 연결 여부로 판단한다.
 - 검증: 미러 생성기의 새 통합 테스트를 기존 구현에서 누락된 push 미러로 RED 확인 후 수정했다. 생성/드리프트/read-only check/사용자 스킬 보존6테스트·typecheck·22개 스킬 형식 검증·미러 검사 통과. 전체 `pnpm test`는 exit1: 666파일/10349테스트 통과, 1파일/1테스트 실패, 1스킵. 실패는 앞선 Geist의 `app/layout.tsx`를 import하는 SEO 테스트에서 `next/font/local`이 Vitest 함수가 아닌 문제이며 T20a 워커에 수정 배정했다. 하네스 독립 리뷰의 공통 모델 경계·QA 권한 분기 지적2건을 수정했고 재검토 결과 추가 findings0이다.
 - 이 변경은 하네스 전용이다. Geist 코드 통합(dev `d073963e`) 이후 실제 폰트/3뷰포트 R3·T21 문서·최종 gate·dev push·T22는 계속 미완이다.
+
+## T21 정본 문서 체크포인트 — 2026-10-02
+
+- CLAUDE: 실제 `components/ui/*.tsx` 43개와 Radix Popover 포함7종, 기존 프리미티브 우선 조립/실재 사본 이관 경계, Geist 우선·Pretendard 폴백/자산 소유권을 정본에 반영한다. 기존 런타임 공통 하네스와 모델 패밀리 정책은 보존한다. AGENTS 미러를 재생성하고 일치 검사를 수행한다.
+- T20a SEO 수정안은 독립 Astra 검토0 findings로 승인되어 Sol에 작은 커밋을 지시했다. 전체 gate·실제 폰트/3뷰포트 QA·나머지 T21 정본·T22/dev push는 아직 미완이다.
