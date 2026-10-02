@@ -12,7 +12,7 @@ describe("검색 단축키와 활성 id", () => {
     for (const extra of [{ shiftKey: true }, { altKey: true }, { ctrlKey: true }, { isComposing: true }, { keyCode: 229 }, { key: "j" }]) expect(isSearchShortcut(event({ metaKey: true, ...extra }), "MacIntel")).toBe(false);
   });
   it("input·textarea·편집 영역의 자손·열린 Dialog와 메뉴를 무시", () => {
-    document.body.innerHTML = '<input/><textarea/><div contenteditable="true"><span id="child"></span></div><button></button>';
+    document.body.innerHTML = '<input/><textarea></textarea><div contenteditable="true"><span id="child"></span></div><button></button>';
     for (const selector of ["input", "textarea", "#child"]) expect(shouldIgnoreShortcut(document.querySelector(selector), document)).toBe(true);
     expect(shouldIgnoreShortcut(document.querySelector("button"), document)).toBe(false);
     expect(shouldIgnoreShortcut(null, document)).toBe(false);

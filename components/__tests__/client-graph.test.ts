@@ -236,6 +236,7 @@ function typeOnly(clause: string): boolean {
  *    그 무게가 따라온다 — 7.2MB 사고가 트리 셰이킹에 기대면 안 된다는 것을 이미 보였다.
  */
 function valueImports(source: string): string[] {
+  source = source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/gm, "$1");
   const specifiers: string[] = [];
   for (const m of source.matchAll(/^\s*import\s+([\s\S]*?)from\s*["']([^"']+)["']/gm)) {
     if (!typeOnly(m[1] ?? "")) specifiers.push(m[2] ?? "");
@@ -463,6 +464,15 @@ describe("클라이언트 그래프", () => {
     const search = walk([join(ROOT, "lib/events/search.ts")]);
     expect([...search.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/events/search.ts"]);
     expect([...search.packages].filter((name) => !allowed(name))).toEqual([]);
+  });
+
+  it("검색 그래프 스캐너는 주석 속 import를 세지 않고 값 import만 찾는다", () => {
+    expect(valueImports('/*\nimport { bad } from "server-only";\n*/\n// import "node:fs";')).toEqual([]);
+    expect(valueImports('import type { KeyHit } from "@/lib/search/key-href";')).toEqual([]);
+    expect(valueImports('import { KeyHit } from "@/lib/search/key-href";')).toEqual(["@/lib/search/key-href"]);
+    const server = readFileSync(join(ROOT, "lib/keys/search.ts"), "utf8");
+    expect(server.length).toBeGreaterThan(0);
+    expect(valueImports(server)).not.toContain("@/lib/search/key-href");
   });
 
   it.each(["match", "highlight", "keys"])("검색 독립 모듈 %s는 자기 자신만 문다", (name) => {

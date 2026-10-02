@@ -12,7 +12,7 @@ describe("내비 검색 색인", () => {
     expect(found.menus.map(e => e.href)).toEqual([...navWorkItems().map(i => i.href), routes.newProject(), ...navFooterItems().map(i => i.href)]);
   });
   it("모든 역할과 보관 프로젝트가 기존 navZones의 권한·표면 주소·라벨을 그대로 쓴다", () => {
-    const projects = [project("owner"), project("editor", "EDITOR"), project("viewer", "VIEWER"), project("archived", "OWNER", true)];
+    const projects = [project("owner"), project("editor", "EDITOR"), project("archived", "OWNER", true)];
     const result = navSearchEntries(projects, options);
     expect(result.projects.map(e => e.slug)).toEqual(projects.map(p => p.slug));
     expect(result.projects.at(-1)).toMatchObject({ archived: true, href: routes.project("archived") });

@@ -15,7 +15,7 @@ describe("검색 판정", () => {
   it("제목 접두·제목 포함·맥락·본문 순위를 지킨다", () => {
     const rows = [entry("body", "Other", { body: "demo" }), entry("context", "Other", { context: "demo" }), entry("contains", "A demo"), entry("prefix", "Demo")];
     expect(rows.map(r => scoreEntry(r, ["demo"])?.score)).toEqual([1, 2, 3, 4]);
-    const groups = searchGroups(index({ projects: rows }), "demo", { activeSlug: null });
+    const groups = searchGroups(index({ docs: rows }), "demo", { activeSlug: null });
     expect(groups[0]?.items.map(r => r.id)).toEqual(["prefix", "contains", "context", "body"]);
   });
   it("그룹 순서·상한·빈 그룹 제거·동점 activeSlug와 안정 정렬", () => {
@@ -25,6 +25,10 @@ describe("검색 판정", () => {
     expect(found[0]?.items.map(r => r.id)).toEqual(["7", "0", "1", "2", "3"]);
     expect(searchGroups(index({ docs: [entry("doc")] }), "demo", { activeSlug: null }).map(g => g.kind)).toEqual(["docs"]);
     expect(searchGroups(index({ projects: rows }), " ", { activeSlug: null })).toEqual([]);
+  });
+  it("Projects는 이름만 찾고 표시용 slug는 검색하지 않는다", () => {
+    const found = searchGroups(index({ projects: [entry("project", "Display name", { context: "secret-slug", slug: "secret-slug" })] }), "secret-slug", { activeSlug: null });
+    expect(found).toEqual([]);
   });
   it("프로젝트가 있으면 현재·비보관 우선 3개와 출구, 프로젝트 메뉴 3개, 문서 도입부 3개", () => {
     const projects = [entry("old", "Old", { slug: "old", archived: true }), ...["a", "b", "c", "d"].map(slug => entry(slug, slug, { slug }))];
@@ -37,7 +41,7 @@ describe("검색 판정", () => {
     expect(found[2]?.items.map(r => r.id)).toEqual(["d1", "d2", "d3", "browse-all-docs"]);
     expect(previewGroups(index({ projects, menus }), { activeSlug: null })[1]?.items.map(r => r.id)).toEqual(["a0", "a1", "a2"]);
   });
-  it("프로젝트0と 비로그인 미리보기는 사용자/하단 메뉴와 Docs 출구", () => {
+  it("프로젝트 0과 비로그인 미리보기는 사용자/하단 메뉴와 Docs 출구", () => {
     const menus = ["projects", "mcp", "account", "new", "changelog", "docs"].map(id => entry(id));
     expect(previewGroups(index({ menus }), { activeSlug: null }).map(g => [g.kind, g.items.map(r => r.id)])).toEqual([["menus", ["projects", "mcp", "account"]], ["docs", ["browse-all-docs"]]]);
     expect(previewGroups(index({ authenticated: false, menus: menus.slice(-2) }), { activeSlug: null }).map(g => [g.kind, g.items.map(r => r.id)])).toEqual([["menus", ["changelog", "docs"]], ["docs", ["browse-all-docs"]]]);

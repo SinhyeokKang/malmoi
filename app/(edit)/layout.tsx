@@ -9,6 +9,7 @@ import { readSession } from "@/lib/auth/read-session";
 import { signOutAction } from "@/lib/auth/sign-out";
 import { getPrisma } from "@/lib/db";
 import { loadMemberships } from "@/lib/keys/query";
+import { toNavProjects } from "@/lib/shell/nav";
 
 /**
  * 편집 UI 셸 — **캔버스 위에 패널이 떠 있는 구조다** (8-2, 시안 `212:937`).
@@ -72,10 +73,7 @@ export default async function EditLayout({ children }: { children: React.ReactNo
             비밀은 아니지만 `lib/shell/nav.ts`가 좁힌 계약이 무의미해진다.
           */
           <Sidebar
-            memberships={memberships.map(({ slug, name, role, archivedAt, image, defaultSurfaceSlug, memberCount, sourceCount, keyCount }) => ({
-              slug, name, role, archived: archivedAt !== null, image, defaultSurfaceSlug,
-              counts: { sources: sourceCount, members: memberCount, keys: keyCount },
-            }))}
+            memberships={toNavProjects(memberships)}
             userName={name}
           />
         }
