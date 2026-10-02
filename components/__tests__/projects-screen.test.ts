@@ -119,8 +119,8 @@ describe("프로젝트 목록 — 배지는 항상 하나이고 갈래는 순수
     expect(STATE[CHIP_STATE.needs_reconnect].variant).toBe("warning");
     for (const chip of ["setup", "awaiting_first_sync", "archived"] as const) expect(STATE[CHIP_STATE[chip]].variant).toBe("neutral");
     const src = PAGE.map(code).join("\n");
-    expect(src).not.toContain("text-neutral-600");
-    expect(src).toContain('chipState === "archived" && "text-neutral-400"');
+    expect(src).not.toContain("text-gray-strong");
+    expect(src).toContain('chipState === "archived" && "text-gray-dim"');
   });
 
   /**
@@ -246,8 +246,8 @@ describe("목록 본문 — 캔버스 값 그대로", () => {
   it.each([
     ["이름 칸 420", "w-[420px]"],
     ["행 요소 gap 16", "gap-4"],
-    // 4-W3(ux-drift-unify) — 행 세로 padding은 `py-[13px]` 한 벌이다(PanelRow·EventRow·Sources·Settings와 같다).
-    ["행 padding 13/14/12", "py-[13px]"],
+    // 4-W3(ux-drift-unify) — 행 세로 padding은 `py-row-y` 한 벌이다(PanelRow·EventRow·Sources·Settings와 같다).
+    ["행 padding 13/14/12", "py-row-y"],
     ["행 hover 2%", "hover:bg-foreground/[0.02]"],
     ["헤더↔첫 행 hairline #f0f0f0", "border-foreground/[0.06]"],
     ["띠 좌측 들여쓰기 56", "pl-14"],
@@ -414,7 +414,7 @@ describe("목록 스켈레톤 — 실물과 같은 골격", () => {
 /**
  * **폭 축소는 컨테이너 쿼리다** (DESIGN §6.63).
  *
- * ⚠️ **뷰포트 브레이크포인트로는 영영 안 밟힌다.** 셸이 `min-w-[1280px]`을 들어 가로 스크롤이 먼저
+ * ⚠️ **뷰포트 브레이크포인트로는 영영 안 밟힌다.** 셸이 `min-w-shell-min`을 들어 가로 스크롤이 먼저
  * 생기고, 패널 폭은 같은 뷰포트에서도 **LNB 리사이즈(200~320)**로 두 값이 된다 — 실제로 변하는 것은
  * 카드 폭이다. (2026-09-16까지 근거가 '오른쪽 패널 유무'였고 그 패널을 지웠다 — DESIGN §6.55.)
  */
@@ -487,9 +487,9 @@ describe("캔버스 대조로 잡은 자리", () => {
    * 이 리포에서 꺼진 컨트롤의 글자색이라 더 내려갈 데가 없었다. **메타도 같은 값으로 따라간다** —
    * 색을 재는 렌더 단언은 `projects-cards.test.tsx`에 있고, 여기서는 갈래가 상태에 묶여 있는지를 센다.
    */
-  it("보관 행의 이름과 메타가 neutral-400이다", () => {
-    expect(BODY).toContain('status === "archived" && "text-neutral-400"');
-    expect(BODY).toContain('status === "archived" ? "text-neutral-400" : "text-muted-foreground"');
+  it("보관 행의 이름과 메타가 gray-dim이다", () => {
+    expect(BODY).toContain('status === "archived" && "text-gray-dim"');
+    expect(BODY).toContain('status === "archived" ? "text-gray-dim" : "text-muted-foreground"');
   });
 
   /**
@@ -498,7 +498,7 @@ describe("캔버스 대조로 잡은 자리", () => {
    */
   it("검색 일치를 이름 칸에서만 칠한다", () => {
     expect(BODY).toContain("highlightName(row.name, q)");
-    expect(BODY).toContain("rounded-[3px] bg-blue-600/[0.14] px-px");
+    expect(BODY).toContain("rounded-[3px] bg-link/[0.14] px-px");
     // 메타 줄은 원문 그대로다.
     expect(BODY).toMatch(/\$\{row\.repoOwner\}\/\$\{row\.repoName\}/);
   });
@@ -517,6 +517,6 @@ describe("캔버스 대조로 잡은 자리", () => {
   it("Clear search 머리 링크가 파랑이 아니다", () => {
     expect(BODY).toContain('className="focus-visible:ring-ring text-foreground ml-auto inline-flex items-center gap-0.5 text-sm');
     expect(BODY).toMatch(/\{m\.projects\.clearSearch\}[^<]*<ChevronRight/);
-    expect(BODY).not.toContain("ml-auto text-sm text-blue-600");
+    expect(BODY).not.toContain("ml-auto text-sm text-link");
   });
 });

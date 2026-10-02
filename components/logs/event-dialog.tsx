@@ -58,10 +58,10 @@ export function EventDialog({
       <Primitive.Portal>
         <Primitive.Overlay className="bg-foreground/32 fixed inset-0 z-50 backdrop-blur-[6px]" />
         <Primitive.Content
-          /* ⚠️ **`w-[calc(100%-96px)]`이 dim 여백 48을 든다** — 옛 `max-w-[calc(100vw-48px)]`는 좌우로
+          /* ⚠️ **`w-[calc(100%-var(--spacing-modal-gutter))]`이 dim 여백 48을 든다** — 옛 `max-w-[calc(100vw-48px)]`는 좌우로
              24씩만 비워 시안의 절반이었다(높이는 그때도 96을 뺐다). 높이는 `svh`다 — 1024 모달(`modal.tsx`)과 같은 단위라
              모바일 주소창이 접혀도 바닥이 화면 밖으로 안 나간다(3-Y6). */
-          className="bg-background fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100svh-96px)] w-[calc(100%-96px)] max-w-[1024px] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl shadow-medium"
+          className="bg-background fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100svh-var(--spacing-modal-gutter))] w-[calc(100%-var(--spacing-modal-gutter))] max-w-[1024px] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl shadow-medium"
           onCloseAutoFocus={(event) => {
             event.preventDefault();
             const row = document.getElementById(returnFocusId);

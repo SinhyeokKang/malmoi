@@ -30,11 +30,11 @@ it("Home 골격의 숫자 카드 grid는 실물과 같은 컨테이너 쿼리 �
 
 it("Home 골격의 할 일 행은 실물 행·줄 묶음과 같은 클래스다", async () => {
   const real = source("components/home/attention-card.tsx");
-  const row = "flex items-center gap-3 border-t px-4 py-[13px]";
+  const row = "flex items-center gap-3 border-t px-4 py-row-y";
   expect(real).toContain(row);
   expect(real).toContain("flex min-w-0 flex-1 flex-col gap-0.5");
   const { container } = await render(HomeLoading());
-  const li = [...container.querySelectorAll("li")].find((node) => node.className.includes("py-[13px]"))!;
+  const li = [...container.querySelectorAll("li")].find((node) => node.className.includes("py-row-y"))!;
   expect(li.className).toContain(row);
   // `justify-center`는 줄 둘이 칸을 채우는 실물에서 효과가 없다 — 간격(gap-0.5)과 방향만 같으면 된다.
   expect(li.querySelector(":scope > span")!.className).toMatch(/flex-col.*gap-0\.5/);
@@ -53,12 +53,12 @@ it("Logs 골격 머리는 필터 행을 든다 — 실물과 같은 행 클래�
 
 it("Logs 골격 행은 실물 EventRow와 같은 padding·줄 묶음이고 보조 줄이 있다", async () => {
   const real = source("components/logs/event-row.tsx");
-  expect(real).toContain("flex items-center gap-3 px-4 py-[13px]");
-  expect(real).toContain("flex min-w-0 flex-1 flex-col gap-[3px]");
+  expect(real).toContain("flex items-center gap-3 px-4 py-row-y");
+  expect(real).toContain("flex min-w-0 flex-1 flex-col gap-copy-gap");
   const { container } = await render(LogsLoading());
   const row = container.querySelector<HTMLElement>("[data-skeleton-event]")!;
-  expect(row.className).toContain("gap-3 border-t px-4 py-[13px]");
+  expect(row.className).toContain("gap-3 border-t px-4 py-row-y");
   const stack = row.querySelector<HTMLElement>("[data-skeleton-stack]")!;
-  expect(stack.className).toContain("flex min-w-0 flex-1 flex-col gap-[3px]");
+  expect(stack.className).toContain("flex min-w-0 flex-1 flex-col gap-copy-gap");
   expect(stack.children).toHaveLength(2);
 });

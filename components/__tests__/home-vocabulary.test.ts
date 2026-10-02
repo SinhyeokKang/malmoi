@@ -117,11 +117,20 @@ describe("완료 조건 9 — 파랑이 정확히 네 자리다", () => {
    * ⚠️ **파랑은 링크색이 아니라 "리포 트래픽"이다.** 카드 넷이 전부 링크인데 파란 것은 첫 칸
    * 하나이고, 로그의 PR 번호는 링크가 아니다 — `<a>`를 세는 것으로는 이 규칙을 못 센다.
    *
-   * ⚠️ **색 이름을 하드코딩하지 않는다.** DESIGN §6.2에 등재된 raw 파랑(`blue-600`)을 세는 것이고,
-   * 그 값이 바뀌면 이 정규식 한 줄이 함께 바뀐다.
+   * DESIGN §6.2의 `link` 토큰과 raw 파랑을 함께 센다. 토큰으로 옮겨도 자리 수는 그대로다.
    */
-  const BLUE = /\bblue-\d{2,3}\b/g;
+  const BLUE = /\bblue-\d{2,3}\b|(?<![\w-])(?:bg|text|border(?:-[trblxyse])?|ring|fill|stroke|from|to|via|outline|divide|shadow|decoration|placeholder|caret|accent)-link(?![\w-])/g;
   const count = (path: string): number => [...bare(read(path)).matchAll(BLUE)].length;
+
+  it("raw 파랑·토큰·수정자를 세고 식별자는 세지 않는다 (카나리아)", () => {
+    expect("text-blue-600 text-link hover:text-link routes.link text-linkish".match(BLUE)).toEqual(["blue-600", "text-link", "text-link"]);
+  });
+
+  it("별도 색 속성·수정자의 파랑과 link도 세는 카나리아", () => {
+    for (const prefix of ["bg", "text", "border-t", "ring", "fill", "stroke", "from", "to", "via", "outline", "divide", "shadow", "decoration", "placeholder", "caret", "accent"]) {
+      expect(`hover:${prefix}-blue-600 hover:${prefix}-link`.match(BLUE), prefix).toHaveLength(2);
+    }
+  });
 
   it("유입 카드가 글리프와 수치 둘을 든다", () => {
     expect(count("components/home/count-cards.tsx")).toBe(2);

@@ -49,6 +49,20 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
+  /* 같은 값의 기존 철자를 한 집에 둔다. 팔레트는 Tailwind 원본의 별칭이다(DESIGN §6.2). */
+  --color-link: var(--color-blue-600);
+  --color-gray-light: var(--color-neutral-300);
+  --color-gray-dim: var(--color-neutral-400);
+  --color-gray-strong: var(--color-neutral-600);
+  --leading-body: 1.6;
+  --leading-prose: 1.7;
+  --leading-translation: 1.55;
+  --spacing-row-y: 13px;
+  --spacing-copy-gap: 3px;
+  --spacing-modal-gutter: 96px;
+  --container-form: 640px;
+  --spacing-shell-min: 1280px;
+
   /**
    * ⚠️ **여기 등록하지 않으면 클래스가 생성되지 않는다.** `:root`에 변수만 만들면
    * `bg-canvas`·`from-auth-hero-from`이 **존재하지 않는 유틸**이 되어 조용히 무시되고,

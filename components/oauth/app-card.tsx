@@ -27,7 +27,7 @@ export function AppCard({ name, ident }: { name: string; ident: string }) {
           <span className="text-muted-foreground text-xs break-all">{ident}</span>
         </span>
       </div>
-      <p className="text-muted-foreground text-xs leading-[1.6]">{m.oauthAuthorize.appNameNote}</p>
+      <p className="text-muted-foreground text-xs leading-body">{m.oauthAuthorize.appNameNote}</p>
     </div>
   );
 }

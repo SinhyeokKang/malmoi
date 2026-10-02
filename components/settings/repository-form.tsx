@@ -21,7 +21,7 @@ import { isRepositorySettingsError, repositorySettingsErrorMessage, settingsAcce
 import { cn } from "@/lib/utils";
 
 /** 기준 브랜치 캡션의 배치 — 오류(`FieldError`)와 안내가 같은 자리에 선다. */
-const CAPTION = "min-w-0 flex-1 basis-40 @max-[640px]:basis-full";
+const CAPTION = "min-w-0 flex-1 basis-40 @max-form:basis-full";
 
 /**
  * ⚠️ **`unpinned`는 DB 판정이다**(`storedConnection` — 설치는 있고 리포 id가 없다, ux-drift-unify D1). 그 프로젝트의 목록 조회는
@@ -96,18 +96,18 @@ export function RepositoryForm({ slug, owner, repo, baseBranch, disabled = false
       {/* ⚠️ 이 행은 `bg-muted` 면이다 — 그 위의 `text-muted-foreground`는 4.35:1로 AA 하한을 깨서 캡션이 `text-foreground/60`이다 (온보딩 ①과 같은 판정). */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-[6px] px-4 py-3.5">
         {/* `for`는 편집 컨트롤이 설 때만 — 보관·고정 갈래의 값은 문단이고 조회 중엔 대상이 없다 (audit #89). */}
-        <label htmlFor={fixed || choice === undefined ? undefined : "base-branch"} className="text-foreground flex shrink-0 items-center gap-1.5 text-sm font-medium whitespace-nowrap @max-[640px]:basis-full" id="base-branch-label"><GitBranch className="size-3.5 shrink-0" aria-hidden />{m.settings.repository.fields.branch}</label>
+        <label htmlFor={fixed || choice === undefined ? undefined : "base-branch"} className="text-foreground flex shrink-0 items-center gap-1.5 text-sm font-medium whitespace-nowrap @max-form:basis-full" id="base-branch-label"><GitBranch className="size-3.5 shrink-0" aria-hidden />{m.settings.repository.fields.branch}</label>
         <div className="[&_.animate-spin]:size-3.5 flex min-w-0 flex-1 flex-wrap items-center gap-2">
           {fixed ? <p id="base-branch" className="text-sm">{branch}</p>
             : choice === undefined ? <div aria-busy="true"><Skeleton className="h-9 w-60 rounded-md" /></div>
             : choice.mode === "select" ? (
               <Select name="baseBranch" value={branch} disabled={pending} onValueChange={value => { setBranch(value); setResult("idle"); }}>
-                <SelectTrigger id="base-branch" aria-labelledby="base-branch-label base-branch" aria-describedby="base-branch-caption" aria-invalid={typeof result === "object"} className="w-60 max-w-full @max-[640px]:min-w-0 @max-[640px]:flex-1">
+                <SelectTrigger id="base-branch" aria-labelledby="base-branch-label base-branch" aria-describedby="base-branch-caption" aria-invalid={typeof result === "object"} className="w-60 max-w-full @max-form:min-w-0 @max-form:flex-1">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>{choice.names.map(name => <SelectItem key={name} value={name}>{name}</SelectItem>)}</SelectContent>
               </Select>
-            ) : <Input id="base-branch" name="baseBranch" className="w-60 max-w-full @max-[640px]:min-w-0 @max-[640px]:flex-1" value={branch} disabled={pending}
+            ) : <Input id="base-branch" name="baseBranch" className="w-60 max-w-full @max-form:min-w-0 @max-form:flex-1" value={branch} disabled={pending}
               aria-invalid={typeof result === "object"} aria-describedby="base-branch-caption"
               onChange={event => { setBranch(event.target.value); setResult("idle"); }} />}
           <Button ref={saveRef} type="submit" loading={pending} aria-busy={pending} disabled={!editable || branch === current}>{m.settings.repository.fields.save}</Button>

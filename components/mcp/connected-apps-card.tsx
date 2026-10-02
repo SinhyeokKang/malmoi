@@ -221,14 +221,14 @@ function AppRow({ app, now, onDisconnect }: { app: ConnectedAppData; now: Date; 
     [m.mcpConnector.token.facts.expires, <time dateTime={app.expiresAt}>{expired ? utcDay(expires) : relativeTime(expires, now)}</time>],
   ];
   return (
-    <div data-app-row={app.id} className="flex items-center gap-4 px-4 py-[13px]">
+    <div data-app-row={app.id} className="flex items-center gap-4 px-4 py-row-y">
       {/* 왼쪽 로고 칸은 40(`lg`)이다(2026-09-30 사용자). 만료 행도 로고는 그대로다 — 흐리게 하면 원본 색이 바뀐다. */}
       <IconTile size="lg" data-app-logo className="self-start">
         {app.brand === null ? <McpIcon /> : <BrandLogo brand={app.brand} className="size-5" />}
       </IconTile>
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <div className="flex min-w-0 items-start gap-2">
-          <span className={cn("min-w-0 text-base font-medium wrap-anywhere", expired && "text-neutral-400")}>{app.name}</span>
+          <span className={cn("min-w-0 text-base font-medium wrap-anywhere", expired && "text-gray-dim")}>{app.name}</span>
           {expired && <Badge variant="warning" className="shrink-0">{m.mcpConnector.token.expired}</Badge>}
         </div>
         <span className="text-muted-foreground min-w-0 text-xs break-all">{app.ident}</span>
@@ -236,7 +236,7 @@ function AppRow({ app, now, onDisconnect }: { app: ConnectedAppData; now: Date; 
           {facts.map(([label, content]) => (
             <div key={label} className="flex items-baseline gap-2">
               <dt className="text-muted-foreground text-xs">{label}</dt>
-              <dd className={cn("text-sm", expired && "text-neutral-400")}>{content}</dd>
+              <dd className={cn("text-sm", expired && "text-gray-dim")}>{content}</dd>
             </div>
           ))}
         </dl>

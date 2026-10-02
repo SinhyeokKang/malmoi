@@ -55,7 +55,7 @@ export function FormGroup({
       {error !== undefined ? (
         <FieldError id={id}>{error}</FieldError>
       ) : help !== undefined ? (
-        <p id={`${base}-help`} className="text-muted-foreground text-xs leading-[1.7]">{help}</p>
+        <p id={`${base}-help`} className="text-muted-foreground text-xs leading-prose">{help}</p>
       ) : null}
     </div>
   );
@@ -70,7 +70,7 @@ export function FormGroup({
  */
 export function FieldError({ className, children, ...props }: ComponentProps<"p">) {
   return (
-    <p role="alert" data-field-error="" className={cn("text-destructive flex items-start gap-1.5 text-xs leading-[1.7]", className)} {...props}>
+    <p role="alert" data-field-error="" className={cn("text-destructive flex items-start gap-1.5 text-xs leading-prose", className)} {...props}>
       <CircleAlert className="mt-1 size-3.5 shrink-0" aria-hidden />
       {children}
     </p>

@@ -167,7 +167,7 @@ export function ConsentPanel({
         <div className="flex flex-col gap-6">
           <TokenGrantFields value={fields} onChange={setFields} projects={projects} disabled={locked} columns={1} />
         </div>
-        <p className="text-muted-foreground text-xs leading-[1.7]">{m.oauthAuthorize.consentNote}</p>
+        <p className="text-muted-foreground text-xs leading-prose">{m.oauthAuthorize.consentNote}</p>
       </fieldset>
 
       <div className="flex w-full flex-col gap-3 pt-2">
@@ -182,7 +182,7 @@ export function ConsentPanel({
           </Alert>
         )}
         <div className="flex items-center gap-3">
-          <p id={footId} data-consent-status className="text-muted-foreground min-w-0 flex-1 text-xs leading-[1.6]">
+          <p id={footId} data-consent-status className="text-muted-foreground min-w-0 flex-1 text-xs leading-body">
             {footnote}
           </p>
           {unconfirmed ? (

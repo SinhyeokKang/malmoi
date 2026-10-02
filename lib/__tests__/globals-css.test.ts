@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
@@ -91,8 +92,11 @@ describe("globals.css — 토큰 등록", () => {
   /**
    * 등록에서 값을 안 가리키면 유틸은 생기지만 **색이 없다** — 위와 증상이 다르고 원인이 같다.
    */
-  it("`@theme`의 `--color-*`가 전부 `:root`의 실재 변수를 가리킨다", () => {
+  it("`@theme`의 `--color-*`가 앱 루트 또는 Tailwind 기본 테마의 실재 변수를 가리킨다", () => {
+    const require = createRequire(import.meta.url);
+    const defaults = readFileSync(require.resolve("tailwindcss/theme.css"), "utf8");
     const rootNames = new Set([...root.matchAll(/^\s*(--[\w-]+):/gm)].map((m) => m[1]));
+    for (const match of defaults.matchAll(/^\s*(--[\w-]+):/gm)) rootNames.add(match[1]);
     const dangling = [...theme.matchAll(/^\s*(--color-[\w-]+):\s*var\((--[\w-]+)\)/gm)]
       .filter((m) => !rootNames.has(m[2] ?? ""))
       .map((m) => m[1]);

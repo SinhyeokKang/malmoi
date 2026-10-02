@@ -224,7 +224,7 @@ function BaseLocaleFields({ state, onChange, id = "base-locale", label = m.newPr
             <p id={`${id}-label`} className="text-sm font-medium">
               {label}
             </p>
-            <p className="text-muted-foreground text-xs leading-[1.6]">{m.newProject.baseLocale.hint}</p>
+            <p className="text-muted-foreground text-xs leading-body">{m.newProject.baseLocale.hint}</p>
           </div>
           {/* ⚠️ **①②와 같은 행 형이다** — 글리프 칩 자리에 국기가 들어간다 (핸드오프 1c). */}
           <RadioGroup

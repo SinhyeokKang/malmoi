@@ -22,7 +22,7 @@ function sourceFiles(dir: string): string[] {
     if (name.startsWith(".") || SKIP.has(name)) continue;
     const full = join(dir, name);
     if (statSync(full).isDirectory()) out.push(...sourceFiles(full));
-    else if (/\.tsx?$/.test(name)) out.push(full);
+    else if (/\.tsx?$/.test(name) && !/\.test\./.test(name)) out.push(full);
   }
   return out;
 }
@@ -45,7 +45,7 @@ function hits(pattern: RegExp, sources = SOURCES): { path: string; token: string
 
 const PALETTE = "slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose";
 const RAW_COLOR = new RegExp(
-  `(?<![\\w-])(?:[a-z-]+:)*(?:bg|text|border|ring|fill|stroke|from|to|via|outline|divide|shadow|decoration)-(?:white|black|(?:${PALETTE})-\\d{2,3})(?:\\/(?:\\[[^\\]]+\\]|\\d+))?(?![\\w-])`,
+  `(?<![\\w-])(?:[a-z-]+:)*(?:bg|text|border(?:-[trblxyse])?|ring|fill|stroke|from|to|via|outline|divide|shadow|decoration|placeholder|caret|accent)-(?:white|black|(?:${PALETTE})-\\d{2,3})(?:\\/(?:\\[[^\\]]+\\]|\\d+))?(?![\\w-])`,
   "g",
 );
 /** 변형 접두(`hover:` 등)는 같은 색이다 — 값으로 센다. */
@@ -125,68 +125,7 @@ const REGISTERED: Record<string, string[]> = {
   // 빨강 — diff · missing 알약 · 사라짐 띠 · 임포트 실패 띠
   "text-red-700": ["components/landing/mockup/publish.tsx", "components/publish-button.tsx"],
   "bg-red-700/[0.14]": ["components/landing/mockup/publish.tsx", "components/publish-button.tsx"],
-  // blue-600 — 링크 색 (§6.3) · 검색 일치 구간
-  "text-blue-600": [
-    // `/oauth/authorize` 로그인 전 약관 링크 — `/signin`과 같은 줄이다 (mcp-oauth)
-    "app/oauth/authorize/page.tsx",
-    "app/signin/page.tsx",
-    // `/docs` 원고 본문 링크 · 404 복귀 링크 (§6.61)
-    "components/docs/classes.ts",
-    "components/home/count-cards.tsx",
-    "components/home/meta-column.tsx",
-    "components/home/sync-button.tsx",
-    "components/logs/event-detail.tsx",
-    "components/logs/event-meta.tsx",
-    "components/onboarding/steps/repo.tsx",
-    "components/privacy/privacy-doc.tsx",
-    "components/projects/project-list.tsx",
-    "components/publish-button.tsx",
-    "components/settings/archive-card.tsx",
-    "components/settings/ci-card.tsx",
-    "components/settings/repository-card.tsx",
-    "components/sources/source-detail-modal.tsx",
-    "components/sources/sources-screen.tsx",
-    "components/translations/workspace/locale-panel.tsx",
-    "components/translations/workspace/workspace.tsx",
-    "components/ui/alert.tsx",
-    "components/ui/button.tsx",
-  ],
-  "bg-blue-600/[0.14]": ["components/projects/project-list.tsx"],
-  // neutral 계단 — 300 · 400 · 600 · 50 (§6.2)
-  // `components/mcp/token-grant-fields.tsx` — 멤버십 0의 꺼진 `Chosen projects` 행 지시자(Radix Item이 아니라 사유를 읽히는 `aria-disabled` 행이다).
-  // 토큰 모달과 `/oauth/authorize` 동의 화면이 공유하는 필드다 (mcp-oauth — 핸드오프 §7.6)
-  "border-neutral-300": ["components/landing/mockup/translations.tsx", "components/mcp/token-grant-fields.tsx", "components/translations/workspace/locale-panel.tsx", "components/ui/checkbox.tsx", "components/ui/radio.tsx"],
-  "text-neutral-300": ["components/members/role-chip.tsx"],
-  "text-neutral-400": [
-    // `/docs` 행 화살표 `→` (§6.61, #119)
-    "components/docs/doc-frame.tsx",
-    "components/home/count-cards.tsx",
-    "components/home/meta-column.tsx",
-    "components/landing/mockup/translations.tsx",
-    "components/logs/event-detail.tsx",
-    // `/mcp` — 만료 토큰의 값(보관 행과 같은 예외) · 멤버십 0 행 (mcp-connector) · 연결된 앱의 만료 행 값 (mcp-oauth — 토큰 카드와 같은 형).
-    // 사실 라벨은 `text-muted-foreground`로 갔다(ux-drift-unify 4-Y22 — Account·General과 함께).
-    "components/mcp/connected-apps-card.tsx",
-    // `Allowed actions` 배지 — 만료 행의 흐린 값(2026-09-30 — 사실 블록에서 옮겨 왔다)
-    "components/mcp/grant-badges.tsx",
-    "components/mcp/token-card.tsx",
-    "components/mcp/token-grant-fields.tsx",
-    "components/projects/project-list.tsx",
-    // LNB 스위처의 보관 배지 — `/projects` 행 칩과 같은 형 (§6.5)
-    "components/shell/project-switcher.tsx",
-    "components/sources/source-detail-modal.tsx",
-    "components/translations/workspace/locale-panel.tsx",
-    "components/translations/workspace/tree-panel.tsx",
-  ],
-  "text-neutral-600": [
-    "components/home/sync-button.tsx",
-    // 랜딩 목업은 번역 작업 화면의 정적 복제라 그 화면의 색을 그대로 쓴다(새 값 0).
-    "components/landing/mockup/translations.tsx",
-    "components/translations/workspace/key-list.tsx",
-    "components/translations/workspace/locale-panel.tsx",
-    "components/translations/workspace/tree-panel.tsx",
-    "components/translations/workspace/workspace.tsx",
-  ],
+  // 링크와 neutral 300/400/600은 T2 의미 토큰이다. raw 등록은 neutral-50만 남는다.
   "bg-neutral-50": ["components/logs/event-detail.tsx"],
   // 흑백 둘 (§6.2 "흑백 둘과 남의 자산은 이 규칙 밖이다")
   "bg-white": ["components/signin/auth-layout.tsx"],
@@ -235,7 +174,7 @@ describe("raw 색은 §6.2 등재 목록 안에만 선다 (audit #43·#44)", () 
 
   it("이력 상세 껍데기 높이는 `svh`다 — 1024 모달과 같은 단위 (3-Y6)", () => {
     const shell = read("components/logs/event-dialog.tsx");
-    expect(shell).toContain("max-h-[calc(100svh-96px)]");
+    expect(shell).toContain("max-h-[calc(100svh-var(--spacing-modal-gutter))]");
     expect(shell).not.toContain("100vh");
   });
 
@@ -304,7 +243,7 @@ describe("아이콘은 §6.8의 넷(16·14·12·20)이다 (audit #48)", () => {
    */
   it("아이콘에 붙는 색은 무채 계단·destructive·PR 초록·warning 글리프뿐이다", () => {
     // `text-amber-700`은 §2.4 글리프 열의 warning 글리프다(Publish Held back 목록 머리, 2026-10-01 1-Y5) — 파일 범위는 위 `REGISTERED`가 묶는다.
-    const ALLOWED = new Set(["text-muted-foreground", "text-foreground", "text-destructive", "text-neutral-300", "text-neutral-400", "text-neutral-600", "text-green-800", "text-amber-700"]);
+    const ALLOWED = new Set(["text-muted-foreground", "text-foreground", "text-destructive", "text-gray-light", "text-gray-dim", "text-gray-strong", "text-green-800", "text-amber-700"]);
     const icons = SOURCES.flatMap(({ path, source }) => {
       const names = [...source.matchAll(/import\s*\{([^}]*)\}\s*from\s*"lucide-react"/g)].flatMap((match) => (match[1] ?? "").split(",").map((name) => name.trim()).filter(Boolean));
       // ⚠️ `className={cn(…)}`·템플릿 리터럴도 읽는다 — 여는 태그 안의 문자열 조각을 전부 모은다.
@@ -494,7 +433,7 @@ describe("T1 동치 철자와 값 보존 예외", () => {
 
 /**
  * **후보 행의 `IconTile`은 면만 덮는다** (ux-drift-unify T23 — IconTile 색 덮기 잔여). 글리프 색은 `tone`(상태 칸) 아니면 기본 muted 하나다 —
- * 꺼진 Scope 행의 `text-neutral-400` 칸은 같은 행 라벨이 이미 꺼짐을 말했다. 면(`bg-muted`·`bg-background` — 선택 면)은 T28 허용 목록이다.
+ * 꺼진 Scope 행의 `text-gray-dim` 칸은 같은 행 라벨이 이미 꺼짐을 말했다. 면(`bg-muted`·`bg-background` — 선택 면)은 T28 허용 목록이다.
  */
 describe("후보 행 IconTile의 덮기", () => {
   const FILES = ["components/onboarding/steps/naming.tsx", "components/onboarding/steps/files.tsx", "components/onboarding/steps/repo.tsx", "components/mcp/token-grant-fields.tsx"];
@@ -700,5 +639,26 @@ describe("화면 간 불변식 — grep 규칙 (T28)", () => {
       expect(mutated).not.toBe(source);
       expect(offenders([{ path, source: mutated }])).toEqual([path]);
     });
+  });
+});
+
+/** T2의 없어진 철자만 센다. API 이름·이미지 sizes의 1280px·모달의 다른 640px는 범위 밖이다. */
+const T2_RAW = /(?<![\w-])(?:bg|text|border(?:-[trblxyse])?|ring|fill|stroke|from|to|via|outline|divide|shadow|decoration|placeholder|caret|accent)-(?:blue-600|neutral-(?:300|400|600))(?![\w-])|leading-\[1\.(?:6|7|55)\]|py-\[13px\]|(?:gap|space-y)-\[3px\]|calc\(100(?:svh|%)-96px\)|@(?:max|min)-\[640px\]|min-w-\[1280px\]/g;
+
+describe("T2 raw 소비자 전수 제거", () => {
+  it("app/components/lib/messages 생산 소스에 이전 철자가 없다", () => {
+    expect(hits(T2_RAW, ALL_SOURCES)).toEqual([]);
+  });
+
+  it("수정자와 별도 색 속성을 실제로 잡는다 (양성 카나리아)", () => {
+    const samples = ["hover:text-blue-600", "border-t-neutral-300", "focus:placeholder-neutral-400", "caret-neutral-600", "accent-blue-600", "leading-[1.6]", "leading-[1.7]", "leading-[1.55]", "py-[13px]", "gap-[3px]", "space-y-[3px]", "h-[calc(100svh-96px)]", "w-[calc(100%-96px)]", "@max-[640px]:flex-wrap", "@min-[640px]:grid", "min-w-[1280px]"];
+    for (const path of ["app/canary.tsx", "components/canary.tsx", "lib/canary.ts", "messages/canary.ts"]) {
+      for (const source of samples) expect(hits(T2_RAW, [{ path, source }]), source).toHaveLength(1);
+    }
+    expect(hits(RAW_COLOR, [{ path: "lib/canary.ts", source: samples.slice(0, 5).join(" ") }])).toHaveLength(5);
+  });
+
+  it("새 토큰·범위 밖 값·T1 비동치 예외는 잡지 않는다 (음성 카나리아)", () => {
+    expect("text-link text-gray-light text-gray-dim text-gray-strong leading-body leading-prose leading-translation py-row-y gap-copy-gap space-y-copy-gap h-[calc(100svh-var(--spacing-modal-gutter))] @max-form:flex-wrap @min-form:grid min-w-shell-min py-[11px] max-w-[1016px] max-w-[850px] border-foreground/[0.06] ring-foreground/[0.06] rounded-[4px] bg-foreground/7".match(T2_RAW)).toBeNull();
   });
 });

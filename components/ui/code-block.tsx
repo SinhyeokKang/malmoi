@@ -80,7 +80,7 @@ export function CodeBlock({ code, filename, fill = false, className }: {
         role="region"
         aria-label={filename ?? m.publicDocs.docs.code}
         className={cn(
-          "text-mono m-0 py-4 pl-4 leading-[1.7] focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset",
+          "text-mono m-0 py-4 pl-4 leading-prose focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset",
           fill ? "min-h-0 flex-1 overflow-auto" : "overflow-x-auto",
           filename === null ? "pr-[88px]" : "pr-4",
         )}

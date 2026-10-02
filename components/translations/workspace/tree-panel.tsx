@@ -109,7 +109,7 @@ export function TreePanel({ tree, nodes = tree, surfaceSlug, ns, allSources = nu
             onClick={() => onSelectAll?.()}
             className={cn("flex items-center gap-2 rounded-sm px-2 py-[7px] text-sm", counted && allSources.count === 0 && "text-muted-foreground")}
           >
-            <span className="flex text-neutral-600"><Search className="size-4" aria-hidden /></span>
+            <span className="flex text-gray-strong"><Search className="size-4" aria-hidden /></span>
             <span className="min-w-0 flex-1 truncate font-medium">{m.translations.workspace.tree.allSources}</span>
             {allSources.count !== null && <span className="text-muted-foreground text-xs">{allSources.count.toLocaleString("en-US")}</span>}
           </ListItemButton>
@@ -127,8 +127,8 @@ export function TreePanel({ tree, nodes = tree, surfaceSlug, ns, allSources = nu
                 onClick={() => setCollapsed(prev => { const next = new Set(prev); if (open) next.add(surface.slug); else next.delete(surface.slug); return next; })}
                 className={cn("flex items-center gap-2 rounded-sm px-2 py-[7px] text-sm", counted && surface.keyCount === 0 && "text-muted-foreground")}
               >
-                <span className="flex text-neutral-600">{open ? <ChevronDown className="size-3.5" aria-hidden /> : <ChevronRight className="size-3.5" aria-hidden />}</span>
-                <span className="flex text-neutral-600"><FileJson2 className="size-4" aria-hidden /></span>
+                <span className="flex text-gray-strong">{open ? <ChevronDown className="size-3.5" aria-hidden /> : <ChevronRight className="size-3.5" aria-hidden />}</span>
+                <span className="flex text-gray-strong"><FileJson2 className="size-4" aria-hidden /></span>
                 <span className="min-w-0 flex-1 truncate font-medium">{surface.slug}</span>
                 <span className="text-muted-foreground text-xs">{surface.keyCount.toLocaleString("en-US")}</span>
               </ListItemButton>
@@ -188,7 +188,7 @@ function TreeItem({ surface, ns, icon, label, count, counted, mark, onClick }: {
       onClick={onClick}
       className={cn("flex items-center gap-2 rounded-sm py-1.5 pr-2 pl-[30px] text-sm", empty && "text-muted-foreground")}
     >
-      <span className={cn("flex", location ? "text-neutral-600" : "text-neutral-400")}>{icon}</span>
+      <span className={cn("flex", location ? "text-gray-strong" : "text-gray-dim")}>{icon}</span>
       <span className={cn("min-w-0 flex-1 truncate", location && "font-medium")}>{label}</span>
       <span className={cn("text-xs", location ? "text-foreground" : "text-muted-foreground")}>{count.toLocaleString("en-US")}</span>
     </ListItemButton>

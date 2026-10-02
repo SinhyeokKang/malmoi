@@ -66,7 +66,7 @@ export default function ProjectsLoading() {
             {[0, 1].map((i) => (
               <li
                 key={i}
-                className={`flex items-center gap-4 py-[13px] pr-3.5 pl-3 ${i === 0 ? "border-foreground/[0.06] border-t" : "border-border border-t"}`}
+                className={`flex items-center gap-4 py-row-y pr-3.5 pl-3 ${i === 0 ? "border-foreground/[0.06] border-t" : "border-border border-t"}`}
               >
                 <Skeleton className="size-7 rounded-[4px]" />
                 <div className="flex w-[420px] shrink-0 flex-col gap-0.5">

@@ -69,7 +69,7 @@ export function LocalePanel({ detail, draft, language, languageLocked = false, o
         <span className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-sm">
           <FileJson2 className="size-4 shrink-0" aria-hidden />
           {detail.key.surfaceSlug}
-          <ChevronRight className="size-3.5 shrink-0 text-neutral-400" aria-hidden />
+          <ChevronRight className="size-3.5 shrink-0 text-gray-dim" aria-hidden />
           <span className="text-foreground min-w-0 truncate font-medium">{detail.key.namespace}</span>
         </span>
         <span className="ml-auto">
@@ -105,7 +105,7 @@ export function LocalePanel({ detail, draft, language, languageLocked = false, o
                 {" · "}
                 {detail.refs[0].href === null
                   ? <span title={w.noCommit}>{`${detail.refs[0].path}:${detail.refs[0].line}`}<span className="sr-only">{` (${w.noCommit})`}</span></span>
-                  : <a href={detail.refs[0].href} target="_blank" rel="noreferrer" className="text-blue-600">{`${lastSegment(detail.refs[0].path)}:${detail.refs[0].line}`}</a>}
+                  : <a href={detail.refs[0].href} target="_blank" rel="noreferrer" className="text-link">{`${lastSegment(detail.refs[0].path)}:${detail.refs[0].line}`}</a>}
                 {/* ⚠️ `title`만으로는 hover에서만 읽힌다 (audit #38) — 같은 문장을 sr-only로 겹친다. 보이는 `+N`은 숨긴다(두 번 읽힌다). */}
                 {detail.refs.length > 1 && <span title={w.referenced(detail.refs.length)}><span aria-hidden>{` +${detail.refs.length - 1}`}</span><span className="sr-only">{` · ${w.referenced(detail.refs.length)}`}</span></span>}
               </>
@@ -230,7 +230,7 @@ function LocaleRow({ keyName, sourceText, sourceCode, locale, first, draft, save
       }}
       className={cn(
         // ⚠️ `w-full`이 필요하다 — 프리미티브의 `field-sizing-content`가 폭까지 내용에 맞춰 줄인다(실측 473 → 269).
-        "w-full rounded-md text-sm leading-[1.55]",
+        "w-full rounded-md text-sm leading-translation",
         // 빈 칸은 입력이 점선 상자 안쪽 전체다 — 어디를 눌러도 커서가 서고, 원문이 그 첫 줄 자리에 겹친다.
         empty ? "col-start-1 row-start-1 min-h-[42px] border-0 bg-transparent p-0 shadow-none focus-visible:ring-0" : "min-h-[62px] px-2.5 py-2.5",
       )}
@@ -259,9 +259,9 @@ function LocaleRow({ keyName, sourceText, sourceCode, locale, first, draft, save
         `placeholder` 속성이 아니라 겹친 span인 이유: 접근 이름과 따로 `aria-describedby`로 읽혀야 하고, 포인터를 가로채지 않아야 한다.
         absolute가 아니라 grid 한 칸에 쌓는다 — 원문이 여러 줄이면 상자가 그 높이를 따라야 다음 행을 덮지 않는다.
       */}
-      <div className={cn(empty && "has-[textarea:focus-visible]:ring-ring grid min-h-[62px] rounded-md border border-dashed border-neutral-300 p-2.5 has-[textarea:focus-visible]:ring-2")}>
+      <div className={cn(empty && "has-[textarea:focus-visible]:ring-ring grid min-h-[62px] rounded-md border border-dashed border-gray-light p-2.5 has-[textarea:focus-visible]:ring-2")}>
         {field}
-        {empty && <span id={helpId} {...(sourceCode === undefined ? { dir: "auto" } : localeTextAttrs(sourceCode))} className="text-muted-foreground pointer-events-none col-start-1 row-start-1 text-sm leading-[1.55]">{sourceText}</span>}
+        {empty && <span id={helpId} {...(sourceCode === undefined ? { dir: "auto" } : localeTextAttrs(sourceCode))} className="text-muted-foreground pointer-events-none col-start-1 row-start-1 text-sm leading-translation">{sourceText}</span>}
       </div>
     </div>
   );
@@ -290,7 +290,7 @@ function CopyLink({ href }: { href: string }) {
         }}
         className="h-7 min-w-7 gap-1 px-1.5"
       >
-        {state === "copied" ? <><Check className="size-3.5" aria-hidden />{w.copied}</> : <Link2 className="size-3.5 text-neutral-600" aria-hidden />}
+        {state === "copied" ? <><Check className="size-3.5" aria-hidden />{w.copied}</> : <Link2 className="size-3.5 text-gray-strong" aria-hidden />}
       </Button>
     </span>
   );

@@ -142,7 +142,7 @@ export function TokenModal({
             </code>
             <CopyButton value={token} />
           </div>
-          <p className="text-muted-foreground text-xs leading-[1.7]">{m.mcpConnector.result.setEnv}</p>
+          <p className="text-muted-foreground text-xs leading-prose">{m.mcpConnector.result.setEnv}</p>
         </div>
       ) : (
         <div data-token-form className="flex flex-col gap-6">

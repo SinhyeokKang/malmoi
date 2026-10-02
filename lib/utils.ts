@@ -10,7 +10,14 @@ import { extendTailwindMerge } from "tailwind-merge";
  */
 const twMerge = extendTailwindMerge({
   // `text-prose`(16px, `/privacy` 본문 — DESIGN §6.616)도 같은 이유로 등록한다 — 커스텀 크기 토큰은 전부 여기 선다.
-  extend: { classGroups: { "font-size": ["text-mono", "text-prose"] } },
+  extend: {
+    // CSS 토큰 등록만으로는 병합기가 임의값과 같은 그룹으로 알지 못한다(T2).
+    theme: {
+      leading: ["body", "prose", "translation"],
+      spacing: ["row-y", "copy-gap", "modal-gutter", "shell-min"],
+    },
+    classGroups: { "font-size": ["text-mono", "text-prose"] },
+  },
 });
 
 /** shadcn 표준 헬퍼. 조건부 클래스는 항상 이걸 지난다 (DESIGN.md §8). */

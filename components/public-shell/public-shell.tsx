@@ -18,7 +18,7 @@ import { PublicScroller } from "./scroller";
  * ⚠️ **패널이 두 겹이다**(앱 셸 `ContentPanel` + `PanelBody`와 같은 형) — 바깥 `<main>`이 표면이고 모서리를
  * 자르므로 안쪽 스크롤러의 스크롤바 트랙이 radius 밖으로 나가지 않는다. 랜드마크는 `<main>` 하나다.
  *
- * ⚠️ **`min-w-[1280px]`**: 그 아래는 가로 스크롤이 정상이다(DESIGN §5 — 앱 셸과 같다).
+ * ⚠️ **`min-w-shell-min`**: 그 아래는 가로 스크롤이 정상이다(DESIGN §5 — 앱 셸과 같다).
  */
 export function PublicShell({
   account,
@@ -45,7 +45,7 @@ export function PublicShell({
       */}
       <style>{`body{background-color:var(--canvas)}`}</style>
 
-      <div className="bg-canvas flex h-svh min-w-[1280px] flex-col overflow-hidden px-2 pt-2">
+      <div className="bg-canvas flex h-svh min-w-shell-min flex-col overflow-hidden px-2 pt-2">
         <PublicHeader account={account} current={current} />
         <main className="border-border-subtle bg-background shadow-low relative flex min-h-0 flex-1 overflow-hidden rounded-xl border">
           {bare ? children : <PublicScroller>{children}</PublicScroller>}

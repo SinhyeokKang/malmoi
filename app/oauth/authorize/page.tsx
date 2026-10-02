@@ -121,7 +121,7 @@ export default async function OAuthAuthorizePage({ searchParams }: { searchParam
             <ProviderButton provider="google" requestId={requestId} autoFocus={false} />
             <p className="text-muted-foreground text-center text-xs leading-relaxed">
               {m.signIn.consent.before}
-              <Link href={routes.privacy()} className="focus-visible:ring-ring text-blue-600 focus-visible:ring-2 focus-visible:outline-none">
+              <Link href={routes.privacy()} className="focus-visible:ring-ring text-link focus-visible:ring-2 focus-visible:outline-none">
                 {m.signIn.consent.link}
               </Link>
               {m.signIn.consent.after}

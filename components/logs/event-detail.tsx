@@ -113,11 +113,11 @@ export function EventDetail({
 
         {row.payload?.kind === "IMPORT" && row.payload.surfaces.length > 0 && (
           <div className="border-divider flex flex-col gap-2 border-t pt-4">
-            <span className="text-neutral-400 text-xs">{m.logs.detail.labels.resultPerSource}</span>
+            <span className="text-gray-dim text-xs">{m.logs.detail.labels.resultPerSource}</span>
             <div className="border-border overflow-hidden rounded-lg border">
               {row.payload.surfaces.map((surface, index) => (
                 <div key={surface.surfaceSlug} className={`flex items-start gap-3 px-3.5 py-3 ${index === 0 ? "" : "border-border border-t"}`}>
-                  <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
+                  <span className="flex min-w-0 flex-1 flex-col gap-copy-gap">
                     <span className="text-base font-medium">{surface.surfaceSlug}</span>
                     <span className="text-muted-foreground text-xs wrap-anywhere">
                       {surface.count === null ? m.logs.value.notRecorded : m.logs.meta.keys(surface.count)}
@@ -173,7 +173,7 @@ export function EventDetail({
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <TableRow className="h-12 hover:bg-transparent">
-      <TableHead scope="row" className="text-neutral-400 h-auto w-[104px] px-3.5 py-2.5 align-middle text-xs font-normal">
+      <TableHead scope="row" className="text-gray-dim h-auto w-[104px] px-3.5 py-2.5 align-middle text-xs font-normal">
         {label}
       </TableHead>
       <TableCell className="px-3.5 py-2.5 align-middle text-base whitespace-normal">{children}</TableCell>
@@ -186,7 +186,7 @@ function ValueBlock({ label, value, muted }: { label: string; value: string | nu
   const state = valueState(value);
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-neutral-400 text-xs">{label}</span>
+      <span className="text-gray-dim text-xs">{label}</span>
       {state.kind === "text" ? (
         /* ⚠️ **`bg-muted`(#f5f5f5)가 아니라 #fafafa다** — 시안의 Before 면이고, 흰 After와의 대비가
            한 단계 더 연해야 두 블록이 "같은 값의 두 시점"으로 읽힌다. */
@@ -259,14 +259,14 @@ function fields(row: EventRow): [string, ReactNode][] {
     const closed = row.run !== null && row.run.prUrl !== null && (row.result === "nothingToSend" || row.result === "notSent");
     if (closed && row.run?.prUrl) out.push([m.logs.detail.labels.closedPullRequest, <>
       {m.logs.detail.closedPullRequest}{" "}
-      <a href={row.run.prUrl} target="_blank" rel="noreferrer" className="text-blue-600">{m.translations.publish.viewLink}</a>
+      <a href={row.run.prUrl} target="_blank" rel="noreferrer" className="text-link">{m.translations.publish.viewLink}</a>
     </>]);
     else out.push([
       m.logs.detail.labels.pullRequest,
       row.run?.prUrl == null ? (
         <span className="text-muted-foreground">{m.logs.detail.noPullRequest}</span>
       ) : (
-        <a href={row.run.prUrl} target="_blank" rel="noreferrer" className="text-blue-600">
+        <a href={row.run.prUrl} target="_blank" rel="noreferrer" className="text-link">
           {m.translations.publish.viewLink}
         </a>
       ),

@@ -52,7 +52,7 @@ export function EventRow({
   return (
     <Link
       href={href}
-      className="focus-visible:ring-ring flex items-center gap-3 px-4 py-[13px] hover:bg-foreground/[0.02] focus-visible:ring-2 focus-visible:outline-none"
+      className="focus-visible:ring-ring flex items-center gap-3 px-4 py-row-y hover:bg-foreground/[0.02] focus-visible:ring-2 focus-visible:outline-none"
     >
       {showTime && (
         /*
@@ -68,7 +68,7 @@ export function EventRow({
         </time>
       )}
       <EventGlyph icon={glyph.icon} tone={glyph.tone} />
-      <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
+      <span className="flex min-w-0 flex-1 flex-col gap-copy-gap">
         <span className="text-base wrap-anywhere">{sentence}</span>
         <EventMetaLine row={row} archived={archived} />
       </span>

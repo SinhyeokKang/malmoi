@@ -20,7 +20,7 @@ import { uploadRejectMessage } from "@/lib/upload/message";
 import { cn } from "@/lib/utils";
 
 /** 이름 줄 캡션의 배치 — 오류(`FieldError`)와 안내가 같은 자리에 선다. */
-const CAPTION = "min-w-0 flex-1 basis-40 @max-[640px]:basis-full";
+const CAPTION = "min-w-0 flex-1 basis-40 @max-form:basis-full";
 
 export function GeneralCard({ slug, name, image, archived }: { slug: string; name: string; image: string | null; archived: boolean }) {
   const [value, setValue] = useState(name);
@@ -87,7 +87,7 @@ export function GeneralCard({ slug, name, image, archived }: { slug: string; nam
         setError(null); setSaved(false);
         save(async () => { try { const result = await updateProjectName({ slug, name: value }); if (result.ok) { setCurrent(result.name); setSaved(true); } else setError(isAccessError(result.error) ? settingsAccessMessage(result.error) : result.error === "empty" ? m.settings.general.emptyName : result.error === "too-long" ? m.settings.general.longName : m.settings.repository.fields.failed); } catch { setError(m.settings.repository.fields.failed); } });
       }}>
-        <Input ref={nameRef} id="project-name" className="w-[320px] max-w-full @max-[640px]:min-w-0 @max-[640px]:flex-1" value={archived ? current : value} maxLength={PROJECT_NAME_MAX_CHARS} disabled={archived || saving} aria-invalid={nameError !== null} aria-describedby="project-name-caption" onChange={event => { setValue(event.target.value); setSaved(false); setError(null); }} />
+        <Input ref={nameRef} id="project-name" className="w-[320px] max-w-full @max-form:min-w-0 @max-form:flex-1" value={archived ? current : value} maxLength={PROJECT_NAME_MAX_CHARS} disabled={archived || saving} aria-invalid={nameError !== null} aria-describedby="project-name-caption" onChange={event => { setValue(event.target.value); setSaved(false); setError(null); }} />
         <Button ref={saveRef} className="[&_.animate-spin]:size-3.5" type="submit" loading={saving} aria-busy={saving} disabled={archived || !plan.ok || plan.name === current} aria-describedby="project-name-caption">{m.settings.repository.fields.save}</Button>
         {nameError ? <FieldError id="project-name-caption" className={CAPTION}>{nameError}</FieldError> : (
           <p id="project-name-caption" className={cn(CAPTION, "text-muted-foreground text-xs")}>
@@ -103,7 +103,7 @@ export function GeneralCard({ slug, name, image, archived }: { slug: string; nam
     <div className="border-border border-t"><PanelFacts>
       <label htmlFor="project-address" className="text-muted-foreground text-xs">{m.settings.general.address}</label>
       <div className="flex min-w-0 flex-wrap items-center gap-2">
-        <Input id="project-address" className="bg-muted text-muted-foreground w-[320px] max-w-full @max-[640px]:min-w-0 @max-[640px]:flex-1" value={slug} readOnly />
+        <Input id="project-address" className="bg-muted text-muted-foreground w-[320px] max-w-full @max-form:min-w-0 @max-form:flex-1" value={slug} readOnly />
       </div>
     </PanelFacts></div>
   </PanelCard>;

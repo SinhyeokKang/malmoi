@@ -71,7 +71,7 @@ export default async function Root() {
           <br />
           {hero.title[1]}
         </h1>
-        <p className="mt-5 max-w-[44em] text-lg leading-[1.6] text-balance">{hero.body}</p>
+        <p className="mt-5 max-w-[44em] text-lg leading-body text-balance">{hero.body}</p>
         <div className="mt-5 flex gap-2">
           {/* 선행 아이콘은 `Button`의 svg 슬롯(16 · gap 8)에 맡긴다 — 크기를 여기서 주지 않는다(DESIGN §6.615). */}
           <ButtonLink href={routes.docs()} size="lg"><DocsIcon aria-hidden />{shell.docs}</ButtonLink>
@@ -87,7 +87,7 @@ export default async function Root() {
           // 위아래 여백은 섹션 자신의 padding-block 240이다(2026-09-27 사용자 — 120의 두 배). 이웃의 margin으로 만들지 않는다.
           <section aria-labelledby="landing-closing" className="flex flex-col items-center px-8 py-60 text-center">
             <h2 id="landing-closing" className="m-0 text-5xl leading-[1.1] font-semibold">{closing.title}</h2>
-            <p className="mt-5 max-w-[40em] text-lg leading-[1.6] text-balance">{closing.body}</p>
+            <p className="mt-5 max-w-[40em] text-lg leading-body text-balance">{closing.body}</p>
             <div className="mt-5 flex gap-2">
               {/* ⚠️ 외부 링크라 `ButtonLink`(next/link)가 아니라 `<a>` + `buttonClass`다(Publish 결과의 `View pull request`와 같은 형). 새 탭 · 글리프 없음(DESIGN §6.3). */}
               <a href={GITHUB_REPO_URL} target="_blank" rel="noreferrer"

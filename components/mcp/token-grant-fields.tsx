@@ -143,7 +143,7 @@ export function TokenGrantFields({
             );
           })}
         </ul>
-        <p id={grantsHelp} className="text-muted-foreground text-xs leading-[1.7]">{m.mcpConnector.form.grantsHelp}</p>
+        <p id={grantsHelp} className="text-muted-foreground text-xs leading-prose">{m.mcpConnector.form.grantsHelp}</p>
       </div>
 
       <div className="flex flex-col gap-2">
@@ -169,12 +169,12 @@ export function TokenGrantFields({
               tabIndex={0}
               className="border-border focus-visible:ring-ring flex cursor-not-allowed items-center gap-3 border-t p-3 focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset"
             >
-              <span aria-hidden className="size-4 shrink-0 rounded-full border border-neutral-300 opacity-50" />
+              <span aria-hidden className="size-4 shrink-0 rounded-full border border-gray-light opacity-50" />
               <IconTile size="lg" className="bg-muted opacity-50">
                 <ListChecks aria-hidden />
               </IconTile>
               <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <span className="text-base font-medium text-neutral-400">{m.mcpConnector.form.chosen}</span>
+                <span className="text-base font-medium text-gray-dim">{m.mcpConnector.form.chosen}</span>
                 <span id={scopeReason} className="text-muted-foreground text-sm">{m.mcpConnector.form.noMembership}</span>
               </span>
             </span>

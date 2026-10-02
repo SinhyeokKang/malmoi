@@ -93,7 +93,7 @@ export function KeyList({ list, title, titleRef, count, savedExtra, selectedKeyI
       <div className="flex h-12 shrink-0 items-center gap-2 px-4">
         {treeButton !== undefined && (
           <Button size="sm" aria-label={m.translations.workspace.tree.open} aria-expanded={treeButton.open} aria-controls={treeButton.open ? treeButton.controls : undefined} onClick={treeButton.onToggle} className="size-7 p-0">
-            <PanelLeftOpen className="size-3.5 text-neutral-600" aria-hidden />
+            <PanelLeftOpen className="size-3.5 text-gray-strong" aria-hidden />
           </Button>
         )}
         <h2 id={headingId} ref={titleRef} tabIndex={-1} className="text-base font-medium">{title}</h2>
@@ -138,7 +138,7 @@ const KeyRow = memo(function KeyRow({ row, savedOut, first, selected, tabStop, s
         onClick={() => onSelect(row)}
         className={cn("flex items-start gap-3 border-t px-4 py-3", first ? "border-divider" : "border-border")}
       >
-        <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
+        <span className="flex min-w-0 flex-1 flex-col gap-copy-gap">
           <span className={cn("text-sm leading-[1.45]", savedOut && "text-muted-foreground line-through")}>{row.sourceText}</span>
           <span className="flex flex-wrap items-center gap-1.5">
             <span className="text-muted-foreground text-xs wrap-anywhere">

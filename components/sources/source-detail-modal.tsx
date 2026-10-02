@@ -66,7 +66,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
   const statusAt = detail === null || importStatus === null ? null : importStatus.state === "not-imported" ? detail.createdAt : importStatus.at;
   return <OnboardingModal open={sourceSlug !== null} title={sourceSlug ?? m.sources.details} description={detail ? `${m.surfaces.sourceCounts(detail.keys, detail.locales)}${detail.connection ? ` · ${detail.connection.format ?? (detail.connection.adapterName === null ? m.sources.notConfigured : m.sources.unknownFormat)}` : ""}` : failed ? undefined : m.sources.loading}
     onClose={() => leave()} closeDisabled={busy} returnFocusRef={returnFocusRef} fallbackFocusRef={fallbackFocusRef} quiet={fieldError}
-    panelClassName={cn(failed ? "min-h-0" : "min-h-[min(560px,calc(100svh-96px))] max-h-[min(800px,calc(100svh-96px))]")}
+    panelClassName={cn(failed ? "min-h-0" : "min-h-[min(560px,calc(100svh-var(--spacing-modal-gutter)))] max-h-[min(800px,calc(100svh-var(--spacing-modal-gutter)))]")}
     // [Open translations]는 바닥 행동 줄의 primary다(2026-09-30 사용자 — 머리 우측에서 옮겼다). [Close]가 보조다. 목록 행의 같은 버튼은 걷혔고 이 모달이 유일한 입구다.
     actions={<>
       <Button size="lg" disabled={busy} onClick={() => leave()}>{m.common.close}</Button>
@@ -95,33 +95,33 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
       {/* 적재 결과는 카드 notice다(🔴 J) — 계산한 톤을 `Alert inset`이 그리고, 실패는 `alert`로 읽던 것을 끊는다. 머리 아래 선은 notice 아래로 내려간다(4-Y1). */}
       <PanelCard title={m.sources.status} subtitle={m.sources.statusHelp}
         notice={importResult ? <Alert inset variant={importResult.tone} live={importResult.tone === "danger" ? "alert" : "status"}>{importResult.text}</Alert> : undefined}>
-        <div className="flex items-center gap-3 px-4 py-[13px]">
+        <div className="flex items-center gap-3 px-4 py-row-y">
           {importStatus && <IconTile data-source-status-tile tone={importStatus.tone}><StatusGlyph labelKey={importStatus.labelKey} /></IconTile>}
-          <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
+          <span className="flex min-w-0 flex-1 flex-col gap-copy-gap">
             <span className="text-base"><span className="font-medium">{importStatus && STATE[importStatus.labelKey].label}</span>
               {statusAt !== null && <> — {importStatus?.state === "importing" && <>{m.sources.started} </>}{importStatus?.state === "not-imported" && <>{m.sources.addedAgo} </>}<RelativeAt at={statusAt} now={now} /></>}</span>
             {/* 보조 문장은 본문 색이다 — 톤은 칸과 낱말이 든다(§6.2 "Alert는 글자를 본문 색으로"와 같은 규칙, 옛 판은 호출부가 호박·빨강 글자를 골랐다). */}
-            <span className="text-muted-foreground text-xs leading-[1.6]">
+            <span className="text-muted-foreground text-xs leading-body">
               {isImportFailureCode(detail.lastImportError) ? importFailureMessage(detail.lastImportError)
                 : detail.lastCommitSha ? m.sources.importedSummary(detail.keys, detail.locales)
                 : m.sources.notImportedHelp}
               {statusFailed && !canEdit && <> {importStatus?.state === "failed-after" ? m.sources.askOwnerRerun : m.sources.askOwner}</>}
               {importStatus?.state === "failed-after" && canEdit && <> {m.settings.sources.rerun}</>}
             </span>
-            {!detail.installed && <span className="text-muted-foreground text-xs">{canEdit ? <>{m.sources.reconnectOwner} <Link className="text-blue-600 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none" href={routes.settings(slug)}>{m.common.nav.projectSettings}</Link></> : m.sources.reconnectEditor}</span>}
+            {!detail.installed && <span className="text-muted-foreground text-xs">{canEdit ? <>{m.sources.reconnectOwner} <Link className="text-link focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none" href={routes.settings(slug)}>{m.common.nav.projectSettings}</Link></> : m.sources.reconnectEditor}</span>}
           </span>
           {/* ⚠️ 스피너는 첫 Sync일 때만 돈다 (audit-ux #26) — 기준 언어 저장도 `busy`를 세우고, 그때는 `canRetry`가 꺼서 잠그기만 한다. */}
           {importStatus?.canRetry && canEdit && <Button className="shrink-0" loading={importing} disabled={!actions?.canRetry} onClick={onImport}>{m.settings.sources.retry}</Button>}
         </div>
         {/* ⚠️ **적재 이후 실패는 두 행이다** (`1d` ④) — 실패 한 줄만 두면 지금 보이는 키가 유효한지 알 수 없다.
             ⚠️ **둘째 행이 말하는 것은 적재 시각이 아니라 원본 커밋이다** — 적재 완료 시각을 저장하는 컬럼이 없다. */}
-        {importStatus?.state === "failed-after" && detail.lastImportedAt && <div className="border-border flex items-center gap-3 border-t px-4 py-[13px]">
+        {importStatus?.state === "failed-after" && detail.lastImportedAt && <div className="border-border flex items-center gap-3 border-t px-4 py-row-y">
           <IconTile tone={STATE.synced.tone}><CircleCheck aria-hidden /></IconTile>
           <span className="min-w-0 flex-1 text-base"><span className="font-medium">{m.sources.lastSuccess}</span> — <SourceTime at={detail.lastImportedAt} /></span>
         </div>}
       </PanelCard>
       <PanelCard title={m.locales.field.label} subtitle={m.sources.baseHelp} badge={basePending(detail) ? <Badge variant="warning">{m.sources.waiting}</Badge> : undefined}>
-        <div className="px-4 py-[13px]">
+        <div className="px-4 py-row-y">
         {canEdit ? <BaseLanguageForm key={detail.id} slug={slug} surfaceSlug={detail.slug} baseLocale={detail.baseLocale} declaredBaseLocale={detail.declaredBaseLocale} locales={detail.languages.filter(row => !row.orphaned).map(row => row.code)} awaiting={basePending(detail)} onDirty={setDraft} onPending={onBusy} onError={setFieldError} onSaved={onSaved} />
           : <div className="flex items-center gap-3">
               {/* 시안 `1e` ④ — EDITOR는 점선 칩과 자물쇠이고 컨트롤이 없다. */}
@@ -131,31 +131,31 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
         {basePending(detail) && <div className="mt-3 space-y-2 text-xs">
           <p className="text-muted-foreground">{m.sources.applied}: <span className="text-foreground">{detail.baseLocale}</span> · {m.sources.requested}: <span className="text-foreground">{detail.declaredBaseLocale}</span></p>
           {/* ⚠️ `<code>`는 preflight가 mono를 깔아서 `font-sans`를 명시한다 — 클래스만 지우면 화면은 그대로 mono다 (DESIGN §4.1) */}
-          {canEdit && <><p className="text-muted-foreground leading-[1.6]">{m.sources.pendingHelp}</p>{detail.workflowLine && <div className="flex items-center gap-3"><code className="font-sans">{detail.workflowLine}</code><CopyButton value={detail.workflowLine} label={m.locales.pending.copy} /></div>}</>}
+          {canEdit && <><p className="text-muted-foreground leading-body">{m.sources.pendingHelp}</p>{detail.workflowLine && <div className="flex items-center gap-3"><code className="font-sans">{detail.workflowLine}</code><CopyButton value={detail.workflowLine} label={m.locales.pending.copy} /></div>}</>}
         </div>}
         </div>
       </PanelCard>
       <PanelCard title={m.sources.languages} count={detail.locales} countLabel={m.sources.languageCount(detail.locales)} subtitle={m.sources.languagesHelp}>
-        {detail.languages.length === 0 ? <p className="text-muted-foreground px-4 py-[13px] text-xs">{m.locales.empty.description}</p>
+        {detail.languages.length === 0 ? <p className="text-muted-foreground px-4 py-row-y text-xs">{m.locales.empty.description}</p>
           : <ul>{detail.languages.map((row, index) => {
           // 집계 두 쿼리 사이 적재가 바뀌어도 막대 합은 트랙을 넘지 않는다. 퍼센트는 완료만 센다.
           const done = Math.min(row.total, row.translated);
           const review = Math.min(Math.max(0, row.total - done), row.needsReview);
-          return <li key={row.code} className={cn("flex items-center gap-4 px-4 py-[13px] @max-[640px]:flex-wrap", index > 0 && "border-border border-t")}>
+          return <li key={row.code} className={cn("flex items-center gap-4 px-4 py-row-y @max-form:flex-wrap", index > 0 && "border-border border-t")}>
             <span className="flex w-[150px] shrink-0 items-center gap-2 @max-[850px]:w-[120px]">
               <span className={cn("flex", row.orphaned && "opacity-50")}><LocaleFlag code={row.code} /></span>
               <span className={cn("text-base", row.orphaned && "text-muted-foreground")}>{row.code}</span>
               {row.isBase && <Badge variant="neutral">{m.locales.base}</Badge>}
             </span>
             <span className="flex w-[300px] shrink-0 flex-col gap-1.5 @max-[850px]:w-auto @max-[850px]:flex-1">
-              <span className={cn("flex items-baseline text-xs", row.orphaned ? "text-neutral-400" : "text-muted-foreground")}>
+              <span className={cn("flex items-baseline text-xs", row.orphaned ? "text-gray-dim" : "text-muted-foreground")}>
                 <span className={cn(!row.orphaned && "text-foreground")}>{row.percent}%</span><span className="ml-auto">{row.translated} of {row.total}</span>
               </span>
               <MeterBar done={row.total === 0 ? 0 : (done / row.total) * 100} review={row.orphaned || row.total === 0 ? 0 : (review / row.total) * 100} dimmed={row.orphaned} />
             </span>
             {/* ⚠️ **좁은 폭에서 숨기지 않고 행 아래로 내린다** (audit #42) — 숨기면 `aria-hidden` Meter의 amber 조각만 남아 검토·누락이
                 색으로만 전달됐다. 비어 있으면 줄을 만들지 않는다. */}
-            <span className="min-w-0 flex-1 text-xs @max-[640px]:order-last @max-[640px]:basis-full @max-[640px]:empty:hidden">
+            <span className="min-w-0 flex-1 text-xs @max-form:order-last @max-form:basis-full @max-form:empty:hidden">
               {row.orphaned ? <Badge variant="missing">{m.sources.missingRepo}</Badge>
                 : row.needsReview > 0 ? <Badge variant="warning">{m.sources.needReview(row.needsReview)}</Badge>
                 : row.isBase ? <span className="text-muted-foreground">{m.sources.baseRow}</span> : null}
@@ -171,7 +171,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
             지난 상태라 `live="off"`다 — 모달을 여는 순간 assertive로 끼어들지 않는다. */}
         {detail.languages.filter(row => row.orphaned).map(row => <div key={`missing-${row.code}`} className="border-divider border-t">
           <Alert inset size="compact" variant="danger" live="off">
-            <span className="leading-[1.55]"><span className="font-medium">{row.code}</span> {m.sources.orphanStrip(row.code).slice(row.code.length + 1)} <span className="text-muted-foreground">{m.sources.orphanStripRest(row.translated, detail.locales)}</span></span>
+            <span className="leading-translation"><span className="font-medium">{row.code}</span> {m.sources.orphanStrip(row.code).slice(row.code.length + 1)} <span className="text-muted-foreground">{m.sources.orphanStripRest(row.translated, detail.locales)}</span></span>
           </Alert>
         </div>)}
       </PanelCard>

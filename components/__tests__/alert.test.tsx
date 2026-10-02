@@ -27,7 +27,7 @@ it("tone마다 배경과 글리프 색이 갈린다", async () => {
   const bg = roots.map(root => tokens(root).find(token => token.startsWith("bg-")));
   const glyph = roots.map(root => tokens(root.querySelector("svg")).find(token => token.startsWith("text-")));
   expect(bg).toEqual(["bg-muted", "bg-blue-50", "bg-green-50", "bg-amber-50", "bg-red-50"]);
-  expect(glyph).toEqual(["text-muted-foreground", "text-blue-600", "text-green-800", "text-amber-700", "text-destructive"]);
+  expect(glyph).toEqual(["text-muted-foreground", "text-link", "text-green-800", "text-amber-700", "text-destructive"]);
 });
 
 /** 알림 방식은 tone이 아니라 `live`가 정한다 — 기본값만 tone에서 온다(danger는 끼어든다). */
@@ -53,7 +53,7 @@ it("size — compact는 radius 10 · padding 12 · 13px · 글리프 14다", asy
 it("inset — 카드에 붙는 띠라 radius가 없고 선도 없다", async () => {
   const { container } = await render(<Alert inset variant="danger">x</Alert>);
   const root = container.querySelector("[data-alert]");
-  expect(tokens(root)).toEqual(expect.arrayContaining(["rounded-none", "px-4", "py-[13px]"]));
+  expect(tokens(root)).toEqual(expect.arrayContaining(["rounded-none", "px-4", "py-row-y"]));
   expect(tokens(root).filter(token => /^border/.test(token))).toEqual([]);
 });
 

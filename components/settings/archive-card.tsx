@@ -165,7 +165,7 @@ function PrLine({ url }: { url: string | null | undefined }) {
         href={url}
         target="_blank"
         rel="noreferrer"
-        className="focus-visible:ring-ring text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
+        className="focus-visible:ring-ring text-link focus-visible:ring-2 focus-visible:outline-none"
       >
         {m.archive.confirm.openPrLink}
       </a>

@@ -175,9 +175,9 @@ export function OnboardingModal({
           }}
           data-onboarding-panel
           className={cn(
-            "bg-background fixed top-1/2 left-1/2 z-50 flex w-[calc(100%-96px)] max-w-[1024px] -translate-x-1/2 -translate-y-1/2",
+            "bg-background fixed top-1/2 left-1/2 z-50 flex w-[calc(100%-var(--spacing-modal-gutter))] max-w-[1024px] -translate-x-1/2 -translate-y-1/2",
             "flex-col overflow-hidden rounded-xl shadow-medium",
-            "min-h-[min(80svh,800px,calc(100svh-96px))] max-h-[min(800px,calc(100svh-96px))]",
+            "min-h-[min(80svh,800px,calc(100svh-var(--spacing-modal-gutter)))] max-h-[min(800px,calc(100svh-var(--spacing-modal-gutter)))]",
             panelClassName,
           )}
         >
@@ -233,7 +233,7 @@ export function OnboardingModal({
           </div>
 
           <footer className="border-divider flex items-center justify-between gap-2 border-t px-8 py-6">
-            <span className="text-muted-foreground text-xs leading-[1.6]">{footer ?? (step === undefined ? null : m.newProject.modal.step(step))}</span>
+            <span className="text-muted-foreground text-xs leading-body">{footer ?? (step === undefined ? null : m.newProject.modal.step(step))}</span>
             {/*
               ⚠️ **소비자의 `actions`도 같은 무리에 싼다** (malmoi#87) — fragment를 넘기면 버튼들이 바닥의 직계 자식이 되어
               `justify-between`이 [Cancel]을 가운데로 띄웠다. `null`(Publish의 버튼 없는 갈래)이면 빈 무리를 세우지 않는다.

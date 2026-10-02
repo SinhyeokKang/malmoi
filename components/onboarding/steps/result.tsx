@@ -14,7 +14,7 @@ export function ResultStep({ pushToken, yaml }: { pushToken: string; yaml: strin
         <p className="text-sm font-medium">{m.newProject.result.token.title}</p>
         <TokenField value={pushToken} />
         {/* ⚠️ `PUSH_TOKEN`은 색만 올린다 (1d). */}
-        <p className="text-muted-foreground text-xs leading-[1.7]">
+        <p className="text-muted-foreground text-xs leading-prose">
           {m.newProject.result.token.description(<span className="text-foreground">PUSH_TOKEN</span>)}
         </p>
       </section>
@@ -22,7 +22,7 @@ export function ResultStep({ pushToken, yaml }: { pushToken: string; yaml: strin
       {/* ⚠️ **워크플로 블록이 남은 높이를 먹는다** — 그래서 토큰 칩이 늘 화면에 남는다. */}
       <WorkflowBlock yaml={yaml} />
 
-      <p className="text-muted-foreground shrink-0 text-xs leading-[1.6]">{m.newProject.result.ingest.refsHint}</p>
+      <p className="text-muted-foreground shrink-0 text-xs leading-body">{m.newProject.result.ingest.refsHint}</p>
     </div>
   );
 }

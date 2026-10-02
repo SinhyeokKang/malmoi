@@ -132,7 +132,7 @@ export function ProjectSwitcher({ projects, current }: { projects: readonly Swit
                 <span className="min-w-0 flex-1 truncate">{project.name}</span>
                 {project.archived && (
                   // ⚠️ `/projects` 행 칩과 같은 형·같은 키다(`project-list.tsx`의 `archived` 칩) — 두 벌이면 하나가 낡는다.
-                  <StatusBadge state="archived" className="shrink-0 px-2 text-neutral-400" />
+                  <StatusBadge state="archived" className="shrink-0 px-2 text-gray-dim" />
                 )}
               </Link>
             </DropdownMenuItem>

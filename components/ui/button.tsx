@@ -108,7 +108,7 @@ export const buttonClass = cva(
           "disabled:text-muted-foreground aria-disabled:text-muted-foreground aria-disabled:hover:text-muted-foreground",
         ),
         // 인라인 링크형 — 외부 링크가 아니라 **행동**이다("Sign in with another account").
-        link: "text-blue-600 disabled:text-muted-foreground aria-disabled:text-muted-foreground",
+        link: "text-link disabled:text-muted-foreground aria-disabled:text-muted-foreground",
       },
       size: {
         /**

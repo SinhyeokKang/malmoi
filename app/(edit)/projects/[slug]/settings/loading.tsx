@@ -65,13 +65,13 @@ export default function SettingsLoading() {
           <div className="border-border border-t">
             <Row chevron />
           </div>
-          <div className="border-border border-t px-4 py-[13px]">
+          <div className="border-border border-t px-4 py-row-y">
             <SkeletonLine text="text-xs" className="w-[55%]" />
           </div>
         </Card>
 
         <Card title="w-28">
-          <div className="flex items-center justify-between gap-4 px-4 py-[13px]">
+          <div className="flex items-center justify-between gap-4 px-4 py-row-y">
             <Skeleton className="size-7 shrink-0 rounded" />
             <div className="flex-1">
               <SkeletonLine text="text-xs" className="w-[45%]" />
@@ -126,12 +126,12 @@ function Field({ button = false }: { button?: boolean }) {
   );
 }
 
-/** 글리프 28 + 두 줄 + 오른쪽 버튼(또는 chevron) 행 — `px-4 py-[13px]`. */
+/** 글리프 28 + 두 줄 + 오른쪽 버튼(또는 chevron) 행 — `px-4 py-row-y`. */
 function Row({ action = false, chevron = false }: { action?: boolean; chevron?: boolean }) {
   return (
-    <div className="flex items-center gap-3 px-4 py-[13px]">
+    <div className="flex items-center gap-3 px-4 py-row-y">
       <Skeleton className="size-7 shrink-0 rounded" />
-      <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
+      <div className="flex min-w-0 flex-1 flex-col gap-copy-gap">
         <SkeletonLine text="text-base" className="w-[40%]" />
         <SkeletonLine text="text-xs" className="w-[60%]" />
       </div>

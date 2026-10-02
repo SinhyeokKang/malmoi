@@ -240,7 +240,7 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
         (`[&_.animate-spin]:size-3.5`가 글리프 폭을 맞춘다), 라벨이 접근 이름이라 진행 신호는 `busy`의 `aria-busy`가 든다.
       */}
       <Button id={triggerId} className="[&_.animate-spin]:size-3.5" busy={pending} aria-disabled={pending} onClick={event => { if (busy.current) event.preventDefault(); }}>
-        {!pending && <ArrowDownToLine className="size-3.5 text-neutral-600" aria-hidden />}
+        {!pending && <ArrowDownToLine className="size-3.5 text-gray-strong" aria-hidden />}
         {m.repositorySync.action}
       </Button>
     </DialogTrigger>
@@ -273,7 +273,7 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
         ⚠️ **결과 단계엔 설명문이 없다** — "리포를 읽어 덮는다"는 이미 답한 질문이다. 명시적 `undefined`라야 Radix가 없는 id를 걸지 않는다.
       */
       aria-describedby={outcome !== null ? undefined : plan.atRisk ? `${describedId} ${warningId}` : describedId}
-      description={outcome !== null ? undefined : <span id={describedId}>{m.repositorySync.body(<span className="text-neutral-600">{branch}</span>)}</span>}
+      description={outcome !== null ? undefined : <span id={describedId}>{m.repositorySync.body(<span className="text-gray-strong">{branch}</span>)}</span>}
       footer={outcome !== null
         /* 결과를 받고 닫는 자리라 [Close] 하나이고 `primary`다(DESIGN §6.4 Modal 행). */
         ? <DialogClose asChild><Button ref={closeRef} variant="primary">{m.common.close}</Button></DialogClose>
@@ -337,11 +337,11 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
         */}
         {plan.recommendSend
           ? <p className="text-muted-foreground">{m.repositorySync.sendHint(shownUnsent,
-              <Link href={surfaceSlug === undefined ? routes.translations(slug) : routes.surfaceTranslations(slug, surfaceSlug)} className="focus-visible:ring-ring text-blue-600 focus-visible:ring-2 focus-visible:outline-none">{m.repositorySync.sendFirst}</Link>,
+              <Link href={surfaceSlug === undefined ? routes.translations(slug) : routes.surfaceTranslations(slug, surfaceSlug)} className="focus-visible:ring-ring text-link focus-visible:ring-2 focus-visible:outline-none">{m.repositorySync.sendFirst}</Link>,
             )}</p>
           : pr !== undefined && pr !== null
             ? <p className="text-muted-foreground">{m.repositorySync.nothingUnsent}{" "}
-                <a href={pr.url} target="_blank" rel="noreferrer" className="focus-visible:ring-ring text-blue-600 focus-visible:ring-2 focus-visible:outline-none">
+                <a href={pr.url} target="_blank" rel="noreferrer" className="focus-visible:ring-ring text-link focus-visible:ring-2 focus-visible:outline-none">
                   {m.repositorySync.seeOpen}
                 </a></p>
             : null}

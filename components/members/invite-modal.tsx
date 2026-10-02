@@ -259,7 +259,7 @@ export function InviteModal({
       description={m.members.invite.description}
       bodyScroll="hidden"
       footer={
-        /* 껍데기 바닥이 이미 13/1.6(`text-xs leading-[1.6]`)이라 크기를 다시 적지 않는다 — 상태 문장이 두 줄로 길어지는 유일한 바닥이다. */
+        /* 껍데기 바닥이 이미 13/1.6(`text-xs leading-body`)이라 크기를 다시 적지 않는다 — 상태 문장이 두 줄로 길어지는 유일한 바닥이다. */
         <span data-invite-status aria-live="polite">
           {status}
         </span>

@@ -56,7 +56,7 @@ export function PanelCard({
         <h2 id={titleId} className="text-base font-medium">{title}</h2>
         {count !== undefined && <CountBadge count={count} label={countLabel} />}
         {badge}
-        {subtitle !== undefined && <div className="text-muted-foreground ml-auto @max-[640px]:ml-0 @max-[640px]:w-full text-xs">{subtitle}</div>}
+        {subtitle !== undefined && <div className="text-muted-foreground ml-auto @max-form:ml-0 @max-form:w-full text-xs">{subtitle}</div>}
       </header>}
       {notice !== undefined && <div data-card-notice className="border-divider border-b">{notice}</div>}
       {/*
@@ -110,9 +110,9 @@ export function PanelRow({
   children?: ReactNode;
 }) {
   return (
-    <li className="border-border flex items-center gap-3 border-t px-4 py-[13px] first:border-t-0">
+    <li className="border-border flex items-center gap-3 border-t px-4 py-row-y first:border-t-0">
       <IconTile>{glyph}</IconTile>
-      <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
+      <div className="flex min-w-0 flex-1 flex-col gap-copy-gap">
         <span className="flex min-w-0 items-center gap-2 text-base">
           <span className="truncate font-medium">{name}</span>
           {status !== undefined && <Badge variant={statusTone} className="shrink-0">{status}</Badge>}
@@ -136,5 +136,5 @@ export function PanelRow({
  * 가로지르므로 호출부가 `full`로 표시한다.
  */
 export function PanelFacts({ children }: { children: ReactNode }) {
-  return <div className="grid grid-cols-1 @min-[640px]:grid-cols-[96px_1fr] items-center gap-x-3 gap-y-[6px] @min-[640px]:gap-y-[14px] px-4 py-3.5">{children}</div>;
+  return <div className="grid grid-cols-1 @min-form:grid-cols-[96px_1fr] items-center gap-x-3 gap-y-[6px] @min-form:gap-y-[14px] px-4 py-3.5">{children}</div>;
 }

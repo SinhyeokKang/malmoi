@@ -148,15 +148,15 @@ const p = m.translations.publish;
  * 허공에 뜬다. ⚠️ **리터럴 문자열이어야 한다** — Tailwind는 소스에 그대로 적힌 클래스만 만든다.
  */
 const PANEL = {
-  preview: "min-h-[min(620px,calc(100svh-96px))] max-h-[min(680px,calc(100svh-96px))]",
-  running: "min-h-[min(340px,calc(100svh-96px))] max-h-[min(380px,calc(100svh-96px))]",
-  created: "min-h-[min(420px,calc(100svh-96px))] max-h-[min(460px,calc(100svh-96px))]",
-  updated: "min-h-[min(460px,calc(100svh-96px))] max-h-[min(500px,calc(100svh-96px))]",
-  noChanges: "min-h-[min(360px,calc(100svh-96px))] max-h-[min(400px,calc(100svh-96px))]",
-  partial: "min-h-[min(560px,calc(100svh-96px))] max-h-[min(600px,calc(100svh-96px))]",
-  configError: "min-h-[min(460px,calc(100svh-96px))] max-h-[min(500px,calc(100svh-96px))]",
-  transientError: "min-h-[min(400px,calc(100svh-96px))] max-h-[min(440px,calc(100svh-96px))]",
-  previewError: "min-h-[min(440px,calc(100svh-96px))] max-h-[min(480px,calc(100svh-96px))]",
+  preview: "min-h-[min(620px,calc(100svh-var(--spacing-modal-gutter)))] max-h-[min(680px,calc(100svh-var(--spacing-modal-gutter)))]",
+  running: "min-h-[min(340px,calc(100svh-var(--spacing-modal-gutter)))] max-h-[min(380px,calc(100svh-var(--spacing-modal-gutter)))]",
+  created: "min-h-[min(420px,calc(100svh-var(--spacing-modal-gutter)))] max-h-[min(460px,calc(100svh-var(--spacing-modal-gutter)))]",
+  updated: "min-h-[min(460px,calc(100svh-var(--spacing-modal-gutter)))] max-h-[min(500px,calc(100svh-var(--spacing-modal-gutter)))]",
+  noChanges: "min-h-[min(360px,calc(100svh-var(--spacing-modal-gutter)))] max-h-[min(400px,calc(100svh-var(--spacing-modal-gutter)))]",
+  partial: "min-h-[min(560px,calc(100svh-var(--spacing-modal-gutter)))] max-h-[min(600px,calc(100svh-var(--spacing-modal-gutter)))]",
+  configError: "min-h-[min(460px,calc(100svh-var(--spacing-modal-gutter)))] max-h-[min(500px,calc(100svh-var(--spacing-modal-gutter)))]",
+  transientError: "min-h-[min(400px,calc(100svh-var(--spacing-modal-gutter)))] max-h-[min(440px,calc(100svh-var(--spacing-modal-gutter)))]",
+  previewError: "min-h-[min(440px,calc(100svh-var(--spacing-modal-gutter)))] max-h-[min(480px,calc(100svh-var(--spacing-modal-gutter)))]",
 } as const;
 
 /*
@@ -195,7 +195,7 @@ function Stack({ children }: { children: ReactNode }) {
 
 /** 바닥 보조 한 줄 — 글리프 21(13/1.6)에 맞춘다. */
 function Hint({ icon: Icon = Info, children }: { icon?: typeof Info; children: ReactNode }) {
-  return <div className="text-muted-foreground flex gap-2.5 text-xs leading-[1.6]">
+  return <div className="text-muted-foreground flex gap-2.5 text-xs leading-body">
     <span className="flex h-[21px] shrink-0 items-center"><Icon className="size-4" aria-hidden /></span>
     <span className="min-w-0 flex-1">{children}</span>
   </div>;
@@ -291,7 +291,7 @@ function PreviewTable({ preview }: { preview: PublishPreview }) {
               </td>
               <td className="border-divider border-t px-3.5 py-[11px] align-top">
                 <span className="flex items-start gap-2.5">
-                  <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
+                  <span className="flex min-w-0 flex-1 flex-col gap-copy-gap">
                     {/* base와 같은 값은 "변경"이 아니다(B1 r3) — 양쪽이 같은 −/+ 두 줄을 그리지 않고 값 한 줄과 사유를 둔다. */}
                     {row.before !== null && !row.same && <DiffLine sign="−" parts={diff.before} before />}
                     <DiffLine sign="+" parts={diff.after} />
@@ -360,7 +360,7 @@ function Warnings({ warnings }: { warnings: readonly string[] }) {
         <span className="text-muted-foreground min-w-0 flex-1 text-xs leading-5 whitespace-pre-wrap">{message}</span>
       </div>))}
     </div>
-    <p className="text-muted-foreground shrink-0 px-4 py-[11px] text-xs leading-[1.6]">{p.stillHere}</p>
+    <p className="text-muted-foreground shrink-0 px-4 py-[11px] text-xs leading-body">{p.stillHere}</p>
   </section>;
 }
 
@@ -434,7 +434,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
           <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2.5 px-8 py-6 text-center">
             <FileJson2 className="text-muted-foreground size-5" aria-hidden />
             <p className="text-sm font-medium">{p.previewFailedTitle(repo.branch)}</p>
-            <p className="text-muted-foreground max-w-[420px] text-xs leading-[1.7] text-pretty">{p.previewFailedBody(count)}</p>
+            <p className="text-muted-foreground max-w-[420px] text-xs leading-prose text-pretty">{p.previewFailedBody(count)}</p>
           </div>
         </TableShell>
         <Hint>{p.previewFailedHint}</Hint>
@@ -507,7 +507,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
       const closed = outcome.status === "skipped" && outcome.reason === "no-changes" ? outcome.closedPr : undefined;
       const closedLine = closed === undefined ? null : <p className="text-muted-foreground text-xs">
         {`${p.closedPr.line(closed.number, repo.branch)} ${role === "OWNER" ? p.closedPr.owner : p.closedPr.editor}`}{" "}
-        <a href={closed.url} target="_blank" rel="noreferrer" className="text-blue-600">{p.closedPr.view(closed.number)}</a>
+        <a href={closed.url} target="_blank" rel="noreferrer" className="text-link">{p.closedPr.view(closed.number)}</a>
       </p>;
       // ⚠️ **번호를 새로 파싱하지 않는다** — origin·owner/repo 검증까지 `parseGithubPrUrl`이 든다(DESIGN §6.646).
       const number = outcome.status === "committed"

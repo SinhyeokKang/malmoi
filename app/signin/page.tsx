@@ -67,12 +67,12 @@ export default async function SignIn({
           <ProviderButton provider="google" label={m.signIn.google} variant="default" />
 
           {dest.kind === "invite" && (
-            <Link href={routes.invite(dest.token)} className="text-center text-sm text-blue-600 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none">
+            <Link href={routes.invite(dest.token)} className="text-center text-sm text-link focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none">
               {m.signIn.backToInvitation}
             </Link>
           )}
           {dest.kind === "oauth" && (
-            <Link href={routes.oauthAuthorize({ request: dest.requestId })} className="text-center text-sm text-blue-600 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none">
+            <Link href={routes.oauthAuthorize({ request: dest.requestId })} className="text-center text-sm text-link focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none">
               {m.signIn.backToAuthorization}
             </Link>
           )}
@@ -80,7 +80,7 @@ export default async function SignIn({
             {m.signIn.consent.before}
             <Link
               href={routes.privacy()}
-              className="focus-visible:ring-ring text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
+              className="focus-visible:ring-ring text-link focus-visible:ring-2 focus-visible:outline-none"
             >
               {m.signIn.consent.link}
             </Link>

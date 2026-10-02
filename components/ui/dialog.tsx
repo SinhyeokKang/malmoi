@@ -165,7 +165,7 @@ export function DialogContent({
           여기가 그 경우다. 기본값(`text-xs`의 1.333 = 17.33px)이면 두 줄짜리 질문이 붙어 읽힌다.
         */}
         {description !== undefined && (
-          <Primitive.Description className="text-muted-foreground px-4 text-xs leading-[1.6]">
+          <Primitive.Description className="text-muted-foreground px-4 text-xs leading-body">
             {description}
           </Primitive.Description>
         )}
@@ -183,7 +183,7 @@ export function DialogContent({
           테스트에도 안 나타나는 부류다.
         */}
         {Boolean(children) && (
-          <div className={cn("space-y-2 p-4", footer !== undefined ? "pb-0 text-xs leading-[1.6]" : "text-sm")}>
+          <div className={cn("space-y-2 p-4", footer !== undefined ? "pb-0 text-xs leading-body" : "text-sm")}>
             {children}
           </div>
         )}

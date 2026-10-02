@@ -56,7 +56,7 @@ export function BaseLanguageForm({ slug, surfaceSlug, baseLocale, declaredBaseLo
         <Button ref={submit} type="submit" variant="primary" loading={state.pending} disabled={unavailable || state.draft === state.baseline}>{m.locales.field.save}</Button>
         {state.result === "saved" && <span role="status" className="text-muted-foreground text-xs">{m.locales.field.saved}</span>}
         {/* 설명은 컨트롤 줄 아래로 떨어진다(2026-09-30 사용자 — 옆에 두면 세 줄로 꺾여 컨트롤보다 키가 컸다). */}
-        <p className="text-muted-foreground min-w-0 basis-full text-xs leading-[1.7]">{m.locales.field.help}</p>
+        <p className="text-muted-foreground min-w-0 basis-full text-xs leading-prose">{m.locales.field.help}</p>
       </div>
     {unavailable && <p id="base-unavailable" className="text-muted-foreground text-xs">{baseLocale === null ? m.sources.firstImport : m.locales.field.noLocales}</p>}
     {error && <FieldError>{isRepositorySettingsError(error) ? repositorySettingsErrorMessage(error) : isAccessError(error) ? accessErrorMessage(error) : m.locales.field.failed}</FieldError>}

@@ -105,7 +105,7 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
   const manualBlocked = !manual.pathTemplate.trim() || !manual.baseLocale.trim();
   return <OnboardingModal open={open} closeDisabled={pending} onClose={() => { if (!pending) onClose(); }} returnFocusRef={returnFocusRef}
     title={m.settings.sources.add} description={m.settings.sources.description} bodyScroll="hidden"
-    panelClassName="[&_.animate-spin]:size-3.5 h-[min(680px,calc(100svh-96px))] min-h-0" actions={<>
+    panelClassName="[&_.animate-spin]:size-3.5 h-[min(680px,calc(100svh-var(--spacing-modal-gutter)))] min-h-0" actions={<>
       <Button size="lg" disabled={pending} onClick={onClose}>{m.surfaces.cancel}</Button>
       <Button size="lg" data-add-sources variant="primary" busy={pending && operation === "add"} aria-disabled={addBlocked || pending || undefined} aria-describedby={addBlocked ? "add-source-help" : undefined} onClick={() => {
         if (addBlocked) return;

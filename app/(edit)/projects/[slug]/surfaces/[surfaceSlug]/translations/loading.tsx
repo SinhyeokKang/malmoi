@@ -68,7 +68,7 @@ export default function TranslationsLoading() {
                     data-skeleton-key
                     className={`flex items-start gap-3 border-t px-4 py-3 ${i === 0 ? "border-divider" : "border-border"}`}
                   >
-                    <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
+                    <div className="flex min-w-0 flex-1 flex-col gap-copy-gap">
                       <SkeletonLine text="text-sm" className={i % 2 === 0 ? "w-[72%]" : "w-[55%]"} />
                       <SkeletonLine text="text-xs" className={i % 2 === 0 ? "w-[40%]" : "w-[50%]"} />
                     </div>

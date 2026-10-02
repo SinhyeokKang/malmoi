@@ -145,7 +145,7 @@ describe("카드 상태 셋", () => {
     expect(button(card(), m.mcpConnector.token.rotate)).toBeNull();
     expect(facts()[m.mcpConnector.token.facts.expires]).toBe("Sep 1, 2026");
     expect(facts()[m.mcpConnector.token.facts.lastUsed]).toBe("Aug 30, 2026");
-    for (const dd of card().querySelectorAll("dd")) expect(dd.className).toContain("text-neutral-400");
+    for (const dd of card().querySelectorAll("dd")) expect(dd.className).toContain("text-gray-dim");
   });
 });
 

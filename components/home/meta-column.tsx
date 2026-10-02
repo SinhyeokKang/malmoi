@@ -76,7 +76,7 @@ function MetaGroup({ rows, now, divided, heldLater, slug }: { rows: readonly Met
     <dl className={cn("flex flex-col gap-2.5 px-4 py-3.5", divided && "border-divider border-t")}>
       {rows.map((row) => (
         <div key={row.kind} className="flex items-baseline gap-3">
-          <dt className="w-24 shrink-0 text-xs text-neutral-400">{m.home.meta[row.kind]}</dt>
+          <dt className="w-24 shrink-0 text-xs text-gray-dim">{m.home.meta[row.kind]}</dt>
           <dd className="min-w-0 flex-1 text-sm">{value(row, now, heldLater, slug)}</dd>
         </div>
       ))}
@@ -105,7 +105,7 @@ function value(row: MetaRow, now: Date, heldLater?: Promise<HoldReason | null>, 
           href={row.href}
           target="_blank"
           rel="noreferrer"
-          className="focus-visible:ring-ring text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
+          className="focus-visible:ring-ring text-link focus-visible:ring-2 focus-visible:outline-none"
         >
           {`${row.owner}/${row.name}`}
         </a>
@@ -165,7 +165,7 @@ function value(row: MetaRow, now: Date, heldLater?: Promise<HoldReason | null>, 
             href={row.prUrl}
             target="_blank"
             rel="noreferrer"
-            className="focus-visible:ring-ring text-blue-600 focus-visible:ring-2 focus-visible:outline-none"
+            className="focus-visible:ring-ring text-link focus-visible:ring-2 focus-visible:outline-none"
           >
             {m.home.meta.pr(pr)}
           </a>

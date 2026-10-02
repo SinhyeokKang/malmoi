@@ -27,9 +27,9 @@ export function SourcesArchived({ slug, role, archivedAt }: { slug: string; role
     </div></PanelHeader>
     <PanelBody>
       <PanelCard title={m.sources.title}>
-        <div className="flex items-center gap-3 px-4 py-[13px]">
+        <div className="flex items-center gap-3 px-4 py-row-y">
           <IconTile><Archive aria-hidden /></IconTile>
-          <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
+          <span className="flex min-w-0 flex-1 flex-col gap-copy-gap">
             <span className="text-base"><span className="font-medium">{m.logs.archived.badge}</span>{archivedAt && <> — <time dateTime={archivedAt.toISOString()}>{utcDay(archivedAt)}</time></>}</span>
             <span className="text-muted-foreground text-xs">{canEdit ? m.sources.archivedOwner : m.sources.archivedEditor}</span>
           </span>

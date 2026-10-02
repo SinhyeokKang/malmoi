@@ -35,6 +35,6 @@ it('the CI card points to Sources with a sentence and a visible link', async () 
   const { container } = await render(<CiCard slug="acme" archived={false} stale={[]}>{null}</CiCard>);
   const link = container.querySelector('a[href="/projects/acme/sources"]')!;
   expect(link).not.toBeNull();
-  expect(link.className).toContain('text-blue-600');
+  expect(link.className).toContain('text-link');
   expect(link.parentElement!.textContent!.trim()).not.toBe(link.textContent!.trim());
 });

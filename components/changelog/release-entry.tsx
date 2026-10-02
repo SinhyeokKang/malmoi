@@ -42,7 +42,7 @@ export function ReleaseEntry({ release }: { release: Release }) {
           {tag}
         </a>
       </h1>
-      <p className="text-muted-foreground mt-1 text-sm leading-[1.6]">
+      <p className="text-muted-foreground mt-1 text-sm leading-body">
         {/* 보이는 쪽은 UTC 날짜(`utcDay`), 정확한 값은 `dateTime`의 원 ISO다. UTC라는 사실은 소개 문장이 한 번 말한다. */}
         <time dateTime={publishedAt}>{utcDay(new Date(publishedAt))}</time>
       </p>

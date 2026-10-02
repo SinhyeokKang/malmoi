@@ -221,7 +221,7 @@ function TokenFacts({ token, now, afterAlert }: { token: Exclude<TokenCardData, 
   const lastUsed = token.lastUsedAt === null ? null : new Date(token.lastUsedAt);
   const scope = token.scope.kind === "all" ? m.mcpConnector.token.allProjects : m.mcpConnector.token.projects(token.scope.projectIds.length);
   // ⚠️ 만료된 값은 기록으로 남기되 흐리게 한다(핸드오프 결정 7) — 새 토큰을 만들 때 참고할 값이다.
-  const value = cn("text-sm", expired && "text-neutral-400");
+  const value = cn("text-sm", expired && "text-gray-dim");
   const facts: [string, ReactNode][] = [
     [m.mcpConnector.token.facts.grants, <GrantBadges key="g" grants={token.grants} dimmed={expired} />],
     [m.mcpConnector.token.facts.scope, scope],

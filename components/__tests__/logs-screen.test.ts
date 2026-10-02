@@ -178,7 +178,7 @@ describe("logs 상세 — 껍데기 시각 값", () => {
    */
   it("폭이 1024 껍데기 관용구다 — 좁은 화면 여백도 96이다", () => {
     expect(dialog).toContain("max-w-[1024px]");
-    expect(dialog).toContain("w-[calc(100%-96px)]");
+    expect(dialog).toContain("w-[calc(100%-var(--spacing-modal-gutter))]");
     expect(dialog).not.toContain("w-[640px]");
     expect(dialog).not.toContain("calc(100vw-48px)");
   });
@@ -202,11 +202,11 @@ describe("logs 상세 — 껍데기 시각 값", () => {
   });
 
   /**
-   * ⚠️ **라벨과 보조 텍스트가 다른 색이다** — 시안은 필드 라벨 `#a3a3a3`(`text-neutral-400`),
+   * ⚠️ **라벨과 보조 텍스트가 다른 색이다** — 시안은 필드 라벨 `#a3a3a3`(`text-gray-dim`),
    * 시각·설명 `#737373`(`text-muted-foreground`)이고 구현이 둘을 하나로 합쳐 두었다.
    */
-  it("필드 라벨이 `text-neutral-400`이다", () => {
-    expect(body).toMatch(/<TableHead scope="row" className="text-neutral-400/);
+  it("필드 라벨이 `text-gray-dim`이다", () => {
+    expect(body).toMatch(/<TableHead scope="row" className="text-gray-dim/);
   });
 
   /**

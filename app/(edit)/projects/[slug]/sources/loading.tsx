@@ -8,7 +8,7 @@ import { m } from "@/lib/i18n";
  * ⚠️ **`ContentPanel`을 들지 않는다** — `[slug]/layout.tsx`가 든다.
  *
  * ⚠️ **치수는 `sources-screen.tsx` 그대로다** — 머리(제목 · [Add source]) · `PanelCard` 헤더(`px-4 py-3`,
- * 아래 `border-divider`, 제목 + 개수 배지, 오른쪽 끝 리포 · 브랜치) · 소스 행(`px-4 py-[13px]` · 글리프 28 · 본문·경로 두 줄 · 상태 ·
+ * 아래 `border-divider`, 제목 + 개수 배지, 오른쪽 끝 리포 · 브랜치) · 소스 행(`px-4 py-row-y` · 글리프 28 · 본문·경로 두 줄 · 상태 ·
  * chevron). 첫 행은 헤더의 선을 쓰고 자기 선이 없다(`first:border-t-0`). 실물에 없는 요소(머리 설명 · 머리 개수 · 행 버튼)를
  * 그리지 않는다 — 도착 순간 폭이 튄다(4-Y16 · 4-Y6).
  * ⚠️ **개수 원은 카드 머리 하나만 그린다**(4-W13) — 실물 `CountBadge`는 0이면 서지 않지만, 골격은 아래 "행은 하나다"와 같은
@@ -44,9 +44,9 @@ export default function SourcesLoading() {
             </div>
           </div>
           <div data-skeleton-source className="flex items-center gap-3 pr-4 @max-[1016px]/panel:items-start">
-            <div className="flex min-w-0 flex-1 items-center gap-3 px-4 py-[13px] @max-[1016px]/panel:items-start">
+            <div className="flex min-w-0 flex-1 items-center gap-3 px-4 py-row-y @max-[1016px]/panel:items-start">
               <Skeleton className="size-7 shrink-0 rounded" />
-              <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
+              <div className="flex min-w-0 flex-1 flex-col gap-copy-gap">
                 <SkeletonLine text="text-base" className="w-[42%]" />
                 <SkeletonLine text="text-xs" className="w-[28%]" />
                 {/* 좁은 폭의 상태 — 셋째 줄(`pt-0.5` + 13px 한 줄). 넓은 폭에서는 오른쪽 블록이 대신한다. */}

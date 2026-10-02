@@ -78,9 +78,9 @@ export default function AccountLoading() {
         {[{ rows: 2, hint: false }, { rows: 1, hint: true }].map(({ rows, hint }, card) => (
           <SkeletonCard key={card}>
             {Array.from({ length: rows }, (_, row) => (
-              <div key={row} className={`flex items-center gap-3 px-4 py-[13px] ${row === 0 ? "" : "border-border border-t"}`}>
+              <div key={row} className={`flex items-center gap-3 px-4 py-row-y ${row === 0 ? "" : "border-border border-t"}`}>
                 <Skeleton className="size-7 rounded" />
-                <div className="flex flex-1 flex-col gap-[3px]">
+                <div className="flex flex-1 flex-col gap-copy-gap">
                   <SkeletonLine text="text-base" className="w-40" />
                   {/*
                     ⚠️ **줄 수가 카드마다 다르다** — 수단 카드는 보조 줄을 안 그리고(데이터가 없다),

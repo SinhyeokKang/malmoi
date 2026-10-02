@@ -27,7 +27,7 @@ it("GrantBadges — 권한마다 하나, 없으면 Read only, 만료면 흐리�
   const none = (await render(<GrantBadges grants={[]} dimmed />)).container;
   const pills = [...none.querySelectorAll(".rounded-full")];
   expect(pills.map((b) => b.textContent)).toEqual(["Read only"]);
-  expect(pills[0]!.className).toContain("text-neutral-400");
+  expect(pills[0]!.className).toContain("text-gray-dim");
 });
 
 /** 국기 + 코드는 배지 하나다(2026-09-30 사용자) — 프로젝트 행 Meter 머리와 Home 메타 열 Languages가 같은 모양이다. */

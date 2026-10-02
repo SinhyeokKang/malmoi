@@ -109,7 +109,7 @@ function Card({ rows, footer, divided = true }: { rows: number; footer: boolean;
           <li
             key={i}
             // 선은 실물과 같은 `RowCard` 규칙이다(4-Y4) — 첫 줄이 머리 선(`--divider`), 행↔행은 `--border`.
-            className={divided ? cn("flex items-center gap-3 border-t px-4 py-[13px]", i === 0 ? "border-divider" : "border-border") : "flex items-center gap-3 pb-4"}
+            className={divided ? cn("flex items-center gap-3 border-t px-4 py-row-y", i === 0 ? "border-divider" : "border-border") : "flex items-center gap-3 pb-4"}
           >
             {/* 두 카드 다 행 칸이 `IconTile sm`(28 · radius 4)이다 — Logs 카드의 옛 10 점은 실물(사건 칸 28)과 달라 도착 때 튀었다. */}
             <Skeleton className="size-7 shrink-0 rounded" />

@@ -39,10 +39,10 @@ export function PushTokenPanel({ slug, disabled = false, unpinned = false }: { s
 
   return (
     <>
-    <div className="space-y-2 px-4 py-[13px]">
-      <div className="flex items-center gap-3 @max-[640px]:grid @max-[640px]:grid-cols-[28px_1fr] @max-[640px]:items-start">
+    <div className="space-y-2 px-4 py-row-y">
+      <div className="flex items-center gap-3 @max-form:grid @max-form:grid-cols-[28px_1fr] @max-form:items-start">
         <IconTile><KeyRound aria-hidden /></IconTile>
-        <div className="min-w-0 flex-1 space-y-[3px]"><p className="text-base font-medium">{m.settings.token.title}</p><p className="text-muted-foreground text-xs">
+        <div className="min-w-0 flex-1 space-y-copy-gap"><p className="text-base font-medium">{m.settings.token.title}</p><p className="text-muted-foreground text-xs">
           {m.settings.token.description(<span className="text-foreground">PUSH_TOKEN</span>)}
         </p></div>
       <Dialog>
@@ -53,7 +53,7 @@ export function PushTokenPanel({ slug, disabled = false, unpinned = false }: { s
           */}
           <Button
             variant="danger"
-            className="@max-[640px]:col-start-2 @max-[640px]:justify-self-start"
+            className="@max-form:col-start-2 @max-form:justify-self-start"
             disabled={disabled || unpinned}
             aria-describedby={blocked ? reasonId : undefined}
             /* ⚠️ `loading`이 아니라 `busy`다 (audit #32) — 확정하면 Dialog가 이 트리거로 포커스를 돌려주는데, 같은 커밋에
@@ -102,7 +102,7 @@ export function PushTokenPanel({ slug, disabled = false, unpinned = false }: { s
             ⚠️ **굵게 "보이지" 않되 `<strong>`은 남긴다** (2026-09-13 사용자 + 리뷰). 토큰을 다시 못
             본다는 경고라 색만으로 말하면 스크린리더와 고대비 모드에서 사라진다.
           */}
-          <p className="text-xs leading-[1.7]">
+          <p className="text-xs leading-prose">
             <strong className="text-foreground font-normal">{m.settings.token.warning}</strong>
           </p>
           <TokenField value={token} />

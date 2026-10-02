@@ -140,7 +140,7 @@ function AttentionRow({ item, slug, role, now }: { item: AttentionItem; slug: st
   return (
     <Link
       href={href}
-      className="focus-visible:ring-ring hover:bg-foreground/[0.02] border-border flex items-center gap-3 border-t px-4 py-[13px] focus-visible:ring-2 focus-visible:outline-none"
+      className="focus-visible:ring-ring hover:bg-foreground/[0.02] border-border flex items-center gap-3 border-t px-4 py-row-y focus-visible:ring-2 focus-visible:outline-none"
     >
       <IconTile tone={tile.tone}>
         <Tile aria-hidden />
@@ -159,7 +159,7 @@ function AttentionRow({ item, slug, role, now }: { item: AttentionItem; slug: st
         {ownerRetries && <span className="text-muted-foreground text-xs">{m.projects.importFailure.ownerRetries}</span>}
       </span>
       {/*
-        시각은 `muted`다(2026-09-30 사용자 — 같은 Home의 Log 행 시각과 맞췄다. 옛 `neutral-400`은 2.5:1이라 읽기 어려웠다).
+        시각은 `muted`다(2026-09-30 사용자 — 같은 Home의 Log 행 시각과 맞췄다. 옛 `gray-dim`은 2.5:1이라 읽기 어려웠다).
         ⚠️ **시각이 없으면 칸을 비운다** — 실패 시각이 기록되지 않은 실패 항목에 "Never"를 적으면 거짓이다(실패는 일어났다).
       */}
       {item.at !== null && <span className="text-muted-foreground shrink-0 text-xs">{relativeTime(item.at, now)}</span>}

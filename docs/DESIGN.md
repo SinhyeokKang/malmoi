@@ -72,11 +72,27 @@ size="lg"`(40)는 그대로 **셸 밖 카드 전용**이다(로그인·초대 �
 | `accent` (+`-foreground`) | hover 강조 |
 | `destructive` (+`-foreground`) | 위험·오류 — 글자색 전용(§2.3) |
 | `card` / `popover` (+`-foreground`) | 카드·팝오버 표면 |
+| `link` | 링크·검색 일치 색 — `--color-blue-600` 별칭(값 보존) |
+| `gray-light` / `gray-dim` / `gray-strong` | 보조 무채 계단 — 각각 `--color-neutral-300` / `--color-neutral-400` / `--color-neutral-600` 별칭(§6.2·§6.8) |
 | `border` / `input` / `ring` | 테두리 · 입력 테두리 · 포커스 링 |
 | `border-subtle` | ⚠️ **`--border`보다 한 단계 연하다** (8-1b) — 캔버스 위에 뜬 패널의 가장자리 정리용. 경계를 만드는 것은 흰색 대비와 `shadow-low`이고 이 선은 윤곽만 남긴다 |
 | `canvas` | **앱 전체의 바깥 배경** (8-1b `--auth-canvas` → 8-2 `--canvas`). 셸(헤더·사이드바 바탕)과 셸 밖 화면이 **같은 값**을 쓴다 — 이름에 화면을 넣으면 둘째 변수가 생긴다 |
 | `auth-hero-from` / `-to` | 로그인 우측 장식의 그라데이션. ⚠️ `from`이 `--canvas`와 **같은 값**이다 — 위쪽에서 배경으로 수렴하는 것이 의도다 (§6.62) |
 | (`--signin-dot`) | ⚠️ **`@theme`에 등록하지 않는다** — Canvas가 `getComputedStyle`로 직접 읽으므로 유틸 클래스의 재료가 아니다. `--radius`·`--mono-size`·`--mono-leading`도 같은 부류다 (`lib/__tests__/globals-css.test.ts`가 그 넷을 이름으로 고정한다) |
+
+**같은 값의 공통 토큰**(component-unify T2). `@theme inline`에 등록하며 rem 환산·색 재계산 없이 기존 값을 보존한다.
+행간·간격의 새 이름은 `lib/utils.ts`의 tailwind-merge theme에도 등록한다. `cn()`의 양방향 override가 기존 임의값과 같아야 한다.
+
+| 토큰 변수 | 값 | 소비 철자 |
+|---|---|---|
+| `--leading-body` | `1.6` | `leading-body` |
+| `--leading-prose` | `1.7` | `leading-prose` |
+| `--leading-translation` | `1.55` | `leading-translation` |
+| `--spacing-row-y` | `13px` | `py-row-y` |
+| `--spacing-copy-gap` | `3px` | `gap-copy-gap` · `space-y-copy-gap` |
+| `--spacing-modal-gutter` | `96px` | `calc(100svh-var(--spacing-modal-gutter))` · `calc(100%-var(--spacing-modal-gutter))` |
+| `--container-form` | `640px` | `@max-form`(`< 640px`) · `@min-form`(`>= 640px`) |
+| `--spacing-shell-min` | `1280px` | `min-w-shell-min` |
 
 ### 2.1 ⚠ `accent` == `secondary` == `muted`가 같은 값이다
 
@@ -483,6 +499,8 @@ computed style로 잰 것이다.
 
 ### 6.2 상태 색 — 배지 5종 + 연결 건강성 8종 + Alert 5종, 색 체계는 하나
 
+**T2 등록**: `link`·`gray-light`·`gray-dim`·`gray-strong`은 각각 Tailwind `blue-600`·`neutral-300`·`neutral-400`·`neutral-600`의 변수 별칭이다. 새 색은 없으며 수정자·알파를 그대로 둔다. 기존 raw 팔레트 허용 목록 `REGISTERED`에서는 이 네 값을 걷고, 생산 소스(app/components/lib/messages)에 옛 철자가 없음을 별도로 검사한다. 위 §2의 행간·간격·모달 여백·컨테이너·셸 최소 폭까지 추가 토큰은 열둘이다.
+
 **축이 셋이고 색 체계는 하나다.** amber는 **경고**, destructive는 **글자색 전용 오류**, 나머지는 무색이다. **semantic 토큰으로 표현 못 하는 상태 색**이라 raw 색을 쓰되, 라이트 단일이므로 `dark:` 짝을 두지 않는다.
 
 | 상태 | 색 | 근거 |
@@ -498,7 +516,7 @@ computed style로 잰 것이다.
 
 **Logs 실행 결과** (`logs` 화면, 2026-09-10 7단계 — 옛 `syncRunView`. 지금 판정은 `lib/events/view.ts`의 `eventView`가 들고 톤은 같은 파일의 `TONES`(+ Logs 표시 층 `logsResultTone`)가 든다 — 값은 §2.4 칸과 같다, 2026-10-01): 성공(`Sent`·`Synced` — **Logs에서는 neutral**, §2.4 예외 2) · `Nothing to send` · `Up to date` · `Superseded` · 진행 중(`Syncing…`/`Publishing…` — 종류로 가른다, "Running…"을 쓰지 않는다) → **무색** / 보류·일부 반영·거부·`Held back`(`notSent`) → **`Badge warning`** / 실패("Failed" — 종류 배지가 앞에 서서 "Sync"를 뺀다, §2.4 Q1) → **`Badge missing`**. ⚠️ **색이 셋뿐이라 구별은 라벨이 든다** — 새 raw 색을 만들지 않는 것이 §6.2의 규칙이고, 성공·스킵·진행 중을 색으로 가르려 들면 그 규칙이 첫날에 깨진다. **판정은 뜻 이름(`EventTone` — `muted`·`danger` …)을 내고 `ResultBadge`의 `VARIANT` 한 곳이 variant로 옮긴다**(muted → `neutral` · danger → `missing`) — 화면마다 매핑 표를 들지 않는다(⚠️ 선례로 적혀 있던 `PublishTone`은 2026-09-16에 사라졌다 — Publish는 tone이 아니라 **갈래 이름**을 내는 쪽으로 갔다, §6.646). ⚠️ 버린 값이 있는 실행에는 `Badge warning` "N dropped"가 **성공한 행에도** 붙는다 (PRODUCT 불변식 9).
 
-**보관** (2026-09-10): 목록 행의 상태 배지가 `Badge neutral` "Archived"다(8-3 — 배지가 **항상 하나**이고 갈래는 `projectStatus`가 정한다, §6.63). ⚠️ **숨기지 않는다** — 숨기면 OWNER가 되돌릴 링크에 도달할 길이 없다. ⚠️ **LNB 스위처에도 같은 배지로 남는다** (2026-09-27 사용자) — 목록 행 칩과 같은 형(`neutral` `px-2 text-neutral-400`)·같은 키(`m.projects.status.archived`)이고, 목록처럼 맨 뒤다(§6.5).
+**보관** (2026-09-10): 목록 행의 상태 배지가 `Badge neutral` "Archived"다(8-3 — 배지가 **항상 하나**이고 갈래는 `projectStatus`가 정한다, §6.63). ⚠️ **숨기지 않는다** — 숨기면 OWNER가 되돌릴 링크에 도달할 길이 없다. ⚠️ **LNB 스위처에도 같은 배지로 남는다** (2026-09-27 사용자) — 목록 행 칩과 같은 형(`neutral` `px-2 text-gray-dim`)·같은 키(`m.projects.status.archived`)이고, 목록처럼 맨 뒤다(§6.5).
 
 **목록 행 칩** (`/projects`, 2026-09-11 사용자 — `projectStatus` + `projectSyncFailure`, 2026-10-01 순서 정정): `Active` → **`Badge success`**(초록) / `Archived`·`Setup`·`Not synced yet` → **무색 `Badge neutral`** / `Disconnected`·`Partially synced` → **`Badge warning`**(amber) / `Sync failed` → **`Badge missing`**. 순서는 §2.4(끊김이 먼저). ⚠️ **`Active`가 초록인 것은 §6.1("가장 흔한 상태가 가장 조용하다")의 예외다** — 근거는 이 목록이 **훑어보는 화면**이라는 것이고, 손볼 프로젝트가 튀어나오려면 정상인 것도 색을 들어야 대비가 생긴다. ⚠️ **색이 드는 축은 "덜 됐나"가 아니라 "사람이 손대야 풀리나"다**: `Setup`·`Not synced yet`은 새 프로젝트가 지나가는 정상 경로라 저절로 `Active`가 되지만, `Disconnected`·`Partially synced`·`Sync failed`는 한때 돌던 것이 멈추거나 덜 들어온 것이라 사람이 손대야 풀린다. ⚠️ **라벨이 전부 한 낱말이고 동사가 없다** — 배지는 행 우측의 좁은 칸이라 문장이 이름·리포 URL과 폭을 다투고, 좁은 칸의 동사는 누를 수 있는 것처럼 읽힌다(할 일은 설정 화면의 `Alert`가 말한다). **새 raw 색은 green 하나**이고 amber와 같은 형이다(`bg-green-100/80 text-green-800`).
 
@@ -509,7 +527,7 @@ computed style로 잰 것이다.
 | variant | 색 | 쓰는 곳 |
 |---|---|---|
 | `neutral` | `bg-muted` + `Info` `text-muted-foreground` | **상시 조건** — 번역 화면의 **`pending-edits`** 리포 갱신 보류 배너(`Repository updates are held until N unsent edits are sent.` · §2.4 예외 1 — 보류 톤은 warning이고 이 배너만 neutral이다. 같은 화면이라도 `open-pr`·`pr-check-failed` 보류는 warning · **닫기 없음** · 액션 `Send with Publish ↑`는 헤더 Publish 버튼으로 **포커스만** 옮긴다 — 둘째 트리거를 만들지 않는다) · logs 보관 안내 · 이벤트 상세의 상시 노트. 가장 흔한 상태라 색이 없다(§6.1). ⚠️ 꺼진 Publish의 사유(`Everything you've edited is already sent.` 등)는 **`aria-disabled` + `aria-describedby`**다(2026-09-23 — 그 전엔 진짜 `disabled` 버튼을 감싼 span의 hover `title`뿐이라 키보드·스크린리더로 닿지 않았다, §6.65). `title`은 마우스용으로 남는다(§6.646) |
-| `info` | `bg-blue-50` + `Info` `text-blue-600` | **지금 알아둘 것** — 온보딩의 읽기 전용 안내·키 개수 차이·설치 승인 대기 · `/docs` 원고의 `>` 콜아웃 |
+| `info` | `bg-blue-50` + `Info` `text-link` | **지금 알아둘 것** — 온보딩의 읽기 전용 안내·키 개수 차이·설치 승인 대기 · `/docs` 원고의 `>` 콜아웃 |
 | `success` | `bg-green-50` + `CircleCheck` `text-green-800` | 수동 Sync 성공 · 로그인 수단 연결 · **Publish 결과**(2026-10-01, Q10 — 모달 안의 손 조립 무색 `Notice`를 걷고 `Alert` success·neutral·warning으로 합쳤다). ⚠️ **2026-09-29에 "초록을 쓰지 않는다"를 뒤집었다**(사용자) — 배경이 tone을 말하는 체계에서 성공만 흰 바탕이면 한 형만 빠진다. ⚠️ **로그인 화면의 전체 로그아웃 완료(`?sessions=revoked`)는 8-1b가 토스트로 옮겼다** — 아래 §6.25 |
 | `warning` | `bg-amber-50` + `TriangleAlert` `text-amber-700` | `repo-moved` · 수동 Sync 결과의 `reconfirm` 거부·응답 확인 못 함(`unconfirmed`)과 "남은 편집" 결과 · Sync 확인 Dialog의 위험 블록(`compact`) · Home 보조줄·메타의 보류(Held — `pr-check-failed` 포함) (⚠️ **번역 화면의 `pending-edits` 배너만 `neutral`이다** — 보호가 켜진 뒤 편집 한 건마다 상시로 서는 상태에 amber를 띄우면 "가장 흔한 상태가 가장 조용하다"(§6.1) 위반이다. §2.4 예외 1) |
 | `danger` | `bg-red-50` + `CircleX` `text-destructive` | Publish 실패 **둘**(모달 안 — §6.646) · 페이지 수준 거부(`?e=`) · 블록 안 컨트롤 실패 · 이벤트 상세의 실패 노트(`live="off"`) |
@@ -518,7 +536,7 @@ computed style로 잰 것이다.
 
 ⚠️ **내부 이름을 화면에 쓰지 않는다** — `awaiting_first_sync`는 번역자에게 아무것도 알려주지 않는다 (PRODUCT §3). 문구는 `messages/en.tsx`이 든다.
 
-**새 raw 색을 늘리지 않는다.** 등재된 것이 전부다 — **amber**(`100/80`·`800` — `Badge warning`과 **`IconTile tone="warning"` 칸**(§2.4, `components/ui/icon-tile.tsx` — 2026-10-01부터 칸 색은 호출부가 아니라 프리미티브가 든다), Alert용 `50`(글리프는 `700`), **면으로 칠하는 `500`** — Meter의 검토 구간(§6.63)과 **Sources 상세 언어 행의 검토 막대**(둘 다 `locale-meter.tsx`의 `MeterBar` 하나다), 그리고 카운트 카드 글리프의 `700`)·**destructive** · §6.3의 외부 링크 **blue-600**(`--signin-dot`이 같은 값이다) · **포커스 링의 blue-400**(2026-09-11에 하나 늘었다 — `--ring`, §7) · `Badge success`와 **`IconTile tone="success"` 칸**의 **green**(`100/80`·`800` — 목록 행 `Active`가 첫 소비자였다) · **Alert 배경**(2026-09-29 사용자 — `blue-50`·`green-50`·`red-50`, `amber-50`은 위. 글리프는 `blue-600`·`green-800`·`amber-700`·`destructive` — 전부 이미 등재된 값이다. `blue-50`은 아래 활동 칩(번역)과 같은 값이다) · 이름에서 뽑는 **tone 여덟**(`-600`) · **`--divider`**(`#f0f0f0`, 2026-09-13 — 바로 아래) · **neutral-300**(`#d4d4d4`) — 라디오·**체크박스** 지시자의 비선택 테두리(16px 원·사각에서 `--input`(#e5e5e5)은 안 보인다) · 번역 작업 화면 빈 칸의 **점선 상자** · 멤버 역할 칩의 **자물쇠**(캔버스 값 — 사유는 `sr-only`가 진다, §6.65). ⚠️ 옛 소비자였던 Home 로그 레일의 점은 사라졌다(2026-09-24 실측 0) · **neutral-400**(`#a3a3a3`, 2026-09-16 등재 — **전부터 쓰이던 것을 이제 센다**: `/docs` 행 화살표 `→`(2026-09-26, §6.61), Home의 메타 열 라벨·개수 카드, **logs 상세의 필드·블록 라벨**(2026-09-22 — 그 전엔 `--muted-foreground`와 합쳐져 있었다), **그리고 2026-09-20부터 `/projects` 보관 행의 이름·메타·배지**(§6.63의 등재된 이탈 — 2026-09-27부터 LNB 스위처의 같은 `Archived` 배지도, §6.5). 캔버스가 라벨·보조 글리프에 그 값을 직접 지정하고 `--muted-foreground`(#737373)보다 한 단계 연하다). · **neutral-600**(`#525252`, 2026-09-22 등재 — **전부터 쓰이던 것을 이제 센다**: Home sync 버튼 · 번역 작업 화면의 한 단계 아래 글리프(B6 표) · 랜딩 목업. 옛 소비자 `row-card` 칩 · `/projects` 행 · Sources 행 칩은 0이 됐다(소비자 목록의 정본은 `REGISTERED`). 캔버스가 글리프에 그 값을 직접 지정하고 `--muted-foreground`(#737373)보다 한 단계 진하다) · **red-700**(`#b91c1c`, 2026-09-22 — Publish diff(아래 표)와 그 랜딩 목업. 옛 소비자 Sources 상세의 사라짐 띠는 `Alert danger`로 옮겼다).  ⚠️ **`destructive`(#dc2626)와 다른 값이다**: 시안이 실패 **글자**와 사라짐 **알약**을 두 색으로 갈랐고, 채운 알약이 같은 밝기면 amber `warning`과 무게가 안 맞는다) · **활동 글리프 칩의 종류 팔레트 셋**(2026-09-20 등재, logs-rework §6.68 — `blue-50/700` · `teal-50/700` · `violet-50/700`). 규칙이 둘이다: **실행은 결과의 색이고 그 색은 §2.4 아이콘 칸 열이다**(2026-10-01 사용자, D3③ — 보류/부분/거부 warning 칸 · 실패 danger 칸 · 성공·진행 중·`Nothing to send`·`Up to date`·`Superseded`는 neutral 칸 — **Logs의 성공은 neutral이다**, §2.4 예외 2), **그 외는 종류의 색**(번역 blue · 소스/로케일 teal · 멤버 violet · 설정은 neutral 칸). ⚠️ **별도 축은 종류 칩 셋뿐이다** — 옛 판정은 결과 칩도 배지 톤과 별도 축(`emerald-50/700` · `amber-50/700` · `slate-100/600`)이라 같은 "보류"가 결과 배지는 amber-800, 칩은 amber-700으로 갈렸다. `components/logs/glyph.tsx`의 그 소비는 0이 됐고(결과 칸은 `IconTile tone`이 든다), 등재에서 빠진 값은 **emerald·slate** 둘이다(`amber-50`(Alert 면)·`text-amber-700`(상태 글자)은 다른 소비자로 등재가 남는다). 칩은 **훑기용 보조**이고 뜻은 결과 열의 낱말과 문장이 든다(색만으로 구별되는 정보는 칩에 싣지 않는다). ⚠️ **종류 셋의 시안 hex가 Tailwind 기본 팔레트와 정확히 같은 값이라 임의 hex를 쓰지 않는다** — 그래서 `app/globals.css`에 토큰이 늘지 않았고, 이 줄이 그 등재다. · **neutral-50**(`#fafafa`, 2026-09-22 — logs 상세의 `Before` 면과 값이 아닌 상태의 점선 블록 **둘뿐**이다. ⚠️ **`--muted`(#f5f5f5)로 대신하지 않는다**: 이 블록은 **흰 `After`와 나란히** 서고 두 면의 차이가 "같은 값의 두 시점"을 말하는 유일한 신호라, 한 단계 더 연한 값이 시안의 판정이다. 새 자리에 번지게 하지 않는다 — 리포의 회색 면은 여전히 `--muted`다). 그 밖은 없다. ⚠️ **랜딩 목업(§6.615)은 번역 작업 화면·Publish 모달의 정적 복제라** 그 두 화면의 값(amber-700 · neutral-300/400/600 · red-700 · green-800과 diff 면 둘)을 **같은 자리에** 쓴다 — 새 값은 0이고 `visual-system.test.ts`의 목록에 파일만 더했다.
+**새 raw 색을 늘리지 않는다.** 등재된 것이 전부다 — **amber**(`100/80`·`800` — `Badge warning`과 **`IconTile tone="warning"` 칸**(§2.4, `components/ui/icon-tile.tsx` — 2026-10-01부터 칸 색은 호출부가 아니라 프리미티브가 든다), Alert용 `50`(글리프는 `700`), **면으로 칠하는 `500`** — Meter의 검토 구간(§6.63)과 **Sources 상세 언어 행의 검토 막대**(둘 다 `locale-meter.tsx`의 `MeterBar` 하나다), 그리고 카운트 카드 글리프의 `700`)·**destructive** · §6.3의 외부 링크 **link**(`--signin-dot`이 같은 값이다) · **포커스 링의 blue-400**(2026-09-11에 하나 늘었다 — `--ring`, §7) · `Badge success`와 **`IconTile tone="success"` 칸**의 **green**(`100/80`·`800` — 목록 행 `Active`가 첫 소비자였다) · **Alert 배경**(2026-09-29 사용자 — `blue-50`·`green-50`·`red-50`, `amber-50`은 위. 글리프는 `link`·`green-800`·`amber-700`·`destructive` — 전부 이미 등재된 값이다. `blue-50`은 아래 활동 칩(번역)과 같은 값이다) · 이름에서 뽑는 **tone 여덟**(`-600`) · **`--divider`**(`#f0f0f0`, 2026-09-13 — 바로 아래) · **gray-light**(`#d4d4d4`) — 라디오·**체크박스** 지시자의 비선택 테두리(16px 원·사각에서 `--input`(#e5e5e5)은 안 보인다) · 번역 작업 화면 빈 칸의 **점선 상자** · 멤버 역할 칩의 **자물쇠**(캔버스 값 — 사유는 `sr-only`가 진다, §6.65). ⚠️ 옛 소비자였던 Home 로그 레일의 점은 사라졌다(2026-09-24 실측 0) · **gray-dim**(`#a3a3a3`, 2026-09-16 등재 — **전부터 쓰이던 것을 이제 센다**: `/docs` 행 화살표 `→`(2026-09-26, §6.61), Home의 메타 열 라벨·개수 카드, **logs 상세의 필드·블록 라벨**(2026-09-22 — 그 전엔 `--muted-foreground`와 합쳐져 있었다), **그리고 2026-09-20부터 `/projects` 보관 행의 이름·메타·배지**(§6.63의 등재된 이탈 — 2026-09-27부터 LNB 스위처의 같은 `Archived` 배지도, §6.5). 캔버스가 라벨·보조 글리프에 그 값을 직접 지정하고 `--muted-foreground`(#737373)보다 한 단계 연하다). · **gray-strong**(`#525252`, 2026-09-22 등재 — **전부터 쓰이던 것을 이제 센다**: Home sync 버튼 · 번역 작업 화면의 한 단계 아래 글리프(B6 표) · 랜딩 목업. 옛 소비자 `row-card` 칩 · `/projects` 행 · Sources 행 칩은 0이 됐다(소비자 목록의 정본은 `REGISTERED`). 캔버스가 글리프에 그 값을 직접 지정하고 `--muted-foreground`(#737373)보다 한 단계 진하다) · **red-700**(`#b91c1c`, 2026-09-22 — Publish diff(아래 표)와 그 랜딩 목업. 옛 소비자 Sources 상세의 사라짐 띠는 `Alert danger`로 옮겼다).  ⚠️ **`destructive`(#dc2626)와 다른 값이다**: 시안이 실패 **글자**와 사라짐 **알약**을 두 색으로 갈랐고, 채운 알약이 같은 밝기면 amber `warning`과 무게가 안 맞는다) · **활동 글리프 칩의 종류 팔레트 셋**(2026-09-20 등재, logs-rework §6.68 — `blue-50/700` · `teal-50/700` · `violet-50/700`). 규칙이 둘이다: **실행은 결과의 색이고 그 색은 §2.4 아이콘 칸 열이다**(2026-10-01 사용자, D3③ — 보류/부분/거부 warning 칸 · 실패 danger 칸 · 성공·진행 중·`Nothing to send`·`Up to date`·`Superseded`는 neutral 칸 — **Logs의 성공은 neutral이다**, §2.4 예외 2), **그 외는 종류의 색**(번역 blue · 소스/로케일 teal · 멤버 violet · 설정은 neutral 칸). ⚠️ **별도 축은 종류 칩 셋뿐이다** — 옛 판정은 결과 칩도 배지 톤과 별도 축(`emerald-50/700` · `amber-50/700` · `slate-100/600`)이라 같은 "보류"가 결과 배지는 amber-800, 칩은 amber-700으로 갈렸다. `components/logs/glyph.tsx`의 그 소비는 0이 됐고(결과 칸은 `IconTile tone`이 든다), 등재에서 빠진 값은 **emerald·slate** 둘이다(`amber-50`(Alert 면)·`text-amber-700`(상태 글자)은 다른 소비자로 등재가 남는다). 칩은 **훑기용 보조**이고 뜻은 결과 열의 낱말과 문장이 든다(색만으로 구별되는 정보는 칩에 싣지 않는다). ⚠️ **종류 셋의 시안 hex가 Tailwind 기본 팔레트와 정확히 같은 값이라 임의 hex를 쓰지 않는다** — 그래서 `app/globals.css`에 토큰이 늘지 않았고, 이 줄이 그 등재다. · **neutral-50**(`#fafafa`, 2026-09-22 — logs 상세의 `Before` 면과 값이 아닌 상태의 점선 블록 **둘뿐**이다. ⚠️ **`--muted`(#f5f5f5)로 대신하지 않는다**: 이 블록은 **흰 `After`와 나란히** 서고 두 면의 차이가 "같은 값의 두 시점"을 말하는 유일한 신호라, 한 단계 더 연한 값이 시안의 판정이다. 새 자리에 번지게 하지 않는다 — 리포의 회색 면은 여전히 `--muted`다). 그 밖은 없다. ⚠️ **랜딩 목업(§6.615)은 번역 작업 화면·Publish 모달의 정적 복제라** 그 두 화면의 값(amber-700 · gray-light/gray-dim/gray-strong · red-700 · green-800과 diff 면 둘)을 **같은 자리에** 쓴다 — 새 값은 0이고 `visual-system.test.ts`의 목록에 파일만 더했다.
 
 **B6 등재·접기 (2026-09-24, audit #43·#44)** — 번역 작업 화면(C4) 분량이 위 목록에서 통째로 빠져 있었다. **값마다 판정했고 새 값은 하나다**:
 
@@ -526,12 +544,12 @@ computed style로 잰 것이다.
 |---|---|---|
 | `text-amber-700` | **등재** (소비자 확장) | 번역 작업 화면의 **상태 글자** — 키 행·로케일 행의 `Needs review`, 로케일 행의 `Not saved`, 푸터의 미저장 수. ⚠️ 미번역 수·로케일 행의 `Untranslated`·`n of m languages`는 muted다(2026-09-30 — 미번역은 회색). amber-800(배지 글자)은 면 위의 값이라 면 없이 선 글자에는 한 단계 밝은 700이 캔버스 값이다(흰 배경 5.0:1) |
 | `border-amber-500/50` | **등재** (새 값) | Sources 기준 언어 `Select`의 **대기 테두리** 하나. 같은 칸의 오류 `border-destructive/50`과 짝이다 — amber-500은 이미 면 값으로 등재돼 있고 알파만 새로 든다 |
-| `neutral-300` | **등재** (소비자 확장) | 위 줄 — 체크박스 · 점선 상자 · 자물쇠 · `/mcp` 토큰 폼의 꺼진 `Chosen projects` 지시자(멤버십 0 — 사유를 읽히는 `aria-disabled` 행이라 Radix `Radio`가 아니다) |
-| `neutral-400` | **등재** (소비자 확장) | 번역 화면 트리의 네임스페이스 글리프 · 로케일 머리의 경로 구분 chevron · Sources 상세의 **사라진 언어 행 수치**(같은 행의 `missing` 알약이 뜻을 완성한다 — §6.63 보관 행과 같은 예외) · **`/mcp`**(mcp-connector) **만료 토큰·만료 연결 앱의 값**(같은 카드의 `Expired` 배지가 뜻을 완성한다 — 보관 행과 같은 예외) · 멤버십 0의 꺼진 `Chosen projects` 이름. ⚠️ **사실 라벨 열(설정 General · `/account` Profile · `/mcp` 사실 블록)은 2026-10-01에 `text-muted-foreground`로 갔다**(ux-drift-unify 4-Y22) |
-| `neutral-600` | **등재** (소비자 확장) | 번역 작업 화면의 **한 단계 아래 글리프**(트리 소스 행의 chevron·파일, 키 목록의 트리 열기, 링크 복사, 툴바 Sync) (옛 `Not sent` 알약 글자는 2026-10-01에 Unsent `Badge neutral`로 가며 빠졌다) |
+| `gray-light` | **등재** (소비자 확장) | 위 줄 — 체크박스 · 점선 상자 · 자물쇠 · `/mcp` 토큰 폼의 꺼진 `Chosen projects` 지시자(멤버십 0 — 사유를 읽히는 `aria-disabled` 행이라 Radix `Radio`가 아니다) |
+| `gray-dim` | **등재** (소비자 확장) | 번역 화면 트리의 네임스페이스 글리프 · 로케일 머리의 경로 구분 chevron · Sources 상세의 **사라진 언어 행 수치**(같은 행의 `missing` 알약이 뜻을 완성한다 — §6.63 보관 행과 같은 예외) · **`/mcp`**(mcp-connector) **만료 토큰·만료 연결 앱의 값**(같은 카드의 `Expired` 배지가 뜻을 완성한다 — 보관 행과 같은 예외) · 멤버십 0의 꺼진 `Chosen projects` 이름. ⚠️ **사실 라벨 열(설정 General · `/account` Profile · `/mcp` 사실 블록)은 2026-10-01에 `text-muted-foreground`로 갔다**(ux-drift-unify 4-Y22) |
+| `gray-strong` | **등재** (소비자 확장) | 번역 작업 화면의 **한 단계 아래 글리프**(트리 소스 행의 chevron·파일, 키 목록의 트리 열기, 링크 복사, 툴바 Sync) (옛 `Not sent` 알약 글자는 2026-10-01에 Unsent `Badge neutral`로 가며 빠졌다) |
 | `bg-white` (이력 날짜 카드) | **접기** → `bg-background` | §6.2가 `bg-white`를 로그인 좌측 하나로 한정한다. 셸 안 흰 카드는 토큰이다 |
-| `disabled:text-neutral-400` (번역 필터 트리거) | **접기** → `disabled:text-muted-foreground` | `Button`의 꺼진 글자와 같은 값이어야 필터 줄의 꺼진 컨트롤이 한 형으로 읽힌다 |
-| `text-neutral-400` (Sources 기준 언어 행의 비고) | **접기** → `text-muted-foreground` | 홀로 선 문장이라 위 "본문 금지"에 걸린다(Publish 저자 이름과 같은 판정) |
+| `disabled:text-gray-dim` (번역 필터 트리거) | **접기** → `disabled:text-muted-foreground` | `Button`의 꺼진 글자와 같은 값이어야 필터 줄의 꺼진 컨트롤이 한 형으로 읽힌다 |
+| `text-gray-dim` (Sources 기준 언어 행의 비고) | **접기** → `text-muted-foreground` | 홀로 선 문장이라 위 "본문 금지"에 걸린다(Publish 저자 이름과 같은 판정) |
 | `shadow-[0_0_0_1px_rgba(10,10,10,0.06)]` (Publish 표의 국기) | **접기** → `ring-1 ring-foreground/[0.06]` | 같은 box-shadow를 토큰의 알파로 낸다 — 임의값 안에 rgba를 두지 않는다 |
 
 ⚠️ **등재 목록의 실물은 `components/__tests__/visual-system.test.ts`의 `REGISTERED`다** — 값 → 쓰는 파일을 들고, 그 밖의 값·파일은 red다(소비자가 0이 된 줄도 red다). **이 절이 "왜"를, 그 표가 "지금 어디에"를 든다** — 자리를 늘리려면 둘을 함께 고친다(§4.1의 mono 목록과 같은 분업). 위 문단들의 소비자 나열은 그 표보다 늦게 갱신될 수 있고, 어긋나면 그 표가 실물이다.
@@ -570,12 +588,12 @@ logs 상세 `components/logs/event-dialog.tsx`(2026-09-24, §6.68), 그리고 �
 
 **목록 재설계가 데려온 넷** (2026-09-13 등재 — 당시 전부 `/projects`가 유일한 소비자였다. 지금 자리는 각 행과 `REGISTERED`가 든다):
 
-| 색 | 자리 | 왜 기존 토큰이 아닌가 |
+| 색 | 자리 | 용도·값을 나눈 근거 |
 |---|---|---|
 | ~~`red-800` (`#991b1b`)~~ | ~~임포트 실패 띠의 `triangle-alert`~~ — **소비자 0**(실패 띠는 `BannerLine danger` + `CircleX`, §2.4 글리프 열 — 2026-10-01). 옛 근거: | `--destructive`는 red-600이라 값이 다르다. 띠는 Alert가 아니라 **한 줄**이고 배경이 2%뿐이라 그 위에서 red-600은 경고보다 장식으로 읽힌다 |
-| `blue-600` (`#2563eb`) | `New from GitHub`의 글리프·숫자 — 지금은 **Home 카운트 카드**(`home/count-cards.tsx`)다 | 이미 §6.2에 있던 값이지만 **숫자에 색을 쓰는 첫 자리**다. 넷 중 유일하게 "내가 만들지 않은 변화"라 그 하나만 색을 든다 |
-| `blue-600/[0.14]` | 검색 일치 구간(`<mark>`) | 강조가 배경이라 알파가 필요하다. `radius 3` · `padding 0 1px`로 글자 사이를 안 벌린다 |
-| `neutral-600` (`#525252`) | ~~무색 배지의 글자(`Setup`·`Pending`)~~(2026-10-01 — 호출부 덮개를 걷어 `Badge neutral` 그대로다, `StatusBadge`) · **Home 머리 `[Sync]`의 `ArrowDownToLine` 글리프** · **Sync 확인 Dialog 설명문의 브랜치**(2026-09-15 실측. ⚠️ 2026-09-23까지 mono였다 — 지금은 색만 남았다) | `Badge neutral`의 기본은 foreground이라 호출부에서 내린다 — 프리미티브를 바꾸면 이 화면 밖 배지가 함께 움직인다. 뒤의 둘은 **한 단계 아래**를 표시하는 같은 쓰임이다(버튼 라벨 `#0a0a0a`보다 글리프가, 설명문 `#737373`보다 브랜치가) |
+| `link` (`#2563eb`) | `New from GitHub`의 글리프·숫자 — 지금은 **Home 카운트 카드**(`home/count-cards.tsx`)다 | 이미 §6.2에 있던 값이지만 **숫자에 색을 쓰는 첫 자리**다. 넷 중 유일하게 "내가 만들지 않은 변화"라 그 하나만 색을 든다 |
+| `link/[0.14]` | 검색 일치 구간(`<mark>`) | 강조가 배경이라 알파가 필요하다. `radius 3` · `padding 0 1px`로 글자 사이를 안 벌린다 |
+| `gray-strong` (`#525252`) | ~~무색 배지의 글자(`Setup`·`Pending`)~~(2026-10-01 — 호출부 덮개를 걷어 `Badge neutral` 그대로다, `StatusBadge`) · **Home 머리 `[Sync]`의 `ArrowDownToLine` 글리프** · **Sync 확인 Dialog 설명문의 브랜치**(2026-09-15 실측. ⚠️ 2026-09-23까지 mono였다 — 지금은 색만 남았다) | `Badge neutral`의 기본은 foreground이라 호출부에서 내린다 — 프리미티브를 바꾸면 이 화면 밖 배지가 함께 움직인다. 뒤의 둘은 **한 단계 아래**를 표시하는 같은 쓰임이다(버튼 라벨 `#0a0a0a`보다 글리프가, 설명문 `#737373`보다 브랜치가) |
 
 ⚠️ **2026-09-15에 둘이 등재에서 빠졌다가 하나가 돌아왔다** — `amber-700`은 Summary 블록이
 사라지며 소비자가 0이 됐지만 **같은 날 Home의 카운트 카드가 그 자리를 받았다**(`To review`의
@@ -584,13 +602,13 @@ logs 상세 `components/logs/event-dialog.tsx`(2026-09-24, §6.68), 그리고 �
 
 **Home 재편이 데려온 하나** (2026-09-15 등재 — `/projects/[slug]` 그래프가 유일한 소비자다):
 
-| 색 | 자리 | 왜 기존 토큰이 아닌가 |
+| 색 | 자리 | 용도·값을 나눈 근거 |
 |---|---|---|
-| `neutral-400` (`#a3a3a3`) | 카드 글리프(색을 안 든 둘) · 메타 열의 라벨 · 0인 수치(⚠️ 주의 카드 항목 행의 시각은 2026-09-30에 muted로 갔다 — 2.5:1이라 읽기 어려웠다) · **`/projects` 보관 행의 이름·메타·배지**(2026-09-20 — 아래 하한의 **등재된 예외**, 근거는 §6.63) | **`--muted-foreground`(#737373)보다 한 단계 더 물러난 층**이고 리포에 그 층이 없었다. 이 화면은 한 화면에 읽을 것이 넷(수 · 근거 · 사건 · 사실)이라 전부 같은 회색이면 위계가 서지 않는다 — 캔버스가 이 색을 **"정보이지만 지금 읽을 필요는 없는 것"** 에 일관되게 쓴다. ⚠️ **흰 배경 2.6:1이라 §7의 3:1 하한을 못 넘는다 — 본문에 쓰지 않는다**: 대상은 라벨·시각·비활성 글리프처럼 **옆의 값이 뜻을 완성하는** 자리뿐이고, 그 값은 전부 `#0a0a0a`다 |
+| `gray-dim` (`#a3a3a3`) | 카드 글리프(색을 안 든 둘) · 메타 열의 라벨 · 0인 수치(⚠️ 주의 카드 항목 행의 시각은 2026-09-30에 muted로 갔다 — 2.5:1이라 읽기 어려웠다) · **`/projects` 보관 행의 이름·메타·배지**(2026-09-20 — 아래 하한의 **등재된 예외**, 근거는 §6.63) | **`--muted-foreground`(#737373)보다 한 단계 더 물러난 층**이고 리포에 그 층이 없었다. 이 화면은 한 화면에 읽을 것이 넷(수 · 근거 · 사건 · 사실)이라 전부 같은 회색이면 위계가 서지 않는다 — 캔버스가 이 색을 **"정보이지만 지금 읽을 필요는 없는 것"** 에 일관되게 쓴다. ⚠️ **흰 배경 2.6:1이라 §7의 3:1 하한을 못 넘는다 — 본문에 쓰지 않는다**: 대상은 라벨·시각·비활성 글리프처럼 **옆의 값이 뜻을 완성하는** 자리뿐이고, 그 값은 전부 `#0a0a0a`다 |
 
 **Publish 모달이 데려온 둘** (2026-09-16 등재 — `components/publish-button.tsx`의 diff 표가 유일한 소비자다):
 
-| 색 | 자리 | 왜 기존 토큰이 아닌가 |
+| 색 | 자리 | 용도·값을 나눈 근거 |
 |---|---|---|
 | `red-700` (`#b91c1c`) + `red-700/[0.14]` | diff의 `−` 글리프 · 제거된 낱말의 배경(⚠️ `Badge missing`은 2026-09-30에 붉은 면 조합 `destructive/8`로 옮겼다 — §2.3) | **diff의 만국 공용 어휘**라 이 제품의 상태색 축(§2.3의 "destructive는 글자색 전용")과 별개다. `--destructive`(#dc2626)보다 한 단계 내린 것은 배경 위에 얹는 글자라서이고, 알파 0.14는 **배지로 안 보이게** 하는 값이다 — 줄 전체가 아니라 바뀐 낱말만 칠한다 |
 | `green-800` (`#166534`) + `green-800/[0.16]` | diff의 `+` 글리프 · 추가된 낱말의 배경 (⚠️ PR 카드의 `GitPullRequestArrow`는 2026-09-30에 muted로 내려갔다 — 열린 PR은 정보다, 랜딩 목업도 같은 형) | 같은 축이다. `Badge success`가 이미 `text-green-800`을 들고 있어 **색 자체는 새 값이 아니고**, 배경 없이 홀로 서는 쓰임과 알파 변형이 새로 등재된다 |
@@ -599,7 +617,7 @@ logs 상세 `components/logs/event-dialog.tsx`(2026-09-24, §6.68), 그리고 �
 상태·결과의 초록·빨강은 **§2.4 표의 배지·아이콘 칸·Alert 값만** 쓴다 — 그 밖의 자리에서 색을 고르기 시작하면 §6.2가 첫날에 깨진다. 열린 PR은 정보라 PR 카드는 neutral이다(`Badge neutral` + muted 글리프, 2026-09-30).
 ⚠️ **예외 하나 — Alert 배경** (2026-09-29 사용자): `success`·`danger`의 면이 `green-50`·`red-50`이다. 이 표의 글자·글리프 값과 별개 축이고(§6.2 Alert 5종), 그 밖의 상태·결과 자리로 넓히지 않는다.
 
-⚠️ **`neutral-400`은 저자 이름에 쓰지 않는다** (2026-09-16). 시안은 diff 행의 저자를 `#a3a3a3`으로
+⚠️ **`gray-dim`은 저자 이름에 쓰지 않는다** (2026-09-16). 시안은 diff 행의 저자를 `#a3a3a3`으로
 그렸지만 위 등재 줄이 그 색을 **본문 금지**로 못 박았고, 저자 이름은 "옆의 값이 뜻을 완성하는"
 부류가 아니다 — 그 화면에서 누가 고쳤는지 말하는 **유일한** 자리다. `--muted-foreground`로 올린다.
 
@@ -641,7 +659,7 @@ logs 상세 `components/logs/event-dialog.tsx`(2026-09-24, §6.68), 그리고 �
 (`grep -rn underline app components --include='*.tsx'`가 0건이어야 한다) `Button` variant `link`도
 같이 바뀌었다.
 
-**리포 밖으로 나가는 링크는 `text-blue-600` + `target="_blank" rel="noreferrer"`다 — 글리프를 달지 않는다** (2026-09-18 사용자 판정으로 반전).
+**리포 밖으로 나가는 링크는 `text-link` + `target="_blank" rel="noreferrer"`다 — 글리프를 달지 않는다** (2026-09-18 사용자 판정으로 반전).
 
 ⚠️ **예외 — GitHub App 설치·설치 설정 왕복은 같은 탭이다** (2026-09-18, install-and-connect). ①의 [Install GitHub App]·[Choose repositories]·목록 아래 "Choose repositories"는 GitHub이 callback으로 되돌려 ①에 착지시키므로, 새 탭이면 원래 탭이 낡은 목록으로 남고 착지한 탭에 모달이 하나 더 선다. `/account`의 [Installation settings]는 malmoi 쪽 착지가 정해지지 않은 나가는 문이라 새 탭 그대로다.
 
@@ -657,7 +675,7 @@ logs 상세 `components/logs/event-dialog.tsx`(2026-09-24, §6.68), 그리고 �
 따라왔다 — 옛 비대칭은 끝났다). `components/__tests__/home-landmarks.test.tsx`가 둘을 **한 검사**로 센다 — 한쪽만
 세면 다른 쪽에 글리프가 되살아나도 green이다.
 
-**내부 링크는 표면이 두 갈래다.** 셸 **안**의 내부 링크(사이드바·목록 행·진행률 행·활동 행)는 밑줄 없이 `text-foreground`/`text-muted-foreground`다 — 행 전체가 눌리는 자리라 색이 아니라 hover가 그것을 말한다. ⚠️ **셸 안 독립·행 링크의 파랑은 새 탭 외부 링크만이다** (2026-10-01, §2.4 동작 규칙 — 4-R2): `/projects` 띠의 `Reconnect`·`Continue setup`·`View details`, 검색 결과 카드 머리의 `Clear search`가 외부 링크와 같은 파랑이라 새 탭으로 나가는지 알 수 없었다(Sources·CI 카드·Sync 확인창의 앱 안 링크는 **문장 안**이라 파랑이 남는다 — 아래 예외). 앱 안 이동은 `text-foreground`(띠 안이면 muted 글자) + `ChevronRight`(Home 바닥 링크와 같은 형)이고, 파랑은 `target="_blank"`와 짝이다. **문장 안 인라인 링크는 예외로 파랑이다**(부모가 문단 — 아래 셸 밖 규칙과 같은 근거). ⚠️ **셸 밖 화면의 텍스트 링크는 `text-blue-600`이다**(`/signin`의 동의 문구 속 Privacy Policy, `/privacy`·`/docs`의 본문 링크 — 공개 셸 안이지만 문단 안 글자라 같은 규칙이다, §6.616 · §6.61) — 그 화면들엔 사이드바도 행도 없어서 **링크가 문단 안의 글자 하나**이고, 색이 없으면 눌리는 것인지 알 수단이 밑줄뿐인데 그것을 8-1b가 전역으로 걷었다. 아이콘은 안 붙는다(리포 밖으로 안 나간다). ⚠️ **공통 푸터(`PublicFooter`)는 이 규칙 밖이다** — 2026-09-26부터 `/signin`·초대·계정 병합도 그 푸터를 쓰고, 링크 목록 줄이라 muted + `hover:text-foreground`다(§6.615).
+**내부 링크는 표면이 두 갈래다.** 셸 **안**의 내부 링크(사이드바·목록 행·진행률 행·활동 행)는 밑줄 없이 `text-foreground`/`text-muted-foreground`다 — 행 전체가 눌리는 자리라 색이 아니라 hover가 그것을 말한다. ⚠️ **셸 안 독립·행 링크의 파랑은 새 탭 외부 링크만이다** (2026-10-01, §2.4 동작 규칙 — 4-R2): `/projects` 띠의 `Reconnect`·`Continue setup`·`View details`, 검색 결과 카드 머리의 `Clear search`가 외부 링크와 같은 파랑이라 새 탭으로 나가는지 알 수 없었다(Sources·CI 카드·Sync 확인창의 앱 안 링크는 **문장 안**이라 파랑이 남는다 — 아래 예외). 앱 안 이동은 `text-foreground`(띠 안이면 muted 글자) + `ChevronRight`(Home 바닥 링크와 같은 형)이고, 파랑은 `target="_blank"`와 짝이다. **문장 안 인라인 링크는 예외로 파랑이다**(부모가 문단 — 아래 셸 밖 규칙과 같은 근거). ⚠️ **셸 밖 화면의 텍스트 링크는 `text-link`이다**(`/signin`의 동의 문구 속 Privacy Policy, `/privacy`·`/docs`의 본문 링크 — 공개 셸 안이지만 문단 안 글자라 같은 규칙이다, §6.616 · §6.61) — 그 화면들엔 사이드바도 행도 없어서 **링크가 문단 안의 글자 하나**이고, 색이 없으면 눌리는 것인지 알 수단이 밑줄뿐인데 그것을 8-1b가 전역으로 걷었다. 아이콘은 안 붙는다(리포 밖으로 안 나간다). ⚠️ **공통 푸터(`PublicFooter`)는 이 규칙 밖이다** — 2026-09-26부터 `/signin`·초대·계정 병합도 그 푸터를 쓰고, 링크 목록 줄이라 muted + `hover:text-foreground`다(§6.615).
 
 ### 6.4 공통 형 — 프리미티브가 든다 (2026-09-08)
 
@@ -1953,7 +1971,7 @@ Project Home의 별도 카드까지 합치지는 않는다 — 그쪽의 빈 상
 
 **쓰지 않는 자리** (아이콘이 정보를 안 더하고 스캔만 방해한다): 배지(§6.2는 텍스트만 — `missing`도 글리프 없이다. ⚠️ **로케일 배지의 국기는 상태 글리프가 아니라 면제다**, §2.4) · `Card` 제목 · 표 헤더 · **반복 목록의 모든 행**(네임스페이스 패널·리포 목록·키 행 — 같은 아이콘이 n번 반복되면 정보량이 0이다) · 텍스트 링크 안(외부 링크 예외).
 
-**형**: `size-4`(14는 `size-3.5`, 12는 `size-3`, 20은 `size-5`) · 색은 **상속**(`currentColor`) — 아이콘에 별도 색 클래스를 주지 않는다. 예외는 Alert 5종 · `EmptyState` · **한 단계 아래 글리프**다: 라벨보다 한 단계 물러난 무채 계단(`muted-foreground` · §6.2의 `neutral-300`·`400`·`600`)까지이고(⚠️ PR 카드의 `green-800`은 2026-09-30에 muted로 내려가 빠졌다 — 5-Y15), **그 밖의 색상(hue)은 아이콘에 주지 않는다**(2026-09-24, audit #48 — 이 문장이 "Alert·EmptyState뿐"이라 적은 동안 Home Sync 글리프(§6.2 등재)를 비롯한 여덟 자리가 이미 계단을 쓰고 있었다. `visual-system.test.ts`가 lucide 글리프의 색 클래스를 이 집합으로 센다) · 라벨과 `gap-2` · **라벨이 있으면 `aria-hidden`**, 아이콘만이면 `aria-label` (§7).
+**형**: `size-4`(14는 `size-3.5`, 12는 `size-3`, 20은 `size-5`) · 색은 **상속**(`currentColor`) — 아이콘에 별도 색 클래스를 주지 않는다. 예외는 Alert 5종 · `EmptyState` · **한 단계 아래 글리프**다: 라벨보다 한 단계 물러난 무채 계단(`muted-foreground` · §6.2의 `gray-light`·`gray-dim`·`gray-strong`)까지이고(⚠️ PR 카드의 `green-800`은 2026-09-30에 muted로 내려가 빠졌다 — 5-Y15), **그 밖의 색상(hue)은 아이콘에 주지 않는다**(2026-09-24, audit #48 — 이 문장이 "Alert·EmptyState뿐"이라 적은 동안 Home Sync 글리프(§6.2 등재)를 비롯한 여덟 자리가 이미 계단을 쓰고 있었다. `visual-system.test.ts`가 lucide 글리프의 색 클래스를 이 집합으로 센다) · 라벨과 `gap-2` · **라벨이 있으면 `aria-hidden`**, 아이콘만이면 `aria-label` (§7).
 
 ⚠️ **`lucide-react` 1.x에 브랜드 아이콘이 없다** — `Github`·`Google`을 import하면 빌드가 죽는다(1.37.0 실측). GitHub 연결 버튼은 `Link2`이거나 아이콘 없이 라벨만이고, provider 로고가 필요하면 인라인 SVG를 그 컴포넌트 안에 둔다.
 

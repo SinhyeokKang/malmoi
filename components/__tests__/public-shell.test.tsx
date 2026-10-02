@@ -275,7 +275,7 @@ describe("푸터 — `/signin`·초대·계정 병합도 공개 셸 푸터 하�
 
   it("공개 셸과 같은 좌표다 — 바깥 `px-2 pt-2`, 푸터가 바닥 40을 든다", () => {
     const outer = signin().querySelector("footer")?.parentElement;
-    expect(outer?.className.split(/\s+/)).toEqual(expect.arrayContaining(["flex", "flex-col", "min-h-svh", "min-w-[1280px]", "px-2", "pt-2"]));
+    expect(outer?.className.split(/\s+/)).toEqual(expect.arrayContaining(["flex", "flex-col", "min-h-svh", "min-w-shell-min", "px-2", "pt-2"]));
     expect(outer?.className.split(/\s+/)).not.toContain("p-2");
     expect(outer?.lastElementChild?.tagName).toBe("FOOTER");
   });
@@ -313,7 +313,7 @@ describe("공개 셸 — 소스 계약", () => {
 
   it("루트가 뷰포트 높이를 채우고 문서는 스크롤되지 않는다", () => {
     expect(all).toMatch(/className="[^"]*\bh-svh\b[^"]*"/);
-    expect(all).toContain("min-w-[1280px]");
+    expect(all).toContain("min-w-shell-min");
     expect(all).toMatch(/className="[^"]*\bh-svh\b[^"]*\boverflow-hidden\b|className="[^"]*\boverflow-hidden\b[^"]*\bh-svh\b/);
   });
 

@@ -27,7 +27,7 @@ export function EventMetaLine({ row, archived }: { row: EventMetaRow; archived: 
           {facts.map((part, index) => (
             <Fragment key={index}>
               {index > 0 && " · "}
-              {typeof part === "string" ? part : part.kind === "link" ? <span className="text-blue-600">{part.text}</span> : null}
+              {typeof part === "string" ? part : part.kind === "link" ? <span className="text-link">{part.text}</span> : null}
             </Fragment>
           ))}
         </span>

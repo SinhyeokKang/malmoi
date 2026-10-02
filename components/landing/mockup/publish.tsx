@@ -37,7 +37,7 @@ function Shell({ title, description, children, meta, action, tall }: { title: st
       </div>
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden px-8 pt-0.5 pb-6">{children}</div>
       <div className="border-divider flex items-center justify-between gap-2 border-t px-8 py-6">
-        <span className="text-muted-foreground text-xs leading-[1.6]">{meta}</span>
+        <span className="text-muted-foreground text-xs leading-body">{meta}</span>
         <div className="flex items-center gap-2">{action}</div>
       </div>
     </div>
@@ -113,7 +113,7 @@ export function PreviewModal() {
                   <span className="text-xs leading-5 font-medium">{row.code}</span>
                 </span>
                 <span className="flex min-w-0 flex-1 items-start gap-2.5 px-3.5 py-[11px]">
-                  <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
+                  <span className="flex min-w-0 flex-1 flex-col gap-copy-gap">
                     {row.before !== null && <DiffLine sign="−" parts={diff.before} before />}
                     <DiffLine sign="+" parts={diff.after} />
                   </span>
@@ -148,7 +148,7 @@ export function ResultModal() {
           </span>
           <StatusBadge state="prOpen" />
         </div>
-        <div className="text-muted-foreground flex gap-2.5 text-xs leading-[1.6]">
+        <div className="text-muted-foreground flex gap-2.5 text-xs leading-body">
           <span className="flex h-[21px] shrink-0 items-center">
             <Info className="size-4" aria-hidden />
           </span>

@@ -174,6 +174,6 @@ describe("이름·시각·색 (#33·#40·#41·#42)", () => {
 
   it("좁은 폭에서도 언어 행의 검토·누락 표시가 숨지 않는다 — Meter는 aria-hidden이라 색만 남는다", () => {
     const source = read("components/sources/source-detail-modal.tsx");
-    expect(source).not.toMatch(/min-w-0 flex-1 text-xs @max-\[640px\]:hidden/);
+    expect(source).not.toMatch(/min-w-0 flex-1 text-xs @max-form:hidden/);
   });
 });

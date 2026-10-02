@@ -51,7 +51,7 @@ const ICON: Record<Tone, ComponentType<{ className?: string }>> = {
 
 const ICON_CLASS: Record<Tone, string> = {
   neutral: "text-muted-foreground",
-  info: "text-blue-600",
+  info: "text-link",
   success: "text-green-800",
   warning: "text-amber-700",
   danger: "text-destructive",
@@ -103,7 +103,7 @@ export function Alert({
   const Icon = ICON[tone];
   const mode = live ?? (tone === "danger" ? "alert" : "off");
   return (
-    <div id={id} className={cn(alert({ variant, size }), inset && "rounded-none px-4 py-[13px]", className)} role={mode === "off" ? undefined : mode} data-alert={tone}>
+    <div id={id} className={cn(alert({ variant, size }), inset && "rounded-none px-4 py-row-y", className)} role={mode === "off" ? undefined : mode} data-alert={tone}>
       <Icon className={cn("mt-0.5 shrink-0", compact ? "size-3.5" : "size-4", ICON_CLASS[tone])} aria-hidden />
       <div className={cn("flex min-w-0 flex-1 flex-col", compact ? "gap-1.5" : "gap-2")}>
         {/* 제목↔본문은 기본 4 · compact 2다(2026-09-30 사용자) — 열 gap(8 · 6)에서 −4를 당긴다. 본문↔액션은 열 gap 그대로다. */}

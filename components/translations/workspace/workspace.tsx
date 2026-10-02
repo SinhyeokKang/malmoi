@@ -753,7 +753,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
             ) : (
               <>
                 <Button aria-disabled="true" title={w.sync.ownerOnly} aria-describedby={syncReasonId} onClick={event => event.preventDefault()}>
-                  <ArrowDownToLine className="text-neutral-600" aria-hidden />
+                  <ArrowDownToLine className="text-gray-strong" aria-hidden />
                   {m.repositorySync.action}
                 </Button>
                 <span id={syncReasonId} className="sr-only">{w.sync.ownerOnly}</span>
@@ -965,7 +965,7 @@ const ALERTS: Partial<Record<FooterStatus["kind"], (ctx: { onCheck: () => void; 
   session: ({ storageBlocked }) => (
     <Alert variant="danger" title={m.translations.workspace.footer.session.title}>
       {storageBlocked ? m.translations.workspace.footer.session.storageBlocked : m.translations.workspace.footer.session.body}{" "}
-      <a href={routes.signIn()} target="_blank" rel="noreferrer" className="text-blue-600">{m.translations.workspace.footer.session.signIn}</a>
+      <a href={routes.signIn()} target="_blank" rel="noreferrer" className="text-link">{m.translations.workspace.footer.session.signIn}</a>
     </Alert>
   ),
   // 보관은 회색이다 — 실패가 아니다(2026-09-30 상태 통일).

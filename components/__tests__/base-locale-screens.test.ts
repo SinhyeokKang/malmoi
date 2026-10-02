@@ -262,7 +262,7 @@ describe("설정의 Base branch 행", () => {
     const src = read(SETTINGS_FORM);
     // `for`는 편집 컨트롤이 설 때만 잇는다(audit #89) — 식 안의 `"base-branch"`까지 한 덩어리로 본다.
     expect(src).toMatch(/<label htmlFor=\{[^}]*"base-branch"\} className="[^"]*\btext-foreground\b[^"]*\bfont-medium\b/);
-    expect(src).not.toMatch(/<label htmlFor=\{[^}]*"base-branch"\} className="[^"]*text-neutral-400/);
+    expect(src).not.toMatch(/<label htmlFor=\{[^}]*"base-branch"\} className="[^"]*text-gray-dim/);
     expect(src).toMatch(/<form\s+className="[^"]*\bpl-10\b/);
   });
 

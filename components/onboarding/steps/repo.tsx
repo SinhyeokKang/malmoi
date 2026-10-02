@@ -141,7 +141,7 @@ export function RepoStep({
             </li>
           ))}
         </ul>
-        <p className="text-muted-foreground text-xs leading-[1.6]">{m.newProject.repo.loading}</p>
+        <p className="text-muted-foreground text-xs leading-body">{m.newProject.repo.loading}</p>
       </div>
     );
   }
@@ -282,9 +282,9 @@ export function RepoStep({
 function InstallHint({ installUrl }: { installUrl: string | null }) {
   if (installUrl === null) return null;
   return (
-    <p className="text-muted-foreground shrink-0 text-xs leading-[1.6]">
+    <p className="text-muted-foreground shrink-0 text-xs leading-body">
       {m.newProject.repo.notListed}{" "}
-      <a href={installUrl} className="text-blue-600">
+      <a href={installUrl} className="text-link">
         {m.newProject.empty.repos.action}
       </a>
     </p>
@@ -360,7 +360,7 @@ function BranchRow({ state, onChange }: { state: RepoStepState; onChange: (value
           AA 미달이다 (핸드오프 · DESIGN §2.2). 같은 이유로 `FormGroup`을 쓰지 않는다 — 그 프리미티브의
           help는 흰 면 전용 색이고, 고치면 다른 화면의 모든 폼이 함께 움직인다.
         */}
-        <p className="text-foreground/60 min-w-0 flex-1 text-xs leading-[1.6]">{help}</p>
+        <p className="text-foreground/60 min-w-0 flex-1 text-xs leading-body">{help}</p>
       </>
     </BranchShell>
   );
@@ -570,7 +570,7 @@ function BlockShell({
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-3">
       <EmptyState icon={icon} title={title} description={description} action={action ?? undefined} />
-      {secondary !== null && <p className="text-muted-foreground text-xs leading-[1.6]">{secondary}</p>}
+      {secondary !== null && <p className="text-muted-foreground text-xs leading-body">{secondary}</p>}
       {error !== null && <Alert variant="danger">{error}</Alert>}
     </div>
   );

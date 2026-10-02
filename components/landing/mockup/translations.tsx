@@ -72,7 +72,7 @@ export function TranslationsView({ phase }: { phase: Phase }) {
           </span>
           <span className="ml-auto flex items-center gap-2">
             <span className={buttonClass({ variant: "default" })}>
-              <ArrowDownToLine className="text-neutral-600" aria-hidden />
+              <ArrowDownToLine className="text-gray-strong" aria-hidden />
               {m.repositorySync.action}
             </span>
             <span data-landing-publish="" aria-disabled={phase === "published" ? "true" : undefined} className={cn(buttonClass({ variant: "primary" }), phase === "published" && "bg-muted text-muted-foreground")}>
@@ -133,8 +133,8 @@ function SourceTree() {
           return (
             <div key={source.slug} data-landing-source={source.slug} className="flex flex-col gap-0.5">
               <span className="flex items-center gap-2 rounded-sm px-2 py-[7px] text-sm">
-                <span className="flex text-neutral-600">{open ? <ChevronDown className="size-3.5" aria-hidden /> : <ChevronRight className="size-3.5" aria-hidden />}</span>
-                <span className="flex text-neutral-600"><FileJson2 className="size-4" aria-hidden /></span>
+                <span className="flex text-gray-strong">{open ? <ChevronDown className="size-3.5" aria-hidden /> : <ChevronRight className="size-3.5" aria-hidden />}</span>
+                <span className="flex text-gray-strong"><FileJson2 className="size-4" aria-hidden /></span>
                 <span className="min-w-0 flex-1 truncate font-medium">{source.slug}</span>
                 <span className="text-muted-foreground text-xs">{count(source.keyCount)}</span>
               </span>
@@ -160,7 +160,7 @@ const SELECTED = "bg-foreground/[0.07]";
 function TreeItem({ icon, label, n, selected }: { icon: ReactNode; label: string; n: number; selected: boolean }) {
   return (
     <span className={cn("flex items-center gap-2 rounded-sm py-1.5 pr-2 pl-[30px] text-sm", selected && SELECTED)}>
-      <span className="flex text-neutral-400">{icon}</span>
+      <span className="flex text-gray-dim">{icon}</span>
       <span className="min-w-0 flex-1 truncate">{label}</span>
       <span className="text-muted-foreground text-xs">{count(n)}</span>
     </span>
@@ -188,7 +188,7 @@ function KeyList({ phase }: { phase: Phase }) {
           const complete = <span className="text-muted-foreground shrink-0 text-xs">{list.complete}</span>;
           return (
             <div key={row.key} data-landing-row={row.key} className={cn("flex shrink-0 items-start gap-3 border-t px-4 py-3", index === 0 ? "border-divider" : "border-border", isSelected && SELECTED)}>
-              <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
+              <span className="flex min-w-0 flex-1 flex-col gap-copy-gap">
                 <span className="text-sm leading-[1.45]">{row.text}</span>
                 <span className="flex flex-wrap items-center gap-1.5">
                   <span className="text-muted-foreground text-xs">{row.key}</span>
@@ -217,7 +217,7 @@ function LocaleDetail({ phase }: { phase: Phase }) {
         <span className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-sm">
           <FileJson2 className="size-4 shrink-0" aria-hidden />
           {fixture.source}
-          <ChevronRight className="size-3.5 shrink-0 text-neutral-400" aria-hidden />
+          <ChevronRight className="size-3.5 shrink-0 text-gray-dim" aria-hidden />
           <span className="text-foreground min-w-0 truncate font-medium">{fixture.namespace}</span>
         </span>
         <span className="ml-auto">
@@ -234,7 +234,7 @@ function LocaleDetail({ phase }: { phase: Phase }) {
               after={<span className="text-muted-foreground shrink-0 text-xs">{d.languages(total, total)}</span>}
             />
             <span className={cn(buttonClass({ variant: "default", size: "sm" }), "h-7 min-w-7 gap-1 px-1.5")}>
-              <Link2 className="size-3.5 text-neutral-600" aria-hidden />
+              <Link2 className="size-3.5 text-gray-strong" aria-hidden />
             </span>
           </div>
           <span className="text-muted-foreground text-xs leading-normal">{selected.description}</span>
@@ -243,7 +243,7 @@ function LocaleDetail({ phase }: { phase: Phase }) {
         <div data-landing-locales="" className="flex min-h-0 flex-1 flex-col overflow-hidden">
           {selected.values.map(({ code, value }, index) => (
             <LocaleRow key={code} code={code} first={index === 0} base={index === 0} status={null}>
-              <span className="border-input bg-background min-h-[62px] rounded-md border px-2.5 py-2.5 text-sm leading-[1.55]">{value}</span>
+              <span className="border-input bg-background min-h-[62px] rounded-md border px-2.5 py-2.5 text-sm leading-translation">{value}</span>
             </LocaleRow>
           ))}
           <TypedRow phase={phase} />
@@ -277,9 +277,9 @@ function TypedRow({ phase }: { phase: Phase }) {
   return (
     <LocaleRow code={selected.typedCode} first={false} status={status}>
       {phase === "missing" ? (
-        <span className="text-muted-foreground min-h-[62px] rounded-md border border-dashed border-neutral-300 p-2.5 text-sm leading-[1.55]">{selected.text}</span>
+        <span className="text-muted-foreground min-h-[62px] rounded-md border border-dashed border-gray-light p-2.5 text-sm leading-translation">{selected.text}</span>
       ) : (
-        <span className={cn("border-input bg-background min-h-[62px] rounded-md border px-2.5 py-2.5 text-sm leading-[1.55]", phase === "typing" && "ring-ring ring-2")}>
+        <span className={cn("border-input bg-background min-h-[62px] rounded-md border px-2.5 py-2.5 text-sm leading-translation", phase === "typing" && "ring-ring ring-2")}>
           {phase === "typing" ? <span data-landing-typed="" /> : selected.typed}
           {phase === "typing" && <span className="bg-foreground ml-px inline-block h-4 w-px translate-y-[3px]" />}
         </span>
