@@ -57,3 +57,9 @@ GS2 증거: 원본 bfc1f089, 전체10470 passed + 기존1 skipped, 격리PG539 p
 통합 증거: dev24a8f2bd의 Node24 `pnpm gate` exit0, db:generate/typecheck/test/격리PG/build/mirror 전부 통과. 로그 `.scratch/global-search/gate-integration-2.log`.
 
 GS3 D5/D7 증거: 원본6a10d83a, Node24 gate exit0, 10489 passed + 기존1 skipped, 집중215건. 독립 Astra 리뷰 red0/yellow0/white0. Command의 실제 client entry 명시·keys.ts 등록 시점, window capture 선택 콜백 편차 수용. E는 닫힘 예약 후 연결된 링크 클릭을 유지하고 실제 이탈 가드/해시 소비자 시나리오를 검사한다.
+
+### GS5a 서버 문서 병렬 분리
+
+- dev f57dd20e의 Node24 통합 `pnpm gate` exit0, db:generate/typecheck/test/격리PG/build/mirror 전부 통과. 로그 `.scratch/global-search/gate-integration-3.log`.
+- GS4(E/F6)가 화면 코드를 구현하는 동안 GS5a(F3/F4)는 이미 통합된 B/C의 서버 사실만 문서화한다. 소유 파일은 ARCHITECTURE.md, CLAUDE.md+AGENTS.md, 새 lib/search 문서 트리거 등록용 .claude/commands/push.md+해당 미러다. GS4 코드·테스트와 교집합 없음. Sol/high, 문서별 커밋·gate·독립 Astra 리뷰 필수.
+- GS5는 GS4+GS5a 통합 후 F1/F2/F5/F6 최종 대조/F7·가이드를 맡는다. GS5a는 화면이 이미 조립됐다고 서술하지 않는다. 사용자 결정이나 제품 범위 변경 없음.
