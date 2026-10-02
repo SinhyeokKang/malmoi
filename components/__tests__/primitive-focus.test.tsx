@@ -242,12 +242,12 @@ it("DialogContent 소비자가 전부 첫 포커스를 정하고, 손으로 지�
   });
   const consumers = ["app", "components"].flatMap((d) => walk(join(ROOT, d)))
     .map((path) => ({ path: relative(ROOT, path), text: readFileSync(path, "utf8") }))
-    .filter(({ path, text }) => path !== "components/ui/dialog.tsx" && text.includes("<DialogContent"));
+    .filter(({ path, text }) => path !== "components/ui/dialog.tsx" && /<(?:DialogContent|CommandDialog)\b/.test(text));
   expect(consumers.length).toBeGreaterThanOrEqual(14);
   // 파일 단위가 아니라 Dialog 수로 센다 — 한 파일의 Dialog 둘이 표식 하나로 통과하면 안 된다(U3 r1).
   const count = (text: string, pattern: RegExp) => text.match(pattern)?.length ?? 0;
   const short = consumers
-    .map(({ path, text }) => ({ path, dialogs: count(text, /<DialogContent\b/g), marks: count(text, /\bdata-initial-focus\b/g) + count(text, /\bautoFocus\b/g) }))
+    .map(({ path, text }) => ({ path, dialogs: count(text, /<(?:DialogContent|CommandDialog)\b/g), marks: count(text, /\bdata-initial-focus\b/g) + count(text, /\bautoFocus\b/g) }))
     .filter(({ dialogs, marks }) => dialogs > marks)
     .map(({ path, dialogs, marks }) => `${path}: ${dialogs} dialogs, ${marks} marks`);
   expect(short).toEqual([]);

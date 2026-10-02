@@ -10,6 +10,7 @@ import { ImageTile } from "@/components/ui/image-tile";
 import { Link } from "@/components/ui/link";
 import { Popover } from "@/components/ui/popover";
 import { FieldTrigger } from "@/components/ui/field-trigger";
+import { FieldButton } from "@/components/ui/field-button";
 import { SelectRow } from "@/components/ui/select-row";
 import { Input } from "@/components/ui/input";
 import { ListRow } from "@/components/ui/list-row";
@@ -130,6 +131,7 @@ const FILES = [...tsxFiles(join(ROOT, "components")), ...tsxFiles(join(ROOT, "ap
 const rel = (file: string): string => file.slice(ROOT.length).replace(/^\//, "");
 
 const FIXTURES = {
+  "components/ui/field-button.tsx": h(FieldButton, { icon: h("svg"), placeholder: "Search…", "aria-label": "Search", onClick: () => {} }),
   "components/ui/button.tsx": h(Button, null, "Save"),
   "components/ui/input.tsx": h(Input, { "aria-label": "Search" }),
   "components/ui/textarea.tsx": h(Textarea, { "aria-label": "Translation" }),
