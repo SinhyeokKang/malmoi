@@ -427,3 +427,5 @@ Run **`run_0e44db2882ac`**, 기존 coordinator **`term_dd1b2d61-f22d-4409-8977-7
 - Geist→Pretendard 폴백, Radix7종, 최종 ListRow/타일/검색 경로와 ImageTile 조립, Sources Meter 폭/표시 percent의 서로 다른 소유권을 반영했다. 퇴역 ListItemButton의 중복 현행 행을 제거하고 기존 결정 배경·수치를 보존한다.
 - §8.1에 공용11축 API 규약과 실제 사본/카나리아 검사 경계를 승격했다. Sol이 지적한 IconTile의 전체 StateTone과 BannerLine/Logs Note의 부분집합을 구별했다. FieldButton·NoMatch의 미래 기능을 미리 구현하지 않는다.
 - diff 검사 통과. 최종 독립 문서 리뷰/global-search 정본·배포 HEAD gate/dev push/T22가 남았다.
+
+- T21 global-search spec: 삭제될 feature 설계 대신 DESIGN §8/실제 LargeModal 상수를 참조하고 NoMatch 필수 action 계약과 미래 출구 없는 형의 작업 경계를 대조했다. 이번 커밋은 이 문서와 component-unify 실행 기록만 포함한다. 최종 독립 리뷰·gate/push/T22는 미완이다.
