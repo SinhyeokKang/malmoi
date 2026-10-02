@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { FormGroup } from "@/components/ui/form-group";
 import { Input } from "@/components/ui/input";
 import { LocaleFlag } from "@/components/translations/locale-badge";
-import { Radio, RadioGroup } from "@/components/ui/radio";
+import { RadioGroup } from "@/components/ui/radio";
+import { SelectRow } from "@/components/ui/select-row";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { m } from "@/lib/i18n";
 import { keyGap } from "@/lib/onboarding/key-gap";
@@ -239,48 +240,43 @@ function BaseLocaleFields({ state, onChange, id = "base-locale", label = m.newPr
                 const prevActive = index > 0 && state.baseLocale === locales[index - 1];
                 const count = countOf(code);
                 return (
-                  <li
-                    key={code}
-                    className={cn(
-                      index > 0 && "border-t",
-                      index > 0 && (active || prevActive ? "border-border" : "border-divider"),
-                      active ? "bg-muted" : "hover:bg-foreground/[0.03]",
-                    )}
-                  >
-                    <div className="p-3">
-                      <Radio
-                        value={code}
-                        className="gap-3"
-                        label={
-                          <>
-                            <IconTile size="lg" className={active ? "bg-background" : "bg-muted"}>
-                              {/* ⚠️ 매핑이 없으면 `LocaleFlag`가 `null`을 낸다 — 칩은 그대로 서고 안만 빈다. */}
-                              <LocaleFlag code={code} size="md" />
-                            </IconTile>
-                            <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                              <span className="block truncate text-base font-medium">{languageName(code)}</span>
-                              <span className={cn("block truncate text-sm", active ? "text-foreground/60" : "text-muted-foreground")}>
-                                {m.newProject.baseLocale.row(
-                                  /*
-                                    ⚠️ **`replaceAll`이고 치환값이 함수다.** `{locale}`이 여러 번 나오는
-                                    템플릿(`locales/{locale}/{locale}.json`)을 `confirm.ts`가 상정하므로
-                                    첫 하나만 바꾸면 **실재하지 않는 경로**를 근거로 내밀게 된다. 함수로
-                                    넘기는 것은 로케일 코드에 든 `$&`·`$1`이 특수 해석되는 것을 막는다.
-                                  */
-                                  state.pathTemplate.replaceAll("{locale}", () => code),
-                                  count === undefined ? undefined : m.newProject.files.keys(count),
-                                )}
-                              </span>
+                  <li key={code}>
+                    <SelectRow
+                      input="radio"
+                      checked={active}
+                      first={index === 0}
+                      previousChecked={prevActive}
+                      disabled={disabled}
+                      value={code}
+                      label={
+                        <>
+                          <IconTile size="lg" className={active ? "bg-background" : "bg-muted"}>
+                            {/* ⚠️ 매핑이 없으면 `LocaleFlag`가 `null`을 낸다 — 칩은 그대로 서고 안만 빈다. */}
+                            <LocaleFlag code={code} size="md" />
+                          </IconTile>
+                          <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                            <span className="block truncate text-base font-medium">{languageName(code)}</span>
+                            <span className={cn("block truncate text-sm", active ? "text-foreground/60" : "text-muted-foreground")}>
+                              {m.newProject.baseLocale.row(
+                                /*
+                                  ⚠️ **`replaceAll`이고 치환값이 함수다.** `{locale}`이 여러 번 나오는
+                                  템플릿(`locales/{locale}/{locale}.json`)을 `confirm.ts`가 상정하므로
+                                  첫 하나만 바꾸면 **실재하지 않는 경로**를 근거로 내밀게 된다. 함수로
+                                  넘기는 것은 로케일 코드에 든 `$&`·`$1`이 특수 해석되는 것을 막는다.
+                                */
+                                state.pathTemplate.replaceAll("{locale}", () => code),
+                                count === undefined ? undefined : m.newProject.files.keys(count),
+                              )}
                             </span>
-                            {code === leader && known.length > 1 && (
-                              <Badge variant="soft-neutral" className="shrink-0">
-                                {m.newProject.naming.mostKeys}
-                              </Badge>
-                            )}
-                          </>
-                        }
-                      />
-                    </div>
+                          </span>
+                          {code === leader && known.length > 1 && (
+                            <Badge variant="soft-neutral" className="shrink-0">
+                              {m.newProject.naming.mostKeys}
+                            </Badge>
+                          )}
+                        </>
+                      }
+                    />
                   </li>
                 );
               })}

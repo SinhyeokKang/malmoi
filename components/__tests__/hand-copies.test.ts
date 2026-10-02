@@ -106,6 +106,10 @@ const RULES: Rule[] = [
     handCopy: (node, file) => node.tagName.getText(file) === "EmptyState" && /icon=\{CircleX\}/.test(node.getText(file)),
     bad: 'export const Demo = () => <EmptyState icon={CircleX} title="Failed" action={<Button onClick={retry}>Retry</Button>} />;',
     good: 'import {ErrorState} from "@/components/ui/error-state"; export const Demo = () => <ErrorState title="Failed" retry={retry} retryLabel="Retry" />;' },
+{ primitive: "SelectRow", retired: [], paths: ["components/onboarding/steps/repo.tsx", "components/onboarding/steps/naming.tsx", "components/onboarding/steps/files.tsx", "components/mcp/token-grant-fields.tsx"], minimum: 4,
+    handCopy: (node, file) => /^(?:li|div)$/.test(canonicalTag(node, file)) && /border-t/.test(classes(node, file)) && /hover:bg-foreground/.test(classes(node, file)) || canonicalTag(node, file) === "span" && /size-4/.test(classes(node, file)) && /rounded-full/.test(classes(node, file)) && /border/.test(classes(node, file)),
+    bad: 'export const Demo = () => <li className="border-t border-divider hover:bg-foreground/[0.03]"><Radio label="Repo" value="repo" /></li>;',
+    good: 'import {SelectRow} from "@/components/ui/select-row"; export const Demo = () => <li><SelectRow input="radio" checked value="repo" label="Repo" /></li>;' },
 { primitive: "ProjectThumbnail", retired: [], retiredModules: ["@/components/projects/project-thumbnail"], paths: ["components/invite/project-card.tsx", "components/settings/general-card.tsx"], minimum: 7,
     handCopy: (node, file) => canonicalTag(node, file) === "ImageTile" && /hueFill/.test(node.getText(file)),
     bad: 'export const Demo = () => <ImageTile className="size-8 rounded-sm" fallback={<span className={hueFill(name)}><Box /></span>} />;',
@@ -246,6 +250,11 @@ it("the header retains its one exact navigation contract and rejects neighboring
 
 // base150d221c의 실제 퇴역 JSX·함수 조각이다. 래퍼만 파서용으로 덧붙인다.
 const RETIRED_P3_SOURCES = [
+{
+    "primitive": "SelectRow",
+    "path": "components/onboarding/steps/repo.tsx",
+    "code": "const P3RetiredProbe = () => (<li\n                key={repo.fullName}\n                className={cn(\n                  index > 0 && \"border-t\",\n                  index > 0 && (active || prevActive ? \"border-border\" : \"border-divider\"),\n                  active ? \"bg-muted\" : \"hover:bg-foreground/[0.03]\",\n                )}\n              >\n                <div className=\"p-3\">\n                  <Radio\n                    value={repo.fullName}\n                    className=\"gap-3\"\n                    label={\n                      <>\n                        {/*\n                          ⚠️ **글리프에 톤 색을 주지 않는다** — 아직 프로젝트가 아니라 후보다\n                          (`/projects` 목록의 `hueFill`과 반대). 선택되면 **칩만** 흰색으로 뒤집혀\n                          muted 면 위에서 떠오른다.\n                        */}\n                        <IconTile size=\"lg\" className={active ? \"bg-background\" : \"bg-muted\"}>\n                          <FolderGit2 aria-hidden />\n                        </IconTile>\n                        <span className=\"flex min-w-0 flex-1 flex-col gap-0.5\">\n                          <span className=\"block truncate text-base font-medium\">{repo.repo}</span>\n                          {/*\n                            ⚠️ **선택 행에서 색이 바뀐다** — muted 면 위에서 `muted-foreground`는\n                            4.34:1로 AA 미달이다 (핸드오프 · DESIGN §2.2).\n                          */}\n                          <span className={cn(\"block truncate text-sm\", active ? \"text-foreground/60\" : \"text-muted-foreground\")}>\n                            {repo.owner}\n                            {repo.pushedAt !== null && ` · ${m.newProject.repo.pushedAt(relativeTime(new Date(repo.pushedAt), new Date(now)))}`}\n                          </span>\n                        </span>\n                      </>\n                    }\n                  />\n                </div>\n                {active && <BranchRow state={state} onChange={onBranchChange} />}\n              </li>);"
+  },
 {
     "primitive": "ProjectThumbnail",
     "path": "components/invite/project-card.tsx",

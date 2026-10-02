@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ImageTile } from "@/components/ui/image-tile";
 import { Link } from "@/components/ui/link";
 import { Popover } from "@/components/ui/popover";
+import { SelectRow } from "@/components/ui/select-row";
 import { Input } from "@/components/ui/input";
 import { ListRow } from "@/components/ui/list-row";
 import { Radio, RadioGroup } from "@/components/ui/radio";
@@ -150,6 +151,11 @@ const RADIX_FIXTURES = {
   "components/ui/radio.tsx": h(RadioGroup, { "aria-label": "Locale", defaultValue: "en" }, h(Radio, { label: "English", value: "en" })),
 };
 
+// Slot 선택 행은 Checkbox와 Button의 실제 포커스 대상을 검사한다.
+const DELEGATED_RADIX_FIXTURES = {
+  "components/ui/select-row.tsx": h(SelectRow, {input: "checkbox", checked: false, label: "Include", aside: h(Button, null, "Preview")}),
+};
+
 /** Slot만 쓰는 장식 타일도 실제 렌더 픽스처로 비포커스 계약을 확인한다. */
 const DECORATIVE_RADIX_FIXTURES = {
   "components/ui/image-tile.tsx": h(ImageTile, { className: "size-7", fallback: h("span", null, h("svg")) }),
@@ -224,7 +230,7 @@ describe("포커스 링 (DESIGN §7)", () => {
       .filter((file) => readFileSync(file, "utf8").includes('from "radix-ui"'))
       .map(rel)
       .sort();
-    const accounted = [...Object.keys(FIXTURES), ...Object.keys(RADIX_FIXTURES), ...Object.keys(DECORATIVE_RADIX_FIXTURES), ...Object.keys(POPOVER_FIXTURES), ...RING_FIXTURE_EXEMPT];
+    const accounted = [...Object.keys(FIXTURES), ...Object.keys(RADIX_FIXTURES), ...Object.keys(DELEGATED_RADIX_FIXTURES), ...Object.keys(DECORATIVE_RADIX_FIXTURES), ...Object.keys(POPOVER_FIXTURES), ...RING_FIXTURE_EXEMPT];
     expect(radixImporters.filter((file) => !accounted.includes(file))).toEqual([]);
   });
 
@@ -254,7 +260,7 @@ describe("포커스 링 (DESIGN §7)", () => {
   });
 
   it("네 태그 전부가 렌더된 포커스 링 셋을 든다", async () => {
-    for (const [file, fixture] of Object.entries({ ...FIXTURES, ...RADIX_FIXTURES })) {
+    for (const [file, fixture] of Object.entries({ ...FIXTURES, ...RADIX_FIXTURES, ...DELEGATED_RADIX_FIXTURES })) {
       const { container } = await render(fixture);
       const elements = [...container.querySelectorAll("button,input,select,textarea")];
       expect(elements.length, file).toBeGreaterThan(0);

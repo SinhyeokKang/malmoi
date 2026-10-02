@@ -801,15 +801,16 @@ it("체크와 상세는 형제이며 리스트 시맨틱과 독립 동작을 보
   await files();
   const checkbox = include("i18n/{locale}.json");
   const preview = find<HTMLElement>(document.body, '[aria-label="Preview i18n/{locale}.json"]');
-  expect(checkbox.parentElement).toBe(preview.parentElement);
-  expect(checkbox.closest("label")).toBeNull();
+  expect(checkbox.closest("li")).toBe(preview.closest("li"));
+  expect(checkbox.closest("label")).not.toBeNull();
+  expect(preview.closest("label")).toBeNull();
   const list = checkbox.closest("ul"); expect(list).not.toBeNull();
   expect(list?.getAttribute("role")).toBeNull();
   expect(list?.getAttribute("aria-label")).toBe("Translation file candidates");
   expect(document.body.querySelector('button button, label button button')).toBeNull();
   await click(include("other/{locale}.json"));
   expect(checkbox.getAttribute("aria-checked")).toBe("true");
-  expect(preview.closest("li")?.className).toContain("bg-muted");
+  expect(preview.closest("[data-select-row]")?.className).toContain("bg-muted");
   await click(checkbox); await click(include("other/{locale}.json"));
   expect(button("Next").disabled).toBe(true);
   await click(find(document.body, '[aria-label="Preview other/{locale}.json"]'));
@@ -1162,4 +1163,23 @@ it("① E 대조군: 대기가 아니면 info가 없다", async () => {
     initialError={undefined} backQuery={{}} closeMode="list" adapters={[]} />);
 
   expect(count(E_INFO)).toBe(0);
+});
+
+it("arrow scanning a different repo blocks Next until explicit confirmation without loading branches", async () => {
+  await mount();
+  const radios = [...document.body.querySelectorAll<HTMLButtonElement>('[role="radio"]')];
+  await click(radios[0]!);
+  expect(button("Next").disabled).toBe(false);
+  const loads = mocks.listRepoBranches.mock.calls.length;
+  await act(async () => { radios[0]!.focus(); radios[0]!.dispatchEvent(new KeyboardEvent("keydown", {key: "ArrowDown", bubbles: true})); });
+  await act(async () => { await vi.waitFor(() => expect(document.activeElement).toBe(radios[1])); });
+  await act(async () => { radios[1]!.dispatchEvent(new KeyboardEvent("keyup", {key: "ArrowDown", bubbles: true})); });
+  expect(mocks.listRepoBranches).toHaveBeenCalledTimes(loads);
+  expect(radios[1]?.getAttribute("aria-checked")).toBe("true");
+  expect(button("Next").disabled).toBe(true);
+  await act(async () => { await userEvent.setup().keyboard(" "); });
+  expect(mocks.listRepoBranches).toHaveBeenCalledTimes(loads + 1);
+  expect(button("Next").disabled).toBe(false);
+  await click(button("Next"));
+  expect(mocks.detectRepoFormats).toHaveBeenLastCalledWith({owner: "acme", repo: "mobile", ref: "main"});
 });

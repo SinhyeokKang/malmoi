@@ -1,11 +1,11 @@
 "use client";
 
 import { Box, Languages, ListChecks, Plus, Settings, Users, type LucideIcon } from "lucide-react";
-import { useId } from "react";
+import { useId, type ReactNode } from "react";
 
-import { Checkbox } from "@/components/ui/checkbox";
 import { IconTile } from "@/components/ui/icon-tile";
-import { Radio, RadioGroup } from "@/components/ui/radio";
+import { RadioGroup } from "@/components/ui/radio";
+import { SelectRow } from "@/components/ui/select-row";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { m } from "@/lib/i18n";
 import type { TokenGrant } from "@/lib/mcp/grant";
@@ -112,37 +112,38 @@ export function TokenGrantFields({
       <div className="flex flex-col gap-2">
         <span id={grantsLabel} className="text-sm font-medium">{m.mcpConnector.form.grants}</span>
         {/* 2×2 격자 — 칸 사이 세로·가로 선은 `#f0f0f0`(mcp-connector 핸드오프 §4). 한 열이면 가로 선만 남는다. */}
-        <ul
+        <div
           role="group"
           aria-labelledby={grantsLabel}
           aria-describedby={grantsHelp}
-          className={cn("border-border grid overflow-hidden rounded-md border", columns === 2 ? "grid-cols-2" : "grid-cols-1")}
         >
-          {GRANT_ORDER.map((grant, index) => {
-            const Icon = GRANT_ICON[grant];
-            const copy = m.mcpConnector.grants[grant];
-            const line = columns === 2 ? cn(index % 2 === 1 && "border-divider border-l", index >= 2 && "border-divider border-t") : index > 0 && "border-divider border-t";
-            return (
-              <li key={grant} className={cn(line)}>
-                <label className={cn("flex cursor-pointer items-center gap-3 p-3", !disabled && ROW_HOVER)}>
-                  <Checkbox
+          <ul className={cn("border-border grid overflow-hidden rounded-md border", columns === 2 ? "grid-cols-2" : "grid-cols-1")}>
+            {GRANT_ORDER.map((grant, index) => {
+              const Icon = GRANT_ICON[grant];
+              const copy = m.mcpConnector.grants[grant];
+              const line = columns === 2 ? cn(index % 2 === 1 && "border-divider border-l", index >= 2 && "border-divider border-t") : index > 0 && "border-divider border-t";
+              return (
+                <li key={grant} className={cn(line)}>
+                  <SelectRow input="checkbox" active={false}
                     data-grant={grant}
                     checked={value.grants.has(grant)}
                     disabled={disabled}
                     onCheckedChange={(on) => set({ grants: toggle(value.grants, grant, on === true) })}
+                    label={<>
+                      <IconTile size="lg" className="bg-muted">
+                        <Icon aria-hidden />
+                      </IconTile>
+                      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                        <span className="text-base font-medium">{copy.label}</span>
+                        <span className="text-muted-foreground text-sm">{copy.hint}</span>
+                      </span>
+                    </>}
                   />
-                  <IconTile size="lg" className="bg-muted">
-                    <Icon aria-hidden />
-                  </IconTile>
-                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                    <span className="text-base font-medium">{copy.label}</span>
-                    <span className="text-muted-foreground text-sm">{copy.hint}</span>
-                  </span>
-                </label>
-              </li>
-            );
-          })}
-        </ul>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
         <p id={grantsHelp} className="text-muted-foreground text-xs leading-prose">{m.mcpConnector.form.grantsHelp}</p>
       </div>
 
@@ -155,53 +156,36 @@ export function TokenGrantFields({
           disabled={disabled}
           className="border-border flex flex-col overflow-hidden rounded-md border"
         >
-          <ScopeRow value="all" icon={Box} label={m.mcpConnector.form.allMine} selected={value.scope === "all"} disabled={disabled} />
+          <ScopeRow first value="all" icon={Box} label={m.mcpConnector.form.allMine} selected={value.scope === "all"} disabled={disabled} />
           {noMembership ? (
             /*
               ⚠️ **`aria-disabled` + 사유다 — 사유 없는 `disabled` 0건 원칙**(§6.65). 포커스를 받고 둘째 줄을 읽힌다.
-              Radix Item이 아니다 — `disabled`로 세우면 Tab 순서에서 빠져 사유가 안 읽힌다.
+              native disabled로 세우면 Tab 순서에서 빠져 사유가 안 읽히므로 실제 Radio의 활성화만 막는다.
             */
-            <span
-              role="radio"
-              aria-checked={false}
-              aria-disabled
-              aria-describedby={scopeReason}
-              tabIndex={0}
-              className="border-border focus-visible:ring-ring flex cursor-not-allowed items-center gap-3 border-t p-3 focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset"
-            >
-              <span aria-hidden className="size-4 shrink-0 rounded-full border border-gray-light opacity-50" />
-              <IconTile size="lg" className="bg-muted opacity-50">
-                <ListChecks aria-hidden />
-              </IconTile>
-              <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <span className="text-base font-medium text-gray-dim">{m.mcpConnector.form.chosen}</span>
-                <span id={scopeReason} className="text-muted-foreground text-sm">{m.mcpConnector.form.noMembership}</span>
-              </span>
-            </span>
+            <ScopeRow value="projects" icon={ListChecks} label={m.mcpConnector.form.chosen}
+              selected={false} disabled={disabled} reason={{ id: scopeReason, text: m.mcpConnector.form.noMembership }} />
           ) : (
             /* 선택된 `Chosen projects` 행과 하위 체크 행이 한 `#f5f5f5` 면이다(`2e`). 닫혀 있는 동안 Scope가 두 행으로 끝난다. */
-            <div className={cn("border-border border-t", value.scope === "projects" && "bg-muted")}>
-              <ScopeRow value="projects" icon={ListChecks} label={m.mcpConnector.form.chosen} selected={value.scope === "projects"} disabled={disabled} />
-              {value.scope === "projects" && (
+            <ScopeRow value="projects" icon={ListChecks} label={m.mcpConnector.form.chosen} selected={value.scope === "projects"} disabled={disabled}
+              expand={value.scope === "projects" && (
                 <ul data-scope-projects>
                   {projects.map((project) => (
                     <li key={project.id} className="border-border border-t">
                       {/* 들여쓰기 80 = 라디오 16 + gap 12 + 칩 40 + gap 12 — 선택 행의 이름과 같은 x에서 시작한다. */}
-                      <label className={cn("flex cursor-pointer items-center gap-3 py-3 pr-3 pl-20", !disabled && ROW_HOVER)}>
-                        <Checkbox
-                          data-scope-project={project.id}
-                          checked={value.chosen.has(project.id)}
-                          disabled={disabled}
-                          onCheckedChange={(on) => set({ chosen: toggle(value.chosen, project.id, on === true) })}
-                        />
-                        <span className="min-w-0 truncate text-sm font-medium" title={project.name}>{project.name}</span>
-                        <span className="text-foreground/60 ml-auto shrink-0 text-xs">{project.repo}</span>
-                      </label>
+                      <SelectRow input="checkbox" active={false} className="[&>div>label]:pl-20"
+                        data-scope-project={project.id}
+                        checked={value.chosen.has(project.id)}
+                        disabled={disabled}
+                        onCheckedChange={(on) => set({ chosen: toggle(value.chosen, project.id, on === true) })}
+                        label={<span className="flex min-w-0 flex-1 items-center gap-3">
+                          <span className="min-w-0 truncate text-sm font-medium" title={project.name}>{project.name}</span>
+                          <span className="text-foreground/60 ml-auto shrink-0 text-xs">{project.repo}</span>
+                        </span>}
+                      />
                     </li>
                   ))}
                 </ul>
-              )}
-            </div>
+              )} />
           )}
         </RadioGroup>
       </div>
@@ -209,21 +193,31 @@ export function TokenGrantFields({
   );
 }
 
-/** 같은 Dialog의 선택 행 셋(Allowed actions · Scope · 고른 프로젝트)이 한 hover 면을 든다. disabled 행에는 붙이지 않는다(#166). */
-const ROW_HOVER = "hover:bg-foreground/[0.03]";
-
-function ScopeRow({ value, icon: Icon, label, selected, disabled }: { value: "all" | "projects"; icon: LucideIcon; label: string; selected: boolean; disabled: boolean }) {
+function ScopeRow({ value, icon: Icon, label, selected, disabled, first = false, reason, expand }: { value: "all" | "projects"; icon: LucideIcon; label: string; selected: boolean; disabled: boolean; first?: boolean; reason?: { id: string; text: string }; expand?: ReactNode }) {
   return (
-    <Radio
+    <SelectRow input="radio" checked={selected} active={selected && value === "projects"} first={first} previousChecked={!selected}
+      className={cn(
+        (!selected || value === "all") && "hover:bg-transparent",
+        value === "all" && selected && "[&>div>label]:bg-muted",
+        !disabled && reason === undefined && "[&>div>label]:hover:bg-foreground/[0.03]",
+      )}
       value={value}
       data-scope={value}
-      className={cn("gap-3 p-3", value === "all" && selected && "bg-muted", !disabled && ROW_HOVER)}
+      disabled={disabled}
+      aria-disabled={reason !== undefined || undefined}
+      aria-describedby={reason?.id}
+      // 선택할 수 없어도 기존 Tab0에서 사유를 읽던 경로는 남긴다.
+      tabIndex={reason !== undefined ? 0 : undefined}
+      expand={expand}
       label={
         <>
-          <IconTile size="lg" className={selected ? "bg-background" : "bg-muted"}>
+          <IconTile size="lg" className={cn(selected ? "bg-background" : "bg-muted", reason !== undefined && "opacity-50")}>
             <Icon aria-hidden />
           </IconTile>
-          <span className="min-w-0 flex-1 text-base font-medium">{label}</span>
+          <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span className={cn("text-base font-medium", reason !== undefined && "text-gray-dim")}>{label}</span>
+            {reason && <span id={reason.id} className="text-muted-foreground text-sm">{reason.text}</span>}
+          </span>
         </>
       }
     />

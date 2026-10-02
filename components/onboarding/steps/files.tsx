@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FormGroup } from "@/components/ui/form-group";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Radio, RadioGroup } from "@/components/ui/radio";
+import { RadioGroup } from "@/components/ui/radio";
+import { SelectRow } from "@/components/ui/select-row";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SegmentedControl } from "@/components/ui/segmented-control";
@@ -189,24 +189,17 @@ export function FilesStep({
                   </>
         );
         return (
-          <li
-            key={c.pathTemplate}
-            className={cn(
-              locked && "opacity-50",
-              index > 0 && "border-t",
-              index > 0 && (active || prevActive ? "border-border" : "border-divider"),
-              active ? "bg-muted" : "hover:bg-foreground/[0.03]",
-            )}
-          >
-            <div className={cn("p-3", selection && "flex items-center gap-3")}>
-              {selection ? <>
-                <Checkbox aria-label={m.newProject.files.include(c.pathTemplate)} checked={locked || selection.checked.has(index)} disabled={pending || locked}
-                  onCheckedChange={() => { if (!pending && !locked) selection.onToggle(index); }} />
-                <Button variant="ghost" type="button" aria-label={m.newProject.files.previewCandidate(c.pathTemplate)}
-                  disabled={pending} className="text-foreground h-auto min-w-0 flex-1 justify-start gap-3 rounded p-0 text-left whitespace-normal"
-                  onClick={() => onPick(index)}>{content}</Button>{locked && <span className="sr-only">{m.settings.sources.locked}</span>}
-              </> : <Radio disabled={pending} value={String(index)} className="gap-3" label={content} />}
-            </div>
+          <li key={c.pathTemplate} className={cn(locked && "opacity-50")}>
+            {selection ? <SelectRow input="checkbox" label={null}
+              active={active} first={index === 0} previousChecked={prevActive}
+              aria-label={m.newProject.files.include(c.pathTemplate)}
+              checked={locked || selection.checked.has(index)} disabled={pending || locked}
+              onCheckedChange={() => { if (!pending && !locked) selection.onToggle(index); }}
+              aside={<Button variant="ghost" type="button" aria-label={m.newProject.files.previewCandidate(c.pathTemplate)}
+                disabled={pending} onClick={() => onPick(index)}>{content}</Button>}
+              expand={locked && <span className="sr-only">{m.settings.sources.locked}</span>}
+            /> : <SelectRow input="radio" disabled={pending} value={String(index)} checked={active}
+              first={index === 0} previousChecked={prevActive} label={content} />}
           </li>
         );
       })}

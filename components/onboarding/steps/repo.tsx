@@ -12,9 +12,10 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { EmptyState, NoMatch } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
-import { Radio, RadioGroup } from "@/components/ui/radio";
+import { RadioGroup } from "@/components/ui/radio";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SelectRow } from "@/components/ui/select-row";
 import { m } from "@/lib/i18n";
 import type { BranchChoice } from "@/lib/onboarding/branch";
 import type { RepoOption } from "@/lib/onboarding/types";
@@ -57,18 +58,27 @@ export type RepoStepState = {
 export function RepoStep({
   state,
   onSelect,
+  onScan,
   onQueryChange,
   onBranchChange,
   onAnnounce,
 }: {
   state: RepoStepState;
   onSelect: (repo: RepoOption) => void;
+  /** 미확정 행을 훑는 동안 Next가 이전 리포로 진행하지 않게 한다. */
+  onScan: (fullName: string) => void;
   onQueryChange: (query: string) => void;
   onBranchChange: (value: string) => void;
   /** 모달의 live 영역 하나로 흘려보낸다 — 영역을 둘로 나누면 같은 전이가 두 번 읽힌다. */
   onAnnounce: (message: string) => void;
 }) {
   const { repos, query, listError, installUrl, now, selected } = state;
+  // 화살표 훑기는 Radix 선택만 움직인다. 브랜치 조회는 명시적 확정에서만 시작한다.
+  const [choice, setChoice] = useState(selected ?? "");
+  const [seenSelection, setSeenSelection] = useState(selected);
+  if (seenSelection !== selected) { setSeenSelection(selected); setChoice(selected ?? ""); }
+  const scanning = useRef(false);
+  const confirm = (repo: RepoOption) => { setChoice(repo.fullName); onSelect(repo); };
   const router = useRouter();
   const search = useRef<HTMLDivElement>(null);
   /**
@@ -205,38 +215,32 @@ export function RepoStep({
         <RadioGroup
           className="shrink-0"
           aria-label={m.newProject.repo.list}
-          value={selected ?? ""}
-          onValueChange={(fullName) => {
-            const picked = shown.find((r) => r.fullName === fullName);
-            if (picked !== undefined) onSelect(picked);
-          }}
+          value={choice}
+          onValueChange={fullName => { setChoice(fullName); if (scanning.current) onScan(fullName); }}
+          onKeyDownCapture={event => { scanning.current = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key); }}
+          onKeyUpCapture={() => { scanning.current = false; }}
+          onPointerDownCapture={() => { scanning.current = false; }}
         >
         <ul className="border-border overflow-hidden rounded-md border">
           {shown.map((repo, index) => {
-            const active = selected === repo.fullName;
+            const active = choice === repo.fullName;
             /*
               ⚠️ **`divide-y`가 아니다** — 구분선 색이 두 벌이기 때문이다: **선택 행(muted 면)에 접한
               경계는 `border`(#e5e5e5)**이고 비선택끼리는 한 단계 연한 `divider`(#f0f0f0)다. 한 값으로
               두면 muted 면의 위아래 가장자리가 면 안에서 풀린다 (핸드오프 1a).
             */
-            const prevActive = index > 0 && selected === shown[index - 1]?.fullName;
+            const prevActive = index > 0 && choice === shown[index - 1]?.fullName;
             return (
               /*
                 ⚠️ **padding이 `<li>`가 아니라 안쪽 둘에 붙는다** — 브랜치 줄의 `border-top`이 행 끝까지
                 가야 하는데, `<li>`가 padding을 들면 그 선이 좌우로 12씩 들여써진다.
               */
-              <li
-                key={repo.fullName}
-                className={cn(
-                  index > 0 && "border-t",
-                  index > 0 && (active || prevActive ? "border-border" : "border-divider"),
-                  active ? "bg-muted" : "hover:bg-foreground/[0.03]",
-                )}
-              >
-                <div className="p-3">
-                  <Radio
+              <li key={repo.fullName}>
+                  <SelectRow input="radio" checked={active} first={index === 0} previousChecked={prevActive}
                     value={repo.fullName}
-                    className="gap-3"
+                    onClick={() => { if (!scanning.current) confirm(repo); }}
+                    onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); confirm(repo); } }}
+                    expand={active && selected === repo.fullName ? <BranchRow state={state} onChange={onBranchChange} /> : undefined}
                     label={
                       <>
                         {/*
@@ -261,8 +265,6 @@ export function RepoStep({
                       </>
                     }
                   />
-                </div>
-                {active && <BranchRow state={state} onChange={onBranchChange} />}
               </li>
             );
           })}

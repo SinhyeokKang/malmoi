@@ -88,6 +88,8 @@ export function NewProject({
   const [branch, setBranch] = useState<BranchChoice | undefined>(undefined);
   const [branchLoading, setBranchLoading] = useState(false);
   const [branchValue, setBranchValue] = useState("");
+  // 체크된 후보와 조회가 끝난 리포가 다르면 Next는 확정을 기다린다.
+  const [repoScanning, setRepoScanning] = useState(false);
   const [accessError, setAccessError] = useState<string | undefined>(undefined);
 
   // ② 후보·미리보기
@@ -167,6 +169,7 @@ export function NewProject({
 
   /** ① 리포 선택 — 브랜치 목록을 받고 그 자리에서 펼친다. 실패는 ①을 막지 않는다 (예외 D). */
   function selectRepo(next: RepoOption) {
+    setRepoScanning(false);
     const request = ++repoRequest.current;
     // 리포 한 곳의 거부가 다른 리포까지 막지는 않는다. 계정·세션 거부는 유지한다.
     if (accessLost !== "unauthorized" && accessLost !== "reauthorize" && accessLost !== "not-connected") {
@@ -481,7 +484,7 @@ export function NewProject({
       actions={<WizardFooter
         nextLabel={step === 3 ? m.newProject.naming.create : step === 4 ? m.newProject.result.ingest.open : undefined}
         nextArrow={step !== 3 && step !== 4}
-        nextDisabled={!nextEnabled(step, state)}
+        nextDisabled={!nextEnabled(step, state) || step === 1 && repoScanning}
         busy={(step === 3 && pending) || (step === 4 && opening)}
         showBack={step === 2 || step === 3}
         onBack={() => {
@@ -529,6 +532,7 @@ export function NewProject({
           onAnnounce={setAnnounce}
           onQueryChange={setRepoQuery}
           onSelect={selectRepo}
+          onScan={fullName => setRepoScanning(fullName !== repo?.fullName)}
           onBranchChange={(value) => {
             setBranchValue(value);
             resetDownstream();

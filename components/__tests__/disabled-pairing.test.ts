@@ -27,7 +27,7 @@ const BUTTON = "components/ui/button.tsx";
  * 목록에 **등재**하는 것이 그 결정이고, 아래 세 검사가 `button.tsx`와 같은 강도로 이 파일도 본다.
  */
 const SELECT = "components/ui/select.tsx";
-const PRIMITIVES = [BUTTON, SELECT];
+const PRIMITIVES = ["components/ui/radio.tsx", BUTTON, SELECT];
 const SKIP = new Set(["__tests__", "node_modules"]);
 
 const stripComments = (source: string): string =>

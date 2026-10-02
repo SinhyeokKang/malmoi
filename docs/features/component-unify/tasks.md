@@ -331,3 +331,9 @@ Run **`run_0e44db2882ac`**, 기존 coordinator **`term_dd1b2d61-f22d-4409-8977-7
 - Skeleton/loading 후보: Thumbnail 체크포인트 `9a5b4625821277c176c7d79ab0a9a5418da9dac5` 뒤에 size 줄 모드와 실제 8개 loading·locale skeleton·설정 카드를 이관하고 SkeletonLine export를 제거한다. 기본 radius4 및 명시 radius·U+200B/0.8em·숨지 않은 sr-only 상태 줄1개를 유지한다.
 - Skeleton 단독 RED: 새 블록/줄 렌더 검사가 이전 구현에서 실패했다. 해당 작은 트리 관련12파일/303테스트와 typecheck exit0. 실제 퇴역 Skeleton 소스·loading status 삭제·검사기 제거는 각각 RED, 소스 복원 후 검사기/loading 계약 GREEN.
 - 남은 리뷰: 선택되지 않은 MCP Scope에서 root+label 3% hover가 겹치고 선택된 All 배경 소유자도 달라진다는 추가 발견은 뒤의 SelectRow 체크포인트에서 고친다. 전체 P3 gate·R3/T20a/T21/T22는 계속 미완이다.
+
+- SelectRow 후보: Skeleton 체크포인트 `b8e7ce3d0dbd06535f1e28f19a93770e1c09d47c` 뒤에 네 실제 소비자, radio/checkbox·expand·aside·native ul/li/group, unavailable scope Tab 사유·동작 차단, repo 화살표 훑기/Space/Enter/detail0 확정 및 미확정 Next 차단을 묶는다. 아직 커밋/독립 최종 승인은 미완이다.
+- 실제 Scope hover 추가 회귀는 RED 뒤 단일 라벨 alpha와 All 라벨/Chosen 확장 부모 배경 소유자를 복원한다. Input 슬롯·Copy/Secret·FieldTrigger·테두리 링은 뒤 체크포인트에 남긴다.
+
+- SelectRow 검증: Scope 중첩 hover/All 배경 소유자 RED 후 수정, 실제 DOM 및 컴파일 CSS로 라벨 한 겹3%/All 라벨 muted/Chosen 확장 부모 muted를 확인했다. 관련11파일 실행은317 passed / 신규 Slot 픽스처 누락1 failed; SelectRow의 위임된 Checkbox+aside Button 렌더 픽스처를 추가한 후 focus-ring·Scope CSS22/22 passed. 최종 typecheck exit0.
+- 실제 퇴역 SelectRow source·중첩 hover 재주입·All 부모 배경 회귀·검사기 제거가 각각 RED, 복원 후 hand-copy/Scope 계약 GREEN. 이19경로 작은 후보의 독립 리뷰0 findings와 명시적 COMMIT 승인을 받았으며 전체 누적 gate·나머지5체크포인트는 미완이다.

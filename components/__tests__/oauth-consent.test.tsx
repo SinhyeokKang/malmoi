@@ -89,7 +89,7 @@ const fieldset = () => find<HTMLFieldSetElement>(document.body, "[data-consent-f
 describe("기본", () => {
   it("권한은 한 열 · 만료 90 · All my projects · 돌아갈 곳 · 대체 경고 없음", async () => {
     await mount();
-    expect(document.querySelector('[role="group"]')?.className).toContain("grid-cols-1");
+    expect(document.querySelector('[role="group"] > ul')?.className).toContain("grid-cols-1");
     expect(document.querySelector('[data-scope="all"]')?.getAttribute("aria-checked")).toBe("true");
     expect(status()).toBe("You'll return to localhost:51234.");
     expect(document.body.textContent).not.toContain("replaces it");
