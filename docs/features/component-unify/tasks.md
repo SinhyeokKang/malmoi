@@ -31,14 +31,14 @@
 | B1b T2 | `globals.css`, §6.2 토큰 소비자 app/components/lib/messages, DESIGN·REGISTERED 테스트 | T1 / T2커밋 | GPT-6.1 Sol high / 값0 토큰 전수치환 | 완료 `d11f99c6`: 12토큰·232곳, CSS79쌍·merge 충돌 계약, 독립 리뷰2건 수정, gate green |
 | B1c T3 | `ui/breadcrumb.tsx`, `ui/segmented-control.tsx`, `ui/avatar.tsx`, `globals.css`, `lib/__tests__/globals-css.test.ts`, invitation-email 테스트, focus-ring 테스트 | T2 / T3커밋 | GPT-6.1 Sol high / dead export·메일 값 대조 | 완료 `2c0f3ffd`: 소비자0·메일 값 보존, 독립 리뷰2건 수정, gate640파일/9795테스트+격리PG520 green |
 | B1d T4 | `docs/DESIGN.md`, `app/globals.css` 주석 | T3 / 문서·주석 경계 | GPT-6.1 Sol medium / 사실 교정 | 완료 `bc535749`: DESIGN·CSS 주석만, 독립 리뷰1문장 수정, gate640파일/9795테스트 green |
-| R1 리뷰·① QA | 읽기 전용 diff/스크린샷 | T4 / 커밋 없음 | GPT-6.1 Sol high 독립 리뷰 / 브라우저는 지휘자 | 완료: 6화면 1280 비교, 시각 회귀 없음. **Claude Code /push 대기** |
+| R1 리뷰·① QA | 읽기 전용 diff/스크린샷 | T4 / 커밋 없음 | GPT-6.1 Sol high 독립 리뷰 / 브라우저는 지휘자 | 완료: 6화면 1280 비교, 시각 회귀 없음. **dev push 완료 `1d5d6eae`** |
 | B2 T5–T6 | primitive 계약 테스트들, `components/__tests__/api-contract.test.ts` | R1 push 완료 / T5·T6 별도 | GPT-6.1 Sol high / 계약·허용목록 그물 | G, mutation 기록 |
 | B3a T7 | `ui/badge.tsx`, `ui/status-badge.tsx`, `ui/panel-card.tsx`, `lib/status/canon.ts`, `lib/events/view.ts`, `logs/result-badge.tsx`, `logs/event-detail.tsx`, Badge 소비자·C | T6 / 상태축1커밋 | GPT-6 Astra high / 결과 의미·색 예외 결합 | G, Logs 성공 회색·라벨 보존 |
 | B3b T8 | `lib/tone.ts→hue.ts`, `ui/tone.ts`, avatar/image 소비자, client-graph 테스트 | T7 / hue축1커밋 | GPT-6.1 Sol medium / 이름 변경 | G, 옛 import0 |
 | B3c T9 | `ui/button.tsx`, `ui/alert.tsx`, `ui/skeleton.tsx`, 스피너 전달 `ui/file-input.tsx`·`reconnect-button.tsx`, 해당 호출부(특히 publish/workspace), C | T8 / 크기축1커밋 | GPT-6.1 Sol high / 크기·busy 렌더 계약 | G, spinnerSize 14/16·기본16 보존, 값0 |
 | B3d T10 | `ui/input.tsx`, `ui/select.tsx`, `components/search-input.tsx`, design §9 폭 호출부, C | T9 / 폭축1커밋 | GPT-6.1 Sol high / responsive 폭 보존 | G, 래퍼 포함 값0 |
 | B3e T11 | `ui/modal.tsx`, dialog/row-card/form-group/segmented-control/image-tile, 해당 슬롯 호출부, C | T10 / 슬롯 등 축별커밋 | GPT-6.1 Sol high / 포커스·슬롯 경계 | G, ② 허용목록 규약행0 |
-| R2 리뷰·② QA | 읽기 전용 전체 이름 변경 | T11 / 커밋 없음 | GPT-6.1 Sol high / 결합 회귀 | 전체 화면·포털·기능 QA 후 Claude Code /push |
+| R2 리뷰·② QA | 읽기 전용 전체 이름 변경 | T11 / 커밋 없음 | GPT-6.1 Sol high / 결합 회귀 | 전체 화면·포털·기능 QA 후 지휘자 /push |
 | B4 T12 | `ui/panel-card.tsx`·`ui/row-card.tsx`의 Card/행 export→`ui/card.tsx`(EmptyRowCard·BannerLine은 row-card에 유지), export별 소비자, mcp token/connected·members·projects·home, C | R2 / Card1커밋 | GPT-6 Astra high / 헤더선·슬롯·자식 결합 | G, 선1개·notice 유무 |
 | B5 T13 | `ui/empty-state.tsx`, T12가 남긴 `ui/row-card.tsx` EmptyRowCard→EmptyState/NoMatch, page13/card2/inset6 및 workspace 목록, C | T12, D2a / Empty1커밋 | GPT-6.1 Sol high / RSC·빈상태 형 | G, placement 전수·서버경계 |
 | B6 T14 | `ui/modal.tsx`→large-modal, WizardFooter, `onboarding/modal.tsx`, modal7소비자, logs event-dialog, C | T13 / Modal1커밋 | GPT-6 Astra high / trap·busy·복귀 | G, 소비자7+event-dialog QA |
@@ -54,7 +54,7 @@
 | B10c T19e | 새 ui/facts, home/meta-column·mcp/token-card·connected-apps-card·logs/event-detail·source-detail-modal, C | T19d / Facts1커밋 | GPT-6.1 Sol high / dl/th·폭·라벨 | G, 의미론·96/120/104 보존 |
 | B10d T19f | 새 ui/error-state, edit/logs 오류·셸 not-found 둘, root-fallback/error/not-found 대조, C | T19e, D6 / Error1커밋 | GPT-6.1 Sol high / RSC·retry·낭독 | G, 오류≠빈상태·루트껍데기 보존 |
 | B11 T20 | 남은 승인 §6.3 행(BannerLine 선 등)와 C | T19f, D3 / 교정별 커밋 | GPT-6.1 Sol high / 결정표 잔여만 | G, 표밖 변경0 |
-| R3 리뷰·③ QA | 읽기 전용 전체 통합 | T20 / 커밋 없음 | GPT-6.1 Sol high / 화면·결합 검증 | 3뷰포트·극단값·포털 후 Claude Code /push |
+| R3 리뷰·③ QA | 읽기 전용 전체 통합 | T20 / 커밋 없음 | GPT-6.1 Sol high / 화면·결합 검증 | 3뷰포트·극단값·포털 후 지휘자 /push |
 | B12 T21 | DESIGN/DIRECTORY/global-search 문서, loading glob 테스트; CLAUDE·mirror는 지휘자 창구 | R3 / 문서별커밋 | GPT-6.1 Sol medium / 정본 반영 | 문서대조+G, 원본정책 준수 |
 | B13 T22 | feature 폴더 삭제만 | T21·전단위 push/QA / 종료커밋 | GPT-6.1 Sol medium / 종료 정리 | G, 결론 정본 승격 후 삭제 |
 
@@ -74,16 +74,16 @@
 
 **병렬 허용은 읽기 전용 독립 리뷰/인벤토리뿐**이다. 실제 코드 배치는 공유 파일이 많아 위 순서로 직렬화한다. 워커는 같은 체크아웃을 쓰고 새 워크트리는 사용자 지시나 실충돌이 있을 때만 만든다. 모델은 전부 Codex다. **2026-10-02 사용자 “Sol도 좀 쓰셈” 반영: 기본은 GPT-6.1 Sol medium/high이며 일반 구현·독립 리뷰·QA도 Sol high다. Astra high는 B0 계획·B3a 상태 매핑·B4 Card·B6 LargeModal·B7b 번역 ListRow·B9b 필드 통합에만 한정한다.**
 
-**원격 경계**: Codex는 로컬 작업·커밋까지. 단위 ① 끝에는 “dev 푸시 대기 — Claude Code에서 /push 실행”으로 멈추고 **②③은 미착수**로 남긴다. 이후 단위도 같은 경계다. 프로덕션/DB/비밀값 변경 없음. QA는 Codex가 제공된 브라우저 기능으로 직접 수행 가능한 항목만 측정하며, 런타임 접근이 없으면 미검증으로 남긴다(로컬 스킬의 과거 ‘Codex QA 불가’ 문장을 사용자 all-Codex 요청보다 우선하지 않는다).
+**원격 경계**: 2026-10-02 사용자 “push 허용”·“멈추지말고 계속 진행해”에 따라 **Codex 지휘자가 단위별 게이트·QA 후 dev push까지 수행하고 다음 단위로 계속 진행한다.** 구현 워커는 로컬 커밋까지만 맡고 원격 쓰기는 지휘자 한 창구다. 프로덕션/main·DB·비밀값 변경 없음. QA는 Codex가 제공된 브라우저 기능으로 직접 수행 가능한 항목만 측정하며, 런타임 접근이 없으면 미검증으로 남긴다.
 
 ## 실행 기록 — 2026-10-02
 
-- **단위 ① T1–T4 및 R1 완료, 원격 미반영.** T0 `b731533a` → T1 `3fcc9e11` → 동치 경계 문서 `9239b351` → T2 `d11f99c6` → T3 `2c0f3ffd` → T4 `bc535749`. 구현·문서·독립 리뷰 워커는 전부 Codex이며, T1–T4는 Sol(high/high/high/medium)로 수행했다.
+- **단위 ① T1–T4 및 R1 완료, dev 반영 `1d5d6eae`.** T0 `b731533a` → T1 `3fcc9e11` → 동치 경계 문서 `9239b351` → T2 `d11f99c6` → T3 `2c0f3ffd` → T4 `bc535749`. 구현·문서·독립 리뷰 워커는 전부 Codex이며, T1–T4는 Sol(high/high/high/medium)로 수행했다.
 - 각 구현 경계의 전체 gate·독립 리뷰를 통과했다. 최종 코드 검증은 640파일/9795테스트, T3 자동 격리 PostgreSQL 31파일/520테스트, typecheck·build·미러 green. T2의 tailwind-merge 별칭 등록과 색 스캐너 접두 누락, T3의 메일 색 파서/hex 누락을 회귀 테스트로 고정했다.
 - **1280×900 R1**: Home·Projects·Translations·Sources·Logs·Settings를 T0와 대조했다. Home/Logs/Sources는 픽셀 차이0, Projects5·Translations4·Settings24픽셀의 미세 렌더링 차이만 남았다. Home/Logs/Settings의 267/406/157개 보이는 HTML 요소 좌표와 계산된 CSS 14속성은 전부 같았다. 승인 밖 레이아웃·색 변화는 발견하지 않았다.
 - 최초 촬영 뒤 브라우저 스크롤바 모드가 달라져, Home/Logs/Settings는 동일 T0 SHA를 임시 디렉터리에서 같은 브라우저·Webpack dev 조건으로 재촬영했다. 상대 시간 문구·개발 도구 렌더링 표시는 안정 상태에서 구분했다. 환경 파일 복사·프로젝트 데이터 변경 없이 검증했고 서버·임시 디렉터리·브라우저 공간을 정리했다.
 - 상세 로컬 증거: `.scratch/component-unify-r1-qa.md`, `.scratch/component-unify/{before,after,baseline-current-browser,after-current-browser}/`, `dom-comparison.json`. 각 배치 인계서는 `.scratch/handoff-component-unify-b1{a,b,c,d}.md`다.
-- **단위 ②·③, T21/T22 및 전체 화면·3뷰포트·Safari 검증은 미착수/미검증.** 단위 ①의 필수 `/push` 경계에서 멈춘다. dev 푸시 대기 — Claude Code에서 `/push` 실행. 스키마·마이그레이션 변경 없음.
+- **단위 ② T5 착수, T6 이후·단위 ③·T21/T22 및 전체 화면·3뷰포트·Safari 검증은 미완/미검증.** 단위 ① push 직전 `pnpm gate` exit 0(640파일/9795테스트·격리 PostgreSQL 31파일/520테스트·build·미러)을 확인했다. `aed73f32..1d5d6eae`를 dev에 푸시했으며 CI run은 `36964622111`이다(푸시 시점 queued). `pnpm guide:check`: `stale 25컷 (39건)` — 후속 재촬영 경고. 스키마·마이그레이션 변경 없음.
 
 ## 단위 ① 토큰 · 정리 — 값 변화 0
 
