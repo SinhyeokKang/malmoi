@@ -19,8 +19,8 @@ export function EventMetaLine({ row, archived }: { row: EventMetaRow; archived: 
       {badges.map((part, index) => {
         if (typeof part === "string") return null;
         if (part.kind === "roles") return <RoleBadges key={index} before={part.before} after={part.after} />;
-        if (part.kind === "locale") return <Badge key={index} variant="neutral" className="gap-1"><LocaleFlag code={part.code} />{part.code}</Badge>;
-        return <Badge key={index} variant="neutral">{part.text}</Badge>;
+        if (part.kind === "locale") return <Badge key={index} variant="soft-neutral" className="gap-1"><LocaleFlag code={part.code} />{part.code}</Badge>;
+        return <Badge key={index} variant="soft-neutral">{part.text}</Badge>;
       })}
       {facts.length > 0 && (
         <span>

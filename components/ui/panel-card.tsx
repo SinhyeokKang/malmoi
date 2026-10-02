@@ -1,7 +1,8 @@
 "use client";
 
 import { useId, type ReactNode } from "react";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
+import type { StateKey } from "@/lib/status/canon";
 import { CountBadge, type CountProps } from "@/components/ui/count-badge";
 import { cn } from "@/lib/utils";
 import { IconTile } from "./icon-tile";
@@ -91,20 +92,15 @@ export function PanelRows({ children }: { children: ReactNode }) {
 export function PanelRow({
   glyph,
   name,
-  status,
+  state,
   detail,
-  statusTone = "neutral",
   children,
 }: {
   glyph: ReactNode;
   /** 이 행이 무엇에 대한 것인가 — 굵다. */
   name: ReactNode;
-  /**
-   * 이 행이 답하는 **상태** — 이름 옆 **배지**다(2026-09-30 사용자 — 옛 `이름 — 상태` 글자). 연결됨은 `success`(초록),
-   * 미연결은 `neutral`(회색), 재인가·조회 실패는 `warning`이다. 상태가 없는 행은 배지를 그리지 않는다 — 사족을 붙이지 않는다.
-   */
-  status?: ReactNode;
-  statusTone?: "success" | "neutral" | "warning";
+  /** 상태의 낱말·모양은 정본이 든다. 없는 행에는 배지 슬롯도 서지 않는다. */
+  state?: StateKey;
   /** **다음에 할 일**을 든다. 없으면 그리지 않는다 — 빈 줄이 서면 행 높이가 이유 없이 갈린다. */
   detail?: ReactNode;
   children?: ReactNode;
@@ -115,7 +111,7 @@ export function PanelRow({
       <div className="flex min-w-0 flex-1 flex-col gap-copy-gap">
         <span className="flex min-w-0 items-center gap-2 text-base">
           <span className="truncate font-medium">{name}</span>
-          {status !== undefined && <Badge variant={statusTone} className="shrink-0">{status}</Badge>}
+          {state !== undefined && <StatusBadge state={state} className="shrink-0" />}
         </span>
         {/* 보조 문구의 행간이 1.5다 — `text-xs` 기본(1.333)보다 한 단계 넓다. */}
         {detail !== undefined && <span className="text-muted-foreground text-xs leading-normal">{detail}</span>}

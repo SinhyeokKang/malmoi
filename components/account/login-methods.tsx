@@ -58,7 +58,7 @@ export function LoginMethods({ rows, outcome = null, unlinkFailure = null }: {
        * 캔버스가 준 배지 스펙(radius 999 · `2px 6px` · 13/500 · `min-width:20px`)과 프리미티브의
        * 기본값이 그대로 맞는다. 같은 값의 variant를 하나 더 두면 다음 사람이 어느 쪽을 쓸지 고민한다.
        */
-      badge={<Badge variant="neutral">{m.link.methods.count(counts.connected, counts.total)}</Badge>}
+      badge={<Badge variant="soft-neutral">{m.link.methods.count(counts.connected, counts.total)}</Badge>}
       notice={notice}
     >
       <PanelRows>
@@ -100,8 +100,7 @@ function MethodRow({ row, removable, onUnconfirmed }: { row: { provider: LoginPr
        * provider를 모른다). 미연결 행에만 보조를 그리면 두 행의 높이가 갈리므로 **둘 다 안 그린다** —
        * 문서화된 이탈이다(DESIGN §6.67).
        */
-      status={row.connected ? m.link.methods.connected : m.link.methods.notConnected}
-      statusTone={row.connected ? "success" : "neutral"}
+      state={row.connected ? "connected" : "notConnected"}
     >
       <div ref={controls} className="contents">
       {!row.connected ? (

@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { CHIP_STATE } from "@/lib/projects/list";
-import { STATE } from "@/lib/status/canon";
+import { STATE, type StateKey, type StateTone } from "@/lib/status/canon";
 
 /**
  * 프로젝트 목록 화면의 배선을 **소스로** 센다 (8-3 — `translations-screen`·`home-screen`과 같은 계보).
@@ -115,9 +115,20 @@ describe("프로젝트 목록 — 배지는 항상 하나이고 갈래는 순수
    * ⚠️ **온보딩 둘의 `#525252` 덮개는 걷었다**(1-Y8). **보관만 `#a3a3a3` 덮개가 남는다** — 이름·메타와 한 색으로 물러나는 등재된 이탈이다(5-W7 제외).
    */
   it("칩 톤이 STATE 행이고 덮개는 보관 하나다", () => {
-    expect(STATE[CHIP_STATE.active].variant).toBe("success");
-    expect(STATE[CHIP_STATE.needs_reconnect].variant).toBe("warning");
-    for (const chip of ["setup", "awaiting_first_sync", "archived"] as const) expect(STATE[CHIP_STATE[chip]].variant).toBe("neutral");
+    const expected = {
+      active: ["active", "success", "Active"],
+      needs_reconnect: ["disconnected", "warning", "Disconnected"],
+      setup: ["setup", "muted", "Setup"],
+      awaiting_first_sync: ["notSyncedYet", "muted", "Not synced yet"],
+      archived: ["archived", "muted", "Archived"],
+      sync_failed: ["syncFailed", "danger", "Sync failed"],
+      partially_synced: ["partiallySynced", "warning", "Partially synced"],
+    } satisfies Record<keyof typeof CHIP_STATE, [StateKey, StateTone, string]>;
+    for (const chip of Object.keys(expected) as (keyof typeof expected)[]) {
+      const [state, tone, label] = expected[chip];
+      expect(CHIP_STATE[chip]).toBe(state);
+      expect(STATE[state]).toMatchObject({ tone, label });
+    }
     const src = PAGE.map(code).join("\n");
     expect(src).not.toContain("text-gray-strong");
     expect(src).toContain('chipState === "archived" && "text-gray-dim"');

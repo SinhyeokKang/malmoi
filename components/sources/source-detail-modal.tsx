@@ -7,6 +7,7 @@ import { OnboardingModal } from "@/components/ui/modal";
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { PanelCard } from "@/components/ui/panel-card";
 import { cn } from "@/lib/utils";
@@ -120,7 +121,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
           <span className="min-w-0 flex-1 text-base"><span className="font-medium">{m.sources.lastSuccess}</span> — <SourceTime at={detail.lastImportedAt} /></span>
         </div>}
       </PanelCard>
-      <PanelCard title={m.locales.field.label} subtitle={m.sources.baseHelp} badge={basePending(detail) ? <Badge variant="warning">{m.sources.waiting}</Badge> : undefined}>
+      <PanelCard title={m.locales.field.label} subtitle={m.sources.baseHelp} badge={basePending(detail) ? <StatusBadge state="waitingToApply" /> : undefined}>
         <div className="px-4 py-row-y">
         {canEdit ? <BaseLanguageForm key={detail.id} slug={slug} surfaceSlug={detail.slug} baseLocale={detail.baseLocale} declaredBaseLocale={detail.declaredBaseLocale} locales={detail.languages.filter(row => !row.orphaned).map(row => row.code)} awaiting={basePending(detail)} onDirty={setDraft} onPending={onBusy} onError={setFieldError} onSaved={onSaved} />
           : <div className="flex items-center gap-3">
@@ -145,7 +146,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
             <span className="flex w-[150px] shrink-0 items-center gap-2 @max-[850px]:w-[120px]">
               <span className={cn("flex", row.orphaned && "opacity-50")}><LocaleFlag code={row.code} /></span>
               <span className={cn("text-base", row.orphaned && "text-muted-foreground")}>{row.code}</span>
-              {row.isBase && <Badge variant="neutral">{m.locales.base}</Badge>}
+              {row.isBase && <Badge variant="soft-neutral">{m.locales.base}</Badge>}
             </span>
             <span className="flex w-[300px] shrink-0 flex-col gap-1.5 @max-[850px]:w-auto @max-[850px]:flex-1">
               <span className={cn("flex items-baseline text-xs", row.orphaned ? "text-gray-dim" : "text-muted-foreground")}>
@@ -156,8 +157,8 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
             {/* ⚠️ **좁은 폭에서 숨기지 않고 행 아래로 내린다** (audit #42) — 숨기면 `aria-hidden` Meter의 amber 조각만 남아 검토·누락이
                 색으로만 전달됐다. 비어 있으면 줄을 만들지 않는다. */}
             <span className="min-w-0 flex-1 text-xs @max-form:order-last @max-form:basis-full @max-form:empty:hidden">
-              {row.orphaned ? <Badge variant="missing">{m.sources.missingRepo}</Badge>
-                : row.needsReview > 0 ? <Badge variant="warning">{m.sources.needReview(row.needsReview)}</Badge>
+              {row.orphaned ? <StatusBadge state="removedFromRepository" />
+                : row.needsReview > 0 ? <Badge variant="soft-amber">{m.sources.needReview(row.needsReview)}</Badge>
                 : row.isBase ? <span className="text-muted-foreground">{m.sources.baseRow}</span> : null}
             </span>
             {canOpen && !row.orphaned ? <ButtonLink size="sm" className="shrink-0" href={routes.surfaceTranslations(slug, detail.slug, { ns: ALL_NAMESPACES, language: row.code })} onClick={event => { if (draft !== null) { event.preventDefault(); leave(routes.surfaceTranslations(slug, detail.slug, { ns: ALL_NAMESPACES, language: row.code })); } }}>{m.sources.openLanguage}<ChevronRight className="text-muted-foreground size-3.5" aria-hidden /></ButtonLink>

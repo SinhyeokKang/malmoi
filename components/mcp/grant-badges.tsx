@@ -13,7 +13,7 @@ export function GrantBadges({ grants, dimmed = false }: { grants: readonly Token
   return (
     <span className="inline-flex flex-wrap gap-1 align-middle">
       {labels.map((label) => (
-        <Badge key={label} variant="neutral" className={cn(dimmed && "text-gray-dim")}>
+        <Badge key={label} variant="soft-neutral" className={cn(dimmed && "text-gray-dim")}>
           {label}
         </Badge>
       ))}

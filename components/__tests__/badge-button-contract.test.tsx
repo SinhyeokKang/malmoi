@@ -7,14 +7,14 @@ import { Button } from "@/components/ui/button";
 
 import { find, render } from "./helpers/dom";
 
-describe("Badge variants before the API rename", () => {
+describe("Badge appearance variants", () => {
   it.each([
     [undefined, undefined, "text-muted-foreground"],
-    ["muted", undefined, "text-muted-foreground"],
-    ["neutral", "bg-foreground/5", "text-foreground"],
-    ["warning", "bg-amber-100/80", "text-amber-800"],
-    ["success", "bg-green-100/80", "text-green-800"],
-    ["missing", "bg-destructive/8", "text-destructive"],
+    ["text", undefined, "text-muted-foreground"],
+    ["soft-neutral", "bg-foreground/5", "text-foreground"],
+    ["soft-amber", "bg-amber-100/80", "text-amber-800"],
+    ["soft-green", "bg-green-100/80", "text-green-800"],
+    ["soft-red", "bg-destructive/8", "text-destructive"],
   ] as const)("%s keeps its existing surface/text combination and content slot", async (variant, surface, color) => {
     const { container } = await render(<Badge variant={variant}><strong>3</strong> keys</Badge>);
     const badge = find(container, "span");
@@ -26,7 +26,7 @@ describe("Badge variants before the API rename", () => {
   });
 
   it("retains caller presentation overrides without discarding the content", async () => {
-    const { container } = await render(<Badge variant="neutral" className="text-xs px-2">OWNER</Badge>);
+    const { container } = await render(<Badge variant="soft-neutral" className="text-xs px-2">OWNER</Badge>);
     const badge = find(container, "span");
     expect(badge.textContent).toBe("OWNER");
     expect(badge.classList.contains("text-xs")).toBe(true);

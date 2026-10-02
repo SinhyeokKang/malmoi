@@ -444,6 +444,8 @@ describe("클라이언트 그래프", () => {
       // 언어 이름은 이미 잎이다(import 0) — 온보딩 ③이 같은 함수를 쓴다.
       "lib/onboarding/language-name.ts",
       "lib/projects/import-failure.ts",
+      // 결과 키가 읽는 상태 정본도 사전만 무는 잎이다.
+      "lib/status/canon.ts",
       // 날짜 카드 머리의 날짜 형 — import 0인 잎이다(`publish-button.tsx`가 클라이언트에서 같은 파일을 읽는다).
       "lib/utc-time.ts",
       "messages/en.tsx",

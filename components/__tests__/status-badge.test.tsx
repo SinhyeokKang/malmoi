@@ -35,14 +35,14 @@ describe("StatusBadge", () => {
   });
 
   /**
-   * **사라진 언어도 `missing` 하나다** (D3②) — 면 없는 붉은 글자 `danger`는 소비자가 로케일 배지 하나라 지웠다.
-   * `missing`에는 글리프 간격이 없다 — 배지 안에 글리프를 넣지 않는다(§2.4).
+   * **사라진 언어도 `soft-red` 하나다** (D3②) — 면 없는 붉은 글자 `danger`는 소비자가 로케일 배지 하나라 지웠다.
+   * `soft-red`에는 글리프 간격이 없다 — 배지 안에 글리프를 넣지 않는다(§2.4).
    */
-  it("Badge에 danger variant가 없고, missing에 글리프 간격이 없다", async () => {
+  it("Badge에 danger variant가 없고, soft-red에 글리프 간격이 없다", async () => {
     // @ts-expect-error — D3②로 지운 variant다. 되살리면 이 줄이 typecheck에서 red다.
     const gone = (await render(<Badge variant="danger">x</Badge>)).container.firstElementChild!;
     expect(gone.className).not.toContain("text-destructive");
-    const missing = (await render(<Badge variant="missing">x</Badge>)).container.firstElementChild!;
+    const missing = (await render(<Badge variant="soft-red">x</Badge>)).container.firstElementChild!;
     expect(missing.className).not.toContain("gap-1.5");
   });
 });
@@ -61,3 +61,15 @@ describe("마지막 직접 상태 배지", () => {
     expect(source).not.toMatch(new RegExp(`<Badge\\b[^>]*>\\s*\\{${label.replace(/\./g, "\\.")}\\}`));
   });
 });
+
+// 타입 계약: 상태 낱말·모양을 호출부에서 덮어쓸 통로가 없어야 한다.
+function rejectedStatusProps() {
+  // @ts-expect-error — 상태는 variant를 받지 않는다.
+  return <StatusBadge state="synced" variant="soft-red" />;
+}
+function rejectedStatusLabel() {
+  // @ts-expect-error — 상태는 임의 라벨을 받지 않는다.
+  return <StatusBadge state="synced" label="Different" />;
+}
+void rejectedStatusProps;
+void rejectedStatusLabel;

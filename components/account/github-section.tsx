@@ -65,13 +65,7 @@ export function GithubSection({
         glyph={connected ? <GithubIcon className="size-4" /> : <Link2 className="text-muted-foreground size-4" aria-hidden />}
         name={connected ? `@${account.login}` : m.account.github.rowName}
         // 상태가 본문이고 보조 줄은 **다음에 할 일**을 든다 (핸드오프 v2 §항목 규격).
-        status={
-          account.status === "reauthorize" ? m.account.github.statusReauthorize
-          : account.status === "unavailable" ? m.account.github.statusUnavailable
-          : connected ? m.account.github.connected
-          : m.account.github.notConnected
-        }
-        statusTone={account.status === "reauthorize" || account.status === "unavailable" ? "warning" : connected ? "success" : "neutral"}
+        state={account.status === "reauthorize" ? "expired" : account.status === "unavailable" ? "couldNotCheck" : connected ? "connected" : "notConnected"}
         detail={
           account.status === "reauthorize" ? m.account.github.hintReauthorize
           : account.status === "unavailable" ? m.account.github.hintUnavailable

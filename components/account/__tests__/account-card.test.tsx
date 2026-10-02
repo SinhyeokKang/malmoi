@@ -28,7 +28,7 @@ import { PanelCard, PanelFacts, PanelRow, PanelRows } from "@/components/ui/pane
 it("상태 배지는 상태가 있을 때만 선다 — 없으면 이름만 남는다(2026-09-30 — 대시에서 배지로)", async () => {
   const withStatus = await render(
     <PanelRows>
-      <PanelRow glyph={<i />} name="GitHub" status="Connected" />
+      <PanelRow glyph={<i />} name="GitHub" state="connected" />
     </PanelRows>,
   );
   expect(withStatus.container.textContent).toBe("GitHubConnected");
@@ -46,8 +46,8 @@ it("상태 배지는 상태가 있을 때만 선다 — 없으면 이름만 남�
 it("보조 줄은 없으면 그리지 않는다 — 빈 줄이 서면 행 높이가 갈린다", async () => {
   const { container } = await render(
     <PanelRows>
-      <PanelRow glyph={<i />} name="GitHub" status="Connected" />
-      <PanelRow glyph={<i />} name="Google" status="Connected" detail="Next step." />
+      <PanelRow glyph={<i />} name="GitHub" state="connected" />
+      <PanelRow glyph={<i />} name="Google" state="connected" detail="Next step." />
     </PanelRows>,
   );
   const rows = [...container.querySelectorAll("li")];
@@ -69,7 +69,7 @@ it("카드가 자기 제목을 가리키는 접근 이름을 든다", async () =
   const { container } = await render(
     <PanelCard title="Sessions" subtitle="Close what's open right now.">
       <PanelRows>
-        <PanelRow glyph={<i />} name="Sign out" status="this device" />
+        <PanelRow glyph={<i />} name="Sign out" state="connected" />
       </PanelRows>
     </PanelCard>,
   );
@@ -101,3 +101,21 @@ it("사실 블록을 든 카드에는 목록이 없다", async () => {
   // 헤더는 그대로 있다 — 목록이 없는 것이지 머리가 없는 것이 아니다.
   expect(container.querySelector("h2")?.textContent).toBe("Profile");
 });
+
+it.each([
+  ["connected", "Connected"], ["notConnected", "Not connected"], ["expired", "Expired"], ["couldNotCheck", "Couldn't check"],
+] as const)("PanelRow %s는 상태·보조·행동 슬롯을 분리한다", async (state, label) => {
+  const { container } = await render(<PanelRows><PanelRow glyph={<i data-glyph />} name="GitHub" state={state} detail={<em>Next step</em>}><button>Act</button></PanelRow></PanelRows>);
+  const item = container.querySelector("li")!;
+  const body = item.querySelector("div:first-of-type")!;
+  expect(body.firstElementChild?.textContent).toBe(`GitHub${label}`);
+  expect(body.lastElementChild?.textContent).toBe("Next step");
+  expect(body.contains(item.querySelector("button"))).toBe(false);
+  expect(item.querySelector("button")?.textContent).toBe("Act");
+});
+
+function rejectedPanelStatus() {
+  // @ts-expect-error — 임의 라벨과 색의 조합 대신 state가 필요하다.
+  return <PanelRow glyph={<i />} name="GitHub" status="Connected" statusTone="success" />;
+}
+void rejectedPanelStatus;

@@ -88,7 +88,7 @@ export function MemberRow({
           >
             {identity.primary}
             {/* 자기 표식은 배지다(2026-09-30 사용자 — 괄호 친 `#a3a3a3` 글자에서 바꿨다). 이름 줄 안이라 굵기를 400으로 되누르지 않는다(배지 라벨은 500). */}
-            {you && <Badge variant="neutral" className="ml-2 align-middle">{m.members.you}</Badge>}
+            {you && <Badge variant="soft-neutral" className="ml-2 align-middle">{m.members.you}</Badge>}
           </span>
           {/* ⚠️ **2행이 없으면 그 자리를 그리지 않는다** — 빈 줄은 행 높이만 늘리고 읽을 것을 안 늘린다. */}
           {identity.secondary !== null && (

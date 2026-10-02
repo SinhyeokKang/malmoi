@@ -9,7 +9,7 @@ import { GrantBadges } from "@/components/mcp/grant-badges";
 import { CopyButton } from "@/components/onboarding/copy-button";
 import { McpIcon } from "@/components/signin/brand-icons";
 import { Alert } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { IconTile } from "@/components/ui/icon-tile";
@@ -229,7 +229,7 @@ function AppRow({ app, now, onDisconnect }: { app: ConnectedAppData; now: Date; 
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <div className="flex min-w-0 items-start gap-2">
           <span className={cn("min-w-0 text-base font-medium wrap-anywhere", expired && "text-gray-dim")}>{app.name}</span>
-          {expired && <Badge variant="warning" className="shrink-0">{m.mcpConnector.token.expired}</Badge>}
+          {expired && <StatusBadge state="expired" className="shrink-0" />}
         </div>
         <span className="text-muted-foreground min-w-0 text-xs break-all">{app.ident}</span>
         <dl className="mt-2 flex flex-wrap gap-x-6 gap-y-1">

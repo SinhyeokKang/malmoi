@@ -120,7 +120,7 @@ function value(row: MetaRow, now: Date, heldLater?: Promise<HoldReason | null>, 
         <span className="flex flex-wrap items-center gap-1.5">
           {row.codes.map((code) => (
             // 국기 + 코드는 배지 하나다(2026-09-30 사용자 — 프로젝트 행 Meter 머리와 같은 모양).
-            <Badge key={code} variant="neutral" className="gap-1">
+            <Badge key={code} variant="soft-neutral" className="gap-1">
               <LocaleFlag code={code} />
               {code}
             </Badge>
@@ -194,5 +194,5 @@ function Held({ reason }: { reason: HoldReason | null }) {
  */
 function TriggerBadge({ trigger, kind }: { trigger: Trigger | null; kind: "IMPORT" | "PUBLISH" }) {
   if (trigger === null) return null;
-  return <Badge variant="neutral" className="mr-1.5 align-middle">{m.logs.meta.runType[kind][trigger]}</Badge>;
+  return <Badge variant="soft-neutral" className="mr-1.5 align-middle">{m.logs.meta.runType[kind][trigger]}</Badge>;
 }

@@ -115,7 +115,7 @@ function Item({ item, active }: { item: NavItem; active: boolean }) {
       </span>
       <span className="min-w-0 truncate">{item.label}</span>
       {item.badge !== undefined && (
-        <Badge variant="neutral" className="ml-auto shrink-0">
+        <Badge variant="soft-neutral" className="ml-auto shrink-0">
           {item.badge}
         </Badge>
       )}

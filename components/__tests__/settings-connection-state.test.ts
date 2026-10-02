@@ -29,6 +29,6 @@ describe("repositoryConnectionState", () => {
   });
 
   it("연결됨은 §2.4의 success · Connected다", () => {
-    expect(STATE.connected).toMatchObject({ tone: "success", variant: "success", label: "Connected" });
+    expect(STATE.connected).toMatchObject({ tone: "success", label: "Connected" });
   });
 });

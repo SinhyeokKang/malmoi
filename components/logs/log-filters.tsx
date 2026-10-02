@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useId, useRef, useState, useTransition, type ReactNode, type RefObject } from "react";
 
 import { SearchInput } from "@/components/search-input";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
 import { FormGroup } from "@/components/ui/form-group";
@@ -112,7 +112,7 @@ export function LogFilters({
         {/* ⚠️ `tabIndex={-1}` — 딥링크(`?event=`)로 연 상세의 폴백 복귀 대상이다(`event-dialog.tsx`). 없으면 `focus()`가
             조용히 무시되어 Esc로 닫은 포커스가 `body`로 빠졌다 (audit #33). */}
         <h1 tabIndex={-1} className="flex min-h-9 items-center text-lg font-medium">{m.common.nav.logs}</h1>
-        {!refreshable && <Badge variant="neutral">{m.logs.archived.badge}</Badge>}
+        {!refreshable && <StatusBadge state="archived" />}
         <div className="ml-auto flex items-center gap-2">
           {refreshable && (
             /*

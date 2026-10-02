@@ -77,8 +77,8 @@ export function LocaleFlag({ code, size = "sm" }: { code: string; size?: "sm" | 
 
 export function LocaleBadge({ code, orphaned }: { code: string; orphaned: boolean }) {
   return (
-    // 사라진 언어는 `missing` 하나다(DESIGN §2.4 · D3②) — 국기는 상태 글리프가 아니라 면제라 배지 안에 남는다.
-    <Badge variant={orphaned ? "missing" : "neutral"} className="gap-1">
+    // 사라진 언어는 `soft-red` 하나다(DESIGN §2.4 · D3②) — 국기는 상태 글리프가 아니라 면제라 배지 안에 남는다.
+    <Badge variant={orphaned ? "soft-red" : "soft-neutral"} className="gap-1">
       <LocaleFlag code={code} />
       <span>{code}</span>
       {/* 색만으로는 말하지 않는다 — 배지가 붉은 이유를 스크린리더에도 준다 (DESIGN §7). */}

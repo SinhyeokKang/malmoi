@@ -307,7 +307,6 @@ components/
                         드롭다운 다섯 + 검색 + [Refresh]) · event-detail(640 본문) · event-dialog(껍데기) ·
                         row-chevron(`"use client"` — useLinkStatus로 누른 행을 스피너로, 행이 서버 컴포넌트라 이것만 뗐다) ·
                         event-meta(보조줄 `[배지…] 사실 · 사실` — 2026-09-30) · role-badges(역할 배지, 행·상세 공용) ·
-                        result-badge(결과 배지 — success·neutral·warning·붉은 면)
                         ⚠️ **Home의 Recent logs가 `event-row`를 그대로 쓴다** — 같은 사건이 두 화면에서
                         같은 모양이어야 한다. PR 링크 파랑 한 자리는 `event-meta`에 있다(home-vocabulary가 센다)
                         ⚠️ **상세 본문은 서버가 그린다** — 클라이언트는 열림·닫힘·포커스만 든다

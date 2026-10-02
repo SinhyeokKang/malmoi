@@ -273,7 +273,7 @@ function BaseLocaleFields({ state, onChange, id = "base-locale", label = m.newPr
                               </span>
                             </span>
                             {code === leader && known.length > 1 && (
-                              <Badge variant="neutral" className="shrink-0">
+                              <Badge variant="soft-neutral" className="shrink-0">
                                 {m.newProject.naming.mostKeys}
                               </Badge>
                             )}

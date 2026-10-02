@@ -280,13 +280,23 @@ function scan(sources: readonly Source[], restDemand: readonly { path: string; s
           if (nameOf(binding.propertyName ?? binding.name) === "tone") toneReferences.add(nameOf(binding.name));
         }
       }
+      // The live adapter forwards tone through one conditional, possibly via a
+      // local alias. Inspect returned branches, not unrelated conditional inputs.
+      const forwardsTone = (value: ts.Node | undefined, seen = new Set<string>()): boolean => {
+        if (!value) return false;
+        if (toneReferences.has(valueName(value) ?? "")) return true;
+        if (ts.isJsxExpression(value) || ts.isParenthesizedExpression(value) || ts.isAsExpression(value) || ts.isSatisfiesExpression(value)) return forwardsTone(value.expression, seen);
+        if (ts.isConditionalExpression(value)) return forwardsTone(value.whenTrue, seen) || forwardsTone(value.whenFalse, seen);
+        if (ts.isIdentifier(value) && !seen.has(value.text)) return forwardsTone(constants.get(value.text), new Set([...seen, value.text]));
+        return false;
+      };
       let wrapper = false;
       visit(component.node, part => {
         if (!ts.isJsxOpeningElement(part) && !ts.isJsxSelfClosingElement(part)) return;
         const binding = imports.get(part.tagName.getText(file));
         if (binding?.path !== "components/ui/alert.tsx" || binding.symbol !== "Alert") return;
         const variant = part.attributes.properties.find((attr): attr is ts.JsxAttribute => ts.isJsxAttribute(attr) && attr.name.getText(file) === "variant");
-        if (toneReferences.has(valueName(variant?.initializer) ?? "")) wrapper = true;
+        if (forwardsTone(variant?.initializer)) wrapper = true;
       });
       if (wrapper && !stateTone(type)) add("state", path, component.name, "tone is not StateTone");
     }
@@ -402,7 +412,7 @@ const SOURCES = ["app", "components", "lib"].flatMap(dir => walkFiles(join(ROOT,
 const REST_DEMAND: readonly { path: string; symbol: string }[] = [];
 // Update only the affected cells when resolving debt, alongside its exact allowlist rows.
 const CARDINALITY: Record<Rule, { rows: number; occurrences: number }> = {
-  state: { rows: 8, occurrences: 8 }, variant: { rows: 10, occurrences: 10 },
+  state: { rows: 0, occurrences: 0 }, variant: { rows: 0, occurrences: 0 },
   hue: { rows: 13, occurrences: 13 }, size: { rows: 21, occurrences: 24 },
   width: { rows: 36, occurrences: 42 }, progress: { rows: 7, occurrences: 7 },
   slots: { rows: 8, occurrences: 8 }, rest: { rows: 0, occurrences: 0 },
@@ -410,12 +420,6 @@ const CARDINALITY: Record<Rule, { rows: number; occurrences: number }> = {
   className: { rows: 4, occurrences: 4 },
 };
 const ALLOWLIST: Debt[] = [
-  { rule: "state", path: "components/logs/event-detail.tsx", symbol: "Note", detail: "tone is not StateTone", count: 1, task: "T7" },
-  { rule: "state", path: "components/mcp/token-card.tsx", symbol: "Badge", detail: "direct state:mcpConnector.token.expired", count: 1, task: "T7" },
-  { rule: "state", path: "components/mcp/connected-apps-card.tsx", symbol: "Badge", detail: "direct state:mcpConnector.token.expired", count: 1, task: "T7" },
-  { rule: "state", path: "components/logs/log-filters.tsx", symbol: "Badge", detail: "direct state:logs.archived.badge", count: 1, task: "T7" },
-  { rule: "state", path: "components/sources/source-detail-modal.tsx", symbol: "Badge", detail: "direct state:sources.waiting", count: 1, task: "T7" },
-  { rule: "state", path: "components/sources/source-detail-modal.tsx", symbol: "Badge", detail: "direct state:sources.missingRepo", count: 1, task: "T7" },
   { rule: "progress", path: "components/projects/new-project-button.tsx", symbol: "NewProjectButton", detail: "manual pending glyph replacement", count: 1, task: "T15" },
   { rule: "progress", path: "components/shell/new-project-icon.tsx", symbol: "NewProjectIcon", detail: "manual pending glyph replacement", count: 1, task: "T15" },
   { rule: "progress", path: "components/logs/row-chevron.tsx", symbol: "RowChevron", detail: "manual pending glyph replacement", count: 1, task: "T16" },
@@ -473,18 +477,6 @@ const ALLOWLIST: Debt[] = [
   { rule: "slots", path: "components/ui/panel-card.tsx", symbol: "PanelRow", detail: "detail", count: 1, task: "T11" },
   { rule: "slots", path: "components/ui/panel-card.tsx", symbol: "PanelRow", detail: "glyph", count: 1, task: "T11" },
   { rule: "slots", path: "components/ui/segmented-control.tsx", symbol: "SegmentContent", detail: "leading", count: 1, task: "T11" },
-  { rule: "state", path: "components/logs/result-badge.tsx", symbol: "Badge", detail: "tone mapping outside canon", count: 1, task: "T7" },
-  { rule: "state", path: "components/ui/panel-card.tsx", symbol: "PanelRow", detail: "statusTone", count: 1, task: "T7" },
-  { rule: "variant", path: "components/ui/badge.tsx", symbol: "badge", detail: "missing", count: 1, task: "T7" },
-  { rule: "variant", path: "components/ui/badge.tsx", symbol: "badge", detail: "muted", count: 1, task: "T7" },
-  { rule: "variant", path: "components/ui/badge.tsx", symbol: "badge", detail: "neutral", count: 1, task: "T7" },
-  { rule: "variant", path: "components/ui/badge.tsx", symbol: "badge", detail: "success", count: 1, task: "T7" },
-  { rule: "variant", path: "components/ui/badge.tsx", symbol: "badge", detail: "warning", count: 1, task: "T7" },
-  { rule: "variant", path: "lib/status/canon.ts", symbol: "StateVariant", detail: "missing", count: 1, task: "T7" },
-  { rule: "variant", path: "lib/status/canon.ts", symbol: "StateVariant", detail: "muted", count: 1, task: "T7" },
-  { rule: "variant", path: "lib/status/canon.ts", symbol: "StateVariant", detail: "neutral", count: 1, task: "T7" },
-  { rule: "variant", path: "lib/status/canon.ts", symbol: "StateVariant", detail: "success", count: 1, task: "T7" },
-  { rule: "variant", path: "lib/status/canon.ts", symbol: "StateVariant", detail: "warning", count: 1, task: "T7" },
   { rule: "width", path: "app/(edit)/account/page.tsx", symbol: "Input", detail: "w-80", count: 1, task: "T10" },
   { rule: "width", path: "components/account/profile-name-form.tsx", symbol: "Input", detail: "w-80", count: 1, task: "T10" },
   { rule: "width", path: "components/logs/log-filters.tsx", symbol: "Input", detail: "w-full", count: 2, task: "T10" },
@@ -540,6 +532,19 @@ describe("primitive API contract — design §3", () => {
         expect({ rows: rows.length, occurrences: rows.reduce((sum, row) => sum + row.count, 0) }, rule).toEqual(CARDINALITY[rule]);
       }
     }
+  });
+
+  it("T7 leaves no component result-label or tone mapping copies", () => {
+    const copies: string[] = [];
+    for (const source of SOURCES.filter(source => source.path.startsWith("components/"))) {
+      visit(parse(source), node => {
+        // Imported original identifiers also catch aliased ResultBadge consumers.
+        if (ts.isIdentifier(node) && ["ResultBadge", "surfaceWord"].includes(node.text)) copies.push(`${source.path}:${node.text}`);
+      });
+    }
+    expect(copies).toEqual([]);
+    expect(scan(SOURCES).filter(row => row.rule === "state" || row.rule === "variant")).toEqual([]);
+    expect(ALLOWLIST.filter(row => row.task === "T7")).toEqual([]);
   });
 
   it("scans the production tree, never comments or test fixtures", () => {
@@ -645,6 +650,19 @@ describe("primitive API contract — design §3", () => {
     expect(scan([badge, good]).filter(row => row.rule === "state")).toEqual([]);
     // Adding a state label to the same screen cannot hide behind its valid appearance badges.
     expect(scan([badge, dictionary, source(`${good.code}\nconst STATE_LABEL = m.sources.waiting; export function Other() {return <Pill variant="warning">{STATE_LABEL}</Pill>;}`, good.path)]).filter(row => row.rule === "state")).toHaveLength(1);
+  });
+
+  it("guards Note tone vocabulary through its conditional Alert adapter", () => {
+    const alert = source('export function Alert(props: Props) {return <div/>;}', "components/ui/alert.tsx");
+    const local = (tone: string, alias: boolean): Source => source(alias
+      ? `import {Alert as Message} from "@/components/ui/alert"; function Note({tone: statusTone, width}: {tone: "danger" | "${tone}"; width: "wide"}) {const variant = statusTone === "muted" ? "neutral" : statusTone; return <Message variant={variant} size="compact" live="off"/>;}`
+      : `import {Alert} from "@/components/ui/alert"; function Note({tone}: {tone: "danger" | "${tone}"}) {return <Alert variant={tone === "muted" ? "neutral" : tone} size="compact" live="off"/>;}`, "components/canary.tsx");
+    for (const alias of [false, true]) {
+      expect(scan([alert, local("neutral", alias)])).toEqual([{ rule: "state", path: "components/canary.tsx", symbol: "Note", detail: "tone is not StateTone", count: 1 }]);
+      expect(scan([alert, local("muted", alias)])).toEqual([]);
+    }
+    const unrelated = source('import {Alert} from "@/components/ui/alert"; function Detail({tone, enabled}: {tone: "neutral"; enabled: boolean}) {return <><span>{tone}</span><Alert variant={enabled ? "neutral" : "danger"}/></>;}', "components/canary.tsx");
+    expect(scan([alert, unrelated])).toEqual([]);
   });
 
   it("checks local size aliases and keyof typeof tables, including numeric keys", () => {

@@ -7,7 +7,7 @@ import { revokeApiToken, type ApiTokenRevokeResult } from "@/app/(edit)/mcp/acti
 import { GrantBadges } from "@/components/mcp/grant-badges";
 import { McpIcon } from "@/components/signin/brand-icons";
 import { Alert } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { EmptyRowCard, RowCard } from "@/components/ui/row-card";
@@ -125,7 +125,7 @@ export function TokenCard({ token, projects, now }: { token: TokenCardData; proj
           <>
             {/* ⚠️ `h2` 바로 뒤다 — 이 화면의 배지는 이것 하나다(핸드오프 §4). */}
             {/* 만료는 호박이다 — GitHub 인가 만료와 같은 톤(2026-09-30 상태 통일). */}
-            {expired && <Badge variant="warning">{m.mcpConnector.token.expired}</Badge>}
+            {expired && <StatusBadge state="expired" />}
             <div className="ml-auto flex shrink-0 items-center gap-2">
               {live ? (
                 <>

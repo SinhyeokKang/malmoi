@@ -4,14 +4,14 @@ import type { ReactNode } from "react";
 import { CopyButton } from "@/components/onboarding/copy-button";
 import { EventGlyph } from "@/components/logs/glyph";
 import { Alert } from "@/components/ui/alert";
-import { ResultBadge } from "@/components/logs/result-badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { RoleBadges } from "@/components/logs/role-badges";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonClass } from "@/components/ui/button";
 import { DialogClose } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { Dialog as DialogTitleSlot } from "radix-ui";
-import { changedValuesText, deferredText, eventGlyph, eventKindWord, eventSentence, eventView, eventFailureMessage, heldReason, importReasonMessage, logsResultTone, refusalMessage, roleWord, triggerOf, valueState } from "@/lib/events/view";
+import { changedValuesText, deferredText, eventGlyph, eventKindWord, eventSentence, eventView, eventFailureMessage, heldReason, importReasonMessage, surfaceResultState, refusalMessage, roleWord, triggerOf, valueState } from "@/lib/events/view";
 import type { EventRow } from "@/lib/events/query";
 import { m } from "@/lib/i18n";
 import { relativeTime } from "@/lib/relative-time";
@@ -58,9 +58,9 @@ export function EventDetail({
         <span className="flex min-w-0 flex-1 flex-col gap-1 pr-9">
           {/* `[종류][결과]` 배지다(4-Y21) — 종류 낱말은 행 보조줄의 첫 배지와 같다(`eventKindWord`). 옛 muted 글자 `Sync run`은 같은 종류의 두 번째 낱말이었다. */}
           <span data-event-detail-kind className="flex flex-wrap items-center gap-2">
-            <Badge variant="neutral">{eventKindWord(row)}</Badge>
-            {view.label !== null && <ResultBadge tone={view.tone} label={view.label} />}
-            {view.warningsLabel !== null && <Badge variant="warning">{view.warningsLabel}</Badge>}
+            <Badge variant="soft-neutral">{eventKindWord(row)}</Badge>
+            {view.state !== null && <StatusBadge state={view.state} />}
+            {view.warningsLabel !== null && <Badge variant="soft-amber">{view.warningsLabel}</Badge>}
           </span>
           <DialogTitleSlot.Title className="text-lg font-medium text-pretty">
             {eventSentence(row, {
@@ -126,9 +126,9 @@ export function EventDetail({
                   </span>
                   {/*
                     ⚠️ **소스별 결과도 머리와 같은 Logs 결과 톤이다** (malmoi#163 · D3③) — 옛 별도 표는 성공이 초록이라 같은 모달의 머리
-                    Synced(무색)와 같은 낱말이 두 톤이었다. 상태 값이 사건 결과와 같은 이름이라 `logsResultTone`을 그대로 지난다.
+                    Synced(무색)와 같은 낱말이 두 톤이었다. 소스별 결과도 `surfaceResultState`가 같은 상태 키로 옮긴다.
                   */}
-                  <span className="shrink-0"><ResultBadge tone={logsResultTone(surface.status)} label={surfaceWord(surface.status)} /></span>
+                  <span className="shrink-0"><StatusBadge state={surfaceResultState(surface.status)} /></span>
                 </div>
               ))}
             </div>
@@ -140,8 +140,8 @@ export function EventDetail({
         {row.result === "failed" && (
           <Note tone="danger" body={eventFailureMessage(row, archived)} note={row.kind === "PUBLISH" ? m.logs.detail.notes.publish : null} />
         )}
-        {row.result === "running" && <Note tone="neutral" body={m.logs.detail.noResult} note={null} />}
-        {row.subtype === "settings.pushTokenRotated" && <Note tone="neutral" body={m.logs.meta.tokenEffect} note={m.logs.detail.notes.token} />}
+        {row.result === "running" && <Note tone="muted" body={m.logs.detail.noResult} note={null} />}
+        {row.subtype === "settings.pushTokenRotated" && <Note tone="muted" body={m.logs.meta.tokenEffect} note={m.logs.detail.notes.token} />}
       </div>
 
       {/*
@@ -207,12 +207,12 @@ function ValueBlock({ label, value, muted }: { label: string; value: string | nu
  *
  * ⚠️ **실패는 `danger`이되 `live="off"`다** (B6 r1, 2026-09-24 사용자). 상세는 **지난 기록**인데 `danger`의
  * 기본 알림은 `role="alert"`라 여는 순간 assertive로 끼어든다 — 결과가 방금 일어난 자리(Sync·Publish)의 판정을
- * 과거 기록에 적용하는 셈이다. 나머지(진행 중·토큰 회전)는 상시 안내라 `neutral`이다.
+ * 과거 기록에 적용하는 셈이다. 나머지(진행 중·토큰 회전)는 상시 안내라 `muted` 톤을 Alert의 `neutral` 모양으로 옮긴다.
  */
-function Note({ tone, body, note }: { tone: "danger" | "neutral"; body: string; note: string | null }) {
+function Note({ tone, body, note }: { tone: "danger" | "muted"; body: string; note: string | null }) {
   return (
     <div data-event-note>
-      <Alert variant={tone} size="compact" live="off">
+      <Alert variant={tone === "muted" ? "neutral" : tone} size="compact" live="off">
         <p className="text-pretty">{body}</p>
         {note !== null && <p className="text-muted-foreground mt-1 text-xs text-pretty">{note}</p>}
       </Alert>
@@ -225,13 +225,6 @@ function actorLabel(row: EventRow): string {
   if (row.actor.kind === "AUTOMATION") return triggerOf({ actorKind: row.actor.kind, kind: row.kind, subtype: row.subtype }) === "nightly" ? m.logs.trigger.cron : m.logs.trigger.ci;
   if (row.actor.removed) return m.logs.trigger.removed;
   return row.actor.name ?? row.actor.emailLabel ?? m.logs.trigger.removed;
-}
-
-function surfaceWord(status: "imported" | "partial" | "failed" | "superseded"): string {
-  if (status === "imported") return m.logs.status.imported;
-  if (status === "partial") return m.logs.status.partial;
-  if (status === "superseded") return m.logs.status.superseded;
-  return m.logs.status.failed;
 }
 
 /**

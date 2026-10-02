@@ -221,7 +221,7 @@ function Item({ item, active, collapsed = false }: { item: NavItem; active: bool
           className={cn("ml-auto shrink-0", FADE, collapsed && "opacity-0")}
         />
       ) : item.badge !== undefined && (
-        <Badge variant="neutral" className={cn("ml-auto shrink-0", FADE, collapsed && "opacity-0")}>
+        <Badge variant="soft-neutral" className={cn("ml-auto shrink-0", FADE, collapsed && "opacity-0")}>
           {item.badge}
         </Badge>
       )}
