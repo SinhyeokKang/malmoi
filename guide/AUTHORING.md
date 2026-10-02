@@ -138,7 +138,7 @@
 | `setup/members.md` | 역할, 초대 메일·재발급·멤버 관리 | `lib/auth/permission.ts`, `lib/auth/invitation.ts`, `lib/invitation-email/`, `app/(edit)/projects/actions.ts`, `components/members/`, `docs/PRODUCT.md` §3·§4.1 |
 | `setup/archive.md` | 보관·복원, 열린 PR 유지, 이력 읽기 | `components/settings/archive-card.tsx`, `app/(edit)/projects/actions.ts`, `lib/auth/permission.ts`, `docs/PRODUCT.md` §7.9 |
 | `translate/join.md` | 초대 주소·로그인·수락·거부 | `app/invite/`, `lib/auth/invitation.ts`, `lib/login-link/`, `docs/PRODUCT.md` §3 |
-| `translate/edit.md` | EDITOR의 검색·필터·저장·미저장 확인·플래그 | `components/translations/workspace/`, `app/(edit)/actions.ts`, `lib/keys/save-key.ts`, `lib/keys/save.ts`, `lib/keys/translation-list.ts`, `docs/PRODUCT.md` §3·§4.2 |
+| `translate/edit.md` | EDITOR의 화면 검색·글로벌 검색·필터·저장·미저장 확인·플래그 | `components/translations/workspace/`, `app/(edit)/actions.ts`, `lib/keys/save-key.ts`, `lib/keys/save.ts`, `lib/keys/translation-list.ts`, `components/search/`, `lib/search/`, `app/search/actions.ts`, `lib/keys/search.ts`, `lib/translations/query.ts`(`Q_MAX_LENGTH`), `docs/PRODUCT.md` §3·§4.1·§4.2 |
 | `translate/publish.md` | EDITOR의 미리보기·실행·결과, PR 표시 범위, 열린 PR 동안의 적재 보류 | `components/translations/`, `app/(edit)/publish-actions.ts`, `lib/publish/`, `lib/pull/`, `docs/PRODUCT.md` §3·§7.6 |
 | `sync/README.md` | 코드와 DB의 경계, 병합 없음 | `docs/ARCHITECTURE.md` §0, `lib/push/apply.ts`, `lib/pull/run.ts` |
 | `sync/push.md` | strict 적재, 보류 사유(미전달 편집·열린 PR·PR 조회 실패), 사라진 키 보존 | `app/api/push/route.ts`, `lib/push/apply.ts`, `lib/protection/where.ts`, `lib/protection/plan.ts`(`planOpenPrGate`), `lib/projects/open-pr.ts`, `lib/cli/push-response.ts`, `docs/ARCHITECTURE.md` §5.5.2 |
