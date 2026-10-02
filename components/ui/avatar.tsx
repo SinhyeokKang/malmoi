@@ -1,7 +1,7 @@
 "use client";
 
 import { useImageFallback } from "@/components/ui/image-tile";
-import { toneFill } from "@/components/ui/tone";
+import { hueFill } from "@/components/ui/tone";
 import { cn } from "@/lib/utils";
 
 /**
@@ -49,7 +49,7 @@ export function Avatar({
          */
         "inline-flex shrink-0 items-center justify-center font-medium text-white",
         size === 56 ? "text-xl" : "text-xs",
-        toneFill(name),
+        hueFill(name),
         "rounded-full",
         className,
       )}

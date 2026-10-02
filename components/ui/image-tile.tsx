@@ -41,7 +41,7 @@ export function useImageFallback(src: string | null | undefined): {
  * ⚠️ **`Avatar`를 대신하지 않는다** — 그쪽은 사람이라 `object-cover`에 폴백이 이니셜 글자이고,
  * 실패 기억만 위 훅으로 공유한다. 여기 폴백은 흰 글리프다 (DESIGN §6.4가 그 대체를 이미 거부했다).
  *
- * ⚠️ **`fallbackClassName`이 폴백에만 붙는다** — `toneFill`이 이미지 뒤에 깔리면 투명 PNG의
+ * ⚠️ **`fallbackClassName`이 폴백에만 붙는다** — `hueFill`이 이미지 뒤에 깔리면 투명 PNG의
  * 배경색이 프로젝트마다 달라진다.
  *
  * ⚠️ **`object-contain`이 이 잎에 박혀 있다 — 소비자가 못 바꾼다.** 프로젝트 이미지는 로고라 잘리면

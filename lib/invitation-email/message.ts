@@ -1,7 +1,7 @@
 import type { Role } from "@/lib/auth/permission";
 import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
-import { toneOf, type Tone } from "@/lib/tone";
+import { hueOf, type Hue } from "@/lib/hue";
 import { planProjectImageDelete } from "@/lib/upload/image";
 
 import { INVITATION_EMAIL_HTML, INVITATION_EMAIL_TILE_FALLBACK, INVITATION_EMAIL_TILE_IMAGE } from "./template";
@@ -28,11 +28,11 @@ const BOX_URL = "https://mal-moi.com/email/box@2x.png";
 const IMAGE_PROXY_ORIGIN = "https://mal-moi.com";
 
 /**
- * 톤 → 폴백 셀 hex. 판정은 화면과 같은 `toneOf`이고 값만 hex다 — 메일 클라이언트는 oklch를 못 읽는다.
- * 값은 Tailwind v4 `--color-<tone>-600` oklch를 sRGB로 환산해 채널별 clamp한 것이고 `message.test.ts`가
+ * 색조 → 폴백 셀 hex. 판정은 화면과 같은 `hueOf`이고 값만 hex다 — 메일 클라이언트는 oklch를 못 읽는다.
+ * 값은 Tailwind v4 `--color-<hue>-600` oklch를 sRGB로 환산해 채널별 clamp한 것이고 `message.test.ts`가
  * `theme.css`에서 다시 환산해 대조한다(P3 화면의 앱 쪽 채도가 더 높은 잔여 차이는 수용).
  */
-export const TONE_HEX: Record<Tone, string> = {
+export const HUE_HEX: Record<Hue, string> = {
   rose: "#ec003f",
   orange: "#f54900",
   amber: "#e17100",
@@ -84,8 +84,8 @@ export function buildInvitationEmail(input: {
     TILE: key === null ? INVITATION_EMAIL_TILE_FALLBACK : INVITATION_EMAIL_TILE_IMAGE,
     // 메일은 PNG 변환 경로다 (#140 — Gmail이 WebP 알파를 버리고 iOS에서 깨뜨렸다). 앱 화면은 `/api/images/` WebP 그대로다.
     TILE_SRC: key === null ? BOX_URL : escapeHtml(`${IMAGE_PROXY_ORIGIN}/api/images/email/${key}`),
-    // 톤은 자르기 전 원래 이름으로 고른다 — 잘린 이름으로 고르면 화면 타일과 색이 갈린다.
-    TILE_BG: TONE_HEX[toneOf(input.project.name)],
+    // 색조는 자르기 전 원래 이름으로 고른다 — 잘린 이름으로 고르면 화면 타일과 색이 갈린다.
+    TILE_BG: HUE_HEX[hueOf(input.project.name)],
   });
   return {
     from: input.from,

@@ -174,11 +174,11 @@ it.each(["/saved.webp", "/replacement.webp", null])("목록·Home·초대에 최
  *
  * ⚠️ `Project.image`가 가리키는 Blob이 사라지는 길이 여럿이다 — 스토어 교체·환경 간 행 이동·업로드 tx가
  * 커밋됐는데 드라이버가 오류로 보고해 정리가 방금 쓴 객체를 지운 경우. 폴백이 없으면 `image`가 truthy라
- * `toneFill` 분기에 못 들어가 **빈 테두리 상자**가 남는다.
+ * `hueFill` 분기에 못 들어가 **빈 테두리 상자**가 남는다.
  */
 it.each(["list", "home", "invite"])("%s의 이미지 로드 실패는 이름 색 Box 타일로 떨어진다", async where => {
   const { InviteProjectCard } = await import("@/components/invite/project-card");
-  const { toneFill } = await import("@/components/ui/tone");
+  const { hueFill } = await import("@/components/ui/tone");
   const { act } = await import("react");
   const src = "https://store.public.blob.vercel-storage.com/projects/p/gone.webp";
   const container = where === "list" ? await draw({ image: src })
@@ -189,7 +189,7 @@ it.each(["list", "home", "invite"])("%s의 이미지 로드 실패는 이름 색
   await act(async () => { image.dispatchEvent(new Event("error")); });
   expect(container.querySelector("img")).toBeNull();
   const tile = container.querySelector("svg.lucide-box")?.parentElement;
-  expect(tile?.classList.contains(toneFill("Acme"))).toBe(true);
+  expect(tile?.classList.contains(hueFill("Acme"))).toBe(true);
 });
 
 /**

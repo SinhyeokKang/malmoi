@@ -1,6 +1,6 @@
 import { Box } from "lucide-react";
 import { ImageTile } from "@/components/ui/image-tile";
-import { toneFill } from "@/components/ui/tone";
+import { hueFill } from "@/components/ui/tone";
 
 /**
  * 프로젝트를 가리키는 타일. 소비자는 목록 행·Home 머리 **둘**이고, 초대 카드는 같은 규격을 자기
@@ -9,7 +9,7 @@ import { toneFill } from "@/components/ui/tone";
  * ⚠️ **타일은 이름의 일부이지 링크가 아니다** — Home에서는 프로젝트 안이라 자기 자신으로 가는
  * 링크가 될 자리이고, 그것은 죽은 컨트롤이다. 목록에서는 행 전체가 이미 링크다.
  *
- * ⚠️ **색이 프로젝트 이름에서 온다** — 사용자 아바타와 **같은 판정**(`lib/tone.ts`)이고 입력만
+ * ⚠️ **색이 프로젝트 이름에서 온다** — 사용자 아바타와 **같은 판정**(`lib/hue.ts`)이고 입력만
  * 다르다. 목록을 훑을 때 행을 가르는 것이 이름 글자보다 색이 먼저다. Home 머리가 2026-09-17까지
  * 고정 `bg-foreground`였고, 같은 프로젝트가 화면마다 다른 색으로 보였다 (POSTMORTEM 2026-09-17).
  *
@@ -45,7 +45,7 @@ export function ProjectThumbnail({ name, src, size = 28 }: { name: string; src?:
     <ImageTile
       src={src}
       className={`flex ${SIZE[size].tile} shrink-0 items-center justify-center overflow-hidden ${SIZE[size].radius}`}
-      fallbackClassName={`text-white ${toneFill(name)}`}
+      fallbackClassName={`text-white ${hueFill(name)}`}
     >
       <Box className={SIZE[size].glyph} />
     </ImageTile>

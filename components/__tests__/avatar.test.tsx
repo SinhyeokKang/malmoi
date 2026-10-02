@@ -71,3 +71,11 @@ it("붙는 시점에 이미 깨져 있는 이미지(complete·naturalWidth 0)도
     if (natural) Object.defineProperty(HTMLImageElement.prototype, "naturalWidth", natural);
   }
 });
+
+/** 빈 이름의 ?도 동일한 sky 면이어야 기존 멤버·계정 폴백과 갈리지 않는다. */
+it.each([["", "?", "bg-sky-600"], ["Acme", "A", "bg-fuchsia-600"]])("%s preserves initial and hue background", async (name, initial, hueClass) => {
+  const { container } = await render(<Avatar name={name} />);
+  expect(container.textContent).toBe(initial);
+  expect(container.firstElementChild?.classList.contains(hueClass)).toBe(true);
+  expect(container.firstElementChild?.classList.contains("text-white")).toBe(true);
+});

@@ -10,7 +10,7 @@ import { m } from "@/lib/i18n";
  * ⚠️ DESIGN 표와의 행 수 대조 테스트는 없다 — 빠진 키는 `Record<StateKey, …>`가 컴파일에서 막는다. 이 표와 §2.4가 어긋나면 둘을 함께 고친다.
  */
 
-/** `EventTone`(`lib/events/view.ts`)과 같은 어휘다 — Badge variant 이름이 아니라 뜻이다. `lib/tone.ts`의 `Tone`(아바타 색)과 다른 것이다. */
+/** `EventTone`(`lib/events/view.ts`)과 같은 어휘다 — Badge variant 이름이 아니라 뜻이다. `lib/hue.ts`의 `Hue`(아바타 색)과 다른 것이다. */
 export type StateTone = "success" | "muted" | "warning" | "danger";
 
 /**

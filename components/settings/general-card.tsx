@@ -10,7 +10,7 @@ import { useLandAfter } from "@/components/ui/focus";
 import { Input } from "@/components/ui/input";
 import { ImageTile } from "@/components/ui/image-tile";
 import { PanelCard, PanelFacts } from "@/components/ui/panel-card";
-import { toneFill } from "@/components/ui/tone";
+import { hueFill } from "@/components/ui/tone";
 import { isAccessError } from "@/lib/auth/message";
 import { m } from "@/lib/i18n";
 import { planProjectName, PROJECT_NAME_MAX_CHARS } from "@/lib/projects/plan";
@@ -52,7 +52,7 @@ export function GeneralCard({ slug, name, image, archived }: { slug: string; nam
         <ImageTile
           src={image}
           className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-sm"
-          fallbackClassName={`text-white ${toneFill(name)}`}
+          fallbackClassName={`text-white ${hueFill(name)}`}
         >
           <Box className="size-5" />
         </ImageTile>

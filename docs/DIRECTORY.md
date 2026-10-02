@@ -471,7 +471,7 @@ lib/
                         displayName — 아바타 이름 폴백)
                         ⚠️ **displayName이 한 자리에 있는 이유**: 셸 32와 /account 56이 같은 얼굴이어야
                         하는데 폴백이 두 자리에 복제돼 연산자가 갈려 있었다(?? vs ||) — 빈 이름에서
-                        toneOf가 다른 색을 냈다
+                        hueOf가 다른 색을 냈다
                         ⚠️ **connection-usage는 2026-09-14에 삭제됐다** — GitHub 해제 Dialog의 근거로
                         `N projects use this connection.`을 그리던 조회인데, 세던 것이 내가 OWNER인
                         **모든** 프로젝트라 이 연결에 의존하지 않는 것까지 들어갔다. 해제가 실제로
@@ -586,7 +586,7 @@ lib/
                         · disclosure(sectionGaps — 등재 ↔ 본문의 절) · doc-text(docText·docDigest — 본문 텍스트·해시,
                         node:crypto라 테스트 전용). 실물 대조는 __tests__/policy-gate.test.tsx(ARCHITECTURE §6.035)
   invitation-email/     초대 메일(PRODUCT §4.1 · ARCHITECTURE §6.02). 순수 판정 — recipients(다중 입력·행별 역할·정규화 중복 거부) ·
-                        plan(좌석 → 행 오류 → 60초/시간당 20건, 요청 전체 통과 또는 전체 차단) · message(text URL 한 줄 + html 프로젝트 카드 — 템플릿·카드 조각 두 벌은 template.ts이고 코드가 정본(첫 시안은 대조 기준이 아니다), 사용자 값 1회 치환, 이름은 60 grapheme 자르기 → 이스케이프, 썸네일은 planProjectImageDelete의 키로 mal-moi.com/api/images/email/ 고정 URL(PNG 변환판), 폴백 톤은 TONE_HEX, 로고·Box는 public/email/ 고정 URL) ·
+                        plan(좌석 → 행 오류 → 60초/시간당 20건, 요청 전체 통과 또는 전체 차단) · message(text URL 한 줄 + html 프로젝트 카드 — 템플릿·카드 조각 두 벌은 template.ts이고 코드가 정본(첫 시안은 대조 기준이 아니다), 사용자 값 1회 치환, 이름은 60 grapheme 자르기 → 이스케이프, 썸네일은 planProjectImageDelete의 키로 mal-moi.com/api/images/email/ 고정 URL(PNG 변환판), 폴백 색조는 HUE_HEX, 로고·Box는 public/email/ 고정 URL) ·
                         config(env 맵 → ready/unavailable, origin을 VERCEL_ENV와 대조) · result(batch 응답 → 요청 단위
                         accepted/rejected/unknown) · limits(상수, 잎). 껍데기(server-only) — issue(Project 잠금 안 발급·재발급,
                         메일을 안 보낸다 — 재발급은 옛 링크의 조건부 닫기 count=1이 선행조건) · send(commit 뒤 Resend batch 한 번,
@@ -784,7 +784,7 @@ lib/
   utc-time.ts           ⚠️ 잎. 절대 날짜·시각의 UTC 표기 하나(`Sep 27, 2026` · `Sep 27, 2026 16:34 UTC`) — 앱의 절대 날짜가 전부 지난다
   url-token.ts          ⚠️ 잎. 키셋 커서의 문자열 ↔ base64url 하나 — Logs(클라이언트)와 번역 목록(서버)이 같이 쓴다.
                         Buffer 대신 btoa + 퍼센트 인코딩이라 번들에 실린다. 디코드는 던지지 않는다(주소창 값)
-  env.ts db.ts githash.ts utils.ts relative-time.ts tone.ts
+  env.ts db.ts githash.ts utils.ts relative-time.ts hue.ts
 ```
 
 ⚠️ **잎 모듈이 잎인 데는 이유가 있다** — `relative-time`·`utc-time`·`compare`·`ref-slug`·`flag`는

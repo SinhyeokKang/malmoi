@@ -152,7 +152,7 @@ function scan(sources: readonly Source[], restDemand: readonly { path: string; s
       if (binding && ts.isNamedImports(binding)) for (const item of binding.elements) {
         const imported = origin(target, (item.propertyName ?? item.name).text);
         imports.set(item.name.text, imported);
-        if ((imported.path === "lib/tone.ts" || imported.path === "components/ui/tone.ts") && ["Tone", "TONES", "toneOf", "toneFill"].includes(imported.symbol)) add("hue", path, `import:${item.name.text}`, imported.symbol);
+        if (["lib/tone.ts", "lib/hue.ts", "components/ui/tone.ts"].includes(imported.path) && ["Tone", "TONES", "toneOf", "toneFill"].includes(imported.symbol)) add("hue", path, `import:${item.name.text}`, imported.symbol);
       }
       if (binding && ts.isNamespaceImport(binding)) {
         // Qualified JSX is resolved on demand below.
@@ -343,8 +343,8 @@ function scan(sources: readonly Source[], restDemand: readonly { path: string; s
         if (ts.isStringLiteral(part) && ["muted", "neutral", "success", "warning", "missing"].includes(part.text)) add("variant", path, "StateVariant", part.text);
       });
       if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier) && /(?:^@\/|\/|^)lib\/tone$/.test(node.moduleSpecifier.text)) add("hue", path, "import", "lib/tone");
-      if (["lib/tone.ts", "components/ui/tone.ts"].includes(path) && (ts.isFunctionDeclaration(node) || ts.isTypeAliasDeclaration(node)) && node.name && exported(node) && ["toneOf", "toneFill", "Tone"].includes(node.name.text)) add("hue", path, node.name.text, "avatar hue name");
-      if (path === "lib/tone.ts" && ts.isVariableStatement(node) && exported(node)) for (const declaration of node.declarationList.declarations) {
+      if (["lib/tone.ts", "lib/hue.ts", "components/ui/tone.ts"].includes(path) && (ts.isFunctionDeclaration(node) || ts.isTypeAliasDeclaration(node)) && node.name && exported(node) && ["toneOf", "toneFill", "Tone"].includes(node.name.text)) add("hue", path, node.name.text, "avatar hue name");
+      if (["lib/tone.ts", "lib/hue.ts"].includes(path) && ts.isVariableStatement(node) && exported(node)) for (const declaration of node.declarationList.declarations) {
         if (ts.isIdentifier(declaration.name) && declaration.name.text === "TONES") add("hue", path, "TONES", "avatar hue name");
       }
       if (!ts.isJsxOpeningElement(node) && !ts.isJsxSelfClosingElement(node)) return;
@@ -413,7 +413,7 @@ const REST_DEMAND: readonly { path: string; symbol: string }[] = [];
 // Update only the affected cells when resolving debt, alongside its exact allowlist rows.
 const CARDINALITY: Record<Rule, { rows: number; occurrences: number }> = {
   state: { rows: 0, occurrences: 0 }, variant: { rows: 0, occurrences: 0 },
-  hue: { rows: 13, occurrences: 13 }, size: { rows: 21, occurrences: 24 },
+  hue: { rows: 0, occurrences: 0 }, size: { rows: 21, occurrences: 24 },
   width: { rows: 36, occurrences: 42 }, progress: { rows: 7, occurrences: 7 },
   slots: { rows: 8, occurrences: 8 }, rest: { rows: 0, occurrences: 0 },
   "data-tone": { rows: 1, occurrences: 1 }, aria: { rows: 3, occurrences: 3 },
@@ -431,19 +431,6 @@ const ALLOWLIST: Debt[] = [
   { rule: "className", path: "components/ui/modal.tsx", symbol: "OnboardingModal", detail: "panelClassName", count: 1, task: "T11" },
   { rule: "className", path: "components/ui/radio.tsx", symbol: "Radio", detail: "labelClassName", count: 1, task: "T11" },
   { rule: "data-tone", path: "components/ui/row-card.tsx", symbol: "BannerLine", detail: "missing data-tone", count: 1, task: "T11" },
-  { rule: "hue", path: "components/invite/project-card.tsx", symbol: "import:toneFill", detail: "toneFill", count: 1, task: "T8" },
-  { rule: "hue", path: "components/projects/project-thumbnail.tsx", symbol: "import:toneFill", detail: "toneFill", count: 1, task: "T8" },
-  { rule: "hue", path: "components/settings/general-card.tsx", symbol: "import:toneFill", detail: "toneFill", count: 1, task: "T8" },
-  { rule: "hue", path: "components/ui/avatar.tsx", symbol: "import:toneFill", detail: "toneFill", count: 1, task: "T8" },
-  { rule: "hue", path: "components/ui/tone.ts", symbol: "import:toneOf", detail: "toneOf", count: 1, task: "T8" },
-  { rule: "hue", path: "components/ui/tone.ts", symbol: "import", detail: "lib/tone", count: 1, task: "T8" },
-  { rule: "hue", path: "components/ui/tone.ts", symbol: "toneFill", detail: "avatar hue name", count: 1, task: "T8" },
-  { rule: "hue", path: "lib/invitation-email/message.ts", symbol: "import:Tone", detail: "Tone", count: 1, task: "T8" },
-  { rule: "hue", path: "lib/invitation-email/message.ts", symbol: "import:toneOf", detail: "toneOf", count: 1, task: "T8" },
-  { rule: "hue", path: "lib/invitation-email/message.ts", symbol: "import", detail: "lib/tone", count: 1, task: "T8" },
-  { rule: "hue", path: "lib/tone.ts", symbol: "Tone", detail: "avatar hue name", count: 1, task: "T8" },
-  { rule: "hue", path: "lib/tone.ts", symbol: "toneOf", detail: "avatar hue name", count: 1, task: "T8" },
-  { rule: "hue", path: "lib/tone.ts", symbol: "TONES", detail: "avatar hue name", count: 1, task: "T8" },
   { rule: "progress", path: "components/home/sync-button.tsx", symbol: "Button", detail: "pending glyph guard", count: 1, task: "T11" },
   { rule: "progress", path: "components/reconnect-button.tsx", symbol: "Button", detail: "pending glyph guard", count: 1, task: "T11" },
   { rule: "progress", path: "components/submit-button.tsx", symbol: "Button", detail: "pending glyph guard", count: 1, task: "T11" },
@@ -554,6 +541,15 @@ describe("primitive API contract — design §3", () => {
   });
 
   const source = (code: string, path = "components/ui/canary.tsx"): Source => ({ path, code });
+  it("rejects legacy hue exports and aliased imports on the renamed leaf", () => {
+    const rows = scan([
+      source('export type Tone = "rose"; export const TONES = ["rose"]; export function toneOf() { return "rose"; }', "lib/hue.ts"),
+      source('import {toneOf as shade} from "@/lib/hue"; export const selected = shade();', "components/canary.tsx"),
+    ]);
+    expect(rows.filter(row => row.rule === "hue")).toHaveLength(4);
+    expect(rows.some(row => row.symbol === "import:shade" && row.detail === "toneOf")).toBe(true);
+  });
+
   const button = source('export function Button({children}: {children?: ReactNode}) { return <button>{children}</button>; }', "components/ui/button.tsx");
   const input = source('export function Input(props: {width?: 132 | 160 | 168 | 192 | 220 | 240 | 256 | 320 | "full"}) { return <input {...props}/>; }', "components/ui/input.tsx");
   const canaries: { rule: Rule; bad: Source[]; good: Source[]; demand?: { path: string; symbol: string }[] }[] = [

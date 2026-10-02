@@ -2,7 +2,7 @@ import { Box } from "lucide-react";
 
 import { LocaleFlag } from "@/components/translations/locale-badge";
 import { ImageTile } from "@/components/ui/image-tile";
-import { toneFill } from "@/components/ui/tone";
+import { hueFill } from "@/components/ui/tone";
 
 /**
  * 초대의 프로젝트 카드 — **`components/ui/`의 프리미티브가 아니다**.
@@ -45,7 +45,7 @@ export function InviteProjectCard({
       <ImageTile
         src={image}
         className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-sm text-white"
-        fallbackClassName={toneFill(name)}
+        fallbackClassName={hueFill(name)}
       >
         <Box className="size-4" />
       </ImageTile>

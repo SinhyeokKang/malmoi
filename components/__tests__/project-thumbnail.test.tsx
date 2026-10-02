@@ -1,14 +1,14 @@
 // @vitest-environment jsdom
 import { expect, it } from "vitest";
 import { ProjectThumbnail } from "@/components/projects/project-thumbnail";
-import { toneFill } from "@/components/ui/tone";
+import { hueFill } from "@/components/ui/tone";
 import { render } from "./helpers/dom";
 
 it.each([undefined, null, ""])("이미지 %s이면 이름 색과 Box 폴백을 표시한다", async (src) => {
   const { container } = await render(<ProjectThumbnail name="Acme" src={src} />);
   expect(container.querySelector("img")).toBeNull();
   const tile = container.querySelector("svg.lucide-box")?.parentElement;
-  expect(tile?.classList.contains(toneFill("Acme"))).toBe(true);
+  expect(tile?.classList.contains(hueFill("Acme"))).toBe(true);
   expect(tile?.classList.contains("rounded-sm")).toBe(true);
   expect(tile?.getAttribute("aria-hidden")).toBe("true");
 });

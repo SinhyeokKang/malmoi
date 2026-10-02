@@ -2,9 +2,9 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
-import { toneOf, TONES, type Tone } from "@/lib/tone";
+import { hueOf, HUES, type Hue } from "@/lib/hue";
 
-import { INVITATION_EMAIL_LOGO_URL, INVITATION_EMAIL_SUBJECT, TONE_HEX, buildInvitationEmail, emailProjectName } from "../message";
+import { INVITATION_EMAIL_LOGO_URL, INVITATION_EMAIL_SUBJECT, HUE_HEX, buildInvitationEmail, emailProjectName } from "../message";
 import { INVITATION_EMAIL_HTML, INVITATION_EMAIL_TILE_FALLBACK, INVITATION_EMAIL_TILE_IMAGE } from "../template";
 
 /**
@@ -190,7 +190,7 @@ describe("buildInvitationEmail — 이미지", () => {
   ])("썸네일 키가 안 나오는 값(%s)은 톤 셀 + Box PNG 폴백이다", (_name, image) => {
     const { html } = buildInvitationEmail({ ...base, project: { ...project, image } });
     expect(html).not.toContain("/api/images/");
-    const hex = TONE_HEX[toneOf(project.name)];
+    const hex = HUE_HEX[hueOf(project.name)];
     expect(html).toMatch(new RegExp(`<td[^>]*bgcolor="${hex}"[^>]*>\\s*<img src="${BOX_URL.replace(/[.]/g, "\\.")}" width="16" height="16"`));
     expect(html).toMatch(new RegExp(`<img src="${BOX_URL.replace(/[.]/g, "\\.")}"[^>]*alt=""`));
   });
@@ -309,14 +309,14 @@ describe("buildInvitationEmail — 프로젝트 이름", () => {
     let name = "";
     for (let i = 0; i < 1000; i++) {
       const candidate = `${"p".repeat(60)}${i}`;
-      if (toneOf(candidate) !== toneOf(emailProjectName(candidate))) {
+      if (hueOf(candidate) !== hueOf(emailProjectName(candidate))) {
         name = candidate;
         break;
       }
     }
     expect(name).not.toBe("");
     const { html } = buildInvitationEmail({ ...base, project: { name, image: null } });
-    expect(html).toContain(`bgcolor="${TONE_HEX[toneOf(name)]}"`);
+    expect(html).toContain(`bgcolor="${HUE_HEX[hueOf(name)]}"`);
   });
 });
 
@@ -350,7 +350,7 @@ describe("emailProjectName — grapheme 60개 상한", () => {
  * (gamut mapping 아님 — design §3). 손으로 적은 상수끼리 비교하면 v3 값도 통과하므로 원본 CSS에서 환산한다.
  * `visual-system.test.ts`는 `app`·`components`만 훑어 이것이 유일한 방어선이다(POSTMORTEM 2026-09-17).
  */
-describe("TONE_HEX", () => {
+describe("HUE_HEX", () => {
   const globals = readFileSync("app/globals.css", "utf8");
   // 실제 앱의 override/별칭을 기본 팔레트 뒤에 적용한다. 이메일 런타임에는 CSS를 넣지 않는다.
   const css = `${readFileSync("node_modules/tailwindcss/theme.css", "utf8")}\n${globals}`;
@@ -423,11 +423,11 @@ describe("TONE_HEX", () => {
     throw new Error(`지원하지 않는 색 선언: ${name}: ${value}`);
   }
 
-  const expected = (tone: Tone): string => colorHex(`--color-${tone}-600`);
+  const expected = (hue: Hue): string => colorHex(`--color-${hue}-600`);
 
   it("톤 여덟 전부가 theme.css -600의 sRGB clamp 환산값과 같다", () => {
-    expect(Object.keys(TONE_HEX).sort()).toEqual([...TONES].sort());
-    for (const tone of TONES) expect(TONE_HEX[tone], tone).toBe(expected(tone));
+    expect(Object.keys(HUE_HEX).sort()).toEqual([...HUES].sort());
+    for (const hue of HUES) expect(HUE_HEX[hue], hue).toBe(expected(hue));
   });
 
   it("환산 자체가 설계 표와 맞는다 — 환산식이 틀리면 둘 다 같이 틀리는 것을 막는다", () => {

@@ -241,7 +241,7 @@ export function RepoStep({
                       <>
                         {/*
                           ⚠️ **글리프에 톤 색을 주지 않는다** — 아직 프로젝트가 아니라 후보다
-                          (`/projects` 목록의 `toneFill`과 반대). 선택되면 **칩만** 흰색으로 뒤집혀
+                          (`/projects` 목록의 `hueFill`과 반대). 선택되면 **칩만** 흰색으로 뒤집혀
                           muted 면 위에서 떠오른다.
                         */}
                         <IconTile size="lg" className={active ? "bg-background" : "bg-muted"}>
