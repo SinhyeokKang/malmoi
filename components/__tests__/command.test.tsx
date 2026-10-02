@@ -221,7 +221,6 @@ it("입력 변경은 문자열 그대로 호출부에 돌려준다", async () =>
 it.each(["mouse", "Enter"])("%s 선택은 document 이탈 가드보다 먼저 알리고 실제 capture 클릭을 보낸다", async mode => {
   const order: string[] = [];
   const onNavigate = () => { order.push("close"); };
-  const view = await render(<Fixture onNavigate={onNavigate} />);
   const guard = (event: MouseEvent) => {
     if (!(event.target instanceof Element) || !event.target.closest("a[href]")) return;
     order.push("guard");
@@ -230,6 +229,8 @@ it.each(["mouse", "Enter"])("%s 선택은 document 이탈 가드보다 먼저 �
   };
   document.addEventListener("click", guard, true);
   try {
+    // 편집 화면의 가드는 검색을 열기 전부터 붙어 있다. 뒤에 붙이면 같은 document capture도 통과한다.
+    const view = await render(<Fixture onNavigate={onNavigate} />);
     if (mode === "mouse") await act(async () => { find<HTMLAnchorElement>(active(view.container), "a").click(); });
     else await key(find(view.container, "input"), "Enter");
     expect(order).toEqual(["close", "guard"]);
@@ -260,6 +261,7 @@ it("선택 listener는 unmount 뒤 제거되어 예전 href를 열지 않는다"
   const anchor = find<HTMLAnchorElement>(active(view.container), "a");
   await view.rerender(null);
   document.body.append(anchor);
+  anchor.addEventListener("click", event => event.preventDefault());
   try { await act(async () => { anchor.click(); }); expect(onNavigate).not.toHaveBeenCalled(); }
   finally { anchor.remove(); }
 });

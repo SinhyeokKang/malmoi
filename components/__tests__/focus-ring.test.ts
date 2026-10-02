@@ -11,6 +11,7 @@ import { Link } from "@/components/ui/link";
 import { Popover } from "@/components/ui/popover";
 import { FieldTrigger } from "@/components/ui/field-trigger";
 import { FieldButton } from "@/components/ui/field-button";
+import { Command, CommandItem, CommandList } from "@/components/ui/command";
 import { SelectRow } from "@/components/ui/select-row";
 import { Input } from "@/components/ui/input";
 import { ListRow } from "@/components/ui/list-row";
@@ -138,7 +139,11 @@ const FIXTURES = {
   "components/ui/list-row.tsx": h(ListRow, { as: "button", variant: "canvas", ringInset: true }, "common.save"),
 };
 
-const LINK_FIXTURES = { "components/ui/link.tsx": h(Link, { href: "/help" }, "Help") };
+const LINK_FIXTURES = {
+  "components/ui/link.tsx": h(Link, { href: "/help" }, "Help"),
+  "components/ui/command.tsx": h(Command, { ids: ["help"], query: "", children:
+    h(CommandList, { label: "Results", children: h(CommandItem, { id: "help", href: "/help", title: "Help", onNavigate: event => event.preventDefault() }) }) }),
+};
 function TreePopoverFixture() {
   const anchor = useRef<HTMLButtonElement>(null);
   return h("div", null, h(Button, {ref: anchor}, "Sources"), h(Popover, {open: true, onOpenChange: () => {}, anchor, id: "focus-tree", "aria-label": "Sources", children: h(Button, {"aria-current": "true"}, "Selected source")}));

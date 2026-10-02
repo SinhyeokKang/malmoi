@@ -27,6 +27,10 @@ const UNAVAILABLE = "Unavailable";
 const NIGHTLY_RETRY = "The next nightly run tries again.";
 
 export const en = {
+  search: {
+    goTo: "Go to",
+    results: (count: number): string => `${count.toLocaleString("en-US")} ${count === 1 ? "result" : "results"}`,
+  },
   /**
    * **리포 재적재(화면 이름 `Sync`)** — 확인 Dialog · 결과 · 거부.
    * 시안: Claude Design `design_handoff_sync_repository/Sync Repository.dc.html` 아트보드 `4a`~`4f`.

@@ -165,6 +165,8 @@ const CLIENT_LIB_FILES = [
   "lib/mcp/brand.ts",
   "lib/relative-time.ts",
   "lib/routes.ts",
+  // D5 Command의 순환·활성 보존 판정 — import 0인 잎이다. 다른 검색 모듈은 E의 실제 소비 때 등록한다.
+  "lib/search/keys.ts",
   "lib/session-revocation/message.ts",
   "lib/settings/message.ts",
   // 루트의 화면 이동 dim이 클릭마다 읽는 판정 — import 0인 잎이다.
