@@ -515,8 +515,7 @@ describe("캔버스 대조로 잡은 자리", () => {
    * 칠하면 화면이 실제보다 넓게 찾은 것처럼 말한다.
    */
   it("검색 일치를 이름 칸에서만 칠한다", () => {
-    expect(BODY).toContain("highlightName(row.name, q)");
-    expect(BODY).toContain("rounded-[3px] bg-link/[0.14] px-px");
+    expect(BODY).toContain("<Highlight segments={highlightName(row.name, q)} />");
     // 메타 줄은 원문 그대로다.
     expect(BODY).toMatch(/\$\{row\.repoOwner\}\/\$\{row\.repoName\}/);
   });
