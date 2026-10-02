@@ -1,4 +1,3 @@
-import Link from "next/link";
 import type { ComponentType, ReactNode } from "react";
 
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio";
@@ -8,9 +7,7 @@ import { cn } from "@/lib/utils";
 /**
  * 세그먼트 컨트롤 — **한 표면 안에서 보기를 바꾸는** 컨트롤이다 (시안 `SegmentedControls`).
  *
- * **형이 둘이다**: 상태를 클라이언트가 들면 `SegmentedControl`(버튼), **URL이 들면
- * `SegmentedLinks`(링크)**. 뒤의 것이 기본이다 — 필터·탭은 뒤로가기·공유·새로고침이 그냥 돼야 하고,
- * 그러려면 주소가 진실이어야 한다 (`logs`의 `?cursor=`와 같은 판정).
+ * 상태를 클라이언트가 들고, 선택과 roving focus는 Radix가 소유한다.
  */
 
 /**
@@ -133,46 +130,5 @@ export function SegmentedControl<T extends string>({
         );
       })}
     </RadioGroup>
-  );
-}
-
-/**
- * 같은 형의 **링크** 판. 상태가 URL에 있으므로 `aria-current="page"`가 선택을 말한다.
- *
- * ⚠️ **`<nav>`다.** 링크 묶음이라 라디오 그룹이 아니고, `role="radio"`를 링크에 얹으면 스크린리더가
- * "고르는 것"이라 읽는데 실제로는 **이동**한다.
- *
- */
-export function SegmentedLinks({
-  label,
-  current,
-  options,
-  className,
-}: {
-  label: string;
-  current: string;
-  options: readonly ({ value: string; href: string } & SegmentContent)[];
-  className?: string;
-}) {
-  return (
-    <nav aria-label={label} className={cn(TRACK, className)}>
-      {options.map((option) => {
-        const selected = option.value === current;
-        return (
-          <Link
-            key={option.value}
-            href={option.href}
-            aria-current={selected ? "page" : undefined}
-            className={cn(
-              "focus-visible:ring-ring min-w-11 focus-visible:ring-2 focus-visible:outline-none",
-              SEGMENT,
-              selected ? SELECTED : UNSELECTED,
-            )}
-          >
-            <SegmentBody {...option} />
-          </Link>
-        );
-      })}
-    </nav>
   );
 }

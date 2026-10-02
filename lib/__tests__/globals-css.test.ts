@@ -1,5 +1,6 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
+import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
@@ -12,6 +13,28 @@ import { describe, expect, it } from "vitest";
  * (`/doc-check` 1회차). 소비 경로가 유틸 하나인 것이 설계라, 그 유틸이 셋(글꼴·크기·행간)을 다 들어야 한다.
  */
 const CSS = readFileSync(fileURLToPath(new URL("../../app/globals.css", import.meta.url)), "utf8");
+
+const SOURCE_ROOT = fileURLToPath(new URL("../../", import.meta.url));
+function productionFiles(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    if (entry.name.startsWith(".") || entry.name === "__tests__" || /\.test\./.test(entry.name)) return [];
+    const path = join(dir, entry.name);
+    return entry.isDirectory() ? productionFiles(path) : /\.(?:[jt]sx?|css|svg)$/.test(entry.name) ? [path] : [];
+  });
+}
+
+/** 등록·루트 선언은 소비가 아니다. 주석에 든 예시도 빼고 실제 코드/스타일만 센다. */
+function consumingSource(source: string): string {
+  return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/gm, "$1")
+    .replace(/(?:@theme(?:\s+inline)?|:root)\s*\{[^{}]*\}/g, "");
+}
+
+function colorUses(source: string, name: string, target: string): string[] {
+  const properties = "bg|text|border(?:-[trblxyse])?|ring|fill|stroke|from|to|via|outline|divide|shadow|decoration|placeholder|caret|accent";
+  return [...consumingSource(source).matchAll(new RegExp(
+    `(?<![\\w-])(?:${properties})-${name}(?![\\w-])|(?<![\\w-])(?:--color-${name}|${target})(?![\\w-])`, "g",
+  ))].map((match) => match[0]);
+}
 
 describe("globals.css — text-mono 유틸", () => {
   const block = /@utility text-mono\s*\{([^}]*)\}/.exec(CSS)?.[1] ?? "";
@@ -83,6 +106,35 @@ describe("globals.css — 포커스 링", () => {
 describe("globals.css — 토큰 등록", () => {
   const theme = /@theme inline\s*\{([\s\S]*?)\n\}/.exec(CSS)?.[1] ?? "";
   const root = /:root\s*\{([\s\S]*?)\n\}/.exec(CSS)?.[1] ?? "";
+
+  it("남은 custom 색마다 실제 생산 클래스 또는 직접 변수 소비자가 있다", () => {
+    const sources = ["app", "components", "lib", "messages", "public"]
+      .flatMap((dir) => productionFiles(join(SOURCE_ROOT, dir)))
+      .map((path) => ({ path: relative(SOURCE_ROOT, path), source: readFileSync(path, "utf8") }));
+    expect(sources.length).toBeGreaterThan(100);
+    const colors = [...theme.matchAll(/^\s*--color-([\w-]+):\s*var\((--[\w-]+)\)/gm)];
+    expect(colors.length).toBeGreaterThan(15);
+    const unused = colors.filter((m) => !sources.some(({ source }) => colorUses(source, m[1]!, m[2]!).length > 0)).map((m) => m[1]);
+    expect(unused).toEqual([]);
+    // 이 색은 @theme를 못 쓰는 Canvas의 실제 getPropertyValue 소비자다.
+    expect(sources.filter(({ source }) => colorUses(source, "signin-dot", "--signin-dot").length > 0).map(({ path }) => path))
+      .toContain("components/signin/dot-field.tsx");
+  });
+
+  it("승인된 미사용 색 일곱의 등록과 루트 짝이 없다", () => {
+    for (const name of ["card", "card-foreground", "popover-foreground", "secondary", "secondary-foreground", "accent-foreground", "destructive-foreground"]) {
+      expect(theme, name).not.toMatch(new RegExp(`--color-${name}:`));
+      expect(root, name).not.toMatch(new RegExp(`--${name}:`));
+    }
+  });
+
+  it("수정자·별도 속성·직접 참조는 세되 자체 등록·주석·다른 토큰은 세지 않는다 (카나리아)", () => {
+    for (const property of ["bg", "text", "border-t", "ring", "from", "to", "placeholder", "caret", "accent"]) {
+      expect(colorUses(`hover:${property}-probe/[0.5]`, "probe", "--probe")).toHaveLength(1);
+    }
+    expect(colorUses('color:var(--probe); getPropertyValue("--color-probe")', "probe", "--probe")).toHaveLength(2);
+    expect(colorUses('@theme inline { --color-probe: var(--probe); } :root { --probe: #ffffff; } /* text-probe */ text-probe-other', "probe", "--probe")).toEqual([]);
+  });
 
   it("두 블록을 찾았다 — 정규식이 조용히 빈 문자열이 되지 않는다", () => {
     expect(theme).not.toBe("");

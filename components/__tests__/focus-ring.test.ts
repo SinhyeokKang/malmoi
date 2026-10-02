@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Radio, RadioGroup } from "@/components/ui/radio";
-import { SegmentedControl, SegmentedLinks } from "@/components/ui/segmented-control";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { render } from "./helpers/dom";
 
 /**
@@ -240,15 +240,14 @@ describe("포커스 링 (DESIGN §7)", () => {
     }
   });
 
-  it("Radix segments and navigation links keep rings on the visible focus target", async () => {
-    const options = [{ value: "one", label: "One", href: "/one" }];
+  it("Radix segments and ButtonLink keep rings on the visible focus target", async () => {
+    const options = [{ value: "one", label: "One" }];
     const { container } = await render(h("div", null,
       h(SegmentedControl, { label: "View", value: "one", options, onChange: () => {} }),
-      h(SegmentedLinks, { label: "Pages", current: "one", options }),
       h(ButtonLink, { href: "/one", children: "Go" }),
     ));
     const targets = [...container.querySelectorAll('button[role="radio"],a')];
-    expect(targets).toHaveLength(3);
+    expect(targets).toHaveLength(2);
     for (const target of targets) {
       expect(RING.every((cls) => target.classList.contains(cls))).toBe(true);
       expect(target.hasAttribute("hidden")).toBe(false);

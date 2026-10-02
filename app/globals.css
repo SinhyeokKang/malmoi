@@ -17,20 +17,13 @@
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
   /**
    * ⚠️ **`--border`보다 한 단계 연한 경계선** (8-1b). 셸 밖 패널이 아주 연한 회색 배경 위에
@@ -181,20 +174,14 @@
 
   --background: hsl(0 0% 100%);
   --foreground: hsl(0 0% 3.9%);
-  --card: hsl(0 0% 100%);
-  --card-foreground: hsl(0 0% 3.9%);
   --popover: hsl(0 0% 100%);
-  --popover-foreground: hsl(0 0% 3.9%);
   --primary: hsl(0 0% 9%);
   --primary-foreground: hsl(0 0% 98%);
 
   /* ⚠️ secondary == muted == accent 가 같은 값이다 (DESIGN.md §2.1).
      muted 표면 위 컨트롤에 hover:bg-accent 는 무효다 — hover 피드백이 0이다. */
-  --secondary: hsl(0 0% 96.1%);
-  --secondary-foreground: hsl(0 0% 9%);
   --muted: hsl(0 0% 96.1%);
   --accent: hsl(0 0% 96.1%);
-  --accent-foreground: hsl(0 0% 9%);
 
   /* ⚠️ background 위에선 4.75:1로 AA를 넘지만 muted 표면 위에선 4.34:1로 미달한다.
      muted 위 글자엔 text-foreground/60 을 쓴다 (DESIGN.md §2.2). */
@@ -203,7 +190,6 @@
   /* 글자색 전용이다 — 꽉 찬 bg-destructive 를 쓰지 않는다(면은 알파로만). red-600으로 흰 배경에서 4.83:1.
      shadcn 기본값 red-500은 3.76:1로 AA 미달이라 쓰지 않는다 (DESIGN.md §2.3). */
   --destructive: hsl(0 72.2% 50.6%);
-  --destructive-foreground: hsl(0 0% 98%);
 
   --border: hsl(0 0% 89.8%);
   /**

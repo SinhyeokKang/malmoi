@@ -6,6 +6,25 @@ import { Avatar } from "@/components/ui/avatar";
 
 import { find, render } from "./helpers/dom";
 
+it.each([24, 32, 56] as const)("크기 %s의 사진·이니셜이 원형·치수·클래스 override를 보존한다", async (size) => {
+  for (const src of [undefined, "https://example.com/avatar.webp"]) {
+    const { container } = await render(<Avatar name="Malmoi" size={size} src={src} className="opacity-50" />);
+    const node = container.firstElementChild as HTMLElement;
+    expect(node.classList.contains("rounded-full")).toBe(true);
+    expect(node.classList.contains("opacity-50")).toBe(true);
+    expect(node.style.width).toBe(`${size}px`);
+    expect(node.style.height).toBe(`${size}px`);
+    if (src === undefined) {
+      expect(node.textContent).toBe("M");
+      expect(node.classList.contains(size === 56 ? "text-xl" : "text-xs")).toBe(true);
+    } else {
+      expect(node.tagName).toBe("IMG");
+      expect(node.classList.contains("object-cover")).toBe(true);
+      expect(node.getAttribute("alt")).toBe("");
+    }
+  }
+});
+
 /**
  * **사진이 안 뜨면 이니셜로 떨어진다** (malmoi#50).
  *
