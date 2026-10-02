@@ -13,7 +13,7 @@
 | 배치 | 항목 | 주요 소유 파일 | 선행 | 모델/effort | 차단·검증 | 상태 |
 |---|---|---|---|---|---|---|
 | GS1 | T0, A 전체 | feature 참조, lib/search 순수 함수, lib/keys/search 순수 부분, nav.ts, layout.tsx, client-graph tests | 없음 | Sol high | 필수; TDD·뮤테이션·pnpm gate --base dev | 로컬 통합 49f62133, 리뷰 2회/수정 1회 |
-| GS2 | B, C | lib/keys/search, 통합·성능 tests, app/search, api/search-index, loaders, entry-points/client-graph tests, design 측정값 | GS1 | Astra high | 필수; 테넌트·성능·gate, B4 조건부 | 대기 |
+| GS2 | B, C | lib/keys/search, 통합·성능 tests, app/search, api/search-index, loaders, entry-points/client-graph tests, design 측정값 | GS1 | Astra high | 필수; 테넌트·성능·gate, B4 조건부 | 로컬 통합 7863dc0d, 리뷰 1회/수정 0회 |
 | GS3 | D | ui primitives, 두 셸 header, project-list/switcher, 관련 tests, DESIGN D7 | GS2 | Sol high | 필수; 접근성·포커스·사본 스캔·gate | 대기 |
 | GS4 | E, F6 자동 검증 | search UI, messages/en.tsx, layout/headers, workspace, docs hash helper, 관련 tests | GS3 | Sol high | 필수; 레이스·이탈·착지·gate | 대기 |
 | GS5 | F, 문서 마무리 | PRODUCT, DESIGN, ARCHITECTURE, CLAUDE+미러, DIRECTORY, README, guide | GS4 | Sol high | 필수; 사실 대조·미러·가이드 검증 | 대기 |
@@ -47,3 +47,5 @@ GS3a 증거: 원본 6ae19606, 전체 10385 passed + 기존 1 skipped, gate exit0
 - 남은 GS3 = D5·D7이며 GS2·GS3b 모두 통합 후 수행한다. Command가 처음 keys.ts를 소비하는 정확 그래프 등록은 여기다. GS4는 그 뒤다.
 
 GS3b 증거: 원본 feedca23, 전체10444 passed + 기존1 skipped, gate exit0. 독립 리뷰 red0/yellow0, 기존 DialogContent 바이트 동일 확인. LARGE_MODAL_HEIGHT 공유 추출 수용. 로컬 통합 후 다음 통합 gate는 B3 단독 실측 종료를 기다려 실행한다.
+
+GS2 증거: 원본 bfc1f089, 전체10470 passed + 기존1 skipped, 격리PG539 passed, Node24 gate exit0. 독립 Astra 리뷰 red0/yellow0/white0. 최악 중앙값253.221ms, 최대 Translation 방문200100 <400200, 두 통계 상태의 전체 스캔 대조군 거부. B4 생략으로 마이그레이션 없음. 최종 SQL은 멤버별 LATERAL·두 materialization·C 배열 min 집계이며 설계와 동일 결과/권한 경계라는 독립 판정. 측정값은 design에 보존했고 GS5가 ARCHITECTURE로 옮긴다.

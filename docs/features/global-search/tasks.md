@@ -40,25 +40,25 @@
 
 ## B. Keys 조회
 
-- [ ] **B1** `lib/keys/search.ts` `searchKeys(prisma, { userId, q, activeSlug })` — design "Keys 조회"의 멤버 id 확정 + ①·② SQL. `lib/keys/__tests__/search.integration.ts` 먼저.
+- [x] **B1** `lib/keys/search.ts` `searchKeys(prisma, { userId, q, activeSlug })` — design "Keys 조회"의 멤버 id 확정 + ①·② SQL. `lib/keys/__tests__/search.integration.ts` 먼저.
   — 검증(격리 postgres): 두 사용자·두 프로젝트에서 **서로의 키·번역값 0건** · 보관 프로젝트·보관 소스·첫 적재 전 소스(`lastCommitSha` null)·orphaned 키 0건 · **orphaned 로케일의 번역값만 일치 → 0건** · 멤버십 0인 사용자 → 0건 · 키 이름 > 원문 > 번역값 순위 · 한 키가 여러 로케일에서 일치하면 로케일 코드(`COLLATE "C"`) 첫 하나 · 같은 이름의 키가 다른 소스·프로젝트에 있으면 둘 다 · ① 키 이름 일치와 ② 번역값만 일치 각각 동점 키 6개 이상에서 최종 키 id 순서의 상위 5개가 고정 · 로케일 0개인 키 · 빈 문자열 번역값 · ①이 5건이면 ② 쿼리 미실행(쿼리 수 계측 — 선례 `lib/keys/__tests__/save-key.integration.ts:28-43`의 `$on("query")`) · `_`·`%`·`\` 질의가 와일드카드로 새지 않음 · `pnpm gate` green(postgres 스위트 포함 — 출력에 새 파일이 잡힌다).
-- [ ] **B2** `app/search/actions.ts` — `searchKeysAction(q, activeSlug)` · `loadSearchMembershipsAction()`. design "Action 형" — `readSession` union(`{ ok: false, error: "unauthorized" }` / `"unavailable"` 리터럴), `requireUser` 없음, 코어 오류는 try/catch로 `unavailable`, `revalidatePath` 없음, `console.*`에 `q` 없음, `typeof q === "string"` 판정 먼저. `entry-points.test.ts`에 `loadSearchMembershipsAction` → `USER_SCOPED_ACTIONS`, 형제 맵 **`MEMBER_JOIN_CORES`**(`searchKeys → lib/keys/search.ts`)와 그 코어 검사(주석 제거 뒤 `"ProjectMember"` 조인 + `pm."userId" = ${userId}` 바인딩, 검출기 0 자기 검사)를 더한다.
+- [x] **B2** `app/search/actions.ts` — `searchKeysAction(q, activeSlug)` · `loadSearchMembershipsAction()`. design "Action 형" — `readSession` union(`{ ok: false, error: "unauthorized" }` / `"unavailable"` 리터럴), `requireUser` 없음, 코어 오류는 try/catch로 `unavailable`, `revalidatePath` 없음, `console.*`에 `q` 없음, `typeof q === "string"` 판정 먼저. `entry-points.test.ts`에 `loadSearchMembershipsAction` → `USER_SCOPED_ACTIONS`, 형제 맵 **`MEMBER_JOIN_CORES`**(`searchKeys → lib/keys/search.ts`)와 그 코어 검사(주석 제거 뒤 `"ProjectMember"` 조인 + `pm."userId" = ${userId}` 바인딩, 검출기 0 자기 검사)를 더한다.
   — 검증: 액션 단위 테스트(세션 없음 → `unauthorized` · 장애 → `unavailable` · 코어가 던지면 `unavailable` · 비문자열 `q` → 빈 결과 · 1자 → 빈 결과 · 멤버십 응답에 레이아웃 키 일곱 밖 필드 0 · 두 Action 입력에 프로젝트 목록이 없음) · `entry-points` green · 뮤테이션: `searchKeysAction`의 `readSession` 호출을 지우면 red, `searchKeys`의 `ProjectMember` 조인을 지우면 red · 소스 스캔(네 장치) `revalidatePath(`·`console.` 호출 0 · `pnpm test` green.
-- [ ] **B3** **성능 실측** — `lib/keys/__tests__/search-performance.integration.ts`(커밋, `translation-list-performance.integration.ts`의 형: autovacuum off · `statement_timeout=5000` · `$on("query")` · `EXPLAIN (ANALYZE, BUFFERS)`). 픽스처: 멤버 프로젝트 둘(하나는 20,000키 × 10로케일 = 200,000행) + 비멤버 대형 테넌트 하나(여러 소스, 번역 행 수 > 멤버 전체 번역 행 수 × 2). 질의 넷(불일치 · 키 이름 일치 · 번역값만 일치 · 흔한 단어) × 통계 상태 둘(없음 · `ANALYZE` 뒤) × 20회.
+- [x] **B3** **성능 실측** — `lib/keys/__tests__/search-performance.integration.ts`(커밋, `translation-list-performance.integration.ts`의 형: autovacuum off · `statement_timeout=5000` · `$on("query")` · `EXPLAIN (ANALYZE, BUFFERS)`). 픽스처: 멤버 프로젝트 둘(하나는 20,000키 × 10로케일 = 200,000행) + 비멤버 대형 테넌트 하나(여러 소스, 번역 행 수 > 멤버 전체 번역 행 수 × 2). 질의 넷(불일치 · 키 이름 일치 · 번역값만 일치 · 흔한 단어) × 통계 상태 둘(없음 · `ANALYZE` 뒤) × 20회.
   — 검증: `Translation` 방문 행(필터·인덱스 재검사 탈락 행과 loops 포함) < 멤버 전체 번역 행 수 × 2 및 접근 경로의 멤버 `projectId` 제한(`Index Cond` 등)을 두 통계 상태 모두에서 단언 · 동일 픽스처 전체 순차 스캔을 대조군으로 수집해 같은 검출기가 거부함을 확인(방문 수만으로 비멤버 미방문을 단정하지 않음 — spec 19) · 중앙값을 design.md "측정값"에 기록(로컬 PG17 Execution Time, 왕복 제외 명시) · 최악 질의 중앙값 ≤ 300ms면 B4 생략(그 판정도 기록) · `pnpm gate` green.
 
 ── 커밋: `feat(search): add membership-scoped key and translation search action`
 
-- [ ] **B4** *(B3이 기준을 넘을 때만)* `/db` — `pg_trgm` + GIN 셋(`StringKey.key` · `StringKey.sourceText` · `Translation.value`), **평범한 `CREATE INDEX`**(`CONCURRENTLY` 아님), 한 파일. 먼저 확인할 것 셋: ① `schema.prisma`에 `@@index(..., type: Gin, ops: raw(...))` + 확장 선언으로 표현되는가 ② 연산자 클래스 `extensions.gin_trgm_ops` 한정이 Supabase·로컬 PG17 양쪽에서 되는가 ③ 로컬 PG17에 `pg_trgm`이 있는가. `--create-only`로 SQL을 눈으로 본 뒤 dev 적용 · dev·prod `has_schema_privilege` false 확인. **prod `db:deploy`는 `/merge` 1단계다.** `migrate dev`의 리셋 제안은 받지 않는다.
+- [x] **B4** **실측 253.221ms ≤ 300ms로 생략, 스키마 변경 없음.** *(B3이 기준을 넘을 때만)* `/db` — `pg_trgm` + GIN 셋(`StringKey.key` · `StringKey.sourceText` · `Translation.value`), **평범한 `CREATE INDEX`**(`CONCURRENTLY` 아님), 한 파일. 먼저 확인할 것 셋: ① `schema.prisma`에 `@@index(..., type: Gin, ops: raw(...))` + 확장 선언으로 표현되는가 ② 연산자 클래스 `extensions.gin_trgm_ops` 한정이 Supabase·로컬 PG17 양쪽에서 되는가 ③ 로컬 PG17에 `pg_trgm`이 있는가. `--create-only`로 SQL을 눈으로 본 뒤 dev 적용 · dev·prod `has_schema_privilege` false 확인. **prod `db:deploy`는 `/merge` 1단계다.** `migrate dev`의 리셋 제안은 받지 않는다.
   — 검증: B3 재측정이 기준 통과 · 격리 postgres 30파일 재생 green · 적용 뒤 `pnpm db:migrate --create-only`가 빈 diff(드리프트 없음) · `pnpm db:status` clean · `pnpm gate` green.
 
 ── 커밋 (조건부): `feat(db): add trigram indexes for key and translation search` (스키마+마이그레이션만)
 
 ## C. 색인 route
 
-- [ ] **C1** `app/api/search-index/route.ts` — `dynamic = "force-static"`(`app/llms-full.txt/route.ts`와 같은 형, 트레이싱 include 없음), 응답 `{ docs }`, 가이드 읽기 실패는 던진다. `app/__tests__/entry-points.test.ts` `EXEMPT`에 사유 주석과 함께 추가(가드가 "없음"이 정답인 이유 — 공개 내용만, 세션·DB 없음).
+- [x] **C1** `app/api/search-index/route.ts` — `dynamic = "force-static"`(`app/llms-full.txt/route.ts`와 같은 형, 트레이싱 include 없음), 응답 `{ docs }`, 가이드 읽기 실패는 던진다. `app/__tests__/entry-points.test.ts` `EXEMPT`에 사유 주석과 함께 추가(가드가 "없음"이 정답인 이유 — 공개 내용만, 세션·DB 없음).
   — 검증: route 단위 테스트 — 응답에 AUTHORING·SHOOTING 문자열 0 · `getPrisma`·`auth`·`cookies`를 던지는 mock으로 두고도 200(이름 세기가 아니라 호출 차단 — 전이 import까지 잡는다) · `loadSummary`가 던지면 핸들러가 던진다 · `pnpm gate` green(build가 route를 정적 생성한다 — 빌드 출력에 `○ /api/search-index`).
-- [ ] **C2** `lib/search/load-index.ts` · `lib/search/load-memberships.ts` — Docs만 탭 수명 모듈 Promise(실패 시 버림), 멤버십은 캐시 없이 호출마다 Action을 부른다.
+- [x] **C2** `lib/search/load-index.ts` · `lib/search/load-memberships.ts` — Docs만 탭 수명 모듈 Promise(실패 시 버림), 멤버십은 캐시 없이 호출마다 Action을 부른다.
   — 검증: jsdom — Docs 두 번 호출에 fetch 1회 · 멤버십 두 번 호출에 Action 2회이며 변경된 응답을 반환 · 네트워크 실패 뒤 재호출에 재시도 · **`fetch`가 `ok: false`(500)로 resolve해도 실패로 보고 버림** · 멤버십 `{ ok: false }` → 버리고 `null` · 테스트 사이 `vi.resetModules()`로 모듈 변수 격리 · `load-index` 독립 그래프 검사 · `load-memberships`는 Action 스텁을 포함한 정확 전이 그래프와 허용 패키지 검사(A9 형) · `pnpm test` green.
 
 ── 커밋: `feat(search): serve a static docs search index`
