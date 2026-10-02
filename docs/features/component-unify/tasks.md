@@ -435,3 +435,5 @@ Run **`run_0e44db2882ac`**, 기존 coordinator **`term_dd1b2d61-f22d-4409-8977-7
 - T21 global-search tasks: 삭제될 feature 설계 대신 DESIGN §8/실제 LargeModal 상수를 참조하고 NoMatch 필수 action 계약과 미래 출구 없는 형의 작업 경계를 대조했다. 이번 커밋은 이 문서와 component-unify 실행 기록만 포함한다. 최종 독립 리뷰·gate/push/T22는 미완이다.
 
 - T21 독립 리뷰 추가 교정: DESIGN의 옛 SkeletonLine·외부 링크 raw a 금지 설명·온보딩 token code칩 설명을 현재 Skeleton/외부 ButtonLink/SecretField로 고쳤다. 관련 코드 주석2곳은 Sol에 맡겼다. 배포 게이트는 문서 교정 통지를 받아 의도적으로 중단(exit130)했으며 실패/통과로 세지 않는다. 교정 통합 후 최종 gate를 다시 실행한다.
+
+- T21 global-search 추가 대조: ProjectThumbnail의 계획상 size16을 실제 심볼 API size="xs"(16px)로 고쳤다. Sol이 T20 승인표22행/38소스의 최종 이행을 읽기 전용으로 확인했고 잔여 구현 delta0이다. 추가 제품 변경을 만들지 않는다.
