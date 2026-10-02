@@ -465,6 +465,30 @@ describe("클라이언트 그래프", () => {
     expect([...search.packages].filter((name) => !allowed(name))).toEqual([]);
   });
 
+  it.each(["match", "highlight", "keys"])("검색 독립 모듈 %s는 자기 자신만 문다", (name) => {
+    const path = `lib/search/${name}.ts`;
+    const graph = walk([join(ROOT, path)]);
+    expect([...graph.files].map(file => file.slice(ROOT.length)).sort()).toEqual([path]);
+    expect([...graph.packages]).toEqual([]);
+  });
+
+  it("검색 nav-index는 기존 클라이언트 내비와 사전만 문다", () => {
+    const graph = walk([join(ROOT, "lib/search/nav-index.ts")]);
+    expect([...graph.files].map(file => file.slice(ROOT.length)).sort()).toEqual([
+      "components/signin/brand-icons.tsx", "lib/app-version.ts", "lib/auth/permission.ts",
+      "lib/i18n/index.ts", "lib/routes.ts", "lib/search/nav-index.ts", "lib/shell/nav.ts", "messages/en.tsx",
+    ]);
+    expect([...graph.packages].filter(name => !allowed(name))).toEqual([]);
+  });
+
+  it("검색 key-href는 번역 URL 계약과 routes만 문다", () => {
+    const graph = walk([join(ROOT, "lib/search/key-href.ts")]);
+    expect([...graph.files].map(file => file.slice(ROOT.length)).sort()).toEqual([
+      "lib/routes.ts", "lib/search/key-href.ts", "lib/translations/query.ts",
+    ]);
+    expect([...graph.packages].filter(name => !allowed(name))).toEqual([]);
+  });
+
   it("클라이언트 그래프가 닿는 `lib/**` 파일이 허용 목록과 정확히 같다", () => {
     const { files } = walk(CLIENT_ENTRIES);
     const reached = [...files].map((file) => file.slice(ROOT.length)).filter((rel) => rel.startsWith("lib/")).sort();
