@@ -2,6 +2,7 @@ import { LogIn } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
+import { HeaderBar } from "@/components/shell/header-bar";
 import { UserMenu } from "@/components/shell/user-menu";
 import { GithubIcon } from "@/components/signin/brand-icons";
 import { ButtonLink } from "@/components/ui/button";
@@ -40,39 +41,46 @@ export type HeaderCurrent = "docs" | "changelog";
  */
 export function PublicHeader({ account, current }: { account: PublicAccount | null; current?: HeaderCurrent }) {
   return (
-    <header className="mb-2 flex h-10 shrink-0 items-center gap-5 px-1">
-      <Link
-        href={routes.home()}
-        aria-label={m.landing.shell.logo}
-        className="focus-visible:ring-ring flex size-8 shrink-0 items-center justify-center rounded-sm focus-visible:ring-2 focus-visible:outline-none"
-      >
-        <Image src={logo} alt="" width={32} height={32} priority />
-      </Link>
-      <nav aria-label={m.landing.shell.nav} className="flex items-center gap-0.5">
-        <Link href={routes.docs()} aria-current={current === "docs" ? "page" : undefined} className={NAV_LINK}>
-          {m.landing.shell.docs}
-        </Link>
-        <Link href={routes.changelog()} aria-current={current === "changelog" ? "page" : undefined} className={NAV_LINK}>
-          {m.changelog.title}
-        </Link>
-      </nav>
-      <div className="ml-auto flex items-center gap-3">
-        {/* 외부 링크 — 새 탭 + `noreferrer`(공개 셸의 외부 링크 규칙). */}
-        <a href={GITHUB_REPO_URL} target="_blank" rel="noreferrer" className={PUBLIC_HEADER_LINK}>
-          <GithubIcon className="size-4 shrink-0" />
-          {m.landing.shell.github}
-        </a>
-        {/* 장식이다 — 캔버스(#f5f6f7) 위에서 보이는 가장 연한 선이 `border-subtle`이다(`divider`는 캔버스보다 옅어 안 보인다). */}
-        <span aria-hidden className="bg-border-subtle h-5 w-px" />
-        {account === null ? (
-          <ButtonLink href={routes.signIn()} variant="primary" size="md">
-            <LogIn aria-hidden />
-            {m.landing.shell.getStarted}
-          </ButtonLink>
-        ) : (
-          <UserMenu name={account.name} email={account.email} image={account.image} signOut={signOutAction} />
-        )}
-      </div>
-    </header>
+    <HeaderBar
+      className="mb-2"
+      start={
+        <div className="flex items-center gap-5">
+          <Link
+            href={routes.home()}
+            aria-label={m.landing.shell.logo}
+            className="focus-visible:ring-ring flex size-8 shrink-0 items-center justify-center rounded-sm focus-visible:ring-2 focus-visible:outline-none"
+          >
+            <Image src={logo} alt="" width={32} height={32} priority />
+          </Link>
+          <nav aria-label={m.landing.shell.nav} className="flex items-center gap-0.5">
+            <Link href={routes.docs()} aria-current={current === "docs" ? "page" : undefined} className={NAV_LINK}>
+              {m.landing.shell.docs}
+            </Link>
+            <Link href={routes.changelog()} aria-current={current === "changelog" ? "page" : undefined} className={NAV_LINK}>
+              {m.changelog.title}
+            </Link>
+          </nav>
+        </div>
+      }
+      end={
+        <div className="flex items-center gap-3">
+          {/* 외부 링크 — 새 탭 + `noreferrer`(공개 셸의 외부 링크 규칙). */}
+          <a href={GITHUB_REPO_URL} target="_blank" rel="noreferrer" className={PUBLIC_HEADER_LINK}>
+            <GithubIcon className="size-4 shrink-0" />
+            {m.landing.shell.github}
+          </a>
+          {/* 장식이다 — 캔버스(#f5f6f7) 위에서 보이는 가장 연한 선이 `border-subtle`이다(`divider`는 캔버스보다 옅어 안 보인다). */}
+          <span aria-hidden className="bg-border-subtle h-5 w-px" />
+          {account === null ? (
+            <ButtonLink href={routes.signIn()} variant="primary" size="md">
+              <LogIn aria-hidden />
+              {m.landing.shell.getStarted}
+            </ButtonLink>
+          ) : (
+            <UserMenu name={account.name} email={account.email} image={account.image} signOut={signOutAction} />
+          )}
+        </div>
+      }
+    />
   );
 }

@@ -6,6 +6,7 @@ import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
 import logo from "@/public/brand/malmoi-icon-black.svg";
 
+import { HeaderBar } from "./header-bar";
 import { NewProjectIcon } from "./new-project-icon";
 import { UserMenu } from "./user-menu";
 
@@ -36,25 +37,28 @@ export function Header({
   signOut: () => void;
 }) {
   return (
-    // 시안 좌표: 로고 x=4 · 아바타 오른쪽 여백 4 → 좌우 padding 4다.
-    <header className="flex h-10 shrink-0 items-center justify-between px-1">
-      <Link
-        href={routes.projects()}
-        aria-label={m.common.nav.appHome}
-        className="focus-visible:ring-ring flex size-8 items-center justify-center rounded-lg focus-visible:ring-2 focus-visible:outline-none"
-      >
-        {/* 로고는 커밋된 원본이다(`public/brand/`) — 폰트와 달리 생성물이 아니다 (규약 2). */}
-        <Image src={logo} alt="" width={32} height={32} priority />
-      </Link>
-      <div className="flex items-center gap-3">
-        <Link href={routes.newProject()} className={PUBLIC_HEADER_LINK}>
-          <NewProjectIcon />
-          {m.common.nav.newProject}
+    <HeaderBar
+      start={
+        <Link
+          href={routes.projects()}
+          aria-label={m.common.nav.appHome}
+          className="focus-visible:ring-ring flex size-8 items-center justify-center rounded-lg focus-visible:ring-2 focus-visible:outline-none"
+        >
+          {/* 로고는 커밋된 원본이다(`public/brand/`) — 폰트와 달리 생성물이 아니다 (규약 2). */}
+          <Image src={logo} alt="" width={32} height={32} priority />
         </Link>
-        {/* 장식이다 — 공개 셸 헤더와 같은 선(`border-subtle`이 캔버스 위에서 보이는 가장 연한 선이다). */}
-        <span aria-hidden className="bg-border-subtle h-5 w-px" />
-        <UserMenu name={name} email={email} image={image} signOut={signOut} />
-      </div>
-    </header>
+      }
+      end={
+        <div className="flex items-center gap-3">
+          <Link href={routes.newProject()} className={PUBLIC_HEADER_LINK}>
+            <NewProjectIcon />
+            {m.common.nav.newProject}
+          </Link>
+          {/* 장식이다 — 공개 셸 헤더와 같은 선(`border-subtle`이 캔버스 위에서 보이는 가장 연한 선이다). */}
+          <span aria-hidden className="bg-border-subtle h-5 w-px" />
+          <UserMenu name={name} email={email} image={image} signOut={signOut} />
+        </div>
+      }
+    />
   );
 }
