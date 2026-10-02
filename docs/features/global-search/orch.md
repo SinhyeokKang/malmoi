@@ -18,7 +18,7 @@
 | GS2 | B, C | lib/keys/search, 통합·성능 tests, app/search, api/search-index, loaders, entry-points/client-graph tests, design 측정값 | GS1 | Astra high | 필수; 테넌트·성능·gate, B4 조건부 | 로컬 통합 7863dc0d, 리뷰 1회/수정 0회 |
 | GS3 | D | ui primitives, 두 셸 header, project-list/switcher, 관련 tests, DESIGN D7 | GS2 | Sol high | 필수; 접근성·포커스·사본 스캔·gate | D 전체 통합 894cbfaa, 리뷰 지적0 |
 | GS4 | E, F6 자동 검증 | search UI, messages/en.tsx, layout/headers, workspace, docs hash helper, 관련 tests | GS3 | Sol high | 필수; 레이스·이탈·착지·gate | 로컬 통합 ccc84462, 리뷰2회/수정1회 |
-| GS5 | F, 문서 마무리 | PRODUCT, DESIGN, ARCHITECTURE, CLAUDE+미러, DIRECTORY, README, guide | GS4 | Sol high | 필수; 사실 대조·미러·가이드 검증 | GS5a 통합, 최종 문서 착수 |
+| GS5 | F, 문서 마무리 | PRODUCT, DESIGN, ARCHITECTURE, CLAUDE+미러, DIRECTORY, README, guide | GS4 | Sol high | 필수; 사실 대조·미러·가이드 검증 | 로컬 통합 66769ac6, 문서 설명 수정 재확인 중 |
 | GS6 | G | 읽기 전용 QA, handoff | 통합·push | Sol high | 필수; ego-browser·BugShot·1280/1440/1890 | 대기 |
 
 ## 파일 겹침 행렬
@@ -73,3 +73,5 @@ GS5a 증거: 원본96d7bea4, 문서3커밋을 dev9f7c4eef까지 통합. Node24 g
 - GS4-fix1은 같은 GS4 워크트리의 후속 Sol/high Dispatch가 맡는다. 기존 작성자는 컨텍스트88%↑로 해제했고 인계·로그를 보존했다. 소유권은 목차·공유 착지 helper·필요한 검색 소비자와 회귀 테스트뿐이다. 테스트 red→fix→gate 및 기존 독립 리뷰어의 재검토 후 통합한다. GS5/GS6는 그 뒤다.
 
 GS4 최종 증거: 원본c2083d9d, Node24 gate exit0,10527 passed+기존1 skipped, 격리PG541 passed. fix1 최초 테스트 scrollTo 오버로드 타입 실패를 수정했고 독립 Astra 재검토 red0/yellow0/white0으로 두 지적 해소. dev ccc84462까지8커밋 통합. 실제 브라우저 치수·착지·IME는 GS6 미검증이다. GS5는 이 구현을 기준으로 F1/F2/F5/F6/F7 및 가이드를 수행한다. 지휘자 통합 gate와 문서 작업은 별도 체크아웃에서 병행하고 PG 성능 실행은 겹치지 않는다.
+
+통합 gate4: dev1ea0dde1, Node24 exit0,10527 passed+기존1 skipped, 격리PG/build/mirror 전부 통과. GS5 원본e5866015의 문서5커밋을 dev6e035b0e까지 통합, gate exit0(10527 passed+기존1 skipped). 가이드 용어 검사 최초1실패는 first sync로 수정했다. 독립 리뷰에서 DIRECTORY의 NoMatch action 필수 설명1건을 발견해 지휘자가 문서 신선도 커밋66769ac6으로 수정했고 재확인 중이다. guide:check stale25컷50건은 보존; 검색 관련 가이드 본문은 갱신했고 스크린샷은 미갱신 경고로 남긴다. G1은 push 후 TaskSpace23에서 검증한다.

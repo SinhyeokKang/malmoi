@@ -110,19 +110,19 @@
 
 ## F. 문서 (문서별 별도 커밋, spec 17)
 
-- [ ] **F1** `docs(PRODUCT)`: §4.1 글로벌 검색(Keys 범위: 보관·첫 적재 전 제외 · 트라이그램 판정) · IA에 "검색은 라우트가 아니다". §7.7은 고치지 않는다.
+- [x] **F1** `docs(PRODUCT)`: §4.1 글로벌 검색(Keys 범위: 보관·첫 적재 전 제외 · 트라이그램 판정) · IA에 "검색은 라우트가 아니다". §7.7은 고치지 않는다.
   — 검증: §4.1·IA 문장을 spec 완료 조건과 대조 · §4.2 비범위와 충돌 문장 0.
-- [ ] **F2** `docs(DESIGN)`: §6.5 "검색 넣지 않는다" 뒤집기 경위 · §9.2 카운터만 남김 · §6.8 헤더 행 · 아이콘 표 · 검색 Dialog 절(D7에 안 들어간 화면 규칙 — 미리보기 · 착지 · GitLab 참고).
+- [x] **F2** `docs(DESIGN)`: §6.5 "검색 넣지 않는다" 뒤집기 경위 · §9.2 카운터만 남김 · §6.8 헤더 행 · 아이콘 표 · 검색 Dialog 절(D7에 안 들어간 화면 규칙 — 미리보기 · 착지 · GitLab 참고).
   — 검증: 절마다 코드 값과 대조 · `visual-system` green.
 - [x] **F3** `docs(ARCHITECTURE)`: §6 "인증 경계" 표에 `/api/search-index`(공개 · 세션 없음 · `force-static`) · Keys 조회의 멤버 id 조인(테넌트 경계) · §1.96 pg_trgm 기각과 B3 측정값의 관계.
   — 검증: 표 행이 `entry-points.test.ts` `EXEMPT` 사유와 같은 말 · 측정값이 design.md와 같은 수.
 - [x] **F4** `docs(CLAUDE)`: 데이터 경로 표에 `/api/search-index` · `searchKeysAction`·`loadSearchMembershipsAction`(`app/search/actions.ts`) 행 → `pnpm sync:agents`.
   — 검증: `pnpm sync:agents:check` green.
-- [ ] **F5** `docs(DIRECTORY)`: `lib/search/` · `components/search/` · `app/api/search-index/` · `app/search/actions.ts` · `components/shell/header-bar.tsx` · 새 `ui/` 파일.
+- [x] **F5** `docs(DIRECTORY)`: `lib/search/` · `components/search/` · `app/api/search-index/` · `app/search/actions.ts` · `components/shell/header-bar.tsx` · 새 `ui/` 파일.
   — 검증: 적은 경로가 전부 실재(`ls`) · 새로 만든 파일 중 빠진 것 0(`git diff --name-only --diff-filter=A origin/dev` 대조).
-- [ ] **F6** `/privacy` 무수정 확인 — 새 수집·브라우저 저장·전송처가 없음을 `/push` 4단계 대조 항목으로 남긴다.
+- [x] **F6** `/privacy` 무수정 확인 — 새 수집·브라우저 저장·전송처가 없음을 `/push` 4단계 대조 항목으로 남긴다.
   — 검증: `components/search/*`·`lib/search/*`에 `localStorage`·`sessionStorage`·`document.cookie` 0(소스 스캔 — 네 장치) · `policy-gate.test.tsx` 무수정 green.
-- [ ] **F7** `README.md` 기능 목록 한 줄 · 가이드 영향 플래그 → `/guide` 판정.
+- [x] **F7** `README.md` 기능 목록 한 줄 · 가이드 영향 플래그 → `/guide` 판정.
   — 검증: README 문장이 PRODUCT §4.1과 같은 사실(Keys 범위 · 로그인 필요) · `/guide` 판정 결과(적음/안 적음과 이유)를 보고에 기록.
 
 ## G. 실물 검증 (`/runtime-test`, 로컬)
