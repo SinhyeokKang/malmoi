@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState, type MouseEvent } from "react";
 
-import { documentTop as topOf, landDocumentHeading } from "@/lib/public-doc/landing";
+import { DOCUMENT_HEADING_LANDED, documentTop as topOf, landDocumentHeading } from "@/lib/public-doc/landing";
 import { currentSection } from "@/lib/public-doc/toc";
 import { cn } from "@/lib/utils";
 
@@ -63,9 +63,17 @@ export function Toc({ label, items }: { label: string; items: readonly { id: str
       pinned.current = null;
       schedule();
     };
+    const land = (event: Event) => {
+      if (!(event instanceof CustomEvent) || typeof event.detail !== "string") return;
+      const index = items.findIndex(({ id }) => id === event.detail);
+      if (index < 0) return;
+      pinned.current = index;
+      setCurrent(index);
+    };
 
     remeasure();
     scroller.addEventListener("scroll", schedule, { passive: true });
+    scroller.addEventListener(DOCUMENT_HEADING_LANDED, land);
     // 목차 링크의 pointerdown·Enter도 여기를 지나지만 click이 곧바로 다시 고정한다.
     for (const type of RELEASE) scroller.addEventListener(type, release, { passive: true });
     // 폭이 바뀌면 줄바꿈이, 폰트가 오면 글자 높이가 절 윗변을 옮긴다.
@@ -76,13 +84,14 @@ export function Toc({ label, items }: { label: string; items: readonly { id: str
     return () => {
       alive = false;
       scroller.removeEventListener("scroll", schedule);
+      scroller.removeEventListener(DOCUMENT_HEADING_LANDED, land);
       for (const type of RELEASE) scroller.removeEventListener(type, release);
       observer.disconnect();
       if (frame !== 0) cancelAnimationFrame(frame);
     };
   }, [items]);
 
-  const onClick = (event: MouseEvent<HTMLAnchorElement>, id: string, index: number) => {
+  const onClick = (event: MouseEvent<HTMLAnchorElement>, id: string) => {
     // 수정 키·가운데 클릭은 새 탭·새 창이다 — 브라우저 몫이라 가로채지 않는다.
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
     const scroller = ref.current?.closest<HTMLElement>("[data-public-scroller]");
@@ -90,8 +99,6 @@ export function Toc({ label, items }: { label: string; items: readonly { id: str
     // 못 찾으면 브라우저 기본 이동에 맡긴다.
     if (!scroller || !target) return;
     event.preventDefault();
-    pinned.current = index;
-    setCurrent(index);
     landDocumentHeading(id);
   };
 
@@ -105,7 +112,7 @@ export function Toc({ label, items }: { label: string; items: readonly { id: str
           <li key={id}>
             <a
               href={`#${id}`}
-              onClick={(event) => onClick(event, id, index)}
+              onClick={(event) => onClick(event, id)}
               aria-current={index === current ? "location" : undefined}
               className={cn(
                 "-ml-px block border-l py-1.5 pr-0 pl-3 text-xs leading-normal focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
