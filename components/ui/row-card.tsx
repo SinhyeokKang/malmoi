@@ -169,6 +169,7 @@ export function BannerLine({
   return (
     <div
       id={id}
+      data-tone={tone}
       className={cn(
         "border-foreground/[0.06] bg-foreground/[0.02] flex items-center gap-2 border-t py-2 pr-3.5 text-xs",
         indent === "avatar" ? "pl-15" : "pl-14",

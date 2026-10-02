@@ -416,14 +416,13 @@ const CARDINALITY: Record<Rule, { rows: number; occurrences: number }> = {
   hue: { rows: 0, occurrences: 0 }, size: { rows: 6, occurrences: 6 },
   width: { rows: 0, occurrences: 0 }, progress: { rows: 3, occurrences: 3 },
   slots: { rows: 1, occurrences: 1 }, rest: { rows: 0, occurrences: 0 },
-  "data-tone": { rows: 1, occurrences: 1 }, aria: { rows: 0, occurrences: 0 },
+  "data-tone": { rows: 0, occurrences: 0 }, aria: { rows: 0, occurrences: 0 },
   className: { rows: 0, occurrences: 0 },
 };
 const ALLOWLIST: Debt[] = [
   { rule: "progress", path: "components/projects/new-project-button.tsx", symbol: "NewProjectButton", detail: "manual pending glyph replacement", count: 1, task: "T15" },
   { rule: "progress", path: "components/shell/new-project-icon.tsx", symbol: "NewProjectIcon", detail: "manual pending glyph replacement", count: 1, task: "T15" },
   { rule: "progress", path: "components/logs/row-chevron.tsx", symbol: "RowChevron", detail: "manual pending glyph replacement", count: 1, task: "T16" },
-  { rule: "data-tone", path: "components/ui/row-card.tsx", symbol: "BannerLine", detail: "missing data-tone", count: 1, task: "T11" },
   { rule: "size", path: "components/shell/project-switcher.tsx", symbol: "Input", detail: "border-0", count: 1, task: "T19a" },
   { rule: "size", path: "components/shell/project-switcher.tsx", symbol: "Input", detail: "h-8", count: 1, task: "T19a" },
   { rule: "size", path: "components/translations/workspace/locale-panel.tsx", symbol: "Input", detail: "h-7", count: 1, task: "T19a" },
@@ -450,6 +449,18 @@ describe("primitive API contract — design §3", () => {
         expect({ rows: rows.length, occurrences: rows.reduce((sum, row) => sum + row.count, 0) }, rule).toEqual(CARDINALITY[rule]);
       }
     }
+  });
+
+  it("T7–T11 leave zero owned debts and preserve exactly ten later-task rows", () => {
+    expect(ALLOWLIST.filter(row => /^T(?:7|8|9|10|11)[a-f]?$/.test(row.task))).toEqual([]);
+    expect(ALLOWLIST.map(({task, rule, symbol, count}) => [task, rule, symbol, count]).sort()).toEqual([
+      ["T14", "slots", "OnboardingModal", 1],
+      ["T15", "progress", "NewProjectButton", 1],
+      ["T15", "progress", "NewProjectIcon", 1],
+      ["T16", "progress", "RowChevron", 1],
+      ...Array.from({length:6}, () => ["T19a", "size", "Input", 1]),
+    ].sort());
+    expect(ALLOWLIST.find(row => row.task === "T14")?.detail).toBe("headerAction");
   });
 
   it("T7 leaves no component result-label or tone mapping copies", () => {
@@ -545,6 +556,13 @@ describe("primitive API contract — design §3", () => {
     const definition = (prop: string) => source(`export function ${symbol}(props: {${prop}?: ${prop === "fallback" ? "ReactElement" : "string"}}) {return <span/>;}`, path);
     expect(scan([definition(old)])).toEqual([{rule: "className", path, symbol, detail: old, count: 1}]);
     expect(scan([definition(next)])).toEqual([]);
+  });
+
+  it("T11E current-path BannerLine marks its root, not a nested child", () => {
+    const path = "components/ui/row-card.tsx";
+    const definition = (markup: string) => source(`export function BannerLine({tone = "muted"}: {tone?: "muted" | "warning" | "danger"}) {return ${markup};}`, path);
+    expect(scan([definition('<div><span data-tone={tone}/></div>')])).toEqual([{rule: "data-tone", path, symbol: "BannerLine", detail: "missing data-tone", count: 1}]);
+    expect(scan([definition('<div data-tone={tone}><span/></div>')])).toEqual([]);
   });
 
   const slotRenames = [

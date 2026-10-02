@@ -6,7 +6,7 @@ import { BannerLine, EmptyRowCard, RowCardList } from "@/components/ui/row-card"
 
 import { find, render } from "./helpers/dom";
 
-describe("BannerLine before the API rename", () => {
+describe("BannerLine root tone contract", () => {
   it.each([
     [undefined, "text-muted-foreground"],
     ["muted", "text-muted-foreground"],
@@ -18,6 +18,8 @@ describe("BannerLine before the API rename", () => {
     </BannerLine>);
     const root = find(container, "#reason");
     expect(root.tagName).toBe("DIV");
+    expect(root.getAttribute("data-tone")).toBe(tone ?? "muted");
+    expect(root.querySelector("span")?.hasAttribute("data-tone")).toBe(false);
     expect(root.children).toHaveLength(3);
     expect(root.children[0]?.tagName.toLowerCase()).toBe("svg");
     expect(root.children[1]?.tagName).toBe("SPAN");
@@ -31,6 +33,7 @@ describe("BannerLine before the API rename", () => {
   it("avatar indent changes only alignment, and absent slots leave just the description", async () => {
     const { container } = await render(<BannerLine indent="avatar">Last owner</BannerLine>);
     const root = find(container, "div");
+    expect(root.getAttribute("data-tone")).toBe("muted");
     expect(root.classList.contains("pl-15")).toBe(true);
     expect(root.classList.contains("pl-14")).toBe(false);
     expect(root.children).toHaveLength(1);

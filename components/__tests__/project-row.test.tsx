@@ -209,15 +209,30 @@ it("메타 줄이 리포 앞에 GitHub 마크를 든다", async () => {
 
 /**
  * **PR 조회 실패는 "없음"이 아니라 "모름" 띠다** (ux-drift-unify Q6) — 열린 PR 게이트가 fail-closed라 그 동안 리포 갱신이 멈춘다.
- * warning 톤이고, 갈 곳이 없어 링크가 없다. ⚠️ `BannerLine`에 `data-tone`이 없어(프리미티브는 U3 소유) 톤은 그 글자색 클래스로 센다.
+ * warning 톤이고, 갈 곳이 없어 링크가 없다. 실제 BannerLine 루트의 표식과 기존 글자색을 함께 확인한다.
  */
 it("열린 PR 조회 실패(openPr undefined)는 warning Couldn't check 띠이고 링크가 없다", async () => {
   const container = await draw({ openPr: undefined });
   const band = [...container.querySelectorAll("div")].find((node) => node.textContent === m.projects.banner.prCheckFailed);
   expect(band).toBeDefined();
   expect(band?.className).toContain("text-amber-800");
+  expect(band?.getAttribute("data-tone")).toBe("warning");
   expect(band?.querySelector("a")).toBeNull();
   // 짝: PR 없음(null)이면 그 띠가 없다.
   const quiet = await draw({ openPr: null });
   expect(quiet.textContent).not.toContain(m.projects.banner.prCheckFailed);
+});
+
+it.each([
+  [{unsent:24}, "muted", "text-muted-foreground"],
+  [{repositoryId:null}, "warning", "text-amber-800"],
+  [{surfaces:[{archivedAt:null,lastCommitSha:"s",importError:"parse-failed",importing:false}]}, "danger", "text-destructive"],
+] as const)("project band %s preserves tone marker, row indent and action", async (over, tone, color) => {
+  const container = await draw({...over, surfaces: "surfaces" in over ? [...over.surfaces] : BASE.surfaces});
+  const band = container.querySelector('div[data-tone]')!;
+  expect(band).not.toBeNull();
+  expect(band.getAttribute("data-tone")).toBe(tone);
+  expect(band.classList.contains(color)).toBe(true);
+  expect(band.classList.contains("pl-14")).toBe(true);
+  expect(band.querySelector("a")?.getAttribute("href")).toBe(tone === "muted" ? "/projects/acme/surfaces/default/translations?ns=*&state=unsent" : tone === "warning" ? "/projects/acme/settings" : "/projects/acme/sources");
 });
