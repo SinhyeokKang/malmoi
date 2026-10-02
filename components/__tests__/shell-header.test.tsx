@@ -3,6 +3,7 @@ import { createContext, useContext, type ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { PUBLIC_HEADER_LINK } from "@/components/public-shell/header";
+import { HeaderBar } from "@/components/shell/header-bar";
 import { Header } from "@/components/shell/header";
 import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
@@ -29,10 +30,32 @@ vi.mock("next/link", () => {
 
 const header = () => render(<Header name="Kim" email="kim@acme.com" image={null} signOut={vi.fn()} />);
 
+describe("HeaderBar — 세 슬롯", () => {
+  it("동일 폭 양옆 칸과 세 정렬 슬롯으로 가운데를 고정한다", async () => {
+    const { container } = await render(<HeaderBar start={<span>Start</span>} center={<span>Center</span>} end={<span>End</span>} />);
+    const bar = container.querySelector("header");
+    expect(bar).not.toBeNull();
+    expect(bar?.className.split(/\s+/)).toEqual(expect.arrayContaining(["grid", "h-10", "shrink-0", "grid-cols-[1fr_auto_1fr]", "items-center", "px-1"]));
+    expect([...bar!.children].map(slot => slot.className)).toEqual(["justify-self-start", "justify-self-center", "justify-self-end"]);
+    expect([...bar!.children].map(slot => slot.textContent)).toEqual(["Start", "Center", "End"]);
+  });
+});
+
 describe("앱 셸 헤더", () => {
+  it("HeaderBar를 쓰고 가운데 슬롯은 비어 있다", async () => {
+    const { container } = await header();
+    const bar = container.querySelector("header");
+    expect(bar).not.toBeNull();
+    expect(bar?.classList.contains("grid-cols-[1fr_auto_1fr]")).toBe(true);
+    expect(bar?.children).toHaveLength(3);
+    expect(bar?.children[0]?.className).toBe("justify-self-start");
+    expect(bar?.children[1]?.className).toBe("justify-self-center");
+    expect(bar?.children[1]?.childNodes).toHaveLength(0);
+    expect(bar?.children[2]?.className).toBe("justify-self-end");
+  });
   it("우측은 New project · 구분선 · 사용자 메뉴 순서다", async () => {
     const { container } = await header();
-    const right = container.querySelector("header > div:last-child");
+    const right = container.querySelector("header > .justify-self-end > div");
     const kids = [...(right?.children ?? [])];
     expect(kids).toHaveLength(3);
     expect(kids[0]?.getAttribute("href")).toBe(routes.newProject());

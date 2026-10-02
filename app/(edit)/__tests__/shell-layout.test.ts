@@ -28,6 +28,7 @@ const read = (rel: string): string => readFileSync(join(ROOT, rel), "utf8");
 const layout = read("app/(edit)/layout.tsx");
 const sidebar = read("components/shell/sidebar.tsx");
 const header = read("components/shell/header.tsx");
+const headerBar = read("components/shell/header-bar.tsx");
 const contentPanel = read("components/shell/content-panel.tsx");
 const shellPanels = read("components/shell/shell-panels.tsx");
 
@@ -133,7 +134,7 @@ describe("셸 골격 — 바깥 padding 8 · 패널 간 gap 8 (8-2)", () => {
   });
 
   it("헤더가 전폭 40이고 로고와 사용자 메뉴 둘을 든다 — 32 컨트롤의 위아래가 4씩이다", () => {
-    expect(header).toMatch(/\bh-10\b/);
+    expect(headerBar).toMatch(/\bh-10\b/);
     expect(header).toContain("UserMenu");
     expect(header).toContain("routes.projects()");
   });
