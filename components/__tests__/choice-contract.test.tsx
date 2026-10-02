@@ -24,7 +24,7 @@ describe("Radio className contract", () => {
     expect(selected?.closest("label")?.classList.contains("gap-3")).toBe(true);
     expect(selected?.closest("label")?.classList.contains("mt-1")).toBe(true);
     expect(selected?.classList.contains("mt-1")).toBe(false);
-    for (const token of ["size-4", "rounded-full", "border", "border-gray-light", "data-[state=checked]:border-foreground", "focus-visible:ring-2"]) expect(selected?.classList.contains(token), token).toBe(true);
+    for (const token of ["size-4", "rounded-full", "border", "border-gray-light", "data-[state=checked]:border-foreground", "focus-visible:ring-1"]) expect(selected?.classList.contains(token), token).toBe(true);
     expect(disabled?.matches(":disabled")).toBe(true);
     expect(disabled?.getAttribute("aria-checked")).toBe("false");
     expect(disabled?.querySelector('[data-state="checked"]')).toBeNull();

@@ -9,7 +9,7 @@ it("라벨 없이 접근 이름이 있고 16 크기·포커스·disabled를 보�
   const change = vi.fn(); const user = userEvent.setup();
   const view = await render(<Checkbox aria-label="Include i18n" onCheckedChange={change} />);
   const control = find<HTMLElement>(view.container, '[role="checkbox"][aria-label="Include i18n"]');
-  expect(control.className).toContain("size-4"); expect(control.className).toContain("focus-visible:ring-2");
+  expect(control.className).toContain("size-4"); expect(control.className).toContain("focus-visible:ring-1");
   await act(async () => { await user.click(control); }); expect(change).toHaveBeenCalledWith(true);
   await view.rerender(<Checkbox aria-label="Include i18n" disabled onCheckedChange={change} />);
   expect(control.matches(":disabled")).toBe(true);

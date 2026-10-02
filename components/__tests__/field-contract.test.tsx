@@ -26,7 +26,7 @@ describe("field primitives before the API rename", () => {
     expect(document.getElementById(field.getAttribute("aria-describedby")!)?.textContent).toBe("Check the source");
     expect(field.getAttribute("aria-invalid")).toBe("true");
     expect(field.dataset.field).toBe("value");
-    for (const token of ["border-input", "border", "rounded-md", "px-2.5", "text-sm", "aria-[invalid=true]:border-destructive", "focus-visible:ring-ring", "focus-visible:ring-2", "focus-visible:outline-none"]) {
+    for (const token of ["border-input", "border", "rounded-md", "px-2.5", "text-sm", "aria-[invalid=true]:border-destructive", "focus-visible:ring-ring", "focus-visible:ring-1", "focus-visible:outline-none"]) {
       expect(field.classList.contains(token), token).toBe(true);
     }
   });

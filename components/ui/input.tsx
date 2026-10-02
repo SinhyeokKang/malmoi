@@ -60,7 +60,7 @@ export function Input({ className, width, size = "md", variant = "default", icon
     "read-only:bg-muted read-only:text-foreground read-only:cursor-default",
     variant === "bare"
       ? "border-0 bg-transparent px-1 shadow-none focus-visible:ring-0 focus-visible:outline-none"
-      : "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
+      : "focus-visible:border-ring focus-visible:ring-ring focus-visible:ring-1 focus-visible:outline-none aria-[invalid=true]:focus-visible:border-destructive aria-[invalid=true]:focus-visible:ring-destructive",
     icon && "pl-8", clearable && "pr-8", className,
   )} {...props} />;
   if (!icon && !clearable) return field;

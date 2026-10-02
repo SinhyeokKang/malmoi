@@ -185,7 +185,7 @@ export function Button({
 }: ButtonProps) {
   return (
     <button
-      className={cn(buttonClass({ variant, size }), "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none", className)}
+      className={cn(buttonClass({ variant, size }), "focus-visible:ring-ring focus-visible:outline-none", (variant ?? "default") === "default" ? "focus-visible:border-ring focus-visible:ring-1" : "focus-visible:ring-2", className)}
       disabled={disabled === true || loading}
       {...props}
       aria-disabled={busy ? true : props["aria-disabled"]}
@@ -234,7 +234,7 @@ export function ButtonLink({
   const safeRel = external || newTab || target === "_blank"
     ? [...new Set([...(rel?.split(/\s+/).filter(Boolean) ?? []), "noopener", "noreferrer"])].join(" ") : rel;
   const content = <>{busy && <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />}{glyphSlot(children, busy)}</>;
-  const classes = cn(buttonClass({ variant, size }), "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none", className);
+  const classes = cn(buttonClass({ variant, size }), "focus-visible:ring-ring focus-visible:outline-none", (variant ?? "default") === "default" ? "focus-visible:border-ring focus-visible:ring-1" : "focus-visible:ring-2", className);
   const shared = { ...props, href, target: newTab ? "_blank" : target, rel: safeRel,
     "aria-disabled": busy ? true : props["aria-disabled"], "aria-busy": busy ? true : props["aria-busy"] };
   // 외부 a는 일반 클릭만 막고, Next onNavigate는 같은 탭 내부 이동만 차단한다.

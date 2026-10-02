@@ -53,7 +53,7 @@ it("actual small FilterMenu keeps one slotted trigger, end alignment, keyboard s
   expect(container.querySelectorAll("button")).toHaveLength(1);
   expect(trigger.classList.contains("h-7")).toBe(true);
   expect(trigger.classList.contains("border-foreground")).toBe(true);
-  expect(trigger.classList.contains("focus-visible:ring-2")).toBe(true);
+  expect(trigger.classList.contains("focus-visible:ring-1")).toBe(true);
   expect(trigger.querySelector("svg")?.classList.contains("group-data-[state=open]:rotate-180")).toBe(true);
   const user = userEvent.setup();
   await act(async () => { trigger.focus(); await user.keyboard("{Enter}"); });

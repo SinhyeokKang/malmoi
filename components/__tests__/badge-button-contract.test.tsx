@@ -45,7 +45,7 @@ describe("Button size/variant contracts before the API rename", () => {
   ] as const)("size %s keeps height, radius, padding and text scale", async (size, height, radius, padding, text) => {
     const { container } = await render(<Button size={size}>Save</Button>);
     const button = find(container, "button");
-    for (const token of [height, radius, padding, text, "font-medium", "focus-visible:ring-2"]) expect(button.classList.contains(token), token).toBe(true);
+    for (const token of [height, radius, padding, text, "font-medium", "focus-visible:ring-1"]) expect(button.classList.contains(token), token).toBe(true);
     expect([...button.classList].filter(token => /^rounded-/.test(token))).toEqual([radius]);
     expect(button.textContent).toBe("Save");
   });
@@ -109,7 +109,7 @@ describe("아이콘 버튼 치수 계약", () => {
   ] as const)("%s는 기존 정방형 치수·radius·글자 크기를 지킨다", async (size, box, radius, text) => {
     const { container } = await render(<Button size={size} aria-label="Open">+</Button>);
     const button = find(container, "button");
-    for (const token of [box, radius, "px-0", text, "font-medium", "focus-visible:ring-2"]) expect(button.classList.contains(token), token).toBe(true);
+    for (const token of [box, radius, "px-0", text, "font-medium", "focus-visible:ring-1"]) expect(button.classList.contains(token), token).toBe(true);
     expect([...button.classList].filter(token => /^h-/.test(token))).toEqual([]);
     expect([...button.classList].filter(token => /^rounded-/.test(token))).toEqual([radius]);
   });

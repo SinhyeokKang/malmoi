@@ -34,6 +34,13 @@ const ROOT = process.cwd();
 /** DESIGN §7의 셋. 하나라도 빠지면 링이 안 보이거나 브라우저 기본 outline만 남는다. */
 const RING = ["focus-visible:ring-ring", "focus-visible:ring-2", "focus-visible:outline-none"];
 
+// API 이름이 아니라 렌더된 테두리 폭이 링을 결정한다. 색 토큰만 가진 컨트롤은 테두리형이 아니다.
+function hasRing(element: Element): boolean {
+  const bordered = [...element.classList].some(token => /^(?:border|border-[0248]|border-\[[\d.]+px\])$/.test(token));
+  const required = ["focus-visible:ring-ring", "focus-visible:outline-none", bordered ? "focus-visible:ring-1" : "focus-visible:ring-2", ...(bordered ? ["focus-visible:border-ring"] : [])];
+  return required.every(token => element.classList.contains(token));
+}
+
 /**
  * ⚠️ **`components/ui/`를 더 이상 제외하지 않는다** (2026-09-08, SaaS 6a T5). 그 디렉터리는 이제
  * **이 리포가 소유하는 프리미티브**이고 shadcn CLI를 다시 돌리지 않는다 — 생성물과 싸울 일이 없으므로
@@ -147,7 +154,7 @@ const RADIX_FIXTURES = {
   "components/ui/radio.tsx": h(RadioGroup, { "aria-label": "Locale", defaultValue: "en" }, h(Radio, { label: "English", value: "en" })),
 };
 
-// Slot 선택 행은 Checkbox와 Button의 실제 포커스 대상을 검사한다.
+// 직접 링을 정의하지 않고 후손 프리미티브에 위임하는 Radix 래퍼도 실제 컨트롤을 렌더한다.
 const DELEGATED_RADIX_FIXTURES = {
   "components/ui/select.tsx": h(
     Select,
@@ -155,7 +162,6 @@ const DELEGATED_RADIX_FIXTURES = {
     h(SelectTrigger, { "aria-label": "Locale" }, h(SelectValue, null)),
     h(SelectContent, null, h(SelectItem, { value: "en" }, "English")),
   ),
-
   "components/ui/select-row.tsx": h(SelectRow, {input: "checkbox", checked: false, label: "Include", aside: h(Button, null, "Preview")}),
 };
 
@@ -268,7 +274,7 @@ describe("포커스 링 (DESIGN §7)", () => {
       const elements = [...container.querySelectorAll("button,input,select,textarea")];
       expect(elements.length, file).toBeGreaterThan(0);
       for (const element of elements) {
-        expect(RING.every((cls) => element.classList.contains(cls)), file).toBe(true);
+        expect(hasRing(element), file).toBe(true);
       }
     }
   });
@@ -283,7 +289,7 @@ describe("포커스 링 (DESIGN §7)", () => {
     const selected = document.querySelector('button[aria-current="true"]')!;
     expect(document.querySelector('[role="dialog"][aria-label="Sources"]')).not.toBeNull();
     expect(document.activeElement).toBe(selected);
-    expect(RING.every(cls => selected.classList.contains(cls))).toBe(true);
+    expect(hasRing(selected)).toBe(true);
   });
 
   it("Radix segments and ButtonLink keep rings on the visible focus target", async () => {
@@ -295,7 +301,7 @@ describe("포커스 링 (DESIGN §7)", () => {
     const targets = [...container.querySelectorAll('button[role="radio"],a')];
     expect(targets).toHaveLength(2);
     for (const target of targets) {
-      expect(RING.every((cls) => target.classList.contains(cls))).toBe(true);
+      expect(hasRing(target)).toBe(true);
       expect(target.hasAttribute("hidden")).toBe(false);
     }
   });
@@ -372,4 +378,21 @@ describe("포커스 링 (DESIGN §7)", () => {
     const labels = controls(fake).map((t) => /className="([^"]*)"/.exec(t)?.[1]);
     expect(labels).toEqual(["a", "b", "c", "d"]);
   });
+});
+
+it("rendered border classification catches wrong widths and matching-border omissions", () => {
+  for (const border of ["border", "border-2", "border-[1px]"]) {
+    const target = document.createElement("button");
+    target.className = `${border} focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-2`;
+    expect(hasRing(target)).toBe(false);
+    target.classList.replace("focus-visible:ring-2", "focus-visible:ring-1");
+    expect(hasRing(target)).toBe(false);
+    target.classList.add("focus-visible:border-ring");
+    expect(hasRing(target)).toBe(true);
+  }
+  const target = document.createElement("button");
+  target.className = "border-ring focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-1";
+  expect(hasRing(target)).toBe(false);
+  target.classList.replace("focus-visible:ring-1", "focus-visible:ring-2");
+  expect(hasRing(target)).toBe(true);
 });

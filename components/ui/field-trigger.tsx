@@ -22,7 +22,7 @@ export function FieldTrigger({ asChild, active, size = "md", width, className, c
     "disabled:bg-accent disabled:text-muted-foreground disabled:hover:bg-accent disabled:cursor-not-allowed",
     "aria-disabled:bg-accent aria-disabled:text-muted-foreground aria-disabled:hover:bg-accent aria-disabled:cursor-not-allowed",
     active === undefined ? undefined : active ? "border-foreground text-foreground font-medium" : "border-border text-muted-foreground",
-    "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
+    "focus-visible:border-ring focus-visible:ring-ring focus-visible:ring-1 focus-visible:outline-none aria-[invalid=true]:focus-visible:border-destructive aria-[invalid=true]:focus-visible:ring-destructive",
     className,
   )} {...props}>
     <Slot.Slottable>{children}</Slot.Slottable>

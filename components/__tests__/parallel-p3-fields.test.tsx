@@ -42,6 +42,8 @@ it("bare has no border or ring; readonly gets display colors while Textarea stay
   expect(bare.classList.contains("focus-visible:ring-0")).toBe(true);
   expect(display.classList.contains("read-only:bg-muted")).toBe(true);
   expect(display.classList.contains("read-only:text-foreground")).toBe(true);
+  expect(display.classList.contains("aria-[invalid=true]:focus-visible:border-destructive")).toBe(true);
+  expect(display.classList.contains("aria-[invalid=true]:focus-visible:ring-destructive")).toBe(true);
   expect(find(container, "textarea").className).not.toContain("read-only:bg-muted");
 });
 
@@ -139,4 +141,15 @@ it("SelectTrigger asChild forwards pending pointer, click and keyboard guards be
   await rerender(fixture(false));
   await act(async () => { await user.keyboard("{ArrowDown}"); });
   expect(opening).toHaveBeenCalledExactlyOnceWith(true);
+});
+
+
+it("invalid actual SelectTrigger keeps destructive border and ring when focused", async () => {
+  const { Select, SelectTrigger } = await import("@/components/ui/select");
+  const { container } = await render(<Select><SelectTrigger aria-invalid aria-label="Base branch">main</SelectTrigger></Select>);
+  const trigger = find<HTMLButtonElement>(container, '[role="combobox"]');
+  await act(async () => trigger.focus());
+  expect(document.activeElement).toBe(trigger);
+  expect(trigger.classList.contains("aria-[invalid=true]:focus-visible:border-destructive")).toBe(true);
+  expect(trigger.classList.contains("aria-[invalid=true]:focus-visible:ring-destructive")).toBe(true);
 });

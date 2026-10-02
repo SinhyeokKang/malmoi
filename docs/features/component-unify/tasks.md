@@ -364,3 +364,13 @@ Run **`run_0e44db2882ac`**, 기존 coordinator **`term_dd1b2d61-f22d-4409-8977-7
 - Secret13경로 후보를 고정해 독립 리뷰와 명시적 COMMIT을 기다린다. 마지막 테두리 링/invalid Select 우선순위와 최종 누적 gate 및 지휘자 R3/T20a/T21/T22는 미완이다.
 
 - Secret13경로 독립 리뷰0 findings 및 명시적 COMMIT7 승인을 받았다. 관련10파일351 GREEN/복원3파일124 GREEN/최종 alias 포함 hand-copy110 GREEN/최종 typecheck exit0이며 마지막 테두리 링 및 전체 누적 gate는 다음 후보에서 검증한다.
+
+- 테두리 링 후보: Secret 체크포인트 뒤 Input/Textarea/FieldTrigger(실제 Select 위임)/Button·ButtonLink default/Checkbox/Radio의 border-ring+ring1, 무테 ring2와 checked·invalid 우선순위를 묶는다. 초기 독립 리뷰의 실제 invalid Select 포커스 회귀도 이 후보에서 고친다. 렌더된 폭 유틸 분류/위임 컨트롤·CSS 동치 계약을 먼저 RED로 확인한다.
+- 기존 소비자/Scope 한 겹 hover/Copy 실패 및 전체8행+alias 사본 카나리아를 보존한다. 독립 리뷰/COMMIT 및 최종 누적 gate와 지휘자 R3/T20a/T21/T22는 미완이다.
+
+- 테두리 링 검증: 이전 트리3파일8 failed/26 passed RED 뒤 관련11파일191테스트 GREEN/typecheck exit0/diff check exit0. 실제 Input ring1→2·FieldTrigger invalid 포커스 우선순위 삭제·Checkbox checked 우선순위 삭제·hasRing 검사기 무력화가 각각 RED, 복원 후4파일37테스트 GREEN. 정상 Select 위임 픽스처와 실제 invalid Select 포커스 및 CSS destructive 우선순위를 함께 확인했다.
+- 링18경로 최종 후보를 고정한다. 독립 리뷰/명시적 COMMIT8과 승인된 base150d221c 누적 full gate를 이어서 진행하며 초기 full gate exit1 로그를 보존한다. T20a/R3/T21/T22는 지휘자 잔여 작업이다.
+
+- P3 최종 승인: 전체92 논리 경로 독립 Astra 리뷰0 findings, 고정된 링18경로 명시적 COMMIT8 승인 및 리뷰 전후 drift0을 확인했다.
+- 실제 누적 `pnpm gate --base 150d221c4b70369831b46428551aea873a6202b1` exit0: db:generate → typecheck → test(666파일 통과/1스킵,10345테스트 통과/1스킵) → build(25페이지) → sync:agents:check. 실제 계획상 격리 PostgreSQL 대상 없음. 초기 실패 로그를 보존했고 최종 후보의 모든 코드/테스트/문서 바이트는 게이트 뒤 그대로다.
+- 남은 일: 지휘자의 R3 실브라우저·뷰포트 QA, T20a Geist 및 대비 판정, T21 나머지 정본 문서/미러, T22 기능 종료와 dev 통합/푸시. P3는 Pretendard를 유지했고 원격 쓰기를 하지 않는다.

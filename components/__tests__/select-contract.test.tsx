@@ -26,7 +26,7 @@ describe("Select before the API rename", () => {
     expect(trigger.getAttribute("aria-expanded")).toBe("false");
     expect(trigger.hasAttribute("data-placeholder")).toBe(true);
     expect(trigger.textContent).toBe("Choose a role");
-    for (const token of ["h-9", "w-40", "border-input", "focus-visible:ring-2", "[&>span]:min-w-0", "[&>span]:truncate", "data-[placeholder]:text-muted-foreground"]) expect(trigger.classList.contains(token), token).toBe(true);
+    for (const token of ["h-9", "w-40", "border-input", "focus-visible:ring-1", "[&>span]:min-w-0", "[&>span]:truncate", "data-[placeholder]:text-muted-foreground"]) expect(trigger.classList.contains(token), token).toBe(true);
     const chevron = find(trigger, "svg");
     expect(chevron.getAttribute("aria-hidden")).toBe("true");
     expect(chevron.classList.contains("size-4")).toBe(true);

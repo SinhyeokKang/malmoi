@@ -40,7 +40,7 @@ export function Radio({
         className={cn(
           "bg-background flex size-4 shrink-0 items-center justify-center rounded-full border border-gray-light",
           "data-[state=checked]:border-foreground disabled:cursor-not-allowed disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50",
-          "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
+          "focus-visible:border-ring focus-visible:ring-ring focus-visible:ring-1 focus-visible:outline-none data-[state=checked]:focus-visible:border-ring",
         )}
         {...props}
       >
