@@ -287,7 +287,7 @@ Run **`run_0e44db2882ac`**, 기존 coordinator **`term_dd1b2d61-f22d-4409-8977-7
 - **T20** design §6.3 남은 행(통합에 딸리지 않은 것 — token-grant-fields 역할 · 링 없는 링크 · BannerLine 선 등 — Facts는 T19e가 전담).
   검증 [수동]: 화면 목록 × 3 뷰포트 — 바뀐 자리가 §6.3 행과 1:1.
   `[commit] fix(ui): …`
-- [ ] **T20a — Geist 우선 폰트** (2026-10-02 사용자 추가): sans 폰트 스택을 **Geist → Pretendard Variable → 기존 시스템 폴백** 순서로 바꾼다. Geist가 지원하지 않는 글리프는 Pretendard Variable로 폴백한다. Pretendard Variable의 기존 자사 호스트 동적 서브셋과 생성/로딩 경로는 유지한다. monospace 스택은 대상이 아니다.
+- [x] **T20a — Geist 우선 폰트** (2026-10-02 사용자 추가): sans 폰트 스택을 **Geist → Pretendard Variable → 기존 시스템 폴백** 순서로 바꾼다. Geist가 지원하지 않는 글리프는 Pretendard Variable로 폴백한다. Pretendard Variable의 기존 자사 호스트 동적 서브셋과 생성/로딩 경로는 유지한다. monospace 스택은 대상이 아니다.
   범위: `app/globals.css`의 `--font-sans`, `app/layout.tsx`의 실제 폰트 로딩 및 필요한 최소 폰트 자산/설정. 구현 후보는 `next/font/local`의 루트 `--font-geist` 변수 → Pretendard Variable → 기존 시스템 폴백이다. 공식 v1.7.2 WOFF2를 고정하고 swap/preload 및 `adjustFontFallback: false`로 실제 로드하며 자동 Arial이 Pretendard 앞에 끼지 않게 한다. 기존 의존성 버전을 임의로 올리지 않는다.
   순서/소유권: **P3의 globals.css 변경을 통합한 뒤 별도 작은 커밋**으로 수행한다. T21의 DESIGN/CLAUDE/DIRECTORY 폰트 설명과 R3는 이 최종 폰트 구성을 기준으로 한다. 기존 시각 보존 범위에 대한 사용자 승인 추가이며, 글자 폭 차이를 이유로 무관한 컴포넌트 치수를 임의로 바꾸지 않는다.
   검증 [자동]: 폰트 스택 순서·실제 로딩 연결·Pretendard 폴백 유지 계약을 먼저 테스트하고 관련 검사/typecheck 및 최종 누적 gate를 통과한다. [브라우저]: 폰트 로드 완료 후 영문/숫자의 Geist 사용과 한글의 Pretendard Variable 폴백을 확인하고, 1280/1440/1890에서 버튼·표·모달·긴 문장의 줄바꿈/넘침을 검사한다. 폰트 미로드 상태를 완료 스크린샷으로 쓰지 않는다.
@@ -413,3 +413,10 @@ Run **`run_0e44db2882ac`**, 기존 coordinator **`term_dd1b2d61-f22d-4409-8977-7
 - 미검증: Safari/보조기술, 보관/zero-membership 픽스처, error.tsx 의도적 유도, 온보딩4, 실제 쓰기/진행/provider인증/시크릿 표시, 비로그인 랜딩. IME는 자동 계약 증거뿐이다. 이 제한을 전체 런타임 PASS로 바꾸지 않는다.
 - 실제 초대·프로젝트 생성·토큰 발급/회전·번역 저장은 하지 않았다. TaskSpace22를 한 번 종료하고 dev서버70496을 정지했다. 생성된 next-env 경로 변경만 복원하고 .next/dev를 정리했다.
 - 남은 일: T21 DESIGN/DIRECTORY/global-search 정본 반영·독립 리뷰 → 최종 gate/dev push → T22 종료/증거 보존·최종 gate/dev push·워커 정리. 런타임 증거 `.scratch/component-unify-r3-qa.md`; 원본 PNG/JSON은 `.scratch/component-unify/r3/`에만 보관한다.
+
+
+### T21 DIRECTORY 정본 승격
+
+- 실제43개 UI 모듈의 새/이동 경로와 잔존 PanelFacts/BannerLine, Card/Fact/ListRow/LargeModal/Popover/SelectRow/필드·검색·복사·토큰·Meter 책임을 반영했다. 루트 Geist 로더/추적 WOFF2와 Pretendard 생성물을 구분한다.
+- Sol의 읽기 전용 사실 검토에서 Geist 누락·StatusBadge/IconTile 입력 구분을 교정했다. globals.css의 옛 secondary/ListItemButton 주석은 이미 P3에서 교정됐으므로 다시 고치지 않았다. T20a는 실제 font/R3·Astra 승인으로 완료 체크했다.
+- 문서 diff 검사는 통과했다. DESIGN/global-search 정본·최종 gate/dev push/T22는 아직 미완이다. 가이드 측정은 `stale 25컷 (50건)`이며 후속 재촬영 경고로 남긴다.
