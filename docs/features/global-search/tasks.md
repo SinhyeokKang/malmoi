@@ -65,9 +65,9 @@
 
 ## D. 프리미티브 (`components/ui/` — 화면보다 먼저)
 
-- [ ] **D1** `Kbd`(`<kbd>` 태그, `shrink-0 … py-0.5` 포함) + 스위처의 손 `<kbd>` 이관.
+- [x] **D1** `Kbd`(`<kbd>` 태그, `shrink-0 … py-0.5` 포함) + 스위처의 손 `<kbd>` 이관.
   — 검증: `project-switcher.test.tsx` 무수정 green(`[role="menu"] kbd` 셀렉터가 `Kbd`를 잡는다) · `hand-copies.test.ts`에 `Kbd` 행(`components/ui/` 밖 `<kbd` 0 · 카나리아 · 하한) · `pnpm test` green.
-- [ ] **D2** `Highlight` + `/projects` 손 `<mark>` 이관(조각은 `highlightName` 그대로). **의도한 테스트 대조 둘**: `visual-system.test.ts:95` `REGISTERED`에는 의미 토큰 `bg-link/[0.14]`가 없음을 유지하고, `projects-screen.test.ts:517-522`의 클래스 단언을 "`Highlight`에 `highlightName(row.name, q)` 조각을 넘긴다"로.
+- [x] **D2** `Highlight` + `/projects` 손 `<mark>` 이관(조각은 `highlightName` 그대로). **의도한 테스트 대조 둘**: `visual-system.test.ts:95` `REGISTERED`에는 의미 토큰 `bg-link/[0.14]`가 없음을 유지하고, `projects-screen.test.ts:517-522`의 클래스 단언을 "`Highlight`에 `highlightName(row.name, q)` 조각을 넘긴다"로.
   — 검증: 위 두 테스트 대조 뒤 green · 그 밖 `projects-*` 무수정 green · `hand-copies.test.ts`에 `Highlight` 행(`ui/` 밖 `<mark` 0 · 카나리아 · 하한) · `pnpm test` green.
 - [ ] **D3** `FieldButton` — 캡슐 `rounded-full` · `h-9` · `w-80` · 패널 면(`bg-background border border-border-subtle shadow-low`) · 슬롯 셋 · 포커스 링 리터럴(rest props 없음 — component-unify S5).
   — 검증: `focus-ring.test.ts`의 `FIXTURES`(:132)에 `FieldButton` 픽스처 추가 후 green(`ui/` 안 raw `<button>`은 등록 필수 — :204-211) · `visual-system` green · jsdom: `shortcut` 슬롯이 비어도 자리 폭 유지 · `pnpm test` green.
@@ -77,7 +77,7 @@
   — 검증: jsdom — ARIA(`combobox`·`aria-expanded`·`aria-controls`·`aria-activedescendant`·`listbox`·`group`+`aria-labelledby`·`option`+`aria-selected`) · **`aria-activedescendant`가 가리키는 id의 요소가 실재**(존재 단언 따로 — 코드베이스 첫 사용, POSTMORTEM 2026-09-14 optional chaining 공허) · listbox의 자식이 option·group뿐(`CommandStatus`는 listbox 밖) · ↑↓ 순환 · **Enter가 활성 option 안 링크의 `click`을 부른다**(spy) · 조합 중 Enter 무시 · hover가 활성을 옮기고 `document.activeElement`는 입력 · 실제 결과 링크 `tabIndex={-1}` · Tab·Shift+Tab 시 결과 링크를 순회하지 않음 · 활성 행에만 `Go to` 힌트 · `CommandStatus`가 `aria-live` · `scrollIntoView` 호출(spy) · `pnpm test` green.
 - [ ] **D5a** `NoMatch` 출구 없는 형 — 필수 `action: ReactElement` 출구 슬롯을 선택으로 연다. 소비자는 검색 Dialog 하나(E2)이고 기존 소비자의 출구는 그대로다.
   — 검증: 렌더 테스트 — 출구 없으면 버튼 0 · 기존 `action` 출구 소비자 무수정 green · component-unify `api-contract` 허용 목록에 새 행 0 · `pnpm test` green.
-- [ ] **D6** `components/shell/header-bar.tsx` `HeaderBar` + 앱 셸·공개 셸 헤더 이관(가운데 슬롯은 아직 비움). **의도한 테스트 갱신**: `app/(edit)/__tests__/shell-layout.test.ts:135-139`의 `h-10` 단언을 `header-bar.tsx`로 옮긴다 · `components/__tests__/shell-header.test.tsx:35`(`header > div:last-child` 우측 자식 순서)와 `components/__tests__/public-shell.test.tsx:202-206`의 우측 자식 순서 단언을 `HeaderBar` `end` 슬롯 기준으로 고친다.
+- [x] **D6** `components/shell/header-bar.tsx` `HeaderBar` + 앱 셸·공개 셸 헤더 이관(가운데 슬롯은 아직 비움). **의도한 테스트 갱신**: `app/(edit)/__tests__/shell-layout.test.ts:135-139`의 `h-10` 단언을 `header-bar.tsx`로 옮긴다 · `components/__tests__/shell-header.test.tsx:35`(`header > div:last-child` 우측 자식 순서)와 `components/__tests__/public-shell.test.tsx:202-206`의 우측 자식 순서 단언을 `HeaderBar` `end` 슬롯 기준으로 고친다.
   — 검증: 새 구조 테스트 — `HeaderBar`가 `grid-cols-[1fr_auto_1fr]`이고 세 슬롯이 `justify-self-start/center/end`, 두 헤더가 `HeaderBar`를 렌더한다(DOM) · 위 세 테스트 갱신 뒤 green · `label-weight.test.ts`(`NAV_LINK`·`PUBLIC_HEADER_LINK`) 무수정 green · `pnpm dev`에서 두 헤더 모양이 이관 전과 같다(수동).
 - [ ] **D7** DESIGN §6.4 프리미티브 행 · §6.5 헤더 규칙(`HeaderBar` · 캡슐이 헤더의 첫 면·테두리 요소라는 예외) · §6.5 스위처 행 "새 combobox 프리미티브 없음" 갱신 · §6.2 강조 색 자리 · `NoMatch` 출구 없는 형(출구 규칙의 예외) · 대형 모달 행에 `CommandDialog` 공유(이 커밋 묶음의 문서 짝 — 별도 커밋).
   — 검증: 갱신한 절마다 코드 값과 대조(클래스 문자열 · 파일 경로 · Dialog 소비자 수 15 명령 출력) · `visual-system`·`focus-ring` green.

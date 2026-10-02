@@ -37,3 +37,5 @@
 GS1의 T0가 끝난 뒤 실제 파일 집합을 다시 대조했다. GS3a = D1·D2·D6만 따로 실행한다. 소유 경로는 kbd.tsx·highlight.tsx·project-switcher.tsx·project-list.tsx·header-bar.tsx·두 header와 해당 hand-copies/focus/visual/projects-screen/shell-layout/shell-header/public-shell 테스트다. GS1 수정의 lib/search/highlight.ts 및 GS2의 SQL/Action/route/client-graph와 겹치지 않는다. GS3a는 client-graph·layout.tsx·messages·DESIGN·feature 문서를 편집하지 않는다. GS3는 나머지 D3·D4·D5·D5a·D7만 GS2와 GS3a 통합 뒤 수행한다. GS3a Sol/high, gate와 독립 리뷰 필수. 기존 행의 광범위 GS2↔GS3 충돌을 피하려는 실제 파일 분리다.
 
 GS1 증거: 원본 최종 255bf325, 전체 10410 passed + 기존 1 skipped, 격리 PG 521 passed, gate exit 0. 독립 리뷰 공백 스니펫 yellow1은 수정·재리뷰 red0/yellow0. 한 줄 표시는 E 소비자의 normal/nowrap 계약으로 검증한다.
+
+GS3a 증거: 원본 6ae19606, 전체 10385 passed + 기존 1 skipped, gate exit0, 독립 리뷰 red0/yellow0 및 집중196건 통과. dev e143a126까지 통합. 실제 헤더 rect는 GS6. 전용 highlight-kbd.test.tsx 소유권을 승인했다. GS2는 34b8cbd7 기반 Astra/high로 진행 중.
