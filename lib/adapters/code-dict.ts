@@ -141,7 +141,7 @@ export function codeDictCandidatePaths(paths: readonly string[]): CodeDictGroup[
   return rankCandidates(
     [...byDir.entries()]
       // 강한 로케일 코드가 하나도 없으면 로케일 모음이 아니다 — `shared.hasStrongLocale`.
-      .filter(([, s]) => s.size >= 2 && hasStrongLocale(s))
+      .filter(([, s]) => hasStrongLocale(s))
       .map(([key, locales]) => ({ dir: key.split("\u0000")[0] ?? "", ext: key.split("\u0000")[1] ?? "ts", locales })),
   ).map(({ dir, ext, locales }) => ({ pathTemplate: `${dir}{locale}.${ext}`, locales }));
 }

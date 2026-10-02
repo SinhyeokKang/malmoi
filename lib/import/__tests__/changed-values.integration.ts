@@ -165,12 +165,13 @@ it("단일 언어 Sync 후 둘째 언어를 더하면 새 셀만 Logs의 변경 
   const { readPayload } = await import("@/lib/events/payload");
   await seed();
   const single = reader('{"a":"A","b":"B"}');
-  const snapshot = await single.snapshot();
+  const snapshot = await single.snapshot("main");
   if (snapshot.status !== "ok") throw new Error("fixture snapshot");
   single.snapshot = async () => ({ ...snapshot, files: snapshot.files.filter(file => file.path === "i18n/en.json") });
   await runRepositoryImportFromReader(prisma, { projectId: "p", userId: "owner", repository, approval: null, credential: undefined }, async () => single);
   const first = await prisma.projectEvent.findFirstOrThrow({ where: { projectId: "p", subtype: "import.run" }, orderBy: { occurredAt: "desc" } });
   expect(first.payload).toMatchObject({ changedValues: 2 });
+  if (first.result !== "imported") throw new Error(`unexpected result: ${first.result}`);
   const firstPayload = readPayload("IMPORT", first.payload);
   if (firstPayload?.kind !== "IMPORT") throw new Error("missing import payload");
   expect(changedValuesText(first.result, firstPayload.changedValues)).toBe("2 values changed");
@@ -181,6 +182,7 @@ it("단일 언어 Sync 후 둘째 언어를 더하면 새 셀만 Logs의 변경 
   await runRepositoryImportFromReader(prisma, { projectId: "p", userId: "owner", repository, approval: null, credential: undefined }, async () => next);
   const second = await prisma.projectEvent.findFirstOrThrow({ where: { projectId: "p", subtype: "import.run", id: { not: first.id } } });
   expect(second.payload).toMatchObject({ changedValues: 2 });
+  if (second.result !== "imported") throw new Error(`unexpected result: ${second.result}`);
   const secondPayload = readPayload("IMPORT", second.payload);
   if (secondPayload?.kind !== "IMPORT") throw new Error("missing import payload");
   expect(changedValuesText(second.result, secondPayload.changedValues)).toBe("2 values changed");

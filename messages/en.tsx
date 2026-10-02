@@ -2083,8 +2083,8 @@ export const en = {
          * 준다)을 말해야 한다 (핸드오프 3a).
          */
         emptyDescription: (repo: string, branch: string): string =>
-          // ⚠️ **조건을 말한다** (malmoi#99) — 로케일 1개 리포에 "didn't find any"는 거짓이었다(파일은 있다).
-          `Malmoi didn't find translation files in 2 or more languages on ${repo} · ${branch}. Set the path and it will check.`,
+          // 탐지 실패가 파일 부재를 뜻하지는 않는다 — 수동 경로로 다시 검증한다.
+          `Malmoi didn't find supported translation files on ${repo} · ${branch}. Set the path and it will check.`,
       },
       naming: {
         title: "Project details",
@@ -3697,9 +3697,7 @@ export const en = {
     onboarding: {
       "no-installations": "Your GitHub account is connected. Install the Malmoi GitHub App on your personal account or organization to choose repositories.",
       "no-repos": "Your GitHub account is connected, but no repositories are available. Choose repositories the Malmoi GitHub App can access in GitHub installation settings.",
-      // 이유를 말한다 — 수동 지정으로 가는 근거다 (로케일이 하나뿐인 리포는 붙일 수 없다).
-      // ⚠️ **다음 행동까지 말한다** (launch-readiness L2.7) — 로케일 하나인 리포 주인이 할 수 있는 일은 둘째 파일뿐이다.
-      "no-candidates": "We couldn't find translation files. Malmoi needs translation files in 2 or more languages — if this repository has only one, add a file for a second language and try again.",
+      "no-candidates": "We couldn't find supported translation files. Check the file format and path, then try again.",
       // 수동 지정을 권하지 않는다 — 확정의 재검증이 같은 스냅샷을 읽어 같은 갈래를 다시 낸다.
       // ⚠️ **막다른 길임을 끝에 말한다** (L2.7) — 안 말하면 사용자가 같은 리포로 다시 시도한다.
       "tree-truncated": "This repository has too many files to search, and setting the path yourself hits the same limit. Malmoi can't connect repositories this large yet.",
@@ -3709,8 +3707,6 @@ export const en = {
       "manual-no-match": "No files of that format at that path. Check the path and the format.",
       // ⚠️ **경로를 의심하게 하지 않는다** — 입력은 멀쩡하고 확인값이 낡았다. 할 일은 재탐지 하나다.
       "sample-expired": "This preview has expired. Detect the files again to see it.",
-      // ⚠️ **파일이 없다고 말하지 않는다** (malmoi#99) — 파일은 있고 언어가 하나다. 할 일은 경로가 아니라 둘째 파일이다.
-      "single-locale": "Only one language was found at that path. Malmoi needs translation files in 2 or more languages — add a file for a second language and try again.",
       "slug-taken": "That address is taken. Pick another one.",
       "limit-reached": (limit: number): string => `You can create up to ${limit} projects.`,
       "invalid-slug": (max: number): string =>

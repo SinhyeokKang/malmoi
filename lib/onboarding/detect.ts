@@ -154,7 +154,7 @@ export function summarizeCandidates(
 ): Omit<CandidateSummary, "outputPaths">[] {
   const out: Omit<CandidateSummary, "outputPaths">[] = [];
   for (const c of candidates) {
-    // 탐지는 로케일 2개 이상만 후보로 내므로 여기 걸리는 것은 없다 — 타입을 닫기 위한 분기다.
+    // 탐지는 로케일 1개 이상만 후보로 내므로 여기 걸리는 것은 없다 — 타입을 닫기 위한 분기다.
     const baseLocale = pickBaseLocale(c.locales);
     if (baseLocale === undefined) continue;
     const adapter = adapterFor(c);

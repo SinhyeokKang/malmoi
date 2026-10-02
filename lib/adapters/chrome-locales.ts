@@ -94,11 +94,10 @@ function detectCandidates(paths: readonly string[], probe?: FileProbe): Detected
     set.add(locale);
     byRoot.set(root, set);
   }
-  // 로케일이 2개 이상인 root만 인정한다 — 하나뿐이면 우연일 수 있다.
   const candidates = rankCandidates(
     [...byRoot.entries()]
       // 강한 로케일 코드가 하나도 없으면 로케일 모음이 아니다 — `shared.hasStrongLocale`.
-      .filter(([, s]) => s.size >= 2 && hasStrongLocale(s))
+      .filter(([, s]) => hasStrongLocale(s))
       .map(([dir, locales]) => ({ dir, locales })),
   );
 
