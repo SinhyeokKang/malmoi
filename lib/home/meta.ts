@@ -1,10 +1,9 @@
 import { readPayload, type ActorKind, type EventKind } from "@/lib/events/payload";
-import type { ConnectionHealth } from "@/lib/github-connect/health";
 import { triggerOf, type Trigger } from "@/lib/events/view";
 import type { ImportFailureCode } from "@/lib/projects/import-status";
 import type { HoldReason } from "@/lib/protection/plan";
 
-import { connectionProblem, connectionState, failureState, type ConnectionProblem, type HomeState } from "./state";
+import { failureState, type ConnectionProblem, type HomeState, type RepositoryConnectionState } from "./state";
 import type { SyncTime } from "./sync-time";
 
 /**
@@ -200,30 +199,21 @@ export type HomePublishRun = {
   surfaceSlugs: readonly string[];
 };
 
-/** Connection 배지의 상태 키 — 설정 카드·Home 배너와 같은 `STATE` 행이다. */
-export type MetaConnection = "connected" | "notConnected" | "disconnected" | "wrongRepository" | "couldNotCheck";
-
-/**
- * 연결 상태 → Connection 배지. ⚠️ **모름(`unknown`)을 끊김으로 접지 않는다** — `planHomeState`가 조회 실패를 미연결로 접지 않는 것과
- * 같은 축이다. `repo-moved`는 Sync·Publish가 도는 연결이라 `connected`다(`connectionProblem`이 `null`).
- */
-export function metaConnection(status: ConnectionHealth["status"]): MetaConnection {
-  if (status === "unknown") return "couldNotCheck";
-  const problem = connectionProblem(status);
-  return problem === null ? "connected" : connectionState(problem);
-}
-
 /**
  * Sync 탭 입력의 세 갈래. ⚠️ **`"unrecorded"`는 첫 Sync 전(`null`)과 다른 사실이다** — 사건 기록(2026-09-20) 이전에 적재되고 그 뒤
  * 시각을 전진시킨 실행이 없다. `notSyncedYet`으로 접으면 거짓이다. `lastSyncTime`의 `"unrecorded"`(`lastCommitAt` 기준)와 이름만 같다.
  */
-export function homeLastSync(run: HomeSyncRun | null, surfaces: readonly { lastImportedAt: Date | null }[]): HomeSyncRun | "unrecorded" | null {
+export function homeLastSync(
+  run: HomeSyncRun | null,
+  surfaces: readonly { lastImportedAt: Date | null; archivedAt: Date | null }[],
+): HomeSyncRun | "unrecorded" | null {
   if (run !== null) return run;
-  return surfaces.some((surface) => surface.lastImportedAt !== null) ? "unrecorded" : null;
+  // 보관한 소스의 옛 적재는 지금 프로젝트의 사실이 아니다 — 비보관 거르기를 호출부에 맡기지 않는다.
+  return surfaces.some((surface) => surface.archivedAt === null && surface.lastImportedAt !== null) ? "unrecorded" : null;
 }
 
 export type MetaTabsInput = {
-  repository: { owner: string; name: string; branch: string; connection: MetaConnection };
+  repository: { owner: string; name: string; branch: string; connection: RepositoryConnectionState };
   /** `pushTokenHash !== null` — ⚠️ **해시는 입력에 없다**. 서버가 select 직후 boolean으로 접는다(RSC 페이로드에 싣지 않는다). */
   ciConfigured: boolean;
   /** 비보관 소스 수 — Project `Sources` 행 · Sync/Publish `Sources` 행의 "둘 이상" 판정. */
@@ -249,7 +239,7 @@ export type MetaTabsInput = {
  */
 export type ProjectTabRow =
   | { kind: "repository"; owner: string; name: string; href: string; linked: boolean }
-  | { kind: "connection"; state: MetaConnection }
+  | { kind: "connection"; state: RepositoryConnectionState }
   | { kind: "branch"; branch: string }
   | { kind: "ci"; configured: boolean }
   | { kind: "sources"; count: number }

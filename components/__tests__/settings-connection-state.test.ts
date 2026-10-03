@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { repositoryConnectionState } from "@/components/settings/connection-state";
 import type { ConnectionHealth } from "@/lib/github-connect/health";
-import { connectionProblem } from "@/lib/home/state";
+import { connectionProblem, repositoryConnectionState } from "@/lib/home/state";
 import { STATE } from "@/lib/status/canon";
 
 /**
  * **Settings 연결 행의 상태 키** (ux-drift-unify 1-Y15 · DESIGN §2.4 연결 행). 배지와 아이콘 칸이 같은 키에서 톤을 읽는다 —
  * 전엔 배지만 상태 톤이고 칸은 회색이었다. `lib/status/__tests__/cross-screen.test.ts`가 이 함수를 그대로 지난다(사본이 없다).
+ * ⚠️ **Home 메타 열 Connection 배지도 이 함수다**(project-card-tabs fix1 — 사본이 새 상태를 `connected`로 떨궜다). 그래서 `lib/`에 산다.
  */
 describe("repositoryConnectionState", () => {
   it.each([

@@ -10,14 +10,13 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { AccountView } from "@/lib/github-connect/account-view";
 import type { ConnectionHealth } from "@/lib/github-connect/health";
-import { connectionProblem } from "@/lib/home/state";
+import { connectionProblem, repositoryConnectionState } from "@/lib/home/state";
 import { installationSettingsUrl } from "@/lib/github-connect/installation-url";
 import { m } from "@/lib/i18n";
 import { RepositoryForm } from "./repository-form";
 import { IconTile } from "@/components/ui/icon-tile";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { STATE } from "@/lib/status/canon";
-import { repositoryConnectionState } from "./connection-state";
 
 /**
  * ⚠️ **`health`·`account`가 promise다** (audit-ux #8). 둘 다 GitHub 왕복이라 페이지가 await하면 이 화면 전체가

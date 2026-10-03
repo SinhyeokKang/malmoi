@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  homeLastSync, metaConnection, metaTabs,
+  homeLastSync, metaTabs,
   type HomePublishRun, type HomeSyncRun, type MetaTabs, type MetaTabsInput,
 } from "../meta";
 
@@ -253,28 +253,13 @@ describe("metaTabs — Publish 탭은 마지막 성공 Publish 하나의 사실�
   });
 });
 
-describe("metaConnection — 연결 상태 → Connection 배지 키", () => {
-  it.each([
-    ["ok", "connected"],
-    ["repo-moved", "connected"],
-    ["unknown", "couldNotCheck"],
-    ["not-connected", "notConnected"],
-    ["unpinned", "disconnected"],
-    ["app-uninstalled", "disconnected"],
-    ["installation-changed", "disconnected"],
-    ["repo-replaced", "wrongRepository"],
-  ] as const)("%s → %s", (status, state) => {
-    expect(metaConnection(status)).toBe(state);
-  });
-});
-
 /**
  * Sync 탭 입력의 세 갈래 — 사건이 있으면 그 실행, 없으면 "적재된 적이 있나"가 첫 Sync 전과 기록 없음을 가른다.
  * ⚠️ `lastSyncTime`의 `"unrecorded"`(`lastImportedAt` 없음 + `lastCommitAt` 있음)와 **이름만 같은 별개 판정이다**.
  */
 describe("homeLastSync", () => {
-  const loaded = [{ lastImportedAt: at("2026-09-01T00:00:00Z") }, { lastImportedAt: null }];
-  const never = [{ lastImportedAt: null }];
+  const loaded = [{ lastImportedAt: at("2026-09-01T00:00:00Z"), archivedAt: null }, { lastImportedAt: null, archivedAt: null }];
+  const never = [{ lastImportedAt: null, archivedAt: null }];
 
   it("실행이 있으면 그 실행이다 — 소스의 시각을 보지 않는다", () => {
     expect(homeLastSync(syncRun, loaded)).toBe(syncRun);
@@ -283,6 +268,11 @@ describe("homeLastSync", () => {
 
   it("실행이 없는데 어느 소스든 적재됐으면 unrecorded", () => {
     expect(homeLastSync(null, loaded)).toBe("unrecorded");
+  });
+
+  /** 보관한 소스의 옛 적재는 지금 프로젝트의 사실이 아니다 — 비보관 거르기를 호출부에 맡기지 않고 여기서 한다(판정을 한 곳에). */
+  it("보관 소스만 적재됐으면 첫 Sync 전(null)", () => {
+    expect(homeLastSync(null, [{ lastImportedAt: at("2026-09-01T00:00:00Z"), archivedAt: at("2026-09-02T00:00:00Z") }, ...never])).toBeNull();
   });
 
   it("실행도 적재도 없으면 첫 Sync 전(null)", () => {

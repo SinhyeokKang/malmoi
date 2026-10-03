@@ -151,7 +151,7 @@ it("SQL 술어가 advancedSyncTime과 같은 행을 고른다", async () => {
 /** 사건 기록(2026-09-20) 이전에 적재된 프로젝트 — 사건이 없는데 `notSyncedYet`으로 접으면 거짓이다. */
 it("사건 없음 + 적재됨 = unrecorded · 둘 다 없으면 첫 Sync 전", async () => {
   await prisma.translationSurface.create({ data: { id: "s1", projectId: "p", slug: "web" } });
-  const surfaces = () => prisma.translationSurface.findMany({ where: { projectId: "p", archivedAt: null }, select: { lastImportedAt: true } });
+  const surfaces = () => prisma.translationSurface.findMany({ where: { projectId: "p" }, select: { lastImportedAt: true, archivedAt: true } });
   const runs = await loadHomeRuns(prisma, "p");
   expect(runs.sync).toBeNull();
   expect(homeLastSync(runs.sync, await surfaces())).toBeNull();
