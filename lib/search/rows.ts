@@ -127,9 +127,10 @@ export function searchStatuses({ membership, docs, keys }: {
   // 세션 종료는 무엇이 알아챘든 한 번만 말한다 — 같은 문장 두 줄은 줄 key도 겹친다.
   if (membership === "unauthorized" || keys === "unauthorized") lines.push({ tone: "danger", text: m.search.sessionEnded });
   if (membership === "unavailable") lines.push({ tone: "danger", text: m.search.projectsUnavailable });
-  if (docs === "loading") lines.push({ tone: "muted", text: m.search.loadingDocs });
-  if (docs === "failed") lines.push({ tone: "danger", text: m.search.docsUnavailable });
+  // 줄 순서는 그룹 순서(Projects → Pages → Keys → Docs)다 — 실패 줄이 아래 결과 그룹과 같은 차례로 읽힌다(#175).
   if (keys === "loading") lines.push({ tone: "muted", text: m.search.loadingKeys });
   if (keys === "unavailable") lines.push({ tone: "danger", text: m.search.keysUnavailable });
+  if (docs === "loading") lines.push({ tone: "muted", text: m.search.loadingDocs });
+  if (docs === "failed") lines.push({ tone: "danger", text: m.search.docsUnavailable });
   return { pending: lines.some(line => line.tone === "muted"), lines, failed: lines.some(line => line.tone === "danger") };
 }

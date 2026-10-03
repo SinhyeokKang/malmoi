@@ -205,8 +205,14 @@ describe("searchStatuses", () => {
     const result = searchStatuses({ membership: "loading", docs: "loading", keys: "loading" });
     expect(result).toEqual({
       pending: true, failed: false,
-      lines: [{ tone: "muted", text: m.projects.loading }, { tone: "muted", text: m.search.loadingDocs }, { tone: "muted", text: m.search.loadingKeys }],
+      lines: [{ tone: "muted", text: m.projects.loading }, { tone: "muted", text: m.search.loadingKeys }, { tone: "muted", text: m.search.loadingDocs }],
     });
+  });
+
+  it("줄 순서는 그룹 순서(Projects → Pages → Keys → Docs)를 따른다 — Keys 줄이 Docs 줄보다 앞이다(#175)", () => {
+    expect(searchStatuses({ ...ready, docs: "failed", keys: "unavailable" }).lines).toEqual([
+      { tone: "danger", text: m.search.keysUnavailable }, { tone: "danger", text: m.search.docsUnavailable },
+    ]);
   });
 
   it("멤버십 unauthorized ↔ unavailable는 다른 문장이고 실패다", () => {
