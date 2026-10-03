@@ -29,11 +29,13 @@ export function Command({ ids, query, children }: { ids: readonly string[]; quer
   const prefix = useId();
   const root = useRef<HTMLDivElement>(null);
   const ime = useImeGuard();
-  const [selection, setSelection] = useState({ ids, query, activeId: ids[0] ?? null });
+  // `moved` — 사용자가 ↑↓·hover로 활성을 옮겼나. 옮기기 전엔 목록이 바뀔 때마다 첫 행을 따라간다(`reconcileActive`).
+  const [selection, setSelection] = useState({ ids, query, activeId: ids[0] ?? null, moved: false });
   const changed = query !== selection.query || ids.length !== selection.ids.length || ids.some((id, index) => id !== selection.ids[index]);
-  const activeId = changed ? reconcileActive(selection.ids, ids, selection.activeId, query !== selection.query) : selection.activeId;
+  const reconciled = changed ? reconcileActive(ids, selection, query !== selection.query) : selection;
+  const activeId = reconciled.activeId;
   // 렌더에서 함께 갱신해 제거된 option의 ID가 aria-activedescendant에 한 프레임 남지 않는다.
-  if (changed) setSelection({ ids, query, activeId });
+  if (changed) setSelection({ ...reconciled, ids, query });
   const optionId = useCallback((id: string) => `${prefix}-option-${id}`, [prefix]);
   const [announcement, setAnnouncement] = useState("");
   useEffect(() => {
@@ -41,7 +43,7 @@ export function Command({ ids, query, children }: { ids: readonly string[]; quer
     return () => clearTimeout(timer);
   }, [ids.length, query]);
 
-  return <CommandContext value={{ listId: `${prefix}-list`, optionId, activeId, activate: id => setSelection(current => ({ ...current, activeId: id })) }}>
+  return <CommandContext value={{ listId: `${prefix}-list`, optionId, activeId, activate: id => setSelection(current => ({ ...current, activeId: id, moved: true })) }}>
     <div ref={root} className="flex min-h-0 flex-1 flex-col"
       onCompositionStart={ime.onCompositionStart}
       onCompositionEnd={ime.onCompositionEnd}
@@ -51,7 +53,7 @@ export function Command({ ids, query, children }: { ids: readonly string[]; quer
         if (ime.blocks(event.nativeEvent)) return;
         if (event.key === "ArrowDown" || event.key === "ArrowUp") {
           event.preventDefault();
-          setSelection(current => ({ ...current, activeId: nextActive(ids, activeId, event.key === "ArrowDown" ? 1 : -1) }));
+          setSelection(current => ({ ...current, activeId: nextActive(ids, activeId, event.key === "ArrowDown" ? 1 : -1), moved: true }));
         } else if (event.key === "Enter" && activeId !== null) {
           event.preventDefault();
           const option = document.getElementById(optionId(activeId));

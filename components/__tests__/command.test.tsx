@@ -283,6 +283,29 @@ it("활성 항목 변경을 scrollIntoView nearest로 보낸다", async () => {
   delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView;
 });
 
+/**
+ * **사용자가 옮기기 전엔 활성이 첫 행을 따라간다** (2026-10-03 사용자 — QA: 첫 열림에 늦게 온 Docs·Keys 때문에 활성이 `Go to docs`나
+ * 아래 Docs 행에 머물러 Enter의 목적지가 응답 순서에 달렸다). ↑↓·hover로 옮긴 뒤에만 늦은 그룹 도착에도 그 id를 지킨다.
+ */
+it("옮기기 전엔 늦게 온 그룹이 위에 끼어도 활성이 첫 행이고, hover로 옮기면 그 id를 지킨다", async () => {
+  const view = await render(<Fixture ids={["docs/go"]} />);
+  expect(active(view.container).textContent).toContain("docs/go");
+  await view.rerender(<Fixture ids={["docs/a", "docs/b", "docs/go"]} />);
+  expect(active(view.container).textContent).toContain("docs/a");
+  await view.rerender(<Fixture ids={["key/1", "docs/a", "docs/b", "docs/go"]} />);
+  expect(active(view.container).textContent).toContain("key/1");
+  const options = view.container.querySelectorAll<HTMLElement>('[role="option"]');
+  await act(async () => { await userEvent.setup().hover(options[2]!); });
+  expect(active(view.container).textContent).toContain("docs/b");
+  await view.rerender(<Fixture ids={["project/x", "key/1", "docs/a", "docs/b", "docs/go"]} />);
+  expect(active(view.container).textContent).toContain("docs/b");
+  // 질의가 바뀌면 다시 "옮기지 않음" — 첫 행이고, 이어서 늦게 온 그룹도 첫 행을 따른다.
+  await view.rerender(<Fixture ids={["docs/b", "docs/go"]} query="b" />);
+  expect(active(view.container).textContent).toContain("docs/b");
+  await view.rerender(<Fixture ids={["key/b", "docs/b", "docs/go"]} query="b" />);
+  expect(active(view.container).textContent).toContain("key/b");
+});
+
 it("그룹이 앞에 도착해도 활성 ID를 유지하고 제거·질의 변경은 첫 ID로 돌아간다", async () => {
   const view = await render(<Fixture />);
   await key(find(view.container, "input"), "ArrowDown");

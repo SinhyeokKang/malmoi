@@ -20,10 +20,18 @@ describe("검색 단축키와 활성 id", () => {
     expect(nextActive(["a", "b"], null, 1)).toBe("a");
     expect(nextActive(["a", "b"], null, -1)).toBe("b");
   });
-  it("질의 변경은 첫 id·늦은 그룹 삽입은 id 보존·사라지면 첫 id", () => {
-    expect(reconcileActive(["doc"], ["key", "doc"], "doc", false)).toBe("doc");
-    expect(reconcileActive(["doc"], ["key", "doc"], "doc", true)).toBe("key");
-    expect(reconcileActive(["doc"], ["key"], "doc", false)).toBe("key");
-    expect(reconcileActive(["doc"], [], "doc", false)).toBeNull();
+  // 첫 열림·질의 직후엔 활성이 첫 행을 따라간다 — 늦게 온 그룹이 위에 끼면 Enter의 목적지가 응답 순서에 달린다(2026-10-03 사용자).
+  // 사용자가 ↑↓·hover로 옮긴 뒤에만 그 id를 지킨다. 질의가 바뀌거나 그 id가 사라지면 다시 "옮기지 않음"이다.
+  it("옮기지 않았으면 늦은 그룹이 와도 첫 행을 따라간다", () => {
+    expect(reconcileActive(["key", "doc"], { activeId: "doc", moved: false }, false)).toEqual({ activeId: "key", moved: false });
+    expect(reconcileActive(["d1", "d2", "go-to-docs"], { activeId: "go-to-docs", moved: false }, false)).toEqual({ activeId: "d1", moved: false });
+  });
+  it("옮긴 뒤엔 늦은 그룹 삽입에도 id를 지킨다", () => {
+    expect(reconcileActive(["key", "doc"], { activeId: "doc", moved: true }, false)).toEqual({ activeId: "doc", moved: true });
+  });
+  it("질의 변경·id 소실은 첫 행이고 옮김을 잊는다", () => {
+    expect(reconcileActive(["key", "doc"], { activeId: "doc", moved: true }, true)).toEqual({ activeId: "key", moved: false });
+    expect(reconcileActive(["key"], { activeId: "doc", moved: true }, false)).toEqual({ activeId: "key", moved: false });
+    expect(reconcileActive([], { activeId: "doc", moved: true }, false)).toEqual({ activeId: null, moved: false });
   });
 });

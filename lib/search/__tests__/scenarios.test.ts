@@ -79,7 +79,9 @@ describe("검색 결과 시나리오", () => {
     expect(marks(row?.description)).toEqual(["settings demo"]);
     const pageId = before.ids[0]!;
     expect(pageId).toBe("page:demo:settings");
-    expect(reconcileActive(before.ids, after.ids, pageId, false)).toBe(pageId);
+    // 사용자가 옮겨 둔 행은 늦게 온 Keys에도 그대로다 — 옮기기 전이면 첫 행을 따른다(여기선 첫 행도 같은 Pages 행이다).
+    expect(reconcileActive(after.ids, { activeId: pageId, moved: true }, false)).toEqual({ activeId: pageId, moved: true });
+    expect(reconcileActive(after.ids, { activeId: pageId, moved: false }, false)).toEqual({ activeId: after.ids[0], moved: false });
     expect(row?.href).toBe(keyResultHref(hit));
     const url = new URL(row?.href ?? "", "https://example.com");
     expect(parseTranslationQuery(Object.fromEntries(url.searchParams))).toEqual({ ns: "billing", scope: "project", completion: "all", key: "a", keySurface: "main" });
