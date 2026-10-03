@@ -20,15 +20,15 @@ Search looks through every source in the project. While you search, **All source
 
 ## Find text across your projects {#global-search}
 
-If you don't know which project contains a piece of text, use the search in the middle of the header. Signed in, you can search your projects, their pages, their text, and the docs from any page, including the docs. Without signing in, search finds the docs only.
+If you don't know which project contains a piece of text, use the search in the middle of the header. Signed in, you can search your projects, Malmoi's pages, your projects' text, and the docs from any page, including the docs. Without signing in, search finds the docs only.
 
-1. Choose **Search…**, or press Cmd+K on macOS or Ctrl+K on other platforms. The shortcut does nothing while a text field has focus or another dialog is open; use the header button instead.
+1. Choose **Search…**, or press Cmd+K on macOS or Ctrl+K on other platforms. The shortcut does nothing while a dialog or menu is open. In a text field, choose **Search…** instead.
 2. Type at least two characters to search key names, source text, and saved translations across projects you belong to. The **Keys** group shows the key name, project and source, and the matching text; a matching translation also shows its language code.
 3. Select a result, or use the arrow keys and press Enter. The search closes and opens Translations with that key selected and visible. You can edit and save it as described below.
 
 Key results exclude archived projects and sources, sources that haven't finished their first sync, and text or languages removed from the repository. Key search matches the whole phrase you type without regard to case and uses its first 200 characters. **Projects**, **Pages**, and **Docs** match every word you type, in any order. Each group shows up to five results; narrow your text if the one you need isn't there.
 
-If part of the search fails, a red line under the search box says which part and how to try again, and the other groups stay usable. If your session ended, sign in again to search your projects; the docs remain searchable.
+If part of the search fails, a line under the search box says which part failed and how to try again, and the other groups stay usable. If your session ended, sign in again to search your projects; the docs remain searchable.
 
 With an empty search, you see previews of **Projects**, **Pages**, and **Docs**. **Pages** takes you to screens in Malmoi, such as a project's Translations. **Projects** includes archived projects, while key results do not. Choose **Go to your projects** to see all of your projects, or **Go to docs** to open the docs. **Docs** searches guide titles and text and opens the matching section. Escape closes the search. Malmoi doesn't keep your search text in history or browser storage.
 
