@@ -77,7 +77,7 @@
 
 - `OPERATOR_EMAILS` — `optionalEnv`. 형식 `"me@example.com,other@example.com"`. `.env.example`에 주석과 함께 추가(실제 주소는 넣지 않는다).
 - 값의 출처: 운영자가 로그인한 계정의 이메일 주소(GitHub·Google 어느 쪽으로 들어와도 같은 `User`다). ⚠️ **개인정보다** — Vercel에 Sensitive로 넣는다. **도메인 단위 지정은 하지 않는다**(spec 비목표).
-- Vercel: Production·Preview **환경별 변수**로 넣는다(CLAUDE.md — 한 변수로 묶으면 `vercel env rm … preview`가 Production까지 지운다). ⚠️ env는 **다음 배포부터** 적용된다 — Preview는 `/push` 전, Production은 `/merge` 전에 넣는다(나중이면 재배포). ⚠️ `vercel env add`의 성공 메시지를 근거로 삼지 않는다(OPERATIONS 확인 절차).
+- Vercel: **구현 에이전트가 CLI로 직접** Production·Preview에 **환경별 변수**로 넣는다(사용자 2026-10-03 — 절차는 tasks T7; CLAUDE.md — 한 변수로 묶으면 `vercel env rm … preview`가 Production까지 지운다). ⚠️ env는 **다음 배포부터** 적용된다 — Preview는 `/push` 전, Production은 `/merge` 전에 넣는다(나중이면 재배포). ⚠️ `vercel env add`의 성공 메시지를 근거로 삼지 않는다(OPERATIONS 확인 절차).
 
 ## 스키마 변경
 

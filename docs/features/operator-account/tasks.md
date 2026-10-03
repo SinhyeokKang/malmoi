@@ -55,4 +55,10 @@
   - 비운영자 계정(또는 값을 뺀 상태)으로 보관 → 생성 → 복원이 거부되고 문구가 뜬다.
   - **정리**: 확인용으로 만든 프로젝트를 상주로 남길지(이름·용도) 보관할지 정하고, dev 상주 상태 기록(`guide/SHOOTING.md` 진행 상태 · 메모리)을 갱신한다.
   - 검증: 수동(`/runtime-test`).
-- **T7.** Vercel Preview·Production에 `OPERATOR_EMAILS`를 **환경별 Sensitive 변수**로 사람이 넣는다(OPERATIONS 절차 — env는 다음 배포부터 적용되므로 Preview는 `/push` 전, Production은 `/merge` 전). `pnpm gate` green → `/push`. 마이그레이션은 없다.
+- **T7. Vercel 환경변수 — 구현 에이전트가 CLI로 직접 넣는다** (사용자 2026-10-03)
+  - Production·Preview에 **환경별로 한 번씩**(한 변수로 묶지 않는다 — CLAUDE.md). 값은 `.env.local`의 것을 **출력하지 않고 stdin으로** 넘긴다(`--value`는 `ps`에 노출된다, OPERATIONS):
+    `grep '^OPERATOR_EMAILS=' .env.local | cut -d= -f2- | sed 's/^"//; s/"$//' | vercel env add OPERATOR_EMAILS production --sensitive` — `preview`도 같은 꼴(브랜치 지정 없이 Preview 전체).
+  - ⚠️ 값·명령 출력을 화면에 찍지 않는다(`cat`·`echo` 금지). `.env.local`은 읽기만 하고 편집하지 않는다.
+  - 순서: env는 **다음 배포부터** 적용된다 — Preview는 `/push` 전, Production은 `/merge` 전에 넣는다.
+  - 검증: **성공 메시지가 근거가 아니다**(OPERATIONS) — `vercel env ls production`·`vercel env ls preview`에 `OPERATOR_EMAILS`가 각각 한 행씩 있고 시각 열이 방금이다. 이미 있으면 `vercel env rm OPERATOR_EMAILS <env> --yes` 후 다시 넣는다(`--force`를 믿지 않는다). 동작 확인은 배포 뒤 `dev.mal-moi.com`에서 T6과 같은 한 문장(spec C14).
+- **T8.** `pnpm gate` green → `/push`. 마이그레이션은 없다.
