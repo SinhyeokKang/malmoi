@@ -74,13 +74,18 @@ Crowdin·Tolgee의 대체품으로 설명하면 번역 메모리·기계 번역�
 | 기준 로케일 **변경** | O | X |
 | 멤버 관리·프로젝트 **보관** | O | X |
 | **보관된 프로젝트의 이력 읽기** | O | O |
+| Home 메타 열 열람 — 리포 · Connection · CI 설정 여부 · 멤버 수 · 마지막 Sync/Publish | O | O |
 
 ⚠️ **프로젝트를 만들고 리포를 재연결·표면을 추가·push 토큰을 재발급하려면 그 리포에 GitHub 쓰기(push) 권한이
 있어야 한다** (2026-09-27, sec-audit-3 발견 1a · 결정 I — ARCHITECTURE §6.4). push 토큰이 리포에 커밋되는 내용을
 정하므로, 읽기만 할 수 있는 사람은 OWNER여도 `repo-read-only`로 거부된다. **리포 재적재(Sync)와 연결된 프로젝트의 base branch
 목록·저장은 예외다**(malmoi#123) — 리포를 읽기만 하는 경로라 OWNER면 읽기 권한으로 된다.
 
-⚠️ **마지막 칸이 보관의 예외다** (2026-09-20, logs-rework). 보관은 `project:settings`를 뺀 모든
+⚠️ **Home 메타 열은 역할과 무관하게 같은 행이다** (2026-10-04, project-card-tabs — 사용자 허용). EDITOR에게 새로 보이는 사실은
+CI 설정 여부(`Configured`/`Not set up` — push 토큰의 유무만이고 해시는 화면·RSC 페이로드에 싣지 않는다)와 Connection 상태다.
+역할이 바꾸는 것은 Project 탭 바닥 `Settings ›` 하나다(편의이고 차단은 `/settings`의 인가가 든다).
+
+⚠️ **보관 행이 보관의 예외다** (2026-09-20, logs-rework). 보관은 `project:settings`를 뺀 모든
 permission을 거부하는데, 그러면 **보관 사건과 그 직전 기록을 보려고 복원해야 하는 순환**이 생긴다.
 `/logs` 하나만 읽기로 통과시키고 **쓰기는 그대로 막는다** — 정책이 `planProjectAccess`의 인자이고
 기본이 거부라, 정책을 안 넘기는 Server Action은 새로 생겨도 막힌다. **읽기 허용은 쓰기 허용이
@@ -289,8 +294,9 @@ GitHub·Google 어느 쪽으로 들어와도 같은 사람을 가리키고, 프�
   그대로이고, 토큰은 "보내야 할 편집이 남았나" 한 축만 답한다. 남아 있는 동안 리포 갱신이 멈춘다(번역 화면 배너 · Home `To send` 카드).
   ⚠️ **토큰이 비워진 뒤에도 PR이 열린 동안은 리포 갱신이 멈춘다** (2026-09-30, nightly-sync — 열린 PR 게이트) — Publish가 커밋에
   성공하면 토큰이 비워지는데, 그 PR이 머지되기 전에 다른 코드 커밋의 적재가 오면 편집이 DB에서 덮이던 창이 있었다. PR이 열린 동안
-  CI·야간 적재가 통째로 보류되고, 푸는 사람은 PR 리뷰어다(머지하거나 닫는다). 셀을 고르지 않으므로 병합이 아니다. Home `Last sync`
-  행에 `held until the pull request is merged or closed`가 붙는다. **대가**: 편집이 이어지는 팀에서는 야간 Publish가 PR을 매일 갱신해
+  CI·야간 적재가 통째로 보류되고, 푸는 사람은 PR 리뷰어다(머지하거나 닫는다). 셀을 고르지 않으므로 병합이 아니다. Home 메타 열
+  Sync 탭에 `Hold` 행(`Held` 배지)이 서고, 사유 문장(`…until the pull request is merged or closed` · 조회 실패면 `couldn't check for an open pull request`)은
+  `To send` 카드 보조 줄이 든다(2026-10-04, project-card-tabs — 옛 `Last sync` 한 줄의 꼬리를 행으로 갈랐다). **대가**: 편집이 이어지는 팀에서는 야간 Publish가 PR을 매일 갱신해
   새 키·삭제가 며칠씩 안 들어올 수 있다. 번역 화면 배너는 이 보류를 말하지 않는다 — 배너는 미전달 편집의 신호다.
   실행 중 모달을 닫아도 실행은 계속되고, 진행은 [Publish]의 스피너(라벨 그대로)와 다시 연 진행 모달로, 완료 결과는 `View result`로
   **다시 연다**. ⚠️ **미전송을 단정하는 자리는 실행 전 명시적 거부 하나뿐이다** — 실행 중 오류와
@@ -801,7 +807,10 @@ Changelog · GitHub | Get started — 2026-09-28에 Home이 빠지고 GitHub가 
    - **지금 판정**: 원천은 **`ProjectEvent` 하나**다 (ARCHITECTURE §5.7). `logs`가 종류 여섯을 한
      스트림으로 보이고, **`Home`은 같은 조회의 최신 여섯**이다 — 같은 참조·같은 상세·같은 권한
      판정이고, 조합 쿼리와 7일 창은 소스에서 사라졌다. 옛 `SyncRun`은 지우지 않고 **참조로 잇는다**:
-     Publish의 결과·파일 수·PR은 계속 그 테이블이 정본이다.
+     Publish의 결과·파일 수·PR은 계속 그 테이블이 정본이다. **값 수도 그 테이블에 산다** (2026-10-04, project-card-tabs —
+     `SyncRun.changedValues`): Logs Publish **상세**의 `Values` 칸이 `N values changed`로 보이고(보조줄엔 넣지 않는다), Home 메타
+     Publish 탭의 `Changed`가 같은 수다. 리포 파일에서 실제로 바뀐 번역 엔트리(수정 + 추가)이고 **열린 PR을 갱신한 실행이면 PR 전체 vs base
+     누적**이다(파일 수와 같은 의미). 스킵은 `0`, 실패·기록 이전은 `—`(not recorded).
    - **대가**: 수집 시작 이전은 복원되지 않는다. 백필 대상은 보존된 Publish 실행뿐이고, 그 경계에
      화면이 선을 하나 긋는다(개시 시각을 모르면 **선을 아예 안 그린다** — 추정값을 만들지 않는다).
 4. **기준 로케일과 언어 진단은 Sources 상세가 소유한다** (2026-09-22 Sources, 프로덕션 배포 완료 #68).
