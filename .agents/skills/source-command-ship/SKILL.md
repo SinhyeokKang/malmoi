@@ -132,7 +132,7 @@ Use this skill when the user asks to run the migrated source command `ship`.
 1. 이 변경이 **런타임에서 확인해야 할 것**을 목록으로 쓴다(사용자가 화면·응답·로그에서 보게 될 결과).
 2. 항목마다 가른다:
    - **(a) 결정적으로 잴 수 있다** — 진입점(Route Handler · Server Action · `run*` 껍데기)을 부르고, 가짜 GitHub 클라이언트
-     (`lib/pull/__tests__/fake-client.ts` 부류)와 격리 PostgreSQL에서 돌린 뒤, **화면이 쓰는 뷰 모델 함수**(`metaRows`·`attentionItems`·
+     (`lib/pull/__tests__/fake-client.ts` 부류)와 격리 PostgreSQL에서 돌린 뒤, **화면이 쓰는 뷰 모델 함수**(`metaTabs`·`attentionItems`·
      `eventSentence` 등)의 출력으로 단언할 수 있다.
    - **(b) 런타임에서만 보인다** — 렌더링·레이아웃·상호작용(포커스·메뉴 조작)·실제 외부(GitHub 머지·OAuth·메일)·BugShot 제출.
 3. **(a)는 시나리오 테스트로 쓴다** — `test:projects:postgres` include 디렉터리의 `*.integration.ts`(새 디렉터리면 include와
