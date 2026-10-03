@@ -3622,7 +3622,7 @@ export const en = {
       "wrong-user": "Your session changed during this request. Start again from the Sign-in methods list.",
       failed: "The sign-in method couldn't be added. Try again in a moment.",
     },
-    /** `accessErrorMessage` — `AccessError` 여섯. */
+    /** `accessErrorMessage` — `AccessError`(`token-scope`는 `mcp.errors`에 있다). */
     access: {
       unauthorized: "Your session ended. Sign in again to save your work.",
       // 무엇이 모자란지까지는 말하지 않는다 — 역할 이름은 내부 어휘다.
@@ -3642,9 +3642,15 @@ export const en = {
       unavailable: "Something went wrong. Try again in a moment.",
       // 되돌릴 수 있다는 것과 **누가** 되돌리는지를 함께 말한다 — 그러지 않으면 사용자가 갇힌다.
       archived: "This project is archived. A project owner can restore it in Settings.",
+      /**
+       * 복원·OWNER 승격이 누군가의 활성 OWNER 프로젝트를 상한 위로 올린다(operator-account C6·C7). 행위자인지 다른 OWNER인지
+       * 가르지 않는다 — 누가 넘는지는 Members에서 보인다. 할 일(보관해 자리 비우기)을 함께 말한다. 숫자는 `PROJECT_LIMIT`이다.
+       */
+      "owner-limit-reached": (limit: number): string =>
+        `A person can own up to ${limit} active projects, and someone here already has ${limit}. They need to archive one first.`,
     },
 
-    /** `inviteErrorMessage` — `InviteError` 일곱 + 폴백(모르는 `?e=`에 던지지 않는다). */
+    /** `inviteErrorMessage` — `InviteError` 여덟 + 폴백(모르는 `?e=`에 던지지 않는다). */
     invite: {
       unauthorized: "You're signed out. Sign in and you'll come back to this link.",
       "not-found": "This invitation doesn't exist. The link is wrong, or the invitation was revoked.",
@@ -3658,6 +3664,9 @@ export const en = {
       "already-member": "You're already a member of this project.",
       // 초대는 소비되지 않는다 — 복원 뒤 만료 전이면 같은 링크가 산다. 그래서 "새 링크를 받아라"가 아니다.
       archived: "This project is archived. Ask the person who invited you to restore it, then open this link again.",
+      // OWNER 초대만 걸린다(operator-account C8). 초대는 소비되지 않았다 — 자리를 비우면 같은 링크가 산다. 숫자는 `PROJECT_LIMIT`이다.
+      "limit-reached": (limit: number): string =>
+        `You already own ${limit} active projects. Archive one of them, then open this link again.`,
       unavailable: "Something went wrong. Try again in a moment.",
       fallback: "We couldn't accept the invitation. Ask the person who invited you for a new link.",
     },

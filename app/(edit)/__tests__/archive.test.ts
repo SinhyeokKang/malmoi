@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createHarness, sessionFor, type Seed } from "./harness";
 
@@ -238,5 +238,69 @@ describe("보관은 PROJECT_LIMIT 슬롯을 비운다 (결정 10)", () => {
       where: { userId: "u-owner", role: "OWNER", project: { archivedAt: null } },
     });
     expect(live).toBe(1);
+  });
+});
+
+/**
+ * **복원도 상한을 다시 센다** (operator-account C6·C9·C11). 생성에만 상한이 걸려 있으면 "보관 → 생성 → 복원"으로 누구나 넷을
+ * 넘긴다. 복원은 그 프로젝트의 **OWNER 전원**을 센다 — 보관 중이라 지금 그들의 활성 수에 안 들어 있다. 운영자는 빠진다.
+ */
+describe("복원은 OWNER 전원의 상한을 다시 센다", () => {
+  /** `pB`(보관)의 OWNER에 `u-co`를 더하고, `heavy`에게 활성 OWNER를 `n`개 준다. */
+  function restoreCase(heavy: string, n: number) {
+    const extra = Array.from({ length: n }, (_, i) => `pX${i}`);
+    const db = seeded({
+      projects: [
+        { id: "pA", slug: "alpha" },
+        { id: "pB", slug: "beta", archivedAt: ARCHIVED_AT },
+        ...extra.map((id) => ({ id, slug: id })),
+      ],
+      members: [
+        { projectId: "pB", userId: "u-owner", role: "OWNER" },
+        { projectId: "pB", userId: "u-co", role: "OWNER" },
+        ...extra.map((projectId) => ({ projectId, userId: heavy, role: "OWNER" as const })),
+      ],
+      users: [
+        { id: "u-owner", email: "owner@a.com" },
+        { id: "u-co", email: "co@a.com" },
+      ],
+    });
+    hoisted.prisma = db.prisma;
+    return db;
+  }
+
+  afterEach(() => {
+    vi.stubEnv("OPERATOR_EMAILS", "");
+  });
+
+  it.each(["u-owner", "u-co"])("%s가 활성 OWNER 3이면 거부되고 보관·사건이 그대로다 — 행위자인지 다른 OWNER인지 가르지 않는다", async (heavy) => {
+    const db = restoreCase(heavy, 3);
+
+    expect(await unarchiveProject("beta")).toEqual({ ok: false, error: "owner-limit-reached" });
+    expect(db.projects.find((p) => p.id === "pB")?.archivedAt).toEqual(ARCHIVED_AT);
+    expect(db.projectEvents.filter((e) => e.projectId === "pB")).toEqual([]);
+  });
+
+  it("두 OWNER 모두 여유가 있으면 복원된다", async () => {
+    const db = restoreCase("u-co", 2);
+
+    expect(await unarchiveProject("beta")).toEqual({ ok: true });
+    expect(db.projects.find((p) => p.id === "pB")?.archivedAt).toBeNull();
+  });
+
+  it("상한인 OWNER가 운영자면 복원된다", async () => {
+    restoreCase("u-co", 3);
+    vi.stubEnv("OPERATOR_EMAILS", "co@a.com");
+
+    expect(await unarchiveProject("beta")).toEqual({ ok: true });
+  });
+
+  it("이미 넷인 사용자도 보관은 된다 — 늘리는 요청만 거부한다 (C9)", async () => {
+    const db = restoreCase("u-owner", 4);
+    const target = db.projects.find((p) => p.id === "pX0");
+    if (target === undefined) throw new Error("seed");
+
+    expect(await archiveProject("pX0")).toEqual({ ok: true });
+    expect(target.archivedAt).not.toBeNull();
   });
 });

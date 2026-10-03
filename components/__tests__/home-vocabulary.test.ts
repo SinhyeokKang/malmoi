@@ -207,6 +207,9 @@ const NOT_A_COUNT: Record<string, string> = {
   "members.invite.seatsUsed": "MEMBER_LIMIT = 10",
   // 거부를 받는 사람은 운영자가 아니므로 보간되는 상수 3이 참이다.
   "errors.onboarding.limit-reached": "PROJECT_LIMIT = 3",
+  // 복원·승격·OWNER 초대 수락의 상한 거부 — 같은 상수다(operator-account).
+  "errors.access.owner-limit-reached": "PROJECT_LIMIT = 3",
+  "errors.invite.limit-reached": "PROJECT_LIMIT = 3",
   // 수가 아니다 — 번호·단계·글자 상한.
   "projects.banner.prOpen": "PR 번호",
   "newProject.modal.step": "단계 번호 — `Step 3 of 4`",

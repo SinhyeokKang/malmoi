@@ -97,6 +97,8 @@ describe("toToolResult — needs-browser", () => {
 describe("toToolResult — refused(코어 거부 코드)", () => {
   it.each([
     ["forbidden", accessErrorMessage("forbidden")],
+    // 복원·승격의 상한 재집계(operator-account) — `unarchive_project`·`change_member`가 같은 코어라 같은 문장이다.
+    ["owner-limit-reached", accessErrorMessage("owner-limit-reached")],
     ["repo-not-installed", onboardErrorMessage("repo-not-installed")],
     ["limit-reached", onboardErrorMessage("limit-reached")],
     ["no-candidates", onboardErrorMessage("no-candidates")],

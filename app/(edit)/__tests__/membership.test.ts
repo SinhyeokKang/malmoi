@@ -42,16 +42,20 @@ const { acceptInvitation } = await import("../../invite/actions");
 const LATER = new Date("2126-01-01T00:00:00Z");
 const EARLIER = new Date("2020-01-01T00:00:00Z");
 
-function seeded() {
+/** `ownedBy` — 그 사용자에게 활성 OWNER 프로젝트 셋(`pO1`~`pO3`)을 더 준다. 상한 재집계(operator-account C7·C8)의 경계다. */
+function seeded(ownedBy?: string) {
+  const owned = ownedBy === undefined ? [] : ["pO1", "pO2", "pO3"];
   return createHarness({
     projects: [
       { id: "pA", slug: "alpha" },
       { id: "pB", slug: "beta" },
+      ...owned.map((id) => ({ id, slug: id })),
     ],
     members: [
       { projectId: "pA", userId: "u-owner", role: "OWNER", createdAt: new Date("2026-02-01T00:00:00Z") },
       { projectId: "pA", userId: "u-editor", role: "EDITOR", createdAt: new Date("2026-02-01T00:00:00Z") },
       { projectId: "pB", userId: "u-other", role: "OWNER" },
+      ...owned.map((projectId) => ({ projectId, userId: ownedBy ?? "", role: "OWNER" as const })),
     ],
     users: [
       { id: "u-owner", email: "owner@a.com" },
@@ -424,6 +428,99 @@ describe("changeMember — 마지막 OWNER 보호", () => {
     expect(db.spies.findManyMembers).toHaveBeenCalledWith(
       expect.objectContaining({ where: expect.objectContaining({ projectId: "pA" }) }),
     );
+  });
+});
+
+/**
+ * **OWNER 자리를 늘리는 쓰기도 상한을 다시 센다** (operator-account C7·C8). 생성에만 상한이 걸려 있으면 승격·OWNER 초대 수락으로
+ * 넷을 넘긴다. 판정은 생성과 같다(`lockOwnerSlots` — 활성 OWNER 셈 · `PROJECT_LIMIT` · 운영자 면제).
+ */
+describe("OWNER 승격·OWNER 초대 수락의 상한", () => {
+  function atLimit(userId: string) {
+    db = seeded(userId);
+    hoisted.prisma = db.prisma;
+  }
+  function ownerInvite(role: "OWNER" | "EDITOR" = "OWNER") {
+    db.invitations.push({
+      id: "inv-1", projectId: "pA", email: "guest@a.com", role,
+      tokenHash: hashInviteToken("tok"), expiresAt: LATER, acceptedAt: null, invitedBy: "u-owner",
+    });
+  }
+
+  afterEach(() => {
+    vi.stubEnv("OPERATOR_EMAILS", "");
+  });
+
+  it("대상자가 활성 OWNER 3이면 승격은 owner-limit-reached이고 역할·사건이 그대로다", async () => {
+    atLimit("u-editor");
+    const events = db.projectEvents.length;
+
+    expect(await changeMember({ slug: "alpha", targetUserId: "u-editor", nextRole: "OWNER" })).toEqual({
+      ok: false,
+      error: "owner-limit-reached",
+    });
+    expect(db.members.find((m) => m.projectId === "pA" && m.userId === "u-editor")?.role).toBe("EDITOR");
+    expect(db.projectEvents).toHaveLength(events);
+  });
+
+  it("User 잠금은 프로젝트 잠금 뒤다 — Project → User 순서라 생성 경로와 교착하지 않는다", async () => {
+    atLimit("u-editor");
+    await changeMember({ slug: "alpha", targetUserId: "u-editor", nextRole: "OWNER" });
+    const sql = db.spies.executeRaw.mock.calls.map((c) => (c[0] as TemplateStringsArray).join("?"));
+    const project = sql.findIndex((q) => /"Project"[\s\S]*FOR UPDATE/.test(q));
+    const user = sql.findIndex((q) => /"User"[\s\S]*FOR UPDATE/.test(q));
+    expect(project).toBeGreaterThanOrEqual(0);
+    expect(user).toBeGreaterThan(project);
+  });
+
+  it("대상자가 운영자면 승격된다", async () => {
+    atLimit("u-editor");
+    vi.stubEnv("OPERATOR_EMAILS", "editor@a.com");
+
+    expect(await changeMember({ slug: "alpha", targetUserId: "u-editor", nextRole: "OWNER" })).toEqual({ ok: true });
+    expect(db.members.find((m) => m.projectId === "pA" && m.userId === "u-editor")?.role).toBe("OWNER");
+  });
+
+  it("강등·제거는 세지 않는다 — 활성 OWNER가 줄어드는 쪽이다", async () => {
+    atLimit("u-owner");
+    db.members.push({ projectId: "pA", userId: "u-second", role: "OWNER", createdAt: new Date("2026-02-01T00:00:00Z") });
+
+    expect(await changeMember({ slug: "alpha", targetUserId: "u-owner", nextRole: "EDITOR" })).toEqual({ ok: true });
+    hoisted.session = sessionFor("u-second");
+    expect(await changeMember({ slug: "alpha", targetUserId: "u-owner", nextRole: null })).toEqual({ ok: true });
+  });
+
+  it("OWNER 초대 + 수락자 3이면 limit-reached이고 초대는 소비되지 않는다 — 보관해 자리를 비우면 같은 링크로 들어온다", async () => {
+    atLimit("u-guest");
+    ownerInvite();
+    hoisted.session = sessionFor("u-guest");
+
+    expect(await acceptInvitation({ token: "tok" })).toEqual({ ok: false, error: "limit-reached" });
+    expect(db.invitations[0]?.acceptedAt).toBeNull();
+    expect(db.members.some((m) => m.projectId === "pA" && m.userId === "u-guest")).toBe(false);
+
+    const slot = db.projects.find((p) => p.id === "pO1");
+    if (slot === undefined) throw new Error("seed");
+    slot.archivedAt = new Date("2026-10-01T00:00:00Z");
+    expect(await acceptInvitation({ token: "tok" })).toEqual({ ok: true, slug: "alpha" });
+  });
+
+  it("EDITOR 초대는 세지 않는다", async () => {
+    atLimit("u-guest");
+    ownerInvite("EDITOR");
+    hoisted.session = sessionFor("u-guest");
+
+    expect(await acceptInvitation({ token: "tok" })).toEqual({ ok: true, slug: "alpha" });
+  });
+
+  it("수락자가 운영자면 OWNER 초대도 수락된다", async () => {
+    atLimit("u-guest");
+    ownerInvite();
+    hoisted.session = sessionFor("u-guest");
+    vi.stubEnv("OPERATOR_EMAILS", "guest@a.com");
+
+    expect(await acceptInvitation({ token: "tok" })).toEqual({ ok: true, slug: "alpha" });
+    expect(db.members).toEqual(expect.arrayContaining([expect.objectContaining({ projectId: "pA", userId: "u-guest", role: "OWNER" })]));
   });
 });
 
