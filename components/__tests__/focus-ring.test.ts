@@ -158,7 +158,10 @@ const RADIX_FIXTURES = {
   "components/ui/field-trigger.tsx": h(FieldTrigger, null, "Filter"),
   "components/ui/checkbox.tsx": h(Checkbox, { "aria-label": "Include files" }),
   "components/ui/radio.tsx": h(RadioGroup, { "aria-label": "Locale", defaultValue: "en" }, h(Radio, { label: "English", value: "en" })),
-  "components/ui/tabs.tsx": h(Tabs, { defaultValue: "a" }, h(TabsList, { label: "Details" }, h(TabsTrigger, { value: "a", label: "A" })), h(TabsContent, { value: "a" }, "Panel")),
+  "components/ui/tabs.tsx": h(Tabs, {
+    defaultValue: "a",
+    children: [h(TabsList, { key: "list", label: "Details", children: h(TabsTrigger, { value: "a", label: "A" }) }), h(TabsContent, { key: "panel", value: "a", children: "Panel" })],
+  }),
 };
 
 // 직접 링을 정의하지 않고 후손 프리미티브에 위임하는 Radix 래퍼도 실제 컨트롤을 렌더한다.
