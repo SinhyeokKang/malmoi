@@ -70,11 +70,14 @@ export function TabsTrigger({ value, ...content }: { value: string } & SegmentCo
   );
 }
 
-/** 패널 — Radix가 탭 이름으로 라벨하고 비활성이면 언마운트한다. */
+/**
+ * 패널 — Radix가 탭 이름으로 라벨하고 비활성이면 언마운트한다.
+ * ⚠️ Radix가 `tabIndex=0`을 줘 패널이 Tab 포커스를 받으므로 링을 든다(DESIGN §7). 잘리는 부모 안이면 소비자가 `ring-inset`을 얹는다.
+ */
 export function TabsContent({ value, className, children }: {
   value: string;
   className?: string;
   children: ComponentProps<typeof Primitive.Content>["children"];
 }) {
-  return <Primitive.Content value={value} className={className}>{children}</Primitive.Content>;
+  return <Primitive.Content value={value} className={cn("focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none", className)}>{children}</Primitive.Content>;
 }

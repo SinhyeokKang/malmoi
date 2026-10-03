@@ -65,6 +65,13 @@ describe("Tabs — roles and panels", () => {
     expect(selected().textContent).toBe("Sync");
   });
 
+  it("the shown panel takes Tab focus, so it carries the focus ring set (DESIGN §7)", async () => {
+    const { container } = await setup();
+    const panel = find(container, SHOWN);
+    expect(panel.getAttribute("tabindex")).toBe("0");
+    for (const cls of ["focus-visible:ring-ring", "focus-visible:ring-2", "focus-visible:outline-none"]) expect(panel.classList.contains(cls), cls).toBe(true);
+  });
+
   it("unmounts the inactive panels' contents", async () => {
     const { container, user, tabs } = await setup();
     expect(container.textContent).toContain("Project facts");

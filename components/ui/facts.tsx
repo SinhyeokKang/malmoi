@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
  * Label/value unit; the consumer owns its dl/grid and the meaning of its value.
  *
  * `align="end"`는 값을 오른쪽 끝에 붙이는 시각 옵션이다(`dir` 아님) — 라벨 폭이 고정이라 값의 끝이 한 열로 선다.
+ * ⚠️ `text-right`는 인라인 값만 민다 — **직속 flex 자식**(`<span className="flex flex-wrap …">`)은 `*:justify-end`가 민다.
+ * 소비자가 `justify-end`를 기억하게 하지 않는다.
  */
 export function Fact({ label, children, width, layout = "row", as, className, dimmed = false, align }: {
   label: ReactNode;
@@ -23,6 +25,6 @@ export function Fact({ label, children, width, layout = "row", as, className, di
   </TableRow>;
   return <div className={cn(layout === "stacked" ? "space-y-1" : layout === "inline" ? "flex items-baseline gap-2" : width === 120 ? "contents" : "flex items-baseline gap-3", className)}>
     <dt className={cn("text-gray-dim text-xs", width === 96 && "w-24 shrink-0", width === 120 && "w-[120px]")}>{label}</dt>
-    <dd className={cn(layout !== "stacked" && "text-sm", layout === "row" && width === 96 && "min-w-0 flex-1", align === "end" && "text-right", dimmed && "text-gray-dim")}>{children}</dd>
+    <dd className={cn(layout !== "stacked" && "text-sm", layout === "row" && width === 96 && "min-w-0 flex-1", align === "end" && "text-right *:justify-end", dimmed && "text-gray-dim")}>{children}</dd>
   </div>;
 }
