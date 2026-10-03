@@ -182,7 +182,7 @@ it("상태 줄 묶음과 톤", async () => {
     <CommandStatus lines={[{ tone: "muted", text: "Loading docs…" }, { tone: "danger", text: "Keys failed." }]} />
   </Command>);
   const status = find(view.container, '[role="status"]');
-  expect([...status.classList]).toEqual(expect.arrayContaining(["flex", "flex-col", "gap-1", "px-4", "pt-2", "text-xs"]));
+  expect([...status.classList]).toEqual(expect.arrayContaining(["flex", "flex-col", "gap-1", "px-4", "pt-2", "text-xs", "leading-normal"]));
   const lines = [...status.querySelectorAll<HTMLElement>("[data-tone]")];
   expect(lines.map(line => [line.dataset.tone, line.textContent])).toEqual([["muted", "Loading docs…"], ["danger", "Keys failed."]]);
   expect(lines[0]!.classList.contains("text-muted-foreground")).toBe(true);
