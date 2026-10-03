@@ -727,6 +727,10 @@ lib/
   oauth-server/         MCP OAuth의 **DB·네트워크 껍데기**(전부 server-only · 쿠키를 읽지 않는다). token(교환·refresh — User → Connection 잠금) ·
                         revoke(토큰 폐기 · disconnectConnection — /mcp 끊기, 같은 tx 모양) · authorize(요청 저장·읽기 · code 발급 · 거부 — 동의 Action이 부른다, 세션은 호출자가 읽는다) ·
                         client-metadata-fetch(CIMD — 해석된 주소 전부 공개 · 그 주소에 고정 · 리다이렉트 불추종)
+  operator/             **운영자 판정**(2026-10-03, operator-account — ARCHITECTURE §6.2.2). allowlist(parseOperatorEmails — 순수,
+                        import는 lib/auth/email 하나) · user(isOperatorUser — server-only, User.emailLookup × OPERATOR_EMAILS).
+                        ⚠️ lib/auth/에 두지 않는 이유가 축이다 — 운영자는 인가가 아니라 계정 축 쿼터 판정이고, 상한 소비는
+                        onboarding-run/·projects/owner-limit에 남는다. user를 import하는 소스는 그 셋뿐이다(소스 스캔 테스트가 센다)
   onboarding-run/       **두 GitHub 자격증명이 만나는 조립**(2026-09-28 T4-c — ARCHITECTURE §3.1). Server Action과 MCP 도구가
                         같이 부른다: access(checkRepoAccess) · repos · branches · detect · add · create · import · rotate-token.
                         ⚠️ lib/onboarding/에 두지 않는 이유가 이 디렉터리의 존재 이유다 — 그 루트는 "두 자격증명 import 없음"이라
@@ -784,6 +788,10 @@ lib/
   projects/open-pr-memo.ts
                         Home의 열린 PR 조회 30초 메모(probe-memo와 같은 TTL·상한). 순수 — `server-only`가 없어
                         runSync·importRepository가 forgetOpenPr로 그 프로젝트 항목을 지운다(Publish가 연 PR을 가리지 않게)
+  projects/owner-limit.ts
+                        server-only. lockOwnerSlots — 복원·OWNER 승격·OWNER 초대 수락이 같이 부르는 상한 재집계(2026-10-03).
+                        User를 id 순으로 잠그고 → 활성 OWNER 수를 세고 → 상한에 닿은 사람만 운영자인지 본다(ARCHITECTURE §3.1).
+                        ⚠️ 생성의 재집계는 여기로 옮기지 않았다 — onboarding-run/create가 이미 잠그고 같은 판정 단위를 쓴다
   projects/pr-url.ts    parseGithubPrUrl(순수). ⚠️ 저장된 URL을 **그 프로젝트의 owner/name으로 다시 검증**한다
                         — DB 문자열을 그대로 링크로 내면 남의 리포를 가리키는 값이 화면에 선다
   projects/import-failure.ts
