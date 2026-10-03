@@ -19,8 +19,8 @@
 
 | 배치 | 항목 | 소유 파일 | 선행 | 모델/effort | 출시 차단 | 게이트 | 상태 |
 |---|---|---|---|---|---|---|---|
-| B1 코드 | T1 → T2 → T3 → T4 | `lib/operator/**` · `lib/onboarding/create-plan.ts` · `lib/onboarding-run/{repos,create}.ts` · `lib/projects/{archive,owner-limit}.ts` · `lib/auth/{members,message}.ts` · `app/invite/actions.ts` · `messages/en.tsx` · `lib/mcp/result.ts` · 해당 테스트 · `components/__tests__/home-vocabulary.test.ts`(주석) | — | Opus 5.5 high — 잠금 순서·트랜잭션 재집계·fail-closed 판단 | 예 | `pnpm gate --base dev`(postgres 스위트 자동) | 1차 완료 → fix1 진행 |
-| B2 문서 | T5 | `docs/PRODUCT.md` · `docs/ARCHITECTURE.md` · `docs/OPERATIONS.md` · `docs/DIRECTORY.md` · `guide/reference/limits.md` · `guide/SHOOTING.md` · `.env.example` | — (spec·design 기준으로 병렬) | Opus 5.5 medium — 정본 문서의 밀도 높은 서술, 판단은 spec이 이미 정함 | 예 | `pnpm gate --base dev` | 1차 완료(`gate: ok`, 9커밋) → fix1 진행 |
+| B1 코드 | T1 → T2 → T3 → T4 | `lib/operator/**` · `lib/onboarding/create-plan.ts` · `lib/onboarding-run/{repos,create}.ts` · `lib/projects/{archive,owner-limit}.ts` · `lib/auth/{members,message}.ts` · `app/invite/actions.ts` · `messages/en.tsx` · `lib/mcp/result.ts` · 해당 테스트 · `components/__tests__/home-vocabulary.test.ts`(주석) | — | Opus 5.5 high — 잠금 순서·트랜잭션 재집계·fail-closed 판단 | 예 | `pnpm gate --base dev`(postgres 스위트 자동) | 통합 완료 2026-10-04 (B1 10커밋) |
+| B2 문서 | T5 | `docs/PRODUCT.md` · `docs/ARCHITECTURE.md` · `docs/OPERATIONS.md` · `docs/DIRECTORY.md` · `guide/reference/limits.md` · `guide/SHOOTING.md` · `.env.example` | — (spec·design 기준으로 병렬) | Opus 5.5 medium — 정본 문서의 밀도 높은 서술, 판단은 spec이 이미 정함 | 예 | `pnpm gate --base dev` | 통합 완료 2026-10-04 (B2 15커밋) |
 | T7 env | Vercel Preview·Production `OPERATOR_EMAILS` | — | D3 | 사용자(`!` 실행 — 분류기가 에이전트의 secret-store 쓰기를 막음) | 예(Preview는 push 전) | `vercel env ls` 행·시각 | 완료 2026-10-04 — production·preview 각 1행(Secret) |
 | QA | T6 | main 체크아웃 · dev DB | B1·B2 통합 + D3 | Sonnet 5.5 medium | — | `/runtime-test` | 대기 |
 
@@ -43,3 +43,6 @@
   - R1 ⚪1(소비자 스캔 확대) · ⚪2(4+ 사용자에게 참인 문구) → 반영. ⚪3 → B1·B2 한 push로 통합.
   - R2 🟡1·🟡2·⚪1·2·3·5 + AUTHORING :157 사실 소스 + `/postmortem`(초대 `?e=` 허용 목록 누락) → B2.
 - fix1 라운드 디스패치: B1 `ctx_d849d400b7de` · B2 `ctx_6ee61c806015`(병렬 — B2는 B1의 최종 동작을 브리프로 받는다).
+- 2026-10-04 fix1 완료 — B1 4커밋(`9fa986f6` 행위자 동반 잠금 · `6c87939a` 4+ 문구 · `1dbb0994` 거부 Alert 렌더 테스트 · `e5745c74` 소비자 스캔 확대), B2 6커밋(ARCHITECTURE·DIRECTORY·limits.md·AUTHORING·POSTMORTEM). 지휘자가 B2 문서의 `lockOwnerSlots(tx, counted, alsoLock)`·문구를 B1 최종 코드와 대조 — 일치.
+- 2026-10-04 통합: B1(10)·B2(15) cherry-pick → `pnpm gate --base origin/dev` 1회차 `FAILED at test:projects:postgres` — `search-performance.integration.ts` 중앙값 510ms > 300ms(검색 경로 무변경, load avg ~15 부하, B1 게이트에선 543/543 green) → 재실행 `gate: ok`(10721 unit + 543 postgres). ⚠️ 그 성능 테스트는 부하에 민감하다.
+- 런타임 남은 것: T6(실 로그인 주소 ↔ env, Alert 배치 눈 확인, 상주 프로젝트 생성 — D2).
