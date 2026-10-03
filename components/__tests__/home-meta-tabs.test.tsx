@@ -42,6 +42,15 @@ const input: MetaTabsInput = {
   prState: "absent",
 };
 
+/**
+ * malmoi#180 — 회색 평문 값(`Never` · `Not recorded`)은 **muted(#737373)**다. 라벨 톤(`text-gray-dim` #a3a3a3)을 쓰면 값이 둘째 라벨처럼 읽힌다(시안 v3 `2a`·`2f`).
+ * ⚠️ `Fact dimmed`는 라벨 톤이라 쓰지 않는다 — 공용 기본값을 바꾸면 다른 소비자가 같이 움직인다.
+ */
+function expectMutedValue(dd: Element) {
+  expect(dd.className).not.toContain("text-gray-dim");
+  expect(dd.querySelector(".text-muted-foreground")?.textContent).toBe(dd.textContent);
+}
+
 async function setup(over: Partial<MetaTabsInput> = {}, opts: { canOpenSettings?: boolean; late?: Promise<HomeLate> } = {}) {
   const { container } = await render(
     <MetaColumn tabs={metaTabs({ ...input, ...over })} slug="acme" now={now} canOpenSettings={opts.canOpenSettings ?? true} late={opts.late} />,
@@ -139,6 +148,13 @@ describe("메타 열 — Project 탭", () => {
     });
   });
 
+  /** malmoi#179 — 시안 v3·spec의 라벨은 `Branch`다. Settings의 `Base branch`(편집 폼)와는 다른 사전 키다. */
+  it("브랜치 행 라벨은 Branch다", async () => {
+    const { panel } = await setup();
+    const labels = [...panel().querySelectorAll("dt")].map((dt) => dt.textContent);
+    expect(labels.slice(0, 4)).toEqual(["Repository", "Connection", "Branch", "CI"]);
+  });
+
   it("대기 초대가 없어도 `(0)`이다 · CI 미설정", async () => {
     const { rows } = await setup({ pendingInvites: 0, ciConfigured: false });
     expect(rows()[m.home.meta.members]).toBe("4 (0)");
@@ -203,7 +219,7 @@ describe("메타 열 — Sync 탭", () => {
     const unrecorded = await setup({ lastSync: "unrecorded" });
     await unrecorded.open(m.home.meta.tabs.sync);
     expect(unrecorded.rows()).toEqual({ [m.home.meta.lastSync]: m.home.meta.unrecorded });
-    expect(find(unrecorded.panel(), "dd").className).toContain("text-gray-dim");
+    expectMutedValue(find(unrecorded.panel(), "dd"));
   });
 
   it("첫 렌더에 아는 보류는 Hold 배지 행이다", async () => {
@@ -309,9 +325,10 @@ describe("메타 열 — 늦게 오는 Hold · PR state", () => {
   });
 
   it("발송 전 — Never 회색 평문 한 행", async () => {
-    const { open, rows } = await setup({ lastPublish: null });
+    const { open, rows, panel } = await setup({ lastPublish: null });
     await open(m.home.meta.tabs.publish);
     expect(rows()).toEqual({ [m.home.meta.lastPublish]: m.home.meta.never });
+    expectMutedValue(find(panel(), "dd"));
   });
 
   /** 닫아도 풀린다 — Logs 사유 문장("merged or closed")과 같은 조건을 말한다. */
