@@ -2718,14 +2718,19 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
   멤버 id 배열로 `projectId`를 좁힌다. 입력은 q와 순위 힌트 `activeSlug`뿐이며 클라이언트 id·slug 목록은 인가에 쓰지 않는다.
   양쪽 SQL은 보관 소스·첫 적재 전 소스(`lastCommitSha IS NULL`)·orphaned 키를 제외하고, 번역값은 orphaned 아닌 로케일만 본다.
   준비 여부에 `installationId`를 더하지 않는 근거는 null로 되돌리는 경로가 없다는 현재 계약이다(`lib/auth/access.ts`).
-  질의는 trim 후 앞 200자(`Q_MAX_LENGTH`), `String.length` 2자 미만이면 검색 코어의 DB 조회 0이다.
+  질의는 trim 후 앞 200자(`Q_MAX_LENGTH`), `String.length`(UTF-16 단위) `KEY_QUERY_MIN`(2) 미만이면 검색 코어의 DB 조회 0이다.
+  하한·상한 상수는 클라이언트 잎 `lib/search/match.ts`가 정의하고 서버가 import한다(서버 → 클라이언트 잎은 허용 방향) — 클라이언트의
+  요청 판정(`keySearchText`, `lib/search/rows.ts`)이 같은 상수·같은 UTF-16 길이를 써서 서로게이트 쌍 한 글자도 양쪽이 요청 대상으로 본다.
   `likePattern`을 번역 목록과 공유해 `%`·`_`·`\`를 escape하고 **질의 전체의 대소문자 무시 부분 일치**로 찾는다.
-  Projects·Menus·Docs의 토큰 AND 판정과 다르다. 순위는 키 이름 > 원문 > 번역값, 같은 급은 지금 프로젝트 →
-  키 이름 → 키 id(`COLLATE "C"`)이고 상한은 5다. 번역값의 여러 일치는 C 순서 첫 로케일 한 셀, 중복 제거는 키 id다.
+  Projects·Pages·Docs의 토큰 AND 판정과 다르다. 순위는 키 이름 > 원문 > 번역값, 같은 급은 지금 프로젝트 →
+  키 이름 → 키 id(`COLLATE "C"`)이고 상한은 5(`SEARCH_GROUP_LIMIT` — SQL `LIMIT`에 바인드 파라미터로 들어간다)다. 번역값의 여러 일치는 C 순서 첫 로케일 한 셀, 중복 제거는 키 id다.
   검색 코어의 조건부 두 SQL과 최종 실행 계획·실측은 §1.965가 든다.
 - **캐시 정책은 공개·개인 데이터가 다르다.** `lib/search/load-index.ts`만 동시 호출 Promise와 성공 결과를 탭 수명 동안 재사용한다.
   네트워크·HTTP·JSON 파싱 실패는 Promise를 비워 다음 호출이 재시도한다. `lib/search/load-memberships.ts`는 매 호출마다 Action을
-  실행하고 성공·실패를 저장하지 않는다(실패는 null). 권한 회수·역할·보관 변경이 다음 서버 호출부터 반영되는 §6.00④를 지킨다.
+  실행하고 성공·실패를 저장하지 않는다. 결과는 Action의 union(`{ ok: true, memberships } | { ok: false, error: "unauthorized" | "unavailable" }`)
+  그대로이고 네트워크 throw만 `unavailable`로 접는다 — **실패를 비로그인으로 접지 않는다**(2026-10-03, search-ux-unify C1: 헤더에 아바타가
+  있는데 비로그인 검색이 서면 거짓이다). 멤버십이 없는 세 경우(비로그인 · `unauthorized` · `unavailable`)는 색인의 Projects·Pages가 비어
+  공개 Docs만 찾는다 — 노출을 줄이는 쪽이라 서버 판정은 그대로다. 권한 회수·역할·보관 변경이 다음 서버 호출부터 반영되는 §6.00④를 지킨다.
 - **검사는 코어까지 내려간다.** `entry-points.test.ts`의 `MEMBER_JOIN_CORES`는 `searchKeys` 호출과 Action의 세션 거부를 함께
   요구하고, 코어 본문의 `ProjectMember`·userId 바인딩도 검사한다. 멤버십 Action은 `USER_SCOPED_ACTIONS`다.
   `lib/keys/__tests__/search.integration.ts`가 다른 사용자의 비노출·권한 회수·제외 조건·순위·왕복 상한을 실제 DB에서 잰다.
