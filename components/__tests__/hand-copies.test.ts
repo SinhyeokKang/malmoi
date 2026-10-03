@@ -59,9 +59,16 @@ function canonicalTag(node: Opening, file: ts.SourceFile): string {
   return tag;
 }
 
+// 표현식 하위 어디든 화면에 나갈 문자열 리터럴이 있으면 손 사본이다(조건식·`&&`·`??`·`+`). 사전 접근의 키(`x["mac"]`)는 글자가 아니다.
+function hasDisplayedLiteral(node: ts.Node): boolean {
+  if (ts.isElementAccessExpression(node)) return hasDisplayedLiteral(node.expression);
+  if (ts.isStringLiteralLike(node)) return node.text.trim() !== "";
+  if (ts.isTemplateExpression(node) && (node.head.text.trim() !== "" || node.templateSpans.some(span => span.literal.text.trim() !== ""))) return true;
+  return ts.forEachChild(node, child => hasDisplayedLiteral(child) || undefined) ?? false;
+}
 function kbdLiteral(node: Opening, file: ts.SourceFile): boolean {
   if (!ts.isJsxOpeningElement(node) || canonicalTag(node, file) !== "Kbd") return false;
-  return node.parent.children.some(child => ts.isJsxText(child) ? child.text.trim() !== "" : ts.isJsxExpression(child) && child.expression !== undefined && (ts.isStringLiteralLike(child.expression) || ts.isTemplateExpression(child.expression)));
+  return node.parent.children.some(child => ts.isJsxText(child) ? child.text.trim() !== "" : ts.isJsxExpression(child) && child.expression !== undefined && hasDisplayedLiteral(child.expression));
 }
 
 const RETIRED_WIZARD_FOOTER = "export const Demo = () => (<div className=\"flex items-center gap-2\">\n              {showBack && (\n                <Button type=\"button\" size=\"lg\" onClick={onBack} disabled={busy}>\n                  {m.newProject.modal.back}\n                </Button>\n              )}\n              {/*\n                \u26a0\ufe0f **\ube44\ud65c\uc131 \ubaa8\uc591\uc744 \uaecd\ub370\uae30\uac00 \ub4e0\ub2e4** \u2014 \ud770 \ubc30\uacbd + border + muted \uae00\uc790 + `not-allowed`.\n                \ub2e8\uacc4\ub9c8\ub2e4 \ub2e4\uc2dc \ub9cc\ub4e4\uba74 \uac08\ub9b0\ub2e4.\n              */}\n              <Button\n                type=\"button\"\n                variant=\"primary\"\n                size=\"lg\"\n                onClick={onNext}\n                disabled={nextDisabled}\n                loading={busy}\n              >\n                {nextLabel ?? m.newProject.modal.next}\n                {nextArrow && <ArrowRight className=\"size-4\" aria-hidden />}\n              </Button>\n            </div>);";
@@ -247,7 +254,10 @@ describe("Kbd children", () => {
   const rule = RULES.find(r => r.primitive === "Kbd")!;
   it.each([
     ['<Kbd>Esc</Kbd>', true], ['<Kbd>{"↵"}</Kbd>', true], ['<Kbd>{`Ctrl K`}</Kbd>', true],
+    // 이 기능이 걷어낸 원래 모양 — 리터럴이 조건식·논리식·연결 안에 있어도 손 사본이다(R-B1 Y3).
+    ['<Kbd>{mac ? "⌘K" : "Ctrl K"}</Kbd>', true], ['<Kbd>{mac && "⌘K"}</Kbd>', true], ['<Kbd>{label ?? "Esc"}</Kbd>', true], ['<Kbd>{"Ctrl" + " K"}</Kbd>', true],
     ['<Kbd>{m.common.keys.enter}</Kbd>', false], ['<Kbd>{m.common.keys.search[label]}</Kbd>', false], ['<Kbd>\n  {m.common.keys.esc}\n</Kbd>', false],
+    ['<Kbd>{m.common.keys.search["mac"]}</Kbd>', false],
   ] as const)("%s → 손 사본 %s", (jsx, hit) => {
     const code = `import {Kbd} from "@/components/ui/kbd"; export const Demo = () => ${jsx};`;
     expect(scan({ path: "components/ui/command.tsx", code }, rule).length > 0).toBe(hit);
