@@ -107,8 +107,9 @@ export function SearchDialog({ open, onOpenChange, account, memberships }: {
     <Command ids={ids} query={q}>
       <CommandInput value={q} onValueChange={value => { ++keyGeneration.current; setKeys({ query: "", hits: [], error: null }); setQuery(value); }} label={m.search.label} placeholder={m.search.placeholder} />
       <CommandStatus lines={status.lines} />
-      {/* 0건은 목록 슬롯 맨 위에 선다. 조회가 실패했으면 "결과 없음"이 거짓이라 그리지 않는다(C3). */}
-      {ids.length === 0 && !status.pending && !status.failed && <NoMatch placement="inset" title={m.search.noResults(q)} description={m.search.noResultsDescription} />}
+      {/* 0건은 목록 슬롯 맨 위에 선다. 조회가 실패했으면 "결과 없음"이 거짓이라 그리지 않는다(C3).
+          listbox 밖 형제라 목록의 위 여백(`py-2`의 8)을 `mt-2`로 직접 든다 — 없으면 시안보다 8 위다(#177). */}
+      {ids.length === 0 && !status.pending && !status.failed && <NoMatch placement="inset" className="mt-2" title={m.search.noResults(q)} description={m.search.noResultsDescription} />}
       <CommandList label={m.search.label}>
         {groups.map(group => <CommandGroup key={group.kind} heading={group.heading}>
           {group.rows.map(row => <CommandItem key={row.id} id={row.id} href={row.href} icon={<Tile tile={row.tile} />}
