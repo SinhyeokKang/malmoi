@@ -22,9 +22,13 @@ const compose = async (type: "compositionstart" | "compositionend") => {
   await act(async () => { field()!.dispatchEvent(new CompositionEvent(type, { bubbles: true })); });
 };
 
+// 오버레이 밖의 프로그램 닫힘·열림 — 모달이 바깥을 막아도 `click()`은 닿는다.
+const Toggle = ({ onToggle }: { onToggle: () => void }) => <button type="button" data-toggle onClick={onToggle} />;
+const toggle = async () => { await act(async () => { document.querySelector<HTMLButtonElement>("[data-toggle]")!.click(); }); };
+
 function Controlled({ children }: { children: (open: boolean, setOpen: (open: boolean) => void) => ReactNode }) {
   const [open, setOpen] = useState(true);
-  return <>{children(open, setOpen)}</>;
+  return <><Toggle onToggle={() => setOpen(value => !value)} />{children(open, setOpen)}</>;
 }
 
 const OVERLAYS: [string, () => ReactNode][] = [
@@ -42,6 +46,7 @@ function PopoverHost() {
   const [open, setOpen] = useState(false);
   const anchor = useRef<HTMLButtonElement>(null);
   return <>
+    <Toggle onToggle={() => setOpen(value => !value)} />
     <Button ref={anchor} onClick={() => setOpen(value => !value)}>Anchor</Button>
     <Button>Outside</Button>
     <Popover id="pop" aria-label="Pop" open={open} onOpenChange={setOpen} anchor={anchor}><Field /></Popover>
@@ -57,6 +62,19 @@ async function openAndFocus(ui: () => ReactNode, name: string) {
 const byName = (name: string) => [...document.querySelectorAll<HTMLButtonElement>("button")].find(button => button.textContent === name)!;
 
 describe.each(OVERLAYS)("%s", (name, ui) => {
+  // R-B2 🟡1 — 래퍼는 닫혀도 마운트된 채라, 조합 중 떨어진 입력의 compositionend를 못 받으면 다음 열림의 Esc가 막혔다.
+  it("조합 중 닫힘 → 다시 엶 → 일반 Esc는 닫는다", async () => {
+    await openAndFocus(ui, name);
+    await compose("compositionstart");
+    await toggle();
+    await vi.waitFor(() => expect(field()).toBeNull());
+    await toggle();
+    await vi.waitFor(() => expect(field()).not.toBeNull());
+    act(() => field()!.focus());
+    await key(field()!, "Escape");
+    await vi.waitFor(() => expect(field()).toBeNull());
+  });
+
   it("isComposing인 Esc는 닫지 않는다", async () => {
     await openAndFocus(ui, name);
     await key(field()!, "Escape", { isComposing: true });

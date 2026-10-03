@@ -191,7 +191,9 @@ export function DialogContent({
           그리로 간다. 전엔 소비자 셋만 `onOpenAutoFocus`로 손수 Cancel을 지정했고 나머지는 Radix 기본(첫 tabbable = 헤더 X)이라,
           같은 파괴 확인인데 첫 Enter가 닿는 곳이 갈렸다. 푸터는 전부 `[Cancel][확정]` 순이라 표식이 확정으로 갈 일이 없다.
           ⚠️ **조건부다** — 호출부가 막았으면(`preventDefault`) 손대지 않는다. 안쪽 `autoFocus`는 FocusScope의 mount 이벤트보다 먼저
-          돌아 이 핸들러가 아예 안 오지만(위 `recent` 주석), 포커스가 이미 안에 있으면 한 번 더 비켜선다.
+          돌아 이 핸들러가 아예 안 온다(위 `recent` 주석 — FocusScope는 포커스가 이미 안에 있으면 이벤트를 쏘지 않는다). 그래서 `openAutoFocus`의
+          "이미 안에 있다" 가드가 서는 길은 **소비자가 `preventDefault` 없이 안으로 포커스를 옮긴 경우 하나**이고, 그것은 Radix 계약상
+          소비자 쪽 버그다 — 표식으로 덮지 않고 Radix 기본(첫 tabbable)에 넘긴다. 소비자의 포커스는 어느 쪽이든 남지 않는다.
         */
         onOpenAutoFocus={(event) => openAutoFocus(event, onOpenAutoFocus)}
         onCloseAutoFocus={(event) => closeAutoFocus(event, onCloseAutoFocus)}
