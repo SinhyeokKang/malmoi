@@ -204,7 +204,13 @@ components/
                         card/canvas hover와 selected·명시 aria-current, 원래 inset 포커스 자리를 보존한다.
                         배너를 함께 드는 li와 목록 의미론은 소비자가 소유한다. ListRowChevron은 busy 표시를 받아 서버 행의 훅을 늘리지 않는다
   ui/facts.tsx          export는 Fact다. 소비자가 dl·grid·값 의미를 소유하고 라벨/값 배치(row/stacked/inline, width96/120)를 공유한다.
-                        as="tr"는 TableRow/Head/Cell을 조립하며 행 라벨은 scope="row"다
+                        as="tr"는 TableRow/Head/Cell을 조립하며 행 라벨은 scope="row"다. align="end"는 값 오른쪽 정렬(Home 메타 열)
+  ui/tabs.tsx · ui/segment.ts
+                        Tabs/TabsList/TabsTrigger/TabsContent(2026-10-04, project-card-tabs — Radix 여덟째) — **패널이 딸린** 전환기라
+                        SegmentedControl(radiogroup)과 역할이 다르고 모양은 같다: segment.ts의 문자열 상수(TRACK·SEGMENT·SELECTED·UNSELECTED)를
+                        둘이 import하고 칸 몸통은 segmented-control의 SegmentBody다. ⚠️ segment.ts가 .ts인 이유 — .tsx면 프리미티브 수가 늘고
+                        focus-ring 스캐너 FILES에 걸린다. ⚠️ Radix가 비활성 패널의 **자식만** 언마운트한다(껍데기는 hidden) — 늦게 오는 값은
+                        늘 마운트된 소비자 껍데기가 구독한다(home/meta-tabs)
   ui/empty-state.tsx    EmptyState(page/card/inset, 기존 번역 목록의 list 배치) + NoMatch(SearchX).
                         NoMatch의 출구 action?: ReactElement는 선택이다 — 검색 Dialog의 0건 결과는 생략하고 기존 소비자는 출구를 유지한다. href/onClick 전용 API가 아니다
   ui/status-badge.tsx · ui/icon-tile.tsx
@@ -378,7 +384,7 @@ components/
                         ⚠️ **상세 본문은 서버가 그린다** — 클라이언트는 열림·닫힘·포커스만 든다
   home/                 Home 화면의 블록 넷 + 클라이언트 호스트. count-cards · attention-card ·
                         logs-card · meta-column은 **순수 서버 컴포넌트**다(`+n more`가 <details>라
-                        클라이언트 상태가 0이다) · actions.tsx만 "use client"
+                        클라이언트 상태가 0이다) · actions.tsx는 "use client"
                         ⚠️ **actions.tsx가 컨텍스트 Provider다** — [Sync]는 머리에 있고 실패 배너는
                         본문에 있어서, 한쪽이 열림 상태를 소유하면 배너의 [Try again]이 같은 Dialog를 못 연다.
                         Provider는 DOM을 안 만들어 PanelHeader·PanelBody 형제 구조가 그대로 남는다
@@ -386,8 +392,12 @@ components/
                         살지만 자기 핸드오프(아트보드 4a~4f)를 따르고, Home의 "파랑 다섯 자리" 규칙 밖이다.
                         Home과 번역 화면이 같은 sync-button을 쓰고, 확인 → 진행 → 결과가 그 Dialog 하나다
                         (2026-10-01 sync-lock — sync-result는 이제 Dialog 본문이고 두 화면의 결과 띠는 없다)
-                        hold-later.tsx("use client" 섬 — 열린 PR 조회에 달린 보류 사유를 `To send` 보조 줄·메타 `Held` 배지 두 자리에
+                        hold-later.tsx("use client" 섬 — 열린 PR 조회에 달린 보류 사유를 `To send` 보조 줄에
                         늦게 그린다. 본문은 그 조회를 기다리지 않는다 — 판정은 lib/home/cards의 planHomeHold, 도착은 use-arrived)
+                        meta-tabs.tsx("use client" — 메타 열의 탭 껍데기, 2026-10-04 project-card-tabs). 탭 선택과 늦게 오는 값(Hold · PR state —
+                        같은 promise의 결론 homeLate)의 **한 번 구독**만 든다 — 패널·라벨·바닥 링크는 meta-column(서버)이 렌더해 넘기고,
+                        패널 속 자리(LateHold·LatePrState)는 컨텍스트를 읽기만 한다. ⚠️ Radix가 비활성 패널 자식을 언마운트해 패널 안에서
+                        구독하면 탭 전환마다 한 프레임 빈다. lib는 타입만 import한다(client-graph)
   onboarding/new-project.tsx
                         생성 흐름의 상태를 소유하고 LargeModal + WizardFooter로 단계 본문·바닥을 조립한다.
                         이전 onboarding/modal.tsx 재수출과 ui/modal.tsx 경로는 제거했다
@@ -400,8 +410,8 @@ components/
   settings/             general-card · repository-card/repository-form ·
                         ci-card · archive-card · push-token-panel. 독립 add-surface.tsx는 모달 전환 뒤
                         삭제했고, push-token-panel은 소비자가 ci-card 하나뿐이라 onboarding/에서 옮겼다.
-                        connection-state.ts(순수 — 연결 행의 상태 키. 끊김·미연결·다른 리포는 lib/home/state의 connectionProblem을
-                        그대로 옮기고 repo-moved·unknown만 덧붙인다 — 여기서 다시 가르면 unpinned가 한 화면에서만 다른 낱말이 된다)
+                        연결 행의 상태 키(repositoryConnectionState)는 2026-10-04에 lib/home/state로 옮겼다 — Home 메타 열 Connection 행과
+                        설정 카드가 같은 함수를 부른다(옛 connection-state.ts는 지웠다)
   onboarding/steps/     단계 넷(repo · files · naming · result). ⚠️ new-project.tsx가 상태를 전부 들고
                         단계는 본문만 그린다 — 모달이 단계 간 상태를 공유하므로 무효화 경계가 코드에
                         명시돼 있어야 한다(브랜치·리포·재탐지). 체크·상세·표면별 기준 언어를 독립 보존한다
@@ -505,6 +515,7 @@ lib/
                         session(requireUser/requireProjectAccess — ⚠️ 보관만 redirect하지 않고 값으로 온다) ·
                         safe-adapter(linkAccount 거부. ⚠️ 만료 세션 조회의 근거도 여기 있고 구현은 credentials/adapter다) ·
                         read-session · outage · public-session · permission · access · invitation ·
+                        pending-invitation(대기 초대 술어 pendingInvitationWhere — 수락·만료 둘 다 제외. 멤버 화면 목록과 Home `Members` 괄호 수가 같이 쓴다) ·
                         invite-view · membership · email · cookie(sessionCookieName — 세션 쿠키 이름의 유일한 출처) ·
                         member-identity(행의 두 줄 배치 + 아바타 씨앗. ⚠️ 씨앗이 1행과 갈라져 있다 —
                         1행이 마스킹 주소면 이니셜이 셸 아바타와 다른 글자가 된다) ·
@@ -548,7 +559,8 @@ lib/
                         막는 것은 리포 (재)연결뿐이고 야간 pull·PR은 설치 토큰이 낸다
   push/ pull/ sync/     payload(생산자 하나) · assemble · plan · apply · auth · guard · token · json-bounds(placeholders 자원 상한) /
                         plan · run · render · load · client · targets · trigger · sync-branch · branch-name · ref-slug ·
-                        message · payload /
+                        message · payload · changed-values(2026-10-04 — Publish가 리포 파일에서 바꾼 엔트리 수, 수정+추가. 관측값이고 판정에 안 쓴다 →
+                        SyncRun.changedValues) /
                         run(진입점 둘이 지나는 유일한 껍데기 — ⚠️ 던지지 않는다) · plan
                         ⚠️ **payload가 두 축에 각각 있다**(push/payload = `/api/push` 본문, pull/payload =
                         Git Data API 요청 본문). 둘 다 **외부 계약이라 반환 타입을 명시하는 것이 요지**이고
@@ -751,15 +763,17 @@ lib/
                         ⚠️ 로딩은 갈래가 아니다: 라우트의 loading.tsx이고 union에 넣으면 생산자 없는
                         갈래가 남는다) · cards(보조 줄과 0 갈래 — ⚠️ 상태의 보조 줄이 0 갈래를 이긴다 · 카드마다 수가 있는 첫 소스의 착지 `cardLandings`, translation-tree-range) ·
                         attention(세 종을 한 시간축에 · 상한 5 · ⚠️ 폴백은 actors 맵의 키 존재로 판정한다,
-                        actorLabel의 null이 아니다) · meta(행이 상태에 따라 사라지거나 는다) ·
+                        actorLabel의 null이 아니다) · meta(메타 열 탭 셋 metaTabs — 탭마다 묶음 배열, 2026-10-04 project-card-tabs ·
+                        사건 → 실행 하나 homeSyncRun·homePublishRun · homeLastSync · 늦게 오는 결론 homeLate(Hold · PR state)) ·
                         sync-time(lastSyncTime — lastImportedAt의 최댓값, 시각 컬럼 이전 적재는 "unrecorded"로 null과 가른다)
                         state에 connectionProblem(연결 판정 → Disconnected·Not connected·Wrong repository — 목록·Settings·거부 문구가 같이 읽는다)과
+                        repositoryConnectionState(연결 배지 키 다섯 — 설정 카드와 Home 메타 Connection 행이 같이 읽는다, 망라형)와
                         planActionAvailability(보관·끊김이면 Publish·Sync를 끈다 — Home·번역 화면이 같이 읽는다)가, cards에 planHomeHold(보류 사유의
                         **지금** 판정 — 편집 수와 열린 PR 조회, 2026-10-01)가 산다
                         ⚠️ **전부 I/O가 없고 server-only를 안 붙인다** — 테스트가 직접 import한다
-                        ⚠️ **예외 하나 — runs(2026-09-30, nightly-sync)는 server-only 조회다**: 메타 열의 실행 주체용 사건 셋
-                        (최근 성공 적재 · 최근 적재(보류 포함) · 최근 성공 Publish)을 읽어 meta의 `homeTriggers`에 넘긴다.
-                        행위자를 select하지 않는다(POSTMORTEM 2026-09-29 #146). 판정(주체·보류 한 줄)은 meta에 남아 순수다
+                        ⚠️ **예외 하나 — runs(2026-09-30, nightly-sync · 2026-10-04 project-card-tabs)는 server-only 조회다**: 메타 열 Sync·Publish 탭의
+                        사건 둘(시각을 전진시킨 마지막 적재 — SQL `ADVANCED_IMPORT_WHERE` · 마지막 성공 Publish + 조인한 SyncRun)을 읽어
+                        meta의 homeSyncRun·homePublishRun에 넘긴다(옛 homeTriggers를 대체). 행위자를 select하지 않는다(POSTMORTEM 2026-09-29 #146)
                         ⚠️ **write-lock(2026-10-01, sync-lock R5)도 server-only 조회다** — 적재 lease 두 컬럼을 읽어 lib/sync/plan의
                         planWriteLock에 넘기고 시각만 돌려준다(토큰 없음). Home의 [Sync]·배너 [Try again]이 그것으로 멈춘다
   shell/nav.ts         역할별 구역·항목과 activeProject·toNavProjects(레이아웃/검색 Action의 일곱 필드 투영).
