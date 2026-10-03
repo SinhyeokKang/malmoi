@@ -20,7 +20,7 @@
 
 | 배치 | 태스크 | 워커 · 모델/effort (이유) | 배치 위치 | 선행 | 출시 차단 | 상태 |
 |---|---|---|---|---|---|---|
-| **B1** 검색 UX | T1~T7 | Opus 5.5 high — 커밋 경계 green 재배치·클라이언트 그래프·뷰모델 판단이 많다 | 새 워크트리 `suu-b1` (base dev) | — | 예 | 대기 |
+| **B1** 검색 UX | T1~T7 | Opus 5.5 high — 커밋 경계 green 재배치·클라이언트 그래프·뷰모델 판단이 많다 | 새 워크트리 `suu-b1` (base dev) | — | 예 | 구현 완료 `ba9cb045..755944d0` · gate ok · 리뷰 중 |
 | **B2** 오버레이 술어 | T10 → (B1 dev 진입 대기) → T8·T9 | Opus 5.5 high — 포커스·IME는 POSTMORTEM 09-20·09-24 영역 | 새 워크트리 `suu-b2` (base dev) | T8·T9는 B1 | 예 | 대기 |
 | **B3** 정본 문서 | T11·T12 | Opus 5.5 medium — 문서 정합이 넓지만 판단은 spec이 이미 했다 | 새 워크트리 `suu-b3` (base dev) | B1·B2 | 예 | 대기 |
 | **R-B1·R-B2·R-B3** 리뷰 | 배치 diff 독립 리뷰 | Opus 5.5 high — 리포트 전용 | 해당 배치 워크트리 | 각 배치 완료 | — | 대기 |
@@ -61,3 +61,4 @@
 | 2026-10-03 | B1 시작(`suu-b1`, Opus high) · B2 시작(`suu-b2`, Opus high) |
 | 2026-10-03 | B2 T10 완료 `d20e0e88` → `WAITING FOR B1` |
 | 2026-10-03 | R-B2a(T10 리뷰): 🔴0 🟡1 — design·tasks의 `closeAutoFocus(event)` 시그니처가 실제 `(event, consumer?)`와 다름 → **B3 T11에서 DESIGN 기술 시 반영**. ⚪: 기존 "포커스가 이미 안에 있음" 가드에 테스트 없음 → B2 T8 때 테스트 한 줄 추가 지시 |
+| 2026-10-03 | B1 worker_done — 7커밋 `ba9cb045..755944d0`, `gate: ok`(10600 tests · projects postgres 34 files · build). 계획과 다른 점 12건(인계 문서) → R-B1 리뷰 시작 |
