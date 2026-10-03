@@ -71,7 +71,7 @@ export function TabsTrigger({ value, ...content }: { value: string } & SegmentCo
 }
 
 /**
- * 패널 — Radix가 탭 이름으로 라벨하고 비활성이면 언마운트한다.
+ * 패널 — Radix가 탭 이름으로 라벨한다. 비활성이면 **자식만** 언마운트하고 껍데기는 `hidden`으로 남긴다(비활성 탭의 `aria-controls`가 그 빈 껍데기를 가리킨다).
  * ⚠️ Radix가 `tabIndex=0`을 줘 패널이 Tab 포커스를 받으므로 링을 든다(DESIGN §7). 잘리는 부모 안이면 소비자가 `ring-inset`을 얹는다.
  */
 export function TabsContent({ value, className, children }: {
