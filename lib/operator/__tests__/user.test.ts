@@ -1,5 +1,5 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
-import { join, relative } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -101,12 +101,33 @@ describe("isOperatorUser 소비자", () => {
     }
   }
 
+  /**
+   * ⚠️ **별칭만 세면 우회된다** (review-R1 ⚪1) — `lib/operator/` 안에서 `./user`로 받아 재수출하거나 상대 경로로 부르면 통과한다.
+   * 그래서 import·`export … from`·동적 `import()`의 지정자를 **파일 위치로 풀어** 이 모듈인지 본다. 루트 `auth.ts`·`middleware.ts`
+   * (인가·세션 경계에 가장 가까운 파일)도 훑는다.
+   */
+  const TARGET = join(ROOT, "lib/operator/user");
+  const SPECIFIER = /(?:from\s+|import\(\s*)["']([^"']+)["']/g;
+  function importsTarget(source: string, at: string): boolean {
+    return [...source.matchAll(SPECIFIER)].some((match) => {
+      const spec = (match[1] ?? "").replace(/\.(ts|tsx|js)$/, "");
+      return (spec.startsWith("@/") ? join(ROOT, spec.slice(2)) : spec.startsWith(".") ? resolve(dirname(at), spec) : null) === TARGET;
+    });
+  }
+
   it("상한 자리만 import한다", () => {
-    const importers = ["app", "components", "lib", "scripts"]
-      .flatMap((dir) => [...walk(join(ROOT, dir))])
-      .filter((path) => /from\s+["']@\/lib\/operator\/user["']/.test(readFileSync(path, "utf8")))
+    const roots = readdirSync(ROOT).filter((name) => /\.(ts|tsx)$/.test(name)).map((name) => join(ROOT, name));
+    expect(roots.map((path) => relative(ROOT, path))).toEqual(expect.arrayContaining(["auth.ts", "middleware.ts"]));
+    const importers = [...roots, ...["app", "components", "lib", "scripts"].flatMap((dir) => [...walk(join(ROOT, dir))])]
+      .filter((path) => importsTarget(readFileSync(path, "utf8"), path))
       .map((path) => relative(ROOT, path))
       .sort();
     expect(importers).toEqual(["lib/onboarding-run/create.ts", "lib/onboarding-run/repos.ts", "lib/projects/owner-limit.ts"]);
+  });
+
+  it("판정기가 상대 경로·재수출을 잡는다 — 스캐너 자기검사", () => {
+    expect(importsTarget('export { isOperatorUser } from "./user";', join(ROOT, "lib/operator/index.ts"))).toBe(true);
+    expect(importsTarget('const { isOperatorUser } = await import("../operator/user");', join(ROOT, "lib/projects/x.ts"))).toBe(true);
+    expect(importsTarget('import { x } from "./user";', join(ROOT, "lib/github-connect/x.ts"))).toBe(false);
   });
 });
