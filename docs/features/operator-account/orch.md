@@ -22,7 +22,7 @@
 | B1 코드 | T1 → T2 → T3 → T4 | `lib/operator/**` · `lib/onboarding/create-plan.ts` · `lib/onboarding-run/{repos,create}.ts` · `lib/projects/{archive,owner-limit}.ts` · `lib/auth/{members,message}.ts` · `app/invite/actions.ts` · `messages/en.tsx` · `lib/mcp/result.ts` · 해당 테스트 · `components/__tests__/home-vocabulary.test.ts`(주석) | — | Opus 5.5 high — 잠금 순서·트랜잭션 재집계·fail-closed 판단 | 예 | `pnpm gate --base dev`(postgres 스위트 자동) | 통합 완료 2026-10-04 (B1 10커밋) |
 | B2 문서 | T5 | `docs/PRODUCT.md` · `docs/ARCHITECTURE.md` · `docs/OPERATIONS.md` · `docs/DIRECTORY.md` · `guide/reference/limits.md` · `guide/SHOOTING.md` · `.env.example` | — (spec·design 기준으로 병렬) | Opus 5.5 medium — 정본 문서의 밀도 높은 서술, 판단은 spec이 이미 정함 | 예 | `pnpm gate --base dev` | 통합 완료 2026-10-04 (B2 15커밋) |
 | T7 env | Vercel Preview·Production `OPERATOR_EMAILS` | — | D3 | 사용자(`!` 실행 — 분류기가 에이전트의 secret-store 쓰기를 막음) | 예(Preview는 push 전) | `vercel env ls` 행·시각 | 완료 2026-10-04 — production·preview 각 1행(Secret) |
-| QA | T6 | main 체크아웃 · dev DB | B1·B2 통합 + D3 | Sonnet 5.5 medium | — | `/runtime-test` | 대기 |
+| QA | T6 | main 체크아웃 · dev DB | B1·B2 통합 + D3 | Sonnet 5.5 medium | — | `/runtime-test` | 완료 2026-10-04 — 결함 0 |
 
 ### 파일 겹침
 
@@ -46,3 +46,11 @@
 - 2026-10-04 fix1 완료 — B1 4커밋(`9fa986f6` 행위자 동반 잠금 · `6c87939a` 4+ 문구 · `1dbb0994` 거부 Alert 렌더 테스트 · `e5745c74` 소비자 스캔 확대), B2 6커밋(ARCHITECTURE·DIRECTORY·limits.md·AUTHORING·POSTMORTEM). 지휘자가 B2 문서의 `lockOwnerSlots(tx, counted, alsoLock)`·문구를 B1 최종 코드와 대조 — 일치.
 - 2026-10-04 통합: B1(10)·B2(15) cherry-pick → `pnpm gate --base origin/dev` 1회차 `FAILED at test:projects:postgres` — `search-performance.integration.ts` 중앙값 510ms > 300ms(검색 경로 무변경, load avg ~15 부하, B1 게이트에선 543/543 green) → 재실행 `gate: ok`(10721 unit + 543 postgres). ⚠️ 그 성능 테스트는 부하에 민감하다.
 - 런타임 남은 것: T6(실 로그인 주소 ↔ env, Alert 배치 눈 확인, 상주 프로젝트 생성 — D2).
+- 2026-10-04 push `7e9d7b29..1b7d68b5`(통합) · `1b7d68b5..055e1320`(SHOOTING 상주 기록, `gate: ok`).
+- 2026-10-04 QA(T6, Sonnet medium, main 체크아웃) — 결함 0, BugShot 이슈 0:
+  - 운영자 GitHub 로그인: OWNER 활성 3에서 ① 리포 목록 → 상주 프로젝트 `operator-check` 생성(D2, `SinhyeokKang/i18n-single-locale` @ `main`, json-catalog 3키).
+  - 비운영자(`OPERATOR_EMAILS=` 프로세스 한정): 4에서 `Project limit reached` · 보관 후 복원 거부(Alert 배치 1280·1440 수용) · 운영자로 복원 성공. 최종 OWNER 활성 4.
+  - Preview `dev.mal-moi.com`(1b7d68b5): GitHub 로그인 → ① 리포 목록(운영자 적용).
+  - Google(사용자 요청 2026-10-04): 운영자 주소 Google 로그인 → `lib/login-link/` challenge → GitHub 확인 → 같은 `User`(새 `Account(google)` 연결, 새 User 0) → ① 리포 목록. Preview Google은 미실행(로컬로 판정 로직 확인).
+  - 참고(결함 아님): 생성 경로 상한 문구 "You own 3 projects"는 활성 4에서도 3이라고 말한다 — spec C12가 그대로 둔 기존 문구.
+- 워커·워크트리 전부 정리(B1·B2·R1·R2·QA·QA2). 남은 것: `/merge`(사용자) — prod 마이그레이션 없음, Production env는 T7에서 이미 넣음. 기능 디렉터리는 머지 뒤 지운다.
