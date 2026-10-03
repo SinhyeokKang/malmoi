@@ -307,9 +307,9 @@ function ProjectRow({ row, q }: { row: ProjectListRow; q?: string }) {
             칩은 상태 키만 넘긴다 — variant·낱말은 `STATE`가 든다(`CHIP_STATE` · DESIGN §2.4). 온보딩 중인 둘의 `#525252` 덮개는 걷었다(1-Y8 —
             Sources의 같은 배지와 글자색이 갈렸다). ⚠️ **보관도 덮개가 없다**(search-ux-unify D6) — 옛 `#a3a3a3`은 배지 면 위 2.3:1이었고,
             보관 모양이 `STATE` 표가 아니라 호출부에 살았다. 물러나는 것은 이름·메타 둘이다.
-            ⚠️ **칩만 `px-2`다** — 총계·그룹 카운트 배지는 `px-1.5` 그대로여야 `min-w-5`가 이겨 원형이 된다.
+            칩 여백은 `Badge` 기본 `px-1.5` 한 형이다 — 덧칠하면 스위처·검색의 같은 칩과 폭이 갈린다(search-ux-polish O8).
           */}
-          <StatusBadge state={CHIP_STATE[chipState]} className="px-2" />
+          <StatusBadge state={CHIP_STATE[chipState]} />
           <ChevronRight aria-hidden className="text-muted-foreground size-4" />
         </span>
       </ListRow>

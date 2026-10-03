@@ -53,7 +53,9 @@ describe("StatusBadge", () => {
 /**
  * **상태 배지의 색은 `STATE` 표 하나가 든다** (search-ux-unify C5·D6 — 보관 배지가 검색·스위처·`/projects`에서 세 모양이었다).
  * `components/**` 전수다: `<StatusBadge>`의 `className`(조건부·`cn(...)` 안 문자열까지)에 색 클래스가 0이고 — 동적 `state`
- * (`CHIP_STATE[...]`)도 같은 스캔에 든다 — 보관 낱말을 원시 `<Badge>`로 그리는 곳이 0이다. `className`은 배치(`shrink-0`·여백)만이다.
+ * (`CHIP_STATE[...]`)도 같은 스캔에 든다 — 보관 낱말을 원시 `<Badge>`로 그리는 곳이 0이다. `className`은 배치(`shrink-0`·바깥 여백)만이다.
+ * ⚠️ **안쪽 가로 여백(`px-*`)도 덧칠 0이다**(search-ux-polish O8) — 칩은 `Badge` 기본 `px-1.5` 한 형이다. 스위처·`/projects`만
+ * `px-2`를 덧대 같은 보관 칩이 화면마다 폭이 갈렸다.
  */
 const NON_COLOR_TEXT = /^(?:xs|sm|base|lg|[2-9]?xl|left|center|right|justify|start|end|wrap|nowrap|balance|pretty|ellipsis|clip)$/;
 const NON_COLOR_BORDER = /^(?:\d+|[xytblrse](?:-\d+)?|solid|dashed|dotted|double|hidden|none|collapse|separate)$/;
@@ -76,9 +78,10 @@ function literals(node: ts.Node): string[] {
   ts.forEachChild(node, child => { found.push(...literals(child)); });
   return found;
 }
-function statusSites(path: string, code: string): { badges: string[]; rawArchived: string[] } {
+function statusSites(path: string, code: string): { badges: string[]; paddings: string[]; rawArchived: string[] } {
   const file = ts.createSourceFile(path, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
   const badges: string[] = [];
+  const paddings: string[] = [];
   const rawArchived: string[] = [];
   const visit = (node: ts.Node): void => {
     if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
@@ -87,13 +90,15 @@ function statusSites(path: string, code: string): { badges: string[]; rawArchive
         const className = node.attributes.properties.filter(ts.isJsxAttribute).find(attr => attr.name.getText(file) === "className")?.initializer;
         const colors = className === undefined ? [] : literals(className).flatMap(colorClasses);
         if (colors.length > 0) badges.push(`${path}: ${colors.join(" ")}`);
+        const padding = className === undefined ? [] : literals(className).flatMap(text => text.split(/\s+/)).filter(token => /^px-/.test(token.split(":").at(-1)!.replace(/^!/, "")));
+        if (padding.length > 0) paddings.push(`${path}: ${padding.join(" ")}`);
       }
       if (tag === "Badge" && ts.isJsxOpeningElement(node) && /\bm\.projects\.(?:status\.)?archived\b/.test(node.parent.getText(file))) rawArchived.push(path);
     }
     ts.forEachChild(node, visit);
   };
   visit(file);
-  return { badges, rawArchived };
+  return { badges, paddings, rawArchived };
 }
 
 describe("상태 배지의 색은 표가 든다 — components 전수", () => {
@@ -109,16 +114,23 @@ describe("상태 배지의 색은 표가 든다 — components 전수", () => {
     expect(sites.flatMap(site => site.badges)).toEqual([]);
   });
 
+  it("<StatusBadge>의 className에 안쪽 가로 여백(px-*)이 없다 — Badge 기본 px-1.5 한 형(O8)", () => {
+    expect(sites.flatMap(site => site.paddings)).toEqual([]);
+  });
+
   it("보관 낱말을 원시 <Badge>로 그리는 곳이 없다", () => {
     expect(sites.flatMap(site => site.rawArchived)).toEqual([]);
   });
 
   it("검사기가 조건부·cn·템플릿 안의 색과 원시 보관 배지를 잡고 배치는 통과시킨다", () => {
     const fixture = (jsx: string) => statusSites("components/x.tsx", `export const X = () => ${jsx};`);
-    expect(fixture('<StatusBadge state={CHIP_STATE[s]} className={cn("px-2", s === "archived" && "text-gray-dim")} />').badges).toHaveLength(1);
-    expect(fixture('<StatusBadge state="archived" className="shrink-0 px-2 hover:bg-muted" />').badges).toHaveLength(1);
+    expect(fixture('<StatusBadge state={CHIP_STATE[s]} className={cn("shrink-0", s === "archived" && "text-gray-dim")} />').badges).toHaveLength(1);
+    expect(fixture('<StatusBadge state="archived" className="shrink-0 hover:bg-muted" />').badges).toHaveLength(1);
     expect(fixture('<StatusBadge state="archived" className={`ml-2 ${x ? "border-red-500" : ""}`} />').badges).toHaveLength(1);
-    expect(fixture('<StatusBadge state="archived" className="shrink-0 px-2 text-xs align-middle border-0" />').badges).toEqual([]);
+    expect(fixture('<StatusBadge state="archived" className="shrink-0 ml-2 text-xs align-middle border-0" />').badges).toEqual([]);
+    expect(fixture('<StatusBadge state="archived" className="shrink-0 ml-2 mr-1.5 align-middle" />').paddings).toEqual([]);
+    expect(fixture('<StatusBadge state="archived" className="shrink-0 px-2" />').paddings).toHaveLength(1);
+    expect(fixture('<StatusBadge state={CHIP_STATE[s]} className={cn("shrink-0", wide && "sm:px-3")} />').paddings).toHaveLength(1);
     expect(fixture("<Badge>{m.projects.archived}</Badge>").rawArchived).toHaveLength(1);
     expect(fixture("<Badge variant=\"soft-neutral\">{m.projects.status.archived}</Badge>").rawArchived).toHaveLength(1);
     expect(fixture("<Badge>{m.projects.status.active}</Badge>").rawArchived).toEqual([]);

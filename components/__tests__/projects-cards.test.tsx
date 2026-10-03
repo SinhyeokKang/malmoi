@@ -247,7 +247,7 @@ describe("보관 행이 한 단계 더 물러난다", () => {
     const badge = find<HTMLElement>(row, "span.rounded-full");
     expect(badge.textContent).toBe(STATE.archived.label);
     expect(badge.className).not.toContain("text-gray-dim");
-    const canon = (await render(<StatusBadge state="archived" className="px-2" />)).container.firstElementChild!;
+    const canon = (await render(<StatusBadge state="archived" />)).container.firstElementChild!;
     expect(badge.className).toBe(canon.className);
   });
 

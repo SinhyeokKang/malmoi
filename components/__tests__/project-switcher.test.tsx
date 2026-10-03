@@ -143,7 +143,10 @@ describe("ProjectSwitcher", () => {
     const row = [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')].find((r) => r.getAttribute("href") === routes.project("old"))!;
     expect(row.getAttribute("aria-checked")).toBe("true");
     const badge = [...row.children].find((node) => node.textContent === m.projects.status.archived) as HTMLElement;
-    expect(badge.className).toContain("px-2");
+    // 칩 여백은 `Badge` 기본 `px-1.5` 한 형이다 — `px-2` 덧칠을 걷었다(search-ux-polish O8).
+    expect(badge.classList.contains("px-1.5")).toBe(true);
+    expect(badge.classList.contains("px-2")).toBe(false);
+    expect(badge.classList.contains("shrink-0")).toBe(true);
     // 보관 배지는 표의 `soft-neutral` 그대로다 — 색 덮개가 없다(search-ux-unify D6).
     expect(badge.className).not.toContain("text-gray-dim");
     // 배지 → 체크 순서, 체크가 마지막 자식이다.
