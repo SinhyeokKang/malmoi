@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { adapterFor } from "@/lib/adapters";
 import { blobSha } from "@/lib/githash";
 import { SKIP_MARKER } from "../payload";
 import { publishFingerprint } from "@/lib/publish/fingerprint";
@@ -1185,6 +1186,24 @@ describe("runPull — changedValues", () => {
       }),
     }, fake);
     expect(await committedValues(deps)).toBe(2);
+  });
+
+  /**
+   * ⚠️ **관측이 Publish를 실패시키지 않는다** — 집계는 커밋 판정 뒤의 관측이라, 파싱이 던지면 수만 `null`로 접고 실행은 그대로 간다.
+   * 빈 base 트리라 렌더·자리 판정이 `read`를 부르지 않는다 — 던지는 `read`가 닿는 곳은 집계뿐이다.
+   */
+  it("집계가 던지면 changedValues만 null이고 커밋·PR은 그대로다", async () => {
+    const adapter = adapterFor({ adapter: "json-catalog", pathTemplate: PROJECT.pathTemplate, locales: [] });
+    const spy = vi.spyOn(adapter, "read").mockImplementation(() => { throw new Error("parser crashed"); });
+    try {
+      const { deps, writes, calls } = makeDeps();
+      expect(await runPull(deps)).toMatchObject({ status: "committed", pr: "created", changedValues: null });
+      expect(spy).toHaveBeenCalled();
+      expect(calls.map(c => c.method)).toContain("createPr");
+      expect(writes).toHaveLength(1);
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it("열린 PR을 갱신해도 PR 전체 vs base다 — 이번 실행의 증분이 아니다", async () => {

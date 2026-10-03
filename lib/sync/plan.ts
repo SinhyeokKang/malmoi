@@ -166,7 +166,8 @@ export type SyncFinish = {
   changed: number | null;
   /**
    * Publish가 리포 파일에서 바꾼 번역 엔트리 수(`SyncRun.changedValues`). 커밋은 센 수, 스킵은 0(바뀐 파일 0), **관측이 없는
-   * 실행(실패·렌더 전에 멈춘 reconfirm)은 `null`** — `changed`와 같은 짝이다. ⚠️ 관측값이다 — 판정에 쓰지 않는다.
+   * 실행(실패·렌더 전에 멈춘 reconfirm)은 `null`** — `changed`와 같은 짝이다. 커밋했는데 집계가 던졌으면 그 커밋도 `null`이다(관측
+   * 실패 — 실행은 SUCCEEDED 그대로). ⚠️ 관측값이다 — 판정에 쓰지 않는다.
    */
   changedValues: number | null;
   warnings: number;

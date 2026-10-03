@@ -116,6 +116,16 @@ describe("Publish 상세 — 바뀐 값 수", () => {
     expect(field((await detail(publish(null, "notStarted"))).container, m.logs.detail.labels.values)).toBe(notRecorded);
   });
 
+  it("칸 순서는 Trigger · Files · Values · Pull request다", async () => {
+    const { container } = await detail(publish(run));
+    const labels = [...container.querySelectorAll("tr th")].map((th) => th.textContent);
+    const d = m.logs.detail.labels;
+    // 머리의 공통 칸(Reference 등)은 이 칸들 앞에 선다 — 종류가 정하는 칸들의 순서만 본다.
+    const start = labels.indexOf(d.trigger);
+    expect(start).toBeGreaterThanOrEqual(0);
+    expect(labels.slice(start, start + 4)).toEqual([d.trigger, d.files, d.values, d.pullRequest]);
+  });
+
   it("행 보조줄에는 값 수가 없다", async () => {
     const { container } = await render(<EventRow row={publish(run)} href="/logs" now={now} archived={false} />);
     expect(container.textContent).not.toContain(m.logs.meta.values(24));

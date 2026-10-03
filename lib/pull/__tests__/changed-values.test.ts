@@ -51,6 +51,15 @@ describe("countChangedValues — 수정 + 추가, 삭제 제외", () => {
     expect(countChangedValues([loc("ko", { toString: "a" })], [loc("ko", { toString: "b", __proto__x: "c" })])).toBe(2);
     expect(countChangedValues([], [{ locale: "ko", entries: [{ key: "__proto__", message: "x" }] }])).toBe(1);
   });
+
+  it("양쪽에 같은 __proto__·constructor 엔트리(로케일 이름도)가 있으면 0이다 — 평범한 {}면 setter·상속값이 끼어 수가 갈린다", () => {
+    const same = (): ReadLocale[] => [
+      { locale: "ko", entries: [{ key: "__proto__", message: "x" }, { key: "constructor", message: "y" }] },
+      { locale: "__proto__", entries: [{ key: "a", message: "z" }] },
+      { locale: "constructor", entries: [{ key: "constructor", message: "w" }] },
+    ];
+    expect(countChangedValues(same(), same())).toBe(0);
+  });
 });
 
 describe("countFileChangedValues — 파일 하나를 어댑터로 읽어 견준다", () => {

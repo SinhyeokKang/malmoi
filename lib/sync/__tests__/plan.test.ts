@@ -337,11 +337,6 @@ describe("planSyncFinish — 닫은 PR", () => {
 });
 
 /**
- * **reconfirm은 리포에 아무것도 안 쓴 스킵이다** (mcp-connector T6.5 · design §3.1). `SKIPPED`로 닫되 `errorCode`로 표시해 `too-soon`의 기준에서
- * 뺀다(`lib/sync/run.ts`) — 표시가 없으면 에이전트가 새 미리보기로 재호출해도 30초를 기다린다. `FAILED`로 닫지 않는다: Revert의 settled
- * 판정(`lib/keys/revert.ts`)이 FAILED를 "썼을 수 있는 실행"으로 센다. 렌더를 안 했으니 `changed`는 관측 없음(`null`)이다.
- */
-/**
  * **Publish가 바꾼 값 수** (project-card-tabs design §2.3). `changed`(파일 수)와 짝이다 — 커밋은 센 수 · 스킵은 0, 관측이 없는 실행(실패·렌더 전에
  * 멈춘 reconfirm)은 `null`. 0은 "바뀐 값이 없었다"는 관측이고 null은 관측 자체가 없다. ⚠️ 관측값이라 판정에 쓰지 않는다.
  */
@@ -361,8 +356,17 @@ describe("planSyncFinish — changedValues", () => {
     expect(planSyncFinish({ thrown: new Error("x") })).toMatchObject({ changed: null, changedValues: null });
     expect(planSyncFinish({ status: "skipped", reason: "reconfirm" })).toMatchObject({ changed: null, changedValues: null });
   });
+  it("커밋했는데 집계가 던졌으면(null) SUCCEEDED 그대로 null을 싣는다 — 관측 실패가 실행 실패가 아니다", () => {
+    const committed = { status: "committed", delivered: 1, pr: "created", commitSha: "c", prUrl: "https://github.com/o/r/pull/1", changed: ["a.yml"] as string[] } as const;
+    expect(planSyncFinish({ ...committed, changedValues: null })).toMatchObject({ status: "SUCCEEDED", errorCode: null, changed: 1, changedValues: null });
+  });
 });
 
+/**
+ * **reconfirm은 리포에 아무것도 안 쓴 스킵이다** (mcp-connector T6.5 · design §3.1). `SKIPPED`로 닫되 `errorCode`로 표시해 `too-soon`의 기준에서
+ * 뺀다(`lib/sync/run.ts`) — 표시가 없으면 에이전트가 새 미리보기로 재호출해도 30초를 기다린다. `FAILED`로 닫지 않는다: Revert의 settled
+ * 판정(`lib/keys/revert.ts`)이 FAILED를 "썼을 수 있는 실행"으로 센다. 렌더를 안 했으니 `changed`는 관측 없음(`null`)이다.
+ */
 describe("planSyncFinish — reconfirm", () => {
   it("SKIPPED + errorCode reconfirm · 재시도 가능 · changed null", () => {
     expect(planSyncFinish({ status: "skipped", reason: "reconfirm" })).toEqual({
