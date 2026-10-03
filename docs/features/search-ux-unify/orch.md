@@ -21,7 +21,7 @@
 | 배치 | 태스크 | 워커 · 모델/effort (이유) | 배치 위치 | 선행 | 출시 차단 | 상태 |
 |---|---|---|---|---|---|---|
 | **B1** 검색 UX | T1~T7 | Opus 5.5 high — 커밋 경계 green 재배치·클라이언트 그래프·뷰모델 판단이 많다 | 새 워크트리 `suu-b1` (base dev) | — | 예 | ✅ dev 통합 `39b9f038..a5fb98c8`(10커밋 = T1~T7 + fix1 3) · 라운드 1 |
-| **B2** 오버레이 술어 | T10 → (B1 dev 진입 대기) → T8·T9 | Opus 5.5 high — 포커스·IME는 POSTMORTEM 09-20·09-24 영역 | 새 워크트리 `suu-b2` (base dev) | T8·T9는 B1 | 예 | 구현 완료 `58b2d9da`·`05f7c369`·`40bf8e3e` · gate ok · 리뷰 중 |
+| **B2** 오버레이 술어 | T10 → (B1 dev 진입 대기) → T8·T9 | Opus 5.5 high — 포커스·IME는 POSTMORTEM 09-20·09-24 영역 | 새 워크트리 `suu-b2` (base dev) | T8·T9는 B1 | 예 | ✅ dev 통합 `a962fad4..3ded135e`(5커밋 = T10·T8·T9 + fix1 2) · 라운드 1 |
 | **B3** 정본 문서 | T11·T12 | Opus 5.5 medium — 문서 정합이 넓지만 판단은 spec이 이미 했다 | 새 워크트리 `suu-b3` (base dev) | B1·B2 | 예 | 진행 중(B2 리뷰와 병렬 — B2 서술은 브랜치 기준, 끝에 `WAITING FOR B2`) |
 | **R-B1·R-B2·R-B3** 리뷰 | 배치 diff 독립 리뷰 | Opus 5.5 high — 리포트 전용 | 해당 배치 워크트리 | 각 배치 완료 | — | 대기 |
 | **QA** | T13 | Opus 5.5 medium — `/runtime-test`, ego-browser | main 체크아웃(dev) | B1·B2·B3 dev | 예 | 대기 |
@@ -66,3 +66,4 @@
 | 2026-10-03 | B1 fix1 완료(`18be5d59`·`0015832d`·`b82ed2b5`, gate ok) — 지휘자가 R1 diff 확인. dev cherry-pick `39b9f038..a5fb98c8` → `pnpm gate` `gate: ok`(10609 · postgres 542 · build) → push. B2에 rebase 신호 |
 | 2026-10-03 | B2 worker_done — T10 `58b2d9da`(가드 테스트 amend) · T8 `05f7c369` · T9 `40bf8e3e`, gate ok. R-B2 리뷰 시작. **B3를 B2 리뷰와 병렬로 앞당겨 시작**(문서만 건드려 코드 겹침 없음, O4 변경) |
 | 2026-10-03 | R-B2: 🔴0 🟡2(조합 중 닫힘 뒤 재오픈 Esc 막힘 — T8 회귀 · IME 검출기가 단독 `isComposing`을 놓침) ⚪6. 인계 다른 점 7건 수용(7은 부분). B2 fix1 발송(🟡1·2 · ⚪1 주석 · ⚪5·6 런타임 목록). ⚪2·3·4는 소비자 0·의도적 우회라 넘김 |
+| 2026-10-03 | B2 fix1 완료(`c9450cf8` 조합 노드 `isConnected` · `48b792ea` 검출기 확장, gate ok) — 지휘자 diff 확인. dev cherry-pick `a962fad4..3ded135e` → `pnpm gate` `gate: ok`(10651 · build) → push |
