@@ -81,7 +81,7 @@ export function connectionProblem(status: ConnectionHealth["status"]): Connectio
 const PROBLEM_STATE = { "not-connected": "notConnected", disconnected: "disconnected", "wrong-repository": "wrongRepository" } as const satisfies Record<ConnectionProblem, StateKey>;
 
 /** 연결 갈래 → 상태 키 — Home 배너·메타 열 배지가 같은 낱말·톤을 쓴다(설정 카드와 같은 `STATE` 행). */
-export function connectionState(problem: ConnectionProblem): StateKey {
+export function connectionState(problem: ConnectionProblem): (typeof PROBLEM_STATE)[ConnectionProblem] {
   return PROBLEM_STATE[problem];
 }
 

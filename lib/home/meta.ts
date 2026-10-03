@@ -1,9 +1,10 @@
 import { readPayload, type ActorKind, type EventKind } from "@/lib/events/payload";
+import type { ConnectionHealth } from "@/lib/github-connect/health";
 import { triggerOf, type Trigger } from "@/lib/events/view";
 import type { ImportFailureCode } from "@/lib/projects/import-status";
 import type { HoldReason } from "@/lib/protection/plan";
 
-import { failureState, type ConnectionProblem, type HomeState } from "./state";
+import { connectionProblem, connectionState, failureState, type ConnectionProblem, type HomeState } from "./state";
 import type { SyncTime } from "./sync-time";
 
 /**
@@ -147,4 +148,193 @@ export function homeTriggers(input: { lastImport: RunEvent | null; lastPublish: 
     sync: last !== null && advancedSyncTime(last) ? triggerOf(last) : null,
     publish: input.lastPublish === null ? null : triggerOf(input.lastPublish),
   };
+}
+
+/**
+ * 메타 열 Sync 탭의 실행 하나 (project-card-tabs) — **마지막으로 시각을 전진시킨 IMPORT 사건**에서 전부 온다.
+ * `at`은 그 실행의 **종료 시각**(사건 `finishedAt`)이다 — 전 소스 `lastImportedAt`의 최댓값이 아니다(spec 문제 3).
+ */
+export type HomeSyncRun = {
+  trigger: Trigger;
+  at: Date;
+  result: (typeof SUCCESSFUL_IMPORT_RESULTS)[number];
+  changedValues: number | null;
+  keys: number | null;
+  surfaceSlugs: readonly string[];
+};
+
+/** 메타 열 Publish 탭의 실행 하나 — 마지막 성공 PUBLISH 사건과 그 `SyncRun`. `at`은 `SyncRun.finishedAt`이다. */
+export type HomePublishRun = {
+  trigger: Trigger;
+  at: Date;
+  prUrl: string | null;
+  changedValues: number | null;
+  /** 실행 시작 때의 비보관 소스 전부 — "그 PR에 실린 소스"가 아니다. 백필된 옛 사건은 `[]`(모른다)다. */
+  surfaceSlugs: readonly string[];
+};
+
+/** Connection 배지의 상태 키 — 설정 카드·Home 배너와 같은 `STATE` 행이다. */
+export type MetaConnection = "connected" | "notConnected" | "disconnected" | "wrongRepository" | "couldNotCheck";
+
+/**
+ * 연결 상태 → Connection 배지. ⚠️ **모름(`unknown`)을 끊김으로 접지 않는다** — `planHomeState`가 조회 실패를 미연결로 접지 않는 것과
+ * 같은 축이다. `repo-moved`는 Sync·Publish가 도는 연결이라 `connected`다(`connectionProblem`이 `null`).
+ */
+export function metaConnection(status: ConnectionHealth["status"]): MetaConnection {
+  if (status === "unknown") return "couldNotCheck";
+  const problem = connectionProblem(status);
+  return problem === null ? "connected" : connectionState(problem);
+}
+
+/**
+ * Sync 탭 입력의 세 갈래. ⚠️ **`"unrecorded"`는 첫 Sync 전(`null`)과 다른 사실이다** — 사건 기록(2026-09-20) 이전에 적재되고 그 뒤
+ * 시각을 전진시킨 실행이 없다. `notSyncedYet`으로 접으면 거짓이다. `lastSyncTime`의 `"unrecorded"`(`lastCommitAt` 기준)와 이름만 같다.
+ */
+export function homeLastSync(run: HomeSyncRun | null, surfaces: readonly { lastImportedAt: Date | null }[]): HomeSyncRun | "unrecorded" | null {
+  if (run !== null) return run;
+  return surfaces.some((surface) => surface.lastImportedAt !== null) ? "unrecorded" : null;
+}
+
+export type MetaTabsInput = {
+  repository: { owner: string; name: string; branch: string; connection: MetaConnection };
+  /** `pushTokenHash !== null` — ⚠️ **해시는 입력에 없다**. 서버가 select 직후 boolean으로 접는다(RSC 페이로드에 싣지 않는다). */
+  ciConfigured: boolean;
+  /** 비보관 소스 수 — Project `Sources` 행 · Sync/Publish `Sources` 행의 "둘 이상" 판정. */
+  surfaceCount: number;
+  keys: number;
+  members: number;
+  /** 대기 초대 수(수락·만료 제외 — `pendingInvitationWhere`). ⚠️ **0도 값이다** — `(0)`. */
+  pendingInvites: number;
+  createdAt: Date;
+  /** 보관 시각 — 있으면 보관 상태다. */
+  archivedAt: Date | null;
+  lastSync: HomeSyncRun | "unrecorded" | null;
+  lastPublish: HomePublishRun | null;
+  /** 첫 렌더에 아는 보류 — PR 조회를 기다리는 동안은 `null`이고 늦게 오는 값은 탭 껍데기가 든다. */
+  held: HoldReason | null;
+  /** PR 조회를 하는 갈래면 `pending`(스켈레톤 자리) · 아니면 `absent`(행 없음). 새 GitHub 호출은 없다. */
+  prState: "pending" | "absent";
+};
+
+/**
+ * ⚠️ **링크 여부가 `linked` 하나다** — `href`는 언제나 있다(평문일 때도 주소는 같다). 옛 `MetaRow`가 `href: null` ∧ `disconnected: false`를
+ * 허용해 파랑 글자인데 포커스를 못 받는 요소가 설 수 있었던 것과 같은 조합이 이 형에선 생기지 않는다.
+ */
+export type ProjectTabRow =
+  | { kind: "repository"; owner: string; name: string; href: string; linked: boolean }
+  | { kind: "connection"; state: MetaConnection }
+  | { kind: "branch"; branch: string }
+  | { kind: "ci"; configured: boolean }
+  | { kind: "sources"; count: number }
+  | { kind: "keys"; count: number }
+  | { kind: "members"; count: number; pending: number }
+  | { kind: "created"; at: Date }
+  /** ⚠️ **시각만 든다** — 행위자를 싣지 않는다(DESIGN §6.64 이탈 표 · POSTMORTEM 2026-09-29 #146). */
+  | { kind: "archived"; at: Date };
+
+export type SyncTabRow =
+  | { kind: "lastSync"; value: Trigger | "notSyncedYet" | "unrecorded" }
+  | { kind: "synced"; at: Date }
+  | { kind: "result"; state: "synced" | "partiallySynced" }
+  | { kind: "changed"; values: number }
+  | { kind: "keysSeen"; count: number }
+  | { kind: "sources"; slugs: readonly string[] }
+  /** 지금의 판정(`planHomeHold`)이다 — 실행의 사실이 아니라 마지막 묶음 끝에 붙고 자리를 잡지 않는다. */
+  | { kind: "hold"; reason: HoldReason };
+
+export type PublishTabRow =
+  | { kind: "lastPublish"; value: Trigger | "never" }
+  | { kind: "published"; at: Date }
+  | { kind: "pullRequest"; href: string; linked: boolean }
+  /** 값이 없다 — 자리(스켈레톤)만 잡고 늦게 오는 PR 조회 결과를 탭 껍데기가 채운다. */
+  | { kind: "prState" }
+  | { kind: "changed"; values: number }
+  | { kind: "sources"; slugs: readonly string[] };
+
+/** 탭마다 **묶음 배열**(구분선 단위). 빈 묶음은 내지 않는다. */
+export type MetaTabs = { project: ProjectTabRow[][]; sync: SyncTabRow[][]; publish: PublishTabRow[][] };
+
+/**
+ * 오른쪽 메타 열의 탭 셋 (project-card-tabs — spec "결정" · 시안 v3).
+ *
+ * ⚠️ **한 행 = 라벨 하나 + 사실 하나.** 옛 `metaRows`의 `Last sync`는 주체·성공 시각·실패·보류를 한 줄에 붙였다.
+ * ⚠️ **Sync·Publish 탭은 실행 하나의 사실이다** — 입력이 실행 하나뿐이라 다른 소스의 시각·실패가 섞일 자리가 없고,
+ * 실패·진행 중은 입력조차 받지 않는다(배너가 든다). ⚠️ **로케일·역할 입력이 없다** — 로케일은 Sources 상세가, 역할은 바닥 링크가 든다.
+ * ⚠️ 상태 매트릭스를 JSX의 `&&`에 흩지 않는다 — 여기 한 곳이 행의 유무를 정하고 테스트가 전수로 든다.
+ */
+export function metaTabs(input: MetaTabsInput): MetaTabs {
+  const { owner, name, branch, connection } = input.repository;
+  // 지금 읽을 수 없는 자리를 링크로 두면 화면이 거짓말한다. 모름(`couldNotCheck`)은 끊김이 아니다.
+  const linked = connection === "connected" || connection === "couldNotCheck";
+  const multiSource = input.surfaceCount > 1;
+
+  const project: ProjectTabRow[][] = [
+    [
+      { kind: "repository", owner, name, href: `https://github.com/${owner}/${name}`, linked },
+      { kind: "connection", state: connection },
+      { kind: "branch", branch },
+      { kind: "ci", configured: input.ciConfigured },
+    ],
+    // ⚠️ **소스가 하나여도 선다** — Keys가 몇 개의 합인지 말한다(옛 `> 1` 규칙을 뒤집었다).
+    [
+      { kind: "sources", count: input.surfaceCount },
+      { kind: "keys", count: input.keys },
+      { kind: "members", count: input.members, pending: input.pendingInvites },
+    ],
+    [
+      { kind: "created", at: input.createdAt },
+      ...(input.archivedAt === null ? [] : [{ kind: "archived", at: input.archivedAt } as const]),
+    ],
+  ];
+
+  const sync = syncTab(input.lastSync, multiSource);
+  if (input.held !== null) sync.at(-1)?.push({ kind: "hold", reason: input.held });
+
+  return { project, sync, publish: publishTab(input, linked, multiSource) };
+}
+
+function syncTab(run: MetaTabsInput["lastSync"], multiSource: boolean): SyncTabRow[][] {
+  if (run === null) return [[{ kind: "lastSync", value: "notSyncedYet" }]];
+  if (run === "unrecorded") return [[{ kind: "lastSync", value: "unrecorded" }]];
+  // 관측하지 않은 수(`null`)를 `0`으로 접지 않는다 — 행이 없다(malmoi#81과 같은 원칙).
+  const facts: SyncTabRow[] = [
+    ...(run.changedValues === null ? [] : [{ kind: "changed", values: run.changedValues } as const]),
+    ...(run.keys === null ? [] : [{ kind: "keysSeen", count: run.keys } as const]),
+    ...sourcesRow(run.surfaceSlugs, multiSource),
+  ];
+  return nonEmpty<SyncTabRow>([
+    [
+      { kind: "lastSync", value: run.trigger },
+      { kind: "synced", at: run.at },
+      { kind: "result", state: run.result === "imported" ? "synced" : "partiallySynced" },
+    ],
+    facts,
+  ]);
+}
+
+function publishTab(input: MetaTabsInput, linked: boolean, multiSource: boolean): PublishTabRow[][] {
+  const run = input.lastPublish;
+  // 발송 전이면 PR 조회 결과도 말할 실행이 없다 — 자리를 잡지 않는다.
+  if (run === null) return [[{ kind: "lastPublish", value: "never" }]];
+  return nonEmpty<PublishTabRow>([
+    [
+      { kind: "lastPublish", value: run.trigger },
+      { kind: "published", at: run.at },
+      ...(run.prUrl === null ? [] : [{ kind: "pullRequest", href: run.prUrl, linked } as const]),
+      ...(input.prState === "pending" ? [{ kind: "prState" } as const] : []),
+    ],
+    [
+      ...(run.changedValues === null ? [] : [{ kind: "changed", values: run.changedValues } as const]),
+      ...sourcesRow(run.surfaceSlugs, multiSource),
+    ],
+  ]);
+}
+
+/** 프로젝트 소스가 둘 이상일 때만 — 백필된 옛 사건의 `[]`는 "모른다"라 빈 행을 세우지 않는다. */
+function sourcesRow(slugs: readonly string[], multiSource: boolean): { kind: "sources"; slugs: readonly string[] }[] {
+  return multiSource && slugs.length > 0 ? [{ kind: "sources", slugs }] : [];
+}
+
+function nonEmpty<T>(groups: T[][]): T[][] {
+  return groups.filter((group) => group.length > 0);
 }
