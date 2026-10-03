@@ -3,29 +3,29 @@
 순서: 순수 함수 → 껍데기 → 생성 배선 → 우회로 셋 → 문서 → 수동. 모든 커밋 경계에서 `pnpm typecheck && pnpm test` green. 자동(`pnpm test`·`pnpm typecheck`)과 수동(`pnpm dev`로 눈으로 봄)을 가른다 — 이 리포에 e2e는 없다.
 
 - **T1. 순수 함수**
-  - `lib/operator/allowlist.ts`: `parseOperatorGithubIds`. `lib/onboarding/create-plan.ts`: `projectLimitFor` + `@param limit` JSDoc·`PROJECT_LIMIT` 머리 주석 갱신(design "순수 함수").
-  - 테스트 먼저 — `parseOperatorGithubIds`:
+  - `lib/operator/allowlist.ts`: `parseOperatorEmails`. `lib/onboarding/create-plan.ts`: `projectLimitFor` + `@param limit` JSDoc·`PROJECT_LIMIT` 머리 주석 갱신(design "순수 함수").
+  - 테스트 먼저 — `parseOperatorEmails`:
     - `undefined`·`""`·`" "` → 빈 집합
-    - `"1, 2,,x,3 "` → `{1,2,3}` / `"1\n"` → `{1}` / `" 1 , 1 "` → `{1}`(중복)
-    - `"007"`·`"0"` 무시(선행 0) / `"__proto__"`·`"-1"`·`"1.5"` 무시
-    - `"9007199254740993"`(2^53+1) → 그 문자열 그대로(정밀도 보존)
+    - `"A@Example.com , b@x.io,,nope"` → `{a@example.com, b@x.io}` / `"a@x.io\n"` → `{a@x.io}` / `"A@x.io,a@x.io"` → 하나(중복)
+    - `"@x.io"`·`"a@"`·`"a@b@c"`·`"__proto__"` 무시
+    - `"a.b+tag@gmail.com"` → 그대로(점·`+` 태그를 접지 않는다 — `normalizeEmail`과 같은 결과)
   - `projectLimitFor(true)` → `Infinity`, `false` → `PROJECT_LIMIT`.
-  - 검증: `lib/operator/__tests__/allowlist.test.ts`·`lib/onboarding/__tests__/create-plan.test.ts` green. `lib/operator/allowlist.ts`의 import 0(잎)을 소스 스캔 테스트 한 줄로 고정.
+  - 검증: `lib/operator/__tests__/allowlist.test.ts`·`lib/onboarding/__tests__/create-plan.test.ts` green. `lib/operator/allowlist.ts`의 import가 `@/lib/auth/email` 하나라는 것을 소스 스캔 테스트 한 줄로 고정.
   - `[commit] feat(operator): parse the operator allowlist and add the limit helper`
 - **T2. 껍데기 `lib/operator/user.ts`의 `isOperatorUser`**
-  - 테스트(Prisma 대역 — `account.findFirst`, `source`로 env 주입):
-    - env 없음 → `findFirst` 미호출 · `false`
-    - **사용자 둘 시드**(POSTMORTEM 2026-09-06): B만 운영자 id의 `github` 행을 가졌을 때 A → `false`, B → `true`
-    - A가 운영자 id를 `github-app` 행으로만 가짐(Google 로그인) → `false`
-    - A가 `github`·`github-app` 행을 둘 다 가짐 → `true`
-    - `findFirst`가 던지면 `isOperatorUser`도 던진다(catch 없음 — spec C4)
+  - 테스트(Prisma 대역 — `user.findUnique`, `source`로 env 주입, `lookupEmail`은 테스트 키로 실물을 쓴다):
+    - env 없음 → `findUnique` 미호출 · `false`
+    - **사용자 둘 시드**(POSTMORTEM 2026-09-06): B만 운영자 주소의 `emailLookup`을 가졌을 때 A → `false`, B → `true`
+    - env 주소가 대소문자·공백만 다른 경우에도 `true`(저장 lookup과 같은 정규화)
+    - `emailLookup`이 `null`인 행 → `false`
+    - `findUnique`가 던지면 `isOperatorUser`도 던진다(catch 없음 — spec C4)
     - **호출 시점에 읽는다**: 모듈을 import한 **뒤에** `source`/`vi.stubEnv`로 값을 넣었다 뺐다 하면 결과가 따라온다(모듈 최상위 평가가 아님을 행동으로 증명)
-    - `where`에 `userId`와 `provider: "github"`가 있다
-  - 검증: 위 테스트 green. `provider`가 `LoginProvider` 타입으로 묶여 있다(`"github-app"`을 넣으면 typecheck red). **`lib/operator/user.ts`를 import하는 소스가 `lib/onboarding-run/{repos,create}.ts`·`lib/projects/owner-limit.ts`뿐**이라는 소스 스캔 테스트 — 인가 경로가 운영자를 보지 않음(spec C13)을 고정한다. 백오피스가 오면 그 목록을 늘린다.
-  - `[commit] feat(operator): resolve operators from the GitHub sign-in account`
+    - `where`가 `{ id: userId }`다
+  - 검증: 위 테스트 green. **`lib/operator/user.ts`를 import하는 소스가 `lib/onboarding-run/{repos,create}.ts`·`lib/projects/owner-limit.ts`뿐**이라는 소스 스캔 테스트 — 인가 경로가 운영자를 보지 않음(spec C13)을 고정한다. 백오피스가 오면 그 목록을 늘린다.
+  - `[commit] feat(operator): resolve operators by their sign-in email`
 - **T3. 생성 배선 (첫 소비자)**
   - `listRepositories`(`repos.ts:49-63`, 기존 `try` 안) · `createProjectFromRepo` 선조회(`create.ts:118-138` — `Promise.all`에 합류) · 잠금 안 재집계(`create.ts:224-225`)가 같은 판정을 쓴다. 면제는 **코어**에 넣는다(Action 래퍼 아님).
-  - 테스트(`app/(edit)/__tests__/onboarding.test.ts` — 실제 코어를 돈다, 하네스는 `account.findFirst`를 이미 가졌다):
+  - 테스트(`app/(edit)/__tests__/onboarding.test.ts` — 실제 코어를 돈다. 하네스 `user`는 `findUnique`를 이미 가졌다(`harness.ts:1085`) — 시드 사용자 행에 `emailLookup`이 없으면 시드에 더한다):
     - 운영자 + OWNER 활성 3 → `listConnectableRepos`가 `limit-reached`를 내지 않고 `createProject`가 성공(선조회와 재집계를 한 테스트가 함께 증명 — 하네스 `countMembers`가 `role`·`archivedAt`을 본다)
     - env 미설정이면 같은 계정도 3에서 `limit-reached`(spec C2)
     - 운영자 조회가 던지면 ①은 `unavailable`, 생성은 선조회 실패 경로(spec C4)
@@ -45,14 +45,14 @@
   - 검증: 위 테스트 green. `app/__tests__/locked-access.test.ts`·`entry-points.test.ts` 무수정 green(인가 16자리 그대로 — User 잠금은 `lockProjectAccess` **뒤**). MCP `unarchive_project`·`change_member`는 같은 코어 — `lib/mcp/__tests__/result.test.ts`에 새 사유 매핑 한 줄. `pnpm gate`가 postgres 스위트를 붙이는지는 `gate-plan.ts`가 판정한다.
   - `[commit] fix(projects): enforce the owner limit on restore, promotion and owner invites`
 - **T5. 환경·문서**
-  - `.env.example`에 `OPERATOR_GITHUB_IDS=""` + 주석(형식 · fail-closed · 로그인 `github` 계정 기준 · 프로젝트 역할 아님 · GitHub 숫자 id 얻는 법).
+  - `.env.example`에 `OPERATOR_EMAILS=""` + 주석(형식 · fail-closed · 병합과 같은 주소 기준 · 도메인 지정 없음 · 프로젝트 역할 아님 · 개인정보라 Sensitive).
   - design "문서 갱신"의 목록 전부 — PRODUCT · ARCHITECTURE · OPERATIONS · DIRECTORY · 가이드 `limits.md` · SHOOTING — 문서별 커밋. **CLAUDE.md는 고치지 않는다.**
-  - 검증: `pnpm sync:agents:check` green · `pnpm test` green(가이드 사실 대조 `lib/guide/__tests__/content.test.ts:116`이 `PROJECT_LIMIT` 값을 문자열로 본다 — 상수 값은 그대로 3). grep: PRODUCT에 `운영자`·`OPERATOR_GITHUB_IDS` 존재 · §3 역할 표는 둘 그대로 · `guide/`에 `operator` 0건.
-  - `[commit] docs(PRODUCT|ARCHITECTURE|OPERATIONS|DIRECTORY): …` · `docs(guide): …` · `chore(env): document OPERATOR_GITHUB_IDS`
+  - 검증: `pnpm sync:agents:check` green · `pnpm test` green(가이드 사실 대조 `lib/guide/__tests__/content.test.ts:116`이 `PROJECT_LIMIT` 값을 문자열로 본다 — 상수 값은 그대로 3). grep: PRODUCT에 `운영자`·`OPERATOR_EMAILS` 존재 · §3 역할 표는 둘 그대로 · `guide/`에 `operator` 0건.
+  - `[commit] docs(PRODUCT|ARCHITECTURE|OPERATIONS|DIRECTORY): …` · `docs(guide): …` · `chore(env): document OPERATOR_EMAILS`
 - **T6. 수동 확인 (dev)**
-  - 사람이 `.env.local`에 본인 GitHub 숫자 id를 넣는다(⚠️ 에이전트가 `.env.local`을 편집하지 않는다). 그 id가 본인 **로그인** `Account`(`provider = "github"`)의 `providerAccountId`인지 먼저 확인한다.
+  - 사람이 `.env.local`에 본인 로그인 주소를 넣는다(⚠️ 에이전트가 `.env.local`을 편집하지 않는다). GitHub·Google 어느 쪽으로 로그인해도 운영자인지 둘 다 본다.
   - `pnpm dev` → OWNER 활성 3개 상태에서 `/projects/new` ①이 리포 목록을 보이고 생성이 된다. 값을 빼고 재시작하면 다시 막힌다.
   - 비운영자 계정(또는 값을 뺀 상태)으로 보관 → 생성 → 복원이 거부되고 문구가 뜬다.
   - **정리**: 확인용으로 만든 프로젝트를 상주로 남길지(이름·용도) 보관할지 정하고, dev 상주 상태 기록(`guide/SHOOTING.md` 진행 상태 · 메모리)을 갱신한다.
   - 검증: 수동(`/runtime-test`).
-- **T7.** Vercel Preview·Production에 `OPERATOR_GITHUB_IDS`를 **환경별 변수**로 사람이 넣는다(OPERATIONS 절차 — env는 다음 배포부터 적용되므로 Preview는 `/push` 전, Production은 `/merge` 전). `pnpm gate` green → `/push`. 마이그레이션은 없다.
+- **T7.** Vercel Preview·Production에 `OPERATOR_EMAILS`를 **환경별 Sensitive 변수**로 사람이 넣는다(OPERATIONS 절차 — env는 다음 배포부터 적용되므로 Preview는 `/push` 전, Production은 `/merge` 전). `pnpm gate` green → `/push`. 마이그레이션은 없다.
