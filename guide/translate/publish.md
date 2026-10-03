@@ -48,3 +48,5 @@ Your published values are safe while the pull request waits for review. Malmoi h
 ## What happens next {#next}
 
 The development team reviews the pull request and merges it into the repository.
+
+To check on it later, open the **Publish** tab on Home. **Last publish** shows how the latest publish was sent, **Published** shows when, and **Changed** shows how many translations it changed in the files. When shown, **PR state** says whether the pull request is still open. **Publish logs** lists every publish.
