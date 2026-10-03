@@ -10,6 +10,7 @@
 - T0(시안 v3 수령·리뷰 결정)은 2026-10-04 spec "결정"으로 닫혔다 — 인테이크에서 새로 물을 🔒 항목 없음.
 - 워커 재량으로 남긴 곳(질문 없이 워커가 정하고 인계 문서에 적는다): `"unrecorded"` 갈래 문구(T1) · Sync `Synced` 종료 시각 출처(T6, design §2.2).
 - **`/guide-shots`를 게이트 마지막 단계로 반드시 돈다** (2026-10-04 사용자) — tasks T13의 "바뀌었으면" 조건을 이 실행에선 쓰지 않는다. 메타 열이 보이는 컷은 전부 다시 찍는다.
+- B-T4: SKIPPED `reconfirm`은 `changedValues = null`(렌더가 안 돌아 관측 없음 — `changed = null`과 짝). 나머지 SKIPPED는 `0`. tasks T4 표의 "reconfirm = 0"을 대체한다(2026-10-04 지휘자 판정, spec "changed와 같은 의미" 근거).
 - 모델 경계: Claude Code 지휘 → Sonnet·Opus만, effort ≤ high. 교차 허가 없음.
 
 ## 배치
@@ -37,3 +38,5 @@
 
 (배치별 라운드·통합 해시·검증 결과를 여기에 덧붙인다)
 - 2026-10-04 Run `run_c2971b959e08` · 웨이브 1 시작 — A `ctx_5adc1c5e470e`(Opus high) · B `ctx_de0a7fb1e640`(Opus high) · C `ctx_dee57e60d929`(Sonnet high), 워크트리 `pct-a-home-data`·`pct-b-publish-count`·`pct-c-ui-primitives`.
+- B-T3 `5cd88900` → dev `6b585d0b` · dev DB 적용(`db:status` clean · anon/authenticated USAGE·CREATE false). A에 rebase 신호 송신.
+- C 1차 완료(커밋 5, gate ok) → 독립 리뷰(Opus): 🔴 `Fact align="end"`가 flex 자식을 못 민다 · 🟡 tabpanel 포커스 링 없음 · 🟡 design §3·T10의 "비활성 패널 언마운트/빈 id" 서술이 틀림(Radix는 hidden 껍데기를 남기고 자식만 언마운트 — **D가 문서 수정**). Tabs 비제어(내부 상태)는 design 의도 충족으로 판정. → C fix1 `ctx_c024a6f363bc`.
