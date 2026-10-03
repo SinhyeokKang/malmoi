@@ -169,6 +169,11 @@ describe("buildInvitationEmail — 가운데 정렬 (2026-10-04 사용자)", () 
     expect(openTag(/<table([^>]*)>\s*<tr><td align="center" bgcolor="#171717"/)).toMatch(/align="center"[^>]*margin:0 auto 28px auto/);
   });
 
+  it("버튼 표는 border-collapse:separate다 — 전역 collapse 아래선 칸의 radius가 테두리에 안 걸려 각진 1px 테두리가 남는다", () => {
+    expect(INVITATION_EMAIL_HTML).toContain("table{border-collapse:collapse}");
+    expect(openTag(/<table([^>]*)>\s*<tr><td align="center" bgcolor="#171717"/)).toContain("border-collapse:separate");
+  });
+
   it("카드 안의 타일·이름 묶음이 가운데에 서고, 이름·역할 두 줄은 타일 옆에서 왼쪽 정렬이다", () => {
     const row = openTag(/<table([^>]*)>\s*<tr>\s*<td width="32"/);
     expect(row).toContain('align="center"');

@@ -10,6 +10,8 @@
  * ⚠️ 원격 이미지는 전부 `mal-moi.com` 고정 경로다(로고 · Box PNG · `/api/images/<key>`). 썸네일은 프로젝트
  *   단위 값이라 수신자를 가르지 않아 열람 추적 픽셀이 되지 않는다.
  * ⚠️ 치환은 `message.ts`가 이스케이프한 값으로만 한다. 여기서 문자열을 조립하지 않는다.
+ * ⚠️ 테두리+radius를 든 칸의 표(카드·버튼)는 `border-collapse:separate`다 — 전역 `table{border-collapse:collapse}` 아래선
+ *   radius가 테두리에 안 걸려 각진 1px 테두리와 모서리 흰 틈이 남는다(2026-10-04 실측 — 버튼에만 빠져 있었다).
  */
 
 /**
@@ -77,7 +79,7 @@ export const INVITATION_EMAIL_HTML = `<!DOCTYPE html>
               </table>
             </td></tr>
           </table>
-          <table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 28px auto;">
+          <table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 28px auto;border-collapse:separate;">
             <tr><td align="center" bgcolor="#171717" style="background-color:#171717;border-radius:10px;border:1px solid #171717;">
               <!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="{{INVITE_URL}}" style="height:40px;v-text-anchor:middle;width:160px;" arcsize="22%" fillcolor="#171717" strokecolor="#171717"><center style="color:#fafafa;font-family:Arial,sans-serif;font-size:14px;font-weight:500;">Accept invitation</center></v:roundrect><![endif]-->
               <!--[if !mso]><!--><a class="mm-btn" href="{{INVITE_URL}}" target="_blank" style="display:inline-block;padding:10px 16px;min-width:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:20px;font-weight:500;color:#fafafa;text-decoration:none;text-align:center;border-radius:10px;background-color:#171717;">Accept invitation</a><!--<![endif]-->
