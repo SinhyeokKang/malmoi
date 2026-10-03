@@ -264,6 +264,39 @@ describe("Kbd children", () => {
   });
 });
 
+// search-ux-unify C10 — "새 탭·새 창·보조 버튼이 아닌 일반 클릭" 판정은 `lib/keyboard.ts`의 `isPlainPrimaryClick` 하나다.
+// 손 사본은 `button` 0 비교이거나, 한 줄에 수식키 넷을 다 세는 식이다(저장 단축키의 `ctrlKey || metaKey`는 넷이 아니라 걸리지 않는다).
+describe("일반 클릭 판정 손 사본", () => {
+  const MODIFIERS = ["metaKey", "ctrlKey", "shiftKey", "altKey"];
+  // 블록 주석은 개행만 남기고 지운다 — 보고하는 줄 번호가 원본과 같다.
+  const bare = (code: string) => code.replace(/\/\*[\s\S]*?\*\//g, comment => comment.replace(/[^\n]/g, "")).replace(/(^|[^:])\/\/[^\n]*/gm, "$1");
+  const plainClickCopies = ({ path, code }: Source) => bare(code).split("\n").flatMap((line, index) =>
+    /\bbutton\s*[!=]==?\s*0\b/.test(line) || MODIFIERS.every(key => line.includes(key)) ? [`${path}:${index + 1}`] : []);
+  const withLib = [...sources, ...walkFiles("lib").map(path => `lib/${path}`).filter(path => /\.tsx?$/.test(path) && !path.includes("__tests__")).map(path => ({ path, code: readFileSync(path, "utf8") }))];
+
+  it("lib/keyboard.ts 밖에서 0곳이다", () => {
+    expect(withLib.length).toBeGreaterThan(500);
+    expect(withLib.filter(source => source.path !== "lib/keyboard.ts").flatMap(plainClickCopies)).toEqual([]);
+  });
+
+  it.each([
+    ["if (event.button !== 0 || event.metaKey) return;", true],
+    ["const plain = e.button === 0;", true],
+    ["if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;", true],
+    ["if (!isPlainPrimaryClick(event)) return;", false],
+    ["if (event.key === \"Enter\" && (event.ctrlKey || event.metaKey)) save();", false],
+    ["// event.button !== 0 || metaKey ctrlKey shiftKey altKey", false],
+  ] as const)("카나리아 %s → %s", (code, hit) => {
+    expect(plainClickCopies({ path: "components/x.tsx", code }).length > 0).toBe(hit);
+  });
+
+  it("isPlainPrimaryClick 자신은 잡힌다 — 정본이 허용 목록이라 0인 것이다", () => {
+    const keyboard = withLib.find(source => source.path === "lib/keyboard.ts");
+    expect(keyboard).toBeDefined();
+    expect(plainClickCopies(keyboard!).length).toBeGreaterThan(0);
+  });
+});
+
 // 사전은 import 없는 데이터 잎이라 이 메일 링크 한 곳만 기존 PrivacyDoc의 조상 링을 받는다.
 function dictionaryAnchors(source: Source): string[] {
   const file = ts.createSourceFile(source.path, source.code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);

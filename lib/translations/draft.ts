@@ -5,6 +5,8 @@
  * ⚠️ **저장 중 받은 서버 값도 `saved`를 갱신한다** (POSTMORTEM 2026-09-12) — 안 그러면 실패 뒤 Escape가 옛 값을 되살린다.
  * ⚠️ 로케일 코드는 남이 정한 키라 레코드를 `Object.create(null)`로 만든다 — `{}`에 `__proto__`를 대입하면 키가 사라진다.
  */
+import { isImeComposing } from "@/lib/keyboard";
+
 type Values = Record<string, string>;
 
 /** 공백만 입력은 미번역이다. 서버 저장과 draft의 성공 적용이 공유하고, 값이 있으면 앞뒤 공백도 보존한다. */
@@ -113,7 +115,7 @@ export function planDraftRecovery(state: KeyDraftState): DraftRecovery {
 
 /**
  * 입력 안의 키보드 — Enter는 줄바꿈, Ctrl/Cmd+Enter는 키 저장, Escape는 현재 입력 취소.
- * IME 조합 중의 키는 조합의 것이다 — `isComposing`과 `keyCode 229`를 둘 다 본다(`SearchInput`과 같은 판정. 하나만 보면 브라우저에 따라 조합 확정 Enter가 저장이 된다).
+ * IME 조합 중의 키는 조합의 것이다 — 판정은 `isImeComposing`(`isComposing`과 `keyCode 229` 둘 다. 하나만 보면 브라우저에 따라 조합 확정 Enter가 저장이 된다).
  */
 export function keyEditCommand(event: {
   key: string;
@@ -123,7 +125,7 @@ export function keyEditCommand(event: {
   isComposing?: boolean;
   keyCode?: number;
 }): "save" | "reset" | null {
-  if (event.isComposing || event.keyCode === 229) return null;
+  if (isImeComposing({ isComposing: event.isComposing ?? false, keyCode: event.keyCode ?? 0 })) return null;
   if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) return "save";
   if (event.key === "Escape") return "reset";
   return null;

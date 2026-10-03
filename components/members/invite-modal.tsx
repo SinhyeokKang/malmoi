@@ -18,6 +18,7 @@ import { parseRecipients, splitPastedEmails, type RecipientRowError } from "@/li
 import type { IssueRowError } from "@/lib/invitation-email/plan";
 import { INVITATION_HOURLY_LIMIT, USER_HOURLY_LIMIT } from "@/lib/invitation-email/limits";
 import { retryAtLabel } from "@/lib/invitation-email/retry-at";
+import { isImeComposing } from "@/lib/keyboard";
 
 /**
  * 다중 초대 폼 — **입력 → 전송 → 성공이면 닫힘 / 오류면 같은 폼** (핸드오프 `Invite Modal.dc.html` `1a`–`1i`).
@@ -146,7 +147,7 @@ export function InviteModal({
   function onEmailKeyDown(index: number, event: KeyboardEvent<HTMLInputElement>) {
     // IME 조합 중 Enter는 글자를 확정하는 키다 — 가로채면 한글·일본어 입력이 깨진다.
     // ⚠️ Safari는 compositionend를 keydown보다 먼저 쏴서 확정 Enter의 `isComposing`이 false다 — 229가 그 표시다.
-    if (event.key !== "Enter" || event.nativeEvent.isComposing || event.keyCode === 229) return;
+    if (event.key !== "Enter" || isImeComposing(event.nativeEvent)) return;
     event.preventDefault();
     insertAfter(index, [blank()]);
   }

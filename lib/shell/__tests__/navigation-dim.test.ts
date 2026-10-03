@@ -9,8 +9,7 @@ import { dimsNavigation, type LinkClick } from "../navigation-dim";
  * 거기에 전면 dim이 겹치면 낙관값으로 먼저 선 선택이 흐려진다.
  */
 const click = (over: Partial<LinkClick> = {}): LinkClick => ({
-  button: 0,
-  modifier: false,
+  plain: true,
   target: "",
   download: false,
   href: "https://mal-moi.com/projects/acme/members",
@@ -31,8 +30,7 @@ describe("dimsNavigation", () => {
   });
 
   it("새 탭·다운로드·보조 버튼은 이 문서를 떠나지 않는다", () => {
-    expect(dimsNavigation(click({ modifier: true }))).toBe(false);
-    expect(dimsNavigation(click({ button: 1 }))).toBe(false);
+    expect(dimsNavigation(click({ plain: false }))).toBe(false);
     expect(dimsNavigation(click({ target: "_blank" }))).toBe(false);
     expect(dimsNavigation(click({ download: true }))).toBe(false);
   });

@@ -12,6 +12,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { searchKeysAction, type SearchMembershipsResult } from "@/app/search/actions";
 import type { PublicAccount } from "@/lib/auth/landing";
 import { m } from "@/lib/i18n";
+import { isPlainPrimaryClick } from "@/lib/keyboard";
 import { landDocumentHeading } from "@/lib/public-doc/landing";
 import type { KeyHit } from "@/lib/search/key-href";
 import { loadSearchIndex } from "@/lib/search/load-index";
@@ -92,7 +93,7 @@ export function SearchDialog({ open, onOpenChange, account, memberships }: {
   });
   const navigate = (href: string) => (event: MouseEvent) => {
     // Modified clicks retain browser new-tab behavior and leave the current search usable.
-    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    if (!isPlainPrimaryClick(event)) return;
     const url = new URL(href, window.location.href);
     if (url.pathname.startsWith("/docs") && url.origin === window.location.origin && url.pathname === window.location.pathname && url.search === window.location.search && url.hash) {
       const id = decodeURIComponent(url.hash.slice(1));

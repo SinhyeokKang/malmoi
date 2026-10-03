@@ -4,6 +4,7 @@ import { Search } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Input, type FieldWidth } from "@/components/ui/input";
+import { isImeComposing } from "@/lib/keyboard";
 import { cn } from "@/lib/utils";
 
 /**
@@ -52,7 +53,7 @@ export function SearchInput({ value, onSearch, label, placeholder = label, disab
         disabled={disabled}
         onChange={(event) => setText(event.target.value)}
         onKeyDown={(event) => {
-          if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
+          if (isImeComposing(event.nativeEvent)) return;
           if (event.key === "Escape") {
             if (text === "") return;
             event.preventDefault();

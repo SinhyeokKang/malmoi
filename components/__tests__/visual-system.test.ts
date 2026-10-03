@@ -484,6 +484,38 @@ describe("화면 간 불변식 — grep 규칙 (T28)", () => {
     expect(LIB.length).toBeGreaterThan(300);
   });
 
+  /**
+   * **IME 조합 판정식은 `lib/keyboard.ts`에만, 조합 상태 추적은 `components/ui/use-ime-guard.ts`에만 선다** (search-ux-unify C9·D11).
+   * 판정식이 여덟 곳에 손으로 있었고 둘은 `isComposing` 하나만 봤다 — Safari 확정 Enter(`keyCode` 229)가 저장·이동이 된다.
+   */
+  describe("IME 판정식·조합 추적은 각자 한 곳이다 (search-ux-unify C9)", () => {
+    const FORMULA = /isComposing\s*(?:\|\||&&)|keyCode\s*[!=]==?\s*229/;
+    const TRACKING = /["']composition(?:start|end)["']|onComposition(?:Start|End)\s*(?:=\s*\{\s*(?:\(|function|async)|:\s*\()/;
+    const offenders = (entries: { path: string; source: string }[], pattern: RegExp, home: string) =>
+      entries.filter(({ path, source }) => path !== home && pattern.test(source)).map(({ path }) => path);
+
+    it("판정식은 lib/keyboard.ts 밖에 0곳이다", () => {
+      expect(FORMULA.test(real("lib/keyboard.ts"))).toBe(true);
+      expect(offenders([...SOURCES, ...LIB], FORMULA, "lib/keyboard.ts")).toEqual([]);
+    });
+
+    it("조합 추적은 use-ime-guard.ts 밖에 0곳이다 — Content는 훅의 핸들러를 달기만 한다", () => {
+      expect(TRACKING.test(real("components/ui/use-ime-guard.ts"))).toBe(true);
+      expect(offenders([...SOURCES, ...LIB], TRACKING, "components/ui/use-ime-guard.ts")).toEqual([]);
+    });
+
+    it.each([
+      ["if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;", FORMULA, true],
+      ["if (!e.isComposing && e.keyCode !== 229) submit();", FORMULA, true],
+      ["if (isImeComposing(event.nativeEvent)) return;", FORMULA, false],
+      ["<div onCompositionStart={() => { composing.current = true; }} />", TRACKING, true],
+      ["input.addEventListener(\"compositionend\", done);", TRACKING, true],
+      ["<Content onCompositionStart={ime.onCompositionStart} onCompositionEnd={ime.onCompositionEnd} />", TRACKING, false],
+    ] as const)("카나리아 %s", (source, pattern, hit) => {
+      expect(offenders([{ path: "components/x.tsx", source }], pattern, "lib/keyboard.ts").length > 0).toBe(hit);
+    });
+  });
+
   describe("`ExternalLink` 글리프를 쓰지 않는다 — 나가는 신호는 색과 새 탭이 든다 (DESIGN §6.8 · 3-Y9)", () => {
     const LUCIDE = /import\s*\{([^}]*)\}\s*from\s*"lucide-react"/g;
     const imports = (source: string) => [...source.matchAll(LUCIDE)].flatMap((match) => (match[1] ?? "").split(",").map((name) => name.trim()));

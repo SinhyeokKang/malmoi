@@ -3,6 +3,8 @@
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
+import { isPlainPrimaryClick } from "@/lib/keyboard";
+
 /**
  * **뒤로/앞으로·새로고침 guard** (translation-rework T13 — design §10.5 실측).
  *
@@ -29,7 +31,7 @@ export function useLeaveGuard(active: boolean, onBlocked: (proceed: () => void) 
     window.addEventListener("beforeunload", beforeUnload);
     // 셸의 Next Link도 React의 클릭 처리보다 먼저 막는다. 새 탭·다운로드·같은 문서의 hash는 이탈이 아니다.
     const click = (event: MouseEvent) => {
-      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      if (event.defaultPrevented || !isPlainPrimaryClick(event)) return;
       const link = event.target instanceof Element ? event.target.closest<HTMLAnchorElement>("a[href]") : null;
       if (link === null || link.hasAttribute("download") || (link.target !== "" && link.target !== "_self")) return;
       const url = new URL(link.href, window.location.href);

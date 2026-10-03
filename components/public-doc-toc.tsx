@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState, type MouseEvent } from "react";
 
+import { isPlainPrimaryClick } from "@/lib/keyboard";
 import { DOCUMENT_HEADING_LANDED, documentTop as topOf, landDocumentHeading } from "@/lib/public-doc/landing";
 import { currentSection } from "@/lib/public-doc/toc";
 import { cn } from "@/lib/utils";
@@ -93,7 +94,7 @@ export function Toc({ label, items }: { label: string; items: readonly { id: str
 
   const onClick = (event: MouseEvent<HTMLAnchorElement>, id: string) => {
     // 수정 키·가운데 클릭은 새 탭·새 창이다 — 브라우저 몫이라 가로채지 않는다.
-    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
+    if (!isPlainPrimaryClick(event)) return;
     const scroller = ref.current?.closest<HTMLElement>("[data-public-scroller]");
     const target = document.getElementById(id);
     // 못 찾으면 브라우저 기본 이동에 맡긴다.

@@ -17,6 +17,7 @@ import {
 import { Kbd } from "@/components/ui/kbd";
 import { Input } from "@/components/ui/input";
 import { m } from "@/lib/i18n";
+import { isImeComposing } from "@/lib/keyboard";
 import { routes } from "@/lib/routes";
 import { switcherProjects } from "@/lib/shell/switcher";
 
@@ -60,7 +61,7 @@ export function ProjectSwitcher({ projects, current }: { projects: readonly Swit
     if (event.key === "ArrowDown") {
       event.preventDefault();
       firstItem()?.focus();
-    } else if (event.key === "Enter" && !event.nativeEvent.isComposing && event.nativeEvent.keyCode !== 229) {
+    } else if (event.key === "Enter" && !isImeComposing(event.nativeEvent)) {
       event.preventDefault();
       // 맞는 프로젝트가 없으면 아무것도 안 한다 — 첫 항목이 New project일 때 그리로 보내지 않는다.
       if (shown.length > 0) content.current?.querySelector<HTMLElement>('[role="menuitemradio"]')?.click();
