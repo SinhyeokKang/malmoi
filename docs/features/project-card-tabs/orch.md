@@ -44,3 +44,4 @@
 - B 1차 완료(커밋 3, gate ok) → 리뷰(Opus): 🔴 0 · 🟡 집계 예외가 Publish를 FAILED로 만듦(→ null로 접기) · `__proto__` 테스트가 null-proto 경로를 안 탐 · 시나리오가 DB 행에서 멈춤(뷰 모델 단언 추가) · 칸 순서 DOM 단언. → B fix1 `ctx_cbfe6582e9ff`.
 - A 1차 완료(커밋 3, gate ok 2회차 — 1회차 `lib/keys` 성능 테스트 부하 red) → 리뷰(Opus): 🔴 0 · 🟡 `metaConnection` 사본(→ 원본 공유) · `homeLastSync` 보관 필터 · Synced 종료 시각 통합 단언. 묶음 경계 시안 대조는 리뷰 서브에이전트가 DesignSync를 못 써서 **Q로 이월**(DesignSync는 `/design-sync` 전용). D 몫으로 넘김: PR state 값 매핑 순수 함수 · ARCHITECTURE:2073·DIRECTORY:761의 `homeTriggers` 언급 · `couldNotCheck` Connection 값 DESIGN 기재 · 늦게 오는 Hold는 Sync 마지막 묶음 끝. → A fix1.
 - B fix1 `647c5645` → dev 통합(T4·T5·fix), `pnpm gate` ok. 워크트리 정리, 인계 사본 `.scratch/orch-pct/handoff-B.md`. 남은 (b): preview 실 Publish 후 Logs Values.
+- A fix1(`4efc2985`·`1760bb46`) → dev 통합(T1·T2·T6·fix), `pnpm gate` ok. 워크트리 정리. 웨이브 1 종료 — D 착수.
