@@ -215,13 +215,19 @@ components/
                         (CountProps — 개수와 문장이 짝이라 문장 없는 개수는 타입 오류). ⚠️ 0을 숨기는 것은 화면 규칙이고 판정은 0을 값으로 낸다(lib/shell/nav)
   ui/close-button.tsx   닫기 X 한 형(ghost · 36 · 원형 · X 20) — Dialog · 1024 모달 · 이력 상세 · Alert · Sources 결과 행이 쓴다. modal.tsx에서 추출했다.
                         ⚠️ label이 필수다 — 자리마다 접근 이름이 다르다(Close · Dismiss)
-  ui/kbd.tsx           Kbd — 스위처 Esc와 검색 플랫폼/Enter 칩의 한 벌. aria-hidden은 소비자 슬롯이 든다. 기존 손 kbd를 이관했다
+  ui/kbd.tsx           Kbd — 스위처·검색 입력 Esc와 검색 플랫폼/Enter 칩의 한 벌. 회색 면·h-5(28 타일 행을 키우지 않는다)·aria-hidden 기본.
+                        글자는 m.common.keys에서 온다 — `<Kbd>` 리터럴 0은 hand-copies.test가 센다
   ui/highlight.tsx     Highlight — highlightSegments의 text/match 조각을 mark로 그린다. /projects와 검색의 손 mark를 모았다
-  ui/field-button.tsx  FieldButton — 검색 캡슐 320×36/rounded-full · icon/placeholder/shortcut 슬롯 · 접근 이름 필수
+  ui/field-button.tsx  FieldButton — 검색 캡슐 320×40/rounded-full(헤더 줄 h-10을 채운다) · icon/placeholder/shortcut 슬롯 · 접근 이름 필수 · aria-expanded
   ui/dialog.tsx       기존 440 Dialog + 형제 CommandDialog. 검색만 LargeModal 패널·높이·dim을 공유하며 top16으로 옮긴다.
-                        입력 첫 포커스·Esc/배경 닫힘·연 자리 복귀, 조합 Esc·해시 착지 복귀 억제는 소비자가 잇는다
+                        진입·복귀는 DialogContent와 같은 순수 핸들러 openAutoFocus·closeAutoFocus(event, consumer?) 한 벌이고(소비자 먼저),
+                        조합 중 Esc는 use-ime-guard가 막는다(onEscapeKeyDown prop 없음). 해시 착지의 복귀 억제(onCloseAutoFocus)만 소비자가 잇는다
+  ui/use-ime-guard.ts IME 조합 상태 추적(compositionstart/end)의 유일한 자리 — 오버레이 다섯(DialogContent · CommandDialog · LargeModal ·
+                        Popover · DropdownMenuContent)과 Command 루트가 쓴다. 판정식은 lib/keyboard의 isImeComposing이고, 순서는
+                        가드 → 내부 동작 → 소비자다(조합 중이면 소비자 onEscapeKeyDown도 안 부른다). ref를 가져 훅이다
   ui/command.tsx      Command/CommandInput/CommandStatus/CommandList/CommandGroup/CommandItem — combobox/listbox.
-                        활성 id·실제 링크 click·입력 포커스·sr 결과 수를 소유하며 검색/필터 판정은 소비자다
+                        활성 id·실제 링크 click·입력 포커스·sr 결과 수를 소유하며 검색/필터 판정은 소비자다.
+                        행은 ListRow + 28 타일(icon 필수, 활성 = selected 7%), 상태 줄은 CommandStatus lines 묶음 하나다
   ui/checkbox.tsx       Radix Checkbox. ②의 Include 접근 이름을 받고 Preview 버튼과 형제로 선다
   ui/large-modal.tsx    LargeModal/LargeModalProps — 공용 1024 껍데기. 온보딩·Publish·초대·Sources 추가/상세·Workflow·MCP 토큰 모달이 쓴다.
                         ⚠️ ui/dialog.tsx(440)의 Overlay·padding·바닥 배치를 바꾸지 않고 Radix Dialog.*를 직접 조립한다.
@@ -258,7 +264,7 @@ components/
   ui/skeleton.tsx       Skeleton — size가 없으면 블록, xs/sm/md/lg면 line 모드. 기존 기본 radius4와 명시 radius·줄 높이를 유지한다.
                         line은 U+200B로 줄 상자를 보존하고 장식은 aria-hidden이다
   search/               search-trigger(두 셸의 FieldButton · 플랫폼 단축키 · 열기마다 새 Dialog 세대) ·
-                        search-dialog(미리보기·Projects/Menus/Keys/Docs 조립 · Docs 탭 캐시 · 공개 멤버십 매 열기 재조회 ·
+                        search-dialog(lib/search/rows의 searchRows·searchStatuses를 그리기만 한다 — 28 타일 · 보관 StatusBadge · 상태 줄 · 실패면 0건 없음 · Docs 탭 캐시 · 공개 멤버십 매 열기 재조회 ·
                         Keys 250ms/세대 무효화 · 실제 링크 이동 · 같은 문서 해시 착지). 프리미티브만 조립한다.
                         __tests__/global-search · search-privacy는 부분 실패/레이스/이탈·dim/목차 소비자와 저장·추적0을 센다
   shell/                앱 셸. ⚠️ 루트가 h-svh overflow-hidden이고 min-h-svh가 아니다 — min-이면
@@ -440,7 +446,7 @@ components/
                         syncBranchFor가 사는 모듈(lib/pull/sync-branch — 2026-09-24에 trigger에서 뺐다)은
                         lib/failure(node:crypto)를 물어 클라이언트 그래프에 오면 안 된다
   ui/search-input.tsx   SearchInput — 기존 제출형 검색을 components/ui/로 옮겼다. Input의 Search/X 슬롯과 width를 조립하고 라우터를 모른다.
-                        ⚠️ IME 조합 확정 Enter는 isComposing과 keyCode229를 함께 거른다(번역 입력의 keyEditCommand와 같은 판정).
+                        ⚠️ IME 조합 중 Enter·Escape는 lib/keyboard의 isImeComposing(isComposing + keyCode229)으로 거른다 — 번역 입력의 keyEditCommand와 같은 판정이고 사본 0은 visual-system.test가 센다.
                         form 암시적 submit을 쓰지 않고 Enter로 제출한다. X/비어 있지 않은 Escape는 빈 질의까지 제출하고,
                         늦은 응답이 도착해도 그동안 작성한 값을 보존한다. repo/tree의 즉시 필터는 Input 슬롯을 직접 쓴다
   projects/search-input.tsx
@@ -457,6 +463,7 @@ components/
                         감싸 로그인·초대 폼이 같은 pending을 쓰게 한다. slow-notice(useSlow)는 긴 원격 실행(탐지·첫 적재·Sync·
                         Publish)에 지연 문구 한 줄을 띄운다 — ⚠️ SLOW_AFTER_MS = GITHUB_WAIT_MS로 값이 한 벌이다, 사본을 두지 않는다
   __tests__/            command-dialog · command · field-button · highlight-kbd · no-match(신규 검색 프리미티브의 DOM/포커스/IME) ·
+                        overlay-ime-guard(오버레이 다섯의 조합 Esc — 플래그·compositionstart 직후·Popover 포커스. 실 IME 검증을 대신하지 않는다) ·
                         global-search(실제 이탈·dim·해시 착지 소비자) · search-privacy(저장·쿠키·추적0 + 검출기 자기검사) ·
                         focus-ring(소스 스캔 — 탭으로 지나가야 보이는 결함이라 눈으로 두 번 놓쳤다) ·
                         docs-content(`/docs`의 상한·포맷·action 넷·마커를 정본 상수와 실제 `uses:`에 대조) ·
@@ -810,10 +817,11 @@ lib/
                         시각은 semver 숫자순 · truncated = 거르기 전 100건) · markdown(본문 mdast 손질 셋 — shiftHeadings · dropFullChangelog ·
                         imagesToLinks) · load(server-only 껍데기 — fetch · revalidate 3600 · 3초 타임아웃 · ⚠️ 던지지 않는다, 로그엔 status와
                         남은 한도만). ⚠️ GitHub 자격증명 셋 중 어느 것도 쓰지 않는다 — Authorization 없음을 load.test가 단언한다
-  search/               match(토큰 AND·순위·상한·빈 입력 미리보기) · nav-index(역할별 내비→Projects/Menus) ·
+  search/               match(토큰 AND·순위·상한·빈 입력 미리보기) · nav-index(역할별 내비→Projects/Pages + nav 글리프 · 멤버십이 없으면 빈 색인 → Docs만) ·
+                        rows(검색 Dialog 뷰모델 — searchRows 그룹·행·ids 한 원천 · searchStatuses 상태 줄 · keySearchText 하한(UTF-16)) ·
                         docs-index(순수 함수 — SUMMARY 원고→페이지 도입/H2 절·평문) · highlight(원문 위치 보존 강조·일치 주변 snippet) ·
-                        keys(플랫폼 단축키/조합·입력·열린 Dialog 제외/활성 id) · key-href(KeyHit 타입·선택 키 번역 주소) ·
-                        load-index(공개 GET의 pending/성공 Promise 탭 재사용·실패 재시도) · load-memberships(매 호출 Action, 캐시 없음).
+                        keys(입력·열린 Dialog의 단축키 제외 · 활성 id — 플랫폼·조합 판정은 lib/keyboard) · key-href(KeyHit 타입·선택 키 번역 주소) ·
+                        load-index(공개 GET의 pending/성공 Promise 탭 재사용·실패 재시도) · load-memberships(매 호출 Action, 캐시 없음 — Action union 그대로, throw만 unavailable).
                         __tests__/는 각 계약 + scenarios의 세션/역할/판정 차이/스니펫 시나리오를 센다. 클라이언트 전이 그래프는 정확 일치로 등록한다
   public-doc/           toc(currentSection) · landing(documentTop · landDocumentHeading). 둘 다 서버 의존 없는 클라이언트 잎이다.
                         목차·검색이 같은48 오프셋/제목 포커스/해시 착지를 쓰고, 스크롤러-local 사건으로 목차의 현재 절 고정도 옮긴다
@@ -850,6 +858,8 @@ lib/
                         (middleware가 요청마다 nonce로 부른다 · 프로덕션 · preview=Vercel Toolbar 호스트 · next dev=eval·HMR). CSP 헤더는 하나다
   bounded-body.ts       ⚠️ 잎. 외부 진입점 본문을 상한 안에서만 읽는다(`/api/push`·`/api/push/failure`) —
                         선언된 길이는 읽기 전에, chunked는 읽는 도중에 끊는다. json()·text()를 먼저 부르면 다 읽은 뒤다
+  keyboard.ts           ⚠️ 잎(import 0). 키보드·포인터 판정 하나 — isImeComposing · isPlainPrimaryClick · searchShortcut(플랫폼별 matches·칩
+                        식별자·aria). 글자는 내지 않는다(컴포넌트가 m.common.keys로 푼다). React 호출부는 nativeEvent를 넘긴다
   cause.ts              ⚠️ 잎. causeMessage — 잡은 값의 메시지. `(cause as Error).message`는 Error 아닌 throw에서 undefined다
   utc-time.ts           ⚠️ 잎. 절대 날짜·시각의 UTC 표기 하나(`Sep 27, 2026` · `Sep 27, 2026 16:34 UTC`) — 앱의 절대 날짜가 전부 지난다
   url-token.ts          ⚠️ 잎. 키셋 커서의 문자열 ↔ base64url 하나 — Logs(클라이언트)와 번역 목록(서버)이 같이 쓴다.
