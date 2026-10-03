@@ -489,7 +489,8 @@ describe("화면 간 불변식 — grep 규칙 (T28)", () => {
    * 판정식이 여덟 곳에 손으로 있었고 둘은 `isComposing` 하나만 봤다 — Safari 확정 Enter(`keyCode` 229)가 저장·이동이 된다.
    */
   describe("IME 판정식·조합 추적은 각자 한 곳이다 (search-ux-unify C9)", () => {
-    const FORMULA = /isComposing\s*(?:\|\||&&)|keyCode\s*[!=]==?\s*229/;
+    // 속성 읽기 자체를 센다(R-B2 🟡2) — `||`·`&&`가 붙어야 걸리면 막으려던 그 형(`isComposing` 단독)과 역순(`229 === e.keyCode`)이 샌다.
+    const FORMULA = /\.isComposing\b|\b229\b/;
     const TRACKING = /["']composition(?:start|end)["']|onComposition(?:Start|End)\s*(?:=\s*\{\s*(?:\(|function|async)|:\s*\()/;
     const offenders = (entries: { path: string; source: string }[], pattern: RegExp, home: string) =>
       entries.filter(({ path, source }) => path !== home && pattern.test(source)).map(({ path }) => path);
@@ -507,7 +508,10 @@ describe("화면 간 불변식 — grep 규칙 (T28)", () => {
     it.each([
       ["if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;", FORMULA, true],
       ["if (!e.isComposing && e.keyCode !== 229) submit();", FORMULA, true],
+      ["if (event.nativeEvent.isComposing) return;", FORMULA, true],
+      ["if (229 === e.keyCode) return;", FORMULA, true],
       ["if (isImeComposing(event.nativeEvent)) return;", FORMULA, false],
+      ["const command = keyEditCommand(event.nativeEvent);", FORMULA, false],
       ["<div onCompositionStart={() => { composing.current = true; }} />", TRACKING, true],
       ["input.addEventListener(\"compositionend\", done);", TRACKING, true],
       ["<Content onCompositionStart={ime.onCompositionStart} onCompositionEnd={ime.onCompositionEnd} />", TRACKING, false],

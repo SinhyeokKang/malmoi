@@ -116,16 +116,10 @@ export function planDraftRecovery(state: KeyDraftState): DraftRecovery {
 /**
  * 입력 안의 키보드 — Enter는 줄바꿈, Ctrl/Cmd+Enter는 키 저장, Escape는 현재 입력 취소.
  * IME 조합 중의 키는 조합의 것이다 — 판정은 `isImeComposing`(`isComposing`과 `keyCode 229` 둘 다. 하나만 보면 브라우저에 따라 조합 확정 Enter가 저장이 된다).
+ * 호출부는 `event.nativeEvent`를 통째로 넘긴다 — 필드를 골라 옮기면 조합 판정식의 사본이 그 자리에 생긴다.
  */
-export function keyEditCommand(event: {
-  key: string;
-  shiftKey?: boolean;
-  ctrlKey?: boolean;
-  metaKey?: boolean;
-  isComposing?: boolean;
-  keyCode?: number;
-}): "save" | "reset" | null {
-  if (isImeComposing({ isComposing: event.isComposing ?? false, keyCode: event.keyCode ?? 0 })) return null;
+export function keyEditCommand(event: Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "isComposing" | "keyCode">): "save" | "reset" | null {
+  if (isImeComposing(event)) return null;
   if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) return "save";
   if (event.key === "Escape") return "reset";
   return null;

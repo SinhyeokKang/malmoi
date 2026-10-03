@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   dirtyLocales,
   initKeyDraft,
-  keyEditCommand,
+  keyEditCommand as command,
   planDraftRecovery,
   reduceKeyDraft,
   type KeyDraftState,
@@ -166,6 +166,9 @@ describe("planDraftRecovery — 세션 복구 사본 (spec §3.4 · T15)", () =>
 });
 
 describe("keyEditCommand — 입력 안의 키보드 (spec §3.4)", () => {
+  // 호출부는 native KeyboardEvent를 넘긴다 — 여기서는 안 누른 키를 기본값으로 채운다. shiftKey는 판정에 안 쓰여도 "Shift+Enter도 줄바꿈"을 적는다.
+  const keyEditCommand = (event: { key: string; shiftKey?: boolean; ctrlKey?: boolean; metaKey?: boolean; isComposing?: boolean; keyCode?: number }) =>
+    command({ ctrlKey: false, metaKey: false, isComposing: false, keyCode: 0, ...event });
   it("Enter는 줄바꿈이다 — 명령이 아니다", () => {
     expect(keyEditCommand({ key: "Enter" })).toBeNull();
     expect(keyEditCommand({ key: "Enter", shiftKey: true })).toBeNull();
