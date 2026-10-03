@@ -2,12 +2,13 @@ import "server-only";
 
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import type { KeyHit } from "@/lib/search/key-href";
+import { KEY_QUERY_MIN, SEARCH_GROUP_LIMIT } from "@/lib/search/match";
 import { Q_MAX_LENGTH } from "@/lib/translations/query";
 import { likePattern } from "./translation-list";
 
 export function keySearchQuery(q: string): { pattern: string } | null {
   const query = q.trim().slice(0, Q_MAX_LENGTH);
-  return query.length < 2 ? null : { pattern: likePattern(query) };
+  return query.length < KEY_QUERY_MIN ? null : { pattern: likePattern(query) };
 }
 
 /** UTF-8 COLLATE C order is code-point order, including supplementary characters. */
@@ -29,9 +30,9 @@ export function mergeKeyHits(first: readonly KeyHit[], second: readonly KeyHit[]
     seen.add(row.id);
     return true;
   });
-  const primary = unique([...first].sort((a, b) => Number(b.inKey) - Number(a.inKey) || order(a, b))).slice(0, 5);
-  if (primary.length === 5) return primary;
-  return [...primary, ...unique([...second].sort(order)).slice(0, 5 - primary.length)];
+  const primary = unique([...first].sort((a, b) => Number(b.inKey) - Number(a.inKey) || order(a, b))).slice(0, SEARCH_GROUP_LIMIT);
+  if (primary.length === SEARCH_GROUP_LIMIT) return primary;
+  return [...primary, ...unique([...second].sort(order)).slice(0, SEARCH_GROUP_LIMIT - primary.length)];
 }
 
 /**
@@ -57,8 +58,8 @@ export async function searchKeys(prisma: PrismaClient, { userId, q, activeSlug }
     WHERE k."projectId" = ANY(${members}) AND NOT k.orphaned
       AND (k.key ILIKE ${pattern} OR k."sourceText" ILIKE ${pattern})
     ORDER BY "inKey" DESC, (p.slug = ${activeSlug}) DESC, k.key COLLATE "C", k.id COLLATE "C"
-    LIMIT 5`);
-  if (first.length === 5) return first;
+    LIMIT ${SEARCH_GROUP_LIMIT}`);
+  if (first.length === SEARCH_GROUP_LIMIT) return first;
   const excluded = first.map(hit => hit.id);
   // ANY 배열은 ANALYZE 뒤에도 원소 수를 몰라 전 테넌트 스캔을 고를 수 있다. 멤버별 LATERAL의
   // OFFSET 0이 projectId 동등 인덱스 탐색을 고정한다. IS TRUE는 로케일 검사를 해시 SubPlan으로
@@ -92,6 +93,6 @@ export async function searchKeys(prisma: PrismaClient, { userId, q, activeSlug }
     JOIN "TranslationSurface" s ON s."projectId" = k."projectId" AND s.id = k."surfaceId"
       AND s."archivedAt" IS NULL AND s."lastCommitSha" IS NOT NULL
     ORDER BY (p.slug = ${activeSlug}) DESC, k.key COLLATE "C", k.id COLLATE "C"
-    LIMIT ${5 - first.length}`);
+    LIMIT ${SEARCH_GROUP_LIMIT - first.length}`);
   return mergeKeyHits(first, second, activeSlug);
 }

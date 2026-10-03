@@ -33,9 +33,10 @@ import { canPerform } from "@/lib/auth/permission";
 import { m } from "@/lib/i18n";
 import type { ProjectListRow } from "@/lib/keys/query";
 import { importFailureMessage, importFailureTone } from "@/lib/projects/import-failure";
+import { highlightSegments } from "@/lib/search/highlight";
+import { searchTokens } from "@/lib/search/match";
 import {
   CHIP_STATE,
-  highlightName,
   listBody,
   meterSlot,
   projectStatus,
@@ -83,7 +84,7 @@ export function ProjectList({
   message?: ReactNode;
 }) {
   const [query, search] = useProjectQuery();
-  // `listBody`·`highlightName`·`routes.newProject`가 전부 빈 값을 "질의 없음"으로 읽는다.
+  // `listBody`·`searchTokens`·`routes.newProject`가 전부 빈 값을 "질의 없음"으로 읽는다.
   const q = query === "" ? undefined : query;
   /**
    * 되돌리기 링크 둘의 가로채기 — `href`(`/projects`)는 새 탭·수정 키 클릭용으로 남기고, 같은 탭
@@ -249,10 +250,10 @@ function ProjectRow({ row, q }: { row: ProjectListRow; q?: string }) {
             자리다** — 등재된 이탈이고 근거는 §6.63에 있다.
 
             ⚠️ **일치 구간은 이름에서만 칠한다** — `searchProjects`의 대상이 이름 하나라, 리포 줄까지
-            칠하면 화면이 실제보다 넓게 찾은 것처럼 말한다.
+            칠하면 화면이 실제보다 넓게 찾은 것처럼 말한다. 칠하는 함수는 검색 Dialog와 같다(search-ux-unify C6).
           */}
           <span className={cn("truncate text-base font-medium", status === "archived" && "text-gray-dim")}>
-            <Highlight segments={highlightName(row.name, q)} />
+            <Highlight segments={highlightSegments(row.name, searchTokens(q ?? ""))} />
           </span>
           {/*
             메타 한 줄 — **owner/repo 하나**다(2026-09-30 사용자 — 역할·멤버 수를 걷었다). ⚠️ **`https://github.com/`를 뗀다**(시안):

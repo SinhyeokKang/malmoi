@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { highlightSegments, snippet } from "../highlight";
+import { searchTokens } from "../match";
 const matched = (text: string, tokens: string[]) => highlightSegments(text, tokens).filter(s => s.match).map(s => s.text);
 describe("강조와 스니펫", () => {
   it("İ 소문자화의 위치를 원문 경계로 되돌린다", () => {
@@ -51,5 +52,36 @@ describe("강조와 스니펫", () => {
     expect(excerpt).not.toContain("false");
     expect(matched(excerpt ?? "", [q])).toEqual([q]);
     expect(snippet(`settings${whitespace}demo`, [q], 30)).toBeNull();
+  });
+});
+
+/**
+ * **`/projects`도 이 함수로 이름을 칠한다** (search-ux-unify C6 — 옛 `highlightName`의 케이스를 옮겼다).
+ * 대상은 이름 하나이고 토큰은 `searchTokens(q)`다 — 대조(`matchesAllTokens`)와 같은 토큰이라 찾은 행엔 칠한 자리가 있다.
+ */
+describe("/projects 이름 강조", () => {
+  const name = (text: string, q: string) => highlightSegments(text, searchTokens(q));
+  it("질의가 없으면 조각 하나다 — 칠할 것이 없다", () => {
+    expect(name("chrome-extension", "")).toEqual([{ text: "chrome-extension", match: false }]);
+    expect(name("chrome-extension", "   ")).toEqual([{ text: "chrome-extension", match: false }]);
+  });
+  it("대소문자를 무시하되 원문 표기를 보존한다", () => {
+    expect(name("BugShot Web", "bugshot")).toEqual([{ text: "BugShot", match: true }, { text: " Web", match: false }]);
+  });
+  it("여러 번 나오면 전부, 일치가 없으면 통째로 하나, 앞뒤가 맞아도 빈 조각이 없다", () => {
+    expect(name("a-b-a", "a")).toEqual([{ text: "a", match: true }, { text: "-b-", match: false }, { text: "a", match: true }]);
+    expect(name("chrome", "figma")).toEqual([{ text: "chrome", match: false }]);
+    expect(name("chrome", "chrome")).toEqual([{ text: "chrome", match: true }]);
+  });
+  it("여러 토큰을 각각 칠한다", () => {
+    expect(name("Web App", "app web")).toEqual([{ text: "Web", match: true }, { text: " ", match: false }, { text: "App", match: true }]);
+  });
+  // POSTMORTEM 2026-09-13 — 소문자화가 길이를 늘리는 글자. 인접 일치는 한 조각으로 합쳐진다.
+  it.each([
+    ["İabc", "a", [{ text: "İ", match: false }, { text: "a", match: true }, { text: "bc", match: false }]],
+    ["İabc", "i", [{ text: "İ", match: true }, { text: "abc", match: false }]],
+    ["İİ", "i", [{ text: "İİ", match: true }]],
+  ])("소문자 변환이 길이를 늘려도 원래 이름의 일치 구간을 보존한다: %s / %s", (text, q, expected) => {
+    expect(name(text, q)).toEqual(expected);
   });
 });

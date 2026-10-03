@@ -1,6 +1,7 @@
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
 import { importFailureTone } from "@/lib/projects/import-failure";
 import type { ImportFailureCode } from "@/lib/projects/import-status";
+import { matchesAllTokens, searchTokens } from "@/lib/search/match";
 import type { StateKey } from "@/lib/status/canon";
 
 /**
@@ -47,11 +48,12 @@ export type ProjectStatusInput = {
  *
  * ⚠️ **원본을 건드리지 않는다** — 호출부가 같은 배열로 총계도 세므로, 제자리에서 잘라내면 제목 옆
  * 숫자가 질의에 따라 달라진다(총계는 좁히기 전의 값이어야 한다).
+ *
+ * ⚠️ **대조는 토큰 AND다**(search-ux-unify D1) — 검색 Dialog·LNB 스위처와 같은 `matchesAllTokens`라 같은 질의에 같은 답을 한다.
  */
 export function searchProjects<T extends { name: string }>(rows: readonly T[], q: string | undefined): T[] {
-  const needle = (q ?? "").trim().toLowerCase();
-  if (needle === "") return [...rows];
-  return rows.filter((row) => row.name.toLowerCase().includes(needle));
+  const tokens = searchTokens(q ?? "");
+  return rows.filter((row) => matchesAllTokens(row.name, tokens));
 }
 
 /**
@@ -551,43 +553,3 @@ export function listBody<T extends RowInput & { name: string }>(
   return { kind: "groups", cards: grouped.groups.map(([group, rows]) => ({ group, rows })) };
 }
 
-/**
- * 검색 일치 구간을 가른다 (캔버스 `3a`).
- *
- * ⚠️ **이름만 대상이다** — `searchProjects`가 `row.name` 하나를 보므로, 리포 줄까지 칠하면 화면이
- * 실제보다 넓게 찾은 것처럼 말한다. 그리고 **같은 규칙으로 대소문자를 무시한다**: 찾은 행인데
- * 칠해진 자리가 없으면 "왜 이 행이 나왔나"에 답할 것이 화면에 없다.
- *
- * ⚠️ **빈 조각을 내지 않는다** — 렌더가 빈 `<span>`을 만들면 그 padding이 글자 사이를 벌린다.
- */
-export function highlightName(name: string, q: string | undefined): { text: string; match: boolean }[] {
-  const needle = (q ?? "").trim().toLowerCase();
-  if (needle === "") return [{ text: name, match: false }];
-
-  const parts: { text: string; match: boolean }[] = [];
-  const haystack = name.toLowerCase();
-  // İ → i̇처럼 길이가 늘어나는 변환의 오프셋을 원문에 대응시킨다. 검색 자체는 전체 소문자화
-  // 결과를 써야 그리스어 끝 시그마처럼 문맥에 따라 바뀌는 글자도 searchProjects와 일치한다.
-  const offsets: { start: number; end: number }[] = [];
-  let original = 0;
-  for (const char of name) {
-    const end = original + char.length;
-    for (let i = 0; i < char.toLowerCase().length; i += 1) offsets.push({ start: original, end });
-    original = end;
-  }
-  let cursor = 0;
-  let searchAt = 0;
-  for (;;) {
-    const at = haystack.indexOf(needle, searchAt);
-    if (at === -1) break;
-    searchAt = at + needle.length;
-    const start = offsets[at]?.start;
-    const end = offsets[searchAt - 1]?.end;
-    if (start === undefined || end === undefined || end <= cursor) continue;
-    if (start > cursor) parts.push({ text: name.slice(cursor, start), match: false });
-    parts.push({ text: name.slice(Math.max(cursor, start), end), match: true });
-    cursor = end;
-  }
-  if (cursor < name.length) parts.push({ text: name.slice(cursor), match: false });
-  return parts;
-}
