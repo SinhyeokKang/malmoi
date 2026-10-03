@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { RepoConnect } from "@/lib/github-connect/connect-plan";
 
-import { planProjectCreate } from "../create-plan";
+import { PROJECT_LIMIT, planProjectCreate, projectLimitFor } from "../create-plan";
 
 /**
  * 프로젝트 생성 가부가 값으로 판정되는 한 자리 (ARCHITECTURE §3.1). 3중 검증(`planRepoConnect`)의 결과를 받아
@@ -61,5 +61,16 @@ describe("planProjectCreate — 통과", () => {
       repoOwner: "acme",
       repoName: "web",
     });
+  });
+});
+
+describe("projectLimitFor — 운영자는 상한이 없다", () => {
+  it("운영자면 Infinity — `ownerCount >= limit`이 늘 거짓이라 `planProjectCreate`가 바뀌지 않는다", () => {
+    expect(projectLimitFor(true)).toBe(Infinity);
+    expect(planProjectCreate({ ...base, ownerCount: 1000, limit: projectLimitFor(true) })).toEqual(OK);
+  });
+
+  it("아니면 PROJECT_LIMIT", () => {
+    expect(projectLimitFor(false)).toBe(PROJECT_LIMIT);
   });
 });
