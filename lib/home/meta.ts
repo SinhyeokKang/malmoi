@@ -160,7 +160,13 @@ export type PublishTabRow =
   | { kind: "sources"; slugs: readonly string[] };
 
 /** 탭마다 **묶음 배열**(구분선 단위). 빈 묶음은 내지 않는다. */
-export type MetaTabs = { project: ProjectTabRow[][]; sync: SyncTabRow[][]; publish: PublishTabRow[][] };
+export type MetaTabs = {
+  project: ProjectTabRow[][];
+  sync: SyncTabRow[][];
+  publish: PublishTabRow[][];
+  /** 늦게 오는 Hold가 Sync 마지막 묶음 끝에 붙을 수 있는가 — 첫 렌더의 `hold` 행과 같은 판정이다. 첫 Sync 전이면 `false`. */
+  lateHold: boolean;
+};
 
 /**
  * 오른쪽 메타 열의 탭 셋 (project-card-tabs — spec "결정" · 시안 v3).
@@ -196,9 +202,12 @@ export function metaTabs(input: MetaTabsInput): MetaTabs {
   ];
 
   const sync = syncTab(input.lastSync, multiSource);
-  if (input.held !== null) sync.at(-1)?.push({ kind: "hold", reason: input.held });
+  // 첫 Sync 전이면 `Last sync` 한 행뿐이다(spec) — 그 갈래에서 보류는 도달 불가(편집·PR이 없다)지만 형식상으로도 붙이지 않는다.
+  // ⚠️ `"unrecorded"`는 적재가 된 프로젝트라 붙는다 — 보류는 실행의 사실이 아니라 지금의 판정이다.
+  const lateHold = input.lastSync !== null;
+  if (lateHold && input.held !== null) sync.at(-1)?.push({ kind: "hold", reason: input.held });
 
-  return { project, sync, publish: publishTab(input, linked, multiSource) };
+  return { project, sync, publish: publishTab(input, linked, multiSource), lateHold };
 }
 
 function syncTab(run: MetaTabsInput["lastSync"], multiSource: boolean): SyncTabRow[][] {

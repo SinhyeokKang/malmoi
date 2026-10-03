@@ -42,7 +42,7 @@ export function MetaColumn({ tabs, slug, now, canOpenSettings, late }: {
 }) {
   const sync = tabs.sync.map((group, i) => group.map((row) => syncFact(row, now)).concat(
     // 늦게 오는 Hold는 마지막 묶음 끝에 붙는다 — 첫 렌더에 아는 Hold(`hold` 행)와 같은 자리다.
-    late !== undefined && i === tabs.sync.length - 1 ? [<LateHold key="late-hold"><HoldRow /></LateHold>] : [],
+    late !== undefined && tabs.lateHold && i === tabs.sync.length - 1 ? [<LateHold key="late-hold"><HoldRow /></LateHold>] : [],
   ));
   return (
     // 보이는 머리가 없어 이름은 aria-label이 든다 — 첫 탭도 `Project`지만 역할(랜드마크 vs 탭)이 갈라 준다.

@@ -39,7 +39,7 @@ const base: MetaTabsInput = {
   prState: "pending",
 };
 
-type Tab = keyof MetaTabs;
+type Tab = Exclude<keyof MetaTabs, "lateHold">;
 const shape = (input: MetaTabsInput, tab: Tab) => metaTabs(input)[tab].map((group) => group.map((row) => row.kind));
 const flat = (input: MetaTabsInput, tab: Tab) => metaTabs(input)[tab].flat();
 const find = (input: MetaTabsInput, tab: Tab, kind: string) => flat(input, tab).find((row) => row.kind === kind);
