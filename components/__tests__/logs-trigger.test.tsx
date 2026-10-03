@@ -47,7 +47,7 @@ describe("행위자 — 야간·CI·사람", () => {
     ["야간 적재", row({ subtype: "import.nightly", result: "imported" }), m.logs.trigger.cron],
     ["CI 적재", row({ subtype: "import.ci", result: "imported", payload: { ...importPayload, source: "ci" } }), m.logs.trigger.ci],
     ["야간 Publish", row({ kind: "PUBLISH", subtype: "publish.run", result: "sent", payload: { kind: "PUBLISH", surfaceSlugs: [], refusal: null },
-      run: { changed: 1, warnings: 0, withheld: 0, prUrl: null, errorCode: null } }), m.logs.trigger.cron],
+      run: { changed: 1, changedValues: 4, warnings: 0, withheld: 0, prUrl: null, errorCode: null } }), m.logs.trigger.cron],
   ])("%s 행의 행위자와 상세 Trigger가 같은 낱말이다", async (_, value, word) => {
     const { container } = await render(<EventRow row={value} href="/logs" now={now} archived={false} />);
     expect(actorText(container)).toBe(word);
@@ -84,6 +84,41 @@ describe("보류 사유와 바뀐 값 수", () => {
   it("실패 실행은 값이 실려 있어도 0이 아니라 —다", async () => {
     const failed = row({ subtype: "import.nightly", result: "failed", payload: { ...importPayload, changedValues: 0 } });
     expect(field((await detail(failed)).container, m.logs.detail.labels.values)).toBe(m.logs.none);
+  });
+});
+
+/**
+ * **Publish 상세의 바뀐 값 수** (project-card-tabs T5 — `SyncRun.changedValues`). IMPORT와 같은 칸·같은 단위다. 기록 이전 행(`null`)은 `Files`와 같은
+ * `—` + not recorded이고 0으로 접지 않는다. 보조줄엔 싣지 않는다 — `N files` 옆에 수가 둘이 된다.
+ */
+describe("Publish 상세 — 바뀐 값 수", () => {
+  const publish = (run: Row["run"], result: Row["result"] = "sent") => row({ kind: "PUBLISH", subtype: "publish.run", result,
+    payload: { kind: "PUBLISH", surfaceSlugs: ["web"], refusal: null }, run });
+  const run = { changed: 2, changedValues: 24, warnings: 0, withheld: 0, prUrl: "https://github.com/o/r/pull/12", errorCode: null };
+  const notRecorded = `${m.logs.none} ${m.logs.detail.notRecordedForRun}`;
+
+  it("커밋한 실행은 'N values changed'다", async () => {
+    expect(field((await detail(publish(run))).container, m.logs.detail.labels.values)).toBe(m.logs.meta.values(24));
+  });
+
+  it("스킵(0)은 0이다 — 관측이 있다", async () => {
+    const skipped = publish({ ...run, changed: 0, changedValues: 0, prUrl: null }, "nothingToSend");
+    expect(field((await detail(skipped)).container, m.logs.detail.labels.values)).toBe(m.logs.meta.values(0));
+  });
+
+  it("기록 이전·실패(null)는 — + not recorded다 — 0이 아니다 (짝)", async () => {
+    expect(field((await detail(publish({ ...run, changedValues: null }))).container, m.logs.detail.labels.values)).toBe(notRecorded);
+    const failed = publish({ ...run, changed: null, changedValues: null, prUrl: null, errorCode: "github-error" }, "failed");
+    expect(field((await detail(failed)).container, m.logs.detail.labels.values)).toBe(notRecorded);
+  });
+
+  it("실행 행이 없는 거부도 — + not recorded다", async () => {
+    expect(field((await detail(publish(null, "notStarted"))).container, m.logs.detail.labels.values)).toBe(notRecorded);
+  });
+
+  it("행 보조줄에는 값 수가 없다", async () => {
+    const { container } = await render(<EventRow row={publish(run)} href="/logs" now={now} archived={false} />);
+    expect(container.textContent).not.toContain(m.logs.meta.values(24));
   });
 });
 

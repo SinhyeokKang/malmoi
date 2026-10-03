@@ -265,10 +265,24 @@ describe("Publish 결과는 조인이 든다 (결정 1)", () => {
 
   it("실행이 나중에 닫혀도 이벤트 쪽 값이 갈리지 않는다", async () => {
     await publishRun("run-1", "RUNNING");
-    await prisma.syncRun.update({ where: { id: "run-1" }, data: { status: "SUCCEEDED", changed: 3, warnings: 2, prUrl: "https://x/1" } });
+    await prisma.syncRun.update({ where: { id: "run-1" }, data: { status: "SUCCEEDED", changed: 3, changedValues: 24, warnings: 2, prUrl: "https://x/1" } });
     const [row] = (await loadEvents(prisma, "p1", base())).rows;
     expect(row?.result).toBe("sent");
-    expect(row?.run).toEqual({ changed: 3, warnings: 2, withheld: 0, prUrl: "https://x/1", errorCode: null });
+    expect(row?.run).toEqual({ changed: 3, changedValues: 24, warnings: 2, withheld: 0, prUrl: "https://x/1", errorCode: null });
+  });
+
+  /**
+   * **select 키는 tsc가 못 본다** (POSTMORTEM 2026-09-14) — `SELECT`에서 `changedValues`를 빼도 `present()`가 `undefined`를 실어 타입이 통과한다.
+   * 실제 행 값으로 고정한다 — 기록 이전 행(`null`)은 `null`이고 0으로 접히지 않는다 (짝).
+   */
+  it("Publish 행이 SyncRun.changedValues를 그대로 든다 — 기록 이전 행은 null", async () => {
+    const counted = await publishRun("run-counted", "RUNNING");
+    await prisma.syncRun.update({ where: { id: "run-counted" }, data: { status: "SUCCEEDED", changed: 1, changedValues: 0, finishedAt: new Date() } });
+    const legacy = await publishRun("run-legacy", "RUNNING");
+    await prisma.syncRun.update({ where: { id: "run-legacy" }, data: { status: "SUCCEEDED", changed: 2, finishedAt: new Date() } });
+    const byRef = new Map((await loadEvents(prisma, "p1", base())).rows.map(r => [r.ref, r.run?.changedValues]));
+    expect(byRef.get(counted)).toBe(0);
+    expect(byRef.get(legacy)).toBeNull();
   });
 
   it("완료 시각은 SyncRun에서 읽고 상세와 목록이 같다", async () => {

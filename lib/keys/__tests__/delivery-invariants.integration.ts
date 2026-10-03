@@ -361,6 +361,7 @@ describe("#3 · D3 — 보류 셀이 있는 Publish 뒤에도 OWNER Revert가 �
     expect(await prisma.syncRun.findFirst({ where: { projectId: "p", trigger: "CRON" } })).toMatchObject({ status: "SUCCEEDED", changed: 2, changedValues: 2 });
     const [row] = (await loadEvents(prisma, "p", { ...parseLogFilter({}) })).rows.filter(r => r.kind === "PUBLISH");
     expect(row?.run?.withheld).toBe(1);
+    expect(row?.run?.changedValues).toBe(2);
     expect(planWithheldLines(outcome, "OWNER")).toHaveLength(1);
   });
 
