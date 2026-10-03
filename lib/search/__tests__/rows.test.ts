@@ -125,6 +125,15 @@ describe("searchRows — 그룹·행·ids 한 원천", () => {
     expect(rows?.map(r => [r.id, r.archived])).toEqual([["project:new", false], ["project:old", true]]);
   });
 
+  // UX 재감사 U1 — 보관 프로젝트에 속한 Pages 행도 Projects 행과 같은 보관 표시·정렬이다(같은 Dialog에서 한 프로젝트가 두 모양이면 안 된다).
+  it("보관 프로젝트의 Pages 행이 archived이고 점수가 같으면 뒤로 간다", () => {
+    const result = searchRows({ index: index([project("old", "Demo old", true), project("new", "Demo new")]), keys: [], q: "translations", activeSlug: null });
+    const rows = result.groups.find(g => g.kind === "pages")?.rows;
+    expect(rows?.map(r => [r.id, r.archived])).toEqual([["page:new:translations", false], ["page:old:translations", true]]);
+    const preview = searchRows({ index: index([project("old", "Old", true)]), keys: [], q: "", activeSlug: null });
+    expect(preview.groups.find(g => g.kind === "pages")?.rows.every(r => r.archived)).toBe(true);
+  });
+
   it("보관 프로젝트만 있어도 미리보기에 선다", () => {
     const result = searchRows({ index: index([project("old", "Old", true)]), keys: [], q: "", activeSlug: null });
     expect(result.groups[0]?.rows.map(r => [r.id, r.archived])).toEqual([["project:old", true], ["go-to-projects", false]]);

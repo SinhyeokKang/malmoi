@@ -25,6 +25,9 @@ describe("내비 검색 색인", () => {
     }
     expect(result.pages.filter(e => e.href.endsWith("/settings")).map(e => e.slug)).toEqual(["owner", "archived"]);
     expect(result.pages.find(e => e.slug === "editor")).toMatchObject({ context: "Demo editor" });
+    // 보관 프로젝트의 Pages 항목도 보관을 싣는다(UX 재감사 U1) — 사용자 Pages(프로젝트 밖)는 싣지 않는다.
+    expect(result.pages.filter(e => e.slug !== undefined).map(e => [e.slug, e.archived])).toEqual(result.pages.filter(e => e.slug !== undefined).map(e => [e.slug, e.slug === "archived"]));
+    expect(result.pages.filter(e => e.slug === undefined).every(e => e.archived === undefined)).toBe(true);
     expect(new Set([...result.projects, ...result.pages].map(e => e.id)).size).toBe(result.projects.length + result.pages.length);
   });
 });
