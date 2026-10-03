@@ -114,8 +114,8 @@ type PublishRun = { trigger: Trigger; at: Date /* SyncRun.finishedAt */; prUrl: 
 - ⚠️ **`SegmentedControl`을 탭으로 쓰지 않는다** — 그것은 `radiogroup`이고 패널 연결이 없다(DESIGN §6.4 :721). 시안 메모의 "탭 의미는 코드에 없음"이 이 프리미티브로 채워진다. DESIGN §6.4에 경계를 한 줄로 적는다.
 - **Radix `Tabs`를 `radix-ui` 단일 패키지에서 쓴다** — `@radix-ui/react-tabs` 1.1.21이 `radix-ui@1.6.7`의 전이 의존성으로 이미 설치돼 있다(새 의존성 0). Radix 부품 일곱 → **여덟**, 프리미티브 모듈 47 → **48**(CLAUDE.md:75 · DESIGN.md:52 스택 표).
 - API는 소비자 하나가 쓰는 만큼만: `Tabs`(Root, 제어) · `TabsList`(`label`) · `TabsTrigger` · `TabsContent`. 다른 축을 열지 않는다.
-- ⚠️ **Radix Tabs는 비활성 패널을 언마운트한다** — `useArrived`는 `useState(null)`로 시작해 effect에서 값을 받으므로(`components/use-arrived.ts:18-25`) 다시 마운트되면 한 프레임은 값 없이 그려진다. → **늦게 오는 promise(보류 판정 · PR state)는 항상 마운트된 탭 껍데기에서 한 번 구독하고 값을 패널로 내린다.** 시안의 자리 규칙: Hold는 자리를 잡지 않고 묶음 끝에 붙는다 · PR state는 조회하는 갈래면 56px 스켈레톤이 자리를 잡는다. `forceMount`를 쓰지 않는다.
-- ⚠️ **비활성 탭의 `aria-controls`는 없는 id를 가리킨다** — 언마운트의 알려진 결과다. CDP 실측 표에 미리 적는다.
+- ⚠️ **Radix Tabs는 비활성 패널의 *자식*을 언마운트한다**(패널 껍데기는 `hidden`으로 남는다 — 배치 C 실측) — `useArrived`는 `useState(null)`로 시작해 effect에서 값을 받으므로(`components/use-arrived.ts:18-25`) 다시 마운트되면 한 프레임은 값 없이 그려진다. → **늦게 오는 promise(보류 판정 · PR state)는 항상 마운트된 탭 껍데기에서 한 번 구독하고 값을 패널로 내린다.** 시안의 자리 규칙: Hold는 자리를 잡지 않고 묶음 끝에 붙는다 · PR state는 조회하는 갈래면 56px 스켈레톤이 자리를 잡는다. `forceMount`를 쓰지 않는다.
+- ⚠️ **비활성 탭의 `aria-controls`는 실재하는 빈 `hidden` 패널을 가리킨다** — 껍데기만 남기는 Radix의 알려진 동작이다(옛 서술 "없는 id"는 틀렸다 — 배치 C 실측). CDP 실측 표에 미리 적는다.
 - ⚠️ **jsdom + Radix + `user-event`는 실시간 지연이 있다** (POSTMORTEM 2026-09-13) — 탭 DOM 테스트 파일 머리에만 `vi.setConfig({ testTimeout: 20_000 })`. Radix `TabsTrigger`는 `onMouseDown`으로 선택하므로 **`user-event`를 쓴다.**
 - ⚠️ **focus-ring 스캐너**: `radix-ui`를 import하는 `ui/` 파일은 `RADIX_FIXTURES`(`focus-ring.test.ts:156`) 등록이 필수다 — `tabs.tsx` 픽스처를 추가한다.
 
