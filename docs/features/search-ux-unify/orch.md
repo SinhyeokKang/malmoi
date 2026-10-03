@@ -67,3 +67,4 @@
 | 2026-10-03 | B2 worker_done — T10 `58b2d9da`(가드 테스트 amend) · T8 `05f7c369` · T9 `40bf8e3e`, gate ok. R-B2 리뷰 시작. **B3를 B2 리뷰와 병렬로 앞당겨 시작**(문서만 건드려 코드 겹침 없음, O4 변경) |
 | 2026-10-03 | R-B2: 🔴0 🟡2(조합 중 닫힘 뒤 재오픈 Esc 막힘 — T8 회귀 · IME 검출기가 단독 `isComposing`을 놓침) ⚪6. 인계 다른 점 7건 수용(7은 부분). B2 fix1 발송(🟡1·2 · ⚪1 주석 · ⚪5·6 런타임 목록). ⚪2·3·4는 소비자 0·의도적 우회라 넘김 |
 | 2026-10-03 | B2 fix1 완료(`c9450cf8` 조합 노드 `isConnected` · `48b792ea` 검출기 확장, gate ok) — 지휘자 diff 확인. dev cherry-pick `a962fad4..3ded135e` → `pnpm gate` `gate: ok`(10651 · build) → push |
+| 2026-10-03 | B3 초안 8커밋 → `WAITING FOR B2`. R-B3(B3 대기 중 병렬): 🔴2(DESIGN:1208 보관 `#a3a3a3` 잔존 · DESIGN:2162 초대 키 오기) 🟡6 ⚪14 + B2 fix1 뒤 고칠 문장 7. B3에 rebase 신호 + 리뷰 반영 지시(⚪9·14 제외) |
