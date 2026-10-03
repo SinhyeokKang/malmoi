@@ -56,4 +56,7 @@
 
 | 시각 | 사건 |
 |---|---|
-| 2026-10-03 | orch.md 작성, dev `7097f65d` 기준 |
+| 2026-10-03 | orch.md 작성, dev `7097f65d` 기준. Run `run_4e8a93de8a7d` |
+| 2026-10-03 | B1 시작(`suu-b1`, Opus high) · B2 시작(`suu-b2`, Opus high) |
+| 2026-10-03 | B2 T10 완료 `d20e0e88` → `WAITING FOR B1` |
+| 2026-10-03 | R-B2a(T10 리뷰): 🔴0 🟡1 — design·tasks의 `closeAutoFocus(event)` 시그니처가 실제 `(event, consumer?)`와 다름 → **B3 T11에서 DESIGN 기술 시 반영**. ⚪: 기존 "포커스가 이미 안에 있음" 가드에 테스트 없음 → B2 T8 때 테스트 한 줄 추가 지시 |
