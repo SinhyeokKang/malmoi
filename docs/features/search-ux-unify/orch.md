@@ -65,3 +65,4 @@
 | 2026-10-03 | R-B1: 🔴1(지우기 X에서 Enter가 결과로 이동) 🟡5(시나리오가 뷰모델 미단언 · `/docs` 개요 제외 미고정 · Kbd 스캐너 구멍 · 상태 줄 live region `empty:hidden` · `PREVIEW_LIMIT` 무효) ⚪7. 인계 다른 점 12건 전부 수용 → B1 fix1 발송(같은 터미널). ⚪6(질의 모드 개요 문서 결과)은 **B3 T11에서 문서화** |
 | 2026-10-03 | B1 fix1 완료(`18be5d59`·`0015832d`·`b82ed2b5`, gate ok) — 지휘자가 R1 diff 확인. dev cherry-pick `39b9f038..a5fb98c8` → `pnpm gate` `gate: ok`(10609 · postgres 542 · build) → push. B2에 rebase 신호 |
 | 2026-10-03 | B2 worker_done — T10 `58b2d9da`(가드 테스트 amend) · T8 `05f7c369` · T9 `40bf8e3e`, gate ok. R-B2 리뷰 시작. **B3를 B2 리뷰와 병렬로 앞당겨 시작**(문서만 건드려 코드 겹침 없음, O4 변경) |
+| 2026-10-03 | R-B2: 🔴0 🟡2(조합 중 닫힘 뒤 재오픈 Esc 막힘 — T8 회귀 · IME 검출기가 단독 `isComposing`을 놓침) ⚪6. 인계 다른 점 7건 수용(7은 부분). B2 fix1 발송(🟡1·2 · ⚪1 주석 · ⚪5·6 런타임 목록). ⚪2·3·4는 소비자 0·의도적 우회라 넘김 |
