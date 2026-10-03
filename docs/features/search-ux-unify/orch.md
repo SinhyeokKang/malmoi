@@ -14,6 +14,7 @@
 | O5 | T14의 `/code-review`는 **배치별 독립 리뷰 워커**(R-B1·R-B2·R-B3)로 갈음한다. 전 배치 통합 뒤 `/ux-audit`(일곱 차원)을 리포트 전용 워커로 돈다 | 같은 diff를 두 번 리뷰하지 않는다 |
 | O6 | 스키마 변경 없음 — 워커에게 마이그레이션을 허용하지 않는다 | design "스키마 변경: 없음" |
 | O9 | **첫 열림 활성 행**: 사용자가 ↑↓·hover로 옮기기 전에는 활성이 늘 첫 행을 따라간다. 옮긴 뒤에만 "늦은 그룹 도착에도 활성 id 유지". 질의가 바뀌면 다시 첫 행 | 사용자 2026-10-03 (QA 판단 — 공개 셸 첫 열림 활성이 `Go to docs`, Enter 목적지가 응답 순서에 달림) |
+| O10 | 검색 Pages 행도 보관 프로젝트면 `archived`를 싣고 같은 보관 배지·보관 뒤 정렬(UX 재감사 Q1) | 사용자 2026-10-03 |
 | O8 | 키 검색 하한 판정은 서버·클라이언트 모두 **UTF-16 length 유지**(이모지 1개 = 길이 2 → 검색한다). tasks T3 엣지 "서로게이트 쌍 1글자 → 요청 없음"은 틀린 문장이었다 — 요지는 "서버와 같은 판정" | 지휘자 2026-10-03 (B1 질문) — 서버 의미 변경은 범위 밖 |
 | O7 | 워커 모델: Claude Code 지휘 → Opus 5.5·Sonnet 5.5, effort ≤ high. 패밀리 교차 없음 | `/orchestrate` 0단계 |
 
@@ -26,7 +27,7 @@
 | **B3** 정본 문서 | T11·T12 | Opus 5.5 medium — 문서 정합이 넓지만 판단은 spec이 이미 했다 | 새 워크트리 `suu-b3` (base dev) | B1·B2 | 예 | ✅ dev 통합(15커밋 — 초안 8 + 리뷰 반영 7) · 라운드 1 |
 | **R-B1·R-B2·R-B3** 리뷰 | 배치 diff 독립 리뷰 | Opus 5.5 high — 리포트 전용 | 해당 배치 워크트리 | 각 배치 완료 | — | 대기 |
 | **QA** | T13 | Opus 5.5 medium — `/runtime-test`, ego-browser | main 체크아웃(dev) | B1·B2·B3 dev | 예 | ✅ 13항목 + 레이아웃 통과, 이슈 0 |
-| **UX** | T14 `/ux-audit` | Opus 5.5 medium — 리포트 전용 | main 체크아웃 | QA 인계 뒤 | 🔴만 | 대기 |
+| **UX** | T14 `/ux-audit` | Opus 5.5 medium — 리포트 전용 | main 체크아웃 | QA 인계 뒤 | 🔴만 | ✅ 🔴0 · 범위 안 🟡2(U1·U2 → B1) |
 | 지휘자 | T14 gate · T15 정리 | — | main 체크아웃 | 전부 | — | — |
 
 ## 파일 겹침 → 순서
@@ -72,3 +73,4 @@
 | 2026-10-03 | B3 리뷰 반영 완료(🔴2·🟡6·⚪10 + fix1 문장 7, gate ok). dev cherry-pick → `pnpm gate` `gate: ok` → push. `guide:check` stale 25컷은 이번 배치와 무관 → `/guide-shots` 후속. QA(T13) 시작 |
 | 2026-10-03 | QA(T13): 13항목 + 레이아웃 375·1280·1440·1890 측정 통과, 이슈 0, dev DB 변경 0. 미검증: 실 macOS 한글 IME의 미확정 글자 취소(CDP 불가) · Safari(O2) · 실제 스크린리더 낭독(AX 트리 role=status polite atomic만 확인). 판단 1건 → O9 → B1 fix2 발송 |
 | 2026-10-03 | GC: `suu-b2`·`suu-b3` 워크트리·브랜치 삭제(미커밋 0 · `git cherry` `+` 0 확인). 남은 워크트리 `suu-b1`(fix2 진행) |
+| 2026-10-03 | fix2 dev 통합(`9465b846`, gate ok). QA2: 2통과 1실패 → **#173**(멈춘 포인터의 mouseenter가 첫 열림 활성을 옮김) → B1 fix3. UX 재감사(T14): 🔴0(첫 감사 🔴6 전부 닫힘), 범위 안 🟡2 — U1(Pages 보관 표시, O10) · U2(DESIGN:544) → B1 fix3에 이어 붙임. 범위 밖 🟡4·Q2·Q3·⚪27은 리포트 `.scratch/ux-audit-suu/REPORT.md` → 후속 |
