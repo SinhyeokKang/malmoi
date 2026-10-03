@@ -54,4 +54,5 @@ search-ux-unify(dev `22ed879c`까지) 뒤처리 두 갈래를 병렬로 태운�
 
 | 시각 | 사건 |
 |---|---|
-| 2026-10-03 | orch.md 작성, dev `22ed879c` |
+| 2026-10-03 | orch.md 작성, dev `22ed879c`. Run `run_1ee53ed0f3b0` |
+| 2026-10-03 | P 시작(`sup-p`, Sonnet medium) ∥ DS 시작(main 체크아웃, Opus high) |
