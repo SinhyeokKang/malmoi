@@ -166,6 +166,7 @@ function FooterLink() {
  * 메타 열 Project 탭 여덟 행의 막대 폭 `[라벨, 값]` (시안 v3 `2e`, malmoi#181) — 여덟 줄이 같은 폭이면 실물 행의 모양을 미리 보이지 못한다.
  * 라벨 막대는 실제 라벨 길이(Repository · Connection · Branch · CI / Sources · Keys · Members / Created), 값 막대는 그 행 값의 흔한 길이다
  * (리포 주소 · 배지 · 브랜치 · `Configured` / 수 · 수 · `4 (2)` / 상대 시각). ⚠️ 클래스를 문자열 리터럴로 둔다 — Tailwind가 소스에서 찾는다.
+ * ⚠️ **위 머리 주석의 "폭은 비율" 규칙의 예외다** — 메타 열은 320 고정이라 뷰포트에 따라 잘리는 폭이 없고, 시안이 px로 정했다.
  */
 const META_ROWS: readonly (readonly [label: string, value: string])[] = [
   ["w-16", "w-30"], ["w-18", "w-21"], ["w-12", "w-10"], ["w-6", "w-19"],
