@@ -22,7 +22,7 @@
 |---|---|---|---|---|---|---|
 | **B1** 검색 UX | T1~T7 | Opus 5.5 high — 커밋 경계 green 재배치·클라이언트 그래프·뷰모델 판단이 많다 | 새 워크트리 `suu-b1` (base dev) | — | 예 | ✅ dev 통합 `39b9f038..a5fb98c8`(10커밋 = T1~T7 + fix1 3) · 라운드 1 |
 | **B2** 오버레이 술어 | T10 → (B1 dev 진입 대기) → T8·T9 | Opus 5.5 high — 포커스·IME는 POSTMORTEM 09-20·09-24 영역 | 새 워크트리 `suu-b2` (base dev) | T8·T9는 B1 | 예 | ✅ dev 통합 `a962fad4..3ded135e`(5커밋 = T10·T8·T9 + fix1 2) · 라운드 1 |
-| **B3** 정본 문서 | T11·T12 | Opus 5.5 medium — 문서 정합이 넓지만 판단은 spec이 이미 했다 | 새 워크트리 `suu-b3` (base dev) | B1·B2 | 예 | 진행 중(B2 리뷰와 병렬 — B2 서술은 브랜치 기준, 끝에 `WAITING FOR B2`) |
+| **B3** 정본 문서 | T11·T12 | Opus 5.5 medium — 문서 정합이 넓지만 판단은 spec이 이미 했다 | 새 워크트리 `suu-b3` (base dev) | B1·B2 | 예 | ✅ dev 통합(15커밋 — 초안 8 + 리뷰 반영 7) · 라운드 1 |
 | **R-B1·R-B2·R-B3** 리뷰 | 배치 diff 독립 리뷰 | Opus 5.5 high — 리포트 전용 | 해당 배치 워크트리 | 각 배치 완료 | — | 대기 |
 | **QA** | T13 | Opus 5.5 medium — `/runtime-test`, ego-browser | main 체크아웃(dev) | B1·B2·B3 dev | 예 | 대기 |
 | **UX** | T14 `/ux-audit` | Opus 5.5 medium — 리포트 전용 | main 체크아웃 | QA 인계 뒤 | 🔴만 | 대기 |
@@ -68,3 +68,4 @@
 | 2026-10-03 | R-B2: 🔴0 🟡2(조합 중 닫힘 뒤 재오픈 Esc 막힘 — T8 회귀 · IME 검출기가 단독 `isComposing`을 놓침) ⚪6. 인계 다른 점 7건 수용(7은 부분). B2 fix1 발송(🟡1·2 · ⚪1 주석 · ⚪5·6 런타임 목록). ⚪2·3·4는 소비자 0·의도적 우회라 넘김 |
 | 2026-10-03 | B2 fix1 완료(`c9450cf8` 조합 노드 `isConnected` · `48b792ea` 검출기 확장, gate ok) — 지휘자 diff 확인. dev cherry-pick `a962fad4..3ded135e` → `pnpm gate` `gate: ok`(10651 · build) → push |
 | 2026-10-03 | B3 초안 8커밋 → `WAITING FOR B2`. R-B3(B3 대기 중 병렬): 🔴2(DESIGN:1208 보관 `#a3a3a3` 잔존 · DESIGN:2162 초대 키 오기) 🟡6 ⚪14 + B2 fix1 뒤 고칠 문장 7. B3에 rebase 신호 + 리뷰 반영 지시(⚪9·14 제외) |
+| 2026-10-03 | B3 리뷰 반영 완료(🔴2·🟡6·⚪10 + fix1 문장 7, gate ok). dev cherry-pick → `pnpm gate` `gate: ok` → push. `guide:check` stale 25컷은 이번 배치와 무관 → `/guide-shots` 후속. QA(T13) 시작 |
