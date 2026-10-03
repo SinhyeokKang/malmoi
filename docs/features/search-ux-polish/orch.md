@@ -65,3 +65,5 @@ search-ux-unify(dev `22ed879c`까지) 뒤처리 두 갈래를 병렬로 태운�
 | 2026-10-03 | P(+fix1) 5커밋 dev 통합(`de98d385..f7bf0910`), gate ok. DS 감사: 결함 4(#174~#177) — #174는 O8로 결함 아님(닫음). DF 시작(#175·#176·#177 + O8) |
 | 2026-10-03 | DF 5커밋(#175·#176·#177·O8) — R-DF 🔴0 🟡1(#177 좌표는 DS2가 잰다) ⚪4. dev 통합 → gate ok → push. DS2 시작 |
 | 2026-10-03 | DS2 재실측 통과 — #175·#176·#177 근거 댓글 후 닫음, 새 결함 0. `sup-p`·`sup-df` 정리. GS 시작 |
+| 2026-10-03 | GS 질문: 검토 대기 행을 만들려면 촬영 리포 커밋 2회 필요 → 허용(같은 범위). qa3는 이미 dev에 없어 보관 단계 생략 |
+| 2026-10-03 | GS 완료 `d3f5f85d` — stale 25컷 + README 두 장 재촬영, 상주 촬영 프로젝트 `Acme web`(리포 `i18n-format-check`, web 9 ns + emails 4 ns, en/de/fr/ja, EDITOR 수락). guide:check stale 0, test green. OWNER 활성 프로젝트가 다시 3(qa · i18n-order-check · acme-web) |
