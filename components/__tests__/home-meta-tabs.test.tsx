@@ -214,6 +214,18 @@ describe("메타 열 — 늦게 오는 Hold · PR state", () => {
     expect(last().lastElementChild?.querySelector("dd")?.textContent).toBe(STATE.held.label);
   });
 
+  /**
+   * 위 테스트만으로는 "껍데기가 한 번 구독한다"가 고정되지 않는다 — `act`가 이미 풀린 promise의 콜백까지 비운 뒤 단언하므로, 패널 안에서
+   * 다시 구독해도 jsdom에서는 빈 프레임이 안 보인다. 그래서 **구독 횟수**를 센다: 탭을 몇 번 오가도 `then`은 한 번이다.
+   */
+  it("탭을 오가도 늦은 값의 구독은 한 번이다 — 패널이 다시 구독하지 않는다", async () => {
+    const late = Promise.resolve(homeLate("open-pr"));
+    const then = vi.spyOn(late, "then");
+    const { open } = await setup(pending, { late });
+    for (const tab of [m.home.meta.tabs.sync, m.home.meta.tabs.publish, m.home.meta.tabs.sync, m.home.meta.tabs.project]) await open(tab);
+    expect(then).toHaveBeenCalledTimes(1);
+  });
+
   it("도착 전에는 Hold 자리가 없다", async () => {
     const { open, rows } = await setup(pending, { late: new Promise(() => {}) });
     await open(m.home.meta.tabs.sync);
