@@ -1,49 +1,58 @@
 "use client";
 
-import { BookOpen, Folder } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList, CommandStatus } from "@/components/ui/command";
 import { CommandDialog } from "@/components/ui/dialog";
 import { NoMatch } from "@/components/ui/empty-state";
 import { Highlight } from "@/components/ui/highlight";
+import { IconTile } from "@/components/ui/icon-tile";
 import { ProjectThumbnail } from "@/components/ui/project-thumbnail";
-import { searchKeysAction } from "@/app/search/actions";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { searchKeysAction, type SearchMembershipsResult } from "@/app/search/actions";
 import type { PublicAccount } from "@/lib/auth/landing";
 import { m } from "@/lib/i18n";
 import { landDocumentHeading } from "@/lib/public-doc/landing";
-import { highlightSegments, snippet } from "@/lib/search/highlight";
-import { keyResultHref, type KeyHit } from "@/lib/search/key-href";
+import type { KeyHit } from "@/lib/search/key-href";
 import { loadSearchIndex } from "@/lib/search/load-index";
 import { loadSearchMemberships } from "@/lib/search/load-memberships";
-import { previewGroups, searchGroups, searchTokens, type SearchEntry } from "@/lib/search/match";
+import type { SearchEntry } from "@/lib/search/match";
 import { navSearchEntries } from "@/lib/search/nav-index";
+import { keySearchText, searchRows, searchStatuses, type SearchTile } from "@/lib/search/rows";
 import { activeProject, type NavProject } from "@/lib/shell/nav";
-import { Q_MAX_LENGTH } from "@/lib/translations/query";
+
+type KeyFailure = "unauthorized" | "unavailable";
+
+function Tile({ tile }: { tile: SearchTile }) {
+  if (tile.kind === "project") return <ProjectThumbnail name={tile.name} src={tile.image} size="sm" />;
+  const Icon = tile.icon;
+  return <IconTile size="sm"><Icon /></IconTile>;
+}
 
 export function SearchDialog({ open, onOpenChange, account, memberships }: {
   open: boolean; onOpenChange: (open: boolean) => void; account: PublicAccount | null; memberships?: readonly NavProject[];
 }) {
   const pathname = usePathname();
   const [q, setQuery] = useState("");
-  const [publicMemberships, setPublicMemberships] = useState<readonly NavProject[] | null>(null);
-  const [membersLoading, setMembersLoading] = useState(account !== null && memberships === undefined);
+  const [publicMemberships, setPublicMemberships] = useState<SearchMembershipsResult | null>(null);
   const [docs, setDocs] = useState<SearchEntry[]>([]);
   const [docsState, setDocsState] = useState<"loading" | "ready" | "failed">("loading");
-  const [keys, setKeys] = useState<{ query: string; hits: KeyHit[]; failed: boolean }>({ query: "", hits: [], failed: false });
+  const [keys, setKeys] = useState<{ query: string; hits: KeyHit[]; error: KeyFailure | null }>({ query: "", hits: [], error: null });
   const [keysLoading, setKeysLoading] = useState(false);
   // This instance belongs to one opening; reuse only its in-flight request during StrictMode effect replay.
   const membershipRequest = useRef<ReturnType<typeof loadSearchMemberships> | null>(null);
   const keyGeneration = useRef(0);
   const composing = useRef(false);
   const heading = useRef<string | null>(null);
-  const currentMemberships = account === null ? null : memberships ?? publicMemberships;
+  const needsMemberships = memberships === undefined && account !== null;
+  // 멤버십 실패를 비로그인으로 접지 않는다 — 색인은 Docs 전용이 되고 상태 줄이 이유를 말한다(C1).
+  const loaded = publicMemberships?.ok ? publicMemberships.memberships : null;
+  const currentMemberships = account === null ? null : memberships ?? loaded;
+  const membershipState = !needsMemberships ? "ready" : publicMemberships === null ? "loading" : publicMemberships.ok ? "ready" : publicMemberships.error;
   const activeSlug = memberships === undefined ? null : activeProject(pathname, memberships)?.slug ?? null;
   const nav = navSearchEntries(currentMemberships, { activeSlug, userName: account?.name ?? "" });
-  const trimmed = q.trim();
-  const keyQuery = trimmed.slice(0, Q_MAX_LENGTH);
-  const canSearchKeys = nav.authenticated && keyQuery.length >= 2;
+  const keyQuery = keySearchText(q, nav.authenticated);
+  const canSearchKeys = keyQuery !== null;
 
   useEffect(() => {
     if (!open) return;
@@ -51,39 +60,37 @@ export function SearchDialog({ open, onOpenChange, account, memberships }: {
     void loadSearchIndex().then(entries => { if (alive) { setDocs(entries); setDocsState("ready"); } }, () => { if (alive) setDocsState("failed"); });
     return () => { alive = false; };
   }, [open]);
-  const needsMemberships = memberships === undefined && account !== null;
   useEffect(() => {
     if (!open || !needsMemberships) return;
     let alive = true;
     membershipRequest.current ??= loadSearchMemberships();
-    void membershipRequest.current.then(rows => { if (alive) { setPublicMemberships(rows); setMembersLoading(false); } });
+    void membershipRequest.current.then(result => { if (alive) setPublicMemberships(result); });
     return () => { alive = false; };
   }, [open, needsMemberships]);
   useEffect(() => {
     const generation = ++keyGeneration.current;
-    if (!open || !canSearchKeys) { setKeysLoading(false); return; }
+    if (!open || keyQuery === null) { setKeysLoading(false); return; }
     setKeysLoading(true);
     const timer = setTimeout(() => {
       void searchKeysAction(keyQuery, activeSlug).then(result => {
         if (generation !== keyGeneration.current) return;
-        setKeys({ query: q, hits: result.ok ? result.hits : [], failed: !result.ok });
+        setKeys({ query: q, hits: result.ok ? result.hits : [], error: result.ok ? null : result.error });
         setKeysLoading(false);
       }, () => {
         if (generation !== keyGeneration.current) return;
-        setKeys({ query: q, hits: [], failed: true });
+        setKeys({ query: q, hits: [], error: "unavailable" });
         setKeysLoading(false);
       });
     }, 250);
     return () => { clearTimeout(timer); ++keyGeneration.current; };
-  }, [open, canSearchKeys, keyQuery, activeSlug, q]);
+  }, [open, keyQuery, activeSlug, q]);
 
-  const index = { ...nav, docs };
-  const groups = trimmed === "" ? previewGroups(index, { activeSlug }) : searchGroups(index, q, { activeSlug });
-  const keyHits = canSearchKeys && keys.query === q ? keys.hits : [];
-  const ordered = ["projects", "menus", "keys", "docs"] as const;
-  const ids = ordered.flatMap(kind => kind === "keys" ? keyHits.map(hit => `key:${hit.id}`) : groups.find(group => group.kind === kind)?.items.map(entry => entry.id) ?? []);
-  const tokens = searchTokens(q);
-  const highlighted = (text: string, parts = tokens) => <Highlight segments={highlightSegments(text, parts)} />;
+  const keysCurrent = canSearchKeys && !keysLoading && keys.query === q;
+  const { groups, ids } = searchRows({ index: { ...nav, docs }, keys: keysCurrent ? keys.hits : [], q, activeSlug });
+  const status = searchStatuses({
+    membership: membershipState, docs: docsState,
+    keys: !canSearchKeys ? "idle" : !keysCurrent ? "loading" : keys.error ?? "ready",
+  });
   const navigate = (href: string) => (event: MouseEvent) => {
     // Modified clicks retain browser new-tab behavior and leave the current search usable.
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -95,42 +102,25 @@ export function SearchDialog({ open, onOpenChange, account, memberships }: {
     // window capture precedes the workspace document guard; React batches both dialog states.
     onOpenChange(false);
   };
-  const pending = (needsMemberships && membersLoading) || docsState === "loading" || (canSearchKeys && (keysLoading || keys.query !== q));
-  const statuses = [needsMemberships && membersLoading && m.search.loadingProjects, docsState === "loading" && m.search.loadingDocs, docsState === "failed" && m.search.docsUnavailable,
-    canSearchKeys && (keysLoading || keys.query !== q) && m.search.loadingKeys, canSearchKeys && keys.query === q && keys.failed && m.search.keysUnavailable].filter(Boolean);
-
   return <CommandDialog open={open} onOpenChange={onOpenChange} title={m.search.label}
     onEscapeKeyDown={event => { if (composing.current || event.isComposing || event.keyCode === 229) event.preventDefault(); }}
     onCloseAutoFocus={event => { if (heading.current !== null) { event.preventDefault(); landDocumentHeading(heading.current); heading.current = null; } }}>
     <div className="flex min-h-0 flex-1 flex-col" onCompositionStart={() => { composing.current = true; }} onCompositionEnd={() => { composing.current = false; }}>
       <Command ids={ids} query={q}>
-        <CommandInput value={q} onValueChange={value => { ++keyGeneration.current; setKeys({ query: "", hits: [], failed: false }); setQuery(value); }} label={m.search.label} placeholder={m.search.placeholder} />
-        {statuses.map(status => <CommandStatus key={String(status)}>{status}</CommandStatus>)}
+        <CommandInput value={q} onValueChange={value => { ++keyGeneration.current; setKeys({ query: "", hits: [], error: null }); setQuery(value); }} label={m.search.label} placeholder={m.search.placeholder} />
+        {status.lines.map(line => <CommandStatus key={line.text} tone={line.tone}>{line.text}</CommandStatus>)}
+        {/* 0건은 목록 슬롯 맨 위에 선다. 조회가 실패했으면 "결과 없음"이 거짓이라 그리지 않는다(C3). */}
+        {ids.length === 0 && !status.pending && !status.failed && <NoMatch placement="inset" title={m.search.noResults(q)} description={m.search.noResultsDescription} />}
         <CommandList label={m.search.label}>
-          {ordered.map(kind => {
-            if (kind === "keys") return keyHits.length === 0 ? null : <CommandGroup key={kind} heading={m.search.groups.keys}>
-              {keyHits.map(hit => {
-                const parts = [keyQuery];
-                const text = hit.value ?? hit.sourceText;
-                const description = snippet(text, parts, 160) ?? text.slice(0, 160);
-                const href = keyResultHref(hit);
-                return <CommandItem key={hit.id} id={`key:${hit.id}`} href={href} title={highlighted(hit.key, parts)} context={highlighted(`${hit.name} · ${hit.surfaceSlug}`, parts)}
-                  description={<>{hit.localeCode !== null && <><span data-search-locale>{hit.localeCode}</span>{" · "}</>}{highlighted(description, parts)}</>} onNavigate={navigate(href)} />;
-              })}
-            </CommandGroup>;
-            const entries = groups.find(group => group.kind === kind)?.items;
-            return !entries?.length ? null : <CommandGroup key={kind} heading={m.search.groups[kind]}>
-              {entries.map(entry => <CommandItem key={entry.id} id={entry.id} href={entry.href}
-                title={highlighted(entry.id === "view-all-projects" ? m.search.viewAllProjects : entry.id === "browse-all-docs" ? m.search.browseAllDocs : entry.title)}
-                context={entry.context === undefined ? undefined : highlighted(entry.context)}
-                icon={entry.id === "view-all-projects" ? <Folder /> : entry.id === "browse-all-docs" ? <BookOpen /> : kind === "projects" ? <ProjectThumbnail name={entry.title} src={entry.image} /> : undefined}
-                badge={entry.archived ? <Badge>{m.projects.archived}</Badge> : undefined}
-                description={kind === "docs" && entry.body ? highlighted(snippet(entry.body, tokens, 160) ?? entry.body.slice(0, 160)) : undefined}
-                onNavigate={navigate(entry.href)} />)}
-            </CommandGroup>;
-          })}
+          {groups.map(group => <CommandGroup key={group.kind} heading={group.heading}>
+            {group.rows.map(row => <CommandItem key={row.id} id={row.id} href={row.href} icon={<Tile tile={row.tile} />}
+              title={<Highlight segments={row.title} />}
+              context={row.context === undefined ? undefined : <Highlight segments={row.context} />}
+              description={row.description === undefined ? undefined : <>{row.locale !== undefined && <><span data-search-locale>{row.locale}</span>{" · "}</>}<Highlight segments={row.description} /></>}
+              badge={row.archived ? <StatusBadge state="archived" /> : undefined}
+              onNavigate={navigate(row.href)} />)}
+          </CommandGroup>)}
         </CommandList>
-        {ids.length === 0 && !pending && <NoMatch placement="inset" title={m.search.noResults(q)} description={m.search.noResultsDescription} />}
       </Command>
     </div>
   </CommandDialog>;

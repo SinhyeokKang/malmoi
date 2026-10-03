@@ -13,7 +13,7 @@ const names = ["Web App", "app-web", "Mobile App", "İabc", "İİ"];
 const rows = names.map((name, i) => ({ slug: `p${i}`, name, archived: i === 2 }));
 const index: SearchIndex = {
   projects: rows.map(row => ({ id: row.slug, title: row.name, href: `/projects/${row.slug}`, slug: row.slug, archived: row.archived })),
-  menus: [], docs: [], authenticated: true,
+  pages: [], docs: [], authenticated: true,
 };
 const sorted = (slugs: string[]) => [...slugs].sort();
 const viaSearch = (q: string) => sorted(searchGroups(index, q, { activeSlug: null }).flatMap(g => g.items.map(item => item.id)));

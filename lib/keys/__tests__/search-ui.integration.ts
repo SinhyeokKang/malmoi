@@ -4,7 +4,8 @@ vi.mock("@/lib/auth/read-session", () => ({ readSession: mock.session }));
 vi.mock("@/lib/db", () => ({ getPrisma: mock.prisma }));
 import { loadSearchMembershipsAction, searchKeysAction } from "@/app/search/actions";
 import { navSearchEntries } from "@/lib/search/nav-index";
-import { previewGroups, searchGroups } from "@/lib/search/match";
+import { searchGroups } from "@/lib/search/match";
+import { searchRows } from "@/lib/search/rows";
 import { highlightSegments, snippet } from "@/lib/search/highlight";
 import { keyResultHref } from "@/lib/search/key-href";
 import { searchFixture } from "./search-fixture";
@@ -27,16 +28,16 @@ async function index() {
 }
 it("public reopen model reflects creation, archive and role changes after real Actions", async () => {
   const before = await index();
-  expect(searchGroups(before, "settings demo", { activeSlug: null }).flatMap(g => g.items).map(e => e.id)).toEqual(["menu:demo:settings"]);
+  expect(searchGroups(before, "settings demo", { activeSlug: null }).flatMap(g => g.items).map(e => e.id)).toEqual(["page:demo:settings"]);
   await db.project("created", "u1");
   await db.prisma.project.update({ where: { id: "demo" }, data: { archivedAt: new Date() } });
   await db.prisma.projectMember.updateMany({ where: { projectId: "demo", userId: "u1" }, data: { role: "EDITOR" } });
   const after = await index();
   expect(after.projects.find(p => p.slug === "demo")).toMatchObject({ archived: true });
-  expect(previewGroups(after, { activeSlug: null })[0]!.items.map(e => e.id)).toEqual(["project:created", "project:demo", "view-all-projects"]);
+  expect(searchRows({ index: after, keys: [], q: "", activeSlug: null }).groups[0]!.rows.map(e => e.id)).toEqual(["project:created", "project:demo", "go-to-projects"]);
   expect(searchGroups(after, "settings demo", { activeSlug: null })).toEqual([]);
 });
-it("whole-string Keys and token-AND menus feed the same rendered search contract", async () => {
+it("whole-string Keys and token-AND pages feed the same rendered search contract", async () => {
   await db.key("demo", "web", "split", "settings key", "demo text");
   await db.key("demo", "web", "literal", "literal-key", "prefix ".repeat(100) + "settings demo");
   const response = await searchKeysAction("settings demo", null);
@@ -48,5 +49,5 @@ it("whole-string Keys and token-AND menus feed the same rendered search contract
   const href = new URL(keyResultHref(hit), "http://localhost");
   expect(Object.fromEntries(href.searchParams)).toMatchObject({ key: "literal", keySurface: "web", ns: "_root" });
   expect(href.searchParams.has("q")).toBe(false);
-  expect(searchGroups(await index(), "settings demo", { activeSlug: null }).flatMap(g => g.items).map(e => e.id)).toContain("menu:demo:settings");
+  expect(searchGroups(await index(), "settings demo", { activeSlug: null }).flatMap(g => g.items).map(e => e.id)).toContain("page:demo:settings");
 });

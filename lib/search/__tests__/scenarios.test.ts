@@ -4,7 +4,8 @@ import { parseSummary } from "@/lib/guide/summary";
 import { parseTranslationQuery } from "@/lib/translations/query";
 import { navSearchEntries } from "../nav-index";
 import { docsSearchEntries } from "../docs-index";
-import { previewGroups, searchGroups, searchTokens } from "../match";
+import { searchGroups, searchTokens } from "../match";
+import { searchRows } from "../rows";
 import { highlightSegments, snippet } from "../highlight";
 import { reconcileActive } from "../keys";
 import { keyResultHref, type KeyHit } from "../key-href";
@@ -15,7 +16,7 @@ describe("검색 결과 시나리오", () => {
   it("settings demo는 이름·프로젝트 맥락을 가로질러 OWNER 설정으로 착지하고 두 필드를 칠한다", () => {
     const index = { ...navSearchEntries([project], options), docs: [] };
     const groups = searchGroups(index, "settings demo", options);
-    expect(groups.map(g => g.kind)).toEqual(["menus"]);
+    expect(groups.map(g => g.kind)).toEqual(["pages"]);
     const row = groups[0]?.items[0];
     expect(row).toBeDefined();
     expect(row?.href).toBe("/projects/demo/settings");
@@ -28,8 +29,8 @@ describe("검색 결과 시나리오", () => {
     const docs = docsSearchEntries(parseSummary(parseMd("- [Guide](page.md)")), () => parseMd("# Guide\nIntroduction\n## Sync {#sync}\n" + "Before ".repeat(40) + "PUSH_TOKEN"));
     for (const memberships of [[project], [], null]) {
       const index = { ...navSearchEntries(memberships, options), docs };
-      const preview = previewGroups(index, options);
-      expect(preview.at(-1)?.items.map(e => e.href)).toEqual(["/docs/page", "/docs"]);
+      const preview = searchRows({ index, keys: [], q: "", activeSlug: options.activeSlug });
+      expect(preview.groups.at(-1)?.rows.map(e => e.href)).toEqual(["/docs/page", "/docs"]);
       const result = searchGroups(index, "push_token", options).at(-1)?.items[0];
       expect(result).toBeDefined();
       expect(result?.href).toBe("/docs/page#sync");

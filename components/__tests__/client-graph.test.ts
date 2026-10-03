@@ -176,6 +176,8 @@ const CLIENT_LIB_FILES = [
   "lib/search/key-href.ts",
   "lib/search/load-index.ts",
   "lib/search/load-memberships.ts",
+  // 검색 Dialog의 뷰모델(search-ux-unify C26) — nav·사전·routes·검색 잎만 문다(아래 그래프 고정).
+  "lib/search/rows.ts",
   "lib/session-revocation/message.ts",
   "lib/settings/message.ts",
   // 루트의 화면 이동 dim이 클릭마다 읽는 판정 — import 0인 잎이다.
@@ -509,6 +511,16 @@ describe("클라이언트 그래프", () => {
     expect([...graph.files].map(file => file.slice(ROOT.length)).sort()).toEqual([
       "components/signin/brand-icons.tsx", "lib/app-version.ts", "lib/auth/permission.ts",
       "lib/i18n/index.ts", "lib/routes.ts", "lib/search/nav-index.ts", "lib/shell/nav.ts", "messages/en.tsx",
+    ]);
+    expect([...graph.packages].filter(name => !allowed(name))).toEqual([]);
+  });
+
+  it("검색 rows는 nav-index와 같은 내비·사전에 검색 잎·번역 질의 상수만 더 문다", () => {
+    const graph = walk([join(ROOT, "lib/search/rows.ts")]);
+    expect([...graph.files].map(file => file.slice(ROOT.length)).sort()).toEqual([
+      "components/signin/brand-icons.tsx", "lib/app-version.ts", "lib/auth/permission.ts", "lib/i18n/index.ts", "lib/routes.ts",
+      "lib/search/highlight.ts", "lib/search/key-href.ts", "lib/search/match.ts", "lib/search/rows.ts", "lib/shell/nav.ts",
+      "lib/translations/query.ts", "messages/en.tsx",
     ]);
     expect([...graph.packages].filter(name => !allowed(name))).toEqual([]);
   });

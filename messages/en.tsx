@@ -30,14 +30,17 @@ export const en = {
   search: {
     label: "Search",
     placeholder: "Search…",
-    groups: { projects: "Projects", menus: "Menus", keys: "Keys", docs: "Docs" },
-    viewAllProjects: "View all projects",
-    browseAllDocs: "Browse all docs",
-    loadingProjects: "Loading projects…",
+    /** `Pages`는 앱 화면으로 가는 행이다(search-ux-unify D4) — 앱에서 "menu"는 드롭다운을 뜻한다. */
+    groups: { projects: "Projects", pages: "Pages", keys: "Keys", docs: "Docs" },
+    /** 문서 목적지 라벨 — `/projects` 목적지는 `notFound.action`(`Go to your projects`)을 쓴다(D9). 로딩 줄은 `projects.loading`이다. */
+    goToDocs: "Go to docs",
     loadingKeys: "Loading keys…",
     loadingDocs: "Loading docs…",
-    keysUnavailable: "Keys can't be searched right now.",
-    docsUnavailable: "Docs can't be searched right now.",
+    /** 실패 줄은 다음 행동을 담는다. 세션 종료는 다른 화면의 `Your session ended. Sign in again to …` 형을 따른다(C2). */
+    projectsUnavailable: "Projects can't be searched right now. Reopen search to try again.",
+    sessionEnded: "Your session ended. Sign in again to search your projects.",
+    keysUnavailable: "Keys can't be searched right now. Edit your search to try again.",
+    docsUnavailable: "Docs can't be searched right now. Reopen search to try again.",
     noResults: (q: string): string => `No results for “${q}”`,
     noResultsDescription: "Try another search.",
     goTo: "Go to",

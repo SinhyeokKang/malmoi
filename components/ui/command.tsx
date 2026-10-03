@@ -74,8 +74,9 @@ export function CommandInput({ value, onValueChange, label, placeholder }: {
   </div>;
 }
 
-export function CommandStatus({ children }: { children: ReactNode }) {
-  return <div role="status" aria-live="polite" className="text-muted-foreground shrink-0 px-4 py-2 text-xs empty:hidden">{children}</div>;
+/** 실패 줄은 `danger`(빨강), 로딩 줄은 muted다 — 실패를 로딩과 같은 회색으로 말하지 않는다(search-ux-unify C3). */
+export function CommandStatus({ tone = "muted", children }: { tone?: "muted" | "danger"; children: ReactNode }) {
+  return <div role="status" aria-live="polite" data-tone={tone} className={cn("shrink-0 px-4 py-2 text-xs empty:hidden", tone === "danger" ? "text-destructive" : "text-muted-foreground")}>{children}</div>;
 }
 
 export function CommandList({ label, children }: { label: string; children: ReactNode }) {
