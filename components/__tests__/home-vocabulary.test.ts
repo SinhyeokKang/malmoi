@@ -197,13 +197,15 @@ describe("완료 조건 9 — 파랑이 정확히 네 자리다", () => {
  * 보면 다른 블록에 같은 이름이 생길 때 엉뚱한 쪽이 조용히 빠진다).
  */
 const NOT_A_COUNT: Record<string, string> = {
-  // 상한이 **코드 상수**로 강제된다 — 재검토가 필요 없는 부류다.
+  // 상한이 **코드 상수**로 강제된다 — 재검토가 필요 없는 부류다. 운영자는 상한에서 빠지지만(`OPERATOR_EMAILS`) 정적 allowlist의
+  // 몇 명이라 네 자리에 닿을 수가 없다.
   "projects.count": "PROJECT_LIMIT = 3",
   // 좌석 넷도 같은 상수가 강제한다 — 분모가 `MEMBER_LIMIT`이고 분자는 그보다 클 수 없다.
   "members.seats": "MEMBER_LIMIT = 10",
   "members.seatsFull": "MEMBER_LIMIT = 10",
   "members.count": "MEMBER_LIMIT = 10",
   "members.invite.seatsUsed": "MEMBER_LIMIT = 10",
+  // 거부를 받는 사람은 운영자가 아니므로 보간되는 상수 3이 참이다.
   "errors.onboarding.limit-reached": "PROJECT_LIMIT = 3",
   // 수가 아니다 — 번호·단계·글자 상한.
   "projects.banner.prOpen": "PR 번호",

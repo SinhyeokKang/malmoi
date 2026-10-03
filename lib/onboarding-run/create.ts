@@ -17,10 +17,11 @@ import { logFailure } from "@/lib/github-connect/log";
 import { readFiles, snapshotError } from "@/lib/import/read";
 import { IngestBudgetError } from "@/lib/onboarding/budget";
 import { planConfirmedFormat, templatePaths } from "@/lib/onboarding/confirm";
-import { PROJECT_LIMIT, planProjectCreate } from "@/lib/onboarding/create-plan";
+import { planProjectCreate, projectLimitFor } from "@/lib/onboarding/create-plan";
 import { ingestTargets } from "@/lib/onboarding/detect";
 import { prepareFirstSnapshot } from "@/lib/onboarding/ingest";
 import { planSlug } from "@/lib/onboarding/slug";
+import { isOperatorUser } from "@/lib/operator/user";
 import { renderProjectWorkflowYaml, workflowApiUrl } from "@/lib/onboarding/workflow";
 import { PROJECT_NAME_MAX_CHARS } from "@/lib/projects/plan";
 import { isValidBranchName } from "@/lib/pull/branch-name";
@@ -115,9 +116,11 @@ export async function createProjectFromRepo(
   const access = await checkRepoAccess(prisma, userId, input.owner, input.repo, true);
   if (access.status === "rejected") return { ok: false, error: access.error };
 
-  const [ownerCount, existing] = await Promise.all([
+  const [ownerCount, operator, existing] = await Promise.all([
     // 셈 조건은 `ownedActiveProjects` 하나다 — ①의 안내·아래 재집계와 갈리면 한쪽이 통과시킨 것을 다른 쪽이 거부한다.
     prisma.projectMember.count({ where: ownedActiveProjects(userId) }),
+    // 운영자 면제도 같은 이유로 ①과 같은 판정이다. 조회 실패는 위 집계 실패와 같은 경로로 던진다(접지 않는다).
+    isOperatorUser(prisma, userId),
     // ⚠️ **전역 조회다** — slug는 `@unique`이고 "이미 쓰는 주소인가"는 테넌트 안에서 답할 수 없는
     // 질문이다 (§7.7의 대가). 돌려주는 것은 존재 여부뿐이고 화면에는 `slug-taken` 한 줄만 간다 —
     // 남의 프로젝트 이름·리포는 새지 않는다.
@@ -130,11 +133,13 @@ export async function createProjectFromRepo(
    * 함수에 문서화돼 있기** 때문이다: 연결 거부 → 제한 → 충돌. 두 층의 매핑이 같은지는
    * "슬롯이 없고 리포 접근도 없으면 연결 거부가 먼저" 테스트가 고정한다.
    */
+  // allowlist는 정적이라 한 번 계산해 잠금 안 재집계에도 쓴다. ⚠️ 비교에만 쓴다 — 결과·문구에 싣지 않는다(`Infinity`).
+  const limit = projectLimitFor(operator);
   const plan = planProjectCreate({
     repoConnect: access.connect,
     ownerCount,
     slugTaken: existing !== null,
-    limit: PROJECT_LIMIT,
+    limit,
   });
   if (plan.status !== "ok") return { ok: false, error: plan.status };
 
@@ -222,7 +227,7 @@ export async function createProjectFromRepo(
       if (apiToken.status !== "ok") throw new TokenRollback("unauthorized");
       if (apiToken.grant === "token-scope") throw new TokenRollback("token-scope");
       const owned = await tx.projectMember.count({ where: ownedActiveProjects(userId) });
-      if (owned >= PROJECT_LIMIT) throw new ProjectLimitRollback();
+      if (owned >= limit) throw new ProjectLimitRollback();
 
       const project = await tx.project.create({
         data: {

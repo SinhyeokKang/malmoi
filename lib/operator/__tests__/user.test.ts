@@ -107,6 +107,6 @@ describe("isOperatorUser 소비자", () => {
       .filter((path) => /from\s+["']@\/lib\/operator\/user["']/.test(readFileSync(path, "utf8")))
       .map((path) => relative(ROOT, path))
       .sort();
-    expect(importers).toEqual([]);
+    expect(importers).toEqual(["lib/onboarding-run/create.ts", "lib/onboarding-run/repos.ts"]);
   });
 });
