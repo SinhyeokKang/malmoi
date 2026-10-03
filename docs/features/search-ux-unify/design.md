@@ -16,11 +16,24 @@
 
 ## 시각 값의 정본 — T0
 
-**아래 시각 값(여백 표·행 높이·칩 치수·타일 배치)은 T0이 확정한다.** `design-prompt.md`로 받은 Claude Design 시안을 이 문서에 반영하고, 사용자가 승인한 날짜를 여기에 적는다. 시안과 이 문서가 다르면 승인된 시안 쪽으로 이 문서를 고친 뒤 착수한다.
+**아래 시각 값은 승인된 시안에서 왔다** — Claude Design `Search UX.dc.html`(프레임 H1·H2·S1~S11·W1·K1·B1). 시안은 `/design-sync`의 SoT가 아니고 이 문서가 정본이다. 이 문서와 시안이 갈리면 이 문서가 이긴다.
 
 - **고정 제약(시안이 바꾸지 않는다)** — 사용자 결정이다: `FieldButton` 40(D13) · `Kbd` 회색 면 + `text-foreground/60` + `h-5`(D14) · 보관 = `soft-neutral`(D6) · 행 = `ListRow`(C15) · 모든 행 28 타일(C17) · 활성 = `selected` 7%(C16) · 활성이 바뀌어도 높이·폭 불변(C19) · 라이트 단일 · 새 raw 색 없음.
-- **시안이 정하는 것**: 입력·상태 줄·그룹 머리·0건의 여백 수치, 그룹 구분 방식, Esc 칩·clear X의 배치, `Go to ↵` 힌트의 모바일 폭 처리, 둘째 줄 행의 밀도.
-- 승인: _(T0에서 기록)_
+- **시안이 정한 것** (Open 1~5):
+  - **간격 한 규칙**: 왼쪽 16 = 그룹 머리·상태 줄·타일 왼쪽 모서리. 입력 검색 글리프 중심 = 타일 중심(x30). 입력 글자 시작(x44)과 행 제목 시작(x56)이 12 어긋나는 것은 받아들인 비용이다.
+  - **그룹**: 세로 padding 0, 두 번째 그룹부터 위쪽 `border-divider` 선 하나(선이 앞 그룹 마지막 행에 바로 붙는다 — 활성 행 면이 선에서 뜨지 않는다). 그룹 위 간격은 머리 `pt-4`(16) 하나가 든다.
+  - **그룹 머리**: `px-4 pt-4 pb-1 text-xs font-medium text-gray-dim`(#a3a3a3) — **D15**. 머리는 읽는 대상이 아니라 경계 표시이고, 행의 보조 글자(맥락·설명·`Go to`)가 #737373이라 같은 색이면 셋이 한 층으로 읽힌다. 흰 면 위 약 2.5:1 — DESIGN §6.2의 등재된 이탈로 올린다(T11).
+  - **입력 행 오른쪽**: `[X] 갭 8 [Esc]`. Esc가 맨 끝에 고정되어 X가 생기고 사라져도 움직이지 않는다. 입력 행은 `pl-3 pr-4` — Esc 칩 오른쪽 끝이 행 `Go to ↵` 칩의 오른쪽 끝과 한 세로선이다.
+  - **두 줄 행**: 높이는 그룹 단위로 같다(Projects·Pages 54, Keys·Docs 약 68). 예외는 설명 없는 출구 행 `Go to docs`(54) 하나 — 짧은 행이 그룹 끝을 알린다.
+  - **모바일**: `sm`(640) 미만에서 행의 `Go to ↵`와 입력의 `Esc`를 숨긴다(`hidden sm:flex`). 폭으로 정하는 규칙이라 활성과 무관하다(C19 유지). 375에서 패널은 279(gutter 96)이고 `Mobile App` + 배지 행의 제목 칸은 약 133이다 — gutter는 바꾸지 않는다(알려진 한계).
+  - **로고 링크**: 두 헤더 `rounded-sm`(8). 앱 헤더의 지금 `rounded-lg`(12)는 32 칸에서 원에 가까워 같은 줄의 아바타 원과 비슷하게 읽힌다.
+- **시안이 더 정한 것**:
+  - **0건(`NoMatch`)은 왼쪽 16 규칙의 예외** — 앱 전체가 쓰는 가운데 정렬 inset 형(IconTile lg `SearchX` · 제목 15/500 · 설명 14 muted · `p-8`)을 그대로 쓴다. 새 형을 만들지 않는 규칙이 앞선다. 위치는 **목록 슬롯 맨 위**다 — 지금은 `flex-1 CommandList` 뒤에 있어 패널 바닥으로 밀린다.
+  - **상태 줄**: 입력 아래·목록 위, 묶음 `px-4 pt-2` · 줄 사이 4 · `text-xs`. 줄마다 위아래 8을 들지 않는다. 아이콘·면·테두리·스피너 없음(Alert를 쓰지 않는다).
+  - **패널 높이**: `LARGE_MODAL_HEIGHT` 그대로(1440×900에서 720~800). 로그인 빈 질의 미리보기는 약 813이라 끝이 잘리고 스크롤된다 — 받아들인다(잘린 끝이 스크롤 신호).
+  - **하이라이트 필드**: Pages는 맥락(`· Web App`)으로 매칭되므로 맥락에 칠한다(C7 "매칭에 쓴 필드만"). Projects slug·Keys의 `· project · source`는 매칭에 쓰지 않아 칠하지 않는다.
+  - **스위처(W1)**: 메뉴 형 그대로(항목 `mx-1 px-2 py-1.5` radius 4 · 지금 프로젝트 `bg-muted` + `Check`), 입력 `Input` bare sm(32 · 13px), 0건은 muted 14 한 줄 `px-3 py-1.5`. 하이라이트 없음.
+- 승인: **2026-10-03 사용자**(시안 검토 후 반영 지시).
 
 ## 과거 함정 (POSTMORTEM)
 
@@ -78,22 +91,23 @@ href 조회는 없다. 객체 맵도 만들지 않는다(프로토타입 키 문
 - hover `bg-foreground/[0.03]` → `hover:bg-primary-foreground`. 흰 테두리 컨트롤의 정본이다(`button.tsx:74-79`).
 - `aria-expanded` prop을 추가하고 트리거가 `open`을 넘긴다.
 
-**`command.tsx`** — 행은 **`ListRow`를 재사용한다**(2026-10-03 사용자). 여백 수치는 T0이 확정한다(아래는 초안).
+**`command.tsx`** — 행은 **`ListRow`를 재사용한다**(2026-10-03 사용자). 수치는 승인된 시안이다(위 "시각 값의 정본").
 
-| 부분 | 지금 | 바뀜 (초안) |
+| 부분 | 지금 | 바뀜 |
 |---|---|---|
-| `CommandInput` 줄 | `px-4 py-3` | `h-12 px-3` + `Input clearable onClear` + 오른쪽 `Kbd` Esc(`m.common.keys.esc`). `Input` bare는 아이콘이 `left-2.5`(`input.tsx:64,68`)라 `px-3`이면 검색 글리프 중심(30)이 타일 중심(16 + 14)과 한 선이다 |
-| `CommandStatus` | `px-4 py-2 text-xs muted` | `px-4 py-2 text-xs`. `tone="danger"`면 `text-destructive` |
+| `CommandInput` 줄 | `px-4 py-3` | `h-12 pl-3 pr-4 border-b border-divider` + `Input`(h-9) `clearable onClear` + 갭 8 + 오른쪽 `Kbd` Esc(`m.common.keys.esc`, `hidden sm:inline-flex`). `Input` bare는 아이콘이 `left-2.5`(`input.tsx:64,68`)라 `pl-3`이면 검색 글리프 중심(30)이 타일 중심(16 + 14)과 한 선이다 |
+| `CommandStatus` | `px-4 py-2 text-xs muted` | 묶음 `px-4 pt-2 flex flex-col gap-1`, 줄은 `text-xs`. `tone="danger"`면 `text-destructive`, 아니면 muted |
 | `CommandList` | `py-2` | `py-2`(가로 여백 없음 — 행이 폭을 꽉 채운다) |
-| `CommandGroup` | `border-b pb-2 last:border-b-0` | `py-1`. 형제 사이는 `not-first:border-t not-first:border-divider` — 구분선 하나 |
-| 그룹 머리 | `px-4 py-2 text-xs font-medium text-foreground` | `px-4 pt-2 pb-1 text-xs font-medium text-muted-foreground` (메뉴 라벨 톤) |
+| `CommandGroup` | `border-b pb-2 last:border-b-0` | 세로 padding 0. 형제 사이는 `not-first:border-t not-first:border-divider` — 구분선 하나, 앞 그룹 마지막 행에 붙는다 |
+| 그룹 머리 | `px-4 py-2 text-xs font-medium text-foreground` | `px-4 pt-4 pb-1 text-xs font-medium text-gray-dim` (D15) |
 | `CommandItem` | 손 조립 `<Link className="mx-2 flex … rounded-md border px-2 py-2 gap-3">` + 활성 `border-ring bg-accent` | `<div role="option"><ListRow variant="canvas" className="text-sm hover:bg-transparent" href tabIndex={-1} ref icon title description aside selected={active} /></div>`. 활성 = `ListRow`의 `selected`(`bg-foreground/[0.07]`). radius·테두리·포커스 링 0. hover 면은 `hover:bg-transparent`로 끈다(`cn` = tailwind-merge가 덮는다) — 마우스를 둔 채 ↑↓를 눌러도 칠해진 행은 `selected` 하나다. 새 prop 없음 |
 | 아이콘 칸 | 선택적 `[&>svg]:size-4` | **필수 28 타일**: `icon` prop은 `ReactNode`이고 소비자가 `ProjectThumbnail sm` 또는 `IconTile sm`을 넘긴다 |
 | 제목 줄 | `{title} · {context}` + `truncate` | `ListRow` `title`에 `<span className="block truncate">{title} · {context}</span>` — `ListRow` title은 맨 `<span>`이라(`list-row.tsx:36`) 소비자가 감싼다. 맥락은 muted `text-xs` 인라인(DESIGN §6.54 "제목과 맥락은 한 줄") |
 | 둘째 줄 | 자체 `gap-1` | `ListRow` `description`(`gap-copy-gap`) + `<span className="block truncate">` |
-| 보관 배지·힌트 | `{badge}` + 활성일 때만 `Go to ↵` | `aside`에 `{badge}` + **늘 렌더하는** `Go to ↵`(비활성 `invisible`, C19) |
+| 보관 배지·힌트 | `{badge}` + 활성일 때만 `Go to ↵` | `aside`에 `{badge}` + **늘 렌더하는** `Go to ↵`(비활성 `invisible`, C19 · `sm` 미만 `hidden`) |
+| 0건 | `CommandList` 뒤 `NoMatch`(패널 바닥으로 밀린다) | 목록 슬롯 맨 위의 `NoMatch` inset(가운데 정렬 — 왼쪽 16의 예외) |
 
-- 행 높이(초안): 한 줄 = 28 + 13×2 = **54**, 둘째 줄이 있으면 20 + 3 + 19.5 + 26 = **약 68.5**. 타일(28)이 힌트(20)보다 높고 힌트가 늘 자리를 차지하므로 활성이 바뀌어도 높이·폭이 변하지 않는다(C19).
+- 행 높이: 한 줄 = 28 + 13×2 = **54**, 둘째 줄이 있으면 20 + 3 + 19.5 + 26 = **약 68**(시안 S3). 타일(28)이 힌트(20)보다 높고 힌트가 늘 자리를 차지하므로 활성이 바뀌어도 높이·폭이 변하지 않는다(C19).
 - ⚠️ `ListRow`는 `link["aria-current"] ?? (selected ? "true" : undefined)`다(`list-row.tsx:39`). `aria-current={false}`를 넘기면 `aria-current="false"`로 렌더된다 — option 활성이 "현재 페이지"가 아님을 그렇게 말한다. 테스트는 "`aria-current`가 `"true"`가 아니다"를 단언한다. `ListRow`에 새 prop을 만들지 않는다.
 - `ProjectThumbnail sm`의 radius는 8, `IconTile sm`은 4다. 프로젝트 정체 칸 8은 사용자 결정(2026-09-17, `project-thumbnail.tsx:16`)이므로 그대로 둔다(비목표).
 - 조합 추적(D11): `Command` 루트가 compositionstart/end ref를 갖고 판정은 `isImeComposing(event.nativeEvent) || composing.current`다. `search-dialog.tsx`의 바깥 조합 div·`composing` ref는 지운다 — 같은 일을 프리미티브가 한다. `global-search.test.tsx:58`이 그 계약을 계속 잰다.
@@ -182,7 +196,8 @@ href 조회는 없다. 객체 맵도 만들지 않는다(프로토타입 키 문
   - §2.4: 보관 한 형(`soft-neutral`).
   - §6.4: `Kbd` 회색 면·`text-foreground/60`·`h-5`·`aria-hidden`(:743) / `FieldButton` 40·hover / `Command*` 여백 표·`ListRow` 재사용·Esc 판정 프리미티브(:747) / Dialog 포커스 핸들러 / 오버레이 IME 가드.
   - §6.5: 스위처 입력 `Search projects`·0건 문구·보관 배지(:808).
-  - §6.54: 트리거 320×40 · 상태 줄 톤·0건 조건 · Pages · 행 = `ListRow` + 28 타일(전 그룹) · 활성 7%(:838) · Docs 전용(비로그인·멤버십 실패) · `/docs` 하나.
+  - §6.54: 트리거 320×40 · 간격 한 규칙(왼쪽 16 · 글리프 중심 30 · 그룹 선 하나 · 머리 `pt-4 pb-1`) · 상태 줄 톤·자리·0건 조건 · 0건 = 가운데 inset(예외)·목록 슬롯 위 · Pages · 행 = `ListRow` + 28 타일(전 그룹) · 활성 7%(:838) · `sm` 미만 힌트·Esc 숨김 · Docs 전용(비로그인·멤버십 실패) · `/docs` 하나.
+  - §6.2: 검색 그룹 머리 `text-gray-dim`을 `neutral-400` 하한의 등재된 이탈로 올린다(D15 — 근거: 경계 표시, 행 보조 글자와 층 분리).
   - :330 헤더 "32 컨트롤의 위아래가 4씩"에 검색 캡슐 40 예외를 적는다.
   - :524 · :1203: 보관 배지 `soft-neutral`, 내려가는 것은 이름·메타 둘.
   - :2003 → "같은 목적지 = 같은 글리프"(아이콘 표의 사용자 메뉴 행 :1998)에 맞춘다.

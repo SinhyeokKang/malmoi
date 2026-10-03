@@ -9,7 +9,7 @@
 
 ## 0. 디자인 정본
 
-- **T0. 디자인 정본 확정**
+- **T0. 디자인 정본 확정** — ✅ 2026-10-03 (Claude Design `Search UX.dc.html` 승인, `design.md` 반영)
   - `design-prompt.md`로 Claude Design 시안을 받는다.
   - 시안의 시각 값(여백·행 높이·칩·타일 배치·모바일 폭)을 `design.md` "시각 값의 정본 — T0"과 `Command*` 표에 반영한다. 고정 제약(D6·D13·D14·C15~C17·C19)과 다르면 시안이 아니라 제약이 이긴다 — 충돌은 사용자에게 묻는다.
   - 검증(수동): `design.md`의 "초안" 표기 0, 승인 날짜 기록.
@@ -34,7 +34,7 @@
   - `lib/search/rows.ts`: `searchRows` → `{ groups, ids }`, `searchStatuses` → `{ pending, lines, failed }`, 지역 상수 `PREVIEW_LIMIT`·`SNIPPET_LENGTH`, 행 모델 `tile`·`archived`, 글리프는 nav key로(design "글리프 출처"). `match.ts:62,67`의 영어 리터럴·경로를 여기로 옮긴다.
   - `searchGroups`에 보관 tie-break(C8). `nav-index.ts`: 멤버십 없음 → 빈 Projects·Pages, footer는 `changelog`만(D8), `item.icon` 싣기. `load-memberships.ts`는 union을 반환한다.
   - 사전: `search.groups.pages`·`goToDocs`·`projectsUnavailable`·`sessionEnded`·실패 문장 개정 추가, `viewAllProjects`·`browseAllDocs`·`groups.menus`·`loadingProjects` 삭제(`m.notFound.action`·`projects.loading` 재사용).
-  - `search-dialog.tsx`가 `searchRows`·`searchStatuses`만 그린다: 모든 행 28 타일(`ProjectThumbnail sm` / `IconTile sm`), `StatusBadge state="archived"`, 실패면 `NoMatch` 없음, Keys `unauthorized`/`unavailable` 구분, 하한 `KEY_QUERY_MIN`. (`CommandItem`의 `icon`은 아직 선택 prop이라 이 커밋에서 깨지지 않는다.)
+  - `search-dialog.tsx`가 `searchRows`·`searchStatuses`만 그린다: 모든 행 28 타일(`ProjectThumbnail sm` / `IconTile sm`), `StatusBadge state="archived"`, 실패면 `NoMatch` 없음(`NoMatch`는 목록 슬롯 맨 위로 옮긴다 — 지금은 `CommandList` 뒤라 패널 바닥에 선다), Keys `unauthorized`/`unavailable` 구분, 하한 `KEY_QUERY_MIN`. (`CommandItem`의 `icon`은 아직 선택 prop이라 이 커밋에서 깨지지 않는다.)
   - `rows.ts`를 `CLIENT_LIB_FILES`에 등재하고 `nav-index.ts` 그래프 고정(`client-graph.test.ts:509-512`)을 갱신한다.
   - 테스트(`lib/search/__tests__/rows.test.ts`): `ids` 순서 = 렌더 행 순서 / 실패가 있으면 `failed` / `unauthorized` ↔ `unavailable` 문장 / 멤버십 없음 세 경우 그룹 = `["docs"]` / Projects 행에 맥락 하이라이트 없음 / 행 `tile.icon`이 `toBe(Box)`·`toBe(CircleHelp)`·`toBe(Languages)`·`toBe(Plus)` / `/docs` href 행 정확히 1.
     - 엣지: 공백만 질의 → 미리보기 / 1글자·서로게이트 쌍 1글자 → Keys 요청 없음(서버와 같은 판정) / `Q_MAX_LENGTH` 초과 절단 / Keys·Docs 동시 실패 → danger 줄 둘·`NoMatch` 없음·Projects·Pages 행 유지 / 로그인 + 멤버십 0 → Projects 그룹 없음, Pages·Docs 있음 / 보관 프로젝트만 / 멤버십 성공 + Keys만 `unauthorized` / 질의 `__proto__`·`constructor`.
@@ -50,10 +50,12 @@
   - `[commit] feat(ui): gray key chips, 40px field button and shared key labels`
 - **T5. `Command*` = `ListRow` + 여백 체계 + 힌트 고정 (C15~C19)**
   - `CommandItem`이 `role="option"` 안에 `ListRow`(`variant="canvas"`·`className="text-sm hover:bg-transparent"`·`href`·`tabIndex -1`·`ref`·`selected`·`aria-current={false}`)를 그린다. `icon` 필수. 제목·설명 `block truncate`.
-  - T0이 확정한 여백 표대로: 입력 줄(clearable·Esc 칩), `CommandStatus` `tone`, 목록, 그룹 구분선, muted 머리.
+  - 승인된 시안 값대로(`design.md` `Command*` 표): 입력 줄 `h-12 pl-3 pr-4`(clearable · 갭 8 · Esc 칩), `CommandStatus` 묶음 `px-4 pt-2 gap-1` + `tone`, 목록 `py-2`, 그룹 세로 padding 0 + `not-first` 구분선, 머리 `pt-4 pb-1 text-gray-dim`.
+  - `sm` 미만에서 `Go to ↵`·입력 Esc 칩 `hidden`.
   - `Go to ↵`는 `aside`에 늘 두고 비활성은 `invisible`.
   - 테스트 갱신·추가: `command.test.tsx`(option 안 `ListRow` 형 = `px-4 py-row-y` / 활성 = `bg-foreground/[0.07]` / `border-ring`·`rounded-md` 0 / **`:90`의 `kbd` 개수 1 → option 수**와 같고 비활성 `invisible` / `aria-current`가 `"true"`가 아님 / hover 면 없음 / 긴 제목이 `truncate`), `focus-ring.test.ts`(`LINK_FIXTURES` 정의 `:142-146` · ring 파일 집합 일치 `:236` — `command.tsx`가 ring 클래스를 잃으면 fixture에서도 뺀다 · 사용처 `:289-292`), `primitive-focus.test.tsx`. `hand-copies.test.ts`에 "`command.tsx`는 행 클래스를 직접 쓰지 않고 `ListRow`를 쓴다"를 추가한다.
-  - 검증: 위 테스트 green. 수동(T13): ↑↓로 처음부터 끝까지 이동할 때 각 option의 `getBoundingClientRect().height`·제목 `scrollWidth` 불변, 마우스를 한 행에 둔 채 ↓ → 칠해진 행 하나, 입력 글리프 중심 x = 타일 중심 x.
+  - 테스트 추가: 그룹 머리 `text-gray-dim` · 그룹 세로 padding 0 · 힌트·Esc 칩에 `hidden sm:` 클래스(폭 분기일 뿐 활성과 무관 — 활성 바꿔도 클래스 불변).
+  - 검증: 위 테스트 green. 수동(T13): 375 폭에서 힌트·Esc 칩이 안 보이고, 1440에서 Esc 칩 오른쪽 끝 x = 행 `Go to ↵` 칩 오른쪽 끝 x. ↑↓로 처음부터 끝까지 이동할 때 각 option의 `getBoundingClientRect().height`·제목 `scrollWidth` 불변, 마우스를 한 행에 둔 채 ↓ → 칠해진 행 하나, 입력 글리프 중심 x = 타일 중심 x.
   - `[commit] refactor(ui): build Command rows on ListRow with a stable active row`
 - **T6. 보관 배지 한 형 (C5·D6)**
   - `STATE.archived` = `soft-neutral` 확인. 스위처·`/projects`의 `text-gray-dim` 덮개를 걷는다(`px-2`·`shrink-0`만 남긴다).
@@ -91,7 +93,7 @@
 ## 문서·검증
 
 - **T11. 정본 문서** (문서별 별도 커밋)
-  - DESIGN(design "문서 갱신" 목록 전부 — §2.4·§6.4·§6.5·§6.54·§10.1·:330·:524·:747·:838·:1203·:2003, D5 의도), PRODUCT §4.1, ARCHITECTURE §6.37(:2723·:2728), DIRECTORY:443, `project-thumbnail.tsx` 머리 주석.
+  - DESIGN(design "문서 갱신" 목록 전부 — §2.4·§6.2(D15 등재 이탈)·§6.4·§6.5·§6.54·§10.1·:330·:524·:747·:838·:1203·:2003, D5 의도), PRODUCT §4.1, ARCHITECTURE §6.37(:2723·:2728), DIRECTORY:443, `project-thumbnail.tsx` 머리 주석.
   - 검증: `pnpm sync:agents:check` green. grep 0건 — DESIGN·DIRECTORY에서 활성 행 "border-ring", `Folder`·`BookOpen`(검색 맥락), "썸네일 16"(검색), "앞 글리프가 없다", "소비자가 맡는다"(Esc), `Find project…`, `View all projects`, `Browse all docs`, `Menus`(검색 그룹), "320×36", "실패는 null"(ARCHITECTURE). grep 존재 — `Pages`·`Go to docs`·`Go to your projects`·`soft-neutral`(보관).
   - `[commit] docs(DESIGN): …` · `docs(PRODUCT): …` · `docs(ARCHITECTURE): …` · `docs(DIRECTORY): …`
 - **T12. 가이드·README (C25)**

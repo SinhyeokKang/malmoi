@@ -4,7 +4,7 @@
 사용자가 같은 날 리포트 추천을 채택했고(D1~D5 — 단 D3는 사용자 디자인 지시가 대체했다), 디자인 지시를 더했다.
 `/feature-review`(2026-10-03)가 남은 결정을 닫았다. 이 문서는 그 목록을 닫힌 범위로 만든다. **결정의 원천은 아래 "결정 기록"이다** — ux-audit 리포트는 리포 밖 스크래치패드에만 있었다.
 
-**착수 조건: 디자인 정본이 먼저다** (2026-10-03 사용자). `design-prompt.md`로 Claude Design 시안을 받아 `design.md`의 시각 값에 반영하고 사용자가 승인한 뒤 T1을 시작한다(tasks T0). 시안은 `/design-sync`의 SoT가 아니다 — 이미 구현된 화면이라 정본은 코드베이스 + DESIGN.md이고(2026-09-27 사용자), 시안은 `design.md`를 거쳐 DESIGN.md로 올라간다.
+**착수 조건: 디자인 정본이 먼저다** (2026-10-03 사용자 — **충족: 같은 날 시안 승인, 결정 기록 T0**). `design-prompt.md`로 Claude Design 시안을 받아 `design.md`의 시각 값에 반영하고 사용자가 승인한 뒤 T1을 시작한다(tasks T0). 시안은 `/design-sync`의 SoT가 아니다 — 이미 구현된 화면이라 정본은 코드베이스 + DESIGN.md이고(2026-09-27 사용자), 시안은 `design.md`를 거쳐 DESIGN.md로 올라간다.
 
 ## 사용자
 
@@ -69,6 +69,8 @@
 | D12 | 범위 분할 | **한 기능으로 유지하고 배치 둘로 나눠 ship**(검색 UX / 오버레이 술어) | 사용자 2026-10-03 (리뷰) |
 | D13 | 헤더 검색 캡슐 높이 | **40(`h-10`)** | 사용자 2026-10-03 (리뷰) |
 | D14 | `Kbd` 형 | **회색 면(테두리 없음) + `text-foreground/60`** — 활성 행 위 대비 약 4.8:1 | 사용자 2026-10-03 (리뷰) |
+| D15 | 검색 그룹 머리 색 | **`text-gray-dim`(#a3a3a3)**. 머리는 경계 표시이고, 행 보조 글자(#737373)와 층을 가른다. 약 2.5:1 — DESIGN §6.2 등재된 이탈 | 사용자 2026-10-03 (Claude Design 지시, 시안 S1) |
+| T0 | 디자인 정본 | **Claude Design `Search UX.dc.html` 승인** — 반영 값은 `design.md` "시각 값의 정본" | 사용자 2026-10-03 |
 | 확인 필요 1 | 번역 저장 단축키(Cmd/Ctrl+Enter)의 화면 힌트 | **비목표 유지**(편집 화면 변경이라 별건) | 리뷰 2026-10-03 |
 | 확인 필요 2 | `FieldButton` 40이 헤더를 꽉 채우나 | **D13으로 닫힘.** 두 헤더 모두 `HeaderBar`(`components/shell/header-bar.tsx:13`)가 `h-10`이다 | 리뷰 2026-10-03 |
 | 확인 필요 3 | 서버·클라이언트 상수 공유 | **`KEY_QUERY_MIN`·`SEARCH_GROUP_LIMIT`를 `lib/search/match.ts`가 export하고 server-only `lib/keys/search.ts`가 import한다.** 서버는 클라이언트 안전한 잎을 import할 수 있다(선례 `lib/keys/search.ts:5`의 `Q_MAX_LENGTH`). 값 일치 테스트는 두지 않는다 | 리뷰 2026-10-03 |
@@ -87,6 +89,7 @@
 | 활성 행 (C16) | DESIGN:747·:838 `bg-accent + border-ring` | `ListRow selected` 7% | D3(사용자 지시) |
 | 검색 행 글리프 (C17) | DESIGN:2003 "썸네일 16 · 일반 행 앞 글리프 없음" | 모든 행 28 타일 | 2026-10-03 사용자 |
 | 비로그인 미리보기 Changelog | DESIGN §6.54 "비로그인은 하단 Menus" | 없음 | C4·D8 |
+| 검색 그룹 머리 (C16) | 브리프 Fixed·리뷰 설계 `text-muted-foreground`(메뉴 라벨 톤) | `text-gray-dim` | D15 |
 
 ## 완료 조건 (검증 가능한 문장)
 
@@ -114,15 +117,15 @@
 - C15. **검색 결과 행은 `ListRow`다** (2026-10-03 사용자 — Logs·Sources·Account 행과 같은 IconTile + 제목 + 설명 조합을 재사용).
   - 행은 목록 폭을 꽉 채우고(radius 없음) `px-4 py-row-y`, `variant="canvas"`, `text-sm`이다.
   - 제목(맥락 포함)과 설명은 각각 한 줄 truncate다. 긴 키 이름도 줄바꿈하지 않는다.
-  - 상태 줄·그룹 머리·0건의 왼쪽 16px이 타일의 왼쪽 가장자리와 한 선이고, 입력의 검색 글리프 중심이 타일 중심과 한 선이다.
+  - 상태 줄·그룹 머리의 왼쪽 16px이 타일의 왼쪽 가장자리와 한 선이고, 입력의 검색 글리프 중심이 타일 중심과 한 선이다. 0건(`NoMatch`)은 앱 공통의 가운데 정렬 inset이라 이 규칙의 예외이고, 목록 슬롯 맨 위에 선다.
   - 그룹 사이는 구분선 하나다. 손 조립 행(`CommandItem`의 자체 flex·padding·radius)이 0이다.
-- C16. 활성 행은 `ListRow selected`(`bg-foreground/[0.07]`, DESIGN:321 "선택 7%")뿐이다. 테두리·포커스 링·hover 면은 없다(마우스를 둔 채 ↑↓를 눌러도 칠해진 행은 하나다). 그룹 머리는 `text-muted-foreground text-xs font-medium`이다.
+- C16. 활성 행은 `ListRow selected`(`bg-foreground/[0.07]`, DESIGN:321 "선택 7%")뿐이다. 테두리·포커스 링·hover 면은 없다(마우스를 둔 채 ↑↓를 눌러도 칠해진 행은 하나다). 그룹 머리는 `text-gray-dim text-xs font-medium`이다(D15).
 - C17. **모든 검색 결과 행이 28 타일을 갖는다** (2026-10-03 사용자).
   - Projects는 `ProjectThumbnail size="sm"`(28)이다.
   - 나머지는 `IconTile size="sm"`이고, 글리프는 같은 목적지의 nav 항목 아이콘이다: `Go to your projects`=`Box`, Pages=그 nav 항목의 아이콘, `New project`=`Plus`(DESIGN 헤더 New project), Keys=`Languages`(Translations), Docs·`Go to docs`=`CircleHelp`.
   - 글리프는 `lib/shell/nav.ts` 항목에서 **nav key로** 꺼낸다(href로 조회하지 않는다 — Keys href에는 쿼리, Docs href에는 해시가 붙는다). 검색만의 하드코딩 글리프(`Folder`·`BookOpen`)가 0이다.
 - C18. `CommandInput`에 지우기 X(`Input` clearable)가 있다.
-- C19. **활성 행이 바뀌어도 어떤 행의 높이·제목 폭도 변하지 않는다** (2026-10-03 사용자). `Go to ↵` 힌트를 모든 행에 늘 렌더하고 활성 아닐 때는 `invisible`로 둔다. `Kbd`는 `h-5`(20)라 타일(28)보다 낮다.
+- C19. **활성 행이 바뀌어도 어떤 행의 높이·제목 폭도 변하지 않는다** (2026-10-03 사용자). `Go to ↵` 힌트를 모든 행에 늘 렌더하고 활성 아닐 때는 `invisible`로 둔다. `Kbd`는 `h-5`(20)라 타일(28)보다 낮다. `sm`(640) 미만에서는 힌트와 입력의 Esc 칩을 숨긴다 — 폭으로 정하는 규칙이라 활성과 무관하다.
 - C20. 두 헤더의 로고 링크 radius가 같다(`rounded-sm`).
 
 ### 문구
