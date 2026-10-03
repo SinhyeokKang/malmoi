@@ -16,6 +16,9 @@ vi.setConfig({ testTimeout: 20_000 });
  * 선택 칸의 클래스는 jsdom이 CSS를 안 만들어 class 문자열만 보이므로, **JS가 붙인 `SELECTED` 상수**로 단언한다
  * (`data-[state=active]:`로 걸면 Tailwind가 CSS를 안 만드는데 이 테스트는 green이 난다).
  */
+/** Radix는 비활성 패널의 **자식을 언마운트**하고 껍데기는 `hidden`으로 남긴다 — 보이는 패널만 센다. */
+const SHOWN = '[role="tabpanel"]:not([hidden])';
+
 const PANELS = [
   { value: "project", label: "Project", body: "Project facts" },
   { value: "sync", label: "Sync", body: "Sync facts" },
@@ -51,25 +54,25 @@ describe("Tabs — roles and panels", () => {
     expect(find(container, '[role="tablist"]').getAttribute("aria-label")).toBe("Project details");
     expect(tabs().map((tab) => tab.textContent)).toEqual(["Project", "Sync", "Publish"]);
     expect(tabs().map((tab) => tab.getAttribute("aria-selected"))).toEqual(["true", "false", "false"]);
-    expect(container.querySelectorAll('[role="tabpanel"]')).toHaveLength(1);
+    expect(container.querySelectorAll(SHOWN)).toHaveLength(1);
   });
 
   it("labels the panel with its tab's name", async () => {
     const { container, selected } = await setup("sync");
-    const panel = find(container, '[role="tabpanel"]');
+    const panel = find(container, SHOWN);
     expect(panel.textContent).toBe("Sync facts");
     expect(panel.getAttribute("aria-labelledby")).toBe(selected().id);
     expect(selected().textContent).toBe("Sync");
   });
 
-  it("unmounts inactive panels instead of hiding them", async () => {
+  it("unmounts the inactive panels' contents", async () => {
     const { container, user, tabs } = await setup();
     expect(container.textContent).toContain("Project facts");
     expect(container.textContent).not.toContain("Sync facts");
     await act(async () => user.click(tabs()[1]!));
     expect(container.textContent).toContain("Sync facts");
     expect(container.textContent).not.toContain("Project facts");
-    expect(container.querySelectorAll('[role="tabpanel"]')).toHaveLength(1);
+    expect(container.querySelectorAll(SHOWN)).toHaveLength(1);
   });
 });
 
@@ -80,7 +83,7 @@ describe("Tabs — keyboard", () => {
     expectSelected("Sync");
     expect(tabs().map((tab) => tab.getAttribute("tabindex"))).toEqual(["-1", "0", "-1"]);
     await act(async () => user.tab());
-    expect(document.activeElement).toBe(find(container, '[role="tabpanel"]'));
+    expect(document.activeElement).toBe(find(container, SHOWN));
   });
 
   it("ArrowRight selects and focuses the next tab, wrapping at the end", async () => {
@@ -114,7 +117,7 @@ describe("Tabs — keyboard", () => {
     const { container, user, tabs, selected } = await setup();
     await act(async () => user.click(tabs()[2]!));
     expect(selected().textContent).toBe("Publish");
-    expect(find(container, '[role="tabpanel"]').textContent).toBe("Publish facts");
+    expect(find(container, SHOWN).textContent).toBe("Publish facts");
   });
 });
 
@@ -122,7 +125,8 @@ describe("Tabs — segment shape", () => {
   it("the track and cells use the shared segment constants", async () => {
     const { container, tabs } = await setup();
     const list = find(container, '[role="tablist"]');
-    for (const cls of TRACK.split(" ")) expect(list.classList.contains(cls)).toBe(true);
+    // `flex`가 `inline-flex`를 대신한다 — 트랙은 항상 전폭이다(`SegmentedControl`도 같다).
+    for (const cls of TRACK.split(" ").filter((c) => c !== "inline-flex")) expect(list.classList.contains(cls)).toBe(true);
     expect(list.classList.contains("flex")).toBe(true);
     for (const tab of tabs()) {
       for (const cls of SEGMENT.split(" ")) expect(tab.classList.contains(cls)).toBe(true);
@@ -142,7 +146,8 @@ describe("Tabs — segment shape", () => {
   });
 
   it("never styles selection with data-[state=active]: (Tailwind emits no CSS for the interpolated form)", () => {
-    expect(readFileSync("components/ui/tabs.tsx", "utf8")).not.toMatch(/data-\[state=active\]/);
+    const code = readFileSync("components/ui/tabs.tsx", "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+    expect(code).not.toMatch(/data-\[state=active\]/);
   });
 
   it("renders the segment body — icon, label and count in order", async () => {
