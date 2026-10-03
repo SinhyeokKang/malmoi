@@ -1,27 +1,58 @@
 # operator-account — 태스크
 
-순서: 순수 함수 → 껍데기 → 상한 배선 → 문서. 모든 커밋 경계에서 `pnpm typecheck && pnpm test` green.
+순서: 순수 함수 → 껍데기 → 생성 배선 → 우회로 셋 → 문서 → 수동. 모든 커밋 경계에서 `pnpm typecheck && pnpm test` green. 자동(`pnpm test`·`pnpm typecheck`)과 수동(`pnpm dev`로 눈으로 봄)을 가른다 — 이 리포에 e2e는 없다.
 
 - **T1. 순수 함수**
-  - `lib/operator/allowlist.ts`: `parseOperatorGithubIds` · `isOperator`. `lib/onboarding/create-plan.ts`: `projectLimitFor`.
-  - 테스트 먼저: `parseOperatorGithubIds` — `undefined`·`""`·`" "` → 빈 집합 / `"1, 2,,x,3 "` → `{1,2,3}` / `"__proto__"` 무시. `isOperator` — 교집합 있음/없음/빈 배열. `projectLimitFor(true)` → `Infinity`, `false` → `PROJECT_LIMIT`.
-  - 검증: `lib/operator/__tests__/allowlist.test.ts`·`lib/onboarding/__tests__/create-plan.test.ts` green.
-  - `[commit] feat(operator): parse the static operator allowlist`
+  - `lib/operator/allowlist.ts`: `parseOperatorGithubIds`. `lib/onboarding/create-plan.ts`: `projectLimitFor` + `@param limit` JSDoc·`PROJECT_LIMIT` 머리 주석 갱신(design "순수 함수").
+  - 테스트 먼저 — `parseOperatorGithubIds`:
+    - `undefined`·`""`·`" "` → 빈 집합
+    - `"1, 2,,x,3 "` → `{1,2,3}` / `"1\n"` → `{1}` / `" 1 , 1 "` → `{1}`(중복)
+    - `"007"`·`"0"` 무시(선행 0) / `"__proto__"`·`"-1"`·`"1.5"` 무시
+    - `"9007199254740993"`(2^53+1) → 그 문자열 그대로(정밀도 보존)
+  - `projectLimitFor(true)` → `Infinity`, `false` → `PROJECT_LIMIT`.
+  - 검증: `lib/operator/__tests__/allowlist.test.ts`·`lib/onboarding/__tests__/create-plan.test.ts` green. `lib/operator/allowlist.ts`의 import 0(잎)을 소스 스캔 테스트 한 줄로 고정.
+  - `[commit] feat(operator): parse the operator allowlist and add the limit helper`
 - **T2. 껍데기 `lib/operator/user.ts`의 `isOperatorUser`**
-  - 테스트(Prisma 대역): env 없음 → `account.findMany` 미호출 · `false` / env에 든 GitHub id를 가진 `Account(provider = 로그인 공급자)` → `true` / 같은 id라도 `provider`가 `APP_ACCOUNT_PROVIDER`면 `false` / `where.userId`로 좁힌다.
-  - 검증: 테스트 green. 소스에 모듈 최상위 `optionalEnv` 호출 0. `lib/github-connect/__tests__/credential-separation.test.ts` green(자격증명 경계).
+  - 테스트(Prisma 대역 — `account.findFirst`, `source`로 env 주입):
+    - env 없음 → `findFirst` 미호출 · `false`
+    - **사용자 둘 시드**(POSTMORTEM 2026-09-06): B만 운영자 id의 `github` 행을 가졌을 때 A → `false`, B → `true`
+    - A가 운영자 id를 `github-app` 행으로만 가짐(Google 로그인) → `false`
+    - A가 `github`·`github-app` 행을 둘 다 가짐 → `true`
+    - `findFirst`가 던지면 `isOperatorUser`도 던진다(catch 없음 — spec C4)
+    - **호출 시점에 읽는다**: 모듈을 import한 **뒤에** `source`/`vi.stubEnv`로 값을 넣었다 뺐다 하면 결과가 따라온다(모듈 최상위 평가가 아님을 행동으로 증명)
+    - `where`에 `userId`와 `provider: "github"`가 있다
+  - 검증: 위 테스트 green. `provider`가 `LoginProvider` 타입으로 묶여 있다(`"github-app"`을 넣으면 typecheck red). **`lib/operator/user.ts`를 import하는 소스가 `lib/onboarding-run/{repos,create}.ts`·`lib/projects/owner-limit.ts`뿐**이라는 소스 스캔 테스트 — 인가 경로가 운영자를 보지 않음(spec C13)을 고정한다. 백오피스가 오면 그 목록을 늘린다.
   - `[commit] feat(operator): resolve operators from the GitHub sign-in account`
-- **T3. 상한 배선 (첫 소비자)**
-  - `listConnectableRepos`(`repos.ts:57`) · `createProject` 선조회(`create.ts:120-137`) · 잠금 안 재집계(`create.ts:224-225`)가 `projectLimitFor(await isOperatorUser(...))`의 한 값을 쓴다. MCP `create_project`는 같은 코어 — 그 경로 테스트 하나로 확인.
-  - 테스트: 운영자가 OWNER 활성 3개일 때 ①이 `limit-reached`를 내지 않고 생성 성공 / 비운영자는 기존 테스트 그대로 `limit-reached`(C5) / env 미설정이면 같은 계정도 3에서 막힘(C2) / 운영자라도 남의 프로젝트 인가는 그대로 거부(C6 — 기존 인가 테스트 하나에 운영자 env를 켠 케이스).
-  - 검증: 위 테스트 green. 기존 `limit-reached` 테스트(온보딩·MCP) 무수정 green. 트리거되면 `pnpm test:projects:postgres` green(`pnpm gate`가 판정).
+- **T3. 생성 배선 (첫 소비자)**
+  - `listRepositories`(`repos.ts:49-63`, 기존 `try` 안) · `createProjectFromRepo` 선조회(`create.ts:118-138` — `Promise.all`에 합류) · 잠금 안 재집계(`create.ts:224-225`)가 같은 판정을 쓴다. 면제는 **코어**에 넣는다(Action 래퍼 아님).
+  - 테스트(`app/(edit)/__tests__/onboarding.test.ts` — 실제 코어를 돈다, 하네스는 `account.findFirst`를 이미 가졌다):
+    - 운영자 + OWNER 활성 3 → `listConnectableRepos`가 `limit-reached`를 내지 않고 `createProject`가 성공(선조회와 재집계를 한 테스트가 함께 증명 — 하네스 `countMembers`가 `role`·`archivedAt`을 본다)
+    - env 미설정이면 같은 계정도 3에서 `limit-reached`(spec C2)
+    - 운영자 조회가 던지면 ①은 `unavailable`, 생성은 선조회 실패 경로(spec C4)
+    - 운영자 + OWNER 3 + 리포 접근 없음 → `repo-not-installed`(`:1164` "연결 거부가 먼저" 옆 — 면제가 순서를 바꾸지 않는다)
+  - MCP `list_repositories`·`create_project`는 같은 코어라 별도 테스트를 두지 않는다(`write-tools.test.ts`는 코어를 mock하므로 거기 쓴 테스트는 면제를 증명하지 못한다).
+  - 검증: 위 테스트 green. 기존 온보딩 `limit-reached` 테스트(`onboarding.test.ts:343-366`·`1096-1138`) **테스트 파일 무수정** green. `ConnectableReposResult`·`onboardErrorMessage`의 형 변경 0(`Infinity`가 결과·문구에 안 실린다). `lib/onboarding-run/` 변경이라 `pnpm gate`가 **반드시** `test:projects:postgres`를 붙인다(`scripts/gate-plan.ts`) — 비운영자 동시 생성 방어선 `lib/keys/__tests__/list-aggregates.integration.ts:815-824`(2 성공 · 1 `limit-reached`) green. `components/__tests__/home-vocabulary.test.ts:201·207`의 `NOT_A_COUNT` 근거 주석에 "운영자 제외"(테스트 값은 그대로).
   - `[commit] feat(onboarding): exempt operators from the project limit`
-- **T4. 환경·문서**
-  - `.env.example`에 `OPERATOR_GITHUB_IDS=""` + 주석(형식 · fail-closed · 로그인 공급자 계정 기준 · 프로젝트 역할 아님 · GitHub 숫자 id 얻는 법).
-  - PRODUCT §3·§4.2, ARCHITECTURE §3.1 + 운영자 판정 절, OPERATIONS(값 넣기·확인 — dev `.env.local`은 사람이 채운다, Vercel은 환경별), 필요 시 CLAUDE.md 한 줄 — 문서별 커밋.
-  - 검증: `pnpm sync:agents:check` green. grep: PRODUCT에 `운영자`·`OPERATOR_GITHUB_IDS` 존재, §3 역할 표는 둘 그대로.
-  - `[commit] docs(PRODUCT|ARCHITECTURE|OPERATIONS): …` · `chore(env): document OPERATOR_GITHUB_IDS`
-- **T5. 수동 확인 (dev)**
-  - 사람이 `.env.local`에 본인 GitHub id를 넣고(⚠️ 에이전트가 `.env.local`을 편집하지 않는다) `pnpm dev` → OWNER 활성 3개 상태에서 `/projects/new` ①이 리포 목록을 보이고 생성이 된다. 값을 빼면 다시 막힌다.
+- **T4. 상한 재집계 껍데기 + 우회로 셋**
+  - `lib/projects/owner-limit.ts`의 `lockOwnerSlots`(design "상한 재집계"). 거부 결과·문구(`owner-limit-reached` → `accessErrorMessage`, `InviteError` `"limit-reached"`)를 `messages/en.tsx`에.
+  - 테스트 먼저:
+    - `lockOwnerSlots`: User를 id 순으로 잠근다 · 상한 미만은 `isOperatorUser`를 부르지 않는다 · 운영자는 빠진다 · 넘는 사람만 돌려준다
+    - **복원**(`app/(edit)/__tests__/archive.test.ts`): 행위자 3 → 거부 · **다른 OWNER가 3** → 거부(행위자는 여유) · 거부되면 `archivedAt`·사건 그대로 · 운영자 OWNER는 3이어도 통과 · OWNER 둘 다 여유 → 성공
+    - **승격**(`app/(edit)/__tests__/membership.test.ts`): 대상자 3 → `owner-limit-reached`, 역할·사건 그대로 · 대상자 운영자 → 성공 · EDITOR로 강등·제거는 세지 않는다
+    - **수락**(`app/invite/__tests__/`): OWNER 초대 + 수락자 3 → `limit-reached`, `acceptedAt` null 그대로(재수락 가능) · EDITOR 초대 + 수락자 3 → 성공 · 수락자 운영자 → 성공
+    - 이미 4 이상인 사용자도 보관은 성공(spec C9)
+    - 문구: `lib/auth/__tests__/message.test.ts`가 새 사유의 문구를 덮는다(`satisfies` 누락은 typecheck red)
+  - 검증: 위 테스트 green. `app/__tests__/locked-access.test.ts`·`entry-points.test.ts` 무수정 green(인가 16자리 그대로 — User 잠금은 `lockProjectAccess` **뒤**). MCP `unarchive_project`·`change_member`는 같은 코어 — `lib/mcp/__tests__/result.test.ts`에 새 사유 매핑 한 줄. `pnpm gate`가 postgres 스위트를 붙이는지는 `gate-plan.ts`가 판정한다.
+  - `[commit] fix(projects): enforce the owner limit on restore, promotion and owner invites`
+- **T5. 환경·문서**
+  - `.env.example`에 `OPERATOR_GITHUB_IDS=""` + 주석(형식 · fail-closed · 로그인 `github` 계정 기준 · 프로젝트 역할 아님 · GitHub 숫자 id 얻는 법).
+  - design "문서 갱신"의 목록 전부 — PRODUCT · ARCHITECTURE · OPERATIONS · DIRECTORY · 가이드 `limits.md` · SHOOTING — 문서별 커밋. **CLAUDE.md는 고치지 않는다.**
+  - 검증: `pnpm sync:agents:check` green · `pnpm test` green(가이드 사실 대조 `lib/guide/__tests__/content.test.ts:116`이 `PROJECT_LIMIT` 값을 문자열로 본다 — 상수 값은 그대로 3). grep: PRODUCT에 `운영자`·`OPERATOR_GITHUB_IDS` 존재 · §3 역할 표는 둘 그대로 · `guide/`에 `operator` 0건.
+  - `[commit] docs(PRODUCT|ARCHITECTURE|OPERATIONS|DIRECTORY): …` · `docs(guide): …` · `chore(env): document OPERATOR_GITHUB_IDS`
+- **T6. 수동 확인 (dev)**
+  - 사람이 `.env.local`에 본인 GitHub 숫자 id를 넣는다(⚠️ 에이전트가 `.env.local`을 편집하지 않는다). 그 id가 본인 **로그인** `Account`(`provider = "github"`)의 `providerAccountId`인지 먼저 확인한다.
+  - `pnpm dev` → OWNER 활성 3개 상태에서 `/projects/new` ①이 리포 목록을 보이고 생성이 된다. 값을 빼고 재시작하면 다시 막힌다.
+  - 비운영자 계정(또는 값을 뺀 상태)으로 보관 → 생성 → 복원이 거부되고 문구가 뜬다.
+  - **정리**: 확인용으로 만든 프로젝트를 상주로 남길지(이름·용도) 보관할지 정하고, dev 상주 상태 기록(`guide/SHOOTING.md` 진행 상태 · 메모리)을 갱신한다.
   - 검증: 수동(`/runtime-test`).
-- **T6.** `pnpm gate` green → `/push`. Production 값은 `/merge` 전 사람이 Vercel에 넣는다(OPERATIONS 절차).
+- **T7.** Vercel Preview·Production에 `OPERATOR_GITHUB_IDS`를 **환경별 변수**로 사람이 넣는다(OPERATIONS 절차 — env는 다음 배포부터 적용되므로 Preview는 `/push` 전, Production은 `/merge` 전). `pnpm gate` green → `/push`. 마이그레이션은 없다.
