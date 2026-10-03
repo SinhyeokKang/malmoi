@@ -12,6 +12,7 @@ import type { RepoReader } from "@/lib/github";
 import { runAutomationImport, runRepositoryImportFromReader } from "@/lib/import/run";
 import { applyPush } from "@/lib/push/apply";
 import { hashPushToken } from "@/lib/push/token";
+import { loadHomeRuns } from "@/lib/home/runs";
 
 /**
  * **`changedValues` 관측** (nightly-sync C2) — 적재가 실제로 `value`를 바꾼 번역 셀 수. 적재 코어(`applyPushInTransaction`)가 세고
@@ -124,6 +125,24 @@ function reader(content: string): RepoReader {
 }
 const importEvent = async (subtype: string) => (await prisma.projectEvent.findFirstOrThrow({ where: { projectId: "p", subtype } })).payload;
 
+/**
+ * **Home `Synced` ≈ 그 실행의 종료** (project-card-tabs fix1) — Home Sync 탭은 사건 `finishedAt`을 시각으로 쓴다(`homeSyncRun`). 그 시각이 같은 실행이
+ * 표면에 쓴 `lastImportedAt`과 같은 순간인지 생산자 셋을 실제 행으로 잰다. ⚠️ **ms 단위 순서는 보장되지 않는다** — CI 경로는 사건 기록(`ciImportEvent`)과
+ * 표면 갱신(`applyPush`의 `importOutcomeFields`)이 같은 트랜잭션에서 각자 `new Date()`를 찍어 사건이 몇 ms 앞설 수 있다(실측 3~5ms). 상대 시각 표시엔 무의미하므로
+ * "그 실행이 `lastImportedAt`을 전진시켰고 `finishedAt`이 그 1초 안"을 단언한다.
+ */
+const surfaceImportedAt = async () => (await prisma.translationSurface.findUniqueOrThrow({ where: { id: "s" }, select: { lastImportedAt: true } })).lastImportedAt;
+async function expectSyncedAtRunEnd(subtype: string, before: Date | null) {
+  const event = await prisma.projectEvent.findFirstOrThrow({ where: { projectId: "p", subtype }, select: { occurredAt: true, finishedAt: true } });
+  const after = await surfaceImportedAt();
+  expect(after?.getTime() ?? 0).toBeGreaterThan(before?.getTime() ?? 0);
+  const finished = event.finishedAt?.getTime() ?? Number.NaN;
+  expect(Math.abs(finished - (after?.getTime() ?? 0))).toBeLessThan(1_000);
+  // CI 사건은 시작·종료가 한 행이라 `occurredAt`(DB 기본값)이 JS `finishedAt`보다 몇 ms 늦을 수도 있다 — 같은 순간으로만 본다.
+  expect(finished - event.occurredAt.getTime()).toBeGreaterThan(-1_000);
+  expect((await loadHomeRuns(prisma, "p")).sync?.at).toEqual(event.finishedAt);
+}
+
 it("생산자 — CI `/api/push`의 import.ci 사건", async () => {
   await seed();
   await apply(BASE);
@@ -131,25 +150,31 @@ it("생산자 — CI `/api/push`의 import.ci 사건", async () => {
   vi.doMock("next/cache", () => ({ revalidatePath: vi.fn() }));
   // 열린 Malmoi PR 없음 — 이 파일은 게이트 뒤(적재)를 잰다. 게이트 자체는 `app/api/__tests__/push-open-pr.test.ts`(nightly-sync D1).
   vi.doMock("@/lib/projects/open-pr", () => ({ loadOpenPrForImportGate: async () => null }));
+  const before = await surfaceImportedAt();
   const { POST } = await import("@/app/api/push/route");
   const body = payload(BASE.map(cell => cell.key === "b" ? { ...cell, value: `${cell.value}2` } : cell));
   const response = await POST(new Request("http://localhost/api/push", { method: "POST", headers: { authorization: `Bearer ${pushToken}` }, body: JSON.stringify(body) }));
   expect(response.status).toBe(200);
   expect(await importEvent("import.ci")).toMatchObject({ source: "ci", changedValues: 2 });
+  await expectSyncedAtRunEnd("import.ci", before);
 });
 
 it("생산자 — 수동 Sync의 import.run 사건", async () => {
   await seed();
   await apply(BASE);
+  const before = await surfaceImportedAt();
   await runRepositoryImportFromReader(prisma, { projectId: "p", userId: "owner", repository, approval: null, credential: undefined }, async () => reader('{"a":"A","b":"B changed"}'));
   expect(await importEvent("import.run")).toMatchObject({ source: "manual", changedValues: 1 });
+  await expectSyncedAtRunEnd("import.run", before);
 });
 
 it("생산자 — 야간 적재의 import.nightly 사건", async () => {
   await seed();
   await apply(BASE);
+  const before = await surfaceImportedAt();
   await runAutomationImport(prisma, { projectId: "p", repository }, async () => reader('{"a":"A new","b":"B new"}'));
   expect(await importEvent("import.nightly")).toMatchObject({ source: "nightly", changedValues: 2 });
+  await expectSyncedAtRunEnd("import.nightly", before);
 });
 
 it("실패로 닫힌 실행은 0이 아니라 null이다", async () => {
