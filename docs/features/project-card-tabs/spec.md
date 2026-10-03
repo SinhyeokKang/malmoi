@@ -3,6 +3,7 @@
 Home(`/projects/[slug]`) 오른쪽 `Project` 메타 열을 **탭 셋(Project · Sync · Publish)** 으로 재편하고,
 그 정보 구성을 **지금의 데이터 모델**(다중 소스 · 보류 게이트 · 전달 불변식 · 사건 기반 실행)에 맞게 다시 짠다.
 **시각·행 구성의 정본은 Claude Design `Project Home Meta Tabs v3.dc.html`이다**(2026-10-04 수령 · 리뷰 반영 — 아래 "결정").
+**디자인 정본**: [Project Home Meta Tabs v3](https://claude.ai/design/p/b99d54cd-3034-44f1-8446-0a864da9d767?file=Project+Home+Meta+Tabs+v3.dc.html) — Claude Design 프로젝트 `b99d54cd-3034-44f1-8446-0a864da9d767`, 파일 `Project Home Meta Tabs v3.dc.html` (`/design-sync`는 DesignSync `get_file`로 이 경로를 읽는다). **이 기능은 정본 구현이다** — `/design-sync`(tasks T10)를 건너뛰지 않는다(2026-10-04 사용자).
 
 ## 사용자
 
@@ -39,7 +40,7 @@ Home(`/projects/[slug]`) 오른쪽 `Project` 메타 열을 **탭 셋(Project · 
 - [ ] Publish 실행이 **리포 파일에서 바꾼 값 수(수정+추가)** 를 기록하고, Publish 탭 `Changed`와 Logs의 Publish 상세가 그 수를 보인다. 스킵은 `0`, 실패·기록 이전은 `null`(Home은 행 없음 · Logs는 `—` + not recorded). (단위 테스트 + 통합 테스트)
 - [ ] 키보드: 탭 목록이 `tablist`/`tab`/`tabpanel` 역할이고 ←/→·Home/End로 이동, 패널이 탭 이름으로 라벨된다. (DOM 테스트 + CDP 접근성 트리 실측)
 - [ ] 랜드마크 `complementary` 이름 `Project`가 유지되고(`aria-label`), `Settings ›`(OWNER, Project 탭) · `Sync logs ›`(전 역할, Sync 탭) · `Publish logs ›`(전 역할, Publish 탭) 바닥 링크가 선다. (`home-landmarks.test.tsx` green)
-- [ ] 시안 v3의 보드 각각에서 패널 내용이 같다 — `1a` 기본·소스 둘 · `1b` 기본·소스 하나 · `2a` 첫 Sync 전 · `2b` Sync 실패 · `2b′` 일부 반영 · `2c` 미연결 · `2d` 보관 · `2e` 로딩 · `2f` 발송 전 · `2g` 늦게 오는 행 · `2h` EDITOR. 시안과 다르게 확정한 것(아래 "결정"의 ⚠️ — `Members (0)` · 바닥 링크 라벨·목표)은 결정이 이긴다. (`/design-sync` 수동 실측 — 밟지 못한 갈래는 미검증으로 적는다)
+- [ ] 시안 v3의 보드 각각에서 패널 내용이 같다 — `1a` 기본·소스 둘 · `1b` 기본·소스 하나 · `2a` 첫 Sync 전 · `2b` Sync 실패 · `2b′` 일부 반영 · `2c` 미연결 · `2d` 보관 · `2e` 로딩 · `2f` 발송 전 · `2g` 늦게 오는 행 · `2h` EDITOR. 시안과 다르게 확정한 것(아래 "결정"의 ⚠️ — `Members (0)` · 바닥 링크 라벨·목표)은 결정이 이긴다. (`/design-sync` 수동 실측 — **보드 11개 전부 필수**. 로컬에서 바로 안 서는 갈래는 dev DB 픽스처·상태 조작으로 재현해 밟는다. 그래도 못 밟은 갈래는 완료로 치지 않고 사용자에게 보고한다)
 - [ ] 로딩 골격(`(home)/loading.tsx`)이 탭 머리(실물) + Project 탭 8행 치수와 같고, 바닥 링크는 `canOpenSettings`일 때만 그린다. (수동 실물 대조 — `/design-sync` `2e`)
 - [ ] Home 조회 라운드가 늘지 않는다 — 새 조회가 생기면 기존 `Promise.all` 한 라운드 안이다. **새 GitHub 호출은 0이다.**
 - [ ] `pnpm gate` green. DESIGN §6.64 · ARCHITECTURE(스키마) · DIRECTORY · CLAUDE.md(프리미티브 수) 갱신.

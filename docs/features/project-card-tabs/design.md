@@ -2,6 +2,8 @@
 
 ⚠️ **시각·행 구성의 정본은 Claude Design `Project Home Meta Tabs v3.dc.html`이고, 그와 다르게 확정한 것은 spec "결정"이 이긴다**
 (2026-10-04 수령·리뷰 — `Members (0)` 상시 · Sync 탭 시각 출처 · Publish `Changed`의 데이터 · 바닥 링크 `Sync logs ›`·`Publish logs ›`와 `kind` 필터 목표).
+**디자인 정본**: [Project Home Meta Tabs v3](https://claude.ai/design/p/b99d54cd-3034-44f1-8446-0a864da9d767?file=Project+Home+Meta+Tabs+v3.dc.html) — Claude Design 프로젝트 `b99d54cd-3034-44f1-8446-0a864da9d767`, 파일 `Project Home Meta Tabs v3.dc.html` (`/design-sync`는 DesignSync `get_file`로 이 경로를 읽는다). **이 기능은 정본 구현이다** — `/design-sync`(tasks T10)를 건너뛰지 않는다(2026-10-04 사용자).
+⚠️ 메모리·DESIGN의 "Claude Design은 신규 페이지 초기 구현만 SoT" 규칙의 **명시 예외**다 — 이미 있는 Home 화면의 일부지만 사용자가 이 시안을 정본으로 지정했다(`/ship` 6.5의 "신규 페이지만" 조건도 이 기능엔 적용하지 않는다).
 이 문서는 그 결론을 코드로 옮기는 배선·판정·함정을 적는다.
 
 ## 1. 영향 받는 흐름
