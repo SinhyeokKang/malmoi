@@ -36,3 +36,4 @@
 ## 진행 기록
 
 (배치별 라운드·통합 해시·검증 결과를 여기에 덧붙인다)
+- 2026-10-04 Run `run_c2971b959e08` · 웨이브 1 시작 — A `ctx_5adc1c5e470e`(Opus high) · B `ctx_de0a7fb1e640`(Opus high) · C `ctx_dee57e60d929`(Sonnet high), 워크트리 `pct-a-home-data`·`pct-b-publish-count`·`pct-c-ui-primitives`.
