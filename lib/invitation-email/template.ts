@@ -58,18 +58,18 @@ export const INVITATION_EMAIL_HTML = `<!DOCTYPE html>
 <tr><td class="mm-outer" align="center" style="padding:40px 16px;">
   <!--[if mso]><table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;width:100%;">
-    <tr><td style="padding:0;"><img src="{{LOGO_URL}}" width="40" height="40" alt="Malmoi" style="display:block;width:40px;height:40px;border:0;outline:none;text-decoration:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:17px;line-height:40px;font-weight:600;color:#0a0a0a;"></td></tr>
+    <tr><td align="center" style="padding:0;"><img src="{{LOGO_URL}}" width="40" height="40" alt="Malmoi" style="display:block;margin:0 auto;width:40px;height:40px;border:0;outline:none;text-decoration:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:17px;line-height:40px;font-weight:600;color:#0a0a0a;"></td></tr>
     <tr><td style="background-color:#ffffff;border-bottom:1px solid #e5e5e5;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-        <tr><td class="mm-card-pad" style="padding:36px 0 32px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+        <tr><td class="mm-card-pad" align="center" style="padding:36px 0 32px 0;text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
           <h1 class="mm-h1" style="margin:0 0 12px 0;font-size:24px;line-height:32px;font-weight:600;letter-spacing:-0.01em;color:#0a0a0a;">You're invited to a project on Malmoi</h1>
           <p style="margin:0 0 16px 0;font-size:15px;line-height:24px;color:#0a0a0a;">You've been invited to join this project on Malmoi.</p>
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 28px 0;border:1px solid #e5e5e5;border-radius:12px;border-collapse:separate;">
             <tr><td style="padding:12px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              <table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
                 <tr>
                   {{TILE}}
-                  <td style="padding:0 0 0 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;letter-spacing:0.02em;font-weight:400;word-break:break-word;overflow-wrap:anywhere;">
+                  <td style="padding:0 0 0 12px;text-align:left;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;letter-spacing:0.02em;font-weight:400;word-break:break-word;overflow-wrap:anywhere;">
                     <div style="font-size:14px;line-height:20px;color:#0a0a0a;">{{PROJECT_NAME}}</div>
                     <div style="margin-top:1px;font-size:13px;line-height:17px;color:#737373;">{{ROLE}}</div>
                   </td>
@@ -77,7 +77,7 @@ export const INVITATION_EMAIL_HTML = `<!DOCTYPE html>
               </table>
             </td></tr>
           </table>
-          <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 28px 0;">
+          <table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 28px auto;">
             <tr><td align="center" bgcolor="#171717" style="background-color:#171717;border-radius:10px;border:1px solid #171717;">
               <!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="{{INVITE_URL}}" style="height:40px;v-text-anchor:middle;width:160px;" arcsize="22%" fillcolor="#171717" strokecolor="#171717"><center style="color:#fafafa;font-family:Arial,sans-serif;font-size:14px;font-weight:500;">Accept invitation</center></v:roundrect><![endif]-->
               <!--[if !mso]><!--><a class="mm-btn" href="{{INVITE_URL}}" target="_blank" style="display:inline-block;padding:10px 16px;min-width:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:20px;font-weight:500;color:#fafafa;text-decoration:none;text-align:center;border-radius:10px;background-color:#171717;">Accept invitation</a><!--<![endif]-->
@@ -86,12 +86,12 @@ export const INVITATION_EMAIL_HTML = `<!DOCTYPE html>
           <p style="margin:0 0 6px 0;font-size:13px;line-height:20px;color:#737373;">If the button doesn't work, paste this link into your browser:</p>
           <p style="margin:0 0 28px 0;font-size:13px;line-height:20px;word-break:break-all;overflow-wrap:anywhere;"><a href="{{INVITE_URL}}" target="_blank" style="color:#0a0a0a;text-decoration:underline;">{{INVITE_URL}}</a></p>
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-            <tr><td style="border-top:1px solid #e5e5e5;padding-top:20px;font-size:13px;line-height:20px;color:#737373;">This link expires in 7 days. To accept, sign in with the email address this invitation was sent to.</td></tr>
+            <tr><td align="center" style="border-top:1px solid #e5e5e5;padding-top:20px;text-align:center;font-size:13px;line-height:20px;color:#737373;">This link expires in 7 days. To accept, sign in with the email address this invitation was sent to.</td></tr>
           </table>
         </td></tr>
       </table>
     </td></tr>
-    <tr><td style="padding:16px 0 0 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;color:#737373;">If you weren't expecting this invitation, you can ignore this email.</td></tr>
+    <tr><td align="center" style="padding:16px 0 0 0;text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;color:#737373;">If you weren't expecting this invitation, you can ignore this email.</td></tr>
   </table>
   <!--[if mso]></td></tr></table><![endif]-->
 </td></tr>
