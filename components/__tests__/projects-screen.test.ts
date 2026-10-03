@@ -131,7 +131,9 @@ describe("프로젝트 목록 — 배지는 항상 하나이고 갈래는 순수
     }
     const src = PAGE.map(code).join("\n");
     expect(src).not.toContain("text-gray-strong");
-    expect(src).toContain('chipState === "archived" && "text-gray-dim"');
+    // 보관 칩도 색 덮개가 없다 — 물러나는 것은 이름·메타 둘이다(search-ux-unify D6).
+    expect(src).toContain('<StatusBadge state={CHIP_STATE[chipState]} className="px-2" />');
+    expect(src).not.toContain('chipState === "archived" && "text-gray-dim"');
   });
 
   /**

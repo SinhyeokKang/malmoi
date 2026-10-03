@@ -141,7 +141,8 @@ describe("ProjectSwitcher", () => {
     expect(row.getAttribute("aria-checked")).toBe("true");
     const badge = [...row.children].find((node) => node.textContent === m.projects.status.archived) as HTMLElement;
     expect(badge.className).toContain("px-2");
-    expect(badge.className).toContain("text-gray-dim");
+    // 보관 배지는 표의 `soft-neutral` 그대로다 — 색 덮개가 없다(search-ux-unify D6).
+    expect(badge.className).not.toContain("text-gray-dim");
     // 배지 → 체크 순서, 체크가 마지막 자식이다.
     expect(badge.nextElementSibling?.tagName.toLowerCase()).toBe("svg");
     expect(row.lastElementChild).toBe(badge.nextElementSibling);

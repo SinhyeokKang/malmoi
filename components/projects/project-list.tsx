@@ -245,7 +245,8 @@ function ProjectRow({ row, q }: { row: ProjectListRow; q?: string }) {
 
             ⚠️ **그 회색이 `#a3a3a3`이다** (2026-09-20 사용자 — *"거의 비활성 상태에 가깝게"*).
             `#737373`은 이 리포에서 **꺼진 컨트롤의 글자색**이라 "비활성처럼"의 하한이 아니라 그 값
-            자체였다. 아래 메타·배지와 **한 색**이라야 이 행이 통째로 물러난 것으로 읽힌다.
+            자체였다. 아래 메타와 **한 색**이라야 이 행이 통째로 물러난 것으로 읽힌다. 배지는 내려가지 않는다 —
+            그 행이 "왜 꺼졌나"를 말하는 유일한 사실이라 `soft-neutral` 그대로다(search-ux-unify D6).
             ⚠️ **대비가 2.3:1이라 DESIGN §6.2의 `gray-dim` 규칙(*"본문에 쓰지 않는다"*)에서 벗어난
             자리다** — 등재된 이탈이고 근거는 §6.63에 있다.
 
@@ -304,10 +305,11 @@ function ProjectRow({ row, q }: { row: ProjectListRow; q?: string }) {
         <span className="ml-auto flex shrink-0 items-center gap-3">
           {/*
             칩은 상태 키만 넘긴다 — variant·낱말은 `STATE`가 든다(`CHIP_STATE` · DESIGN §2.4). 온보딩 중인 둘의 `#525252` 덮개는 걷었다(1-Y8 —
-            Sources의 같은 배지와 글자색이 갈렸다). ⚠️ **보관만 `#a3a3a3`이다** — 이름·메타와 한 색으로 물러나는 등재된 이탈이다(DESIGN §6.63 보관 행).
+            Sources의 같은 배지와 글자색이 갈렸다). ⚠️ **보관도 덮개가 없다**(search-ux-unify D6) — 옛 `#a3a3a3`은 배지 면 위 2.3:1이었고,
+            보관 모양이 `STATE` 표가 아니라 호출부에 살았다. 물러나는 것은 이름·메타 둘이다.
             ⚠️ **칩만 `px-2`다** — 총계·그룹 카운트 배지는 `px-1.5` 그대로여야 `min-w-5`가 이겨 원형이 된다.
           */}
-          <StatusBadge state={CHIP_STATE[chipState]} className={cn("px-2", chipState === "archived" && "text-gray-dim")} />
+          <StatusBadge state={CHIP_STATE[chipState]} className="px-2" />
           <ChevronRight aria-hidden className="text-muted-foreground size-4" />
         </span>
       </ListRow>
