@@ -23,6 +23,8 @@ search-ux-unify(dev `22ed879c`까지) 뒤처리 두 갈래를 병렬로 태운�
 | O3 | **문서화된 이탈은 이탈이 아니다** — search-ux-unify 결정이 시안 뒤에 정한 것: D15 그룹 머리 `text-gray-dim`(시안도 같음) · O9 첫 열림 활성 = 첫 행 · #173 활성 이동은 mousemove만 · U1 보관 프로젝트 Pages 행 배지 · `hover:bg-transparent` 비활성 행만 · `CommandStatus` 묶음 · `/docs` 질의 중 개요 문서 한 행. 정본 문서(`docs/DESIGN.md` §6.4·§6.54 등)에 적힌 것은 코드가 이긴다 | design-sync §2 "문서화된 이탈" |
 | O4 | Safari는 범위 밖(이전 orch O2 그대로) — Chromium만 잰다 | 사용자 2026-10-03 |
 | O5 | 워커 모델: Claude Code 지휘 → Opus 5.5·Sonnet 5.5, effort ≤ high | `/orchestrate` 0단계 |
+| O6 | **갈래 3 — `/guide-shots` 전부 재촬영 + README 이미지**("계속 미뤄서 이번에 다 찍어야함"). 대상: `pnpm guide:check` stale 전부(직전 25컷 · 밀린 `create-ready` 포함) + README 두 장(`hero` · `logs`) + 이번 변경이 바꾼 화면. **번역 페이지 컷은 랜딩 목업과 유사한 씬**(`m.landing.mockup` — `Acme web` · 소스 `web`/`emails` · 네임스페이스 `cart`·`checkout`·`common`·`product`…, 트리에 네임스페이스가 많아 보이게). 모든 UI 변경(P·DF)이 dev에 들어간 뒤 main 체크아웃에서 직렬로 돈다 | 사용자 2026-10-03 |
+| O7 | 목업 씬 데이터는 **일회용 프로젝트**: `i18n-order-check`를 잠시 보관(OWNER 한도 3) → `i18n-format-check`로 `Acme web` 생성 → 목업과 같은 네임스페이스 픽스처를 `pnpm push:local`로 적재 → 촬영 → 프로젝트 id로 삭제·보관 복원. dev 전/후 표. **이 보관·생성·삭제는 사용자가 승인했다** | 사용자 2026-10-03 |
 
 ## 배치
 
@@ -33,6 +35,7 @@ search-ux-unify(dev `22ed879c`까지) 뒤처리 두 갈래를 병렬로 태운�
 | **DF** | DS가 낸 design-sync 결함 수정 | Opus 5.5 medium | 새 워크트리 `sup-df` | DS 리포트 | 대기 |
 | **R** | P·DF diff 독립 리뷰 | Opus 5.5 high — 리포트 전용 | 해당 워크트리 | 각 배치 완료 | 대기 |
 | **DS2** | DF 반영 뒤 재실측 + 이슈 닫기 | Opus 5.5 medium | main 체크아웃 | DF dev 통합 | 대기 |
+| **GS** | `/guide-shots` 전부 + README(O6·O7) | Opus 5.5 medium — 마스킹·씬 구성 판단 | main 체크아웃(커밋은 `public/guide/`·`docs/assets/readme/`·`guide/SHOOTING.md`만) | P·DF dev 통합 + DS2 | 대기 |
 
 ## 파일 겹침 → 순서
 
@@ -56,3 +59,4 @@ search-ux-unify(dev `22ed879c`까지) 뒤처리 두 갈래를 병렬로 태운�
 |---|---|
 | 2026-10-03 | orch.md 작성, dev `22ed879c`. Run `run_1ee53ed0f3b0` |
 | 2026-10-03 | P 시작(`sup-p`, Sonnet medium) ∥ DS 시작(main 체크아웃, Opus high) |
+| 2026-10-03 | 갈래 3(GS) 추가 — 사용자 지시, 일회용 프로젝트 승인(O6·O7) |
