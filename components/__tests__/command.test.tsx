@@ -149,6 +149,31 @@ it("입력 줄은 h-12 pl-3 pr-4이고 지우기 X와 끝의 Esc 칩을 든다",
   expect(onValueChange).toHaveBeenLastCalledWith("");
 });
 
+/**
+ * ⚠️ **Enter·↑↓의 주인은 combobox 입력이다** (R-B1 R1) — 루트가 대상과 무관하게 Enter를 잡으면, Tab으로 닿는 지우기 X에서
+ * Enter를 눌렀을 때 버튼 활성화가 취소되고 활성 결과로 이동한다(POSTMORTEM 2026-09-08과 같은 축: Enter의 주인이 누구인가).
+ */
+it("지우기 X에서 Enter·↑↓는 그 버튼의 것이다 — 결과로 이동하지 않는다", async () => {
+  const onValueChange = vi.fn();
+  const onNavigate = vi.fn(noNavigation);
+  const { container } = await render(<Command ids={["a", "b"]} query="abc">
+    <CommandInput value="abc" onValueChange={onValueChange} label="Search" placeholder="Search…" />
+    <CommandList label="Results">
+      <CommandItem id="a" href="/a" icon={<Search />} title="A" onNavigate={onNavigate} />
+      <CommandItem id="b" href="/b" icon={<Search />} title="B" onNavigate={onNavigate} />
+    </CommandList>
+  </Command>);
+  const clear = find<HTMLButtonElement>(container, `button[aria-label="${m.common.clearSearch}"]`);
+  const user = userEvent.setup();
+  clear.focus();
+  await act(async () => { await user.keyboard("{ArrowDown}"); });
+  expect(active(container).textContent).toContain("A");
+  await act(async () => { await user.keyboard("{Enter}"); });
+  expect(onNavigate).not.toHaveBeenCalled();
+  expect(onValueChange).toHaveBeenCalledTimes(1);
+  expect(onValueChange).toHaveBeenLastCalledWith("");
+});
+
 /** C3 — 상태 줄은 한 묶음(`px-4 pt-2` · 줄 사이 4)이고 실패 줄만 빨강이다. 줄이 없으면 묶음도 없다. */
 it("상태 줄 묶음과 톤", async () => {
   const view = await render(<Command ids={[]} query="">
@@ -161,7 +186,13 @@ it("상태 줄 묶음과 톤", async () => {
   expect(lines[0]!.classList.contains("text-muted-foreground")).toBe(true);
   expect(lines[1]!.classList.contains("text-destructive")).toBe(true);
   await view.rerender(<Command ids={[]} query=""><CommandStatus lines={[]} /></Command>);
-  expect(view.container.querySelector('[role="status"]')?.textContent ?? "").toBe("");
+  // 줄이 없어도 live region은 숨김 없이 남는다 — 숨은 영역이 내용과 함께 나타나는 순간은 낭독이 보장되지 않는다(R-B1 Y4).
+  // 빈 묶음은 높이만 없앤다(`pt-2`는 줄이 있을 때만).
+  const empty = find(view.container, '[role="status"]');
+  expect(empty.textContent).toBe("");
+  for (const token of empty.classList) expect(token, token).not.toMatch(/(?:^|:)hidden$/);
+  expect(empty.classList.contains("pt-2")).toBe(false);
+  expect(empty.getAttribute("aria-live")).toBe("polite");
 });
 
 it("입력은 공통 Input 글리프 슬롯·전폭 선·테두리 없는 형을 쓴다", async () => {

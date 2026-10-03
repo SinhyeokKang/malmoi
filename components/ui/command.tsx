@@ -45,6 +45,8 @@ export function Command({ ids, query, children }: { ids: readonly string[]; quer
       onCompositionStart={() => { composing.current = true; }}
       onCompositionEnd={() => { composing.current = false; }}
       onKeyDown={event => {
+        // Enter·↑↓의 주인은 combobox 입력이다 — 지우기 X 같은 다른 컨트롤의 키를 가로채면 그 버튼의 Enter가 결과 이동이 된다(R-B1 R1).
+        if (!(event.target instanceof HTMLElement) || event.target.getAttribute("role") !== "combobox") return;
         if (composing.current || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
         if (event.key === "ArrowDown" || event.key === "ArrowUp") {
           event.preventDefault();
@@ -85,10 +87,11 @@ export function CommandInput({ value, onValueChange, label, placeholder }: {
 /**
  * 상태 줄 묶음 — 입력 아래·목록 위, 왼쪽 16(타일 왼쪽 모서리와 한 선). 줄마다 위아래 여백을 들지 않는다(줄 사이 4).
  * 실패 줄은 `danger`(빨강), 로딩 줄은 muted다 — 실패를 로딩과 같은 회색으로 말하지 않는다(search-ux-unify C3).
- * 줄이 없어도 live region은 남긴다 — 영역이 새로 생기는 순간의 내용은 낭독되지 않는다.
+ * 줄이 없어도 live region은 숨기지 않고 남긴다 — 숨은(`display:none`) 영역이 내용과 함께 나타나는 순간은 낭독이 보장되지 않는다.
+ * 빈 묶음은 높이만 없앤다(`pt-2`는 줄이 있을 때만).
  */
 export function CommandStatus({ lines }: { lines: readonly { tone: "muted" | "danger"; text: string }[] }) {
-  return <div role="status" aria-live="polite" className="flex shrink-0 flex-col gap-1 px-4 pt-2 text-xs empty:hidden">
+  return <div role="status" aria-live="polite" className={cn("flex shrink-0 flex-col gap-1 px-4 text-xs", lines.length > 0 && "pt-2")}>
     {lines.map(line => <p key={line.text} data-tone={line.tone} className={line.tone === "danger" ? "text-destructive" : "text-muted-foreground"}>{line.text}</p>)}
   </div>;
 }
