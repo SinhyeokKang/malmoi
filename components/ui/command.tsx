@@ -127,7 +127,7 @@ export function CommandItem({ id, href, title, icon, context, description, badge
         {description !== undefined && <span className="text-muted-foreground truncate whitespace-nowrap text-xs">{description}</span>}
       </span>
       {badge}
-      {selected && <span aria-hidden className="text-muted-foreground flex shrink-0 items-center gap-2 text-xs">{m.search.goTo}<Kbd>↵</Kbd></span>}
+      {selected && <span aria-hidden className="text-muted-foreground flex shrink-0 items-center gap-2 text-xs">{m.search.goTo}<Kbd>{m.common.keys.enter}</Kbd></span>}
     </Link>
   </div>;
 }

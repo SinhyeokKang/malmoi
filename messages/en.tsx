@@ -387,8 +387,6 @@ export const en = {
         label: "Switch project",
         search: "Find project…",
         empty: "No projects found",
-        /** 입력 오른쪽 키 칩 — 닫는 키 이름이다. */
-        escHint: "Esc",
       },
       /** 헤더의 로고가 링크다 — 그림뿐이라 이름이 없으면 스크린리더가 URL을 읽는다. */
       appHome: "Malmoi home",

@@ -118,9 +118,7 @@ export function ProjectSwitcher({ projects, current }: { projects: readonly Swit
               aria-label={m.common.nav.projectSwitcher.search}
             />
           </div>
-          <Kbd>
-            {m.common.nav.projectSwitcher.escHint}
-          </Kbd>
+          <Kbd>{m.common.keys.esc}</Kbd>
         </div>
         <DropdownMenuSeparator />
         {shown.length === 0 ? (

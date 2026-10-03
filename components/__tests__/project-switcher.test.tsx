@@ -55,7 +55,8 @@ describe("ProjectSwitcher", () => {
     expect(document.activeElement).toBe(input());
     expect(input().getAttribute("aria-label")).toBe(m.common.nav.projectSwitcher.search);
     expect(input().placeholder).toBe(m.common.nav.projectSwitcher.search);
-    expect(document.querySelector('[role="menu"] kbd')?.textContent).toBe(m.common.nav.projectSwitcher.escHint);
+    expect(document.querySelector('[role="menu"] kbd')?.textContent).toBe(m.common.keys.esc);
+    expect(document.querySelector('[role="menu"] kbd')?.getAttribute("aria-hidden")).toBe("true");
   });
 
   it("보관까지 전부이고 보관은 맨 뒤(`/projects` 기본 순서), 지금 프로젝트만 체크다", async () => {

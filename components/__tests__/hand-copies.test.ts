@@ -59,6 +59,11 @@ function canonicalTag(node: Opening, file: ts.SourceFile): string {
   return tag;
 }
 
+function kbdLiteral(node: Opening, file: ts.SourceFile): boolean {
+  if (!ts.isJsxOpeningElement(node) || canonicalTag(node, file) !== "Kbd") return false;
+  return node.parent.children.some(child => ts.isJsxText(child) ? child.text.trim() !== "" : ts.isJsxExpression(child) && child.expression !== undefined && (ts.isStringLiteralLike(child.expression) || ts.isTemplateExpression(child.expression)));
+}
+
 const RETIRED_WIZARD_FOOTER = "export const Demo = () => (<div className=\"flex items-center gap-2\">\n              {showBack && (\n                <Button type=\"button\" size=\"lg\" onClick={onBack} disabled={busy}>\n                  {m.newProject.modal.back}\n                </Button>\n              )}\n              {/*\n                \u26a0\ufe0f **\ube44\ud65c\uc131 \ubaa8\uc591\uc744 \uaecd\ub370\uae30\uac00 \ub4e0\ub2e4** \u2014 \ud770 \ubc30\uacbd + border + muted \uae00\uc790 + `not-allowed`.\n                \ub2e8\uacc4\ub9c8\ub2e4 \ub2e4\uc2dc \ub9cc\ub4e4\uba74 \uac08\ub9b0\ub2e4.\n              */}\n              <Button\n                type=\"button\"\n                variant=\"primary\"\n                size=\"lg\"\n                onClick={onNext}\n                disabled={nextDisabled}\n                loading={busy}\n              >\n                {nextLabel ?? m.newProject.modal.next}\n                {nextArrow && <ArrowRight className=\"size-4\" aria-hidden />}\n              </Button>\n            </div>);";
 
 const RULES: Rule[] = [
@@ -66,10 +71,11 @@ const RULES: Rule[] = [
     handCopy: (node, file) => /^(button|input|a|kbd|mark)$/.test(node.tagName.getText(file)) || /#[\da-fA-F]{3,8}\b|\[\d+(?:\.\d+)?px\]/.test(classes(node, file)),
     bad: 'export const Demo = () => <button className="text-[#abc] w-[17px]">Search</button>;',
     good: 'import {Command} from "@/components/ui/command"; export const Demo = () => <Command ids={[]} query="">Body</Command>;' },
-{ primitive: "Kbd", retired: [], paths: ["components/shell/project-switcher.tsx", "*"], minimum: 1,
-    handCopy: node => node.tagName.getText() === "kbd",
+// search-ux-unify C12 — 키 이름은 `m.common.keys`에서 온다: `<Kbd>` children의 문자열 리터럴도 손 사본이다. ui의 소비처(`command.tsx`)도 센다.
+{ primitive: "Kbd", retired: [], paths: ["components/shell/project-switcher.tsx", "components/ui/command.tsx", "*"], minimum: 1,
+    handCopy: (node, file) => node.tagName.getText(file) === "kbd" || kbdLiteral(node, file),
     bad: 'export const Demo = () => <kbd>Esc</kbd>;',
-    good: 'import {Kbd} from "@/components/ui/kbd"; export const Demo = () => <Kbd>Esc</Kbd>;' },
+    good: 'import {Kbd} from "@/components/ui/kbd"; export const Demo = () => <Kbd>{m.common.keys.esc}</Kbd>;' },
 { primitive: "Highlight", retired: [], paths: ["components/projects/project-list.tsx", "*"], minimum: 1,
     handCopy: node => node.tagName.getText() === "mark",
     bad: 'export const Demo = () => <mark>Match</mark>;',
@@ -223,6 +229,17 @@ describe.each(RULES)("$primitive production contract", rule => {
       expect(scan({ path: "components/example.tsx", code: `import { ${retired} as Alias } from "@/components/ui/row-card"; const view = <Alias />;` }, rule)).toContain(`jsx:${retired}`);
       expect(scan({ path: "components/example.tsx", code: `import * as UI from "@/components/ui/row-card"; const view = <UI.${retired} />;` }, rule)).toContain(`jsx:${retired}`);
     }
+  });
+});
+
+describe("Kbd children", () => {
+  const rule = RULES.find(r => r.primitive === "Kbd")!;
+  it.each([
+    ['<Kbd>Esc</Kbd>', true], ['<Kbd>{"↵"}</Kbd>', true], ['<Kbd>{`Ctrl K`}</Kbd>', true],
+    ['<Kbd>{m.common.keys.enter}</Kbd>', false], ['<Kbd>{m.common.keys.search[label]}</Kbd>', false], ['<Kbd>\n  {m.common.keys.esc}\n</Kbd>', false],
+  ] as const)("%s → 손 사본 %s", (jsx, hit) => {
+    const code = `import {Kbd} from "@/components/ui/kbd"; export const Demo = () => ${jsx};`;
+    expect(scan({ path: "components/ui/command.tsx", code }, rule).length > 0).toBe(hit);
   });
 });
 

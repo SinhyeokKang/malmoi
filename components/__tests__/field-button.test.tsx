@@ -16,11 +16,13 @@ it("캡슐 치수·패널 면·장식 슬롯과 접근 이름을 그린다", asy
   const { container } = await render(<FieldButton {...props} shortcut={<Kbd>{m.common.keys.search.mac}</Kbd>} aria-keyshortcuts="Meta+K" />);
   const button = find<HTMLButtonElement>(container, "button");
   expect(button.type).toBe("button");
-  for (const token of ["rounded-full", "h-9", "w-80", "bg-background", "border", "border-border-subtle", "shadow-low", "hover:bg-foreground/[0.03]", "focus-visible:border-ring", "focus-visible:ring-ring", "focus-visible:ring-1", "focus-visible:outline-none"]) {
+  for (const token of ["rounded-full", "h-10", "w-80", "bg-background", "border", "border-border-subtle", "shadow-low", "hover:bg-primary-foreground", "focus-visible:border-ring", "focus-visible:ring-ring", "focus-visible:ring-1", "focus-visible:outline-none"]) {
     expect(button.classList.contains(token), token).toBe(true);
   }
   expect(button.getAttribute("aria-label")).toBe("Search");
   expect(button.getAttribute("aria-haspopup")).toBe("dialog");
+  expect(button.hasAttribute("aria-expanded")).toBe(false);
+  expect(button.classList.contains("h-9")).toBe(false);
   expect(button.getAttribute("aria-keyshortcuts")).toBe("Meta+K");
   expect(find(button, "svg").closest('[aria-hidden="true"]')).not.toBeNull();
   expect(button.children[1]?.textContent).toBe("Search…");
@@ -40,6 +42,14 @@ it("단축키 수화 전후에 같은 폭의 빈 슬롯을 유지한다", async 
   await view.rerender(<FieldButton {...props} shortcut={<Kbd>{m.common.keys.search.other}</Kbd>} aria-keyshortcuts="Control+K" />);
   expect(button.lastElementChild).toBe(shortcut);
   expect(shortcut.querySelector("kbd")?.textContent).toBe(m.common.keys.search.other);
+});
+
+it("트리거가 넘긴 열림 상태를 aria-expanded로 말한다", async () => {
+  const view = await render(<FieldButton {...props} aria-expanded={false} />);
+  const button = find<HTMLButtonElement>(view.container, "button");
+  expect(button.getAttribute("aria-expanded")).toBe("false");
+  await view.rerender(<FieldButton {...props} aria-expanded />);
+  expect(button.getAttribute("aria-expanded")).toBe("true");
 });
 
 it("마우스·Enter·Space가 같은 버튼 동작을 부른다", async () => {
