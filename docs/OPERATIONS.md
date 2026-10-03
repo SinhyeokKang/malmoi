@@ -367,6 +367,34 @@ CLAUDE.md) ④ 재배포 ⑤ 초대 한 통을 지정 수신자로 보내 접수
 **한도**: 앱 쪽은 같은 주소 60초 · 프로젝트 최근 1시간 20건 · 발급자 1인 전 프로젝트 합산 1시간 30건이고(`lib/invitation-email/limits.ts`), Resend 요금제 한도는 그보다 넓다고 가정한다 —
 넘으면 429가 `email-rejected`로 보인다.
 
+## 운영자 지정 — `OPERATOR_EMAILS` (2026-10-03, operator-account)
+
+**무엇**: 운영자(사용자당 프로젝트 상한 면제 — PRODUCT §3·§4.2, 판정은 ARCHITECTURE §6.2.2)를 정하는 정적 allowlist다. 값은 쉼표로 구분한
+**이메일 주소 전체**이고(`me@example.com,other@example.com`), 운영자가 **로그인한 계정의 주소**를 넣는다 — GitHub·Google 어느 쪽으로 들어와도
+같은 `User`라 하나면 된다. 도메인 단위 지정은 없다. 비거나 없으면 운영자 0명이다(fail-closed — 다른 동작은 그대로).
+
+⚠️ **값은 개인정보다** — Vercel에 **Sensitive**로 넣고, 로그·채팅·커밋에 값을 찍지 않는다(`cat`·`echo` 금지). `.env.example`에는 빈 값과 주석만 있다.
+
+**넣기**:
+
+1. **로컬**: 사람이 `.env.local`에 `OPERATOR_EMAILS="<주소>"`를 넣는다(에이전트는 이 파일을 편집하지 않는다 — "새 머신 셋업"). 두 머신 모두.
+2. **Vercel — 환경별 변수로 하나씩**(Production·Preview를 한 변수로 묶으면 `vercel env rm … preview`가 Production까지 지운다 — CLAUDE.md "게이트웨이").
+   값은 `.env.local`의 것을 **stdin으로** 넘긴다(`--value`는 `ps`에 노출된다):
+   `grep '^OPERATOR_EMAILS=' .env.local | cut -d= -f2- | sed 's/^"//; s/"$//' | vercel env add OPERATOR_EMAILS production --sensitive`
+   — `preview`도 같은 꼴(브랜치 지정 없이 Preview 전체). 이미 있으면 `vercel env rm OPERATOR_EMAILS <env> --yes` 후 다시 넣는다(`--force`를 믿지 않는다).
+3. **확인**: `vercel env ls production`·`vercel env ls preview`에 `OPERATOR_EMAILS`가 각각 한 행씩 있고 시각 열이 방금이다.
+   ⚠️ **`vercel env add`의 성공 메시지는 근거가 아니다**(위 "새 머신 셋업").
+4. ⚠️ **env는 다음 배포부터 적용된다** — Preview는 dev push(`/push`) 전, Production은 `/merge` 전에 넣는다. 나중에 넣었으면 재배포한다.
+   로컬은 `pnpm dev`를 재시작해야 읽는다.
+
+**동작 확인 (한 문장)**: OWNER 활성 3개 상태에서 `/projects/new` ①이 리포 목록을 보이면 적용, `Project limit reached`면 주소 오기(로그인한 계정의 주소와 철자 대조).
+Preview는 `https://dev.mal-moi.com`에서 본다(배포별 URL은 로그인이 안 된다).
+
+**운영자를 빼기**: 값에서 주소를 지우고 위 2~4를 다시 한다. 그 계정이 이미 넷 이상 가진 활성 프로젝트는 그대로 남는다(데이터를 고치지 않는다) —
+늘리는 요청(생성·복원·OWNER 승격·OWNER 초대 수락)만 다시 거부된다.
+
+⚠️ **`EMAIL_LOOKUP_KEY` 회전 중**에는 운영자가 일시적으로 비운영자로 판정될 수 있다(저장 lookup이 아직 옛 키 — 회전이 끝나면 돌아온다, §2).
+
 ## HSTS preload 제출 — 오너 수동 절차 (2026-09-24)
 
 응답 헤더가 `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload`를 **선언**한다(`lib/security-headers.ts`).
