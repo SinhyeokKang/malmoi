@@ -115,19 +115,28 @@ export function metaRows(input: {
 /** Home이 읽는 사건 한 줄 — **행위자를 싣지 않는다**(POSTMORTEM 2026-09-29 #146). 주체는 컬럼 셋(`triggerOf`)이 정한다. */
 export type RunEvent = { actorKind: ActorKind; kind: EventKind; subtype: string; result: string | null; payload: unknown };
 
+/** IMPORT 사건 — `occurredAt`은 실행 **시작**, `finishedAt`은 종료다(내부·CI·야간 종료가 모두 채운다). */
+export type ImportRunEvent = RunEvent & { occurredAt: Date; finishedAt: Date | null };
+
+/** PUBLISH 사건 — 결과·시각·PR은 조인한 `SyncRun`이 든다(logs-rework 결정 1). 백필된 옛 사건은 `SyncRun`이 없을 수 있다. */
+export type PublishRunEvent = ImportRunEvent & {
+  syncRun: { finishedAt: Date | null; prUrl: string | null; changedValues: number | null } | null;
+};
+
 export type HomeTriggers = { sync: Trigger | null; publish: Trigger | null };
 
 /**
  * 성공 적재 — `lastImportedAt`을 전진시키는 집합과 같다. ⚠️ 두 집합이 갈리면 "12시간 전 수동 Sync" 옆에 그 뒤 보류된 야간 행의
- * `nightly`가 붙는다. 조회(`lib/home/runs.ts`)가 같은 목록으로 좁히고, 여기서 한 번 더 거른다.
+ * `nightly`가 붙는다. 조회(`lib/home/runs.ts`)가 같은 술어를 SQL로 걸고, 여기서 한 번 더 거른다.
  */
 export const SUCCESSFUL_IMPORT_RESULTS = ["imported", "partial"] as const;
 
 /**
  * `lastImportedAt`을 적어도 한 표면에서 전진시킨 적재인가. ⚠️ `partial` 사건은 표면이 전부 코드를 달고 끝났을 수 있다 — 그 표면은
- * `lastImportedAt`을 안 쓴다(`importOutcomeFields`). 그러면 `Last sync` 시각은 더 옛 실행의 것이라 이 사건의 주체를 붙이면 거짓이다.
+ * `lastImportedAt`을 안 쓴다(`importOutcomeFields`). 조회(`lib/home/runs.ts`)의 SQL 술어가 이것과 같은 행을 고르는지는
+ * `runs.integration.ts`가 실제 행으로 잰다.
  */
-function advancedSyncTime(event: RunEvent): boolean {
+export function advancedSyncTime(event: RunEvent): boolean {
   if (event.result === "imported") return true;
   if (event.result !== "partial") return false;
   const payload = readPayload(event.kind, event.payload);
@@ -135,18 +144,36 @@ function advancedSyncTime(event: RunEvent): boolean {
 }
 
 /**
- * 사건 둘 → 메타 열의 주체 (nightly-sync 14). ⚠️ **보류 한 줄은 여기서 오지 않는다** (ux-drift-unify Q6) — `metaRows`가 지금의 판정으로 든다.
+ * 시각을 전진시킨 마지막 IMPORT 사건 → Sync 탭의 실행 (project-card-tabs §2.2). ⚠️ **보류는 여기서 오지 않는다** (ux-drift-unify Q6).
  *
- * ⚠️ **고른 적재 사건이 못 쓰이면 더 옛 사건으로 물러나지 않는다** — 물러난 사건이 `lastSyncAt`과 다른 실행일 수 있다. 틀린 주체보다 주체 없음이 낫다.
- *
- * ⚠️ **`lastSyncAt`(표면 `lastImportedAt`)과 사건 시각을 대조하지 않는다** — 트랜잭션 경계가 달라 밀리초가 갈리고, 대조가
- * 실패하면 주체가 조용히 사라진다.
+ * ⚠️ **조회는 시각을 전진시키지 못한 사건을 건너뛰고 그 앞 실행으로 물러난다** — 옛 판정(nightly-sync F2)은 물러나지 않았다: 주체(사건)와
+ * 시각(전 소스 `lastImportedAt` 최댓값)이 다른 실행을 가리킬 수 있어서였다. 이제 시각도 이 사건(`finishedAt`)에서 읽으므로 그 근거가 없다.
+ * ⚠️ `occurredAt`은 시작이다 — `Synced`는 종료(`finishedAt`)이고, 옛 행처럼 비었을 때만 시작으로 물러난다.
  */
-export function homeTriggers(input: { lastImport: RunEvent | null; lastPublish: RunEvent | null }): HomeTriggers {
-  const last = input.lastImport;
+export function homeSyncRun(event: ImportRunEvent | null): HomeSyncRun | null {
+  if (event === null || !advancedSyncTime(event)) return null;
+  const payload = readPayload(event.kind, event.payload);
+  const imported = payload?.kind === "IMPORT" ? payload : null;
   return {
-    sync: last !== null && advancedSyncTime(last) ? triggerOf(last) : null,
-    publish: input.lastPublish === null ? null : triggerOf(input.lastPublish),
+    trigger: triggerOf(event),
+    at: event.finishedAt ?? event.occurredAt,
+    result: event.result === "imported" ? "imported" : "partial",
+    changedValues: imported?.changedValues ?? null,
+    keys: imported?.keys ?? null,
+    surfaceSlugs: imported?.surfaceSlugs ?? [],
+  };
+}
+
+/** 마지막 성공 PUBLISH 사건 → Publish 탭의 실행. 시각·PR·값 수는 조인한 `SyncRun`의 것이다 — `Project.lastPublishedAt`·`lastPrUrl`이 아니다. */
+export function homePublishRun(event: PublishRunEvent | null): HomePublishRun | null {
+  if (event === null) return null;
+  const payload = readPayload(event.kind, event.payload);
+  return {
+    trigger: triggerOf(event),
+    at: event.syncRun?.finishedAt ?? event.finishedAt ?? event.occurredAt,
+    prUrl: event.syncRun?.prUrl ?? null,
+    changedValues: event.syncRun?.changedValues ?? null,
+    surfaceSlugs: payload?.kind === "PUBLISH" ? payload.surfaceSlugs : [],
   };
 }
 

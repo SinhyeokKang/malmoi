@@ -12,6 +12,7 @@ import { LogsCard } from "@/components/home/logs-card";
 import { MetaColumn } from "@/components/home/meta-column";
 import { ProjectNotReady } from "@/components/project-not-ready";
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
+import { pendingInvitationWhere } from "@/lib/auth/pending-invitation";
 import { canPerform } from "@/lib/auth/permission";
 import { requireProjectAccess } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
@@ -87,7 +88,9 @@ export default async function ProjectHomePage({
   const openRef = parseLogFilter(await searchParams).event;
 
   const prisma = getPrisma();
-  const project = await prisma.project.findUnique({
+  // 기준 시각을 서버에서 한 번 만든다 — 항목마다 부르면 상대 시각의 기준이 갈린다. ⚠️ **project 조회 앞이다** — 대기 초대 수(`_count`)의 술어가 이 시각을 쓴다.
+  const now = new Date();
+  const projectRow = await prisma.project.findUnique({
     where: { id: projectId },
     select: {
       name: true,
@@ -99,6 +102,8 @@ export default async function ProjectHomePage({
       baseBranch: true,
       createdAt: true,
       archivedAt: true,
+      // ⚠️ **유무만 쓴다** — 아래에서 select 직후 boolean으로 접어 `project`에서 뗀다(해시라도 RSC 페이로드에 싣지 않는다).
+      pushTokenHash: true,
       lastPublishedAt: true,
       lastPrUrl: true,
       // 번역 링크가 공가 redirect를 건너뛰고 기본 표면으로 바로 간다 (audit-ux #4b). 보관된 기본 표면은 옛 라우트처럼 없는 것으로 친다.
@@ -112,11 +117,14 @@ export default async function ProjectHomePage({
           locales: { select: { code: true, name: true, isBase: true, orphaned: true, createdAt: true } },
         },
       },
-      _count: { select: { members: true } },
+      // 대기 초대 — 멤버 화면 목록과 같은 술어다(수락·만료 둘 다 뺀다, POSTMORTEM 2026-09-10).
+      _count: { select: { members: true, invitations: { where: pendingInvitationWhere(now) } } },
     },
   });
   // 인가는 지났는데 행이 없다 — 그 사이에 지워진 경우다. 문구가 존재 여부를 말하지 않는 곳으로 보낸다.
-  if (project === null) redirect(routes.projects({ e: "not-found" }));
+  if (projectRow === null) redirect(routes.projects({ e: "not-found" }));
+  const { pushTokenHash, ...project } = projectRow;
+  const ciConfigured = pushTokenHash !== null;
 
   /**
    * 첫 적재 전에는 볼 것이 없다. **정책과 문구는 `ProjectNotReady`가 든다** — 번역 화면도 같은
@@ -124,9 +132,6 @@ export default async function ProjectHomePage({
    */
   const readiness = planProjectReadiness(project);
   if (readiness !== "ready") return <ProjectNotReady slug={slug} role={role} readiness={readiness} />;
-
-  // 기준 시각을 서버에서 한 번 만든다 — 항목마다 부르면 상대 시각의 기준이 갈린다.
-  const now = new Date();
 
   /**
    * ⚠️ **한 라운드다** (POSTMORTEM 2026-09-05 — 병목이 행 수가 아니라 함수 리전이었다). 조회가
@@ -136,7 +141,7 @@ export default async function ProjectHomePage({
    * ⚠️ **연결 조회는 `installationId`가 있을 때만 GitHub을 친다** — `loadConnectionHealth`가 그
    * 가드를 든다. GitHub 장애는 값(`unknown`)으로 오므로 이 화면이 그것에 죽지 않는다.
    */
-  const [aggregates, events, review, openEvent, health, triggers, writeLock] = await Promise.all([
+  const [aggregates, events, review, openEvent, health, runs, writeLock] = await Promise.all([
     loadProjectListAggregates(prisma, [projectId]),
     /**
      * ⚠️ **Logs와 같은 함수다** (logs-rework 결정 — 조합 쿼리 넷이 사라졌다). 같은 수를 두 번 세지
@@ -162,7 +167,7 @@ export default async function ProjectHomePage({
       logFailure("home-connection-health", error);
       return { status: "unknown" } as const;
     }),
-    // 메타 열의 실행 주체(`12 hours ago · nightly`) — 행위자를 싣지 않는 사건 셋이다(nightly-sync F2).
+    // 메타 열 Sync·Publish 탭의 실행 하나씩 — 행위자를 싣지 않는 사건 둘이다(project-card-tabs §2.2).
     loadHomeRuns(prisma, projectId),
     // 다른 실행의 적재 lease — [Sync]·배너 [Try again]을 멈춘다(sync-lock R5). 같은 라운드라 왕복이 늘지 않는다.
     loadWriteLock(prisma, projectId, now),
@@ -369,7 +374,7 @@ export default async function ProjectHomePage({
             lastPrUrl: project.lastPrUrl,
             createdAt: project.createdAt,
             archivedAt: project.archivedAt,
-            triggers,
+            triggers: { sync: runs.sync?.trigger ?? null, publish: runs.publish?.trigger ?? null },
             connection: connectionProblem(health.status),
             held: heldNow,
           })}
