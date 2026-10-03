@@ -103,8 +103,16 @@ function FooterLink({ href, children }: { href: string; children: ReactNode }) {
   );
 }
 
-function Row({ label, children, dimmed }: { label: string; children: ReactNode; dimmed?: boolean }) {
-  return <Fact width={96} align="end" label={label} dimmed={dimmed}>{children}</Fact>;
+function Row({ label, children }: { label: string; children: ReactNode }) {
+  return <Fact width={96} align="end" label={label}>{children}</Fact>;
+}
+
+/**
+ * 회색 평문 값(`Never` · `Not recorded`) — **muted(#737373)**다(시안 v3 `2a`·`2f`, malmoi#180). ⚠️ `Fact dimmed`(라벨 톤 `text-gray-dim`)를 쓰지 않는다 —
+ * 값이 라벨과 같은 톤이면 둘째 라벨처럼 읽힌다. 공용 `dimmed`의 기본값은 다른 소비자가 쓰므로 바꾸지 않는다.
+ */
+function Muted({ children }: { children: ReactNode }) {
+  return <span className="text-muted-foreground">{children}</span>;
 }
 
 // 로케일을 고정한다 — 서버 로케일에 따라 구분자가 갈리면 같은 DB 상태가 다른 화면을 낸다.
@@ -156,7 +164,7 @@ function syncFact(row: SyncTabRow, now: Date): ReactNode {
   switch (row.kind) {
     case "lastSync":
       if (row.value === "notSyncedYet") return <Row key={row.kind} label={label}><StatusBadge state="notSyncedYet" /></Row>;
-      if (row.value === "unrecorded") return <Row key={row.kind} label={label} dimmed>{m.home.meta.unrecorded}</Row>;
+      if (row.value === "unrecorded") return <Row key={row.kind} label={label}><Muted>{m.home.meta.unrecorded}</Muted></Row>;
       return <Row key={row.kind} label={label}><TriggerBadge trigger={row.value} kind="IMPORT" /></Row>;
     case "synced":
       return <Row key={row.kind} label={label}>{relativeTime(row.at, now)}</Row>;
@@ -182,7 +190,7 @@ function publishFact(row: PublishTabRow, now: Date): ReactNode {
   const label = m.home.meta[row.kind];
   switch (row.kind) {
     case "lastPublish":
-      if (row.value === "never") return <Row key={row.kind} label={label} dimmed>{m.home.meta.never}</Row>;
+      if (row.value === "never") return <Row key={row.kind} label={label}><Muted>{m.home.meta.never}</Muted></Row>;
       return <Row key={row.kind} label={label}><TriggerBadge trigger={row.value} kind="PUBLISH" /></Row>;
     case "published":
       return <Row key={row.kind} label={label}>{relativeTime(row.at, now)}</Row>;
