@@ -49,6 +49,8 @@
    ⚠️ **Malmoi가 발급하는 MCP OAuth 토큰(`mlo_`·`mlr_`)은 이 축이 아니다** (2026-09-29, mcp-oauth) — GitHub 자격증명이 아니라 개인 토큰과
    같은 **Malmoi 신원**이고, GitHub에는 아무것도 요청하지 않는다(§6.45.9).
 7. 로그인 provider가 아니라 **`ProjectMember`가 권한을 결정**한다.
+   ⚠️ **운영자(§6.2.2, 2026-10-03)는 이 단서 하나를 단다** — 프로젝트 권한은 운영자에게도 `ProjectMember`뿐이고,
+   운영자 판정은 계정 축 **쿼터**(사용자당 프로젝트 상한) 하나만 바꾼다. 인가(`planProjectAccess`·`lockProjectAccess`)는 운영자를 보지 않는다.
 8. **`ready`는 설정 저장이 아니라 최초 적재 성공**으로 판정한다.
 9. **버린 값을 성공으로 숨기지 않는다** — 실패한 sync는 마지막 성공 상태를 전진시키지 않는다.
    ⚠️ **전달 기준도 같다 (§5.8)** — Publish는 첫 외부 쓰기 **전에** 그 소스의 전달 확인을 무효화하고, 성공 확정 tx에서만
@@ -1133,7 +1135,7 @@ GitHub 읽기·파싱은 tx 밖이며 `prepareFirstSnapshot`의 `payload === nul
 
 읽기(탐지)와 달리 이쪽은 **거부 순서 자체가 계약**이다.
 
-- **`create-plan.ts`의 `planProjectCreate`** — 연결 거부 → **OWNER 개수**(`PROJECT_LIMIT = 3`) → slug 선점
+- **`create-plan.ts`의 `planProjectCreate`** — 연결 거부 → **OWNER 개수**(`limit` — 비운영자 `PROJECT_LIMIT = 3`) → slug 선점
   순서다. 제한을 나중에 보면 접근 없는 리포로도 카운터를 소진시킬 수 있고, slug를 먼저 보면 남의 slug
   존재 여부를 탐색할 수 있다. ⚠️ **분자는 OWNER 행이다** — 멤버십 전체를 세면 EDITOR로 초대만 받은
   사람이 하나도 못 만든다.
@@ -1142,6 +1144,26 @@ GitHub 읽기·파싱은 tx 밖이며 `prepareFirstSnapshot`의 `payload === nul
     트랜잭션이 **`User` 행을 잠그고 다시 센다** — 생성 경로에는 잠글 프로젝트가 없으므로 대상이 User다
     (`issueInvitations`·`changeMember`가 프로젝트 행을 잠그는 것과 같은 이유). 선조회를 남기는 이유는
     거부될 요청이 GitHub을 읽지 않게 하는 것이다.
+  - ⚠️ **상한은 사용자별 값이다** (2026-10-03, operator-account). `projectLimitFor(operator)`가 운영자면 `Infinity`,
+    아니면 `PROJECT_LIMIT`을 내고, **①의 리포 목록 코어 `listRepositories`·생성 코어 `createProjectFromRepo`의 선조회·잠금 안
+    재집계가 같은 판정**(`isOperatorUser`, §6.2.2)을 쓴다 — 하나만 면제하면 앞이 통과시킨 것을 뒤가 거부한다. 면제는
+    **코어에서** 계산한다(Action 래퍼에 넣으면 MCP `list_repositories`·`create_project`가 계속 막힌다). 생성은 `limit`을
+    트랜잭션 밖에서 한 번 계산한다(allowlist는 정적이다). ⚠️ **그 값은 비교에만 쓴다** — 결과 타입·문구·MCP 응답은 계속
+    `PROJECT_LIMIT` 상수를 싣는다(실으면 화면에 `∞`, JSON에 `null`이 나간다). 운영자 조회 실패는 던져 ①은 `unavailable`,
+    생성은 선조회 실패 경로를 탄다. `create-plan.ts`는 클라이언트 그래프라 `lib/operator/`를 import하지 않는다.
+  - ⚠️ **상한이 걸리는 자리는 생성만이 아니다 — 넷이다** (2026-10-03). 그 전에는 복원·OWNER 승격·OWNER 초대 수락이
+    활성 OWNER 수를 다시 세지 않아 "보관 → 생성 → 복원"으로 넷 이상이 됐다. 셋은 `lib/projects/owner-limit.ts`의
+    `lockOwnerSlots(tx, userIds)`를 부른다 — 대상 User를 **id 순으로 `FOR UPDATE`**(생성과 같은 잠금이라 같은 사용자의
+    동시 생성·복원이 직렬화된다) → 각자 `ownedActiveProjects`를 세고 → **상한에 닿은 사람만** 운영자인지 본다 → 넘게 될
+    비운영자 목록을 돌려준다. 복원(`runUnarchive`)은 그 프로젝트의 **OWNER 전원**을 넘기고(보관된 프로젝트라 지금 그들의
+    활성 수에 안 들어 있다), 승격(`changeMemberRole`의 EDITOR→OWNER)은 대상자, 수락(`acceptInvitation`의 OWNER 초대)은
+    수락자를 넘긴다. 거부는 복원·승격이 `owner-limit-reached`, 수락이 `InviteError` `"limit-reached"`이고 수락 거부는
+    롤백이라 초대가 소비되지 않는다. 생성의 재집계는 이 함수로 옮기지 않았다 — 이미 잠금이 있고 판정의 단위
+    (`ownedActiveProjects`·`PROJECT_LIMIT`·`isOperatorUser`)가 같으면 된다. **이미 넘긴 상태는 고치지 않는다** — 늘리는
+    요청만 거부하고 보관은 언제나 된다.
+  - **잠금 순서**: 복원·승격은 `lockProjectAccess`(`Project`) → User, 생성은 User만, 수락은 초대 판정 → User다.
+    `Project`↔User 역순이 없어 교착이 생기지 않고, 여러 User는 id 순이다. User 잠금이 `lockProjectAccess` **뒤**라
+    인가 자리(`locked-access.test.ts`)는 그대로다.
 - **`slug.ts`의 `planSlug`** — 형식·길이(`PROJECT_SLUG_MAX = 40`)·예약어(`RESERVED = {"new"}`)를 거른다.
   형식 판정은 `lib/pull/ref-slug.ts`의 `isRefSafeSlug` **한 벌**을 쓴다(브랜치 이름에 그대로 들어가므로).
 - **`confirm.ts`의 `planConfirmedFormat`** — ⚠️ **클라이언트가 보낸 `adapter`·`pathTemplate`을 파일 재조회로
@@ -1382,7 +1404,8 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
   수락·만료된 행이 이메일을 점유하는데, unique면 **멤버를 뺐다가 다시 부르는 정상 경로가 제약 위반**이
   된다. 행이 여럿이어도 `planInvitationAccept`가 `expired`·`already-accepted`를 가른다.
 - **`ProjectMember`에 `userId` 단독 인덱스를 두지 않는다.** ⚠️ **`loadMemberships`는 이제 `(edit)` 레이아웃도 부른다** (2026-09-08 — 셸 사이드바가 같은 조회를 쓴다) — 그 스캔이 그룹 전 페이지의 매 렌더에 붙는다. 판정의 근거는 화면 수가 아니라 **행 수 상한**이다. 목록이 그 컬럼으로 조회하지만
-  고정 제한(사용자당 프로젝트 3 · 프로젝트당 멤버 10)이 이 테이블을 수십 행으로 묶는다.
+  고정 제한(사용자당 프로젝트 3 · 프로젝트당 멤버 10)이 이 테이블을 수십 행으로 묶는다. 운영자(§6.2.2)는 프로젝트 3에서
+  면제되지만 env로 지정한 소수의 정적 계정이라 이 판정을 바꾸지 않는다.
   "인덱스는 전부 `projectId` 선두"(위 §5)를 여기서도 지키고, 실제로 느려지면 그때 예외를 만든다.
 
 **신규 github/google 로그인 Account는 OAuth 토큰을 저장하지 않는다** (2026-09-10).
@@ -1495,7 +1518,7 @@ push 스키마와 pull 판정이 서로의 그래프를 안 끌고 같은 규칙
 
 ### 5.5.1 pooler가 구현을 규정한다
 
-- **push는 대화형 `$transaction(async tx => …)`을 쓴다 — 잠금 때문이다** (2026-09-15에 배열형에서 옮겼다). 진입점 둘(`/api/push`·Sync)이 같은 표면을 동시에 적용할 수 있게 되면서 `Project` → `TranslationSurface`를 `FOR UPDATE`로 잠그고 **잠근 뒤 읽은 최신 상태로** 보관·오배송·포맷·역행을 다시 판정해야 하는데, 배열형은 그 사이에 판정을 끼울 자리가 없다. ⚠️ **대가가 실측으로 있다**: 1446키×6로케일 로컬 격리 핸들러에서 warm 240·242·243ms → **689·677·543ms**. 잠금과 최신 상태 조회가 왕복을 늘린 값이고, 배포 환경의 네트워크 지연은 여기 안 들어 있다(`lib/push/apply.ts`에 같은 수가 있다). 문장 자체는 여전히 배치로 만들어 그 연결에서 순서대로 보낸다 — 키마다 왕복하지 않는다. ⚠️ **"대화형은 pooler에서 못 쓴다"는 서술은 틀렸었다** (2026-09-06 정정): pgbouncer transaction 모드는 `BEGIN…COMMIT` 동안 서버 커넥션을 고정하고 Prisma는 대화형 tx를 커넥션 하나에 묶으므로 안전하다. 대화형 사용처에는 다음이 있다 — `changeMember`(`SELECT … FOR UPDATE` + 재집계) · `issueInvitations`·`reissueInvitation`(같은 잠금) · **`createProject`**(`SELECT … "User" … FOR UPDATE` + `PROJECT_LIMIT` 재집계 — §3.1이 그 방어선을 설명한다) · `acceptInvitation`(조건부 소비 + 멤버 생성) · GitHub callback의 `Account` 연결. 잠금과 롤백이 필요한 자리다. 로그인 Account 연결과 sync 실행 등록도 대화형 트랜잭션을 쓴다. 배열형은 그 둘이 필요 없고 문장이 많을 때 고른다 — push는 2026-09-15에 그 조건에서 빠졌다.
+- **push는 대화형 `$transaction(async tx => …)`을 쓴다 — 잠금 때문이다** (2026-09-15에 배열형에서 옮겼다). 진입점 둘(`/api/push`·Sync)이 같은 표면을 동시에 적용할 수 있게 되면서 `Project` → `TranslationSurface`를 `FOR UPDATE`로 잠그고 **잠근 뒤 읽은 최신 상태로** 보관·오배송·포맷·역행을 다시 판정해야 하는데, 배열형은 그 사이에 판정을 끼울 자리가 없다. ⚠️ **대가가 실측으로 있다**: 1446키×6로케일 로컬 격리 핸들러에서 warm 240·242·243ms → **689·677·543ms**. 잠금과 최신 상태 조회가 왕복을 늘린 값이고, 배포 환경의 네트워크 지연은 여기 안 들어 있다(`lib/push/apply.ts`에 같은 수가 있다). 문장 자체는 여전히 배치로 만들어 그 연결에서 순서대로 보낸다 — 키마다 왕복하지 않는다. ⚠️ **"대화형은 pooler에서 못 쓴다"는 서술은 틀렸었다** (2026-09-06 정정): pgbouncer transaction 모드는 `BEGIN…COMMIT` 동안 서버 커넥션을 고정하고 Prisma는 대화형 tx를 커넥션 하나에 묶으므로 안전하다. 대화형 사용처에는 다음이 있다 — `changeMember`(`SELECT … FOR UPDATE` + 재집계) · `issueInvitations`·`reissueInvitation`(같은 잠금) · **`createProject`**(`SELECT … "User" … FOR UPDATE` + `PROJECT_LIMIT` 재집계 — §3.1이 그 방어선을 설명한다) · `acceptInvitation`(조건부 소비 + 멤버 생성, OWNER 초대면 그 전에 수락자 User 잠금 + 재집계) · 복원(`runUnarchive`)·OWNER 승격(`changeMemberRole`)의 `lockProjectAccess` 뒤 User 잠금 + 재집계(`lockOwnerSlots` — §3.1, 2026-10-03) · GitHub callback의 `Account` 연결. 잠금과 롤백이 필요한 자리다. 로그인 Account 연결과 sync 실행 등록도 대화형 트랜잭션을 쓴다. 배열형은 그 둘이 필요 없고 문장이 많을 때 고른다 — push는 2026-09-15에 그 조건에서 빠졌다.
 - **키마다 왕복하면 타임아웃이다.** skillflo가 1446키다. `unnest()`로 배열을 넘겨 문장 하나가 전체를 처리한다. 실측 1446키 + 2892번역 + 1446refs가 **약 1.6초**(라우트 한도 60초).
 - **키 id를 JS에서 만든다.** 스키마의 `@default(cuid())`는 Prisma 클라이언트가 적용하는 값이라 raw SQL에는 오지 않는다. 현재 `randomUUID()`를 쓰고, 형식 혼재를 통일할지는 미결이다.
 
@@ -1901,6 +1924,10 @@ PRODUCT §7.5가 "별도 상태 컬럼을 즉시 만들지 않는다"고 이미 
 - **`PROJECT_LIMIT` 슬롯을 비운다** — 삭제가 비범위라 그것이 슬롯을 되찾는 유일한 길이다.
   ⚠️ **선조회와 트랜잭션 안 재집계가 같은 조건이어야 한다**: 하나만 좁히면 증상이 같다(선조회 통과 뒤
   재집계가 거부하거나, 그 반대).
+  ⚠️ **복원은 그 슬롯을 다시 채우므로 잠금 안에서 다시 센다** (2026-10-03). `runUnarchive`가 `lockProjectAccess` 뒤
+  `lockOwnerSlots`로 그 프로젝트의 OWNER 전원을 잠그고 세어, 운영자가 아닌 OWNER 중 하나라도 복원 뒤 상한을 넘으면
+  `owner-limit-reached`로 거부한다(보관 상태·사건 그대로). 행위자 본인인지 다른 OWNER인지 문구가 가르지 않는다.
+  **보관은 세지 않는다** — 이미 넘긴 사용자도 보관은 된다(§3.1).
 - ⚠️ **열린 PR을 닫지 않는다** (PRODUCT §7.9) — 보관은 GitHub 상태를 정리하는 일이 아니다.
 - ⚠️ **Logs만 읽기로 통과한다** (2026-09-20, logs-rework). 보관 사건과 그 직전 기록을 확인하려면
   **복원해야 하는 순환**이었다. `planProjectAccess`가 `archivedPolicy: "block" | "read"`를 받고
@@ -2101,6 +2128,7 @@ Logs 행위자·상세 Trigger·보조줄·Home 메타 열이 이것 하나를 �
 |---|---|---|
 | 편집 UI **로그인** | GitHub·Google OAuth **App** (Auth.js, DB 세션 / `AUTH_GITHUB_*`) | 신원 확인까지다 — **무엇을 할 수 있는지는 정하지 않는다** |
 | 편집 UI **인가** | `ProjectMember` 행 (`getProjectAccess`) | 로그인 provider가 권한을 정하지 않는다 (§0 불변식 7). 허용 핸들 목록은 2026-09-06에 사라졌다 |
+| 운영자 판정 (`isOperatorUser`, 2026-10-03) | `User.emailLookup` × `OPERATOR_EMAILS` | **인가 아님** — 사용자당 프로젝트 상한 면제 하나만 바꾼다. 로그인·`ProjectMember` 인가·화면 표시와 무관하다 (§6.2.2) |
 | `/api/search-index` | **공개 · 세션 없음 · `force-static`** | SUMMARY에 등재된 공개 가이드만 빌드 때 JSON으로 만든다. 인증·DB·쿠키 조회가 없고 원고 실패는 빌드를 실패시킨다. `entry-points.test.ts`의 `EXEMPT` 사유도 이 경계다 (§6.37) |
 | Keys 조회 — `searchKeysAction` (`app/search/actions.ts`) | 세션(`readSession`) + 코어 `searchKeys`의 **`ProjectMember.userId` 조인** | 서버의 userId로 비보관 멤버 프로젝트 id를 확정한다. 클라이언트 프로젝트 목록을 받지 않고 `activeSlug`는 순위에만 쓴다 (§6.37) |
 | 검색 멤버십 — `loadSearchMembershipsAction` (같은 파일) | 세션(`readSession`) + `loadMemberships`의 **userId 제한** | 보관 포함 자기 멤버십만 읽고 `toNavProjects`의 일곱 필드만 반환한다. 성공·실패 모두 다음 호출에 캐시하지 않는다 (§6.37) |
@@ -2547,6 +2575,36 @@ challenge**가 그 둘을 묶을 것. 셋을 다 통과한 뒤에야 `Account`�
   "실패했는데 연결까지 풀렸다"가 된다 — 판정 순서 자체가 방어다.
 - **Account 쓰기는 `upsert`가 아니라 `create` + P2002 재조회다.** `upsert`는 동시 요청이 `userId`를
   덮어써 **소유권이 이동**할 수 있다. 어떤 update도 `userId`를 인자에 넣지 않는다.
+
+### 6.2.2 운영자 판정 — 계정 축 쿼터를 넓히는 면제 하나 (2026-10-03, operator-account)
+
+운영자는 환경변수 `OPERATOR_EMAILS`(쉼표로 구분한 **이메일 주소 전체**)로 지정한 플랫폼 계정이다(PRODUCT §3). 프로젝트
+역할이 아니고, 소비자는 사용자당 프로젝트 상한 면제 하나다(§3.1 — 생성·복원·OWNER 승격·OWNER 초대 수락).
+
+- **모듈이 둘이다.** `lib/operator/allowlist.ts`의 `parseOperatorEmails`(순수 — env 문자열 → 정규화한 주소 집합, import는
+  `lib/auth/email.ts` 하나)와 `lib/operator/user.ts`의 `isOperatorUser(db, userId, source = process.env)`(`server-only` 껍데기).
+  소비자는 껍데기만 부른다. ⚠️ **껍데기를 import하는 소스는 `lib/onboarding-run/{repos,create}.ts`·`lib/projects/owner-limit.ts`
+  뿐이다** — 소스 스캔 테스트가 고정한다. 인가 경로가 운영자를 보기 시작하면 불변식 7의 단서가 깨진다. 백오피스가 오면 그
+  목록을 늘린다.
+- **판정 기준은 계정 병합과 같은 `User.emailLookup`이다.** env 주소마다 병합·로그인과 같은 `lookupEmail`(스코프 `user`,
+  안에서 `normalizeEmail`)로 HMAC해 그 사용자 행(`where: { id: userId }`)의 값과 견준다. 그래서 GitHub·Google 어느 쪽으로
+  들어와도 같은 사람이고 대소문자·앞뒤 공백만 다른 env 주소도 맞는다. 평문 `User.email`(봉투)을 복호해 비교하지 않고,
+  `User.id`(DB마다 다르고 dev 리셋마다 바뀐다)·이름·로그인 `Account`로 하지 않는다. `emailLookup`이 `null`인 행은 운영자가 아니다.
+- **파싱**: 쉼표 분리 · 조각마다 `normalizeEmail`(trim + 소문자 — gmail 점·`+` 태그를 접지 않는다) · `@`가 정확히 하나이고
+  앞뒤가 빈 것이 아닌 조각만 · 빈 조각 무시 · 중복은 Set이 접는다. 형식이 틀린 항목은 무시하고 나머지는 적용한다.
+- **fail-closed** — env가 없거나 비면 운영자는 0명이고 DB를 읽지 않는다. env는 **호출 시점에** 읽는다(모듈 최상위·기본 인자
+  평가 금지 — POSTMORTEM 2026-08-31). 조회가 실패하면 **던진다** — "운영자 아님"으로 접지 않는다(POSTMORTEM 2026-09-03).
+  호출부의 기존 실패 경로(①의 `unavailable`, 생성의 선조회 실패, 트랜잭션 안이면 롤백)를 탄다.
+- **상한에 닿은 사람만 조회한다** — 생성 선조회는 상한일 때만, `lockOwnerSlots`는 `owned >= PROJECT_LIMIT`인 사람만 본다.
+  운영자가 없는 환경과 상한에 안 닿은 사용자의 비용은 0이다.
+- ⚠️ **도메인 단위 지정을 하지 않는다.** 그 도메인의 동료(초대받는 번역 편집자)까지 운영자가 되고, 퇴사 뒤에도 GitHub에 검증
+  상태로 남은 회사 주소로 로그인한 사람이 운영자로 판정된다. 주소 전체가 정확히 일치해야 한다.
+- ⚠️ **`EMAIL_LOOKUP_KEY` 회전 중**에는 저장값이 아직 옛 키라 일치하지 않을 수 있다 — 결과는 "운영자 아님"(fail-closed)이고
+  회전이 끝나면 돌아온다. 키 자체가 없으면 `lookupEmail`이 던진다(위 실패 경로).
+- ⚠️ **`AUTH_ALLOWED_LOGINS`(§6.2, 2026-09-05 제거)의 부활이 아니다.** 그것은 로그인을 **좁히는** AND 층이었고 인가와 겹쳐 초대받은
+  편집자를 막았다. 운영자는 로그인·인가를 건드리지 않고 계정 축 쿼터 하나를 **넓힌다**.
+- **알려진 대가**: MCP `create_project`도 면제되므로 운영자의 개인·OAuth 토큰이 새면 상한 없는 생성이 가능하다. 운영자 주소가
+  Vercel env에 든다(본인 주소이고 이미 `User.email`로 저장되는 값이라 방침 판정은 바뀌지 않는다 — Sensitive로 넣는다, OPERATIONS).
 
 ### 6.3 거부는 값으로 흐른다 — 예외로 죽지 않는다
 
