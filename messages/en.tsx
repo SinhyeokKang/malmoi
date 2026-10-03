@@ -998,24 +998,48 @@ export const en = {
     },
 
     meta: {
+      /** 랜드마크 이름(aside `aria-label`) — 보이는 머리가 없다. 탭 목록이 머리다(project-card-tabs). */
       title: "Project",
+      /** 탭 셋 — 착지할 때마다 `Project`다. 목록 이름은 "무엇의 탭인가"를 말한다(첫 탭과 랜드마크가 같은 `Project`라서). */
+      tabs: { list: "Project details", project: "Project", sync: "Sync", publish: "Publish" },
       repository: "Repository",
+      connection: "Connection",
       branch: "Base branch",
-      surfaces: "Sources",
-      locales: "Languages",
+      ci: "CI",
+      sources: "Sources",
       keys: "Keys",
       members: "Members",
-      lastSync: "Last sync",
-      lastPublish: "Last publish",
       created: "Created",
       archived: "Archived",
-      settings: "Settings",
-      /** 시각이 없는 마지막 Publish 칸. ⚠️ Sync 행은 아래 `notSyncedYet`이다. 주의 항목은 시각이 없으면 칸을 비운다 — 실패한 표면에 "Never"는 거짓이다. */
-      never: "Never",
-      /** 첫 동기화 전의 Last sync 행 전용 — 같은 Home 카드 보조줄과 같은 낱말이다(1-Y17). */
-      notSyncedYet: "Not synced yet",
-      /** 캔버스는 `Pull request #127 · 2d ago` — **무엇을 보냈나**가 먼저고 시각이 뒤다. */
+      lastSync: "Last sync",
+      synced: "Synced",
+      result: "Result",
+      changed: "Changed",
+      keysSeen: "Keys seen",
+      hold: "Hold",
+      lastPublish: "Last publish",
+      published: "Published",
       pullRequest: "Pull request",
+      prState: "PR state",
+      settings: "Settings",
+      syncLogs: "Sync logs",
+      publishLogs: "Publish logs",
+      /** CI 행 — push 토큰이 있는가(해시는 화면에 오지 않는다). */
+      configured: "Configured",
+      notSetUp: "Not set up",
+      /** 멤버 수 + 대기 초대 수 — ⚠️ 초대가 없어도 `(0)`이다(2026-10-04 사용자). */
+      memberCount: (members: number, pending: number): string => `${members.toLocaleString("en-US")} (${pending.toLocaleString("en-US")})`,
+      /** 실행이 바꾼 번역 값 수 — Sync·Publish 탭의 같은 단위다. Logs 상세의 문장형(`N values changed`)과 따로 둔다(라벨이 `Changed`다). */
+      values: (n: number): string => `${n.toLocaleString("en-US")} value${n === 1 ? "" : "s"}`,
+      /** 시각이 없는 마지막 Publish 칸. ⚠️ Sync 탭의 첫 Sync 전은 `notSyncedYet` 배지다. 주의 항목은 시각이 없으면 칸을 비운다 — 실패한 표면에 "Never"는 거짓이다. */
+      never: "Never",
+      /**
+       * 사건 기록(2026-09-20) 이전에 적재되고 그 뒤 시각을 전진시킨 실행이 없다 — 적재는 됐으니 `Not synced yet`은 거짓이고, 어느 실행인지는
+       * 기록이 없다. 회색 평문이다.
+       */
+      unrecorded: "Not recorded",
+      /** PR state — 열린 PR이 없다(보류 판정이 이미 본 조회의 결론). 열린 PR·조회 실패는 상태 배지다. */
+      notOpen: "Not open",
       /** PR 번호는 링크의 이름이다 — 주소를 그대로 읽히지 않는다. */
       pr: (n: number): string => `#${n}`,
     },

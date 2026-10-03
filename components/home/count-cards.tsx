@@ -121,7 +121,7 @@ export function CountCards({ cards, slug, surfaceSlugs, now, heldLater }: {
                   <span className="text-muted-foreground text-xs">
                     {m.home.cards.unit[card.unit]} ·{" "}
                     {card.key === "toSend" && heldLater !== undefined
-                      ? <HoldLater hold={heldLater} as="subline" identity={slug} />
+                      ? <HoldLater hold={heldLater} identity={slug} />
                       : sublineText(card.subline, now)}
                   </span>
                 </span>

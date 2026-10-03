@@ -23,10 +23,10 @@ import { loadConnectionHealth } from "@/lib/github";
 import { logFailure } from "@/lib/github-connect/log";
 import { attentionItems } from "@/lib/home/attention";
 import { cardLandings, countCards, planHomeHold, surfaceQueues } from "@/lib/home/cards";
-import { metaRows } from "@/lib/home/meta";
+import { homeLastSync, homeLate, metaTabs } from "@/lib/home/meta";
 import { loadHomeRuns } from "@/lib/home/runs";
 import { lastSyncTime } from "@/lib/home/sync-time";
-import { connectionProblem, planActionAvailability, planHomeState } from "@/lib/home/state";
+import { connectionProblem, planActionAvailability, planHomeState, repositoryConnectionState } from "@/lib/home/state";
 import { loadWriteLock } from "@/lib/home/write-lock";
 import {
   loadActors, loadProjectListAggregates, loadReviewAttention,
@@ -104,8 +104,6 @@ export default async function ProjectHomePage({
       archivedAt: true,
       // ⚠️ **유무만 쓴다** — 아래에서 select 직후 boolean으로 접어 `project`에서 뗀다(해시라도 RSC 페이로드에 싣지 않는다).
       pushTokenHash: true,
-      lastPublishedAt: true,
-      lastPrUrl: true,
       // 번역 링크가 공가 redirect를 건너뛰고 기본 표면으로 바로 간다 (audit-ux #4b). 보관된 기본 표면은 옛 라우트처럼 없는 것으로 친다.
       defaultSurface: { select: { slug: true, archivedAt: true } },
       surfaces: {
@@ -255,7 +253,7 @@ export default async function ProjectHomePage({
   const paused = !availability.sync || !availability.publish;
   /**
    * 보류 판정 — 게이트와 같은 입력이다(`planHomeHold` → `planHoldNotice`, ux-drift-unify Q6). ⚠️ **편집이 있으면 PR을 조회하지 않는다**(결과가 같다).
-   * 조회가 필요하면 promise를 **기다리지 않고** 카드 보조 줄·메타 열의 클라이언트 섬(`HoldLater` — effect 구독, `use()`는 전환을 붙잡는다)으로 내린다 — 본문 렌더를 막지 않는다(malmoi#107이 메모로 줄인
+   * 조회가 필요하면 promise를 **기다리지 않고** 카드 보조 줄(`HoldLater`)·메타 열 탭 껍데기(`MetaTabs`)의 effect 구독으로 내린다(`use()`는 전환을 붙잡는다) — 본문 렌더를 막지 않는다(malmoi#107이 메모로 줄인
    * 착지 병목을 되살리지 않는다). 조회는 여기서 출발하므로 본문과 동시에 돈다.
    * ⚠️ **거부를 삼킨다** — Home은 모든 프로젝트의 착지 화면이라(위 연결 조회와 같은 판정) 조회 실패는 보류(`pr-check-failed`)로 말한다.
    * ⚠️ **메모를 거친다** (U15 — T18 실측: 착지·상세마다 GitHub 2회) — 연결 확인과 같은 TTL이다. 표시 전용이라서이고 게이트는 실물을 본다.
@@ -270,6 +268,25 @@ export default async function ProjectHomePage({
   );
   const heldNow = hold instanceof Promise ? null : hold;
   const heldLater = hold instanceof Promise ? hold : undefined;
+  /**
+   * 메타 열 탭 셋 (project-card-tabs). ⚠️ **PR state는 새 조회가 아니다** — 위 보류 판정이 PR을 조회하는 갈래(`heldLater`)일 때만 자리를 잡고,
+   * 같은 promise의 결론(`homeLate`)이 Hold와 함께 늦게 채운다. 조회하지 않는 갈래면 행이 없다.
+   */
+  const meta = metaTabs({
+    // 설정 카드와 같은 판정이다 — 연결 확인 실패(`unknown`)는 끊김이 아니라 `Couldn't check`다.
+    repository: { owner: project.repoOwner, name: project.repoName, branch: project.baseBranch, connection: repositoryConnectionState(health.status, connectionProblem(health.status)) },
+    ciConfigured,
+    surfaceCount: surfaces.length,
+    keys,
+    members: project._count.members,
+    pendingInvites: project._count.invitations,
+    createdAt: project.createdAt,
+    archivedAt: project.archivedAt,
+    lastSync: homeLastSync(runs.sync, surfaces),
+    lastPublish: runs.publish,
+    held: heldNow,
+    prState: heldLater === undefined ? "absent" : "pending",
+  });
   const defaultSurface = project.defaultSurface?.archivedAt === null ? project.defaultSurface.slug : null;
 
   return (
@@ -358,30 +375,11 @@ export default async function ProjectHomePage({
         </div>
 
         <MetaColumn
-          rows={metaRows({
-            state,
-            repoOwner: project.repoOwner,
-            repoName: project.repoName,
-            baseBranch: project.baseBranch,
-            surfaces: surfaces.length,
-            locales: [...new Set(surfaces.flatMap((s) => s.locales.filter((l) => !l.orphaned).map((l) => l.code)))].sort(),
-            keys,
-            members: project._count.members,
-            lastSyncAt,
-            lastImportFailedAt: failed?.lastImportFailedAt ?? null,
-            lastImportError: failed?.importError ?? null,
-            lastPublishedAt: project.lastPublishedAt,
-            lastPrUrl: project.lastPrUrl,
-            createdAt: project.createdAt,
-            archivedAt: project.archivedAt,
-            triggers: { sync: runs.sync?.trigger ?? null, publish: runs.publish?.trigger ?? null },
-            connection: connectionProblem(health.status),
-            held: heldNow,
-          })}
+          tabs={meta}
           slug={slug}
           now={now}
           canOpenSettings={canPerform(role, "project:settings")}
-          heldLater={heldLater}
+          late={heldLater?.then(homeLate)}
         />
       </PanelBody>
 
