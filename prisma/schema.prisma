@@ -404,6 +404,11 @@ model SyncRun {
   prUrl    String?
   /// 바꾼 파일 수. **실패는 null이다** — 0은 "아무것도 안 바뀌었다"는 관측이고 실패엔 관측 자체가 없다.
   changed  Int?
+  /// Publish가 리포 파일에서 **실제로 바꾼 번역 엔트리 수**(수정 + 추가, 삭제 제외) — 바뀐 파일마다 base 원문과
+  /// 새 원문을 어댑터 `read`로 파싱해 견준다(`lib/pull/changed-values.ts`). 열린 PR을 갱신한 실행이면 **PR 전체 vs
+  /// base 누적**이다(`changed`와 같은 의미). 표현만 바뀐 커밋·스킵은 0, 실패·기록 이전 행은 null.
+  /// ⚠️ **관측값이다 — 판정에 쓰지 않는다**(쓰는 순간 병합이다, IMPORT 사건 payload의 같은 필드와 같다).
+  changedValues Int?
   /// writer가 **버린** 항목 수. skipped에도 센다 (SAAS 불변식 9).
   warnings Int     @default(0)
   /// 이번 PR에 **못 실은** 미전달 편집 수 (delivery-invariants D3·D7). 버린 것이 아니다 — 토큰이 남아 다음 Publish를 기다린다.
