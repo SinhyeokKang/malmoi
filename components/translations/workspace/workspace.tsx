@@ -1027,7 +1027,7 @@ function WorkspaceDialog({ dialog, keyName, projectName, onClose, onPreview, onR
   } else if (dialog?.kind === "revert-changed") {
     title = w.revert.changed.title;
     description = w.revert.changed.body;
-    actions = <Button autoFocus onClick={onReview}>{w.revert.changed.again}</Button>;
+    actions = <Button variant="primary" autoFocus onClick={onReview}>{w.revert.changed.again}</Button>;
   }
   return (
     <Dialog open={open} onOpenChange={next => { if (!next) onClose(); }}>

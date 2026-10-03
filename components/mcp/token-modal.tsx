@@ -125,7 +125,7 @@ export function TokenModal({
           </>
         ) : (
           <Button ref={doneRef} type="button" variant="primary" size="lg" onClick={onClose}>
-            {m.mcpConnector.result.done}
+            {m.common.close}
           </Button>
         )
       }

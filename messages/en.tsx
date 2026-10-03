@@ -2008,7 +2008,6 @@ export const en = {
       // ⚠️ `<strong className="font-normal">` 자리다 — 모달 문맥의 강조이지 굵기가 아니다(design §8).
       copyNow: "Copy it now — it won't be shown again.",
       setEnv: "Set it as MALMOI_TOKEN in your shell, then add Malmoi to your agent — Connect an AI agent shows how.",
-      done: "Done",
     },
     revoke: {
       title: "Revoke your token?",

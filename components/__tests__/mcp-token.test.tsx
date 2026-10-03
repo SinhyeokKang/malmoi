@@ -170,7 +170,7 @@ describe("생성 ① → ②", () => {
     expect(button(panel()!, m.newProject.modal.back)).toBeNull();
   });
 
-  it("복사 성공만으로 닫히지 않는다 · Done → 활성 카드의 Rotate로 착지", async () => {
+  it("복사 성공만으로 닫히지 않는다 · Close → 활성 카드의 Rotate로 착지", async () => {
     mocks.issue.mockResolvedValue({ ok: true, token: RAW, expiresAt: ACTIVE.expiresAt });
     const view = await mount({ state: "none" });
     await click(button(card(), m.mcpConnector.token.create));
@@ -181,7 +181,7 @@ describe("생성 ① → ②", () => {
     expect(panel()).not.toBeNull();
     // 뒤 페이지는 Action의 재검증으로 이미 활성이다.
     await view.update(ACTIVE);
-    await click(button(panel()!, m.mcpConnector.result.done));
+    await click(button(panel()!, m.common.close));
     await settle();
     expect(panel()).toBeNull();
     expect(document.activeElement).toBe(button(card(), m.mcpConnector.token.rotate));
@@ -249,7 +249,7 @@ describe("생성 ① → ②", () => {
     const close = find<HTMLButtonElement>(panel()!, `button[aria-label="${m.common.close}"]`);
     expect(close.disabled).toBe(true);
     expect(find<HTMLInputElement>(panel()!, "[data-secret-field]").value).toBe(RAW);
-    await click(button(panel()!, m.mcpConnector.result.done));
+    await click(button(panel()!, m.common.close));
     expect(panel()).toBeNull();
   });
 
