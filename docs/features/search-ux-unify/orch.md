@@ -62,3 +62,4 @@
 | 2026-10-03 | B2 T10 완료 `d20e0e88` → `WAITING FOR B1` |
 | 2026-10-03 | R-B2a(T10 리뷰): 🔴0 🟡1 — design·tasks의 `closeAutoFocus(event)` 시그니처가 실제 `(event, consumer?)`와 다름 → **B3 T11에서 DESIGN 기술 시 반영**. ⚪: 기존 "포커스가 이미 안에 있음" 가드에 테스트 없음 → B2 T8 때 테스트 한 줄 추가 지시 |
 | 2026-10-03 | B1 worker_done — 7커밋 `ba9cb045..755944d0`, `gate: ok`(10600 tests · projects postgres 34 files · build). 계획과 다른 점 12건(인계 문서) → R-B1 리뷰 시작 |
+| 2026-10-03 | R-B1: 🔴1(지우기 X에서 Enter가 결과로 이동) 🟡5(시나리오가 뷰모델 미단언 · `/docs` 개요 제외 미고정 · Kbd 스캐너 구멍 · 상태 줄 live region `empty:hidden` · `PREVIEW_LIMIT` 무효) ⚪7. 인계 다른 점 12건 전부 수용 → B1 fix1 발송(같은 터미널). ⚪6(질의 모드 개요 문서 결과)은 **B3 T11에서 문서화** |
