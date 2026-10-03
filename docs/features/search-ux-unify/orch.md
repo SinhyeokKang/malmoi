@@ -71,3 +71,4 @@
 | 2026-10-03 | B3 초안 8커밋 → `WAITING FOR B2`. R-B3(B3 대기 중 병렬): 🔴2(DESIGN:1208 보관 `#a3a3a3` 잔존 · DESIGN:2162 초대 키 오기) 🟡6 ⚪14 + B2 fix1 뒤 고칠 문장 7. B3에 rebase 신호 + 리뷰 반영 지시(⚪9·14 제외) |
 | 2026-10-03 | B3 리뷰 반영 완료(🔴2·🟡6·⚪10 + fix1 문장 7, gate ok). dev cherry-pick → `pnpm gate` `gate: ok` → push. `guide:check` stale 25컷은 이번 배치와 무관 → `/guide-shots` 후속. QA(T13) 시작 |
 | 2026-10-03 | QA(T13): 13항목 + 레이아웃 375·1280·1440·1890 측정 통과, 이슈 0, dev DB 변경 0. 미검증: 실 macOS 한글 IME의 미확정 글자 취소(CDP 불가) · Safari(O2) · 실제 스크린리더 낭독(AX 트리 role=status polite atomic만 확인). 판단 1건 → O9 → B1 fix2 발송 |
+| 2026-10-03 | GC: `suu-b2`·`suu-b3` 워크트리·브랜치 삭제(미커밋 0 · `git cherry` `+` 0 확인). 남은 워크트리 `suu-b1`(fix2 진행) |
