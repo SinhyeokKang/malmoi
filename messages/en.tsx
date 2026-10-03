@@ -320,6 +320,11 @@ export const en = {
      * 움직이는지 말하지 못한다. 라이브러리는 이름을 만들어 주지 않는다.
      */
     resizeSidebar: "Resize sidebar",
+    /**
+     * `Kbd` 칩의 키 이름 — `components/`의 `<Kbd>` children에 문자열 리터럴을 두지 않는다(search-ux-unify C12).
+     * `search`의 키는 `searchShortcut(platform).label`이 고른다(`lib/keyboard.ts`).
+     */
+    keys: { enter: "↵", esc: "Esc", search: { mac: "⌘K", other: "Ctrl K" } },
     /** 셸의 전역 항목 — 사이드바 하단과 사용자 메뉴가 같은 문구를 쓴다. */
     nav: {
       /**

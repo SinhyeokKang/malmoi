@@ -1,8 +1,3 @@
-export function isSearchShortcut(event: Pick<KeyboardEvent, "key" | "metaKey" | "ctrlKey" | "altKey" | "shiftKey" | "isComposing" | "keyCode">, platform: string): boolean {
-  if (event.isComposing || event.keyCode === 229 || event.altKey || event.shiftKey || event.key.toLowerCase() !== "k") return false;
-  return /mac/i.test(platform) ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey;
-}
-
 export function shouldIgnoreShortcut(target: EventTarget | null, doc: Document): boolean {
   const element = target instanceof Element ? target : null;
   if (element?.closest('input, textarea, [contenteditable]:not([contenteditable="false"])')) return true;

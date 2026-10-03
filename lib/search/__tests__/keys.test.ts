@@ -1,16 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from "vitest";
-import { isSearchShortcut, shouldIgnoreShortcut, nextActive, reconcileActive } from "../keys";
-const event = (extra: KeyboardEventInit = {}) => new KeyboardEvent("keydown", { key: "k", ...extra });
+import { shouldIgnoreShortcut, nextActive, reconcileActive } from "../keys";
 afterEach(() => { document.body.innerHTML = ""; });
 describe("검색 단축키와 활성 id", () => {
-  it("플랫폼 수식키만 받고 Shift·Alt·반대 키·조합을 무시", () => {
-    expect(isSearchShortcut(event({ metaKey: true }), "MacIntel")).toBe(true);
-    expect(isSearchShortcut(event({ ctrlKey: true }), "MacIntel")).toBe(false);
-    expect(isSearchShortcut(event({ ctrlKey: true, key: "K" }), "Win32")).toBe(true);
-    expect(isSearchShortcut(event({ metaKey: true }), "Linux")).toBe(false);
-    for (const extra of [{ shiftKey: true }, { altKey: true }, { ctrlKey: true }, { isComposing: true }, { keyCode: 229 }, { key: "j" }]) expect(isSearchShortcut(event({ metaKey: true, ...extra }), "MacIntel")).toBe(false);
-  });
   it("input·textarea·편집 영역의 자손·열린 Dialog와 메뉴를 무시", () => {
     document.body.innerHTML = '<input/><textarea></textarea><div contenteditable="true"><span id="child"></span></div><button></button>';
     for (const selector of ["input", "textarea", "#child"]) expect(shouldIgnoreShortcut(document.querySelector(selector), document)).toBe(true);

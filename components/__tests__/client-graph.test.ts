@@ -125,6 +125,8 @@ const CLIENT_LIB_FILES = [
   "lib/invitation-email/limits.ts",
   "lib/invitation-email/recipients.ts",
   "lib/invitation-email/retry-at.ts",
+  // 단축키·IME·일반 클릭 판정의 정본(search-ux-unify C9~C11) — import 0인 잎이다(아래 잎 검사).
+  "lib/keyboard.ts",
   "lib/keys/flag.ts",
   // 랜딩 스테이지가 스크롤 위치마다 값으로 읽는 수학 — import 0인 잎이다(아래 잎 검사).
   "lib/landing/stage.ts",
@@ -488,8 +490,7 @@ describe("클라이언트 그래프", () => {
     expect(valueImports(server)).not.toContain("@/lib/search/key-href");
   });
 
-  it.each(["match", "highlight", "keys", "load-index"])("검색 독립 모듈 %s는 자기 자신만 문다", (name) => {
-    const path = `lib/search/${name}.ts`;
+  it.each(["lib/search/match.ts", "lib/search/highlight.ts", "lib/search/keys.ts", "lib/search/load-index.ts", "lib/keyboard.ts"])("검색 독립 모듈 %s는 자기 자신만 문다", (path) => {
     const graph = walk([join(ROOT, path)]);
     expect([...graph.files].map(file => file.slice(ROOT.length)).sort()).toEqual([path]);
     expect([...graph.packages]).toEqual([]);
