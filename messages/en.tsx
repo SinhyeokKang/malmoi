@@ -385,8 +385,10 @@ export const en = {
        */
       projectSwitcher: {
         label: "Switch project",
-        search: "Find project…",
-        empty: "No projects found",
+        /** 접근 이름에는 줄임표가 없다 — `…`는 placeholder 표기다(search-ux-unify C24). */
+        search: { label: "Search projects", placeholder: "Search projects…" },
+        /** 0건 제목 한 형 `No {noun} match “{q}”`(C23). 메뉴 안이라 `NoMatch`가 아니라 한 줄 `<p>`다. */
+        empty: (q: string): string => `No projects match “${q}”`,
       },
       /** 헤더의 로고가 링크다 — 그림뿐이라 이름이 없으면 스크린리더가 URL을 읽는다. */
       appHome: "Malmoi home",
@@ -2198,7 +2200,7 @@ export const en = {
        * 예외 B′ — **예외 B(설치에 리포 없음)와 가른다.** 요구하는 일이 다르다: 검색어를 지워라 /
        * 설치에 리포를 넣어라 (DESIGN §6.7).
        */
-      searchEmpty: (q: string): string => `No repository matches "${q}".`,
+      searchEmpty: (q: string): string => `No repositories match “${q}”`,
       clearSearch: "Clear search",
     },
 
@@ -2499,8 +2501,8 @@ export const en = {
       },
       empty: {
         noIncomplete: (ns: string): string => `No incomplete keys in ${ns}`,
-        noMatch: (q: string): string => `No keys match "${q}"`,
-        noIncompleteMatch: (q: string): string => `No incomplete keys match "${q}"`,
+        noMatch: (q: string): string => `No keys match “${q}”`,
+        noIncompleteMatch: (q: string): string => `No incomplete keys match “${q}”`,
         filteredOut: "No keys match these filters",
         searchAll: "Search all sources",
         clearSearch: "Clear search",

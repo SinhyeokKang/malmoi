@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { createContext, useContext, type ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -40,6 +42,23 @@ describe("HeaderBar — 세 슬롯", () => {
     expect(bar?.className.split(/\s+/)).toEqual(expect.arrayContaining(["grid", "h-10", "shrink-0", "grid-cols-[1fr_auto_1fr]", "items-center", "px-1"]));
     expect([...bar!.children].map(slot => slot.className)).toEqual(["justify-self-start", "justify-self-center", "justify-self-end"]);
     expect([...bar!.children].map(slot => slot.textContent)).toEqual(["Start", "Center", "End"]);
+  });
+});
+
+/** search-ux-unify C20 — 두 헤더의 로고 링크 radius가 같다(`rounded-sm`). 앱 헤더의 `rounded-lg`(12)는 32 칸에서 원에 가까웠다. */
+describe("로고 링크 radius", () => {
+  it("앱 셸 헤더 로고가 rounded-sm이다", async () => {
+    const { container } = await header();
+    const logo = container.querySelector<HTMLAnchorElement>(`a[aria-label="${m.common.nav.appHome}"]`);
+    expect(logo).not.toBeNull();
+    expect(logo!.classList.contains("rounded-sm")).toBe(true);
+    expect(logo!.classList.contains("rounded-lg")).toBe(false);
+  });
+  it("공개 셸 헤더 로고도 rounded-sm이다", () => {
+    const source = readFileSync(join(process.cwd(), "components/public-shell/header.tsx"), "utf8");
+    const logo = /aria-label=\{m\.landing\.shell\.logo\}\s*className="([^"]+)"/.exec(source);
+    expect(logo).not.toBeNull();
+    expect(logo![1]!.split(/\s+/)).toContain("rounded-sm");
   });
 });
 

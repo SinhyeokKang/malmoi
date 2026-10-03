@@ -749,7 +749,7 @@ it("① 검색 0건도 세로 중앙이다 — 검색 필드는 위에 남는다
   await mount();
   await input(find<HTMLInputElement>(document.body, 'input[aria-label="Search repositories"]'), "zzz");
 
-  expect(document.body.textContent).toContain('No repository matches "zzz".');
+  expect(document.body.textContent).toContain("No repositories match “zzz”");
   expectCentered(emptyWrapper());
 });
 

@@ -153,6 +153,9 @@ const CONCEPT_BANNED: readonly Ban[] = [
   ["image Delete", /^delete\b/i, /picture|image|avatar|thumbnail/i],
   // 목적지 라벨 하나 — /projects는 "Go to your projects", GitHub은 "Open on GitHub"
   ["Open projects", /\bopen projects\b/i],
+  // search-ux-unify C22 — 검색의 옛 출구 라벨. /projects는 "Go to your projects", 문서는 "Go to docs"다.
+  ["view all projects", /\bview all projects\b/i],
+  ["browse all docs", /\bbrowse all docs\b/i],
   ["View on GitHub", /\bview on GitHub\b/i],
   ["Open repository", /^open repository[.!]?$/i],
   // 축약형 (DESIGN §10) — 강조가 필요한 부정만 ALLOWED가 든다
@@ -377,6 +380,25 @@ describe("화면 용어 — DESIGN §10.1의 표를 사전 전체가 따른다 (
     expect(sample("Rotate the push token for PUSH_TOKEN")).toEqual([]);
     expect(sample("_locales/{locale}/messages.json · src/locales/{locale}.json")).toEqual([]);
     expect(sample("Ask the repository owner for access. An organization owner has to approve.")).toEqual([]);
+  });
+});
+
+/**
+ * **0건 제목은 한 형이다** (search-ux-unify C23) — `No {noun} match “{q}”`: 곡선 따옴표, 제목 마침표 없음. 검색 Dialog의
+ * `No results for “{q}”`만 예외다(DESIGN §10.1). 보간 자리를 곧은 따옴표로 감싼 문장은 사전 어디에도 없다.
+ */
+describe("0건 제목 한 형 (C23)", () => {
+  const found = strings();
+  it("보간을 곧은 따옴표로 감싸지 않는다", () => {
+    expect(found.filter(({ text }) => text.includes(`"${ARG}"`)).map(({ path, text }) => `${path}: ${text}`)).toEqual([]);
+  });
+  it("질의를 든 0건 제목은 `No {noun} match “{q}”`이다", () => {
+    const titles = found.filter(({ text }) => /^No\b[^.]*\bmatch(?:es)?\b/.test(text) && text.includes(ARG));
+    expect(titles.length).toBeGreaterThanOrEqual(5);
+    expect(titles.filter(({ text }) => !/^No [\p{L} ]+ match “X”$/u.test(text)).map(({ path, text }) => `${path}: ${text}`)).toEqual([]);
+  });
+  it("검색 Dialog만 예외 형이다", () => {
+    expect(m.search.noResults(ARG)).toBe("No results for “X”");
   });
 });
 

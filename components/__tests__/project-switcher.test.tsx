@@ -53,8 +53,9 @@ describe("ProjectSwitcher", () => {
     await open();
     expect(trigger().getAttribute("aria-haspopup")).toBe("menu");
     expect(document.activeElement).toBe(input());
-    expect(input().getAttribute("aria-label")).toBe(m.common.nav.projectSwitcher.search);
-    expect(input().placeholder).toBe(m.common.nav.projectSwitcher.search);
+    // 접근 이름엔 줄임표가 없고 placeholder만 `…`다(search-ux-unify C24).
+    expect(input().getAttribute("aria-label")).toBe("Search projects");
+    expect(input().placeholder).toBe("Search projects…");
     expect(document.querySelector('[role="menu"] kbd')?.textContent).toBe(m.common.keys.esc);
     expect(document.querySelector('[role="menu"] kbd')?.getAttribute("aria-hidden")).toBe("true");
   });
@@ -90,7 +91,9 @@ describe("ProjectSwitcher", () => {
     expect(names()).toEqual(["course-chatbot", m.common.nav.newProject]);
     await act(async () => user.keyboard("zzz"));
     expect(names()).toEqual([m.common.nav.newProject]);
-    expect(document.querySelector('[role="menu"]')?.textContent).toContain(m.common.nav.projectSwitcher.empty);
+    // 0건 제목 한 형(C23) — 메뉴 안이라 `<p>` 한 줄이다.
+    const empty = [...document.querySelectorAll('[role="menu"] p')].find(p => p.textContent === "No projects match “CHATzzz”");
+    expect(empty).toBeDefined();
   });
 
   it("ArrowDown은 첫 항목으로, 항목에서 친 글자는 입력으로 돌아가 이어 붙고, 첫 항목의 ArrowUp은 입력으로 간다", async () => {

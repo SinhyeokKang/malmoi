@@ -114,15 +114,15 @@ export function ProjectSwitcher({ projects, current }: { projects: readonly Swit
               value={q}
               onChange={(event) => setQ(event.target.value)}
               onKeyDown={onInputKeyDown}
-              placeholder={m.common.nav.projectSwitcher.search}
-              aria-label={m.common.nav.projectSwitcher.search}
+              placeholder={m.common.nav.projectSwitcher.search.placeholder}
+              aria-label={m.common.nav.projectSwitcher.search.label}
             />
           </div>
           <Kbd>{m.common.keys.esc}</Kbd>
         </div>
         <DropdownMenuSeparator />
         {shown.length === 0 ? (
-          <p className="text-muted-foreground px-3 py-1.5 text-sm">{m.common.nav.projectSwitcher.empty}</p>
+          <p className="text-muted-foreground px-3 py-1.5 text-sm">{m.common.nav.projectSwitcher.empty(q)}</p>
         ) : (
           shown.map((project) => (
             <DropdownMenuItem key={project.slug} asChild selected={project.slug === current} {...keepInputFocus}>
