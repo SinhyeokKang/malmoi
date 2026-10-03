@@ -101,7 +101,7 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
           return <li key={source.id} className="border-border border-t first:border-t-0">
             {/* ⚠️ **1016 이하에서 행이 `items-start`가 되고 상태가 셋째 줄로 내려간다** (시안 `1h`).
                 상태를 오른쪽에 두면 긴 경로와 버튼 사이에서 먼저 줄바꿈되는 것이 경로가 된다. */}
-              <ListRow as="button" ringInset type="button" data-source-row id={`source-row-${source.id}`} aria-expanded={selected === source.slug} disabled={selected === source.slug} className="p-0 pr-4 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:bg-foreground/[0.07] min-w-0 whitespace-normal @max-[1016px]/panel:items-start" onClick={event => {
+              <ListRow as="button" ringInset type="button" data-source-row id={`source-row-${source.id}`} aria-expanded={selected === source.slug} disabled={selected === source.slug} className="p-0 pr-4 text-sm transition-colors disabled:cursor-not-allowed disabled:bg-foreground/[0.07] min-w-0 whitespace-normal @max-[1016px]/panel:items-start" onClick={event => {
                 returnFocus.current = event.currentTarget; selection.current = source.slug; setSelected(source.slug); void load(source.slug, false);
               }}>
                 {/* Content retains its old padding; the chevron keeps the outer gap and top offset inside this button. */}

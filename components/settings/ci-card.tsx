@@ -27,7 +27,7 @@ export function CiCard({ slug, archived, unpinned = false, stale, children }: { 
   return <Card title={m.settings.ci.title} description={m.settings.ci.description}>
     <PushTokenPanel slug={slug} disabled={archived} unpinned={unpinned} />
     <div className="border-border border-t">
-      <ListRow as="button" chevron ringInset className={cn("text-foreground text-sm font-medium transition-colors", blocked !== undefined && "cursor-not-allowed")} ref={trigger} aria-disabled={blocked !== undefined || undefined} aria-describedby={blocked} onClick={() => { if (blocked === undefined) setOpen(true); }}>
+      <ListRow as="button" chevron ringInset className={cn("text-foreground text-sm transition-colors", blocked !== undefined && "cursor-not-allowed")} ref={trigger} aria-disabled={blocked !== undefined || undefined} aria-describedby={blocked} onClick={() => { if (blocked === undefined) setOpen(true); }}>
         <IconTile><FileCode2 aria-hidden /></IconTile>
         <span className="flex min-w-0 flex-1 flex-col gap-copy-gap"><span className="text-base font-medium">{m.settings.ci.workflow}</span><span className="text-muted-foreground text-xs">.github/workflows/malmoi-i18n.yml</span></span>
       </ListRow>
