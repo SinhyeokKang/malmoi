@@ -136,6 +136,8 @@ describe("실물 가이드 본문 게이트", () => {
     expect(search).toContain(`at least ${WORDS[KEY_QUERY_MIN]} characters`);
     expect(search).toContain(`up to ${WORDS[SEARCH_GROUP_LIMIT]} results`);
     expect(search).toContain(`first ${Q_MAX_LENGTH} characters`);
+    // 그룹명은 라벨 게이트로 안 묶인다 — 같은 낱말이 사전의 다른 자리에 있어서다. 사전 값으로 직접 단언한다.
+    for (const group of Object.values(m.search.groups)) expect(search, group).toContain(group);
   });
 
   // 에이전트 연결 조각의 정본은 가이드다 — `/mcp`의 Connect 카드를 걷은 뒤(2026-09-30) 앱 안 사본이 없다. 토큰은 원문이 아니라 환경변수 참조다.
