@@ -1153,17 +1153,22 @@ GitHub 읽기·파싱은 tx 밖이며 `prepareFirstSnapshot`의 `payload === nul
     생성은 선조회 실패 경로를 탄다. `create-plan.ts`는 클라이언트 그래프라 `lib/operator/`를 import하지 않는다.
   - ⚠️ **상한이 걸리는 자리는 생성만이 아니다 — 넷이다** (2026-10-03). 그 전에는 복원·OWNER 승격·OWNER 초대 수락이
     활성 OWNER 수를 다시 세지 않아 "보관 → 생성 → 복원"으로 넷 이상이 됐다. 셋은 `lib/projects/owner-limit.ts`의
-    `lockOwnerSlots(tx, userIds)`를 부른다 — 대상 User를 **id 순으로 `FOR UPDATE`**(생성과 같은 잠금이라 같은 사용자의
-    동시 생성·복원이 직렬화된다) → 각자 `ownedActiveProjects`를 세고 → **상한에 닿은 사람만** 운영자인지 본다 → 넘게 될
+    `lockOwnerSlots(tx, counted, alsoLock)`을 부른다 — 대상 User(`counted` ∪ `alsoLock`)를 **id 순으로 `FOR UPDATE`**(생성과 같은 잠금이라 같은 사용자의
+    동시 생성·복원이 직렬화된다 — `lib/keys/__tests__/list-aggregates.integration.ts`가 실제 PG에서 "동시 복원·생성 중 하나만
+    성공"과 운영자 복원 통과를 잰다, `pnpm test:projects:postgres`) → `counted`만 각자 `ownedActiveProjects`를 세고 → **상한에 닿은 사람만** 운영자인지 본다 → 넘게 될
     비운영자 목록을 돌려준다. 복원(`runUnarchive`)은 그 프로젝트의 **OWNER 전원**을 넘기고(보관된 프로젝트라 지금 그들의
-    활성 수에 안 들어 있다), 승격(`changeMemberRole`의 EDITOR→OWNER)은 대상자, 수락(`acceptInvitation`의 OWNER 초대)은
+    활성 수에 안 들어 있다), 승격(`changeMemberRole`의 EDITOR→OWNER)은 대상자(행위자는 `alsoLock` — 아래 잠금 순서), 수락(`acceptInvitation`의 OWNER 초대)은
     수락자를 넘긴다. 거부는 복원·승격이 `owner-limit-reached`, 수락이 `InviteError` `"limit-reached"`이고 수락 거부는
     롤백이라 초대가 소비되지 않는다. 생성의 재집계는 이 함수로 옮기지 않았다 — 이미 잠금이 있고 판정의 단위
     (`ownedActiveProjects`·`PROJECT_LIMIT`·`isOperatorUser`)가 같으면 된다. **이미 넘긴 상태는 고치지 않는다** — 늘리는
     요청만 거부하고 보관은 언제나 된다.
-  - **잠금 순서**: 복원·승격은 `lockProjectAccess`(`Project`) → User, 생성은 User만, 수락은 초대 판정 → User다.
-    `Project`↔User 역순이 없어 교착이 생기지 않고, 여러 User는 id 순이다. User 잠금이 `lockProjectAccess` **뒤**라
-    인가 자리(`locked-access.test.ts`)는 그대로다.
+  - **잠금 순서**: 복원·승격은 `lockProjectAccess`(`Project`) → User, 생성은 User만, 수락은 초대 판정 → User다. 여러 User는
+    **한 번에 id 순으로** `FOR UPDATE`한다. ⚠️ **승격은 행위자도 같은 정렬 집합에 넣어 잠근다** — `lockOwnerSlots(tx, counted,
+    alsoLock)`이 `counted`(대상자)만 세고 `alsoLock`(행위자)은 잠그기만 한다. 승격의 사건 기록에서 `ProjectEvent.actorUserId` FK가
+    행위자 User 행에 `FOR KEY SHARE`를 잡는데, 그 행을 정렬 집합 밖에서 나중에 잡으면 같은 두 사람을 id 순으로 잠그는 다른
+    프로젝트의 복원과 순환한다(`FOR KEY SHARE`는 `FOR UPDATE`와 충돌한다). 행위자를 미리 같은 집합에서 잠그면 그 FK 잠금은
+    이미 쥔 행이라 기다리지 않는다. 그래서 생성·복원·승격·수락 사이에 `Project`↔User 역순도 User↔User 순환도 없다. User 잠금이
+    `lockProjectAccess` **뒤**라 인가 자리(`locked-access.test.ts`)는 그대로다.
 - **`slug.ts`의 `planSlug`** — 형식·길이(`PROJECT_SLUG_MAX = 40`)·예약어(`RESERVED = {"new"}`)를 거른다.
   형식 판정은 `lib/pull/ref-slug.ts`의 `isRefSafeSlug` **한 벌**을 쓴다(브랜치 이름에 그대로 들어가므로).
 - **`confirm.ts`의 `planConfirmedFormat`** — ⚠️ **클라이언트가 보낸 `adapter`·`pathTemplate`을 파일 재조회로
@@ -2592,11 +2597,12 @@ challenge**가 그 둘을 묶을 것. 셋을 다 통과한 뒤에야 `Account`�
   `User.id`(DB마다 다르고 dev 리셋마다 바뀐다)·이름·로그인 `Account`로 하지 않는다. `emailLookup`이 `null`인 행은 운영자가 아니다.
 - **파싱**: 쉼표 분리 · 조각마다 `normalizeEmail`(trim + 소문자 — gmail 점·`+` 태그를 접지 않는다) · `@`가 정확히 하나이고
   앞뒤가 빈 것이 아닌 조각만 · 빈 조각 무시 · 중복은 Set이 접는다. 형식이 틀린 항목은 무시하고 나머지는 적용한다.
-- **fail-closed** — env가 없거나 비면 운영자는 0명이고 DB를 읽지 않는다. env는 **호출 시점에** 읽는다(모듈 최상위·기본 인자
-  평가 금지 — POSTMORTEM 2026-08-31). 조회가 실패하면 **던진다** — "운영자 아님"으로 접지 않는다(POSTMORTEM 2026-09-03).
+- **fail-closed** — env가 없거나 비면 운영자는 0명이고 DB를 읽지 않는다. env는 **호출 시점에** 읽는다(모듈 최상위 평가 금지 —
+  기본 인자 `process.env`는 호출마다 평가돼 괜찮다, POSTMORTEM 2026-08-31). 조회가 실패하면 **던진다** — "운영자 아님"으로 접지 않는다(POSTMORTEM 2026-09-03).
   호출부의 기존 실패 경로(①의 `unavailable`, 생성의 선조회 실패, 트랜잭션 안이면 롤백)를 탄다.
-- **상한에 닿은 사람만 조회한다** — 생성 선조회는 상한일 때만, `lockOwnerSlots`는 `owned >= PROJECT_LIMIT`인 사람만 본다.
-  운영자가 없는 환경과 상한에 안 닿은 사용자의 비용은 0이다.
+- **조회 비용** — ①(`listRepositories`)과 `lockOwnerSlots`는 `owned >= PROJECT_LIMIT`일 때만 운영자인지 본다. 생성 선조회
+  (`createProjectFromRepo`)는 집계와 같은 `Promise.all`에서 **늘** 부른다(왕복을 늘리지 않으려고). 운영자가 없는 환경의 비용은
+  0이고(env가 비면 DB를 읽지 않는다), 있는 환경에서도 PK 한 행이다.
 - ⚠️ **도메인 단위 지정을 하지 않는다.** 그 도메인의 동료(초대받는 번역 편집자)까지 운영자가 되고, 퇴사 뒤에도 GitHub에 검증
   상태로 남은 회사 주소로 로그인한 사람이 운영자로 판정된다. 주소 전체가 정확히 일치해야 한다.
 - ⚠️ **`EMAIL_LOOKUP_KEY` 회전 중**에는 저장값이 아직 옛 키라 일치하지 않을 수 있다 — 결과는 "운영자 아님"(fail-closed)이고
@@ -2608,7 +2614,7 @@ challenge**가 그 둘을 묶을 것. 셋을 다 통과한 뒤에야 `Account`�
 
 ### 6.3 거부는 값으로 흐른다 — 예외로 죽지 않는다
 
-Server Action의 거부 사유(`unauthorized`·`not-found`·`forbidden`·`last-owner`·`not-member`·`unavailable`·**`archived`**·초대 분기)는 **응답에 실려** 화면이 `accessErrorMessage`로 문구를 정한다(`isAccessError`가 문자열을 가른다 — 화면 셋이 각자 `Set`을 들던 것을 한 곳으로). `unavailable`만 재시도를 권하고 로그인을 시키지 않는다(§6.1.2). ⚠️ **`archived`는 7단계에 union으로 들어왔고 `forbidden`과 일부러 갈려 있다**(§5.6.4) — 권한은 그대로이고 프로젝트가 멈춘 것이라, "권한이 없다"고 말하면 사용자가 OWNER에게 권한을 달라고 한다. **`AccessError`·`ACCESS_ERRORS`·사전 셋이 함께 움직인다** — 하나만 늘리면 새 사유가 화면에서 무음이다. **페이지의 거부도 사유를 버리지 않는다** — `requireProjectAccess`는 `/projects?e=<status>`로 보내고 목록 화면이 `isAccessError`로 걸러 한 줄 보인다(주소창 값이라 모르는 값은 무시). ⚠️ **존재 비노출의 근거는 문구가 아니라 분기 순서다** (2026-09-08 정정 — 이 문장은 반대를 말하고 있었다). 두 문구는 **일부러 다르다**(`messages/en.tsx` — forbidden "Ask the project owner." vs not-found "Check your invite link."). 노출을 막는 것은 `planProjectAccess`가 **멤버가 아니면 무조건 `not-found`**를 내는 것이고(`lib/auth/access.ts`), 그래서 `forbidden`은 **멤버에게만** 도달한다 — 실측: EDITOR가 `/projects/:slug/settings`를 직접 열면 `?e=forbidden`, 비멤버는 `not-found`다. 문구를 같게 맞추거나 `forbidden` 판정을 멤버 검사 앞으로 옮기면 이 성질이 깨진다. 처리되지 않은 throw는 사용자에게 digest만 있는 일반 오류가 되고, 판정 함수가 만들어 둔 사유가 통째로 무시된다.
+Server Action의 거부 사유(`unauthorized`·`not-found`·`forbidden`·`last-owner`·`not-member`·`unavailable`·**`archived`**·`owner-limit-reached`(복원·OWNER 승격, §3.1)·초대 분기)는 **응답에 실려** 화면이 `accessErrorMessage`로 문구를 정한다(`isAccessError`가 문자열을 가른다 — 화면 셋이 각자 `Set`을 들던 것을 한 곳으로). `unavailable`만 재시도를 권하고 로그인을 시키지 않는다(§6.1.2). ⚠️ **`archived`는 7단계에 union으로 들어왔고 `forbidden`과 일부러 갈려 있다**(§5.6.4) — 권한은 그대로이고 프로젝트가 멈춘 것이라, "권한이 없다"고 말하면 사용자가 OWNER에게 권한을 달라고 한다. **`AccessError`·`ACCESS_ERRORS`·사전 셋이 함께 움직인다** — 하나만 늘리면 새 사유가 화면에서 무음이다. ⚠️ `owner-limit-reached`의 사전 값은 문자열이 아니라 **숫자를 보간하는 함수**이고 `lib/auth/message.ts`가 `PROJECT_LIMIT`으로 풀어 담는다(운영자는 거부를 받지 않으므로 3이 참이다). **페이지의 거부도 사유를 버리지 않는다** — `requireProjectAccess`는 `/projects?e=<status>`로 보내고 목록 화면이 `isAccessError`로 걸러 한 줄 보인다(주소창 값이라 모르는 값은 무시). ⚠️ **존재 비노출의 근거는 문구가 아니라 분기 순서다** (2026-09-08 정정 — 이 문장은 반대를 말하고 있었다). 두 문구는 **일부러 다르다**(`messages/en.tsx` — forbidden "Ask the project owner." vs not-found "Check your invite link."). 노출을 막는 것은 `planProjectAccess`가 **멤버가 아니면 무조건 `not-found`**를 내는 것이고(`lib/auth/access.ts`), 그래서 `forbidden`은 **멤버에게만** 도달한다 — 실측: EDITOR가 `/projects/:slug/settings`를 직접 열면 `?e=forbidden`, 비멤버는 `not-found`다. 문구를 같게 맞추거나 `forbidden` 판정을 멤버 검사 앞으로 옮기면 이 성질이 깨진다. 처리되지 않은 throw는 사용자에게 digest만 있는 일반 오류가 되고, 판정 함수가 만들어 둔 사유가 통째로 무시된다.
 
 ⚠️ **`ready`가 아닌 프로젝트의 번역 Action은 `not-ready`다** (2026-09-07, SaaS 5단계). 첫 적재 전에는
 저장할 키가 없어 화면으로 도달하지 않으므로 이것이 막는 것은 **URL 직접 호출**과 적재 실패 후의
