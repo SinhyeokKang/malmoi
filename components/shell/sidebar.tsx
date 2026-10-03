@@ -26,6 +26,17 @@ const ROW = "flex h-8 items-center gap-2 rounded-sm px-2 text-sm whitespace-nowr
 const FADE = "transition-opacity duration-200";
 
 /**
+ * LNB의 아이콘 버튼 한 벌 — 접기 토글과 접힌 레일의 프로젝트 트리거가 같은 틀이다(2026-10-04 사용자).
+ * `Button`이지 raw `<button>`이 아니다(ui/ 밖 raw 태그 0 게이트) — 항목과 같은 틀(`ROW`)로 덮는다.
+ * ⚠️ **`font-normal`로 되누른다** (2026-09-30 사용자) — Button 라벨은 500이지만 LNB 내비는 그 규칙 밖이라 옆 항목(400)과 같아야 한다.
+ */
+const ICON_BUTTON = cn(ROW, "text-foreground hover:text-foreground h-8 justify-start font-normal hover:bg-foreground/[0.03]");
+
+/** 구역 머리 줄의 접힘 틀 — 높이를 grid 행으로 접어 아래 항목이 튀지 않고 올라온다. `inert`가 접힌 줄을 Tab 순서에서 뺀다. */
+const fold = (hidden: boolean) =>
+  cn("grid transition-[grid-template-rows,opacity,margin] duration-200", hidden ? "-mb-0.5 grid-rows-[0fr] opacity-0" : "grid-rows-[1fr]");
+
+/**
  * 앱 셸의 사이드바 (8-2 골격 → **8-3이 시안 `212:944`에 맞췄다**).
  *
  * ⚠️ **패널이 아니다.** 헤더와 마찬가지로 캔버스 위에 그냥 얹힌다(배경·border·그림자 0) — 흰
@@ -90,10 +101,7 @@ export function Sidebar({ memberships, userName }: { memberships: NavProject[]; 
             높이를 grid 행으로 접어 아래 항목이 튀지 않고 올라온다. `inert`가 접힌 머리의 전환 메뉴를 Tab 순서에서 뺀다.
           */}
           {zone.key === "project" && (
-          <div
-            inert={collapsed}
-            className={cn("grid transition-[grid-template-rows,opacity,margin] duration-200", collapsed ? "-mb-0.5 grid-rows-[0fr] opacity-0" : "grid-rows-[1fr]")}
-          >
+          <div inert={collapsed} className={fold(collapsed)}>
           {/* ⚠️ 행을 접는 것은 이 겹이다 — `h-8`을 든 `<p>`에 `overflow-hidden`을 걸면 제 높이 32를 지켜 0fr 행 밖으로 넘친다. */}
           <div className="min-h-0 overflow-hidden">
           <p data-zone-head className={cn(ROW, "text-foreground font-medium")}>
@@ -105,6 +113,26 @@ export function Sidebar({ memberships, userName }: { memberships: NavProject[]; 
             */}
             <ProjectSwitcher projects={memberships} current={project?.slug ?? null} />
           </p>
+          </div>
+          </div>
+          )}
+          {/*
+            ⚠️ **접힌 레일에서는 머리 줄 대신 썸네일 아이콘 버튼이 선다** (2026-10-04 사용자) — 접기 토글과 같은 틀(`ICON_BUTTON`)이고
+            누르면 머리와 같은 전환 메뉴가 열린다. 머리와 반대 방향으로 같은 32를 접고 펴서 전이 중에도 아래 항목이 제자리다.
+            보이는 이름이 없어 `title`이 프로젝트 이름을, `aria-label`이 동작을 댄다.
+          */}
+          {zone.key === "project" && (
+          <div inert={!collapsed} className={fold(!collapsed)}>
+          <div data-zone-rail className="min-h-0 overflow-hidden">
+            <ProjectSwitcher
+              projects={memberships}
+              current={project?.slug ?? null}
+              trigger={
+                <Button variant="ghost" aria-label={m.common.nav.projectSwitcher.label} title={zone.label} className={ICON_BUTTON}>
+                  <ProjectThumbnail name={zone.label} src={project?.image} size="xs" />
+                </Button>
+              }
+            />
           </div>
           </div>
           )}
@@ -122,17 +150,13 @@ export function Sidebar({ memberships, userName }: { memberships: NavProject[]; 
         {navFooterItems().map((item) => (
           <Item key={item.key} item={item} active={isActive(pathname, item)} collapsed={collapsed} />
         ))}
-        {/*
-          ⚠️ **LNB 맨 아래다** (2026-09-28 사용자). 리사이저로도 접고 편다 — 하한(200) 밑으로 끌면 접히고, 접힌 채 끌면 펴진다(`collapsible`).
-          `Button`이지 raw `<button>`이 아니다(ui/ 밖 raw 태그 0 게이트) — 항목과 같은 틀(`ROW`)로 덮는다.
-          ⚠️ **`font-normal`로 되누른다** (2026-09-30 사용자) — Button 라벨은 500이지만 LNB 내비는 그 규칙 밖이라 옆 항목(400)과 같아야 한다.
-        */}
+        {/* ⚠️ **LNB 맨 아래다** (2026-09-28 사용자). 리사이저로도 접고 편다 — 하한(200) 밑으로 끌면 접히고, 접힌 채 끌면 펴진다(`collapsible`). */}
         <Button
           variant="ghost"
           onClick={toggle}
           aria-expanded={!collapsed}
           title={collapsed ? m.common.nav.expandSidebar : undefined}
-          className={cn(ROW, "text-foreground hover:text-foreground h-8 justify-start font-normal hover:bg-foreground/[0.03]")}
+          className={ICON_BUTTON}
         >
           <span className="flex size-4 shrink-0 items-center justify-center">
             {collapsed ? <PanelLeftOpen className="size-4" aria-hidden /> : <PanelLeftClose className="size-4" aria-hidden />}

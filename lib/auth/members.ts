@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { recordEvent } from "@/lib/events/record";
 import { invitationEventLabel, userEventLabel } from "@/lib/events/member-label";
+import { lockOwnerSlots } from "@/lib/projects/owner-limit";
 
 import { lockProjectAccess } from "./lock";
 import { planMemberChange } from "./membership";
@@ -115,6 +116,12 @@ export async function changeMemberRole(prisma: PrismaClient, subject: Subject, i
     const plan = planMemberChange({ members, targetUserId: input.targetUserId, nextRole: input.nextRole });
     if (plan !== "ok") return plan;
     if (members.find(member => member.userId === input.targetUserId)?.role === input.nextRole) return "ok" as const;
+    // OWNER 승격은 대상자의 활성 OWNER 프로젝트를 하나 늘린다 — 생성과 같은 상한을 잠금 안에서 다시 센다(operator-account C7).
+    // 강등·제거는 줄이는 쪽이라 세지 않는다. User 잠금은 위 `lockProjectAccess`(Project) 뒤다. 행위자도 같은 정렬 집합으로 잡는다 —
+    // 아래 사건의 actor FK가 그 행에 `KEY SHARE`를 걸어, 따로 두면 맞승격과 교착한다(`lockOwnerSlots`의 `alsoLock`).
+    if (input.nextRole === "OWNER" && (await lockOwnerSlots(tx, [input.targetUserId], [userId])).length > 0) {
+      return "owner-limit-reached" as const;
+    }
 
     // ⚠️ **조건부 쓰기의 count를 읽는다.** `delete`/`update`는 행이 사라졌을 때 P2025로 던지는데,
     // 그건 다른 경로가 같은 멤버를 먼저 지운 경우 실제로 일어난다 — Server Action에서 처리되지 않은

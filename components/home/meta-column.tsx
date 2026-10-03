@@ -4,194 +4,228 @@ import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { HoldLater } from "@/components/home/hold-later";
-import { LocaleFlag } from "@/components/translations/locale-badge";
+import { LateHold, LatePrState, MetaTabs } from "@/components/home/meta-tabs";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
+import type { LogKind } from "@/lib/events/payload";
 import type { Trigger } from "@/lib/events/view";
-import type { MetaRow } from "@/lib/home/meta";
-import { connectionState } from "@/lib/home/state";
+import type { HomeLate, MetaTabs as Tabs, ProjectTabRow, PublishTabRow, SyncTabRow } from "@/lib/home/meta";
 import { m } from "@/lib/i18n";
-import type { HoldReason } from "@/lib/protection/plan";
 import { pullNumberFrom } from "@/lib/projects/remote-plan";
 import { relativeTime } from "@/lib/relative-time";
 import { cn } from "@/lib/utils";
 import { routes } from "@/lib/routes";
 
 /**
- * 오른쪽 `Project` 메타 열 — **변하지 않는 사실만** (캔버스 `2a` 오른쪽 · DESIGN §6.64).
+ * 오른쪽 `Project` 메타 열 — **사실만** 든다 (project-card-tabs · DESIGN §6.64). 탭 셋 `Project` · `Sync` · `Publish`이고 착지할 때마다 `Project`다.
+ * 실패의 "무엇을 하라"와 상태·사유는 배너·`Needs your attention`이 든다.
  *
- * ⚠️ **구역이 둘이다** — 리포의 모양(주소·브랜치·표면·로케일·키·멤버)과 **시각**(마지막 Sync·
- * 마지막 Publish·생성·보관). 한 덩어리로 두면 아홉 행이 균질한 표가 되어 "언제"를 찾는 눈이
- * 위에서부터 훑어야 한다.
+ * ⚠️ **한 행 = 라벨 하나 + 사실 하나** — 옛 `Last sync`는 주체 · 성공 시각 · 실패 · 보류를 `·`로 한 줄에 붙여 어느 조각이 어느 사실인지 안 읽혔다.
+ * 행의 유무는 `metaTabs`가 정하고 여기는 kind별 모양만 든다.
  *
- * ⚠️ **`[Project settings ›]`의 노출은 편의이고 차단이 아니다** — `/settings`의
- * `requireProjectAccess({ permission: "project:settings" })`가 실제 방어선이다 (CLAUDE.md).
+ * ⚠️ **서버가 패널을 렌더하고 탭 껍데기(`MetaTabs`)만 클라이언트다** — 상대 시각·PR 번호·사전 문구가 서버에 남는다.
+ *
+ * ⚠️ **바닥 링크는 탭마다 하나이고 패널 안에 있다** — 높이가 탭을 따른다. `[Settings ›]`의 노출은 편의이고 차단이 아니다 —
+ * `/settings`의 `requireProjectAccess({ permission: "project:settings" })`가 실제 방어선이다 (CLAUDE.md).
  */
-
-/** 시각을 드는 행들 — 아래 구역으로 내려간다. */
-const TIMES: readonly MetaRow["kind"][] = ["lastSync", "lastPublish", "created", "archived"];
-
-export function MetaColumn({ rows, slug, now, canOpenSettings, heldLater }: {
-  rows: readonly MetaRow[];
+export function MetaColumn({ tabs, slug, now, canOpenSettings, late }: {
+  tabs: Tabs;
   slug: string;
   now: Date;
   canOpenSettings: boolean;
   /**
-   * 열린 PR 조회에 달린 보류 사유 — **본문을 막지 않고 늦게 도착한다**(ux-drift-unify Q6 · malmoi#107 — 클라이언트 섬 `HoldLater`가 받는다). 없으면 `Last sync` 행의 `held`가 결론이다.
-   * `planHomeHold`가 promise를 낼 때만 온다(편집 0 · 게이트 있음).
+   * 열린 PR 조회에 달린 Hold · PR state — **본문을 막지 않고 늦게 도착한다**(malmoi#107). `planHomeHold`가 promise를 낼 때만 온다(편집 0 · 게이트 있음).
+   * 없으면 `tabs`의 `hold` 행이 결론이다.
    */
-  heldLater?: Promise<HoldReason | null>;
+  late?: Promise<HomeLate>;
 }) {
-  const facts = rows.filter((row) => !TIMES.includes(row.kind));
-  const times = rows.filter((row) => TIMES.includes(row.kind));
-
+  const sync = tabs.sync.map((group, i) => group.map((row) => syncFact(row, now)).concat(
+    // 늦게 오는 Hold는 마지막 묶음 끝에 붙는다 — 첫 렌더에 아는 Hold(`hold` 행)와 같은 자리다.
+    late !== undefined && tabs.lateHold && i === tabs.sync.length - 1 ? [<LateHold key="late-hold"><HoldRow /></LateHold>] : [],
+  ));
   return (
-    <aside className="border-border flex h-fit flex-col overflow-hidden rounded-lg border" aria-labelledby="home-meta-title">
-      {/* 머리 아래 선은 머리가 긋는다(2026-10-01 4-Y1 — `Card`와 한 규약) · 머리 gap은 카드 머리 한 벌이다(4-W1). */}
-      <h2 id="home-meta-title" className="border-divider flex min-h-12 items-center gap-2 border-b px-4 py-3 text-base font-medium">
-        {m.home.meta.title}
-      </h2>
-      {/* 구역 사이 선만 구역이 든다 — 머리 바로 아래 구역은 머리 선을 쓴다. */}
-      <MetaGroup rows={facts} now={now} divided={false} />
-      <MetaGroup rows={times} now={now} divided={facts.length > 0} heldLater={heldLater} slug={slug} />
-      {canOpenSettings && (
-        <Link
-          href={routes.settings(slug)}
-          className="focus-visible:ring-ring hover:bg-foreground/[0.02] border-divider flex items-center justify-center gap-0.5 border-t px-4 py-3 text-sm focus-visible:ring-2 focus-visible:outline-none"
-        >
-          {m.home.meta.settings}
-          <ChevronRight className="text-muted-foreground size-4" aria-hidden />
-        </Link>
-      )}
+    // 보이는 머리가 없어 이름은 aria-label이 든다 — 첫 탭도 `Project`지만 역할(랜드마크 vs 탭)이 갈라 준다.
+    <aside className="border-border flex h-fit flex-col overflow-hidden rounded-lg border" aria-label={m.home.meta.title}>
+      <MetaTabs
+        label={m.home.meta.tabs.list}
+        identity={slug}
+        late={late}
+        tabs={[
+          {
+            value: "project", label: m.home.meta.tabs.project,
+            panel: <Panel groups={tabs.project.map((group) => group.map((row) => projectFact(row, slug, now)))}
+              footer={canOpenSettings ? <FooterLink href={routes.settings(slug)}>{m.home.meta.settings}</FooterLink> : null} />,
+          },
+          {
+            value: "sync", label: m.home.meta.tabs.sync,
+            panel: <Panel groups={sync} footer={<FooterLink href={logsOf(slug, "imports")}>{m.home.meta.syncLogs}</FooterLink>} />,
+          },
+          {
+            value: "publish", label: m.home.meta.tabs.publish,
+            panel: <Panel groups={tabs.publish.map((group) => group.map((row) => publishFact(row, now)))}
+              footer={<FooterLink href={logsOf(slug, "publish")}>{m.home.meta.publishLogs}</FooterLink>} />,
+          },
+        ]}
+      />
     </aside>
   );
 }
 
+/** Logs를 그 종류로 좁혀 연다 — `kind`는 Logs가 읽는 화면 낱말(`LOG_KINDS`)이다. 이력이 없어도 선다(빈 목록은 Logs의 빈 상태가 말한다). */
+function logsOf(slug: string, kind: LogKind): string {
+  return routes.logs(slug, { kind });
+}
+
 /**
- * ⚠️ **라벨 폭이 96으로 고정이다** — `justify-between`으로 벌리면 값의 시작 위치가 라벨 길이를 따라
- * 행마다 달라지고, 아홉 행이 한 열로 안 읽힌다.
+ * ⚠️ **묶음 사이만 선이다** — 첫 묶음은 탭 머리 선을 쓴다. 라벨 폭 96 고정 + 값 오른쪽 정렬(`dir` 아님)이라 값의 끝이 한 열로 선다.
  */
-function MetaGroup({ rows, now, divided, heldLater, slug }: { rows: readonly MetaRow[]; now: Date; divided: boolean; heldLater?: Promise<HoldReason | null>; slug?: string }) {
-  if (rows.length === 0) return null;
+function Panel({ groups, footer }: { groups: ReactNode[][]; footer: ReactNode }) {
   return (
-    <dl className={cn("flex flex-col gap-2.5 px-4 py-3.5", divided && "border-divider border-t")}>
-      {rows.map((row) => (
-        <Fact key={row.kind} width={96} label={m.home.meta[row.kind]}>{value(row, now, heldLater, slug)}</Fact>
+    <>
+      {groups.map((facts, i) => (
+        <dl key={i} className={cn("flex flex-col gap-2.5 px-4 py-3.5", i > 0 && "border-divider border-t")}>{facts}</dl>
       ))}
-    </dl>
+      {footer}
+    </>
   );
 }
 
-function value(row: MetaRow, now: Date, heldLater?: Promise<HoldReason | null>, slug = ""): ReactNode {
-  switch (row.kind) {
-    case "repository":
-      return row.disconnected ? (
-        <span className="flex flex-wrap items-center gap-1.5">
-          {`${row.owner}/${row.name}`}
-          {/* ⚠️ **링크가 사라지고 pill이 선다** — 지금 읽을 수 없는 자리를 링크로 두면 화면이 거짓말한다. */}
-          {/* 배지는 연결 갈래의 상태 키다 — 미연결 회색 · 끊김 호박 · 다른 리포 빨강(DESIGN §2.4, 설정 카드와 같은 `STATE` 행). */}
-          <StatusBadge state={connectionState(row.problem)} />
-        </span>
-      ) : (
-        /*
-          ⚠️ **외부 링크에 글리프를 달지 않는다** (DESIGN §6.3). 이 자리가 2026-09-16에 먼저 뺐고 —
-          캔버스(`design_handoff_project_home`)의 lucide 목록에 `external-link`가 없다 — 2026-09-18에
-          나머지 열이 따라왔다. 나가는 신호는 색과 `target="_blank"`가 든다.
-          `home-landmarks.test.tsx`가 이 행과 아래 PR 행을 **함께** 세서 한쪽에만 되살아나지 못하게 한다.
-        */
-        <InlineLink
-          href={row.href}
-          target="_blank"
-          rel="noreferrer"
-
-        >
-          {`${row.owner}/${row.name}`}
-        </InlineLink>
-      );
-    case "branch":
-      return row.branch;
-    case "surfaces":
-      return row.count;
-    case "locales":
-      /* ⚠️ 매핑이 없는 코드는 `LocaleFlag`가 `null`을 낸다 — 물음표·지구본을 대신 그리지 않는다. */
-      return (
-        <span className="flex flex-wrap items-center gap-1.5">
-          {row.codes.map((code) => (
-            // 국기 + 코드는 배지 하나다(2026-09-30 사용자 — 프로젝트 행 Meter 머리와 같은 모양).
-            <Badge key={code} variant="soft-neutral" className="gap-1">
-              <LocaleFlag code={code} />
-              {code}
-            </Badge>
-          ))}
-        </span>
-      );
-    case "keys":
-    case "members":
-      // 로케일을 고정한다 — 서버 로케일에 따라 구분자가 갈리면 같은 DB 상태가 다른 화면을 낸다.
-      return row.count.toLocaleString("en-US");
-    case "lastSync":
-      /*
-        ⚠️ **배지가 먼저고 사실이 뒤다** (4-Y19 — Logs 보조줄의 `[배지…] 사실` 문법) — `[Nightly sync] 1d ago · [Sync failed] 10m ago · [Held]`.
-        상태 조각이 색 글자가 아니라 배지다(4-W11 — 옛 붉은 `failed 10m ago` · 호박 `held until …`). 첫 동기화 전에는 아무것도 붙이지 않는다.
-      */
-      if (row.at === null) return m.home.meta.notSyncedYet;
-      return (
-        <span className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
-          <span><TriggerBadge trigger={row.trigger} kind="IMPORT" />{relativeTime(row.at, now)}</span>
-          {/* `2b`에서만 선다 — 일부 반영은 `Partially synced`다(🔴 A2, "failed"로 말하지 않는다). */}
-          {row.failed !== null && <span>· <StatusBadge state={row.failed.state} className="mr-1.5 align-middle" />{relativeTime(row.failed.at, now)}</span>}
-          {/* 보류는 지금의 판정이다(ux-drift-unify Q6) — 사유 문장은 `To send` 카드 보조 줄이 든다. PR에 달린 사유는 늦게 도착한다. */}
-          {/* 늦게 도착하는 사유는 클라이언트 섬이 effect로 받는다 — `use()`로 받으면 `?event=`·재검증 전환이 조회를 기다린다(U7 r1). */}
-          {heldLater === undefined ? <Held reason={row.held} /> : <HoldLater hold={heldLater} as="badge" identity={slug} />}
-        </span>
-      );
-    case "lastPublish": {
-      // ⚠️ 번호를 못 뽑으면 링크를 만들지 않는다 — 주소를 그대로 이름으로 읽히지 않는다.
-      const pr = pullNumberFrom(row.prUrl);
-      if (row.at === null) return m.home.meta.never;
-      return pr === null || row.prUrl === null ? (
-        <span><TriggerBadge trigger={row.trigger} kind="PUBLISH" />{relativeTime(row.at, now)}</span>
-      ) : (
-        /* 캔버스는 **PR이 앞이고 시각이 뒤**다 — 이 행이 답하는 질문이 "무엇을 보냈나"라서다. */
-        <span>
-          {m.home.meta.pullRequest}{" "}
-          {/*
-            ⚠️ **글리프 없이 색만 든다** (DESIGN §6.3 — 위 리포 행과 같은 규칙). 접근 이름이 `#127`
-            하나뿐이라 앞의 `{m.home.meta.pullRequest}`가 그것이 무엇인지 말하는 몫을 진다.
-          */}
-          <InlineLink
-            href={row.prUrl}
-            target="_blank"
-            rel="noreferrer"
-
-          >
-            {m.home.meta.pr(pr)}
-          </InlineLink>
-          {" · "}
-          <TriggerBadge trigger={row.trigger} kind="PUBLISH" />
-          {relativeTime(row.at, now)}
-        </span>
-      );
-    }
-    case "created":
-    case "archived":
-      return relativeTime(row.at, now);
-  }
+function FooterLink({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className="focus-visible:ring-ring hover:bg-foreground/[0.02] border-divider flex items-center justify-center gap-0.5 border-t px-4 py-3 text-sm focus-visible:ring-2 focus-visible:ring-inset focus-visible:outline-none"
+    >
+      {children}
+      <ChevronRight className="text-muted-foreground size-4" aria-hidden />
+    </Link>
+  );
 }
 
-/** 보류 배지 — 사유가 셋이어도 낱말은 `Held` 하나다(DESIGN §2.4). 사유는 카드 보조 줄이 든다. */
-function Held({ reason }: { reason: HoldReason | null }) {
-  return reason === null ? null : <span>· <StatusBadge state="held" className="align-middle" /></span>;
+function Row({ label, children }: { label: string; children: ReactNode }) {
+  return <Fact width={96} align="end" label={label}>{children}</Fact>;
 }
 
 /**
- * 실행 주체 (nightly-sync 14) — **Logs 보조줄과 같은 실행 종류 배지**다(4-Y19 — `Manual sync`·`Nightly publish` …, `m.logs.meta.runType`). 옛 소문자
- * `nightly`가 같은 Home의 Recent logs `Nightly sync` 옆에 섰다. 사건이 없으면(`null`) 붙이지 않는다 — 이력 도입 전 실행에 주체를 추정해 적지 않는다.
- *
- * ⚠️ **배지다, 글자가 아니다** (2026-09-30 사용자). 요약 줄 행간이 20이고 배지도 20이라 줄 높이가 안 흔들린다. 배지 자체가 경계라 `·`를 두지 않는다.
+ * 회색 평문 값(`Never` · `Not recorded`) — **muted(#737373)**다(시안 v3 `2a`·`2f`, malmoi#180). ⚠️ `Fact dimmed`(라벨 톤 `text-gray-dim`)를 쓰지 않는다 —
+ * 값이 라벨과 같은 톤이면 둘째 라벨처럼 읽힌다. 공용 `dimmed`의 기본값은 다른 소비자가 쓰므로 바꾸지 않는다.
  */
-function TriggerBadge({ trigger, kind }: { trigger: Trigger | null; kind: "IMPORT" | "PUBLISH" }) {
-  if (trigger === null) return null;
-  return <Badge variant="soft-neutral" className="mr-1.5 align-middle">{m.logs.meta.runType[kind][trigger]}</Badge>;
+function Muted({ children }: { children: ReactNode }) {
+  return <span className="text-muted-foreground">{children}</span>;
+}
+
+// 로케일을 고정한다 — 서버 로케일에 따라 구분자가 갈리면 같은 DB 상태가 다른 화면을 낸다.
+const count = (n: number) => n.toLocaleString("en-US");
+
+function projectFact(row: ProjectTabRow, slug: string, now: Date): ReactNode {
+  const label = m.home.meta[row.kind];
+  switch (row.kind) {
+    case "repository":
+      /*
+        ⚠️ **외부 링크에 글리프를 달지 않는다** (DESIGN §6.3) — 나가는 신호는 색과 `target="_blank"`가 든다. `home-landmarks.test.tsx`가
+        이 행과 PR 행을 **함께** 세서 한쪽에만 되살아나지 못하게 한다. 파랑은 GitHub으로 나가는 것뿐이다(리포 · PR) — 앱 안 이동은 검정 + chevron.
+        ⚠️ **연결이 정상이 아니면 평문이다** — 지금 읽을 수 없는 자리를 링크로 두면 화면이 거짓말한다(상태는 Connection 행이 든다).
+      */
+      return (
+        <Row key={row.kind} label={label}>
+          {row.linked ? <InlineLink href={row.href} target="_blank" rel="noreferrer">{`${row.owner}/${row.name}`}</InlineLink> : `${row.owner}/${row.name}`}
+        </Row>
+      );
+    case "connection":
+      // 배지 키는 설정 카드와 같은 판정(`repositoryConnectionState`)이다 — 연결 확인 실패는 끊김이 아니라 `Couldn't check`다.
+      return <Row key={row.kind} label={label}><StatusBadge state={row.state} /></Row>;
+    case "branch":
+      return <Row key={row.kind} label={label}>{row.branch}</Row>;
+    case "ci":
+      return <Row key={row.kind} label={label}>{row.configured ? m.home.meta.configured : m.home.meta.notSetUp}</Row>;
+    case "sources":
+      // 로케일은 이 열에 없다 — Sources 상세가 소유한다(PRODUCT §7.7 결정 4). 이 행이 그 화면으로 가는 길이다.
+      return (
+        <Row key={row.kind} label={label}>
+          <Link href={routes.sources(slug)} className="focus-visible:ring-ring inline-flex items-center gap-0.5 rounded-sm focus-visible:ring-2 focus-visible:outline-none">
+            {count(row.count)}
+            <ChevronRight className="text-muted-foreground size-4" aria-hidden />
+          </Link>
+        </Row>
+      );
+    case "keys":
+      return <Row key={row.kind} label={label}>{count(row.count)}</Row>;
+    case "members":
+      return <Row key={row.kind} label={label}>{m.home.meta.memberCount(row.count, row.pending)}</Row>;
+    case "created":
+    case "archived":
+      return <Row key={row.kind} label={label}>{relativeTime(row.at, now)}</Row>;
+  }
+}
+
+function syncFact(row: SyncTabRow, now: Date): ReactNode {
+  const label = m.home.meta[row.kind];
+  switch (row.kind) {
+    case "lastSync":
+      if (row.value === "notSyncedYet") return <Row key={row.kind} label={label}><StatusBadge state="notSyncedYet" /></Row>;
+      if (row.value === "unrecorded") return <Row key={row.kind} label={label}><Muted>{m.home.meta.unrecorded}</Muted></Row>;
+      return <Row key={row.kind} label={label}><TriggerBadge trigger={row.value} kind="IMPORT" /></Row>;
+    case "synced":
+      return <Row key={row.kind} label={label}>{relativeTime(row.at, now)}</Row>;
+    case "result":
+      return <Row key={row.kind} label={label}><StatusBadge state={row.state} /></Row>;
+    case "changed":
+      return <Row key={row.kind} label={label}>{m.home.meta.values(row.values)}</Row>;
+    case "keysSeen":
+      return <Row key={row.kind} label={label}>{count(row.count)}</Row>;
+    case "sources":
+      return <Row key={row.kind} label={label}>{row.slugs.join(", ")}</Row>;
+    case "hold":
+      return <HoldRow key={row.kind} />;
+  }
+}
+
+/** 보류 — 사유가 셋이어도 낱말은 `Held` 하나다(DESIGN §2.4). 사유 문장은 `To send` 카드 보조 줄이 든다. 첫 렌더·늦은 도착이 같은 모양이다. */
+function HoldRow() {
+  return <Row label={m.home.meta.hold}><StatusBadge state="held" /></Row>;
+}
+
+function publishFact(row: PublishTabRow, now: Date): ReactNode {
+  const label = m.home.meta[row.kind];
+  switch (row.kind) {
+    case "lastPublish":
+      if (row.value === "never") return <Row key={row.kind} label={label}><Muted>{m.home.meta.never}</Muted></Row>;
+      return <Row key={row.kind} label={label}><TriggerBadge trigger={row.value} kind="PUBLISH" /></Row>;
+    case "published":
+      return <Row key={row.kind} label={label}>{relativeTime(row.at, now)}</Row>;
+    case "pullRequest": {
+      // ⚠️ 번호를 못 뽑으면 링크를 만들지 않는다 — 주소를 그대로 이름으로 읽히지 않는다.
+      const pr = pullNumberFrom(row.href);
+      // 리포 행과 같은 규칙 — 글리프 없이 색만, 연결이 정상이 아니면 평문.
+      if (pr === null) return <Row key={row.kind} label={label}>—</Row>;
+      return (
+        <Row key={row.kind} label={label}>
+          {row.linked ? <InlineLink href={row.href} target="_blank" rel="noreferrer">{m.home.meta.pr(pr)}</InlineLink> : m.home.meta.pr(pr)}
+        </Row>
+      );
+    }
+    case "prState":
+      // 새 GitHub 호출이 없다 — 보류 판정이 이미 부른 조회의 결론이 늦게 도착해 채운다. 그때까지 56px 스켈레톤이 자리를 잡는다.
+      return (
+        <Row key={row.kind} label={label}>
+          <LatePrState
+            pending={<Skeleton size="sm" className="w-14" />}
+            values={{ prOpen: <StatusBadge state="prOpen" />, notOpen: m.home.meta.notOpen, couldNotCheck: <StatusBadge state="couldNotCheck" /> }}
+          />
+        </Row>
+      );
+    case "changed":
+      return <Row key={row.kind} label={label}>{m.home.meta.values(row.values)}</Row>;
+    case "sources":
+      return <Row key={row.kind} label={label}>{row.slugs.join(", ")}</Row>;
+  }
+}
+
+/**
+ * 실행 주체 (nightly-sync 14) — **Logs 보조줄과 같은 실행 종류 배지**다(4-Y19 — `Manual sync`·`Nightly publish` …, `m.logs.meta.runType`).
+ * 이 탭은 성공 실행이 있을 때만 이 배지를 세우므로 주체가 언제나 있다.
+ */
+function TriggerBadge({ trigger, kind }: { trigger: Trigger; kind: "IMPORT" | "PUBLISH" }) {
+  return <Badge variant="soft-neutral">{m.logs.meta.runType[kind][trigger]}</Badge>;
 }

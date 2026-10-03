@@ -15,6 +15,7 @@ import { compareSurfaces, surfaceOwnership } from "@/lib/surfaces/plan";
 import { planMultiSurfacePull } from "./surfaces";
 import { planProtectedPublish } from "@/lib/protection/plan";
 import { publishFingerprint } from "@/lib/publish/fingerprint";
+import { countFileChangedValues } from "./changed-values";
 import { blockingErrors, readSlotFiles, slotlessCells, splitEdits, withheldCoordinates } from "./undeliverable";
 
 /**
@@ -139,6 +140,11 @@ export type PullResult =
       commitSha: string;
       prUrl: string;
       changed: string[];
+      /**
+       * 바뀐 파일들에서 바뀐 번역 엔트리 수(수정 + 추가) — `SyncRun.changedValues` (`changed-values.ts`). 열린 PR을 갱신했으면 PR 전체 vs base다.
+       * ⚠️ 관측값이다 — 이 실행의 어떤 판정에도 들어가지 않는다. 집계가 던지면 `null`이다(관측 실패 — 커밋은 그대로 성공이다).
+       */
+      changedValues: number | null;
     };
 
 /**
@@ -358,6 +364,8 @@ export async function runPull(deps: PullDeps, expectedFingerprint?: string): Pro
     return { status: "skipped", reason: "no-changes", ...withheld, ...(closedPr === undefined ? {} : { closedPr }) };
   }
 
+  // 쓰기 전에 센다 — 렌더가 끝난 순간의 base 원문(`current`)과 새 원문을 견주는 관측이고, 아래 쓰기는 이 값을 보지 않는다.
+  const changedValues = countChangedValuesOf(resolved, current, changes);
   const summary = `${changes.length} file${changes.length === 1 ? "" : "s"}`;
   // ⚠️ **createTree가 첫 외부 쓰기다** — 여기까지는 읽기뿐이라, 무효화가 실패하면 GitHub에 아무것도 남지 않는다.
   await deps.invalidateDelivery(project.id);
@@ -408,5 +416,31 @@ export async function runPull(deps: PullDeps, expectedFingerprint?: string): Pro
     commitSha,
     prUrl,
     changed: changes.map((c) => c.path),
+    changedValues,
   };
+}
+
+/**
+ * 바뀐 파일마다 그 파일을 소유한 표면의 어댑터로 센다. 경로마다 소유 표면이 하나임은 `renderProject`가 이미 검증했다(`surfaceOwnership`).
+ *
+ * ⚠️ **던지면 `null`로 접는다** — 관측이 Publish를 실패시키면 판정에 끼어든 것과 같다. 쓰기 전이라 던지면 보낼 편집이 남는다.
+ */
+function countChangedValuesOf(
+  resolved: Awaited<ReturnType<typeof renderProject>>["resolved"],
+  current: ReadonlyMap<string, string>,
+  changes: readonly { path: string; content: string }[],
+): number | null {
+  const after = new Map(changes.map(c => [c.path, c.content]));
+  let total = 0;
+  try {
+    for (const item of resolved) {
+      for (const { path } of item.paths) {
+        const content = after.get(path);
+        if (content !== undefined) total += countFileChangedValues(adapterFor(item.format), item.format, path, current.get(path), content);
+      }
+    }
+  } catch {
+    return null;
+  }
+  return total;
 }

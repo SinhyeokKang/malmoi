@@ -56,7 +56,7 @@ describe("Home — 개요가 일로 이어진다 (project-home)", () => {
   it("순수 판정 다섯을 `lib/home/*`에서 받는다", () => {
     // ⚠️ **`recentActivity`가 2026-09-20에 빠졌다** (logs-rework) — 활동 조합이 사라지고 Home도
     // `lib/events/query.ts`의 같은 스트림을 읽는다. 아래 `loadEvents` 검사가 그 자리를 대신한다.
-    for (const fn of ["planHomeState(", "countCards(", "attentionItems(", "metaRows("]) {
+    for (const fn of ["planHomeState(", "countCards(", "attentionItems(", "metaTabs("]) {
       expect(src, fn).toContain(fn);
     }
   });
@@ -187,10 +187,13 @@ it("Home이 HomeActions를 프로젝트 단위로 분리한다", () => {
 describe("로딩 골격이 실물의 치수를 든다 (2026-09-16 실측)", () => {
   const skeleton = () => read("app/(edit)/projects/[slug]/(home)/loading.tsx");
 
-  it("메타 열은 구역이 둘이고 바닥에 링크가 있다", () => {
+  it("메타 열은 묶음이 셋(4·3·1)이고 바닥에 링크가 있다", () => {
     const source = skeleton();
-    // 한 구역 아홉 행이면 경계 하나와 `[Project settings ›]` 45px이 통째로 빠진다.
-    expect(source.match(/<MetaGroup rows=\{\d+\}/g)).toHaveLength(2);
+    // Project 탭 8행 — 한 묶음으로 그리면 경계 둘과 `[Settings ›]` 45px이 통째로 빠진다. 치수 대조는 `loading-parity.test.tsx`.
+    // 행별 막대 폭은 `META_ROWS` 하나가 든다(malmoi#181) — 묶음은 그 배열을 4·3·1로 자른다.
+    expect(source.match(/<MetaGroup rows=\{META_ROWS\.slice\([^)]*\)\}/g)).toEqual([
+      "<MetaGroup rows={META_ROWS.slice(0, 4)}", "<MetaGroup rows={META_ROWS.slice(4, 7)}", "<MetaGroup rows={META_ROWS.slice(7)}",
+    ]);
     expect(source).toMatch(/<FooterLink \/>\s*<\/aside>/);
   });
 
@@ -273,8 +276,14 @@ describe("Home — 보류 판정", () => {
     expect(src).toContain("loadOpenPrUrlMemo(slug, project)");
   });
 
+  /**
+   * 메타 열은 같은 promise의 **결론**(`homeLate` — Hold · PR state)을 받는다(project-card-tabs). PR state 자리는 그 promise가 있을 때만 잡힌다 —
+   * 새 GitHub 호출이 없다.
+   */
   it("같은 promise가 카드와 메타 열 둘 다에 간다", () => {
     expect(src).toContain("const heldLater = hold instanceof Promise ? hold : undefined;");
-    expect(src.match(/heldLater=\{heldLater\}/g)).toHaveLength(2);
+    expect(src.match(/heldLater=\{heldLater\}/g)).toHaveLength(1);
+    expect(src).toContain("late={heldLater?.then(homeLate)}");
+    expect(src).toContain('prState: heldLater === undefined ? "absent" : "pending"');
   });
 });

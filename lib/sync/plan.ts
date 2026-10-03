@@ -164,6 +164,12 @@ export type SyncFinish = {
   prUrl: string | null;
   /** **실패는 `null`이다** — 0은 "아무것도 안 바뀌었다"는 관측이고, 실패엔 관측 자체가 없다. */
   changed: number | null;
+  /**
+   * Publish가 리포 파일에서 바꾼 번역 엔트리 수(`SyncRun.changedValues`). 커밋은 센 수, 스킵은 0(바뀐 파일 0), **관측이 없는
+   * 실행(실패·렌더 전에 멈춘 reconfirm)은 `null`** — `changed`와 같은 짝이다. 커밋했는데 집계가 던졌으면 그 커밋도 `null`이다(관측
+   * 실패 — 실행은 SUCCEEDED 그대로). ⚠️ 관측값이다 — 판정에 쓰지 않는다.
+   */
+  changedValues: number | null;
   warnings: number;
   /**
    * 이번 PR에 **못 실은** 편집 수 (delivery-invariants D7 — `SyncRun.withheld`). 버린 것(`warnings`)이 아니다 — 토큰이 남아 다음 Publish를 기다린다.
@@ -188,7 +194,7 @@ export type SyncFinish = {
 export function planSyncFinish(result: PullResult | { thrown: unknown }): SyncFinish {
   if ("thrown" in result) {
     const { code, retryable } = classifySyncError(result.thrown);
-    return { status: "FAILED", errorCode: code, retryable, prUrl: null, changed: null, warnings: 0, withheld: 0 };
+    return { status: "FAILED", errorCode: code, retryable, prUrl: null, changed: null, changedValues: null, warnings: 0, withheld: 0 };
   }
 
   const warnings = result.status === "skipped" && result.reason === "writer-warnings" ? result.warnings.length : 0;
@@ -196,12 +202,12 @@ export function planSyncFinish(result: PullResult | { thrown: unknown }): SyncFi
   const withheld = counted === undefined ? 0 : counted.file + counted.key;
   if (result.status === "skipped" && result.reason === "reconfirm") {
     // ⚠️ **FAILED로 닫지 않는다** — Revert의 settled 판정(`lib/keys/revert.ts`)이 FAILED를 "썼을 수 있는 실행"으로 센다. 렌더를 안 했으니 `changed`는 관측 없음이다.
-    return { status: "SKIPPED", errorCode: "reconfirm", retryable: RETRYABLE.reconfirm, prUrl: null, changed: null, warnings: 0, withheld: 0 };
+    return { status: "SKIPPED", errorCode: "reconfirm", retryable: RETRYABLE.reconfirm, prUrl: null, changed: null, changedValues: null, warnings: 0, withheld: 0 };
   }
   if (result.status === "skipped") {
     // ⚠️ **SKIPPED 행의 `prUrl`은 이 실행이 닫은 PR이다** (B1 r3) — 스킵 행에 prUrl이 선 적이 없어 뜻이 겹치지 않는다. 새 컬럼을 만들지 않는다.
     const prUrl = result.reason === "no-changes" && result.closedPr !== undefined ? result.closedPr.url : null;
-    return { status: "SKIPPED", errorCode: null, retryable: null, prUrl, changed: 0, warnings, withheld };
+    return { status: "SKIPPED", errorCode: null, retryable: null, prUrl, changed: 0, changedValues: 0, warnings, withheld };
   }
   return {
     status: "SUCCEEDED",
@@ -209,6 +215,7 @@ export function planSyncFinish(result: PullResult | { thrown: unknown }): SyncFi
     retryable: null,
     prUrl: result.prUrl,
     changed: result.changed.length,
+    changedValues: result.changedValues,
     warnings,
     withheld,
   };

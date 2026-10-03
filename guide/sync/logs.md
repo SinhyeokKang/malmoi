@@ -17,7 +17,7 @@ If filters hide every event, the list says so; choose **Clear filters** to see e
 
 ## Read event details {#event-details}
 
-Open an event to inspect its details without changing the list filters. Translation events identify the key and source; sync and Publish events show their observed result. A sync shows under **Values** how many translations it changed. A sync held by unsent edits shows them under **Unsent edits**; one held for another reason, such as a still-open change request from Publish (a *pull request* on GitHub), explains it under **Held because**.
+Open an event to inspect its details without changing the list filters. Translation events identify the key and source; sync and Publish events show their observed result. Under **Values**, a sync shows how many translations it changed, and a Publish shows how many it changed in the repository's files. A sync held by unsent edits shows them under **Unsent edits**; one held for another reason, such as a still-open change request from Publish (a *pull request* on GitHub), explains it under **Held because**.
 
 ![An event opened from Logs: a Publish run that sent two files to GitHub, with its trigger and a link to the pull request](/guide/logs-event.webp "Open an event to see its details.")
 

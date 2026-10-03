@@ -81,8 +81,34 @@ export function connectionProblem(status: ConnectionHealth["status"]): Connectio
 const PROBLEM_STATE = { "not-connected": "notConnected", disconnected: "disconnected", "wrong-repository": "wrongRepository" } as const satisfies Record<ConnectionProblem, StateKey>;
 
 /** 연결 갈래 → 상태 키 — Home 배너·메타 열 배지가 같은 낱말·톤을 쓴다(설정 카드와 같은 `STATE` 행). */
-export function connectionState(problem: ConnectionProblem): StateKey {
+export function connectionState(problem: ConnectionProblem): (typeof PROBLEM_STATE)[ConnectionProblem] {
   return PROBLEM_STATE[problem];
+}
+
+/** 연결 배지의 상태 키 다섯 — Settings 연결 행과 Home 메타 열 Connection 배지가 같은 값이다. */
+export type RepositoryConnectionState = "connected" | "notConnected" | "disconnected" | "wrongRepository" | "couldNotCheck";
+
+/**
+ * **연결 배지 판정 하나** — Settings 연결 행(배지·아이콘 칸, DESIGN §2.4 · ux-drift-unify 1-Y15)과 Home 메타 열 Connection 행이 이것을 부른다.
+ * ⚠️ **`lib/`에 사는 이유**: Home 메타가 손 사본을 들었을 때 새 건강성 갈래가 `connected`로 떨어졌다(project-card-tabs fix1). 판정이
+ * `components/`에 있으면 `lib/`가 역방향 import를 못 해 사본이 다시 생긴다.
+ *
+ * ⚠️ **끊김·미연결·다른 리포는 `problem`(= `connectionProblem`)을 그대로 옮긴다** — Home·목록과 같은 판정이어야 하고
+ * (D1), 여기서 다시 가르면 `unpinned`가 한 화면에서만 다른 낱말이 된다. 덧붙이는 것은 `repo-moved`(이름만 바뀐
+ * 연결됨)와 `unknown`(확인 실패) 둘뿐이다. `problem`을 인자로 받는 것은 `cross-screen.test.ts`가 판정 하나를 갈아 끼워
+ * 이 칸까지 red가 나는지 보기 위해서다.
+ */
+export function repositoryConnectionState(status: ConnectionHealth["status"], problem: ConnectionProblem | null): RepositoryConnectionState {
+  if (problem !== null) return PROBLEM_STATE[problem];
+  // ⚠️ **폴백이 없다** — 건강성 갈래가 늘면 여기서 typecheck가 red다(새 갈래가 조용히 Connected로 서지 않게).
+  switch (status) {
+    case "unknown": return "couldNotCheck";
+    case "ok": case "repo-moved": return "connected";
+    // 문제 갈래는 위의 `problem`에서 끝난다 — 여기 닿는 것은 `problem`이 판정과 어긋나게 들어온 경우(교차 행렬 카나리아)뿐이고,
+    // 그때 Connected를 내므로 행렬이 red를 낸다.
+    case "not-connected": case "unpinned": case "app-uninstalled": case "installation-changed": case "repo-replaced": return "connected";
+    default: return status satisfies never;
+  }
 }
 
 /** 적재 실패 코드 → 상태 키 — 일부 반영은 "실패"가 아니다(🔴 A2, DESIGN §2.4). Home 배너·메타 열이 같은 낱말을 쓰게 한 자리에서 가른다. */

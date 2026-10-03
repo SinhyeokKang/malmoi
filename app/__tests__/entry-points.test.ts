@@ -687,6 +687,11 @@ describe("쿼리 파라미터의 수신자", () => {
      * 상세를 **Home 위에서** 여는 유일한 발신처이고, Home 화면 파일에는 인자 없는 호출만 남는다.
      */
     "components/home/logs-card.tsx",
+    /**
+     * ⚠️ **메타 열 바닥 링크가 `routes.logs(slug, { kind })`를 낸다** (project-card-tabs) — Sync·Publish 탭의 `Sync logs ›`·`Publish logs ›`가
+     * Logs를 그 종류로 좁혀 연다. 안 넣으면 `kind` 값이 Logs가 읽는 낱말인지 아무도 대조하지 않는다.
+     */
+    "components/home/meta-column.tsx",
   ];
 
   const SOURCES = [

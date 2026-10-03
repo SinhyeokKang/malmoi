@@ -1,4 +1,5 @@
 import { m, pick } from "@/lib/i18n";
+import { PROJECT_LIMIT } from "@/lib/onboarding/create-plan";
 
 /**
  * 인가 거부 → 사용자 문구. 문구는 사전(`messages/en.tsx`)이 들고, **케이스 누락은 `satisfies
@@ -25,7 +26,9 @@ export type AccessError =
    */
   | "archived"
   /** MCP 토큰이 그 동작의 grant를 안 받았다 — 역할은 된다(`lockProjectAccess`). 세션 경로에서는 나오지 않는다. */
-  | "token-scope";
+  | "token-scope"
+  /** 복원·OWNER 승격이 운영자가 아닌 누군가의 활성 OWNER 프로젝트를 상한 위로 올린다 (`lockOwnerSlots`). */
+  | "owner-limit-reached";
 
 const ACCESS_ERRORS: ReadonlySet<string> = new Set<AccessError>([
   "unauthorized",
@@ -36,6 +39,7 @@ const ACCESS_ERRORS: ReadonlySet<string> = new Set<AccessError>([
   "unavailable",
   "archived",
   "token-scope",
+  "owner-limit-reached",
 ]);
 
 /**
@@ -52,7 +56,12 @@ export function isAccessError(value: unknown): value is AccessError {
  * 던져도 되는 이유는 인자가 우리 코드가 만든 값만 들어오기 때문이다(아래 둘과 다르다).
  */
 // `token-scope`는 MCP 도구 결과와 같은 문장이다 — 사전에 한 벌만 둔다.
-const ACCESS = { ...m.errors.access, "token-scope": m.mcp.errors["token-scope"] } satisfies Record<AccessError, string>;
+// 상한 문구는 숫자를 상수에서 보간한다 — 사전은 잎이라 `PROJECT_LIMIT`을 import하지 않는다(`onboardErrorMessage`와 같은 형).
+const ACCESS = {
+  ...m.errors.access,
+  "token-scope": m.mcp.errors["token-scope"],
+  "owner-limit-reached": m.errors.access["owner-limit-reached"](PROJECT_LIMIT),
+} satisfies Record<AccessError, string>;
 
 export function accessErrorMessage(error: AccessError): string {
   return ACCESS[error];
@@ -79,19 +88,24 @@ export type InviteError =
   /** 프로젝트가 보관됐다 — "보관 = 멈춤"이라 멤버가 새로 들지 않는다(audit #79). 초대는 소비되지 않는다. */
   | "archived"
   /** 세션을 못 읽었다 — 거부가 아니다. */
-  | "unavailable";
+  | "unavailable"
+  /** OWNER 초대인데 수락자가 이미 활성 OWNER 상한이다 (`lockOwnerSlots`). 초대는 소비되지 않는다 — 보관한 뒤 같은 링크로 다시 수락한다. */
+  | "limit-reached";
 
 /**
- * ⚠️ **여덟 중 셋은 여기서만 사용자에게 보인다.** `not-found`·`already-accepted`·`expired`는 페이지가
+ * ⚠️ **아홉 중 넷은 여기서만 사용자에게 보인다.** `not-found`·`already-accepted`·`expired`는 페이지가
  * 서버 렌더 단계에서 갈라 각자 화면을 내지만, **수락 버튼을 눌러서 나는 실패**(`email-mismatch`·
- * `already-member`·`unauthorized`)는 이 문구가 없으면 어디에도 나타나지 않는다 — 2026-09-06까지
+ * `already-member`·`unauthorized`·`limit-reached`)는 이 문구가 없으면 어디에도 나타나지 않는다 — 2026-09-06까지
  * 실제로 그랬고, 사용자에게는 버튼이 안 눌린 것으로 보였다 (POSTMORTEM 2026-09-06).
  *
  * ⚠️ **모르는 값에 던지지 않는다.** `?e=`는 주소창에 있어 사용자가 손댈 수 있다 — 던지면 초대 화면이
  * 통째로 죽고, 그건 외부인이 여는 화면이다. `accessErrorMessage`가 던져도 되는 것과 다르다(그쪽 인자는
  * 우리 코드가 만든 값만 들어온다).
  */
-const INVITE = m.errors.invite satisfies Record<InviteError | "fallback", string>;
+const INVITE = {
+  ...m.errors.invite,
+  "limit-reached": m.errors.invite["limit-reached"](PROJECT_LIMIT),
+} satisfies Record<InviteError | "fallback", string>;
 
 /**
  * ⚠️ **인자가 `string`이다 — `InviteError`가 아니다** (2026-09-08). 이 함수의 계약은 "모르는 값에

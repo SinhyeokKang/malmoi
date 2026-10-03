@@ -7,6 +7,7 @@ import { planPending } from "@/lib/github-connect/pending";
 import { ensureUserToken } from "@/lib/github-connect/token-store";
 import { type InstallationRepo, listInstallationRepos, listUserInstallationRecords } from "@/lib/github-connect/user";
 import { PROJECT_LIMIT } from "@/lib/onboarding/create-plan";
+import { isOperatorUser } from "@/lib/operator/user";
 
 import { listFailure, type OnboardFailure } from "./access";
 
@@ -52,9 +53,13 @@ export async function listRepositories(prisma: PrismaClient, subject: Subject): 
    * ⚠️ **상한은 ① 진입에서 말한다** (launch-readiness L2.6) — 전에는 ③ 끝의 [Create project]에서야 거부돼, 리포·파일·
    * 이름을 다 고른 뒤에 막혔다. 연결보다 먼저다: 상한이면 GitHub을 읽을 이유가 없다. 판정의 정본은 여전히
    * `createProject`의 잠금 안 재집계이고, 이것은 안내다.
+   * 운영자는 면제된다 — 생성 코어와 같은 판정이고, 상한에 닿았을 때만 조회한다. 그 조회가 던지면 같은 `unavailable`이다.
    */
   try {
-    if ((await prisma.projectMember.count({ where: ownedActiveProjects(userId) })) >= PROJECT_LIMIT) {
+    if (
+      (await prisma.projectMember.count({ where: ownedActiveProjects(userId) })) >= PROJECT_LIMIT &&
+      !(await isOperatorUser(prisma, userId))
+    ) {
       return { ok: false, error: "limit-reached" };
     }
   } catch (error) {

@@ -150,6 +150,38 @@ describe("buildInvitationEmail — html", () => {
   });
 });
 
+describe("buildInvitationEmail — 가운데 정렬 (2026-10-04 사용자)", () => {
+  const html = buildInvitationEmail(base).html;
+  const openTag = (re: RegExp) => re.exec(html)?.[1] ?? "";
+
+  it("로고 칸이 가운데이고 로고 <img>는 margin auto로 선다", () => {
+    expect(openTag(/<tr><td([^>]*)><img src="https:\/\/mal-moi\.com\/email\/logo@2x\.png"/)).toContain('align="center"');
+    expect(/<img src="https:\/\/mal-moi\.com\/email\/logo@2x\.png"[^>]*style="([^"]*)"/.exec(html)?.[1]).toContain("margin:0 auto");
+  });
+
+  it("본문 칸(h1·문장·대체 링크·만료 안내)과 꼬리말이 text-align:center다", () => {
+    expect(openTag(/<td class="mm-card-pad"([^>]*)>/)).toMatch(/align="center"[^>]*text-align:center/);
+    expect(openTag(/<td([^>]*)>This link expires in 7 days\./)).toContain("text-align:center");
+    expect(openTag(/<td([^>]*)>If you weren't expecting this invitation/)).toContain("text-align:center");
+  });
+
+  it("버튼 표가 가운데에 선다", () => {
+    expect(openTag(/<table([^>]*)>\s*<tr><td align="center" bgcolor="#171717"/)).toMatch(/align="center"[^>]*margin:0 auto 28px auto/);
+  });
+
+  it("버튼 표는 border-collapse:separate다 — 전역 collapse 아래선 칸의 radius가 테두리에 안 걸려 각진 1px 테두리가 남는다", () => {
+    expect(INVITATION_EMAIL_HTML).toContain("table{border-collapse:collapse}");
+    expect(openTag(/<table([^>]*)>\s*<tr><td align="center" bgcolor="#171717"/)).toContain("border-collapse:separate");
+  });
+
+  it("카드 안의 타일·이름 묶음이 가운데에 서고, 이름·역할 두 줄은 타일 옆에서 왼쪽 정렬이다", () => {
+    const row = openTag(/<table([^>]*)>\s*<tr>\s*<td width="32"/);
+    expect(row).toContain('align="center"');
+    expect(row).not.toContain('width="100%"');
+    expect(openTag(/<td([^>]*)>\s*<div style="font-size:14px/)).toContain("text-align:left");
+  });
+});
+
 describe("buildInvitationEmail — 이미지", () => {
   const ALLOWED_SRC = /^(https:\/\/mal-moi\.com\/email\/(logo|box)@2x\.png|https:\/\/mal-moi\.com\/api\/images\/email\/projects\/[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+\.(png|jpeg|webp))$/;
 

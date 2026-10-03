@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { adapterFor } from "@/lib/adapters";
 import { blobSha } from "@/lib/githash";
 import { SKIP_MARKER } from "../payload";
 import { publishFingerprint } from "@/lib/publish/fingerprint";
@@ -1088,5 +1089,130 @@ describe("runPull — expectedFingerprint (mcp-connector T6.5)", () => {
     now.surfaces[0]!.keys[0]!.cells.ko = { value: "하나!" };
     const { deps } = harness(now);
     expect((await runPull(deps)).status).toBe("committed");
+  });
+});
+
+/**
+ * **Publish가 바꾼 값 수** (project-card-tabs design §2.3 — 정의 (b)). 바뀐 파일마다 base 원문과 새 원문을 어댑터로 읽어 수정 + 추가를 센다.
+ * ⚠️ 관측값이다 — 커밋 판정(blob SHA)은 그대로이고, 아래 어느 갈래도 이 수로 쓰기·스킵이 바뀌지 않는다.
+ */
+describe("runPull — changedValues", () => {
+  const withBase = (blobs: Record<string, string>) => createFakeGitClient({
+    refSha: { "heads/dev": "basehead" },
+    tree: { basehead: Object.entries(blobs).map(([path, content]) => ({ path, sha: blobSha(content) })) },
+    blobs: Object.fromEntries(Object.values(blobs).map(content => [blobSha(content), content])),
+  });
+  const committedValues = async (deps: PullDeps) => {
+    const result = await runPull(deps);
+    if (result.status !== "committed") throw new Error(`expected committed, got ${JSON.stringify(result)}`);
+    return result.changedValues;
+  };
+
+  it("새 로케일 파일은 엔트리 전부가 추가다 — base 트리에 없는 두 파일 = 2", async () => {
+    const { deps } = makeDeps();
+    expect(await committedValues(deps)).toBe(2);
+  });
+
+  it("SHA가 같은 파일은 세지 않는다 — 값이 바뀐 ko 하나만 1", async () => {
+    const fake = withBase({ "i18n/en.json": EN_CONTENT, "i18n/ko.json": '{\n  "a.one": "옛 하나"\n}\n' });
+    const { deps } = makeDeps({}, fake);
+    const result = await runPull(deps);
+    expect(result).toMatchObject({ status: "committed", changed: ["i18n/ko.json"], changedValues: 1 });
+  });
+
+  it("표현만 바뀐 커밋은 0이다 — 끝 개행이 없던 파일", async () => {
+    const fake = withBase({ "i18n/en.json": EN_CONTENT, "i18n/ko.json": KO_CONTENT.trimEnd() });
+    const { deps } = makeDeps({}, fake);
+    const result = await runPull(deps);
+    expect(result).toMatchObject({ status: "committed", changed: ["i18n/ko.json"], changedValues: 0 });
+  });
+
+  it("DB에 없는 키가 파일에서 빠지는 것은 세지 않는다 — 삭제 제외", async () => {
+    const fake = withBase({ "i18n/en.json": EN_CONTENT, "i18n/ko.json": '{\n  "a.one": "하나",\n  "a.two": "둘"\n}\n' });
+    const { deps } = makeDeps({}, fake);
+    const result = await runPull(deps);
+    expect(result).toMatchObject({ status: "committed", changed: ["i18n/ko.json"], changedValues: 0 });
+  });
+
+  it("orphaned 키는 세지 않는다 — 재생성 writer가 빼는 것은 삭제다", async () => {
+    const fake = withBase({ "i18n/en.json": '{\n  "a.one": "one",\n  "gone": "Gone"\n}\n', "i18n/ko.json": '{\n  "a.one": "옛",\n  "gone": "사라짐"\n}\n' });
+    const { deps } = makeDeps({
+      loadState: async () => ({
+        project: { ...PROJECT },
+        surfaces: [{ ...PROJECT, id: "s1", slug: "default", localeCodes: ["en", "ko"], keys: [
+          ...KEYS,
+          { key: "gone", sourceText: "Gone", orphaned: true, cells: { en: { value: "Gone" }, ko: { value: "사라짐" } } },
+        ] }],
+        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1, pendingEdits: [],
+      }),
+    }, fake);
+    const result = await runPull(deps);
+    if (result.status !== "committed") throw new Error(JSON.stringify(result));
+    expect(result.changed).toContain("i18n/ko.json");
+    expect(result.changedValues).toBe(1);
+  });
+
+  it("다중 소스 한 PR은 소스를 넘어 합산한다", async () => {
+    const emails = { ...PROJECT, pathTemplate: "emails/{locale}.json" };
+    const fake = withBase({ "i18n/en.json": EN_CONTENT, "i18n/ko.json": '{\n  "a.one": "옛"\n}\n' });
+    const { deps } = makeDeps({
+      loadState: async () => ({
+        project: { ...PROJECT },
+        surfaces: [
+          { ...PROJECT, id: "s1", slug: "web", localeCodes: ["en", "ko"], keys: KEYS },
+          { ...emails, id: "s2", slug: "emails", localeCodes: ["en", "ko"], keys: [
+            { key: "m.hi", sourceText: "Hi", orphaned: false, cells: { en: { value: "Hi" }, ko: { value: "안녕" } } },
+            { key: "m.bye", sourceText: "Bye", orphaned: false, cells: { en: { value: "Bye" }, ko: { value: "잘 가" } } },
+          ] },
+        ],
+        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1, pendingEdits: [],
+      }),
+    }, fake);
+    // web ko 1 + emails 새 파일 둘(en 2 + ko 2) = 5
+    expect(await committedValues(deps)).toBe(5);
+  });
+
+  it("multi-locale(ts-dict) 파일은 로케일마다 센다", async () => {
+    const source = 'const ko = {\n  "a.one": "하나",\n} as const;\n\nconst en = {\n  "a.one": "one",\n} as const;\n\nexport const ns = { ko, en };\n';
+    const ts = { ...PROJECT, adapterName: "ts-dict", pathTemplate: "src/i18n/ns/*.ts", nested: null as boolean | null };
+    const fake = withBase({ "src/i18n/ns/a.ts": source });
+    const { deps } = makeDeps({
+      loadState: async () => ({
+        project: ts,
+        surfaces: [{ ...ts, id: "s1", slug: "default", localeCodes: ["en", "ko"], keys: [
+          { key: "a.one", sourceText: "one", orphaned: false, cells: { ko: { value: "하나!" }, en: { value: "one!" } } },
+        ] }],
+        maxUpdatedAt: new Date("2026-09-01T10:00:00Z"), unpublished: 1, pendingEdits: [],
+      }),
+    }, fake);
+    expect(await committedValues(deps)).toBe(2);
+  });
+
+  /**
+   * ⚠️ **관측이 Publish를 실패시키지 않는다** — 집계는 커밋 판정 뒤의 관측이라, 파싱이 던지면 수만 `null`로 접고 실행은 그대로 간다.
+   * 빈 base 트리라 렌더·자리 판정이 `read`를 부르지 않는다 — 던지는 `read`가 닿는 곳은 집계뿐이다.
+   */
+  it("집계가 던지면 changedValues만 null이고 커밋·PR은 그대로다", async () => {
+    const adapter = adapterFor({ adapter: "json-catalog", pathTemplate: PROJECT.pathTemplate, locales: [] });
+    const spy = vi.spyOn(adapter, "read").mockImplementation(() => { throw new Error("parser crashed"); });
+    try {
+      const { deps, writes, calls } = makeDeps();
+      expect(await runPull(deps)).toMatchObject({ status: "committed", pr: "created", changedValues: null });
+      expect(spy).toHaveBeenCalled();
+      expect(calls.map(c => c.method)).toContain("createPr");
+      expect(writes).toHaveLength(1);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("열린 PR을 갱신해도 PR 전체 vs base다 — 이번 실행의 증분이 아니다", async () => {
+    const fake = createFakeGitClient({
+      refSha: { "heads/dev": "basehead", "heads/malmoi-i18n/sync": "oldsync" },
+      tree: { basehead: [] },
+      openPr: { url: "https://github.com/o/r/pull/9", number: 9, title: "x [skip-malmoi-i18n]" },
+    });
+    const { deps } = makeDeps({}, fake);
+    expect(await runPull(deps)).toMatchObject({ status: "committed", pr: "updated", changedValues: 2 });
   });
 });

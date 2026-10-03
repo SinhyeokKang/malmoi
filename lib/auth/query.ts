@@ -6,6 +6,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 
 import { planProjectAccess, type ArchivedPolicy, type ProjectAccess } from "./access";
 import { maskedEmailLabels } from "./invite-label";
+import { pendingInvitationWhere } from "./pending-invitation";
 import type { Permission, Role } from "./permission";
 
 /**
@@ -134,7 +135,7 @@ export type PendingInvitation = {
 };
 
 /**
- * 아직 쓸 수 있는 초대만. **술어가 둘이다** — `acceptedAt IS NULL AND expiresAt > now()`.
+ * 아직 쓸 수 있는 초대만 — 술어는 `pendingInvitationWhere`가 든다(Home `Members (N)`과 같은 행을 센다). **술어가 둘이다** — `acceptedAt IS NULL AND expiresAt > now()`.
  *
  * ⚠️ **수락된 행을 지우지 않는 설계**(`prisma/schema.prisma`의 `acceptedAt` 주석)라 그 행이 여기
  * 남아 있다. 한쪽 조건만 보면 이미 멤버가 된 사람의 초대가 "대기 중"으로 보이고, OWNER가 없는
@@ -148,7 +149,7 @@ export async function loadPendingInvitations(
   now: Date,
 ): Promise<PendingInvitation[]> {
   const storedRows = await prisma.projectInvitation.findMany({
-    where: { projectId, acceptedAt: null, expiresAt: { gt: now } },
+    where: { projectId, ...pendingInvitationWhere(now) },
     select: {
       id: true,
       email: true,

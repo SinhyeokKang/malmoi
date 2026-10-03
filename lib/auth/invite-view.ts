@@ -44,6 +44,7 @@ export function planInviteView(input: {
     case "email-mismatch":
     case "already-member":
     case "archived":
+    case "limit-reached":
       notice = input.queryError;
   }
   if (input.session === "none") return { kind: "sign-in", notice };

@@ -10,7 +10,10 @@ import { buttonClass } from "@/components/ui/button";
 import { m } from "@/lib/i18n";
 import { navFooterItems, navZones } from "@/lib/shell/nav";
 
+import { Search } from "lucide-react";
+
 import { CloseButton } from "@/components/ui/close-button";
+import { FieldButton } from "@/components/ui/field-button";
 import { ListRow } from "@/components/ui/list-row";
 import { StatusBadge } from "@/components/ui/status-badge";
 
@@ -125,6 +128,21 @@ describe("목업 — 제품과 같은 구조다", () => {
     expect(kids[0]?.textContent).toBe(m.common.nav.newProject);
     expect(kids[0]?.querySelector("svg")?.getAttribute("class")).toContain("lucide-plus");
     expect(kids[1]?.className).toContain("bg-border-subtle");
+  });
+
+  /** 앱 셸 헤더의 center 슬롯(`SearchTrigger`)이 목업에서 빠져 있었다(2026-10-03 사용자). */
+  it("헤더 가운데에 실물 `FieldButton`과 같은 검색 캡슐이 있다 — 태그만 `<span>`이다", async () => {
+    const real = (await render(<FieldButton icon={<Search />} placeholder={m.search.placeholder} aria-label={m.search.label} onClick={() => {}} />)).container.querySelector("button")!;
+    const container = await mount();
+    for (const [index, scene] of [0, 1, 2, 3, 4].map((k) => [k, layer(container, k)] as const)) {
+      const header = scene.querySelector("header")!;
+      expect(header.className, `scene ${index}`).toContain("grid-cols-[1fr_auto_1fr]");
+      const search = find<HTMLElement>(header, "[data-landing-global-search]");
+      expect(search.tagName).toBe("SPAN");
+      expect(new Set(search.className.split(" "))).toEqual(new Set(real.className.split(" ")));
+      expect(search.querySelector("svg")?.getAttribute("class")).toContain("lucide-search");
+      expect(search.textContent).toBe(`${m.search.placeholder}${m.common.keys.search.mac}`);
+    }
   });
 
   it("모든 씬의 사이드바 맨 아래에 Collapse가 있다", async () => {

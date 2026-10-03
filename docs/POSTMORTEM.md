@@ -465,6 +465,19 @@ _이 아래에 새 항목을 추가한다._
   - 전수 grep: `grep -rnE '\?[A-Za-z_]+=\$?\{' app/` — 쿼리를 실어 보내는 자리 전부. 현재 2건
     (`/invite/[token]?e=`, `app/page.tsx`가 받는 Auth.js `?error=`)이고 **둘 다 읽는 쪽이 있다.**
   - ⚠️ 검사의 사각지대는 `qs()`처럼 **키를 변수로 조립하는** 경우다. 리터럴이 아니라 못 잡는다.
+- **🔁 재발 (2026-10-03, operator-account — 출시 전 리뷰 R2가 잡음, dev에 안 나갔다)**: 이번엔 **읽는 쪽은 있는데 허용 목록이
+  새 값을 몰랐다.** OWNER 초대 수락에 상한을 걸며 `InviteError`에 `"limit-reached"`를 더했고, 활성 OWNER 3인 계정이 수락하면
+  Action은 그 사유를 돌려 `?e=limit-reached`로 착지한다. 그런데 `lib/auth/invite-view.ts`의 `planInviteView` switch가 모르는
+  값을 버려 알림이 서지 않았다 — 위 증상 그대로(버튼이 안 눌린 것으로 보인다). `satisfies Record<InviteError | "fallback", string>`은
+  **문구 누락**만 잡고, 문구까지 가는 길인 switch의 case는 아무것도 검사하지 않는다. 위 `entry-points.test.ts` 검사는 "읽는 쪽이
+  있나"까지라 이 층을 못 본다(ARCHITECTURE §0.5의 "도달" 층).
+  - 수정: `case "limit-reached":` 추가 + Action → `planInviteView` → `inviteErrorMessage`를 잇는 테스트
+    (`lib/auth/__tests__/invite-view.test.ts`·`app/(edit)/__tests__/membership.test.ts`).
+  - 재발 방지 grep(실행): `rg -n 'case "' lib/auth/invite-view.ts`의 목록과 `lib/auth/message.ts`의 `InviteError` union을 대조한다
+    — 지금 union 아홉이 case 아홉과 같다(서버 렌더가 가르는 셋과 `unavailable`도 case에 있다). 같은 부류의 다른 허용 목록
+    `ACCESS_ERRORS`(`isAccessError` — `/projects?e=` 등)는 새 `owner-limit-reached`를 이미 담고 있다.
+  - 구조적 대안(후속 후보): 허용 목록을 `InviteError`에서 파생시키거나 테스트가 union 전수를 돌게 해 grep 대신 typecheck·test가
+    잡게 한다. **`InviteError`를 늘리는 변경은 `planInviteView`의 case도 같은 커밋에서 늘린다**(DIRECTORY `invite/[token]/`).
 
 ### 2026-09-06 — 리다이렉트 횟수로 검증해서 전면 장애를 "정상"으로 읽었다
 

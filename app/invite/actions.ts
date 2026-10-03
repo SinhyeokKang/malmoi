@@ -9,6 +9,7 @@ import { hashInviteToken, planInvitationAccept } from "@/lib/auth/invitation";
 import type { InviteError } from "@/lib/auth/message";
 import { readSession } from "@/lib/auth/read-session";
 import { getPrisma } from "@/lib/db";
+import { lockOwnerSlots } from "@/lib/projects/owner-limit";
 
 /**
  * 초대 수락.
@@ -74,7 +75,7 @@ export async function acceptInvitation(input: { token: string }): Promise<Accept
      */
     if (project.archivedAt !== null) return { ok: false, error: "archived" };
 
-    const accepted = await prisma.$transaction(async (tx): Promise<"ok" | "lost" | "already-member"> => {
+    const accepted = await prisma.$transaction(async (tx): Promise<"ok" | "lost" | "already-member" | "limit-reached"> => {
       // ⚠️ **이미 멤버인지 먼저 본다.** `createInvitations`이 그 조합을 막지만 **막혀 있다는 것이 코드가
       // 아니라 추론에 있으면** 다음 변경에서 열린다 — 그때 `projectMember.create`가 unique 위반으로
       // 던지고, 초대 링크를 연 외부인에게는 digest만 남는다.
@@ -85,6 +86,13 @@ export async function acceptInvitation(input: { token: string }): Promise<Accept
         select: { userId: true },
       });
       if (already !== null) return "already-member";
+
+      /**
+       * OWNER 초대는 수락자의 활성 OWNER 프로젝트를 하나 늘린다 — 생성과 같은 상한을 잠금 안에서 다시 센다(operator-account C8).
+       * ⚠️ **소비(아래 `updateMany`) 전이다** — 거부돼도 초대가 살아 있어, 보관으로 자리를 비우면 같은 링크로 다시 수락한다.
+       * EDITOR 초대는 세지 않는다.
+       */
+      if (invitation.role === "OWNER" && (await lockOwnerSlots(tx, [userId])).length > 0) return "limit-reached";
 
       // ⚠️ **단일 사용을 조건부 갱신으로 강제한다.** 두 요청이 동시에 들어와도 `acceptedAt: null`이
       // 한쪽만 통과시킨다 — count를 안 읽고 그냥 update하면 둘 다 성공해 멤버십이 두 번 생긴다.
@@ -129,6 +137,7 @@ export async function acceptInvitation(input: { token: string }): Promise<Accept
     });
 
     if (accepted === "already-member") return { ok: false, error: "already-member" };
+    if (accepted === "limit-reached") return { ok: false, error: "limit-reached" };
     if (accepted === "lost") {
       // 경합에서 진 쪽 — 왜 졌는지는 행을 다시 봐야 안다. 수락됨이 만료보다 앞이다 (`planInvitationAccept`와 같은 순서).
       const after = await prisma.projectInvitation.findUnique({

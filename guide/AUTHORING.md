@@ -154,7 +154,7 @@
 | `ai-agents/permissions.md` | 역할 ∩ 허용 권한, 도구 묶음 | `lib/mcp/catalog.ts`, `lib/mcp/grant.ts`, `lib/mcp/tools/`, `messages/en.tsx`의 `mcp`, `docs/PRODUCT.md` §4.1 |
 | `ai-agents/prompts.md` | 에이전트 프로젝트 생성·push 토큰 secret 저장·번역 채워 Publish | `lib/mcp/tools/`, `lib/onboarding/workflow.ts`, `docs/ARCHITECTURE.md` §6.45 |
 | `reference/formats.md` | 지원 포맷 다섯·경로·보존 특성 | `lib/adapters/index.ts`, `lib/adapters/`, `lib/onboarding/detect.ts`, `docs/ARCHITECTURE.md` §1 |
-| `reference/limits.md` | 프로젝트·멤버·slug·초대 상한, 파일·적재 예산 | `lib/onboarding/create-plan.ts` (`PROJECT_LIMIT`), `lib/auth/invitation.ts` (`MEMBER_LIMIT`), `lib/onboarding/slug.ts` (`PROJECT_SLUG_MAX`), `lib/invitation-email/limits.ts` (`INVITATION_HOURLY_LIMIT`), `lib/onboarding/budget.ts`, `lib/push/plan.ts` |
+| `reference/limits.md` | 프로젝트·멤버·slug·초대 상한, 파일·적재 예산 | `lib/onboarding/create-plan.ts` (`PROJECT_LIMIT`), `lib/projects/owner-limit.ts` (`lockOwnerSlots` — 복원·OWNER 승격·OWNER 초대 수락의 상한), `messages/en.tsx` (`errors.access["owner-limit-reached"]`·`errors.invite["limit-reached"]` — 거부 문구의 결), `lib/auth/invitation.ts` (`MEMBER_LIMIT`), `lib/onboarding/slug.ts` (`PROJECT_SLUG_MAX`), `lib/invitation-email/limits.ts` (`INVITATION_HOURLY_LIMIT`), `lib/onboarding/budget.ts`, `lib/push/plan.ts` |
 | `reference/troubleshooting.md` | 설치 누락·stale commit 409·payload 400·사용자 복구 경로 | `app/api/push/route.ts`, `lib/push/guard.ts`, `lib/push/plan.ts`, `docs/ACTIONS.md` §3, `lib/github-connect/message.ts`, `lib/onboarding/message.ts`, `messages/en.tsx` |
 | 모든 페이지 | 정확한 UI 라벨·화면 용어 | `messages/en.tsx`, `lib/guide/dictionary.ts`, 실제 컴포넌트의 역할별 분기, `docs/DESIGN.md` §10 |
 

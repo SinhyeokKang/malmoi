@@ -21,6 +21,8 @@ import { applyProtectedPush, applyPush } from "@/lib/push/apply";
 import { hashPushToken } from "@/lib/push/token";
 
 import { loadEvents } from "@/lib/events/query";
+import { changedValuesText } from "@/lib/events/view";
+import { m } from "@/lib/i18n";
 import { parseLogFilter } from "@/lib/events/filter";
 import { runSync } from "@/lib/sync/run";
 import { planWithheldLines } from "@/lib/publish/plan";
@@ -357,8 +359,13 @@ describe("#3 · D3 — 보류 셀이 있는 Publish 뒤에도 OWNER Revert가 �
     }).client;
     const outcome = await runSync(prisma, { projectId: "p", slug: "fixture", trigger: "cron", requestedBy: null, credential: undefined });
     expect(outcome).toMatchObject({ status: "committed", withheld: { file: 1, key: 0 } });
+    // 바꾼 값 수(project-card-tabs §2.3)도 같은 행에 산다 — en은 CI 값 `Repo`가 base의 `one`을 대신하고 ko는 편집이다. 보류된 fr은 파일이 없어 안 센다.
+    expect(await prisma.syncRun.findFirst({ where: { projectId: "p", trigger: "CRON" } })).toMatchObject({ status: "SUCCEEDED", changed: 2, changedValues: 2 });
     const [row] = (await loadEvents(prisma, "p", { ...parseLogFilter({}) })).rows.filter(r => r.kind === "PUBLISH");
     expect(row?.run?.withheld).toBe(1);
+    expect(row?.run?.changedValues).toBe(2);
+    // 상세가 그 칸을 그리는 함수로 — 조회 값이 화면 문구까지 같은 수로 간다.
+    expect(changedValuesText(row?.result ?? null, row?.run?.changedValues ?? null)).toBe(m.logs.meta.values(2));
     expect(planWithheldLines(outcome, "OWNER")).toHaveLength(1);
   });
 
@@ -383,7 +390,7 @@ describe("#3 · D3 — 보류 셀이 있는 Publish 뒤에도 OWNER Revert가 �
     const outcome = await runSync(prisma, { projectId: "p", slug: "fixture", trigger: "cron", requestedBy: null, credential: undefined });
     expect(outcome).toMatchObject({ status: "skipped", reason: "no-changes", closedPr: { number: 4 } });
     expect(fake.calls.map(c => c.method).filter(m => m === "closePr" || m === "updateRefForce")).toEqual(["closePr", "updateRefForce"]);
-    expect(await prisma.syncRun.findFirst({ where: { projectId: "p", trigger: "CRON" } })).toMatchObject({ status: "SKIPPED", prUrl: "https://github.com/o/r/pull/4" });
+    expect(await prisma.syncRun.findFirst({ where: { projectId: "p", trigger: "CRON" } })).toMatchObject({ status: "SKIPPED", prUrl: "https://github.com/o/r/pull/4", changed: 0, changedValues: 0 });
     const [row] = (await loadEvents(prisma, "p", { ...parseLogFilter({}) })).rows.filter(r => r.kind === "PUBLISH");
     expect(row).toMatchObject({ result: "nothingToSend", run: { prUrl: "https://github.com/o/r/pull/4" } });
     expect(await countPending(prisma, "p")).toBe(0);
@@ -433,10 +440,12 @@ describe("Publish 지문 — 미리보기 뒤 바뀐 export 입력은 reconfirm 
     expect(await manual(stale)).toEqual({ status: "skipped", reason: "reconfirm" });
     expect(writes()).toEqual([]);
     expect(await countPending(prisma, "p")).toBe(2);
-    expect(await lastRun()).toMatchObject({ status: "SKIPPED", errorCode: "reconfirm", changed: null });
+    expect(await lastRun()).toMatchObject({ status: "SKIPPED", errorCode: "reconfirm", changed: null, changedValues: null });
 
     repo();
     expect(await manual((await preview()).fingerprint)).toMatchObject({ status: "committed", delivered: 2 });
+    // 짝 — 커밋은 센 수다. 빈 base 트리라 세 로케일 파일 × 두 키가 전부 추가다.
+    expect(await lastRun()).toMatchObject({ status: "SUCCEEDED", changed: 3, changedValues: 6 });
     expect(writes().length).toBeGreaterThan(0);
     expect(await countPending(prisma, "p")).toBe(0);
   });

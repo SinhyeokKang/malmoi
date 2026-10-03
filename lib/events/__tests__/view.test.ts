@@ -7,6 +7,7 @@ import { importFailureMessage } from "@/lib/projects/import-failure";
 import { EVENT_KINDS, EVENT_RESULTS, type EventResult, type SurfaceOutcome } from "../payload";
 import { STATE, type StateKey, type StateTone, type StateVariant } from "@/lib/status/canon";
 import {
+  changedValuesText,
   coverageBoundaryIndex,
   eventGlyph,
   eventMeta,
@@ -508,5 +509,21 @@ describe("Logs 결과의 상태 키", () => {
     expect(eventView(row({ result: "notSent", errorCode: "reconfirm", warnings: 2 }))).toMatchObject({ state: "heldBack", label: "Held back", reasonKey: "reconfirm", warningsLabel: m.logs.warnings(2) });
     expect(TONES.sent).toBe("success");
     expect(TONES.imported).toBe("success");
+  });
+});
+
+/**
+ * **Publish의 바뀐 값 수** (project-card-tabs T5 — `SyncRun.changedValues`). IMPORT payload와 같은 함수·같은 단위로 그린다. 0은 관측이고 실패는 값이
+ * 실려 있어도 `—`다 — 0으로 적으면 "아무것도 안 바뀐 성공"과 같아진다. `null`(기록 이전)의 not recorded 꼬리는 상세 화면이 붙인다.
+ */
+describe("changedValuesText — Publish 결과", () => {
+  it("보낸·갱신한 실행은 'N values changed' · 스킵은 0도 수다", () => {
+    expect(changedValuesText("sent", 24)).toBe(m.logs.meta.values(24));
+    expect(changedValuesText("nothingToSend", 0)).toBe(m.logs.meta.values(0));
+    expect(changedValuesText("notSent", 0)).toBe(m.logs.meta.values(0));
+  });
+  it("실패와 기록 이전(null)은 —다 (짝)", () => {
+    expect(changedValuesText("failed", 3)).toBe(m.logs.none);
+    expect(changedValuesText("sent", null)).toBe(m.logs.none);
   });
 });

@@ -39,6 +39,8 @@ const HOME_GRAPH = [
   "components/home/attention-card.tsx",
   "components/home/logs-card.tsx",
   "components/home/meta-column.tsx",
+  // 메타 열의 탭 껍데기(project-card-tabs) — 파랑은 서버 패널(`meta-column.tsx`)에만 있고 여기는 0이다. 옮겨 와도 세지게 넣어 둔다.
+  "components/home/meta-tabs.tsx",
   /**
    * ⚠️ **2026-09-20에 들어왔다** (logs-rework) — Recent logs가 Logs와 **같은 행 컴포넌트**를 쓰면서
    * 카드의 파랑이 이 파일로 옮겨갔다. 안 넣으면 "화면의 파랑이 몇 자리인가"가 Home 파일만 세어
@@ -90,7 +92,7 @@ describe("완료 조건 8 — Home 소스에 고정폭 글꼴이 0이다", () =>
    * ⚠️ **`text-mono`는 이 리포의 유일한 mono 소비 경로다** (`app/globals.css`의 `@utility`).
    * 시안이 Home에서 mono를 0으로 만들었으므로 여기서는 그 유틸이 한 번도 안 서야 한다.
    */
-  it("그래프 여덟에 `text-mono`가 없다", () => {
+  it("그래프 파일 전부에 `text-mono`가 없다", () => {
     for (const path of HOME_GRAPH) {
       expect(bare(read(path)), path).not.toMatch(/text-mono/);
     }
@@ -172,7 +174,7 @@ describe("완료 조건 9 — 파랑이 정확히 네 자리다", () => {
   });
 
   it("나머지 그래프에는 파랑이 없다", () => {
-    for (const path of ["app/(edit)/projects/[slug]/(home)/page.tsx", "app/(edit)/projects/[slug]/(home)/loading.tsx", "components/home/actions.tsx", "components/home/attention-card.tsx"]) {
+    for (const path of ["app/(edit)/projects/[slug]/(home)/page.tsx", "app/(edit)/projects/[slug]/(home)/loading.tsx", "components/home/actions.tsx", "components/home/attention-card.tsx", "components/home/meta-tabs.tsx"]) {
       expect(count(path), path).toBe(0);
     }
   });
@@ -197,14 +199,19 @@ describe("완료 조건 9 — 파랑이 정확히 네 자리다", () => {
  * 보면 다른 블록에 같은 이름이 생길 때 엉뚱한 쪽이 조용히 빠진다).
  */
 const NOT_A_COUNT: Record<string, string> = {
-  // 상한이 **코드 상수**로 강제된다 — 재검토가 필요 없는 부류다.
+  // 상한이 **코드 상수**로 강제된다 — 재검토가 필요 없는 부류다. 운영자는 상한에서 빠지지만(`OPERATOR_EMAILS`) 정적 allowlist의
+  // 몇 명이라 네 자리에 닿을 수가 없다.
   "projects.count": "PROJECT_LIMIT = 3",
   // 좌석 넷도 같은 상수가 강제한다 — 분모가 `MEMBER_LIMIT`이고 분자는 그보다 클 수 없다.
   "members.seats": "MEMBER_LIMIT = 10",
   "members.seatsFull": "MEMBER_LIMIT = 10",
   "members.count": "MEMBER_LIMIT = 10",
   "members.invite.seatsUsed": "MEMBER_LIMIT = 10",
+  // 거부를 받는 사람은 운영자가 아니므로 보간되는 상수 3이 참이다.
   "errors.onboarding.limit-reached": "PROJECT_LIMIT = 3",
+  // 복원·승격·OWNER 초대 수락의 상한 거부 — 같은 상수다(operator-account).
+  "errors.access.owner-limit-reached": "PROJECT_LIMIT = 3",
+  "errors.invite.limit-reached": "PROJECT_LIMIT = 3",
   // 수가 아니다 — 번호·단계·글자 상한.
   "projects.banner.prOpen": "PR 번호",
   "newProject.modal.step": "단계 번호 — `Step 3 of 4`",

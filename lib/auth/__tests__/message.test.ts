@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { m } from "@/lib/i18n";
+import { PROJECT_LIMIT } from "@/lib/onboarding/create-plan";
 
 import {
   accessErrorMessage,
@@ -121,11 +122,12 @@ const INVITE_ERRORS: readonly InviteError[] = [
   "email-mismatch",
   "already-member",
   "archived",
+  "limit-reached",
 ];
 
-describe("inviteErrorMessage — 일곱 사유가 각자 다른 문구다", () => {
-  it("일곱이 서로 다른 문장을 낸다", () => {
-    expect(new Set(INVITE_ERRORS.map(inviteErrorMessage)).size).toBe(7);
+describe("inviteErrorMessage — 여덟 사유가 각자 다른 문구다", () => {
+  it("여덟이 서로 다른 문장을 낸다", () => {
+    expect(new Set(INVITE_ERRORS.map(inviteErrorMessage)).size).toBe(8);
   });
 
   it("빈 문구를 내지 않는다", () => {
@@ -229,5 +231,32 @@ describe("사전에 죽은 문구가 남지 않는다", () => {
       if (key === "fallback") continue;
       expect(known.has(key), key).toBe(true);
     }
+  });
+});
+
+/**
+ * 상한 재집계의 거부 (operator-account C10). 숫자는 `PROJECT_LIMIT` 상수다 — 거부를 받는 사람은 운영자가 아니므로 3이 참이다.
+ * 사전에 숫자를 따로 적으면 상수가 바뀔 때 문구가 거짓이 된다.
+ */
+describe("상한 거부 문구", () => {
+  it("owner-limit-reached는 AccessError이고 상한 숫자와 보관(자리 비우기)을 말한다", () => {
+    expect(isAccessError("owner-limit-reached")).toBe(true);
+    const text = accessErrorMessage("owner-limit-reached");
+    expect(text).toContain(String(PROJECT_LIMIT));
+    expect(text).toMatch(/archiv/i);
+    expect(text).not.toContain("owner-limit-reached");
+  });
+
+  it("이미 넘긴 사용자(C9)에게도 참이다 — '정확히 3'이나 '하나만 보관'을 단언하지 않는다", () => {
+    expect(accessErrorMessage("owner-limit-reached")).toMatch(/or more/);
+    expect(inviteErrorMessage("limit-reached")).toMatch(/or more/);
+    expect(inviteErrorMessage("limit-reached")).toMatch(/fewer than/);
+  });
+
+  it("초대 limit-reached는 상한 숫자와 '보관한 뒤 이 링크로 다시'를 말한다 — 초대는 소비되지 않았다", () => {
+    const text = inviteErrorMessage("limit-reached");
+    expect(text).toContain(String(PROJECT_LIMIT));
+    expect(text).toMatch(/archiv/i);
+    expect(text).toMatch(/link/i);
   });
 });

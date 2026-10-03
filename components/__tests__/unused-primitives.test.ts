@@ -11,10 +11,11 @@ describe("T3 미사용 프리미티브/API 제거", () => {
     expect(existsSync("components/ui/breadcrumb.tsx")).toBe(false);
   });
 
+  // `SegmentBody`는 `Tabs`가 같은 칸 몸통을 쓰려고 export한다(project-card-tabs).
   it("segment 모듈의 실제 사용 함수·content 타입만 남는다", () => {
     const source = parsed("components/ui/segmented-control.tsx");
     const exported = source.statements.filter((node) => ts.canHaveModifiers(node) && ts.getModifiers(node)?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword));
-    expect(exported.filter(ts.isFunctionDeclaration).map((node) => node.name?.text)).toEqual(["SegmentedControl"]);
+    expect(exported.filter(ts.isFunctionDeclaration).map((node) => node.name?.text)).toEqual(["SegmentBody", "SegmentedControl"]);
     expect(exported.filter(ts.isTypeAliasDeclaration).map((node) => node.name.text)).toEqual(["SegmentContent"]);
   });
 

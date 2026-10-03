@@ -554,3 +554,20 @@ it("pending invitation notice has one header boundary before and after resend fa
   expect(borders()[0]?.hasAttribute("data-card-notice")).toBe(true);
   expect(section.querySelector("ul > li")?.classList.contains("border-t")).toBe(false);
 });
+
+/**
+ * **OWNER 승격의 상한 재집계 거부**(operator-account C7)가 그 행 아래 Alert로 선다 — 문장은 서버 사유의 사전 문구다.
+ * 렌더해서 문자열을 견준다(위 머리 주석과 같은 이유).
+ */
+it("승격이 owner-limit-reached면 그 행 아래 Alert가 사유를 말하고 역할은 그대로다", async () => {
+  changeMember.mockResolvedValue({ ok: false, error: "owner-limit-reached" });
+  await draw([owner, editor]);
+  const click = async (node: Element) => { await act(async () => { await userEvent.setup().click(node); }); };
+  await click(find(document.body, "#role-u3"));
+  await click([...document.querySelectorAll('[role="option"]')].find((o) => o.textContent?.trim() === m.projects.role.OWNER)!);
+  await click([...document.querySelectorAll('[role="dialog"] button')].find((b) => b.textContent?.trim() === m.members.confirmRoleAction)!);
+  expect(changeMember).toHaveBeenCalledWith({ slug: "acme", targetUserId: "u3", nextRole: "OWNER" });
+  const row = document.getElementById("role-u3")!.closest("li")!;
+  expect(row.querySelector('[role="alert"]')?.textContent).toBe(accessErrorMessage("owner-limit-reached"));
+  expect(find(document.body, "#role-u3").textContent).toContain(m.projects.role.EDITOR);
+});

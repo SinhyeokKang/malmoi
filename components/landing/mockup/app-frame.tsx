@@ -1,12 +1,14 @@
-import { ChevronsUpDown, PanelLeftClose, Plus } from "lucide-react";
+import { ChevronsUpDown, PanelLeftClose, Plus, Search } from "lucide-react";
 import Image from "next/image";
 import type { ReactNode } from "react";
 
 import { ProjectThumbnail } from "@/components/ui/project-thumbnail";
 import { PUBLIC_HEADER_LINK } from "@/components/public-shell/header";
+import { HeaderBar } from "@/components/shell/header-bar";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { buttonClass } from "@/components/ui/button";
+import { Kbd } from "@/components/ui/kbd";
 import { m } from "@/lib/i18n";
 import { navFooterItems, navZones, type NavItem } from "@/lib/shell/nav";
 import { cn } from "@/lib/utils";
@@ -43,22 +45,41 @@ export function AppFrame({ children, overlay }: { children: ReactNode; overlay?:
   );
   return (
     <div className="bg-canvas relative flex h-full flex-col gap-2 p-2">
-      <div className="flex h-10 shrink-0 items-center justify-between px-1">
-        <span className="flex size-8 items-center justify-center rounded-lg">
-          <Image src={logo} alt="" width={32} height={32} />
-        </span>
-        {/* 앱 셸 헤더(`components/shell/header.tsx`)와 같은 우측 — New project · 연한 세로선 · 아바타. */}
-        <div data-landing-header-right="" className="flex items-center gap-3">
-          <span className={PUBLIC_HEADER_LINK}>
-            <Plus className="size-4 shrink-0" aria-hidden />
-            {m.common.nav.newProject}
+      {/* 앱 셸 헤더(`components/shell/header.tsx`)와 같은 `HeaderBar` — 로고 · 가운데 검색 · 우측 New project · 연한 세로선 · 아바타. */}
+      <HeaderBar
+        start={
+          <span className="flex size-8 items-center justify-center rounded-lg">
+            <Image src={logo} alt="" width={32} height={32} />
           </span>
-          <span aria-hidden className="bg-border-subtle h-5 w-px" />
-          <span className="flex size-8 items-center justify-center rounded-full">
-            <Avatar name={fixture.user} size={32} />
+        }
+        center={
+          /* `FieldButton`(`SearchTrigger`)과 같은 클래스다(태그만 `<span>`). 수화 전 플랫폼을 모르는 정적 복제라 칩은 Mac 표기 하나로 고정한다. `landing-mockup.test.tsx`가 실물을 렌더해 견준다. */
+          <span
+            data-landing-global-search=""
+            className="bg-background border-border-subtle shadow-low inline-flex h-10 w-80 cursor-pointer items-center gap-2 rounded-full border px-3 text-sm transition-colors hover:bg-primary-foreground focus-visible:border-ring focus-visible:ring-ring focus-visible:ring-1 focus-visible:outline-none"
+          >
+            <span aria-hidden className="text-muted-foreground shrink-0">
+              <Search className="size-4" />
+            </span>
+            <span className="text-muted-foreground min-w-0 flex-1 truncate text-left">{m.search.placeholder}</span>
+            <span aria-hidden className="flex w-16 shrink-0 justify-end">
+              <Kbd>{m.common.keys.search.mac}</Kbd>
+            </span>
           </span>
-        </div>
-      </div>
+        }
+        end={
+          <div data-landing-header-right="" className="flex items-center gap-3">
+            <span className={PUBLIC_HEADER_LINK}>
+              <Plus className="size-4 shrink-0" aria-hidden />
+              {m.common.nav.newProject}
+            </span>
+            <span aria-hidden className="bg-border-subtle h-5 w-px" />
+            <span className="flex size-8 items-center justify-center rounded-full">
+              <Avatar name={fixture.user} size={32} />
+            </span>
+          </div>
+        }
+      />
       <div className="flex min-h-0 flex-1">
         <div data-landing-lnb="" className="flex h-full w-[240px] shrink-0 flex-col gap-2 overflow-hidden p-1">
           {zones.map((zone, index) => (

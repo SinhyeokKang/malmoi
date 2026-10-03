@@ -19,7 +19,7 @@ Saved values that cannot be published stay in Malmoi. If your changes were not p
 If nothing is waiting to be published, the nightly run checks whether the branch Malmoi reads has new commits since Malmoi last read your sources.
 
 - No new commits and nothing failed last time: nothing is read and the event says **Up to date**. If a file failed to update, the nightly run tries again each night until it succeeds.
-- New commits: Malmoi reads the sources from the repository and updates the project, the same way a project owner's Sync does, but without discarding anything. On Home, **Last sync** then starts with **Nightly sync**.
+- New commits: Malmoi reads the sources from the repository and updates the project, the same way a project owner's Sync does, but without discarding anything. On Home, the **Sync** tab then shows **Nightly sync** as the **Last sync**, with when it finished under **Synced** and how many translations it changed under **Changed**.
 
 If someone saves a translation while the nightly update is running, Malmoi stops before the next source so the new edit is not overwritten. The sources it already updated stay updated.
 
@@ -27,7 +27,7 @@ If someone saves a translation while the nightly update is running, Malmoi stops
 
 The nightly run holds the update — the project is not updated, and **Logs** shows **Held** with the reason — when:
 
-- A Malmoi pull request is still open. Its translations are not in the repository yet, so an update would overwrite them. Merge or close the pull request; the next nightly run picks up the changes. Home shows **Held** next to **Last sync**, and the To send card says why.
+- A Malmoi pull request is still open. Its translations are not in the repository yet, so an update would overwrite them. Merge or close the pull request; the next nightly run picks up the changes. Home's **Sync** tab shows **Held** in its **Hold** row, and the To send card says why.
 - GitHub didn't answer whether that pull request is open. Malmoi does not guess; Home shows **Held**, and the next run checks again.
 - The change is too large for a server-side sync. Nightly updates use the same file budget as creating a project (see [Limits](../reference/limits.md#files)). Reduce the files' size, or deliver the change with the repository workflow.
 

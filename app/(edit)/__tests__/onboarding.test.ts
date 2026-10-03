@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ProbeResult } from "@/lib/github-connect/health";
 import type { InstallationRepo } from "@/lib/github-connect/user";
@@ -1227,6 +1227,82 @@ describe("createProject — 재검증한 값만 저장한다 (ARCHITECTURE §3.1
     hoisted.probeRepo.mockResolvedValue({ status: "error" });
 
     expect(await createProject(createInput())).toMatchObject({ ok: false, error: "unavailable" });
+  });
+});
+
+/**
+ * **운영자는 프로젝트 상한에서 면제된다** (operator-account C5·C11). 면제는 코어(`listRepositories`·`createProjectFromRepo`)에
+ * 있으므로 Action을 지나 증명한다 — MCP `list_repositories`·`create_project`가 같은 코어다. 운영자 판정은 `User.emailLookup`
+ * 하나이고(`lib/operator/user.ts`), 하네스의 `user.findUnique`가 시드 주소의 lookup을 돌려준다.
+ */
+describe("운영자 — 생성 경로의 상한 면제", () => {
+  const OPERATOR_EMAIL = "o@a.com";
+
+  function atLimit() {
+    db = createHarness({
+      projects: [
+        { id: "p1", slug: "a1", name: "A1" },
+        { id: "p2", slug: "a2", name: "A2" },
+        { id: "p3", slug: "a3", name: "A3" },
+      ],
+      members: [
+        { projectId: "p1", userId: OWNER, role: "OWNER" },
+        { projectId: "p2", userId: OWNER, role: "OWNER" },
+        { projectId: "p3", userId: OWNER, role: "OWNER" },
+      ],
+      users: [{ id: OWNER, email: OPERATOR_EMAIL }],
+      accounts: [{ userId: OWNER, provider: "github-app", providerAccountId: "gh-1" }],
+    });
+    hoisted.prisma = db.prisma;
+  }
+
+  // 이 파일의 다른 테스트로 새지 않게 한다 — 상한 테스트는 운영자가 없는 환경을 전제한다.
+  afterEach(() => {
+    vi.stubEnv("OPERATOR_EMAILS", "");
+  });
+
+  it("OWNER 활성 3이어도 ①이 목록을 주고 생성이 된다 — 선조회와 잠금 안 재집계가 같은 판정이다", async () => {
+    atLimit();
+    // 대소문자·공백이 달라도 같은 사람이다 — 병합과 같은 정규화.
+    vi.stubEnv("OPERATOR_EMAILS", " O@A.com ");
+
+    expect(await listConnectableRepos()).toMatchObject({ ok: true });
+    expect(await createProject(createInput())).toMatchObject({ ok: true });
+    // 하네스 `countMembers`가 `role`·`archivedAt`을 보므로 재집계도 4를 봤다 — 그래도 롤백되지 않았다.
+    expect(db.members.filter((m) => m.userId === OWNER && m.role === "OWNER")).toHaveLength(4);
+  });
+
+  it("env가 없으면 같은 계정도 3에서 limit-reached다 (C2 — fail-closed)", async () => {
+    atLimit();
+
+    expect(await listConnectableRepos()).toEqual({ ok: false, error: "limit-reached" });
+    expect(await createProject(createInput())).toEqual({ ok: false, error: "limit-reached" });
+  });
+
+  it("다른 주소만 든 env면 운영자가 아니다", async () => {
+    atLimit();
+    vi.stubEnv("OPERATOR_EMAILS", "someone@else.io");
+
+    expect(await createProject(createInput())).toEqual({ ok: false, error: "limit-reached" });
+  });
+
+  it("운영자 조회가 던지면 ①은 unavailable, 생성은 선조회 실패 경로다 — 장애를 '운영자 아님'으로 접지 않는다 (C4)", async () => {
+    atLimit();
+    vi.stubEnv("OPERATOR_EMAILS", OPERATOR_EMAIL);
+    vi.mocked(db.prisma.user.findUnique).mockRejectedValue(new Error("db down"));
+
+    expect(await listConnectableRepos()).toEqual({ ok: false, error: "unavailable" });
+    expect(hoisted.listUserInstallationRecords).not.toHaveBeenCalled();
+    await expect(createProject(createInput())).rejects.toThrow("db down");
+    expect(db.projects.some((p) => p.slug === "acme-web")).toBe(false);
+  });
+
+  it("운영자 + 리포 접근 없음이면 연결 거부가 먼저다 — 면제가 순서를 바꾸지 않는다", async () => {
+    atLimit();
+    vi.stubEnv("OPERATOR_EMAILS", OPERATOR_EMAIL);
+    hoisted.listInstallationRepos.mockResolvedValue([repoRow("someone/else")]);
+
+    expect(await createProject(createInput())).toEqual({ ok: false, error: "repo-not-installed" });
   });
 });
 

@@ -51,6 +51,8 @@ export type EventActor = {
 /** Publish 실행의 정본은 `SyncRun`이다 — 이 값들은 **조인해서 읽고 복제하지 않는다** (결정 1). */
 export type PublishRun = {
   changed: number | null;
+  /** 리포 파일에서 바꾼 번역 엔트리 수 (`SyncRun.changedValues`) — 열린 PR 갱신이면 PR 전체 vs base 누적. 기록 이전·실패는 `null`. */
+  changedValues: number | null;
   warnings: number;
   /** 못 실은 편집 수 (`SyncRun.withheld`) — 결과 모달과 같은 수다. */
   withheld: number;
@@ -91,7 +93,7 @@ const SELECT = {
   payload: true,
   // ⚠️ `email`을 **읽되 돌려주지 않는다** — 가리려면 원문이 필요하고, 나가면 안 되는 것은 반환값이다.
   actor: { select: { id: true, name: true, email: true, emailLookup: true } },
-  syncRun: { select: { status: true, finishedAt: true, changed: true, warnings: true, withheld: true, prUrl: true, errorCode: true } },
+  syncRun: { select: { status: true, finishedAt: true, changed: true, changedValues: true, warnings: true, withheld: true, prUrl: true, errorCode: true } },
 } satisfies Prisma.ProjectEventSelect;
 
 type Selected = Prisma.ProjectEventGetPayload<{ select: typeof SELECT }>;
@@ -213,6 +215,7 @@ function present(rows: readonly Selected[]): EventRow[] {
           ? null
           : {
               changed: row.syncRun.changed,
+              changedValues: row.syncRun.changedValues,
               warnings: row.syncRun.warnings,
               withheld: row.syncRun.withheld,
               prUrl: row.syncRun.prUrl,

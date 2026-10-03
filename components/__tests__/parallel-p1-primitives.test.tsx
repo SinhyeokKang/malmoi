@@ -65,6 +65,24 @@ it("Facts preserve fixed widths, stacked slots and table row headers", async () 
   for (const label of container.querySelectorAll("dt,th")) expect(label.className).toContain("text-gray-dim");
 });
 
+it("Fact right-aligns its value only when asked, and leaves existing consumers unchanged", async () => {
+  const { container } = await render(<dl><Fact width={96} label="Plain">Left</Fact><Fact width={96} align="end" label="Meta">Right</Fact></dl>);
+  const [plain, aligned] = [...container.querySelectorAll("dd")];
+  expect(plain?.className).not.toContain("text-right");
+  expect(aligned?.className).toContain("text-right");
+  // 라벨 폭은 그대로 고정이라 값의 끝이 한 열로 선다.
+  expect(container.querySelectorAll("dt")[1]?.className).toContain("w-24");
+  expect(aligned?.className).toContain("min-w-0 flex-1");
+});
+
+it("Fact align=end also pushes a block flex child to the end — the primitive owns the whole alignment", async () => {
+  const { container } = await render(<dl><Fact width={96} align="end" label="Meta"><span className="flex flex-wrap items-center gap-2"><b>a</b><i>b</i></span></Fact><Fact width={96} label="Plain"><span className="flex flex-wrap gap-2">c</span></Fact></dl>);
+  const [aligned, plain] = [...container.querySelectorAll("dd")];
+  // 직속 자식의 flex 줄은 `text-right`를 따르지 않는다 — `*:justify-end`가 그 줄을 끝으로 민다.
+  expect(aligned?.className).toContain("*:justify-end");
+  expect(plain?.className).not.toContain("justify-end");
+});
+
 it("translation NoMatch retains text14, py40, gap8 and both exit nodes", async () => {
   const { container } = await render(<NoMatch layout="list" title="No results" action={<><button>Search all</button><button>Clear filters</button></>} />);
   const root = container.firstElementChild!;

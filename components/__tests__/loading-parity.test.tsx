@@ -64,3 +64,36 @@ it("Logs 골격 행은 실물 EventRow와 같은 padding·줄 묶음이고 보�
   expect(stack.className).toContain("flex min-w-0 flex-1 flex-col gap-copy-gap");
   expect(stack.children).toHaveLength(2);
 });
+
+/**
+ * Home 메타 열 골격 (project-card-tabs T9) — **탭 머리는 실물**(같은 머리 클래스 · 같은 세그먼트 상수 · 같은 라벨)이고 본문은 Project 탭 8행
+ * (묶음 4·3·1)이다. ⚠️ **바닥 `Settings ›` 자리는 역할과 무관하게 늘 그린다** — 라우트 골격은 params·세션을 못 받아 역할을 모른다
+ * (2026-10-04 지휘자 판정 — 주 독자 OWNER 기준, EDITOR는 도착 때 45px 줄어든다. DESIGN §6.64 이탈 표).
+ */
+it("Home 골격의 메타 열은 실물 탭 머리 + Project 탭 8행(4·3·1) + 바닥이다", async () => {
+  const real = source("components/home/meta-tabs.tsx");
+  const head = real.match(/data-meta-head className="([^"]*)"/)![1]!;
+  const { container } = await render(HomeLoading());
+  const aside = container.querySelector<HTMLElement>("aside")!;
+  const skeletonHead = aside.querySelector<HTMLElement>("[data-skeleton-meta-head]")!;
+  expect(skeletonHead.className).toBe(head);
+  expect([...skeletonHead.querySelectorAll("span.truncate")].map((node) => node.textContent)).toEqual(["Project", "Sync", "Publish"]);
+  const groups = [...aside.querySelectorAll<HTMLElement>("[data-skeleton-meta-group]")];
+  expect(groups.map((group) => group.children.length)).toEqual([4, 3, 1]);
+  // 첫 묶음은 머리 선을 쓴다 — 실물 묶음과 같은 규칙이다.
+  expect(groups.map((group) => group.className.includes("border-t"))).toEqual([false, true, true]);
+  expect(aside.lastElementChild?.className).toContain("h-[45px]");
+});
+
+/**
+ * malmoi#181 — 골격 막대 폭이 **행마다 다르다**(시안 v3 `2e`) — 여덟 줄이 같은 폭이면 실물 행의 모양을 미리 보이지 못한다.
+ * 라벨 막대는 실제 라벨 길이(Repository · Connection · Branch · CI / Sources · Keys · Members / Created), 값 막대는 그 행 값의 흔한 길이다.
+ */
+it("Home 골격의 메타 열 막대 폭이 시안의 행별 폭이다", async () => {
+  const { container } = await render(HomeLoading());
+  const rows = [...container.querySelectorAll<HTMLElement>("aside [data-skeleton-meta-group] > div")];
+  const width = (node: Element | null | undefined) => node?.className.match(/\bw-(\d+)\b/)?.[1];
+  const bar = (row: HTMLElement, i: 0 | 1) => row.children[i]?.querySelector("[data-skeleton-line] > div");
+  expect(rows.map((row) => Number(width(bar(row, 0))) * 4)).toEqual([64, 72, 48, 24, 52, 36, 56, 52]);
+  expect(rows.map((row) => Number(width(bar(row, 1))) * 4)).toEqual([120, 84, 40, 76, 20, 36, 20, 80]);
+});

@@ -115,6 +115,8 @@ describe("planImportRefusal", () => {
       "not-ready", "unpinned", "no-surfaces", "repo-replaced", "invalid input",
       // 인가 — 다시 눌러도 같다(세션 만료는 아래 transient — 다시 로그인하면 풀린다)
       "forbidden", "not-found", "archived", "last-owner", "not-member",
+      // 복원·승격의 상한 재집계 — 이 경로에 생산자는 없다(`AccessError` 합집합이라 분류를 강요받는다). 보관해 자리를 비워야 풀린다.
+      "owner-limit-reached",
       // 연결·설치 — 사람이 GitHub에서 손대야 풀린다
       // `not-connected`는 이 사람의 GitHub 계정이 없다는 ConnectError다(ux-drift-unify r1) — 계정을 연결해야 풀린다.
       "not-connected", "reauthorize", "repo-not-installed", "installation-forbidden", "repo-forbidden", "repo-read-only",

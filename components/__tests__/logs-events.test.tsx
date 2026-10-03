@@ -33,7 +33,7 @@ describe("활동 행과 상세의 실제 동작", () => {
   /** B1 r3 — no-changes 실행이 닫은 PR은 SKIPPED 행의 prUrl이다. 상세가 "닫았다"로 말하고, 보낸 PR로 읽히지 않는다. */
   it.each([["https://github.com/o/r/pull/4", true], [null, false]] as const)("스킵 실행의 prUrl(%s)은 닫은 PR로 선다", async (url, shown) => {
     const { container } = await detail(row({ kind: "PUBLISH", subtype: "publish.run", result: "nothingToSend",
-      payload: { kind: "PUBLISH", surfaceSlugs: ["web"], refusal: null }, run: { changed: 0, warnings: 0, withheld: 0, prUrl: url, errorCode: null } }));
+      payload: { kind: "PUBLISH", surfaceSlugs: ["web"], refusal: null }, run: { changed: 0, changedValues: 0, warnings: 0, withheld: 0, prUrl: url, errorCode: null } }));
     expect(container.textContent?.includes(m.logs.detail.labels.closedPullRequest)).toBe(shown);
     expect(container.textContent?.includes(m.logs.detail.closedPullRequest)).toBe(shown);
   });
@@ -41,7 +41,7 @@ describe("활동 행과 상세의 실제 동작", () => {
   /** delivery-invariants D7 — Logs 상세가 모달과 같은 수를 한 줄로 말한다. 짝: 보류 0이면 줄이 없다. */
   it.each([[2, true], [0, false]] as const)("Publish 상세는 보류 %i건을 한 줄로 말한다(%s)", async (n, shown) => {
     const { container } = await detail(row({ kind: "PUBLISH", subtype: "publish.run", result: n > 0 ? "notSent" : "nothingToSend",
-      payload: { kind: "PUBLISH", surfaceSlugs: ["web"], refusal: null }, run: { changed: 0, warnings: 0, withheld: n, prUrl: null, errorCode: null } }));
+      payload: { kind: "PUBLISH", surfaceSlugs: ["web"], refusal: null }, run: { changed: 0, changedValues: 0, warnings: 0, withheld: n, prUrl: null, errorCode: null } }));
     expect(container.textContent?.includes(m.logs.detail.withheld(2))).toBe(shown);
   });
 
@@ -106,7 +106,7 @@ describe("활동 행과 상세의 실제 동작", () => {
 
   it("Home과 상세에도 Publish의 dropped 경고가 보인다", async () => {
     const value = row({ kind: "PUBLISH", subtype: "publish.run", result: "sent", payload: { kind: "PUBLISH", surfaceSlugs: ["web"], refusal: null },
-      run: { changed: 1, warnings: 2, withheld: 0, prUrl: null, errorCode: null } });
+      run: { changed: 1, changedValues: 1, warnings: 2, withheld: 0, prUrl: null, errorCode: null } });
     const { container } = await render(<EventRow row={value} href="/logs" now={now} archived={false} showTime={false} />);
     expect(container.textContent).toContain(m.logs.warnings(2));
     expect((await detail(value)).container.textContent).toContain(m.logs.warnings(2));
@@ -140,7 +140,7 @@ it("보관된 Publish의 행과 상세 모두 야간 재시도를 약속하지 �
   const code = Object.entries(m.logs.reasons).find(([, value]) => value.includes("nightly"))?.[0];
   expect(code).toBeDefined();
   const value = row({ kind: "PUBLISH", subtype: "publish.run", result: "failed",
-    run: { changed: null, warnings: 0, withheld: 0, prUrl: null, errorCode: code! },
+    run: { changed: null, changedValues: null, warnings: 0, withheld: 0, prUrl: null, errorCode: code! },
     payload: { kind: "PUBLISH", surfaceSlugs: [], refusal: null } });
   const { container, rerender } = await render(<EventRow row={value} href="/logs" now={now} archived={false} />);
   expect(container.textContent).toContain("nightly");
@@ -234,7 +234,7 @@ describe("상세 머리·바닥 — 행과 한 문법 (4-Y21 · 3-Y6)", () => {
   /** U4 리뷰 — 지문 재확인으로 멈춘 Publish는 "held back its edits"가 아니다(아무것도 안 보냈고 보류가 아니다). */
   it("reconfirm으로 멈춘 Publish는 자기 문장을 든다 · 보류로 인한 notSent는 그대로 (짝)", async () => {
     const publish = (errorCode: string | null) => row({ kind: "PUBLISH", subtype: "publish.run", result: "notSent",
-      payload: { kind: "PUBLISH", surfaceSlugs: ["web"], refusal: null }, run: { changed: 0, warnings: 0, withheld: errorCode === null ? 2 : 0, prUrl: null, errorCode } });
+      payload: { kind: "PUBLISH", surfaceSlugs: ["web"], refusal: null }, run: { changed: 0, changedValues: errorCode === null ? 0 : null, warnings: 0, withheld: errorCode === null ? 2 : 0, prUrl: null, errorCode } });
     const { container: stopped } = await render(<EventRow row={publish("reconfirm")} href="/logs" now={now} archived={false} />);
     expect(stopped.textContent).not.toContain("held back its edits");
     expect(stopped.textContent).toContain("stopped before sending");

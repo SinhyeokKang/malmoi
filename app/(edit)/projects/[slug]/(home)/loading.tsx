@@ -1,4 +1,6 @@
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
+import { SEGMENT, SELECTED, TRACK, UNSELECTED } from "@/components/ui/segment";
+import { SegmentBody } from "@/components/ui/segmented-control";
 import { Skeleton } from "@/components/ui/skeleton";
 import { m } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -12,7 +14,7 @@ import { cn } from "@/lib/utils";
  * ⚠️ **골격이 실물과 같은 치수여야 한다** — 머리 padding·카드 테두리·행 높이·구분선·섹션 제목이
  * 그대로다. 다르면 데이터가 도착하는 순간 레이아웃이 튀고, 그 튐이 로딩 표시보다 더 눈에 띈다.
  *
- * ⚠️ **개수를 모르는 자리는 가장 흔한 수로 그린다** (캔버스: 항목 3 · 로그 5 · 메타 9). 실제 개수를
+ * ⚠️ **개수를 모르는 자리는 가장 흔한 수로 그린다** (캔버스: 항목 3 · 로그 5 · 메타 Project 탭 8). 실제 개수를
  * 맞히려 들면 틀렸을 때 두 번 튄다.
  *
  * ⚠️ **폭은 비율이다** — 고정 px로 주면 1440과 1280에서 골격만 다르게 잘린다.
@@ -73,17 +75,24 @@ export default function ProjectHomeLoading() {
         </div>
 
         {/*
-          ⚠️ **메타 열은 구역이 둘이고 바닥에 링크가 있다** (§6.64 · 2026-09-16 실측). 한 구역 아홉 행으로
-          그리면 경계 하나와 `[Project settings ›]` 45px이 통째로 빠져 **오른쪽 열이 도착하는 순간
-          늘어난다.** 행 수(6·3)는 실물의 가장 흔한 모양이고, 두 줄짜리 값(리포·마지막 발행)까지
-          맞히려 들지는 않는다 — 틀리면 두 번 튄다.
+          ⚠️ **메타 열은 탭 머리가 실물이다** (project-card-tabs `2e`) — 착지는 언제나 `Project` 탭이라 머리 라벨·선택 칸을 미리 안다.
+          본문은 Project 탭 8행(묶음 4·3·1 — Repository·Connection·Branch·CI / Sources·Keys·Members / Created)이고 보관의 `Archived`까지
+          맞히려 들지 않는다 — 틀리면 두 번 튄다.
+          ⚠️ **바닥 `Settings ›` 자리를 역할과 무관하게 늘 그린다** — 라우트 골격은 params·세션을 못 받아 역할을 모른다(2026-10-04 지휘자 판정 —
+          주 독자 OWNER 기준). EDITOR는 도착 때 45px 줄어든다(DESIGN §6.64 이탈 표).
         */}
         <aside className="border-border overflow-hidden rounded-lg border">
-          <div className="flex min-h-12 items-center px-4 py-3">
-            <Skeleton size="md" className="w-20" />
+          {/* 실물 머리(`meta-tabs.tsx`의 `data-meta-head`)와 같은 클래스·같은 세그먼트 상수 — 골격만 다른 높이로 서지 않는다. */}
+          <div data-skeleton-meta-head className="border-divider border-b p-3">
+            <div className={cn(TRACK, "flex")}>
+              {[m.home.meta.tabs.project, m.home.meta.tabs.sync, m.home.meta.tabs.publish].map((label, i) => (
+                <span key={label} className={cn(SEGMENT, "flex-1", i === 0 ? SELECTED : UNSELECTED)}><SegmentBody label={label} /></span>
+              ))}
+            </div>
           </div>
-          <MetaGroup rows={6} />
-          <MetaGroup rows={3} />
+          <MetaGroup rows={META_ROWS.slice(0, 4)} divided={false} />
+          <MetaGroup rows={META_ROWS.slice(4, 7)} />
+          <MetaGroup rows={META_ROWS.slice(7)} />
           <FooterLink />
         </aside>
       </PanelBody>
@@ -153,13 +162,28 @@ function FooterLink() {
  * ⚠️ **행 높이 20은 컨테이너가 든다** — 실물의 값은 `text-sm`(line-height 20)이고, 골격이 블록의
  * 14로 서면 아홉 행에서 54px이 모자란다 (2026-09-16 실측).
  */
-function MetaGroup({ rows }: { rows: number }) {
+/**
+ * 메타 열 Project 탭 여덟 행의 막대 폭 `[라벨, 값]` (시안 v3 `2e`, malmoi#181) — 여덟 줄이 같은 폭이면 실물 행의 모양을 미리 보이지 못한다.
+ * 라벨 막대는 실제 라벨 길이(Repository · Connection · Branch · CI / Sources · Keys · Members / Created), 값 막대는 그 행 값의 흔한 길이다
+ * (리포 주소 · 배지 · 브랜치 · `Configured` / 수 · 수 · `4 (2)` / 상대 시각). ⚠️ 클래스를 문자열 리터럴로 둔다 — Tailwind가 소스에서 찾는다.
+ * ⚠️ **위 머리 주석의 "폭은 비율" 규칙의 예외다** — 메타 열은 320 고정이라 뷰포트에 따라 잘리는 폭이 없고, 시안이 px로 정했다.
+ */
+const META_ROWS: readonly (readonly [label: string, value: string])[] = [
+  ["w-16", "w-30"], ["w-18", "w-21"], ["w-12", "w-10"], ["w-6", "w-19"],
+  ["w-13", "w-5"], ["w-9", "w-9"], ["w-14", "w-5"],
+  ["w-13", "w-20"],
+];
+
+function MetaGroup({ rows, divided = true }: { rows: readonly (readonly [label: string, value: string])[]; divided?: boolean }) {
   return (
-    <div className="border-divider flex flex-col gap-2.5 border-t px-4 py-3.5">
-      {Array.from({ length: rows }, (_, i) => (
+    // 첫 묶음은 탭 머리 선을 쓴다 — 실물 묶음과 같은 규칙이다.
+    <div data-skeleton-meta-group className={cn("flex flex-col gap-2.5 px-4 py-3.5", divided && "border-divider border-t")}>
+      {rows.map(([label, value], i) => (
         <div key={i} className="flex h-5 items-center gap-3">
-          <div className="w-24 shrink-0"><Skeleton size="xs" className="w-full" /></div>
-          <div className="min-w-0 flex-1"><Skeleton size="sm" className="w-[62%]" /></div>
+          {/* 라벨 칸은 실물과 같은 96이고 막대만 라벨 길이다. */}
+          <div className="w-24 shrink-0"><Skeleton size="xs" className={label} /></div>
+          {/* 값은 오른쪽 끝에 붙는다 — 실물 `Fact align="end"`와 같은 쪽이다. */}
+          <div className="flex min-w-0 flex-1 justify-end"><Skeleton size="sm" className={value} /></div>
         </div>
       ))}
     </div>

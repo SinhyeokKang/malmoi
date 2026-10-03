@@ -12,6 +12,7 @@ import { LogsCard } from "@/components/home/logs-card";
 import { MetaColumn } from "@/components/home/meta-column";
 import { ProjectNotReady } from "@/components/project-not-ready";
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
+import { pendingInvitationWhere } from "@/lib/auth/pending-invitation";
 import { canPerform } from "@/lib/auth/permission";
 import { requireProjectAccess } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
@@ -22,10 +23,10 @@ import { loadConnectionHealth } from "@/lib/github";
 import { logFailure } from "@/lib/github-connect/log";
 import { attentionItems } from "@/lib/home/attention";
 import { cardLandings, countCards, planHomeHold, surfaceQueues } from "@/lib/home/cards";
-import { metaRows } from "@/lib/home/meta";
+import { homeLastSync, homeLate, metaTabs } from "@/lib/home/meta";
 import { loadHomeRuns } from "@/lib/home/runs";
 import { lastSyncTime } from "@/lib/home/sync-time";
-import { connectionProblem, planActionAvailability, planHomeState } from "@/lib/home/state";
+import { connectionProblem, planActionAvailability, planHomeState, repositoryConnectionState } from "@/lib/home/state";
 import { loadWriteLock } from "@/lib/home/write-lock";
 import {
   loadActors, loadProjectListAggregates, loadReviewAttention,
@@ -87,7 +88,9 @@ export default async function ProjectHomePage({
   const openRef = parseLogFilter(await searchParams).event;
 
   const prisma = getPrisma();
-  const project = await prisma.project.findUnique({
+  // 기준 시각을 서버에서 한 번 만든다 — 항목마다 부르면 상대 시각의 기준이 갈린다. ⚠️ **project 조회 앞이다** — 대기 초대 수(`_count`)의 술어가 이 시각을 쓴다.
+  const now = new Date();
+  const projectRow = await prisma.project.findUnique({
     where: { id: projectId },
     select: {
       name: true,
@@ -99,8 +102,8 @@ export default async function ProjectHomePage({
       baseBranch: true,
       createdAt: true,
       archivedAt: true,
-      lastPublishedAt: true,
-      lastPrUrl: true,
+      // ⚠️ **유무만 쓴다** — 아래에서 select 직후 boolean으로 접어 `project`에서 뗀다(해시라도 RSC 페이로드에 싣지 않는다).
+      pushTokenHash: true,
       // 번역 링크가 공가 redirect를 건너뛰고 기본 표면으로 바로 간다 (audit-ux #4b). 보관된 기본 표면은 옛 라우트처럼 없는 것으로 친다.
       defaultSurface: { select: { slug: true, archivedAt: true } },
       surfaces: {
@@ -112,11 +115,14 @@ export default async function ProjectHomePage({
           locales: { select: { code: true, name: true, isBase: true, orphaned: true, createdAt: true } },
         },
       },
-      _count: { select: { members: true } },
+      // 대기 초대 — 멤버 화면 목록과 같은 술어다(수락·만료 둘 다 뺀다, POSTMORTEM 2026-09-10).
+      _count: { select: { members: true, invitations: { where: pendingInvitationWhere(now) } } },
     },
   });
   // 인가는 지났는데 행이 없다 — 그 사이에 지워진 경우다. 문구가 존재 여부를 말하지 않는 곳으로 보낸다.
-  if (project === null) redirect(routes.projects({ e: "not-found" }));
+  if (projectRow === null) redirect(routes.projects({ e: "not-found" }));
+  const { pushTokenHash, ...project } = projectRow;
+  const ciConfigured = pushTokenHash !== null;
 
   /**
    * 첫 적재 전에는 볼 것이 없다. **정책과 문구는 `ProjectNotReady`가 든다** — 번역 화면도 같은
@@ -124,9 +130,6 @@ export default async function ProjectHomePage({
    */
   const readiness = planProjectReadiness(project);
   if (readiness !== "ready") return <ProjectNotReady slug={slug} role={role} readiness={readiness} />;
-
-  // 기준 시각을 서버에서 한 번 만든다 — 항목마다 부르면 상대 시각의 기준이 갈린다.
-  const now = new Date();
 
   /**
    * ⚠️ **한 라운드다** (POSTMORTEM 2026-09-05 — 병목이 행 수가 아니라 함수 리전이었다). 조회가
@@ -136,7 +139,7 @@ export default async function ProjectHomePage({
    * ⚠️ **연결 조회는 `installationId`가 있을 때만 GitHub을 친다** — `loadConnectionHealth`가 그
    * 가드를 든다. GitHub 장애는 값(`unknown`)으로 오므로 이 화면이 그것에 죽지 않는다.
    */
-  const [aggregates, events, review, openEvent, health, triggers, writeLock] = await Promise.all([
+  const [aggregates, events, review, openEvent, health, runs, writeLock] = await Promise.all([
     loadProjectListAggregates(prisma, [projectId]),
     /**
      * ⚠️ **Logs와 같은 함수다** (logs-rework 결정 — 조합 쿼리 넷이 사라졌다). 같은 수를 두 번 세지
@@ -162,7 +165,7 @@ export default async function ProjectHomePage({
       logFailure("home-connection-health", error);
       return { status: "unknown" } as const;
     }),
-    // 메타 열의 실행 주체(`12 hours ago · nightly`) — 행위자를 싣지 않는 사건 셋이다(nightly-sync F2).
+    // 메타 열 Sync·Publish 탭의 실행 하나씩 — 행위자를 싣지 않는 사건 둘이다(project-card-tabs §2.2).
     loadHomeRuns(prisma, projectId),
     // 다른 실행의 적재 lease — [Sync]·배너 [Try again]을 멈춘다(sync-lock R5). 같은 라운드라 왕복이 늘지 않는다.
     loadWriteLock(prisma, projectId, now),
@@ -250,7 +253,7 @@ export default async function ProjectHomePage({
   const paused = !availability.sync || !availability.publish;
   /**
    * 보류 판정 — 게이트와 같은 입력이다(`planHomeHold` → `planHoldNotice`, ux-drift-unify Q6). ⚠️ **편집이 있으면 PR을 조회하지 않는다**(결과가 같다).
-   * 조회가 필요하면 promise를 **기다리지 않고** 카드 보조 줄·메타 열의 클라이언트 섬(`HoldLater` — effect 구독, `use()`는 전환을 붙잡는다)으로 내린다 — 본문 렌더를 막지 않는다(malmoi#107이 메모로 줄인
+   * 조회가 필요하면 promise를 **기다리지 않고** 카드 보조 줄(`HoldLater`)·메타 열 탭 껍데기(`MetaTabs`)의 effect 구독으로 내린다(`use()`는 전환을 붙잡는다) — 본문 렌더를 막지 않는다(malmoi#107이 메모로 줄인
    * 착지 병목을 되살리지 않는다). 조회는 여기서 출발하므로 본문과 동시에 돈다.
    * ⚠️ **거부를 삼킨다** — Home은 모든 프로젝트의 착지 화면이라(위 연결 조회와 같은 판정) 조회 실패는 보류(`pr-check-failed`)로 말한다.
    * ⚠️ **메모를 거친다** (U15 — T18 실측: 착지·상세마다 GitHub 2회) — 연결 확인과 같은 TTL이다. 표시 전용이라서이고 게이트는 실물을 본다.
@@ -265,6 +268,25 @@ export default async function ProjectHomePage({
   );
   const heldNow = hold instanceof Promise ? null : hold;
   const heldLater = hold instanceof Promise ? hold : undefined;
+  /**
+   * 메타 열 탭 셋 (project-card-tabs). ⚠️ **PR state는 새 조회가 아니다** — 위 보류 판정이 PR을 조회하는 갈래(`heldLater`)일 때만 자리를 잡고,
+   * 같은 promise의 결론(`homeLate`)이 Hold와 함께 늦게 채운다. 조회하지 않는 갈래면 행이 없다.
+   */
+  const meta = metaTabs({
+    // 설정 카드와 같은 판정이다 — 연결 확인 실패(`unknown`)는 끊김이 아니라 `Couldn't check`다.
+    repository: { owner: project.repoOwner, name: project.repoName, branch: project.baseBranch, connection: repositoryConnectionState(health.status, connectionProblem(health.status)) },
+    ciConfigured,
+    surfaceCount: surfaces.length,
+    keys,
+    members: project._count.members,
+    pendingInvites: project._count.invitations,
+    createdAt: project.createdAt,
+    archivedAt: project.archivedAt,
+    lastSync: homeLastSync(runs.sync, surfaces),
+    lastPublish: runs.publish,
+    held: heldNow,
+    prState: heldLater === undefined ? "absent" : "pending",
+  });
   const defaultSurface = project.defaultSurface?.archivedAt === null ? project.defaultSurface.slug : null;
 
   return (
@@ -353,30 +375,11 @@ export default async function ProjectHomePage({
         </div>
 
         <MetaColumn
-          rows={metaRows({
-            state,
-            repoOwner: project.repoOwner,
-            repoName: project.repoName,
-            baseBranch: project.baseBranch,
-            surfaces: surfaces.length,
-            locales: [...new Set(surfaces.flatMap((s) => s.locales.filter((l) => !l.orphaned).map((l) => l.code)))].sort(),
-            keys,
-            members: project._count.members,
-            lastSyncAt,
-            lastImportFailedAt: failed?.lastImportFailedAt ?? null,
-            lastImportError: failed?.importError ?? null,
-            lastPublishedAt: project.lastPublishedAt,
-            lastPrUrl: project.lastPrUrl,
-            createdAt: project.createdAt,
-            archivedAt: project.archivedAt,
-            triggers,
-            connection: connectionProblem(health.status),
-            held: heldNow,
-          })}
+          tabs={meta}
           slug={slug}
           now={now}
           canOpenSettings={canPerform(role, "project:settings")}
-          heldLater={heldLater}
+          late={heldLater?.then(homeLate)}
         />
       </PanelBody>
 

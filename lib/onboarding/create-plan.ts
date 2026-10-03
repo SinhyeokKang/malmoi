@@ -10,10 +10,20 @@ import type { RepoConnect } from "@/lib/github-connect/connect-plan";
  */
 
 /**
- * 사용자당 프로젝트 상한 — 자율 가입의 대가로 5단계가 먼저 건 유일한 고정 제한이다 (PRODUCT §4.2). 호출부가 `limit`으로
- * 넘기고 `onboardErrorMessage`가 문구의 숫자로 쓴다 — 두 곳이 갈리면 문구가 거짓이 된다.
+ * 사용자당 프로젝트 상한 — 자율 가입의 대가로 5단계가 먼저 건 유일한 고정 제한이다 (PRODUCT §4.2). 호출부는
+ * `projectLimitFor`로 사용자별 값을 받아 `limit`으로 넘기고, 문구(`onboardErrorMessage` 등)는 **이 상수**를 숫자로
+ * 쓴다 — 거부를 받는 사람은 운영자가 아니므로 문구의 3은 계속 참이다.
  */
 export const PROJECT_LIMIT = 3;
+
+/**
+ * 그 사용자의 상한 — 운영자(자율 가입자가 아니다)는 `Infinity`. ⚠️ **비교에만 쓴다** — 결과 타입·문구·MCP 응답에
+ * 실으면 화면에 `∞`, JSON에 `null`이 나간다. 이 파일은 클라이언트 그래프라 운영자 판정(`lib/operator/`)을
+ * 부르지 않고 판정 결과만 받는다.
+ */
+export function projectLimitFor(operator: boolean): number {
+  return operator ? Infinity : PROJECT_LIMIT;
+}
 
 export type ProjectCreate =
   | { status: "ok"; installationId: string; repoOwner: string; repoName: string }
@@ -25,8 +35,7 @@ export type ProjectCreate =
  *   ⚠️ **이 값은 트랜잭션 밖의 선조회다** — 거부될 요청이 GitHub을 읽지 않게 하는 것이 그 목적이고,
  *   **제한의 실제 방어선은 `createProject`의 트랜잭션 안 재집계**다(`User` 행을 잠그고 다시 센다,
  *   2026-09-07 리뷰 🟡7). 여기만 믿으면 두 탭의 동시 생성이 슬롯을 하나 더 만든다.
- * @param limit 사용자당 프로젝트 상한 — 보통 `PROJECT_LIMIT`이다. 인자로 받는 것은 테스트가 상수를 바꾸지 않고
- *   경계를 밟기 위해서다.
+ * @param limit 그 사용자의 상한 — `projectLimitFor`의 값이다(운영자면 `Infinity`, 아니면 `PROJECT_LIMIT`).
  */
 export function planProjectCreate(input: {
   repoConnect: RepoConnect;

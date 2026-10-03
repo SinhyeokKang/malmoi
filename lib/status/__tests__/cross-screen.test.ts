@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { repositoryConnectionState } from "@/components/settings/connection-state";
 import { planConnectionHealth, type ProbeResult } from "@/lib/github-connect/health";
-import { connectionProblem, homeBannerState, planActionAvailability, planHomeState } from "@/lib/home/state";
+import { metaTabs } from "@/lib/home/meta";
+import { connectionProblem, homeBannerState, planActionAvailability, planHomeState, repositoryConnectionState } from "@/lib/home/state";
 import { m } from "@/lib/i18n";
 import { planRepositoryImport, type ImportPlanInput } from "@/lib/import/plan";
 import { planImportRefusal } from "@/lib/import/refusal";
@@ -30,8 +30,8 @@ import { STATE, type StateKey } from "../canon";
  * - readiness가 먼저 막는다 — Home(`ProjectNotReady`)·적재 거부(`not-ready`)가 그 판정에 닿지 않는다.
  *
  * ⚠️ **화면 쪽 매핑(판정 결과 → 상태 키)은 사본이 남은 것이 있다** — 목록 띠(`project-list.tsx` `ProjectBanner`)는 컴포넌트 안에 있다.
- * 칩(`CHIP_STATE`)·Home 배너 갈래(`homeBannerState`)·Settings 배지(`repositoryConnectionState`, `components/settings/connection-state.ts`)는
- * 화면이 쓰는 그 순수 매핑을 그대로 부른다(ux-drift-unify T18·T19·T22).
+ * 칩(`CHIP_STATE`)·Home 배너 갈래(`homeBannerState`)·Settings 배지와 Home 메타 열 Connection 배지(둘 다 `repositoryConnectionState`, `lib/home/state.ts`)는
+ * 화면이 쓰는 그 순수 매핑을 그대로 부른다(ux-drift-unify T18·T19·T22 · project-card-tabs fix1).
  */
 
 // ── 판정 묶음 — 카나리아가 한 판정만 바꿔 넣는다 ─────────────────────────────
@@ -106,7 +106,7 @@ function bannerKey(banner: RowBanner): StateKey | null {
 type NotApplicable = { na: string };
 type Observed = {
   list: { chip: StateKey; banner: StateKey | null };
-  home: { banner: StateKey | null; hold: HoldReason | null; actions: { publish: boolean; sync: boolean } } | NotApplicable;
+  home: { banner: StateKey | null; hold: HoldReason | null; actions: { publish: boolean; sync: boolean }; meta: StateKey } | NotApplicable;
   settings: StateKey | null;
   sources: StateKey[];
   refusal: { error: string; tone: string; message: string } | NotApplicable;
@@ -149,7 +149,14 @@ function observe(f: Fixture, J: Judgments): Observed {
       pending: f.pending, openPr: f.openPr === undefined ? undefined : f.openPr?.url ?? null,
       gateApplies: openPrGateApplies(project), archived, disconnected: state === "not_connected",
     });
-    home = { banner, hold: hold?.reason ?? null, actions: J.planActionAvailability({ archived, connection: health.status }) };
+    // 메타 열 Connection 배지 — Settings와 같은 함수를 `metaTabs`에 넣고 그 행을 읽는다(project-card-tabs fix1 — 사본이 판정과 갈렸다).
+    const meta = metaTabs({
+      repository: { owner: "acme", name: "web", branch: "main", connection: repositoryConnectionState(health.status, problem) },
+      ciConfigured: false, surfaceCount: f.surfaces.length, keys: 0, members: 1, pendingInvites: 0, createdAt: T0, archivedAt: f.archivedAt,
+      lastSync: null, lastPublish: null, held: null, prState: "absent",
+    }).project.flat().find((r) => r.kind === "connection");
+    if (meta === undefined) throw new Error("no connection row");
+    home = { banner, hold: hold?.reason ?? null, actions: J.planActionAvailability({ archived, connection: health.status }), meta: meta.state };
   }
 
   // Settings — 컴포넌트와 같은 함수다. `connectionProblem`을 넘겨받으므로 카나리아가 그 판정을 바꾸면 이 칸도 따라 바뀐다.
@@ -208,7 +215,7 @@ const na = <C extends Column>(column: C, axis: keyof (typeof RECEIVES)[C]) => ({
 
 // ── 행렬 — spec 완료 조건 3의 표 그대로 ─────────────────────────────────────
 
-type HomeCell = { banner: StateKey | null; hold?: HoldReason | null } | { readiness: string };
+type HomeCell = { banner: StateKey | null; hold?: HoldReason | null; meta?: StateKey } | { readiness: string };
 type Cell<T> = T | { na: { column: Column; axis: string } };
 type Row = {
   input: string;
@@ -290,7 +297,8 @@ const MATRIX: Row[] = [
     input: "보관 + repositoryId null",
     fixture: fixture({ archivedAt: T0, repositoryId: null }),
     list: { chip: "archived", banner: null },
-    home: { banner: "archived", hold: null },
+    // 배너는 보관이 이기지만 메타 열 Connection은 연결 사실 그대로다 — Settings 배지와 같은 키.
+    home: { banner: "archived", hold: null, meta: "disconnected" },
     settings: na("settings", "archived"),
     sources: na("sources", "archived"),
     refusal: { na: { column: "refusal", axis: "archived-before-plan" } },
@@ -351,6 +359,8 @@ function mismatches(row: Row, J: Judgments): string[] {
   else {
     cmp("home.banner", row.home.banner, got.home.banner);
     if (row.home.hold !== undefined) cmp("home.hold", row.home.hold, got.home.hold);
+    // 메타 열 Connection은 Settings 칸과 같은 키다 — 행이 따로 적지 않으면 Settings 칸(문제 갈래) 또는 connected를 기대한다.
+    cmp("home.meta", row.home.meta ?? (typeof row.settings === "string" ? row.settings : "connected"), got.home.meta);
     // 버튼은 배너가 보관·연결 문제를 말할 때만 꺼진다 — Home 머리와 번역 화면이 같은 판정이다(🔴 F).
     const off = row.home.banner === "archived" || row.home.banner === "disconnected" || row.home.banner === "notConnected" || row.home.banner === "wrongRepository";
     cmp("home.actions", { publish: !off, sync: !off }, got.home.actions);
@@ -421,11 +431,12 @@ describe("화면 매핑 사본이 낡지 않았다", () => {
 describe("카나리아", () => {
   const total = (J: Judgments) => MATRIX.flatMap((row) => mismatches(row, J));
 
-  it("connectionProblem이 unpinned를 미연결로 접으면 Home·Settings 칸이 red다", () => {
+  it("connectionProblem이 unpinned를 미연결로 접으면 Home·Settings·Home 메타 칸이 red다", () => {
     const flipped: Judgments = { ...REAL, connectionProblem: (status) => (status === "unpinned" ? "not-connected" : connectionProblem(status)) };
     const red = total(flipped);
     expect(red.some((line) => line.startsWith("repositoryId null(설치 있음) × settings"))).toBe(true);
     expect(red.some((line) => line.startsWith("unpinned + probe error × home.banner"))).toBe(true);
+    expect(red.some((line) => line.startsWith("unpinned + probe error × home.meta"))).toBe(true);
   });
 
   it("worstFailingSurface가 첫 실패를 고르면 A partial + B failed의 Home 칸이 red다", () => {

@@ -2,7 +2,7 @@
 
 import { ChevronsUpDown, Plus } from "lucide-react";
 import Link from "next/link";
-import { useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
+import { useRef, useState, type KeyboardEvent, type PointerEvent, type ReactElement } from "react";
 
 import { ProjectThumbnail } from "@/components/ui/project-thumbnail";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -38,8 +38,19 @@ const ITEM = '[role="menuitem"], [role="menuitemradio"]';
  * - 항목에 포커스가 있을 때 친 글자·Backspace는 typeahead 대신 **입력으로 돌아가 질의를 고친다** — 포인터가 항목 위를 지나며 포커스를
  *   옮긴 뒤에도 치던 것이 이어진다. 첫 항목의 ArrowUp은 입력으로 간다.
  * ⚠️ `SearchInput`을 쓰지 않는다 — 그쪽은 Enter에 제출하는 URL 검색이고, 여기는 칠 때마다 좁히는 로컬 필터다.
+ *
+ * `trigger`는 접힌 LNB 레일의 썸네일 버튼이다(2026-10-04 사용자) — 없으면 머리 오른쪽 끝의 chevron 버튼이다. 메뉴는 한 벌이다.
+ * ⚠️ **레일에서는 오른쪽으로 연다** — 40 레일 아래로 열면 메뉴가 레일 항목을 덮는다. 머리에서는 아래다(펼친 LNB 폭 안에 선다).
  */
-export function ProjectSwitcher({ projects, current }: { projects: readonly SwitcherProject[]; current: string | null }) {
+export function ProjectSwitcher({
+  projects,
+  current,
+  trigger,
+}: {
+  projects: readonly SwitcherProject[];
+  current: string | null;
+  trigger?: ReactElement;
+}) {
   const [q, setQ] = useState("");
   const input = useRef<HTMLInputElement>(null);
   const content = useRef<HTMLDivElement>(null);
@@ -90,13 +101,16 @@ export function ProjectSwitcher({ projects, current }: { projects: readonly Swit
   return (
     <DropdownMenu onOpenChange={(open) => { if (!open) setQ(""); }}>
       <DropdownMenuTrigger asChild>
-        {/* ⚠️ 머리 줄은 32다 — 24 버튼을 `-my-0.5`로 그 안에 넣는다(안 그러면 머리만 36이 된다). */}
-        <Button size="icon-xs" variant="ghost" aria-label={m.common.nav.projectSwitcher.label} className="-my-0.5 ml-auto shrink-0 rounded-sm">
-          <ChevronsUpDown className="size-4" aria-hidden />
-        </Button>
+        {trigger ?? (
+          // ⚠️ 머리 줄은 32다 — 24 버튼을 `-my-0.5`로 그 안에 넣는다(안 그러면 머리만 36이 된다).
+          <Button size="icon-xs" variant="ghost" aria-label={m.common.nav.projectSwitcher.label} className="-my-0.5 ml-auto shrink-0 rounded-sm">
+            <ChevronsUpDown className="size-4" aria-hidden />
+          </Button>
+        )}
       </DropdownMenuTrigger>
       <DropdownMenuContent
         ref={content}
+        side={trigger ? "right" : "bottom"}
         align="start"
         className="w-64"
         onKeyDown={onContentKeyDown}

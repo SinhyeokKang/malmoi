@@ -230,17 +230,15 @@ function fields(row: EventRow): [string, ReactNode][] {
   const out: [string, ReactNode][] = [];
   const payload = row.payload;
   if (row.kind === "PUBLISH") {
+    const notRecorded = <>{m.logs.none} <span className="text-muted-foreground text-xs">{m.logs.detail.notRecordedForRun}</span></>;
     out.push([m.logs.detail.labels.trigger, actorLabel(row)]);
     out.push([
       m.logs.detail.labels.files,
-      row.run?.changed == null ? (
-        <>
-          {m.logs.none} <span className="text-muted-foreground text-xs">{m.logs.detail.notRecordedForRun}</span>
-        </>
-      ) : (
-        m.logs.meta.files(row.run.changed)
-      ),
+      row.run?.changed == null ? notRecorded : m.logs.meta.files(row.run.changed),
     ]);
+    // 리포 파일에서 바꾼 값 수(`SyncRun.changedValues`) — IMPORT의 같은 칸과 같은 단위다. 열린 PR 갱신이면 PR 전체 vs base 누적이다.
+    // 상세에만 둔다 — 보조줄(`eventMeta`)엔 `N files` 옆에 수가 둘이 된다. 기록 이전 실행은 `Files`와 같은 `—` + not recorded다.
+    out.push([m.logs.detail.labels.values, row.run?.changedValues == null ? notRecorded : changedValuesText(row.result, row.run.changedValues)]);
     // ⚠️ **스킵 행의 prUrl은 이 실행이 닫은 PR이다** (B1 r3 — `planSyncFinish`). 보낸 PR의 "View"로 그리면 뜻이 뒤집힌다.
     const closed = row.run !== null && row.run.prUrl !== null && (row.result === "nothingToSend" || row.result === "notSent");
     if (closed && row.run?.prUrl) out.push([m.logs.detail.labels.closedPullRequest, <>

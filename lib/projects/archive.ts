@@ -5,6 +5,8 @@ import { getProjectAccess } from "@/lib/auth/query";
 import type { Subject } from "@/lib/auth/subject";
 import { recordEvent } from "@/lib/events/record";
 
+import { lockOwnerSlots } from "./owner-limit";
+
 /**
  * **보관·복원의 공유 코어** (mcp-connector T4-b). 편집 UI와 MCP `archive_project`·`unarchive_project`가 같은 인가·잠금 tx·사건을 지난다.
  *
@@ -54,6 +56,12 @@ export async function runUnarchive(prisma: PrismaClient, subject: Subject, input
     if (locked.status !== "ok") return locked;
     const project = await tx.project.findUnique({ where: { id: access.projectId }, select: { archivedAt: true } });
     if (project === null || project.archivedAt === null) return locked;
+    /**
+     * ⚠️ **복원은 OWNER 전원의 활성 프로젝트를 하나씩 늘린다** — 상한이 생성에만 있으면 "보관 → 생성 → 복원"이 넷을 만든다
+     * (operator-account C6). 보관 중이라 지금 그들의 셈에 안 들어 있다. 잠금은 `lockProjectAccess`(Project) **뒤**다.
+     */
+    const owners = await tx.projectMember.findMany({ where: { projectId: access.projectId, role: "OWNER" }, select: { userId: true } });
+    if ((await lockOwnerSlots(tx, owners.map((owner) => owner.userId))).length > 0) return { status: "owner-limit-reached" as const };
     await tx.project.update({ where: { id: access.projectId }, data: { archivedAt: null } });
     await recordEvent(tx, {
       projectId: access.projectId,
