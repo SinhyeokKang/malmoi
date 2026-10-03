@@ -10,13 +10,13 @@
 
 | 파일 | 변경 |
 |---|---|
-| `prisma/schema.prisma` · 마이그레이션 | `SyncRun.changedValues Int?` 추가 (additive · §6) |
-| Publish 실행(`lib/pull/run.ts` 근처) | 커밋한 실행이 **리포 파일에서 실제로 바꾼 번역 값 수(추가 포함)** 를 `SyncRun.changedValues`에 쓴다(§2.3). 실패·스킵은 `null` |
-| `lib/events/view.ts` · Logs Publish 행 | `changedValuesText`(:386, IMPORT가 쓰는 것)를 Publish 행에도 — 조회가 `SyncRun`을 조인해 읽는다(PUBLISH payload에 복제하지 않는다, logs-rework 결정 1) |
+| `prisma/schema.prisma` · 마이그레이션 · `lib/privacy/collected.ts` | `SyncRun.changedValues Int?` 추가 (additive · §6). `collected.ts`의 `CLASSIFIED`(:258-270)에 `"SyncRun.changedValues"` 등재 — 없으면 typecheck red(`SyncRunScalarFieldEnum`, :98) |
+| Publish 실행 — `lib/pull/run.ts` · `lib/sync/plan.ts` · `lib/sync/run.ts` | `runPull`(`lib/pull/run.ts:238`)이 `PullResult.committed`(:128-)에 수를 싣고 → `SyncFinish`·`planSyncFinish`(`lib/sync/plan.ts:188`)가 필드를 받고 → 종료 `update`(`lib/sync/run.ts:67-80`)가 `SyncRun.changedValues`에 쓴다(§2.3). 커밋·스킵은 수, 실패는 `null` |
+| Logs Publish 상세 — `lib/events/query.ts` · `components/logs/event-detail.tsx` | 조인은 이미 있다(`query.ts:93`) — select · `PublishRun` 타입(:55-63) · `present()`(:207-216)에 `changedValues`를 더하고, 상세 `fields`(`event-detail.tsx:270-276`, 지금은 IMPORT만)에서 `changedValuesText`(`lib/events/view.ts:386`)로 그린다. 자리는 **상세만**(보조줄 `eventMeta`엔 넣지 않는다 — `N files` 옆에 수가 둘이 된다). `null`은 기존 관례대로 `—` + `notRecordedForRun`(`event-detail.tsx:238-240`). PUBLISH payload에 복제하지 않는다(logs-rework 결정 1) |
 | `lib/home/meta.ts` | `metaRows` → **탭별 행을 내는 `metaTabs`**로 교체. `SUCCESSFUL_IMPORT_RESULTS`·`advancedSyncTime`은 그대로 |
 | `lib/home/runs.ts` | `loadHomeRuns`가 **"마지막으로 시각을 전진시킨 IMPORT 사건"** 과 **"마지막 성공 PUBLISH 사건 + 그 `SyncRun`"** 을 고른다(§2.2). 반환형이 `HomeTriggers`에서 넓어진다. **행위자 컬럼을 넣지 않는다** |
-| `lib/home/sync-time.ts` | Home 메타 열이 더는 쓰지 않는다 — 다른 소비자가 없으면 내 변경이 만든 고아로 지운다(T2에서 확인) |
-| 대기 초대 술어 | `acceptedAt: null` + `expiresAt > now`를 **공유 헬퍼로 추출**한다 — 지금 인라인 사본이 넷이다(`lib/auth/query.ts:151` · `issue.ts:198` · `app/invite/actions.ts:102` · `lib/mcp/tools/project.ts:113`). Home이 새 소비자이고 기존 사본은 같은 배치에서 이관한다(CLAUDE.md "실재하는 손 사본 이관은 중복 제거") |
+| `lib/home/sync-time.ts` | **파일은 남는다** — `SyncTime` 타입을 `lib/home/cards.ts:84`·`meta.ts`가 쓴다. `lastSyncTime` 함수가 다른 소비자 없이 남으면 내 변경이 만든 고아로 지운다(T8) |
+| 대기 초대 술어 | `acceptedAt: null` + `expiresAt > now`를 **공유 헬퍼로 추출**한다 — 그대로 된 사본은 `lib/auth/query.ts:151`(`loadPendingInvitations`) 하나이고 Home이 둘째 소비자다. `lib/invitation-email/issue.ts:198`·`app/invite/actions.ts:102`는 `expiresAt: { equals, gt }` CAS 갱신이라 같은 술어가 아니다(범위 밖) · `lib/mcp/tools/project.ts:113`은 사본이 아니라 `loadPendingInvitations` 호출이다 |
 | Home `project` select | `pushTokenHash`(값이 아니라 `!== null`만 — 화면·props로 넘기지 않는다) · `_count.invitations`(위 술어). ⚠️ **`now`가 project 조회 뒤에 만들어진다**(`page.tsx:129`) — `_count` where에 넣으려면 앞으로 옮긴다 |
 | `components/ui/facts.tsx` | `Fact`에 값 **오른쪽 정렬** 옵션(소비자 = 메타 열) |
 | `components/ui/segment.ts` | **신규 헬퍼(문자열 상수만)** — 트랙·칸·선택·비선택 클래스 (§3) |
@@ -44,40 +44,47 @@ type MetaTabsInput = {
   pendingInvites: number;                   // 0도 값이다 — `(0)`
   createdAt: Date;
   archivedAt: Date | null;
-  lastSync: SyncRun | "unrecorded" | null;  // null = 첫 Sync 전 · "unrecorded" = 사건 기록 이전 적재
+  lastSync: SyncRun | "unrecorded" | null;  // null = 첫 Sync 전 · "unrecorded" = 성공 사건 없음 + 어느 소스든 lastImportedAt 있음
   lastPublish: PublishRun | null;           // null = 발송 전
   held: HoldReason | null;                  // 첫 렌더에 아는 값 — 늦게 오는 것은 껍데기가 든다(§3)
   prState: "pending" | "absent";            // 조회하는 갈래면 pending(스켈레톤 자리), 아니면 absent(행 없음)
 };
-type SyncRun = { trigger: Trigger; at: Date; result: "imported" | "partial"; changedValues: number | null; keys: number | null; surfaceSlugs: readonly string[] };
-type PublishRun = { trigger: Trigger; at: Date; prUrl: string | null; changedValues: number | null; surfaceSlugs: readonly string[] };
+type SyncRun = { trigger: Trigger; at: Date /* 종료 시각 */; result: "imported" | "partial"; changedValues: number | null; keys: number | null; surfaceSlugs: readonly string[] };
+type PublishRun = { trigger: Trigger; at: Date /* SyncRun.finishedAt */; prUrl: string | null; changedValues: number | null; surfaceSlugs: readonly string[] };
 ```
 
 - **로케일 입력이 없다** — 로케일 행이 어느 입력에서도 나오지 않는다(spec 문제 2의 회귀).
 - **소스별 적재 입력이 없다** — Sync 탭은 실행 하나의 사실이고, 실패·진행 중은 입력조차 받지 않는다(배너가 든다). 그래서 문제 3이 구조로 막힌다.
 - **역할 입력이 없다** — 행은 역할과 무관하다(spec). 바닥 링크는 `MetaColumn`이 `canOpenSettings`로 고른다.
-- `"unrecorded"` = 사건이 없는데 어느 소스든 `lastImportedAt !== null`(사건 기록 2026-09-20 이전 적재) — `notSyncedYet`으로 접으면 거짓이다. `Last sync` 한 행 회색 평문.
+- `"unrecorded"` = 성공 사건이 없는데 어느 소스든 `lastImportedAt !== null`(사건 기록 2026-09-20 이전 적재) — `notSyncedYet`으로 접으면 거짓이다. `Last sync` 한 행 회색 평문. ⚠️ **지금 `lastSyncTime`의 `"unrecorded"`(`lastImportedAt` 없음 + `lastCommitAt` 있음, `sync-time.ts:11-18`)와 이름만 같은 별개 판정이다** — 같은 타입을 재사용하지 않는다.
+- `Synced` = 그 IMPORT 실행의 **종료 시각**(2026-10-04 사용자 — 지금 `lastImportedAt`과 같은 의미). 사건에 종료 시각이 없으면 T6에서 출처를 확정한다(사건 `occurredAt`은 시작이다).
+- Publish `surfaceSlugs`는 **실행 시작 때의 비보관 소스 전부**다(`lib/sync/run.ts:187-203`) — "그 PR에 실린 소스"가 아니다. 라벨·설명을 그에 맞추고, 백필된 옛 사건의 `[]`(ARCHITECTURE §5.7.5)는 행을 숨긴다.
 - `null` 수치(`changedValues`·`keys`)는 행을 숨긴다 — `0`으로 접지 않는다(malmoi#81과 같은 원칙).
 - 상태 매트릭스(`not_connected`면 Repository·Pull request 평문, `archived`면 `Archived` 행)를 JSX의 `&&`로 흩지 않는다(지금 `metaRows` 머리 주석의 이유 그대로).
 
 ### 2.2 `loadHomeRuns`의 고르기
 
-- **Sync**: 지금은 "마지막 IMPORT 사건"을 고른 뒤 `advancedSyncTime`을 지나지 못하면 주체를 `null`로 버린다(`meta.ts:144-147`). 이제는 **지난 것 중 마지막**이 필요하다 — 결과가 `SUCCESSFUL_IMPORT_RESULTS`인 IMPORT 사건을 최신순으로 몇 건 읽고 `advancedSyncTime`을 지나는 첫 건을 고른다(판정은 순수 함수에 남긴다). 몇 건으로 충분한지(야간 보류·스킵이 연속되는 창)는 T3에서 상한과 함께 고정한다. 상한 안에 없는데 어느 소스든 `lastImportedAt !== null`이면 `"unrecorded"`(회색 평문)로 떨어진다 — **`notSyncedYet`으로 접지 않는다.**
-- **Publish**: 마지막 성공 PUBLISH 사건과 조인한 `SyncRun { finishedAt, prUrl, changedValues }`. 지금의 `Project.lastPublishedAt`·`lastPrUrl`을 쓰지 않는다 — 한 실행의 사실만 한 탭에 선다(spec).
+- **Sync**: 지금은 "마지막 IMPORT 사건"을 고른 뒤 `advancedSyncTime`을 지나지 못하면 주체를 `null`로 버리고 **더 옛 사건으로 물러나지 않는다**(`meta.ts:139-147` · ARCHITECTURE §5.7.7 `:2077`). 그 금지의 근거는 "주체(사건)와 시각(`lastImportedAt` 최댓값)이 다른 실행을 가리킨다"였는데, 이제 시각도 사건에서 읽으므로 근거가 사라진다 → **시각을 전진시킨 마지막 사건을 SQL 한 번에 고른다**: `result = 'imported' OR (result = 'partial' AND payload의 surfaces에 imported가 하나라도 있음)`(Prisma `payload: { path: ["surfaces"], array_contains: [...] }` — 실행 확인은 T6). `result`는 컬럼이고(`schema.prisma:483`) 야간 보류·스킵은 이미 `result IN (imported, partial)` 필터에서 빠진다(`runs.ts:22`). **최신 N건 + 상한 방식은 쓰지 않는다** — 상한 안이 전부 실패 partial이면 사건이 있는데 `"unrecorded"`로 떨어지는 거짓이 생긴다. SQL 조건이 `advancedSyncTime`과 같은 술어임을 통합 테스트로 대조한다.
+  ⚠️ **ARCHITECTURE §5.7.7과 `meta.ts:139-142` 주석을 개정한다**(T11) — 지금 문서가 이 후퇴를 금지한다.
+- 인덱스는 지금과 같다 — `kind`·`result` 인덱스가 없어 `[projectId, occurredAt, id]`(`schema.prisma:531`)를 역방향으로 훑는다.
+- **Publish**: 마지막 성공 PUBLISH 사건과 조인한 `SyncRun { finishedAt, prUrl, changedValues }`(복합 FK 조인 `schema.prisma:522`, 성공 술어 `runs.ts:26`). 지금의 `Project.lastPublishedAt`·`lastPrUrl`을 쓰지 않는다 — 한 실행의 사실만 한 탭에 선다(spec).
 - 둘 다 `loadHomeRuns` 안의 `Promise.all`이고 그 함수는 바깥 `Promise.all`(page.tsx:139) 안이다 — 라운드 불변. 전부 `projectId`로 좁힌다.
 
-### 2.3 Publish `changedValues` 집계
+### 2.3 Publish `changedValues` 집계 (2026-10-04 사용자 — 정의 (b))
 
-- 정의: 커밋한 실행이 **리포 파일에서 실제로 바꾼 번역 셀 수(추가 포함)** — 실은 셀 중 base 값과 다른 셀. 미리보기의 `same` 판정(`lib/publish/diff.ts` — 셀 값이 base와 같으면 파일을 바꾸지 않는 편집)과 같은 비교를 실행 쪽 순수 함수로 둔다(손 사본이 아니라 같은 함수를 공유).
+- 정의: **바뀐 파일마다 base 원문과 새 원문을 그 어댑터의 `read`로 파싱해 견준 엔트리 차이 — 수정 + 추가**(삭제는 세지 않는다 — DB에만 있는 키·`orphaned` 키가 빠지는 것은 사람의 편집이 아니다). 새 순수 함수 `countChangedValues(oldRead, newRead) → number`.
+  - 왜 (b)인가: 실행은 미전달 셀이 아니라 활성 키 전체의 DB 스냅샷을 렌더한다(`lib/pull/run.ts:173` `renderProject`) — CI 보류 중 리포에서 바뀐 값을 DB 값이 되돌리는 셀은 "실린 편집" 비교(미리보기 `same`, `lib/publish/diff.ts:23` 인라인 · `PREVIEW_LIMIT` 200)로는 안 잡힌다. 미리보기와 공유하지 않는다.
+  - SHA가 같은 파일은 렌더 목록(`run.ts:216`)에 없으므로 구조적으로 0이다 — blob SHA 판정과 어긋나지 않는다. 수술적·재생성 어댑터 모두 `read` 하나로 맞는다. GitHub 추가 호출 0(옛 원문은 이미 읽은 `current`, :202-207) · CPU 파싱만 는다.
+  - **PR 누적치다** — 열린 PR을 갱신하는 실행은 sync 브랜치를 base에서 다시 뽑으므로 "이번 실행의 증분"이 아니라 "PR 전체 vs base"다. `SyncRun.changed`(파일 수)와 같은 의미 — 스키마 주석과 PRODUCT Logs 절에 적는다.
 - ⚠️ **관측값이다 — 판정에 쓰지 않는다.** 이 수로 무엇을 보내거나 건너뛸지 고르는 순간 병합이다(IMPORT `changedValues`의 같은 주석). 실행의 판정은 지금처럼 파일 blob SHA다.
-- 실패·스킵(커밋 없음)은 `null`. "아무것도 안 바뀌었다"는 `0`이 아니라 스킵이다.
+- 값: 커밋(SUCCEEDED)은 센 수 — **표현만 바뀐 파일(`placeholders: null` 왕복 · 키 순서 · description)이면 `0`이 정상 관측값이다**. 스킵(SKIPPED)은 `0`(바뀐 파일 0 — 상세의 `0 files`와 나란히 맞는다). 실패는 `null`. 거부(refusal)는 `SyncRun` 행이 없다(`lib/sync/run.ts:116,152-160`). 기록 이전 행은 `null`.
 
-테스트(`lib/home/__tests__/meta.test.ts` 갱신 · `sync-time.test.ts:42-44`의 `metaRows` 참조 정리 · `runs.test.ts` · 새 집계 함수 테스트):
+테스트(`lib/home/__tests__/meta.test.ts` 갱신 · `lib/home/__tests__/sync-time.test.ts:42-44`의 `metaRows` 참조 정리 · `runs.test.ts` · 새 집계 함수 테스트):
 - 시안 보드 11개(`1a`~`2h`)를 입력으로 옮겨 탭마다 묶음·행 kind를 전수 고정.
 - Sync 탭의 모든 값이 같은 `SyncRun`에서 온다 — 다른 소스의 더 최근 `lastImportedAt`이 `Synced`를 바꾸지 않는다(문제 3의 회귀).
 - 실패·진행 중 입력이 없음을 타입으로 고정(카드 불변) · `partial`이면 `Result`만 호박.
 - `"unrecorded"` · 첫 Sync 전 · 발송 전 · `null` 수치(행 없음) · `pendingInvites: 0`이 `(0)` · 소스 1개면 Sync/Publish `Sources` 행 없음, Project `Sources` 행은 있음 · `prState` 두 갈래.
-- 소스 0개는 `planProjectReadiness`가 `ProjectNotReady`로 먼저 끊으므로(`page.tsx:124`) 대상이 아니다.
+- 소스 0개는 `planProjectReadiness`가 `ProjectNotReady`로 먼저 끊으므로(`page.tsx:125`) 대상이 아니다.
 - `advancedSyncTime`을 못 지난 partial·보류 사건을 건너뛰고 그 앞 실행을 고른다(§2.2).
 
 ## 3. 탭 프리미티브 — `components/ui/tabs.tsx`
@@ -112,7 +119,7 @@ type PublishRun = { trigger: Trigger; at: Date; prUrl: string | null; changedVal
 
 ## 4. 서버/클라이언트 경계
 
-- **탭 껍데기만 `"use client"`** 로 두고, 패널 내용과 탭별 바닥 링크는 서버가 렌더한 `ReactNode`를 넘긴다. 바닥 링크 목표는 `routes.logs(slug, { kind: "imports" })` · `routes.logs(slug, { kind: "publish" })` — `kind` 값은 `LOG_KINDS`(`lib/events/payload.ts:300`)의 화면 낱말이고 손 문자열이 아니라 그 상수에서 고른다(`entry-points.test.ts`가 생성기 키를 대조한다). `relativeTime(row.at, now)`·`pullNumberFrom` 등이 서버에 남는다.
+- **탭 껍데기만 `"use client"`** 로 두고, 패널 내용과 탭별 바닥 링크는 서버가 렌더한 `ReactNode`를 넘긴다. 바닥 링크 목표는 `routes.logs(slug, { kind: "imports" })` · `routes.logs(slug, { kind: "publish" })` — `kind` 값은 `LOG_KINDS`(`lib/events/payload.ts:300`)의 화면 낱말이고 손 문자열이 아니라 그 상수에서 고른다(⚠️ `app/__tests__/entry-points.test.ts`는 `app/`과 `EXTRA_EMITTERS`(:671-)만 훑는다 — `components/home/meta-column.tsx`를 그 목록에 더해야 새 `routes.logs` 호출이 검사된다, T8). `relativeTime(row.at, now)`·`pullNumberFrom` 등이 서버에 남는다.
 - **탭 라벨도 서버가 props로 넘긴다** — 껍데기는 `components/ui/tabs`와 `components/use-arrived`만 import한다.
 - 늦게 오는 promise는 껍데기가 props로 받아 구독한다(§3) — 지금 `HoldLater`와 같은 RSC 직렬화 경로.
 - ⚠️ **클라이언트 그래프에 `lib/**`를 끌어들이지 않는다** (POSTMORTEM 2026-09-07). `components/__tests__/client-graph.test.ts`가 지킨다.
@@ -128,9 +135,9 @@ type PublishRun = { trigger: Trigger; at: Date; prUrl: string | null; changedVal
 ## 6. 스키마 · 환경변수 · 불변식
 
 - **스키마: `SyncRun.changedValues Int?` 하나 — additive.** 기존 행은 `null`(기록 이전 = 행 없음). 배포 순서: dev는 `/push` 전 `/db`, prod는 `/merge` 1단계 `db:deploy` — 코드는 컬럼을 읽기만/쓰기만 하므로 컬럼이 먼저 있어야 한다(additive-first). 새 마이그레이션 뒤 dev·prod `has_schema_privilege` false 확인(`/db` 5단계).
-  스키마 주석: "Publish가 리포 파일에서 바꾼 번역 셀 수(추가 포함). 관측값 — 판정에 쓰지 않는다. 실패·스킵·기록 이전은 null".
+  스키마 주석: "Publish가 리포 파일에서 바꾼 번역 엔트리 수(수정+추가, 삭제 제외) — 열린 PR 갱신이면 PR 전체 vs base 누적. 관측값 — 판정에 쓰지 않는다. 스킵은 0, 실패·기록 이전은 null".
 - **새 GitHub 호출 없음** — PR state는 `planHomeHold`가 이미 부르는 `loadOpenPrUrlMemo`의 결과만 쓴다.
-- ⚠️ **`pushTokenHash`는 해시라도 RSC 페이로드에 싣지 않는다** — 서버에서 boolean으로 접는다. 정적 검사로 고정한다(tasks T3).
+- ⚠️ **`pushTokenHash`는 해시라도 RSC 페이로드에 싣지 않는다** — 서버에서 boolean으로 접는다. 정적 검사로 고정한다(tasks T6).
 - ⚠️ **대기 초대 수는 추출한 공유 술어**(수락·만료 둘 다 제외)를 쓴다(POSTMORTEM 2026-09-10).
 - **새 환경변수 없음.**
 - **불변식**: export 결정성·blob SHA는 그대로다 — `changedValues`는 커밋 판정 뒤에 세는 관측값이고 무엇을 쓸지에 들어가지 않는다(코어 원칙 "병합 없음"). 인가: Home `requireProjectAccess` 그대로. **EDITOR에게 새로 보이는 사실**(CI 설정 여부 · Connection)은 2026-10-04 사용자가 허용했다 — 행은 역할과 무관하다. PRODUCT 권한표에 Home 메타 열 한 줄을 남긴다(T8).
@@ -140,7 +147,7 @@ type PublishRun = { trigger: Trigger; at: Date; prUrl: string | null; changedVal
 
 - DESIGN §6.64: 메타 열 행 · 주체 행 · 로딩 골격 행(:1261 "메타 9" → 8) · 접근성 표 · 이탈 표 · 실측 보드 표 · 값 오른쪽 정렬과 바닥 링크 둘.
 - DESIGN §6.4: `Tabs` 프리미티브 행과 `SegmentedControl`과의 경계 · `Fact` 정렬 옵션. DESIGN.md:52 스택 표의 Radix 부품 수.
-- ARCHITECTURE: 스키마 절에 `SyncRun.changedValues`(관측값, 판정 금지).
+- ARCHITECTURE: 스키마 절에 `SyncRun.changedValues`(정의 (b) · PR 누적 · 관측값, 판정 금지) · **§5.7.7(`:2077`) "더 옛 사건으로 물러나지 않는다" 개정**(시각을 사건에서 읽으므로 후퇴가 정합하다).
 - CLAUDE.md:75 스택 표: 프리미티브 47 → 48, Radix 일곱 → 여덟(목록에 Tabs).
 - DIRECTORY: `components/ui/tabs.tsx` · `components/ui/segment.ts` · 대기 초대 술어 헬퍼 · Publish 집계 함수.
 - PRODUCT §4.1(:292 근처) "Home `Last sync` 행에 `held until…`이 붙는다" 문장(보류가 Sync 탭 `Hold` 행으로) · 권한표에 메타 열 노출 · Logs Publish 행의 `Changed`.

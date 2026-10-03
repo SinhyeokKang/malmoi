@@ -36,7 +36,7 @@ Home(`/projects/[slug]`) 오른쪽 `Project` 메타 열을 **탭 셋(Project · 
 - [ ] 로케일이 카드에 나타나지 않는다 — `Sources` 행이 Sources 화면으로 가는 앱 안 링크다. (단위 테스트)
 - [ ] `Sync` 탭의 모든 행이 **같은 실행 하나**(마지막으로 시각을 전진시킨 IMPORT 사건)의 사실이다 — 다른 실행·소스의 시각과 결과가 한 탭에 섞이지 않는다. `Publish` 탭도 같은 규칙(마지막 성공 Publish 실행 하나). (단위 테스트)
 - [ ] Sync 실패·진행 중이 카드를 바꾸지 않는다 — 실패는 배너가 든다. (단위 테스트)
-- [ ] Publish 실행이 **바꾼 값 수(추가 포함)** 를 기록하고, Publish 탭 `Changed`와 Logs의 Publish 행이 그 수를 보인다. 기록 이전 실행은 `0`이 아니라 행 없음이다. (단위 테스트 + 통합 테스트)
+- [ ] Publish 실행이 **리포 파일에서 바꾼 값 수(수정+추가)** 를 기록하고, Publish 탭 `Changed`와 Logs의 Publish 상세가 그 수를 보인다. 스킵은 `0`, 실패·기록 이전은 `null`(Home은 행 없음 · Logs는 `—` + not recorded). (단위 테스트 + 통합 테스트)
 - [ ] 키보드: 탭 목록이 `tablist`/`tab`/`tabpanel` 역할이고 ←/→·Home/End로 이동, 패널이 탭 이름으로 라벨된다. (DOM 테스트 + CDP 접근성 트리 실측)
 - [ ] 랜드마크 `complementary` 이름 `Project`가 유지되고(`aria-label`), `Settings ›`(OWNER, Project 탭) · `Sync logs ›`(전 역할, Sync 탭) · `Publish logs ›`(전 역할, Publish 탭) 바닥 링크가 선다. (`home-landmarks.test.tsx` green)
 - [ ] 시안 v3의 보드 각각에서 패널 내용이 같다 — `1a` 기본·소스 둘 · `1b` 기본·소스 하나 · `2a` 첫 Sync 전 · `2b` Sync 실패 · `2b′` 일부 반영 · `2c` 미연결 · `2d` 보관 · `2e` 로딩 · `2f` 발송 전 · `2g` 늦게 오는 행 · `2h` EDITOR. 시안과 다르게 확정한 것(아래 "결정"의 ⚠️ — `Members (0)` · 바닥 링크 라벨·목표)은 결정이 이긴다. (`/design-sync` 수동 실측 — 밟지 못한 갈래는 미검증으로 적는다)
@@ -70,7 +70,7 @@ Home(`/projects/[slug]`) 오른쪽 `Project` 메타 열을 **탭 셋(Project · 
 | 행 | 값 | 출처 |
 |---|---|---|
 | Last sync | 실행 종류 배지(`Nightly sync` 등). 첫 Sync 전이면 `notSyncedYet` 배지가 값이고 탭에 이 행 하나뿐 | 사건 `triggerOf` |
-| Synced | 그 사건의 시각(상대) | 사건 시각 — `lastSyncTime`(전 소스 최댓값)이 아니다 |
+| Synced | 그 실행의 **종료 시각**(상대) | 그 실행의 종료 시각 — `lastSyncTime`(전 소스 최댓값)이 아니다. 출처는 T6에서 확정(사건 `occurredAt`은 시작) |
 | Result | `synced`(초록) / `partiallySynced`(호박) — 실행이 있으면 늘 선다 | 사건 `result` (`imported` / `partial`) |
 | Changed | `128 values` | payload `changedValues` (null이면 행 없음) |
 | Keys seen | 그 실행이 본 키 수 | payload `keys` (null이면 행 없음) |
@@ -84,8 +84,8 @@ Home(`/projects/[slug]`) 오른쪽 `Project` 메타 열을 **탭 셋(Project · 
 | Published | 그 실행의 시각 | `SyncRun.finishedAt` |
 | Pull request | `#127` 링크. 연결이 정상이 아니면 평문 | `SyncRun.prUrl` |
 | PR state | `prOpen` 배지 / 평문 `Not open` / `couldNotCheck` 배지. 조회하는 갈래면 스켈레톤(56px)이 자리를 먼저 잡고, 조회하지 않는 갈래면 행이 없다. **새 GitHub 호출 없음** | `loadOpenPrUrlMemo`(planHomeHold가 이미 부르는 것) |
-| Changed | `24 values` — **새 기록**(아래 스키마). 기록 이전 실행이면 행 없음 | `SyncRun.changedValues` |
-| Sources | 그 PR에 실린 소스 — 프로젝트 소스가 둘 이상일 때만 | PUBLISH payload `surfaceSlugs` |
+| Changed | `24 values` — **새 기록**(아래 스키마). 열린 PR을 갱신한 실행이면 PR 전체 vs base 누적. 기록 이전 실행이면 행 없음 | `SyncRun.changedValues` |
+| Sources | 그 실행이 대상으로 잡은 소스(실행 시작 때의 비보관 소스 전부 — "PR에 실린 소스"가 아니다) — 프로젝트 소스가 둘 이상일 때만, 백필된 옛 사건의 `[]`이면 행 없음 | PUBLISH payload `surfaceSlugs` |
 
 **바닥 링크** — Project 탭 `Settings ›`(OWNER만, `routes.settings(slug)`) · Sync 탭 **`Sync logs ›`** → `routes.logs(slug, { kind: "imports" })` · Publish 탭 **`Publish logs ›`** → `routes.logs(slug, { kind: "publish" })`. 둘 다 전 역할 · 보관 중에도 · 이력이 없어도 늘 선다(빈 목록은 Logs의 빈 상태가 말한다). ⚠️ **시안(`Logs ›`, 필터 없음)과 다르다 — 2026-10-04 사용자가 정했고 시안은 고치지 않는다.**
 
@@ -96,7 +96,7 @@ Home(`/projects/[slug]`) 오른쪽 `Project` 메타 열을 **탭 셋(Project · 
 - ⚠️ **사건 기록 이전에 적재된 프로젝트**(`ProjectEvent` 2026-09-20 이전 적재 후 시각을 전진시킨 실행이 없음)는 `notSyncedYet`이 거짓이다 — 그 갈래는 `Last sync` 한 행에 회색 평문(기록 없음)으로 선다(문구는 T1에서 고정, 시안에 없는 갈래).
 
 **스키마 확장 하나** (2026-10-04 사용자 — 비목표 해제)
-- `SyncRun.changedValues Int?` — Publish가 **리포 파일에서 실제로 바꾼 번역 값 수(추가 포함)**. Sync의 `changedValues`와 같은 정의라 두 탭의 `Changed`가 같은 단위다. 실패·기록 이전은 `null`(0이 아니다). **관측값이다 — 판정에 쓰지 않는다**(쓰는 순간 병합이다, IMPORT의 같은 필드 주석과 같다). Logs의 Publish 행도 이 수를 보인다.
+- `SyncRun.changedValues Int?` — Publish가 **리포 파일에서 실제로 바꾼 번역 엔트리 수(수정 + 추가, 삭제 제외)**: 바뀐 파일마다 base 원문과 새 원문을 어댑터로 파싱해 견준다(2026-10-04 사용자 — 정의 (b)). 두 탭의 `Changed`가 같은 단위(번역 값 수)다. **열린 PR을 갱신한 실행이면 PR 전체 vs base 누적**이다(`SyncRun.changed` 파일 수와 같은 의미). 표현만 바뀐 커밋·스킵은 `0`, 실패·기록 이전은 `null`. **관측값이다 — 판정에 쓰지 않는다**(쓰는 순간 병합이다, IMPORT의 같은 필드 주석과 같다). Logs는 Publish **상세**에 이 수를 보인다(보조줄엔 넣지 않는다).
 
 ## 넣지 않는 행
 
