@@ -65,6 +65,16 @@ it("Facts preserve fixed widths, stacked slots and table row headers", async () 
   for (const label of container.querySelectorAll("dt,th")) expect(label.className).toContain("text-gray-dim");
 });
 
+it("Fact right-aligns its value only when asked, and leaves existing consumers unchanged", async () => {
+  const { container } = await render(<dl><Fact width={96} label="Plain">Left</Fact><Fact width={96} align="end" label="Meta">Right</Fact></dl>);
+  const [plain, aligned] = [...container.querySelectorAll("dd")];
+  expect(plain?.className).not.toContain("text-right");
+  expect(aligned?.className).toContain("text-right");
+  // 라벨 폭은 그대로 고정이라 값의 끝이 한 열로 선다.
+  expect(container.querySelectorAll("dt")[1]?.className).toContain("w-24");
+  expect(aligned?.className).toContain("min-w-0 flex-1");
+});
+
 it("translation NoMatch retains text14, py40, gap8 and both exit nodes", async () => {
   const { container } = await render(<NoMatch layout="list" title="No results" action={<><button>Search all</button><button>Clear filters</button></>} />);
   const root = container.firstElementChild!;
