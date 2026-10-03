@@ -131,7 +131,10 @@ describe("프로젝트 목록 — 배지는 항상 하나이고 갈래는 순수
     }
     const src = PAGE.map(code).join("\n");
     expect(src).not.toContain("text-gray-strong");
-    expect(src).toContain('chipState === "archived" && "text-gray-dim"');
+    // 보관 칩도 색 덮개가 없다 — 물러나는 것은 이름·메타 둘이다(search-ux-unify D6).
+    // 칩 여백도 덧칠이 없다 — `Badge` 기본 `px-1.5` 한 형(search-ux-polish O8).
+    expect(src).toContain('<StatusBadge state={CHIP_STATE[chipState]} />');
+    expect(src).not.toContain('chipState === "archived" && "text-gray-dim"');
   });
 
   /**
@@ -515,8 +518,7 @@ describe("캔버스 대조로 잡은 자리", () => {
    * 칠하면 화면이 실제보다 넓게 찾은 것처럼 말한다.
    */
   it("검색 일치를 이름 칸에서만 칠한다", () => {
-    expect(BODY).toContain("highlightName(row.name, q)");
-    expect(BODY).toContain("rounded-[3px] bg-link/[0.14] px-px");
+    expect(BODY).toContain('<Highlight segments={highlightSegments(row.name, searchTokens(q ?? ""))} />');
     // 메타 줄은 원문 그대로다.
     expect(BODY).toMatch(/\$\{row\.repoOwner\}\/\$\{row\.repoName\}/);
   });

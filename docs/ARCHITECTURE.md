@@ -1,6 +1,6 @@
 # ARCHITECTURE
 
-**코어 로직(`lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/github-connect/`·`lib/db.ts`·`lib/env.ts`·`lib/failure.ts`·`lib/scan/`·`lib/push/`·`lib/pull/`·`lib/import/`·`lib/keys/`·`lib/surfaces/`·`lib/auth/`·`lib/cli/`·`lib/survey/`·`lib/onboarding/`·`lib/i18n/`·`lib/shell/`·`lib/home/`·`lib/settings/`·`lib/sources/`·`lib/sync/`·`lib/credentials/`·`lib/session-revocation/`·`lib/login-link/`·`lib/account-connect/`·`lib/account/`·`lib/upload/`·`lib/projects/`·`lib/publish/`·`lib/protection/`·`lib/privacy/`·`lib/signin/`·`lib/translations/`·`lib/invitation-email/`·`lib/events/`·`lib/routes.ts`·`lib/locale-code.ts`·`lib/compare.ts`·`lib/cause.ts`·`lib/relative-time.ts`·`lib/utc-time.ts`·`lib/hue.ts`)을 건드리기 전에 읽는다** — ⚠️ **이 목록은 `.claude/commands/push.md` 4단계 트리거와 같아야 한다**(2026-09-13 전까지 세 곳이었고 실제로 셋이 갈렸다 — CLAUDE.md 쪽 사본을 없애 둘로 줄였다). ⚠️ **목록에 있다고 이 문서에 전용 절이 있는 것은 아니다** — `shell`·`home`·`settings`·`projects`·`signin`·`routes.ts`·`locale-code.ts`·`relative-time.ts`·`hue.ts`는 잎에 가까운 얕은 모듈이라 불변식이 **코드 주석과 [DIRECTORY.md](./DIRECTORY.md)**에 있고, 여기에 사본을 만들면 같은 규칙이 세 곳이 된다. 그 아홉을 건드릴 때 이 문서에서 볼 것은 §6.35(잎 모듈 규칙)다. 무엇을 만드는지는 [PRODUCT.md](./PRODUCT.md), 어떻게 작업하는지는 [../CLAUDE.md](../CLAUDE.md), 디렉터리별 "왜 이렇게 생겼나"는 [DIRECTORY.md](./DIRECTORY.md)다. 이 문서는 **불변식과 함정**만 다룬다.
+**코어 로직(`lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/github-connect/`·`lib/db.ts`·`lib/env.ts`·`lib/failure.ts`·`lib/scan/`·`lib/push/`·`lib/pull/`·`lib/import/`·`lib/keys/`·`lib/search/`·`lib/surfaces/`·`lib/auth/`·`lib/cli/`·`lib/survey/`·`lib/onboarding/`·`lib/i18n/`·`lib/shell/`·`lib/home/`·`lib/settings/`·`lib/sources/`·`lib/sync/`·`lib/credentials/`·`lib/session-revocation/`·`lib/login-link/`·`lib/account-connect/`·`lib/account/`·`lib/upload/`·`lib/projects/`·`lib/publish/`·`lib/protection/`·`lib/privacy/`·`lib/signin/`·`lib/translations/`·`lib/invitation-email/`·`lib/events/`·`lib/routes.ts`·`lib/locale-code.ts`·`lib/compare.ts`·`lib/cause.ts`·`lib/relative-time.ts`·`lib/utc-time.ts`·`lib/hue.ts`)을 건드리기 전에 읽는다** — ⚠️ **이 목록은 `.claude/commands/push.md` 4단계 트리거와 같아야 한다**(2026-09-13 전까지 세 곳이었고 실제로 셋이 갈렸다 — CLAUDE.md 쪽 사본을 없애 둘로 줄였다). ⚠️ **목록에 있다고 이 문서에 전용 절이 있는 것은 아니다** — `shell`·`home`·`settings`·`projects`·`signin`·`routes.ts`·`locale-code.ts`·`relative-time.ts`·`hue.ts`는 잎에 가까운 얕은 모듈이라 불변식이 **코드 주석과 [DIRECTORY.md](./DIRECTORY.md)**에 있고, 여기에 사본을 만들면 같은 규칙이 세 곳이 된다. 그 아홉을 건드릴 때 이 문서에서 볼 것은 §6.35(잎 모듈 규칙)다. 무엇을 만드는지는 [PRODUCT.md](./PRODUCT.md), 어떻게 작업하는지는 [../CLAUDE.md](../CLAUDE.md), 디렉터리별 "왜 이렇게 생겼나"는 [DIRECTORY.md](./DIRECTORY.md)다. 이 문서는 **불변식과 함정**만 다룬다.
 
 > 이 문서는 **선 코드의 계약만** 적는다. 아직 서지 않은 것은 `docs/PRODUCT.md` §10(아직 안 정한 것)이나 진행 중인 `docs/features/<slug>/`가 든다 — 여기에 미래형을 섞으면 "불변식"이 지켜야 할 것과 지키고 싶은 것으로 갈린다.
 
@@ -235,7 +235,7 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 `detect`는 리포 파일 경로 목록에서 포맷을 찾는다. **경로 사전순으로 후보를 고르면 틀린다** — bugshot-web에서 `public/search/{locale}.json`(검색 인덱스, 최상위가 배열)이 `src/lib/i18n/{locale}.json`보다 먼저 잡혔다.
 
 - 후보를 **i18n 계열 경로 신호 → 예제·픽스처 디렉터리 감점 → 로케일 개수 → 경로 모양 → 얕은 경로 → 경로순**으로 순위 매긴다. **어댑터 간** 순위는 `shared.compareTemplates`다. ⚠️ **어댑터 내부 순위는 갈린다** — `json-catalog`·`yaml-catalog`는 `rankTemplateCandidates`(→ `compareTemplates`)를, `chrome-locales`·`code-dict`는 `rankCandidates`(i18n 신호 → 감점 → 로케일 수 → 디렉터리 — 경로 모양·깊이·`liftAncestors` 없음)를, `ts-dict`는 템플릿 `compareKeys` 순을 쓴다. 그래서 명시 지정 경로(`detectFormatWith`)의 순위는 자동 탐지와 다를 수 있다
-- **로케일이 2개 이상**이고 **강한 로케일 코드가 하나 이상**인 후보만 인정한다 (하나뿐이면 `config/en.json` 같은 우연일 수 있다)
+- **단일 언어도 후보로 인정한다** (2026-10-03). **강한 로케일 코드가 하나 이상**이어야 하고 내용 검증은 유지한다. 자동 탐지·수동 확정·서버 재적재가 같은 판정을 지난다. 단일 언어 조상 후보는 여러 언어 후보보다 승격하지 않는다 — `config/i18n-js.yml` 같은 설정이 하위의 실제 다국어 사전을 가리는 회귀를 막는다. `ts-dict`도 파일 하나·로케일 객체 하나를 받되, 단일 객체에 직접 쓴 문자열이 없으면 import·spread 래퍼로 보고 제외한다.
 - `probe` 콜백을 주면 후보 파일 **여러 개**를 읽어 카탈로그 모양인지 확인한다. **GitHub API에서는 블롭 읽기가 요청 비용**이라 경로로 좁힌 뒤 그 후보만 확인하도록 콜백으로 받는다
 - **`detectCandidates`가 후보 전부를 순위순으로 낸다.** `detect`는 그 `[0]`이다 — 두 함수가 같은 관문을 지나므로 어긋날 수 없고, 1순위가 틀렸을 때 정답이 몇 순위였는지를 관측할 수 있는 것은 이쪽뿐이다. **2026-09-14부터 예외가 0이다** — `ts-dict`가 자동 탐지에 들어오면서 다섯이 같은 계약을 진다. 단 그 어댑터는 **probe가 없으면 `[]`** 이고(경로만으로는 판단하지 않는다), 예외가 생기면 `detect-candidates.test.ts`가 red다
 
@@ -277,7 +277,7 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 
 **되돌린 이유**: 그 대가를 실물이 냈다 — bugshot-2의 온보딩 ②에 **4키 `_locales`만** 뜨고 903키 딕셔너리는 목록에 없었다. 명시 지정은 **그 포맷을 아는 사람에게만** 길이고, PRODUCT §7.3이 그 상황을 *"작은 `_locales`(4키)가 실제 UI 딕셔너리(903키)를 가렸고 조용히 작은 쪽으로 떨어져 에러가 나지 않았다"* 로 이미 적어 두고 있었다.
 
-**지금 모양**: `detectCandidates`가 `detectByContent`를 그대로 부르고, **probe가 없으면 빈 배열**이다(경로만으로는 판단하지 않는다). 1패스에서 내려받을 파일은 `tsDictProbePaths`가 경로만 보고 고른다 — `I18N_HINT` 통과 · 곁가지 제외 · **파일이 많은 디렉터리 2개 × 8파일**. 판정은 내용이 하므로 씨앗에 들어온 디렉터리도 로케일 객체가 하나뿐이면 스스로 떨어진다(bugshot-2의 `src/i18n/`이 그 예다).
+**지금 모양**: `detectCandidates`가 `detectByContent`를 그대로 부르고, **probe가 없으면 빈 배열**이다(경로만으로는 판단하지 않는다). 1패스에서 내려받을 파일은 `tsDictProbePaths`가 경로만 보고 고른다 — `I18N_HINT` 통과 · 곁가지 제외 · **파일이 많은 디렉터리 2개 × 8파일**. 파일 하나인 디렉터리도 씨앗이 된다. 판정은 내용이 하므로 직접 쓴 문자열 없이 import·spread만 모은 단일 객체는 떨어진다(bugshot-2의 `src/i18n/`이 그 예다).
 
 **`--adapter ts-dict` / `TranslationSurface.adapterName = "ts-dict"` 명시 지정은 그대로 동작한다** — 워크플로 YAML은 이 포맷을 포함해 모든 확정 어댑터를 명시한다. 자동 탐지의 1순위가 저장된 포맷이라는 보장이 없다(bugshot-2는 `_locales`가 크롬 버킷이라 언제나 앞선다).
 
@@ -505,6 +505,30 @@ pnpm adapter-survey docs/adapter-survey/repos-heldout.txt  --verdicts docs/adapt
 
 새 정의로 재도 비교 가능한 칸은 21차와 한 칸도 안 바뀌었다 — B7a의 BOM·넓은 들여쓰기·YAML 삽입 인용·중복 정렬 수정은 코퍼스에 그 모양이 없거나(결함 케이스만 출력이 바뀐다) 이미 같은 출력이었다.
 
+**23차 (2026-10-03, 단일 언어 탐지 허용 · 조상 승격 회귀 수정 후)** — 학습 109개와 홀드아웃 20개를 모두 재측정했다.
+원문 확인 및 사용자 승인으로 판정 목록도 갱신했다: Huginn(`config/locales/{locale}.yml`), Home Assistant
+(`src/translations/{locale}.json`), unreal-ui-next(`locale/lang/{locale}.ts`), veigar(`locale/{locale}.tsx`)는 단일 언어
+지원 사전이다. n8n의 `packages/@n8n/mcp-apps/src/locales/{locale}.json`은 유효한 추가 경로(`alsoValid`)다.
+따라서 학습의 지원 포맷 분모가 101 → 105로 바뀌었다. **22차와 분모가 달라 단순 증감으로 비교하지 않는다.**
+
+| 지표 | 학습 109 | 홀드아웃 20 |
+|---|---|---|
+| 지원 포맷 탐지 | 105/105 (100%) | 17/17 (100%) |
+| 오탐 — 후보가 있는 리포 기준 | 0/105 (0%) | 3/18 (16.7%) |
+| 오탐 — 지원 포맷 기준 | 0/105 (0%) | 2/17 (11.8%) |
+| 왕복 의미 동일 | 104/105 (siyuan — 기존 1건) | 18/18 |
+| 바이트 고정점 | 105/105 | 18/18 |
+| `writeErrors` > 0 | 1 (siyuan 22) | 0 |
+| 편집 탐침 1헝크 | 32/32 | 4/4 |
+| 조용한 손실 | 0건 | 0건 |
+
+- 최초 재측정이 moebooru의 `config/i18n-js.yml`(단일 후보)을 7언어 정본보다 앞세우는 새 회귀를 잡았다.
+  단일 언어 조상은 다국어 후보 위로 승격하지 않게 수정하고 **두 코퍼스를 다시 측정**한 값이 위 표다.
+- 홀드아웃의 남은 오탐은 Discourse(플러그인 카탈로그), Mattermost(용어집), Stirling-PDF(규칙 팩)다.
+  변경 전 코드(`05d557c8`)로 이 리포들을 별도 재측정해 **같은 경로가 선택됨**을 확인했다. 이번 변경의 회귀가 아니다.
+- 판정 목록을 바꾸기 전의 최종 원자료 집계는 학습 4/105·홀드아웃 4/18 오탐이었다. 추가 확인한 단일 언어 사전 다섯의
+  실제 내용에 따라 판정을 갱신하고, **동일한 원자료를 `summarize`로 재집계**했다. 판정 목록 변경을 탐지 개선으로 세지 않는다.
+
 **판정 넷**
 
 - **① 지원 선언 포맷은 넷이다** — `chrome-locales` · `json-catalog` · `yaml-catalog` · `code-dict`.
@@ -694,6 +718,7 @@ Home 편집 1 행은 첫 측정(dev `ae0f2f98`, 교대 없이 5회 중앙값)이
 
 - **신규 인덱스가 없다.** 키 요약은 기존 `(projectId, surfaceId, …)` 인덱스 위의 키 단위 집계이고 KeyRef를 조인하지 않는다.
   **pg_trgm GIN(value·sourceText)은 기각했다** — 키별 EXISTS 계획이라 131→94ms · 36→11ms로 확장 하나를 들일 값이 아니었다.
+  여러 멤버 프로젝트를 찾는 글로벌 Keys 조회는 다른 실행 계획이므로 이 기각을 그대로 적용하지 않고 따로 쟀다(§1.965).
 - **정렬은 `Incomplete first` 하나이고 URL에 `sort`가 없다** — 고를 것이 없는 파라미터는 만들지 않는다.
 - **화면 목록은 전량이다 — `pageSize: "all"`** (translation-filter-scope, 2026-09-30 사용자). 안정 분할이 범위 전체 집계를 요구하므로 비용은
   페이지 크기가 아니라 `scope`에 좌우된다 — 페이지를 나눠도 조회 시간이 줄지 않았다. `"all"`은 LIMIT·cursor가 없고 **SQL count를 따로 돌리지
@@ -717,6 +742,39 @@ Home 편집 1 행은 첫 측정(dev `ae0f2f98`, 교대 없이 5회 중앙값)이
 - **Save는 `KEY_SAVE_LIMITS`**(`lib/keys/save.ts`) — 값당 10,000 · 로케일 200 · **변경값 합계 UTF-16 1,000,000 코드유닛**. 최악이
   UTF-8 약 3MB(CJK 1유닛=3바이트, 서로게이트 2유닛=4바이트)라 `serverActions.bodySizeLimit: "4mb"` 안에 든다. ⚠️ **둘 중 하나를
   움직이면 다른 쪽을 같이 본다** — 합계가 body 한도를 넘으면 초과가 우리 거부 문구가 아니라 프레임워크 오류로 난다.
+
+### 1.965 글로벌 Keys 조회 — 멤버 범위와 인덱스 판정 (global-search B3, 2026-10-03)
+
+`lib/keys/search.ts`는 키 이름·원문에서 먼저 5건을 찾고, 부족할 때만 번역값에서 나머지를 찾는다(인가·순위는 §6.37).
+**검색 코어의 SQL 왕복은 최대 둘**이고 세션 조회의 DB 왕복은 이 상한에 포함하지 않는다. 멤버 프로젝트 id 확정도 각 SQL 안에서 끝낸다.
+
+**최종 번역값 계획**은 멤버 배열 `unnest` → 프로젝트별 `LATERAL ... OFFSET 0`의 `Translation.projectId = member.id` 인덱스 탐색 →
+`IN (...) IS TRUE`의 독립 로케일 검사 → `matched AS MATERIALIZED` → `first_match AS MATERIALIZED`의 키별
+`min(ARRAY[localeCode,value] COLLATE "C")` 집계 → 키 PK 조회·메타데이터 → 정렬·남은 행 수 LIMIT다.
+`(keyId,localeCode)` 유일성 때문에 집계는 C 순서의 첫 일치 로케일과 **그 셀의 값 한 쌍**을 준다.
+
+경계가 필요한 근거는 B3 실험이다: 직접 다중 조인은 통계 없이 키마다 번역을 재탐색해 5초를 넘었고,
+단순 `ANY(member-array)` materialization은 ANALYZE 뒤 전체 테넌트의 병렬 순차 스캔으로 바뀌었다.
+최종 계획의 `matched` 경계를 합치는 실험도 무통계 `common` 중앙값 437.5ms여서 되돌렸다.
+멤버별 인덱스 탐색과 집계 경계 둘을 유지해야 무통계 재탐색·전체 셀 정렬을 피한다.
+
+**실측**: 로컬 PostgreSQL **17.11**, Node **24.21.0**. 커밋된 `lib/keys/__tests__/search-performance.integration.ts`가
+멤버 2프로젝트 **200,100셀**(20,000키×10 + 10키×10)과 비멤버 1프로젝트·3소스 **600,000셀**을 넣는다.
+autovacuum off · statement_timeout=5000, 통계 없음/ANALYZE 뒤 × 네 질의 × 각 20회(160표본)다.
+아래는 `EXPLAIN (ANALYZE, BUFFERS, VERBOSE)` **실행한 SQL(최대 둘)의 Execution Time 합 중앙값(ms)**이며 앱·pooler 네트워크 왕복은 제외한다.
+
+| 질의 | 통계 없음 | ANALYZE 뒤 | 최대 Translation 방문 |
+|---|---:|---:|---:|
+| 불일치 (`no-match-at-all`) | 61.7215 | 77.9915 | 200,100 |
+| 키 이름 (`key-123`) | 5.3085 | 20.1720 | 0 — 첫 SQL만 실행 |
+| 번역값만 (`unique-translation`) | 59.7620 | 77.0265 | 200,100 |
+| 흔한 단어 (`common`) | 253.0085 | 253.2210 | 200,100 |
+
+**최악 중앙값 253.2210ms ≤ 300ms → 조건부 B4 생략. pg_trgm·신규 인덱스·스키마 마이그레이션이 없다.**
+§1.96의 기각은 번역 목록의 EXISTS 계획에 대한 것이고, 이 판정은 위 멤버 범위 계획을 따로 측정한 결과다.
+방문 수 검출기는 필터·인덱스 재검사 탈락 행과 loops를 포함하고, 방문 **< 400,200**뿐 아니라
+멤버 배열에서 유래한 `projectId` 인덱스 접근도 요구한다. 같은 800,100셀의 실제 전체 순차 스캔 대조군은 두 통계 상태 모두 거부한다.
+방문 수만으로 비멤버 행 미방문을 증명하지 않는다. 수치는 이 로컬 픽스처의 실행 시간이며 다른 서버·플래너의 성능 보장은 아니다.
 
 ### 1.97 ⚠️ 미저장 이탈 guard는 Next 내부 동작에 기댄다 (`components/translations/workspace/use-leave-guard.ts`)
 
@@ -2043,6 +2101,9 @@ Logs 행위자·상세 Trigger·보조줄·Home 메타 열이 이것 하나를 �
 |---|---|---|
 | 편집 UI **로그인** | GitHub·Google OAuth **App** (Auth.js, DB 세션 / `AUTH_GITHUB_*`) | 신원 확인까지다 — **무엇을 할 수 있는지는 정하지 않는다** |
 | 편집 UI **인가** | `ProjectMember` 행 (`getProjectAccess`) | 로그인 provider가 권한을 정하지 않는다 (§0 불변식 7). 허용 핸들 목록은 2026-09-06에 사라졌다 |
+| `/api/search-index` | **공개 · 세션 없음 · `force-static`** | SUMMARY에 등재된 공개 가이드만 빌드 때 JSON으로 만든다. 인증·DB·쿠키 조회가 없고 원고 실패는 빌드를 실패시킨다. `entry-points.test.ts`의 `EXEMPT` 사유도 이 경계다 (§6.37) |
+| Keys 조회 — `searchKeysAction` (`app/search/actions.ts`) | 세션(`readSession`) + 코어 `searchKeys`의 **`ProjectMember.userId` 조인** | 서버의 userId로 비보관 멤버 프로젝트 id를 확정한다. 클라이언트 프로젝트 목록을 받지 않고 `activeSlug`는 순위에만 쓴다 (§6.37) |
+| 검색 멤버십 — `loadSearchMembershipsAction` (같은 파일) | 세션(`readSession`) + `loadMemberships`의 **userId 제한** | 보관 포함 자기 멤버십만 읽고 `toNavProjects`의 일곱 필드만 반환한다. 성공·실패 모두 다음 호출에 캐시하지 않는다 (§6.37) |
 | GitHub **연결** | GitHub App **user-to-server** 토큰 (`GITHUB_APP_CLIENT_*`, `lib/github-connect/user.ts`) | "이 사람이 이 설치·리포를 볼 수 있는가"를 묻는 데만 쓴다. **GET만 부른다** — 이름에 OAuth가 들어가지만 로그인 토큰과 client id가 다르다 |
 | `malmoi-i18n/sync` 쓰기 | GitHub App **installation** 토큰 (`GITHUB_APP_ID`·`GITHUB_APP_PRIVATE_KEY`) | OAuth 토큰으로 커밋하면 커밋이 개인 명의가 되고 그 사람이 org를 떠나면 깨진다 |
 | `/api/github/callback` | 세션(`requireUser`) + userId에 묶인 **state HMAC** + state 쿠키 | 브라우저가 돌아오는 지점이라 CSRF 축이 초대 토큰과 같다 (§6.4) |
@@ -2640,6 +2701,41 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 - ⚠️ **grep 한 번으로 확인했다고 하지 않는다.** T6에서 이 경계를 의심해 산출물을 grep했는데 `@octokit`만
   봤고 그건 정말로 없었다 — 그래서 "트리 셰이킹이 떼어냈다"는 **틀린 결론을 주석으로 남겼다.** 한 번의
   grep은 자신이 고른 패턴만 답한다.
+
+### 6.37 검색의 공개·사용자 경계 (`app/search/actions.ts` · `lib/search/`, global-search)
+
+- **공개 색인은 Docs만 든다.** `app/api/search-index/route.ts`는 질의를 받지 않는 GET으로 `{ docs: DocsEntry[] }`를 준다.
+  `loadSummary`·`loadPage` → `docsSearchEntries`가 SUMMARY 순서로 페이지 도입부와 표식 있는 H2 절의 평문을 만든다.
+  프로젝트·키·번역값·Changelog 본문은 이 응답에 없다. `force-static`은 `/llms-full.txt`와 같은 빌드 생성 형이라
+  가이드 원고의 런타임 트레이싱·ISR이 없고 원고 읽기 실패를 빈 색인으로 삼키지 않는다.
+  `/api/*`는 미들웨어 matcher 밖이며 `isProtectedPath`에 넣지 않는다. route 테스트가 세션·DB·쿠키 호출을 던지는 mock으로 막는다.
+- **사용자 조회 둘은 읽기 전용 Server Action이다.** `app/search/actions.ts`에는 페이지가 없고 공개 셸도 호출할 수 있다.
+  두 Action은 호출마다 `readSession`을 읽어 없음은 `unauthorized`, 세션·DB·코어 장애는 `unavailable` union으로 돌려준다.
+  `redirect`·`revalidatePath`·검색어 로그가 없다. 단 `searchKeysAction`의 비문자열 q는 세션 조회 전에 빈 성공 결과로 끝낸다.
+  `loadSearchMembershipsAction`은 `loadMemberships(prisma, session.userId)` → `toNavProjects`로
+  `slug`·`name`·`role`·`archived`·`image`·`defaultSurfaceSlug`·`counts`만 싣는다(보관 포함).
+- **Keys의 테넌트 제한은 SQL 안에서 확정한다.** `searchKeys`는 세션 userId의 `ProjectMember`와 비보관 `Project`로 만든
+  멤버 id 배열로 `projectId`를 좁힌다. 입력은 q와 순위 힌트 `activeSlug`뿐이며 클라이언트 id·slug 목록은 인가에 쓰지 않는다.
+  양쪽 SQL은 보관 소스·첫 적재 전 소스(`lastCommitSha IS NULL`)·orphaned 키를 제외하고, 번역값은 orphaned 아닌 로케일만 본다.
+  준비 여부에 `installationId`를 더하지 않는 근거는 null로 되돌리는 경로가 없다는 현재 계약이다(`lib/auth/access.ts`).
+  질의는 trim 후 앞 200자(`Q_MAX_LENGTH`), `String.length`(UTF-16 단위) `KEY_QUERY_MIN`(2) 미만이면 검색 코어의 DB 조회 0이다.
+  길이 하한 `KEY_QUERY_MIN`과 그룹 상한 `SEARCH_GROUP_LIMIT`은 클라이언트 잎 `lib/search/match.ts`가, 질의 길이 상한 `Q_MAX_LENGTH`는
+  `lib/translations/query.ts`가 정의하고 서버가 둘 다 import한다(서버 → 클라이언트 잎은 허용 방향) — 클라이언트의 요청 판정
+  (`keySearchText`, `lib/search/rows.ts`)이 같은 상수·같은 trim→절단→UTF-16 길이를 써서 서로게이트 쌍 한 글자도 양쪽이 요청 대상으로 본다.
+  `likePattern`을 번역 목록과 공유해 `%`·`_`·`\`를 escape하고 **질의 전체의 대소문자 무시 부분 일치**로 찾는다.
+  Projects·Pages·Docs의 토큰 AND 판정과 다르다. 순위는 키 이름 > 원문 > 번역값, 같은 급은 지금 프로젝트 →
+  키 이름 → 키 id(`COLLATE "C"`)이고 상한은 5(`SEARCH_GROUP_LIMIT` — SQL `LIMIT`에 바인드 파라미터로 들어간다)다. 번역값의 여러 일치는 C 순서 첫 로케일 한 셀, 중복 제거는 키 id다.
+  검색 코어의 조건부 두 SQL과 최종 실행 계획·실측은 §1.965가 든다.
+- **캐시 정책은 공개·개인 데이터가 다르다.** `lib/search/load-index.ts`만 동시 호출 Promise와 성공 결과를 탭 수명 동안 재사용한다.
+  네트워크·HTTP·JSON 파싱 실패는 Promise를 비워 다음 호출이 재시도한다. `lib/search/load-memberships.ts`는 매 호출마다 Action을
+  실행하고 성공·실패를 저장하지 않는다. 결과는 Action의 union(`{ ok: true, memberships } | { ok: false, error: "unauthorized" | "unavailable" }`)
+  그대로이고 네트워크 throw만 `unavailable`로 접는다 — **실패를 비로그인으로 접지 않는다**(2026-10-03, search-ux-unify C1: 헤더에 아바타가
+  있는데 비로그인 검색이 서면 거짓이다). 멤버십이 없는 세 경우(비로그인 · `unauthorized` · `unavailable`)는 색인의 Projects·Pages가 비어
+  공개 Docs만 찾는다 — 노출을 줄이는 쪽이라 서버 판정은 그대로다. 앱 셸은 레이아웃이 넘긴 멤버십을 쓰므로 `unauthorized`·`unavailable`은
+  공개 셸에서만 생긴다. 권한 회수·역할·보관 변경이 다음 서버 호출부터 반영되는 §6.00④를 지킨다.
+- **검사는 코어까지 내려간다.** `entry-points.test.ts`의 `MEMBER_JOIN_CORES`는 `searchKeys` 호출과 Action의 세션 거부를 함께
+  요구하고, 코어 본문의 `ProjectMember`·userId 바인딩도 검사한다. 멤버십 Action은 `USER_SCOPED_ACTIONS`다.
+  `lib/keys/__tests__/search.integration.ts`가 다른 사용자의 비노출·권한 회수·제외 조건·순위·왕복 상한을 실제 DB에서 잰다.
 
 ### 6.4 GitHub 연결의 왕복 — state와 착지 지점 (SaaS 4단계, `lib/github-connect/`)
 

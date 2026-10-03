@@ -82,7 +82,7 @@ function detectCandidates(paths: readonly string[], probe?: FileProbe): Detected
   const candidates = rankTemplateCandidates(
     [...byTemplate.entries()]
       // 강한 로케일 코드가 없으면 로케일 모음이 아니다 — `shared.hasStrongLocale`.
-      .filter(([, s]) => s.size >= 2 && hasStrongLocale(s))
+      .filter(([, s]) => hasStrongLocale(s))
       .map(([pathTemplate, locales]) => ({ pathTemplate, locales })),
   );
 

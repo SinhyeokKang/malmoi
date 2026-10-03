@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ADAPTERS, chromeLocales, detectFormat, jsonCatalog, tsDict } from "../index";
+import { ADAPTERS, chromeLocales, detectCandidatesAcross, detectFormat, jsonCatalog, tsDict } from "../index";
 import type { FileProbe } from "../types";
 
 /**
@@ -159,4 +159,65 @@ describe("detectCandidates는 additive다 — detect가 그 [0]이다", () => {
       ])?.adapter,
     ).toBe("chrome-locales");
   });
+});
+
+
+describe("단일 언어 사전 — 자동 탐지와 수동 확정", () => {
+  const cases = [
+    ["chrome-locales", "_locales/{locale}/messages.json", '{"ok":{"message":"OK"}}'],
+    ["json-catalog", "messages/{locale}.json", '{"ok":"OK"}'],
+    ["json-catalog", "locales/{locale}/common.json", '{"ok":"OK"}'],
+    ["json-catalog", "locales/app.{locale}.json", '{"ok":"OK"}'],
+    ["yaml-catalog", "locales/{locale}.yml", 'ok: OK\n'],
+    ["yaml-catalog", "locales/app.{locale}.yaml", 'en:\n  ok: OK\n'],
+    ["code-dict", "messages/{locale}.tsx", 'export const en = { ok: "OK" } as const;'],
+    ["ts-dict", "src/i18n/*.ts", 'const en = { "common.ok": "OK" }; export const common = { en };'],
+  ] as const;
+
+  it.each(cases)("%s %s: 2패스로 단일 언어를 읽고 확정 후에도 같은 템플릿을 유지한다", async (adapter, pathTemplate, content) => {
+    const { codeDictCandidatePaths } = await import("../code-dict");
+    const { makeProbe, probeTargets, summarizeCandidates } = await import("@/lib/onboarding/detect");
+    const { planConfirmedFormat } = await import("@/lib/onboarding/confirm");
+    const path = pathTemplate.replace("{locale}", "en").replace("*", "common");
+    const paths = [path];
+    const downloads = probeTargets(detectCandidatesAcross(paths), codeDictCandidatePaths(paths), paths);
+    expect(downloads).toContain(path);
+    const blobs = new Map(downloads.map(p => [p, content]));
+    const found = detectCandidatesAcross(paths, makeProbe(blobs));
+    expect(found).toContainEqual({ adapter, pathTemplate, locales: ["en"] });
+    const summary = summarizeCandidates(found, blobs).find(c => c.adapter === adapter);
+    expect(summary).toMatchObject({ baseLocale: "en", locales: ["en"], keys: { status: "counted", count: 1 } });
+    expect(planConfirmedFormat({ adapter, pathTemplate, baseLocale: "en" }, [{ path, content }])).toMatchObject({
+      status: "ok", baseLocale: "en", format: { adapter, pathTemplate, locales: ["en"] },
+    });
+  });
+
+  it.each(cases.filter(([adapter]) => adapter !== "ts-dict"))("%s %s: 나중에 추가된 언어도 같은 템플릿에서 읽는다", async (adapter, pathTemplate, content) => {
+    const { planConfirmedFormat } = await import("@/lib/onboarding/confirm");
+    const files = ["en", "ko"].map(locale => ({ path: pathTemplate.replace("{locale}", locale), content }));
+    expect(planConfirmedFormat({ adapter, pathTemplate, baseLocale: "en" }, files)).toMatchObject({
+      status: "ok", baseLocale: "en", format: { adapter, pathTemplate, locales: ["en", "ko"] },
+    });
+  });
+
+  it.each([
+    ["locales/en.json", "[1,2,3]"],
+    ["locales/en.yml", "- 1\n- 2\n"],
+    ["messages/en.tsx", "export const en = { count: 42 };"],
+    ["src/i18n/common.ts", "const en = { ...common.en }; export default en;"],
+    ["src/i18n/common.ts", 'const fmt = { ok: "OK" };'],
+  ])("%s: 로케일 모양만 있고 지원 문자열이 없으면 거부한다", (path, content) => {
+    expect(detectCandidatesAcross([path], () => content)).toEqual([]);
+  });
+});
+
+it("단일 언어 조상 후보가 여러 언어의 정본을 끌어내리지 않는다 (moebooru 실측)", () => {
+  const files: Record<string, string> = {
+    "config/i18n-js.yml": "translations:\n  file: public/javascripts/translations.js\n  only: '*.js'\n",
+    "config/locales/en.yml": "en:\n  greeting: Hello\n",
+    "config/locales/ja.yml": "ja:\n  greeting: こんにちは\n",
+  };
+  const found = detectCandidatesAcross(Object.keys(files), path => files[path]);
+  expect(found[0]?.pathTemplate).toBe("config/locales/{locale}.yml");
+  expect(found.map(candidate => candidate.pathTemplate)).toContain("config/i18n-{locale}.yml");
 });

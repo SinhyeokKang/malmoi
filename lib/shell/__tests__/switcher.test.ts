@@ -7,7 +7,7 @@ const rows = [p("bot", "course-chatbot"), p("malmoi", "malmoi"), p("old", "Old S
 
 /**
  * **LNB 프로젝트 스위처의 목록** (2026-09-27 사용자). 보관도 싣고, `/projects` 기본 순서처럼 **보관이 맨 뒤**다.
- * 이름 대조는 `/projects` 검색(`searchProjects`)과 같은 규칙이다.
+ * 이름 대조는 검색·`/projects`와 같은 토큰 AND다(`matchesAllTokens` — 교차 표는 `lib/search/__tests__/name-match.test.ts`).
  */
 describe("switcherProjects", () => {
   it("전부 싣되 보관은 맨 뒤, 나머지는 멤버십 순서 그대로", () => {
@@ -23,6 +23,11 @@ describe("switcherProjects", () => {
     expect(switcherProjects(rows, "  BUG ").map((r) => r.slug)).toEqual(["web"]);
     expect(switcherProjects(rows, "site").map((r) => r.slug)).toEqual(["old"]);
     expect(switcherProjects(rows, "zzz")).toEqual([]);
+  });
+
+  it("여러 낱말은 어순과 무관하게 각각 이름 안에 있으면 찾는다", () => {
+    expect(switcherProjects(rows, "web bugshot").map((r) => r.slug)).toEqual(["web"]);
+    expect(switcherProjects(rows, "web site")).toEqual([]);
   });
 
   it("원본을 건드리지 않는다", () => {

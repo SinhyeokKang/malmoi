@@ -8,6 +8,7 @@ const url = vi.hoisted(() => ({ params: new URLSearchParams() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), useSearchParams: () => url.params }));
 
 import { ProjectList } from "@/components/projects/project-list";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { m } from "@/lib/i18n";
 import type { ProjectListRow } from "@/lib/keys/query";
 import { STATE } from "@/lib/status/canon";
@@ -233,19 +234,21 @@ describe("보관 행이 한 단계 더 물러난다", () => {
   const metaOf = (row: HTMLElement) => find<HTMLElement>(row, "span.text-xs.min-w-0");
 
   /**
-   * ⚠️ **이름·메타·배지가 `#a3a3a3` 한 색이다** (2026-09-20 사용자 — *"거의 비활성 상태에 가깝게"*).
-   * 전에는 셋 다 `#737373`이었는데 그 값은 이 리포에서 **꺼진 컨트롤의 글자색**이라 더 내려갈 데가
-   * 없었다. 한 단계 아래인 `gray-dim`을 이 행에 들이는 것이 그 요청의 답이다.
+   * ⚠️ **이름·메타가 `#a3a3a3`이다** (2026-09-20 사용자 — *"거의 비활성 상태에 가깝게"*).
+   * 전에는 `#737373`이었는데 그 값은 이 리포에서 **꺼진 컨트롤의 글자색**이라 더 내려갈 데가 없었다.
    *
-   * ⚠️ **셋이 함께 움직여야 한다** — 하나라도 남으면 그것이 행에서 가장 진한 것이 되어 눈이 먼저 간다.
+   * ⚠️ **배지는 내려가지 않는다** (search-ux-unify D6) — 그 행이 "왜 꺼졌나"를 말하는 유일한 사실이라 2.3:1은 회귀였다.
+   * 보관 배지는 어느 화면에서나 `STATE.archived`(`soft-neutral`) 한 모양이다.
    */
-  it("이름·메타·배지가 전부 gray-dim이다", async () => {
+  it("이름·메타는 gray-dim이고 보관 배지는 표의 soft-neutral 그대로다", async () => {
     const row = archivedRow(await draw());
     expect(nameOf(row).className).toContain("text-gray-dim");
     expect(metaOf(row).className).toContain("text-gray-dim");
     const badge = find<HTMLElement>(row, "span.rounded-full");
     expect(badge.textContent).toBe(STATE.archived.label);
-    expect(badge.className).toContain("text-gray-dim");
+    expect(badge.className).not.toContain("text-gray-dim");
+    const canon = (await render(<StatusBadge state="archived" />)).container.firstElementChild!;
+    expect(badge.className).toBe(canon.className);
   });
 
   /** ⚠️ **살아 있는 행은 안 움직인다** — 이름은 `#0a0a0a`, 메타는 `#737373` 그대로다. */

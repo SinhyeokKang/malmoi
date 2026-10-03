@@ -59,9 +59,34 @@ function canonicalTag(node: Opening, file: ts.SourceFile): string {
   return tag;
 }
 
+// 표현식 하위 어디든 화면에 나갈 문자열 리터럴이 있으면 손 사본이다(조건식·`&&`·`??`·`+`). 사전 접근의 키(`x["mac"]`)는 글자가 아니다.
+function hasDisplayedLiteral(node: ts.Node): boolean {
+  if (ts.isElementAccessExpression(node)) return hasDisplayedLiteral(node.expression);
+  if (ts.isStringLiteralLike(node)) return node.text.trim() !== "";
+  if (ts.isTemplateExpression(node) && (node.head.text.trim() !== "" || node.templateSpans.some(span => span.literal.text.trim() !== ""))) return true;
+  return ts.forEachChild(node, child => hasDisplayedLiteral(child) || undefined) ?? false;
+}
+function kbdLiteral(node: Opening, file: ts.SourceFile): boolean {
+  if (!ts.isJsxOpeningElement(node) || canonicalTag(node, file) !== "Kbd") return false;
+  return node.parent.children.some(child => ts.isJsxText(child) ? child.text.trim() !== "" : ts.isJsxExpression(child) && child.expression !== undefined && hasDisplayedLiteral(child.expression));
+}
+
 const RETIRED_WIZARD_FOOTER = "export const Demo = () => (<div className=\"flex items-center gap-2\">\n              {showBack && (\n                <Button type=\"button\" size=\"lg\" onClick={onBack} disabled={busy}>\n                  {m.newProject.modal.back}\n                </Button>\n              )}\n              {/*\n                \u26a0\ufe0f **\ube44\ud65c\uc131 \ubaa8\uc591\uc744 \uaecd\ub370\uae30\uac00 \ub4e0\ub2e4** \u2014 \ud770 \ubc30\uacbd + border + muted \uae00\uc790 + `not-allowed`.\n                \ub2e8\uacc4\ub9c8\ub2e4 \ub2e4\uc2dc \ub9cc\ub4e4\uba74 \uac08\ub9b0\ub2e4.\n              */}\n              <Button\n                type=\"button\"\n                variant=\"primary\"\n                size=\"lg\"\n                onClick={onNext}\n                disabled={nextDisabled}\n                loading={busy}\n              >\n                {nextLabel ?? m.newProject.modal.next}\n                {nextArrow && <ArrowRight className=\"size-4\" aria-hidden />}\n              </Button>\n            </div>);";
 
 const RULES: Rule[] = [
+{ primitive: "Command", retired: [], paths: ["components/search/search-trigger.tsx", "components/search/*"], minimum: 1,
+    handCopy: (node, file) => /^(button|input|a|kbd|mark)$/.test(node.tagName.getText(file)) || /#[\da-fA-F]{3,8}\b|\[\d+(?:\.\d+)?px\]/.test(classes(node, file)),
+    bad: 'export const Demo = () => <button className="text-[#abc] w-[17px]">Search</button>;',
+    good: 'import {Command} from "@/components/ui/command"; export const Demo = () => <Command ids={[]} query="">Body</Command>;' },
+// search-ux-unify C12 — 키 이름은 `m.common.keys`에서 온다: `<Kbd>` children의 문자열 리터럴도 손 사본이다. ui의 소비처(`command.tsx`)도 센다.
+{ primitive: "Kbd", retired: [], paths: ["components/shell/project-switcher.tsx", "components/ui/command.tsx", "*"], minimum: 1,
+    handCopy: (node, file) => node.tagName.getText(file) === "kbd" || kbdLiteral(node, file),
+    bad: 'export const Demo = () => <kbd>Esc</kbd>;',
+    good: 'import {Kbd} from "@/components/ui/kbd"; export const Demo = () => <Kbd>{m.common.keys.esc}</Kbd>;' },
+{ primitive: "Highlight", retired: [], paths: ["components/projects/project-list.tsx", "*"], minimum: 1,
+    handCopy: node => node.tagName.getText() === "mark",
+    bad: 'export const Demo = () => <mark>Match</mark>;',
+    good: 'import {Highlight} from "@/components/ui/highlight"; export const Demo = () => <Highlight segments={[]} />;' },
 { primitive: "Card", retired: ["PanelCard", "RowCard", "PanelRows", "RowCardList", "RowCardItem"], paths: [], minimum: 20,
     handCopy: () => false,
     bad: 'import { RowCard as Local } from "@/components/ui/row-card"; export const Demo = () => <Local title="Title">Body</Local>;',
@@ -70,7 +95,7 @@ const RULES: Rule[] = [
     handCopy: (node, file) => /icon=\{SearchX\}/.test(node.getText(file)),
     bad: 'import { EmptyRowCard as Blank } from "@/components/ui/row-card"; export const Demo = () => <Blank title="Empty" />;',
     good: 'import { EmptyState } from "@/components/ui/empty-state"; export const Demo = () => <EmptyState placement="inset" title="Empty" />;' },
-{ primitive: "ListRow", retired: ["PanelRow", "ListItemButton"], paths: ["components/logs/event-row.tsx", "components/home/attention-card.tsx", "components/projects/project-list.tsx", "components/settings/ci-card.tsx", "components/sources/sources-screen.tsx", "components/sources/source-detail-modal.tsx"], minimum: 10,
+{ primitive: "ListRow", retired: ["PanelRow", "ListItemButton"], paths: ["components/logs/event-row.tsx", "components/home/attention-card.tsx", "components/projects/project-list.tsx", "components/settings/ci-card.tsx", "components/sources/sources-screen.tsx", "components/sources/source-detail-modal.tsx", "components/ui/command.tsx"], minimum: 10,
     handCopy: (node, file) => /^(?:a|button|div|Link|Button)$/.test(node.tagName.getText(file)) && /\bpy-row-y\b/.test(classes(node, file)) && /\b(?:items-center|justify-start)\b/.test(classes(node, file)),
     bad: 'export const Demo = () => <button className="flex items-center gap-3 px-4 py-row-y">Row</button>;',
     good: 'import { ListRow } from "@/components/ui/list-row"; export const Demo = () => <ListRow as="button">Row</ListRow>;' },
@@ -163,11 +188,12 @@ function scan(source: Source, rule: Rule): string[] {
     if (ts.isFunctionDeclaration(node) && node.name && rule.retired.includes(node.name.text) && node.modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword)) hits.push(`export:${node.name.text}`);
     if (ts.isExportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier) && rule.retiredModules?.includes(node.moduleSpecifier.text)) hits.push(`module:${node.moduleSpecifier.text}`);
     if (ts.isExportDeclaration(node) && node.exportClause && ts.isNamedExports(node.exportClause)) for (const item of node.exportClause.elements) if (rule.retired.includes((item.propertyName ?? item.name).text)) hits.push(`export:${item.name.text}`);
+    if (rule.primitive === "Command" && source.path.startsWith("components/search/") && ts.isStringLiteralLike(node) && /^#[\da-fA-F]{3,8}$/.test(node.text)) hits.push("search-style");
     if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
       const tag = node.tagName.getText(file);
       const name = aliases.get(tag) ?? (tag.includes(".") && namespaces.has(tag.split(".")[0]!) ? tag.split(".")[1]! : tag);
       if (rule.retired.includes(name)) hits.push(`jsx:${name}`);
-      if ((rule.paths.includes(source.path) || rule.paths.includes("*") && !source.path.startsWith("components/ui/")) && rule.handCopy(node, file)) hits.push(`copy:${tag}`);
+      if ((rule.paths.includes(source.path) || rule.paths.some(path => path.endsWith("/*") && source.path.startsWith(path.slice(0, -1))) || rule.paths.includes("*") && !source.path.startsWith("components/ui/")) && rule.handCopy(node, file)) hits.push(`copy:${tag}`);
     }
     ts.forEachChild(node, visit);
   };
@@ -210,6 +236,64 @@ describe.each(RULES)("$primitive production contract", rule => {
       expect(scan({ path: "components/example.tsx", code: `import { ${retired} as Alias } from "@/components/ui/row-card"; const view = <Alias />;` }, rule)).toContain(`jsx:${retired}`);
       expect(scan({ path: "components/example.tsx", code: `import * as UI from "@/components/ui/row-card"; const view = <UI.${retired} />;` }, rule)).toContain(`jsx:${retired}`);
     }
+  });
+});
+
+// search-ux-unify C15 — 검색 결과 행은 `ListRow`다. 옛 손 조립(`mx-2 … rounded-md border px-2 py-2`)이 돌아오면 여기서 red다.
+it("command.tsx는 행 클래스를 직접 쓰지 않고 ListRow를 쓴다", () => {
+  const source = sources.find(s => s.path === "components/ui/command.tsx");
+  expect(source).toBeDefined();
+  const code = source!.code.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "");
+  expect(code).toMatch(/import \{ ListRow \} from "\.\/list-row"/);
+  expect(code).toMatch(/<ListRow\b/);
+  expect(code).not.toMatch(/from "next\/link"/);
+  for (const token of ["py-row-y", "rounded-md", "mx-2", "border-ring", "bg-accent", "px-2 py-2"]) expect(code, token).not.toContain(token);
+});
+
+describe("Kbd children", () => {
+  const rule = RULES.find(r => r.primitive === "Kbd")!;
+  it.each([
+    ['<Kbd>Esc</Kbd>', true], ['<Kbd>{"↵"}</Kbd>', true], ['<Kbd>{`Ctrl K`}</Kbd>', true],
+    // 이 기능이 걷어낸 원래 모양 — 리터럴이 조건식·논리식·연결 안에 있어도 손 사본이다(R-B1 Y3).
+    ['<Kbd>{mac ? "⌘K" : "Ctrl K"}</Kbd>', true], ['<Kbd>{mac && "⌘K"}</Kbd>', true], ['<Kbd>{label ?? "Esc"}</Kbd>', true], ['<Kbd>{"Ctrl" + " K"}</Kbd>', true],
+    ['<Kbd>{m.common.keys.enter}</Kbd>', false], ['<Kbd>{m.common.keys.search[label]}</Kbd>', false], ['<Kbd>\n  {m.common.keys.esc}\n</Kbd>', false],
+    ['<Kbd>{m.common.keys.search["mac"]}</Kbd>', false],
+  ] as const)("%s → 손 사본 %s", (jsx, hit) => {
+    const code = `import {Kbd} from "@/components/ui/kbd"; export const Demo = () => ${jsx};`;
+    expect(scan({ path: "components/ui/command.tsx", code }, rule).length > 0).toBe(hit);
+  });
+});
+
+// search-ux-unify C10 — "새 탭·새 창·보조 버튼이 아닌 일반 클릭" 판정은 `lib/keyboard.ts`의 `isPlainPrimaryClick` 하나다.
+// 손 사본은 `button` 0 비교이거나, 한 줄에 수식키 넷을 다 세는 식이다(저장 단축키의 `ctrlKey || metaKey`는 넷이 아니라 걸리지 않는다).
+describe("일반 클릭 판정 손 사본", () => {
+  const MODIFIERS = ["metaKey", "ctrlKey", "shiftKey", "altKey"];
+  // 블록 주석은 개행만 남기고 지운다 — 보고하는 줄 번호가 원본과 같다.
+  const bare = (code: string) => code.replace(/\/\*[\s\S]*?\*\//g, comment => comment.replace(/[^\n]/g, "")).replace(/(^|[^:])\/\/[^\n]*/gm, "$1");
+  const plainClickCopies = ({ path, code }: Source) => bare(code).split("\n").flatMap((line, index) =>
+    /\bbutton\s*[!=]==?\s*0\b/.test(line) || MODIFIERS.every(key => line.includes(key)) ? [`${path}:${index + 1}`] : []);
+  const withLib = [...sources, ...walkFiles("lib").map(path => `lib/${path}`).filter(path => /\.tsx?$/.test(path) && !path.includes("__tests__")).map(path => ({ path, code: readFileSync(path, "utf8") }))];
+
+  it("lib/keyboard.ts 밖에서 0곳이다", () => {
+    expect(withLib.length).toBeGreaterThan(500);
+    expect(withLib.filter(source => source.path !== "lib/keyboard.ts").flatMap(plainClickCopies)).toEqual([]);
+  });
+
+  it.each([
+    ["if (event.button !== 0 || event.metaKey) return;", true],
+    ["const plain = e.button === 0;", true],
+    ["if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;", true],
+    ["if (!isPlainPrimaryClick(event)) return;", false],
+    ["if (event.key === \"Enter\" && (event.ctrlKey || event.metaKey)) save();", false],
+    ["// event.button !== 0 || metaKey ctrlKey shiftKey altKey", false],
+  ] as const)("카나리아 %s → %s", (code, hit) => {
+    expect(plainClickCopies({ path: "components/x.tsx", code }).length > 0).toBe(hit);
+  });
+
+  it("isPlainPrimaryClick 자신은 잡힌다 — 정본이 허용 목록이라 0인 것이다", () => {
+    const keyboard = withLib.find(source => source.path === "lib/keyboard.ts");
+    expect(keyboard).toBeDefined();
+    expect(plainClickCopies(keyboard!).length).toBeGreaterThan(0);
   });
 });
 
@@ -327,4 +411,12 @@ it.each([
 ])("%s owned hand-copy aliases cannot escape the current-path detector", (primitive, code) => {
   const rule = RULES.find(rule => rule.primitive === primitive)!;
   expect(scan({path: rule.paths[0]!, code}, rule).length).toBeGreaterThan(0);
+});
+
+
+it("search directory rules catch each raw tag and literal style independently", () => {
+  const rule = RULES.find(row => row.primitive === "Command");
+  if (!rule) throw new Error("Search composition rule is missing");
+  for (const tag of ["button", "input", "a", "kbd", "mark"]) expect(scan({ path: "components/search/new-consumer.tsx", code: `export const Demo = () => <${tag} />;` }, rule).length).toBeGreaterThan(0);
+  for (const code of ['const color = "#abc"; export const Demo = () => <div style={{color}} />;', 'export const Demo = () => <div className="w-[17px]" />;']) expect(scan({ path: "components/search/new-consumer.tsx", code }, rule).length).toBeGreaterThan(0);
 });

@@ -287,7 +287,7 @@ function dirOf(pathTemplate: string): string {
  * 조상)이 `_locales/{locale}/messages.json`(정답)을 끌어내린다 — 크롬 최우선 규칙이 막고 있는
  * 것을 여기서 되살릴 이유가 없다 (ARCHITECTURE §1.3 "버킷별로 적용").
  */
-export function liftAncestors<T extends { pathTemplate: string }>(ranked: readonly T[]): T[] {
+export function liftAncestors<T extends { pathTemplate: string; locales: Iterable<string> }>(ranked: readonly T[]): T[] {
   const out = ranked.slice();
   for (let i = 1; i < out.length; i += 1) {
     const head = out[0];
@@ -300,6 +300,8 @@ export function liftAncestors<T extends { pathTemplate: string }>(ranked: readon
      * 1순위를 가져간다(실측: 3로케일 `src/i18n/locales/{locale}.json`이 2순위로 밀렸다).
      */
     if (!at.pathTemplate.includes("{locale}")) continue;
+    // 단일 언어 조상은 하위 카탈로그의 정본이라는 근거가 약하다(moebooru의 i18n-js.yml).
+    if ([...at.locales].length === 1 && [...head.locales].length > 1) continue;
     const headDir = dirOf(head.pathTemplate);
     const dir = dirOf(at.pathTemplate);
     if (dir.length < headDir.length && headDir.startsWith(dir)) {

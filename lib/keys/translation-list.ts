@@ -96,7 +96,7 @@ function decodeCursor(raw: string | undefined): Cursor | null {
 }
 
 /** LIKE 메타문자를 문자 그대로 — `%`·`_`·`\`. */
-function likePattern(q: string): string {
+export function likePattern(q: string): string {
   return `%${q.replace(/[\\%_]/g, ch => `\\${ch}`)}%`;
 }
 

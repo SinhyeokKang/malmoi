@@ -70,8 +70,8 @@ describe("detectFormat — 리포 파일 목록에서 포맷을 찾는다", () =
     expect(detectFormat(["src/data/users.json", "src/data/posts.json"])).toBeUndefined();
   });
 
-  it("로케일 파일이 하나뿐이면 잡지 않는다 (오탐 방지)", () => {
-    expect(detectFormat(["config/en.json"])).toBeUndefined();
+  it("로케일 파일 하나도 내용 검증 전 경로 후보로 잡는다", () => {
+    expect(detectFormat(["config/en.json"])).toMatchObject({ adapter: "json-catalog", locales: ["en"] });
   });
 
   it("chrome _locales가 있으면 그쪽을 우선한다", () => {

@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { isPlainPrimaryClick } from "@/lib/keyboard";
 import { dimsNavigation } from "@/lib/shell/navigation-dim";
 
 /** 커밋이 끝내 오지 않을 때(같은 화면으로 돌아오는 redirect 등) dim을 거두는 한도. */
@@ -39,8 +40,7 @@ export function NavigationDim() {
       const link = event.target instanceof Element ? event.target.closest<HTMLAnchorElement>("a[href]") : null;
       if (link === null) return;
       const on = dimsNavigation({
-        button: event.button,
-        modifier: event.metaKey || event.ctrlKey || event.shiftKey || event.altKey,
+        plain: isPlainPrimaryClick(event),
         target: link.target,
         download: link.hasAttribute("download"),
         href: link.href,

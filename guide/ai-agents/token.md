@@ -8,7 +8,7 @@ Use a personal token for agents that can't sign in through your browser, such as
 2. Under **Expires in**, choose 30, 90, or 365 days. Every token expires.
 3. Under **Allowed actions**, check what the agent may change. Leave everything unchecked for a read-only token.
 4. Under **Scope**, choose **All my projects** or **Chosen projects**.
-5. Choose **Create**, then **Copy** the token. It is shown only once; choose **Done** after you have stored it.
+5. Choose **Create**, then **Copy** the token. It is shown only once; choose **Close** after you have stored it.
 
 ![Step 1 of 2 of the Create token dialog with 90 days selected, Translate & publish checked, and All my projects chosen](/guide/mcp-create-token.webp "Choose the expiry, the allowed actions, and the scope, then create the token.")
 

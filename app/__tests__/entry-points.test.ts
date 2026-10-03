@@ -46,6 +46,8 @@ const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 
 /** 프로젝트 인가를 지나지 않아도 되는 진입점. 경로는 `app/` 기준이다. */
 const EXEMPT = new Set([
+  // 공개 Docs만 빌드 때 생성한다. 인증 없음이 정답이며 route 테스트가 세션·DB 호출을 금지한다.
+  "api/search-index/route.ts",
   "api/push/route.ts",
   /**
    * CI 파싱 실패 보고 (PRODUCT §7.8). **세션 인가가 아니라 그 프로젝트의 push 토큰이
@@ -119,6 +121,8 @@ const GUARDS = [...PROJECT_GUARDS, USER_GUARD];
  * 여기 이름을 더하려면 그 둘 중 어느 쪽인지 적는다.
  */
 const USER_SCOPED_ACTIONS = new Set([
+  // 멤버십은 세션 사용자가 소유한 목록이다.
+  "search/actions.ts#loadSearchMembershipsAction",
   // Session revocation affects only the authenticated user, including users without projects.
   "account/actions.ts#startSessionRevocation",
   // `Account`는 사용자 소유다 — 프로젝트가 없는 사용자도 자기 로그인 수단을 해제할 수 있어야 한다.
@@ -175,6 +179,15 @@ const DELEGATED_CORES = new Map([
   ["rotateToken", "lib/onboarding-run/rotate-token.ts"],
 ]);
 
+/** 멤버 프로젝트 조인은 프로젝트별 가드와 다른 인가 경계다. */
+const MEMBER_JOIN_CORES = new Map([["searchKeys", "lib/keys/search.ts"]]);
+
+function hasMemberJoin(source: string): boolean {
+  const code = stripComments(source);
+  return /FROM\s+"ProjectMember"\s+pm\s+JOIN\s+"Project"\s+p\s+ON\s+p\.id\s*=\s*pm\."projectId"/.test(code) &&
+    /pm\."userId"\s*=\s*\$\{userId\}/.test(code);
+}
+
 /** 이름 그대로의 호출 — 앞이 식별자·`.`이면 다른 이름의 꼬리다(`xsaveTranslation(`·`obj.saveTranslation(`). */
 function callsName(code: string, name: string): boolean {
   return new RegExp(`(?<![\\w.$])${name}\\(`).test(code);
@@ -196,6 +209,7 @@ function stripComments(source: string): string {
 function exportGuarded(body: string, id: string): boolean {
   const code = stripComments(body);
   return PROJECT_GUARDS.some((g) => code.includes(`${g}(`)) || [...DELEGATED_CORES.keys()].some((core) => callsName(code, core)) ||
+    ([...MEMBER_JOIN_CORES.keys()].some(core => callsName(code, core)) && hasUserGuard(code)) ||
     (USER_SCOPED_ACTIONS.has(id) && hasUserGuard(code));
 }
 
@@ -225,6 +239,26 @@ it("사용자 Action의 readSession은 두 거부 반환 없이는 인증으로 
   expect(hasUserGuard(read + none)).toBe(false);
   expect(hasUserGuard(read + outage)).toBe(false);
   expect(hasUserGuard(read + none + outage)).toBe(true);
+});
+
+describe("멤버십 조인 코어 위임", () => {
+  it("검사 대상이 비지 않고 실제 코어가 멤버 조인과 세션 바인딩을 든다", () => {
+    expect(MEMBER_JOIN_CORES.size).toBeGreaterThan(0);
+    const morph = new Project({ skipAddingFilesFromTsConfig: true });
+    for (const [name, file] of MEMBER_JOIN_CORES) {
+      const fn = morph.addSourceFileAtPath(join(ROOT, file)).getFunction(name);
+      expect(fn?.isExported()).toBe(true);
+      expect(hasMemberJoin(fn?.getText() ?? "")).toBe(true);
+    }
+  });
+  it("주석·조인 제거·바인딩 제거는 인가가 아니다", () => {
+    const join = 'FROM "ProjectMember" pm JOIN "Project" p ON p.id = pm."projectId" WHERE pm."userId" = ${userId}';
+    expect(hasMemberJoin(join)).toBe(true);
+    expect(hasMemberJoin(`/* ${join} */`)).toBe(false);
+    expect(hasMemberJoin(join.replace('"ProjectMember"', '"Other"'))).toBe(false);
+    expect(hasMemberJoin(join.replace('${userId}', '${clientUserId}'))).toBe(false);
+    expect(exportGuarded("return searchKeys(prisma, input);", "search/actions.ts#searchKeysAction")).toBe(false);
+  });
 });
 
 describe("공유 코어 위임", () => {

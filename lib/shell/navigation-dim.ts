@@ -1,8 +1,7 @@
 /** 링크 클릭 하나에서 판정에 필요한 사실만 — DOM 없이 테스트하려고 풀어 둔다. */
 export type LinkClick = {
-  button: number;
-  /** meta·ctrl·shift·alt 중 하나라도 — 새 탭·새 창·다운로드로 간다. */
-  modifier: boolean;
+  /** 수식키 없는 주 버튼 클릭(`isPlainPrimaryClick`) — 아니면 새 탭·새 창·다운로드로 간다. 판정은 호출부가 정본으로 한다. */
+  plain: boolean;
   target: string;
   download: boolean;
   /** 해석된 절대 주소(`HTMLAnchorElement.href`). */
@@ -19,7 +18,7 @@ export type LinkClick = {
  * 그래서 꺼짐 신호도 pathname 하나로 충분하다(`components/shell/navigation-dim.tsx`).
  */
 export function dimsNavigation(click: LinkClick): boolean {
-  if (click.button !== 0 || click.modifier || click.download) return false;
+  if (!click.plain || click.download) return false;
   if (click.target !== "" && click.target !== "_self") return false;
   let to: URL;
   let from: URL;

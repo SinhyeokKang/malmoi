@@ -348,13 +348,19 @@ export function TranslationWorkspace(props: WorkspaceProps) {
 
   /*
     ⚠️ **선택 행으로 스크롤하는 것은 착지뿐이다** (translation-filter-scope design §3.2) — 마운트(딥링크·새로고침·다른 소스로의 이동은 재마운트다),
-    트리 이동의 도착, 검색 지우기의 도착(조건 8 — 범위가 고른 키의 위치로 돌아간다). 목록에서 직접 누른 행은 이미 보이는 행이라 스크롤하지 않는다.
+    트리 이동의 도착, 검색 지우기의 도착(조건 8 — 범위가 고른 키의 위치로 돌아간다). 목록에서 직접 누른 행은 이미 보이는 행이라 스크롤하지 않는다. 같은 소스의 외부 선택 키 변경은 그 행으로 스크롤한다(글로벌 검색 착지).
     포커스는 재마운트 착지(아래)만 옮긴다.
     대기 중에는 기다린다 — 트리 이동의 선택은 응답이 고른 첫 키다. 확인창에서 취소한 트리 이동은 표식을 세우지 않는다.
   */
   const scrollPending = useRef(true);
+  const scrolledKey = useRef(keyId);
+  const listSelectedKey = useRef<string | null>(null);
   useEffect(() => {
-    if (!scrollPending.current || navigating) return;
+    if (navigating) return;
+    const shouldScroll = scrollPending.current || (scrolledKey.current !== keyId && listSelectedKey.current !== keyId);
+    scrolledKey.current = keyId;
+    listSelectedKey.current = null;
+    if (!shouldScroll) return;
     scrollPending.current = false;
     if (keyId === undefined) return;
     [...(bodyRef.current?.querySelectorAll<HTMLElement>("[data-key-row]") ?? [])].find(el => el.dataset.keyRow === keyId)?.scrollIntoView({ block: "nearest" });
@@ -400,6 +406,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
     const { query: next, surfaceSlug } = selectQuery(view.query, row);
     const surface = surfaceSlug ?? view.surface;
     attempt({ kind: "select-key", target: row.keyId }, () => {
+      listSelectedKey.current = row.keyId;
       if (surface !== routeSurfaceSlug) landing = landingFor(surface, { kind: "row", keyId: row.keyId });
       navigate(withQuery(next, surface), "replace", { query: next, keyId: row.keyId, surface });
     });
@@ -1020,7 +1027,7 @@ function WorkspaceDialog({ dialog, keyName, projectName, onClose, onPreview, onR
   } else if (dialog?.kind === "revert-changed") {
     title = w.revert.changed.title;
     description = w.revert.changed.body;
-    actions = <Button autoFocus onClick={onReview}>{w.revert.changed.again}</Button>;
+    actions = <Button variant="primary" autoFocus onClick={onReview}>{w.revert.changed.again}</Button>;
   }
   return (
     <Dialog open={open} onOpenChange={next => { if (!next) onClose(); }}>

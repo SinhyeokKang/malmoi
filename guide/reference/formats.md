@@ -4,7 +4,7 @@ Check which translation file formats Malmoi can read and write.
 
 ## Supported formats {#formats}
 
-The supported formats are JSON catalogs, YAML catalogs, Chrome extension messages, one code dictionary per language, and one code dictionary containing all languages. Detection needs at least two languages.
+The supported formats are JSON catalogs, YAML catalogs, Chrome extension messages, one code dictionary per language, and one code dictionary containing all languages. A single language is enough to start editing source text before adding translations.
 
 | Format | Example path |
 | --- | --- |

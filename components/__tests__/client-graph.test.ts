@@ -125,6 +125,8 @@ const CLIENT_LIB_FILES = [
   "lib/invitation-email/limits.ts",
   "lib/invitation-email/recipients.ts",
   "lib/invitation-email/retry-at.ts",
+  // 단축키·IME·일반 클릭 판정의 정본(search-ux-unify C9~C11) — import 0인 잎이다(아래 잎 검사).
+  "lib/keyboard.ts",
   "lib/keys/flag.ts",
   // 랜딩 스테이지가 스크롤 위치마다 값으로 읽는 수학 — import 0인 잎이다(아래 잎 검사).
   "lib/landing/stage.ts",
@@ -151,6 +153,7 @@ const CLIENT_LIB_FILES = [
   "lib/onboarding/readiness.ts",
   // `/privacy` 목차가 스크롤마다 값으로 읽는 판정 — import 0인 잎이다(아래 잎 검사).
   "lib/public-doc/toc.ts",
+  "lib/public-doc/landing.ts",
   // Analytics `beforeSend` 허용 목록 — 값 import 0인 잎이다(아래 잎 검사). `SITE_ORIGIN`·`m`도 물지 않는다.
   "lib/seo/analytics.ts",
   "lib/surfaces/plan-add.ts",
@@ -165,6 +168,16 @@ const CLIENT_LIB_FILES = [
   "lib/mcp/brand.ts",
   "lib/relative-time.ts",
   "lib/routes.ts",
+  // D5 Command의 순환·활성 보존 판정 — import 0인 잎이다. 다른 검색 모듈은 E의 실제 소비 때 등록한다.
+  "lib/search/keys.ts",
+  "lib/search/match.ts",
+  "lib/search/highlight.ts",
+  "lib/search/nav-index.ts",
+  "lib/search/key-href.ts",
+  "lib/search/load-index.ts",
+  "lib/search/load-memberships.ts",
+  // 검색 Dialog의 뷰모델(search-ux-unify C26) — nav·사전·routes·검색 잎만 문다(아래 그래프 고정).
+  "lib/search/rows.ts",
   "lib/session-revocation/message.ts",
   "lib/settings/message.ts",
   // 루트의 화면 이동 dim이 클릭마다 읽는 판정 — import 0인 잎이다.
@@ -236,6 +249,7 @@ function typeOnly(clause: string): boolean {
  *    그 무게가 따라온다 — 7.2MB 사고가 트리 셰이킹에 기대면 안 된다는 것을 이미 보였다.
  */
 function valueImports(source: string): string[] {
+  source = source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/gm, "$1");
   const specifiers: string[] = [];
   for (const m of source.matchAll(/^\s*import\s+([\s\S]*?)from\s*["']([^"']+)["']/gm)) {
     if (!typeOnly(m[1] ?? "")) specifiers.push(m[2] ?? "");
@@ -290,9 +304,13 @@ function walk(entries: string[]): { files: Set<string>; packages: Set<string> } 
   return { files, packages };
 }
 
-const CLIENT_ENTRIES = [...sourceFiles(join(ROOT, "components")), ...sourceFiles(join(ROOT, "app"))].filter(
-  (file) => /^["']use client["']/.test(readFileSync(file, "utf8").trimStart()),
-);
+const CLIENT_ENTRIES = [
+  ...[...sourceFiles(join(ROOT, "components")), ...sourceFiles(join(ROOT, "app"))].filter(
+    (file) => /^["']use client["']/.test(readFileSync(file, "utf8").trimStart()),
+  ),
+  // D5의 실제 클라이언트 소비자. ui/ 진입점 탐색은 생략하므로 E 조립 전에도 이 그래프를 직접 건다.
+  join(ROOT, "components/ui/command.tsx"),
+];
 
 describe("클라이언트 그래프", () => {
   it("`use client` 진입점을 실제로 찾았다 — 스캐너가 조용히 0건이 되지 않는다", () => {
@@ -463,6 +481,56 @@ describe("클라이언트 그래프", () => {
     const search = walk([join(ROOT, "lib/events/search.ts")]);
     expect([...search.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/events/search.ts"]);
     expect([...search.packages].filter((name) => !allowed(name))).toEqual([]);
+  });
+
+  it("검색 그래프 스캐너는 주석 속 import를 세지 않고 값 import만 찾는다", () => {
+    expect(valueImports('/*\nimport { bad } from "server-only";\n*/\n// import "node:fs";')).toEqual([]);
+    expect(valueImports('import type { KeyHit } from "@/lib/search/key-href";')).toEqual([]);
+    expect(valueImports('import { KeyHit } from "@/lib/search/key-href";')).toEqual(["@/lib/search/key-href"]);
+    const server = readFileSync(join(ROOT, "lib/keys/search.ts"), "utf8");
+    expect(server.length).toBeGreaterThan(0);
+    expect(valueImports(server)).not.toContain("@/lib/search/key-href");
+  });
+
+  it.each(["lib/search/match.ts", "lib/search/highlight.ts", "lib/search/keys.ts", "lib/search/load-index.ts", "lib/keyboard.ts"])("검색 독립 모듈 %s는 자기 자신만 문다", (path) => {
+    const graph = walk([join(ROOT, path)]);
+    expect([...graph.files].map(file => file.slice(ROOT.length)).sort()).toEqual([path]);
+    expect([...graph.packages]).toEqual([]);
+  });
+
+  it("검색 멤버십 로더는 서버 Action 스텁만 문다", () => {
+    const graph = walk([join(ROOT, "lib/search/load-memberships.ts")]);
+    expect([...graph.files].map(file => file.slice(ROOT.length)).sort()).toEqual([
+      "app/search/actions.ts", "lib/search/load-memberships.ts",
+    ]);
+    expect([...graph.packages].filter(name => !allowed(name))).toEqual([]);
+  });
+
+  it("검색 nav-index는 기존 클라이언트 내비와 사전만 문다", () => {
+    const graph = walk([join(ROOT, "lib/search/nav-index.ts")]);
+    expect([...graph.files].map(file => file.slice(ROOT.length)).sort()).toEqual([
+      "components/signin/brand-icons.tsx", "lib/app-version.ts", "lib/auth/permission.ts",
+      "lib/i18n/index.ts", "lib/routes.ts", "lib/search/nav-index.ts", "lib/shell/nav.ts", "messages/en.tsx",
+    ]);
+    expect([...graph.packages].filter(name => !allowed(name))).toEqual([]);
+  });
+
+  it("검색 rows는 nav-index와 같은 내비·사전에 검색 잎·번역 질의 상수만 더 문다", () => {
+    const graph = walk([join(ROOT, "lib/search/rows.ts")]);
+    expect([...graph.files].map(file => file.slice(ROOT.length)).sort()).toEqual([
+      "components/signin/brand-icons.tsx", "lib/app-version.ts", "lib/auth/permission.ts", "lib/i18n/index.ts", "lib/routes.ts",
+      "lib/search/highlight.ts", "lib/search/key-href.ts", "lib/search/match.ts", "lib/search/rows.ts", "lib/shell/nav.ts",
+      "lib/translations/query.ts", "messages/en.tsx",
+    ]);
+    expect([...graph.packages].filter(name => !allowed(name))).toEqual([]);
+  });
+
+  it("검색 key-href는 번역 URL 계약과 routes만 문다", () => {
+    const graph = walk([join(ROOT, "lib/search/key-href.ts")]);
+    expect([...graph.files].map(file => file.slice(ROOT.length)).sort()).toEqual([
+      "lib/routes.ts", "lib/search/key-href.ts", "lib/translations/query.ts",
+    ]);
+    expect([...graph.packages].filter(name => !allowed(name))).toEqual([]);
   });
 
   it("클라이언트 그래프가 닿는 `lib/**` 파일이 허용 목록과 정확히 같다", () => {

@@ -131,7 +131,7 @@ const SEED_DIRS = 2;
  * 안 실리고 → 2패스에도 내용이 없어 또 0이다. `code-dict`의 `codeDictCandidatePaths`와 같은 자리다.
  *
  * ⚠️ **씨앗은 후보가 아니다 — 판정은 내용이 한다.** bugshot-2의 `src/i18n/`이 그 증거다: 씨앗에는
- * 들어오지만 파일마다 로케일 객체가 하나뿐이라 2패스에서 스스로 떨어진다.
+ * 들어오지만 직접 정의한 문자열 없이 spread만 있어 2패스에서 스스로 떨어진다.
  *
  * ⚠️ **`I18N_HINT`로 좁히는 것이 예산의 전부다.** `.ts` 디렉터리는 어디에나 있어서(bugshot-2에 40여 개)
  * 신호 없이 고르면 blob이 수십 개가 된다. 곁가지(`__tests__`·`examples`)는 `aside`가 걷어낸다.
@@ -148,8 +148,6 @@ export function tsDictProbePaths(paths: readonly string[]): string[] {
   }
 
   const dirs = [...byTemplate.entries()]
-    // 파일이 하나뿐이면 딕셔너리가 아니다 — `detectByContent`도 로케일 객체 2개 이상을 요구한다.
-    .filter(([, files]) => files.length >= 2)
     /**
      * ⚠️ **파일이 많은 쪽이 이긴다 — 얕은 쪽이 아니다** (2026-09-14 2차 리뷰 🟡6). 다른 어댑터의
      * "얕은 쪽이 진짜"(`pathSignals.depth`)를 여기 그대로 쓰면 **하필 진짜가 진다**: 네임스페이스
@@ -197,8 +195,9 @@ function detectByContent(paths: readonly string[], probe?: (p: string) => string
       if (content === undefined) continue;
       const sf = newProject().createSourceFile(path, content, { overwrite: true });
       const objs = localeObjects(sf);
-      // 로케일 이름 선언이 2개 이상이어야 딕셔너리로 인정한다.
-      if (objs.size < 2) continue;
+      if (objs.size === 0) continue;
+      // 단일 언어도 받되 import·spread만 모은 래퍼를 편집 가능한 사전으로 내놓지 않는다.
+      if (objs.size === 1 && ![...objs.values()].some(obj => pairs(obj, path, []).length > 0)) continue;
       matched += 1;
       for (const name of objs.keys()) locales.add(name);
     }
@@ -209,7 +208,7 @@ function detectByContent(paths: readonly string[], probe?: (p: string) => string
      * `fmt`/`map`이 뜬다.** 나머지 네 어댑터의 그룹 필터는 전부 이 관문을 지나고, 명시 지정
      * 전용이던 동안에는 사람이 경로를 보고 골라서 이 어댑터만 밖에 있어도 무해했다.
      */
-    if (matched === 0 || locales.size < 2 || !hasStrongLocale(locales)) continue;
+    if (matched === 0 || !hasStrongLocale(locales)) continue;
     found.push({ adapter: "ts-dict", pathTemplate, locales: [...locales] });
   }
   return found;

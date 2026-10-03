@@ -53,9 +53,11 @@ describe("ProjectSwitcher", () => {
     await open();
     expect(trigger().getAttribute("aria-haspopup")).toBe("menu");
     expect(document.activeElement).toBe(input());
-    expect(input().getAttribute("aria-label")).toBe(m.common.nav.projectSwitcher.search);
-    expect(input().placeholder).toBe(m.common.nav.projectSwitcher.search);
-    expect(document.querySelector('[role="menu"] kbd')?.textContent).toBe(m.common.nav.projectSwitcher.escHint);
+    // 접근 이름엔 줄임표가 없고 placeholder만 `…`다(search-ux-unify C24).
+    expect(input().getAttribute("aria-label")).toBe("Search projects");
+    expect(input().placeholder).toBe("Search projects…");
+    expect(document.querySelector('[role="menu"] kbd')?.textContent).toBe(m.common.keys.esc);
+    expect(document.querySelector('[role="menu"] kbd')?.getAttribute("aria-hidden")).toBe("true");
   });
 
   it("보관까지 전부이고 보관은 맨 뒤(`/projects` 기본 순서), 지금 프로젝트만 체크다", async () => {
@@ -89,7 +91,9 @@ describe("ProjectSwitcher", () => {
     expect(names()).toEqual(["course-chatbot", m.common.nav.newProject]);
     await act(async () => user.keyboard("zzz"));
     expect(names()).toEqual([m.common.nav.newProject]);
-    expect(document.querySelector('[role="menu"]')?.textContent).toContain(m.common.nav.projectSwitcher.empty);
+    // 0건 제목 한 형(C23) — 메뉴 안이라 `<p>` 한 줄이다.
+    const empty = [...document.querySelectorAll('[role="menu"] p')].find(p => p.textContent === "No projects match “CHATzzz”");
+    expect(empty).toBeDefined();
   });
 
   it("ArrowDown은 첫 항목으로, 항목에서 친 글자는 입력으로 돌아가 이어 붙고, 첫 항목의 ArrowUp은 입력으로 간다", async () => {
@@ -139,8 +143,12 @@ describe("ProjectSwitcher", () => {
     const row = [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')].find((r) => r.getAttribute("href") === routes.project("old"))!;
     expect(row.getAttribute("aria-checked")).toBe("true");
     const badge = [...row.children].find((node) => node.textContent === m.projects.status.archived) as HTMLElement;
-    expect(badge.className).toContain("px-2");
-    expect(badge.className).toContain("text-gray-dim");
+    // 칩 여백은 `Badge` 기본 `px-1.5` 한 형이다 — `px-2` 덧칠을 걷었다(search-ux-polish O8).
+    expect(badge.classList.contains("px-1.5")).toBe(true);
+    expect(badge.classList.contains("px-2")).toBe(false);
+    expect(badge.classList.contains("shrink-0")).toBe(true);
+    // 보관 배지는 표의 `soft-neutral` 그대로다 — 색 덮개가 없다(search-ux-unify D6).
+    expect(badge.className).not.toContain("text-gray-dim");
     // 배지 → 체크 순서, 체크가 마지막 자식이다.
     expect(badge.nextElementSibling?.tagName.toLowerCase()).toBe("svg");
     expect(row.lastElementChild).toBe(badge.nextElementSibling);

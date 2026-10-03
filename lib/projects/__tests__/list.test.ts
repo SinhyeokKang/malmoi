@@ -5,7 +5,6 @@ import { STATE } from "@/lib/status/canon";
 import {
   CHIP_STATE,
   groupProjects,
-  highlightName,
   listBody,
   meterSlot,
   projectGroup,
@@ -44,6 +43,12 @@ describe("searchProjects", () => {
 
   it("앞뒤 공백을 무시한다", () => {
     expect(searchProjects(rows, "  web  ").map((r) => r.slug)).toEqual(["a"]);
+  });
+
+  // search-ux-unify D1 — 검색·스위처와 같은 토큰 AND. 어순이 달라도 찾는다.
+  it("여러 낱말은 각각 이름 안에 있으면 찾는다", () => {
+    expect(searchProjects(rows, "web bugshot").map((r) => r.slug)).toEqual(["a"]);
+    expect(searchProjects(rows, "web extension")).toEqual([]);
   });
 
   it("비ASCII 이름도 찾는다", () => {
@@ -609,57 +614,6 @@ describe("groupProjects — 검색 중에는 평평하다 (DESIGN §6.63)", () =
     groupProjects(rows, undefined);
     expect(rows).toEqual(original);
   });
-});
-
-/**
- * **검색 일치 구간은 이름에서만 칠한다** (캔버스 `3a`). `searchProjects`의 대상이 `row.name` 하나라
- * 리포 줄을 칠하면 화면이 실제보다 넓게 찾은 것처럼 말한다.
- */
-describe("highlightName", () => {
-  it("질의가 없으면 조각 하나다 — 칠할 것이 없다", () => {
-    expect(highlightName("chrome-extension", "")).toEqual([{ text: "chrome-extension", match: false }]);
-    expect(highlightName("chrome-extension", "   ")).toEqual([{ text: "chrome-extension", match: false }]);
-  });
-
-  it("일치 구간을 가른다", () => {
-    expect(highlightName("chrome-extension", "chrome")).toEqual([
-      { text: "chrome", match: true },
-      { text: "-extension", match: false },
-    ]);
-  });
-
-  /** `searchProjects`가 대소문자를 무시하므로 칠하는 쪽도 같아야 한다 — 아니면 찾았는데 안 칠해진다. */
-  it("대소문자를 무시하되 원문 표기를 보존한다", () => {
-    expect(highlightName("BugShot Web", "bugshot")).toEqual([
-      { text: "BugShot", match: true },
-      { text: " Web", match: false },
-    ]);
-  });
-
-  it("여러 번 나오면 전부 칠한다", () => {
-    expect(highlightName("a-b-a", "a")).toEqual([
-      { text: "a", match: true },
-      { text: "-b-", match: false },
-      { text: "a", match: true },
-    ]);
-  });
-
-  it("일치가 없으면 통째로 하나다", () => {
-    expect(highlightName("chrome", "figma")).toEqual([{ text: "chrome", match: false }]);
-  });
-
-  /** ⚠️ **빈 조각을 내지 않는다** — 렌더가 빈 `<span>`을 만들면 padding이 붙어 글자 사이가 벌어진다. */
-  it("앞뒤가 딱 맞아도 빈 조각이 없다", () => {
-    expect(highlightName("chrome", "chrome")).toEqual([{ text: "chrome", match: true }]);
-  });
-});
-
-it.each([
-  ["İabc", "a", [{ text: "İ", match: false }, { text: "a", match: true }, { text: "bc", match: false }]],
-  ["İabc", "i", [{ text: "İ", match: true }, { text: "abc", match: false }]],
-  ["İİ", "i", [{ text: "İ", match: true }, { text: "İ", match: true }]],
-])("소문자 변환이 길이를 늘려도 원래 이름의 일치 구간을 보존한다: %s / %s", (name, q, expected) => {
-  expect(highlightName(name, q)).toEqual(expected);
 });
 
 /**

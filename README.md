@@ -48,6 +48,8 @@ and Publish writes Malmoi's values back.
 
 ## Features
 
+Search from either header for the docs; sign in to also find your projects, Malmoi's pages, and your text, with key results limited to nonarchived projects and sources after the first sync, excluding removed keys and languages.
+
 <table>
 <tr>
 <td width="50%" valign="middle">
@@ -142,8 +144,7 @@ collects code references, so each key shows where your code uses it.
 
 YAML catalogs and code dictionaries keep comments, blank lines, and key order;
 JSON catalogs and Chrome messages keep indentation, one-line containers,
-escapes, and field order. Values come from Malmoi. Detection needs at least two
-languages. One project can hold several sources, in any mix of formats; Publish
+escapes, and field order. Values come from Malmoi. Detection supports a single language, so you can edit source text before adding translations. One project can hold several sources, in any mix of formats; Publish
 sends them in one pull request.
 [Limits →](https://mal-moi.com/docs/reference/limits)
 

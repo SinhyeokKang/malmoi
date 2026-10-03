@@ -28,7 +28,7 @@ const PATHS = [
   // 로케일 이름이 아닌 파일 — 어느 쪽에도 없다
   "src/lib/foo.ts",
   "src/lib/bar.ts",
-  // 로케일이 하나뿐 — 그룹 탈락
+  // 로케일 하나도 경로 후보 — 내용 검증은 별도
   "src/x/en.ts",
   // 강한 로케일이 없는 3글자 모음 — 그룹 탈락 (홀드아웃 오탐 2건이 정확히 이 모양)
   "src/y/abc.ts",
@@ -52,9 +52,9 @@ describe("codeDictCandidatePaths — probe 없이 경로 그룹을 낸다", () =
     expect([...(locale?.locales ?? [])].sort()).toEqual(["en", "ko"]);
   });
 
-  it("로케일 1개 그룹과 강한 로케일이 없는 그룹은 빠진다 — detectCandidates와 같은 필터다", () => {
+  it("로케일 1개 그룹은 남고 강한 로케일이 없는 그룹만 빠진다", () => {
     const templates = codeDictCandidatePaths(PATHS).map((g) => g.pathTemplate);
-    expect(templates).not.toContain("src/x/{locale}.ts");
+    expect(templates).toContain("src/x/{locale}.ts");
     expect(templates).not.toContain("src/y/{locale}.ts");
     expect(templates).not.toContain("src/lib/{locale}.ts");
   });

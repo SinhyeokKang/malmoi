@@ -191,9 +191,9 @@ export const ns = { ko, en };
     expect(detectFormatWith("ts-dict", paths)).toBeUndefined();
   });
 
-  it("명시 지정이라도 로케일 객체가 2개 미만이면 안 잡는다", () => {
+  it("명시 지정도 단일 로케일 객체를 받는다", () => {
     const one = `const ko = { "a.b": "확인" } as const;\nexport const ns = { ko };\n`;
-    expect(detectFormatWith("ts-dict", paths, () => one)).toBeUndefined();
+    expect(detectFormatWith("ts-dict", paths, () => one)).toMatchObject({ locales: ["ko"] });
   });
 
   it("read·write는 아무것도 바뀌지 않았다", () => {

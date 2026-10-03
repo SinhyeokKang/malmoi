@@ -11,6 +11,8 @@ import { PROJECT_SLUG_MAX } from "@/lib/onboarding/slug";
 import { INVITATION_HOURLY_LIMIT } from "@/lib/invitation-email/limits";
 import { MEMBER_LIMIT } from "@/lib/auth/invitation";
 import { SKIP_MARKER } from "@/lib/pull/payload";
+import { KEY_QUERY_MIN, SEARCH_GROUP_LIMIT } from "@/lib/search/match";
+import { Q_MAX_LENGTH } from "@/lib/translations/query";
 import { allowedActions } from "./helpers/allowed-actions";
 import { servedGuideFiles } from "./helpers/served";
 import { collectLinks, collectUiLabels } from "../collect";
@@ -124,6 +126,18 @@ describe("실물 가이드 본문 게이트", () => {
     expect(new Set(allowedActions()).size).toBe(4);
     expect(nav().length).toBeGreaterThan(0);
     expect(slugToFile(["setup", "workflow"], nav().map(({ file }) => file))).toBe("setup/workflow.md");
+  });
+
+  // 산문은 작은 수를 낱말로 쓴다("at least two characters") — `toContain(String(CONST))`로는 못 묶어 낱말 대응표를 둔다.
+  // 상수가 표 밖 값으로 바뀌면 `undefined`가 들어가 red다(search-ux-unify C25).
+  it("전역 검색 절의 숫자가 검색 상수와 같다", () => {
+    const WORDS: Readonly<Record<number, string>> = { 2: "two", 5: "five" };
+    const search = sectionByAnchor(tree("translate/edit.md"), "global-search");
+    expect(search).toContain(`at least ${WORDS[KEY_QUERY_MIN]} characters`);
+    expect(search).toContain(`up to ${WORDS[SEARCH_GROUP_LIMIT]} results`);
+    expect(search).toContain(`first ${Q_MAX_LENGTH} characters`);
+    // 그룹명은 라벨 게이트로 안 묶인다 — 같은 낱말이 사전의 다른 자리에 있어서다. 사전 값으로 직접 단언한다.
+    for (const group of Object.values(m.search.groups)) expect(search, group).toContain(group);
   });
 
   // 에이전트 연결 조각의 정본은 가이드다 — `/mcp`의 Connect 카드를 걷은 뒤(2026-09-30) 앱 안 사본이 없다. 토큰은 원문이 아니라 환경변수 참조다.

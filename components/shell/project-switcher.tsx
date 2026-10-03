@@ -14,8 +14,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Kbd } from "@/components/ui/kbd";
 import { Input } from "@/components/ui/input";
 import { m } from "@/lib/i18n";
+import { isImeComposing } from "@/lib/keyboard";
 import { routes } from "@/lib/routes";
 import { switcherProjects } from "@/lib/shell/switcher";
 
@@ -59,7 +61,7 @@ export function ProjectSwitcher({ projects, current }: { projects: readonly Swit
     if (event.key === "ArrowDown") {
       event.preventDefault();
       firstItem()?.focus();
-    } else if (event.key === "Enter" && !event.nativeEvent.isComposing && event.nativeEvent.keyCode !== 229) {
+    } else if (event.key === "Enter" && !isImeComposing(event.nativeEvent)) {
       event.preventDefault();
       // 맞는 프로젝트가 없으면 아무것도 안 한다 — 첫 항목이 New project일 때 그리로 보내지 않는다.
       if (shown.length > 0) content.current?.querySelector<HTMLElement>('[role="menuitemradio"]')?.click();
@@ -98,8 +100,6 @@ export function ProjectSwitcher({ projects, current }: { projects: readonly Swit
         align="start"
         className="w-64"
         onKeyDown={onContentKeyDown}
-        // ⚠️ 한글 조합 중 Esc는 조합을 취소하는 키다 — 메뉴를 닫지 않는다(Radix는 document capture에서 들어 stopPropagation이 안 닿는다).
-        onEscapeKeyDown={(event) => { if (event.isComposing || event.keyCode === 229) event.preventDefault(); }}
       >
         <div className="flex items-center gap-2 px-2 pb-1">
           {/*
@@ -113,17 +113,15 @@ export function ProjectSwitcher({ projects, current }: { projects: readonly Swit
               value={q}
               onChange={(event) => setQ(event.target.value)}
               onKeyDown={onInputKeyDown}
-              placeholder={m.common.nav.projectSwitcher.search}
-              aria-label={m.common.nav.projectSwitcher.search}
+              placeholder={m.common.nav.projectSwitcher.search.placeholder}
+              aria-label={m.common.nav.projectSwitcher.search.label}
             />
           </div>
-          <kbd className="border-border text-muted-foreground shrink-0 rounded border px-1.5 py-0.5 font-sans text-xs">
-            {m.common.nav.projectSwitcher.escHint}
-          </kbd>
+          <Kbd>{m.common.keys.esc}</Kbd>
         </div>
         <DropdownMenuSeparator />
         {shown.length === 0 ? (
-          <p className="text-muted-foreground px-3 py-1.5 text-sm">{m.common.nav.projectSwitcher.empty}</p>
+          <p className="text-muted-foreground px-3 py-1.5 text-sm">{m.common.nav.projectSwitcher.empty(q)}</p>
         ) : (
           shown.map((project) => (
             <DropdownMenuItem key={project.slug} asChild selected={project.slug === current} {...keepInputFocus}>
@@ -133,7 +131,7 @@ export function ProjectSwitcher({ projects, current }: { projects: readonly Swit
                 <span className="min-w-0 flex-1 truncate">{project.name}</span>
                 {project.archived && (
                   // ⚠️ `/projects` 행 칩과 같은 형·같은 키다(`project-list.tsx`의 `archived` 칩) — 두 벌이면 하나가 낡는다.
-                  <StatusBadge state="archived" className="shrink-0 px-2 text-gray-dim" />
+                  <StatusBadge state="archived" className="shrink-0" />
                 )}
               </Link>
             </DropdownMenuItem>

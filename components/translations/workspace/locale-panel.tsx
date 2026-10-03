@@ -218,10 +218,7 @@ function LocaleRow({ keyName, sourceText, sourceCode, locale, first, draft, save
       placeholder=""
       onChange={event => onEdit(event.target.value)}
       onKeyDown={event => {
-        const command = keyEditCommand({
-          key: event.key, shiftKey: event.shiftKey, ctrlKey: event.ctrlKey, metaKey: event.metaKey,
-          isComposing: event.nativeEvent.isComposing, keyCode: event.nativeEvent.keyCode,
-        });
+        const command = keyEditCommand(event.nativeEvent);
         if (command === null) return;
         event.preventDefault();
         if (command === "save") onSave();

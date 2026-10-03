@@ -8,6 +8,7 @@ import { canPerform, type Role } from "@/lib/auth/permission";
 import { m } from "@/lib/i18n";
 import { appVersion } from "@/lib/app-version";
 import { routes } from "@/lib/routes";
+import type { MembershipRow } from "@/lib/keys/query";
 
 /**
  * 셸 사이드바의 순수 판정. **클라이언트 컴포넌트가 읽으므로 무게가 붙는 것을 여기서 막는다** —
@@ -39,6 +40,14 @@ export type NavProject = {
   slug: string; name: string; role: Role; archived: boolean; image?: string | null; surfaceSlug?: string; defaultSurfaceSlug?: string | null;
   counts?: { sources: number; members: number; keys: number };
 };
+
+/** Keep the RSC payload restricted to the seven fields shared by shell and search. */
+export function toNavProjects(rows: readonly MembershipRow[]): NavProject[] {
+  return rows.map(({ slug, name, role, archivedAt, image, defaultSurfaceSlug, memberCount, sourceCount, keyCount }) => ({
+    slug, name, role, archived: archivedAt !== null, image, defaultSurfaceSlug,
+    counts: { sources: sourceCount, members: memberCount, keys: keyCount },
+  }));
+}
 
 /**
  * pathname → 지금 보고 있는 프로젝트.

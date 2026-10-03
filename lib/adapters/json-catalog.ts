@@ -49,7 +49,7 @@ const PRIMARY_NAMES = ["translation", "translations", "common", "messages", "def
 
 type Group = { pathTemplate: string; locales: Set<string> };
 
-/** `key` 기준으로 로케일을 모으고, 2개 이상 + 강한 코드 하나 이상인 그룹만 남긴다. */
+/** `key` 기준으로 로케일을 모으고, 강한 코드 하나 이상인 그룹만 남긴다. */
 function groupsOf(rows: readonly { key: string; locale: string; template: (key: string) => string }[]): Group[] {
   const byKey = new Map<string, { locales: Set<string>; template: (key: string) => string }>();
   for (const { key, locale, template } of rows) {
@@ -59,9 +59,8 @@ function groupsOf(rows: readonly { key: string; locale: string; template: (key: 
   }
   const out: Group[] = [];
   for (const [key, { locales, template }] of byKey) {
-    // 로케일이 하나뿐이면 `config/en.json` 같은 우연일 수 있다. 강한 코드가 없으면 로케일
-    // 모음이 아니다 — `{add,get}.json`이 후보가 된 경로가 정확히 이 구멍이었다.
-    if (locales.size < 2 || !hasStrongLocale(locales)) continue;
+    // 단일 언어도 받되 강한 코드가 없는 `{add,get}.json` 같은 오탐은 막는다.
+    if (!hasStrongLocale(locales)) continue;
     out.push({ pathTemplate: template(key), locales });
   }
   return out;
@@ -112,7 +111,7 @@ function detectCandidates(paths: readonly string[], probe?: FileProbe): Detected
     // 카탈로그 7개는 **전부** 경로에 `locale(s)`·`i18n`을 갖는다(grafana·open-webui·outline·
     // Ghost·cal.com·zulip·automa). 편향이 한 방향이다 — 과소 탐지일 뿐 오탐을 만들지 않는다.
     if (!pathSignals(`${dir}x/y.json`).hint) continue;
-    const usable = [...byName.entries()].filter(([, s]) => s.size >= 2 && hasStrongLocale(s));
+    const usable = [...byName.entries()].filter(([, s]) => hasStrongLocale(s));
     const best = usable.slice().sort(([na, sa], [nb, sb]) => {
       const ra = PRIMARY_NAMES.indexOf(na);
       const rb = PRIMARY_NAMES.indexOf(nb);

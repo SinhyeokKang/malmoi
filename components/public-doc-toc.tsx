@@ -2,20 +2,16 @@
 
 import { useEffect, useId, useRef, useState, type MouseEvent } from "react";
 
+import { isPlainPrimaryClick } from "@/lib/keyboard";
+import { DOCUMENT_HEADING_LANDED, documentTop as topOf, landDocumentHeading } from "@/lib/public-doc/landing";
 import { currentSection } from "@/lib/public-doc/toc";
 import { cn } from "@/lib/utils";
 
 /** 절 윗변이 이만큼 아래를 지나면 그 절이 현재다(시안 Prototype `isPrivacy`). */
 const ACTIVE_OFFSET = 96;
-/** 클릭한 절이 서는 자리 — 스크롤러 윗변에서 48. h2의 `scroll-mt-12`와 같은 값이다. */
-const LAND_OFFSET = 48;
 
 /** 사용자가 스스로 스크롤하는 입력 — 누른 절의 고정을 푼다. */
 const RELEASE = ["wheel", "touchstart", "keydown", "pointerdown"] as const;
-
-/** 절 윗변의 스크롤러 좌표. ⚠️ offsetTop은 offsetParent에 매여 셸 구조가 바뀌면 조용히 틀린다(스테이지와 같은 판단). */
-const topOf = (node: HTMLElement, scroller: HTMLElement) =>
-  node.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop;
 
 /**
  * 공개 문서의 `On this page` 목차 — 스크롤러의 위치로 현재 절을 강조하고, 누르면 그 절로 스크롤한다 (DESIGN §6.616).
@@ -24,7 +20,7 @@ const topOf = (node: HTMLElement, scroller: HTMLElement) =>
  * ⚠️ **링크가 실제 `href="#id"`다** — JS 전·없이도 fragment 이동이 된다. JS는 그 위에 착지 위치(48)와 모션만 얹는다.
  * ⚠️ **스크롤러는 공개 셸의 것이다**(`[data-public-scroller]` — `/docs`는 페이지가 그 스크롤러를 든다) — 문서는 스크롤되지 않으므로 `window`를 구독하면 아무것도 안 온다.
  * ⚠️ **setState는 값이 바뀔 때만 리렌더한다** — 항목이 열 안팎이라 스테이지처럼 DOM에 직접 쓸 이유가 없다.
- * ⚠️ **`@/lib/**`는 잎 `lib/public-doc/toc.ts`와 `cn`만 읽는다** — 둘 다 `client-graph.test.ts`의 `CLIENT_LIB_FILES`에 있다.
+ * ⚠️ **`@/lib/**`는 판정 `lib/public-doc/toc.ts`·공유 착지 `lib/public-doc/landing.ts`와 `cn`을 읽는다** — 셋 다 `client-graph.test.ts`의 `CLIENT_LIB_FILES`에 있다.
  */
 export function Toc({ label, items }: { label: string; items: readonly { id: string; heading: string }[] }) {
   const titleId = useId();
@@ -68,9 +64,17 @@ export function Toc({ label, items }: { label: string; items: readonly { id: str
       pinned.current = null;
       schedule();
     };
+    const land = (event: Event) => {
+      if (!(event instanceof CustomEvent) || typeof event.detail !== "string") return;
+      const index = items.findIndex(({ id }) => id === event.detail);
+      if (index < 0) return;
+      pinned.current = index;
+      setCurrent(index);
+    };
 
     remeasure();
     scroller.addEventListener("scroll", schedule, { passive: true });
+    scroller.addEventListener(DOCUMENT_HEADING_LANDED, land);
     // 목차 링크의 pointerdown·Enter도 여기를 지나지만 click이 곧바로 다시 고정한다.
     for (const type of RELEASE) scroller.addEventListener(type, release, { passive: true });
     // 폭이 바뀌면 줄바꿈이, 폰트가 오면 글자 높이가 절 윗변을 옮긴다.
@@ -81,28 +85,22 @@ export function Toc({ label, items }: { label: string; items: readonly { id: str
     return () => {
       alive = false;
       scroller.removeEventListener("scroll", schedule);
+      scroller.removeEventListener(DOCUMENT_HEADING_LANDED, land);
       for (const type of RELEASE) scroller.removeEventListener(type, release);
       observer.disconnect();
       if (frame !== 0) cancelAnimationFrame(frame);
     };
   }, [items]);
 
-  const onClick = (event: MouseEvent<HTMLAnchorElement>, id: string, index: number) => {
+  const onClick = (event: MouseEvent<HTMLAnchorElement>, id: string) => {
     // 수정 키·가운데 클릭은 새 탭·새 창이다 — 브라우저 몫이라 가로채지 않는다.
-    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
+    if (!isPlainPrimaryClick(event)) return;
     const scroller = ref.current?.closest<HTMLElement>("[data-public-scroller]");
     const target = document.getElementById(id);
     // 못 찾으면 브라우저 기본 이동에 맡긴다.
     if (!scroller || !target) return;
     event.preventDefault();
-    pinned.current = index;
-    setCurrent(index);
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    scroller.scrollTo({ top: topOf(target, scroller) - LAND_OFFSET, behavior: reduced ? "auto" : "smooth" });
-    history.replaceState(null, "", `#${id}`);
-    // ⚠️ preventDefault가 fragment 이동의 포커스 이동까지 막는다 — 안 옮기면 키보드·스크린리더가 목차에 남는다.
-    // `preventScroll` — 포커스가 smooth 스크롤을 끊고 즉시 점프시키지 않게 한다.
-    target.focus({ preventScroll: true });
+    landDocumentHeading(id);
   };
 
   return (
@@ -115,7 +113,7 @@ export function Toc({ label, items }: { label: string; items: readonly { id: str
           <li key={id}>
             <a
               href={`#${id}`}
-              onClick={(event) => onClick(event, id, index)}
+              onClick={(event) => onClick(event, id)}
               aria-current={index === current ? "location" : undefined}
               className={cn(
                 "-ml-px block border-l py-1.5 pr-0 pl-3 text-xs leading-normal focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",

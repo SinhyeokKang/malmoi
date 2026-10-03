@@ -27,6 +27,25 @@ const UNAVAILABLE = "Unavailable";
 const NIGHTLY_RETRY = "The next nightly run tries again.";
 
 export const en = {
+  search: {
+    label: "Search",
+    placeholder: "Search…",
+    /** `Pages`는 앱 화면으로 가는 행이다(search-ux-unify D4) — 앱에서 "menu"는 드롭다운을 뜻한다. */
+    groups: { projects: "Projects", pages: "Pages", keys: "Keys", docs: "Docs" },
+    /** 문서 목적지 라벨 — `/projects` 목적지는 `notFound.action`(`Go to your projects`)을 쓴다(D9). 로딩 줄은 `projects.loading`이다. */
+    goToDocs: "Go to docs",
+    loadingKeys: "Loading keys…",
+    loadingDocs: "Loading docs…",
+    /** 실패 줄은 다음 행동을 담는다. 세션 종료는 다른 화면의 `Your session ended. Sign in again to …` 형을 따른다(C2). */
+    projectsUnavailable: "Projects can't be searched right now. Reopen search to try again.",
+    sessionEnded: "Your session ended. Sign in again to search your projects.",
+    keysUnavailable: "Keys can't be searched right now. Edit your search to try again.",
+    docsUnavailable: "Docs can't be searched right now. Reopen search to try again.",
+    noResults: (q: string): string => `No results for “${q}”`,
+    noResultsDescription: "Try another search.",
+    goTo: "Go to",
+    results: (count: number): string => `${count.toLocaleString("en-US")} ${count === 1 ? "result" : "results"}`,
+  },
   /**
    * **리포 재적재(화면 이름 `Sync`)** — 확인 Dialog · 결과 · 거부.
    * 시안: Claude Design `design_handoff_sync_repository/Sync Repository.dc.html` 아트보드 `4a`~`4f`.
@@ -304,6 +323,11 @@ export const en = {
      * 움직이는지 말하지 못한다. 라이브러리는 이름을 만들어 주지 않는다.
      */
     resizeSidebar: "Resize sidebar",
+    /**
+     * `Kbd` 칩의 키 이름 — `components/`의 `<Kbd>` children에 문자열 리터럴을 두지 않는다(search-ux-unify C12).
+     * `search`의 키는 `searchShortcut(platform).label`이 고른다(`lib/keyboard.ts`).
+     */
+    keys: { enter: "↵", esc: "Esc", search: { mac: "⌘K", other: "Ctrl K" } },
     /** 셸의 전역 항목 — 사이드바 하단과 사용자 메뉴가 같은 문구를 쓴다. */
     nav: {
       /**
@@ -361,10 +385,10 @@ export const en = {
        */
       projectSwitcher: {
         label: "Switch project",
-        search: "Find project…",
-        empty: "No projects found",
-        /** 입력 오른쪽 키 칩 — 닫는 키 이름이다. */
-        escHint: "Esc",
+        /** 접근 이름에는 줄임표가 없다 — `…`는 placeholder 표기다(search-ux-unify C24). */
+        search: { label: "Search projects", placeholder: "Search projects…" },
+        /** 0건 제목 한 형 `No {noun} match “{q}”`(C23). 메뉴 안이라 `NoMatch`가 아니라 한 줄 `<p>`다. */
+        empty: (q: string): string => `No projects match “${q}”`,
       },
       /** 헤더의 로고가 링크다 — 그림뿐이라 이름이 없으면 스크린리더가 URL을 읽는다. */
       appHome: "Malmoi home",
@@ -1205,7 +1229,7 @@ export const en = {
     /** ⚠️ **빈 이력과 원인이 반대다** — 하나는 프로젝트가 비었고 하나는 내가 좁혔다. */
     noMatch: {
       title: "No events match these filters",
-      description: "This project has activity — none of it is in this slice. Widen the date range or clear the filters.",
+      description: "This project has activity — none of it appears in this slice. Widen the date range or clear the filters.",
     },
     /** 수집 공백 경계선. ⚠️ **날짜를 서버가 주지 못하면 이 줄을 아예 그리지 않는다**(추정값 금지). */
     coverage: (date: string): string =>
@@ -1405,7 +1429,6 @@ export const en = {
      * ⚠️ **복원 링크는 OWNER에게만** — EDITOR는 그 화면에 못 들어간다.
      */
     archived: {
-      badge: "Archived",
       description: "This project is archived. The history stays readable — editing, publishing and syncing are off.",
       restoreLine: (date: string): string => `Archived on ${date}. Project owners can restore it from Settings.`,
     },
@@ -1870,7 +1893,7 @@ export const en = {
       button: "Confirm and sign out everywhere",
       complete: "You have been signed out everywhere. Sign in again to continue.",
       failed: "We couldn't sign you out everywhere. Try again.",
-      cancelled: "Confirmation was cancelled. You are still signed in. Try again when you are ready.",
+      cancelled: "Confirmation was cancelled. You're still signed in. Try again when you're ready.",
       expired: "This confirmation expired. Start again to sign out everywhere.",
       wrongAccount: "Choose the same account you use to sign in to Malmoi, then try again.",
     },
@@ -1985,7 +2008,6 @@ export const en = {
       // ⚠️ `<strong className="font-normal">` 자리다 — 모달 문맥의 강조이지 굵기가 아니다(design §8).
       copyNow: "Copy it now — it won't be shown again.",
       setEnv: "Set it as MALMOI_TOKEN in your shell, then add Malmoi to your agent — Connect an AI agent shows how.",
-      done: "Done",
     },
     revoke: {
       title: "Revoke your token?",
@@ -2083,8 +2105,8 @@ export const en = {
          * 준다)을 말해야 한다 (핸드오프 3a).
          */
         emptyDescription: (repo: string, branch: string): string =>
-          // ⚠️ **조건을 말한다** (malmoi#99) — 로케일 1개 리포에 "didn't find any"는 거짓이었다(파일은 있다).
-          `Malmoi didn't find translation files in 2 or more languages on ${repo} · ${branch}. Set the path and it will check.`,
+          // 탐지 실패가 파일 부재를 뜻하지는 않는다 — 수동 경로로 다시 검증한다.
+          `Malmoi didn't find supported translation files on ${repo} · ${branch}. Set the path and it will check.`,
       },
       naming: {
         title: "Project details",
@@ -2176,7 +2198,7 @@ export const en = {
        * 예외 B′ — **예외 B(설치에 리포 없음)와 가른다.** 요구하는 일이 다르다: 검색어를 지워라 /
        * 설치에 리포를 넣어라 (DESIGN §6.7).
        */
-      searchEmpty: (q: string): string => `No repository matches "${q}".`,
+      searchEmpty: (q: string): string => `No repositories match “${q}”`,
       clearSearch: "Clear search",
     },
 
@@ -2477,8 +2499,8 @@ export const en = {
       },
       empty: {
         noIncomplete: (ns: string): string => `No incomplete keys in ${ns}`,
-        noMatch: (q: string): string => `No keys match "${q}"`,
-        noIncompleteMatch: (q: string): string => `No incomplete keys match "${q}"`,
+        noMatch: (q: string): string => `No keys match “${q}”`,
+        noIncompleteMatch: (q: string): string => `No incomplete keys match “${q}”`,
         filteredOut: "No keys match these filters",
         searchAll: "Search all sources",
         clearSearch: "Clear search",
@@ -2722,7 +2744,7 @@ export const en = {
           before sending.
         </>
       ),
-      inLogs: "It is recorded in Logs as a run with nothing to send.",
+      inLogs: "It's recorded in Logs as a run with nothing to send.",
       close: "Close",
 
       /**
@@ -2771,7 +2793,7 @@ export const en = {
       failedAt: "Failed at",
       reference: "Reference",
       /** ⚠️ **`Reference`가 없는 갈래에서는 이 줄도 빠진다** — 그 다섯은 실행 행 자체가 안 생긴다. */
-      sendReference: "Not a project owner? Share the reference above with one \u2014 it is in Logs too.",
+      sendReference: "Not a project owner? Share the reference above with one \u2014 it's in Logs too.",
       settings: "Open settings",
       signIn: "Sign in",
 
@@ -3697,9 +3719,7 @@ export const en = {
     onboarding: {
       "no-installations": "Your GitHub account is connected. Install the Malmoi GitHub App on your personal account or organization to choose repositories.",
       "no-repos": "Your GitHub account is connected, but no repositories are available. Choose repositories the Malmoi GitHub App can access in GitHub installation settings.",
-      // 이유를 말한다 — 수동 지정으로 가는 근거다 (로케일이 하나뿐인 리포는 붙일 수 없다).
-      // ⚠️ **다음 행동까지 말한다** (launch-readiness L2.7) — 로케일 하나인 리포 주인이 할 수 있는 일은 둘째 파일뿐이다.
-      "no-candidates": "We couldn't find translation files. Malmoi needs translation files in 2 or more languages — if this repository has only one, add a file for a second language and try again.",
+      "no-candidates": "We couldn't find supported translation files. Check the file format and path, then try again.",
       // 수동 지정을 권하지 않는다 — 확정의 재검증이 같은 스냅샷을 읽어 같은 갈래를 다시 낸다.
       // ⚠️ **막다른 길임을 끝에 말한다** (L2.7) — 안 말하면 사용자가 같은 리포로 다시 시도한다.
       "tree-truncated": "This repository has too many files to search, and setting the path yourself hits the same limit. Malmoi can't connect repositories this large yet.",
@@ -3709,8 +3729,6 @@ export const en = {
       "manual-no-match": "No files of that format at that path. Check the path and the format.",
       // ⚠️ **경로를 의심하게 하지 않는다** — 입력은 멀쩡하고 확인값이 낡았다. 할 일은 재탐지 하나다.
       "sample-expired": "This preview has expired. Detect the files again to see it.",
-      // ⚠️ **파일이 없다고 말하지 않는다** (malmoi#99) — 파일은 있고 언어가 하나다. 할 일은 경로가 아니라 둘째 파일이다.
-      "single-locale": "Only one language was found at that path. Malmoi needs translation files in 2 or more languages — add a file for a second language and try again.",
       "slug-taken": "That address is taken. Pick another one.",
       "limit-reached": (limit: number): string => `You can create up to ${limit} projects.`,
       "invalid-slug": (max: number): string =>

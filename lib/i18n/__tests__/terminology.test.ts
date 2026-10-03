@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { isValidElement, type ReactNode } from "react";
+import { isValidElement, type ReactElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { visit } from "unist-util-visit";
 
@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
 import { parseMd, stripHeadingMarker, toText } from "@/lib/guide/parse";
 import { servedGuideFiles } from "@/lib/guide/__tests__/helpers/served";
 import { m } from "@/lib/i18n";
+import { STATE } from "@/lib/status/canon";
 
 /**
  * **화면 용어 표** (DESIGN §10.1 — audit #29). 사전 전체를 걸어 **보이는 문장**만 센다.
@@ -153,6 +154,9 @@ const CONCEPT_BANNED: readonly Ban[] = [
   ["image Delete", /^delete\b/i, /picture|image|avatar|thumbnail/i],
   // 목적지 라벨 하나 — /projects는 "Go to your projects", GitHub은 "Open on GitHub"
   ["Open projects", /\bopen projects\b/i],
+  // search-ux-unify C22 — 검색의 옛 출구 라벨. /projects는 "Go to your projects", 문서는 "Go to docs"다.
+  ["view all projects", /\bview all projects\b/i],
+  ["browse all docs", /\bbrowse all docs\b/i],
   ["View on GitHub", /\bview on GitHub\b/i],
   ["Open repository", /^open repository[.!]?$/i],
   // 축약형 (DESIGN §10) — 강조가 필요한 부정만 ALLOWED가 든다
@@ -166,10 +170,12 @@ const CONCEPT_BANNED: readonly Ban[] = [
   ["does not", /\bdoes not\b/i],
   ["do not", /\bdo not\b/i],
   ["has not", /\bha(?:s|ve) not\b/i],
+  ["you are", /\byou are\b/i],
+  ["it is", /(?<!\bas )\bit is\b/i],
 ];
 
 /** 개인정보 방침 본문 — 문구를 고치면 개정 이력·시행일이 따라가는 문서라(policy-gate) 화면 문체 규칙을 소급하지 않는다. */
-const CONTRACTIONS = ["could not", "did not", "cannot", "is not", "was not", "were not", "are not", "does not", "do not", "has not"] as const;
+const CONTRACTIONS = ["could not", "did not", "cannot", "is not", "was not", "were not", "are not", "does not", "do not", "has not", "you are", "it is"] as const;
 
 /**
  * **원고용 개념 색인** — 사전 색인에서 둘을 빼고 하나를 더한다.
@@ -289,6 +295,12 @@ describe("화면 용어 — DESIGN §10.1의 표를 사전 전체가 따른다 (
     expect(allows("a.cd", "held", table)).toBe(false);
   });
 
+  // `en.tsx`는 canon을 import할 수 없어(순환) 보관 문장 둘에 낱말이 리터럴이다 — 상태 낱말이 바뀌면 여기서 red가 난다(P fix1 Y2).
+  it("보관 시각 문장은 상태 낱말 STATE.archived.label로 시작한다", () => {
+    expect(String(m.logs.archived.restoreLine("x")).startsWith(`${STATE.archived.label} on `)).toBe(true);
+    expect(renderToStaticMarkup(m.archive.archivedBy("x") as ReactElement).startsWith(`${STATE.archived.label} on `)).toBe(true);
+  });
+
   it("개념 색인이 옛 동의어를 잡고 정본 낱말은 통과시킨다", () => {
     const sample = (text: string, path = "x") => violations([{ path, text }], CONCEPT_BANNED);
     const caught = (text: string) => expect(sample(text), text).not.toEqual([]);
@@ -299,7 +311,7 @@ describe("화면 용어 — DESIGN §10.1의 표를 사전 전체가 따른다 (
       "Saved · not sent yet", "3 edits have not been sent to GitHub yet.", "Missing only", "Couldn't load", "Authorization expired",
       "X cancelled an invitation", "or the invitation was cancelled.", "The Malmoi app is installed", "in account settings",
       "Image upload", "Open projects", "View on GitHub", "Open repository", "We could not sign you out", "cannot be sent",
-      "Malmoi is not connected", "This source was not replaced.",
+      "Malmoi is not connected", "This source was not replaced.", "You are still signed in.", "It is recorded in Logs.",
       // 우회형(fix1 🟡3) — 라벨 끝 마침표 · 축약형 · 마침표 셋
       "Couldn't be read.", "Couldn't load.", "Authorization expired.", "Open repository.", "Saved · hasn't been sent yet",
       "3 edits haven't been sent to GitHub yet.", "Running...",
@@ -309,6 +321,7 @@ describe("화면 용어 — DESIGN §10.1의 표를 사전 전체가 따른다 (
       "3 unsent edits", "Saved · unsent", "Untranslated only", "Couldn't check", "Expired", "X revoked an invitation",
       "Malmoi GitHub App", "the app", "Account", "Upload", "Remove", "Go to your projects", "Open on GitHub",
       "We couldn't load your repositories.", "X sources couldn't be read", "Your GitHub App authorization expired.",
+      "You're still signed in.", "It's recorded in Logs.", "Leaves the other as it is.",
     ]) expect(sample(text), text).toEqual([]);
     // 보류 키 아래의 held · Publish 결과의 held back은 통과한다
     expect(sample("Held", "logs.status.deferred")).toEqual([]);
@@ -377,6 +390,25 @@ describe("화면 용어 — DESIGN §10.1의 표를 사전 전체가 따른다 (
     expect(sample("Rotate the push token for PUSH_TOKEN")).toEqual([]);
     expect(sample("_locales/{locale}/messages.json · src/locales/{locale}.json")).toEqual([]);
     expect(sample("Ask the repository owner for access. An organization owner has to approve.")).toEqual([]);
+  });
+});
+
+/**
+ * **0건 제목은 한 형이다** (search-ux-unify C23) — `No {noun} match “{q}”`: 곡선 따옴표, 제목 마침표 없음. 검색 Dialog의
+ * `No results for “{q}”`만 예외다(DESIGN §10.1). 보간 자리를 곧은 따옴표로 감싼 문장은 사전 어디에도 없다.
+ */
+describe("0건 제목 한 형 (C23)", () => {
+  const found = strings();
+  it("보간을 곧은 따옴표로 감싸지 않는다", () => {
+    expect(found.filter(({ text }) => text.includes(`"${ARG}"`)).map(({ path, text }) => `${path}: ${text}`)).toEqual([]);
+  });
+  it("질의를 든 0건 제목은 `No {noun} match “{q}”`이다", () => {
+    const titles = found.filter(({ text }) => /^No\b[^.]*\bmatch(?:es)?\b/.test(text) && text.includes(ARG));
+    expect(titles.length).toBeGreaterThanOrEqual(5);
+    expect(titles.filter(({ text }) => !/^No [\p{L} ]+ match “X”$/u.test(text)).map(({ path, text }) => `${path}: ${text}`)).toEqual([]);
+  });
+  it("검색 Dialog만 예외 형이다", () => {
+    expect(m.search.noResults(ARG)).toBe("No results for “X”");
   });
 });
 

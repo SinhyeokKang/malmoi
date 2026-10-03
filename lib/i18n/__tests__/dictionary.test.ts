@@ -125,3 +125,30 @@ describe("사전 — Revert 확인 문장의 주어와 동사가 수를 맞춘�
     expect(m.translations.workspace.revert.body(2, "ko, ja")).toContain("Your unsent edits in 2 languages — ko, ja — go back");
   });
 });
+
+/**
+ * **접근 이름(`label`)에 줄임표가 없다** (search-ux-unify C24 — 스위처 입력이 `Find project…`로 낭독됐다). `…`는 placeholder·로딩
+ * 문장의 표기다. 경로 끝이 `label`인 키만 센다.
+ */
+describe("사전 — label 값에 줄임표가 없다", () => {
+  type Leaf = { path: string; text: string };
+  const leaves = (value: unknown, path: string, out: Leaf[]): Leaf[] => {
+    if (typeof value === "string") out.push({ path, text: value });
+    else if (typeof value === "function") leaves((value as (...a: unknown[]) => unknown)(...Array.from({ length: value.length }, () => "X")), path, out);
+    else if (value !== null && typeof value === "object" && !Array.isArray(value) && !("$$typeof" in value)) {
+      for (const [key, child] of Object.entries(value)) leaves(child, path === "" ? key : `${path}.${key}`, out);
+    }
+    return out;
+  };
+  const labels = (root: unknown) => leaves(root, "", []).filter(({ path }) => /(?:^|\.)label$/.test(path));
+  it("사전을 실제로 걸었다", () => {
+    expect(labels(m).length).toBeGreaterThan(15);
+  });
+  it("경로 끝이 label인 값에 …가 없다(placeholder·loading의 …는 정상)", () => {
+    expect(labels(m).filter(({ text }) => text.includes("…")).map(({ path, text }) => `${path}: ${text}`)).toEqual([]);
+  });
+  it("검사기가 label의 줄임표를 잡고 placeholder는 통과시킨다", () => {
+    const hits = labels({ a: { label: "Find project…", placeholder: "Search projects…" }, b: { search: { label: "Search projects" } } });
+    expect(hits.filter(({ text }) => text.includes("…")).map(({ path }) => path)).toEqual(["a.label"]);
+  });
+});

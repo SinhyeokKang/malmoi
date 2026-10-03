@@ -52,6 +52,7 @@
 - 사전 대조 통과만으로 충분하지 않다. 그 라벨이 해당 절에서 안내하는 실제 화면의 문구인지도 확인하고 검증 결과를 기록한다.
 - 라벨은 `dictionaryStrings(m)`에 포함된 문자열 또는 아래 외부 라벨 표에 있어야 한다. 옛 `publicDocs.docs.sections` 본문은 제거됐고, 라벨 게이트는 전체 사전을 대상으로 한다. 함수·JSX 값은 제외한다.
 - **보이는 글자만 굵게 쓴다.** 필터 축 이름(`Status`·`Kind`처럼 `aria-label`에만 붙는 값)은 화면에 없다 — 트리거가 보이는 현재 값(번역 화면의 Status 메뉴는 **All keys**, Logs는 **All activity**)을 쓴다. 라벨 게이트가 그 경로를 `ARIA_ONLY`(`lib/guide/__tests__/content.test.ts`)로 빼고 세며, 새 aria 전용 키를 만들면 거기에 더한다.
+- **단축키는 산문으로 쓴다** — `Cmd+K` on macOS / `Ctrl+K` on other platforms, `Ctrl+Enter or Cmd+Enter` 꼴(키 이름 + `+`, 굵게·코드 없음). 화면 칩의 `⌘K`·`Ctrl K`·`↵`(`m.common.keys`)는 장식(`aria-hidden`)이라 라벨이 아니므로 원고에 옮기지 않는다(2026-10-03, search-ux-unify).
 - 상태 낱말의 금지 동의어(`unpublished`·`on hold`·`deferred`(코드 밖)·보류 문맥의 `wait` 등)는 `lib/i18n/__tests__/terminology.test.ts`의 원고용 색인이 원고 문장에서 센다.
 - `Publish 3 changes` 같은 보간 라벨과 `hookHint` 같은 함수형 문구는 굵게 쓰지 않는다. 숫자 예시를 사전에 있는 고정 라벨처럼 취급하지 않는다.
 - GitHub 등 외부 화면의 라벨도 굵게 쓰되 아래 표에 정확한 문구·화면·근거를 먼저 기록한다. 사전에 이미 있는 라벨이라도 그 화면에 실제로 있는지는 원고 검토에서 확인한다.
@@ -138,7 +139,7 @@
 | `setup/members.md` | 역할, 초대 메일·재발급·멤버 관리 | `lib/auth/permission.ts`, `lib/auth/invitation.ts`, `lib/invitation-email/`, `app/(edit)/projects/actions.ts`, `components/members/`, `docs/PRODUCT.md` §3·§4.1 |
 | `setup/archive.md` | 보관·복원, 열린 PR 유지, 이력 읽기 | `components/settings/archive-card.tsx`, `app/(edit)/projects/actions.ts`, `lib/auth/permission.ts`, `docs/PRODUCT.md` §7.9 |
 | `translate/join.md` | 초대 주소·로그인·수락·거부 | `app/invite/`, `lib/auth/invitation.ts`, `lib/login-link/`, `docs/PRODUCT.md` §3 |
-| `translate/edit.md` | EDITOR의 검색·필터·저장·미저장 확인·플래그 | `components/translations/workspace/`, `app/(edit)/actions.ts`, `lib/keys/save-key.ts`, `lib/keys/save.ts`, `lib/keys/translation-list.ts`, `docs/PRODUCT.md` §3·§4.2 |
+| `translate/edit.md` | EDITOR의 화면 검색·글로벌 검색·필터·저장·미저장 확인·플래그 | `components/translations/workspace/`, `app/(edit)/actions.ts`, `lib/keys/save-key.ts`, `lib/keys/save.ts`, `lib/keys/translation-list.ts`, `components/search/`, `lib/search/`, `app/search/actions.ts`, `lib/keys/search.ts`, `lib/translations/query.ts`(`Q_MAX_LENGTH`), `lib/search/match.ts`(`KEY_QUERY_MIN`·`SEARCH_GROUP_LIMIT` — 산문의 `two`·`five`·`200`은 `content.test.ts`가 상수에 묶는다), `lib/keyboard.ts`(단축키), `docs/PRODUCT.md` §3·§4.1·§4.2 |
 | `translate/publish.md` | EDITOR의 미리보기·실행·결과, PR 표시 범위, 열린 PR 동안의 적재 보류 | `components/translations/`, `app/(edit)/publish-actions.ts`, `lib/publish/`, `lib/pull/`, `docs/PRODUCT.md` §3·§7.6 |
 | `sync/README.md` | 코드와 DB의 경계, 병합 없음 | `docs/ARCHITECTURE.md` §0, `lib/push/apply.ts`, `lib/pull/run.ts` |
 | `sync/push.md` | strict 적재, 보류 사유(미전달 편집·열린 PR·PR 조회 실패), 사라진 키 보존 | `app/api/push/route.ts`, `lib/push/apply.ts`, `lib/protection/where.ts`, `lib/protection/plan.ts`(`planOpenPrGate`), `lib/projects/open-pr.ts`, `lib/cli/push-response.ts`, `docs/ARCHITECTURE.md` §5.5.2 |

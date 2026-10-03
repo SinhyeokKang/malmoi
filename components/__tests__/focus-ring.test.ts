@@ -10,6 +10,7 @@ import { ImageTile } from "@/components/ui/image-tile";
 import { Link } from "@/components/ui/link";
 import { Popover } from "@/components/ui/popover";
 import { FieldTrigger } from "@/components/ui/field-trigger";
+import { FieldButton } from "@/components/ui/field-button";
 import { SelectRow } from "@/components/ui/select-row";
 import { Input } from "@/components/ui/input";
 import { ListRow } from "@/components/ui/list-row";
@@ -130,13 +131,17 @@ const FILES = [...tsxFiles(join(ROOT, "components")), ...tsxFiles(join(ROOT, "ap
 const rel = (file: string): string => file.slice(ROOT.length).replace(/^\//, "");
 
 const FIXTURES = {
+  "components/ui/field-button.tsx": h(FieldButton, { icon: h("svg"), placeholder: "Search…", "aria-label": "Search", onClick: () => {} }),
   "components/ui/button.tsx": h(Button, null, "Save"),
   "components/ui/input.tsx": h(Input, { "aria-label": "Search" }),
   "components/ui/textarea.tsx": h(Textarea, { "aria-label": "Translation" }),
   "components/ui/list-row.tsx": h(ListRow, { as: "button", variant: "canvas", ringInset: true }, "common.save"),
 };
 
-const LINK_FIXTURES = { "components/ui/link.tsx": h(Link, { href: "/help" }, "Help") };
+// `command.tsx`는 행을 `ListRow`로 그려 링을 직접 들지 않는다 — 링은 `list-row.tsx` 픽스처가 잰다(search-ux-unify C15).
+const LINK_FIXTURES = {
+  "components/ui/link.tsx": h(Link, { href: "/help" }, "Help"),
+};
 function TreePopoverFixture() {
   const anchor = useRef<HTMLButtonElement>(null);
   return h("div", null, h(Button, {ref: anchor}, "Sources"), h(Popover, {open: true, onOpenChange: () => {}, anchor, id: "focus-tree", "aria-label": "Sources", children: h(Button, {"aria-current": "true"}, "Selected source")}));

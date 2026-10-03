@@ -20,10 +20,29 @@
 ## 환경 {#environment}
 
 - 로컬 `pnpm dev` + dev DB. **촬영 전에 `pnpm dev`를 다시 띄운다** — dev 서버가 도는 중에 `pnpm build`를 돌리면 서버 컴포넌트가 낡은 채로 남는다.
-- 데이터는 dev DB의 상주 QA 프로젝트 `bugshot-i18n-test-qa`(OWNER + EDITOR 두 계정)다. 지우거나 새로 만들지 않는다.
+- 데이터는 dev DB의 **상주 촬영 프로젝트 `Acme web`**(아래 절)이 기본이다. 실제 PR 이력이 필요한 컷(`logs-event` · README `logs`)만 상주 QA 프로젝트 `bugshot-i18n-test-qa`(OWNER + EDITOR, 마스킹 표로 `acme-web`)에서 찍는다. 둘 다 지우거나 새로 만들지 않는다.
 - **편집자 장(`translate/*`)의 컷은 EDITOR 계정으로 찍는다** — OWNER에게만 보이는 동작이 편집자 가이드 이미지에 들어가면 거짓이다.
 - GitHub 화면은 github.com에서 폐기용 리포의 설정 화면으로 찍는다. **폼을 채워도 저장·제출하지 않고**, 촬영 뒤 새로고침해 되돌린다.
 - 로그인(OAuth)은 사람이 한다. 계정을 바꿔야 하는 컷은 한 계정의 컷을 모아 찍는다.
+
+### 상주 촬영 프로젝트 `Acme web` {#resident}
+
+2026-10-03에 만들었다(사용자 결정 — 일회용 프로젝트를 만들고 지우던 방식을 대신한다). 번역 화면이 랜딩 목업(`m.landing.mockup`)과 같은 씬이 되도록 데이터를 짰다. **지우지 않고 다음 촬영마다 재사용한다.**
+
+| 항목 | 값 |
+| --- | --- |
+| 프로젝트 | Name `Acme web` · Address `acme-web` · OWNER(GitHub 계정) + EDITOR(Google 계정, 초대 수락) |
+| 리포 | 촬영 리포 `i18n-format-check` · base `dev` — 리포의 다른 세트(`locales/{locale}.yml` · `src/i18n/*`)는 Add sources 모달의 "아직 안 고른 후보"로 쓴다 |
+| 소스 `web` | `i18n/web/{locale}.json`(json-catalog, 중첩) · 53키 · 네임스페이스 아홉(`account` · `cart` · `checkout` · `common` · `errors` · `nav` · `product` · `search` · `settings`) |
+| 소스 `emails` | `i18n/emails/{locale}.json` · 11키 · 네임스페이스 넷(`order` · `password` · `shipping` · `welcome`) |
+| 로케일 | `en`(기준) · `de` · `fr` · `ja` — fr·ja에 미번역 칸, 원문을 고친 키 셋(`cart.empty` · `product.shipsIn` · `welcome.subject`)의 번역 9칸이 검토 대기, 원문만 있는 새 키 둘(`checkout.giftNote` · `product.wishlist`) |
+| 목업 씬 | `web` › `checkout` › `checkout.submit` — en `Place order` · de `Bestellung aufgeben` · fr 빈 칸 · ja `注文を確定する` |
+
+- **픽스처 파일은 키를 코드 유닛 순으로 정렬해 커밋했다** — json-catalog writer가 정렬해 다시 쓰므로, 정렬이 어긋나면 촬영용 Publish가 `Nothing differs`가 아니라 실제 diff(=PR)를 낸다. 픽스처를 고치면 어댑터 read→write가 바이트 동일한지 먼저 잰다.
+- 검토 대기는 원문 변경이 적재될 때만 생긴다 — 그래서 픽스처는 두 커밋이다(전체 적재 → 원문 셋 수정·새 키 둘 → OWNER Sync).
+- **편집 흔적은 남기지 않는다**: EDITOR 컷은 `checkout.submit` fr에 `Passer la commande`를 저장해 Home·미리보기(PR 안 엶)를 찍고, 칸을 비워 다시 저장한 뒤 Publish(`Nothing differs` → `Nothing changed in the files`)로 미전달 표시를 지운다(이 Publish가 전달 확인도 세운다). OWNER 컷은 `checkout.submit` de를 `Jetzt bestellen`으로 저장해 보류 Home·Sync 확인창(Cancel)·Revert 확인창을 찍고 실제 Revert로 되돌린다. 끝나면 미전달 0이어야 한다.
+- ⚠️ **이 프로젝트로 OWNER 활성 프로젝트가 상한(셋)에 닿았다**(`bugshot-i18n-test-qa` · `i18n-order-check` · `acme-web`) — `/projects/new`가 목록으로 돌려보낸다. 온보딩 ①–④를 다시 찍을 때는 `acme-web`을 Settings에서 잠시 보관해 자리를 만들고, 일회용 프로젝트는 Address를 `acme-web`이 아닌 값(보관해도 slug는 남는다)으로 만든 뒤 id로 지우고, `acme-web`을 Restore한다. ①–③만이면 Create project를 누르지 않으니 일회용 프로젝트가 필요 없다.
+- `bugshot-i18n-test-qa3`(O7의 "영구 보관" 대상)은 촬영 시점(2026-10-03)에 dev DB에 이미 없었다 — 보관할 것이 없어 그 단계를 건너뛰었다.
 
 ## 마스킹 {#masking}
 
@@ -36,9 +55,14 @@
 | malmoi-test-org | acme |
 | bugshot-i18n-test | web |
 | i18n-order-check | acme-mobile |
+| i18n-format-check | web |
+| i18n-single-locale | admin |
+| i18n-many-locales | docs |
+| i18n-none | api |
 
 **사람을 가리키는 값은 이 표에 적지 않는다** — 표 자체가 공개 리포에 커밋된다. 촬영자가 원본을 로컬에서만 들고 치환한다: OWNER 표시 이름·GitHub 로그인 → `Alex Kim`·`@alex-kim`, EDITOR 표시 이름 → `Jordan Lee`, 이메일(가려진 `ab***@…` 꼴 포함) → `@example.com` 주소, 사람 사진 → 치환 이름의 이니셜 원(`Avatar` 폴백 모양). 뷰포트 전체 규격이라 셸 좌상단·우상단 아바타가 늘 컷에 들어간다 — 크롭으로 뺄 수 없다.
 - 앱 origin `localhost:3000`은 `mal-moi.com`으로 바꾼다 — `/mcp`의 Server URL과 조각이 origin을 그대로 보인다(가이드 본문이 프로덕션 주소를 쓴다).
+- 리포 경로의 소유자 조각(오너 계정명 + `/`)은 `acme/`로 바꾼다 — `Acme web`의 리포가 `acme/web`이 된다. ⚠️ 그 경로는 화면에서 **소유자 · `/` · 리포명 세 텍스트 노드로 갈려** 있어 경로 단위 치환이 안 걸린다 — 다음 노드가 `/` + 리포명인 소유자 노드를 먼저 `acme`로 바꾼다. 온보딩 대화상자(①·②) 안은 예외로 `alex-kim/`이다(행 머리의 계정명이 로그인이다).
 
 - ⚠️ **오너 GitHub 계정명은 원본으로 올릴 수 없다** — `SinhyeokKang/malmoi/...`는 action 경로라 `setup/allowed-actions.md`에 정당하게 있고, 게이트가 부분 문자열로 red를 낸다. 화면에서 그 계정이 사람으로 보이는 자리(셸 좌측 상단·계정 메뉴)는 크롭으로 뺀다. action 경로 속 계정명은 공개 식별자라 그대로 둔다.
 - 픽셀 안의 문자열은 게이트가 못 본다. 컷마다 눈으로 확인한다.
@@ -86,39 +110,39 @@
 | 에셋 | 소스 | blob | 치수 |
 | --- | --- | --- | --- |
 | /guide/push-token-secret.webp | lib/onboarding/workflow.ts | 45d351ca4d9fc6cff70c84d0e784e6e992edba69 | 2560x1600 |
-| /guide/workflow-file.webp | components/settings/ci-card.tsx, components/onboarding/workflow-block.tsx, lib/onboarding/workflow.ts | 8dc8b8e40c8d03d1987042a2753dbd2b7a51a560, e099fcb70b6fca21b04b07c69217a0b2a0018f9e, 45d351ca4d9fc6cff70c84d0e784e6e992edba69 | 2560x1600 |
+| /guide/workflow-file.webp | components/settings/ci-card.tsx, components/onboarding/workflow-block.tsx, lib/onboarding/workflow.ts | 4bd4e0efe406a56623031a2b69b5d5c38a4d847a, 092b2bc9a2f640b47cde917eba8198f77b2b8534, 45d351ca4d9fc6cff70c84d0e784e6e992edba69 | 2560x1600 |
 | /guide/actions-policy.webp | lib/onboarding/workflow.ts, .github/actions/malmoi-i18n-push/action.yml | 45d351ca4d9fc6cff70c84d0e784e6e992edba69, 559ddc28bcd1c0fa8f4a1946dd15f7e8fcd0f03d | 2560x1600 |
-| /guide/translation-editor.webp | components/translations/workspace/key-list.tsx, components/translations/workspace/locale-panel.tsx, components/translations/workspace/workspace.tsx, components/translations/workspace/tree-panel.tsx | e80e1d2ccbceef8b1fe90129642828023062181f, d1cdf1a4ed40ae711dcd497e5ab53d1f636e0ca6, 9f09ce7b01ed2e925931caed9574e4a268a7069f, e6ffd8bacdd8839ed55d81a881e8596a00db5856 | 2560x1600 |
-| /guide/publish-preview.webp | components/publish-button.tsx, lib/publish/preview.ts | 883186b35409b04573b0875338f3c50b4be4b67e, 257ebc5a440efdd31731c6426b9851f869a41561 | 2560x1600 |
-| /guide/project-home.webp | app/(edit)/projects/[slug]/(home)/page.tsx, components/home/count-cards.tsx, components/home/meta-column.tsx | 75265bd2c58a5ee2adb12676c1505e0a85fb321f, c07299e669429f92e186871be1b5af5c072196f5, e604a3df5c2d576c3a23eea73ec2ab63eb25bec8 | 2560x1600 |
-| /guide/invite-members.webp | components/members/invite-modal.tsx | 02990e7be3eaa99151caea8a3272f5511f95923c | 2560x1600 |
-| /guide/members.webp | components/members/member-list.tsx, components/members/member-row.tsx, components/members/pending-invitations.tsx | 991ea321fe17d6a550fb2fa40b2b8a7a6116ae7c, 670643ad10a2e9a101d3b2e1123d24cc56fc3ab4, 7c9b9160e6e4fc77dd6277239daaf8c5fa5e196e | 2560x1600 |
-| /guide/sources.webp | components/sources/sources-screen.tsx, components/sources/source-status.tsx | 91c8f8eeb1666d899d9d7c07413dc3a5a7a7a794, 322b6032402ec63dfb1ac84adb5f61466197f0ab | 2560x1600 |
-| /guide/add-sources.webp | components/sources/add-sources-modal.tsx | a5d967e4ae6d9c0ea5e6490d959f5bd8fb3539af | 2560x1600 |
-| /guide/archive-card.webp | components/settings/archive-card.tsx | ad3ac6b92e320b8c701f4a5f89ae79636ee09848 | 2560x1600 |
-| /guide/accept-invitation.webp | app/invite/[token]/page.tsx, components/invite/project-card.tsx, components/signin/auth-layout.tsx | 1acd7ea93339bf382346675e15153911f7e5ff28, f04bd2df388d5f046ad05818553e51c39fd45376, 707e072f943e340d3d4fb9b389ecb39f75d67eb2 | 2560x1600 |
-| /guide/state-filter.webp | components/translations/workspace/filter-menu.tsx, components/translations/workspace/key-list.tsx, dict:translations.workspace.filters.state.any, dict:translations.workspace.filters.state.incomplete, dict:translations.workspace.filters.state.unsent, dict:translations.workspace.filters.state.review, dict:translations.workspace.filters.state.new | d3bce959af8d327b21251baf8afc1d3719bdea3c, e80e1d2ccbceef8b1fe90129642828023062181f, b823bb9b42b3672439670b5267fe5328d7524380, 387fd1bbc18419e26c612f4acad9213e5073ade4, 0d09fa0d8c890b48da20aefe409a39eb962b5114, 33a506cf6ec5a56c261838f0a5a3d29cd7f2dacc, 56539cd31aeb7453fb2900c2952b988146fd6127 | 2560x1600 |
-| /guide/home-publish.webp | app/(edit)/projects/[slug]/(home)/page.tsx, components/home/count-cards.tsx, components/publish-button.tsx | 75265bd2c58a5ee2adb12676c1505e0a85fb321f, c07299e669429f92e186871be1b5af5c072196f5, 883186b35409b04573b0875338f3c50b4be4b67e | 2560x1600 |
-| /guide/publish-result.webp | components/publish-button.tsx | 883186b35409b04573b0875338f3c50b4be4b67e | 2560x1600 |
-| /guide/home-paused.webp | app/(edit)/projects/[slug]/(home)/page.tsx, components/home/count-cards.tsx, dict:home.cards.held.pending-edits | 75265bd2c58a5ee2adb12676c1505e0a85fb321f, c07299e669429f92e186871be1b5af5c072196f5, e7daa697ea395700d6e0a57f5dc83a59b2b30aa7 | 2560x1600 |
-| /guide/revert-confirm.webp | components/translations/workspace/workspace.tsx, components/translations/edit-loss-banner.tsx, components/translations/workspace/key-list.tsx | 9f09ce7b01ed2e925931caed9574e4a268a7069f, a2d467970dd0f205e735b233b89ac467e3cbd7af, e80e1d2ccbceef8b1fe90129642828023062181f | 2560x1600 |
-| /guide/sync-discard.webp | components/home/sync-button.tsx | 291488b956d5ed29073e941cfb010802b501c67e | 2560x1600 |
-| /guide/logs-event.webp | components/logs/event-dialog.tsx, components/logs/event-detail.tsx | 0165c38aa64249055a9719799656d73b6aa11187, a9b4439ca5ac09eb517ce395d8a8554e3e77ecc2 | 2560x1600 |
-| /guide/account.webp | app/(edit)/account/page.tsx, components/account/profile-picture.tsx, components/account/login-methods.tsx, components/account/github-section.tsx | 0c1aa217dc31719904fc9fd926d8910e49e9b5fb, 398f113d7977abdc5f558f52e70bab28bdce3927, f4338d4aae4e18915e03a1f4bd35e96c2d7f52ba, 4c51c1f75b4f736cfece77b000c560e670b9093c | 2560x1600 |
-| /guide/mcp-create-token.webp | components/mcp/token-modal.tsx, components/mcp/token-grant-fields.tsx | ffa3d134c45ea4791b60fab9a77ad5809a35ebd3, 3d25c124462babf4252b119e8ee891f2b693150d | 2560x1600 |
-| /guide/mcp-connector.webp | components/mcp/connected-apps-card.tsx, components/mcp/token-card.tsx | 67ca3987aaa70690fd76e5631ca3c4ac8730d688, 9159821fea3a659f0a8de65105a95c7d514c11f5 | 2560x1600 |
-| /guide/oauth-consent.webp | app/oauth/authorize/page.tsx, components/oauth/consent-panel.tsx, components/oauth/app-card.tsx, components/mcp/token-grant-fields.tsx | 3440235fe7a45c306afa13f94ba1536d829b5f36, 12ad3105c15d4917f0a245797f1b092f59159757, c53824331c89ec5759a6173c71718b1b6b1ce01f, 3d25c124462babf4252b119e8ee891f2b693150d | 2560x1600 |
-| /guide/create-repository.webp | components/onboarding/new-project.tsx, components/onboarding/steps/repo.tsx | 92d8908f3e4e816ef619ad5056bf7c5fe7f9d5dd, dde9d7f67f12f97ae260f96a84a2a35ccc9cc10d | 2560x1600 |
-| /guide/create-files.webp | components/onboarding/new-project.tsx, components/onboarding/steps/files.tsx | 92d8908f3e4e816ef619ad5056bf7c5fe7f9d5dd, 73239b5ec88a1a2ec869a90b13942709f27b28b5 | 2560x1600 |
-| /guide/create-name.webp | components/onboarding/new-project.tsx, components/onboarding/steps/naming.tsx | 92d8908f3e4e816ef619ad5056bf7c5fe7f9d5dd, cd59e484ac6d8aace8458c721f627be1948f857f | 2560x1600 |
-| /guide/create-ready.webp | components/onboarding/new-project.tsx, components/onboarding/steps/result.tsx, components/onboarding/workflow-block.tsx | 92d8908f3e4e816ef619ad5056bf7c5fe7f9d5dd, 768be882181242fe383d1b32646b089128d6676f, e099fcb70b6fca21b04b07c69217a0b2a0018f9e | 2560x1600 |
+| /guide/translation-editor.webp | components/translations/workspace/key-list.tsx, components/translations/workspace/locale-panel.tsx, components/translations/workspace/workspace.tsx, components/translations/workspace/tree-panel.tsx | 577591f47aa319f104fb6e3255228e8577ec5944, 9128e27fd830b7e652eac42f98e7082440980b23, a71181e2bdacaa99af65fd018d01c75fd526080b, 3ee7152f19005f825a81af057cbaa2e232ee4c0f | 2560x1600 |
+| /guide/publish-preview.webp | components/publish-button.tsx, lib/publish/preview.ts | 4a4f73fdcefb0bd9b5d65a3ebcda8183638b47d3, 257ebc5a440efdd31731c6426b9851f869a41561 | 2560x1600 |
+| /guide/project-home.webp | app/(edit)/projects/[slug]/(home)/page.tsx, components/home/count-cards.tsx, components/home/meta-column.tsx | 75265bd2c58a5ee2adb12676c1505e0a85fb321f, 6bc8a8f1bb9835ebfbb199a2efa13cb2e3314ae2, edf23259e875f2f3ea5022c65afde7dbe52ef961 | 2560x1600 |
+| /guide/invite-members.webp | components/members/invite-modal.tsx | 9b5a3cda42078ed85f1644cecede6cceba78512e | 2560x1600 |
+| /guide/members.webp | components/members/member-list.tsx, components/members/member-row.tsx, components/members/pending-invitations.tsx | 5d6d40bdda585cd2701e1a96e35cf919cd563d94, 1ef2a56aa72c5358d2694909da62048dd4b9d62f, dc4b07831441305ba57c73f3d8ea7f37520b7988 | 2560x1600 |
+| /guide/sources.webp | components/sources/sources-screen.tsx, components/sources/source-status.tsx | ec9328d4a3caf885093bae4ffa3b2cacb3af6271, 322b6032402ec63dfb1ac84adb5f61466197f0ab | 2560x1600 |
+| /guide/add-sources.webp | components/sources/add-sources-modal.tsx | cef5eeb86b8eb0f8b58d787a5127a08c0f4ce142 | 2560x1600 |
+| /guide/archive-card.webp | components/settings/archive-card.tsx | 577981f534827fb9996f0a70583c9ea9bccb4894 | 2560x1600 |
+| /guide/accept-invitation.webp | app/invite/[token]/page.tsx, components/invite/project-card.tsx, components/signin/auth-layout.tsx | 8c1b77f4b306fb4c14745b91e57503407e3485fd, 127ce43ee81376d2129c819207560812ddf1f1e7, 8a968c709a4a6d01b86c1eac76f2456efa964c3e | 2560x1600 |
+| /guide/state-filter.webp | components/translations/workspace/filter-menu.tsx, components/translations/workspace/key-list.tsx, dict:translations.workspace.filters.state.any, dict:translations.workspace.filters.state.incomplete, dict:translations.workspace.filters.state.unsent, dict:translations.workspace.filters.state.review, dict:translations.workspace.filters.state.new | 0d6e722c777ce3d4d3cdba98015793f38c2cbb4a, 577591f47aa319f104fb6e3255228e8577ec5944, b823bb9b42b3672439670b5267fe5328d7524380, 387fd1bbc18419e26c612f4acad9213e5073ade4, 0d09fa0d8c890b48da20aefe409a39eb962b5114, 33a506cf6ec5a56c261838f0a5a3d29cd7f2dacc, 56539cd31aeb7453fb2900c2952b988146fd6127 | 2560x1600 |
+| /guide/home-publish.webp | app/(edit)/projects/[slug]/(home)/page.tsx, components/home/count-cards.tsx, components/publish-button.tsx | 75265bd2c58a5ee2adb12676c1505e0a85fb321f, 6bc8a8f1bb9835ebfbb199a2efa13cb2e3314ae2, 4a4f73fdcefb0bd9b5d65a3ebcda8183638b47d3 | 2560x1600 |
+| /guide/publish-result.webp | components/publish-button.tsx | 4a4f73fdcefb0bd9b5d65a3ebcda8183638b47d3 | 2560x1600 |
+| /guide/home-paused.webp | app/(edit)/projects/[slug]/(home)/page.tsx, components/home/count-cards.tsx, dict:home.cards.held.pending-edits | 75265bd2c58a5ee2adb12676c1505e0a85fb321f, 6bc8a8f1bb9835ebfbb199a2efa13cb2e3314ae2, e7daa697ea395700d6e0a57f5dc83a59b2b30aa7 | 2560x1600 |
+| /guide/revert-confirm.webp | components/translations/workspace/workspace.tsx, components/translations/edit-loss-banner.tsx, components/translations/workspace/key-list.tsx | a71181e2bdacaa99af65fd018d01c75fd526080b, a2d467970dd0f205e735b233b89ac467e3cbd7af, 577591f47aa319f104fb6e3255228e8577ec5944 | 2560x1600 |
+| /guide/sync-discard.webp | components/home/sync-button.tsx | 356c1137a5ca0cf424bd99a0cef14dd639cff2f0 | 2560x1600 |
+| /guide/logs-event.webp | components/logs/event-dialog.tsx, components/logs/event-detail.tsx | 0dedec5f350f028a90964b1de78ea9b59ff0bf35, ddce8aefc3e5f3139a66bceabe4009fc8eaa85f0 | 2560x1600 |
+| /guide/account.webp | app/(edit)/account/page.tsx, components/account/profile-picture.tsx, components/account/login-methods.tsx, components/account/github-section.tsx | 08c082fdfcf73447117b8630f1935c2df7616260, 398f113d7977abdc5f558f52e70bab28bdce3927, c5a0185be30d378a43f5f1fd74abdc4aff87fa6f, 9ba2437980de1b0efb7d651cae50a654a2415b41 | 2560x1600 |
+| /guide/mcp-create-token.webp | components/mcp/token-modal.tsx, components/mcp/token-grant-fields.tsx | af606c315ee6be9fbde91726442a1eaf1b434875, 7e1886518d239bbb8c0cf7ca2aa9b68648f3576b | 2560x1600 |
+| /guide/mcp-connector.webp | components/mcp/connected-apps-card.tsx, components/mcp/token-card.tsx | 622ad68db7cd503d0a130615ef0296835285b92c, 9c41fc7bc3180499c970f2d0219b66e080e15bad | 2560x1600 |
+| /guide/oauth-consent.webp | app/oauth/authorize/page.tsx, components/oauth/consent-panel.tsx, components/oauth/app-card.tsx, components/mcp/token-grant-fields.tsx | f7d6f8fe1be6b9580261103ade395f17f3a8dbff, 2660e31ba25278e2addd3e3bcddeb3b9a94c486e, aa583137442fbd8122e5ca461701f5ffa2dbe599, 7e1886518d239bbb8c0cf7ca2aa9b68648f3576b | 2560x1600 |
+| /guide/create-repository.webp | components/onboarding/new-project.tsx, components/onboarding/steps/repo.tsx | 111ce7bcd111dc95367fa5984f528d9ff2f7a49f, ff3ffdc74c77292b9143ecbee24ca1e0abc0a474 | 2560x1600 |
+| /guide/create-files.webp | components/onboarding/new-project.tsx, components/onboarding/steps/files.tsx | 111ce7bcd111dc95367fa5984f528d9ff2f7a49f, 85fd6e1b62eb182e52040cbb2793d32ed3ed42af | 2560x1600 |
+| /guide/create-name.webp | components/onboarding/new-project.tsx, components/onboarding/steps/naming.tsx | 111ce7bcd111dc95367fa5984f528d9ff2f7a49f, ab8f89284b04afc62a47127b63ea44b698bbeead | 2560x1600 |
+| /guide/create-ready.webp | components/onboarding/new-project.tsx, components/onboarding/steps/result.tsx, components/onboarding/workflow-block.tsx | 111ce7bcd111dc95367fa5984f528d9ff2f7a49f, 0303dfc89c884f37a886a0040c5e01c626e4b116, 092b2bc9a2f640b47cde917eba8198f77b2b8534 | 2560x1600 |
 
 - ⚠️ **셸이 컷에 들어간 뒤로 LNB·패널 머리·카드 머리(`components/shell/**`·`components/ui/panel-card.tsx` 등)의 변경도 모든 컷을 낡게 한다** — 소스로 올리면 신호가 죽으므로(`messages/en.tsx`와 같은 이유) 올리지 않는다. 셸을 바꿨으면 컷 전체를 손으로 다시 본다.
 
 ## 알려진 벽 {#walls}
 
 - **GitHub App 설치 왕복**(①의 1클릭 설치·요청 복귀·승인 복귀)은 로컬에서 못 밟는다 — 설치 URL이 `redirect_uri`를 안 받아 프로덕션 callback으로 간다. 찍어야 하면 수동으로 찍고, 아니면 건너뛴다.
-- **④ `Malmoi is ready`는 프로젝트를 새로 만들어야만 닿는다**(2026-09-29 사용자 승인으로 찍었다). 절차: ①–③과 같이 `i18n-order-check`를 보관해 자리를 만들고 → 실제 UI로 일회용 프로젝트를 만든다(Name `Acme web`·Address `acme-web` — 마스킹이 필요 없다) → ④가 뜨면 **스냅샷·텍스트 출력 전에** 토큰 칩(`<code>`)을 같은 형(base64url 43자)의 무작위 가짜 값으로 바꾸고, 캡처 직전 그 값이 남았는지 다시 확인한다 → YAML의 `api-url:` 줄은 로컬에서만 생기므로 DOM에서 지운다(프로덕션 출력과 맞춘다) → 캡처 뒤 Close → 일회용 프로젝트를 dev DB에서 **그 id로 좁힌 SQL**로 지운다(한 트랜잭션: `ProjectEvent`·`DeliveryConfirmation`·`SyncRun`·`TranslationBaseline`·`Translation`·`StringKey`(`KeyRef`는 cascade)·`Locale`·`ProjectInvitation`·`ProjectMember` → `Project.defaultSurfaceId` NULL → `TranslationSurface` → `Project`. **UI 삭제는 없다**) → `i18n-order-check`를 Restore. ⚠️ 폐기한 프로젝트의 사건은 촬영 흔적이라 같이 지운다 — 남은 프로젝트의 사건은 지우지 않는다.
+- **④ `Malmoi is ready`는 프로젝트를 새로 만들어야만 닿는다**(2026-09-29 사용자 승인으로 찍었다). 절차: ①–③과 같이 `i18n-order-check`를 보관해 자리를 만들고 → 실제 UI로 일회용 프로젝트를 만든다(Name `Acme web`·Address `acme-web` — 마스킹이 필요 없다) → ④가 뜨면 **스냅샷·텍스트 출력 전에** 토큰 칩(`<code>`)을 같은 형(base64url 43자)의 무작위 가짜 값으로 바꾸고, 캡처 직전 그 값이 남았는지 다시 확인한다 → YAML의 `api-url:` 줄은 로컬에서만 생기므로 DOM에서 지운다(프로덕션 출력과 맞춘다) → 캡처 뒤 Close → 일회용 프로젝트를 dev DB에서 **그 id로 좁힌 SQL**로 지운다(한 트랜잭션: `ProjectEvent`·`DeliveryConfirmation`·`SyncRun`·`TranslationBaseline`·`Translation`·`StringKey`(`KeyRef`는 cascade)·`Locale`·`ProjectInvitation`·`ProjectMember` → `Project.defaultSurfaceId` NULL → `TranslationSurface` → `Project`. **UI 삭제는 없다**) → `i18n-order-check`를 Restore. ⚠️ 폐기한 프로젝트의 사건은 촬영 흔적이라 같이 지운다 — 남은 프로젝트의 사건은 지우지 않는다. ⚠️ **2026-10-03 상주 촬영 프로젝트 이후**: 토큰 칩은 이제 `<code>`가 아니라 **읽기 전용 `<input>`의 value**다 — 그 값을 바꾼다. `api-url:` 줄은 job마다 하나씩 둘이다(전역 치환). 자리 만들기는 `i18n-order-check`가 아니라 `acme-web` 보관이다(상주 절).
 - ⚠️ **미전달 표시를 지우는 길** (2026-09-28): 촬영용 편집을 원래 값으로 다시 저장하면 값은 리포와 같아지고 표시만 남는다. 그 셀에 전달된 적 있는 값이 없으면 **Revert to last sent가 꺼진다**(OWNER에게도 — "The last sent version isn't available"). 그때 OWNER의 Publish 미리보기가 *Nothing differs from dev*를 내고, 그 Publish는 **PR 없이 보낸 것으로 표시만 한다**(GitHub 쓰기 없음, Logs에 Publish 사건 1건). 편집자 장 컷은 이 정리 **뒤에** 찍는다 — 남으면 번역 화면에 `Repository updates are paused…` 배너와 `Not sent` 칩이 선다.
 - **Publish 미리보기는 미전달 편집이 있어야 열린다** — 없으면 Publish가 `aria-disabled`다. 편집을 하나 저장해 찍으면 그 셀에 미전달 표시가 남는다. **Revert to last sent**는 마지막 전달 값이 없는 셀에서 꺼져 있을 수 있고, 같은 값을 다시 저장해도 미전달 표시는 안 지워진다(`lib/keys/save-key.ts`가 저장마다 새 토큰을 쓴다). 촬영 전에 되돌릴 길을 정한다.
 - **GitHub 설정 화면에서 뷰포트 에뮬레이션(`Emulation.setDeviceMetricsOverride`)은 자동 모드 분류기가 막았다**(2026-09-27). ⚠️ 2026-09-28에는 앱에서 건 에뮬레이션이 같은 탭의 github.com 이동 뒤에도 유지돼 막히지 않았다 — 막히면 앱 탭에서 걸고 이동한다. GitHub 테마는 촬영 계정의 설정(지금 다크)을 따른다 — 바꾸지 않는다.
@@ -126,7 +150,7 @@
 
 - ⚠️ **Revert to last sent는 전달 확인(`DeliveryConfirmation`)이 유효할 때만 켜진다** (2026-09-29): 확인이 무효인 소스에선 편집 직후에도 "The last sent version isn't available"로 꺼진다. **PR 없이 끝나는 Publish(`Nothing differs from dev` → `Nothing changed in the files`)가 새 확인을 세운다** — 그 뒤에 한 편집은 기준이 기록돼 Revert가 켜지고, 확인창 촬영 뒤 실제 Revert로 셀을 되돌리면 미전달 표시까지 GitHub 쓰기 없이 지워진다. 순서: 편집 → 원래 값으로 재저장 → Publish(Nothing differs) → 새 편집 → Revert 확인창 촬영 → Revert.
 - **새 프로젝트 흐름(①–③)은 OWNER가 활성 프로젝트 상한(셋)이면 `/projects/new`가 목록으로 돌려보낸다** (2026-09-29 — 같은 dev DB를 쓰는 다른 QA가 MCP로 프로젝트를 만들어 셋이 됐다). 자리는 **OWNER 단독의 유휴 프로젝트(`i18n-order-check`)를 Settings에서 보관**해 만들고, 촬영 뒤 같은 카드의 Restore project로 되돌린다(사용자 승인 2026-09-29). 남이 쓰는 프로젝트는 건드리지 않는다. ③에서 **Create project를 누르지 않는다** — ④는 위 절차(일회용 프로젝트 + 정리)로만 찍는다.
-- ①의 저장소 목록은 설치가 닿는 **개인 리포 이름을 전부** 보인다 — 검색창에 `i18n`을 넣어 테스트 리포만 남긴 상태로 찍는다. 목록의 GitHub 계정명은 `alex-kim`으로 치환한다(셸의 표시 이름은 `Alex Kim`).
+- ①의 저장소 목록은 설치가 닿는 **개인 리포 이름을 전부** 보인다 — 검색창에 `i18n`을 넣어 테스트 리포만 남긴 상태로 찍는다. 목록의 GitHub 계정명은 `alex-kim`으로 치환한다(셸의 표시 이름은 `Alex Kim`). 고른 리포(`i18n-format-check` → `web`)와 겹치지 않게 이 컷에서만 `bugshot-i18n-test`를 `extension`으로 바꾼다(표의 `web`과 충돌).
 - **dev DB는 다른 워커·preview와 함께 쓴다** — 촬영 중에 프로젝트 수·Logs·Projects 배지가 바뀔 수 있다. 촬영 전후 상태를 스냅샷으로 대조한다.
 
 ## 진행 상태 {#progress}
@@ -154,3 +178,4 @@
 - 2026-10-01 sync-lock(Sync Dialog가 진행·결과까지 든다 · 적재 lease 배너·거부 Dialog) — stale 다섯 전부 **재촬영 없이 SHA만 갱신**: `project-home`·`home-publish`·`home-paused`(`page.tsx`는 `loadWriteLock` 로더와 `HomeActions`의 `writeLock` prop뿐 — lease가 없으면 Home은 그대로다) · `revert-confirm`(`workspace.tsx`는 결과 띠·`SlowNotice`를 걷고 `SyncLockBanner`·`SyncLockDialog`를 더했다 — 둘 다 lease·거부가 없으면 렌더하지 않는다) · `sync-discard`(바뀐 것은 진행·결과 단계다. 컷이 보이는 확인 단계는 설명문·경고 블록·푸터 마크업이 같고, 미전달 0 상태의 확인 단계를 1280×800에서 실측해 Dialog 폭 440·머리·X·푸터가 기존 컷과 같음을 확인했다 — 편집을 만들지 않았다).
 - 2026-10-02 translation-tree-range(툴바는 검색 하나 · Status 필터가 키 목록 머리로 · 트리가 범위이고 노드를 숨기지 않는다 · `Complete` 걷고 `Incomplete` 추가) — **재촬영**: `translation-editor`·`state-filter`(EDITOR, `Jordan Lee` sky) · `revert-confirm`(OWNER) · README `hero`(OWNER, 1400×875). 트리가 이제 전 네임스페이스를 보이므로 `translation-editor`·`state-filter`·`hero`는 `Filter namespaces`에 `cancel`을 넣어 `cancelConfirm`이 보이게 찍었다(`?ns=cancelConfirm` + `cancelConfirm.body` 선택). `state-filter` 매핑에 `filters.state.incomplete`를 더했다(`any`의 값이 `All keys`로 바뀌었다). `translation-editor` 매핑에 `workspace.tsx`·`tree-panel.tsx`를 더했다 — 트리와 툴바가 그 둘에서 그려져 `guide:check`가 못 잡았다. **SHA만 갱신** 셋: `project-home`·`home-publish`·`home-paused` — `count-cards.tsx`·`page.tsx`는 카드 링크의 착지 소스(`cardLandings`)와 주석뿐이다. 그대로 둔 둘: `workflow-file`·`create-ready`(이번 변경과 무관한 기존 stale). 셋업: OWNER `_locales` `EXT_NAME` fr 편집 → **Revert가 꺼져 있었다**(전달 확인 무효) → 원래 값 재저장 → OWNER Publish(`Nothing differs` → `Nothing changed in the files`) → 새 편집 → 확인창 촬영 → 실제 Revert. 전후: 미전달 0→0, GitHub 쓰기 없음, `bugshot-i18n-test-qa` 사건 466→471(편집·재저장·Publish·편집·Revert), `i18n-order-check` 72→72. README의 `translation-editor`는 `public/guide/` 같은 파일이다(README 전용 사본 없음).
 - 2026-10-02 translation-tree-range r8(키 목록 머리의 `Incomplete first` 문구를 걷었다 — 정렬은 그대로) — 그 머리가 보이는 네 컷 **재촬영**: `translation-editor`·`state-filter`(EDITOR) · `revert-confirm`(Dim 뒤 머리) · README `hero`. 셋업은 같은 날 앞 항목과 같다(`Filter namespaces`에 `cancel` · OWNER `_locales` `EXT_NAME` fr 편집 → 확인창 → 실제 Revert — 이번엔 Revert가 처음부터 켜져 있었다). `guide:check`는 `translation-editor`만 냈다 — `state-filter`·`revert-confirm`도 그 머리를 찍으므로 둘의 매핑 소스에 `key-list.tsx`를 더했다. 전후: 미전달 0→0, GitHub 쓰기 없음, `bugshot-i18n-test-qa` 사건 471→473(편집·Revert), `i18n-order-check` 72→72. ⚠️ **새로 밟은 것**: EDITOR 계정이 이제 Google 프로필 사진(`<img>`)을 들고 온다 — 이니셜 `<span>`만 고치는 치환이 안 걸려 원본 사진이 찍혔다. `<img>`를 이니셜 원(`Jordan Lee` sky)으로 바꿔 끼운다.
+- 2026-10-03 search-ux-polish GS(사용자 — "이번에 다 찍는다") — **`guide:check` stale 25컷 전부 + README 두 장(`hero` · `logs`) 재촬영**, 밀린 `create-ready` 포함. 그대로 둔 둘: `push-token-secret` · `actions-policy`(GitHub 화면, stale 아님). 검색 Dialog·스위처는 가이드 컷이 없어 따로 찍지 않았다 — 셸 헤더의 검색 트리거는 모든 셸 컷에 들어갔다. **상주 촬영 프로젝트 `Acme web`(위 절)을 이 촬영으로 만들었다**: 촬영 리포에 픽스처 두 커밋(전체 적재용 · 원문 셋 수정과 새 키 둘) → ①–④를 그 생성 흐름 그대로 찍었다(①은 `i18n`으로 거른 목록에서 `web` 선택, ②는 `web`·`emails` 두 세트, ③은 `Acme web`/`acme-web`, ④는 토큰 input을 43자 가짜 값으로 바꾸고 `api-url` 두 줄 제거) → OWNER Sync로 검토 대기 9칸 → EDITOR 초대 1건을 dev DB에 심어 `accept-invitation`을 찍고 **실제로 수락**(상주 멤버). 번역·Home·Members·Sources·Settings·Publish·Revert 컷은 전부 `Acme web`, `logs-event`·README `logs`는 PR 이력이 있는 `bugshot-i18n-test-qa`(Kind: Publish, 17:11 행부터). MCP 연결 둘은 가짜 `OAuthConnection` 행 → 촬영 뒤 id로 삭제(0→0), `oauth-consent`는 claude.ai CIMD authorize 요청(Authorize 안 누름). 전후 대조: 기존 프로젝트 셋(`bugshot-i18n-test-qa` 사건 476 · `i18n-order-check` 72 · 보관된 `malmoi` 11)은 그대로, `acme-web`이 새로 생겼다(키 64 · 멤버 2 · 사건 11 · 미전달 0), OAuth 연결 0→0, 촬영 리포에 PR 없음. ⚠️ **새로 밟은 것**: dev DB가 촬영 중 한 번 `DatabaseNotReachable`로 Home을 `Something went wrong`으로 그렸다 — 캡처 전에 그 문구가 없는지 확인한다. Settings·Account의 파일 입력은 브라우저 로케일 문구(한국어)를 숨긴 input에 들고 있어 화면엔 안 보인다. `create-name`은 Address 입력에 포커스 링이 남으니 blur 뒤 찍는다. Logs의 Kind 필터 버튼도 고른 뒤 포커스 링이 남는다.

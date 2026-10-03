@@ -7,6 +7,8 @@ import { m } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 import { CloseButton } from "./close-button";
+import { LARGE_MODAL_HEIGHT, LARGE_MODAL_OVERLAY, LARGE_MODAL_PANEL } from "./large-modal";
+import { useImeGuard } from "./use-ime-guard";
 
 /**
  * 초대 폼·확인 모달 (DESIGN §6.4).
@@ -69,8 +71,61 @@ function returnTarget(): HTMLElement | null {
   }
   return null;
 }
+type AutoFocusHandler = (event: Event) => void;
+/**
+ * 진입·복귀를 두 Content(`CommandDialog`·`DialogContent`)가 같이 쓴다 (D10) — 상태는 위 모듈 기록뿐이라 훅이 아니다.
+ * ⚠️ **소비자 핸들러가 먼저다** — 그것이 `preventDefault`했으면 손대지 않는다.
+ */
+function openAutoFocus(event: Event, consumer?: AutoFocusHandler) {
+  consumer?.(event);
+  if (event.defaultPrevented || !(event.target instanceof HTMLElement)) return;
+  if (event.target.contains(document.activeElement)) return;
+  const target = event.target.querySelector<HTMLElement>("[data-initial-focus]");
+  if (target === null) return;
+  event.preventDefault();
+  target.focus();
+}
+function closeAutoFocus(event: Event, consumer?: AutoFocusHandler) {
+  consumer?.(event);
+  if (event.defaultPrevented) return;
+  const target = returnTarget();
+  if (target === null) return;
+  event.preventDefault();
+  target.focus();
+}
 export const DialogTrigger = Primitive.Trigger;
 export const DialogClose = Primitive.Close;
+
+/** 검색 패널은 대형 모달의 치수를 공유하고 위에서 열린다. 기존 확인 Dialog의 구조는 그대로다. */
+export function CommandDialog({ open, onOpenChange, title, children, onCloseAutoFocus }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: ReactNode;
+  children: ReactNode;
+  /** 같은 가이드 페이지 해시 착지는 제목 포커스가 이기도록 복귀를 막는다. */
+  onCloseAutoFocus?: ComponentProps<typeof Primitive.Content>["onCloseAutoFocus"];
+}) {
+  const ime = useImeGuard();
+  return <Primitive.Root open={open} onOpenChange={onOpenChange}>
+    <Primitive.Portal>
+      <Primitive.Overlay className={LARGE_MODAL_OVERLAY} />
+      <Primitive.Content
+        aria-modal="true"
+        aria-describedby={undefined}
+        className={cn(LARGE_MODAL_PANEL, LARGE_MODAL_HEIGHT, "top-4 translate-y-0")}
+        onCompositionStart={ime.onCompositionStart}
+        onCompositionEnd={ime.onCompositionEnd}
+        // 조합 중 Esc는 닫힘이 아니라 조합 취소다 — 소비자 없이 프리미티브가 든다(C9).
+        onEscapeKeyDown={event => { if (ime.blocks(event)) event.preventDefault(); }}
+        onOpenAutoFocus={event => openAutoFocus(event)}
+        onCloseAutoFocus={event => closeAutoFocus(event, onCloseAutoFocus)}
+      >
+        <Primitive.Title className="sr-only">{title}</Primitive.Title>
+        {children}
+      </Primitive.Content>
+    </Primitive.Portal>
+  </Primitive.Root>;
+}
 
 export function DialogContent({
   title,
@@ -94,6 +149,7 @@ export function DialogContent({
    */
   closeDisabled?: boolean;
 }) {
+  const ime = useImeGuard();
   return (
     <Primitive.Portal>
       {/*
@@ -117,7 +173,11 @@ export function DialogContent({
           className,
         )}
         {...props}
+        onCompositionStart={ime.onCompositionStart}
+        onCompositionEnd={ime.onCompositionEnd}
+        // 가드 → 내부 동작 → 소비자 순이다. 조합 중 Esc는 조합 취소라 소비자에게도 넘기지 않는다(C9).
         onEscapeKeyDown={(event) => {
+          if (ime.blocks(event)) { event.preventDefault(); return; }
           if (closeDisabled) event.preventDefault();
           onEscapeKeyDown?.(event);
         }}
@@ -131,25 +191,12 @@ export function DialogContent({
           그리로 간다. 전엔 소비자 셋만 `onOpenAutoFocus`로 손수 Cancel을 지정했고 나머지는 Radix 기본(첫 tabbable = 헤더 X)이라,
           같은 파괴 확인인데 첫 Enter가 닿는 곳이 갈렸다. 푸터는 전부 `[Cancel][확정]` 순이라 표식이 확정으로 갈 일이 없다.
           ⚠️ **조건부다** — 호출부가 막았으면(`preventDefault`) 손대지 않는다. 안쪽 `autoFocus`는 FocusScope의 mount 이벤트보다 먼저
-          돌아 이 핸들러가 아예 안 오지만(위 `recent` 주석), 포커스가 이미 안에 있으면 한 번 더 비켜선다.
+          돌아 이 핸들러가 아예 안 온다(위 `recent` 주석 — FocusScope는 포커스가 이미 안에 있으면 이벤트를 쏘지 않는다). 그래서 `openAutoFocus`의
+          "이미 안에 있다" 가드가 서는 길은 **소비자가 `preventDefault` 없이 안으로 포커스를 옮긴 경우 하나**이고, 그것은 Radix 계약상
+          소비자 쪽 버그다 — 표식으로 덮지 않고 Radix 기본(첫 tabbable)에 넘긴다. 소비자의 포커스는 어느 쪽이든 남지 않는다.
         */
-        onOpenAutoFocus={(event) => {
-          onOpenAutoFocus?.(event);
-          if (event.defaultPrevented || !(event.target instanceof HTMLElement)) return;
-          if (event.target.contains(document.activeElement)) return;
-          const target = event.target.querySelector<HTMLElement>("[data-initial-focus]");
-          if (target === null) return;
-          event.preventDefault();
-          target.focus();
-        }}
-        onCloseAutoFocus={(event) => {
-          onCloseAutoFocus?.(event);
-          if (event.defaultPrevented) return;
-          const target = returnTarget();
-          if (target === null) return;
-          event.preventDefault();
-          target.focus();
-        }}
+        onOpenAutoFocus={(event) => openAutoFocus(event, onOpenAutoFocus)}
+        onCloseAutoFocus={(event) => closeAutoFocus(event, onCloseAutoFocus)}
       >
         <header className="flex items-start justify-between gap-2 p-4 pb-2">
           <Primitive.Title className="text-base font-medium">{title}</Primitive.Title>

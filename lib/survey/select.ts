@@ -69,7 +69,7 @@ export type FileSelection = {
 export function selectSurveyFiles(allPaths: readonly string[]): FileSelection {
   const wanted = new Set<string>();
 
-  // ── chrome `_locales` — 로케일이 2개 이상인 root의 파일 전부 ──────────
+  // ── chrome `_locales` — 로케일 root의 파일 전부 ──────────
   const chromeByRoot = new Map<string, string[]>();
   for (const p of allPaths) {
     const m = LOCALES_PATH.exec(p);
@@ -78,10 +78,10 @@ export function selectSurveyFiles(allPaths: readonly string[]): FileSelection {
     (chromeByRoot.get(root) ?? chromeByRoot.set(root, []).get(root)!).push(p);
   }
   for (const [, files] of chromeByRoot) {
-    if (files.length >= 2) for (const f of files) wanted.add(f);
+    for (const f of files) wanted.add(f);
   }
 
-  // ── json 카탈로그 — 로케일 이름 파일이 2개 이상인 디렉터리 ────────────
+  // ── json 카탈로그 — 로케일 이름 파일이 있는 디렉터리 ────────────
   const jsonByDir = new Map<string, string[]>();
   for (const p of allPaths) {
     const m = JSON_FILE.exec(p);
@@ -90,7 +90,7 @@ export function selectSurveyFiles(allPaths: readonly string[]): FileSelection {
     (jsonByDir.get(dir) ?? jsonByDir.set(dir, []).get(dir)!).push(p);
   }
   for (const [, files] of jsonByDir) {
-    if (files.length >= 2) for (const f of files) wanted.add(f);
+    for (const f of files) wanted.add(f);
   }
 
   // ── YAML 카탈로그 ────────────────────────────────────────────────────
@@ -106,7 +106,7 @@ export function selectSurveyFiles(allPaths: readonly string[]): FileSelection {
     (yamlByDir.get(dir) ?? yamlByDir.set(dir, []).get(dir)!).push(p);
   }
   for (const [, files] of yamlByDir) {
-    if (files.length >= 2) for (const f of files) wanted.add(f);
+    for (const f of files) wanted.add(f);
   }
 
   // ── 접두사 붙은 파일명 · 로케일 디렉터리 ─────────────────────────────
@@ -153,12 +153,12 @@ export function selectSurveyFiles(allPaths: readonly string[]): FileSelection {
   }
   for (const [dir, files] of codeByDir) {
     const localeNamed = files.filter((f) => looksLikeLocale(f.replace(/^.*\//, "").replace(/\.(tsx?|mjs|js)$/, "")));
-    const worthReading = I18N_HINT.test(dir) || localeNamed.length >= 2;
+    const worthReading = I18N_HINT.test(dir) || localeNamed.length >= 1;
     if (!worthReading) continue;
     // 로케일 이름 파일이 모인 디렉터리는 `code-dict` 후보다 — 그쪽을 우선해서 담는다.
     // 나머지(ts-dict 형태 probe)는 디렉터리당 소수만 본다: ts-morph 파싱이 비싸다.
     const ordered = [...localeNamed.slice().sort(compareKeys), ...files.filter((f) => !localeNamed.includes(f)).sort(compareKeys)];
-    for (const f of ordered.slice(0, localeNamed.length >= 2 ? LOCALE_CODE_PER_DIR : TS_PER_DIR)) wanted.add(f);
+    for (const f of ordered.slice(0, localeNamed.length >= 1 ? LOCALE_CODE_PER_DIR : TS_PER_DIR)) wanted.add(f);
   }
 
   // 존재 여부만 세므로 내용을 읽지 않는다 — 물리화 목록에는 넣지 않는다.
@@ -177,7 +177,6 @@ function rankShapeGroups(
   groups: ReadonlyMap<string, Array<{ locale: string; path: string }>>,
 ): Array<[string, Array<{ locale: string; path: string }>]> {
   return [...groups.entries()]
-    .filter(([, files]) => files.length >= 2)
     .sort(([ka, fa], [kb, fb]) => {
       const sa = pathSignals(ka);
       const sb = pathSignals(kb);

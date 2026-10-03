@@ -6,6 +6,8 @@ import type { ComponentProps, ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
+import { useImeGuard } from "./use-ime-guard";
+
 /**
  * 사용자 메뉴·프로젝트 전환 (DESIGN §6.4).
  *
@@ -26,8 +28,10 @@ export function DropdownMenuContent({
   sideOffset = 4,
   collisionPadding = 8,
   children,
+  onEscapeKeyDown,
   ...props
 }: ComponentProps<typeof Primitive.Content>) {
+  const ime = useImeGuard();
   return (
     <Primitive.Portal>
       <Primitive.Content
@@ -36,6 +40,13 @@ export function DropdownMenuContent({
         collisionPadding={collisionPadding}
         className={cn("bg-popover border-border z-50 max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-60 max-w-md overflow-x-hidden overflow-y-auto rounded-lg border py-1 shadow-md", className)}
         {...props}
+        onCompositionStart={ime.onCompositionStart}
+        onCompositionEnd={ime.onCompositionEnd}
+        // 조합 중 Esc는 조합 취소다 — Radix가 Esc를 document capture에서 들어 입력의 stopPropagation이 안 닿는다(C9).
+        onEscapeKeyDown={(event) => {
+          if (ime.blocks(event)) { event.preventDefault(); return; }
+          onEscapeKeyDown?.(event);
+        }}
       >
         {children}
       </Primitive.Content>

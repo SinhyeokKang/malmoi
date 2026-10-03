@@ -159,3 +159,32 @@ it("실패로 닫힌 실행은 0이 아니라 null이다", async () => {
   await runRepositoryImportFromReader(prisma, { projectId: "p", userId: "owner", repository, approval: null, credential: undefined }, async () => failing);
   expect(await importEvent("import.run")).toMatchObject({ changedValues: null });
 });
+
+it("단일 언어 Sync 후 둘째 언어를 더하면 새 셀만 Logs의 변경 수에 오른다", async () => {
+  const { changedValuesText } = await import("@/lib/events/view");
+  const { readPayload } = await import("@/lib/events/payload");
+  await seed();
+  const single = reader('{"a":"A","b":"B"}');
+  const snapshot = await single.snapshot("main");
+  if (snapshot.status !== "ok") throw new Error("fixture snapshot");
+  single.snapshot = async () => ({ ...snapshot, files: snapshot.files.filter(file => file.path === "i18n/en.json") });
+  await runRepositoryImportFromReader(prisma, { projectId: "p", userId: "owner", repository, approval: null, credential: undefined }, async () => single);
+  const first = await prisma.projectEvent.findFirstOrThrow({ where: { projectId: "p", subtype: "import.run" }, orderBy: { occurredAt: "desc" } });
+  expect(first.payload).toMatchObject({ changedValues: 2 });
+  if (first.result !== "imported") throw new Error(`unexpected result: ${first.result}`);
+  const firstPayload = readPayload("IMPORT", first.payload);
+  if (firstPayload?.kind !== "IMPORT") throw new Error("missing import payload");
+  expect(changedValuesText(first.result, firstPayload.changedValues)).toBe("2 values changed");
+  expect(await prisma.locale.findMany({ where: { projectId: "p", orphaned: false }, select: { code: true } })).toEqual([{ code: "en" }]);
+
+  const next = reader('{"a":"A","b":"B"}');
+  next.snapshot = async () => ({ ...snapshot, headSha: "d".repeat(40), headCommittedAt: new Date(commitClock + 7_200_000).toISOString() });
+  await runRepositoryImportFromReader(prisma, { projectId: "p", userId: "owner", repository, approval: null, credential: undefined }, async () => next);
+  const second = await prisma.projectEvent.findFirstOrThrow({ where: { projectId: "p", subtype: "import.run", id: { not: first.id } } });
+  expect(second.payload).toMatchObject({ changedValues: 2 });
+  if (second.result !== "imported") throw new Error(`unexpected result: ${second.result}`);
+  const secondPayload = readPayload("IMPORT", second.payload);
+  if (secondPayload?.kind !== "IMPORT") throw new Error("missing import payload");
+  expect(changedValuesText(second.result, secondPayload.changedValues)).toBe("2 values changed");
+  expect(await prisma.locale.findMany({ where: { projectId: "p", orphaned: false }, select: { code: true }, orderBy: { code: "asc" } })).toEqual([{ code: "en" }, { code: "ko" }]);
+});

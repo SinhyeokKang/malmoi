@@ -3,6 +3,7 @@ import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { Children, isValidElement, type ButtonHTMLAttributes, type ComponentProps, type ReactNode, type Ref } from "react";
 
+import { isPlainPrimaryClick } from "@/lib/keyboard";
 import { cn } from "@/lib/utils";
 
 /**
@@ -239,7 +240,7 @@ export function ButtonLink({
     "aria-disabled": busy ? true : props["aria-disabled"], "aria-busy": busy ? true : props["aria-busy"] };
   // 외부 a는 일반 클릭만 막고, Next onNavigate는 같은 탭 내부 이동만 차단한다.
   if (external) return <a {...shared} onClick={busy ? event => {
-    if (!newTab && (!target || target === "_self") && event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) event.preventDefault();
+    if (!newTab && (!target || target === "_self") && isPlainPrimaryClick(event)) event.preventDefault();
     else onClick?.(event);
   } : onClick} className={classes}>{content}</a>;
   return <Link {...shared} onClick={onClick} onNavigate={busy ? event => event.preventDefault() : onNavigate} className={classes}>{content}</Link>;

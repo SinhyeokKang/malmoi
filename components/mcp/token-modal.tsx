@@ -20,7 +20,7 @@ import { chosenProjectIds, GRANT_ORDER, initialGrantFields, TokenGrantFields, ty
  *
  * ⚠️ **결과를 셋으로 가른다** (design §8): 명시적 거부는 입력을 유지한 채 폼 위 danger Alert(`4a` — 같은 버튼이 재시도), 호출 자체가
  * 끊긴 것은 **결과 미확인**이라 모달을 닫고 카드가 말한다(`4b` — 서버가 발급했는지 모른다). 자동 재시도는 없다.
- * ⚠️ **복사 성공만으로 닫지 않는다** — Done이 유일한 출구다(원문을 두 번 볼 길이 없다).
+ * ⚠️ **복사 성공만으로 닫지 않는다** — Close가 유일한 출구다(원문을 두 번 볼 길이 없다).
  */
 
 export type TokenFormInitial = { grants: readonly TokenGrant[]; scope: "all" | "projects"; projectIds: readonly string[] };
@@ -107,7 +107,7 @@ export function TokenModal({
       title={title}
       transitionKey={String(step)}
       closeLabel={m.common.close}
-      // ⚠️ **②는 Done만 닫는다** — Esc·바깥 클릭·X로 닫히면 원문을 잃는다(다시 볼 길이 없다). ①은 평소처럼 닫힌다.
+      // ⚠️ **②는 Close만 닫는다** — Esc·바깥 클릭·X로 닫히면 원문을 잃는다(다시 볼 길이 없다). ①은 평소처럼 닫힌다.
       closeDisabled={pending || step === 2}
       returnFocusRef={returnFocusRef}
       fallbackFocusRef={fallbackFocusRef}
@@ -125,7 +125,7 @@ export function TokenModal({
           </>
         ) : (
           <Button ref={doneRef} type="button" variant="primary" size="lg" onClick={onClose}>
-            {m.mcpConnector.result.done}
+            {m.common.close}
           </Button>
         )
       }

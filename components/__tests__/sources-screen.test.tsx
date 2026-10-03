@@ -364,6 +364,8 @@ it("보관된 Sources는 날짜만 말하고 출구 낱말이 보관 화면들�
   const time = document.querySelector("time")!;
   expect(time.textContent).toBe("Sep 20, 2026");
   expect(time.getAttribute("dateTime")).toBe(at.toISOString());
+  // 보관 시각 문장은 Settings·Logs와 같은 `Archived on {date}` 한 형이다(P1).
+  expect(time.parentElement?.textContent).toBe("Archived on Sep 20, 2026");
   expect(document.querySelector('a[href*="settings"]')?.textContent).toBe(m.archive.empty.action);
   expect(document.querySelector('a[href*="settings"] svg')?.getAttribute("class")).toContain("lucide-chevron-right");
 });
