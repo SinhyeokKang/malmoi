@@ -466,14 +466,19 @@ describe("OWNER 승격·OWNER 초대 수락의 상한", () => {
     expect(db.projectEvents).toHaveLength(events);
   });
 
-  it("User 잠금은 프로젝트 잠금 뒤다 — Project → User 순서라 생성 경로와 교착하지 않는다", async () => {
+  /**
+   * 사건(`member.roleChanged`)의 행위자 FK가 행위자 User 행에 `KEY SHARE`를 건다 — 행위자를 정렬 집합 밖에 두면 맞승격·복원과
+   * 순환이 생긴다(review-R1 🟡1). 그래서 행위자와 대상을 **같은 id 순**으로, Project 잠금 **뒤에** 잡는다.
+   */
+  it("User 잠금은 프로젝트 잠금 뒤이고, 행위자와 대상을 id 순으로 함께 잡는다", async () => {
     atLimit("u-editor");
     await changeMember({ slug: "alpha", targetUserId: "u-editor", nextRole: "OWNER" });
-    const sql = db.spies.executeRaw.mock.calls.map((c) => (c[0] as TemplateStringsArray).join("?"));
-    const project = sql.findIndex((q) => /"Project"[\s\S]*FOR UPDATE/.test(q));
-    const user = sql.findIndex((q) => /"User"[\s\S]*FOR UPDATE/.test(q));
+    const calls = db.spies.executeRaw.mock.calls.map((c) => ({ sql: (c[0] as TemplateStringsArray).join("?"), arg: c[1] }));
+    const project = calls.findIndex((c) => /"Project"[\s\S]*FOR UPDATE/.test(c.sql));
+    const users = calls.flatMap((c, i) => (/"User"[\s\S]*FOR UPDATE/.test(c.sql) ? [{ i, arg: c.arg }] : []));
     expect(project).toBeGreaterThanOrEqual(0);
-    expect(user).toBeGreaterThan(project);
+    expect(users.map((u) => u.arg)).toEqual(["u-editor", "u-owner"].sort());
+    expect(users.every((u) => u.i > project)).toBe(true);
   });
 
   it("대상자가 운영자면 승격된다", async () => {

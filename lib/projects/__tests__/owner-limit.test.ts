@@ -65,6 +65,15 @@ describe("lockOwnerSlots", () => {
     await expect(lockOwnerSlots(tx, ["u-a"])).rejects.toThrow("db down");
   });
 
+  it("alsoLock은 같은 정렬 집합으로 잠그되 세지 않는다 — 사건의 행위자 FK가 그 행에 KEY SHARE를 건다", async () => {
+    isOperatorUser.mockReset().mockResolvedValue(false);
+    const { tx, calls } = fakeTx({ "u-target": 1, "u-actor": 9 });
+    expect(await lockOwnerSlots(tx, ["u-target"], ["u-actor", "u-target"])).toEqual([]);
+    expect(calls.filter((c) => c.startsWith("lock:"))).toEqual(["lock:u-actor", "lock:u-target"]);
+    expect(calls.filter((c) => c.startsWith("count:"))).toEqual(["count:u-target"]);
+    expect(isOperatorUser).not.toHaveBeenCalled();
+  });
+
   it("같은 id가 둘이면 한 번만 잠근다", async () => {
     isOperatorUser.mockClear();
     const { tx, calls } = fakeTx({});
