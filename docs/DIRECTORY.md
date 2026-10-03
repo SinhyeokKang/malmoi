@@ -220,11 +220,13 @@ components/
   ui/highlight.tsx     Highlight — highlightSegments의 text/match 조각을 mark로 그린다. /projects와 검색의 손 mark를 모았다
   ui/field-button.tsx  FieldButton — 검색 캡슐 320×40/rounded-full(헤더 줄 h-10을 채운다) · icon/placeholder/shortcut 슬롯 · 접근 이름 필수 · aria-expanded
   ui/dialog.tsx       기존 440 Dialog + 형제 CommandDialog. 검색만 LargeModal 패널·높이·dim을 공유하며 top16으로 옮긴다.
-                        진입·복귀는 DialogContent와 같은 순수 핸들러 openAutoFocus·closeAutoFocus(event, consumer?) 한 벌이고(소비자 먼저),
+                        진입·복귀는 DialogContent와 같은 모듈 함수(훅 아님) openAutoFocus·closeAutoFocus(event, consumer?) 한 벌이고(소비자 먼저),
                         조합 중 Esc는 use-ime-guard가 막는다(onEscapeKeyDown prop 없음). 해시 착지의 복귀 억제(onCloseAutoFocus)만 소비자가 잇는다
   ui/use-ime-guard.ts IME 조합 상태 추적(compositionstart/end)의 유일한 자리 — 오버레이 다섯(DialogContent · CommandDialog · LargeModal ·
                         Popover · DropdownMenuContent)과 Command 루트가 쓴다. 판정식은 lib/keyboard의 isImeComposing이고, 순서는
-                        가드 → 내부 동작 → 소비자다(조합 중이면 소비자 onEscapeKeyDown도 안 부른다). ref를 가져 훅이다
+                        가드 → 내부 동작 → 소비자다(조합 중이면 소비자 onEscapeKeyDown도 안 부른다). ref를 가져 훅이다.
+                        ⚠️ 불리언이 아니라 조합을 시작한 노드를 든다 — 조합 중에 닫히면 compositionend가 안 와 재오픈 뒤 Esc가 막혔다.
+                        노드가 문서에서 떨어지면 조합이 끝난 것으로 본다
   ui/command.tsx      Command/CommandInput/CommandStatus/CommandList/CommandGroup/CommandItem — combobox/listbox.
                         활성 id·실제 링크 click·입력 포커스·sr 결과 수를 소유하며 검색/필터 판정은 소비자다.
                         행은 ListRow + 28 타일(icon 필수, 활성 = selected 7%), 상태 줄은 CommandStatus lines 묶음 하나다
@@ -446,7 +448,7 @@ components/
                         syncBranchFor가 사는 모듈(lib/pull/sync-branch — 2026-09-24에 trigger에서 뺐다)은
                         lib/failure(node:crypto)를 물어 클라이언트 그래프에 오면 안 된다
   ui/search-input.tsx   SearchInput — 기존 제출형 검색을 components/ui/로 옮겼다. Input의 Search/X 슬롯과 width를 조립하고 라우터를 모른다.
-                        ⚠️ IME 조합 중 Enter·Escape는 lib/keyboard의 isImeComposing(isComposing + keyCode229)으로 거른다 — 번역 입력의 keyEditCommand와 같은 판정이고 사본 0은 visual-system.test가 센다.
+                        ⚠️ IME 조합 중 Enter·Escape는 lib/keyboard의 isImeComposing(isComposing + keyCode229)으로 거른다 — 번역 입력의 keyEditCommand와 같은 판정이고 사본 0(단독 `isComposing`·`229` 읽기 포함)은 visual-system.test가 센다.
                         form 암시적 submit을 쓰지 않고 Enter로 제출한다. X/비어 있지 않은 Escape는 빈 질의까지 제출하고,
                         늦은 응답이 도착해도 그동안 작성한 값을 보존한다. repo/tree의 즉시 필터는 Input 슬롯을 직접 쓴다
   projects/search-input.tsx
@@ -463,7 +465,7 @@ components/
                         감싸 로그인·초대 폼이 같은 pending을 쓰게 한다. slow-notice(useSlow)는 긴 원격 실행(탐지·첫 적재·Sync·
                         Publish)에 지연 문구 한 줄을 띄운다 — ⚠️ SLOW_AFTER_MS = GITHUB_WAIT_MS로 값이 한 벌이다, 사본을 두지 않는다
   __tests__/            command-dialog · command · field-button · highlight-kbd · no-match(신규 검색 프리미티브의 DOM/포커스/IME) ·
-                        overlay-ime-guard(오버레이 다섯의 조합 Esc — 플래그·compositionstart 직후·Popover 포커스. 실 IME 검증을 대신하지 않는다) ·
+                        overlay-ime-guard(오버레이 다섯의 조합 Esc — 플래그·compositionstart 직후·조합 중 닫힘 뒤 재오픈·Popover 포커스. 실 IME 검증을 대신하지 않는다) ·
                         global-search(실제 이탈·dim·해시 착지 소비자) · search-privacy(저장·쿠키·추적0 + 검출기 자기검사) ·
                         focus-ring(소스 스캔 — 탭으로 지나가야 보이는 결함이라 눈으로 두 번 놓쳤다) ·
                         docs-content(`/docs`의 상한·포맷·action 넷·마커를 정본 상수와 실제 `uses:`에 대조) ·
@@ -817,7 +819,7 @@ lib/
                         시각은 semver 숫자순 · truncated = 거르기 전 100건) · markdown(본문 mdast 손질 셋 — shiftHeadings · dropFullChangelog ·
                         imagesToLinks) · load(server-only 껍데기 — fetch · revalidate 3600 · 3초 타임아웃 · ⚠️ 던지지 않는다, 로그엔 status와
                         남은 한도만). ⚠️ GitHub 자격증명 셋 중 어느 것도 쓰지 않는다 — Authorization 없음을 load.test가 단언한다
-  search/               match(토큰 AND·순위·상한·빈 입력 미리보기) · nav-index(역할별 내비→Projects/Pages + nav 글리프 · 멤버십이 없으면 빈 색인 → Docs만) ·
+  search/               match(토큰 AND·순위·상한·빈 입력 미리보기. matchesAllTokens는 검색·`/projects`·LNB 스위처(lib/shell/switcher.ts)가 같이 쓴다) · nav-index(역할별 내비→Projects/Pages + nav 글리프 · 멤버십이 없으면 빈 색인 → Docs만) ·
                         rows(검색 Dialog 뷰모델 — searchRows 그룹·행·ids 한 원천 · searchStatuses 상태 줄 · keySearchText 하한(UTF-16)) ·
                         docs-index(순수 함수 — SUMMARY 원고→페이지 도입/H2 절·평문) · highlight(원문 위치 보존 강조·일치 주변 snippet) ·
                         keys(입력·열린 Dialog의 단축키 제외 · 활성 id — 플랫폼·조합 판정은 lib/keyboard) · key-href(KeyHit 타입·선택 키 번역 주소) ·
