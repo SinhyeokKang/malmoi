@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { LargeModal, LARGE_MODAL_HEIGHT, LARGE_MODAL_OVERLAY, LARGE_MODAL_PANEL } from "@/components/ui/large-modal";
 import { cn } from "@/lib/utils";
 
-import { find, render } from "./helpers/dom";
+import { find, key, render } from "./helpers/dom";
 
 // jsdom의 disabled focus fixup을 보충한다 — 꺼진 연 자리로 복귀한 것으로 오판하지 않는다.
 let fixup: MutationObserver;
@@ -27,12 +27,12 @@ beforeEach(() => {
 afterEach(() => fixup.disconnect());
 
 async function click(node: Element) { await act(async () => { await userEvent.setup().click(node); }); }
-function Host({ onCloseAutoFocus, onEscapeKeyDown, autoFocus = false }: Pick<ComponentProps<typeof CommandDialog>, "onCloseAutoFocus" | "onEscapeKeyDown"> & { autoFocus?: boolean }) {
+function Host({ onCloseAutoFocus, autoFocus = false }: Pick<ComponentProps<typeof CommandDialog>, "onCloseAutoFocus"> & { autoFocus?: boolean }) {
   const [open, setOpen] = useState(false);
   return <>
     <Input aria-label="Earlier" />
     <Button onClick={() => setOpen(true)}>Open search</Button>
-    <CommandDialog open={open} onOpenChange={setOpen} title="Search" onCloseAutoFocus={onCloseAutoFocus} onEscapeKeyDown={onEscapeKeyDown}>
+    <CommandDialog open={open} onOpenChange={setOpen} title="Search" onCloseAutoFocus={onCloseAutoFocus}>
       <Input aria-label="First" autoFocus={autoFocus} />
       <Input aria-label="Search query" data-initial-focus />
     </CommandDialog>
@@ -91,10 +91,10 @@ it("호출부의 닫힘 포커스 지정이 우선한다 — 같은 페이지 �
   await vi.waitFor(() => expect(document.activeElement).toBe(document.querySelector('[aria-label="Earlier"]')));
 });
 
-it("Esc를 소비한 호출부는 닫지 않는다 — IME 취소의 경계", async () => {
+it("조합 중 Esc는 닫지 않는다 — IME 취소는 소비자 없이 프리미티브가 든다", async () => {
   const onOpenChange = vi.fn();
-  await render(<CommandDialog open onOpenChange={onOpenChange} title="Search" onEscapeKeyDown={event => event.preventDefault()}><Input aria-label="Search query" data-initial-focus /></CommandDialog>);
-  await act(async () => { await userEvent.setup().keyboard("{Escape}"); });
+  await render(<CommandDialog open onOpenChange={onOpenChange} title="Search"><Input aria-label="Search query" data-initial-focus /></CommandDialog>);
+  await key(find(document.body, '[aria-label="Search query"]'), "Escape", { isComposing: true });
   expect(document.querySelector('[role="dialog"]')).not.toBeNull();
   expect(onOpenChange).not.toHaveBeenCalled();
 });

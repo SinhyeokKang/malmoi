@@ -4,6 +4,8 @@ import { cn } from "@/lib/utils";
 import { Popover as Primitive } from "radix-ui";
 import { useRef, type ReactNode, type RefObject } from "react";
 
+import { useImeGuard } from "./use-ime-guard";
+
 /** 외부 트리거를 기준으로 연다. 바깥 클릭은 사용자가 누른 곳의 포커스를 유지한다. */
 export function Popover({ open, onOpenChange, anchor, id, children, className, "aria-label": label }: {
   open: boolean;
@@ -15,6 +17,7 @@ export function Popover({ open, onOpenChange, anchor, id, children, className, "
   className?: string;
 }) {
   const escaped = useRef(false);
+  const ime = useImeGuard();
   return <Primitive.Root open={open} onOpenChange={onOpenChange}>
     <Primitive.Anchor virtualRef={anchor} />
     <Primitive.Portal>
@@ -30,7 +33,13 @@ export function Popover({ open, onOpenChange, anchor, id, children, className, "
           // 트리거 click 한 번만 토글한다. 여기서 먼저 닫으면 같은 click이 다시 연다.
           if (event.target instanceof Node && anchor.current?.contains(event.target)) event.preventDefault();
         }}
-        onEscapeKeyDown={() => { escaped.current = true; }}
+        onCompositionStart={ime.onCompositionStart}
+        onCompositionEnd={ime.onCompositionEnd}
+        // ⚠️ 조합 중 Esc는 `escaped`를 세우지 않고 돌아간다 — 세우면 다음 비-Esc 닫힘(바깥 클릭)이 앵커로 포커스를 잘못 돌린다.
+        onEscapeKeyDown={event => {
+          if (ime.blocks(event)) { event.preventDefault(); return; }
+          escaped.current = true;
+        }}
         onCloseAutoFocus={event => {
           event.preventDefault();
           if (escaped.current) anchor.current?.focus();

@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 
 import { CloseButton } from "./close-button";
 import { LARGE_MODAL_HEIGHT, LARGE_MODAL_OVERLAY, LARGE_MODAL_PANEL } from "./large-modal";
+import { useImeGuard } from "./use-ime-guard";
 
 /**
  * 초대 폼·확인 모달 (DESIGN §6.4).
@@ -96,16 +97,15 @@ export const DialogTrigger = Primitive.Trigger;
 export const DialogClose = Primitive.Close;
 
 /** 검색 패널은 대형 모달의 치수를 공유하고 위에서 열린다. 기존 확인 Dialog의 구조는 그대로다. */
-export function CommandDialog({ open, onOpenChange, title, children, onEscapeKeyDown, onCloseAutoFocus }: {
+export function CommandDialog({ open, onOpenChange, title, children, onCloseAutoFocus }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: ReactNode;
   children: ReactNode;
-  /** 조합 중 Esc는 닫힘이 아니라 취소다 — 입력을 소유한 호출부가 판정한다. */
-  onEscapeKeyDown?: ComponentProps<typeof Primitive.Content>["onEscapeKeyDown"];
   /** 같은 가이드 페이지 해시 착지는 제목 포커스가 이기도록 복귀를 막는다. */
   onCloseAutoFocus?: ComponentProps<typeof Primitive.Content>["onCloseAutoFocus"];
 }) {
+  const ime = useImeGuard();
   return <Primitive.Root open={open} onOpenChange={onOpenChange}>
     <Primitive.Portal>
       <Primitive.Overlay className={LARGE_MODAL_OVERLAY} />
@@ -113,7 +113,10 @@ export function CommandDialog({ open, onOpenChange, title, children, onEscapeKey
         aria-modal="true"
         aria-describedby={undefined}
         className={cn(LARGE_MODAL_PANEL, LARGE_MODAL_HEIGHT, "top-4 translate-y-0")}
-        onEscapeKeyDown={onEscapeKeyDown}
+        onCompositionStart={ime.onCompositionStart}
+        onCompositionEnd={ime.onCompositionEnd}
+        // 조합 중 Esc는 닫힘이 아니라 조합 취소다 — 소비자 없이 프리미티브가 든다(C9).
+        onEscapeKeyDown={event => { if (ime.blocks(event)) event.preventDefault(); }}
         onOpenAutoFocus={event => openAutoFocus(event)}
         onCloseAutoFocus={event => closeAutoFocus(event, onCloseAutoFocus)}
       >
@@ -146,6 +149,7 @@ export function DialogContent({
    */
   closeDisabled?: boolean;
 }) {
+  const ime = useImeGuard();
   return (
     <Primitive.Portal>
       {/*
@@ -169,7 +173,11 @@ export function DialogContent({
           className,
         )}
         {...props}
+        onCompositionStart={ime.onCompositionStart}
+        onCompositionEnd={ime.onCompositionEnd}
+        // 가드 → 내부 동작 → 소비자 순이다. 조합 중 Esc는 조합 취소라 소비자에게도 넘기지 않는다(C9).
         onEscapeKeyDown={(event) => {
+          if (ime.blocks(event)) { event.preventDefault(); return; }
           if (closeDisabled) event.preventDefault();
           onEscapeKeyDown?.(event);
         }}

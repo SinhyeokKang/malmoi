@@ -42,7 +42,6 @@ export function SearchDialog({ open, onOpenChange, account, memberships }: {
   // This instance belongs to one opening; reuse only its in-flight request during StrictMode effect replay.
   const membershipRequest = useRef<ReturnType<typeof loadSearchMemberships> | null>(null);
   const keyGeneration = useRef(0);
-  const composing = useRef(false);
   const heading = useRef<string | null>(null);
   const needsMemberships = memberships === undefined && account !== null;
   // 멤버십 실패를 비로그인으로 접지 않는다 — 색인은 Docs 전용이 되고 상태 줄이 이유를 말한다(C1).
@@ -103,25 +102,22 @@ export function SearchDialog({ open, onOpenChange, account, memberships }: {
     onOpenChange(false);
   };
   return <CommandDialog open={open} onOpenChange={onOpenChange} title={m.search.label}
-    onEscapeKeyDown={event => { if (composing.current || event.isComposing || event.keyCode === 229) event.preventDefault(); }}
     onCloseAutoFocus={event => { if (heading.current !== null) { event.preventDefault(); landDocumentHeading(heading.current); heading.current = null; } }}>
-    <div className="flex min-h-0 flex-1 flex-col" onCompositionStart={() => { composing.current = true; }} onCompositionEnd={() => { composing.current = false; }}>
-      <Command ids={ids} query={q}>
-        <CommandInput value={q} onValueChange={value => { ++keyGeneration.current; setKeys({ query: "", hits: [], error: null }); setQuery(value); }} label={m.search.label} placeholder={m.search.placeholder} />
-        <CommandStatus lines={status.lines} />
-        {/* 0건은 목록 슬롯 맨 위에 선다. 조회가 실패했으면 "결과 없음"이 거짓이라 그리지 않는다(C3). */}
-        {ids.length === 0 && !status.pending && !status.failed && <NoMatch placement="inset" title={m.search.noResults(q)} description={m.search.noResultsDescription} />}
-        <CommandList label={m.search.label}>
-          {groups.map(group => <CommandGroup key={group.kind} heading={group.heading}>
-            {group.rows.map(row => <CommandItem key={row.id} id={row.id} href={row.href} icon={<Tile tile={row.tile} />}
-              title={<Highlight segments={row.title} />}
-              context={row.context === undefined ? undefined : <Highlight segments={row.context} />}
-              description={row.description === undefined ? undefined : <>{row.locale !== undefined && <><span data-search-locale>{row.locale}</span>{" · "}</>}<Highlight segments={row.description} /></>}
-              badge={row.archived ? <StatusBadge state="archived" /> : undefined}
-              onNavigate={navigate(row.href)} />)}
-          </CommandGroup>)}
-        </CommandList>
-      </Command>
-    </div>
+    <Command ids={ids} query={q}>
+      <CommandInput value={q} onValueChange={value => { ++keyGeneration.current; setKeys({ query: "", hits: [], error: null }); setQuery(value); }} label={m.search.label} placeholder={m.search.placeholder} />
+      <CommandStatus lines={status.lines} />
+      {/* 0건은 목록 슬롯 맨 위에 선다. 조회가 실패했으면 "결과 없음"이 거짓이라 그리지 않는다(C3). */}
+      {ids.length === 0 && !status.pending && !status.failed && <NoMatch placement="inset" title={m.search.noResults(q)} description={m.search.noResultsDescription} />}
+      <CommandList label={m.search.label}>
+        {groups.map(group => <CommandGroup key={group.kind} heading={group.heading}>
+          {group.rows.map(row => <CommandItem key={row.id} id={row.id} href={row.href} icon={<Tile tile={row.tile} />}
+            title={<Highlight segments={row.title} />}
+            context={row.context === undefined ? undefined : <Highlight segments={row.context} />}
+            description={row.description === undefined ? undefined : <>{row.locale !== undefined && <><span data-search-locale>{row.locale}</span>{" · "}</>}<Highlight segments={row.description} /></>}
+            badge={row.archived ? <StatusBadge state="archived" /> : undefined}
+            onNavigate={navigate(row.href)} />)}
+        </CommandGroup>)}
+      </CommandList>
+    </Command>
   </CommandDialog>;
 }

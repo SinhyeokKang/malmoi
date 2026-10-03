@@ -99,8 +99,6 @@ export function ProjectSwitcher({ projects, current }: { projects: readonly Swit
         align="start"
         className="w-64"
         onKeyDown={onContentKeyDown}
-        // ⚠️ 한글 조합 중 Esc는 조합을 취소하는 키다 — 메뉴를 닫지 않는다(Radix는 document capture에서 들어 stopPropagation이 안 닿는다).
-        onEscapeKeyDown={(event) => { if (event.isComposing || event.keyCode === 229) event.preventDefault(); }}
       >
         <div className="flex items-center gap-2 px-2 pb-1">
           {/*

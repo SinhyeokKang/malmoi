@@ -7,6 +7,7 @@ import { CloseButton } from "@/components/ui/close-button";
 import { m } from "@/lib/i18n";
 import type { Step } from "@/lib/onboarding/next-enabled";
 import { cn } from "@/lib/utils";
+import { useImeGuard } from "./use-ime-guard";
 
 /** 폭·radius·dim만 공유한다. 이력 상세의 본문·머리·높이 계약은 소비자에 남는다. */
 export const LARGE_MODAL_OVERLAY = "bg-foreground/32 fixed inset-0 z-50 backdrop-blur-[6px]";
@@ -57,6 +58,7 @@ export function LargeModal({
   children, notice, actions, closeLabel, closeDisabled = false, className, transitionKey, quiet = false, fallbackFocusRef, returnFocusRef, initialFocusRef,
 }: LargeModalProps) {
   const bodyRef = useRef<HTMLDivElement>(null);
+  const ime = useImeGuard();
   /**
    * live 영역에 **지금 말할 것**만 담는다. 제목을 상시 들고 있으면 헤더와 합쳐 두 번 읽히고,
    * 단계와 무관한 리렌더에도 같은 문장이 다시 낭독된다 (runtime-test 2026-09-13 실측).
@@ -130,6 +132,10 @@ export function LargeModal({
             if (target?.isConnected && !target.matches(":disabled")) target.focus();
             else fallbackFocusRef?.current?.focus();
           }}
+          onCompositionStart={ime.onCompositionStart}
+          onCompositionEnd={ime.onCompositionEnd}
+          // 조합 중 Esc는 조합 취소다 — 닫지 않는다(C9). 이 모달은 Esc 소비자 prop이 없어 가드만 단다.
+          onEscapeKeyDown={(event) => { if (ime.blocks(event)) event.preventDefault(); }}
           data-onboarding-panel
           className={cn(
             LARGE_MODAL_PANEL,

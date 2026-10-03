@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { Input } from "./input";
 import { Kbd } from "./kbd";
 import { ListRow } from "./list-row";
+import { useImeGuard } from "./use-ime-guard";
 
 const CommandContext = createContext<{
   listId: string;
@@ -27,7 +28,7 @@ function useCommand() {
 export function Command({ ids, query, children }: { ids: readonly string[]; query: string; children: ReactNode }) {
   const prefix = useId();
   const root = useRef<HTMLDivElement>(null);
-  const composing = useRef(false);
+  const ime = useImeGuard();
   const [selection, setSelection] = useState({ ids, query, activeId: ids[0] ?? null });
   const changed = query !== selection.query || ids.length !== selection.ids.length || ids.some((id, index) => id !== selection.ids[index]);
   const activeId = changed ? reconcileActive(selection.ids, ids, selection.activeId, query !== selection.query) : selection.activeId;
@@ -42,12 +43,12 @@ export function Command({ ids, query, children }: { ids: readonly string[]; quer
 
   return <CommandContext value={{ listId: `${prefix}-list`, optionId, activeId, activate: id => setSelection(current => ({ ...current, activeId: id })) }}>
     <div ref={root} className="flex min-h-0 flex-1 flex-col"
-      onCompositionStart={() => { composing.current = true; }}
-      onCompositionEnd={() => { composing.current = false; }}
+      onCompositionStart={ime.onCompositionStart}
+      onCompositionEnd={ime.onCompositionEnd}
       onKeyDown={event => {
         // Enter·↑↓의 주인은 combobox 입력이다 — 지우기 X 같은 다른 컨트롤의 키를 가로채면 그 버튼의 Enter가 결과 이동이 된다(R-B1 R1).
         if (!(event.target instanceof HTMLElement) || event.target.getAttribute("role") !== "combobox") return;
-        if (composing.current || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
+        if (ime.blocks(event.nativeEvent)) return;
         if (event.key === "ArrowDown" || event.key === "ArrowUp") {
           event.preventDefault();
           setSelection(current => ({ ...current, activeId: nextActive(ids, activeId, event.key === "ArrowDown" ? 1 : -1) }));
