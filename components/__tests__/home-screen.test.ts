@@ -190,7 +190,10 @@ describe("로딩 골격이 실물의 치수를 든다 (2026-09-16 실측)", () =
   it("메타 열은 묶음이 셋(4·3·1)이고 바닥에 링크가 있다", () => {
     const source = skeleton();
     // Project 탭 8행 — 한 묶음으로 그리면 경계 둘과 `[Settings ›]` 45px이 통째로 빠진다. 치수 대조는 `loading-parity.test.tsx`.
-    expect(source.match(/<MetaGroup rows=\{\d+\}/g)).toEqual(["<MetaGroup rows={4}", "<MetaGroup rows={3}", "<MetaGroup rows={1}"]);
+    // 행별 막대 폭은 `META_ROWS` 하나가 든다(malmoi#181) — 묶음은 그 배열을 4·3·1로 자른다.
+    expect(source.match(/<MetaGroup rows=\{META_ROWS\.slice\([^)]*\)\}/g)).toEqual([
+      "<MetaGroup rows={META_ROWS.slice(0, 4)}", "<MetaGroup rows={META_ROWS.slice(4, 7)}", "<MetaGroup rows={META_ROWS.slice(7)}",
+    ]);
     expect(source).toMatch(/<FooterLink \/>\s*<\/aside>/);
   });
 

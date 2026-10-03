@@ -90,9 +90,9 @@ export default function ProjectHomeLoading() {
               ))}
             </div>
           </div>
-          <MetaGroup rows={4} divided={false} />
-          <MetaGroup rows={3} />
-          <MetaGroup rows={1} />
+          <MetaGroup rows={META_ROWS.slice(0, 4)} divided={false} />
+          <MetaGroup rows={META_ROWS.slice(4, 7)} />
+          <MetaGroup rows={META_ROWS.slice(7)} />
           <FooterLink />
         </aside>
       </PanelBody>
@@ -162,15 +162,27 @@ function FooterLink() {
  * ⚠️ **행 높이 20은 컨테이너가 든다** — 실물의 값은 `text-sm`(line-height 20)이고, 골격이 블록의
  * 14로 서면 아홉 행에서 54px이 모자란다 (2026-09-16 실측).
  */
-function MetaGroup({ rows, divided = true }: { rows: number; divided?: boolean }) {
+/**
+ * 메타 열 Project 탭 여덟 행의 막대 폭 `[라벨, 값]` (시안 v3 `2e`, malmoi#181) — 여덟 줄이 같은 폭이면 실물 행의 모양을 미리 보이지 못한다.
+ * 라벨 막대는 실제 라벨 길이(Repository · Connection · Branch · CI / Sources · Keys · Members / Created), 값 막대는 그 행 값의 흔한 길이다
+ * (리포 주소 · 배지 · 브랜치 · `Configured` / 수 · 수 · `4 (2)` / 상대 시각). ⚠️ 클래스를 문자열 리터럴로 둔다 — Tailwind가 소스에서 찾는다.
+ */
+const META_ROWS: readonly (readonly [label: string, value: string])[] = [
+  ["w-16", "w-30"], ["w-18", "w-21"], ["w-12", "w-10"], ["w-6", "w-19"],
+  ["w-13", "w-5"], ["w-9", "w-9"], ["w-14", "w-5"],
+  ["w-13", "w-20"],
+];
+
+function MetaGroup({ rows, divided = true }: { rows: readonly (readonly [label: string, value: string])[]; divided?: boolean }) {
   return (
     // 첫 묶음은 탭 머리 선을 쓴다 — 실물 묶음과 같은 규칙이다.
     <div data-skeleton-meta-group className={cn("flex flex-col gap-2.5 px-4 py-3.5", divided && "border-divider border-t")}>
-      {Array.from({ length: rows }, (_, i) => (
+      {rows.map(([label, value], i) => (
         <div key={i} className="flex h-5 items-center gap-3">
-          <div className="w-24 shrink-0"><Skeleton size="xs" className="w-full" /></div>
+          {/* 라벨 칸은 실물과 같은 96이고 막대만 라벨 길이다. */}
+          <div className="w-24 shrink-0"><Skeleton size="xs" className={label} /></div>
           {/* 값은 오른쪽 끝에 붙는다 — 실물 `Fact align="end"`와 같은 쪽이다. */}
-          <div className="flex min-w-0 flex-1 justify-end"><Skeleton size="sm" className="w-20" /></div>
+          <div className="flex min-w-0 flex-1 justify-end"><Skeleton size="sm" className={value} /></div>
         </div>
       ))}
     </div>
