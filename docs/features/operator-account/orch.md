@@ -19,8 +19,8 @@
 
 | 배치 | 항목 | 소유 파일 | 선행 | 모델/effort | 출시 차단 | 게이트 | 상태 |
 |---|---|---|---|---|---|---|---|
-| B1 코드 | T1 → T2 → T3 → T4 | `lib/operator/**` · `lib/onboarding/create-plan.ts` · `lib/onboarding-run/{repos,create}.ts` · `lib/projects/{archive,owner-limit}.ts` · `lib/auth/{members,message}.ts` · `app/invite/actions.ts` · `messages/en.tsx` · `lib/mcp/result.ts` · 해당 테스트 · `components/__tests__/home-vocabulary.test.ts`(주석) | — | Opus 5.5 high — 잠금 순서·트랜잭션 재집계·fail-closed 판단 | 예 | `pnpm gate --base dev`(postgres 스위트 자동) | 대기 |
-| B2 문서 | T5 | `docs/PRODUCT.md` · `docs/ARCHITECTURE.md` · `docs/OPERATIONS.md` · `docs/DIRECTORY.md` · `guide/reference/limits.md` · `guide/SHOOTING.md` · `.env.example` | — (spec·design 기준으로 병렬) | Opus 5.5 medium — 정본 문서의 밀도 높은 서술, 판단은 spec이 이미 정함 | 예 | `pnpm gate --base dev` | 1차 완료(`gate: ok`, 9커밋) — B1 착지 뒤 대조·리뷰 대기, 터미널 retain |
+| B1 코드 | T1 → T2 → T3 → T4 | `lib/operator/**` · `lib/onboarding/create-plan.ts` · `lib/onboarding-run/{repos,create}.ts` · `lib/projects/{archive,owner-limit}.ts` · `lib/auth/{members,message}.ts` · `app/invite/actions.ts` · `messages/en.tsx` · `lib/mcp/result.ts` · 해당 테스트 · `components/__tests__/home-vocabulary.test.ts`(주석) | — | Opus 5.5 high — 잠금 순서·트랜잭션 재집계·fail-closed 판단 | 예 | `pnpm gate --base dev`(postgres 스위트 자동) | 1차 완료 → fix1 진행 |
+| B2 문서 | T5 | `docs/PRODUCT.md` · `docs/ARCHITECTURE.md` · `docs/OPERATIONS.md` · `docs/DIRECTORY.md` · `guide/reference/limits.md` · `guide/SHOOTING.md` · `.env.example` | — (spec·design 기준으로 병렬) | Opus 5.5 medium — 정본 문서의 밀도 높은 서술, 판단은 spec이 이미 정함 | 예 | `pnpm gate --base dev` | 1차 완료(`gate: ok`, 9커밋) → fix1 진행 |
 | T7 env | Vercel Preview·Production `OPERATOR_EMAILS` | — | D3 | 사용자(`!` 실행 — 분류기가 에이전트의 secret-store 쓰기를 막음) | 예(Preview는 push 전) | `vercel env ls` 행·시각 | 완료 2026-10-04 — production·preview 각 1행(Secret) |
 | QA | T6 | main 체크아웃 · dev DB | B1·B2 통합 + D3 | Sonnet 5.5 medium | — | `/runtime-test` | 대기 |
 
@@ -36,3 +36,10 @@
 
 - 2026-10-04 T7: `.env.local` 값 확인(1행·주소 1개, 출력 없음) → 사용자가 stdin으로 `vercel env add` → `vercel env ls`에서 production·preview 각 1행(Secret, 방금) 확인. 적용은 다음 배포부터(Preview = 이번 dev push, Production = 다음 `/merge`).
 - 2026-10-04 B2 worker_done(succeeded): 9커밋 `98f175c8..ed5e95bf`, `gate: ok`. 남은 것 — handoff의 B1 의존 서술 9개 대조, `guide/AUTHORING.md` 사실 대조 표에 `owner-limit.ts` 추가 여부, SHOOTING 상주 자리표시(T6 뒤 채움).
+- 2026-10-04 B1 worker_done(succeeded): 6커밋 `41e6aa47..89d34e18`, `gate: ok`(10715 unit + 543 postgres). 자체 리뷰 🔴(초대 `?e=` 허용 목록) 수정 포함.
+- 2026-10-04 리뷰 R1(Opus high, B1 코드) 🔴0 🟡2 ⚪4 · R2(Opus medium, B2 문서↔B1 코드) 🔴0 🟡2 ⚪6. 지휘자 판정:
+  - R1 🟡1(승격 경로 행위자 User가 정렬 집합 밖 — 교착 순환 둘) → **고친다**, 형태 A(`lockOwnerSlots(tx, counted, alsoLock)`). 사용자 결정 불요(원칙 판단 — 틀린 "교착 없음"이 정본에 들어가는 비용이 더 크다).
+  - R1 🟡2(런타임 2·3·4는 기존 하네스로 결정적) → 테스트로 옮긴다. T6 QA에 남는 것: 실 로그인 주소 대조 + Alert 배치 눈 확인.
+  - R1 ⚪1(소비자 스캔 확대) · ⚪2(4+ 사용자에게 참인 문구) → 반영. ⚪3 → B1·B2 한 push로 통합.
+  - R2 🟡1·🟡2·⚪1·2·3·5 + AUTHORING :157 사실 소스 + `/postmortem`(초대 `?e=` 허용 목록 누락) → B2.
+- fix1 라운드 디스패치: B1 `ctx_6ee61c806015` · B2 `ctx_d849d400b7de`(병렬 — B2는 B1의 최종 동작을 브리프로 받는다).
