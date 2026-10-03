@@ -24,7 +24,7 @@ describe("Home의 push 토큰 해시 비노출", () => {
     expect(page.match(/\bprojectRow\b/g)).toHaveLength(3);
   });
 
-  it.each(["components/home/meta-column.tsx", "lib/home/meta.ts"])("%s에 해시가 없다", (file) => {
+  it.each(["components/home/meta-column.tsx", "components/home/meta-tabs.tsx", "lib/home/meta.ts"])("%s에 해시가 없다", (file) => {
     expect(code(file)).not.toContain("pushTokenHash");
   });
 });

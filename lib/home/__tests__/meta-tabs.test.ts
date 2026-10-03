@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  homeLastSync, metaTabs,
+  homeLastSync, homeLate, metaTabs,
   type HomePublishRun, type HomeSyncRun, type MetaTabs, type MetaTabsInput,
 } from "../meta";
 
@@ -278,5 +278,24 @@ describe("homeLastSync", () => {
   it("실행도 적재도 없으면 첫 Sync 전(null)", () => {
     expect(homeLastSync(null, never)).toBeNull();
     expect(homeLastSync(null, [])).toBeNull();
+  });
+});
+
+/**
+ * **늦게 오는 사실 둘** (project-card-tabs — 리뷰 D 몫 1). PR 조회가 도는 갈래에서 `planHomeHold`의 결론 하나가 Hold와 PR state를 함께 정한다.
+ * ⚠️ **새 GitHub 호출이 없다** — PR state는 보류 판정이 이미 부른 조회의 결과를 옮길 뿐이다.
+ */
+describe("homeLate — 보류 결론 → Hold · PR state", () => {
+  it.each([
+    ["open-pr", "prOpen"],
+    [null, "notOpen"],
+    ["pr-check-failed", "couldNotCheck"],
+  ] as const)("%s → %s", (reason, prState) => {
+    expect(homeLate(reason)).toEqual({ held: reason, prState });
+  });
+
+  /** PR 조회 갈래는 편집 0이라 도달 불가지만 — 편집 보류는 PR을 보지 않았으므로 PR state를 말하지 않는다. */
+  it("pending-edits는 PR state를 모른다", () => {
+    expect(homeLate("pending-edits")).toEqual({ held: "pending-edits", prState: null });
   });
 });

@@ -1,10 +1,16 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from "vitest";
+import userEvent from "@testing-library/user-event";
+import { act } from "react";
+import { describe, expect, it, vi } from "vitest";
 
 import { AttentionCard } from "@/components/home/attention-card";
 import { LogsCard } from "@/components/home/logs-card";
 import { MetaColumn } from "@/components/home/meta-column";
+import { metaTabs, type MetaTabsInput } from "@/lib/home/meta";
 import { render } from "./helpers/dom";
+
+// ⚠️ Radix + user-event는 jsdom에서 실시간 지연이 있다(POSTMORTEM 2026-09-13).
+vi.setConfig({ testTimeout: 20_000 });
 
 /**
  * **접근성 트리에만 나타나는 회귀를 고정한다** (`/design-sync` 6단계 — 2026-09-15 CDP 실측이 잡은 것).
@@ -20,6 +26,12 @@ import { render } from "./helpers/dom";
 
 const now = new Date("2026-09-15T12:00:00Z");
 const empty = { shown: [], more: [], count: 0 };
+const meta: MetaTabsInput = {
+  repository: { owner: "acme", name: "web", branch: "main", connection: "connected" },
+  ciConfigured: true, surfaceCount: 1, keys: 1, members: 1, pendingInvites: 0,
+  createdAt: now, archivedAt: null, lastSync: null, held: null, prState: "absent",
+  lastPublish: { trigger: "manual", at: now, prUrl: "https://github.com/acme/web/pull/127", changedValues: null, surfaceSlugs: [] },
+};
 
 /** `aria-labelledby`가 가리키는 id가 그 트리 안에 실재하나 — 끊긴 참조는 이름을 **비운다**. */
 function labelledBy(root: HTMLElement, selector: string): string | null {
@@ -40,12 +52,14 @@ describe("Home의 블록 셋이 이름 있는 랜드마크다", () => {
     expect(labelledBy(container, "section")).toContain("Recent logs");
   });
 
+  /**
+   * ⚠️ **메타 열에는 보이는 머리가 없다** (project-card-tabs) — 탭 목록이 머리라 `h2`를 가리킬 수 없고, 이름은 `aria-label`이 든다.
+   * 첫 탭 이름도 `Project`지만 역할이 달라(랜드마크 vs 탭) 스크린리더가 가른다 — 실측은 CDP(DESIGN §6.64).
+   */
   it("`Project` 메타 열이 `complementary`이고 이름을 든다", async () => {
-    const { container } = await render(
-      <MetaColumn slug="acme" now={now} canOpenSettings rows={[{ kind: "branch", branch: "main" }]} />,
-    );
+    const { container } = await render(<MetaColumn slug="acme" now={now} canOpenSettings tabs={metaTabs(meta)} />);
     expect(container.querySelector("aside")).not.toBeNull();
-    expect(labelledBy(container, "aside")).toContain("Project");
+    expect(container.querySelector("aside")?.getAttribute("aria-label")).toBe("Project");
   });
 });
 
@@ -104,18 +118,12 @@ describe("메타 열 — 외부 링크 글리프", () => {
   const at = new Date("2026-09-14T12:00:00Z");
 
   it("리포 행도 PR 행도 글리프 없이 링크다", async () => {
-    const { container } = await render(
-      <MetaColumn
-        slug="acme"
-        now={now}
-        canOpenSettings
-        rows={[
-          { kind: "repository", owner: "acme", name: "web", href: "https://github.com/acme/web", disconnected: false },
-          { kind: "lastPublish", at, prUrl: "https://github.com/acme/web/pull/127", trigger: null },
-        ]}
-      />,
-    );
+    // 두 행이 다른 탭에 산다 — Radix는 비활성 패널의 자식을 그리지 않으므로 Publish 탭으로 옮겨 PR 행을 읽는다.
+    const { container } = await render(<MetaColumn slug="acme" now={now} canOpenSettings tabs={metaTabs({ ...meta, lastPublish: { ...meta.lastPublish!, at } })} />);
     const links = [...container.querySelectorAll("a[target=_blank]")];
+    const publish = [...container.querySelectorAll<HTMLElement>('[role="tab"]')].find((tab) => tab.textContent === "Publish")!;
+    await act(async () => { await userEvent.setup().click(publish); });
+    links.push(...container.querySelectorAll("a[target=_blank]"));
     const repo = links.find((a) => (a.textContent ?? "").includes("acme/web"));
     const pr = links.find((a) => a.getAttribute("href")?.includes("/pull/"));
     expect(repo).toBeDefined();

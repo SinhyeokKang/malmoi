@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import { countCards } from "../cards";
-import { metaRows } from "../meta";
 import { lastSyncTime } from "../sync-time";
 
 /**
@@ -31,19 +30,7 @@ describe("lastSyncTime", () => {
   });
 });
 
-const meta = {
-  state: "default" as const, repoOwner: "o", repoName: "r", baseBranch: "main", surfaces: 1, locales: ["en"],
-  keys: 1, members: 1, lastImportFailedAt: null, lastImportError: null, lastPublishedAt: null, lastPrUrl: null, createdAt: at("2026-09-01T00:00:00Z"), archivedAt: null,
-  triggers: { sync: null, publish: null }, held: null,
-};
-
 describe("시각이 기록되지 않은 Sync", () => {
-  it("메타 열은 Last sync 행을 생략한다 — 'Never'는 거짓이다. 짝: 시각이 있으면 선다", () => {
-    expect(metaRows({ ...meta, lastSyncAt: "unrecorded" }).some((r) => r.kind === "lastSync")).toBe(false);
-    expect(metaRows({ ...meta, lastSyncAt: at("2026-09-22T00:00:00Z") }).some((r) => r.kind === "lastSync")).toBe(true);
-    expect(metaRows({ ...meta, lastSyncAt: null }).some((r) => r.kind === "lastSync")).toBe(true);
-  });
-
   it("카드는 'not synced yet'이 아니라 시각 없는 문장이다", () => {
     const cards = countCards({ state: "default", counts: { newFromGithub: 1, toTranslate: 0, toReview: 0, toSend: 0 }, surfaces: 1, keys: 1, lastSyncAt: "unrecorded", reviewByLocale: [], hold: null });
     expect(cards.find((c) => c.key === "newFromGithub")?.subline).toEqual({ kind: "asOfLastSync" });

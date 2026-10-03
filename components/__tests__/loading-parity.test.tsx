@@ -64,3 +64,23 @@ it("Logs 골격 행은 실물 EventRow와 같은 padding·줄 묶음이고 보�
   expect(stack.className).toContain("flex min-w-0 flex-1 flex-col gap-copy-gap");
   expect(stack.children).toHaveLength(2);
 });
+
+/**
+ * Home 메타 열 골격 (project-card-tabs T9) — **탭 머리는 실물**(같은 머리 클래스 · 같은 세그먼트 상수 · 같은 라벨)이고 본문은 Project 탭 8행
+ * (묶음 4·3·1)이다. ⚠️ **바닥 `Settings ›` 자리는 역할과 무관하게 늘 그린다** — 라우트 골격은 params·세션을 못 받아 역할을 모른다
+ * (2026-10-04 지휘자 판정 — 주 독자 OWNER 기준, EDITOR는 도착 때 45px 줄어든다. DESIGN §6.64 이탈 표).
+ */
+it("Home 골격의 메타 열은 실물 탭 머리 + Project 탭 8행(4·3·1) + 바닥이다", async () => {
+  const real = source("components/home/meta-tabs.tsx");
+  const head = real.match(/data-meta-head className="([^"]*)"/)![1]!;
+  const { container } = await render(HomeLoading());
+  const aside = container.querySelector<HTMLElement>("aside")!;
+  const skeletonHead = aside.querySelector<HTMLElement>("[data-skeleton-meta-head]")!;
+  expect(skeletonHead.className).toBe(head);
+  expect([...skeletonHead.querySelectorAll("span.truncate")].map((node) => node.textContent)).toEqual(["Project", "Sync", "Publish"]);
+  const groups = [...aside.querySelectorAll<HTMLElement>("[data-skeleton-meta-group]")];
+  expect(groups.map((group) => group.children.length)).toEqual([4, 3, 1]);
+  // 첫 묶음은 머리 선을 쓴다 — 실물 묶음과 같은 규칙이다.
+  expect(groups.map((group) => group.className.includes("border-t"))).toEqual([false, true, true]);
+  expect(aside.lastElementChild?.className).toContain("h-[45px]");
+});

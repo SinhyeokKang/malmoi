@@ -50,6 +50,7 @@ import { GithubSection } from "@/components/account/github-section";
 import { LoginMethods } from "@/components/account/login-methods";
 import { SessionsSection } from "@/components/account/sessions-section";
 import { MetaColumn } from "@/components/home/meta-column";
+import { metaTabs, type MetaTabsInput } from "@/lib/home/meta";
 import { SyncButton as SyncControl } from "@/components/home/sync-button";
 import { ConnectedAppsCard, type ConnectedAppData } from "@/components/mcp/connected-apps-card";
 import { TokenCard, type TokenCardData } from "@/components/mcp/token-card";
@@ -232,13 +233,19 @@ const blueLinks = (root: ParentNode) => [...root.querySelectorAll("a")].filter((
 /**
  * 파랑 링크를 그리는 셸 화면 — 렌더해서 센다. `open`은 창 안의 링크를 드러내는 동작이다.
  */
+const META: MetaTabsInput = {
+  repository: { owner: "o", name: "r", branch: "main", connection: "connected" },
+  ciConfigured: true, surfaceCount: 1, keys: 1, members: 1, pendingInvites: 0, createdAt: now, archivedAt: null,
+  lastSync: null, held: null, prState: "absent",
+  lastPublish: { trigger: "manual", at: now, prUrl: "https://github.com/o/r/pull/7", changedValues: null, surfaceSlugs: [] },
+};
 const BLUE: { name: string; file: string; ui: () => ReactNode; open?: () => Promise<void> }[] = [
+  // 리포는 Project 탭, PR은 Publish 탭이다 — Radix가 비활성 패널의 자식을 그리지 않아 탭을 열어 센다.
+  { name: "Home 메타 — 리포 (Project 탭)", file: "components/home/meta-column.tsx", ui: () => <MetaColumn slug="acme" now={now} canOpenSettings={false} tabs={metaTabs(META)} /> },
   {
-    name: "Home 메타 — 리포·PR", file: "components/home/meta-column.tsx",
-    ui: () => <MetaColumn slug="acme" now={now} canOpenSettings={false} rows={[
-      { kind: "repository", owner: "o", name: "r", disconnected: false, href: "https://github.com/o/r" },
-      { kind: "lastPublish", at: now, prUrl: "https://github.com/o/r/pull/7", trigger: null },
-    ]} />,
+    name: "Home 메타 — PR (Publish 탭)", file: "components/home/meta-column.tsx",
+    ui: () => <MetaColumn slug="acme" now={now} canOpenSettings={false} tabs={metaTabs(META)} />,
+    open: () => click([...document.querySelectorAll('[role="tab"]')].find((tab) => tab.textContent === "Publish")!),
   },
   { name: "/projects 행 띠 — 열린 PR", file: "components/projects/project-list.tsx", ui: () => <ProjectList all={[{ ...BLUE_ROW, openPr: { url: "https://github.com/o/r/pull/7", number: 7 } }]} /> },
   { name: "Settings 연결 — App 설치", file: "components/settings/repository-card.tsx", ui: () => <RepositoryCard slug="acme" owner="o" repo="r" branch="main" archived={false} health={Promise.resolve({ status: "app-uninstalled" } as ConnectionHealth)} account={Promise.resolve({ status: "ok", login: "octo" })} appSlug="malmoi" /> },

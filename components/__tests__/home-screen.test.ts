@@ -56,7 +56,7 @@ describe("Home — 개요가 일로 이어진다 (project-home)", () => {
   it("순수 판정 다섯을 `lib/home/*`에서 받는다", () => {
     // ⚠️ **`recentActivity`가 2026-09-20에 빠졌다** (logs-rework) — 활동 조합이 사라지고 Home도
     // `lib/events/query.ts`의 같은 스트림을 읽는다. 아래 `loadEvents` 검사가 그 자리를 대신한다.
-    for (const fn of ["planHomeState(", "countCards(", "attentionItems(", "metaRows("]) {
+    for (const fn of ["planHomeState(", "countCards(", "attentionItems(", "metaTabs("]) {
       expect(src, fn).toContain(fn);
     }
   });
