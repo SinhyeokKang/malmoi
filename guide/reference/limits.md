@@ -4,7 +4,7 @@ Check the fixed limits for projects, members, invitations, and translation files
 
 ## Project and member limits {#limits}
 
-You can own up to 3 active projects. New invitations and resends are blocked once a project has 10 members. A project address (the name in its URL) can be up to 40 characters. Archiving a project frees a project slot; pending invitations do not count toward the member check. Previously issued invitations can still be accepted, so membership can exceed that threshold.
+You can own up to 3 active projects. New invitations and resends are blocked once a project has 10 members. A project address (the name in its URL) can be up to 40 characters. Archiving a project frees a project slot. The same limit applies when you restore an archived project, when you are changed to **Owner**, and when you accept an invitation as **Owner**: Malmoi blocks the change if it would take someone past 3 active projects as an owner, and restoring checks every owner of the project. A blocked invitation is not used up, so you can archive a project and open the same link again. If you already own more than 3 active projects, they stay as they are, and you can always archive one. Pending invitations do not count toward the member check. Previously issued invitations can still be accepted, so membership can exceed that threshold.
 
 ## Invitation limits {#invitations}
 
