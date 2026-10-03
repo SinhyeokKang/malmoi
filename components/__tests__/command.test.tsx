@@ -26,6 +26,8 @@ function Fixture({ ids = initial, query = "", onValueChange = () => {}, onNaviga
     </CommandList>
   </Command>;
 }
+/** 실제 포인터 움직임 — 활성 이동은 mousemove에서만 일어난다(#173). */
+async function move(target: Element) { await act(async () => { target.dispatchEvent(new MouseEvent("mousemove", { bubbles: true })); }); }
 function active(container: ParentNode): HTMLElement {
   const combobox = find<HTMLInputElement>(container, '[role="combobox"]');
   const id = combobox.getAttribute("aria-activedescendant");
@@ -253,7 +255,7 @@ it("hover와 mousedown이 입력 포커스를 유지하고 활성 항목만 바�
   combobox.focus();
   const options = container.querySelectorAll<HTMLElement>('[role="option"]');
   const user = userEvent.setup();
-  await act(async () => { await user.hover(options[2]!); });
+  await move(options[2]!);
   expect(active(container)).toBe(options[2]);
   expect(document.activeElement).toBe(combobox);
   await act(async () => { await user.pointer({ target: find(options[1]!, "a"), keys: "[MouseLeft>]" }); });
@@ -284,6 +286,36 @@ it("활성 항목 변경을 scrollIntoView nearest로 보낸다", async () => {
 });
 
 /**
+ * **멈춘 포인터 아래 행이 그려져도 활성은 옮겨지지 않는다** (#173 — QA2). Chrome은 렌더 뒤 포인터 아래 새 요소에 mouseover·mouseenter를
+ * 쏜다(mousemove 0). 그것으로 활성을 옮기면 ⌘K 직전에 커서가 놓인 자리의 행이 활성이 되고 `moved`가 서서 첫 행 규칙이 꺼진다.
+ */
+it("mouseover·mouseenter만으로는 활성이 첫 행 그대로이고, mousemove가 와야 그 행으로 옮겨 늦은 그룹에도 지킨다", async () => {
+  const view = await render(<Fixture ids={["docs/a", "docs/b", "docs/go"]} />);
+  const options = () => view.container.querySelectorAll<HTMLElement>('[role="option"]');
+  await act(async () => {
+    options()[2]!.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+    options()[2]!.dispatchEvent(new MouseEvent("mouseenter"));
+    find(options()[2]!, "a").dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+  });
+  expect(active(view.container).textContent).toContain("docs/a");
+  // 아직 "옮기지 않음"이라 늦게 온 그룹이 위에 끼면 첫 행을 따른다.
+  await view.rerender(<Fixture ids={["key/1", "docs/a", "docs/b", "docs/go"]} />);
+  expect(active(view.container).textContent).toContain("key/1");
+  await move(find(options()[3]!, "a"));
+  expect(active(view.container).textContent).toContain("docs/go");
+  await view.rerender(<Fixture ids={["project/x", "key/1", "docs/a", "docs/b", "docs/go"]} />);
+  expect(active(view.container).textContent).toContain("docs/go");
+});
+
+// 첫 행 위에서 포인터를 움직인 것도 선택이다 — 그 뒤 늦은 그룹이 위에 끼어도 그 행을 지킨다.
+it("이미 활성인 첫 행 위의 mousemove도 옮김으로 친다", async () => {
+  const view = await render(<Fixture ids={["docs/a", "docs/go"]} />);
+  await move(view.container.querySelectorAll('[role="option"]')[0]!);
+  await view.rerender(<Fixture ids={["key/1", "docs/a", "docs/go"]} />);
+  expect(active(view.container).textContent).toContain("docs/a");
+});
+
+/**
  * **사용자가 옮기기 전엔 활성이 첫 행을 따라간다** (2026-10-03 사용자 — QA: 첫 열림에 늦게 온 Docs·Keys 때문에 활성이 `Go to docs`나
  * 아래 Docs 행에 머물러 Enter의 목적지가 응답 순서에 달렸다). ↑↓·hover로 옮긴 뒤에만 늦은 그룹 도착에도 그 id를 지킨다.
  */
@@ -295,7 +327,7 @@ it("옮기기 전엔 늦게 온 그룹이 위에 끼어도 활성이 첫 행이�
   await view.rerender(<Fixture ids={["key/1", "docs/a", "docs/b", "docs/go"]} />);
   expect(active(view.container).textContent).toContain("key/1");
   const options = view.container.querySelectorAll<HTMLElement>('[role="option"]');
-  await act(async () => { await userEvent.setup().hover(options[2]!); });
+  await move(options[2]!);
   expect(active(view.container).textContent).toContain("docs/b");
   await view.rerender(<Fixture ids={["project/x", "key/1", "docs/a", "docs/b", "docs/go"]} />);
   expect(active(view.container).textContent).toContain("docs/b");

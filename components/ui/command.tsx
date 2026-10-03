@@ -29,7 +29,7 @@ export function Command({ ids, query, children }: { ids: readonly string[]; quer
   const prefix = useId();
   const root = useRef<HTMLDivElement>(null);
   const ime = useImeGuard();
-  // `moved` — 사용자가 ↑↓·hover로 활성을 옮겼나. 옮기기 전엔 목록이 바뀔 때마다 첫 행을 따라간다(`reconcileActive`).
+  // `moved` — 사용자가 ↑↓·포인터 움직임으로 활성을 옮겼나. 옮기기 전엔 목록이 바뀔 때마다 첫 행을 따라간다(`reconcileActive`).
   const [selection, setSelection] = useState({ ids, query, activeId: ids[0] ?? null, moved: false });
   const changed = query !== selection.query || ids.length !== selection.ids.length || ids.some((id, index) => id !== selection.ids[index]);
   const reconciled = changed ? reconcileActive(ids, selection, query !== selection.query) : selection;
@@ -43,7 +43,7 @@ export function Command({ ids, query, children }: { ids: readonly string[]; quer
     return () => clearTimeout(timer);
   }, [ids.length, query]);
 
-  return <CommandContext value={{ listId: `${prefix}-list`, optionId, activeId, activate: id => setSelection(current => ({ ...current, activeId: id, moved: true })) }}>
+  return <CommandContext value={{ listId: `${prefix}-list`, optionId, activeId, activate: id => setSelection(current => current.activeId === id && current.moved ? current : { ...current, activeId: id, moved: true }) }}>
     <div ref={root} className="flex min-h-0 flex-1 flex-col"
       onCompositionStart={ime.onCompositionStart}
       onCompositionEnd={ime.onCompositionEnd}
@@ -147,7 +147,10 @@ export function CommandItem({ id, href, title, icon, context, description, badge
     return () => window.removeEventListener("click", navigate, true);
   }, [onNavigate]);
 
-  return <div id={optionId(id)} role="option" aria-selected={selected} onMouseEnter={() => activate(id)}
+  // ⚠️ 활성 이동은 **실제 포인터 움직임**(mousemove)에서만이다(#173) — Chrome은 멈춘 포인터 아래 새로 그려진 행에도 렌더 뒤
+  // mouseover·mouseenter를 쏜다(mousemove 0). enter로 옮기면 ⌘K 직전 커서 자리의 행이 활성이 되고 `moved`가 서 첫 행 규칙이 꺼진다.
+  // 이미 옮겨 둔 행에서 움직일 때는 `activate`가 같은 상태를 돌려줘 다시 그리지 않는다.
+  return <div id={optionId(id)} role="option" aria-selected={selected} onMouseMove={() => activate(id)}
     onMouseDown={event => event.preventDefault()}>
     <ListRow ref={anchor} href={href} tabIndex={-1} variant="canvas" selected={selected} aria-current={false}
       className={cn("text-sm", !selected && "hover:bg-transparent")}
