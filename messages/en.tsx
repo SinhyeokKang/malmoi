@@ -3645,9 +3645,10 @@ export const en = {
       /**
        * 복원·OWNER 승격이 누군가의 활성 OWNER 프로젝트를 상한 위로 올린다(operator-account C6·C7). 행위자인지 다른 OWNER인지
        * 가르지 않는다 — 누가 넘는지는 Members에서 보인다. 할 일(보관해 자리 비우기)을 함께 말한다. 숫자는 `PROJECT_LIMIT`이다.
+       * 이미 넘긴 사람(C9)에게도 참이도록 "or more"·"projects"로 쓴다.
        */
       "owner-limit-reached": (limit: number): string =>
-        `A person can own up to ${limit} active projects, and someone here already has ${limit}. They need to archive one first.`,
+        `A person can own up to ${limit} active projects, and someone here already has ${limit} or more. They need to archive projects first.`,
     },
 
     /** `inviteErrorMessage` — `InviteError` 여덟 + 폴백(모르는 `?e=`에 던지지 않는다). */
@@ -3665,8 +3666,9 @@ export const en = {
       // 초대는 소비되지 않는다 — 복원 뒤 만료 전이면 같은 링크가 산다. 그래서 "새 링크를 받아라"가 아니다.
       archived: "This project is archived. Ask the person who invited you to restore it, then open this link again.",
       // OWNER 초대만 걸린다(operator-account C8). 초대는 소비되지 않았다 — 자리를 비우면 같은 링크가 산다. 숫자는 `PROJECT_LIMIT`이다.
+      // ⚠️ "or more"·"fewer than"인 이유: 옛 우회로(보관 → 생성 → 복원)로 이미 넘긴 사람도 이 거부를 받는다(C9) — 하나만 보관해선 안 풀린다.
       "limit-reached": (limit: number): string =>
-        `You already own ${limit} active projects. Archive one of them, then open this link again.`,
+        `You already own ${limit} or more active projects. Archive projects until you own fewer than ${limit}, then open this link again.`,
       unavailable: "Something went wrong. Try again in a moment.",
       fallback: "We couldn't accept the invitation. Ask the person who invited you for a new link.",
     },

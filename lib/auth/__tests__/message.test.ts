@@ -247,6 +247,12 @@ describe("상한 거부 문구", () => {
     expect(text).not.toContain("owner-limit-reached");
   });
 
+  it("이미 넘긴 사용자(C9)에게도 참이다 — '정확히 3'이나 '하나만 보관'을 단언하지 않는다", () => {
+    expect(accessErrorMessage("owner-limit-reached")).toMatch(/or more/);
+    expect(inviteErrorMessage("limit-reached")).toMatch(/or more/);
+    expect(inviteErrorMessage("limit-reached")).toMatch(/fewer than/);
+  });
+
   it("초대 limit-reached는 상한 숫자와 '보관한 뒤 이 링크로 다시'를 말한다 — 초대는 소비되지 않았다", () => {
     const text = inviteErrorMessage("limit-reached");
     expect(text).toContain(String(PROJECT_LIMIT));
