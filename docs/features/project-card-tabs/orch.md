@@ -12,6 +12,7 @@
 - **`/guide-shots`를 게이트 마지막 단계로 반드시 돈다** (2026-10-04 사용자) — tasks T13의 "바뀌었으면" 조건을 이 실행에선 쓰지 않는다. 메타 열이 보이는 컷은 전부 다시 찍는다.
 - B-T4: SKIPPED `reconfirm`은 `changedValues = null`(렌더가 안 돌아 관측 없음 — `changed = null`과 짝). 나머지 SKIPPED는 `0`. tasks T4 표의 "reconfirm = 0"을 대체한다(2026-10-04 지휘자 판정, spec "changed와 같은 의미" 근거).
 - D-T9: `(home)/loading.tsx`는 정적 폴백이라 역할을 모른다 → **바닥 링크 골격을 늘 그린다**(지금 동작 유지, EDITOR는 도착 시 45px 줄어든다). spec 완료 조건·tasks T9의 "`canOpenSettings`일 때만"을 대체하는 의도된 이탈 — DESIGN §6.64에 기록(2026-10-04 지휘자 판정 · 사용자 확인 "그냥 가"; shell context 신설은 범위 확장이라 기각).
+- #179: 메타 열 브랜치 라벨은 **`Branch`**(시안 v3 + spec). Settings의 `Base branch`와 낱말이 갈리는 것은 spec 비목표("다른 화면 표기는 맞추지 않는다 — `/ux-audit` 후보")로 남긴다(2026-10-04 지휘자 판정).
 - 모델 경계: Claude Code 지휘 → Sonnet·Opus만, effort ≤ high. 교차 허가 없음.
 
 ## 배치
@@ -48,3 +49,4 @@
 - A fix1(`4efc2985`·`1760bb46`) → dev 통합(T1·T2·T6·fix), `pnpm gate` ok. 워크트리 정리. 웨이브 1 종료 — D 착수.
 - D 1차 완료(커밋 10, gate ok) → 리뷰(Opus): 🔴 0 · 🟡 ship.md `metaRows` · DESIGN Languages 잔재 · PRODUCT 스킵 0 문장 · 프로젝트 전환 Hold 테스트 · aria-controls 패널 단언 · 첫 Sync 전 탭에 Hold가 붙음(spec "이 행 하나뿐" 위반). `Base branch` vs `Branch`는 Q에서 시안으로 판정. → D fix1.
 - D fix1 → dev 통합(T8·T9·T11·fix), `pnpm gate` ok → **dev push `b5430f0b..e74be445`**(A·B·C·D 전부). D 워커는 Q 결함 수정용으로 유지. Q 착수.
+- Q 감사 완료: 보드 11개 중 10 ✅ · `2g` 부분(늦게 도착하는 Hold·PR `Open`·`Couldn't check` 미검증 — 테스트 리포 PR #17 재오픈을 GitHub이 거부, 쓰기 없음). 이슈 #179(→`Branch`) #180(회색 값 톤) #181(골격 막대 폭) → D q1 `ctx_ffab2bc3bb50`. dev DB 조작 전부 원복(handoff-Q). Q 터미널 재실측용 유지.
