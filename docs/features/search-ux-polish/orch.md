@@ -22,6 +22,7 @@ search-ux-unify(dev `22ed879c`까지) 뒤처리 두 갈래를 병렬로 태운�
 | O2 | design-sync는 **`--audit` 모드로 main 체크아웃에서** 돈다(dev 서버·`.env.local` 필요). 결함은 BugShot(`[design-sync]` 태그)으로 내고, 수정은 **별도 워크트리의 수정 워커(DF)**가 한다 — 지휘자는 코드를 고치지 않는다. 수정이 dev에 들어가면 같은 감사 워커(또는 새 워커)가 재실측한다 | `/orchestrate` 규칙 + design-sync 3단계를 워커 둘로 나눔 |
 | O3 | **문서화된 이탈은 이탈이 아니다** — search-ux-unify 결정이 시안 뒤에 정한 것: D15 그룹 머리 `text-gray-dim`(시안도 같음) · O9 첫 열림 활성 = 첫 행 · #173 활성 이동은 mousemove만 · U1 보관 프로젝트 Pages 행 배지 · `hover:bg-transparent` 비활성 행만 · `CommandStatus` 묶음 · `/docs` 질의 중 개요 문서 한 행. 정본 문서(`docs/DESIGN.md` §6.4·§6.54 등)에 적힌 것은 코드가 이긴다 | design-sync §2 "문서화된 이탈" |
 | O4 | Safari는 범위 밖(이전 orch O2 그대로) — Chromium만 잰다 | 사용자 2026-10-03 |
+| O8 | **상태 칩 여백은 `px-1.5`로 통일**(코드베이스 기준 — 문구 배지 49곳 중 47곳이 `Badge` 기본). 스위처·`/projects`의 `px-2` 덧칠을 걷는다. 시안 B1의 `px-2`는 따르지 않고 #174는 결함 아님으로 닫는다 | 사용자 2026-10-03 (DS 판단 요청) |
 | O5 | 워커 모델: Claude Code 지휘 → Opus 5.5·Sonnet 5.5, effort ≤ high | `/orchestrate` 0단계 |
 | O6 | **갈래 3 — `/guide-shots` 전부 재촬영 + README 이미지**("계속 미뤄서 이번에 다 찍어야함"). 대상: `pnpm guide:check` stale 전부(직전 25컷 · 밀린 `create-ready` 포함) + README 두 장(`hero` · `logs`) + 이번 변경이 바꾼 화면. **번역 페이지 컷은 랜딩 목업과 유사한 씬**(`m.landing.mockup` — `Acme web` · 소스 `web`/`emails` · 네임스페이스 `cart`·`checkout`·`common`·`product`…, 트리에 네임스페이스가 많아 보이게). 모든 UI 변경(P·DF)이 dev에 들어간 뒤 main 체크아웃에서 직렬로 돈다 | 사용자 2026-10-03 |
 | O7 | 목업 씬 데이터는 **상주 촬영 프로젝트**(2026-10-03 번복 — 지우지 않고 이후 스크린샷 갱신마다 재사용): `bugshot-i18n-test-qa3`(base 브랜치 삭제로 sync 실패)를 **영구 보관**해 OWNER 한도 자리를 비우고 → 촬영 리포 `i18n-format-check`에 목업과 같은 소스·네임스페이스 로케일 픽스처를 **커밋**(리포 쓰기 승인) → 그 리포로 `Acme web` 프로젝트 생성·적재 → 촬영. 삭제하지 않는다. `i18n-order-check`는 건드리지 않는다. dev 전/후 표 + `guide/SHOOTING.md`에 상주 촬영 프로젝트 절차를 정본으로 적는다 | 사용자 2026-10-03 |
@@ -61,3 +62,4 @@ search-ux-unify(dev `22ed879c`까지) 뒤처리 두 갈래를 병렬로 태운�
 | 2026-10-03 | P 시작(`sup-p`, Sonnet medium) ∥ DS 시작(main 체크아웃, Opus high) |
 | 2026-10-03 | 갈래 3(GS) 추가 — 사용자 지시, 일회용 프로젝트 승인(O6·O7) |
 | 2026-10-03 | O7 번복 — 촬영 프로젝트 상주(qa3 영구 보관 · 픽스처는 촬영 리포에 커밋) |
+| 2026-10-03 | P(+fix1) 5커밋 dev 통합(`de98d385..f7bf0910`), gate ok. DS 감사: 결함 4(#174~#177) — #174는 O8로 결함 아님(닫음). DF 시작(#175·#176·#177 + O8) |
