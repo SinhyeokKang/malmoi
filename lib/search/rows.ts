@@ -57,11 +57,11 @@ export function keySearchText(q: string, authenticated: boolean): string | null 
   return authenticated && query.length >= KEY_QUERY_MIN ? query : null;
 }
 
-export function searchRows({ index, keys, q, activeSlug }: { index: SearchIndex; keys: readonly KeyHit[]; q: string; activeSlug: string | null }): { groups: SearchRowGroup[]; ids: string[] } {
+export function searchRows({ index, keys, q, activeSlug }: { index: SearchIndex<Glyph>; keys: readonly KeyHit[]; q: string; activeSlug: string | null }): { groups: SearchRowGroup[]; ids: string[] } {
   const icon = glyphs();
   const tokens = searchTokens(q);
   const mark = (text: string, parts: readonly string[] = tokens): SearchSegments => highlightSegments(text, parts);
-  const entryRow = (kind: "projects" | "pages" | "docs", entry: SearchEntry): SearchRow => ({
+  const entryRow = (kind: "projects" | "pages" | "docs", entry: SearchEntry<Glyph>): SearchRow => ({
     id: entry.id,
     href: entry.href,
     title: mark(entry.title),
@@ -124,12 +124,12 @@ export function searchStatuses({ membership, docs, keys }: {
 }): { pending: boolean; lines: { tone: "muted" | "danger"; text: string }[]; failed: boolean } {
   const lines: { tone: "muted" | "danger"; text: string }[] = [];
   if (membership === "loading") lines.push({ tone: "muted", text: m.projects.loading });
-  if (membership === "unauthorized") lines.push({ tone: "danger", text: m.search.sessionEnded });
+  // 세션 종료는 무엇이 알아챘든 한 번만 말한다 — 같은 문장 두 줄은 줄 key도 겹친다.
+  if (membership === "unauthorized" || keys === "unauthorized") lines.push({ tone: "danger", text: m.search.sessionEnded });
   if (membership === "unavailable") lines.push({ tone: "danger", text: m.search.projectsUnavailable });
   if (docs === "loading") lines.push({ tone: "muted", text: m.search.loadingDocs });
   if (docs === "failed") lines.push({ tone: "danger", text: m.search.docsUnavailable });
   if (keys === "loading") lines.push({ tone: "muted", text: m.search.loadingKeys });
-  if (keys === "unauthorized") lines.push({ tone: "danger", text: m.search.sessionEnded });
   if (keys === "unavailable") lines.push({ tone: "danger", text: m.search.keysUnavailable });
   return { pending: lines.some(line => line.tone === "muted"), lines, failed: lines.some(line => line.tone === "danger") };
 }

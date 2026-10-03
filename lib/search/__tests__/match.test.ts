@@ -36,19 +36,20 @@ describe("검색 판정", () => {
     // 점수가 먼저다 — 접두 일치한 보관 프로젝트는 포함 일치한 활성 프로젝트보다 앞이다.
     expect(searchGroups(index({ projects: [entry("contains", "Demo old"), entry("old", "Old demo", { archived: true })] }), "old", { activeSlug: null })[0]?.items.map(r => r.id)).toEqual(["old", "contains"]);
   });
-  it("미리보기는 현재·비보관 우선 프로젝트 3개, 프로젝트 Pages 3개, 문서 도입부 3개 — 출구 행은 rows.ts가 붙인다", () => {
+  // 상한(앞 셋)은 `rows.ts`의 `PREVIEW_LIMIT` 하나가 자른다(R-B1 Y5) — 여기는 순서·거르기만 정한다. 상한 기대값은 rows.test에 있다.
+  it("미리보기는 현재·비보관 우선 프로젝트, 첫 프로젝트의 Pages, 문서 도입부를 자르지 않고 낸다 — 출구 행은 rows.ts가 붙인다", () => {
     const projects = [entry("old", "Old", { slug: "old", archived: true }), ...["a", "b", "c", "d"].map(slug => entry(slug, slug, { slug }))];
     const pages = [entry("account"), ...["a", "c"].flatMap(slug => Array.from({ length: 4 }, (_, i) => entry(`${slug}${i}`, "Home", { slug })))];
     const docs = [entry("section", "Section", { anchor: "section" }), ...["d1", "d2", "d3", "d4"].map(id => entry(id, id, { anchor: null }))];
     const found = previewGroups(index({ projects, pages, docs }), { activeSlug: "c" });
-    expect(found[0]?.items.map(r => r.id)).toEqual(["c", "a", "b"]);
-    expect(found[1]?.items.map(r => r.id)).toEqual(["c0", "c1", "c2"]);
-    expect(found[2]?.items.map(r => r.id)).toEqual(["d1", "d2", "d3"]);
-    expect(previewGroups(index({ projects, pages }), { activeSlug: null })[1]?.items.map(r => r.id)).toEqual(["a0", "a1", "a2"]);
+    expect(found[0]?.items.map(r => r.id)).toEqual(["c", "a", "b", "d", "old"]);
+    expect(found[1]?.items.map(r => r.id)).toEqual(["c0", "c1", "c2", "c3"]);
+    expect(found[2]?.items.map(r => r.id)).toEqual(["d1", "d2", "d3", "d4"]);
+    expect(previewGroups(index({ projects, pages }), { activeSlug: null })[1]?.items.map(r => r.id)).toEqual(["a0", "a1", "a2", "a3"]);
   });
   it("프로젝트 0과 비로그인 미리보기는 사용자 Pages와 Docs, 또는 Docs만", () => {
     const pages = ["projects", "mcp", "account", "new", "changelog"].map(id => entry(id));
-    expect(previewGroups(index({ pages }), { activeSlug: null }).map(g => [g.kind, g.items.map(r => r.id)])).toEqual([["pages", ["projects", "mcp", "account"]], ["docs", []]]);
+    expect(previewGroups(index({ pages }), { activeSlug: null }).map(g => [g.kind, g.items.map(r => r.id)])).toEqual([["pages", ["projects", "mcp", "account", "new", "changelog"]], ["docs", []]]);
     expect(previewGroups(index({ authenticated: false }), { activeSlug: null }).map(g => [g.kind, g.items.map(r => r.id)])).toEqual([["docs", []]]);
   });
 });

@@ -1,6 +1,8 @@
-import type { ComponentType } from "react";
-
-export type SearchEntry = {
+/**
+ * `Icon`은 Pages 행 글리프의 타입이다 — 이 파일은 import 0인 잎이라 React 타입을 들이지 않고 소비자(`nav-index`·`rows`)가 채운다.
+ * 기본 `never`라 아이콘이 없는 Docs(JSON)·Projects 항목이 어느 색인에도 그대로 들어간다.
+ */
+export type SearchEntry<Icon = never> = {
   id: string;
   title: string;
   href: string;
@@ -11,16 +13,16 @@ export type SearchEntry = {
   image?: string | null;
   anchor?: string | null;
   /** Pages 행의 글리프 — 같은 목적지의 nav 항목 아이콘이다(`nav-index.ts`가 싣는다). 다른 그룹은 `rows.ts`가 정한다. */
-  icon?: ComponentType<{ className?: string }>;
+  icon?: Icon;
 };
 
-export type SearchIndex = {
-  projects: readonly SearchEntry[];
-  pages: readonly SearchEntry[];
-  docs: readonly SearchEntry[];
+export type SearchIndex<Icon = never> = {
+  projects: readonly SearchEntry<Icon>[];
+  pages: readonly SearchEntry<Icon>[];
+  docs: readonly SearchEntry<Icon>[];
   authenticated: boolean;
 };
-export type SearchGroup = { kind: "projects" | "pages" | "docs"; items: SearchEntry[] };
+export type SearchGroup<Icon = never> = { kind: "projects" | "pages" | "docs"; items: SearchEntry<Icon>[] };
 type MatchField = "title" | "context" | "body";
 
 /**
@@ -43,7 +45,7 @@ export function matchesAllTokens(text: string, tokens: readonly string[]): boole
   return tokens.every(token => folded.includes(token));
 }
 
-export function scoreEntry(entry: SearchEntry, tokens: readonly string[]): { score: number; fields: MatchField[] } | null {
+export function scoreEntry<Icon>(entry: SearchEntry<Icon>, tokens: readonly string[]): { score: number; fields: MatchField[] } | null {
   if (tokens.length === 0) return null;
   const fields: MatchField[] = [];
   let score = 0;
@@ -61,7 +63,7 @@ export function scoreEntry(entry: SearchEntry, tokens: readonly string[]): { sco
   return { score, fields };
 }
 
-export function searchGroups(index: SearchIndex, q: string, { activeSlug }: { activeSlug: string | null }): SearchGroup[] {
+export function searchGroups<Icon>(index: SearchIndex<Icon>, q: string, { activeSlug }: { activeSlug: string | null }): SearchGroup<Icon>[] {
   const tokens = searchTokens(q);
   if (tokens.length === 0) return [];
   return (["projects", "pages", "docs"] as const).flatMap(kind => {
@@ -78,16 +80,17 @@ export function searchGroups(index: SearchIndex, q: string, { activeSlug }: { ac
 }
 
 /**
- * 빈 질의 미리보기 — 그룹마다 앞 셋이다. 출구 행(`Go to your projects`·`Go to docs`)은 문구·경로라 `rows.ts`가 붙인다
- * (이 파일은 import 0인 잎이라 사전·routes를 물지 않는다).
+ * 빈 질의 미리보기의 순서·거르기 — 현재·비보관 우선 프로젝트, 첫 프로젝트의 Pages, 문서 도입부. **자르지 않는다** — 상한은
+ * `rows.ts`의 `PREVIEW_LIMIT` 하나가 든다(상수가 둘이면 리터럴 쪽이 이긴다). 출구 행(`Go to your projects`·`Go to docs`)은
+ * 문구·경로라 `rows.ts`가 붙인다(이 파일은 import 0인 잎이라 사전·routes를 물지 않는다).
  */
-export function previewGroups(index: SearchIndex, { activeSlug }: { activeSlug: string | null }): SearchGroup[] {
-  const groups: SearchGroup[] = [];
+export function previewGroups<Icon>(index: SearchIndex<Icon>, { activeSlug }: { activeSlug: string | null }): SearchGroup<Icon>[] {
+  const groups: SearchGroup<Icon>[] = [];
   const projects = [...index.projects].sort((a, b) => Number(b.slug === activeSlug) - Number(a.slug === activeSlug) || Number(!!a.archived) - Number(!!b.archived));
-  if (index.authenticated && projects.length > 0) groups.push({ kind: "projects", items: projects.slice(0, 3) });
+  if (index.authenticated && projects.length > 0) groups.push({ kind: "projects", items: projects });
   const projectSlug = projects[0]?.slug;
   const pages = projectSlug === undefined ? index.pages : index.pages.filter(entry => entry.slug === projectSlug);
-  if (pages.length > 0) groups.push({ kind: "pages", items: pages.slice(0, 3) });
-  groups.push({ kind: "docs", items: index.docs.filter(entry => entry.anchor == null).slice(0, 3) });
+  if (pages.length > 0) groups.push({ kind: "pages", items: [...pages] });
+  groups.push({ kind: "docs", items: index.docs.filter(entry => entry.anchor == null) });
   return groups;
 }

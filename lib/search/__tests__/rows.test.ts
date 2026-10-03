@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
-import { navWorkItems, type NavProject } from "@/lib/shell/nav";
+import { navWorkItems, type NavItem, type NavProject } from "@/lib/shell/nav";
 import { Q_MAX_LENGTH } from "@/lib/translations/query";
 
 import type { KeyHit } from "../key-href";
@@ -19,7 +19,8 @@ const docs: SearchEntry[] = [
   { id: "docs:sync", title: "Sync", href: "/docs/sync", body: "Sync the repository" },
   { id: "docs:keys", title: "Keys", href: "/docs/keys", body: "Find keys" },
 ];
-const index = (memberships: readonly NavProject[] | null, extra: Partial<SearchIndex> = {}): SearchIndex =>
+type Index = SearchIndex<NavItem["icon"]>;
+const index = (memberships: readonly NavProject[] | null, extra: Partial<Index> = {}): Index =>
   ({ ...navSearchEntries(memberships, { activeSlug: null, userName: "Person" }), docs, ...extra });
 const hit = (id: string, patch: Partial<KeyHit> = {}): KeyHit => ({ id, key: id, namespace: "_root", sourceText: "Source text", surfaceSlug: "web", slug: "demo", name: "Demo", inKey: true, localeCode: null, value: null, ...patch });
 const rendered = (rows: { groups: { rows: SearchRow[] }[] }) => rows.groups.flatMap(group => group.rows.map(row => row.id));
@@ -47,6 +48,22 @@ describe("searchRows — 그룹·행·ids 한 원천", () => {
     expect(pages?.rows).toHaveLength(3);
     expect(docsGroup?.rows.at(-1)).toMatchObject({ href: routes.docs(), tile: { kind: "glyph", icon: CircleHelp } });
     expect(text(docsGroup?.rows.at(-1)?.title)).toBe(m.search.goToDocs);
+  });
+
+  // 미리보기 상한의 정본은 rows.ts의 PREVIEW_LIMIT 하나다(R-B1 Y5 — match.ts의 리터럴 3이 이기던 것을 걷었다).
+  it("미리보기 상한 — 그룹마다 앞 셋, 현재 프로젝트의 Pages, 문서 도입부(절 제외)", () => {
+    const docsMany: SearchEntry[] = [
+      { id: "docs:a#s", title: "A", href: "/docs/a#s", anchor: "s" },
+      ...["d1", "d2", "d3", "d4"].map(id => ({ id: `docs:${id}`, title: id, href: `/docs/${id}`, anchor: null })),
+    ];
+    const memberships = [project("old", "Old", true), ...["a", "b", "c", "d"].map(slug => project(slug))];
+    const result = searchRows({ index: index(memberships, { docs: docsMany }), keys: [], q: "", activeSlug: "c" });
+    const [projects, pages, docsGroup] = result.groups;
+    expect(projects?.rows.map(r => r.id)).toEqual(["project:c", "project:a", "project:b", "go-to-projects"]);
+    expect(pages?.rows.map(r => r.id)).toEqual(["page:c:home", "page:c:sources", "page:c:translations"]);
+    expect(docsGroup?.rows.map(r => r.id)).toEqual(["docs:d1", "docs:d2", "docs:d3", "go-to-docs"]);
+    const user = searchRows({ index: index([]), keys: [], q: "", activeSlug: null });
+    expect(user.groups[0]?.rows.map(r => r.id)).toEqual(["page:projects", "page:mcp", "page:account"]);
   });
 
   it.each([null, []] as const)("/docs로 가는 행은 정확히 하나 — memberships %j", (memberships) => {
@@ -199,6 +216,11 @@ describe("searchStatuses", () => {
     expect(result.failed).toBe(true);
     const rows = searchRows({ index: index([project("demo")], { docs: [] }), keys: [], q: "demo", activeSlug: null });
     expect(rows.groups.map(g => g.kind)).toEqual(["projects", "pages"]);
+  });
+
+  // 순수 함수 계약 — 멤버십·Keys가 둘 다 세션 종료여도 문장은 한 번이다(줄 key 충돌도 막는다).
+  it("세션 종료 줄은 한 번만 낸다", () => {
+    expect(searchStatuses({ membership: "unauthorized", docs: "ready", keys: "unauthorized" }).lines).toEqual([{ tone: "danger", text: m.search.sessionEnded }]);
   });
 
   it("세션 종료 문장은 기존 형을 따른다", () => {
