@@ -1627,9 +1627,17 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
   `too-large`는 **모든 표면이 한도 보류일 때만**이다 — 파싱 실패가 섞이면 `failed`, 적재가 섞이면 `partial`로 소스별 결과에 맡긴다(`summarizeRun`). ⚠️ **한도 보류 프로젝트는 매 밤 다시 시도하고 매 밤 `too-large`를 남긴다** — 한도가 영구라 상태를 쓰지 않는 대가다. ⚠️ **수동 Sync는 이 분류를 타지 않는다** — 사람이 누른 실행의 실패는 그 사람이 Home에서 봐야 한다.
 
 **`changedValues` — 적재가 실제로 `value`를 바꾼 셀 수** (2026-09-30, nightly-sync). 모든 적재 사건(CI · 야간 · 수동 Sync · 첫 적재 셋)이 싣고 Logs 상세가 "N values changed"로 보인다. 필드가 없는 옛 사건과 실패 실행은 0이 아니라 `—`다 — 실패에 0을 적으면 "아무것도 안 바뀐 성공"과 같아진다(`changedValuesText`). 정의는 삽입 포함 `value`가 바뀐 셀이고 description·placeholders만 바뀐 셀과 토큰 가드로 안 덮인 셀은 세지 않는다.
-- ⚠️ **판정에 쓰지 않는다 — 관측값이다.** 이 수로 무엇을 덮을지 고르는 순간 병합이다. `rg changedValues lib/protection lib/nightly lib/pull`이 0이어야 한다.
+- ⚠️ **판정에 쓰지 않는다 — 관측값이다.** 이 수로 무엇을 덮을지 고르는 순간 병합이다. `rg changedValues lib/protection lib/nightly`가 0이어야 한다 — `lib/pull`은 2026-10-04부터 아래 Publish 쪽 같은 이름의 수를 **세고 싣기만** 한다(`lib/pull/changed-values.ts` · `run.ts`의 `committed.changedValues`), 읽어서 고르는 자리는 거기도 0이다.
 - 세는 자리는 공유 코어의 upsert 한 문장이다(`lib/push/apply.ts`) — `ON CONFLICT … RETURNING`은 old 값을 못 보므로 CTE `old`가 기존 값을 먼저 읽고 `IS DISTINCT FROM`으로 센다(그래서 `$executeRaw`가 `$queryRaw`다). 싣는 생산자는 따로 배선한다(CI `onApplied` · 수동/야간 `close` · 첫 적재 셋).
 - ⚠️ **`old`는 상관 서브쿼리 + `LIMIT 1`이고 `projectId` 조건은 그 펜스 밖이다** (POSTMORTEM 2026-09-18 부류 — 낡은 통계에서 인덱스를 버렸다). 평범한 조인이면 ANALYZE 전 표에서 해시 조인 + 풀스캔을 고르고(실측), `projectId`를 안에 넣으면 ANALYZE 전 계획이 `projectId` 선두 인덱스로 갈아타 행마다 프로젝트 범위를 훑는다(실측). 펜스 밖 조건은 내려가지 않아 조회는 유일 인덱스 `Translation_keyId_localeCode_key` 그대로이고 테넌트 조건은 결과에 걸린다. 계획은 `lib/keys/__tests__/repository-import.integration.ts`가 1446키 픽스처에서 ANALYZE 전·후 `EXPLAIN (FORMAT JSON)`의 `Index Name`으로 고정하고, 시간 상한은 **라우트 `maxDuration`(60초)**을 단언한다(`pnpm test:projects:postgres` — 실측은 warm 230–270ms. 옛 태스크의 "기존 상한 안"은 잴 수 없는 문장이라 이 경계로 바꿨다).
+
+**`SyncRun.changedValues` — Publish가 리포 파일에서 실제로 바꾼 번역 엔트리 수** (2026-10-04, project-card-tabs — `Int?`, additive). 두 탭(Home 메타 Sync·Publish)의 `Changed`가 같은 단위(번역 값 수)로 말하게 하려고 더했다 — 그 전 Publish는 `SyncRun.changed`(파일 수)뿐이었다.
+- **정의 (b)**: 바뀐 파일마다 base 원문(`current` — 이미 읽은 것)과 새 원문을 그 어댑터의 `read`로 파싱해 견준 엔트리 차이 — **수정 + 추가, 삭제는 세지 않는다**(DB에만 있는 키·`orphaned` 키가 빠지는 것은 사람의 편집이 아니다). 메시지만 견준다(description·placeholders 차이는 0). 순수 함수 `countChangedValues`·`countFileChangedValues`(`lib/pull/changed-values.ts`), 합산은 `runPull`이 2층 비교 뒤·첫 쓰기 전에 한다. GitHub 추가 호출 0 · blob SHA가 같은 파일은 렌더 목록에 없어 구조적으로 0이다. ⚠️ 키 조회는 `Object.create(null)` + `Object.hasOwn`이다(로케일 파일의 키 — `__proto__`).
+  - 왜 (a) "실린 편집 수"가 아닌가: 실행은 미전달 셀이 아니라 활성 키 전체의 DB 스냅샷을 렌더한다 — CI 보류 중 리포에서 바뀐 값을 DB 값이 되돌리는 셀은 미리보기의 `same` 비교로는 안 잡힌다. 미리보기와 공유하지 않는다.
+- **PR 누적치다** — 열린 PR을 갱신하는 실행은 sync 브랜치를 base에서 다시 뽑으므로 "이번 실행의 증분"이 아니라 "PR 전체 vs base"다. `SyncRun.changed`(파일 수)와 같은 의미다.
+- **값**: 커밋(SUCCEEDED)은 센 수 — 표현만 바뀐 커밋이면 `0`이 정상 관측값이다. 스킵(SKIPPED — no-edits · no-changes · withheld · writer-warnings)은 `0`. **`null`은 넷** — 실패 · 기록 이전 행 · **reconfirm 스킵**(렌더 전에 멈춰 관측이 없다 — `changed = null`과 짝) · **집계 예외**(관측 실패 — Publish는 그대로 성공하고 수만 `null`로 접는다). 거부(refusal)는 `SyncRun` 행이 없다.
+- ⚠️ **관측값이다 — 판정에 쓰지 않는다.** 이 수로 무엇을 보내거나 건너뛸지 고르는 순간 병합이다(위 IMPORT 쪽과 같은 규칙). 실행의 판정은 그대로 파일 blob SHA다.
+- 읽는 자리: Home 메타 Publish 탭 `Changed`(`null`이면 행 없음) · Logs Publish **상세**의 `Values` 칸(`N values changed`, `null`이면 `—` + not recorded — 보조줄엔 넣지 않는다). PUBLISH payload에 복제하지 않는다(§5.7.3).
 
 **"예외 없음"의 범위는 값이 있는 셀이다** (2026-09-17 명문화, launch-readiness L1.3). `applyPush`는 `value === ""`인 엔트리를 적재 대상에서 뺀다(`lib/push/apply.ts`) — 리포에서 사라지거나 비워진 번역은 DB 셀을 **건드리지 않는다**. 이것은 셀 단위 "누가 이겼나"가 아니라 **"코드에서 번역을 지우는 방법은 없다"**(§0 불변식 3)의 귀결이다: pull은 DB의 `""`를 부재로 내보내므로(POSTMORTEM 2026-09-09 — `buildWriteEntries`의 판정 기준은 "그 값이 없으면 키가 사라지는가"), 부재를 삭제로 받으면 리포에 잠깐 없던 셀이 다음 PR에서 키째 사라진다. 지우려면 UI에서 비운다. **"리포 부재 → DB 비움"으로 바꾸는 것은 export가 명시적 빈값과 미번역 빈값을 구별하는 수단이 생긴 뒤의 일이다**(PRODUCT §10).
 
@@ -2070,16 +2078,23 @@ Logs 행위자·상세 Trigger·보조줄·Home 메타 열이 이것 하나를 �
   둘이 같은 행을 가르는지는 같은 모듈끼리의 비교가 아니라 `query.integration.ts`의 실제 행으로 잰다(POSTMORTEM 2026-09-14 — nightly-sync E2가 `source` 없는 옛 CI 행을 포함해 행을 심는다).
 - **새 결과어 `upToDate`** — `Record<EventResult, …>`가 누락을 잡고, `lib/events/query.ts`의 `RESULTS`는 `EVENT_RESULTS`에서 파생한다(손 사본이면 `asResult`가
   null을 줘 결과 칸이 조용히 빈다). 결과 필터 그룹은 "Both"다.
-- **Home 메타 열**(`lib/home/runs.ts` → `homeTriggers` in `lib/home/meta.ts`): 사건 둘(최근 성공 적재 · 최근 성공 Publish — 최근 적재(보류 포함) 사건은 아래 Q6에서 뺐다)을 페이지의
-  기존 `Promise.all` 한 라운드 안에서 읽는다. ⚠️ **행위자를 고르지 않는다**(POSTMORTEM 2026-09-29 #146). ⚠️ `Last sync`의 주체는 **`lastImportedAt`을
-  적어도 한 표면에서 전진시킨** 적재의 것이다 — 표면이 전부 실패한 `partial`의 주체를 붙이면 더 옛 실행의 시각에 거짓 주체가 선다. 고른 사건이 못 쓰이면
-  더 옛 사건으로 물러나지 않는다(틀린 주체보다 주체 없음). ⚠️ **`lastSyncAt`과 사건 시각을 대조하지 않는다** — 트랜잭션 경계가 달라 밀리초가 갈리고,
-  대조가 실패하면 주체가 조용히 사라진다. **보류(`Held` 배지·`To send` 보조 줄)는 사건 이력이 아니라 지금의 판정이다** (2026-10-01, ux-drift-unify Q6 — 옛 판은
+- **Home 메타 열**(`lib/home/runs.ts`의 `loadHomeRuns` → `homeSyncRun`·`homePublishRun` in `lib/home/meta.ts` — 2026-10-04 project-card-tabs에서 `homeTriggers`를 대체):
+  사건 둘(시각을 전진시킨 마지막 적재 · 마지막 성공 Publish + 조인한 `SyncRun`)을 페이지의 기존 `Promise.all` 한 라운드 안에서 읽는다. ⚠️ **행위자를 고르지 않는다**(POSTMORTEM 2026-09-29 #146).
+  Sync·Publish 탭은 **각자 실행 하나의 사실**이다 — 주체·시각·결과·수가 같은 사건에서 온다.
+  ⚠️ **적재 쪽은 시각을 전진시키지 못한 사건을 건너뛰고 그 앞 실행으로 물러난다** (2026-10-04 개정). 옛 판(2026-09-30)은 "고른 사건이 못 쓰이면 더 옛 사건으로 물러나지 않는다(틀린 주체보다 주체 없음)"였다 —
+  그때 시각은 전 소스 `lastImportedAt`의 최댓값이라 물러난 사건의 주체와 그 시각이 **다른 실행**을 가리킬 수 있었다. 이제 시각도 그 사건(`finishedAt`)에서 읽으므로 그 근거가 사라졌다.
+  고르기는 **SQL 한 번**이다(`ADVANCED_IMPORT_WHERE` — `result = 'imported'` 또는 `partial`이면서 payload `surfaces`에 `imported` 표면이 하나라도 있음, jsonb `@>`): 최신 N건을 JS로 거르면
+  상한 안이 전부 실패 `partial`일 때 사건이 있는데 "기록 없음"으로 떨어진다. SQL 술어가 `advancedSyncTime`과 같은 행을 고르는지는 `runs.integration.ts`가 실제 행으로 잰다.
+  ⚠️ **`Synced`는 그 실행의 종료(사건 `finishedAt`)다** — 표면 `lastImportedAt`과 같은 실행의 종료이지 "≥"가 아니다: CI 경로는 같은 트랜잭션 안에서 사건(`ciImportEvent`)과
+  표면 갱신(`importOutcomeFields`)이 각자 시각을 찍어 사건이 3~5ms 앞선다. 둘을 대조하지 않는다(`changed-values.integration.ts`가 "1초 안"으로 잰다).
+  사건이 없는데 비보관 소스가 적재돼 있으면(사건 기록 2026-09-20 이전) `"unrecorded"` — 첫 Sync 전(`null`)과 다른 사실이다(`homeLastSync`, 보관 소스는 거른다).
+  **보류(`Held`·`To send` 보조 줄)는 사건 이력이 아니라 지금의 판정이다** (2026-10-01, ux-drift-unify Q6 — 옛 판은
   최신 적재 사건이 `deferred`·`open-pr`일 때만 섰다): `planHomeHold`(`lib/home/cards.ts`)가 게이트와 같은 입력(미전달 편집 수 · `openPrGateApplies` · 보관 · 끊김)으로
   `planHoldNotice`(`lib/protection/plan.ts`)를 부르고, **PR을 몰라도 결론이 서면**(편집 > 0 · 보관 · 끊김 · 게이트 없음) 조회하지 않는다. 조회가 필요할 때만
-  `loadOpenPrUrl` promise를 돌려주고, 페이지는 그것을 기다리지 않고 클라이언트 섬(`HoldLater` — `useArrived` 구독)으로 내린다 — 본문 착지를 GitHub에 묶지 않는다
+  `loadOpenPrUrlMemo` promise를 돌려주고, 페이지는 그것을 기다리지 않고 `useArrived` effect 구독으로 내린다 — 카드 보조 줄은 `HoldLater`, 메타 열은 탭 껍데기(`meta-tabs.tsx`)가
+  같은 promise의 결론(`homeLate` — Hold · PR state)을 한 번 받아 패널로 내린다(Radix가 비활성 패널 자식을 언마운트해 패널 안 구독은 탭 전환마다 비운다). 본문 착지를 GitHub에 묶지 않는다
   (malmoi#107). ⚠️ 조회가 던지거나 마감을 넘기면 `pr-check-failed`(보류 + "couldn't check for an open pull request")다 — 게이트가 fail-closed라 화면도 같은 쪽으로 말한다.
-  사건 이력은 실행 주체(`[Nightly sync] 1d ago`)만 든다.
+  메타 Publish 탭의 **PR state 행은 이 결론을 옮길 뿐이다**(열린 PR → `prOpen` · 없음 → `Not open` · 조회 실패 → `couldNotCheck`) — **새 GitHub 호출이 없다**.
 
 ## 5.8 전달 기준과 Revert (translation-rework — 2026-09-23 구현 · 프로덕션, #71–#73)
 
