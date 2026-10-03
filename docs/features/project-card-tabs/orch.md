@@ -11,6 +11,7 @@
 - 워커 재량으로 남긴 곳(질문 없이 워커가 정하고 인계 문서에 적는다): `"unrecorded"` 갈래 문구(T1) · Sync `Synced` 종료 시각 출처(T6, design §2.2).
 - **`/guide-shots`를 게이트 마지막 단계로 반드시 돈다** (2026-10-04 사용자) — tasks T13의 "바뀌었으면" 조건을 이 실행에선 쓰지 않는다. 메타 열이 보이는 컷은 전부 다시 찍는다.
 - B-T4: SKIPPED `reconfirm`은 `changedValues = null`(렌더가 안 돌아 관측 없음 — `changed = null`과 짝). 나머지 SKIPPED는 `0`. tasks T4 표의 "reconfirm = 0"을 대체한다(2026-10-04 지휘자 판정, spec "changed와 같은 의미" 근거).
+- D-T9: `(home)/loading.tsx`는 정적 폴백이라 역할을 모른다 → **바닥 링크 골격을 늘 그린다**(지금 동작 유지, EDITOR는 도착 시 45px 줄어든다). spec 완료 조건·tasks T9의 "`canOpenSettings`일 때만"을 대체하는 의도된 이탈 — DESIGN §6.64에 기록(2026-10-04 지휘자 판정 · 사용자 확인 "그냥 가"; shell context 신설은 범위 확장이라 기각).
 - 모델 경계: Claude Code 지휘 → Sonnet·Opus만, effort ≤ high. 교차 허가 없음.
 
 ## 배치
@@ -45,3 +46,4 @@
 - A 1차 완료(커밋 3, gate ok 2회차 — 1회차 `lib/keys` 성능 테스트 부하 red) → 리뷰(Opus): 🔴 0 · 🟡 `metaConnection` 사본(→ 원본 공유) · `homeLastSync` 보관 필터 · Synced 종료 시각 통합 단언. 묶음 경계 시안 대조는 리뷰 서브에이전트가 DesignSync를 못 써서 **Q로 이월**(DesignSync는 `/design-sync` 전용). D 몫으로 넘김: PR state 값 매핑 순수 함수 · ARCHITECTURE:2073·DIRECTORY:761의 `homeTriggers` 언급 · `couldNotCheck` Connection 값 DESIGN 기재 · 늦게 오는 Hold는 Sync 마지막 묶음 끝. → A fix1.
 - B fix1 `647c5645` → dev 통합(T4·T5·fix), `pnpm gate` ok. 워크트리 정리, 인계 사본 `.scratch/orch-pct/handoff-B.md`. 남은 (b): preview 실 Publish 후 Logs Values.
 - A fix1(`4efc2985`·`1760bb46`) → dev 통합(T1·T2·T6·fix), `pnpm gate` ok. 워크트리 정리. 웨이브 1 종료 — D 착수.
+- D 1차 완료(커밋 10, gate ok) → 리뷰(Opus): 🔴 0 · 🟡 ship.md `metaRows` · DESIGN Languages 잔재 · PRODUCT 스킵 0 문장 · 프로젝트 전환 Hold 테스트 · aria-controls 패널 단언 · 첫 Sync 전 탭에 Hold가 붙음(spec "이 행 하나뿐" 위반). `Base branch` vs `Branch`는 Q에서 시안으로 판정. → D fix1.
