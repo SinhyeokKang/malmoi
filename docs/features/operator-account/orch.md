@@ -21,7 +21,7 @@
 |---|---|---|---|---|---|---|---|
 | B1 코드 | T1 → T2 → T3 → T4 | `lib/operator/**` · `lib/onboarding/create-plan.ts` · `lib/onboarding-run/{repos,create}.ts` · `lib/projects/{archive,owner-limit}.ts` · `lib/auth/{members,message}.ts` · `app/invite/actions.ts` · `messages/en.tsx` · `lib/mcp/result.ts` · 해당 테스트 · `components/__tests__/home-vocabulary.test.ts`(주석) | — | Opus 5.5 high — 잠금 순서·트랜잭션 재집계·fail-closed 판단 | 예 | `pnpm gate --base dev`(postgres 스위트 자동) | 대기 |
 | B2 문서 | T5 | `docs/PRODUCT.md` · `docs/ARCHITECTURE.md` · `docs/OPERATIONS.md` · `docs/DIRECTORY.md` · `guide/reference/limits.md` · `guide/SHOOTING.md` · `.env.example` | — (spec·design 기준으로 병렬) | Opus 5.5 medium — 정본 문서의 밀도 높은 서술, 판단은 spec이 이미 정함 | 예 | `pnpm gate --base dev` | 대기 |
-| T7 env | Vercel Preview·Production `OPERATOR_EMAILS` | — | D3 | 지휘자 | 예(Preview는 push 전) | `vercel env ls` 행·시각 | 대기 |
+| T7 env | Vercel Preview·Production `OPERATOR_EMAILS` | — | D3 | 사용자(`!` 실행 — 분류기가 에이전트의 secret-store 쓰기를 막음) | 예(Preview는 push 전) | `vercel env ls` 행·시각 | 완료 2026-10-04 — production·preview 각 1행(Secret) |
 | QA | T6 | main 체크아웃 · dev DB | B1·B2 통합 + D3 | Sonnet 5.5 medium | — | `/runtime-test` | 대기 |
 
 ### 파일 겹침
@@ -33,3 +33,5 @@
 ## 진행 기록
 
 (통합 커밋·검증 결과·라운드·미완을 여기 덧붙인다)
+
+- 2026-10-04 T7: `.env.local` 값 확인(1행·주소 1개, 출력 없음) → 사용자가 stdin으로 `vercel env add` → `vercel env ls`에서 production·preview 각 1행(Secret, 방금) 확인. 적용은 다음 배포부터(Preview = 이번 dev push, Production = 다음 `/merge`).
