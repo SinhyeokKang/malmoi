@@ -9,7 +9,7 @@
 
 ## 0. 디자인 정본
 
-- **T0. 디자인 정본 확정** — ✅ 2026-10-03 (Claude Design `Search UX.dc.html` 승인, `design.md` 반영)
+- **T0. 디자인 정본 확정** — ✅ 2026-10-03 (Claude Design [`Search UX.dc.html`](https://claude.ai/design/p/b99d54cd-3034-44f1-8446-0a864da9d767?file=Search+UX.dc.html) 승인, `design.md` 반영)
   - `design-prompt.md`로 Claude Design 시안을 받는다.
   - 시안의 시각 값(여백·행 높이·칩·타일 배치·모바일 폭)을 `design.md` "시각 값의 정본 — T0"과 `Command*` 표에 반영한다. 고정 제약(D6·D13·D14·C15~C17·C19)과 다르면 시안이 아니라 제약이 이긴다 — 충돌은 사용자에게 묻는다.
   - 검증(수동): `design.md`의 "초안" 표기 0, 승인 날짜 기록.

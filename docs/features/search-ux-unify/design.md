@@ -16,7 +16,7 @@
 
 ## 시각 값의 정본 — T0
 
-**아래 시각 값은 승인된 시안에서 왔다** — Claude Design `Search UX.dc.html`(프레임 H1·H2·S1~S11·W1·K1·B1). 시안은 `/design-sync`의 SoT가 아니고 이 문서가 정본이다. 이 문서와 시안이 갈리면 이 문서가 이긴다.
+**아래 시각 값은 승인된 시안에서 왔다** — Claude Design [`Search UX.dc.html`](https://claude.ai/design/p/b99d54cd-3034-44f1-8446-0a864da9d767?file=Search+UX.dc.html)(프레임 H1·H2·S1~S11·W1·K1·B1). 시안은 `/design-sync`의 SoT가 아니고 이 문서가 정본이다. 이 문서와 시안이 갈리면 이 문서가 이긴다.
 
 - **고정 제약(시안이 바꾸지 않는다)** — 사용자 결정이다: `FieldButton` 40(D13) · `Kbd` 회색 면 + `text-foreground/60` + `h-5`(D14) · 보관 = `soft-neutral`(D6) · 행 = `ListRow`(C15) · 모든 행 28 타일(C17) · 활성 = `selected` 7%(C16) · 활성이 바뀌어도 높이·폭 불변(C19) · 라이트 단일 · 새 raw 색 없음.
 - **시안이 정한 것** (Open 1~5):

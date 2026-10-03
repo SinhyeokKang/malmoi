@@ -70,7 +70,7 @@
 | D13 | 헤더 검색 캡슐 높이 | **40(`h-10`)** | 사용자 2026-10-03 (리뷰) |
 | D14 | `Kbd` 형 | **회색 면(테두리 없음) + `text-foreground/60`** — 활성 행 위 대비 약 4.8:1 | 사용자 2026-10-03 (리뷰) |
 | D15 | 검색 그룹 머리 색 | **`text-gray-dim`(#a3a3a3)**. 머리는 경계 표시이고, 행 보조 글자(#737373)와 층을 가른다. 약 2.5:1 — DESIGN §6.2 등재된 이탈 | 사용자 2026-10-03 (Claude Design 지시, 시안 S1) |
-| T0 | 디자인 정본 | **Claude Design `Search UX.dc.html` 승인** — 반영 값은 `design.md` "시각 값의 정본" | 사용자 2026-10-03 |
+| T0 | 디자인 정본 | **Claude Design [`Search UX.dc.html`](https://claude.ai/design/p/b99d54cd-3034-44f1-8446-0a864da9d767?file=Search+UX.dc.html) 승인** — 반영 값은 `design.md` "시각 값의 정본" | 사용자 2026-10-03 |
 | 확인 필요 1 | 번역 저장 단축키(Cmd/Ctrl+Enter)의 화면 힌트 | **비목표 유지**(편집 화면 변경이라 별건) | 리뷰 2026-10-03 |
 | 확인 필요 2 | `FieldButton` 40이 헤더를 꽉 채우나 | **D13으로 닫힘.** 두 헤더 모두 `HeaderBar`(`components/shell/header-bar.tsx:13`)가 `h-10`이다 | 리뷰 2026-10-03 |
 | 확인 필요 3 | 서버·클라이언트 상수 공유 | **`KEY_QUERY_MIN`·`SEARCH_GROUP_LIMIT`를 `lib/search/match.ts`가 export하고 server-only `lib/keys/search.ts`가 import한다.** 서버는 클라이언트 안전한 잎을 import할 수 있다(선례 `lib/keys/search.ts:5`의 `Q_MAX_LENGTH`). 값 일치 테스트는 두지 않는다 | 리뷰 2026-10-03 |
