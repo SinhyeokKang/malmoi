@@ -108,7 +108,7 @@ export function SearchDialog({ open, onOpenChange, account, memberships }: {
     <div className="flex min-h-0 flex-1 flex-col" onCompositionStart={() => { composing.current = true; }} onCompositionEnd={() => { composing.current = false; }}>
       <Command ids={ids} query={q}>
         <CommandInput value={q} onValueChange={value => { ++keyGeneration.current; setKeys({ query: "", hits: [], error: null }); setQuery(value); }} label={m.search.label} placeholder={m.search.placeholder} />
-        {status.lines.map(line => <CommandStatus key={line.text} tone={line.tone}>{line.text}</CommandStatus>)}
+        <CommandStatus lines={status.lines} />
         {/* 0건은 목록 슬롯 맨 위에 선다. 조회가 실패했으면 "결과 없음"이 거짓이라 그리지 않는다(C3). */}
         {ids.length === 0 && !status.pending && !status.failed && <NoMatch placement="inset" title={m.search.noResults(q)} description={m.search.noResultsDescription} />}
         <CommandList label={m.search.label}>

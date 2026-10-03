@@ -88,7 +88,7 @@ const RULES: Rule[] = [
     handCopy: (node, file) => /icon=\{SearchX\}/.test(node.getText(file)),
     bad: 'import { EmptyRowCard as Blank } from "@/components/ui/row-card"; export const Demo = () => <Blank title="Empty" />;',
     good: 'import { EmptyState } from "@/components/ui/empty-state"; export const Demo = () => <EmptyState placement="inset" title="Empty" />;' },
-{ primitive: "ListRow", retired: ["PanelRow", "ListItemButton"], paths: ["components/logs/event-row.tsx", "components/home/attention-card.tsx", "components/projects/project-list.tsx", "components/settings/ci-card.tsx", "components/sources/sources-screen.tsx", "components/sources/source-detail-modal.tsx"], minimum: 10,
+{ primitive: "ListRow", retired: ["PanelRow", "ListItemButton"], paths: ["components/logs/event-row.tsx", "components/home/attention-card.tsx", "components/projects/project-list.tsx", "components/settings/ci-card.tsx", "components/sources/sources-screen.tsx", "components/sources/source-detail-modal.tsx", "components/ui/command.tsx"], minimum: 10,
     handCopy: (node, file) => /^(?:a|button|div|Link|Button)$/.test(node.tagName.getText(file)) && /\bpy-row-y\b/.test(classes(node, file)) && /\b(?:items-center|justify-start)\b/.test(classes(node, file)),
     bad: 'export const Demo = () => <button className="flex items-center gap-3 px-4 py-row-y">Row</button>;',
     good: 'import { ListRow } from "@/components/ui/list-row"; export const Demo = () => <ListRow as="button">Row</ListRow>;' },
@@ -230,6 +230,17 @@ describe.each(RULES)("$primitive production contract", rule => {
       expect(scan({ path: "components/example.tsx", code: `import * as UI from "@/components/ui/row-card"; const view = <UI.${retired} />;` }, rule)).toContain(`jsx:${retired}`);
     }
   });
+});
+
+// search-ux-unify C15 — 검색 결과 행은 `ListRow`다. 옛 손 조립(`mx-2 … rounded-md border px-2 py-2`)이 돌아오면 여기서 red다.
+it("command.tsx는 행 클래스를 직접 쓰지 않고 ListRow를 쓴다", () => {
+  const source = sources.find(s => s.path === "components/ui/command.tsx");
+  expect(source).toBeDefined();
+  const code = source!.code.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "");
+  expect(code).toMatch(/import \{ ListRow \} from "\.\/list-row"/);
+  expect(code).toMatch(/<ListRow\b/);
+  expect(code).not.toMatch(/from "next\/link"/);
+  for (const token of ["py-row-y", "rounded-md", "mx-2", "border-ring", "bg-accent", "px-2 py-2"]) expect(code, token).not.toContain(token);
 });
 
 describe("Kbd children", () => {

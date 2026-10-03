@@ -6,6 +6,7 @@ import { Search } from "lucide-react";
 
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList, CommandStatus } from "@/components/ui/command";
 import { Badge } from "@/components/ui/badge";
+import { m } from "@/lib/i18n";
 import { Highlight } from "@/components/ui/highlight";
 import { find, input, key, render } from "./helpers/dom";
 
@@ -17,10 +18,10 @@ function Fixture({ ids = initial, query = "", onValueChange = () => {}, onNaviga
 }) {
   return <Command ids={ids} query={query}>
     <CommandInput value={query} onValueChange={onValueChange} label="Search" placeholder="Search…" />
-    <CommandStatus>Searching keys…</CommandStatus>
+    <CommandStatus lines={[{ tone: "muted", text: "Searching keys…" }]} />
     <CommandList label="Search results">
       <CommandGroup heading="Projects">
-        {ids.map(id => <CommandItem key={id} id={id} href={`/${id}`} title={id} onNavigate={onNavigate} />)}
+        {ids.map(id => <CommandItem key={id} id={id} href={`/${id}`} icon={<Search />} title={id} onNavigate={onNavigate} />)}
       </CommandGroup>
     </CommandList>
   </Command>;
@@ -70,6 +71,99 @@ it("status는 listbox 밖에 서고 listbox의 직계 자식은 option/group뿐�
   expect(heading!.classList.contains("font-medium")).toBe(true);
 });
 
+/** search-ux-unify C15·C16 — 그룹은 세로 padding 0 + 두 번째부터 위쪽 선 하나, 머리는 `text-gray-dim`(D15). */
+it("그룹 머리는 gray-dim·pt-4 pb-1이고 그룹은 세로 padding 없이 사이 선 하나다", async () => {
+  const { container } = await render(<Command ids={["a", "b"]} query="">
+    <CommandInput value="" onValueChange={() => {}} label="Search" placeholder="Search…" />
+    <CommandList label="Results">
+      <CommandGroup heading="One"><CommandItem id="a" href="/a" icon={<Search />} title="A" onNavigate={noNavigation} /></CommandGroup>
+      <CommandGroup heading="Two"><CommandItem id="b" href="/b" icon={<Search />} title="B" onNavigate={noNavigation} /></CommandGroup>
+    </CommandList>
+  </Command>);
+  const groups = [...container.querySelectorAll<HTMLElement>('[role="group"]')];
+  expect(groups).toHaveLength(2);
+  for (const group of groups) {
+    const classes = [...group.classList];
+    expect(classes.filter(token => /^(?:p|py|pt|pb)-/.test(token)), group.className).toEqual([]);
+    expect(classes).toEqual(expect.arrayContaining(["not-first:border-t", "not-first:border-divider"]));
+    const heading = document.getElementById(group.getAttribute("aria-labelledby")!)!;
+    expect([...heading.classList]).toEqual(expect.arrayContaining(["px-4", "pt-4", "pb-1", "text-xs", "font-medium", "text-gray-dim"]));
+    expect(heading.classList.contains("text-foreground")).toBe(false);
+  }
+  expect(find(container, '[role="listbox"]').classList.contains("py-2")).toBe(true);
+});
+
+/** C15·C16·C19 — 행은 `ListRow`(폭을 꽉 채우는 `px-4 py-row-y`), 활성은 `selected` 7% 하나, 힌트는 늘 자리를 차지한다. */
+it("행은 option 안의 ListRow이고 활성 면만 칠하며 힌트가 모든 행에 자리를 지킨다", async () => {
+  const { container } = await render(<Fixture />);
+  const options = [...container.querySelectorAll<HTMLElement>('[role="option"]')];
+  const links = options.map(option => find<HTMLAnchorElement>(option, "a[href]"));
+  for (const link of links) {
+    expect([...link.classList]).toEqual(expect.arrayContaining(["flex", "items-center", "gap-3", "px-4", "py-row-y", "text-sm"]));
+    for (const gone of ["border", "border-ring", "rounded-md", "mx-2", "bg-accent", "hover:bg-foreground/[0.03]"]) expect(link.classList.contains(gone), gone).toBe(false);
+    expect(link.getAttribute("aria-current")).not.toBe("true");
+  }
+  expect(links[0]!.classList.contains("bg-foreground/[0.07]")).toBe(true);
+  expect(links.slice(1).every(link => !link.classList.contains("bg-foreground/[0.07]") && link.classList.contains("hover:bg-transparent"))).toBe(true);
+  expect(container.querySelectorAll('[role="option"] kbd')).toHaveLength(options.length);
+  const hints = options.map(option => find(option, "kbd").parentElement!);
+  const before = hints.map(hint => hint.className.replace(/\binvisible\b/, "").trim());
+  expect(hints.map(hint => hint.classList.contains("invisible"))).toEqual([false, true, true]);
+  for (const hint of hints) expect([...hint.classList]).toEqual(expect.arrayContaining(["hidden", "sm:flex"]));
+  await key(find(container, "input"), "ArrowDown");
+  expect(hints.map(hint => hint.classList.contains("invisible"))).toEqual([true, false, true]);
+  // 폭 분기(`hidden sm:flex`)는 활성과 무관하다 — 활성을 바꿔도 invisible 말고는 클래스가 그대로다.
+  expect(hints.map(hint => hint.className.replace(/\binvisible\b/, "").trim())).toEqual(before);
+});
+
+it("긴 제목·맥락·설명은 각각 한 줄로 자른다", async () => {
+  const { container } = await render(<Command ids={["long"]} query="">
+    <CommandList label="Results"><CommandItem id="long" href="/long" icon={<Search />} title={"x".repeat(300)} context="project · source" description={"y".repeat(300)} onNavigate={noNavigation} /></CommandList>
+  </Command>);
+  const option = find(container, '[role="option"]');
+  const title = [...option.querySelectorAll("span")].find(span => span.textContent?.startsWith("xxx") && span.classList.contains("truncate"));
+  expect(title).toBeDefined();
+  expect(title!.classList.contains("block")).toBe(true);
+  expect(title!.textContent).toContain(" · project · source");
+  const description = [...option.querySelectorAll("span")].find(span => span.textContent === "y".repeat(300) && span.classList.contains("truncate"));
+  expect(description?.classList.contains("block")).toBe(true);
+});
+
+/** C18·C19 — 입력 줄 `h-12 pl-3 pr-4`, 지우기 X, 맨 끝 Esc 칩(좁은 폭에선 숨김). */
+it("입력 줄은 h-12 pl-3 pr-4이고 지우기 X와 끝의 Esc 칩을 든다", async () => {
+  const onValueChange = vi.fn();
+  const { container } = await render(<Command ids={[]} query="abc">
+    <CommandInput value="abc" onValueChange={onValueChange} label="Search" placeholder="Search…" />
+    <CommandList label="Results">{null}</CommandList>
+  </Command>);
+  const combobox = find<HTMLInputElement>(container, '[role="combobox"]');
+  const row = combobox.closest(".border-b")!;
+  expect([...row.classList]).toEqual(expect.arrayContaining(["flex", "h-12", "items-center", "gap-2", "pl-3", "pr-4", "border-divider"]));
+  const esc = find(row, "kbd");
+  expect(esc.textContent).toBe(m.common.keys.esc);
+  expect([...esc.parentElement!.classList]).toEqual(expect.arrayContaining(["hidden", "sm:inline-flex"]));
+  expect(row.lastElementChild).toBe(esc.parentElement);
+  const clear = find<HTMLButtonElement>(row, `button[aria-label="${m.common.clearSearch}"]`);
+  expect(clear.type).toBe("button");
+  await act(async () => { clear.click(); });
+  expect(onValueChange).toHaveBeenLastCalledWith("");
+});
+
+/** C3 — 상태 줄은 한 묶음(`px-4 pt-2` · 줄 사이 4)이고 실패 줄만 빨강이다. 줄이 없으면 묶음도 없다. */
+it("상태 줄 묶음과 톤", async () => {
+  const view = await render(<Command ids={[]} query="">
+    <CommandStatus lines={[{ tone: "muted", text: "Loading docs…" }, { tone: "danger", text: "Keys failed." }]} />
+  </Command>);
+  const status = find(view.container, '[role="status"]');
+  expect([...status.classList]).toEqual(expect.arrayContaining(["flex", "flex-col", "gap-1", "px-4", "pt-2", "text-xs"]));
+  const lines = [...status.querySelectorAll<HTMLElement>("[data-tone]")];
+  expect(lines.map(line => [line.dataset.tone, line.textContent])).toEqual([["muted", "Loading docs…"], ["danger", "Keys failed."]]);
+  expect(lines[0]!.classList.contains("text-muted-foreground")).toBe(true);
+  expect(lines[1]!.classList.contains("text-destructive")).toBe(true);
+  await view.rerender(<Command ids={[]} query=""><CommandStatus lines={[]} /></Command>);
+  expect(view.container.querySelector('[role="status"]')?.textContent ?? "").toBe("");
+});
+
 it("입력은 공통 Input 글리프 슬롯·전폭 선·테두리 없는 형을 쓴다", async () => {
   const { container } = await render(<Fixture />);
   const combobox = find<HTMLInputElement>(container, "input");
@@ -87,8 +181,9 @@ it("↑↓가 DOM 순서대로 순환하고 선택 힌트는 활성 행에만 �
   expect(active(container).textContent).toContain(initial[0]);
   await key(combobox, "ArrowDown");
   expect(active(container).textContent).toContain(initial[1]);
-  expect(container.querySelectorAll("kbd")).toHaveLength(1);
-  expect(find(active(container), "kbd").textContent).toBe("↵");
+  expect(container.querySelectorAll('[role="option"] kbd')).toHaveLength(initial.length);
+  expect(find(active(container), "kbd").textContent).toBe(m.common.keys.enter);
+  expect(find(active(container), "kbd").parentElement?.classList.contains("invisible")).toBe(false);
   expect(active(container).textContent).toContain("Go to");
 });
 
