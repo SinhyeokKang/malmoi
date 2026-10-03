@@ -171,7 +171,7 @@ export function TokenCard({ token, projects, now }: { token: TokenCardData; proj
           mode={modal.mode}
           initial={initial}
           projects={projects}
-          // 착지: Done → Rotate(뒤 페이지는 이미 활성), 취소 → 누른 버튼(없음이면 Create). 둘 다 없으면 카드 제목.
+          // 착지: Close → Rotate(뒤 페이지는 이미 활성), 취소 → 누른 버튼(없음이면 Create). 둘 다 없으면 카드 제목.
           returnFocusRef={rotateRef}
           fallbackFocusRef={createRef}
           onClose={() => setModal(null)}

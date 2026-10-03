@@ -229,7 +229,7 @@ describe("생성 ① → ②", () => {
     expect(card().querySelectorAll('[role="status"]')).toHaveLength(1);
   });
 
-  it("② 원문 화면은 Esc · 바깥 클릭 · X로 닫히지 않는다 — Done이 유일한 출구다", async () => {
+  it("② 원문 화면은 Esc · 바깥 클릭 · X로 닫히지 않는다 — Close가 유일한 출구다", async () => {
     mocks.issue.mockResolvedValue({ ok: true, token: RAW, expiresAt: ACTIVE.expiresAt });
     await mount({ state: "none" });
     await click(button(card(), m.mcpConnector.token.create));

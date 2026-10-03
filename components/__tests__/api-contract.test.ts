@@ -387,7 +387,7 @@ function scan(sources: readonly Source[], restDemand: readonly { path: string; s
       if (symbol === "Badge" && primitive && ts.isJsxOpeningElement(node) && ts.isJsxElement(node.parent)) {
         // Proven state labels from S6 inventory. Appearance/count/locale/role labels
         // do not become states merely because the Badge has a colored preset.
-        const stateLabels = new Set(["mcpConnector.token.expired", "logs.archived.badge", "sources.waiting", "sources.missingRepo"]);
+        const stateLabels = new Set(["mcpConnector.token.expired", "sources.waiting", "sources.missingRepo"]);
         for (const child of node.parent.children) {
           const label = valueName(child);
           if (label?.startsWith("m.") && stateLabels.has(label.slice(2))) add("state", path, "Badge", `direct state:${label.slice(2)}`);
@@ -672,12 +672,12 @@ describe("primitive API contract — design §3", () => {
       source('import {Alert} from "@/components/ui/alert"; function Note({tone}: {tone: "danger" | "neutral"}) {return <Alert variant={tone}/>;}', "components/logs/event-detail.tsx"),
       render("mcpConnector.token.expired", "components/mcp/token-card.tsx"),
       render("mcpConnector.token.expired", "components/mcp/connected-apps-card.tsx"),
-      render("logs.archived.badge", "components/logs/log-filters.tsx"),
+      render("sources.missingRepo", "components/logs/log-filters.tsx"),
       source('import {Badge} from "@/components/ui/badge"; export function Screen() {return <><Badge variant="warning">{m.sources.waiting}</Badge><Badge variant="missing">{m.sources.missingRepo}</Badge></>;}', "components/sources/source-detail-modal.tsx"),
     ];
     expect(scan(fixtures).filter(row => row.rule === "state")).toEqual([
       { rule: "state", path: "components/logs/event-detail.tsx", symbol: "Note", detail: "tone is not StateTone", count: 1 },
-      { rule: "state", path: "components/logs/log-filters.tsx", symbol: "Badge", detail: "direct state:logs.archived.badge", count: 1 },
+      { rule: "state", path: "components/logs/log-filters.tsx", symbol: "Badge", detail: "direct state:sources.missingRepo", count: 1 },
       { rule: "state", path: "components/mcp/connected-apps-card.tsx", symbol: "Badge", detail: "direct state:mcpConnector.token.expired", count: 1 },
       { rule: "state", path: "components/mcp/token-card.tsx", symbol: "Badge", detail: "direct state:mcpConnector.token.expired", count: 1 },
       { rule: "state", path: "components/sources/source-detail-modal.tsx", symbol: "Badge", detail: "direct state:sources.missingRepo", count: 1 },

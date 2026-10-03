@@ -1229,7 +1229,7 @@ export const en = {
     /** ⚠️ **빈 이력과 원인이 반대다** — 하나는 프로젝트가 비었고 하나는 내가 좁혔다. */
     noMatch: {
       title: "No events match these filters",
-      description: "This project has activity — none of it's in this slice. Widen the date range or clear the filters.",
+      description: "This project has activity — none of it appears in this slice. Widen the date range or clear the filters.",
     },
     /** 수집 공백 경계선. ⚠️ **날짜를 서버가 주지 못하면 이 줄을 아예 그리지 않는다**(추정값 금지). */
     coverage: (date: string): string =>
