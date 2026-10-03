@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { act } from "react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { SHELL_SIDEBAR_COLLAPSED_PX, ShellPanels } from "@/components/shell/shell-panels";
@@ -62,6 +63,35 @@ describe("사이드바 — 접기", () => {
     expect(home?.getAttribute("title")).toBe(m.common.nav.home);
     expect(toggleButton(container)?.getAttribute("aria-expanded")).toBe("false");
     expect(toggleButton(container)?.textContent).toBe(m.common.nav.expandSidebar);
+  });
+
+  /**
+   * 접힌 레일의 프로젝트 트리거 (2026-10-04 사용자) — 머리 줄 대신 토글과 같은 틀의 ghost 버튼이 썸네일을 아이콘으로 들고,
+   * 누르면 전환 메뉴가 열린다. 펼침에서는 접혀 Tab 순서에서 빠진다.
+   */
+  const railTrigger = (container: HTMLElement) => container.querySelector<HTMLButtonElement>("[data-zone-rail] button");
+
+  it("접히면 썸네일 아이콘 버튼이 서고, 누르면 프로젝트 전환 메뉴가 열린다", async () => {
+    const { container } = await sidebar(true);
+    const button = railTrigger(container)!;
+    expect(button.getAttribute("aria-label")).toBe(m.common.nav.projectSwitcher.label);
+    expect(button.getAttribute("title")).toBe("Beta");
+    expect(button.getAttribute("aria-haspopup")).toBe("menu");
+    expect(button.closest("[inert]")).toBeNull();
+    // 펼친 머리의 스위처와 같은 틀 — 토글 버튼과 같은 클래스 묶음이다.
+    expect(button.className).toBe(toggleButton(container)?.className);
+    const user = userEvent.setup();
+    await act(async () => user.click(button));
+    expect(document.querySelector('[role="menu"] input')).not.toBeNull();
+    // 레일에서는 오른쪽으로 연다 — 아래로 열면 레일 항목을 덮는다(2026-10-04 사용자).
+    expect(document.querySelector('[role="menu"]')?.getAttribute("data-side")).toBe("right");
+  });
+
+  it("펼침에서는 레일 트리거가 0 높이로 접혀 Tab 순서에서 빠진다", async () => {
+    const { container } = await sidebar(false);
+    const fold = container.querySelector("[data-zone-rail]")?.parentElement;
+    expect(fold?.className).toContain("grid-rows-[0fr]");
+    expect(fold?.hasAttribute("inert")).toBe(true);
   });
 
   it("펼침에는 `title`이 없다 — 라벨이 이미 보인다", async () => {

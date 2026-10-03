@@ -29,9 +29,12 @@ describe("누르는 것의 라벨 weight", () => {
     }
   });
 
-  // LNB 내비는 이 규칙 밖이다(2026-09-30 사용자) — Button을 빌린 접기 항목도 옆 항목과 같은 400이다.
-  it("LNB의 접기 버튼은 font-normal로 되누른다", () => {
-    const button = /<Button\s+variant="ghost"\s+onClick=\{toggle\}[\s\S]*?className=\{cn\(ROW, "([^"]+)"\)\}/.exec(read("components/shell/sidebar.tsx"))?.[1] ?? "";
-    expect(button.split(/\s+/)).toContain("font-normal");
+  // LNB 내비는 이 규칙 밖이다(2026-09-30 사용자) — Button을 빌린 접기 토글·레일 프로젝트 트리거도 옆 항목과 같은 400이다.
+  it("LNB의 아이콘 버튼(`ICON_BUTTON`)은 font-normal로 되누른다", () => {
+    const source = read("components/shell/sidebar.tsx");
+    const classes = /const ICON_BUTTON = cn\(ROW, "([^"]+)"\)/.exec(source)?.[1] ?? "";
+    expect(classes.split(/\s+/)).toContain("font-normal");
+    // 소비자 둘(접기 토글 · 레일 트리거)이 그 상수를 쓴다.
+    expect(source.match(/className=\{ICON_BUTTON\}/g)).toHaveLength(2);
   });
 });
