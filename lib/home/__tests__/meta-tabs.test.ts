@@ -79,6 +79,20 @@ describe("metaTabs — 보드별 묶음·행 (시안 v3)", () => {
     expect(metaTabs(fresh).sync).toEqual([[{ kind: "lastSync", value: "notSyncedYet" }]]);
   });
 
+  /**
+   * spec — 첫 Sync 전이면 `Last sync`가 **탭에 하나뿐**이다. 보류는 그 갈래에서 도달 불가(편집·PR이 없다)지만 형식상 붙이지 않는다 —
+   * 첫 렌더의 보류도, 늦게 오는 보류의 자리(`lateHold`)도. ⚠️ `"unrecorded"`는 적재가 된 프로젝트라 보류가 붙는다(배치 A 결정).
+   */
+  it("2a 첫 Sync 전에는 Hold가 붙지 않고 늦게 오는 Hold 자리도 없다", () => {
+    const fresh = metaTabs({ ...base, lastSync: null, held: "pending-edits" });
+    expect(fresh.sync).toEqual([[{ kind: "lastSync", value: "notSyncedYet" }]]);
+    expect(fresh.lateHold).toBe(false);
+    const unrecorded = metaTabs({ ...base, lastSync: "unrecorded", held: "open-pr" });
+    expect(unrecorded.sync).toEqual([[{ kind: "lastSync", value: "unrecorded" }, { kind: "hold", reason: "open-pr" }]]);
+    expect(unrecorded.lateHold).toBe(true);
+    expect(metaTabs(base).lateHold).toBe(true);
+  });
+
   /** Sync 실패·진행 중은 입력에 자리가 없다 — 실패는 배너가 든다. 마지막 성공 실행이 그대로 선다. */
   it("2b Sync 실패 — 실패·진행 중 입력이 없어 카드가 불변이다", () => {
     for (const key of ["lastImportFailedAt", "lastImportError", "importing", "failed", "state"]) expect(Object.keys(base)).not.toContain(key);

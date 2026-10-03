@@ -82,6 +82,23 @@ describe("메타 열 — 구조", () => {
     for (const panel of container.querySelectorAll('[role="tabpanel"]')) expect(panel.className).toContain("ring-inset");
   });
 
+  /**
+   * ⚠️ **Radix는 비활성 패널의 자식만 언마운트하고 껍데기를 `hidden`으로 남긴다** — 비활성 탭의 `aria-controls`가 가리키는 것은 없는 id가 아니라
+   * 실재하는 빈 패널이다(DESIGN §6.64 접근성 표). 이름(accname)은 jsdom이 계산하지 않아 CDP 몫이고, 배선은 여기서 센다.
+   */
+  it("비활성 탭의 aria-controls는 실재하는 빈 hidden 패널을 가리킨다", async () => {
+    const { container } = await setup();
+    const inactive = [...container.querySelectorAll('[role="tab"][aria-selected="false"]')];
+    expect(inactive).toHaveLength(2);
+    for (const tab of inactive) {
+      const id = tab.getAttribute("aria-controls");
+      const panel = id === null ? null : container.ownerDocument.getElementById(id);
+      expect(panel?.getAttribute("role")).toBe("tabpanel");
+      expect(panel?.hasAttribute("hidden")).toBe(true);
+      expect(panel?.childElementCount).toBe(0);
+    }
+  });
+
   it("묶음 사이만 구분선이다 — 첫 묶음은 탭 머리 선을 쓴다", async () => {
     const { panel } = await setup();
     const groups = [...panel().querySelectorAll("dl")];
@@ -224,6 +241,28 @@ describe("메타 열 — 늦게 오는 Hold · PR state", () => {
     const { open } = await setup(pending, { late });
     for (const tab of [m.home.meta.tabs.sync, m.home.meta.tabs.publish, m.home.meta.tabs.sync, m.home.meta.tabs.project]) await open(tab);
     expect(then).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * **U7 r2와 같은 축** — 같은 트리가 다른 프로젝트로 다시 렌더되면(스위처가 컴포넌트를 마운트한 채 둔다) 옛 프로젝트의 Hold가 새 조회가 끝날 때까지
+   * 남으면 안 된다. 껍데기가 `identity`(slug)로 도착값을 가른다.
+   */
+  it("프로젝트가 바뀌면 옛 프로젝트의 Hold가 서지 않는다", async () => {
+    const user = userEvent.setup();
+    const view = await render(<MetaColumn tabs={metaTabs({ ...input, ...pending })} slug="acme" now={now} canOpenSettings late={Promise.resolve(homeLate("open-pr"))} />);
+    const sync = () => [...view.container.querySelectorAll<HTMLElement>('[role="tab"]')].find((tab) => tab.textContent === m.home.meta.tabs.sync)!;
+    await act(async () => { await user.click(sync()); });
+    const holdRows = () => [...view.container.querySelectorAll(`${SHOWN} dt`)].filter((dt) => dt.textContent === m.home.meta.hold);
+    expect(holdRows()).toHaveLength(1);
+    await view.rerender(<MetaColumn tabs={metaTabs({ ...input, ...pending })} slug="globex" now={now} canOpenSettings late={new Promise(() => {})} />);
+    expect(holdRows()).toHaveLength(0);
+  });
+
+  /** 첫 Sync 전은 `Last sync` 한 행뿐이다 — 늦게 도착한 보류도 그 갈래엔 붙지 않는다(`metaTabs`의 `lateHold`). */
+  it("첫 Sync 전에는 늦게 오는 Hold가 붙지 않는다", async () => {
+    const { open, rows } = await setup({ ...pending, lastSync: null }, { late: Promise.resolve(homeLate("open-pr")) });
+    await open(m.home.meta.tabs.sync);
+    expect(rows()).toEqual({ [m.home.meta.lastSync]: `[${STATE.notSyncedYet.label}]` });
   });
 
   it("도착 전에는 Hold 자리가 없다", async () => {
