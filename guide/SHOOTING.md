@@ -42,7 +42,7 @@
 - 검토 대기는 원문 변경이 적재될 때만 생긴다 — 그래서 픽스처는 두 커밋이다(전체 적재 → 원문 셋 수정·새 키 둘 → OWNER Sync).
 - **편집 흔적은 남기지 않는다**: EDITOR 컷은 `checkout.submit` fr에 `Passer la commande`를 저장해 Home·미리보기(PR 안 엶)를 찍고, 칸을 비워 다시 저장한 뒤 Publish(`Nothing differs` → `Nothing changed in the files`)로 미전달 표시를 지운다(이 Publish가 전달 확인도 세운다). OWNER 컷은 `checkout.submit` de를 `Jetzt bestellen`으로 저장해 보류 Home·Sync 확인창(Cancel)·Revert 확인창을 찍고 실제 Revert로 되돌린다. 끝나면 미전달 0이어야 한다.
 - **OWNER(GitHub 촬영 계정)는 운영자라 프로젝트 상한(셋)에 걸리지 않는다** (2026-10-03 — ARCHITECTURE §6.2.2). 로컬 `.env.local`의 `OPERATOR_EMAILS`에 그 계정의 로그인 주소가 있을 때만 참이다(설정·확인은 OPERATIONS "운영자 지정"). 그래서 **보관해서 자리를 만드는 왕복이 없다** — 온보딩 ①–④를 다시 찍을 때 `/projects/new`로 바로 들어가고, 일회용 프로젝트는 Address를 `acme-web`이 아닌 값으로 만든 뒤 id로 지운다(벽 절). ①–③만이면 Create project를 누르지 않으니 일회용 프로젝트가 필요 없다.
-- **상주 프로젝트는 이제 늘 수 있다** — 상한이 촬영 계정을 셋으로 묶지 않는다. 지금 OWNER 활성 상주 집합: `bugshot-i18n-test-qa` · `i18n-order-check` · `acme-web` · (T6가 만든 상주 프로젝트 — 지휘자가 이름을 채운다). 새로 상주시키면 여기와 메모리에 적는다.
+- **상주 프로젝트는 이제 늘 수 있다** — 상한이 촬영 계정을 셋으로 묶지 않는다. 지금 OWNER 활성 상주 집합: `bugshot-i18n-test-qa` · `i18n-order-check` · `acme-web` · `operator-check`(2026-10-04 operator-account T6 — `SinhyeokKang/i18n-single-locale` @ `main`, `src/locales/{locale}.json` json-catalog 3키, 운영자 면제 확인용). 새로 상주시키면 여기와 메모리에 적는다.
 - ⚠️ **값이 빠진 체크아웃(다른 머신·`.env.local` 미갱신)이면 옛 벽이 그대로다** — `/projects/new`가 `Project limit reached`로 목록에 돌려보내면 먼저 그 값을 확인한다(사람이 넣는다). 보관 → 생성 → 복원 우회는 **더는 되지 않는다**: 복원도 상한을 다시 세어 거부한다(같은 기능).
 - `bugshot-i18n-test-qa3`(O7의 "영구 보관" 대상)은 촬영 시점(2026-10-03)에 dev DB에 이미 없었다 — 보관할 것이 없어 그 단계를 건너뛰었다.
 
