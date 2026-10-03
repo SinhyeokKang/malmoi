@@ -1004,7 +1004,7 @@ export const en = {
       tabs: { list: "Project details", project: "Project", sync: "Sync", publish: "Publish" },
       repository: "Repository",
       connection: "Connection",
-      branch: "Base branch",
+      branch: "Branch",
       ci: "CI",
       sources: "Sources",
       keys: "Keys",
