@@ -810,7 +810,8 @@ Changelog · GitHub | Get started — 2026-09-28에 Home이 빠지고 GitHub가 
      Publish의 결과·파일 수·PR은 계속 그 테이블이 정본이다. **값 수도 그 테이블에 산다** (2026-10-04, project-card-tabs —
      `SyncRun.changedValues`): Logs Publish **상세**의 `Values` 칸이 `N values changed`로 보이고(보조줄엔 넣지 않는다), Home 메타
      Publish 탭의 `Changed`가 같은 수다. 리포 파일에서 실제로 바뀐 번역 엔트리(수정 + 추가)이고 **열린 PR을 갱신한 실행이면 PR 전체 vs base
-     누적**이다(파일 수와 같은 의미). 스킵은 `0`, 실패·기록 이전은 `—`(not recorded).
+     누적**이다(파일 수와 같은 의미). 스킵은 `0`이고, **reconfirm 스킵 · 집계 예외 · 실패 · 기록 이전은 `null`**이다 — Logs는 `—`(not recorded),
+     Home은 `Changed` 행이 없다(reconfirm은 렌더 전에 멈춰 관측이 없고, 집계 예외는 Publish를 성공으로 둔 채 수만 접는다).
    - **대가**: 수집 시작 이전은 복원되지 않는다. 백필 대상은 보존된 Publish 실행뿐이고, 그 경계에
      화면이 선을 하나 긋는다(개시 시각을 모르면 **선을 아예 안 그린다** — 추정값을 만들지 않는다).
 4. **기준 로케일과 언어 진단은 Sources 상세가 소유한다** (2026-09-22 Sources, 프로덕션 배포 완료 #68).
