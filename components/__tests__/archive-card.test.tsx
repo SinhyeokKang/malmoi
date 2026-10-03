@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({ archive: vi.fn(), unarchive: vi.fn() }));
 vi.mock("@/app/(edit)/projects/actions", () => ({ archiveProject: mocks.archive, unarchiveProject: mocks.unarchive }));
 
 import { ArchiveCard } from "@/components/settings/archive-card";
+import { accessErrorMessage } from "@/lib/auth/message";
 import { m } from "@/lib/i18n";
 
 const click = async (label: string) => {
@@ -43,6 +44,14 @@ it("복원 거부·통신 실패도 사유를 세우고, 다시 누르면 지운
   await click("Restore project");
   expect(mocks.unarchive).toHaveBeenCalledTimes(3);
   expect(document.querySelector('[role="alert"]')).toBeNull();
+});
+
+/** 복원의 상한 재집계 거부(operator-account C6)도 같은 Alert에 서고, 문장은 서버 사유의 사전 문구다. */
+it("복원이 owner-limit-reached면 그 사유의 문장을 세운다", async () => {
+  mocks.unarchive.mockResolvedValue({ ok: false, error: "owner-limit-reached" });
+  await render(<ArchiveCard slug="acme" name="Acme" archived openPrUrl={undefined} />);
+  await click("Restore project");
+  expect(document.querySelector('[role="alert"]')?.textContent).toBe(accessErrorMessage("owner-limit-reached"));
 });
 
 /**

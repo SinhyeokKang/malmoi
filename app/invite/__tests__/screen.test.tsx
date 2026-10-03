@@ -12,6 +12,7 @@ vi.mock("@/lib/credentials/access", () => ({ credentialIO: (read: () => Promise<
 vi.mock("@/components/signin/dot-field", () => ({ DotField: () => null }));
 import Page from "../[token]/page";
 import { m } from "@/lib/i18n";
+import { inviteErrorMessage } from "@/lib/auth/message";
 
 const invitation = {
   id: "i1",
@@ -180,4 +181,17 @@ it.each(["unauthorized", "unavailable"] as const)("%s도 초대의 인라인 알
     expect(markup).toContain('role="alert"');
     expect(markup).toContain(escaped(m.errors.invite[e]));
   }
+});
+
+/**
+ * OWNER 초대의 상한 거부(operator-account C8)도 수락 폼이 되돌린 `?e=`로 화면에 닿는다. ⚠️ 기댓값은 `inviteErrorMessage`로 만든다 —
+ * 사전 값이 숫자를 받는 함수라 `m.errors.invite[e]`로는 문장이 안 나온다. Action → `planInviteView`는 `membership.test.ts`가 잇는다.
+ */
+it("limit-reached도 초대의 인라인 알림이다", async () => {
+  await html("ok");
+  const markup = await renderPage("limit-reached");
+  expect(markup).toContain('role="alert"');
+  expect(markup).toContain(escaped(inviteErrorMessage("limit-reached")));
+  // 초대는 소비되지 않았다 — 자리를 비운 뒤 같은 링크로 다시 수락하는 버튼이 남는다.
+  expect(markup).toContain(m.invite.accept);
 });
