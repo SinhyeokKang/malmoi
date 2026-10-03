@@ -823,6 +823,46 @@ it("같은 사용자의 동시 생성은 OWNER 한도를 넘지 않고 같은 sl
   expect(await prisma.project.count()).toBe(3);
 });
 
+/**
+ * **"보관 → 생성 → 복원"으로 상한을 넘지 못한다** (operator-account C6·C11). 복원이 생성과 같은 `User` 잠금 안에서 다시 세므로
+ * 동시에 들어와도 하나만 이긴다 — 메모리 하네스는 잠금을 흉내내지 못해 실제 PG에서만 잴 수 있다. 끝 단언은 화면이 쓰는 문구다.
+ */
+it("복원은 생성과 같은 상한을 잠금 안에서 다시 세고, 동시 복원·생성은 하나만 이기며, 운영자는 넘는다", async () => {
+  const { createProject, input } = await creationFixture();
+  const { runArchive, runUnarchive } = await import("@/lib/projects/archive");
+  const { accessErrorMessage } = await import("@/lib/auth/message");
+  const { lookupEmail } = await import("@/lib/credentials/storage");
+  const subject = { userId: "create-owner" };
+  const activeOwned = () => prisma.projectMember.count({ where: { userId: "create-owner", role: "OWNER", project: { archivedAt: null } } });
+  for (const n of [1, 2, 3]) expect(await createProject({ ...input, slug: `limit-${n}` })).toMatchObject({ ok: true });
+
+  // 보관으로 자리를 비우고 넷째를 만든다 — 여기까지는 지금도 된다.
+  expect(await runArchive(prisma, subject, { slug: "limit-1" })).toEqual({ ok: true });
+  expect(await createProject({ ...input, slug: "limit-4" })).toMatchObject({ ok: true });
+  const restore = await runUnarchive(prisma, subject, { slug: "limit-1" });
+  expect(restore).toEqual({ ok: false, error: "owner-limit-reached" });
+  expect(await activeOwned()).toBe(3);
+  expect(await prisma.projectEvent.count({ where: { subtype: "settings.restored" } })).toBe(0);
+  expect(accessErrorMessage("owner-limit-reached")).toContain("3");
+
+  // 자리가 하나 남은 상태에서 복원과 생성이 동시에 들어오면 하나만 이긴다.
+  expect(await runArchive(prisma, subject, { slug: "limit-2" })).toEqual({ ok: true });
+  const raced = await Promise.all([runUnarchive(prisma, subject, { slug: "limit-1" }), createProject({ ...input, slug: "limit-5" })]);
+  expect(raced.filter((r) => r.ok)).toHaveLength(1);
+  expect(raced.find((r) => !r.ok)).toMatchObject({ error: expect.stringMatching(/^(owner-)?limit-reached$/) });
+  expect(await activeOwned()).toBe(3);
+
+  // 운영자는 같은 잠금 안 판정에서 빠진다 — 판정은 병합과 같은 `emailLookup`이다.
+  await prisma.user.update({ where: { id: "create-owner" }, data: { emailLookup: lookupEmail("op@example.com") } });
+  vi.stubEnv("OPERATOR_EMAILS", "Op@Example.com");
+  try {
+    expect(await runUnarchive(prisma, subject, { slug: "limit-2" })).toEqual({ ok: true });
+    expect(await activeOwned()).toBe(4);
+  } finally {
+    vi.stubEnv("OPERATOR_EMAILS", "");
+  }
+});
+
 it("별도 연결에는 적재 중인 부분 프로젝트가 보이지 않는다", async () => {
   const { createProject, input } = await creationFixture();
   const blocker = await pool.connect();
