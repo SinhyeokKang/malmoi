@@ -47,3 +47,4 @@
 - B fix1 `647c5645` → dev 통합(T4·T5·fix), `pnpm gate` ok. 워크트리 정리, 인계 사본 `.scratch/orch-pct/handoff-B.md`. 남은 (b): preview 실 Publish 후 Logs Values.
 - A fix1(`4efc2985`·`1760bb46`) → dev 통합(T1·T2·T6·fix), `pnpm gate` ok. 워크트리 정리. 웨이브 1 종료 — D 착수.
 - D 1차 완료(커밋 10, gate ok) → 리뷰(Opus): 🔴 0 · 🟡 ship.md `metaRows` · DESIGN Languages 잔재 · PRODUCT 스킵 0 문장 · 프로젝트 전환 Hold 테스트 · aria-controls 패널 단언 · 첫 Sync 전 탭에 Hold가 붙음(spec "이 행 하나뿐" 위반). `Base branch` vs `Branch`는 Q에서 시안으로 판정. → D fix1.
+- D fix1 → dev 통합(T8·T9·T11·fix), `pnpm gate` ok → **dev push `b5430f0b..e74be445`**(A·B·C·D 전부). D 워커는 Q 결함 수정용으로 유지. Q 착수.
