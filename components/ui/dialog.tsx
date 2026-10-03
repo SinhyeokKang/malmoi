@@ -70,6 +70,28 @@ function returnTarget(): HTMLElement | null {
   }
   return null;
 }
+type AutoFocusHandler = (event: Event) => void;
+/**
+ * 진입·복귀를 두 Content(`CommandDialog`·`DialogContent`)가 같이 쓴다 (D10) — 상태는 위 모듈 기록뿐이라 훅이 아니다.
+ * ⚠️ **소비자 핸들러가 먼저다** — 그것이 `preventDefault`했으면 손대지 않는다.
+ */
+function openAutoFocus(event: Event, consumer?: AutoFocusHandler) {
+  consumer?.(event);
+  if (event.defaultPrevented || !(event.target instanceof HTMLElement)) return;
+  if (event.target.contains(document.activeElement)) return;
+  const target = event.target.querySelector<HTMLElement>("[data-initial-focus]");
+  if (target === null) return;
+  event.preventDefault();
+  target.focus();
+}
+function closeAutoFocus(event: Event, consumer?: AutoFocusHandler) {
+  consumer?.(event);
+  if (event.defaultPrevented) return;
+  const target = returnTarget();
+  if (target === null) return;
+  event.preventDefault();
+  target.focus();
+}
 export const DialogTrigger = Primitive.Trigger;
 export const DialogClose = Primitive.Close;
 
@@ -92,23 +114,8 @@ export function CommandDialog({ open, onOpenChange, title, children, onEscapeKey
         aria-describedby={undefined}
         className={cn(LARGE_MODAL_PANEL, LARGE_MODAL_HEIGHT, "top-4 translate-y-0")}
         onEscapeKeyDown={onEscapeKeyDown}
-        onOpenAutoFocus={event => {
-          // DialogContent와 같은 표식 규칙 — 이미 안쪽 autoFocus가 섰으면 비켜선다.
-          if (event.defaultPrevented || !(event.target instanceof HTMLElement)) return;
-          if (event.target.contains(document.activeElement)) return;
-          const target = event.target.querySelector<HTMLElement>("[data-initial-focus]");
-          if (target === null) return;
-          event.preventDefault();
-          target.focus();
-        }}
-        onCloseAutoFocus={event => {
-          onCloseAutoFocus?.(event);
-          if (event.defaultPrevented) return;
-          const target = returnTarget();
-          if (target === null) return;
-          event.preventDefault();
-          target.focus();
-        }}
+        onOpenAutoFocus={event => openAutoFocus(event)}
+        onCloseAutoFocus={event => closeAutoFocus(event, onCloseAutoFocus)}
       >
         <Primitive.Title className="sr-only">{title}</Primitive.Title>
         {children}
@@ -178,23 +185,8 @@ export function DialogContent({
           ⚠️ **조건부다** — 호출부가 막았으면(`preventDefault`) 손대지 않는다. 안쪽 `autoFocus`는 FocusScope의 mount 이벤트보다 먼저
           돌아 이 핸들러가 아예 안 오지만(위 `recent` 주석), 포커스가 이미 안에 있으면 한 번 더 비켜선다.
         */
-        onOpenAutoFocus={(event) => {
-          onOpenAutoFocus?.(event);
-          if (event.defaultPrevented || !(event.target instanceof HTMLElement)) return;
-          if (event.target.contains(document.activeElement)) return;
-          const target = event.target.querySelector<HTMLElement>("[data-initial-focus]");
-          if (target === null) return;
-          event.preventDefault();
-          target.focus();
-        }}
-        onCloseAutoFocus={(event) => {
-          onCloseAutoFocus?.(event);
-          if (event.defaultPrevented) return;
-          const target = returnTarget();
-          if (target === null) return;
-          event.preventDefault();
-          target.focus();
-        }}
+        onOpenAutoFocus={(event) => openAutoFocus(event, onOpenAutoFocus)}
+        onCloseAutoFocus={(event) => closeAutoFocus(event, onCloseAutoFocus)}
       >
         <header className="flex items-start justify-between gap-2 p-4 pb-2">
           <Primitive.Title className="text-base font-medium">{title}</Primitive.Title>

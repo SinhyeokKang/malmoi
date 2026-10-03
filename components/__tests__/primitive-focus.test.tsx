@@ -213,6 +213,15 @@ it("안쪽 autoFocus가 있으면 그것이 이긴다", async () => {
   expect(document.activeElement?.getAttribute("aria-label")).toBe("From");
 });
 
+// 소비자가 막지 않고 포커스만 안으로 옮긴 경우 — `openAutoFocus`의 "이미 안에 있으면 비켜선다" 가드가 표식으로 덮지 않고
+// Radix 기본(첫 tabbable)에 넘긴다. 가드를 지우면 표식 Cancel이 이긴다(T10 리뷰 — 그 전엔 이 가드를 재는 테스트가 없었다).
+it("호출부가 막지 않고 안쪽으로 포커스를 옮겼으면 표식으로 덮지 않고 Radix 기본에 넘긴다", async () => {
+  await render(<Confirm inner={<input aria-label="From" />} onOpenAutoFocus={() => document.querySelector<HTMLElement>('[aria-label="From"]')?.focus()} />);
+  await click(byText("Open"));
+  expect(document.activeElement).not.toBe(byText("Cancel"));
+  expect(document.activeElement?.getAttribute("aria-label")).toBe(m.common.close);
+});
+
 it("표식이 없으면 Radix 기본이다 — 첫 tabbable(헤더 닫기)", async () => {
   function Plain() {
     const [open, setOpen] = useState(false);
