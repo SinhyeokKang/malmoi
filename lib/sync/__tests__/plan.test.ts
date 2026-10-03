@@ -146,6 +146,7 @@ describe("planSyncFinish — 결과를 행으로", () => {
         commitSha: "abc",
         prUrl: "https://github.com/o/r/pull/1",
         changed: ["a.json", "b.json"],
+        changedValues: 7,
       }),
     ).toEqual({
       status: "SUCCEEDED",
@@ -153,6 +154,7 @@ describe("planSyncFinish — 결과를 행으로", () => {
       retryable: null,
       prUrl: "https://github.com/o/r/pull/1",
       changed: 2,
+      changedValues: 7,
       warnings: 0,
       withheld: 0,
     });
@@ -166,6 +168,7 @@ describe("planSyncFinish — 결과를 행으로", () => {
       retryable: null,
       prUrl: null,
       changed: 0,
+      changedValues: 0,
       warnings: 0,
       withheld: 0,
     });
@@ -185,6 +188,7 @@ describe("planSyncFinish — 결과를 행으로", () => {
       retryable: true,
       prUrl: null,
       changed: null,
+      changedValues: null,
       warnings: 0,
       withheld: 0,
     });
@@ -310,7 +314,7 @@ describe("planSyncStart — 수동 Sync와의 상호 배제 (sync-edit-protectio
  * Publish 사건 payload에 복제하지 않는다(logs-rework 결정 1). 버린 것(`warnings`)과 섞지 않는다 — 보류는 토큰이 남아 다음 Publish를 기다린다.
  */
 describe("planSyncFinish — 보류 수", () => {
-  const committed = { status: "committed", delivered: 1, pr: "created", commitSha: "c", prUrl: "https://github.com/o/r/pull/1", changed: ["a.yml"] as string[] } as const;
+  const committed = { status: "committed", delivered: 1, pr: "created", commitSha: "c", prUrl: "https://github.com/o/r/pull/1", changed: ["a.yml"] as string[], changedValues: 1 } as const;
   it("committed · no-changes · skipped/withheld는 사유를 합친 보류 수를 싣는다", () => {
     expect(planSyncFinish({ ...committed, withheld: { file: 1, key: 2 } })).toMatchObject({ status: "SUCCEEDED", withheld: 3, warnings: 0 });
     expect(planSyncFinish({ status: "skipped", reason: "no-changes", withheld: { file: 1, key: 0 } })).toMatchObject({ status: "SKIPPED", withheld: 1 });
@@ -337,10 +341,32 @@ describe("planSyncFinish — 닫은 PR", () => {
  * 뺀다(`lib/sync/run.ts`) — 표시가 없으면 에이전트가 새 미리보기로 재호출해도 30초를 기다린다. `FAILED`로 닫지 않는다: Revert의 settled
  * 판정(`lib/keys/revert.ts`)이 FAILED를 "썼을 수 있는 실행"으로 센다. 렌더를 안 했으니 `changed`는 관측 없음(`null`)이다.
  */
+/**
+ * **Publish가 바꾼 값 수** (project-card-tabs design §2.3). `changed`(파일 수)와 짝이다 — 커밋은 센 수 · 스킵은 0, 관측이 없는 실행(실패·렌더 전에
+ * 멈춘 reconfirm)은 `null`. 0은 "바뀐 값이 없었다"는 관측이고 null은 관측 자체가 없다. ⚠️ 관측값이라 판정에 쓰지 않는다.
+ */
+describe("planSyncFinish — changedValues", () => {
+  it("committed는 센 수를 그대로 싣는다 — 표현만 바뀐 커밋의 0도 그대로다", () => {
+    const committed = { status: "committed", delivered: 1, pr: "updated", commitSha: "c", prUrl: "https://github.com/o/r/pull/1", changed: ["a.yml"] as string[] } as const;
+    expect(planSyncFinish({ ...committed, changedValues: 24 })).toMatchObject({ status: "SUCCEEDED", changedValues: 24 });
+    expect(planSyncFinish({ ...committed, changedValues: 0 })).toMatchObject({ status: "SUCCEEDED", changed: 1, changedValues: 0 });
+  });
+  it("스킵(no-edits · no-changes · withheld · writer-warnings)은 0이다", () => {
+    expect(planSyncFinish({ status: "skipped", reason: "no-edits" })).toMatchObject({ changedValues: 0 });
+    expect(planSyncFinish({ status: "skipped", reason: "no-changes" })).toMatchObject({ changedValues: 0 });
+    expect(planSyncFinish({ status: "skipped", reason: "withheld", withheld: { file: 1, key: 0 } })).toMatchObject({ changedValues: 0 });
+    expect(planSyncFinish({ status: "skipped", reason: "writer-warnings", warnings: ["x"] })).toMatchObject({ changedValues: 0 });
+  });
+  it("실패·reconfirm은 null이다 — 0으로 접지 않는다 (짝)", () => {
+    expect(planSyncFinish({ thrown: new Error("x") })).toMatchObject({ changed: null, changedValues: null });
+    expect(planSyncFinish({ status: "skipped", reason: "reconfirm" })).toMatchObject({ changed: null, changedValues: null });
+  });
+});
+
 describe("planSyncFinish — reconfirm", () => {
   it("SKIPPED + errorCode reconfirm · 재시도 가능 · changed null", () => {
     expect(planSyncFinish({ status: "skipped", reason: "reconfirm" })).toEqual({
-      status: "SKIPPED", errorCode: "reconfirm", retryable: true, prUrl: null, changed: null, warnings: 0, withheld: 0,
+      status: "SKIPPED", errorCode: "reconfirm", retryable: true, prUrl: null, changed: null, changedValues: null, warnings: 0, withheld: 0,
     });
   });
 

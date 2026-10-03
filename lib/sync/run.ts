@@ -73,6 +73,7 @@ export async function runSync(
         errorCode: finish.errorCode,
         prUrl: finish.prUrl,
         changed: finish.changed,
+        changedValues: finish.changedValues,
         warnings: finish.warnings,
         withheld: finish.withheld,
         finishedAt: new Date(),
