@@ -48,7 +48,7 @@ and Publish writes Malmoi's values back.
 
 ## Features
 
-Search from either header for the docs; sign in to also find your projects, their pages, and their text, with key results limited to nonarchived projects and sources after the first sync, excluding removed keys and languages.
+Search from either header for the docs; sign in to also find your projects, Malmoi's pages, and your text, with key results limited to nonarchived projects and sources after the first sync, excluding removed keys and languages.
 
 <table>
 <tr>
