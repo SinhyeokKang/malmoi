@@ -123,7 +123,9 @@ app/
                         모달 · 보관 · 리포설정 · sync · Revert·Sync 준비 · 커밋된 쓰기 둘(재검증 장애를 실패로 안 뒤집는다) · 활동사건 · 표면추가로그 · 프로젝트메타데이터 ·
                         소스Action · 소스페이지 · 초대메일 · MCP 토큰 Action · 없는화면(+아이콘) · 맞지 않는 하위 주소
   invite/[token]/       ⚠️ (edit) 밖이고 보호 경로 밖이다 — 비로그인으로 열려야 토큰이 보존된다.
-                        갈래는 planInviteView가 고른다(화면이 조건을 다시 적지 않는다)
+                        갈래는 planInviteView가 고른다(화면이 조건을 다시 적지 않는다).
+                        ⚠️ 수락 실패 `?e=`는 **허용 목록**(planInviteView의 case)이라 InviteError를 늘리면 여기 case도
+                        늘린다 — 빠뜨리면 거부가 무음이다(POSTMORTEM 2026-10-03)
   invite/actions.ts     acceptInvitation 하나. ⚠️ **인가 예외** — 지날 프로젝트 인가가 없고 토큰이 대신한다.
                         entry-points의 면제가 파일이 아니라 **export 단위**(EXEMPT_ACTIONS)다 — 파일 단위면
                         여기 붙는 둘째 export가 조용히 무인가로 열린다
@@ -789,7 +791,8 @@ lib/
                         Home의 열린 PR 조회 30초 메모(probe-memo와 같은 TTL·상한). 순수 — `server-only`가 없어
                         runSync·importRepository가 forgetOpenPr로 그 프로젝트 항목을 지운다(Publish가 연 PR을 가리지 않게)
   projects/owner-limit.ts
-                        server-only. lockOwnerSlots — 복원·OWNER 승격·OWNER 초대 수락이 같이 부르는 상한 재집계(2026-10-03).
+                        server-only. lockOwnerSlots(tx, counted, alsoLock) — 복원·OWNER 승격·OWNER 초대 수락이 같이 부르는 상한 재집계(2026-10-03).
+                        alsoLock은 세지 않고 잠그기만 한다(승격의 행위자 — 사건 FK 잠금과의 순환 방지, ARCHITECTURE §3.1).
                         User를 id 순으로 잠그고 → 활성 OWNER 수를 세고 → 상한에 닿은 사람만 운영자인지 본다(ARCHITECTURE §3.1).
                         ⚠️ 생성의 재집계는 여기로 옮기지 않았다 — onboarding-run/create가 이미 잠그고 같은 판정 단위를 쓴다
   projects/pr-url.ts    parseGithubPrUrl(순수). ⚠️ 저장된 URL을 **그 프로젝트의 owner/name으로 다시 검증**한다
