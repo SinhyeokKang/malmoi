@@ -47,7 +47,7 @@ describe("초대 화면 판정", () => {
   it("이메일 정규화를 기존 수락 판정과 공유한다", () => {
     expect(planInviteView(input)).toEqual({ kind: "accept", notice: null });
   });
-  it.each(["unauthorized", "unavailable", "not-found", "expired", "already-accepted", "email-mismatch", "already-member"])("알려진 queryError %s를 알림으로 보존한다", (queryError) => {
+  it.each(["unauthorized", "unavailable", "not-found", "expired", "already-accepted", "email-mismatch", "already-member", "limit-reached"])("알려진 queryError %s를 알림으로 보존한다", (queryError) => {
     for (const session of ["ok", "none"] as const) {
       expect(planInviteView({ ...input, session, queryError })).toEqual({ kind: session === "ok" ? "accept" : "sign-in", notice: queryError });
     }

@@ -2,6 +2,9 @@ import { encodeInvitationEmail } from "@/lib/credentials/records";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { hashInviteToken } from "@/lib/auth/invitation";
+import { planInviteView } from "@/lib/auth/invite-view";
+import { inviteErrorMessage } from "@/lib/auth/message";
+import { PROJECT_LIMIT } from "@/lib/onboarding/create-plan";
 
 import { createHarness, sessionFor } from "./harness";
 
@@ -495,8 +498,16 @@ describe("OWNER 승격·OWNER 초대 수락의 상한", () => {
     ownerInvite();
     hoisted.session = sessionFor("u-guest");
 
-    expect(await acceptInvitation({ token: "tok" })).toEqual({ ok: false, error: "limit-reached" });
+    const refused = await acceptInvitation({ token: "tok" });
+    expect(refused).toEqual({ ok: false, error: "limit-reached" });
     expect(db.invitations[0]?.acceptedAt).toBeNull();
+    // 화면까지 닿는다 — 수락 폼은 `?e=<error>`로 되돌리고 `planInviteView`가 아는 값만 알림으로 고른다(POSTMORTEM 2026-09-06).
+    const view = planInviteView({
+      session: "ok", invitation: { email: "guest@a.com", expiresAt: LATER, acceptedAt: null }, archived: false,
+      viewerEmail: "guest@a.com", alreadyMember: false, queryError: refused.ok ? undefined : refused.error, now: new Date(),
+    });
+    expect(view).toEqual({ kind: "accept", notice: "limit-reached" });
+    expect(view.notice === null ? "" : inviteErrorMessage(view.notice)).toContain(String(PROJECT_LIMIT));
     expect(db.members.some((m) => m.projectId === "pA" && m.userId === "u-guest")).toBe(false);
 
     const slot = db.projects.find((p) => p.id === "pO1");
