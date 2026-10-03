@@ -1229,7 +1229,7 @@ export const en = {
     /** ⚠️ **빈 이력과 원인이 반대다** — 하나는 프로젝트가 비었고 하나는 내가 좁혔다. */
     noMatch: {
       title: "No events match these filters",
-      description: "This project has activity — none of it is in this slice. Widen the date range or clear the filters.",
+      description: "This project has activity — none of it's in this slice. Widen the date range or clear the filters.",
     },
     /** 수집 공백 경계선. ⚠️ **날짜를 서버가 주지 못하면 이 줄을 아예 그리지 않는다**(추정값 금지). */
     coverage: (date: string): string =>
@@ -1429,7 +1429,6 @@ export const en = {
      * ⚠️ **복원 링크는 OWNER에게만** — EDITOR는 그 화면에 못 들어간다.
      */
     archived: {
-      badge: "Archived",
       description: "This project is archived. The history stays readable — editing, publishing and syncing are off.",
       restoreLine: (date: string): string => `Archived on ${date}. Project owners can restore it from Settings.`,
     },
@@ -1894,7 +1893,7 @@ export const en = {
       button: "Confirm and sign out everywhere",
       complete: "You have been signed out everywhere. Sign in again to continue.",
       failed: "We couldn't sign you out everywhere. Try again.",
-      cancelled: "Confirmation was cancelled. You are still signed in. Try again when you are ready.",
+      cancelled: "Confirmation was cancelled. You're still signed in. Try again when you're ready.",
       expired: "This confirmation expired. Start again to sign out everywhere.",
       wrongAccount: "Choose the same account you use to sign in to Malmoi, then try again.",
     },
@@ -2746,7 +2745,7 @@ export const en = {
           before sending.
         </>
       ),
-      inLogs: "It is recorded in Logs as a run with nothing to send.",
+      inLogs: "It's recorded in Logs as a run with nothing to send.",
       close: "Close",
 
       /**
@@ -2795,7 +2794,7 @@ export const en = {
       failedAt: "Failed at",
       reference: "Reference",
       /** ⚠️ **`Reference`가 없는 갈래에서는 이 줄도 빠진다** — 그 다섯은 실행 행 자체가 안 생긴다. */
-      sendReference: "Not a project owner? Share the reference above with one \u2014 it is in Logs too.",
+      sendReference: "Not a project owner? Share the reference above with one \u2014 it's in Logs too.",
       settings: "Open settings",
       signIn: "Sign in",
 

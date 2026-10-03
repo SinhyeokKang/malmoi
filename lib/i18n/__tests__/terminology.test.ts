@@ -169,10 +169,12 @@ const CONCEPT_BANNED: readonly Ban[] = [
   ["does not", /\bdoes not\b/i],
   ["do not", /\bdo not\b/i],
   ["has not", /\bha(?:s|ve) not\b/i],
+  ["you are", /\byou are\b/i],
+  ["it is", /(?<!\bas )\bit is\b/i],
 ];
 
 /** 개인정보 방침 본문 — 문구를 고치면 개정 이력·시행일이 따라가는 문서라(policy-gate) 화면 문체 규칙을 소급하지 않는다. */
-const CONTRACTIONS = ["could not", "did not", "cannot", "is not", "was not", "were not", "are not", "does not", "do not", "has not"] as const;
+const CONTRACTIONS = ["could not", "did not", "cannot", "is not", "was not", "were not", "are not", "does not", "do not", "has not", "you are", "it is"] as const;
 
 /**
  * **원고용 개념 색인** — 사전 색인에서 둘을 빼고 하나를 더한다.
