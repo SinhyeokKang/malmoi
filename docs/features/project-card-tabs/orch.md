@@ -40,3 +40,6 @@
 - 2026-10-04 Run `run_c2971b959e08` · 웨이브 1 시작 — A `ctx_5adc1c5e470e`(Opus high) · B `ctx_de0a7fb1e640`(Opus high) · C `ctx_dee57e60d929`(Sonnet high), 워크트리 `pct-a-home-data`·`pct-b-publish-count`·`pct-c-ui-primitives`.
 - B-T3 `5cd88900` → dev `6b585d0b` · dev DB 적용(`db:status` clean · anon/authenticated USAGE·CREATE false). A에 rebase 신호 송신.
 - C 1차 완료(커밋 5, gate ok) → 독립 리뷰(Opus): 🔴 `Fact align="end"`가 flex 자식을 못 민다 · 🟡 tabpanel 포커스 링 없음 · 🟡 design §3·T10의 "비활성 패널 언마운트/빈 id" 서술이 틀림(Radix는 hidden 껍데기를 남기고 자식만 언마운트 — **D가 문서 수정**). Tabs 비제어(내부 상태)는 design 의도 충족으로 판정. → C fix1 `ctx_c024a6f363bc`.
+- C fix1 완료(`dadcb75f`) → dev `93523f03..e3d6998a` 통합, `pnpm gate` ok. 워크트리·터미널 정리. 인계 사본 `.scratch/orch-pct/handoff-C.md`. dev push는 A·B 통합 뒤 한 번에.
+- B 1차 완료(커밋 3, gate ok) → 리뷰(Opus): 🔴 0 · 🟡 집계 예외가 Publish를 FAILED로 만듦(→ null로 접기) · `__proto__` 테스트가 null-proto 경로를 안 탐 · 시나리오가 DB 행에서 멈춤(뷰 모델 단언 추가) · 칸 순서 DOM 단언. → B fix1 `ctx_cbfe6582e9ff`.
+- A 1차 완료(커밋 3, gate ok 2회차 — 1회차 `lib/keys` 성능 테스트 부하 red) → 리뷰(Opus): 🔴 0 · 🟡 `metaConnection` 사본(→ 원본 공유) · `homeLastSync` 보관 필터 · Synced 종료 시각 통합 단언. 묶음 경계 시안 대조는 리뷰 서브에이전트가 DesignSync를 못 써서 **Q로 이월**(DesignSync는 `/design-sync` 전용). D 몫으로 넘김: PR state 값 매핑 순수 함수 · ARCHITECTURE:2073·DIRECTORY:761의 `homeTriggers` 언급 · `couldNotCheck` Connection 값 DESIGN 기재 · 늦게 오는 Hold는 Sync 마지막 묶음 끝. → A fix1.
