@@ -125,7 +125,7 @@ app/
   invite/[token]/       ⚠️ (edit) 밖이고 보호 경로 밖이다 — 비로그인으로 열려야 토큰이 보존된다.
                         갈래는 planInviteView가 고른다(화면이 조건을 다시 적지 않는다).
                         ⚠️ 수락 실패 `?e=`는 **허용 목록**(planInviteView의 case)이라 InviteError를 늘리면 여기 case도
-                        늘린다 — 빠뜨리면 거부가 무음이다(POSTMORTEM 2026-10-03)
+                        늘린다 — 빠뜨리면 거부가 무음이다(POSTMORTEM 2026-09-06 · 🔁 2026-10-03)
   invite/actions.ts     acceptInvitation 하나. ⚠️ **인가 예외** — 지날 프로젝트 인가가 없고 토큰이 대신한다.
                         entry-points의 면제가 파일이 아니라 **export 단위**(EXEMPT_ACTIONS)다 — 파일 단위면
                         여기 붙는 둘째 export가 조용히 무인가로 열린다
