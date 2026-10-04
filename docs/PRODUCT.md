@@ -348,6 +348,20 @@ GitHub·Google 어느 쪽으로 들어와도 같은 사람을 가리키고, 프�
   토큰은 허용 동작(기존 `Permission` 셋 + 토큰 전용 `project:create`)과 프로젝트 범위를 고르고, 역할보다 넓을 수 없다.
   에이전트가 한 일은 그 사용자의 사건으로 Logs에 선다(경유 표시 없음). ④ **도구 목록과 각 도구의 쓰기 범위의 정본은
   ARCHITECTURE §6.45**다.
+- **화면 언어 — `en`·`ko`·`es`** (2026-10-05, ui-locales — §10의 "UI를 ko로 여는 시점"을 닫았다). 주 대상은 초대 링크로 들어오는
+  **번역 편집자**다 — 영어 화면에서 Sync·Publish·Sources를 읽어야 했다. **기본은 여전히 영어**이고 개발자 요구와 충돌하지 않는다.
+  ① **판정 순서는 계정(`User.uiLocale`) > 기기 쿠키(`malmoi-ui-locale`) > `en`**이다. **`Accept-Language`는 보지 않는다 — 처음 온 사용자는
+  항상 영어다**(사용자 결정). 기기 층이 localStorage가 아니라 http-only 쿠키인 것은 서버 컴포넌트 문구를 서버가 번역해야 해서다.
+  ② **바꾸는 자리가 둘이다** — 공개 페이지(`PublicFooter`를 렌더하는 공개 셸·`AuthLayout`)의 푸터 스위처와 앱 안의 **`/preferences`**(Language 카드
+  하나, 고르는 즉시 적용). 둘이 같은 Action(`setUiLocale`)을 부르고, **로그인한 사용자가 푸터에서 바꾸면 쿠키와 계정에 함께 쓴다** — 쿠키에만 쓰면
+  계정 값이 이겨 푸터가 고장 난 것처럼 보인다. 로그아웃 뒤에는 그 기기의 쿠키 값이 적용된다. 로그인할 때 쿠키 값을 계정으로 옮기지 않는다
+  (계정이 비면 쿠키가 폴백이라 결과가 같다). "기기 설정 따르기" 같은 넷째 선택지는 없다.
+  ③ **번역하는 것**: 앱·공개 셸의 화면 문구 전부, 날짜(여전히 `UTC`를 말한다)·상대 시각·언어 이름, `/docs` 원고(언어별 세 벌 — 스크린샷만 en 공유),
+  `/privacy` 본문(**en·ko 두 벌 — es 화면은 en 본문**). **영어로 고정되는 것**: MCP 도구 응답 · 초대 메일(받는 사람의 언어를 모른다) · SEO 메타·탭 제목·
+  `llms*.txt`·sitemap(크롤러는 쿠키가 없다) · `/api/*` JSON · cron·서버 로그 · CLI 출력 · 가이드 스크린샷 · changelog 본문(GitHub Release) · 숫자 형식 ·
+  리포에 남는 문장(PR 제목·본문·커밋 메시지 — 누가 Publish했느냐로 바뀌면 안 된다).
+  ④ **검수**: ko(사전·가이드·방침)는 사용자가 검수하고 **es는 원어민 검수 없이 에이전트 초안으로 낸다**(사용자 결정 — 품질 위험을 감수했다).
+  이 리포의 사전을 Malmoi 자신으로 관리하는 dogfooding은 하지 않는다 — 사전 값에 함수·ReactNode가 섞여 `ts-dict` 어댑터의 문자열 사전과 맞지 않는다.
 
 ### 4.2 만들지 않는 것
 
@@ -386,6 +400,10 @@ GitHub·Google 어느 쪽으로 들어와도 같은 사람을 가리키고, 프�
 - **실시간 공동 편집** — 위 "동시 편집"의 연장.
 - **범용 알림 시스템** — 멤버 초대 메일(§4.1) 밖의 발송은 없다(ARCHITECTURE §6.00). 발송 이력·배달·열람 추적, 자동 재시도·작업 큐, 캠페인 발송도 만들지 않는다.
 - **포맷별 무제한 설정 UI** — 어댑터 내부는 사용자에게 노출하지 않는다(§3).
+- **화면 언어(§4.1)의 확장** (2026-10-05, ui-locales) — 로케일 URL(`/ko/...`)·`hreflang`·언어별 색인(크롤러는 영어만 본다), `Accept-Language`·지역 기반
+  자동 감지, changelog 본문 번역, 방침 es 본(법적 문서를 원어민 검수 없이 낼 수 없다), 언어별 가이드 스크린샷(ko 원고는 `게시`, 그림 속 버튼은
+  `Publish` — 수용한 대가), 다른 탭의 언어 동기화(다음 새로고침에서 풀린다), en·ko·es 밖의 언어와 RTL. **타임존·테마는 비범위가 아니라 별도
+  기능이다** — `/preferences`에 이어 붙일 예정이고 각자 정본의 결정을 뒤집는다(타임존은 "절대 시각은 UTC로 말한다", 테마는 DESIGN §3.1 라이트 단일).
 - **셀프서비스 계정 삭제 화면** (2026-09-19 privacy) — 방침이 공표하는 것은 **문의 주소와 30일 안의
   처리**이고, 화면은 만들지 않는다. 지우는 일이 사람 손으로 끝나는 규모이고(멤버 상한 10·프로젝트 3 — 운영자 제외),
   화면을 만들면 **남길 것과 지울 것의 경계**를 UI가 대신 판단하게 된다 — 번역 값은 프로젝트의
@@ -659,7 +677,9 @@ git ref-safe(`isRefSafeSlug` — 브랜치 이름 `malmoi-i18n/sync-<slug>`에 �
 ⚠️ **그 예약의 근거는 모달화 뒤에도 그대로다** (2026-09-13) — 화면이 모달이 됐을 뿐 **라우트는 남는다**.
 
 **검색은 라우트가 아니다** — 두 셸 헤더가 여는 Dialog이고 검색어는 주소에 싣지 않는다. 선택한 결과만 기존 목적지로 이동한다.
-공개 가이드 색인의 `/api/search-index`는 API라 아래 화면 IA에 넣지 않는다.
+공개 가이드 색인 `/api/search-index/<uiLocale>`(화면 언어별 정적 파일 셋)는 API라 아래 화면 IA에 넣지 않는다.
+
+**URL은 화면 언어와 무관하다** (2026-10-05, ui-locales) — 같은 주소가 요청의 언어(계정 > 기기 쿠키 > en)로 그려진다. 로케일 URL은 만들지 않는다(§4.2).
 
 **축이 둘이고 사이드바가 그것을 구역으로 드러낸다** (2026-09-09 IA 확정 — DESIGN §9의 GitLab
 super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드바는 프로젝트 컨텍스트를 `usePathname`으로
@@ -674,14 +694,15 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
                                클라이언트가 연 OAuth 쿼리 → 검증 뒤 ?request=<id>로 정규화 · 로그인 왕복·계정 연결·/signin 복귀가 같은 요청으로 돌아온다
 /invite/:token                 초대 수락 (토큰이 인가를 대신한다)
 /privacy                       ✅ 방침 — 랜딩과 같은 공개 셸 안 (헤더 primary가 세션으로 갈린다) ← privacy-shell (2026-09-26)
-/docs · /docs/:slug*           ✅ 사용 가이드 — 원고 guide/**.md · 순서 guide/SUMMARY.md · 공개 셸 + 문서 내비 ← docs-guide (2026-09-26)
+/docs · /docs/:slug*           ✅ 사용 가이드 — 원고 guide/<uiLocale>/**.md · 순서 guide/<uiLocale>/SUMMARY.md · 공개 셸 + 문서 내비 ← docs-guide (2026-09-26)
+                               화면 언어의 원고(en·ko·es 세 벌 — 구조 동형, 스크린샷은 en 한 벌 공유, 없는 언어를 en으로 메우지 않는다) ← ui-locales (2026-10-05)
                                /docs = 개요(독자 두 갈래 Set up / Translate) · 없는 slug·AUTHORING·SHOOTING은 404
                                옛 /docs#<id> 일곱은 개요가 새 페이지로 보낸다 · 앱 안 링크는 routes.docs(page?, anchor?)
 /changelog                     릴리스 노트 — 원문은 GitHub Release(공개 리포, 토큰 없이 1시간 캐시 · 배포마다 새로 받는다) · 공개 셸 · #v<x.y.z> 착지 ← changelog (2026-09-28)
                                앱 태그 v<x.y.z>만(draft·prerelease·액션 태그 제외) · GitHub 실패·0건도 200 + GitHub Releases 안내
-/robots.txt                    ✅ 요청 시점 VERCEL_ENV 판정 — production만 허용(/api/·/projects·/account 거부 + sitemap), 그 밖은 Disallow: / ← seo-geo (2026-09-27)
+/robots.txt                    ✅ 요청 시점 VERCEL_ENV 판정 — production만 허용(/api/·/projects·/account·/preferences 거부 + sitemap), 그 밖은 Disallow: / ← seo-geo (2026-09-27)
 /sitemap.xml                   ✅ / · /docs/** 전부(SUMMARY 순서) · /changelog · /privacy — /signin은 noindex라 없다 ← seo-geo
-/llms.txt · /llms-full.txt     ✅ 가이드 목차(제목·절대 URL·첫 문단) · 원고 전문(페이지마다 Source 줄) — text/plain ← seo-geo
+/llms.txt · /llms-full.txt     ✅ 가이드 목차(제목·절대 URL·첫 문단) · 원고 전문(페이지마다 Source 줄) — text/plain · en 원고만 ← seo-geo
                                색인: 공개 다섯(/·/docs·/docs/:slug·/changelog·/privacy)만 canonical · /signin·/invite·/signin/link·/oauth/authorize는 noindex(robots.txt로는 안 막는다)
 
 ── Your work (사용자 축 — 인가는 requireUser) ────────────────────
@@ -689,6 +710,7 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 /projects/new                  ✅ 생성 — **`/projects` 위의 모달 딥링크** (뒤에 목록이 그대로 있다) ← new-project-modal (2026-09-13)
 /account                       ✅ 프로필 편집·사진 · 로그인 수단 목록/연결/해제 · GitHub App 연동/해제 · **전체 세션 회수** ← 6b-4 · account-linking · account-connect · account-settings
 /mcp                           MCP connector — Connected apps(OAuth 연결 목록·끊기) + 개인 토큰 발급·재발급·폐기 + 연결 예시(방식 둘) (사이드바 `Projects` 아래) ← mcp-connector (2026-09-28) · mcp-oauth (2026-09-29)
+/preferences                   Preferences — Language 카드 하나(고르는 즉시 적용 · 저장 버튼 없음). 사용자 축 내비 Projects · MCP connector · Preferences · Account 순 ← ui-locales (2026-10-05)
 
 ── <project> (프로젝트 축 — 인가는 getProjectAccess) ─────────────
 /projects/:slug                ✅ Home — 개요 (착지점)            ← 6b-6 (2026-09-09, 프로덕션)
@@ -751,9 +773,12 @@ Changelog · GitHub | Get started — 2026-09-28에 Home이 빠지고 GitHub가 
   섰다(2026-09-24, launch-readiness L2.3 — 절 일곱) — ⚠️ **2026-09-26에 사전 본문을 걷고 리포 안 Markdown(`guide/**.md`)으로 옮겼다**(docs-guide — 편집자 장이 생기고 페이지가 늘었다. 상한·포맷·action 넷·마커의 정본 상수 대조는 원고 게이트 `lib/guide/__tests__/`가 든다). 라우트를 먼저 딴 이유는 로그인 화면 푸터가 그것을 가리키기
   때문이다. **`/privacy`는 2026-09-26에 공개 셸 안으로 들어갔다**(privacy-shell — 랜딩 푸터에서 누르면 셸 밖으로 떨어지던 것을 막는다.
   폭은 셸의 1280이고 폰에서는 가로 스크롤을 수용했다 · 사용자 판정). `/docs`도 같은 날 공개 셸 안으로 들어갔다(docs-guide — 문서 내비를 더한 형, DESIGN §6.61). **Terms of Service는 만들지 않는다** — 돈을 받고 파는 서비스가 아니라 Privacy Policy
-  하나로 퉁친다(2026-09-10 사용자). **방침은 en 단일이다**(2026-09-19 privacy) — ko를 열면 본문 두 벌의 신선도를
-  각각 게이트해야 하고 §10(ko 여는 시점)을 선행해 정하게 된다. 대가: 동의를 받는 문서를 한국어 화자 동료가 en으로 읽는다.
-  **쿠키 동의 배너는 없다** — 쿠키가 로그인·왕복 state뿐이라 고지로 충분하다.
+  하나로 퉁친다(2026-09-10 사용자). ~~**방침은 en 단일이다**(2026-09-19 privacy)~~ → **방침은 en·ko 두 벌이다**(2026-10-04 사용자, ui-locales) —
+  ko 화면이면 ko 본문(`messages/ko-privacy.tsx`), **그 밖의 화면(en·es)은 en 본문**이다. 그때 걱정한 "본문 두 벌의 신선도"는 게이트가 든다 —
+  `policy-gate.test.tsx`가 두 본의 절 id·수집 항목(`collected.ts`)·쿠키 표·개정 이력 항목과 시행일·문단마다의 사실 집합(숫자·기간·고유명·링크)을
+  대조해 **한쪽만 고치면 red**다. 두 본 중 어느 쪽이 우선한다는 조항은 두지 않는다(게이트로 같은 사실을 말한다). es 본은 만들지 않는다(§4.2).
+  **쿠키 동의 배너는 없다** — 쿠키가 로그인·왕복 state와 **사용자가 고른 화면 언어를 기억하는 기능 쿠키**(`malmoi-ui-locale`, http-only)뿐이라
+  고지로 충분하다(추적·광고 쿠키가 없다).
 
 ⚠️ **MCP 토큰 화면은 전용 라우트 `/mcp`다** (2026-09-28 — §4.3 ⑤가 적었던 "라우트로 만들지 않는다, `settings`의 섹션이다"를
 뒤집었다). 토큰이 프로젝트가 아니라 **계정** 밑이라 사용자 축(`Your work`)에 선다 — 인가는 `requireUser`, 사이드바 사용자
@@ -858,7 +883,7 @@ Changelog · GitHub | Get started — 2026-09-28에 Home이 빠지고 GitHub가 
    - ⚠️ **순서**: 백로그의 조건이 *"착수 전에 어느 왕복이 얼마인지부터 재야 한다"* 다
      **재기 전에 스키마를 늘리는 것은 순서가 거꾸로다.**
 
-⚠️ **2026-09-27에 8-3의 두 결정이 다시 뒤집혔다** (사용자) — 사용자 축에 **`New project`**가 돌아왔고(`Projects · New project · Account` — 헤더 사용자 메뉴의 첫 묶음도 같은 목록이다. ⚠️ **2026-09-30에 다시 빠졌다** — 자리는 앱 셸 헤더의 아바타 왼쪽 버튼이고, 사용자 구역의 아바타·이름 머리 줄도 함께 걷혔다), 프로젝트 구역 머리에 **프로젝트 전환 메뉴**가 섰다(이름 검색 · 보관 포함 · 지금 프로젝트 체크 · 고르면 그 프로젝트 Home). 8-3은 스위처를 지워 "옮기는 길을 목록 하나로" 모았었고, 새 프로젝트는 목록 버튼 하나였다. 사이드바 **하단은 `Changelog · Docs` 둘**이다(2026-09-28 — GitHub Releases 외부 링크 `Release notes`였던 첫 항목이 앱 안 `/changelog`가 되고 라벨이 그 페이지 제목 `Changelog`와 같은 키가 됐다) — `Sign out`은 하단에서 빠져 사용자 메뉴에만 있다(`lib/shell/nav.ts`의 `navFooterItems`).
+⚠️ **2026-09-27에 8-3의 두 결정이 다시 뒤집혔다** (사용자) — 사용자 축에 **`New project`**가 돌아왔고(`Projects · New project · Account` — 헤더 사용자 메뉴의 첫 묶음도 같은 목록이다. ⚠️ **2026-09-30에 다시 빠졌다** — 자리는 앱 셸 헤더의 아바타 왼쪽 버튼이고, 사용자 구역의 아바타·이름 머리 줄도 함께 걷혔다), 프로젝트 구역 머리에 **프로젝트 전환 메뉴**가 섰다(이름 검색 · 보관 포함 · 지금 프로젝트 체크 · 고르면 그 프로젝트 Home). 8-3은 스위처를 지워 "옮기는 길을 목록 하나로" 모았었고, 새 프로젝트는 목록 버튼 하나였다. 사이드바 **하단은 `Changelog · Docs` 둘**이다(2026-09-28 — GitHub Releases 외부 링크 `Release notes`였던 첫 항목이 앱 안 `/changelog`가 되고 라벨이 그 페이지 제목 `Changelog`와 같은 키가 됐다) — `Sign out`은 하단에서 빠져 사용자 메뉴에만 있다(`lib/shell/nav.ts`의 `navFooterItems`). **사용자 축은 지금 `Projects · MCP connector · Preferences · Account`다**(2026-10-05, ui-locales — `Preferences`가 `Account` 앞에 섰다. 사이드바 사용자 구역과 헤더 사용자 메뉴가 같은 `navWorkItems`를 읽는다).
 
 ⚠️ **그 뒤 뒤집혔다** (8-3, 2026-09-11) — 구역 라벨은 **이름 그대로**(사용자 이름 / 프로젝트 이름)이고 계정 항목은 `Settings`다. ⚠️ **계정 항목은 2026-09-23에 다시 `Account`가 됐다**(사용자) — 같은 사이드바에 `Project settings`가 서 있어 `Settings`가 축만 다른 동의어였고, 2인칭(`Your account`)으로 돌아간 것이 아니라 라우트·아이콘과 같은 낱말을 고른 것이다. 아래는 8-3 때의 판정이다. ~~**문구는 2인칭으로 통일한다** — 구역 `Your work`, 항목 `Your account`. 시안의 `My account`는 구역과
 인칭이 섞였다.~~
@@ -1005,11 +1030,12 @@ active → archived (편집·sync·CI push 중단, 목록엔 배지로 남는다
 
 ## 10. 아직 안 정한 것
 
-- **UI를 ko로 여는 시점.** 6a가 UI 문자열을 영어 단일로 모았고(`messages/en.tsx`), 여는 길은 이미
-  좁혀 뒀다 — `messages/ko.tsx`를 `satisfies Messages`로 만들고 `lib/i18n/index.ts`의 `m`을 상수에서
-  `getMessages(locale)`(서버) + provider(클라이언트)로 바꾸면 된다. **소비자의 import 자리는 안 바뀐다.**
-  안 정한 것은 **언제 여는가**와 **locale을 무엇이 정하는가**(사용자 설정 / `Accept-Language` / 프로젝트
-  속성)다. 이 도구를 이 리포 자신에 붙이는 8단계가 그 답을 요구한다.
+- ~~**UI를 ko로 여는 시점**~~ → ✅ **열었다 — en·ko·es** (2026-10-05, ui-locales — §4.1 "화면 언어"). **언제**: 지금 — 근거는 관측된 수요가
+  아니라 **사용자 판단**이다(2026-10-04 — 막힌 편집자·요청 이슈는 아직 없었다. 여기 적혀 있던 계기 "8단계 dogfooding"은 기다리지 않았고,
+  dogfooding 자체는 하지 않는다). **무엇이 정하나**: 계정 설정 > 기기 쿠키 > 영어 — `Accept-Language`·프로젝트 속성은 보지 않는다.
+  ⚠️ **여기 있던 전망 "소비자의 import 자리는 안 바뀐다"는 틀렸다** — `m`은 모듈 상수라 요청마다 언어가 다른 서버에서 유지할 수 없고,
+  루트 레이아웃이 언어를 흘려보내는 방식도 레이아웃·페이지 병렬 렌더(POSTMORTEM 2026-08-31) 때문에 쓸 수 없어 **소비자 166곳이 전부
+  입구(`getMessages()`·`useMessages()`)를 직접 묻도록** 바뀌었다(ARCHITECTURE "화면 문구").
 
 - ~~**Workflows 권한을 요구할 것인가**~~ → ✅ **요구하지 않는다** (2026-09-07, 5단계). 연동 PR을 자동으로
   내지 않고 **복사용 YAML**을 낸다. 근거는 신뢰 비용과 권한 면적 둘이다 — 설치 화면의 "워크플로 파일을
