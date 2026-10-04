@@ -65,7 +65,7 @@ bearer_token_env_var = "MALMOI_TOKEN"
 }
 ```
 
-항목을 추가한 뒤 에이전트를 다시 시작합니다. `unauthorized`가 보고되면 토큰이 없거나, 만료됐거나, 철회된 것입니다. `MALMOI_TOKEN`을 확인하거나 토큰을 교체하세요.
+항목을 추가한 뒤 에이전트를 다시 시작합니다. `unauthorized`가 보고되면 토큰이 없거나, 만료되었거나, 철회된 것입니다. `MALMOI_TOKEN`을 확인하거나 토큰을 교체하세요.
 
 ## 다음 단계 {#next}
 

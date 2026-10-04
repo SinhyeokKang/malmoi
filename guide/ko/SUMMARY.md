@@ -14,7 +14,7 @@
   - [변경 사항 게시](translate/publish.md)
 - [동기화의 원리](sync/README.md)
   - [코드가 바뀌면](sync/push.md)
-  - [풀 리퀘스트 머지](sync/merging.md)
+  - [PR 머지](sync/merging.md)
   - [매일 밤](sync/nightly.md)
   - [되돌리기와 다시 동기화](sync/revert.md)
   - [로그에서 활동 확인](sync/logs.md)
