@@ -77,7 +77,7 @@ it("경고를 파일별로 묶되 파서 원문의 개행을 보존한다", () =
   const groups = summarizeWarnings([
     { surfaceSlug: "web", path: "ko.yml", code: "parse-failed", detail: "bad\n  x\n  ^" },
     { surfaceSlug: "web", path: "ko.yml", code: "root-not-object" },
-  ], (warning) => adapterErrorMessage(warning));
+  ], (warning) => adapterErrorMessage(warning, en.adapterErrors));
   expect(groups).toEqual([{ file: "web: ko.yml", messages: [`${en.adapterErrors["parse-failed"]} (bad\n  x\n  ^)`, en.adapterErrors["root-not-object"]] }]);
 });
 it("PR URL은 원본 리포·origin·양의 안전 정수를 검증하고 삼상태를 보존한다", () => {

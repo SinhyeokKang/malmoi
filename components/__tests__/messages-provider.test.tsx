@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import { existsSync } from "node:fs";
 import { join } from "node:path";
 
 import { act, useState } from "react";
@@ -35,9 +34,9 @@ function Probe() {
   );
 }
 
-/** 이 언어 화면이 받아야 할 사전 — 사전 파일이 있으면 그 export, 없으면(들어오기 전) en. */
+/** 이 언어 화면이 받아야 할 사전 — 그 언어 파일의 export다(파일이 없으면 import가 던져 red). */
 async function expected(uiLocale: UiLocale): Promise<Messages> {
-  if (uiLocale === "en" || !existsSync(join(ROOT, "messages", `${uiLocale}.tsx`))) return en;
+  if (uiLocale === "en") return en;
   const mod = (await import(join(ROOT, "messages", `${uiLocale}.tsx`))) as Record<string, Messages>;
   return mod[uiLocale] as Messages;
 }

@@ -12,7 +12,7 @@ import type { UiLocale } from "@/lib/i18n/locales";
  * (POSTMORTEM 2026-09-20의 grep 0건 규칙).
  *
  * **화면 언어(`uiLocale`)별 형식도 손으로 만든다**(ui-locales) — en `Sep 27, 2026` · ko `2026년 9월 27일` · es `27 sept 2026`.
- * 세 언어 모두 뒤에 `UTC`를 단다. ⚠️ 기본값 `"en"`은 이행 중에만 있다(ui-locales orch D3) — 소비자가 다 언어를 넘기면 지운다.
+ * 세 언어 모두 뒤에 `UTC`를 단다.
  *
  * ⚠️ **잎이다 — 값 import가 0이다**(화면 언어 타입만 읽는다). 클라이언트 컴포넌트(`publish-button.tsx`)가 값으로 읽는다.
  */
@@ -24,19 +24,19 @@ const ES_MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sept
 /** 한 날짜의 부품 — 언어별 조립만 다르고 값은 전부 UTC에서 읽는다. */
 const parts = (at: Date) => ({ y: at.getUTCFullYear(), mo: at.getUTCMonth(), d: at.getUTCDate() });
 
-export function utcDay(at: Date, uiLocale: UiLocale = "en"): string {
+export function utcDay(at: Date, uiLocale: UiLocale): string {
   const { y, mo, d } = parts(at);
   if (uiLocale === "ko") return `${y}년 ${mo + 1}월 ${d}일`;
   if (uiLocale === "es") return `${d} ${ES_MONTHS[mo]} ${y}`;
   return `${EN_MONTHS[mo]} ${d}, ${y}`;
 }
 
-export function utcMinute(at: Date, uiLocale: UiLocale = "en"): string {
+export function utcMinute(at: Date, uiLocale: UiLocale): string {
   return `${utcDay(at, uiLocale)} ${at.toISOString().slice(11, 16)} UTC`;
 }
 
 /** 날짜가 과한 자리(계정 병합 확인의 가입 시점)의 형 — 로케일 포맷터 대신 같은 월 약어를 쓴다. */
-export function utcMonth(at: Date, uiLocale: UiLocale = "en"): string {
+export function utcMonth(at: Date, uiLocale: UiLocale): string {
   const { y, mo } = parts(at);
   if (uiLocale === "ko") return `${y}년 ${mo + 1}월`;
   if (uiLocale === "es") return `${ES_MONTHS[mo]} ${y}`;

@@ -144,7 +144,7 @@ describe("메타 열 — Project 탭", () => {
       [en.home.meta.sources]: "2",
       [en.home.meta.keys]: "1,207",
       [en.home.meta.members]: "4 (2)",
-      [en.home.meta.created]: relativeTime(input.createdAt, now),
+      [en.home.meta.created]: relativeTime(input.createdAt, now, "en"),
     });
   });
 
@@ -194,7 +194,7 @@ describe("메타 열 — Project 탭", () => {
   it("보관이면 Archived 행이 시각만 든다", async () => {
     const archivedAt = new Date("2026-10-01T00:00:00Z");
     const { rows } = await setup({ archivedAt });
-    expect(rows()[en.home.meta.archived]).toBe(relativeTime(archivedAt, now));
+    expect(rows()[en.home.meta.archived]).toBe(relativeTime(archivedAt, now, "en"));
   });
 });
 
@@ -204,7 +204,7 @@ describe("메타 열 — Sync 탭", () => {
     await open(en.home.meta.tabs.sync);
     expect(rows()).toEqual({
       [en.home.meta.lastSync]: `[${en.logs.meta.runType.IMPORT.nightly}]`,
-      [en.home.meta.synced]: relativeTime(synced, now),
+      [en.home.meta.synced]: relativeTime(synced, now, "en"),
       [en.home.meta.result]: `[${stateLabel(en, "partiallySynced")}]`,
       [en.home.meta.changed]: en.home.meta.values(128),
       [en.home.meta.keysSeen]: "903",
@@ -309,7 +309,7 @@ describe("메타 열 — 늦게 오는 Hold · PR state", () => {
     await open(en.home.meta.tabs.publish);
     expect(rows()).toEqual({
       [en.home.meta.lastPublish]: `[${en.logs.meta.runType.PUBLISH.manual}]`,
-      [en.home.meta.published]: relativeTime(published, now),
+      [en.home.meta.published]: relativeTime(published, now, "en"),
       [en.home.meta.pullRequest]: en.home.meta.pr(127),
       [en.home.meta.changed]: en.home.meta.values(24),
       [en.home.meta.sources]: "mobile, web",

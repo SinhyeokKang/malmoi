@@ -175,7 +175,7 @@ describe("이름·시각·색 (#33·#40·#41·#42)", () => {
     const { container } = await render(<SourceStatus now={new Date("2026-09-24T03:09:00Z")} source={{ lastCommitSha: null, lastImportStartedAt: at, lastImportError: null, lastImportFailedAt: null, lastImportedAt: null }} />);
     const time = container.querySelector("time");
     expect(time?.getAttribute("dateTime")).toBe(at.toISOString());
-    expect(time?.getAttribute("aria-label")).toBe(utcMinute(at));
+    expect(time?.getAttribute("aria-label")).toBe(utcMinute(at, "en"));
   });
 
   it("좁은 폭에서도 언어 행의 검토·누락 표시가 숨지 않는다 — Meter는 aria-hidden이라 색만 남는다", () => {

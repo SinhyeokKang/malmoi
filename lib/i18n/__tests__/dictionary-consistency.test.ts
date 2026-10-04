@@ -7,6 +7,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import type { Messages } from "@/lib/i18n";
+import { UI_LOCALES, type UiLocale } from "@/lib/i18n/locales";
 import { en } from "@/messages/en";
 
 import { BANNED_TERMS } from "./helpers/banned-terms";
@@ -16,17 +17,17 @@ import { FUNCTION_ARGS } from "./helpers/function-args";
  * **번역 사전 정합성** (ui-locales tasks B1). 키·함수 시그니처는 `satisfies Messages`가 컴파일 시점에 든다 — 여기는 그 밖이다:
  * ①en과 같은 문장(번역 누락) ②함수 값 ③빈 문장 ④용어 ⑥사전 import 자리 ⑦pull·push의 사전 0 ⑧영어 고정 표면의 입구.
  *
- * ⚠️ **검사 대상은 "존재하는 사전"이다** — ko만 있으면 ko만, 둘 다 있으면 둘 다. 사전이 없는 커밋에서는 ①~④가 비어 green이다
- * (⑥~⑧은 소스 검사라 늘 돈다). 사전 파일은 `export const <lang>`으로 사전을 내보낸다.
+ * ⚠️ **검사 대상은 en을 뺀 `UI_LOCALES` 전부다** — 사전 파일이 없으면 red다(빈 대상으로 green이 되지 않는다).
+ * 사전 파일은 `export const <lang>`으로 사전을 내보낸다.
  */
 const ROOT = fileURLToPath(new URL("../../..", import.meta.url));
-const TRANSLATED = ["ko", "es"] as const;
+const TRANSLATED = UI_LOCALES.filter((lang): lang is Exclude<UiLocale, "en"> => lang !== "en");
 type Translated = (typeof TRANSLATED)[number];
 
 const dictionaries: [Translated, Messages][] = [];
 for (const lang of TRANSLATED) {
   const file = join(ROOT, "messages", `${lang}.tsx`);
-  if (!existsSync(file)) continue;
+  if (!existsSync(file)) throw new Error(`messages/${lang}.tsx is missing`);
   const mod = (await import(file)) as Record<string, unknown>;
   if (!Object.hasOwn(mod, lang)) throw new Error(`messages/${lang}.tsx must export \`${lang}\``);
   dictionaries.push([lang, mod[lang] as Messages]);

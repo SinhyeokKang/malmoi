@@ -370,13 +370,10 @@ describe("클라이언트 그래프", () => {
    * 읽으므로 그 그래프가 곧 번들이다 — 사전이 `@/lib/**`를 하나라도 물면 7.2MB 사고의 재현이다.
    * 실 소비자는 T6부터 생기고, **그 전까지 이 검사가 공허하지 않도록** 여기서 직접 건다.
    */
-  it("`@/lib/i18n`은 잎이다 — 사전 말고 아무것도 물지 않는다", () => {
+  it("`@/lib/i18n`은 잎이다 — 사전도 값으로 물지 않는다(타입만)", () => {
     const { files, packages } = walk([join(ROOT, "lib/i18n/index.ts")]);
     expect([...packages].filter((name) => !allowed(name))).toEqual([]);
-    expect([...files].map((file) => file.slice(ROOT.length)).sort()).toEqual([
-      "lib/i18n/index.ts",
-      "messages/en.tsx",
-    ]);
+    expect([...files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/i18n/index.ts"]);
   });
 
   /**

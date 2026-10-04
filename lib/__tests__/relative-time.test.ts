@@ -26,6 +26,6 @@ describe("relativeTime — 세 언어", () => {
   });
 
   it("언어를 넘기지 않으면 en이다 — 이행 중 기존 호출부의 출력이 바뀌지 않는다", () => {
-    expect(relativeTime(at("2026-09-06T12:00:00Z"), now)).toBe("2 days ago");
+    expect(relativeTime(at("2026-09-06T12:00:00Z"), now, "en")).toBe("2 days ago");
   });
 });

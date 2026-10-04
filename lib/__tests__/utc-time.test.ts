@@ -14,23 +14,23 @@ it("TZ가 실제로 서울이다 — 이 가드가 없으면 아래 단언이 UT
 });
 
 it("utcDay — 월 약어 · 한 자리 날짜 · 연도, 서울 기준으론 다음 날이어도 UTC 날짜다", () => {
-  expect(utcDay(new Date("2026-09-27T16:34:14Z"))).toBe("Sep 27, 2026");
-  expect(utcDay(new Date("2026-01-05T00:00:00Z"))).toBe("Jan 5, 2026");
-  expect(utcDay(new Date("2026-12-31T23:59:59.999Z"))).toBe("Dec 31, 2026");
-  expect(utcDay(new Date("2027-01-01T08:59:00+09:00"))).toBe("Dec 31, 2026");
+  expect(utcDay(new Date("2026-09-27T16:34:14Z"), "en")).toBe("Sep 27, 2026");
+  expect(utcDay(new Date("2026-01-05T00:00:00Z"), "en")).toBe("Jan 5, 2026");
+  expect(utcDay(new Date("2026-12-31T23:59:59.999Z"), "en")).toBe("Dec 31, 2026");
+  expect(utcDay(new Date("2027-01-01T08:59:00+09:00"), "en")).toBe("Dec 31, 2026");
 });
 
 it("utcMinute — utcDay 뒤에 분 단위 24시 시각과 UTC 라벨", () => {
-  expect(utcMinute(new Date("2026-09-27T16:34:14Z"))).toBe("Sep 27, 2026 16:34 UTC");
-  expect(utcMinute(new Date("2026-09-10T12:00:59.999Z"))).toBe("Sep 10, 2026 12:00 UTC");
-  expect(utcMinute(new Date("2026-09-10T23:59:00+09:00"))).toBe("Sep 10, 2026 14:59 UTC");
-  expect(utcMinute(new Date("2026-01-01T00:05:00Z"))).toBe("Jan 1, 2026 00:05 UTC");
+  expect(utcMinute(new Date("2026-09-27T16:34:14Z"), "en")).toBe("Sep 27, 2026 16:34 UTC");
+  expect(utcMinute(new Date("2026-09-10T12:00:59.999Z"), "en")).toBe("Sep 10, 2026 12:00 UTC");
+  expect(utcMinute(new Date("2026-09-10T23:59:00+09:00"), "en")).toBe("Sep 10, 2026 14:59 UTC");
+  expect(utcMinute(new Date("2026-01-01T00:05:00Z"), "en")).toBe("Jan 1, 2026 00:05 UTC");
 });
 
 it("utcMonth — 월 약어와 연도만, 서울 기준으론 다음 달이어도 UTC 달이다", () => {
-  expect(utcMonth(new Date("2026-09-27T16:34:14Z"))).toBe("Sep 2026");
-  expect(utcMonth(new Date("2026-01-01T08:59:00+09:00"))).toBe("Dec 2025");
-  expect(utcMonth(new Date("2026-12-31T23:59:59.999Z"))).toBe("Dec 2026");
+  expect(utcMonth(new Date("2026-09-27T16:34:14Z"), "en")).toBe("Sep 2026");
+  expect(utcMonth(new Date("2026-01-01T08:59:00+09:00"), "en")).toBe("Dec 2025");
+  expect(utcMonth(new Date("2026-12-31T23:59:59.999Z"), "en")).toBe("Dec 2026");
 });
 
 /**

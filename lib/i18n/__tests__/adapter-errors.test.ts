@@ -33,13 +33,13 @@ describe("adapterErrorMessage — 코드 → 문장", () => {
   });
 
   it("key가 없으면 문장만 낸다", () => {
-    expect(adapterErrorMessage({ path: "i18n/en.json", code: "root-not-object" })).toBe(
+    expect(adapterErrorMessage({ path: "i18n/en.json", code: "root-not-object" }, en.adapterErrors)).toBe(
       en.adapterErrors["root-not-object"],
     );
   });
 
   it("key가 있으면 어느 키인지 앞에 붙는다 — 903키 파일에서 그것만이 행동 가능한 정보다", () => {
-    const out = adapterErrorMessage({ path: "i18n/en.json", code: "value-not-string", key: "a.deep" });
+    const out = adapterErrorMessage({ path: "i18n/en.json", code: "value-not-string", key: "a.deep" }, en.adapterErrors);
     expect(out).toContain("a.deep");
     expect(out).toContain(en.adapterErrors["value-not-string"]);
   });
@@ -49,7 +49,7 @@ describe("adapterErrorMessage — 코드 → 문장", () => {
       path: "i18n/en.yml",
       code: "parse-failed",
       detail: "Nested mappings are not allowed",
-    });
+    }, en.adapterErrors);
     expect(out).toContain(en.adapterErrors["parse-failed"]);
     expect(out).toContain("Nested mappings are not allowed");
   });
@@ -60,7 +60,7 @@ describe("adapterErrorMessage — 코드 → 문장", () => {
       code: "value-not-string-literal",
       key: "grp.ok",
       detail: "CallExpression",
-    });
+    }, en.adapterErrors);
     expect(out).toContain("grp.ok");
     expect(out).toContain("CallExpression");
   });
@@ -72,7 +72,7 @@ describe("adapterErrorMessage — 코드 → 문장", () => {
    */
   it("모르는 코드는 폴백 문장이다 — 프로토타입 키도 포함한다", () => {
     for (const code of ["constructor", "toString", "hasOwnProperty", "nope"]) {
-      const out = adapterErrorMessage({ path: "x", code: code as AdapterErrorCode });
+      const out = adapterErrorMessage({ path: "x", code: code as AdapterErrorCode }, en.adapterErrors);
       expect(typeof out, code).toBe("string");
       expect(out, code).toBe(en.adapterErrors.fallback);
     }

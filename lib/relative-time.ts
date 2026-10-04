@@ -12,9 +12,9 @@ import type { UiLocale } from "@/lib/i18n/locales";
  * 기준이 갈려 첫 페인트에서 문구가 바뀐다. 호출부가 한 번 만들어 내려보낸다.
  *
  * 화면 언어(`uiLocale`)로 말한다 — 문자열은 `Intl`이 만들고 경계(초 → 분 → 시간 → 일)는 언어와 무관하다.
- * ⚠️ 기본값 `"en"`은 이행 중에만 있다(ui-locales orch D3) — 소비자가 다 언어를 넘기면 지운다.
+ *
  */
-export function relativeTime(then: Date, now: Date, uiLocale: UiLocale = "en"): string {
+export function relativeTime(then: Date, now: Date, uiLocale: UiLocale): string {
   const format = new Intl.RelativeTimeFormat(uiLocale, { numeric: "auto" });
   const seconds = Math.round((then.getTime() - now.getTime()) / 1000);
   const abs = Math.abs(seconds);

@@ -13,9 +13,9 @@ import { languageName } from "../language-name";
  */
 describe("languageName", () => {
   it("코드를 영어 언어 이름으로 바꾼다", () => {
-    expect(languageName("en")).toBe("English");
-    expect(languageName("ko")).toBe("Korean");
-    expect(languageName("ja")).toBe("Japanese");
+    expect(languageName("en", "en")).toBe("English");
+    expect(languageName("ko", "en")).toBe("Korean");
+    expect(languageName("ja", "en")).toBe("Japanese");
   });
 
   /**
@@ -26,15 +26,15 @@ describe("languageName", () => {
    * 바뀐 것이므로 눈으로 보고 값을 갱신한다.
    */
   it("지역·문자 하위태그를 구별해 읽는다", () => {
-    expect(languageName("pt-BR")).toBe("Brazilian Portuguese");
-    expect(languageName("zh-Hans")).not.toBe(languageName("zh-Hant"));
+    expect(languageName("pt-BR", "en")).toBe("Brazilian Portuguese");
+    expect(languageName("zh-Hans", "en")).not.toBe(languageName("zh-Hant", "en"));
   });
 
   /** ⚠️ **리포에서 온 임의 문자열이다** — 매핑이 원리적으로 실패하므로 그때는 코드를 그대로 쓴다. */
   it("모르는 코드는 코드 그대로 둔다", () => {
-    expect(languageName("zzz")).toBe("zzz");
-    expect(languageName("")).toBe("");
-    expect(languageName("not a locale")).toBe("not a locale");
+    expect(languageName("zzz", "en")).toBe("zzz");
+    expect(languageName("", "en")).toBe("");
+    expect(languageName("not a locale", "en")).toBe("not a locale");
   });
 
   /**
@@ -51,7 +51,7 @@ describe("languageName", () => {
   it("화면 언어마다 표시기를 따로 둔다 — 먼저 부른 언어가 다음 호출을 오염시키지 않는다", () => {
     expect(languageName("ja", "es")).toBe("japonés");
     expect(languageName("ja", "ko")).toBe("일본어");
-    expect(languageName("ja")).toBe("Japanese");
+    expect(languageName("ja", "en")).toBe("Japanese");
   });
 
   it("모르는 코드는 어느 화면 언어에서도 코드 그대로다", () => {
@@ -64,7 +64,7 @@ describe("languageName", () => {
 
   /** ⚠️ **`Object.prototype`의 키가 와도 코드로 떨어진다** — 남이 정한 키다 (CLAUDE.md). */
   it("프로토타입 키에도 안전하다", () => {
-    expect(languageName("constructor")).toBe("constructor");
-    expect(languageName("__proto__")).toBe("__proto__");
+    expect(languageName("constructor", "en")).toBe("constructor");
+    expect(languageName("__proto__", "en")).toBe("__proto__");
   });
 });

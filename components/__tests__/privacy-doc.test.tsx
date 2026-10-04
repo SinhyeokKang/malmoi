@@ -47,9 +47,9 @@ describe("PrivacyDoc — 구조", () => {
     const time = find(container, "time");
     expect(time.getAttribute("datetime")).toBe(privacy.effectiveDate);
     // 보이는 형은 `lib/utc-time.ts`의 날짜 형이고, `dateTime`·사전 값은 ISO 그대로다(`policy-gate`가 그 값을 본다).
-    expect(time.textContent).toBe(utcDay(new Date(privacy.effectiveDate)));
+    expect(time.textContent).toBe(utcDay(new Date(privacy.effectiveDate), "en"));
     expect(time.textContent).toMatch(/^[A-Z][a-z]{2} \d{1,2}, \d{4}$/);
-    expect(time.parentElement?.textContent).toBe(`${en.publicDocs.effectiveDate} ${utcDay(new Date(privacy.effectiveDate))}`);
+    expect(time.parentElement?.textContent).toBe(`${en.publicDocs.effectiveDate} ${utcDay(new Date(privacy.effectiveDate), "en")}`);
   });
 
   /** POSTMORTEM 2026-09-19 — 가로 스크롤은 표 자기 컨테이너가 든다. 키보드로 닿으려면 region·tabIndex·이름 셋. */
@@ -242,7 +242,7 @@ it("changes 절의 개정 날짜가 utcDay로 보이고 dateTime은 ISO다", asy
     const time = li.querySelector("time")!;
     const iso = time.getAttribute("dateTime")!;
     expect(iso).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    expect(time.textContent).toBe(utcDay(new Date(iso)));
+    expect(time.textContent).toBe(utcDay(new Date(iso), "en"));
     expect(li.textContent).not.toContain(iso);
   }
 });

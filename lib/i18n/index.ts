@@ -1,15 +1,12 @@
 /**
- * 사전의 유일한 입구. **`m`이라는 짧은 이름을 쓰는 것이 요지다** — 화면 코드가 `m.translations.publish.nothing`처럼
- * 읽히고, `as const`라 그 접근 자체가 타입 검사다.
+ * 사전의 타입 입구 — 화면 코드는 `m.translations.publish.nothing`처럼 읽고, `as const`라 그 접근 자체가 타입 검사다.
  *
  * ⚠️ **잎 모듈이다** — `@/lib/**`를 하나도 import하지 않는다. 클라이언트 컴포넌트가 이것을 읽으므로
  * 그래프가 곧 번들이다 (`components/__tests__/client-graph.test.ts`).
  *
- * ⚠️ **`m`은 이행 중의 en 별칭이다**(ui-locales design §3.4) — 서버는 `getMessages()`(`lib/i18n/server.ts`),
- * 클라이언트는 `useMessages()`(`components/i18n/messages-provider.tsx`)로 요청의 언어를 읽는다. 소비자를 다 옮기면 지운다.
+ * 서버는 `getMessages()`(`lib/i18n/server.ts`), 클라이언트는 `useMessages()`(`components/i18n/messages-provider.tsx`)로
+ * 요청의 언어를 읽는다.
  */
-export { en as m } from "@/messages/en";
-
 type En = typeof import("@/messages/en").en;
 
 /**

@@ -62,7 +62,7 @@ export default async function SettingsPage({ params, searchParams }: { params: P
   </Card>;
   // `api-url`은 이 화면을 연 앱을 가리킨다 — 워크플로를 그릴 때만 요청 헤더를 읽는다.
   const apiUrl = project.surfaces.length > 0 ? await requestApiUrl() : undefined;
-  const workflow = project.surfaces.length > 0 && <WorkflowBlock yaml={renderProjectWorkflowYaml({ slug, baseBranch: project.baseBranch, surfaces: project.surfaces.map(workflowSurfaceOf), ...(apiUrl === undefined ? {} : { apiUrl }) })} />;
+  const workflow = project.surfaces.length > 0 && <WorkflowBlock m={m} yaml={renderProjectWorkflowYaml({ slug, baseBranch: project.baseBranch, surfaces: project.surfaces.map(workflowSurfaceOf), ...(apiUrl === undefined ? {} : { apiUrl }) })} />;
   return <>
     <PanelHeader><h1 className="flex items-center text-lg font-medium">{m.common.nav.projectSettings}</h1></PanelHeader>
     <PanelBody className="space-y-4">

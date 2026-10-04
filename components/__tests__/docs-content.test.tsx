@@ -37,7 +37,7 @@ it("설정 화면의 hook 안내가 `setup/workflow#workflow`로 이어진다", 
  * 같은 형으로 **블록 머리(Copy 옆) 하나만** 남긴다. 실제 설정 화면처럼 `WorkflowBlock`을 children으로 넣어 센다.
  */
 it("워크플로 모달에 저장 경로 문장이 한 번만 선다", async () => {
-  await render(<CiCard slug="acme" archived={false} stale={[]}><WorkflowBlock yaml="on: push" /></CiCard>);
+  await render(<CiCard slug="acme" archived={false} stale={[]}><WorkflowBlock m={en} yaml="on: push" /></CiCard>);
   const trigger = [...document.querySelectorAll("button")].find((b) => b.textContent?.includes(en.settings.ci.workflow))!;
   trigger.click();
   await new Promise((resolve) => setTimeout(resolve, 0));

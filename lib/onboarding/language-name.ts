@@ -11,7 +11,7 @@ import type { UiLocale } from "@/lib/i18n/locales";
  *
  * 화면 언어가 셋이 된 뒤(ui-locales)에는 **표시 언어가 그 셋 중 하나**다 — 대상 코드의 로케일 데이터가 아니라 en·ko·es
  * 데이터만 있으면 되고 그것은 Node·브라우저 ICU에 다 있어 위의 폴백 사고가 다시 나지 않는다.
- * ⚠️ 기본값 `"en"`은 이행 중에만 있다(ui-locales orch D3) — 소비자가 다 언어를 넘기면 지운다.
+ *
  *
  * ⚠️ **하위태그를 떼지 않는다.** `zh-Hans`/`zh-Hant`·`pt-BR`/`pt-PT`가 같은 이름이 되면 **되돌릴 수
  * 없는 결정을 잘못 내린다** — 언어 서브태그만 넘기는 안을 그래서 버렸다.
@@ -24,7 +24,7 @@ import type { UiLocale } from "@/lib/i18n/locales";
  */
 const names: Partial<Record<UiLocale, Intl.DisplayNames>> = {};
 
-export function languageName(code: string, uiLocale: UiLocale = "en"): string {
+export function languageName(code: string, uiLocale: UiLocale): string {
   if (code === "") return code;
   try {
     const display = (names[uiLocale] ??= new Intl.DisplayNames([uiLocale], { type: "language" }));

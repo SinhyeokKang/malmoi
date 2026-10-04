@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -48,13 +48,11 @@ describe("getMessages", () => {
   });
 
   /**
-   * 🟡1(R1) — **배선**을 잰다: 사전 파일이 있는데 `DICTIONARIES`의 그 줄을 en으로 둔 채면 red다. 사전이 들어오기 전에는 en을 기대한다
-   * (E7에서 "파일이 없으면 en" 갈래를 지워 대상을 `UI_LOCALES` 전부로 만든다).
+   * 🟡1(R1) — **배선**을 잰다: `DICTIONARIES`의 그 줄이 그 언어 파일의 export가 아니면 red다. 대상은 `UI_LOCALES` 전부다.
    */
   it.each(UI_LOCALES)("%s 화면은 그 언어의 사전이다", async (uiLocale) => {
     h.cookie = uiLocale;
-    const file = join(process.cwd(), "messages", `${uiLocale}.tsx`);
-    const want = uiLocale === "en" || !existsSync(file) ? en : ((await import(file)) as Record<string, Messages>)[uiLocale];
+    const want = uiLocale === "en" ? en : ((await import(join(process.cwd(), "messages", `${uiLocale}.tsx`))) as Record<string, Messages>)[uiLocale];
     expect(await getMessages()).toBe(want);
   });
 });

@@ -18,6 +18,7 @@ import { planMemberIdentity } from "@/lib/auth/member-identity";
 import type { PendingInvitation } from "@/lib/auth/query";
 import { useMessages, useUiLocale } from "@/components/i18n/messages-provider";
 import { INVITATION_HOURLY_LIMIT, USER_HOURLY_LIMIT } from "@/lib/invitation-email/limits";
+import type { UiLocale } from "@/lib/i18n/locales";
 import { retryAtLabel } from "@/lib/invitation-email/retry-at";
 import { relativeTime } from "@/lib/relative-time";
 import { IconTile } from "@/components/ui/icon-tile";
@@ -120,7 +121,7 @@ export function PendingInvitations({
         setLanding({ kind: "heading" });
         return;
       }
-      setCardAlert(resendAlert(m, result, who));
+      setCardAlert(resendAlert(m, uiLocale, result, who));
       // 발급 뒤 메일 단계의 실패면 행이 이미 새 초대로 바뀌었다 — 성공 여부가 아니라 행이 남는지로 고른다.
       const replaced = result === null || result.error === "email-rejected" || result.error === "email-unknown";
       setLanding(replaced ? { kind: "heading" } : { kind: "resend", id: invitationId });
@@ -296,11 +297,11 @@ export function PendingInvitations({
 }
 
 /** Resend 거부 → 카드 Alert 한 장. `null`은 호출 자체가 끊긴 경우다(결과 미확인). */
-function resendAlert(m: Messages, result: Exclude<ResendResult, { ok: true }> | null, who: string): { variant: "warning" | "danger"; text: string } {
+function resendAlert(m: Messages, uiLocale: UiLocale, result: Exclude<ResendResult, { ok: true }> | null, who: string): { variant: "warning" | "danger"; text: string } {
   const p = m.members.pending;
   if (result === null || result.error === "email-unknown") return { variant: "warning", text: p.resendUnconfirmed(who) };
   if (result.error === "rate-limited" && "limit" in result) {
-    const time = retryAtLabel(result.retryAt);
+    const time = retryAtLabel(result.retryAt, uiLocale);
     const text =
       result.limit === "project"
         ? p.resendProjectLimited(who, INVITATION_HOURLY_LIMIT, time)
@@ -309,7 +310,7 @@ function resendAlert(m: Messages, result: Exclude<ResendResult, { ok: true }> | 
           : p.resendLimited(who, time);
     return { variant: "warning", text };
   }
-  if (result.error === "email-rejected" && "retryAt" in result) return { variant: "danger", text: p.resendFailed(who, retryAtLabel(result.retryAt)) };
+  if (result.error === "email-rejected" && "retryAt" in result) return { variant: "danger", text: p.resendFailed(who, retryAtLabel(result.retryAt, uiLocale)) };
   if (result.error === "email-unavailable") return { variant: "danger", text: p.resendUnavailable(who) };
   if (result.error === "not-found") return { variant: "danger", text: p.gone(who) };
   if (result.error === "already-member") return { variant: "danger", text: m.members.invite.alreadyMember };

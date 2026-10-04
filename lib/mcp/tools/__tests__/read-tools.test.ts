@@ -284,7 +284,7 @@ describe("get_project — 마지막 Publish의 PR", () => {
   });
 
   it("도구 설명이 열린 PR 여부는 preview_publish가 답한다고 말한다", async () => {
-    const { m } = await import("@/lib/i18n");
+    const { en: m } = await import("@/messages/en");
     expect(m.mcp.tools.get_project).not.toMatch(/open pull request/i);
     expect(m.mcp.tools.get_project).toContain("preview_publish");
   });
