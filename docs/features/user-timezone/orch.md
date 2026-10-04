@@ -77,3 +77,4 @@
 - **Q2 완료**: #186 재확인(en `53 of 53` · ko `53개 중 49개` · es `53 de 53`) 후 댓글과 함께 닫음. ko 잔여 3화면 폭 이상 없음.
 - ⚠️ **dev CI red**(@49547778 · @26d589a2): `preferences-time-zone.test.tsx` es 케이스 `Missing element: section h2` — 로컬 3/3 green, CI만 실패(es 사전 비동기 청크 대기 누락 추정). **F2 착수**(Sonnet medium).
 - **F2 통합·push**: `test(helpers)` render 헬퍼가 ko·es 사전 모듈을 먼저 import해 캐시를 데움(50틱 고정 대기가 느린 CI에서 부족 — 로컬 재현 실패, 코드 분석 가설). gate ok. CI로 확인.
+- **dev CI green** @c8ef56bb(run 37235563287). 워크트리 0 · 활성 워커 0. 남은 것: `/merge`(H4 — prod `db:deploy` `20261004180102_add_user_time_zone`, ui-locales `uiLocale` 마이그레이션 뒤) · ko 일괄 검수(D2 — K1·K2·T4 방침·T5 가이드·T9 슬로건·F1) · 기능 종료 시 `docs/features/user-timezone/` 삭제.
