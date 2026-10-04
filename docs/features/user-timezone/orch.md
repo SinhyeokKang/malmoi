@@ -25,8 +25,8 @@
 
 | 배치 | 태스크 | 모델·effort (이유) | 선행 | 소유 파일(주) | 상태 |
 |---|---|---|---|---|---|
-| **T1 순수 함수** | A1–A5 | Opus 5.5 high — 서머타임·0시 없는 날·런타임 TZ 누수·잎 경계 판단 | — | `lib/time-zone/**` · `lib/utc-time.ts`→`lib/date-format.ts` · `lib/events/{filter,view,query}.ts` · 호출부 18파일(**이름만** — `timeZone: "UTC"`) · `components/logs/log-filters.tsx`(프리셋 이동) · `lib/mcp/tools/project.ts` · `(home)/page.tsx`·logs page의 `loadEvents` 호출 · 관련 테스트 · `client-graph.test.ts` | 대기 |
-| **T2 스키마·세션** | B1(SQL만) · B2 | Sonnet 5.5 medium — ui-locales C2(`uiLocale`)와 같은 자리를 따라 넓힌다 | — (T1과 병렬) | `prisma/**` · `lib/privacy/collected.ts` · `lib/auth/**` · `types/next-auth.d.ts` · `lib/credentials/__tests__/adapter.test.ts` | 대기 |
+| **T1 순수 함수** | A1–A5 | Opus 5.5 high — 서머타임·0시 없는 날·런타임 TZ 누수·잎 경계 판단 | — | `lib/time-zone/**` · `lib/utc-time.ts`→`lib/date-format.ts` · `lib/events/{filter,view,query}.ts` · 호출부 18파일(**이름만** — `timeZone: "UTC"`) · `components/logs/log-filters.tsx`(프리셋 이동) · `lib/mcp/tools/project.ts` · `(home)/page.tsx`·logs page의 `loadEvents` 호출 · 관련 테스트 · `client-graph.test.ts` | 진행 |
+| **T2 스키마·세션** | B1(SQL만) · B2 | Sonnet 5.5 medium — ui-locales C2(`uiLocale`)와 같은 자리를 따라 넓힌다 | — (T1과 병렬) | `prisma/**` · `lib/privacy/collected.ts` · `lib/auth/**` · `types/next-auth.d.ts` · `lib/credentials/__tests__/adapter.test.ts` | 진행 |
 | **T3 입구·호출부** | C1 · C2 (+ H2 주석) | Opus 5.5 high — provider·하이드레이션 `now` prop·호출부 전수·사전 셋 | T1·T2 통합 | `lib/i18n/server.ts` · `components/i18n/**` · `app/layout.tsx` · 호출부 전부 · `messages/{en,ko,es}.tsx`(`m.logs.range.*`) · `components/{logs,home}/**` | 대기 |
 | **T4 화면·방침** | D1–D3 | Opus 5.5 high — Radix Select 포커스·공용 조립 추출·Action 갈래·방침 동형 | T3 통합 | `app/(edit)/preferences/**` · `components/preferences/**` · `messages/{en,ko,es}.tsx`(새 키) · `messages/ko-privacy.tsx` · `app/__tests__/entry-points.test.ts` | 대기 |
 | **T5 가이드** | E1 | Sonnet 5.5 medium — 원고 세 벌 문장 교체 + 절 하나 | T4 통합 | `guide/{en,ko,es}/**` · `guide/AUTHORING.md`(필요 시) | 대기 |
@@ -51,3 +51,5 @@
 ## 진행 기록
 
 (배치별 라운드·통합 해시·미완 항목을 여기에 덧붙인다.)
+- Run `run_ba6c4daeafda`. **T1 착수**(Opus high, task_853dadb07aee / ctx_e0385ed40aa9, 워크트리 `utz-t1`) · **T2 착수**(Sonnet medium, task_3380583ca10d / ctx_e159312bdf37, 워크트리 `utz-t2`). 브리프 `.scratch/user-timezone/`.
+- **별건 둘 추가**(사용자 2026-10-05, 범위 밖이지만 같은 런에서): **T7** 랜딩·signin 슬로건 en 고정 — 범위 D5 = `landing.hero.title` · `signIn.hero` · `landing.closing.title`(사용자 선택) (Sonnet medium, task_6ba42706ae04 / ctx_e11e121fa8fe, `utz-t7`, 브리프 `brief-T7.md`) · **T8** 하위태그 없는 `es` 로케일 배지 = 스페인 국기(D6 — 다른 다국 언어는 null 유지) (Sonnet medium, `utz-t8`, `brief-T8.md`). T7은 `messages/*.tsx`를 고치므로 **T3은 T7 통합 뒤** 착수.
