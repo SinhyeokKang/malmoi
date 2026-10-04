@@ -90,6 +90,12 @@ describe("실물 가이드 — 언어별 트리", () => {
     expect(trees.map(({ uiLocale }) => uiLocale).sort()).toEqual(root.filter((e) => e.isDirectory()).map(({ name }) => name).sort());
   });
 
+  // 닫는 조건 — 화면 언어마다 원고 트리가 있다. 없으면 그 언어의 `/docs`가 던지고(폴백 없음) 검색 색인 파일이 안 생긴다.
+  // `UI_LOCALES`에 언어를 더하거나 트리를 지우면 여기서 red다(W4 R4 🟡1).
+  it("모든 화면 언어에 원고 트리가 있다", () => {
+    expect(trees.map(({ uiLocale }) => uiLocale)).toEqual([...UI_LOCALES]);
+  });
+
   for (const { uiLocale, dir } of trees.filter(({ uiLocale }) => uiLocale !== "en")) {
     describe(uiLocale, () => {
       it("파일 집합과 SUMMARY 순서가 en과 같다", () => {

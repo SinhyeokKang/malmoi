@@ -28,8 +28,7 @@ it("언어별 정적 파일 — 원고 트리가 있는 언어만 만들고 나�
   expect(dynamicParams).toBe(false);
   const params = await generateStaticParams();
   expect(params).toContainEqual({ uiLocale: "en" });
-  expect(params).toContainEqual({ uiLocale: "ko" });
-  for (const { uiLocale } of params) expect(["en", "ko", "es"]).toContain(uiLocale);
+  expect(params).toEqual([{ uiLocale: "en" }, { uiLocale: "ko" }, { uiLocale: "es" }]);
 });
 
 it("ko 색인은 ko 원고의 제목을 들고, 주소와 절은 en과 같다", async () => {

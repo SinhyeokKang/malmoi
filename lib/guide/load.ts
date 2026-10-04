@@ -29,6 +29,7 @@ const guideDir = (uiLocale: UiLocale) => join(guideRoot(), uiLocale);
 /**
  * 원고 트리가 있는 화면 언어 — 언어별 정적 파일(검색 색인)을 빌드할 목록이다. 트리가 없는 언어를 만들면 빌드가 던지므로
  * 번역 원고가 다른 커밋에서 들어오는 동안에도 빌드가 선다. 화면 렌더는 이것을 보지 않는다(없는 트리는 던진다 — 폴백 없음).
+ * 세 트리가 다 들어온 뒤로는 `UI_LOCALES`와 같다 — `locales.test.ts`의 닫는 조건이 그 항등식을 고정한다.
  */
 export function guideLocales(): UiLocale[] {
   return UI_LOCALES.filter((uiLocale) => existsSync(join(guideDir(uiLocale), "SUMMARY.md")));
