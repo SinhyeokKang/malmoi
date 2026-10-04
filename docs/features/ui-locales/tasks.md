@@ -117,6 +117,8 @@
   DOM 테스트(포커스 fixup observer 포함): `aria-labelledby`·`aria-describedby` · 옵션 `lang` · 고르면 Action 호출 · 옵션·트리거 값에 국기 · 진행 중 `RoleSelect` 가드이고 고른 값을 먼저 보이며 포커스 유지 · 실패면 원래 값으로 복귀 · 같은 값이면 Action을 부르지 않음 · **닫힌 트리거에서 글자 키로 값이 바뀌지 않는다** · 실패면 카드 `notice`의 `Alert danger inset`.
   검증: 로컬에서 es 선택 → 앱 전체 es, 다른 브라우저로 로그인해도 es, 로그아웃 뒤 그 기기는 마지막 값 `[수동]`. revalidate 뒤 Alert 유지 여부는 jsdom이 못 본다 → H4 `[수동]`.
 - [ ] **G3** `/design-sync` — 푸터 스위처·Preferences를 핸드오프와 프레임 단위로 대조(computed style + 접근성 트리). `[수동]`
+  ⚠️ **선행: D(입구) · F2a·F2(푸터 스위처) · G1·G2(`/preferences`)가 구현돼 있어야 한다** — 대조할 화면이 없으면 돌릴 수 없다(2026-10-04 시도 시 `uiLocale` 코드 0건으로 중단).
+  ko·es 아트보드(A5·A6·B6·B7)는 B3·B4(사전)와 E(소비자 이행) 뒤에야 대조된다. 시안 대조를 앞당기려면 F2a·F2·G1·G2만 먼저 구현해 en 아트보드만 대조하고, ko·es는 E 뒤에 다시 돌린다.
 - [ ] `[커밋] feat(preferences): add the Preferences page with language`
 
 ## I. 가이드 언어별 원고 (design §6.1)
