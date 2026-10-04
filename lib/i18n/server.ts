@@ -4,8 +4,10 @@ import { cookies } from "next/headers";
 import { cache } from "react";
 
 import { readSession } from "@/lib/auth/read-session";
+import type { DateStyle } from "@/lib/date-format";
 import type { Messages } from "@/lib/i18n";
 import { UI_LOCALE_COOKIE, resolveUiLocale, type UiLocale } from "@/lib/i18n/locales";
+import { resolveTimeZone } from "@/lib/time-zone/zones";
 import { en } from "@/messages/en";
 import { es } from "@/messages/es";
 import { ko } from "@/messages/ko";
@@ -33,6 +35,17 @@ export const getUiLocale = cache(async function getUiLocale(): Promise<UiLocale>
   const session = await readSession();
   const cookie = (await cookies()).get(UI_LOCALE_COOKIE)?.value;
   return resolveUiLocale({ account: session.status === "ok" ? session.uiLocale : null, cookie });
+});
+
+/**
+ * **요청의 날짜 형** — 화면 언어 + 보는 사람의 시간대(user-timezone). 시간대는 계정(`User.timeZone`) 하나뿐이고(쿠키 층 없음)
+ * 고르지 않았거나 목록 밖이거나 세션을 못 읽으면 UTC다 — 화면 표시라 거부가 아니다.
+ * `getUiLocale`과 같은 이유로 각 서버 소비자가 직접 묻는다.
+ * ⚠️ **공개 셸·공유 코어(`lib/**`)·MCP는 이것을 부르지 않는다** — 그쪽은 `{ uiLocale, timeZone: "UTC" }`를 명시한다(`date-format-consumers.test.ts`).
+ */
+export const getDateStyle = cache(async function getDateStyle(): Promise<DateStyle> {
+  const session = await readSession();
+  return { uiLocale: await getUiLocale(), timeZone: resolveTimeZone(session.status === "ok" ? session.timeZone : null) };
 });
 
 /** 서버 컴포넌트·페이지·Server Action의 사전 입구 — `const m = await getMessages()`. */

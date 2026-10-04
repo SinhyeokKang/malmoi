@@ -3,8 +3,10 @@
 import dynamic from "next/dynamic";
 import { createContext, use, useContext, useMemo, type ComponentType, type ReactNode } from "react";
 
+import type { DateStyle } from "@/lib/date-format";
 import type { Messages } from "@/lib/i18n";
 import type { UiLocale } from "@/lib/i18n/locales";
+import type { TimeZone } from "@/lib/time-zone/zones";
 import { en } from "@/messages/en";
 
 /**
@@ -23,9 +25,9 @@ import { en } from "@/messages/en";
  * 대가는 "provider를 빠뜨리면 조용히 영어"이고, 루트 레이아웃 소스 검사(`app/__tests__/root-layout-i18n.test.ts`)가 막는다.
  * ko·es 사용자도 en을 받는다(이 기본값) — 완료 조건 10은 en 사용자 기준이다.
  */
-type Value = { readonly m: Messages; readonly uiLocale: UiLocale };
+type Value = { readonly m: Messages; readonly uiLocale: UiLocale; readonly style: DateStyle };
 
-const MessagesContext = createContext<Value>({ m: en, uiLocale: "en" });
+const MessagesContext = createContext<Value>({ m: en, uiLocale: "en", style: { uiLocale: "en", timeZone: "UTC" } });
 
 type Slot = { readonly promise: Promise<Messages>; readonly resolve: (messages: Messages) => void };
 const slots = new Map<UiLocale, Slot>();
@@ -61,19 +63,25 @@ const CARRIERS: Readonly<Partial<Record<UiLocale, ComponentType>>> = {
   es: dynamic(() => import("@/messages/es").then((mod) => arrive("es", mod.es))),
 };
 
-function Inner({ uiLocale, children }: { uiLocale: UiLocale; children: ReactNode }) {
+function Inner({ uiLocale, timeZone, children }: { uiLocale: UiLocale; timeZone: TimeZone; children: ReactNode }) {
   const m = CARRIERS[uiLocale] === undefined ? en : use(slot(uiLocale).promise);
-  const value = useMemo(() => ({ m, uiLocale }), [m, uiLocale]);
+  // 날짜 형은 따로 memo한다 — `useDateStyle()`이 같은 값에서 같은 객체를 돌려줘야 deps로 쓴 자리가 매 렌더 다시 돌지 않는다.
+  const style = useMemo(() => ({ uiLocale, timeZone }), [uiLocale, timeZone]);
+  const value = useMemo(() => ({ m, uiLocale, style }), [m, uiLocale, style]);
   return <MessagesContext value={value}>{children}</MessagesContext>;
 }
 
-export function MessagesProvider({ uiLocale, children }: { uiLocale: UiLocale; children: ReactNode }) {
+/**
+ * `timeZone`은 보는 사람이 고른 시간대(user-timezone — 루트 레이아웃이 `getDateStyle()`에서 넘긴다). 바뀌어도 context 값의 필드만 바뀌고
+ * 트리는 다시 마운트되지 않는다(위 껍데기 규칙과 같다).
+ */
+export function MessagesProvider({ uiLocale, timeZone, children }: { uiLocale: UiLocale; timeZone: TimeZone; children: ReactNode }) {
   const Carrier = CARRIERS[uiLocale];
   // ⚠️ 운반체가 `Inner`보다 **앞** 형제다 — 첫 렌더 패스에서 lazy 로더가 먼저 시작돼야 `Inner`의 `use()`가 기다릴 것이 생긴다.
   return (
     <>
       {Carrier !== undefined && <Carrier />}
-      <Inner uiLocale={uiLocale}>{children}</Inner>
+      <Inner uiLocale={uiLocale} timeZone={timeZone}>{children}</Inner>
     </>
   );
 }
@@ -85,4 +93,9 @@ export function useMessages(): Messages {
 /** 날짜·상대 시각·언어명 헬퍼에 넘길 화면 언어 코드. */
 export function useUiLocale(): UiLocale {
   return useContext(MessagesContext).uiLocale;
+}
+
+/** 날짜 포맷(`lib/date-format.ts`)에 넘길 `{ uiLocale, timeZone }` — provider가 없으면 en·UTC. 같은 provider 값에서는 같은 객체다. */
+export function useDateStyle(): DateStyle {
+  return useContext(MessagesContext).style;
 }

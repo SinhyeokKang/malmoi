@@ -7,7 +7,7 @@ import { SiteAnalytics } from "@/components/analytics";
 import { MessagesProvider } from "@/components/i18n/messages-provider";
 import { NavigationDim } from "@/components/shell/navigation-dim";
 import { en } from "@/messages/en";
-import { getUiLocale } from "@/lib/i18n/server";
+import { getDateStyle, getUiLocale } from "@/lib/i18n/server";
 import { OG_IMAGE, SITE_ORIGIN } from "@/lib/seo/site";
 
 import "./globals.css";
@@ -45,6 +45,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   */
   await connection();
   const uiLocale = await getUiLocale();
+  const { timeZone } = await getDateStyle();
   return (
     /*
       ⚠️ **`lang`은 요청의 화면 언어다** (ui-locales D3) — 틀리면 스크린리더가 영어 문장을 한국어 음성 엔진으로 읽는다
@@ -65,11 +66,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body>
         {/*
-          클라이언트 사전 입구 — 요청의 언어로 provider **하나**를 렌더하고 **언어 코드만** 넘긴다. ⚠️ 여기(서버)서 사전 모듈을 import하지 않는다 —
+          클라이언트 사전 입구 — 요청의 언어로 provider **하나**를 렌더하고 **언어 코드와 시간대(user-timezone)만** 넘긴다. ⚠️ 여기(서버)서 사전 모듈을 import하지 않는다 —
           레이아웃이 import하는 client 모듈은 Turbopack이 전부 레이아웃 청크 그룹에 실어 en 사용자도 받는다(orch D7 실측). ko·es 사전은
           provider 안 `next/dynamic` 로더가 읽는다(`components/i18n/messages-provider.tsx` 머리 주석). ⚠️ `key`를 걸지 않는다 — 언어를 바꿀 때 트리가 다시 마운트된다.
         */}
-        <MessagesProvider uiLocale={uiLocale}>
+        <MessagesProvider uiLocale={uiLocale} timeZone={timeZone}>
           {children}
           {/*
             ⚠️ **`theme="light"`가 필수다** (8-1b). `sonner`는 테마를 **스스로 감지**하므로 이 값이

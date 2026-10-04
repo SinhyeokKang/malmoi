@@ -4,7 +4,8 @@ import { join } from "node:path";
 import { act, useState } from "react";
 import { describe, expect, it } from "vitest";
 
-import { MessagesProvider, useMessages, useUiLocale } from "@/components/i18n/messages-provider";
+import { MessagesProvider, useDateStyle, useMessages, useUiLocale } from "@/components/i18n/messages-provider";
+import type { DateStyle } from "@/lib/date-format";
 import type { Messages } from "@/lib/i18n";
 import { UI_LOCALES, type UiLocale } from "@/lib/i18n/locales";
 import { en } from "@/messages/en";
@@ -60,13 +61,13 @@ describe("MessagesProvider", () => {
   });
 
   it("언어를 바꿔도 자식이 다시 마운트되지 않는다 — 입력값·상태·포커스가 남는다", async () => {
-    const view = await render(<MessagesProvider uiLocale="en"><Probe /></MessagesProvider>);
+    const view = await render(<MessagesProvider uiLocale="en" timeZone="UTC"><Probe /></MessagesProvider>);
     const input = view.container.querySelector("input")!;
     const button = view.container.querySelector("button")!;
     input.value = "typed";
     await act(async () => button.click());
     input.focus();
-    await view.rerender(<MessagesProvider uiLocale="ko"><Probe /></MessagesProvider>);
+    await view.rerender(<MessagesProvider uiLocale="ko" timeZone="UTC"><Probe /></MessagesProvider>);
     for (let tries = 0; view.container.querySelector("button")?.textContent !== "ko:1" && tries < 50; tries++) {
       await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
     }
@@ -74,9 +75,60 @@ describe("MessagesProvider", () => {
     expect(view.container.querySelector("input")).toBe(input);
     expect(input.value).toBe("typed");
     expect(document.activeElement).toBe(input);
-    await view.rerender(<MessagesProvider uiLocale="en"><Probe /></MessagesProvider>);
+    await view.rerender(<MessagesProvider uiLocale="en" timeZone="UTC"><Probe /></MessagesProvider>);
     expect(view.container.querySelector("input")).toBe(input);
     expect(view.container.querySelector("button")?.textContent).toBe("en:1");
     expect(view.container.querySelector("label")?.textContent).toBe(en.search.label);
+  });
+});
+
+/**
+ * 날짜 형 입구 (user-timezone C1 · design §4) — provider가 없으면 UTC. 시간대가 바뀌어도 트리는 다시 마운트되지 않고,
+ * 같은 provider 값에서는 **같은 객체**를 돌려준다(호출마다 새 객체면 deps로 쓴 자리가 매 렌더 다시 돈다).
+ */
+describe("useDateStyle", () => {
+  const styles: DateStyle[] = [];
+
+  function StyleProbe() {
+    const style = useDateStyle();
+    const [clicks, setClicks] = useState(0);
+    styles.push(style);
+    return (
+      <div>
+        <input id="tz" defaultValue="" />
+        <button type="button" onClick={() => setClicks((n) => n + 1)}>{`${style.uiLocale}:${style.timeZone}:${clicks}`}</button>
+      </div>
+    );
+  }
+
+  it("provider가 없으면 en·UTC다", async () => {
+    styles.length = 0;
+    const { container } = await render(<StyleProbe />);
+    expect(container.querySelector("button")?.textContent).toBe("en:UTC:0");
+  });
+
+  it("provider의 시간대·언어를 돌려주고, 같은 값이면 같은 객체다", async () => {
+    styles.length = 0;
+    const view = await render(<MessagesProvider uiLocale="en" timeZone="Asia/Seoul"><StyleProbe /></MessagesProvider>);
+    expect(styles.at(-1)).toEqual({ uiLocale: "en", timeZone: "Asia/Seoul" });
+    const first = styles.at(-1);
+    await act(async () => view.container.querySelector("button")!.click());
+    expect(view.container.querySelector("button")?.textContent).toBe("en:Asia/Seoul:1");
+    expect(styles.at(-1)).toBe(first);
+    await view.rerender(<MessagesProvider uiLocale="en" timeZone="Asia/Seoul"><StyleProbe /></MessagesProvider>);
+    expect(styles.at(-1)).toBe(first);
+  });
+
+  it("시간대를 바꿔도 자식이 다시 마운트되지 않는다 — 입력값·상태·포커스가 남는다", async () => {
+    const view = await render(<MessagesProvider uiLocale="en" timeZone="UTC"><StyleProbe /></MessagesProvider>);
+    const input = view.container.querySelector("input")!;
+    input.value = "typed";
+    await act(async () => view.container.querySelector("button")!.click());
+    input.focus();
+    await view.rerender(<MessagesProvider uiLocale="en" timeZone="America/New_York"><StyleProbe /></MessagesProvider>);
+    expect(view.container.querySelector("button")?.textContent).toBe("en:America/New_York:1");
+    expect(view.container.querySelector("input")).toBe(input);
+    expect(input.value).toBe("typed");
+    expect(document.activeElement).toBe(input);
   });
 });

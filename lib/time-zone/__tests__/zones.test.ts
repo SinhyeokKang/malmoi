@@ -1,4 +1,4 @@
-// ⚠️ **import보다 먼저 선다** — 런타임 TZ를 UTC가 아닌 곳(분 단위 오프셋)에 두어야 "런타임 TZ를 읽지 않는다"가 CI(UTC)에서 공허하게 통과하지 않는다.
+// ⚠️ import는 이 줄보다 먼저 평가되지만(ESM) Node는 `Date` 연산마다 `TZ`를 다시 읽어 테스트 본문에는 걸린다 — 걸렸는지는 아래 가드가 판정한다. 런타임 TZ를 UTC가 아닌 곳(분 단위 오프셋)에 두어야 "런타임 TZ를 읽지 않는다"가 CI(UTC)에서 공허하게 통과하지 않는다.
 process.env.TZ = "Asia/Kathmandu";
 
 import { describe, expect, it } from "vitest";

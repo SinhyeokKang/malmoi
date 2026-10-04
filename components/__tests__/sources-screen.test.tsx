@@ -360,7 +360,7 @@ it("변경이 없으면 확인창 없이 바로 닫는다", async () => {
 it("보관된 Sources는 날짜만 말하고 출구 낱말이 보관 화면들과 같다", async () => {
   const { SourcesArchived } = await import("@/components/sources/sources-archived");
   const at = new Date("2026-09-20T13:45:00Z");
-  await render(<SourcesArchived slug="p" role="OWNER" archivedAt={at} uiLocale="en" m={en} />);
+  await render(<SourcesArchived slug="p" role="OWNER" archivedAt={at} style={{ uiLocale: "en", timeZone: "UTC" }} m={en} />);
   const time = document.querySelector("time")!;
   expect(time.textContent).toBe("Sep 20, 2026");
   expect(time.getAttribute("dateTime")).toBe(at.toISOString());

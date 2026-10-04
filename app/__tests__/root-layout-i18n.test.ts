@@ -14,8 +14,10 @@ it("레이아웃이 getUiLocale을 읽어 <html lang>에 싣는다 — 영어 �
   expect(src).not.toContain('lang="en"');
 });
 
-it("레이아웃이 언어 코드만 넘겨 provider 하나를 렌더한다 — 사전은 provider 안 로더가 읽는다", () => {
-  expect(src).toContain("<MessagesProvider uiLocale={uiLocale}>");
+it("레이아웃이 언어 코드·시간대만 넘겨 provider 하나를 렌더한다 — 사전은 provider 안 로더가 읽는다", () => {
+  // user-timezone C1 — 시간대를 빠뜨리면 클라이언트 날짜가 조용히 UTC다(`useDateStyle()`의 기본값).
+  expect(src).toContain("await getDateStyle()");
+  expect(src).toContain("<MessagesProvider uiLocale={uiLocale} timeZone={timeZone}>");
   expect(src).toContain("</MessagesProvider>");
 });
 

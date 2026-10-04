@@ -38,7 +38,7 @@ it("Home — 주의 카드의 제목과 상대 시각이 ko다", async () => {
 });
 
 it("Sources — 보관 화면의 날짜가 ko 형식이다", async () => {
-  const { container } = await render(<SourcesArchived slug="a" role="OWNER" archivedAt={at} uiLocale="ko" m={ko} />);
+  const { container } = await render(<SourcesArchived slug="a" role="OWNER" archivedAt={at} style={{ uiLocale: "ko", timeZone: "UTC" }} m={ko} />);
   expect(container.textContent).toContain(formatDay(at, { uiLocale: "ko", timeZone: "UTC" }));
   expect(formatDay(at, { uiLocale: "ko", timeZone: "UTC" })).toBe("2026년 9월 18일");
 });
@@ -62,12 +62,12 @@ it("Logs — 날짜 머리·언어 이름·상세 시각이 ko다", async () => 
     actor: { kind: "USER", removed: false, name: "Kim", emailLabel: null }, surfaceIds: ["s1"], surfaceScope: "sources", run: null,
     payload: { kind: "TRANSLATION", key: "home.title", locale: "fr", before: "a", after: "b", surfaceSlug: "web" } as Row["payload"],
   };
-  const list = await render(<EventRow row={row} href="/logs" now={now} archived={false} uiLocale="ko" m={ko} />);
+  const list = await render(<EventRow row={row} href="/logs" now={now} archived={false} style={{ uiLocale: "ko", timeZone: "UTC" }} m={ko} />);
   expect(list.container.textContent).toContain(languageName("fr", "ko"));
   expect(languageName("fr", "ko")).not.toBe(languageName("fr", "en"));
   const detail = await render(
     <Dialog.Root open><Dialog.Content aria-describedby={undefined}>
-      <EventDetail row={row} slug="a" now={now} archived={false} canOpenSettings={false} repoUrl={null} uiLocale="ko" m={ko} />
+      <EventDetail row={row} slug="a" now={now} archived={false} canOpenSettings={false} repoUrl={null} style={{ uiLocale: "ko", timeZone: "UTC" }} m={ko} />
     </Dialog.Content></Dialog.Root>,
   );
   expect(detail.container.textContent).toContain(formatMinute(at, { uiLocale: "ko", timeZone: "UTC" }));

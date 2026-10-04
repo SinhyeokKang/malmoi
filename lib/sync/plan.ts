@@ -49,7 +49,7 @@ export type WriteLock = { reason: "sync-running"; startedAt: Date; reopensBy: Da
  * ⚠️ **CI·첫 적재의 표면 표시(`TranslationSurface.lastImportStartedAt`)는 입력이 아니다** — 넣으면 CI push마다 편집자를 막는다(sync-lock C2·C5).
  * ⚠️ **화면은 이 함수를 import하지 않는다** — 이 모듈은 `lib/failure`(→ `node:crypto`)를 물어 잎이 아니다. 페이지가 판정해 시각만 넘긴다.
  *
- * `reopensBy`는 **표시용**이다 — 만료 시각을 다음 분으로 올린다. `isRunActive`는 정각도 활성이고 `utcMinute`은 초를 버리므로, 그대로 내면
+ * `reopensBy`는 **표시용**이다 — 만료 시각을 다음 분으로 올린다. `isRunActive`는 정각도 활성이고 `formatMinute`은 초를 버리므로, 그대로 내면
  * 표시가 실제보다 최대 59초 이르다. 올린 시각에는 반드시 풀려 있다. 화면·MCP·Revert가 같은 값을 받도록 여기서 올린다.
  */
 export function planWriteLock(input: { now: Date; repositoryImportToken: string | null; repositoryImportStartedAt: Date | null }): WriteLock | null {

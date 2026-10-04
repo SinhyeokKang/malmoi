@@ -17,7 +17,7 @@ import { IconTile } from "@/components/ui/icon-tile";
 import { type CountProps } from "@/components/ui/count-badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Card, CardList } from "@/components/ui/card";
-import { useMessages, useUiLocale } from "@/components/i18n/messages-provider";
+import { useDateStyle, useMessages } from "@/components/i18n/messages-provider";
 import type { Brand } from "@/lib/mcp/brand";
 import type { TokenGrant } from "@/lib/mcp/grant";
 import { relativeTime } from "@/lib/relative-time";
@@ -213,7 +213,7 @@ export function ConnectedAppsCard({ apps, now, serverUrl }: { apps: readonly Con
 }
 
 function AppRow({ app, now, onDisconnect }: { app: ConnectedAppData; now: Date; onDisconnect: () => void }) {
-  const uiLocale = useUiLocale();
+  const style = useDateStyle();
   const m = useMessages();
   const expired = app.state === "expired";
   const expires = new Date(app.expiresAt);
@@ -223,8 +223,8 @@ function AppRow({ app, now, onDisconnect }: { app: ConnectedAppData; now: Date; 
   const facts: [string, ReactNode][] = [
     [m.mcpConnector.token.facts.grants, <GrantBadges key="g" grants={app.grants} dimmed={expired} />],
     [m.mcpConnector.token.facts.scope, scope],
-    [m.mcpConnector.token.facts.lastUsed, lastUsed === null ? m.mcpConnector.token.never : <time dateTime={app.lastUsedAt ?? ""}>{expired ? formatDay(lastUsed, { uiLocale, timeZone: "UTC" }) : relativeTime(lastUsed, now, uiLocale)}</time>],
-    [m.mcpConnector.token.facts.expires, <time dateTime={app.expiresAt}>{expired ? formatDay(expires, { uiLocale, timeZone: "UTC" }) : relativeTime(expires, now, uiLocale)}</time>],
+    [m.mcpConnector.token.facts.lastUsed, lastUsed === null ? m.mcpConnector.token.never : <time dateTime={app.lastUsedAt ?? ""}>{expired ? formatDay(lastUsed, style) : relativeTime(lastUsed, now, style.uiLocale)}</time>],
+    [m.mcpConnector.token.facts.expires, <time dateTime={app.expiresAt}>{expired ? formatDay(expires, style) : relativeTime(expires, now, style.uiLocale)}</time>],
   ];
   return (
     <div data-app-row={app.id} className="flex items-center gap-4 px-4 py-row-y">

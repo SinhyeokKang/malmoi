@@ -6,9 +6,8 @@ import { ButtonLink } from "@/components/ui/button";
 import { canPerform, type Role } from "@/lib/auth/permission";
 import { STATE, stateLabel } from "@/lib/status/canon";
 import { routes } from "@/lib/routes";
-import { formatDay } from "@/lib/date-format";
+import { formatDay, type DateStyle } from "@/lib/date-format";
 import { IconTile } from "@/components/ui/icon-tile";
-import type { UiLocale } from "@/lib/i18n/locales";
 import type { Messages } from "@/lib/i18n";
 
 /**
@@ -21,8 +20,8 @@ import type { Messages } from "@/lib/i18n";
  * ⚠️ **보관 시각은 날짜다** — Settings 보관 카드와 같은 `formatDay`(2-Y19). 정확한 값은 `dateTime`이 든다.
  * ⚠️ **출구 낱말은 "Open settings" 하나다**(4-Y24 — 보관 화면 전부가 `m.archive.empty.action`) · 앱 안 이동이라 chevron이다(4-Y23).
  */
-export function SourcesArchived({ slug, role, archivedAt, uiLocale, m }: { slug: string; role: Role; archivedAt: Date | null;
-  uiLocale: UiLocale;
+export function SourcesArchived({ slug, role, archivedAt, style, m }: { slug: string; role: Role; archivedAt: Date | null;
+  style: DateStyle;
   m: Messages;
 }) {
   const canEdit = canPerform(role, "project:settings");
@@ -35,7 +34,7 @@ export function SourcesArchived({ slug, role, archivedAt, uiLocale, m }: { slug:
         <div className="flex items-center gap-3 px-4 py-row-y">
           <IconTile><Archive aria-hidden /></IconTile>
           <span className="flex min-w-0 flex-1 flex-col gap-copy-gap">
-            <span className="text-base"><span className="font-medium">{archivedAt ? m.archive.archivedBy(<time dateTime={archivedAt.toISOString()}>{formatDay(archivedAt, { uiLocale, timeZone: "UTC" })}</time>) : stateLabel(m, "archived")}</span></span>
+            <span className="text-base"><span className="font-medium">{archivedAt ? m.archive.archivedBy(<time dateTime={archivedAt.toISOString()}>{formatDay(archivedAt, style)}</time>) : stateLabel(m, "archived")}</span></span>
             <span className="text-muted-foreground text-xs">{canEdit ? m.sources.archivedOwner : m.sources.archivedEditor}</span>
           </span>
           {canEdit && <ButtonLink className="shrink-0" href={routes.settings(slug)}>{m.archive.empty.action}<ChevronRight className="text-muted-foreground size-3.5" aria-hidden /></ButtonLink>}

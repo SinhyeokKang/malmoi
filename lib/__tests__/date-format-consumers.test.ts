@@ -63,3 +63,35 @@ it("MCP의 loadEvents 호출이 전부 timeZone: \"UTC\"를 넘긴다", () => {
   expect(calls.length).toBeGreaterThan(0);
   expect(src.match(/\bloadEvents\([^;]*\{ timeZone: "UTC" \}\);/g) ?? []).toHaveLength(calls.length);
 });
+
+/**
+ * ② **공개 셸은 로그인 여부와 무관하게 UTC다**(user-timezone design §4) — changelog의 `Dates are in UTC.`가 참이어야 한다.
+ * 공개 셸 경로가 보는 사람의 날짜 형 입구(`getDateStyle`·`useDateStyle`)를 읽으면 로그인한 방문자에게 그 시간대가 샌다.
+ * ③ **공유 코어(`lib/**`)는 `getDateStyle`을 부르지 않는다** — 코어가 스스로 물으면 MCP 응답이 요청자의 시간대를 따라간다(ui-locales B1⑧ 확장).
+ * ⚠️ 둘 다 부정 검사라 입구 이름이 바뀌면 공허하게 green이다 — 센티넬이 입구가 그 이름으로 export되는지 먼저 본다.
+ */
+const PUBLIC_SHELL = ["app/page.tsx", "app/changelog/", "app/privacy/", "app/docs/", "components/public-shell/", "components/changelog/", "components/privacy/", "components/landing/", "components/docs/"];
+
+it("센티넬 — 날짜 형 입구가 그 이름으로 export된다", () => {
+  expect(readFileSync("lib/i18n/server.ts", "utf8")).toMatch(/export const getDateStyle\b/);
+  expect(readFileSync("components/i18n/messages-provider.tsx", "utf8")).toMatch(/export function useDateStyle\b/);
+});
+
+it("공개 셸 경로가 getDateStyle·useDateStyle을 읽지 않는다", () => {
+  const files = scanned().filter(({ path }) => PUBLIC_SHELL.some((prefix) => path === prefix || path.startsWith(prefix)));
+  expect(files.length).toBeGreaterThan(5);
+  expect(files.filter(({ text }) => /\b(getDateStyle|useDateStyle)\b/.test(text)).map(({ path }) => path)).toEqual([]);
+});
+
+it("lib/**는 getDateStyle을 읽지 않는다 (lib/i18n/server.ts 자신 제외)", () => {
+  const core = scanned().filter(({ path }) => path.startsWith("lib/") && path !== "lib/i18n/server.ts");
+  expect(core.filter(({ text }) => /\bgetDateStyle\b/.test(text)).map(({ path }) => path)).toEqual([]);
+});
+
+/**
+ * ⑤ **생산자를 우회한 시각이 없다** — `toISOString().slice(11, 16)`은 라벨 없는 UTC `HH:mm`이다(옛 Logs 행). 시각은 `formatClock`·`formatMinute`가 낸다.
+ */
+it("app/**·components/**에 toISOString().slice(11 이 0건이다", () => {
+  const ui = scanned().filter(({ path }) => path.startsWith("app/") || path.startsWith("components/"));
+  expect(ui.filter(({ text }) => /toISOString\(\)\.slice\(11/.test(text)).map(({ path }) => path)).toEqual([]);
+});

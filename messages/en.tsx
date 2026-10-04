@@ -1204,14 +1204,19 @@ export const en = {
       yesterday: "Yesterday",
       last7: "Last 7 days",
       last30: "Last 30 days",
-      custom: "Custom range (UTC)",
+      custom: "Custom range",
       /** 메뉴 항목 — 눌러서 Dialog가 열린다는 것을 줄임표가 말한다 (audit #8 — 칸은 메뉴 밖에 산다). */
-      customOpen: "Custom range (UTC)…",
-      from: "From (UTC)",
-      to: "To (UTC)",
+      customOpen: "Custom range…",
+      from: "From",
+      to: "To",
       apply: "Apply range",
       /** Dialog 설명 — 한쪽을 비우면 열린 범위라는 것을 고르기 전에 말한다. */
       description: "Pick the first and last day to show. Leave one empty for an open-ended range.",
+      /**
+       * Dialog 설명 끝줄 — 날짜가 어느 시간대의 자정으로 끊기는지(user-timezone). 인자는 **시간대 id**(`Asia/Seoul`·`UTC`)다 —
+       * 지금의 오프셋 하나를 쓰면 서머타임을 넘는 범위(1월 범위를 7월에 고름)에서 거짓이 된다. id는 어느 날에도 참이다.
+       */
+      zoneNote: (zone: string) => `Days are in ${zone}.`,
     },
     /** ⚠️ **`aria-label`에는 줄임표가 없다** — 스크린리더가 읽는 이름이라 장식이 붙으면 안 된다. */
     search: { label: "Search logs", placeholder: "Search logs…" },
@@ -1250,8 +1255,8 @@ export const en = {
       upToDate: "Up to date",
     },
     /**
-     * 날짜 카드 머리에 붙는 낱말 (캔버스 `1a`). **UTC 자정으로 끊는다** — 로컬로 끊으면 밤 사이 실행이
-     * 보는 사람마다 다른 날에 선다. 머리의 날짜는 늘 `utcDay` 형이고, 이 낱말은 오늘·어제에만 덧붙는다.
+     * 날짜 카드 머리에 붙는 낱말 (캔버스 `1a`). **보는 사람이 고른 시간대(기본 UTC)의 자정으로 끊는다** — 런타임 TZ로 끊으면
+     * 서버와 브라우저가 다른 날을 낸다. 머리의 날짜는 늘 `formatDayKey` 형이고, 이 낱말은 오늘·어제에만 덧붙는다.
      */
     day: {
       today: "Today",
@@ -1537,7 +1542,7 @@ export const en = {
     action: "Archive project",
     /** 되돌리기는 확인을 묻지 않는다 — 잃는 것이 없다. */
     restore: "Restore project",
-    /** ⚠️ **절대 시각은 `<time dateTime>`이 든다** (L7.1) — 호출부가 `utcMinute`로 만든 노드를 넘긴다. */
+    /** ⚠️ **절대 시각은 `<time dateTime>`이 든다** (L7.1) — 호출부가 `formatDay`로 만든 노드를 넘긴다. */
     archivedBy: (when: ReactNode): ReactNode => <>Archived on {when}</>,
     confirm: {
       title: (name: string): string => `Archive ${name}?`,

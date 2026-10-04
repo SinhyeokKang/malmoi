@@ -25,7 +25,7 @@ const row = (over: Partial<Row> = {}): Row => ({
 
 const detail = (value: Row) => render(
   <Dialog.Root open><Dialog.Content aria-describedby={undefined}>
-    <EventDetail row={value} slug="alpha" now={now} archived={false} canOpenSettings={false} repoUrl={null} uiLocale="en" m={en} />
+    <EventDetail row={value} slug="alpha" now={now} archived={false} canOpenSettings={false} repoUrl={null} style={{ uiLocale: "en", timeZone: "UTC" }} m={en} />
   </Dialog.Content></Dialog.Root>,
 );
 
@@ -46,7 +46,7 @@ describe("활동 행과 상세의 실제 동작", () => {
   });
 
   it("수동 적재 성공은 보호 보류라고 말하지 않고 소스별 결과를 보인다", async () => {
-    const { container } = await render(<EventRow row={row()} href="/logs" now={now} archived={false} uiLocale="en" m={en} />);
+    const { container } = await render(<EventRow row={row()} href="/logs" now={now} archived={false} style={{ uiLocale: "en", timeZone: "UTC" }} m={en} />);
     // 보조줄은 `[Manual sync] [web]  4 keys` — 소스는 언제나 배지이고 결과 낱말을 인라인에 싣지 않는다(ux-drift-unify 4-Y20).
     const badges = [...container.querySelectorAll("[data-event-meta] .rounded-full")].map((node) => node.textContent);
     expect(badges).toEqual(["Manual sync", "web"]);
@@ -107,7 +107,7 @@ describe("활동 행과 상세의 실제 동작", () => {
   it("Home과 상세에도 Publish의 dropped 경고가 보인다", async () => {
     const value = row({ kind: "PUBLISH", subtype: "publish.run", result: "sent", payload: { kind: "PUBLISH", surfaceSlugs: ["web"], refusal: null },
       run: { changed: 1, changedValues: 1, warnings: 2, withheld: 0, prUrl: null, errorCode: null } });
-    const { container } = await render(<EventRow row={value} href="/logs" now={now} archived={false} showTime={false} uiLocale="en" m={en} />);
+    const { container } = await render(<EventRow row={value} href="/logs" now={now} archived={false} showTime={false} style={{ uiLocale: "en", timeZone: "UTC" }} m={en} />);
     expect(container.textContent).toContain(en.logs.warnings(2));
     expect((await detail(value)).container.textContent).toContain(en.logs.warnings(2));
   });
@@ -119,7 +119,7 @@ describe("활동 행과 상세의 실제 동작", () => {
  * 지나야 IME 조합 확정 Enter가 검색으로 나가지 않는다.
  */
 it("검색 필드가 필터와 같은 줄의 끝에 선다 — 제목 줄에 없다", async () => {
-  const props = { slug: "alpha", sources: [], actors: [], refreshable: true };
+  const props = { slug: "alpha", sources: [], actors: [], refreshable: true, now: "2026-10-04T23:10:00.000Z" };
   const { container } = await render(<LogFilters {...props} filter={parseLogFilter({})} />);
   const search = container.querySelector('input[type="search"]');
   const row = search?.closest("[data-log-filter-row]");
@@ -130,7 +130,7 @@ it("검색 필드가 필터와 같은 줄의 끝에 선다 — 제목 줄에 없
 });
 
 it("검색 URL이 바뀌면 입력값도 따라간다", async () => {
-  const props = { slug: "alpha", sources: [], actors: [], refreshable: true };
+  const props = { slug: "alpha", sources: [], actors: [], refreshable: true, now: "2026-10-04T23:10:00.000Z" };
   const { container, rerender } = await render(<LogFilters {...props} filter={parseLogFilter({ q: "old" })} />);
   await rerender(<LogFilters {...props} filter={parseLogFilter({})} />);
   expect(container.querySelector<HTMLInputElement>('input[type="search"]')?.value).toBe("");
@@ -142,12 +142,12 @@ it("보관된 Publish의 행과 상세 모두 야간 재시도를 약속하지 �
   const value = row({ kind: "PUBLISH", subtype: "publish.run", result: "failed",
     run: { changed: null, changedValues: null, warnings: 0, withheld: 0, prUrl: null, errorCode: code! },
     payload: { kind: "PUBLISH", surfaceSlugs: [], refusal: null } });
-  const { container, rerender } = await render(<EventRow row={value} href="/logs" now={now} archived={false} uiLocale="en" m={en} />);
+  const { container, rerender } = await render(<EventRow row={value} href="/logs" now={now} archived={false} style={{ uiLocale: "en", timeZone: "UTC" }} m={en} />);
   expect(container.textContent).toContain("nightly");
-  await rerender(<EventRow row={value} href="/logs" now={now} archived uiLocale="en" m={en} />);
+  await rerender(<EventRow row={value} href="/logs" now={now} archived style={{ uiLocale: "en", timeZone: "UTC" }} m={en} />);
   expect(container.textContent).not.toContain("nightly");
   const dialog = await render(<Dialog.Root open><Dialog.Content aria-describedby={undefined}>
-    <EventDetail row={value} slug="alpha" now={now} archived canOpenSettings={false} repoUrl={null} uiLocale="en" m={en} />
+    <EventDetail row={value} slug="alpha" now={now} archived canOpenSettings={false} repoUrl={null} style={{ uiLocale: "en", timeZone: "UTC" }} m={en} />
   </Dialog.Content></Dialog.Root>);
   expect(dialog.container.textContent).not.toContain("nightly");
 });
@@ -211,7 +211,7 @@ describe("상세 껍데기 — 실측이 잡은 자리", () => {
 describe("상세 머리·바닥 — 행과 한 문법 (4-Y21 · 3-Y6)", () => {
   it("머리는 `[종류 배지][결과 배지]`이고 종류 낱말은 행 보조줄의 첫 배지와 같다", async () => {
     const value = row();
-    const { container: rowView } = await render(<EventRow row={value} href="/logs" now={now} archived={false} uiLocale="en" m={en} />);
+    const { container: rowView } = await render(<EventRow row={value} href="/logs" now={now} archived={false} style={{ uiLocale: "en", timeZone: "UTC" }} m={en} />);
     const kind = rowView.querySelector("[data-event-meta] .rounded-full")?.textContent;
     const { container } = await detail(value);
     const badges = [...container.querySelectorAll("[data-event-detail-kind] .rounded-full")].map((node) => node.textContent);
@@ -223,7 +223,7 @@ describe("상세 머리·바닥 — 행과 한 문법 (4-Y21 · 3-Y6)", () => {
   it("바닥 버튼은 1024 표면의 `lg`다 — [Close]와 목적지가 같은 크기다", async () => {
     const { container } = await render(
       <Dialog.Root open><Dialog.Content aria-describedby={undefined}>
-        <EventDetail row={row({ kind: "MEMBER", subtype: "member.joined", result: null, finishedAt: null, payload: { kind: "MEMBER", targetLabel: "a@b", role: null } })} slug="alpha" now={now} archived={false} canOpenSettings repoUrl={null} uiLocale="en" m={en} />
+        <EventDetail row={row({ kind: "MEMBER", subtype: "member.joined", result: null, finishedAt: null, payload: { kind: "MEMBER", targetLabel: "a@b", role: null } })} slug="alpha" now={now} archived={false} canOpenSettings repoUrl={null} style={{ uiLocale: "en", timeZone: "UTC" }} m={en} />
       </Dialog.Content></Dialog.Root>,
     );
     const actions = [...container.querySelectorAll("[data-event-detail-footer] a, [data-event-detail-footer] button")];
@@ -235,10 +235,10 @@ describe("상세 머리·바닥 — 행과 한 문법 (4-Y21 · 3-Y6)", () => {
   it("reconfirm으로 멈춘 Publish는 자기 문장을 든다 · 보류로 인한 notSent는 그대로 (짝)", async () => {
     const publish = (errorCode: string | null) => row({ kind: "PUBLISH", subtype: "publish.run", result: "notSent",
       payload: { kind: "PUBLISH", surfaceSlugs: ["web"], refusal: null }, run: { changed: 0, changedValues: errorCode === null ? 0 : null, warnings: 0, withheld: errorCode === null ? 2 : 0, prUrl: null, errorCode } });
-    const { container: stopped } = await render(<EventRow row={publish("reconfirm")} href="/logs" now={now} archived={false} uiLocale="en" m={en} />);
+    const { container: stopped } = await render(<EventRow row={publish("reconfirm")} href="/logs" now={now} archived={false} style={{ uiLocale: "en", timeZone: "UTC" }} m={en} />);
     expect(stopped.textContent).not.toContain("held back its edits");
     expect(stopped.textContent).toContain("stopped before sending");
-    const { container: held } = await render(<EventRow row={publish(null)} href="/logs" now={now} archived={false} uiLocale="en" m={en} />);
+    const { container: held } = await render(<EventRow row={publish(null)} href="/logs" now={now} archived={false} style={{ uiLocale: "en", timeZone: "UTC" }} m={en} />);
     expect(held.textContent).toContain("held back its edits");
   });
 });
@@ -287,7 +287,7 @@ it.each([
 ] as const)("%s %s 결과 슬롯은 %s다", async (kind, result, label, face) => {
   const value = row({ kind, result, ...(kind === "PUBLISH" ? { payload: { kind: "PUBLISH", surfaceSlugs: ["web"], refusal: null } as const } : {}) });
   for (const showTime of [true, false]) {
-    const { container } = await render(<EventRow row={value} href="/logs?event=evt_test" now={now} archived={false} showTime={showTime} uiLocale="en" m={en} />);
+    const { container } = await render(<EventRow row={value} href="/logs?event=evt_test" now={now} archived={false} showTime={showTime} style={{ uiLocale: "en", timeZone: "UTC" }} m={en} />);
     const pills = [...container.querySelectorAll(".rounded-full")].filter(node => node.textContent === label);
     expect(pills).toHaveLength(1);
     expect(pills[0]!.classList.contains(face)).toBe(true);
@@ -313,7 +313,7 @@ it.each([
 });
 
 it("Logs keeps320px search inside the outer ml-auto filter flex item", async () => {
-  const { container } = await render(<LogFilters slug="alpha" sources={[]} actors={[]} refreshable filter={parseLogFilter({})} />);
+  const { container } = await render(<LogFilters slug="alpha" sources={[]} actors={[]} refreshable now="2026-10-04T23:10:00.000Z" filter={parseLogFilter({})} />);
   const field = container.querySelector<HTMLElement>('input[type="search"]')!;
   expect(field.classList.contains("w-80")).toBe(true);
   expect(field.classList.contains("ml-auto")).toBe(false);
@@ -321,4 +321,34 @@ it("Logs keeps320px search inside the outer ml-auto filter flex item", async () 
   expect(outer?.contains(field)).toBe(true);
   expect(outer?.classList.contains("ml-auto")).toBe(true);
   expect(outer?.parentElement).toBe(field.closest("[data-log-filter-row]"));
+});
+
+/**
+ * **행 시각은 보는 사람의 시간대로 말하고 행마다 오프셋을 단다** (user-timezone C2 · design §2 `formatClock`). 옛 행은
+ * `toISOString().slice(11, 16)` — 라벨 없는 UTC `HH:mm`이었다. 정확한 값(`dateTime`)은 그대로 UTC ISO다.
+ */
+describe("이벤트 행의 시각", () => {
+  const at = new Date("2026-10-04T23:10:00.000Z");
+  const shown = async (timeZone: "UTC" | "Asia/Seoul" | "Asia/Kolkata") => {
+    const { container } = await render(<EventRow row={row({ occurredAt: at, finishedAt: at })} href="/logs" now={now} archived={false} style={{ uiLocale: "en", timeZone }} m={en} />);
+    return container.querySelector("time")!;
+  };
+
+  it.each([
+    ["UTC", "23:10 UTC", "Oct 4, 2026 23:10 UTC"],
+    ["Asia/Seoul", "08:10 UTC+9", "Oct 5, 2026 08:10 UTC+9"],
+    ["Asia/Kolkata", "04:40 UTC+5:30", "Oct 5, 2026 04:40 UTC+5:30"],
+  ] as const)("%s → 보이는 시각 %s · 접근 이름 %s · dateTime은 UTC ISO", async (timeZone, text, label) => {
+    const time = await shown(timeZone);
+    expect(time.textContent).toBe(text);
+    expect(time.getAttribute("aria-label")).toBe(label);
+    expect(time.getAttribute("dateTime")).toBe("2026-10-04T23:10:00.000Z");
+  });
+
+  it("가장 긴 라벨도 한 줄에 선다 — 시각 칸이 줄바꿈하지 않고 줄지 않는다", async () => {
+    const time = await shown("Asia/Kolkata");
+    expect(time.className).toContain("whitespace-nowrap");
+    expect(time.className).toContain("shrink-0");
+    expect(time.className).not.toContain("w-12");
+  });
 });

@@ -18,8 +18,7 @@ import { changedValuesText, deferredText, eventGlyph, eventKindWord, eventSenten
 import type { EventRow } from "@/lib/events/query";
 import { relativeTime } from "@/lib/relative-time";
 import { routes } from "@/lib/routes";
-import { formatMinute } from "@/lib/date-format";
-import type { UiLocale } from "@/lib/i18n/locales";
+import { formatMinute, type DateStyle } from "@/lib/date-format";
 import type { Messages } from "@/lib/i18n";
 
 /**
@@ -38,7 +37,7 @@ export function EventDetail({
       archived,
       canOpenSettings,
       repoUrl,
-      translationHref = null, uiLocale, m }: {
+      translationHref = null, style, m }: {
   row: EventRow;
   slug: string;
   now: Date;
@@ -48,7 +47,8 @@ export function EventDetail({
   repoUrl: string | null;
   /** 번역 사건의 키에 착지하는 주소 — 페이지가 서버에서 키 이름을 현재 id로 해석한다. 사라진 키면 `null`이고 링크가 없다. */
   translationHref?: string | null;
-  uiLocale: UiLocale;
+  /** 화면 언어 + 보는 사람의 시간대 — 서버 부모가 `getDateStyle()`로 넘긴다. */
+  style: DateStyle;
   m: Messages;
 }) {
   const view = eventView(m, { kind: row.kind, result: row.result, warnings: row.run?.warnings ?? 0, errorCode: row.run?.errorCode ?? null });
@@ -67,7 +67,7 @@ export function EventDetail({
             {view.warningsLabel !== null && <Badge variant="soft-amber">{view.warningsLabel}</Badge>}
           </span>
           <DialogTitleSlot.Title className="text-lg font-medium text-pretty">
-            {eventSentence(m, uiLocale, row, {
+            {eventSentence(m, style.uiLocale, row, {
               actor: actorLabel(m, row),
               key: row.payload?.kind === "TRANSLATION" ? row.payload.key : "",
             })}
@@ -77,9 +77,9 @@ export function EventDetail({
             <time dateTime={row.occurredAt.toISOString()}>
               {run
                 ? row.finishedAt === null
-                  ? m.logs.detail.startedOnly(formatMinute(row.occurredAt, { uiLocale, timeZone: "UTC" }))
-                  : m.logs.detail.startedFinished(formatMinute(row.occurredAt, { uiLocale, timeZone: "UTC" }), formatMinute(row.finishedAt, { uiLocale, timeZone: "UTC" }))
-                : `${formatMinute(row.occurredAt, { uiLocale, timeZone: "UTC" })} · ${relativeTime(row.occurredAt, now, uiLocale)}`}
+                  ? m.logs.detail.startedOnly(formatMinute(row.occurredAt, style))
+                  : m.logs.detail.startedFinished(formatMinute(row.occurredAt, style), formatMinute(row.finishedAt, style))
+                : `${formatMinute(row.occurredAt, style)} · ${relativeTime(row.occurredAt, now, style.uiLocale)}`}
             </time>
           </span>
         </span>

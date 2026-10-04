@@ -45,7 +45,7 @@ export function ConsentPanel({
   projects: readonly ScopeProject[];
   /** 재동의면 기존 연결의 grant·범위(범위는 이미 멤버십 교집합) — 토큰 회전과 같은 채움. */
   initial: { grants: readonly TokenGrant[]; scope: "all" | "projects"; projectIds: readonly string[] };
-  /** 같은 클라이언트의 기존 연결이 있으면 그 연결일(`utcDay`) — 대체 경고(`1d`). */
+  /** 같은 클라이언트의 기존 연결이 있으면 그 연결일(`formatDay` — 보는 사람의 시간대) — 대체 경고(`1d`). */
   replacesOn: string | null;
 }) {
   const m = useMessages();

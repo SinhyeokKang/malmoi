@@ -22,11 +22,12 @@ import { Input } from "@/components/ui/input";
 import { FieldTrigger } from "@/components/ui/field-trigger";
 import { EVENT_RESULTS, LOG_KINDS, type EventResult, type LogKind } from "@/lib/events/payload";
 import { LOG_PRESETS, PROJECT_WIDE, clearedLogsQuery, hasNarrowing, logsQuery, presetRange, type LogFilter, type LogPreset } from "@/lib/events/filter";
-import { useMessages, useUiLocale } from "@/components/i18n/messages-provider";
+import { useDateStyle, useMessages } from "@/components/i18n/messages-provider";
 import { routes } from "@/lib/routes";
 import { formatDayKey } from "@/lib/date-format";
 import type { Messages } from "@/lib/i18n";
 import type { UiLocale } from "@/lib/i18n/locales";
+import type { TimeZone } from "@/lib/time-zone/zones";
 
 /**
  * 필터 다섯 + 검색 + [Refresh] (캔버스 `1a`·`1m`).
@@ -52,15 +53,22 @@ export function LogFilters({
   actors,
   /** 보관된 프로젝트에는 [Refresh]가 없다 — 진행 중 실행이 생길 수 없다 (캔버스 `1j`). */
   refreshable,
+  now,
 }: {
   slug: string;
   filter: LogFilter;
   sources: readonly { slug: string }[];
   actors: readonly { id: string; label: string }[];
   refreshable: boolean;
+  /**
+   * 프리셋의 "오늘"을 잡는 기준 시각(ISO) — **Logs 페이지가 렌더한 순간이다.** 렌더 중 `Date.now()`를 쓰면 보는 사람 시간대의 자정이
+   * 서버 렌더와 하이드레이션 사이에 낄 때 두 쪽의 프리셋 판정이 갈린다(user-timezone design §0 하이드레이션 ①).
+   */
+  now: string;
 }) {
   const m = useMessages();
-  const uiLocale = useUiLocale();
+  const style = useDateStyle();
+  const range = (preset: LogPreset) => presetRange(preset, new Date(now), style.timeZone);
   const router = useRouter();
 
   /**
@@ -147,7 +155,7 @@ export function LogFilters({
           ))}
         </Filter>
 
-        <Filter triggerRef={dateTrigger} onCloseAutoFocus={handOffToCustom} axis={m.logs.filters.axis.date} label={dateLabel(m, uiLocale, filter)} on={filter.from !== null || filter.to !== null}>
+        <Filter triggerRef={dateTrigger} onCloseAutoFocus={handOffToCustom} axis={m.logs.filters.axis.date} label={dateLabel(m, style.uiLocale, filter)} on={filter.from !== null || filter.to !== null}>
           <DropdownMenuItem selected={filter.from === null && filter.to === null} onSelect={() => go({ from: null, to: null })}>
             {m.logs.filters.anyDate}
           </DropdownMenuItem>
@@ -299,6 +307,7 @@ function CustomRangeDialog({ open, onOpenChange, filter, returnFocusRef, onApply
   onApply: (range: { from: string | null; to: string | null }) => void;
 }) {
   const m = useMessages();
+  const { timeZone } = useDateStyle();
   const [from, setFrom] = useState(filter.from ?? "");
   const [to, setTo] = useState(filter.to ?? "");
   const fromId = useId();
@@ -307,7 +316,7 @@ function CustomRangeDialog({ open, onOpenChange, filter, returnFocusRef, onApply
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         title={m.logs.range.custom}
-        description={m.logs.range.description}
+        description={description(m, timeZone)}
         onCloseAutoFocus={event => { event.preventDefault(); returnFocusRef.current?.focus(); }}
         actions={<>
           <DialogClose asChild><Button>{m.common.cancel}</Button></DialogClose>
@@ -337,11 +346,11 @@ function CustomRangeDialog({ open, onOpenChange, filter, returnFocusRef, onApply
 }
 
 /**
- * 프리셋 넷의 날짜 키 — **UTC 기준으로 오늘을 잡는다**(로컬 자정으로 끊으면 밤 사이 실행이 하루 어긋난다). 판정은 `presetRange`(순수)다.
- * ⚠️ 렌더 중 `Date.now()`는 아직 여기 있다 — 서버가 내린 `now`로 바꾸는 것은 시간대 배선과 같이 한다(user-timezone C2).
+ * Dialog 설명 — 칸의 날짜가 **보는 사람이 고른 시간대의 자정**으로 끊긴다는 것을 끝줄이 말한다(라벨의 `(UTC)` 괄호를 대신한다).
+ * 런타임 TZ가 아니다 — 프리셋(`presetRange`)·서버 구간(`parseDateRange`)이 같은 시간대를 받는다.
  */
-function range(preset: LogPreset): { from: string; to: string } {
-  return presetRange(preset, new Date(), "UTC");
+function description(m: Messages, timeZone: TimeZone): string {
+  return `${m.logs.range.description} ${m.logs.range.zoneNote(timeZone)}`;
 }
 
 function sameRange(filter: LogFilter, range: { from: string; to: string }): boolean {

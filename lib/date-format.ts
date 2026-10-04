@@ -77,7 +77,7 @@ export function zonedParts(at: Date, timeZone: TimeZone): ZonedParts {
 
 /**
  * 그 순간의 UTC 오프셋(분). 초·밀리초는 분으로 내려 버린다(`…:59.999Z`도 맞다).
- * 1970년 이전(음수 epoch)은 대상이 아니다 — 내림 방향이 달라진다.
+ * `Math.floor`라 1970년 이전(음수 epoch)에서도 내림 방향이 같다 — `Intl` 부품도 그 분을 가리킨다.
  */
 export function utcOffsetMinutes(at: Date, timeZone: TimeZone): number {
   if (timeZone === "UTC") return 0;

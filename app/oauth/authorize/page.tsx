@@ -23,7 +23,7 @@ import { getPrisma } from "@/lib/db";
 import { logCaught } from "@/lib/failure";
 import type { Messages } from "@/lib/i18n";
 import type { UiLocale } from "@/lib/i18n/locales";
-import { getMessages, getUiLocale } from "@/lib/i18n/server";
+import { getDateStyle, getMessages } from "@/lib/i18n/server";
 import { en } from "@/messages/en";
 import { providerLabel } from "@/lib/login-link/message";
 import { LOGIN_PROVIDERS, type LoginProvider } from "@/lib/login-link/policy";
@@ -59,7 +59,7 @@ type Params = Record<string, string | string[] | undefined>;
  * 본판정은 Authorize·Deny Action의 `readSession`이다. ⚠️ 이 페이지는 쿠키를 읽는다 — `no-cookie-reads.test.ts`의 비쿠키 트리 밖이다.
  */
 export default async function OAuthAuthorizePage({ searchParams }: { searchParams: Promise<Params> }) {
-  const [m, uiLocale] = await Promise.all([getMessages(), getUiLocale()]);
+  const [m, style] = await Promise.all([getMessages(), getDateStyle()]);
   const params = await searchParams;
   const endpoint = oauthEndpoint(await headers());
   const requestId = single(params, "request");
@@ -165,7 +165,7 @@ export default async function OAuthAuthorizePage({ searchParams }: { searchParam
             account={account}
             projects={projects}
             initial={initial}
-            replacesOn={existing === null ? null : formatDay(existing.createdAt, { uiLocale, timeZone: "UTC" })}
+            replacesOn={existing === null ? null : formatDay(existing.createdAt, style)}
           />
         </div>
       </div>

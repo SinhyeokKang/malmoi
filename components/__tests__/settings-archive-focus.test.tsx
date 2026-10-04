@@ -23,7 +23,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), replac
 import SettingsPage from "@/app/(edit)/projects/[slug]/settings/page";
 import { en } from "@/messages/en";
 
-vi.mock("@/lib/i18n/server", async () => ({ getUiLocale: async () => "en", getMessages: async () => (await import("@/messages/en")).en }));
+vi.mock("@/lib/i18n/server", async () => ({ getUiLocale: async () => "en", getDateStyle: async () => ({ uiLocale: "en", timeZone: "UTC" }), getMessages: async () => (await import("@/messages/en")).en }));
 
 let fixup: MutationObserver | undefined;
 beforeEach(() => {

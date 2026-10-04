@@ -1,6 +1,6 @@
 "use client";
 import { Link as InlineLink } from "@/components/ui/link";
-import { formatMinute } from "@/lib/date-format";
+import { formatMinute, type DateStyle } from "@/lib/date-format";
 import { flagFor } from "@/lib/keys/flag";
 import { diffWords } from "@/lib/publish/words";
 import { FileJson2, GitPullRequestArrow, History, Info, LoaderCircle, Send, TriangleAlert } from "lucide-react";
@@ -15,7 +15,7 @@ import { CountBadge } from "@/components/ui/count-badge";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LargeModal } from "@/components/ui/large-modal";
-import { useMessages, useUiLocale } from "@/components/i18n/messages-provider";
+import { useDateStyle, useMessages } from "@/components/i18n/messages-provider";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { onboardErrorMessage, isOnboardError } from "@/lib/onboarding/message";
 import { pullRevalidates, UNCONFIRMED_PULL, type PullOutcome } from "@/lib/pull/message";
@@ -29,7 +29,6 @@ import type { PullWarning } from "@/lib/pull/run";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { SlowNotice } from "@/components/slow-notice";
 import type { Messages } from "@/lib/i18n";
-import type { UiLocale } from "@/lib/i18n/locales";
 
 /** 실행 결과에 **그때의 사실**을 붙여 둔다 — 결과를 다시 열 때 `count`는 이미 재검증으로 줄어 있다. */
 type PublishResultState = { outcome: PullOutcome; at: Date; total: number };
@@ -394,7 +393,7 @@ function failureText(m: Messages, outcome: Extract<PullOutcome, { status: "faile
 }
 
 // 절대 시각은 UTC라고 말한다 — 브라우저 로컬을 라벨 없이 내면 참조 코드로 Logs(UTC)와 대조할 때 어긋나 보인다 (launch-readiness L7.1).
-const stamp = (at: Date, uiLocale: UiLocale) => <time dateTime={at.toISOString()}>{formatMinute(at, { uiLocale, timeZone: "UTC" })}</time>;
+const stamp = (at: Date, style: DateStyle) => <time dateTime={at.toISOString()}>{formatMinute(at, style)}</time>;
 
 export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, role }: {
   slug: string;
@@ -414,7 +413,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
    */
   repo: { owner: string; name: string; branch: string; syncBranch: string };
 }) {
-  const uiLocale = useUiLocale();
+  const style = useDateStyle();
   const m = useMessages();
   const p = m.translations.publish;
   const { state, result, runTotal } = publish;
@@ -612,7 +611,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
               <div className="border-border grid shrink-0 grid-cols-[130px_1fr] gap-x-3.5 gap-y-2.5 rounded-lg border px-4 py-3.5 text-xs">
                 <span className="text-muted-foreground">{p.repository}</span><span>{label}</span>
                 <span className="text-muted-foreground">{p.baseBranch}</span><span>{repo.branch}</span>
-                <span className="text-muted-foreground">{p.failedAt}</span><span>{at === null ? "" : stamp(at, uiLocale)}</span>
+                <span className="text-muted-foreground">{p.failedAt}</span><span>{at === null ? "" : stamp(at, style)}</span>
                 <span className="text-muted-foreground">{p.reference}</span><span className="text-muted-foreground">{failed.code}</span>
               </div>
               <Hint>{p.sendReference}</Hint>
@@ -635,7 +634,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
             {failed?.code !== undefined && <div className="border-border flex shrink-0 items-center gap-3 rounded-lg border px-4 py-3 text-xs">
               <span className="text-muted-foreground">{p.reference}</span>
               <span>{failed.code}</span>
-              {at !== null && <span className="text-muted-foreground ml-auto">{stamp(at, uiLocale)}</span>}
+              {at !== null && <span className="text-muted-foreground ml-auto">{stamp(at, style)}</span>}
             </div>}
           </Stack>;
           break;

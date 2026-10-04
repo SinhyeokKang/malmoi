@@ -8,6 +8,7 @@ import { HomeActions, HomeTitle, HomeHeaderActions, HomeNotices } from "@/compon
 import { TranslationWorkspace } from "@/components/translations/workspace/workspace";
 import { props as workspaceProps } from "./helpers/workspace-props";
 import { render } from "./helpers/dom";
+import { formatMinute } from "@/lib/date-format";
 import { en } from "@/messages/en";
 const mocks = vi.hoisted(() => ({ preview: vi.fn(), pull: vi.fn(), refresh: vi.fn() }));
 vi.mock("@/app/(edit)/publish-actions", () => ({ loadPublishPreview: mocks.preview }));
@@ -631,6 +632,16 @@ it("실패 시각은 <time dateTime>에 UTC 라벨로 선다", async () => {
   const time = document.querySelector("time");
   expect(time?.textContent).toMatch(/^[A-Z][a-z]{2} \d{1,2}, \d{4} \d{2}:\d{2} UTC$/);
   expect(new Date(time?.getAttribute("dateTime") ?? "").toISOString()).toBe(time?.getAttribute("dateTime"));
+});
+/** user-timezone C2 — 보는 사람이 고른 시간대로 말하고 오프셋을 단다. `dateTime`은 그대로 UTC ISO다. */
+it("실패 시각은 고른 시간대(Asia/Seoul)로 서고 UTC+9 라벨을 단다", async () => {
+  mocks.pull.mockResolvedValueOnce({ status: "failed", error: "unavailable", retryable: true, code: "ref-1" });
+  await render(<Host />, { timeZone: "Asia/Seoul" }); await click("Publish1"); await click("Open pull request");
+  const time = document.querySelector("time");
+  const iso = time?.getAttribute("dateTime") ?? "";
+  expect(new Date(iso).toISOString()).toBe(iso);
+  expect(time?.textContent).toMatch(/ UTC\+9$/);
+  expect(time?.textContent).toBe(formatMinute(new Date(iso), { uiLocale: "en", timeZone: "Asia/Seoul" }));
 });
 
 });

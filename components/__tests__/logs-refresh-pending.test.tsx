@@ -17,7 +17,7 @@ import { parseLogFilter } from "@/lib/events/filter";
 import { en } from "@/messages/en";
 import { routes } from "@/lib/routes";
 
-const props = { slug: "alpha", sources: [{ slug: "web" }], actors: [], refreshable: true };
+const props = { slug: "alpha", sources: [{ slug: "web" }], actors: [], refreshable: true, now: "2026-10-04T23:10:00.000Z" };
 beforeEach(() => { mocks.push.mockReset(); mocks.refresh.mockReset(); });
 
 /** 라우터 응답이 오기 전까지 transition을 붙들어 두는 목적지 — 서버 렌더가 아직 안 온 상태다. */

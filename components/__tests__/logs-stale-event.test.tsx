@@ -18,7 +18,7 @@ import { LogFilters } from "@/components/logs/log-filters";
 import { parseLogFilter } from "@/lib/events/filter";
 import { en } from "@/messages/en";
 
-const props = { slug: "alpha", sources: [{ slug: "web" }], actors: [], refreshable: true };
+const props = { slug: "alpha", sources: [{ slug: "web" }], actors: [], refreshable: true, now: "2026-10-04T23:10:00.000Z" };
 beforeEach(() => { mocks.push.mockReset(); });
 const lastUrl = () => new URL(String(mocks.push.mock.calls.at(-1)?.[0]), "http://x");
 

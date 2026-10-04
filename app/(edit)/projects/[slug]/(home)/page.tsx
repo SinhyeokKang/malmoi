@@ -17,7 +17,7 @@ import { canPerform } from "@/lib/auth/permission";
 import { requireProjectAccess } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
 import { parseLogFilter, type LogSearchParams } from "@/lib/events/filter";
-import { getMessages, getUiLocale } from "@/lib/i18n/server";
+import { getDateStyle, getMessages, getUiLocale } from "@/lib/i18n/server";
 import { HOME_EVENT_LIMIT, loadEvent, loadEvents } from "@/lib/events/query";
 import { loadConnectionHealth } from "@/lib/github";
 import { logFailure } from "@/lib/github-connect/log";
@@ -84,6 +84,7 @@ export default async function ProjectHomePage({
   searchParams: Promise<LogSearchParams>;
 }) {
   const uiLocale = await getUiLocale();
+  const style = await getDateStyle();
   const m = await getMessages();
   const { slug } = await params;
   const { projectId, role, archived } = await requireProjectAccess({ slug, permission: "translation:write" });
@@ -150,7 +151,7 @@ export default async function ProjectHomePage({
      *
      * ⚠️ **`try`로 감싸지 않는다** (결정 16) — 실패는 Home 전체가 오류 화면이 되어야 한다.
      */
-    loadEvents(prisma, m, projectId, parseLogFilter({}), { limit: HOME_EVENT_LIMIT, timeZone: "UTC" }),
+    loadEvents(prisma, m, projectId, parseLogFilter({}), { limit: HOME_EVENT_LIMIT, timeZone: style.timeZone }),
     loadReviewAttention(prisma, projectId),
     // ⚠️ **상세는 Home 위에서 연다** — Logs로 튕겨 보내지 않는다(캔버스 `1h`).
     openRef === null ? Promise.resolve(null) : loadEvent(prisma, m, projectId, openRef),
@@ -373,7 +374,7 @@ export default async function ProjectHomePage({
             heldLater={heldLater} uiLocale={uiLocale} m={m}
           />
           <AttentionCard items={items} slug={slug} role={role} state={state} now={now} uiLocale={uiLocale} m={m} />
-          <LogsCard rows={events.rows} slug={slug} now={now} archived={archived} syncedBefore={lastSyncAt !== null} uiLocale={uiLocale} m={m} />
+          <LogsCard rows={events.rows} slug={slug} now={now} archived={archived} syncedBefore={lastSyncAt !== null} style={style} m={m} />
         </div>
 
         <MetaColumn
@@ -405,7 +406,7 @@ export default async function ProjectHomePage({
               archived={archived}
               canOpenSettings={canPerform(role, "project:settings")}
               repoUrl={`https://github.com/${project.repoOwner}/${project.repoName}`}
-              translationHref={translationHref} uiLocale={uiLocale} m={m}
+              translationHref={translationHref} style={style} m={m}
             />
           )}
         </EventDialog>

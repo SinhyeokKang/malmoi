@@ -18,8 +18,8 @@ vi.mock("next/headers", () => ({
   cookies: async () => ({ get: (name: string) => (name === "malmoi-ui-locale" && h.cookie !== undefined ? { name, value: h.cookie } : undefined) }),
 }));
 
-const { getMessages, getUiLocale } = await import("../server");
-const ok = (uiLocale: string | null): SessionRead => ({ status: "ok", userId: "u1", name: null, email: null, image: null, uiLocale, timeZone: null });
+const { getDateStyle, getMessages, getUiLocale } = await import("../server");
+const ok = (uiLocale: string | null, timeZone: string | null = null): SessionRead => ({ status: "ok", userId: "u1", name: null, email: null, image: null, uiLocale, timeZone });
 
 beforeEach(() => {
   h.session = { status: "none" };
@@ -42,6 +42,29 @@ describe("getUiLocale", () => {
   });
 });
 
+/**
+ * 요청의 날짜 형 (user-timezone C1) — 시간대는 계정 하나뿐이다(쿠키 층 없음). 목록 밖·null·비로그인·세션 장애는 UTC — 화면 표시라 거부가 아니다.
+ */
+describe("getDateStyle", () => {
+  it.each([
+    ["계정 값이 목록 안이면 그 값", ok(null, "Asia/Seoul"), "Asia/Seoul"],
+    ["계정 값이 목록 밖이면 UTC", ok(null, "Mars/Base"), "UTC"],
+    ["프로토타입 키도 목록 밖이다", ok(null, "__proto__"), "UTC"],
+    ["고르지 않았으면 UTC", ok(null, null), "UTC"],
+    ["비로그인은 UTC", { status: "none" } as SessionRead, "UTC"],
+    ["세션을 못 읽으면 UTC — 거부가 아니다", { status: "unavailable" } as SessionRead, "UTC"],
+  ] as const)("%s", async (_, session, expected) => {
+    h.session = session;
+    expect((await getDateStyle()).timeZone).toBe(expected);
+  });
+
+  it("화면 언어는 getUiLocale과 같은 판정이다", async () => {
+    h.session = ok(null, "Asia/Kolkata");
+    h.cookie = "es";
+    expect(await getDateStyle()).toEqual({ uiLocale: "es", timeZone: "Asia/Kolkata" });
+  });
+});
+
 describe("getMessages", () => {
   it("en 화면은 en 사전이다", async () => {
     expect(await getMessages()).toBe(en);
@@ -58,9 +81,10 @@ describe("getMessages", () => {
 });
 
 /** ⚪1(R1) — 요청당 한 번(React `cache`)과 "Accept-Language를 보지 않는다"(헤더를 읽지 않는다)를 소스로 고정한다. */
-it("getUiLocale은 cache로 감싸고 요청 헤더를 읽지 않는다", () => {
+it("getUiLocale·getDateStyle은 cache로 감싸고 요청 헤더를 읽지 않는다", () => {
   const src = readFileSync("lib/i18n/server.ts", "utf8");
-  expect(src).toContain("cache(");
+  expect(src).toContain("export const getUiLocale = cache(");
+  expect(src).toContain("export const getDateStyle = cache(");
   // `next/headers`에서는 `cookies`만 가져온다 — `headers()`(Accept-Language)를 부르는 우회를 막는다.
   expect(src).toContain('import { cookies } from "next/headers";');
   expect(src).not.toMatch(/\bheaders\s*\(/);

@@ -21,7 +21,7 @@ import { LocaleFlag } from "@/components/translations/locale-badge";
 import { relativeTime } from "@/lib/relative-time";
 import { CopyButton } from "@/components/ui/copy-button";
 import { canPerform, type Role } from "@/lib/auth/permission";
-import { useMessages, useUiLocale } from "@/components/i18n/messages-provider";
+import { useDateStyle, useMessages } from "@/components/i18n/messages-provider";
 import { planSurfaceImportStatus, type SurfaceImportStatus } from "@/lib/import/surface-status";
 import { basePending } from "@/lib/onboarding/base-pending";
 import { importFailureMessage, isImportFailureCode } from "@/lib/projects/import-failure";
@@ -200,7 +200,7 @@ function slashBreaks(text: string) {
   return text.split("/").map((part, index) => <Fragment key={index}>{index > 0 && <>/<wbr /></>}{part}</Fragment>);
 }
 function SourceTime({ at }: { at: Date }) {
-  const uiLocale = useUiLocale(); return <time dateTime={at.toISOString()} aria-label={formatMinute(at, { uiLocale, timeZone: "UTC" })}>{formatMinute(at, { uiLocale, timeZone: "UTC" })}</time>; }
+  const style = useDateStyle(); return <time dateTime={at.toISOString()} aria-label={formatMinute(at, style)}>{formatMinute(at, style)}</time>; }
 /**
  * 상세 칸의 글리프 — §2.4 글리프 열이다(5-Y4): 실패 `CircleX` · 경고 `TriangleAlert` · 성공 `CircleCheck` · 그 밖 `Info`.
  * 진행 중은 `LoaderCircle` 회전이다(5-Y14 — 옛 손 조립 원 스피너. 칸 안 자리 교체라 `Button loading`으로 못 옮긴다).
@@ -214,6 +214,6 @@ function StatusGlyph({ labelKey }: { labelKey: SurfaceImportStatus["labelKey"] }
     case "notSyncedYet": return <Info aria-hidden />;
   }
 }
-/** 상대 표기여도 절대 값을 함께 든다 — 화면의 낱말이 "5분 전"이어도 접근 이름은 UTC다 (DESIGN §6.68). */
+/** 상대 표기여도 절대 값을 함께 든다 — 화면의 낱말이 "5분 전"이어도 접근 이름은 절대 시각이다 (DESIGN §6.68). */
 function RelativeAt({ at, now }: { at: Date; now: Date }) {
-  const uiLocale = useUiLocale(); return <time dateTime={at.toISOString()} aria-label={formatMinute(at, { uiLocale, timeZone: "UTC" })}>{relativeTime(at, now, uiLocale)}</time>; }
+  const style = useDateStyle(); return <time dateTime={at.toISOString()} aria-label={formatMinute(at, style)}>{relativeTime(at, now, style.uiLocale)}</time>; }

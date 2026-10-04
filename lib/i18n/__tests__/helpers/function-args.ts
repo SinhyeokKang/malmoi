@@ -76,6 +76,7 @@ export const FUNCTION_ARGS: { readonly [P in FunctionPaths<Messages>]: Parameter
   "logs.warnings": [2],
   "logs.deferredReason": [2],
   "logs.coverage": ["X"],
+  "logs.range.zoneNote": ["X"],
   "logs.meta.values": [2],
   "logs.meta.files": [2],
   "logs.meta.keys": [2],

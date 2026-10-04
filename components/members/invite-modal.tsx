@@ -13,11 +13,11 @@ import { LargeModal } from "@/components/ui/large-modal";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import type { Role } from "@/lib/auth/permission";
-import { useMessages, useUiLocale } from "@/components/i18n/messages-provider";
+import { useDateStyle, useMessages } from "@/components/i18n/messages-provider";
 import { parseRecipients, splitPastedEmails, type RecipientRowError } from "@/lib/invitation-email/recipients";
 import type { IssueRowError } from "@/lib/invitation-email/plan";
 import { INVITATION_HOURLY_LIMIT, USER_HOURLY_LIMIT } from "@/lib/invitation-email/limits";
-import type { UiLocale } from "@/lib/i18n/locales";
+import type { DateStyle } from "@/lib/date-format";
 import { retryAtLabel } from "@/lib/invitation-email/retry-at";
 import { isImeComposing } from "@/lib/keyboard";
 import type { Messages } from "@/lib/i18n";
@@ -66,7 +66,7 @@ export function InviteModal({
   returnFocusRef: RefObject<HTMLElement | null>;
 }) {
   const m = useMessages();
-  const uiLocale = useUiLocale();
+  const style = useDateStyle();
   const [rows, setRows] = useState<Row[]>(() => [blank()]);
   const [rowErrors, setRowErrors] = useState<ReadonlyMap<number, RowIssue>>(new Map());
   const [nothingSent, setNothingSent] = useState(false);
@@ -243,7 +243,7 @@ export function InviteModal({
         showRowErrors(describeRowErrors(result.rowErrors, (i) => sentRows[i] ?? -1), true);
         return;
       }
-      setAlert(formAlertFor(m, uiLocale, result, (i) => filled[i]?.email.trim() ?? "", filled.length, seats.limit));
+      setAlert(formAlertFor(m, style, result, (i) => filled[i]?.email.trim() ?? "", filled.length, seats.limit));
       setFocus({ kind: "submit" });
     });
   }
@@ -408,12 +408,12 @@ function rowErrorText(m: Messages, code: "invalid-email" | "invalid-role" | "alr
 }
 
 /** 행이 아닌 거부 → 폼 Alert 한 장. `null`은 호출 자체가 끊긴 경우다(결과 미확인). */
-function formAlertFor(m: Messages, uiLocale: UiLocale, result: Exclude<InvitationsResult, { ok: true }> | null, emailAt: (index: number) => string, count: number, seatsLimit: number): FormAlert {
+function formAlertFor(m: Messages, style: DateStyle, result: Exclude<InvitationsResult, { ok: true }> | null, emailAt: (index: number) => string, count: number, seatsLimit: number): FormAlert {
   if (result === null || result.error === "email-unknown") {
     return { variant: "warning", title: m.members.invite.unconfirmed.title, body: m.members.invite.unconfirmed.body };
   }
   if (result.error === "rate-limited" && "limit" in result) {
-    const time = retryAtLabel(result.retryAt, uiLocale);
+    const time = retryAtLabel(result.retryAt, style);
     const body =
       result.limit === "address"
         ? m.members.invite.limit.address(emailAt(result.index), time)

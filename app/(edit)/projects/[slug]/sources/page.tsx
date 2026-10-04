@@ -6,7 +6,7 @@ import { requireProjectAccess } from "@/lib/auth/session";
 import { canPerform } from "@/lib/auth/permission";
 import { ADAPTERS } from "@/lib/adapters";
 import { getPrisma } from "@/lib/db";
-import { getMessages, getUiLocale } from "@/lib/i18n/server";
+import { getDateStyle, getMessages } from "@/lib/i18n/server";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
 import { formatLabel } from "@/lib/onboarding/detect";
 import { firstQueryValues, type Raw } from "@/lib/search-params";
@@ -14,13 +14,13 @@ import { loadSources } from "@/lib/sources/query";
 
 export const maxDuration = 60;
 export default async function SourcesPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<Raw<"add" | "e" | "source">> }) {
-  const uiLocale = await getUiLocale();
+  const style = await getDateStyle();
   const m = await getMessages();
   const { slug } = await params;
   const { projectId, role, archived } = await requireProjectAccess({ slug, permission: "translation:write" });
   if (archived) {
     const project = await getPrisma().project.findUnique({ where: { id: projectId }, select: { archivedAt: true } });
-    return <SourcesArchived slug={slug} role={role} archivedAt={project?.archivedAt ?? null} uiLocale={uiLocale} m={m} />;
+    return <SourcesArchived slug={slug} role={role} archivedAt={project?.archivedAt ?? null} style={style} m={m} />;
   }
   const { add, e } = firstQueryValues(await searchParams);
   const canEdit = canPerform(role, "project:settings");
