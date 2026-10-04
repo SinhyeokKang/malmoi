@@ -47,7 +47,7 @@
 7. `messages/ko.tsx`·`messages/es.tsx`가 en과 **키 집합·함수 시그니처가 같다**(영어 고정 네임스페이스는 `Messages`에서 빠진다 — design §2) — 하나라도 빠지거나 남으면 `pnpm typecheck`가 red다. `[자동]`
 8. ko·es 사전에서 en과 **같은 문자열**인 값은 허용 목록(**키 경로** 기준 — 고유명사·코드)에 있는 것뿐이다 — 번역 누락을 `pnpm test`가 잡는다. `[자동]`
 9. 절대 날짜는 언어별 형식으로 나오고 **여전히 UTC라고 말한다**(`2026년 9월 27일` · `27 sept 2026` · `Sep 27, 2026`). 상대 시각과 언어명(`Intl.DisplayNames`)도 그 언어다. `[자동]` 헬퍼 · `[수동]` 화면
-10. en 사용자의 클라이언트 JS가 이 기능 전 대비 gzip 기준 +2KB 이내다. ko·es 사전은 그 언어를 고른 사용자만 받는 별도 청크다. 기준선은 착수 전에 잰다(tasks A0). `[수동]` 실측
+10. ko·es 사전은 그 언어를 고른 사용자만 받는 별도 청크다 — en 페이지 HTML·first-load에 ko·es 청크가 0이다. en 사용자의 first-load JS 증가는 실측해 기록한다(2026-10-05 실측 gzip +4.1~6.1KB/라우트 — `next/dynamic` 로더·provider 약 3~4KB와 Turbopack 청크 재묶음의 모듈 중복; 사용자 수용, 처음의 "+2KB 이내"를 대체). `[수동]` 실측
 11. 영어로 고정되는 표면은 바뀌지 않는다 — MCP 도구 응답, 초대 메일, SEO 메타·탭 제목(`metadata`)·`llms.txt`·`llms-full.txt`(en 가이드)·sitemap, `/api/*` JSON(검색 색인은 언어별 정적 파일 — 14), cron·서버 로그, CLI 출력, 가이드 스크린샷,
     방침 본문(ko 화면 제외 — 조건 12), changelog 본문(GitHub Release), 숫자 형식(`en-US`), `/signin` 키비주얼 PNG, zod 검증 메시지, `global-error`(`lang="en"`). `[자동]` 소스 검사(tasks B1⑦·⑧)
 12. `/privacy`가 새 쿠키와 `User.uiLocale`을 말하고 개정 이력이 붙는다(`policy-gate.test.tsx` green). ko 화면은 ko 본문, en·es 화면은 en 본문이다.

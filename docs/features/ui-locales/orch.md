@@ -124,3 +124,6 @@
 - **W8 fix1 완료**(a2e3d3ee·67563222 — Logs 날짜·언어명 uiLocale, 화면군 8곳 ko 렌더, D9 고정 상수+동치 테스트). W7 push 뒤 rebase 지시 예정.
 - **W7 통합·push** `69bc9186..feb0ecf4`(gate ok). W7 해제·워크트리 제거. W8 rebase Task `ctx_443caa29f7a6`.
 - W8 통합 게이트 1회차: `invitation.integration.ts` 동시 수락 테스트가 `unavailable`(기대 `already-member`)로 red — W7·W8 워커도 간헐 red 보고. postgres 스위트 단독 3연속 552/552 green → 부하 경합 플레이크로 판정, 전체 gate 재실행. **후속(이 기능 밖)**: 그 테스트의 동시성 플레이크를 이슈/postmortem 후보로 리포트에 남긴다.
+- **W8 통합·push** `feb0ecf4..f404376c`. W8 해제·워크트리 제거. **W9 착수**(Sonnet medium).
+- **W9**: E7 `5e602047` gate ok. E8 — 사전 분리 성립(en HTML에 ko·es 청크 0, ko +26KB·es +27KB 청크는 그 언어만), 그러나 en first-load gzip이 A0 대비 +4.1~6.1KB(조건 10 초과). **D10(사용자)**: 원인 모듈부터 특정 → 피할 수 있는 것은 고치고 구조적이면 수치·근거로 다시 판단.
+- **D11(사용자)**: en first-load +4.1~6.1KB gz는 구조적(next/dynamic 런타임·provider ~3–4KB + Turbopack 청크 재묶음 중복 — button.tsx 등) → **수용**, spec 완료 조건 10을 '사전 분리 + 증가 실측 기록'으로 수정. 모듈 중복은 기능 밖 후속 후보.
