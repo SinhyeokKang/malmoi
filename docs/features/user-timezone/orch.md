@@ -26,9 +26,9 @@
 
 | 배치 | 태스크 | 모델·effort (이유) | 선행 | 소유 파일(주) | 상태 |
 |---|---|---|---|---|---|
-| **T1 순수 함수** | A1–A5 | Opus 5.5 high — 서머타임·0시 없는 날·런타임 TZ 누수·잎 경계 판단 | — | `lib/time-zone/**` · `lib/utc-time.ts`→`lib/date-format.ts` · `lib/events/{filter,view,query}.ts` · 호출부 18파일(**이름만** — `timeZone: "UTC"`) · `components/logs/log-filters.tsx`(프리셋 이동) · `lib/mcp/tools/project.ts` · `(home)/page.tsx`·logs page의 `loadEvents` 호출 · 관련 테스트 · `client-graph.test.ts` | 진행 |
-| **T2 스키마·세션** | B1(SQL만) · B2 | Sonnet 5.5 medium — ui-locales C2(`uiLocale`)와 같은 자리를 따라 넓힌다 | — (T1과 병렬) | `prisma/**` · `lib/privacy/collected.ts` · `lib/auth/**` · `types/next-auth.d.ts` · `lib/credentials/__tests__/adapter.test.ts` | 진행 |
-| **T3 입구·호출부** | C1 · C2 (+ H2 주석) | Opus 5.5 high — provider·하이드레이션 `now` prop·호출부 전수·사전 셋 | T1·T2 통합 | `lib/i18n/server.ts` · `components/i18n/**` · `app/layout.tsx` · 호출부 전부 · `messages/{en,ko,es}.tsx`(`m.logs.range.*`) · `components/{logs,home}/**` | 대기 |
+| **T1 순수 함수** | A1–A5 | Opus 5.5 high — 서머타임·0시 없는 날·런타임 TZ 누수·잎 경계 판단 | — | `lib/time-zone/**` · `lib/utc-time.ts`→`lib/date-format.ts` · `lib/events/{filter,view,query}.ts` · 호출부 18파일(**이름만** — `timeZone: "UTC"`) · `components/logs/log-filters.tsx`(프리셋 이동) · `lib/mcp/tools/project.ts` · `(home)/page.tsx`·logs page의 `loadEvents` 호출 · 관련 테스트 · `client-graph.test.ts` | 완료 |
+| **T2 스키마·세션** | B1(SQL만) · B2 | Sonnet 5.5 medium — ui-locales C2(`uiLocale`)와 같은 자리를 따라 넓힌다 | — (T1과 병렬) | `prisma/**` · `lib/privacy/collected.ts` · `lib/auth/**` · `types/next-auth.d.ts` · `lib/credentials/__tests__/adapter.test.ts` | 완료 |
+| **T3 입구·호출부** | C1 · C2 (+ H2 주석) | Opus 5.5 high — provider·하이드레이션 `now` prop·호출부 전수·사전 셋 | T1·T2 통합 | `lib/i18n/server.ts` · `components/i18n/**` · `app/layout.tsx` · 호출부 전부 · `messages/{en,ko,es}.tsx`(`m.logs.range.*`) · `components/{logs,home}/**` | 진행 |
 | **T4 화면·방침** | D1–D3 | Opus 5.5 high — Radix Select 포커스·공용 조립 추출·Action 갈래·방침 동형 | T3 통합 | `app/(edit)/preferences/**` · `components/preferences/**` · `messages/{en,ko,es}.tsx`(새 키) · `messages/ko-privacy.tsx` · `app/__tests__/entry-points.test.ts` | 대기 |
 | **T5 가이드** | E1 | Sonnet 5.5 medium — 원고 세 벌 문장 교체 + 절 하나 | T4 통합 | `guide/{en,ko,es}/**` · `guide/AUTHORING.md`(필요 시) | 대기 |
 | **T6 정본 문서** | H1 | Opus 5.5 medium — 문서별 커밋, 사실 대조 | T4 통합 (T5와 병렬 — 파일이 갈린다) | CLAUDE.md(+미러) · `docs/{ARCHITECTURE,DESIGN,PRODUCT,DIRECTORY,OPERATIONS}.md` | 대기 |
@@ -57,3 +57,5 @@
 - **T7 · T8 통합**: `fa589a61` feat(i18n) 슬로건 en 고정 · `377dd4ac` docs(ARCHITECTURE) · `24b1c21d` feat(keys) es 국기 — 각각 별도 커밋(사용자 요청). gate 2회 red(load 26–38에서 5초 타임아웃·타이밍 — 단독 실행 green) → 부하 해소 뒤 `gate: ok`. 런타임 미확인: ko·es 랜딩/signin 슬로건 육안 · 번역 화면 `es` 배지 → Q1. T7·T8 해제·워크트리 제거.
 - **T2 통합·push**: `feat(db)` + `feat(auth)` (B1·B2). dev DB `20261004180102_add_user_time_zone` 적용 · `db:status` 최신 · anon/authenticated USAGE·CREATE false · 테이블 GRANT 0. deviation: SQL을 `--from-schema`(직전 커밋 스키마)로 diff · T3 소유 `server.test.ts`에 `timeZone: null` 한 토큰. 런타임 미확인: `/api/auth/session` 본문 → Q1. T2 해제·워크트리 제거.
 - **K1 착수**(별건, 사용자 2026-10-05): ko 사전 전면 톤 검수 — 자연스럽게, en 유지 허용(슬로건·기술 용어). Codex gpt-6-astra high(D5), task_3e2daf9bbb98 / ctx_330d2e847cb2, 워크트리 `utz-k1`, `brief-K1.md`. `logs.range.*`·`preferences.*`·`ko-privacy.tsx`는 손대지 않음(T3·T4 충돌 방지). §10.0·§10.1과 충돌하면 사용자 요청이 이기고 DESIGN도 고친다. T3·T4는 ko.tsx 다른 절만 고쳐 병렬 허용 — 통합 순서대로 rebase.
+- **T1 통합·push**: `feat(time)` (A1–A5, 48파일). 리뷰(Opus 서브에이전트) 🔴0 🟡0 ⚪6 — startOfDay 42 tz × 1990–2039 전수 0 불일치, deviation 7 전부 수용. ⚪(1970 주석·테스트 머리 주석)는 T3 브리프로. 개명은 git이 delete+create로 봐 `--follow` 이력이 끊김(수용). gate ok. T1 해제·워크트리 제거, 인계 사본 `.scratch/user-timezone/handoff-T1.md`.
+- **T3 착수**(Opus high, `brief-T3.md`). K1과 ko.tsx 겹침은 절로 가름(`logs.range.*`만 T3).

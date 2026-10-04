@@ -9,20 +9,20 @@
 
 ## 0. 선행 확인
 
-- [ ] **P0** dev에 ui-locales가 통합됐는지 확인한다: `lib/utc-time.ts`의 `uiLocale` 인자에 기본값이 없음(ui-locales `orch.md` D3 — E 배치) · `getUiLocale`·`useUiLocale` · `User.uiLocale` 마이그레이션 · `/preferences` Language 카드 · `messages/es.tsx`·`ko-privacy.tsx` · `guide/{en,ko,es}/sync/logs.md`.
+- [x] **P0** dev에 ui-locales가 통합됐는지 확인한다: `lib/utc-time.ts`의 `uiLocale` 인자에 기본값이 없음(ui-locales `orch.md` D3 — E 배치) · `getUiLocale`·`useUiLocale` · `User.uiLocale` 마이그레이션 · `/preferences` Language 카드 · `messages/es.tsx`·`ko-privacy.tsx` · `guide/{en,ko,es}/sync/logs.md`.
   그리고 `git grep -l "@/lib/utc-time"`(비테스트)로 호출부를, **같은 grep을 테스트 파일에도** 돌려 갱신 대상 테스트를 다시 뽑아 design §5 표·A2 목록과 대조하고, 달라진 자리를 고친다. `loadEvents`·`parseDateRange` 호출부도 `git grep -n`으로 다시 본다.
   design §2.1의 id별 오프셋 표를 **Node 24(CI `.nvmrc`)로도** 실측한다(로컬은 Node 26).
   검증: 목록 전부 있음 · 두 Node에서 표 일치. 하나라도 어긋나면 착수하지 않는다.
 
 ## A. 순수 함수 (`/tdd interface` 대상)
 
-- [ ] **A1** `lib/time-zone/zones.ts`(잎) — `TIME_ZONES`(design §2.1 초안 → 사용자 확인 후 확정) · `TimeZone` · `DEFAULT_TIME_ZONE` · `parseTimeZone` · `resolveTimeZone`.
+- [x] **A1** `lib/time-zone/zones.ts`(잎) — `TIME_ZONES`(design §2.1 초안 → 사용자 확인 후 확정) · `TimeZone` · `DEFAULT_TIME_ZONE` · `parseTimeZone` · `resolveTimeZone`.
   테스트: 목록 값 통과 · `Mars/Base`·`""`·`__proto__`·`constructor`·`toString`·`asia/seoul`·`"Asia/Seoul "`·숫자·`null` 거부 · 모든 id가 `Intl.DateTimeFormat`으로 생성됨 · id별 1월·7월 기대 오프셋 표(design §2.1 — `resolvedOptions()` 정규명 검사는 하지 않는다).
   `client-graph.test.ts`의 `CLIENT_LIB_FILES`에 등재.
   ⚠️ **테스트 파일 머리에 프로세스 TZ를 고정한다** — vitest·CI 어디에도 TZ 설정이 없고 CI(ubuntu)는 사실상 UTC라, 런타임 TZ 누수가 있어도 CI에선 green이다. 지금 고정은 `lib/__tests__/utc-time.test.ts:2`(`process.env.TZ = "Asia/Seoul"`)와 `:12`의 가드뿐이다.
   A1·A2·A3·A5의 새·갱신 테스트 파일 전부에 같은 형(`process.env.TZ = "Asia/Kathmandu"` — UTC가 아니고 분 단위 오프셋 + 가드)을 둔다.
   검증: `pnpm test` green.
-- [ ] **A2** `lib/utc-time.ts` → `lib/date-format.ts`(`git mv`) — `DateStyle` · `zonedParts` · `utcOffsetMinutes` · `offsetLabel` · `formatDay`·`formatMinute`·`formatMonth` · `formatClock` · `formatDayKey` · `dayKeyAt` · `addDays` · `startOfDay`.
+- [x] **A2** `lib/utc-time.ts` → `lib/date-format.ts`(`git mv`) — `DateStyle` · `zonedParts` · `utcOffsetMinutes` · `offsetLabel` · `formatDay`·`formatMinute`·`formatMonth` · `formatClock` · `formatDayKey` · `dayKeyAt` · `addDays` · `startOfDay`.
   테스트: ①`timeZone: "UTC"`에서 세 언어 × 세 함수가 **옛 `utcDay`·`utcMinute`·`utcMonth` 기댓값과 같은 문자열**(기존 `utc-time.test.ts` 표를 그대로 옮긴다 — 완료 조건 1)
   ②`Asia/Seoul`·`Asia/Kolkata`·`Asia/Kathmandu`·`America/New_York`(1월·7월) 기댓값. 음수 분 오프셋(`UTC-9:30`)은 목록에 없으므로 ③의 `offsetLabel` 단위 테스트로만 본다
   ③`offsetLabel` 표(0·540·330·345·-180·-570) ④날짜 경계 — `2026-10-04T23:10Z`가 Seoul에서 `Oct 5` ⑤`startOfDay` — New York 2026-03-08(23시간)·2026-11-01(25시간), `startOfDay(addDays(d,1)) - startOfDay(d)`가 그 길이.
@@ -37,28 +37,28 @@
   `components/__tests__/{a11y-reasons,logs-custom-range,privacy-doc,settings-layout,logs-screen,sources-screen}`(`logs-screen.test.ts:82-89`는 소스 정규식 `aria-label={utcMinute(`이다).
   `client-graph.test.ts`: `CLIENT_LIB_FILES`의 이름 · Logs view 잎 목록 `:478`의 `lib/utc-time.ts` → `lib/date-format.ts`.
   검증: `pnpm test` green · `git grep -n "utc-time\|utcDay(\|utcMinute(\|utcMonth("` 비테스트 0(지역 함수 `utcDay`는 A3에서 개명) · `toLocaleDateString\|toLocaleTimeString` grep 0.
-- [ ] **A3** Logs 경계 — `parseDateRange(from, to, timeZone)`(배타 상한 = `startOfDay(addDays(to,1))`, `DAY_MS` 삭제 — 호출자는 `narrow` 하나) · 지역 `utcDay(raw)` → `parseDayKey` · **`parseLogFilter`의 유효성 판정을 `parseDayKey` + 키 문자열 비교로 떼어 시간대와 무관하게 둔다**(`filter.ts:53` — 시그니처 불변, MCP·Home 호출부 그대로) · `presetRange(key, now, timeZone)`를 `lib/events/filter.ts`로(지역 `utcDay(offset)` 삭제) · `groupByDay(rows, now, style)`(머리 `formatDayKey`) · `loadEvents`에 `timeZone` 필수 인자.
+- [x] **A3** Logs 경계 — `parseDateRange(from, to, timeZone)`(배타 상한 = `startOfDay(addDays(to,1))`, `DAY_MS` 삭제 — 호출자는 `narrow` 하나) · 지역 `utcDay(raw)` → `parseDayKey` · **`parseLogFilter`의 유효성 판정을 `parseDayKey` + 키 문자열 비교로 떼어 시간대와 무관하게 둔다**(`filter.ts:53` — 시그니처 불변, MCP·Home 호출부 그대로) · `presetRange(key, now, timeZone)`를 `lib/events/filter.ts`로(지역 `utcDay(offset)` 삭제) · `groupByDay(rows, now, style)`(머리 `formatDayKey`) · `loadEvents`에 `timeZone` 필수 인자.
   테스트: UTC에서 기존 기댓값 그대로 · Seoul 구간 `[2026-10-04T15:00Z, 2026-10-05T15:00Z)` · 서머타임 날 23·25시간 · **0시가 없는 날**(Santiago 2026-09-06 — 구간 시작 01:00, 그 날 23시간, 카드 머리가 `Sep 6, 2026`) · Seoul `now=2026-10-04T23:10Z`의 Today=`2026-10-05`·Yesterday=`2026-10-04` · 그룹 머리·`label` ·
   기존 경계 케이스(역전 쌍·무효 날짜·월말·윤년 — `filter.test.ts:147-184`)를 Seoul·New York에서도 · `parseLogFilter`가 시간대 없이 같은 판정.
   이 커밋에서 `loadEvents` 호출부 셋은 `"UTC"`를 넘긴다(동작 불변): Logs 페이지 · Home(`(home)/page.tsx:151`) · MCP `list_events`.
   `client-graph.test.ts` Logs filter 잎 목록 `:484-488`에 `lib/date-format.ts` 추가.
   검증: `pnpm test` green.
-- [ ] **A4** 소스 검사 — ①`Intl.DateTimeFormat`은 `lib/date-format.ts`에서만(비테스트) ②공개 셸 경로(design §4)가 `getDateStyle`·`useDateStyle`을 import하지 않는다 ③`lib/**`(단 `lib/i18n/server.ts` 자신은 제외)가 `getDateStyle`을 import하지 않는다(ui-locales B1⑧ 확장) ④`lib/mcp/tools/project.ts`의 `loadEvents` 호출이 `timeZone: "UTC"` ⑤비테스트 `app/**`·`components/**`에서 `toISOString().slice(11` 0건(생산자 우회 시각 — event-row 같은 자리).
+- [x] **A4** 소스 검사 — ①`Intl.DateTimeFormat`은 `lib/date-format.ts`에서만(비테스트) ②공개 셸 경로(design §4)가 `getDateStyle`·`useDateStyle`을 import하지 않는다 ③`lib/**`(단 `lib/i18n/server.ts` 자신은 제외)가 `getDateStyle`을 import하지 않는다(ui-locales B1⑧ 확장) ④`lib/mcp/tools/project.ts`의 `loadEvents` 호출이 `timeZone: "UTC"` ⑤비테스트 `app/**`·`components/**`에서 `toISOString().slice(11` 0건(생산자 우회 시각 — event-row 같은 자리).
   ①·④는 A에서 바로 켠다(A3이 MCP에 `"UTC"`를 넘긴다). ⑤는 C2에서 event-row를 옮기며 켠다. ②·③은 부정 검사라 언제든 공허하게 green이다 — C1에서 **센티넬**("`lib/i18n/server.ts`가 `getDateStyle`을 export한다")을 같은 테스트에 더해 이름이 바뀌면 red가 되게 한다.
   검증: `pnpm test` green.
-- [ ] **A5** `timeZoneOptions(now)` — `lib/time-zone/options.ts`. 테스트: 첫 줄 `UTC` · 오프셋 오름차순·동률 id 순 · 1월과 7월 `now`에서 New York 라벨이 `UTC-5`/`UTC-4` · 오프셋 0 옵션 라벨이 `UTC+0 · Europe/London`(첫 줄 `UTC`와 다름). `client-graph.test.ts` `CLIENT_LIB_FILES`에 등재.
+- [x] **A5** `timeZoneOptions(now)` — `lib/time-zone/options.ts`. 테스트: 첫 줄 `UTC` · 오프셋 오름차순·동률 id 순 · 1월과 7월 `now`에서 New York 라벨이 `UTC-5`/`UTC-4` · 오프셋 0 옵션 라벨이 `UTC+0 · Europe/London`(첫 줄 `UTC`와 다름). `client-graph.test.ts` `CLIENT_LIB_FILES`에 등재.
   검증: `pnpm test` green.
-- [ ] `[커밋] feat(time): zoned date formatting and time zone resolution` (A1–A5 — 출력 불변)
+- [x] `[커밋] feat(time): zoned date formatting and time zone resolution` (A1–A5 — 출력 불변)
 
 ## B. 스키마·세션 (`/db`)
 
-- [ ] **B1** `User.timeZone String?` + 마이그레이션(`--create-only`로 SQL을 본 뒤 dev 적용) + `lib/privacy/collected.ts` 등재.
+- [x] **B1** `User.timeZone String?` + 마이그레이션(`--create-only`로 SQL을 본 뒤 dev 적용) + `lib/privacy/collected.ts` 등재.
   ⚠️ `/db`는 스키마+마이그레이션만 커밋하지만 **이 커밋엔 `collected.ts`가 같이 들어간다** — 빠지면 `Record<FieldPath, …>` 때문에 typecheck가 red다.
   검증: `pnpm db:status` 깨끗 · dev `has_schema_privilege` false · `pnpm typecheck` green.
-- [ ] `[커밋] feat(db): add User.timeZone`
-- [ ] **B2** `readSession()` ok 갈래에 `timeZone` — 타입 넷(design §7). `read-session.test.ts`의 `toEqual` 갱신 + 새 케이스 · `lib/auth/__tests__/public-session.test.ts:24,41,51`(`:41`은 키 목록 정확 비교) · `lib/credentials/__tests__/adapter.test.ts:97-108`의 `uiLocale` 통과 케이스에 `timeZone` 짝.
+- [x] `[커밋] feat(db): add User.timeZone`
+- [x] **B2** `readSession()` ok 갈래에 `timeZone` — 타입 넷(design §7). `read-session.test.ts`의 `toEqual` 갱신 + 새 케이스 · `lib/auth/__tests__/public-session.test.ts:24,41,51`(`:41`은 키 목록 정확 비교) · `lib/credentials/__tests__/adapter.test.ts:97-108`의 `uiLocale` 통과 케이스에 `timeZone` 짝.
   검증: `pnpm test` green · 로컬 `/api/auth/session` 본문에 값 `[수동]`.
-- [ ] `[커밋] feat(auth): expose timeZone on the session`
+- [x] `[커밋] feat(auth): expose timeZone on the session`
 
 ## C. 입구 + 호출부
 
