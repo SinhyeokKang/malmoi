@@ -11,7 +11,7 @@ Use this skill when the user asks to run the migrated source command `guide`.
 
 `guide/**.md`(`/docs`로 서빙되는 사용자 가이드)를 **작성·갱신**하는 전용 스킬. 코드는 건드리지 않고 `guide/`만 다룬다. 작성 규칙·IA·표기 규약·톤·사실 대조 소스·외부 라벨 허용 목록은 전부 **`guide/AUTHORING.md`가 단일 출처**다 — 이 스킬은 그 매뉴얼을 로드해 실행하는 손이다.
 
-**본문은 화면 언어마다 한 벌 — `guide/en/`·`guide/ko/`·`guide/es/`다**(2026-10-05, ui-locales). en이 원문이고 ko·es는 구조가 같은 번역이다. ⚠️ **en을 고치면 ko·es를 같은 작업에서 고친다** — 문장 드리프트는 게이트가 못 본다(구조 동형만 본다). 언어 규칙(앵커 번역 금지·라벨은 그 언어 사전·톤·이미지 공유)은 AUTHORING `#languages`가 정본이다. AUTHORING·SHOOTING은 한국어이고 서빙되지 않는다.
+**본문은 화면 언어마다 한 벌 — `guide/en/`·`guide/ko/`·`guide/es/`다**(2026-10-05, ui-locales). en이 원문이고 ko·es는 구조가 같은 번역이다. ⚠️ **en을 고치면 ko·es를 같은 작업에서 고친다** — 문장 드리프트는 게이트가 못 본다(구조 동형만 본다). 언어 규칙(앵커 번역 금지·라벨은 그 언어 사전·톤·이미지 공유)은 AUTHORING `#languages`가 정본이다. ko·es 원고의 용어(DESIGN §10.1·쓰지 않는 말)를 범위로 검수하거나 사전 용어 변경을 원고에 퍼뜨리는 일은 `/translate`가 맡는다. AUTHORING·SHOOTING은 한국어이고 서빙되지 않는다.
 
 **진입 신호**: `/implement` 보고의 **"가이드 영향"** 플래그, 또는 `/push` 4단계의 **"가이드 stale 후보"** 경고. 둘 다 차단이 아니라 이 스킬을 부르라는 신호다.
 
