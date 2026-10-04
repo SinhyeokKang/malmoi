@@ -135,3 +135,5 @@
 - W11 질문: 새 페이지 `guide/{en,ko,es}/language.md` — AUTHORING.md IA·사실 대조 표에 행 추가 승인.
 - **W11 완료**(`b9149943` — guide/{en,ko,es}/language.md, SUMMARY 셋, AUTHORING 두 행, docs-index 28→29, gate ok). en/es는 한글 endonym 대신 표기 회피(no-korean-ui). 스크린샷 컷 목록: preferences-language.webp(·footer-language-menu.webp 선택) — Q2에서 촬영. 통합은 Q1 인계 뒤(main 체크아웃 사용 중). 워커 해제, 워크트리 유지.
 - **Q1(시안 대조 감사) 완료**: 이슈 2 — #183 Preferences Select→도움말 간격 6(시안 8) → **D12(사용자) /account에 맞춰 6 유지, 시안 드리프트로 닫음** · #184 실패 토스트가 sonner 기본 스타일(앱 전체 기존 결함) → **D13(사용자) 이번 런에서 수정 — W12(Sonnet)**. 나머지 아트보드 일치(접근 이름·menuitemradio·lang·busy·포커스). 못 본 것: `/signin` 자체·로그아웃 쿠키 경로(A7은 /invite AuthLayout로 대체)·B8 스켈레톤(코드만)·서버 측 failed 경로 → Q2.
+- **W11 통합·push** `17f05401..f207e70e`(gate ok). W11 워크트리 제거.
+- **D1 착수**(정본 문서 갱신 — H2·I6·리뷰 문서 항목, Opus medium, 워크트리).
