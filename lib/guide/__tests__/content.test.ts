@@ -15,6 +15,7 @@ import { KEY_QUERY_MIN, SEARCH_GROUP_LIMIT } from "@/lib/search/match";
 import { Q_MAX_LENGTH } from "@/lib/translations/query";
 import { allowedActions } from "./helpers/allowed-actions";
 import type { UiLocale } from "@/lib/i18n/locales";
+import { BANNED_TERMS } from "@/lib/i18n/__tests__/helpers/banned-terms";
 import { guideTrees, servedGuideFiles } from "./helpers/served";
 import { collectLinks, collectUiLabels } from "../collect";
 import { dictionaryStrings } from "../dictionary";
@@ -41,6 +42,29 @@ const DICTIONARIES: Partial<Record<UiLocale, unknown>> = Object.fromEntries(
     }),
   ),
 );
+
+/**
+ * **인용한 화면 문장** — 산문의 `“…”`·`"…"`는 화면에서 그대로 찾을 문장이라 그 언어 사전에 있어야 한다(W4 R4 🟡3 — en 인용 하나가
+ * 사전 문구 변경을 따라가지 못한 채 번역까지 물려받았다). 사전 밖 인용(외부 화면 문구)만 여기에 이유와 함께 둔다.
+ */
+const EXTERNAL_QUOTES: ReadonlySet<string> = new Set([
+  // GitHub Actions가 막힌 action에 남기는 오류 문구 — `setup/allowed-actions.md`
+  "not allowed to be used.",
+]);
+
+/** 산문의 글자 — 코드(스팬·블록)는 빼고 이미지 alt는 넣는다. alt도 독자가 읽는 문장이다. */
+function proseTexts(value: ReturnType<typeof parseMd>): string[] {
+  const out: string[] = [];
+  visit(value, (node) => {
+    if (node.type === "text") out.push(node.value);
+    else if (node.type === "image" && node.alt) out.push(node.alt);
+  });
+  return out;
+}
+
+function quotedSentences(text: string): string[] {
+  return [...text.matchAll(/“([^”]+)”|"([^"]+)"/g)].map((match) => match[1] ?? match[2] ?? "");
+}
 
 /**
  * 산문의 숫자 표현 — 작은 수는 낱말이라(`at least two characters`) `toContain(String(CONST))`로는 못 묶는다. 언어마다 문형이 다르다.
@@ -157,6 +181,24 @@ describe(`실물 가이드 본문 게이트 — ${uiLocale}`, () => {
   });
 
   // 에이전트 연결 조각의 정본은 가이드다 — `/mcp`의 Connect 카드를 걷은 뒤(2026-09-30) 앱 안 사본이 없다. 토큰은 원문이 아니라 환경변수 참조다.
+  it.skipIf(dict === undefined)("따옴표로 인용한 화면 문장은 그 언어 사전에 있다", () => {
+    const allowed = dictionaryStrings(dict);
+    for (const file of files()) {
+      for (const quote of proseTexts(tree(file)).flatMap(quotedSentences)) {
+        expect(allowed.has(quote) || EXTERNAL_QUOTES.has(quote), `${file}: “${quote}”`).toBe(true);
+      }
+    }
+  });
+
+  // 화면과 가이드가 한 개념을 다른 낱말로 부르면 독자가 가이드의 낱말을 화면에서 못 찾는다 — 사전과 같은 금지어 목록이다
+  it.skipIf(!Object.hasOwn(BANNED_TERMS, uiLocale))("산문에 그 언어의 쓰지 않는 말이 없다 (DESIGN §10.1)", () => {
+    const banned = BANNED_TERMS[uiLocale as keyof typeof BANNED_TERMS];
+    const hits = files().flatMap((file) =>
+      proseTexts(tree(file)).flatMap((text) => banned.filter(([word]) => text.includes(word)).map(([word, use]) => `${file}: ${word} → ${use}`)),
+    );
+    expect(hits).toEqual([]);
+  });
+
   it("AI 에이전트 연결 조각이 토큰 원문 대신 MALMOI_TOKEN을 참조한다", () => {
     expect(sectionByAnchor(tree("ai-agents/token.md"), "token")).toContain("MALMOI_TOKEN");
     expect(sectionByAnchor(tree("ai-agents/prompts.md"), "push-token")).toContain("gh secret set PUSH_TOKEN --repo OWNER/REPO");
@@ -165,6 +207,11 @@ describe(`실물 가이드 본문 게이트 — ${uiLocale}`, () => {
 }
 
 describe("실물 가이드 — 사전 경로 (en)", () => {
+  it("인용 추출 — 곡선·곧은 따옴표를 잡고 따옴표 없는 문장은 뺀다", () => {
+    expect(quotedSentences("a (“Nothing to send.”) and \"Run\" then plain")).toEqual(["Nothing to send.", "Run"]);
+    expect(quotedSentences("no quotes here")).toEqual([]);
+  });
+
   it("ARIA_ONLY의 경로가 사전에 실재한다 — 키 이름이 바뀌면 거름망이 조용히 비는 것을 막는다", () => {
     for (const path of ARIA_ONLY) {
       let value: unknown = en;
