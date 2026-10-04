@@ -9,14 +9,14 @@ Phase 1은 ui-locales의 E 배치(화면 파일 이관)와 W10(`globals.css`·Pr
 
 ## Phase 1 — 의미 토큰 (라이트 화면 변화 0, 단독으로 dev 배포 — spec 결정 "Phase 1 단독 가치 있음")
 
-### P1-0 기준값 캡처 + 스파이크 (코드 커밋 없음)
+### P1-0 기준값 캡처 + 스파이크 (코드 커밋 없음) ✅ Q0 · A
 
 - **이관 전 라이트 기준값**: 로컬 `pnpm dev`(이관 전 커밋)에서 대표 화면 × 요소 — Badge 셋 · Alert 넷 · IconTile · Logs 칩 셋 · Logs 상세 빈 값 상자 · Publish diff(`+`·`-` 기호·낱말 면) · 번역 화면 상태 글자(`Needs review`·`Not saved`) · Meter 검토 구간 · 기준 언어 Select 대기 테두리 · 아바타·썸네일 식별색 · Dialog·LargeModal 오버레이 · 로그인 패널 면 — 의 computed `color`·`background-color`·`border-color`를 `.scratch/color-baseline.json`에 기록한다(ego-browser CDP). 이후 커밋엔 옛 상태가 로컬에 없으므로 **P1-1 전에** 한다.
   - 검증: `[수동]` 파일이 있고 위 요소마다 값이 있다.
 - **팔레트 변수 출력 스파이크**(design §2.1): `.scratch/`의 임시 브랜치에서 `app/globals.css` `:root`에 **어느 유틸도 쓰지 않는 팔레트 변수**(`--x: var(--color-lime-300)` · `color-mix(in oklab, var(--color-lime-200) 80%, transparent)`)를 넣고 `pnpm build`.
   - 검증: `[수동]` `.next/static/css`에 `--color-lime-300`·`--color-lime-200` 정의가 있다. 없으면 폴백 `@theme static`으로 design §2.1을 고친다. 판정을 design §2.1에 적는다.
 
-### P1-1 토큰 + 프리미티브 이관 (TDD red 먼저 — 한 커밋)
+### P1-1 토큰 + 프리미티브 이관 (TDD red 먼저 — 한 커밋) ✅
 
 토큰은 소비자를 이관하는 커밋에서 같이 더한다 — `globals-css.test.ts:110-121`이 소비자 없는 `@theme` 색을 red로 잡는다(design §2.3).
 
@@ -33,16 +33,16 @@ Phase 1은 ui-locales의 E 배치(화면 파일 이관)와 W10(`globals.css`·Pr
 
 ──
 
-### P1-2 화면 이관 + 나머지 토큰 (한 커밋)
+### P1-2 화면 이관 + 나머지 토큰 (한 커밋) ✅
 
-- `app/globals.css`: 화면만 소비하는 토큰 — `diff-removed` · `diff-added` · `kind-{blue,teal,violet}`(+`-surface`) · `subtle` — 을 더하고 P1-1 ① 상수 표에 잇는다.
+- `app/globals.css`: 화면만 소비하는 토큰 — `diff-removed` · `diff-added` · `kind-{blue,teal,violet}`(+`-surface`) · `subtle`(→ `surface-subtle`, RA 🟡2) — 을 더하고 P1-1 ① 상수 표에 잇는다.
 - 이관: `components/logs/{glyph,event-detail}.tsx` · `components/publish-button.tsx`(diff `+` 기호는 `diff-added` — design §2.2) · `components/landing/mockup/{publish,translations,app-frame}.tsx`(app-frame 오버레이 `bg-scrim/32`) · `components/home/count-cards.tsx` · `components/translations/workspace/{key-list,locale-panel,workspace}.tsx` · `components/sources/base-language-form.tsx` · `components/signin/auth-layout.tsx`(`bg-white` → `bg-background`).
 - 깨지는 테스트: `publish-button.test.tsx:402` · `signin-screen.test.ts:97`(`bg-white`).
   - 검증: `pnpm test` green · `REGISTERED`가 빈 표.
 
 ──
 
-### P1-3 "raw 0" 고정
+### P1-3 "raw 0" 고정 ✅
 
 - `visual-system.test.ts`: `REGISTERED`와 그 두 검사를 지우고 **생산 소스 raw 팔레트 0** 검사를 `ALL_SOURCES`(app·components·lib·messages)로 돌린다(기본 `SOURCES`는 app·components뿐).
 - 색 리터럴 검사: 생산 소스(주석 제외)의 hex·`rgb(`·`hsl(`·`oklch(`가 `components/signin/brand-icons.tsx`·`lib/invitation-email/**` 밖에서 0.
@@ -52,7 +52,7 @@ Phase 1은 ui-locales의 E 배치(화면 파일 이관)와 W10(`globals.css`·Pr
 
 ──
 
-### P1-4 정본 갱신 + 라이트 무변화 확인
+### P1-4 정본 갱신 + 라이트 무변화 확인 (문서 ✅ · 대조는 Q1)
 
 - `docs/DESIGN.md`: §2 토큰 표에 새 토큰 · §2.4 톤 표의 클래스 열 · §6.2 "등재 raw 색" 절을 **의미 토큰 표**로 바꾼다(`REGISTERED`가 사라졌다는 사실과 새 검사 이름). "흑백 둘과 남의 자산" 절은 Google 로고·초대 메일만 남긴다.
 - `docs/DIRECTORY.md`: 변경 없음 확인(새 파일 없음).
@@ -64,7 +64,7 @@ Phase 1은 ui-locales의 E 배치(화면 파일 이관)와 W10(`globals.css`·Pr
 
 ## Phase 2 — 컬러 스킴
 
-### P2-pre 통합 뒤 재대조 (코드 커밋 없음)
+### P2-pre 통합 뒤 재대조 (코드 커밋 없음) ✅ B
 
 - ui-locales·user-timezone이 dev에 들어간 뒤, 그 실물로 design §3.6(`setUiLocale` 처리 순서) · §3.7(공용 Select 카드 조립의 유무와 API · Language 카드 국기의 트리거 복제 규칙 · DESIGN §6.4 문안) · §4.3(방침의 쿠키 문장)을 다시 대조하고 어긋나면 design을 먼저 고친다.
   - 검증: design §3.6·§3.7·§4.3에 대조 일자와 결과 한 줄이 있다.
@@ -81,7 +81,7 @@ Phase 1은 ui-locales의 E 배치(화면 파일 이관)와 W10(`globals.css`·Pr
 - ① `bg-<token>/50`이 `light-dark()` 값에서 올바른 알파 색이 되는가 ② `color-mix(… var(--color-…) …)`를 품은 `light-dark()`가 Chrome·Safari·Firefox 최신에서 계산되는가 · 산출 CSS에서 `light-dark()`가 그대로인가(`--lightningcss-light/dark` 폴리필로 바뀌었는가) ③ `getComputedStyle`이 사용자 정의 속성에서 선언 문자열을 돌려주는가 · `color: var(--signin-dot)` 요소의 계산된 `color`는 rgb인가 ④ 토스트의 계산된 `background`·`border-color`·`color`가 토큰 값인가 — 묶는 규칙의 자리(`globals.css` 특이도 vs `Toaster style`)를 고른다.
   - 검증: `[수동]` ①–③ 다 통과면 `light-dark()` 형, 하나라도 실패면 두 벌 블록 형 + "두 블록이 같은 토큰 집합" 검사로 설계를 고친다. ④의 선택을 design §3.5 Toaster 행에 적는다.
 
-### P2-1 순수 함수 (TDD — `/tdd interface`)
+### P2-1 순수 함수 (TDD — `/tdd interface`) ✅ B
 
 - `lib/color-scheme/scheme.ts`: `COLOR_SCHEMES` · `parseColorScheme` · `resolveColorScheme`(쓰기 계획 함수 없음 — design §3.3). 테스트:
   - `parseColorScheme`: `__proto__`·`constructor`·`toString`·`""`·`"Dark"`·`"blue"`·숫자·`null` 불통과.
@@ -92,7 +92,7 @@ Phase 1은 ui-locales의 E 배치(화면 파일 이관)와 W10(`globals.css`·Pr
 
 ──
 
-### P2-2 스키마 (`/db`)
+### P2-2 스키마 (`/db`) ✅ B · dev DB 적용(prod는 /merge)
 
 - `User.colorScheme String?` + 마이그레이션 1개(additive). 세션 허용 목록·타입 넷(design §4.1) · `read-session.test.ts` 모양.
 - **배포 순서**: dev 적용은 `/db`(이 커밋을 `/push`하기 전) → dev `has_schema_privilege` false. prod는 `/merge` 1단계의 `pnpm db:deploy` + prod `has_schema_privilege` false. ⚠️ 이 커밋부터 세션 읽기가 `colorScheme`을 싣는다 — prod 반영을 빠뜨리면 프로덕션의 모든 세션 읽기가 실패한다. 리셋 제안은 받지 않는다.
