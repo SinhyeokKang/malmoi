@@ -176,6 +176,13 @@ export const ko = {
     loading: "환경설정을 불러오는 중…",
     description: "Malmoi 화면에 표시할 언어입니다.",
     help: "프로젝트의 번역 언어는 바뀌지 않습니다.",
+    timeZone: {
+      title: "시간대",
+      description: "Malmoi에서 날짜와 시각을 표시할 시간대입니다.",
+      help: "기본값은 UTC입니다. 공개 페이지는 항상 UTC로 표시합니다.",
+      now: (time: string) => `현재: ${time}`,
+      failed: "시간대를 바꾸지 못했습니다. 다시 시도하세요.",
+    },
   },
 
   landing: {

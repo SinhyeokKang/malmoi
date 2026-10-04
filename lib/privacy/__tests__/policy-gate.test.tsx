@@ -36,6 +36,8 @@ const REVISIONS: readonly { effectiveDate: string; digest?: string; koDigest?: s
   { effectiveDate: "2026-09-29", digest: "e335ec7a17858075cedf5f04e94f3fdbb25b93172d64d380f68516d74e6f8d61" },
   // ui-locales — 화면 언어(`User.uiLocale` · 쿠키 `malmoi-ui-locale`)와 ko 본 게시. 머지일이 바뀌면 날짜를 옮긴다.
   { effectiveDate: "2026-10-05", digest: "dbc15a7e6caa185de6b2d2a80f873d5eb7bbabfa9ab7886deaa7dd0167960ab0", koDigest: "5a47d4988e7046a3dcb898a8948d329e8d56ae88f89c011a1bf477885cc3dcdd" },
+  // user-timezone — 고른 시간대(`User.timeZone`, 계정에만 — 쿠키 없음). ui-locales와 같은 날 두 번째 개정이다 — 머지일이 바뀌면 두 행의 날짜를 같이 옮긴다.
+  { effectiveDate: "2026-10-05", digest: "8bc00b1d413c224be7b57680504093a73aebf6d2f3dee999666081ce45ccbb0d", koDigest: "40211bba125fdf7d4fe16f589a730aab0c925ae8cd684bce8a626ee2bbdce2d0" },
 ];
 
 const privacy = en.publicDocs.privacy;

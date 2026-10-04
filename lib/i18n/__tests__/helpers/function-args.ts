@@ -46,6 +46,7 @@ export const FUNCTION_ARGS: { readonly [P in FunctionPaths<Messages>]: Parameter
   "common.nav.projectSwitcher.empty": ["X"],
   "landing.hero.latest": ["X"],
   "landing.mockup.file": ["X"],
+  "preferences.timeZone.now": ["X"],
   "publicDocs.docs.notFound.body": ["X", "X"],
   "changelog.intro": ["X"],
   "changelog.failed": ["X"],

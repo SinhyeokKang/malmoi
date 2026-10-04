@@ -173,6 +173,13 @@ export const es = {
     loading: "Cargando preferencias…",
     description: "El idioma de todas las pantallas de Malmoi.",
     help: "Los idiomas de tus proyectos no cambian.",
+    timeZone: {
+      title: "Zona horaria",
+      description: "La zona horaria de las fechas y horas en Malmoi.",
+      help: "La predeterminada es UTC. Las páginas públicas siempre usan UTC.",
+      now: (time: string) => `Ahora: ${time}`,
+      failed: "No pudimos cambiar la zona horaria. Inténtalo de nuevo.",
+    },
   },
 
   landing: {

@@ -149,6 +149,8 @@ const USER_SCOPED_ACTIONS = new Set([
   "mcp/actions.ts#revokeApiToken",
   // `OAuthConnection`도 사용자 소유다 — 코어가 세션의 userId로 행을 다시 읽는다(mcp-oauth spec 조건 8)
   "mcp/actions.ts#disconnectOAuthConnection",
+  // `User.timeZone`은 사람에게 붙는다 — 프로젝트가 없어도 고를 수 있다. 코드를 돌려주는 Action이라 거부가 `failed` 하나다(user-timezone D1)
+  "preferences/actions.ts#setTimeZone",
 ]);
 
 /**
@@ -213,11 +215,15 @@ function exportGuarded(body: string, id: string): boolean {
     (USER_SCOPED_ACTIONS.has(id) && hasUserGuard(code));
 }
 
-/** readSession 호출만으로는 부족하다 — 비로그인·장애 두 갈래가 즉시 반환해야 인증이다. */
+/**
+ * readSession 호출만으로는 부족하다 — 비로그인·장애 두 갈래가 즉시 반환해야 인증이다.
+ * 결과 코드만 돌려주는 Action(`setTimeZone`)은 두 갈래를 `!== "ok"` 한 줄로 함께 끊는다 — `ok` 밖이 전부 거부라 빠지는 갈래가 없다.
+ */
 function hasUserGuard(body: string): boolean {
   if (body.includes("requireUser(")) return true;
-  return body.includes("await readSession()") &&
-    /if \(session.status === "none"\) return \{ ok: false, error: "unauthorized" \}/.test(body) &&
+  if (!body.includes("await readSession()")) return false;
+  if (/if \(session\.status !== "ok"\) return "failed";/.test(body)) return true;
+  return /if \(session.status === "none"\) return \{ ok: false, error: "unauthorized" \}/.test(body) &&
     /if \(session.status === "unavailable"\) return \{ ok: false, error: "unavailable" \}/.test(body);
 }
 
@@ -239,6 +245,10 @@ it("사용자 Action의 readSession은 두 거부 반환 없이는 인증으로 
   expect(hasUserGuard(read + none)).toBe(false);
   expect(hasUserGuard(read + outage)).toBe(false);
   expect(hasUserGuard(read + none + outage)).toBe(true);
+  // 코드를 돌려주는 Action은 `ok` 밖을 한 줄로 끊는다 — 한 갈래만 끊는 줄(`=== "none"`)은 인정하지 않는다.
+  expect(hasUserGuard(read + 'if (session.status !== "ok") return "failed";')).toBe(true);
+  expect(hasUserGuard(read + 'if (session.status === "none") return "failed";')).toBe(false);
+  expect(hasUserGuard('if (session.status !== "ok") return "failed";')).toBe(false);
 });
 
 describe("멤버십 조인 코어 위임", () => {

@@ -173,6 +173,9 @@ const CLIENT_LIB_FILES = [
   // D5 Command의 순환·활성 보존 판정 — import 0인 잎이다. 다른 검색 모듈은 E의 실제 소비 때 등록한다.
   "lib/search/keys.ts",
   "lib/search/match.ts",
+  // Preferences Time zone 카드가 선별 목록 판정·옵션을 값으로 읽는다(user-timezone D2) — 아래 잎 검사가 두 파일의 그래프를 고정한다.
+  "lib/time-zone/options.ts",
+  "lib/time-zone/zones.ts",
   "lib/search/highlight.ts",
   "lib/search/nav-index.ts",
   "lib/search/key-href.ts",

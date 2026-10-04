@@ -462,7 +462,7 @@ export const en = {
 
   /**
    * `/preferences` (ui-locales design §5.2) — 제목은 `common.nav.preferences`, Language 카드 제목은 `uiLocale.label`이다(같은 낱말 두 벌을 두지 않는다).
-   * ⚠️ 타임존·테마 자리는 없다(spec 비목표) — 카드가 하나다.
+   * 카드는 Language · Time zone 둘이다(user-timezone design §6). 테마 자리는 없다.
    */
   preferences: {
     /** ⚠️ **골격은 `aria-hidden`이라 이 한 줄이 유일한 안내다.** */
@@ -471,6 +471,17 @@ export const en = {
     description: "The language Malmoi uses on every screen.",
     /** Select 아래 도움말 — 번역 화면의 언어 열과 혼동하지 않게 한다(design §0). */
     help: "Your projects' languages don't change.",
+    /** Time zone 카드 (user-timezone design §6) — Language 카드와 같은 형. 시간대 id(`Asia/Seoul`)는 번역하지 않는다. */
+    timeZone: {
+      title: "Time zone",
+      description: "The time zone Malmoi uses for dates and times.",
+      /** 기본값과 공개 페이지 고정(spec 결정) — 공개 페이지는 로그인 여부와 무관하게 UTC다. */
+      help: "The default is UTC. Public pages always use UTC.",
+      /** 지금 시각 미리보기 — `time`은 `formatMinute`(`Oct 5, 2026 08:10 UTC+9`). 이 페이지에서 고른 결과가 보이는 유일한 자리다. */
+      now: (time: string) => `Now: ${time}`,
+      /** Action `invalid`·`failed` — 카드 Alert. */
+      failed: "We couldn't change the time zone. Try again.",
+    },
   },
 
   /**
@@ -690,6 +701,11 @@ export const en = {
                     "Showing Malmoi in that language on every device you sign in on",
                   ],
                   [
+                    "The time zone you choose for dates and times",
+                    "You, when you pick a time zone",
+                    "Showing dates and times in that time zone on every device you sign in on",
+                  ],
+                  [
                     "Who last changed a translation, and who asked for a sync",
                     "Your own edits",
                     "Showing your teammates who changed what",
@@ -723,6 +739,7 @@ export const en = {
               ul: [
                 "Signing you in and keeping you signed in.",
                 "Showing Malmoi in the language you choose.",
+                "Showing dates and times in the time zone you choose.",
                 "Deciding which projects you can open and what you can do in them.",
                 "Showing your teammates who changed a translation and who asked for a sync.",
                 "Writing translations back to the repository a project is connected to, as a pull request.",
@@ -748,6 +765,7 @@ export const en = {
               ul: [
                 "Your account and its connections: kept until you ask us to delete them.",
                 "The language you choose: kept with your account until you choose another or ask us to delete your account. On a browser, the language cookie lasts a year from your last choice.",
+                "The time zone you choose: kept with your account until you choose another or ask us to delete your account. It is not stored in a cookie.",
                 "A session stops working 24 hours after your last activity. Its row goes away when you sign out, or when that expired session is next presented.",
                 "A challenge for linking an account or signing other sessions out stops working after 5 to 10 minutes. Its row goes away the next time you start the same step.",
                 "An invitation stops working after 7 days, or as soon as it is accepted, revoked or sent again. The row is kept after that, including the address it was sent to, as the record that the invitation happened — ask us and we will delete it.",
@@ -848,7 +866,7 @@ export const en = {
             {
               p: "The effective date at the top belongs to the text below it: whenever this policy changes, that date moves and the change is listed here.",
             },
-            { ul: ["2026-10-05 — you can choose the language of Malmoi's screens: English, Korean or Spanish. Malmoi remembers your choice with your account and in a cookie on this browser. This policy is also published in Korean.", "2026-09-29 — you can also connect an app such as Claude Code or Codex by signing in through your browser, with no token to copy. Malmoi keeps the connection — the app's name and address, the actions and projects you allowed, when it was used — and only hashes of the tokens it issued; you can disconnect it on the MCP connector page.", "2026-09-29 — you can create a personal token for AI agents on the MCP connector page. Malmoi stores only a hash of it, with the actions and projects you allowed and when it was used.", "2026-09-28 — invitation emails show the name and picture of the project you are invited to, and your role in it. They still do not say who invited you.", "2026-09-27 — visits to the public pages are counted with Vercel Web Analytics, without cookies.", "2026-09-26 — the product name is written Malmoi. No change to what we collect or share.", "2026-09-24 — invitations can be sent by email through Resend.", "2026-09-19 — first version."] },
+            { ul: ["2026-10-05 — you can choose the time zone Malmoi uses for dates and times. Malmoi remembers your choice with your account only, not in a cookie. Public pages always use UTC.", "2026-10-05 — you can choose the language of Malmoi's screens: English, Korean or Spanish. Malmoi remembers your choice with your account and in a cookie on this browser. This policy is also published in Korean.", "2026-09-29 — you can also connect an app such as Claude Code or Codex by signing in through your browser, with no token to copy. Malmoi keeps the connection — the app's name and address, the actions and projects you allowed, when it was used — and only hashes of the tokens it issued; you can disconnect it on the MCP connector page.", "2026-09-29 — you can create a personal token for AI agents on the MCP connector page. Malmoi stores only a hash of it, with the actions and projects you allowed and when it was used.", "2026-09-28 — invitation emails show the name and picture of the project you are invited to, and your role in it. They still do not say who invited you.", "2026-09-27 — visits to the public pages are counted with Vercel Web Analytics, without cookies.", "2026-09-26 — the product name is written Malmoi. No change to what we collect or share.", "2026-09-24 — invitations can be sent by email through Resend.", "2026-09-19 — first version."] },
           ],
         },
       ],
