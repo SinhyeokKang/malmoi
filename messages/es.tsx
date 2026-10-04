@@ -163,6 +163,11 @@ export const es = {
     hero: { top: "Conecta tus proyectos", bottom: "Traduce y publica en equipo" },
   },
 
+  uiLocale: {
+    label: "Idioma",
+    failed: "No pudimos cambiar el idioma. Inténtalo de nuevo.",
+  },
+
   landing: {
     shell: {
       logo: "Inicio de Malmoi",

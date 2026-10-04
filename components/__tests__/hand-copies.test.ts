@@ -314,7 +314,10 @@ function dictionaryAnchors(source: Source): string[] {
         parent = parent.parent;
       }
       const expected = href && ts.isStringLiteral(href) && href.text === "mailto:ox501501@gmail.com" && attrs.length === 1 && ts.isJsxOpeningElement(node) && node.parent.children.map(child => child.getText(file)).join("").trim() === "ox501501@gmail.com";
-      sites.push(expected && deletion && firstBlock && ["p", "blocks", "sections", "privacy", "publicDocs"].every(p => properties.includes(p)) ? "publicDocs.privacy.sections[deletion].blocks[0].p" : "unexpected anchor");
+      // ko 방침 본(`messages/ko-privacy.tsx` — ui-locales design §8)은 같은 절의 같은 링크를 최상위 `koPrivacy` 아래에 든다.
+      const ko = source.path === "messages/ko-privacy.tsx";
+      const owners = ko ? ["p", "blocks", "sections"] : ["p", "blocks", "sections", "privacy", "publicDocs"];
+      sites.push(expected && deletion && firstBlock && owners.every(p => properties.includes(p)) ? `${ko ? "koPrivacy" : "publicDocs.privacy"}.sections[deletion].blocks[0].p` : "unexpected anchor");
     }
     ts.forEachChild(node, visit);
   };
@@ -335,7 +338,7 @@ function headerSite(code: string): string[] {
   visit(file); return sites;
 }
 it("the dictionary permits exactly the privacy/deletion mailto site, with no stale or extra sites", () => {
-  expect(sources.filter(s => s.path.startsWith("messages/")).flatMap(s => dictionaryAnchors(s).map(site => `${s.path}:${site}`))).toEqual(["messages/en.tsx:publicDocs.privacy.sections[deletion].blocks[0].p"]);
+  expect(sources.filter(s => s.path.startsWith("messages/")).flatMap(s => dictionaryAnchors(s).map(site => `${s.path}:${site}`))).toEqual(["messages/en.tsx:publicDocs.privacy.sections[deletion].blocks[0].p", "messages/ko-privacy.tsx:koPrivacy.sections[deletion].blocks[0].p"]);
   const code = 'const dictionary = {publicDocs:{privacy:{sections:[{id:"deletion",blocks:[{p:<a href="mailto:ox501501@gmail.com">ox501501@gmail.com</a>}]}]}}};';
   expect(dictionaryAnchors({path:"messages/en.tsx",code})).toEqual(["publicDocs.privacy.sections[deletion].blocks[0].p"]);
   expect(dictionaryAnchors({path:"messages/en.tsx",code:code.replace('id:"deletion"','id:"other"')})).toEqual(["unexpected anchor"]);

@@ -30,6 +30,16 @@ describe("누르는 것의 라벨 weight", () => {
     }
   });
 
+  /**
+   * `TextTrigger`는 `Button` 계열이 아니다 — 400 예외가 아니라 애초에 푸터 링크(13/400)와 같은 줄에 서는 누르는 글자다(ui-locales design §5.1).
+   * `Button`을 빌리면 이 규칙이 500을 강제해 이웃 링크와 무게가 갈린다. 굵기 클래스를 들지 않는 것으로 고정한다.
+   */
+  it("TextTrigger는 Button을 빌리지 않고 굵기 클래스를 들지 않는다", () => {
+    const source = read("components/ui/text-trigger.tsx");
+    expect(source).not.toMatch(/buttonClass|<Button\b/);
+    expect(source).not.toMatch(/\bfont-(medium|semibold|bold)\b/);
+  });
+
   // LNB 내비는 이 규칙 밖이다(2026-09-30 사용자) — Button을 빌린 접기 토글·레일 프로젝트 트리거도 옆 항목과 같은 400이다.
   it("LNB의 아이콘 버튼(`ICON_BUTTON`)은 font-normal로 되누른다", () => {
     const source = read("components/shell/sidebar.tsx");

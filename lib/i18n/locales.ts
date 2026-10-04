@@ -18,6 +18,13 @@ export const UI_LOCALE_COOKIE = "malmoi-ui-locale";
 export const UI_LOCALE_NAMES: Record<UiLocale, string> = { en: "English", ko: "한국어", es: "Español" };
 
 /**
+ * 언어 메뉴·Select 옵션 앞의 국기 — **en GB · ko KR · es ES**(2026-10-04 사용자). `LocaleFlag`에 넘길 지역 붙은 코드다 —
+ * 프로젝트 로케일용 `flagFor`는 지역 하위태그가 이기므로 이 값이 그 국기를 고른다. ⚠️ `flagFor("es")`는 사용국이 여럿이라 일부러 `null`이고
+ * 그 판정은 건드리지 않는다 — 화면 언어 축만 여기서 국가를 정한다.
+ */
+export const UI_LOCALE_FLAGS: Record<UiLocale, string> = { en: "en-GB", ko: "ko-KR", es: "es-ES" };
+
+/**
  * 쿠키·DB 값은 남이 정한 값이다 — 지원 집합 밖이면 `null`이고 호출부가 다음 층으로 넘어간다.
  * ⚠️ **`Object.hasOwn`으로 판정한다** — `in`·`?? 폴백`은 `__proto__`·`constructor`·`toString`을 통과시킨다(CLAUDE.md).
  * 대소문자·공백을 정규화하지 않는다 — 쓰는 쪽이 우리뿐이다.

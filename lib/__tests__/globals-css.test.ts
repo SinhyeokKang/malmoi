@@ -205,3 +205,19 @@ describe("globals.css — 버튼 커서", () => {
     expect(CSS).toMatch(/button:not\(:disabled\):not\(\[aria-disabled="true"\]\)[^{]*\{\s*cursor:\s*pointer;?\s*\}/);
   });
 });
+
+/**
+ * **한국어 줄바꿈** (ui-locales design §5.5 — F3). 기본 `word-break: normal`은 CJK를 음절 사이에서 끊는다. `<html lang="ko">`가 켜는 규칙이라
+ * 선택자가 `:lang(ko)`여야 하고, 띄어쓰기 없는 긴 토큰이 넘치지 않게 `overflow-wrap: anywhere`가 짝이다.
+ */
+describe("globals.css — :lang(ko) 줄바꿈", () => {
+  it("keep-all과 overflow-wrap: anywhere를 한 규칙에 든다", () => {
+    const block = /:lang\(ko\)\s*\{([^}]*)\}/.exec(CSS)?.[1] ?? "";
+    expect(block).toMatch(/word-break:\s*keep-all;/);
+    expect(block).toMatch(/overflow-wrap:\s*anywhere;/);
+  });
+
+  it("규칙이 하나다 — 두 벌이면 한쪽이 낡는다", () => {
+    expect(CSS.match(/:lang\(ko\)/g)).toHaveLength(1);
+  });
+});

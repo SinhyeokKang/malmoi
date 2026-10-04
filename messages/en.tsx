@@ -448,6 +448,17 @@ export const en = {
   },
 
   /**
+   * 화면 언어 바꾸기 (ui-locales design §4·§5.1) — 공개 푸터의 스위처와 `/preferences`가 같은 Action(`setUiLocale`)을 부른다.
+   * ⚠️ **언어 이름은 여기 없다** — endonym이라 번역하지 않는다(`UI_LOCALE_NAMES`, `lib/i18n/locales.ts`).
+   */
+  uiLocale: {
+    /** 스위처의 접근 이름 앞머리 — `aria-label`이 아니라 sr-only 조각 + 보이는 endonym이다(WCAG 2.5.3): "Language: English". */
+    label: "Language",
+    /** Action `invalid`·`failed` — 푸터는 오류 토스트, Preferences는 카드 Alert가 같은 문장을 쓴다. */
+    failed: "We couldn't change the language. Try again.",
+  },
+
+  /**
    * 랜딩(`/`) — 비로그인 방문자만 본다(`ok`는 `/projects`로 간다).
    *
    * ⚠️ **셸의 `Docs`·`GitHub`는 푸터(`m.signIn.footer`)와 같은 낱말이지만 다른 자리다** — 헤더 내비의 이름이고,
@@ -603,7 +614,7 @@ export const en = {
        * ⚠️ **여기서 이름을 대는 저장 항목은 `lib/privacy/collected.ts`의 등재와 절 id로 묶인다** —
        * 표는 필드 여럿을 한 행으로 접으므로 대조 단위가 라벨이 아니라 절이다.
        */
-      effectiveDate: "2026-09-29",
+      effectiveDate: "2026-10-05",
       /**
        * 목차 이름 — ⚠️ **`sections` 밖에 둔다**: `policy-gate.test.tsx`가 `sections`를 해시하므로 안에 넣으면 개정 이력이 요구된다.
        */
@@ -659,6 +670,11 @@ export const en = {
                     "Deciding which projects you can open and what you can do in them, and emailing you the invitation link",
                   ],
                   [
+                    "The language you choose for Malmoi's screens",
+                    "You, when you pick a language",
+                    "Showing Malmoi in that language on every device you sign in on",
+                  ],
+                  [
                     "Who last changed a translation, and who asked for a sync",
                     "Your own edits",
                     "Showing your teammates who changed what",
@@ -691,6 +707,7 @@ export const en = {
             {
               ul: [
                 "Signing you in and keeping you signed in.",
+                "Showing Malmoi in the language you choose.",
                 "Deciding which projects you can open and what you can do in them.",
                 "Showing your teammates who changed a translation and who asked for a sync.",
                 "Writing translations back to the repository a project is connected to, as a pull request.",
@@ -715,6 +732,7 @@ export const en = {
             {
               ul: [
                 "Your account and its connections: kept until you ask us to delete them.",
+                "The language you choose: kept with your account until you choose another or ask us to delete your account. On a browser, the language cookie lasts a year from your last choice.",
                 "A session stops working 24 hours after your last activity. Its row goes away when you sign out, or when that expired session is next presented.",
                 "A challenge for linking an account or signing other sessions out stops working after 5 to 10 minutes. Its row goes away the next time you start the same step.",
                 "An invitation stops working after 7 days, or as soon as it is accepted, revoked or sent again. The row is kept after that, including the address it was sent to, as the record that the invitation happened — ask us and we will delete it.",
@@ -777,7 +795,7 @@ export const en = {
           heading: "Cookies",
           blocks: [
             {
-              p: "Every cookie Malmoi sets is needed to sign you in or to finish a round trip to GitHub or Google. There are no analytics, advertising or tracking cookies, so there is nothing here to consent to or turn off. All of them are http-only, which means scripts cannot read them.",
+              p: "Every cookie Malmoi sets is needed to sign you in, to finish a round trip to GitHub or Google, or to remember the language you chose for Malmoi's screens. There are no analytics, advertising or tracking cookies, so there is nothing here to consent to or turn off. All of them are http-only, which means scripts cannot read them.",
             },
             {
               table: {
@@ -802,6 +820,7 @@ export const en = {
                     "5 to 15 minutes",
                     "The same, for adding a second sign-in method to one address and for signing other sessions out",
                   ],
+                  ["Language", "1 year from your last choice", "Shows Malmoi in the language you chose on this browser, even when you are signed out"],
                 ],
               },
             },
@@ -814,7 +833,7 @@ export const en = {
             {
               p: "The effective date at the top belongs to the text below it: whenever this policy changes, that date moves and the change is listed here.",
             },
-            { ul: ["2026-09-29 — you can also connect an app such as Claude Code or Codex by signing in through your browser, with no token to copy. Malmoi keeps the connection — the app's name and address, the actions and projects you allowed, when it was used — and only hashes of the tokens it issued; you can disconnect it on the MCP connector page.", "2026-09-29 — you can create a personal token for AI agents on the MCP connector page. Malmoi stores only a hash of it, with the actions and projects you allowed and when it was used.", "2026-09-28 — invitation emails show the name and picture of the project you are invited to, and your role in it. They still do not say who invited you.", "2026-09-27 — visits to the public pages are counted with Vercel Web Analytics, without cookies.", "2026-09-26 — the product name is written Malmoi. No change to what we collect or share.", "2026-09-24 — invitations can be sent by email through Resend.", "2026-09-19 — first version."] },
+            { ul: ["2026-10-05 — you can choose the language of Malmoi's screens: English, Korean or Spanish. Malmoi remembers your choice with your account and in a cookie on this browser. This policy is also published in Korean.", "2026-09-29 — you can also connect an app such as Claude Code or Codex by signing in through your browser, with no token to copy. Malmoi keeps the connection — the app's name and address, the actions and projects you allowed, when it was used — and only hashes of the tokens it issued; you can disconnect it on the MCP connector page.", "2026-09-29 — you can create a personal token for AI agents on the MCP connector page. Malmoi stores only a hash of it, with the actions and projects you allowed and when it was used.", "2026-09-28 — invitation emails show the name and picture of the project you are invited to, and your role in it. They still do not say who invited you.", "2026-09-27 — visits to the public pages are counted with Vercel Web Analytics, without cookies.", "2026-09-26 — the product name is written Malmoi. No change to what we collect or share.", "2026-09-24 — invitations can be sent by email through Resend.", "2026-09-19 — first version."] },
           ],
         },
       ],

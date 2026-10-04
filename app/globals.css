@@ -324,6 +324,15 @@
      */
     font-weight: 400;
   }
+  /*
+   * ⚠️ **한국어는 낱말 단위로 줄을 바꾼다** (ui-locales design §5.5). 기본 `word-break: normal`은 CJK를 음절 사이에서 끊어
+   * ko Alert·카드 설명·Dialog 본문이 `저장하지 못/했습니다`처럼 갈렸다. `<html lang>`이 이 규칙을 켜고, 띄어쓰기 없는 긴 토큰
+   * (URL·키)이 넘치지 않게 `overflow-wrap: anywhere`를 함께 둔다. 기존 `break-all`·`wrap-anywhere` 클래스는 그대로 이것을 덮는다.
+   */
+  :lang(ko) {
+    word-break: keep-all;
+    overflow-wrap: anywhere;
+  }
 }
 
 

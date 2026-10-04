@@ -1,9 +1,8 @@
 import { LIST, PROSE, SECTION_HEADING } from "@/components/docs/classes";
 import { DOC_TABLE, DocTable } from "@/components/public-doc-table";
 import { Toc } from "@/components/public-doc-toc";
-import type { Messages } from "@/lib/i18n";
+import type { Messages, PrivacyBody } from "@/lib/i18n";
 import type { UiLocale } from "@/lib/i18n/locales";
-import { en } from "@/messages/en";
 import { utcDay } from "@/lib/utc-time";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
@@ -14,13 +13,14 @@ import type { ReactNode } from "react";
  *
  * ⚠️ **`<main>`을 그리지 않는다** — 랜드마크는 셸의 `<main>` 하나다.
  * ⚠️ **복귀 링크가 없다** — 헤더(로고 · Home · primary)가 나가는 길을 든다.
- * ⚠️ **본문은 사전 그대로다** (`m.publicDocs.privacy`) — 고치면 `effectiveDate`와 개정 이력이 따라와야 한다.
+ * ⚠️ **본문은 사전 그대로다** — `doc`은 페이지가 고른 본(en `en.publicDocs.privacy` · ko `messages/ko-privacy.tsx`)이다. 고치면 `effectiveDate`와
+ * 개정 이력이 따라와야 한다. 셸 라벨(`m`)과 본문(`doc`)이 따로 오는 것은 es 화면이 es 셸 + en 본문이기 때문이다(ui-locales design §8).
  */
 /** 3열 표의 열 폭 — 방침 문구가 아니라 열 수에서 온다. 셋째 열은 나머지다. */
 const TABLE_3COL = "[&_th:nth-child(1)]:w-[34%] [&_th:nth-child(2)]:w-[26%]";
 
-export function PrivacyDoc({ m, uiLocale }: { m: Messages; uiLocale: UiLocale }) {
-  const { title, effectiveDate, intro, sections, tocLabels } = en.publicDocs.privacy;
+export function PrivacyDoc({ m, uiLocale, doc }: { m: Messages; uiLocale: UiLocale; doc: PrivacyBody }) {
+  const { title, effectiveDate, intro, sections, tocLabels, toc } = doc;
   // 키가 절 `id`(사전 데이터)라 프로토타입을 끊고 찾는다 — `constructor` 같은 id가 `Object.prototype`에서 값을 얻지 않게.
   const labels: Readonly<Record<string, string>> = tocLabels;
   const tocItems = sections.map(({ id, heading }) => ({ id, heading: Object.hasOwn(labels, id) ? (labels[id] ?? heading) : heading }));
@@ -80,7 +80,7 @@ export function PrivacyDoc({ m, uiLocale }: { m: Messages; uiLocale: UiLocale })
           </section>
         ))}
       </article>
-      <Toc label={en.publicDocs.privacy.toc} items={tocItems} />
+      <Toc label={toc} items={tocItems} />
     </div>
   );
 }

@@ -19,6 +19,7 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { TextTrigger } from "@/components/ui/text-trigger";
 import { createElement as h, useRef } from "react";
 import { render } from "./helpers/dom";
 
@@ -137,6 +138,7 @@ const FIXTURES = {
   "components/ui/input.tsx": h(Input, { "aria-label": "Search" }),
   "components/ui/textarea.tsx": h(Textarea, { "aria-label": "Translation" }),
   "components/ui/list-row.tsx": h(ListRow, { as: "button", variant: "canvas", ringInset: true }, "common.save"),
+  "components/ui/text-trigger.tsx": h(TextTrigger, null, "English"),
 };
 
 // `command.tsx`는 행을 `ListRow`로 그려 링을 직접 들지 않는다 — 링은 `list-row.tsx` 픽스처가 잰다(search-ux-unify C15).

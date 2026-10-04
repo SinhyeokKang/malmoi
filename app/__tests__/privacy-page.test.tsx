@@ -3,17 +3,23 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { render } from "@/components/__tests__/helpers/dom";
 import type { SessionRead } from "@/lib/auth/read-session";
+import type { UiLocale } from "@/lib/i18n/locales";
+import { es } from "@/messages/es";
+import { koPrivacy } from "@/messages/ko-privacy";
 import { en } from "@/messages/en";
 import { footerLinks } from "@/lib/links";
 import { routes } from "@/lib/routes";
 
-vi.mock("@/lib/i18n/server", async () => ({ getMessages: async () => (await import("@/messages/en")).en, getUiLocale: async () => "en" }));
+vi.mock("@/lib/i18n/server", async () => {
+  const dictionaries = { en: (await import("@/messages/en")).en, ko: (await import("@/messages/ko")).ko, es: (await import("@/messages/es")).es };
+  return { getMessages: async () => dictionaries[mocks.uiLocale], getUiLocale: async () => mocks.uiLocale };
+});
 
 /**
  * **`/privacy`는 공개 셸 안에 선다** (DESIGN §6.616). 세션은 차단이 아니라 **헤더 primary 하나**를 가른다 —
  * 로그인이면 앱 셸과 같은 아바타 메뉴, 아니면(장애 포함) `Get started`.
  */
-const mocks = vi.hoisted(() => ({ status: "none" as SessionRead["status"] }));
+const mocks = vi.hoisted(() => ({ status: "none" as SessionRead["status"], uiLocale: "en" as UiLocale }));
 
 vi.mock("@/lib/auth/read-session", () => ({
   readSession: async () =>
@@ -23,6 +29,7 @@ vi.mock("@/lib/auth/read-session", () => ({
 vi.mock("@/lib/auth/sign-out", () => ({ signOutAction: async () => {} }));
 
 beforeEach(() => {
+  mocks.uiLocale = "en";
   vi.stubGlobal("matchMedia", () => ({ matches: false, addEventListener() {}, removeEventListener() {} }));
 });
 afterEach(() => { vi.unstubAllGlobals(); });
@@ -63,5 +70,28 @@ describe("`/privacy` — 공개 셸", () => {
   it("푸터가 공개 셸의 링크 목록이다", async () => {
     const { container } = await page("none");
     expect([...container.querySelectorAll("footer a")].map((a) => a.getAttribute("href"))).toEqual(footerLinks(en).map(({ href }) => href));
+  });
+});
+
+/**
+ * **본문은 두 벌이다** (ui-locales design §8) — ko 화면은 ko 본, en·es 화면은 en 본. es 본은 원어민 검수 없이 낼 수 없어 두지 않는다.
+ * 셸(헤더·푸터)은 화면 언어 그대로라 es 화면은 es 셸 + en 본문이다.
+ */
+describe("`/privacy` — 본문 언어", () => {
+  it.each([
+    ["en", en.publicDocs.privacy.title],
+    ["ko", koPrivacy.title],
+    ["es", en.publicDocs.privacy.title],
+  ] as const)("%s 화면 → %s", async (uiLocale, title) => {
+    mocks.uiLocale = uiLocale;
+    const { container } = await page("none");
+    expect(container.querySelector("main h1")?.textContent).toBe(title);
+  });
+
+  it("es 화면의 셸은 es다 — 본문만 en이다", async () => {
+    mocks.uiLocale = "es";
+    const { container } = await page("none");
+    expect(container.querySelector("footer")?.textContent).toContain(es.signIn.footer.privacy);
+    expect(container.querySelector("main h1")?.textContent).toBe(en.publicDocs.privacy.title);
   });
 });

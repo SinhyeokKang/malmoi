@@ -3,6 +3,7 @@ import { createElement as h } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { PrivacyDoc } from "@/components/privacy/privacy-doc";
+import { koPrivacy } from "@/messages/ko-privacy";
 import { NewProjectButton } from "@/components/projects/new-project-button";
 import { PublicShell } from "@/components/public-shell/public-shell";
 import { SearchTrigger } from "@/components/search/search-trigger";
@@ -40,7 +41,8 @@ describe("ko 화면 렌더", () => {
   });
 
   it("방침 — 머리 시행일과 개정 이력 날짜가 같은 ko 형이다", async () => {
-    const { container } = await render(h(PrivacyDoc, { m: ko, uiLocale: "ko" }));
+    const { container } = await render(h(PrivacyDoc, { m: ko, uiLocale: "ko", doc: koPrivacy }));
+    expect(container.querySelector("h1")?.textContent).toBe(koPrivacy.title);
     const times = [...container.querySelectorAll("time")];
     expect(times.length).toBeGreaterThan(1);
     for (const time of times) expect(time.textContent).toBe(utcDay(new Date(time.getAttribute("datetime")!), "ko"));

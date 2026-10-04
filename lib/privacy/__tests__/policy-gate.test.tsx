@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { en } from "@/messages/en";
+import { koPrivacy } from "@/messages/ko-privacy";
 
 import { CLASSIFIED, DISCLOSURE_SECTIONS, NOT_PERSONAL } from "../collected";
 import { sectionGaps } from "../disclosure";
@@ -16,10 +17,12 @@ import { docDigest, docText } from "../doc-text";
  * ⚠️ **git log로 대신하지 않는다** — CI 체크아웃이 깊이 1이라 파일 이력이 없어 조용히 통과하거나 깨진다.
  * ⚠️ 첫 판(2026-09-19)은 이 게이트 전이라 해시가 없다 — 이력의 날짜만 든다.
  *
- * 본문을 고쳤으면: 새 행 `{ effectiveDate: "<오늘>", digest: "<실패 메시지의 값>" }`를 끝에 붙이고,
- * `publicDocs.privacy.effectiveDate`와 `changes` 절의 목록에 같은 날짜를 적는다.
+ * 본문을 고쳤으면: 새 행 `{ effectiveDate: "<오늘>", digest: "<실패 메시지의 값>", koDigest: "<실패 메시지의 값>" }`를 끝에 붙이고,
+ * `publicDocs.privacy.effectiveDate`와 `changes` 절의 목록에 같은 날짜를 적는다 — en 본과 ko 본(`messages/ko-privacy.tsx`) **둘 다**다.
+ *
+ * ⚠️ **ko 본은 2026-10-05부터다**(ui-locales design §8) — 그 전 행에는 `koDigest`가 없다. ko 본만 고쳐도 새 행이 필요하다(법적 문서다).
  */
-const REVISIONS: readonly { effectiveDate: string; digest?: string }[] = [
+const REVISIONS: readonly { effectiveDate: string; digest?: string; koDigest?: string }[] = [
   { effectiveDate: "2026-09-19" },
   { effectiveDate: "2026-09-24", digest: "4343d4fa724798db81c134a167f85b963f598199bb1fab0569d9dda6794b6963" },
   { effectiveDate: "2026-09-26", digest: "440e6802bea1828929a8f70aa81d2aed8e0a0a73f063ecdc95265e0671edb097" },
@@ -29,6 +32,8 @@ const REVISIONS: readonly { effectiveDate: string; digest?: string }[] = [
   { effectiveDate: "2026-09-29", digest: "e6c29b97727ea713450110a19f52138eb28b9f23fa2ad6b8bfd5d7954f1a9473" },
   // mcp-oauth — 브라우저 로그인으로 붙는 앱 연결(이름·주소·콜백·해시·허용 동작·범위·사용 시각) · 보존 · CIMD 문서 읽기. 같은 날 두 번째 개정이다 — 머지일이 바뀌면 날짜를 옮긴다.
   { effectiveDate: "2026-09-29", digest: "e335ec7a17858075cedf5f04e94f3fdbb25b93172d64d380f68516d74e6f8d61" },
+  // ui-locales — 화면 언어(`User.uiLocale` · 쿠키 `malmoi-ui-locale`)와 ko 본 게시. 머지일이 바뀌면 날짜를 옮긴다.
+  { effectiveDate: "2026-10-05", digest: "dbc15a7e6caa185de6b2d2a80f873d5eb7bbabfa9ab7886deaa7dd0167960ab0", koDigest: "5a47d4988e7046a3dcb898a8948d329e8d56ae88f89c011a1bf477885cc3dcdd" },
 ];
 
 const privacy = en.publicDocs.privacy;
@@ -75,5 +80,60 @@ describe("방침 게이트 (C) — 본문 ↔ 개정 이력", () => {
     const changes = privacy.sections.find((s) => s.id === "changes");
     const changesText = docText(changes === undefined ? [] : [changes]);
     for (const revision of REVISIONS) expect(changesText).toContain(revision.effectiveDate);
+  });
+});
+
+/**
+ * **두 본의 동형** (ui-locales design §8) — ko 화면은 ko 본, en·es 화면은 en 본을 본다. 두 본이 다른 사실을 말하면 어느 쪽이 맞는지
+ * 정하는 조항이 없으므로(spec 비목표) 같은 사실을 말하는 것을 게이트가 든다. 문장 대조는 사람(검수)의 몫이고, 여기는 구조를 센다.
+ * `PrivacyBody` 타입이 표의 행 수·목록 항목 수를 이미 묶는다 — 아래는 그 위에 **값**이 같아야 하는 자리(id·날짜)를 잰다.
+ */
+describe("방침 두 본(en·ko) — 동형", () => {
+  const ko = koPrivacy;
+  const dates = (body: typeof ko | typeof privacy) => {
+    const changes = body.sections.find((s) => s.id === "changes");
+    const list = changes?.blocks.find((b) => "ul" in b);
+    return list !== undefined && "ul" in list ? list.ul.map((item) => (typeof item === "string" ? /^\d{4}-\d{2}-\d{2}/.exec(item)?.[0] : undefined)) : [];
+  };
+  const table = (body: typeof ko | typeof privacy, id: string) => {
+    const block = body.sections.find((s) => s.id === id)?.blocks.find((b) => "table" in b);
+    return block !== undefined && "table" in block ? block.table : undefined;
+  };
+
+  it("절 id와 순서가 같다", () => {
+    expect(ko.sections.map((s) => s.id)).toEqual(privacy.sections.map((s) => s.id));
+  });
+
+  it("시행일이 같다", () => {
+    expect(ko.effectiveDate).toBe(privacy.effectiveDate);
+  });
+
+  it("개정 이력 항목 수와 날짜가 같다", () => {
+    expect(dates(ko)).toEqual(dates(privacy));
+    expect(dates(ko).every((date) => date !== undefined)).toBe(true);
+  });
+
+  it("수집 항목 표와 쿠키 표의 행·열 수가 같다", () => {
+    for (const id of ["collected", "cookies"]) {
+      const [a, b] = [table(ko, id), table(privacy, id)];
+      expect(a?.rows.length, id).toBe(b?.rows.length);
+      expect(a?.head.length, id).toBe(b?.head.length);
+      for (const row of a?.rows ?? []) expect(row.length, id).toBe(a?.head.length);
+    }
+  });
+
+  it("목차 짧은 라벨의 키(절 id)가 같다", () => {
+    expect(Object.keys(ko.tocLabels)).toEqual(Object.keys(privacy.tocLabels));
+  });
+
+  it("등재(`collected.ts`) ↔ ko 본의 절도 맞는다", () => {
+    const disclosed = Object.values(CLASSIFIED).filter((c) => c !== NOT_PERSONAL);
+    expect(sectionGaps(disclosed, ko.sections, DISCLOSURE_SECTIONS)).toEqual({ missingSections: [], unusedSections: [], duplicateIds: [] });
+  });
+
+  it("ko 본이 비지 않았고, 해시가 마지막 개정의 ko 값과 같다 — ko 본만 고쳐도 새 개정 행이 필요하다", () => {
+    const koText = docText(ko.sections);
+    expect(koText.length).toBeGreaterThan(1500);
+    expect(docDigest(koText)).toBe(REVISIONS.at(-1)?.koDigest);
   });
 });

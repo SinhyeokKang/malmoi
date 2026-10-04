@@ -38,6 +38,12 @@ export type Messages = Omit<Full, "mcp" | "seo" | "crash" | "publicDocs"> & {
 };
 
 /**
+ * 방침 본문의 모양 — en 본(`en.publicDocs.privacy`)과 ko 본(`messages/ko-privacy.tsx`)이 함께 맞춘다(ui-locales design §8).
+ * 리터럴만 넓히고 튜플 길이는 남으므로 **표의 행 수·목록 항목 수·절 순서까지** 두 본이 같아야 통과한다.
+ */
+export type PrivacyBody = Full["publicDocs"]["privacy"];
+
+/**
  * 사전에서 문구 하나를 꺼낸다 — **모르는 키에는 항상 폴백 문자열**이다.
  *
  * ⚠️ **`DICT[key] ?? fallback`을 쓰지 않는다** (2026-09-08 code-review 🔴1). 프로토타입 키

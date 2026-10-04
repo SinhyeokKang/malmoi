@@ -75,6 +75,8 @@ const KOREAN_ALLOWED = [
   "lib/utc-time.ts",
   // ko 화면 사전 — 화면 문구의 한글은 이 파일에만 둔다(ui-locales design §6). 위 두 줄은 문구가 아니라 상수다.
   "messages/ko.tsx",
+  // ko 방침 본 — 법적 문서라 ko 화면 사전과 따로 둔다(ui-locales design §8). `/privacy` 페이지만 import한다.
+  "messages/ko-privacy.tsx",
 ];
 
 /**

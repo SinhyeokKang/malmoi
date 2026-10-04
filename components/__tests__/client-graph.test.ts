@@ -119,6 +119,8 @@ const CLIENT_LIB_FILES = [
   "lib/home/state.ts",
   "lib/i18n/adapter-errors.ts",
   "lib/i18n/index.ts",
+  // 공개 푸터의 언어 스위처가 지원 집합·endonym·국기 매핑을 값으로 읽는다(ui-locales F2) — import 0인 잎이다(아래 잎 검사).
+  "lib/i18n/locales.ts",
   "lib/import/confirm.ts",
   "lib/import/refusal.ts",
   "lib/import/result.ts",

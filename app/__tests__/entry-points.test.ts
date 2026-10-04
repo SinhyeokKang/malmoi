@@ -300,6 +300,11 @@ const EXEMPT_ACTIONS = new Set([
   "oauth/authorize/actions.ts#denyOAuthRequest",
   "oauth/authorize/actions.ts#checkOAuthRequest",
   "oauth/authorize/actions.ts#switchOAuthAccount",
+  /**
+   * 화면 언어 바꾸기 (ui-locales design §4). **비로그인이 정상 진입이다** — 공개 푸터가 부른다. 프로젝트를 건드리지 않고, 계정에 쓰는
+   * 대상은 `readSession`의 userId가 정한다(입력에 userId가 없다). 비로그인이면 기기 쿠키만 쓴다.
+   */
+  "ui-locale/actions.ts#setUiLocale",
 ]);
 
 /**

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { UI_LOCALE_NAMES, UI_LOCALES, parseUiLocale, planUiLocaleWrite, resolveUiLocale } from "../locales";
+import { flagFor } from "@/lib/keys/flag";
+
+import { UI_LOCALE_FLAGS, UI_LOCALE_NAMES, UI_LOCALES, parseUiLocale, planUiLocaleWrite, resolveUiLocale } from "../locales";
 
 /**
  * 화면 언어(ui-locales) 판정 — **계정 > 기기 쿠키 > en**. `Accept-Language`는 입력에 없다(처음 온 사용자는 항상 영어).
@@ -46,5 +48,11 @@ describe("UI_LOCALE_NAMES", () => {
   it("언어 이름은 그 언어 자체의 표기(endonym)이고 지원 집합과 키가 같다", () => {
     expect(UI_LOCALE_NAMES).toEqual({ en: "English", ko: "한국어", es: "Español" });
     expect(Object.keys(UI_LOCALE_NAMES).sort()).toEqual([...UI_LOCALES].sort());
+  });
+});
+
+describe("UI_LOCALE_FLAGS", () => {
+  it("en GB · ko KR · es ES — 프로젝트 로케일 판정(`flagFor`)이 그 국기를 고른다", () => {
+    expect(Object.fromEntries(UI_LOCALES.map((code) => [code, flagFor(UI_LOCALE_FLAGS[code])]))).toEqual({ en: "gb", ko: "kr", es: "es" });
   });
 });

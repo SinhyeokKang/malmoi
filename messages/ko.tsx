@@ -166,6 +166,11 @@ export const ko = {
     hero: { top: "프로젝트를 연결하고", bottom: "함께 번역하고 내보내세요" },
   },
 
+  uiLocale: {
+    label: "언어",
+    failed: "언어를 바꾸지 못했습니다. 다시 시도하세요.",
+  },
+
   landing: {
     shell: {
       logo: "Malmoi 홈",

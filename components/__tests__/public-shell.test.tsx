@@ -291,8 +291,11 @@ describe("푸터 — `/signin`·초대·계정 병합도 공개 셸 푸터 하�
   });
 
   it("마크업이 `PublicFooter`와 바이트 단위로 같다", () => {
+    // 언어 스위처의 Radix 트리거 id는 렌더마다 `useId`가 새로 짓는다 — 그 한 값만 지우고 나머지 바이트를 견준다.
+    const unId = (html: string | undefined) => html?.replace(/ id="radix-[^"]*"/g, "");
     const own = renderToStaticMarkup(h(PublicFooter, { m: en }));
-    expect(signin().querySelector("footer")?.outerHTML).toBe(own);
+    expect(own).toContain('id="radix-');
+    expect(unId(signin().querySelector("footer")?.outerHTML)).toBe(unId(own));
   });
 
   it("바깥 `px-2 pt-2`(헤더가 없어 위 8 — 공개 셸의 6+44+6과 다르다), 푸터가 바닥 40을 든다", () => {

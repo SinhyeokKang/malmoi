@@ -12,7 +12,7 @@ import { find, render } from "./helpers/dom";
  * `/privacy` 읽기 그릇 (시안 `Landing.dc.html` 1e — DESIGN §6.616). 본문은 사전 그대로이고 그릇만 바뀐다.
  */
 const privacy = en.publicDocs.privacy;
-const doc = () => render(<PrivacyDoc m={en} uiLocale="en" />);
+const doc = () => render(<PrivacyDoc m={en} uiLocale="en" doc={privacy} />);
 /** DESIGN §7의 링 셋 — 하나라도 빠지면 브라우저 기본 outline이 그려진다. */
 const RING = ["focus-visible:ring-ring", "focus-visible:ring-2", "focus-visible:outline-none"];
 

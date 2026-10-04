@@ -6,6 +6,7 @@ import { publicAccount } from "@/lib/auth/landing";
 import { readSession } from "@/lib/auth/read-session";
 import { getMessages, getUiLocale } from "@/lib/i18n/server";
 import { en } from "@/messages/en";
+import { koPrivacy } from "@/messages/ko-privacy";
 import { pageMetadata } from "@/lib/seo/site";
 
 /** 설명은 방침 첫 문장이 아니라 제품 한 줄이다 — 검색 결과에서 이 페이지가 무엇의 방침인지가 먼저다. */
@@ -24,13 +25,16 @@ export const metadata: Metadata = pageMetadata({ title: en.publicDocs.privacy.ti
  * ⚠️ **인가를 지나지 않는다** — 공개 문서라 로그인 없이 읽혀야 한다(`entry-points.test.ts`의
  * `EXEMPT`에 이름으로 등재). 같은 이유로 1차 차단의 보호 경로에도 없다. 세션을 읽는 것은 **헤더 primary
  * 하나 때문이고 차단이 아니다** — 로그인이면 아바타 메뉴, 아니면(장애 포함) `Get started`(`publicAccount`).
+ *
+ * ⚠️ **본문은 두 벌이다**(ui-locales design §8) — ko 화면은 ko 본(`messages/ko-privacy.tsx`), 그 밖(en·es)은 en 본이다. es 본은 원어민 검수 없이
+ * 낼 수 없어 두지 않는다. ko 본을 import하는 비테스트 소스는 이 파일 하나다 — 클라이언트 그래프에 들면 ko 사용자 번들에 본문이 실린다.
  */
 export default async function Privacy() {
   const [session, m, uiLocale] = await Promise.all([readSession(), getMessages(), getUiLocale()]);
 
   return (
     <PublicShell m={m} account={publicAccount(session)}>
-      <PrivacyDoc m={m} uiLocale={uiLocale} />
+      <PrivacyDoc m={m} uiLocale={uiLocale} doc={uiLocale === "ko" ? koPrivacy : en.publicDocs.privacy} />
     </PublicShell>
   );
 }
