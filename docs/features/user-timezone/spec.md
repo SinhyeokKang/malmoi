@@ -11,7 +11,8 @@ UTC+9에 사는 사람은 `Oct 4, 2026 23:10 UTC`를 보고 머릿속으로 9시
 
 ## 문제 (관측된 사실)
 
-- 절대 날짜·시각의 생산자는 `lib/utc-time.ts` 하나이고(`utcDay`·`utcMinute`·`utcMonth`) 셋 다 UTC 부품만 읽는다. 호출부는 비테스트 소스 약 20개 파일이다.
+- 절대 날짜·시각의 생산자는 `lib/utc-time.ts` 하나이고(`utcDay`·`utcMinute`·`utcMonth`) 셋 다 UTC 부품만 읽는다. 호출부는 비테스트 소스 18개 파일이다(`@/lib/utc-time` import 기준).
+- **그 생산자를 지나지 않는 시각이 하나 있다** — Logs 행의 `HH:mm`(`components/logs/event-row.tsx:69`, `toISOString().slice(11, 16)`). 라벨 없는 UTC 시각이고 `aria-label`만 `utcMinute`다.
 - Logs의 날짜 카드(`lib/events/view.ts`의 `groupByDay`)·Today/Yesterday 낱말·날짜 필터(`lib/events/filter.ts`의 `parseDateRange`,
   `components/logs/log-filters.tsx`의 프리셋)가 전부 **UTC 자정**으로 끊는다. 필터 라벨은 `Custom range (UTC)`다.
 - 이 결정은 근거가 있어서 섰다 — "보는 사람의 로컬 시각을 라벨 없이 내면 어느 시간대인지 모른다"(CLAUDE.md 코드 컨벤션 · `lib/utc-time.ts` 머리 주석 ·
@@ -35,16 +36,16 @@ UTC+9에 사는 사람은 `Oct 4, 2026 23:10 UTC`를 보고 머릿속으로 9시
 `[자동]`은 `pnpm test`·`pnpm typecheck`, `[수동]`은 `/runtime-test`(tasks H3)가 판정한다.
 
 1. 시간대를 고르지 않은 사용자는 모든 화면에서 지금과 **바이트 단위로 같은** 날짜·시각을 본다(`Sep 27, 2026 16:34 UTC`). `[자동]` 포맷 함수 기댓값
-2. `Asia/Seoul`을 고른 사용자는 앱 안의 모든 절대 시각을 그 시간대로 보고, 시각 뒤에 `UTC+9`가 붙는다 — `2026-10-04T23:10Z` → `Oct 5, 2026 08:10 UTC+9`(en) · `2026년 10월 5일 08:10 UTC+9`(ko) · `5 oct 2026 08:10 UTC+9`(es). `[자동]` · `[수동]` 화면
+2. `Asia/Seoul`을 고른 사용자는 앱 안의 모든 절대 시각을 그 시간대로 보고, 시각 뒤에 `UTC+9`가 붙는다 — `2026-10-04T23:10Z` → `Oct 5, 2026 08:10 UTC+9`(en) · `2026년 10월 5일 08:10 UTC+9`(ko) · `5 oct 2026 08:10 UTC+9`(es). Logs 행의 시각도 그 시간대이고 행마다 라벨을 단다(`08:10 UTC+9`). `[자동]` · `[수동]` 화면
 3. 서머타임이 있는 시간대는 그 시각의 오프셋을 말한다 — `America/New_York`에서 1월 시각은 `UTC-5`, 7월 시각은 `UTC-4`. `[자동]`
-4. 날짜만 쓰는 자리(보관일·토큰 생성일·OAuth 기존 연결일·Logs 수집 개시일)도 그 시간대의 날짜다. 라벨은 지금처럼 붙지 않는다. `[자동]`
+4. 날짜만 쓰는 자리(보관일·토큰 생성일·OAuth 기존 연결일·Logs 수집 개시일)도 그 시간대의 날짜다. 라벨은 지금처럼 붙지 않는다 — 시간대가 다른 두 멤버가 같은 보관일을 다른 날짜로 보는 것은 **수용한 대가다**. `[자동]`
 5. `<time dateTime>`의 값은 시간대와 무관하게 **UTC ISO 그대로**다. `[자동]` 소스 검사
-6. Logs: `Asia/Seoul` 사용자에게 `2026-10-04T23:10Z` 사건은 `Oct 5, 2026` 카드에 서고, 그날이 오늘이면 `Today`가 붙는다. 프리셋 `Today`·`Yesterday`·`Last 7 days`·`Last 30 days`와 Custom range는 그 시간대의 자정 구간을 조회한다. 필터 라벨은 `Custom range (UTC+9)`다. `[자동]` 순수 함수 · `[수동]` 화면
-7. 서머타임 전환일의 Logs 구간은 23·25시간이다(24시간을 더하지 않는다). `[자동]`
+6. Logs: `Asia/Seoul` 사용자에게 `2026-10-04T23:10Z` 사건은 `Oct 5, 2026` 카드에 서고, 그날이 오늘이면 `Today`가 붙는다. 프리셋 `Today`·`Yesterday`·`Last 7 days`·`Last 30 days`와 Custom range는 그 시간대의 자정 구간을 조회한다. 필터 메뉴·칸 라벨에서 `(UTC)` 괄호가 빠지고 Custom range Dialog 설명에 `Days are in Asia/Seoul.`(시간대 id — 오프셋이 아니라 서머타임을 넘는 범위에서도 참이다) 한 줄이 선다. 필터 칩의 날짜는 `America/New_York`에서도 고른 날짜 그대로다(하루 밀리지 않는다). `[자동]` 순수 함수·DOM · `[수동]` 화면
+7. 서머타임 전환일의 Logs 구간은 23·25시간이다(24시간을 더하지 않는다). **0시가 없는 날**(`America/Santiago` 2026-09-06 · `Atlantic/Azores` 2026-03-29 · `Africa/Cairo` 2026-04-24)은 그날 첫 순간(01:00)에서 시작하고 카드 머리는 그 날짜다(전날이 아니다). `[자동]`
 8. MCP 도구 응답(`list_events` 등)은 시간대와 무관하게 UTC 구간·ISO 시각이다 — 같은 필터 입력이 웹(사용자 시간대)과 MCP(UTC)에서 다른 구간을 뜻한다. `[자동]` 소스 검사
 9. 공개 페이지(`/changelog`·`/privacy`)는 로그인한 `Asia/Seoul` 사용자에게도 UTC 날짜다. 방침의 시행일·개정 이력처럼 **달력 날짜**(시각이 아닌 값)는 어느 화면에서도 옮기지 않는다. `[자동]` 소스 검사
-10. 서버 렌더와 클라이언트 하이드레이션의 날짜 문자열이 같다 — ko·es·`Asia/Kolkata`(`UTC+5:30`) 조합에서 하이드레이션 경고 0. `[수동]`
-11. `/preferences`의 Time zone에서 고르면 저장 버튼 없이 앱 전체가 그 시간대로 다시 그려지고, **다른 기기에서 로그인해도** 같다. 실패하면 카드 안 `Alert danger inset`이고 값은 원래대로 돌아간다. `[자동]` DOM · `[수동]` 두 기기
+10. 서버 렌더와 클라이언트 하이드레이션의 날짜 문자열이 같다 — ko·es·`Asia/Kolkata`(`UTC+5:30`) 조합에서 하이드레이션 경고 0. `[수동]` · 대리 `[자동]` — 프로세스 TZ를 UTC·Seoul·Santiago로 바꿔도 포맷·경계 함수 출력이 같다
+11. `/preferences`의 Time zone 카드는 지금 시각 미리보기(`Now: Oct 5, 2026 08:10 UTC+9`)를 들고, 고르면 저장 버튼 없이 미리보기와 앱 전체가 그 시간대로 다시 그려지고, **다른 기기에서 로그인해도** 같다. 실패하면 카드 안 `Alert danger inset`이고 값은 원래대로 돌아간다. `[자동]` DOM · `[수동]` 두 기기
 12. `User.timeZone`에 목록 밖 값(`Mars/Base`·`__proto__`·`""`·`Asia/Seoul ` 공백)이 있으면 UTC로 보이고 화면이 깨지지 않는다. `[자동]`
 13. `/privacy`(en·ko 두 본문)가 `User.timeZone`을 말하고 개정 이력·시행일이 붙는다. 새 쿠키는 없다. `[자동]` `policy-gate.test.tsx`
 14. 가이드의 "Dates and event times use UTC" 문장(`guide/{en,ko,es}/sync/logs.md`)이 기본값과 Preferences를 말하도록 바뀐다. `[자동]` 원고 게이트 green
@@ -55,7 +56,7 @@ UTC+9에 사는 사람은 `Oct 4, 2026 23:10 UTC`를 보고 머릿속으로 9시
 - **브라우저 시간대 자동 감지·"기기 시간대 따르기"** — 서버가 첫 렌더 전에 알 수 없고(하이드레이션 불일치), 자동으로 바꾸면 "라벨 없는 로컬 시각"과 같은 부류가 된다. 기본은 UTC이고 사람이 고른다. 감지값을 *제안*만 하는 힌트도 이번엔 두지 않는다.
 - **IANA 전체 목록·검색 콤보박스 프리미티브** — 사용자 결정(선별 목록 + 기존 `Select`).
 - **시간대 약어**(`KST`·`PST`) — 사용자 결정. Intl의 `timeZoneName`은 로케일·ICU 버전마다 다르고 en에서 `Asia/Seoul`은 `GMT+9`다.
-- **12시간제·초 단위·요일** — 형은 지금 셋(`Day`·`Minute`·`Month`) 그대로이고 24시간제다.
+- **12시간제·초 단위·요일** — 형은 지금 셋(`Day`·`Minute`·`Month`) + Logs 행의 시각(`Clock` — 지금 `event-row`가 손으로 자르는 자리를 생산자로 옮긴 것)이고 24시간제다.
 - **상대 시각**(`2 days ago`) — 시간대와 무관하다(`lib/relative-time.ts` 그대로).
 - **초대 메일·MCP·cron 응답·서버 로그·PR 본문** — 받는 쪽의 시간대를 모르거나 사람이 아니다. UTC·ISO 그대로다.
 - **가이드의 고정 시각**(`18:00 UTC` 야간 실행) — 서버 일정이라 UTC로 말하는 것이 참이다.

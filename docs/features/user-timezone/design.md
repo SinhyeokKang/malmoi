@@ -2,7 +2,7 @@
 
 전제: **ui-locales가 dev에 통합된 뒤 착수한다.** 이 문서가 기대는 그 기능의 산출물 — `/preferences` 페이지(Language 카드)·`User.uiLocale`과
 세션 배선(`readSession().uiLocale`)·`getUiLocale()`(`lib/i18n/server.ts`)·`MessagesProvider`/`useUiLocale()`·`lib/utc-time.ts`의 `uiLocale` 인자
-(E7이 기본값 `"en"`을 지운 상태)·ko·es 사전·`messages/ko-privacy.tsx`·`guide/{en,ko,es}/`. 착수 때 이 목록이 dev에 있는지 먼저 본다(tasks 0).
+(ui-locales `orch.md` D3 — E 배치가 호출부에 언어를 넘기고 기본값 `"en"`을 지운 상태)·ko·es 사전·`messages/ko-privacy.tsx`·`guide/{en,ko,es}/`. 착수 때 이 목록이 dev에 있는지 먼저 본다(tasks 0).
 
 ## 0. 뒤집는 규칙과 그 근거
 
@@ -18,9 +18,12 @@
 (`Sep 27, 2026 16:34 UTC` · `Oct 5, 2026 08:10 UTC+9`). 생산자는 `lib/date-format.ts` 하나이고 `<time dateTime>`은 UTC ISO다.
 `Intl.DateTimeFormat`은 그 파일에서 `timeZone`을 명시한 숫자 부품 추출에만 쓴다. `toLocale*`은 쓰지 않는다."
 
-**하이드레이션**: 서버(Node ICU)와 브라우저가 같은 `timeZone` 문자열로 같은 순간의 부품을 뽑는다. 출력이 갈리는 것은 두 런타임의 tzdata가
-**그 시간대의 규칙 변경 직후 시점**을 서로 다르게 알 때뿐이다 — 선별 목록이라 범위가 작고, 갈리면 하이드레이션 경고 한 번이 나고 클라이언트 값이 이긴다.
-수용한다(`suppressHydrationWarning`을 달지 않는다 — 다른 불일치까지 숨긴다).
+**하이드레이션**: 서버(Node ICU)와 브라우저가 같은 `timeZone` 문자열로 같은 순간의 부품을 뽑는다. 출력이 갈리는 원인은 둘이다.
+① **`now`의 출처** — 클라이언트 렌더 중 `Date.now()`로 "오늘"·오프셋·정렬을 계산하면 그 시간대의 자정이나 전환 순간이 서버 렌더와 하이드레이션
+사이에 낄 때 갈린다(UTC 자정보다 사용자가 더 자주 겪는다). 그래서 `now`의 함수인 것(`presetRange`·`timeZoneOptions`·Preferences 미리보기·Today 판정)은
+**전부 서버가 내린 `now` ISO prop**을 쓴다(`member-list`·`token-card`와 같은 형). ② **tzdata 차이** — 두 런타임이 그 시간대의 규칙 변경 직후 시점을
+서로 다르게 알 때(예: 2022년 서머타임을 없앤 `America/Mexico_City`, 규칙이 자주 바뀌는 `America/Santiago`·`Africa/Cairo`를 낡은 브라우저가 볼 때).
+②는 선별 목록이라 범위가 작고, 갈리면 하이드레이션 경고 한 번이 나고 클라이언트 값이 이긴다. 수용한다(`suppressHydrationWarning`을 달지 않는다 — 다른 불일치까지 숨긴다).
 
 ## 1. 이름
 
@@ -29,7 +32,7 @@
 | 지원 집합 | `TIME_ZONES`(IANA id 배열 `as const`) · `type TimeZone` — `lib/time-zone/zones.ts`(잎) |
 | 기본값 | `DEFAULT_TIME_ZONE = "UTC"` |
 | DB 컬럼 | `User.timeZone String?` |
-| 포맷 모듈 | `lib/utc-time.ts` → **`lib/date-format.ts`**(git mv). 함수 `formatDay`·`formatMinute`·`formatMonth` |
+| 포맷 모듈 | `lib/utc-time.ts` → **`lib/date-format.ts`**(git mv). 함수 `formatDay`·`formatMinute`·`formatMonth` + `formatClock`(Logs 행 시각) + `formatDayKey`(달력 날짜 키) |
 | 포맷 입력 | `type DateStyle = { readonly uiLocale: UiLocale; readonly timeZone: TimeZone }` |
 | Action | `setTimeZone` — `app/(edit)/preferences/actions.ts` |
 | 화면 라벨 | Preferences의 `Time zone` |
@@ -43,17 +46,20 @@
 |---|---|---|
 | `TIME_ZONES` · `parseTimeZone(raw: unknown): TimeZone \| null` | `lib/time-zone/zones.ts` (잎, import 0) | 선별 목록 안의 문자열만 통과. **`Object.hasOwn`으로 판정**(표를 `Record`로 든다) — `__proto__`·`constructor`·`toString`·`""`·공백 붙은 값·대소문자 다른 값(`asia/seoul`) 거부. 런타임 `Intl`에 유효성을 묻지 않는다(ICU마다 다르다) |
 | `resolveTimeZone(account: unknown): TimeZone` | 같은 파일 | `parseTimeZone(account) ?? "UTC"`. 쿠키 입력이 없다(spec 결정) |
-| `zonedParts(at: Date, timeZone): { y; mo; d; h; mi }` | `lib/date-format.ts` (잎 — `UiLocale`·`TimeZone` 타입만 import) | `Intl.DateTimeFormat("en-US", { timeZone, hourCycle: "h23", year·month·day·hour·minute: "numeric" }).formatToParts`에서 **숫자만** 읽는다. `timeZone === "UTC"`면 `getUTC*`로 직행한다(기본 경로에 Intl이 없다 — 완료 조건 1의 바이트 동일성을 구조로 보장). 포맷터는 시간대별로 모듈 `Map`에 캐시한다 |
-| `utcOffsetMinutes(at, timeZone): number` | 같은 파일 | `Date.UTC(zonedParts…) - floor(at, 분)` → 분. `UTC`는 0 |
+| `zonedParts(at: Date, timeZone): { y; mo; d; h; mi }` | `lib/date-format.ts` (잎 — `UiLocale`·`TimeZone` 타입만 import) | `Intl.DateTimeFormat("en-US", { timeZone, hourCycle: "h23", year·month·day·hour·minute: "numeric" }).formatToParts`에서 **숫자만** 읽는다. `h === 24`는 `0`으로 정규화한다(구 엔진의 `hour12:false` 자정 `24` 전례 — Node 26은 `00`이지만 테스트로 고정). `timeZone === "UTC"`면 `getUTC*`로 직행한다(기본 경로에 Intl이 없다 — 완료 조건 1의 바이트 동일성을 구조로 보장). 포맷터는 시간대별로 모듈 `Map`에 캐시한다 |
+| `utcOffsetMinutes(at, timeZone): number` | 같은 파일 | `Date.UTC(zonedParts…) - floor(at, 분)` → 분. `UTC`는 0. 초가 있는 순간(`…:59.999Z`)도 분 내림이라 맞다. 1970년 이전 음수 epoch는 대상이 아니다(주석 한 줄) |
 | `offsetLabel(minutes): string` | 같은 파일 | `0 → "UTC"` · `540 → "UTC+9"` · `330 → "UTC+5:30"` · `345 → "UTC+5:45"` · `-180 → "UTC-3"` · `-570 → "UTC-9:30"`. ASCII `-`(복사·검색에서 갈리지 않는다). 시는 0 채움 없음, 분은 0이 아닐 때만 `:mm` |
 | `formatDay(at, style)` · `formatMinute(at, style)` · `formatMonth(at, style)` | 같은 파일 | 지금 `utcDay`·`utcMinute`·`utcMonth`의 언어별 손 형식 그대로, 부품만 `zonedParts`에서 읽는다. `formatMinute`의 꼬리는 `offsetLabel(utcOffsetMinutes(at, tz))` — `UTC`면 지금과 같은 ` UTC`. `formatDay`·`formatMonth`는 라벨을 달지 않는다(지금과 같다) |
+| `formatClock(at, style)` | 같은 파일 | Logs 행의 시각 — `HH:mm` + 공백 + `offsetLabel`(`09:42 UTC` · `08:10 UTC+9` · `14:12 UTC+5:30`). **행마다 라벨을 단다**(사용자 2026-10-04 — 바뀐 규칙 "시각에는 오프셋 라벨"에 예외를 두지 않는다). `event-row.tsx:69`의 `toISOString().slice(11, 16)`을 대체한다. ⚠️ 그 `<time>`의 폭 `w-12`는 `08:10 UTC+5:30`을 못 담는다 — 구현 때 폭을 실측해 늘린다 |
+| `formatDayKey(key, uiLocale): string` | 같은 파일 | **달력 날짜 키 `YYYY-MM-DD`를 순간으로 바꾸지 않고** 언어별 `Day` 형으로 그린다(시간대 인자 없음). Logs 카드 머리·필터 칩이 쓴다. ⚠️ 키를 `new Date(key)`(UTC 자정)나 `startOfDay(key, tz)`로 순간을 만든 뒤 `formatDay`에 넘기면 음수 오프셋에서 하루 밀리고(칩), 0시가 없는 날 보정이 틀리면 전날을 찍는다(머리) |
 | `dayKeyAt(at, timeZone): string` | 같은 파일 | 그 시간대의 달력 날짜 `YYYY-MM-DD`. Logs 그룹 키·프리셋의 오늘 |
 | `addDays(dayKey, n): string` | 같은 파일 | 달력 날짜 산술(UTC 자정 `Date`로 계산 — 시간대와 무관). `Yesterday`·`Last 7 days`는 `now - 24h`가 아니라 이것이다(서머타임 날 23·25시간) |
-| `startOfDay(dayKey, timeZone): Date` | 같은 파일 | 그 시간대에서 그날 0시의 순간. `Date.UTC(y,mo,d) - offset(guess)`를 두 번 반복해 전환일 오프셋을 맞춘다. 0시가 없는 날(전환이 자정에 걸린 과거 사례)은 그날 첫 순간 — 선별 목록에 대해 2026–2027 전환일 표로 고정한다 |
-| `parseDateRange(from, to, timeZone)` | `lib/events/filter.ts` (기존 함수에 인자 추가) | `from`은 `startOfDay(from, tz)`, `to`는 **`startOfDay(addDays(to, 1), tz)`**(배타 상한 — `+DAY_MS`를 지운다). 역전 쌍은 지금처럼 둘 다 버린다. `"UTC"`면 지금과 같은 순간을 낸다 |
-| `groupByDay(rows, now, style)` | `lib/events/view.ts` (기존 함수에 인자) | 키 `dayKeyAt(occurredAt, tz)` · 머리 `formatDay(startOfDay(key, tz), style)` · `today = dayKeyAt(now, tz)` · `yesterday = addDays(today, -1)` |
-| 프리셋 범위 `presetRange(key, now, timeZone)` | `lib/events/filter.ts`(순수로 옮김) | `components/logs/log-filters.tsx`의 `PRESETS`·지역 `utcDay(offset)`를 대체. `today = dayKeyAt(now, tz)`에서 `addDays`로 |
-| `timeZoneOptions(now): { value; label }[]` | `lib/time-zone/options.ts` | Preferences Select의 옵션 — `UTC`가 첫 줄, 나머지는 **`now` 기준 오프셋 오름차순, 같은 오프셋은 id 순**. 라벨 `UTC+9 · Asia/Seoul`(id는 번역하지 않는다 — 세 언어 공통이고 `lang` 무관). `now`를 인자로 받는다(`relativeTime`과 같은 이유 — 서버·클라이언트 기준이 갈리지 않게) |
+| `startOfDay(dayKey, timeZone): Date` | 같은 파일 | 그 시간대에서 그날 0시의 순간. `Date.UTC(y,mo,d) - offset(guess)`를 두 번 반복해 전환일 오프셋을 맞춘다. **반복 뒤 `dayKeyAt(result, tz) !== dayKey`면 0시가 없는 날이다** — 결과가 전날 23시로 떨어진 것이므로 그날 첫 순간(전환 순간, 보통 01:00)까지 전진시킨다(`result + (offset(result + 1h) − offset(result))`). ⚠️ 이 날은 과거 사례가 아니다 — 선별 목록에서 `America/Santiago` 2026-09-06·2027-09-05 · `Atlantic/Azores` 2026-03-29·2027-03-28 · `Africa/Cairo` 2026-04-24·2027-04-30(Node 26 실측. 보정 없이 두 번 반복만 하면 Santiago·Azores가 전날 23시를 낸다). 이 표를 테스트로 고정한다 |
+| `parseDateRange(from, to, timeZone)` | `lib/events/filter.ts` (기존 함수에 인자 추가) | `from`은 `startOfDay(from, tz)`, `to`는 **`startOfDay(addDays(to, 1), tz)`**(배타 상한 — `+DAY_MS`를 지운다). `"UTC"`면 지금과 같은 순간을 낸다. **순간 계산 전용이고 호출자는 `loadEvents`의 `narrow`(`lib/events/query.ts:299`) 하나다** |
+| 유효성 판정 `parseLogFilter` | `lib/events/filter.ts` (기존) | 지금은 `:53`이 `parseDateRange`로 유효성을 본다 — **시간대와 무관한 판정으로 뗀다**: `parseDayKey`로 형식·실재 날짜를 보고 `from ≤ to`는 키 문자열 비교. 역전 쌍은 지금처럼 둘 다 버린다. 그래서 `parseLogFilter`는 시간대 인자를 받지 않고 MCP(`lib/mcp/tools/project.ts:86`)·Home(`(home)/page.tsx:88`) 호출부가 그대로다 |
+| `groupByDay(rows, now, style)` | `lib/events/view.ts` (기존 함수에 인자) | 키 `dayKeyAt(occurredAt, tz)` · 머리 **`formatDayKey(key, uiLocale)`**(순간을 거치지 않는다) · `today = dayKeyAt(now, tz)` · `yesterday = addDays(today, -1)` |
+| 프리셋 범위 `presetRange(key, now, timeZone)` | `lib/events/filter.ts`(순수로 옮김) | `components/logs/log-filters.tsx`의 `PRESETS`·지역 `utcDay(offset)`를 대체. `today = dayKeyAt(now, tz)`에서 `addDays`로. **`now`는 서버가 내린 prop이다**(§0 하이드레이션 ①) — 지금 `log-filters.tsx:152-153`·`:342-345`의 렌더 중 `Date.now()`를 그 prop으로 바꾼다 |
+| `timeZoneOptions(now): { value; label }[]` | `lib/time-zone/options.ts` | Preferences Select의 옵션 — `UTC`가 첫 줄, 나머지는 **`now` 기준 오프셋 오름차순, 같은 오프셋은 id 순**. 라벨 `UTC+9 · Asia/Seoul`(id는 번역하지 않는다 — 세 언어 공통이고 `lang` 무관). **옵션 라벨에서만 오프셋 0을 `UTC+0`으로 쓴다**(`UTC+0 · Europe/London` — 첫 줄 `UTC`와 구분. 시각 꼬리 `offsetLabel`은 그대로 `UTC`). `now`는 서버가 내린 prop이다(§0 하이드레이션 ①) |
 
 `zonedParts`가 `Intl`을 쓰므로 **`lib/date-format.ts`는 클라이언트 그래프의 잎이지만 값 import 0은 유지된다**(Intl은 전역이다). `client-graph.test.ts`의 등재 이름만 바꾼다.
 
@@ -67,7 +73,7 @@
 `Europe/Athens` · `Europe/Istanbul` · `Europe/Moscow` · `Asia/Riyadh` · `Asia/Tehran` · `Asia/Dubai` · `Asia/Karachi` · `Asia/Kolkata` · `Asia/Kathmandu` ·
 `Asia/Dhaka` · `Asia/Bangkok` · `Asia/Jakarta` · `Asia/Shanghai` · `Asia/Singapore` · `Asia/Seoul` · `Asia/Tokyo` · `Australia/Sydney` · `Pacific/Auckland`
 
-테스트: 목록의 모든 id가 Node에서 `Intl.DateTimeFormat`으로 생성되고(`RangeError` 없음), **id별 기대 오프셋 표**(2026-01-15·2026-07-15 정오 UTC 두 순간)와 `utcOffsetMinutes`가 같다.
+테스트: 목록의 모든 id가 Node에서 `Intl.DateTimeFormat`으로 생성되고(`RangeError` 없음), **id별 기대 오프셋 표**(2026-01-15·2026-07-15 정오 UTC 두 순간)와 `utcOffsetMinutes`가 같다. 이 표는 로컬(Node 26)과 CI(`.nvmrc` 24)의 ICU에서 둘 다 통과해야 한다 — P0에서 Node 24로도 실측한다.
 ⚠️ `resolvedOptions().timeZone`으로 "정규 이름"을 검사하지 않는다 — Node 26 ICU는 `Asia/Kolkata`→`Asia/Calcutta` · `Asia/Kathmandu`→`Asia/Katmandu` · `America/Argentina/Buenos_Aires`→`America/Buenos_Aires`로 돌려준다(2026-10-04 실측).
 그래서 저장·비교·표시는 **우리 목록의 id 문자열**만 쓰고 `resolvedOptions()`를 읽지 않는다.
 ⚠️ 목록에서 id를 **빼면** 그 값을 저장한 사용자는 UTC로 떨어진다(완료 조건 12) — 빼기는 마이그레이션 없이 되지만 사람의 설정이 조용히 바뀐다. 빼기 전에 `SELECT count(*) WHERE "timeZone" = …`를 본다(OPERATIONS에 한 줄).
@@ -86,7 +92,7 @@ ui-locales §3.1과 같은 이유로(레이아웃·페이지 병렬 렌더 — P
 | 소비자 | 읽는 법 |
 |---|---|
 | 서버 컴포넌트·페이지·Server Action | `await getDateStyle()` — `lib/i18n/server.ts`에 둔다(`getUiLocale` 옆, React `cache`). 입력은 같은 `readSession()`의 `timeZone` → `resolveTimeZone`. 세션 `unavailable`·비로그인이면 `UTC`(화면 표시라 거부가 아니다) |
-| 클라이언트 컴포넌트 | `useDateStyle()` — `components/i18n/messages-provider.tsx`의 context 값에 `timeZone`을 더한다. 루트 레이아웃이 `getDateStyle()`의 `timeZone`을 provider prop으로 넘긴다(문자열이라 RSC 경계를 넘는다). provider 없음 → `UTC` |
+| 클라이언트 컴포넌트 | `useDateStyle()` — `components/i18n/messages-provider.tsx`의 context 값에 `timeZone`을 더한다. 루트 레이아웃이 `getDateStyle()`의 `timeZone`을 provider prop으로 넘긴다(문자열이라 RSC 경계를 넘는다). provider 없음 → `UTC`. **훅은 context가 든 `{ uiLocale, timeZone }` 객체를 그대로 돌려준다**(provider의 `useMemo` — `messages-provider.tsx:67`) — 호출마다 새 객체를 만들면 deps로 쓴 자리가 매 렌더 다시 돈다 |
 | `"use client"` 없는 공용 컴포넌트 | 부모가 `style` prop으로 넘긴다(ui-locales와 같은 규칙) |
 | `lib/` 순수 모듈 | `style: DateStyle`·`timeZone: TimeZone` 인자. **`getDateStyle()`을 부르지 않는다** — 공유 코어가 스스로 물으면 MCP 응답이 요청자의 시간대를 따라간다(ui-locales B1⑧과 같은 소스 검사에 `getDateStyle`을 더한다) |
 | **UTC로 고정되는 표면** | `{ uiLocale, timeZone: "UTC" }`를 **명시**한다 — 공개 셸(`/changelog`·`/privacy`·`components/changelog/**`·`components/privacy/**`) · `/signin/link/:challenge`(세션 없는 흐름 — `utcMonth` 자리) · MCP · 초대 메일 · cron·로그 |
@@ -98,27 +104,31 @@ ui-locales §3.1과 같은 이유로(레이아웃·페이지 병렬 렌더 — P
 
 ## 5. 호출부 (ui-locales E가 언어를 넘긴 자리와 같다 — 착수 때 grep으로 다시 뽑는다)
 
-`git grep -l "utcDay\|utcMinute\|utcMonth"` 2026-10-04 기준 비테스트 18파일 + Logs 경계 3파일:
+`@/lib/utc-time`을 import하는 비테스트 파일 18개(2026-10-04 — `view.ts`·`log-filters.tsx` 포함. `git grep -l "utcDay\|utcMinute\|utcMonth"`는 주석·지역 함수까지 세어 23을 낸다) + Logs 경계·생산자 우회 자리:
 
 | 자리 | 바뀌는 것 |
 |---|---|
 | `components/publish-button.tsx` · `components/translations/sync-lock.tsx` · `components/sources/{source-detail-modal,source-status,sources-archived}.tsx` · `components/logs/{event-row,event-detail}.tsx` · `components/mcp/{token-card,connected-apps-card}.tsx` · `components/members/{invite-modal,pending-invitations}.tsx`(`retryAtLabel`) | `useDateStyle()`/부모 prop → `formatMinute`·`formatDay` |
 | `app/(edit)/projects/[slug]/{logs,settings}/page.tsx` · `app/oauth/authorize/page.tsx`(기존 연결일 — 로그인 필수 화면이라 사용자 시간대) | `getDateStyle()` |
 | `lib/invitation-email/retry-at.ts` | `retryAtLabel(iso, style)` — 분 올림은 그대로 |
-| `lib/events/view.ts`(`groupByDay`) · `lib/events/filter.ts`(`parseDateRange`·프리셋) · `lib/events/query.ts`(`loadEvents`가 `timeZone` 필수 인자) · `components/logs/log-filters.tsx`(프리셋·칩 날짜 라벨) | §2 |
+| `components/logs/event-row.tsx:69` 보이는 시각(`toISOString().slice(11, 16)` — 생산자 우회) | `formatClock(at, style)`(§2) — 행마다 오프셋 라벨. `<time>` 폭 조정 |
+| `lib/events/view.ts`(`groupByDay`) · `lib/events/filter.ts`(`parseDateRange`·`parseLogFilter` 분리·프리셋) · `lib/events/query.ts`(`loadEvents`가 `timeZone` 필수 인자) · `components/logs/log-filters.tsx`(프리셋 — 서버 `now` prop · 칩 날짜 라벨 `:357`은 **`formatDayKey`**) | §2 |
+| `app/(edit)/projects/[slug]/(home)/page.tsx:151`(Home 최근 로그 `loadEvents`) · `components/home/logs-card.tsx`(`event-row` 렌더) | `getDateStyle()`의 `timeZone`을 `loadEvents`에, style을 행에 |
 | `lib/mcp/tools/project.ts`(`list_events`) | `loadEvents(…, { timeZone: "UTC" })` 명시 |
 | `components/changelog/release-entry.tsx` · `components/privacy/privacy-doc.tsx` · `app/signin/link/[challenge]/page.tsx` | `timeZone: "UTC"` 명시(§4 고정 표면) |
-| `lib/sync/plan.ts` 주석 | 이름만(`utcMinute` → `formatMinute`) |
+| `lib/sync/plan.ts:52` · `components/oauth/consent-panel.tsx:48` · `messages/en.tsx:1218-1220`·`:1506` 주석 | 이름·계약만(`utcMinute` → `formatMinute`, "UTC 자정" → 새 계약) |
 
-**사전 문구**(en·ko·es — ui-locales 사전 셋): `logs.filters.range.custom`·`customOpen`·`from`·`to`의 `(UTC)`가 **함수**가 된다 — `custom: (zone: string) => \`Custom range (${zone})\``.
-호출부는 `offsetLabel(utcOffsetMinutes(now, tz))`를 넘긴다(지금의 오프셋 — 범위 중간에 서머타임이 바뀌어도 라벨은 하나다. 조회 구간은 §2가 날마다 정확히 계산한다).
+**사전 문구**(en·ko·es — ui-locales 사전 셋. 실제 키 경로는 `m.logs.range.*` — `messages/en.tsx:1168`): `custom`·`customOpen`·`from`·`to`에서 **`(UTC)` 괄호를 뺀다**
+(`Custom range…`·`From`·`To`). 대신 Custom range Dialog 설명에 한 줄 — `zoneNote: (zone: string) => \`Days are in ${zone}.\``, 호출부는 **시간대 id**(`Asia/Seoul`·`UTC`)를 넘긴다(사용자 2026-10-04).
+오프셋을 쓰지 않는 이유: 지금의 오프셋 하나를 라벨에 쓰면 서머타임을 넘는 범위(1월 범위를 7월에 고름)에서 `UTC-4`라고 거짓말한다 — id는 어느 날에도 참이다. 함수가 되는 사전 항목이 넷에서 하나로 준다.
 `changelog.intro`의 `Dates are in UTC.`는 그대로 참이다(공개 셸 고정).
 
 ## 6. 화면 — `/preferences` Time zone 카드
 
 - Language 카드 **아래** 둘째 카드. 껍데기·폭·즉시 적용·`busy`·실패 Alert·**닫힌 트리거 typeahead 차단**은 Language 카드와 같다(ui-locales design §5.2) — 그 카드가 쓰는 Select 조립을 그대로 쓴다. ui-locales 구현에서 그 조립이 컴포넌트로 빠져 있지 않고 두 번째 소비자가 이 카드라면, **이 기능에서 공용 컴포넌트로 뽑고 Language 카드를 같은 배치에서 이관한다**(CLAUDE.md "실재하는 손 사본을 같은 배치에서 새 프리미티브로").
-- 본문: `Select` 하나, 옵션은 `timeZoneOptions(now)`(§2). 국기·아이콘 없음. 옵션 42개라 열린 목록은 **높이 상한 + 스크롤**(Radix `SelectContent`의 기본 동작 — 새 스타일을 만들지 않는다).
+- 본문: `Select` 하나, 옵션은 `timeZoneOptions(now)`(§2) — `now`는 서버 페이지가 ISO prop으로 내린다(§0 하이드레이션 ①). 국기·아이콘 없음. 옵션 42개라 열린 목록은 **화면 가용 높이까지 + 스크롤**(`components/ui/select.tsx:60`의 `--radix-select-content-available-height` — 고정 상한이 아니다. 새 스타일을 만들지 않는다). 트리거 폭(320)에 가장 긴 라벨 `UTC-3 · America/Argentina/Buenos_Aires`가 들어가는지는 구현 때 실측하고, 넘치면 트리거만 truncate한다.
 - 도움말 한 줄(Select 아래): 기본이 UTC라는 것과 **공개 페이지는 UTC로 남는다**는 것. 예: `Dates and times in projects use this time zone. Public pages stay in UTC.`
+- **지금 시각 미리보기**(도움말 아래 한 줄, 사용자 2026-10-04): `Now: Oct 5, 2026 08:10 UTC+9` — `formatMinute(now, { uiLocale, timeZone: 고른 값 })`, `now`는 같은 서버 prop. 이 페이지엔 다른 날짜가 없어 고른 결과가 눈에 보이는 자리가 이것뿐이다(Language 카드는 화면 전체가 바뀌는 것이 피드백이라 토스트를 뺐다 — 시간대는 그 근거가 서지 않는다). 낙관적 표시와 같이 움직이고 실패면 같이 복귀한다. 사전 셋에 `now: (time: string) => …` 한 항목.
 - 지금 값과 같은 값을 고르면 요청하지 않는다. 낙관적 표시 → 실패면 복귀.
 - **시안**: 새 페이지가 아니라 기존 페이지에 카드 하나를 같은 형으로 더하는 것이라 Claude Design 핸드오프·`/design-sync`를 두지 않는다(CLAUDE.md — `/design-sync`는 신규 페이지 초기 구현 전용). 카드 형은 DESIGN의 Preferences 절(ui-locales H2가 올린다)을 따른다. 사용자가 시안을 원하면 tasks S로 넣는다(확인 필요 목록).
 
@@ -161,7 +171,7 @@ model User {
 - **export 결정성·blob SHA(ARCHITECTURE §1·2)**: 영향 없다. 날짜 문장은 화면에서만 조립되고 파일·PR·커밋·`ProjectEvent`에 들어가지 않는다. `ProjectEvent.occurredAt`은 계속 UTC `timestamptz`다.
 - **인증 경계(§6·§8)**: `setTimeZone`은 세션 userId만 쓴다. `/preferences`는 ui-locales가 세운 `isProtectedPath` + `requireUser` 두 층 그대로.
 - **MCP 쿠키·세션 비사용(§6.45)**: 공유 코어가 `getDateStyle`을 부르지 않고 MCP가 `"UTC"`를 명시한다 — 소스 검사.
-- **잎 명부**: `lib/time-zone/zones.ts` 추가, `lib/utc-time.ts` → `lib/date-format.ts` 개명(ARCHITECTURE 잎 명부·`client-graph.test.ts` `CLIENT_LIB_FILES`).
+- **잎 명부**: `lib/time-zone/zones.ts`·`lib/time-zone/options.ts`(클라이언트 카드가 부른다) 추가, `lib/utc-time.ts` → `lib/date-format.ts` 개명(ARCHITECTURE 잎 명부·`client-graph.test.ts` `CLIENT_LIB_FILES`). 같은 테스트의 Logs 잎 정확 목록(`:465-490`)도 바뀐다 — view 목록 `:478`의 `lib/utc-time.ts` → `lib/date-format.ts`, filter 목록 `:484-488`에 `lib/date-format.ts` 추가(`presetRange`·`parseDateRange`가 값 import).
 - **CSP·Analytics**: 바뀌지 않는다.
 
 ## 11. 소환한 과거 함정 (POSTMORTEM)
