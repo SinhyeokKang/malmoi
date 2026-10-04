@@ -69,7 +69,7 @@ Use this skill when the user asks to run the migrated source command `orchestrat
 
 - `orchestration` 스킬의 `check --run <run> --wait`로 완료·질문·차단 메시지를 받는다. 도구 반환에 따라 실행 세션을 이어 기다리며, Claude 전용 `run_in_background`나 화면 마커 폴링을 필수로 삼지 않는다.
 - heartbeat·빈 대기·타임아웃은 완료나 실패가 아니다. 현재 Task/Dispatch와 보고서·실제 커밋을 대조한 뒤 다음 배치를 연결한다.
-- heartbeat만 온 알림은 `check` → `--ack` 뒤 **최소 토큰 + 워커 이름**(`hb A`·`hb B Q0`)으로만 답한다 — 문장·상태 설명을 쓰지 않는다(2026-10-05 사용자). 침묵(빈 응답)은 쓰지 않는다 — 하네스가 출력을 다시 요구해 루프가 생긴다.
+- heartbeat만 온 알림은 `check` → `--ack` 뒤 **`<워커> hb`**(`A hb`·`B Q0 hb`)로만 답한다 — 문장·상태 설명을 쓰지 않는다(2026-10-05 사용자). 침묵(빈 응답)은 쓰지 않는다 — 하네스가 출력을 다시 요구해 루프가 생긴다.
 - 완료된 워커는 Delivery 확인 전에 다음 태스크로 재사용하거나 명시적으로 유지·해제한다. 새 태스크는 새 Dispatch로 보내며, 종료된 lifecycle ID로 계속 지시하지 않는다.
 - 사용자가 결정해야 하는 질문은 전달하고, 코드 수정은 소유 워커에게 돌려보낸다. 받은 메시지는 처리 후 확인하고 미처리 배치를 누락하지 않는다.
 
