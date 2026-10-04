@@ -12,19 +12,21 @@
  */
 
 export type PublicSession = {
-  user: { id: string; name: string | null; email: string | null; image: string | null };
+  /** `uiLocale`은 고른 화면 언어(ui-locales) — 식별 정보가 아니고 판정(`parseUiLocale`)은 읽는 쪽이 한다. */
+  user: { id: string; name: string | null; email: string | null; image: string | null; uiLocale: string | null };
   expires: string;
 };
 
 export function publicSession(input: {
   session: { expires: Date | string };
-  user: { id: string; name?: string | null; email?: string | null; image?: string | null };
+  /** Auth.js `AdapterUser`에는 `uiLocale`이 없다 — `getSessionAndUser`가 User 행 전체를 돌려주므로 런타임에는 실린다. */
+  user: { id: string; name?: string | null; email?: string | null; image?: string | null; uiLocale?: string | null };
 }): PublicSession {
   const { session, user } = input;
   const expires = session.expires instanceof Date ? session.expires.toISOString() : session.expires;
   // undefined 대신 null — JSON에서 키가 사라져 클라이언트가 보는 모양이 흔들리지 않게 한다.
   return {
-    user: { id: user.id, name: user.name ?? null, email: user.email ?? null, image: user.image ?? null },
+    user: { id: user.id, name: user.name ?? null, email: user.email ?? null, image: user.image ?? null, uiLocale: user.uiLocale ?? null },
     expires,
   };
 }

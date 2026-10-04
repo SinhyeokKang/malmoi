@@ -19,9 +19,9 @@ const row = {
 const user = { id: "u1", name: "Kim", email: "k@a.com", image: null, emailVerified: null };
 
 describe("publicSession — 허용 목록", () => {
-  it("user.id·name·email·image와 expires만 남는다", () => {
+  it("user.id·name·email·image·uiLocale와 expires만 남는다", () => {
     expect(publicSession({ session: row, user })).toEqual({
-      user: { id: "u1", name: "Kim", email: "k@a.com", image: null },
+      user: { id: "u1", name: "Kim", email: "k@a.com", image: null, uiLocale: null },
       expires: "2026-09-07T00:00:00.000Z",
     });
   });
@@ -38,7 +38,7 @@ describe("publicSession — 허용 목록", () => {
     const wideUser = { ...user, createdAt: new Date(), token: "z" };
     const out = publicSession({ session: wide, user: wideUser });
     expect(Object.keys(out).sort()).toEqual(["expires", "user"]);
-    expect(Object.keys(out.user).sort()).toEqual(["email", "id", "image", "name"]);
+    expect(Object.keys(out.user).sort()).toEqual(["email", "id", "image", "name", "uiLocale"]);
   });
 
   it("expires가 이미 문자열이면 그대로 둔다", () => {
@@ -48,6 +48,15 @@ describe("publicSession — 허용 목록", () => {
 
   it("name·email·image가 없으면 null이다 — undefined는 JSON에서 키가 사라져 모양이 흔들린다", () => {
     const out = publicSession({ session: row, user: { id: "u1" } });
-    expect(out.user).toEqual({ id: "u1", name: null, email: null, image: null });
+    expect(out.user).toEqual({ id: "u1", name: null, email: null, image: null, uiLocale: null });
+  });
+
+  /**
+   * **화면 언어를 싣는다** (ui-locales C2) — `getSessionAndUser`가 이미 User 행을 돌려주므로 추가 쿼리가 0이다.
+   * 값은 그대로 싣고 판정(`parseUiLocale`)은 읽는 쪽(`getUiLocale`)이 한다 — 식별 정보가 아니라 `/api/auth/session`에 실려도 된다.
+   */
+  it("uiLocale을 그대로 싣고, 없으면 null이다", () => {
+    expect(publicSession({ session: row, user: { ...user, uiLocale: "ko" } }).user.uiLocale).toBe("ko");
+    expect(publicSession({ session: row, user: { id: "u1" } }).user.uiLocale).toBeNull();
   });
 });
