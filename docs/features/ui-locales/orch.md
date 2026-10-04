@@ -122,3 +122,5 @@
 - **R7(W7 리뷰)**: 🔴0 · 🟡4(목업 h-10 미고정 · D8 테스트가 클래스 존재만 · privacy RevisionLine uiLocale 무시 · 공개/셸/온보딩/검색 ko 렌더 테스트 0) · ⚪5. D8 산술(패널 56·중심 28) 성립, 커밋 둘 각각 green, `FIELD_BUTTON_CLASS` 수용. W7 수정 라운드 2 착수.
 - **W7 fix2 완료**(목업 h-10 고정 · header-44 산술 테스트 · RevisionLine uiLocale · ko 화면 렌더 테스트). 로컬 dev cherry-pick 3커밋, 통합 게이트 중. D8 런타임 실측은 아직 아무도 안 잼 → Q2(H4)·머지 전.
 - **W8 fix1 완료**(a2e3d3ee·67563222 — Logs 날짜·언어명 uiLocale, 화면군 8곳 ko 렌더, D9 고정 상수+동치 테스트). W7 push 뒤 rebase 지시 예정.
+- **W7 통합·push** `69bc9186..feb0ecf4`(gate ok). W7 해제·워크트리 제거. W8 rebase Task `ctx_443caa29f7a6`.
+- W8 통합 게이트 1회차: `invitation.integration.ts` 동시 수락 테스트가 `unavailable`(기대 `already-member`)로 red — W7·W8 워커도 간헐 red 보고. postgres 스위트 단독 3연속 552/552 green → 부하 경합 플레이크로 판정, 전체 gate 재실행. **후속(이 기능 밖)**: 그 테스트의 동시성 플레이크를 이슈/postmortem 후보로 리포트에 남긴다.
