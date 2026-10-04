@@ -234,8 +234,8 @@ model User {
 
 본문 AA(4.5)를 두 테마에서 잰다: `foreground`/`background`·`popover`·`canvas`·`muted` · `foreground` @60%/`muted`(DESIGN §2.2의 muted 면 처방) · `muted-foreground`/`background`·`canvas`·`popover` · `primary-foreground`/`primary` · `destructive`/`background` · `link`/`background` · `success-foreground`/`success-soft`·`success-surface`·`background` · `warning-soft-foreground`/`warning-soft` · `warning-foreground`/`background` · `diff-removed`/`background` · `diff-added`/`background` · `foreground`/`diff-removed`@14%·`diff-added`@16%(낱말 면 위 글자) · `kind-*`/`kind-*-surface`.
 비텍스트 3:1: `border`/`background`(정보용 경계만 — 구조 선은 두 테마 모두 의도적으로 미달, §3.8) · `ring`/`background` · `on-hue`/`hue-*`(**썸네일 글리프**).
-`gray-dim` 글자(약 22곳, 흰 바탕 약 2.5:1)는 수용 근거가 DESIGN에 있는지 P2-1에서 확인하고, 있으면 예외 상수에, 없으면 이 목록에 4.5 쌍으로 넣는다.
-**수용 예외**(spec 완료 조건 12 — 넷뿐): `ring`/`background` 2.54(DESIGN :2064) · `destructive`/`destructive`@8% 약 4.3(DESIGN :116) · `muted-foreground`/`muted` 4.34(DESIGN :108) · `on-hue`/`hue-*` **아바타 이니셜**(라이트 최저 amber 3.19 — DESIGN 등재는 P2-6). 다크에서도 같은 자리만 예외이고, 테스트 상수에 **실측 수치와 DESIGN 절**을 같이 적는다 — 근거 없는 예외가 늘지 않게.
+`gray-dim` 글자(약 22곳)는 DESIGN §6.2에 수용 근거가 있다(P2-1 확인) → 아래 수용 예외 다섯째.
+**수용 예외**(spec 완료 조건 12 — 다섯뿐, 2026-10-05 사용자가 gray-dim을 다섯째로 확정): `ring`/`background` 2.54(DESIGN :2064) · `destructive`/`destructive`@8% 약 4.3(DESIGN :116) · `muted-foreground`/`muted` 4.34(DESIGN :108) · `on-hue`/`hue-*` **아바타 이니셜**(라이트 최저 amber 3.19 — DESIGN 등재는 P2-6) · `gray-dim`/`background`·`canvas` 2.58 · 2.39(DESIGN §6.2 — 본문 아님, 옆 값이 뜻을 완성하는 자리만. B 실측, v4 `#a1a1a1`). 다크에서도 같은 자리만 예외이고, 테스트 상수에 **실측 수치와 DESIGN 절**을 같이 적는다 — 근거 없는 예외가 늘지 않게.
 
 ## 5. 불변식 영향
 

@@ -20,6 +20,7 @@
 | D1 | **기존 화면 `/design-sync`는 사용자 승인 예외**다 — 다크 시안 대상 화면(A1–A15 · B1–B6)을 Q2가 프레임 단위로 대조한다 | spec 결정 "다크 값의 출처" · tasks S2 |
 | D2 | 스키마: B가 **DB 없이** `prisma migrate diff`로 SQL만 만든다(연결하지 않는 더미 `DIRECT_URL` — 없으면 빈 출력 + exit 0). dev DB 적용·`has_schema_privilege` 확인은 지휘자가 통합 때 한다 | orchestrate §1 |
 | D3 | **Phase 1은 단독으로 dev에 push**한다(A 통합 직후). Phase 2 배치는 그 뒤 dev에서 갈라진다 | spec 결정 "Phase 1 단독 가치" |
+| D5 | **gray-dim = 다섯째 대비 수용 예외**(흰 면 2.58 · canvas 2.39, DESIGN §6.2) — spec 12 "넷뿐" → "다섯뿐" | 2026-10-05 사용자 |
 | D4 | P2-0 ②의 Safari·Firefox 계산은 워커 도구(ego-browser = Chromium)로 못 본다 → **미검증으로 리포트에 남긴다**(Chromium + 산출 CSS 판정으로 진행). 사용자가 직접 볼지는 최종 리포트에서 묻는다 | 지휘자 판단 — 도구 부재를 통과로 취급하지 않는다 |
 
 ## 배치
@@ -62,3 +63,6 @@
 - Run `run_28e3b25ee627`. 브리프 `.scratch/color-scheme/`. **A 착수**(Opus high, task_9e8324b99acc / ctx_0eead285f36b, `cs-a`) · **B 착수**(Opus medium, task_404cc9320c49 / ctx_b6cf19091b3a, `cs-b`) · **Q0 착수**(Sonnet medium, main 체크아웃, task_653e7d404b85 / ctx_64342ef125bb — 이 동안 cherry-pick·build 금지).
 - 핸드오프 확보 실패: `DesignSync list_projects`에 design-system 프로젝트 둘만 보이고, 리포·`.scratch`·Downloads·Desktop에 `design_handoff_color_scheme` 링크·폴더 없음 → **사용자에게 시안 URL(또는 로컬 경로) 요청** — C·Q2 착수 전 필요.
 - **Q0 완료**: `.scratch/color-baseline.json` 53항목(23그룹) · 재현 러너 `.scratch/q0-baseline.js`(클래스 비의존 선택자). 못 잰 것 8(alert info 실렌더 없음 · badge soft-red/text · icontile danger · hue 4종(rose·orange·teal·indigo) · 사이드바 16px 타일 · 랜딩 삭제 낱말 면 · logs 상세 Alert · checkbox 테두리) → Q1은 이 8건을 토큰 값 대조(P1-1 ① 상수)로만 본다. dev DB: acme-web 번역·미전송 원복, emails `declaredBaseLocale`이 `en`으로 남았을 수 있음(동작 무변화) · ProjectEvent 추가분 보존. Q0 해제.
+- **B 완료**(4커밋 `a5a3ce89..98cff5a5`, gate ok): P2-pre 대조(공용 카드는 ReactNode 라벨로 글리프를 이미 받는다 · design §3.6을 형제 Action 실물대로 고침 — 세션 없으면 `failed`, `secure` = proto) · `scheme.ts` + 대비 헬퍼 · `User.colorScheme` SQL(`--from-migrations`가 shadow DB를 요구해 `--from-schema`로) · 세션 노출 · `COLOR_SCHEME_COOKIE` 상수. 열린 결정: gray-dim을 다섯째 대비 예외로(spec "넷뿐"). **RB 리뷰 착수**(Opus high, task_48f40c7caa43 / ctx_4d1fa0dbf3dd, `cs-b`). B는 수정 라운드용으로 유지.
+- 지휘자 판정: §3.6(형제 Action 형)이 tasks P2-5의 "세션 없음 → requireUser redirect" 줄을 이긴다 — CLAUDE.md 데이터 변경 표의 `setTimeZone` 형과 같다. E 브리프에 반영.
+- **D5**(2026-10-05 사용자): **gray-dim을 다섯째 대비 수용 예외로 등재** — DESIGN §6.2 기존 수용을 옮기는 것이라 화면 변화 0. spec 완료 조건 12 · design §4.4 갱신. C 대비 검사 상수에 실측 수치(2.58·2.39) + DESIGN 절.
