@@ -91,3 +91,9 @@
 - W1 정리: 인계·스파이크 보고 사본 `.scratch/ui-locales/{handoff-W1,spike-bundle}.md`, 워커 해제·워크트리 제거.
 - 신호: W2 rebase+satisfies(W3는 W2 통합 뒤) · W4 I1–I3 시작(가이드 관련 파일의 en 전환도 W4 소유) · **W6 착수** `task_071cebac8f37`/`ctx_c35f0ba1166b`(Opus medium).
 - W4 질문(I1): `no-korean-ui`·`brand-spelling`의 가이드 경로 한 줄씩 수정 승인 — no-korean-ui는 ko 외 전 트리, brand-spelling은 전 트리.
+
+## 피어 세션 (지휘 대상 아님 — 사용자가 직접 응답)
+
+- 2026-10-04 사용자: Preferences에 TZ·Theme 추가. **구현 순서 고정: ui-locales → user-timezone → color-scheme**(color-scheme은 하드코딩 색 정리 → 컬러 스킴).
+- 스펙 작성 세션 둘(Opus 5.5, dev 기반 워크트리, `/feature`): `feature-user-timezone`(term_d5eca2ce…) · `feature-color-scheme`(term_8df94b9f…). 브리프 `.scratch/peer/feature-*.md`. 산출물은 각 브랜치 커밋 — 통합은 ui-locales와 별개.
+- W6 질문: `lib/links.ts`·`lib/shell/nav.ts`·`lib/search/{rows,nav-index}.ts`의 m 인자화는 W7 몫으로 남김.
