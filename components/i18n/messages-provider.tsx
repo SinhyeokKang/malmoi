@@ -53,13 +53,12 @@ function arrive(uiLocale: UiLocale, messages: Messages): { default: ComponentTyp
 }
 
 /**
- * 언어별 사전 운반체 — **줄 하나가 그 언어의 유일한 import 자리다**. ⚠️ ko·es는 사전이 들어올 때까지 en을 운반한다
- * (W2·W3이 자기 줄의 `@/messages/en`·`mod.en`을 `@/messages/ko`·`mod.ko`로 바꾼다 — 서버 쪽은 `lib/i18n/server.ts`의 `DICTIONARIES` 한 줄).
+ * 언어별 사전 운반체 — **줄 하나가 그 언어의 유일한 import 자리다**(서버 쪽은 `lib/i18n/server.ts`의 `DICTIONARIES` 한 줄).
  * en은 위 정적 import가 든다(provider 기본값과 같은 객체).
  */
 const CARRIERS: Readonly<Partial<Record<UiLocale, ComponentType>>> = {
   ko: dynamic(() => import("@/messages/ko").then((mod) => arrive("ko", mod.ko))),
-  es: dynamic(() => import("@/messages/en").then((mod) => arrive("es", mod.en))),
+  es: dynamic(() => import("@/messages/es").then((mod) => arrive("es", mod.es))),
 };
 
 function Inner({ uiLocale, children }: { uiLocale: UiLocale; children: ReactNode }) {

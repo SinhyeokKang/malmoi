@@ -105,7 +105,48 @@ const SAME_AS_EN: Readonly<Record<Translated, readonly string[]>> = {
     "newProject.baseLocale.row",
     "translations.cellLabel",
   ],
-  es: ["landing.mockup"],
+  es: [
+    "landing.mockup",
+    // 고유명사·기호 — 번역하지 않는 이름(`Malmoi`·`GitHub`·`Google`·`CI`·`404`·`—`·키 기호)과 en과 철자가 같은 낱말(`Editor`·`Avatar`·`General`·`Base`)
+    "common.appName",
+    "common.keys",
+    "signIn.footer.copyright",
+    "signIn.footer.github",
+    "landing.shell.github",
+    "publicDocs.docs.notFound.eyebrow",
+    "changelog.releases",
+    "home.meta.ci",
+    "home.meta.pullRequest",
+    "logs.none",
+    "logs.detail.labels.pullRequest",
+    "logs.trigger.ci",
+    "projects.role.EDITOR",
+    "account.profile.avatar",
+    "account.github.title",
+    "account.github.rowName",
+    "locales.base",
+    "settings.general.title",
+    "link.providers.github",
+    "link.providers.google",
+    // 입력 예시 — 사용자가 칠 경로·코드·주소다
+    "newProject.formats.chrome-locales.example",
+    "newProject.formats.json-catalog.example",
+    "newProject.formats.yaml-catalog.example",
+    "newProject.formats.code-dict.example",
+    "newProject.formats.ts-dict.example",
+    "newProject.files.manual.baseLocalePlaceholder",
+    // 낱말 없는 조합 — 값을 `·`·`—`·`#`·괄호로만 잇는다
+    "repositorySync.cause",
+    "home.cards.reviewByLocale",
+    "home.cards.localeCount",
+    "home.attention.review.title",
+    "home.attention.neverFilled.title",
+    "home.meta.memberCount",
+    "home.meta.pr",
+    "newProject.files.preview.option",
+    "newProject.baseLocale.row",
+    "translations.cellLabel",
+  ],
 };
 
 const covers = (allowed: string, path: string): boolean =>
@@ -149,7 +190,7 @@ const BANNED_TERMS: Readonly<Record<Translated, readonly (readonly [banned: stri
     ["”와 일치하는", "”에 해당하는"],
     ["보관됨 —", "{date}에 보관됨"],
   ],
-  // es 사전(W3)이 들어오면 돈다 — 대소문자를 가르므로 문장 첫머리 형도 함께 둔다.
+  // 대소문자를 가르므로 문장 첫머리 형도 함께 둔다.
   es: [
     ["superficie", "fuente"],
     ["importar", "sincronizar"],

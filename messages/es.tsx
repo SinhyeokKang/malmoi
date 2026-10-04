@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import type { Messages } from "@/lib/i18n";
+
 /**
  * **es 사전** — `messages/en.tsx`와 키·함수 시그니처·JSX 구조가 같고 문장만 다르다. 문맥 주석은 en에만 둔다(사본은 낡는다).
  *
@@ -66,7 +68,7 @@ export const es = {
     seeOpen: "Ver qué está abierto",
     completed: (n: number, branch: string): string => `${n.toLocaleString("es")} ${n === 1 ? "clave sincronizada" : "claves sincronizadas"} desde ${branch}`,
     syncedKeys: (n: number): string => `${n.toLocaleString("es")} ${n === 1 ? "clave sincronizada" : "claves sincronizadas"}`,
-    unreadable: (n: number): string => `No se ${n === 1 ? "pudo" : "pudieron"} leer ${n} ${n === 1 ? "fuente" : "fuentes"}`,
+    unreadable: (n: number): string => `No pudimos leer ${n} ${n === 1 ? "fuente" : "fuentes"}`,
     notReplaced: (n: number): string => `${n} ${n === 1 ? "fuente no se reemplazó" : "fuentes no se reemplazaron"}`,
     withIssue: (base: string, issue: string): string => `${base}, pero ${issue}`,
     partial: (n: number): string => `${n.toLocaleString("es")} ${n === 1 ? "elemento quedó" : "elementos quedaron"} sin sincronizar. Revisa los detalles abajo.`,
@@ -272,7 +274,7 @@ export const es = {
     intro: (releases: ReactNode): ReactNode => (
       <>Qué cambió en cada versión de Malmoi, de la más reciente a la más antigua. Las fechas están en UTC. Las mismas notas se publican en {releases}.</>
     ),
-    failed: (releases: ReactNode): ReactNode => <>No se pudieron cargar las novedades desde GitHub en este momento. Léelas en {releases}.</>,
+    failed: (releases: ReactNode): ReactNode => <>No pudimos cargar las novedades desde GitHub en este momento. Léelas en {releases}.</>,
     empty: (releases: ReactNode): ReactNode => <>Todavía no se ha publicado ninguna versión. Las nuevas versiones aparecen aquí y en {releases}.</>,
     truncated: (releases: ReactNode): ReactNode => <>Las versiones anteriores están en {releases}.</>,
   },
@@ -502,7 +504,7 @@ export const es = {
     coverage: (date: string): string =>
       `El historial completo de actividad está disponible desde el ${date}. Los registros anteriores solo incluyen las ejecuciones de publicación.`,
     queryError: {
-      title: "No se pudo cargar la actividad",
+      title: "No pudimos cargar la actividad",
       description: "No se ha perdido nada: es un problema al leer el historial, no un proyecto sin actividad.",
       retry: "Intentar de nuevo",
     },
@@ -655,7 +657,7 @@ export const es = {
     },
     nightlyRetry: NIGHTLY_RETRY,
     reasons: {
-      "base-unreadable": "No se pudo leer tu repositorio. Pide a tus desarrolladores que revisen el acceso de la app.",
+      "base-unreadable": "No pudimos leer tu repositorio. Pide a tus desarrolladores que revisen el acceso de la app.",
       "not-installed": "La app no estaba conectada al repositorio. Pide a tus desarrolladores que la vuelvan a conectar.",
       "glob-matched-nothing": "Los archivos de traducción no estaban donde esperábamos. Consulta a tus desarrolladores.",
       "github-error": `GitHub no respondió. ${NIGHTLY_RETRY}`,
@@ -762,8 +764,8 @@ export const es = {
     importFailure: {
       parseFailed: "No se pudieron analizar los archivos de traducción.",
       parseCrashed: "Un archivo de traducción detuvo el analizador.",
-      invalidLocaleData: "No se pudieron leer algunas entradas de traducción.",
-      prepareFailed: "No se pudo leer el formato de los archivos en la última sincronización.",
+      invalidLocaleData: "No pudimos leer algunas entradas de traducción.",
+      prepareFailed: "No pudimos leer el formato de los archivos en la última sincronización.",
       partialImport: "Algunos archivos de traducción quedaron fuera de la última sincronización.",
       importFailed: "La última sincronización no pudo terminar.",
       ownerRetries: "Solo los propietarios del proyecto pueden intentarlo de nuevo.",
@@ -875,7 +877,7 @@ export const es = {
       confirmBody: "Pierde el acceso de inmediato. Tus otras apps y tu token personal siguen funcionando.",
       confirm: "Desconectar app",
       disconnected: (name: string): string => `${name} desconectada`,
-      loadFailed: "No se pudieron cargar tus apps conectadas.",
+      loadFailed: "No pudimos cargar tus apps conectadas.",
       unconfirmed: (name: string): string => `No se pudo confirmar que ${name} se desconectó. Si todavía aparece en la lista, vuelve a desconectarla.`,
       dcrIdent: (id: string, host: string): string => `ID de cliente ${id} · vuelve a ${host}`,
     },
@@ -940,7 +942,7 @@ export const es = {
         title: "Esta solicitud ya se respondió",
         body: "Se autorizó o se denegó antes. Revisa la app; si no está conectada, vuelve a conectarte a Malmoi desde allí.",
       },
-      unavailable: { title: "No se pudo cargar esta solicitud", body: "Algo salió mal por nuestra parte. Es posible que la solicitud siga abierta; vuelve a intentarlo en un momento." },
+      unavailable: { title: "No pudimos cargar esta solicitud", body: "Algo salió mal por nuestra parte. Es posible que la solicitud siga abierta; vuelve a intentarlo en un momento." },
       invalid: {
         title: "Esta app no puede conectarse",
         body: "Malmoi no pudo verificar de dónde venía esta solicitud, así que se detuvo aquí. No se compartió nada con la app.",
@@ -1027,7 +1029,7 @@ export const es = {
         description: "Vuelve a autorizar la Malmoi GitHub App para ver tus repositorios.",
       },
       noLink: "Pide a quien administre tu cuenta u organización de GitHub que instale la Malmoi GitHub App y le dé acceso al repositorio.",
-      listFailed: "No se pudieron cargar tus repositorios.",
+      listFailed: "No pudimos cargar tus repositorios.",
     },
 
     repo: {
@@ -1063,7 +1065,7 @@ export const es = {
         none: "Todavía no hay nada que mostrar",
         noneDescription: "Indica una ruta y Malmoi mostrará las claves que encuentre. Si ningún archivo coincide, el proyecto no se crea.",
         rows: "Filas de la vista previa",
-        unavailable: "No se pudo leer este archivo.",
+        unavailable: "No pudimos leer este archivo.",
       },
       manual: {
         format: "Formato de archivo",
@@ -1493,10 +1495,10 @@ export const es = {
         "Malmoi espera un momento entre pull requests para que el repositorio no reciba dos seguidas.",
       wait: (seconds: number): string => `Vuelve a intentarlo en ${seconds.toLocaleString("es")} s`,
 
-      previewFailed: "No se pudo leer lo que se enviaría",
+      previewFailed: "No pudimos leer lo que se enviaría",
       previewFailedDescription: (branch: string): string =>
         `Malmoi lee los archivos de traducción en ${branch} para mostrar lo que cambiarían tus ediciones. Esa lectura no llegó.`,
-      previewFailedTitle: (branch: string): string => `No se pudieron leer los archivos en ${branch}`,
+      previewFailedTitle: (branch: string): string => `No pudimos leer los archivos en ${branch}`,
       previewFailedBody: (n: number): string =>
         `${n === 1 ? "Tu cambio sigue" : `Tus ${n.toLocaleString("es")} cambios siguen`} aquí. Publicar queda desactivado hasta que se pueda mostrar esta lista — enviar sin ella se saltaría el único paso que dice qué reemplaza una pull request.`,
       previewFailedHint:
@@ -1725,7 +1727,7 @@ export const es = {
       previewNone: "Indica una ruta y Malmoi mostrará las claves que encuentre. Si ningún archivo coincide, no se añade nada.",
       blocked: {
         detecting: "Buscando archivos de traducción en el repositorio.",
-        detectFailed: "No se pudo cargar la lista de archivos. Vuelve a intentarlo arriba.",
+        detectFailed: "No pudimos cargar la lista de archivos. Vuelve a intentarlo arriba.",
         conflict: "Algunos de los archivos seleccionados ya pertenecen a otra fuente.",
         base: "Elige un idioma base para cada fuente seleccionada.",
       },
@@ -1986,6 +1988,6 @@ export const es = {
     "write-slot-missing": "No hay un hueco para esta clave, así que se omitió; habría que cambiar la estructura del archivo.",
     "original-file-missing": "El archivo original no está en el repositorio, así que este idioma se omitió y no se envió.",
     "download-failed": "No se pudo descargar el archivo.",
-    fallback: "No se pudo leer este archivo.",
+    fallback: "No pudimos leer este archivo.",
   },
-} as const;
+} satisfies Messages;
