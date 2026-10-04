@@ -2,7 +2,6 @@ import { clearAuthRoundtripCookies } from "@/lib/auth/roundtrip-cookies";
 import { decodeInvitation, decodeUser } from "@/lib/credentials/records";
 import { credentialIO } from "@/lib/credentials/access";
 import type { Metadata } from "next";
-import Image from "next/image";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
@@ -15,6 +14,7 @@ import { ProviderSubmit } from "@/components/signin/provider-button";
 import { Alert } from "@/components/ui/alert";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { SubmitButton } from "@/components/submit-button";
+import { MalmoiMark } from "@/components/ui/malmoi-mark";
 import { maskEmail } from "@/lib/auth/email";
 import { hashInviteToken } from "@/lib/auth/invitation";
 import { planInviteView } from "@/lib/auth/invite-view";
@@ -26,7 +26,6 @@ import type { Messages } from "@/lib/i18n";
 import { getMessages } from "@/lib/i18n/server";
 import { en } from "@/messages/en";
 import { routes } from "@/lib/routes";
-import logo from "@/public/brand/malmoi-icon-black.svg";
 import { firstQueryValues, type Raw } from "@/lib/search-params";
 
 import { acceptInvitation } from "../actions";
@@ -201,7 +200,7 @@ function Card({ m, children }: { m: Messages; children: ReactNode }) {
   return (
     <AuthLayout m={m}>
       <AuthColumn>
-        <Image src={logo} alt="" width={48} height={48} priority />
+        <MalmoiMark size={48} />
         {children}
       </AuthColumn>
     </AuthLayout>

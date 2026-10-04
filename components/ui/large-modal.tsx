@@ -9,9 +9,13 @@ import type { Step } from "@/lib/onboarding/next-enabled";
 import { cn } from "@/lib/utils";
 import { useImeGuard } from "./use-ime-guard";
 
-/** 폭·radius·dim만 공유한다. 이력 상세의 본문·머리·높이 계약은 소비자에 남는다. */
+/**
+ * 폭·radius·dim만 공유한다. 이력 상세의 본문·머리·높이 계약은 소비자에 남는다.
+ * ⚠️ **패널이 `border`를 든다**(Dialog와 같다 — color-scheme design §3.8). 다크에서 scrim이 덮은 바탕과 패널 면이 약 1.07:1이고
+ * `shadow-medium`은 안 보여, 선이 없으면 모달 가장자리가 사라진다. 라이트에서는 scrim 위 `#e5e5e5`라 사실상 그대로다.
+ */
 export const LARGE_MODAL_OVERLAY = "bg-scrim/32 fixed inset-0 z-50 backdrop-blur-[6px]";
-export const LARGE_MODAL_PANEL = "bg-background fixed top-1/2 left-1/2 z-50 flex w-[calc(100%-var(--spacing-modal-gutter))] max-w-[1024px] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl shadow-medium";
+export const LARGE_MODAL_PANEL = "bg-background border-border border fixed top-1/2 left-1/2 z-50 flex w-[calc(100%-var(--spacing-modal-gutter))] max-w-[1024px] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl shadow-medium";
 /** CommandDialog도 같은 높이를 쓴다 — 위치를 바꿔도 하한·상한은 한 벌이다. */
 export const LARGE_MODAL_HEIGHT = "min-h-[min(80svh,800px,calc(100svh-var(--spacing-modal-gutter)))] max-h-[min(800px,calc(100svh-var(--spacing-modal-gutter)))]";
 

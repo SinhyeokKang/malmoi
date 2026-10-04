@@ -1,5 +1,4 @@
 import { LogIn } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 
 import { SearchTrigger } from "@/components/search/search-trigger";
@@ -7,12 +6,12 @@ import { HeaderBar } from "@/components/shell/header-bar";
 import { UserMenu } from "@/components/shell/user-menu";
 import { GithubIcon } from "@/components/signin/brand-icons";
 import { ButtonLink } from "@/components/ui/button";
+import { MalmoiMark } from "@/components/ui/malmoi-mark";
 import type { PublicAccount } from "@/lib/auth/landing";
 import { signOutAction } from "@/lib/auth/sign-out";
 import type { Messages } from "@/lib/i18n";
 import { GITHUB_REPO_URL } from "@/lib/links";
 import { routes } from "@/lib/routes";
-import logo from "@/public/brand/malmoi-icon-black.svg";
 
 /** 시안 1a: 14/500(2026-09-30 사용자 — 400에서 올렸다) · 6/10 · radius 8 · hover `foreground/[0.03]`. */
 const NAV_LINK =
@@ -52,7 +51,7 @@ export function PublicHeader({ m, account, current }: { m: Messages; account: Pu
             aria-label={m.landing.shell.logo}
             className="focus-visible:ring-ring flex size-8 shrink-0 items-center justify-center rounded-sm focus-visible:ring-2 focus-visible:outline-none"
           >
-            <Image src={logo} alt="" width={32} height={32} priority />
+            <MalmoiMark size={32} />
           </Link>
           <nav aria-label={m.landing.shell.nav} className="flex items-center gap-0.5">
             <Link href={routes.docs()} aria-current={current === "docs" ? "page" : undefined} className={NAV_LINK}>

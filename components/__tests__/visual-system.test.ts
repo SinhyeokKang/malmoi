@@ -91,10 +91,12 @@ function buttonOverrides(source: string): string[] {
 }
 
 /**
- * **색 리터럴이 서도 되는 자리는 남의 자산뿐이다** (DESIGN §6.2 · color-scheme spec 완료 조건 2) — Google 로고 4색과
- * 초대 메일(라이트 고정, 메일 클라이언트는 우리 CSS를 모른다). 늘리려면 §6.2와 이 목록을 함께 고친다.
+ * **색 리터럴이 서도 되는 자리는 남의 자산뿐이다** (DESIGN §6.2 · color-scheme spec 완료 조건 2) — Google 로고 4색 ·
+ * OpenAI 로고의 흰 판(두 테마 같은 판 — `brand-logo.tsx`, color-scheme design §3.5) · 초대 메일(라이트 고정, 메일 클라이언트는 우리 CSS를 모른다).
+ * 늘리려면 §6.2와 이 목록을 함께 고친다.
  */
-const COLOR_LITERAL_OWNERS = (path: string): boolean => path === "components/signin/brand-icons.tsx" || path.startsWith("lib/invitation-email/");
+const COLOR_LITERAL_OWNERS = (path: string): boolean =>
+  path === "components/signin/brand-icons.tsx" || path === "components/mcp/brand-logo.tsx" || path.startsWith("lib/invitation-email/");
 const COLOR_LITERAL = /(?<![\w&#])#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})(?![\w-])|(?<![\w-])(?:rgba?|hsla?|oklch|oklab)\(/g;
 const SCRIM_AS_FOREGROUND = /(?<![\w-])(?:[a-z-]+:)*bg-foreground\/(?:32|40)(?![\w-])/g;
 const DARK_VARIANT = /(?<![\w-])(?:[a-z-]+:)*dark:[\w[-]/g;
@@ -141,6 +143,11 @@ describe("raw 색은 0곳이다 — 색은 의미 토큰이 든다 (audit #43·#
     expect(hits(COLOR_LITERAL, ALL_SOURCES.filter(({ path }) => !COLOR_LITERAL_OWNERS(path))).map(({ path, token }) => `${path}: ${token}`)).toEqual([]);
   });
 
+  /** 에이전트 로고 파일은 통째로 허용된 자리가 아니다 — OpenAI 흰 판 하나뿐이다. 늘면 그 색이 왜 테마를 안 따르는지가 먼저다. */
+  it("`brand-logo.tsx`의 색 리터럴은 OpenAI 흰 판 하나다", () => {
+    expect(hits(COLOR_LITERAL, ALL_SOURCES.filter(({ path }) => path === "components/mcp/brand-logo.tsx")).map(({ token }) => token)).toEqual(["#ffffff"]);
+  });
+
   it("색 리터럴 카나리아 — 잡을 것과 놓아줄 것", () => {
     const found = (source: string) => hits(COLOR_LITERAL, [{ path: "components/canary.tsx", source }]).map(({ token }) => token);
     expect(found('fill="#4285F4" style={{ color: "#fff", background: "rgba(0,0,0,.5)" }} stroke="hsl(0 0% 0%)" c="oklch(50% 0 0)"')).toEqual(["#4285F4", "#fff", "rgba(", "hsl(", "oklch("]);
@@ -179,8 +186,22 @@ describe("raw 색은 0곳이다 — 색은 의미 토큰이 든다 (audit #43·#
     expect(shell).not.toContain("100vh");
   });
 
+  /** 색 리터럴이 서도 되는 남의 자산 자리(`COLOR_LITERAL_OWNERS` — OpenAI 흰 판)만 뺀다 — 허용 목록은 하나다. */
   it("임의값 안에 hex·rgba를 쓰지 않는다 — 토큰의 알파로 접는다", () => {
-    expect(hits(/[\w:-]+-\[[^\]\s]*(?:rgba?\(|#[0-9a-fA-F]{3,8})[^\]\s]*\]/g).map(({ path, token }) => `${path}: ${token}`)).toEqual([]);
+    expect(hits(/[\w:-]+-\[[^\]\s]*(?:rgba?\(|#[0-9a-fA-F]{3,8})[^\]\s]*\]/g, SOURCES.filter(({ path }) => !COLOR_LITERAL_OWNERS(path))).map(({ path, token }) => `${path}: ${token}`)).toEqual([]);
+  });
+});
+
+/**
+ * **떠 있는 패널은 윤곽 선을 든다** (color-scheme design §2.2 · §3.8). 다크에서 scrim이 덮은 바탕(약 `#0e0e0e`)과 모달 면(`#171717`)이
+ * 약 1.07:1이고 `shadow-medium`은 안 보인다 — 층을 만드는 것은 면 단계 + `border`다. Dialog는 이미 들었고 LargeModal이 맞췄다.
+ */
+describe("모달 패널 윤곽", () => {
+  const panel = (path: string, name: string) => new RegExp(`${name} =\\s*"([^"]*)"`).exec(read(path))?.[1]?.split(" ") ?? [];
+
+  it("LargeModal 패널이 `border border-border`를 든다 — Dialog와 같다", () => {
+    expect(panel("components/ui/large-modal.tsx", "LARGE_MODAL_PANEL")).toEqual(expect.arrayContaining(["border", "border-border"]));
+    expect(read("components/ui/dialog.tsx")).toMatch(/"bg-background border-border [^"]*"[\s\S]{0,80}"shadow-medium rounded-lg border"/);
   });
 });
 

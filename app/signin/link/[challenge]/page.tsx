@@ -1,6 +1,5 @@
 import { clearAuthRoundtripCookies } from "@/lib/auth/roundtrip-cookies";
 import type { Metadata } from "next";
-import Image from "next/image";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -12,6 +11,7 @@ import { GithubIcon, GoogleIcon } from "@/components/signin/brand-icons";
 import { Alert } from "@/components/ui/alert";
 import { EntityCard } from "@/components/ui/entity-card";
 import { ButtonLink } from "@/components/ui/button";
+import { MalmoiMark } from "@/components/ui/malmoi-mark";
 import { getPrisma } from "@/lib/db";
 import { logCaught } from "@/lib/failure";
 import { requestOrigin } from "@/lib/github-connect/origin";
@@ -25,7 +25,6 @@ import { linkCookie, outcomeUrl, type LinkDest, type LoginProvider } from "@/lib
 import { loadChallengeView } from "@/lib/login-link/view";
 import { routes } from "@/lib/routes";
 import { firstQueryValues, type Raw } from "@/lib/search-params";
-import logo from "@/public/brand/malmoi-icon-black.svg";
 import { formatMonth } from "@/lib/date-format";
 
 /** ⚠️ **색인 거부 + referrer 없음** — `/invite/<token>`과 같은 이유다(challenge가 경로에 실린다). */
@@ -67,7 +66,7 @@ export default async function LinkAccountPage({
   return (
     <AuthLayout m={m}>
       <AuthColumn>
-        <Image src={logo} alt="" width={48} height={48} priority />
+        <MalmoiMark size={48} />
         <AuthHeading
           title={m.link.title}
           description={m.link.description(providerLabel(m, view.pending), providerLabel(m, view.have))}

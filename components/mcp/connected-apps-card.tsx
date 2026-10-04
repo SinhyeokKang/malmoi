@@ -5,7 +5,7 @@ import { unstable_rethrow, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 
 import { disconnectOAuthConnection, type OAuthDisconnectResult } from "@/app/(edit)/mcp/actions";
-import { BrandLogo } from "@/components/mcp/brand-logo";
+import { BrandLogo, brandPlate } from "@/components/mcp/brand-logo";
 import { GrantBadges } from "@/components/mcp/grant-badges";
 import { CopyButton } from "@/components/ui/copy-button";
 import { McpIcon } from "@/components/signin/brand-icons";
@@ -195,7 +195,7 @@ export function ConnectedAppsCard({ apps, now, serverUrl }: { apps: readonly Con
               {/* 이름만으로는 같은 이름의 두 연결을 못 가른다 — 식별 줄까지 보인다(핸드오프 §7.5). */}
               <div data-disconnect-app className="border-border flex items-center gap-3 rounded-lg border p-3">
                 {/* 행과 같은 로고 칸이다 — 무엇을 끊는지 목록에서 본 모양 그대로 알아본다. */}
-                <IconTile size="lg">
+                <IconTile size="lg" className={brandPlate(target.brand)}>
                   {target.brand === null ? <McpIcon /> : <BrandLogo brand={target.brand} className="size-5" />}
                 </IconTile>
                 <div className="flex min-w-0 flex-col gap-px">
@@ -229,7 +229,7 @@ function AppRow({ app, now, onDisconnect }: { app: ConnectedAppData; now: Date; 
   return (
     <div data-app-row={app.id} className="flex items-center gap-4 px-4 py-row-y">
       {/* 왼쪽 로고 칸은 40(`lg`)이다(2026-09-30 사용자). 만료 행도 로고는 그대로다 — 흐리게 하면 원본 색이 바뀐다. */}
-      <IconTile size="lg" data-app-logo className="self-start">
+      <IconTile size="lg" data-app-logo className={cn("self-start", brandPlate(app.brand))}>
         {app.brand === null ? <McpIcon /> : <BrandLogo brand={app.brand} className="size-5" />}
       </IconTile>
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">

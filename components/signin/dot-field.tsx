@@ -58,12 +58,17 @@ export function DotField({ className }: { className?: string }) {
      * ⚠️ **색을 tsx에 hex로 박지 않는다** — 리포에 tsx 내 hex 리터럴이 0건이다(DESIGN §6.2).
      * CSS 커스텀 프로퍼티에서 읽어 값의 집을 `globals.css` 하나로 둔다.
      *
+     * ⚠️ **`--signin-dot`을 직접 읽지 않고 캔버스의 계산된 `color`를 읽는다**(color-scheme design §3.5). 그 변수가 `light-dark()`라
+     * 사용자 정의 속성으로 읽으면 선언 문자열이 올 수 있고 `fillStyle`은 그것을 모른다 — 캔버스 `style`의 `color: var(--signin-dot)`를
+     * 브라우저가 풀어 준다(2026-10-05 P2-0 실측: Chromium은 `lab()`을 주고 `fillStyle`이 그대로 받는다).
+     *
      * ⚠️ **폴백을 두지 않는다.** 이 코드는 effect 안에서만 돌므로 스타일시트가 이미 적용된
      * 뒤이고(SSR 경로가 없다), 폴백을 두면 **같은 색의 두 번째 사본**이 생겨 `globals.css`를
      * 고쳐도 여기가 안 따라오는 자리가 된다. 토큰이 없으면 도트가 안 보이는 것이 맞다 —
      * 그래야 그것이 결함으로 드러난다.
      */
-    const color = getComputedStyle(canvas).getPropertyValue("--signin-dot").trim();
+    const readColor = () => getComputedStyle(canvas).color;
+    let color = readColor();
 
     /**
      * **실제** 커서. 캔버스 좌표계이고 `null`이면 자동 순회가 대신 든다.
@@ -163,6 +168,17 @@ export function DotField({ className }: { className?: string }) {
     observer.observe(canvas);
 
     /**
+     * ⚠️ **System이면 OS 테마가 바뀔 때 색이 바뀐다** — CSS는 저절로 따라가지만 캔버스는 칠해 둔 픽셀이라 다시 읽어 다시 그린다.
+     * 움직임 줄이기에서 루프가 없으므로 여기서 직접 한 번 그린다. 명시한 Light·Dark에서는 계산값이 그대로라 같은 색을 다시 칠할 뿐이다.
+     */
+    const scheme = window.matchMedia("(prefers-color-scheme: dark)");
+    const onScheme = () => {
+      color = readColor();
+      draw();
+    };
+    scheme.addEventListener("change", onScheme);
+
+    /**
      * ⚠️ **이 effect의 함수가 전부 화살표다.** `function` 선언은 호이스팅되므로 TS가 위
      * `canvas !== null`·`ctx !== null` 좁힘을 그 안까지 들고 가지 못하고, 그러면 `canvas!`·`ctx!`
      * 단언이 되살아난다 — 실제로 하나만 바꿨더니 에러가 다른 함수로 옮겨 다녔다.
@@ -186,11 +202,12 @@ export function DotField({ className }: { className?: string }) {
     return () => {
       cancelAnimationFrame(frame);
       observer.disconnect();
+      scheme.removeEventListener("change", onScheme);
       canvas.removeEventListener("pointermove", onMove);
       canvas.removeEventListener("pointerleave", onLeave);
     };
   }, []);
 
   /** ⚠️ **장식이라 접근성 트리 밖이다** — 948px짜리 배경이고 읽을 내용이 0이다. */
-  return <canvas ref={ref} aria-hidden="true" className={className} />;
+  return <canvas ref={ref} aria-hidden="true" className={className} style={{ color: "var(--signin-dot)" }} />;
 }

@@ -1,5 +1,4 @@
 import { ChevronsUpDown, PanelLeftClose, Plus, Search } from "lucide-react";
-import Image from "next/image";
 import type { ReactNode } from "react";
 
 import { ProjectThumbnail } from "@/components/ui/project-thumbnail";
@@ -10,10 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { buttonClass } from "@/components/ui/button";
 import { FIELD_BUTTON_CLASS } from "@/components/ui/field-button";
 import { Kbd } from "@/components/ui/kbd";
+import { MalmoiMark } from "@/components/ui/malmoi-mark";
 import type { Messages } from "@/lib/i18n";
 import { navFooterItems, navZones, type NavItem } from "@/lib/shell/nav";
 import { cn } from "@/lib/utils";
-import logo from "@/public/brand/malmoi-icon-black.svg";
 
 /**
  * 목업 안의 앱 셸 — 헤더 40 · LNB 240 · 핸들 8 · `ContentPanel`을 **정적 복제**로 그린다(DESIGN §6.615 — 실제 셸은 Server Action·세션에 묶여 있다).
@@ -50,7 +49,7 @@ export function AppFrame({ m, children, overlay }: { m: Messages; children: Reac
         className="h-10"
         start={
           <span className="flex size-8 items-center justify-center rounded-lg">
-            <Image src={logo} alt="" width={32} height={32} />
+            <MalmoiMark size={32} />
           </span>
         }
         center={

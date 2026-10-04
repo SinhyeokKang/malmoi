@@ -1,6 +1,5 @@
 import { Link as InlineLink } from "@/components/ui/link";
 import type { Metadata } from "next";
-import Image from "next/image";
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -15,6 +14,7 @@ import { GithubIcon, GoogleIcon } from "@/components/signin/brand-icons";
 import { ProviderSubmit } from "@/components/signin/provider-button";
 import { Alert } from "@/components/ui/alert";
 import { ButtonLink } from "@/components/ui/button";
+import { MalmoiMark } from "@/components/ui/malmoi-mark";
 import { readSession } from "@/lib/auth/read-session";
 import { clearAuthRoundtripCookies } from "@/lib/auth/roundtrip-cookies";
 import { decodeUser } from "@/lib/credentials/records";
@@ -36,7 +36,6 @@ import { readAuthorizationRequest, storeAuthorizationRequest } from "@/lib/oauth
 import { fetchClientMetadata } from "@/lib/oauth-server/client-metadata-fetch";
 import { routes } from "@/lib/routes";
 import { formatDay } from "@/lib/date-format";
-import logo from "@/public/brand/malmoi-icon-black.svg";
 
 /**
  * ⚠️ **색인 거부 + referrer 없음** — 요청 ID가 주소에 실린다(`/invite/[token]`과 같은 이유). ⚠️ `lib/seo/analytics.ts`의 추적 허용 목록에도 없다.
@@ -111,7 +110,7 @@ export default async function OAuthAuthorizePage({ searchParams }: { searchParam
     return (
       <AuthLayout m={m}>
         <AuthColumn>
-          <Image src={logo} alt="" width={48} height={48} priority />
+          <MalmoiMark size={48} />
           <AuthHeading title={m.oauthAuthorize.title} description={m.oauthAuthorize.signInDescription} />
           {/* `1k` — 동의 중 세션이 끝났다. 낭독이 먼저 오도록 `role="alert"`다(핸드오프 §8 탭 순서). */}
           {view.kind === "sign-in" && view.notice === "signed-out" && (
@@ -156,7 +155,7 @@ export default async function OAuthAuthorizePage({ searchParams }: { searchParam
       {/* 동의 단계만 `<main>` 안이 스크롤한다 — 폼이 뷰포트보다 길다(핸드오프 §7.1: padding 48/32/32 · 480 컬럼). */}
       <div className="min-h-0 w-full flex-1 overflow-y-auto px-8 pt-12 pb-8">
         <div className="mx-auto flex w-[480px] flex-col items-center gap-4">
-          <Image src={logo} alt="" width={48} height={48} priority />
+          <MalmoiMark size={48} />
           <AuthHeading title={m.oauthAuthorize.title} description={m.oauthAuthorize.consentDescription} />
           <ConsentPanel
             requestId={requestId}
@@ -249,7 +248,7 @@ function Ended({ m, view, retryHref }: { m: Messages; view: Extract<AuthorizeVie
   return (
     <AuthLayout m={m}>
       <AuthColumn>
-        <Image src={logo} alt="" width={48} height={48} priority />
+        <MalmoiMark size={48} />
         <AuthHeading title={copy.title} description={copy.body} />
         {cta}
       </AuthColumn>

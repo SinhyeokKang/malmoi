@@ -1,12 +1,11 @@
-import Image from "next/image";
 import Link from "next/link";
 
 import { SearchTrigger } from "@/components/search/search-trigger";
 import type { NavProject } from "@/lib/shell/nav";
 import { PUBLIC_HEADER_LINK } from "@/components/public-shell/header";
+import { MalmoiMark } from "@/components/ui/malmoi-mark";
 import type { Messages } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
-import logo from "@/public/brand/malmoi-icon-black.svg";
 
 import { HeaderBar } from "./header-bar";
 import { NewProjectIcon } from "./new-project-icon";
@@ -52,8 +51,8 @@ export function Header({
           aria-label={m.common.nav.appHome}
           className="focus-visible:ring-ring flex size-8 items-center justify-center rounded-sm focus-visible:ring-2 focus-visible:outline-none"
         >
-          {/* 로고는 커밋된 원본이다(`public/brand/`) — 폰트와 달리 생성물이 아니다 (규약 2). */}
-          <Image src={logo} alt="" width={32} height={32} priority />
+          {/* 로고는 토큰으로 칠하는 인라인 SVG다 — 다크에서 면·마크가 저절로 뒤집힌다(`MalmoiMark`). */}
+          <MalmoiMark size={32} />
         </Link>
       }
       end={

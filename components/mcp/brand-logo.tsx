@@ -13,6 +13,17 @@ import { cn } from "@/lib/utils";
  */
 const OPTICAL: Partial<Record<Brand, string>> = { openai: "scale-150" };
 
+/**
+ * ⚠️ **OpenAI 칸은 두 테마 같은 흰 판이다** (color-scheme design §3.5 — 2026-10-05 시안 확정). 공식 마크가 검정 하나뿐이라 다크 칸 위에서
+ * 사라지는데, 파일을 바꾸거나 칠하면 "받은 그대로"가 깨진다 — 판을 깐다. **브랜드 자산 규칙이라 토큰이 아니라 리터럴이다**: 테마를 따라가면
+ * 다크에서 다시 검정 위 검정이다. 그래서 이 파일이 `visual-system.test.ts` `COLOR_LITERAL_OWNERS`의 한 자리다. 칸(`IconTile`)의 면만 덮는다.
+ */
+const PLATE: Partial<Record<Brand, string>> = { openai: "bg-[#ffffff]" };
+
+export function brandPlate(brand: Brand | null): string | undefined {
+  return brand === null ? undefined : PLATE[brand];
+}
+
 export function BrandLogo({ brand, className }: { brand: Brand; className?: string }) {
   return <img src={BRAND_LOGO[brand]} alt="" aria-hidden className={cn("shrink-0 object-contain", OPTICAL[brand], className)} />;
 }
