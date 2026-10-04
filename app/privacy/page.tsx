@@ -34,7 +34,7 @@ export default async function Privacy() {
 
   return (
     <PublicShell m={m} account={publicAccount(session)}>
-      <PrivacyDoc m={m} uiLocale={uiLocale} doc={uiLocale === "ko" ? koPrivacy : en.publicDocs.privacy} />
+      <PrivacyDoc m={m} uiLocale={uiLocale} {...(uiLocale === "ko" ? { doc: koPrivacy, lang: "ko" } : { doc: en.publicDocs.privacy, lang: "en" })} />
     </PublicShell>
   );
 }

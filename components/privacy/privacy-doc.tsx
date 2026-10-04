@@ -19,14 +19,18 @@ import type { ReactNode } from "react";
 /** 3열 표의 열 폭 — 방침 문구가 아니라 열 수에서 온다. 셋째 열은 나머지다. */
 const TABLE_3COL = "[&_th:nth-child(1)]:w-[34%] [&_th:nth-child(2)]:w-[26%]";
 
-export function PrivacyDoc({ m, uiLocale, doc }: { m: Messages; uiLocale: UiLocale; doc: PrivacyBody }) {
+/**
+ * ⚠️ **`lang`은 본문의 언어다**(R10 🟡1) — es 화면은 en 본문이라 `<html lang="es">` 안에서 본문·목차가 스페인어 음성 규칙으로 읽혔다(WCAG 3.1.2).
+ * 그릇 전체가 본문 언어를 들고, 셸 문구(시행일 줄)와 셸 형으로 만든 날짜(`utcDay(uiLocale)`)만 화면 언어로 되돌린다.
+ */
+export function PrivacyDoc({ m, uiLocale, doc, lang }: { m: Messages; uiLocale: UiLocale; doc: PrivacyBody; lang: "en" | "ko" }) {
   const { title, effectiveDate, intro, sections, tocLabels, toc } = doc;
   // 키가 절 `id`(사전 데이터)라 프로토타입을 끊고 찾는다 — `constructor` 같은 id가 `Object.prototype`에서 값을 얻지 않게.
   const labels: Readonly<Record<string, string>> = tocLabels;
   const tocItems = sections.map(({ id, heading }) => ({ id, heading: Object.hasOwn(labels, id) ? (labels[id] ?? heading) : heading }));
 
   return (
-    <div className="mx-auto grid max-w-[1120px] grid-cols-[minmax(0,720px)_200px] justify-between gap-16 px-10 pt-16 pb-30">
+    <div lang={lang} className="mx-auto grid max-w-[1120px] grid-cols-[minmax(0,720px)_200px] justify-between gap-16 px-10 pt-16 pb-30">
       <article className="min-w-0">
         <h1 className="m-0 text-4xl leading-[1.3] font-semibold">{title}</h1>
         {/*
@@ -34,7 +38,7 @@ export function PrivacyDoc({ m, uiLocale, doc }: { m: Messages; uiLocale: UiLoca
           사전의 `"YYYY-MM-DD"`는 `dateTime`에 그대로 넣고(날짜만 든 `datetime`은 올바른 HTML이다) 보이는 쪽만
           앱의 날짜 형(`utcDay`)이다 — 사전 값을 바꾸면 `policy-gate`가 개정 이력을 요구한다.
         */}
-        <p className="text-muted-foreground mt-3 text-sm leading-body">
+        <p lang={uiLocale} className="text-muted-foreground mt-3 text-sm leading-body">
           {m.publicDocs.effectiveDate} <time dateTime={effectiveDate}>{utcDay(new Date(effectiveDate), uiLocale)}</time>
         </p>
         <p className={cn(PROSE, "mt-6")}>{intro}</p>
@@ -97,5 +101,5 @@ function RevisionLine({ item, uiLocale }: { item: ReactNode; uiLocale: UiLocale 
   const match = typeof item === "string" ? REVISION.exec(item) : null;
   if (match === null || typeof item !== "string") return <>{item}</>;
   const iso = match[1] ?? "";
-  return <><time dateTime={iso}>{utcDay(new Date(iso), uiLocale)}</time> — {item.slice(match[0].length)}</>;
+  return <><time lang={uiLocale} dateTime={iso}>{utcDay(new Date(iso), uiLocale)}</time> — {item.slice(match[0].length)}</>;
 }

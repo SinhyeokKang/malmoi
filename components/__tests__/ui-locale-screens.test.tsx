@@ -41,7 +41,7 @@ describe("ko 화면 렌더", () => {
   });
 
   it("방침 — 머리 시행일과 개정 이력 날짜가 같은 ko 형이다", async () => {
-    const { container } = await render(h(PrivacyDoc, { m: ko, uiLocale: "ko", doc: koPrivacy }));
+    const { container } = await render(h(PrivacyDoc, { m: ko, uiLocale: "ko", doc: koPrivacy, lang: "ko" }));
     expect(container.querySelector("h1")?.textContent).toBe(koPrivacy.title);
     const times = [...container.querySelectorAll("time")];
     expect(times.length).toBeGreaterThan(1);

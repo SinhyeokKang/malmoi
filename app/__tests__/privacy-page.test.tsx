@@ -94,4 +94,16 @@ describe("`/privacy` — 본문 언어", () => {
     expect(container.querySelector("footer")?.textContent).toContain(es.signIn.footer.privacy);
     expect(container.querySelector("main h1")?.textContent).toBe(en.publicDocs.privacy.title);
   });
+
+  /** WCAG 3.1.2 (R10 🟡1) — es 화면에서 영어 본문이 스페인어 음성 규칙으로 읽히지 않게 본문 그릇이 `lang="en"`을 든다. 셸 문구는 화면 언어다. */
+  it.each([["en", "en"], ["ko", "ko"], ["es", "en"]] as const)("%s 화면 → 본문·목차 lang=%s, 시행일 줄·이력 날짜는 화면 언어", async (uiLocale, lang) => {
+    mocks.uiLocale = uiLocale;
+    const { container } = await page("none");
+    const article = container.querySelector("main article");
+    expect(article?.closest("[lang]")?.getAttribute("lang")).toBe(lang);
+    expect(container.querySelector("main nav")?.closest("[lang]")?.getAttribute("lang")).toBe(lang);
+    const times = [...container.querySelectorAll("main article time")];
+    expect(times.length).toBeGreaterThan(1);
+    for (const time of times) expect(time.closest("[lang]")?.getAttribute("lang")).toBe(uiLocale);
+  });
 });

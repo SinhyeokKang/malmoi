@@ -1,3 +1,5 @@
+import { createElement, Fragment, type ReactNode } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { en } from "@/messages/en";
@@ -135,5 +137,84 @@ describe("방침 두 본(en·ko) — 동형", () => {
     const koText = docText(ko.sections);
     expect(koText.length).toBeGreaterThan(1500);
     expect(docDigest(koText)).toBe(REVISIONS.at(-1)?.koDigest);
+  });
+});
+
+/**
+ * **두 본의 사실 대조** (R10 🟡3) — 위 동형 검사는 구조만 센다. 해시(`koDigest`)는 "ko 본이 바뀌었다"만 알리므로, 해시만 갱신하면 ko의 보존 기간
+ * `30일`이 `3일`이 되거나 전송처 하나가 빠져도 green이었다. 모양이 튜플로 정렬돼 있으니 **문단·목록 항목·표 셀 단위로 짝을 맞춰** 사실 토큰
+ * (숫자 · 고정 고유명 · `href`)을 견준다. 문장 자체의 대조는 사람(검수)의 몫이다.
+ *
+ * ⚠️ **정규화 표는 수사만 바꾼다** — en이 낱말로 쓴 수(`one minute`·`a year`·`five`)와 ko의 고유어 수·지명 표기를 숫자·en 표기로 맞춘다. 사실을
+ * 맞추려고 이 표를 늘리지 않는다(그러면 게이트가 빈다). 새 문장이 이 표 밖의 수사를 쓰면 red이고, 그때 표에 한 줄을 더한다.
+ */
+describe("방침 두 본(en·ko) — 사실 대조", () => {
+  type Unit = { path: string; node: ReactNode };
+  const units = (body: typeof koPrivacy | typeof privacy): Unit[] => [
+    { path: "intro", node: body.intro },
+    ...body.sections.flatMap((section) =>
+      section.blocks.flatMap((block, b): Unit[] => {
+        const at = `${section.id}.blocks[${b}]`;
+        if ("p" in block) return [{ path: at, node: block.p }];
+        if ("ul" in block) return block.ul.map((node, i) => ({ path: `${at}.ul[${i}]`, node }));
+        return [
+          ...block.table.head.map((node, i) => ({ path: `${at}.head[${i}]`, node })),
+          ...block.table.rows.flatMap((row, r) => row.map((node, c) => ({ path: `${at}.rows[${r}][${c}]`, node }))),
+        ];
+      }),
+    ),
+  ];
+
+  const NORMALIZE: Readonly<Record<"en" | "ko", readonly (readonly [RegExp, string])[]>> = {
+    en: [[/\bone minute\b/g, "1 minute"], [/\ba year\b/g, "1 year"], [/\bfive\b/g, "5"]],
+    ko: [[/다섯/g, "5"], [/도쿄/g, "Tokyo"]],
+  };
+  /** 수 바로 뒤의 시간 단위 — 같은 수라도 `1 year`와 `1개월`은 다른 사실이다. en `30, 90 or 365 days`처럼 단위를 끝에 한 번 쓰는 열거도 있어 수와 단위를 따로 센다. */
+  const UNITS: Readonly<Record<"en" | "ko", readonly (readonly [RegExp, string])[]>> = {
+    en: [[/\d+\s*minutes?\b/g, "unit:minute"], [/\d+\s*hours?\b/g, "unit:hour"], [/\d+\s*days?\b/g, "unit:day"], [/\d+\s*months?\b/g, "unit:month"], [/\d+\s*years?\b/g, "unit:year"]],
+    ko: [[/\d+\s*분/g, "unit:minute"], [/\d+\s*시간/g, "unit:hour"], [/\d+\s*일/g, "unit:day"], [/\d+\s*개월/g, "unit:month"], [/\d+\s*년/g, "unit:year"]],
+  };
+  const NAMES = ["GitHub", "Google", "Supabase", "Vercel", "Web Analytics", "Resend", "Claude Code", "Codex", "MCP", "Tokyo", "mal-moi.com", "http-only"];
+
+  /**
+   * 한 단위의 사실 토큰 — **집합**이다. 다중집합이면 번역이 주어를 한 번 생략한 것(`Vercel … Vercel uses` ↔ `Vercel이 … 쓰며`)까지 red가 된다 —
+   * 사실이 아니라 문체를 재게 된다.
+   */
+  function facts(node: ReactNode, lang: "en" | "ko"): string[] {
+    const markup = renderToStaticMarkup(createElement(Fragment, null, node));
+    const hrefs = [...markup.matchAll(/href="([^"]*)"/g)].map((match) => `href:${match[1]}`);
+    // 문자 참조를 먼저 지운다 — `&#x27;`(아포스트로피)의 `27`이 수로 세어진다.
+    let text = markup.replace(/<[^>]*>/g, " ").replace(/&[#\w]+;/g, " ");
+    for (const [pattern, to] of NORMALIZE[lang]) text = text.replace(pattern, to);
+    const names = NAMES.flatMap((name) => Array.from({ length: text.split(name).length - 1 }, () => name));
+    // 고유명 안의 수(`mal-moi.com`에는 없다)·이메일 주소 안의 숫자도 수로 센다 — 두 본이 같은 주소를 쓰면 같은 수가 나온다.
+    const numbers = [...text.matchAll(/\d+/g)].map((match) => String(Number(match[0])));
+    const units = UNITS[lang].filter(([pattern]) => text.search(pattern) !== -1).map(([, unit]) => unit);
+    return [...new Set([...hrefs, ...names, ...numbers, ...units])].sort();
+  }
+
+  it("짝 맞춘 단위마다 숫자·고유명·href가 같다", () => {
+    const [enUnits, koUnits] = [units(privacy), units(koPrivacy)];
+    expect(koUnits.map((u) => u.path)).toEqual(enUnits.map((u) => u.path));
+    const diffs = enUnits.flatMap((unit, i) => {
+      const [a, b] = [facts(unit.node, "en"), facts(koUnits[i]?.node, "ko")];
+      return JSON.stringify(a) === JSON.stringify(b) ? [] : [{ path: unit.path, en: a, ko: b }];
+    });
+    expect(diffs).toEqual([]);
+  });
+
+  it("검사가 실제로 가른다 — 기간·전송처·연락처·쿠키 기간 하나를 바꾸면 그 단위가 걸린다", () => {
+    expect(facts("Resend keeps it for 30 days.", "en")).not.toEqual(facts("Resend가 3일간 보관합니다.", "ko"));
+    expect(facts("GitHub, Google and Resend", "en")).not.toEqual(facts("GitHub, Google", "ko"));
+    expect(facts(<a href="mailto:a@x.dev">a@x.dev</a>, "en")).not.toEqual(facts(<a href="mailto:b@x.dev">b@x.dev</a>, "ko"));
+    expect(facts("1 year from your last choice", "en")).not.toEqual(facts("마지막으로 고른 때부터 1개월", "ko"));
+    // 정규화는 수사만 맞춘다.
+    expect(facts("lasts one minute, in Tokyo, to five services", "en")).toEqual(facts("1분간, 도쿄에서, 다섯 서비스로", "ko"));
+  });
+
+  it("단위가 충분히 많고 사실 토큰이 실제로 나온다 — 0건은 방어선이 아니다", () => {
+    const all = units(privacy).flatMap((unit) => facts(unit.node, "en"));
+    expect(units(privacy).length).toBeGreaterThan(60);
+    for (const token of ["Resend", "Tokyo", "href:mailto:ox501501@gmail.com", "30", "365"]) expect(all, token).toContain(token);
   });
 });
