@@ -4,7 +4,7 @@ import { Dialog as Primitive } from "radix-ui";
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 
 import { CloseButton } from "@/components/ui/close-button";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import type { Step } from "@/lib/onboarding/next-enabled";
 import { cn } from "@/lib/utils";
 import { useImeGuard } from "./use-ime-guard";
@@ -57,6 +57,7 @@ export function LargeModal({
   onClose,
   children, notice, actions, closeLabel, closeDisabled = false, className, transitionKey, quiet = false, fallbackFocusRef, returnFocusRef, initialFocusRef,
 }: LargeModalProps) {
+  const m = useMessages();
   const bodyRef = useRef<HTMLDivElement>(null);
   const ime = useImeGuard();
   /**

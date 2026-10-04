@@ -3,7 +3,7 @@
 import { Search } from "lucide-react";
 import { createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import { nextActive, reconcileActive } from "@/lib/search/keys";
 import { cn } from "@/lib/utils";
 import { Input } from "./input";
@@ -26,6 +26,7 @@ function useCommand() {
 
 /** ids는 표시 순서의 논리 ID다. DOM ID는 Command마다 이름 공간을 둔다. */
 export function Command({ ids, query, children }: { ids: readonly string[]; query: string; children: ReactNode }) {
+  const m = useMessages();
   const prefix = useId();
   const root = useRef<HTMLDivElement>(null);
   const ime = useImeGuard();
@@ -74,6 +75,7 @@ export function Command({ ids, query, children }: { ids: readonly string[]; quer
 export function CommandInput({ value, onValueChange, label, placeholder }: {
   value: string; onValueChange: (value: string) => void; label: string; placeholder: string;
 }) {
+  const m = useMessages();
   const { listId, activeId, optionId } = useCommand();
   return <div className="border-divider flex h-12 shrink-0 items-center gap-2 border-b pr-4 pl-3">
     <div className="min-w-0 flex-1">
@@ -136,6 +138,7 @@ export function CommandItem({ id, href, title, icon, context, description, badge
   /** 실제 클릭이 document 이탈 가드에 닿기 전에 닫힘을 예약한다. 클릭 요소를 동기 unmount하지 않는다. */
   onNavigate: (event: MouseEvent) => void;
 }) {
+  const m = useMessages();
   const { activeId, optionId, activate } = useCommand();
   const anchor = useRef<HTMLAnchorElement>(null);
   const selected = activeId === id;

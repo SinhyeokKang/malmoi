@@ -20,7 +20,7 @@ import { loadAccountView } from "@/lib/github-connect/account-view";
 import { installationSettingsUrl } from "@/lib/github-connect/installation-url";
 import { loadInstalledRepoCount } from "@/lib/github-connect/installed-repos";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
-import { m } from "@/lib/i18n";
+import { getMessages } from "@/lib/i18n/server";
 import { linkErrorMessage, providerLabel } from "@/lib/login-link/message";
 import { isLoginProvider, loginMethodRows, LOGIN_PROVIDERS, pickLoginAccount } from "@/lib/login-link/policy";
 import { firstQueryValues, type Raw } from "@/lib/search-params";
@@ -50,6 +50,7 @@ import { firstQueryValues, type Raw } from "@/lib/search-params";
  * 재로그인은 그 메서드를 부르지 않는다** — 그 계약을 `lib/credentials/__tests__`의 둘이 든다.
  */
 export default async function AccountPage({ searchParams }: { searchParams: Promise<Raw<"e" | "sessionRevocation" | "link" | "connect">> }) {
+  const m = await getMessages();
   const { userId } = await requireUser();
 
   /**

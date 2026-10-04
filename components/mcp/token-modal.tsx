@@ -9,7 +9,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useLandAfter } from "@/components/ui/focus";
 import { LargeModal } from "@/components/ui/large-modal";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import type { TokenGrant } from "@/lib/mcp/grant";
 
 import { chosenProjectIds, GRANT_ORDER, initialGrantFields, TokenGrantFields, type GrantFieldsValue, type ScopeProject } from "./token-grant-fields";
@@ -49,6 +49,7 @@ export function TokenModal({
   returnFocusRef: RefObject<HTMLElement | null>;
   fallbackFocusRef: RefObject<HTMLElement | null>;
 }) {
+  const m = useMessages();
   const [step, setStep] = useState<1 | 2>(1);
   const [fields, setFields] = useState<GrantFieldsValue>(() => initialGrantFields(initial, projects));
   const [failed, setFailed] = useState(false);

@@ -4,7 +4,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { CircleCheck, CircleX, Info, TriangleAlert } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import { cn } from "@/lib/utils";
 
 import { CloseButton } from "./close-button";
@@ -98,6 +98,7 @@ export function Alert({
   className?: string;
   children?: ReactNode;
 }) {
+  const m = useMessages();
   const tone = variant ?? "neutral";
   const compact = size === "sm";
   const Icon = ICON[tone];

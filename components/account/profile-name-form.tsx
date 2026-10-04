@@ -9,12 +9,13 @@ import { Button } from "@/components/ui/button";
 import { useLandAfter } from "@/components/ui/focus";
 import { Input } from "@/components/ui/input";
 import { NAME_MAX_CHARS } from "@/lib/account/plan";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
+import type { Messages } from "@/lib/i18n";
 
 type Reason = "empty" | "too-long" | "unavailable";
 
 /** 거부가 셋뿐이고 전부 우리 Action이 낸 값이라 사전 조회가 아니라 분기다 — 주소창 값이 아니다. */
-function reasonMessage(reason: Reason): string {
+function reasonMessage(m: Messages, reason: Reason): string {
   const errors = m.account.profile.errors;
   if (reason === "empty") return errors.empty;
   if (reason === "too-long") return errors.tooLong(NAME_MAX_CHARS);
@@ -32,6 +33,7 @@ function reasonMessage(reason: Reason): string {
  * 이 리포에 0이고, 여기서 시작하면 같은 일에 형이 둘이 된다.
  */
 export function ProfileNameForm({ name, inputId }: { name: string; inputId: string }) {
+  const m = useMessages();
   /**
    * ⚠️ **제출값을 지우지 않는다** — 실패 뒤에 필드가 저장된 값으로 되돌아가면 방금 친 이름이
    * 사라지고 사용자는 무엇을 고쳤는지 다시 떠올려야 한다.
@@ -57,7 +59,7 @@ export function ProfileNameForm({ name, inputId }: { name: string; inputId: stri
     catch (thrown) { unstable_rethrow(thrown); return "unavailable"; }
     return result.ok ? { saved: result.name } : result.reason;
   }, null);
-  const failure = state === null || typeof state === "object" ? null : reasonMessage(state);
+  const failure = state === null || typeof state === "object" ? null : reasonMessage(m, state);
   const saveRef = useRef<HTMLButtonElement>(null);
   // ⚠️ 저장 중 `loading`이 [Save]를 꺼 포커스가 `body`로 빠진다 — 끝나면 다시 켜진 그 버튼으로 돌려준다 (audit #32 계열).
   useLandAfter(pending, () => saveRef.current);

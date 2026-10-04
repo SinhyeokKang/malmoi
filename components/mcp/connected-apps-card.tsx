@@ -17,7 +17,7 @@ import { IconTile } from "@/components/ui/icon-tile";
 import { type CountProps } from "@/components/ui/count-badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Card, CardList } from "@/components/ui/card";
-import { m } from "@/lib/i18n";
+import { useMessages, useUiLocale } from "@/components/i18n/messages-provider";
 import type { Brand } from "@/lib/mcp/brand";
 import type { TokenGrant } from "@/lib/mcp/grant";
 import { relativeTime } from "@/lib/relative-time";
@@ -51,6 +51,7 @@ const TITLE_ID = "mcp-apps-title";
 
 /** `serverUrl` — 이 요청의 origin으로 만든 MCP 주소(preview·로컬이면 그 주소). Connect 카드를 걷고 머리의 복사 버튼 하나로 남겼다(2026-09-30 사용자). */
 export function ConnectedAppsCard({ apps, now, serverUrl }: { apps: readonly ConnectedAppData[] | null; now: string; serverUrl: string }) {
+  const m = useMessages();
   const router = useRouter();
   // 대상은 닫힌 뒤에도 남긴다 — Dialog가 닫히는 동안 제목이 비지 않고, 닫힘 포커스 처리가 같은 콘텐츠에서 돈다.
   const [target, setTarget] = useState<ConnectedAppData | null>(null);
@@ -212,6 +213,8 @@ export function ConnectedAppsCard({ apps, now, serverUrl }: { apps: readonly Con
 }
 
 function AppRow({ app, now, onDisconnect }: { app: ConnectedAppData; now: Date; onDisconnect: () => void }) {
+  const uiLocale = useUiLocale();
+  const m = useMessages();
   const expired = app.state === "expired";
   const expires = new Date(app.expiresAt);
   const lastUsed = app.lastUsedAt === null ? null : new Date(app.lastUsedAt);
@@ -220,8 +223,8 @@ function AppRow({ app, now, onDisconnect }: { app: ConnectedAppData; now: Date; 
   const facts: [string, ReactNode][] = [
     [m.mcpConnector.token.facts.grants, <GrantBadges key="g" grants={app.grants} dimmed={expired} />],
     [m.mcpConnector.token.facts.scope, scope],
-    [m.mcpConnector.token.facts.lastUsed, lastUsed === null ? m.mcpConnector.token.never : <time dateTime={app.lastUsedAt ?? ""}>{expired ? utcDay(lastUsed) : relativeTime(lastUsed, now)}</time>],
-    [m.mcpConnector.token.facts.expires, <time dateTime={app.expiresAt}>{expired ? utcDay(expires) : relativeTime(expires, now)}</time>],
+    [m.mcpConnector.token.facts.lastUsed, lastUsed === null ? m.mcpConnector.token.never : <time dateTime={app.lastUsedAt ?? ""}>{expired ? utcDay(lastUsed, uiLocale) : relativeTime(lastUsed, now, uiLocale)}</time>],
+    [m.mcpConnector.token.facts.expires, <time dateTime={app.expiresAt}>{expired ? utcDay(expires, uiLocale) : relativeTime(expires, now, uiLocale)}</time>],
   ];
   return (
     <div data-app-row={app.id} className="flex items-center gap-4 px-4 py-row-y">

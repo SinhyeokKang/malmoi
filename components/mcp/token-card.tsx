@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Card } from "@/components/ui/card";
-import { m } from "@/lib/i18n";
+import { useMessages, useUiLocale } from "@/components/i18n/messages-provider";
 import type { TokenGrant } from "@/lib/mcp/grant";
 import { relativeTime } from "@/lib/relative-time";
 import { utcDay } from "@/lib/utc-time";
@@ -46,6 +46,7 @@ export type TokenCardData =
 const TITLE_ID = "mcp-token-title";
 
 export function TokenCard({ token, projects, now }: { token: TokenCardData; projects: readonly ScopeProject[]; now: string }) {
+  const m = useMessages();
   const router = useRouter();
   const [modal, setModal] = useState<{ mode: "create" | "rotate"; key: number } | null>(null);
   const [revokeOpen, setRevokeOpen] = useState(false);
@@ -217,6 +218,8 @@ export function TokenCard({ token, projects, now }: { token: TokenCardData; proj
 }
 
 function TokenFacts({ token, now }: { token: Exclude<TokenCardData, { state: "none" }>; now: Date }) {
+  const uiLocale = useUiLocale();
+  const m = useMessages();
   const expired = token.state === "expired";
   const created = new Date(token.createdAt);
   const expires = new Date(token.expiresAt);
@@ -226,9 +229,9 @@ function TokenFacts({ token, now }: { token: Exclude<TokenCardData, { state: "no
   const facts: [string, ReactNode][] = [
     [m.mcpConnector.token.facts.grants, <GrantBadges key="g" grants={token.grants} dimmed={expired} />],
     [m.mcpConnector.token.facts.scope, scope],
-    [m.mcpConnector.token.facts.created, <time key="c" dateTime={token.createdAt}>{utcDay(created)}</time>],
-    [m.mcpConnector.token.facts.lastUsed, lastUsed === null ? m.mcpConnector.token.never : <time key="l" dateTime={token.lastUsedAt ?? ""}>{expired ? utcDay(lastUsed) : relativeTime(lastUsed, now)}</time>],
-    [m.mcpConnector.token.facts.expires, <time key="e" dateTime={token.expiresAt}>{expired ? utcDay(expires) : relativeTime(expires, now)}</time>],
+    [m.mcpConnector.token.facts.created, <time key="c" dateTime={token.createdAt}>{utcDay(created, uiLocale)}</time>],
+    [m.mcpConnector.token.facts.lastUsed, lastUsed === null ? m.mcpConnector.token.never : <time key="l" dateTime={token.lastUsedAt ?? ""}>{expired ? utcDay(lastUsed, uiLocale) : relativeTime(lastUsed, now, uiLocale)}</time>],
+    [m.mcpConnector.token.facts.expires, <time key="e" dateTime={token.expiresAt}>{expired ? utcDay(expires, uiLocale) : relativeTime(expires, now, uiLocale)}</time>],
   ];
   return (
     // Alert 다음 행은 행↔행 선(`#e5e5e5`), 머리 바로 아래면 머리 선(`#f0f0f0`)이다(핸드오프 `4b`).

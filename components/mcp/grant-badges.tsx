@@ -1,5 +1,7 @@
+"use client";
+
 import { Badge } from "@/components/ui/badge";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import type { TokenGrant } from "@/lib/mcp/grant";
 import { cn } from "@/lib/utils";
 
@@ -9,6 +11,7 @@ import { cn } from "@/lib/utils";
  * `dimmed` — 만료 행은 값이 흐리다(보관 행과 같은 `gray-dim`).
  */
 export function GrantBadges({ grants, dimmed = false }: { grants: readonly TokenGrant[]; dimmed?: boolean }) {
+  const m = useMessages();
   const labels = grants.length === 0 ? [m.mcpConnector.token.readOnly] : grants.map((grant) => m.mcpConnector.grants[grant].label);
   return (
     <span className="inline-flex flex-wrap gap-1 align-middle">

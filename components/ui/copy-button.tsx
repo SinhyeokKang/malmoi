@@ -4,16 +4,18 @@ import { Check, Copy, Link2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "./button";
 import { Input } from "./input";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 
 /** 값 복사는 확인을 남기고, 코드·참조 복사는 기존 계약대로 2초 뒤 되돌린다. */
-export function CopyButton({ value, label = m.common.copy, size = "md", variant = "default", onCopyFailed }: {
+export function CopyButton({ value, label, size = "md", variant = "default", onCopyFailed }: {
   value: string;
   label?: string;
   size?: "sm" | "md";
   variant?: "default" | "code" | "link";
   onCopyFailed?: () => void;
 }) {
+  const m = useMessages();
+  const text = label ?? m.common.copy;
   const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
   const [announcement, setAnnouncement] = useState("");
   const timer = useRef(0);
@@ -35,11 +37,11 @@ export function CopyButton({ value, label = m.common.copy, size = "md", variant 
     } catch { fail(); }
   };
   const button = <Button type="button" size={variant === "default" ? size : "sm"}
-    aria-label={variant === "link" && state !== "copied" ? label : undefined}
+    aria-label={variant === "link" && state !== "copied" ? text : undefined}
     className={variant === "code" ? "min-w-[66px]" : variant === "link" ? "min-w-7 gap-1 px-1.5" : undefined}
     onClick={() => { void copy(); }}>
     {variant !== "code" && (state === "copied" ? <Check className="size-3.5" aria-hidden /> : variant === "link" ? <Link2 className="size-3.5 text-gray-strong" aria-hidden /> : <Copy className="size-3.5" aria-hidden />)}
-    {state === "copied" ? m.common.copied : variant === "link" ? null : state === "failed" ? m.common.copyFailed : label}
+    {state === "copied" ? m.common.copied : variant === "link" ? null : state === "failed" ? m.common.copyFailed : text}
   </Button>;
   return <>
     {variant === "link" ? <span className="flex shrink-0 items-center gap-1.5">

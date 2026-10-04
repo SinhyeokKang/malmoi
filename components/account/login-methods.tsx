@@ -15,7 +15,7 @@ import { GithubIcon, GoogleIcon } from "@/components/signin/brand-icons";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { useLandAfter } from "@/components/ui/focus";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import { Badge } from "@/components/ui/badge";
 import { canUnlink, methodCounts, type LoginProvider } from "@/lib/login-link/policy";
 import { providerLabel } from "@/lib/login-link/message";
@@ -40,6 +40,7 @@ export function LoginMethods({ rows, outcome = null, unlinkFailure = null }: {
    */
   unlinkFailure?: string | null;
 }) {
+  const m = useMessages();
   const connected = rows.filter((row) => row.connected).map((row) => row.provider);
   const counts = methodCounts(rows);
   /**
@@ -74,6 +75,7 @@ export function LoginMethods({ rows, outcome = null, unlinkFailure = null }: {
 }
 
 function MethodRow({ row, removable, onUnconfirmed }: { row: { provider: LoginProvider; connected: boolean }; removable: boolean; onUnconfirmed: (unconfirmed: boolean) => void }) {
+  const m = useMessages();
   const [pending, startTransition] = useTransition();
   const label = providerLabel(m, row.provider);
   /**
@@ -124,6 +126,7 @@ function MethodRow({ row, removable, onUnconfirmed }: { row: { provider: LoginPr
 }
 
 function ConnectButton({ label }: { label: string }) {
+  const m = useMessages();
   const { pending } = useFormStatus();
   // `aria-label`이 보이는 텍스트를 **포함**한다 — 음성 입력이 라벨로 컨트롤을 찾는다 (WCAG 2.5.3).
   return (
@@ -147,6 +150,7 @@ function ConnectButton({ label }: { label: string }) {
  * 의존하지 않는 프로젝트까지 세고 있어 함께 걷었다. **Dialog는 남는다** — 근거가 위의 왕복 비용이다.
  */
 function DisconnectButton({ label, pending, onConfirm }: { label: string; pending: boolean; onConfirm: () => void }) {
+  const m = useMessages();
   return (
     <Dialog>
       <DialogTrigger asChild>

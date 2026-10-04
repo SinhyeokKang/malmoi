@@ -1,8 +1,6 @@
 import type { InputHTMLAttributes, ReactNode, Ref } from "react";
 
-import { X } from "lucide-react";
-import { Button } from "./button";
-import { m } from "@/lib/i18n";
+import { InputClearButton } from "./input-clear-button";
 
 import { cn } from "@/lib/utils";
 
@@ -67,17 +65,6 @@ export function Input({ className, width, size = "md", variant = "default", icon
   return <span className={cn("relative block min-w-0", width === "full" ? "w-full" : "w-fit")}>
     {icon && <span aria-hidden className={cn("text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 [&>svg]:size-4", size !== "md" && "[&>svg]:size-3.5")}>{icon}</span>}
     {field}
-    {clearable && hasValue && !props.readOnly && <Button type="button" variant="ghost" size="icon-xs" disabled={props.disabled} aria-label={m.common.clearSearch}
-      className="absolute top-1/2 right-1 -translate-y-1/2"
-      onMouseDown={event => event.preventDefault()}
-      onClick={event => {
-        const input = event.currentTarget.parentElement?.querySelector("input");
-        if (!input) return;
-        // React의 값 추적을 우회하는 native setter여야 빈 값 onChange가 한 번 들어온다.
-        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, "");
-        input.dispatchEvent(new Event("input", { bubbles: true }));
-        onClear?.();
-        input.focus();
-      }}><X aria-hidden className="size-3.5" /></Button>}
+    {clearable && hasValue && !props.readOnly && <InputClearButton disabled={props.disabled} onClear={onClear} />}
   </span>;
 }

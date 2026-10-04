@@ -32,7 +32,8 @@ describe("CloseButton", () => {
   });
 });
 
-// Input의 지우기 X 하나만 이름·크기·조건·소유자를 함께 검증해 허용한다.
+// Input의 지우기 X 하나만 이름·크기·소유자를 함께 검증해 허용한다. 지우기 버튼은 접근 이름이 화면 언어라 `input-clear-button.tsx`(클라이언트 모듈)에 산다 —
+// 값이 있을 때만 서는 조건(guard)은 `Input`이 든다(아래 마지막 테스트).
 function unownedX(path: string, code: string): string[] {
   const file = ts.createSourceFile(path, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
   const hits: string[] = [];
@@ -40,14 +41,8 @@ function unownedX(path: string, code: string): string[] {
     if ((ts.isJsxSelfClosingElement(node) || ts.isJsxOpeningElement(node)) && node.tagName.getText(file) === "X") {
       const button = node.parent;
       let owner: ts.Node | undefined = button;
-      let guarded = false;
-      while (owner && !ts.isFunctionDeclaration(owner)) {
-        if (ts.isBinaryExpression(owner) && owner.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken) {
-          guarded ||= owner.getText(file).startsWith("clearable && hasValue && !props.readOnly &&");
-        }
-        owner = owner.parent;
-      }
-      const valid = path === "components/ui/input.tsx" && owner !== undefined && ts.isFunctionDeclaration(owner) && owner.name?.text === "Input" && guarded
+      while (owner && !ts.isFunctionDeclaration(owner)) owner = owner.parent;
+      const valid = path === "components/ui/input-clear-button.tsx" && owner !== undefined && ts.isFunctionDeclaration(owner) && owner.name?.text === "InputClearButton"
         && ts.isJsxElement(button) && button.openingElement.tagName.getText(file) === "Button"
         && /variant="ghost"/.test(button.openingElement.getText(file)) && /size="icon-xs"/.test(button.openingElement.getText(file))
         && /aria-label=\{m\.common\.clearSearch\}/.test(button.openingElement.getText(file))
@@ -97,13 +92,14 @@ describe("닫기 X — 손으로 그린 사본이 없다", () => {
   });
 });
 
-it("Input clear permits only its named guarded X and rejects an extra close, renamed label and lost guard", () => {
-  const path = "components/ui/input.tsx";
+it("Input clear permits only its named X and rejects an extra close and a renamed label; Input keeps the guard", () => {
+  const path = "components/ui/input-clear-button.tsx";
   const actual = readFileSync(path, "utf8");
   expect(actual.match(/<X\b/g)).toHaveLength(1);
   expect(unownedX(path, actual)).toEqual([]);
   expect(unownedX(path, actual + '\nfunction Neighbor(){return <Button><X aria-hidden className="size-3.5" /></Button>;}')).toHaveLength(1);
   expect(unownedX(path, actual.replace("m.common.clearSearch", "m.common.close"))).toHaveLength(1);
-  expect(unownedX(path, actual.replace("clearable && hasValue && !props.readOnly &&", "hasValue &&"))).toHaveLength(1);
+  // 값이 있고 읽기 전용이 아닐 때만 서는 조건은 `Input`이 든다 — 사라지면 빈 필드에도 지우기가 선다.
+  expect(readFileSync("components/ui/input.tsx", "utf8")).toContain("clearable && hasValue && !props.readOnly && <InputClearButton");
   expect(unownedX("components/neighbor.tsx", actual)).toHaveLength(1);
 });

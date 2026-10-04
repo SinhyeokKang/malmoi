@@ -26,6 +26,8 @@ vi.mock("@/app/(edit)/projects/[slug]/settings/actions", () => ({ startGithubCon
 
 import AccountPage from "../page";
 
+vi.mock("@/lib/i18n/server", async () => ({ getUiLocale: async () => "en", getMessages: async () => (await import("@/messages/en")).en }));
+
 /**
  * 화면 구조의 방어선 (account-settings 태스크 10).
  *

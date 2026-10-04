@@ -7,7 +7,7 @@ import { deleteProfileImage, uploadProfileImage } from "@/app/(edit)/account/act
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { FileInput } from "@/components/ui/file-input";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import { planImagePick } from "@/lib/upload/image";
 import { uploadRejectMessage } from "@/lib/upload/message";
 
@@ -24,6 +24,7 @@ import { uploadRejectMessage } from "@/lib/upload/message";
  * `Button`의 `loading`이다.
  */
 export function ProfilePicture({ hasPicture }: { hasPicture: boolean }) {
+  const m = useMessages();
   const [failure, setFailure] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   /**

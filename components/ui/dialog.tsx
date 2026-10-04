@@ -3,7 +3,7 @@
 import { Dialog as Primitive } from "radix-ui";
 import type { ComponentProps, ReactNode } from "react";
 
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import { cn } from "@/lib/utils";
 
 import { CloseButton } from "./close-button";
@@ -149,6 +149,7 @@ export function DialogContent({
    */
   closeDisabled?: boolean;
 }) {
+  const m = useMessages();
   const ime = useImeGuard();
   return (
     <Primitive.Portal>

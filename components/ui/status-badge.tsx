@@ -1,5 +1,7 @@
+"use client";
+
 import { Badge } from "@/components/ui/badge";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import { STATE, stateLabel, type StateKey } from "@/lib/status/canon";
 
 /**
@@ -9,6 +11,7 @@ import { STATE, stateLabel, type StateKey } from "@/lib/status/canon";
  * 알약 · Not synced yet 글자색). 표에 없는 상태가 필요하면 표에 행을 더한다. `className`은 배치(`shrink-0`·여백)만 덧댄다.
  */
 export function StatusBadge({ state, className }: { state: StateKey; className?: string }) {
+  const m = useMessages();
   const row = STATE[state];
   return <Badge variant={row.variant} className={className}>{stateLabel(m, state)}</Badge>;
 }
