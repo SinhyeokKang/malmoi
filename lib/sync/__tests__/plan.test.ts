@@ -176,7 +176,7 @@ describe("planSyncFinish — 결과를 행으로", () => {
 
   it("⚠️ writer 경고로 멈춘 실행은 SKIPPED이고 경고 수를 센다 — 버린 값을 숨기지 않는다 (sync-edit-protection T10)", () => {
     expect(
-      planSyncFinish({ status: "skipped", reason: "writer-warnings", warnings: ["a: x", "b: y"] }),
+      planSyncFinish({ status: "skipped", reason: "writer-warnings", warnings: [{ surfaceSlug: "a", path: "x.json", code: "root-not-object" }, { surfaceSlug: "b", path: "y.json", code: "root-not-object" }] }),
     ).toMatchObject({ status: "SKIPPED", warnings: 2, prUrl: null });
   });
 
@@ -322,7 +322,7 @@ describe("planSyncFinish — 보류 수", () => {
   });
   it("보류가 없거나 실패면 0이다 (짝)", () => {
     expect(planSyncFinish(committed)).toMatchObject({ withheld: 0 });
-    expect(planSyncFinish({ status: "skipped", reason: "writer-warnings", warnings: ["x"] })).toMatchObject({ withheld: 0, warnings: 1 });
+    expect(planSyncFinish({ status: "skipped", reason: "writer-warnings", warnings: [{ surfaceSlug: "web", path: "x.json", code: "root-not-object" }] })).toMatchObject({ withheld: 0, warnings: 1 });
     expect(planSyncFinish({ thrown: new Error("x") })).toMatchObject({ withheld: 0 });
   });
 });
@@ -350,7 +350,7 @@ describe("planSyncFinish — changedValues", () => {
     expect(planSyncFinish({ status: "skipped", reason: "no-edits" })).toMatchObject({ changedValues: 0 });
     expect(planSyncFinish({ status: "skipped", reason: "no-changes" })).toMatchObject({ changedValues: 0 });
     expect(planSyncFinish({ status: "skipped", reason: "withheld", withheld: { file: 1, key: 0 } })).toMatchObject({ changedValues: 0 });
-    expect(planSyncFinish({ status: "skipped", reason: "writer-warnings", warnings: ["x"] })).toMatchObject({ changedValues: 0 });
+    expect(planSyncFinish({ status: "skipped", reason: "writer-warnings", warnings: [{ surfaceSlug: "web", path: "x.json", code: "root-not-object" }] })).toMatchObject({ changedValues: 0 });
   });
   it("실패·reconfirm은 null이다 — 0으로 접지 않는다 (짝)", () => {
     expect(planSyncFinish({ thrown: new Error("x") })).toMatchObject({ changed: null, changedValues: null });

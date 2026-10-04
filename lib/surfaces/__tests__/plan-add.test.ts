@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import { planAddSources, summarizeAddResults, formatSourceCounts } from "../plan-add";
 import type { CandidateSummary } from "@/lib/onboarding/detect";
-const candidate = (pathTemplate: string): CandidateSummary => ({ adapter: "json-catalog", label: "JSON", pathTemplate, outputPaths: [], locales: ["en"], baseLocale: "en", keys: { status: "counted", count: 1 }, samples: [] });
+const candidate = (pathTemplate: string): CandidateSummary => ({ adapter: "json-catalog", pathTemplate, outputPaths: [], locales: ["en"], baseLocale: "en", keys: { status: "counted", count: 1 }, samples: [] });
 it("이미 쓰는 템플릿은 잠그고 새 후보의 순서와 내용을 지킨다", () => {
   const a = candidate("a/{locale}.json"), b = candidate("b/{locale}.json");
   expect(planAddSources({ picked: [a, b], existing: [{ pathTemplate: a.pathTemplate }] })).toEqual({ ok: true, add: [b], locked: [a] });

@@ -64,7 +64,7 @@ it("닫힌 동안 실행을 유지하고 완료가 자동으로 열리지 않는
   await click("Publish"); expect(mocks.pull).toHaveBeenCalledTimes(1);
   expect(document.body.textContent).not.toContain("Publishing\u2026");
   await click("Close");
-  await act(async () => run.resolve({ status: "skipped", reason: "writer-warnings", warnings: ["web: ko.json: bad\n ^"] }));
+  await act(async () => run.resolve({ status: "skipped", reason: "writer-warnings", warnings: [{ surfaceSlug: "web", path: "ko.json", code: "parse-failed", detail: "bad\n ^" }] }));
   expect(document.querySelector('[role="dialog"]')).toBeNull();
   // 재검증 트리가 커밋되기 전까지는 Publish가 잠긴 채다 (malmoi#103) — 서버 렌더를 흉내 낸다.
   await view.rerender(<Host />);
@@ -390,7 +390,9 @@ it("열린 PR 줄 본문은 한 줄 길이다", async () => {
 });
 /** 4-W2 · 1-Y5 — 버린 값 목록은 카드 규격(radius 12)이고 개수는 배지(`CountBadge`)이며 머리 글리프가 warning 톤이다. */
 it("writer 경고 목록은 카드 radius · 개수 배지 · warning 글리프다", async () => {
-  mocks.pull.mockResolvedValueOnce({ status: "skipped", reason: "writer-warnings", warnings: ["web: ko.json: bad", "web: ko.json: worse"] });
+  mocks.pull.mockResolvedValueOnce({ status: "skipped", reason: "writer-warnings", warnings: [
+    { surfaceSlug: "web", path: "ko.json", code: "parse-failed", detail: "bad" }, { surfaceSlug: "web", path: "ko.json", code: "root-not-object" },
+  ] });
   await render(<Host />); await click("Publish1"); await click("Open pull request");
   const list = document.querySelector('[role="dialog"] section');
   expect(list?.className).toContain("rounded-lg");
@@ -398,6 +400,10 @@ it("writer 경고 목록은 카드 radius · 개수 배지 · warning 글리프�
   expect(head?.querySelector('[aria-hidden="true"]:not(svg)')?.textContent).toBe("2");
   expect(head?.querySelector(".sr-only")?.textContent).toBe(m.translations.publish.warnings(2));
   expect(head?.querySelector("svg")?.getAttribute("class")).toContain("text-amber-700");
+  // 실행은 코드만 싣고 모달이 사전으로 문장을 조립한다(ui-locales B1′) — 표면·파일 한 묶음에 문장 둘.
+  expect(list?.textContent).toContain("web: ko.json");
+  expect(list?.textContent).toContain(`${m.adapterErrors["parse-failed"]} (bad)`);
+  expect(list?.textContent).toContain(m.adapterErrors["root-not-object"]);
 });
 it("전부 보류면 PR 버튼이 없고 이유를 말한다 · 실행하지 않는다", async () => {
   mocks.preview.mockResolvedValue(ok({ ...preview, total: 1, keys: 1, withoutFile: 1, sendable: { total: 0, keys: 0 }, openPr: { number: 9, url: "https://github.com/owner/repo/pull/9" } }));

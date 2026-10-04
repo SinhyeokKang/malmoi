@@ -83,7 +83,7 @@ describe("ReconnectButton", () => {
 
 describe("AddSourcesModal", () => {
   const candidate: CandidateSummary = {
-    adapter: "json-catalog", label: "JSON", pathTemplate: "i18n/{locale}.json", locales: ["en"], outputPaths: ["i18n/en.json"],
+    adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", locales: ["en"], outputPaths: ["i18n/en.json"],
     baseLocale: "en", keys: { status: "counted", count: 2 }, samples: [{ locale: "en", rows: [{ key: "hello", value: "Hi" }], total: 2 }],
   };
   const results = [{ surfaceSlug: "mobile", count: 2, failed: 0 }];

@@ -4,6 +4,7 @@ import { createHarness } from "@/app/(edit)/__tests__/harness";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { accessErrorMessage } from "@/lib/auth/message";
 import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { toolCatalog } from "../../catalog";
 import type { TokenGrant, TokenScope } from "../../grant";
@@ -230,6 +231,23 @@ describe("publish 실패 — 코드(`SyncErrorCode`)로 가른다", () => {
   it("실행 전 거부(잠금 뒤 인가)는 그 코드의 화면 문장이다", async () => {
     failed({ error: "forbidden", retryable: false });
     expect(toToolResult(await publishNow()).structuredContent).toMatchObject({ status: "forbidden", message: accessErrorMessage("forbidden") });
+  });
+});
+
+/**
+ * **writer 경고는 영어 문장으로 나간다** — 실행은 코드로 싣지만(ui-locales B1′) 도구 응답의 계약은 바뀌기 전과 같은 `표면: 파일: 문장`이다.
+ */
+describe("publish — writer 경고", () => {
+  it("코드로 온 경고를 en 사전으로 조립해 outcome.warnings에 싣는다", async () => {
+    h.core.mockResolvedValueOnce({ outcome: { status: "skipped", reason: "writer-warnings", warnings: [
+      { surfaceSlug: "web", path: "i18n/ko.json", code: "value-not-string", key: "a.b" },
+      { surfaceSlug: "web", path: "i18n/ko.json", code: "parse-failed", detail: "Unexpected token" },
+    ] }, attempted: true });
+    const result = toToolResult(await run("publish", subject("editor"), { slug: "acme", fingerprint: "f" }));
+    expect(result.structuredContent).toMatchObject({ outcome: { status: "skipped", reason: "writer-warnings", warnings: [
+      `web: i18n/ko.json: a.b — ${en.adapterErrors["value-not-string"]}`,
+      `web: i18n/ko.json: ${en.adapterErrors["parse-failed"]} (Unexpected token)`,
+    ] } });
   });
 });
 

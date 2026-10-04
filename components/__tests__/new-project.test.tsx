@@ -43,7 +43,7 @@ const repos: RepoOption[] = ["web", "mobile"].map((repo) => ({
   owner: "acme", repo, fullName: `acme/${repo}`, suggestedSlug: `acme-${repo}`, pushedAt: null,
 }));
 const candidate = (path = "i18n/{locale}.json"): CandidateSummary => ({
-  adapter: "json-catalog", label: "JSON", pathTemplate: path, locales: ["en", "fr", "ko", "de", "ja"],
+  adapter: "json-catalog", pathTemplate: path, locales: ["en", "fr", "ko", "de", "ja"],
   outputPaths: [path.replace("{locale}", "en")],
   baseLocale: "en", keys: { status: "counted", count: 2 },
   samples: [{ locale: "en", rows: [{ key: "hello", value: path }], total: 2 }],

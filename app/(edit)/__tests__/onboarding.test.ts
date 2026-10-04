@@ -588,7 +588,6 @@ describe("detectRepoFormats — 3중 검증을 지난 뒤 2패스로 탐지한�
         {
           adapter: "json-catalog",
           confirmation: expect.any(String),
-          label: "JSON catalog",
           pathTemplate: "i18n/{locale}.json",
           outputPaths: ["i18n/en.json", "i18n/fr.json", "i18n/ko.json"],
           locales: ["en", "fr", "ko"],

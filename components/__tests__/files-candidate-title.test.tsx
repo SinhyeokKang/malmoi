@@ -15,7 +15,6 @@ import { render } from "./helpers/dom";
 const candidate: CandidateSummary = {
   outputPaths: ["public/_locales/en/messages.json"],
   adapter: "chrome-locales",
-  label: "Chrome",
   pathTemplate: "public/_locales/{locale}/messages.json",
   locales: ["en", "ko", "fr"],
   baseLocale: "en",

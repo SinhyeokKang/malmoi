@@ -51,7 +51,7 @@ it("도는 동안 8초가 지나야 문구가 서고, 끝나면 사라지며, �
 });
 
 const candidate: CandidateSummary = {
-  outputPaths: ["locales/en.json"], adapter: "json-catalog", label: "JSON", pathTemplate: "locales/{locale}.json",
+  outputPaths: ["locales/en.json"], adapter: "json-catalog", pathTemplate: "locales/{locale}.json",
   locales: ["en"], baseLocale: "en", keys: { status: "counted", count: 1 }, samples: [],
 };
 function state(patch: Partial<FilesStepState>): FilesStepState {

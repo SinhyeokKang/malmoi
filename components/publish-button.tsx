@@ -24,6 +24,8 @@ import { routes } from "@/lib/routes";
 import type { PublishModalState, PublishPreview } from "@/lib/publish/preview";
 import { planPublishButton, planPublishView, planWithheldLines } from "@/lib/publish/plan";
 import { summarizeWarnings } from "@/lib/publish/warnings";
+import { adapterErrorMessage } from "@/lib/i18n/adapter-errors";
+import type { PullWarning } from "@/lib/pull/run";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { SlowNotice } from "@/components/slow-notice";
 
@@ -346,8 +348,9 @@ function Progress({ branch }: { branch: string }) {
 }
 
 /** `1g` — 펼친 목록이다(불변식 9). 단위가 **파일**이고 키 이름이 없다 — 경고 문자열에 없다. */
-function Warnings({ warnings }: { warnings: readonly string[] }) {
-  const groups = summarizeWarnings(warnings);
+function Warnings({ warnings }: { warnings: readonly PullWarning[] }) {
+  // 실행은 코드만 싣는다(ui-locales B1′) — 문장은 여기서 화면의 사전으로 조립한다. 렌더 블록의 개행 보존은 `multiline-detail.test.ts`가 마커로 센다.
+  const groups = summarizeWarnings(warnings, adapterErrorMessage);
   // 4-W2 · 1-Y5 — 카드 규격(radius 12)이고 개수는 배지다. 머리 글리프는 Held back(warning)의 톤을 든다 — 무색이면 결과가 경고인지 안 읽힌다.
   return <section className="border-border flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border">
     <div className="border-divider flex shrink-0 items-center gap-2 border-b px-4 py-3">

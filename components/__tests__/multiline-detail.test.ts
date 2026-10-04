@@ -56,9 +56,9 @@ function renderSites(): { path: string; line: number; text: string }[] {
 }
 
 /**
- * ⚠️ **서버가 합쳐서 보내는 자리는 위 스캔이 원리적으로 못 본다.** `lib/pull/run.ts`가
- * `${path}: ${adapterErrorMessage(e)}`로 **문자열을 완성해** `PullResult.warnings`에 싣고, Publish의
- * `<details>`는 그 완성품을 받는다 — 그 컴포넌트에는 `adapterErrorMessage(`가 없다. 온보딩만 고치고
+ * ⚠️ **묶어서 그리는 자리는 위 스캔이 원리적으로 못 본다.** 실행은 경고를 코드로 싣고(ui-locales B1′) Publish 모달이
+ * `summarizeWarnings(warnings, adapterErrorMessage)`로 **묶음을 완성해** 렌더한다 — 렌더 줄에는 `adapterErrorMessage(`가 없다
+ * (2026-09-08에는 `lib/pull/run.ts`가 문장을 완성해 실었다 — 자리는 그대로다). 온보딩만 고치고
  * 이 자리를 놓치면 **번역자가 실제로 보는 쪽**이 안 고쳐진 채 검사가 green이다 (2026-09-08 code-review 🔴1).
  *
  * 그래서 **이름으로 고정한다** — `entry-points.test.ts`가 인가 예외를 이름으로 고정하고 그 이름이

@@ -80,8 +80,10 @@ export type CandidateSummary = {
   confirmation?: string;
   /** 확정 시 되돌려 보내는 값이다 — 화면에 쓰지 않는다. */
   adapter: AdapterName;
-  label: string;
   /**
+   * ⚠️ **화면 문구(`label`)는 여기 없다** (ui-locales B1′) — 이 값은 Action 반환·MCP 응답으로 나가는데 누구의 언어로 쓸지는
+   * 받는 쪽만 안다. 화면은 `adapter`로 자기 사전에서 고르고, MCP(`detect_formats`)는 en 라벨을 붙여 내보낸다.
+   *
    * ⚠️ **`formatLabel`의 `example`은 여기 없다** (2026-09-07 리뷰 ⚪11). 후보는 **자기 실제
    * `pathTemplate`** 을 보이므로 형식 예시가 중복이고, 계산해서 아무도 안 쓰면 "만든 것이 실제로
    * 호출되는가"를 흐린다. 예시는 수동 지정 셀렉트(`AdapterChoice`)에서만 쓰인다.
@@ -158,10 +160,9 @@ export function summarizeCandidates(
     const baseLocale = pickBaseLocale(c.locales);
     if (baseLocale === undefined) continue;
     const adapter = adapterFor(c);
-    const { label } = formatLabel(c.adapter);
     const locales = c.locales.slice().sort(compareKeys);
     const { samples, keys } = sampleCandidate(adapter, c, locales, baseLocale, blobs);
-    out.push({ adapter: c.adapter, label, pathTemplate: c.pathTemplate, locales, baseLocale, keys, samples });
+    out.push({ adapter: c.adapter, pathTemplate: c.pathTemplate, locales, baseLocale, keys, samples });
   }
   return out;
 }

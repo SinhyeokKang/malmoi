@@ -1,6 +1,6 @@
 import { fail } from "@/lib/failure";
 import { adapterFor } from "@/lib/adapters";
-import { adapterErrorMessage } from "@/lib/i18n/adapter-errors";
+import type { AdapterError } from "@/lib/adapters/types";
 import type { GitClient } from "./client";
 import { PR_TITLE, buildCommitPayload, buildTreePayload, withSkipMarker } from "./payload";
 import {
@@ -95,7 +95,14 @@ export type PullDeps = {
 };
 
 /**
- * `warnings`는 writer가 **버린** 항목이다 (`파일: 메시지`) — json-catalog 접두 충돌(ARCHITECTURE §1.35)이 대표다.
+ * writer가 **버린** 항목 하나 — 문장이 아니라 **코드**다(ui-locales B1′). 이 결과는 Publish 모달·cron JSON·MCP 응답·서버 로그로 가는데
+ * 누구의 언어로 쓸지는 받는 쪽만 안다 — 화면은 그 사용자의 사전으로, cron·MCP는 en으로 조립한다(`lib/i18n/adapter-errors.ts`).
+ * ⚠️ **그래서 `lib/pull/**`는 사전을 import하지 않는다**(`lib/i18n/__tests__/dictionary-consistency.test.ts`가 소스로 센다).
+ */
+export type PullWarning = { surfaceSlug: string } & AdapterError;
+
+/**
+ * `warnings`는 writer가 **버린** 항목이다 (`PullWarning` — 표면·파일·코드) — json-catalog 접두 충돌(ARCHITECTURE §1.35)이 대표다.
  *
  * ⚠️ **경고가 있으면 GitHub에 쓰기 전에 멈춘다** (sync-edit-protection T10, 2026-09-18). 전에는 경고를 커밋·스킵 결과에
  * 실어 보냈다 — 그러면 버린 값의 편집 토큰이 전달 확인으로 비워져 "보내지 않은 편집을 보냈다"가 된다. 그래서 경고는
@@ -121,7 +128,7 @@ export type PullResult =
   | { status: "skipped"; reason: "no-changes"; withheld?: Withheld; closedPr?: { number: number; url: string } }
   /** 실린 편집 0 + 보류 > 0. 쓰기도 전달 확인도 없다 — 파일 변경이 있었더라도 이 편집들 몫이 아니다. */
   | { status: "skipped"; reason: "withheld"; withheld: Withheld }
-  | { status: "skipped"; reason: "writer-warnings"; warnings: string[] }
+  | { status: "skipped"; reason: "writer-warnings"; warnings: PullWarning[] }
   /**
    * 미리보기가 준 지문(`expectedFingerprint`)과 실행권 뒤 스냅샷 + base head의 지문이 다르다 (mcp-connector design §3.1). **첫 쓰기 전에** 끝나
    * GitHub 쓰기·전달 확인 무효화·성공 확정이 전부 0이다. 인자가 없는 호출(웹·cron)에는 생기지 않는다.
@@ -274,7 +281,10 @@ export async function runPull(deps: PullDeps, expectedFingerprint?: string): Pro
     read = { baseHead };
   }
   const { baseHead, tree, resolved, current, rendered, local, changes } = await renderProject(project, formats, client, read);
-  const warnings = blockingErrors(rendered).map(({ surfaceSlug, error }) => `${surfaceSlug}: ${error.path}: ${adapterErrorMessage(error)}`);
+  // 렌더의 로케일 좌표(`locale`)는 싣지 않는다 — 결과의 계약은 표면·파일·코드(+키·파서 원문)다.
+  const warnings = blockingErrors(rendered).map(({ surfaceSlug, error: { path, code, key, detail } }): PullWarning => (
+    { surfaceSlug, path, code, ...(key === undefined ? {} : { key }), ...(detail === undefined ? {} : { detail }) }
+  ));
   /**
    * ⚠️ **2층 비교·브랜치 되돌림보다 앞이다** — 경고가 있는 렌더는 무엇을 쓰든 값 일부가 빠진 파일이다. 1층을 지났으므로
    * 여기 오면 미전달 편집이 있고, 멈추면 `lastPulledAt`도 토큰도 그대로라 다음 실행이 같은 판정을 다시 한다.

@@ -116,6 +116,8 @@ describe("triggerPull — 조립", () => {
     expect(spy).toHaveBeenCalled();
     expect(spy.mock.calls[0]?.[0]).toContain("config/locales/en.yml");
     expect(spy.mock.calls[0]?.[0]).toContain("fmt");
+    // 서버 로그는 코드다 — `lib/pull`은 사전을 읽지 않는다(ui-locales B1′).
+    expect(spy.mock.calls[0]?.[0]).toContain(result.status === "skipped" && result.reason === "writer-warnings" ? result.warnings[0]?.code ?? "?" : "?");
     spy.mockRestore();
   });
 

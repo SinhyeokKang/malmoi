@@ -20,7 +20,6 @@ const HINT = m.newProject.files.manual.hint;
 const candidate: CandidateSummary = {
   outputPaths: ["locales/en.json"],
   adapter: "json-catalog",
-  label: "JSON",
   pathTemplate: "locales/{locale}.json",
   locales: ["en"],
   baseLocale: "en",

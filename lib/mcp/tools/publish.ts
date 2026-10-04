@@ -5,10 +5,12 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { logFailure } from "@/lib/github-connect/log";
 import type { OpenImportPr } from "@/lib/import/confirm";
 import { m } from "@/lib/i18n";
+import { withWarningLines } from "@/lib/i18n/adapter-errors";
 import { revalidateTranslationReaders } from "@/lib/keys/revalidate-readers";
 import { loadPreview } from "@/lib/publish/load-preview";
 import { planPublishView } from "@/lib/publish/plan";
 import { publishProject } from "@/lib/sync/publish";
+import { en } from "@/messages/en";
 
 import type { ToolOutcome } from "../result";
 import { checkProjectTool } from "./access";
@@ -112,5 +114,6 @@ async function publishOutcome(
     return { status: "refused", code: outcome.error, detail: { delivery } };
   }
   const view = planPublishView(outcome);
-  return ok({ result: view, outcome }, m.mcp.summary.published(view));
+  // 실행은 writer 경고를 코드로 싣는다(ui-locales B1′) — 도구 응답의 계약은 영어 문장이라 여기서 en으로 조립한다.
+  return ok({ result: view, outcome: withWarningLines(outcome, en.adapterErrors) }, m.mcp.summary.published(view));
 }

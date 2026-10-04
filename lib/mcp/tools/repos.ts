@@ -7,6 +7,7 @@ import { detectFormats, detectProjectFormats, DetectInput } from "@/lib/onboardi
 import { listRepositories } from "@/lib/onboarding-run/repos";
 import { isSyncBranchName } from "@/lib/pull/ref-slug";
 import { routes } from "@/lib/routes";
+import { en } from "@/messages/en";
 
 import type { NeedsBrowserReason, ToolOutcome } from "../result";
 import { checkCreateTool, checkProjectTool } from "./access";
@@ -105,6 +106,8 @@ export const detectFormatsTool = defineTool({
       }
       return refusedOrBrowser(ctx, result.error);
     }
-    return ok({ candidates: result.candidates }, m.mcp.summary.formats(result.candidates.length));
+    // 후보는 화면 문구를 싣지 않는다(ui-locales B1′) — 도구 응답의 계약인 영어 형식 이름을 여기서 붙인다(어댑터 이름은 화면 어휘가 아니다).
+    const candidates = result.candidates.map(({ adapter, ...rest }) => ({ adapter, label: en.newProject.formats[adapter].label, ...rest }));
+    return ok({ candidates }, m.mcp.summary.formats(candidates.length));
   },
 });

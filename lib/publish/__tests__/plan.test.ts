@@ -3,6 +3,7 @@ import { planPublishButton, planPublishView, planWithheldLines } from "../plan";
 import { m } from "@/lib/i18n";
 import { buildPublishDiff, type PublishCell } from "../diff";
 import { summarizeWarnings } from "../warnings";
+import { adapterErrorMessage } from "@/lib/i18n/adapter-errors";
 import { parseGithubPrUrl } from "@/lib/projects/pr-url";
 import { SYNC_ERROR_CODES } from "@/lib/sync/plan";
 
@@ -11,7 +12,7 @@ it("실행 결과 여덟 갈래와 스킵 경고를 보존한다", () => {
   expect(planPublishView(committed)).toBe("created");
   expect(planPublishView({ ...committed, pr: "updated" })).toBe("updated");
   // writer 경고는 **보내지 않은** 결과다(sync-edit-protection T10) — 기존 Warnings 갈래가 "보내지 않았다"로 선다.
-  expect(planPublishView({ status: "skipped", reason: "writer-warnings", warnings: ["x"] })).toBe("partial");
+  expect(planPublishView({ status: "skipped", reason: "writer-warnings", warnings: [{ surfaceSlug: "web", path: "ko.json", code: "root-not-object" }] })).toBe("partial");
   for (const reason of ["no-edits", "no-changes"] as const) expect(planPublishView({ status: "skipped", reason })).toBe("no-changes");
   for (const error of ["already-running", "too-soon"] as const) expect(planPublishView({ status: "failed", error, delivery: "not-started" })).toBe(error);
   for (const error of ["unauthorized", "not-found", "archived", "not-ready", "invalid input", "unavailable"]) {
@@ -46,7 +47,7 @@ it("보류 줄 — 사유별 한 줄 + 역할별 다음 행동 · 보류 0이면
   expect(p.withheld.owner.keyNoRevert).not.toContain("Revert");
   expect(p.withheld.owner.fileNoRevert).not.toContain("Revert");
   expect(planWithheldLines(committed, "OWNER")).toEqual([]);
-  expect(planWithheldLines({ status: "skipped", reason: "writer-warnings", warnings: ["x"] }, "OWNER")).toEqual([]);
+  expect(planWithheldLines({ status: "skipped", reason: "writer-warnings", warnings: [{ surfaceSlug: "web", path: "ko.json", code: "root-not-object" }] }, "OWNER")).toEqual([]);
 });
 it("0건은 비활성이나 실행 중에는 재열기가 우선한다", () => {
   expect(planPublishButton({ count: 0, paused: false, otherPending: false, publishPending: false })).toMatchObject({ mode: "preview", disabled: true, badge: null, hint: expect.any(String) });
@@ -73,9 +74,11 @@ it("프로토타입 경로·로케일·키를 상속 조회하지 않는다", ()
   expect(buildPublishDiff([row], base)).toEqual(buildPublishDiff([row], base));
 });
 it("경고를 파일별로 묶되 파서 원문의 개행을 보존한다", () => {
-  const groups = summarizeWarnings(["web: ko.yml: bad\n  x\n  ^", "web: ko.yml: other", "plain"]);
-  expect(groups[0]).toEqual({ file: "web: ko.yml", messages: ["bad\n  x\n  ^", "other"] });
-  expect(groups[1]?.messages).toEqual(["plain"]);
+  const groups = summarizeWarnings([
+    { surfaceSlug: "web", path: "ko.yml", code: "parse-failed", detail: "bad\n  x\n  ^" },
+    { surfaceSlug: "web", path: "ko.yml", code: "root-not-object" },
+  ], (warning) => adapterErrorMessage(warning));
+  expect(groups).toEqual([{ file: "web: ko.yml", messages: [`${m.adapterErrors["parse-failed"]} (bad\n  x\n  ^)`, m.adapterErrors["root-not-object"]] }]);
 });
 it("PR URL은 원본 리포·origin·양의 안전 정수를 검증하고 삼상태를 보존한다", () => {
   const repo = { repoOwner: "o", repoName: "r" };

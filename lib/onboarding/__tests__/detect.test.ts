@@ -235,11 +235,11 @@ describe("summarizeCandidates — 후보 + blob → 사용자 언어 요약", ()
     expect(out.map((s) => s.pathTemplate)).toEqual([c2.pathTemplate, c1.pathTemplate]);
   });
 
-  it("어댑터 이름은 값으로 실리되(확정 시 되돌려 보낸다) 라벨엔 없다", () => {
+  /** 화면 문구(`label`)는 싣지 않는다(ui-locales B1′) — 받는 쪽이 자기 언어로 `adapter`에서 고른다. MCP는 en 라벨을 붙인다. */
+  it("어댑터 이름은 값으로 실리고(확정 시 되돌려 보낸다) 화면 문구는 싣지 않는다", () => {
     const [s] = summarizeCandidates([c1], new Map());
     expect(s?.adapter).toBe("json-catalog");
-    expect(s?.label).toBe(formatLabel("json-catalog").label);
-    expect(s?.label).not.toContain("json-catalog");
+    expect(s).not.toHaveProperty("label");
   });
 
   it("로케일 목록은 정렬돼 있다 — 탐지 결과는 정렬돼 있지 않다", () => {
