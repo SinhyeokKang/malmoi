@@ -135,6 +135,8 @@ export const CLASSIFIED: Record<FieldPath, Classification> = {
   "User.uiLocale": "collected",
   /** 고른 시간대(user-timezone) — 사람을 식별하지 않지만 대략의 지역을 말하고 계정에 저장하는 설정이라 밝힌다. */
   "User.timeZone": "collected",
+  /** 고른 화면 테마(color-scheme) — 사람을 식별하지 않지만 계정에 저장하는 설정이라 밝힌다. 쓰는 경로(테마 바꾸기 Action)와 방침 본문·쿠키 표 행(`malmoi-color-scheme`)은 color-scheme P2-5 커밋에서 함께 생긴다. */
+  "User.colorScheme": "collected",
 
   /**
    * ⚠️ **`third-parties`가 아니라 `collected`다** (2026-09-19 리뷰) — 그 절은 **누가 더 보나**(서비스
