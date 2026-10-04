@@ -75,16 +75,16 @@
 
 ## D. 화면 + 방침 (한 커밋 — 값을 고를 수 있게 되는 커밋에서 방침이 참이어야 한다)
 
-- [ ] **D1** `setTimeZone`(`app/(edit)/preferences/actions.ts`). 테스트: 목록 밖 값 → `invalid`·쓰기 0 · 세션 없음/`unavailable` → `failed`·쓰기 0 · 세션 userId로 갱신 · DB 실패 → `failed` · **성공 갈래에서만** `revalidateAfterCommit` · `"UTC"`를 고르면 `"UTC"` 저장. `app/__tests__/entry-points.test.ts`의 `USER_SCOPED_ACTIONS`에 등재.
+- [x] **D1** `setTimeZone`(`app/(edit)/preferences/actions.ts`). 테스트: 목록 밖 값 → `invalid`·쓰기 0 · 세션 없음/`unavailable` → `failed`·쓰기 0 · 세션 userId로 갱신 · DB 실패 → `failed` · **성공 갈래에서만** `revalidateAfterCommit` · `"UTC"`를 고르면 `"UTC"` 저장. `app/__tests__/entry-points.test.ts`의 `USER_SCOPED_ACTIONS`에 등재.
   검증: `pnpm test` green.
-- [ ] **D2** Time zone 카드(design §6). Language 카드의 Select 조립이 공용 컴포넌트가 아니면 **먼저 공용으로 뽑고 Language 카드를 이관**(같은 커밋 — 테스트 먼저).
+- [x] **D2** Time zone 카드(design §6). Language 카드의 Select 조립이 공용 컴포넌트가 아니면 **먼저 공용으로 뽑고 Language 카드를 이관**(같은 커밋 — 테스트 먼저).
   `now`는 서버 페이지가 ISO prop으로 내린다(옵션 정렬·미리보기 공통).
   DOM 테스트(포커스 fixup observer 포함 — Radix Select 테스트는 POSTMORTEM 2026-09-13·09-19의 기존 패턴을 따른다): 옵션 = `timeZoneOptions(now)` · 고르면 Action · 같은 값이면 호출 없음 · 진행 중 가드·포커스 유지 · 낙관적 표시(트리거·**미리보기 `Now: …`**) → 실패 복귀 + `Alert danger inset` · 닫힌 트리거 글자 키로 값 불변 · 도움말 `aria-describedby`.
   사전 셋에 카드 문구(제목·설명·도움말·미리보기 `now`) — ko·es 같은 커밋.
   검증: `pnpm test` green.
-- [ ] **D3** 방침 en(`messages/en.tsx` 방침 절)·ko(`messages/ko-privacy.tsx`) — `User.timeZone` 수집 항목 + 개정 이력 + 시행일. ko는 에이전트 초안 → **사용자 검수**.
+- [x] **D3** 방침 en(`messages/en.tsx` 방침 절)·ko(`messages/ko-privacy.tsx`) — `User.timeZone` 수집 항목 + 개정 이력 + 시행일. ko는 에이전트 초안 → **사용자 검수**.
   검증: `policy-gate.test.tsx`·두 본문 동형 검사 green.
-- [ ] `[커밋] feat(preferences): choose a time zone for dates and times`
+- [x] `[커밋] feat(preferences): choose a time zone for dates and times`
 
 ## E. 가이드
 

@@ -29,9 +29,9 @@
 | **T1 순수 함수** | A1–A5 | Opus 5.5 high — 서머타임·0시 없는 날·런타임 TZ 누수·잎 경계 판단 | — | `lib/time-zone/**` · `lib/utc-time.ts`→`lib/date-format.ts` · `lib/events/{filter,view,query}.ts` · 호출부 18파일(**이름만** — `timeZone: "UTC"`) · `components/logs/log-filters.tsx`(프리셋 이동) · `lib/mcp/tools/project.ts` · `(home)/page.tsx`·logs page의 `loadEvents` 호출 · 관련 테스트 · `client-graph.test.ts` | 완료 |
 | **T2 스키마·세션** | B1(SQL만) · B2 | Sonnet 5.5 medium — ui-locales C2(`uiLocale`)와 같은 자리를 따라 넓힌다 | — (T1과 병렬) | `prisma/**` · `lib/privacy/collected.ts` · `lib/auth/**` · `types/next-auth.d.ts` · `lib/credentials/__tests__/adapter.test.ts` | 완료 |
 | **T3 입구·호출부** | C1 · C2 (+ H2 주석) | Opus 5.5 high — provider·하이드레이션 `now` prop·호출부 전수·사전 셋 | T1·T2 통합 | `lib/i18n/server.ts` · `components/i18n/**` · `app/layout.tsx` · 호출부 전부 · `messages/{en,ko,es}.tsx`(`m.logs.range.*`) · `components/{logs,home}/**` | 완료 |
-| **T4 화면·방침** | D1–D3 | Opus 5.5 high — Radix Select 포커스·공용 조립 추출·Action 갈래·방침 동형 | T3 통합 | `app/(edit)/preferences/**` · `components/preferences/**` · `messages/{en,ko,es}.tsx`(새 키) · `messages/ko-privacy.tsx` · `app/__tests__/entry-points.test.ts` | 진행 |
-| **T5 가이드** | E1 | Sonnet 5.5 medium — 원고 세 벌 문장 교체 + 절 하나 | T4 통합 | `guide/{en,ko,es}/**` · `guide/AUTHORING.md`(필요 시) | 대기 |
-| **T6 정본 문서** | H1 | Opus 5.5 medium — 문서별 커밋, 사실 대조 | T4 통합 (T5와 병렬 — 파일이 갈린다) | CLAUDE.md(+미러) · `docs/{ARCHITECTURE,DESIGN,PRODUCT,DIRECTORY,OPERATIONS}.md` | 대기 |
+| **T4 화면·방침** | D1–D3 | Opus 5.5 high — Radix Select 포커스·공용 조립 추출·Action 갈래·방침 동형 | T3 통합 | `app/(edit)/preferences/**` · `components/preferences/**` · `messages/{en,ko,es}.tsx`(새 키) · `messages/ko-privacy.tsx` · `app/__tests__/entry-points.test.ts` | 완료 |
+| **T5 가이드** | E1 | Sonnet 5.5 medium — 원고 세 벌 문장 교체 + 절 하나 | T4 통합 | `guide/{en,ko,es}/**` · `guide/AUTHORING.md`(필요 시) | 진행 |
+| **T6 정본 문서** | H1 | Opus 5.5 medium — 문서별 커밋, 사실 대조 | T4 통합 (T5와 병렬 — 파일이 갈린다) | CLAUDE.md(+미러) · `docs/{ARCHITECTURE,DESIGN,PRODUCT,DIRECTORY,OPERATIONS}.md` | 진행 |
 | **Q1 런타임** | H3 `/runtime-test` + Preferences 샷 `/guide-shots` | Opus 5.5 medium — main 체크아웃(그동안 cherry-pick·build 금지) | T1–T6 통합 | 없음(리포트·BugShot) · `public/guide/` 샷 | 대기 |
 | 지휘자 | P0 · 체크·통합 · dev DB 마이그레이션 · 결함 라우팅 | — | 각 통합 시 | 이 문서 · tasks 체크 | — |
 
@@ -67,3 +67,4 @@
 - **T9 통합·push**: `feat(i18n)` 슬로건 재번역(ko 사용자 안 · es `Reúne tus textos, / traduce y publica en equipo` · `Empieza con los archivos que ya tienes` 초안) · `docs(ARCHITECTURE)` 영어 고정 목록에서 제거. K2 위로 충돌 없이 cherry-pick, gate ok. 런타임: ko·es 랜딩/signin 줄바꿈 → Q1. T9 해제·워크트리 제거.
 - **T3 통합·push**: `feat(time)` C1·C2(+H2) · `test(time)` fix1(FIXED_UTC 허용 목록 · PUBLIC_SHELL에 signin/link · A4⑤ 정규식). gate ok. T3 해제·워크트리 제거. **T4 착수**(Opus high, `brief-T4.md`).
 - **R4(T4 리뷰)**: 🔴0 · 🟡1(ko 방침 개정 행 주어 "Malmoi가 … 고를") · ⚪5(열린 목록 typeahead가 `UTC…` 접두로 무의미 → `textValue` · revalidate 던짐 시 피드백 없음(Language와 같은 기존 성질, 수용) · ko-privacy 옛 용어 · 같은 날 개정 행 둘(같은 머지라 수용) · CLAUDE/DIRECTORY는 T6). deviation 4 수용. **T4 fix1 착수**(🟡1 + typeahead + ko-privacy 용어).
+- **T4 통합·push**: `feat(preferences)` D1–D3(+공용 `PreferenceSelectCard`, Language 이관) · fix1 `fix(preferences)` 열린 목록 도시명 typeahead · `docs(privacy)` ko 방침 용어 정리(그림 저장소 → `자체 저장 공간`, 의미 불변 — D2 검수 대상). gate ok. T4 해제·워크트리 제거. **T5(Sonnet medium) · T6(Opus medium) 병렬 착수**.
