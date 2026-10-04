@@ -32,7 +32,8 @@ Use this skill when the user asks to run the migrated source command `implement`
 - **외과적으로.** 요청 범위 밖의 인접 코드를 손대지 않는다.
 - **주석은 "왜"만.** 특히 비자명한 제약(pooler와 prepared statement, PEM 개행, `base_tree` 누락 등).
 - **새 환경변수를 읽었으면 같은 작업에서 `.env.example`에 추가**한다. 빠지면 새 체크아웃·Vercel 재설정에서 원인 불명으로 죽는다.
-- **새 사전 키(`messages/en.tsx`)를 만들기 전에 같은 개념의 기존 키를 grep한다** — 기준은 `docs/DESIGN.md` §2.4(상태 톤·낱말)와 §10.1(개념 색인)이다. 같은 개념이 있으면 그 키를 쓴다. 기능마다 새 낱말을 만들어 같은 상태가 화면마다 다른 말이 됐다(2026-09-30 전수조사 — 동기화 실패 문장이 다섯 벌이었다).
+- **새 사전 키는 세 사전(`messages/en.tsx`·`ko.tsx`·`es.tsx`)에 같은 작업에서 넣는다** — ko·es는 `satisfies Messages`라 빠지면 typecheck가 red이고, en과 같은 문자열이면 번역 누락 검사(`dictionary-consistency.test.ts`)가 red다(고유명사·코드는 키 경로 허용 목록). 낱말은 DESIGN §10.1의 ko·es 열. 화면 코드는 서버 `await getMessages()` · 클라이언트 `useMessages()`로 읽고, 영어 고정 표면만 `en`을 명시 import한다.
+- **새 사전 키를 만들기 전에 같은 개념의 기존 키를 grep한다** — 기준은 `docs/DESIGN.md` §2.4(상태 톤·낱말)와 §10.1(개념 색인)이다. 같은 개념이 있으면 그 키를 쓴다. 기능마다 새 낱말을 만들어 같은 상태가 화면마다 다른 말이 됐다(2026-09-30 전수조사 — 동기화 실패 문장이 다섯 벌이었다).
 
 ### 3. 자체 검증 (4관점, 병렬)
 

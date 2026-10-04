@@ -31,7 +31,7 @@ description: 화면 전체를 같은 개념 = 같은 톤·낱말·형태 기준�
 
 ### 1. 기준 로드
 
-정본은 셋이다 — **`docs/DESIGN.md` §2.4(상태 톤·낱말·글리프·동작 규칙 표)와 §10.1(개념 색인)** · `messages/en.tsx` · `components/ui/*`(variant → 실제 클래스).
+정본은 셋이다 — **`docs/DESIGN.md` §2.4(상태 톤·낱말·글리프·동작 규칙 표)와 §10.1(개념 색인 — ko·es 열 포함)** · `messages/en.tsx`(원문 — ko·es 사전은 같은 키의 번역이고 §10.1 열과 `dictionary-consistency.test.ts`가 낱말을 묶는다) · `components/ui/*`(variant → 실제 클래스).
 코드판 정본은 `lib/status/canon.ts`의 `STATE`다(§2.4가 가리킨다).
 
 **이미 테스트가 막는 것을 먼저 읽는다** — 그 부류는 red가 났을 것이므로 다시 찾지 않고, 테스트가 **못 보는 자리**를 찾는다:
@@ -48,7 +48,7 @@ description: 화면 전체를 같은 개념 = 같은 톤·낱말·형태 기준�
 
 ### 2. 차원별 병렬 감사
 
-차원마다 에이전트를 **동시에** 띄운다(`subagent_type: general-purpose`). 대상: `app/**` · `components/**`(랜딩 목업 포함) · `messages/en.tsx` · `guide/**`의 화면 서술.
+차원마다 에이전트를 **동시에** 띄운다(`subagent_type: general-purpose`). 대상: `app/**` · `components/**`(랜딩 목업 포함) · `messages/{en,ko,es}.tsx` · `guide/{en,ko,es}/**`의 화면 서술.
 각 에이전트는 **인벤토리 표**(개념 | 화면·맥락 | 형태 | 색 클래스 | 낱말(키 → 텍스트) | file:line)를 만들고 끝에 불일치 목록을 낸다.
 
 | 키워드 | 차원 | 본다 |
