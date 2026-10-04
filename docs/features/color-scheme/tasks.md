@@ -75,7 +75,7 @@ Phase 1은 ui-locales의 E 배치(화면 파일 이관)와 W10(`globals.css`·Pr
   ⚠️ Phase 1 착수 때 토큰 이름이 바뀌면 브리프 §3도 같이 고친다(시안이 이미 나왔으면 핸드오프 표의 이름을 옮긴다).
 - S2 ✅ 다크 시안 확정(2026-10-05) — 핸드오프 `design_handoff_color_scheme`(A1–A15 · B1–B6 · 토큰 표). 피드백 1차는 [`design-brief-feedback-1.md`](./design-brief-feedback-1.md). 시안이 바꾼 항목과 열린 결정 판정은 design §3.8. ⚠️ **기존 화면의 design-sync는 사용자 승인 예외**(spec 결정)임을 orch·DESIGN 기록에 남긴다.
 
-### P2-0 스파이크 (코드 커밋 없음 — 결과를 design §3.1에 적는다)
+### P2-0 스파이크 (코드 커밋 없음 — 결과를 design §3.1에 적는다) ✅ C
 
 판정은 `next build` 산출 CSS(`.next/static/css`)와 브라우저 computed 값으로 한다.
 - ① `bg-<token>/50`이 `light-dark()` 값에서 올바른 알파 색이 되는가 ② `color-mix(… var(--color-…) …)`를 품은 `light-dark()`가 Chrome·Safari·Firefox 최신에서 계산되는가 · 산출 CSS에서 `light-dark()`가 그대로인가(`--lightningcss-light/dark` 폴리필로 바뀌었는가) ③ `getComputedStyle`이 사용자 정의 속성에서 선언 문자열을 돌려주는가 · `color: var(--signin-dot)` 요소의 계산된 `color`는 rgb인가 ④ 토스트의 계산된 `background`·`border-color`·`color`가 토큰 값인가 — 묶는 규칙의 자리(`globals.css` 특이도 vs `Toaster style`)를 고른다.
@@ -100,7 +100,7 @@ Phase 1은 ui-locales의 E 배치(화면 파일 이관)와 W10(`globals.css`·Pr
 
 ──
 
-### P2-3 다크 값 + 루트 레이아웃 + 토스트 (한 커밋 — 값 없이 속성만 들어가면 System 사용자가 빈 다크를 본다)
+### P2-3 다크 값 + 루트 레이아웃 + 토스트 (한 커밋 — 값 없이 속성만 들어가면 System 사용자가 빈 다크를 본다) ✅ C
 
 - `app/globals.css`: 모든 색 변수를 `light-dark(<라이트>, <시안 다크>)`로 · `color-scheme` 세 줄은 **본문 `:root {` 블록 뒤에**(design §3.1 — `globals-css.test.ts:107` 정규식) · 다크 값은 핸드오프 README §5 표 그대로(design §3.8) · 비색 값 블록은 없다(OpenAI 흰 판은 두 테마 같다 — design §3.5).
 - sonner 변수(`--normal-bg/border/text`)를 `popover`·`border`·`foreground`에 묶는 규칙(P2-0 ④에서 고른 자리) · `[data-description]` 글자색도.
@@ -112,7 +112,7 @@ Phase 1은 ui-locales의 E 배치(화면 파일 이관)와 W10(`globals.css`·Pr
 
 ──
 
-### P2-4 화면 밖 자산
+### P2-4 화면 밖 자산 ✅ C
 
 - Malmoi 로고: 7곳 import를 `components/ui/malmoi-mark.tsx`(토큰 fill 인라인 SVG — design §3.5)로 모은다 — 기존 사본 이관이므로 같은 커밋에서 7곳 전부. DOM 테스트: 면 path는 `fill-foreground`, 마크 path는 `fill-background`(또는 `var(--…)`) · `aria-hidden` · `<img>`·`next/image` 없음.
 - OpenAI 로고: 원본 검정 마크를 두 테마 같은 흰 판 위에 — `mcp/connected-apps-card.tsx`의 로고 칸 둘, OpenAI만(design §3.5). 새 자산 없음. 색 리터럴 허용 목록에 그 자리를 더하고, `IconTile` 덮어쓰기 금지·raw 0 검사와 부딪히지 않는 길을 고른다.
