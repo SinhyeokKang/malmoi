@@ -14,7 +14,16 @@ it("레이아웃이 getUiLocale을 읽어 <html lang>에 싣는다 — 영어 �
   expect(src).not.toContain('lang="en"');
 });
 
-it("레이아웃이 그 언어의 사전으로 provider 하나를 렌더한다", () => {
-  expect(src).toContain("<MessagesProvider uiLocale={uiLocale} messages={UI_DICTIONARIES[uiLocale]}>");
+it("레이아웃이 언어 코드만 넘겨 provider 하나를 렌더한다 — 사전은 provider 안 로더가 읽는다", () => {
+  expect(src).toContain("<MessagesProvider uiLocale={uiLocale}>");
   expect(src).toContain("</MessagesProvider>");
+});
+
+/**
+ * ⚠️ **번들 회귀 방어선** (orch D7) — 레이아웃(서버)이 import하는 client 모듈은 Turbopack이 전부 레이아웃 청크 그룹에 실어 en 사용자도 받는다.
+ * 사전을 레이아웃 그래프로 끌어오는 import가 생기면 ko·es 사전이 모든 사용자에게 간다. 사전 import 자리 전체는 `dictionary-consistency.test.ts` ⑥이 센다.
+ */
+it("레이아웃이 사전 모듈을 import하지 않는다", () => {
+  expect(src).not.toMatch(/["']@\/messages\/(?!en["'])/);
+  expect(src).not.toMatch(/["']@\/components\/i18n\/(?!messages-provider["'])/);
 });

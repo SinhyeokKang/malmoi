@@ -10,7 +10,8 @@ import { en } from "@/messages/en";
 
 /**
  * 화면 언어 → 서버가 쓰는 사전. ⚠️ **ko·es는 사전이 들어올 때까지 en이다**(ui-locales orch — W2·W3이 자기 줄 하나를 바꾼다).
- * 클라이언트 쪽 표는 `components/i18n/ui-dictionaries.ts`다 — 둘은 같은 커밋에서 같이 바뀐다.
+ * 클라이언트 쪽은 `components/i18n/messages-provider.tsx`의 `CARRIERS` 한 줄이다 — 둘은 같은 커밋에서 같이 바뀐다.
+ * ⚠️ 이 파일은 server-only라 여기서 정적으로 import하는 사전은 클라이언트 번들에 실리지 않는다(`dictionary-consistency.test.ts` ⑥).
  */
 const DICTIONARIES: Readonly<Record<UiLocale, Messages>> = {
   en,

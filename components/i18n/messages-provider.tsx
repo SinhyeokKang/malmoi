@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, useContext, useMemo, type ReactNode } from "react";
+import dynamic from "next/dynamic";
+import { createContext, use, useContext, useMemo, type ComponentType, type ReactNode } from "react";
 
 import type { Messages } from "@/lib/i18n";
 import type { UiLocale } from "@/lib/i18n/locales";
@@ -9,23 +10,73 @@ import { en } from "@/messages/en";
 /**
  * **클라이언트의 사전 입구** (ui-locales design §3.2) — `useMessages()`·`useUiLocale()`. 루트 레이아웃이 요청의 언어로 이 provider 하나를 렌더한다.
  *
- * ⚠️ **사전은 언어별 `"use client"` 모듈이 client reference로 넘긴다**(`components/i18n/<lang>-messages.ts` → `ui-dictionaries.ts`).
- * 사전 객체를 prop으로 직렬화할 수는 없지만(함수·ReactNode 값) client reference는 Flight가 그대로 싣고 브라우저가 그 모듈의
- * export로 푼다 — 그래서 **렌더된 언어의 청크만** 받는다.
- * ⚠️ **언어별 껍데기 컴포넌트로 감싸지 않는다** — 언어마다 요소 타입이 다르면 언어를 바꿀 때 React가 그 아래 트리를 통째로 다시
- * 마운트해 컨트롤의 포커스·상태가 사라진다(POSTMORTEM 2026-09-07과 같은 형). 타입은 이 컴포넌트 하나이고 바뀌는 것은 prop뿐이다.
- * 같은 이유로 `key={uiLocale}`도 걸지 않는다.
+ * ⚠️ **ko·es 사전은 언어별 비동기 청크다** (orch D7 — 스파이크 1b 실측, Next 16.3.3 Turbopack). 루트 레이아웃이 **서버에서** import하는
+ * client 모듈은 정적이든 `await import()`든 전부 레이아웃의 청크 그룹 하나에 실려 en 페이지도 받는다 — 그래서 사전은 서버 그래프 밖,
+ * 이 파일 안의 `next/dynamic` 로더가 읽는다. 실측: 그 언어 페이지의 SSR HTML만 청크를 `<link rel="preload">`로 싣고(쿠키 없는 en HTML은 0회),
+ * 클라이언트 로더도 같은 청크를 받는다.
+ * ⚠️ **사전 하나당 import 자리는 로더 하나다** — 같은 모듈을 `use(import(...))` 같은 다른 자리에서 또 읽으면 Turbopack이 모듈을 청크 둘로
+ * 복제하고 그쪽은 preload되지 않는다(하이드레이션 중 폭포). 로더가 읽은 사전은 언어별 슬롯에 맡기고 `Inner`가 `use()`로 기다린다.
+ * ⚠️ **언어별 껍데기로 자식을 감싸지 않는다** — 요소 타입이 언어마다 달라지면 언어를 바꿀 때 그 아래 트리가 다시 마운트돼 포커스·상태가 사라진다
+ * (POSTMORTEM 2026-09-07과 같은 형). 자식은 늘 `Inner` 아래 두 번째 자리다. 같은 이유로 `key={uiLocale}`도 걸지 않는다.
  *
  * provider가 없으면 **en**이다 — 루트 레이아웃 밖의 `global-error`와 컴포넌트만 렌더하는 DOM 테스트가 그대로 돈다.
  * 대가는 "provider를 빠뜨리면 조용히 영어"이고, 루트 레이아웃 소스 검사(`app/__tests__/root-layout-i18n.test.ts`)가 막는다.
+ * ko·es 사용자도 en을 받는다(이 기본값) — 완료 조건 10은 en 사용자 기준이다.
  */
 type Value = { readonly m: Messages; readonly uiLocale: UiLocale };
 
 const MessagesContext = createContext<Value>({ m: en, uiLocale: "en" });
 
-export function MessagesProvider({ uiLocale, messages, children }: { uiLocale: UiLocale; messages: Messages; children: ReactNode }) {
-  const value = useMemo(() => ({ m: messages, uiLocale }), [messages, uiLocale]);
+type Slot = { readonly promise: Promise<Messages>; readonly resolve: (messages: Messages) => void };
+const slots = new Map<UiLocale, Slot>();
+
+function slot(uiLocale: UiLocale): Slot {
+  const found = slots.get(uiLocale);
+  if (found !== undefined) return found;
+  let resolve: (messages: Messages) => void = () => {};
+  const promise = new Promise<Messages>((done) => {
+    resolve = done;
+  });
+  const made = { promise, resolve };
+  slots.set(uiLocale, made);
+  return made;
+}
+
+function Nothing() {
+  return null;
+}
+
+/** 로더가 받은 사전을 슬롯에 맡긴다 — 운반체 자신은 아무것도 그리지 않는다. */
+function arrive(uiLocale: UiLocale, messages: Messages): { default: ComponentType } {
+  slot(uiLocale).resolve(messages);
+  return { default: Nothing };
+}
+
+/**
+ * 언어별 사전 운반체 — **줄 하나가 그 언어의 유일한 import 자리다**. ⚠️ ko·es는 사전이 들어올 때까지 en을 운반한다
+ * (W2·W3이 자기 줄의 `@/messages/en`·`mod.en`을 `@/messages/ko`·`mod.ko`로 바꾼다 — 서버 쪽은 `lib/i18n/server.ts`의 `DICTIONARIES` 한 줄).
+ * en은 위 정적 import가 든다(provider 기본값과 같은 객체).
+ */
+const CARRIERS: Readonly<Partial<Record<UiLocale, ComponentType>>> = {
+  ko: dynamic(() => import("@/messages/en").then((mod) => arrive("ko", mod.en))),
+  es: dynamic(() => import("@/messages/en").then((mod) => arrive("es", mod.en))),
+};
+
+function Inner({ uiLocale, children }: { uiLocale: UiLocale; children: ReactNode }) {
+  const m = CARRIERS[uiLocale] === undefined ? en : use(slot(uiLocale).promise);
+  const value = useMemo(() => ({ m, uiLocale }), [m, uiLocale]);
   return <MessagesContext value={value}>{children}</MessagesContext>;
+}
+
+export function MessagesProvider({ uiLocale, children }: { uiLocale: UiLocale; children: ReactNode }) {
+  const Carrier = CARRIERS[uiLocale];
+  // ⚠️ 운반체가 `Inner`보다 **앞** 형제다 — 첫 렌더 패스에서 lazy 로더가 먼저 시작돼야 `Inner`의 `use()`가 기다릴 것이 생긴다.
+  return (
+    <>
+      {Carrier !== undefined && <Carrier />}
+      <Inner uiLocale={uiLocale}>{children}</Inner>
+    </>
+  );
 }
 
 export function useMessages(): Messages {

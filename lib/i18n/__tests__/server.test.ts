@@ -1,6 +1,11 @@
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { SessionRead } from "@/lib/auth/read-session";
+import type { Messages } from "@/lib/i18n";
+import { UI_LOCALES } from "@/lib/i18n/locales";
 import { en } from "@/messages/en";
 
 /**
@@ -41,4 +46,24 @@ describe("getMessages", () => {
   it("en 화면은 en 사전이다", async () => {
     expect(await getMessages()).toBe(en);
   });
+
+  /**
+   * 🟡1(R1) — **배선**을 잰다: 사전 파일이 있는데 `DICTIONARIES`의 그 줄을 en으로 둔 채면 red다. 사전이 들어오기 전에는 en을 기대한다
+   * (E7에서 "파일이 없으면 en" 갈래를 지워 대상을 `UI_LOCALES` 전부로 만든다).
+   */
+  it.each(UI_LOCALES)("%s 화면은 그 언어의 사전이다", async (uiLocale) => {
+    h.cookie = uiLocale;
+    const file = join(process.cwd(), "messages", `${uiLocale}.tsx`);
+    const want = uiLocale === "en" || !existsSync(file) ? en : ((await import(file)) as Record<string, Messages>)[uiLocale];
+    expect(await getMessages()).toBe(want);
+  });
+});
+
+/** ⚪1(R1) — 요청당 한 번(React `cache`)과 "Accept-Language를 보지 않는다"(헤더를 읽지 않는다)를 소스로 고정한다. */
+it("getUiLocale은 cache로 감싸고 요청 헤더를 읽지 않는다", () => {
+  const src = readFileSync("lib/i18n/server.ts", "utf8");
+  expect(src).toContain("cache(");
+  // `next/headers`에서는 `cookies`만 가져온다 — `headers()`(Accept-Language)를 부르는 우회를 막는다.
+  expect(src).toContain('import { cookies } from "next/headers";');
+  expect(src).not.toMatch(/\bheaders\s*\(/);
 });

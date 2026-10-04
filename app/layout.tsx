@@ -5,7 +5,6 @@ import { Toaster } from "sonner";
 
 import { SiteAnalytics } from "@/components/analytics";
 import { MessagesProvider } from "@/components/i18n/messages-provider";
-import { UI_DICTIONARIES } from "@/components/i18n/ui-dictionaries";
 import { NavigationDim } from "@/components/shell/navigation-dim";
 import { m } from "@/lib/i18n";
 import { getUiLocale } from "@/lib/i18n/server";
@@ -66,10 +65,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body>
         {/*
-          클라이언트 사전 입구 — 요청의 언어로 provider **하나**를 렌더한다. 사전은 언어별 `"use client"` 모듈의 client reference라
-          렌더된 언어의 청크만 받는다(`components/i18n/messages-provider.tsx` 머리 주석). ⚠️ `key`를 걸지 않는다 — 언어를 바꿀 때 트리가 다시 마운트된다.
+          클라이언트 사전 입구 — 요청의 언어로 provider **하나**를 렌더하고 **언어 코드만** 넘긴다. ⚠️ 여기(서버)서 사전 모듈을 import하지 않는다 —
+          레이아웃이 import하는 client 모듈은 Turbopack이 전부 레이아웃 청크 그룹에 실어 en 사용자도 받는다(orch D7 실측). ko·es 사전은
+          provider 안 `next/dynamic` 로더가 읽는다(`components/i18n/messages-provider.tsx` 머리 주석). ⚠️ `key`를 걸지 않는다 — 언어를 바꿀 때 트리가 다시 마운트된다.
         */}
-        <MessagesProvider uiLocale={uiLocale} messages={UI_DICTIONARIES[uiLocale]}>
+        <MessagesProvider uiLocale={uiLocale}>
           {children}
           {/*
             ⚠️ **`theme="light"`가 필수다** (8-1b). `sonner`는 테마를 **스스로 감지**하므로 이 값이

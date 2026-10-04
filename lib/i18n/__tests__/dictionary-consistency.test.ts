@@ -108,6 +108,13 @@ describe.each(dictionaries)("사전 %s", (lang, dict) => {
     expect(untranslated(found, lang)).toEqual([]);
   });
 
+  /** 🟡2(R1) — 키 정합을 `satisfies`가 붙어 있다는 가정에만 맡기지 않는다. 빠진 키는 화면의 `undefined`, 남는 키는 죽은 번역이다. */
+  it("② 키 경로 집합이 en과 같다 — 영어 고정 네임스페이스 제외", () => {
+    const paths = new Set(found.map(({ path }) => path));
+    expect([...enLeaves.keys()].filter((path) => !paths.has(path))).toEqual([]);
+    expect([...paths].filter((path) => !enLeaves.has(path))).toEqual([]);
+  });
+
   it("③ 빈 문장이 없다 — en이 비어 있는 자리만 예외다", () => {
     expect(emptied(found)).toEqual([]);
   });
@@ -225,13 +232,28 @@ describe("소스 검사 — 사전을 어디서 읽나", () => {
 
   /** design §3.3 — 다른 클라이언트 모듈이 ko·es를 import하면 그 순간 모든 사용자 번들에 실린다. 방침 ko 본도 페이지 하나만 읽는다(§8). */
   it.each([
-    // 서버 입구(`lib/i18n/server.ts`, server-only)는 클라이언트 그래프 밖이라 번들에 싣지 않는다.
-    ["ko", ["components/i18n/ko-messages.ts", "lib/i18n/server.ts"]],
-    ["es", ["components/i18n/es-messages.ts", "lib/i18n/server.ts"]],
+    // 클라이언트는 provider 안 `next/dynamic` 로더 한 줄뿐이고(아래 검사), 서버 입구(`lib/i18n/server.ts`)는 server-only라 번들에 싣지 않는다.
+    ["ko", ["components/i18n/messages-provider.tsx", "lib/i18n/server.ts"]],
+    ["es", ["components/i18n/messages-provider.tsx", "lib/i18n/server.ts"]],
     ["ko-privacy", ["app/privacy/page.tsx"]],
   ] as const)("⑥ messages/%s를 import하는 비테스트 소스는 정해진 파일뿐이다", (name, allowed) => {
     const extra = importers(new RegExp(`(^|/)messages/${name}(\\.tsx)?$`)).filter((path) => !(allowed as readonly string[]).includes(path));
     expect(extra).toEqual([]);
+  });
+
+  /**
+   * ⚠️ **번들 회귀 방어선** (orch D7 실측) — 레이아웃 그래프의 client 모듈은 Turbopack이 레이아웃 청크 그룹 하나에 실어 en 사용자도 받는다.
+   * 그래서 ko·es 사전은 provider 안 **`next/dynamic` 로더로만** 읽는다(정적 import·`use(import())` 금지 — 후자는 모듈을 청크 둘로 복제하고
+   * preload되지 않는다). 서버 입구는 server-only여야 정적 import가 클라이언트로 새지 않는다.
+   */
+  it("⑥ provider는 ko·es 사전을 next/dynamic 로더로만 읽고, 서버 입구는 server-only다", () => {
+    const provider = SOURCES.find(({ path }) => path === "components/i18n/messages-provider.tsx")?.code ?? "";
+    const statics = specifiers(provider.replace(/\bimport\s*\(\s*["'][^"']+["']\s*\)/g, ""));
+    expect(statics.filter((spec) => /(^|\/)messages\/(ko|es)$/.test(spec))).toEqual([]);
+    const dynamicLines = provider.split("\n").filter((line) => /\bimport\s*\(\s*["']@\/messages\//.test(line));
+    expect(dynamicLines.length).toBeGreaterThan(0);
+    expect(dynamicLines.filter((line) => !/\bdynamic\(\s*\(\)\s*=>\s*import\(/.test(line))).toEqual([]);
+    expect(SOURCES.find(({ path }) => path === "lib/i18n/server.ts")?.code).toMatch(/^import "server-only";/m);
   });
 
   /** design §10 — cron에는 누구의 언어로 쓸지 정할 사용자가 없다. pull·push 결과는 코드를 싣고 문장은 받는 쪽이 조립한다(B1′). */
