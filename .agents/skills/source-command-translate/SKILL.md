@@ -20,7 +20,7 @@ Use this skill when the user asks to run the migrated source command `translate`
 | 개념별 화면 용어와 "쓰지 않는 말"(en·ko·es 열) | `docs/DESIGN.md` §10.1 + `lib/i18n/__tests__/helpers/banned-terms.ts`(같은 커밋에서 같이 고친다) |
 | 상태 톤·낱말 | `docs/DESIGN.md` §2.4 |
 | 사전 입구·영어 고정 표면 목록 | `docs/ARCHITECTURE.md` §6.355 · CLAUDE.md "코드 컨벤션" |
-| 가이드 원고의 언어 규칙·라벨 게이트·톤 | `guide/AUTHORING.md` `#languages`·`#labels` |
+| 가이드 원고의 언어 규칙·라벨 게이트·톤 | `guide/AUTHORING.md` `#languages`·`#labels`·`#tone-ko`(ko 원고 톤) |
 | ko 개인정보 방침 | `messages/ko-privacy.tsx` + `lib/privacy/__tests__/policy-gate.test.tsx`(`koDigest`) |
 
 ## 사용
