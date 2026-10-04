@@ -707,7 +707,7 @@ logs 상세 `components/logs/event-dialog.tsx`(2026-09-24, §6.68), 그리고 �
 | **ErrorState** | 편집 셸·Logs 경계의 CircleX/페이지 EmptyState와 primary Retry를 공유한다. role=alert 한 번만 추가하며 실제 retry callback·문구를 보존한다. 셸 404는 alert 없는 EmptyState p18, 루트 오류/404는 기존 RootFallback h1/24를 유지한다 |
 | **Input·Select** | Input은 `size="md|sm|xs"` =36·32·28, 기본md. `variant="bare"`는 테두리·링 없이 스위처 검색에 쓴다. `icon`·`clearable` 슬롯이 글리프와 이름 있는 X(`common.clearSearch`)를 든다. 즉시 필터 X는 빈 값 onChange 한 번, 제출형은 onSearch도 한 번 호출하고 필드 포커스를 지킨다. readOnly는 muted 면·foreground 글자·default 커서다. 기본 형은 `px-2.5 text-sm border border-input bg-background rounded-md`, invalid는 포커스 중에도 destructive 테두리·링이다. SelectTrigger는 FieldTrigger에 형을 위임하며 Radix 선택·aria·ref·이벤트를 유지한다. 충돌 여백8, 호출부 end 정렬을 보존한다 |
 | **Textarea** | 같은 형이지만 **높이 클래스(`h-9`)를 안 든다** — `rows=1` + `field-sizing-content py-1`이라 높이는 내용이 정한다 (§6.1) |
-| **Select 즉시 적용 (예외)** | **`/preferences`의 Language Select 하나만** 고르는 즉시 `setUiLocale`을 부르고 [Save]·Dialog로 확정하지 않는다(2026-10-04, ui-locales) — 공개 푸터 스위처와 같은 Action·같은 동작이고, 화면 전체가 새 언어로 다시 그려지는 것이 피드백이라 성공 토스트도 없다. 진행 중에는 트리거가 `busy`다. **앱의 다른 Select는 전부 [Save]·Dialog로 확정한다** — 이 예외를 다른 설정으로 넓히지 않는다 |
+| **Select 즉시 적용 (예외)** | **`/preferences`의 Select 둘만**(Language · Time zone — 같은 조립 `PreferenceSelectCard`, §6.675) 고르는 즉시 Action(`setUiLocale` · `setTimeZone`)을 부르고 [Save]·Dialog로 확정하지 않는다(2026-10-04 ui-locales · 2026-10-05 user-timezone). Language는 공개 푸터 스위처와 같은 Action·같은 동작이고 화면 전체가 새 언어로 다시 그려지는 것이 피드백이다 · Time zone은 카드 안 미리보기 줄 `Now: …`가 피드백이다 — 둘 다 성공 토스트가 없다. 진행 중에는 트리거가 `busy`다. **앱의 다른 Select는 전부 [Save]·Dialog로 확정한다** — 이 예외를 Preferences 밖의 설정으로 넓히지 않는다 |
 | **SearchInput** | `components/ui/search-input.tsx`. Input의 검색 글리프·지우기 슬롯을 쓴다. 기본 폭256, 번역·Logs는320이며 className은 바깥 배치만 든다. Enter는 trim한 질의를 제출하고, X와 비어 있지 않은 Escape는 빈 질의를 정확히 한 번 제출한다. 빈 Escape는 전파하며 `isImeComposing` 동안 Enter/Escape를 가로채지 않는다. 제출 응답은 그 뒤에 작성한 질의를 덮지 않는다. ProjectSearch/useProjectQuery 래퍼는 로컬 상태와 history.replaceState URL 동기화를 유지한다. 온보딩 repo·트리 필터는 즉시 Input을 쓴다 |
 | **ProjectThumbnail** | ui 잎. xs16/radius4/glyph12, sm28/radius8/glyph16, md32/radius8/glyph16, lg56/radius8/glyph20. 이미지 object-contain·투명 배경, 이름 hue 폴백·새 URL 재시도는 ImageTile이 유지한다 |
 | **Skeleton** | size 없는 블록의 기본 radius4와 모든 명시 radius를 유지한다. size=xs/sm/md/lg는 U+200B line box와0.8em 블록으로 글자 줄을 만든다. 옛 SkeletonLine export는 제거했다. 모든 app loading은 숨지 않은 sr-only 상태 문장을 정확히 하나 가진다 |
@@ -1029,7 +1029,7 @@ Keys는 trim 뒤 `KEY_QUERY_MIN`(2) 이상 — **UTF-16 길이**라 서로게이
 |---|---|
 | 컨테이너 | `mx-auto max-w-[1120px] px-10 pt-16 pb-30`(위 64는 `/docs`·`/changelog`와 같다 — 2026-09-28 사용자, 옛 위 120) · grid `minmax(0,720px) 200px` · `justify-between` · gap 64. `<main>`을 그리지 않는다 — 랜드마크는 셸의 것 하나다 |
 | `h1` | `text-4xl`(36) · 1.3 · **600**(§4 — 24px 이상) |
-| 시행일 | `h1` 바로 아래·도입 **위** 한 줄 · 14 · 1.6 · muted · mt 12 · `Effective date` + `<time dateTime="YYYY-MM-DD">`. ⚠️ **본문의 muted 금지가 이 줄에는 안 걸린다** — 메타 줄이다. ⚠️ **보이는 날짜는 `lib/utc-time.ts`의 `utcDay`다**(`Sep 28, 2026` — 앱의 절대 날짜 형 하나, 2026-09-28) — 사전의 `"YYYY-MM-DD"`는 `dateTime`에만 그대로 넣고 사전 값은 바꾸지 않는다(`policy-gate`가 그 값을 본다). ⚠️ `<section>` 밖이라 본문 링크 규칙이 안 걸린다. 2026-09-26까지 §6.61(옛 1열 그릇)의 행이었고 `/docs`는 쓰지 않아 그 prop과 함께 걷었다 |
+| 시행일 | `h1` 바로 아래·도입 **위** 한 줄 · 14 · 1.6 · muted · mt 12 · `Effective date` + `<time dateTime="YYYY-MM-DD">`. ⚠️ **본문의 muted 금지가 이 줄에는 안 걸린다** — 메타 줄이다. ⚠️ **보이는 날짜는 `lib/date-format.ts`의 `formatDay`이고 시간대는 UTC 고정이다**(`Sep 28, 2026` — 앱의 절대 날짜 형 하나, 2026-09-28 · 공개 셸이라 보는 사람의 시간대를 따르지 않는다, 2026-10-05 user-timezone) — 사전의 `"YYYY-MM-DD"`는 `dateTime`에만 그대로 넣고 사전 값은 바꾸지 않는다(`policy-gate`가 그 값을 본다). ⚠️ `<section>` 밖이라 본문 링크 규칙이 안 걸린다. 2026-09-26까지 §6.61(옛 1열 그릇)의 행이었고 `/docs`는 쓰지 않아 그 prop과 함께 걷었다 |
 | 도입 | `PROSE`(16 · 1.6 · `text-pretty`) · mt 24 |
 | 구분선 | `<hr>` 1px `--border` · mt 40 |
 | `h2` | `SECTION_HEADING`(24 · 1.4 · **600** — §4) · **절 간격 32**(`<section>`의 `mt-8` — 첫 절도 같다, 옛 48·56) · **`id` 필수**(§6.61) · `scroll-mt-12`(하드 해시 착지도 48 아래) · `tabIndex={-1}` + `focus:outline-none`(목차가 포커스를 옮긴다) |
@@ -1054,7 +1054,7 @@ Keys는 trim 뒤 `KEY_QUERY_MIN`(2) 이상 — **UTF-16 길이**라 서로게이
 | 그릇 | ⚠️ **`mx-auto max-w-[800px] px-10 pt-16 pb-30` 한 겹** — 본문 720 + 좌우 40, 위 64(§6.61 `/docs`와 같다), 아래 120. **목차가 없어 §6.61·§6.616의 720 + 목차 200 격자를 따르지 않는다** — 빈 200 열을 남기면 본문이 왼쪽으로 쏠린다. 시안의 1120 바깥 그릇에서도 이탈했다 |
 | `h1` · 소개 | `h1` 36/1.3/600(§6.616과 같다) · 소개 `PROSE`(16/1.6) · **위 20**(§6.61 `h1+p`와 같다). 소개가 `Dates are in UTC.`를 한 번 말하고 항목의 날짜엔 라벨이 없다 |
 | 목록 | 소개 아래 32. **모든 항목이 같은 틀**(`ENTRY_BLOCK` — `border-t` `--border` + 위아래 **48**, 2026-09-28 사용자 — 옛 40) — ⚠️ **첫 항목도 예외가 아니다**. 선이 소개와 목록을 가른다. 특례(`first:` 류)는 `changelog-page.test.tsx`가 막는다. **항목은 `<section aria-labelledby={tag}>`**(이름 없는 section 금지) |
-| 항목 머리 | 최신 항목만 초록 `Badge soft-green`의 `Latest` → 8 → 버전 **`h1`** 30/1.3/600(2026-09-28 사용자 — 태그째 올렸다. 페이지 제목 `Changelog`도 `h1`이라 한 문서에 `h1`이 여럿이다) → 4 → 날짜 14/1.6 muted(`<time dateTime>`에 원 ISO, 보이는 쪽은 `utcDay`) → 24 → 본문 |
+| 항목 머리 | 최신 항목만 초록 `Badge soft-green`의 `Latest` → 8 → 버전 **`h1`** 30/1.3/600(2026-09-28 사용자 — 태그째 올렸다. 페이지 제목 `Changelog`도 `h1`이라 한 문서에 `h1`이 여럿이다) → 4 → 날짜 14/1.6 muted(`<time dateTime>`에 원 ISO, 보이는 쪽은 `formatDay` — UTC 고정, 소개의 `Dates are in UTC.`가 참이어야 한다) → 24 → 본문 |
 | 버전 링크 | ⚠️ **`h1` 안의 버전 글자가 곧 그 판의 GitHub Release 링크다**(2026-09-28 사용자 — 옛 자기 앵커 `#v1.0.1`과 본문 아래 `View on GitHub` 버튼을 함께 대체했다) · 새 탭 + `noreferrer` · **글리프 없음**(§6.3 — 외부 링크 아이콘을 잠깐 세웠다가 걷었다) · `aria-label` 없음(접근 이름 = 보이는 버전 — 구역 이름도 이것이다). 색은 **`primary`** · hover는 글자색만 `muted-foreground` + 포커스 링. `h1`은 `id={tag}` · `tabIndex={-1}` · `scroll-mt-12` · `focus:outline-none` — 버전 주소(`/changelog#v1.0.1`)의 해시 착지·포커스는 `PublicScroller`가 그대로 한다. ⚠️ **페이지 안에서 버전 주소를 복사하는 길은 없다** |
 | 본문 제목 | 원문의 최소 깊이를 **`h1`**로 맞춘다(`shiftHeadings` — `##`·`###` → `h1`·`h2`, 2026-09-28 사용자 — 버전과 같은 태그 급). 모양은 공개 문서 공통 급(`components/docs/classes.ts` — `/docs`·`/privacy`·`/changelog` 한 벌, 2026-09-28 사용자): `h1` = `SECTION_HEADING`(24/1.4/600 · 위 32) · `h2` = `SUB_HEADING`(20/1.4/500 · 위 20) · `h3` = `MINOR_HEADING`(18/1.5/500 · 위 16). ⚠️ **`h4`~`h6`는 이 화면이 정한 급이다** — `text-prose`(16) · 1.6 · 500 · 위 16(없으면 브라우저 기본 700이 나온다). 버전(30)과 본문 절(24)은 크기로 갈린다 |
 | 본문 | 문단·목록·굵게·인라인 코드·hr은 §6.61의 원고 급과 같은 클래스 상수다(`components/docs/classes.ts`의 `PROSE`·`LIST`·`INLINE_CODE`·`DOC_LINK` — 16/1.6 · 위 8 · 항목 간격 4). 링크는 `text-link`(§6.3), 스킴이 있거나 `//`로 시작하면 새 탭 + `noreferrer`(원고의 `resolveDocLink`와 같은 외부 판정). 목록 항목은 `text-pretty`(굵은 머리 + 긴 문장이라 끝줄에 낱말 하나가 떨어지기 쉽다). 끝의 `**Full changelog:**` 줄은 걷는다(버전 링크가 대신한다) |
@@ -1720,7 +1720,7 @@ jsdom의 user-event는 keydown·keypress를 한 동기 호출에서 보내 이 �
 - ⚠️ **제출 버튼이 바닥이라 `<form>` 바깥이다 → `form="invite-form"`으로 묶는다** (POSTMORTEM 2026-09-08).
 - ⚠️ **포커스 복귀가 `pending`에 물려 있다** (malmoi#64) — 행 오류는 첫 문제 행 이메일, 폼 Alert는 주 버튼.
   `useTransition`의 pending이 응답 커밋에도 아직 true라 그때 `focus()`하면 무시된다.
-- **시각은 서버의 `retryAt`을 UTC로**(`retryAtLabel` — 분 단위로 **올린다**, 내리면 그 시각에 눌러 다시 막힌다).
+- **시각은 서버의 `retryAt`을 보는 사람의 시간대로**(`retryAtLabel(iso, style)` — `formatMinute`이라 오프셋 라벨이 붙는다 `… 15:40 UTC+9`. 분 단위로 **올린다**, 내리면 그 시각에 눌러 다시 막힌다).
   캔버스의 `3:40 PM`은 라벨 없는 로컬 시각이라 리포 규칙(CLAUDE.md 날짜)에 진다.
 
 **캔버스와 다른 채 둔 것** (전부 프리미티브·리포 규칙이 이긴 자리다): 폼 Alert 본문 14(캔버스 13 — `Alert`
@@ -1786,7 +1786,7 @@ green이었고, 증상이 "내용이 안 보인다"가 아니라 **"여백이 �
 2026-09-22에는 "경로에만 mono를 쓴다"였는데, 다음 날 §4.1이 **mono를 `<pre>` 코드 블록 전용**으로
 못 박으면서 경로도 그 밖이 됐다. 코드가 따라갔다 — Sources의 경로는 sans이고 `text-mono`는 `<pre>` 표면(지금은 `ui/code-block` 하나 — 2026-10-01에 둘이 합쳐졌다)에만 남는다.
 로컬 정본은 `design_handoff_sources/Sources.dc.html`이다. 확정 spec이 덮는 동작은
-미저장 이탈 확인창 없음·Open translations의 바닥 배치·절대 UTC 시각이다.
+미저장 이탈 확인창 없음·Open translations의 바닥 배치·절대 시각(오프셋 라벨 — 2026-10-05부터 보는 사람의 시간대)이다.
 
 | 요소 | 규칙 |
 |---|---|
@@ -1797,7 +1797,7 @@ green이었고, 증상이 "내용이 안 보인다"가 아니라 **"여백이 �
 | 로딩·오류 | 제목+값 skeleton 세 블록 + 언어 세 행. 읽기 실패는 Try again, 접근 거부에는 Try again 없음. 성공 후 최신 조회만 실패하면 기존 상세와 성공 결과를 보존하고 재조회 안내 |
 | 연결 블록 | OWNER만. 경로·형식·리포/브랜치, border/radius12·muted 배경. 넓을 때 1fr/180/280, 컨테이너850 이하에서 경로 한 줄+형식/리포 두 칸. null은 Not configured, 알 수 없는 형식은 Unrecognized format. ⚠️ **경로·리포 값은 `break-all`이 아니라 `overflow-wrap:anywhere` + `/` 뒤 `<wbr>`다** (malmoi#89) — `break-all`이 `master`를 `m`/`aster`로 갈라 두 값처럼 읽혔다. 조각 경계(`/` · ` · `)에서 먼저 꺾고 한 조각이 칸보다 길 때만 그 안에서 꺾는다 |
 | 카드 | Sync status · Base language · Languages. 공유 Card, 간격16, header `12 16`(§5.15), 본문13/16. 적재 상태의 톤은 §2.4다(`planSurfaceImportStatus`의 `tone` — 2026-10-01): 성공 success · 일부 반영 warning · 실패 danger · 미적재·진행 중 neutral. 글리프는 §2.4 글리프 열 — 실패 `CircleX` · 일부 반영 `TriangleAlert` · 성공 `CircleCheck` · 미적재 `Info` · 진행 중 `LoaderCircle` 회전(칸 안 자리 교체라 `Button loading`이 아니다) |
-| 적재 | not-imported / importing / failed-first / failed-after / imported. 최초 실패만 재시도, 이후 실패는 OWNER에게 워크플로 재실행 안내. Source commit은 원본 커밋 시각이고 적재 완료 시각이라고 부르지 않는다. `<time dateTime>`+UTC 접근 이름, null 시각 생략, 상대 표기는 importing뿐 |
+| 적재 | not-imported / importing / failed-first / failed-after / imported. 최초 실패만 재시도, 이후 실패는 OWNER에게 워크플로 재실행 안내. Source commit은 원본 커밋 시각이고 적재 완료 시각이라고 부르지 않는다. `<time dateTime>`+오프셋 라벨이 붙은 절대 접근 이름(`formatMinute`), null 시각 생략, 상대 표기는 importing뿐 |
 | 기준 언어 | 활성 언어 Select + Save. **적용 대기는 신호 셋이다** — 카드 머리의 `warning` 배지 · Select의 `border-amber-500/50` · 적용값/요청값 한 줄(`Applied: x · Requested: y`). 저장이 즉시 적용된 것처럼 보이지 않게 하는 장치이고, 배지가 낱말을 들었으므로 아래 Alert에 같은 제목을 또 쓰지 않는다. 선언만 저장한다. 저장 중 refresh와 실패에서도 draft를 보존하고 baseline만 갱신. 오류 뒤 Save 포커스. EDITOR는 적용값만 읽고 대기 시 적용값/요청값을 본다. OWNER만 workflow 한 줄+Copy. 비활성 Select는 pointer/click/key 셋을 막는다 |
 | 언어 | base 먼저→활성 코드순→고아(기존 localeProgress 정렬). 코드·Base·완료 수·공유 Meter·검토 수·고아 사유/복구·Open. percent는 완료만, 막대는 완료+검토. 0분모는0%, 동시 읽기 어긋남은 clamp. 고아는 활성 수에서 제외하되 행은 남기며 Open은 비활성 |
 | 좁은 표 | 컨테이너640 이하에서 고아 사유를 별도 행으로 내려 코드·진행률·복구 문구를 보존한다 |
@@ -1853,7 +1853,7 @@ spec이 더한 것이었는데 그 근거가 정본 어디에도 없었다(featu
 ⚠️ **`TranslationSurface`에 컬럼 둘을 더했다** — `lastImportedAt`(마지막 **성공** 적재)와 `createdAt`(소스 선언).
 시안 `1d`가 `Imported — 5 minutes ago` · `added 2 minutes ago` · `Last successful import`를 말하는데 그 값이
 DB에 없었고, `lastCommitAt`(원본 커밋)을 그 자리에 쓰면 거짓이 된다. **backfill이 없어** 그 이전 성공에는
-시각이 없고 화면이 시각을 생략한다. 상대 표기여도 `<time dateTime>`의 접근 이름은 UTC 절대값이다.
+시각이 없고 화면이 시각을 생략한다. 상대 표기여도 `<time dateTime>`의 접근 이름은 오프셋 라벨이 붙은 절대값이다(`formatMinute`).
 
 ### 6.67 계정 (`/account`) — 카드 넷 (2026-09-09 6b-4 · 2026-09-10 세션 회수 · 2026-09-13 재편 · **2026-09-16 카드 규격**)
 
@@ -1905,9 +1905,9 @@ Home 카드도 Card를 쓰되 details·Meter·aside 랜드마크의 의미론은
 **주소창 값이라 `isConnectError`로 거른다**: 캐스팅하면 프로토타입 키가 문자열 자리에 함수를 넣어 화면이
 죽는다 (POSTMORTEM 2026-09-08).
 
-### 6.675 환경설정 (`/preferences`) — Language 카드 하나 (2026-10-04, ui-locales · 시안 `UI Locales.dc.html` B1–B8)
+### 6.675 환경설정 (`/preferences`) — Language · Time zone 카드 둘 (2026-10-04, ui-locales · 시안 `UI Locales.dc.html` B1–B8 · 2026-10-05 user-timezone — 시안 없음)
 
-**사용자 축 화면이다**(`/account`·`/mcp` 옆 — 인가는 `requireUser`, 보호 경로 + robots disallow). 셸 안 공통 상한 1280, 페이지 제목 `Preferences`(`h1` 18/500), breadcrumb 없음. 본문은 **`Language` 카드 하나**이고 `/account`의 `Card` 껍데기 그대로다. 타임존·테마 자리는 만들지 않았다(빈 자리·설정 추상화 없음 — 각자 별도 기능).
+**사용자 축 화면이다**(`/account`·`/mcp` 옆 — 인가는 `requireUser`, 보호 경로 + robots disallow). 셸 안 공통 상한 1280, 페이지 제목 `Preferences`(`h1` 18/500), breadcrumb 없음. 본문은 **`Language` → `Time zone` 카드 둘**(간격 16 — `space-y-4`)이고 `/account`의 `Card` 껍데기 그대로다. ⚠️ **두 카드는 한 조립이다** — `components/preferences/preference-select-card.tsx`(`PreferenceSelectCard` — 카드 머리 · 320 Select · 도움말 · 즉시 적용 · 진행 중 가드 · 닫힌 트리거 차단 · 실패 Alert. 2026-10-05에 Language 카드의 손 조립을 뽑아 두 소비자가 쓴다). 아래 표의 행은 둘 다에 걸리고, Time zone만의 것은 표 아래에 적는다. 테마 자리는 만들지 않았다(빈 자리·설정 추상화 없음 — 별도 기능).
 
 | 요소 | 규칙 |
 |---|---|
@@ -1917,19 +1917,29 @@ Home 카드도 Card를 쓰되 details·Meter·aside 랜드마크의 의미론은
 | 진행 중 | 트리거가 **고른 값을 먼저 보인다**(낙관적 표시) · Root `disabled`가 아니라 `RoleSelect`와 같은 가드(`aria-disabled` + `aria-busy` · `bg-muted` · muted 글자 · not-allowed — 포커스 유지, §4 busy 형) · **스피너 없음** |
 | ⚠️ 닫힌 트리거 typeahead | **막는다** — 닫힌 Radix Select 트리거는 글자를 치면 메뉴 없이 값이 바뀌고(POSTMORTEM 2026-09-19의 두 번째 경로), 즉시 적용이라 Tab으로 지나가다 `e`를 치면 앱 전체가 Español이 된다. 닫힌 트리거는 **화이트리스트** `Enter`·`Space`·`ArrowUp`·`ArrowDown`·`Tab`(+ 수정자 조합 — 브라우저 단축키)만 받는다 |
 | 실패 | `invalid`·`failed`(Action reject 포함 — 오류 경계로 보내지 않는다)면 값이 원래대로 돌아가고 `Card`의 `notice` 슬롯에 **`Alert danger inset`**(radius 0 · 카드 좌우 끝 · 13/16 · `bg-red-50` · 테두리 없음 · `CircleX`) · Dismiss 없음 · 포커스는 트리거에 남는다. 실패 갈래는 revalidate하지 않으므로 Alert가 씻기지 않는다 |
-| 로딩 | `loading.tsx` — 앱 관례대로 제목도 `Skeleton`, 카드 껍데기·머리·320×36 r10 자리 |
+| 로딩 | `loading.tsx` — 앱 관례대로 제목도 `Skeleton`, 카드 껍데기·머리·320×36 r10 자리 — 카드 둘이고 두 번째는 미리보기 줄 자리가 하나 더 있다 |
+
+**Time zone 카드**(`components/preferences/time-zone-card.tsx`, 2026-10-05 user-timezone — 기존 페이지에 같은 형의 카드 하나라 핸드오프·`/design-sync`가 없다):
+
+| 요소 | 규칙 |
+|---|---|
+| 카드 머리 | 제목 `Time zone` · 설명 `The time zone Malmoi uses for dates and times.` |
+| Select 옵션 | `timeZoneOptions(now)` — **`UTC`가 첫 줄**, 나머지 41개는 `now` 기준 오프셋 오름차순·같은 오프셋은 id 순. 라벨 `UTC+9 · Asia/Seoul`(id는 번역하지 않는다 — 세 언어 공통). **옵션 라벨에서만 오프셋 0을 `UTC+0`으로 쓴다**(`UTC+0 · Europe/London` — 첫 줄 `UTC`와 구분. 시각 꼬리는 그대로 `UTC`). 국기·아이콘 없음. 열린 목록은 화면 가용 높이까지 + 스크롤(`--radix-select-content-available-height` — 고정 상한이 아니다). 가장 긴 라벨 `UTC-3 · America/Argentina/Buenos_Aires`가 320을 넘으면 트리거만 말줄임(`FieldTrigger`의 `[&>span]:truncate`) |
+| 열린 목록 글자 이동 | **도시 이름으로 간다** — 옵션 `textValue` = id 마지막 조각에서 `_`를 공백으로(`Seoul`·`New York`·`Buenos Aires`·`UTC`). 라벨은 전부 `UTC…`, id는 대륙으로 시작해 어느 쪽으로도 `s`가 서울에 닿지 않는다. 닫힌 트리거 차단은 그대로다 |
+| 도움말 | `The default is UTC. Public pages always use UTC.` — `aria-describedby` 대상 |
+| 미리보기 | 도움말 아래 한 줄 `Now: Oct 5, 2026 08:10 UTC+9` — `formatMinute(now, { uiLocale, timeZone: 고른 값 })` · 12 muted `tabular-nums` · `aria-describedby`에 넣지 않는다. **이 페이지의 유일한 피드백이다**(다른 날짜가 없다) — 낙관 값을 따라가고 실패면 같이 돌아간다. `now`는 서버 페이지가 내린 ISO prop(옵션 정렬과 같은 순간) |
 
 ### 6.68 이력 (`/projects/[slug]/logs`) — 날짜 카드 + 이벤트 행 (2026-09-20, logs-rework · 시안 `design_handoff_project_logs` 1a–1m)
 
 ⚠️ **상세 Dialog의 열림은 URL(`?event=`)에서 파생된다** (2026-09-25, audit-ux #9·#102) — `open = useSearchParams().get("event") === ref`, 닫기는 `history.replaceState`라 서버 왕복이 없고 뒤로가기가 상세를 되살리지 않는다. 로컬 불리언을 곁에 두지 않는다(같은 행 재오픈이 영영 안 열렸다). 닫은 뒤 화면이 조립하는 모든 주소(필터·검색·[Clear filters]·[Older])는 `event`를 비운다 — 서버가 그린 `filter` prop에는 닫은 뒤에도 `event`가 남는다. 열 때는 행 chevron이 `useLinkStatus`로 스피너가 된다.
 
-셸 안 공통 상한 1280(여백·폭 상한은 `PanelHeader`·`PanelBody`가 든다, §5.15가 정본이다). 머리는 **제목 + 검색 + [Refresh] + 필터 다섯**(설명 줄은 보관 프로젝트의 안내 한 줄뿐), 본문은 **날짜 카드**(radius **12** `rounded-lg` — 셸 안 카드는 16을 쓰지 않는다, §5 · 2026-10-01 4-Y2. 머리↔첫 행 선은 `Card`와 같은 `#f0f0f0`이고 행↔행은 `--border`다 · 머리 `Sep 20, 2026 · Today` — 날짜는 `utcDay`, 낱말은 오늘·어제에만)에 담긴 **이벤트 행**이다. ⚠️ **breadcrumb이 없다** (§0).
+셸 안 공통 상한 1280(여백·폭 상한은 `PanelHeader`·`PanelBody`가 든다, §5.15가 정본이다). 머리는 **제목 + 검색 + [Refresh] + 필터 다섯**(설명 줄은 보관 프로젝트의 안내 한 줄뿐), 본문은 **날짜 카드**(radius **12** `rounded-lg` — 셸 안 카드는 16을 쓰지 않는다, §5 · 2026-10-01 4-Y2. 머리↔첫 행 선은 `Card`와 같은 `#f0f0f0`이고 행↔행은 `--border`다 · 머리 `Sep 20, 2026 · Today` — 날짜는 보는 사람의 시간대로 끊은 날짜 키를 `formatDayKey`로 그린 것, 낱말은 오늘·어제에만)에 담긴 **이벤트 행**이다. ⚠️ **breadcrumb이 없다** (§0).
 
 ⚠️ **표 다섯 열이 사라졌다.** When·Started by·Result·Files·Reason은 **Publish 실행 하나에만** 맞고, 종류가 여섯이면 번역 편집 행의 Files·Reason이 영원히 빈 칸이다 — **빈 칸은 "값이 없다"와 "이 종류엔 해당 없다"를 구별하지 못한다**(§6.1의 부재 규칙). 그래서 세로로 맞추는 것은 **셋뿐**이다.
 
-**행**: `[시각 48] [글리프 28] [문장 15 + 보조 13] [결과 172] [chevron 16]`
+**행**: `[시각 112] [글리프 28] [문장 15 + 보조 13] [결과 172] [chevron 16]`
 
-- **시각은 `09:42`만** 든다 — 날짜는 카드 머리가 한 번 든다. 정확한 값은 사라지지 않는다: `<time dateTime>` + `aria-label="Sep 20, 2026 09:42 UTC"`(`utcMinute`). ⚠️ **행마다 전체 날짜를 적던 옛 형은 활동이 하루 수십 건이 되면 같은 날짜를 스무 번 반복하고 그 폭(약 150)이 문장에서 빠져나간다.**
+- **시각은 `HH:mm` + 오프셋 라벨**이다(`09:42 UTC` · `08:10 UTC+9` · `14:12 UTC+5:30` — `formatClock`, 2026-10-05 user-timezone). 날짜는 카드 머리가 한 번 든다. **라벨을 행마다 단다** — "시각에는 오프셋 라벨" 규칙에 예외를 두지 않는다(사용자 2026-10-04). 칸은 **`w-28`(112) + `whitespace-nowrap` + `tabular-nums`**다 — 옛 `w-12`(48)는 `08:10 UTC+5:30`을 못 담는다(폭은 Geist 14px 자폭 추정 ≈ 103이고 실물 확인은 Q1 몫). 정확한 값은 사라지지 않는다: `<time dateTime>`(UTC ISO) + `aria-label="Sep 20, 2026 09:42 UTC"`(`formatMinute` — 서울이면 `… 18:42 UTC+9`). ⚠️ **행마다 전체 날짜를 적던 옛 형은 활동이 하루 수십 건이 되면 같은 날짜를 스무 번 반복하고 그 폭(약 150)이 문장에서 빠져나간다.**
 - **문장이 행위자로 시작한다**(500 굵기). 자동 실행은 `Nightly`·`CI`가 그 자리를 그대로 쓴다 — 사람과 자동화를 같은 문법으로 읽는다. ⚠️ **방향은 낱말과 글리프가 함께 말한다**: 내보내기 `sent … to GitHub`/`git-pull-request-arrow`, 가져오기 `synced … from the repository`/`arrow-down-to-line`. 내부 이름이 하나(`SyncRun`)라는 사실이 두 방향을 섞을 근거가 되지 않는다.
   ⚠️ **자동화 낱말은 `triggerOf`(`lib/events/view.ts`)가 `subtype` 컬럼으로 정한다** (2026-09-30, nightly-sync) — AUTOMATION이 PUBLISH이거나 야간 subtype(`import.nightly`·`nightly.skip`)이면 `Nightly`, 그 밖이 `CI`다. 전엔 AUTOMATION IMPORT가 전부 `CI`였다. 행·상세의 행위자·Trigger 필드·Home 메타 열이 이 하나를 쓴다. 사람 행은 그대로 마스킹된 이름이다.
 - **야간 적재·스킵 문장** (2026-09-30, 행위자 머리 문법 그대로 — 정본은 `messages/en.tsx`의 `m.logs.sentence.import`): 편집도 새 커밋도 없던 밤 `Nightly found nothing to publish or sync`(⚠️ "synced"라 말하지 않는다 — 아무것도 읽지 않았다) · head를 못 읽은 밤 `Nightly couldn’t read the repository’s base branch`("sync failed"와 가른다 — 적재가 시작조차 안 했다) · 편집 수가 아닌 보류 셋 `{who} held the sync — a Malmoi pull request is still open` / `— GitHub didn’t answer about pull requests` / `— the change is too large for a server-side sync`. `pending-edits` 보류는 옛 문장(소스 이름) 그대로다. 야간 적재 자체(`import.nightly`)는 수동 Sync와 같은 결과 문장을 쓴다.
@@ -1945,7 +1955,7 @@ Home 카드도 Card를 쓰되 details·Meter·aside 랜드마크의 의미론은
 - **Result 메뉴 머리의 한 줄**이 이 축은 실행에만 적용된다는 사실을 고르기 전에 말한다.
 - ⚠️ **행위자 메뉴의 `Automation` 머리 아래는 `CI` · `Nightly` 두 항목이다** (2026-09-30, nightly-sync — `?actor=ci` · `?actor=nightly`). 옛 한 항목은 `Nightly`라고 적힌 채 CI 적재까지 걸렀다. **단일 선택 그대로**라 새 축·AND 조합·빈 교집합이 생기지 않는다. `Manual` 항목은 없다 — 사람별 선택이 그 자리다. 옛 링크의 `?actor=automation`은 둘 다를 뜻하고 메뉴 항목이 없으며, 트리거 칩은 머리 낱말 **`Automation`**으로 읽는다(`Nightly`로 적으면 옛 결함이 칩에 남는다).
 - **결과 `Up to date`** (2026-09-30) — 편집 없는 밤, 리포 head도 그대로였던 야간 스킵의 결과어다. 배지는 `neutral` 면(톤 `muted` — `Nothing to send`와 같은 회색, 가장 조용한 무리) · 결과 글리프 칸은 **§2.4 neutral 칸**(`bg-foreground/5` — `Nothing to send`·`Superseded`·진행 중과 같은 무채. ⚠️ nightly-sync가 적은 `slate`는 등재하지 않는다 — 결과 칩은 별도 축이 아니다, §6.2) · 글리프는 IMPORT의 `arrow-down-to-line` · Result 메뉴 그룹은 **`Both`**(Publish도 적재도 할 일이 없었다). ⚠️ **`Nothing to send`와 다른 낱말이다** — 그것은 Publish 한쪽만 말한다.
-- ⚠️ **기간의 `Custom range (UTC)`는 네이티브 `<input type="date">` 둘이다** — 라이브러리도 새 프리미티브도 넣지 않는다. **피커 모양을 브라우저가 정하므로 시안과 픽셀이 갈리는 것이 의도된 이탈이다**(아래 "의도된 이탈"). ⚠️ **두 칸은 메뉴 밖 Dialog에 산다** (2026-09-24, audit #8 — WCAG 2.1.1): 메뉴 안에 두면 roving focus가 `menuitem`만 들르고 Tab이 메뉴를 닫아 키보드로 도달할 수 없었다. 메뉴에는 `Custom range (UTC)…` 항목 하나가 서고, Dialog는 [Cancel]/[Apply range]를 든다 — **칸을 바꿀 때마다 이동하지 않는다**(한 칸만 고친 중간 상태가 결과처럼 서지 않게). 닫히면 Date 트리거로 포커스가 돌아간다. 두 칸은 **보이는 라벨이 있는 Dialog 필드**다(`FormGroup` + 기본 `Input` — 메뉴 시절의 `h-8 text-xs`가 아니다) · 설명 한 줄(한쪽을 비우면 열린 범위) · **여는 때마다 URL의 현재 값에서 시작한다**(취소한 입력·프리셋 이전의 범위가 남지 않는다).
+- ⚠️ **기간의 `Custom range`는 네이티브 `<input type="date">` 둘이다** — 라이브러리도 새 프리미티브도 넣지 않는다. **피커 모양을 브라우저가 정하므로 시안과 픽셀이 갈리는 것이 의도된 이탈이다**(아래 "의도된 이탈"). ⚠️ **두 칸은 메뉴 밖 Dialog에 산다** (2026-09-24, audit #8 — WCAG 2.1.1): 메뉴 안에 두면 roving focus가 `menuitem`만 들르고 Tab이 메뉴를 닫아 키보드로 도달할 수 없었다. 메뉴에는 `Custom range…` 항목 하나가 서고, Dialog는 [Cancel]/[Apply range]를 든다 — **칸을 바꿀 때마다 이동하지 않는다**(한 칸만 고친 중간 상태가 결과처럼 서지 않게). 닫히면 Date 트리거로 포커스가 돌아간다. 두 칸은 **보이는 라벨이 있는 Dialog 필드**다(`FormGroup` + 기본 `Input` — 메뉴 시절의 `h-8 text-xs`가 아니다) · 설명 한 문단(한쪽을 비우면 열린 범위 + 끝에 **`Days are in <id>.`** — 시간대 **id**(`Asia/Seoul`·`UTC`)이고 오프셋이 아니다: 지금의 오프셋 하나를 쓰면 서머타임을 넘는 범위에서 거짓이 된다. 같은 `aria-describedby` 노드에 이어 붙인다, 2026-10-05 user-timezone) · ⚠️ **라벨에 `(UTC)` 괄호가 없다**(메뉴 항목·칩·`From`·`To` — 2026-10-05에 뺐다. 날짜는 보는 사람의 시간대로 끊고 그 사실은 설명 끝줄이 한 번 말한다) · **여는 때마다 URL의 현재 값에서 시작한다**(취소한 입력·프리셋 이전의 범위가 남지 않는다).
 
 **상세 1024** (2026-09-22 사용자 — `/design-sync`) — ⚠️ **캔버스 `1d`의 640 판정을 뒤집은 값이다.** 시안은 640을 *"본문 한 줄이 약 70자에서 끊기는 폭"* 이라는 근거로 못 박았지만, 같은 셸에서 Sources 상세가 `LargeModal`(1024)로 서면서 **두 상세가 나란히 다른 판**이 됐고 사용자가 그 불일치를 먼저 발견했다. 확인창 `dialog.tsx`(440)는 여전히 아니다 — Before/After 두 블록과 소스별 결과가 들어가면 줄바꿈이 무너진다. ⚠️ **`large-modal.tsx`와 폭·radius·dim이 같다**(`w-[calc(100%-var(--spacing-modal-gutter))] max-w-[1024px]` — dim 여백 48이 그 관용구에 딸려 온다. 옛 `max-w-[calc(100vw-48px)]`는 좌우 24만 비워 시안의 절반이었고 높이만 96을 뺐다) · `rounded-xl` · dim `bg-foreground/32` + `backdrop-blur-[6px]`. ⚠️ **2026-09-24에 dim·radius도 모달로 접었다**(사용자) — 전엔 폭만 빌리고 dim `/35`·blur 없음·`rounded-2xl`을 두어 *"온보딩 껍데기까지 따라가면 라우트를 대신하는 판으로 읽힌다"* 고 판정했는데, 폭을 1024로 맞춘 뒤로는 Sources 상세와 나란히 서서 **blur 유무가 먼저 보이는 차이**가 됐다. ⚠️ **껍데기 컴포넌트는 여전히 따로다**(`components/logs/event-dialog.tsx`) — `LargeModal`의 높이 하한 `80svh`가 참조 한 줄뿐인 상세를 빈 판으로 만들고, 머리에 글리프·종류·시각 자리가 없다. 바닥은 필수 actions 슬롯으로 소비자 버튼군을 받으며 온보딩의 [Back]/[Next]는 WizardFooter가 공급한다. ⚠️ **값 열이 860px가 된다**(1024 − 여백 48×2 − 라벨 104 − gap 12)는 것을 **보고 유지한 판정이다** (2026-09-22 실측 스크린샷). ⚠️ **2026-09-24에 머리와 필드가 움직였다**(사용자): 칩이 **40**(`EventGlyph` `size="lg"` = `IconTile lg`, 글리프 20 · radius 8(2026-09-28, 옛 10) — 온보딩 ①②의 40 칩과 같은 규격, 목록 행은 28 그대로)이고, 본문이 칩이 아니라 **제목 열에서 시작한다**(`pl-[76px]` = 머리 좌측 24 + 칩 40 + gap 12 — 셋 중 하나를 바꾸면 이 값도 같이 움직인다). 필드는 `dl` 격자에서 **`Table`**(`scrollable={false}`, `border rounded-lg` 박스 · 행 선 `--border` · hover 없음)로 바뀌었고 라벨은 `th scope="row"`(104, `text-gray-dim` 13)다. **행 최소 높이 48(`h-12`)은 [Copy reference]가 든 참조 행이 기준이고**(버튼 28 + 10×2) 세로 정렬은 가운데다 — 값 열 폭은 그만큼 줄었다. 시안이 640을 고른 근거였던 *"본문 한 줄 약 70자"* 는 폭 결정과 함께 버렸고, 격자 `104px 1fr`의 비가 1:4에서 1:8로 간다 — **값에 `max-w`를 두거나 라벨 열을 넓히지 않는다**: 긴 번역 값·긴 키가 줄바꿈 없이 보이는 쪽을 택했다. 나머지 껍데기 값은 시안대로다(머리 24/24/16 · 제목 18/500 · 닫기 36 ghost · 푸터 위 선 `--divider` · 그림자는 `shadow-medium` — `--shadow-medium`이 시안이 적은 `0 6px 16px 2px rgba(22,24,27,0.15)`와 **바이트 단위로 같아** raw를 토큰으로 바꿨다). **dim은 임의 hex가 아니라 토큰 + 불투명도다** — §6.2의 "새 raw 색을 늘리지 않는다"가 그 형이고, 행 hover도 같은 이유로 `hover:bg-foreground/[0.02]`, 날짜 카드 머리↔첫 행 선은 `border-foreground/[0.06]`이다(철자의 정본은 `CardList`). `border-divider`의 불투명 `rgb(240 240 240)`과 알파 `color-mix` 선언은 다르므로 서로 치환하지 않는다(T1 CSS 검증). ⚠️ **모달은 그 "한 화면"이 아니다** (2026-09-22): 상세 안의 선 셋은 `border-divider`이고 목록의 카드 선은 `border-foreground/[0.06]`이라 **같은 라우트에 두 철자가 산다.** 규칙이 막는 것은 *같은 판 안에서* 두 철자가 섞이는 것이고, dim 위에 뜬 표면은 그 판이 아니다.
 
@@ -1969,7 +1979,7 @@ Home 카드도 Card를 쓰되 details·Meter·aside 랜드마크의 의미론은
 #### 의도된 이탈 둘 (캔버스와 다르고, 근거가 여기 있다)
 
 1. **상세 로딩·상세 오류가 라우트 층으로 내려갔다.** 캔버스 `1i`는 클라이언트 fetch를 전제해 상세 전용 로딩·오류를 그렸는데, 상세를 **RSC가 그리기로** 하면서(스키마가 두 벌이 되지 않는다) 그 둘이 `loading.tsx`·`error.tsx`가 됐다. **같은 이유로 조회 실패가 all-or-nothing이다** — 캔버스 `1i`-4의 "이미 읽은 목록은 남기고 마지막 갱신 시각을 밝힌다"는 리뷰가 뒤집었다: 두 목록을 한 화면에 세우면 어느 쪽이 지금 사실인지 말할 수 없다.
-2. **기간 필터의 `Custom range (UTC)`가 네이티브 date 입력 둘이다** — 피커 모양을 브라우저가 정한다. date picker 라이브러리를 넣지 않는 결정의 대가이고, 그 결정의 근거는 "라이브러리 0·새 프리미티브 0"이다.
+2. **기간 필터의 `Custom range`가 네이티브 date 입력 둘이다** — 피커 모양을 브라우저가 정한다. date picker 라이브러리를 넣지 않는 결정의 대가이고, 그 결정의 근거는 "라이브러리 0·새 프리미티브 0"이다.
 
 #### Home의 Recent logs (§6.64와 함께)
 
@@ -2084,7 +2094,7 @@ Publish는 표면과 무관한 **프로젝트 전체**이고 라벨은 Home과 �
   - ⚠️ **`focus-visible:ring-offset-1`의 실물 사용처가 0건이다** (2026-09-13 실측 — `grep -rn "ring-offset-1" app components`가 주석 둘만 낸다). 이 절이 *"값 칩 옆 버튼 하나(온보딩의 리포 되돌리기)에서 남겨 뒀다"*고 적고 있었는데 그 호출부는 이미 사라졌다. **규칙이 아니라 사실이 낡은 것이고, 지금 offset을 덧대는 자리는 없다.** ⚠️ **`lib/__tests__/globals-css.test.ts`는 이 대비를 안 본다**(`--border`와 다른가 · 무채색이 아닌가 둘뿐이라 지금 값에서도 green이다) — 링이 안 보인다는 제보의 첫 확인 자리는 검사가 아니라 `--ring` 값이다. 사이드바 항목은 8-2부터 캔버스 위라 대상이 아니다.
   - ⚠️ **`--input`과 값을 다시 같게 두지 않는다** — 필드 테두리는 쉬는 상태의 윤곽, 링은 포커스 신호로 축이 다르다. `lib/__tests__/globals-css.test.ts`가 `--border`와의 동일성과 무채색 여부를 센다.
 - ⚠️ **`overflow-hidden` 부모 안에서는 `focus-visible:ring-inset`이 예외로 붙는다** (2026-09-11 실측). 링은 box-shadow라 요소 **밖으로** 3px 퍼지는데, 프로젝트 목록의 `<ul>`이 `rounded-lg`로 첫·끝 행의 모서리를 자르려고 `overflow-hidden`을 들고 있어 **그 3px이 통째로 잘렸다** — 키보드 사용자에게 포커스가 아예 안 보였다. 부모의 `overflow-hidden`을 뗄 수 없는 자리에서만 안쪽으로 그린다.
-- **저장 알림은 작업 화면에 `aria-live="polite"` 영역 하나**다 — 키 카드 푸터의 결과 줄(`data-footer-result`). 로케일 행마다 두면 200개다. Revert 뒤에는 포커스가 그 결과 줄로 간다(성공 뒤 Revert가 사라지고 Save는 꺼져 있어서다). 저장 거부·결과 미확인은 그 위의 `Alert`가 든다. ⚠️ **예외 하나 — Sync가 도는 동안의 거부(`sync-running`)는 Dialog다** (2026-10-01 sync-lock): **화면 밖 사건이 끼어드는 유일한 거부**라서다. 제목 `Syncing…` · 본문 `You can't save edits until the sync finishes — by ‹reopensBy› at the latest.`(`<time>` 안의 `utcMinute`) · `[OK]` `primary`. 저장과 Revert(미리보기·확정 둘 다)가 같은 Dialog이고 초안은 그대로다. 닫히면 연 자리로 간다 — [Save] 클릭이면 Save, 단축키면 그 입력(`DialogContent`의 최근 포커스 기록). 착지 때 lease가 살아 있으면 헤더 배너 스택 맨 위에 `neutral` 한 줄이 서고 **Save는 끄지 않는다**(막는 것은 서버 거부다). 둘 다 live 영역을 더하지 않는다(`components/translations/sync-lock.tsx`). ⚠️ **Revert가 꺼진 사유는 그 결과 줄 밖의 형제 span이다** (2026-09-23) — 안에 두면 사유가 바뀔 때마다 결과처럼 다시 낭독된다. 전달 경로는 `aria-describedby` 하나이고, 처리 중에도 `loading` 대신 `aria-disabled` + 스피너라 방금 누른 버튼이 포커스를 지킨다(§6.65 "`loading`과 겸용 불가").
+- **저장 알림은 작업 화면에 `aria-live="polite"` 영역 하나**다 — 키 카드 푸터의 결과 줄(`data-footer-result`). 로케일 행마다 두면 200개다. Revert 뒤에는 포커스가 그 결과 줄로 간다(성공 뒤 Revert가 사라지고 Save는 꺼져 있어서다). 저장 거부·결과 미확인은 그 위의 `Alert`가 든다. ⚠️ **예외 하나 — Sync가 도는 동안의 거부(`sync-running`)는 Dialog다** (2026-10-01 sync-lock): **화면 밖 사건이 끼어드는 유일한 거부**라서다. 제목 `Syncing…` · 본문 `You can't save edits until the sync finishes — by ‹reopensBy› at the latest.`(`<time>` 안의 `formatMinute`) · `[OK]` `primary`. 저장과 Revert(미리보기·확정 둘 다)가 같은 Dialog이고 초안은 그대로다. 닫히면 연 자리로 간다 — [Save] 클릭이면 Save, 단축키면 그 입력(`DialogContent`의 최근 포커스 기록). 착지 때 lease가 살아 있으면 헤더 배너 스택 맨 위에 `neutral` 한 줄이 서고 **Save는 끄지 않는다**(막는 것은 서버 거부다). 둘 다 live 영역을 더하지 않는다(`components/translations/sync-lock.tsx`). ⚠️ **Revert가 꺼진 사유는 그 결과 줄 밖의 형제 span이다** (2026-09-23) — 안에 두면 사유가 바뀔 때마다 결과처럼 다시 낭독된다. 전달 경로는 `aria-describedby` 하나이고, 처리 중에도 `loading` 대신 `aria-disabled` + 스피너라 방금 누른 버튼이 포커스를 지킨다(§6.65 "`loading`과 겸용 불가").
 - **번역 화면의 규칙 여럿은 `components/__tests__/translations-screen.test.ts`가 소스로 고정한다** — 작업 화면의 live region이 푸터 하나인지 · 로케일 입력에 `role="status"`가 없는지 · 입력이 키·로케일을 접근 이름으로 드는지 · 보류 배너가 `neutral`(not `warning`)이고 닫기·세션 저장이 없는지 · 옛 표 조각과 `pull-button.tsx`가 사라졌는지. 이 절의 규칙을 고치려면 그 파일이 red를 낸다.
 - 아이콘만 있는 버튼은 `aria-label`.
 - 드롭다운·모달은 Radix가 포커스 트랩·Esc·`aria-*`를 든다 — 직접 만들지 않는다.
@@ -2178,6 +2188,8 @@ Supabase를 골랐던 이유(2026-09-05)는 "개발자 도구이면서 비개발
 ### 10.0 ko·es 문체 (2026-10-04, ui-locales)
 
 `messages/ko.tsx`·`messages/es.tsx`는 `en`과 같은 키·같은 시그니처의 번역이고, 위 규칙(마침표·느낌표·줄임표 U+2026·곡선 따옴표·"please/sorry" 금지·다음 행동을 말하는 오류·git 어휘 금지)을 그대로 따른다. 언어마다 더하는 것만 적는다. 낱말은 아래 §10.1 표의 ko·es 열이 정본이다.
+
+**이 절과 §10.1을 사전·원고에 적용하는 절차는 `/translate` 스킬(`.claude/commands/translate.md`)이다** — 규칙은 여기에만 두고 스킬은 절차·체크리스트만 든다.
 
 - **ko — 합니다체.** 완전 문장(help·Alert 본문·오류·토스트)은 `~합니다`·`~습니다`로 끝낸다. 해요체 평서(`~해요`)·반말을 쓰지 않는다. 지시는 `~하세요`(합니다체 문장 옆에 서는 한국어 UI의 관용 — `~하십시오`는 쓰지 않는다), 확인 모달의 질문은 `~할까요?`·`~바꿀까요?`처럼 짧고 자연스럽게 쓴다(2026-10-05 사용자 — ko 톤 검수).
   - 버튼·메뉴 항목은 **명사형**(`저장` · `게시` · `멤버 제거`) 또는 `~하기`(`링크 만들기`)이고 마침표가 없다. 라벨·제목·배지는 명사구, 상태는 `~됨`(`보관됨` · `만료됨`)이다.
