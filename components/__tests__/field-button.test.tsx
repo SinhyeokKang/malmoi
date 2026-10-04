@@ -16,7 +16,7 @@ it("캡슐 치수·패널 면·장식 슬롯과 접근 이름을 그린다", asy
   const { container } = await render(<FieldButton {...props} shortcut={<Kbd>{en.common.keys.search.mac}</Kbd>} aria-keyshortcuts="Meta+K" />);
   const button = find<HTMLButtonElement>(container, "button");
   expect(button.type).toBe("button");
-  for (const token of ["rounded-full", "h-10", "w-80", "bg-background", "border", "border-border-subtle", "shadow-low", "hover:bg-primary-foreground", "focus-visible:border-ring", "focus-visible:ring-ring", "focus-visible:ring-1", "focus-visible:outline-none"]) {
+  for (const token of ["rounded-full", "h-11", "w-80", "bg-background", "border", "border-border-subtle", "shadow-low", "hover:bg-primary-foreground", "focus-visible:border-ring", "focus-visible:ring-ring", "focus-visible:ring-1", "focus-visible:outline-none"]) {
     expect(button.classList.contains(token), token).toBe(true);
   }
   expect(button.getAttribute("aria-label")).toBe("Search");

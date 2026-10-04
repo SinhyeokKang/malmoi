@@ -39,7 +39,7 @@ describe("HeaderBar — 세 슬롯", () => {
     const { container } = await render(<HeaderBar start={<span>Start</span>} center={<span>Center</span>} end={<span>End</span>} />);
     const bar = container.querySelector("header");
     expect(bar).not.toBeNull();
-    expect(bar?.className.split(/\s+/)).toEqual(expect.arrayContaining(["grid", "h-10", "shrink-0", "grid-cols-[1fr_auto_1fr]", "items-center", "px-1"]));
+    expect(bar?.className.split(/\s+/)).toEqual(expect.arrayContaining(["grid", "h-11", "shrink-0", "grid-cols-[1fr_auto_1fr]", "items-center", "px-1"]));
     expect([...bar!.children].map(slot => slot.className)).toEqual(["justify-self-start", "justify-self-center", "justify-self-end"]);
     expect([...bar!.children].map(slot => slot.textContent)).toEqual(["Start", "Center", "End"]);
   });

@@ -45,7 +45,9 @@ export function AppFrame({ m, children, overlay }: { m: Messages; children: Reac
   return (
     <div className="bg-canvas relative flex h-full flex-col gap-2 p-2">
       {/* 앱 셸 헤더(`components/shell/header.tsx`)와 같은 `HeaderBar` — 로고 · 가운데 검색 · 우측 New project · 연한 세로선 · 아바타. */}
+      {/* 목업 헤더는 40을 지킨다(2026-10-04 헤더 44 — 앱 셸·공개 셸만 44). 검색 캡슐 사본도 `h-10`이다. */}
       <HeaderBar
+        className="h-10"
         start={
           <span className="flex size-8 items-center justify-center rounded-lg">
             <Image src={logo} alt="" width={32} height={32} />

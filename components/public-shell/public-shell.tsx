@@ -49,7 +49,7 @@ export function PublicShell({
       */}
       <style>{`body{background-color:var(--canvas)}`}</style>
 
-      <div className="bg-canvas flex h-svh min-w-shell-min flex-col overflow-hidden px-2 pt-2">
+      <div className="bg-canvas flex h-svh min-w-shell-min flex-col overflow-hidden px-2 pt-1.5">
         <PublicHeader m={m} account={account} current={current} />
         <main className="border-border-subtle bg-background shadow-low relative flex min-h-0 flex-1 overflow-hidden rounded-xl border">
           {bare ? children : <PublicScroller>{children}</PublicScroller>}

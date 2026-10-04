@@ -43,7 +43,7 @@ export type HeaderCurrent = "docs" | "changelog";
 export function PublicHeader({ m, account, current }: { m: Messages; account: PublicAccount | null; current?: HeaderCurrent }) {
   return (
     <HeaderBar
-      className="mb-2"
+      className="mb-1.5"
       center={<SearchTrigger account={account} />}
       start={
         <div className="flex items-center gap-5">

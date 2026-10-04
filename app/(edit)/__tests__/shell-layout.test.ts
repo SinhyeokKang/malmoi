@@ -120,9 +120,11 @@ describe("셸 골격 — 바깥 padding 8 · 패널 간 gap 8 (8-2)", () => {
     expect(layout).toMatch(/\bbg-canvas\b/);
   });
 
-  it("바깥 padding 8과 패널 간 gap 8을 든다", () => {
-    expect(layout).toMatch(/className="[^"]*\bp-2\b/);
-    expect(layout).toMatch(/className="[^"]*\bgap-2\b/);
+  // 헤더 44(2026-10-04): 위 6 + 헤더 44 + 아래 6 = 패널 시작 56, 좌우·바닥 8. `gap-2`는 헤더의 `mb-1.5`로 옮겼다.
+  it("바깥 padding 좌우 8·위 6·바닥 8을 들고 헤더 아래 6은 헤더의 mb가 든다", () => {
+    expect(layout).toMatch(/className="[^"]*\bpx-2\b[^"]*\bpt-1\.5\b[^"]*\bpb-2\b/);
+    expect(layout).not.toMatch(/className="[^"]*\bgap-2\b/);
+    expect(header).toMatch(/className="mb-1\.5"/);
   });
 
   /**
@@ -133,8 +135,8 @@ describe("셸 골격 — 바깥 padding 8 · 패널 간 gap 8 (8-2)", () => {
     expect(layout).toMatch(/min-w-shell-min/);
   });
 
-  it("헤더가 전폭 40이고 로고와 사용자 메뉴 둘을 든다 — 32 컨트롤의 위아래가 4씩이다", () => {
-    expect(headerBar).toMatch(/\bh-10\b/);
+  it("헤더가 전폭 44이고 로고와 사용자 메뉴 둘을 든다 — 32 컨트롤의 위아래가 6씩이다", () => {
+    expect(headerBar).toMatch(/\bh-11\b/);
     expect(header).toContain("UserMenu");
     expect(header).toContain("routes.projects()");
   });

@@ -15,6 +15,8 @@ import { toNavProjects } from "@/lib/shell/nav";
 /**
  * 편집 UI 셸 — **캔버스 위에 패널이 떠 있는 구조다** (8-2, 시안 `212:937`).
  * 바깥 padding 8 · 패널 간 gap 8이고 예외를 만들지 않는다 (DESIGN §6.5).
+ * ⚠️ **헤더 44 이후 위·헤더 아래가 6·6이다**(`px-2 pt-1.5 pb-2` + 헤더 `mb-1.5` — 2026-10-04): 헤더가 4 커진 만큼 위 2·아래 2를 깎아 패널 시작(56)과
+ * 헤더 요소의 세로 중심(28)이 그대로다. `gap-2`는 없다 — 자식이 헤더·패널 둘뿐이라 헤더의 `mb`가 그 간격을 든다.
  *
  * ⚠️ **레이아웃의 조건부 반환은 차단이 아니다.** App Router는 레이아웃과 페이지를 병렬로
  * 렌더하므로, 여기서 `children`을 안 써도 페이지는 이미 실행돼 DB를 조회하고 RSC 페이로드를
@@ -55,7 +57,7 @@ export default async function EditLayout({ children }: { children: React.ReactNo
      * ⚠️ **`min-w-shell-min`가 있어야 좁은 창에서 "가로 스크롤"이 된다** (8단계 규약 3). 없으면
      * 스크롤이 아니라 flex가 압축돼 **콘텐츠가 잘린다** — 둘은 다르다.
      */
-    <div className="bg-canvas flex h-svh min-w-shell-min flex-col gap-2 overflow-hidden p-2">
+    <div className="bg-canvas flex h-svh min-w-shell-min flex-col overflow-hidden px-2 pt-1.5 pb-2">
       {/* ⚠️ **`image`가 여기를 지난다** — 세션을 읽는 것이 이 파일이라 앞뒤만 고치면 값이 `undefined`로 흐른다. */}
       <Header m={m} name={name} email={session.email} image={session.image} signOut={signOutAction} memberships={navMemberships} />
       {/*

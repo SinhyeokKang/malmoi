@@ -128,7 +128,10 @@ describe("공개 셸 — 헤더", () => {
     const bar = container.querySelector("header");
     expect(bar).not.toBeNull();
     expect(bar?.classList.contains("grid-cols-[1fr_auto_1fr]")).toBe(true);
-    expect(bar?.classList.contains("mb-2")).toBe(true);
+    expect(bar?.classList.contains("mb-1.5")).toBe(true);
+    // 헤더 44(2026-10-04): 위 6 + 헤더 44 + 아래 6 = 패널 시작 56 — 바깥 `pt-1.5`와 헤더 `mb-1.5`, 헤더 `h-11`.
+    expect(bar?.classList.contains("h-11")).toBe(true);
+    expect(container.querySelector(".pt-1\\.5")).not.toBeNull();
     expect(bar?.children).toHaveLength(3);
     const start = bar!.children[0]!;
     expect(start.className).toBe("justify-self-start");

@@ -44,6 +44,7 @@ export function Header({
 }) {
   return (
     <HeaderBar
+      className="mb-1.5"
       center={<SearchTrigger account={{ name, email, image }} memberships={memberships} />}
       start={
         <Link
