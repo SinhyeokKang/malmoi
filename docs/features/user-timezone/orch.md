@@ -76,3 +76,4 @@
 - **F1 통합·push**: `fix(sources)` #186 `sources.translatedOfTotal`(ko `53개 중 49개`) Refs #186 · `fix(i18n)` ko 용어 잔여(모든 작업자 · 갱신→업데이트 · 마지막 변경 사항) + banned-terms·가이드·DESIGN. gate ok. 런타임 미확인: ko 칩·카운트 폭(#186 재확인 QA 대상). F1 해제·워크트리 제거.
 - **Q2 완료**: #186 재확인(en `53 of 53` · ko `53개 중 49개` · es `53 de 53`) 후 댓글과 함께 닫음. ko 잔여 3화면 폭 이상 없음.
 - ⚠️ **dev CI red**(@49547778 · @26d589a2): `preferences-time-zone.test.tsx` es 케이스 `Missing element: section h2` — 로컬 3/3 green, CI만 실패(es 사전 비동기 청크 대기 누락 추정). **F2 착수**(Sonnet medium).
+- **F2 통합·push**: `test(helpers)` render 헬퍼가 ko·es 사전 모듈을 먼저 import해 캐시를 데움(50틱 고정 대기가 느린 CI에서 부족 — 로컬 재현 실패, 코드 분석 가설). gate ok. CI로 확인.
