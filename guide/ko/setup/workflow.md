@@ -1,19 +1,19 @@
 # 워크플로 추가
 
-생성된 GitHub Actions 워크플로를 추가해 저장소의 변경이 Malmoi에 들어오게 합니다.
+생성된 GitHub Actions 워크플로를 추가해 리포지토리의 변경이 Malmoi에 들어오게 합니다.
 
 시작하기 전에: **Malmoi 준비 완료** 페이지의 push 토큰을 준비합니다. 워크플로 파일을 커밋하기 전에 secret부터 저장하세요.
 
 ## secret 저장 {#push-token}
 
-1. GitHub에서 저장소의 **Settings**를 열고 **Secrets and variables**, 이어서 **Actions**를 선택합니다.
+1. GitHub에서 리포지토리의 **Settings**를 열고 **Secrets and variables**, 이어서 **Actions**를 선택합니다.
 2. **New repository secret**을 선택하고 `PUSH_TOKEN`을 입력한 뒤 push 토큰을 붙여 넣고 저장합니다.
 
 ![이름에 PUSH_TOKEN을 입력하고 secret 칸은 비어 있는 GitHub 새 secret 양식](/guide/push-token-secret.webp "이름에 PUSH_TOKEN을 입력하고 push 토큰을 붙여 넣은 뒤 secret을 추가합니다.")
 
 ## 워크플로 추가하기 {#workflow}
 
-1. **Malmoi 준비 완료** 페이지에서, 또는 나중에 **설정**에서 워크플로를 복사해 저장소에 `.github/workflows/malmoi-i18n.yml`로 저장합니다.
+1. **Malmoi 준비 완료** 페이지에서, 또는 나중에 **설정**에서 워크플로를 복사해 리포지토리에 `.github/workflows/malmoi-i18n.yml`로 저장합니다.
 2. 조직이 action을 제한한다면 [action 허용](allowed-actions.md)을 따릅니다.
 3. 설정할 때 고른 기준 브랜치에 파일을 커밋합니다. 생성된 워크플로에는 소스마다 단계가 하나씩 있습니다.
 
@@ -29,7 +29,7 @@
 
 ## 실행하고 확인하기 {#first-run}
 
-기준 브랜치에 워크플로를 커밋하면 실행이 시작됩니다. 다시 실행하려면 GitHub **Actions**를 열고 워크플로를 고른 뒤 **Run workflow**를 선택합니다. 실행 로그를 확인하세요. `applied`는 파일을 적재했고 Malmoi의 **소스**가 갱신됐다는 뜻입니다. 미전송 편집이 있으면 성공한 실행도 `deferred`를 보고할 수 있습니다. 이때 갱신은 보류되며 로그에는 **보류됨**으로 표시됩니다. [코드가 바뀌면](../sync/push.md#deferred)을 참고하세요. 실패한 실행은 로그에 이유를 보여 줍니다. Malmoi에서는 홈의 **동기화** 탭이 최근 동기화를 보여 줍니다. **마지막 동기화**에 **CI 동기화**가, **결과**에 그 결과가, **변경**에 바뀐 번역 수가 표시됩니다. **동기화 로그**에는 모든 동기화가 나열됩니다.
+기준 브랜치에 워크플로를 커밋하면 실행이 시작됩니다. 다시 실행하려면 GitHub **Actions**를 열고 워크플로를 고른 뒤 **Run workflow**를 선택합니다. 실행 로그를 확인하세요. `applied`는 파일을 적재했고 Malmoi의 **소스**가 갱신됐다는 뜻입니다. 보내지 않은 편집이 있으면 성공한 실행도 `deferred`를 보고할 수 있습니다. 이때 갱신은 보류되며 로그에는 **보류**로 표시됩니다. [코드가 바뀌면](../sync/push.md#deferred)을 참고하세요. 실패한 실행은 로그에 이유를 보여 줍니다. Malmoi에서는 홈의 **동기화** 탭이 최근 동기화를 보여 줍니다. **마지막 동기화**에 **CI 동기화**가, **결과**에 그 결과가, **변경**에 바뀐 번역 수가 표시됩니다. **동기화 로그**에는 모든 동기화가 나열됩니다.
 
 나중에 기준 브랜치를 바꾸려면 **설정**에서 **기준 브랜치**를 바꾸고 **저장**을 선택한 뒤 워크플로의 `branches:` 값을 고칩니다. 소스의 기준 언어를 바꿨다면 [소스 추가](sources.md#base-language)를 따라 워크플로 항목을 고칩니다.
 

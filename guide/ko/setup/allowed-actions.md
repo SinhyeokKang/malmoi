@@ -1,8 +1,8 @@
 # action 허용
 
-저장소나 조직이 GitHub Actions를 제한한다면, 생성된 워크플로가 쓰는 action 네 개를 허용합니다.
+리포지토리나 조직이 GitHub Actions를 제한한다면, 생성된 워크플로가 쓰는 action 네 개를 허용합니다.
 
-시작하기 전에: 저장소 또는 조직의 **Settings**를 열고 **Actions** → **General**로 갑니다.
+시작하기 전에: 리포지토리 또는 조직의 **Settings**를 열고 **Actions** → **General**로 갑니다.
 
 ## 필요한 action 허용 {#allowed-actions}
 
@@ -20,4 +20,4 @@ action이 차단되면 실행이 **Set up job**에서 “not allowed to be used.
 
 ## 다음 단계 {#next}
 
-action 네 개가 모두 허용되면 워크플로가 저장소를 읽을 수 있습니다. 그래도 실행이 실패하면 GitHub Actions 로그에서 이유를 확인합니다.
+action 네 개가 모두 허용되면 워크플로가 리포지토리를 읽을 수 있습니다. 그래도 실행이 실패하면 GitHub Actions 로그에서 이유를 확인합니다.
