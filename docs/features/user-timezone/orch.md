@@ -19,6 +19,7 @@
 | D1 | **선별 목록은 design §2.1 초안(UTC + 41개) 그대로 확정** | 2026-10-05 사용자 |
 | D2 | **ko 초안(방침 D3 · 가이드 E1) 검수는 dev 통합 뒤 일괄**이다. gate green이면 통합하고 `/merge` 전까지 사용자가 한 번에 본다 | 2026-10-05 사용자 (ui-locales D1과 같은 방식) |
 | D3 | 스키마: T2가 **DB 없이** `prisma migrate diff`로 SQL만 만든다(연결하지 않는 더미 `DIRECT_URL`). dev DB 적용·`has_schema_privilege` 확인은 지휘자가 통합 때 한다 | orchestrate §1 |
+| D5 | **K1(ko 사전 톤 검수)만 Codex / gpt-6-astra high로 패밀리 교차** — 사용자 명시 허가(2026-10-05 "워크트리로 코덱스 하나 띄워서" · "astra로 띄워"). 다른 배치는 Claude 패밀리 그대로 | 2026-10-05 사용자 |
 | D4 | 시안·`/design-sync` 없음 — 기존 페이지에 같은 형의 카드 하나(design §6) | design §6 |
 
 ## 배치
@@ -55,3 +56,4 @@
 - **별건 둘 추가**(사용자 2026-10-05, 범위 밖이지만 같은 런에서): **T7** 랜딩·signin 슬로건 en 고정 — 범위 D5 = `landing.hero.title` · `signIn.hero` · `landing.closing.title`(사용자 선택) (Sonnet medium, task_6ba42706ae04 / ctx_e11e121fa8fe, `utz-t7`, 브리프 `brief-T7.md`) · **T8** 하위태그 없는 `es` 로케일 배지 = 스페인 국기(D6 — 다른 다국 언어는 null 유지) (Sonnet medium, `utz-t8`, `brief-T8.md`). T7은 `messages/*.tsx`를 고치므로 **T3은 T7 통합 뒤** 착수.
 - **T7 · T8 통합**: `fa589a61` feat(i18n) 슬로건 en 고정 · `377dd4ac` docs(ARCHITECTURE) · `24b1c21d` feat(keys) es 국기 — 각각 별도 커밋(사용자 요청). gate 2회 red(load 26–38에서 5초 타임아웃·타이밍 — 단독 실행 green) → 부하 해소 뒤 `gate: ok`. 런타임 미확인: ko·es 랜딩/signin 슬로건 육안 · 번역 화면 `es` 배지 → Q1. T7·T8 해제·워크트리 제거.
 - **T2 통합·push**: `feat(db)` + `feat(auth)` (B1·B2). dev DB `20261004180102_add_user_time_zone` 적용 · `db:status` 최신 · anon/authenticated USAGE·CREATE false · 테이블 GRANT 0. deviation: SQL을 `--from-schema`(직전 커밋 스키마)로 diff · T3 소유 `server.test.ts`에 `timeZone: null` 한 토큰. 런타임 미확인: `/api/auth/session` 본문 → Q1. T2 해제·워크트리 제거.
+- **K1 착수**(별건, 사용자 2026-10-05): ko 사전 전면 톤 검수 — 자연스럽게, en 유지 허용(슬로건·기술 용어). Codex gpt-6-astra high(D5), task_3e2daf9bbb98 / ctx_330d2e847cb2, 워크트리 `utz-k1`, `brief-K1.md`. `logs.range.*`·`preferences.*`·`ko-privacy.tsx`는 손대지 않음(T3·T4 충돌 방지). §10.0·§10.1과 충돌하면 사용자 요청이 이기고 DESIGN도 고친다. T3·T4는 ko.tsx 다른 절만 고쳐 병렬 허용 — 통합 순서대로 rebase.
