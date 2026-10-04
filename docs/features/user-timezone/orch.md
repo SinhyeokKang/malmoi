@@ -74,3 +74,5 @@
 - **T6 통합·push**: 문서별 7커밋(CLAUDE · commands/push.md · ARCHITECTURE §6.356 신설 · DESIGN(+§10.0 `/translate` 포인터) · PRODUCT · DIRECTORY · OPERATIONS) + 지휘자 정정 `docs(CLAUDE)`(고정 표면 목록 §6.355→§6.356). gate ok @b12370a5. 워크트리 0. **Q1 착수**(main 체크아웃 — 이 동안 cherry-pick·build 금지, `brief-Q1.md`).
 - **Q1 완료**: 전 항목 통과, 이슈 1(#186 소스 상세 `53 of 53` 하드코드 영어 — user-timezone 무관). 못 봄: Sync 잠금·초대 재시도·Publish 실패 시각·OAuth 기존 연결일(외부 실패 필요)·`es-MX` 배지. 다른 기기는 새 DB 세션+쿠키 없는 curl로 대리. Logs 시각 칸 실측 109px → DESIGN 정정. 가이드 샷 재촬영 커밋. dev DB 원복. ko 검수 메모 4건(3건은 F1이 K2 표에 맞춤). **F1 착수**(#186 + ko 용어 잔여, Sonnet medium).
 - **F1 통합·push**: `fix(sources)` #186 `sources.translatedOfTotal`(ko `53개 중 49개`) Refs #186 · `fix(i18n)` ko 용어 잔여(모든 작업자 · 갱신→업데이트 · 마지막 변경 사항) + banned-terms·가이드·DESIGN. gate ok. 런타임 미확인: ko 칩·카운트 폭(#186 재확인 QA 대상). F1 해제·워크트리 제거.
+- **Q2 완료**: #186 재확인(en `53 of 53` · ko `53개 중 49개` · es `53 de 53`) 후 댓글과 함께 닫음. ko 잔여 3화면 폭 이상 없음.
+- ⚠️ **dev CI red**(@49547778 · @26d589a2): `preferences-time-zone.test.tsx` es 케이스 `Missing element: section h2` — 로컬 3/3 green, CI만 실패(es 사전 비동기 청크 대기 누락 추정). **F2 착수**(Sonnet medium).
