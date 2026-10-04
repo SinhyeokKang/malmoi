@@ -100,3 +100,5 @@
 - W4: I1 커밋(`00622bb8` guide/en 이동·로더 · `17350047` ko 가이드), I2 소유 밖 파일(검색 로더·다이얼로그 한 줄·entry-points 등) 승인. 옛 `/api/search-index` 경로 제거 → CLAUDE.md 데이터 경로 표 갱신은 지휘자 H2. W5는 W4 브랜치 끝 위에서 커밋(통합 순서 W4 → W5). W6에 W4가 고친 테스트 파일 회피 지시.
 - **W4 완료**: 5커밋 `00622bb8 17350047 2ab43bea a456f5e6 5fa369c3`(I4·I1·I2·I3), gate ok. 문서 갱신 대상(지휘자): 옛 `/api/search-index` — CLAUDE.md:123 · ARCHITECTURE 2152/2786 · DIRECTORY 135 · PRODUCT 662 + I6. W5 rebase 대상 5fa369c3. 리뷰 R4 착수.
 - **W3 완료**(es 사전 `0a32feaf 5a36fae3 f05aaf2d`, W1 위 rebase) → W2와 같은 블록 충돌 예상이라 후속 Task로 로컬 dev(W2 포함) rebase 지시. 지휘자가 W3의 W1-신호 질문에 답을 놓쳤다(W3가 로컬 dev를 신호로 삼음).
+- **W3 통합(로컬)**: `48d9aa9a 85c5153f b7487eb9`(es 사전·§10.1 정렬·배선). 워커 해제·워크트리 제거. push는 W2와 함께 게이트 대기.
+- **R4(W4 리뷰)**: 🔴0 · 🟡3(트리 없는 언어에서 /docs 500 — 닫는 조건 · ko 'push 토큰' vs 사전 '푸시 토큰' · 인용 문구 게이트 밖) · ⚪10. 사본 `.scratch/ui-locales/review-W4.md`. W4 수정 라운드 1 착수(🟡1은 W5 es 커밋 위로 rebase 뒤). 통합 순서: W5 커밋 → W4 fix1이 그 위로 → W4 브랜치 하나로 통합.
