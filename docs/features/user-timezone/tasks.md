@@ -62,16 +62,16 @@
 
 ## C. 입구 + 호출부
 
-- [ ] **C1** `getDateStyle()`(`lib/i18n/server.ts`, React `cache`) · `MessagesProvider`에 `timeZone` prop → context · `useDateStyle()` · 루트 레이아웃이 넘긴다.
+- [x] **C1** `getDateStyle()`(`lib/i18n/server.ts`, React `cache`) · `MessagesProvider`에 `timeZone` prop → context · `useDateStyle()` · 루트 레이아웃이 넘긴다.
   테스트: 서버 — 세션 ok·값 있음/목록 밖/null · `unavailable` → UTC. DOM — provider 없음 → UTC · `timeZone` 바꿔 렌더해도 자식 상태·포커스 유지(재마운트 없음) · `useDateStyle()`이 같은 provider 값에서 같은 객체 참조를 돌려준다. 루트 레이아웃 소스 검사(`app/__tests__/root-layout-i18n.test.ts`)에 `timeZone` 전달 고정. A4 ②·③ 센티넬 추가.
   검증: `pnpm test` green(C1은 따로 커밋하지 않는다 — `pnpm gate`는 C2 커밋에서 판정).
-- [ ] **C2** 호출부 전환(design §5 표) — 사용자 시간대 자리는 `getDateStyle()`/`useDateStyle()`, 고정 표면은 `"UTC"` 명시. Logs 페이지·Home(`(home)/page.tsx:151` + `components/home/logs-card.tsx`)·필터·`list_events`. `retryAtLabel(iso, style)`.
+- [x] **C2** 호출부 전환(design §5 표) — 사용자 시간대 자리는 `getDateStyle()`/`useDateStyle()`, 고정 표면은 `"UTC"` 명시. Logs 페이지·Home(`(home)/page.tsx:151` + `components/home/logs-card.tsx`)·필터·`list_events`. `retryAtLabel(iso, style)`.
   `event-row.tsx:69`의 보이는 시각을 `formatClock`으로(행마다 라벨 · `<time>` 폭 `w-12` 실측 조정) — A4 ⑤를 켠다. 필터 칩(`log-filters.tsx:357`)은 `formatDayKey`. 프리셋·Custom range의 `now`는 Logs 페이지가 내린 ISO prop(렌더 중 `Date.now()` 제거).
   사전 셋(en·ko·es — 실제 경로 `m.logs.range.*`)의 `custom`·`customOpen`·`from`·`to`에서 `(UTC)` 괄호를 빼고 Dialog 설명용 `zoneNote: (zone) => …` 하나를 더한다(design §5) — ko·es도 같은 커밋(`satisfies Messages`가 막는다). 사전 정합성 테스트의 대표 인자 표에 항목 추가.
   DOM 테스트(대표 셋): `event-row`의 보이는 시각·`aria-label`이 Seoul에서 `… UTC+9` · `publish-button` stamp · `log-filters` 칩이 Seoul **과 `America/New_York`**에서 고른 날짜 그대로(음수 오프셋에서 하루 밀리지 않음) · Custom range Dialog에 `Days are in Asia/Seoul.`. 모두 `<time dateTime>`이 UTC ISO.
   **H2(주석 갱신)를 이 커밋에서 한다** — 주석이 코드와 함께 거짓이 되지 않게.
   검증: `pnpm gate` green(출력을 파이프로 거르지 않는다 — POSTMORTEM 2026-09-30) · 시간대를 고르지 않은 로컬 화면이 이전과 같음 `[수동]`.
-- [ ] `[커밋] feat(time): render dates in the viewer's time zone`
+- [x] `[커밋] feat(time): render dates in the viewer's time zone`
 
 ## D. 화면 + 방침 (한 커밋 — 값을 고를 수 있게 되는 커밋에서 방침이 참이어야 한다)
 
@@ -103,7 +103,7 @@
   - DIRECTORY — `lib/time-zone/` · `lib/date-format.ts`.
   - OPERATIONS — 선별 목록에서 id를 빼기 전 저장 건수 확인 한 줄(design §2.1).
   - POSTMORTEM 2026-09-20 항목의 재발 방지 grep은 append-only라 고치지 않는다 — 그 grep(`toLocale*` 0)은 여전히 참이다.
-- [ ] **H2** (C2에서 실행 — 여기는 참조) `lib/date-format.ts` 머리 주석·`lib/events/filter.ts`·`view.ts`·`messages/en.tsx`의 "UTC 자정으로 끊는다" 주석(`:1218-1220`)·`:1506`·`components/oauth/consent-panel.tsx:48`·`lib/sync/plan.ts:52`·`log-filters.tsx`의 `dateLabel` 머리 주석을 새 계약으로.
+- [x] **H2** (C2에서 실행 — 여기는 참조) `lib/date-format.ts` 머리 주석·`lib/events/filter.ts`·`view.ts`·`messages/en.tsx`의 "UTC 자정으로 끊는다" 주석(`:1218-1220`)·`:1506`·`components/oauth/consent-panel.tsx:48`·`lib/sync/plan.ts:52`·`log-filters.tsx`의 `dateLabel` 머리 주석을 새 계약으로.
 - [ ] **H3** `/runtime-test` — 완료 조건의 `[수동]` 전부: 기본 UTC 화면 불변 · Seoul·Kolkata·New York 선택 뒤 Logs 카드 경계·Today·프리셋·행 시각 라벨·칩 날짜(New York에서 하루 밀리지 않음) · Preferences 미리보기 · Sources·Publish·Sync 잠금·초대 재시도·토큰 시각 · ko·es × Kolkata에서 하이드레이션 경고 0 · 다른 기기 로그인 · 공개 페이지가 UTC · Preferences 실패 Alert(revalidate 뒤 유지).
 - [ ] **H4** prod 반영(`/merge` 1단계): `pnpm db:status:prod` → `pnpm db:deploy` → prod `has_schema_privilege` false. ⚠️ ui-locales의 `User.uiLocale` 마이그레이션이 prod에 먼저 있어야 한다(순서 고정).
 - [ ] 끝나면 결론을 정본으로 올리고 `docs/features/user-timezone/`를 지운다.
