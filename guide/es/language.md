@@ -9,6 +9,8 @@ Las páginas públicas y las de inicio de sesión e invitación muestran el idio
 1. Elige el nombre del idioma en el pie de página, por ejemplo English.
 2. Elige un idioma en el menú. Cada uno aparece con su propio nombre, como Español. La página aparece en ese idioma.
 
+![El menú de idioma abierto sobre el pie de página, con inglés, coreano y español](/guide/footer-language-menu.webp "Elige un idioma desde el pie de página.")
+
 Malmoi recuerda tu elección en este dispositivo. Si ya iniciaste sesión, la elección también se guarda en tu cuenta.
 
 Si el cambio falla, Malmoi muestra **No pudimos cambiar el idioma. Inténtalo de nuevo.** y mantiene el idioma actual.
@@ -19,6 +21,8 @@ Antes de empezar: abre el menú de tu avatar, arriba a la derecha, y elige **Pre
 
 1. En la tarjeta **Idioma**, abre el menú y elige un idioma. No hay botón de guardar; el cambio se aplica al momento.
 2. Malmoi cambia todas las pantallas al nuevo idioma. La elección se guarda en tu cuenta y en este dispositivo.
+
+![La página de Preferencias con la tarjeta Idioma en English](/guide/preferences-language.webp "Elige tu idioma en Preferencias.")
 
 Si el cambio falla, la tarjeta muestra **No pudimos cambiar el idioma. Inténtalo de nuevo.** y el menú vuelve al idioma anterior.
 

@@ -9,6 +9,8 @@ The public pages and the sign-in and invitation pages show the current language 
 1. Choose the language name in the footer, for example English.
 2. Pick a language from the menu. Each one is listed by its own name, such as Español. The page appears in that language.
 
+![The footer language menu open above the footer, listing English, Korean, and Spanish](/guide/footer-language-menu.webp "Pick a language from the footer.")
+
 Malmoi remembers the choice on this device. If you're already signed in, the choice is also saved to your account.
 
 If the change fails, Malmoi shows **We couldn't change the language. Try again.** and keeps the current language.
@@ -19,6 +21,8 @@ Before you start: Open your avatar menu at the top right and choose **Preference
 
 1. In the **Language** card, open the menu and pick a language. There is no Save button; the change applies right away.
 2. Malmoi switches every screen to the new language. The choice is saved to your account and to this device.
+
+![The Preferences page with the Language card set to English](/guide/preferences-language.webp "Choose your language in Preferences.")
 
 If the change fails, the card shows **We couldn't change the language. Try again.** and the menu goes back to the previous language.
 
