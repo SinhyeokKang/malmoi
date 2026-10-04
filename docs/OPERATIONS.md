@@ -395,6 +395,12 @@ Preview는 `https://dev.mal-moi.com`에서 본다(배포별 URL은 로그인이 
 
 ⚠️ **`EMAIL_LOOKUP_KEY` 회전 중**에는 운영자가 일시적으로 비운영자로 판정될 수 있다(저장 lookup이 아직 옛 키 — 회전이 끝나면 돌아온다, §2).
 
+## 시간대 선별 목록에서 id 빼기 (2026-10-05, user-timezone)
+
+`lib/time-zone/zones.ts`의 `TIME_ZONES`에서 id를 빼는 것은 마이그레이션 없이 되지만, **그 값을 저장한 사람의 화면이 조용히 UTC로 바뀐다**(읽을 때 `parseTimeZone`이
+목록 밖 값을 UTC로 떨어뜨린다 — ARCHITECTURE §5.1). 빼기 전에 dev·prod 둘 다 저장 건수를 본다: `select count(*) from "User" where "timeZone" = '<id>';`
+0이 아니면 대체 id(같은 오프셋·같은 서머타임 규칙)를 목록에 두는지 먼저 정한다. 더할 때는 DB 확인이 없고, `lib/time-zone/__tests__/zones.test.ts`의 id별 1월·7월 오프셋 표에 행을 더한다(CI Node 24와 로컬 ICU 둘 다에서 green이어야 한다).
+
 ## HSTS preload 제출 — 오너 수동 절차 (2026-09-24)
 
 응답 헤더가 `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload`를 **선언**한다(`lib/security-headers.ts`).
