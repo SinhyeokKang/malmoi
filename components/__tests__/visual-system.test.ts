@@ -45,9 +45,15 @@ function hits(pattern: RegExp, sources = SOURCES): { path: string; token: string
 
 const PALETTE = "slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose";
 const RAW_COLOR = new RegExp(
-  `(?<![\\w-])(?:[a-z-]+:)*(?:bg|text|border(?:-[trblxyse])?|ring|fill|stroke|from|to|via|outline|divide|shadow|decoration|placeholder|caret|accent)-(?:white|black|(?:${PALETTE})-\\d{2,3})(?:\\/(?:\\[[^\\]]+\\]|\\d+))?(?![\\w-])`,
+  `(?<![\\w-])(?:[a-z-]+:)*(?:bg|text|border(?:-[trblxyse])?|ring(?:-offset)?|inset-ring|fill|stroke|from|to|via|outline|divide|shadow|inset-shadow|drop-shadow|text-shadow|decoration|placeholder|caret|accent)-(?:white|black|(?:${PALETTE})-\\d{2,3})(?:\\/(?:\\[[^\\]]+\\]|\\d+))?(?![\\w-])`,
   "g",
 );
+/**
+ * **유틸 이름 밖의 팔레트 철자** — 임의값 `bg-[var(--color-amber-500)]` · v4 괄호 `text-(--color-amber-700)` · 인라인 `style`의
+ * `var(--color-amber-700)`은 `RAW_COLOR`가 못 본다(color-scheme RA 🟡1). 셋 다 팔레트 변수 이름을 지나므로 그 이름 하나를 센다.
+ * ⚠️ 팔레트 변수를 가리키는 유일한 자리는 `app/globals.css`의 `:root` 라이트 값이고, CSS라 `ALL_SOURCES`(`.ts`·`.tsx`) 밖이다.
+ */
+const PALETTE_VAR = new RegExp(`--color-(?:white|black|(?:${PALETTE})-\\d{2,3})(?![\\w-])`, "g");
 /** 변형 접두(`hover:` 등)는 같은 색이다 — 값으로 센다. */
 const colorValue = (token: string): string => token.replace(/^(?:[a-z-]+:)+/, "");
 
@@ -104,6 +110,25 @@ describe("raw 색은 0곳이다 — 색은 의미 토큰이 든다 (audit #43·#
   it("검사가 실제로 raw 색을 찾는다 (카나리아)", () => {
     const fixture = '<span className="bg-amber-100/80 hover:text-white border-t-red-700/[0.14] bg-success-soft text-on-hue bg-hue-amber" />';
     expect(hits(RAW_COLOR, [{ path: "components/canary.tsx", source: fixture }]).map(({ token }) => colorValue(token))).toEqual(["bg-amber-100/80", "text-white", "border-t-red-700/[0.14]"]);
+  });
+
+  /** 입구를 하나씩 먹인다 — 색을 받는 접두마다 한 토큰. 정규식의 접두 목록과 따로 적어야 빠진 접두가 드러난다. */
+  it.each([
+    "bg-amber-500", "text-amber-500", "border-amber-500", "border-x-amber-500", "border-y-amber-500", "border-t-amber-500", "border-r-amber-500",
+    "border-b-amber-500", "border-l-amber-500", "border-s-amber-500", "border-e-amber-500", "ring-amber-500", "ring-offset-white", "inset-ring-amber-500",
+    "fill-amber-500", "stroke-amber-500", "from-amber-500", "to-amber-500", "via-amber-500", "outline-amber-500", "divide-amber-500", "shadow-black",
+    "inset-shadow-amber-500", "drop-shadow-amber-500", "text-shadow-amber-500", "decoration-amber-500", "placeholder-amber-500", "caret-amber-500", "accent-amber-500",
+  ])("카나리아 — `%s`를 잡는다", (token) => {
+    expect(hits(RAW_COLOR, [{ path: "components/canary.tsx", source: `"focus:${token}/50"` }]).map(({ token: found }) => colorValue(found))).toEqual([`${token}/50`]);
+  });
+
+  it("유틸 이름 밖의 팔레트 철자(임의값·괄호·인라인 style)가 0곳이다", () => {
+    expect(hits(PALETTE_VAR, ALL_SOURCES).map(({ path, token }) => `${path}: ${token}`)).toEqual([]);
+  });
+
+  it("카나리아 — 임의값·괄호·style의 팔레트 변수는 잡고 의미 토큰 변수는 놓아준다", () => {
+    const fixture = '"bg-[var(--color-amber-500)] text-(--color-amber-700)" style={{ color: "var(--color-white)" }} "bg-(--color-warning-soft) text-[var(--color-hue-amber)] var(--color-link)"';
+    expect(hits(PALETTE_VAR, [{ path: "components/canary.tsx", source: fixture }]).map(({ token }) => token)).toEqual(["--color-amber-500", "--color-amber-700", "--color-white"]);
   });
 
   it("app·components·lib·messages 생산 소스에 Tailwind raw 팔레트 클래스가 0곳이다", () => {
