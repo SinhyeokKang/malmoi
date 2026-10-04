@@ -3,7 +3,7 @@ import { DOC_TABLE, DocTable } from "@/components/public-doc-table";
 import { Toc } from "@/components/public-doc-toc";
 import type { Messages, PrivacyBody } from "@/lib/i18n";
 import type { UiLocale } from "@/lib/i18n/locales";
-import { utcDay } from "@/lib/utc-time";
+import { formatDay } from "@/lib/date-format";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 
@@ -21,7 +21,7 @@ const TABLE_3COL = "[&_th:nth-child(1)]:w-[34%] [&_th:nth-child(2)]:w-[26%]";
 
 /**
  * ⚠️ **`lang`은 본문의 언어다**(R10 🟡1) — es 화면은 en 본문이라 `<html lang="es">` 안에서 본문·목차가 스페인어 음성 규칙으로 읽혔다(WCAG 3.1.2).
- * 그릇 전체가 본문 언어를 들고, 셸 문구(시행일 줄)와 셸 형으로 만든 날짜(`utcDay(uiLocale)`)만 화면 언어로 되돌린다.
+ * 그릇 전체가 본문 언어를 들고, 셸 문구(시행일 줄)와 셸 형으로 만든 날짜(`formatDay(uiLocale)`)만 화면 언어로 되돌린다.
  */
 export function PrivacyDoc({ m, uiLocale, doc, lang }: { m: Messages; uiLocale: UiLocale; doc: PrivacyBody; lang: "en" | "ko" }) {
   const { title, effectiveDate, intro, sections, tocLabels, toc } = doc;
@@ -36,10 +36,10 @@ export function PrivacyDoc({ m, uiLocale, doc, lang }: { m: Messages; uiLocale: 
         {/*
           메타 줄이라 보조 색이 맞다 — 본문의 muted 금지는 여기 안 걸린다(§6.61). 라벨 없이 날짜만 두면 무슨 날짜인지 모른다.
           사전의 `"YYYY-MM-DD"`는 `dateTime`에 그대로 넣고(날짜만 든 `datetime`은 올바른 HTML이다) 보이는 쪽만
-          앱의 날짜 형(`utcDay`)이다 — 사전 값을 바꾸면 `policy-gate`가 개정 이력을 요구한다.
+          앱의 날짜 형(`formatDay`)이다 — 사전 값을 바꾸면 `policy-gate`가 개정 이력을 요구한다.
         */}
         <p lang={uiLocale} className="text-muted-foreground mt-3 text-sm leading-body">
-          {m.publicDocs.effectiveDate} <time dateTime={effectiveDate}>{utcDay(new Date(effectiveDate), uiLocale)}</time>
+          {m.publicDocs.effectiveDate} <time dateTime={effectiveDate}>{formatDay(new Date(effectiveDate), { uiLocale, timeZone: "UTC" })}</time>
         </p>
         <p className={cn(PROSE, "mt-6")}>{intro}</p>
         <hr className="border-border mt-10" />
@@ -93,7 +93,7 @@ export function PrivacyDoc({ m, uiLocale, doc, lang }: { m: Messages; uiLocale: 
 const REVISION = /^(\d{4}-\d{2}-\d{2}) — /;
 
 /**
- * 개정 이력의 날짜를 머리의 시행일과 같은 형(`utcDay`)으로 보인다 (ux-drift-unify 2-Y19 — 한 페이지에서 머리는 `Sep 29, 2026`,
+ * 개정 이력의 날짜를 머리의 시행일과 같은 형(`formatDay`)으로 보인다 (ux-drift-unify 2-Y19 — 한 페이지에서 머리는 `Sep 29, 2026`,
  * 이력은 ISO였다). ⚠️ **사전 값은 ISO 그대로다** — 본문 해시(`policy-gate.test.tsx`)가 사전을 보고, 날짜 형을 바꾸는 것은 방침 개정이
  * 아니다. 날짜로 시작하지 않는 줄은 그대로 둔다.
  */
@@ -101,5 +101,5 @@ function RevisionLine({ item, uiLocale }: { item: ReactNode; uiLocale: UiLocale 
   const match = typeof item === "string" ? REVISION.exec(item) : null;
   if (match === null || typeof item !== "string") return <>{item}</>;
   const iso = match[1] ?? "";
-  return <><time lang={uiLocale} dateTime={iso}>{utcDay(new Date(iso), uiLocale)}</time> — {item.slice(match[0].length)}</>;
+  return <><time lang={uiLocale} dateTime={iso}>{formatDay(new Date(iso), { uiLocale, timeZone: "UTC" })}</time> — {item.slice(match[0].length)}</>;
 }

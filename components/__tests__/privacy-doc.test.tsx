@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { PROSE } from "@/components/docs/classes";
 import { PrivacyDoc } from "@/components/privacy/privacy-doc";
 import { en } from "@/messages/en";
-import { utcDay } from "@/lib/utc-time";
+import { formatDay } from "@/lib/date-format";
 
 import { find, render } from "./helpers/dom";
 
@@ -46,10 +46,10 @@ describe("PrivacyDoc — 구조", () => {
     const { container } = await doc();
     const time = find(container, "time");
     expect(time.getAttribute("datetime")).toBe(privacy.effectiveDate);
-    // 보이는 형은 `lib/utc-time.ts`의 날짜 형이고, `dateTime`·사전 값은 ISO 그대로다(`policy-gate`가 그 값을 본다).
-    expect(time.textContent).toBe(utcDay(new Date(privacy.effectiveDate), "en"));
+    // 보이는 형은 `lib/date-format.ts`의 날짜 형이고, `dateTime`·사전 값은 ISO 그대로다(`policy-gate`가 그 값을 본다).
+    expect(time.textContent).toBe(formatDay(new Date(privacy.effectiveDate), { uiLocale: "en", timeZone: "UTC" }));
     expect(time.textContent).toMatch(/^[A-Z][a-z]{2} \d{1,2}, \d{4}$/);
-    expect(time.parentElement?.textContent).toBe(`${en.publicDocs.effectiveDate} ${utcDay(new Date(privacy.effectiveDate), "en")}`);
+    expect(time.parentElement?.textContent).toBe(`${en.publicDocs.effectiveDate} ${formatDay(new Date(privacy.effectiveDate), { uiLocale: "en", timeZone: "UTC" })}`);
   });
 
   /** POSTMORTEM 2026-09-19 — 가로 스크롤은 표 자기 컨테이너가 든다. 키보드로 닿으려면 region·tabIndex·이름 셋. */
@@ -232,7 +232,7 @@ describe("PrivacyDoc — 시안 대조 교정", () => {
  * **개정 이력의 날짜가 머리의 시행일과 같은 형이다** (ux-drift-unify 2-Y19) — 한 페이지에서 머리는 `Sep 29, 2026`, 이력은 ISO였다.
  * 사전 값은 ISO 그대로 두고(방침 게이트의 해시가 본문을 본다) 렌더에서 `<time>`으로 바꾼다.
  */
-it("changes 절의 개정 날짜가 utcDay로 보이고 dateTime은 ISO다", async () => {
+it("changes 절의 개정 날짜가 formatDay로 보이고 dateTime은 ISO다", async () => {
   const { container } = await doc();
   const items = [...container.querySelectorAll<HTMLElement>("section[aria-labelledby=\"changes\"] li")];
   // 개정 이력은 줄마다 날짜로 시작한다 — 한 줄이라도 ISO로 남으면 여기서 red다.
@@ -242,7 +242,7 @@ it("changes 절의 개정 날짜가 utcDay로 보이고 dateTime은 ISO다", asy
     const time = li.querySelector("time")!;
     const iso = time.getAttribute("dateTime")!;
     expect(iso).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    expect(time.textContent).toBe(utcDay(new Date(iso), "en"));
+    expect(time.textContent).toBe(formatDay(new Date(iso), { uiLocale: "en", timeZone: "UTC" }));
     expect(li.textContent).not.toContain(iso);
   }
 });

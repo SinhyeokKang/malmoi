@@ -21,7 +21,7 @@ import { useMessages, useUiLocale } from "@/components/i18n/messages-provider";
 import type { Brand } from "@/lib/mcp/brand";
 import type { TokenGrant } from "@/lib/mcp/grant";
 import { relativeTime } from "@/lib/relative-time";
-import { utcDay } from "@/lib/utc-time";
+import { formatDay } from "@/lib/date-format";
 import { cn } from "@/lib/utils";
 
 /**
@@ -223,8 +223,8 @@ function AppRow({ app, now, onDisconnect }: { app: ConnectedAppData; now: Date; 
   const facts: [string, ReactNode][] = [
     [m.mcpConnector.token.facts.grants, <GrantBadges key="g" grants={app.grants} dimmed={expired} />],
     [m.mcpConnector.token.facts.scope, scope],
-    [m.mcpConnector.token.facts.lastUsed, lastUsed === null ? m.mcpConnector.token.never : <time dateTime={app.lastUsedAt ?? ""}>{expired ? utcDay(lastUsed, uiLocale) : relativeTime(lastUsed, now, uiLocale)}</time>],
-    [m.mcpConnector.token.facts.expires, <time dateTime={app.expiresAt}>{expired ? utcDay(expires, uiLocale) : relativeTime(expires, now, uiLocale)}</time>],
+    [m.mcpConnector.token.facts.lastUsed, lastUsed === null ? m.mcpConnector.token.never : <time dateTime={app.lastUsedAt ?? ""}>{expired ? formatDay(lastUsed, { uiLocale, timeZone: "UTC" }) : relativeTime(lastUsed, now, uiLocale)}</time>],
+    [m.mcpConnector.token.facts.expires, <time dateTime={app.expiresAt}>{expired ? formatDay(expires, { uiLocale, timeZone: "UTC" }) : relativeTime(expires, now, uiLocale)}</time>],
   ];
   return (
     <div data-app-row={app.id} className="flex items-center gap-4 px-4 py-row-y">

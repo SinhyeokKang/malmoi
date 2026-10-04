@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
 import { useMessages, useUiLocale } from "@/components/i18n/messages-provider";
 import type { UiLocale } from "@/lib/i18n/locales";
-import { utcMinute } from "@/lib/utc-time";
+import { formatMinute } from "@/lib/date-format";
 
 /**
  * **Sync가 도는 동안의 쓰기 잠금을 편집자에게 보이는 두 자리** (sync-lock S4 — DESIGN §7).
@@ -13,7 +13,7 @@ import { utcMinute } from "@/lib/utc-time";
  * ⚠️ **이 파일은 판정하지 않는다** — lease 판정(`planWriteLock`)은 `lib/sync/plan.ts`에 있고 그 모듈은 잎이 아니다(`node:crypto`까지 물린다 —
  * POSTMORTEM 2026-09-07의 번들 7.2MB). 서버가 판정해 시각만 넘긴다. 실행권 토큰은 클라이언트에 오지 않는다.
  */
-const stamp = (at: Date, uiLocale: UiLocale) => <time dateTime={at.toISOString()}>{utcMinute(at, uiLocale)}</time>;
+const stamp = (at: Date, uiLocale: UiLocale) => <time dateTime={at.toISOString()}>{formatMinute(at, { uiLocale, timeZone: "UTC" })}</time>;
 
 /**
  * 착지 배너 (R1) — 들어왔을 때 lease가 살아 있었다는 **그 시점의 사실**이다. Save를 끄지 않는다: 막는 것은 서버 거부이고, 끄면 lease가 끝난

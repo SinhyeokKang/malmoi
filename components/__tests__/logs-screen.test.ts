@@ -79,14 +79,14 @@ describe("logs — 시각과 페이지네이션", () => {
     for (const path of ["components/logs/event-row.tsx", "components/logs/event-detail.tsx"]) {
       expect(read(path), path).toMatch(/<time[^>]*dateTime=/);
     }
-    expect(read("components/logs/event-row.tsx")).toContain("aria-label={utcMinute(");
+    expect(read("components/logs/event-row.tsx")).toContain("aria-label={formatMinute(");
   });
 
-  /** 날짜만 쓰는 두 줄(coverage · 보관 복구)도 절대 날짜라 `utcDay`를 지난다 — ISO를 잘라 보이지 않는다. */
-  it("coverage · 보관 줄의 날짜가 `utcDay`다", () => {
+  /** 날짜만 쓰는 두 줄(coverage · 보관 복구)도 절대 날짜라 `formatDay`를 지난다 — ISO를 잘라 보이지 않는다. */
+  it("coverage · 보관 줄의 날짜가 `formatDay`다", () => {
     const src = read(PAGE);
-    expect(src).toMatch(/m\.logs\.coverage\(utcDay\(/);
-    expect(src).toMatch(/m\.logs\.archived\.restoreLine\(utcDay\(/);
+    expect(src).toMatch(/m\.logs\.coverage\(formatDay\(/);
+    expect(src).toMatch(/m\.logs\.archived\.restoreLine\(formatDay\(/);
     expect(src).not.toContain("slice(0, 10)");
   });
 

@@ -18,7 +18,7 @@ import { loadEvent, loadEventActors, loadEvents } from "@/lib/events/query";
 import { coverageBoundaryIndex, groupByDay } from "@/lib/events/view";
 import { getMessages, getUiLocale } from "@/lib/i18n/server";
 import { routes } from "@/lib/routes";
-import { utcDay } from "@/lib/utc-time";
+import { formatDay } from "@/lib/date-format";
 
 /**
  * 프로젝트 **전체 활동 이력** (logs-rework — 시안 `design_handoff_project_logs`, 아트보드 1a–1l).
@@ -66,7 +66,7 @@ export default async function LogsPage({
   const [sources, actors, page, openEvent] = await Promise.all([
     prisma.translationSurface.findMany({ where: { projectId, archivedAt: null }, select: { slug: true }, orderBy: { slug: "asc" } }),
     loadEventActors(prisma, m, projectId),
-    loadEvents(prisma, m, projectId, filter),
+    loadEvents(prisma, m, projectId, filter, { timeZone: "UTC" }),
     // ⚠️ **상세 조회는 목록 필터와 독립이다** (결정 15) — 필터 밖 이벤트도 열되 목록은 그대로 둔다.
     filter.event === null ? Promise.resolve(null) : loadEvent(prisma, m, projectId, filter.event),
   ]);
@@ -78,7 +78,7 @@ export default async function LogsPage({
 
   // ⚠️ **`now`를 한 번 만들어 내린다** — 행마다 만들면 같은 페이지 안에서 기준이 흔들린다.
   const now = new Date();
-  const groups = groupByDay(m, uiLocale, page.rows, now);
+  const groups = groupByDay(m, { uiLocale, timeZone: "UTC" }, page.rows, now);
   const boundary = coverageBoundaryIndex(page.rows, project.activityCoverageStartedAt, filter.cursor);
   const href = (ref: string) => routes.logs(slug, { ...logsQuery(filter), event: ref });
   const closeHref = routes.logs(slug, { ...logsQuery(filter), event: undefined });
@@ -147,7 +147,7 @@ export default async function LogsPage({
                       <div className="flex items-center gap-3 px-4 py-3">
                         <span className="bg-border h-px flex-1" />
                         <span className="text-muted-foreground text-center text-xs text-pretty">
-                          {m.logs.coverage(utcDay(project.activityCoverageStartedAt!, uiLocale))}
+                          {m.logs.coverage(formatDay(project.activityCoverageStartedAt!, { uiLocale, timeZone: "UTC" }))}
                         </span>
                         <span className="bg-border h-px flex-1" />
                       </div>
@@ -187,7 +187,7 @@ export default async function LogsPage({
             /* ⚠️ **복원 링크는 OWNER에게만** — EDITOR에게 누를 수 없는 것을 보이지 않는다. */
             actions={canPerform(role, "project:settings") ? <ButtonLink href={routes.settings(slug)}>{m.archive.empty.action}</ButtonLink> : undefined}
           >
-            {m.logs.archived.restoreLine(utcDay(project.archivedAt, uiLocale))}
+            {m.logs.archived.restoreLine(formatDay(project.archivedAt, { uiLocale, timeZone: "UTC" }))}
           </Alert>
         )}
       </PanelBody>

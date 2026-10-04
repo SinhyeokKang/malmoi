@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { eventGlyph, eventSentence, eventView, triggerOf } from "@/lib/events/view";
 import type { EventRow as Row } from "@/lib/events/query";
 import { relativeTime } from "@/lib/relative-time";
-import { utcMinute } from "@/lib/utc-time";
+import { formatMinute } from "@/lib/date-format";
 import type { UiLocale } from "@/lib/i18n/locales";
 import type { Messages } from "@/lib/i18n";
 
@@ -65,7 +65,7 @@ export function EventRow({
         */
         <time
           dateTime={row.occurredAt.toISOString()}
-          aria-label={utcMinute(row.occurredAt, uiLocale)}
+          aria-label={formatMinute(row.occurredAt, { uiLocale, timeZone: "UTC" })}
           className="text-muted-foreground w-12 shrink-0 text-sm tabular-nums"
         >
           {row.occurredAt.toISOString().slice(11, 16)}

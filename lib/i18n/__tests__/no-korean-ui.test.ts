@@ -71,8 +71,8 @@ const KOREAN_ALLOWED = [
   "lib/push/apply.ts",
   // 화면 언어 이름 `한국어`(endonym) — 번역하지 않는 상수라 사전에 둘 수 없다(ui-locales design §2 `UI_LOCALE_NAMES`). 그 밖의 한글은 두지 않는다.
   "lib/i18n/locales.ts",
-  // ko 날짜 단위(`년`·`월`·`일`) — 형식을 손으로 만드는 자리라(`Intl` 날짜 포맷터 배제는 `lib/utc-time.ts` 머리 주석) 사전에 둘 수 없다. 한글은 ko 조립 두 줄에만 둔다.
-  "lib/utc-time.ts",
+  // ko 날짜 단위(`년`·`월`·`일`) — 형식을 손으로 만드는 자리라(`Intl` 날짜 포맷터 배제는 `lib/date-format.ts` 머리 주석) 사전에 둘 수 없다. 한글은 ko 조립 두 줄에만 둔다.
+  "lib/date-format.ts",
   // ko 화면 사전 — 화면 문구의 한글은 이 파일에만 둔다(ui-locales design §6). 위 두 줄은 문구가 아니라 상수다.
   "messages/ko.tsx",
   // ko 방침 본 — 법적 문서라 ko 화면 사전과 따로 둔다(ui-locales design §8). `/privacy` 페이지만 import한다.

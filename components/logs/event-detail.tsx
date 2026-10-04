@@ -18,7 +18,7 @@ import { changedValuesText, deferredText, eventGlyph, eventKindWord, eventSenten
 import type { EventRow } from "@/lib/events/query";
 import { relativeTime } from "@/lib/relative-time";
 import { routes } from "@/lib/routes";
-import { utcMinute } from "@/lib/utc-time";
+import { formatMinute } from "@/lib/date-format";
 import type { UiLocale } from "@/lib/i18n/locales";
 import type { Messages } from "@/lib/i18n";
 
@@ -77,9 +77,9 @@ export function EventDetail({
             <time dateTime={row.occurredAt.toISOString()}>
               {run
                 ? row.finishedAt === null
-                  ? m.logs.detail.startedOnly(utcMinute(row.occurredAt, uiLocale))
-                  : m.logs.detail.startedFinished(utcMinute(row.occurredAt, uiLocale), utcMinute(row.finishedAt, uiLocale))
-                : `${utcMinute(row.occurredAt, uiLocale)} · ${relativeTime(row.occurredAt, now, uiLocale)}`}
+                  ? m.logs.detail.startedOnly(formatMinute(row.occurredAt, { uiLocale, timeZone: "UTC" }))
+                  : m.logs.detail.startedFinished(formatMinute(row.occurredAt, { uiLocale, timeZone: "UTC" }), formatMinute(row.finishedAt, { uiLocale, timeZone: "UTC" }))
+                : `${formatMinute(row.occurredAt, { uiLocale, timeZone: "UTC" })} · ${relativeTime(row.occurredAt, now, uiLocale)}`}
             </time>
           </span>
         </span>

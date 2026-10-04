@@ -1,5 +1,5 @@
 import type { UiLocale } from "@/lib/i18n/locales";
-import { utcMinute } from "@/lib/utc-time";
+import { formatMinute } from "@/lib/date-format";
 
 /**
  * 재시도 가능 시각의 표기 — UTC 절대 시각(CLAUDE.md 날짜 규칙)이고 **분 단위로 올린다**.
@@ -8,5 +8,5 @@ import { utcMinute } from "@/lib/utc-time";
 export function retryAtLabel(iso: string, uiLocale: UiLocale): string {
   const ms = new Date(iso).getTime();
   const minute = 60_000;
-  return utcMinute(new Date(Math.ceil(ms / minute) * minute), uiLocale);
+  return formatMinute(new Date(Math.ceil(ms / minute) * minute), { uiLocale, timeZone: "UTC" });
 }

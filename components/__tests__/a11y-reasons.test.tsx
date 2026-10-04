@@ -30,7 +30,7 @@ import { GeneralCard } from "@/components/settings/general-card";
 import { SourceStatus } from "@/components/sources/source-status";
 import { SurfaceSelector } from "@/components/surface-selector";
 import { en } from "@/messages/en";
-import { utcMinute } from "@/lib/utc-time";
+import { formatMinute } from "@/lib/date-format";
 
 beforeEach(() => { for (const fn of Object.values(mocks)) fn.mockReset(); });
 const strip = (source: string) => source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\/.*$/gm, "");
@@ -175,7 +175,7 @@ describe("이름·시각·색 (#33·#40·#41·#42)", () => {
     const { container } = await render(<SourceStatus now={new Date("2026-09-24T03:09:00Z")} source={{ lastCommitSha: null, lastImportStartedAt: at, lastImportError: null, lastImportFailedAt: null, lastImportedAt: null }} />);
     const time = container.querySelector("time");
     expect(time?.getAttribute("dateTime")).toBe(at.toISOString());
-    expect(time?.getAttribute("aria-label")).toBe(utcMinute(at, "en"));
+    expect(time?.getAttribute("aria-label")).toBe(formatMinute(at, { uiLocale: "en", timeZone: "UTC" }));
   });
 
   it("좁은 폭에서도 언어 행의 검토·누락 표시가 숨지 않는다 — Meter는 aria-hidden이라 색만 남는다", () => {

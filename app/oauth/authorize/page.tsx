@@ -35,7 +35,7 @@ import { oauthEndpoint } from "@/lib/oauth/endpoint";
 import { readAuthorizationRequest, storeAuthorizationRequest } from "@/lib/oauth-server/authorize";
 import { fetchClientMetadata } from "@/lib/oauth-server/client-metadata-fetch";
 import { routes } from "@/lib/routes";
-import { utcDay } from "@/lib/utc-time";
+import { formatDay } from "@/lib/date-format";
 import logo from "@/public/brand/malmoi-icon-black.svg";
 
 /**
@@ -165,7 +165,7 @@ export default async function OAuthAuthorizePage({ searchParams }: { searchParam
             account={account}
             projects={projects}
             initial={initial}
-            replacesOn={existing === null ? null : utcDay(existing.createdAt, uiLocale)}
+            replacesOn={existing === null ? null : formatDay(existing.createdAt, { uiLocale, timeZone: "UTC" })}
           />
         </div>
       </div>

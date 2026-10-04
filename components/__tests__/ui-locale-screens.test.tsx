@@ -9,7 +9,7 @@ import { PublicShell } from "@/components/public-shell/public-shell";
 import { SearchTrigger } from "@/components/search/search-trigger";
 import { Sidebar } from "@/components/shell/sidebar";
 import { publicAccount } from "@/lib/auth/landing";
-import { utcDay } from "@/lib/utc-time";
+import { formatDay } from "@/lib/date-format";
 import { en } from "@/messages/en";
 import { ko } from "@/messages/ko";
 
@@ -45,7 +45,7 @@ describe("ko 화면 렌더", () => {
     expect(container.querySelector("h1")?.textContent).toBe(koPrivacy.title);
     const times = [...container.querySelectorAll("time")];
     expect(times.length).toBeGreaterThan(1);
-    for (const time of times) expect(time.textContent).toBe(utcDay(new Date(time.getAttribute("datetime")!), "ko"));
+    for (const time of times) expect(time.textContent).toBe(formatDay(new Date(time.getAttribute("datetime")!), { uiLocale: "ko", timeZone: "UTC" }));
   });
 
   it("앱 셸 사이드바 — 항목 라벨이 ko다", async () => {

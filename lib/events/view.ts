@@ -7,7 +7,7 @@ import { importFailureMessage, isImportFailureCode } from "@/lib/projects/import
 import { languageName } from "@/lib/onboarding/language-name";
 import type { SyncErrorCode } from "@/lib/sync/plan";
 import type { UiLocale } from "@/lib/i18n/locales";
-import { utcDay } from "@/lib/utc-time";
+import { addDays, dayKeyAt, formatDayKey, type DateStyle } from "@/lib/date-format";
 
 import type { EventCursor } from "./filter";
 import { NIGHTLY_SUBTYPES, type ActorKind, type DeferReason, type EventKind, type EventPayload, type EventResult, type SurfaceOutcome } from "./payload";
@@ -400,29 +400,24 @@ export function refusalMessage(m: Messages, code: string | null): string {
 export type DayGroup<T> = { dayKey: string; heading: string; label: string | null; rows: T[] };
 
 /**
- * 날짜 카드 — **UTC 자정으로 끊는다.**
+ * 날짜 카드 — **보는 사람의 시간대 자정으로 끊는다**(기본 UTC). 머리는 키를 순간으로 바꾸지 않고 그린다(`formatDayKey`).
  *
  * ⚠️ **`now`를 서버가 하나 내린다** (design §6). 행마다 만들면 기준이 흔들려 같은 목록의 위아래가
- * 다른 날을 "오늘"이라고 말할 수 있다.
+ * 다른 날을 "오늘"이라고 말할 수 있다. 어제는 `now - 24h`가 아니라 달력의 전날이다(서머타임 날).
  *
  * ⚠️ **입력 순서를 보존한다** — 조회가 이미 `(occurredAt desc, id desc)`로 정렬해 내려준다.
  */
-export function groupByDay<T extends { occurredAt: Date }>(m: Messages, uiLocale: UiLocale, rows: readonly T[], now: Date): DayGroup<T>[] {
-  const today = dayKey(now);
-  const yesterday = dayKey(new Date(now.getTime() - 24 * 60 * 60 * 1000));
+export function groupByDay<T extends { occurredAt: Date }>(m: Messages, style: DateStyle, rows: readonly T[], now: Date): DayGroup<T>[] {
+  const today = dayKeyAt(now, style.timeZone);
+  const yesterday = addDays(today, -1);
   const groups = new Map<string, DayGroup<T>>();
   for (const row of rows) {
-    const key = dayKey(row.occurredAt);
-    // 키가 UTC 자정의 ISO 날짜라 `utcDay`가 같은 날을 말한다.
-    const group = groups.get(key) ?? { dayKey: key, heading: utcDay(new Date(key), uiLocale), label: dayLabel(m, key, today, yesterday), rows: [] };
+    const key = dayKeyAt(row.occurredAt, style.timeZone);
+    const group = groups.get(key) ?? { dayKey: key, heading: formatDayKey(key, style.uiLocale), label: dayLabel(m, key, today, yesterday), rows: [] };
     group.rows.push(row);
     groups.set(key, group);
   }
   return [...groups.values()];
-}
-
-function dayKey(at: Date): string {
-  return at.toISOString().slice(0, 10);
 }
 
 function dayLabel(m: Messages, key: string, today: string, yesterday: string): string | null {

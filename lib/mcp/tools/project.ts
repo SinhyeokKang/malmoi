@@ -83,7 +83,8 @@ export const listEvents = defineTool({
     const access = await getProjectAccess(prisma, { userId: subject.userId, slug, permission: "translation:write", archivedPolicy: "read" });
     if (access.status !== "ok") return { status: "refused", code: access.status };
     // 필터·커서는 Logs 화면과 같은 해석이다 — 주소창 값과 같은 이름을 받는다.
-    const page = await loadEvents(prisma, en, access.projectId, parseLogFilter(query ?? {}));
+    // ⚠️ 기간은 **UTC 자정으로 끊는다** — MCP는 세션·쿠키를 읽지 않으므로 보는 사람의 시간대가 없다(응답 시각도 ISO다).
+    const page = await loadEvents(prisma, en, access.projectId, parseLogFilter(query ?? {}), { timeZone: "UTC" });
     return ok({
       events: page.rows.map(row => ({
         ref: row.ref, kind: row.kind, subtype: row.subtype, occurredAt: row.occurredAt.toISOString(), finishedAt: row.finishedAt?.toISOString() ?? null,

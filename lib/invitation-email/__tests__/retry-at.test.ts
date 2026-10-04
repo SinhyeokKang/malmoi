@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { retryAtLabel } from "../retry-at";
 
 /**
- * 재시도 가능 시각의 표기 — **UTC 절대 시각**(`lib/utc-time.ts`의 형)이고 분 단위로 **올린다**.
+ * 재시도 가능 시각의 표기 — **UTC 절대 시각**(`lib/date-format.ts`의 형)이고 분 단위로 **올린다**.
  * 내리면 "12:00 이후에"를 보고 12:00에 눌러 다시 막힌다.
  */
 describe("retryAtLabel", () => {

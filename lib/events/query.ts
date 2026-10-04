@@ -5,6 +5,7 @@ import { maskedEmailLabels } from "@/lib/auth/invite-label";
 import { decodeUser, readable } from "@/lib/credentials/records";
 import { validatePiiReadKeys } from "@/lib/credentials/storage";
 import type { Messages } from "@/lib/i18n";
+import type { TimeZone } from "@/lib/time-zone/zones";
 
 import { displayMemberPayload } from "./member-label";
 import { PROJECT_WIDE, parseDateRange, type EventCursor, type LogFilter } from "./filter";
@@ -104,11 +105,12 @@ export async function loadEvents(
   m: Messages,
   projectId: string,
   filter: LogFilter,
-  options: { limit?: number } = {},
+  // ⚠️ 시간대는 **필수**다 — 기간 필터의 날짜를 어느 자정으로 끊을지 호출부가 정한다. 화면은 보는 사람의 것, MCP는 `"UTC"`를 명시한다.
+  options: { limit?: number; timeZone: TimeZone },
 ): Promise<EventPage> {
   const limit = options.limit ?? EVENT_PAGE_SIZE;
   const rows = await prisma.projectEvent.findMany({
-    where: { projectId, ...narrow(filter, await surfaceIds(prisma, projectId, filter)) },
+    where: { projectId, ...narrow(filter, await surfaceIds(prisma, projectId, filter), options.timeZone) },
     // ⚠️ 정렬 키 둘이 커서 둘과 **같아야 한다** — 하나라도 어긋나면 페이지 경계에서 행이 사라지거나 겹친다.
     orderBy: [{ occurredAt: "desc" }, { id: "desc" }],
     // 한 개 더 읽어 "다음 페이지가 있나"를 조회 하나로 답한다 (기존 관용구).
@@ -292,14 +294,14 @@ async function surfaceIds(prisma: PrismaClient, projectId: string, filter: LogFi
   return rows.map((row) => row.id);
 }
 
-function narrow(filter: LogFilter, sourceIds: readonly string[]): Prisma.ProjectEventWhereInput {
+function narrow(filter: LogFilter, sourceIds: readonly string[], timeZone: TimeZone): Prisma.ProjectEventWhereInput {
   const where: Prisma.ProjectEventWhereInput = {};
   const and: Prisma.ProjectEventWhereInput[] = [];
 
   const kind = eventKindOf(filter.kind);
   if (kind !== null) where.kind = kind;
 
-  const range = parseDateRange(filter.from, filter.to);
+  const range = parseDateRange(filter.from, filter.to, timeZone);
   if (range.from !== null || range.to !== null) {
     where.occurredAt = {
       ...(range.from === null ? {} : { gte: range.from }),

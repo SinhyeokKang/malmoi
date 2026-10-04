@@ -26,7 +26,7 @@ import { loadChallengeView } from "@/lib/login-link/view";
 import { routes } from "@/lib/routes";
 import { firstQueryValues, type Raw } from "@/lib/search-params";
 import logo from "@/public/brand/malmoi-icon-black.svg";
-import { utcMonth } from "@/lib/utc-time";
+import { formatMonth } from "@/lib/date-format";
 
 /** ⚠️ **색인 거부 + referrer 없음** — `/invite/<token>`과 같은 이유다(challenge가 경로에 실린다). */
 export const metadata: Metadata = { title: en.link.title, robots: { index: false, follow: false }, referrer: "no-referrer" };
@@ -118,9 +118,9 @@ export default async function LinkAccountPage({
   );
 }
 
-/** 가입 월 — 앱의 날짜 형이 사는 `lib/utc-time.ts`가 만든다(ux-drift-unify 2-Y19 — 로케일 포맷터는 ICU·TZ에 기댄다). */
+/** 가입 월 — 앱의 날짜 형이 사는 `lib/date-format.ts`가 만든다(ux-drift-unify 2-Y19 — 로케일 포맷터는 ICU·TZ에 기댄다). */
 function joinedLabel(m: Messages, uiLocale: UiLocale, joined: Date): string {
-  return m.link.joined(utcMonth(joined, uiLocale));
+  return m.link.joined(formatMonth(joined, { uiLocale, timeZone: "UTC" }));
 }
 
 /**

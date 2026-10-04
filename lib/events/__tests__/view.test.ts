@@ -1,3 +1,6 @@
+// ⚠️ **import보다 먼저 선다** — 런타임 TZ를 UTC가 아닌 곳(분 단위 오프셋)에 두어야 날짜 카드가 "런타임 TZ로 새지 않는다"가 CI(UTC)에서 공허하게 통과하지 않는다.
+process.env.TZ = "Asia/Kathmandu";
+
 import { describe, expect, it } from "vitest";
 
 import { en } from "@/messages/en";
@@ -219,19 +222,20 @@ describe("valueState — 빈 칸을 만들지 않는다", () => {
 });
 
 describe("groupByDay — UTC 자정으로 끊는다", () => {
+  const UTC_EN = { uiLocale: "en", timeZone: "UTC" } as const;
   const NOW = new Date("2026-09-20T02:00:00.000Z");
   const at = (iso: string) => ({ occurredAt: new Date(iso) });
 
   it("오늘·어제만 낱말이 붙고 나머지는 없다", () => {
-    const groups = groupByDay(en, "en", [at("2026-09-20T01:00:00Z"), at("2026-09-19T23:59:59Z"), at("2026-09-18T00:00:00Z")],
+    const groups = groupByDay(en, UTC_EN, [at("2026-09-20T01:00:00Z"), at("2026-09-19T23:59:59Z"), at("2026-09-18T00:00:00Z")],
       NOW,
     );
     expect(groups.map((group) => group.label)).toEqual([en.logs.day.today, en.logs.day.yesterday, null]);
   });
 
   /** 카드 머리는 늘 날짜이고(앱의 날짜 형), 오늘·어제 낱말은 그 옆의 덧붙임이다 — 지난 날짜가 두 번 서지 않는다. */
-  it("머리는 `utcDay` 형이고 그룹 키는 ISO 그대로다", () => {
-    const groups = groupByDay(en, "en", [at("2026-09-20T01:00:00Z"), at("2026-09-19T23:59:59Z"), at("2026-09-18T00:00:00Z")],
+  it("머리는 `formatDayKey` 형이고 그룹 키는 ISO 그대로다", () => {
+    const groups = groupByDay(en, UTC_EN, [at("2026-09-20T01:00:00Z"), at("2026-09-19T23:59:59Z"), at("2026-09-18T00:00:00Z")],
       NOW,
     );
     expect(groups.map((group) => group.heading)).toEqual(["Sep 20, 2026", "Sep 19, 2026", "Sep 18, 2026"]);
@@ -243,7 +247,7 @@ describe("groupByDay — UTC 자정으로 끊는다", () => {
    * 로컬로 끊으면 밤 사이 실행이 하루 어긋난다 (POSTMORTEM 2026-09-19 항목의 계열).
    */
   it("UTC 자정 직전·직후가 다른 카드다", () => {
-    const groups = groupByDay(en, "en", [at("2026-09-20T00:00:00.000Z"), at("2026-09-19T23:59:59.999Z")], NOW);
+    const groups = groupByDay(en, UTC_EN, [at("2026-09-20T00:00:00.000Z"), at("2026-09-19T23:59:59.999Z")], NOW);
     expect(groups).toHaveLength(2);
     expect(groups[0]?.dayKey).toBe("2026-09-20");
     expect(groups[1]?.dayKey).toBe("2026-09-19");
@@ -251,24 +255,83 @@ describe("groupByDay — UTC 자정으로 끊는다", () => {
 
   it("같은 날은 한 카드에 순서대로 들어간다", () => {
     const rows = [at("2026-09-20T05:00:00Z"), at("2026-09-20T01:00:00Z")];
-    const groups = groupByDay(en, "en", rows, NOW);
+    const groups = groupByDay(en, UTC_EN, rows, NOW);
     expect(groups).toHaveLength(1);
     expect(groups[0]?.rows).toEqual(rows);
   });
 
   it("빈 목록은 빈 배열이다", () => {
-    expect(groupByDay(en, "en", [], NOW)).toEqual([]);
+    expect(groupByDay(en, UTC_EN, [], NOW)).toEqual([]);
   });
 
   /** ⚠️ **`now`를 서버가 하나 내린다** — 행마다 만들면 기준이 흔들린다. */
   it("now가 하루 뒤면 같은 행이 Yesterday로 옮겨간다", () => {
-    const groups = groupByDay(en, "en", [at("2026-09-20T01:00:00Z")], new Date("2026-09-21T00:00:01Z"));
+    const groups = groupByDay(en, UTC_EN, [at("2026-09-20T01:00:00Z")], new Date("2026-09-21T00:00:01Z"));
     expect(groups[0]?.label).toBe(en.logs.day.yesterday);
   });
 
   it("미래 행도 날짜로 그린다 — 던지지 않는다", () => {
-    const groups = groupByDay(en, "en", [at("2026-09-25T01:00:00Z")], NOW);
+    const groups = groupByDay(en, UTC_EN, [at("2026-09-25T01:00:00Z")], NOW);
     expect(groups[0]?.dayKey).toBe("2026-09-25");
+  });
+});
+
+/**
+ * **보는 사람의 시간대 자정으로 끊는다**(user-timezone A3). 머리는 그룹 키를 순간으로 바꾸지 않고 그린다(`formatDayKey`),
+ * 어제는 달력의 전날이다(`now - 24h`가 아니다).
+ */
+describe("groupByDay — 고른 시간대", () => {
+  const at = (iso: string) => ({ occurredAt: new Date(iso) });
+
+  it("TZ가 실제로 카트만두다 — 이 가드가 없으면 아래 단언이 UTC 런타임에서 공허하다", () => {
+    expect(new Date("2026-01-01T00:00:00Z").getTimezoneOffset()).toBe(-345);
+  });
+
+  it("서울 — now=2026-10-04T23:10Z의 Today는 10-05, Yesterday는 10-04이고 머리·키가 서울 날짜다", () => {
+    const groups = groupByDay(
+      en,
+      { uiLocale: "en", timeZone: "Asia/Seoul" },
+      [at("2026-10-04T23:00:00Z"), at("2026-10-04T14:59:00Z"), at("2026-10-03T15:00:00Z"), at("2026-10-03T14:59:00Z")],
+      new Date("2026-10-04T23:10:00Z"),
+    );
+    expect(groups.map((group) => group.dayKey)).toEqual(["2026-10-05", "2026-10-04", "2026-10-03"]);
+    expect(groups.map((group) => group.heading)).toEqual(["Oct 5, 2026", "Oct 4, 2026", "Oct 3, 2026"]);
+    expect(groups.map((group) => group.label)).toEqual([en.logs.day.today, en.logs.day.yesterday, null]);
+    expect(groups.map((group) => group.rows.length)).toEqual([1, 2, 1]);
+  });
+
+  it("같은 행이 UTC에서는 다른 카드다", () => {
+    const groups = groupByDay(en, { uiLocale: "en", timeZone: "UTC" }, [at("2026-10-04T23:00:00Z")], new Date("2026-10-04T23:10:00Z"));
+    expect(groups.map((group) => [group.dayKey, group.heading, group.label])).toEqual([["2026-10-04", "Oct 4, 2026", en.logs.day.today]]);
+  });
+
+  it("0시가 없는 날(산티아고 2026-09-06) — 01:00은 그날 카드이고 머리가 `Sep 6, 2026`이다", () => {
+    const groups = groupByDay(
+      en,
+      { uiLocale: "en", timeZone: "America/Santiago" },
+      [at("2026-09-06T04:00:00Z"), at("2026-09-06T03:59:00Z")],
+      new Date("2026-09-06T12:00:00Z"),
+    );
+    expect(groups.map((group) => [group.dayKey, group.heading, group.label])).toEqual([
+      ["2026-09-06", "Sep 6, 2026", en.logs.day.today],
+      ["2026-09-05", "Sep 5, 2026", en.logs.day.yesterday],
+    ]);
+  });
+
+  it("Yesterday는 달력의 전날이다 — 뉴욕 서머타임 다음 날 0시 30분", () => {
+    const groups = groupByDay(
+      en,
+      { uiLocale: "en", timeZone: "America/New_York" },
+      [at("2026-03-08T05:30:00Z")],
+      new Date("2026-03-09T04:30:00Z"),
+    );
+    expect(groups[0]?.dayKey).toBe("2026-03-08");
+    expect(groups[0]?.label).toBe(en.logs.day.yesterday);
+  });
+
+  it("머리는 화면 언어를 따른다", () => {
+    const groups = groupByDay(en, { uiLocale: "ko", timeZone: "Asia/Seoul" }, [at("2026-10-04T23:00:00Z")], new Date("2026-10-04T23:10:00Z"));
+    expect(groups[0]?.heading).toBe("2026년 10월 5일");
   });
 });
 

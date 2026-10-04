@@ -34,7 +34,7 @@ it.each(["/saved.webp", "/replaced.webp", null])("설정 서버 조회가 보낸
 });
 
 /**
- * **보관 일시는 UTC라고 말한다** (launch-readiness L7.1 — `lib/utc-time.ts`·Logs 화면이 정본).
+ * **보관 일시는 UTC라고 말한다** (launch-readiness L7.1 — `lib/date-format.ts`·Logs 화면이 정본).
  * 라벨 없는 로컬 날짜는 보는 사람이 어느 시간대인지 모른다: KST 09-21 08:30에 보관한 사람이
  * "9/20/2026"을 보면 자기가 어제 보관한 것으로 읽는다. 정확한 값은 `<time dateTime>`이 든다.
  */

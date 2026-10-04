@@ -15,7 +15,7 @@ import { groupByDay } from "@/lib/events/view";
 import type { EventRow as Row } from "@/lib/events/query";
 import { languageName } from "@/lib/onboarding/language-name";
 import { relativeTime } from "@/lib/relative-time";
-import { utcDay, utcMinute } from "@/lib/utc-time";
+import { formatDay, formatMinute } from "@/lib/date-format";
 import { ko } from "@/messages/ko";
 import { render } from "./helpers/dom";
 
@@ -39,13 +39,13 @@ it("Home — 주의 카드의 제목과 상대 시각이 ko다", async () => {
 
 it("Sources — 보관 화면의 날짜가 ko 형식이다", async () => {
   const { container } = await render(<SourcesArchived slug="a" role="OWNER" archivedAt={at} uiLocale="ko" m={ko} />);
-  expect(container.textContent).toContain(utcDay(at, "ko"));
-  expect(utcDay(at, "ko")).toBe("2026년 9월 18일");
+  expect(container.textContent).toContain(formatDay(at, { uiLocale: "ko", timeZone: "UTC" }));
+  expect(formatDay(at, { uiLocale: "ko", timeZone: "UTC" })).toBe("2026년 9월 18일");
 });
 
 it("Translations — 동기화 잠금 배너의 문장과 시각이 ko다", async () => {
   const { container } = await render(<SyncLockBanner reopensBy={at} />, { uiLocale: "ko" });
-  expect(container.textContent).toContain(utcMinute(at, "ko"));
+  expect(container.textContent).toContain(formatMinute(at, { uiLocale: "ko", timeZone: "UTC" }));
   expect(container.textContent).toContain(ko.translations.workspace.syncLock.title);
 });
 
@@ -55,7 +55,7 @@ it("Members — 역할 칩이 ko 낱말이다", async () => {
 });
 
 it("Logs — 날짜 머리·언어 이름·상세 시각이 ko다", async () => {
-  const groups = groupByDay(ko, "ko", [{ occurredAt: at }], now);
+  const groups = groupByDay(ko, { uiLocale: "ko", timeZone: "UTC" }, [{ occurredAt: at }], now);
   expect(groups[0]?.heading).toBe("2026년 9월 18일");
   const row: Row = {
     id: "e1", ref: "evt_ko", kind: "TRANSLATION", subtype: "translation.saved", occurredAt: at, finishedAt: at, result: null,
@@ -70,7 +70,7 @@ it("Logs — 날짜 머리·언어 이름·상세 시각이 ko다", async () => 
       <EventDetail row={row} slug="a" now={now} archived={false} canOpenSettings={false} repoUrl={null} uiLocale="ko" m={ko} />
     </Dialog.Content></Dialog.Root>,
   );
-  expect(detail.container.textContent).toContain(utcMinute(at, "ko"));
+  expect(detail.container.textContent).toContain(formatMinute(at, { uiLocale: "ko", timeZone: "UTC" }));
 });
 
 it("Settings — CI 카드의 안내가 ko다", async () => {

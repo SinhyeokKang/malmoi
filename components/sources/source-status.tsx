@@ -3,7 +3,7 @@
 import { StatusBadge } from "@/components/ui/status-badge";
 import { planSurfaceImportStatus } from "@/lib/import/surface-status";
 import { relativeTime } from "@/lib/relative-time";
-import { utcMinute } from "@/lib/utc-time";
+import { formatMinute } from "@/lib/date-format";
 import { cn } from "@/lib/utils";
 import { useUiLocale } from "@/components/i18n/messages-provider";
 
@@ -20,6 +20,6 @@ export function SourceStatus({ source, now, className }: { source: Parameters<ty
   return <span data-source-status={status.state} className={cn("flex shrink-0 items-center gap-1.5", className)}>
     <StatusBadge state={status.labelKey} />
     {/* ⚠️ 상대 시각도 절대 값을 든다 (audit #41 — DESIGN §6.66·§6.68) — 화면의 낱말이 "5분 전"이어도 접근 이름은 UTC다. */}
-    {status.state === "importing" && status.at !== null && <time className="text-muted-foreground text-xs" dateTime={status.at.toISOString()} aria-label={utcMinute(status.at, uiLocale)}>{relativeTime(status.at, now, uiLocale)}</time>}
+    {status.state === "importing" && status.at !== null && <time className="text-muted-foreground text-xs" dateTime={status.at.toISOString()} aria-label={formatMinute(status.at, { uiLocale, timeZone: "UTC" })}>{relativeTime(status.at, now, uiLocale)}</time>}
   </span>;
 }

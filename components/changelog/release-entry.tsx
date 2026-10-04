@@ -3,7 +3,7 @@ import type { Messages } from "@/lib/i18n";
 import type { UiLocale } from "@/lib/i18n/locales";
 import type { Release } from "@/lib/changelog/parse";
 import { releaseTagUrl } from "@/lib/links";
-import { utcDay } from "@/lib/utc-time";
+import { formatDay } from "@/lib/date-format";
 import { cn } from "@/lib/utils";
 
 import { ReleaseMarkdown } from "./release-markdown";
@@ -47,8 +47,8 @@ export function ReleaseEntry({ m, uiLocale, release, latest = false }: { m: Mess
         </a>
       </h1>
       <p className="text-muted-foreground mt-1 text-sm leading-body">
-        {/* 보이는 쪽은 UTC 날짜(`utcDay`), 정확한 값은 `dateTime`의 원 ISO다. UTC라는 사실은 소개 문장이 한 번 말한다. */}
-        <time dateTime={publishedAt}>{utcDay(new Date(publishedAt), uiLocale)}</time>
+        {/* 보이는 쪽은 UTC 날짜(`formatDay`), 정확한 값은 `dateTime`의 원 ISO다. UTC라는 사실은 소개 문장이 한 번 말한다. */}
+        <time dateTime={publishedAt}>{formatDay(new Date(publishedAt), { uiLocale, timeZone: "UTC" })}</time>
       </p>
       <div className="mt-6 [&>:first-child]:mt-0">
         <ReleaseMarkdown body={body} />

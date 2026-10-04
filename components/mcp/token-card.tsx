@@ -16,7 +16,7 @@ import { Card } from "@/components/ui/card";
 import { useMessages, useUiLocale } from "@/components/i18n/messages-provider";
 import type { TokenGrant } from "@/lib/mcp/grant";
 import { relativeTime } from "@/lib/relative-time";
-import { utcDay } from "@/lib/utc-time";
+import { formatDay } from "@/lib/date-format";
 
 import type { ScopeProject } from "./token-grant-fields";
 import { TokenModal } from "./token-modal";
@@ -229,9 +229,9 @@ function TokenFacts({ token, now }: { token: Exclude<TokenCardData, { state: "no
   const facts: [string, ReactNode][] = [
     [m.mcpConnector.token.facts.grants, <GrantBadges key="g" grants={token.grants} dimmed={expired} />],
     [m.mcpConnector.token.facts.scope, scope],
-    [m.mcpConnector.token.facts.created, <time key="c" dateTime={token.createdAt}>{utcDay(created, uiLocale)}</time>],
-    [m.mcpConnector.token.facts.lastUsed, lastUsed === null ? m.mcpConnector.token.never : <time key="l" dateTime={token.lastUsedAt ?? ""}>{expired ? utcDay(lastUsed, uiLocale) : relativeTime(lastUsed, now, uiLocale)}</time>],
-    [m.mcpConnector.token.facts.expires, <time key="e" dateTime={token.expiresAt}>{expired ? utcDay(expires, uiLocale) : relativeTime(expires, now, uiLocale)}</time>],
+    [m.mcpConnector.token.facts.created, <time key="c" dateTime={token.createdAt}>{formatDay(created, { uiLocale, timeZone: "UTC" })}</time>],
+    [m.mcpConnector.token.facts.lastUsed, lastUsed === null ? m.mcpConnector.token.never : <time key="l" dateTime={token.lastUsedAt ?? ""}>{expired ? formatDay(lastUsed, { uiLocale, timeZone: "UTC" }) : relativeTime(lastUsed, now, uiLocale)}</time>],
+    [m.mcpConnector.token.facts.expires, <time key="e" dateTime={token.expiresAt}>{expired ? formatDay(expires, { uiLocale, timeZone: "UTC" }) : relativeTime(expires, now, uiLocale)}</time>],
   ];
   return (
     // Alert 다음 행은 행↔행 선(`#e5e5e5`), 머리 바로 아래면 머리 선(`#f0f0f0`)이다(핸드오프 `4b`).

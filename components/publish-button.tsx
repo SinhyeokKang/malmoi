@@ -1,6 +1,6 @@
 "use client";
 import { Link as InlineLink } from "@/components/ui/link";
-import { utcMinute } from "@/lib/utc-time";
+import { formatMinute } from "@/lib/date-format";
 import { flagFor } from "@/lib/keys/flag";
 import { diffWords } from "@/lib/publish/words";
 import { FileJson2, GitPullRequestArrow, History, Info, LoaderCircle, Send, TriangleAlert } from "lucide-react";
@@ -394,7 +394,7 @@ function failureText(m: Messages, outcome: Extract<PullOutcome, { status: "faile
 }
 
 // 절대 시각은 UTC라고 말한다 — 브라우저 로컬을 라벨 없이 내면 참조 코드로 Logs(UTC)와 대조할 때 어긋나 보인다 (launch-readiness L7.1).
-const stamp = (at: Date, uiLocale: UiLocale) => <time dateTime={at.toISOString()}>{utcMinute(at, uiLocale)}</time>;
+const stamp = (at: Date, uiLocale: UiLocale) => <time dateTime={at.toISOString()}>{formatMinute(at, { uiLocale, timeZone: "UTC" })}</time>;
 
 export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, role }: {
   slug: string;

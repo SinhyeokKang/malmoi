@@ -212,7 +212,8 @@ const CLIENT_LIB_FILES = [
   "lib/upload/message.ts",
   // Logs 커서의 base64url 코덱 (audit #73) — import가 없는 잎이다.
   "lib/url-token.ts",
-  "lib/utc-time.ts",
+  // 절대 날짜·시각의 생산자(user-timezone — 옛 `lib/utc-time.ts`). 값 import 0인 잎이다(시간대·언어 타입만).
+  "lib/date-format.ts",
   "lib/utils.ts",
 ];
 
@@ -440,6 +441,32 @@ describe("클라이언트 그래프", () => {
   });
 
   /** 상태 정본은 클라이언트 프리미티브(`StatusBadge`·`IconTile`)가 값으로 읽는다 — 무언가를 무는 순간을 여기서 직접 건다. 낱말은 `stateLabel`이 인자로 받은 사전에서 고른다. */
+  /**
+   * ⚠️ **시간대 판정과 옵션은 Preferences 카드(클라이언트)가 값으로 읽는다**(user-timezone) — 소비자가 붙기 전에도 검사가 공허하지 않도록
+   * 여기서 직접 건다. 소비자가 생기면 `CLIENT_LIB_FILES`에 등재한다(위 정확 대조가 그때 요구한다).
+   */
+  it("`lib/time-zone/zones.ts`는 잎이다 — 아무것도 물지 않는다", () => {
+    const zones = walk([join(ROOT, "lib/time-zone/zones.ts")]);
+    expect([...zones.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/time-zone/zones.ts"]);
+    expect([...zones.packages]).toEqual([]);
+  });
+
+  it("`lib/time-zone/options.ts`는 목록과 날짜 형만 문다", () => {
+    const options = walk([join(ROOT, "lib/time-zone/options.ts")]);
+    expect([...options.files].map((file) => file.slice(ROOT.length)).sort()).toEqual([
+      "lib/date-format.ts",
+      "lib/time-zone/options.ts",
+      "lib/time-zone/zones.ts",
+    ]);
+    expect([...options.packages]).toEqual([]);
+  });
+
+  it("`lib/date-format.ts`는 잎이다 — 시간대·언어는 타입으로만 읽는다", () => {
+    const format = walk([join(ROOT, "lib/date-format.ts")]);
+    expect([...format.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/date-format.ts"]);
+    expect([...format.packages]).toEqual([]);
+  });
+
   it("`lib/status/canon.ts`는 잎이다 — 사전도 물지 않는다", () => {
     const canon = walk([join(ROOT, "lib/status/canon.ts")]);
     expect([...canon.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/status/canon.ts"]);
@@ -464,6 +491,8 @@ describe("클라이언트 그래프", () => {
   it("`lib/events`의 판정 모듈 셋은 잎이다 — 조회를 물지 않는다", () => {
     const view = walk([join(ROOT, "lib/events/view.ts")]);
     expect([...view.files].map((file) => file.slice(ROOT.length)).sort()).toEqual([
+      // 날짜 카드 머리·그룹 키 — import 0인 잎이다(`publish-button.tsx`가 클라이언트에서 같은 파일을 읽는다).
+      "lib/date-format.ts",
       // 어휘 사전(import 0) — 주체 판정 `triggerOf`가 야간 subtype 목록을 값으로 읽는다(nightly-sync).
       "lib/events/payload.ts",
       "lib/events/view.ts",
@@ -472,13 +501,13 @@ describe("클라이언트 그래프", () => {
       "lib/projects/import-failure.ts",
       // 결과 키가 읽는 상태 정본도 잎이다 — 문구는 모두 인자로 받은 사전에서 고른다.
       "lib/status/canon.ts",
-      // 날짜 카드 머리의 날짜 형 — import 0인 잎이다(`publish-button.tsx`가 클라이언트에서 같은 파일을 읽는다).
-      "lib/utc-time.ts",
     ]);
     expect([...view.packages].filter((name) => !allowed(name))).toEqual([]);
 
     const filter = walk([join(ROOT, "lib/events/filter.ts")]);
     expect([...filter.files].map((file) => file.slice(ROOT.length)).sort()).toEqual([
+      // 기간 구간·프리셋이 시간대 자정을 값으로 읽는다(user-timezone A3).
+      "lib/date-format.ts",
       "lib/events/filter.ts",
       "lib/events/payload.ts",
       "lib/url-token.ts",

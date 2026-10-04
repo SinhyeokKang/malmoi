@@ -1,3 +1,5 @@
+import { addDays, dayKeyAt, startOfDay } from "@/lib/date-format";
+import type { TimeZone } from "@/lib/time-zone/zones";
 import { decodeUrlToken, encodeUrlToken } from "@/lib/url-token";
 
 import { EVENT_RESULTS, LOG_KINDS, type EventResult, type LogKind } from "./payload";
@@ -8,7 +10,7 @@ import { EVENT_RESULTS, LOG_KINDS, type EventResult, type LogKind } from "./payl
  * ⚠️ **주소창 값이라 무엇을 받아도 던지지 않는다.** 모르는 값·해독 불가는 기본값이고 화면은 첫
  * 페이지를 그린다 — `decodeCursor`·`pick`과 같은 축이다 (POSTMORTEM 2026-09-08).
  *
- * ⚠️ **잎이다** — `./payload`·`@/lib/url-token`(둘 다 잎)까지다. 필터 UI가 클라이언트 컴포넌트라 이 그래프가 곧
+ * ⚠️ **잎이다** — `./payload`·`@/lib/url-token`·`@/lib/date-format`(전부 잎)까지다. 필터 UI가 클라이언트 컴포넌트라 이 그래프가 곧
  * 번들이다 (`components/__tests__/client-graph.test.ts`).
  */
 
@@ -22,7 +24,7 @@ export type EventCursor = { occurredAt: Date; id: string };
  * 좁히는 축 다섯 + 검색 + 커서 + 열린 이벤트.
  *
  * ⚠️ **기간은 `YYYY-MM-DD` 원문이다** — 네이티브 `<input type="date">`가 그 값을 그대로 쓰고,
- * 조회가 보는 UTC 구간은 `parseDateRange`가 만든다. 하나를 둘로 들면 입력창과 적용된 창이 어긋난다.
+ * 조회가 보는 구간(보는 사람의 시간대)은 `parseDateRange`가 만든다. 하나를 둘로 들면 입력창과 적용된 창이 어긋난다.
  */
 export type LogFilter = {
   kind: LogKind;
@@ -49,13 +51,17 @@ export type LogFilter = {
 /** 주소창 값이 쿼리 길이를 정하지 않는다. */
 const MAX_TEXT = 200;
 
+/**
+ * ⚠️ **시간대를 받지 않는다** — 기간의 유효성(형식·실재 날짜·순서)은 달력 날짜 키만으로 판정된다. 순간으로 바꾸는 것은 조회의
+ * `parseDateRange`다. 그래서 MCP·Home이 같은 판정을 시간대 없이 부른다.
+ */
 export function parseLogFilter(params: LogSearchParams): LogFilter {
-  const range = parseDateRange(text(params.from), text(params.to));
+  const range = dayKeyRange(text(params.from), text(params.to));
   return {
     kind: oneOf(LOG_KINDS, text(params.kind)) ?? "all",
     // 구간이 성립하지 않으면 입력창도 비운다 — 남겨 두면 화면의 값과 적용된 창이 어긋난다.
-    from: range.from === null ? null : text(params.from),
-    to: range.to === null ? null : text(params.to),
+    from: range.from,
+    to: range.to,
     actor: text(params.actor),
     sources: list(params.source),
     results: list(params.result).filter((value): value is EventResult =>
@@ -156,33 +162,59 @@ export function filterChanged(prev: LogFilter, next: LogFilter): boolean {
 }
 
 /**
- * 네이티브 date 입력 둘 → **UTC 구간**. `to`는 **배타 상한**(다음 UTC 자정)이라 고른 날 하루가
- * 통째로 들어온다.
+ * 네이티브 date 입력 둘 → **보는 사람의 시간대로 끊은 구간**. `to`는 **배타 상한**(다음 날의 첫 순간)이라 고른 날 하루가
+ * 통째로 들어온다. `+24시간`이 아니다 — 서머타임 날은 23·25시간이고, 0시가 없는 날도 있다(`startOfDay`).
  *
- * ⚠️ **로컬 타임존으로 새지 않는다** — `new Date(y, m, d)`는 로컬 자정이고, 그러면 KST에서 고른
- * 하루가 UTC 기준 9시간 어긋난다 (POSTMORTEM 2026-09-19 계열).
+ * ⚠️ **런타임 타임존으로 새지 않는다** — `new Date(y, m, d)`는 런타임 로컬 자정이고, 그러면 서버(UTC)와 고른 시간대가
+ * 어긋난다 (POSTMORTEM 2026-09-19 계열). 시간대는 언제나 인자로 받는다.
  *
  * ⚠️ **역전된 쌍은 둘 다 버린다.** 한쪽만 남기면 사용자가 지정하지 않은 구간이 적용된다.
  */
 export function parseDateRange(
   from: string | null | undefined,
   to: string | null | undefined,
+  timeZone: TimeZone,
 ): { from: Date | null; to: Date | null } {
-  const start = utcDay(from);
-  const end = utcDay(to);
-  if (start !== null && end !== null && start.getTime() > end.getTime()) return { from: null, to: null };
-  return { from: start, to: end === null ? null : new Date(end.getTime() + DAY_MS) };
+  const range = dayKeyRange(from, to);
+  return {
+    from: range.from === null ? null : startOfDay(range.from, timeZone),
+    to: range.to === null ? null : startOfDay(addDays(range.to, 1), timeZone),
+  };
 }
 
-const DAY_MS = 24 * 60 * 60 * 1000;
+/** 키 둘의 판정 — 무효한 쪽은 `null`, 역전된 쌍은 둘 다 `null`. `YYYY-MM-DD`는 문자열 순서가 날짜 순서다. */
+function dayKeyRange(from: string | null | undefined, to: string | null | undefined): { from: string | null; to: string | null } {
+  const start = parseDayKey(from);
+  const end = parseDayKey(to);
+  if (start !== null && end !== null && start > end) return { from: null, to: null };
+  return { from: start, to: end };
+}
 
 /** `YYYY-MM-DD`만 받는다 — 부분 파싱하지 않는다(`2026-9-1`·`2026-02-30`은 값이 아니다). */
-function utcDay(raw: string | null | undefined): Date | null {
+export function parseDayKey(raw: string | null | undefined): string | null {
   if (typeof raw !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
   const at = new Date(`${raw}T00:00:00.000Z`);
   if (Number.isNaN(at.getTime())) return null;
   // `2026-02-30`은 `Date`가 3월로 굴린다 — 되돌려 찍어 같은 날인지 본다.
-  return at.toISOString().slice(0, 10) === raw ? at : null;
+  return at.toISOString().slice(0, 10) === raw ? raw : null;
+}
+
+/** 기간 프리셋 넷 — 사전 `m.logs.range.*`의 키와 같다. */
+export const LOG_PRESETS = ["today", "yesterday", "last7", "last30"] as const;
+export type LogPreset = (typeof LOG_PRESETS)[number];
+
+/**
+ * 프리셋의 날짜 키 쌍 — **보는 사람의 시간대에서 오늘을 잡고** 달력 날짜로 센다(`now - 24h`가 아니다 — 서머타임 날).
+ * ⚠️ `now`는 호출부가 넘긴다 — 렌더 중 `Date.now()`는 서버 렌더와 하이드레이션 사이에 자정이 끼면 갈린다.
+ */
+export function presetRange(key: LogPreset, now: Date, timeZone: TimeZone): { from: string; to: string } {
+  const today = dayKeyAt(now, timeZone);
+  if (key === "today") return { from: today, to: today };
+  if (key === "yesterday") {
+    const yesterday = addDays(today, -1);
+    return { from: yesterday, to: yesterday };
+  }
+  return { from: addDays(today, key === "last7" ? -6 : -29), to: today };
 }
 
 /** 키셋 커서. 문자열 ↔ base64url은 `@/lib/url-token`(잎)이 든다 — 이 모듈은 페이로드 모양만 정한다. */

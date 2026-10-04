@@ -21,10 +21,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { FieldTrigger } from "@/components/ui/field-trigger";
 import { EVENT_RESULTS, LOG_KINDS, type EventResult, type LogKind } from "@/lib/events/payload";
-import { PROJECT_WIDE, clearedLogsQuery, hasNarrowing, logsQuery, type LogFilter } from "@/lib/events/filter";
+import { LOG_PRESETS, PROJECT_WIDE, clearedLogsQuery, hasNarrowing, logsQuery, presetRange, type LogFilter, type LogPreset } from "@/lib/events/filter";
 import { useMessages, useUiLocale } from "@/components/i18n/messages-provider";
 import { routes } from "@/lib/routes";
-import { utcDay as dayText } from "@/lib/utc-time";
+import { formatDayKey } from "@/lib/date-format";
 import type { Messages } from "@/lib/i18n";
 import type { UiLocale } from "@/lib/i18n/locales";
 
@@ -153,9 +153,9 @@ export function LogFilters({
           </DropdownMenuItem>
           {/* ⚠️ 프리셋도 선택 상태를 든다 (B5 리뷰 r1) — 다른 필터 넷과 같은 단일 선택이고, 없으면 프리셋을 적용한 뒤 스크린리더가
               "아무것도 선택 안 됨"을 읽는다. 판정은 지금 범위가 그 프리셋의 범위와 같은가다. `Custom…`은 값이 아니라 동작이다. */}
-          {PRESETS.map((preset) => (
-            <DropdownMenuItem key={preset.key} selected={sameRange(filter, preset.range())} onSelect={() => go(preset.range())}>
-              {m.logs.range[preset.key]}
+          {LOG_PRESETS.map((preset) => (
+            <DropdownMenuItem key={preset} selected={sameRange(filter, range(preset))} onSelect={() => go(range(preset))}>
+              {m.logs.range[preset]}
             </DropdownMenuItem>
           ))}
           <DropdownMenuSeparator />
@@ -336,17 +336,12 @@ function CustomRangeDialog({ open, onOpenChange, filter, returnFocusRef, onApply
   );
 }
 
-/** 프리셋 넷 — **UTC 기준으로 오늘을 잡는다**(로컬 자정으로 끊으면 밤 사이 실행이 하루 어긋난다). */
-const PRESETS = [
-  { key: "today" as const, range: () => ({ from: utcDay(0), to: utcDay(0) }) },
-  { key: "yesterday" as const, range: () => ({ from: utcDay(-1), to: utcDay(-1) }) },
-  { key: "last7" as const, range: () => ({ from: utcDay(-6), to: utcDay(0) }) },
-  { key: "last30" as const, range: () => ({ from: utcDay(-29), to: utcDay(0) }) },
-];
-
-function utcDay(offset: number): string {
-  const at = new Date(Date.now() + offset * 24 * 60 * 60 * 1000);
-  return at.toISOString().slice(0, 10);
+/**
+ * 프리셋 넷의 날짜 키 — **UTC 기준으로 오늘을 잡는다**(로컬 자정으로 끊으면 밤 사이 실행이 하루 어긋난다). 판정은 `presetRange`(순수)다.
+ * ⚠️ 렌더 중 `Date.now()`는 아직 여기 있다 — 서버가 내린 `now`로 바꾸는 것은 시간대 배선과 같이 한다(user-timezone C2).
+ */
+function range(preset: LogPreset): { from: string; to: string } {
+  return presetRange(preset, new Date(), "UTC");
 }
 
 function sameRange(filter: LogFilter, range: { from: string; to: string }): boolean {
@@ -354,12 +349,12 @@ function sameRange(filter: LogFilter, range: { from: string; to: string }): bool
 }
 
 /**
- * 칩 글자만 `lib/utc-time.ts`의 형이다(`Sep 27, 2026`) — URL·입력 값·프리셋 판정은 ISO 그대로다. `new Date("YYYY-MM-DD")`는 UTC 자정이라
- * 날짜가 밀리지 않는다. ⚠️ 위의 지역 `utcDay(offset)`는 ISO를 만드는 다른 함수라 import에 별칭을 붙였다.
+ * 칩 글자만 `lib/date-format.ts`의 형이다(`Sep 27, 2026`) — URL·입력 값·프리셋 판정은 ISO 그대로다.
+ * ⚠️ 키를 순간으로 바꾸지 않는다(`formatDayKey`) — `new Date(key)`를 시간대로 그리면 음수 오프셋에서 하루 밀린다.
  */
 function dateLabel(m: Messages, uiLocale: UiLocale, filter: LogFilter): string {
   if (filter.from === null && filter.to === null) return m.logs.filters.anyDate;
-  const day = (iso: string | null) => (iso === null ? "…" : dayText(new Date(iso), uiLocale));
+  const day = (iso: string | null) => (iso === null ? "…" : formatDayKey(iso, uiLocale));
   if (filter.from !== null && filter.from === filter.to) return day(filter.from);
   return `${day(filter.from)} – ${day(filter.to)}`;
 }
