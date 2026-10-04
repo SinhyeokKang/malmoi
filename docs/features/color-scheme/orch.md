@@ -59,3 +59,5 @@
 
 (배치별 라운드·통합 해시·미완 항목을 여기에 덧붙인다.)
 - 2026-10-05 계획 작성 → 사용자가 dev CI green · 클린 트리 확인 후 착수 지시(`ec081f63`).
+- Run `run_28e3b25ee627`. 브리프 `.scratch/color-scheme/`. **A 착수**(Opus high, task_9e8324b99acc / ctx_0eead285f36b, `cs-a`) · **B 착수**(Opus medium, task_404cc9320c49 / ctx_b6cf19091b3a, `cs-b`) · **Q0 착수**(Sonnet medium, main 체크아웃, task_653e7d404b85 / ctx_64342ef125bb — 이 동안 cherry-pick·build 금지).
+- 핸드오프 확보 실패: `DesignSync list_projects`에 design-system 프로젝트 둘만 보이고, 리포·`.scratch`·Downloads·Desktop에 `design_handoff_color_scheme` 링크·폴더 없음 → **사용자에게 시안 URL(또는 로컬 경로) 요청** — C·Q2 착수 전 필요.
