@@ -198,6 +198,45 @@ function themes(value: string | undefined): [string, string] | null {
   throw new Error(`light-dark()에 인자가 둘이 아니다: ${value}`);
 }
 
+/** 의미 색 34의 라이트 값 — 옮겨 온 raw(design §2.2). 아래 두 describe가 같이 쓴다. */
+const LIGHT: Readonly<Record<string, string>> = {
+  "--link": "var(--color-blue-600)",
+  "--gray-light": "var(--color-neutral-300)",
+  "--gray-dim": "var(--color-neutral-400)",
+  "--gray-strong": "var(--color-neutral-600)",
+  "--success-surface": "var(--color-green-50)",
+  "--success-soft": "color-mix(in oklab, var(--color-green-100) 80%, transparent)",
+  "--success-foreground": "var(--color-green-800)",
+  "--warning-surface": "var(--color-amber-50)",
+  "--warning-soft": "color-mix(in oklab, var(--color-amber-100) 80%, transparent)",
+  "--warning-soft-foreground": "var(--color-amber-800)",
+  "--warning-foreground": "var(--color-amber-700)",
+  "--warning-emphasis": "var(--color-amber-500)",
+  "--danger-surface": "var(--color-red-50)",
+  "--info-surface": "var(--color-blue-50)",
+  "--hue-rose": "var(--color-rose-600)",
+  "--hue-orange": "var(--color-orange-600)",
+  "--hue-amber": "var(--color-amber-600)",
+  "--hue-emerald": "var(--color-emerald-600)",
+  "--hue-teal": "var(--color-teal-600)",
+  "--hue-sky": "var(--color-sky-600)",
+  "--hue-indigo": "var(--color-indigo-600)",
+  "--hue-fuchsia": "var(--color-fuchsia-600)",
+  "--on-hue": "var(--color-white)",
+  // 오버레이는 `--foreground`의 라이트 값과 같은 색이되 그 변수를 가리키지 않는다(다크에서 갈린다).
+  "--scrim": "hsl(0 0% 3.9%)",
+  "--shadow-color": "rgb(22 24 27)",
+  "--diff-removed": "var(--color-red-700)",
+  "--diff-added": "var(--color-green-800)",
+  "--kind-blue-surface": "var(--color-blue-50)",
+  "--kind-blue": "var(--color-blue-700)",
+  "--kind-teal-surface": "var(--color-teal-50)",
+  "--kind-teal": "var(--color-teal-700)",
+  "--kind-violet-surface": "var(--color-violet-50)",
+  "--kind-violet": "var(--color-violet-700)",
+  "--surface-subtle": "var(--color-neutral-50)",
+};
+
 /**
  * **의미 색의 라이트 값은 옮겨 온 raw 그대로다** (color-scheme Phase 1 — spec 완료 조건 3·4, design §2.2).
  *
@@ -209,43 +248,6 @@ describe("globals.css — 의미 색 토큰", () => {
   const theme = /@theme inline\s*\{([\s\S]*?)\n\}/.exec(CSS)?.[1] ?? "";
   const declared = new Map([...root.matchAll(/^\s*(--[\w-]+):\s*([^;]+);/gm)].map((m) => [m[1], m[2]?.trim()]));
 
-  const LIGHT: Readonly<Record<string, string>> = {
-    "--link": "var(--color-blue-600)",
-    "--gray-light": "var(--color-neutral-300)",
-    "--gray-dim": "var(--color-neutral-400)",
-    "--gray-strong": "var(--color-neutral-600)",
-    "--success-surface": "var(--color-green-50)",
-    "--success-soft": "color-mix(in oklab, var(--color-green-100) 80%, transparent)",
-    "--success-foreground": "var(--color-green-800)",
-    "--warning-surface": "var(--color-amber-50)",
-    "--warning-soft": "color-mix(in oklab, var(--color-amber-100) 80%, transparent)",
-    "--warning-soft-foreground": "var(--color-amber-800)",
-    "--warning-foreground": "var(--color-amber-700)",
-    "--warning-emphasis": "var(--color-amber-500)",
-    "--danger-surface": "var(--color-red-50)",
-    "--info-surface": "var(--color-blue-50)",
-    "--hue-rose": "var(--color-rose-600)",
-    "--hue-orange": "var(--color-orange-600)",
-    "--hue-amber": "var(--color-amber-600)",
-    "--hue-emerald": "var(--color-emerald-600)",
-    "--hue-teal": "var(--color-teal-600)",
-    "--hue-sky": "var(--color-sky-600)",
-    "--hue-indigo": "var(--color-indigo-600)",
-    "--hue-fuchsia": "var(--color-fuchsia-600)",
-    "--on-hue": "var(--color-white)",
-    // 오버레이는 `--foreground`의 라이트 값과 같은 색이되 그 변수를 가리키지 않는다(다크에서 갈린다).
-    "--scrim": "hsl(0 0% 3.9%)",
-    "--shadow-color": "rgb(22 24 27)",
-    "--diff-removed": "var(--color-red-700)",
-    "--diff-added": "var(--color-green-800)",
-    "--kind-blue-surface": "var(--color-blue-50)",
-    "--kind-blue": "var(--color-blue-700)",
-    "--kind-teal-surface": "var(--color-teal-50)",
-    "--kind-teal": "var(--color-teal-700)",
-    "--kind-violet-surface": "var(--color-violet-50)",
-    "--kind-violet": "var(--color-violet-700)",
-    "--surface-subtle": "var(--color-neutral-50)",
-  };
 
   it.each(Object.entries(LIGHT))("%s의 라이트 값이 옮겨 온 raw와 같다", (name, value) => {
     expect(themes(declared.get(name))?.[0]).toBe(value);
@@ -347,6 +349,42 @@ describe("globals.css — 다크 값 (light-dark)", () => {
   };
 
   const colors = [...declared.keys()].filter((name) => !NOT_COLOR.has(name));
+
+  /**
+   * **기본 토큰의 라이트 값** — `LIGHT`(의미 색 34) 밖의 색 변수다. Phase 2가 `light-dark()`로 감싸는 동안 라이트 쪽이 조용히 바뀌지 않게
+   * base `7db35fec`(감싸기 직전)의 값을 문자열로 고정한다(color-scheme RC 🟡2). 라이트 값을 바꾸는 것은 시안·DESIGN의 일이다.
+   */
+  const LIGHT_BASE: Readonly<Record<string, string>> = {
+    "--background": "hsl(0 0% 100%)",
+    "--foreground": "hsl(0 0% 3.9%)",
+    "--popover": "hsl(0 0% 100%)",
+    "--primary": "hsl(0 0% 9%)",
+    "--primary-foreground": "hsl(0 0% 98%)",
+    "--muted": "hsl(0 0% 96.1%)",
+    "--accent": "hsl(0 0% 96.1%)",
+    "--muted-foreground": "hsl(0 0% 45.1%)",
+    "--destructive": "hsl(0 72.2% 50.6%)",
+    "--border": "hsl(0 0% 89.8%)",
+    "--border-subtle": "rgb(233 236 239)",
+    "--divider": "rgb(240 240 240)",
+    "--input": "hsl(0 0% 89.8%)",
+    "--ring": "rgb(96 165 250)",
+    "--signin-dot": "rgb(37 99 235)",
+    "--canvas": "rgb(245 246 247)",
+    "--auth-hero-from": "rgb(245 246 247)",
+    "--auth-hero-to": "rgb(215 227 254)",
+  };
+
+  it.each(Object.entries(LIGHT_BASE))("%s의 라이트 값이 Phase 2 전과 같다", (name, value) => {
+    expect(themes(declared.get(name))?.[0]).toBe(value);
+  });
+
+  it("색 변수마다 라이트 값 표(`LIGHT` 또는 `LIGHT_BASE`) 하나에 든다 — 테마 불변도 `LIGHT`에 있다", () => {
+    const lightTables = [...Object.keys(LIGHT), ...Object.keys(LIGHT_BASE)];
+    expect(new Set(lightTables).size).toBe(lightTables.length);
+    expect(Object.keys(THEME_INVARIANT).filter((name) => !Object.hasOwn(LIGHT, name))).toEqual([]);
+    expect([...colors].sort()).toEqual(lightTables.sort());
+  });
 
   it("본문 `:root`를 읽었다 — 정규식이 조용히 빈 표가 되지 않는다", () => {
     expect(colors.length).toBeGreaterThan(50);
