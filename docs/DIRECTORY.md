@@ -36,7 +36,7 @@ app/
                         내비가 페이지 이동에 스크롤·포커스를 남겨야 해서다. ⚠️ fs로 읽으므로 next.config.ts의
                         outputFileTracingIncludes가 guide/**/*.md를 싣는다(빠지면 Vercel에서 /docs/* 전부 500)
   layout.tsx            루트 레이아웃(Geist next/font/local 변수 · Pretendard 폴백 <link> · 머리 기본값 · components/analytics · MessagesProvider).
-                        ⚠️ lang은 요청의 화면 언어(getUiLocale)이고 provider도 같은 값으로 하나 렌더한다 — app/__tests__/root-layout-i18n이 provider 존재를 고정한다
+                        ⚠️ lang은 요청의 화면 언어(getUiLocale)이고 provider도 같은 값으로 하나 렌더한다(+ getDateStyle의 timeZone — user-timezone) — app/__tests__/root-layout-i18n이 provider 존재를 고정한다
                         (빠지면 provider 기본값이 en이라 조용히 영어다)
                         ⚠️ metadata에 canonical·og:url이 없다 — 얕은 병합으로 앱·/signin·/invite·404 전부에 홈 canonical이 번진다
   robots.ts · sitemap.ts  크롤러용 파일 둘(lib/seo/crawl). robots는 force-dynamic(요청 시점 VERCEL_ENV), sitemap은 빌드 prerender.
@@ -83,8 +83,9 @@ app/
                         ⚠️ 온보딩(생성 경로)은 사용자 수준 인증뿐이다(인가할 프로젝트가 없다) — 모달이라
                         readSession으로 거부를 값으로 돌려받고 checkRepoAccess를 지난다
     preferences/        Preferences(`/preferences`, 2026-10-04 ui-locales). 사용자 축 — requireUser만 지난다(account/·mcp/와 같은 형 · layout.tsx가
-                        ContentPanel을 든다 · loading.tsx). page.tsx는 Language 카드 하나(components/preferences/)이고 Action은 app/ui-locale/에 있다
-                        (공개 푸터와 공유). ⚠️ 보호 경로라 isProtectedPath와 lib/seo/crawl의 robots disallow 두 곳에 각각 등재된다(따로 하드코딩된 목록)
+                        ContentPanel을 든다 · loading.tsx). page.tsx는 Language · Time zone 카드 둘(components/preferences/)이고 now ISO를 Time zone 카드에
+                        내린다(옵션 정렬·미리보기 — 하이드레이션). Language의 Action은 app/ui-locale/에 있고(공개 푸터와 공유) Time zone의 Action은
+                        actions.ts(setTimeZone — 로그인 전용이라 여기 산다, user-timezone 2026-10-05). ⚠️ 보호 경로라 isProtectedPath와 lib/seo/crawl의 robots disallow 두 곳에 각각 등재된다(따로 하드코딩된 목록)
     account/            사용자 축 화면(프로필·로그인 수단·세션). requireUser만 지난다 · layout.tsx · loading.tsx 스켈레톤 ·
                         actions.ts(프로필 이름·사진 둘 · 전체 세션 회수 · 로그인 수단 연결/해제 — 여섯 다
                         requireUser만 지난다. 인가할 프로젝트가 없는 축이다)
@@ -351,12 +352,15 @@ components/
                         않는다 — 우측 primary는 페이지가 publicAccount로 정해 넘기고, 로그아웃은 lib/auth/sign-out을 참조로 넘긴다. route group 레이아웃으로 묶지 않는다(이동 때 스크롤러 재마운트)
                         footer는 셸 밖 골격(signin/auth-layout — /signin·초대·계정 병합)도 패널 아래에 그린다 — 푸터 렌더러가 하나다.
                         footer는 서버 컴포넌트로 남고 마지막 항목인 언어 스위처(components/i18n/locale-switcher)만 클라이언트다
-  i18n/                 화면 언어(ui-locales, 2026-10-04 — ARCHITECTURE §6.355). messages-provider("use client" — useMessages·useUiLocale ·
+  i18n/                 화면 언어(ui-locales, 2026-10-04 — ARCHITECTURE §6.355). messages-provider("use client" — useMessages·useUiLocale·useDateStyle(시간대는 context 필드 하나 — provider 없음 = UTC) ·
                         ⚠️ ko·es 사전의 유일한 클라이언트 import 자리 = next/dynamic 운반체 CARRIERS 한 줄씩. 루트 레이아웃이 서버에서 import하는
                         client 모듈은 한 청크 그룹에 실려 언어별 provider 셋으로는 en도 ko를 받았다 · 언어별 껍데기·key={uiLocale} 금지 — 재마운트) ·
                         locale-switcher(공개 푸터 스위처 — TextTrigger + DropdownMenu selected 세 줄, busy 형, 실패는 sonner 토스트, reject도 failed로 받는다)
-  preferences/          `/preferences` 조각 — language-card(Card + Select 하나, 고르는 즉시 setUiLocale · 낙관적 표시 · RoleSelect 가드 ·
-                        닫힌 트리거 typeahead 차단(Enter·Space·↑↓·Tab만) · 실패는 Card notice의 Alert danger inset)
+  preferences/          `/preferences` 조각 — preference-select-card(카드 둘의 공용 조립: Card + Select 하나, 고르는 즉시 적용 · 낙관적 표시 ·
+                        RoleSelect 가드 · 닫힌 트리거 typeahead 차단(Enter·Space·↑↓·Tab만) · 실패는 Card notice의 Alert danger inset · after 슬롯이
+                        낙관 값을 받는다. 2026-10-05에 language-card의 손 조립을 뽑았다 — 소비자가 둘 다 Preferences 카드라 components/ui가 아니다) ·
+                        language-card(setUiLocale) · time-zone-card(setTimeZone — 옵션 timeZoneOptions(now) · 열린 목록 글자 이동은 도시 이름 ·
+                        미리보기 `Now: …`가 유일한 피드백)
   privacy/              `/privacy` 읽기 그릇 — privacy-doc(서버 — 1120 · 본문 720 + 목차 200, 본문은 사전 그대로)
   docs/                 `/docs/*` 조각 — guide-markdown(서버 — react-markdown에 로더 트리 사본을 꽂고 요소를 매핑한다.
                         ⚠️ urlTransform을 덮지 않는다 · rehype-raw 없음 — raw HTML은 글자로 나가므로 원고에서 게이트가 막는다) · doc-frame(그릇 · 이전/다음 · 장 개요 행 · 개요 두 갈래) ·
@@ -364,7 +368,7 @@ components/
                         legacy-hash(클라이언트 — 옛 /docs#id → router.replace, 표는 서버가 넘긴다) · requested-path(404 주소) ·
                         classes.ts(서버·클라이언트가 같이 쓰는 클래스 — "use client" 모듈에 두면 값이 아니라 참조가 온다. 공개 문서 셋(/docs·/privacy·/changelog)의
                         글자 급·간격 한 벌: SECTION_HEADING · SUB_HEADING · MINOR_HEADING · PROSE · LIST)
-  changelog/            `/changelog` 조각 — release-entry(서버 — 항목 하나: 버전 h1 = 그 판의 GitHub Release 링크 · utcDay) ·
+  changelog/            `/changelog` 조각 — release-entry(서버 — 항목 하나: 버전 h1 = 그 판의 GitHub Release 링크 · formatDay, UTC 고정) ·
                         release-markdown(서버 — GitHub 원문 렌더러. ⚠️ GuideMarkdown을 재사용하지 않는다 — 원고 전용 전제를 든다.
                         rehype-raw 없음 · urlTransform 기본값 · 이미지는 링크로. 원고와 같은 급은 docs/classes.ts 상수로만 공유한다)
   public-doc-toc.tsx · public-doc-table.tsx
@@ -606,8 +610,8 @@ lib/
                         ⚠️ run.ts 안에 두지 않는 이유: 그 판정이 "야간이 CI로 건강한 프로젝트를 실패로 뒤집지 않는다"의 전부라
                         I/O 없이 표로 고정해야 한다(`__tests__/automation.test.ts`). 수동 Sync는 이 분류를 타지 않는다
   events/               **프로젝트 활동 스트림** (2026-09-20, logs-rework) — payload(어휘·종류별 맥락·
-                        `runToken` 조립·`readPayload`) · view(결과 열·값 상태·UTC 날짜 카드·수집 경계선) ·
-                        filter(URL 판정·커서·UTC 구간) · search(검색 문자열의 **유일한 관문**) /
+                        `runToken` 조립·`readPayload`) · view(결과 열·값 상태·보는 사람의 시간대 날짜 카드·수집 경계선) ·
+                        filter(URL 판정 — 시간대 무관 · 커서 · 시간대 구간 parseDateRange · 프리셋 presetRange) · search(검색 문자열의 **유일한 관문**) /
                         query(`server-only` 조회) · record(사건 기록) · ci(CI 적재 사건) · member-label ·
                         trigger-where(2026-09-30 — 행위자 필터 `ci`·`nightly`의 Prisma 술어. view의 `triggerOf`와 **같은 컬럼**
                         (`actorKind`·`kind`·`subtype`)을 보고 `ci`를 AUTOMATION 안 `nightly`의 여집합으로 적는다. ⚠️ query.ts가 아니라
@@ -698,7 +702,7 @@ lib/
                         accepted/rejected/unknown) · limits(상수, 잎). 껍데기(server-only) — issue(Project 잠금 안 발급·재발급,
                         메일을 안 보낸다 — 재발급은 옛 링크의 조건부 닫기 count=1이 선행조건) · send(commit 뒤 Resend batch 한 번,
                         재시도 0·10초 timeout, 로그에 상태 코드만). 호출부는 createInvitations·resendInvitation이고
-                        화면은 초대 모달과 Pending의 Resend다 · retry-at(retryAt → UTC 분 올림, 잎). ⚠️ recipients는 클라이언트 폼도 부르므로
+                        화면은 초대 모달과 Pending의 Resend다 · retry-at(retryAt → 분 올림한 formatMinute, 보는 사람의 시간대 — 잎). ⚠️ recipients는 클라이언트 폼도 부르므로
                         zod·node:crypto를 물지 않는다 — 한도를 plan이 아니라 limits에서 읽고 zod의 이메일 정규식을
                         옮겨 뒀다(client-safe.test가 그래프, recipients.test가 zod와의 판정 일치를 고정한다).
                         PostgreSQL 경합은 invitation.integration.ts(`pnpm test:projects:postgres`)가 잰다
@@ -737,7 +741,7 @@ lib/
                         policy(쿠키) · http(가로채기) · store(challenge·Account 쓰기)로 갈린다
   i18n/                 화면 언어의 입구(ui-locales — ARCHITECTURE §6.355). index(⚠️ 잎 — Messages 타입 = Widen<en>에서 영어 고정 절을 뺀 것 · pick) ·
                         locales(⚠️ 잎, import 0 — UI_LOCALES·endonym·국기·parseUiLocale(Object.hasOwn)·resolveUiLocale(계정 > 쿠키 > en, Accept-Language
-                        입력 없음)·planUiLocaleWrite · no-korean-ui 허용(endonym 한국어)) · server(server-only — getUiLocale(React cache)·getMessages ·
+                        입력 없음)·planUiLocaleWrite · no-korean-ui 허용(endonym 한국어)) · server(server-only — getUiLocale(React cache)·getMessages·getDateStyle(React cache — 세션의 timeZone, 밖은 UTC) ·
                         ko·es 사전의 서버 import 자리) · adapter-errors(어댑터 오류·pull 경고 코드 → 문장, 사전을 인자로 받는다 · withWarningLines는 외부 계약용)
   onboarding/ survey/ scan/ projects/ shell/ settings/ signin/ cli/
                         (cli/push-response — `/api/push` 응답을 CI 로그·exit로 옮긴다. deferred면 exit 0 + ::warning 한 줄 ·
@@ -914,13 +918,17 @@ lib/
   keyboard.ts           ⚠️ 잎(import 0). 키보드·포인터 판정 하나 — isImeComposing · isPlainPrimaryClick · searchShortcut(플랫폼별 matches·칩
                         식별자·aria). 글자는 내지 않는다(컴포넌트가 m.common.keys로 푼다). React 호출부는 nativeEvent를 넘긴다
   cause.ts              ⚠️ 잎. causeMessage — 잡은 값의 메시지. `(cause as Error).message`는 Error 아닌 throw에서 undefined다
-  utc-time.ts           ⚠️ 잎. 절대 날짜·시각의 UTC 표기 하나(`Sep 27, 2026` · `Sep 27, 2026 16:34 UTC`) — 앱의 절대 날짜가 전부 지난다
+  date-format.ts        ⚠️ 잎(옛 utc-time.ts — 2026-10-05 user-timezone). 절대 날짜·시각의 유일한 생산자(`Sep 27, 2026` · `Oct 5, 2026 08:10 UTC+9`) —
+                        입력 DateStyle { uiLocale, timeZone } · Logs 날짜 산술(dayKeyAt·addDays·startOfDay). Intl.DateTimeFormat은 이 파일에서
+                        timeZone을 명시한 숫자 부품 추출에만 쓴다 — 런타임 TZ를 읽지 않아야 서버·브라우저가 같은 값을 찍는다(ARCHITECTURE §6.356)
+  time-zone/            ⚠️ 잎 둘(user-timezone). zones(선별 목록 TIME_ZONES · parseTimeZone — Object.hasOwn, 런타임 Intl에 유효성을 묻지 않는다 ·
+                        resolveTimeZone — 밖은 UTC. import 0) · options(timeZoneOptions(now) — Preferences Select 옵션, UTC 첫 줄 + 오프셋 순)
   url-token.ts          ⚠️ 잎. 키셋 커서의 문자열 ↔ base64url 하나 — Logs(클라이언트)와 번역 목록(서버)이 같이 쓴다.
                         Buffer 대신 btoa + 퍼센트 인코딩이라 번들에 실린다. 디코드는 던지지 않는다(주소창 값)
   env.ts db.ts githash.ts utils.ts relative-time.ts hue.ts
 ```
 
-⚠️ **잎 모듈이 잎인 데는 이유가 있다** — `relative-time`·`utc-time`·`compare`·`ref-slug`·`flag`는
+⚠️ **잎 모듈이 잎인 데는 이유가 있다** — `relative-time`·`date-format`·`time-zone/`·`compare`·`ref-slug`·`flag`는
 클라이언트가 값으로 읽는 판정이라 무거운 그래프를 물면 그대로 번들이 된다. **재수출도 하지 않는다.**
 `vitest.setup.ts`가 `server-only`를 전역 mock하므로 "테스트가 죽는다"는 더 이상 그 압력이 아니고,
 **남은 방어선은 `components/__tests__/client-graph.test.ts` 하나**다.
