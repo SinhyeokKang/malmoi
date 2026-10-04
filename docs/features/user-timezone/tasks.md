@@ -104,7 +104,7 @@
   - OPERATIONS — 선별 목록에서 id를 빼기 전 저장 건수 확인 한 줄(design §2.1).
   - POSTMORTEM 2026-09-20 항목의 재발 방지 grep은 append-only라 고치지 않는다 — 그 grep(`toLocale*` 0)은 여전히 참이다.
 - [x] **H2** (C2에서 실행 — 여기는 참조) `lib/date-format.ts` 머리 주석·`lib/events/filter.ts`·`view.ts`·`messages/en.tsx`의 "UTC 자정으로 끊는다" 주석(`:1218-1220`)·`:1506`·`components/oauth/consent-panel.tsx:48`·`lib/sync/plan.ts:52`·`log-filters.tsx`의 `dateLabel` 머리 주석을 새 계약으로.
-- [ ] **H3** `/runtime-test` — 완료 조건의 `[수동]` 전부: 기본 UTC 화면 불변 · Seoul·Kolkata·New York 선택 뒤 Logs 카드 경계·Today·프리셋·행 시각 라벨·칩 날짜(New York에서 하루 밀리지 않음) · Preferences 미리보기 · Sources·Publish·Sync 잠금·초대 재시도·토큰 시각 · ko·es × Kolkata에서 하이드레이션 경고 0 · 다른 기기 로그인 · 공개 페이지가 UTC · Preferences 실패 Alert(revalidate 뒤 유지).
+- [x] **H3** `/runtime-test` — 완료 조건의 `[수동]` 전부: 기본 UTC 화면 불변 · Seoul·Kolkata·New York 선택 뒤 Logs 카드 경계·Today·프리셋·행 시각 라벨·칩 날짜(New York에서 하루 밀리지 않음) · Preferences 미리보기 · Sources·Publish·Sync 잠금·초대 재시도·토큰 시각 · ko·es × Kolkata에서 하이드레이션 경고 0 · 다른 기기 로그인 · 공개 페이지가 UTC · Preferences 실패 Alert(revalidate 뒤 유지).
 - [ ] **H4** prod 반영(`/merge` 1단계): `pnpm db:status:prod` → `pnpm db:deploy` → prod `has_schema_privilege` false. ⚠️ ui-locales의 `User.uiLocale` 마이그레이션이 prod에 먼저 있어야 한다(순서 고정).
 - [ ] 끝나면 결론을 정본으로 올리고 `docs/features/user-timezone/`를 지운다.
 
