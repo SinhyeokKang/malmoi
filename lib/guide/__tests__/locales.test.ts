@@ -71,6 +71,13 @@ describe("guideShape", () => {
     expect(guideShape(parseMd("# 가\n\n## 단계 {#step}\n\n1. 하나\n"))).not.toEqual(a);
     expect(guideShape(parseMd("# 가\n\n## 단계 {#danggye}\n\n1. 하나\n2. 둘\n"))).not.toEqual(a);
   });
+
+  it("이미지 경로나 링크 대상을 바꾸면 다르다", () => {
+    const a = guideShape(parseMd("# A\n\nSee [x](b.md#y).\n\n![Alt](/guide/a.webp)\n"));
+    expect(guideShape(parseMd("# 가\n\n[엑스](b.md#y) 참고.\n\n![대체](/guide/other.webp)\n"))).not.toEqual(a);
+    expect(guideShape(parseMd("# 가\n\n[엑스](c.md#y) 참고.\n\n![대체](/guide/a.webp)\n"))).not.toEqual(a);
+    expect(guideShape(parseMd("# 가\n\n[엑스](b.md#y) 참고.\n\n![대체](/guide/a.webp)\n"))).toEqual(a);
+  });
 });
 
 describe("실물 가이드 — 언어별 트리", () => {

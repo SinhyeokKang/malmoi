@@ -38,6 +38,8 @@ const DICTIONARIES: Partial<Record<UiLocale, unknown>> = Object.fromEntries(
   await Promise.all(
     TREES.filter(({ uiLocale }) => existsSync(join(ROOT, "messages", `${uiLocale}.tsx`))).map(async ({ uiLocale }) => {
       const mod: Record<string, unknown> = await import(pathToFileURL(join(ROOT, "messages", `${uiLocale}.tsx`)).href);
+      // export 이름이 언어 코드와 다르면 라벨 대조가 조용히 skip된다 — skip은 "사전 파일이 없다" 한 뜻이어야 한다
+      if (!Object.hasOwn(mod, uiLocale)) throw new Error(`messages/${uiLocale}.tsx must export \`${uiLocale}\``);
       return [uiLocale, mod[uiLocale]] as const;
     }),
   ),

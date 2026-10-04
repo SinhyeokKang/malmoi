@@ -100,6 +100,7 @@ export default async function DocsPage({ params }: { params: Promise<{ slug?: st
   // 한 페이지였다가 섹션으로 나뉜 장의 옛 해시 (malmoi#152) — slug는 남이 정한 키라 `Object.hasOwn`으로만 찾는다.
   const legacy = Object.hasOwn(SECTION_LEGACY_ANCHORS, slug.join("/")) ? SECTION_LEGACY_ANCHORS[slug.join("/")] : undefined;
   // ⚠️ 장 URL이 `slug[0]`인 것은 SUMMARY가 2단이라는 전제다 — `FlatNavItem.parent`는 제목 문자열뿐이다.
+  // JSON-LD는 본문과 같은 화면 언어다(메타와 달리) — 크롤러는 쿠키가 없어 en만 받고, 사람에게는 본문과 갈리지 않는 쪽이 맞다.
   const ld = docLd({
     title: self?.title ?? "",
     description: leadParagraph(page.tree) ?? en.landing.hero.body,
