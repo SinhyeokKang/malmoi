@@ -21,7 +21,7 @@ export const es = {
     sessionEnded: "Tu sesión terminó. Vuelve a iniciar sesión para buscar en tus proyectos.",
     keysUnavailable: "Ahora mismo no se pueden buscar claves. Modifica la búsqueda para intentarlo de nuevo.",
     docsUnavailable: "Ahora mismo no se puede buscar en la documentación. Vuelve a abrir la búsqueda para intentarlo de nuevo.",
-    noResults: (q: string): string => `No hay resultados para “${q}”`,
+    noResults: (q: string): string => `Sin resultados para “${q}”`,
     noResultsDescription: "Prueba con otra búsqueda.",
     goTo: "Ir a",
     results: (count: number): string => `${count.toLocaleString("es")} ${count === 1 ? "resultado" : "resultados"}`,
@@ -70,10 +70,10 @@ export const es = {
     notReplaced: (n: number): string => `${n} ${n === 1 ? "fuente no se reemplazó" : "fuentes no se reemplazaron"}`,
     withIssue: (base: string, issue: string): string => `${base}, pero ${issue}`,
     partial: (n: number): string => `${n.toLocaleString("es")} ${n === 1 ? "elemento quedó" : "elementos quedaron"} sin sincronizar. Revisa los detalles abajo.`,
-    kept: (n: number): string => `Se ${n === 1 ? "conservó" : "conservaron"} ${n.toLocaleString("es")} ${n === 1 ? "edición sin enviar" : "ediciones sin enviar"}. Las actualizaciones del repositorio quedan en espera hasta que ${n === 1 ? "se envíe" : "se envíen"}.`,
+    kept: (n: number): string => `Se ${n === 1 ? "conservó" : "conservaron"} ${n.toLocaleString("es")} ${n === 1 ? "edición sin enviar" : "ediciones sin enviar"}. Las actualizaciones del repositorio se retienen hasta que ${n === 1 ? "se envíe" : "se envíen"}.`,
     cause: (surface: ReactNode, reason: string): ReactNode => <>{surface} — {reason}</>,
-    failedTitle: "La última sincronización no pudo completarse",
-    supersededTitle: "Reemplazada",
+    failedTitle: "La última sincronización no pudo terminar",
+    supersededTitle: "Reemplazado",
     openSettings: "Abrir Configuración",
     openAccount: "Abrir Cuenta",
     signIn: "Iniciar sesión",
@@ -89,9 +89,9 @@ export const es = {
       "reconfirm": "No se pudo confirmar que lo que revisaste sigue vigente — no se descartó nada. Abre Sincronizar de nuevo para revisar y confirmar",
       "no-surfaces": "No hay nada que sincronizar — este proyecto no tiene fuentes activas",
       "invalid input": "No se pudo identificar el proyecto. Actualiza la página y vuelve a intentarlo.",
-      "ingest-failed": "La sincronización no se completó",
+      "ingest-failed": "La sincronización no se pudo hacer",
       "unauthorized": "Tu sesión terminó — no se sincronizó nada. Inicia sesión y vuelve a sincronizar",
-      "unavailable": "La sincronización no se completó",
+      "unavailable": "La sincronización no se pudo hacer",
       "unconfirmed": "No se pudo confirmar si la sincronización terminó",
       "repo-replaced": "Esta conexión apunta a otro repositorio",
     },
@@ -293,9 +293,9 @@ export const es = {
       asOfLastSync: "a fecha de la última sincronización",
       cannotSend: "no se puede enviar ahora",
       held: {
-        "pending-edits": "actualizaciones del repositorio en espera",
-        "open-pr": "en espera hasta que se fusione o se cierre la pull request",
-        "pr-check-failed": "en espera — no se pudo comprobar si hay una pull request abierta",
+        "pending-edits": "actualizaciones del repositorio retenidas",
+        "open-pr": "retenido hasta que se fusione o se cierre la pull request",
+        "pr-check-failed": "retenido — no se pudo comprobar si hay una pull request abierta",
       },
       frozen: "congelado al archivar",
       neverSent: "nunca enviado",
@@ -311,7 +311,7 @@ export const es = {
         tail: " — no se sincronizó nada de ella.",
       },
       partial: {
-        body: "Esta fuente se sincronizó parcialmente",
+        body: "Esta fuente se sincronizó en parte",
         tail: " — algunos archivos de traducción quedaron fuera.",
       },
       review: {
@@ -380,7 +380,7 @@ export const es = {
 
     banner: {
       syncFailed: {
-        title: "La última sincronización no pudo completarse",
+        title: "La última sincronización no pudo terminar",
         body: (surface: string, branch: string, reason: string): string =>
           `Malmoi no pudo leer ${surface} en ${branch}. ${reason}`,
         safe: (when: string | null): string =>
@@ -391,8 +391,8 @@ export const es = {
         editor: "Pide a un propietario del proyecto que vuelva a ejecutar la sincronización.",
       },
       partial: {
-        title: "Sincronizada parcialmente",
-        body: (surface: string, branch: string, reason: string): string => `${surface} en ${branch} se sincronizó parcialmente. ${reason}`,
+        title: "Sincronizado en parte",
+        body: (surface: string, branch: string, reason: string): string => `${surface} en ${branch} se sincronizó en parte. ${reason}`,
       },
       notConnected: {
         title: "Malmoi no está conectado a este repositorio",
@@ -466,15 +466,15 @@ export const es = {
     status: {
       succeeded: "Enviado",
       skipped: "Nada que enviar",
-      notSent: "Retenido",
+      notSent: "Excluido",
       failed: "Fallida",
       syncing: "Sincronizando…",
       publishing: "Publicando…",
       inProgress: "En curso",
       imported: "Sincronizado",
-      deferred: "En espera",
-      partial: "Sincronizada parcialmente",
-      superseded: "Reemplazada",
+      deferred: "Retenido",
+      partial: "Sincronizado en parte",
+      superseded: "Reemplazado",
       notStarted: "Sin iniciar",
       upToDate: "Al día",
     },
@@ -485,7 +485,7 @@ export const es = {
     none: "—",
     warnings: (count: number): string => (count === 1 ? "1 descartada" : `${count.toLocaleString("es")} descartadas`),
     deferredReason: (count: number): string =>
-      `${count === 1 ? "Una edición sin enviar dejó" : `${count.toLocaleString("es")} ediciones sin enviar dejaron`} la sincronización en espera. No se sincronizó nada.`,
+      `${count === 1 ? "Una edición sin enviar dejó" : `${count.toLocaleString("es")} ediciones sin enviar dejaron`} la sincronización retenida. No se sincronizó nada.`,
     deferReasons: {
       "open-pr": "Todavía hay una pull request de Malmoi abierta. No se sincronizó nada: la sincronización se reanuda cuando se fusione o se cierre.",
       "pr-check-failed": "No se pudo comprobar en GitHub si hay una pull request de Malmoi abierta, así que no se sincronizó nada. La próxima ejecución lo vuelve a comprobar.",
@@ -544,7 +544,7 @@ export const es = {
         running: (who: ReactNode): ReactNode => <>{who} está enviando traducciones a GitHub</>,
         sent: (who: ReactNode): ReactNode => <>{who} envió traducciones a GitHub</>,
         nothing: (who: ReactNode): ReactNode => <>{who}: la publicación no tenía nada que enviar</>,
-        notSent: (who: ReactNode): ReactNode => <>{who}: la publicación retuvo sus ediciones</>,
+        notSent: (who: ReactNode): ReactNode => <>{who}: la publicación excluyó algunas ediciones</>,
         reconfirm: (who: ReactNode): ReactNode => <>{who}: la publicación se detuvo antes de enviar</>,
         failed: (who: ReactNode): ReactNode => <>{who}: la publicación falló</>,
         notStarted: (who: ReactNode): ReactNode => <>{who}: la publicación no se inició</>,
@@ -554,16 +554,16 @@ export const es = {
         imported: (who: ReactNode, sources: number): ReactNode => (
           <>{who} sincronizó {sources.toLocaleString("es")} {sources === 1 ? "fuente" : "fuentes"} desde el repositorio</>
         ),
-        deferred: (who: ReactNode, source: string): ReactNode => <>{who} dejó en espera la sincronización de {source}</>,
+        deferred: (who: ReactNode, source: string): ReactNode => <>{who} retuvo la sincronización de {source}</>,
         superseded: (who: ReactNode): ReactNode => <>{who}: la sincronización cedió el paso a otra ejecución</>,
         failed: (who: ReactNode): ReactNode => <>{who}: la sincronización falló</>,
         notStarted: (who: ReactNode): ReactNode => <>{who}: la sincronización no se inició</>,
         upToDate: (who: ReactNode): ReactNode => <>{who} no encontró nada que publicar ni sincronizar</>,
         baseUnreadable: (who: ReactNode): ReactNode => <>{who} no pudo leer la rama base del repositorio</>,
         held: {
-          "open-pr": (who: ReactNode): ReactNode => <>{who} dejó en espera la sincronización: todavía hay una pull request de Malmoi abierta</>,
-          "pr-check-failed": (who: ReactNode): ReactNode => <>{who} dejó en espera la sincronización: GitHub no respondió sobre las pull requests</>,
-          "too-large": (who: ReactNode): ReactNode => <>{who} dejó en espera la sincronización: el cambio es demasiado grande para una sincronización desde el servidor</>,
+          "open-pr": (who: ReactNode): ReactNode => <>{who} retuvo la sincronización: todavía hay una pull request de Malmoi abierta</>,
+          "pr-check-failed": (who: ReactNode): ReactNode => <>{who} retuvo la sincronización: GitHub no respondió sobre las pull requests</>,
+          "too-large": (who: ReactNode): ReactNode => <>{who} retuvo la sincronización: el cambio es demasiado grande para una sincronización desde el servidor</>,
         },
       },
       member: {
@@ -609,9 +609,9 @@ export const es = {
         role: "Rol",
         effect: "Efecto",
         unsentEdits: "Ediciones sin enviar",
-        heldBecause: "En espera porque",
+        heldBecause: "Retenido porque",
         values: "Valores",
-        withheld: "Retenidas",
+        withheld: "Excluidas",
         closedPullRequest: "Pull request cerrada",
       },
       closedPullRequest: "Ya no había nada en ella que difiriera de la rama base, así que Malmoi la cerró.",
@@ -765,7 +765,7 @@ export const es = {
       invalidLocaleData: "No se pudieron leer algunas entradas de traducción.",
       prepareFailed: "No se pudo leer el formato de los archivos en la última sincronización.",
       partialImport: "Algunos archivos de traducción quedaron fuera de la última sincronización.",
-      importFailed: "La última sincronización no pudo completarse.",
+      importFailed: "La última sincronización no pudo terminar.",
       ownerRetries: "Solo los propietarios del proyecto pueden intentarlo de nuevo.",
     },
   },
@@ -797,7 +797,7 @@ export const es = {
       installedOn: (n: number): string => `Instalada en ${n.toLocaleString("es")} ${n === 1 ? "repositorio" : "repositorios"}.`,
       installationSettings: "Configuración de la instalación",
       rowName: "GitHub",
-      confirmDisconnect: "¿Desconectar la GitHub App de Malmoi?",
+      confirmDisconnect: "¿Desconectar la Malmoi GitHub App?",
       confirmHint: "No podrás añadir ni volver a conectar repositorios hasta que vuelvas a conectarte. Los proyectos que ya están conectados siguen sincronizándose.",
     },
     sessionsSection: {
@@ -999,19 +999,19 @@ export const es = {
       },
       install: {
         title: "Conecta tus repositorios",
-        description: "Instala la GitHub App de Malmoi en tu cuenta u organización para elegir repositorios.",
+        description: "Instala la Malmoi GitHub App en tu cuenta u organización para elegir repositorios.",
         action: "Instalar la GitHub App",
         installed: "¿Ya está instalada en tu organización?",
         connect: "Conectar tu cuenta",
       },
       repos: {
         title: "Añadir un repositorio",
-        description: "Elige a qué repositorios puede acceder la GitHub App de Malmoi.",
+        description: "Elige a qué repositorios puede acceder la Malmoi GitHub App.",
         action: "Elegir repositorios",
       },
       waiting: {
         title: "Esperando aprobación",
-        description: "Un propietario de la organización tiene que aprobar tu solicitud para instalar la GitHub App de Malmoi.",
+        description: "Un propietario de la organización tiene que aprobar tu solicitud para instalar la Malmoi GitHub App.",
         action: "Intentar de nuevo",
         otherAccount: "Instalar en otra cuenta",
         still: "Todavía esperando aprobación.",
@@ -1024,9 +1024,9 @@ export const es = {
       },
       reconnect: {
         title: "Volver a conectar GitHub",
-        description: "Vuelve a autorizar la GitHub App de Malmoi para ver tus repositorios.",
+        description: "Vuelve a autorizar la Malmoi GitHub App para ver tus repositorios.",
       },
-      noLink: "Pide a tu administrador que instale la GitHub App de Malmoi y le dé acceso al repositorio.",
+      noLink: "Pide a quien administre tu cuenta u organización de GitHub que instale la Malmoi GitHub App y le dé acceso al repositorio.",
       listFailed: "No se pudieron cargar tus repositorios.",
     },
 
@@ -1039,7 +1039,7 @@ export const es = {
       branchDefault: "Se usa la rama predeterminada del repositorio.",
       branchTooMany: "Este repositorio tiene demasiadas ramas para mostrarlas; escribe el nombre de la rama.",
       notListed: "¿No ves un repositorio?",
-      loading: "Buscando repositorios que tengan instalada la GitHub App de Malmoi…",
+      loading: "Buscando repositorios que tengan instalada la Malmoi GitHub App…",
       searchEmpty: (q: string): string => `Ningún repositorio coincide con “${q}”`,
       clearSearch: "Borrar búsqueda",
     },
@@ -1268,7 +1268,7 @@ export const es = {
 
     banner: {
       paused: (n: number): string =>
-        `Las actualizaciones del repositorio quedan en espera hasta que se ${n === 1 ? "envíe" : "envíen"} ${n.toLocaleString("es")} ${n === 1 ? "edición sin enviar" : "ediciones sin enviar"}.`,
+        `Las actualizaciones del repositorio se retienen hasta que se ${n === 1 ? "envíe" : "envíen"} ${n.toLocaleString("es")} ${n === 1 ? "edición sin enviar" : "ediciones sin enviar"}.`,
       sendWithPublish: "Enviar con Publicar",
 
       basePending: (locale: string): string =>
@@ -1421,7 +1421,7 @@ export const es = {
       inLogs: "Queda registrado en Registros como una ejecución sin nada que enviar.",
       close: "Cerrar",
 
-      notSent: "Retenido — algunos valores no se pueden escribir en los archivos",
+      notSent: "Excluido — algunos valores no se pueden escribir en los archivos",
       notSentDescription:
         "Malmoi se detuvo antes de escribir en el repositorio, porque estos valores se habrían quedado fuera. Tus ediciones siguen guardadas aquí.",
       closedPr: {
@@ -1435,7 +1435,7 @@ export const es = {
         withheld: "No se escribió nada en el repositorio. Estas ediciones siguen guardadas aquí hasta que se puedan enviar.",
         noChanges: "No se escribió nada en el repositorio. Tus otras ediciones ya coincidían con él, y estas siguen guardadas aquí hasta que se puedan enviar.",
       },
-      notWritten: "Retenidas",
+      notWritten: "Excluidas",
       warnings: (n: number): string =>
         `${n.toLocaleString("es")} ${n === 1 ? "advertencia" : "advertencias"} · los valores siguen guardados en Malmoi`,
       stillHere: "Estos valores se quedan en Malmoi y saldrán cuando los archivos puedan contenerlos.",
@@ -1736,7 +1736,7 @@ export const es = {
     archivedReason: "Restaura este proyecto para cambiar su configuración.",
     recovery: "Las sincronizaciones siguen funcionando. Gestiona tu autorización de GitHub en Cuenta para volver a conectar este repositorio o añadir fuentes.",
     accountLink: "Cuenta",
-    installed: "La GitHub App de Malmoi está instalada en este repositorio.",
+    installed: "La Malmoi GitHub App está instalada en este repositorio.",
     openRepo: "Abrir en GitHub",
 
     repository: {
@@ -1921,7 +1921,7 @@ export const es = {
       denied: "Se canceló la conexión en GitHub. Empiézala de nuevo para continuar.",
       "exchange-failed": "No se pudo completar la conexión con GitHub. Empiézala de nuevo.",
       "taken-by-other": "Esa cuenta de GitHub ya está conectada a otro usuario. Esa persona puede desconectarla para liberarla.",
-      "not-connected": "Primero autoriza la GitHub App de Malmoi; usa Autorizar la GitHub App, más abajo.",
+      "not-connected": "Primero autoriza la Malmoi GitHub App; usa Autorizar la GitHub App, más abajo.",
       reauthorize: "Tu autorización de la GitHub App caducó. Usa Volver a autorizar la GitHub App.",
       "repo-not-installed": "La app no está instalada en este repositorio. Instálala y vuelve a conectar.",
       "installation-forbidden": "Esta cuenta no tiene acceso a esa instalación. Pide acceso al propietario del repositorio.",
@@ -1932,8 +1932,8 @@ export const es = {
     },
 
     onboarding: {
-      "no-installations": "Tu cuenta de GitHub está conectada. Instala la GitHub App de Malmoi en tu cuenta personal o en tu organización para elegir repositorios.",
-      "no-repos": "Tu cuenta de GitHub está conectada, pero no hay repositorios disponibles. Elige a qué repositorios puede acceder la GitHub App de Malmoi en la configuración de la instalación en GitHub.",
+      "no-installations": "Tu cuenta de GitHub está conectada. Instala la Malmoi GitHub App en tu cuenta personal o en tu organización para elegir repositorios.",
+      "no-repos": "Tu cuenta de GitHub está conectada, pero no hay repositorios disponibles. Elige a qué repositorios puede acceder la Malmoi GitHub App en la configuración de la instalación en GitHub.",
       "no-candidates": "No encontramos archivos de traducción compatibles. Revisa el formato y la ruta de los archivos y vuelve a intentarlo.",
       "tree-truncated": "Este repositorio tiene demasiados archivos para buscar, e indicar la ruta a mano choca con el mismo límite. Malmoi todavía no puede conectar repositorios tan grandes.",
       "base-branch-missing": "No podemos leer la rama predeterminada. Comprueba que el repositorio tenga commits.",
