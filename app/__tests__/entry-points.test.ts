@@ -151,6 +151,8 @@ const USER_SCOPED_ACTIONS = new Set([
   "mcp/actions.ts#disconnectOAuthConnection",
   // `User.timeZone`은 사람에게 붙는다 — 프로젝트가 없어도 고를 수 있다. 코드를 돌려주는 Action이라 거부가 `failed` 하나다(user-timezone D1)
   "preferences/actions.ts#setTimeZone",
+  // `User.colorScheme`도 사람에게 붙는다 — `setTimeZone`과 같은 형(세션이 `ok`가 아니면 `failed`, color-scheme design §3.6)
+  "preferences/actions.ts#setColorScheme",
 ]);
 
 /**

@@ -183,6 +183,13 @@ export const ko = {
       now: (time: string) => `현재: ${time}`,
       failed: "시간대를 바꾸지 못했습니다. 다시 시도하세요.",
     },
+    theme: {
+      title: "테마",
+      description: "Malmoi 화면의 밝기를 정합니다.",
+      help: "시스템은 기기의 화면 모드 설정을 따릅니다.",
+      options: { system: "시스템", light: "라이트", dark: "다크" },
+      failed: "테마를 바꾸지 못했습니다. 다시 시도하세요.",
+    },
   },
 
   landing: {

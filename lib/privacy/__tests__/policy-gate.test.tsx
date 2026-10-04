@@ -39,6 +39,8 @@ const REVISIONS: readonly { effectiveDate: string; digest?: string; koDigest?: s
   // user-timezone — 고른 시간대(`User.timeZone`, 계정에만 — 쿠키 없음). ui-locales와 같은 날 두 번째 개정이다 — 머지일이 바뀌면 두 행의 날짜를 같이 옮긴다.
   // ko 해시는 같은 미배포 개정 안에서 ko 본 용어를 사전에 맞춘 뒤(풀 리퀘스트→PR · 저장소→리포지토리 · 초대 이메일→초대 메일, 의미 불변)의 값이다.
   { effectiveDate: "2026-10-05", digest: "8bc00b1d413c224be7b57680504093a73aebf6d2f3dee999666081ce45ccbb0d", koDigest: "c31e3f378a394b7846fe9e4aaeb722a33a54ea9a12d4d4f3c6ed5b64bf481f98" },
+  // color-scheme — 고른 화면 테마(`User.colorScheme` · 쿠키 `malmoi-color-scheme`). 같은 날 세 번째 개정이다 — 머지일이 바뀌면 세 행의 날짜를 같이 옮긴다.
+  { effectiveDate: "2026-10-05", digest: "c67d2592808e700f35af74f4670d58190a6718747175c0278f9629072ac8c8e8", koDigest: "d0f5f45fbe9eeb157f02b91a1fec22e5c516225024e0a920c34896979efc4b25" },
 ];
 
 const privacy = en.publicDocs.privacy;

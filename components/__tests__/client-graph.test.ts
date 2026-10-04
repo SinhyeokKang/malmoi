@@ -176,6 +176,8 @@ const CLIENT_LIB_FILES = [
   // Preferences Time zone 카드가 선별 목록 판정·옵션을 값으로 읽는다(user-timezone D2) — 아래 잎 검사가 두 파일의 그래프를 고정한다.
   "lib/time-zone/options.ts",
   "lib/time-zone/zones.ts",
+  // Preferences Theme 카드가 지원 집합·판정을 값으로 읽는다(color-scheme P2-5) — import 0인 잎이다(아래 잎 검사). 서버 입구 `server.ts`는 없다.
+  "lib/color-scheme/scheme.ts",
   "lib/search/highlight.ts",
   "lib/search/nav-index.ts",
   "lib/search/key-href.ts",
@@ -448,6 +450,13 @@ describe("클라이언트 그래프", () => {
    * ⚠️ **시간대 판정과 옵션은 Preferences 카드(클라이언트)가 값으로 읽는다**(user-timezone) — 소비자가 붙기 전에도 검사가 공허하지 않도록
    * 여기서 직접 건다. 소비자가 생기면 `CLIENT_LIB_FILES`에 등재한다(위 정확 대조가 그때 요구한다).
    */
+  /** ⚠️ **화면 테마 판정 `lib/color-scheme/scheme.ts`도 잎이다**(color-scheme design §0) — Theme 카드(클라이언트)가 값으로 읽는다. */
+  it("`lib/color-scheme/scheme.ts`는 잎이다 — 아무것도 물지 않는다", () => {
+    const scheme = walk([join(ROOT, "lib/color-scheme/scheme.ts")]);
+    expect([...scheme.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/color-scheme/scheme.ts"]);
+    expect([...scheme.packages]).toEqual([]);
+  });
+
   it("`lib/time-zone/zones.ts`는 잎이다 — 아무것도 물지 않는다", () => {
     const zones = walk([join(ROOT, "lib/time-zone/zones.ts")]);
     expect([...zones.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/time-zone/zones.ts"]);

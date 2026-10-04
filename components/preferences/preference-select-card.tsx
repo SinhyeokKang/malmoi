@@ -22,7 +22,7 @@ function passesClosedTrigger(event: KeyboardEvent): boolean {
 type ApplyResult = "ok" | "invalid" | "failed";
 
 /**
- * `/preferences`의 **즉시 적용 Select 카드** — Language·Time zone 두 카드가 같은 조립을 쓴다(user-timezone design §6 — 두 번째 소비자가 생겨 뽑았다).
+ * `/preferences`의 **즉시 적용 Select 카드** — Language·Time zone·Theme 세 카드가 같은 조립을 쓴다(user-timezone design §6 — 두 번째 소비자가 생겨 뽑았다).
  *
  * ⚠️ **고르는 즉시 적용한다(저장 버튼 없음)** — 그래서 닫힌 트리거의 typeahead를 막는다. Tab으로 지나가다 글자 하나를 치면 앱 전체가
  * 바뀐다(POSTMORTEM 2026-09-19의 두 번째 경로). 닫힌 트리거는 Enter·Space·위아래 방향키·Tab(과 수정자 조합)만 받는다.

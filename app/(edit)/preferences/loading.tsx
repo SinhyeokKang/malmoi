@@ -3,7 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getMessages } from "@/lib/i18n/server";
 
 /**
- * Language · Time zone 카드가 서는 동안의 골격 (ui-locales 시안 B8 — DESIGN §6.67 로딩 골격 규칙).
+ * Language · Time zone · Theme 카드가 서는 동안의 골격 (ui-locales 시안 B8 — DESIGN §6.67 로딩 골격 규칙).
  *
  * ⚠️ **`ContentPanel`을 들지 않는다** — 패널은 `preferences/layout.tsx`가 든다(`/account`와 같다). 여기서 또 들면 흰 패널이 두 겹이다.
  * ⚠️ **카드 껍데기·머리 padding·디바이더는 실물 값이다** — 움직이는 것은 글자·필드 자리뿐이다. 필드는 실물과 같은 320×36·radius 10이다.
@@ -24,6 +24,7 @@ export default async function PreferencesLoading() {
         <CardSkeleton lines={1} />
         {/* Time zone 카드 — 도움말 아래 미리보기 줄이 하나 더 있다. */}
         <CardSkeleton lines={2} />
+        <CardSkeleton lines={1} />
       </PanelBody>
     </>
   );

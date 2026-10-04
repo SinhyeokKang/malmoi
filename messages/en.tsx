@@ -462,7 +462,7 @@ export const en = {
 
   /**
    * `/preferences` (ui-locales design §5.2) — 제목은 `common.nav.preferences`, Language 카드 제목은 `uiLocale.label`이다(같은 낱말 두 벌을 두지 않는다).
-   * 카드는 Language · Time zone 둘이다(user-timezone design §6). 테마 자리는 없다.
+   * 카드는 Language · Time zone · Theme 셋이다(user-timezone design §6 · color-scheme design §3.7).
    */
   preferences: {
     /** ⚠️ **골격은 `aria-hidden`이라 이 한 줄이 유일한 안내다.** */
@@ -481,6 +481,19 @@ export const en = {
       now: (time: string) => `Now: ${time}`,
       /** Action `invalid`·`failed` — 카드 Alert. */
       failed: "We couldn't change the time zone. Try again.",
+    },
+    /**
+     * Theme 카드 (color-scheme design §3.7) — 같은 형. 식별자는 `colorScheme`이고 화면 라벨만 `Theme`이다.
+     * 옵션 키는 `COLOR_SCHEMES` 값이다 — 카드가 그 순서로 그린다.
+     */
+    theme: {
+      title: "Theme",
+      description: "How Malmoi looks on every screen.",
+      /** System의 뜻 — OS 설정을 따른다(서버는 모르고 CSS가 푼다). */
+      help: "System follows your device's appearance setting.",
+      options: { system: "System", light: "Light", dark: "Dark" },
+      /** Action `invalid`·`failed` — 카드 Alert. 화면은 원래 테마로 돌아간다. */
+      failed: "We couldn't change the theme. Try again.",
     },
   },
 
@@ -706,6 +719,11 @@ export const en = {
                     "Showing dates and times in that time zone on every device you sign in on",
                   ],
                   [
+                    "The theme you choose for Malmoi's screens",
+                    "You, when you pick a theme",
+                    "Showing Malmoi in that theme on every device you sign in on",
+                  ],
+                  [
                     "Who last changed a translation, and who asked for a sync",
                     "Your own edits",
                     "Showing your teammates who changed what",
@@ -740,6 +758,7 @@ export const en = {
                 "Signing you in and keeping you signed in.",
                 "Showing Malmoi in the language you choose.",
                 "Showing dates and times in the time zone you choose.",
+                "Showing Malmoi in the theme you choose.",
                 "Deciding which projects you can open and what you can do in them.",
                 "Showing your teammates who changed a translation and who asked for a sync.",
                 "Writing translations back to the repository a project is connected to, as a pull request.",
@@ -766,6 +785,7 @@ export const en = {
                 "Your account and its connections: kept until you ask us to delete them.",
                 "The language you choose: kept with your account until you choose another or ask us to delete your account. On a browser, the language cookie lasts a year from your last choice.",
                 "The time zone you choose: kept with your account until you choose another or ask us to delete your account. It is not stored in a cookie.",
+                "The theme you choose: kept with your account until you choose another or ask us to delete your account. On a browser, the theme cookie lasts a year from your last choice.",
                 "A session stops working 24 hours after your last activity. Its row goes away when you sign out, or when that expired session is next presented.",
                 "A challenge for linking an account or signing other sessions out stops working after 5 to 10 minutes. Its row goes away the next time you start the same step.",
                 "An invitation stops working after 7 days, or as soon as it is accepted, revoked or sent again. The row is kept after that, including the address it was sent to, as the record that the invitation happened — ask us and we will delete it.",
@@ -828,7 +848,7 @@ export const en = {
           heading: "Cookies",
           blocks: [
             {
-              p: "Every cookie Malmoi sets is needed to sign you in, to finish a round trip to GitHub or Google, or to remember the language you chose for Malmoi's screens. There are no analytics, advertising or tracking cookies, so there is nothing here to consent to or turn off. All of them are http-only, which means scripts cannot read them.",
+              p: "Every cookie Malmoi sets is needed to sign you in, to finish a round trip to GitHub or Google, or to remember the language and theme you chose for Malmoi's screens. There are no analytics, advertising or tracking cookies, so there is nothing here to consent to or turn off. All of them are http-only, which means scripts cannot read them.",
             },
             {
               table: {
@@ -854,6 +874,7 @@ export const en = {
                     "The same, for adding a second sign-in method to one address and for signing other sessions out",
                   ],
                   ["Language", "1 year from your last choice", "Shows Malmoi in the language you chose on this browser, even when you are signed out"],
+                  ["Theme", "1 year from your last choice", "Shows Malmoi in the theme you chose on this browser, even when you are signed out"],
                 ],
               },
             },
@@ -866,7 +887,7 @@ export const en = {
             {
               p: "The effective date at the top belongs to the text below it: whenever this policy changes, that date moves and the change is listed here.",
             },
-            { ul: ["2026-10-05 — you can choose the time zone Malmoi uses for dates and times. Malmoi remembers your choice with your account only, not in a cookie. Public pages always use UTC.", "2026-10-05 — you can choose the language of Malmoi's screens: English, Korean or Spanish. Malmoi remembers your choice with your account and in a cookie on this browser. This policy is also published in Korean.", "2026-09-29 — you can also connect an app such as Claude Code or Codex by signing in through your browser, with no token to copy. Malmoi keeps the connection — the app's name and address, the actions and projects you allowed, when it was used — and only hashes of the tokens it issued; you can disconnect it on the MCP connector page.", "2026-09-29 — you can create a personal token for AI agents on the MCP connector page. Malmoi stores only a hash of it, with the actions and projects you allowed and when it was used.", "2026-09-28 — invitation emails show the name and picture of the project you are invited to, and your role in it. They still do not say who invited you.", "2026-09-27 — visits to the public pages are counted with Vercel Web Analytics, without cookies.", "2026-09-26 — the product name is written Malmoi. No change to what we collect or share.", "2026-09-24 — invitations can be sent by email through Resend.", "2026-09-19 — first version."] },
+            { ul: ["2026-10-05 — you can choose Malmoi's theme: System, Light or Dark. Malmoi remembers your choice with your account and in a cookie on this browser.", "2026-10-05 — you can choose the time zone Malmoi uses for dates and times. Malmoi remembers your choice with your account only, not in a cookie. Public pages always use UTC.", "2026-10-05 — you can choose the language of Malmoi's screens: English, Korean or Spanish. Malmoi remembers your choice with your account and in a cookie on this browser. This policy is also published in Korean.", "2026-09-29 — you can also connect an app such as Claude Code or Codex by signing in through your browser, with no token to copy. Malmoi keeps the connection — the app's name and address, the actions and projects you allowed, when it was used — and only hashes of the tokens it issued; you can disconnect it on the MCP connector page.", "2026-09-29 — you can create a personal token for AI agents on the MCP connector page. Malmoi stores only a hash of it, with the actions and projects you allowed and when it was used.", "2026-09-28 — invitation emails show the name and picture of the project you are invited to, and your role in it. They still do not say who invited you.", "2026-09-27 — visits to the public pages are counted with Vercel Web Analytics, without cookies.", "2026-09-26 — the product name is written Malmoi. No change to what we collect or share.", "2026-09-24 — invitations can be sent by email through Resend.", "2026-09-19 — first version."] },
           ],
         },
       ],

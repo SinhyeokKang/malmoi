@@ -180,6 +180,13 @@ export const es = {
       now: (time: string) => `Ahora: ${time}`,
       failed: "No pudimos cambiar la zona horaria. Inténtalo de nuevo.",
     },
+    theme: {
+      title: "Tema",
+      description: "Cómo se ve Malmoi en todas las pantallas.",
+      help: "Sistema sigue la configuración de apariencia de tu dispositivo.",
+      options: { system: "Sistema", light: "Claro", dark: "Oscuro" },
+      failed: "No pudimos cambiar el tema. Inténtalo de nuevo.",
+    },
   },
 
   landing: {
