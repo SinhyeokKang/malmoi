@@ -400,7 +400,7 @@ it("writer 경고 목록은 카드 radius · 개수 배지 · warning 글리프�
   const head = list?.firstElementChild;
   expect(head?.querySelector('[aria-hidden="true"]:not(svg)')?.textContent).toBe("2");
   expect(head?.querySelector(".sr-only")?.textContent).toBe(en.translations.publish.warnings(2));
-  expect(head?.querySelector("svg")?.getAttribute("class")).toContain("text-amber-700");
+  expect(head?.querySelector("svg")?.getAttribute("class")).toContain("text-warning-foreground");
   // 실행은 코드만 싣고 모달이 사전으로 문장을 조립한다(ui-locales B1′) — 표면·파일 한 묶음에 문장 둘.
   expect(list?.textContent).toContain("web: ko.json");
   expect(list?.textContent).toContain(`${en.adapterErrors["parse-failed"]} (bad)`);

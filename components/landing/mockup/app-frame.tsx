@@ -121,7 +121,7 @@ export function AppFrame({ m, children, overlay }: { m: Messages; children: Reac
         <div className="border-border-subtle bg-background shadow-low flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl border">{children}</div>
       </div>
       {overlay !== undefined && (
-        <div className="bg-foreground/32 absolute inset-0 flex items-center justify-center backdrop-blur-[6px]">{overlay}</div>
+        <div className="bg-scrim/32 absolute inset-0 flex items-center justify-center backdrop-blur-[6px]">{overlay}</div>
       )}
     </div>
   );

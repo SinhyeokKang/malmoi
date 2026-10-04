@@ -101,7 +101,7 @@ export function CountCards({ cards, slug, surfaceSlugs, now, heldLater, uiLocale
                   <Glyph
                     className={cn(
                       "ml-auto size-4",
-                      card.tone === "accent" ? "text-link" : card.tone === "warning" ? "text-amber-700" : "text-gray-dim",
+                      card.tone === "accent" ? "text-link" : card.tone === "warning" ? "text-warning-foreground" : "text-gray-dim",
                     )}
                     aria-hidden
                   />

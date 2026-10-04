@@ -46,10 +46,10 @@ function DiffLine({ p, sign, parts, before = false }: { p: Messages["translation
     <span className="flex gap-2">
       {/* 전·후 라벨은 실제 모달에서 sr-only다 — 목업에선 글리프가 그 자리를 보여 준다. */}
       <span className="sr-only">{before ? p.beforeLabel : p.afterLabel}</span>
-      <span className={cn("w-2.5 shrink-0 text-xs leading-5", before ? "text-red-700" : "text-green-800")}>{sign}</span>
+      <span className={cn("w-2.5 shrink-0 text-xs leading-5", before ? "text-diff-removed" : "text-diff-added")}>{sign}</span>
       <span className={cn("min-w-0 flex-1 text-sm leading-5 break-words whitespace-pre-wrap", before && "text-muted-foreground")}>
         {parts.map((part, i) => (
-          <span key={i} className={!part.changed ? undefined : before ? "text-foreground rounded-[3px] bg-red-700/[0.14]" : "rounded-[3px] bg-green-800/[0.16]"}>
+          <span key={i} className={!part.changed ? undefined : before ? "text-foreground rounded-[3px] bg-diff-removed/[0.14]" : "rounded-[3px] bg-diff-added/[0.16]"}>
             {part.text}
           </span>
         ))}

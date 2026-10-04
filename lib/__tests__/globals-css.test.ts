@@ -221,6 +221,15 @@ describe("globals.css — 의미 색 토큰", () => {
     // 오버레이는 `--foreground`의 라이트 값과 같은 색이되 그 변수를 가리키지 않는다(다크에서 갈린다).
     "--scrim": "hsl(0 0% 3.9%)",
     "--shadow-color": "rgb(22 24 27)",
+    "--diff-removed": "var(--color-red-700)",
+    "--diff-added": "var(--color-green-800)",
+    "--kind-blue-surface": "var(--color-blue-50)",
+    "--kind-blue": "var(--color-blue-700)",
+    "--kind-teal-surface": "var(--color-teal-50)",
+    "--kind-teal": "var(--color-teal-700)",
+    "--kind-violet-surface": "var(--color-violet-50)",
+    "--kind-violet": "var(--color-violet-700)",
+    "--subtle": "var(--color-neutral-50)",
   };
 
   it.each(Object.entries(LIGHT))("%s의 라이트 값이 옮겨 온 raw와 같다", (name, value) => {

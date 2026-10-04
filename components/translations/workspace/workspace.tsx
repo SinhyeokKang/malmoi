@@ -944,7 +944,7 @@ function Footer({ alertId, dirty, status, saving, resultRef, saveRef, hasPending
             세로로 묶는 래퍼가 결과 아래에 쌓이는 자리를 지킨다. */}
         <span className="flex min-w-0 flex-col">
           <span ref={resultRef} tabIndex={-1} data-footer-result="true" aria-live="polite"
-            className={cn("min-w-0 text-xs focus:outline-none", dirty > 0 ? "text-amber-700" : "text-muted-foreground")}>
+            className={cn("min-w-0 text-xs focus:outline-none", dirty > 0 ? "text-warning-foreground" : "text-muted-foreground")}>
             {text}
           </span>
           {hasPending && revertBlocked !== null && <span id={reasonId} className="text-muted-foreground min-w-0 text-xs">{REVERT_REASONS[revertBlocked](m)}</span>}

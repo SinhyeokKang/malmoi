@@ -278,7 +278,7 @@ function LocaleRow({ m, code, first, base = false, status, children }: { m: Mess
 function TypedRow({ m, phase }: { m: Messages; phase: Phase }) {
   const selected = m.landing.mockup.selected;
   const d = m.translations.workspace.detail;
-  const notSaved = <span className="text-xs text-amber-700">{d.notSaved}</span>;
+  const notSaved = <span className="text-warning-foreground text-xs">{d.notSaved}</span>;
   const notSent = unsentBadge();
   const status = phase === "published" ? null : phase === "missing" ? <span className="text-muted-foreground text-xs">{d.missing}</span> : phase === "typing" ? notSaved : <Swap phase={phase} before={notSaved} after={notSent} />;
   return (
@@ -302,7 +302,7 @@ function TypedRow({ m, phase }: { m: Messages; phase: Phase }) {
 function Footer({ m, phase }: { m: Messages; phase: Phase }) {
   const w = m.translations.workspace;
   const f = w.footer;
-  const unsaved = <span className="text-xs text-amber-700">{f.unsaved(1)}</span>;
+  const unsaved = <span className="text-warning-foreground text-xs">{f.unsaved(1)}</span>;
   const saved = <span className="text-muted-foreground text-xs">{phase === "published" ? f.saved : f.savedNotSent}</span>;
   const text = phase === "missing" ? null : phase === "typing" ? unsaved : <Swap phase={phase} before={unsaved} after={saved} />;
   // 실물과 같은 `danger`다 — 편집을 버리는 동작이다(DESIGN §2.4 동작 규칙).

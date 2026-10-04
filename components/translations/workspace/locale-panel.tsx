@@ -244,9 +244,9 @@ function LocaleRow({ keyName, sourceText, sourceCode, locale, first, draft, save
           {dirty && sending
             ? <span className="text-muted-foreground text-xs">{w.saving}</span>
             : dirty
-            ? <span className="text-xs text-amber-700">{w.notSaved}</span>
+            ? <span className="text-warning-foreground text-xs">{w.notSaved}</span>
             : missing && <span className="text-muted-foreground text-xs">{w.missing}</span>}
-          {locale.needsReview && !missing && <span className="text-xs text-amber-700">{m.translations.workspace.list.needsReview}</span>}
+          {locale.needsReview && !missing && <span className="text-warning-foreground text-xs">{m.translations.workspace.list.needsReview}</span>}
           {locale.pending && <StatusBadge state="unsent" className="shrink-0" />}
         </span>
       </div>

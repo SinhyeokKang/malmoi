@@ -70,6 +70,15 @@
   --color-hue-fuchsia: var(--hue-fuchsia);
   --color-on-hue: var(--on-hue);
   --color-scrim: var(--scrim);
+  --color-diff-removed: var(--diff-removed);
+  --color-diff-added: var(--diff-added);
+  --color-kind-blue-surface: var(--kind-blue-surface);
+  --color-kind-blue: var(--kind-blue);
+  --color-kind-teal-surface: var(--kind-teal-surface);
+  --color-kind-teal: var(--kind-teal);
+  --color-kind-violet-surface: var(--kind-violet-surface);
+  --color-kind-violet: var(--kind-violet);
+  --color-subtle: var(--subtle);
   --leading-body: 1.6;
   --leading-prose: 1.7;
   --leading-translation: 1.55;
@@ -346,6 +355,21 @@
    * ⚠️ **`--foreground`를 가리키지 않는다** — 글자색은 다크에서 밝아지지만 덮개는 계속 어두워야 한다.
    */
   --scrim: hsl(0 0% 3.9%);
+
+  /* Publish diff — 삭제(`-` 기호·삭제 낱말 면 `/[0.14]`)와 추가(`+` 기호·추가 낱말 면 `/[0.16]`)가 한 쌍이다. 성공·실패와 뜻이 다르다. */
+  --diff-removed: var(--color-red-700);
+  --diff-added: var(--color-green-800);
+
+  /* Logs 종류 칩(면·글자) — 상태가 아니라 종류다. `info-surface`와 라이트 값이 같아도 뜻이 달라 나눈다. */
+  --kind-blue-surface: var(--color-blue-50);
+  --kind-blue: var(--color-blue-700);
+  --kind-teal-surface: var(--color-teal-50);
+  --kind-teal: var(--color-teal-700);
+  --kind-violet-surface: var(--color-violet-50);
+  --kind-violet: var(--color-violet-700);
+
+  /* 흰 카드 안 한 단계 꺼진 면(Logs 상세의 Before·빈 값 상자). `--muted`(#f5f5f5)보다 한 단계 연하다. */
+  --subtle: var(--color-neutral-50);
 
   /** elevation 둘(`@theme`의 `--shadow-low/medium`)의 색. 유틸 재료가 아니라 등록하지 않는다(`globals-css.test.ts` `UNREGISTERED`). */
   --shadow-color: rgb(22 24 27);

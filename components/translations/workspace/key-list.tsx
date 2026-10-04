@@ -148,7 +148,7 @@ const KeyRow = memo(function KeyRow({ row, savedOut, first, selected, tabStop, s
             </span>
             {/* 미전달은 `Badge neutral` 하나다(Q3 · 1-Y9 — 테두리 알약 `Pill`을 걷었다, 랜딩 목업·Sources와 같은 형). */}
             {row.hasPending && <StatusBadge state="unsent" className="shrink-0" />}
-            {row.hasReview && <span className="text-xs text-amber-700">{w.needsReview}</span>}
+            {row.hasReview && <span className="text-warning-foreground text-xs">{w.needsReview}</span>}
           </span>
         </span>
         <span className="text-muted-foreground shrink-0 text-xs">

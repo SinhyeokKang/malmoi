@@ -95,7 +95,7 @@ describe("셸 밖 골격 — 장식은 로그인만", () => {
 
   it("단일에서도 폼 패널 규격이 같다 — true white · border-subtle · shadow-low", () => {
     const main = plain.match(/<main\b[^>]*>/)?.[0] ?? "";
-    for (const cls of ["bg-white", "border-border-subtle", "shadow-low", "rounded-xl"]) expect(main).toContain(cls);
+    for (const cls of ["bg-background", "border-border-subtle", "shadow-low", "rounded-xl"]) expect(main).toContain(cls);
   });
 
   it("`decoration`을 넘기는 소비자는 `/signin` 하나다", () => {

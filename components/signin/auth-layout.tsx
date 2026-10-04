@@ -55,11 +55,11 @@ export function AuthLayout({ m, children, decoration = false, scroll = false }: 
         <div className={cn("grid flex-1 gap-2", decoration && "grid-cols-2", scroll && "min-h-0")}>
           {/*
             ⚠️ `<main>`은 **좌측**이다 — 우측은 장식이고 랜드마크가 아니다.
-            ⚠️ **true white다** — 바깥이 연한 회색이라 그 대비가 탭의 경계를 만든다.
+            ⚠️ **`bg-background`(라이트 #fff)다** — 바깥이 연한 회색이라 그 대비가 탭의 경계를 만든다. 옛 `bg-white`와 같은 값이다(color-scheme Phase 1).
             ⚠️ **`border-subtle`이다** — 시안의 `#f5f6f7`은 배경과 거의 같은 톤이라, 패널을 떼어내는
             것은 흰색 대비와 `shadow-low`이고 border는 가장자리를 정리할 뿐이다.
           */}
-          <main className={cn("border-border-subtle relative flex flex-col overflow-hidden rounded-xl border bg-white shadow-low", scroll ? "min-h-0" : "items-center justify-center px-8")}>
+          <main className={cn("border-border-subtle relative flex flex-col overflow-hidden rounded-xl border bg-background shadow-low", scroll ? "min-h-0" : "items-center justify-center px-8")}>
             {children}
           </main>
           {decoration && <Decoration m={m} />}

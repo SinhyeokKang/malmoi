@@ -84,7 +84,6 @@ function buttonOverrides(source: string): string[] {
   });
 }
 
-const GLYPH = ["components/logs/glyph.tsx"];
 
 /**
  * **DESIGN §6.2 등재 목록의 실물** — 값 → 쓰는 파일. 여기 없는 값·파일은 red다.
@@ -92,31 +91,8 @@ const GLYPH = ["components/logs/glyph.tsx"];
  * ⚠️ 값의 **근거**는 §6.2가 든다. 이 표는 그것이 지금 어디에 서 있는지만 센다.
  */
 const REGISTERED: Record<string, string[]> = {
-  // ⚠️ color-scheme Phase 1이 프리미티브(Alert·Badge·IconTile·RowCard·Meter·Avatar·ProjectThumbnail·tone)를 의미 토큰으로 옮겼다 —
-  // 남은 줄은 화면 파일이고 P1-2가 비운다. 이 표가 비면 "raw 0" 검사가 자리를 잇는다(design §2.4).
-  // B6 — 기준 언어 대기 테두리. `border-destructive/50`(오류)의 짝이다.
-  "border-amber-500/50": ["components/sources/base-language-form.tsx"],
-  // 카운트 카드 글리프 + 번역 작업 화면의 상태 글자(B6 등재) + 활동 칩
-  "text-amber-700": [
-    "components/home/count-cards.tsx",
-    "components/landing/mockup/translations.tsx",
-    "components/translations/workspace/key-list.tsx",
-    "components/translations/workspace/locale-panel.tsx",
-    "components/translations/workspace/workspace.tsx",
-    // Publish 결과의 버린 값 목록 머리 — Held back(warning) 글리프 (2026-10-01 ux-drift-unify 1-Y5)
-    "components/publish-button.tsx",
-  ],
-  // 초록 — diff
-  "text-green-800": ["components/landing/mockup/publish.tsx", "components/publish-button.tsx"],
-  "bg-green-800/[0.16]": ["components/landing/mockup/publish.tsx", "components/publish-button.tsx"],
-  // 빨강 — diff
-  "text-red-700": ["components/landing/mockup/publish.tsx", "components/publish-button.tsx"],
-  "bg-red-700/[0.14]": ["components/landing/mockup/publish.tsx", "components/publish-button.tsx"],
-  "bg-neutral-50": ["components/logs/event-detail.tsx"],
-  // 흑백 (§6.2 "흑백 둘과 남의 자산은 이 규칙 밖이다")
-  "bg-white": ["components/signin/auth-layout.tsx"],
-  // 활동 글리프 칩 — 종류 색 셋만 남는다(D3③ — 결과 색은 `IconTile tone`이 든다, §6.68)
-  ...Object.fromEntries(["bg-blue-50", "text-blue-700", "bg-teal-50", "text-teal-700", "bg-violet-50", "text-violet-700"].map((value) => [value, GLYPH])),
+  // ⚠️ color-scheme Phase 1이 화면 전체를 의미 토큰으로 옮겨 이 표가 비었다 — P1-3이 "raw 0" 검사로 바꾼다(design §2.4).
+  // `bg-white`(로그인 패널)는 토큰이 아니라 `bg-background`로 접었다 — 같은 #fff이고 뜻이 "배경 위 흰 카드"다.
 };
 
 describe("raw 색은 §6.2 등재 목록 안에만 선다 (audit #43·#44)", () => {
@@ -227,8 +203,7 @@ describe("아이콘은 §6.8의 넷(16·14·12·20)이다 (audit #48)", () => {
    */
   it("아이콘에 붙는 색은 무채 계단·destructive·PR 초록·warning 글리프뿐이다", () => {
     // `text-warning-foreground`는 §2.4 글리프 열의 warning 글리프다(Publish Held back 목록 머리, 2026-10-01 1-Y5).
-    // `text-amber-700`은 그 자리의 이관 전 철자다 — 파일 범위는 위 `REGISTERED`가 묶는다.
-    const ALLOWED = new Set(["text-muted-foreground", "text-foreground", "text-destructive", "text-gray-light", "text-gray-dim", "text-gray-strong", "text-success-foreground", "text-warning-foreground", "text-amber-700"]);
+    const ALLOWED = new Set(["text-muted-foreground", "text-foreground", "text-destructive", "text-gray-light", "text-gray-dim", "text-gray-strong", "text-success-foreground", "text-warning-foreground"]);
     const icons = SOURCES.flatMap(({ path, source }) => {
       const names = [...source.matchAll(/import\s*\{([^}]*)\}\s*from\s*"lucide-react"/g)].flatMap((match) => (match[1] ?? "").split(",").map((name) => name.trim()).filter(Boolean));
       // ⚠️ `className={cn(…)}`·템플릿 리터럴도 읽는다 — 여는 태그 안의 문자열 조각을 전부 모은다.
