@@ -15,7 +15,7 @@ describe("ko Logs 번역 문장 — 언어 이름 뒤에 '언어'를 겹치지 �
   it.each([
     ["updated", updated, "홍길동 — 프랑스어의 greet 값을 수정했습니다"],
     ["cleared", cleared, "홍길동 — 프랑스어의 greet 값을 비웠습니다"],
-    ["reverted", reverted, "홍길동 — 프랑스어의 greet 값을 마지막으로 보낸 것이 확인된 버전으로 되돌렸습니다"],
+    ["reverted", reverted, "홍길동 — 프랑스어의 greet 값을 마지막으로 전송이 확인된 값으로 되돌렸습니다"],
   ] as const)("%s", (_name, sentence, expected) => {
     expect(text(sentence("홍길동", "greet", "프랑스어"))).toBe(expected);
   });
