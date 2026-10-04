@@ -131,7 +131,7 @@ export default async function ProjectHomePage({
    * 갈래를 만나고, 이 화면이 착지점이라 그것을 **먼저** 만나는 자리가 여기다.
    */
   const readiness = planProjectReadiness(project);
-  if (readiness !== "ready") return <ProjectNotReady slug={slug} role={role} readiness={readiness} />;
+  if (readiness !== "ready") return <ProjectNotReady slug={slug} role={role} readiness={readiness} m={m} />;
 
   /**
    * ⚠️ **한 라운드다** (POSTMORTEM 2026-09-05 — 병목이 행 수가 아니라 함수 리전이었다). 조회가

@@ -5,7 +5,7 @@ import { ErrorState } from "@/components/ui/error-state";
 
 
 
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { ContentPanel, PanelBody } from "@/components/shell/content-panel";
 
 /*
@@ -15,12 +15,13 @@ import { ContentPanel, PanelBody } from "@/components/shell/content-panel";
   두 모양이었다. 무엇이 실패했는지 모르므로 문구는 루트 경계와 같은 `crash`다.
 */
 export default function PageError({ retry }: { error: Error & { digest?: string }; retry: () => void }) {
+  // 무엇이 실패했는지 모르는 경계라 `crash`를 읽는다 — `crash`는 영어 고정 네임스페이스이고(ui-locales design §3.2) 같은 경계의 버튼도 en으로 맞춘다.
   return (
     <ContentPanel>
       {/* 세로 중앙은 `flex-1`이 든다 — 셸 안 not-found 둘·`ProjectArchived`와 같은 형(malmoi#162). */}
       <PanelBody className="flex flex-col">
         <div className="flex flex-1 items-center justify-center">
-          <ErrorState title={m.crash.title} description={m.crash.description} retry={retry} retryLabel={m.common.retry} />
+          <ErrorState title={en.crash.title} description={en.crash.description} retry={retry} retryLabel={en.common.retry} />
         </div>
       </PanelBody>
     </ContentPanel>

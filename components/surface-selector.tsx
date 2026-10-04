@@ -2,13 +2,14 @@
 import { useId } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CountBadge } from "@/components/ui/count-badge";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import { surfaceLabel } from "@/lib/surfaces/plan";
 
 export type SurfaceOption = { slug: string; pathTemplate: string | null; unpublished: number };
 export function SurfaceSelector({ value, surfaces, pending, onChange }: {
   value: string; surfaces: readonly SurfaceOption[]; pending: boolean; onChange: (slug: string) => void;
 }) {
+  const m = useMessages();
   const pathId = useId();
   if (surfaces.length < 2) return null;
   const path = surfaces.find(s => s.slug === value)?.pathTemplate ?? null;

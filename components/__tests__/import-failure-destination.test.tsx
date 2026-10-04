@@ -40,10 +40,10 @@ it("EDITOR의 같은 항목도 Sources로 가고, 재시도는 소유자 몫이�
 });
 
 it("첫 적재 전 OWNER는 Sources로, 연결 전 OWNER는 Settings로 간다 — EDITOR는 이동하지 않는다", async () => {
-  expect(() => ProjectNotReady({ slug: "acme", role: "OWNER", readiness: "awaiting_first_sync" })).toThrow("redirect:/projects/acme/sources");
-  expect(() => ProjectNotReady({ slug: "acme", role: "OWNER", readiness: "setup" })).toThrow("redirect:/projects/acme/settings");
+  expect(() => ProjectNotReady({ slug: "acme", role: "OWNER", readiness: "awaiting_first_sync", m: en })).toThrow("redirect:/projects/acme/sources");
+  expect(() => ProjectNotReady({ slug: "acme", role: "OWNER", readiness: "setup", m: en })).toThrow("redirect:/projects/acme/settings");
   nav.redirect.mockClear();
-  await render(<ProjectNotReady slug="acme" role="EDITOR" readiness="awaiting_first_sync" />);
+  await render(<ProjectNotReady slug="acme" role="EDITOR" readiness="awaiting_first_sync" m={en} />);
   expect(nav.redirect).not.toHaveBeenCalled();
 });
 

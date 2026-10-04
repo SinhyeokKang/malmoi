@@ -34,7 +34,7 @@ export default async function MembersPage({ params }: { params: Promise<{ slug: 
   const m = await getMessages();
   const { slug } = await params;
   const { projectId, role, userId, archived } = await requireProjectAccess({ slug, permission: "translation:write" });
-  if (archived) return <ProjectArchived slug={slug} role={role} />;
+  if (archived) return <ProjectArchived slug={slug} role={role} m={m} />;
 
   const prisma = getPrisma();
   const project = await prisma.project.findUnique({ where: { id: projectId }, select: { name: true } });

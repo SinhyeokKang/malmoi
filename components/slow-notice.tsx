@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { GITHUB_WAIT_MS } from "@/lib/github-wait";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import { cn } from "@/lib/utils";
 
 /**
@@ -42,5 +42,6 @@ export function SlowNotice({ active, className }: { active: boolean; className?:
  * 타이머가 한 번 더 돈다). ⚠️ 마크업 사본을 만들지 않는다 — `SlowNotice`도 이것을 그린다.
  */
 export function SlowLine({ className }: { className?: string }) {
+  const m = useMessages();
   return <p role="status" className={cn("text-muted-foreground text-xs", className)}>{m.common.slow}</p>;
 }

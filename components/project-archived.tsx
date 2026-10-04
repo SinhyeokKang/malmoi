@@ -4,8 +4,8 @@ import { PanelBody } from "@/components/shell/content-panel";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ButtonLink } from "@/components/ui/button";
 import { canPerform, type Role } from "@/lib/auth/permission";
-import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
+import type { Messages } from "@/lib/i18n";
 
 /**
  * 보관된 프로젝트 화면 (7단계 — DESIGN §6.69). **정책과 문구를 한 곳이 든다** —
@@ -19,7 +19,7 @@ import { routes } from "@/lib/routes";
  * ⚠️ **EDITOR에게 설정 링크를 주지 않는다** — 그 화면은 `project:settings` 뒤라 눌러도 못 들어간다.
  * 누구에게 말해야 하는지를 대신 말한다 (`errors.access.archived`).
  */
-export function ProjectArchived({ slug, role }: { slug: string; role: Role }) {
+export function ProjectArchived({ slug, role, m }: { slug: string; role: Role; m: Messages }) {
   return (
     /*
       ⚠️ **`PanelHeader`가 없다 — 이 갈래엔 제목이 없다.** 본문만 있으므로 `PanelBody` 하나이고,
