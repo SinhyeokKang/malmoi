@@ -127,3 +127,4 @@
 - **W8 통합·push** `feb0ecf4..f404376c`. W8 해제·워크트리 제거. **W9 착수**(Sonnet medium).
 - **W9**: E7 `5e602047` gate ok. E8 — 사전 분리 성립(en HTML에 ko·es 청크 0, ko +26KB·es +27KB 청크는 그 언어만), 그러나 en first-load gzip이 A0 대비 +4.1~6.1KB(조건 10 초과). **D10(사용자)**: 원인 모듈부터 특정 → 피할 수 있는 것은 고치고 구조적이면 수치·근거로 다시 판단.
 - **D11(사용자)**: en first-load +4.1~6.1KB gz는 구조적(next/dynamic 런타임·provider ~3–4KB + Turbopack 청크 재묶음 중복 — button.tsx 등) → **수용**, spec 완료 조건 10을 '사전 분리 + 증가 실측 기록'으로 수정. 모듈 중복은 기능 밖 후속 후보.
+- W9 통합 중 발견: `5e602047`이 sed 백업 파일(`retry-at.test.ts-E`)을 커밋 — 게이트 중단, W9에 삭제 커밋 지시(로컬 dev에는 cherry-pick된 상태, push 전).
