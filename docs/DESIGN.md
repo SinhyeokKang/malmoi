@@ -2283,6 +2283,7 @@ Supabase를 골랐던 이유(2026-09-05)는 "개발자 도구이면서 비개발
 | 초대 철회 | **Revoke** / revoked | cancelled an invitation | **철회** / 철회됨 | 초대 취소 | **Revocar** / revocada | cancelar la invitación |
 | App 호칭 | 처음 **Malmoi GitHub App**, 이어서 **the app** | Malmoi app | 처음 **Malmoi GitHub App**, 이어서 **앱** | Malmoi 앱 | primero **Malmoi GitHub App**, luego **la app** | app de Malmoi |
 | 계정 화면 | **Account** | account settings | **계정** | 계정 설정 | **Cuenta** | configuración de la cuenta |
+| 화면 테마 (2026-10-05, color-scheme) | **Theme** — 옵션 **System** · **Light** · **Dark**(식별자 `colorScheme`은 코드에만) | Color scheme, Dark mode | **테마** — **시스템** · **라이트** · **다크** | 색 구성표, 다크 모드 | **Tema** — **Sistema** · **Claro** · **Oscuro** | esquema de colores, modo oscuro |
 | 프로젝트 push 토큰 (2026-10-04, ui-locales R4) | **Push token** | — | **푸시 토큰** | push 토큰 | **Token de push** | — |
 | 이미지 제거 | **Remove** / **Upload** | Delete(이미지), Image upload | **제거** / **업로드** | 삭제(이미지), 이미지 업로드 | **Quitar** / **Subir** | Eliminar(imagen), carga de imagen |
 | 앱 화면으로 가는 검색 그룹 | **Pages** | Menus(앱에서 menu는 드롭다운이다 — 2026-10-03 search-ux-unify D4) | **페이지** | 메뉴 | **Páginas** | Menús |
