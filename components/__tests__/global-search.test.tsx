@@ -188,3 +188,13 @@ it.each(["pointer", "Enter"])("real search %s navigation reaches NavigationDim a
   expect(dialog()).toBeNull();
   expect(dim.getAttribute("data-active")).toBe("true");
 });
+it("ko 화면이면 Docs 색인을 ko 경로에서 받아 그 제목을 보인다 (ui-locales I2)", async () => {
+  const koDocs = [{ id: "doc:edit", title: "번역 편집", href: "/docs/translate/edit", body: "번역 화면을 열어 텍스트를 찾습니다" }];
+  mocks.fetch.mockReset().mockResolvedValue({ ok: true, json: async () => ({ docs: koDocs }) });
+  // `beforeEach`의 resetModules로 SearchTrigger가 새 모듈 그래프를 문다 — 헬퍼의 provider(옛 인스턴스)와 컨텍스트가 갈리므로 같은 그래프에서 꺼낸다
+  const { MessagesProvider } = await import("@/components/i18n/messages-provider");
+  await render(<MessagesProvider uiLocale="ko"><SearchTrigger account={null} /></MessagesProvider>);
+  await vi.waitFor(() => expect(document.querySelector('button[aria-haspopup="dialog"]')).not.toBeNull()); await open();
+  await vi.waitFor(() => expect(document.body.textContent).toContain("번역 편집"));
+  expect(mocks.fetch).toHaveBeenCalledOnce(); expect(mocks.fetch).toHaveBeenCalledWith("/api/search-index/ko");
+});

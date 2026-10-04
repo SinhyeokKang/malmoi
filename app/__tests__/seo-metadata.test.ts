@@ -17,6 +17,9 @@ import { OG_IMAGE } from "@/lib/seo/site";
 vi.mock("@/auth", () => ({ signIn: vi.fn(), signOut: vi.fn() }));
 vi.mock("@/lib/db", () => ({ getPrisma: vi.fn() }));
 vi.mock("@/app/invite/actions", () => ({ acceptInvitation: vi.fn() }));
+// 요청의 화면 언어를 ko로 둔다 — `/docs` 메타는 그래도 en 원고여야 한다(크롤러는 쿠키가 없고 URL이 언어와 무관하다, ui-locales design §6.1).
+// 지금은 `generateMetadata`가 화면 언어를 묻지 않아 참이다 — 누가 넣으면 아래 SUMMARY 전 항목 단언이 ko 제목으로 red가 된다.
+vi.mock("@/lib/i18n/server", async () => ({ getUiLocale: async () => "ko", getMessages: async () => (await import("@/messages/en")).en }));
 // next/font는 Next 빌드가 변환한다. 여기서는 SEO 값만 읽고 실제 로더·글리프는 font-loading.test.ts가 검사한다.
 vi.mock("next/font/local", () => ({
   default: () => ({ className: "geist-font-fixture", variable: "geist-variable-fixture", style: { fontFamily: "Geist" } }),
@@ -73,7 +76,7 @@ describe("공개 페이지 — canonical 있음 · noindex 없음", () => {
     expect((meta.openGraph as { title: string }).title).toBe("Malmoi Docs");
   });
 
-  it("SUMMARY 전 항목 — 제목은 SUMMARY 제목 · 설명은 첫 문단(없으면 hero.body) · canonical 절대 URL", async () => {
+  it("SUMMARY 전 항목 — 제목은 en SUMMARY 제목 · 설명은 en 첫 문단(없으면 hero.body) · canonical 절대 URL — 화면 언어가 ko여도", async () => {
     const flat = flattenNav(loadSummary("en")).filter((item) => item.slug.length > 0);
     expect(flat.length).toBeGreaterThan(10);
     for (const item of flat) {
