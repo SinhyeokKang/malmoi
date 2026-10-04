@@ -552,13 +552,13 @@ export const ko = {
     sentence: {
       translation: {
         updated: (who: ReactNode, key: ReactNode, language: string): ReactNode => (
-          <>{who} — {language} 언어의 {key} 값을 수정했습니다</>
+          <>{who} — {language}의 {key} 값을 수정했습니다</>
         ),
         cleared: (who: ReactNode, key: ReactNode, language: string): ReactNode => (
-          <>{who} — {language} 언어의 {key} 값을 비웠습니다</>
+          <>{who} — {language}의 {key} 값을 비웠습니다</>
         ),
         reverted: (who: ReactNode, key: ReactNode, language: string): ReactNode => (
-          <>{who} — {language} 언어의 {key} 값을 마지막으로 보낸 것이 확인된 버전으로 되돌렸습니다</>
+          <>{who} — {language}의 {key} 값을 마지막으로 보낸 것이 확인된 버전으로 되돌렸습니다</>
         ),
       },
       publish: {
