@@ -186,11 +186,11 @@ function ValueBlock({ label, value, muted, m }: { label: string; value: string |
       {state.kind === "text" ? (
         /* ⚠️ **`bg-muted`(#f5f5f5)가 아니라 #fafafa다** — 시안의 Before 면이고, 흰 After와의 대비가
            한 단계 더 연해야 두 블록이 "같은 값의 두 시점"으로 읽힌다. */
-        <div className={`border-border rounded-md border px-3 py-2.5 text-base wrap-anywhere whitespace-pre-wrap ${muted ? "bg-subtle" : ""}`}>
+        <div className={`border-border rounded-md border px-3 py-2.5 text-base wrap-anywhere whitespace-pre-wrap ${muted ? "bg-surface-subtle" : ""}`}>
           {state.text}
         </div>
       ) : (
-        <div className="border-border bg-subtle text-muted-foreground rounded-md border border-dashed px-3 py-2.5 text-base">
+        <div className="border-border bg-surface-subtle text-muted-foreground rounded-md border border-dashed px-3 py-2.5 text-base">
           {state.label}
         </div>
       )}

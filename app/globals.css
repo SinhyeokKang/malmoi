@@ -78,7 +78,7 @@
   --color-kind-teal: var(--kind-teal);
   --color-kind-violet-surface: var(--kind-violet-surface);
   --color-kind-violet: var(--kind-violet);
-  --color-subtle: var(--subtle);
+  --color-surface-subtle: var(--surface-subtle);
   --leading-body: 1.6;
   --leading-prose: 1.7;
   --leading-translation: 1.55;
@@ -369,7 +369,7 @@
   --kind-violet: var(--color-violet-700);
 
   /* 흰 카드 안 한 단계 꺼진 면(Logs 상세의 Before·빈 값 상자). `--muted`(#f5f5f5)보다 한 단계 연하다. */
-  --subtle: var(--color-neutral-50);
+  --surface-subtle: var(--color-neutral-50);
 
   /** elevation 둘(`@theme`의 `--shadow-low/medium`)의 색. 유틸 재료가 아니라 등록하지 않는다(`globals-css.test.ts` `UNREGISTERED`). */
   --shadow-color: rgb(22 24 27);

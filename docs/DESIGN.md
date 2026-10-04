@@ -76,7 +76,7 @@ size="lg"`(40)는 그대로 **셸 밖 카드 전용**이다(로그인·초대 �
 | `success-*` · `warning-*` · `danger-surface` · `info-surface` | 상태 색 — Alert 면 · 알약·칸 면 · 그 위 글자 · 흰 표면 위 글자가 각각 토큰이다(§2.4 · §6.2 의미 토큰 표) |
 | `diff-removed` / `diff-added` | Publish diff의 삭제·추가(§6.646 · §6.2) |
 | `kind-blue` · `kind-teal` · `kind-violet` (+`-surface`) | Logs 활동 칩의 **종류** 색(§6.68 · §6.2) |
-| `subtle` | 흰 카드 안 한 단계 꺼진 면(§6.2) |
+| `surface-subtle` | 흰 카드 안 한 단계 꺼진 면(§6.2). ⚠️ `border-subtle`(패널 가장자리 선)과 다른 토큰이다 — 이름을 `border-*`와 겹쳐 읽히지 않게 지었다 |
 | `hue-*` 여덟 / `on-hue` | 프로젝트·사람 식별색과 그 위 글자(§6.2) |
 | `scrim` | 오버레이(어둡게 덮기) — `--foreground`와 라이트 값이 같지만 그 변수를 가리키지 않는다(§6.2) |
 | `border` / `input` / `ring` | 테두리 · 입력 테두리 · 포커스 링 |
@@ -561,7 +561,7 @@ computed style로 잰 것이다.
 | `warning-emphasis` | 경고 **면·선** | `amber-500` | Meter 검토 구간(§6.63 — Sources 상세 언어 행도 같은 `MeterBar`) · 기준 언어 `Select` 대기 테두리 `border-warning-emphasis/50`(오류 `border-destructive/50`의 짝) |
 | `diff-removed` · `diff-added` | Publish diff의 `−`·`+` 글리프와 바뀐 낱말 면(`/[0.14]`·`/[0.16]`) | `red-700` · `green-800` | Publish 모달 · 랜딩 목업 — 아래 "Publish 모달이 데려온 둘". 성공·실패 토큰과 라이트 값이 겹쳐도 뜻이 달라 나눈다 |
 | `kind-blue` · `kind-teal` · `kind-violet` (+`-surface`) | Logs 활동 칩의 **종류** 색(번역 · 소스/로케일 · 멤버) | `blue-700`/`50` · `teal-700`/`50` · `violet-700`/`50` | `logs/glyph.tsx` 하나 — 아래 종류 칩 규칙 |
-| `subtle` | 흰 카드 안 한 단계 꺼진 면 | `neutral-50`(`#fafafa`) | Logs 상세의 `Before` 면과 값이 아닌 상태의 점선 블록 **둘뿐**. ⚠️ **`--muted`(#f5f5f5)로 대신하지 않는다** — 흰 `After`와 나란히 서고 두 면의 차이가 "같은 값의 두 시점"을 말하는 유일한 신호다. 새 자리에 번지게 하지 않는다 — 리포의 회색 면은 여전히 `--muted`다 |
+| `surface-subtle` | 흰 카드 안 한 단계 꺼진 면 | `neutral-50`(`#fafafa`) | Logs 상세의 `Before` 면과 값이 아닌 상태의 점선 블록 **둘뿐**. ⚠️ **`--muted`(#f5f5f5)로 대신하지 않는다** — 흰 `After`와 나란히 서고 두 면의 차이가 "같은 값의 두 시점"을 말하는 유일한 신호다. 새 자리에 번지게 하지 않는다 — 리포의 회색 면은 여전히 `--muted`다 |
 | `hue-rose` … `hue-fuchsia`(8) + `on-hue` | 프로젝트·사람 **식별색**과 그 위 글자·글리프 | `-600` 여덟 · `white` | `ui/tone.ts`의 `hueFill`만 — 아래 "이름에서 뽑는 색 8종" |
 | `scrim` | 오버레이(어둡게 덮기) — `/40`(Dialog) · `/32`(LargeModal · logs 상세 · 랜딩 목업) | `--foreground`와 같은 값 | ⚠️ **`--foreground`를 가리키지 않는다** — 글자색은 테마를 따라 밝아질 수 있지만 덮개는 계속 어두워야 한다. `--foreground` 알파의 나머지 관용구(hover `/[0.03]` · 선택 `/[0.07]` · `text-foreground/60` 등)는 "표면 위에 글자색을 얇게 깐다"는 뜻이라 그대로다 |
 | `link` | 외부 링크 · 검색 일치 · `New from GitHub` | `blue-600` | §6.3 · 아래 "목록 재설계가 데려온 넷". `--signin-dot`이 같은 값이다 |

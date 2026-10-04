@@ -71,7 +71,7 @@ export function PublicHeader({ m, account, current }: { m: Messages; account: Pu
             <GithubIcon className="size-4 shrink-0" />
             {m.landing.shell.github}
           </a>
-          {/* 장식이다 — 캔버스(#f5f6f7) 위에서 보이는 가장 연한 선이 `border-subtle`이다(`divider`는 캔버스보다 옅어 안 보인다). */}
+          {/* 장식이다 — 캔버스(#f5f6f7) 위에서 보이는 가장 연한 선이 `border-border-subtle`이다(`divider`는 캔버스보다 옅어 안 보인다). */}
           <span aria-hidden className="bg-border-subtle h-5 w-px" />
           {account === null ? (
             <ButtonLink href={routes.signIn()} variant="primary" size="md">

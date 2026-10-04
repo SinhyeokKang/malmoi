@@ -62,7 +62,7 @@ export function Header({
             <NewProjectIcon />
             {m.common.nav.newProject}
           </Link>
-          {/* 장식이다 — 공개 셸 헤더와 같은 선(`border-subtle`이 캔버스 위에서 보이는 가장 연한 선이다). */}
+          {/* 장식이다 — 공개 셸 헤더와 같은 선(`border-border-subtle`이 캔버스 위에서 보이는 가장 연한 선이다). */}
           <span aria-hidden className="bg-border-subtle h-5 w-px" />
           <UserMenu name={name} email={email} image={image} signOut={signOut} />
         </div>

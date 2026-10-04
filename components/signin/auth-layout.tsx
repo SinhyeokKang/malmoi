@@ -56,7 +56,7 @@ export function AuthLayout({ m, children, decoration = false, scroll = false }: 
           {/*
             ⚠️ `<main>`은 **좌측**이다 — 우측은 장식이고 랜드마크가 아니다.
             ⚠️ **`bg-background`(라이트 #fff)다** — 바깥이 연한 회색이라 그 대비가 탭의 경계를 만든다. 옛 `bg-white`와 같은 값이다(color-scheme Phase 1).
-            ⚠️ **`border-subtle`이다** — 시안의 `#f5f6f7`은 배경과 거의 같은 톤이라, 패널을 떼어내는
+            ⚠️ **`border-border-subtle`이다** — 시안의 `#f5f6f7`은 배경과 거의 같은 톤이라, 패널을 떼어내는
             것은 흰색 대비와 `shadow-low`이고 border는 가장자리를 정리할 뿐이다.
           */}
           <main className={cn("border-border-subtle relative flex flex-col overflow-hidden rounded-xl border bg-background shadow-low", scroll ? "min-h-0" : "items-center justify-center px-8")}>
@@ -78,7 +78,7 @@ export function AuthLayout({ m, children, decoration = false, scroll = false }: 
  * 맞춰 줄어들어, 1280px에서 우측 컬럼 628 − 128 = 500px이라 **넘치지 않는다.**
  *
  * ⚠️ **이 패널엔 border가 없다** (시안) — 그라데이션 자체가 면을 만들어 선이 필요 없다. 좌측
- * 폼 패널만 `border-subtle`을 든다.
+ * 폼 패널만 `border-border-subtle`을 든다.
  */
 function Decoration({ m }: { m: Messages }) {
   return (

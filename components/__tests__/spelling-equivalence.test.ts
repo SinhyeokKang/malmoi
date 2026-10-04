@@ -269,7 +269,7 @@ describe("color-scheme 의미 색은 옮겨 온 raw와 같은 색이다", () => 
     ["text-teal-700", "text-kind-teal"],
     ["bg-violet-50", "bg-kind-violet-surface"],
     ["text-violet-700", "text-kind-violet"],
-    ["bg-neutral-50", "bg-subtle"],
+    ["bg-neutral-50", "bg-surface-subtle"],
     // T2 쌍. `link`가 `:root` 변수가 되면서 color-mix 미지원 브라우저용 폴백만 단색이 됐다(값을 못 푸는 토큰 알파의 공통 형 — `bg-foreground/40`과 같다).
     ["bg-blue-600/[0.14]", "bg-link/[0.14]"],
   ])("%s → %s", async (before, after) => {

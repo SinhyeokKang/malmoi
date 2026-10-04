@@ -229,7 +229,7 @@ describe("globals.css — 의미 색 토큰", () => {
     "--kind-teal": "var(--color-teal-700)",
     "--kind-violet-surface": "var(--color-violet-50)",
     "--kind-violet": "var(--color-violet-700)",
-    "--subtle": "var(--color-neutral-50)",
+    "--surface-subtle": "var(--color-neutral-50)",
   };
 
   it.each(Object.entries(LIGHT))("%s의 라이트 값이 옮겨 온 raw와 같다", (name, value) => {

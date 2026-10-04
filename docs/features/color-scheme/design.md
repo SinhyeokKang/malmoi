@@ -54,7 +54,7 @@
 | `kind-blue-surface` · `kind-blue` | Logs 종류 칩 면·글자 | `blue-50` · `blue-700` | `logs/glyph.tsx` | 알파 면 · 밝은 글자 |
 | `kind-teal-surface` · `kind-teal` | 〃 | `teal-50` · `teal-700` | `logs/glyph.tsx` | 〃 |
 | `kind-violet-surface` · `kind-violet` | 〃 | `violet-50` · `violet-700` | `logs/glyph.tsx` | 〃 |
-| `subtle` | 흰 카드 안 한 단계 꺼진 면(Logs 상세의 비어 있는 값 상자) | `neutral-50` | `logs/event-detail.tsx` 둘 | `#121212` — `--background`보다 한 단계 **어두운** 면(§3.8. 밝게 두면 빈 상자가 채워진 상자보다 떠 보인다) |
+| `surface-subtle` | 흰 카드 안 한 단계 꺼진 면(Logs 상세의 비어 있는 값 상자) | `neutral-50` | `logs/event-detail.tsx` 둘 | `#121212` — `--background`보다 한 단계 **어두운** 면(§3.8. 밝게 두면 빈 상자가 채워진 상자보다 떠 보인다) |
 | `hue-rose` … `hue-fuchsia` (8) | 프로젝트·사람 **식별색**(이름 해시) | `rose-600` … `fuchsia-600` | `ui/tone.ts` | 같은 hue — 다크 표면 위 대비만 확인 |
 | `on-hue` | 식별색 위 글자·글리프 | `white` | `ui/avatar.tsx`(이니셜 — 대비 수용 예외, §4.4) · `ui/project-thumbnail.tsx`(글리프 — 비텍스트 3:1) | `white` |
 | `scrim` | 오버레이(어둡게 덮기) — `/32`·`/40`으로 쓴다 | `--foreground` 값 | `ui/dialog.tsx:160` · `ui/large-modal.tsx:13` 상수(렌더 자리: large-modal · dialog · `logs/event-dialog`) · 랜딩 `mockup/app-frame.tsx:123` — **리터럴 셋** | 검정 그대로(다크에서도 어둡게 덮는다) |
@@ -190,11 +190,11 @@ ui-locales의 `parseUiLocale`·`resolveUiLocale`(`lib/i18n/locales.ts`)와 **모
 
 **다크 값의 정본은 Claude Design 핸드오프 `design_handoff_color_scheme`이다** — `README.md` §5 토큰 표(Tailwind 이름 또는 hex)와 `Color Scheme.dc.html` 머리의 `[data-theme="dark"]` 블록이 같은 값이다. P2-1은 그 표를 `globals.css`의 `light-dark()` 둘째 인자로 옮긴다. 토큰 수는 그대로다(합치거나 늘리지 않음).
 
-시안이 이 문서·브리프와 다르게 정한 것(사용자 확정 — 위 각 절에 반영):
+시안이 이 문서·브리프와 다르게 정한 것(사용자 확정 — 위 각 절에 반영). ⚠️ **시안·핸드오프·`design-brief.md`의 `subtle` = 코드 `surface-subtle`**이다(2026-10-05 RA 🟡2 — `--color-subtle`이면 `border-subtle`이 `border-border-subtle`과 다른 색으로 살아난다):
 
 | 항목 | 확정 | 절 |
 |---|---|---|
-| `subtle` 다크 | `#121212`(background보다 어둡게 — 라이트의 "꺼진 면" 방향 유지) | §2.2 표 |
+| `surface-subtle` 다크 | `#121212`(background보다 어둡게 — 라이트의 "꺼진 면" 방향 유지) | §2.2 표 |
 | 모달 윤곽 | `LARGE_MODAL_PANEL`에 `border border-border`(Dialog는 이미 있다) | §2.2 |
 | OpenAI 로고 | 원본 검정 마크 + 두 테마 같은 흰 판 · 비색 값 블록 0 | §3.5 · §3.1 |
 | 가이드 스크린샷 | 시안은 `border` 1px 제안 → **받지 않고 지금 처리 그대로**(핸드오프 README §4와 다르다 — 이 문서가 이긴다) | §3.5 |
