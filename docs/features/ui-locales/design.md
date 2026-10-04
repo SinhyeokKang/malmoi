@@ -170,7 +170,7 @@ es 문장이 가장 길다. 미리 알려진 위험 자리 — `PanelFacts` 라�
 
   가이드 원고도 같은 용어집을 쓴다 — `terminology.test.ts`(가이드 ↔ 사전)를 **언어별로** 돌려 `guide/ko/`는 ko 사전 라벨과 대조한다(§6.1). 금지어 검사는 사전 셋으로 넓힌다(§2).
 - `brand-spelling.test.ts`: ko·es 화면에서도 제품 이름은 `Malmoi`다. 이 테스트는 이미 `messages/` 전체를 훑으므로(`:28`) 새 사전이 자동으로 대상이 된다 — 바꿀 것이 없다.
-- `no-korean-ui.test.ts`: **`messages/ko.tsx` 한 파일만** 예외로 둔다. 다른 소스의 한글 리터럴 0은 그대로 유지된다 — 사전 밖으로 한글이 새는 것을 막는 검사의 목적은 변하지 않는다.
+- `no-korean-ui.test.ts`: **`messages/ko.tsx`·`messages/ko-privacy.tsx` 두 파일만** 예외로 둔다(§8). 다른 소스의 한글 리터럴 0은 그대로 유지된다 — 사전 밖으로 한글이 새는 것을 막는 검사의 목적은 변하지 않는다.
 
 ## 6.1 가이드 원고 — 언어별 세 벌, 이미지는 공유
 
@@ -210,7 +210,10 @@ model User {
 - 방침 본문의 **"Every cookie Malmoi sets is needed to sign you in or to finish a round trip to GitHub or Google"**이 거짓이 된다 — 고친다.
   "추적·광고 쿠키가 없다", "http-only다", "동의할 것이 없다"는 그대로 참이다(사용자가 고른 언어를 기억하는 기능 쿠키다).
 - 개정 이력 한 줄 + 시행일(`policy-gate.test.tsx`가 요구한다). 새 목적(화면 언어 기억)·새 쿠키 둘 다 `/push` 4단계 개인정보 점검 항목이다.
-- 방침 본문은 영어로만 둔다(spec 비목표).
+- **방침 본문은 en·ko 두 벌**이다(2026-10-04 사용자). en 본문은 지금처럼 `messages/en.tsx`의 방침 절이고 `Messages`에서 `Omit`된다(§2). ko 본문은 **별도 파일 `messages/ko-privacy.tsx`**에 en 방침 절과 같은 타입(`satisfies`)으로 둔다 —
+  `messages/ko.tsx`에 넣으면 ko provider가 그 파일을 클라이언트로 끌고 가 ko 사용자 번들에 방침 본문이 실린다. `/privacy` 페이지(서버)가 `getUiLocale() === "ko" ? koPrivacy : en.publicDocs.privacy`로 고른다 — es는 en이다.
+- `policy-gate.test.tsx`를 두 본문에 돌리고 **동형 검사**를 더한다: 절 id 집합 · `collected.ts` 전수 등재 · 쿠키 표 행 · 개정 이력 항목 수와 날짜 · 시행일이 같다. 한쪽 본문만 고치면 red다.
+- `no-korean-ui.test.ts` 허용 목록은 `messages/ko.tsx`·`messages/ko-privacy.tsx` **두 파일**이 된다. `messages/ko-privacy.tsx`를 import하는 비테스트 소스는 `/privacy` 페이지(서버) 하나뿐이다(소스 검사 — B1⑥에 합친다).
 
 ## 9. 새 환경변수
 

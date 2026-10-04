@@ -29,7 +29,7 @@
 - [ ] **B1** 정합성 테스트 — **검사 대상은 "존재하는 사전"이다**(ko만 있으면 ko만, 둘 다 있으면 둘 다). 사전이 하나도 없는 이 커밋에서는 대상이 비어 green이다.
   ①en과 같은 문자열은 허용 목록(**키 경로** 기준)에만 ②함수 값은 대표 인자로 호출해 비교 — 대표 인자 표는 `Record<FunctionPaths<Messages>, Parameters<…>>`로 타입을 걸고 JSX 반환은 `renderToStaticMarkup`으로 비교 ③빈 문자열 금지
   ④용어 일관성 — design §6 용어집(DESIGN §10.1 ko·es 열)의 "쓰지 않는 말" 0건, 금지어·링크↔버튼 이름 검사를 사전 셋으로 확장
-  ⑥`@/messages/ko`·`@/messages/es`를 import(정적·동적 불문)하는 비테스트 소스는 각 언어의 provider 파일뿐(소스 검사 — 사전 정합성 테스트 파일은 예외)
+  ⑥`@/messages/ko`·`@/messages/es`를 import(정적·동적 불문)하는 비테스트 소스는 각 언어의 provider 파일뿐이고 `@/messages/ko-privacy`는 `/privacy` 페이지뿐(소스 검사 — 사전 정합성 테스트 파일은 예외)
   ⑦`lib/pull/**`·`lib/push/**`가 사전을 import하지 않는다(소스 검사 — design §10. **B1′ 뒤에야 green이다**)
   ⑧`lib/mcp/**`·`lib/invitation-email/**`·`lib/seo/**`가 `getMessages`·`useMessages`를 import하지 않고, `lib/**` 전체가 `lib/i18n/server`를 import하지 않는다(소스 검사 — 공유 코어는 `m`을 인자로만 받는다).
   (`brand-spelling.test.ts`는 이미 `messages/` 전체를 보므로 바꿀 것이 없다.)
@@ -100,8 +100,11 @@
 - [ ] **F2** `LocaleSwitcher`(핸드오프 기준 — 기본안은 design §5.1) → `PublicFooter`·`AuthLayout`. DOM 테스트(포커스 fixup observer 포함):
   현재 언어 endonym 표시 · 언어 이름에 `lang={code}` · 접근 이름 "Language: English" · 고르면 Action 호출 · 진행 중 `aria-busy`·`aria-disabled`이고 **포커스가 트리거에 남는다** · 실패면 오류 토스트.
   검증: 로컬 브라우저에서 `/`·`/signin`·`/docs`가 ko·es로 바뀌고 새로고침해도 유지, 첫 화면에 영어가 비치지 않음 `[수동]`.
-- [ ] **H1** `/privacy` 본문(`messages/en.tsx`의 방침 절 — 영어 고정이라 en만): "Every cookie Malmoi sets is needed to …" 문장 수정 + 쿠키 표 1줄 + `User.uiLocale` + 개정 이력·시행일.
+- [ ] **H1** `/privacy` en 본문(`messages/en.tsx`의 방침 절): "Every cookie Malmoi sets is needed to …" 문장 수정 + 쿠키 표 1줄 + `User.uiLocale` + 개정 이력·시행일.
   검증: `policy-gate.test.tsx` green.
+- [ ] **H1k** ko 방침 `messages/ko-privacy.tsx` — H1을 반영한 en 본문의 번역(에이전트 초안 → **사용자 검수 필수**) + `/privacy`가 ko 화면에서만 ko 본문 + `no-korean-ui` 허용 목록에 이 파일 추가 + 두 본문 동형 검사(design §8).
+  테스트: 동형 검사 · `policy-gate`를 ko 본문에도 · 페이지 선택(ko→ko, en·es→en) · `ko-privacy` import는 `/privacy` 페이지뿐.
+  검증: `pnpm test` green. ⚠️ 이 커밋 시점에 ko UI가 이미 있어야 의미가 있으므로 B3 뒤다 — F 커밋에 함께 넣어 쿠키 고지가 두 본문에서 동시에 참이 되게 한다.
 - [ ] **F3** `app/globals.css`에 `:lang(ko) { word-break: keep-all; overflow-wrap: anywhere; }`. 검증: `globals-css.test.ts`에 규칙 고정, green.
 - [ ] `[커밋] feat(i18n): language switcher in the public footer and disclose the UI language cookie`
 
@@ -132,7 +135,7 @@
 ## H. 문서·검증
 
 - [ ] **H2** 정본 갱신(문서별 별도 커밋, `/implement`·`/push` 신선도 단계에서):
-  - PRODUCT — §10 "UI를 ko로 여는 시점" 해소(결정·폴백 순서·사용자 판단으로 연다) · `:754-755` "§10을 선행해 정하게 된다" · §4.1에 화면 언어 · §7.7 IA에 `/preferences` · "소비자의 import 자리는 안 바뀐다" 정정. `/docs` 절에 "가이드는 언어별 세 벌, 이미지는 en 공유"(방침은 en 단일 유지).
+  - PRODUCT — §10 "UI를 ko로 여는 시점" 해소(결정·폴백 순서·사용자 판단으로 연다) · `:754-755` "§10을 선행해 정하게 된다" · §4.1에 화면 언어 · §7.7 IA에 `/preferences` · "소비자의 import 자리는 안 바뀐다" 정정. `/docs` 절에 "가이드는 언어별 세 벌, 이미지는 en 공유" · `:754-755` "방침은 en 단일" → "en·ko 두 벌, es 화면은 en"(2026-09-19 결정 갱신).
   - ARCHITECTURE — "화면 문구는 영어 단일" 줄 교체(§3 입구 · 영어 고정 표면 목록 · 언어별 provider 청크 규칙) · 잎 명부에 `lib/i18n/locales.ts` · 스키마 절에 `User.uiLocale` · pull 경고가 코드라는 계약. 가이드 로더·검색 색인의 언어 축(§6.37).
   - DESIGN — §10 ko·es 문체·§10.1 ko·es 열(B2) · `:2146`·`:2224` "문자열은 `messages/en.tsx`에서 오고 `m`으로 읽는다" · Preferences 화면 · 푸터 스위처 · §6.4 즉시 적용 Select 예외(B2) · `:lang(ko)` 규칙.
   - DIRECTORY — `app/ui-locale/` · `app/(edit)/preferences/` · `components/i18n/` · `messages/ko.tsx`·`es.tsx` · `guide/en·ko·es/`.
