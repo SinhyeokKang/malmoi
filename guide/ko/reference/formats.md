@@ -11,8 +11,8 @@ Malmoi가 읽고 쓸 수 있는 번역 파일 형식을 확인합니다.
 | **JSON 카탈로그** | `src/locales/{locale}.json` |
 | **YAML 카탈로그** | `config/locales/{locale}.yml` |
 | **Chrome 확장 프로그램 메시지** | `_locales/{locale}/messages.json` |
-| **코드 사전(언어마다 파일 하나)** | `src/locales/{locale}.ts` |
-| **코드 사전(모든 언어가 파일 하나에)** | `src/i18n/namespaces/*.ts` |
+| **코드 사전(언어별 파일)** | `src/locales/{locale}.ts` |
+| **코드 사전(모든 언어를 한 파일에)** | `src/i18n/namespaces/*.ts` |
 
 `{locale}`은 `en` 같은 언어 코드를 뜻하고, `*`는 그 디렉터리 안의 파일 이름 한 부분과 일치합니다.
 
