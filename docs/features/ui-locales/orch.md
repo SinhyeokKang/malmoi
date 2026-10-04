@@ -57,3 +57,33 @@
 ## 진행 기록
 
 (배치별 라운드·통합 해시·미완 항목을 여기에 덧붙인다.)
+
+### 1파 — 2026-10-04 착수 (Run `run_d303841cd9aa`)
+
+| 배치 | Task | Dispatch | 워크트리 | 모델 |
+|---|---|---|---|---|
+| W1 | task_724a86f7b6e3 | ctx_95a9a14ce285 | `~/orca/workspaces/malmoi/ui-locales-W1` | Opus 5.5 high |
+| W2 | task_2ac94b06fd6e | ctx_9a2dee6437d5 | `…/ui-locales-W2` | Opus 5.5 medium |
+| W3 | task_f80fa47e2e13 | ctx_617c7947a513 | `…/ui-locales-W3` | Opus 5.5 medium |
+| W4 | task_a8aa7e0bda45 | ctx_87474fcb42c8 | `…/ui-locales-W4` | Opus 5.5 medium |
+| W5 | task_2703e03fbb0b | ctx_c083b680efec | `…/ui-locales-W5` | Sonnet 5.5 medium |
+
+브리프: `.scratch/ui-locales/brief-{common,W1..W5}.md`(메인 체크아웃, gitignore).
+- W1 질문(A1): `UI_LOCALE_NAMES`의 `한국어` endonym 때문에 `lib/i18n/locales.ts`를 `no-korean-ui` 허용 목록에 넣는다 → 승인. 허용 목록은 `locales.ts`·`messages/ko.tsx`·`messages/ko-privacy.tsx` 셋이 된다(design §6·§8 갱신 대상 — 지휘자 문서 커밋).
+- W1 질문(A3): ko 날짜 단위(년·월·일) 때문에 `lib/utc-time.ts`도 허용 목록에 → 승인. 허용 목록 넷(`locales.ts`·`utc-time.ts`·`messages/ko.tsx`·`messages/ko-privacy.tsx`).
+- W4 질문: 기존 `structure.test.ts`가 `guide/`를 재귀로 훑어 `guide/ko`를 미등재 페이지로 잡는다 → 초안은 미커밋으로 두고 I1과 함께 커밋. W5에도 같은 지시(I1 뒤 rebase·커밋). 독자 원고는 29파일.
+- W5: I5 초안 완료(미커밋, 질문 msg_11c61b2f9b5c에 I1 뒤 답한다).
+- W1 질문(B1′): `lib/publish/warnings.ts`·`components/onboarding/steps/files.tsx` 한 곳씩 수정 승인. MCP publish 응답·cron JSON은 각 층(`lib/mcp`·`app/api/pull`)에서 `en`으로 문장을 조립해 계약 모양을 유지하라고 지시. 서버 로그는 코드 허용.
+- W4: I4 초안 완료(미커밋, 질문 msg_350d442a5337에 W1 통합 뒤 답한다).
+- W3: es 사전 초안 `5a24008e`(gate ok, 미import). 질문 msg_351025ece70a에 W1 통합 뒤 'go'.
+- W2: `a18908d6` DESIGN §10 · `b24b0cb3` ko 사전(gate ok). 질문 msg_a82d364a79e8에 W1 통합 뒤 답. W1에 landing.mockup 허용 접두 전달, W3에 §10.1 es 열 정렬 지시.
+- W1 질문(D1–D3): ko·es provider·사전 행은 W1에서 en으로 임시 매핑, W2/W3가 rebase 때 각자 provider 파일 추가 + 표 한 줄 교체 → 승인. B1⑥ 허용 importer = 언어별 provider + `lib/i18n/server.ts`. W2 → W3 직렬 rebase.
+- **W1 에스컬레이션(번들)**: Turbopack에서 루트 레이아웃이 import하는 클라이언트 모듈은 언어별 provider로 나눠도 한 레이아웃 청크 묶음에 들어간다 — 실험상 en 페이지도 ko 사전 청크를 받았다. design §3.3·완료 조건 10이 성립하지 않는다.
+  **D7(사용자)**: 스파이크 후 판정 — W1 통합 뒤 같은 워커가 클라이언트 언어별 비동기 청크(next/dynamic 또는 동적 import + preload)를 실측한다. 실패하면 모두에게 +~60KB를 수용하고 조건 10을 지운다. W2·W3의 표 교체는 판정 뒤.
+- **W1 완료**(2026-10-04): 6커밋 `20f242dd..ec766001`, `gate: ok`. 인계의 "계획과 다른 점" 12개(공용 provider + client reference 사전 · `Widen` · `AdapterUser` 미확장 등)는 R1 리뷰가 판정.
+  - A0 기준선: en 사전 청크 gzip 32,828B(`Button`·lucide와 한 청크) · first-load gzip `/` 268,997 · `/projects/[slug]` 307,067 등(인계 부록 스크립트).
+  - 후속: W1 터미널 재사용 → 스파이크 Task `task_9fb4f17bb5fa`/`ctx_0c825f4ec063`(커밋 없음). 리뷰 R1 `task_c81f503e99ff`/`ctx_bb49435ca3af`(Opus high, W1 브랜치 위 새 워크트리).
+- **D7 판정(스파이크 결과)**: **1b 채택** — 사전을 `next/dynamic` 로더 하나가 운반하고 안정된 `Inner` provider가 언어별 슬롯을 `use()`로 읽는다. 실측(Turbopack, `/privacy`): ko 청크가 레이아웃 엔트리 밖 단일 청크 · en HTML 참조 0 · ko HTML이 preload · SSR ko 문구 · 전환 시 재마운트 없음(jsdom). 완료 조건 10 유지. `ui-dictionaries.ts`·`<lang>-messages.ts` 표는 사라지고 W2·W3의 교체는 `Carriers` 한 줄 + `server.ts` 한 줄. 남은 위험(브라우저 H4): 루트 하이드레이션 suspend 길이 · preload `fetchPriority=low`. 구현은 W1 수정 라운드에 넣는다(보고서 `ui-locales-W1/.scratch/spike-bundle.md`).
+- **R1 리뷰(W1)**: 🔴1(번들 주장 — D7 1b로 해소) · 🟡5(배선이 en인 상태 미탐지 · 잎 경로 집합 · 사전 importer 검사 · 어댑터→세션 경로 · cron 행동 테스트) · ⚪9. deviation 1–7·9–12 수용, 8은 재마운트·SSR 수용/번들 주장 수정. 리포트 사본 `.scratch/ui-locales/review-W1.md`. R1 워크트리 제거.
+  - 지휘자 몫: ⚪2(E2 뒤 B1⑦을 전이 검사로 올릴지 — `lib/push/apply.ts → import-status → import-failure.ts`의 최상위 `m`) · ⚪4(E8은 사전 청크가 아니라 라우트별 first-load gzip 합으로 비교) · ⚪6(pull 서버 로그가 코드 — H2 OPERATIONS·ARCHITECTURE).
+- W1 수정 라운드 1: `task_a7666a24f593`/`ctx_e19f2a766d61`(1b 구현 + 🟡1–5 + ⚪1·⚪5).
