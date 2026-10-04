@@ -30,7 +30,7 @@
 | **T2 스키마·세션** | B1(SQL만) · B2 | Sonnet 5.5 medium — ui-locales C2(`uiLocale`)와 같은 자리를 따라 넓힌다 | — (T1과 병렬) | `prisma/**` · `lib/privacy/collected.ts` · `lib/auth/**` · `types/next-auth.d.ts` · `lib/credentials/__tests__/adapter.test.ts` | 완료 |
 | **T3 입구·호출부** | C1 · C2 (+ H2 주석) | Opus 5.5 high — provider·하이드레이션 `now` prop·호출부 전수·사전 셋 | T1·T2 통합 | `lib/i18n/server.ts` · `components/i18n/**` · `app/layout.tsx` · 호출부 전부 · `messages/{en,ko,es}.tsx`(`m.logs.range.*`) · `components/{logs,home}/**` | 완료 |
 | **T4 화면·방침** | D1–D3 | Opus 5.5 high — Radix Select 포커스·공용 조립 추출·Action 갈래·방침 동형 | T3 통합 | `app/(edit)/preferences/**` · `components/preferences/**` · `messages/{en,ko,es}.tsx`(새 키) · `messages/ko-privacy.tsx` · `app/__tests__/entry-points.test.ts` | 완료 |
-| **T5 가이드** | E1 | Sonnet 5.5 medium — 원고 세 벌 문장 교체 + 절 하나 | T4 통합 | `guide/{en,ko,es}/**` · `guide/AUTHORING.md`(필요 시) | 진행 |
+| **T5 가이드** | E1 | Sonnet 5.5 medium — 원고 세 벌 문장 교체 + 절 하나 | T4 통합 | `guide/{en,ko,es}/**` · `guide/AUTHORING.md`(필요 시) | 완료 |
 | **T6 정본 문서** | H1 | Opus 5.5 medium — 문서별 커밋, 사실 대조 | T4 통합 (T5와 병렬 — 파일이 갈린다) | CLAUDE.md(+미러) · `docs/{ARCHITECTURE,DESIGN,PRODUCT,DIRECTORY,OPERATIONS}.md` | 진행 |
 | **Q1 런타임** | H3 `/runtime-test` + Preferences 샷 `/guide-shots` | Opus 5.5 medium — main 체크아웃(그동안 cherry-pick·build 금지) | T1–T6 통합 | 없음(리포트·BugShot) · `public/guide/` 샷 | 대기 |
 | 지휘자 | P0 · 체크·통합 · dev DB 마이그레이션 · 결함 라우팅 | — | 각 통합 시 | 이 문서 · tasks 체크 | — |
@@ -70,3 +70,4 @@
 - **T4 통합·push**: `feat(preferences)` D1–D3(+공용 `PreferenceSelectCard`, Language 이관) · fix1 `fix(preferences)` 열린 목록 도시명 typeahead · `docs(privacy)` ko 방침 용어 정리(그림 저장소 → `자체 저장 공간`, 의미 불변 — D2 검수 대상). gate ok. T4 해제·워크트리 제거. **T5(Sonnet medium) · T6(Opus medium) 병렬 착수**.
 - **S1 착수**(별건, 사용자 2026-10-05): 하네스에 `/translate` 스킬 — 번역 규칙 정본을 가리키는 절차 문서(키 추가 모드 · 일괄 검수 모드), 다른 스킬 포인터, CLAUDE.md 스킬 수 22→23, Codex 미러. `/feature` 불필요(사용자 확인). Opus medium, `utz-s1`, `brief-S1.md`. CLAUDE.md는 T6와 겹침 — T6 통합 뒤 rebase 신호.
 - T5에 추가 지시: AUTHORING에 ko-first 톤 반영(24행 + "한국어 원고의 톤" 절, 별도 커밋).
+- **T5 통합**: `docs(guide)` E1(language.md 제목 언어+시간대, Time zone 절 · logs.md 세 벌) · `docs(guide)` AUTHORING ko-first 톤(`#tone-ko`). **S1 통합**: `feat(harness)` `/translate` · `docs(harness)` 포인터 5스킬 · `docs(CLAUDE)` 22→23 · `docs(harness)` AUTHORING↔translate 연결. gate ok(@b954838f, 앞선 red 1회는 load 35 api-contract 타임아웃). T5·S1 해제·워크트리 제거. Q1 몫: `preferences-language.webp` 재촬영(카드 둘).

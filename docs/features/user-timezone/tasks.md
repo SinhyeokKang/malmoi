@@ -88,10 +88,10 @@
 
 ## E. 가이드
 
-- [ ] **E1** `guide/{en,ko,es}/sync/logs.md:12`의 "Dates and event times use UTC" → 기본 UTC + Preferences에서 바꿀 수 있음(세 언어 같은 커밋 — ui-locales I6 규칙). Preferences 가이드 페이지(ui-locales H3이 만든 것)에 Time zone 절.
+- [x] **E1** `guide/{en,ko,es}/sync/logs.md:12`의 "Dates and event times use UTC" → 기본 UTC + Preferences에서 바꿀 수 있음(세 언어 같은 커밋 — ui-locales I6 규칙). Preferences 가이드 페이지(ui-locales H3이 만든 것)에 Time zone 절.
   ko 초안 → 사용자 검수(ui-locales와 같은 방식), es 초안 그대로.
   검증: 원고 게이트·구조 동형·용어 검사 green. 스크린샷은 Preferences 샷만 `/guide-shots`(en) — `pnpm guide:check` stale 후보로 확인.
-- [ ] `[커밋] docs(guide): time zone preference`
+- [x] `[커밋] docs(guide): time zone preference`
 
 ## H. 문서·검증
 
