@@ -140,3 +140,4 @@
 - **W12 통합·push** `f207e70e..2ee820ef`(Refs #184). W12 해제·워크트리 제거. **Q2 착수**(런타임 QA + 가이드 촬영, main 체크아웃 — cherry-pick·build 금지 구간).
 - **D1 완료**: 문서별 8커밋 `4be2d754..f9deca51`(CLAUDE.md+미러 · 스킬 7+미러 · AUTHORING/SHOOTING · PRODUCT · ARCHITECTURE §6.355 신설 · DIRECTORY · DESIGN · README), gate ok. OPERATIONS 변경 없음. DESIGN §6.65 'role Select (immediate)' 낡음 — 범위 밖 지적. 통합은 Q2 인계 뒤.
 - **Q2 완료**: #185(es Account `Correo electrónico`가 96 라벨 열에서 두 줄) 신규 · #184 실측 통과 후 닫음 · 가이드 샷 2장 커밋 `ee2917e7`(main 체크아웃) · dev DB uiLocale 원복. 못 본 것: 서버 failed 갈래(DB를 망가뜨려야 함) · Publish writer 경고 · MCP 실호출 · 탈퇴 사용자 로그 라벨(행 없음) · https Secure 쿠키. ko 검수 후보 '프랑스어 언어의'(ko.tsx:555-561) → **W13**(Sonnet): #185 es 라벨 축약 + ko 문법. D1 문서 8커밋 로컬 cherry-pick 완료.
+- **D1·Q2 샷 통합·push** `2ee820ef..0511835a`(gate ok). D1 워크트리 제거, Q2 해제.
