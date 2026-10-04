@@ -462,7 +462,7 @@ export function NewProject({
         : m.newProject.steps.files.description(candidates.length, repoLabel, branchValue),
     3: m.newProject.steps.naming.description,
     4: created === undefined ? m.newProject.steps.result.description
-      : `${ingestHeadline(created.count, 0)} ${m.newProject.steps.result.description}`,
+      : `${ingestHeadline(m, created.count, 0)} ${m.newProject.steps.result.description}`,
   } as const;
 
   return (

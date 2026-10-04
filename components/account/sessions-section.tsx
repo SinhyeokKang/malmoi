@@ -41,7 +41,7 @@ export function SessionsSection({ outcome, signOut, confirmProvider }: {
     return true;
   }, false);
   // 제출 실패는 `?sessionRevocation=invalid`·`=unavailable`과 같은 문구로 접힌다 — 할 일이 같다.
-  const message = failed ? m.account.sessions.failed : sessionRevocationMessage(outcome);
+  const message = failed ? m.account.sessions.failed : sessionRevocationMessage(m, outcome);
 
   return (
     <Card

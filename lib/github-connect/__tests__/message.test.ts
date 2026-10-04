@@ -66,23 +66,23 @@ describe("isConnectError — union과 판정 Set이 갈리지 않는다", () => 
 
 describe("connectErrorMessage — 갈래마다 다른 한국어 문구", () => {
   it("열두 사유가 각자 다른 문장을 낸다", () => {
-    expect(new Set(ERRORS.map(connectErrorMessage)).size).toBe(ERRORS.length);
+    expect(new Set(ERRORS.map((error) => connectErrorMessage(en, error))).size).toBe(ERRORS.length);
   });
 
   it("빈 문구를 내지 않는다", () => {
     for (const error of ERRORS) {
-      expect(connectErrorMessage(error).trim().length).toBeGreaterThan(0);
+      expect(connectErrorMessage(en, error).trim().length).toBeGreaterThan(0);
     }
   });
 
   it("영어 토큰을 그대로 흘리지 않는다 — 읽는 사람은 비개발자 동료다 (PRODUCT §3)", () => {
     for (const error of ERRORS) {
-      expect(connectErrorMessage(error)).not.toContain(error);
+      expect(connectErrorMessage(en, error)).not.toContain(error);
     }
   });
 
   it("모르는 값에 던지지 않고 폴백한다 — `?e=`는 사용자가 손댈 수 있다", () => {
-    const fallback = connectErrorMessage("무엇이든" as ConnectError);
+    const fallback = connectErrorMessage(en, "무엇이든" as ConnectError);
     expect(fallback.trim().length).toBeGreaterThan(0);
   });
 });
@@ -91,9 +91,9 @@ describe("connectErrorMessage — 재시도가 유효한 사유만 그렇게 말
   it("`unavailable`만 '잠시'를 권한다", () => {
     // 원인이 고정된 거부에 "잠시 뒤 다시"를 보이면 사용자가 같은 버튼을 반복해서 누른다 —
     // 2026-09-05 preview 실측에서 `OAuthAccountNotLinked`가 정확히 그 모양이었다.
-    expect(connectErrorMessage("unavailable")).toMatch(/in a moment/i);
+    expect(connectErrorMessage(en, "unavailable")).toMatch(/in a moment/i);
     for (const error of ERRORS.filter((e) => e !== "unavailable")) {
-      expect(connectErrorMessage(error)).not.toMatch(/in a moment/i);
+      expect(connectErrorMessage(en, error)).not.toMatch(/in a moment/i);
     }
   });
 
@@ -101,14 +101,14 @@ describe("connectErrorMessage — 재시도가 유효한 사유만 그렇게 말
     // `taken-by-other`는 연결 해제(DESIGN §6.67)가, 나머지 둘은 GitHub 쪽 권한이 답이다.
     // ⚠️ 길이로 재지 않는다 (audit #90) — 폴백 문구도 10자를 넘어서 매핑이 통째로 빠져도 green이었다.
     const fallback = en.errors.connect.fallback;
-    expect(connectErrorMessage("taken-by-other")).toBe(en.errors.connect["taken-by-other"]);
-    expect(connectErrorMessage("taken-by-other")).toMatch(/disconnect/i);
+    expect(connectErrorMessage(en, "taken-by-other")).toBe(en.errors.connect["taken-by-other"]);
+    expect(connectErrorMessage(en, "taken-by-other")).toMatch(/disconnect/i);
     for (const error of ["installation-forbidden", "repo-forbidden"] as const) {
-      expect(connectErrorMessage(error)).toBe(en.errors.connect[error]);
-      expect(connectErrorMessage(error)).toMatch(/ask the repository owner/i);
+      expect(connectErrorMessage(en, error)).toBe(en.errors.connect[error]);
+      expect(connectErrorMessage(en, error)).toMatch(/ask the repository owner/i);
     }
     for (const error of ["taken-by-other", "installation-forbidden", "repo-forbidden"] as const) {
-      expect(connectErrorMessage(error)).not.toBe(fallback);
+      expect(connectErrorMessage(en, error)).not.toBe(fallback);
     }
   });
 });

@@ -134,7 +134,7 @@ describe("#2 OWNER · 오너 1명", () => {
    */
   it("띠 문구가 서버 거부 문구와 같은 문자열이다", async () => {
     const container = await draw([owner, editor]);
-    expect(bands(container)[0]!.textContent).toBe(accessErrorMessage("last-owner"));
+    expect(bands(container)[0]!.textContent).toBe(accessErrorMessage(en, "last-owner"));
   });
 });
 
@@ -161,10 +161,10 @@ describe("#5 · #6 복호화 실패 행", () => {
     const band = bands(container)[0]!;
     expect(bands(container)).toHaveLength(1);
     expect(band.textContent).toContain(en.members.unreadableHint);
-    expect(band.textContent).toContain(accessErrorMessage("last-owner"));
+    expect(band.textContent).toContain(accessErrorMessage(en, "last-owner"));
     // 순서가 못 읽음 → 마지막 오너다.
     expect(band.textContent!.indexOf(en.members.unreadableHint)).toBeLessThan(
-      band.textContent!.indexOf(accessErrorMessage("last-owner")),
+      band.textContent!.indexOf(accessErrorMessage(en, "last-owner")),
     );
   });
 });
@@ -375,8 +375,8 @@ describe("캔버스 대조로 되돌린 자리", () => {
    */
   it("last-owner 문구가 시안 문장이 아니라 사전 값이다", async () => {
     const container = await draw([owner, editor]);
-    expect(bands(container)[0]!.textContent).toBe(accessErrorMessage("last-owner"));
-    expect(accessErrorMessage("last-owner")).toContain("at least one owner");
+    expect(bands(container)[0]!.textContent).toBe(accessErrorMessage(en, "last-owner"));
+    expect(accessErrorMessage(en, "last-owner")).toContain("at least one owner");
   });
 
   /**
@@ -568,6 +568,6 @@ it("승격이 owner-limit-reached면 그 행 아래 Alert가 사유를 말하고
   await click([...document.querySelectorAll('[role="dialog"] button')].find((b) => b.textContent?.trim() === en.members.confirmRoleAction)!);
   expect(changeMember).toHaveBeenCalledWith({ slug: "acme", targetUserId: "u3", nextRole: "OWNER" });
   const row = document.getElementById("role-u3")!.closest("li")!;
-  expect(row.querySelector('[role="alert"]')?.textContent).toBe(accessErrorMessage("owner-limit-reached"));
+  expect(row.querySelector('[role="alert"]')?.textContent).toBe(accessErrorMessage(en, "owner-limit-reached"));
   expect(find(document.body, "#role-u3").textContent).toContain(en.projects.role.EDITOR);
 });

@@ -51,7 +51,7 @@ it("복원이 owner-limit-reached면 그 사유의 문장을 세운다", async (
   mocks.unarchive.mockResolvedValue({ ok: false, error: "owner-limit-reached" });
   await render(<ArchiveCard slug="acme" name="Acme" archived openPrUrl={undefined} />);
   await click("Restore project");
-  expect(document.querySelector('[role="alert"]')?.textContent).toBe(accessErrorMessage("owner-limit-reached"));
+  expect(document.querySelector('[role="alert"]')?.textContent).toBe(accessErrorMessage(en, "owner-limit-reached"));
 });
 
 /**

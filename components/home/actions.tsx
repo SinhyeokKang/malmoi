@@ -255,8 +255,8 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
             여기만 muted로 덮었고, Alert가 그 규칙을 들게 된 뒤로 덮개가 이 배너만 흐리게 했다.
           */}
           {partial
-            ? m.home.banner.partial.body(failedSurface, branch, importFailureMessage(reason))
-            : <>{m.home.banner.syncFailed.body(failedSurface, branch, importFailureMessage(reason))}{" "}
+            ? m.home.banner.partial.body(failedSurface, branch, importFailureMessage(m, reason))
+            : <>{m.home.banner.syncFailed.body(failedSurface, branch, importFailureMessage(m, reason))}{" "}
               {m.home.banner.syncFailed.safe(lastSyncAt === null ? null : relativeTime(lastSyncAt, now))}</>}
           {!owner && <> {m.home.banner.syncFailed.editor}</>}
         </Alert>

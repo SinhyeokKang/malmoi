@@ -229,7 +229,7 @@ describe("publish 실패 — 코드(`SyncErrorCode`)로 가른다", () => {
 
   it("실행 전 거부(잠금 뒤 인가)는 그 코드의 화면 문장이다", async () => {
     failed({ error: "forbidden", retryable: false });
-    expect(toToolResult(await publishNow()).structuredContent).toMatchObject({ status: "forbidden", message: accessErrorMessage("forbidden") });
+    expect(toToolResult(await publishNow()).structuredContent).toMatchObject({ status: "forbidden", message: accessErrorMessage(en, "forbidden") });
   });
 });
 
@@ -292,7 +292,7 @@ describe("결과 문장은 화면과 같은 키", () => {
 
   it("코어의 접근 거부(잠금 뒤 재판정)는 화면의 접근 문장", async () => {
     h.core.mockResolvedValueOnce({ ok: false, error: "last-owner" });
-    expect(toToolResult(await run("change_member", subject("owner"), { slug: "acme", targetUserId: "owner", nextRole: "EDITOR" })).content[0]?.text).toBe(accessErrorMessage("last-owner"));
+    expect(toToolResult(await run("change_member", subject("owner"), { slug: "acme", targetUserId: "owner", nextRole: "EDITOR" })).content[0]?.text).toBe(accessErrorMessage(en, "last-owner"));
   });
 
   it("초대의 메일 실패는 멤버 화면의 문장이고 초대는 다시 그린다", async () => {

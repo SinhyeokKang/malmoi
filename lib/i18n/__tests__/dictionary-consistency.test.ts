@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { join, relative } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { isValidElement } from "react";
@@ -276,6 +276,31 @@ function specifiers(code: string, { values = false } = {}): string[] {
   return out;
 }
 
+const BY_PATH = new Map(SOURCES.map((source) => [source.path, source.code]));
+
+/** 소스 안의 지정자(`@/…`·상대 경로) → 저장소 상대 경로. 패키지·없는 파일은 `null`이다(그래프 밖). */
+function resolveSpec(from: string, spec: string): string | null {
+  const base = spec.startsWith("@/") ? spec.slice(2) : spec.startsWith(".") ? join(dirname(from), spec) : null;
+  if (base === null) return null;
+  return [base, `${base}.ts`, `${base}.tsx`, `${base}/index.ts`, `${base}/index.tsx`].find((path) => BY_PATH.has(path)) ?? null;
+}
+
+/** 값 import로 닿는 파일 전부(시작 포함). */
+function reachable(start: readonly string[]): string[] {
+  const seen = new Set(start);
+  const queue = [...start];
+  for (let file = queue.shift(); file !== undefined; file = queue.shift()) {
+    for (const spec of specifiers(BY_PATH.get(file) ?? "", { values: true })) {
+      const next = resolveSpec(file, spec);
+      if (next !== null && !seen.has(next)) {
+        seen.add(next);
+        queue.push(next);
+      }
+    }
+  }
+  return [...seen].sort();
+}
+
 const importers = (pattern: RegExp, { values = false } = {}): string[] =>
   SOURCES.filter(({ code }) => specifiers(code, { values }).some((spec) => pattern.test(spec))).map(({ path }) => path).sort();
 
@@ -324,12 +349,15 @@ describe("소스 검사 — 사전을 어디서 읽나", () => {
     expect(SOURCES.find(({ path }) => path === "lib/i18n/server.ts")?.code).toMatch(/^import "server-only";/m);
   });
 
-  /** design §10 — cron에는 누구의 언어로 쓸지 정할 사용자가 없다. pull·push 결과는 코드를 싣고 문장은 받는 쪽이 조립한다(B1′). */
-  it("⑦ lib/pull/**·lib/push/**는 사전을 값으로 import하지 않는다", () => {
-    const offenders = SOURCES
-      .filter(({ path }) => path.startsWith("lib/pull/") || path.startsWith("lib/push/"))
-      .filter(({ code }) => specifiers(code, { values: true }).some((spec) => /^@\/lib\/i18n(\/|$)|(^|\/)messages\//.test(spec) || /^\.\.?\/.*i18n/.test(spec)))
-      .map(({ path }) => path);
+  /**
+   * design §10 — cron에는 누구의 언어로 쓸지 정할 사용자가 없다. pull·push 결과는 코드를 싣고 문장은 받는 쪽이 조립한다(B1′).
+   * ⚠️ **전이로 센다** — 직접 import만 보면 `lib/push/apply.ts → import-status → import-failure.ts`처럼 이웃 모듈의 최상위 `m`이
+   * 사전을 끌고 와도 green이었다(R1 ⚪2). `import type`은 런타임에 사라지므로 따라가지 않는다.
+   */
+  it("⑦ lib/pull/**·lib/push/**에서 값 import로 닿는 그래프에 사전이 없다", () => {
+    const start = SOURCES.filter(({ path }) => path.startsWith("lib/pull/") || path.startsWith("lib/push/")).map(({ path }) => path);
+    expect(start.length).toBeGreaterThan(0);
+    const offenders = reachable(start).filter((path) => /^lib\/i18n\/|^messages\//.test(path));
     expect(offenders).toEqual([]);
   });
 

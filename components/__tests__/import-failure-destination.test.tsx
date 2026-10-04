@@ -48,7 +48,7 @@ it("첫 적재 전 OWNER는 Sources로, 연결 전 OWNER는 Settings로 간다 �
 });
 
 it("첫 적재 실패 문구가 Settings를 가리키지 않는다 — 재시도는 Sources에 있다", () => {
-  const text = onboardErrorMessage("ingest-failed");
+  const text = onboardErrorMessage(en, "ingest-failed");
   expect(text).not.toMatch(/settings/i);
   expect(text).toContain("Sources");
 });

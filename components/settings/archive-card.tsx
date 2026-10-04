@@ -80,7 +80,7 @@ export function ArchiveCard({
       try { result = await action(slug); } catch { result = null; }
       if (result?.ok) handoff = { slug, at: Date.now() };
       if (result === null) report(m.archive.failedUnknown);
-      else if (!result.ok) report(isAccessError(result.error) ? accessErrorMessage(result.error) : m.archive.failed(result.error));
+      else if (!result.ok) report(isAccessError(result.error) ? accessErrorMessage(m, result.error) : m.archive.failed(result.error));
     });
   }
   /*

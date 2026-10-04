@@ -361,12 +361,12 @@ describe("#3 · D3 — 보류 셀이 있는 Publish 뒤에도 OWNER Revert가 �
     expect(outcome).toMatchObject({ status: "committed", withheld: { file: 1, key: 0 } });
     // 바꾼 값 수(project-card-tabs §2.3)도 같은 행에 산다 — en은 CI 값 `Repo`가 base의 `one`을 대신하고 ko는 편집이다. 보류된 fr은 파일이 없어 안 센다.
     expect(await prisma.syncRun.findFirst({ where: { projectId: "p", trigger: "CRON" } })).toMatchObject({ status: "SUCCEEDED", changed: 2, changedValues: 2 });
-    const [row] = (await loadEvents(prisma, "p", { ...parseLogFilter({}) })).rows.filter(r => r.kind === "PUBLISH");
+    const [row] = (await loadEvents(prisma, en, "p", { ...parseLogFilter({}) })).rows.filter(r => r.kind === "PUBLISH");
     expect(row?.run?.withheld).toBe(1);
     expect(row?.run?.changedValues).toBe(2);
     // 상세가 그 칸을 그리는 함수로 — 조회 값이 화면 문구까지 같은 수로 간다.
-    expect(changedValuesText(row?.result ?? null, row?.run?.changedValues ?? null)).toBe(en.logs.meta.values(2));
-    expect(planWithheldLines(outcome, "OWNER")).toHaveLength(1);
+    expect(changedValuesText(en, row?.result ?? null, row?.run?.changedValues ?? null)).toBe(en.logs.meta.values(2));
+    expect(planWithheldLines(en, outcome, "OWNER")).toHaveLength(1);
   });
 
   /**
@@ -391,7 +391,7 @@ describe("#3 · D3 — 보류 셀이 있는 Publish 뒤에도 OWNER Revert가 �
     expect(outcome).toMatchObject({ status: "skipped", reason: "no-changes", closedPr: { number: 4 } });
     expect(fake.calls.map(c => c.method).filter(m => m === "closePr" || m === "updateRefForce")).toEqual(["closePr", "updateRefForce"]);
     expect(await prisma.syncRun.findFirst({ where: { projectId: "p", trigger: "CRON" } })).toMatchObject({ status: "SKIPPED", prUrl: "https://github.com/o/r/pull/4", changed: 0, changedValues: 0 });
-    const [row] = (await loadEvents(prisma, "p", { ...parseLogFilter({}) })).rows.filter(r => r.kind === "PUBLISH");
+    const [row] = (await loadEvents(prisma, en, "p", { ...parseLogFilter({}) })).rows.filter(r => r.kind === "PUBLISH");
     expect(row).toMatchObject({ result: "nothingToSend", run: { prUrl: "https://github.com/o/r/pull/4" } });
     expect(await countPending(prisma, "p")).toBe(0);
   });

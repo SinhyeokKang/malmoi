@@ -440,10 +440,10 @@ describe("클라이언트 그래프", () => {
     expect([...redact.packages]).toEqual([]);
   });
 
-  /** 상태 정본은 클라이언트 프리미티브(`StatusBadge`·`IconTile`)가 값으로 읽는다 — 사전 밖의 것을 무는 순간을 여기서 직접 건다. */
-  it("`lib/status/canon.ts`는 사전만 문다", () => {
+  /** 상태 정본은 클라이언트 프리미티브(`StatusBadge`·`IconTile`)가 값으로 읽는다 — 무언가를 무는 순간을 여기서 직접 건다. 낱말은 `stateLabel`이 인자로 받은 사전에서 고른다. */
+  it("`lib/status/canon.ts`는 잎이다 — 사전도 물지 않는다", () => {
     const canon = walk([join(ROOT, "lib/status/canon.ts")]);
-    expect([...canon.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/i18n/index.ts", "lib/status/canon.ts", "messages/en.tsx"]);
+    expect([...canon.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/status/canon.ts"]);
     expect([...canon.packages].filter((name) => !allowed(name))).toEqual([]);
   });
 
@@ -468,15 +468,13 @@ describe("클라이언트 그래프", () => {
       // 어휘 사전(import 0) — 주체 판정 `triggerOf`가 야간 subtype 목록을 값으로 읽는다(nightly-sync).
       "lib/events/payload.ts",
       "lib/events/view.ts",
-      "lib/i18n/index.ts",
       // 언어 이름은 이미 잎이다(import 0) — 온보딩 ③이 같은 함수를 쓴다.
       "lib/onboarding/language-name.ts",
       "lib/projects/import-failure.ts",
-      // 결과 키가 읽는 상태 정본도 사전만 무는 잎이다.
+      // 결과 키가 읽는 상태 정본도 잎이다 — 문구는 모두 인자로 받은 사전에서 고른다.
       "lib/status/canon.ts",
       // 날짜 카드 머리의 날짜 형 — import 0인 잎이다(`publish-button.tsx`가 클라이언트에서 같은 파일을 읽는다).
       "lib/utc-time.ts",
-      "messages/en.tsx",
     ]);
     expect([...view.packages].filter((name) => !allowed(name))).toEqual([]);
 

@@ -50,7 +50,7 @@ export function EventDetail({
   /** 번역 사건의 키에 착지하는 주소 — 페이지가 서버에서 키 이름을 현재 id로 해석한다. 사라진 키면 `null`이고 링크가 없다. */
   translationHref?: string | null;
 }) {
-  const view = eventView({ kind: row.kind, result: row.result, warnings: row.run?.warnings ?? 0, errorCode: row.run?.errorCode ?? null });
+  const view = eventView(m, { kind: row.kind, result: row.result, warnings: row.run?.warnings ?? 0, errorCode: row.run?.errorCode ?? null });
   const glyph = eventGlyph({ kind: row.kind, result: row.result, subtype: row.subtype });
   const run = row.kind === "IMPORT" || row.kind === "PUBLISH";
 
@@ -61,12 +61,12 @@ export function EventDetail({
         <span className="flex min-w-0 flex-1 flex-col gap-1 pr-9">
           {/* `[종류][결과]` 배지다(4-Y21) — 종류 낱말은 행 보조줄의 첫 배지와 같다(`eventKindWord`). 옛 muted 글자 `Sync run`은 같은 종류의 두 번째 낱말이었다. */}
           <span data-event-detail-kind className="flex flex-wrap items-center gap-2">
-            <Badge variant="soft-neutral">{eventKindWord(row)}</Badge>
+            <Badge variant="soft-neutral">{eventKindWord(m, row)}</Badge>
             {view.state !== null && <StatusBadge state={view.state} />}
             {view.warningsLabel !== null && <Badge variant="soft-amber">{view.warningsLabel}</Badge>}
           </span>
           <DialogTitleSlot.Title className="text-lg font-medium text-pretty">
-            {eventSentence(row, {
+            {eventSentence(m, row, {
               actor: actorLabel(row),
               key: row.payload?.kind === "TRANSLATION" ? row.payload.key : "",
             })}
@@ -124,7 +124,7 @@ export function EventDetail({
                     <span className="text-base font-medium">{surface.surfaceSlug}</span>
                     <span className="text-muted-foreground text-xs wrap-anywhere">
                       {surface.count === null ? m.logs.value.notRecorded : m.logs.meta.keys(surface.count)}
-                      {surface.reason === null ? "" : ` · ${importReasonMessage(surface.reason)}`}
+                      {surface.reason === null ? "" : ` · ${importReasonMessage(m, surface.reason)}`}
                     </span>
                   </span>
                   {/*
@@ -141,7 +141,7 @@ export function EventDetail({
 
         {/* ⚠️ **보관 중에는 야간 절이 빠진다** — 다음 야간 실행이 없으므로 그 문장이 거짓이 된다. */}
         {row.result === "failed" && (
-          <Note tone="danger" body={eventFailureMessage(row, archived)} note={row.kind === "PUBLISH" ? m.logs.detail.notes.publish : null} />
+          <Note tone="danger" body={eventFailureMessage(m, row, archived)} note={row.kind === "PUBLISH" ? m.logs.detail.notes.publish : null} />
         )}
         {row.result === "running" && <Note tone="muted" body={m.logs.detail.noResult} note={null} />}
         {row.subtype === "settings.pushTokenRotated" && <Note tone="muted" body={m.logs.meta.tokenEffect} note={m.logs.detail.notes.token} />}
@@ -176,7 +176,7 @@ export function EventDetail({
 
 /** ⚠️ **값이 아닌 상태는 점선 테두리 + 회색 글자**로 한 번 더 갈린다 (캔버스 `1d`). */
 function ValueBlock({ label, value, muted }: { label: string; value: string | null; muted: boolean }) {
-  const state = valueState(value);
+  const state = valueState(m, value);
   return (
     <div className="flex flex-col gap-1">
       <span className="text-gray-dim text-xs">{label}</span>
@@ -238,7 +238,7 @@ function fields(row: EventRow): [string, ReactNode][] {
     ]);
     // 리포 파일에서 바꾼 값 수(`SyncRun.changedValues`) — IMPORT의 같은 칸과 같은 단위다. 열린 PR 갱신이면 PR 전체 vs base 누적이다.
     // 상세에만 둔다 — 보조줄(`eventMeta`)엔 `N files` 옆에 수가 둘이 된다. 기록 이전 실행은 `Files`와 같은 `—` + not recorded다.
-    out.push([m.logs.detail.labels.values, row.run?.changedValues == null ? notRecorded : changedValuesText(row.result, row.run.changedValues)]);
+    out.push([m.logs.detail.labels.values, row.run?.changedValues == null ? notRecorded : changedValuesText(m, row.result, row.run.changedValues)]);
     // ⚠️ **스킵 행의 prUrl은 이 실행이 닫은 PR이다** (B1 r3 — `planSyncFinish`). 보낸 PR의 "View"로 그리면 뜻이 뒤집힌다.
     const closed = row.run !== null && row.run.prUrl !== null && (row.result === "nothingToSend" || row.result === "notSent");
     if (closed && row.run?.prUrl) out.push([m.logs.detail.labels.closedPullRequest, <>
@@ -258,7 +258,7 @@ function fields(row: EventRow): [string, ReactNode][] {
     // 모달의 보류 줄과 같은 수다 — 같은 `SyncRun.withheld`에서 온다(delivery-invariants D7).
     if (row.run !== null && row.run.withheld > 0) out.push([m.logs.detail.labels.withheld, m.logs.detail.withheld(row.run.withheld)]);
     if (row.run?.errorCode != null) out.push([m.logs.detail.labels.errorCode, row.run.errorCode]);
-    if (payload?.kind === "PUBLISH" && payload.refusal !== null) out.push([m.logs.detail.labels.effect, refusalMessage(payload.refusal)]);
+    if (payload?.kind === "PUBLISH" && payload.refusal !== null) out.push([m.logs.detail.labels.effect, refusalMessage(m, payload.refusal)]);
   }
   if (payload?.kind === "TRANSLATION") {
     out.push([m.logs.detail.labels.source, payload.surfaceSlug]);
@@ -267,19 +267,19 @@ function fields(row: EventRow): [string, ReactNode][] {
   }
   if (payload?.kind === "IMPORT") {
     out.push([m.logs.detail.labels.trigger, actorLabel(row)]);
-    const deferred = row.result === "deferred" ? deferredText(payload) : null;
+    const deferred = row.result === "deferred" ? deferredText(m, payload) : null;
     // 편집 수가 아닌 보류는 칸 이름부터 다르다 — `Unsent edits`에 PR 사유를 적으면 칸이 거짓말한다.
     if (deferred !== null) out.push([heldReason(payload.deferReason) === null ? m.logs.detail.labels.unsentEdits : m.logs.detail.labels.heldBecause, deferred]);
     else if ((payload.pendingEdits ?? 0) > 0) out.push([m.logs.detail.labels.unsentEdits, m.repositorySync.kept(payload.pendingEdits!)]);
-    out.push([m.logs.detail.labels.values, changedValuesText(row.result, payload.changedValues)]);
+    out.push([m.logs.detail.labels.values, changedValuesText(m, row.result, payload.changedValues)]);
     if (payload.errorCode !== null) out.push([m.logs.detail.labels.errorCode, payload.errorCode]);
-    if (payload.refusal !== null) out.push([m.logs.detail.labels.effect, refusalMessage(payload.refusal)]);
+    if (payload.refusal !== null) out.push([m.logs.detail.labels.effect, refusalMessage(m, payload.refusal)]);
     if (payload.keys !== null) out.push([m.logs.detail.labels.resultPerSource, m.logs.meta.keys(payload.keys)]);
   }
   if (payload?.kind === "MEMBER") {
     out.push([m.logs.detail.labels.member, payload.targetLabel]);
     // 행 보조줄과 같은 역할 배지다 — 원문 `— → OWNER`를 싣지 않는다(2026-09-30 사용자).
-    if (payload.role !== null) out.push([m.logs.detail.labels.role, <RoleBadges before={payload.role.before === null ? null : roleWord(payload.role.before)} after={payload.role.after === null ? null : roleWord(payload.role.after)} />]);
+    if (payload.role !== null) out.push([m.logs.detail.labels.role, <RoleBadges before={payload.role.before === null ? null : roleWord(m, payload.role.before)} after={payload.role.after === null ? null : roleWord(m, payload.role.after)} />]);
   }
   if (payload?.kind === "SURFACE") {
     out.push([m.logs.detail.labels.source, payload.surfaceSlug]);

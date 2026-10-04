@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
-import { m } from "@/lib/i18n";
-import { STATE, type StateKey, type StateTone } from "@/lib/status/canon";
+import type { Messages } from "@/lib/i18n";
+import { STATE, stateLabel, type StateKey, type StateTone } from "@/lib/status/canon";
 import type { SurfaceImportResult } from "@/lib/import/result";
 import { importFailureMessage, isImportFailureCode } from "@/lib/projects/import-failure";
 import { languageName } from "@/lib/onboarding/language-name";
@@ -90,16 +90,16 @@ export function surfaceResultState(status: SurfaceOutcome["status"]): StateKey {
   return eventResultState("IMPORT", status);
 }
 
-export function eventView(row: EventViewRow): EventView {
+export function eventView(m: Messages, row: EventViewRow): EventView {
   const result = row.result;
   const state = result === null ? null : eventResultState(row.kind, result);
   return {
     state,
     tone: state === null ? "muted" : STATE[state].tone,
-    label: state === null ? null : STATE[state].label,
+    label: state === null ? null : stateLabel(m, state),
     // 음수는 없는 것으로 읽는다 — 화면에 `-1 dropped`를 내지 않는다.
     warningsLabel: row.warnings > 0 ? m.logs.warnings(row.warnings) : null,
-    reasonKey: result === "failed" ? reasonKey(row.errorCode) : isReconfirm(result, row.errorCode) ? "reconfirm" : null,
+    reasonKey: result === "failed" ? reasonKey(m, row.errorCode) : isReconfirm(result, row.errorCode) ? "reconfirm" : null,
   };
 }
 
@@ -117,15 +117,12 @@ function isReconfirm(result: EventResult | null, errorCode: string | null): bool
  * ⚠️ **갈래 누락을 컴파일 타임에 잡는다** — `SYNC_ERROR_CODES`가 늘 때 문장이 안 늘면 그 행의 사유 칸이
  * 폴백으로 떨어지고, 그것을 볼 사람은 실패를 겪은 사용자뿐이다.
  */
-const REASONS = m.logs.reasons satisfies Record<SyncErrorCode | "fallback", string>;
+export type ReasonKey = keyof Messages["logs"]["reasons"];
 
-export type ReasonKey = keyof typeof REASONS;
-
-const REASON_KEYS = Object.keys(REASONS) as ReasonKey[];
-
-function reasonKey(errorCode: string | null): ReasonKey {
+function reasonKey(m: Messages, errorCode: string | null): ReasonKey {
+  const reasons = m.logs.reasons satisfies Record<SyncErrorCode | "fallback", string>;
   // ⚠️ **배열 `includes`다** — 사전을 직접 인덱싱하면 `__proto__`가 값을 돌려준다 (POSTMORTEM 2026-09-08).
-  if (errorCode !== null && (REASON_KEYS as readonly string[]).includes(errorCode)) return errorCode as ReasonKey;
+  if (errorCode !== null && Object.keys(reasons).includes(errorCode)) return errorCode as ReasonKey;
   return "fallback";
 }
 
@@ -136,8 +133,8 @@ function reasonKey(errorCode: string | null): ReasonKey {
  * 그래서 "The next nightly run tries again."이 **거짓이 된다.** 사전 문구를 고쳐도 검사가 남도록
  * `view.test.ts`가 "보관이면 어느 사유에도 nightly가 없다"를 전 갈래로 센다.
  */
-export function planArchivedReason(key: string, archived: boolean): string {
-  const sentence = m.logs.reasons[reasonKey(key)];
+export function planArchivedReason(m: Messages, key: string, archived: boolean): string {
+  const sentence = m.logs.reasons[reasonKey(m, key)];
   if (!archived) return sentence;
   // 절은 사전 값이다(2-W9) — 리터럴 사본이면 사전 문구가 바뀌는 순간 치환이 조용히 빈다.
   return sentence.replace(m.logs.nightlyRetry, "").replace(/\s{2,}/g, " ").trim();
@@ -154,7 +151,7 @@ export type ValueView = { kind: "text"; text: string } | { kind: "state"; label:
  * `undefined`는 **해당 없음**(그 종류가 그 필드를 갖지 않는다)이고 `null`은 **수집하지 않았다**이다 —
  * 둘을 한 낱말로 접으면 "없다"와 "모른다"가 같은 말이 된다 (POSTMORTEM 2026-09-03).
  */
-export function valueState(value: RecordedValue): ValueView {
+export function valueState(m: Messages, value: RecordedValue): ValueView {
   if (value === undefined) return { kind: "state", label: m.logs.none };
   if (value === null) return { kind: "state", label: m.logs.value.notRecorded };
   if (typeof value === "object") return { kind: "state", label: m.logs.value.unavailable };
@@ -258,6 +255,7 @@ export function triggerOf(row: { actorKind: ActorKind; kind: EventKind; subtype:
  * ⚠️ **모르는 하위 종류는 던지지 않는다** — 종류 이름으로 떨어진다(읽는 쪽이 폴백을 든다).
  */
 export function eventSentence(
+  m: Messages,
   row: { kind: EventKind; subtype: string; result: EventResult | null; payload: EventPayload | null; run?: { errorCode: string | null } | null },
   nodes: { actor: ReactNode; key: ReactNode },
 ): ReactNode {
@@ -267,7 +265,7 @@ export function eventSentence(
     case "TRANSLATION": {
       const locale = payload?.kind === "TRANSLATION" ? payload.locale : "";
       const cleared = payload?.kind === "TRANSLATION" && payload.after === "";
-      const language = languageOf(locale);
+      const language = languageOf(m, locale);
       if (row.subtype === "translation.reverted") return m.logs.sentence.translation.reverted(actor, nodes.key, language);
       return cleared
         ? m.logs.sentence.translation.cleared(actor, nodes.key, language)
@@ -329,7 +327,8 @@ export function eventSentence(
     default: {
       // ⚠️ **`Object.hasOwn`을 지난다** — `subtype`은 DB에서 온 자유 문자열이라 `__proto__`가
       // 값을 돌려주는 자리다 (POSTMORTEM 2026-09-08).
-      const sentence = Object.hasOwn(SETTINGS_SENTENCE, row.subtype) ? SETTINGS_SENTENCE[row.subtype] : undefined;
+      const settings = settingsSentences(m);
+      const sentence = Object.hasOwn(settings, row.subtype) ? settings[row.subtype] : undefined;
       return sentence === undefined
         ? m.logs.sentence.fallback(actor, m.logs.kinds.settings)
         : sentence(actor);
@@ -337,23 +336,25 @@ export function eventSentence(
   }
 }
 
-const SETTINGS_SENTENCE: Record<string, (who: ReactNode) => ReactNode> = {
-  "settings.projectCreated": m.logs.sentence.settings.created,
-  "settings.nameChanged": m.logs.sentence.settings.name,
-  "settings.baseBranchChanged": m.logs.sentence.settings.baseBranch,
-  "settings.repositoryConnected": m.logs.sentence.settings.repository,
-  "settings.pushTokenRotated": m.logs.sentence.settings.pushToken,
-  "settings.imageChanged": m.logs.sentence.settings.image,
-  "settings.imageRemoved": m.logs.sentence.settings.imageRemoved,
-  "settings.archived": m.logs.sentence.settings.archived,
-  "settings.restored": m.logs.sentence.settings.restored,
-};
+function settingsSentences(m: Messages): Record<string, (who: ReactNode) => ReactNode> {
+  return {
+    "settings.projectCreated": m.logs.sentence.settings.created,
+    "settings.nameChanged": m.logs.sentence.settings.name,
+    "settings.baseBranchChanged": m.logs.sentence.settings.baseBranch,
+    "settings.repositoryConnected": m.logs.sentence.settings.repository,
+    "settings.pushTokenRotated": m.logs.sentence.settings.pushToken,
+    "settings.imageChanged": m.logs.sentence.settings.image,
+    "settings.imageRemoved": m.logs.sentence.settings.imageRemoved,
+    "settings.archived": m.logs.sentence.settings.archived,
+    "settings.restored": m.logs.sentence.settings.restored,
+  };
+}
 
 /**
  * 로케일 코드 → 영어 언어 이름. **매핑이 실패하면 코드를 그대로 낸다** (`languageName`의 계약) —
  * 리포에서 온 임의 문자열이라 실패가 정상 갈래다.
  */
-function languageOf(code: string): string {
+function languageOf(m: Messages, code: string): string {
   return code === "" ? m.logs.none : languageName(code);
 }
 
@@ -362,9 +363,7 @@ function languageOf(code: string): string {
  *
  * ⚠️ **`satisfies`가 누락을 잡는다** — `DEFER_REASONS`가 늘 때 문장이 안 늘면 새 사유가 "0 unsent edits"로 떨어진다.
  */
-const DEFER_REASON_TEXT = m.logs.deferReasons satisfies Record<Exclude<DeferReason, "pending-edits">, string>;
-
-export type HeldReason = keyof typeof DEFER_REASON_TEXT;
+export type HeldReason = Exclude<DeferReason, "pending-edits">;
 
 export function heldReason(reason: DeferReason | null): HeldReason | null {
   return reason === null || reason === "pending-edits" ? null : reason;
@@ -374,21 +373,22 @@ export function heldReason(reason: DeferReason | null): HeldReason | null {
  * 보류 행의 사유 한 줄 — 보조줄과 상세가 같이 쓴다. 편집 수 보류는 수를 말하고, 나머지는 사유를 말한다.
  * 수를 수집하지 않은 편집 수 보류는 `null`이다(지어내지 않는다).
  */
-export function deferredText(payload: Extract<EventPayload, { kind: "IMPORT" }>): string | null {
+export function deferredText(m: Messages, payload: Extract<EventPayload, { kind: "IMPORT" }>): string | null {
+  const text = m.logs.deferReasons satisfies Record<HeldReason, string>;
   const held = heldReason(payload.deferReason);
-  if (held !== null) return DEFER_REASON_TEXT[held];
+  if (held !== null) return text[held];
   return payload.pendingEdits === null ? null : m.logs.deferredReason(payload.pendingEdits);
 }
 
 /**
  * 바뀐 값 수의 표시 — 부재·실패는 `—`다. ⚠️ 실패 실행에 0을 적으면 "아무것도 안 바뀐 성공"과 같아진다(`files`와 같은 규칙).
  */
-export function changedValuesText(result: EventResult | null, changed: number | null): string {
+export function changedValuesText(m: Messages, result: EventResult | null, changed: number | null): string {
   return changed === null || result === "failed" ? m.logs.none : m.logs.meta.values(changed);
 }
 
 /** 거부 여섯의 문장. 모르는 코드는 던지지 않고 폴백이다 (`reasonKey`와 같은 축). */
-export function refusalMessage(code: string | null): string {
+export function refusalMessage(m: Messages, code: string | null): string {
   const reasons: Record<string, string> = m.logs.refusals;
   const fallback = m.logs.refusals.fallback;
   return code !== null && Object.hasOwn(reasons, code) ? (reasons[code] ?? fallback) : fallback;
@@ -405,14 +405,14 @@ export type DayGroup<T> = { dayKey: string; heading: string; label: string | nul
  *
  * ⚠️ **입력 순서를 보존한다** — 조회가 이미 `(occurredAt desc, id desc)`로 정렬해 내려준다.
  */
-export function groupByDay<T extends { occurredAt: Date }>(rows: readonly T[], now: Date): DayGroup<T>[] {
+export function groupByDay<T extends { occurredAt: Date }>(m: Messages, rows: readonly T[], now: Date): DayGroup<T>[] {
   const today = dayKey(now);
   const yesterday = dayKey(new Date(now.getTime() - 24 * 60 * 60 * 1000));
   const groups = new Map<string, DayGroup<T>>();
   for (const row of rows) {
     const key = dayKey(row.occurredAt);
     // 키가 UTC 자정의 ISO 날짜라 `utcDay`가 같은 날을 말한다.
-    const group = groups.get(key) ?? { dayKey: key, heading: utcDay(new Date(key)), label: dayLabel(key, today, yesterday), rows: [] };
+    const group = groups.get(key) ?? { dayKey: key, heading: utcDay(new Date(key)), label: dayLabel(m, key, today, yesterday), rows: [] };
     group.rows.push(row);
     groups.set(key, group);
   }
@@ -423,7 +423,7 @@ function dayKey(at: Date): string {
   return at.toISOString().slice(0, 10);
 }
 
-function dayLabel(key: string, today: string, yesterday: string): string | null {
+function dayLabel(m: Messages, key: string, today: string, yesterday: string): string | null {
   if (key === today) return m.logs.day.today;
   if (key === yesterday) return m.logs.day.yesterday;
   return null;
@@ -491,22 +491,22 @@ export function isBadgePart(part: EventMetaPart): boolean {
 }
 
 /** `이전 → 이후` — 이전이 없으면(첫 설정) 이후 하나만 말한다. `— → en`은 "없던 것이 생겼다"를 기호로 말해 읽히지 않았다. */
-function change(before: string | null, after: string | null): string {
+function change(m: Messages, before: string | null, after: string | null): string {
   if (before === null) return after ?? m.logs.none;
   return `${before} → ${after ?? m.logs.none}`;
 }
 
 /** 적재 실패를 발송 실패 문구로 설명하면 복구 방향이 반대가 된다. */
-export function eventFailureMessage(row: Pick<EventMetaRow, "kind" | "subtype" | "payload" | "run">, archived: boolean): string {
-  if (row.kind !== "IMPORT") return planArchivedReason(row.run?.errorCode ?? "", archived);
+export function eventFailureMessage(m: Messages, row: Pick<EventMetaRow, "kind" | "subtype" | "payload" | "run">, archived: boolean): string {
+  if (row.kind !== "IMPORT") return planArchivedReason(m, row.run?.errorCode ?? "", archived);
   const code = row.payload?.kind === "IMPORT" ? row.payload.errorCode : null;
   // 야간 스킵 실패(`base-unreadable`)는 적재 전 단계의 실패라 적재 사유 사전에 없다 — 야간 Publish와 같은 사유 사전을 쓴다.
-  if (row.subtype === "nightly.skip") return planArchivedReason(code ?? "", archived);
-  return importReasonMessage(code);
+  if (row.subtype === "nightly.skip") return planArchivedReason(m, code ?? "", archived);
+  return importReasonMessage(m, code);
 }
 
-export function importReasonMessage(code: string | null): string {
-  if (isImportFailureCode(code)) return importFailureMessage(code);
+export function importReasonMessage(m: Messages, code: string | null): string {
+  if (isImportFailureCode(code)) return importFailureMessage(m, code);
   const reasons: Readonly<Record<string, string>> = m.repositorySync.errors;
   return code !== null && Object.hasOwn(reasons, code) ? reasons[code]! : m.projects.importFailure.importFailed;
 }
@@ -515,7 +515,7 @@ export function importReasonMessage(code: string | null): string {
  * 종류 배지의 낱말 — 실행(동기화·Publish)은 주체와 합친 한 낱말이다(`Manual sync`). 행 보조줄의 첫 배지와 상세 머리의 종류 배지가
  * 이것 하나를 쓴다(ux-drift-unify 4-Y21 — 상세가 `Sync run` 같은 두 번째 낱말을 들고 있었다).
  */
-export function eventKindWord(row: Pick<EventMetaRow, "kind" | "subtype" | "actor">): string {
+export function eventKindWord(m: Messages, row: Pick<EventMetaRow, "kind" | "subtype" | "actor">): string {
   const trigger = triggerOf({ actorKind: row.actor.kind, kind: row.kind, subtype: row.subtype });
   return row.kind === "IMPORT" || row.kind === "PUBLISH" ? m.logs.meta.runType[row.kind][trigger] : m.logs.meta.type[row.kind];
 }
@@ -525,16 +525,16 @@ export function eventKindWord(row: Pick<EventMetaRow, "kind" | "subtype" | "acto
  *
  * ⚠️ **파일 수 `null`은 `—`이고 `0`이 아니다** — 0으로 적으면 "아무것도 안 바뀐 성공"과 같아진다.
  */
-export function eventMeta(row: EventMetaRow, archived: boolean): EventMetaPart[] {
+export function eventMeta(m: Messages, row: EventMetaRow, archived: boolean): EventMetaPart[] {
   const payload = row.payload;
   // 종류가 맨 앞 배지다 — 배지만 훑어도 무슨 사건인지 안다(2026-09-30 사용자).
-  const parts: EventMetaPart[] = [{ kind: "badge", text: eventKindWord(row) }];
+  const parts: EventMetaPart[] = [{ kind: "badge", text: eventKindWord(m, row) }];
   switch (row.kind) {
     case "TRANSLATION": {
       if (payload?.kind !== "TRANSLATION") break;
       parts.push({ kind: "locale", code: payload.locale }, { kind: "badge", text: payload.surfaceSlug });
-      const before = valueState(payload.before);
-      const after = valueState(payload.after);
+      const before = valueState(m, payload.before);
+      const after = valueState(m, payload.after);
       parts.push(`${before.kind === "text" ? before.text : before.label} → ${after.kind === "text" ? after.text : after.label}`);
       break;
     }
@@ -542,13 +542,13 @@ export function eventMeta(row: EventMetaRow, archived: boolean): EventMetaPart[]
       parts.push(row.run?.changed === null || row.run === null ? `${m.logs.detail.labels.files}: ${m.logs.none}` : m.logs.meta.files(row.run.changed));
       if (row.run?.prUrl != null) parts.push({ kind: "link", text: m.translations.publish.viewLink });
       else if (row.result !== "running") parts.push(m.logs.meta.noPullRequest);
-      if (payload?.kind === "PUBLISH" && payload.refusal !== null) parts.push(refusalMessage(payload.refusal));
+      if (payload?.kind === "PUBLISH" && payload.refusal !== null) parts.push(refusalMessage(m, payload.refusal));
       break;
     }
     case "IMPORT": {
       if (payload?.kind !== "IMPORT") break;
-      const deferred = row.result === "deferred" ? deferredText(payload) : null;
-      if (payload.refusal !== null) parts.push(refusalMessage(payload.refusal), m.logs.meta.nothingImported);
+      const deferred = row.result === "deferred" ? deferredText(m, payload) : null;
+      if (payload.refusal !== null) parts.push(refusalMessage(m, payload.refusal), m.logs.meta.nothingImported);
       else if (deferred !== null) parts.push(deferred);
       else if (payload.surfaces.length > 0) {
         /*
@@ -565,7 +565,7 @@ export function eventMeta(row: EventMetaRow, archived: boolean): EventMetaPart[]
     case "MEMBER": {
       if (payload?.kind !== "MEMBER") break;
       // 역할은 배지다 — 합류(이전 없음)면 새 역할 하나, 변경이면 이전 → 이후.
-      if (payload.role !== null) parts.push({ kind: "roles", before: payload.role.before === null ? null : roleWord(payload.role.before), after: payload.role.after === null ? null : roleWord(payload.role.after) });
+      if (payload.role !== null) parts.push({ kind: "roles", before: payload.role.before === null ? null : roleWord(m, payload.role.before), after: payload.role.after === null ? null : roleWord(m, payload.role.after) });
       else parts.push(payload.targetLabel);
       break;
     }
@@ -573,7 +573,7 @@ export function eventMeta(row: EventMetaRow, archived: boolean): EventMetaPart[]
       if (payload?.kind !== "SURFACE") break;
       if (payload.adapter !== null) parts.push({ kind: "badge", text: payload.adapter });
       if (payload.baseLocale !== null) {
-        parts.push(change(payload.baseLocale.before, payload.baseLocale.after));
+        parts.push(change(m, payload.baseLocale.before, payload.baseLocale.after));
         if (row.subtype.startsWith("surface.baseLocale")) parts.push(m.logs.meta.declarationOnly);
       }
       break;
@@ -583,19 +583,19 @@ export function eventMeta(row: EventMetaRow, archived: boolean): EventMetaPart[]
       if (row.subtype === "settings.pushTokenRotated") parts.push(m.logs.meta.tokenEffect);
       else if (row.subtype === "settings.archived") parts.push(m.logs.meta.archivedEffect);
       else if (row.subtype === "settings.restored") parts.push(m.logs.meta.restoredEffect);
-      else if (payload.value !== null) parts.push(change(payload.value.before, payload.value.after));
+      else if (payload.value !== null) parts.push(change(m, payload.value.before, payload.value.after));
       break;
     }
   }
   // 실패 사유는 마지막이다 — 보관 중이면 야간 절이 빠진다 (`planArchivedReason`).
   if (row.result === "failed") {
-    parts.push(eventFailureMessage(row, archived));
+    parts.push(eventFailureMessage(m, row, archived));
   } else if (isReconfirm(row.result, row.run?.errorCode ?? null)) {
     parts.push(m.logs.reasons.reconfirm);
   }
   return parts;
 }
 
-export function roleWord(role: string | null): string {
+export function roleWord(m: Messages, role: string | null): string {
   return role === null ? m.logs.none : role.charAt(0) + role.slice(1).toLowerCase();
 }

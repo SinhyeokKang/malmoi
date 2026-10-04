@@ -11,7 +11,7 @@ import { describe, expect, it } from "vitest";
 import { parseMd, stripHeadingMarker, toText } from "@/lib/guide/parse";
 import { servedGuideFiles } from "@/lib/guide/__tests__/helpers/served";
 import { en } from "@/messages/en";
-import { STATE } from "@/lib/status/canon";
+import { stateLabel } from "@/lib/status/canon";
 
 /**
  * **화면 용어 표** (DESIGN §10.1 — audit #29). 사전 전체를 걸어 **보이는 문장**만 센다.
@@ -297,9 +297,9 @@ describe("화면 용어 — DESIGN §10.1의 표를 사전 전체가 따른다 (
   });
 
   // `en.tsx`는 canon을 import할 수 없어(순환) 보관 문장 둘에 낱말이 리터럴이다 — 상태 낱말이 바뀌면 여기서 red가 난다(P fix1 Y2).
-  it("보관 시각 문장은 상태 낱말 STATE.archived.label로 시작한다", () => {
-    expect(String(en.logs.archived.restoreLine("x")).startsWith(`${STATE.archived.label} on `)).toBe(true);
-    expect(renderToStaticMarkup(en.archive.archivedBy("x") as ReactElement).startsWith(`${STATE.archived.label} on `)).toBe(true);
+  it("보관 시각 문장은 상태 낱말 stateLabel(en, 'archived')로 시작한다", () => {
+    expect(String(en.logs.archived.restoreLine("x")).startsWith(`${stateLabel(en, "archived")} on `)).toBe(true);
+    expect(renderToStaticMarkup(en.archive.archivedBy("x") as ReactElement).startsWith(`${stateLabel(en, "archived")} on `)).toBe(true);
   });
 
   it("개념 색인이 옛 동의어를 잡고 정본 낱말은 통과시킨다", () => {

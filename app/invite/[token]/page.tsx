@@ -176,7 +176,7 @@ export default async function InvitePage({
   return (
     <Card>
       <AuthHeading title={view.kind === "blocked" && !view.retry ? m.invite.unavailableTitle : m.invite.title} description={email === null ? undefined : m.invite.sentTo(email)} />
-      {view.notice !== null && <Alert variant="danger" className="w-full">{inviteErrorMessage(view.notice)}</Alert>}
+      {view.notice !== null && <Alert variant="danger" className="w-full">{inviteErrorMessage(m, view.notice)}</Alert>}
       {(view.kind === "accept" || view.kind === "wrong-account") && invitation != null && (
         <InviteProjectCard
           name={invitation.project.name}

@@ -92,7 +92,7 @@ export default async function SignIn({
       </AuthColumn>
 
       {/* 렌더하지 않는다 — `?error=`·`?sessions=`를 토스트로 옮기는 조각이다. */}
-      <AuthToast error={shown === undefined ? undefined : signInErrorMessage(shown)} sessions={sessions} />
+      <AuthToast error={shown === undefined ? undefined : signInErrorMessage(m, shown)} sessions={sessions} />
     </AuthLayout>
   );
 }

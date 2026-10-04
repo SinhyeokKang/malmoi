@@ -121,9 +121,9 @@ const UNCONFIRMED = "unconfirmed";
 function messageFor(error: string): string {
   if (error === UNCONFIRMED) return m.settings.token.unconfirmed;
   if (error === "unpinned") return m.settings.token.disconnected;
-  if (isOnboardError(error)) return onboardErrorMessage(error);
+  if (isOnboardError(error)) return onboardErrorMessage(m, error);
   // 쓰기 권한 확인(sec-audit-3 결정 I)이 `reauthorize`·`not-connected` 같은 연결 사유를 낸다.
-  if (isConnectError(error)) return connectErrorMessage(error);
-  if (isAccessError(error)) return settingsAccessMessage(error);
+  if (isConnectError(error)) return connectErrorMessage(m, error);
+  if (isAccessError(error)) return settingsAccessMessage(m, error);
   return m.settings.token.failed;
 }

@@ -142,7 +142,7 @@ export function MemberList({
       >
         <CardList aria-labelledby={headingId}>
           {members.map((member) => {
-            const identity = planMemberIdentity(member);
+            const identity = planMemberIdentity(m, member);
             // 라벨이 대상을 들어야 한다 — 행마다 같은 문구면 어느 사람의 컨트롤인지 구별되지 않는다.
             // ⚠️ **읽기전용 칩만 이 규칙의 예외다** — 포커스를 못 받는 비대화형 요소라 탭으로 도달할 수
             //    없고 낭독이 언제나 그 행의 이름 바로 뒤다(`role-chip.tsx`). 캔버스가 정한 문장에 대상이
@@ -170,7 +170,7 @@ export function MemberList({
              */
             const sentences = [
               member.readable ? null : m.members.unreadableHint,
-              blocked ? accessErrorMessage("last-owner") : null,
+              blocked ? accessErrorMessage(m, "last-owner") : null,
             ].filter((sentence): sentence is string => sentence !== null);
             const pending = isPending ? (pendingOps.get(member.userId) ?? null) : null;
 
@@ -218,7 +218,7 @@ export function MemberList({
                         {failed.error === null
                           ? m.members.changeUnconfirmed
                           : isAccessError(failed.error)
-                            ? accessErrorMessage(failed.error)
+                            ? accessErrorMessage(m, failed.error)
                             : m.members.changeFailed}
                       </Alert>
                     ) : null

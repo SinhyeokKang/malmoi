@@ -53,7 +53,7 @@ export function ProfilePicture({ hasPicture }: { hasPicture: boolean }) {
             // 바이트를 안 보내기 위한 1차 방어다 — 정본은 서버다.
             const picked = planImagePick(file);
             if (!picked.ok) {
-              setFailure(uploadRejectMessage(picked.reason));
+              setFailure(uploadRejectMessage(m, picked.reason));
               return;
             }
             const form = new FormData();
@@ -64,10 +64,10 @@ export function ProfilePicture({ hasPicture }: { hasPicture: boolean }) {
               // ⚠️ **통신 실패는 제자리에서 말한다** (audit-ux #14) — 안 잡으면 error boundary가 `/account` 전체를 삼킨다. redirect만 되던진다.
               try {
                 const result = await uploadProfileImage(form);
-                setFailure(result.ok ? null : uploadRejectMessage(result.reason));
+                setFailure(result.ok ? null : uploadRejectMessage(m, result.reason));
               } catch (thrown) {
                 unstable_rethrow(thrown);
-                setFailure(uploadRejectMessage("unavailable"));
+                setFailure(uploadRejectMessage(m, "unavailable"));
               } finally {
                 setRunning(null);
               }
@@ -95,10 +95,10 @@ export function ProfilePicture({ hasPicture }: { hasPicture: boolean }) {
             startTransition(async () => {
               try {
                 const result = await deleteProfileImage();
-                setFailure(result.ok ? null : uploadRejectMessage(result.reason));
+                setFailure(result.ok ? null : uploadRejectMessage(m, result.reason));
               } catch (thrown) {
                 unstable_rethrow(thrown);
-                setFailure(uploadRejectMessage("unavailable"));
+                setFailure(uploadRejectMessage(m, "unavailable"));
               } finally {
                 setRunning(null);
               }

@@ -9,7 +9,7 @@ import { connectionProblem, repositoryConnectionState, type RepositoryConnection
 import { en } from "@/messages/en";
 import { relativeTime } from "@/lib/relative-time";
 import { routes } from "@/lib/routes";
-import { STATE } from "@/lib/status/canon";
+import { STATE, stateLabel } from "@/lib/status/canon";
 
 import { find, render } from "./helpers/dom";
 
@@ -138,7 +138,7 @@ describe("메타 열 — Project 탭", () => {
     const { rows } = await setup();
     expect(rows()).toEqual({
       [en.home.meta.repository]: "acme/web",
-      [en.home.meta.connection]: `[${STATE.connected.label}]`,
+      [en.home.meta.connection]: `[${stateLabel(en, "connected")}]`,
       [en.home.meta.branch]: "main",
       [en.home.meta.ci]: en.home.meta.configured,
       [en.home.meta.sources]: "2",
@@ -179,7 +179,7 @@ describe("메타 열 — Project 탭", () => {
     ["wrongRepository", false],
   ] as const satisfies readonly (readonly [RepositoryConnectionState, boolean])[])("연결 %s — Connection 배지 · 리포 링크 %s", async (connection, linked) => {
     const { panel, rows } = await setup({ repository: { ...input.repository, connection } });
-    expect(rows()[en.home.meta.connection]).toBe(`[${STATE[connection].label}]`);
+    expect(rows()[en.home.meta.connection]).toBe(`[${stateLabel(en, connection)}]`);
     expect(panel().querySelector('a[target="_blank"]') !== null).toBe(linked);
     expect(rows()[en.home.meta.repository]).toBe("acme/web");
   });
@@ -188,7 +188,7 @@ describe("메타 열 — Project 탭", () => {
   it("연결 조회 실패(unknown)는 Couldn't check다 — 끊김으로 접지 않는다", async () => {
     const connection = repositoryConnectionState("unknown", connectionProblem("unknown"));
     const { rows } = await setup({ repository: { ...input.repository, connection } });
-    expect(rows()[en.home.meta.connection]).toBe(`[${STATE.couldNotCheck.label}]`);
+    expect(rows()[en.home.meta.connection]).toBe(`[${stateLabel(en, "couldNotCheck")}]`);
   });
 
   it("보관이면 Archived 행이 시각만 든다", async () => {
@@ -205,7 +205,7 @@ describe("메타 열 — Sync 탭", () => {
     expect(rows()).toEqual({
       [en.home.meta.lastSync]: `[${en.logs.meta.runType.IMPORT.nightly}]`,
       [en.home.meta.synced]: relativeTime(synced, now),
-      [en.home.meta.result]: `[${STATE.partiallySynced.label}]`,
+      [en.home.meta.result]: `[${stateLabel(en, "partiallySynced")}]`,
       [en.home.meta.changed]: en.home.meta.values(128),
       [en.home.meta.keysSeen]: "903",
       [en.home.meta.sources]: "mobile, web",
@@ -215,7 +215,7 @@ describe("메타 열 — Sync 탭", () => {
   it("첫 Sync 전은 Not synced yet 배지 · 기록 이전 적재는 회색 평문", async () => {
     const first = await setup({ lastSync: null });
     await first.open(en.home.meta.tabs.sync);
-    expect(first.rows()).toEqual({ [en.home.meta.lastSync]: `[${STATE.notSyncedYet.label}]` });
+    expect(first.rows()).toEqual({ [en.home.meta.lastSync]: `[${stateLabel(en, "notSyncedYet")}]` });
     const unrecorded = await setup({ lastSync: "unrecorded" });
     await unrecorded.open(en.home.meta.tabs.sync);
     expect(unrecorded.rows()).toEqual({ [en.home.meta.lastSync]: en.home.meta.unrecorded });
@@ -225,7 +225,7 @@ describe("메타 열 — Sync 탭", () => {
   it("첫 렌더에 아는 보류는 Hold 배지 행이다", async () => {
     const { open, rows } = await setup({ held: "pending-edits" });
     await open(en.home.meta.tabs.sync);
-    expect(rows()[en.home.meta.hold]).toBe(`[${STATE.held.label}]`);
+    expect(rows()[en.home.meta.hold]).toBe(`[${stateLabel(en, "held")}]`);
   });
 });
 
@@ -244,7 +244,7 @@ describe("메타 열 — 늦게 오는 Hold · PR state", () => {
     await open(en.home.meta.tabs.publish);
     await open(en.home.meta.tabs.sync);
     expect(last().lastElementChild?.querySelector("dt")?.textContent).toBe(en.home.meta.hold);
-    expect(last().lastElementChild?.querySelector("dd")?.textContent).toBe(STATE.held.label);
+    expect(last().lastElementChild?.querySelector("dd")?.textContent).toBe(stateLabel(en, "held"));
   });
 
   /**
@@ -278,7 +278,7 @@ describe("메타 열 — 늦게 오는 Hold · PR state", () => {
   it("첫 Sync 전에는 늦게 오는 Hold가 붙지 않는다", async () => {
     const { open, rows } = await setup({ ...pending, lastSync: null }, { late: Promise.resolve(homeLate("open-pr")) });
     await open(en.home.meta.tabs.sync);
-    expect(rows()).toEqual({ [en.home.meta.lastSync]: `[${STATE.notSyncedYet.label}]` });
+    expect(rows()).toEqual({ [en.home.meta.lastSync]: `[${stateLabel(en, "notSyncedYet")}]` });
   });
 
   it("도착 전에는 Hold 자리가 없다", async () => {
@@ -295,9 +295,9 @@ describe("메타 열 — 늦게 오는 Hold · PR state", () => {
   });
 
   it.each([
-    ["open-pr", `[${STATE.prOpen.label}]`],
+    ["open-pr", `[${stateLabel(en, "prOpen")}]`],
     [null, en.home.meta.notOpen],
-    ["pr-check-failed", `[${STATE.couldNotCheck.label}]`],
+    ["pr-check-failed", `[${stateLabel(en, "couldNotCheck")}]`],
   ] as const)("PR 조회 결론 %s → PR state %s", async (reason, text) => {
     const { open, rows } = await setup(pending, { late: Promise.resolve(homeLate(reason)) });
     await open(en.home.meta.tabs.publish);

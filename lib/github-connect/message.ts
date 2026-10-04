@@ -1,4 +1,4 @@
-import { m, pick } from "@/lib/i18n";
+import { pick, type Messages } from "@/lib/i18n";
 
 /**
  * 연결 실패 사유 → 사용자 문구 (ARCHITECTURE §6.3). `inviteErrorMessage`(`lib/auth/message.ts`)와 **같은 형**이다:
@@ -69,9 +69,8 @@ export function isConnectError(value: unknown): value is ConnectError {
   return typeof value === "string" && CONNECT_ERRORS.has(value);
 }
 
-const CONNECT = m.errors.connect satisfies Record<ConnectError | "fallback", string>;
-
-export function connectErrorMessage(error: ConnectError): string {
+export function connectErrorMessage(m: Messages, error: ConnectError): string {
+  const connect = m.errors.connect satisfies Record<ConnectError | "fallback", string>;
   // 모르는 값은 접는다 — `?e=`는 주소창에 있어 사용자가 손댈 수 있고, 던지면 설정 화면이 통째로 죽는다.
-  return pick(CONNECT, error, CONNECT.fallback);
+  return pick(connect, error, connect.fallback);
 }

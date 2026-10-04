@@ -42,9 +42,9 @@ export function EventRow({
   /** Home에는 시각 열이 없다 — 날짜 카드가 없으므로 오른쪽에 상대 시각이 선다 (캔버스 `1h`). */
   showTime?: boolean;
 }) {
-  const view = eventView({ kind: row.kind, result: row.result, warnings: row.run?.warnings ?? 0, errorCode: row.run?.errorCode ?? null });
+  const view = eventView(m, { kind: row.kind, result: row.result, warnings: row.run?.warnings ?? 0, errorCode: row.run?.errorCode ?? null });
   const glyph = eventGlyph({ kind: row.kind, result: row.result, subtype: row.subtype });
-  const sentence = eventSentence(row, {
+  const sentence = eventSentence(m, row, {
     actor: <span className="font-medium">{actorLabel(row)}</span>,
     key: translationKey(row),
   });

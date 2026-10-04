@@ -5,7 +5,7 @@ import type { SurfaceImportResult } from "@/lib/import/result";
 import { importFailureMessage } from "@/lib/projects/import-failure";
 
 import { EVENT_KINDS, EVENT_RESULTS, type EventResult, type SurfaceOutcome } from "../payload";
-import { STATE, type StateKey, type StateTone, type StateVariant } from "@/lib/status/canon";
+import { STATE, stateLabel, type StateKey, type StateTone, type StateVariant } from "@/lib/status/canon";
 import {
   changedValuesText,
   coverageBoundaryIndex,
@@ -41,29 +41,29 @@ describe("eventView — 결과 어휘 전부", () => {
    */
   it("실행 종류마다 전부 라벨을 갖고, 한 종류 안에서 서로 다르다", () => {
     for (const kind of ["IMPORT", "PUBLISH"] as const) {
-      const labels = EVENT_RESULTS.map((result) => eventView(row({ kind, result })).label);
+      const labels = EVENT_RESULTS.map((result) => eventView(en, row({ kind, result })).label);
       expect(labels.filter((label) => label !== null), kind).toHaveLength(EVENT_RESULTS.length);
       expect(new Set(labels).size, kind).toBe(EVENT_RESULTS.length);
     }
   });
 
   it("진행 중은 Sync면 Syncing…, Publish면 Publishing…다 — Running…을 쓰지 않는다", () => {
-    expect(eventView(row({ kind: "IMPORT", result: "running" })).label).toBe("Syncing…");
-    expect(eventView(row({ kind: "PUBLISH", result: "running" })).label).toBe("Publishing…");
+    expect(eventView(en, row({ kind: "IMPORT", result: "running" })).label).toBe("Syncing…");
+    expect(eventView(en, row({ kind: "PUBLISH", result: "running" })).label).toBe("Publishing…");
   });
 
   /** Logs는 결과에서 종류를 빼고 말한다(Q1) — 종류 배지가 앞에 선다. 다른 화면은 종류가 없어 "Sync failed"다. */
   it("Sync 실패의 결과 배지는 Failed다", () => {
-    expect(eventView(row({ kind: "IMPORT", result: "failed" })).label).toBe("Failed");
+    expect(eventView(en, row({ kind: "IMPORT", result: "failed" })).label).toBe("Failed");
   });
 
   it("실패만 danger다", () => {
-    expect(eventView(row({ result: "failed", errorCode: "github-error" })).tone).toBe("danger");
+    expect(eventView(en, row({ result: "failed", errorCode: "github-error" })).tone).toBe("danger");
   });
 
   it("사람이 고쳐야 풀리는 셋은 warning이다", () => {
     for (const result of ["deferred", "partial", "notStarted", "notSent"] as const) {
-      expect(eventView(row({ result })).tone, result).toBe("warning");
+      expect(eventView(en, row({ result })).tone, result).toBe("warning");
     }
   });
 
@@ -73,10 +73,10 @@ describe("eventView — 결과 어휘 전부", () => {
    */
   it("성공 둘은 Logs에서 muted이고 공유 톤은 success 그대로다", () => {
     for (const result of ["sent", "imported"] as const) {
-      expect(eventView(row({ result })).tone, result).toBe("muted");
+      expect(eventView(en, row({ result })).tone, result).toBe("muted");
       expect(TONES[result], result).toBe("success");
     }
-    for (const result of ["running", "nothingToSend", "superseded"] as const) expect(eventView(row({ result })).tone, result).toBe("muted");
+    for (const result of ["running", "nothingToSend", "superseded"] as const) expect(eventView(en, row({ result })).tone, result).toBe("muted");
   });
 
   it("성공 밖은 공유 톤 그대로다", () => {
@@ -85,9 +85,9 @@ describe("eventView — 결과 어휘 전부", () => {
 
   it("진행 중만 줄임표를 든다 (DESIGN §10)", () => {
     for (const kind of ["IMPORT", "PUBLISH"] as const) {
-      expect(eventView(row({ kind, result: "running" })).label).toContain("…");
+      expect(eventView(en, row({ kind, result: "running" })).label).toContain("…");
       for (const result of EVENT_RESULTS.filter((r) => r !== "running")) {
-        expect(eventView(row({ kind, result })).label, result).not.toContain("…");
+        expect(eventView(en, row({ kind, result })).label, result).not.toContain("…");
       }
     }
   });
@@ -97,7 +97,7 @@ describe("eventView — 결과 어휘 전부", () => {
    * `null`이어야 화면이 "값이 없다"와 "이 종류엔 해당 없다"를 가를 수 있다 (POSTMORTEM 2026-09-03).
    */
   it("결과가 없는 사건은 라벨이 null이고 톤은 muted다", () => {
-    const view = eventView(row({ kind: "MEMBER", result: null }));
+    const view = eventView(en, row({ kind: "MEMBER", result: null }));
     expect(view.label).toBe(null);
     expect(view.tone).toBe("muted");
   });
@@ -106,7 +106,7 @@ describe("eventView — 결과 어휘 전부", () => {
 describe("eventView — warnings는 결과와 독립이다", () => {
   /** ⚠️ 불변식 9 — 버린 값을 숨기지 않는다. 성공한 행에도 붙는다. */
   it("성공 행에도 붙는다", () => {
-    const view = eventView(row({ result: "sent", warnings: 3 }));
+    const view = eventView(en, row({ result: "sent", warnings: 3 }));
     expect(view.label).toBe(en.logs.status.succeeded);
     // Logs의 성공은 무색이다(D3③ 예외) — 경고 수는 톤과 독립으로 붙는다.
     expect(view.tone).toBe("muted");
@@ -114,30 +114,30 @@ describe("eventView — warnings는 결과와 독립이다", () => {
   });
 
   it("스킵 + warnings도 성립한다 — 하나로 접지 않는다", () => {
-    const view = eventView(row({ result: "nothingToSend", warnings: 1 }));
+    const view = eventView(en, row({ result: "nothingToSend", warnings: 1 }));
     expect(view.label).toBe(en.logs.status.skipped);
     expect(view.warningsLabel).toBe(en.logs.warnings(1));
   });
 
   it("0이면 없다", () => {
-    expect(eventView(row({ warnings: 0 })).warningsLabel).toBe(null);
+    expect(eventView(en, row({ warnings: 0 })).warningsLabel).toBe(null);
   });
 
   it("음수도 없는 것으로 읽는다 — 화면에 '-1 dropped'를 내지 않는다", () => {
-    expect(eventView(row({ warnings: -1 })).warningsLabel).toBe(null);
+    expect(eventView(en, row({ warnings: -1 })).warningsLabel).toBe(null);
   });
 });
 
 describe("eventView — 실패 사유", () => {
   it("실패만 사유 키를 낸다", () => {
-    expect(eventView(row({ result: "failed", errorCode: "github-error" })).reasonKey).toBe("github-error");
-    expect(eventView(row({ result: "sent", errorCode: "github-error" })).reasonKey).toBe(null);
+    expect(eventView(en, row({ result: "failed", errorCode: "github-error" })).reasonKey).toBe("github-error");
+    expect(eventView(en, row({ result: "sent", errorCode: "github-error" })).reasonKey).toBe(null);
   });
 
   it("모르는 코드는 던지지 않고 fallback이다", () => {
-    expect(eventView(row({ result: "failed", errorCode: "nope" })).reasonKey).toBe("fallback");
-    expect(eventView(row({ result: "failed", errorCode: null })).reasonKey).toBe("fallback");
-    expect(eventView(row({ result: "failed", errorCode: "__proto__" })).reasonKey).toBe("fallback");
+    expect(eventView(en, row({ result: "failed", errorCode: "nope" })).reasonKey).toBe("fallback");
+    expect(eventView(en, row({ result: "failed", errorCode: null })).reasonKey).toBe("fallback");
+    expect(eventView(en, row({ result: "failed", errorCode: "__proto__" })).reasonKey).toBe("fallback");
   });
 });
 
@@ -145,7 +145,7 @@ describe("planArchivedReason — 보관 시 야간 문구를 뺀다", () => {
   const KEYS = Object.keys(en.logs.reasons) as (keyof typeof en.logs.reasons)[];
 
   it("보관이 아니면 사전 문장 그대로다", () => {
-    for (const key of KEYS) expect(planArchivedReason(key, false), key).toBe(en.logs.reasons[key]);
+    for (const key of KEYS) expect(planArchivedReason(en, key, false), key).toBe(en.logs.reasons[key]);
   });
 
   /**
@@ -154,65 +154,65 @@ describe("planArchivedReason — 보관 시 야간 문구를 뺀다", () => {
    */
   it("보관이면 어느 사유에도 'nightly'가 남지 않는다", () => {
     for (const key of KEYS) {
-      expect(planArchivedReason(key, true).toLowerCase(), key).not.toContain("nightly");
+      expect(planArchivedReason(en, key, true).toLowerCase(), key).not.toContain("nightly");
     }
   });
 
   it("실제로 바뀌는 사유가 있다 — 공허한 통과가 아니다", () => {
-    const changed = KEYS.filter((key) => planArchivedReason(key, true) !== en.logs.reasons[key]);
+    const changed = KEYS.filter((key) => planArchivedReason(en, key, true) !== en.logs.reasons[key]);
     expect(changed.length).toBeGreaterThan(0);
   });
 
   it("문장을 통째로 비우지 않는다 — 남는 절이 있다", () => {
     for (const key of KEYS) {
-      expect(planArchivedReason(key, true).trim(), key).not.toBe("");
-      expect(planArchivedReason(key, true), key).not.toMatch(/\s{2,}/);
+      expect(planArchivedReason(en, key, true).trim(), key).not.toBe("");
+      expect(planArchivedReason(en, key, true), key).not.toMatch(/\s{2,}/);
     }
   });
 
   it("모르는 키는 던지지 않고 fallback 문장이다", () => {
     for (const bad of ["nope", "__proto__", "constructor"]) {
-      expect(planArchivedReason(bad, false), bad).toBe(en.logs.reasons.fallback);
+      expect(planArchivedReason(en, bad, false), bad).toBe(en.logs.reasons.fallback);
     }
   });
 });
 
 describe("valueState — 빈 칸을 만들지 않는다", () => {
   it("값이 있으면 그대로 낸다", () => {
-    expect(valueState("hello")).toEqual({ kind: "text", text: "hello" });
+    expect(valueState(en, "hello")).toEqual({ kind: "text", text: "hello" });
   });
 
   it("전문을 자르지 않는다 — 상한은 이미 저장 층이 든다 (결정 5)", () => {
     const long = "x".repeat(10_000);
-    expect(valueState(long)).toEqual({ kind: "text", text: long });
+    expect(valueState(en, long)).toEqual({ kind: "text", text: long });
   });
 
   it("사람이 비운 값은 Empty다", () => {
-    expect(valueState("")).toEqual({ kind: "state", label: en.logs.value.empty });
+    expect(valueState(en, "")).toEqual({ kind: "state", label: en.logs.value.empty });
   });
 
   it("공백만 있는 값은 글자 수를 말한다 — 보이지 않는 차이를 보이게 한다", () => {
-    expect(valueState("  ")).toEqual({ kind: "state", label: en.logs.value.spacesOnly(2) });
-    expect(valueState(" ")).toEqual({ kind: "state", label: en.logs.value.spacesOnly(1) });
-    expect(valueState("\t\n")).toEqual({ kind: "state", label: en.logs.value.spacesOnly(2) });
+    expect(valueState(en, "  ")).toEqual({ kind: "state", label: en.logs.value.spacesOnly(2) });
+    expect(valueState(en, " ")).toEqual({ kind: "state", label: en.logs.value.spacesOnly(1) });
+    expect(valueState(en, "\t\n")).toEqual({ kind: "state", label: en.logs.value.spacesOnly(2) });
   });
 
   it("수집하지 않은 값은 Not recorded다", () => {
-    expect(valueState(null)).toEqual({ kind: "state", label: en.logs.value.notRecorded });
+    expect(valueState(en, null)).toEqual({ kind: "state", label: en.logs.value.notRecorded });
   });
 
   it("복호 실패는 Unavailable이고, 기존 낱말과 같다", () => {
-    expect(valueState({ unavailable: true })).toEqual({ kind: "state", label: en.logs.value.unavailable });
+    expect(valueState(en, { unavailable: true })).toEqual({ kind: "state", label: en.logs.value.unavailable });
     expect(en.logs.value.unavailable).toBe(en.common.unreadable);
   });
 
   /** ⚠️ **'해당 없음'은 '값 없음'과 다르다** — 그 종류가 그 필드를 갖지 않는다. */
   it("해당 없음은 —다", () => {
-    expect(valueState(undefined)).toEqual({ kind: "state", label: en.logs.none });
+    expect(valueState(en, undefined)).toEqual({ kind: "state", label: en.logs.none });
   });
 
   it("다섯 갈래의 라벨이 서로 다르다", () => {
-    const labels = [valueState(""), valueState(" "), valueState(null), valueState({ unavailable: true }), valueState(undefined)]
+    const labels = [valueState(en, ""), valueState(en, " "), valueState(en, null), valueState(en, { unavailable: true }), valueState(en, undefined)]
       .map((value) => (value.kind === "state" ? value.label : ""));
     expect(new Set(labels).size).toBe(5);
   });
@@ -223,7 +223,7 @@ describe("groupByDay — UTC 자정으로 끊는다", () => {
   const at = (iso: string) => ({ occurredAt: new Date(iso) });
 
   it("오늘·어제만 낱말이 붙고 나머지는 없다", () => {
-    const groups = groupByDay(
+    const groups = groupByDay(en, 
       [at("2026-09-20T01:00:00Z"), at("2026-09-19T23:59:59Z"), at("2026-09-18T00:00:00Z")],
       NOW,
     );
@@ -232,7 +232,7 @@ describe("groupByDay — UTC 자정으로 끊는다", () => {
 
   /** 카드 머리는 늘 날짜이고(앱의 날짜 형), 오늘·어제 낱말은 그 옆의 덧붙임이다 — 지난 날짜가 두 번 서지 않는다. */
   it("머리는 `utcDay` 형이고 그룹 키는 ISO 그대로다", () => {
-    const groups = groupByDay(
+    const groups = groupByDay(en, 
       [at("2026-09-20T01:00:00Z"), at("2026-09-19T23:59:59Z"), at("2026-09-18T00:00:00Z")],
       NOW,
     );
@@ -245,7 +245,7 @@ describe("groupByDay — UTC 자정으로 끊는다", () => {
    * 로컬로 끊으면 밤 사이 실행이 하루 어긋난다 (POSTMORTEM 2026-09-19 항목의 계열).
    */
   it("UTC 자정 직전·직후가 다른 카드다", () => {
-    const groups = groupByDay([at("2026-09-20T00:00:00.000Z"), at("2026-09-19T23:59:59.999Z")], NOW);
+    const groups = groupByDay(en, [at("2026-09-20T00:00:00.000Z"), at("2026-09-19T23:59:59.999Z")], NOW);
     expect(groups).toHaveLength(2);
     expect(groups[0]?.dayKey).toBe("2026-09-20");
     expect(groups[1]?.dayKey).toBe("2026-09-19");
@@ -253,23 +253,23 @@ describe("groupByDay — UTC 자정으로 끊는다", () => {
 
   it("같은 날은 한 카드에 순서대로 들어간다", () => {
     const rows = [at("2026-09-20T05:00:00Z"), at("2026-09-20T01:00:00Z")];
-    const groups = groupByDay(rows, NOW);
+    const groups = groupByDay(en, rows, NOW);
     expect(groups).toHaveLength(1);
     expect(groups[0]?.rows).toEqual(rows);
   });
 
   it("빈 목록은 빈 배열이다", () => {
-    expect(groupByDay([], NOW)).toEqual([]);
+    expect(groupByDay(en, [], NOW)).toEqual([]);
   });
 
   /** ⚠️ **`now`를 서버가 하나 내린다** — 행마다 만들면 기준이 흔들린다. */
   it("now가 하루 뒤면 같은 행이 Yesterday로 옮겨간다", () => {
-    const groups = groupByDay([at("2026-09-20T01:00:00Z")], new Date("2026-09-21T00:00:01Z"));
+    const groups = groupByDay(en, [at("2026-09-20T01:00:00Z")], new Date("2026-09-21T00:00:01Z"));
     expect(groups[0]?.label).toBe(en.logs.day.yesterday);
   });
 
   it("미래 행도 날짜로 그린다 — 던지지 않는다", () => {
-    const groups = groupByDay([at("2026-09-25T01:00:00Z")], NOW);
+    const groups = groupByDay(en, [at("2026-09-25T01:00:00Z")], NOW);
     expect(groups[0]?.dayKey).toBe("2026-09-25");
   });
 });
@@ -359,7 +359,7 @@ describe("summarizeImportEvent — 소스별 결과 → 결과 어휘", () => {
 
 it("Import 보조줄 판정은 남은 편집과 소스별 결과를 함께 보존한다", async () => {
   const { eventMeta } = await import("../view");
-  const parts = eventMeta({ kind: "IMPORT", subtype: "import.run", result: "imported", actor: { kind: "USER" }, run: null,
+  const parts = eventMeta(en, { kind: "IMPORT", subtype: "import.run", result: "imported", actor: { kind: "USER" }, run: null,
     payload: { kind: "IMPORT", source: "manual", surfaceSlugs: ["web"], keys: 4, pendingEdits: 2,
       surfaces: [{ surfaceSlug: "web", status: "imported", count: 4, reason: null }], errorCode: null, refusal: null, deferReason: null, changedValues: null } }, false);
   expect(parts).toContain(en.repositorySync.kept(2));
@@ -373,7 +373,7 @@ it("Import 보조줄 판정은 남은 편집과 소스별 결과를 함께 보�
  * 결과는 행 오른쪽 배지가, 소스별 결과는 상세가 든다. 소스는 TRANSLATION처럼 언제나 배지다.
  */
 it("Import 보조줄은 소스를 배지로, 키 수를 합으로 싣고 결과 낱말을 싣지 않는다", () => {
-  const parts = eventMeta({ kind: "IMPORT", subtype: "import.run", result: "partial", actor: { kind: "USER" }, run: null,
+  const parts = eventMeta(en, { kind: "IMPORT", subtype: "import.run", result: "partial", actor: { kind: "USER" }, run: null,
     payload: { kind: "IMPORT", source: "manual", surfaceSlugs: ["app", "web"], keys: null, pendingEdits: 0,
       surfaces: [{ surfaceSlug: "app", status: "partial", count: 3, reason: "partial-import" }, { surfaceSlug: "web", status: "superseded", count: null, reason: "superseded" }],
       errorCode: null, refusal: null, deferReason: null, changedValues: null } }, false);
@@ -406,12 +406,12 @@ describe("eventGlyph — 결과 칩 톤", () => {
 /** 야간 재시도 절은 사전 값이다(2-W9) — 글자 일치에 기대는 리터럴 사본을 두지 않는다. */
 it("야간 재시도 절이 사전의 사유 문장 안에 그대로 있다 — 공허한 치환이 아니다", () => {
   expect(en.logs.reasons.unknown).toContain(en.logs.nightlyRetry);
-  expect(planArchivedReason("unknown", true)).not.toContain(en.logs.nightlyRetry);
+  expect(planArchivedReason(en, "unknown", true)).not.toContain(en.logs.nightlyRetry);
 });
 
 it("소스 추가는 다음 CI에서 적용할 선언이라고 표시하지 않는다", async () => {
   const { eventMeta } = await import("../view");
-  expect(eventMeta({ kind: "SURFACE", subtype: "surface.added", result: null, actor: { kind: "USER" }, run: null,
+  expect(eventMeta(en, { kind: "SURFACE", subtype: "surface.added", result: null, actor: { kind: "USER" }, run: null,
     payload: { kind: "SURFACE", surfaceSlug: "web", adapter: "json-catalog", baseLocale: { before: null, after: "en" } } }, false))
     .not.toContain(en.logs.meta.declarationOnly);
 });
@@ -419,7 +419,7 @@ it("소스 추가는 다음 CI에서 적용할 선언이라고 표시하지 않�
 /** delivery-invariants D7 — 보류만 남은 Publish는 "Nothing to send"가 아니다. 모달의 `Not sent`와 같은 낱말이다(DESIGN §10.1). */
 describe("eventView — 보류만 남은 Publish", () => {
   it("notSent는 Not sent이고 warning이다 — Nothing to send와 다르다", () => {
-    const view = eventView(row({ result: "notSent" }));
+    const view = eventView(en, row({ result: "notSent" }));
     expect(view.label).toBe(en.logs.status.notSent);
     expect(view.label).not.toBe(en.logs.status.skipped);
     expect(view.tone).toBe("warning");
@@ -432,21 +432,21 @@ describe("eventView — 보류만 남은 Publish", () => {
  */
 describe("refusalMessage", () => {
   it("거부 여섯은 제 문장, 모르는 코드·null·프로토타입 이름은 폴백이다", () => {
-    expect(refusalMessage("stale-commit")).toBe(en.logs.refusals["stale-commit"]);
-    expect(refusalMessage("archived")).toBe(en.logs.refusals.archived);
+    expect(refusalMessage(en, "stale-commit")).toBe(en.logs.refusals["stale-commit"]);
+    expect(refusalMessage(en, "archived")).toBe(en.logs.refusals.archived);
     for (const code of [null, "too-soon", "constructor", "__proto__", "toString"]) {
-      expect(refusalMessage(code)).toBe(en.logs.refusals.fallback);
+      expect(refusalMessage(en, code)).toBe(en.logs.refusals.fallback);
     }
   });
 });
 
 describe("importReasonMessage", () => {
   it("적재 실패 코드 → 동기화 오류 코드 → 폴백 순으로 읽는다", () => {
-    expect(importReasonMessage("parse-failed")).toBe(importFailureMessage("parse-failed"));
-    expect(importFailureMessage("parse-failed")).not.toBe(en.projects.importFailure.importFailed);
-    expect(importReasonMessage("superseded")).toBe(en.repositorySync.errors.superseded);
+    expect(importReasonMessage(en, "parse-failed")).toBe(importFailureMessage(en, "parse-failed"));
+    expect(importFailureMessage(en, "parse-failed")).not.toBe(en.projects.importFailure.importFailed);
+    expect(importReasonMessage(en, "superseded")).toBe(en.repositorySync.errors.superseded);
     for (const code of [null, "unknown-code", "constructor", "hasOwnProperty"]) {
-      expect(importReasonMessage(code)).toBe(en.projects.importFailure.importFailed);
+      expect(importReasonMessage(en, code)).toBe(en.projects.importFailure.importFailed);
     }
   });
 });
@@ -457,13 +457,13 @@ describe("importReasonMessage", () => {
  */
 describe("reconfirm Publish — Not sent + 사유", () => {
   it("notSent + reconfirm이면 reasonKey가 reconfirm이다 · 다른 notSent는 사유가 없다 (짝)", () => {
-    expect(eventView(row({ result: "notSent", errorCode: "reconfirm" })).reasonKey).toBe("reconfirm");
-    expect(eventView(row({ result: "notSent", errorCode: null })).reasonKey).toBeNull();
+    expect(eventView(en, row({ result: "notSent", errorCode: "reconfirm" })).reasonKey).toBe("reconfirm");
+    expect(eventView(en, row({ result: "notSent", errorCode: null })).reasonKey).toBeNull();
   });
 
   it("메타 줄 끝에 reconfirm 문장이 선다 · 보류로 인한 notSent에는 없다 (짝)", async () => {
     const { eventMeta } = await import("../view");
-    const meta = (errorCode: string | null) => eventMeta({ kind: "PUBLISH", subtype: "publish.run", result: "notSent", actor: { kind: "USER" },
+    const meta = (errorCode: string | null) => eventMeta(en, { kind: "PUBLISH", subtype: "publish.run", result: "notSent", actor: { kind: "USER" },
       payload: { kind: "PUBLISH", surfaceSlugs: ["a"], refusal: null }, run: { changed: null, prUrl: null, errorCode } }, false);
     expect(meta("reconfirm").at(-1)).toBe(en.logs.reasons.reconfirm);
     expect(meta(null)).not.toContain(en.logs.reasons.reconfirm);
@@ -492,8 +492,8 @@ describe("Logs 결과의 상태 키", () => {
         ? ["publishing", "Publishing…", "muted", "soft-neutral"] as const : expected[result];
       const state = eventResultState(kind, result);
       expect(state, result).toBe(key);
-      expect(STATE[state], result).toEqual({ label, tone, variant });
-      expect(eventView(row({ kind, result }))).toMatchObject({ state, label, tone });
+      expect({ ...STATE[state], label: stateLabel(en, state) }, result).toEqual({ label, tone, variant });
+      expect(eventView(en, row({ kind, result }))).toMatchObject({ state, label, tone });
     }
   });
 
@@ -501,12 +501,13 @@ describe("Logs 결과의 상태 키", () => {
   it.each(Object.keys(surfaceStatuses) as SurfaceOutcome["status"][])("surface %s도 같은 Logs 상태다", (status) => {
     const [key, label, tone, variant] = expected[status];
     expect(surfaceResultState(status)).toBe(key);
-    expect(STATE[surfaceResultState(status)]).toEqual({ label, tone, variant });
+    const state = surfaceResultState(status);
+    expect({ ...STATE[state], label: stateLabel(en, state) }).toEqual({ label, tone, variant });
   });
 
   it("결과가 없는 사건은 상태 슬롯이 없고 경고·재확인 문구는 독립이다", () => {
-    expect(eventView(row({ kind: "MEMBER", result: null }))).toMatchObject({ state: null, label: null, tone: "muted" });
-    expect(eventView(row({ result: "notSent", errorCode: "reconfirm", warnings: 2 }))).toMatchObject({ state: "heldBack", label: "Held back", reasonKey: "reconfirm", warningsLabel: en.logs.warnings(2) });
+    expect(eventView(en, row({ kind: "MEMBER", result: null }))).toMatchObject({ state: null, label: null, tone: "muted" });
+    expect(eventView(en, row({ result: "notSent", errorCode: "reconfirm", warnings: 2 }))).toMatchObject({ state: "heldBack", label: "Held back", reasonKey: "reconfirm", warningsLabel: en.logs.warnings(2) });
     expect(TONES.sent).toBe("success");
     expect(TONES.imported).toBe("success");
   });
@@ -518,12 +519,12 @@ describe("Logs 결과의 상태 키", () => {
  */
 describe("changedValuesText — Publish 결과", () => {
   it("보낸·갱신한 실행은 'N values changed' · 스킵은 0도 수다", () => {
-    expect(changedValuesText("sent", 24)).toBe(en.logs.meta.values(24));
-    expect(changedValuesText("nothingToSend", 0)).toBe(en.logs.meta.values(0));
-    expect(changedValuesText("notSent", 0)).toBe(en.logs.meta.values(0));
+    expect(changedValuesText(en, "sent", 24)).toBe(en.logs.meta.values(24));
+    expect(changedValuesText(en, "nothingToSend", 0)).toBe(en.logs.meta.values(0));
+    expect(changedValuesText(en, "notSent", 0)).toBe(en.logs.meta.values(0));
   });
   it("실패와 기록 이전(null)은 —다 (짝)", () => {
-    expect(changedValuesText("failed", 3)).toBe(en.logs.none);
-    expect(changedValuesText("sent", null)).toBe(en.logs.none);
+    expect(changedValuesText(en, "failed", 3)).toBe(en.logs.none);
+    expect(changedValuesText(en, "sent", null)).toBe(en.logs.none);
   });
 });

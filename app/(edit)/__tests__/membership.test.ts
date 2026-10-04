@@ -1,3 +1,4 @@
+import { en } from "@/messages/en";
 import { encodeInvitationEmail } from "@/lib/credentials/records";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -512,7 +513,7 @@ describe("OWNER 승격·OWNER 초대 수락의 상한", () => {
       viewerEmail: "guest@a.com", alreadyMember: false, queryError: refused.ok ? undefined : refused.error, now: new Date(),
     });
     expect(view).toEqual({ kind: "accept", notice: "limit-reached" });
-    expect(view.notice === null ? "" : inviteErrorMessage(view.notice)).toContain(String(PROJECT_LIMIT));
+    expect(view.notice === null ? "" : inviteErrorMessage(en, view.notice)).toContain(String(PROJECT_LIMIT));
     expect(db.members.some((m) => m.projectId === "pA" && m.userId === "u-guest")).toBe(false);
 
     const slot = db.projects.find((p) => p.id === "pO1");

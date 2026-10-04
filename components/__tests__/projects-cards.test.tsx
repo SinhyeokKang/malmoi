@@ -11,7 +11,7 @@ import { ProjectList } from "@/components/projects/project-list";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { en } from "@/messages/en";
 import type { ProjectListRow } from "@/lib/keys/query";
-import { STATE } from "@/lib/status/canon";
+import { STATE, stateLabel } from "@/lib/status/canon";
 
 /**
  * **목록의 그릇** — 아트보드 `1a`~`1d` (projects-panel-rework T4·T5·T6·T7).
@@ -245,7 +245,7 @@ describe("보관 행이 한 단계 더 물러난다", () => {
     expect(nameOf(row).className).toContain("text-gray-dim");
     expect(metaOf(row).className).toContain("text-gray-dim");
     const badge = find<HTMLElement>(row, "span.rounded-full");
-    expect(badge.textContent).toBe(STATE.archived.label);
+    expect(badge.textContent).toBe(stateLabel(en, "archived"));
     expect(badge.className).not.toContain("text-gray-dim");
     const canon = (await render(<StatusBadge state="archived" />)).container.firstElementChild!;
     expect(badge.className).toBe(canon.className);

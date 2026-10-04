@@ -10,9 +10,9 @@ import { isOnboardError, onboardErrorMessage } from "@/lib/onboarding/message";
  */
 export function failureText(error: string, created = false): string {
   if (error === "unauthorized") return created ? m.newProject.errors.sessionLostAfterCreate : m.newProject.errors.sessionLost;
-  if (isOnboardError(error)) return onboardErrorMessage(error);
-  if (isConnectError(error)) return connectErrorMessage(error);
-  if (isAccessError(error)) return accessErrorMessage(error);
+  if (isOnboardError(error)) return onboardErrorMessage(m, error);
+  if (isConnectError(error)) return connectErrorMessage(m, error);
+  if (isAccessError(error)) return accessErrorMessage(m, error);
   return m.newProject.result.failed;
 }
 

@@ -14,7 +14,7 @@ vi.mock("@/app/(edit)/publish-actions", () => ({ loadPublishPreview: vi.fn() }))
 import { TranslationWorkspace } from "@/components/translations/workspace/workspace";
 import type { ConnectionHealth } from "@/lib/github-connect/health";
 import { en } from "@/messages/en";
-import { STATE } from "@/lib/status/canon";
+import { STATE, stateLabel } from "@/lib/status/canon";
 import { connectionReason } from "@/lib/translations/connection-reason";
 
 import { props } from "./helpers/workspace-props";
@@ -41,7 +41,7 @@ describe("첫 렌더 — DB 판정", () => {
     expect(off(sync)).toBe(true);
     expect(off(publish)).toBe(true);
     // 꺼진 이유는 끊김이다 — Publish 대기 문구도, 원인 없는 "currently unavailable"도 아니다(malmoi#160).
-    expect(sync?.getAttribute("title")).toBe(connectionReason(status, "OWNER"));
+    expect(sync?.getAttribute("title")).toBe(connectionReason(en, status, "OWNER"));
   });
 
   /**
@@ -50,7 +50,7 @@ describe("첫 렌더 — DB 판정", () => {
    */
   it.each(["OWNER", "EDITOR"] as const)("unpinned · %s — Publish·Sync 사유가 끊김과 해법을 말한다", async (role) => {
     const { container } = await render(<TranslationWorkspace {...props({ role, unpublished: 2, connection: { status: "unpinned" } })} />);
-    const reason = connectionReason("unpinned", role)!;
+    const reason = connectionReason(en, "unpinned", role)!;
     const { publish } = buttons(container);
     expect(document.getElementById(publish?.getAttribute("aria-describedby") ?? "")?.textContent).toBe(reason);
     if (role === "OWNER") expect(buttons(container).sync?.getAttribute("title")).toBe(reason);
@@ -63,7 +63,7 @@ describe("첫 렌더 — DB 판정", () => {
   it("unpinned면 보류 배너에 Send with Publish가 없고 끊김 사유를 잇는다", async () => {
     const { container } = await render(<TranslationWorkspace {...props({ unpublished: 2, connection: { status: "unpinned" } })} />);
     const banner = [...container.querySelectorAll('[role="status"], [role="alert"], div')].find((el) => el.textContent?.startsWith(en.translations.banner.paused(2)))!;
-    expect(banner.textContent).toContain(connectionReason("unpinned", "OWNER")!);
+    expect(banner.textContent).toContain(connectionReason(en, "unpinned", "OWNER")!);
     expect([...container.querySelectorAll("button")].some((b) => b.textContent?.includes(en.translations.banner.sendWithPublish))).toBe(false);
   });
 
@@ -156,7 +156,7 @@ describe("스트리밍 — GitHub 판정", () => {
 describe("표시 — Unsent · 보류 배너 · Revert", () => {
   it("미전달은 StatusBadge unsent다 — 테두리 알약이 아니다", async () => {
     const { container } = await render(<TranslationWorkspace {...props()} />);
-    const badges = [...container.querySelectorAll("span.rounded-full")].filter((b) => b.textContent === STATE.unsent.label);
+    const badges = [...container.querySelectorAll("span.rounded-full")].filter((b) => b.textContent === stateLabel(en, "unsent"));
     expect(badges.length).toBeGreaterThanOrEqual(2); // 목록 행 + 상세 로케일
     for (const badge of badges) {
       expect(badge.className).toContain("bg-foreground/5");

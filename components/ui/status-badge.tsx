@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
-import { STATE, type StateKey } from "@/lib/status/canon";
+import { m } from "@/lib/i18n";
+import { STATE, stateLabel, type StateKey } from "@/lib/status/canon";
 
 /**
  * **상태 배지 — 상태 키만 받는다** (DESIGN §2.4 · 2026-10-01 ux-drift-unify). variant와 낱말은 `STATE`(`lib/status/canon.ts`)가 든다.
@@ -9,5 +10,5 @@ import { STATE, type StateKey } from "@/lib/status/canon";
  */
 export function StatusBadge({ state, className }: { state: StateKey; className?: string }) {
   const row = STATE[state];
-  return <Badge variant={row.variant} className={className}>{row.label}</Badge>;
+  return <Badge variant={row.variant} className={className}>{stateLabel(m, state)}</Badge>;
 }

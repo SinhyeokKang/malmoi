@@ -103,7 +103,7 @@ export function useGithubConnect({
 }
 
 function messageFor(error: string): string {
-  if (isOnboardError(error)) return onboardErrorMessage(error);
-  if (isConnectError(error)) return connectErrorMessage(error);
+  if (isOnboardError(error)) return onboardErrorMessage(m, error);
+  if (isConnectError(error)) return connectErrorMessage(m, error);
   return m.settings.repository.connectFailed;
 }

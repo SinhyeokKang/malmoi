@@ -59,7 +59,7 @@ export function DisconnectGithubButton({ onFailure }: {
                       let result: Awaited<ReturnType<typeof disconnectGithub>> | null;
                       try { result = await disconnectGithub(); } catch { result = null; }
                       if (result?.ok) report(null);
-                      else report(result !== null && isAccessError(result.error) ? accessErrorMessage(result.error) : m.settings.account.disconnectFailed);
+                      else report(result !== null && isAccessError(result.error) ? accessErrorMessage(m, result.error) : m.settings.account.disconnectFailed);
                     });
                   }}
                 >

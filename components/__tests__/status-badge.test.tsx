@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { en } from "@/messages/en";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -9,7 +10,7 @@ import { walkFiles } from "@/lib/cli/walk";
 
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { STATE, type StateKey } from "@/lib/status/canon";
+import { STATE, stateLabel, type StateKey } from "@/lib/status/canon";
 
 import { render } from "./helpers/dom";
 
@@ -26,9 +27,9 @@ describe("StatusBadge", () => {
 
   it.each(keys)("%s → STATE의 variant + 낱말", async (key) => {
     const shown = (await render(<StatusBadge state={key} />)).container.firstElementChild!;
-    const expected = (await render(<Badge variant={STATE[key].variant}>{STATE[key].label}</Badge>)).container.firstElementChild!;
+    const expected = (await render(<Badge variant={STATE[key].variant}>{stateLabel(en, key)}</Badge>)).container.firstElementChild!;
     expect(shown.className).toBe(expected.className);
-    expect(shown.textContent).toBe(STATE[key].label);
+    expect(shown.textContent).toBe(stateLabel(en, key));
   });
 
   it("className은 배치만 덧댄다 — variant 면은 그대로다", async () => {

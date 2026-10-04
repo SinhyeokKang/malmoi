@@ -179,7 +179,7 @@ export function PendingInvitations({
             {invitations.map((invitation) => {
               /* ⚠️ **`name: null`을 박는다** — `PendingInvitation`에는 이름이 없다(`invitedByName`은
                  초대한 **다른** 사람이다). 그래서 마스킹 라벨이 1행으로 올라가고 아바타는 중립 원이다. */
-              const identity = planMemberIdentity({
+              const identity = planMemberIdentity(m, {
                 name: null,
                 emailLabel: invitation.emailLabel,
                 readable: invitation.readable,
@@ -276,7 +276,7 @@ export function PendingInvitations({
                             : failed.error === "not-found"
                               ? m.members.pending.gone(invitation.emailLabel)
                               : isAccessError(failed.error)
-                                ? accessErrorMessage(failed.error)
+                                ? accessErrorMessage(m, failed.error)
                                 : m.members.pending.revokeFailed}
                         </Alert>
                       ) : null
@@ -310,7 +310,7 @@ function resendAlert(result: Exclude<ResendResult, { ok: true }> | null, who: st
   if (result.error === "email-unavailable") return { variant: "danger", text: p.resendUnavailable(who) };
   if (result.error === "not-found") return { variant: "danger", text: p.gone(who) };
   if (result.error === "already-member") return { variant: "danger", text: m.members.invite.alreadyMember };
-  if (isAccessError(result.error)) return { variant: "danger", text: accessErrorMessage(result.error) };
+  if (isAccessError(result.error)) return { variant: "danger", text: accessErrorMessage(m, result.error) };
   // ⚠️ 코드 원문을 문장에 끼우지 않는다 (audit #21).
   return { variant: "danger", text: p.resendError(who) };
 }

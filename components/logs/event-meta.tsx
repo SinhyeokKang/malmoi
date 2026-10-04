@@ -1,3 +1,4 @@
+import { m } from "@/lib/i18n";
 import { Fragment } from "react";
 
 import { RoleBadges } from "@/components/logs/role-badges";
@@ -10,7 +11,7 @@ import { eventMeta, isBadgePart, type EventMetaRow } from "@/lib/events/view";
  * 이 컴포넌트 하나를 쓴다 — 두 화면의 보조줄은 글자 하나까지 같다(결과 배지는 보조줄 밖, 행 오른쪽이다).
  */
 export function EventMetaLine({ row, archived }: { row: EventMetaRow; archived: boolean }) {
-  const parts = eventMeta(row, archived);
+  const parts = eventMeta(m, row, archived);
   const badges = parts.filter(isBadgePart);
   const facts = parts.filter((part) => !isBadgePart(part));
   if (parts.length === 0) return null;

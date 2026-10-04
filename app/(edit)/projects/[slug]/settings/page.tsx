@@ -32,7 +32,7 @@ export default async function SettingsPage({ params, searchParams }: { params: P
   const { projectId, userId } = await requireProjectAccess({ slug, permission: "project:settings" });
   const { e, add } = firstQueryValues(await searchParams);
   if (add === "sources") redirect(routes.sources(slug, { add, e }));
-  const notice = isConnectError(e) ? connectErrorMessage(e) : null;
+  const notice = isConnectError(e) ? connectErrorMessage(m, e) : null;
   const prisma = getPrisma();
   const project = await prisma.project.findUnique({ where: { id: projectId }, select: {
     name: true, image: true, repoOwner: true, repoName: true, installationId: true, repositoryId: true,

@@ -130,7 +130,7 @@ export function RepositoryForm({ slug, owner, repo, baseBranch, disabled = false
 
 /** 갈래 이름을 문구로. 모르는 값은 재시도 가능한 실패로 접는다 (`PushTokenPanel`과 같은 형). */
 function messageFor(error: string): string {
-  if (isRepositorySettingsError(error)) return repositorySettingsErrorMessage(error);
-  if (isAccessError(error)) return settingsAccessMessage(error);
+  if (isRepositorySettingsError(error)) return repositorySettingsErrorMessage(m, error);
+  if (isAccessError(error)) return settingsAccessMessage(m, error);
   return m.settings.repository.fields.failed;
 }

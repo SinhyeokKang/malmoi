@@ -25,39 +25,39 @@ const ERRORS: readonly AccessError[] = ["unauthorized", "forbidden", "not-found"
 
 describe("accessErrorMessage — 넷이 서로 다른 문구다", () => {
   it("네 사유가 각자 다른 문장을 낸다", () => {
-    const texts = ERRORS.map(accessErrorMessage);
+    const texts = ERRORS.map((error) => accessErrorMessage(en, error));
     expect(new Set(texts).size).toBe(4);
   });
 
   it("unavailable만 재시도를 권하고 로그인을 시키지 않는다 — 장애를 거부처럼 말하면 사용자가 헛로그인한다", () => {
-    const text = accessErrorMessage("unavailable");
+    const text = accessErrorMessage(en, "unavailable");
     expect(text).toMatch(/in a moment/i);
     expect(text).not.toMatch(/sign in/i);
     for (const error of ["unauthorized", "forbidden", "not-found"] as const) {
-      expect(accessErrorMessage(error)).not.toMatch(/in a moment/i);
+      expect(accessErrorMessage(en, error)).not.toMatch(/in a moment/i);
     }
   });
 
   it("빈 문구를 내지 않는다", () => {
     for (const error of ERRORS) {
-      expect(accessErrorMessage(error).trim().length).toBeGreaterThan(0);
+      expect(accessErrorMessage(en, error).trim().length).toBeGreaterThan(0);
     }
   });
 
   it("내부 토큰을 그대로 흘리지 않는다 — 읽는 사람은 비개발자다", () => {
     for (const error of ERRORS) {
-      expect(accessErrorMessage(error)).not.toContain(error);
+      expect(accessErrorMessage(en, error)).not.toContain(error);
     }
   });
 
   it("unauthorized는 다시 로그인하라고 말한다 — 세션 만료가 이 경로로 온다", () => {
-    expect(accessErrorMessage("unauthorized")).toMatch(/sign in/i);
+    expect(accessErrorMessage(en, "unauthorized")).toMatch(/sign in/i);
   });
 
   it("forbidden은 권한 부족을 말한다 — 없는 프로젝트라고 말하지 않는다", () => {
-    const text = accessErrorMessage("forbidden");
+    const text = accessErrorMessage(en, "forbidden");
     expect(text).toMatch(/permission/i);
-    expect(text).not.toBe(accessErrorMessage("not-found"));
+    expect(text).not.toBe(accessErrorMessage(en, "not-found"));
   });
 });
 
@@ -71,34 +71,34 @@ describe("accessErrorMessage — 넷이 서로 다른 문구다", () => {
  */
 describe("signInErrorMessage — 거부와 장애를 가른다", () => {
   it("OAuthAccountNotLinked는 같은 이메일의 다른 로그인 방식을 가리킨다", () => {
-    const text = signInErrorMessage("OAuthAccountNotLinked");
+    const text = signInErrorMessage(en, "OAuthAccountNotLinked");
     expect(text).toMatch(/email/i);
     expect(text).not.toMatch(/in a moment/i);
   });
 
   it("AccessDenied는 이 계정으로 못 들어온다고 말한다", () => {
-    expect(signInErrorMessage("AccessDenied")).not.toMatch(/in a moment/i);
+    expect(signInErrorMessage(en, "AccessDenied")).not.toMatch(/in a moment/i);
   });
 
   it("두 거부가 서로 다른 문구다 — 원인이 다르면 안내도 달라야 한다", () => {
-    expect(signInErrorMessage("OAuthAccountNotLinked")).not.toBe(signInErrorMessage("AccessDenied"));
+    expect(signInErrorMessage(en, "OAuthAccountNotLinked")).not.toBe(signInErrorMessage(en, "AccessDenied"));
   });
 
   it("Unavailable은 로그인 실패가 아니라 일시적 오류라고 말한다 — requireUser가 DB 장애를 이 코드로 보낸다", () => {
-    const text = signInErrorMessage("Unavailable");
+    const text = signInErrorMessage(en, "Unavailable");
     expect(text).toMatch(/in a moment/i);
     expect(text).not.toMatch(/sign-in failed/i);
-    expect(text).not.toBe(signInErrorMessage("Configuration"));
+    expect(text).not.toBe(signInErrorMessage(en, "Configuration"));
   });
 
   it("모르는 코드는 재시도를 권한다 — 그때만 '잠시 뒤'가 맞다", () => {
-    expect(signInErrorMessage("Configuration")).toMatch(/in a moment/i);
-    expect(signInErrorMessage("anything-at-all")).toMatch(/in a moment/i);
+    expect(signInErrorMessage(en, "Configuration")).toMatch(/in a moment/i);
+    expect(signInErrorMessage(en, "anything-at-all")).toMatch(/in a moment/i);
   });
 
   it("코드를 그대로 노출하지 않는다 — 읽는 사람은 비개발자다", () => {
     for (const code of ["OAuthAccountNotLinked", "AccessDenied", "Verification"]) {
-      expect(signInErrorMessage(code)).not.toContain(code);
+      expect(signInErrorMessage(en, code)).not.toContain(code);
     }
   });
 });
@@ -127,18 +127,18 @@ const INVITE_ERRORS: readonly InviteError[] = [
 
 describe("inviteErrorMessage — 여덟 사유가 각자 다른 문구다", () => {
   it("여덟이 서로 다른 문장을 낸다", () => {
-    expect(new Set(INVITE_ERRORS.map(inviteErrorMessage)).size).toBe(8);
+    expect(new Set(INVITE_ERRORS.map((error) => inviteErrorMessage(en, error))).size).toBe(8);
   });
 
   it("빈 문구를 내지 않는다", () => {
     for (const error of INVITE_ERRORS) {
-      expect(inviteErrorMessage(error).trim().length).toBeGreaterThan(0);
+      expect(inviteErrorMessage(en, error).trim().length).toBeGreaterThan(0);
     }
   });
 
   it("내부 토큰을 그대로 흘리지 않는다 — 초대 링크를 여는 사람은 외부인이다", () => {
     for (const error of INVITE_ERRORS) {
-      const text = inviteErrorMessage(error);
+      const text = inviteErrorMessage(en, error);
       expect(text).not.toBe(error);
       // 하이픈 토큰이 우리 내부 이름의 모양이다 — en 문장에 자연스럽게 들어가는 낱말("expired")과
       // 갈라야 이 검사가 영어에서도 뜻을 갖는다.
@@ -148,26 +148,26 @@ describe("inviteErrorMessage — 여덟 사유가 각자 다른 문구다", () =
 
   it("email-mismatch는 **어느 계정으로 로그인해야 하는지**를 말한다", () => {
     // 이 화면에서 사용자가 할 수 있는 일이 그것 하나다 — 막힌 이유만 알려주면 갇힌다.
-    expect(inviteErrorMessage("email-mismatch")).toMatch(/sign in/i);
+    expect(inviteErrorMessage(en, "email-mismatch")).toMatch(/sign in/i);
   });
 
   it("already-member는 실패처럼 읽히지 않는다 — 이미 원하는 상태다", () => {
-    expect(inviteErrorMessage("already-member")).toMatch(/member/i);
+    expect(inviteErrorMessage(en, "already-member")).toMatch(/member/i);
   });
 
   it("아무 사유에도 '잠시 뒤'를 붙이지 않는다 — 여섯 다 재시도로 바뀌지 않는다", () => {
     for (const error of INVITE_ERRORS) {
-      expect(inviteErrorMessage(error)).not.toMatch(/in a moment/i);
+      expect(inviteErrorMessage(en, error)).not.toMatch(/in a moment/i);
     }
   });
 
   it("unavailable만 재시도를 권한다 — 세션을 못 읽은 것은 거부가 아니다", () => {
-    expect(inviteErrorMessage("unavailable")).toMatch(/in a moment/i);
+    expect(inviteErrorMessage(en, "unavailable")).toMatch(/in a moment/i);
   });
 
   it("모르는 코드는 일반 문구로 접는다 — URL은 사용자가 손댈 수 있다", () => {
     // `?e=`는 주소창에 있으므로 우리가 안 만든 값이 들어온다. 던지면 초대 화면이 통째로 죽는다.
-    expect(inviteErrorMessage("무엇이든" as InviteError).trim().length).toBeGreaterThan(0);
+    expect(inviteErrorMessage(en, "무엇이든" as InviteError).trim().length).toBeGreaterThan(0);
   });
 });
 
@@ -200,15 +200,15 @@ describe("문구 함수는 어떤 입력에도 문자열을 낸다", () => {
 
   it("inviteErrorMessage — 프로토타입 키에도 폴백 문자열이다", () => {
     for (const key of PROTOTYPE_KEYS) {
-      const text = inviteErrorMessage(key as InviteError);
+      const text = inviteErrorMessage(en, key as InviteError);
       expect(typeof text, key).toBe("string");
-      expect(text, key).toBe(inviteErrorMessage("nope" as InviteError));
+      expect(text, key).toBe(inviteErrorMessage(en, "nope" as InviteError));
     }
   });
 
   it("signInErrorMessage — 프로토타입 키에도 폴백 문자열이다", () => {
     for (const key of PROTOTYPE_KEYS) {
-      expect(typeof signInErrorMessage(key), key).toBe("string");
+      expect(typeof signInErrorMessage(en, key), key).toBe("string");
     }
   });
 });
@@ -241,20 +241,20 @@ describe("사전에 죽은 문구가 남지 않는다", () => {
 describe("상한 거부 문구", () => {
   it("owner-limit-reached는 AccessError이고 상한 숫자와 보관(자리 비우기)을 말한다", () => {
     expect(isAccessError("owner-limit-reached")).toBe(true);
-    const text = accessErrorMessage("owner-limit-reached");
+    const text = accessErrorMessage(en, "owner-limit-reached");
     expect(text).toContain(String(PROJECT_LIMIT));
     expect(text).toMatch(/archiv/i);
     expect(text).not.toContain("owner-limit-reached");
   });
 
   it("이미 넘긴 사용자(C9)에게도 참이다 — '정확히 3'이나 '하나만 보관'을 단언하지 않는다", () => {
-    expect(accessErrorMessage("owner-limit-reached")).toMatch(/or more/);
-    expect(inviteErrorMessage("limit-reached")).toMatch(/or more/);
-    expect(inviteErrorMessage("limit-reached")).toMatch(/fewer than/);
+    expect(accessErrorMessage(en, "owner-limit-reached")).toMatch(/or more/);
+    expect(inviteErrorMessage(en, "limit-reached")).toMatch(/or more/);
+    expect(inviteErrorMessage(en, "limit-reached")).toMatch(/fewer than/);
   });
 
   it("초대 limit-reached는 상한 숫자와 '보관한 뒤 이 링크로 다시'를 말한다 — 초대는 소비되지 않았다", () => {
-    const text = inviteErrorMessage("limit-reached");
+    const text = inviteErrorMessage(en, "limit-reached");
     expect(text).toContain(String(PROJECT_LIMIT));
     expect(text).toMatch(/archiv/i);
     expect(text).toMatch(/link/i);

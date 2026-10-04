@@ -56,18 +56,18 @@ export function GeneralCard({ slug, name, image, archived }: { slug: string; nam
               if (!file || pending || archived) return;
               setImageError(null);
               const picked = planImagePick(file);
-              if (!picked.ok) { setImageError(uploadRejectMessage(picked.reason)); return; }
+              if (!picked.ok) { setImageError(uploadRejectMessage(m, picked.reason)); return; }
               const form = new FormData(); form.set("slug", slug); form.set("image", file);
               setOperation("upload");
               run(async () => {
-                try { const result = await uploadProjectImage(form); if (!result.ok) setImageError(isAccessError(result.reason) ? settingsAccessMessage(result.reason) : uploadRejectMessage(result.reason)); }
-                catch { setImageError(uploadRejectMessage("unavailable")); }
+                try { const result = await uploadProjectImage(form); if (!result.ok) setImageError(isAccessError(result.reason) ? settingsAccessMessage(m, result.reason) : uploadRejectMessage(m, result.reason)); }
+                catch { setImageError(uploadRejectMessage(m, "unavailable")); }
               });
             }}>{m.settings.general.upload}</FileInput>
             {/* 썸네일이 없으면 [Remove]를 그리지 않는다(2026-09-30 사용자 — 꺼진 버튼을 걷었다). */}
             {image && <Button spinnerSize="sm" variant="ghost" aria-describedby="project-image-caption" disabled={archived || pending} loading={pending && operation === "remove"} aria-busy={pending && operation === "remove"} onClick={() => {
               setImageError(null); setOperation("remove");
-              run(async () => { try { const result = await deleteProjectImage(slug); if (!result.ok) setImageError(isAccessError(result.reason) ? settingsAccessMessage(result.reason) : uploadRejectMessage(result.reason)); } catch { setImageError(uploadRejectMessage("unavailable")); } });
+              run(async () => { try { const result = await deleteProjectImage(slug); if (!result.ok) setImageError(isAccessError(result.reason) ? settingsAccessMessage(m, result.reason) : uploadRejectMessage(m, result.reason)); } catch { setImageError(uploadRejectMessage(m, "unavailable")); } });
             }}>{m.settings.general.remove}</Button>}
           </div>
           {shownImageError ? <FieldError id="project-image-caption">{caption}</FieldError> : <p id="project-image-caption" className="text-muted-foreground text-xs">{caption}</p>}
@@ -79,7 +79,7 @@ export function GeneralCard({ slug, name, image, archived }: { slug: string; nam
       <form className="flex min-w-0 flex-wrap items-center gap-2" onSubmit={event => {
         event.preventDefault(); if (archived || saving || !plan.ok) return;
         setError(null); setSaved(false);
-        save(async () => { try { const result = await updateProjectName({ slug, name: value }); if (result.ok) { setCurrent(result.name); setSaved(true); } else setError(isAccessError(result.error) ? settingsAccessMessage(result.error) : result.error === "empty" ? m.settings.general.emptyName : result.error === "too-long" ? m.settings.general.longName : m.settings.repository.fields.failed); } catch { setError(m.settings.repository.fields.failed); } });
+        save(async () => { try { const result = await updateProjectName({ slug, name: value }); if (result.ok) { setCurrent(result.name); setSaved(true); } else setError(isAccessError(result.error) ? settingsAccessMessage(m, result.error) : result.error === "empty" ? m.settings.general.emptyName : result.error === "too-long" ? m.settings.general.longName : m.settings.repository.fields.failed); } catch { setError(m.settings.repository.fields.failed); } });
       }}>
         <div className="flex w-[320px] max-w-full @max-form:min-w-0 @max-form:flex-1">
           <Input width="full" ref={nameRef} id="project-name" value={archived ? current : value} maxLength={PROJECT_NAME_MAX_CHARS} disabled={archived || saving} aria-invalid={nameError !== null} aria-describedby="project-name-caption" onChange={event => { setValue(event.target.value); setSaved(false); setError(null); }} />

@@ -225,7 +225,7 @@ async function loadConsent(userId: string, clientId: string, now: Date) {
     email: user.email,
     avatarName: user.name ?? user.email,
     image: user.image ?? null,
-    secondary: only === undefined ? null : m.oauthAuthorize.signedInWith(providerLabel(only)),
+    secondary: only === undefined ? null : m.oauthAuthorize.signedInWith(providerLabel(m, only)),
   };
   const existing = connection === null ? null : planConnectedApps({ rows: [connection], memberProjectIds: projects.map((p) => p.id), now })[0] ?? null;
   return { account, projects, existing };

@@ -1,3 +1,4 @@
+import { en } from "@/messages/en";
 import { expect, it } from "vitest";
 import { planAddSources, summarizeAddResults, formatSourceCounts } from "../plan-add";
 import type { CandidateSummary } from "@/lib/onboarding/detect";
@@ -19,7 +20,7 @@ it("적재 부분 실패는 파일 오류 배열 대신 failed 합으로 경고�
   expect(summarizeAddResults([good, duplicateFailure])).toEqual({ surfaces: 2, keys: 7, failed: 3, tone: "warning" });
 });
 it("서버가 orphaned를 제외해 센 수를 표시한다", () => {
-  expect(formatSourceCounts({ keys: 0, locales: 0 })).toBe("0 keys · 0 languages");
-  expect(formatSourceCounts({ keys: 1, locales: 1 })).toBe("1 key · 1 language");
-  expect(formatSourceCounts({ keys: 2000, locales: 2 })).toBe("2,000 keys · 2 languages");
+  expect(formatSourceCounts(en, { keys: 0, locales: 0 })).toBe("0 keys · 0 languages");
+  expect(formatSourceCounts(en, { keys: 1, locales: 1 })).toBe("1 key · 1 language");
+  expect(formatSourceCounts(en, { keys: 2000, locales: 2 })).toBe("2,000 keys · 2 languages");
 });

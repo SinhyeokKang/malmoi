@@ -1,3 +1,4 @@
+import { m } from "@/lib/i18n";
 import { ProjectList } from "@/components/projects/project-list";
 import { ContentPanel } from "@/components/shell/content-panel";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
@@ -50,9 +51,9 @@ export default async function ProjectsPage({
   // 타입에 남는 것은 이 라우트가 여전히 `?q=`의 수신자이기 때문이다.
   const { e } = firstQueryValues(await searchParams);
   const message = isAccessError(e)
-    ? accessErrorMessage(e)
+    ? accessErrorMessage(m, e)
     : isConnectError(e)
-      ? connectErrorMessage(e)
+      ? connectErrorMessage(m, e)
       : null;
 
   /**

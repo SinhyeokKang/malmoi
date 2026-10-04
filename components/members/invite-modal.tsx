@@ -422,7 +422,7 @@ function formAlertFor(result: Exclude<InvitationsResult, { ok: true }> | null, e
   if (result.error === "email-unavailable") return { variant: "danger", body: m.members.invite.emailUnavailable };
   if (result.error === "too-many") return { variant: "danger", body: m.members.invite.tooMany(INVITATION_HOURLY_LIMIT) };
   if (result.error === "member-limit") return { variant: "danger", body: m.members.seatsFull(seatsLimit) };
-  if (isAccessError(result.error)) return { variant: "danger", body: accessErrorMessage(result.error) };
+  if (isAccessError(result.error)) return { variant: "danger", body: accessErrorMessage(m, result.error) };
   // ⚠️ 코드 원문을 문장에 끼우지 않는다 (audit #21).
   return { variant: "danger", body: m.members.invite.failed };
 }

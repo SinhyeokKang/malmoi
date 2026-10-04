@@ -1,3 +1,4 @@
+import { en } from "@/messages/en";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -5,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { CHIP_STATE } from "@/lib/projects/list";
-import { STATE, type StateKey, type StateTone } from "@/lib/status/canon";
+import { STATE, stateLabel, type StateKey, type StateTone } from "@/lib/status/canon";
 
 /**
  * 프로젝트 목록 화면의 배선을 **소스로** 센다 (8-3 — `translations-screen`·`home-screen`과 같은 계보).
@@ -127,7 +128,7 @@ describe("프로젝트 목록 — 배지는 항상 하나이고 갈래는 순수
     for (const chip of Object.keys(expected) as (keyof typeof expected)[]) {
       const [state, tone, label] = expected[chip];
       expect(CHIP_STATE[chip]).toBe(state);
-      expect(STATE[state]).toMatchObject({ tone, label });
+      expect({ ...STATE[state], label: stateLabel(en, state) }).toMatchObject({ tone, label });
     }
     const src = PAGE.map(code).join("\n");
     expect(src).not.toContain("text-gray-strong");

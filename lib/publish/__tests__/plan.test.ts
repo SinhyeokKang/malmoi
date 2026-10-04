@@ -35,24 +35,24 @@ it("skipped/withheld는 Not sent 틀이다 — No changes가 아니다", () => {
 });
 it("보류 줄 — 사유별 한 줄 + 역할별 다음 행동 · 보류 0이면 줄이 없다 (짝)", () => {
   const p = en.translations.publish;
-  expect(planWithheldLines({ ...committed, withheld: { file: 2, key: 0 } }, "EDITOR")).toEqual([`${p.withheld.file(2)} ${p.withheld.editor}`]);
+  expect(planWithheldLines(en, { ...committed, withheld: { file: 2, key: 0 } }, "EDITOR")).toEqual([`${p.withheld.file(2)} ${p.withheld.editor}`]);
   // #129 — Revert를 가리키는 것은 보류된 셀 전부에 기준이 있을 때뿐이다(`revertable`). 모르면 Revert 없는 안내다 — 화면에서 꺼진 버튼을 가리키지 않는다.
-  expect(planWithheldLines({ ...committed, withheld: { file: 0, key: 1 } }, "OWNER")).toEqual([`${p.withheld.key(1)} ${p.withheld.owner.keyNoRevert}`]);
-  expect(planWithheldLines({ ...committed, withheld: { file: 0, key: 1, revertable: true } }, "OWNER")).toEqual([`${p.withheld.key(1)} ${p.withheld.owner.key}`]);
-  expect(planWithheldLines({ status: "skipped", reason: "withheld", withheld: { file: 1, key: 1 } }, "OWNER"))
+  expect(planWithheldLines(en, { ...committed, withheld: { file: 0, key: 1 } }, "OWNER")).toEqual([`${p.withheld.key(1)} ${p.withheld.owner.keyNoRevert}`]);
+  expect(planWithheldLines(en, { ...committed, withheld: { file: 0, key: 1, revertable: true } }, "OWNER")).toEqual([`${p.withheld.key(1)} ${p.withheld.owner.key}`]);
+  expect(planWithheldLines(en, { status: "skipped", reason: "withheld", withheld: { file: 1, key: 1 } }, "OWNER"))
     .toEqual([`${p.withheld.file(1)} ${p.withheld.owner.fileNoRevert}`, `${p.withheld.key(1)} ${p.withheld.owner.keyNoRevert}`]);
-  expect(planWithheldLines({ status: "skipped", reason: "withheld", withheld: { file: 1, key: 1, revertable: true } }, "OWNER"))
+  expect(planWithheldLines(en, { status: "skipped", reason: "withheld", withheld: { file: 1, key: 1, revertable: true } }, "OWNER"))
     .toEqual([`${p.withheld.file(1)} ${p.withheld.owner.file}`, `${p.withheld.key(1)} ${p.withheld.owner.key}`]);
   // Revert 없는 안내는 Revert를 말하지 않는다.
   expect(p.withheld.owner.keyNoRevert).not.toContain("Revert");
   expect(p.withheld.owner.fileNoRevert).not.toContain("Revert");
-  expect(planWithheldLines(committed, "OWNER")).toEqual([]);
-  expect(planWithheldLines({ status: "skipped", reason: "writer-warnings", warnings: [{ surfaceSlug: "web", path: "ko.json", code: "root-not-object" }] }, "OWNER")).toEqual([]);
+  expect(planWithheldLines(en, committed, "OWNER")).toEqual([]);
+  expect(planWithheldLines(en, { status: "skipped", reason: "writer-warnings", warnings: [{ surfaceSlug: "web", path: "ko.json", code: "root-not-object" }] }, "OWNER")).toEqual([]);
 });
 it("0건은 비활성이나 실행 중에는 재열기가 우선한다", () => {
-  expect(planPublishButton({ count: 0, paused: false, otherPending: false, publishPending: false })).toMatchObject({ mode: "preview", disabled: true, badge: null, hint: expect.any(String) });
-  expect(planPublishButton({ count: 0, paused: true, otherPending: true, publishPending: true })).toMatchObject({ mode: "progress", disabled: false, badge: null });
-  expect(planPublishButton({ count: 2, paused: false, otherPending: true, publishPending: false }).disabled).toBe(true);
+  expect(planPublishButton(en, { count: 0, paused: false, otherPending: false, publishPending: false })).toMatchObject({ mode: "preview", disabled: true, badge: null, hint: expect.any(String) });
+  expect(planPublishButton(en, { count: 0, paused: true, otherPending: true, publishPending: true })).toMatchObject({ mode: "progress", disabled: false, badge: null });
+  expect(planPublishButton(en, { count: 2, paused: false, otherPending: true, publishPending: false }).disabled).toBe(true);
 });
 const cell = (over: Partial<PublishCell> = {}): PublishCell => ({ surface: "web", path: "ko.json", keyId: "k1", key: "hello", localeCode: "ko", after: "new", author: "Editor", updatedAt: "2026-09-16", ...over });
 it("파일·키·로케일로 정렬하고 키 병합과 상한 초과 수를 센다", () => {

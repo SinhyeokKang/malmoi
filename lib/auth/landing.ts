@@ -31,7 +31,7 @@ import { routes } from "@/lib/routes";
  * ⚠️ **삼항이 아니라 맵 + `satisfies`인 이유**: `SessionRead`에 갈래가 늘면 **키가 없어 컴파일
  * 에러**가 난다. 삼항이면 새 갈래가 else로 떨어져 **사유 없이** 로그인 화면으로 가고 타입 검사가
  * 아무 말도 안 한다(실측: 갈래를 넷으로 늘려도 `tsc`가 조용히 통과했다). `lib/auth/message.ts`의
- * `ACCESS`·`INVITE`와 같은 관용구다 — 같은 문제에 두 가지 형을 만들지 않는다.
+ * `accessErrorMessage`·`inviteErrorMessage`의 `satisfies`와 같은 관용구다 — 같은 문제에 두 가지 형을 만들지 않는다.
  */
 const REJECT = {
   none: routes.signIn(),

@@ -123,7 +123,7 @@ it.each(["upload", "delete"] as const)("프로필 사진 %s 호출이 던지면 
   await render(<ProfilePicture hasPicture />);
   if (kind === "delete") await click(buttonByText(en.account.picture.delete));
   else await act(async () => { await userEvent.setup().upload(document.querySelector<HTMLInputElement>('input[type="file"]')!, new File([new Uint8Array(8)], "me.png", { type: "image/png" })); });
-  expect(alerts()).toContain(uploadRejectMessage("unavailable"));
+  expect(alerts()).toContain(uploadRejectMessage(en, "unavailable"));
 });
 
 it("표시 이름 저장이 던지면 제자리에서 실패를 말하고 입력을 지킨다", async () => {

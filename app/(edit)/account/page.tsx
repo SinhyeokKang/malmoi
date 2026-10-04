@@ -68,13 +68,13 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
    * 옆에서 사유만 사라진다.
    */
   const { e, sessionRevocation, link, connect } = firstQueryValues(await searchParams);
-  const notice = isConnectError(e) ? connectErrorMessage(e) : null;
+  const notice = isConnectError(e) ? connectErrorMessage(m, e) : null;
   /**
    * ⚠️ **보내는 쪽과 읽는 쪽이 같은 커밋에 있어야 한다** — 사유를 실어 보내놓고 아무도 안 읽으면
    * 사용자에게는 버튼이 안 눌린 것으로 보인다 (POSTMORTEM 2026-09-06). 성공은 화면이 바뀌는 것이
    * 피드백이라 문구를 내지 않는다 — 실패만 말한다.
    */
-  const unlinkFailure = isUnlinkOutcome(link) && link !== "disconnected" ? linkErrorMessage(link) : null;
+  const unlinkFailure = isUnlinkOutcome(link) && link !== "disconnected" ? linkErrorMessage(m, link) : null;
 
   const prisma = getPrisma();
   /**
@@ -113,7 +113,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
    * 확인 상대를 고른다. 화면은 같은 판정을 다시 돌려 **이름만** 쓴다(확정 라벨이 결과를 말해야 한다).
    */
   const confirming = pickLoginAccount(methods);
-  const confirmProvider = confirming !== null && isLoginProvider(confirming.provider) ? providerLabel(confirming.provider) : null;
+  const confirmProvider = confirming !== null && isLoginProvider(confirming.provider) ? providerLabel(m, confirming.provider) : null;
 
   // Server Action을 클라이언트 컴포넌트에 **참조로** 넘긴다 — 셸의 로그아웃과 같은 형이다.
   // ⚠️ **`/`가 맞다 — 이관 누락이 아니다** (2026-09-10 사용자): 로그아웃은 랜딩으로 간다.

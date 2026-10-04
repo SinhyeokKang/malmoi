@@ -46,8 +46,8 @@ export default async function MembersPage({ params }: { params: Promise<{ slug: 
    */
   const now = new Date();
   const [members, pending] = await Promise.all([
-    loadMembers(prisma, projectId),
-    loadPendingInvitations(prisma, projectId, now),
+    loadMembers(prisma, m, projectId),
+    loadPendingInvitations(prisma, m, projectId, now),
   ]);
 
   return (

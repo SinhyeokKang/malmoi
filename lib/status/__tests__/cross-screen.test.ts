@@ -14,7 +14,7 @@ import { importOutcomeFields, isImportFailureCode, type ImportFailureCode } from
 import { CHIP_STATE, rowBanner, rowChip, worstFailingSurface, type RowBanner } from "@/lib/projects/list";
 import { openPrGateApplies, planHoldNotice, type HoldReason } from "@/lib/protection/plan";
 
-import { STATE, type StateKey } from "../canon";
+import { STATE, stateLabel, type StateKey } from "../canon";
 
 /**
  * **화면 × 입력 교차 행렬** (ux-drift-unify spec 완료 조건 3 · design §3.8). 같은 프로젝트 상태를 목록·Home·Settings·Sources·적재 거부가
@@ -379,7 +379,7 @@ function mismatches(row: Row, J: Judgments): string[] {
     cmp("refusal.error", row.refusal.error, got.refusal.error);
     if (row.refusal.word !== undefined) {
       const word = STATE[row.refusal.word];
-      cmp("refusal.word", true, got.refusal.message.toLowerCase().includes(word.label.toLowerCase()));
+      cmp("refusal.word", true, got.refusal.message.toLowerCase().includes(stateLabel(en, row.refusal.word).toLowerCase()));
       cmp("refusal.tone", word.tone, got.refusal.tone);
     }
   }
@@ -397,7 +397,7 @@ describe("교차 행렬 — 같은 입력은 어느 화면에서도 같은 STATE
 
   /** 설치 없음·적재 거부 칸 — 문구가 "끊겼다"로 말하지 않는다(설치 없음은 Disconnected가 아니다, D1). */
   it("설치 없음의 적재 거부 문구는 Disconnected 낱말을 쓰지 않는다", () => {
-    expect(en.repositorySync.errors["not-ready"].toLowerCase()).not.toContain(STATE.disconnected.label.toLowerCase());
+    expect(en.repositorySync.errors["not-ready"].toLowerCase()).not.toContain(stateLabel(en, "disconnected").toLowerCase());
   });
 
   /**
@@ -420,7 +420,7 @@ describe("교차 행렬 — 같은 입력은 어느 화면에서도 같은 STATE
 
 describe("화면 매핑 사본이 낡지 않았다", () => {
   it("띠의 PR 조회 실패 문장이 Couldn't check 축이다", () => {
-    expect(en.projects.banner.prCheckFailed.toLowerCase()).toContain(STATE.couldNotCheck.label.toLowerCase());
+    expect(en.projects.banner.prCheckFailed.toLowerCase()).toContain(stateLabel(en, "couldNotCheck").toLowerCase());
   });
 });
 

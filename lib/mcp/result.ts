@@ -73,10 +73,10 @@ const text = (value: string): ToolResult["content"] => [{ type: "text", text: va
 function rejectionMessage(code: string, credential: Credential["kind"] | undefined): string | null {
   if (code === "token-scope") return scopeMessage(credential);
   if (Object.hasOwn(MESSAGE, code)) return MESSAGE[code as ToolRejection];
-  if (isAccessError(code)) return accessErrorMessage(code);
-  if (isRepositorySettingsError(code)) return repositorySettingsErrorMessage(code);
-  if (isOnboardError(code)) return onboardErrorMessage(code);
-  if (isConnectError(code)) return connectErrorMessage(code);
+  if (isAccessError(code)) return accessErrorMessage(en, code);
+  if (isRepositorySettingsError(code)) return repositorySettingsErrorMessage(en, code);
+  if (isOnboardError(code)) return onboardErrorMessage(en, code);
+  if (isConnectError(code)) return connectErrorMessage(en, code);
   return null;
 }
 

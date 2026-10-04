@@ -19,7 +19,7 @@ import { find, render } from "./helpers/dom";
 const BAND = '[id^="band-"]';
 
 const identity = (name: string | null, emailLabel: string | null, readable = true) =>
-  planMemberIdentity({ name, emailLabel, readable });
+  planMemberIdentity(en, { name, emailLabel, readable });
 
 describe("MemberRow — 아바타 씨앗", () => {
   it("이름이 있으면 이니셜이 선다", async () => {
@@ -42,13 +42,13 @@ describe("MemberRow — 아바타 씨앗", () => {
 
 describe("MemberRow — 아바타 사진", () => {
   it("사진이 있으면 이니셜 대신 사진을 그린다", async () => {
-    const row = planMemberIdentity({ name: "Jane", emailLabel: null, image: "https://avatars.githubusercontent.com/u/1", readable: true });
+    const row = planMemberIdentity(en, { name: "Jane", emailLabel: null, image: "https://avatars.githubusercontent.com/u/1", readable: true });
     const { container } = await render(<MemberRow id="u1" identity={row} />);
     expect(find(container, "[data-avatar] img").getAttribute("src")).toBe("https://avatars.githubusercontent.com/u/1");
   });
 
   it("못 읽은 행은 사진 값이 있어도 `?`다", async () => {
-    const row = planMemberIdentity({ name: "Jane", emailLabel: null, image: "https://x/y.png", readable: false });
+    const row = planMemberIdentity(en, { name: "Jane", emailLabel: null, image: "https://x/y.png", readable: false });
     const { container } = await render(<MemberRow id="u1" identity={row} />);
     expect(container.querySelector("[data-avatar] img")).toBeNull();
     expect(find(container, "[data-avatar]").textContent).toBe("?");

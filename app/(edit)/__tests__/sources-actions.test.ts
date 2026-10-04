@@ -1,3 +1,4 @@
+import { en } from "@/messages/en";
 import { beforeEach, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ session: vi.fn(), access: vi.fn(), load: vi.fn(), revalidate: vi.fn() }));
 vi.mock("@/lib/auth/read-session", () => ({ readSession: mocks.session }));
@@ -11,7 +12,7 @@ it("매 호출 인가 뒤 명시 reader만 반환하며 무효화하지 않는�
   for (let i=0;i<2;i++) expect(await loadSourceDetail({ slug: "p", surfaceSlug: "web" })).toEqual({ ok: true, detail: { slug: "web" } });
   expect(mocks.access).toHaveBeenCalledTimes(2);
   expect(mocks.access).toHaveBeenCalledWith({}, { slug: "p", surfaceSlug: "web", userId: "u", permission: "translation:write" });
-  expect(mocks.load).toHaveBeenCalledWith({}, "p", "s", "EDITOR");
+  expect(mocks.load).toHaveBeenCalledWith({}, en, "p", "s", "EDITOR");
   expect(mocks.revalidate).not.toHaveBeenCalled();
 });
 it.each(["forbidden", "not-found", "unauthorized", "archived"])("거부 %s는 읽기 전에 끝난다", async status => {

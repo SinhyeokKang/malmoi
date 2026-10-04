@@ -5,7 +5,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { ButtonLink } from "@/components/ui/button";
 import { canPerform, type Role } from "@/lib/auth/permission";
 import { m } from "@/lib/i18n";
-import { STATE } from "@/lib/status/canon";
+import { STATE, stateLabel } from "@/lib/status/canon";
 import { routes } from "@/lib/routes";
 import { utcDay } from "@/lib/utc-time";
 import { IconTile } from "@/components/ui/icon-tile";
@@ -31,7 +31,7 @@ export function SourcesArchived({ slug, role, archivedAt }: { slug: string; role
         <div className="flex items-center gap-3 px-4 py-row-y">
           <IconTile><Archive aria-hidden /></IconTile>
           <span className="flex min-w-0 flex-1 flex-col gap-copy-gap">
-            <span className="text-base"><span className="font-medium">{archivedAt ? m.archive.archivedBy(<time dateTime={archivedAt.toISOString()}>{utcDay(archivedAt)}</time>) : STATE.archived.label}</span></span>
+            <span className="text-base"><span className="font-medium">{archivedAt ? m.archive.archivedBy(<time dateTime={archivedAt.toISOString()}>{utcDay(archivedAt)}</time>) : stateLabel(m, "archived")}</span></span>
             <span className="text-muted-foreground text-xs">{canEdit ? m.sources.archivedOwner : m.sources.archivedEditor}</span>
           </span>
           {canEdit && <ButtonLink className="shrink-0" href={routes.settings(slug)}>{m.archive.empty.action}<ChevronRight className="text-muted-foreground size-3.5" aria-hidden /></ButtonLink>}

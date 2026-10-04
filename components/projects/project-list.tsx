@@ -350,7 +350,7 @@ function ProjectBanner({ row, banner }: { row: ProjectListRow; banner: NonNullab
       {banner.kind === "needs_reconnect" && m.projects.banner.needsReconnect}
       {banner.kind === "import_failed" && (
         <>
-          {importFailureMessage(banner.reason)}{" "}
+          {importFailureMessage(m, banner.reason)}{" "}
           {canSettle ? m.projects.banner.checkDetails : m.projects.importFailure.ownerRetries}
         </>
       )}

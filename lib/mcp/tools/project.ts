@@ -83,7 +83,7 @@ export const listEvents = defineTool({
     const access = await getProjectAccess(prisma, { userId: subject.userId, slug, permission: "translation:write", archivedPolicy: "read" });
     if (access.status !== "ok") return { status: "refused", code: access.status };
     // 필터·커서는 Logs 화면과 같은 해석이다 — 주소창 값과 같은 이름을 받는다.
-    const page = await loadEvents(prisma, access.projectId, parseLogFilter(query ?? {}));
+    const page = await loadEvents(prisma, en, access.projectId, parseLogFilter(query ?? {}));
     return ok({
       events: page.rows.map(row => ({
         ref: row.ref, kind: row.kind, subtype: row.subtype, occurredAt: row.occurredAt.toISOString(), finishedAt: row.finishedAt?.toISOString() ?? null,
@@ -105,8 +105,8 @@ export const listMembers = defineTool({
     if (access.status !== "ok") return { status: "refused", code: access.status };
     // 이메일은 마스킹 라벨만 — 로더가 원문을 내지 않는다(sec-audit 발견 4). 대기 초대는 초대할 수 있는 OWNER에게만 보인다(멤버 화면과 같다).
     const [members, pending] = await Promise.all([
-      loadMembers(prisma, access.projectId),
-      access.role === "OWNER" ? loadPendingInvitations(prisma, access.projectId, now) : Promise.resolve([]),
+      loadMembers(prisma, en, access.projectId),
+      access.role === "OWNER" ? loadPendingInvitations(prisma, en, access.projectId, now) : Promise.resolve([]),
     ]);
     return ok({
       members: members.map(member => ({ userId: member.userId, name: member.name, emailLabel: member.emailLabel, role: member.role, joinedAt: member.joinedAt.toISOString() })),

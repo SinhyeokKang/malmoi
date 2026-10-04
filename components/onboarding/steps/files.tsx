@@ -171,7 +171,7 @@ export function FilesStep({
         const Glyph = c.pathTemplate.endsWith(".json") ? FileJson2 : FileCode2;
         const summary = m.newProject.files.summaryShort(
           c.locales.length,
-          c.keys.status === "counted" ? m.newProject.files.keys(c.keys.count) : onboardErrorMessage("key-count-failed"),
+          c.keys.status === "counted" ? m.newProject.files.keys(c.keys.count) : onboardErrorMessage(m, "key-count-failed"),
         );
         const content = (
                   <>

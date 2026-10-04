@@ -84,8 +84,8 @@ const FAILED = "thrown";
  * 두 union이 겹치는 값은 `unavailable` 하나이고 뜻이 같다 — 먼저 보는 쪽이 이겨도 문제가 없다.
  * 모르는 값에 던지지 않는다: Action이 새 갈래를 늘려도 화면이 죽지 않아야 한다.
  */
-function messageFor(error: string, access: (error: AccessError) => string = accessErrorMessage): string {
-  if (isAccessError(error)) return access(error);
-  if (isConnectError(error)) return connectErrorMessage(error);
+function messageFor(error: string, access: typeof accessErrorMessage = accessErrorMessage): string {
+  if (isAccessError(error)) return access(m, error);
+  if (isConnectError(error)) return connectErrorMessage(m, error);
   return m.settings.repository.connectFailed;
 }

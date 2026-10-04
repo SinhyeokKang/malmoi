@@ -1,3 +1,4 @@
+import { en } from "@/messages/en";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ADAPTERS, jsonCatalog, matchGlobPaths, tsDict } from "@/lib/adapters";
@@ -170,23 +171,23 @@ describe("formatLabel — 어댑터 이름을 화면에 쓰지 않는다 (PRODUC
 
   it("다섯 어댑터 전부에 라벨과 경로 예시가 있다", () => {
     for (const name of names) {
-      const { label, example } = formatLabel(name);
+      const { label, example } = formatLabel(en, name);
       expect(label.trim().length).toBeGreaterThan(0);
       expect(example.trim().length).toBeGreaterThan(0);
     }
   });
 
   it("라벨에 내부 이름이 들어가지 않는다", () => {
-    for (const name of names) expect(formatLabel(name).label).not.toContain(name);
+    for (const name of names) expect(formatLabel(en, name).label).not.toContain(name);
   });
 
   it("경로 예시가 구별자다 — '코드 딕셔너리'가 둘이라 라벨만으로는 못 가른다", () => {
-    expect(new Set(names.map((n) => formatLabel(n).example)).size).toBe(names.length);
+    expect(new Set(names.map((n) => formatLabel(en, n).example)).size).toBe(names.length);
   });
 
   it("per-locale 예시에는 `{locale}`이, multi-locale 예시에는 `*`가 있다 — 사용자가 자기 리포에서 확인할 단서다", () => {
     for (const a of ADAPTERS) {
-      const { example } = formatLabel(a.name);
+      const { example } = formatLabel(en, a.name);
       if (a.layout === "per-locale") expect(example).toContain("{locale}");
       else expect(example).toContain("*");
     }

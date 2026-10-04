@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { en } from "@/messages/en";
 import { expect, it } from "vitest";
 
 import { SyncResult } from "@/components/home/sync-result";
@@ -32,7 +33,7 @@ it("대조: 진짜 실패가 섞이면 warning이고 not synced를 말한다", a
 });
 
 it("Sources 첫 Sync 결과 문장: 안내가 실패 문장을 대신하지 않는다", () => {
-  expect(ingestHeadline(904, 0, 1)).toBe("Synced 904 keys. 1 entry isn't plain text and stays in the code.");
-  expect(ingestHeadline(904, 0, 0)).toBe("Synced 904 keys.");
-  expect(ingestHeadline(904, 1, 2)).toBe("Synced 904 keys, but 1 couldn't be read. 2 entries aren't plain text and stay in the code.");
+  expect(ingestHeadline(en, 904, 0, 1)).toBe("Synced 904 keys. 1 entry isn't plain text and stays in the code.");
+  expect(ingestHeadline(en, 904, 0, 0)).toBe("Synced 904 keys.");
+  expect(ingestHeadline(en, 904, 1, 2)).toBe("Synced 904 keys, but 1 couldn't be read. 2 entries aren't plain text and stay in the code.");
 });

@@ -616,7 +616,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   const arrived = useArrived(props.connection.later, `${slug}/${routeSurfaceSlug}`)?.status ?? null;
   const availability = planActionAvailability({ archived: false, connection: arrived ?? props.connection.status });
   // 꺼진 원인 문장 (malmoi#160) — 이 화면엔 Home의 연결 배너가 없어서 Publish·Sync 사유와 보류 배너가 원인·해법을 직접 말한다.
-  const connectionBlock = availability.publish ? null : connectionReason(arrived ?? props.connection.status, role);
+  const connectionBlock = availability.publish ? null : connectionReason(m, arrived ?? props.connection.status, role);
   /**
    * [Sync]를 열 수 있나 — 연결과 착지 lease 둘이다. ⚠️ **미저장 가로채기와 `openSync`가 이 한 값을 본다** (U 리뷰 🔴) — 가로채기가 연결만 보던 때
    * lease로 멈춘 [Sync]를 누르면 "Discard your changes?"가 서고, 확정하면 초안이 버려진 채 Sync Dialog는 열리지 않았다.

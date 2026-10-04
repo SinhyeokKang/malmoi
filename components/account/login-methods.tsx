@@ -75,7 +75,7 @@ export function LoginMethods({ rows, outcome = null, unlinkFailure = null }: {
 
 function MethodRow({ row, removable, onUnconfirmed }: { row: { provider: LoginProvider; connected: boolean }; removable: boolean; onUnconfirmed: (unconfirmed: boolean) => void }) {
   const [pending, startTransition] = useTransition();
-  const label = providerLabel(row.provider);
+  const label = providerLabel(m, row.provider);
   /**
    * ⚠️ **사유가 화면에만 있으면 절반만 지킨 것이다.** 옆에 선 문구를 `aria-describedby`로 묶지
    * 않으면 스크린리더는 *"…, 버튼, 사용 불가"*까지만 읽고 **왜인지는 못 읽는다** — "사유 없는

@@ -96,14 +96,14 @@ describe("toToolResult — needs-browser", () => {
  */
 describe("toToolResult — refused(코어 거부 코드)", () => {
   it.each([
-    ["forbidden", accessErrorMessage("forbidden")],
+    ["forbidden", accessErrorMessage(en, "forbidden")],
     // 복원·승격의 상한 재집계(operator-account) — `unarchive_project`·`change_member`가 같은 코어라 같은 문장이다.
-    ["owner-limit-reached", accessErrorMessage("owner-limit-reached")],
-    ["repo-not-installed", onboardErrorMessage("repo-not-installed")],
-    ["limit-reached", onboardErrorMessage("limit-reached")],
-    ["no-candidates", onboardErrorMessage("no-candidates")],
-    ["invalid-branch", repositorySettingsErrorMessage("invalid-branch")],
-    ["exchange-failed", connectErrorMessage("exchange-failed")],
+    ["owner-limit-reached", accessErrorMessage(en, "owner-limit-reached")],
+    ["repo-not-installed", onboardErrorMessage(en, "repo-not-installed")],
+    ["limit-reached", onboardErrorMessage(en, "limit-reached")],
+    ["no-candidates", onboardErrorMessage(en, "no-candidates")],
+    ["invalid-branch", repositorySettingsErrorMessage(en, "invalid-branch")],
+    ["exchange-failed", connectErrorMessage(en, "exchange-failed")],
   ])("%s → 화면 사전의 문장, status는 그 코드", (code, message) => {
     const result = toToolResult({ status: "refused", code });
     expect(result.isError).toBe(true);

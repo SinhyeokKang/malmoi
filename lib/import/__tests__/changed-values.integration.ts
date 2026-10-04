@@ -1,3 +1,4 @@
+import { en } from "@/messages/en";
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -199,7 +200,7 @@ it("단일 언어 Sync 후 둘째 언어를 더하면 새 셀만 Logs의 변경 
   if (first.result !== "imported") throw new Error(`unexpected result: ${first.result}`);
   const firstPayload = readPayload("IMPORT", first.payload);
   if (firstPayload?.kind !== "IMPORT") throw new Error("missing import payload");
-  expect(changedValuesText(first.result, firstPayload.changedValues)).toBe("2 values changed");
+  expect(changedValuesText(en, first.result, firstPayload.changedValues)).toBe("2 values changed");
   expect(await prisma.locale.findMany({ where: { projectId: "p", orphaned: false }, select: { code: true } })).toEqual([{ code: "en" }]);
 
   const next = reader('{"a":"A","b":"B"}');
@@ -210,6 +211,6 @@ it("단일 언어 Sync 후 둘째 언어를 더하면 새 셀만 Logs의 변경 
   if (second.result !== "imported") throw new Error(`unexpected result: ${second.result}`);
   const secondPayload = readPayload("IMPORT", second.payload);
   if (secondPayload?.kind !== "IMPORT") throw new Error("missing import payload");
-  expect(changedValuesText(second.result, secondPayload.changedValues)).toBe("2 values changed");
+  expect(changedValuesText(en, second.result, secondPayload.changedValues)).toBe("2 values changed");
   expect(await prisma.locale.findMany({ where: { projectId: "p", orphaned: false }, select: { code: true }, orderBy: { code: "asc" } })).toEqual([{ code: "en" }, { code: "ko" }]);
 });

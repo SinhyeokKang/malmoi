@@ -22,12 +22,12 @@ export default async function SourcesPage({ params, searchParams }: { params: Pr
   }
   const { add, e } = firstQueryValues(await searchParams);
   const canEdit = canPerform(role, "project:settings");
-  const data = await loadSources(getPrisma(), projectId, role);
+  const data = await loadSources(getPrisma(), m, projectId, role);
   if (data === null) notFound();
   return <>
-    {isConnectError(e) && <Alert variant="danger">{connectErrorMessage(e)}</Alert>}
+    {isConnectError(e) && <Alert variant="danger">{connectErrorMessage(m, e)}</Alert>}
     {add === "sources" && !canEdit && <Alert variant="warning">{m.sources.ownerOnly}</Alert>}
     <SourcesScreen slug={slug} role={role} data={data} now={new Date()} initialOpen={canEdit && add === "sources"}
-      adapters={canEdit ? ADAPTERS.map(a => ({ adapter: a.name, layout: a.layout, ...formatLabel(a.name) })) : []} />
+      adapters={canEdit ? ADAPTERS.map(a => ({ adapter: a.name, layout: a.layout, ...formatLabel(m, a.name) })) : []} />
   </>;
 }

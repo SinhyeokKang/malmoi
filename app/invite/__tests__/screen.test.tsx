@@ -191,7 +191,7 @@ it("limit-reached도 초대의 인라인 알림이다", async () => {
   await html("ok");
   const markup = await renderPage("limit-reached");
   expect(markup).toContain('role="alert"');
-  expect(markup).toContain(escaped(inviteErrorMessage("limit-reached")));
+  expect(markup).toContain(escaped(inviteErrorMessage(en, "limit-reached")));
   // 초대는 소비되지 않았다 — 자리를 비운 뒤 같은 링크로 다시 수락하는 버튼이 남는다.
   expect(markup).toContain(en.invite.accept);
 });

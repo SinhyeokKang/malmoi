@@ -1,3 +1,4 @@
+import { en } from "@/messages/en";
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -55,13 +56,13 @@ it("실제 DB에서 소스 격리·고아 키 제외·84%와 89.5% 차이를 보
     INSERT INTO "Locale" ("projectId","surfaceId",code,name,orphaned) VALUES ('p','s','ja','Japanese',true);
     INSERT INTO "StringKey" (id,"projectId","surfaceId",key,namespace,"sourceText","sourceHash",orphaned,"updatedAt") SELECT 'k'||n,'p','s','k'||n,'root','Hello','hash',n=249,now() FROM generate_series(1,249) n;
     INSERT INTO "Translation" (id,"projectId","surfaceId","keyId","localeCode",value,"needsReview","updatedAt") SELECT 't'||n,'p','s','k'||n,'en','value',n>210 AND n<=222,now() FROM generate_series(1,249) n WHERE n<=222 OR n=249`);
-  const detail = await loadSource(prisma, "p", "s", "OWNER");
+  const detail = await loadSource(prisma, en, "p", "s", "OWNER");
   expect(detail?.languages.find(row => row.code === "en")).toMatchObject({ translated: 210, needsReview: 12, untranslated: 26, total: 248, percent: 84 });
   expect((210 + 12) / 248 * 100).toBeCloseTo(89.516, 2);
   expect(detail?.languages.some(row => row.code === "ja" && row.orphaned)).toBe(true);
-  expect((await loadSource(prisma, "p", "s2", "OWNER"))?.languages[0]).toMatchObject({ total: 0, percent: 0 });
-  expect(await loadSource(prisma, "p", "foreign", "OWNER")).toBeNull();
-  const list = await loadSources(prisma, "p", "EDITOR");
+  expect((await loadSource(prisma, en, "p", "s2", "OWNER"))?.languages[0]).toMatchObject({ total: 0, percent: 0 });
+  expect(await loadSource(prisma, en, "p", "foreign", "OWNER")).toBeNull();
+  const list = await loadSources(prisma, en, "p", "EDITOR");
   expect(list?.sources.find(row => row.id === "s")).toMatchObject({ keys: 248, locales: 1, orphanedLocales: 1 });
   // 분모를 읽은 직후 데이터 변경과 같은 입력이다. 읽기를 직렬화하지 않는다.
   const counts = await loadLocaleCounts(prisma, "p", "s");
@@ -78,7 +79,7 @@ it("대량 적재 직후 ANALYZE 전 상세 쿼리 시간을 기록한다", asyn
     INSERT INTO "StringKey" (id,"projectId","surfaceId",key,namespace,"sourceText","sourceHash","updatedAt") SELECT 'k'||n,'p','s','k'||n,'root','Hello','hash',now() FROM generate_series(1,1446) n;
     INSERT INTO "Translation" (id,"projectId","surfaceId","keyId","localeCode",value,"updatedAt") SELECT 't'||n,'p','s','k'||(((n-1)%1446)+1),'l'||(((n-1)/1446)+1),'value',now() FROM generate_series(1,8676) n`);
   const start = performance.now();
-  const detail = await loadSource(prisma, "p", "s", "OWNER");
+  const detail = await loadSource(prisma, en, "p", "s", "OWNER");
   process.stdout.write(JSON.stringify({ sourcesDetailBeforeAnalyzeMs: performance.now() - start, keys: 1446, cells: 8676 }) + "\n");
   expect(detail?.languages).toHaveLength(6);
   expect(detail?.languages.every(row => row.total === 1446 && row.percent === 100)).toBe(true);

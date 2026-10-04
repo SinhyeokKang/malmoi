@@ -12,6 +12,7 @@ import { PrismaClient } from "../generated/prisma/client";
 import { adapterFor, detectCandidatesAcross } from "../lib/adapters/index";
 import { codeDictCandidatePaths } from "../lib/adapters/code-dict";
 import { requireEnv } from "../lib/env";
+import { en } from "../messages/en";
 import { createGitClient, openRepoReader, probeRepo } from "../lib/github";
 import { checkContentBudget, checkDownloadBudget } from "../lib/onboarding/budget";
 import { formatLabel, makeProbe, probeTargets, summarizeCandidates } from "../lib/onboarding/detect";
@@ -142,7 +143,7 @@ async function main(): Promise<void> {
       console.log(`  2패스 후보 ${candidates.length}개:`);
       for (const c of candidates.slice(0, 5)) {
         const keys = c.keys.status === "counted" ? `${c.keys.count}키` : "키 수 확인 실패";
-        console.log(`    ${formatLabel(c.adapter).label} — ${c.pathTemplate} (${c.locales.length}언어, base ${c.baseLocale}, ${keys})`);
+        console.log(`    ${formatLabel(en, c.adapter).label} — ${c.pathTemplate} (${c.locales.length}언어, base ${c.baseLocale}, ${keys})`);
       }
     }
 

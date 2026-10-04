@@ -100,7 +100,7 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
     `loading`(진짜 `disabled`)과 `aria-disabled`를 겸하지 않는다(DESIGN §6.65). 사유는 둘 다 **보이는 글자**다.
   */
   // ⚠️ 사유는 꺼진 동안만 서고, 막은 갈래를 말한다 (malmoi#93) — 켜진 버튼이 옛 문장을 describedby로 들고 있었다.
-  const addReason = planAddBlock({ detecting, detectError: !!detectError, formats: selection.formats, conflicts: selection.conflicts.length });
+  const addReason = planAddBlock(m, { detecting, detectError: !!detectError, formats: selection.formats, conflicts: selection.conflicts.length });
   const addBlocked = addReason !== null;
   const manualBlocked = !manual.pathTemplate.trim() || !manual.baseLocale.trim();
   return <LargeModal open={open} closeDisabled={pending} onClose={() => { if (!pending) onClose(); }} returnFocusRef={returnFocusRef}

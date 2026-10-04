@@ -148,10 +148,10 @@ export default async function ProjectHomePage({
      *
      * ⚠️ **`try`로 감싸지 않는다** (결정 16) — 실패는 Home 전체가 오류 화면이 되어야 한다.
      */
-    loadEvents(prisma, projectId, parseLogFilter({}), { limit: HOME_EVENT_LIMIT }),
+    loadEvents(prisma, m, projectId, parseLogFilter({}), { limit: HOME_EVENT_LIMIT }),
     loadReviewAttention(prisma, projectId),
     // ⚠️ **상세는 Home 위에서 연다** — Logs로 튕겨 보내지 않는다(캔버스 `1h`).
-    openRef === null ? Promise.resolve(null) : loadEvent(prisma, projectId, openRef),
+    openRef === null ? Promise.resolve(null) : loadEvent(prisma, m, projectId, openRef),
     /**
      * ⚠️ **여기서만 던지는 것을 삼킨다** (code-review 2026-09-15 🟡4). `probeRepo`는 GitHub 실패를
      * 값으로 주지만 `createApp()`은 `GITHUB_APP_ID`·PEM이 깨졌을 때 **던진다** — 설정 화면에서는

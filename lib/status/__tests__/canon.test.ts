@@ -5,7 +5,7 @@ import type { EventTone } from "@/lib/events/view";
 import { en } from "@/messages/en";
 import type { SurfaceImportStatus } from "@/lib/import/surface-status";
 
-import { STATE, type StateKey, type StateTone, type StateVariant } from "../canon";
+import { STATE, stateLabel, type StateKey, type StateTone, type StateVariant } from "../canon";
 
 /**
  * **상태 톤·낱말의 코드판 정본** (DESIGN §2.4 · ux-drift-unify §3.6). 화면은 상태 키만 넘기고 톤·variant·낱말을 고르지 않는다.
@@ -32,8 +32,8 @@ describe("STATE", () => {
     expect([toneIsEventTone, variantIsBadgeVariant, surfaceKeysAreStates]).toEqual([true, true, true]);
   });
 
-  it.each(entries)("%s의 낱말은 사전 값이다", (_key, row) => {
-    expect(dictionaryStrings(en).has(row.label)).toBe(true);
+  it.each(entries)("%s의 낱말은 사전 값이다", (key) => {
+    expect(dictionaryStrings(en).has(stateLabel(en, key))).toBe(true);
   });
 
   /** 붉은 면 없는 글자(`danger` variant)는 소비자가 사라진 언어 하나라 지웠다(D3②) — danger 톤은 언제나 `soft-red` 면이다. */
@@ -53,11 +53,11 @@ describe("STATE", () => {
   });
 
   it("같은 상태 낱말이 DESIGN §2.4와 같다", () => {
-    expect(STATE.syncFailed.label).toBe("Sync failed");
-    expect(STATE.partiallySynced.label).toBe("Partially synced");
-    expect(STATE.disconnected.label).toBe("Disconnected");
-    expect(STATE.held.label).toBe("Held");
-    expect(STATE.unsent.label).toBe("Unsent");
+    expect(stateLabel(en, "syncFailed")).toBe("Sync failed");
+    expect(stateLabel(en, "partiallySynced")).toBe("Partially synced");
+    expect(stateLabel(en, "disconnected")).toBe("Disconnected");
+    expect(stateLabel(en, "held")).toBe("Held");
+    expect(stateLabel(en, "unsent")).toBe("Unsent");
   });
 });
 
@@ -66,5 +66,5 @@ it.each([
   ["waitingToApply", "Waiting to apply", "warning", "soft-amber"],
   ["removedFromRepository", "Removed from repository", "danger", "soft-red"],
 ] as const)("실제 소비자 상태 %s의 기존 낱말·색", (key, label, tone, variant) => {
-  expect(STATE[key]).toEqual({ label, tone, variant });
+  expect({ ...STATE[key], label: stateLabel(en, key) }).toEqual({ label, tone, variant });
 });

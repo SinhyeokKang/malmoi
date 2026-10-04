@@ -20,10 +20,10 @@ import { routes } from "@/lib/routes";
  */
 function reasonMessage(reason: RepositoryImportError | SurfaceImportReason): string {
   if (Object.hasOwn(m.repositorySync.errors, reason)) return m.repositorySync.errors[reason as keyof typeof m.repositorySync.errors];
-  if (isAccessError(reason)) return accessErrorMessage(reason);
-  if (isOnboardError(reason)) return onboardErrorMessage(reason);
-  if (isConnectError(reason)) return connectErrorMessage(reason);
-  if (isImportFailureCode(reason)) return importFailureMessage(reason);
+  if (isAccessError(reason)) return accessErrorMessage(m, reason);
+  if (isOnboardError(reason)) return onboardErrorMessage(m, reason);
+  if (isConnectError(reason)) return connectErrorMessage(m, reason);
+  if (isImportFailureCode(reason)) return importFailureMessage(m, reason);
   return m.projects.importFailure.importFailed;
 }
 

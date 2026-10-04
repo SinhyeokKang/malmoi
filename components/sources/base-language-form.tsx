@@ -59,6 +59,6 @@ export function BaseLanguageForm({ slug, surfaceSlug, baseLocale, declaredBaseLo
         <p className="text-muted-foreground min-w-0 basis-full text-xs leading-prose">{m.locales.field.help}</p>
       </div>
     {unavailable && <p id="base-unavailable" className="text-muted-foreground text-xs">{baseLocale === null ? m.sources.firstImport : m.locales.field.noLocales}</p>}
-    {error && <FieldError>{isRepositorySettingsError(error) ? repositorySettingsErrorMessage(error) : isAccessError(error) ? accessErrorMessage(error) : m.locales.field.failed}</FieldError>}
+    {error && <FieldError>{isRepositorySettingsError(error) ? repositorySettingsErrorMessage(m, error) : isAccessError(error) ? accessErrorMessage(m, error) : m.locales.field.failed}</FieldError>}
   </form>;
 }

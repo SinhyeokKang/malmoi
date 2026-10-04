@@ -1,3 +1,4 @@
+import { m } from "@/lib/i18n";
 import "server-only";
 
 import { Suspense } from "react";
@@ -19,7 +20,7 @@ export function NewProjectModal({ initialError, backQuery, closeMode }: {
 }) {
   // 어댑터 그래프는 서버에 남겨야 클라이언트 번들로 파서가 따라오지 않는다.
   const adapters: AdapterChoice[] = ADAPTERS.map((adapter) => ({
-    adapter: adapter.name, layout: adapter.layout, ...formatLabel(adapter.name),
+    adapter: adapter.name, layout: adapter.layout, ...formatLabel(m, adapter.name),
   }));
   return (
     // 리포 조회가 끝나기 전에 껍데기와 로딩 상태를 보내야 모달이 네트워크 대기 뒤에 뜨지 않는다.

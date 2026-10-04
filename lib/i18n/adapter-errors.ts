@@ -1,13 +1,14 @@
 import type { AdapterError, AdapterErrorCode } from "@/lib/adapters/types";
-import { m, type Messages } from "@/lib/i18n";
+import type { Messages } from "@/lib/i18n";
 import type { PullWarning } from "@/lib/pull/run";
+import { en } from "@/messages/en";
 
 /**
  * 갈래 누락을 **컴파일 타임에** 잡는다 — 사전이 잎이라 union을 그쪽에서 import할 수 없으므로
- * 소비자가 `satisfies`를 건다 (CLAUDE.md 코드 컨벤션). `ACCESS`·`INVITE`·`CONNECT`·`ONBOARD`와
+ * 소비자가 `satisfies`를 건다 (CLAUDE.md 코드 컨벤션). `accessErrorMessage`·`inviteErrorMessage`·`connectErrorMessage`·`onboardErrorMessage`와
  * 같은 형이고, 이것이 옛 `never` 검사가 하던 일이다.
  */
-const ADAPTER = m.adapterErrors satisfies Record<AdapterErrorCode | "fallback", string>;
+const ADAPTER = en.adapterErrors satisfies Record<AdapterErrorCode | "fallback", string>;
 
 /**
  * **어댑터 오류 하나를 사람이 읽는 한 줄로.** 문장은 사전이 내고 어댑터는 코드만 준다
@@ -22,7 +23,7 @@ const ADAPTER = m.adapterErrors satisfies Record<AdapterErrorCode | "fallback", 
  * 찾아져 문자열 자리에 들어간다 (POSTMORTEM 2026-09-08 🔴1 — `pick`이 존재하는 이유).
  *
  * `sentences`는 그 화면 언어의 `adapterErrors` 절이다 — 영어로 고정되는 표면(MCP·cron)은 `en.adapterErrors`를 명시한다.
- * ⚠️ 기본값(en 별칭)은 이행 중에만 있다(ui-locales design §3.4).
+ * ⚠️ 기본값(en)은 이행 중에만 있다(ui-locales design §3.4).
  */
 export function adapterErrorMessage(error: AdapterError, sentences: Messages["adapterErrors"] = ADAPTER): string {
   const sentence = Object.hasOwn(sentences, error.code) ? sentences[error.code] : undefined;

@@ -1,4 +1,4 @@
-import { m, pick } from "@/lib/i18n";
+import { pick, type Messages } from "@/lib/i18n";
 
 /**
  * 업로드 거부 → 문구 (account-settings 태스크 4b).
@@ -10,8 +10,7 @@ import { m, pick } from "@/lib/i18n";
  * ⚠️ **인자가 `string`이다 — union이 아니다.** 단언을 걸면 "모르는 값에 폴백한다"가 검사에서
  * 지워지고, 그 폴백이 실제로 도는지 아무도 안 묻게 된다 (POSTMORTEM 2026-09-08).
  */
-const UPLOAD = m.errors.upload;
 
-export function uploadRejectMessage(reason: string): string {
-  return pick(UPLOAD, reason, UPLOAD.fallback);
+export function uploadRejectMessage(m: Messages, reason: string): string {
+  return pick(m.errors.upload, reason, m.errors.upload.fallback);
 }

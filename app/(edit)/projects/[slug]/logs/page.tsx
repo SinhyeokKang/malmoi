@@ -63,10 +63,10 @@ export default async function LogsPage({
 
   const [sources, actors, page, openEvent] = await Promise.all([
     prisma.translationSurface.findMany({ where: { projectId, archivedAt: null }, select: { slug: true }, orderBy: { slug: "asc" } }),
-    loadEventActors(prisma, projectId),
-    loadEvents(prisma, projectId, filter),
+    loadEventActors(prisma, m, projectId),
+    loadEvents(prisma, m, projectId, filter),
     // ⚠️ **상세 조회는 목록 필터와 독립이다** (결정 15) — 필터 밖 이벤트도 열되 목록은 그대로 둔다.
-    filter.event === null ? Promise.resolve(null) : loadEvent(prisma, projectId, filter.event),
+    filter.event === null ? Promise.resolve(null) : loadEvent(prisma, m, projectId, filter.event),
   ]);
 
   // 번역 사건은 키 **이름**을 든다 — 그 키의 현재 id로 해석해야 상세가 선택된 채로 착지한다(translation-rework T12).
@@ -76,7 +76,7 @@ export default async function LogsPage({
 
   // ⚠️ **`now`를 한 번 만들어 내린다** — 행마다 만들면 같은 페이지 안에서 기준이 흔들린다.
   const now = new Date();
-  const groups = groupByDay(page.rows, now);
+  const groups = groupByDay(m, page.rows, now);
   const boundary = coverageBoundaryIndex(page.rows, project.activityCoverageStartedAt, filter.cursor);
   const href = (ref: string) => routes.logs(slug, { ...logsQuery(filter), event: ref });
   const closeHref = routes.logs(slug, { ...logsQuery(filter), event: undefined });

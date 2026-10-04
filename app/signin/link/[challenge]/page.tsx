@@ -67,7 +67,7 @@ export default async function LinkAccountPage({
         <Image src={logo} alt="" width={48} height={48} priority />
         <AuthHeading
           title={m.link.title}
-          description={m.link.description(providerLabel(view.pending), providerLabel(view.have))}
+          description={m.link.description(providerLabel(m, view.pending), providerLabel(m, view.have))}
         />
 
         {/*
@@ -81,7 +81,7 @@ export default async function LinkAccountPage({
         */}
         {e !== undefined && (
           <Alert variant="danger" className="w-full">
-            {linkErrorMessage(e)}
+            {linkErrorMessage(m, e)}
           </Alert>
         )}
 
@@ -95,7 +95,7 @@ export default async function LinkAccountPage({
           name={view.emailLabel}
           avatarName={view.name ?? view.emailLabel}
           image={view.image}
-          description={<>{providerLabel(view.have)} · <time dateTime={view.joined.toISOString()}>{joinedLabel(view.joined)}</time></>}
+          description={<>{providerLabel(m, view.have)} · <time dateTime={view.joined.toISOString()}>{joinedLabel(view.joined)}</time></>}
           badge={view.have === "github" ? <GithubIcon className="size-4" /> : <GoogleIcon className="size-4" />}
         />
 
@@ -153,7 +153,7 @@ function ProviderButton({
       }}
     >
       <SubmitButton variant="primary" size="lg" className="w-full">
-        {m.link.confirm(providerLabel(provider))}
+        {m.link.confirm(providerLabel(m, provider))}
       </SubmitButton>
     </form>
   );

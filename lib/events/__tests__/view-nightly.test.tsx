@@ -22,7 +22,7 @@ const metaRow = (over: Partial<EventMetaRow> = {}): EventMetaRow => ({
 });
 
 const sentence = (row: EventMetaRow): string =>
-  renderToStaticMarkup(<>{eventSentence(row, { actor: "WHO", key: "" })}</>);
+  renderToStaticMarkup(<>{eventSentence(en, row, { actor: "WHO", key: "" })}</>);
 
 describe("eventSentence — 야간 스킵과 야간 적재", () => {
   it("upToDate는 '적재했다'가 아니라 할 일이 없었다고 말한다", () => {
@@ -65,19 +65,19 @@ describe("eventSentence — 야간 스킵과 야간 적재", () => {
 
 describe("eventMeta — 주체 낱말과 보류 사유", () => {
   it("open-pr 보류는 '0 unsent edits'를 내지 않고 PR 사유를 말한다", () => {
-    const parts = eventMeta(metaRow({ subtype: "import.ci", result: "deferred", payload: payload({ source: "ci", deferReason: "open-pr", pendingEdits: 0 }) }), false);
+    const parts = eventMeta(en, metaRow({ subtype: "import.ci", result: "deferred", payload: payload({ source: "ci", deferReason: "open-pr", pendingEdits: 0 }) }), false);
     expect(parts).not.toContain(en.logs.deferredReason(0));
     expect(parts).toContain(en.logs.deferReasons["open-pr"]);
   });
 
   it.each(["pr-check-failed", "too-large"] as const)("%s 보류도 편집 수가 아니라 사유를 말한다", (reason) => {
-    const parts = eventMeta(metaRow({ result: "deferred", payload: payload({ deferReason: reason, pendingEdits: 0 }) }), false);
+    const parts = eventMeta(en, metaRow({ result: "deferred", payload: payload({ deferReason: reason, pendingEdits: 0 }) }), false);
     expect(parts).toContain(en.logs.deferReasons[reason]);
     expect(parts.some((part) => typeof part === "string" && part.includes("unsent edit"))).toBe(false);
   });
 
   it("pending-edits 보류는 편집 수 문장 그대로다", () => {
-    const parts = eventMeta(metaRow({ subtype: "import.ci", result: "deferred", payload: payload({ source: "ci", deferReason: "pending-edits", pendingEdits: 3 }) }), false);
+    const parts = eventMeta(en, metaRow({ subtype: "import.ci", result: "deferred", payload: payload({ source: "ci", deferReason: "pending-edits", pendingEdits: 3 }) }), false);
     expect(parts).toContain(en.logs.deferredReason(3));
   });
 
@@ -88,7 +88,7 @@ describe("eventMeta — 주체 낱말과 보류 사유", () => {
     ["야간 Publish", metaRow({ kind: "PUBLISH", subtype: "publish.run", result: "sent", payload: { kind: "PUBLISH", surfaceSlugs: [], refusal: null },
       run: { changed: 1, prUrl: null, errorCode: null } })],
   ])("%s 보조줄은 주체를 종류와 합친 배지 하나로 든다 — 낱말을 따로 싣지 않는다", (_, row) => {
-    const parts = eventMeta(row, false);
+    const parts = eventMeta(en, row, false);
     // 옛 소문자 주체 낱말(사전에서 지웠다 — Home 메타 열도 실행 종류 배지를 쓴다, ux-drift-unify U7 r1)이 따로 서지 않는다.
     for (const word of ["manual", "nightly", "CI", "automatic"]) expect(parts).not.toContain(word);
     const expected = row.kind === "PUBLISH" ? en.logs.meta.runType.PUBLISH.nightly : row.subtype === "import.ci" ? en.logs.meta.runType.IMPORT.ci : en.logs.meta.runType.IMPORT.nightly;
@@ -96,7 +96,7 @@ describe("eventMeta — 주체 낱말과 보류 사유", () => {
   });
 
   it("사람 행은 manual을 그대로 든다", () => {
-    const parts = eventMeta(metaRow({ subtype: "import.run", result: "imported", actor: { kind: "USER" }, payload: payload({ source: "manual" }) }), false);
+    const parts = eventMeta(en, metaRow({ subtype: "import.run", result: "imported", actor: { kind: "USER" }, payload: payload({ source: "manual" }) }), false);
     // 종류와 주체가 한 배지다(2026-09-30 사용자 — `Manual sync`).
     expect(parts[0]).toEqual({ kind: "badge", text: en.logs.meta.runType.IMPORT.manual });
   });
@@ -116,11 +116,11 @@ describe("eventFailureMessage — nightly.skip base-unreadable", () => {
   const skip = metaRow({ result: "failed", payload: payload({ errorCode: "base-unreadable" }) });
 
   it("base-unreadable 사유 문장을 낸다", () => {
-    expect(eventFailureMessage(skip, false)).toBe(en.logs.reasons["base-unreadable"]);
-    expect(eventFailureMessage(skip, false)).not.toBe(en.projects.importFailure.importFailed);
+    expect(eventFailureMessage(en, skip, false)).toBe(en.logs.reasons["base-unreadable"]);
+    expect(eventFailureMessage(en, skip, false)).not.toBe(en.projects.importFailure.importFailed);
   });
 
   it("보관 중이면 야간 절이 빠진다", () => {
-    expect(eventFailureMessage(skip, true)).not.toContain("nightly");
+    expect(eventFailureMessage(en, skip, true)).not.toContain("nightly");
   });
 });

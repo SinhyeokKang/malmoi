@@ -13,21 +13,21 @@ const SESSIONS = en.account.sessions;
  * "모르는 값에는 문구를 내지 않는다"가 검사에서 지워진다 (POSTMORTEM 2026-09-08).
  */
 it("갈래마다 그 결과를 말하는 문구를 낸다", () => {
-  expect(sessionRevocationMessage("cancelled")).toBe(SESSIONS.cancelled);
-  expect(sessionRevocationMessage("wrong-account")).toBe(SESSIONS.wrongAccount);
-  expect(sessionRevocationMessage("expired")).toBe(SESSIONS.expired);
+  expect(sessionRevocationMessage(en, "cancelled")).toBe(SESSIONS.cancelled);
+  expect(sessionRevocationMessage(en, "wrong-account")).toBe(SESSIONS.wrongAccount);
+  expect(sessionRevocationMessage(en, "expired")).toBe(SESSIONS.expired);
 });
 
 /** 사용자가 할 일이 같은 둘은 같은 문구다 — 내부 갈래 이름을 화면 어휘로 쓰지 않는다. */
 it("invalid와 unavailable은 하나의 재시도 문구로 접힌다", () => {
-  expect(sessionRevocationMessage("invalid")).toBe(SESSIONS.failed);
-  expect(sessionRevocationMessage("unavailable")).toBe(SESSIONS.failed);
+  expect(sessionRevocationMessage(en, "invalid")).toBe(SESSIONS.failed);
+  expect(sessionRevocationMessage(en, "unavailable")).toBe(SESSIONS.failed);
 });
 
 it("값이 없거나 모르는 갈래에는 문구를 내지 않는다", () => {
-  expect(sessionRevocationMessage(undefined)).toBeNull();
-  expect(sessionRevocationMessage("")).toBeNull();
-  expect(sessionRevocationMessage("revoked")).toBeNull();
+  expect(sessionRevocationMessage(en, undefined)).toBeNull();
+  expect(sessionRevocationMessage(en, "")).toBeNull();
+  expect(sessionRevocationMessage(en, "revoked")).toBeNull();
 });
 
 /**
@@ -38,6 +38,6 @@ it("값이 없거나 모르는 갈래에는 문구를 내지 않는다", () => {
 it.each(["constructor", "toString", "valueOf", "hasOwnProperty", "__proto__"])(
   "프로토타입 키 %s에 함수를 돌려주지 않는다",
   (key) => {
-    expect(sessionRevocationMessage(key)).toBeNull();
+    expect(sessionRevocationMessage(en, key)).toBeNull();
   },
 );

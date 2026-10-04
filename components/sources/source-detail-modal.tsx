@@ -27,7 +27,7 @@ import { basePending } from "@/lib/onboarding/base-pending";
 import { importFailureMessage, isImportFailureCode } from "@/lib/projects/import-failure";
 import { routes, ALL_NAMESPACES } from "@/lib/routes";
 import { planSourceActions } from "@/lib/sources/actions";
-import { STATE } from "@/lib/status/canon";
+import { STATE, stateLabel } from "@/lib/status/canon";
 import type { SourceDetail } from "@/lib/sources/query";
 import { utcMinute } from "@/lib/utc-time";
 import { BaseLanguageForm } from "./base-language-form";
@@ -103,11 +103,11 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
         <ListRow>
           {importStatus && <IconTile data-source-status-tile tone={importStatus.tone}><StatusGlyph labelKey={importStatus.labelKey} /></IconTile>}
           <span className="flex min-w-0 flex-1 flex-col gap-copy-gap">
-            <span className="text-base"><span className="font-medium">{importStatus && STATE[importStatus.labelKey].label}</span>
+            <span className="text-base"><span className="font-medium">{importStatus && stateLabel(m, importStatus.labelKey)}</span>
               {statusAt !== null && <> — {importStatus?.state === "importing" && <>{m.sources.started} </>}{importStatus?.state === "not-imported" && <>{m.sources.addedAgo} </>}<RelativeAt at={statusAt} now={now} /></>}</span>
             {/* 보조 문장은 본문 색이다 — 톤은 칸과 낱말이 든다(§6.2 "Alert는 글자를 본문 색으로"와 같은 규칙, 옛 판은 호출부가 호박·빨강 글자를 골랐다). */}
             <span className="text-muted-foreground text-xs leading-body">
-              {isImportFailureCode(detail.lastImportError) ? importFailureMessage(detail.lastImportError)
+              {isImportFailureCode(detail.lastImportError) ? importFailureMessage(m, detail.lastImportError)
                 : detail.lastCommitSha ? m.sources.importedSummary(detail.keys, detail.locales)
                 : m.sources.notImportedHelp}
               {statusFailed && !canEdit && <> {importStatus?.state === "failed-after" ? m.sources.askOwnerRerun : m.sources.askOwner}</>}

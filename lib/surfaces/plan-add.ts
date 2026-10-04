@@ -1,5 +1,5 @@
 import type { CandidateSummary } from "@/lib/onboarding/detect";
-import { m } from "@/lib/i18n";
+import type { Messages } from "@/lib/i18n";
 
 export type SurfaceAdded = { pathTemplate: string; surfaceSlug: string; count: number; failed: number };
 
@@ -25,6 +25,6 @@ export function summarizeAddResults(results: readonly SurfaceAdded[]): { surface
 }
 
 /** 집계는 서버가 orphaned를 제외해 넘긴다. 여기서 후보의 표본 개수를 대신 쓰지 않는다. */
-export function formatSourceCounts(counts: { keys: number; locales: number }): string {
+export function formatSourceCounts(m: Messages, counts: { keys: number; locales: number }): string {
   return m.surfaces.sourceCounts(counts.keys, counts.locales);
 }
