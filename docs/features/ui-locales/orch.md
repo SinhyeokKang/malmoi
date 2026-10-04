@@ -113,3 +113,10 @@
 - W8 질문: W7 소유 `failureText` 시그니처 → W7이 바꾸고 W8 파일 세 곳의 호출 줄도 W7이 한 줄씩 수정, W8은 그 줄을 건드리지 않음(red 커밋 금지).
 - **R6(W6 리뷰)**: 🔴0 · 🟡4 · ⚪4 — W6 코드 수정 불필요. 🟡1 소유 빈 m 소비자 7개 → W8 · 🟡2 인계 오류(`publish-button`·sync-result → W8, new-project → W7이 `m.adapterErrors` 명시) · 🟡4 `/docs` 크롬이 en 고정 → W7. `read-tools.test.ts:287`의 동적 m import는 E7(W9)이 잡는다.
   - **D9(사용자)**: 멤버 사건 대체 라벨은 en으로 저장하되 Logs가 **렌더 때 화면 언어로 치환**(저장 계약 불변) → W8 E5.
+- **W6 통합·push** `c7c03680..69bc9186`(gate ok, postgres 스위트 포함). W7·W8에 rebase dev 알림. W6 해제·워크트리 제거.
+- **W7 완료 보고** → 수정 라운드 1(리뷰 전 선행): rebase dev · 커밋별 green 위반(셋이 단독 typecheck red) 교정 · R6 지적(/docs 크롬 en 고정, new-project adapterErrors) 미반영 · 랜딩 목업 검색 캡슐 손 사본 제거. 인계 사본 `.scratch/ui-locales/handoff-W7.md`.
+- **W8 완료**(`6b66568b df65f143 8e2ef1f3 9fc21c00`, 커밋마다 gate ok — E5·E6 + 소비자 7 · adapterErrors 명시 · D9 렌더 치환). failureText 옛 시그니처 4줄 남김(W7 몫). R8 리뷰 착수. 통합 순서: W7 → W8(W7 위로 rebase).
+- **R8(W8 리뷰)**: 🔴0 · 🟡3(Logs 날짜 머리·언어명 en 기본값 · 화면 단위 ko 렌더 테스트 없음 · rebase 충돌 repository-form:120) · ⚪5(D9가 en 문구 문자열 비교라 en 수정 시 옛 사건 치환이 끊김 → 고정 상수+단언). W8 수정 라운드 1 착수. design §3.2 정본 갱신은 지휘자 H2.
+  - W8 fix1 Task `task_e1c7edc5921a`/`ctx_4eafbec0176b`(첫 시도는 셸 변수 문제로 실패, 재시도 성공).
+- **W7 fix1 완료**: dev 위 2커밋(a5ff3140 i18n 소비자 · ae7909c9 D8), 커밋마다 gate ok, /docs 크롬·new-project 수정, 목업 손 사본 → `FIELD_BUTTON_CLASS` 상수 export. R7 리뷰 착수.
+- **R7(W7 리뷰)**: 🔴0 · 🟡4(목업 h-10 미고정 · D8 테스트가 클래스 존재만 · privacy RevisionLine uiLocale 무시 · 공개/셸/온보딩/검색 ko 렌더 테스트 0) · ⚪5. D8 산술(패널 56·중심 28) 성립, 커밋 둘 각각 green, `FIELD_BUTTON_CLASS` 수용. W7 수정 라운드 2 착수.
