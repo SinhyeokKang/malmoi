@@ -2779,6 +2779,7 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
   §6.37) · cron 응답·서버 로그 · CLI(`scripts/**`) · `app/global-error.tsx`(루트 레이아웃 밖이라 provider가 없다, `lang="en"`) · 방침 en 본(§6.035) ·
   숫자 형식(`en-US`) · 리포에 남는 문장(PR 제목·본문·커밋 메시지 — 누가 Publish했느냐로 같은 DB 상태에서 다른 PR이 나오면 안 된다) ·
   저장되는 값(`ProjectEvent` payload — §5.7.4의 렌더 치환). 사전에서는 최상위 `mcp`·`seo`·`crash`와 중첩 `publicDocs.privacy`가 `Messages`에서 빠진다(ko·es는 그 절이 없다).
+  **브랜드 슬로건 셋도 영어로 고정이다**(2026-10-05, user-timezone T7) — `landing.hero.title`·`landing.closing.title`·`signIn.hero`(키비주얼에 구운 영문과 같은 말)는 `Messages`에서 빠지고 소비자(`app/page.tsx`·`components/signin/auth-layout.tsx`)가 `en`을 읽으며 요소에 `lang="en"`을 단다. 랜딩 나머지 문구는 번역된다.
   ⚠️ **공유 코어(`planPublishView`·`loadEvents` 등 MCP 도구와 화면이 같이 부르는 것)는 `getMessages()`를 부르지 않고 `m`을 인자로만 받는다** —
   코어가 스스로 언어를 물으면 MCP 응답이 요청자의 언어를 따라간다. 소스 검사 `dictionary-consistency.test.ts` ⑧이 영어 고정 표면의 입구 import와
   `lib/** → lib/i18n/server`를 막는다. 테스트도 `en`을 명시 import한다.
