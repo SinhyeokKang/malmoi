@@ -87,3 +87,7 @@
 - **R1 리뷰(W1)**: 🔴1(번들 주장 — D7 1b로 해소) · 🟡5(배선이 en인 상태 미탐지 · 잎 경로 집합 · 사전 importer 검사 · 어댑터→세션 경로 · cron 행동 테스트) · ⚪9. deviation 1–7·9–12 수용, 8은 재마운트·SSR 수용/번들 주장 수정. 리포트 사본 `.scratch/ui-locales/review-W1.md`. R1 워크트리 제거.
   - 지휘자 몫: ⚪2(E2 뒤 B1⑦을 전이 검사로 올릴지 — `lib/push/apply.ts → import-status → import-failure.ts`의 최상위 `m`) · ⚪4(E8은 사전 청크가 아니라 라우트별 first-load gzip 합으로 비교) · ⚪6(pull 서버 로그가 코드 — H2 OPERATIONS·ARCHITECTURE).
 - W1 수정 라운드 1: `task_a7666a24f593`/`ctx_e19f2a766d61`(1b 구현 + 🟡1–5 + ⚪1·⚪5).
+- **W1 통합 준비**: dev에 cherry-pick 8커밋(`20f242dd`…`9152bf82` → dev `c5db7d8c`, push `2ef22e0d..c5db7d8c`; gate 1회차 api-contract 부하 타임아웃(load 43) → 재실행 `gate: ok`). dev DB `20261004102735_add_user_ui_locale` 적용 · `db:status` 최신 · anon/authenticated USAGE·CREATE 모두 false · 테이블 GRANT 0.
+- W1 정리: 인계·스파이크 보고 사본 `.scratch/ui-locales/{handoff-W1,spike-bundle}.md`, 워커 해제·워크트리 제거.
+- 신호: W2 rebase+satisfies(W3는 W2 통합 뒤) · W4 I1–I3 시작(가이드 관련 파일의 en 전환도 W4 소유) · **W6 착수** `task_071cebac8f37`/`ctx_c35f0ba1166b`(Opus medium).
+- W4 질문(I1): `no-korean-ui`·`brand-spelling`의 가이드 경로 한 줄씩 수정 승인 — no-korean-ui는 ko 외 전 트리, brand-spelling은 전 트리.
