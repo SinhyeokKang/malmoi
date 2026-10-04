@@ -68,3 +68,5 @@
 - **T3 통합·push**: `feat(time)` C1·C2(+H2) · `test(time)` fix1(FIXED_UTC 허용 목록 · PUBLIC_SHELL에 signin/link · A4⑤ 정규식). gate ok. T3 해제·워크트리 제거. **T4 착수**(Opus high, `brief-T4.md`).
 - **R4(T4 리뷰)**: 🔴0 · 🟡1(ko 방침 개정 행 주어 "Malmoi가 … 고를") · ⚪5(열린 목록 typeahead가 `UTC…` 접두로 무의미 → `textValue` · revalidate 던짐 시 피드백 없음(Language와 같은 기존 성질, 수용) · ko-privacy 옛 용어 · 같은 날 개정 행 둘(같은 머지라 수용) · CLAUDE/DIRECTORY는 T6). deviation 4 수용. **T4 fix1 착수**(🟡1 + typeahead + ko-privacy 용어).
 - **T4 통합·push**: `feat(preferences)` D1–D3(+공용 `PreferenceSelectCard`, Language 이관) · fix1 `fix(preferences)` 열린 목록 도시명 typeahead · `docs(privacy)` ko 방침 용어 정리(그림 저장소 → `자체 저장 공간`, 의미 불변 — D2 검수 대상). gate ok. T4 해제·워크트리 제거. **T5(Sonnet medium) · T6(Opus medium) 병렬 착수**.
+- **S1 착수**(별건, 사용자 2026-10-05): 하네스에 `/translate` 스킬 — 번역 규칙 정본을 가리키는 절차 문서(키 추가 모드 · 일괄 검수 모드), 다른 스킬 포인터, CLAUDE.md 스킬 수 22→23, Codex 미러. `/feature` 불필요(사용자 확인). Opus medium, `utz-s1`, `brief-S1.md`. CLAUDE.md는 T6와 겹침 — T6 통합 뒤 rebase 신호.
+- T5에 추가 지시: AUTHORING에 ko-first 톤 반영(24행 + "한국어 원고의 톤" 절, 별도 커밋).
