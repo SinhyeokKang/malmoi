@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { useUiLocale } from "@/components/i18n/messages-provider";
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList, CommandStatus } from "@/components/ui/command";
 import { CommandDialog } from "@/components/ui/dialog";
 import { NoMatch } from "@/components/ui/empty-state";
@@ -34,6 +35,7 @@ export function SearchDialog({ open, onOpenChange, account, memberships }: {
   open: boolean; onOpenChange: (open: boolean) => void; account: PublicAccount | null; memberships?: readonly NavProject[];
 }) {
   const pathname = usePathname();
+  const uiLocale = useUiLocale();
   const [q, setQuery] = useState("");
   const [publicMemberships, setPublicMemberships] = useState<SearchMembershipsResult | null>(null);
   const [docs, setDocs] = useState<SearchEntry[]>([]);
@@ -57,9 +59,9 @@ export function SearchDialog({ open, onOpenChange, account, memberships }: {
   useEffect(() => {
     if (!open) return;
     let alive = true;
-    void loadSearchIndex().then(entries => { if (alive) { setDocs(entries); setDocsState("ready"); } }, () => { if (alive) setDocsState("failed"); });
+    void loadSearchIndex(uiLocale).then(entries => { if (alive) { setDocs(entries); setDocsState("ready"); } }, () => { if (alive) setDocsState("failed"); });
     return () => { alive = false; };
-  }, [open]);
+  }, [open, uiLocale]);
   useEffect(() => {
     if (!open || !needsMemberships) return;
     let alive = true;

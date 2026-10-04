@@ -9,7 +9,7 @@ import { cache } from "react";
 import { parseMd } from "./parse";
 import { parseMdTable } from "./sections";
 import { shotSizes, type ShotSize } from "./shots";
-import type { UiLocale } from "@/lib/i18n/locales";
+import { UI_LOCALES, type UiLocale } from "@/lib/i18n/locales";
 
 import { flattenNav, parseSummary, slugToFile, type NavNode } from "./summary";
 
@@ -25,6 +25,14 @@ import { flattenNav, parseSummary, slugToFile, type NavNode } from "./summary";
  */
 const guideRoot = () => join(process.cwd(), "guide");
 const guideDir = (uiLocale: UiLocale) => join(guideRoot(), uiLocale);
+
+/**
+ * 원고 트리가 있는 화면 언어 — 언어별 정적 파일(검색 색인)을 빌드할 목록이다. 트리가 없는 언어를 만들면 빌드가 던지므로
+ * 번역 원고가 다른 커밋에서 들어오는 동안에도 빌드가 선다. 화면 렌더는 이것을 보지 않는다(없는 트리는 던진다 — 폴백 없음).
+ */
+export function guideLocales(): UiLocale[] {
+  return UI_LOCALES.filter((uiLocale) => existsSync(join(guideDir(uiLocale), "SUMMARY.md")));
+}
 
 export const loadSummary = cache((uiLocale: UiLocale): NavNode[] => parseSummary(parseMd(readFileSync(join(guideDir(uiLocale), "SUMMARY.md"), "utf8"))));
 
