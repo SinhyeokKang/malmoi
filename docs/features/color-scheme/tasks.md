@@ -61,9 +61,8 @@ Phase 1은 ui-locales의 E 배치(화면 파일 이관)와 W10(`globals.css`·Pr
 
 ### S. 다크 시안 (P2-3 전에 — `/design-sync` 입력)
 
-- S1 `docs/features/color-scheme/design-brief.md`: design §2.2 토큰 표(의미·라이트 값·다크 후보) + 기존 토큰 18개 + §4.4 대비 쌍 + 대표 화면 목록을 Claude Design 입력으로 쓴다.
-  대표 화면: 셸 + `/projects` · Home · 번역 작업 화면(세 패널, 상태 글자 포함) · Publish 모달(diff) · Logs(종류 칩·상세) · Sources 상세 · Members · `/preferences`(Theme 카드 포함) · Dialog/LargeModal 오버레이 · 토스트 · 랜딩 · `/docs` · `/signin`(키비주얼·점) · 빈 상태.
-  - 검증: 사용자가 브리프를 확인.
+- S1 ✅ [`design-brief.md`](./design-brief.md)(2026-10-04) — 토큰 표(다크 칸 비움) · 대표 화면 A1–A15 · Theme 카드 B1–B6 · 대비 하한 · 열린 질문 일곱.
+  ⚠️ Phase 1 착수 때 토큰 이름이 바뀌면 브리프 §3도 같이 고친다(시안이 이미 나왔으면 핸드오프 표의 이름을 옮긴다).
 - S2 사용자가 Claude Design에서 다크 시안을 받는다 → 핸드오프 확보. ⚠️ **기존 화면의 design-sync는 사용자 승인 예외**(spec 결정)임을 orch·DESIGN 기록에 남긴다.
 
 ### P2-0 스파이크 (코드 커밋 없음 — 결과를 design §3.1에 적는다)
