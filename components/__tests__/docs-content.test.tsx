@@ -7,7 +7,7 @@ import { expect, it } from "vitest";
 import { WorkflowBlock } from "@/components/onboarding/workflow-block";
 import { CiCard } from "@/components/settings/ci-card";
 import { headings, parseMd } from "@/lib/guide/parse";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { routes } from "@/lib/routes";
 
 import { render } from "./helpers/dom";
@@ -24,7 +24,7 @@ import { render } from "./helpers/dom";
  */
 it("설정 화면의 hook 안내가 `setup/workflow#workflow`로 이어진다", async () => {
   await render(<CiCard slug="acme" archived={false} stale={[]}><p>yaml</p></CiCard>);
-  const trigger = [...document.querySelectorAll("button")].find((b) => b.textContent?.includes(m.settings.ci.workflow))!;
+  const trigger = [...document.querySelectorAll("button")].find((b) => b.textContent?.includes(en.settings.ci.workflow))!;
   trigger.click();
   await new Promise((resolve) => setTimeout(resolve, 0));
   const link = document.querySelector<HTMLAnchorElement>(`a[href="${routes.docs("setup/workflow", "workflow")}"]`);
@@ -38,17 +38,17 @@ it("설정 화면의 hook 안내가 `setup/workflow#workflow`로 이어진다", 
  */
 it("워크플로 모달에 저장 경로 문장이 한 번만 선다", async () => {
   await render(<CiCard slug="acme" archived={false} stale={[]}><WorkflowBlock yaml="on: push" /></CiCard>);
-  const trigger = [...document.querySelectorAll("button")].find((b) => b.textContent?.includes(m.settings.ci.workflow))!;
+  const trigger = [...document.querySelectorAll("button")].find((b) => b.textContent?.includes(en.settings.ci.workflow))!;
   trigger.click();
   await new Promise((resolve) => setTimeout(resolve, 0));
   const dialog = document.querySelector('[role="dialog"]');
   expect(dialog).not.toBeNull();
-  const count = (dialog?.textContent ?? "").split(m.settings.workflow.saveAs).length - 1;
+  const count = (dialog?.textContent ?? "").split(en.settings.workflow.saveAs).length - 1;
   expect(count).toBe(1);
 });
 
 /** 링크 글자가 가리키는 페이지 제목과 같다(#121) — 다른 이름이면 누른 뒤 "여기가 맞나"를 다시 판단한다. */
 it("hook 안내 링크 글자가 대상 페이지(`setup/workflow`)의 h1과 같다", () => {
   const h1 = headings(parseMd(readFileSync(join(process.cwd(), "guide/en/setup/workflow.md"), "utf8"))).find((heading) => heading.depth === 1);
-  expect(m.settings.workflow.hookDoc).toBe(h1?.text);
+  expect(en.settings.workflow.hookDoc).toBe(h1?.text);
 });

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { loadSource, loadSummary } from "@/lib/guide/load";
 import { flattenNav, type NavNode } from "@/lib/guide/summary";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { llmsFull, llmsIndex } from "../llms";
 
@@ -31,7 +31,7 @@ describe("llmsIndex", () => {
       [
         "# Malmoi",
         "",
-        `> ${m.landing.hero.body}`,
+        `> ${en.landing.hero.body}`,
         "",
         "## Malmoi",
         "",
