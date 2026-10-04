@@ -128,3 +128,6 @@
 - **W9**: E7 `5e602047` gate ok. E8 — 사전 분리 성립(en HTML에 ko·es 청크 0, ko +26KB·es +27KB 청크는 그 언어만), 그러나 en first-load gzip이 A0 대비 +4.1~6.1KB(조건 10 초과). **D10(사용자)**: 원인 모듈부터 특정 → 피할 수 있는 것은 고치고 구조적이면 수치·근거로 다시 판단.
 - **D11(사용자)**: en first-load +4.1~6.1KB gz는 구조적(next/dynamic 런타임·provider ~3–4KB + Turbopack 청크 재묶음 중복 — button.tsx 등) → **수용**, spec 완료 조건 10을 '사전 분리 + 증가 실측 기록'으로 수정. 모듈 중복은 기능 밖 후속 후보.
 - W9 통합 중 발견: `5e602047`이 sed 백업 파일(`retry-at.test.ts-E`)을 커밋 — 게이트 중단, W9에 삭제 커밋 지시(로컬 dev에는 cherry-pick된 상태, push 전).
+- **W9 통합·push** `f404376c..31c0894b`(E7 + sed 백업 삭제, gate ok). W9 해제·워크트리 제거. **W10 착수**(Opus high).
+- **W10 완료**(`30c951d2` F·H1·H1k·F3 · `e6cc042a` G1·G2, 커밋마다 gate ok). deviation: TextTrigger 글리프를 children으로 · `UI_LOCALE_FLAGS` in locales.ts · `PrivacyBody` 타입 export · 카드 `components/preferences/` · 검색 빈 미리보기에서 Account 빠짐. ko 방침 초안 사용자 검수 대상(koDigest 갱신 필요). R10 리뷰(Opus high) 착수.
+- **R10(W10 리뷰)**: 🔴1(Action reject가 오류 경계로 — try/catch 없음) · 🟡4(es /privacy 본문 lang 없음 · typeahead 가드가 화이트리스트 아님 · 방침 동형이 구조만 · 검색 미리보기 Account 빠짐 수용 → DESIGN §6.54·§6.8 H2). setUiLocale 보안·쿠키·보호 경로·세 사전 통과. W10 수정 라운드 1 착수.
