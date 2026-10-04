@@ -70,10 +70,10 @@ export default async function Root() {
           <ArrowRight className="size-4 shrink-0" aria-hidden />
         </Link>
         {/* h1·CTA h2는 48/600 — DESIGN §4가 예고한 weight 600의 첫 소비자다(§6.615). */}
-        <h1 id="landing-hero" lang="en" className="m-0 text-5xl leading-[1.1] font-semibold">
-          {en.landing.hero.title[0]}
+        <h1 id="landing-hero" className="m-0 text-5xl leading-[1.1] font-semibold">
+          {hero.title[0]}
           <br />
-          {en.landing.hero.title[1]}
+          {hero.title[1]}
         </h1>
         <p className="mt-5 max-w-[44em] text-lg leading-body text-balance">{hero.body}</p>
         <div className="mt-5 flex gap-2">
@@ -90,7 +90,7 @@ export default async function Root() {
         closing={
           // 위아래 여백은 섹션 자신의 padding-block 240이다(2026-09-27 사용자 — 120의 두 배). 이웃의 margin으로 만들지 않는다.
           <section aria-labelledby="landing-closing" className="flex flex-col items-center px-8 py-60 text-center">
-            <h2 id="landing-closing" lang="en" className="m-0 text-5xl leading-[1.1] font-semibold">{en.landing.closing.title}</h2>
+            <h2 id="landing-closing" className="m-0 text-5xl leading-[1.1] font-semibold">{closing.title}</h2>
             <p className="mt-5 max-w-[40em] text-lg leading-body text-balance">{closing.body}</p>
             <div className="mt-5 flex gap-2">
               {/* ⚠️ ButtonLink external은 native <a>다. newTab으로 새 탭을 열고 기존 rel에 noopener·noreferrer를 보존·추가한다(DESIGN §6.3). */}

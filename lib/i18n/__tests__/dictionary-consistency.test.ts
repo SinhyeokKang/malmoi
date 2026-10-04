@@ -48,7 +48,7 @@ function shown(value: unknown): string {
  * en에 함수가 늘면 typecheck가 표의 누락을 잡는다.
  */
 /** `Messages`가 뺀 영어 고정 네임스페이스(orch D2) — 번역 사전에 없으므로 en에서도 펼치지 않는다. */
-const ENGLISH_ONLY = new Set(["mcp", "seo", "crash", "publicDocs.privacy", "landing.hero.title", "landing.closing.title", "signIn.hero"]);
+const ENGLISH_ONLY = new Set(["mcp", "seo", "crash", "publicDocs.privacy"]);
 
 function leaves(value: unknown, path = "", out: Leaf[] = []): Leaf[] {
   if (ENGLISH_ONLY.has(path)) return out;

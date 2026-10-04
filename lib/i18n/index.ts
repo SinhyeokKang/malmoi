@@ -30,17 +30,11 @@ type Full = Widen<En>;
 
 /**
  * 번역 사전(ko·es)이 맞출 모양. **영어로 고정되는 네임스페이스는 뺀다** — MCP 도구 응답(`mcp`)·SEO 메타(`seo`)·
- * 루트 레이아웃 밖 오류 화면(`crash`)·방침 본문(`publicDocs.privacy` — ko 본은 `messages/ko-privacy.tsx`)·
- * 슬로건 셋(`landing.hero.title`·`landing.closing.title`·`signIn.hero` — 브랜드 문구라 번역하지 않는다, user-timezone T7)은
+ * 루트 레이아웃 밖 오류 화면(`crash`)·방침 본문(`publicDocs.privacy` — ko 본은 `messages/ko-privacy.tsx`)은
  * 소비자가 `@/messages/en`을 명시해 읽는다(ui-locales orch D2).
  */
-export type Messages = Omit<Full, "mcp" | "seo" | "crash" | "publicDocs" | "landing" | "signIn"> & {
+export type Messages = Omit<Full, "mcp" | "seo" | "crash" | "publicDocs"> & {
   readonly publicDocs: Omit<Full["publicDocs"], "privacy">;
-  readonly landing: Omit<Full["landing"], "hero" | "closing"> & {
-    readonly hero: Omit<Full["landing"]["hero"], "title">;
-    readonly closing: Omit<Full["landing"]["closing"], "title">;
-  };
-  readonly signIn: Omit<Full["signIn"], "hero">;
 };
 
 /**

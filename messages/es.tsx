@@ -161,6 +161,7 @@ export const es = {
     google: "Continuar con Google",
     consent: { before: "Al hacer clic en Continuar con un servicio externo, aceptas la ", link: "Política de privacidad", after: " de Malmoi." },
     footer: { copyright: "© 2026 Malmoi", github: "GitHub", privacy: "Política de privacidad" },
+    hero: { top: "Reúne tus textos", bottom: "Traduce y publica en equipo" },
   },
 
   uiLocale: {
@@ -183,6 +184,7 @@ export const es = {
       getStarted: "Empezar",
     },
     hero: {
+      title: ["Reúne tus textos,", "traduce y publica en equipo"] as const,
       body: "Malmoi es una herramienta de localización para repositorios de GitHub: encuentra tus archivos de traducción, permite que tu equipo los edite en el navegador y devuelve todos los cambios en una sola pull request.",
       latest: (version: string) => (version === "" ? "Últimas novedades" : `Novedades de la v${version}`),
     },
@@ -197,6 +199,7 @@ export const es = {
       ] as const,
     },
     closing: {
+      title: "Empieza con los archivos que ya tienes",
       body: "Conecta un repositorio de GitHub con archivos de traducción JSON, YAML, JS/TS o de extensiones de Chrome, invita a tu equipo y envía la primera pull request.",
     },
     mockup: {

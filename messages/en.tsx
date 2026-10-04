@@ -443,8 +443,8 @@ export const en = {
     consent: { before: "By clicking Continue through a third party you accept the Malmoi ", link: "Privacy Policy", after: "." },
     footer: { copyright: "© 2026 Malmoi", github: "GitHub", privacy: "Privacy Policy" },
     /**
-     * 우측 장식의 문구 둘. ⚠️ **키비주얼을 `alt=""`로 둘 수 있는 근거가 이 두 줄이다** — 이미지
-     * 안에 구운 텍스트가 말하는 것을 여기가 이미 말하고 있어야 그것이 장식이 된다.
+     * 우측 장식의 문구 둘. ⚠️ **키비주얼을 `alt=""`로 둘 수 있는 근거가 이 두 줄이다** — 이미지는 장식이고
+     * 의미는 이 문구가 진다. 이미지에 구운 영문과 ko·es 문구는 같은 말의 번역이지 같은 글자가 아니다(user-timezone T9).
      */
     hero: { top: "Connect your projects", bottom: "Translate & ship together" },
   },
