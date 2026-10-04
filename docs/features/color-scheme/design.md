@@ -169,10 +169,10 @@ ui-locales의 `parseUiLocale`·`resolveUiLocale`(`lib/i18n/locales.ts`)와 **모
 
 - 위치: **`app/(edit)/preferences/actions.ts`** — 부르는 곳이 `/preferences` 하나뿐이다(공개 스위처 없음, spec 결정). ui-locales의 `app/ui-locale/`과 다른 이유가 이것이다.
 - 입력 `colorScheme` 하나 → `parseColorScheme` 불통과면 `invalid`.
-- 처리 순서: ①`requireUser()`(`lib/auth/session.ts:26` — 세션이 없으면 **redirect**, 다른 보호 Action과 같은 형) → **그 `userId`로** `User.colorScheme` 갱신(입력 userId 없음) → ②쿠키 `malmoi-color-scheme`(`httpOnly` · `SameSite=Lax` · `Secure` · `Path=/` · 1년)를 **무조건** 쓴다(§3.3 — 쓰기 계획 함수 없음) → ③`revalidateAfterCommit("color-scheme")`(`lib/revalidate-after-commit.ts:6`, 시그니처 `(scope, path = "/")` — 안에서 `revalidatePath(path, "layout")`. ⚠️ `("/", "layout")`으로 부르면 `revalidatePath("layout", "layout")`이 되어 `<html data-theme>`이 새로고침 전까지 안 바뀐다).
+- 처리 순서(형제 `setTimeZone`과 같은 형 — 아래 대조): ①`readSession()`이 `ok`가 아니면 아무것도 쓰지 않고 `failed`(redirect하지 않는다 — 카드가 Alert로 말한다) → **세션의 `userId`로** `User.colorScheme` 갱신(입력 userId 없음) → ②쿠키 `malmoi-color-scheme`(`httpOnly` · `sameSite: "lax"` · `secure: x-forwarded-proto === "https"` — `setUiLocale`과 같은 판정, 로컬 http에서도 쿠키가 선다 · `path: "/"` · 1년)를 **무조건** 쓴다(§3.3 — 쓰기 계획 함수 없음) → ③`revalidateAfterCommit("color-scheme")`(`lib/revalidate-after-commit.ts:6`, 시그니처 `(scope, path = "/")` — 안에서 `revalidatePath(path, "layout")`. ⚠️ `("/", "layout")`으로 부르면 `revalidatePath("layout", "layout")`이 되어 `<html data-theme>`이 새로고침 전까지 안 바뀐다).
   ①의 DB 갱신이 실패하면 아무것도 쓰지 않고 `failed`(쿠키만 쓰면 다음 렌더에서 계정의 옛 값이 이겨 조용히 되돌아간다). ③의 오류는 커밋 뒤라 `ok`다(POSTMORTEM 2026-09-20).
 - 결과는 코드(`ok`·`invalid`·`failed`)다. `ProjectEvent`를 남기지 않는다.
-- ⚠️ ui-locales의 `setUiLocale`(`app/ui-locale/actions.ts`)이 아직 dev에 없다(2026-10-04) — 착수 때 그 실물과 이 절을 다시 대조한다(tasks P2-pre).
+- 대조 2026-10-05: dev의 `setUiLocale`(`app/ui-locale/actions.ts`)·`setTimeZone`(`app/(edit)/preferences/actions.ts`)과 대조 — 둘 다 `readSession` + 세션 없음 `failed`(redirect 아님)이고 쿠키 `secure`가 프록시 프로토콜 판정이라, 옛 문안(`requireUser` redirect · 무조건 `Secure`)을 그 형으로 고쳤다. 계정 → 쿠키 → 무효화 순서 · DB 실패 시 무기록 `failed` · `revalidateAfterCommit(scope)` 호출형은 일치.
 
 ### 3.7 화면 — Preferences의 Theme 카드
 
@@ -183,6 +183,7 @@ ui-locales의 `parseUiLocale`·`resolveUiLocale`(`lib/i18n/locales.ts`)와 **모
 - `preferences/loading.tsx` 골격에 셋째 카드 자리를 더한다.
 - 문구는 `messages/{en,ko,es}.tsx`에 같은 커밋으로 넣는다(ui-locales 사전 정합 테스트가 빠진 키를 typecheck로 잡는다). 용어: en `Theme`·`System`·`Light`·`Dark` / ko `테마`·`시스템`·`라이트`·`다크` / es `Tema`·`Sistema`·`Claro`·`Oscuro` — DESIGN §10.1 ko·es 열에 등재.
 - 시안: Phase 2 다크 시안에 Theme 카드를 포함한다(S 단계).
+- 대조 2026-10-05: 공용 조립 `components/preferences/preference-select-card.tsx`(`PreferenceSelectCard`)가 dev에 있고 Language·Time zone이 쓴다 → "없으면 뽑는다" 갈래는 닫힘. **옵션 글리프 슬롯은 이미 있다** — `items[].label`이 `ReactNode`라 Language 카드가 `LocaleFlag`를 라벨 안에 넣고(`ItemText` 안 → 트리거로 복제), Theme도 `Monitor`·`Sun`·`Moon`을 같은 자리에 넣는다. **E는 카드에 슬롯을 더하지 않는다.** DOM 선적용·롤백은 카드가 아니라 Theme 카드가 넘기는 `apply` 클로저가 든다(카드는 `apply`가 던지면 잡아 실패로 그린다 — 클로저는 던짐에서도 `data-theme`을 되돌려야 하므로 `try/finally`·`catch`로 감싼다). DESIGN §6.4 문안은 user-timezone이 이미 "Preferences 밖의 설정으로 넓히지 않는다"로 고쳤다 — P2-6은 Select 목록에 Theme을 더하고 "둘만"을 "셋"으로 바꾼다. DESIGN `/preferences` 절의 "테마 자리는 만들지 않았다" 문장도 P2-6에서 고친다.
 
 ### 3.8 다크 값 — 시안 확정 (2026-10-05)
 
@@ -228,7 +229,7 @@ model User {
 
 - `lib/privacy/collected.ts`: `User.colorScheme` → `collected`. 쿠키 표에 `malmoi-color-scheme` 한 줄.
 - 방침 본문 en·ko 두 벌(ui-locales가 만든 동형 게이트)에 같은 내용 + 개정 이력 한 줄 + 시행일. 새 **목적**(화면 테마 기억)·새 **쿠키** — `/push` 4단계 개인정보 점검 항목이다.
-- ui-locales가 고친 "모든 쿠키는 로그인·왕복에 필요하다" 문장이 기능 쿠키를 이미 말하고 있는지 착수 때 본다.
+- 대조 2026-10-05: 방침 en 쿠키 절(`messages/en.tsx` `id: "cookies"`)의 첫 문장은 "로그인 · GitHub/Google 왕복 · **고른 화면 언어 기억**"에 필요한 쿠키라고 쓴다 — 테마 기억은 그 목록에 없으므로 E가 그 문장과 쿠키 표에 한 줄을 더한다. "All of them are http-only"는 테마 쿠키도 `httpOnly`라 그대로 참이다(클라이언트는 쿠키를 읽지 않고 DOM `data-theme`만 쓴다). 보존 목록(`The language you choose…` · `The time zone you choose…`)에 테마 한 줄도 같이 — ko 본(`ko-privacy.tsx`)도 동형.
 
 ### 4.4 대비 쌍 (완료 조건 12의 입력)
 
