@@ -97,3 +97,6 @@
 - 2026-10-04 사용자: Preferences에 TZ·Theme 추가. **구현 순서 고정: ui-locales → user-timezone → color-scheme**(color-scheme은 하드코딩 색 정리 → 컬러 스킴).
 - 스펙 작성 세션 둘(Opus 5.5, dev 기반 워크트리, `/feature`): `feature-user-timezone`(term_d5eca2ce…) · `feature-color-scheme`(term_8df94b9f…). 브리프 `.scratch/peer/feature-*.md`. 산출물은 각 브랜치 커밋 — 통합은 ui-locales와 별개.
 - W6 질문: `lib/links.ts`·`lib/shell/nav.ts`·`lib/search/{rows,nav-index}.ts`의 m 인자화는 W7 몫으로 남김.
+- W4: I1 커밋(`00622bb8` guide/en 이동·로더 · `17350047` ko 가이드), I2 소유 밖 파일(검색 로더·다이얼로그 한 줄·entry-points 등) 승인. 옛 `/api/search-index` 경로 제거 → CLAUDE.md 데이터 경로 표 갱신은 지휘자 H2. W5는 W4 브랜치 끝 위에서 커밋(통합 순서 W4 → W5). W6에 W4가 고친 테스트 파일 회피 지시.
+- **W4 완료**: 5커밋 `00622bb8 17350047 2ab43bea a456f5e6 5fa369c3`(I4·I1·I2·I3), gate ok. 문서 갱신 대상(지휘자): 옛 `/api/search-index` — CLAUDE.md:123 · ARCHITECTURE 2152/2786 · DIRECTORY 135 · PRODUCT 662 + I6. W5 rebase 대상 5fa369c3. 리뷰 R4 착수.
+- **W3 완료**(es 사전 `0a32feaf 5a36fae3 f05aaf2d`, W1 위 rebase) → W2와 같은 블록 충돌 예상이라 후속 Task로 로컬 dev(W2 포함) rebase 지시. 지휘자가 W3의 W1-신호 질문에 답을 놓쳤다(W3가 로컬 dev를 신호로 삼음).
