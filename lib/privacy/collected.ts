@@ -131,6 +131,8 @@ export const CLASSIFIED: Record<FieldPath, Classification> = {
   "User.emailVerified": "collected",
   "User.image": "collected",
   "User.createdAt": "collected",
+  /** 고른 화면 언어(ui-locales) — 사람을 식별하지 않지만 계정에 저장하는 설정이라 밝힌다. 기기 쿠키 `malmoi-ui-locale`은 쿠키 표가 든다. */
+  "User.uiLocale": "collected",
 
   /**
    * ⚠️ **`third-parties`가 아니라 `collected`다** (2026-09-19 리뷰) — 그 절은 **누가 더 보나**(서비스

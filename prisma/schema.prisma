@@ -566,6 +566,10 @@ model User {
   /// 사용자 식별자를 담으므로 봉투를 지난다.
   image         String?
   createdAt     DateTime  @default(now())
+  /// 화면 언어(ui-locales). null = 정하지 않음 → 기기 쿠키 → en 순으로 넘어간다. **읽을 때 `parseUiLocale`을 지난다** —
+  /// 언어를 지원 목록에서 빼도 남은 값 때문에 화면이 깨지지 않는다. enum으로 두지 않는 이유가 이것이다(enum이면 값 하나를 빼는 것이
+  /// destructive 마이그레이션이 된다). ⚠️ **봉투를 지나지 않는다** — 사람을 식별하는 값이 아니다(`name`·`image`와 다르다).
+  uiLocale      String?
 
   accounts        Account[]
   sessions        Session[]
