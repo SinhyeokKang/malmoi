@@ -162,7 +162,8 @@ describe("globals.css — 토큰 등록", () => {
    * 목록에 이름을 더하려면 **그 변수를 클래스로 안 쓰는 이유**가 함께 있어야 한다.
    */
   it("`:root`의 색 변수가 전부 등록됐다 — 안 하면 클래스가 생성되지 않는다", () => {
-    const UNREGISTERED = new Set(["--radius", "--mono-size", "--mono-leading", "--signin-dot"]);
+    // `--shadow-color`는 `@theme`의 `--shadow-low/medium`이 `color-mix`로 읽는 재료다 — 클래스로 쓰지 않는다(color-scheme design §2.2).
+    const UNREGISTERED = new Set(["--radius", "--mono-size", "--mono-leading", "--signin-dot", "--shadow-color"]);
     const registered = new Set(
       [...theme.matchAll(/var\((--[\w-]+)\)/g)].map((m) => m[1] ?? ""),
     );
@@ -179,6 +180,70 @@ describe("globals.css — 토큰 등록", () => {
   it("캔버스 토큰의 이름이 화면에 매이지 않는다", () => {
     expect(root).toMatch(/^\s*--canvas:/m);
     expect(CSS).not.toContain("--auth-canvas");
+  });
+});
+
+/**
+ * **의미 색의 라이트 값은 옮겨 온 raw 그대로다** (color-scheme Phase 1 — spec 완료 조건 3·4, design §2.2).
+ *
+ * ⚠️ 이 표가 지키는 것은 **토큰 값**뿐이다 — `amber-700` 자리에 `warning-soft-foreground`(amber-800)를 붙인 자리별 오매핑은
+ * 못 잡는다(그것은 이관 전 computed style 표본과의 수동 대조 몫이다). Phase 2에서 `light-dark()`가 감싸도 첫 인자가 이 값이어야 한다.
+ */
+describe("globals.css — 의미 색 토큰", () => {
+  const root = /:root\s*\{([\s\S]*?)\n\}/.exec(CSS)?.[1] ?? "";
+  const theme = /@theme inline\s*\{([\s\S]*?)\n\}/.exec(CSS)?.[1] ?? "";
+  const declared = new Map([...root.matchAll(/^\s*(--[\w-]+):\s*([^;]+);/gm)].map((m) => [m[1], m[2]?.trim()]));
+
+  const LIGHT: Readonly<Record<string, string>> = {
+    "--link": "var(--color-blue-600)",
+    "--gray-light": "var(--color-neutral-300)",
+    "--gray-dim": "var(--color-neutral-400)",
+    "--gray-strong": "var(--color-neutral-600)",
+    "--success-surface": "var(--color-green-50)",
+    "--success-soft": "color-mix(in oklab, var(--color-green-100) 80%, transparent)",
+    "--success-foreground": "var(--color-green-800)",
+    "--warning-surface": "var(--color-amber-50)",
+    "--warning-soft": "color-mix(in oklab, var(--color-amber-100) 80%, transparent)",
+    "--warning-soft-foreground": "var(--color-amber-800)",
+    "--warning-foreground": "var(--color-amber-700)",
+    "--warning-emphasis": "var(--color-amber-500)",
+    "--danger-surface": "var(--color-red-50)",
+    "--info-surface": "var(--color-blue-50)",
+    "--hue-rose": "var(--color-rose-600)",
+    "--hue-orange": "var(--color-orange-600)",
+    "--hue-amber": "var(--color-amber-600)",
+    "--hue-emerald": "var(--color-emerald-600)",
+    "--hue-teal": "var(--color-teal-600)",
+    "--hue-sky": "var(--color-sky-600)",
+    "--hue-indigo": "var(--color-indigo-600)",
+    "--hue-fuchsia": "var(--color-fuchsia-600)",
+    "--on-hue": "var(--color-white)",
+    // 오버레이는 `--foreground`의 라이트 값과 같은 색이되 그 변수를 가리키지 않는다(다크에서 갈린다).
+    "--scrim": "hsl(0 0% 3.9%)",
+    "--shadow-color": "rgb(22 24 27)",
+  };
+
+  it.each(Object.entries(LIGHT))("%s의 라이트 값이 옮겨 온 raw와 같다", (name, value) => {
+    expect(declared.get(name)).toBe(value);
+  });
+
+  it("오버레이 토큰이 지금의 `--foreground`와 같은 색이다", () => {
+    expect(declared.get("--scrim")).toBe(declared.get("--foreground"));
+  });
+
+  it("`@theme inline`이 팔레트를 별칭으로 들지 않는다 — 모든 색 유틸의 값은 `:root`에서 온다", () => {
+    expect(theme).not.toBe("");
+    expect([...theme.matchAll(/^\s*(--color-[\w-]+):\s*(.+);/gm)].filter((m) => /var\(--color-/.test(m[2] ?? "")).map((m) => m[1])).toEqual([]);
+  });
+
+  it("그림자 둘의 색이 `--shadow-color`를 지난다 — 리터럴 색이 `@theme`에 남지 않는다", () => {
+    for (const name of ["--shadow-low", "--shadow-medium"]) {
+      const value = new RegExp(`^\\s*${name}:\\s*([^;]+);`, "m").exec(theme)?.[1] ?? "";
+      expect(value, name).toMatch(/color-mix\(in srgb, var\(--shadow-color\) \d+%, transparent\)/);
+      expect(value, name).not.toMatch(/rgb\(|hsl\(|#[0-9a-f]{3,8}/i);
+    }
+    expect(theme).toMatch(/--shadow-low:[^;]*var\(--shadow-color\) 5%/);
+    expect(theme).toMatch(/--shadow-medium:[^;]*var\(--shadow-color\) 15%/);
   });
 });
 

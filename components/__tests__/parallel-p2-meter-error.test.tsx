@@ -14,7 +14,7 @@ it.each([false, true])("meter preserves decorative done/review proportions and d
   expect(bar.getAttribute("aria-hidden")).toBe("true"); expect(bar.getAttribute("role")).toBeNull();
   expect([...bar.children].map(n => (n as HTMLElement).style.width)).toEqual(["60%", "20%"]);
   expect(bar.children[0]?.classList.contains(dimmed ? "bg-foreground/25" : "bg-foreground/85")).toBe(true);
-  expect(bar.children[1]?.classList.contains("bg-amber-500")).toBe(true);
+  expect(bar.children[1]?.classList.contains("bg-warning-emphasis")).toBe(true);
   for (const cls of ["h-1", "rounded-full", "overflow-hidden"]) expect(bar.classList.contains(cls)).toBe(true);
 });
 

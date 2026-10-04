@@ -28,9 +28,9 @@ describe("IconTile", () => {
    * 기대값은 §2.4 표의 칸 열을 그대로 옮겼다. `muted`는 기본 회색 칸과 같다.
    */
   it.each([
-    ["success", "bg-green-100/80 text-green-800"],
+    ["success", "bg-success-soft text-success-foreground"],
     ["muted", "bg-foreground/5 text-muted-foreground"],
-    ["warning", "bg-amber-100/80 text-amber-800"],
+    ["warning", "bg-warning-soft text-warning-soft-foreground"],
     ["danger", "bg-destructive/8 text-destructive"],
   ] as const)("tone %s → §2.4 칸 %s", async (tone, cell) => {
     const classes = (await render(<IconTile tone={tone}><svg /></IconTile>)).container.firstElementChild?.className.split(" ") ?? [];

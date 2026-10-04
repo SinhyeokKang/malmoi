@@ -215,7 +215,7 @@ it("열린 PR 조회 실패(openPr undefined)는 warning Couldn't check 띠이�
   const container = await draw({ openPr: undefined });
   const band = [...container.querySelectorAll("div")].find((node) => node.textContent === en.projects.banner.prCheckFailed);
   expect(band).toBeDefined();
-  expect(band?.className).toContain("text-amber-800");
+  expect(band?.className).toContain("text-warning-soft-foreground");
   expect(band?.getAttribute("data-tone")).toBe("warning");
   expect(band?.querySelector("a")).toBeNull();
   // 짝: PR 없음(null)이면 그 띠가 없다.
@@ -225,7 +225,7 @@ it("열린 PR 조회 실패(openPr undefined)는 warning Couldn't check 띠이�
 
 it.each([
   [{unsent:24}, "muted", "text-muted-foreground"],
-  [{repositoryId:null}, "warning", "text-amber-800"],
+  [{repositoryId:null}, "warning", "text-warning-soft-foreground"],
   [{surfaces:[{archivedAt:null,lastCommitSha:"s",importError:"parse-failed",importing:false}]}, "danger", "text-destructive"],
 ] as const)("project band %s preserves tone marker, row indent and action", async (over, tone, color) => {
   const container = await draw({...over, surfaces: "surfaces" in over ? [...over.surfaces] : BASE.surfaces});

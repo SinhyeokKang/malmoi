@@ -221,7 +221,7 @@ it("연결 행의 상태는 배지이고 대시가 없다 — 연결됨 초록 �
   const methods = [...card(container, en.link.methods.title).querySelectorAll("li")];
   const pills = methods.map((row) => row.querySelector(".rounded-full"));
   expect(pills.map((p) => p?.textContent)).toEqual([en.link.methods.connected, en.link.methods.connected]);
-  expect(pills[0]!.className).toContain("bg-green-100/80");
+  expect(pills[0]!.className).toContain("bg-success-soft");
 });
 
 /**

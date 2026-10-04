@@ -166,7 +166,7 @@ describe("표시 — Unsent · 보류 배너 · Revert", () => {
 
   it("pending-edits 보류 배너는 neutral이다 — 이 화면만의 예외(DESIGN §2.4 예외 1)", async () => {
     const { container } = await render(<TranslationWorkspace {...props({ unpublished: 3 })} />);
-    const banner = [...container.querySelectorAll("div")].find((el) => /\bbg-(muted|amber-50)\b/.test(el.className) && el.textContent?.includes(en.translations.banner.paused(3)));
+    const banner = [...container.querySelectorAll("div")].find((el) => /\bbg-(muted|warning-surface)\b/.test(el.className) && el.textContent?.includes(en.translations.banner.paused(3)));
     expect(banner?.className).toContain("bg-muted");
   });
 

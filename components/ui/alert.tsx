@@ -22,10 +22,10 @@ const alert = cva("flex", {
   variants: {
     variant: {
       neutral: "bg-muted",
-      info: "bg-blue-50",
-      success: "bg-green-50",
-      warning: "bg-amber-50",
-      danger: "bg-red-50",
+      info: "bg-info-surface",
+      success: "bg-success-surface",
+      warning: "bg-warning-surface",
+      danger: "bg-danger-surface",
     },
     /**
      * ⚠️ `sm`은 좁은 자리(360 Dialog · 상세 노트)의 형이다 — `p-4`면 360 Dialog 본문 폭이 296으로 떨어져
@@ -52,8 +52,8 @@ const ICON: Record<Tone, ComponentType<{ className?: string }>> = {
 const ICON_CLASS: Record<Tone, string> = {
   neutral: "text-muted-foreground",
   info: "text-link",
-  success: "text-green-800",
-  warning: "text-amber-700",
+  success: "text-success-foreground",
+  warning: "text-warning-foreground",
   danger: "text-destructive",
 };
 

@@ -17,9 +17,9 @@ import { cn } from "@/lib/utils";
  * **상태가 아닌 면**만 덮는다 — Logs 종류 색(파랑·청록·보라) · 온보딩 후보의 선택 면·`bg-muted`. 회색 칸의 글자색은 기본 하나다.
  */
 const TONE: Readonly<Record<StateTone, string>> = {
-  success: "bg-green-100/80 text-green-800",
+  success: "bg-success-soft text-success-foreground",
   muted: "bg-foreground/5 text-muted-foreground",
-  warning: "bg-amber-100/80 text-amber-800",
+  warning: "bg-warning-soft text-warning-soft-foreground",
   danger: "bg-destructive/8 text-destructive",
 };
 

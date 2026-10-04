@@ -226,7 +226,7 @@ describe("로케일 Meter — 캔버스 값 그대로", () => {
     ["바 radius 999", "rounded-full"],
     ["트랙 8%", "bg-foreground/[0.08]"],
     ["완료 rgba(10,10,10,0.85)", "bg-foreground/85"],
-    ["검토 대기 #f59e0b", "bg-amber-500"],
+    ["검토 대기 amber-500", "bg-warning-emphasis"],
   ])("%s", (_label, literal) => {
     expect(METER).toContain(literal);
   });

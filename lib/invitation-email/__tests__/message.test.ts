@@ -447,6 +447,9 @@ describe("HUE_HEX", () => {
     }
     const rgb = rgbPattern.exec(value);
     if (rgb) return channelsHex(numericChannels(rgb.slice(1)));
+    // theme.css의 `--color-white: #fff` — 식별색 위 글자 `--on-hue`가 가리킨다(color-scheme Phase 1).
+    const hex = /^#([\da-f]{3}|[\da-f]{6})$/i.exec(value);
+    if (hex) return `#${hex[1]!.length === 3 ? [...hex[1]!].map((digit) => digit + digit).join("") : hex[1]!}`.toLowerCase();
     const oklch = oklchPattern.exec(value);
     if (oklch) {
       const [l, c, h] = numericChannels([oklch[1]!, oklch[2]!, oklch[3] === "none" ? "0" : oklch[3]!]);
@@ -492,7 +495,17 @@ describe("HUE_HEX", () => {
     expect(EXCEPTIONS["#262626"]).not.toBe("");
     expect(template.match(/#262626/g)).toHaveLength(1);
     expect(template).toContain("a.mm-btn:hover{background:#262626!important}");
-    const customColors = [...globals.matchAll(/^\s*(--color-[\w-]+):/gm)].map((match) => colorHex(match[1]!));
+    // 알파 토큰(별칭 끝이 `color-mix(… transparent)`)은 불투명 `#262626`과 같을 수 없어 거른다 — color-scheme Phase 1의
+    // `--color-success-soft`·`--color-warning-soft`(`-100/80`)다. 나머지 불투명 토큰은 전부 hex로 풀어 계속 센다.
+    const terminal = (name: string): string => {
+      const value = variables.get(name) ?? "";
+      const alias = /^var\((--[\w-]+)\)$/.exec(value);
+      return alias ? terminal(alias[1]!) : value;
+    };
+    const names = [...globals.matchAll(/^\s*(--color-[\w-]+):/gm)].map((match) => match[1]!);
+    const translucent = names.filter((name) => /^color-mix\(/.test(terminal(name)));
+    expect(translucent).toEqual(["--color-success-soft", "--color-warning-soft"]);
+    const customColors = names.filter((name) => !translucent.includes(name)).map((name) => colorHex(name));
     expect(customColors).not.toContain("#262626");
   });
 

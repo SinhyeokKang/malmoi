@@ -237,7 +237,7 @@ describe("생성 ① → ②", () => {
     await userEvent.keyboard("{Escape}");
     await settle();
     expect(panel()).not.toBeNull();
-    const overlay = [...document.querySelectorAll<HTMLElement>("[data-state]")].find((el) => el.className.includes("bg-foreground/32"));
+    const overlay = [...document.querySelectorAll<HTMLElement>("[data-state]")].find((el) => el.className.includes("bg-scrim/32"));
     if (overlay !== undefined) {
       await act(async () => {
         overlay.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));

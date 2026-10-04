@@ -6,7 +6,7 @@ export function Meter({ done, review, dimmed = false }: { done: number; review: 
   return (
     <span aria-hidden className="bg-foreground/[0.08] flex h-1 overflow-hidden rounded-full">
       <span className={dimmed ? "bg-foreground/25 h-1" : "bg-foreground/85 h-1"} style={{ width: `${done}%` }} />
-      <span className="h-1 bg-amber-500" style={{ width: `${review}%` }} />
+      <span className="bg-warning-emphasis h-1" style={{ width: `${review}%` }} />
     </span>
   );
 }

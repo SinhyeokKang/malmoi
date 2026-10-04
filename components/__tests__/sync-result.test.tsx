@@ -165,7 +165,7 @@ it("거부는 tone·닫기·액션이 갈래마다 갈린다", async () => {
   await view.rerender(<SyncResult {...props} onRetry={vi.fn()} outcome={{ ok: false, error: "not-ready" }} />);
   expect(retryButton(view.container)).toBeNull();
   expect(view.container.querySelector('a[href="/projects/acme/settings"]')?.textContent).toBe("Open settings");
-  expect(alert(view.container)?.className).toContain("bg-amber-50");
+  expect(alert(view.container)?.className).toContain("bg-warning-surface");
 
   // 리포 id 미고정은 [Reconnect], 계정 미연결(ConnectError)은 리포가 멀쩡하므로 끊김을 말하지 않고 설정으로 보낸다(ux-drift-unify r1).
   await view.rerender(<SyncResult {...props} onRetry={vi.fn()} outcome={{ ok: false, error: "unpinned" }} />);
@@ -173,7 +173,7 @@ it("거부는 tone·닫기·액션이 갈래마다 갈린다", async () => {
   expect(view.container.textContent).toContain("This repository is disconnected");
   // 1-Y14 — 끊김 거부는 Home 배너·목록 칩의 Disconnected와 같은 톤이다(호박). 미연결(설치 없음)은 readiness가 먼저 막는다(`not-ready`).
   expect(planImportRefusal("unpinned").tone).toBe(STATE.disconnected.tone);
-  expect(alert(view.container)?.className).toContain("bg-amber-50");
+  expect(alert(view.container)?.className).toContain("bg-warning-surface");
   await view.rerender(<SyncResult {...props} onRetry={vi.fn()} outcome={{ ok: false, error: "not-connected" }} />);
   expect(view.container.querySelector('a[href="/account"]')?.textContent).toBe(en.repositorySync.openAccount);
   expect(view.container.textContent).toContain("Account");

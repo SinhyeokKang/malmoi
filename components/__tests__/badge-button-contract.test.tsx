@@ -12,8 +12,8 @@ describe("Badge appearance variants", () => {
     [undefined, undefined, "text-muted-foreground"],
     ["text", undefined, "text-muted-foreground"],
     ["soft-neutral", "bg-foreground/5", "text-foreground"],
-    ["soft-amber", "bg-amber-100/80", "text-amber-800"],
-    ["soft-green", "bg-green-100/80", "text-green-800"],
+    ["soft-amber", "bg-warning-soft", "text-warning-soft-foreground"],
+    ["soft-green", "bg-success-soft", "text-success-foreground"],
     ["soft-red", "bg-destructive/8", "text-destructive"],
   ] as const)("%s keeps its existing surface/text combination and content slot", async (variant, surface, color) => {
     const { container } = await render(<Badge variant={variant}><strong>3</strong> keys</Badge>);

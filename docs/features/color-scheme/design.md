@@ -31,6 +31,7 @@
   Tailwind v4 팔레트는 oklch라 hex 사본은 반올림만큼 어긋난다(완료 조건 4가 "같은 색"이다).
 - **`@theme inline`은 `--color-<name>: var(--<name>)` 등록만 든다.** 지금의 팔레트 별칭 넷(`link`·`gray-light/dim/strong`)은 `:root` 변수로 내려간다 — `@theme`에 값이 있으면 Phase 2에서 다크 값을 걸 자리가 없다.
 - ⚠️ **`:root`에서 Tailwind 팔레트 변수를 참조할 때 그 변수가 출력되는지** 먼저 확인한다(tasks P1-0 스파이크). Tailwind 4.3.3은 테마 밖 선언 값의 `var(`를 `trackUsedVariables`로 "사용됨" 표시하므로 출력될 것으로 보지만(소스 확인, 실측 전), **어느 유틸도 쓰지 않는 팔레트 변수**(예: `--color-lime-300`)를 `:root`에서만 참조해 빌드 CSS로 잰다 — raw 클래스가 살아 있는 상태에서 쓰이는 변수로 재면 유틸 덕분에 나온 것과 구별이 안 돼 거짓 green이다. 안 나오면 폴백은 **`@theme static`**(쓰임과 무관하게 출력)이다 — `@theme reference`는 출력하지 *않는* 옵션이라 폴백이 아니다. 판정을 이 절에 적는다.
+  - **판정(2026-10-05, P1-0 스파이크): 출력된다 — `@theme static` 폴백 불필요.** `:root`에 `--x: var(--color-lime-300)` · `color-mix(in oklab, var(--color-lime-200) 80%, transparent)`만 넣고 `pnpm build` → 산출 CSS(`.next/static/chunks/*.css` — 이 리포는 `static/css`가 아니다)에 `--color-lime-300`·`--color-lime-200` 정의가 있었다(hex + `lab()` 두 벌). `color-mix` 값에는 Tailwind가 폴백 + `@supports` 재선언을 붙인다.
 
 ### 2.2 토큰 표 (Phase 1 산출물 · Phase 2 시안 입력)
 

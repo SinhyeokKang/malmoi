@@ -84,7 +84,6 @@ function buttonOverrides(source: string): string[] {
   });
 }
 
-const TONE_FILES = ["components/ui/tone.ts"];
 const GLYPH = ["components/logs/glyph.tsx"];
 
 /**
@@ -93,14 +92,8 @@ const GLYPH = ["components/logs/glyph.tsx"];
  * ⚠️ 값의 **근거**는 §6.2가 든다. 이 표는 그것이 지금 어디에 서 있는지만 센다.
  */
 const REGISTERED: Record<string, string[]> = {
-  // amber — 경고 축 (§6.2 "새 raw 색을 늘리지 않는다")
-  // 2026-09-30 상태 통일 — 호박 면·글자는 "손봐야 할 것"의 한 벌이다(배지 · 칸 · 행 띠 · 보류 글자).
-  // 아이콘 칸의 호박·초록은 `IconTile tone` 하나가 든다(2026-10-01 ux-drift-unify T11 — 호출부 넷이 문자열을 들고 있었다).
-  "bg-amber-100/80": ["components/ui/badge.tsx", "components/ui/icon-tile.tsx"],
-  "text-amber-800": ["components/ui/badge.tsx", "components/ui/icon-tile.tsx", "components/ui/row-card.tsx"],
-  "bg-amber-50": ["components/ui/alert.tsx"],
-  // Sources 상세 언어 행은 `MeterBar`를 공유한다(5-Y18 — 손 사본을 걷었다).
-  "bg-amber-500": ["components/ui/meter.tsx"],
+  // ⚠️ color-scheme Phase 1이 프리미티브(Alert·Badge·IconTile·RowCard·Meter·Avatar·ProjectThumbnail·tone)를 의미 토큰으로 옮겼다 —
+  // 남은 줄은 화면 파일이고 P1-2가 비운다. 이 표가 비면 "raw 0" 검사가 자리를 잇는다(design §2.4).
   // B6 — 기준 언어 대기 테두리. `border-destructive/50`(오류)의 짝이다.
   "border-amber-500/50": ["components/sources/base-language-form.tsx"],
   // 카운트 카드 글리프 + 번역 작업 화면의 상태 글자(B6 등재) + 활동 칩
@@ -112,38 +105,27 @@ const REGISTERED: Record<string, string[]> = {
     "components/translations/workspace/workspace.tsx",
     // Publish 결과의 버린 값 목록 머리 — Held back(warning) 글리프 (2026-10-01 ux-drift-unify 1-Y5)
     "components/publish-button.tsx",
-    // Alert warning 글리프 (2026-09-29 — 색은 배경과 글리프만 든다)
-    "components/ui/alert.tsx",
   ],
-  // 초록 — `Active` 배지 · diff
-  // 초록 면·글자는 성공 칸에도 선다(2026-09-30 — Sources 상세 `Synced` 칸)
-  "bg-green-100/80": ["components/ui/badge.tsx", "components/ui/icon-tile.tsx"],
-  "text-green-800": ["components/landing/mockup/publish.tsx", "components/publish-button.tsx", "components/ui/alert.tsx", "components/ui/badge.tsx", "components/ui/icon-tile.tsx"],
-  // Alert 배경 셋 (2026-09-29 사용자 — `bg-amber-50`은 위, `bg-red-50`·`bg-blue-50`은 활동 칩과 같은 값이라 아래에서 합친다)
-  "bg-green-50": ["components/ui/alert.tsx"],
+  // 초록 — diff
+  "text-green-800": ["components/landing/mockup/publish.tsx", "components/publish-button.tsx"],
   "bg-green-800/[0.16]": ["components/landing/mockup/publish.tsx", "components/publish-button.tsx"],
-  // 빨강 — diff · missing 알약 · 사라짐 띠 · 임포트 실패 띠
+  // 빨강 — diff
   "text-red-700": ["components/landing/mockup/publish.tsx", "components/publish-button.tsx"],
   "bg-red-700/[0.14]": ["components/landing/mockup/publish.tsx", "components/publish-button.tsx"],
-  // 링크와 neutral 300/400/600은 T2 의미 토큰이다. raw 등록은 neutral-50만 남는다.
   "bg-neutral-50": ["components/logs/event-detail.tsx"],
-  // 흑백 둘 (§6.2 "흑백 둘과 남의 자산은 이 규칙 밖이다")
+  // 흑백 (§6.2 "흑백 둘과 남의 자산은 이 규칙 밖이다")
   "bg-white": ["components/signin/auth-layout.tsx"],
-  "text-white": ["components/ui/project-thumbnail.tsx", "components/ui/avatar.tsx"],
-  // tone 여덟 (`-600`)
-  ...Object.fromEntries(["rose", "orange", "amber", "emerald", "teal", "sky", "indigo", "fuchsia"].map((tone) => [`bg-${tone}-600`, TONE_FILES])),
   // 활동 글리프 칩 — 종류 색 셋만 남는다(D3③ — 결과 색은 `IconTile tone`이 든다, §6.68)
-  ...Object.fromEntries(["text-blue-700", "bg-teal-50", "text-teal-700", "bg-violet-50", "text-violet-700"].map((value) => [value, GLYPH])),
-  // 활동 칩과 Alert가 같은 값을 쓴다 (Alert `danger`·`info` 배경)
-  "bg-red-50": ["components/ui/alert.tsx"],
-  "bg-blue-50": ["components/ui/alert.tsx", ...GLYPH],
+  ...Object.fromEntries(["bg-blue-50", "text-blue-700", "bg-teal-50", "text-teal-700", "bg-violet-50", "text-violet-700"].map((value) => [value, GLYPH])),
 };
 
 describe("raw 색은 §6.2 등재 목록 안에만 선다 (audit #43·#44)", () => {
   const found = hits(RAW_COLOR).map(({ path, token }) => ({ path, value: colorValue(token) }));
 
+  /** ⚠️ 실제 소스의 정답이 0으로 가므로 개수 하한이 아니라 픽스처로 검사 자체가 찾는지 본다(POSTMORTEM 2026-09-07 — 패턴 오류가 "안전"으로 읽혔다). */
   it("검사가 실제로 raw 색을 찾는다 (카나리아)", () => {
-    expect(found.length).toBeGreaterThan(50);
+    const fixture = '<span className="bg-amber-100/80 hover:text-white border-t-red-700/[0.14] bg-success-soft text-on-hue bg-hue-amber" />';
+    expect(hits(RAW_COLOR, [{ path: "components/canary.tsx", source: fixture }]).map(({ token }) => colorValue(token))).toEqual(["bg-amber-100/80", "text-white", "border-t-red-700/[0.14]"]);
   });
 
   it("등재되지 않은 값·자리가 없다", () => {
@@ -244,8 +226,9 @@ describe("아이콘은 §6.8의 넷(16·14·12·20)이다 (audit #48)", () => {
    * 그 밖의 색상(hue)을 아이콘에 주지 않는다 — 색만으로 말하는 글리프가 생긴다.
    */
   it("아이콘에 붙는 색은 무채 계단·destructive·PR 초록·warning 글리프뿐이다", () => {
-    // `text-amber-700`은 §2.4 글리프 열의 warning 글리프다(Publish Held back 목록 머리, 2026-10-01 1-Y5) — 파일 범위는 위 `REGISTERED`가 묶는다.
-    const ALLOWED = new Set(["text-muted-foreground", "text-foreground", "text-destructive", "text-gray-light", "text-gray-dim", "text-gray-strong", "text-green-800", "text-amber-700"]);
+    // `text-warning-foreground`는 §2.4 글리프 열의 warning 글리프다(Publish Held back 목록 머리, 2026-10-01 1-Y5).
+    // `text-amber-700`은 그 자리의 이관 전 철자다 — 파일 범위는 위 `REGISTERED`가 묶는다.
+    const ALLOWED = new Set(["text-muted-foreground", "text-foreground", "text-destructive", "text-gray-light", "text-gray-dim", "text-gray-strong", "text-success-foreground", "text-warning-foreground", "text-amber-700"]);
     const icons = SOURCES.flatMap(({ path, source }) => {
       const names = [...source.matchAll(/import\s*\{([^}]*)\}\s*from\s*"lucide-react"/g)].flatMap((match) => (match[1] ?? "").split(",").map((name) => name.trim()).filter(Boolean));
       // ⚠️ `className={cn(…)}`·템플릿 리터럴도 읽는다 — 여는 태그 안의 문자열 조각을 전부 모은다.
@@ -286,8 +269,9 @@ describe("프리미티브를 손으로 다시 만들지 않는다 (audit #49)", 
   });
 
   it("경고·안내 상자를 손으로 그리지 않는다 — Alert의 배경 넷이 그 파일 밖에 서지 않는다", () => {
-    const box = /(?<![\w-])bg-(?:amber|red|green|blue)-50(?![\w/-])[^"]*(?:rounded|p-\d)|(?:rounded|p-\d)[^"]*(?<![\w-])bg-(?:amber|red|green|blue)-50(?![\w/-])/;
-    expect(SOURCES.filter(({ path, source }) => path !== "components/ui/alert.tsx" && !GLYPH.includes(path) && box.test(source)).map(({ path }) => path)).toEqual([]);
+    const box = /(?<![\w-])bg-(?:warning|danger|success|info)-surface(?![\w/-])[^"]*(?:rounded|p-\d)|(?:rounded|p-\d)[^"]*(?<![\w-])bg-(?:warning|danger|success|info)-surface(?![\w/-])/;
+    expect(box.test('"bg-warning-surface rounded-lg p-4"')).toBe(true);
+    expect(SOURCES.filter(({ path, source }) => path !== "components/ui/alert.tsx" && box.test(source)).map(({ path }) => path)).toEqual([]);
   });
 });
 
@@ -630,7 +614,7 @@ describe("화면 간 불변식 — grep 규칙 (T28)", () => {
   });
 
   describe("`IconTile`의 상태 색은 `tone`이 든다 — 호출부는 면만 덮는다 (1-R1 · 5-R1 · 5-Y6)", () => {
-    const STATE_COLOR = /^(?:[a-z-]+:)*(?:text|bg|border|ring)-(?:green|emerald|amber|red|destructive)(?:-|$|\/)/;
+    const STATE_COLOR = /^(?:[a-z-]+:)*(?:text|bg|border|ring)-(?:green|emerald|amber|red|destructive|success|warning|danger)(?:-|$|\/)/;
     const tokens = (source: string) => openingTags(source, "IconTile").flatMap((tag) =>
       [...tag.matchAll(/"([^"]*)"|`([^`]*)`/g)].flatMap((match) => (match[1] ?? match[2] ?? "").split(/\s+/)));
     const offenders = (entries: { path: string; source: string }[]) =>
@@ -644,9 +628,9 @@ describe("화면 간 불변식 — grep 규칙 (T28)", () => {
     it("카나리아 — 온보딩 후보 칸의 면을 호박으로 덮으면 잡는다", () => {
       const path = "components/onboarding/steps/naming.tsx";
       const source = real(path);
-      const mutated = source.replace('className={active ? "bg-background" : "bg-muted"}', 'className={active ? "bg-background" : "bg-amber-100/80 text-amber-800"}');
+      const mutated = source.replace('className={active ? "bg-background" : "bg-muted"}', 'className={active ? "bg-background" : "bg-warning-soft text-warning-soft-foreground"}');
       expect(mutated).not.toBe(source);
-      expect(offenders([{ path, source: mutated }])).toEqual([`${path}: bg-amber-100/80`, `${path}: text-amber-800`]);
+      expect(offenders([{ path, source: mutated }])).toEqual([`${path}: bg-warning-soft`, `${path}: text-warning-soft-foreground`]);
     });
   });
 

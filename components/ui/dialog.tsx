@@ -158,7 +158,7 @@ export function DialogContent({
         mousedown에서 포커스를 포커스 불가 오버레이로 옮겨 `body`로 떨어뜨렸다(Chromium 실측 — 도는 확정 버튼의 포커스가 사라졌다).
         Radix의 포커스 트랩은 `relatedTarget`이 없는 focusout을 되돌리지 않는다. 닫을 수 있을 때는 그대로 둔다 — 그 클릭은 닫힘이고 복귀가 받는다.
       */}
-      <Primitive.Overlay className="bg-foreground/40 fixed inset-0 z-50" onMouseDown={closeDisabled ? (event) => event.preventDefault() : undefined} />
+      <Primitive.Overlay className="bg-scrim/40 fixed inset-0 z-50" onMouseDown={closeDisabled ? (event) => event.preventDefault() : undefined} />
       <Primitive.Content
         className={cn(
           /**

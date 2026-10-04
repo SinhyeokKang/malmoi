@@ -195,7 +195,7 @@ describe("logs 상세 — 껍데기 시각 값", () => {
    * 두던 판정(`/35`·blur 없음·`rounded-2xl`)을 접었다. Sources 상세와 나란히 서면 차이가 먼저 보였다.
    */
   it("dim과 radius가 1024 모달과 같다 — `/32` + blur 6 · `rounded-xl`", () => {
-    expect(shell).toContain("bg-foreground/32");
+    expect(shell).toContain("bg-scrim/32");
     expect(shell).toContain("backdrop-blur-[6px]");
     expect(shell).toContain("rounded-xl");
     expect(dialog).not.toContain("bg-foreground/35");

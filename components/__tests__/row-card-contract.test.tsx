@@ -12,7 +12,7 @@ describe("BannerLine root tone contract", () => {
   it.each([
     [undefined, "text-muted-foreground"],
     ["muted", "text-muted-foreground"],
-    ["warning", "text-amber-800"],
+    ["warning", "text-warning-soft-foreground"],
     ["danger", "text-destructive"],
   ] as const)("tone %s preserves the alpha divider and independent icon/text/action slots", async (tone, color) => {
     const { container } = await render(<BannerLine id="reason" tone={tone} icon={<Inbox aria-hidden />} action={<a href="/account">Reconnect</a>}>

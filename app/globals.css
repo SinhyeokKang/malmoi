@@ -42,11 +42,34 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
-  /* 같은 값의 기존 철자를 한 집에 둔다. 팔레트는 Tailwind 원본의 별칭이다(DESIGN §6.2). */
-  --color-link: var(--color-blue-600);
-  --color-gray-light: var(--color-neutral-300);
-  --color-gray-dim: var(--color-neutral-400);
-  --color-gray-strong: var(--color-neutral-600);
+  /**
+   * **의미 색 — 이름이 뜻이고 값은 `:root`가 든다** (color-scheme Phase 1, DESIGN §6.2).
+   * ⚠️ **여기에 팔레트(`var(--color-amber-800)`)를 직접 걸지 않는다** — `@theme`에 값이 있으면 다크 값을 걸 자리가 없다.
+   */
+  --color-link: var(--link);
+  --color-gray-light: var(--gray-light);
+  --color-gray-dim: var(--gray-dim);
+  --color-gray-strong: var(--gray-strong);
+  --color-success-surface: var(--success-surface);
+  --color-success-soft: var(--success-soft);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning-surface: var(--warning-surface);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-soft-foreground: var(--warning-soft-foreground);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-emphasis: var(--warning-emphasis);
+  --color-danger-surface: var(--danger-surface);
+  --color-info-surface: var(--info-surface);
+  --color-hue-rose: var(--hue-rose);
+  --color-hue-orange: var(--hue-orange);
+  --color-hue-amber: var(--hue-amber);
+  --color-hue-emerald: var(--hue-emerald);
+  --color-hue-teal: var(--hue-teal);
+  --color-hue-sky: var(--hue-sky);
+  --color-hue-indigo: var(--hue-indigo);
+  --color-hue-fuchsia: var(--hue-fuchsia);
+  --color-on-hue: var(--on-hue);
+  --color-scrim: var(--scrim);
   --leading-body: 1.6;
   --leading-prose: 1.7;
   --leading-translation: 1.55;
@@ -143,8 +166,9 @@
   /** 랜딩 h1·CTA h2(48 · 600) 하나가 쓴다 — 시안 `Landing.dc.html` 1a의 −0.015em. 앱 화면에서 이 크기를 쓰는 곳은 없다. */
   --text-5xl--letter-spacing: -0.015em;
 
-  --shadow-low: 0 4px 12px 4px rgb(22 24 27 / 0.05);
-  --shadow-medium: 0 6px 16px 2px rgb(22 24 27 / 0.15);
+  /* 색은 `:root`의 `--shadow-color`다. srgb 혼합이라 옛 `rgb(22 24 27 / 0.05)`·`/ 0.15`와 같은 색이다. */
+  --shadow-low: 0 4px 12px 4px color-mix(in srgb, var(--shadow-color) 5%, transparent);
+  --shadow-medium: 0 6px 16px 2px color-mix(in srgb, var(--shadow-color) 15%, transparent);
 
   --color-canvas: var(--canvas);
   --color-auth-hero-from: var(--auth-hero-from);
@@ -278,6 +302,53 @@
    */
   --auth-hero-from: rgb(245 246 247);
   --auth-hero-to: rgb(215 227 254);
+
+  /**
+   * **의미 색** (color-scheme Phase 1 — 2026-10-05). 화면의 raw 팔레트 클래스가 전부 여기로 왔다.
+   * **토큰 하나 = 다크에서 값이 따로 필요할 수 있는 뜻 하나**다 — 라이트 값이 같아도 뜻이 다르면 나눈다.
+   *
+   * ⚠️ **값은 옮겨 온 raw 그대로다** — 팔레트 변수를 가리키고, 알파가 박혀 있던 것은 `color-mix`로 같은 색을 만든다.
+   * 손으로 hex를 옮기지 않는다: v4 팔레트는 oklch라 hex 사본은 반올림만큼 어긋난다.
+   * `globals-css.test.ts`가 이 값을 옮겨 온 raw와 문자열로 대조한다 — 값을 바꾸는 것은 시안의 일이다.
+   * (어느 유틸도 안 쓰는 팔레트 변수도 `:root`에서 참조하면 빌드 CSS에 나온다 — 2026-10-05 실측, design §2.1.)
+   */
+  --link: var(--color-blue-600);
+  --gray-light: var(--color-neutral-300);
+  --gray-dim: var(--color-neutral-400);
+  --gray-strong: var(--color-neutral-600);
+
+  /* 상태 — 면(Alert) · 칸(배지·아이콘 칸) · 그 위 글자 · 흰 표면 위 글자가 각각 다른 뜻이다. */
+  --success-surface: var(--color-green-50);
+  --success-soft: color-mix(in oklab, var(--color-green-100) 80%, transparent);
+  --success-foreground: var(--color-green-800);
+  --warning-surface: var(--color-amber-50);
+  --warning-soft: color-mix(in oklab, var(--color-amber-100) 80%, transparent);
+  --warning-soft-foreground: var(--color-amber-800);
+  --warning-foreground: var(--color-amber-700);
+  /* 경고 막대·대기 테두리(`/50`) — 글자가 아니라 면·선이다. */
+  --warning-emphasis: var(--color-amber-500);
+  --danger-surface: var(--color-red-50);
+  --info-surface: var(--color-blue-50);
+
+  /* 프로젝트·사람 식별색(이름 해시 — `components/ui/tone.ts`만 쓴다)과 그 위 글자. */
+  --hue-rose: var(--color-rose-600);
+  --hue-orange: var(--color-orange-600);
+  --hue-amber: var(--color-amber-600);
+  --hue-emerald: var(--color-emerald-600);
+  --hue-teal: var(--color-teal-600);
+  --hue-sky: var(--color-sky-600);
+  --hue-indigo: var(--color-indigo-600);
+  --hue-fuchsia: var(--color-fuchsia-600);
+  --on-hue: var(--color-white);
+
+  /**
+   * 오버레이(어둡게 덮기) — `/40`(Dialog)·`/32`(LargeModal)로 쓴다. 라이트 값은 `--foreground`와 같다.
+   * ⚠️ **`--foreground`를 가리키지 않는다** — 글자색은 다크에서 밝아지지만 덮개는 계속 어두워야 한다.
+   */
+  --scrim: hsl(0 0% 3.9%);
+
+  /** elevation 둘(`@theme`의 `--shadow-low/medium`)의 색. 유틸 재료가 아니라 등록하지 않는다(`globals-css.test.ts` `UNREGISTERED`). */
+  --shadow-color: rgb(22 24 27);
 }
 
 /* text-mono 유틸 — 글꼴·13px·18px 셋을 한 클래스로 싣는다. text-[13px] 임의값을 쓰면 행간이

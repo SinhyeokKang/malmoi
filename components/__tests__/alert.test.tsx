@@ -26,8 +26,8 @@ it("tone마다 배경과 글리프 색이 갈린다", async () => {
   const roots = [...container.querySelectorAll("[data-alert]")];
   const bg = roots.map(root => tokens(root).find(token => token.startsWith("bg-")));
   const glyph = roots.map(root => tokens(root.querySelector("svg")).find(token => token.startsWith("text-")));
-  expect(bg).toEqual(["bg-muted", "bg-blue-50", "bg-green-50", "bg-amber-50", "bg-red-50"]);
-  expect(glyph).toEqual(["text-muted-foreground", "text-link", "text-green-800", "text-amber-700", "text-destructive"]);
+  expect(bg).toEqual(["bg-muted", "bg-info-surface", "bg-success-surface", "bg-warning-surface", "bg-danger-surface"]);
+  expect(glyph).toEqual(["text-muted-foreground", "text-link", "text-success-foreground", "text-warning-foreground", "text-destructive"]);
 });
 
 /** 알림 방식은 tone이 아니라 `live`가 정한다 — 기본값만 tone에서 온다(danger는 끼어든다). */

@@ -407,7 +407,7 @@ describe("1g·1h 폼 Alert — 같은 자리 하나", () => {
     const alert = formAlert();
     expect(alert?.textContent).toContain(en.members.invite.limit.title);
     expect(alert?.textContent).toContain(en.members.invite.limit.user(30, 29, 2, "Sep 23, 2026 12:01 UTC"));
-    expect(alert?.className).toContain("amber");
+    expect(alert?.className).toContain("warning-surface");
   });
 
   it("프로젝트 한도는 warning이고 서버 수·시각을 문장으로 적는다", async () => {
@@ -419,7 +419,7 @@ describe("1g·1h 폼 Alert — 같은 자리 하나", () => {
     const alert = formAlert();
     expect(alert?.textContent).toContain(en.members.invite.limit.title);
     expect(alert?.textContent).toContain(en.members.invite.limit.project(20, 18, 3, "Sep 23, 2026 12:01 UTC"));
-    expect(alert?.className).toContain("amber");
+    expect(alert?.className).toContain("warning-surface");
     expect(email(2).value).toBe("c@x.com");
     expect(document.activeElement).toBe(submit());
   });
@@ -439,7 +439,7 @@ describe("1g·1h 폼 Alert — 같은 자리 하나", () => {
     await click(submit());
     expect(formAlert()?.textContent).toContain(en.members.invite.unconfirmed.title);
     expect(formAlert()?.textContent).toContain(en.members.invite.unconfirmed.body);
-    expect(formAlert()?.className).toContain("amber");
+    expect(formAlert()?.className).toContain("warning-surface");
   });
 
   it.each([

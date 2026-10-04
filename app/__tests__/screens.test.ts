@@ -298,7 +298,8 @@ describe("보관 — 네 화면이 같은 갈래를 그린다 (7단계)", () => 
    * 등록과 소비를 함께 센다. 실제 CSS 생성·값 동치는 spelling-equivalence.test.ts가 검사한다.
    */
   it("인라인 링크가 등록된 `text-link` 토큰을 쓴다", () => {
-    expect(read("app/globals.css")).toMatch(/--color-link:\s*var\(--color-blue-600\)/);
+    expect(read("app/globals.css")).toMatch(/--color-link:\s*var\(--link\)/);
+    expect(read("app/globals.css")).toMatch(/--link:\s*var\(--color-blue-600\)/);
     expect(read("components/ui/link.tsx")).toContain("text-link");
     for (const path of ["components/settings/ci-card.tsx", "components/sources/source-detail-modal.tsx", "components/sources/sources-screen.tsx"]) {
       expect(read(path), path).toContain("@/components/ui/link");

@@ -18,10 +18,10 @@ it.each([
   ["nothingToSend", "Nothing to send", "bg-foreground/5"],
   ["superseded", "Superseded", "bg-foreground/5"],
   ["upToDate", "Up to date", "bg-foreground/5"],
-  ["heldBack", "Held back", "bg-amber-100/80"],
-  ["held", "Held", "bg-amber-100/80"],
-  ["partiallySynced", "Partially synced", "bg-amber-100/80"],
-  ["notStarted", "Not started", "bg-amber-100/80"],
+  ["heldBack", "Held back", "bg-warning-soft"],
+  ["held", "Held", "bg-warning-soft"],
+  ["partiallySynced", "Partially synced", "bg-warning-soft"],
+  ["notStarted", "Not started", "bg-warning-soft"],
   ["logsFailed", "Failed", "bg-destructive/8"],
 ] as const)("StatusBadge %s의 낱말과 기존 면", async (state, label, face) => {
   const { container } = await render(<StatusBadge state={state} />);

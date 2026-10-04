@@ -47,7 +47,7 @@ export function Avatar({
          *
          * ⚠️ **글자가 흰색이다** — 채워진 배경 위라 `text-foreground/60`은 안 읽힌다.
          */
-        "inline-flex shrink-0 items-center justify-center font-medium text-white",
+        "inline-flex shrink-0 items-center justify-center font-medium text-on-hue",
         size === 56 ? "text-xl" : "text-xs",
         hueFill(name),
         "rounded-full",

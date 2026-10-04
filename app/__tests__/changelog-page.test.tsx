@@ -133,8 +133,8 @@ describe("`/changelog` — 목록", () => {
     const sections = [...main(container).querySelectorAll("section")];
     const badge = sections[0]!.firstElementChild;
     expect(badge?.textContent).toBe("Latest");
-    expect(badge?.className).toContain("bg-green-100/80");
-    expect(badge?.className).toContain("text-green-800");
+    expect(badge?.className).toContain("bg-success-soft");
+    expect(badge?.className).toContain("text-success-foreground");
     expect(badge?.nextElementSibling?.tagName).toBe("H1");
     expect(badge?.nextElementSibling?.textContent).toBe(TWO[0]!.tag);
     expect(badge?.nextElementSibling?.nextElementSibling?.querySelector("time")?.textContent).toBe("Sep 27, 2026");

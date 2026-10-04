@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { useImeGuard } from "./use-ime-guard";
 
 /** 폭·radius·dim만 공유한다. 이력 상세의 본문·머리·높이 계약은 소비자에 남는다. */
-export const LARGE_MODAL_OVERLAY = "bg-foreground/32 fixed inset-0 z-50 backdrop-blur-[6px]";
+export const LARGE_MODAL_OVERLAY = "bg-scrim/32 fixed inset-0 z-50 backdrop-blur-[6px]";
 export const LARGE_MODAL_PANEL = "bg-background fixed top-1/2 left-1/2 z-50 flex w-[calc(100%-var(--spacing-modal-gutter))] max-w-[1024px] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl shadow-medium";
 /** CommandDialog도 같은 높이를 쓴다 — 위치를 바꿔도 하한·상한은 한 벌이다. */
 export const LARGE_MODAL_HEIGHT = "min-h-[min(80svh,800px,calc(100svh-var(--spacing-modal-gutter)))] max-h-[min(800px,calc(100svh-var(--spacing-modal-gutter)))]";
@@ -103,7 +103,7 @@ export function LargeModal({
     <Primitive.Root open={open} onOpenChange={(next) => { if (!next && !closeDisabled) onClose(); }}>
       <Primitive.Portal>
         {/*
-          dim은 `bg-foreground/32` — 기존 `Dialog`의 `/40`과 값이 갈리는 것이 의도다(이 모달은 뒤의
+          dim은 `bg-scrim/32` — 기존 `Dialog`의 `/40`과 값이 갈리는 것이 의도다(이 모달은 뒤의
           목록이 읽혀야 한다). ⚠️ **리포 최초의 `backdrop-*`다** (DESIGN §6.2 등재 대상).
         */}
         {/* ⚠️ 닫기를 막은 동안 오버레이 mousedown이 포커스를 `body`로 떨어뜨리지 않게 한다 — `Dialog`와 같은 이유다(#169). */}

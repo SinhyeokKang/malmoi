@@ -263,8 +263,8 @@ describe("상세 — Result per source", () => {
     const synced = perSource(en.logs.status.imported);
     expect(synced).toHaveLength(1);
     expect(synced[0]!.className).toBe(head.className);
-    expect(synced[0]!.className).not.toMatch(/green/);
-    expect(perSource(en.logs.status.partial)[0]!.className).toMatch(/amber/);
+    expect(synced[0]!.className).not.toMatch(/success|green/);
+    expect(perSource(en.logs.status.partial)[0]!.className).toMatch(/warning-soft/);
     expect(perSource(en.logs.status.failed)[0]!.className).toContain("text-destructive");
     expect(perSource(en.logs.status.superseded)[0]!.className).toContain("bg-foreground/5");
   });
@@ -276,12 +276,12 @@ it.each([
   ["PUBLISH", "running", "Publishing…", "bg-foreground/5"],
   ["PUBLISH", "sent", "Sent", "bg-foreground/5"],
   ["PUBLISH", "nothingToSend", "Nothing to send", "bg-foreground/5"],
-  ["PUBLISH", "notSent", "Held back", "bg-amber-100/80"],
+  ["PUBLISH", "notSent", "Held back", "bg-warning-soft"],
   ["IMPORT", "imported", "Synced", "bg-foreground/5"],
-  ["IMPORT", "deferred", "Held", "bg-amber-100/80"],
-  ["IMPORT", "partial", "Partially synced", "bg-amber-100/80"],
+  ["IMPORT", "deferred", "Held", "bg-warning-soft"],
+  ["IMPORT", "partial", "Partially synced", "bg-warning-soft"],
   ["IMPORT", "superseded", "Superseded", "bg-foreground/5"],
-  ["IMPORT", "notStarted", "Not started", "bg-amber-100/80"],
+  ["IMPORT", "notStarted", "Not started", "bg-warning-soft"],
   ["IMPORT", "failed", "Failed", "bg-destructive/8"],
   ["IMPORT", "upToDate", "Up to date", "bg-foreground/5"],
 ] as const)("%s %s 결과 슬롯은 %s다", async (kind, result, label, face) => {
