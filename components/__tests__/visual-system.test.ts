@@ -84,35 +84,53 @@ function buttonOverrides(source: string): string[] {
   });
 }
 
+/**
+ * **색 리터럴이 서도 되는 자리는 남의 자산뿐이다** (DESIGN §6.2 · color-scheme spec 완료 조건 2) — Google 로고 4색과
+ * 초대 메일(라이트 고정, 메일 클라이언트는 우리 CSS를 모른다). 늘리려면 §6.2와 이 목록을 함께 고친다.
+ */
+const COLOR_LITERAL_OWNERS = (path: string): boolean => path === "components/signin/brand-icons.tsx" || path.startsWith("lib/invitation-email/");
+const COLOR_LITERAL = /(?<![\w&#])#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})(?![\w-])|(?<![\w-])(?:rgba?|hsla?|oklch|oklab)\(/g;
+const SCRIM_AS_FOREGROUND = /(?<![\w-])(?:[a-z-]+:)*bg-foreground\/(?:32|40)(?![\w-])/g;
+const DARK_VARIANT = /(?<![\w-])(?:[a-z-]+:)*dark:[\w[-]/g;
 
 /**
- * **DESIGN §6.2 등재 목록의 실물** — 값 → 쓰는 파일. 여기 없는 값·파일은 red다.
+ * **색은 의미 토큰이 든다 — raw 팔레트 클래스는 0곳이다** (color-scheme Phase 1, 2026-10-05 · DESIGN §6.2).
  *
- * ⚠️ 값의 **근거**는 §6.2가 든다. 이 표는 그것이 지금 어디에 서 있는지만 센다.
+ * ⚠️ 2026-10-05까지는 `REGISTERED`가 raw 값 → 쓰는 파일을 손으로 들었다. 이름이 값(`amber-800`)이라 다크 값을 걸 자리가 없었고,
+ * Phase 1이 전부 `app/globals.css`의 `:root` 토큰으로 옮겨 표가 비었다. 새 색이 필요하면 raw를 쓰지 말고 토큰을 하나 더한다.
  */
-const REGISTERED: Record<string, string[]> = {
-  // ⚠️ color-scheme Phase 1이 화면 전체를 의미 토큰으로 옮겨 이 표가 비었다 — P1-3이 "raw 0" 검사로 바꾼다(design §2.4).
-  // `bg-white`(로그인 패널)는 토큰이 아니라 `bg-background`로 접었다 — 같은 #fff이고 뜻이 "배경 위 흰 카드"다.
-};
-
-describe("raw 색은 §6.2 등재 목록 안에만 선다 (audit #43·#44)", () => {
-  const found = hits(RAW_COLOR).map(({ path, token }) => ({ path, value: colorValue(token) }));
-
-  /** ⚠️ 실제 소스의 정답이 0으로 가므로 개수 하한이 아니라 픽스처로 검사 자체가 찾는지 본다(POSTMORTEM 2026-09-07 — 패턴 오류가 "안전"으로 읽혔다). */
+describe("raw 색은 0곳이다 — 색은 의미 토큰이 든다 (audit #43·#44 · color-scheme)", () => {
+  /** ⚠️ 실제 소스의 정답이 0이므로 개수 하한이 아니라 픽스처로 검사 자체가 찾는지 본다(POSTMORTEM 2026-09-07 — 패턴 오류가 "안전"으로 읽혔다). */
   it("검사가 실제로 raw 색을 찾는다 (카나리아)", () => {
     const fixture = '<span className="bg-amber-100/80 hover:text-white border-t-red-700/[0.14] bg-success-soft text-on-hue bg-hue-amber" />';
     expect(hits(RAW_COLOR, [{ path: "components/canary.tsx", source: fixture }]).map(({ token }) => colorValue(token))).toEqual(["bg-amber-100/80", "text-white", "border-t-red-700/[0.14]"]);
   });
 
-  it("등재되지 않은 값·자리가 없다", () => {
-    const stray = found.filter(({ path, value }) => !(Object.hasOwn(REGISTERED, value) && REGISTERED[value]?.includes(path)));
-    expect(stray.map(({ path, value }) => `${path}: ${value}`)).toEqual([]);
+  it("app·components·lib·messages 생산 소스에 Tailwind raw 팔레트 클래스가 0곳이다", () => {
+    expect(ALL_SOURCES.length).toBeGreaterThan(500);
+    expect(hits(RAW_COLOR, ALL_SOURCES).map(({ path, token }) => `${path}: ${token}`)).toEqual([]);
   });
 
-  it("등재된 자리가 전부 실재한다 — 소비자가 0이 된 줄은 목록에서 걷는다", () => {
-    const seen = new Set(found.map(({ path, value }) => `${path}: ${value}`));
-    const stale = Object.entries(REGISTERED).flatMap(([value, paths]) => paths.map((path) => `${path}: ${value}`)).filter((key) => !seen.has(key));
-    expect(stale).toEqual([]);
+  it("색 리터럴(hex·`rgb(`·`hsl(`·`oklch(`)은 남의 자산 자리에만 선다", () => {
+    expect(hits(COLOR_LITERAL, ALL_SOURCES.filter(({ path }) => COLOR_LITERAL_OWNERS(path))).length).toBeGreaterThan(4);
+    expect(hits(COLOR_LITERAL, ALL_SOURCES.filter(({ path }) => !COLOR_LITERAL_OWNERS(path))).map(({ path, token }) => `${path}: ${token}`)).toEqual([]);
+  });
+
+  it("색 리터럴 카나리아 — 잡을 것과 놓아줄 것", () => {
+    const found = (source: string) => hits(COLOR_LITERAL, [{ path: "components/canary.tsx", source }]).map(({ token }) => token);
+    expect(found('fill="#4285F4" style={{ color: "#fff", background: "rgba(0,0,0,.5)" }} stroke="hsl(0 0% 0%)" c="oklch(50% 0 0)"')).toEqual(["#4285F4", "#fff", "rgba(", "hsl(", "oklch("]);
+    expect(found('href="/docs#publish" &#128; id-#ab12x color-mix(in oklab, var(--x) 5%, transparent)')).toEqual([]);
+  });
+
+  it("오버레이(어둡게 덮기)는 `scrim`이다 — `bg-foreground/32|40`이 0곳이다", () => {
+    expect(hits(SCRIM_AS_FOREGROUND, [{ path: "components/canary.tsx", source: '"bg-foreground/40 data-[state=open]:bg-foreground/32"' }])).toHaveLength(2);
+    expect(hits(SCRIM_AS_FOREGROUND, ALL_SOURCES).map(({ path, token }) => `${path}: ${token}`)).toEqual([]);
+  });
+
+  /** 테마는 토큰이 든다 — 컴포넌트가 `dark:`로 분기하면 다크 값의 집이 `globals.css`와 수십 파일로 갈린다(design §3.2). */
+  it("`dark:` 변형이 0곳이다", () => {
+    expect(hits(DARK_VARIANT, [{ path: "components/canary.tsx", source: '"dark:bg-background hover:dark:text-foreground dark:[&_a]:underline"' }])).toHaveLength(3);
+    expect(hits(DARK_VARIANT, ALL_SOURCES).map(({ path, token }) => `${path}: ${token}`)).toEqual([]);
   });
 
   /**
