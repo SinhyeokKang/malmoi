@@ -81,3 +81,4 @@
 - **RE 리뷰**: 🔴0 · 🟡1(`data-theme` 없는 상태 롤백 갈래 테스트 없음) · ⚪4(design §3.4 소비자 줄 낡음 · revalidate 던짐 시 카드/DOM 어긋남은 공용 카드 기존 형 · ko 설명 낱말(사용자 검수) · 같은 날 개정 행). **E fix1 착수**(같은 터미널). RE 해제.
 - **E fix1**(`17617f85` 롤백 "속성 없음" 갈래 DOM 테스트 둘 + design §3.4 소비자 둘) gate ok. **E 통합** cherry-pick 3(`fd3b14f2..d5b3553b`). ko 검수 메모: Theme 카드 설명 "Malmoi 화면의 밝기를 정합니다." → 형제 형("…테마입니다.") 제안(사용자 일괄 검수).
 - **E push** `363abe45..7db35fec`(gate ok) · CI 37243633751 감시. E 해제·`cs-e` 제거(인계 사본 `.scratch/color-scheme/handoff-E.md`). C에 "E가 dev에 있다 — rebase 후 P2-3" 전달.
+- **C 완료**(2커밋 `ecd83a61` P2-4 · `15f59799` P2-3, dev `7db35fec` 위, HEAD gate ok): 스파이크 = `light-dark()` 유지 — 단 **Next lightningcss가 `--lightningcss-light/dark` 토글로 낮춘다**(산출 CSS에 `light-dark()` 0개, 실제 하한은 사용자 정의 속성+`color-mix()` → D가 DESIGN §3 하한 문장에) · 토스트는 `Toaster style` · Canvas 점은 계산된 color(다크에서 `lab()`). 소유 밖 테스트 6파일(라이트 값 대조 → 첫 인자 · Toaster light 고정 단언) 승인 수정. Safari·Firefox 미검증. **RC 리뷰 착수**. C 유지.
