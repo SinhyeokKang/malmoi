@@ -157,6 +157,26 @@ it("닫힌 트리거에서 글자 키로 값이 바뀌지 않는다 — Tab으�
   expect(trigger().getAttribute("aria-expanded")).toBe("false");
 });
 
+it("열린 목록에서 도시 이름을 치면 그 항목으로 간다 — 라벨이 전부 `UTC…`로 시작해 라벨로는 글자 이동이 무의미하다", async () => {
+  await render(<TimeZoneCard now={NOW} />);
+  await open();
+  // Radix는 글자 이동의 포커스를 `setTimeout`으로 옮긴다 — 틱을 기다려야 하이라이트가 보인다.
+  for (const letter of ["s", "e", "o"]) await key(document.activeElement ?? document.body, letter);
+  await tick();
+  expect(document.activeElement?.getAttribute("role")).toBe("option");
+  expect(document.activeElement?.textContent).toBe("UTC+9 · Asia/Seoul");
+  // 고르기 전이다 — 옮겨 간 것은 하이라이트뿐이다.
+  expect(mocks.setTimeZone).not.toHaveBeenCalled();
+});
+
+it("밑줄은 공백으로 친다 — `new y`가 America/New_York에 닿는다", async () => {
+  await render(<TimeZoneCard now={NOW} />);
+  await open();
+  for (const letter of [..."new y"]) await key(document.activeElement ?? document.body, letter);
+  await tick();
+  expect(document.activeElement?.textContent).toBe("UTC-4 · America/New_York");
+});
+
 it("es 화면이면 카드 문구와 미리보기가 es다 — 시간대 id는 번역하지 않는다", async () => {
   await render(<TimeZoneCard now={NOW} />, { uiLocale: "es", timeZone: "Asia/Kolkata" });
   expect(find(document.body, "section h2").textContent).toBe("Zona horaria");

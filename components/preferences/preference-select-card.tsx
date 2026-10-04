@@ -28,6 +28,7 @@ type ApplyResult = "ok" | "invalid" | "failed";
  * 바뀐다(POSTMORTEM 2026-09-19의 두 번째 경로). 닫힌 트리거는 Enter·Space·위아래 방향키·Tab(과 수정자 조합)만 받는다.
  * ⚠️ **진행 중은 Root `disabled`가 아니라 `RoleSelect` 가드다**(`components/members/member-list.tsx`) — 꺼지면 포커스가 `body`로 빠진다.
  * 트리거는 고른 값을 먼저 보이고(낙관적), 실패하면 원래 값으로 돌아가며 카드 `notice`에 Alert가 선다. 같은 값이면 요청하지 않는다.
+ * 옵션의 `textValue`는 **열린 목록**의 글자 이동이 보는 글자다(없으면 라벨) — 닫힌 트리거 차단과 별개다.
  * `after`는 도움말 아래 줄 — 낙관 값(`shown`)을 받아 같이 움직이고 실패면 같이 돌아간다(Time zone 미리보기).
  * ⚠️ 라벨 열이 없다 — 카드 제목이 이름이라 `aria-labelledby`로 그 제목을, 설명은 `aria-describedby`로 도움말을 가리킨다.
  */
@@ -47,7 +48,7 @@ export function PreferenceSelectCard<T extends string>({
   help: string;
   failed: string;
   current: T;
-  items: readonly { value: T; label: ReactNode }[];
+  items: readonly { value: T; label: ReactNode; textValue?: string }[];
   parse: (raw: string) => T | null;
   apply: (value: T) => Promise<ApplyResult>;
   after?: (shown: T) => ReactNode;
@@ -105,7 +106,7 @@ export function PreferenceSelectCard<T extends string>({
           </SelectTrigger>
           <SelectContent>
             {items.map((item) => (
-              <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>
+              <SelectItem key={item.value} value={item.value} textValue={item.textValue}>{item.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
