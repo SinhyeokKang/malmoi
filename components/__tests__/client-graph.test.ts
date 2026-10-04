@@ -380,6 +380,16 @@ describe("클라이언트 그래프", () => {
   });
 
   /**
+   * ⚠️ **화면 언어 판정 `lib/i18n/locales.ts`도 잎이다**(ui-locales design §3.3) — 날짜·상대 시각·언어명 헬퍼가 그 타입을,
+   * 클라이언트 provider·스위처가 값을 읽는다. 사전도 물지 않는다(en 사전을 물면 ko·es 사용자 번들에도 en이 실린다).
+   */
+  it("`lib/i18n/locales.ts`는 잎이다 — 사전도 물지 않는다", () => {
+    const { files, packages } = walk([join(ROOT, "lib/i18n/locales.ts")]);
+    expect([...packages]).toEqual([]);
+    expect([...files].map((file) => file.slice(ROOT.length))).toEqual(["lib/i18n/locales.ts"]);
+  });
+
+  /**
    * ⚠️ **`lib/keys/flag.ts`도 잎이어야 한다** (ARCHITECTURE §0). 로케일 배지가 그것을 값으로 읽는데
    * (칩 판정 `lib/keys/filters.ts`는 translation-rework T16에서 옛 칩과 함께 지웠다), 이웃한 `lib/keys/view.ts`는 잎이 아니다
    * (`compareKeys` → `lib/adapters/shared` → `json-style`).

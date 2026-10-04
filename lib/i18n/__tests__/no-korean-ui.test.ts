@@ -69,6 +69,10 @@ const KOREAN_ALLOWED = [
   // ⚠️ 사용자 문자열이 아니라 `$queryRaw` 템플릿 안의 **SQL 주석**(`--`)이다 — 스캐너는 JS 주석만 벗기므로 남고, 화면에 닿지 않아 옮길 대상이 아니다.
   // 이 목록에 이름이 있어야 스캐너가 루트 파일을 실제로 훑는다는 것이 고정된다.
   "lib/push/apply.ts",
+  // 화면 언어 이름 `한국어`(endonym) — 번역하지 않는 상수라 사전에 둘 수 없다(ui-locales design §2 `UI_LOCALE_NAMES`). 그 밖의 한글은 두지 않는다.
+  "lib/i18n/locales.ts",
+  // ko 날짜 단위(`년`·`월`·`일`) — 형식을 손으로 만드는 자리라(`Intl` 날짜 포맷터 배제는 `lib/utc-time.ts` 머리 주석) 사전에 둘 수 없다. 한글은 ko 조립 두 줄에만 둔다.
+  "lib/utc-time.ts",
 ];
 
 /**

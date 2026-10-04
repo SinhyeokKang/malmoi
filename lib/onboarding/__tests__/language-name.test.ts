@@ -37,6 +37,31 @@ describe("languageName", () => {
     expect(languageName("not a locale")).toBe("not a locale");
   });
 
+  /**
+   * **화면 언어로 읽는다**(ui-locales) — ko 화면에 `Korean`·`French`가 나오지 않는다. 표시 언어는 지원 집합 셋뿐이라
+   * 위의 "로케일 데이터가 없으면 시스템 언어로 떨어진다"가 성립하지 않는다(en·ko·es 데이터는 Node·브라우저 ICU에 다 있다).
+   * ⚠️ CLDR 문자열 카나리아다 — Node를 올려 붉어지면 눈으로 보고 갱신한다.
+   */
+  it("화면 언어를 넘기면 그 언어의 이름이다", () => {
+    expect(["en", "ko", "es", "ja"].map((code) => languageName(code, "ko"))).toEqual(["영어", "한국어", "스페인어", "일본어"]);
+    expect(["en", "ko", "es", "ja"].map((code) => languageName(code, "es"))).toEqual(["inglés", "coreano", "español", "japonés"]);
+    expect(["en", "ko", "es", "ja"].map((code) => languageName(code, "en"))).toEqual(["English", "Korean", "Spanish", "Japanese"]);
+  });
+
+  it("화면 언어마다 표시기를 따로 둔다 — 먼저 부른 언어가 다음 호출을 오염시키지 않는다", () => {
+    expect(languageName("ja", "es")).toBe("japonés");
+    expect(languageName("ja", "ko")).toBe("일본어");
+    expect(languageName("ja")).toBe("Japanese");
+  });
+
+  it("모르는 코드는 어느 화면 언어에서도 코드 그대로다", () => {
+    for (const uiLocale of ["en", "ko", "es"] as const) {
+      expect(languageName("zzz", uiLocale)).toBe("zzz");
+      expect(languageName("not a locale", uiLocale)).toBe("not a locale");
+      expect(languageName("__proto__", uiLocale)).toBe("__proto__");
+    }
+  });
+
   /** ⚠️ **`Object.prototype`의 키가 와도 코드로 떨어진다** — 남이 정한 키다 (CLAUDE.md). */
   it("프로토타입 키에도 안전하다", () => {
     expect(languageName("constructor")).toBe("constructor");
