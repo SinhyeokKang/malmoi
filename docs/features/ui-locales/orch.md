@@ -120,3 +120,5 @@
   - W8 fix1 Task `task_e1c7edc5921a`/`ctx_4eafbec0176b`(첫 시도는 셸 변수 문제로 실패, 재시도 성공).
 - **W7 fix1 완료**: dev 위 2커밋(a5ff3140 i18n 소비자 · ae7909c9 D8), 커밋마다 gate ok, /docs 크롬·new-project 수정, 목업 손 사본 → `FIELD_BUTTON_CLASS` 상수 export. R7 리뷰 착수.
 - **R7(W7 리뷰)**: 🔴0 · 🟡4(목업 h-10 미고정 · D8 테스트가 클래스 존재만 · privacy RevisionLine uiLocale 무시 · 공개/셸/온보딩/검색 ko 렌더 테스트 0) · ⚪5. D8 산술(패널 56·중심 28) 성립, 커밋 둘 각각 green, `FIELD_BUTTON_CLASS` 수용. W7 수정 라운드 2 착수.
+- **W7 fix2 완료**(목업 h-10 고정 · header-44 산술 테스트 · RevisionLine uiLocale · ko 화면 렌더 테스트). 로컬 dev cherry-pick 3커밋, 통합 게이트 중. D8 런타임 실측은 아직 아무도 안 잼 → Q2(H4)·머지 전.
+- **W8 fix1 완료**(a2e3d3ee·67563222 — Logs 날짜·언어명 uiLocale, 화면군 8곳 ko 렌더, D9 고정 상수+동치 테스트). W7 push 뒤 rebase 지시 예정.
