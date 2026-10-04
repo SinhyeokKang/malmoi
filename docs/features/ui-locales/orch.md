@@ -131,3 +131,7 @@
 - **W9 통합·push** `f404376c..31c0894b`(E7 + sed 백업 삭제, gate ok). W9 해제·워크트리 제거. **W10 착수**(Opus high).
 - **W10 완료**(`30c951d2` F·H1·H1k·F3 · `e6cc042a` G1·G2, 커밋마다 gate ok). deviation: TextTrigger 글리프를 children으로 · `UI_LOCALE_FLAGS` in locales.ts · `PrivacyBody` 타입 export · 카드 `components/preferences/` · 검색 빈 미리보기에서 Account 빠짐. ko 방침 초안 사용자 검수 대상(koDigest 갱신 필요). R10 리뷰(Opus high) 착수.
 - **R10(W10 리뷰)**: 🔴1(Action reject가 오류 경계로 — try/catch 없음) · 🟡4(es /privacy 본문 lang 없음 · typeahead 가드가 화이트리스트 아님 · 방침 동형이 구조만 · 검색 미리보기 Account 빠짐 수용 → DESIGN §6.54·§6.8 H2). setUiLocale 보안·쿠키·보호 경로·세 사전 통과. W10 수정 라운드 1 착수.
+- **W10 통합·push** `31c0894b..17f05401`. W10 해제·워크트리 제거. **W11(가이드 원고, 워크트리, ctx_25ca97de5004) · Q1(시안 대조 감사, main 체크아웃 — 그동안 cherry-pick·build 금지)** 착수.
+- W11 질문: 새 페이지 `guide/{en,ko,es}/language.md` — AUTHORING.md IA·사실 대조 표에 행 추가 승인.
+- **W11 완료**(`b9149943` — guide/{en,ko,es}/language.md, SUMMARY 셋, AUTHORING 두 행, docs-index 28→29, gate ok). en/es는 한글 endonym 대신 표기 회피(no-korean-ui). 스크린샷 컷 목록: preferences-language.webp(·footer-language-menu.webp 선택) — Q2에서 촬영. 통합은 Q1 인계 뒤(main 체크아웃 사용 중). 워커 해제, 워크트리 유지.
+- **Q1(시안 대조 감사) 완료**: 이슈 2 — #183 Preferences Select→도움말 간격 6(시안 8) → **D12(사용자) /account에 맞춰 6 유지, 시안 드리프트로 닫음** · #184 실패 토스트가 sonner 기본 스타일(앱 전체 기존 결함) → **D13(사용자) 이번 런에서 수정 — W12(Sonnet)**. 나머지 아트보드 일치(접근 이름·menuitemradio·lang·busy·포커스). 못 본 것: `/signin` 자체·로그아웃 쿠키 경로(A7은 /invite AuthLayout로 대체)·B8 스켈레톤(코드만)·서버 측 failed 경로 → Q2.
