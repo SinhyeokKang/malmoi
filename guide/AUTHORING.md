@@ -1,19 +1,33 @@
 # 가이드 작성 규약
 
-공개 가이드의 구성·표기·사실 대조·검증은 이 문서를 따른다. 독자에게 보이는 원고는 영어로 쓰고, 이 매뉴얼과 촬영 매뉴얼은 한국어로 관리한다.
+공개 가이드의 구성·표기·사실 대조·검증은 이 문서를 따른다. 독자에게 보이는 원고는 화면 언어마다 한 벌씩 `guide/en/`·`guide/ko/`·`guide/es/`에 두고(en이 원문, ko·es는 번역 — [언어](#languages)), 이 매뉴얼과 촬영 매뉴얼은 한국어로 `guide/` 루트에 관리한다.
 
 ## 운영 방식 {#workflow}
 
-- `guide/SUMMARY.md`가 페이지·순서·계층의 정본이다. 페이지를 추가하거나 옮기면 SUMMARY와 내부 링크를 함께 고친다.
-- `guide/README.md`는 개요이고 `<chapter>/README.md`는 장 개요다. 각 페이지는 H1 하나와 바로 다음 독립 도입 문단(1–2문장)으로 시작한다. 도입에는 굵은 글씨나 링크를 넣지 않으며 카드 설명으로도 쓴다. 작업 페이지에는 필요한 사전 조건, 사용자가 고르는 것과 화면에 보이는 것을 함께 쓰는 번호 단계, `What happens next` 절을 둔다. 설명·참조 페이지에는 번호 단계가 없어도 된다.
+- 이 문서의 원고 경로(`README.md`·`setup/workflow.md` …)는 언어 트리 기준이다 — `guide/<언어>/` 아래 같은 경로가 세 벌 있다.
+- `guide/<언어>/SUMMARY.md`가 페이지·순서·계층의 정본이다. 페이지를 추가하거나 옮기면 세 언어의 SUMMARY와 내부 링크를 함께 고친다.
+- `README.md`는 개요이고 `<chapter>/README.md`는 장 개요다. 각 페이지는 H1 하나와 바로 다음 독립 도입 문단(1–2문장)으로 시작한다. 도입에는 굵은 글씨나 링크를 넣지 않으며 카드 설명으로도 쓴다. 작업 페이지에는 필요한 사전 조건, 사용자가 고르는 것과 화면에 보이는 것을 함께 쓰는 번호 단계, `What happens next` 절을 둔다. 설명·참조 페이지에는 번호 단계가 없어도 된다.
 - 개요의 두 갈래 카드와 나머지 장 목록, 장 개요의 하위 목록은 SUMMARY와 각 페이지의 도입 문단에서 생성한다. 원고에 카드·목록을 중복 작성하지 않는다. 개요는 H1과 도입, 그리고 대표 화면 스크린샷 한 장만 둔다(카드보다 위에 선다). 장 개요는 H1과 도입에 필요한 본문만 둔다.
 - 두 갈래의 선택은 `lib/guide/overview.ts`가 소유한다(렌더링 단계에서 추가). 제목은 SUMMARY, 설명은 도입 문단에서 가져온다.
 - `AUTHORING.md`와 `SHOOTING.md`는 SUMMARY에 올리지 않고 공개 페이지로 제공하지 않는다. SUMMARY 자신도 페이지가 아니라 내비 데이터다.
 - 실제 화면은 스크린샷으로 기록하며 촬영 규약은 `SHOOTING.md`가 소유한다. 화면을 안내하는 작업 페이지는 적어도 한 장을 둔다 — 화면이 없는 참조 페이지(`reference/formats.md`·`reference/limits.md` 등)와 GitHub 쪽 동작만 설명하는 페이지(`sync/merging.md`·`sync/nightly.md`)는 예외다. 이미지는 절의 단계 목록 뒤(또는 그 화면을 여는 단계 앞)에 둔다.
 
+## 언어 {#languages}
+
+2026-10-05(ui-locales)부터 원고는 화면 언어 셋(`en`·`ko`·`es`)마다 한 벌이다. `/docs`는 화면 언어(계정 > 기기 쿠키 > en)의 트리를 보여 주고, URL은 언어와 무관하다. **없는 언어를 en으로 메우지 않는다** — 트리나 페이지가 빠지면 던지거나 404다.
+
+- **en이 원문이고 ko·es는 같은 구조의 번역이다.** 원고를 고치면 **세 언어를 같은 커밋에서** 고친다 — 문장 내용의 드리프트는 게이트가 보지 않으므로(구조만 본다) 이 규칙이 유일한 장치다.
+- **구조 동형**: 세 트리의 파일 집합 · SUMMARY 순서 · 페이지마다 앵커(`{#id}`) · 이미지 참조 · 링크 대상 · 번호 단계 수가 같아야 한다(`lib/guide/__tests__/locales.test.ts`). **앵커 id는 번역하지 않는다** — 앱 안 가이드 링크와 옛 해시 매핑이 언어와 무관하게 성립해야 한다.
+- **스크린샷은 en 화면 한 벌(`public/guide/*.webp`)을 세 언어가 공유한다.** 이미지 경로는 세 언어가 같고 alt·title만 그 언어로 쓴다. ko 원고는 `게시`라고 부르는데 그림 속 버튼이 `Publish`인 것은 **수용한 대가다**(2026-10-04 사용자).
+- **라벨은 그 언어 사전의 값이다** — ko 원고의 굵은 라벨은 `messages/ko.tsx`, es는 `messages/es.tsx`에 있어야 한다(아래 [라벨](#labels)). 낱말은 `docs/DESIGN.md` §10.1 개념 표의 ko·es 열이 정본이고, 그 표의 "쓰지 않는 말"(`lib/i18n/__tests__/helpers/banned-terms.ts`)이 ko·es 산문에서 0건이어야 한다.
+- **한글은 ko 트리에만 둔다** — en·es 원고는 `no-korean-ui.test.ts`가 훑는다. 언어 이름 `한국어` 같은 endonym도 en·es 원고에서는 쓰지 않고 표기를 피한다.
+- **톤**: en은 아래 [영어 원고의 톤](#tone). ko는 **합니다체**, es는 **tú**이고 화면 문체(`docs/DESIGN.md` §10.0)를 따른다. 문장 길이·단계 나눔은 en과 같게 두고 언어에 맞지 않는 직역만 고친다.
+- **검수**: ko는 사용자가 검수하고 es는 에이전트 초안 그대로 낸다(화면 사전과 같다).
+- 크롤러 표면(`llms.txt`·`llms-full.txt`·sitemap·SEO 메타)과 `pnpm guide:check`·촬영 매핑은 en 트리만 본다.
+
 ## 페이지별 독자 {#audiences}
 
-개발자는 프로젝트 OWNER, 편집자는 EDITOR를 뜻한다. 공통 페이지는 두 역할이 함께 읽는다.
+개발자는 프로젝트 OWNER, 편집자는 EDITOR를 뜻한다. 공통 페이지는 두 역할이 함께 읽는다. 경로는 언어 트리 기준이고 제목은 en 원고의 것이다.
 
 | 페이지 | 제목 | 독자 |
 | --- | --- | --- |
@@ -51,7 +65,7 @@
 
 - 굵게는 UI 라벨에만, 기울임은 강조에 쓴다. 각 절에서 화면 라벨을 처음 언급할 때 사전의 문자열을 대소문자·구두점·말줄임표까지 정확히 굵게 쓴다.
 - 사전 대조 통과만으로 충분하지 않다. 그 라벨이 해당 절에서 안내하는 실제 화면의 문구인지도 확인하고 검증 결과를 기록한다.
-- 라벨은 `dictionaryStrings(m)`에 포함된 문자열 또는 아래 외부 라벨 표에 있어야 한다. 옛 `publicDocs.docs.sections` 본문은 제거됐고, 라벨 게이트는 전체 사전을 대상으로 한다. 함수·JSX 값은 제외한다.
+- 라벨은 **그 원고 언어의 사전**(`dictionaryStrings(<언어 사전>, ARIA_ONLY)` — en 원고는 `messages/en.tsx`, ko는 `ko.tsx`, es는 `es.tsx`)에 포함된 보이는 문자열 또는 아래 외부 라벨 표에 있어야 한다. 외부 화면(GitHub·claude.ai) 라벨은 세 언어 원고 모두 영어 그대로 쓴다. 옛 `publicDocs.docs.sections` 본문은 제거됐고, 라벨 게이트는 전체 사전을 대상으로 한다. 함수·JSX 값은 제외한다.
 - **보이는 글자만 굵게 쓴다.** 필터 축 이름(`Status`·`Kind`처럼 `aria-label`에만 붙는 값)은 화면에 없다 — 트리거가 보이는 현재 값(번역 화면의 Status 메뉴는 **All keys**, Logs는 **All activity**)을 쓴다. 라벨 게이트가 그 경로를 `ARIA_ONLY`(`lib/guide/__tests__/content.test.ts`)로 빼고 세며, 새 aria 전용 키를 만들면 거기에 더한다.
 - **단축키는 산문으로 쓴다** — `Cmd+K` on macOS / `Ctrl+K` on other platforms, `Ctrl+Enter or Cmd+Enter` 꼴(키 이름 + `+`, 굵게·코드 없음). 화면 칩의 `⌘K`·`Ctrl K`·`↵`(`m.common.keys`)는 장식(`aria-hidden`)이라 라벨이 아니므로 원고에 옮기지 않는다(2026-10-03, search-ux-unify).
 - 상태 낱말의 금지 동의어(`unpublished`·`on hold`·`deferred`(코드 밖)·보류 문맥의 `wait` 등)는 `lib/i18n/__tests__/terminology.test.ts`의 원고용 색인이 원고 문장에서 센다.
@@ -128,7 +142,7 @@
 
 ## 사실 대조 소스 {#fact-sources}
 
-경로는 저장소 루트 기준이다. 제품 범위·독자·권한은 PRODUCT와, 실제 동작은 코드와 함께 대조한다. 불일치하면 원고에 추측을 넣지 말고 차이를 보고한다. 파일명만 맞추는 것이 아니라 사용자가 만나는 화면 분기와 실패 상태까지 읽는다.
+경로는 저장소 루트 기준이다(페이지 열은 언어 트리 기준). 제품 범위·독자·권한은 PRODUCT와, 실제 동작은 코드와 함께 대조한다. 표의 `messages/en.tsx` 키는 en 원고 기준이고, ko·es 원고는 **같은 키의 그 언어 사전 값**(`messages/ko.tsx`·`es.tsx`)과 대조한다. 불일치하면 원고에 추측을 넣지 말고 차이를 보고한다. 파일명만 맞추는 것이 아니라 사용자가 만나는 화면 분기와 실패 상태까지 읽는다.
 
 | 페이지 | 확인할 사실 | 대조 소스 |
 | --- | --- | --- |
@@ -158,7 +172,7 @@
 | `reference/formats.md` | 지원 포맷 다섯·경로·보존 특성 | `lib/adapters/index.ts`, `lib/adapters/`, `lib/onboarding/detect.ts`, `docs/ARCHITECTURE.md` §1 |
 | `reference/limits.md` | 프로젝트·멤버·slug·초대 상한, 파일·적재 예산 | `lib/onboarding/create-plan.ts` (`PROJECT_LIMIT`), `lib/projects/owner-limit.ts` (`lockOwnerSlots` — 복원·OWNER 승격·OWNER 초대 수락의 상한), `messages/en.tsx` (`errors.access["owner-limit-reached"]`·`errors.invite["limit-reached"]` — 거부 문구의 결), `lib/auth/invitation.ts` (`MEMBER_LIMIT`), `lib/onboarding/slug.ts` (`PROJECT_SLUG_MAX`), `lib/invitation-email/limits.ts` (`INVITATION_HOURLY_LIMIT`), `lib/onboarding/budget.ts`, `lib/push/plan.ts` |
 | `reference/troubleshooting.md` | 설치 누락·stale commit 409·payload 400·사용자 복구 경로 | `app/api/push/route.ts`, `lib/push/guard.ts`, `lib/push/plan.ts`, `docs/ACTIONS.md` §3, `lib/github-connect/message.ts`, `lib/onboarding/message.ts`, `messages/en.tsx` |
-| 모든 페이지 | 정확한 UI 라벨·화면 용어 | `messages/en.tsx`, `lib/guide/dictionary.ts`, 실제 컴포넌트의 역할별 분기, `docs/DESIGN.md` §10 |
+| 모든 페이지 | 정확한 UI 라벨·화면 용어 | 그 원고 언어의 사전(`messages/en.tsx`·`ko.tsx`·`es.tsx`), `lib/guide/dictionary.ts`, 실제 컴포넌트의 역할별 분기, `docs/DESIGN.md` §10·§10.0·§10.1 |
 
 ## 사전 본문 이관과 동결 {#dictionary-freeze}
 
@@ -168,7 +182,7 @@
 
 검증 명령은 `pnpm test`다. 실물 원고에 거는 게이트는 그 원고와 같은 커밋에서 green이어야 한다.
 
-- 구성 단계: SUMMARY와 파일 트리 일치, H1 하나, H2 앵커 필수·중복 없음, 모든 페이지 도입 문단, 옛 해시 일곱의 대상 존재를 검사한다. 문자열 스캐너 셋은 실제 guide Markdown을 적어도 하나 읽어야 한다.
+- 구성 단계: 언어마다 SUMMARY와 파일 트리 일치, 세 트리의 구조 동형(`locales.test.ts`), H1 하나, H2 앵커 필수·중복 없음, 모든 페이지 도입 문단, 옛 해시 일곱의 대상 존재를 검사한다. 문자열 스캐너 셋은 실제 guide Markdown을 적어도 하나 읽어야 한다.
 - 본문 단계: 내부 링크·앵커, 자리표시자, 사전·허용 목록 라벨, 표 이름 중복, 정본 상수를 추가 검사한다. 정본 상수는 `sectionByAnchor`로 해당 절만 잘라 대조한다. action 목록은 공유 헬퍼를 사용하고 고유 action 수가 4인지 유지한다.
 - 이미지 단계: 참조·파일 양방향 일치, alt·치수·매핑 소스 경로·마스킹을 검사한다. 이미지 0개일 때만 촬영 매뉴얼 부재를 허용한다.
 - 스크린샷 최신성은 `pnpm guide:check`가 도입된 뒤 그 결과를 인용한다. stale 여부는 테스트의 차단 조건이 아니다.

@@ -2,6 +2,8 @@
 
 공개 가이드(`/docs`)의 스크린샷을 찍고 기록하는 규칙이다. `/guide-shots`가 이 문서를 로드해 실행하고, 이미지 게이트(`pnpm test`)와 `pnpm guide:check`가 아래 두 표를 읽는다. 본문 작성 규칙은 `AUTHORING.md`가 소유한다.
 
+**스크린샷은 en 화면 한 벌이다**(2026-10-05, ui-locales) — 원고는 `guide/en·ko·es/` 세 벌이지만 이미지(`public/guide/*.webp`)는 세 언어가 같은 파일을 쓴다. 그래서 아래 컷 목록·에셋 매핑의 `페이지 · 절`은 **`guide/en/` 기준**이고(ko·es는 구조 동형 게이트가 같은 자리를 강제한다), `dict:` 소스의 기준값은 `messages/en.tsx`의 그 키다(`pnpm guide:check`가 en 사전으로 잰다). 새 컷을 넣으면 세 언어 원고에 **같은 경로**를 넣고 alt·title만 그 언어로 쓴다(그건 `/guide` 몫).
+
 ## 규격 {#spec}
 
 | 항목 | 값 | 이유 |
@@ -24,6 +26,7 @@
 - **편집자 장(`translate/*`)의 컷은 EDITOR 계정으로 찍는다** — OWNER에게만 보이는 동작이 편집자 가이드 이미지에 들어가면 거짓이다.
 - GitHub 화면은 github.com에서 폐기용 리포의 설정 화면으로 찍는다. **폼을 채워도 저장·제출하지 않고**, 촬영 뒤 새로고침해 되돌린다.
 - 로그인(OAuth)은 사람이 한다. 계정을 바꿔야 하는 컷은 한 계정의 컷을 모아 찍는다.
+- **촬영 계정의 화면 언어는 en이다** — `/preferences`의 Language가 `English`이고 기기 쿠키 `malmoi-ui-locale`도 en(또는 없음)인지 촬영 전에 본다. 계정 값이 쿠키를 이기므로(계정 > 쿠키 > en) 한쪽만 보면 틀린다. 언어 화면 컷(`language.md`)도 en 화면에서 찍는다.
 
 ### 상주 촬영 프로젝트 `Acme web` {#resident}
 
