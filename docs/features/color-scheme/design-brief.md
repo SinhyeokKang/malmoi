@@ -27,11 +27,12 @@
 - **식별색 8개(hue)는 이름 해시로 정해지는 프로젝트·사람 색이다.** 같은 프로젝트가 화면마다 같은 색이어야 하므로 **hue는 그대로** 두고, 다크에서는 흰 글리프가 읽히는지만 확인한다.
 - **오버레이(`scrim`)는 다크에서도 어둡게 덮는다.**
 - **레이아웃·치수·문구는 바꾸지 않는다.** 최소 너비 1280, 모바일 분기 없음.
-- **고정 자산**: 로그인 키비주얼 PNG 넷은 라이트 그림 그대로 다크 패널 위에 놓인다(바꾸려면 PNG를 새로 만들어야 한다 — 그 판단만 노트에 남긴다). 국기는 국기 그대로다. 가이드 본문 이미지는 라이트 스크린샷이다.
+- **고정 자산**: 로그인 키비주얼 PNG 넷은 라이트 그림 그대로 다크 패널 위에 놓인다 — **다크 PNG 제작은 이번 기능 밖이다**(필요해 보이면 노트에 후속 이슈 후보로만). 국기는 국기 그대로이고 **테두리 처리도 이번 기능 밖이다**. 가이드 본문 이미지는 라이트 스크린샷이고, 다크 본문 안 **테두리·여백(CSS)만 이번에 정한다**(§5-6).
+- **토스트는 우리 토큰으로 칠한다** — 면 `popover` · 테두리 `border` · 글자 `foreground`. sonner 내장 다크 팔레트를 쓰지 않는다.
 
 ## 3. 토큰 — 다크 값을 채울 표
 
-값의 정본은 `app/globals.css`다. 라이트 값은 지금 화면 그대로이고 hex는 Tailwind v4 팔레트의 근삿값이다(실제 정의는 oklch).
+값의 정본은 `app/globals.css`다. 라이트 값은 지금 화면 그대로다. ⚠️ 아래 hex는 **참고용 근삿값**이고 일부는 Tailwind v3 값이다(예: amber-800은 v4에서 ≈`#973c00`) — 정본은 팔레트 이름과 `theme.css`의 oklch다.
 **채울 칸은 "다크" 하나다.** "방향"은 출발점일 뿐이다.
 
 ### 3.1 기본 표면·글자 (기존 토큰)
@@ -40,7 +41,7 @@
 |---|---|---|---|---|
 | `canvas` | 앱 전체 바깥 배경 — 셸(헤더·사이드바 바탕)·셸 밖 화면 | `#f5f6f7` | | 가장 어두운 면 |
 | `background` | 패널·카드 면, 페이지 바탕 | `#ffffff` | | canvas보다 **한 단계 밝게** — 패널이 캔버스 위에 떠 있는 구조다(§5-1) |
-| `popover` | 메뉴·팝오버·Select 목록 면 | `#ffffff` | | background보다 한 단계 더 밝게? |
+| `popover` | 메뉴·팝오버·Select 목록 면 · 토스트 면 | `#ffffff` | | background보다 한 단계 더 밝게 — 다크에서 팝오버 층은 **면 단계 + `border`**가 만든다(`shadow-md` 검정은 거의 안 보인다, design §2.2) |
 | `foreground` | 기본 글자 | `#0a0a0a` | | 순백보다 약간 낮게 |
 | `primary` | 주요 CTA 면 — 화면당 하나 | `#171717` | | 반전(밝은 면) |
 | `primary-foreground` | primary 위 글자 | `#fafafa` | | 반전 |
@@ -68,7 +69,7 @@
 |---|---|---|---|---|
 | `success-surface` | 성공 Alert 면 | green-50 `#f0fdf4` | | 초록 알파 면 |
 | `success-soft` | 성공 배지·아이콘 칸 면 | green-100 @80% `#dcfce7` | | |
-| `success-foreground` | 성공 면 위 글자·글리프 · diff `+` 글리프 | green-800 `#166534` | | 밝은 초록 |
+| `success-foreground` | 성공 면 위 글자·글리프(상태 전용) | green-800 `#166534` | | 밝은 초록 |
 | `warning-surface` | 경고 Alert 면 | amber-50 `#fffbeb` | | 호박 알파 면 |
 | `warning-soft` | 경고 배지·아이콘 칸 면 | amber-100 @80% `#fef3c7` | | |
 | `warning-soft-foreground` | 경고 면 위 글자 | amber-800 `#92400e` | | |
@@ -77,7 +78,7 @@
 | `danger-surface` | 실패 Alert 면 | red-50 `#fef2f2` | | 빨강 알파 면 |
 | `info-surface` | 정보 Alert 면 | blue-50 `#eff6ff` | | 파랑 알파 면 |
 | `diff-removed` | Publish diff 삭제 글자 · 삭제 낱말 면(@14%) | red-700 `#b91c1c` | | |
-| `diff-added` | Publish diff 추가 낱말 면(@16%) | green-800 `#166534` | | |
+| `diff-added` | Publish diff `+` 글리프 · 추가 낱말 면(@16%) | green-800 `#166534` | | |
 | `kind-blue-surface` · `kind-blue` | Logs 종류 칩 면 · 글리프 | blue-50 · blue-700 `#1d4ed8` | | |
 | `kind-teal-surface` · `kind-teal` | 〃 | teal-50 `#f0fdfa` · teal-700 `#0f766e` | | |
 | `kind-violet-surface` · `kind-violet` | 〃 | violet-50 `#f5f3ff` · violet-700 `#6d28d9` | | |
@@ -99,7 +100,8 @@
 | `destructive` @8% | 붉은 면 — 실패 배지·아이콘 칸·danger 버튼 면(글자는 `destructive`) |
 | `link` @14% | 검색 일치 강조 |
 | `primary` @85% | primary 버튼 hover |
-| `background` @20% · @50% | 진행 중 흐리기 |
+| `background` @50% | 진행 중 흐리기 |
+| `background` @20% | primary 버튼 안 개수 배지 면 |
 
 ## 4. 아트보드
 
@@ -116,7 +118,7 @@
 | A5 | Logs — 날짜 카드 + 이벤트 행, 종류 칩 셋(blue·teal·violet) · 결과 배지 | 종류 칩 면·글리프 · 성공이 회색인 예외(DESIGN §2.4 예외 2) |
 | A6 | Logs 상세 모달 — 소스별 결과, 비어 있는 값 상자 | `subtle` 면 · 점선 테두리 |
 | A7 | Sources 상세 `LargeModal` — 언어 행 진행 막대(검토 대기 구간) · 사라진 언어 `soft-red` 배지 · 기준 언어 Select 대기 테두리 | `warning-emphasis` 막대·@50% 테두리 · `destructive` @8% 면 |
-| A8 | Alert 다섯 + 배지 다섯 + 토스트 — 한 장에 모은 견본 | success·warning·danger·info·neutral Alert · `text`·`soft-neutral`·`soft-green`·`soft-amber`·`soft-red` 배지 · sonner 성공·오류 토스트 |
+| A8 | Alert 다섯 + 배지 다섯 + 토스트 — 한 장에 모은 견본 | success·warning·danger·info·neutral Alert · `text`·`soft-neutral`·`soft-green`·`soft-amber`·`soft-red` 배지 · sonner 성공·오류 토스트(면 `popover` · 테두리 `border` · 글자 `foreground`) |
 | A9 | 버튼 견본 — primary · default · outline · ghost · danger · busy · 꺼짐, 그리고 입력·Select·체크박스·라디오의 쉼·hover·포커스·꺼짐 | primary 반전 · danger(붉은 면 + 붉은 글자) · 포커스 링 대비 · 네이티브 컨트롤(체크박스·스크롤바)이 다크인지 |
 | A10 | Members — 멤버 행(아바타 식별색) · 역할 칩 · 대기 초대 | `on-hue` 글자 · 꺼진 행 |
 | A11 | 랜딩 `/` — 히어로 + 스크롤 목업 한 장면(번역 화면·Publish 모달 목업) | 목업이 제품 다크와 같은 토큰으로 그려짐 · 공개 셸 헤더·푸터 |
@@ -142,9 +144,9 @@ Preferences 페이지에는 앞 기능이 만든 **Language 카드**(ui-locales)
 
 1. **층 구별** — 라이트는 "연회색 canvas 위에 흰 패널이 떠 있고, 경계는 흰색 대비와 `shadow-low`가 만든다"이다. 다크에서는 그림자가 잘 안 보인다. 기본안은 **canvas가 가장 어둡고 패널(`background`)이 한 단계 밝은 것**이다. 그러면 `border-subtle` 윤곽을 얼마나 진하게 할지도 함께 정한다.
 2. **`accent` == `muted`** — 라이트에서 같은 값이라 muted 면 위 hover가 없다(DESIGN §2.1). 다크에서 둘을 가를지, 같은 값을 유지할지.
-3. **로고** — `malmoi-icon-black`(검정 면 + 흰 마크)은 다크에서 `malmoi-icon-white`(흰 면 + 검정 마크)로 바꾼다는 것이 기본안이다. 다크 헤더에서 흰 사각이 너무 튀면 다른 안을 노트에 적는다(새 로고 자산을 만들어야 하는 안이면 그 사실도).
-4. **키비주얼 PNG** — 라이트 카드 그림 넷을 다크 장식 패널 위에 그대로 둘 수 있는가. 안 되면 "다크 PNG 네 장 제작"이 필요하다는 판단과 근거를 노트에 적는다.
-5. **국기** — 흰 부분이 많은 국기(일본·한국 등)가 다크 면 위에서 윤곽 없이 떠 보이는가. 얇은 테두리가 필요하면 그 값을 토큰 후보로 적는다.
+3. **로고** — Malmoi 로고는 토큰으로 칠하는 인라인 SVG가 된다: 면 = `foreground`, 마크 = `background`. 그래서 다크에서는 자동으로 흰 면 + 어두운 마크(`malmoi-icon-white`와 같은 그림)다. 다크 헤더에서 흰 사각이 너무 튀면 다른 **토큰 조합**을 노트에 적는다(새 로고 자산은 만들지 않는다).
+4. **키비주얼 PNG** — 라이트 카드 그림 넷을 다크 장식 패널 위에 그대로 둔다(다크 PNG 제작은 이번 기능 밖). 패널 쪽 색(`auth-hero-*`)으로 어울림을 맞추고, 그래도 안 되면 후속 이슈 후보로 노트에만 적는다.
+5. **국기** — 이번 기능 밖이다. 눈에 띄게 떠 보이면 후속 이슈 후보로 노트에만 적는다.
 6. **가이드 스크린샷** — 라이트 이미지가 다크 문서 본문 안에서 너무 밝으면 테두리·여백 처리를 제안한다(이미지 자체는 바꾸지 않는다).
 7. **포커스 링** — 라이트는 3:1 미달을 수용했다. 다크에서 3:1을 넘는 값이 있으면 그것을 고른다.
 
@@ -155,16 +157,20 @@ Preferences 페이지에는 앞 기능이 만든 **Language 카드**(ui-locales)
 | 쌍 (글자 / 면) | 하한 |
 |---|---|
 | `foreground` / `background`·`popover`·`canvas`·`muted` | 4.5 |
-| `muted-foreground` / `background` | 4.5 (⚠️ `muted` 면 위는 라이트에서도 4.34로 미달 — 그 자리는 `foreground` @60%를 쓴다. 다크에서도 같은 규칙이면 된다) |
+| `muted-foreground` / `background`·`canvas`·`popover` | 4.5 (⚠️ `muted` 면 위는 라이트에서도 4.34로 미달 — 수용 예외. 그 자리 처방은 `foreground` @60%다) |
+| `foreground` @60% / `muted` | 4.5 |
 | `primary-foreground` / `primary` | 4.5 |
 | `destructive` / `background` | 4.5 |
 | `link` / `background` | 4.5 |
 | `success-foreground` / `success-soft`·`success-surface` | 4.5 |
 | `warning-soft-foreground` / `warning-soft` | 4.5 |
 | `warning-foreground` / `background` | 4.5 |
-| `diff-removed` / `background` | 4.5 |
+| `diff-removed` · `diff-added` / `background` | 4.5 |
+| `foreground` / `diff-removed` @14% · `diff-added` @16% | 4.5 |
+| `success-foreground` / `background` | 4.5 |
 | `kind-*` / `kind-*-surface` | 4.5 |
-| `on-hue` / `hue-*` | 4.5 (라이트에서 미달인 hue가 있으면 노트에 수치만) |
+| `on-hue` / `hue-*` — 썸네일 글리프 | 3 (비텍스트) |
+| `on-hue` / `hue-*` — 아바타 이니셜 | 수용 예외(라이트 최저 amber 3.19 · orange 3.56 · teal 3.74 · emerald 3.77 · sky 4.10). hue는 그대로 — 다크에서 이보다 나빠지지 않는지만 본다 |
 | `ring` / `background` | 3 (라이트는 2.54로 수용 — 다크에서 넘기면 좋다) |
 | `border` / `background` (정보를 나르는 경계만) | 3 |
 | `destructive` 글자 / `destructive` @8% 면 | 라이트 약 4.3 수용(DESIGN §2.3) — 다크에서도 같은 수용이면 수치를 적는다 |
