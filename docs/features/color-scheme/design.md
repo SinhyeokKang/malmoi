@@ -53,11 +53,11 @@
 | `kind-blue-surface` · `kind-blue` | Logs 종류 칩 면·글자 | `blue-50` · `blue-700` | `logs/glyph.tsx` | 알파 면 · 밝은 글자 |
 | `kind-teal-surface` · `kind-teal` | 〃 | `teal-50` · `teal-700` | `logs/glyph.tsx` | 〃 |
 | `kind-violet-surface` · `kind-violet` | 〃 | `violet-50` · `violet-700` | `logs/glyph.tsx` | 〃 |
-| `subtle` | 흰 카드 안 한 단계 꺼진 면(Logs 상세의 비어 있는 값 상자) | `neutral-50` | `logs/event-detail.tsx` 둘 | `--background`보다 한 단계 밝은 면 |
+| `subtle` | 흰 카드 안 한 단계 꺼진 면(Logs 상세의 비어 있는 값 상자) | `neutral-50` | `logs/event-detail.tsx` 둘 | `#121212` — `--background`보다 한 단계 **어두운** 면(§3.8. 밝게 두면 빈 상자가 채워진 상자보다 떠 보인다) |
 | `hue-rose` … `hue-fuchsia` (8) | 프로젝트·사람 **식별색**(이름 해시) | `rose-600` … `fuchsia-600` | `ui/tone.ts` | 같은 hue — 다크 표면 위 대비만 확인 |
 | `on-hue` | 식별색 위 글자·글리프 | `white` | `ui/avatar.tsx`(이니셜 — 대비 수용 예외, §4.4) · `ui/project-thumbnail.tsx`(글리프 — 비텍스트 3:1) | `white` |
 | `scrim` | 오버레이(어둡게 덮기) — `/32`·`/40`으로 쓴다 | `--foreground` 값 | `ui/dialog.tsx:160` · `ui/large-modal.tsx:13` 상수(렌더 자리: large-modal · dialog · `logs/event-dialog`) · 랜딩 `mockup/app-frame.tsx:123` — **리터럴 셋** | 검정 그대로(다크에서도 어둡게 덮는다) |
-| `shadow-color` | elevation 둘의 그림자 색 | `rgb(22 24 27)` (`--shadow-low/medium` 리터럴) | `@theme`의 그림자 둘 — **유틸 재료가 아니므로 `@theme`에 등록하지 않고 `globals-css.test.ts` `UNREGISTERED`(:164)에 이유와 함께 넣는다** | 검정 · 알파 상향 |
+| `shadow-color` | elevation 둘의 그림자 색 | `rgb(22 24 27)` (`--shadow-low/medium` 리터럴) | `@theme`의 그림자 둘 — **유틸 재료가 아니므로 `@theme`에 등록하지 않고 `globals-css.test.ts` `UNREGISTERED`(:164)에 이유와 함께 넣는다** | 검정 · 알파 그대로(§3.8 — 다크의 층은 면 단계와 윤곽이 만든다) |
 | `link` · `gray-light` · `gray-dim` · `gray-strong` | (기존 별칭 — `@theme` → `:root`로 이동) | `blue-600` · `neutral-300/400/600` | 기존 그대로 | 밝은 파랑 · 무채 계단 반전 |
 
 **옮기지 않고 접는 것**: `bg-white`(`signin/auth-layout.tsx`의 로그인 패널) → `bg-background`(같은 `#fff` — 그 패널은 "배경 위 흰 카드"라는 의미가 `background`다).
@@ -70,6 +70,8 @@
 
 **팝오버 계열 그림자**: `ui/popover.tsx:25`·`ui/select.tsx:60`·`ui/dropdown-menu.tsx:41`의 `shadow-md`(Tailwind 검정, DESIGN §4.5 등재 예외)는 **그대로 둔다**. 다크에서는 검정 그림자가 거의 안 보이므로 층은 **`popover` 면 단계 + `border`가 만든다** — 시안 브리프 §3.1의 `popover` 방향을 이 판정으로 확정한다(2026-10-04 리뷰).
 
+**모달 윤곽**(2026-10-05 시안 확정, §3.8): `LARGE_MODAL_PANEL`(`ui/large-modal.tsx:14`)에 `border border-border`를 더한다. 다크에서 scrim @40%가 덮은 배경(약 `#0e0e0e`)과 모달 면 `#171717`이 약 1.07:1이고 `shadow-medium`은 보이지 않는다. `Dialog`(`ui/dialog.tsx:172-173`)는 이미 `border`가 있다 — 이 변경은 LargeModal을 Dialog에 맞추는 것이다. 라이트에서는 scrim 위 `#e5e5e5` 선이 거의 보이지 않아 사실상 그대로다. scrim 알파(`/40`·`/32`)는 코드 리터럴이라 올리면 라이트도 짙어져 택하지 않았다.
+
 ### 2.3 Tailwind 철자
 
 `@theme inline`에 `--color-success-soft: var(--success-soft)` 꼴로 등록하면 `bg-success-soft`·`text-success-foreground`·`border-warning-emphasis/50`이 생긴다.
@@ -81,7 +83,7 @@
 - `components/__tests__/visual-system.test.ts`의 `REGISTERED`는 표가 비면 지운다. 대신 **"raw 팔레트 클래스 0"** 검사가 같은 `hits(RAW_COLOR)`를 **`ALL_SOURCES`**(app·components·lib·messages — 완료 조건 1. 기본 `SOURCES`는 app·components뿐이다)로 돌린다. 카나리아(`found.length > 50`, :146)는 픽스처 문자열에 대한 카나리아로 바꾼다 — 실제 소스에서 0이 정답이므로. ⚠️ 지금 적중이 52곳이라 프리미티브 이관(26곳 감소)만으로 카나리아가 red가 된다 — 교체는 **첫 이관 커밋**에서 한다.
 - 같은 파일의 다른 raw 리터럴 가드 셋을 새 철자로 옮긴다 — 안 옮기면 red가 되거나 조용히 죽는다: :246-248 아이콘 색 허용 목록(`text-green-800`·`text-amber-700` → `text-success-foreground`·`text-warning-foreground`) · :288 "Alert 배경 넷이 그 파일 밖에 서지 않는다"(`bg-(amber|red|green|blue)-50` → `bg-*-surface`) · :632-649 IconTile 덮어쓰기 금지 리터럴.
 - **scrim 검사**(완료 조건 5): 생산 소스에서 `bg-foreground/(32|40)` 0 — raw 0 검사의 `RAW_COLOR`에 foreground가 없어 따로 센다.
-- **색 리터럴 허용 목록**(완료 조건 2): `brand-icons.tsx`·`lib/invitation-email/**` 둘. 그 밖의 hex·`rgb(`·`hsl(`·`oklch(`는 생산 소스에서 0 — 주석을 벗기고 센다(`globals-css.test.ts`의 `consumingSource`와 같은 방식).
+- **색 리터럴 허용 목록**(완료 조건 2): `brand-icons.tsx`·`lib/invitation-email/**` · OpenAI 로고 흰 판 자리(§3.5 — P2-4에서 생긴다) 셋. 그 밖의 hex·`rgb(`·`hsl(`·`oklch(`는 생산 소스에서 0 — 주석을 벗기고 센다(`globals-css.test.ts`의 `consumingSource`와 같은 방식).
 - **토큰 표 대조**(완료 조건 4): 표의 "옮겨 온 값"을 테스트 상수(`[token, "var(--color-amber-800)"]` 꼴)로 두고 `globals.css`의 라이트 값과 문자열 대조한다. 이 상수가 Phase 2에서 라이트 쪽 값 회귀를 막는다. ⚠️ 이것은 **토큰 값**만 지킨다 — 자리별 오매핑은 이관 전 캡처 표본(tasks P1-0)과의 `[수동]` 대조 몫이다.
 - 클래스 리터럴을 단언하는 기존 테스트 약 20개를 새 철자로 고친다 — 목록은 tasks P1-1·P1-2. 클래스 이름만 바뀌므로 DOM 구조 기대는 그대로다(`status-badge.test.tsx:129`는 픽스처 문자열이라 고치지 않는다).
 - `link`를 `:root`로 내리면 `app/__tests__/screens.test.ts:300`의 `--color-link:\s*var\(--color-blue-600\)` 리터럴이 깨진다 — 새 형으로 고친다. `components/__tests__/spelling-equivalence.test.ts`(Tailwind `compile`로 `text-blue-600` ≡ `text-link`)가 한 겹 더 감싼 뒤에도 같은 값으로 판정하는지 같이 본다. 새 유틸 생성 여부도 이 `compile()`로 자동 검사한다.
@@ -105,7 +107,7 @@
 - **색 변수 하나가 한 줄이다** — `[data-theme=dark]` 블록과 `@media (prefers-color-scheme: dark)` 안의 System 블록에 다크 값을 두 벌 적는 형을 기각한다(한 벌만 고치면 System 다크와 명시 다크가 조용히 갈린다).
 - `color-scheme`이 `<html>`에서 상속되므로 네이티브 컨트롤·스크롤바·자동완성 면도 함께 바뀐다(완료 조건 13). System은 `light dark`라 OS 변경을 **CSS만으로** 따라간다(완료 조건 8 — JS 없음).
 - **인라인 스크립트가 없다** — 서버가 `data-theme`을 정해 첫 HTML에 싣는다. 쿠키를 읽어 서버가 렌더하므로 깜빡임이 없고, CSP nonce에 새 스크립트를 들이지 않는다(완료 조건 9).
-- ⚠️ **`light-dark()`는 색만 받는다.** 색이 아닌 테마 값(지금은 OpenAI 로고 두 판 전환 하나 — §3.5. Malmoi 로고는 토큰 인라인 SVG라 필요 없다)은 `:root[data-theme="dark"]` + `@media (prefers-color-scheme: dark) { :root[data-theme="system"] }` 두 블록에 둔다. 그런 값이 셋을 넘으면 설계를 다시 본다.
+- ⚠️ **`light-dark()`는 색만 받는다.** 색이 아닌 테마 값은 **지금 0개다**(OpenAI 로고는 두 테마 같은 흰 판이 되어 전환이 사라졌다 — §3.5. Malmoi 로고는 토큰 인라인 SVG라 필요 없다). 생기면 `:root[data-theme="dark"]` + `@media (prefers-color-scheme: dark) { :root[data-theme="system"] }` 두 블록에 둔다. 그런 값이 셋을 넘으면 설계를 다시 본다.
 - ⚠️ **스파이크로 먼저 확인한다**(tasks P2-0). 판정은 Tailwind 출력이 아니라 **`next build` 산출 CSS**(`.next/static/css`)로 한다 — `@tailwindcss/node`는 lightningcss에서 `light-dark()`를 낮추지 않지만(소스 확인), Next CSS 처리가 기본 대상(Safari 16.4, 리포에 browserslist 없음)에 맞춰 `--lightningcss-light/dark` 폴리필로 바꾸는지는 미확인이고, 바뀌면 ③과 `color-scheme` 동작이 달라진다. ① Tailwind v4의 알파 수정자(`bg-success-soft/50` → `color-mix(in oklab, var(--…) 50%, transparent)`)가 `light-dark()` 값을 받는가 ② `color-mix()` 안 `var(--color-amber-100)`가 든 `light-dark()`가 지원 브라우저에서 계산되는가 ③ `getComputedStyle`이 사용자 정의 속성에서 무엇을 돌려주는가(아래 Canvas) ④ 토스트의 계산된 `background`·`border-color`·`color`가 토큰 값인가(§3.5 Toaster). ①–③ 중 하나라도 깨지면 두 벌 블록 형으로 내려가고, 두 벌이 같은 토큰 집합인지를 테스트가 센다.
 - ⚠️ **`color-scheme` 블록은 본문 `:root {` 블록 뒤에 둔다** — `globals-css.test.ts:107`의 `/:root\s*\{([\s\S]*?)\n\}/`는 **첫** `:root {`를 본문으로 잡으므로, 한 줄 블록이 앞에 서면 본문 자리를 가로챈다.
 - 지원 하한: `light-dark()`는 Chrome 123 · Safari 17.5 · Firefox 120(2024 Baseline). 이 앱의 대상(데스크톱 최신 브라우저)에서 문제가 없다고 보고, 옛 브라우저에서는 선언이 무효가 되어 **변수가 비고 색이 사라진다** — 그래서 하한을 DESIGN §3에 적는다.
@@ -152,12 +154,12 @@ ui-locales의 `parseUiLocale`·`resolveUiLocale`(`lib/i18n/locales.ts`)와 **모
 | 자산 | 다크에서 | 근거 |
 |---|---|---|
 | 로고 `malmoi-icon-black.svg`(7곳 import + JSON-LD) | **토큰으로 칠하는 인라인 SVG 컴포넌트 `MalmoiMark`(`components/ui/malmoi-mark.tsx`) 하나로 7곳을 모은다**(2026-10-04 리뷰 — 실재하는 사본 이관). 두 path의 fill을 면 = `foreground`(`#0a0a0a`, 원본 `#090B0C`와 1단위 차이), 마크 = `background`로 칠하면 다크에서 자동으로 `-white` 판과 같은 그림이 된다 — 두 번째 `<Image>`도, §3.1의 비색 테마 블록도 필요 없다. 7곳 모두 장식(`alt=""`)이라 `aria-hidden`. `priority` preload는 사라진다(인라인이라 요청이 없다). JSON-LD `logo`·`public/brand/*.svg` 파일은 크롤러·외부용이라 그대로. ⚠️ `BrandLogo`라는 이름은 `components/mcp/brand-logo.tsx`(에이전트 로고)가 이미 쓴다 | 검정 면(`#090B0C`)이 다크 캔버스에 묻힌다 |
-| 에이전트 로고 `openai.svg`(검정 마크) | **공식 배포본의 흰 판을 추가한다**(변형이 아니라 두 번째 공식 파일 — `lib/mcp/brand.ts` 머리 주석의 무변형 규정을 지킨다). 대상은 기존 `components/mcp/brand-logo.tsx`의 `BRAND_LOGO` 맵 + `lib/mcp/brand.ts` — 두 `<img>`를 두고 CSS(§3.1 비색 값 블록 — 이것 하나)가 하나를 숨긴다. `<picture media="(prefers-color-scheme)">`는 명시적 Dark 선택을 따르지 않아 쓰지 않는다. ⚠️ **공식 흰 판이 실제로 배포되는지는 가정이다** — P2-4 착수 전에 출처를 확인하고, 없으면 이 행을 다시 판정한다. Claude 로고(`#D97757`)는 그대로 | 검정 마크가 다크 면에서 사라진다 |
-| 로그인 키비주얼 PNG 넷(`malmoi-kv-1..4`) | **그대로**. 라이트 카드 그림이 다크 패널 위에 놓인다. 다크 PNG 제작은 spec 비목표(후속 이슈) | 사진 같은 자산이라 토큰으로 못 바꾼다 |
+| 에이전트 로고 `openai.svg`(검정 마크) | **원본 검정 마크를 두 테마 모두 흰 판(`#ffffff`) 위에 놓는다**(2026-10-05 시안 확정, §3.8). 파일은 그대로라 `lib/mcp/brand.ts`의 무변형 규정을 지키고, 두 테마가 같은 판이라 테마 분기·두 번째 자산·비색 값 블록이 없다(옛 안 "공식 흰 마크 파일 추가 + CSS 전환"은 그 파일이 배포되는지부터 가정이었다). 자리는 `mcp/connected-apps-card.tsx`의 로고 칸 둘(`IconTile size="lg"` — 연결 행 · 끊기 확인). 흰 판은 브랜드 자산 규칙이라 토큰이 아니라 리터럴이다 → 색 리터럴 허용 목록에 이 자리를 더한다(§2.4 · spec 완료 조건 2). ⚠️ `IconTile` 덮어쓰기 금지 가드(`visual-system.test.ts` :632-649)와 raw 팔레트 0 검사(`bg-white`도 잡힌다)에 걸리지 않는 길을 P2-4에서 고른다 — 흰 판은 OpenAI 칸만이고 Claude 칸은 `foreground` @5% 그대로다. 대가: 라이트의 OpenAI 칸이 옅은 회색에서 흰 판으로 바뀐다 | 검정 마크가 다크 면에서 사라진다 |
+| 로그인 키비주얼 PNG 넷(`malmoi-kv-1..4`) | **그대로**. 라이트 카드 그림이 다크 패널 위에 놓인다. 다크 PNG 제작은 spec 비목표 — 후속 이슈로도 올리지 않는다(2026-10-05 사용자) | 사진 같은 자산이라 토큰으로 못 바꾼다 |
 | 로그인 Canvas 점(`--signin-dot`) | ⚠️ `dot-field.tsx:66`이 `getComputedStyle(canvas).getPropertyValue("--signin-dot")`를 effect에서 한 번 읽는다 — 사용자 정의 속성은 **선언 문자열**(`light-dark(…)`)이 그대로 오고 Canvas `fillStyle`은 그것을 모른다. **`style={{ color: "var(--signin-dot)" }}`을 단 요소의 계산된 `color`를 읽도록** 바꾼다(브라우저가 `light-dark`를 풀어 준다). 유틸로 등록하지 않는다 — `globals-css.test.ts:119-120`의 "직접 소비자"(`var(--signin-dot)` 문자열) 검사와 `UNREGISTERED`(:163)가 그대로 성립한다. System이면 `matchMedia("(prefers-color-scheme: dark)")`의 `change`에서 다시 읽는다(완료 조건 8). 로그인 화면엔 Preferences가 없어 `data-theme`이 그 화면에서 바뀌는 경로는 없다 | |
 | 토스트(sonner `Toaster`, `app/layout.tsx:87`) | **`theme={colorScheme}`을 넘기고, sonner 변수(`--normal-bg`·`--normal-border`·`--normal-text`)를 `popover`·`border`·`foreground` 토큰에 묶는다**(spec 결정). sonner CSS는 `<head>` 끝에 레이어 없이 주입되고 `[data-sonner-toast][data-styled=true]`(특이도 0,2,0)가 `@layer utilities`의 `classNames`를 이기므로, 묶는 규칙은 `globals.css`에서 그보다 높은 특이도로 두거나 `Toaster`의 `style`로 넘긴다(P2-0 ④ 실측으로 고른다). `[data-description]{color:#3f3f3f}`도 같이 덮는다. 레이아웃 머리 주석("`theme="light"`가 필수다")을 고친다 | 라이트는 값이 우연히 같아 안 드러났을 뿐, 다크에서 토스트만 흰색으로 남는다 |
 | 국기 SVG(`public/flags/`) | 그대로. 테두리 처리는 spec 비목표(후속 이슈) | 국기는 국기다 |
-| 가이드 스크린샷(`public/guide/`) | 이미지는 그대로(라이트) — spec 비목표. **다크 본문 안 테두리·여백(CSS)은 범위** — 시안 브리프 §5-6이 값을 내고 가이드 렌더러의 이미지 스타일에 토큰으로 건다 | |
+| 가이드 스크린샷(`public/guide/`) | 이미지는 그대로(라이트) — spec 비목표. **테두리는 `border` 1px + radius 8, 여백·면 없음, 두 테마 같은 규칙**(2026-10-05 시안 확정, §3.8). 지금 `docs/guide-markdown.tsx:112`의 `Figure`가 이미 `border-border-subtle rounded-lg border`(+ `shadow-low`)라, 바뀌는 것은 선 토큰 `border-subtle` → `border` 하나다(다크 `#1f1f1f` → `#262626` — 흰 그림의 가장자리를 닫는다). 매트(padding)는 다크에서 세 번째 명도를 만들어 기각 | 처리가 없으면 흰 여백이 본문으로 번진다(시안 A12) |
 | 사용자 프로젝트 썸네일(`ui/image-tile.tsx`) | 그대로 — 투명 PNG가 다크 면에 묻히는 것은 spec 비목표(수용) | |
 | 초대 메일 | 그대로(`color-scheme: light` 메타) — spec 비목표 | |
 | OG `og.png`·파비콘 `app/icon.svg` | 그대로 — spec 비목표 | |
@@ -181,6 +183,27 @@ ui-locales의 `parseUiLocale`·`resolveUiLocale`(`lib/i18n/locales.ts`)와 **모
 - `preferences/loading.tsx` 골격에 셋째 카드 자리를 더한다.
 - 문구는 `messages/{en,ko,es}.tsx`에 같은 커밋으로 넣는다(ui-locales 사전 정합 테스트가 빠진 키를 typecheck로 잡는다). 용어: en `Theme`·`System`·`Light`·`Dark` / ko `테마`·`시스템`·`라이트`·`다크` / es `Tema`·`Sistema`·`Claro`·`Oscuro` — DESIGN §10.1 ko·es 열에 등재.
 - 시안: Phase 2 다크 시안에 Theme 카드를 포함한다(S 단계).
+
+### 3.8 다크 값 — 시안 확정 (2026-10-05)
+
+**다크 값의 정본은 Claude Design 핸드오프 `design_handoff_color_scheme`이다** — `README.md` §5 토큰 표(Tailwind 이름 또는 hex)와 `Color Scheme.dc.html` 머리의 `[data-theme="dark"]` 블록이 같은 값이다. P2-1은 그 표를 `globals.css`의 `light-dark()` 둘째 인자로 옮긴다. 토큰 수는 그대로다(합치거나 늘리지 않음).
+
+시안이 이 문서·브리프와 다르게 정한 것(사용자 확정 — 위 각 절에 반영):
+
+| 항목 | 확정 | 절 |
+|---|---|---|
+| `subtle` 다크 | `#121212`(background보다 어둡게 — 라이트의 "꺼진 면" 방향 유지) | §2.2 표 |
+| 모달 윤곽 | `LARGE_MODAL_PANEL`에 `border border-border`(Dialog는 이미 있다) | §2.2 |
+| OpenAI 로고 | 원본 검정 마크 + 두 테마 같은 흰 판 · 비색 값 블록 0 | §3.5 · §3.1 |
+| 가이드 스크린샷 | `border` 1px + radius 8, 여백·면 없음(두 테마) | §3.5 |
+| `border`/`background` 3:1 | 두 테마 약 1.2–1.26으로 미달 유지 — border·divider·border-subtle의 낮은 대비는 의도다. "정보를 나르는 경계"는 구현 판정 | §4.4 |
+
+시안 열린 결정의 판정:
+
+- **neutral Alert 면은 `muted` 그대로** — `foreground` @5%로 내리면 컴포넌트 변경이라 색 값만 바꾸는 이번 범위 밖이다. 무채라 "가장 조용하다"는 뜻은 다크에서도 선다.
+- **primary hover가 다크에서 어두워지는 것을 받는다** — `primary` @85%가 다크에서 약 `#d4d4d4`로 내려가지만(글자 대비 약 11:1) 두 테마 모두 "면이 달라진다"는 신호는 선다. hover 전용 토큰은 두지 않는다.
+- **로고(§5-3)는 기본안 그대로** — 다크 헤더에서 흰 사각 32.
+- **시안의 후속 이슈 후보 둘은 이슈로 올리지 않는다** — 다크 키비주얼 PNG 넷(A13) · 다크 가이드 스크린샷(A12)은 이번 기능에서 하지 않고 따로 추적하지도 않는다(2026-10-05 사용자, spec 비목표). 나중에 할지는 열려 있다 — 영구 비범위로 고정하지 않는다.
 
 ## 4. 스키마 · 환경변수 · 방침
 
@@ -210,7 +233,7 @@ model User {
 ### 4.4 대비 쌍 (완료 조건 12의 입력)
 
 본문 AA(4.5)를 두 테마에서 잰다: `foreground`/`background`·`popover`·`canvas`·`muted` · `foreground` @60%/`muted`(DESIGN §2.2의 muted 면 처방) · `muted-foreground`/`background`·`canvas`·`popover` · `primary-foreground`/`primary` · `destructive`/`background` · `link`/`background` · `success-foreground`/`success-soft`·`success-surface`·`background` · `warning-soft-foreground`/`warning-soft` · `warning-foreground`/`background` · `diff-removed`/`background` · `diff-added`/`background` · `foreground`/`diff-removed`@14%·`diff-added`@16%(낱말 면 위 글자) · `kind-*`/`kind-*-surface`.
-비텍스트 3:1: `border`/`background`(정보용 경계만) · `ring`/`background` · `on-hue`/`hue-*`(**썸네일 글리프**).
+비텍스트 3:1: `border`/`background`(정보용 경계만 — 구조 선은 두 테마 모두 의도적으로 미달, §3.8) · `ring`/`background` · `on-hue`/`hue-*`(**썸네일 글리프**).
 `gray-dim` 글자(약 22곳, 흰 바탕 약 2.5:1)는 수용 근거가 DESIGN에 있는지 P2-1에서 확인하고, 있으면 예외 상수에, 없으면 이 목록에 4.5 쌍으로 넣는다.
 **수용 예외**(spec 완료 조건 12 — 넷뿐): `ring`/`background` 2.54(DESIGN :2064) · `destructive`/`destructive`@8% 약 4.3(DESIGN :116) · `muted-foreground`/`muted` 4.34(DESIGN :108) · `on-hue`/`hue-*` **아바타 이니셜**(라이트 최저 amber 3.19 — DESIGN 등재는 P2-6). 다크에서도 같은 자리만 예외이고, 테스트 상수에 **실측 수치와 DESIGN 절**을 같이 적는다 — 근거 없는 예외가 늘지 않게.
 
