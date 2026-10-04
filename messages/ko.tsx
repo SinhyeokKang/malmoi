@@ -131,6 +131,7 @@ export const ko = {
       projects: "프로젝트",
       account: "계정",
       mcp: "MCP 커넥터",
+      preferences: "환경설정",
       home: "홈",
       sources: "소스",
       translations: "번역",
@@ -169,6 +170,12 @@ export const ko = {
   uiLocale: {
     label: "언어",
     failed: "언어를 바꾸지 못했습니다. 다시 시도하세요.",
+  },
+
+  preferences: {
+    loading: "환경설정을 불러오는 중…",
+    description: "Malmoi 화면에 표시할 언어입니다.",
+    help: "프로젝트의 번역 언어는 바뀌지 않습니다.",
   },
 
   landing: {

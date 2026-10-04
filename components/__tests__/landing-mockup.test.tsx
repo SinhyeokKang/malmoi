@@ -85,7 +85,7 @@ describe("목업 — 제품과 같은 구조다", () => {
     { userName: fixture.user, projectCount: fixture.projectCount },
   );
 
-  it("LNB가 사이드바와 같은 구역·항목·배지다 — 사용자 구역(Projects · MCP connector · Account, 머리 없음) · 프로젝트 구역 · 하단 목록", async () => {
+  it("LNB가 사이드바와 같은 구역·항목·배지다 — 사용자 구역(Projects · MCP connector · Preferences · Account, 머리 없음) · 프로젝트 구역 · 하단 목록", async () => {
     const scene = layer(await mount(), 0);
     const zoneText = (key: string) => find(scene, `[data-landing-zone="${key}"]`);
     const items = (key: string) => [...zoneText(key).querySelectorAll("[data-landing-nav]")].map((node) => node.textContent);
@@ -96,7 +96,7 @@ describe("목업 — 제품과 같은 구조다", () => {
     // 머리 줄은 프로젝트 구역에만 있다 — 사용자 구역의 아바타·이름 줄은 2026-09-30에 빠졌다(사이드바와 같다).
     expect(zoneText("project").querySelector("p > span.truncate")?.textContent).toBe(fixture.project);
     expect(zoneText("work").querySelector("p")).toBeNull();
-    expect(items("work")).toEqual([`${en.common.nav.projects}${fixture.projectCount}`, en.common.nav.mcp, en.common.nav.account]);
+    expect(items("work")).toEqual([`${en.common.nav.projects}${fixture.projectCount}`, en.common.nav.mcp, en.common.nav.preferences, en.common.nav.account]);
     expect(items("footer")).toEqual(navFooterItems(en).map((item) => item.label));
     // Sign out은 하단이 아니라 아바타 메뉴의 것이다(MISC 배치) — 목업 LNB에 따로 서지 않는다.
     expect(scene.querySelector("[data-landing-lnb]")?.textContent).not.toContain(en.common.nav.signOut);

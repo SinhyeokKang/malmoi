@@ -351,6 +351,8 @@ export const en = {
        * `/mcp` (mcp-connector) — 사이드바 사용자 축의 `Account` 바로 앞. **페이지 제목도 이 키다**(DESIGN "메뉴명 = 페이지 제목").
        */
       mcp: "MCP connector",
+      /** `/preferences` (ui-locales) — `MCP connector`와 `Account` 사이. **페이지 제목도 이 키다**(DESIGN "메뉴명 = 페이지 제목"). */
+      preferences: "Preferences",
       /**
        * 프로젝트 구역의 항목 여섯. **`lib/shell/nav.ts`가 읽는다** — 라벨이 소스 리터럴이던 자리다.
        *
@@ -456,6 +458,19 @@ export const en = {
     label: "Language",
     /** Action `invalid`·`failed` — 푸터는 오류 토스트, Preferences는 카드 Alert가 같은 문장을 쓴다. */
     failed: "We couldn't change the language. Try again.",
+  },
+
+  /**
+   * `/preferences` (ui-locales design §5.2) — 제목은 `common.nav.preferences`, Language 카드 제목은 `uiLocale.label`이다(같은 낱말 두 벌을 두지 않는다).
+   * ⚠️ 타임존·테마 자리는 없다(spec 비목표) — 카드가 하나다.
+   */
+  preferences: {
+    /** ⚠️ **골격은 `aria-hidden`이라 이 한 줄이 유일한 안내다.** */
+    loading: "Loading preferences…",
+    /** 카드 머리 설명 — 한 문장(DESIGN §6.67). */
+    description: "The language Malmoi uses on every screen.",
+    /** Select 아래 도움말 — 번역 화면의 언어 열과 혼동하지 않게 한다(design §0). */
+    help: "Your projects' languages don't change.",
   },
 
   /**

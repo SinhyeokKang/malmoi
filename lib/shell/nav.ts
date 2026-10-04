@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 
-import { Box, CircleHelp, CircleUser, Compass, Files, History, House, Languages, Settings, Users } from "lucide-react";
+import { Box, CircleHelp, CircleUser, Compass, Files, History, House, Languages, Settings, SlidersHorizontal, Users } from "lucide-react";
 
 import { McpIcon } from "@/components/signin/brand-icons";
 
@@ -180,6 +180,11 @@ export function navWorkItems(m: Messages, projectCount?: number): NavItem[] {
    */
   // 글리프는 공식 MCP 로고다(2026-09-29 사용자 — 옛 lucide `Plug`). lucide에 브랜드가 없어 `brand-icons.tsx`의 인라인 SVG다.
   { key: "mcp", label: m.common.nav.mcp, icon: McpIcon, href: routes.mcp(), exact: true },
+  /**
+   * `Preferences` (ui-locales design §5.2) — **`MCP connector`와 `Account` 사이**다(2026-10-04 사용자 — `Account`가 목록 끝에 남는다).
+   * 글리프는 `SlidersHorizontal` — `Settings`(톱니)는 Project settings, `CircleUser`는 Account라 셋이 갈려야 한다.
+   */
+  { key: "preferences", label: m.common.nav.preferences, icon: SlidersHorizontal, href: routes.preferences(), exact: true },
   { key: "account", label: m.common.nav.account, icon: CircleUser, href: routes.account(), exact: true },
   ];
 }

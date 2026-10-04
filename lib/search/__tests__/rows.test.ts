@@ -63,7 +63,8 @@ describe("searchRows — 그룹·행·ids 한 원천", () => {
     expect(pages?.rows.map(r => r.id)).toEqual(["page:c:home", "page:c:sources", "page:c:translations"]);
     expect(docsGroup?.rows.map(r => r.id)).toEqual(["docs:d1", "docs:d2", "docs:d3", "go-to-docs"]);
     const user = searchRows(en, { index: index([]), keys: [], q: "", activeSlug: null });
-    expect(user.groups[0]?.rows.map(r => r.id)).toEqual(["page:projects", "page:mcp", "page:account"]);
+    // 사용자 축이 넷이 된 뒤(ui-locales `Preferences`) 미리보기는 앞 셋이다 — `Account`는 검색어로 찾는다.
+    expect(user.groups[0]?.rows.map(r => r.id)).toEqual(["page:projects", "page:mcp", "page:preferences"]);
   });
 
   it.each([null, []] as const)("/docs로 가는 행은 정확히 하나 — memberships %j", (memberships) => {

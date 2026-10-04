@@ -17,11 +17,11 @@ vi.mock("next/navigation", () => ({ usePathname: () => path.value }));
 const memberships = [{ slug: "acme", name: "Acme", role: "OWNER" as const, archived: false, image: null }];
 
 describe("사이드바 — 사용자 구역", () => {
-  it("항목이 Projects · MCP connector · Account 순이다 — New project가 없다", async () => {
+  it("항목이 Projects · MCP connector · Preferences · Account 순이다 — New project가 없다", async () => {
     path.value = "/projects";
     const { container } = await render(<Sidebar memberships={[]} userName="Kim" />);
     const work = container.querySelector('nav[aria-label="Kim"]')!;
-    expect([...work.querySelectorAll("a")].map((a) => a.getAttribute("href"))).toEqual(["/projects", "/mcp", "/account"]);
+    expect([...work.querySelectorAll("a")].map((a) => a.getAttribute("href"))).toEqual(["/projects", "/mcp", "/preferences", "/account"]);
     expect(container.querySelector(`a[href="${routes.newProject()}"]`)).toBeNull();
     expect(container.textContent).not.toContain(en.common.nav.newProject);
   });

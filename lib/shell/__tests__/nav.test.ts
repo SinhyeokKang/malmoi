@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { CircleHelp, Compass } from "lucide-react";
+import { CircleHelp, Compass, SlidersHorizontal } from "lucide-react";
 
 import { McpIcon } from "@/components/signin/brand-icons";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -221,13 +221,20 @@ describe("navZones — 사용자 축과 프로젝트 축 (PRODUCT §7.7 · 8-3 �
    * ⚠️ **`New project`가 사용자 축에 없다** (2026-09-30 사용자 — 2026-09-27의 "Projects 바로 아래"를 되돌렸다). 앱 셸 헤더의
    * 아바타 왼쪽 버튼이 그 자리다.
    */
-  it("사용자 축은 Projects · MCP connector · Account 순이다", () => {
+  it("사용자 축은 Projects · MCP connector · Preferences · Account 순이다", () => {
     const items = navZones(en, null, ctx)[0]?.items ?? [];
     expect(items.map((i) => [i.key, i.href])).toEqual([
       ["projects", "/projects"],
       ["mcp", "/mcp"],
+      ["preferences", "/preferences"],
       ["account", "/account"],
     ]);
+    // Preferences (ui-locales design §5.2) — `SlidersHorizontal`(톱니는 Project settings, `CircleUser`는 Account) · 정확히 일치 · 배지 없음 · 라벨 = 페이지 제목 키.
+    const preferences = items.find((i) => i.key === "preferences");
+    expect(preferences?.label).toBe(en.common.nav.preferences);
+    expect(preferences?.icon).toBe(SlidersHorizontal);
+    expect(preferences?.exact).toBe(true);
+    expect(preferences?.badge).toBeUndefined();
     // MCP connector — 공식 MCP 로고(`McpIcon`, 2026-09-29 사용자 — 옛 `Plug`) · 정확히 일치 · 배지 없음 · 라벨이 페이지 제목과 같은 키(핸드오프 §4).
     const mcp = items.find((i) => i.key === "mcp");
     expect(mcp?.label).toBe(en.common.nav.mcp);
@@ -252,7 +259,7 @@ describe("navZones — 사용자 축과 프로젝트 축 (PRODUCT §7.7 · 8-3 �
    */
   it("`Projects`에만 개수 배지가 붙고, 0도 값이다", () => {
     const items = navZones(en, null, { userName: "Shin", projectCount: 0 })[0]?.items ?? [];
-    expect(items.map((i) => i.badge)).toEqual([0, undefined, undefined]);
+    expect(items.map((i) => i.badge)).toEqual([0, undefined, undefined, undefined]);
     expect(navZones(en, null, ctx)[0]?.items[0]?.badge).toBe(3);
   });
 

@@ -933,6 +933,10 @@ describe("보호 라우트가 1차 차단에 걸린다 — matcher는 전 페이
     expect(isProtectedPath("/%6Dcp")).toBe(true);
     expect(isProtectedPath("/mcpx")).toBe(false);
     expect(isProtectedPath("/api/mcp")).toBe(false);
+    // `/preferences` (ui-locales) — 같은 모양이다. 전송 변형(`.rsc`·`.json`·`_next/data`·세그먼트)과 인코딩된 경로도 덮고, 접두만 같은 경로는 아니다.
+    for (const path of ["/preferences", "/preferences/", "/preferences.rsc", "/preferences.json", "/_next/data/build/preferences.json",
+      "/preferences.segments/x.segment.rsc", "/%70references"]) expect(isProtectedPath(path), path).toBe(true);
+    for (const path of ["/preferencesx", "/preferences/x", "/api/preferences", "/ui-locale"]) expect(isProtectedPath(path), path).toBe(false);
     // 접두 문자열만 같은 경로는 보호 대상이 아니다 — 이 줄이 위 넷을 의미 있게 만든다.
     expect(isProtectedPath("/projectsx")).toBe(false);
     expect(isProtectedPath("/invite/sample")).toBe(false);

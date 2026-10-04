@@ -13,7 +13,7 @@ import { SITE_ORIGIN } from "../site";
 describe("robotsFor — 프로덕션만 연다", () => {
   it("`production`은 전체 허용 + 앱·API 거부 + sitemap 위치", () => {
     expect(robotsFor("production")).toEqual({
-      rules: [{ userAgent: "*", allow: "/", disallow: ["/api/", "/projects", "/account"] }],
+      rules: [{ userAgent: "*", allow: "/", disallow: ["/api/", "/projects", "/account", "/preferences"] }],
       sitemap: "https://mal-moi.com/sitemap.xml",
     });
   });

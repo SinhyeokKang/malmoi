@@ -128,6 +128,7 @@ export const es = {
       projects: "Proyectos",
       account: "Cuenta",
       mcp: "Conector MCP",
+      preferences: "Preferencias",
       home: "Inicio",
       sources: "Fuentes",
       translations: "Traducciones",
@@ -166,6 +167,12 @@ export const es = {
   uiLocale: {
     label: "Idioma",
     failed: "No pudimos cambiar el idioma. Inténtalo de nuevo.",
+  },
+
+  preferences: {
+    loading: "Cargando preferencias…",
+    description: "El idioma de todas las pantallas de Malmoi.",
+    help: "Los idiomas de tus proyectos no cambian.",
   },
 
   landing: {
