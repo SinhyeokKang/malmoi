@@ -4,7 +4,7 @@ import Link from "next/link";
 import { SearchTrigger } from "@/components/search/search-trigger";
 import type { NavProject } from "@/lib/shell/nav";
 import { PUBLIC_HEADER_LINK } from "@/components/public-shell/header";
-import { m } from "@/lib/i18n";
+import type { Messages } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
 import logo from "@/public/brand/malmoi-icon-black.svg";
 
@@ -28,12 +28,14 @@ import { UserMenu } from "./user-menu";
  * 든다. 8-3이 그것을 `[slug]` 레이아웃으로 옮길 자리다.
  */
 export function Header({
+  m,
   name,
   email,
   image,
   signOut,
   memberships,
 }: {
+  m: Messages;
   name: string;
   email: string | null;
   image: string | null;

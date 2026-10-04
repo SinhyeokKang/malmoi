@@ -5,8 +5,10 @@ import { render } from "@/components/__tests__/helpers/dom";
 import type { SessionRead } from "@/lib/auth/read-session";
 import type { LoadedReleases } from "@/lib/changelog/load";
 import { en } from "@/messages/en";
-import { FOOTER_LINKS, GITHUB_RELEASES_URL } from "@/lib/links";
+import { footerLinks, GITHUB_RELEASES_URL } from "@/lib/links";
 import { routes } from "@/lib/routes";
+
+vi.mock("@/lib/i18n/server", async () => ({ getMessages: async () => (await import("@/messages/en")).en, getUiLocale: async () => "en" }));
 
 /**
  * **`/changelog`는 공개 셸 안의 공개 페이지다** (spec 결정). GitHub가 실패하거나 0건이어도 페이지는 서고
@@ -65,7 +67,7 @@ describe("`/changelog` — 공개 셸", () => {
 
   it("푸터가 공개 셸의 링크 목록이다", async () => {
     const container = await page({ ok: false });
-    expect([...container.querySelectorAll("footer a")].map((a) => a.getAttribute("href"))).toEqual(FOOTER_LINKS.map(({ href }) => href));
+    expect([...container.querySelectorAll("footer a")].map((a) => a.getAttribute("href"))).toEqual(footerLinks(en).map(({ href }) => href));
   });
 
   it("헤더 primary는 세션으로 갈린다", async () => {

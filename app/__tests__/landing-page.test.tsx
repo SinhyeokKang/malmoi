@@ -11,6 +11,8 @@ import { GITHUB_REPO_URL } from "@/lib/links";
 import { routes } from "@/lib/routes";
 import { navFooterItems } from "@/lib/shell/nav";
 
+vi.mock("@/lib/i18n/server", async () => ({ getMessages: async () => (await import("@/messages/en")).en, getUiLocale: async () => "en" }));
+
 /**
  * **루트(`/`)의 세 갈래** (ARCHITECTURE `rootView` 문단 · DESIGN §6.615) — `ok`는 여전히 `/projects`(2026-09-10 결정), `none`·`unavailable`은 랜딩이다.
  *
@@ -118,7 +120,7 @@ describe.each(["none", "unavailable"] as const)("`/` — `%s`는 랜딩이다", 
     }
     const icon = (a: Element | undefined) => a?.firstElementChild?.getAttribute("class") ?? "";
     // Docs는 `navFooterItems`의 Docs 항목과 같은 글리프다 — 셸이 바꾸면 랜딩도 따라간다.
-    const docsIcon = navFooterItems().find((item) => item.key === "docs")?.icon;
+    const docsIcon = navFooterItems(en).find((item) => item.key === "docs")?.icon;
     expect(docsIcon).toBeDefined();
     const expected = docsIcon ? /class="([^"]*)"/.exec(renderToStaticMarkup(createElement(docsIcon)))?.[1] : undefined;
     expect(icon(buttons[0])).toBe(expected);

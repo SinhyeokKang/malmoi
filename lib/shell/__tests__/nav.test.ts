@@ -31,7 +31,7 @@ const memberships: NavProject[] = [
 describe("Translations 링크 — 기본 표면으로 직접", () => {
   const withDefault: NavProject[] = [{ slug: "acme", name: "Acme", role: "OWNER", archived: false, defaultSurfaceSlug: "app" }];
   const translations = (pathname: string, list: NavProject[] = withDefault) =>
-    navZones(activeProject(pathname, list), { userName: "Shin", projectCount: 1 })[1]!.items.find((item) => item.key === "translations")!.href;
+    navZones(en, activeProject(pathname, list), { userName: "Shin", projectCount: 1 })[1]!.items.find((item) => item.key === "translations")!.href;
 
   it("Home에서 기본 표면의 편집 주소다 — redirect를 거치지 않는다", () => {
     expect(translations("/projects/acme")).toBe("/projects/acme/surfaces/app/translations");
@@ -55,13 +55,13 @@ describe("activeProject — pathname에서 프로젝트 컨텍스트", () => {
   it("Add surface의 new를 표면으로 읽어 죽은 편집 링크를 만들지 않는다", () => {
     const current = activeProject("/projects/acme/surfaces/new", memberships);
     expect(current).toEqual(memberships[0]);
-    const items = navZones(current, { userName: "Shin", projectCount: 2 })[1]!.items;
+    const items = navZones(en, current, { userName: "Shin", projectCount: 2 })[1]!.items;
     expect(items.find(item => item.key === "translations")!.href).toBe("/projects/acme/translations");
   });
   it("keeps surface B in both editing links without adding a sidebar section", () => {
     const current = activeProject("/projects/acme/surfaces/web/translations", memberships);
     expect(current).toMatchObject({ slug: "acme", surfaceSlug: "web" });
-    const items = navZones(current, { userName: "Shin", projectCount: 2 })[1]!.items;
+    const items = navZones(en, current, { userName: "Shin", projectCount: 2 })[1]!.items;
     expect(items.find(item => item.key === "translations")!.href).toBe("/projects/acme/surfaces/web/translations");
     expect(items.find(item => item.key === "sources")!.href).toBe("/projects/acme/sources");
     expect(items).toHaveLength(6);
@@ -111,7 +111,7 @@ describe("projectSections — 역할이 항목을 정한다", () => {
    */
   // 2026-09-30 사용자 — 시안의 Members · Logs를 맞바꿨다.
   it("OWNER는 여섯을 본다 — Logs가 Members 앞이다", () => {
-    expect(projectSections("OWNER").map((s) => s.key)).toEqual([
+    expect(projectSections(en, "OWNER").map((s) => s.key)).toEqual([
       "home",
       "sources",
       "translations",
@@ -122,7 +122,7 @@ describe("projectSections — 역할이 항목을 정한다", () => {
   });
 
   it("EDITOR는 Project settings만 못 본다 — Home·Locales·Logs는 전원이 본다", () => {
-    expect(projectSections("EDITOR").map((s) => s.key)).toEqual([
+    expect(projectSections(en, "EDITOR").map((s) => s.key)).toEqual([
       "home",
       "sources",
       "translations",
@@ -138,7 +138,7 @@ describe("projectSections — 역할이 항목을 정한다", () => {
    * 무너뜨린다. **규칙은 축이 아니라 라우트 모양에 붙는다**: 하위 경로가 있는 항목만 접두다.
    */
   it("Home과 Logs가 정확히 일치다 — 하위 경로가 없다", () => {
-    const byKey = new Map(projectSections("OWNER").map((s) => [s.key, s.exact]));
+    const byKey = new Map(projectSections(en, "OWNER").map((s) => [s.key, s.exact]));
     expect(byKey.get("home")).toBe(true);
     // ⚠️ Logs의 `?cursor=`는 쿼리라 경로가 아니다 — 접두로 재도 결과가 같지만, 규칙이 **라우트
     // 모양**에 붙는다는 것을 지키면 다음 사람이 하위 라우트를 더할 때 여기서 걸린다.
@@ -154,7 +154,7 @@ describe("projectSections — 역할이 항목을 정한다", () => {
    */
   it("Logs는 두 역할에 다 있다 — 번역자가 자기 전송 결과를 본다", () => {
     for (const role of ["OWNER", "EDITOR"] as const) {
-      expect(projectSections(role).map((s) => s.key), role).toContain("logs");
+      expect(projectSections(en, role).map((s) => s.key), role).toContain("logs");
     }
   });
 
@@ -165,7 +165,7 @@ describe("projectSections — 역할이 항목을 정한다", () => {
    */
   it("Locales는 두 역할에 다 있다 — 컨트롤만 갈린다", () => {
     for (const role of ["OWNER", "EDITOR"] as const) {
-      expect(projectSections(role).map((s) => s.key), role).toContain("sources");
+      expect(projectSections(en, role).map((s) => s.key), role).toContain("sources");
     }
   });
 
@@ -176,13 +176,13 @@ describe("projectSections — 역할이 항목을 정한다", () => {
    */
   it("Members는 두 역할에 다 있다 — 목록은 전원이 본다, 컨트롤만 갈린다", () => {
     for (const role of ["OWNER", "EDITOR"] as const) {
-      expect(projectSections(role).map((s) => s.key), role).toContain("members");
+      expect(projectSections(en, role).map((s) => s.key), role).toContain("members");
     }
   });
 
   it("모든 항목이 아이콘을 든다 — 접힌 레일에서 아이콘이 유일한 라벨이다 (DESIGN §6.8)", () => {
     for (const role of ["OWNER", "EDITOR"] as const) {
-      for (const section of projectSections(role)) {
+      for (const section of projectSections(en, role)) {
         expect(section.icon, section.key).toBeDefined();
       }
     }
@@ -190,7 +190,7 @@ describe("projectSections — 역할이 항목을 정한다", () => {
 
   /** ⚠️ 인덱스로 집지 않는다 — 6b-6이 Home을 맨 앞에 넣으면서 그 전제가 깨졌다. 키로 찾는다. */
   it("경로는 slug를 받아 만든다 — 화면이 문자열을 조립하지 않는다 (lib/routes.ts)", () => {
-    const byKey = new Map(projectSections("EDITOR").map((s) => [s.key, s.href]));
+    const byKey = new Map(projectSections(en, "EDITOR").map((s) => [s.key, s.href]));
     expect(byKey.get("home")?.("acme")).toBe("/projects/acme");
     expect(byKey.get("translations")?.("acme")).toBe("/projects/acme/translations");
     expect(byKey.get("logs")?.("acme")).toBe("/projects/acme/logs");
@@ -210,11 +210,11 @@ describe("navZones — 사용자 축과 프로젝트 축 (PRODUCT §7.7 · 8-3 �
   const ctx = { userName: "Shin", projectCount: 3 };
 
   it("프로젝트 컨텍스트가 있으면 구역이 둘이고 사용자 축이 먼저다", () => {
-    expect(navZones(project("OWNER"), ctx).map((z) => z.key)).toEqual(["work", "project"]);
+    expect(navZones(en, project("OWNER"), ctx).map((z) => z.key)).toEqual(["work", "project"]);
   });
 
   it("컨텍스트가 없으면 사용자 축 하나다 — 목록·생성·계정 화면에서 프로젝트 항목을 지어내지 않는다", () => {
-    expect(navZones(null, ctx).map((z) => z.key)).toEqual(["work"]);
+    expect(navZones(en, null, ctx).map((z) => z.key)).toEqual(["work"]);
   });
 
   /**
@@ -222,7 +222,7 @@ describe("navZones — 사용자 축과 프로젝트 축 (PRODUCT §7.7 · 8-3 �
    * 아바타 왼쪽 버튼이 그 자리다.
    */
   it("사용자 축은 Projects · MCP connector · Account 순이다", () => {
-    const items = navZones(null, ctx)[0]?.items ?? [];
+    const items = navZones(en, null, ctx)[0]?.items ?? [];
     expect(items.map((i) => [i.key, i.href])).toEqual([
       ["projects", "/projects"],
       ["mcp", "/mcp"],
@@ -238,11 +238,11 @@ describe("navZones — 사용자 축과 프로젝트 축 (PRODUCT §7.7 · 8-3 �
 
   /** ⚠️ **구역 라벨이 이름 그대로다** — 사용자 축은 사용자 이름(옛 `Your work`를 대체했다). */
   it("사용자 구역의 라벨은 사용자 이름이다", () => {
-    expect(navZones(null, { userName: "Shin", projectCount: 0 })[0]?.label).toBe("Shin");
+    expect(navZones(en, null, { userName: "Shin", projectCount: 0 })[0]?.label).toBe("Shin");
   });
 
   it("프로젝트 구역의 라벨은 프로젝트 이름이다 — 어느 스코프인지 이름으로 말한다", () => {
-    expect(navZones({ slug: "beta", name: "Beta", role: "EDITOR", archived: false }, ctx)[1]?.label).toBe("Beta");
+    expect(navZones(en, { slug: "beta", name: "Beta", role: "EDITOR", archived: false }, ctx)[1]?.label).toBe("Beta");
   });
 
   /**
@@ -251,9 +251,9 @@ describe("navZones — 사용자 축과 프로젝트 축 (PRODUCT §7.7 · 8-3 �
    * 여기서 0을 `undefined`로 접으면 그 규칙이 판정 층으로 새어 "셀 수 없음"과 "없음"이 한 값이 된다.
    */
   it("`Projects`에만 개수 배지가 붙고, 0도 값이다", () => {
-    const items = navZones(null, { userName: "Shin", projectCount: 0 })[0]?.items ?? [];
+    const items = navZones(en, null, { userName: "Shin", projectCount: 0 })[0]?.items ?? [];
     expect(items.map((i) => i.badge)).toEqual([0, undefined, undefined]);
-    expect(navZones(null, ctx)[0]?.items[0]?.badge).toBe(3);
+    expect(navZones(en, null, ctx)[0]?.items[0]?.badge).toBe(3);
   });
 
   /**
@@ -263,20 +263,20 @@ describe("navZones — 사용자 축과 프로젝트 축 (PRODUCT §7.7 · 8-3 �
    */
   it("Sources·Translations·Members에 개수 배지가 붙고, Translations는 표면과 무관하게 프로젝트 전체 키 수다", () => {
     const counted: NavProject = { ...project("OWNER"), defaultSurfaceSlug: "app", counts: { sources: 2, members: 0, keys: 31 } };
-    const badges = (p: NavProject) => Object.fromEntries((navZones(p, ctx)[1]?.items ?? []).map((i) => [i.key, i.badge]));
+    const badges = (p: NavProject) => Object.fromEntries((navZones(en, p, ctx)[1]?.items ?? []).map((i) => [i.key, i.badge]));
     expect(badges(counted)).toEqual({ home: undefined, sources: 2, translations: 31, members: 0, logs: undefined, settings: undefined });
     expect(badges({ ...counted, surfaceSlug: "web" }).translations).toBe(31);
   });
 
   it("개수가 없으면 프로젝트 축에 배지가 없다", () => {
-    const items = navZones(project("OWNER"), ctx)[1]?.items ?? [];
+    const items = navZones(en, project("OWNER"), ctx)[1]?.items ?? [];
     expect(items.every((i) => i.badge === undefined)).toBe(true);
   });
 
   it("프로젝트 구역은 `projectSections`를 그대로 든다 — 권한 판정이 두 벌이 되지 않는다", () => {
     for (const role of ["OWNER", "EDITOR"] as const) {
-      expect(navZones(project(role), ctx)[1]?.items.map((i) => i.key), role).toEqual(
-        projectSections(role).map((s) => s.key),
+      expect(navZones(en, project(role), ctx)[1]?.items.map((i) => i.key), role).toEqual(
+        projectSections(en, role).map((s) => s.key),
       );
     }
   });
@@ -287,18 +287,18 @@ describe("navZones — 사용자 축과 프로젝트 축 (PRODUCT §7.7 · 8-3 �
    */
   it("EDITOR에게 빠지는 항목은 Project settings 하나다 — 나머지는 전원이 본다", () => {
     const keys = (role: Role): string[] =>
-      navZones(project(role), ctx).flatMap((z) => z.items.map((i) => i.key));
+      navZones(en, project(role), ctx).flatMap((z) => z.items.map((i) => i.key));
     expect(keys("OWNER").filter((k) => !keys("EDITOR").includes(k))).toEqual(["settings"]);
   });
 
   it("사용자 축은 전부 정확히 일치다 — `/projects`가 `/projects/new`의 접두다", () => {
-    const work = navZones(null, ctx)[0];
+    const work = navZones(en, null, ctx)[0];
     expect(work?.items.length).toBeGreaterThan(0);
     for (const item of work?.items ?? []) expect(item.exact, item.key).toBe(true);
   });
 
   it("항목마다 아이콘과 **완성된** href가 있다 (DESIGN §6.8)", () => {
-    for (const zone of navZones(project("OWNER"), ctx)) {
+    for (const zone of navZones(en, project("OWNER"), ctx)) {
       expect(zone.items.length, zone.key).toBeGreaterThan(0);
       for (const item of zone.items) {
         expect(item.icon, item.key).toBeDefined();
@@ -320,11 +320,11 @@ describe("navFooterItems", () => {
    */
   // 외부 링크 항목이 없어져 `NavItem.external`도 사라졌다 — 새 탭 여부는 사이드바 DOM 테스트(`sign-out-pending`)가 본다.
   it("Changelog(`/changelog`) 다음 Docs(`/docs`)다", () => {
-    expect(navFooterItems().map((i) => ({ key: i.key, label: i.label, href: i.href }))).toEqual([
+    expect(navFooterItems(en).map((i) => ({ key: i.key, label: i.label, href: i.href }))).toEqual([
       { key: "changelog", label: en.changelog.title, href: "/changelog" },
       { key: "docs", label: en.publicDocs.docs.title, href: "/docs" },
     ]);
-    expect(navFooterItems().map((i) => i.icon)).toEqual([Compass, CircleHelp]);
+    expect(navFooterItems(en).map((i) => i.icon)).toEqual([Compass, CircleHelp]);
   });
 
   /**
@@ -336,19 +336,19 @@ describe("navFooterItems", () => {
 
     it("Changelog가 현재 버전을 배지로 든다 — Docs는 배지가 없다", () => {
       vi.stubEnv("APP_VERSION", "1.0.3");
-      const items = navFooterItems();
+      const items = navFooterItems(en);
       expect(items.find((i) => i.key === "changelog")?.badge).toBe("1.0.3");
       expect(items.find((i) => i.key === "docs")?.badge).toBeUndefined();
     });
 
     it("버전이 비면 배지가 없다", () => {
       vi.stubEnv("APP_VERSION", undefined);
-      expect(navFooterItems().find((i) => i.key === "changelog")?.badge).toBeUndefined();
+      expect(navFooterItems(en).find((i) => i.key === "changelog")?.badge).toBeUndefined();
     });
   });
 
   it("Sign out은 LNB에 없다 — 사용자 메뉴에만 있다 (2026-09-27 사용자)", () => {
-    expect(navFooterItems().some((i) => i.key === "signOut")).toBe(false);
+    expect(navFooterItems(en).some((i) => i.key === "signOut")).toBe(false);
   });
 });
 
@@ -358,7 +358,7 @@ describe("프로젝트 설정 항목의 라벨", () => {
    * `Account`가 되어 사이드바에 `Settings`가 하나만 남으므로 "어느 설정인가"가 다시 생기지 않는다.
    */
   it("LNB 라벨이 `Settings`다", () => {
-    const item = projectSections("OWNER").find((s) => s.key === "settings");
+    const item = projectSections(en, "OWNER").find((s) => s.key === "settings");
     expect(item?.label).toBe("Settings");
   });
 

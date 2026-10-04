@@ -132,7 +132,7 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
           // ⚠️ `not-awaiting`만 직접 다시 읽는다 — 다른 실행이 이미 적재한 갈래라 서버 상태는 바뀌었는데, Action이 `revalidatePath` 전에
           // 반환해 `data`가 안 바뀌고 상세가 옛 [Run first sync]에 남는다. 다른 조기 거부는 바뀐 것이 없어 읽을 것도 없다.
           if (!outcome.ok && outcome.error === "not-awaiting") void load(surfaceSlug, true);
-          setResult(outcome.ok ? { tone: outcome.failed > 0 ? "warning" : "success", text: ingestHeadline(m, outcome.count, outcome.failed, outcome.unmanaged), source: surfaceSlug } : { tone: "danger", text: failureText(outcome.error), source: surfaceSlug });
+          setResult(outcome.ok ? { tone: outcome.failed > 0 ? "warning" : "success", text: ingestHeadline(m, outcome.count, outcome.failed, outcome.unmanaged), source: surfaceSlug } : { tone: "danger", text: failureText(m, outcome.error), source: surfaceSlug });
         } catch {
           /*
             ⚠️ **"didn't finish"로 접지 않는다** (malmoi#135 — Sync의 #132와 같은 부류) — throw는 요청이 나간 뒤 응답을 잃은 것일 수 있고,

@@ -5,7 +5,7 @@ import { Box, CircleHelp, CircleUser, Compass, Files, History, House, Languages,
 import { McpIcon } from "@/components/signin/brand-icons";
 
 import { canPerform, type Role } from "@/lib/auth/permission";
-import { m } from "@/lib/i18n";
+import type { Messages } from "@/lib/i18n";
 import { appVersion } from "@/lib/app-version";
 import { routes } from "@/lib/routes";
 import type { MembershipRow } from "@/lib/keys/query";
@@ -96,7 +96,7 @@ export type NavSection = {
  * ⚠️ **Members·Locales·Logs는 `canPerform` 뒤가 아니다 — 전원에게 보인다.** EDITOR도 그 화면들에
  * `translation:write`로 들어오고 **컨트롤만** 역할로 갈린다 (ARCHITECTURE §6.1 · 6b-2 · 6b-5).
  */
-export function projectSections(role: Role): NavSection[] {
+export function projectSections(m: Messages, role: Role): NavSection[] {
   const sections: NavSection[] = [
     // 착지점이라 맨 앞이다 (PRODUCT §7.7 결정 1).
     { key: "home", label: m.common.nav.home, icon: House, href: (slug) => routes.project(slug), exact: true },
@@ -151,7 +151,7 @@ export type NavZone = { key: "work" | "project"; label: string; items: NavItem[]
  * 사용자 축 항목 — **사이드바 사용자 구역과 헤더 사용자 메뉴의 첫 묶음이 이 목록 하나를 읽는다** (2026-09-27 사용자). 두 벌이면
  * 한쪽에만 항목이 늘어 순서가 갈린다. `projectCount`를 주면 `Projects`가 개수 배지를 든다(사이드바만 준다 — 메뉴엔 배지가 없다).
  */
-export function navWorkItems(projectCount?: number): NavItem[] {
+export function navWorkItems(m: Messages, projectCount?: number): NavItem[] {
   return [
   /**
    * ⚠️ **사용자 축은 전부 정확히 일치다.** `/projects`가 `/projects/new`의 접두라, 접두로 재면
@@ -197,13 +197,14 @@ export function navWorkItems(projectCount?: number): NavItem[] {
  * 되고 그중 하나가 낡는다 — 판정은 `canPerform` 한 곳이다.
  */
 export function navZones(
+  m: Messages,
   project: NavProject | null,
   context: { userName: string; projectCount: number },
 ): NavZone[] {
   const work: NavZone = {
     key: "work",
     label: context.userName,
-    items: navWorkItems(context.projectCount),
+    items: navWorkItems(m, context.projectCount),
   };
   if (project === null) return [work];
 
@@ -212,7 +213,7 @@ export function navZones(
     {
       key: "project",
       label: project.name,
-      items: projectSections(project.role).map((section) => ({
+      items: projectSections(m, project.role).map((section) => ({
         key: section.key,
         label: section.label,
         icon: section.icon,
@@ -252,7 +253,7 @@ function translationsHref(project: NavProject): string {
  * ⚠️ **아이콘이 사용자 메뉴의 같은 항목과 같다**(`Compass` · `CircleHelp`) — 같은 곳을 두 글리프로 가리키지 않는다.
  * ⚠️ **Docs가 `/docs`(개요)를 가리킨다** (8-3 사용자 결정). 셸은 역할을 읽지 않는다 — 개발자·편집자 갈래는 개요가 준다.
  */
-export function navFooterItems(): NavItem[] {
+export function navFooterItems(m: Messages): NavItem[] {
   // `exact`는 효과가 없다 — 사이드바는 앱 셸(`app/(edit)/layout.tsx`)에만 서고 `/docs/*`·`/changelog`는 공개 셸이라 둘이 한 화면에 안 선다.
   return [
     // 오른쪽 배지는 현재 앱 버전 `x.y.z`다 (2026-09-28 사용자 — 개수 배지와 같은 자리·모양). 비면 싣지 않는다.

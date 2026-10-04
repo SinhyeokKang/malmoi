@@ -518,7 +518,7 @@ describe("클라이언트 그래프", () => {
     const graph = walk([join(ROOT, "lib/search/nav-index.ts")]);
     expect([...graph.files].map(file => file.slice(ROOT.length)).sort()).toEqual([
       "components/signin/brand-icons.tsx", "lib/app-version.ts", "lib/auth/permission.ts",
-      "lib/i18n/index.ts", "lib/routes.ts", "lib/search/nav-index.ts", "lib/shell/nav.ts", "messages/en.tsx",
+      "lib/routes.ts", "lib/search/nav-index.ts", "lib/shell/nav.ts",
     ]);
     expect([...graph.packages].filter(name => !allowed(name))).toEqual([]);
   });
@@ -526,9 +526,9 @@ describe("클라이언트 그래프", () => {
   it("검색 rows는 nav-index와 같은 내비·사전에 검색 잎·번역 질의 상수만 더 문다", () => {
     const graph = walk([join(ROOT, "lib/search/rows.ts")]);
     expect([...graph.files].map(file => file.slice(ROOT.length)).sort()).toEqual([
-      "components/signin/brand-icons.tsx", "lib/app-version.ts", "lib/auth/permission.ts", "lib/i18n/index.ts", "lib/routes.ts",
+      "components/signin/brand-icons.tsx", "lib/app-version.ts", "lib/auth/permission.ts", "lib/routes.ts",
       "lib/search/highlight.ts", "lib/search/key-href.ts", "lib/search/match.ts", "lib/search/rows.ts", "lib/shell/nav.ts",
-      "lib/translations/query.ts", "messages/en.tsx",
+      "lib/translations/query.ts",
     ]);
     expect([...graph.packages].filter(name => !allowed(name))).toEqual([]);
   });

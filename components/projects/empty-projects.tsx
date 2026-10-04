@@ -4,7 +4,7 @@ import { Box, RotateCcw } from "lucide-react";
 import { NewProjectButton } from "@/components/projects/new-project-button";
 import { ButtonLink } from "@/components/ui/button";
 import { EmptyState, NoMatch } from "@/components/ui/empty-state";
-import { m } from "@/lib/i18n";
+import type { Messages } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
 
 /**
@@ -24,7 +24,7 @@ import { routes } from "@/lib/routes";
  * 였는데, 카드 안에 앉으므로 머리의 [New project]와 같은 규격이어야 한다: 같은 행동이 한 앱에서
  * 두 크기로 보일 이유가 없다.
  */
-export function EmptyProjects() {
+export function EmptyProjects({ m }: { m: Messages }) {
   return (
     <EmptyState placement="card"
       icon={Box}
@@ -45,7 +45,8 @@ export function EmptyProjects() {
  * 등재된 예외였는데, 캔버스가 그 예외를 되돌렸다 — 머리의 [New project]가 이 화면에 이미 서 있으므로
  * 카드가 그것을 두 번 말할 이유가 없다.
  */
-export function NoProjectsMatch({ query, onReset }: {
+export function NoProjectsMatch({ m, query, onReset }: {
+  m: Messages;
   query: string;
   /** 같은 탭 클릭을 가로채 로컬로 되돌린다 (audit-ux #17) — `href`는 새 탭용으로 남는다. */
   onReset: (event: { preventDefault(): void }) => void;

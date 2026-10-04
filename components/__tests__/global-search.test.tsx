@@ -21,7 +21,7 @@ const hit = (id: string, patch: Partial<KeyHit> = {}): KeyHit => ({ id, key: id,
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(r => { resolve = r; }); return { promise, resolve: async (value: T) => { await act(async () => resolve(value)); } }; }
 const dialog = () => document.querySelector('[role="dialog"]');
 const query = () => find<HTMLInputElement>(document.body, '[role="combobox"]');
-const opener = () => find<HTMLButtonElement>(document.body, 'button[aria-label="Search"]');
+const opener = () => find<HTMLButtonElement>(document.body, 'button[aria-haspopup="dialog"]');
 const options = () => [...document.querySelectorAll<HTMLElement>('[role="option"]')];
 const group = (label: string) => [...document.querySelectorAll<HTMLElement>('[role="group"]')].find(el => el.firstElementChild?.textContent === label);
 async function open() { await act(async () => { await userEvent.setup().click(opener()); }); }

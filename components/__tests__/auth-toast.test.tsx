@@ -14,6 +14,10 @@ import { expect, it, vi } from "vitest";
  */
 const toastCalls = vi.hoisted(() => ({ error: vi.fn(), success: vi.fn(), dismiss: vi.fn() }));
 vi.mock("sonner", () => ({ toast: toastCalls }));
+vi.mock("@/components/i18n/messages-provider", async () => {
+  const { en } = await import("@/messages/en");
+  return { useMessages: () => en };
+});
 
 type Effect = { fn: () => void | (() => void); deps: unknown[] | undefined };
 const effects = vi.hoisted(() => [] as { fn: () => void | (() => void); deps: unknown[] | undefined }[]);

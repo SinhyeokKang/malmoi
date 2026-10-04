@@ -125,8 +125,8 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
     </>} notice={addReason !== null ? <span id="add-source-help" className="text-muted-foreground text-xs">{addReason}</span>
       /* 추가는 첫 적재까지 돈다 (audit-ux #23) — 큰 리포면 버튼 스피너 하나로 30초를 넘긴다. */
       : pending && operation === "add" ? <SlowNotice active /> : undefined}>
-    {error && <Alert variant="danger"><p>{m.settings.sources.nothingAdded}</p><p>{error === "repo-replaced" ? m.settings.repository.health["repo-replaced"] : error === "path-conflict" ? m.surfaces.conflict : error === "ingest-failed" ? m.surfaces.failed : failureText(error)}</p>{conflicts.map(c => <p key={c.path}>{c.path} · {c.surfaceSlugs.join(", ")}</p>)}</Alert>}
-    {manualError && <Alert variant="danger">{failureText(manualError)}</Alert>}
+    {error && <Alert variant="danger"><p>{m.settings.sources.nothingAdded}</p><p>{error === "repo-replaced" ? m.settings.repository.health["repo-replaced"] : error === "path-conflict" ? m.surfaces.conflict : error === "ingest-failed" ? m.surfaces.failed : failureText(m, error)}</p>{conflicts.map(c => <p key={c.path}>{c.path} · {c.surfaceSlugs.join(", ")}</p>)}</Alert>}
+    {manualError && <Alert variant="danger">{failureText(m, manualError)}</Alert>}
     {unknown && <Alert variant="warning">{m.settings.sources.unknown}</Alert>}
     {/* ⚠️ 성공은 GitHub으로 가는 redirect라 되던진다 (audit-ux #14) — 그 밖의 throw는 거부와 같은 자리로 접는다. */}
     {connect && <Button spinnerSize="sm" disabled={pending && operation !== "connect"} loading={pending && operation === "connect"} onClick={() => { setOperation("connect"); run(async () => {

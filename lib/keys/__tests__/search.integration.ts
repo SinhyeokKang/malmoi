@@ -8,6 +8,7 @@ import { searchKeys } from "@/lib/keys/search";
 import { keyResultHref } from "@/lib/search/key-href";
 import { parseTranslationQuery } from "@/lib/translations/query";
 import { searchFixture } from "./search-fixture";
+import { en } from "@/messages/en";
 
 const db = searchFixture();
 beforeAll(() => db.start());
@@ -96,12 +97,12 @@ it("권한 회수 뒤 다음 Action 응답과 화면용 내비에서 프로젝�
   expect((await searchKeysAction("private-value", null))).toMatchObject({ ok: true, hits: [{ id: "p1-key" }] });
   const before = await loadSearchMembershipsAction();
   if (!before.ok) throw new Error("Membership action failed");
-  expect(navSearchEntries(before.memberships, { activeSlug: null, userName: "Fixture" }).projects.map(p => p.slug)).toEqual(["p1"]);
+  expect(navSearchEntries(en, before.memberships, { activeSlug: null, userName: "Fixture" }).projects.map(p => p.slug)).toEqual(["p1"]);
   await db.prisma.projectMember.deleteMany({ where: { projectId: "p1", userId: "u1" } });
   expect(await searchKeysAction("private-value", null)).toEqual({ ok: true, hits: [] });
   const after = await loadSearchMembershipsAction();
   if (!after.ok) throw new Error("Membership action failed");
-  expect(navSearchEntries(after.memberships, { activeSlug: null, userName: "Fixture" }).projects).toEqual([]);
+  expect(navSearchEntries(en, after.memberships, { activeSlug: null, userName: "Fixture" }).projects).toEqual([]);
 });
 
 it("일치 로케일은 DB 기본 정렬 대신 C 정렬의 첫 코드다", async () => {

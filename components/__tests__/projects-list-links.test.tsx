@@ -65,7 +65,7 @@ describe("띠 글리프 — 실패는 CircleX, 경고는 삼각", () => {
 
 describe("좁힌 0건 · 검색 결과 머리 — 앱 안 되돌리기", () => {
   it("좁힌 0건의 출구는 default 버튼 + RotateCcw이고 파랑이 아니다", async () => {
-    const { container } = await render(<NoProjectsMatch query="zzz" onReset={vi.fn()} />);
+    const { container } = await render(<NoProjectsMatch m={en} query="zzz" onReset={vi.fn()} />);
     const reset = link(container, en.projects.narrowed.reset);
     expect(reset?.className).not.toContain("text-link");
     expect(reset?.querySelector("svg.lucide-rotate-ccw")).not.toBeNull();

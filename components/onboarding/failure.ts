@@ -1,6 +1,6 @@
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
-import { m } from "@/lib/i18n";
+import type { Messages } from "@/lib/i18n";
 import { isOnboardError, onboardErrorMessage } from "@/lib/onboarding/message";
 
 /**
@@ -8,7 +8,7 @@ import { isOnboardError, onboardErrorMessage } from "@/lib/onboarding/message";
  * `AccessError`를 낸다. **한쪽만 보면 그 사유가 통째로 무음이다** (POSTMORTEM 2026-09-06).
  * 모르는 값에 던지지 않는다: Action이 갈래를 늘려도 화면이 죽지 않아야 한다.
  */
-export function failureText(error: string, created = false): string {
+export function failureText(m: Messages, error: string, created = false): string {
   if (error === "unauthorized") return created ? m.newProject.errors.sessionLostAfterCreate : m.newProject.errors.sessionLost;
   if (isOnboardError(error)) return onboardErrorMessage(m, error);
   if (isConnectError(error)) return connectErrorMessage(m, error);

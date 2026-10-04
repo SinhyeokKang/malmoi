@@ -14,7 +14,7 @@ import { GithubIcon, GoogleIcon } from "@/components/signin/brand-icons";
 import { ProviderSubmit } from "@/components/signin/provider-button";
 import { signInErrorMessage } from "@/lib/auth/message";
 import { readSession } from "@/lib/auth/read-session";
-import { m } from "@/lib/i18n";
+import { getMessages } from "@/lib/i18n/server";
 import { en } from "@/messages/en";
 import { routes } from "@/lib/routes";
 import { destFromCallbackUrl } from "@/lib/login-link/policy";
@@ -48,6 +48,7 @@ export default async function SignIn({
 }: {
   searchParams: Promise<Raw<"error" | "sessions">>;
 }) {
+  const m = await getMessages();
   const { error, sessions } = firstQueryValues(await searchParams);
   const session = await readSession();
   if (session.status === "ok") redirect(routes.projects());
@@ -57,7 +58,7 @@ export default async function SignIn({
   const shown = error ?? (session.status === "unavailable" ? "Unavailable" : undefined);
 
   return (
-    <AuthLayout decoration>
+    <AuthLayout m={m} decoration>
       <AuthColumn>
         <Image src={logo} alt="" width={48} height={48} priority />
         {/* ⚠️ **설명이 없다** — 제품 설명은 랜딩이 맡는다 (8-1b). */}

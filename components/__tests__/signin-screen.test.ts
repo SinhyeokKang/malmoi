@@ -6,6 +6,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { describe, expect, it } from "vitest";
 import { AuthLayout } from "@/components/signin/auth-layout";
+import { en } from "@/messages/en";
 
 /**
  * 로그인 화면의 배선을 **소스에서** 센다 (8-1b).
@@ -39,7 +40,7 @@ const DOTS = "components/signin/dot-field.tsx";
 const ICONS = "components/signin/brand-icons.tsx";
 
 describe("키비주얼 — 개별 카드", () => {
-  const html = renderToStaticMarkup(createElement(AuthLayout, { decoration: true, children: null }));
+  const html = renderToStaticMarkup(createElement(AuthLayout, { m: en, decoration: true, children: null }));
   const images = html.match(/<img\b[^>]*>/g) ?? [];
 
   it("프로젝트와 번역 카드 세 장을 각각 장식 이미지로 렌더한다", () => {
@@ -74,8 +75,8 @@ describe("키비주얼 — 개별 카드", () => {
  * 기본값이 단일이라 새 셸 밖 화면(`/oauth/authorize`)은 손대지 않아도 단일로 선다.
  */
 describe("셸 밖 골격 — 장식은 로그인만", () => {
-  const plain = renderToStaticMarkup(createElement(AuthLayout, { children: createElement("p", null, "form") }));
-  const decorated = renderToStaticMarkup(createElement(AuthLayout, { decoration: true, children: null }));
+  const plain = renderToStaticMarkup(createElement(AuthLayout, { m: en, children: createElement("p", null, "form") }));
+  const decorated = renderToStaticMarkup(createElement(AuthLayout, { m: en, decoration: true, children: null }));
 
   it("기본은 폼 패널 단일이다 — KV·도트 필드·2열 그리드가 없다", () => {
     expect(plain).not.toMatch(/<img\b/);
@@ -98,9 +99,9 @@ describe("셸 밖 골격 — 장식은 로그인만", () => {
   });
 
   it("`decoration`을 넘기는 소비자는 `/signin` 하나다", () => {
-    expect(read(SIGNIN)).toMatch(/<AuthLayout\s+decoration\b/);
+    expect(read(SIGNIN)).toMatch(/<AuthLayout\s+m=\{m\}\s+decoration\b/);
     for (const page of ["app/invite/[token]/page.tsx", "app/signin/link/[challenge]/page.tsx"]) {
-      expect(read(page)).toMatch(/<AuthLayout>/);
+      expect(read(page)).toMatch(/<AuthLayout m=\{m\}>/);
       expect(read(page)).not.toMatch(/\bdecoration\b/);
     }
   });
@@ -127,7 +128,7 @@ describe("로그인 화면 — 레이아웃 계약", () => {
     const shell = read(SHELL);
     expect(shell).not.toMatch(/<footer\b/);
     expect(shell).toContain('from "@/components/public-shell/footer"');
-    expect(shell).toContain("<PublicFooter />");
+    expect(shell).toContain("<PublicFooter m={m} />");
   });
 
   it("최소 너비 1280px를 든다 — 그 아래에서 스크롤이 나야 한다", () => {
@@ -158,7 +159,7 @@ describe("로그인 화면 — 레이아웃 계약", () => {
    */
   it("내부 링크가 `routes.*`를 지난다", () => {
     const links = read("lib/links.ts");
-    expect(read("components/public-shell/footer.tsx")).toMatch(/\bFOOTER_LINKS\b/);
+    expect(read("components/public-shell/footer.tsx")).toMatch(/\bfooterLinks\b/);
     expect(links).toMatch(/routes\.privacy\(\)/);
   });
 });

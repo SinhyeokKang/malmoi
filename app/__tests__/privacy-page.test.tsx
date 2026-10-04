@@ -4,8 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "@/components/__tests__/helpers/dom";
 import type { SessionRead } from "@/lib/auth/read-session";
 import { en } from "@/messages/en";
-import { FOOTER_LINKS } from "@/lib/links";
+import { footerLinks } from "@/lib/links";
 import { routes } from "@/lib/routes";
+
+vi.mock("@/lib/i18n/server", async () => ({ getMessages: async () => (await import("@/messages/en")).en, getUiLocale: async () => "en" }));
 
 /**
  * **`/privacy`는 공개 셸 안에 선다** (DESIGN §6.616). 세션은 차단이 아니라 **헤더 primary 하나**를 가른다 —
@@ -60,6 +62,6 @@ describe("`/privacy` — 공개 셸", () => {
 
   it("푸터가 공개 셸의 링크 목록이다", async () => {
     const { container } = await page("none");
-    expect([...container.querySelectorAll("footer a")].map((a) => a.getAttribute("href"))).toEqual(FOOTER_LINKS.map(({ href }) => href));
+    expect([...container.querySelectorAll("footer a")].map((a) => a.getAttribute("href"))).toEqual(footerLinks(en).map(({ href }) => href));
   });
 });

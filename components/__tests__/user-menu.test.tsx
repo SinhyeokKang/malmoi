@@ -97,8 +97,8 @@ it("Sign out도 필터 메뉴와 같은 항목 모양이다 — ghost 버튼의 
 /** 첫 묶음이 사이드바 사용자 구역과 같은 목록이다 — 두 벌로 두면 한쪽에만 항목이 는다 (2026-09-27 사용자). */
 it("첫 묶음이 `navWorkItems`와 같은 라벨·주소·순서다", async () => {
   const menu = await open();
-  const first = [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')].slice(0, navWorkItems().length);
-  expect(first.map((node) => [node.textContent?.trim(), node.getAttribute("href")])).toEqual(navWorkItems().map((i) => [i.label, i.href]));
+  const first = [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')].slice(0, navWorkItems(en).length);
+  expect(first.map((node) => [node.textContent?.trim(), node.getAttribute("href")])).toEqual(navWorkItems(en).map((i) => [i.label, i.href]));
   // 메뉴엔 개수 배지가 없다.
-  expect(navWorkItems().every((i) => i.badge === undefined)).toBe(true);
+  expect(navWorkItems(en).every((i) => i.badge === undefined)).toBe(true);
 });

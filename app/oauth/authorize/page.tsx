@@ -21,7 +21,9 @@ import { decodeUser } from "@/lib/credentials/records";
 import { credentialIO } from "@/lib/credentials/access";
 import { getPrisma } from "@/lib/db";
 import { logCaught } from "@/lib/failure";
-import { m } from "@/lib/i18n";
+import type { Messages } from "@/lib/i18n";
+import type { UiLocale } from "@/lib/i18n/locales";
+import { getMessages, getUiLocale } from "@/lib/i18n/server";
 import { en } from "@/messages/en";
 import { providerLabel } from "@/lib/login-link/message";
 import { LOGIN_PROVIDERS, type LoginProvider } from "@/lib/login-link/policy";
@@ -57,6 +59,7 @@ type Params = Record<string, string | string[] | undefined>;
  * 본판정은 Authorize·Deny Action의 `readSession`이다. ⚠️ 이 페이지는 쿠키를 읽는다 — `no-cookie-reads.test.ts`의 비쿠키 트리 밖이다.
  */
 export default async function OAuthAuthorizePage({ searchParams }: { searchParams: Promise<Params> }) {
+  const [m, uiLocale] = await Promise.all([getMessages(), getUiLocale()]);
   const params = await searchParams;
   const endpoint = oauthEndpoint(await headers());
   const requestId = single(params, "request");
@@ -66,18 +69,18 @@ export default async function OAuthAuthorizePage({ searchParams }: { searchParam
     // ① 클라이언트가 연 쿼리. 허용 밖 origin이면 이 AS가 발급할 대상이 아니다.
     const now = new Date();
     const parsed = endpoint === null ? null : parseAuthorizeRequest(params, endpoint.resource);
-    if (endpoint === null || parsed === null || !parsed.ok) return <Ended view={await endedView("invalid")} retryHref={null} />;
+    if (endpoint === null || parsed === null || !parsed.ok) return <Ended m={m} view={await endedView("invalid")} retryHref={null} />;
     const fetched = await fetchClientMetadata(parsed.request.clientId);
-    if (!fetched.ok) return <Ended view={await endedView("invalid")} retryHref={null} />;
+    if (!fetched.ok) return <Ended m={m} view={await endedView("invalid")} retryHref={null} />;
     let stored: Awaited<ReturnType<typeof storeAuthorizationRequest>>;
     try {
       stored = await storeAuthorizationRequest(getPrisma(), { request: parsed.request, client: fetched.client, endpoint, now });
     } catch (error) {
       logCaught("oauth-authorize", "store", error);
       // 같은 쿼리로 다시 — 저장 전이라 새 요청이 선다.
-      return <Ended view={await endedView("error")} retryHref={retryQuery(params)} />;
+      return <Ended m={m} view={await endedView("error")} retryHref={retryQuery(params)} />;
     }
-    if (!stored.ok) return <Ended view={await endedView("invalid")} retryHref={null} />;
+    if (!stored.ok) return <Ended m={m} view={await endedView("invalid")} retryHref={null} />;
     redirect(routes.oauthAuthorize({ request: stored.requestId }));
   }
 
@@ -101,12 +104,12 @@ export default async function OAuthAuthorizePage({ searchParams }: { searchParam
   const session = await readSession();
   const view = planAuthorizeView({ request: state, session: session.status, e });
   const self = routes.oauthAuthorize({ request: requestId });
-  if (view.kind === "ended" || request === null) return <Ended view={view.kind === "ended" ? view : await endedView("error")} retryHref={self} />;
+  if (view.kind === "ended" || request === null) return <Ended m={m} view={view.kind === "ended" ? view : await endedView("error")} retryHref={self} />;
 
   const app = { name: request.clientName ?? request.clientId, ident: clientIdLabel(request.clientId) };
   if (view.kind === "sign-in" || session.status !== "ok") {
     return (
-      <AuthLayout>
+      <AuthLayout m={m}>
         <AuthColumn>
           <Image src={logo} alt="" width={48} height={48} priority />
           <AuthHeading title={m.oauthAuthorize.title} description={m.oauthAuthorize.signInDescription} />
@@ -116,11 +119,11 @@ export default async function OAuthAuthorizePage({ searchParams }: { searchParam
               <Alert variant="warning">{m.oauthAuthorize.sessionEnded}</Alert>
             </div>
           )}
-          <AppCard name={app.name} ident={app.ident} />
+          <AppCard m={m} name={app.name} ident={app.ident} />
           <div className="flex w-full flex-col gap-2">
             {/* `Not you?` 뒤(`1s`)에는 첫 공급자 버튼에 포커스 — 계정을 바꾸러 온 사람의 다음 행동이다. */}
-            <ProviderButton provider="github" requestId={requestId} autoFocus={view.kind === "sign-in" && view.notice === "switch"} />
-            <ProviderButton provider="google" requestId={requestId} autoFocus={false} />
+            <ProviderButton m={m} provider="github" requestId={requestId} autoFocus={view.kind === "sign-in" && view.notice === "switch"} />
+            <ProviderButton m={m} provider="google" requestId={requestId} autoFocus={false} />
             <p className="text-muted-foreground text-center text-xs leading-relaxed">
               {m.signIn.consent.before}
               <InlineLink href={routes.privacy()} >
@@ -137,10 +140,10 @@ export default async function OAuthAuthorizePage({ searchParams }: { searchParam
   const userId = session.userId;
   let loaded: { account: ConsentAccount; projects: { id: string; name: string; repo: string }[]; existing: ReturnType<typeof planConnectedApps>[number] | null };
   try {
-    loaded = await loadConsent(userId, request.clientId, now);
+    loaded = await loadConsent(m, userId, request.clientId, now);
   } catch (error) {
     logCaught("oauth-authorize", "consent", error);
-    return <Ended view={await endedView("error")} retryHref={self} />;
+    return <Ended m={m} view={await endedView("error")} retryHref={self} />;
   }
   const { account, projects, existing } = loaded;
   // 재동의는 기존 연결의 값으로 채운다(핸드오프 §13 결정 2 — 토큰 회전과 같은 판정, 범위는 현재 멤버십 교집합).
@@ -149,7 +152,7 @@ export default async function OAuthAuthorizePage({ searchParams }: { searchParam
     : { grants: existing.grants, scope: existing.scope.kind, projectIds: existing.scope.kind === "all" ? [] : existing.scope.projectIds };
 
   return (
-    <AuthLayout scroll>
+    <AuthLayout m={m} scroll>
       {/* 동의 단계만 `<main>` 안이 스크롤한다 — 폼이 뷰포트보다 길다(핸드오프 §7.1: padding 48/32/32 · 480 컬럼). */}
       <div className="min-h-0 w-full flex-1 overflow-y-auto px-8 pt-12 pb-8">
         <div className="mx-auto flex w-[480px] flex-col items-center gap-4">
@@ -162,7 +165,7 @@ export default async function OAuthAuthorizePage({ searchParams }: { searchParam
             account={account}
             projects={projects}
             initial={initial}
-            replacesOn={existing === null ? null : utcDay(existing.createdAt)}
+            replacesOn={existing === null ? null : utcDay(existing.createdAt, uiLocale)}
           />
         </div>
       </div>
@@ -195,7 +198,7 @@ async function endedView(request: "invalid" | "error"): Promise<Extract<Authoriz
   return view;
 }
 
-async function loadConsent(userId: string, clientId: string, now: Date) {
+async function loadConsent(m: Messages, userId: string, clientId: string, now: Date) {
   const prisma = getPrisma();
   const [user, accounts, members, connection] = await Promise.all([
     credentialIO(async () => {
@@ -231,7 +234,7 @@ async function loadConsent(userId: string, clientId: string, now: Date) {
   return { account, projects, existing };
 }
 
-function Ended({ view, retryHref }: { view: Extract<AuthorizeView, { kind: "ended" }>; retryHref: string | null }) {
+function Ended({ m, view, retryHref }: { m: Messages; view: Extract<AuthorizeView, { kind: "ended" }>; retryHref: string | null }) {
   const copy = {
     invalid: m.oauthAuthorize.ended.invalid,
     "not-found": m.oauthAuthorize.ended.notFound,
@@ -244,7 +247,7 @@ function Ended({ view, retryHref }: { view: Extract<AuthorizeView, { kind: "ende
   if (view.cta === "retry" && retryHref !== null) cta = <ButtonLink variant="primary" size="lg" className="w-full" href={retryHref}>{m.common.retry}</ButtonLink>;
   if (view.cta === "projects") cta = <ButtonLink size="lg" className="w-full" href={routes.projects()}>{m.invite.openProjects}</ButtonLink>;
   return (
-    <AuthLayout>
+    <AuthLayout m={m}>
       <AuthColumn>
         <Image src={logo} alt="" width={48} height={48} priority />
         <AuthHeading title={copy.title} description={copy.body} />
@@ -259,7 +262,7 @@ function Ended({ view, retryHref }: { view: Extract<AuthorizeView, { kind: "ende
  * `clearAuthRoundtripCookies()`가 `signIn()`보다 먼저 불리는 것을 고정한다(POSTMORTEM 2026-09-10). 이 화면이 일반 로그인 진입점 넷째다.
  * ⚠️ **`redirectTo`는 `?request=` 정규형이다** — 요청 ID 하나가 목적지이고(`destFromCallbackUrl`이 그것만 갈래로 남긴다), `e`는 싣지 않는다.
  */
-function ProviderButton({ provider, requestId, autoFocus }: { provider: LoginProvider; requestId: string; autoFocus: boolean }) {
+function ProviderButton({ m, provider, requestId, autoFocus }: { m: Messages; provider: LoginProvider; requestId: string; autoFocus: boolean }) {
   return (
     <form
       className="w-full"

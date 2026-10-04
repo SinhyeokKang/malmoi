@@ -16,6 +16,8 @@ vi.mock("@/components/signin/dot-field", () => ({ DotField: () => null }));
 vi.mock("@/components/signin/auth-toast", () => ({ AuthToast: () => null }));
 import Page from "../[token]/page";
 
+vi.mock("@/lib/i18n/server", async () => ({ getMessages: async () => (await import("@/messages/en")).en, getUiLocale: async () => "en" }));
+
 for (const action of ["signIn", "accept", "signOut"] as const) {
   it(`초대 ${action} 제출 중 버튼을 잠그고 스피너를 표시한다`, async () => {
     let finish: (result?: unknown) => void = () => {};

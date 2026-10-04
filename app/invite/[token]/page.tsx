@@ -22,7 +22,8 @@ import { inviteErrorMessage } from "@/lib/auth/message";
 import { readSession } from "@/lib/auth/read-session";
 import { getPrisma } from "@/lib/db";
 import { logCaught } from "@/lib/failure";
-import { m } from "@/lib/i18n";
+import type { Messages } from "@/lib/i18n";
+import { getMessages } from "@/lib/i18n/server";
 import { en } from "@/messages/en";
 import { routes } from "@/lib/routes";
 import logo from "@/public/brand/malmoi-icon-black.svg";
@@ -59,6 +60,7 @@ export default async function InvitePage({
   // 화면은 그대로라, 사용자에게는 버튼이 안 눌린 것으로 보인다 (issue #2, POSTMORTEM 2026-09-06).
   searchParams: Promise<Raw<"e">>;
 }) {
+  const m = await getMessages();
   const { token } = await params;
   const { e } = firstQueryValues(await searchParams);
   const session = await readSession();
@@ -130,8 +132,8 @@ export default async function InvitePage({
     case "sign-in":
       cta = (
         <div className="flex w-full flex-col gap-2">
-          <ProviderButton provider="github" token={token} />
-          <ProviderButton provider="google" token={token} />
+          <ProviderButton m={m} provider="github" token={token} />
+          <ProviderButton m={m} provider="google" token={token} />
           {/* 로그인 약관과 같이 행동을 먼저 읽도록 캡션은 버튼 아래에 둔다. */}
           <p className="text-muted-foreground text-center text-xs leading-relaxed">
             {m.invite.signInHint(email ?? "")}
@@ -174,7 +176,7 @@ export default async function InvitePage({
   }
 
   return (
-    <Card>
+    <Card m={m}>
       <AuthHeading title={view.kind === "blocked" && !view.retry ? m.invite.unavailableTitle : m.invite.title} description={email === null ? undefined : m.invite.sentTo(email)} />
       {view.notice !== null && <Alert variant="danger" className="w-full">{inviteErrorMessage(m, view.notice)}</Alert>}
       {(view.kind === "accept" || view.kind === "wrong-account") && invitation != null && (
@@ -195,9 +197,9 @@ export default async function InvitePage({
  * 셸 밖 카드 — **로그인 화면과 같은 2열 골격을 쓴다** (8-1b). 번역자에게는 이 화면이 제품의 첫
  * 얼굴이라 따로 그리면 같은 제품이 두 얼굴이 된다.
  */
-function Card({ children }: { children: ReactNode }) {
+function Card({ m, children }: { m: Messages; children: ReactNode }) {
   return (
-    <AuthLayout>
+    <AuthLayout m={m}>
       <AuthColumn>
         <Image src={logo} alt="" width={48} height={48} priority />
         {children}
@@ -219,7 +221,7 @@ function Card({ children }: { children: ReactNode }) {
  *
  * ⚠️ **함수 이름을 바꾸지 않는다** — `normal-login.test.tsx`가 이것을 이름으로 찾는다.
  */
-function ProviderButton({ provider, token }: { provider: "github" | "google"; token: string }) {
+function ProviderButton({ m, provider, token }: { m: Messages; provider: "github" | "google"; token: string }) {
   return (
     <form
       className="w-full"

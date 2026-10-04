@@ -9,6 +9,7 @@ import { highlightSegments, snippet } from "../highlight";
 import { reconcileActive } from "../keys";
 import { keyResultHref, type KeyHit } from "../key-href";
 import { keySearchQuery, mergeKeyHits } from "@/lib/keys/search";
+import { en } from "@/messages/en";
 const project = { slug: "demo", name: "Demo", role: "OWNER" as const, archived: false };
 const marks = (segments: SearchSegments | undefined) => (segments ?? []).filter(s => s.match).map(s => s.text);
 const text = (segments: SearchSegments | undefined) => (segments ?? []).map(s => s.text).join("");
@@ -16,8 +17,8 @@ const options = { activeSlug: "demo", userName: "Person" };
 describe("검색 결과 시나리오", () => {
   // 시나리오는 렌더가 실제로 쓰는 행 모델(`searchRows`)까지 간다 — 어느 필드를 칠하나(C7)가 여기서 정해진다(R-B1 Y1).
   it("settings demo는 이름·프로젝트 맥락을 가로질러 OWNER 설정으로 착지하고 두 필드를 칠한다", () => {
-    const index = { ...navSearchEntries([project], options), docs: [] };
-    const result = searchRows({ index, keys: [], q: "settings demo", activeSlug: options.activeSlug });
+    const index = { ...navSearchEntries(en, [project], options), docs: [] };
+    const result = searchRows(en, { index, keys: [], q: "settings demo", activeSlug: options.activeSlug });
     expect(result.groups.map(g => g.kind)).toEqual(["pages"]);
     const row = result.groups[0]?.rows[0];
     expect(row).toBeDefined();
@@ -27,19 +28,19 @@ describe("검색 결과 시나리오", () => {
     expect(row?.description).toBeUndefined();
     expect(result.ids).toEqual([row?.id]);
     // Projects는 이름만 칠한다 — slug 맥락은 원문 그대로다.
-    const projects = searchRows({ index, keys: [], q: "demo", activeSlug: options.activeSlug }).groups.find(g => g.kind === "projects")?.rows[0];
+    const projects = searchRows(en, { index, keys: [], q: "demo", activeSlug: options.activeSlug }).groups.find(g => g.kind === "projects")?.rows[0];
     expect(marks(projects?.title)).toEqual(["Demo"]);
     expect(projects?.context).toEqual([{ text: "demo", match: false }]);
-    expect(searchRows({ index: { ...navSearchEntries([{ ...project, role: "EDITOR" }], options), docs: [] }, keys: [], q: "settings demo", activeSlug: null }).groups).toEqual([]);
+    expect(searchRows(en, { index: { ...navSearchEntries(en, [{ ...project, role: "EDITOR" }], options), docs: [] }, keys: [], q: "settings demo", activeSlug: null }).groups).toEqual([]);
     expect(keySearchQuery("settings demo")).toEqual({ pattern: "%settings demo%" });
   });
   it("세 세션 상태 미리보기와 가이드 본문 검색·해시 착지가 같은 색인을 쓴다", () => {
     const docs = docsSearchEntries(parseSummary(parseMd("- [Guide](page.md)")), () => parseMd("# Guide\nIntroduction\n## Sync {#sync}\n" + "Before ".repeat(40) + "PUSH_TOKEN"));
     for (const memberships of [[project], [], null]) {
-      const index = { ...navSearchEntries(memberships, options), docs };
-      const preview = searchRows({ index, keys: [], q: "", activeSlug: options.activeSlug });
+      const index = { ...navSearchEntries(en, memberships, options), docs };
+      const preview = searchRows(en, { index, keys: [], q: "", activeSlug: options.activeSlug });
       expect(preview.groups.at(-1)?.rows.map(e => e.href)).toEqual(["/docs/page", "/docs"]);
-      const found = searchRows({ index, keys: [], q: "push_token", activeSlug: options.activeSlug });
+      const found = searchRows(en, { index, keys: [], q: "push_token", activeSlug: options.activeSlug });
       expect(found.groups.map(g => g.kind)).toEqual(["docs"]);
       const row = found.groups[0]?.rows[0];
       expect(row?.href).toBe("/docs/page#sync");
@@ -55,7 +56,7 @@ describe("검색 결과 시나리오", () => {
     const docs = docsSearchEntries(parseSummary(parseMd("- [Malmoi](README.md)\n- [Guide](page.md)")), () => parseMd("# Page\nIntroduction"));
     expect(docs.map(d => d.href)).toContain("/docs");
     for (const memberships of [[project], [], null]) {
-      const preview = searchRows({ index: { ...navSearchEntries(memberships, options), docs }, keys: [], q: "", activeSlug: options.activeSlug });
+      const preview = searchRows(en, { index: { ...navSearchEntries(en, memberships, options), docs }, keys: [], q: "", activeSlug: options.activeSlug });
       const rows = preview.groups.flatMap(g => g.rows);
       expect(rows.filter(r => r.href === "/docs").map(r => r.id)).toEqual(["go-to-docs"]);
       expect(preview.groups.at(-1)?.rows.map(r => r.href)).toEqual(["/docs/page", "/docs"]);
@@ -66,9 +67,9 @@ describe("검색 결과 시나리오", () => {
     const hit: KeyHit = { id: "a", key: "button", namespace: "billing", sourceText: "Pay now", surfaceSlug: "main", slug: "demo", name: "Demo", inKey: false, localeCode: "en", value };
     const hits = mergeKeyHits([], [hit, { ...hit, id: "b" }], "demo");
     expect(hits.map(h => h.id)).toEqual(["a", "b"]);
-    const index = { ...navSearchEntries([project], options), docs: [] };
-    const before = searchRows({ index, keys: [], q: "settings demo", activeSlug: options.activeSlug });
-    const after = searchRows({ index, keys: hits, q: "settings demo", activeSlug: options.activeSlug });
+    const index = { ...navSearchEntries(en, [project], options), docs: [] };
+    const before = searchRows(en, { index, keys: [], q: "settings demo", activeSlug: options.activeSlug });
+    const after = searchRows(en, { index, keys: hits, q: "settings demo", activeSlug: options.activeSlug });
     expect(after.groups.map(g => g.kind)).toEqual(["pages", "keys"]);
     const row = after.groups[1]?.rows[0];
     expect(row?.id).toBe("key:a");

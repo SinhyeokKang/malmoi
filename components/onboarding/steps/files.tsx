@@ -18,7 +18,8 @@ import { Table, TableBody, TableHeader, TableRow, Td, Th, Tr } from "@/component
 import { LocaleFlag } from "@/components/translations/locale-badge";
 import { SlowNotice } from "@/components/slow-notice";
 import type { Adapter, AdapterName } from "@/lib/adapters/types";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
+import type { Messages } from "@/lib/i18n";
 import { panelConstraints } from "@/lib/shell/panel-size";
 import type { CandidateSummary, LocaleSample, SampleRow } from "@/lib/onboarding/detect";
 import { onboardErrorMessage } from "@/lib/onboarding/message";
@@ -79,7 +80,7 @@ export function samplePreview(sample: LocaleSample): PreviewState {
 }
 
 /** 실패 미리보기의 문장. 알림(`aria-live`)과 표 칸이 같은 문장을 쓴다. */
-export function previewFailureText(preview: FailedPreview): string {
+export function previewFailureText(m: Messages, preview: FailedPreview): string {
   return preview.status === "expired" ? m.errors.onboarding["sample-expired"] : m.newProject.files.preview.unavailable;
 }
 
@@ -101,15 +102,6 @@ export type FilesStepState = {
   banner: string | null;
 };
 
-/**
- * Path 힌트의 갈래 — 사전에 layout 전부가 있는지를 **여기서** 닫는다 (`lib/auth/message.ts`와 같은
- * 관용구: 사전은 잎이라 `satisfies`를 못 걸고 소비자가 건다).
- */
-const PATH_HINTS = m.newProject.files.manual.pathHint satisfies Record<
-  Adapter["layout"],
-  (token: React.ReactNode) => React.ReactNode
->;
-
 export function FilesStep({
   state,
   onPick,
@@ -118,7 +110,7 @@ export function FilesStep({
   onRetry,
   selection,
   pending = false,
-  previewNone = m.newProject.files.preview.noneDescription,
+  previewNone,
 }: {
   state: FilesStepState;
   pending?: boolean;
@@ -133,13 +125,14 @@ export function FilesStep({
   onManual: (next: ManualEntry) => void;
   onRetry: () => void;
 }) {
+  const m = useMessages();
   const { candidates, picked, detecting, detectError } = state;
 
   // 예외 F — 탐지 실패. ①의 선택(리포·브랜치)은 지키고 "아무것도 만들어지지 않았다"를 말한다.
   if (detectError !== undefined) {
     return (
       <div className="flex flex-1 flex-col gap-3">
-        <Alert variant="danger">{failureText(detectError)}</Alert>
+        <Alert variant="danger">{failureText(m, detectError)}</Alert>
         <div>
           <Button variant="default" disabled={pending} onClick={onRetry}>
             {m.newProject.result.ingest.retry}
@@ -239,7 +232,7 @@ export function FilesStep({
           `-m-1`이 그 자리를 되돌려 배치는 그대로다.
         */}
         <div data-files-left className="-m-1 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-1">
-        {state.banner !== null && <Alert variant="danger">{failureText(state.banner)}</Alert>}
+        {state.banner !== null && <Alert variant="danger">{failureText(m, state.banner)}</Alert>}
         {detecting ? (
           <>
           <ul className="border-border overflow-hidden rounded-md border" aria-hidden>
@@ -289,7 +282,7 @@ export function FilesStep({
           candidate={candidate ?? state.manualCandidate}
           onLocale={onLocale}
           empty={manualMode && !state.manualMatched}
-          noneDescription={previewNone}
+          noneDescription={previewNone ?? m.newProject.files.preview.noneDescription}
         />
       </ResizablePanel>
     </ResizablePanelGroup>
@@ -312,6 +305,7 @@ function Preview({
   noneDescription: string;
   pending: boolean;
 }) {
+  const m = useMessages();
   const locales = candidate?.locales ?? [];
   /**
    * 다섯 이상이면 세그먼트가 아니라 `Select`로 접는다. ⚠️ **③의 기준 언어와 경계가 다르다**(그쪽은
@@ -442,7 +436,7 @@ function Preview({
             ) : state.preview.status === "unavailable" || state.preview.status === "expired" ? (
               <Tr className="hover:bg-transparent">
                 <Td colSpan={2} className="border-border text-muted-foreground py-3">
-                  {previewFailureText(state.preview)}
+                  {previewFailureText(m, state.preview)}
                 </Td>
               </Tr>
             ) : (
@@ -491,6 +485,7 @@ function Preview({
 }
 
 function ManualToggle({ state, onManual, pending }: { pending: boolean; state: FilesStepState; onManual: (next: ManualEntry) => void }) {
+  const m = useMessages();
   const [open, setOpen] = useState(false);
   if (!open) {
     return (
@@ -518,6 +513,15 @@ function ManualForm({
   clearsSelection: boolean;
   pending: boolean;
 }) {
+  const m = useMessages();
+  /**
+   * Path 힌트의 갈래 — 사전에 layout 전부가 있는지를 **여기서** 닫는다 (`lib/auth/message.ts`와 같은
+   * 관용구: 사전은 잎이라 `satisfies`를 못 걸고 소비자가 건다).
+   */
+  const PATH_HINTS = m.newProject.files.manual.pathHint satisfies Record<
+    Adapter["layout"],
+    (token: React.ReactNode) => React.ReactNode
+  >;
   const { manual, adapters } = state;
   // 셀렉트의 선택지가 `adapters` 그 배열이라 못 찾을 수 없다 — 폴백은 타입을 닫기 위한 것이다.
   const choice = adapters.find((c) => c.adapter === manual.adapter);
@@ -544,7 +548,7 @@ function ManualForm({
         label={m.newProject.files.manual.path}
         htmlFor="manual-path"
         /* FormGroup이 오류·도움말 중 현재 렌더된 설명을 선택한다. */
-        error={state.manualError === undefined ? undefined : failureText(state.manualError)}
+        error={state.manualError === undefined ? undefined : failureText(m, state.manualError)}
         help={PATH_HINTS[choice?.layout ?? "per-locale"](
           <span>{choice?.layout === "multi-locale" ? "*" : "{locale}"}</span>,
         )}

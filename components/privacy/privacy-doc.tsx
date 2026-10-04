@@ -1,7 +1,9 @@
 import { LIST, PROSE, SECTION_HEADING } from "@/components/docs/classes";
 import { DOC_TABLE, DocTable } from "@/components/public-doc-table";
 import { Toc } from "@/components/public-doc-toc";
-import { m } from "@/lib/i18n";
+import type { Messages } from "@/lib/i18n";
+import type { UiLocale } from "@/lib/i18n/locales";
+import { en } from "@/messages/en";
 import { utcDay } from "@/lib/utc-time";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
@@ -17,8 +19,8 @@ import type { ReactNode } from "react";
 /** 3열 표의 열 폭 — 방침 문구가 아니라 열 수에서 온다. 셋째 열은 나머지다. */
 const TABLE_3COL = "[&_th:nth-child(1)]:w-[34%] [&_th:nth-child(2)]:w-[26%]";
 
-export function PrivacyDoc() {
-  const { title, effectiveDate, intro, sections, tocLabels } = m.publicDocs.privacy;
+export function PrivacyDoc({ m, uiLocale }: { m: Messages; uiLocale: UiLocale }) {
+  const { title, effectiveDate, intro, sections, tocLabels } = en.publicDocs.privacy;
   // 키가 절 `id`(사전 데이터)라 프로토타입을 끊고 찾는다 — `constructor` 같은 id가 `Object.prototype`에서 값을 얻지 않게.
   const labels: Readonly<Record<string, string>> = tocLabels;
   const tocItems = sections.map(({ id, heading }) => ({ id, heading: Object.hasOwn(labels, id) ? (labels[id] ?? heading) : heading }));
@@ -33,7 +35,7 @@ export function PrivacyDoc() {
           앱의 날짜 형(`utcDay`)이다 — 사전 값을 바꾸면 `policy-gate`가 개정 이력을 요구한다.
         */}
         <p className="text-muted-foreground mt-3 text-sm leading-body">
-          {m.publicDocs.effectiveDate} <time dateTime={effectiveDate}>{utcDay(new Date(effectiveDate))}</time>
+          {m.publicDocs.effectiveDate} <time dateTime={effectiveDate}>{utcDay(new Date(effectiveDate), uiLocale)}</time>
         </p>
         <p className={cn(PROSE, "mt-6")}>{intro}</p>
         <hr className="border-border mt-10" />
@@ -78,7 +80,7 @@ export function PrivacyDoc() {
           </section>
         ))}
       </article>
-      <Toc label={m.publicDocs.privacy.toc} items={tocItems} />
+      <Toc label={en.publicDocs.privacy.toc} items={tocItems} />
     </div>
   );
 }

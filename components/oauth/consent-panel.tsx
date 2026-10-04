@@ -9,7 +9,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { EntityCard } from "@/components/ui/entity-card";
 import { useLandAfter } from "@/components/ui/focus";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import type { TokenGrant } from "@/lib/mcp/grant";
 import { cn } from "@/lib/utils";
 
@@ -48,6 +48,7 @@ export function ConsentPanel({
   /** 같은 클라이언트의 기존 연결이 있으면 그 연결일(`utcDay`) — 대체 경고(`1d`). */
   replacesOn: string | null;
 }) {
+  const m = useMessages();
   const router = useRouter();
   const [fields, setFields] = useState<GrantFieldsValue>(() => initialGrantFields(initial, projects));
   const [acting, setActing] = useState<"authorize" | "deny" | "check" | null>(null);
@@ -154,7 +155,7 @@ export function ConsentPanel({
             </form>
           }
         />
-        <AppCard name={app.name} ident={app.ident} />
+        <AppCard m={m} name={app.name} ident={app.ident} />
       </div>
 
       {replacesOn !== null && (

@@ -146,7 +146,7 @@ it("Add sources의 GitHub 재연결이 던지면 모달 안에서 말한다", as
   mocks.startGithubConnect.mockRejectedValue(offline());
   await render(<AddSourcesModal open onClose={vi.fn()} onAdded={vi.fn()} returnFocusRef={{ current: null }} slug="acme" owner="o" repo="r" branch="main" existing={[]} adapters={[]} server={{}} />);
   await click(buttonByText(en.newProject.empty.connect.reauthorize));
-  expect(alerts()).toContain(failureText("unavailable"));
+  expect(alerts()).toContain(failureText(en, "unavailable"));
 });
 
 const methods = [{ provider: "github" as const, connected: true }, { provider: "google" as const, connected: true }];

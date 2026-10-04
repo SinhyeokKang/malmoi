@@ -11,7 +11,7 @@ import { PublicShell } from "@/components/public-shell/public-shell";
 import { AuthLayout } from "@/components/signin/auth-layout";
 import { publicAccount } from "@/lib/auth/landing";
 import { en } from "@/messages/en";
-import { FOOTER_LINKS, GITHUB_REPO_URL } from "@/lib/links";
+import { footerLinks, GITHUB_REPO_URL } from "@/lib/links";
 import { routes } from "@/lib/routes";
 
 vi.mock("next/navigation", () => ({ usePathname: () => "/docs" }));
@@ -31,7 +31,7 @@ const SIGNED_IN = publicAccount({ status: "ok", userId: "u1", name: "Ada", email
  * 포커스가 있으면 Space/PageDown이 root scroller만 민다(DESIGN §6.615 "키보드").
  */
 /** 랜딩이 넘기는 값 그대로 — `app/page.tsx`. */
-const shell = () => render(h(PublicShell, { account: GUEST, children: h("p", null, "landing body") }));
+const shell = () => render(h(PublicShell, { m: en, account: GUEST, children: h("p", null, "landing body") }));
 
 describe("공개 셸 — 구조", () => {
   it("본문 랜드마크가 하나이고 페이지 내용은 스크롤러 안에 선다", async () => {
@@ -69,7 +69,7 @@ describe("공개 셸 — 구조", () => {
   it("해시가 `tabIndex`를 든 요소를 가리키면 그 요소가 포커스를 받는다", async () => {
     history.replaceState(null, "", "#workflow");
     try {
-      await render(h(PublicShell, { account: GUEST, children: h("h2", { id: "workflow", tabIndex: -1 }, "Workflow") }));
+      await render(h(PublicShell, { m: en, account: GUEST, children: h("h2", { id: "workflow", tabIndex: -1 }, "Workflow") }));
       expect(document.activeElement?.id).toBe("workflow");
     } finally {
       history.replaceState(null, "", window.location.pathname);
@@ -80,7 +80,7 @@ describe("공개 셸 — 구조", () => {
     for (const hash of ["#plain", "#%E0"]) {
       history.replaceState(null, "", hash);
       try {
-        const { container } = await render(h(PublicShell, { account: GUEST, children: h("p", { id: "plain" }, "body") }));
+        const { container } = await render(h(PublicShell, { m: en, account: GUEST, children: h("p", { id: "plain" }, "body") }));
         expect(document.activeElement).toBe(container.querySelector("[data-public-scroller]"));
       } finally {
         history.replaceState(null, "", window.location.pathname);
@@ -90,7 +90,7 @@ describe("공개 셸 — 구조", () => {
 
   /** `/docs`는 레이아웃이 셸을 들고 본문 스크롤러는 페이지가 든다(DESIGN §6.61) — 셸이 스크롤러를 하나 더 만들면 중첩된다. */
   it("`bare`면 패널 안을 스크롤러로 감싸지 않는다", async () => {
-    const { container } = await render(h(PublicShell, { account: GUEST, current: "docs", bare: true, children: h("p", null, "body") }));
+    const { container } = await render(h(PublicShell, { m: en, account: GUEST, current: "docs", bare: true, children: h("p", null, "body") }));
     expect(container.querySelectorAll("[data-public-scroller]")).toHaveLength(0);
     expect(container.querySelector("main > p")?.textContent).toBe("body");
   });
@@ -169,20 +169,20 @@ describe("공개 셸 — 헤더", () => {
   });
 
   it("`/docs/*`는 Docs만 aria-current다", async () => {
-    const { container } = await render(h(PublicShell, { account: GUEST, current: "docs", children: h("p", null, "body") }));
+    const { container } = await render(h(PublicShell, { m: en, account: GUEST, current: "docs", children: h("p", null, "body") }));
     const links = [...container.querySelectorAll(`nav[aria-label="${en.landing.shell.nav}"] a`)];
     expect(links.map((a) => a.getAttribute("aria-current"))).toEqual(["page", null]);
   });
 
   it("`/changelog`는 Changelog만 aria-current다", async () => {
-    const { container } = await render(h(PublicShell, { account: GUEST, current: "changelog", children: h("p", null, "body") }));
+    const { container } = await render(h(PublicShell, { m: en, account: GUEST, current: "changelog", children: h("p", null, "body") }));
     const links = [...container.querySelectorAll(`nav[aria-label="${en.landing.shell.nav}"] a`)];
     expect(links.map((a) => a.getAttribute("aria-current"))).toEqual([null, "page"]);
   });
 
   /** `/privacy`는 헤더 링크 어디에도 없는 화면이다 — current를 안 넘기면 어느 링크도 current가 아니다. */
   it("`current`가 없으면 헤더에 `aria-current`가 없다", async () => {
-    const { container } = await render(h(PublicShell, { account: GUEST, children: h("p", null, "body") }));
+    const { container } = await render(h(PublicShell, { m: en, account: GUEST, children: h("p", null, "body") }));
     expect(container.querySelectorAll("header [aria-current]")).toHaveLength(0);
   });
 
@@ -207,7 +207,7 @@ describe("공개 셸 — 헤더", () => {
 
   /** 2026-09-28 사용자 — `Open Malmoi` 대신 앱 셸과 같은 아바타 메뉴로 들어간다. */
   it("로그인이면 Get started 없이 앱 셸과 같은 사용자 메뉴가 선다", async () => {
-    const { container } = await render(h(PublicShell, { account: SIGNED_IN, children: h("p", null, "body") }));
+    const { container } = await render(h(PublicShell, { m: en, account: SIGNED_IN, children: h("p", null, "body") }));
     expect([...container.querySelectorAll("header a")].filter((a) => a.getAttribute("href") === routes.signIn())).toHaveLength(0);
     expect(container.querySelector(`header button[aria-label="${en.common.nav.userMenu}"]`)).not.toBeNull();
     expect(container.querySelector("header")?.textContent).not.toContain("Open Malmoi");
@@ -216,7 +216,7 @@ describe("공개 셸 — 헤더", () => {
   /** primary와 GitHub 사이에 연한 세로 구분선 하나 — 장식이라 접근성 트리에 안 선다. */
   it("우측은 GitHub · 구분선 · primary 순서다", async () => {
     for (const account of [GUEST, SIGNED_IN]) {
-      const { container } = await render(h(PublicShell, { account, children: h("p", null, "body") }));
+      const { container } = await render(h(PublicShell, { m: en, account, children: h("p", null, "body") }));
       const right = container.querySelector("header > .justify-self-end > div");
       const kids = [...(right?.children ?? [])];
       expect(kids).toHaveLength(3);
@@ -265,7 +265,7 @@ describe("GitHub 링크 — 새 탭 + `noreferrer`", () => {
 
   it("`/signin` 푸터", () => {
     const signin = document.createElement("div");
-    signin.innerHTML = renderToStaticMarkup(h(AuthLayout, null, null));
+    signin.innerHTML = renderToStaticMarkup(h(AuthLayout, { m: en, children: null }));
     external([...signin.querySelectorAll("footer a")]);
   });
 });
@@ -273,7 +273,7 @@ describe("GitHub 링크 — 새 탭 + `noreferrer`", () => {
 describe("푸터 — `/signin`·초대·계정 병합도 공개 셸 푸터 하나다", () => {
   const signin = () => {
     const root = document.createElement("div");
-    root.innerHTML = renderToStaticMarkup(h(AuthLayout, null, h("p", null, "form")));
+    root.innerHTML = renderToStaticMarkup(h(AuthLayout, { m: en, children: h("p", null, "form") }));
     return root;
   };
 
@@ -287,7 +287,7 @@ describe("푸터 — `/signin`·초대·계정 병합도 공개 셸 푸터 하�
   });
 
   it("마크업이 `PublicFooter`와 바이트 단위로 같다", () => {
-    const own = renderToStaticMarkup(h(PublicFooter));
+    const own = renderToStaticMarkup(h(PublicFooter, { m: en }));
     expect(signin().querySelector("footer")?.outerHTML).toBe(own);
   });
 
@@ -304,7 +304,7 @@ describe("푸터 링크 — `/signin`과 한 목록", () => {
     [...root.querySelectorAll("footer a")].map((a) => [a.textContent, a.getAttribute("href")]);
 
   it("GitHub · Privacy Policy 둘이다 — Docs·Changelog는 헤더가 든다", () => {
-    expect(FOOTER_LINKS.map(({ label, href, external }) => [label, href, external])).toEqual([
+    expect(footerLinks(en).map(({ label, href, external }) => [label, href, external])).toEqual([
       [en.signIn.footer.github, GITHUB_REPO_URL, true],
       [en.signIn.footer.privacy, routes.privacy(), false],
     ]);
@@ -313,9 +313,9 @@ describe("푸터 링크 — `/signin`과 한 목록", () => {
   it("랜딩 푸터와 로그인 푸터가 같은 링크를 같은 순서로 낸다", async () => {
     const { container } = await shell();
     const signin = document.createElement("div");
-    signin.innerHTML = renderToStaticMarkup(h(AuthLayout, null, null));
+    signin.innerHTML = renderToStaticMarkup(h(AuthLayout, { m: en, children: null }));
     expect(pairs(container)).toEqual(pairs(signin));
-    expect(pairs(container)).toEqual(FOOTER_LINKS.map(({ label, href }) => [label, href]));
+    expect(pairs(container)).toEqual(footerLinks(en).map(({ label, href }) => [label, href]));
   });
 });
 

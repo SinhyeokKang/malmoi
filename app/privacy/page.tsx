@@ -4,6 +4,7 @@ import { PrivacyDoc } from "@/components/privacy/privacy-doc";
 import { PublicShell } from "@/components/public-shell/public-shell";
 import { publicAccount } from "@/lib/auth/landing";
 import { readSession } from "@/lib/auth/read-session";
+import { getMessages, getUiLocale } from "@/lib/i18n/server";
 import { en } from "@/messages/en";
 import { pageMetadata } from "@/lib/seo/site";
 
@@ -25,11 +26,11 @@ export const metadata: Metadata = pageMetadata({ title: en.publicDocs.privacy.ti
  * 하나 때문이고 차단이 아니다** — 로그인이면 아바타 메뉴, 아니면(장애 포함) `Get started`(`publicAccount`).
  */
 export default async function Privacy() {
-  const session = await readSession();
+  const [session, m, uiLocale] = await Promise.all([readSession(), getMessages(), getUiLocale()]);
 
   return (
-    <PublicShell account={publicAccount(session)}>
-      <PrivacyDoc />
+    <PublicShell m={m} account={publicAccount(session)}>
+      <PrivacyDoc m={m} uiLocale={uiLocale} />
     </PublicShell>
   );
 }

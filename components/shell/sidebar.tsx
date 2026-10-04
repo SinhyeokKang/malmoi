@@ -9,7 +9,8 @@ import { ProjectSwitcher } from "@/components/shell/project-switcher";
 import { Badge } from "@/components/ui/badge";
 import { CountBadge } from "@/components/ui/count-badge";
 import { Button } from "@/components/ui/button";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
+import type { Messages } from "@/lib/i18n";
 import { activeProject, navFooterItems, navZones, type NavItem, type NavProject } from "@/lib/shell/nav";
 import { cn } from "@/lib/utils";
 
@@ -57,9 +58,10 @@ const fold = (hidden: boolean) =>
  * 찾고 없으면 컨텍스트가 없다. 데이터 접근은 여전히 각 페이지가 판정한 `projectId`로만 한다.
  */
 export function Sidebar({ memberships, userName }: { memberships: NavProject[]; userName: string }) {
+  const m = useMessages();
   const pathname = usePathname();
   const project = activeProject(pathname, memberships);
-  const zones = navZones(project, { userName, projectCount: memberships.length });
+  const zones = navZones(m, project, { userName, projectCount: memberships.length });
   const { collapsed, toggle } = useSidebarCollapse();
 
   return (
@@ -147,7 +149,7 @@ export function Sidebar({ memberships, userName }: { memberships: NavProject[]; 
         ⚠️ **Sign out이 없다** (2026-09-27 사용자) — 로그아웃은 헤더 사용자 메뉴 하나에만 있다.
       */}
       <div data-sidebar-zone="footer" className="mt-auto flex flex-col gap-0.5 pt-2">
-        {navFooterItems().map((item) => (
+        {navFooterItems(m).map((item) => (
           <Item key={item.key} item={item} active={isActive(pathname, item)} collapsed={collapsed} />
         ))}
         {/* ⚠️ **LNB 맨 아래다** (2026-09-28 사용자). 리사이저로도 접고 편다 — 하한(200) 밑으로 끌면 접히고, 접힌 채 끌면 펴진다(`collapsible`). */}
@@ -186,15 +188,19 @@ function isActive(pathname: string, item: NavItem): boolean {
  * 개수 배지의 sr 문장 — 숫자는 `aria-hidden`이다(`CountBadge`). **개수를 드는 항목만** 여기 있고, 문자열 배지(Changelog 버전)는 개수가 아니다.
  * ⚠️ 문장을 `lib/shell/nav.ts`가 아니라 여기서 고른다 — 그쪽은 개수만 내고, 그 개수를 읽히는 방식은 화면의 몫이다.
  */
-const COUNT_LABEL: Readonly<Record<string, (n: number) => string>> = {
-  projects: m.projects.count,
-  sources: m.sources.count,
-  translations: m.translations.keys,
-  members: m.members.count,
-};
+function countLabel(m: Messages, key: string): ((n: number) => string) | undefined {
+  const labels: Readonly<Record<string, (n: number) => string>> = {
+    projects: m.projects.count,
+    sources: m.sources.count,
+    translations: m.translations.keys,
+    members: m.members.count,
+  };
+  return Object.hasOwn(labels, key) ? labels[key] : undefined;
+}
 
 /** 항목 하나 — 시안 치수는 `p-6 · gap-8 · radius-8 · 아이콘 16 · 14px`이다. */
 function Item({ item, active, collapsed = false }: { item: NavItem; active: boolean; collapsed?: boolean }) {
+  const m = useMessages();
   const Icon = item.icon;
   return (
     <Link
@@ -241,7 +247,7 @@ function Item({ item, active, collapsed = false }: { item: NavItem; active: bool
       {typeof item.badge === "number" ? (
         <CountBadge
           count={item.badge}
-          label={Object.hasOwn(COUNT_LABEL, item.key) ? COUNT_LABEL[item.key]!(item.badge) : String(item.badge)}
+          label={countLabel(m, item.key)?.(item.badge) ?? String(item.badge)}
           className={cn("ml-auto shrink-0", FADE, collapsed && "opacity-0")}
         />
       ) : item.badge !== undefined && (

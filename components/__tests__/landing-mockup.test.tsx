@@ -39,7 +39,7 @@ afterEach(() => { vi.unstubAllGlobals(); });
 async function mount() {
   const { container } = await render(
     <div data-public-scroller="">
-      <Stage label={en.landing.stage.label} captions={en.landing.stage.captions} typed={fixture.selected.typed} scenes={mockupScenes()} closing={null} />
+      <Stage label={en.landing.stage.label} captions={en.landing.stage.captions} typed={fixture.selected.typed} scenes={mockupScenes(en)} closing={null} />
     </div>,
   );
   return container;
@@ -80,7 +80,7 @@ describe("목업 — 조작 대상이 아니다", () => {
  * 컴포넌트의 구획에서 뽑아 견준다 — 손으로 목록을 두 벌 두면 사이드바가 바뀔 때 목업만 낡는다.
  */
 describe("목업 — 제품과 같은 구조다", () => {
-  const zones = navZones(
+  const zones = navZones(en, 
     { slug: "acme-web", name: fixture.project, role: "OWNER", archived: false, counts: { sources: fixture.sources.length, members: fixture.memberCount, keys: fixture.keyCount } },
     { userName: fixture.user, projectCount: fixture.projectCount },
   );
@@ -97,7 +97,7 @@ describe("목업 — 제품과 같은 구조다", () => {
     expect(zoneText("project").querySelector("p > span.truncate")?.textContent).toBe(fixture.project);
     expect(zoneText("work").querySelector("p")).toBeNull();
     expect(items("work")).toEqual([`${en.common.nav.projects}${fixture.projectCount}`, en.common.nav.mcp, en.common.nav.account]);
-    expect(items("footer")).toEqual(navFooterItems().map((item) => item.label));
+    expect(items("footer")).toEqual(navFooterItems(en).map((item) => item.label));
     // Sign out은 하단이 아니라 아바타 메뉴의 것이다(MISC 배치) — 목업 LNB에 따로 서지 않는다.
     expect(scene.querySelector("[data-landing-lnb]")?.textContent).not.toContain(en.common.nav.signOut);
     // 선택은 Translations 하나다.
@@ -139,7 +139,10 @@ describe("목업 — 제품과 같은 구조다", () => {
       expect(header.className, `scene ${index}`).toContain("grid-cols-[1fr_auto_1fr]");
       const search = find<HTMLElement>(header, "[data-landing-global-search]");
       expect(search.tagName).toBe("SPAN");
-      expect(new Set(search.className.split(" "))).toEqual(new Set(real.className.split(" ")));
+      // 헤더 44 이후 실물은 `h-11`이고 목업은 40을 지킨다(`h-10`) — 높이만 다르다.
+      const classes = (el: Element) => new Set(el.className.split(" ").filter((c) => c !== "h-10" && c !== "h-11"));
+      expect(classes(search)).toEqual(classes(real));
+      expect(search.classList.contains("h-10")).toBe(true);
       expect(search.querySelector("svg")?.getAttribute("class")).toContain("lucide-search");
       expect(search.textContent).toBe(`${en.search.placeholder}${en.common.keys.search.mac}`);
     }

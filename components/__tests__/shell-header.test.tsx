@@ -32,7 +32,7 @@ vi.mock("next/link", () => {
 
 vi.mock("next/navigation", () => ({ usePathname: () => "/projects" }));
 
-const header = () => render(<Header name="Kim" email="kim@acme.com" image={null} signOut={vi.fn()} memberships={[]} />);
+const header = () => render(<Header m={en} name="Kim" email="kim@acme.com" image={null} signOut={vi.fn()} memberships={[]} />);
 
 describe("HeaderBar — 세 슬롯", () => {
   it("동일 폭 양옆 칸과 세 정렬 슬롯으로 가운데를 고정한다", async () => {

@@ -8,6 +8,7 @@ import { rejectTarget } from "@/lib/auth/landing";
 import { readSession } from "@/lib/auth/read-session";
 import { signOutAction } from "@/lib/auth/sign-out";
 import { getPrisma } from "@/lib/db";
+import { getMessages } from "@/lib/i18n/server";
 import { loadMemberships } from "@/lib/keys/query";
 import { toNavProjects } from "@/lib/shell/nav";
 
@@ -27,7 +28,7 @@ import { toNavProjects } from "@/lib/shell/nav";
  * 화면이라 눈에 잘 안 띈다).
  */
 export default async function EditLayout({ children }: { children: React.ReactNode }) {
-  const session = await readSession();
+  const [session, m] = await Promise.all([readSession(), getMessages()]);
 
   // 2차 방어. 차단의 1차는 미들웨어다(위 주석) — 장애는 `requireUser`와 같은 목적지로 보내
   // 비로그인과 같은 응답을 내지 않는다. 그 판정은 `rejectTarget`이 든다 (8-1a).
@@ -56,7 +57,7 @@ export default async function EditLayout({ children }: { children: React.ReactNo
      */
     <div className="bg-canvas flex h-svh min-w-shell-min flex-col gap-2 overflow-hidden p-2">
       {/* ⚠️ **`image`가 여기를 지난다** — 세션을 읽는 것이 이 파일이라 앞뒤만 고치면 값이 `undefined`로 흐른다. */}
-      <Header name={name} email={session.email} image={session.image} signOut={signOutAction} memberships={navMemberships} />
+      <Header m={m} name={name} email={session.email} image={session.image} signOut={signOutAction} memberships={navMemberships} />
       {/*
         ⚠️ **행의 `gap-2`가 리사이즈 핸들로 옮겨 갔다.** flex `gap` 안에 핸들을 형제로 끼우면 간격이
         `gap + 핸들 + gap`이 되므로, 핸들이 그 8px을 투명 스트립으로 든다

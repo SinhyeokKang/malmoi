@@ -19,7 +19,7 @@ const mocks = vi.hoisted(() => ({ path: "/docs", replace: vi.fn(), uiLocale: "en
 
 vi.mock("@/lib/auth/read-session", () => ({ readSession: async () => ({ status: "none" }) }));
 // 화면 언어는 쿠키·세션에서 오고 렌더 요청 밖에서는 `cookies()`가 던진다 — 요청의 언어를 여기서 정한다
-vi.mock("@/lib/i18n/server", () => ({ getUiLocale: async () => mocks.uiLocale }));
+vi.mock("@/lib/i18n/server", async () => ({ getUiLocale: async () => mocks.uiLocale, getMessages: async () => (await import("@/messages/en")).en }));
 vi.mock("next/navigation", () => ({
   usePathname: () => mocks.path,
   useRouter: () => ({ replace: mocks.replace }),

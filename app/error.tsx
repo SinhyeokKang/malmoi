@@ -2,7 +2,8 @@
 
 import { RootFallback } from "@/components/root-fallback";
 import { Button, ButtonLink } from "@/components/ui/button";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
+import { en } from "@/messages/en";
 import { routes } from "@/lib/routes";
 
 /**
@@ -14,8 +15,9 @@ import { routes } from "@/lib/routes";
   `reset`은 다시 가져오지 않고 다시 그리기만 해서, 서버 렌더에서 난 오류는 같은 오류를 다시 낸다.
 */
 export default function RootError({ retry }: { error: Error & { digest?: string }; retry: () => void }) {
+  const m = useMessages();
   return (
-    <RootFallback title={m.crash.title} description={m.crash.description}>
+    <RootFallback title={en.crash.title} description={en.crash.description}>
       <Button size="lg" variant="primary" className="w-full" onClick={() => retry()}>{m.common.retry}</Button>
       <ButtonLink size="lg" className="w-full" href={routes.projects()}>{m.notFound.action}</ButtonLink>
     </RootFallback>

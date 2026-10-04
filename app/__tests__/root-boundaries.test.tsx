@@ -10,13 +10,15 @@ import RootError from "../error";
 import GlobalError from "../global-error";
 import RootNotFound from "../not-found";
 
+vi.mock("@/lib/i18n/server", async () => ({ getMessages: async () => (await import("@/messages/en")).en, getUiLocale: async () => "en" }));
+
 /**
  * **셸 밖 라우트의 오타·예외가 Next 기본 페이지로 떨어지지 않는다** (audit #17). `/invite`·`/signin`·`/signin/link`는
  * `(edit)` 그룹 밖이라 그 그룹의 `error.tsx`가 닿지 않고, 루트에는 경계가 0이었다 — 영문 기본 404와 흰 화면
  * *"Application error"* 가 제품 문구·출구 없이 섰다.
  */
-it("루트 not-found는 제품 문구와 목록 출구를 든다", () => {
-  const html = renderToStaticMarkup(<RootNotFound />);
+it("루트 not-found는 제품 문구와 목록 출구를 든다", async () => {
+  const html = renderToStaticMarkup(await RootNotFound());
   expect(html).toContain(en.notFound.title);
   expect(html).toContain('href="/projects"');
 });

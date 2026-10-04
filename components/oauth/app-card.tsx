@@ -1,6 +1,6 @@
 import { McpIcon } from "@/components/signin/brand-icons";
 import { IconTile } from "@/components/ui/icon-tile";
-import { m } from "@/lib/i18n";
+import type { Messages } from "@/lib/i18n";
 
 /**
  * 동의 화면의 **앱 카드** (mcp-oauth 핸드오프 §7.2) — 로그인 전·동의 단계가 같은 것을 쓴다. `EntityCard`와 같은 카드 치수(radius 12 · padding 12)이고
@@ -11,7 +11,7 @@ import { m } from "@/lib/i18n";
  * ⚠️ 배지 없음 — "공식 인증 아님"은 카드 아래 문장이 말한다. 검증되지 않은 요청(`1o`)에서는 이 카드를 그리지 않는다.
  * ⚠️ 식별 줄은 `/mcp` 연결 행과 **같은 문자열**이다(`clientIdLabel`).
  */
-export function AppCard({ name, ident }: { name: string; ident: string }) {
+export function AppCard({ m, name, ident }: { m: Messages; name: string; ident: string }) {
   return (
     <div className="flex w-full min-w-0 flex-col gap-1.5">
       <div data-app-card className="border-border flex w-full min-w-0 items-center gap-3 rounded-lg border p-3">

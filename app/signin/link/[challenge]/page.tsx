@@ -15,7 +15,9 @@ import { ButtonLink } from "@/components/ui/button";
 import { getPrisma } from "@/lib/db";
 import { logCaught } from "@/lib/failure";
 import { requestOrigin } from "@/lib/github-connect/origin";
-import { m } from "@/lib/i18n";
+import type { Messages } from "@/lib/i18n";
+import type { UiLocale } from "@/lib/i18n/locales";
+import { getMessages, getUiLocale } from "@/lib/i18n/server";
 import { en } from "@/messages/en";
 import { withLinkStart } from "@/lib/login-link/http";
 import { linkErrorMessage, providerLabel } from "@/lib/login-link/message";
@@ -48,6 +50,7 @@ export default async function LinkAccountPage({
   params: Promise<{ challenge: string }>;
   searchParams: Promise<Raw<"e">>;
 }) {
+  const [m, uiLocale] = await Promise.all([getMessages(), getUiLocale()]);
   const { challenge } = await params;
   const { e } = firstQueryValues(await searchParams);
 
@@ -62,7 +65,7 @@ export default async function LinkAccountPage({
   if (view === null) redirect(routes.signIn({ error: "LinkExpired" }));
 
   return (
-    <AuthLayout>
+    <AuthLayout m={m}>
       <AuthColumn>
         <Image src={logo} alt="" width={48} height={48} priority />
         <AuthHeading
@@ -95,12 +98,12 @@ export default async function LinkAccountPage({
           name={view.emailLabel}
           avatarName={view.name ?? view.emailLabel}
           image={view.image}
-          description={<>{providerLabel(m, view.have)} · <time dateTime={view.joined.toISOString()}>{joinedLabel(view.joined)}</time></>}
+          description={<>{providerLabel(m, view.have)} · <time dateTime={view.joined.toISOString()}>{joinedLabel(m, uiLocale, view.joined)}</time></>}
           badge={view.have === "github" ? <GithubIcon className="size-4" /> : <GoogleIcon className="size-4" />}
         />
 
         <div className="flex w-full flex-col gap-2">
-          <ProviderButton provider={view.have} challenge={challenge} dest={view.dest} />
+          <ProviderButton m={m} provider={view.have} challenge={challenge} dest={view.dest} />
           <p className="text-muted-foreground text-center text-xs leading-relaxed">{m.link.footnote}</p>
         </div>
 
@@ -116,8 +119,8 @@ export default async function LinkAccountPage({
 }
 
 /** 가입 월 — 앱의 날짜 형이 사는 `lib/utc-time.ts`가 만든다(ux-drift-unify 2-Y19 — 로케일 포맷터는 ICU·TZ에 기댄다). */
-function joinedLabel(joined: Date): string {
-  return m.link.joined(utcMonth(joined));
+function joinedLabel(m: Messages, uiLocale: UiLocale, joined: Date): string {
+  return m.link.joined(utcMonth(joined, uiLocale));
 }
 
 /**
@@ -126,10 +129,12 @@ function joinedLabel(joined: Date): string {
  * 방어선이다 — 이 화면이 **일반 로그인 진입점 셋째**라 버려진 회수 왕복을 먼저 지워야 한다.
  */
 function ProviderButton({
+  m,
   provider,
   challenge,
   dest,
 }: {
+  m: Messages;
   provider: LoginProvider;
   challenge: string;
   dest: LinkDest;

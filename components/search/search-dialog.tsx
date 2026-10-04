@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { useUiLocale } from "@/components/i18n/messages-provider";
+import { useMessages, useUiLocale } from "@/components/i18n/messages-provider";
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList, CommandStatus } from "@/components/ui/command";
 import { CommandDialog } from "@/components/ui/dialog";
 import { NoMatch } from "@/components/ui/empty-state";
@@ -12,7 +12,6 @@ import { ProjectThumbnail } from "@/components/ui/project-thumbnail";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { searchKeysAction, type SearchMembershipsResult } from "@/app/search/actions";
 import type { PublicAccount } from "@/lib/auth/landing";
-import { m } from "@/lib/i18n";
 import { isPlainPrimaryClick } from "@/lib/keyboard";
 import { landDocumentHeading } from "@/lib/public-doc/landing";
 import type { KeyHit } from "@/lib/search/key-href";
@@ -34,6 +33,7 @@ function Tile({ tile }: { tile: SearchTile }) {
 export function SearchDialog({ open, onOpenChange, account, memberships }: {
   open: boolean; onOpenChange: (open: boolean) => void; account: PublicAccount | null; memberships?: readonly NavProject[];
 }) {
+  const m = useMessages();
   const pathname = usePathname();
   const uiLocale = useUiLocale();
   const [q, setQuery] = useState("");
@@ -52,7 +52,7 @@ export function SearchDialog({ open, onOpenChange, account, memberships }: {
   const currentMemberships = account === null ? null : memberships ?? loaded;
   const membershipState = !needsMemberships ? "ready" : publicMemberships === null ? "loading" : publicMemberships.ok ? "ready" : publicMemberships.error;
   const activeSlug = memberships === undefined ? null : activeProject(pathname, memberships)?.slug ?? null;
-  const nav = navSearchEntries(currentMemberships, { activeSlug, userName: account?.name ?? "" });
+  const nav = navSearchEntries(m, currentMemberships, { activeSlug, userName: account?.name ?? "" });
   const keyQuery = keySearchText(q, nav.authenticated);
   const canSearchKeys = keyQuery !== null;
 
@@ -88,8 +88,8 @@ export function SearchDialog({ open, onOpenChange, account, memberships }: {
   }, [open, keyQuery, activeSlug, q]);
 
   const keysCurrent = canSearchKeys && !keysLoading && keys.query === q;
-  const { groups, ids } = searchRows({ index: { ...nav, docs }, keys: keysCurrent ? keys.hits : [], q, activeSlug });
-  const status = searchStatuses({
+  const { groups, ids } = searchRows(m, { index: { ...nav, docs }, keys: keysCurrent ? keys.hits : [], q, activeSlug });
+  const status = searchStatuses(m, {
     membership: membershipState, docs: docsState,
     keys: !canSearchKeys ? "idle" : !keysCurrent ? "loading" : keys.error ?? "ready",
   });

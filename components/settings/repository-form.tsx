@@ -115,7 +115,7 @@ export function RepositoryForm({ slug, owner, repo, baseBranch, disabled = false
                 onChange={event => { setBranch(event.target.value); setResult("idle"); }} />
             </div>}
           <Button spinnerSize="sm" ref={saveRef} type="submit" loading={pending} aria-busy={pending} disabled={!editable || branch === current}>{m.settings.repository.fields.save}</Button>
-          {lookupError || failure !== null ? <FieldError id="base-branch-caption" className={CAPTION}>{lookupError ? failureText(lookupError) : failure !== null ? messageFor(failure) : null}</FieldError> : (
+          {lookupError || failure !== null ? <FieldError id="base-branch-caption" className={CAPTION}>{lookupError ? failureText(m, lookupError) : failure !== null ? messageFor(failure) : null}</FieldError> : (
             <p id="base-branch-caption" className={cn(CAPTION, "text-foreground/60 text-xs")}>
               {disabled ? m.settings.archivedReason : unpinned ? m.settings.repository.fields.branchDisconnected : result === "saved" ? <><Check className="mr-1 inline size-3.5" aria-hidden />{m.settings.repository.fields.saved}</> : choice?.mode === "input" ? m.newProject.repo.branchTooMany : m.settings.repository.fields.branchHelp}
             </p>

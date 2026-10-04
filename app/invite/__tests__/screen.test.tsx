@@ -14,6 +14,8 @@ import Page from "../[token]/page";
 import { en } from "@/messages/en";
 import { inviteErrorMessage } from "@/lib/auth/message";
 
+vi.mock("@/lib/i18n/server", async () => ({ getMessages: async () => (await import("@/messages/en")).en, getUiLocale: async () => "en" }));
+
 const invitation = {
   id: "i1",
   projectId: "p1",

@@ -1,4 +1,4 @@
-import { m } from "@/lib/i18n";
+import type { Messages } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
 
 /**
@@ -34,7 +34,9 @@ export type FooterLink = { href: string; label: string; external: boolean };
  * ⚠️ **`Docs`·`Changelog`가 없다** (2026-09-28 사용자) — 공개 셸 헤더 내비와 아바타 메뉴가 이미 든다. 푸터는 외부 리포와 방침 둘이다.
  * 셸 밖 화면(`/signin`·초대·계정 병합)에는 헤더가 없어 그 둘로 가는 길이 사라지는 것도 같은 판정이다.
  */
-export const FOOTER_LINKS: readonly FooterLink[] = [
-  { href: GITHUB_REPO_URL, label: m.signIn.footer.github, external: true },
-  { href: routes.privacy(), label: m.signIn.footer.privacy, external: false },
-];
+export function footerLinks(m: Messages): readonly FooterLink[] {
+  return [
+    { href: GITHUB_REPO_URL, label: m.signIn.footer.github, external: true },
+    { href: routes.privacy(), label: m.signIn.footer.privacy, external: false },
+  ];
+}

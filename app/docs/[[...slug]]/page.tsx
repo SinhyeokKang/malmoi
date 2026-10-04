@@ -12,7 +12,7 @@ import { OVERVIEW_TRACKS } from "@/lib/guide/overview";
 import { leadParagraph } from "@/lib/guide/sections";
 import { flattenNav, type NavNode } from "@/lib/guide/summary";
 import { extractToc } from "@/lib/guide/toc";
-import { getUiLocale } from "@/lib/i18n/server";
+import { getMessages, getUiLocale } from "@/lib/i18n/server";
 import { en } from "@/messages/en";
 import { docLd, jsonLdHtml } from "@/lib/seo/json-ld";
 import { DOCS_TITLE, pageMetadata, SITE_ORIGIN } from "@/lib/seo/site";
@@ -48,7 +48,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug?: st
  */
 export default async function DocsPage({ params }: { params: Promise<{ slug?: string[] }> }) {
   const { slug = [] } = await params;
-  const uiLocale = await getUiLocale();
+  const [uiLocale, m] = await Promise.all([getUiLocale(), getMessages()]);
   const page = loadPageBySlug(uiLocale, slug);
   if (page === null) notFound();
 
@@ -74,7 +74,7 @@ export default async function DocsPage({ params }: { params: Promise<{ slug?: st
       return item;
     };
     const tracks = OVERVIEW_TRACKS.map((track) => ({
-      audience: en.publicDocs.docs[track.audience],
+      audience: m.publicDocs.docs[track.audience],
       chapter: row(pick(track.chapter)),
       pages: track.pages.map((key) => ({ href: docHref(pick(key).slug), title: pick(key).title })),
     }));
@@ -84,10 +84,10 @@ export default async function DocsPage({ params }: { params: Promise<{ slug?: st
     return (
       <PublicScroller key="">
         <LegacyHashRedirect table={LEGACY_ANCHORS} />
-        <DocFrame toc={[]}>
+        <DocFrame m={m} toc={[]}>
           <GuideMarkdown tree={page.tree} file={page.file} sizes={loadShotSizes()} />
           <DocTracks tracks={tracks} />
-          <h2 className="m-0 mt-14 text-2xl leading-[1.4] font-semibold">{en.publicDocs.docs.more}</h2>
+          <h2 className="m-0 mt-14 text-2xl leading-[1.4] font-semibold">{m.publicDocs.docs.more}</h2>
           <DocRows rows={rest} arrow={false} className="mt-4" />
         </DocFrame>
       </PublicScroller>
@@ -103,7 +103,7 @@ export default async function DocsPage({ params }: { params: Promise<{ slug?: st
   // JSON-LD는 본문과 같은 화면 언어다(메타와 달리) — 크롤러는 쿠키가 없어 en만 받고, 사람에게는 본문과 갈리지 않는 쪽이 맞다.
   const ld = docLd({
     title: self?.title ?? "",
-    description: leadParagraph(page.tree) ?? en.landing.hero.body,
+    description: leadParagraph(page.tree) ?? m.landing.hero.body,
     url: `${SITE_ORIGIN}${docHref(slug)}`,
     chapter: self?.parent ? { title: self.parent, url: `${SITE_ORIGIN}${docHref(slug.slice(0, 1))}` } : null,
   });
@@ -112,11 +112,11 @@ export default async function DocsPage({ params }: { params: Promise<{ slug?: st
     <PublicScroller key={slug.join("/")}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdHtml(ld) }} />
       {legacy ? <LegacyHashRedirect table={legacy} /> : null}
-      <DocFrame toc={chapterIndex ? [] : extractToc(page.tree)}>
+      <DocFrame m={m} toc={chapterIndex ? [] : extractToc(page.tree)}>
         {!chapterIndex && self?.parent ? <DocEyebrow>{self.parent}</DocEyebrow> : null}
         <GuideMarkdown tree={page.tree} file={page.file} sizes={loadShotSizes()} />
         {chapterIndex ? <DocRows rows={children.map(row)} arrow className="mt-10" /> : null}
-        <DocNeighbours previous={neighbour(flat[index - 1])} next={neighbour(flat[index + 1])} />
+        <DocNeighbours m={m} previous={neighbour(flat[index - 1])} next={neighbour(flat[index + 1])} />
       </DocFrame>
     </PublicScroller>
   );

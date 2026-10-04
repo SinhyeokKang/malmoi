@@ -4,11 +4,12 @@ import { Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { ButtonLink } from "@/components/ui/button";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import { routes } from "@/lib/routes";
 
 
 export function NewProjectButton({ q }: { q?: string }) {
+  const m = useMessages();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const href = routes.newProject({ q });

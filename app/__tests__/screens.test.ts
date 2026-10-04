@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import { routes } from "@/lib/routes";
 import { navWorkItems } from "@/lib/shell/nav";
+import { en } from "@/messages/en";
 
 /**
  * 화면 배선을 **소스에서** 센다 (translation-ui T8).
@@ -200,8 +201,8 @@ describe("계정 화면 — 옮겼고 복제하지 않았다 (6b-4)", () => {
   it("사용자 메뉴에 계정 항목이 있다 — 셸에서 도달하는 경로다", () => {
     // 2026-09-27부터 메뉴 첫 묶음이 사이드바 사용자 구역과 같은 목록(`navWorkItems`)을 읽는다 — 계정 항목은 그 목록에 있다.
     // 렌더 단언(라벨·주소·순서)은 `components/__tests__/user-menu.test.tsx`가 든다.
-    expect(read(USER_MENU)).toContain("navWorkItems()");
-    expect(navWorkItems().map((item) => item.href)).toContain(routes.account());
+    expect(read(USER_MENU)).toContain("navWorkItems(m)");
+    expect(navWorkItems(en).map((item) => item.href)).toContain(routes.account());
   });
 
   /**
