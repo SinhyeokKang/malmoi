@@ -2179,13 +2179,14 @@ Supabase를 골랐던 이유(2026-09-05)는 "개발자 도구이면서 비개발
 
 `messages/ko.tsx`·`messages/es.tsx`는 `en`과 같은 키·같은 시그니처의 번역이고, 위 규칙(마침표·느낌표·줄임표 U+2026·곡선 따옴표·"please/sorry" 금지·다음 행동을 말하는 오류·git 어휘 금지)을 그대로 따른다. 언어마다 더하는 것만 적는다. 낱말은 아래 §10.1 표의 ko·es 열이 정본이다.
 
-- **ko — 합니다체.** 완전 문장(help·Alert 본문·오류·토스트)은 `~합니다`·`~습니다`로 끝낸다. 해요체 평서(`~해요`)·반말을 쓰지 않는다. 지시는 `~하세요`(합니다체 문장 옆에 서는 한국어 UI의 관용 — `~하십시오`는 쓰지 않는다), 확인 모달의 질문은 `~하시겠습니까?`다.
+- **ko — 합니다체.** 완전 문장(help·Alert 본문·오류·토스트)은 `~합니다`·`~습니다`로 끝낸다. 해요체 평서(`~해요`)·반말을 쓰지 않는다. 지시는 `~하세요`(합니다체 문장 옆에 서는 한국어 UI의 관용 — `~하십시오`는 쓰지 않는다), 확인 모달의 질문은 `~할까요?`·`~바꿀까요?`처럼 짧고 자연스럽게 쓴다(2026-10-05 사용자 — ko 톤 검수).
   - 버튼·메뉴 항목은 **명사형**(`저장` · `게시` · `멤버 제거`) 또는 `~하기`(`링크 만들기`)이고 마침표가 없다. 라벨·제목·배지는 명사구, 상태는 `~됨`(`보관됨` · `만료됨`)이다.
   - 진행 중은 `{명사} 중…`(`저장 중…` · `동기화 중…`).
   - 주어 `당신`을 쓰지 않는다 — 주어를 생략하고, `your projects`는 `내 프로젝트`다.
   - **보간 값 바로 뒤에 받침에 따라 갈리는 조사(을/를 · 이/가 · 은/는 · 와/과 · 으로/로)를 붙이지 않는다** — 값의 끝 글자를 사전이 모른다. `을(를)` 병기도 쓰지 않는다. 값 뒤에 고정 명사를 둔다(`{name} 님을` · `{project} 프로젝트에서` · `{language} 언어를`) 또는 조사가 필요 없는 어순으로 쓴다.
   - 숫자는 숫자로, 단위는 `개`·`건`·`명`. 단수·복수 갈래가 없으므로 en의 `count === 1 ? … : …`는 한 형으로 접는다.
-  - 고유명사 `Malmoi`·`GitHub`·`Google`·`MCP`·`OAuth`와 `pull request`의 한국어 표기 `풀 리퀘스트`는 번역하지 않는 이름이다. 코드·경로·명령(`pnpm`·`{locale}`·파일 경로)은 원문 그대로다.
+  - 고유명사 `Malmoi`·`GitHub`·`Google`·`MCP`·`OAuth`, GitHub의 `PR`(pull request), 개발자 문맥의 `push`·`diff`·`import`·`default export`는 원문 표기를 쓴다. 코드·경로·명령(`pnpm`·`{locale}`·파일 경로)도 그대로다. 익숙한 한국어인 리포지토리·브랜치·커밋·키·토큰은 유지한다. 모든 낱말을 한국어로 바꾸는 것이 목표가 아니다(2026-10-05 사용자).
+  - **영문 어순과 비유를 옮기지 않는다.** `좌석`은 `정원`, 권한을 허용하는 `인가`는 `승인`, `허용 동작`은 `권한`으로 쓴다. 편집 동작은 `편집`, 수정된 내용은 `수정 사항`·`변경 사항`으로 구분하고 `unsent edits`는 `미전송 변경 사항`으로 통일한다. 긴 설명은 원인·현재 상태·다음 행동으로 나누되 실패·미확인·보류, 덮어쓰기와 보존 범위를 바꾸지 않는다.
 - **es — tú.** 독자를 `tú`로 부르고(`Guarda tus cambios`) `usted`를 쓰지 않는다.
   - 버튼·메뉴 항목은 **동사 원형**(`Guardar` · `Publicar` · `Quitar miembro`), 상태는 과거분사(`Archivado` · `Caducado`)다. 대문자는 문장 첫 글자와 고유명사뿐이다.
   - 물음표는 `¿…?`, 느낌표는 쓰지 않는다. `por favor`·`lo sentimos`를 쓰지 않는다.
@@ -2211,7 +2212,7 @@ Supabase를 골랐던 이유(2026-09-05)는 "개발자 도구이면서 비개발
 | Owner · Editor(역할) | 소유자 · 편집자 | Propietario · Editor |
 | repository | 리포지토리 | repositorio |
 | key | 키 | clave |
-| edit(명사) | 편집 | edición |
+| edit(명사) | 수정 사항(동작은 편집) | edición |
 | invitation | 초대 | invitación |
 | Archive | 보관 | Archivar |
 | Sign in · Sign out | 로그인 · 로그아웃 | Iniciar sesión · Cerrar sesión |
@@ -2228,15 +2229,15 @@ Supabase를 골랐던 이유(2026-09-05)는 "개발자 도구이면서 비개발
 | 언어 | **Language** / **Base language** | locale, Source language | **언어** / **기준 언어** | 로케일, 원본 언어, 소스 언어 | **Idioma** / **Idioma base** | locale, configuración regional, idioma de origen |
 | OWNER 호칭 | **a project owner** (주어 자리 "Only project owners") | the project owner, an owner of this project, Only an owner | **프로젝트 소유자**(주어 자리 "프로젝트 소유자만") | 오너, 관리자, 이 프로젝트의 소유자 | **propietario del proyecto**(sujeto "Solo los propietarios del proyecto") | dueño, administrador |
 | 재시도 | **Try again** | Retry, Check again | **다시 시도** | 재시도, 다시 확인 | **Intentar de nuevo** | Reintentar, Volver a comprobar |
-| 동기화 실패 (2026-10-01 — 아래 행부터 상태 낱말 개념 색인, §2.4) | 배지 **Sync failed**(Logs 결과 배지만 **Failed** — 종류 배지가 앞에 선다) · 문장 **The last sync couldn't finish** 하나 | Sync could not finish, did not finish, failed on its first sync | 배지 **동기화 실패**(Logs 결과 배지 **실패**) · 문장 **마지막 동기화를 끝내지 못했습니다** 하나 | 동기화 오류, 동기화를 완료하지 못함 | insignia **Sincronización fallida**(Logs: **Fallida**) · frase **La última sincronización no pudo terminar** | error de sincronización, no se completó |
+| 동기화 실패 (2026-10-01 — 아래 행부터 상태 낱말 개념 색인, §2.4) | 배지 **Sync failed**(Logs 결과 배지만 **Failed** — 종류 배지가 앞에 선다) · 문장 **The last sync couldn't finish** 하나 | Sync could not finish, did not finish, failed on its first sync | 배지 **동기화 실패**(Logs 결과 배지 **실패**) · 문장 **마지막 동기화를 완료하지 못했습니다** 하나 | 동기화 오류, 동기화를 완료하지 못함 | insignia **Sincronización fallida**(Logs: **Fallida**) · frase **La última sincronización no pudo terminar** | error de sincronización, no se completó |
 | 복호화 실패 이름 | **Unavailable** | Couldn't be read | **사용할 수 없음** | 읽을 수 없음 | **No disponible** | No se pudo leer |
 | 일부 반영 | **Partially synced** | partial 문맥의 could not · did not come in · failed | **일부 동기화됨** | 일부 실패, 들어오지 못함 | **Sincronizado en parte** | falló, no se pudo(contexto parcial) |
 | 동기화 중 | **Syncing…** (Publish는 **Publishing…**) | Sync 문맥의 Running… | **동기화 중…** (게시는 **게시 중…**) | 실행 중… | **Sincronizando…** (**Publicando…**) | Ejecutando… |
 | 연결 끊김 결과 | **Syncs and publishes stop until it's reconnected.** | paused, 연결 문맥의 held | **다시 연결할 때까지 동기화와 게시가 멈춥니다.** | 일시 중지, 연결 문맥의 보류 | **Las sincronizaciones y publicaciones se detienen hasta que se vuelva a conectar.** | en pausa, retenido(contexto de conexión) |
 | 보류 | **Held** / "Repository updates are held until …" | on hold, deferred(CI 로그 인용 밖) | **보류** / "…까지 리포지토리 업데이트를 보류합니다" | 대기, 연기 | **Retenido** / "Las actualizaciones del repositorio se retienen hasta …" | en espera, aplazado |
-| 열린 PR 조회 실패 | **Couldn't check for an open pull request** — 목적어를 붙인다 | 홀로 서는 Couldn't check(연결 확인 실패 낱말이다) | **열린 풀 리퀘스트를 확인하지 못했습니다** — 목적어를 붙인다 | 홀로 서는 "확인하지 못함" | **No se pudo comprobar si hay una pull request abierta** | "No se pudo comprobar" suelto |
+| 열린 PR 조회 실패 | **Couldn't check for an open pull request** — 목적어를 붙인다 | 홀로 서는 Couldn't check(연결 확인 실패 낱말이다) | **열린 PR을 확인하지 못했습니다** — 목적어를 붙인다 | 홀로 서는 "확인하지 못함" | **No se pudo comprobar si hay una pull request abierta** | "No se pudo comprobar" suelto |
 | Publish 일부 보류 | **Held back** | Sync 문장의 held back | **제외됨** | 게시 문맥의 보류 | **Excluido** | retenido(contexto de publicación) |
-| 미전달 | 상태 **Unsent** · 명사 **unsent edit(s)** | unpublished, unsent change, not sent yet | 상태 **미전송** · 명사 **보내지 않은 편집** | 미게시, 미발행, 보내지 않은 변경 | estado **Sin enviar** · sustantivo **ediciones sin enviar** | sin publicar, cambios sin enviar |
+| 미전달 | 상태 **Unsent** · 명사 **unsent edit(s)** | unpublished, unsent change, not sent yet | 상태 **미전송** · 명사 **미전송 변경 사항** | 미게시, 미발행, 보내지 않은 변경 | estado **Sin enviar** · sustantivo **ediciones sin enviar** | sin publicar, cambios sin enviar |
 | 미번역 | **Untranslated** | Missing only | **미번역** | 누락만 | **Sin traducir** | Solo faltantes |
 | 연결 확인 실패 · 만료 | **Couldn't check** · **Expired** | Couldn't load, Authorization expired | **확인하지 못함** · **만료됨** | 불러오지 못함, 인증 만료 | **No se pudo comprobar** · **Caducado** | No se pudo cargar, autorización caducada |
 | 초대 철회 | **Revoke** / revoked | cancelled an invitation | **철회** / 철회됨 | 초대 취소 | **Revocar** / revocada | cancelar la invitación |
