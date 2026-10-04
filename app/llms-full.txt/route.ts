@@ -10,7 +10,8 @@ import { llmsFull } from "@/lib/seo/llms";
 export const dynamic = "force-static";
 
 export function GET(): Response {
-  const flat = flattenNav(loadSummary());
-  const sources = new Map(flat.map((item) => [item.file, loadSource(item.file)]));
+  // 크롤러는 쿠키가 없다 — 원문 en만 낸다(ui-locales design §6.1)
+  const flat = flattenNav(loadSummary("en"));
+  const sources = new Map(flat.map((item) => [item.file, loadSource("en", item.file)]));
   return new Response(llmsFull(flat, sources), { headers: { "content-type": "text/plain; charset=utf-8" } });
 }

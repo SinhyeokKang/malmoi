@@ -5,7 +5,7 @@ import { headings, parseMd } from "@/lib/guide/parse";
 import { flattenNav, parseSummary } from "@/lib/guide/summary";
 import { routes } from "@/lib/routes";
 import { docsSearchEntries } from "../docs-index";
-const read = (file: string) => parseMd(readFileSync(join(process.cwd(), "guide", file), "utf8"));
+const read = (file: string) => parseMd(readFileSync(join(process.cwd(), "guide", "en", file), "utf8"));
 describe("가이드 색인", () => {
   it("실물 SUMMARY 페이지와 표식 H2 전량·순서·주소가 맞는다", () => {
     const summary = parseSummary(read("SUMMARY.md"));

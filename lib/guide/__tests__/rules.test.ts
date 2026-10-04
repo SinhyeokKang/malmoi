@@ -56,7 +56,7 @@ describe("summaryDepth — 내비는 두 단만 그린다", () => {
 });
 
 describe("서빙 원고 — 렌더 규칙", () => {
-  const guide = join(process.cwd(), "guide");
+  const guide = join(process.cwd(), "guide", "en");
   const files = servedGuideFiles(guide);
 
   it("원고를 실제로 읽었다", () => {

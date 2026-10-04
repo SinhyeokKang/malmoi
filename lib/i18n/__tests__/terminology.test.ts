@@ -58,7 +58,8 @@ const strings = (): Found[] => {
  * 식별자라 코드로 쓰고, 그러면 표의 개념이 아니다. 헤딩의 `{#id}` 표식도 뗀다(`{#push}` 같은 id가 걸리지 않게).
  */
 function guideStrings(root: string): Found[] {
-  const dir = join(root, "guide");
+  // en 원고만 — 영어 금지어 색인이라서다. 언어별 대조는 ui-locales I3
+  const dir = join(root, "guide", "en");
   return servedGuideFiles(dir).flatMap((file) => {
     const out: Found[] = [];
     visit(parseMd(readFileSync(join(dir, file), "utf8")), (node) => {

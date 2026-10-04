@@ -15,9 +15,11 @@ import { routes } from "@/lib/routes";
 */
 vi.setConfig({ testTimeout: 20_000 });
 
-const mocks = vi.hoisted(() => ({ path: "/docs", replace: vi.fn() }));
+const mocks = vi.hoisted(() => ({ path: "/docs", replace: vi.fn(), uiLocale: "en" as "en" | "ko" }));
 
 vi.mock("@/lib/auth/read-session", () => ({ readSession: async () => ({ status: "none" }) }));
+// 화면 언어는 쿠키·세션에서 오고 렌더 요청 밖에서는 `cookies()`가 던진다 — 요청의 언어를 여기서 정한다
+vi.mock("@/lib/i18n/server", () => ({ getUiLocale: async () => mocks.uiLocale }));
 vi.mock("next/navigation", () => ({
   usePathname: () => mocks.path,
   useRouter: () => ({ replace: mocks.replace }),
@@ -29,6 +31,7 @@ vi.mock("next/navigation", () => ({
 beforeEach(() => {
   vi.stubGlobal("matchMedia", () => ({ matches: false, addEventListener() {}, removeEventListener() {} }));
   mocks.replace.mockReset();
+  mocks.uiLocale = "en";
 });
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -197,5 +200,21 @@ describe("`/docs/*` — JSON-LD", () => {
   it("장 개요 — 2항목", async () => {
     const { container } = await page(["translate"]);
     expect(ld(container)[0]?.[1]?.itemListElement?.map((crumb) => crumb.position)).toEqual([1, 2]);
+  });
+});
+
+describe("`/docs/*` — 화면 언어의 원고 (ui-locales design §6.1)", () => {
+  it("ko면 내비와 본문이 guide/ko에서 온다 — URL·절 id·이미지 경로는 en과 같다", async () => {
+    const en = await page(["translate", "edit"]);
+    const enImages = [...en.container.querySelectorAll("article img")].map((img) => img.getAttribute("src"));
+    const enIds = [...en.container.querySelectorAll("article h2")].map((h) => h.id);
+
+    mocks.uiLocale = "ko";
+    const { container } = await page(["translate", "edit"]);
+    expect(container.querySelector("article h1")?.textContent).toBe("번역 편집");
+    expect([...container.querySelectorAll("nav a")].some((a) => a.textContent === "프로젝트 설정" && a.getAttribute("href") === routes.docs("setup"))).toBe(true);
+    expect([...container.querySelectorAll("article img")].map((img) => img.getAttribute("src"))).toEqual(enImages);
+    expect([...container.querySelectorAll("article h2")].map((h) => h.id)).toEqual(enIds);
+    expect(enImages.length).toBeGreaterThan(0);
   });
 });

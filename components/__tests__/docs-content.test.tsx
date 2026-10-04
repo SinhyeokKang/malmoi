@@ -49,6 +49,6 @@ it("워크플로 모달에 저장 경로 문장이 한 번만 선다", async () 
 
 /** 링크 글자가 가리키는 페이지 제목과 같다(#121) — 다른 이름이면 누른 뒤 "여기가 맞나"를 다시 판단한다. */
 it("hook 안내 링크 글자가 대상 페이지(`setup/workflow`)의 h1과 같다", () => {
-  const h1 = headings(parseMd(readFileSync(join(process.cwd(), "guide/setup/workflow.md"), "utf8"))).find((heading) => heading.depth === 1);
+  const h1 = headings(parseMd(readFileSync(join(process.cwd(), "guide/en/setup/workflow.md"), "utf8"))).find((heading) => heading.depth === 1);
   expect(m.settings.workflow.hookDoc).toBe(h1?.text);
 });

@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-import { servedGuideFiles } from "@/lib/guide/__tests__/helpers/served";
+import { guideTrees, servedGuideFiles } from "@/lib/guide/__tests__/helpers/served";
 
 /**
  * **화면에 닿는 문구에서 제품 이름은 `Malmoi`이고, 식별자에서는 `malmoi`다** (2026-09-26 사용자 결정 —
@@ -100,8 +100,10 @@ function brandViolations(source: string): string[] {
  * 시작으로 먹혀 그 뒤 본문이 사라진다(`no-korean-ui.test.ts`와 같은 이유).
  */
 function guideScanned(root: string): { path: string; wrong: string[] }[] {
-  const dir = join(root, "guide");
-  return servedGuideFiles(dir).map((file) => ({ path: relative(root, join(dir, file)), wrong: brandViolations(readFileSync(join(dir, file), "utf8")) }));
+  // 제품 이름은 어느 언어 원고에서도 `Malmoi`다 — 존재하는 트리 전부
+  return guideTrees(join(root, "guide")).flatMap(({ dir }) =>
+    servedGuideFiles(dir).map((file) => ({ path: relative(root, join(dir, file)), wrong: brandViolations(readFileSync(join(dir, file), "utf8")) })),
+  );
 }
 
 function scanned(): { path: string; wrong: string[] }[] {
@@ -169,20 +171,20 @@ describe("제품 이름 표기 — 화면은 Malmoi, 식별자는 malmoi", () =>
 
 describe("원고 스캔 — 서빙되는 md만, 주석 벗기기 없이", () => {
   const FIXTURE = fileURLToPath(new URL("../../guide/__tests__/fixtures/scan", import.meta.url));
-  const formats = () => guideScanned(FIXTURE).find(({ path }) => path === "guide/formats.md")?.wrong ?? [];
+  const formats = () => guideScanned(FIXTURE).find(({ path }) => path === "guide/en/formats.md")?.wrong ?? [];
 
   it("SUMMARY에 오른 md만 훑는다 — 한국어 AUTHORING·SHOOTING은 틀린 표기를 들어도 무시된다", () => {
-    expect(guideScanned(FIXTURE).map(({ path }) => path)).toEqual(["guide/SUMMARY.md", "guide/formats.md"]);
+    expect(guideScanned(FIXTURE).map(({ path }) => path)).toEqual(["guide/en/SUMMARY.md", "guide/en/formats.md"]);
   });
 
   it("글롭 `/*` 뒤의 `MALMOI`가 잡힌다 — 벗기기를 건너뛰었다는 증거", () => {
-    const source = readFileSync(join(FIXTURE, "guide/formats.md"), "utf8");
+    const source = readFileSync(join(FIXTURE, "guide/en/formats.md"), "utf8");
     expect(brandViolations(stripComments(source)).some((hit) => hit.includes("MALMOI"))).toBe(false);
     expect(formats().some((hit) => hit.includes("MALMOI"))).toBe(true);
   });
 
   it("`//…` 뒤의 홀로 선 소문자도 잡힌다 — 줄 주석 벗기기를 건너뛰었다는 증거", () => {
-    const source = readFileSync(join(FIXTURE, "guide/formats.md"), "utf8");
+    const source = readFileSync(join(FIXTURE, "guide/en/formats.md"), "utf8");
     expect(brandViolations(stripComments(source)).some((hit) => hit.includes("then malmoi"))).toBe(false);
     expect(formats().some((hit) => hit.includes("then malmoi"))).toBe(true);
   });

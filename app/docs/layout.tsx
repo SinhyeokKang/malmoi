@@ -7,7 +7,8 @@ import { publicAccount } from "@/lib/auth/landing";
 import { readSession } from "@/lib/auth/read-session";
 import { docHref } from "@/lib/guide/href";
 import { loadSummary } from "@/lib/guide/load";
-import { m } from "@/lib/i18n";
+import { getUiLocale } from "@/lib/i18n/server";
+import { en } from "@/messages/en";
 import { DOCS_TITLE } from "@/lib/seo/site";
 
 export const metadata: Metadata = { title: { template: `%s · ${DOCS_TITLE}`, default: DOCS_TITLE } };
@@ -24,11 +25,12 @@ export const metadata: Metadata = { title: { template: `%s · ${DOCS_TITLE}`, de
  */
 export default async function DocsLayout({ children }: { children: ReactNode }) {
   const session = await readSession();
-  const nav = loadSummary();
+  // 내비 제목은 화면 언어의 SUMMARY다 — 본문(페이지)과 같은 트리를 읽어야 제목이 둘로 갈리지 않는다
+  const nav = loadSummary(await getUiLocale());
 
   return (
     <PublicShell account={publicAccount(session)} current="docs" bare>
-      <nav aria-label={m.publicDocs.docs.nav} className="border-border w-[264px] shrink-0 overflow-y-auto border-r p-4">
+      <nav aria-label={en.publicDocs.docs.nav} className="border-border w-[264px] shrink-0 overflow-y-auto border-r p-4">
         <ul className="m-0 list-none space-y-3 p-0">
           {nav.map((chapter) => (
             <li key={chapter.file}>

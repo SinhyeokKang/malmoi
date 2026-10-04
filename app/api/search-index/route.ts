@@ -5,5 +5,5 @@ import { docsSearchEntries } from "@/lib/search/docs-index";
 export const dynamic = "force-static";
 
 export function GET(): Response {
-  return Response.json({ docs: docsSearchEntries(loadSummary(), loadPage) });
+  return Response.json({ docs: docsSearchEntries(loadSummary("en"), (file) => loadPage("en", file)) });
 }

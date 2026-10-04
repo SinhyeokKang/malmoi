@@ -5,7 +5,7 @@ import { DocEyebrow, DocFrame } from "@/components/docs/doc-frame";
 
 import { RequestedPath } from "@/components/docs/requested-path";
 import { PublicScroller } from "@/components/public-shell/scroller";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { routes } from "@/lib/routes";
 
 /**
@@ -13,7 +13,7 @@ import { routes } from "@/lib/routes";
  * 목차·이전/다음 없음. `/docs` 밖 404는 이 화면을 쓰지 않는다(루트 `not-found`).
  */
 export default function DocsNotFound() {
-  const t = m.publicDocs.docs.notFound;
+  const t = en.publicDocs.docs.notFound;
   return (
     <PublicScroller>
       <DocFrame toc={[]}>

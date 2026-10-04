@@ -74,12 +74,12 @@ describe("공개 페이지 — canonical 있음 · noindex 없음", () => {
   });
 
   it("SUMMARY 전 항목 — 제목은 SUMMARY 제목 · 설명은 첫 문단(없으면 hero.body) · canonical 절대 URL", async () => {
-    const flat = flattenNav(loadSummary()).filter((item) => item.slug.length > 0);
+    const flat = flattenNav(loadSummary("en")).filter((item) => item.slug.length > 0);
     expect(flat.length).toBeGreaterThan(10);
     for (const item of flat) {
       const meta = await docsMetadata(item.slug);
       expect(meta.title).toBe(item.title);
-      expect(meta.description).toBe(leadParagraph(loadPage(item.file)) ?? m.landing.hero.body);
+      expect(meta.description).toBe(leadParagraph(loadPage("en", item.file)) ?? m.landing.hero.body);
       expect(meta.alternates).toEqual({ canonical: `https://mal-moi.com/docs/${item.slug.join("/")}` });
       expect((meta.openGraph as { images: unknown[] }).images).toEqual([OG_IMAGE]);
       expect(meta.robots).toBeUndefined();

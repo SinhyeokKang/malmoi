@@ -3,6 +3,7 @@ import { join } from "node:path";
 
 import { parseMd } from "@/lib/guide/parse";
 import { flattenNav, parseSummary } from "@/lib/guide/summary";
+import { UI_LOCALES, type UiLocale } from "@/lib/i18n/locales";
 
 /**
  * 화면에 닿는 원고 — `SUMMARY.md`(내비 제목) + 거기 오른 페이지. `guideDir` 기준 상대 경로.
@@ -17,4 +18,16 @@ export function servedGuideFiles(guideDir: string): string[] {
   const summary = join(guideDir, "SUMMARY.md");
   if (!existsSync(summary)) return [];
   return ["SUMMARY.md", ...flattenNav(parseSummary(parseMd(readFileSync(summary, "utf8")))).map((item) => item.file)];
+}
+
+/**
+ * **존재하는 언어 트리** — `guide/<uiLocale>/SUMMARY.md`가 있는 언어만, `UI_LOCALES` 순서로. en이 원문이라 맨 앞이다.
+ * ⚠️ 없는 언어는 빠진다 — 번역 원고가 다른 커밋에서 들어오므로 커밋마다 green이어야 한다(ui-locales tasks I1).
+ * 들어온 트리는 그때부터 구조 동형·문자열 게이트가 자동으로 붙잡는다.
+ */
+export function guideTrees(guideRoot: string): { uiLocale: UiLocale; dir: string }[] {
+  return UI_LOCALES.flatMap((uiLocale) => {
+    const dir = join(guideRoot, uiLocale);
+    return existsSync(join(dir, "SUMMARY.md")) ? [{ uiLocale, dir }] : [];
+  });
 }

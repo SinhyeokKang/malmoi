@@ -3,7 +3,8 @@ import type { List, Root } from "mdast";
 import { GuideError, toText } from "./parse";
 
 /**
- * `guide/` 루트의 비서빙 문서. SUMMARY에 오르면 오류이고, slug로 해소되지 않는다 — `/docs/AUTHORING`은 404다.
+ * 비서빙 문서. SUMMARY에 오르면 오류이고, slug로 해소되지 않는다 — `/docs/AUTHORING`은 404다.
+ * 매뉴얼은 언어 트리(`guide/<uiLocale>/`) 밖 `guide/` 루트에 있다 — 그래도 트리 안에 놓이면 서빙되지 않도록 이름으로 막는다.
  */
 const RESERVED = new Set(["AUTHORING.md", "SHOOTING.md", "SUMMARY.md"]);
 

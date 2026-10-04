@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { visit } from "unist-util-visit";
 
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { PROJECT_LIMIT } from "@/lib/onboarding/create-plan";
 import { PROJECT_SLUG_MAX } from "@/lib/onboarding/slug";
 import { INVITATION_HOURLY_LIMIT } from "@/lib/invitation-email/limits";
@@ -23,9 +23,12 @@ import { sectionByAnchor, leadParagraph, parseMdTable } from "../sections";
 import { flattenNav, parseSummary, slugToFile } from "../summary";
 
 const ROOT = fileURLToPath(new URL("../../..", import.meta.url));
-const GUIDE = join(ROOT, "guide");
+// 원문은 en 트리, 비서빙 매뉴얼(AUTHORING·SHOOTING)은 언어와 무관하게 guide/ 루트다
+const MANUALS = join(ROOT, "guide");
+const GUIDE = join(MANUALS, "en");
 const read = (file: string) => readFileSync(join(GUIDE, file), "utf8");
 const tree = (file: string) => parseMd(read(file));
+const manual = (file: string) => parseMd(readFileSync(join(MANUALS, file), "utf8"));
 const files = () => servedGuideFiles(GUIDE);
 const nav = () => flattenNav(parseSummary(tree("SUMMARY.md")));
 
@@ -82,8 +85,8 @@ describe("실물 가이드 본문 게이트", () => {
   });
 
   it("굵은 라벨은 사전(보이는 문자열) 또는 AUTHORING 허용 목록에만 있다", () => {
-    const allowed = new Set(dictionaryStrings(m, ARIA_ONLY));
-    const external = parseMdTable(tree("AUTHORING.md"), "external-labels") ?? [];
+    const allowed = new Set(dictionaryStrings(en, ARIA_ONLY));
+    const external = parseMdTable(manual("AUTHORING.md"), "external-labels") ?? [];
     for (const row of external) allowed.add(row["라벨"] ?? "");
     for (const file of files()) {
       for (const label of collectUiLabels(tree(file))) expect(allowed, `${file}:${label.line} ${label.text}`).toContain(label.text);
@@ -92,7 +95,7 @@ describe("실물 가이드 본문 게이트", () => {
 
   it("ARIA_ONLY의 경로가 사전에 실재한다 — 키 이름이 바뀌면 거름망이 조용히 비는 것을 막는다", () => {
     for (const path of ARIA_ONLY) {
-      let value: unknown = m;
+      let value: unknown = en;
       for (const key of path.split(".")) value = value !== null && typeof value === "object" && Object.hasOwn(value, key) ? (value as Record<string, unknown>)[key] : undefined;
       expect(value, path).toBeDefined();
       expect(typeof value === "function", path).toBe(false);
@@ -100,15 +103,15 @@ describe("실물 가이드 본문 게이트", () => {
   });
 
   it("aria 전용 축 이름을 굵은 라벨로 쓰면 red다 (카나리아)", () => {
-    const visible = dictionaryStrings(m, ARIA_ONLY);
-    for (const axis of [m.logs.filters.axis.kind, m.logs.filters.axis.actor, m.translations.workspace.filters.state.axis]) expect(visible.has(axis), axis).toBe(false);
+    const visible = dictionaryStrings(en, ARIA_ONLY);
+    for (const axis of [en.logs.filters.axis.kind, en.logs.filters.axis.actor, en.translations.workspace.filters.state.axis]) expect(visible.has(axis), axis).toBe(false);
   });
 
   it("촬영 매핑의 dict: 소스가 사전의 문자열 키다 — 오타면 guide:check가 deleted만 말한다", () => {
-    const rows = parseMdTable(tree("SHOOTING.md"), "shots") ?? [];
+    const rows = parseMdTable(manual("SHOOTING.md"), "shots") ?? [];
     const keys = shotDictKeys(rows.map((row) => ({ asset: row["에셋"] ?? "", sources: row["소스"] ?? "", blobs: row["blob"] ?? "" })));
     expect(keys.length).toBeGreaterThanOrEqual(2);
-    for (const key of keys) expect(dictDigest(m, key), key).not.toBeNull();
+    for (const key of keys) expect(dictDigest(en, key), key).not.toBeNull();
   });
 
   it("정본 상수와 기존 일곱 절을 원고가 보존한다", () => {
@@ -137,7 +140,7 @@ describe("실물 가이드 본문 게이트", () => {
     expect(search).toContain(`up to ${WORDS[SEARCH_GROUP_LIMIT]} results`);
     expect(search).toContain(`first ${Q_MAX_LENGTH} characters`);
     // 그룹명은 라벨 게이트로 안 묶인다 — 같은 낱말이 사전의 다른 자리에 있어서다. 사전 값으로 직접 단언한다.
-    for (const group of Object.values(m.search.groups)) expect(search, group).toContain(group);
+    for (const group of Object.values(en.search.groups)) expect(search, group).toContain(group);
   });
 
   // 에이전트 연결 조각의 정본은 가이드다 — `/mcp`의 Connect 카드를 걷은 뒤(2026-09-30) 앱 안 사본이 없다. 토큰은 원문이 아니라 환경변수 참조다.

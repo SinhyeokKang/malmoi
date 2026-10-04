@@ -52,7 +52,7 @@ describe("llmsIndex", () => {
   });
 
   it("실물 SUMMARY — 링크 수가 항목 수이고 두 번 생성해도 바이트가 같다", () => {
-    const real = loadSummary();
+    const real = loadSummary("en");
     const flat = flattenNav(real);
     const leads = new Map(flat.map((item) => [item.file, `lead of ${item.file}`]));
     const once = llmsIndex(real, leads);
@@ -99,8 +99,8 @@ describe("llmsFull", () => {
   });
 
   it("실물 원고 — Source 줄 수가 항목 수이고 두 번 생성해도 바이트가 같다", () => {
-    const flat = flattenNav(loadSummary());
-    const sources = new Map(flat.map((item) => [item.file, loadSource(item.file)]));
+    const flat = flattenNav(loadSummary("en"));
+    const sources = new Map(flat.map((item) => [item.file, loadSource("en", item.file)]));
     const once = llmsFull(flat, sources);
     expect(once.match(/^Source: https:\/\/mal-moi\.com\/docs/gm)).toHaveLength(flat.length);
     expect(llmsFull(flat, sources)).toBe(once);

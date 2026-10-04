@@ -12,7 +12,8 @@ import { OVERVIEW_TRACKS } from "@/lib/guide/overview";
 import { leadParagraph } from "@/lib/guide/sections";
 import { flattenNav, type NavNode } from "@/lib/guide/summary";
 import { extractToc } from "@/lib/guide/toc";
-import { m } from "@/lib/i18n";
+import { getUiLocale } from "@/lib/i18n/server";
+import { en } from "@/messages/en";
 import { docLd, jsonLdHtml } from "@/lib/seo/json-ld";
 import { DOCS_TITLE, pageMetadata, SITE_ORIGIN } from "@/lib/seo/site";
 
@@ -21,19 +22,21 @@ import { DOCS_TITLE, pageMetadata, SITE_ORIGIN } from "@/lib/seo/site";
  *
  * ⚠️ **없는 slug에는 canonical을 싣지 않는다** — 본문이 `notFound()`하고 Next가 noindex를 붙인다. 404에 canonical이 서면
  * soft-404 신호다.
+ * ⚠️ **메타는 en 원고에서 낸다** — 크롤러는 쿠키가 없고 URL이 언어와 무관하다(로케일 URL 비목표, ui-locales design §6.1).
+ * 화면 언어로 고르면 같은 URL의 `<title>`·canonical 설명이 방문자마다 달라진다.
  */
 export async function generateMetadata({ params }: { params: Promise<{ slug?: string[] }> }): Promise<Metadata> {
   const { slug = [] } = await params;
-  const page = loadPageBySlug(slug);
-  if (page === null) return { title: m.publicDocs.docs.notFound.title };
-  const description = leadParagraph(page.tree) ?? m.landing.hero.body;
+  const page = loadPageBySlug("en", slug);
+  if (page === null) return { title: en.publicDocs.docs.notFound.title };
+  const description = leadParagraph(page.tree) ?? en.landing.hero.body;
   if (slug.length === 0) return { ...pageMetadata({ title: DOCS_TITLE, description, path: docHref(slug) }), title: { absolute: DOCS_TITLE } };
-  const title = flattenNav(loadSummary()).find((item) => item.file === page.file)?.title ?? DOCS_TITLE;
+  const title = flattenNav(loadSummary("en")).find((item) => item.file === page.file)?.title ?? DOCS_TITLE;
   return pageMetadata({ title, description, path: docHref(slug) });
 }
 
 /**
- * `/docs`(개요) · `/docs/<slug>`(각 페이지) — 원고는 `guide/**.md`, 순서·계층은 `guide/SUMMARY.md` (DESIGN §6.61).
+ * `/docs`(개요) · `/docs/<slug>`(각 페이지) — 원고는 `guide/<uiLocale>/**.md`, 순서·계층은 그 트리의 `SUMMARY.md` (DESIGN §6.61).
  *
  * ⚠️ **동적이다** — 레이아웃이 세션을 읽는다(헤더 primary). `generateStaticParams`가 없고, 없는 slug·`AUTHORING`·`SHOOTING`은
  * `loadPageBySlug`가 null을 줘 `notFound()` 한 줄이다(`app/docs/not-found.tsx`가 내비 안에서 받는다).
@@ -41,13 +44,15 @@ export async function generateMetadata({ params }: { params: Promise<{ slug?: st
  * (해시가 있으면 그 h2 — `PublicScroller`).
  *
  * ⚠️ **인가를 지나지 않는다** — 공개 문서다(`entry-points.test.ts`의 `EXEMPT`).
+ * 원고는 화면 언어의 트리다(`getUiLocale` — 레이아웃과 병렬로 렌더되므로 각자 묻는다). 이미지는 언어 사이에 한 벌이다.
  */
 export default async function DocsPage({ params }: { params: Promise<{ slug?: string[] }> }) {
   const { slug = [] } = await params;
-  const page = loadPageBySlug(slug);
+  const uiLocale = await getUiLocale();
+  const page = loadPageBySlug(uiLocale, slug);
   if (page === null) notFound();
 
-  const nav = loadSummary();
+  const nav = loadSummary(uiLocale);
   const flat = flattenNav(nav);
   const index = flat.findIndex((item) => item.file === page.file);
   const self = flat[index];
@@ -55,7 +60,7 @@ export default async function DocsPage({ params }: { params: Promise<{ slug?: st
   const row = (item: { title: string; slug: string[]; file: string }): DocLinkRow => ({
     href: docHref(item.slug),
     title: item.title,
-    description: leadParagraph(loadPage(item.file)),
+    description: leadParagraph(loadPage(uiLocale, item.file)),
   });
   const neighbour = (item: (typeof flat)[number] | undefined) => (item ? { href: docHref(item.slug), title: item.title } : null);
 
@@ -69,7 +74,7 @@ export default async function DocsPage({ params }: { params: Promise<{ slug?: st
       return item;
     };
     const tracks = OVERVIEW_TRACKS.map((track) => ({
-      audience: m.publicDocs.docs[track.audience],
+      audience: en.publicDocs.docs[track.audience],
       chapter: row(pick(track.chapter)),
       pages: track.pages.map((key) => ({ href: docHref(pick(key).slug), title: pick(key).title })),
     }));
@@ -82,7 +87,7 @@ export default async function DocsPage({ params }: { params: Promise<{ slug?: st
         <DocFrame toc={[]}>
           <GuideMarkdown tree={page.tree} file={page.file} sizes={loadShotSizes()} />
           <DocTracks tracks={tracks} />
-          <h2 className="m-0 mt-14 text-2xl leading-[1.4] font-semibold">{m.publicDocs.docs.more}</h2>
+          <h2 className="m-0 mt-14 text-2xl leading-[1.4] font-semibold">{en.publicDocs.docs.more}</h2>
           <DocRows rows={rest} arrow={false} className="mt-4" />
         </DocFrame>
       </PublicScroller>
@@ -97,7 +102,7 @@ export default async function DocsPage({ params }: { params: Promise<{ slug?: st
   // ⚠️ 장 URL이 `slug[0]`인 것은 SUMMARY가 2단이라는 전제다 — `FlatNavItem.parent`는 제목 문자열뿐이다.
   const ld = docLd({
     title: self?.title ?? "",
-    description: leadParagraph(page.tree) ?? m.landing.hero.body,
+    description: leadParagraph(page.tree) ?? en.landing.hero.body,
     url: `${SITE_ORIGIN}${docHref(slug)}`,
     chapter: self?.parent ? { title: self.parent, url: `${SITE_ORIGIN}${docHref(slug.slice(0, 1))}` } : null,
   });

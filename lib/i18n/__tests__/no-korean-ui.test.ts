@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-import { servedGuideFiles } from "@/lib/guide/__tests__/helpers/served";
+import { guideTrees, servedGuideFiles } from "@/lib/guide/__tests__/helpers/served";
 
 /**
  * **화면에 닿는 소스에 한글 리터럴이 없다** (CLAUDE.md 코드 컨벤션).
@@ -109,8 +109,10 @@ const countKorean = (text: string): number => (text.match(/[가-힣]/g) ?? []).l
  * 같은 글롭의 `/*`를 블록 주석 시작으로 먹어 **그 뒤 본문이 통째로 사라진다**(거짓 음성).
  */
 function guideScanned(root: string): { path: string; korean: number }[] {
-  const dir = join(root, "guide");
-  return servedGuideFiles(dir).map((file) => ({ path: relative(root, join(dir, file)), korean: countKorean(readFileSync(join(dir, file), "utf8")) }));
+  // ko 트리만 한국어가 정상이다 — en·es 원고에 한글이 새면 그 언어 독자에게 깨진 문장이다(ui-locales design §6.1)
+  return guideTrees(join(root, "guide"))
+    .filter(({ uiLocale }) => uiLocale !== "ko")
+    .flatMap(({ dir }) => servedGuideFiles(dir).map((file) => ({ path: relative(root, join(dir, file)), korean: countKorean(readFileSync(join(dir, file), "utf8")) })));
 }
 
 function scanned(): { path: string; korean: number }[] {
@@ -184,13 +186,13 @@ describe("원고 스캔 — 서빙되는 md만, 주석 벗기기 없이", () => 
   const FIXTURE = fileURLToPath(new URL("../../guide/__tests__/fixtures/scan", import.meta.url));
 
   it("SUMMARY에 오른 md만 훑는다 — AUTHORING·SHOOTING·미등재 파일은 빠진다", () => {
-    expect(guideScanned(FIXTURE).map(({ path }) => path)).toEqual(["guide/SUMMARY.md", "guide/formats.md"]);
+    expect(guideScanned(FIXTURE).map(({ path }) => path)).toEqual(["guide/en/SUMMARY.md", "guide/en/formats.md"]);
   });
 
   it("글롭 `/*` 뒤의 한글이 잡힌다 — 벗기기를 건너뛰었다는 증거", () => {
-    const source = readFileSync(join(FIXTURE, "guide/formats.md"), "utf8");
+    const source = readFileSync(join(FIXTURE, "guide/en/formats.md"), "utf8");
     // 같은 본문을 벗기면 한글이 사라진다 — md에 벗기기를 걸면 이 검사가 조용해진다
     expect(countKorean(stripComments(source))).toBe(0);
-    expect(guideScanned(FIXTURE).find(({ path }) => path === "guide/formats.md")?.korean).toBeGreaterThan(0);
+    expect(guideScanned(FIXTURE).find(({ path }) => path === "guide/en/formats.md")?.korean).toBeGreaterThan(0);
   });
 });
