@@ -113,6 +113,9 @@ describe("readThemeTokens", () => {
     expect(on("--muted-foreground", "--muted")).toBeCloseTo(4.34, 1); // DESIGN §2.2
     expect(on("--destructive", "--background")).toBeCloseTo(4.83, 1); // DESIGN §2.3
     expect(on("--ring", "--background")).toBeCloseTo(2.54, 1); // DESIGN §7 링
-    expect(dark).toEqual(light); // light-dark가 없는 지금은 두 테마가 같다
+    // Phase 2부터 테마 토큰은 `light-dark()`다 — 다크 쪽이 시안 값(README §5)으로 풀린다.
+    expect(dark).not.toEqual(light);
+    expect(hex(dark["--background"]!)).toBe(hex(parseColor("oklch(20.5% 0 0)")!)); // neutral-900
+    expect(dark["--hue-amber"]).toEqual(light["--hue-amber"]); // 테마 불변 토큰은 두 테마가 같다
   });
 });

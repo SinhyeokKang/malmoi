@@ -299,7 +299,8 @@ describe("보관 — 네 화면이 같은 갈래를 그린다 (7단계)", () => 
    */
   it("인라인 링크가 등록된 `text-link` 토큰을 쓴다", () => {
     expect(read("app/globals.css")).toMatch(/--color-link:\s*var\(--link\)/);
-    expect(read("app/globals.css")).toMatch(/--link:\s*var\(--color-blue-600\)/);
+    // 라이트 값이 옛 `text-blue-600`과 같은 파랑이다(color-scheme — 다크 값은 `light-dark()` 둘째 인자).
+    expect(read("app/globals.css")).toMatch(/--link:\s*light-dark\(var\(--color-blue-600\),/);
     expect(read("components/ui/link.tsx")).toContain("text-link");
     for (const path of ["components/settings/ci-card.tsx", "components/sources/source-detail-modal.tsx", "components/sources/sources-screen.tsx"]) {
       expect(read(path), path).toContain("@/components/ui/link");

@@ -1,10 +1,11 @@
 @import "tailwindcss";
 
-/* ⚠️ 이 줄이 **라이트 고정의 유일한 장치다** — 지우지 말 것 (docs/DESIGN.md §3.1).
-   Tailwind v4는 `dark:`의 기본 동작이 prefers-color-scheme이다. 이 줄이 그걸 클래스
-   기반으로 덮어쓰고, `.dark`를 DOM에 붙이지 않으므로 `dark:` 유틸이 컴파일돼도 절대
-   매치되지 않는다. 지금 소스에 `dark:`는 0곳이지만(shadcn 생성물과 함께 사라졌다) 이 줄은
-   남긴다 — 누가 `dark:`를 하나 쓰는 순간 OS 다크에서 살아나는 경로를 막는 것이 요지다. */
+/* ⚠️ 이 줄이 **`dark:` 유틸을 죽여 두는 유일한 장치다** — 지우지 말 것 (docs/DESIGN.md §3 · color-scheme design §3.2).
+   다크는 **토큰 값이 든다**(아래 `:root`의 `light-dark()`) — 컴포넌트가 `dark:`로 분기하면 다크 값의 집이 이 파일과
+   수십 개 컴포넌트로 갈린다. Tailwind v4는 `dark:`의 기본 동작이 prefers-color-scheme이다. 이 줄이 그걸 클래스
+   기반으로 덮어쓰고, `.dark`를 DOM에 붙이지 않으므로(테마는 `data-theme` 속성이다) `dark:` 유틸이 컴파일돼도 절대
+   매치되지 않는다. 지금 소스에 `dark:`는 0곳이고(`visual-system.test.ts`가 센다) 이 줄은 남긴다 — 누가 `dark:`를
+   하나 쓰는 순간 OS 다크에서 살아나는 경로를 막는 것이 요지다. */
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -205,26 +206,26 @@
    */
   --radius: 0.75rem;
 
-  --background: hsl(0 0% 100%);
-  --foreground: hsl(0 0% 3.9%);
-  --popover: hsl(0 0% 100%);
-  --primary: hsl(0 0% 9%);
-  --primary-foreground: hsl(0 0% 98%);
+  --background: light-dark(hsl(0 0% 100%), var(--color-neutral-900));
+  --foreground: light-dark(hsl(0 0% 3.9%), var(--color-neutral-100));
+  --popover: light-dark(hsl(0 0% 100%), #1f1f1f);
+  --primary: light-dark(hsl(0 0% 9%), var(--color-neutral-100));
+  --primary-foreground: light-dark(hsl(0 0% 98%), #1f1f1f);
 
   /* ⚠️ accent == muted 가 같은 값이다 (DESIGN.md §2.1).
      muted 표면 위 컨트롤에 hover:bg-accent 는 무효다 — hover 피드백이 0이다. */
-  --muted: hsl(0 0% 96.1%);
-  --accent: hsl(0 0% 96.1%);
+  --muted: light-dark(hsl(0 0% 96.1%), var(--color-neutral-800));
+  --accent: light-dark(hsl(0 0% 96.1%), var(--color-neutral-800));
 
   /* ⚠️ background 위에선 4.75:1로 AA를 넘지만 muted 표면 위에선 4.34:1로 미달한다.
      muted 위 글자엔 text-foreground/60 을 쓴다 (DESIGN.md §2.2). */
-  --muted-foreground: hsl(0 0% 45.1%);
+  --muted-foreground: light-dark(hsl(0 0% 45.1%), var(--color-neutral-400));
 
   /* 글자색 전용이다 — 꽉 찬 bg-destructive 를 쓰지 않는다(면은 알파로만). red-600으로 흰 배경에서 4.83:1.
      shadcn 기본값 red-500은 3.76:1로 AA 미달이라 쓰지 않는다 (DESIGN.md §2.3). */
-  --destructive: hsl(0 72.2% 50.6%);
+  --destructive: light-dark(hsl(0 72.2% 50.6%), var(--color-red-400));
 
-  --border: hsl(0 0% 89.8%);
+  --border: light-dark(hsl(0 0% 89.8%), var(--color-neutral-800));
   /**
    * 시안 `color-semantic/divider/low` = **`#f5f6f7`**. 위 `--border`(`#e5e5e5`)보다 한 단계 연하다.
    *
@@ -233,9 +234,9 @@
    * 가장자리가 그림자에만 기댄다. 한 단계 진하게 두어 윤곽이 남게 한다 — 그래도 `--border`
    * (`#e5e5e5`)보다는 연해서 선이 도드라지지는 않는다.
    */
-  --border-subtle: rgb(233 236 239);
-  --divider: rgb(240 240 240);
-  --input: hsl(0 0% 89.8%);
+  --border-subtle: light-dark(rgb(233 236 239), #1f1f1f);
+  --divider: light-dark(rgb(240 240 240), #1e1e1e);
+  --input: light-dark(hsl(0 0% 89.8%), #3a3a3a);
 
   /**
    * 포커스 링 (2026-09-11 사용자 — 블루 계열로 전환).
@@ -265,7 +266,7 @@
    * ⚠️ **`--input`과 값이 갈렸다** — 필드 테두리는 쉬는 상태의 윤곽이고 링은 포커스 신호라 축이 다르다.
    * 둘을 다시 같게 두면 위 결함이 값만 바꿔 돌아온다(`globals-css.test.ts`가 `--border`와의 동일성을 센다).
    */
-  --ring: rgb(96 165 250);
+  --ring: light-dark(rgb(96 165 250), var(--color-blue-500));
 
   /* 코드 블록 타입스케일 단일 출처. ⚠️ **2026-09-23부터 mono는 코드 블록 전용이다** — 화면의
      식별자(키·slug·경로·토큰)는 전부 sans이고, 남은 자리는 워크플로 YAML `<pre>` 하나와 캐럿
@@ -277,7 +278,7 @@
 
   /**
    * 로그인 우측 장식의 도트 (8-1b). ⚠️ **여기 있는 이유는 Canvas가 유틸 클래스를 못 받아서다** —
-   * `components/signin/dot-field.tsx`가 `getComputedStyle`로 읽는다. tsx에 hex를 박으면 리포
+   * `components/signin/dot-field.tsx`가 캔버스의 `color: var(--signin-dot)`를 `getComputedStyle`로 읽는다(`light-dark()`라 변수를 직접 읽지 않는다). tsx에 hex를 박으면 리포
    * 최초의 인라인 색이 되고(§6.2), 값의 집이 둘이 된다.
    *
    * 시안은 `#006BFF` @5%이고 blue-600(`#2563eb`)으로 매핑했다 — 5% 투명도라 육안 차이가
@@ -287,7 +288,7 @@
    * ⚠️ **알파가 없다** — 투명도는 커서 거리에 따라 변하는 **인터랙션 값**이라 `dot-field.tsx`가
    * `globalAlpha`로 든다. 여기 알파를 박으면 두 곳이 곱해져 값이 조용히 어두워진다.
    */
-  --signin-dot: rgb(37 99 235);
+  --signin-dot: light-dark(rgb(37 99 235), var(--color-blue-400));
 
   /**
    * **앱 전체의 바깥 배경** (8-1b가 로그인 화면용으로 냈고 8-2가 이름에서 화면을 뗐다).
@@ -299,7 +300,7 @@
    * 두 번째 변수를 만드는 순간 값의 집이 둘로 갈린다.
    */
   /** 시안 `color-semantic/paper/surface-medium` = `#f5f6f7`. **로그인 우측 패널의 base도 이 색이다.** */
-  --canvas: rgb(245 246 247);
+  --canvas: light-dark(rgb(245 246 247), var(--color-neutral-950));
 
   /**
    * 우측 장식 패널의 그라데이션 (8-1b).
@@ -309,35 +310,38 @@
    * **그라데이션이 없으면 우측 패널이 배경과 구분되지 않고, 로그인 패널만 떠 있는 그림이 된다.**
    * 그것이 이 화면의 의도이므로 위쪽에서 그 상태로 수렴한다.
    */
-  --auth-hero-from: rgb(245 246 247);
-  --auth-hero-to: rgb(215 227 254);
+  --auth-hero-from: light-dark(rgb(245 246 247), var(--color-neutral-950));
+  --auth-hero-to: light-dark(rgb(215 227 254), var(--color-blue-950));
 
   /**
    * **의미 색** (color-scheme Phase 1 — 2026-10-05). 화면의 raw 팔레트 클래스가 전부 여기로 왔다.
    * **토큰 하나 = 다크에서 값이 따로 필요할 수 있는 뜻 하나**다 — 라이트 값이 같아도 뜻이 다르면 나눈다.
    *
-   * ⚠️ **값은 옮겨 온 raw 그대로다** — 팔레트 변수를 가리키고, 알파가 박혀 있던 것은 `color-mix`로 같은 색을 만든다.
+   * ⚠️ **`light-dark(라이트, 다크)` 한 줄이다**(color-scheme Phase 2) — 다크 값의 정본은 시안 핸드오프 README §5다. `[data-theme=dark]` 블록과
+   * System 미디어 블록에 두 벌 적지 않는다(한 벌만 고치면 명시 다크와 System 다크가 조용히 갈린다). 다크에서도 같은 값인 것(`hue-*`·`on-hue`·
+   * `scrim`·`warning-emphasis`)은 감싸지 않는다 — `globals-css.test.ts`의 테마 불변 목록이 그 이름을 든다.
+   * ⚠️ **라이트 값은 옮겨 온 raw 그대로다** — 팔레트 변수를 가리키고, 알파가 박혀 있던 것은 `color-mix`로 같은 색을 만든다.
    * 손으로 hex를 옮기지 않는다: v4 팔레트는 oklch라 hex 사본은 반올림만큼 어긋난다.
    * `globals-css.test.ts`가 이 값을 옮겨 온 raw와 문자열로 대조한다 — 값을 바꾸는 것은 시안의 일이다.
    * (어느 유틸도 안 쓰는 팔레트 변수도 `:root`에서 참조하면 빌드 CSS에 나온다 — 2026-10-05 실측, design §2.1.)
    */
-  --link: var(--color-blue-600);
-  --gray-light: var(--color-neutral-300);
-  --gray-dim: var(--color-neutral-400);
-  --gray-strong: var(--color-neutral-600);
+  --link: light-dark(var(--color-blue-600), var(--color-blue-400));
+  --gray-light: light-dark(var(--color-neutral-300), var(--color-neutral-700));
+  --gray-dim: light-dark(var(--color-neutral-400), var(--color-neutral-500));
+  --gray-strong: light-dark(var(--color-neutral-600), var(--color-neutral-300));
 
   /* 상태 — 면(Alert) · 칸(배지·아이콘 칸) · 그 위 글자 · 흰 표면 위 글자가 각각 다른 뜻이다. */
-  --success-surface: var(--color-green-50);
-  --success-soft: color-mix(in oklab, var(--color-green-100) 80%, transparent);
-  --success-foreground: var(--color-green-800);
-  --warning-surface: var(--color-amber-50);
-  --warning-soft: color-mix(in oklab, var(--color-amber-100) 80%, transparent);
-  --warning-soft-foreground: var(--color-amber-800);
-  --warning-foreground: var(--color-amber-700);
+  --success-surface: light-dark(var(--color-green-50), color-mix(in oklab, var(--color-green-500) 10%, transparent));
+  --success-soft: light-dark(color-mix(in oklab, var(--color-green-100) 80%, transparent), color-mix(in oklab, var(--color-green-500) 16%, transparent));
+  --success-foreground: light-dark(var(--color-green-800), var(--color-green-400));
+  --warning-surface: light-dark(var(--color-amber-50), color-mix(in oklab, var(--color-amber-500) 10%, transparent));
+  --warning-soft: light-dark(color-mix(in oklab, var(--color-amber-100) 80%, transparent), color-mix(in oklab, var(--color-amber-500) 16%, transparent));
+  --warning-soft-foreground: light-dark(var(--color-amber-800), var(--color-amber-300));
+  --warning-foreground: light-dark(var(--color-amber-700), var(--color-amber-400));
   /* 경고 막대·대기 테두리(`/50`) — 글자가 아니라 면·선이다. */
   --warning-emphasis: var(--color-amber-500);
-  --danger-surface: var(--color-red-50);
-  --info-surface: var(--color-blue-50);
+  --danger-surface: light-dark(var(--color-red-50), color-mix(in oklab, var(--color-red-500) 12%, transparent));
+  --info-surface: light-dark(var(--color-blue-50), color-mix(in oklab, var(--color-blue-500) 12%, transparent));
 
   /* 프로젝트·사람 식별색(이름 해시 — `components/ui/tone.ts`만 쓴다)과 그 위 글자. */
   --hue-rose: var(--color-rose-600);
@@ -357,23 +361,35 @@
   --scrim: hsl(0 0% 3.9%);
 
   /* Publish diff — 삭제(`-` 기호·삭제 낱말 면 `/[0.14]`)와 추가(`+` 기호·추가 낱말 면 `/[0.16]`)가 한 쌍이다. 성공·실패와 뜻이 다르다. */
-  --diff-removed: var(--color-red-700);
-  --diff-added: var(--color-green-800);
+  --diff-removed: light-dark(var(--color-red-700), var(--color-red-400));
+  --diff-added: light-dark(var(--color-green-800), var(--color-green-400));
 
   /* Logs 종류 칩(면·글자) — 상태가 아니라 종류다. `info-surface`와 라이트 값이 같아도 뜻이 달라 나눈다. */
-  --kind-blue-surface: var(--color-blue-50);
-  --kind-blue: var(--color-blue-700);
-  --kind-teal-surface: var(--color-teal-50);
-  --kind-teal: var(--color-teal-700);
-  --kind-violet-surface: var(--color-violet-50);
-  --kind-violet: var(--color-violet-700);
+  --kind-blue-surface: light-dark(var(--color-blue-50), color-mix(in oklab, var(--color-blue-500) 14%, transparent));
+  --kind-blue: light-dark(var(--color-blue-700), var(--color-blue-300));
+  --kind-teal-surface: light-dark(var(--color-teal-50), color-mix(in oklab, var(--color-teal-500) 14%, transparent));
+  --kind-teal: light-dark(var(--color-teal-700), var(--color-teal-300));
+  --kind-violet-surface: light-dark(var(--color-violet-50), color-mix(in oklab, var(--color-violet-500) 16%, transparent));
+  --kind-violet: light-dark(var(--color-violet-700), var(--color-violet-300));
 
   /* 흰 카드 안 한 단계 꺼진 면(Logs 상세의 Before·빈 값 상자). `--muted`(#f5f5f5)보다 한 단계 연하다. */
-  --surface-subtle: var(--color-neutral-50);
+  --surface-subtle: light-dark(var(--color-neutral-50), #121212);
 
   /** elevation 둘(`@theme`의 `--shadow-low/medium`)의 색. 유틸 재료가 아니라 등록하지 않는다(`globals-css.test.ts` `UNREGISTERED`). */
-  --shadow-color: rgb(22 24 27);
+  --shadow-color: light-dark(rgb(22 24 27), var(--color-black));
 }
+
+/*
+ * **테마는 `<html data-theme>`이 고르고 값은 위 `light-dark()`가 든다** (color-scheme design §3.1). 루트 레이아웃이 서버에서
+ * 속성을 싣고(쿠키·계정), System은 `light dark`라 OS 변경을 CSS만으로 따라간다 — 인라인 스크립트가 없다.
+ * ⚠️ **이 세 블록은 본문 `:root {` 뒤에 둔다** — `globals-css.test.ts`·대비 헬퍼가 **첫** `:root {`를 본문으로 잡는다.
+ * ⚠️ **산출 CSS에 `light-dark()`가 남지 않는다**(2026-10-05 P2-0 실측) — Next의 lightningcss가 기본 대상에 맞춰
+ * `--lightningcss-light/dark` 토글 폴리필로 낮추고, 이 세 블록(System의 미디어 쿼리 포함)도 그 토글로 바꾼다. 그래서
+ * `color-scheme`을 고르는 자리가 여기 하나여야 한다 — 다른 자리에서 `color-scheme`을 바꾸면 네이티브 컨트롤만 바뀌고 토큰은 안 따라간다.
+ */
+:root { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
+:root[data-theme="system"] { color-scheme: light dark; }
 
 /* text-mono 유틸 — 글꼴·13px·18px 셋을 한 클래스로 싣는다. text-[13px] 임의값을 쓰면 행간이
    따라오지 않아 표면마다 갈린다 (DESIGN.md §4.1).

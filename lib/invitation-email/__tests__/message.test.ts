@@ -386,7 +386,19 @@ describe("HUE_HEX", () => {
   const globals = readFileSync("app/globals.css", "utf8");
   // 실제 앱의 override/별칭을 기본 팔레트 뒤에 적용한다. 이메일 런타임에는 CSS를 넣지 않는다.
   const css = `${readFileSync("node_modules/tailwindcss/theme.css", "utf8")}\n${globals}`;
-  const variables = new Map([...css.matchAll(/^\s*(--[\w-]+):\s*([^;]+);/gm)].map((match) => [match[1]!, match[2]!.trim()]));
+  // ⚠️ 앱 토큰은 `light-dark(라이트, 다크)`다(color-scheme Phase 2). 메일은 라이트 고정(`color-scheme: light` 메타)이라 **라이트 쪽**과 대조한다.
+  const lightSide = (value: string): string => {
+    const body = /^light-dark\(([\s\S]*)\)$/.exec(value)?.[1];
+    if (body === undefined) return value;
+    let depth = 0;
+    for (let i = 0; i < body.length; i++) {
+      if (body[i] === "(") depth++;
+      else if (body[i] === ")") depth--;
+      else if (body[i] === "," && depth === 0) return body.slice(0, i).trim();
+    }
+    return value;
+  };
+  const variables = new Map([...css.matchAll(/^\s*(--[\w-]+):\s*([^;]+);/gm)].map((match) => [match[1]!, lightSide(match[2]!.trim())]));
 
   function channelsHex(channels: number[]): string {
     if (!channels.every(Number.isFinite)) throw new Error("비유한 색 채널");

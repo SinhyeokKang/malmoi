@@ -53,7 +53,7 @@ describe("globals.css — text-mono 유틸", () => {
     expect(CSS).not.toMatch(/^\s*--text-mono/m);
   });
 
-  it("라이트 고정 장치가 그대로다", () => {
+  it("`dark:` 차단 장치가 그대로다 — 다크는 토큰 값이 든다", () => {
     expect(CSS).toContain("@custom-variant dark (&:is(.dark *));");
   });
 });
@@ -183,6 +183,21 @@ describe("globals.css — 토큰 등록", () => {
   });
 });
 
+/** `light-dark(a, b)`면 [a, b], 아니면 두 테마 같은 값 [v, v]. 최상위 쉼표로만 가른다(`color-mix(…, transparent)`의 쉼표는 안쪽이다). */
+function themes(value: string | undefined): [string, string] | null {
+  if (value === undefined) return null;
+  const body = /^light-dark\(([\s\S]*)\)$/.exec(value)?.[1];
+  if (body === undefined) return [value, value];
+  let depth = 0;
+  for (let i = 0; i < body.length; i++) {
+    const ch = body[i];
+    if (ch === "(") depth++;
+    else if (ch === ")") depth--;
+    else if (ch === "," && depth === 0) return [body.slice(0, i).trim(), body.slice(i + 1).trim()];
+  }
+  throw new Error(`light-dark()에 인자가 둘이 아니다: ${value}`);
+}
+
 /**
  * **의미 색의 라이트 값은 옮겨 온 raw 그대로다** (color-scheme Phase 1 — spec 완료 조건 3·4, design §2.2).
  *
@@ -233,11 +248,12 @@ describe("globals.css — 의미 색 토큰", () => {
   };
 
   it.each(Object.entries(LIGHT))("%s의 라이트 값이 옮겨 온 raw와 같다", (name, value) => {
-    expect(declared.get(name)).toBe(value);
+    expect(themes(declared.get(name))?.[0]).toBe(value);
   });
 
-  it("오버레이 토큰이 지금의 `--foreground`와 같은 색이다", () => {
-    expect(declared.get("--scrim")).toBe(declared.get("--foreground"));
+  it("오버레이 토큰이 `--foreground`의 라이트 값과 같은 색이다 — 다크에서는 갈린다(덮개는 계속 어둡다)", () => {
+    expect(themes(declared.get("--scrim"))?.[0]).toBe(themes(declared.get("--foreground"))?.[0]);
+    expect(themes(declared.get("--scrim"))?.[1]).not.toBe(themes(declared.get("--foreground"))?.[1]);
   });
 
   it("`@theme inline`이 팔레트를 별칭으로 들지 않는다 — 모든 색 유틸의 값은 `:root`에서 온다", () => {
@@ -253,6 +269,113 @@ describe("globals.css — 의미 색 토큰", () => {
     }
     expect(theme).toMatch(/--shadow-low:[^;]*var\(--shadow-color\) 5%/);
     expect(theme).toMatch(/--shadow-medium:[^;]*var\(--shadow-color\) 15%/);
+  });
+});
+
+/**
+ * **다크 값은 시안 핸드오프 README §5 표 그대로다** (color-scheme Phase 2 — design §3.8). 표기는 Tailwind 이름 또는 hex, `@N%`는
+ * `color-mix(in oklab, … N%, transparent)`. 값을 바꾸는 것은 시안의 일이다 — 여기서 고치면 대비 검사(`lib/color-scheme/__tests__/contrast.test.ts`)도 같이 본다.
+ *
+ * ⚠️ **색 변수 하나가 `light-dark()` 한 줄이다** — `[data-theme=dark]`·System 미디어 블록에 두 벌 적으면 한 벌만 고쳐 명시 다크와 System 다크가 조용히 갈린다.
+ * 두 테마 같은 값은 감싸지 않고 `THEME_INVARIANT`에 이유와 함께 둔다.
+ */
+describe("globals.css — 다크 값 (light-dark)", () => {
+  const root = /:root\s*\{([\s\S]*?)\n\}/.exec(CSS)?.[1] ?? "";
+  const declared = new Map([...root.matchAll(/^\s*(--[\w-]+):\s*([^;]+);/gm)].map((m) => [m[1]!, m[2]!.replace(/\s+/g, " ").trim()]));
+  const NOT_COLOR = new Set(["--radius", "--mono-size", "--mono-leading"]);
+  const p = (name: string) => `var(--color-${name})`;
+  const a = (name: string, percent: number) => `color-mix(in oklab, var(--color-${name}) ${percent}%, transparent)`;
+
+  /** 다크에서도 같은 값 — 이유가 없으면 이 목록에 더하지 않는다. */
+  const THEME_INVARIANT: Readonly<Record<string, string>> = {
+    "--hue-rose": "식별색 — 같은 사람·프로젝트는 테마와 무관하게 같은 색(시안 §5.2 · DESIGN §2)",
+    "--hue-orange": "식별색",
+    "--hue-amber": "식별색",
+    "--hue-emerald": "식별색",
+    "--hue-teal": "식별색",
+    "--hue-sky": "식별색",
+    "--hue-indigo": "식별색",
+    "--hue-fuchsia": "식별색",
+    "--on-hue": "식별색 위 흰 글자 — 면이 그대로라 글자도 그대로",
+    "--scrim": "덮개는 다크에서도 어둡게 덮는다(design §2.2)",
+    "--warning-emphasis": "시안 §5.2 '그대로' — 호박 막대·대기 테두리는 두 테마 같은 값",
+  };
+
+  const DARK: Readonly<Record<string, string>> = {
+    "--background": p("neutral-900"),
+    "--foreground": p("neutral-100"),
+    "--popover": "#1f1f1f",
+    "--primary": p("neutral-100"),
+    "--primary-foreground": "#1f1f1f",
+    "--muted": p("neutral-800"),
+    "--accent": p("neutral-800"),
+    "--muted-foreground": p("neutral-400"),
+    "--destructive": p("red-400"),
+    "--border": p("neutral-800"),
+    "--border-subtle": "#1f1f1f",
+    "--divider": "#1e1e1e",
+    "--input": "#3a3a3a",
+    "--ring": p("blue-500"),
+    "--signin-dot": p("blue-400"),
+    "--canvas": p("neutral-950"),
+    "--auth-hero-from": p("neutral-950"),
+    "--auth-hero-to": p("blue-950"),
+    "--link": p("blue-400"),
+    "--gray-light": p("neutral-700"),
+    "--gray-dim": p("neutral-500"),
+    "--gray-strong": p("neutral-300"),
+    "--success-surface": a("green-500", 10),
+    "--success-soft": a("green-500", 16),
+    "--success-foreground": p("green-400"),
+    "--warning-surface": a("amber-500", 10),
+    "--warning-soft": a("amber-500", 16),
+    "--warning-soft-foreground": p("amber-300"),
+    "--warning-foreground": p("amber-400"),
+    "--danger-surface": a("red-500", 12),
+    "--info-surface": a("blue-500", 12),
+    "--diff-removed": p("red-400"),
+    "--diff-added": p("green-400"),
+    "--kind-blue-surface": a("blue-500", 14),
+    "--kind-blue": p("blue-300"),
+    "--kind-teal-surface": a("teal-500", 14),
+    "--kind-teal": p("teal-300"),
+    "--kind-violet-surface": a("violet-500", 16),
+    "--kind-violet": p("violet-300"),
+    // 시안·핸드오프의 `subtle` = 코드 `surface-subtle`(background보다 한 단계 어둡게 — design §3.8).
+    "--surface-subtle": "#121212",
+    "--shadow-color": p("black"),
+  };
+
+  const colors = [...declared.keys()].filter((name) => !NOT_COLOR.has(name));
+
+  it("본문 `:root`를 읽었다 — 정규식이 조용히 빈 표가 되지 않는다", () => {
+    expect(colors.length).toBeGreaterThan(50);
+  });
+
+  it("색 변수는 전부 `light-dark()`이거나 테마 불변 목록에 있다 — 둘 다는 아니다", () => {
+    const wrapped = colors.filter((name) => declared.get(name)!.startsWith("light-dark("));
+    expect(colors.filter((name) => !wrapped.includes(name)).sort()).toEqual(Object.keys(THEME_INVARIANT).sort());
+    expect(wrapped.sort()).toEqual(Object.keys(DARK).sort());
+  });
+
+  it.each(Object.entries(DARK))("%s의 다크 값이 시안과 같다", (name, value) => {
+    expect(themes(declared.get(name))?.[1]).toBe(value);
+  });
+
+  it("`light-dark()`는 본문 `:root` 밖에 없다 — 테마 값의 집이 한 곳이다", () => {
+    expect(consumingSource(CSS).match(/light-dark\(/g) ?? []).toEqual([]);
+  });
+
+  /**
+   * ⚠️ **`color-scheme` 세 블록은 본문 `:root {` 뒤에 선다** (design §3.1) — 이 파일의 정규식과 대비 헬퍼가 **첫** `:root {`를 본문으로 잡는다.
+   * 서버가 `<html data-theme>`을 싣고 System은 `light dark`라 OS 변경을 CSS만으로 따라간다.
+   */
+  it("`color-scheme`이 `data-theme` 셋으로 갈리고 본문 뒤에 선다", () => {
+    const bodyEnd = CSS.indexOf(root) + root.length;
+    const blocks = [...CSS.matchAll(/(:root(?:\[data-theme="(\w+)"\])?)\s*\{\s*color-scheme:\s*([^;]+);\s*\}/g)];
+    expect(blocks.map((m) => [m[2] ?? "(default)", m[3]])).toEqual([["(default)", "light"], ["dark", "dark"], ["system", "light dark"]]);
+    for (const m of blocks) expect(m.index).toBeGreaterThan(bodyEnd);
+    expect(CSS.match(/color-scheme:/g)).toHaveLength(3);
   });
 });
 

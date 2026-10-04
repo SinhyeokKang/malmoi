@@ -199,12 +199,13 @@ describe("토스트 배선", () => {
   const toast = read(TOAST);
 
   /**
-   * ⚠️ **`theme="light"`를 안 주면 OS 다크에서 토스트만 어두워진다** — `sonner`가 테마를
-   * 스스로 감지하므로, 라이트 단일(DESIGN §3)이 **그 컴포넌트에서만** 깨진다.
+   * ⚠️ **`theme`을 안 주면 OS 테마에 따라 토스트만 다른 테마가 된다** — `sonner`가 테마를 스스로 감지한다.
+   * 화면 테마(`<html data-theme>`)와 같은 값을 넘긴다(color-scheme design §3.5 — 8-1b의 `"light"` 고정을 바꿨다).
    */
-  it("Toaster가 라이트로 고정돼 있다", () => {
+  it("Toaster가 화면 테마를 받는다", () => {
     expect(layout).toMatch(/<Toaster\b/);
-    expect(layout).toMatch(/theme="light"/);
+    expect(layout).toMatch(/theme=\{colorScheme\}/);
+    expect(layout).not.toMatch(/theme="light"/);
   });
 
   /** ⚠️ StrictMode에서 effect가 두 번 돌아 **토스트가 둘**이 된다 — 같은 id는 갱신된다. */

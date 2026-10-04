@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { connection } from "next/server";
+import type { CSSProperties } from "react";
 import { Toaster } from "sonner";
 
 import { SiteAnalytics } from "@/components/analytics";
 import { MessagesProvider } from "@/components/i18n/messages-provider";
 import { NavigationDim } from "@/components/shell/navigation-dim";
 import { en } from "@/messages/en";
+import { getColorScheme } from "@/lib/color-scheme/server";
 import { getDateStyle, getUiLocale } from "@/lib/i18n/server";
 import { OG_IMAGE, SITE_ORIGIN } from "@/lib/seo/site";
 
@@ -37,6 +39,9 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image", images: [OG_IMAGE.url] },
 };
 
+/** sonner가 껍데기 밖 부품(액션 버튼·닫기)에 쓰는 변수 — 토큰에 묶는다(아래 `Toaster` 주석). */
+const SONNER_TOKENS = { "--normal-bg": "var(--popover)", "--normal-border": "var(--border)", "--normal-text": "var(--foreground)" } as CSSProperties;
+
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   /*
     ⚠️ **전 페이지를 요청마다 렌더한다** (sec-audit-3 #11). CSP nonce는 요청마다 새로 나오고 Next는 렌더 중에 그것을
@@ -46,13 +51,18 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   await connection();
   const uiLocale = await getUiLocale();
   const { timeZone } = await getDateStyle();
+  const colorScheme = await getColorScheme();
   return (
     /*
       ⚠️ **`lang`은 요청의 화면 언어다** (ui-locales D3) — 틀리면 스크린리더가 영어 문장을 한국어 음성 엔진으로 읽는다
       (2026-09-08 ship 4가 `"en"`으로 고정한 이유). `:lang(ko)` 줄바꿈 규칙도 이 값이 켠다.
       ⚠️ 언어를 여기서 정해 아래로 흘려보내지 않는다 — 페이지는 레이아웃과 병렬로 렌더되므로 각자 `getMessages()`를 부른다.
+
+      ⚠️ **`data-theme`이 화면 테마의 유일한 입구다** (color-scheme design §3.1·§3.4). 서버가 쿠키·계정으로 정해 첫 HTML에 싣는다 —
+      깜빡임도 인라인 스크립트도 없다. 값은 `globals.css`의 `light-dark()`가 이 속성 셋(`light`·`dark`·`system`)으로 고른다.
+      컴포넌트는 묻지 않는다(훅·provider 없음). Theme 카드만 고르는 즉시 이 속성을 직접 바꾼다.
     */
-    <html lang={uiLocale} className={geist.variable}>
+    <html lang={uiLocale} className={geist.variable} data-theme={colorScheme}>
       <head>
         {/*
           Pretendard 동적 서브셋. globals.css의 @import가 아니라 <link>로 넣는다 —
@@ -73,29 +83,35 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <MessagesProvider uiLocale={uiLocale} timeZone={timeZone}>
           {children}
           {/*
-            ⚠️ **`theme="light"`가 필수다** (8-1b). `sonner`는 테마를 **스스로 감지**하므로 이 값이
-            없으면 OS 다크에서 토스트만 어두워지고, 라이트 단일(DESIGN §3)이 **그 컴포넌트에서만**
-            깨진다. `globals.css`의 `@custom-variant dark`는 우리 `dark:` 유틸만 막지 남의
-            패키지 내부 스타일은 못 막는다.
+            ⚠️ **`theme`에 화면 테마를 넘긴다** (color-scheme design §3.5 — 8-1b에선 `"light"` 고정이었다). `sonner`는 테마를 **스스로
+            감지**하므로 안 넘기면 OS 다크에서 토스트만 다른 테마가 된다. 값 집합(`system|light|dark`)이 `COLOR_SCHEMES`와 같다.
+            `globals.css`의 `@custom-variant dark`는 우리 `dark:` 유틸만 막지 남의 패키지 내부 스타일은 못 막는다.
+
+            ⚠️ **sonner 변수(`--normal-bg/border/text`)를 `style`로 토큰에 묶는다** (2026-10-05 P2-0 ④ 실측). sonner CSS의
+            `[data-sonner-toaster][data-sonner-theme=dark]`가 그 변수를 `#000`·`hsl(0 0% 20%)`로 두고, 껍데기 밖 부품(액션 버튼
+            `[data-button]` · 닫기)은 `classNames`가 아니라 그 변수를 읽는다 — 안 묶으면 다크에서 그 부품만 sonner 색이다.
+            `style`은 그 `<ol>`의 인라인이라 sonner 선택자와 특이도를 겨루지 않는다(`globals.css` 규칙이면 주입 순서·특이도에 기댄다).
 
             ⚠️ **`classNames`로 우리 토큰에 묶는다** — 안 묶으면 `sonner`가 자기 배경·테두리·radius를
             주입해 규약 5("CSS는 Tailwind로") 밖의 **두 번째 CSS 출처**가 되고, `Alert`와 같은 뜻을
-            다른 형으로 말한다.
+            다른 형으로 말한다. 면은 `popover`다 — 떠 있는 층이다(라이트에서는 `background`와 같은 값).
 
             ⚠️ **유틸마다 `!`(important)를 붙인다** (#184) — `sonner`의 `[data-sonner-toast][data-styled=true]`는
             **CSS 레이어 밖**이라 Tailwind의 `@layer utilities` 일반 선언을 이긴다(`!` 없이는 radius 8·#ededed·0 4px 12px가
             그대로 나왔다). important는 일반 선언을 레이어와 무관하게 넘는다. 고정은 `app/__tests__/toaster-specificity.test.ts`.
+            설명 글자도 같다 — `[data-description]`이 `#3f3f3f`(다크 `hsl(0 0% 91%)`)를 들어 `!` 없는 유틸은 진다(P2-0 실측).
 
             ⚠️ **루트에 둔다** — 8단계가 화면마다 토스트를 쓰므로 화면별로 두면 사본이 늘어난다.
           */}
           <Toaster
-            theme="light"
+            theme={colorScheme}
             position="bottom-right"
+            style={SONNER_TOKENS}
             toastOptions={{
               classNames: {
-                toast: "bg-background! border-border! text-foreground! rounded-lg! border! shadow-sm!",
+                toast: "bg-popover! border-border! text-foreground! rounded-lg! border! shadow-sm!",
                 icon: "[&>svg]:size-4!",
-                description: "text-muted-foreground",
+                description: "text-muted-foreground!",
                 actionButton: "bg-primary text-primary-foreground",
                 closeButton: "bg-background border-border text-muted-foreground",
               },

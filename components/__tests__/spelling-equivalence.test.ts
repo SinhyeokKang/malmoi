@@ -26,13 +26,27 @@ async function compiled(candidate: string): Promise<{ css: string; utilities: st
   return { css, utilities };
 }
 
+/** `light-dark(a, b)` → a. 최상위 쉼표로 가른다(`color-mix(…, transparent)`의 쉼표는 안쪽이다). */
+function lightSide(value: string): string {
+  const body = /^light-dark\(([\s\S]*)\)$/.exec(value)?.[1];
+  if (body === undefined) return value;
+  let depth = 0;
+  for (let i = 0; i < body.length; i++) {
+    if (body[i] === "(") depth++;
+    else if (body[i] === ")") depth--;
+    else if (body[i] === "," && depth === 0) return body.slice(0, i).trim();
+  }
+  return value;
+}
+
 function resolved(css: string, value: string): string {
   // 실제 루트 선언만 푼다. 색 합성·단위 변환·반올림은 하지 않는다.
   // ⚠️ `:root`의 `color-mix` 값에는 Tailwind가 폴백 + `@supports` 재선언을 붙인다 — 한 단계 중첩까지 읽고 뒤 선언(최신 브라우저 값)이 이긴다.
+  // ⚠️ 테마 토큰은 `light-dark(라이트, 다크)`다(color-scheme Phase 2) — 철자 동치는 옛 raw 철자와의 대조라 **라이트 쪽**을 편다.
   const variables = new Map<string, string>();
   for (const rule of css.matchAll(/:root(?:,\s*:host)?\s*\{((?:[^{}]|\{[^{}]*\})*)\}/g)) {
     for (const declaration of (rule[1] ?? "").matchAll(/(--[\w-]+):\s*([^;]+);/g)) {
-      variables.set(declaration[1]!, declaration[2]!.trim());
+      variables.set(declaration[1]!, lightSide(declaration[2]!.trim()));
     }
   }
   const expand = (input: string, seen: Set<string>): string => input.replace(/var\((--[\w-]+)\)/g, (original, name: string) => {
