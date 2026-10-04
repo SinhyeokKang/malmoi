@@ -25,7 +25,7 @@ A 409 can mean the project is archived, the project or source does not match, th
 
 If the run log shows `deferred`, the update is held, and Logs shows it as **Held**. If saved edits are unsent, publish them and run the workflow again. With `open-pr`, a Malmoi pull request is still open: merge or close it. With `pr-check-failed`, Malmoi couldn't check GitHub; run the workflow again later.
 
-If **Publish** is disabled, there may be nothing unsent (“Everything you've edited is already sent.”), GitHub may not be connected, the project may be archived, or Sync may be running (“Publishing is currently unavailable.”). See [Publish your changes](../translate/publish.md#publish) for the editor path. Project owners can fix the connection or wait for Sync.
+If **Publish** is disabled, there may be nothing unsent (“Nothing to send — every edit is already sent.”), GitHub may not be connected, the project may be archived, or Sync may be running (“Publishing is currently unavailable.”). See [Publish your changes](../translate/publish.md#publish) for the editor path. Project owners can fix the connection or wait for Sync.
 
 A commit containing `[skip-malmoi-i18n]` is skipped; read that result in the workflow run log.
 

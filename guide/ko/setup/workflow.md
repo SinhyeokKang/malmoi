@@ -2,14 +2,14 @@
 
 생성된 GitHub Actions 워크플로를 추가해 리포지토리의 변경이 Malmoi에 들어오게 합니다.
 
-시작하기 전에: **Malmoi 준비 완료** 페이지의 push 토큰을 준비합니다. 워크플로 파일을 커밋하기 전에 secret부터 저장하세요.
+시작하기 전에: **Malmoi 준비 완료** 페이지의 푸시 토큰을 준비합니다. 워크플로 파일을 커밋하기 전에 secret부터 저장하세요.
 
 ## secret 저장 {#push-token}
 
 1. GitHub에서 리포지토리의 **Settings**를 열고 **Secrets and variables**, 이어서 **Actions**를 선택합니다.
-2. **New repository secret**을 선택하고 `PUSH_TOKEN`을 입력한 뒤 push 토큰을 붙여 넣고 저장합니다.
+2. **New repository secret**을 선택하고 `PUSH_TOKEN`을 입력한 뒤 푸시 토큰을 붙여 넣고 저장합니다.
 
-![이름에 PUSH_TOKEN을 입력하고 secret 칸은 비어 있는 GitHub 새 secret 양식](/guide/push-token-secret.webp "이름에 PUSH_TOKEN을 입력하고 push 토큰을 붙여 넣은 뒤 secret을 추가합니다.")
+![이름에 PUSH_TOKEN을 입력하고 secret 칸은 비어 있는 GitHub 새 secret 양식](/guide/push-token-secret.webp "이름에 PUSH_TOKEN을 입력하고 푸시 토큰을 붙여 넣은 뒤 secret을 추가합니다.")
 
 ## 워크플로 추가하기 {#workflow}
 

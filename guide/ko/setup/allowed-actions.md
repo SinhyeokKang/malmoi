@@ -16,7 +16,7 @@
 
 ![select-actions 옵션을 고르고 패턴 네 개를 입력한 GitHub Actions 권한 화면](/guide/actions-policy.webp "select-actions 옵션을 고르고 패턴 네 개를 입력한 뒤 저장합니다.")
 
-action이 차단되면 실행이 **Set up job**에서 “not allowed to be used.”와 함께 멈춥니다. push 토큰으로는 이 GitHub 정책을 바꿀 수 없습니다.
+action이 차단되면 실행이 **Set up job**에서 “not allowed to be used.”와 함께 멈춥니다. 푸시 토큰으로는 이 GitHub 정책을 바꿀 수 없습니다.
 
 ## 다음 단계 {#next}
 
