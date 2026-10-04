@@ -343,8 +343,8 @@ export const ko = {
       review: {
         title: (surface: string, locale: string): string => `${surface} · ${locale}`,
         body: (n: number): string => `번역 ${n.toLocaleString("ko-KR")}개를 검토해야 합니다`,
-        // 이름 뒤 조사를 피하려고 "마지막 수정: 이름" 꼴로 쓴다.
-        tail: (who: string): string => ` — 이 언어의 마지막 수정: ${who} 님.`,
+        // 이름 뒤 조사를 피하려고 "마지막 변경 사항: 이름" 꼴로 쓴다.
+        tail: (who: string): string => ` — 이 언어의 마지막 변경 사항: ${who} 님.`,
       },
       neverFilled: {
         title: (surface: string, locale: string): string => `${surface} · ${locale}`,
@@ -456,7 +456,7 @@ export const ko = {
     },
     filters: {
       anyDate: "모든 날짜",
-      anyone: "모든 사람",
+      anyone: "모든 작업자",
       anySource: "모든 소스",
       anyResult: "모든 결과",
       clear: "필터 지우기",
@@ -1573,7 +1573,7 @@ export const ko = {
     orphanStrip: (code: string): string => `${code} 언어는 리포지토리에서 제거되었습니다.`,
     orphanStripRest: (translations: number, active: number): string =>
       `번역 ${translations.toLocaleString("ko-KR")}개는 보존되며 읽기 전용입니다. 리포지토리에 이 언어가 다시 생기고 다음 동기화가 실행되면 돌아옵니다. 활성 언어 ${active.toLocaleString("ko-KR")}개에는 포함되지 않습니다.`,
-    statusHelp: "리포지토리에서 오는 동기화로 갱신됩니다.",
+    statusHelp: "리포지토리에서 오는 동기화로 업데이트됩니다.",
     baseHelp: "기준 언어의 파일로 이 소스의 키 목록을 정합니다.",
     languagesHelp: "언어 목록은 리포지토리에서 읽습니다. 파일 추가·제거는 리포지토리에서 하세요.",
     baseRow: "키 목록의 기준",
@@ -1599,7 +1599,7 @@ export const ko = {
     addedOne: (count: number): string => `키 ${count.toLocaleString("ko-KR")}개 동기화됨`,
     // 결과 줄 `{slug} 동기화 실패` 조각 — 동기화 실패의 배지 낱말이다.
     addedFailed: "동기화 실패",
-    resultKeep: "상태가 갱신되어도 이 결과는 직접 닫을 때까지 표시됩니다.",
+    resultKeep: "상태가 업데이트되어도 이 결과는 직접 닫을 때까지 표시됩니다.",
   },
 
   locales: {
@@ -1808,7 +1808,7 @@ export const ko = {
       title: "푸시 토큰",
       description: (secret: ReactNode): ReactNode => (
         <>
-          교체하면 지금 토큰이 즉시 무효가 됩니다 — 리포지토리의 {secret} 시크릿을 갱신할 때까지 CI가
+          교체하면 지금 토큰이 즉시 무효가 됩니다 — 리포지토리의 {secret} 시크릿을 업데이트할 때까지 CI가
           실패합니다.
         </>
       ),
