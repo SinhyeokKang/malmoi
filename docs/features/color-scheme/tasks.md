@@ -124,7 +124,7 @@ Phase 1은 ui-locales의 E 배치(화면 파일 이관)와 W10(`globals.css`·Pr
 
 ### P2-5 바꾸기 + Theme 카드 + 방침 (한 커밋 — 쿠키가 생기는 커밋에서 방침이 참이어야 한다)
 
-- `app/(edit)/preferences/actions.ts` `setColorScheme`(design §3.6) — Action 갈래 테스트: invalid · 세션 없음 → `requireUser` redirect · DB 실패 시 쿠키 미기록 + `failed` · 성공 시 **세션 userId로** 계정 갱신 + 쿠키(입력에 userId 없음) · 쿠키 속성(`httpOnly`·`SameSite=Lax`·`Secure`·`Path=/`·1년) · 커밋 뒤 `revalidateAfterCommit` 오류여도 `ok` · `revalidateAfterCommit("color-scheme")` 호출 인자.
+- `app/(edit)/preferences/actions.ts` `setColorScheme`(design §3.6) — Action 갈래 테스트: invalid · 세션이 `ok`가 아니면 아무것도 안 쓰고 `failed`(redirect 없음 — 형제 `setTimeZone` 형, 2026-10-05 지휘자 판정) · DB 실패 시 쿠키 미기록 + `failed` · 성공 시 **세션 userId로** 계정 갱신 + 쿠키(입력에 userId 없음) · 쿠키 속성(`httpOnly`·`SameSite=Lax`·`secure`는 `x-forwarded-proto` 첫 항목이 `https`일 때 — `app/ui-locale/actions.ts` 실물 그대로 · `Path=/`·1년) · 커밋 뒤 `revalidateAfterCommit` 오류여도 `ok` · `revalidateAfterCommit("color-scheme")` 호출 인자.
 - Theme 카드(design §3.7) — 공용 Select 카드 조립 위에. DOM 테스트: 즉시 적용 · Action 전에 `<html data-theme>`이 바뀜 · 실패 시 `data-theme`과 Select가 원래 값 + Alert · 같은 값 무요청 · 닫힌 트리거 typeahead 차단 · busy 중 포커스 유지. `preferences/loading.tsx` 골격에 셋째 카드.
 - `client-graph.test.ts` `CLIENT_LIB_FILES`(:96-215, 정확 일치)에 `lib/color-scheme/scheme.ts` 등재 — 클라이언트 카드가 `COLOR_SCHEMES`를 import하는 이 커밋에서. ARCHITECTURE 잎 명부도 같이.
 - `messages/{en,ko,es}.tsx` 새 키 · DESIGN §10.1 ko·es 열.

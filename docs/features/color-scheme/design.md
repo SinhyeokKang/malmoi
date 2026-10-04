@@ -229,7 +229,7 @@ model User {
 
 - `lib/privacy/collected.ts`: `User.colorScheme` → `collected`. 쿠키 표에 `malmoi-color-scheme` 한 줄.
 - 방침 본문 en·ko 두 벌(ui-locales가 만든 동형 게이트)에 같은 내용 + 개정 이력 한 줄 + 시행일. 새 **목적**(화면 테마 기억)·새 **쿠키** — `/push` 4단계 개인정보 점검 항목이다.
-- 대조 2026-10-05: 방침 en 쿠키 절(`messages/en.tsx` `id: "cookies"`)의 첫 문장은 "로그인 · GitHub/Google 왕복 · **고른 화면 언어 기억**"에 필요한 쿠키라고 쓴다 — 테마 기억은 그 목록에 없으므로 E가 그 문장과 쿠키 표에 한 줄을 더한다. "All of them are http-only"는 테마 쿠키도 `httpOnly`라 그대로 참이다(클라이언트는 쿠키를 읽지 않고 DOM `data-theme`만 쓴다). 보존 목록(`The language you choose…` · `The time zone you choose…`)에 테마 한 줄도 같이 — ko 본(`ko-privacy.tsx`)도 동형.
+- 대조 2026-10-05: 방침 en 쿠키 절(`messages/en.tsx` `id: "cookies"`)의 첫 문장은 "로그인 · GitHub/Google 왕복 · **고른 화면 언어 기억**"에 필요한 쿠키라고 쓴다 — 테마 기억은 그 목록에 없으므로 E가 그 문장과 쿠키 표에 한 줄을 더한다. "All of them are http-only"는 테마 쿠키도 `httpOnly`라 그대로 참이다(클라이언트는 쿠키를 읽지 않고 DOM `data-theme`만 쓴다). 보존 목록(`The language you choose…` · `The time zone you choose…`)에 테마 한 줄도 같이 — ko 본(`ko-privacy.tsx`)도 동형. **RB 리뷰 추가**: "수집하는 것" 표(`messages/en.tsx` 언어·시간대 행 옆 — 2026-10-05 기준 :699·:704)와 목적 목록(:741·:742)에도 테마 한 줄씩 — 새 수집 항목·새 목적은 `policy-gate`가 못 본다. ko 본 같은 자리.
 
 ### 4.4 대비 쌍 (완료 조건 12의 입력)
 
