@@ -95,14 +95,16 @@ it("updateUser에 name이 들어오면 사용자가 고친 이름을 봉투로 �
   expect(String(update.mock.calls[0]![0].data["name"])).toMatch(/^enc:v1:/);
 });
 /**
- * **계정 화면 언어가 어댑터 → 세션 허용 목록까지 실린다** (ui-locales C2 · R1 🟡4). `AdapterUser`에는 `uiLocale`이 없어 타입이 이 경로를
+ * **계정 화면 언어가 어댑터 → 세션 허용 목록까지 실린다** (ui-locales C2 · R1 🟡4 · `timeZone`은 user-timezone B2가 짝으로 얹었다). `AdapterUser`에는 `uiLocale`이 없어 타입이 이 경로를
  * 지키지 않는다 — `decodeUser`가 행을 펼쳐 넘기는 것이 유일한 근거라, 허용 목록형으로 바뀌면 다른 기기의 언어 유지가 조용히 죽는다.
  */
 it("행의 uiLocale이 getSessionAndUser를 지나 publicSession에 실린다", async () => {
-  const user = { id: "u1", emailVerified: null, uiLocale: "es", ...encodeUserFields("u1", { email: "a@x.com" }) };
+  const user = { id: "u1", emailVerified: null, uiLocale: "es", timeZone: "Asia/Seoul", ...encodeUserFields("u1", { email: "a@x.com" }) };
   const findUnique = vi.fn().mockResolvedValue({ sessionToken: hashSessionToken("secret"), userId: "u1", expires: new Date(101), user });
   const adapter = credentialAdapter({ session: { findUnique, deleteMany: vi.fn() } } as unknown as PrismaClient, () => new Date(100));
   const read = await adapter.getSessionAndUser!("secret");
-  expect(read?.user).toMatchObject({ uiLocale: "es" });
-  expect(publicSession({ session: read!.session, user: read!.user }).user.uiLocale).toBe("es");
+  expect(read?.user).toMatchObject({ uiLocale: "es", timeZone: "Asia/Seoul" });
+  const out = publicSession({ session: read!.session, user: read!.user }).user;
+  expect(out.uiLocale).toBe("es");
+  expect(out.timeZone).toBe("Asia/Seoul");
 });
