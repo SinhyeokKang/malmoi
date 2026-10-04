@@ -106,3 +106,10 @@
 - **D8(사용자, W7에 얹음)**: 헤더 44 — `HeaderBar` `h-10`→`h-11` · `FieldButton` 40→44 · 앱 셸 `gap-2 p-2`→`px-2 pt-1.5 pb-2` + 헤더 `mb-1.5` · 공개 셸 `pt-2`→`pt-1.5` + 헤더 `mb-2`→`mb-1.5`(두 셸 같은 형). 패널 시작(56)·헤더 요소 세로 중심(28) 불변. 랜딩 목업 헤더·DESIGN 문구(§6.x "전폭 40 헤더", FieldButton "40×320") 함께.
   - **D8 검증 통과 조건(사용자)**: **검색 버튼 높이(40→44, 그에 따른 버튼 y −2)를 빼고 시각 변경 0.** 판정은 변경 전후 DOM 실측 — 1280·1440에서 앱 셸(`/projects`·프로젝트 Home)·공개 셸(`/`·`/docs`·`/privacy`)·`AuthLayout`(`/signin`)의 패널 시작 y·사이드바·로고·내비·New project·아바타·푸터의 bounding rect가 같다. 값을 표로 인계에 남긴다. ⚠️ 랜딩 목업도 `HeaderBar`를 쓰므로 목업 프레임 안 헤더 줄이 4px 커지면 위반이다 — 목업은 지금 높이를 유지하는 방법을 W7이 정하고(필요하면 `ask`), 같은 실측에 넣는다.
 - W4 fix1 1–4 완료(`7c3dbe30 a83cc5c7 ae0ffad3 5173c91f`, dev 83941d54 위, gate ok). W5가 ask 타임아웃 뒤 유휴로 커밋을 안 해서 **es 가이드 초안을 W4가 W5 워크트리에서 복사해 커밋**하고 닫는 조건 테스트까지. W5는 복사 확인 뒤 해제.
+- **W4 통합·push**: `83941d54..c7c03680`(W4 11커밋 — guide/en 이동·ko·es 가이드·언어별 색인·가이드 게이트). 1회차 gate는 낡은 `.next/types`로 typecheck red(코드 무관) → 지우고 `gate: ok`. W4 워크트리 제거. W5에 worker_done 요청.
+- W5 완료 보고·해제·워크트리 제거.
+- **W6 완료**(E1 `b4e8fa91` · E2 `e56b5c88`, base c5db7d8c): 영어 고정 표면·테스트 ~127파일 en 전환, lib 최상위 m 상수 → 함수, `stateLabel(m,key)`, B1⑦ 전이 import 검사로 상향, `lib/events/member-label.ts` 대체 라벨은 **저장되는 값이라 en 고정**(이미 저장된 행은 ko·es Logs에서 영어 — 범위 밖). `status-badge.tsx`가 m을 읽는 9번째 ui 프리미티브. 남은 m 소비자: lib 넷(W7) + 화면 128파일(W7·W8). → dev c7c03680로 rebase 후속 Task.
+- W6 rebase 완료(`ed177381 045d4ac9 7ea77128` on c7c03680, gate ok ×3). **R6 리뷰(Opus medium) · W7(Sonnet medium, E3·E4·D8) · W8(Sonnet medium, E5·E6) 동시 착수** — W7·W8은 W6 브랜치 위(리뷰 수정이 생기면 rebase).
+- W8 질문: W7 소유 `failureText` 시그니처 → W7이 바꾸고 W8 파일 세 곳의 호출 줄도 W7이 한 줄씩 수정, W8은 그 줄을 건드리지 않음(red 커밋 금지).
+- **R6(W6 리뷰)**: 🔴0 · 🟡4 · ⚪4 — W6 코드 수정 불필요. 🟡1 소유 빈 m 소비자 7개 → W8 · 🟡2 인계 오류(`publish-button`·sync-result → W8, new-project → W7이 `m.adapterErrors` 명시) · 🟡4 `/docs` 크롬이 en 고정 → W7. `read-tools.test.ts:287`의 동적 m import는 E7(W9)이 잡는다.
+  - **D9(사용자)**: 멤버 사건 대체 라벨은 en으로 저장하되 Logs가 **렌더 때 화면 언어로 치환**(저장 계약 불변) → W8 E5.
