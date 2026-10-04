@@ -223,8 +223,7 @@ describe("groupByDay — UTC 자정으로 끊는다", () => {
   const at = (iso: string) => ({ occurredAt: new Date(iso) });
 
   it("오늘·어제만 낱말이 붙고 나머지는 없다", () => {
-    const groups = groupByDay(en, 
-      [at("2026-09-20T01:00:00Z"), at("2026-09-19T23:59:59Z"), at("2026-09-18T00:00:00Z")],
+    const groups = groupByDay(en, "en", [at("2026-09-20T01:00:00Z"), at("2026-09-19T23:59:59Z"), at("2026-09-18T00:00:00Z")],
       NOW,
     );
     expect(groups.map((group) => group.label)).toEqual([en.logs.day.today, en.logs.day.yesterday, null]);
@@ -232,8 +231,7 @@ describe("groupByDay — UTC 자정으로 끊는다", () => {
 
   /** 카드 머리는 늘 날짜이고(앱의 날짜 형), 오늘·어제 낱말은 그 옆의 덧붙임이다 — 지난 날짜가 두 번 서지 않는다. */
   it("머리는 `utcDay` 형이고 그룹 키는 ISO 그대로다", () => {
-    const groups = groupByDay(en, 
-      [at("2026-09-20T01:00:00Z"), at("2026-09-19T23:59:59Z"), at("2026-09-18T00:00:00Z")],
+    const groups = groupByDay(en, "en", [at("2026-09-20T01:00:00Z"), at("2026-09-19T23:59:59Z"), at("2026-09-18T00:00:00Z")],
       NOW,
     );
     expect(groups.map((group) => group.heading)).toEqual(["Sep 20, 2026", "Sep 19, 2026", "Sep 18, 2026"]);
@@ -245,7 +243,7 @@ describe("groupByDay — UTC 자정으로 끊는다", () => {
    * 로컬로 끊으면 밤 사이 실행이 하루 어긋난다 (POSTMORTEM 2026-09-19 항목의 계열).
    */
   it("UTC 자정 직전·직후가 다른 카드다", () => {
-    const groups = groupByDay(en, [at("2026-09-20T00:00:00.000Z"), at("2026-09-19T23:59:59.999Z")], NOW);
+    const groups = groupByDay(en, "en", [at("2026-09-20T00:00:00.000Z"), at("2026-09-19T23:59:59.999Z")], NOW);
     expect(groups).toHaveLength(2);
     expect(groups[0]?.dayKey).toBe("2026-09-20");
     expect(groups[1]?.dayKey).toBe("2026-09-19");
@@ -253,23 +251,23 @@ describe("groupByDay — UTC 자정으로 끊는다", () => {
 
   it("같은 날은 한 카드에 순서대로 들어간다", () => {
     const rows = [at("2026-09-20T05:00:00Z"), at("2026-09-20T01:00:00Z")];
-    const groups = groupByDay(en, rows, NOW);
+    const groups = groupByDay(en, "en", rows, NOW);
     expect(groups).toHaveLength(1);
     expect(groups[0]?.rows).toEqual(rows);
   });
 
   it("빈 목록은 빈 배열이다", () => {
-    expect(groupByDay(en, [], NOW)).toEqual([]);
+    expect(groupByDay(en, "en", [], NOW)).toEqual([]);
   });
 
   /** ⚠️ **`now`를 서버가 하나 내린다** — 행마다 만들면 기준이 흔들린다. */
   it("now가 하루 뒤면 같은 행이 Yesterday로 옮겨간다", () => {
-    const groups = groupByDay(en, [at("2026-09-20T01:00:00Z")], new Date("2026-09-21T00:00:01Z"));
+    const groups = groupByDay(en, "en", [at("2026-09-20T01:00:00Z")], new Date("2026-09-21T00:00:01Z"));
     expect(groups[0]?.label).toBe(en.logs.day.yesterday);
   });
 
   it("미래 행도 날짜로 그린다 — 던지지 않는다", () => {
-    const groups = groupByDay(en, [at("2026-09-25T01:00:00Z")], NOW);
+    const groups = groupByDay(en, "en", [at("2026-09-25T01:00:00Z")], NOW);
     expect(groups[0]?.dayKey).toBe("2026-09-25");
   });
 });

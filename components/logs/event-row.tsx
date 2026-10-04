@@ -46,7 +46,7 @@ export function EventRow({
 }) {
   const view = eventView(m, { kind: row.kind, result: row.result, warnings: row.run?.warnings ?? 0, errorCode: row.run?.errorCode ?? null });
   const glyph = eventGlyph({ kind: row.kind, result: row.result, subtype: row.subtype });
-  const sentence = eventSentence(m, row, {
+  const sentence = eventSentence(m, uiLocale, row, {
     actor: <span className="font-medium">{actorLabel(m, row)}</span>,
     key: translationKey(row),
   });

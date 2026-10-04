@@ -9,7 +9,7 @@ import { eventSentence } from "../view";
  * 매핑돼 Logs에서 삭제가 "changed"로 읽혔다.
  */
 const text = (subtype: string) =>
-  renderToStaticMarkup(eventSentence(en, { kind: "SETTINGS", subtype, result: null, payload: null }, { actor: "Owner", key: null }));
+  renderToStaticMarkup(eventSentence(en, "en", { kind: "SETTINGS", subtype, result: null, payload: null }, { actor: "Owner", key: null }));
 
 describe("eventSentence — settings.image*", () => {
   it("삭제는 removed 문장이다", () => {

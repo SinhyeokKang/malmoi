@@ -22,7 +22,7 @@ const metaRow = (over: Partial<EventMetaRow> = {}): EventMetaRow => ({
 });
 
 const sentence = (row: EventMetaRow): string =>
-  renderToStaticMarkup(<>{eventSentence(en, row, { actor: "WHO", key: "" })}</>);
+  renderToStaticMarkup(<>{eventSentence(en, "en", row, { actor: "WHO", key: "" })}</>);
 
 describe("eventSentence — 야간 스킵과 야간 적재", () => {
   it("upToDate는 '적재했다'가 아니라 할 일이 없었다고 말한다", () => {

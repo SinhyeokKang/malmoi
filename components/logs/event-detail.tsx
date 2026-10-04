@@ -67,7 +67,7 @@ export function EventDetail({
             {view.warningsLabel !== null && <Badge variant="soft-amber">{view.warningsLabel}</Badge>}
           </span>
           <DialogTitleSlot.Title className="text-lg font-medium text-pretty">
-            {eventSentence(m, row, {
+            {eventSentence(m, uiLocale, row, {
               actor: actorLabel(m, row),
               key: row.payload?.kind === "TRANSLATION" ? row.payload.key : "",
             })}

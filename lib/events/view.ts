@@ -6,6 +6,7 @@ import type { SurfaceImportResult } from "@/lib/import/result";
 import { importFailureMessage, isImportFailureCode } from "@/lib/projects/import-failure";
 import { languageName } from "@/lib/onboarding/language-name";
 import type { SyncErrorCode } from "@/lib/sync/plan";
+import type { UiLocale } from "@/lib/i18n/locales";
 import { utcDay } from "@/lib/utc-time";
 
 import type { EventCursor } from "./filter";
@@ -256,6 +257,7 @@ export function triggerOf(row: { actorKind: ActorKind; kind: EventKind; subtype:
  */
 export function eventSentence(
   m: Messages,
+  uiLocale: UiLocale,
   row: { kind: EventKind; subtype: string; result: EventResult | null; payload: EventPayload | null; run?: { errorCode: string | null } | null },
   nodes: { actor: ReactNode; key: ReactNode },
 ): ReactNode {
@@ -265,7 +267,7 @@ export function eventSentence(
     case "TRANSLATION": {
       const locale = payload?.kind === "TRANSLATION" ? payload.locale : "";
       const cleared = payload?.kind === "TRANSLATION" && payload.after === "";
-      const language = languageOf(m, locale);
+      const language = languageOf(m, locale, uiLocale);
       if (row.subtype === "translation.reverted") return m.logs.sentence.translation.reverted(actor, nodes.key, language);
       return cleared
         ? m.logs.sentence.translation.cleared(actor, nodes.key, language)
@@ -351,11 +353,11 @@ function settingsSentences(m: Messages): Record<string, (who: ReactNode) => Reac
 }
 
 /**
- * 로케일 코드 → 영어 언어 이름. **매핑이 실패하면 코드를 그대로 낸다** (`languageName`의 계약) —
+ * 로케일 코드 → 화면 언어의 언어 이름. **매핑이 실패하면 코드를 그대로 낸다** (`languageName`의 계약) —
  * 리포에서 온 임의 문자열이라 실패가 정상 갈래다.
  */
-function languageOf(m: Messages, code: string): string {
-  return code === "" ? m.logs.none : languageName(code);
+function languageOf(m: Messages, code: string, uiLocale: UiLocale): string {
+  return code === "" ? m.logs.none : languageName(code, uiLocale);
 }
 
 /**
@@ -405,14 +407,14 @@ export type DayGroup<T> = { dayKey: string; heading: string; label: string | nul
  *
  * ⚠️ **입력 순서를 보존한다** — 조회가 이미 `(occurredAt desc, id desc)`로 정렬해 내려준다.
  */
-export function groupByDay<T extends { occurredAt: Date }>(m: Messages, rows: readonly T[], now: Date): DayGroup<T>[] {
+export function groupByDay<T extends { occurredAt: Date }>(m: Messages, uiLocale: UiLocale, rows: readonly T[], now: Date): DayGroup<T>[] {
   const today = dayKey(now);
   const yesterday = dayKey(new Date(now.getTime() - 24 * 60 * 60 * 1000));
   const groups = new Map<string, DayGroup<T>>();
   for (const row of rows) {
     const key = dayKey(row.occurredAt);
     // 키가 UTC 자정의 ISO 날짜라 `utcDay`가 같은 날을 말한다.
-    const group = groups.get(key) ?? { dayKey: key, heading: utcDay(new Date(key)), label: dayLabel(m, key, today, yesterday), rows: [] };
+    const group = groups.get(key) ?? { dayKey: key, heading: utcDay(new Date(key), uiLocale), label: dayLabel(m, key, today, yesterday), rows: [] };
     group.rows.push(row);
     groups.set(key, group);
   }

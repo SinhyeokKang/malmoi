@@ -78,7 +78,7 @@ export default async function LogsPage({
 
   // ⚠️ **`now`를 한 번 만들어 내린다** — 행마다 만들면 같은 페이지 안에서 기준이 흔들린다.
   const now = new Date();
-  const groups = groupByDay(m, page.rows, now);
+  const groups = groupByDay(m, uiLocale, page.rows, now);
   const boundary = coverageBoundaryIndex(page.rows, project.activityCoverageStartedAt, filter.cursor);
   const href = (ref: string) => routes.logs(slug, { ...logsQuery(filter), event: ref });
   const closeHref = routes.logs(slug, { ...logsQuery(filter), event: undefined });
