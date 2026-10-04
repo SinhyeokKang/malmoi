@@ -252,11 +252,12 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 
 ## 워크플로우 (스킬 라인업)
 
-스킬 **22개**의 역할·단계별 게이트는 `.claude/commands/<name>.md`에 있고, 모두 `.agents/skills/source-command-<name>/SKILL.md`로 미러된다. Claude Code와 Codex 모두 같은 권한·브랜치·검증 게이트로 실행한다. Codex의 `/design-sync`는 사용자 제공 로컬 핸드오프를 받고, Claude Code는 DesignSync로 확보한다. 브라우저 등은 실제 도구 가용성을 확인하며, 없는 도구의 검증을 통과로 취급하지 않는다. 모든 워커·서브에이전트 생성·재사용의 모델 경계는 **Codex 지휘 → Sol·Astra, Claude Code 지휘 → Sonnet·Opus**이며 사용자 명시 허가 없이 교차하지 않는다. `/orchestrate`뿐 아니라 단독 `/design-sync`·`/doc-check`·`/feature-review` 등에도 적용한다.
+스킬 **23개**의 역할·단계별 게이트는 `.claude/commands/<name>.md`에 있고, 모두 `.agents/skills/source-command-<name>/SKILL.md`로 미러된다. Claude Code와 Codex 모두 같은 권한·브랜치·검증 게이트로 실행한다. Codex의 `/design-sync`는 사용자 제공 로컬 핸드오프를 받고, Claude Code는 DesignSync로 확보한다. 브라우저 등은 실제 도구 가용성을 확인하며, 없는 도구의 검증을 통과로 취급하지 않는다. 모든 워커·서브에이전트 생성·재사용의 모델 경계는 **Codex 지휘 → Sol·Astra, Claude Code 지휘 → Sonnet·Opus**이며 사용자 명시 허가 없이 교차하지 않는다. `/orchestrate`뿐 아니라 단독 `/design-sync`·`/doc-check`·`/feature-review` 등에도 적용한다.
 
 **권장 흐름**: `/feature` → `/tdd interface` → `/implement` → `/code-review` → `/refactor` → (`/design-sync`) → (`/db`) → `/push`(dev) → `/merge`(프로덕션 + 릴리스). ⚠️ **`/design-sync`는 신규 페이지를 핸드오프로 처음 구현할 때만** 끼고, `/ship`도 6.5단계에서 같은 조건으로 부른다. 작은 변경은 `/ship` 하나로 `/push`까지 오케스트레이션하며, **`/ship`은 dev까지다 — 프로덕션 배포는 `/merge`를 따로 부른다**(브랜치를 나눈 목적이 프로덕션 앞에 사람 판단을 하나 더 두는 것이므로).
 
 - **사용자 가이드(`/docs`)는 흐름 옆에 붙는다** — 사용자 노출 변경이면 `/implement` 보고의 **"가이드 영향"** 플래그나 `/push` 4단계의 **"가이드 stale 후보"** 경고(둘 다 차단 아님)를 받아 `/guide`(본문, en 원문 + ko·es 번역을 같은 커밋에서)와 `/guide-shots`(스크린샷, ego-browser)를 부른다. 작성 규칙은 `guide/AUTHORING.md`, 촬영 규칙·매핑 표는 `guide/SHOOTING.md`가 정본이고 스킬은 그것을 로드해 실행하는 손이다.
+- **번역(ko·es)은 `/translate`가 맡는다** (2026-10-05) — 기능 배치 안의 사전 키 추가·수정(모드 ①)과 범위를 정한 일괄 검수(모드 ②). 규칙은 DESIGN §10·§10.0·§10.1 · `banned-terms.ts` · AUTHORING `#languages`가 정본이고 스킬은 절차만 든다. ko는 사용자가 `/merge` 전에 일괄 검수하고 es는 에이전트 초안이다.
 
 - **`/feature`가 기능의 시작점이다.** 산출물은 `docs/features/<name>/`에 `spec`·`design`·`tasks`로 남고, **기능이 끝나면 결론을 정본(PRODUCT — 제품 판정 / ARCHITECTURE — 불변식·함정 / DESIGN — 시각 규칙)으로 올리고 그 디렉터리는 지운다.** 근거 기록을 쌓아 두지 않는다 — 되살릴 일이 생기면 `git log`가 답한다.
 - **`/audit`은 이 흐름 밖이다.** 변경분이 아니라 **코드베이스 전체**를 불변식·원칙·경계·부채 네 차원으로 감사하고 `docs/POSTMORTEM.md` 전 항목의 재발 방지 grep을 전수로 돌린다 — `/code-review`는 변경분에 걸린 항목만 소환하므로 손대지 않은 코드에 남은 같은 패턴은 이쪽만 잡는다. 리포트 전용이라 배포 경로와 무관하다.
