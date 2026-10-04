@@ -53,3 +53,4 @@
 (배치별 라운드·통합 해시·미완 항목을 여기에 덧붙인다.)
 - Run `run_ba6c4daeafda`. **T1 착수**(Opus high, task_853dadb07aee / ctx_e0385ed40aa9, 워크트리 `utz-t1`) · **T2 착수**(Sonnet medium, task_3380583ca10d / ctx_e159312bdf37, 워크트리 `utz-t2`). 브리프 `.scratch/user-timezone/`.
 - **별건 둘 추가**(사용자 2026-10-05, 범위 밖이지만 같은 런에서): **T7** 랜딩·signin 슬로건 en 고정 — 범위 D5 = `landing.hero.title` · `signIn.hero` · `landing.closing.title`(사용자 선택) (Sonnet medium, task_6ba42706ae04 / ctx_e11e121fa8fe, `utz-t7`, 브리프 `brief-T7.md`) · **T8** 하위태그 없는 `es` 로케일 배지 = 스페인 국기(D6 — 다른 다국 언어는 null 유지) (Sonnet medium, `utz-t8`, `brief-T8.md`). T7은 `messages/*.tsx`를 고치므로 **T3은 T7 통합 뒤** 착수.
+- **T7 · T8 통합**: `fa589a61` feat(i18n) 슬로건 en 고정 · `377dd4ac` docs(ARCHITECTURE) · `24b1c21d` feat(keys) es 국기 — 각각 별도 커밋(사용자 요청). gate 2회 red(load 26–38에서 5초 타임아웃·타이밍 — 단독 실행 green) → 부하 해소 뒤 `gate: ok`. 런타임 미확인: ko·es 랜딩/signin 슬로건 육안 · 번역 화면 `es` 배지 → Q1. T7·T8 해제·워크트리 제거.
