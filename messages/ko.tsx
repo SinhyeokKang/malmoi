@@ -164,7 +164,6 @@ export const ko = {
     google: "Google로 계속하기",
     consent: { before: "외부 계정으로 계속하면 Malmoi ", link: "개인정보 처리방침", after: "에 동의하는 것으로 간주합니다." },
     footer: { copyright: "© 2026 Malmoi", github: "GitHub", privacy: "개인정보 처리방침" },
-    hero: { top: "프로젝트를 연결하고", bottom: "함께 번역하고 내보내세요" },
   },
 
   uiLocale: {
@@ -187,7 +186,6 @@ export const ko = {
       getStarted: "시작하기",
     },
     hero: {
-      title: ["프로젝트를 연결하고,", "함께 번역하고 내보내세요"] as const,
       // 첫 문장이 정의다 — 홈 description·og:description으로도 나가므로 분량을 늘리지 않는다.
       body: "Malmoi는 GitHub 리포지토리를 위한 로컬라이제이션 도구입니다. 번역 파일을 찾아 팀원이 브라우저에서 편집하게 하고, 모든 변경을 풀 리퀘스트 하나로 되돌려 보냅니다.",
       latest: (version: string) => (version === "" ? "최신 변경 기록" : `v${version}의 새로운 점`),
@@ -203,7 +201,6 @@ export const ko = {
       ] as const,
     },
     closing: {
-      title: "이미 가진 파일에서 시작하세요",
       body: "JSON, YAML, JS/TS, Chrome 확장 프로그램 번역 파일이 있는 GitHub 리포지토리를 연결하고, 팀을 초대하고, 첫 풀 리퀘스트를 보내세요.",
     },
     // 목업 데이터는 가상 프로젝트의 리포 내용(원문 en·de·fr 값)이라 화면 언어와 함께 바꾸지 않는다.

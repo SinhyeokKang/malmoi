@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { PublicFooter } from "@/components/public-shell/footer";
 import type { Messages } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { en } from "@/messages/en";
 import projectCard from "@/public/brand/malmoi-kv-1.png";
 import koreanCard from "@/public/brand/malmoi-kv-2.png";
 import englishCard from "@/public/brand/malmoi-kv-3.png";
@@ -62,7 +63,7 @@ export function AuthLayout({ m, children, decoration = false, scroll = false }: 
           <main className={cn("border-border-subtle relative flex flex-col overflow-hidden rounded-xl border bg-white shadow-low", scroll ? "min-h-0" : "items-center justify-center px-8")}>
             {children}
           </main>
-          {decoration && <Decoration m={m} />}
+          {decoration && <Decoration />}
         </div>
         <PublicFooter m={m} />
       </div>
@@ -80,16 +81,16 @@ export function AuthLayout({ m, children, decoration = false, scroll = false }: 
  * ⚠️ **이 패널엔 border가 없다** (시안) — 그라데이션 자체가 면을 만들어 선이 필요 없다. 좌측
  * 폼 패널만 `border-subtle`을 든다.
  */
-function Decoration({ m }: { m: Messages }) {
+function Decoration() {
   return (
     <div className="from-auth-hero-from to-auth-hero-to relative flex flex-col items-center justify-between overflow-hidden rounded-xl bg-gradient-to-b px-16 py-20">
       <DotField className="absolute inset-0 size-full" />
 
-      <p className="relative text-3xl font-semibold">{m.signIn.hero.top}</p>
+      <p lang="en" className="relative text-3xl font-semibold">{en.signIn.hero.top}</p>
 
       <KeyVisual />
 
-      <p className="relative text-3xl font-semibold">{m.signIn.hero.bottom}</p>
+      <p lang="en" className="relative text-3xl font-semibold">{en.signIn.hero.bottom}</p>
     </div>
   );
 }

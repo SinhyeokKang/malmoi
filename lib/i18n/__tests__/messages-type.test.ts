@@ -16,7 +16,7 @@ describe("Messages", () => {
   });
 
   it("튜플은 길이를 지키고 원소만 넓어진다", () => {
-    expectTypeOf<Messages["landing"]["hero"]["title"]>().toEqualTypeOf<readonly [string, string]>();
+    expectTypeOf<Messages["landing"]["stage"]["captions"]>().toEqualTypeOf<readonly [string, string, string, string, string]>();
   });
 
   it("함수 값은 인자를 지키고 문자열 반환만 넓어진다", () => {
@@ -32,6 +32,10 @@ describe("Messages", () => {
     expectTypeOf<Messages>().not.toHaveProperty("seo");
     expectTypeOf<Messages>().not.toHaveProperty("crash");
     expectTypeOf<Messages["publicDocs"]>().not.toHaveProperty("privacy");
+    // 슬로건 셋(user-timezone T7)
+    expectTypeOf<Messages["landing"]["hero"]>().not.toHaveProperty("title");
+    expectTypeOf<Messages["landing"]["closing"]>().not.toHaveProperty("title");
+    expectTypeOf<Messages["signIn"]>().not.toHaveProperty("hero");
     expectTypeOf<Messages["publicDocs"]["effectiveDate"]>().toEqualTypeOf<string>();
     expectTypeOf<Messages>().toHaveProperty("translations");
   });
