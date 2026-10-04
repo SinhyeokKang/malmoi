@@ -24,17 +24,20 @@ app/
                         콜백 대조 → 요청 저장 → ?request= 정규화 · 판정 순서는 lib/oauth/authorize-view) · actions.ts(Authorize·Deny·Check request·
                         Not you? — 세션을 **다시** 읽고, 콜백 redirect는 try 밖). ⚠️ 쿠키를 읽는 쪽이라 no-cookie-reads의 비쿠키 트리 밖이고,
                         entry-points의 면제가 export 단위(EXEMPT_ACTIONS)다. 로그인 버튼은 normal-login이 넷째 진입점으로 센다
-  privacy/              방침. 공개 셸 안의 components/privacy/(DESIGN §6.616) · 본문은 messages/en.tsx의 publicDocs.privacy.
+  privacy/              방침. 공개 셸 안의 components/privacy/(DESIGN §6.616) · 본문은 두 벌 — ko 화면이면 messages/ko-privacy.tsx, en·es 화면은 messages/en.tsx의
+                        publicDocs.privacy(ui-locales). ⚠️ ko-privacy를 import하는 비테스트 소스는 이 페이지 하나다(ko 사용자 번들에 본문이 실리지 않게)
                         ⚠️ 세션을 읽는 이유는 차단이 아니다 — 헤더 우측(publicAccount: 로그인이면 앱 셸과 같은 아바타 메뉴,
                         아니면 Get started → /signin). 그래서 동적이다
   changelog/            릴리스 노트(DESIGN §6.617). 공개 셸 안 · 원문은 lib/changelog/load(GitHub Release, 토큰 없이 1시간 캐시 — 키에 앱 버전이 실려 배포마다 새로 받는다).
                         ⚠️ 세션을 읽는 이유는 /privacy와 같다(헤더 primary) — 인가 없음(entry-points EXEMPT). GitHub가 실패해도 200이다
   docs/                 사용 가이드(DESIGN §6.61). layout(공개 셸 bare + 문서 내비 — SUMMARY를 읽는다) ·
                         [[...slug]]/page(개요·장 개요·일반 문서 — 본문 스크롤러를 페이지가 key={slug}로 든다, 없는 slug는
-                        notFound()) · not-found(셸·내비 안 404). 원고는 guide/**.md. ⚠️ 셸이 레이아웃에 있는 유일한 공개 화면이다 —
+                        notFound()) · not-found(셸·내비 안 404). 원고는 화면 언어의 guide/<uiLocale>/**.md(getUiLocale로 고른다). ⚠️ 셸이 레이아웃에 있는 유일한 공개 화면이다 —
                         내비가 페이지 이동에 스크롤·포커스를 남겨야 해서다. ⚠️ fs로 읽으므로 next.config.ts의
                         outputFileTracingIncludes가 guide/**/*.md를 싣는다(빠지면 Vercel에서 /docs/* 전부 500)
-  layout.tsx            루트 레이아웃(Geist next/font/local 변수 · Pretendard 폴백 <link> · 머리 기본값 · components/analytics). ⚠️ lang="en" — screens.test.ts가 고정한다.
+  layout.tsx            루트 레이아웃(Geist next/font/local 변수 · Pretendard 폴백 <link> · 머리 기본값 · components/analytics · MessagesProvider).
+                        ⚠️ lang은 요청의 화면 언어(getUiLocale)이고 provider도 같은 값으로 하나 렌더한다 — app/__tests__/root-layout-i18n이 provider 존재를 고정한다
+                        (빠지면 provider 기본값이 en이라 조용히 영어다)
                         ⚠️ metadata에 canonical·og:url이 없다 — 얕은 병합으로 앱·/signin·/invite·404 전부에 홈 canonical이 번진다
   robots.ts · sitemap.ts  크롤러용 파일 둘(lib/seo/crawl). robots는 force-dynamic(요청 시점 VERCEL_ENV), sitemap은 빌드 prerender.
                         ⚠️ sitemap이 guide/를 읽는데 트레이싱은 /docs 함수에만 싣는다 — 동적으로 바꾸면 Vercel에서만 500
@@ -79,7 +82,10 @@ app/
                         ⚠️ actions.ts의 인가가 export마다 따로다 — 공용 헬퍼로 빼면 entry-points가 못 센다
                         ⚠️ 온보딩(생성 경로)은 사용자 수준 인증뿐이다(인가할 프로젝트가 없다) — 모달이라
                         readSession으로 거부를 값으로 돌려받고 checkRepoAccess를 지난다
-    account/            사용자 축의 유일한 화면. requireUser만 지난다 · layout.tsx · loading.tsx 스켈레톤 ·
+    preferences/        Preferences(`/preferences`, 2026-10-04 ui-locales). 사용자 축 — requireUser만 지난다(account/·mcp/와 같은 형 · layout.tsx가
+                        ContentPanel을 든다 · loading.tsx). page.tsx는 Language 카드 하나(components/preferences/)이고 Action은 app/ui-locale/에 있다
+                        (공개 푸터와 공유). ⚠️ 보호 경로라 isProtectedPath와 lib/seo/crawl의 robots disallow 두 곳에 각각 등재된다(따로 하드코딩된 목록)
+    account/            사용자 축 화면(프로필·로그인 수단·세션). requireUser만 지난다 · layout.tsx · loading.tsx 스켈레톤 ·
                         actions.ts(프로필 이름·사진 둘 · 전체 세션 회수 · 로그인 수단 연결/해제 — 여섯 다
                         requireUser만 지난다. 인가할 프로젝트가 없는 축이다)
                         (⚠️ ContentPanel을 안 든다 — 이 라우트는 layout.tsx가 든다. /projects만
@@ -126,13 +132,18 @@ app/
                         갈래는 planInviteView가 고른다(화면이 조건을 다시 적지 않는다).
                         ⚠️ 수락 실패 `?e=`는 **허용 목록**(planInviteView의 case)이라 InviteError를 늘리면 여기 case도
                         늘린다 — 빠뜨리면 거부가 무음이다(POSTMORTEM 2026-09-06 · 🔁 2026-10-03)
+  ui-locale/actions.ts  setUiLocale 하나(ui-locales, 2026-10-04 — ARCHITECTURE §6.355). 공개 푸터(비로그인 포함)와 /preferences가 같이 부르는
+                        **공개 Action**이라 보호 경로 밖·라우트 없는 디렉터리에 산다(app/search/actions.ts가 선례). ⚠️ 맨 locale이 아니다 — 프로젝트
+                        로케일과 다른 축. 계정 대상은 세션이 정하고, 순서 계정 → 쿠키 → revalidateAfterCommit, 실패면 아무것도 안 쓴다. 코드를 돌려준다
   invite/actions.ts     acceptInvitation 하나. ⚠️ **인가 예외** — 지날 프로젝트 인가가 없고 토큰이 대신한다.
                         entry-points의 면제가 파일이 아니라 **export 단위**(EXEMPT_ACTIONS)다 — 파일 단위면
                         여기 붙는 둘째 export가 조용히 무인가로 열린다
   search/actions.ts    검색 읽기 전용 Action 둘(searchKeysAction · loadSearchMembershipsAction). page.tsx가 없어 검색 라우트는 없다.
                         readSession union → 세션 userId로 키 코어/멤버십을 좁힌다. redirect·revalidate·질의 로그 없음.
                         __tests__/actions.test.ts는 만료·장애·입력·일곱 NavProject 필드 투영을 센다
-  api/search-index/    route.ts — SUMMARY 가이드 절의 공개 JSON { docs }, force-static. 질의·세션·DB·쿠키 없음.
+  api/search-index/[uiLocale]/  route.ts — 그 언어 원고 SUMMARY 가이드 절의 공개 JSON { docs }, force-static. 질의·세션·DB·쿠키 없음.
+                        ⚠️ 언어가 URL에 실린다 — force-static은 쿠키로 못 갈라서 generateStaticParams(= guideLocales()) + dynamicParams=false
+                        (목록 밖 404). 옛 api/search-index/route.ts는 2026-10-04에 지웠다(ui-locales I2).
                         원고 실패는 빌드 실패고 __tests__/route.test.ts가 이 경계를 센다
   api/push/             CI → DB. Bearer가 그 프로젝트의 토큰 원문이다(서버 env가 아니다)
   api/push/failure/     CI가 **적재에 실패했다는 사실**만 남긴다(2026-09-13). 파싱이 깨지면 /api/push는
@@ -226,7 +237,11 @@ components/
   ui/kbd.tsx           Kbd — 스위처·검색 입력 Esc와 검색 플랫폼/Enter 칩의 한 벌. 회색 면·h-5(28 타일 행을 키우지 않는다)·aria-hidden 기본.
                         글자는 m.common.keys에서 온다 — `<Kbd>` 리터럴 0은 hand-copies.test가 센다
   ui/highlight.tsx     Highlight — highlightSegments의 text/match 조각을 mark로 그린다. /projects와 검색의 손 mark를 모았다
-  ui/field-button.tsx  FieldButton — 검색 캡슐 320×40/rounded-full(헤더 줄 h-10을 채운다) · icon/placeholder/shortcut 슬롯 · 접근 이름 필수 · aria-expanded
+  ui/field-button.tsx  FieldButton — 검색 캡슐 320×44/rounded-full(헤더 줄 h-11을 채운다 — 2026-10-04 D8) · icon/placeholder/shortcut 슬롯 · 접근 이름 필수 · aria-expanded.
+                        FIELD_BUTTON_CLASS를 export한다 — 랜딩 목업의 비상호작용 캡슐(<span>)이 같은 값을 읽고 h-10만 덮는다(손 사본 대신, buttonClass 선례)
+  ui/text-trigger.tsx  TextTrigger — 누르는 글자(ui-locales). 공개 푸터 언어 스위처의 트리거 — Button이 아닌 이유는 라벨 500 강제(이웃 푸터 링크 400).
+                        busy는 aria-disabled + aria-busy(진짜 disabled면 메뉴가 닫힐 때 포커스가 body로 빠진다) · 앞 글리프를 스피너로 교체(glyphSlot)
+  ui/input-clear-button.tsx  InputClearButton — Input의 지우기 X(클라이언트). input.tsx는 fieldClass를 서버가 읽어 "use client"를 달 수 없어서 떼었다
   ui/dialog.tsx       기존 440 Dialog + 형제 CommandDialog. 검색만 LargeModal 패널·높이·dim을 공유하며 top16으로 옮긴다.
                         진입·복귀는 DialogContent와 같은 모듈 함수(훅 아님) openAutoFocus·closeAutoFocus(event, consumer?) 한 벌이고(소비자 먼저),
                         조합 중 Esc는 use-ime-guard가 막는다(onEscapeKeyDown prop 없음). 해시 착지의 복귀 억제(onCloseAutoFocus)만 소비자가 잇는다
@@ -328,13 +343,20 @@ components/
                         입력 상태만 든다
   analytics.tsx         Vercel Web Analytics 래퍼("use client") — 루트 레이아웃이 서버 컴포넌트라 beforeSend(함수)를 못 넘겨서 선다.
                         ⚠️ 개발 서버에서는 null(dev 디버그 스크립트를 CSP가 막는다 — CSP를 넓히지 않는다)
-  public-shell/         공개 셸(`/` · `/privacy` · `/docs/*` · `/changelog`) — PublicShell({ cta, current, bare }) · header · footer · scroller. 헤더 40 · 패널 ·
+  public-shell/         공개 셸(`/` · `/privacy` · `/docs/*` · `/changelog`) — PublicShell({ cta, current, bare }) · header · footer · scroller. 헤더 44 · 패널 ·
                         푸터 40, 루트 h-svh min-w-[1280px] overflow-hidden. ⚠️ "use client"는 scroller 하나이고 lib/를 물지
                         않는다 — 문서가 스크롤되지 않으므로 스크롤러가 마운트 때 포커스를 받아야 Space/PageDown이 먹는다.
                         data-public-scroller가 랜딩 스테이지·공개 문서 목차의 스크롤 대상 표식이다. 해시가 tabindex 든 헤딩을
                         가리키면 마운트 때 그 헤딩이 포커스를 받는다. bare는 스크롤러를 안 만든다(/docs는 페이지가 든다). ⚠️ 헤더는 세션을 읽지
                         않는다 — 우측 primary는 페이지가 publicAccount로 정해 넘기고, 로그아웃은 lib/auth/sign-out을 참조로 넘긴다. route group 레이아웃으로 묶지 않는다(이동 때 스크롤러 재마운트)
-                        footer는 셸 밖 골격(signin/auth-layout — /signin·초대·계정 병합)도 패널 아래에 그린다 — 푸터 렌더러가 하나다
+                        footer는 셸 밖 골격(signin/auth-layout — /signin·초대·계정 병합)도 패널 아래에 그린다 — 푸터 렌더러가 하나다.
+                        footer는 서버 컴포넌트로 남고 마지막 항목인 언어 스위처(components/i18n/locale-switcher)만 클라이언트다
+  i18n/                 화면 언어(ui-locales, 2026-10-04 — ARCHITECTURE §6.355). messages-provider("use client" — useMessages·useUiLocale ·
+                        ⚠️ ko·es 사전의 유일한 클라이언트 import 자리 = next/dynamic 운반체 CARRIERS 한 줄씩. 루트 레이아웃이 서버에서 import하는
+                        client 모듈은 한 청크 그룹에 실려 언어별 provider 셋으로는 en도 ko를 받았다 · 언어별 껍데기·key={uiLocale} 금지 — 재마운트) ·
+                        locale-switcher(공개 푸터 스위처 — TextTrigger + DropdownMenu selected 세 줄, busy 형, 실패는 sonner 토스트, reject도 failed로 받는다)
+  preferences/          `/preferences` 조각 — language-card(Card + Select 하나, 고르는 즉시 setUiLocale · 낙관적 표시 · RoleSelect 가드 ·
+                        닫힌 트리거 typeahead 차단(Enter·Space·↑↓·Tab만) · 실패는 Card notice의 Alert danger inset)
   privacy/              `/privacy` 읽기 그릇 — privacy-doc(서버 — 1120 · 본문 720 + 목차 200, 본문은 사전 그대로)
   docs/                 `/docs/*` 조각 — guide-markdown(서버 — react-markdown에 로더 트리 사본을 꽂고 요소를 매핑한다.
                         ⚠️ urlTransform을 덮지 않는다 · rehype-raw 없음 — raw HTML은 글자로 나가므로 원고에서 게이트가 막는다) · doc-frame(그릇 · 이전/다음 · 장 개요 행 · 개요 두 갈래) ·
@@ -713,7 +735,11 @@ lib/
                         진행시키고, 추가는 살아 있는 세션 위에서 Account만 쓴다) — 합치지 않는다.
                         ⚠️ account-connect는 VerificationToken의 **세 번째 접두**이고 plan(판정) ·
                         policy(쿠키) · http(가로채기) · store(challenge·Account 쓰기)로 갈린다
-  onboarding/ survey/ scan/ projects/ shell/ settings/ signin/ i18n/ cli/
+  i18n/                 화면 언어의 입구(ui-locales — ARCHITECTURE §6.355). index(⚠️ 잎 — Messages 타입 = Widen<en>에서 영어 고정 절을 뺀 것 · pick) ·
+                        locales(⚠️ 잎, import 0 — UI_LOCALES·endonym·국기·parseUiLocale(Object.hasOwn)·resolveUiLocale(계정 > 쿠키 > en, Accept-Language
+                        입력 없음)·planUiLocaleWrite · no-korean-ui 허용(endonym 한국어)) · server(server-only — getUiLocale(React cache)·getMessages ·
+                        ko·es 사전의 서버 import 자리) · adapter-errors(어댑터 오류·pull 경고 코드 → 문장, 사전을 인자로 받는다 · withWarningLines는 외부 계약용)
+  onboarding/ survey/ scan/ projects/ shell/ settings/ signin/ cli/
                         (cli/push-response — `/api/push` 응답을 CI 로그·exit로 옮긴다. deferred면 exit 0 + ::warning 한 줄 ·
                         cli/push-url — `push-local --url` 판정. 토큰 원문을 싣는 요청이라 http는 루프백 셋만, 위반은 exit 2)
                         각 기능의 순수 판정층
@@ -902,8 +928,14 @@ lib/
 ## 그 밖
 
 ```
-messages/en.tsx         ⚠️ UI 문자열의 단일 출처. 값은 문자열 또는 함수다(헬퍼 셋을 만들지 않는다).
-                        갈래 누락은 소비자가 거는 satisfies Record<Union, string>이 잡는다. ⚠️ 잎이다
+messages/en.tsx         ⚠️ UI 문자열의 원문(화면 언어 en). 값은 문자열 또는 함수다(헬퍼 셋을 만들지 않는다).
+                        갈래 누락은 소비자가 거는 satisfies Record<Union, string>이 잡는다. ⚠️ 잎이다. 영어 고정 절(mcp·seo·crash·publicDocs.privacy)은
+                        Messages 타입에서 빠지고 소비자가 en을 명시 import한다
+messages/ko.tsx · es.tsx  ko·es 화면 사전(ui-locales) — satisfies Messages라 키·시그니처가 en과 묶인다. ⚠️ 비테스트 importer는
+                        lib/i18n/server.ts와 components/i18n/messages-provider의 next/dynamic 둘뿐이다(dictionary-consistency ⑥ — 다른 클라이언트
+                        모듈이 import하면 모든 사용자 번들에 실린다). ko.tsx는 no-korean-ui 허용 목록이다
+messages/ko-privacy.tsx  ko 방침 본 — en의 publicDocs.privacy와 같은 타입(PrivacyBody). ko.tsx에 넣지 않는 이유는 ko 사용자 번들에 법적 본문이
+                        실리기 때문이다. importer는 app/privacy/page.tsx 하나. policy-gate가 en 본과 동형·사실 집합을 대조한다
 prisma/schema.prisma    모델·enum 목록은 이 파일이 정본이다(TranslationSurface가 2026-09-14에 들어와 표면 축이 생겼고,
                         ProjectEvent·EventKind·ActorKind가 2026-09-20 활동 스트림에서, DeliveryConfirmation·
                         TranslationBaseline이 2026-09-23 translation-rework에서, ApiToken이 2026-09-28 mcp-connector에서,
@@ -961,10 +993,12 @@ public/brand/ flags/ email/
                         brand/agents/는 남의 로고다(2026-09-30) — Anthropic press kit Claude Spark · OpenAI black monoblossom을 **받은 그대로** 둔다
                         (색·비율 변경 금지 — 크기 보정은 BrandLogo의 표시 배율로 한다). 우리 로고(brand/ 바로 아래)와 섞지 않는다
 LICENSE                 MIT. ⚠️ 전문에 문장을 더하지 않는다 — GitHub가 유사도로 판정해 한 줄만 붙여도 인식이 풀린다
-guide/                  **사용 가이드 원고**(en) — SUMMARY.md(IA 정본 · 내비 순서) + README.md(개요) + <장>/README.md + <장>/<페이지>.md.
+guide/                  **사용 가이드 원고** — 화면 언어마다 한 벌 guide/en/·guide/ko/·guide/es/(ui-locales, 2026-10-04 — en이 원문, 구조 동형은
+                        lib/guide/__tests__/locales.test). 각 트리 = SUMMARY.md(IA 정본 · 내비 순서) + README.md(개요) + <장>/README.md + <장>/<페이지>.md.
+                        ⚠️ guide/ 루트에는 비서빙 매뉴얼 둘과 언어 디렉터리만 있다. 없는 언어를 en으로 메우지 않는다.
                         AUTHORING.md·SHOOTING.md는 한국어 매뉴얼이고 SUMMARY 밖이라 서빙되지 않는다(`/docs/AUTHORING`은 404).
                         ⚠️ docs/(내부 문서)와 이름을 가르려고 guide/다 — 라우트만 /docs다. ⚠️ x.md와 x/README.md가 둘 다 있으면 red
-public/guide/           원고 이미지(WebP) — 커밋된 원본이고 복사 단계가 없다(목록은 guide/SHOOTING.md 매핑 표가 정본). md는 /guide/<name>.webp 절대경로로만 참조한다.
+public/guide/           원고 이미지(WebP, en 화면 한 벌을 세 언어 원고가 공유) — 커밋된 원본이고 복사 단계가 없다(목록은 guide/SHOOTING.md 매핑 표가 정본). md는 /guide/<name>.webp 절대경로로만 참조한다.
                         치수·매핑 소스·blob SHA는 guide/SHOOTING.md 표가 정본이다.
                         ⚠️ README가 translation-editor·publish-preview·workflow-file 세 장을 상대 경로로 참조한다 — 이름을 바꾸면 README 이미지가 깨진다
 docs/assets/readme/     README 이미지(WebP) — 서빙되지 않고 GitHub가 렌더한다. ego로 찍고 마스킹은 guide/SHOOTING.md 표를 따른다
