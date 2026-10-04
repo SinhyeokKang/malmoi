@@ -789,7 +789,7 @@ export const es = {
       title: "Perfil",
       avatar: "Avatar",
       name: "Nombre",
-      email: "Correo electrónico",
+      email: "Correo",
       none: "Ninguno",
       save: "Guardar",
       saved: "Guardado",
