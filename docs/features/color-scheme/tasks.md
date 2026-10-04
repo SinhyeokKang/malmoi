@@ -118,7 +118,6 @@ Phase 1은 ui-locales의 E 배치(화면 파일 이관)와 W10(`globals.css`·Pr
 - OpenAI 로고: 원본 검정 마크를 두 테마 같은 흰 판 위에 — `mcp/connected-apps-card.tsx`의 로고 칸 둘, OpenAI만(design §3.5). 새 자산 없음. 색 리터럴 허용 목록에 그 자리를 더하고, `IconTile` 덮어쓰기 금지·raw 0 검사와 부딪히지 않는 길을 고른다.
 - LargeModal 윤곽: `LARGE_MODAL_PANEL`에 `border border-border`(design §2.2 — Dialog와 맞춘다). `components/ui/__tests__`의 large-modal 단언 확인.
 - `components/signin/dot-field.tsx`: `style={{ color: "var(--signin-dot)" }}` 요소의 계산된 `color` 읽기 + System의 `matchMedia` `change` 구독(`globals-css.test.ts:119-120`의 직접 소비자 검사가 그대로 green).
-- 가이드 스크린샷 테두리: `docs/guide-markdown.tsx` `Figure`의 `border-border-subtle` → `border-border`(radius 8·여백 없음은 이미 그렇다 — design §3.5).
   - 검증: `pnpm test` green. `[수동]`(P2-7로): OS 다크 토글 시 로그인 점 색이 따라감.
 
 ──
@@ -155,6 +154,6 @@ Phase 1은 ui-locales의 E 배치(화면 파일 이관)와 W10(`globals.css`·Pr
 ### P2-7 검증
 
 - `/design-sync` — S2 핸드오프 대비 대표 화면을 다크에서 computed style + CDP로 대조.
-- `/runtime-test` — **전 화면 × Light·Dark·System(OS 다크)**: 첫 페인트부터 고른 테마(깜빡임 없음) · Theme 카드 선택 즉시 전환 · 다른 기기 로그인 시 계정 값 · 로그아웃 뒤 공개 페이지에 쿠키 값 · 네이티브 컨트롤 · Malmoi·에이전트 로고 · 키비주얼 · 토스트 면·테두리·글자가 토큰 값(완료 조건 19) · 오버레이 · 포커스 링 가시성 · OS 다크 토글 시 로그인 점 · 가이드 스크린샷 테두리 · `public-shell`·`auth-layout`의 `<style>{body{background-color:var(--canvas)}}`가 다크 값을 받는지.
+- `/runtime-test` — **전 화면 × Light·Dark·System(OS 다크)**: 첫 페인트부터 고른 테마(깜빡임 없음) · Theme 카드 선택 즉시 전환 · 다른 기기 로그인 시 계정 값 · 로그아웃 뒤 공개 페이지에 쿠키 값 · 네이티브 컨트롤 · Malmoi·에이전트 로고 · 키비주얼 · 토스트 면·테두리·글자가 토큰 값(완료 조건 19) · 오버레이 · 포커스 링 가시성 · OS 다크 토글 시 로그인 점 · 가이드 스크린샷이 다크 본문에서 읽히는지(변경 없음 확인) · `public-shell`·`auth-layout`의 `<style>{body{background-color:var(--canvas)}}`가 다크 값을 받는지.
   - 검증: 두 리포트의 🔴 0, 결함은 BugShot 이슈.
 - 끝나면 결론을 정본으로 올렸는지 확인하고 `docs/features/color-scheme/`을 지운다.

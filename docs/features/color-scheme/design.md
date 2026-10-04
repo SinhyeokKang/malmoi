@@ -158,8 +158,8 @@ ui-locales의 `parseUiLocale`·`resolveUiLocale`(`lib/i18n/locales.ts`)와 **모
 | 로그인 키비주얼 PNG 넷(`malmoi-kv-1..4`) | **그대로**. 라이트 카드 그림이 다크 패널 위에 놓인다. 다크 PNG 제작은 spec 비목표 — 후속 이슈로도 올리지 않는다(2026-10-05 사용자) | 사진 같은 자산이라 토큰으로 못 바꾼다 |
 | 로그인 Canvas 점(`--signin-dot`) | ⚠️ `dot-field.tsx:66`이 `getComputedStyle(canvas).getPropertyValue("--signin-dot")`를 effect에서 한 번 읽는다 — 사용자 정의 속성은 **선언 문자열**(`light-dark(…)`)이 그대로 오고 Canvas `fillStyle`은 그것을 모른다. **`style={{ color: "var(--signin-dot)" }}`을 단 요소의 계산된 `color`를 읽도록** 바꾼다(브라우저가 `light-dark`를 풀어 준다). 유틸로 등록하지 않는다 — `globals-css.test.ts:119-120`의 "직접 소비자"(`var(--signin-dot)` 문자열) 검사와 `UNREGISTERED`(:163)가 그대로 성립한다. System이면 `matchMedia("(prefers-color-scheme: dark)")`의 `change`에서 다시 읽는다(완료 조건 8). 로그인 화면엔 Preferences가 없어 `data-theme`이 그 화면에서 바뀌는 경로는 없다 | |
 | 토스트(sonner `Toaster`, `app/layout.tsx:87`) | **`theme={colorScheme}`을 넘기고, sonner 변수(`--normal-bg`·`--normal-border`·`--normal-text`)를 `popover`·`border`·`foreground` 토큰에 묶는다**(spec 결정). sonner CSS는 `<head>` 끝에 레이어 없이 주입되고 `[data-sonner-toast][data-styled=true]`(특이도 0,2,0)가 `@layer utilities`의 `classNames`를 이기므로, 묶는 규칙은 `globals.css`에서 그보다 높은 특이도로 두거나 `Toaster`의 `style`로 넘긴다(P2-0 ④ 실측으로 고른다). `[data-description]{color:#3f3f3f}`도 같이 덮는다. 레이아웃 머리 주석("`theme="light"`가 필수다")을 고친다 | 라이트는 값이 우연히 같아 안 드러났을 뿐, 다크에서 토스트만 흰색으로 남는다 |
-| 국기 SVG(`public/flags/`) | 그대로. 테두리 처리는 spec 비목표(후속 이슈) | 국기는 국기다 |
-| 가이드 스크린샷(`public/guide/`) | 이미지는 그대로(라이트) — spec 비목표. **테두리는 `border` 1px + radius 8, 여백·면 없음, 두 테마 같은 규칙**(2026-10-05 시안 확정, §3.8). 지금 `docs/guide-markdown.tsx:112`의 `Figure`가 이미 `border-border-subtle rounded-lg border`(+ `shadow-low`)라, 바뀌는 것은 선 토큰 `border-subtle` → `border` 하나다(다크 `#1f1f1f` → `#262626` — 흰 그림의 가장자리를 닫는다). 매트(padding)는 다크에서 세 번째 명도를 만들어 기각 | 처리가 없으면 흰 여백이 본문으로 번진다(시안 A12) |
+| 국기 SVG(`public/flags/`) | 그대로. 흰 국기(kr·jp)의 윤곽이 흰 면에 묻히는 것은 라이트의 문제라 이 기능과 무관하다 — 다크 면 위에서는 오히려 선다(시안 확인) | 국기는 국기다 |
+| 가이드 스크린샷(`public/guide/`) | 이미지도 테두리도 **그대로 — 변경 없음**(2026-10-05 사용자). `docs/guide-markdown.tsx:112`의 `Figure`가 이미 `border-border-subtle rounded-lg border` + `shadow-low`라 라이트의 "흰 그림이 흰 본문과 섞임"은 막혀 있고, 다크에서는 흰 그림이 어두운 본문 위에서 스스로 경계를 만든다. 시안의 `border-subtle` → `border` 제안(A12)은 다크 `#1f1f1f` → `#262626` 차이뿐이라 받지 않았다. 다크 스크린샷 제작은 spec 비목표 | |
 | 사용자 프로젝트 썸네일(`ui/image-tile.tsx`) | 그대로 — 투명 PNG가 다크 면에 묻히는 것은 spec 비목표(수용) | |
 | 초대 메일 | 그대로(`color-scheme: light` 메타) — spec 비목표 | |
 | OG `og.png`·파비콘 `app/icon.svg` | 그대로 — spec 비목표 | |
@@ -195,7 +195,7 @@ ui-locales의 `parseUiLocale`·`resolveUiLocale`(`lib/i18n/locales.ts`)와 **모
 | `subtle` 다크 | `#121212`(background보다 어둡게 — 라이트의 "꺼진 면" 방향 유지) | §2.2 표 |
 | 모달 윤곽 | `LARGE_MODAL_PANEL`에 `border border-border`(Dialog는 이미 있다) | §2.2 |
 | OpenAI 로고 | 원본 검정 마크 + 두 테마 같은 흰 판 · 비색 값 블록 0 | §3.5 · §3.1 |
-| 가이드 스크린샷 | `border` 1px + radius 8, 여백·면 없음(두 테마) | §3.5 |
+| 가이드 스크린샷 | 시안은 `border` 1px 제안 → **받지 않고 지금 처리 그대로**(핸드오프 README §4와 다르다 — 이 문서가 이긴다) | §3.5 |
 | `border`/`background` 3:1 | 두 테마 약 1.2–1.26으로 미달 유지 — border·divider·border-subtle의 낮은 대비는 의도다. "정보를 나르는 경계"는 구현 판정 | §4.4 |
 
 시안 열린 결정의 판정:
