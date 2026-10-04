@@ -19,6 +19,7 @@
   - [되돌리기와 다시 동기화](sync/revert.md)
   - [로그에서 활동 확인](sync/logs.md)
 - [내 계정](account.md)
+- [화면 언어 바꾸기](language.md)
 - [AI 에이전트 연결](ai-agents/README.md)
   - [브라우저로 로그인](ai-agents/browser.md)
   - [개인 토큰 사용](ai-agents/token.md)
