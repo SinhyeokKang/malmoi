@@ -28,12 +28,13 @@ const INVITE = "app/invite/[token]/page.tsx";
 
 describe("문서 언어 (T8)", () => {
   /**
-   * ⚠️ **T4가 미뤄 둔 한 줄이다.** 화면 문구가 전부 영어가 되는 커밋이 이것이므로 여기서 바꾼다 —
    * `lang`이 틀리면 스크린리더가 영어 문장을 한국어 음성 엔진으로 읽고, 하이픈네이션·따옴표도 갈린다.
+   * 2026-09-08 T8이 `"en"`으로 고정했고, 화면 언어가 셋이 된 뒤(ui-locales D3)로는 **요청의 화면 언어**다 — 리터럴이 남으면 안 된다.
+   * provider까지의 계약은 `root-layout-i18n.test.ts`가 든다.
    */
-  it("`<html lang=\"en\">`이다 — 문구가 전부 영어가 됐다", () => {
-    expect(read(LAYOUT)).toMatch(/lang="en"/);
-    expect(read(LAYOUT)).not.toMatch(/lang="ko"/);
+  it("`<html lang>`이 요청의 화면 언어다 — 고정 리터럴이 없다", () => {
+    expect(read(LAYOUT)).toMatch(/<html lang=\{uiLocale\}/);
+    expect(read(LAYOUT)).not.toMatch(/lang="(en|ko|es)"/);
   });
 });
 

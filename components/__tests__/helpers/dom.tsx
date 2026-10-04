@@ -2,17 +2,23 @@ import { act, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach } from "vitest";
 
+import { MessagesProvider } from "@/components/i18n/messages-provider";
+import { UI_DICTIONARIES } from "@/components/i18n/ui-dictionaries";
+import type { UiLocale } from "@/lib/i18n/locales";
+
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 const cleanups: (() => Promise<void>)[] = [];
 afterEach(async () => { for (const cleanup of cleanups.splice(0).reverse()) await cleanup(); });
 
-export async function render(ui: ReactNode) {
+/** `uiLocale`을 주면 루트 레이아웃처럼 그 언어의 사전으로 감싼다 — 안 주면 provider 없이 그린다(`useMessages()`의 기본값 en). */
+export async function render(ui: ReactNode, { uiLocale }: { uiLocale?: UiLocale } = {}) {
   const container = document.createElement("div");
   document.body.append(container);
   const root = createRoot(container);
-  await act(async () => root.render(ui));
+  const wrap = (node: ReactNode) => (uiLocale === undefined ? node : <MessagesProvider uiLocale={uiLocale} messages={UI_DICTIONARIES[uiLocale]}>{node}</MessagesProvider>);
+  await act(async () => root.render(wrap(ui)));
   cleanups.push(async () => { await act(async () => root.unmount()); container.remove(); });
-  return { container, rerender: async (next: ReactNode) => { await act(async () => root.render(next)); } };
+  return { container, rerender: async (next: ReactNode) => { await act(async () => root.render(wrap(next))); } };
 }
 
 export function find<T extends Element>(container: ParentNode, selector: string): T {

@@ -8,6 +8,9 @@
 export const UI_LOCALES = ["en", "ko", "es"] as const;
 export type UiLocale = (typeof UI_LOCALES)[number];
 
+/** 기기 쿠키 이름 — http-only라 클라이언트는 읽지 않는다(provider가 서버에서 받은 코드를 쓴다). 서버 입구와 언어 바꾸기 Action이 같이 읽는다. */
+export const UI_LOCALE_COOKIE = "malmoi-ui-locale";
+
 /**
  * 언어 이름은 **그 언어 자체의 표기(endonym)**이고 번역하지 않는다 — ko 화면에서 영어를 찾는 사람도 `English`를 읽어야 한다.
  * 판정 표를 겸한다: `parseUiLocale`이 이 객체의 own key로 지원 여부를 본다.
