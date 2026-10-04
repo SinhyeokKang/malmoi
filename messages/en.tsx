@@ -2981,6 +2981,8 @@ export const en = {
     count: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "source" : "sources"}`,
     /** Sources 상세 Languages 카드의 개수 배지 sr 문장. */
     languageCount: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "language" : "languages"}`,
+    /** Sources 상세 언어 행의 오른쪽 수치 — 번역된 수 / 전체 수. */
+    translatedOfTotal: (translated: number, total: number): string => `${translated.toLocaleString("en-US")} of ${total.toLocaleString("en-US")}`,
     /**
      * 관리하지 않는 항목 (B2 r3 · QA5 — ARCHITECTURE §1 "read 오류의 두 갈래"). **실패 문장이 아니다** — 코드의 식·참조라
      * 파일에 그대로 남고 번역을 잃지 않는다. Sync 결과 문장 뒤에 안내로만 붙는다.

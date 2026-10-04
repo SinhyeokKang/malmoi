@@ -155,7 +155,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
             </span>
             <span className="flex w-[300px] shrink-0 flex-col gap-1.5 @max-[850px]:w-auto @max-[850px]:flex-1">
               <span className={cn("flex items-baseline text-xs", row.orphaned ? "text-gray-dim" : "text-muted-foreground")}>
-                <span className={cn(!row.orphaned && "text-foreground")}>{row.percent}%</span><span className="ml-auto">{row.translated} of {row.total}</span>
+                <span className={cn(!row.orphaned && "text-foreground")}>{row.percent}%</span><span className="ml-auto">{m.sources.translatedOfTotal(row.translated, row.total)}</span>
               </span>
               <Meter done={row.total === 0 ? 0 : (done / row.total) * 100} review={row.orphaned || row.total === 0 ? 0 : (review / row.total) * 100} dimmed={row.orphaned} />
             </span>

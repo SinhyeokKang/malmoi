@@ -243,6 +243,7 @@ export const FUNCTION_ARGS: { readonly [P in FunctionPaths<Messages>]: Parameter
   "translations.publish.previewFailedBody": [2],
   "sources.count": [2],
   "sources.languageCount": [2],
+  "sources.translatedOfTotal": [2, 2],
   "sources.unmanaged": [2],
   "sources.orphanStrip": ["X"],
   "sources.orphanStripRest": [2, 2],
