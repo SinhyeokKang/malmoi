@@ -73,6 +73,8 @@ const KOREAN_ALLOWED = [
   "lib/i18n/locales.ts",
   // ko 날짜 단위(`년`·`월`·`일`) — 형식을 손으로 만드는 자리라(`Intl` 날짜 포맷터 배제는 `lib/utc-time.ts` 머리 주석) 사전에 둘 수 없다. 한글은 ko 조립 두 줄에만 둔다.
   "lib/utc-time.ts",
+  // ko 화면 사전 — 화면 문구의 한글은 이 파일에만 둔다(ui-locales design §6). 위 두 줄은 문구가 아니라 상수다.
+  "messages/ko.tsx",
 ];
 
 /**

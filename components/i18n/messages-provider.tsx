@@ -58,7 +58,7 @@ function arrive(uiLocale: UiLocale, messages: Messages): { default: ComponentTyp
  * en은 위 정적 import가 든다(provider 기본값과 같은 객체).
  */
 const CARRIERS: Readonly<Partial<Record<UiLocale, ComponentType>>> = {
-  ko: dynamic(() => import("@/messages/en").then((mod) => arrive("ko", mod.en))),
+  ko: dynamic(() => import("@/messages/ko").then((mod) => arrive("ko", mod.ko))),
   es: dynamic(() => import("@/messages/en").then((mod) => arrive("es", mod.en))),
 };
 

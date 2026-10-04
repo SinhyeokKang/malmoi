@@ -7,6 +7,7 @@ import { readSession } from "@/lib/auth/read-session";
 import type { Messages } from "@/lib/i18n";
 import { UI_LOCALE_COOKIE, resolveUiLocale, type UiLocale } from "@/lib/i18n/locales";
 import { en } from "@/messages/en";
+import { ko } from "@/messages/ko";
 
 /**
  * 화면 언어 → 서버가 쓰는 사전. ⚠️ **ko·es는 사전이 들어올 때까지 en이다**(ui-locales orch — W2·W3이 자기 줄 하나를 바꾼다).
@@ -15,7 +16,7 @@ import { en } from "@/messages/en";
  */
 const DICTIONARIES: Readonly<Record<UiLocale, Messages>> = {
   en,
-  ko: en, // TODO(W2): ko from "@/messages/ko"
+  ko,
   es: en, // TODO(W3): es from "@/messages/es"
 };
 
