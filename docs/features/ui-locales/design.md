@@ -134,7 +134,7 @@ PRODUCT §10의 "소비자의 import 자리는 안 바뀐다"는 틀린 전망�
   - 타임존·테마 자리는 만들지 않는다(spec 비목표).
 - 사용자 축 내비(`navWorkItems` — 사이드바 사용자 구역과 사용자 메뉴가 같은 목록)는 **`Projects · MCP connector · Preferences · Account`** 순이다(2026-10-04 사용자 — Account가 목록 끝에 남는다). exact 매칭. 아이콘은 `SlidersHorizontal`(`Settings` 톱니는 Project settings, `CircleUser`는 Account와 구별). 랜딩 목업의 LNB도 `navZones`에서 뽑으므로 함께 바뀐다.
 - 인가: 페이지 최상단 `requireUser`. Action은 §4.
-- 시안: Claude Design 핸드오프 **`design_handoff_ui_locales/`**(프로젝트 `b99d54cd-3034-44f1-8446-0a864da9d767`, 캔버스 `UI Locales.dc.html` — 아트보드 A1–A8 · B1–B4 · B6–B8 · C1–C3). 새 페이지의 초기 구현이므로 `/design-sync` 대상이다.
+- 시안: <https://claude.ai/design/p/b99d54cd-3034-44f1-8446-0a864da9d767?file=UI+Locales.dc.html> — Claude Design 핸드오프 **`design_handoff_ui_locales/`**(캔버스 `UI Locales.dc.html` — 아트보드 A1–A8 · B1–B4 · B6–B8 · C1–C3). 새 페이지의 초기 구현이므로 `/design-sync` 대상이다.
   핸드오프와 이 문서가 다르면 이 문서가 정본이다: Action 이름은 `setUiLocale`, 로그인 때 쿠키↔계정을 옮기지 않는다(핸드오프 §10-2 기본안 기각 — spec 비목표), 닫힌 Select의 typeahead 가드는 핸드오프 상태 정의에 없지만 이 문서대로 넣는다.
 
 ### 5.3 `<html lang>`

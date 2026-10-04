@@ -90,7 +90,7 @@
 
 - [ ] **S1** `design-brief.md`로 Claude Design 핸드오프를 만든다(사용자). 아트보드 목록·상태는 브리프 §4가 정본이다.
 - [ ] **S2** 핸드오프가 브리프의 결정(즉시 적용·성공 토스트 없음·`DropdownMenuItem selected`·`busy` 진행 표시)과 어긋나면 design.md를 먼저 고친다 — 시안이 결정을 뒤집으면 그것은 변경 요청이다.
-  검증: 핸드오프 경로를 design.md §5에 기록. ✅ 2026-10-04 — `design_handoff_ui_locales/`, 차이는 design §5.1·§5.2에 반영.
+  검증: 핸드오프 경로를 design.md §5에 기록. ✅ 2026-10-04 — <https://claude.ai/design/p/b99d54cd-3034-44f1-8446-0a864da9d767?file=UI+Locales.dc.html> (`design_handoff_ui_locales/`), 차이는 design §5.1·§5.2에 반영.
 
 ## F. 언어 바꾸기 + 방침 (한 커밋 — 쿠키가 생기는 커밋에서 방침이 참이어야 한다)
 
