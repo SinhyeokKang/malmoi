@@ -706,6 +706,7 @@ logs 상세 `components/logs/event-dialog.tsx`(2026-09-24, §6.68), 그리고 �
 | **ErrorState** | 편집 셸·Logs 경계의 CircleX/페이지 EmptyState와 primary Retry를 공유한다. role=alert 한 번만 추가하며 실제 retry callback·문구를 보존한다. 셸 404는 alert 없는 EmptyState p18, 루트 오류/404는 기존 RootFallback h1/24를 유지한다 |
 | **Input·Select** | Input은 `size="md|sm|xs"` =36·32·28, 기본md. `variant="bare"`는 테두리·링 없이 스위처 검색에 쓴다. `icon`·`clearable` 슬롯이 글리프와 이름 있는 X(`common.clearSearch`)를 든다. 즉시 필터 X는 빈 값 onChange 한 번, 제출형은 onSearch도 한 번 호출하고 필드 포커스를 지킨다. readOnly는 muted 면·foreground 글자·default 커서다. 기본 형은 `px-2.5 text-sm border border-input bg-background rounded-md`, invalid는 포커스 중에도 destructive 테두리·링이다. SelectTrigger는 FieldTrigger에 형을 위임하며 Radix 선택·aria·ref·이벤트를 유지한다. 충돌 여백8, 호출부 end 정렬을 보존한다 |
 | **Textarea** | 같은 형이지만 **높이 클래스(`h-9`)를 안 든다** — `rows=1` + `field-sizing-content py-1`이라 높이는 내용이 정한다 (§6.1) |
+| **Select 즉시 적용 (예외)** | **`/preferences`의 Language Select 하나만** 고르는 즉시 `setUiLocale`을 부르고 [Save]·Dialog로 확정하지 않는다(2026-10-04, ui-locales) — 공개 푸터 스위처와 같은 Action·같은 동작이고, 화면 전체가 새 언어로 다시 그려지는 것이 피드백이라 성공 토스트도 없다. 진행 중에는 트리거가 `busy`다. **앱의 다른 Select는 전부 [Save]·Dialog로 확정한다** — 이 예외를 다른 설정으로 넓히지 않는다 |
 | **SearchInput** | `components/ui/search-input.tsx`. Input의 검색 글리프·지우기 슬롯을 쓴다. 기본 폭256, 번역·Logs는320이며 className은 바깥 배치만 든다. Enter는 trim한 질의를 제출하고, X와 비어 있지 않은 Escape는 빈 질의를 정확히 한 번 제출한다. 빈 Escape는 전파하며 `isImeComposing` 동안 Enter/Escape를 가로채지 않는다. 제출 응답은 그 뒤에 작성한 질의를 덮지 않는다. ProjectSearch/useProjectQuery 래퍼는 로컬 상태와 history.replaceState URL 동기화를 유지한다. 온보딩 repo·트리 필터는 즉시 Input을 쓴다 |
 | **ProjectThumbnail** | ui 잎. xs16/radius4/glyph12, sm28/radius8/glyph16, md32/radius8/glyph16, lg56/radius8/glyph20. 이미지 object-contain·투명 배경, 이름 hue 폴백·새 URL 재시도는 ImageTile이 유지한다 |
 | **Skeleton** | size 없는 블록의 기본 radius4와 모든 명시 radius를 유지한다. size=xs/sm/md/lg는 U+200B line box와0.8em 블록으로 글자 줄을 만든다. 옛 SkeletonLine export는 제거했다. 모든 app loading은 숨지 않은 sr-only 상태 문장을 정확히 하나 가진다 |
@@ -2155,41 +2156,82 @@ Supabase를 골랐던 이유(2026-09-05)는 "개발자 도구이면서 비개발
 - 능동태·**축약형 선호**(can't, won't, you're)·숫자는 숫자로.
 - **git 어휘를 편집자 화면에 쓰지 않는다** (`lib/pull/message.ts`의 옛 결정) — "PR opened"가 아니라 "Sent for review". 링크 라벨만 "View pull request"다(그 링크가 실제로 PR로 가므로).
 
+### 10.0 ko·es 문체 (2026-10-04, ui-locales)
+
+`messages/ko.tsx`·`messages/es.tsx`는 `en`과 같은 키·같은 시그니처의 번역이고, 위 규칙(마침표·느낌표·줄임표 U+2026·곡선 따옴표·"please/sorry" 금지·다음 행동을 말하는 오류·git 어휘 금지)을 그대로 따른다. 언어마다 더하는 것만 적는다. 낱말은 아래 §10.1 표의 ko·es 열이 정본이다.
+
+- **ko — 합니다체.** 완전 문장(help·Alert 본문·오류·토스트)은 `~합니다`·`~습니다`로 끝낸다. 해요체 평서(`~해요`)·반말을 쓰지 않는다. 지시는 `~하세요`(합니다체 문장 옆에 서는 한국어 UI의 관용 — `~하십시오`는 쓰지 않는다), 확인 모달의 질문은 `~하시겠습니까?`다.
+  - 버튼·메뉴 항목은 **명사형**(`저장` · `게시` · `멤버 제거`) 또는 `~하기`(`링크 만들기`)이고 마침표가 없다. 라벨·제목·배지는 명사구, 상태는 `~됨`(`보관됨` · `만료됨`)이다.
+  - 진행 중은 `{명사} 중…`(`저장 중…` · `동기화 중…`).
+  - 주어 `당신`을 쓰지 않는다 — 주어를 생략하고, `your projects`는 `내 프로젝트`다.
+  - **보간 값 바로 뒤에 받침에 따라 갈리는 조사(을/를 · 이/가 · 은/는 · 와/과 · 으로/로)를 붙이지 않는다** — 값의 끝 글자를 사전이 모른다. `을(를)` 병기도 쓰지 않는다. 값 뒤에 고정 명사를 둔다(`{name} 님을` · `{project} 프로젝트에서` · `{language} 언어를`) 또는 조사가 필요 없는 어순으로 쓴다.
+  - 숫자는 숫자로, 단위는 `개`·`건`·`명`. 단수·복수 갈래가 없으므로 en의 `count === 1 ? … : …`는 한 형으로 접는다.
+  - 고유명사 `Malmoi`·`GitHub`·`Google`·`MCP`·`OAuth`와 `pull request`의 한국어 표기 `풀 리퀘스트`는 번역하지 않는 이름이다. 코드·경로·명령(`pnpm`·`{locale}`·파일 경로)은 원문 그대로다.
+- **es — tú.** 독자를 `tú`로 부르고(`Guarda tus cambios`) `usted`를 쓰지 않는다.
+  - 버튼·메뉴 항목은 **동사 원형**(`Guardar` · `Publicar` · `Quitar miembro`), 상태는 과거분사(`Archivado` · `Caducado`)다. 대문자는 문장 첫 글자와 고유명사뿐이다.
+  - 물음표는 `¿…?`, 느낌표는 쓰지 않는다. `por favor`·`lo sentimos`를 쓰지 않는다.
+  - 성(性)이 갈리는 사람 지칭은 피한다 — 역할 이름(`Propietario`·`Editor`)은 칸 라벨로만 세우고, 문장은 행동으로 쓴다.
+  - `pull request`는 영어 그대로(GitHub의 고유명사 — en과 같은 근거)다.
+
+**기능·화면 이름** — 고유명사는 그대로이고 기능 이름은 번역한다(2026-10-04 사용자).
+
+| en | ko | es |
+|---|---|---|
+| Sync | 동기화 | Sincronizar |
+| Publish | 게시 | Publicar |
+| Sources | 소스 | Fuentes |
+| Translations | 번역 | Traducciones |
+| Logs | 로그 | Registros |
+| Members | 멤버 | Miembros |
+| Settings | 설정 | Configuración |
+| Home | 홈 | Inicio |
+| Needs review | 검토 필요 | Por revisar |
+| Preferences | 환경설정 | Preferencias |
+| Projects | 프로젝트 | Proyectos |
+| Docs | 문서 | Documentación |
+| Owner · Editor(역할) | 소유자 · 편집자 | Propietario · Editor |
+| repository | 리포지토리 | repositorio |
+| key | 키 | clave |
+| edit(명사) | 편집 | edición |
+| invitation | 초대 | invitación |
+| Archive | 보관 | Archivar |
+| Sign in · Sign out | 로그인 · 로그아웃 | Iniciar sesión · Cerrar sesión |
+
 ### 10.1 화면 용어 (2026-09-24 — 번역자 기준 세트, audit #29)
 
 **화면 문구만 이 표를 따르고 코드 식별자(`surface`·`locale`·`import`)는 그대로다.** 한 개념에 낱말이 둘이면 읽는 사람이 둘이 같은 것인지부터 되묻는다 — 2026-09-13 `malmoi`/`Malmoi`와 같은 계보라, 표를 **한 번에** 적용하고 `lib/i18n/__tests__/terminology.test.ts`가 사전 전체(함수 값은 호출해 렌더한 문장까지)를 상시로 센다.
 
-| 개념 | 화면 용어 | 쓰지 않는 말 |
-|---|---|---|
-| 번역 표면 | **Source** / Sources | surface, Translation surface |
-| 리포→앱 (CI·수동 모두) | **Sync** | import, imported |
-| 앱→리포 | **Publish** | Send changes, pull |
-| 언어 | **Language** / **Base language** | locale, Source language |
-| OWNER 호칭 | **a project owner** (주어 자리 "Only project owners") | the project owner, an owner of this project, Only an owner |
-| 재시도 | **Try again** | Retry, Check again |
-| 동기화 실패 (2026-10-01 — 아래 행부터 상태 낱말 개념 색인, §2.4) | 배지 **Sync failed**(Logs 결과 배지만 **Failed** — 종류 배지가 앞에 선다) · 문장 **The last sync couldn't finish** 하나 | Sync could not finish, did not finish, failed on its first sync |
-| 복호화 실패 이름 | **Unavailable** | Couldn't be read |
-| 일부 반영 | **Partially synced** | partial 문맥의 could not · did not come in · failed |
-| 동기화 중 | **Syncing…** (Publish는 **Publishing…**) | Sync 문맥의 Running… |
-| 연결 끊김 결과 | **Syncs and publishes stop until it's reconnected.** | paused, 연결 문맥의 held |
-| 보류 | **Held** / "Repository updates are held until …" | on hold, deferred(CI 로그 인용 밖) |
-| 열린 PR 조회 실패 | **Couldn't check for an open pull request** — 목적어를 붙인다 | 홀로 서는 Couldn't check(연결 확인 실패 낱말이다) |
-| Publish 일부 보류 | **Held back** | Sync 문장의 held back |
-| 미전달 | 상태 **Unsent** · 명사 **unsent edit(s)** | unpublished, unsent change, not sent yet |
-| 미번역 | **Untranslated** | Missing only |
-| 연결 확인 실패 · 만료 | **Couldn't check** · **Expired** | Couldn't load, Authorization expired |
-| 초대 철회 | **Revoke** / revoked | cancelled an invitation |
-| App 호칭 | 처음 **Malmoi GitHub App**, 이어서 **the app** | Malmoi app |
-| 계정 화면 | **Account** | account settings |
-| 이미지 제거 | **Remove** / **Upload** | Delete(이미지), Image upload |
-| 앱 화면으로 가는 검색 그룹 | **Pages** | Menus(앱에서 menu는 드롭다운이다 — 2026-10-03 search-ux-unify D4) |
-| `/projects`로 가는 출구 | **Go to your projects** — 검색은 404·오류 경계와 같은 `m.notFound.action`을 쓴다(D9). 초대·Sources·온보딩 한도의 같은 낱말은 각자의 키다 | View all projects |
-| `/docs`로 가는 출구 | **Go to docs** | Browse all docs |
-| 좁혀서 0건인 제목 | **No {대상} match “{q}”** — 곡선 따옴표 · 마침표 없음(`No projects match “q”` · `No repositories match “q”` · `No keys match “q”` · `No incomplete keys match “q”`). ⚠️ **검색 Dialog만 예외다** — 여러 그룹을 가로지르므로 `No results for “{q}”`다 | 곧은 따옴표, No projects found |
-| 축약형 | could not → **couldn't** · you are → **you're** · it is → **it's** 등(`as it is`는 축약이 안 되므로 예외) | could not · did not · cannot · is not · you are · it is(허용 목록: 강조 부정) |
-| 보관 시각 문장 | **Archived on {date}** 한 형(Sources·Logs·Settings) · 낱말 단독은 `STATE.archived.label`(2026-10-03 search-ux-polish P1) | Archived — {date} |
-| 토큰 모달 닫기 | **Close** — 결과 모달의 닫는 버튼은 `m.common.close` 하나다(2026-10-03 P4) | Done |
-| 밀림 | **Superseded** + 보조 문장(비개발자가 읽는 Home에 선다) | — |
+| 개념 | 화면 용어 | 쓰지 않는 말 | ko 화면 용어 | ko 쓰지 않는 말 | es 화면 용어 | es 쓰지 않는 말 |
+|---|---|---|---|---|---|---|
+| 번역 표면 | **Source** / Sources | surface, Translation surface | **소스** | 표면, 번역 표면, 원본 | **Fuente** / Fuentes | superficie |
+| 리포→앱 (CI·수동 모두) | **Sync** | import, imported | **동기화** | 가져오기, 임포트 | **Sincronizar** / sincronización | importar, importación |
+| 앱→리포 | **Publish** | Send changes, pull | **게시** | 발행, 배포, 퍼블리시, 변경 사항 보내기 | **Publicar** / publicación | enviar cambios, exportar |
+| 언어 | **Language** / **Base language** | locale, Source language | **언어** / **기준 언어** | 로케일, 원본 언어, 소스 언어 | **Idioma** / **Idioma base** | locale, configuración regional, idioma de origen |
+| OWNER 호칭 | **a project owner** (주어 자리 "Only project owners") | the project owner, an owner of this project, Only an owner | **프로젝트 소유자**(주어 자리 "프로젝트 소유자만") | 오너, 관리자, 이 프로젝트의 소유자 | **propietario del proyecto**(sujeto "Solo los propietarios del proyecto") | dueño, administrador |
+| 재시도 | **Try again** | Retry, Check again | **다시 시도** | 재시도, 다시 확인 | **Intentar de nuevo** | Reintentar, Volver a comprobar |
+| 동기화 실패 (2026-10-01 — 아래 행부터 상태 낱말 개념 색인, §2.4) | 배지 **Sync failed**(Logs 결과 배지만 **Failed** — 종류 배지가 앞에 선다) · 문장 **The last sync couldn't finish** 하나 | Sync could not finish, did not finish, failed on its first sync | 배지 **동기화 실패**(Logs 결과 배지 **실패**) · 문장 **마지막 동기화를 끝내지 못했습니다** 하나 | 동기화 오류, 동기화를 완료하지 못함 | insignia **Sincronización fallida**(Logs: **Fallida**) · frase **La última sincronización no pudo terminar** | error de sincronización, no se completó |
+| 복호화 실패 이름 | **Unavailable** | Couldn't be read | **사용할 수 없음** | 읽을 수 없음 | **No disponible** | No se pudo leer |
+| 일부 반영 | **Partially synced** | partial 문맥의 could not · did not come in · failed | **일부 동기화됨** | 일부 실패, 들어오지 못함 | **Sincronizado en parte** | falló, no se pudo(contexto parcial) |
+| 동기화 중 | **Syncing…** (Publish는 **Publishing…**) | Sync 문맥의 Running… | **동기화 중…** (게시는 **게시 중…**) | 실행 중… | **Sincronizando…** (**Publicando…**) | Ejecutando… |
+| 연결 끊김 결과 | **Syncs and publishes stop until it's reconnected.** | paused, 연결 문맥의 held | **다시 연결할 때까지 동기화와 게시가 멈춥니다.** | 일시 중지, 연결 문맥의 보류 | **Las sincronizaciones y publicaciones se detienen hasta que se vuelva a conectar.** | en pausa, retenido(contexto de conexión) |
+| 보류 | **Held** / "Repository updates are held until …" | on hold, deferred(CI 로그 인용 밖) | **보류** / "…까지 리포지토리 업데이트를 보류합니다" | 대기, 연기 | **Retenido** / "Las actualizaciones del repositorio se retienen hasta …" | en espera, aplazado |
+| 열린 PR 조회 실패 | **Couldn't check for an open pull request** — 목적어를 붙인다 | 홀로 서는 Couldn't check(연결 확인 실패 낱말이다) | **열린 풀 리퀘스트를 확인하지 못했습니다** — 목적어를 붙인다 | 홀로 서는 "확인하지 못함" | **No se pudo comprobar si hay una pull request abierta** | "No se pudo comprobar" suelto |
+| Publish 일부 보류 | **Held back** | Sync 문장의 held back | **제외됨** | 게시 문맥의 보류 | **Excluido** | retenido(contexto de publicación) |
+| 미전달 | 상태 **Unsent** · 명사 **unsent edit(s)** | unpublished, unsent change, not sent yet | 상태 **미전송** · 명사 **보내지 않은 편집** | 미게시, 미발행, 보내지 않은 변경 | estado **Sin enviar** · sustantivo **ediciones sin enviar** | sin publicar, cambios sin enviar |
+| 미번역 | **Untranslated** | Missing only | **미번역** | 누락만 | **Sin traducir** | Solo faltantes |
+| 연결 확인 실패 · 만료 | **Couldn't check** · **Expired** | Couldn't load, Authorization expired | **확인하지 못함** · **만료됨** | 불러오지 못함, 인증 만료 | **No se pudo comprobar** · **Caducado** | No se pudo cargar, autorización caducada |
+| 초대 철회 | **Revoke** / revoked | cancelled an invitation | **철회** / 철회됨 | 초대 취소 | **Revocar** / revocada | cancelar la invitación |
+| App 호칭 | 처음 **Malmoi GitHub App**, 이어서 **the app** | Malmoi app | 처음 **Malmoi GitHub App**, 이어서 **앱** | Malmoi 앱 | primero **Malmoi GitHub App**, luego **la app** | app de Malmoi |
+| 계정 화면 | **Account** | account settings | **계정** | 계정 설정 | **Cuenta** | configuración de la cuenta |
+| 이미지 제거 | **Remove** / **Upload** | Delete(이미지), Image upload | **제거** / **업로드** | 삭제(이미지), 이미지 업로드 | **Quitar** / **Subir** | Eliminar(imagen), carga de imagen |
+| 앱 화면으로 가는 검색 그룹 | **Pages** | Menus(앱에서 menu는 드롭다운이다 — 2026-10-03 search-ux-unify D4) | **페이지** | 메뉴 | **Páginas** | Menús |
+| `/projects`로 가는 출구 | **Go to your projects** — 검색은 404·오류 경계와 같은 `m.notFound.action`을 쓴다(D9). 초대·Sources·온보딩 한도의 같은 낱말은 각자의 키다 | View all projects | **내 프로젝트로 이동** | 모든 프로젝트 보기 | **Ir a tus proyectos** | Ver todos los proyectos |
+| `/docs`로 가는 출구 | **Go to docs** | Browse all docs | **문서로 이동** | 모든 문서 보기 | **Ir a la documentación** | Ver toda la documentación |
+| 좁혀서 0건인 제목 | **No {대상} match “{q}”** — 곡선 따옴표 · 마침표 없음(`No projects match “q”` · `No repositories match “q”` · `No keys match “q”` · `No incomplete keys match “q”`). ⚠️ **검색 Dialog만 예외다** — 여러 그룹을 가로지르므로 `No results for “{q}”`다 | 곧은 따옴표, No projects found | **“{q}”에 해당하는 {대상} 없음** — 곡선 따옴표 · 마침표 없음 · 조사는 받침과 무관한 `에`(§10.0). 검색 Dialog는 **“{q}” 검색 결과 없음** | 곧은 따옴표, “{q}”와 일치하는, {대상}을 찾을 수 없음 | **Ningún {objeto} coincide con “{q}”** — Dialog de búsqueda: **Sin resultados para “{q}”** | comillas rectas, No se encontraron |
+| 축약형 | could not → **couldn't** · you are → **you're** · it is → **it's** 등(`as it is`는 축약이 안 되므로 예외) | could not · did not · cannot · is not · you are · it is(허용 목록: 강조 부정) | — (축약형이 없다. 대신 합니다체 — §10 ko) | 해요체 평서("~해요"), 반말 | — (sin contracciones; tuteo — §10 es) | usted("puede" dirigido al lector) |
+| 보관 시각 문장 | **Archived on {date}** 한 형(Sources·Logs·Settings) · 낱말 단독은 `STATE.archived.label`(2026-10-03 search-ux-polish P1) | Archived — {date} | **{date}에 보관됨** 한 형 | 보관됨 — {date} | **Archivado el {date}** | Archivado — {date} |
+| 토큰 모달 닫기 | **Close** — 결과 모달의 닫는 버튼은 `m.common.close` 하나다(2026-10-03 P4) | Done | **닫기** | 완료 | **Cerrar** | Listo |
+| 밀림 | **Superseded** + 보조 문장(비개발자가 읽는 Home에 선다) | — | **대체됨** + 보조 문장 | — | **Reemplazado** + frase de apoyo | — |
 
 - ⚠️ **상태 낱말 행의 금지어는 `terminology.test.ts`의 `CONCEPT_BANNED`가 사전 전체에서 0건으로 센다**(2026-10-01) — `ALLOWED`가 접두("held는 보류 키 아래만")와 한 키의 금지어 여럿을 표현한다. **새 사전 키를 만들기 전에 이 표에서 같은 개념의 기존 낱말을 찾는다.**
 - **Home 카드 제목 `To send`·`To review`·`To translate`는 상태 낱말(Unsent·Needs review·Untranslated)과 품사가 다르다 — 의도된 차이다** (1-W8): 카드 제목은 **할 일**(동사형)이고 배지·칸의 낱말은 **상태**다. 같은 개념이 두 품사로 서는 등재된 자리이고, 새 화면이 이 차이를 낱말 드리프트로 넓히지 않는다.
