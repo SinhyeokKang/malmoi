@@ -50,6 +50,14 @@ it("busy면 앞 글리프(aria-hidden 첫 자식)를 스피너로 교체하고 a
   expect(container.querySelector('[data-glyph="trail"]')).not.toBeNull();
 });
 
+it("스피너가 바뀌는 글리프와 같은 크기다 — 진행 중 트리거 폭이 흔들리지 않는다", async () => {
+  const { container, rerender } = await render(<TextTrigger><svg data-glyph="lead" className="size-3.5" aria-hidden />English</TextTrigger>);
+  const size = (node: Element | null) => [...(node?.classList ?? [])].filter((cls) => /^size-/.test(cls));
+  const glyphSize = size(container.querySelector('[data-glyph="lead"]'));
+  await rerender(<TextTrigger busy><svg data-glyph="lead" className="size-3.5" aria-hidden />English</TextTrigger>);
+  expect(size(container.querySelector(".animate-spin"))).toEqual(glyphSize);
+});
+
 it("busy면 클릭·키 입력이 먹지 않고 포커스가 남는다", async () => {
   const onClick = vi.fn();
   const onKeyDown = vi.fn();

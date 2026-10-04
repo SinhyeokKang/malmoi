@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act } from "react";
+import { act, Component, type ReactNode } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { LocaleSwitcher } from "@/components/i18n/locale-switcher";
@@ -33,6 +33,13 @@ function deferred<T>() {
   let resolve: (value: T) => void = () => {};
   const promise = new Promise<T>((done) => { resolve = done; });
   return { promise, resolve };
+}
+
+/** transition 안의 예외가 오류 경계로 올라가는지 잰다 — 올라가면 화면 전체가 오류 화면이 된다(audit #24 · R10 🔴1). */
+class Boundary extends Component<{ children: ReactNode }, { error: unknown }> {
+  state = { error: null as unknown };
+  static getDerivedStateFromError(error: unknown) { return { error }; }
+  render() { return this.state.error === null ? this.props.children : <p data-caught />; }
 }
 
 const trigger = () => find<HTMLButtonElement>(document.body, "button[aria-haspopup]");
@@ -108,6 +115,27 @@ it.each(["failed", "invalid"])("Action이 %s면 오류 토스트를 띄운다 �
   await choose("Español");
   expect(mocks.error).toHaveBeenCalledWith("We couldn't change the language. Try again.");
   expect(trigger().textContent).toBe("Language: English");
+});
+
+it("Action이 reject되면(배포 skew·오프라인·5xx) 오류 경계가 아니라 토스트다", async () => {
+  mocks.setUiLocale.mockRejectedValueOnce(new Error("Failed to fetch"));
+  const error = vi.spyOn(console, "error").mockImplementation(() => {});
+  await render(<Boundary><LocaleSwitcher /></Boundary>);
+  await open();
+  await choose("Español");
+  error.mockRestore();
+  expect(document.querySelector("[data-caught]")).toBeNull();
+  expect(mocks.error).toHaveBeenCalledWith("We couldn't change the language. Try again.");
+  expect(trigger().hasAttribute("aria-busy")).toBe(false);
+  expect(trigger().textContent).toBe("Language: English");
+});
+
+it("메뉴가 위로 열리고 끝 정렬이다 — 푸터가 화면 바닥이고 줄의 마지막 항목이다", async () => {
+  await render(<LocaleSwitcher />);
+  await open();
+  const content = find<HTMLElement>(document.body, '[role="menu"]');
+  expect(content.getAttribute("data-side")).toBe("top");
+  expect(content.getAttribute("data-align")).toBe("end");
 });
 
 it("푸터의 마지막 항목이다 — 저작권 · 링크 뒤", async () => {

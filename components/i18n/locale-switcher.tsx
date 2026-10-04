@@ -4,7 +4,7 @@ import { ChevronsUpDown, Globe } from "lucide-react";
 import { useRef, useTransition } from "react";
 import { toast } from "sonner";
 
-import { setUiLocale } from "@/app/ui-locale/actions";
+import { setUiLocale, type SetUiLocaleResult } from "@/app/ui-locale/actions";
 import { useMessages, useUiLocale } from "@/components/i18n/messages-provider";
 import { LocaleFlag } from "@/components/translations/locale-badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -33,7 +33,12 @@ export function LocaleSwitcher() {
     // 같은 값이면 요청하지 않는다 — 무효화가 전 화면을 다시 그린다.
     if (next === uiLocale || pending) return;
     startTransition(async () => {
-      const result = await setUiLocale(next);
+      /*
+        ⚠️ **던져도 그 자리에서 말한다** (R10 🔴1 · audit #24) — try가 없으면 transition 안의 예외(배포 skew로 Action id 불일치·오프라인·5xx)가
+        error boundary로 올라가 페이지 전체가 오류 화면이 된다. 영어를 못 읽어 언어부터 바꾸는 사람이 먼저 맞는 경로다. `failed`와 같은 갈래다.
+      */
+      let result: SetUiLocaleResult | null;
+      try { result = await setUiLocale(next); } catch { result = null; }
       if (result !== "ok") toast.error(m.uiLocale.failed);
     });
   }

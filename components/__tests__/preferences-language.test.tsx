@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act } from "react";
+import { act, Component, type ReactNode } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { LanguageCard } from "@/components/preferences/language-card";
@@ -31,6 +31,13 @@ function deferred<T>() {
   let resolve: (value: T) => void = () => {};
   const promise = new Promise<T>((done) => { resolve = done; });
   return { promise, resolve };
+}
+
+/** transition 안의 예외가 오류 경계로 올라가는지 잰다 — 올라가면 화면 전체가 오류 화면이 된다(audit #24 · R10 🔴1). */
+class Boundary extends Component<{ children: ReactNode }, { error: unknown }> {
+  state = { error: null as unknown };
+  static getDerivedStateFromError(error: unknown) { return { error }; }
+  render() { return this.state.error === null ? this.props.children : <p data-caught />; }
 }
 
 const trigger = () => find<HTMLButtonElement>(document.body, '[role="combobox"]');
@@ -111,6 +118,18 @@ it.each(["failed", "invalid"])("Action이 %s면 원래 값으로 돌아가고 �
   expect(alert.querySelector("button")).toBeNull();
 });
 
+it("Action이 reject되면(배포 skew·오프라인·5xx) 오류 경계가 아니라 원래 값 + 카드 Alert다", async () => {
+  mocks.setUiLocale.mockRejectedValueOnce(new Error("Failed to fetch"));
+  const error = vi.spyOn(console, "error").mockImplementation(() => {});
+  await render(<Boundary><LanguageCard /></Boundary>);
+  await choose("Español");
+  error.mockRestore();
+  expect(document.querySelector("[data-caught]")).toBeNull();
+  expect(trigger().textContent).toBe("English");
+  expect(trigger().hasAttribute("aria-busy")).toBe(false);
+  expect(find(document.body, "[data-card-notice] [data-alert]").textContent).toBe("We couldn't change the language. Try again.");
+});
+
 it("실패 뒤 다시 고르면 Alert가 걷힌다", async () => {
   mocks.setUiLocale.mockResolvedValueOnce("failed");
   await render(<LanguageCard />);
@@ -124,6 +143,24 @@ it("닫힌 트리거에서 글자 키로 값이 바뀌지 않는다 — 즉시 �
   await render(<LanguageCard />);
   await act(async () => { trigger().focus(); });
   for (const letter of ["e", "E", "k", "한"]) await key(trigger(), letter);
+  await tick();
+  expect(mocks.setUiLocale).not.toHaveBeenCalled();
+  expect(trigger().textContent).toBe("English");
+  expect(trigger().getAttribute("aria-expanded")).toBe("false");
+});
+
+it("화이트리스트다 — Home·End·PageUp·PageDown·Backspace·좌우 방향키도 닫힌 트리거에서 막힌다", async () => {
+  await render(<LanguageCard />);
+  await act(async () => { trigger().focus(); });
+  for (const name of ["Home", "End", "PageUp", "PageDown", "Backspace", "Delete", "ArrowLeft", "ArrowRight", "Process", "Dead"]) {
+    const event = new KeyboardEvent("keydown", { key: name, bubbles: true, cancelable: true });
+    await act(async () => { trigger().dispatchEvent(event); });
+    expect(event.defaultPrevented, name).toBe(true);
+  }
+  // 수정자 조합은 브라우저 단축키라 막지 않는다(Cmd+R·Ctrl+L).
+  const reload = new KeyboardEvent("keydown", { key: "r", metaKey: true, bubbles: true, cancelable: true });
+  await act(async () => { trigger().dispatchEvent(reload); });
+  expect(reload.defaultPrevented).toBe(false);
   await tick();
   expect(mocks.setUiLocale).not.toHaveBeenCalled();
   expect(trigger().textContent).toBe("English");
