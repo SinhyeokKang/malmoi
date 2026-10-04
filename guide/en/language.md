@@ -1,6 +1,6 @@
-# Change the interface language
+# Change the interface language and time zone
 
-Choose whether Malmoi's screens appear in English, Korean, or Spanish. This changes only Malmoi itself, not the languages your projects translate into.
+Choose whether Malmoi's screens appear in English, Korean, or Spanish. This changes only Malmoi itself, not the languages your projects translate into. You can also choose the time zone Malmoi uses for dates and times.
 
 ## Before you sign in {#footer}
 
@@ -41,6 +41,19 @@ Malmoi doesn't read your browser's language setting, so your first visit is alwa
 The interface language doesn't touch your projects. The language columns in Translations, the base language of each source, and the files Malmoi publishes stay the same. The **Language** card says so too: **Your projects' languages don't change.**
 
 This guide follows the interface language and is available in all three languages. Its screenshots show the English interface. The **Privacy Policy** is available in English and Korean; with Spanish selected, it appears in English.
+
+## Choose a time zone {#time-zone}
+
+Malmoi shows dates and times in UTC by default. Choose another time zone if you'd rather read them in your own.
+
+Before you start: Open your avatar menu at the top right and choose **Preferences**.
+
+1. In the **Time zone** card, open the menu and pick a time zone. The first entry is `UTC`; the others show their offset and name, such as `UTC+9 · Asia/Seoul`. There is no Save button; the change applies right away.
+2. Check the line under the menu. It shows the current time in the zone you picked, such as `Now: Oct 5, 2026 08:10 UTC+9`. Times across Malmoi, including [Logs](sync/logs.md), now use that zone, and each one shows its offset.
+
+The time zone is saved to your account, so it is the same on every device you sign in on. It isn't saved in a cookie. Public pages, such as the changelog and the Privacy Policy, always use UTC, even when you're signed in.
+
+If the change fails, the card shows **We couldn't change the time zone. Try again.** and the menu keeps the previous time zone.
 
 ## What happens next {#next}
 

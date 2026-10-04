@@ -19,7 +19,7 @@
   - [Undo and resync](sync/revert.md)
   - [Check activity in Logs](sync/logs.md)
 - [Your account](account.md)
-- [Change the interface language](language.md)
+- [Change the interface language and time zone](language.md)
 - [Connect an AI agent](ai-agents/README.md)
   - [Sign in through your browser](ai-agents/browser.md)
   - [Use a personal token](ai-agents/token.md)

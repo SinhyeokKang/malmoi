@@ -1,6 +1,6 @@
-# Cambia el idioma de la interfaz
+# Cambia el idioma de la interfaz y la zona horaria
 
-Elige si las pantallas de Malmoi aparecen en inglés, coreano o español. Esto cambia solo Malmoi, no los idiomas a los que traducen tus proyectos.
+Elige si las pantallas de Malmoi aparecen en inglés, coreano o español. Esto cambia solo Malmoi, no los idiomas a los que traducen tus proyectos. También puedes elegir la zona horaria que Malmoi usa para las fechas y las horas.
 
 ## Antes de iniciar sesión {#footer}
 
@@ -41,6 +41,19 @@ Malmoi no lee la configuración de idioma de tu navegador, así que tu primera v
 El idioma de la interfaz no afecta a tus proyectos. Las columnas de idioma de Traducciones, el idioma base de cada fuente y los archivos que Malmoi publica siguen igual. La tarjeta **Idioma** también lo dice: **Los idiomas de tus proyectos no cambian.**
 
 Esta guía sigue el idioma de la interfaz y está disponible en los tres idiomas. Sus capturas muestran la interfaz en inglés. La **Política de privacidad** está disponible en inglés y coreano; con español seleccionado, aparece en inglés.
+
+## Elige una zona horaria {#time-zone}
+
+Malmoi muestra las fechas y las horas en UTC de forma predeterminada. Elige otra zona horaria si prefieres verlas en la tuya.
+
+Antes de empezar: abre el menú de tu avatar, arriba a la derecha, y elige **Preferencias**.
+
+1. En la tarjeta **Zona horaria**, abre el menú y elige una zona horaria. La primera opción es `UTC`; las demás muestran su desfase y su nombre, como `UTC+9 · Asia/Seoul`. No hay botón de guardar; el cambio se aplica al momento.
+2. Revisa la línea bajo el menú. Muestra la hora actual en la zona que elegiste, como `Ahora: Oct 5, 2026 08:10 UTC+9`. Las horas de todo Malmoi, incluidos los [Registros](sync/logs.md), usan ahora esa zona, y cada una muestra su desfase.
+
+La zona horaria se guarda en tu cuenta, así que es la misma en todos los dispositivos donde inicies sesión. No se guarda en una cookie. Las páginas públicas, como el registro de cambios y la Política de privacidad, siempre usan UTC, incluso con la sesión iniciada.
+
+Si el cambio falla, la tarjeta muestra **No pudimos cambiar la zona horaria. Inténtalo de nuevo.** y el menú conserva la zona horaria anterior.
 
 ## Qué pasa después {#next}
 

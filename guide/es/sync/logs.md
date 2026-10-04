@@ -9,7 +9,7 @@ Registros guarda los eventos del proyecto con la persona que los hizo, la hora, 
 1. Abre **Registros** desde la navegación del proyecto.
 2. Acota la lista con los filtros — **Toda la actividad**, **Cualquier fecha**, **Cualquier persona**, **Cualquier fuente** y **Cualquier resultado** — y usa **Buscar en los registros**.
 
-Las fechas y las horas de los eventos usan UTC. Los filtros de resultado se aplican a las ejecuciones de sincronización y de publicación.
+Las fechas y las horas de los eventos usan UTC, salvo que [elijas otra zona horaria](../language.md#time-zone) en Preferencias. Los separadores de fecha y el filtro de fecha siguen esa zona horaria, y cada hora de evento lleva su desfase, como `08:10 UTC+9`. Los filtros de resultado se aplican a las ejecuciones de sincronización y de publicación.
 
 En **Automatización**, el filtro **Cualquier persona** ofrece **CI** para las ejecuciones del workflow de tu repositorio y **Proceso nocturno** para la [ejecución nocturna](nightly.md). Una noche sin ediciones sin enviar aparece en **Sincronizaciones**, no en **Publicar**: la ejecución nocturna actualizó el proyecto desde el repositorio, informó **Al día**, retuvo la actualización (**Retenido**) o falló (por ejemplo, no pudo leer la rama del repositorio). Algunas noches no dejan ningún evento para un proyecto, por ejemplo cuando ninguna fuente está lista para comparar o la ejecución llegó al proyecto demasiado tarde para iniciar una actualización.
 
