@@ -137,3 +137,5 @@
 - **Q1(시안 대조 감사) 완료**: 이슈 2 — #183 Preferences Select→도움말 간격 6(시안 8) → **D12(사용자) /account에 맞춰 6 유지, 시안 드리프트로 닫음** · #184 실패 토스트가 sonner 기본 스타일(앱 전체 기존 결함) → **D13(사용자) 이번 런에서 수정 — W12(Sonnet)**. 나머지 아트보드 일치(접근 이름·menuitemradio·lang·busy·포커스). 못 본 것: `/signin` 자체·로그아웃 쿠키 경로(A7은 /invite AuthLayout로 대체)·B8 스켈레톤(코드만)·서버 측 failed 경로 → Q2.
 - **W11 통합·push** `17f05401..f207e70e`(gate ok). W11 워크트리 제거.
 - **D1 착수**(정본 문서 갱신 — H2·I6·리뷰 문서 항목, Opus medium, 워크트리).
+- **W12 통합·push** `f207e70e..2ee820ef`(Refs #184). W12 해제·워크트리 제거. **Q2 착수**(런타임 QA + 가이드 촬영, main 체크아웃 — cherry-pick·build 금지 구간).
+- **D1 완료**: 문서별 8커밋 `4be2d754..f9deca51`(CLAUDE.md+미러 · 스킬 7+미러 · AUTHORING/SHOOTING · PRODUCT · ARCHITECTURE §6.355 신설 · DIRECTORY · DESIGN · README), gate ok. OPERATIONS 변경 없음. DESIGN §6.65 'role Select (immediate)' 낡음 — 범위 밖 지적. 통합은 Q2 인계 뒤.
