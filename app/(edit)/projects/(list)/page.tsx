@@ -1,4 +1,4 @@
-import { m } from "@/lib/i18n";
+import { getMessages } from "@/lib/i18n/server";
 import { ProjectList } from "@/components/projects/project-list";
 import { ContentPanel } from "@/components/shell/content-panel";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
@@ -36,6 +36,7 @@ export default async function ProjectsPage({
 }: {
   searchParams: Promise<Raw<"e" | "q">>;
 }) {
+  const m = await getMessages();
   const { userId } = await requireUser();
   /**
    * `requireProjectAccess`가 거부 사유를 `?e=`로 넘긴다. 주소창 값이라 판정 함수로 거른다 — 모르는 값은 무시.

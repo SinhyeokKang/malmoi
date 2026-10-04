@@ -7,7 +7,7 @@ import { Dialog as Primitive } from "radix-ui";
 import type { ReactNode } from "react";
 
 import { CloseButton } from "@/components/ui/close-button";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 
 /**
  * 이벤트 상세의 **껍데기 1024** (캔버스 `1d`–`1f`).
@@ -49,6 +49,7 @@ export function EventDialog({
   returnFocusId: string;
   children: ReactNode;
 }) {
+  const m = useMessages();
   const open = `${ROW_ID_PREFIX}${useSearchParams().get("event") ?? ""}` === returnFocusId;
   return (
     <Primitive.Root

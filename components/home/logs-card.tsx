@@ -6,8 +6,9 @@ import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 
 import type { EventRow as Row } from "@/lib/events/query";
-import { m } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
+import type { UiLocale } from "@/lib/i18n/locales";
+import type { Messages } from "@/lib/i18n";
 
 /**
  * `Recent logs` — **Logs와 같은 스트림의 최신 여섯** (logs-rework 캔버스 `1h`).
@@ -22,13 +23,15 @@ import { routes } from "@/lib/routes";
  * ⚠️ **상세가 Home 위에서 열린다** — 행이 `routes.project(slug, { event })`를 가리키고 닫으면
  * Home으로 돌아온다. Logs로 튕겨 보내지 않는다. `[All logs]`만 목록으로 간다.
  */
-export function LogsCard({ rows, slug, now, archived, syncedBefore }: {
+export function LogsCard({ rows, slug, now, archived, syncedBefore, uiLocale, m }: {
   rows: readonly Row[];
   slug: string;
   now: Date;
   archived: boolean;
   /** 첫 Sync가 있었나 — 빈 상태의 문장이 그것으로 갈린다. */
   syncedBefore: boolean;
+  uiLocale: UiLocale;
+  m: Messages;
 }) {
   return (
     /* 머리·머리 아래 선·접근 이름(`region`)은 `Card`가 든다(5-Y12 — 손으로 복제한 머리가 셋이었다). */
@@ -46,7 +49,7 @@ export function LogsCard({ rows, slug, now, archived, syncedBefore }: {
             /* 선은 `Card` 규칙이다(4-Y4) — 머리↔첫 행은 머리 선, 행↔행은 `--border`. Logs 화면의 같은 행과 같은 색이다. */
             <li key={row.id} id={`event-${row.ref}`} tabIndex={-1} className="border-border not-first:border-t">
               {/* ⚠️ **시각 열이 없다** — 날짜 카드가 없으므로 오른쪽에 상대 시각이 서고, 결과 배지는 행 오른쪽 그 앞이다(D3⑤ · `event-row`). */}
-              <EventRow row={row} href={routes.project(slug, { event: row.ref })} now={now} archived={archived} showTime={false} />
+              <EventRow row={row} href={routes.project(slug, { event: row.ref })} now={now} archived={archived} showTime={false} uiLocale={uiLocale} m={m} />
             </li>
           ))}
         </ul>

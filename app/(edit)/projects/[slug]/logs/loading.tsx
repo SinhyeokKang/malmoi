@@ -1,6 +1,6 @@
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { Skeleton } from "@/components/ui/skeleton";
-import { m } from "@/lib/i18n";
+import { getMessages } from "@/lib/i18n/server";
 
 /**
  * Logs가 서버에서 오는 동안의 골격 (캔버스 `1i`-3).
@@ -12,7 +12,8 @@ import { m } from "@/lib/i18n";
  * ⚠️ **골격이 `aria-hidden`이라 접근성 트리가 통째로 빈다** — `role="status"` 한 줄이 그 자리를 메운다
  * (`projects/[slug]/(home)/loading.tsx`와 같은 형).
  */
-export default function LogsLoading() {
+export default async function LogsLoading() {
+  const m = await getMessages();
   return (
     <>
       <span className="sr-only" role="status">{m.logs.loading.list}</span>

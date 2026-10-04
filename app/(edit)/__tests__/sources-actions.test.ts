@@ -7,6 +7,8 @@ vi.mock("@/lib/db", () => ({ getPrisma: () => ({}) }));
 vi.mock("@/lib/sources/query", () => ({ loadSource: mocks.load }));
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidate }));
 import { loadSourceDetail } from "../projects/[slug]/sources/actions";
+vi.mock("@/lib/i18n/server", async () => ({ getUiLocale: async () => "en", getMessages: async () => (await import("@/messages/en")).en }));
+
 beforeEach(() => { vi.clearAllMocks(); mocks.session.mockResolvedValue({ status: "ok", userId: "u" }); mocks.access.mockResolvedValue({ status: "ok", projectId: "p", surfaceId: "s", role: "EDITOR", archived: false, surface: { lastImportToken: "private" } }); mocks.load.mockResolvedValue({ slug: "web" }); });
 it("매 호출 인가 뒤 명시 reader만 반환하며 무효화하지 않는다", async () => {
   for (let i=0;i<2;i++) expect(await loadSourceDetail({ slug: "p", surfaceSlug: "web" })).toEqual({ ok: true, detail: { slug: "web" } });

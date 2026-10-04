@@ -11,6 +11,8 @@ import { ProjectList } from "@/components/projects/project-list";
 import { en } from "@/messages/en";
 import type { ProjectListRow } from "@/lib/keys/query";
 
+vi.mock("@/lib/i18n/server", async () => ({ getUiLocale: async () => "en", getMessages: async () => (await import("@/messages/en")).en }));
+
 /**
  * `/projects`의 링크 색·글리프 (ux-drift-unify T19 · DESIGN §2.4 동작 규칙 · 글리프 열).
  * 🔴 N — 행 띠에서 앱 안 이동과 새 탭 외부 링크가 같은 파랑이었다. 파랑은 새 탭 외부만, 앱 안은 muted + chevron이다.

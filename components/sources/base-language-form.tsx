@@ -6,7 +6,7 @@ import { FieldError } from "@/components/ui/form-group";
 import { useLandAfter } from "@/components/ui/focus";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import { baseLocaleFieldValue } from "@/lib/onboarding/base-pending";
 import { isRepositorySettingsError, repositorySettingsErrorMessage } from "@/lib/settings/message";
 import { createBaseLanguageForm, planBaseLanguageForm } from "@/lib/sources/base-language";
@@ -20,6 +20,7 @@ export function BaseLanguageForm({ slug, surfaceSlug, baseLocale, declaredBaseLo
   /** 미저장 변경 — 모달을 떠나는 길 전부가 이 값 하나로 확인창을 지난다 (시안 `1j`). */
   onDirty: (draft: string | null) => void;
 }) {
+  const m = useMessages();
   const [state, setState] = useState(() => createBaseLanguageForm({ baseLocale, declaredBaseLocale }));
   const submit = useRef<HTMLButtonElement>(null);
   const server = baseLocaleFieldValue({ baseLocale, declaredBaseLocale }) ?? "";

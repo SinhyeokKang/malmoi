@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { SyncResult, syncResultTitle } from "@/components/home/sync-result";
 import { SlowLine, useSlow } from "@/components/slow-notice";
 import { Dialog, DialogClose, DialogContent, DialogTrigger, lastRecorded } from "@/components/ui/dialog";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import { planImportConfirmation, type OpenImportPr } from "@/lib/import/confirm";
 import type { RepositoryImportOutcome } from "@/lib/import/result";
 import { routes } from "@/lib/routes";
@@ -32,7 +32,7 @@ import { routes } from "@/lib/routes";
 /** 응답 없이 이만큼 지나면 진행 Dialog가 닫기를 돌려준다 (sync-lock R3). 함수 상한 60초 + 왕복 여유. */
 const EXIT_AFTER_MS = 70_000;
 
-export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paused = false, pausedReason = m.repositorySync.paused, onResult, onPendingChange, open, onOpenChange, fallbackFocusRef }: {
+export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paused = false, pausedReason, onResult, onPendingChange, open, onOpenChange, fallbackFocusRef }: {
   /** 트리거가 사라졌을 때(권한 변경) 포커스를 받을 Home 제목. */
   fallbackFocusRef?: RefObject<HTMLElement | null>;
   open: boolean; onOpenChange: (open: boolean) => void;
@@ -60,6 +60,8 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
    */
   onPendingChange?: (pending: boolean) => void;
 }) {
+  const m = useMessages();
+  const pausedText = pausedReason ?? m.repositorySync.paused;
   const triggerId = useId();
   const describedId = useId();
   const warningId = useId();
@@ -219,11 +221,11 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
   */
   if (paused && !pending && outcome === null) {
     return <>
-      <Button aria-disabled aria-describedby={pausedReasonId} title={pausedReason} onClick={event => event.preventDefault()}>
+      <Button aria-disabled aria-describedby={pausedReasonId} title={pausedText} onClick={event => event.preventDefault()}>
         <ArrowDownToLine className="size-3.5" aria-hidden />
         {m.repositorySync.action}
       </Button>
-      <span id={pausedReasonId} className="sr-only">{pausedReason}</span>
+      <span id={pausedReasonId} className="sr-only">{pausedText}</span>
     </>;
   }
   return <Dialog open={open} onOpenChange={changeOpen}>
@@ -261,7 +263,7 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
         target.focus();
       }}
       /* 결과 단계는 결과별 제목이다(R6 — Publish 모달 §6.646과 같은 형). 확인 질문은 이미 답했다. */
-      title={outcome !== null ? syncResultTitle(outcome) : m.repositorySync.title(name)}
+      title={outcome !== null ? syncResultTitle(m, outcome) : m.repositorySync.title(name)}
       /*
         ⚠️ **경고 블록을 `aria-describedby`에 넣는다.** Radix는 그것을 `Description` 하나에만 걸어서,
         열릴 때 읽히는 것이 "리포를 읽어 덮는다"까지였다 — **무엇이 지워지는지는 안 읽혔다.** 포커스가

@@ -16,7 +16,7 @@ import { getPrisma } from "@/lib/db";
 import { clearedLogsQuery, encodeCursor, hasNarrowing, logsQuery, parseLogFilter, type LogSearchParams } from "@/lib/events/filter";
 import { loadEvent, loadEventActors, loadEvents } from "@/lib/events/query";
 import { coverageBoundaryIndex, groupByDay } from "@/lib/events/view";
-import { m } from "@/lib/i18n";
+import { getMessages, getUiLocale } from "@/lib/i18n/server";
 import { routes } from "@/lib/routes";
 import { utcDay } from "@/lib/utc-time";
 
@@ -45,6 +45,8 @@ export default async function LogsPage({
   params: Promise<{ slug: string }>;
   searchParams: Promise<LogSearchParams>;
 }) {
+  const uiLocale = await getUiLocale();
+  const m = await getMessages();
   const { slug } = await params;
   const { projectId, role, archived } = await requireProjectAccess({
     slug,
@@ -145,13 +147,13 @@ export default async function LogsPage({
                       <div className="flex items-center gap-3 px-4 py-3">
                         <span className="bg-border h-px flex-1" />
                         <span className="text-muted-foreground text-center text-xs text-pretty">
-                          {m.logs.coverage(utcDay(project.activityCoverageStartedAt!))}
+                          {m.logs.coverage(utcDay(project.activityCoverageStartedAt!, uiLocale))}
                         </span>
                         <span className="bg-border h-px flex-1" />
                       </div>
                     )}
                     <div id={`event-${row.ref}`} tabIndex={-1}>
-                      <EventRow row={row} href={href(row.ref)} now={now} archived={archived} />
+                      <EventRow row={row} href={href(row.ref)} now={now} archived={archived} uiLocale={uiLocale} m={m} />
                     </div>
                   </div>
                 );
@@ -185,7 +187,7 @@ export default async function LogsPage({
             /* ⚠️ **복원 링크는 OWNER에게만** — EDITOR에게 누를 수 없는 것을 보이지 않는다. */
             actions={canPerform(role, "project:settings") ? <ButtonLink href={routes.settings(slug)}>{m.archive.empty.action}</ButtonLink> : undefined}
           >
-            {m.logs.archived.restoreLine(utcDay(project.archivedAt))}
+            {m.logs.archived.restoreLine(utcDay(project.archivedAt, uiLocale))}
           </Alert>
         )}
       </PanelBody>
@@ -206,7 +208,7 @@ export default async function LogsPage({
               archived={archived}
               canOpenSettings={canPerform(role, "project:settings")}
               repoUrl={`https://github.com/${project.repoOwner}/${project.repoName}`}
-              translationHref={translationHref}
+              translationHref={translationHref} uiLocale={uiLocale} m={m}
             />
           )}
         </EventDialog>

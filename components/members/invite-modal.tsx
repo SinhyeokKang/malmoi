@@ -13,12 +13,13 @@ import { LargeModal } from "@/components/ui/large-modal";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import type { Role } from "@/lib/auth/permission";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import { parseRecipients, splitPastedEmails, type RecipientRowError } from "@/lib/invitation-email/recipients";
 import type { IssueRowError } from "@/lib/invitation-email/plan";
 import { INVITATION_HOURLY_LIMIT, USER_HOURLY_LIMIT } from "@/lib/invitation-email/limits";
 import { retryAtLabel } from "@/lib/invitation-email/retry-at";
 import { isImeComposing } from "@/lib/keyboard";
+import type { Messages } from "@/lib/i18n";
 
 /**
  * 다중 초대 폼 — **입력 → 전송 → 성공이면 닫힘 / 오류면 같은 폼** (핸드오프 `Invite Modal.dc.html` `1a`–`1i`).
@@ -63,6 +64,7 @@ export function InviteModal({
   /** 닫으면 [Invite]로 포커스를 돌려준다. */
   returnFocusRef: RefObject<HTMLElement | null>;
 }) {
+  const m = useMessages();
   const [rows, setRows] = useState<Row[]>(() => [blank()]);
   const [rowErrors, setRowErrors] = useState<ReadonlyMap<number, RowIssue>>(new Map());
   const [nothingSent, setNothingSent] = useState(false);
@@ -185,7 +187,7 @@ export function InviteModal({
    * 이제 같으면 "역할을 하나로"가 거짓이라 세우지 않는다(다음 제출이 같은 역할 중복으로 다시 판정한다).
    */
   function reasonText(row: Row, issue: RowIssue): string | null {
-    if (issue.code !== "duplicate" && issue.code !== "role-conflict") return rowErrorText(issue.code);
+    if (issue.code !== "duplicate" && issue.code !== "role-conflict") return rowErrorText(m, issue.code);
     const at = rows.findIndex((r) => r.id === issue.otherRowId);
     const other = rows[at];
     if (other === undefined) return null;
@@ -239,7 +241,7 @@ export function InviteModal({
         showRowErrors(describeRowErrors(result.rowErrors, (i) => sentRows[i] ?? -1), true);
         return;
       }
-      setAlert(formAlertFor(result, (i) => filled[i]?.email.trim() ?? "", filled.length, seats.limit));
+      setAlert(formAlertFor(m, result, (i) => filled[i]?.email.trim() ?? "", filled.length, seats.limit));
       setFocus({ kind: "submit" });
     });
   }
@@ -397,14 +399,14 @@ export function InviteModal({
   );
 }
 
-function rowErrorText(code: "invalid-email" | "invalid-role" | "already-member"): string {
+function rowErrorText(m: Messages, code: "invalid-email" | "invalid-role" | "already-member"): string {
   if (code === "invalid-email") return m.members.invite.rowError.invalidEmail;
   if (code === "invalid-role") return m.members.invite.rowError.invalidRole;
   return m.members.invite.alreadyMember;
 }
 
 /** 행이 아닌 거부 → 폼 Alert 한 장. `null`은 호출 자체가 끊긴 경우다(결과 미확인). */
-function formAlertFor(result: Exclude<InvitationsResult, { ok: true }> | null, emailAt: (index: number) => string, count: number, seatsLimit: number): FormAlert {
+function formAlertFor(m: Messages, result: Exclude<InvitationsResult, { ok: true }> | null, emailAt: (index: number) => string, count: number, seatsLimit: number): FormAlert {
   if (result === null || result.error === "email-unknown") {
     return { variant: "warning", title: m.members.invite.unconfirmed.title, body: m.members.invite.unconfirmed.body };
   }

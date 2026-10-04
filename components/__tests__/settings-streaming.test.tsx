@@ -30,6 +30,8 @@ vi.mock("@/app/(edit)/projects/[slug]/settings/actions", () => ({ startGithubCon
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), replace: vi.fn() }), redirect: vi.fn() }));
 import SettingsPage from "@/app/(edit)/projects/[slug]/settings/page";
 
+vi.mock("@/lib/i18n/server", async () => ({ getUiLocale: async () => "en", getMessages: async () => (await import("@/messages/en")).en }));
+
 let health: ReturnType<typeof deferred<ConnectionHealth>>;
 let account: ReturnType<typeof deferred<AccountView>>;
 let pr: ReturnType<typeof deferred<string | null | undefined>>;

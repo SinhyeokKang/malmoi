@@ -12,7 +12,7 @@ import { LargeModal } from "@/components/ui/large-modal";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import { planAddBlock } from "@/lib/sources/add-block";
 import type { CandidateSummary } from "@/lib/onboarding/detect";
 import type { AdapterChoice } from "@/lib/onboarding/types";
@@ -25,6 +25,7 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
   /** 서버가 렌더할 때마다 새 객체가 되는 prop — 추가 뒤 닫기를 재검증 트리 커밋까지 미룬다(`useCommitWait`). */
   server: unknown;
 }) {
+  const m = useMessages();
   const [candidates, setCandidates] = useState<CandidateSummary[]>([]);
   const [checked, setChecked] = useState<Set<number>>(new Set());
   const [bases, setBases] = useState<Record<number, string>>({});

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ListRow } from "@/components/ui/list-row";
 import { StatusBadge } from "@/components/ui/status-badge";
 import type { TranslationListRow } from "@/lib/keys/translation-list";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import type { ListGeneration } from "@/lib/translations/saved-rows";
 import { cn } from "@/lib/utils";
 
@@ -43,6 +43,7 @@ export function KeyList({ list, title, titleRef, count, savedExtra, selectedKeyI
   filter?: ReactNode;
   empty: ReactNode;
 }) {
+  const m = useMessages();
   const w = m.translations.workspace.list;
   const headingId = useId();
   const listRef = useRef<HTMLUListElement>(null);
@@ -128,6 +129,7 @@ const KeyRow = memo(function KeyRow({ row, savedOut, first, selected, tabStop, s
   showSource: boolean;
   onSelect: (row: TranslationListRow) => void;
 }) {
+  const m = useMessages();
   const w = m.translations.workspace.list;
   return (
     <li>

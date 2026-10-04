@@ -2,7 +2,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { render } from "@/components/__tests__/helpers/dom";
 
@@ -12,6 +12,8 @@ import MembersLoading from "../projects/[slug]/members/loading";
 import SettingsLoading from "../projects/[slug]/settings/loading";
 import SourcesLoading from "../projects/[slug]/sources/loading";
 import TranslationsLoading from "../projects/[slug]/surfaces/[surfaceSlug]/translations/loading";
+
+vi.mock("@/lib/i18n/server", async () => ({ getUiLocale: async () => "en", getMessages: async () => (await import("@/messages/en")).en }));
 
 /**
  * **`[slug]` 아래 형제 화면이 각자 골격을 든다** (audit-ux #5 · DESIGN §6.64 로딩 행). 없으면 Home·Logs에서, 또

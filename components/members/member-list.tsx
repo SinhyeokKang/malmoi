@@ -15,7 +15,7 @@ import { planMemberIdentity } from "@/lib/auth/member-identity";
 import { planMemberChange } from "@/lib/auth/membership";
 import { canPerform, type Role } from "@/lib/auth/permission";
 import type { MemberView } from "@/lib/auth/query";
-import { m } from "@/lib/i18n";
+import { useMessages, useUiLocale } from "@/components/i18n/messages-provider";
 import { relativeTime } from "@/lib/relative-time";
 
 /**
@@ -64,6 +64,8 @@ export function MemberList({
    */
   headingId: string;
 }) {
+  const uiLocale = useUiLocale();
+  const m = useMessages();
   const manage = canPerform(role, "member:manage");
   /** `removal` — 거부된 것이 제거였나. 포커스를 돌려줄 컨트롤이 그것으로 갈린다. */
   /** `error: null`은 **확인 불가**다 — 호출이 던져 서버가 바꿨는지 모른다 (audit #24). */
@@ -184,7 +186,7 @@ export function MemberList({
                     /* ⚠️ **150 고정 + 라벨을 든다** (캔버스). 열 머리를 지웠으므로 `2 days ago`가 무엇의
                        시각인지 말하는 자리가 이 문장뿐이고, 폭이 흔들리면 오른쪽 군의 x가 행마다 달라진다. */
                     <span className="text-muted-foreground w-[150px] shrink-0 text-xs">
-                      {m.members.joined(relativeTime(member.joinedAt, now))}
+                      {m.members.joined(relativeTime(member.joinedAt, now, uiLocale))}
                     </span>
                   }
                   band={sentences.length === 0 ? null : sentences.join(" ")}
@@ -295,6 +297,7 @@ function RoleSelect({
   describedBy: string | undefined;
   onChange: (next: Role) => void;
 }) {
+  const m = useMessages();
   const blocked = describedBy !== undefined;
   const locked = blocked || pending;
   return (
@@ -352,6 +355,7 @@ function RemoveButton({
   describedBy: string | undefined;
   onConfirm: () => void;
 }) {
+  const m = useMessages();
   /* ⚠️ `aria-label`이 보이는 텍스트("Remove")를 **포함**한다 — 음성 입력이 라벨로 컨트롤을 찾으므로
      다른 문구로 바꾸면 "Remove 클릭"이 안 먹는다 (WCAG 2.5.3). */
   if (describedBy !== undefined) {

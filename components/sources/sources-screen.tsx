@@ -16,7 +16,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 
 import { failureText } from "@/components/onboarding/failure";
 import { canPerform, type Role } from "@/lib/auth/permission";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import { ingestHeadline } from "@/lib/onboarding/message";
 import type { AdapterChoice } from "@/lib/onboarding/types";
 import { routes } from "@/lib/routes";
@@ -32,6 +32,7 @@ type Result = { tone: "success" | "warning" | "danger"; text?: string; added?: S
 export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = false }: {
   slug: string; role: Role; data: SourcesData; adapters: AdapterChoice[]; now: Date; initialOpen?: boolean;
 }) {
+  const m = useMessages();
   const router = useRouter();
   const canEdit = canPerform(role, "project:settings");
   const [adding, setAdding] = useState(initialOpen && canEdit);

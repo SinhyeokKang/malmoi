@@ -17,6 +17,8 @@ import DefaultSlot from "../projects/@modal/default";
 import Layout from "../projects/layout";
 import { NewProjectModal } from "../projects/new-project-modal";
 
+vi.mock("@/lib/i18n/server", async () => ({ getUiLocale: async () => "en", getMessages: async () => (await import("@/messages/en")).en }));
+
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.requireUser.mockResolvedValue({ userId: "u1" });
@@ -50,8 +52,8 @@ it.each([DirectPage, InterceptedPage])("인가가 거부되면 목록·리포 �
   expect(mocks.listConnectableRepos).not.toHaveBeenCalled();
 });
 
-it.each(["back", "list"] as const)("리포 대기 중에도 모달 껍데기에 닫기 문맥을 전달한다: %s", (closeMode) => {
-  const tree = NewProjectModal({ closeMode, backQuery: { q: "format" }, initialError: undefined });
+it.each(["back", "list"] as const)("리포 대기 중에도 모달 껍데기에 닫기 문맥을 전달한다: %s", async (closeMode) => {
+  const tree = await NewProjectModal({ closeMode, backQuery: { q: "format" }, initialError: undefined });
   expect(tree.props.fallback.props).toMatchObject({ repos: undefined, closeMode, backQuery: { q: "format" } });
   expect(tree.props.children.props.closeMode).toBe(closeMode);
   expect(mocks.listConnectableRepos).not.toHaveBeenCalled();
@@ -71,7 +73,7 @@ it("기본 슬롯과 다른 프로젝트 경로는 모달을 렌더하지 않는
 
 
 it.each(["back", "list"] as const)("리포 조회 완료 뒤에도 닫기 문맥과 검색을 보존한다: %s", async (closeMode) => {
-  const tree = NewProjectModal({ closeMode, backQuery: { q: "format" }, initialError: "unavailable" });
+  const tree = await NewProjectModal({ closeMode, backQuery: { q: "format" }, initialError: "unavailable" });
   const loader = tree.props.children;
   const loaded = await loader.type(loader.props);
   expect(mocks.listConnectableRepos).toHaveBeenCalledOnce();

@@ -32,6 +32,8 @@ vi.mock("@/lib/surfaces/access", () => ({
 vi.mock("@/components/translations/workspace/workspace", () => ({ TranslationWorkspace: () => null }));
 import TranslationsPage from "@/app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/translations/page";
 
+vi.mock("@/lib/i18n/server", async () => ({ getUiLocale: async () => "en", getMessages: async () => (await import("@/messages/en")).en }));
+
 /**
  * **번역 목록·트리·상세 조회** (translation-rework T9 — spec §3.2·§3.3 · design §2 · §10.2).
  *

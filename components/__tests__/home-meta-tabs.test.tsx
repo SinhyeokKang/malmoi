@@ -53,7 +53,7 @@ function expectMutedValue(dd: Element) {
 
 async function setup(over: Partial<MetaTabsInput> = {}, opts: { canOpenSettings?: boolean; late?: Promise<HomeLate> } = {}) {
   const { container } = await render(
-    <MetaColumn tabs={metaTabs({ ...input, ...over })} slug="acme" now={now} canOpenSettings={opts.canOpenSettings ?? true} late={opts.late} />,
+    <MetaColumn tabs={metaTabs({ ...input, ...over })} slug="acme" now={now} canOpenSettings={opts.canOpenSettings ?? true} late={opts.late} uiLocale="en" m={en} />,
   );
   const user = userEvent.setup();
   const open = async (label: string) => {
@@ -265,12 +265,12 @@ describe("메타 열 — 늦게 오는 Hold · PR state", () => {
    */
   it("프로젝트가 바뀌면 옛 프로젝트의 Hold가 서지 않는다", async () => {
     const user = userEvent.setup();
-    const view = await render(<MetaColumn tabs={metaTabs({ ...input, ...pending })} slug="acme" now={now} canOpenSettings late={Promise.resolve(homeLate("open-pr"))} />);
+    const view = await render(<MetaColumn tabs={metaTabs({ ...input, ...pending })} slug="acme" now={now} canOpenSettings late={Promise.resolve(homeLate("open-pr"))} uiLocale="en" m={en} />);
     const sync = () => [...view.container.querySelectorAll<HTMLElement>('[role="tab"]')].find((tab) => tab.textContent === en.home.meta.tabs.sync)!;
     await act(async () => { await user.click(sync()); });
     const holdRows = () => [...view.container.querySelectorAll(`${SHOWN} dt`)].filter((dt) => dt.textContent === en.home.meta.hold);
     expect(holdRows()).toHaveLength(1);
-    await view.rerender(<MetaColumn tabs={metaTabs({ ...input, ...pending })} slug="globex" now={now} canOpenSettings late={new Promise(() => {})} />);
+    await view.rerender(<MetaColumn tabs={metaTabs({ ...input, ...pending })} slug="globex" now={now} canOpenSettings late={new Promise(() => {})} uiLocale="en" m={en} />);
     expect(holdRows()).toHaveLength(0);
   });
 

@@ -16,11 +16,12 @@ import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { canPerform, type Role } from "@/lib/auth/permission";
 import { planMemberIdentity } from "@/lib/auth/member-identity";
 import type { PendingInvitation } from "@/lib/auth/query";
-import { m } from "@/lib/i18n";
+import { useMessages, useUiLocale } from "@/components/i18n/messages-provider";
 import { INVITATION_HOURLY_LIMIT, USER_HOURLY_LIMIT } from "@/lib/invitation-email/limits";
 import { retryAtLabel } from "@/lib/invitation-email/retry-at";
 import { relativeTime } from "@/lib/relative-time";
 import { IconTile } from "@/components/ui/icon-tile";
+import type { Messages } from "@/lib/i18n";
 
 /**
  * 대기 중인 초대 (DESIGN §6.65). **멤버 카드와 같은 그릇·같은 행 껍데기다.**
@@ -53,6 +54,8 @@ export function PendingInvitations({
   /** 철회 뒤 포커스 착지점 — 이 카드의 제목이고, 마지막 초대를 지워 빈 상태로 접혀도 남는다 (malmoi#51). */
   headingId: string;
 }) {
+  const uiLocale = useUiLocale();
+  const m = useMessages();
   const manage = canPerform(role, "member:manage");
   /** `error: null`은 **확인 불가**다 — 호출이 던져 서버가 철회했는지 모른다 (audit #24). */
   const [failed, setFailed] = useState<{ id: string; error: string | null } | null>(null);
@@ -117,7 +120,7 @@ export function PendingInvitations({
         setLanding({ kind: "heading" });
         return;
       }
-      setCardAlert(resendAlert(result, who));
+      setCardAlert(resendAlert(m, result, who));
       // 발급 뒤 메일 단계의 실패면 행이 이미 새 초대로 바뀌었다 — 성공 여부가 아니라 행이 남는지로 고른다.
       const replaced = result === null || result.error === "email-rejected" || result.error === "email-unknown";
       setLanding(replaced ? { kind: "heading" } : { kind: "resend", id: invitationId });
@@ -204,7 +207,7 @@ export function PendingInvitations({
                          세로로 쌓으면 행 높이가 멤버 카드와 달라져 두 카드가 다른 표처럼 읽힌다. */
                       <>
                         <span className="text-muted-foreground w-[150px] shrink-0 text-xs">
-                          {m.members.pending.expires(relativeTime(invitation.expiresAt, now))}
+                          {m.members.pending.expires(relativeTime(invitation.expiresAt, now, uiLocale))}
                         </span>
                         {/* ⚠️ 잘리는 유일한 가변 칸이라 전문을 `title`로 든다 (malmoi#90) — 1280에서 112px라 12자 이름부터 잘리고,
                             초대한 사람을 말하는 자리가 이 칸뿐이다. 보이는 문장이 곧 접근 이름이라 스크린리더는 원래 전문을 읽는다. */}
@@ -293,7 +296,7 @@ export function PendingInvitations({
 }
 
 /** Resend 거부 → 카드 Alert 한 장. `null`은 호출 자체가 끊긴 경우다(결과 미확인). */
-function resendAlert(result: Exclude<ResendResult, { ok: true }> | null, who: string): { variant: "warning" | "danger"; text: string } {
+function resendAlert(m: Messages, result: Exclude<ResendResult, { ok: true }> | null, who: string): { variant: "warning" | "danger"; text: string } {
   const p = m.members.pending;
   if (result === null || result.error === "email-unknown") return { variant: "warning", text: p.resendUnconfirmed(who) };
   if (result.error === "rate-limited" && "limit" in result) {

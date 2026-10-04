@@ -16,11 +16,11 @@ import { Table, TableBody } from "@/components/ui/table";
 import { Dialog as DialogTitleSlot } from "radix-ui";
 import { changedValuesText, deferredText, eventGlyph, eventKindWord, eventSentence, eventView, eventFailureMessage, heldReason, importReasonMessage, surfaceResultState, refusalMessage, roleWord, triggerOf, valueState } from "@/lib/events/view";
 import type { EventRow } from "@/lib/events/query";
-import { m } from "@/lib/i18n";
 import { relativeTime } from "@/lib/relative-time";
 import { routes } from "@/lib/routes";
 import { utcMinute } from "@/lib/utc-time";
-
+import type { UiLocale } from "@/lib/i18n/locales";
+import type { Messages } from "@/lib/i18n";
 
 /**
  * 이벤트 상세의 **본문** (캔버스 `1d`–`1f`).
@@ -32,14 +32,13 @@ import { utcMinute } from "@/lib/utc-time";
  * 쪽이 더 나쁘다 (`entry-points.test.ts`의 축).
  */
 export function EventDetail({
-  row,
-  slug,
-  now,
-  archived,
-  canOpenSettings,
-  repoUrl,
-  translationHref = null,
-}: {
+      row,
+      slug,
+      now,
+      archived,
+      canOpenSettings,
+      repoUrl,
+      translationHref = null, uiLocale, m }: {
   row: EventRow;
   slug: string;
   now: Date;
@@ -49,6 +48,8 @@ export function EventDetail({
   repoUrl: string | null;
   /** 번역 사건의 키에 착지하는 주소 — 페이지가 서버에서 키 이름을 현재 id로 해석한다. 사라진 키면 `null`이고 링크가 없다. */
   translationHref?: string | null;
+  uiLocale: UiLocale;
+  m: Messages;
 }) {
   const view = eventView(m, { kind: row.kind, result: row.result, warnings: row.run?.warnings ?? 0, errorCode: row.run?.errorCode ?? null });
   const glyph = eventGlyph({ kind: row.kind, result: row.result, subtype: row.subtype });
@@ -67,7 +68,7 @@ export function EventDetail({
           </span>
           <DialogTitleSlot.Title className="text-lg font-medium text-pretty">
             {eventSentence(m, row, {
-              actor: actorLabel(row),
+              actor: actorLabel(m, row),
               key: row.payload?.kind === "TRANSLATION" ? row.payload.key : "",
             })}
           </DialogTitleSlot.Title>
@@ -76,9 +77,9 @@ export function EventDetail({
             <time dateTime={row.occurredAt.toISOString()}>
               {run
                 ? row.finishedAt === null
-                  ? m.logs.detail.startedOnly(utcMinute(row.occurredAt))
-                  : m.logs.detail.startedFinished(utcMinute(row.occurredAt), utcMinute(row.finishedAt))
-                : `${utcMinute(row.occurredAt)} · ${relativeTime(row.occurredAt, now)}`}
+                  ? m.logs.detail.startedOnly(utcMinute(row.occurredAt, uiLocale))
+                  : m.logs.detail.startedFinished(utcMinute(row.occurredAt, uiLocale), utcMinute(row.finishedAt, uiLocale))
+                : `${utcMinute(row.occurredAt, uiLocale)} · ${relativeTime(row.occurredAt, now, uiLocale)}`}
             </time>
           </span>
         </span>
@@ -97,7 +98,7 @@ export function EventDetail({
                   <CopyButton value={row.ref} label={m.logs.detail.actions.copy} size="sm" />
                 </span>
               </Fact>
-              {fields(row).map(([label, value]) => (
+              {fields(m, row).map(([label, value]) => (
                 <Fact as="tr" key={label} label={label}>
                   {value}
                 </Fact>
@@ -109,8 +110,8 @@ export function EventDetail({
         {row.payload?.kind === "TRANSLATION" && (
           <div className="border-divider flex flex-col gap-2 border-t pt-4">
             {/* ⚠️ **색이 아니라 라벨과 자리로 가른다** — 붉은·초록 diff는 색각·흑백에서 두 블록이 같아진다. */}
-            <ValueBlock label={m.logs.detail.labels.before} value={row.payload.before} muted />
-            <ValueBlock label={m.logs.detail.labels.after} value={row.payload.after} muted={false} />
+            <ValueBlock label={m.logs.detail.labels.before} value={row.payload.before} muted m={m} />
+            <ValueBlock label={m.logs.detail.labels.after} value={row.payload.after} muted={false} m={m} />
           </div>
         )}
 
@@ -159,7 +160,7 @@ export function EventDetail({
         <DialogClose asChild>
           <Button size="lg">{m.logs.detail.actions.close}</Button>
         </DialogClose>
-        {destination(row, slug, canOpenSettings, repoUrl, translationHref)}
+        {destination(m, row, slug, canOpenSettings, repoUrl, translationHref)}
       </div>
     </>
   );
@@ -175,7 +176,9 @@ export function EventDetail({
  */
 
 /** ⚠️ **값이 아닌 상태는 점선 테두리 + 회색 글자**로 한 번 더 갈린다 (캔버스 `1d`). */
-function ValueBlock({ label, value, muted }: { label: string; value: string | null; muted: boolean }) {
+function ValueBlock({ label, value, muted, m }: { label: string; value: string | null; muted: boolean;
+  m: Messages;
+}) {
   const state = valueState(m, value);
   return (
     <div className="flex flex-col gap-1">
@@ -214,7 +217,7 @@ function Note({ tone, body, note }: { tone: "danger" | "muted"; body: string; no
 }
 
 /** 행 쪽(`event-row.tsx`)과 같은 판정이다 — 자동화 낱말은 `triggerOf`가 정한다. */
-function actorLabel(row: EventRow): string {
+function actorLabel(m: Messages, row: EventRow): string {
   if (row.actor.kind === "AUTOMATION") return triggerOf({ actorKind: row.actor.kind, kind: row.kind, subtype: row.subtype }) === "nightly" ? m.logs.trigger.cron : m.logs.trigger.ci;
   if (row.actor.removed) return m.logs.trigger.removed;
   return row.actor.name ?? row.actor.emailLabel ?? m.logs.trigger.removed;
@@ -226,12 +229,12 @@ function actorLabel(row: EventRow): string {
  * ⚠️ **보관 여부를 받지 않는다** — 그 분기는 실패 **사유 문장** 하나에만 걸리고(`planArchivedReason`),
  * 여기까지 끌고 오면 안 쓰는 인자가 "빠뜨린 갈래"처럼 읽힌다.
  */
-function fields(row: EventRow): [string, ReactNode][] {
+function fields(m: Messages, row: EventRow): [string, ReactNode][] {
   const out: [string, ReactNode][] = [];
   const payload = row.payload;
   if (row.kind === "PUBLISH") {
     const notRecorded = <>{m.logs.none} <span className="text-muted-foreground text-xs">{m.logs.detail.notRecordedForRun}</span></>;
-    out.push([m.logs.detail.labels.trigger, actorLabel(row)]);
+    out.push([m.logs.detail.labels.trigger, actorLabel(m, row)]);
     out.push([
       m.logs.detail.labels.files,
       row.run?.changed == null ? notRecorded : m.logs.meta.files(row.run.changed),
@@ -266,7 +269,7 @@ function fields(row: EventRow): [string, ReactNode][] {
     out.push([m.logs.detail.labels.locale, payload.locale]);
   }
   if (payload?.kind === "IMPORT") {
-    out.push([m.logs.detail.labels.trigger, actorLabel(row)]);
+    out.push([m.logs.detail.labels.trigger, actorLabel(m, row)]);
     const deferred = row.result === "deferred" ? deferredText(m, payload) : null;
     // 편집 수가 아닌 보류는 칸 이름부터 다르다 — `Unsent edits`에 PR 사유를 적으면 칸이 거짓말한다.
     if (deferred !== null) out.push([heldReason(payload.deferReason) === null ? m.logs.detail.labels.unsentEdits : m.logs.detail.labels.heldBecause, deferred]);
@@ -297,7 +300,7 @@ function fields(row: EventRow): [string, ReactNode][] {
  */
 
 /** 목적지 링크 하나 — 권한이 없거나 대상이 없으면 **그리지 않는다.** */
-function destination(row: EventRow, slug: string, canOpenSettings: boolean, repoUrl: string | null, translationHref: string | null): ReactNode {
+function destination(m: Messages, row: EventRow, slug: string, canOpenSettings: boolean, repoUrl: string | null, translationHref: string | null): ReactNode {
   if (row.kind === "TRANSLATION" && translationHref !== null) return <ButtonLink variant="primary" size="lg" href={translationHref}>{m.logs.detail.actions.openTranslation}</ButtonLink>;
   if (row.kind === "MEMBER") return <ButtonLink variant="primary" size="lg" href={routes.members(slug)} >{m.logs.detail.actions.openMembers}</ButtonLink>;
   if (row.kind === "SETTINGS" && canOpenSettings) return <ButtonLink variant="primary" size="lg" href={routes.settings(slug)} >{m.logs.detail.actions.openSettings}</ButtonLink>;

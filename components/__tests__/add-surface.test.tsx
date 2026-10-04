@@ -7,6 +7,8 @@ import { SourcesScreen } from "../sources/sources-screen";
 import NotFound from "@/app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/not-found";
 import { en } from "@/messages/en";
 
+vi.mock("@/lib/i18n/server", async () => ({ getUiLocale: async () => "en", getMessages: async () => (await import("@/messages/en")).en }));
+
 vi.setConfig({ testTimeout: 20_000 });
 vi.mock("@/app/(edit)/projects/[slug]/sources/actions", () => ({ loadSourceDetail: vi.fn(), updateBaseLocale: vi.fn() }));
 const mocks = vi.hoisted(() => ({ add: vi.fn(), detect: vi.fn(), sample: vi.fn(), confirm: vi.fn() }));

@@ -152,12 +152,12 @@ const row: Row = {
 
 it("행을 누르면 상세가 뜨기 전까지 행의 chevron이 스피너로 바뀐다 — 폭은 그대로다", async () => {
   const now = new Date("2026-09-21T00:00:00Z");
-  const idle = await render(<EventRow row={row} href="/logs?event=evt_a" now={now} archived={false} />);
+  const idle = await render(<EventRow row={row} href="/logs?event=evt_a" now={now} archived={false} uiLocale="en" m={en} />);
   expect(idle.container.querySelector(".lucide-chevron-right")).not.toBeNull();
   expect(idle.container.querySelector(".animate-spin")).toBeNull();
 
   linkStatus.pending = true;
-  const busy = await render(<EventRow row={row} href="/logs?event=evt_a" now={now} archived={false} />);
+  const busy = await render(<EventRow row={row} href="/logs?event=evt_a" now={now} archived={false} uiLocale="en" m={en} />);
   expect(busy.container.querySelector(".lucide-chevron-right")).toBeNull();
   const spinner = find<SVGElement>(busy.container, ".animate-spin");
   // 교체한 아이콘이 같은 16 정방이어야 행이 안 흔들린다 (DESIGN §6 `Button loading`).

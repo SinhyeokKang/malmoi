@@ -1,4 +1,4 @@
-import { act, type ReactNode } from "react";
+import { act, isValidElement, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach } from "vitest";
 
@@ -10,10 +10,24 @@ const cleanups: (() => Promise<void>)[] = [];
 afterEach(async () => { for (const cleanup of cleanups.splice(0).reverse()) await cleanup(); });
 
 /**
+ * **서버 컴포넌트(async)를 그대로 받는다** — 서버 컴포넌트는 `await getMessages()`를 하는 async 함수라 클라이언트 루트가 못 그린다.
+ * 최상위 요소가 async 함수 컴포넌트이거나 호출 결과(Promise)면 풀어서 그 결과 트리를 그린다. 안쪽 async는 풀지 않는다.
+ */
+async function resolveServer(input: ReactNode | Promise<ReactNode>): Promise<ReactNode> {
+  const node = await input;
+  // ⚠️ async 함수만 직접 부른다 — 훅을 쓰는 평범한 컴포넌트를 렌더 밖에서 부르면 "Invalid hook call"이다.
+  if (isValidElement(node) && typeof node.type === "function" && node.type.constructor.name === "AsyncFunction") {
+    return (await (node.type as (props: unknown) => Promise<ReactNode>)(node.props));
+  }
+  return node;
+}
+
+/**
  * `uiLocale`을 주면 루트 레이아웃처럼 그 언어의 provider로 감싼다 — 안 주면 provider 없이 그린다(`useMessages()`의 기본값 en).
  * ⚠️ ko·es 사전은 비동기 로더가 운반하므로(첫 렌더가 suspend한다) 그려질 때까지 기다린다.
  */
-export async function render(ui: ReactNode, { uiLocale }: { uiLocale?: UiLocale } = {}) {
+export async function render(input: ReactNode | Promise<ReactNode>, { uiLocale }: { uiLocale?: UiLocale } = {}) {
+  const ui = await resolveServer(input);
   const container = document.createElement("div");
   document.body.append(container);
   const root = createRoot(container);

@@ -9,12 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { isAccessError } from "@/lib/auth/message";
 import { settingsAccessMessage } from "@/lib/settings/message";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import { isOnboardError, onboardErrorMessage } from "@/lib/onboarding/message";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
 
 import { SecretField } from "@/components/ui/secret-field";
 import { IconTile } from "@/components/ui/icon-tile";
+import type { Messages } from "@/lib/i18n";
 
 /**
  * push 토큰 재발급 (PRODUCT §7.8). **원문은 이 반환값에만 있다** — 저장되는 것은 해시뿐이다.
@@ -27,6 +28,7 @@ import { IconTile } from "@/components/ui/icon-tile";
  * (POSTMORTEM 2026-09-07).
  */
 export function PushTokenPanel({ slug, disabled = false, unpinned = false }: { slug: string; disabled?: boolean; unpinned?: boolean }) {
+  const m = useMessages();
   const [pending, startTransition] = useTransition();
   /*
     ⚠️ **리포 id가 없으면(`unpinned`) 서버가 반드시 거부한다** (malmoi#159) — 쓰기 권한을 확인할 리포가 없다. 되돌릴 수 없는 확인 창을
@@ -110,7 +112,7 @@ export function PushTokenPanel({ slug, disabled = false, unpinned = false }: { s
       )}
     </div>
     {/* 보관 상태가 오면(`disabled`) 옛 거부를 내린다 — 카드 아래 `archivedReason`이 대신 말한다 (QA D1). */}
-    {error !== null && !disabled && <Alert inset variant="danger">{messageFor(error)}</Alert>}
+    {error !== null && !disabled && <Alert inset variant="danger">{messageFor(m, error)}</Alert>}
     </>
   );
 }
@@ -118,7 +120,7 @@ export function PushTokenPanel({ slug, disabled = false, unpinned = false }: { s
 /** 호출이 끊긴 갈래의 표식 — 서버 오류 코드와 겹치지 않는 값이다. */
 const UNCONFIRMED = "unconfirmed";
 
-function messageFor(error: string): string {
+function messageFor(m: Messages, error: string): string {
   if (error === UNCONFIRMED) return m.settings.token.unconfirmed;
   if (error === "unpinned") return m.settings.token.disconnected;
   if (isOnboardError(error)) return onboardErrorMessage(m, error);

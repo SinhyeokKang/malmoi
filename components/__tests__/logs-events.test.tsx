@@ -25,7 +25,7 @@ const row = (over: Partial<Row> = {}): Row => ({
 
 const detail = (value: Row) => render(
   <Dialog.Root open><Dialog.Content aria-describedby={undefined}>
-    <EventDetail row={value} slug="alpha" now={now} archived={false} canOpenSettings={false} repoUrl={null} />
+    <EventDetail row={value} slug="alpha" now={now} archived={false} canOpenSettings={false} repoUrl={null} uiLocale="en" m={en} />
   </Dialog.Content></Dialog.Root>,
 );
 
@@ -46,7 +46,7 @@ describe("활동 행과 상세의 실제 동작", () => {
   });
 
   it("수동 적재 성공은 보호 보류라고 말하지 않고 소스별 결과를 보인다", async () => {
-    const { container } = await render(<EventRow row={row()} href="/logs" now={now} archived={false} />);
+    const { container } = await render(<EventRow row={row()} href="/logs" now={now} archived={false} uiLocale="en" m={en} />);
     // 보조줄은 `[Manual sync] [web]  4 keys` — 소스는 언제나 배지이고 결과 낱말을 인라인에 싣지 않는다(ux-drift-unify 4-Y20).
     const badges = [...container.querySelectorAll("[data-event-meta] .rounded-full")].map((node) => node.textContent);
     expect(badges).toEqual(["Manual sync", "web"]);
@@ -107,7 +107,7 @@ describe("활동 행과 상세의 실제 동작", () => {
   it("Home과 상세에도 Publish의 dropped 경고가 보인다", async () => {
     const value = row({ kind: "PUBLISH", subtype: "publish.run", result: "sent", payload: { kind: "PUBLISH", surfaceSlugs: ["web"], refusal: null },
       run: { changed: 1, changedValues: 1, warnings: 2, withheld: 0, prUrl: null, errorCode: null } });
-    const { container } = await render(<EventRow row={value} href="/logs" now={now} archived={false} showTime={false} />);
+    const { container } = await render(<EventRow row={value} href="/logs" now={now} archived={false} showTime={false} uiLocale="en" m={en} />);
     expect(container.textContent).toContain(en.logs.warnings(2));
     expect((await detail(value)).container.textContent).toContain(en.logs.warnings(2));
   });
@@ -142,12 +142,12 @@ it("보관된 Publish의 행과 상세 모두 야간 재시도를 약속하지 �
   const value = row({ kind: "PUBLISH", subtype: "publish.run", result: "failed",
     run: { changed: null, changedValues: null, warnings: 0, withheld: 0, prUrl: null, errorCode: code! },
     payload: { kind: "PUBLISH", surfaceSlugs: [], refusal: null } });
-  const { container, rerender } = await render(<EventRow row={value} href="/logs" now={now} archived={false} />);
+  const { container, rerender } = await render(<EventRow row={value} href="/logs" now={now} archived={false} uiLocale="en" m={en} />);
   expect(container.textContent).toContain("nightly");
-  await rerender(<EventRow row={value} href="/logs" now={now} archived />);
+  await rerender(<EventRow row={value} href="/logs" now={now} archived uiLocale="en" m={en} />);
   expect(container.textContent).not.toContain("nightly");
   const dialog = await render(<Dialog.Root open><Dialog.Content aria-describedby={undefined}>
-    <EventDetail row={value} slug="alpha" now={now} archived canOpenSettings={false} repoUrl={null} />
+    <EventDetail row={value} slug="alpha" now={now} archived canOpenSettings={false} repoUrl={null} uiLocale="en" m={en} />
   </Dialog.Content></Dialog.Root>);
   expect(dialog.container.textContent).not.toContain("nightly");
 });
@@ -211,7 +211,7 @@ describe("상세 껍데기 — 실측이 잡은 자리", () => {
 describe("상세 머리·바닥 — 행과 한 문법 (4-Y21 · 3-Y6)", () => {
   it("머리는 `[종류 배지][결과 배지]`이고 종류 낱말은 행 보조줄의 첫 배지와 같다", async () => {
     const value = row();
-    const { container: rowView } = await render(<EventRow row={value} href="/logs" now={now} archived={false} />);
+    const { container: rowView } = await render(<EventRow row={value} href="/logs" now={now} archived={false} uiLocale="en" m={en} />);
     const kind = rowView.querySelector("[data-event-meta] .rounded-full")?.textContent;
     const { container } = await detail(value);
     const badges = [...container.querySelectorAll("[data-event-detail-kind] .rounded-full")].map((node) => node.textContent);
@@ -223,7 +223,7 @@ describe("상세 머리·바닥 — 행과 한 문법 (4-Y21 · 3-Y6)", () => {
   it("바닥 버튼은 1024 표면의 `lg`다 — [Close]와 목적지가 같은 크기다", async () => {
     const { container } = await render(
       <Dialog.Root open><Dialog.Content aria-describedby={undefined}>
-        <EventDetail row={row({ kind: "MEMBER", subtype: "member.joined", result: null, finishedAt: null, payload: { kind: "MEMBER", targetLabel: "a@b", role: null } })} slug="alpha" now={now} archived={false} canOpenSettings repoUrl={null} />
+        <EventDetail row={row({ kind: "MEMBER", subtype: "member.joined", result: null, finishedAt: null, payload: { kind: "MEMBER", targetLabel: "a@b", role: null } })} slug="alpha" now={now} archived={false} canOpenSettings repoUrl={null} uiLocale="en" m={en} />
       </Dialog.Content></Dialog.Root>,
     );
     const actions = [...container.querySelectorAll("[data-event-detail-footer] a, [data-event-detail-footer] button")];
@@ -235,10 +235,10 @@ describe("상세 머리·바닥 — 행과 한 문법 (4-Y21 · 3-Y6)", () => {
   it("reconfirm으로 멈춘 Publish는 자기 문장을 든다 · 보류로 인한 notSent는 그대로 (짝)", async () => {
     const publish = (errorCode: string | null) => row({ kind: "PUBLISH", subtype: "publish.run", result: "notSent",
       payload: { kind: "PUBLISH", surfaceSlugs: ["web"], refusal: null }, run: { changed: 0, changedValues: errorCode === null ? 0 : null, warnings: 0, withheld: errorCode === null ? 2 : 0, prUrl: null, errorCode } });
-    const { container: stopped } = await render(<EventRow row={publish("reconfirm")} href="/logs" now={now} archived={false} />);
+    const { container: stopped } = await render(<EventRow row={publish("reconfirm")} href="/logs" now={now} archived={false} uiLocale="en" m={en} />);
     expect(stopped.textContent).not.toContain("held back its edits");
     expect(stopped.textContent).toContain("stopped before sending");
-    const { container: held } = await render(<EventRow row={publish(null)} href="/logs" now={now} archived={false} />);
+    const { container: held } = await render(<EventRow row={publish(null)} href="/logs" now={now} archived={false} uiLocale="en" m={en} />);
     expect(held.textContent).toContain("held back its edits");
   });
 });
@@ -287,7 +287,7 @@ it.each([
 ] as const)("%s %s 결과 슬롯은 %s다", async (kind, result, label, face) => {
   const value = row({ kind, result, ...(kind === "PUBLISH" ? { payload: { kind: "PUBLISH", surfaceSlugs: ["web"], refusal: null } as const } : {}) });
   for (const showTime of [true, false]) {
-    const { container } = await render(<EventRow row={value} href="/logs?event=evt_test" now={now} archived={false} showTime={showTime} />);
+    const { container } = await render(<EventRow row={value} href="/logs?event=evt_test" now={now} archived={false} showTime={showTime} uiLocale="en" m={en} />);
     const pills = [...container.querySelectorAll(".rounded-full")].filter(node => node.textContent === label);
     expect(pills).toHaveLength(1);
     expect(pills[0]!.classList.contains(face)).toBe(true);

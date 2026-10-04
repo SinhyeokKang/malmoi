@@ -16,7 +16,7 @@ import { loadConnectionHealth } from "@/lib/github";
 import { storedConnection } from "@/lib/github-connect/health";
 import { loadAccountView } from "@/lib/github-connect/account-view";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
-import { m } from "@/lib/i18n";
+import { getMessages, getUiLocale } from "@/lib/i18n/server";
 import { requestOrigin } from "@/lib/github-connect/origin";
 import { planWorkflowStale, renderProjectWorkflowYaml, workflowApiUrl, workflowSurfaceOf } from "@/lib/onboarding/workflow";
 import { loadOpenPrUrl } from "@/lib/projects/open-pr";
@@ -27,6 +27,8 @@ import { IconTile } from "@/components/ui/icon-tile";
 
 export const maxDuration = 60;
 export default async function SettingsPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<Raw<"e" | "add">> }) {
+  const uiLocale = await getUiLocale();
+  const m = await getMessages();
   const { slug } = await params;
   // Pages and layouts render independently: authorize before any query or external read.
   const { projectId, userId } = await requireProjectAccess({ slug, permission: "project:settings" });
@@ -54,7 +56,7 @@ export default async function SettingsPage({ params, searchParams }: { params: P
   const unpinned = storedConnection(project)?.status === "unpinned";
   const archive = <Card title={archived ? m.archive.restore : m.archive.title}>
     <div className="flex items-center justify-between gap-4 px-4 py-row-y @max-form:grid @max-form:grid-cols-[28px_1fr] @max-form:items-start @max-form:[&>[data-archive-card]]:col-start-2 @max-form:[&>[data-archive-card]]:justify-self-start">
-      <IconTile><Archive aria-hidden /></IconTile><p className="text-muted-foreground flex-1 text-xs">{archived ? m.archive.archivedBy(<time dateTime={project.archivedAt!.toISOString()}>{utcDay(project.archivedAt!)}</time>) : m.archive.description}</p>
+      <IconTile><Archive aria-hidden /></IconTile><p className="text-muted-foreground flex-1 text-xs">{archived ? m.archive.archivedBy(<time dateTime={project.archivedAt!.toISOString()}>{utcDay(project.archivedAt!, uiLocale)}</time>) : m.archive.description}</p>
       <ArchiveCard slug={slug} name={project.name} archived={archived} openPrUrl={openPrUrl} />
     </div>
   </Card>;

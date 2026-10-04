@@ -241,10 +241,10 @@ const META: MetaTabsInput = {
 };
 const BLUE: { name: string; file: string; ui: () => ReactNode; open?: () => Promise<void> }[] = [
   // 리포는 Project 탭, PR은 Publish 탭이다 — Radix가 비활성 패널의 자식을 그리지 않아 탭을 열어 센다.
-  { name: "Home 메타 — 리포 (Project 탭)", file: "components/home/meta-column.tsx", ui: () => <MetaColumn slug="acme" now={now} canOpenSettings={false} tabs={metaTabs(META)} /> },
+  { name: "Home 메타 — 리포 (Project 탭)", file: "components/home/meta-column.tsx", ui: () => <MetaColumn slug="acme" now={now} canOpenSettings={false} tabs={metaTabs(META)} uiLocale="en" m={en} /> },
   {
     name: "Home 메타 — PR (Publish 탭)", file: "components/home/meta-column.tsx",
-    ui: () => <MetaColumn slug="acme" now={now} canOpenSettings={false} tabs={metaTabs(META)} />,
+    ui: () => <MetaColumn slug="acme" now={now} canOpenSettings={false} tabs={metaTabs(META)} uiLocale="en" m={en} />,
     open: () => click([...document.querySelectorAll('[role="tab"]')].find((tab) => tab.textContent === "Publish")!),
   },
   { name: "/projects 행 띠 — 열린 PR", file: "components/projects/project-list.tsx", ui: () => <ProjectList all={[{ ...BLUE_ROW, openPr: { url: "https://github.com/o/r/pull/7", number: 7 } }]} /> },

@@ -39,7 +39,7 @@ const narrowing = (href: string) => {
 it("Home 카운트 카드 넷은 ns=*를 싣고 카드마다 착지 소스가 다르다", async () => {
   const card = (key: HomeCard["key"]): HomeCard => ({ key, value: 1, unit: "cells", muted: false, tone: null, subline: { kind: "nothingPending" } });
   const surfaceSlugs = { newFromGithub: "web", toTranslate: "app", toReview: "web", toSend: "docs" };
-  const { container } = await render(<CountCards cards={(["newFromGithub", "toTranslate", "toReview", "toSend"] as const).map(card)} slug="acme" surfaceSlugs={surfaceSlugs} now={now} />);
+  const { container } = await render(<CountCards cards={(["newFromGithub", "toTranslate", "toReview", "toSend"] as const).map(card)} slug="acme" surfaceSlugs={surfaceSlugs} now={now} uiLocale="en" m={en} />);
   const hrefs = [...container.querySelectorAll("a")].map(a => a.getAttribute("href")!);
   expect(hrefs).toHaveLength(4);
   for (const href of hrefs) expect(narrowing(href)).toMatchObject({ ns: "*", scope: null, parsedNs: "*" });
@@ -51,7 +51,7 @@ it("Home 주의 카드의 검토 대기·빈 로케일 링크는 ns=*를 싣는�
     { kind: "review" as const, at: now, surfaceSlug: "web", code: "ko", name: "Korean", count: 2, who: null },
     { kind: "never_filled" as const, at: now, surfaceSlug: "app", code: "ja", name: "Japanese", keys: 3 },
   ];
-  const { container } = await render(<AttentionCard items={{ shown: items, more: [], count: 2 }} slug="acme" role="OWNER" state="default" now={now} />);
+  const { container } = await render(<AttentionCard items={{ shown: items, more: [], count: 2 }} slug="acme" role="OWNER" state="default" now={now} uiLocale="en" m={en} />);
   const hrefs = [...container.querySelectorAll("a")].map(a => a.getAttribute("href")!).filter(href => href.includes("/translations"));
   expect(hrefs).toHaveLength(2);
   expect(narrowing(hrefs[0]!)).toMatchObject({ ns: "*", state: "review", parsedNs: "*" });

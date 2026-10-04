@@ -1,6 +1,6 @@
 "use server";
 
-import { m } from "@/lib/i18n";
+import { getMessages } from "@/lib/i18n/server";
 import { revalidateAfterCommit } from "@/lib/revalidate-after-commit";
 import { loadSource } from "@/lib/sources/query";
 import { logFailure } from "@/lib/github-connect/log";
@@ -59,6 +59,7 @@ export async function updateBaseLocale(raw: {
 
 export type SourceDetailResult = { ok: true; detail: import("@/lib/sources/query").SourceDetail } | { rejected: string } | { failed: true };
 export async function loadSourceDetail(raw: { slug: string; surfaceSlug: string }): Promise<SourceDetailResult> {
+  const m = await getMessages();
   if (!raw || typeof raw.slug !== "string" || !raw.slug || typeof raw.surfaceSlug !== "string" || !raw.surfaceSlug) return { rejected: "invalid input" };
   const session = await readSession();
   if (session.status === "none") return { rejected: "unauthorized" };

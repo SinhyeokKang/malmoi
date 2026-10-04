@@ -4,6 +4,8 @@ vi.mock("@/lib/db", () => ({ getPrisma: () => ({}) }));
 vi.mock("@/lib/keys/query", () => ({ loadProjectList: async () => [] }));
 import Page from "../projects/(list)/page";
 
+vi.mock("@/lib/i18n/server", async () => ({ getUiLocale: async () => "en", getMessages: async () => (await import("@/messages/en")).en }));
+
 it("중복 q 파라미터가 프로젝트 목록을 오류로 보내지 않는다", async () => {
   await expect(Page({ searchParams: Promise.resolve({ q: ["a", "b"] }) })).resolves.toBeDefined();
 });

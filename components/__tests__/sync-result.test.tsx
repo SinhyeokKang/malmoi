@@ -319,7 +319,7 @@ const PAIRS: [string, RepositoryImportOutcome, string][] = [
 const IGNORED = new Set(["sync", "synced", "the", "a", "is", "was", "were", "with"]);
 const words = (text: string) => new Set(text.toLowerCase().replace(/[^a-z' ]/g, " ").split(/\s+/).filter(word => word !== "" && !IGNORED.has(word)));
 it.each(PAIRS)("결과 제목 — %s", async (_, outcome, title) => {
-  expect(syncResultTitle(outcome)).toBe(title);
+  expect(syncResultTitle(en, outcome)).toBe(title);
   const { container } = await render(<SyncResult {...props} outcome={outcome} />);
   const headline = alert(container)?.querySelector("p.font-medium")?.textContent ?? "";
   expect(headline).not.toBe("");

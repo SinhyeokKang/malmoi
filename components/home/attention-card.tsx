@@ -8,12 +8,13 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { canPerform, type Role } from "@/lib/auth/permission";
 import type { AttentionItem, AttentionList } from "@/lib/home/attention";
 import type { HomeState } from "@/lib/home/state";
-import { m } from "@/lib/i18n";
 import { importFailureTone } from "@/lib/projects/import-failure";
 import { relativeTime } from "@/lib/relative-time";
 import { ALL_NAMESPACES, routes } from "@/lib/routes";
 import type { StateTone } from "@/lib/status/canon";
 import { IconTile } from "@/components/ui/icon-tile";
+import type { UiLocale } from "@/lib/i18n/locales";
+import type { Messages } from "@/lib/i18n";
 
 /**
  * `Needs your attention` (캔버스 `2a` 왼쪽 가운데).
@@ -44,13 +45,15 @@ const TILE: Record<AttentionItem["kind"], { icon: ComponentType<{ className?: st
 /** 일부 반영은 경고 칸 + `TriangleAlert`다 — 실패 원을 빌리지 않는다(🔴 A2 · §2.4 글리프 열). */
 const PARTIAL_TILE = { icon: TriangleAlert, tone: "warning" } as const;
 
-export function AttentionCard({ items, slug, role, state, now }: {
+export function AttentionCard({ items, slug, role, state, now, uiLocale, m }: {
   items: AttentionList;
   slug: string;
   /** 가져오기 실패의 재시도가 OWNER 전용이라 EDITOR 행에만 그 사실 한 줄이 붙는다. */
   role: Role;
   state: HomeState;
   now: Date;
+  uiLocale: UiLocale;
+  m: Messages;
 }) {
   return (
     /*
@@ -78,7 +81,7 @@ export function AttentionCard({ items, slug, role, state, now }: {
             {items.shown.map((item) => (
               // 첫 행은 머리 선 바로 아래라 자기 선을 내려놓는다.
               <li key={itemKey(item)} className="[&:first-child>a]:border-t-0">
-                <AttentionRow item={item} slug={slug} role={role} now={now} />
+                <AttentionRow item={item} slug={slug} role={role} now={now} uiLocale={uiLocale} m={m} />
               </li>
             ))}
           </ul>
@@ -96,7 +99,7 @@ export function AttentionCard({ items, slug, role, state, now }: {
               <ul>
                 {items.more.map((item) => (
                   <li key={itemKey(item)}>
-                    <AttentionRow item={item} slug={slug} role={role} now={now} />
+                    <AttentionRow item={item} slug={slug} role={role} now={now} uiLocale={uiLocale} m={m} />
                   </li>
                 ))}
               </ul>
@@ -119,7 +122,10 @@ export function AttentionCard({ items, slug, role, state, now }: {
  * ⚠️ **선은 `Card` 규칙이다** (4-Y4 · DESIGN §6.64) — 머리↔첫 행은 머리의 `--divider`(#f0f0f0), 행↔행은 `--border`(#e5e5e5).
  * 옛 판은 행↔행도 `--divider`라 같은 `EventRow`가 Home과 Logs에서 반대 색이었다.
  */
-function AttentionRow({ item, slug, role, now }: { item: AttentionItem; slug: string; role: Role; now: Date }) {
+function AttentionRow({ item, slug, role, now, uiLocale, m }: { item: AttentionItem; slug: string; role: Role; now: Date;
+  uiLocale: UiLocale;
+  m: Messages;
+}) {
   const ownerRetries = item.kind === "import_failed" && !canPerform(role, "project:settings");
   const href =
     item.kind === "import_failed"
@@ -145,32 +151,32 @@ function AttentionRow({ item, slug, role, now }: { item: AttentionItem; slug: st
       <span className="flex min-w-0 flex-1 flex-col gap-copy-gap">
         <span className="text-base">
           {/* 굵은 조각이 **사실**이고 나머지가 그 근거다 — 색이 아니라 무게로 가른다 (캔버스). */}
-          <span className="font-medium">{body(item)}</span>
-          {tail(item)}
+          <span className="font-medium">{body(m, item)}</span>
+          {tail(m, item)}
         </span>
         {/*
           보조줄(표면 · 로케일)은 본문 **아래**다(Q9 · 4-Y10 — 다른 모든 행과 같은 형, 옛 판은 이 행만 위였다).
           ⚠️ **한 줄로 자른다** — 표면·로케일 이름이 길어지면 줄이 밀려 행 높이가 흔들린다.
         */}
-        <span className="text-muted-foreground truncate text-xs">{title(item)}</span>
+        <span className="text-muted-foreground truncate text-xs">{title(m, item)}</span>
         {ownerRetries && <span className="text-muted-foreground text-xs">{m.projects.importFailure.ownerRetries}</span>}
       </span>
       {/*
         시각은 `muted`다(2026-09-30 사용자 — 같은 Home의 Log 행 시각과 맞췄다. 옛 `gray-dim`은 2.5:1이라 읽기 어려웠다).
         ⚠️ **시각이 없으면 칸을 비운다** — 실패 시각이 기록되지 않은 실패 항목에 "Never"를 적으면 거짓이다(실패는 일어났다).
       */}
-      {item.at !== null && <span className="text-muted-foreground shrink-0 text-xs">{relativeTime(item.at, now)}</span>}
+      {item.at !== null && <span className="text-muted-foreground shrink-0 text-xs">{relativeTime(item.at, now, uiLocale)}</span>}
     </ListRow>
   );
 }
 
-function title(item: AttentionItem): string {
+function title(m: Messages, item: AttentionItem): string {
   if (item.kind === "import_failed") return m.home.attention.importFailed.title(item.surfaceSlug);
   const label = item.kind === "review" ? m.home.attention.review : m.home.attention.neverFilled;
   return label.title(item.surfaceSlug, item.name);
 }
 
-function body(item: AttentionItem): string {
+function body(m: Messages, item: AttentionItem): string {
   // 일부만 반영된 표면은 실패 문장을 빌리지 않는다(DESIGN §2.4 — 데이터는 들어갔다).
   if (item.kind === "import_failed") return importFailureTone(item.reason) === "warning" ? m.home.attention.partial.body : m.home.attention.importFailed.body;
   if (item.kind === "review") return m.home.attention.review.body(item.count);
@@ -182,7 +188,7 @@ function body(item: AttentionItem): string {
  * `8 cells are waiting for review.`로 끝난다. `who`가 `null`인지가 그 판정이고, 그 `null`은
  * `actorLabel`이 아니라 **`actors` 맵의 키 존재**에서 왔다.
  */
-function tail(item: AttentionItem): string {
+function tail(m: Messages, item: AttentionItem): string {
   if (item.kind === "import_failed") return importFailureTone(item.reason) === "warning" ? m.home.attention.partial.tail : m.home.attention.importFailed.tail;
   if (item.kind === "review") return item.who === null ? "." : m.home.attention.review.tail(item.who);
   return m.home.attention.neverFilled.tail(item.keys);

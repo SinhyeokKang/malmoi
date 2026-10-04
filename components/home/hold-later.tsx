@@ -1,7 +1,7 @@
 "use client";
 
 import { useArrived } from "@/components/use-arrived";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import type { HoldReason } from "@/lib/protection/plan";
 
 /**
@@ -17,6 +17,7 @@ export function HoldLater({ hold, identity }: {
   /** 그 사유가 속한 프로젝트(slug) — 바뀌면 옛 프로젝트의 사유를 곧바로 버린다(`useArrived`, U7 r2). */
   identity: string;
 }) {
+  const m = useMessages();
   const reason = useArrived(hold, identity) ?? null;
   return reason === null ? m.home.cards.nothingPending : m.home.cards.held[reason];
 }

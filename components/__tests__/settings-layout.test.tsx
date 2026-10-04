@@ -12,6 +12,8 @@ vi.mock("@/app/(edit)/projects/actions", () => ({ runFirstIngest: vi.fn(), addSu
 vi.mock("@/app/(edit)/projects/[slug]/settings/actions", () => ({ startGithubConnect: vi.fn(), connectRepository: vi.fn(), updateProjectName: vi.fn(), updateRepositorySettings: vi.fn(), uploadProjectImage: vi.fn(), deleteProjectImage: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), replace: vi.fn() }), redirect: vi.fn() }));
 import SettingsPage from "@/app/(edit)/projects/[slug]/settings/page";
+vi.mock("@/lib/i18n/server", async () => ({ getUiLocale: async () => "en", getMessages: async () => (await import("@/messages/en")).en }));
+
 beforeEach(() => { state.archived = false; state.image = null; state.find.mockImplementation(async () => ({ name: "Acme", image: state.image, repoOwner: "owner", repoName: "repo", installationId: "1", repositoryId: "r1", baseBranch: "main", archivedAt: state.archived ? new Date("2026-09-20") : null, surfaces: [] })); });
 const page = () => SettingsPage({ params: Promise.resolve({ slug: "acme" }), searchParams: Promise.resolve({}) });
 it.each([false, true])("활성·보관 상태 모두 네 카드이고 복원이 첫 자리다: %s", async archived => {

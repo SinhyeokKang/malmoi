@@ -49,6 +49,8 @@ function renderSites(): { path: string; line: number; text: string }[] {
     lines.forEach((text, i) => {
       if (!text.includes("adapterErrorMessage(")) return;
       if (/^\s*import\b/.test(text)) return;
+      // 묶음을 완성하는 줄(`summarizeWarnings(warnings, (w) => adapterErrorMessage(w, m.adapterErrors))`)은 렌더 줄이 아니다 — 아래 COMPOSED_SITES가 그 자리를 이름으로 고정한다.
+      if (text.includes("summarizeWarnings(")) return;
       out.push({ path: relative(ROOT, file), line: i + 1, text });
     });
   }

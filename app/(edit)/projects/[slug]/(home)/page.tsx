@@ -17,7 +17,7 @@ import { canPerform } from "@/lib/auth/permission";
 import { requireProjectAccess } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
 import { parseLogFilter, type LogSearchParams } from "@/lib/events/filter";
-import { m } from "@/lib/i18n";
+import { getMessages, getUiLocale } from "@/lib/i18n/server";
 import { HOME_EVENT_LIMIT, loadEvent, loadEvents } from "@/lib/events/query";
 import { loadConnectionHealth } from "@/lib/github";
 import { logFailure } from "@/lib/github-connect/log";
@@ -83,6 +83,8 @@ export default async function ProjectHomePage({
   /** ⚠️ **`event` 하나를 받는다** — Recent logs가 **Home 위에서** 상세를 연다 (캔버스 `1h`). */
   searchParams: Promise<LogSearchParams>;
 }) {
+  const uiLocale = await getUiLocale();
+  const m = await getMessages();
   const { slug } = await params;
   const { projectId, role, archived } = await requireProjectAccess({ slug, permission: "translation:write" });
   const openRef = parseLogFilter(await searchParams).event;
@@ -368,10 +370,10 @@ export default async function ProjectHomePage({
             // 카드마다 그 수가 있는 첫 소스로 — 번역 화면의 범위가 트리 위치라 기본 소스로 가면 0건일 수 있다(translation-tree-range §5).
             surfaceSlugs={cardLandings(surfaceQueues(projectId, surfaces, aggregates), defaultSurface)}
             now={now}
-            heldLater={heldLater}
+            heldLater={heldLater} uiLocale={uiLocale} m={m}
           />
-          <AttentionCard items={items} slug={slug} role={role} state={state} now={now} />
-          <LogsCard rows={events.rows} slug={slug} now={now} archived={archived} syncedBefore={lastSyncAt !== null} />
+          <AttentionCard items={items} slug={slug} role={role} state={state} now={now} uiLocale={uiLocale} m={m} />
+          <LogsCard rows={events.rows} slug={slug} now={now} archived={archived} syncedBefore={lastSyncAt !== null} uiLocale={uiLocale} m={m} />
         </div>
 
         <MetaColumn
@@ -379,7 +381,7 @@ export default async function ProjectHomePage({
           slug={slug}
           now={now}
           canOpenSettings={canPerform(role, "project:settings")}
-          late={heldLater?.then(homeLate)}
+          late={heldLater?.then(homeLate)} uiLocale={uiLocale} m={m}
         />
       </PanelBody>
 
@@ -403,7 +405,7 @@ export default async function ProjectHomePage({
               archived={archived}
               canOpenSettings={canPerform(role, "project:settings")}
               repoUrl={`https://github.com/${project.repoOwner}/${project.repoName}`}
-              translationHref={translationHref}
+              translationHref={translationHref} uiLocale={uiLocale} m={m}
             />
           )}
         </EventDialog>

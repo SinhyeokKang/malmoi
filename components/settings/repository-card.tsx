@@ -12,7 +12,7 @@ import type { AccountView } from "@/lib/github-connect/account-view";
 import type { ConnectionHealth } from "@/lib/github-connect/health";
 import { connectionProblem, repositoryConnectionState } from "@/lib/home/state";
 import { installationSettingsUrl } from "@/lib/github-connect/installation-url";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import { RepositoryForm } from "./repository-form";
 import { IconTile } from "@/components/ui/icon-tile";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -26,6 +26,7 @@ import { STATE } from "@/lib/status/canon";
 export function RepositoryCard({ slug, owner, repo, branch, archived, unpinned = false, health, account, appSlug }: {
   slug: string; owner: string; repo: string; branch: string; archived: boolean; unpinned?: boolean; health: Promise<ConnectionHealth>; account: Promise<AccountView>; appSlug?: string;
 }) {
+  const m = useMessages();
   const [failure, setFailure] = useState<string | null>(null);
   // 보관 상태가 오면 옛 거부를 내린다 — 카드가 보관 상태를 대신 말한다 (QA D1).
   const shown = failure && !archived ? failure : null;
@@ -44,6 +45,7 @@ export function RepositoryCard({ slug, owner, repo, branch, archived, unpinned =
 }
 
 function Notice({ health: pending, failure, appSlug }: { health: Promise<ConnectionHealth>; failure: string | null; appSlug?: string }) {
+  const m = useMessages();
   const health = use(pending);
   const installUrl = installationSettingsUrl(appSlug);
   const notice = health.status === "repo-moved" ? <Alert inset variant="warning">{m.settings.repository.health.moved(health.fullName)}</Alert>
@@ -61,6 +63,7 @@ const ROW = "flex items-center gap-3 px-4 py-row-y @max-form:grid @max-form:grid
 function ConnectionRow({ health: pending, slug, owner, repo, archived, onFailure }: {
   health: Promise<ConnectionHealth>; slug: string; owner: string; repo: string; archived: boolean; onFailure: (message: string | null) => void;
 }) {
+  const m = useMessages();
   const health = use(pending);
   /*
     끊김·미연결·다른 리포의 판정은 Home과 같은 함수다(ux-drift-unify D1) — 설치는 있고 리포 id가 없는 `unpinned`가 목록·Home과
@@ -98,6 +101,7 @@ function ConnectionRowPending() {
 }
 
 function Recovery({ account: pending }: { account: Promise<AccountView> }) {
+  const m = useMessages();
   const account = use(pending);
   if (account.status === "ok" && account.login !== null) return null;
   return <div className="border-divider text-muted-foreground border-t px-4 py-row-y text-xs">{account.status === "unavailable" ? m.settings.account.unavailable : m.settings.recovery} <ButtonLink variant="link" href="/account">{m.settings.accountLink}</ButtonLink></div>;

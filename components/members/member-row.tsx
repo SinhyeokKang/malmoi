@@ -1,10 +1,12 @@
+"use client";
+
 import type { ReactNode } from "react";
 
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { BannerLine } from "@/components/ui/row-card";
 import type { MemberIdentity } from "@/lib/auth/member-identity";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import { cn } from "@/lib/utils";
 
 /**
@@ -57,6 +59,7 @@ export function MemberRow({
   /** 사후 거부 `Alert` — 띠와 같은 자리(행 아래)다. 어느 행이 거부됐는지가 정보다. */
   after?: ReactNode;
 }) {
+  const m = useMessages();
   const bandId = band === null ? undefined : `band-${id}`;
 
   return (

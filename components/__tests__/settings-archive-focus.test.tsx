@@ -23,6 +23,8 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), replac
 import SettingsPage from "@/app/(edit)/projects/[slug]/settings/page";
 import { en } from "@/messages/en";
 
+vi.mock("@/lib/i18n/server", async () => ({ getUiLocale: async () => "en", getMessages: async () => (await import("@/messages/en")).en }));
+
 let fixup: MutationObserver | undefined;
 beforeEach(() => {
   state.archived = false;

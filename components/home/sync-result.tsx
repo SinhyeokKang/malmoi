@@ -6,19 +6,20 @@ import { Alert } from "@/components/ui/alert";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import { adapterErrorMessage } from "@/lib/i18n/adapter-errors";
 import { planImportRefusal } from "@/lib/import/refusal";
 import { summarizeImport, type RepositoryImportOutcome, type RepositoryImportError, type SurfaceImportReason } from "@/lib/import/result";
 import { onboardErrorMessage, isOnboardError } from "@/lib/onboarding/message";
 import { importFailureMessage, isImportFailureCode } from "@/lib/projects/import-failure";
 import { routes } from "@/lib/routes";
+import type { Messages } from "@/lib/i18n";
 
 /**
  * ⚠️ **화면 전용 문구를 먼저 본다** — `not-ready`·`not-connected`는 온보딩·연결 사전에도 있지만
  * 그쪽 문장이 그 화면의 컨트롤을 가리킨다("use Authorize GitHub App below"). 여기엔 그 아래가 없다.
  */
-function reasonMessage(reason: RepositoryImportError | SurfaceImportReason): string {
+function reasonMessage(m: Messages, reason: RepositoryImportError | SurfaceImportReason): string {
   if (Object.hasOwn(m.repositorySync.errors, reason)) return m.repositorySync.errors[reason as keyof typeof m.repositorySync.errors];
   if (isAccessError(reason)) return accessErrorMessage(m, reason);
   if (isOnboardError(reason)) return onboardErrorMessage(m, reason);
@@ -36,7 +37,7 @@ function reasonMessage(reason: RepositoryImportError | SurfaceImportReason): str
  * 모른다(`unavailable`은 세션 저장소와 저장소 접근 둘에서, `ingest-failed`는 lease 뒤 바깥 catch에서 나온다).
  */
 const PRE_RUN: ReadonlySet<string> = new Set(["reconfirm", "already-running", "unauthorized", "invalid input", "not-ready", "no-surfaces", "unpinned", "repo-replaced"]);
-export function syncResultTitle(outcome: RepositoryImportOutcome): string {
+export function syncResultTitle(m: Messages, outcome: RepositoryImportOutcome): string {
   const t = m.repositorySync.resultTitle;
   if (!outcome.ok) {
     if (outcome.error === "unconfirmed") return t.unknown;
@@ -79,6 +80,7 @@ export function SyncResult({ outcome, slug, branch, role = "OWNER", onRetry }: {
    */
   onRetry?: () => void;
 }) {
+  const m = useMessages();
   if (outcome === null) return null;
   if (!outcome.ok) {
     const refusal = planImportRefusal(outcome.error);
@@ -88,7 +90,7 @@ export function SyncResult({ outcome, slug, branch, role = "OWNER", onRetry }: {
       ? (owner ? m.repositorySync.baseBranchMissing.owner(branch) : m.repositorySync.baseBranchMissing.editor(branch))
       // 제목이 사실을 말하는 Dialog라 헤드라인은 다음 행동이다(R6 r2) — 그 밖의 거부는 `errors` 문장 그대로다.
       : Object.hasOwn(m.repositorySync.resultHeadline, outcome.error) ? m.repositorySync.resultHeadline[outcome.error as keyof typeof m.repositorySync.resultHeadline]
-      : reasonMessage(outcome.error);
+      : reasonMessage(m, outcome.error);
     const action = !owner && (refusal.action === "settings" || refusal.action === "reconnect") ? null : refusal.action;
     /*
       ⚠️ **닫을 수 있고 갈 곳이 없는 거부만 [Try again]을 든다** — `dismissible`이 이미 "다시 눌러 다른 답이 날 수 있나"의 판정이다.
@@ -163,8 +165,8 @@ export function SyncResult({ outcome, slug, branch, role = "OWNER", onRetry }: {
           부정한다 (2026-09-16 브라우저 실측). 이 갈래의 원인은 아래 파일 줄이 든다.
         */}
         {surface.reason !== null &&
-          <p>{m.repositorySync.cause(<span data-surface="">{surface.surfaceSlug}</span>, reasonMessage(surface.reason))}</p>}
-        {surface.errors.map((error, index) => <p key={index} data-error-code={error.code} className="whitespace-pre-wrap break-words">{error.path}: {adapterErrorMessage(error)}</p>)}
+          <p>{m.repositorySync.cause(<span data-surface="">{surface.surfaceSlug}</span>, reasonMessage(m, surface.reason))}</p>}
+        {surface.errors.map((error, index) => <p key={index} data-error-code={error.code} className="whitespace-pre-wrap break-words">{error.path}: {adapterErrorMessage(error, m.adapterErrors)}</p>)}
       </div>)}
   </>;
   // 결과 톤은 Logs와 같은 어휘다(`EventTone`) — 무색(`muted`, 전 표면 superseded)은 Alert의 `neutral`이다.

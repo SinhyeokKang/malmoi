@@ -9,7 +9,7 @@ import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/
 import { landFocus, useLandAfter } from "@/components/ui/focus";
 import { Skeleton } from "@/components/ui/skeleton";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 
 /**
  * ⚠️ **성공한 전환의 착지를 새 인스턴스에 넘긴다** (malmoi#82). Settings는 같은 카드를 **두 자리**(보관이면 General 위,
@@ -55,6 +55,7 @@ export function ArchiveCard({
   openPrUrl?: Promise<string | null | undefined>;
   onFailure?: (message: string | null) => void;
 }) {
+  const m = useMessages();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   /**
@@ -156,6 +157,7 @@ function PendingPrLine({ url }: { url: Promise<string | null | undefined> }) {
 }
 
 function PrLine({ url }: { url: string | null | undefined }) {
+  const m = useMessages();
   if (url === undefined) return <p className="text-muted-foreground text-xs">{m.archive.confirm.prUnknown}</p>;
   if (url === null) return null;
   return (

@@ -2,8 +2,10 @@
 import { globSync } from "node:fs";
 import { join } from "node:path";
 import type { ComponentType } from "react";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { render } from "./helpers/dom";
+
+vi.mock("@/lib/i18n/server", async () => ({ getUiLocale: async () => "en", getMessages: async () => (await import("@/messages/en")).en }));
 
 const ROOT = join(__dirname, "../..");
 // 배열 수동 등록은 새 라우트를 검사 밖에 두므로 실제 파일을 전수 발견한다.

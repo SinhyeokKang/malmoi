@@ -1,6 +1,6 @@
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { Skeleton } from "@/components/ui/skeleton";
-import { m } from "@/lib/i18n";
+import { getMessages } from "@/lib/i18n/server";
 
 /**
  * Members가 서버에서 오는 동안의 골격 (audit-ux #5 · DESIGN §6.64 로딩 행 — 형제 화면도 같은 규칙).
@@ -13,7 +13,8 @@ import { m } from "@/lib/i18n";
  * ⚠️ **개수는 가장 흔한 모양이다** — 멤버 둘(이름·이메일 두 줄), 대기 초대 0(빈 상태). 실제 수를 맞히려 들면 틀렸을 때
  * 두 번 튄다. 마지막 오너의 사유 띠(OWNER 시점에서 오너 하나인 행)는 그리지 않는다 — 시점마다 갈려 가장 흔한 수가 없다.
  */
-export default function MembersLoading() {
+export default async function MembersLoading() {
+  const m = await getMessages();
   return (
     <>
       <span className="sr-only" role="status">{m.members.loading}</span>

@@ -7,9 +7,10 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { eventGlyph, eventSentence, eventView, triggerOf } from "@/lib/events/view";
 import type { EventRow as Row } from "@/lib/events/query";
-import { m } from "@/lib/i18n";
 import { relativeTime } from "@/lib/relative-time";
 import { utcMinute } from "@/lib/utc-time";
+import type { UiLocale } from "@/lib/i18n/locales";
+import type { Messages } from "@/lib/i18n";
 
 /**
  * 이벤트 행 (캔버스 §7): `[시각 48] [글리프 28] [문장 + 보조] [결과 172] [chevron]`.
@@ -28,12 +29,11 @@ import { utcMinute } from "@/lib/utc-time";
  * 확인 수단이 되어 키보드·터치에서 값이 사라진다 — 행 높이가 들쭉날쭉해지는 비용은 받아들인다.
  */
 export function EventRow({
-  row,
-  href,
-  now,
-  archived,
-  showTime = true,
-}: {
+      row,
+      href,
+      now,
+      archived,
+      showTime = true, uiLocale, m }: {
   row: Row;
   href: string;
   now: Date;
@@ -41,11 +41,13 @@ export function EventRow({
   archived: boolean;
   /** Home에는 시각 열이 없다 — 날짜 카드가 없으므로 오른쪽에 상대 시각이 선다 (캔버스 `1h`). */
   showTime?: boolean;
+  uiLocale: UiLocale;
+  m: Messages;
 }) {
   const view = eventView(m, { kind: row.kind, result: row.result, warnings: row.run?.warnings ?? 0, errorCode: row.run?.errorCode ?? null });
   const glyph = eventGlyph({ kind: row.kind, result: row.result, subtype: row.subtype });
   const sentence = eventSentence(m, row, {
-    actor: <span className="font-medium">{actorLabel(row)}</span>,
+    actor: <span className="font-medium">{actorLabel(m, row)}</span>,
     key: translationKey(row),
   });
 
@@ -63,7 +65,7 @@ export function EventRow({
         */
         <time
           dateTime={row.occurredAt.toISOString()}
-          aria-label={utcMinute(row.occurredAt)}
+          aria-label={utcMinute(row.occurredAt, uiLocale)}
           className="text-muted-foreground w-12 shrink-0 text-sm tabular-nums"
         >
           {row.occurredAt.toISOString().slice(11, 16)}
@@ -72,7 +74,7 @@ export function EventRow({
       <EventGlyph icon={glyph.icon} tone={glyph.tone} />
       <span className="flex min-w-0 flex-1 flex-col gap-copy-gap">
         <span className="text-base wrap-anywhere">{sentence}</span>
-        <EventMetaLine row={row} archived={archived} />
+        <EventMetaLine row={row} archived={archived} m={m} />
       </span>
       {/* 결과 배지는 보조줄 밖, 행 오른쪽이다 — Logs는 172 칸의 오른쪽 끝(chevron 옆), Home 최근 로그는 시각 앞(2026-09-30 사용자). */}
       {showTime ? (
@@ -84,7 +86,7 @@ export function EventRow({
         <span className="flex shrink-0 items-center gap-2">
           {view.state !== null && <StatusBadge state={view.state} />}
           {view.warningsLabel !== null && <Badge variant="soft-amber">{view.warningsLabel}</Badge>}
-          <span className="text-muted-foreground text-xs">{relativeTime(row.occurredAt, now)}</span>
+          <span className="text-muted-foreground text-xs">{relativeTime(row.occurredAt, now, uiLocale)}</span>
         </span>
       )}
     </ListRow>
@@ -95,7 +97,7 @@ export function EventRow({
  * 행위자 폴백 순서 — 이름 → 마스킹 라벨 → `Removed user`, 자동화는 그 자리를 그대로 쓴다.
  * ⚠️ 자동화 낱말은 `triggerOf`(subtype)가 정한다 — 종류로 가르면 야간 적재·스킵이 `CI`로 선다(nightly-sync).
  */
-function actorLabel(row: Row): string {
+function actorLabel(m: Messages, row: Row): string {
   if (row.actor.kind === "AUTOMATION") return triggerOf({ actorKind: row.actor.kind, kind: row.kind, subtype: row.subtype }) === "nightly" ? m.logs.trigger.cron : m.logs.trigger.ci;
   if (row.actor.removed) return m.logs.trigger.removed;
   return row.actor.name ?? row.actor.emailLabel ?? m.logs.trigger.removed;

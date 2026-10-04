@@ -11,11 +11,12 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import type { LogKind } from "@/lib/events/payload";
 import type { Trigger } from "@/lib/events/view";
 import type { HomeLate, MetaTabs as Tabs, ProjectTabRow, PublishTabRow, SyncTabRow } from "@/lib/home/meta";
-import { m } from "@/lib/i18n";
 import { pullNumberFrom } from "@/lib/projects/remote-plan";
 import { relativeTime } from "@/lib/relative-time";
 import { cn } from "@/lib/utils";
 import { routes } from "@/lib/routes";
+import type { UiLocale } from "@/lib/i18n/locales";
+import type { Messages } from "@/lib/i18n";
 
 /**
  * 오른쪽 `Project` 메타 열 — **사실만** 든다 (project-card-tabs · DESIGN §6.64). 탭 셋 `Project` · `Sync` · `Publish`이고 착지할 때마다 `Project`다.
@@ -29,7 +30,7 @@ import { routes } from "@/lib/routes";
  * ⚠️ **바닥 링크는 탭마다 하나이고 패널 안에 있다** — 높이가 탭을 따른다. `[Settings ›]`의 노출은 편의이고 차단이 아니다 —
  * `/settings`의 `requireProjectAccess({ permission: "project:settings" })`가 실제 방어선이다 (CLAUDE.md).
  */
-export function MetaColumn({ tabs, slug, now, canOpenSettings, late }: {
+export function MetaColumn({ tabs, slug, now, canOpenSettings, late, uiLocale, m }: {
   tabs: Tabs;
   slug: string;
   now: Date;
@@ -39,10 +40,12 @@ export function MetaColumn({ tabs, slug, now, canOpenSettings, late }: {
    * 없으면 `tabs`의 `hold` 행이 결론이다.
    */
   late?: Promise<HomeLate>;
+  uiLocale: UiLocale;
+  m: Messages;
 }) {
-  const sync = tabs.sync.map((group, i) => group.map((row) => syncFact(row, now)).concat(
+  const sync = tabs.sync.map((group, i) => group.map((row) => syncFact(m, uiLocale, row, now)).concat(
     // 늦게 오는 Hold는 마지막 묶음 끝에 붙는다 — 첫 렌더에 아는 Hold(`hold` 행)와 같은 자리다.
-    late !== undefined && tabs.lateHold && i === tabs.sync.length - 1 ? [<LateHold key="late-hold"><HoldRow /></LateHold>] : [],
+    late !== undefined && tabs.lateHold && i === tabs.sync.length - 1 ? [<LateHold key="late-hold"><HoldRow m={m} /></LateHold>] : [],
   ));
   return (
     // 보이는 머리가 없어 이름은 aria-label이 든다 — 첫 탭도 `Project`지만 역할(랜드마크 vs 탭)이 갈라 준다.
@@ -54,7 +57,7 @@ export function MetaColumn({ tabs, slug, now, canOpenSettings, late }: {
         tabs={[
           {
             value: "project", label: m.home.meta.tabs.project,
-            panel: <Panel groups={tabs.project.map((group) => group.map((row) => projectFact(row, slug, now)))}
+            panel: <Panel groups={tabs.project.map((group) => group.map((row) => projectFact(m, uiLocale, row, slug, now)))}
               footer={canOpenSettings ? <FooterLink href={routes.settings(slug)}>{m.home.meta.settings}</FooterLink> : null} />,
           },
           {
@@ -63,7 +66,7 @@ export function MetaColumn({ tabs, slug, now, canOpenSettings, late }: {
           },
           {
             value: "publish", label: m.home.meta.tabs.publish,
-            panel: <Panel groups={tabs.publish.map((group) => group.map((row) => publishFact(row, now)))}
+            panel: <Panel groups={tabs.publish.map((group) => group.map((row) => publishFact(m, uiLocale, row, now)))}
               footer={<FooterLink href={logsOf(slug, "publish")}>{m.home.meta.publishLogs}</FooterLink>} />,
           },
         ]}
@@ -118,7 +121,7 @@ function Muted({ children }: { children: ReactNode }) {
 // 로케일을 고정한다 — 서버 로케일에 따라 구분자가 갈리면 같은 DB 상태가 다른 화면을 낸다.
 const count = (n: number) => n.toLocaleString("en-US");
 
-function projectFact(row: ProjectTabRow, slug: string, now: Date): ReactNode {
+function projectFact(m: Messages, uiLocale: UiLocale, row: ProjectTabRow, slug: string, now: Date): ReactNode {
   const label = m.home.meta[row.kind];
   switch (row.kind) {
     case "repository":
@@ -155,19 +158,19 @@ function projectFact(row: ProjectTabRow, slug: string, now: Date): ReactNode {
       return <Row key={row.kind} label={label}>{m.home.meta.memberCount(row.count, row.pending)}</Row>;
     case "created":
     case "archived":
-      return <Row key={row.kind} label={label}>{relativeTime(row.at, now)}</Row>;
+      return <Row key={row.kind} label={label}>{relativeTime(row.at, now, uiLocale)}</Row>;
   }
 }
 
-function syncFact(row: SyncTabRow, now: Date): ReactNode {
+function syncFact(m: Messages, uiLocale: UiLocale, row: SyncTabRow, now: Date): ReactNode {
   const label = m.home.meta[row.kind];
   switch (row.kind) {
     case "lastSync":
       if (row.value === "notSyncedYet") return <Row key={row.kind} label={label}><StatusBadge state="notSyncedYet" /></Row>;
       if (row.value === "unrecorded") return <Row key={row.kind} label={label}><Muted>{m.home.meta.unrecorded}</Muted></Row>;
-      return <Row key={row.kind} label={label}><TriggerBadge trigger={row.value} kind="IMPORT" /></Row>;
+      return <Row key={row.kind} label={label}><TriggerBadge trigger={row.value} kind="IMPORT" m={m} /></Row>;
     case "synced":
-      return <Row key={row.kind} label={label}>{relativeTime(row.at, now)}</Row>;
+      return <Row key={row.kind} label={label}>{relativeTime(row.at, now, uiLocale)}</Row>;
     case "result":
       return <Row key={row.kind} label={label}><StatusBadge state={row.state} /></Row>;
     case "changed":
@@ -177,23 +180,23 @@ function syncFact(row: SyncTabRow, now: Date): ReactNode {
     case "sources":
       return <Row key={row.kind} label={label}>{row.slugs.join(", ")}</Row>;
     case "hold":
-      return <HoldRow key={row.kind} />;
+      return <HoldRow key={row.kind} m={m} />;
   }
 }
 
 /** 보류 — 사유가 셋이어도 낱말은 `Held` 하나다(DESIGN §2.4). 사유 문장은 `To send` 카드 보조 줄이 든다. 첫 렌더·늦은 도착이 같은 모양이다. */
-function HoldRow() {
+function HoldRow({ m }: { m: Messages }) {
   return <Row label={m.home.meta.hold}><StatusBadge state="held" /></Row>;
 }
 
-function publishFact(row: PublishTabRow, now: Date): ReactNode {
+function publishFact(m: Messages, uiLocale: UiLocale, row: PublishTabRow, now: Date): ReactNode {
   const label = m.home.meta[row.kind];
   switch (row.kind) {
     case "lastPublish":
       if (row.value === "never") return <Row key={row.kind} label={label}><Muted>{m.home.meta.never}</Muted></Row>;
-      return <Row key={row.kind} label={label}><TriggerBadge trigger={row.value} kind="PUBLISH" /></Row>;
+      return <Row key={row.kind} label={label}><TriggerBadge trigger={row.value} kind="PUBLISH" m={m} /></Row>;
     case "published":
-      return <Row key={row.kind} label={label}>{relativeTime(row.at, now)}</Row>;
+      return <Row key={row.kind} label={label}>{relativeTime(row.at, now, uiLocale)}</Row>;
     case "pullRequest": {
       // ⚠️ 번호를 못 뽑으면 링크를 만들지 않는다 — 주소를 그대로 이름으로 읽히지 않는다.
       const pr = pullNumberFrom(row.href);
@@ -226,6 +229,8 @@ function publishFact(row: PublishTabRow, now: Date): ReactNode {
  * 실행 주체 (nightly-sync 14) — **Logs 보조줄과 같은 실행 종류 배지**다(4-Y19 — `Manual sync`·`Nightly publish` …, `m.logs.meta.runType`).
  * 이 탭은 성공 실행이 있을 때만 이 배지를 세우므로 주체가 언제나 있다.
  */
-function TriggerBadge({ trigger, kind }: { trigger: Trigger; kind: "IMPORT" | "PUBLISH" }) {
+function TriggerBadge({ trigger, kind, m }: { trigger: Trigger; kind: "IMPORT" | "PUBLISH";
+  m: Messages;
+}) {
   return <Badge variant="soft-neutral">{m.logs.meta.runType[kind][trigger]}</Badge>;
 }

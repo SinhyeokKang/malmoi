@@ -34,7 +34,7 @@ const human = { kind: "USER" as const, removed: false, name: null, emailLabel: "
 
 const detail = (value: Row) => render(
   <Dialog.Root open><Dialog.Content aria-describedby={undefined}>
-    <EventDetail row={value} slug="alpha" now={now} archived={false} canOpenSettings={false} repoUrl={null} />
+    <EventDetail row={value} slug="alpha" now={now} archived={false} canOpenSettings={false} repoUrl={null} uiLocale="en" m={en} />
   </Dialog.Content></Dialog.Root>,
 );
 const field = (container: HTMLElement, label: string) =>
@@ -49,7 +49,7 @@ describe("행위자 — 야간·CI·사람", () => {
     ["야간 Publish", row({ kind: "PUBLISH", subtype: "publish.run", result: "sent", payload: { kind: "PUBLISH", surfaceSlugs: [], refusal: null },
       run: { changed: 1, changedValues: 4, warnings: 0, withheld: 0, prUrl: null, errorCode: null } }), en.logs.trigger.cron],
   ])("%s 행의 행위자와 상세 Trigger가 같은 낱말이다", async (_, value, word) => {
-    const { container } = await render(<EventRow row={value} href="/logs" now={now} archived={false} />);
+    const { container } = await render(<EventRow row={value} href="/logs" now={now} archived={false} uiLocale="en" m={en} />);
     expect(actorText(container)).toBe(word);
     const opened = await detail(value);
     expect(field(opened.container, en.logs.detail.labels.trigger)).toBe(word);
@@ -57,7 +57,7 @@ describe("행위자 — 야간·CI·사람", () => {
 
   it("사람 행은 마스킹된 이름 그대로다", async () => {
     const value = row({ subtype: "import.run", result: "imported", actor: human, payload: { ...importPayload, source: "manual" } });
-    const { container } = await render(<EventRow row={value} href="/logs" now={now} archived={false} />);
+    const { container } = await render(<EventRow row={value} href="/logs" now={now} archived={false} uiLocale="en" m={en} />);
     expect(actorText(container)).toBe("ki***@acme.dev");
     expect(field((await detail(value)).container, en.logs.detail.labels.trigger)).toBe("ki***@acme.dev");
   });
@@ -66,7 +66,7 @@ describe("행위자 — 야간·CI·사람", () => {
 describe("보류 사유와 바뀐 값 수", () => {
   it("open-pr 보류 행과 상세가 '0 unsent edits'를 내지 않는다", async () => {
     const value = row({ subtype: "import.ci", result: "deferred", payload: { ...importPayload, source: "ci", deferReason: "open-pr", pendingEdits: 0 } });
-    const { container } = await render(<EventRow row={value} href="/logs" now={now} archived={false} />);
+    const { container } = await render(<EventRow row={value} href="/logs" now={now} archived={false} uiLocale="en" m={en} />);
     expect(container.textContent).not.toContain("0 unsent edits");
     expect(container.textContent).toContain(en.logs.deferReasons["open-pr"]);
     const opened = await detail(value);
@@ -127,7 +127,7 @@ describe("Publish 상세 — 바뀐 값 수", () => {
   });
 
   it("행 보조줄에는 값 수가 없다", async () => {
-    const { container } = await render(<EventRow row={publish(run)} href="/logs" now={now} archived={false} />);
+    const { container } = await render(<EventRow row={publish(run)} href="/logs" now={now} archived={false} uiLocale="en" m={en} />);
     expect(container.textContent).not.toContain(en.logs.meta.values(24));
   });
 });

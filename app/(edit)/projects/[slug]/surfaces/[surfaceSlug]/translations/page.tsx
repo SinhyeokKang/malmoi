@@ -18,6 +18,7 @@ import type { Raw } from "@/lib/search-params";
 import { requireSurfaceAccess } from "@/lib/surfaces/access";
 import { FIRST_KEY, isScreenCanonical, landOnFirstKey, MISSING_LANGUAGES, screenQuery, serializeScreenQuery, statusOf, treeFollowsSearch, withStatus, type TranslationQuery } from "@/lib/translations/query";
 import { firstRowAt, inRange, rangeOf, tallyRows } from "@/lib/translations/tree-narrow";
+import { getUiLocale } from "@/lib/i18n/server";
 
 /**
  * 번역 화면 — **트리 · 요약 목록 · 선택 키 상세** 세 패널 (translation-rework — 핸드오프 `2a`, spec §3).
@@ -47,6 +48,7 @@ export default async function TranslationsPage({
   params: Promise<{ slug: string; surfaceSlug: string }>;
   searchParams: Promise<Search>;
 }) {
+  const uiLocale = await getUiLocale();
   const { slug, surfaceSlug } = await params;
   const raw = await searchParams;
 
@@ -161,7 +163,7 @@ export default async function TranslationsPage({
       publish={{
         /* ⚠️ **`syncBranchFor`를 서버가 부른다** — 그 모듈은 `lib/failure`(node:crypto)를 물어 클라이언트가 물면 안 된다. */
         repo: { owner: project.repoOwner, name: project.repoName, branch: project.baseBranch, syncBranch: syncBranchFor(slug) },
-        lastSentLabel: project.lastPublishedAt === null ? null : relativeTime(project.lastPublishedAt, new Date()),
+        lastSentLabel: project.lastPublishedAt === null ? null : relativeTime(project.lastPublishedAt, new Date(), uiLocale),
         lastPrUrl: project.lastPrUrl,
       }}
       sync={{ name: project.name, branch: project.baseBranch }}

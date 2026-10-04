@@ -1,5 +1,5 @@
 import { Skeleton } from "@/components/ui/skeleton";
-import { m } from "@/lib/i18n";
+import { getMessages } from "@/lib/i18n/server";
 import { PANEL } from "@/lib/translations/layout";
 
 /**
@@ -14,7 +14,8 @@ import { PANEL } from "@/lib/translations/layout";
  * ⚠️ **상세는 키를 안 고른 모양이다** — 사이드바·Sources에서 오는 가장 흔한 진입이 `?key=` 없이다. 트리는 표면 하나 +
  * 이름공간 넷(All + 셋), 키 목록은 화면을 채우는 수라 넘치는 줄은 잘린다(목록이 자기 안에서 스크롤한다).
  */
-export default function TranslationsLoading() {
+export default async function TranslationsLoading() {
+  const m = await getMessages();
   return (
     <div className="flex h-full min-h-0 flex-col">
       <span className="sr-only" role="status">{m.translations.loading}</span>

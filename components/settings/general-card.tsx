@@ -12,7 +12,7 @@ import { ProjectThumbnail } from "@/components/ui/project-thumbnail";
 import { PanelFacts } from "@/components/ui/panel-card";
 import { Card } from "@/components/ui/card";
 import { isAccessError } from "@/lib/auth/message";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import { planProjectName, PROJECT_NAME_MAX_CHARS } from "@/lib/projects/plan";
 import { settingsAccessMessage } from "@/lib/settings/message";
 import { planImagePick } from "@/lib/upload/image";
@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 const CAPTION = "min-w-0 flex-1 basis-40 @max-form:basis-full";
 
 export function GeneralCard({ slug, name, image, archived }: { slug: string; name: string; image: string | null; archived: boolean }) {
+  const m = useMessages();
   const [value, setValue] = useState(name);
   // 저장된 이름 — 앞뒤 공백만 다른 값은 서버가 같은 이름으로 접으므로 [Save]를 켜지 않는다.
   const [current, setCurrent] = useState(name);

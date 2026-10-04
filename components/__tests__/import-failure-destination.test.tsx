@@ -20,7 +20,7 @@ import { onboardErrorMessage } from "@/lib/onboarding/message";
 const now = new Date("2026-09-24T00:00:00Z");
 const failed = { kind: "import_failed" as const, at: now, surfaceSlug: "web", reason: "import-failed" as const };
 const card = (role: "OWNER" | "EDITOR") =>
-  render(<AttentionCard items={{ shown: [failed], more: [], count: 1 }} slug="acme" role={role} state="default" now={now} />);
+  render(<AttentionCard items={{ shown: [failed], more: [], count: 1 }} slug="acme" role={role} state="default" now={now} uiLocale="en" m={en} />);
 
 beforeEach(() => { nav.redirect.mockClear(); });
 
@@ -56,7 +56,7 @@ it("첫 적재 실패 문구가 Settings를 가리키지 않는다 — 재시도
 /** 🔴 A2 — 일부만 반영된 표면의 항목은 "읽지 못했다·키가 안 들어왔다"를 말하지 않는다(데이터는 들어갔다). */
 it("partial-import 항목은 Partially synced 문장이고 실패 문장을 빌리지 않는다", async () => {
   const partial = { ...failed, reason: "partial-import" as const };
-  const { container } = await render(<AttentionCard items={{ shown: [partial], more: [], count: 1 }} slug="acme" role="OWNER" state="default" now={now} />);
+  const { container } = await render(<AttentionCard items={{ shown: [partial], more: [], count: 1 }} slug="acme" role="OWNER" state="default" now={now} uiLocale="en" m={en} />);
   expect(container.textContent).toContain(`${en.home.attention.partial.body}${en.home.attention.partial.tail}`);
   expect(container.textContent).not.toContain(en.home.attention.importFailed.body);
   expect(container.textContent).not.toMatch(/didn['’]t come in|couldn['’]t read/);
@@ -67,7 +67,7 @@ it("partial-import 항목은 Partially synced 문장이고 실패 문장을 빌�
  * ux-drift-unify T18 — "Never"도 거짓이다(실패는 일어났고 시각만 기록되지 않았다). 시각 칸을 비운다.
  */
 it("실패 항목의 시각이 없으면 시각 칸이 비어 있다", async () => {
-  const { container } = await render(<AttentionCard items={{ shown: [{ ...failed, at: null }], more: [], count: 1 }} slug="acme" role="OWNER" state="default" now={now} />);
+  const { container } = await render(<AttentionCard items={{ shown: [{ ...failed, at: null }], more: [], count: 1 }} slug="acme" role="OWNER" state="default" now={now} uiLocale="en" m={en} />);
   expect(container.textContent).not.toMatch(/not synced yet/i);
   expect(container.textContent).not.toContain(en.home.meta.never);
   expect(container.querySelector("a > span.shrink-0.text-xs")).toBeNull();

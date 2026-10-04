@@ -21,7 +21,7 @@ import { LocaleFlag } from "@/components/translations/locale-badge";
 import { relativeTime } from "@/lib/relative-time";
 import { CopyButton } from "@/components/ui/copy-button";
 import { canPerform, type Role } from "@/lib/auth/permission";
-import { m } from "@/lib/i18n";
+import { useMessages, useUiLocale } from "@/components/i18n/messages-provider";
 import { planSurfaceImportStatus, type SurfaceImportStatus } from "@/lib/import/surface-status";
 import { basePending } from "@/lib/onboarding/base-pending";
 import { importFailureMessage, isImportFailureCode } from "@/lib/projects/import-failure";
@@ -42,6 +42,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
   onBusy: (busy: boolean) => void; onClose: () => void; onReload: () => void; onImport: () => void; onSaved: () => void;
   returnFocusRef: RefObject<HTMLElement | null>; fallbackFocusRef: RefObject<HTMLElement | null>;
 }) {
+  const m = useMessages();
   const [fieldError, setFieldError] = useState(false);
   /**
    * ⚠️ **모달을 떠나는 길 전부가 같은 문을 지난다** (시안 `1j`) — 목록으로 돌아가는 넷(× · Esc ·
@@ -198,7 +199,8 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
 function slashBreaks(text: string) {
   return text.split("/").map((part, index) => <Fragment key={index}>{index > 0 && <>/<wbr /></>}{part}</Fragment>);
 }
-function SourceTime({ at }: { at: Date }) { return <time dateTime={at.toISOString()} aria-label={utcMinute(at)}>{utcMinute(at)}</time>; }
+function SourceTime({ at }: { at: Date }) {
+  const uiLocale = useUiLocale(); return <time dateTime={at.toISOString()} aria-label={utcMinute(at, uiLocale)}>{utcMinute(at, uiLocale)}</time>; }
 /**
  * 상세 칸의 글리프 — §2.4 글리프 열이다(5-Y4): 실패 `CircleX` · 경고 `TriangleAlert` · 성공 `CircleCheck` · 그 밖 `Info`.
  * 진행 중은 `LoaderCircle` 회전이다(5-Y14 — 옛 손 조립 원 스피너. 칸 안 자리 교체라 `Button loading`으로 못 옮긴다).
@@ -213,4 +215,5 @@ function StatusGlyph({ labelKey }: { labelKey: SurfaceImportStatus["labelKey"] }
   }
 }
 /** 상대 표기여도 절대 값을 함께 든다 — 화면의 낱말이 "5분 전"이어도 접근 이름은 UTC다 (DESIGN §6.68). */
-function RelativeAt({ at, now }: { at: Date; now: Date }) { return <time dateTime={at.toISOString()} aria-label={utcMinute(at)}>{relativeTime(at, now)}</time>; }
+function RelativeAt({ at, now }: { at: Date; now: Date }) {
+  const uiLocale = useUiLocale(); return <time dateTime={at.toISOString()} aria-label={utcMinute(at, uiLocale)}>{relativeTime(at, now, uiLocale)}</time>; }
