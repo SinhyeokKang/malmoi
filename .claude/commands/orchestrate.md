@@ -80,7 +80,10 @@ git status --porcelain                              # 비어 있어야 한다
 git cherry-pick $(git merge-base dev <branch>)..<branch>
 pnpm gate                                           # db:generate → typecheck → test → (트리거면) 격리 postgres → build → 미러. 끝줄만 본다
 git push                                            # = /push 1·3·4·5단계를 여기서 수행한다
+gh run watch $(gh run list --branch dev --workflow ci.yml --commit $(git rev-parse HEAD) --limit 1 --json databaseId -q '.[0].databaseId') --exit-status
 ```
+
+- ⚠️ **push 뒤 그 커밋의 dev CI 결론을 본다** (2026-10-05) — 로컬 `gate: ok`는 CI green을 뜻하지 않는다. user-timezone T4 push(`49547778`)의 CI red(`preferences-time-zone.test.tsx` 한 건)를 지휘자가 다음 push까지 몰랐고 F1 push(`26d589a2`)에서 또 red였다. 백그라운드로 걸어 두고 다음 배치를 진행해도 되지만, red면 그 배치 워커에게 돌려보내기 전에는 다음 push를 하지 않는다. 뒤 push가 앞 run을 `cancelled`로 만들면 마지막 run의 결론이 두 커밋 모두의 근거다.
 
 - ⚠️ **게이트를 손으로 조립하지 않는다** (2026-09-30) — `pnpm test | grep … | head`로 건 게이트는 파이프가 종료 코드를 삼켜 29건 red를 dev에 내보냈다. `pnpm gate`의 끝줄 `gate: ok`/`gate: FAILED at <step>`만 근거로 쓴다.
 - 마이그레이션이 든 배치: dev DB에 `pnpm exec prisma migrate deploy`(PRISMA_TARGET 없음 = dev) → `db:status` → anon 권한 0 확인(`/db` 5단계). **prod `db:deploy`는 `/merge` 1단계다.**
