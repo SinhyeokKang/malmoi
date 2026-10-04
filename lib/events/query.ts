@@ -6,6 +6,7 @@ import { decodeUser, readable } from "@/lib/credentials/records";
 import { validatePiiReadKeys } from "@/lib/credentials/storage";
 import type { Messages } from "@/lib/i18n";
 
+import { displayMemberPayload } from "./member-label";
 import { PROJECT_WIDE, parseDateRange, type EventCursor, type LogFilter } from "./filter";
 import { triggerWhere } from "./trigger-where";
 import {
@@ -211,7 +212,7 @@ function present(m: Messages, rows: readonly Selected[]): EventRow[] {
       },
       surfaceIds: row.surfaceIds,
       surfaceScope: scope(row.surfaceScope),
-      payload: readPayload(row.kind, row.payload),
+      payload: displayMemberPayload(m, readPayload(row.kind, row.payload)),
       run:
         row.syncRun === null
           ? null

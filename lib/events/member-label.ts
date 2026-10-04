@@ -3,6 +3,8 @@ import "server-only";
 import type { Prisma } from "@/generated/prisma/client";
 import { maskEmail } from "@/lib/auth/email";
 import { decodeInvitation, decodeUser, readable } from "@/lib/credentials/records";
+import type { Messages } from "@/lib/i18n";
+import type { EventPayload } from "./payload";
 import { en } from "@/messages/en";
 
 /**
@@ -40,4 +42,15 @@ export async function invitationEventLabel(
   if (row === null) return en.common.unreadable;
   const invitation = readable(() => decodeInvitation(row));
   return invitation === null ? en.common.unreadable : maskEmail(invitation.email);
+}
+
+/**
+ * **저장된 대체 라벨을 읽는 화면의 언어로 되돌린다** — 위 두 낱말은 en으로 굳어 있으니(지우지 않는 사건) Logs가 읽을 때만 사전의 **같은 키**로 바꾼다.
+ * 그 밖의 `targetLabel`(마스킹 주소)은 그대로다. ⚠️ **저장값은 건드리지 않는다** — 조회가 만든 행 모델에서만 바뀐다.
+ */
+export function displayMemberPayload(m: Messages, payload: EventPayload | null): EventPayload | null {
+  if (payload === null || payload.kind !== "MEMBER") return payload;
+  if (payload.targetLabel === en.logs.trigger.removed) return { ...payload, targetLabel: m.logs.trigger.removed };
+  if (payload.targetLabel === en.common.unreadable) return { ...payload, targetLabel: m.common.unreadable };
+  return payload;
 }
