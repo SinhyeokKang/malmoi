@@ -22,7 +22,7 @@ import { render } from "./helpers/dom";
 vi.mock("@/lib/auth/sign-out", () => ({ signOutAction: async () => {} }));
 
 const GUEST = publicAccount({ status: "none" });
-const SIGNED_IN = publicAccount({ status: "ok", userId: "u1", name: "Ada", email: "ada@x.dev", image: null, uiLocale: null, timeZone: null });
+const SIGNED_IN = publicAccount({ status: "ok", userId: "u1", name: "Ada", email: "ada@x.dev", image: null, uiLocale: null, timeZone: null, colorScheme: null });
 
 /**
  * 공개 셸 (DESIGN §6.615) — 헤더 · 패널(표면 + 스크롤러) · 푸터. 랜딩(`/`)과 `/privacy`가 쓴다.

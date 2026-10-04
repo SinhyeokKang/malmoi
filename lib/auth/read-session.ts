@@ -20,7 +20,11 @@ export type SessionRead =
    */
   /** `uiLocale`은 고른 화면 언어(ui-locales C2) — 날 값이다. 판정은 `getUiLocale`(`lib/i18n/server.ts`)이 `parseUiLocale`로 한다. */
   /** `timeZone`은 고른 시간대(user-timezone) — 날 값이다. 판정은 `parseTimeZone`(`lib/time-zone/`)이 읽는 쪽에서 한다. */
-  | { status: "ok"; userId: string; name: string | null; email: string | null; image: string | null; uiLocale: string | null; timeZone: string | null }
+  /** `colorScheme`은 고른 화면 테마(color-scheme) — 날 값이다. 판정은 읽는 쪽이 `parseColorScheme`으로 한다. */
+  | {
+    status: "ok"; userId: string; name: string | null; email: string | null; image: string | null;
+    uiLocale: string | null; timeZone: string | null; colorScheme: string | null;
+  }
   | { status: "none" }
   /** 세션을 읽지 못했다 — 거부가 아니다. 호출부는 재시도를 권하고 로그인을 시키지 않는다. */
   | { status: "unavailable" };
@@ -42,6 +46,6 @@ export const readSession = cache(async function readSession(): Promise<SessionRe
   if (typeof userId !== "string" || userId === "") return { status: "none" };
   return {
     status: "ok", userId, name: value?.user?.name ?? null, email: value?.user?.email ?? null, image: value?.user?.image ?? null,
-    uiLocale: value?.user?.uiLocale ?? null, timeZone: value?.user?.timeZone ?? null,
+    uiLocale: value?.user?.uiLocale ?? null, timeZone: value?.user?.timeZone ?? null, colorScheme: value?.user?.colorScheme ?? null,
   };
 });

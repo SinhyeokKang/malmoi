@@ -19,7 +19,7 @@ vi.mock("next/headers", () => ({
 }));
 
 const { getDateStyle, getMessages, getUiLocale } = await import("../server");
-const ok = (uiLocale: string | null, timeZone: string | null = null): SessionRead => ({ status: "ok", userId: "u1", name: null, email: null, image: null, uiLocale, timeZone });
+const ok = (uiLocale: string | null, timeZone: string | null = null): SessionRead => ({ status: "ok", userId: "u1", name: null, email: null, image: null, uiLocale, timeZone, colorScheme: null });
 
 beforeEach(() => {
   h.session = { status: "none" };

@@ -19,9 +19,9 @@ const row = {
 const user = { id: "u1", name: "Kim", email: "k@a.com", image: null, emailVerified: null };
 
 describe("publicSession — 허용 목록", () => {
-  it("user.id·name·email·image·uiLocale·timeZone과 expires만 남는다", () => {
+  it("user.id·name·email·image·uiLocale·timeZone·colorScheme과 expires만 남는다", () => {
     expect(publicSession({ session: row, user })).toEqual({
-      user: { id: "u1", name: "Kim", email: "k@a.com", image: null, uiLocale: null, timeZone: null },
+      user: { id: "u1", name: "Kim", email: "k@a.com", image: null, uiLocale: null, timeZone: null, colorScheme: null },
       expires: "2026-09-07T00:00:00.000Z",
     });
   });
@@ -38,7 +38,7 @@ describe("publicSession — 허용 목록", () => {
     const wideUser = { ...user, createdAt: new Date(), token: "z" };
     const out = publicSession({ session: wide, user: wideUser });
     expect(Object.keys(out).sort()).toEqual(["expires", "user"]);
-    expect(Object.keys(out.user).sort()).toEqual(["email", "id", "image", "name", "timeZone", "uiLocale"]);
+    expect(Object.keys(out.user).sort()).toEqual(["colorScheme", "email", "id", "image", "name", "timeZone", "uiLocale"]);
   });
 
   it("expires가 이미 문자열이면 그대로 둔다", () => {
@@ -48,7 +48,7 @@ describe("publicSession — 허용 목록", () => {
 
   it("name·email·image가 없으면 null이다 — undefined는 JSON에서 키가 사라져 모양이 흔들린다", () => {
     const out = publicSession({ session: row, user: { id: "u1" } });
-    expect(out.user).toEqual({ id: "u1", name: null, email: null, image: null, uiLocale: null, timeZone: null });
+    expect(out.user).toEqual({ id: "u1", name: null, email: null, image: null, uiLocale: null, timeZone: null, colorScheme: null });
   });
 
   /**
@@ -64,5 +64,11 @@ describe("publicSession — 허용 목록", () => {
   it("timeZone을 그대로 싣고, 없으면 null이다", () => {
     expect(publicSession({ session: row, user: { ...user, timeZone: "Asia/Seoul" } }).user.timeZone).toBe("Asia/Seoul");
     expect(publicSession({ session: row, user: { id: "u1" } }).user.timeZone).toBeNull();
+  });
+
+  /** **화면 테마를 싣는다** (color-scheme P2-2) — 같은 형: 추가 쿼리 0, 날 값이고 판정(`parseColorScheme`)은 읽는 쪽이 한다. */
+  it("colorScheme을 그대로 싣고, 없으면 null이다", () => {
+    expect(publicSession({ session: row, user: { ...user, colorScheme: "dark" } }).user.colorScheme).toBe("dark");
+    expect(publicSession({ session: row, user: { id: "u1" } }).user.colorScheme).toBeNull();
   });
 });

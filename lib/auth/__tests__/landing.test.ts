@@ -62,7 +62,7 @@ describe("rootView — 루트(`/`)가 무엇을 그리나 (랜딩)", () => {
 
 describe("publicAccount — 공개 셸 헤더 우측의 계정", () => {
   it("세션이 있으면 앱 셸 아바타와 같은 이름·사진을 싣는다", () => {
-    expect(publicAccount({ status: "ok", userId: "u1", name: "  ", email: "a@x.dev", image: "https://img/a.webp", uiLocale: null, timeZone: null })).toEqual({
+    expect(publicAccount({ status: "ok", userId: "u1", name: "  ", email: "a@x.dev", image: "https://img/a.webp", uiLocale: null, timeZone: null, colorScheme: null })).toEqual({
       name: "a@x.dev",
       email: "a@x.dev",
       image: "https://img/a.webp",
