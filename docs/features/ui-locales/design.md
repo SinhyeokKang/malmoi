@@ -110,8 +110,12 @@ PRODUCT §10의 "소비자의 import 자리는 안 바뀐다"는 틀린 전망�
   항목이 셋이라 검색 입력이 필요 없고, `components/ui/`에 콤보박스 프리미티브가 없으며, 새로 만들면 소비자 없는 기능(검색)을 선반영하게 된다.
   - 아이콘: 지구본은 `Globe`로 고정한다. `Languages`는 Translations의 글리프라 쓰지 않는다. 화살표는 위로 열리는 메뉴에 방향이 맞지 않는 `chevron-down` 대신 프로젝트 스위처와 같은 `ChevronsUpDown`이다.
   - 위치: 가운데 정렬 한 줄의 **마지막 항목**(바닥 띠 40에 좌우 분리를 들이지 않는다).
-  - 트리거는 `Button`이 아니라 **날 `<button>`에 푸터 링크 클래스**(`footer.tsx:6,17` — 13 · 400 · muted)를 쓴다. `Button`은 `label-weight.test.ts`가 500을 강제해 이웃 링크와 무게가 갈린다.
+  - 트리거는 **`components/ui/`의 새 프리미티브 `TextTrigger`**(`text-trigger.tsx`)다(2026-10-04 사용자). 날 `<button>`은 `focus-ring.test.ts:121`이 `ui/` 밖에서 막고, `Button`은 `label-weight.test.ts`가 500을 강제해 이웃 푸터 링크(400)와 무게가 갈린다.
+    계약: `inline-flex items-center gap-1 text-xs text-muted-foreground` + 푸터 `LINK`의 hover·focus(`footer.tsx:6`) · 앞 글리프 슬롯(진행 중 `Loader2 animate-spin`으로 교체) · 뒤 글리프 · `busy`(aria-disabled + aria-busy + `cursor-not-allowed`, 클릭 차단) · `DropdownMenuTrigger asChild`로 받는다(ref 전달).
+    `focus-ring.test.ts`의 프리미티브 렌더 표와 `label-weight.test.ts`(400 예외가 아니라 애초에 `Button` 계열이 아님을 명시)에 등재한다. 소비자는 지금 `LocaleSwitcher` 하나다 — 실재하는 필요라 선반영이 아니다.
   - 접근 이름: `aria-label`을 쓰지 않고 `<span class="sr-only">{Language}: </span><span lang="en">English</span>` 구조로 보이는 글자를 이름에 포함한다(WCAG 2.5.3). 메뉴라는 사실은 `aria-haspopup`이 알린다.
+  - 메뉴: `DropdownMenuContent side="top" align="end"` · sideOffset 4. 항목 앞에 **`LocaleFlag` sm + gap 8**(2026-10-04 사용자). 트리거에는 국기를 두지 않는다(지구본이 단서).
+  - 국기 매핑은 **en → GB · ko → KR · es → ES**(2026-10-04 사용자). `UI_LOCALES` 옆 상수가 직접 든다 — 프로젝트 로케일용 `flagFor`(`lib/keys/flag.ts:121`, es는 사용국이 여럿이라 일부러 `null`)는 건드리지 않는다. en GB는 앱 전체 en 배지와 같다.
   - 언어 이름(트리거·메뉴 항목·Select 옵션)에는 각각 **`lang={code}`**를 단다 — ko 화면에서 `English`·`Español`이 한국어 음성으로 읽히지 않게 한다.
 - 고르면 `setUiLocale` → 같은 페이지가 새 언어로 다시 그려진다. 진행 중에는 트리거가 `busy`이고 지구본 자리를 `Loader2`로 **교체**한다(DESIGN §6.4).
 - 실패(`invalid`·`failed`)는 **sonner 오류 토스트**로 알린다 — 푸터는 40px 한 줄이라 Alert 자리가 없다. 이 갈래만 토스트이고 Preferences는 카드 안 Alert다.
@@ -124,12 +128,14 @@ PRODUCT §10의 "소비자의 import 자리는 안 바뀐다"는 틀린 전망�
   - 본문은 기존 `Select` 하나(옵션 셋, endonym, `lang={code}`)이고 라벨 열을 두지 않는다. 접근 이름은 `aria-labelledby`로 카드 제목(`Language`)을, `aria-describedby`로 도움말을 가리킨다. 폭은 Profile 이름 필드와 같은 320이다.
   - **고르는 즉시 적용한다(저장 버튼 없음)** — 푸터와 같은 Action·같은 동작이고, 화면 전체가 새 언어로 다시 그려지는 것 자체가 피드백이라 성공 토스트를 띄우지 않는다. 앱의 다른 Select는 전부 [Save]·Dialog로 확정하므로 **이 예외를 DESIGN §6.4에 등재한다.**
   - ⚠️ **닫힌 트리거의 typeahead를 막는다** — 닫힌 Radix Select 트리거에 포커스를 두고 글자를 치면 메뉴가 열리지 않은 채 값이 바뀐다(POSTMORTEM 2026-09-19의 두 번째 경로). 즉시 적용이라 Tab으로 지나가다 `e`를 치면 앱 전체가 Español이 된다. 닫힌 트리거는 Enter·Space·방향키·Tab만 받는다.
-  - 진행 중에는 Root `disabled`가 아니라 `RoleSelect` 가드(`member-list.tsx:300-316`)를 그대로 쓴다(§4 `busy` — 포커스 유지).
-  - 실패는 `Card`의 `notice` 슬롯(`components/ui/card.tsx:8`)에 `Alert danger`. 손으로 조립하지 않는다.
+  - 옵션과 트리거 값 앞에 `LocaleFlag` sm(16×11 · radius 2) + gap 8 — 국기가 `ItemText` 안이라 트리거로 복제된다. 매핑은 §5.1과 같다. 열린 목록은 popper · 폭 = 트리거 · 체크만(SelectItem은 `bg-muted` 없음).
+  - 진행 중에는 Root `disabled`가 아니라 `RoleSelect` 가드(`member-list.tsx:300-316`)를 그대로 쓴다(§4 `busy` — 포커스 유지). 트리거는 **고른 값을 먼저 보인다**(낙관적 표시)이고 스피너는 없다. 실패하면 원래 값으로 돌아간다. **지금 값과 같은 값을 고르면 요청하지 않는다**(푸터도 같다).
+  - 실패는 `Card`의 `notice` 슬롯(`components/ui/card.tsx:8`)에 **`Alert danger inset`**(radius 0 · 카드 좌우 끝 · 13/16 · `bg-red-50` · 테두리 없음 — `alert.tsx` `inset`). Dismiss 없음. 손으로 조립하지 않는다.
   - 타임존·테마 자리는 만들지 않는다(spec 비목표).
-- 사용자 축 내비(`navWorkItems` — 사이드바 사용자 구역과 사용자 메뉴가 같은 목록)에 `Account` 다음으로 `Preferences`를 넣는다. 아이콘은 `SlidersHorizontal`(`Settings` 톱니는 Project settings, `CircleUser`는 Account와 구별). 랜딩 목업의 LNB도 `navZones`에서 뽑으므로 함께 바뀐다.
+- 사용자 축 내비(`navWorkItems` — 사이드바 사용자 구역과 사용자 메뉴가 같은 목록)는 **`Projects · MCP connector · Preferences · Account`** 순이다(2026-10-04 사용자 — Account가 목록 끝에 남는다). exact 매칭. 아이콘은 `SlidersHorizontal`(`Settings` 톱니는 Project settings, `CircleUser`는 Account와 구별). 랜딩 목업의 LNB도 `navZones`에서 뽑으므로 함께 바뀐다.
 - 인가: 페이지 최상단 `requireUser`. Action은 §4.
-- 시안: **Claude Design 핸드오프를 먼저 만든다**(2026-10-04 사용자). 입력은 `design-brief.md`이고, 새 페이지의 초기 구현이므로 `/design-sync` 대상이다. 푸터 스위처도 같은 핸드오프에 넣는다.
+- 시안: Claude Design 핸드오프 **`design_handoff_ui_locales/`**(프로젝트 `b99d54cd-3034-44f1-8446-0a864da9d767`, 캔버스 `UI Locales.dc.html` — 아트보드 A1–A8 · B1–B4 · B6–B8 · C1–C3). 새 페이지의 초기 구현이므로 `/design-sync` 대상이다.
+  핸드오프와 이 문서가 다르면 이 문서가 정본이다: Action 이름은 `setUiLocale`, 로그인 때 쿠키↔계정을 옮기지 않는다(핸드오프 §10-2 기본안 기각 — spec 비목표), 닫힌 Select의 typeahead 가드는 핸드오프 상태 정의에 없지만 이 문서대로 넣는다.
 
 ### 5.3 `<html lang>`
 

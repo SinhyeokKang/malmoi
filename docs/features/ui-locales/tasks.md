@@ -90,15 +90,16 @@
 
 - [ ] **S1** `design-brief.md`로 Claude Design 핸드오프를 만든다(사용자). 아트보드 목록·상태는 브리프 §4가 정본이다.
 - [ ] **S2** 핸드오프가 브리프의 결정(즉시 적용·성공 토스트 없음·`DropdownMenuItem selected`·`busy` 진행 표시)과 어긋나면 design.md를 먼저 고친다 — 시안이 결정을 뒤집으면 그것은 변경 요청이다.
-  검증: 핸드오프 경로를 design.md §5에 기록.
+  검증: 핸드오프 경로를 design.md §5에 기록. ✅ 2026-10-04 — `design_handoff_ui_locales/`, 차이는 design §5.1·§5.2에 반영.
 
 ## F. 언어 바꾸기 + 방침 (한 커밋 — 쿠키가 생기는 커밋에서 방침이 참이어야 한다)
 
 - [ ] **F1** `app/ui-locale/actions.ts` — `setUiLocale`. 테스트:
   잘못된 값이면 아무것도 안 씀(`invalid`) · 비로그인이면 쿠키만 · 로그인이면 세션 userId의 계정 → 쿠키 순 · 세션 `unavailable`이면 아무것도 안 씀(`failed`) · 로그인 중 User 갱신 실패(행 없음·DB 오류)면 쿠키도 안 씀(`failed`) ·
   **성공 갈래에서만** `revalidateAfterCommit` 호출 · 쿠키 속성(httpOnly·SameSite=Lax·Secure(https)·Path=/·1년).
-- [ ] **F2** `LocaleSwitcher`(핸드오프 기준 — 기본안은 design §5.1) → `PublicFooter`·`AuthLayout`. DOM 테스트(포커스 fixup observer 포함):
-  현재 언어 endonym 표시 · 언어 이름에 `lang={code}` · 접근 이름 "Language: English" · 고르면 Action 호출 · 진행 중 `aria-busy`·`aria-disabled`이고 **포커스가 트리거에 남는다** · 실패면 오류 토스트.
+- [ ] **F2a** `components/ui/text-trigger.tsx`(`TextTrigger`, design §5.1 계약) — 테스트 먼저: 13/400 muted · 글리프 슬롯 · `busy`면 `aria-disabled`·`aria-busy`이고 클릭이 안 먹으며 포커스 유지 · `asChild` 트리거로 ref 전달. `focus-ring.test.ts` 프리미티브 표·`label-weight.test.ts`에 등재.
+- [ ] **F2** `LocaleSwitcher`(`TextTrigger` + `DropdownMenu`, design §5.1) → `PublicFooter`·`AuthLayout`. 국기 매핑 상수(en GB · ko KR · es ES) 단위 테스트. DOM 테스트(포커스 fixup observer 포함):
+  현재 언어 endonym 표시 · 메뉴 항목에 국기 + `lang={code}` · 같은 값을 고르면 Action을 부르지 않음 · 접근 이름 "Language: English" · 고르면 Action 호출 · 진행 중 `aria-busy`·`aria-disabled`이고 **포커스가 트리거에 남는다** · 실패면 오류 토스트.
   검증: 로컬 브라우저에서 `/`·`/signin`·`/docs`가 ko·es로 바뀌고 새로고침해도 유지, 첫 화면에 영어가 비치지 않음 `[수동]`.
 - [ ] **H1** `/privacy` en 본문(`messages/en.tsx`의 방침 절): "Every cookie Malmoi sets is needed to …" 문장 수정 + 쿠키 표 1줄 + `User.uiLocale` + 개정 이력·시행일.
   검증: `policy-gate.test.tsx` green.
@@ -110,10 +111,10 @@
 
 ## G. `/preferences`
 
-- [ ] **G1** `routes.preferences()` · `isProtectedPath`에 정규식 1줄 · robots `disallow`(`lib/seo/crawl.ts:19` — 별도 목록) · `navWorkItems`에 `Account` 다음 항목(`SlidersHorizontal`, 사이드바·사용자 메뉴·랜딩 목업 LNB 공통 — 검색 `Pages` 행은 자동).
+- [ ] **G1** `routes.preferences()` · `isProtectedPath`에 정규식 1줄 · robots `disallow`(`lib/seo/crawl.ts:19` — 별도 목록) · `navWorkItems`에 `MCP connector`와 `Account` 사이 항목(`SlidersHorizontal`, exact, 사이드바·사용자 메뉴·랜딩 목업 LNB 공통 — 검색 `Pages` 행은 자동).
   테스트: 보호 경로 표에 `/preferences`·`.rsc`·`_next/data` 변형 추가, robots 테스트 갱신, nav 목록 테스트 갱신.
 - [ ] **G2** `app/(edit)/preferences/{page,loading}.tsx` — 핸드오프 기준. `requireUser` + Language 카드(design §5.2).
-  DOM 테스트(포커스 fixup observer 포함): `aria-labelledby`·`aria-describedby` · 옵션 `lang` · 고르면 Action 호출 · 진행 중 `RoleSelect` 가드이고 포커스 유지 · **닫힌 트리거에서 글자 키로 값이 바뀌지 않는다** · 실패면 카드 `notice` Alert.
+  DOM 테스트(포커스 fixup observer 포함): `aria-labelledby`·`aria-describedby` · 옵션 `lang` · 고르면 Action 호출 · 옵션·트리거 값에 국기 · 진행 중 `RoleSelect` 가드이고 고른 값을 먼저 보이며 포커스 유지 · 실패면 원래 값으로 복귀 · 같은 값이면 Action을 부르지 않음 · **닫힌 트리거에서 글자 키로 값이 바뀌지 않는다** · 실패면 카드 `notice`의 `Alert danger inset`.
   검증: 로컬에서 es 선택 → 앱 전체 es, 다른 브라우저로 로그인해도 es, 로그아웃 뒤 그 기기는 마지막 값 `[수동]`. revalidate 뒤 Alert 유지 여부는 jsdom이 못 본다 → H4 `[수동]`.
 - [ ] **G3** `/design-sync` — 푸터 스위처·Preferences를 핸드오프와 프레임 단위로 대조(computed style + 접근성 트리). `[수동]`
 - [ ] `[커밋] feat(preferences): add the Preferences page with language`
