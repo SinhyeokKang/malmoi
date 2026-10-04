@@ -78,3 +78,4 @@
 - **핸드오프 확보**: 사용자 URL(`b99d54cd…`, `Color Scheme.dc.html`) → DesignSync로 `design_handoff_color_scheme/README.md`를 `.scratch/color-scheme/handoff/README.md`에(§5 다크 토큰 표 · §4 시안 우선 표 — design §3.8과 다르면 design이 이긴다 주석). `.dc.html`은 Q2가 직접 받는다.
 - **C 착수**(Opus high, `cs-c`, task_916158667dbb / ctx_7344af0608d9) — 순서 P2-0 스파이크 → P2-4(자산) → E가 dev에 들어오면 rebase → P2-3. **통합 순서를 E → C로 바꿨다**: `getColorScheme`이 E 소유가 되어 C의 레이아웃 연결이 그것에 기대고, 그 사이 dev에서 Dark를 골라도 레이아웃이 `data-theme`을 안 다는 상태라 화면 변화가 없다(빈 다크 위험 없음).
 - **RE 리뷰**: 🔴0 · 🟡1(`data-theme` 없는 상태 롤백 갈래 테스트 없음) · ⚪4(design §3.4 소비자 줄 낡음 · revalidate 던짐 시 카드/DOM 어긋남은 공용 카드 기존 형 · ko 설명 낱말(사용자 검수) · 같은 날 개정 행). **E fix1 착수**(같은 터미널). RE 해제.
+- **E fix1**(`17617f85` 롤백 "속성 없음" 갈래 DOM 테스트 둘 + design §3.4 소비자 둘) gate ok. **E 통합** cherry-pick 3(`fd3b14f2..d5b3553b`). ko 검수 메모: Theme 카드 설명 "Malmoi 화면의 밝기를 정합니다." → 형제 형("…테마입니다.") 제안(사용자 일괄 검수).
