@@ -7,7 +7,7 @@ import { parseMd } from "../parse";
 import { renderProblems, summaryDepth } from "../rules";
 import { parseSummary } from "../summary";
 
-import { servedGuideFiles } from "./helpers/served";
+import { guideTrees, servedGuideFiles } from "./helpers/served";
 
 const kinds = (md: string) => renderProblems(parseMd(md)).map((problem) => problem.kind);
 
@@ -55,8 +55,7 @@ describe("summaryDepth — 내비는 두 단만 그린다", () => {
   });
 });
 
-describe("서빙 원고 — 렌더 규칙", () => {
-  const guide = join(process.cwd(), "guide", "en");
+describe.each(guideTrees(join(process.cwd(), "guide")).map(({ uiLocale, dir }) => [uiLocale, dir] as const))("서빙 원고 — 렌더 규칙 — %s", (_uiLocale, guide) => {
   const files = servedGuideFiles(guide);
 
   it("원고를 실제로 읽었다", () => {

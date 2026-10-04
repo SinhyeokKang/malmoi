@@ -7,7 +7,7 @@ import { visit } from "unist-util-visit";
 import { describe, expect, it } from "vitest";
 
 import { UI_LOCALES } from "@/lib/i18n/locales";
-import { collectImages, collectLinks } from "../collect";
+import { collectImages, collectLinks, collectUiLabels } from "../collect";
 import { headings, parseMd } from "../parse";
 import { flattenNav, parseSummary } from "../summary";
 import { guideTrees } from "./helpers/served";
@@ -27,7 +27,11 @@ function markdownFiles(dir: string, prefix = ""): string[] {
   });
 }
 
-/** 번역이 바꾸면 안 되는 것 — 앵커 · 이미지 경로 · 링크 대상 · 번호 단계 수. 문장은 언어마다 다르다. */
+/**
+ * 번역이 바꾸면 안 되는 것 — 앵커 · 이미지 경로 · 링크 대상 · 번호 단계 수 · 굵은 라벨 수. 문장은 언어마다 다르다.
+ * ⚠️ 라벨 수는 **굵게가 닫혔는지**를 잰다 — `**본인이 아닙니까?**를`처럼 문장부호로 끝난 라벨 뒤에 조사가 붙으면 CommonMark가
+ * 닫는 `**`로 보지 않아 별표가 화면에 그대로 남는다(띄어쓰기 없는 언어에서만 생기는 부류).
+ */
 function guideShape(tree: Root) {
   let steps = 0;
   visit(tree, "list", (list) => {
@@ -37,6 +41,7 @@ function guideShape(tree: Root) {
     anchors: headings(tree).map(({ depth, id }) => `${depth}:${id ?? ""}`),
     images: collectImages(tree).map(({ src }) => src),
     links: collectLinks(tree).map(({ url }) => url),
+    labels: collectUiLabels(tree).length,
     steps,
   };
 }
@@ -51,7 +56,14 @@ describe("guideShape", () => {
     const a = guideShape(parseMd("# A\n\nLead.\n\n## Step {#step}\n\n1. One [x](b.md#y)\n2. Two\n\n![Alt](/guide/a.webp)\n"));
     const b = guideShape(parseMd("# 가\n\n도입.\n\n## 단계 {#step}\n\n1. 하나 [엑스](b.md#y)\n2. 둘\n\n![대체](/guide/a.webp)\n"));
     expect(b).toEqual(a);
-    expect(a).toEqual({ anchors: ["1:", "2:step"], images: ["/guide/a.webp"], links: ["b.md#y"], steps: 2 });
+    expect(a).toEqual({ anchors: ["1:", "2:step"], images: ["/guide/a.webp"], links: ["b.md#y"], labels: 0, steps: 2 });
+  });
+
+  it("문장부호로 끝난 굵은 라벨에 조사가 붙어 굵게가 안 닫히면 다르다", () => {
+    const a = guideShape(parseMd("# A\n\nChoose **Not you?** to switch.\n"));
+    expect(a.labels).toBe(1);
+    expect(guideShape(parseMd("# 가\n\n**본인이 아닙니까?**를 선택합니다.\n"))).not.toEqual(a);
+    expect(guideShape(parseMd("# 가\n\n**본인이 아닙니까?** 링크를 선택합니다.\n"))).toEqual(a);
   });
 
   it("번역에서 단계가 빠지거나 앵커를 번역하면 다르다", () => {

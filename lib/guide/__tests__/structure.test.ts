@@ -9,6 +9,7 @@ import { LEGACY_ANCHORS, SECTION_LEGACY_ANCHORS } from "../legacy-anchors";
 import { headings, parseMd } from "../parse";
 import { leadParagraph, parseMdTable } from "../sections";
 import { flattenNav, parseSummary, slugToFile } from "../summary";
+import { guideTrees } from "./helpers/served";
 
 const MANUALS = fileURLToPath(new URL("../../../guide/", import.meta.url));
 // 원문(en) 트리 — 번역 트리의 구조는 `locales.test.ts`가 en과 견준다
@@ -34,9 +35,11 @@ describe("실물 가이드 구조", () => {
     expect(slugToFile(["SHOOTING"], files)).toBeNull();
   });
 
-  it("페이지마다 H1 하나와 도입 문단이 있고 H2 앵커가 빠지거나 겹치지 않는다", () => {
-    for (const { file, title } of nav()) {
-      const tree = read(file);
+  // 번역 트리도 같은 규칙이다 — H1이 그 언어 SUMMARY의 제목이어야 내비와 본문 제목이 갈리지 않는다
+  it.each(guideTrees(MANUALS).map(({ uiLocale, dir }) => [uiLocale, dir] as const))("페이지마다 H1 하나와 도입 문단이 있고 H2 앵커가 빠지거나 겹치지 않는다 — %s", (_uiLocale, dir) => {
+    const readIn = (file: string) => parseMd(readFileSync(join(dir, file), "utf8"));
+    for (const { file, title } of flattenNav(parseSummary(readIn("SUMMARY.md")))) {
+      const tree = readIn(file);
       const all = headings(tree);
       expect(all.filter(({ depth }) => depth === 1), file).toHaveLength(1);
       expect(all.find(({ depth }) => depth === 1)?.text, file).toBe(title);
