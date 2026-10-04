@@ -95,7 +95,7 @@
 
 ## H. 문서·검증
 
-- [ ] **H1** 정본 갱신(문서별 별도 커밋):
+- [x] **H1** 정본 갱신(문서별 별도 커밋):
   - CLAUDE.md 코드 컨벤션 "날짜는 UTC로 저장하고…" → design §0 "바뀐 규칙" 문안. 데이터 변경 경로 표에 `setTimeZone` 행. (미러는 훅)
   - ARCHITECTURE — 잎 명부(`lib/time-zone/zones.ts` 추가, `lib/utc-time.ts` → `lib/date-format.ts`) · 스키마 절 `User.timeZone` · Logs 구간이 보는 사람의 시간대이고 MCP는 UTC라는 계약 · 하이드레이션 수용 근거(design §0).
   - DESIGN — 날짜·시각 형 절(`UTC+9` 라벨) · `:1914`의 `aria-label="… UTC"` 예 · `:1930`·`:1954` `Custom range (UTC)` → 괄호 없는 라벨 + Dialog `Days are in <id>.` 줄 · Logs 행 시각 `08:10 UTC+9` · `:1719` `retryAtLabel` · Preferences Time zone 카드.
