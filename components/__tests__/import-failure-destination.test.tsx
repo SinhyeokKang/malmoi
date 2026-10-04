@@ -14,7 +14,7 @@ vi.mock("next/navigation", () => ({ redirect: nav.redirect, useRouter: () => ({ 
 
 import { AttentionCard } from "@/components/home/attention-card";
 import { ProjectNotReady } from "@/components/project-not-ready";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { onboardErrorMessage } from "@/lib/onboarding/message";
 
 const now = new Date("2026-09-24T00:00:00Z");
@@ -33,10 +33,10 @@ it("OWNER의 Home 가져오기 실패 항목은 Sources로 간다", async () => 
 it("EDITOR의 같은 항목도 Sources로 가고, 재시도는 소유자 몫이라는 한 줄이 붙는다", async () => {
   const { container } = await card("EDITOR");
   expect([...container.querySelectorAll("a")].map(a => a.getAttribute("href"))).toEqual(["/projects/acme/sources"]);
-  expect(container.textContent).toContain(m.home.attention.importFailed.title("web"));
-  expect(container.textContent).toContain(m.projects.importFailure.ownerRetries);
+  expect(container.textContent).toContain(en.home.attention.importFailed.title("web"));
+  expect(container.textContent).toContain(en.projects.importFailure.ownerRetries);
   const owner = await card("OWNER");
-  expect(owner.container.textContent).not.toContain(m.projects.importFailure.ownerRetries);
+  expect(owner.container.textContent).not.toContain(en.projects.importFailure.ownerRetries);
 });
 
 it("첫 적재 전 OWNER는 Sources로, 연결 전 OWNER는 Settings로 간다 — EDITOR는 이동하지 않는다", async () => {
@@ -57,8 +57,8 @@ it("첫 적재 실패 문구가 Settings를 가리키지 않는다 — 재시도
 it("partial-import 항목은 Partially synced 문장이고 실패 문장을 빌리지 않는다", async () => {
   const partial = { ...failed, reason: "partial-import" as const };
   const { container } = await render(<AttentionCard items={{ shown: [partial], more: [], count: 1 }} slug="acme" role="OWNER" state="default" now={now} />);
-  expect(container.textContent).toContain(`${m.home.attention.partial.body}${m.home.attention.partial.tail}`);
-  expect(container.textContent).not.toContain(m.home.attention.importFailed.body);
+  expect(container.textContent).toContain(`${en.home.attention.partial.body}${en.home.attention.partial.tail}`);
+  expect(container.textContent).not.toContain(en.home.attention.importFailed.body);
   expect(container.textContent).not.toMatch(/didn['’]t come in|couldn['’]t read/);
 });
 
@@ -69,6 +69,6 @@ it("partial-import 항목은 Partially synced 문장이고 실패 문장을 빌�
 it("실패 항목의 시각이 없으면 시각 칸이 비어 있다", async () => {
   const { container } = await render(<AttentionCard items={{ shown: [{ ...failed, at: null }], more: [], count: 1 }} slug="acme" role="OWNER" state="default" now={now} />);
   expect(container.textContent).not.toMatch(/not synced yet/i);
-  expect(container.textContent).not.toContain(m.home.meta.never);
+  expect(container.textContent).not.toContain(en.home.meta.never);
   expect(container.querySelector("a > span.shrink-0.text-xs")).toBeNull();
 });

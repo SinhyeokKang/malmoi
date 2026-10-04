@@ -3,7 +3,7 @@ import { expect, it, vi } from "vitest";
 
 import { FilesStep, type FilesStepState } from "@/components/onboarding/steps/files";
 import { NamingStep } from "@/components/onboarding/steps/naming";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { render } from "./helpers/dom";
 
@@ -48,5 +48,5 @@ it("수동 경로 입력이 형식 힌트를 설명으로 가리킨다", async (
   const field = container.querySelector("#manual-path");
   expect(field).not.toBeNull();
   expect(describedText(field)).toContain("{locale}");
-  expect(m.newProject.files.manual.path).not.toBe("");
+  expect(en.newProject.files.manual.path).not.toBe("");
 });

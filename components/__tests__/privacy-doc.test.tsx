@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { PROSE } from "@/components/docs/classes";
 import { PrivacyDoc } from "@/components/privacy/privacy-doc";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { utcDay } from "@/lib/utc-time";
 
 import { find, render } from "./helpers/dom";
@@ -11,7 +11,7 @@ import { find, render } from "./helpers/dom";
 /**
  * `/privacy` 읽기 그릇 (시안 `Landing.dc.html` 1e — DESIGN §6.616). 본문은 사전 그대로이고 그릇만 바뀐다.
  */
-const privacy = m.publicDocs.privacy;
+const privacy = en.publicDocs.privacy;
 const doc = () => render(<PrivacyDoc />);
 /** DESIGN §7의 링 셋 — 하나라도 빠지면 브라우저 기본 outline이 그려진다. */
 const RING = ["focus-visible:ring-ring", "focus-visible:ring-2", "focus-visible:outline-none"];
@@ -49,7 +49,7 @@ describe("PrivacyDoc — 구조", () => {
     // 보이는 형은 `lib/utc-time.ts`의 날짜 형이고, `dateTime`·사전 값은 ISO 그대로다(`policy-gate`가 그 값을 본다).
     expect(time.textContent).toBe(utcDay(new Date(privacy.effectiveDate)));
     expect(time.textContent).toMatch(/^[A-Z][a-z]{2} \d{1,2}, \d{4}$/);
-    expect(time.parentElement?.textContent).toBe(`${m.publicDocs.effectiveDate} ${utcDay(new Date(privacy.effectiveDate))}`);
+    expect(time.parentElement?.textContent).toBe(`${en.publicDocs.effectiveDate} ${utcDay(new Date(privacy.effectiveDate))}`);
   });
 
   /** POSTMORTEM 2026-09-19 — 가로 스크롤은 표 자기 컨테이너가 든다. 키보드로 닿으려면 region·tabIndex·이름 셋. */

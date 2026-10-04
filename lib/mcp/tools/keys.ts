@@ -1,7 +1,7 @@
 import "server-only";
 import { z } from "zod";
 
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { previewRevert, RevertInput } from "@/lib/keys/revert-translation";
 import { loadTranslationDetail, loadTranslationList } from "@/lib/keys/translation-list";
 import { isProjectReady } from "@/lib/projects/ready";
@@ -19,7 +19,7 @@ import { coreSubject, defineTool, ok } from "./define";
 /**
  * 목록 조건은 **동결된 파서**(`parseTranslationQuery`)의 해석이다 — `scope`가 없으면 전 소스, `completion`(`missing`·`complete` 포함)·`state`·cursor를 그대로
  * 받는다. ⚠️ **화면과 같은 필터가 아니다** (translation-tree-range §2.4) — 화면은 그 위의 화면 층(`screenQuery`)으로 Status 하나·트리 범위를 쓴다. 이 도구의
- * 입력 해석을 화면에 맞춰 바꾸지 않는다(외부 계약). 설명 문장(`m.mcp.tools.list_keys`)도 화면이 아니라 받는 축을 나열한다.
+ * 입력 해석을 화면에 맞춰 바꾸지 않는다(외부 계약). 설명 문장(`en.mcp.tools.list_keys`)도 화면이 아니라 받는 축을 나열한다.
  * ⚠️ **cursor 페이징은 이 도구의 외부 계약이다** — 화면은 전량을 한 번에 싣지만 도구는 `pageSize`·`nextCursor`를 그대로 둔다.
  * 상한은 주소창 값의 합리적인 크기다 — 검색어(`Q_MAX_LENGTH` 200)·키 id·cursor(키 이름을 든다)를 넉넉히 덮고 그 이상은 조작이다.
  */
@@ -45,7 +45,7 @@ export const listKeys = defineTool({
       matchedKeyCount: page.matchedKeyCount,
       incompleteKeyCount: page.incompleteKeyCount,
       nextCursor: page.nextCursor,
-    }, m.mcp.summary.keys(page.rows.length, page.matchedKeyCount));
+    }, en.mcp.summary.keys(page.rows.length, page.matchedKeyCount));
   },
 });
 
@@ -65,7 +65,7 @@ export const getKey = defineTool({
       refs: detail.refs,
       // ⚠️ `updatedBy`는 원문 사용자 id라 싣지 않는다 — 화면도 마스킹 라벨로 바꾼 뒤에만 낸다. 미전달 토큰은 원래 boolean 투영뿐이다.
       locales: detail.locales.map(({ updatedBy: _updatedBy, updatedAt, ...cell }) => ({ ...cell, updatedAt: updatedAt?.toISOString() ?? null })),
-    }, m.mcp.summary.key(detail.key.key));
+    }, en.mcp.summary.key(detail.key.key));
   },
 });
 
@@ -80,9 +80,9 @@ export const previewRevertTool = defineTool({
     // 막힌 갈래는 거부가 아니라 미리보기의 답이다 — 무엇이 막는지를 값으로 싣는다(확인값 없음). lease 갈래는 실행과 같은 시각을 싣는다(sync-lock R2).
     if (preview.status === "blocked") {
       const times = preview.reason === "sync-running" ? { startedAt: preview.startedAt.toISOString(), reopensBy: preview.reopensBy.toISOString() } : {};
-      return ok({ revertable: false, reason: preview.reason, ...("localeCodes" in preview ? { localeCodes: preview.localeCodes } : {}), ...times }, m.mcp.summary.revertBlocked);
+      return ok({ revertable: false, reason: preview.reason, ...("localeCodes" in preview ? { localeCodes: preview.localeCodes } : {}), ...times }, en.mcp.summary.revertBlocked);
     }
     // 확인값은 `revert_to_last_sent`가 소비한다 — 실행은 역할·쓰기 grant·잠금 뒤 재측정을 다시 지난다(읽기 토큰의 핸들로는 못 쓴다).
-    return ok({ revertable: true, locales: preview.locales, confirmation: preview.confirmation }, m.mcp.summary.revertReady(preview.locales.length));
+    return ok({ revertable: true, locales: preview.locales, confirmation: preview.confirmation }, en.mcp.summary.revertReady(preview.locales.length));
   },
 });

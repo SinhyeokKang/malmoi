@@ -31,7 +31,7 @@ import { MemberList } from "@/components/members/member-list";
 import { CiCard } from "@/components/settings/ci-card";
 import { PushTokenPanel } from "@/components/settings/push-token-panel";
 import type { MemberView } from "@/lib/auth/query";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { render } from "./helpers/dom";
 
@@ -55,33 +55,33 @@ const alice: MemberView = { userId: "u2", name: "Alice", emailLabel: "a***@examp
 describe("확정 = 동사+목적어 (3-Y10)", () => {
   it("멤버 제거 — 트리거는 Remove, 확정은 Remove member", async () => {
     await render(<MemberList slug="acme" members={[owner, alice]} role="OWNER" viewerId="u1" now={now} headingId="h" />);
-    await click(byLabel(m.members.removeLabel("Alice")));
-    expect(byText(m.members.removeConfirm, dialog()).textContent).toBe("Remove member");
-    expect(buttons(dialog()).map((b) => b.textContent?.trim())).not.toContain(m.members.remove);
+    await click(byLabel(en.members.removeLabel("Alice")));
+    expect(byText(en.members.removeConfirm, dialog()).textContent).toBe("Remove member");
+    expect(buttons(dialog()).map((b) => b.textContent?.trim())).not.toContain(en.members.remove);
   });
 
   it("GitHub App 연결 해제 — 확정이 대상을 든다", async () => {
     await render(<GithubSection account={{ status: "ok", login: "octo" }} installedRepoCount={1} settingsUrl={null} />);
-    await click(byLabel(m.settings.account.disconnectLabel));
-    expect(danger(byText(m.settings.account.disconnectConfirm, dialog()))).toBe(true);
-    expect(buttons(dialog()).map((b) => b.textContent?.trim())).not.toContain(m.settings.account.disconnect);
+    await click(byLabel(en.settings.account.disconnectLabel));
+    expect(danger(byText(en.settings.account.disconnectConfirm, dialog()))).toBe(true);
+    expect(buttons(dialog()).map((b) => b.textContent?.trim())).not.toContain(en.settings.account.disconnect);
   });
 
   it("로그인 수단 해제 — 확정이 대상을 든다", async () => {
     await render(<LoginMethods rows={[{ provider: "github", connected: true }, { provider: "google", connected: true }]} />);
-    await click(byLabel(m.link.methods.disconnectLabel("Google")));
-    expect(danger(byText(m.link.methods.disconnectConfirm, dialog()))).toBe(true);
-    expect(buttons(dialog()).map((b) => b.textContent?.trim())).not.toContain(m.link.methods.disconnect);
+    await click(byLabel(en.link.methods.disconnectLabel("Google")));
+    expect(danger(byText(en.link.methods.disconnectConfirm, dialog()))).toBe(true);
+    expect(buttons(dialog()).map((b) => b.textContent?.trim())).not.toContain(en.link.methods.disconnect);
   });
 });
 
 describe("확정이 danger면 트리거도 danger (3-Y2 · 🔴 L)", () => {
   it("push 토큰 Rotate token 트리거가 danger다", async () => {
     await render(<PushTokenPanel slug="acme" />);
-    const trigger = byText(m.settings.token.rotate);
+    const trigger = byText(en.settings.token.rotate);
     expect(danger(trigger)).toBe(true);
     await click(trigger);
-    expect(danger(byText(m.settings.token.confirmAction, dialog()))).toBe(true);
+    expect(danger(byText(en.settings.token.confirmAction, dialog()))).toBe(true);
   });
 
   it("MCP 토큰 회전 — 트리거는 Rotate token · danger, 모달 확정도 danger다(생성 확정은 primary)", async () => {
@@ -90,35 +90,35 @@ describe("확정이 danger면 트리거도 danger (3-Y2 · 🔴 L)", () => {
     expect(trigger.textContent).toBe("Rotate token");
     expect(danger(trigger)).toBe(true);
     await click(trigger);
-    expect(danger(byText(m.mcpConnector.form.rotateConfirm))).toBe(true);
+    expect(danger(byText(en.mcpConnector.form.rotateConfirm))).toBe(true);
   });
 
   it("MCP 토큰 생성 확정은 primary 그대로다", async () => {
     await render(<TokenCard token={{ state: "none" }} projects={[]} now="2026-09-28T12:00:00.000Z" />);
     await click(document.querySelector('[data-token-action="create"]')!);
-    expect(danger(byText(m.mcpConnector.form.create))).toBe(false);
+    expect(danger(byText(en.mcpConnector.form.create))).toBe(false);
   });
 });
 
 describe("1024 모달 바닥 (3-Y6)", () => {
   it("CI 워크플로 모달은 Close 하나로 닫힌다", async () => {
     await render(<CiCard slug="acme" archived={false} stale={[]}><p>yaml</p></CiCard>);
-    await click(buttons().find((b) => b.textContent?.includes(m.settings.ci.workflow))!);
-    expect(buttons().map((b) => b.textContent?.trim())).toContain(m.common.close);
-    expect(buttons().map((b) => b.textContent?.trim())).not.toContain(m.common.dismiss);
+    await click(buttons().find((b) => b.textContent?.includes(en.settings.ci.workflow))!);
+    expect(buttons().map((b) => b.textContent?.trim())).toContain(en.common.close);
+    expect(buttons().map((b) => b.textContent?.trim())).not.toContain(en.common.dismiss);
   });
 
   it("초대 모달은 Cancel이 있고 누르면 닫는다", async () => {
     const onClose = vi.fn();
     await render(<InviteModal slug="acme" open onClose={onClose} seats={{ n: 1, limit: 10 }} returnFocusRef={createRef<HTMLButtonElement>()} />);
-    await click(byText(m.common.cancel));
+    await click(byText(en.common.cancel));
     expect(onClose).toHaveBeenCalled();
   });
 });
 
 it("CI 워크플로 행은 누를 수 있는 행이라 hover 면이 있다 (4-Y12)", async () => {
   const { container } = await render(<CiCard slug="acme" archived={false} stale={[]}><p>yaml</p></CiCard>);
-  const row = [...container.querySelectorAll("button")].find((b) => b.textContent?.includes(m.settings.ci.workflow))!;
+  const row = [...container.querySelectorAll("button")].find((b) => b.textContent?.includes(en.settings.ci.workflow))!;
   expect(row.className).toContain("hover:bg-foreground/[0.02]");
 });
 
@@ -127,7 +127,7 @@ it.each([
   ["소스 없음", { archived: false, children: null }],
 ] as const)("막힌 CI 워크플로 행(%s)에는 hover 면이 서지 않는다", async (_case, props) => {
   const { container } = await render(<CiCard slug="acme" archived={props.archived} stale={[]}>{props.children}</CiCard>);
-  const row = [...container.querySelectorAll("button")].find((b) => b.textContent?.includes(m.settings.ci.workflow))!;
+  const row = [...container.querySelectorAll("button")].find((b) => b.textContent?.includes(en.settings.ci.workflow))!;
   expect(row.getAttribute("aria-disabled")).toBe("true");
   // `aria-disabled:` 철자는 `buttonClass` 밖에서 금지라(`disabled-pairing.test.ts`) 막힌 동안 hover 클래스 자체가 없다.
   expect(row.className).not.toContain("hover:bg-foreground");

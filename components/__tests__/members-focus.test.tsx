@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MemberList } from "@/components/members/member-list";
 import { PendingInvitations } from "@/components/members/pending-invitations";
 import type { MemberView, PendingInvitation } from "@/lib/auth/query";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { render } from "./helpers/dom";
 
@@ -84,7 +84,7 @@ describe("Members — Remove", () => {
     expect(status()?.textContent).toBe("");
 
     await click(byLabel("Remove Alice"));
-    const confirm = [...document.querySelectorAll<HTMLElement>('[role="dialog"] button')].find((b) => b.textContent === m.members.removeConfirm);
+    const confirm = [...document.querySelectorAll<HTMLElement>('[role="dialog"] button')].find((b) => b.textContent === en.members.removeConfirm);
     if (!confirm) throw new Error("Missing confirm");
     await click(confirm);
     // 서버 revalidate가 행을 걷어낸 상태를 재현한다.
@@ -106,7 +106,7 @@ describe("Members — Remove", () => {
     await render(<Screen members={[owner, alice]} />);
 
     await click(byLabel("Remove Alice"));
-    const confirm = [...document.querySelectorAll<HTMLElement>('[role="dialog"] button')].find((b) => b.textContent === m.members.removeConfirm);
+    const confirm = [...document.querySelectorAll<HTMLElement>('[role="dialog"] button')].find((b) => b.textContent === en.members.removeConfirm);
     if (!confirm) throw new Error("Missing confirm");
     await click(confirm);
     await response.resolve({ ok: false, error: "last-owner" });

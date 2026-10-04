@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { planRepositoryImport } from "@/lib/import/plan";
 import { planImportRefusal } from "@/lib/import/refusal";
 import type { RepositoryImportError } from "@/lib/import/result";
@@ -176,7 +176,7 @@ describe("unpinned 거부 문구", () => {
   });
 
   it("문구가 Home 배너와 같은 Disconnected 낱말이고 'not connected'라 말하지 않는다", () => {
-    expect(m.repositorySync.errors.unpinned).toBe(m.home.banner.disconnected.title);
-    expect(m.repositorySync.errors.unpinned).not.toMatch(/not connected/i);
+    expect(en.repositorySync.errors.unpinned).toBe(en.home.banner.disconnected.title);
+    expect(en.repositorySync.errors.unpinned).not.toMatch(/not connected/i);
   });
 });

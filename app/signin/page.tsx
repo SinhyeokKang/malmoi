@@ -15,13 +15,14 @@ import { ProviderSubmit } from "@/components/signin/provider-button";
 import { signInErrorMessage } from "@/lib/auth/message";
 import { readSession } from "@/lib/auth/read-session";
 import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { routes } from "@/lib/routes";
 import { destFromCallbackUrl } from "@/lib/login-link/policy";
 import logo from "@/public/brand/malmoi-icon-black.svg";
 import { firstQueryValues, type Raw } from "@/lib/search-params";
 
 /** 로그인 폼은 검색 가치가 없다 — 브랜드 검색은 랜딩이 받는다(seo-geo spec D6). robots.txt로는 막지 않는다(`/invite`와 같은 이유). */
-export const metadata: Metadata = { title: m.seo.signInTitle, robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: en.seo.signInTitle, robots: { index: false, follow: false } };
 
 /**
  * 로그인 진입점. 미들웨어가 세션 없는 보호 라우트 요청을 여기로 보낸다.

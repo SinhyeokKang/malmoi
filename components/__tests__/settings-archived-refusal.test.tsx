@@ -7,7 +7,7 @@ import { GeneralCard } from "@/components/settings/general-card";
 import { PushTokenPanel } from "@/components/settings/push-token-panel";
 import { RepositoryCard } from "@/components/settings/repository-card";
 import { RepositoryForm } from "@/components/settings/repository-form";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { input, render } from "./helpers/dom";
 
@@ -31,19 +31,19 @@ beforeEach(() => {
 
 const button = (label: string) => [...document.querySelectorAll("button")].find(b => b.textContent?.includes(label))!;
 const click = async (target: Element) => { await act(async () => { await userEvent.setup().click(target); }); };
-const elsewhere = m.errors.access.archived;
+const elsewhere = en.errors.access.archived;
 
 it("Name: 보관 거부는 Settings 문구로 말하고, 보관 상태가 오면 옛 오류가 사라진다", async () => {
   actions.updateProjectName.mockResolvedValue({ ok: false, error: "archived" });
   const view = (archived: boolean) => <GeneralCard slug="acme" name="Acme" image={null} archived={archived} />;
   const { container, rerender } = await render(view(false));
   await input(container.querySelector<HTMLInputElement>("#project-name")!, "Acme-x");
-  await click(button(m.settings.repository.fields.save));
+  await click(button(en.settings.repository.fields.save));
   const caption = () => container.querySelector("#project-name-caption")!;
-  expect(caption().textContent).toContain(m.settings.archivedReason);
+  expect(caption().textContent).toContain(en.settings.archivedReason);
   expect(caption().textContent).not.toContain(elsewhere);
   await rerender(view(true));
-  expect(caption().textContent).toBe(m.settings.archivedReason);
+  expect(caption().textContent).toBe(en.settings.archivedReason);
   expect(caption().getAttribute("role")).toBeNull();
   expect(container.querySelector("#project-name")!.getAttribute("aria-invalid")).toBe("false");
   // 거부된 입력도 내린다 — 꺼진 입력란에 저장되지 않은 이름이 남으면 그것이 저장된 이름처럼 읽힌다.
@@ -56,7 +56,7 @@ it("Upload: 보관 거부는 Settings 문구로 말하고, 보관 상태가 오�
   const { container, rerender } = await render(view(false));
   await act(async () => { await userEvent.setup().upload(container.querySelector<HTMLInputElement>('input[type="file"]')!, new File(["png"], "logo.png", { type: "image/png" })); });
   const caption = () => container.querySelector("#project-image-caption")!;
-  expect(caption().textContent).toContain(m.settings.archivedReason);
+  expect(caption().textContent).toContain(en.settings.archivedReason);
   expect(caption().textContent).not.toContain(elsewhere);
   await rerender(view(true));
   expect(caption().getAttribute("role")).toBeNull();
@@ -69,21 +69,21 @@ it("Base branch: 보관 거부는 Settings 문구로 말하고, 보관 상태가
   const { container, rerender } = await render(view(false));
   await act(async () => { await userEvent.setup().click(container.querySelector('[role="combobox"]')!); });
   await click([...document.querySelectorAll('[role="option"]')].find(node => node.textContent === "dev")!);
-  await click(button(m.settings.repository.fields.save));
+  await click(button(en.settings.repository.fields.save));
   const caption = () => container.querySelector("#base-branch-caption")!;
-  expect(caption().textContent).toContain(m.settings.archivedReason);
+  expect(caption().textContent).toContain(en.settings.archivedReason);
   expect(caption().textContent).not.toContain(elsewhere);
   await rerender(view(true));
-  expect(caption().textContent).toBe(m.settings.archivedReason);
+  expect(caption().textContent).toBe(en.settings.archivedReason);
   expect(caption().getAttribute("role")).toBeNull();
 });
 
 it("Rotate token: 보관 거부는 Settings 문구로 말하고, 보관 상태가 오면 경고가 사라진다", async () => {
   actions.rotatePushToken.mockResolvedValue({ ok: false, error: "archived" });
   const { rerender } = await render(<PushTokenPanel slug="acme" />);
-  await click(button(m.settings.token.rotate));
-  await click([...document.querySelectorAll('[role="dialog"] button')].find(b => b.textContent === m.settings.token.confirmAction)!);
-  expect(document.body.textContent).toContain(m.settings.archivedReason);
+  await click(button(en.settings.token.rotate));
+  await click([...document.querySelectorAll('[role="dialog"] button')].find(b => b.textContent === en.settings.token.confirmAction)!);
+  expect(document.body.textContent).toContain(en.settings.archivedReason);
   expect(document.body.textContent).not.toContain(elsewhere);
   await rerender(<PushTokenPanel slug="acme" disabled />);
   expect(document.querySelector('[role="alert"]')).toBeNull();
@@ -93,8 +93,8 @@ it("Reconnect: 보관 거부는 Settings 문구로 말하고, 보관 상태가 �
   actions.connectRepository.mockResolvedValue({ ok: false, error: "archived" });
   const view = (archived: boolean) => <RepositoryCard slug="acme" owner="acme" repo="web" branch="main" archived={archived} health={Promise.resolve({ status: "not-connected" })} account={Promise.resolve({ status: "reauthorize" })} />;
   const { rerender } = await render(view(false));
-  await click(button(m.settings.repository.connect));
-  expect(document.body.textContent).toContain(m.settings.archivedReason);
+  await click(button(en.settings.repository.connect));
+  expect(document.body.textContent).toContain(en.settings.archivedReason);
   expect(document.body.textContent).not.toContain(elsewhere);
   await rerender(view(true));
   expect(document.querySelector('[role="alert"]')).toBeNull();

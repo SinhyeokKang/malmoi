@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import { SHELL_SIDEBAR_COLLAPSED_PX, ShellPanels } from "@/components/shell/shell-panels";
 import { Sidebar } from "@/components/shell/sidebar";
 import { SidebarCollapseContext } from "@/components/shell/sidebar-collapse";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { render } from "./helpers/dom";
 
@@ -33,7 +33,7 @@ describe("사이드바 — 접기", () => {
   it("토글은 LNB 맨 아래이고 상태를 `aria-expanded`로 말한다", async () => {
     const { container } = await sidebar(false);
     const button = toggleButton(container);
-    expect(button?.textContent).toBe(m.common.nav.collapseSidebar);
+    expect(button?.textContent).toBe(en.common.nav.collapseSidebar);
     expect(button?.getAttribute("aria-expanded")).toBe("true");
     const footer = container.querySelector('[data-sidebar-zone="footer"]');
     expect(footer?.lastElementChild).toBe(button);
@@ -59,10 +59,10 @@ describe("사이드바 — 접기", () => {
   it("접혀도 항목 이름이 DOM에 남아 접근 이름이 되고, 보이는 이름은 `title`이 든다", async () => {
     const { container } = await sidebar(true);
     const home = [...container.querySelectorAll('nav[aria-label="Beta"] a')][0];
-    expect(home?.textContent).toContain(m.common.nav.home);
-    expect(home?.getAttribute("title")).toBe(m.common.nav.home);
+    expect(home?.textContent).toContain(en.common.nav.home);
+    expect(home?.getAttribute("title")).toBe(en.common.nav.home);
     expect(toggleButton(container)?.getAttribute("aria-expanded")).toBe("false");
-    expect(toggleButton(container)?.textContent).toBe(m.common.nav.expandSidebar);
+    expect(toggleButton(container)?.textContent).toBe(en.common.nav.expandSidebar);
   });
 
   /**
@@ -74,7 +74,7 @@ describe("사이드바 — 접기", () => {
   it("접히면 썸네일 아이콘 버튼이 서고, 누르면 프로젝트 전환 메뉴가 열린다", async () => {
     const { container } = await sidebar(true);
     const button = railTrigger(container)!;
-    expect(button.getAttribute("aria-label")).toBe(m.common.nav.projectSwitcher.label);
+    expect(button.getAttribute("aria-label")).toBe(en.common.nav.projectSwitcher.label);
     expect(button.getAttribute("title")).toBe("Beta");
     expect(button.getAttribute("aria-haspopup")).toBe("menu");
     expect(button.closest("[inert]")).toBeNull();

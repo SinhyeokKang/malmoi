@@ -14,7 +14,7 @@ vi.mock("@/app/(edit)/publish-actions", () => ({ loadPublishPreview: vi.fn() }))
 import { HomeActions, HomeTitle } from "@/components/home/actions";
 import { ProjectList } from "@/components/projects/project-list";
 import type { ProjectListRow } from "@/lib/keys/query";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { isScreenCanonical, screenQuery } from "@/lib/translations/query";
 
 /**
@@ -63,8 +63,8 @@ const links = (container: HTMLElement) =>
   필터 없이 가면 그 소스 전체 목록에서 일을 다시 찾아야 한다. `ns=*`는 남긴다(POSTMORTEM 2026-09-15). 만든 주소는 화면 정규형이라 redirect가 없다.
 */
 it.each([
-  ["review", { review: 88 }, m.projects.banner.action.review, "/projects/acme/surfaces/web/translations?ns=*&state=review"],
-  ["unsent", { unsent: 24 }, m.projects.banner.action.send, "/projects/acme/surfaces/app/translations?ns=*&state=unsent"],
+  ["review", { review: 88 }, en.projects.banner.action.review, "/projects/acme/surfaces/web/translations?ns=*&state=review"],
+  ["unsent", { unsent: 24 }, en.projects.banner.action.send, "/projects/acme/surfaces/app/translations?ns=*&state=unsent"],
 ])("%s 띠가 그 소스의 번역 화면을 그 Status로 걸러 보낸다", async (_label, over, label, href) => {
   const found = links(await draw({ ...over, reviewSurfaceSlug: "web", unsentSurfaceSlug: "app" })).find((a) => a.text === label);
   expect(found?.href).toBe(href);
@@ -75,7 +75,7 @@ it.each([
 /** ⚠️ **외부로 나가는 둘은 새 탭이다** — 목적지가 GitHub이라 이 앱의 라우트가 아니다. */
 it("열린 PR 띠가 그 PR을 가리킨다", async () => {
   const container = await draw({ openPr: { number: 142, url: "https://github.com/o/r/pull/142" } });
-  const found = [...container.querySelectorAll("a")].find((a) => a.textContent?.trim() === m.projects.banner.action.viewPr);
+  const found = [...container.querySelectorAll("a")].find((a) => a.textContent?.trim() === en.projects.banner.action.viewPr);
   expect(found?.getAttribute("href")).toBe("https://github.com/o/r/pull/142");
   expect(found?.getAttribute("target")).toBe("_blank");
 });
@@ -83,9 +83,9 @@ it("열린 PR 띠가 그 PR을 가리킨다", async () => {
 /** ⚠️ **`main`을 하드코딩하지 않는다** — 실제 base 브랜치가 문구와 compare 범위에 들어간다. */
 it("원격 변경 띠가 실제 base로 compare를 연다", async () => {
   const container = await draw({ repoAheadFiles: 3 });
-  const found = [...container.querySelectorAll("a")].find((a) => a.textContent?.trim() === m.projects.banner.action.reviewChanges);
+  const found = [...container.querySelectorAll("a")].find((a) => a.textContent?.trim() === en.projects.banner.action.reviewChanges);
   expect(found?.getAttribute("href")).toBe("https://github.com/o/r/compare/s...release");
-  expect(container.textContent).toContain(m.projects.banner.repoAhead(3, "release"));
+  expect(container.textContent).toContain(en.projects.banner.repoAhead(3, "release"));
 });
 
 /**
@@ -93,8 +93,8 @@ it("원격 변경 띠가 실제 base로 compare를 연다", async () => {
  * 문장은 역할과 무관하고 **링크만** 사라진다 (DESIGN §6.63).
  */
 it.each([
-  ["needs_reconnect", { repositoryId: null }, m.projects.banner.action.reconnect, m.projects.banner.askOwner.reconnect],
-  ["setup", { installationId: null }, m.projects.banner.action.continueSetup, m.projects.banner.askOwner.setup],
+  ["needs_reconnect", { repositoryId: null }, en.projects.banner.action.reconnect, en.projects.banner.askOwner.reconnect],
+  ["setup", { installationId: null }, en.projects.banner.action.continueSetup, en.projects.banner.askOwner.setup],
 ])("%s: OWNER는 링크, EDITOR는 안내 문구", async (_label, over, action, guidance) => {
   const owner = await draw({ ...over, role: "OWNER" });
   expect(links(owner).some((a) => a.text === action)).toBe(true);
@@ -113,22 +113,22 @@ it("임포트 실패: EDITOR도 Sources 링크를 받고 재시도는 소유자 
   const over = { surfaces: [{ archivedAt: null, lastCommitSha: "s", importError: "parse-failed" as const, importing: false }] };
   const owner = await draw({ ...over, role: "OWNER" });
   // ⚠️ **상세·재시도가 사는 곳은 Sources다** (audit #6) — Settings에는 가져오기 실패에 관한 정보가 0이다.
-  expect(links(owner).find((a) => a.text === m.projects.banner.action.viewDetails)?.href).toBe("/projects/acme/sources");
-  expect(owner.textContent).toContain(m.projects.banner.checkDetails);
+  expect(links(owner).find((a) => a.text === en.projects.banner.action.viewDetails)?.href).toBe("/projects/acme/sources");
+  expect(owner.textContent).toContain(en.projects.banner.checkDetails);
 
   const editor = await draw({ ...over, role: "EDITOR" });
-  expect(links(editor).find((a) => a.text === m.projects.banner.action.viewDetails)?.href).toBe("/projects/acme/sources");
-  expect(editor.textContent).toContain(m.projects.importFailure.ownerRetries);
-  expect(owner.textContent).not.toContain(m.projects.importFailure.ownerRetries);
+  expect(links(editor).find((a) => a.text === en.projects.banner.action.viewDetails)?.href).toBe("/projects/acme/sources");
+  expect(editor.textContent).toContain(en.projects.importFailure.ownerRetries);
+  expect(owner.textContent).not.toContain(en.projects.importFailure.ownerRetries);
   // 사유 자체는 둘 다 읽는다 — 무엇이 틀렸는지는 역할과 무관한 사실이다.
-  expect(editor.textContent).toContain(m.projects.importFailure.parseFailed);
+  expect(editor.textContent).toContain(en.projects.importFailure.parseFailed);
 });
 
 /** ⚠️ **보관 행에는 어떤 사건이 겹쳐도 액션이 없다.** */
 it("보관 행은 띠를 그리지 않는다", async () => {
   const container = await draw({ archivedAt: new Date("2026-09-01T00:00:00Z"), unsent: 24, review: 9 });
-  expect(container.textContent).not.toContain(m.projects.banner.action.send);
-  expect(container.textContent).not.toContain(m.projects.banner.unsent(24));
+  expect(container.textContent).not.toContain(en.projects.banner.action.send);
+  expect(container.textContent).not.toContain(en.projects.banner.unsent(24));
 });
 
 /**
@@ -213,14 +213,14 @@ it("메타 줄이 리포 앞에 GitHub 마크를 든다", async () => {
  */
 it("열린 PR 조회 실패(openPr undefined)는 warning Couldn't check 띠이고 링크가 없다", async () => {
   const container = await draw({ openPr: undefined });
-  const band = [...container.querySelectorAll("div")].find((node) => node.textContent === m.projects.banner.prCheckFailed);
+  const band = [...container.querySelectorAll("div")].find((node) => node.textContent === en.projects.banner.prCheckFailed);
   expect(band).toBeDefined();
   expect(band?.className).toContain("text-amber-800");
   expect(band?.getAttribute("data-tone")).toBe("warning");
   expect(band?.querySelector("a")).toBeNull();
   // 짝: PR 없음(null)이면 그 띠가 없다.
   const quiet = await draw({ openPr: null });
-  expect(quiet.textContent).not.toContain(m.projects.banner.prCheckFailed);
+  expect(quiet.textContent).not.toContain(en.projects.banner.prCheckFailed);
 });
 
 it.each([

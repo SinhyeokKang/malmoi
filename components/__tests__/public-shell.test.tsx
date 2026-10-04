@@ -10,7 +10,7 @@ import { PublicFooter } from "@/components/public-shell/footer";
 import { PublicShell } from "@/components/public-shell/public-shell";
 import { AuthLayout } from "@/components/signin/auth-layout";
 import { publicAccount } from "@/lib/auth/landing";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { FOOTER_LINKS, GITHUB_REPO_URL } from "@/lib/links";
 import { routes } from "@/lib/routes";
 
@@ -133,7 +133,7 @@ describe("공개 셸 — 헤더", () => {
     const start = bar!.children[0]!;
     expect(start.className).toBe("justify-self-start");
     expect(start.querySelectorAll("nav")).toHaveLength(1);
-    expect(start.querySelector(`a[aria-label="${m.landing.shell.logo}"]`)).not.toBeNull();
+    expect(start.querySelector(`a[aria-label="${en.landing.shell.logo}"]`)).not.toBeNull();
     expect(start.firstElementChild?.className.split(/\s+/)).toEqual(expect.arrayContaining(["flex", "items-center", "gap-5"]));
     expect(bar?.children[1]?.className).toBe("justify-self-center");
     expect(bar!.children[1]!.querySelector('button[aria-label="Search"]')).not.toBeNull();
@@ -141,20 +141,20 @@ describe("공개 셸 — 헤더", () => {
   });
   it("로고가 Home으로 가고 이름을 갖는다", async () => {
     const { container } = await shell();
-    const logo = container.querySelector(`header a[aria-label="${m.landing.shell.logo}"]`);
-    expect(m.landing.shell.logo).toBe("Malmoi home");
+    const logo = container.querySelector(`header a[aria-label="${en.landing.shell.logo}"]`);
+    expect(en.landing.shell.logo).toBe("Malmoi home");
     expect(logo?.getAttribute("href")).toBe(routes.home());
   });
 
   /** 헤더 내비는 앱 안 목적지만 든다 — GitHub는 내비 밖 우측 끝이다(2026-09-28 사용자). 랜딩은 current가 없다(`Home`이 빠졌다). */
   it("Main 내비가 Docs · Changelog 순이고 랜딩에선 어느 것도 aria-current가 아니다", async () => {
     const { container } = await shell();
-    const nav = container.querySelector(`nav[aria-label="${m.landing.shell.nav}"]`);
-    expect(m.landing.shell.nav).toBe("Main");
+    const nav = container.querySelector(`nav[aria-label="${en.landing.shell.nav}"]`);
+    expect(en.landing.shell.nav).toBe("Main");
     const links = [...(nav?.querySelectorAll("a") ?? [])];
     expect(links.map((a) => [a.textContent, a.getAttribute("href")])).toEqual([
-      [m.landing.shell.docs, routes.docs()],
-      [m.changelog.title, routes.changelog()],
+      [en.landing.shell.docs, routes.docs()],
+      [en.changelog.title, routes.changelog()],
     ]);
     expect(links.map((a) => a.getAttribute("aria-current"))).toEqual([null, null]);
     expect(links.map((a) => a.getAttribute("target"))).toEqual([null, null]);
@@ -162,21 +162,21 @@ describe("공개 셸 — 헤더", () => {
 
   it("CTA는 Get started 하나이고 로그인으로 간다", async () => {
     const { container } = await shell();
-    const cta = [...container.querySelectorAll("header a")].filter((a) => a.textContent === m.landing.shell.getStarted);
-    expect(m.landing.shell.getStarted).toBe("Get started");
+    const cta = [...container.querySelectorAll("header a")].filter((a) => a.textContent === en.landing.shell.getStarted);
+    expect(en.landing.shell.getStarted).toBe("Get started");
     expect(cta).toHaveLength(1);
     expect(cta[0]?.getAttribute("href")).toBe(routes.signIn());
   });
 
   it("`/docs/*`는 Docs만 aria-current다", async () => {
     const { container } = await render(h(PublicShell, { account: GUEST, current: "docs", children: h("p", null, "body") }));
-    const links = [...container.querySelectorAll(`nav[aria-label="${m.landing.shell.nav}"] a`)];
+    const links = [...container.querySelectorAll(`nav[aria-label="${en.landing.shell.nav}"] a`)];
     expect(links.map((a) => a.getAttribute("aria-current"))).toEqual(["page", null]);
   });
 
   it("`/changelog`는 Changelog만 aria-current다", async () => {
     const { container } = await render(h(PublicShell, { account: GUEST, current: "changelog", children: h("p", null, "body") }));
-    const links = [...container.querySelectorAll(`nav[aria-label="${m.landing.shell.nav}"] a`)];
+    const links = [...container.querySelectorAll(`nav[aria-label="${en.landing.shell.nav}"] a`)];
     expect(links.map((a) => a.getAttribute("aria-current"))).toEqual([null, "page"]);
   });
 
@@ -189,12 +189,12 @@ describe("공개 셸 — 헤더", () => {
   /** 2026-09-28 사용자 — 로고가 곧 홈이라 `Home`을 뺐다. 내비는 `Docs · Changelog` 둘이고 글자만이다. */
   it("내비는 Docs · Changelog 둘이고 아이콘이 없다", async () => {
     const { container } = await shell();
-    const links = [...container.querySelectorAll(`nav[aria-label="${m.landing.shell.nav}"] a`)];
+    const links = [...container.querySelectorAll(`nav[aria-label="${en.landing.shell.nav}"] a`)];
     expect(links.map((a) => [a.textContent, a.getAttribute("href")])).toEqual([
-      [m.landing.shell.docs, routes.docs()],
-      [m.changelog.title, routes.changelog()],
+      [en.landing.shell.docs, routes.docs()],
+      [en.changelog.title, routes.changelog()],
     ]);
-    expect(container.querySelectorAll(`nav[aria-label="${m.landing.shell.nav}"] svg`)).toHaveLength(0);
+    expect(container.querySelectorAll(`nav[aria-label="${en.landing.shell.nav}"] svg`)).toHaveLength(0);
   });
 
   it("비로그인 primary는 `LogIn` 아이콘을 든 Get started다", async () => {
@@ -209,7 +209,7 @@ describe("공개 셸 — 헤더", () => {
   it("로그인이면 Get started 없이 앱 셸과 같은 사용자 메뉴가 선다", async () => {
     const { container } = await render(h(PublicShell, { account: SIGNED_IN, children: h("p", null, "body") }));
     expect([...container.querySelectorAll("header a")].filter((a) => a.getAttribute("href") === routes.signIn())).toHaveLength(0);
-    expect(container.querySelector(`header button[aria-label="${m.common.nav.userMenu}"]`)).not.toBeNull();
+    expect(container.querySelector(`header button[aria-label="${en.common.nav.userMenu}"]`)).not.toBeNull();
     expect(container.querySelector("header")?.textContent).not.toContain("Open Malmoi");
   });
 
@@ -233,7 +233,7 @@ describe("공개 셸 — 헤더", () => {
   it("GitHub는 아이콘 + GitHub 글자이고 사이드바 항목 모양이다", async () => {
     const { container } = await shell();
     const github = container.querySelector(`header a[href="${GITHUB_REPO_URL}"]`);
-    expect(github?.textContent).toBe(m.landing.shell.github);
+    expect(github?.textContent).toBe(en.landing.shell.github);
     expect(github?.firstElementChild?.tagName.toLowerCase()).toBe("svg");
     const classes = github?.className.split(/\s+/) ?? [];
     expect(classes).toEqual(expect.arrayContaining(["rounded-sm", "p-1.5", "text-sm", "hover:bg-foreground/[0.03]"]));
@@ -305,8 +305,8 @@ describe("푸터 링크 — `/signin`과 한 목록", () => {
 
   it("GitHub · Privacy Policy 둘이다 — Docs·Changelog는 헤더가 든다", () => {
     expect(FOOTER_LINKS.map(({ label, href, external }) => [label, href, external])).toEqual([
-      [m.signIn.footer.github, GITHUB_REPO_URL, true],
-      [m.signIn.footer.privacy, routes.privacy(), false],
+      [en.signIn.footer.github, GITHUB_REPO_URL, true],
+      [en.signIn.footer.privacy, routes.privacy(), false],
     ]);
   });
 

@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "@/components/__tests__/helpers/dom";
 import type { SessionRead } from "@/lib/auth/read-session";
 import type { LoadedReleases } from "@/lib/changelog/load";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { FOOTER_LINKS, GITHUB_RELEASES_URL } from "@/lib/links";
 import { routes } from "@/lib/routes";
 
@@ -56,10 +56,10 @@ describe("`/changelog` — 공개 셸", () => {
   it("본문 랜드마크 하나 안에 제목이 서고, 헤더의 Changelog만 current다", async () => {
     const container = await page({ ok: true, releases: TWO, truncated: false });
     expect(container.querySelectorAll("main")).toHaveLength(1);
-    expect(main(container).querySelector("h1")?.textContent).toBe(m.changelog.title);
+    expect(main(container).querySelector("h1")?.textContent).toBe(en.changelog.title);
     const current = [...container.querySelectorAll("header [aria-current]")];
     expect(current.map((a) => [a.textContent, a.getAttribute("href"), a.getAttribute("aria-current")])).toEqual([
-      [m.changelog.title, routes.changelog(), "page"],
+      [en.changelog.title, routes.changelog(), "page"],
     ]);
   });
 
@@ -70,7 +70,7 @@ describe("`/changelog` — 공개 셸", () => {
 
   it("헤더 primary는 세션으로 갈린다", async () => {
     const container = await page({ ok: false }, "ok");
-    expect(container.querySelector(`header button[aria-label="${m.common.nav.userMenu}"]`)).not.toBeNull();
+    expect(container.querySelector(`header button[aria-label="${en.common.nav.userMenu}"]`)).not.toBeNull();
     expect(container.querySelector(`header a[href="${routes.signIn()}"]`)).toBeNull();
   });
 

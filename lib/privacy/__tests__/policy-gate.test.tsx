@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { CLASSIFIED, DISCLOSURE_SECTIONS, NOT_PERSONAL } from "../collected";
 import { sectionGaps } from "../disclosure";
@@ -31,7 +31,7 @@ const REVISIONS: readonly { effectiveDate: string; digest?: string }[] = [
   { effectiveDate: "2026-09-29", digest: "e335ec7a17858075cedf5f04e94f3fdbb25b93172d64d380f68516d74e6f8d61" },
 ];
 
-const privacy = m.publicDocs.privacy;
+const privacy = en.publicDocs.privacy;
 const text = docText(privacy.sections);
 
 describe("방침 게이트 (B) — 등재 ↔ 본문의 절", () => {

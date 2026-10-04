@@ -4,7 +4,7 @@ vi.mock("@/lib/auth/read-session", () => ({ readSession: mock.session }));
 vi.mock("@/lib/db", () => ({ getPrisma: mock.prisma }));
 import { loadSearchMembershipsAction, searchKeysAction } from "@/app/search/actions";
 import { navSearchEntries } from "@/lib/search/nav-index";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { searchGroups } from "@/lib/search/match";
 import { keySearchText, searchRows, searchStatuses } from "@/lib/search/rows";
 import { searchFixture } from "./search-fixture";
@@ -74,5 +74,5 @@ it("unauthorized Actions fold to a Docs-only view with one session-ended line", 
     expect(searchRows({ index: { ...nav, docs }, keys: [], q, activeSlug: null }).groups.map(g => g.kind)).toEqual(["docs"]);
   }
   const status = searchStatuses({ membership: memberships.ok ? "ready" : memberships.error, docs: "ready", keys: keys.ok ? "ready" : keys.error });
-  expect(status).toEqual({ pending: false, failed: true, lines: [{ tone: "danger", text: m.search.sessionEnded }] });
+  expect(status).toEqual({ pending: false, failed: true, lines: [{ tone: "danger", text: en.search.sessionEnded }] });
 });

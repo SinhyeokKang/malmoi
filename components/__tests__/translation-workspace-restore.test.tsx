@@ -15,13 +15,13 @@ vi.mock("@/app/(edit)/publish-actions", () => ({ loadPublishPreview: vi.fn() }))
 vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: vi.fn(), checkOpenPullRequest: vi.fn(), prepareRepositorySync: vi.fn() }));
 
 import { TranslationWorkspace, type WorkspaceProps } from "@/components/translations/workspace/workspace";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { props } from "./helpers/workspace-props";
 
 const area = (container: HTMLElement, code: string) => container.querySelector<HTMLTextAreaElement>(`textarea[data-locale="${code}"]`)!;
 const footer = (container: HTMLElement) => container.querySelector<HTMLElement>("[data-footer-result]")?.textContent ?? "";
-const SESSION = m.translations.workspace.footer.session.restored(1);
+const SESSION = en.translations.workspace.footer.session.restored(1);
 
 function detailOf(keyId: string, codes?: readonly string[]): NonNullable<WorkspaceProps["detail"]> {
   const base = props().detail as Exclude<WorkspaceProps["detail"], null | { absent: true }>;

@@ -3,7 +3,7 @@ import { act } from "react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
 import { SourcesScreen } from "@/components/sources/sources-screen";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import type { SourceDetail, SourcesData } from "@/lib/sources/query";
 import { render } from "./helpers/dom";
 vi.setConfig({ testTimeout: 20_000 });
@@ -61,7 +61,7 @@ it("불러오는 중에는 설명이 로딩을 말하고 골격은 장식이다"
   await open();
   const dialog = document.querySelector('[role="dialog"]')!;
   const described = (dialog.getAttribute("aria-describedby") ?? "").split(" ").map(id => document.getElementById(id)?.textContent ?? "").join(" ");
-  expect(described).toContain(m.sources.loading);
+  expect(described).toContain(en.sources.loading);
   const skeleton = document.querySelector('[data-language-skeleton]')!.closest("[data-source-loading]");
   expect(skeleton).not.toBeNull();
   expect(skeleton?.getAttribute("aria-label")).toBeNull();
@@ -126,7 +126,7 @@ it("응답을 잃은 첫 적재는 끝나지 않았다고 단언하지 않고 �
   await act(async () => { await userEvent.setup().click(button("Run first sync")); });
   expect(mocks.runFirstIngest).toHaveBeenCalledTimes(1);
   expect(mocks.refresh).toHaveBeenCalledTimes(1);
-  expect(document.body.textContent).toContain(m.settings.status.unconfirmed);
+  expect(document.body.textContent).toContain(en.settings.status.unconfirmed);
   expect(document.body.textContent).not.toContain("didn't finish");
 });
 it("오프라인에서 응답을 잃은 첫 적재는 refresh를 부르지 않는다", async () => {
@@ -137,7 +137,7 @@ it("오프라인에서 응답을 잃은 첫 적재는 refresh를 부르지 않�
     await render(<SourcesScreen slug="p" role="OWNER" data={data} adapters={[]} now={new Date()} />);
     await open();
     await act(async () => { await userEvent.setup().click(button("Run first sync")); });
-    expect(document.body.textContent).toContain(m.settings.status.unconfirmed);
+    expect(document.body.textContent).toContain(en.settings.status.unconfirmed);
     expect(mocks.refresh).not.toHaveBeenCalled();
   } finally { online.mockRestore(); }
 });
@@ -215,7 +215,7 @@ it("진행 중 시각은 배지 밖 `<time>`이 UTC 접근 이름을 든다", as
 it("총계는 카드 머리 한 곳이다 — 화면 제목 옆에 같은 개수를 두 번 세우지 않는다 (4-Y6)", async () => {
   await render(<SourcesScreen slug="p" role="EDITOR" data={data} adapters={[]} now={new Date()} />);
   expect(document.querySelector("h1")!.parentElement!.textContent).toBe("Sources");
-  expect(document.querySelector("section h2")!.parentElement!.textContent).toContain(m.sources.count(1));
+  expect(document.querySelector("section h2")!.parentElement!.textContent).toContain(en.sources.count(1));
 });
 it("행 chevron은 다른 행과 같은 muted이고, 선택·hover 면은 `/[0.0N]` 철자다 (4-Y11 · 5-Y7)", async () => {
   await render(<SourcesScreen slug="p" role="EDITOR" data={data} adapters={[]} now={new Date()} />);
@@ -227,7 +227,7 @@ it("행 chevron은 다른 행과 같은 muted이고, 선택·hover 면은 `/[0.0
 });
 it("소스 0개는 카드 안 `EmptyRowCard inset`이다 — 손 조립 중앙 블록이 아니다 (4-Y14)", async () => {
   await render(<SourcesScreen slug="p" role="OWNER" data={{ installed: true, sources: [] }} adapters={[]} now={new Date()} />);
-  const empty = [...document.querySelectorAll("p")].find(node => node.textContent === m.sources.emptyTitle)!;
+  const empty = [...document.querySelectorAll("p")].find(node => node.textContent === en.sources.emptyTitle)!;
   expect(empty.className).toContain("text-base font-medium");
   expect(document.querySelector("section")!.innerHTML).not.toContain("max-w-[460px]");
 });
@@ -366,7 +366,7 @@ it("보관된 Sources는 날짜만 말하고 출구 낱말이 보관 화면들�
   expect(time.getAttribute("dateTime")).toBe(at.toISOString());
   // 보관 시각 문장은 Settings·Logs와 같은 `Archived on {date}` 한 형이다(P1).
   expect(time.parentElement?.textContent).toBe("Archived on Sep 20, 2026");
-  expect(document.querySelector('a[href*="settings"]')?.textContent).toBe(m.archive.empty.action);
+  expect(document.querySelector('a[href*="settings"]')?.textContent).toBe(en.archive.empty.action);
   expect(document.querySelector('a[href*="settings"] svg')?.getAttribute("class")).toContain("lucide-chevron-right");
 });
 /*
@@ -374,9 +374,9 @@ it("보관된 Sources는 날짜만 말하고 출구 낱말이 보관 화면들�
   "first sync"를 말하면 거짓이다. Home 배너의 EDITOR 문장과 같은 말이다.
 */
 it.each([
-  { name: "첫 적재 실패", row: failedFirst, want: m.sources.askOwner, not: m.sources.askOwnerRerun },
-  { name: "이후 실패", row: { ...source, lastImportError: "import-failed", lastImportFailedAt: new Date("2026-09-20T00:00:00Z") }, want: m.sources.askOwnerRerun, not: m.sources.askOwner },
-  { name: "일부 반영", row: partialAfter, want: m.sources.askOwnerRerun, not: m.sources.askOwner },
+  { name: "첫 적재 실패", row: failedFirst, want: en.sources.askOwner, not: en.sources.askOwnerRerun },
+  { name: "이후 실패", row: { ...source, lastImportError: "import-failed", lastImportFailedAt: new Date("2026-09-20T00:00:00Z") }, want: en.sources.askOwnerRerun, not: en.sources.askOwner },
+  { name: "일부 반영", row: partialAfter, want: en.sources.askOwnerRerun, not: en.sources.askOwner },
 ])("EDITOR는 $name 상태에서 그 상태에 맞는 요청 문장을 본다", async ({ row, want, not }) => {
   mocks.load.mockResolvedValue({ ok: true, detail: { ...detail, ...row } });
   await render(<SourcesScreen slug="p" role="EDITOR" data={{ ...data, sources: [row] }} adapters={[]} now={new Date()} />);

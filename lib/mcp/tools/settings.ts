@@ -2,7 +2,7 @@ import "server-only";
 import { z } from "zod";
 
 import { logFailure } from "@/lib/github-connect/log";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { rotateToken } from "@/lib/onboarding-run/rotate-token";
 import { runArchive, runUnarchive } from "@/lib/projects/archive";
 import { redrawIfArchived, revalidateAfterCommit, settleRevalidate } from "@/lib/revalidate-after-commit";
@@ -45,16 +45,16 @@ export const updateProject = defineTool({
         logFailure("mcp-tool-update_project", error);
         settleRevalidate("base-branch", () => revalidatePath(`/projects/${slug}/settings`));
         settleRevalidate("base-branch", () => revalidatePath(`/projects/${slug}`, "layout"));
-        return ok({ changed, unconfirmed: ["baseBranch"] }, m.mcp.summary.branchUnconfirmed);
+        return ok({ changed, unconfirmed: ["baseBranch"] }, en.mcp.summary.branchUnconfirmed);
       }
       // 이름은 이미 커밋됐다 — 뒤의 거부로 앞의 성공을 지우지 않는다(불변식 9). 이름을 안 바꾼 호출이면 그대로 거부다.
       if (!moved.ok && name === undefined) return redrawIfArchived(slug, moved.error, { status: "refused", code: moved.error });
-      if (!moved.ok) return redrawIfArchived(slug, moved.error, ok({ changed, failed: { baseBranch: moved.error } }, m.mcp.summary.nameOnly));
+      if (!moved.ok) return redrawIfArchived(slug, moved.error, ok({ changed, failed: { baseBranch: moved.error } }, en.mcp.summary.nameOnly));
       settleRevalidate("base-branch", () => revalidatePath(`/projects/${slug}/settings`));
       settleRevalidate("base-branch", () => revalidatePath(`/projects/${slug}`, "layout"));
       changed.baseBranch = baseBranch;
     }
-    return ok({ changed }, m.mcp.summary.updated);
+    return ok({ changed }, en.mcp.summary.updated);
   },
 });
 
@@ -67,7 +67,7 @@ export const setBaseLocale = defineTool({
     const result = await declareBaseLocale(prisma, coreSubject(subject), input);
     if (!result.ok) return { status: "refused", code: result.error };
     revalidateAfterCommit("source-base-language", `/projects/${input.slug}`);
-    return ok({ declaredBaseLocale: input.baseLocale }, m.mcp.summary.baseLocale(input.baseLocale));
+    return ok({ declaredBaseLocale: input.baseLocale }, en.mcp.summary.baseLocale(input.baseLocale));
   },
 });
 
@@ -85,7 +85,7 @@ export const rotatePushToken = defineTool({
      * ⚠️ **원문이 도구 결과로 나간다** (2026-09-28 사용자 확정) — 프로젝트 한정·`/api/push` 한 곳의 쓰기·재발급이 곧 폐기다. 안내는 원문을
      * `gh secret set PUSH_TOKEN`의 **표준입력**으로 넘기게 한다(`--body` 생략 — `--body -`는 문자 `-`를 저장한다). 생성 YAML의 secret 이름과 같다.
      */
-    return ok({ pushToken: result.pushToken, secretName: "PUSH_TOKEN" }, m.mcp.summary.pushToken);
+    return ok({ pushToken: result.pushToken, secretName: "PUSH_TOKEN" }, en.mcp.summary.pushToken);
   },
 });
 
@@ -99,7 +99,7 @@ export const archiveProject = defineTool({
     if (!result.ok) return { status: "refused", code: result.error };
     // 보관은 목록·사이드바·Home·번역·설정을 다 바꾼다 — Action과 같은 루트 레이아웃 무효화다.
     settleRevalidate("archive", () => revalidatePath("/", "layout"));
-    return ok({ archived: true }, m.mcp.summary.archived);
+    return ok({ archived: true }, en.mcp.summary.archived);
   },
 });
 
@@ -112,6 +112,6 @@ export const unarchiveProject = defineTool({
     const result = await runUnarchive(prisma, coreSubject(subject), { slug });
     if (!result.ok) return { status: "refused", code: result.error };
     settleRevalidate("unarchive", () => revalidatePath("/", "layout"));
-    return ok({ archived: false }, m.mcp.summary.restored);
+    return ok({ archived: false }, en.mcp.summary.restored);
   },
 });

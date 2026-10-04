@@ -3,7 +3,7 @@ import { expect, it } from "vitest";
 
 import { LocaleMeter } from "@/components/locale-meter";
 import { LocaleBadge } from "@/components/translations/locale-badge";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { GrantBadges } from "@/components/mcp/grant-badges";
 
@@ -59,7 +59,7 @@ it.each([false, true])("로케일 orphaned=%s도 코드·국기와 접근 설명
   const visibleCode = [...pill.children].find(node => node.textContent === "fr");
   expect(visibleCode).toBeDefined();
   expect(visibleCode?.classList.contains("sr-only")).toBe(false);
-  expect(pill.querySelector(".sr-only")?.textContent ?? null).toBe(orphaned ? m.locales.orphaned.badge : null);
+  expect(pill.querySelector(".sr-only")?.textContent ?? null).toBe(orphaned ? en.locales.orphaned.badge : null);
   expect(pill.classList.contains(orphaned ? "bg-destructive/8" : "bg-foreground/5")).toBe(true);
   expect(pill.classList.contains("gap-1")).toBe(true);
 });

@@ -2,7 +2,7 @@ import { expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 vi.mock("@/app/(edit)/account/actions", () => ({ startSessionRevocation: vi.fn() }));
 import { SessionsSection } from "@/components/account/sessions-section";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 /**
  * ⚠️ **`components/session-revocation.tsx`를 겨냥하던 파일이다** (2026-09-13). 그 카드가 Sessions
@@ -16,19 +16,19 @@ const render = (outcome: string | undefined) =>
   renderToStaticMarkup(<SessionsSection outcome={outcome} signOut={() => {}} confirmProvider="GitHub" />);
 
 it.each([
-  ["cancelled", m.account.sessions.cancelled], ["wrong-account", m.account.sessions.wrongAccount],
-  ["expired", m.account.sessions.expired], ["unavailable", m.account.sessions.failed], ["invalid", m.account.sessions.failed],
+  ["cancelled", en.account.sessions.cancelled], ["wrong-account", en.account.sessions.wrongAccount],
+  ["expired", en.account.sessions.expired], ["unavailable", en.account.sessions.failed], ["invalid", en.account.sessions.failed],
 ])("%s renders an accessible error inside the sessions section", (outcome, message) => {
   const html = render(outcome);
   expect(html).toContain('role="alert"');
   // 정적 마크업은 아포스트로피를 `&#x27;`로 이스케이프한다 — 축약형 문장(couldn't)을 그대로 대조하려면 되돌린다.
   expect(html.replaceAll("&#x27;", "'")).toContain(message);
-  expect(html).toContain(m.account.sessions.title);
+  expect(html).toContain(en.account.sessions.title);
 });
 
 it.each([undefined, "toString", "__proto__", "revoked", "<script>bad</script>"])("untrusted result %s cannot inject a message or claim success", outcome => {
   const html = render(outcome);
   expect(html).not.toContain('role="alert"');
-  expect(html).not.toContain(m.account.sessions.complete);
+  expect(html).not.toContain(en.account.sessions.complete);
   expect(html).not.toContain("<script>bad</script>");
 });

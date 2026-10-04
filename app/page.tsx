@@ -12,6 +12,7 @@ import { appVersion } from "@/lib/app-version";
 import { rootView } from "@/lib/auth/landing";
 import { readSession } from "@/lib/auth/read-session";
 import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { GITHUB_REPO_URL } from "@/lib/links";
 import { routes } from "@/lib/routes";
 import { navFooterItems } from "@/lib/shell/nav";
@@ -21,8 +22,8 @@ import { pageMetadata } from "@/lib/seo/site";
 
 /** 제목만 absolute다 — 템플릿(`%s · Malmoi`)을 지나면 브랜드가 두 번 선다. */
 export const metadata: Metadata = {
-  ...pageMetadata({ title: m.seo.homeTitle, description: m.landing.hero.body, path: "/" }),
-  title: { absolute: m.seo.homeTitle },
+  ...pageMetadata({ title: en.seo.homeTitle, description: en.landing.hero.body, path: "/" }),
+  title: { absolute: en.seo.homeTitle },
 };
 
 /**

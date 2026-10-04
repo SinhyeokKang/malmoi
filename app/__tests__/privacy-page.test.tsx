@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { render } from "@/components/__tests__/helpers/dom";
 import type { SessionRead } from "@/lib/auth/read-session";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { FOOTER_LINKS } from "@/lib/links";
 import { routes } from "@/lib/routes";
 
@@ -39,13 +39,13 @@ const primary = (container: HTMLElement) => {
 describe("`/privacy` — 헤더 primary가 세션으로 갈린다", () => {
   it("`ok` → 아바타 메뉴, Get started 없음", async () => {
     const { container } = await page("ok");
-    expect(container.querySelector(`header button[aria-label="${m.common.nav.userMenu}"]`)).not.toBeNull();
+    expect(container.querySelector(`header button[aria-label="${en.common.nav.userMenu}"]`)).not.toBeNull();
     expect(container.querySelector(`header a[href="${routes.signIn()}"]`)).toBeNull();
   });
 
   it.each(["none", "unavailable"] as const)("`%s` → Get started · `/signin`", async (status) => {
     const { container } = await page(status);
-    expect(primary(container)).toEqual([m.landing.shell.getStarted, routes.signIn()]);
+    expect(primary(container)).toEqual([en.landing.shell.getStarted, routes.signIn()]);
   });
 });
 
@@ -54,7 +54,7 @@ describe("`/privacy` — 공개 셸", () => {
     const { container } = await page("none");
     const main = container.querySelectorAll("main");
     expect(main).toHaveLength(1);
-    expect(main[0]?.querySelector("h1")?.textContent).toBe(m.publicDocs.privacy.title);
+    expect(main[0]?.querySelector("h1")?.textContent).toBe(en.publicDocs.privacy.title);
     expect(container.querySelectorAll("header [aria-current]")).toHaveLength(0);
   });
 

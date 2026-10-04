@@ -5,7 +5,7 @@ import { expect, it, vi } from "vitest";
 
 import { FilesStep, type FilesStepState } from "@/components/onboarding/steps/files";
 import type { CandidateSummary } from "@/lib/onboarding/detect";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { input, render } from "./helpers/dom";
 
@@ -15,7 +15,7 @@ import { input, render } from "./helpers/dom";
  * ⚠️ `ManualForm`의 소비자가 둘이다 — 후보 0개(예외 E, 좌측이 폼 하나뿐)와 후보 목록 아래 토글.
  * 앞엣것에서 그 문장은 존재하지 않는 UI를 가리킨다.
  */
-const HINT = m.newProject.files.manual.hint;
+const HINT = en.newProject.files.manual.hint;
 
 const candidate: CandidateSummary = {
   outputPaths: ["locales/en.json"],
@@ -59,7 +59,7 @@ it("후보 목록 아래 토글로 연 폼에는 안내 문장이 남는다", as
   const { container } = await render(
     <FilesStep state={state([candidate])} onPick={noop} onLocale={noop} onManual={noop} onRetry={noop} />,
   );
-  const toggle = [...container.querySelectorAll("button")].find((b) => b.textContent === m.newProject.files.setPath);
+  const toggle = [...container.querySelectorAll("button")].find((b) => b.textContent === en.newProject.files.setPath);
   if (!toggle) throw new Error("Missing toggle");
   await act(async () => { await userEvent.setup().click(toggle); });
 

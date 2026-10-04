@@ -22,6 +22,7 @@ import { credentialIO } from "@/lib/credentials/access";
 import { getPrisma } from "@/lib/db";
 import { logCaught } from "@/lib/failure";
 import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { providerLabel } from "@/lib/login-link/message";
 import { LOGIN_PROVIDERS, type LoginProvider } from "@/lib/login-link/policy";
 import { planConnectedApps } from "@/lib/mcp/view";
@@ -38,7 +39,7 @@ import logo from "@/public/brand/malmoi-icon-black.svg";
 /**
  * ⚠️ **색인 거부 + referrer 없음** — 요청 ID가 주소에 실린다(`/invite/[token]`과 같은 이유). ⚠️ `lib/seo/analytics.ts`의 추적 허용 목록에도 없다.
  */
-export const metadata: Metadata = { title: m.oauthAuthorize.title, robots: { index: false, follow: false }, referrer: "no-referrer" };
+export const metadata: Metadata = { title: en.oauthAuthorize.title, robots: { index: false, follow: false }, referrer: "no-referrer" };
 
 type Params = Record<string, string | string[] | undefined>;
 

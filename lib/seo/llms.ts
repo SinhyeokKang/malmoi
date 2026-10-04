@@ -1,6 +1,6 @@
 import { docHref } from "@/lib/guide/href";
 import type { FlatNavItem, NavNode } from "@/lib/guide/summary";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { SITE_ORIGIN } from "./site";
 
@@ -21,7 +21,7 @@ export function llmsIndex(nav: readonly NavNode[], leads: ReadonlyMap<string, st
     return `- [${linkText(title)}](${url(slug)})${lead === null ? "" : `: ${lead}`}`;
   };
   const chapters = nav.map((chapter) => [`## ${chapter.title}`, "", item(chapter), ...chapter.children.map(item)].join("\n"));
-  return `${[`# ${m.common.appName}`, `> ${m.landing.hero.body}`, ...chapters].join("\n\n")}\n`;
+  return `${[`# ${en.common.appName}`, `> ${en.landing.hero.body}`, ...chapters].join("\n\n")}\n`;
 }
 
 /**

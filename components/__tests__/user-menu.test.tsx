@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { expect, it, vi } from "vitest";
 
 import { UserMenu } from "@/components/shell/user-menu";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { routes } from "@/lib/routes";
 import { navWorkItems } from "@/lib/shell/nav";
 
@@ -16,7 +16,7 @@ import { render } from "./helpers/dom";
  */
 async function open() {
   await render(<UserMenu name="Kim" email="kim@acme.com" image={null} signOut={vi.fn()} />);
-  const trigger = document.querySelector<HTMLButtonElement>(`button[aria-label="${m.common.nav.userMenu}"]`)!;
+  const trigger = document.querySelector<HTMLButtonElement>(`button[aria-label="${en.common.nav.userMenu}"]`)!;
   for (const token of ["size-8", "rounded-full", "px-0"]) expect(trigger.classList.contains(token)).toBe(true);
   await act(async () => userEvent.setup().click(trigger));
   return document.querySelector<HTMLElement>('[role="menu"]')!;
@@ -34,36 +34,36 @@ it("머리 뒤 항목 순서와 구분선이 사용자가 정한 그대로다", 
   expect(menu.textContent).toContain("kim@acme.com");
   expect(rows(menu)).toEqual([
     "---",
-    m.common.nav.projects,
-    m.common.nav.mcp,
-    m.common.nav.account,
+    en.common.nav.projects,
+    en.common.nav.mcp,
+    en.common.nav.account,
     "---",
-    m.changelog.title,
-    m.publicDocs.docs.title,
-    m.publicDocs.privacy.title,
+    en.changelog.title,
+    en.publicDocs.docs.title,
+    en.publicDocs.privacy.title,
     "---",
-    m.common.nav.signOut,
+    en.common.nav.signOut,
   ]);
 });
 
 /** ⚠️ **New project가 메뉴에 없다** (2026-09-30 사용자) — 앱 셸 헤더의 아바타 왼쪽 버튼으로 옮겼다. */
 it("New project 항목이 없다", async () => {
   const menu = await open();
-  expect(rows(menu)).not.toContain(m.common.nav.newProject);
+  expect(rows(menu)).not.toContain(en.common.nav.newProject);
   expect(menu.querySelector(`a[href="${routes.newProject()}"]`)).toBeNull();
 });
 
 it("항목이 전부 앱 라우트이고 새 탭이 없다 — Changelog도 앱 안 `/changelog`다", async () => {
   const menu = await open();
-  expect(item(menu, m.common.nav.projects).getAttribute("href")).toBe(routes.projects());
-  expect(item(menu, m.common.nav.account).getAttribute("href")).toBe(routes.account());
-  expect(item(menu, m.publicDocs.docs.title).getAttribute("href")).toBe(routes.docs());
-  expect(item(menu, m.publicDocs.privacy.title).getAttribute("href")).toBe(routes.privacy());
-  const release = item(menu, m.changelog.title);
+  expect(item(menu, en.common.nav.projects).getAttribute("href")).toBe(routes.projects());
+  expect(item(menu, en.common.nav.account).getAttribute("href")).toBe(routes.account());
+  expect(item(menu, en.publicDocs.docs.title).getAttribute("href")).toBe(routes.docs());
+  expect(item(menu, en.publicDocs.privacy.title).getAttribute("href")).toBe(routes.privacy());
+  const release = item(menu, en.changelog.title);
   expect(release.getAttribute("href")).toBe(routes.changelog());
   // 아이콘은 사이드바 하단의 같은 항목과 같은 `Compass`다 (2026-09-27 사용자).
   expect(release.querySelector("svg")?.getAttribute("class")).toContain("lucide-compass");
-  for (const label of [m.common.nav.projects, m.common.nav.account, m.changelog.title, m.publicDocs.docs.title, m.publicDocs.privacy.title]) {
+  for (const label of [en.common.nav.projects, en.common.nav.account, en.changelog.title, en.publicDocs.docs.title, en.publicDocs.privacy.title]) {
     expect(item(menu, label).hasAttribute("target")).toBe(false);
   }
 });
@@ -81,11 +81,11 @@ it("모든 항목이 앞 아이콘 하나를 들고, 외부 링크 글리프를 
 
 it("Sign out도 필터 메뉴와 같은 항목 모양이다 — ghost 버튼의 높이·색·radius를 들지 않는다", async () => {
   const menu = await open();
-  const signOut = item(menu, m.common.nav.signOut);
+  const signOut = item(menu, en.common.nav.signOut);
   // 항목 자체가 감싼 폼을 제출한다 — 안에 버튼이 없다.
   expect(signOut.querySelector("button")).toBeNull();
   expect(signOut.closest("form")).not.toBeNull();
-  const projects = item(menu, m.common.nav.projects);
+  const projects = item(menu, en.common.nav.projects);
   // 같은 항목 클래스(`DropdownMenuItem`)를 받고 Button의 크기·색은 없다.
   for (const cls of ["mx-1", "rounded", "px-2", "py-1.5", "text-sm", "hover:bg-accent"]) {
     expect(signOut.classList.contains(cls)).toBe(true);

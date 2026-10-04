@@ -9,11 +9,12 @@ import { publicAccount } from "@/lib/auth/landing";
 import { readSession } from "@/lib/auth/read-session";
 import { loadReleases } from "@/lib/changelog/load";
 import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { GITHUB_RELEASES_URL } from "@/lib/links";
 import { pageMetadata } from "@/lib/seo/site";
 import { cn } from "@/lib/utils";
 
-export const metadata: Metadata = pageMetadata({ title: m.changelog.title, description: m.changelog.description, path: "/changelog" });
+export const metadata: Metadata = pageMetadata({ title: en.changelog.title, description: en.changelog.description, path: "/changelog" });
 
 /** 안내 문장 넷이 모두 받는 GitHub Releases 링크 — 새 탭 + `noreferrer`(공개 셸의 외부 링크 규칙). */
 const releases: ReactNode = (

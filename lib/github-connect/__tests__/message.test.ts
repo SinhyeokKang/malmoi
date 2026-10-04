@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { isAccessError } from "@/lib/auth/message";
 
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { connectErrorMessage, isConnectError, type ConnectError } from "../message";
 
@@ -100,11 +100,11 @@ describe("connectErrorMessage — 재시도가 유효한 사유만 그렇게 말
   it("고정된 거부는 사용자가 할 수 있는 일을 말한다 — 막힌 이유만 알려주면 갇힌다", () => {
     // `taken-by-other`는 연결 해제(DESIGN §6.67)가, 나머지 둘은 GitHub 쪽 권한이 답이다.
     // ⚠️ 길이로 재지 않는다 (audit #90) — 폴백 문구도 10자를 넘어서 매핑이 통째로 빠져도 green이었다.
-    const fallback = m.errors.connect.fallback;
-    expect(connectErrorMessage("taken-by-other")).toBe(m.errors.connect["taken-by-other"]);
+    const fallback = en.errors.connect.fallback;
+    expect(connectErrorMessage("taken-by-other")).toBe(en.errors.connect["taken-by-other"]);
     expect(connectErrorMessage("taken-by-other")).toMatch(/disconnect/i);
     for (const error of ["installation-forbidden", "repo-forbidden"] as const) {
-      expect(connectErrorMessage(error)).toBe(m.errors.connect[error]);
+      expect(connectErrorMessage(error)).toBe(en.errors.connect[error]);
       expect(connectErrorMessage(error)).toMatch(/ask the repository owner/i);
     }
     for (const error of ["taken-by-other", "installation-forbidden", "repo-forbidden"] as const) {
@@ -129,14 +129,14 @@ describe("AccessError와 겹치는 값 하나", () => {
 });
 
 /**
- * ⚠️ **`satisfies`는 잉여 키를 못 잡는다** (2026-09-08 code-review ⚪9). `m.errors.x satisfies
+ * ⚠️ **`satisfies`는 잉여 키를 못 잡는다** (2026-09-08 code-review ⚪9). `en.errors.x satisfies
  * Record<Union, string>`은 **없는 키**를 컴파일 에러로 만들지만, union에서 갈래를 지웠을 때 사전에 남는
  * **죽은 문구**에는 침묵한다(신선한 객체 리터럴이 아니라 excess property check가 안 걸린다).
  * 그래서 반대 방향은 런타임으로 센다.
  */
 describe("사전에 죽은 문구가 남지 않는다", () => {
   it("errors.connect의 키가 전부 ConnectError다 (fallback 제외)", () => {
-    for (const key of Object.keys(m.errors.connect)) {
+    for (const key of Object.keys(en.errors.connect)) {
       if (key === "fallback") continue;
       expect(isConnectError(key), key).toBe(true);
     }

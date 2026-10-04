@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { find, render } from "./helpers/dom";
 import { SourcesScreen } from "../sources/sources-screen";
 import NotFound from "@/app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/not-found";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 vi.setConfig({ testTimeout: 20_000 });
 vi.mock("@/app/(edit)/projects/[slug]/sources/actions", () => ({ loadSourceDetail: vi.fn(), updateBaseLocale: vi.fn() }));
@@ -78,8 +78,8 @@ it("샘플 확인값이 만료되면 다시 탐지하라고 말한다", async ()
   if (!option) throw new Error("Missing option: ko");
   await act(async () => { await user.click(option); });
   expect(mocks.sample).toHaveBeenCalled();
-  expect(document.body.textContent).toContain(m.errors.onboarding["sample-expired"]);
-  expect(document.body.textContent).not.toContain(m.newProject.files.preview.unavailable);
+  expect(document.body.textContent).toContain(en.errors.onboarding["sample-expired"]);
+  expect(document.body.textContent).not.toContain(en.newProject.files.preview.unavailable);
 });
 
 // audit #14 — 탐지가 미리 든 샘플이 "못 읽음"이면 0키 표가 아니라 실패 문장이다(새 프로젝트 모달과 같은 `samplePreview`).
@@ -92,7 +92,7 @@ it("탐지 샘플에서 못 읽은 언어는 빈 표가 아니라 읽지 못했�
   if (!option) throw new Error("Missing option: ko");
   await act(async () => { await user.click(option); });
   expect(mocks.sample).not.toHaveBeenCalled();
-  expect(document.body.textContent).toContain(m.newProject.files.preview.unavailable);
+  expect(document.body.textContent).toContain(en.newProject.files.preview.unavailable);
 });
 
 it("없는 표면의 404는 제품 안내와 돌아갈 링크를 제공한다", async () => {
@@ -143,8 +143,8 @@ it("0후보는 수동 입력을 열고 검사 실패 뒤 경로를 보존한다"
  * 섰다.
  */
 it.each([
-  ["reauthorize", m.newProject.empty.connect.reauthorize],
-  ["not-connected", m.newProject.empty.connect.action],
+  ["reauthorize", en.newProject.empty.connect.reauthorize],
+  ["not-connected", en.newProject.empty.connect.action],
 ])("%s면 버튼 라벨이 그 문구가 말하는 이름이다", async (error, label) => {
   mocks.detect.mockResolvedValue({ ok: false, error });
   const { container } = await draw();
@@ -164,9 +164,9 @@ it("고르기 전엔 사유가 보이고 버튼이 그것을 가리키며, 고�
   await act(async () => { await new Promise(r => setTimeout(r, 0)); });
   const add = () => find<HTMLButtonElement>(container, '[data-add-sources]');
   expect(blocked(container)).toBe(true);
-  expect(document.getElementById(add().getAttribute("aria-describedby") ?? "")?.textContent).toBe(m.settings.sources.selectHelp);
+  expect(document.getElementById(add().getAttribute("aria-describedby") ?? "")?.textContent).toBe(en.settings.sources.selectHelp);
   await select();
   expect(blocked(container)).toBe(false);
   expect(add().getAttribute("aria-describedby")).toBeNull();
-  expect(container.textContent).not.toContain(m.settings.sources.selectHelp);
+  expect(container.textContent).not.toContain(en.settings.sources.selectHelp);
 });

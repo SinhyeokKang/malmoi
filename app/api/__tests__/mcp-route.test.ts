@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { toolCatalog } from "@/lib/mcp/catalog";
 import { hashApiToken } from "@/lib/mcp/token";
 
@@ -190,7 +190,7 @@ describe("2025 handshake (Codex)", () => {
     const res = await post({ jsonrpc: "2.0", id: 3, method: "tools/call", params: { name: "whoami", arguments: {} } }, { headers: LEGACY });
     const body = await res.json();
     expect(body.result.isError).toBe(true);
-    expect(body.result.structuredContent).toEqual({ status: "unavailable", message: m.errors.access.unavailable, retryable: true });
+    expect(body.result.structuredContent).toEqual({ status: "unavailable", message: en.errors.access.unavailable, retryable: true });
     expect(JSON.stringify(body)).not.toMatch(/Cannot read|undefined|TypeError/);
   });
 
@@ -198,7 +198,7 @@ describe("2025 handshake (Codex)", () => {
     const res = await post({ jsonrpc: "2.0", id: 9, method: "tools/list" }, { headers: LEGACY });
     const tools = (await res.json()).result.tools as { name: string; description?: string }[];
     expect(tools.filter(t => !t.description?.trim()).map(t => t.name)).toEqual([]);
-    expect(tools.find(t => t.name === "publish")?.description).toBe(m.mcp.tools.publish);
+    expect(tools.find(t => t.name === "publish")?.description).toBe(en.mcp.tools.publish);
   });
 
   it("입력 스키마를 싣는다 — tools/list의 list_keys는 slug·surfaceSlug를 요구한다", async () => {

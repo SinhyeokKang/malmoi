@@ -3,7 +3,7 @@ import { act } from "react";
 import { expect, it, vi } from "vitest";
 
 import { render } from "@/components/__tests__/helpers/dom";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import EditError from "../error";
 import LogsError from "../projects/[slug]/logs/error";
@@ -22,13 +22,13 @@ async function clickRetry(ui: React.ReactElement, label: string) {
 
 it("(edit) error의 재시도는 retry를 부른다", async () => {
   const retry = vi.fn();
-  await clickRetry(<EditError error={new Error("boom")} retry={retry} />, m.common.retry);
+  await clickRetry(<EditError error={new Error("boom")} retry={retry} />, en.common.retry);
   expect(retry).toHaveBeenCalledOnce();
 });
 
 it("Logs error의 재시도는 retry를 부른다", async () => {
   const retry = vi.fn();
-  await clickRetry(<LogsError error={new Error("boom")} retry={retry} />, m.logs.queryError.retry);
+  await clickRetry(<LogsError error={new Error("boom")} retry={retry} />, en.logs.queryError.retry);
   expect(retry).toHaveBeenCalledOnce();
 });
 
@@ -37,8 +37,8 @@ it("Logs error의 재시도는 retry를 부른다", async () => {
  * 제목·글리프 없는 danger Alert라 Logs 경계와 같은 사건이 두 모양이었다. 글리프는 §2.4 글리프 열의 실패 `CircleX`(`CircleAlert`는 필드 오류 전용).
  */
 it.each([
-  ["(edit)", EditError, m.crash.title],
-  ["Logs", LogsError, m.logs.queryError.title],
+  ["(edit)", EditError, en.crash.title],
+  ["Logs", LogsError, en.logs.queryError.title],
 ] as const)("%s 경계는 실패 글리프 칸 + 제목 + 설명 + primary Retry다", async (_name, Boundary, title) => {
   const { container } = await render(<Boundary error={new Error("boom")} retry={vi.fn()} />);
   const glyph = container.querySelector("svg");

@@ -4,11 +4,11 @@ import { PrivacyDoc } from "@/components/privacy/privacy-doc";
 import { PublicShell } from "@/components/public-shell/public-shell";
 import { publicAccount } from "@/lib/auth/landing";
 import { readSession } from "@/lib/auth/read-session";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { pageMetadata } from "@/lib/seo/site";
 
 /** 설명은 방침 첫 문장이 아니라 제품 한 줄이다 — 검색 결과에서 이 페이지가 무엇의 방침인지가 먼저다. */
-export const metadata: Metadata = pageMetadata({ title: m.publicDocs.privacy.title, description: m.landing.hero.body, path: "/privacy" });
+export const metadata: Metadata = pageMetadata({ title: en.publicDocs.privacy.title, description: en.landing.hero.body, path: "/privacy" });
 
 /**
  * **공개 셸 안의 방침** (시안 `Landing.dc.html` 1e, DESIGN §6.616) — 랜딩 푸터의 `Privacy Policy`가 셸 밖으로

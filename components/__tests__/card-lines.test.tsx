@@ -10,7 +10,7 @@ import { RepositoryCard } from "@/components/settings/repository-card";
 import { SourceDetailModal } from "@/components/sources/source-detail-modal";
 import { eventGlyph } from "@/lib/events/view";
 import type { ConnectionHealth } from "@/lib/github-connect/health";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import type { SourceDetail } from "@/lib/sources/query";
 
 import { render } from "./helpers/dom";
@@ -44,7 +44,7 @@ describe("Repository 카드 — notice 셋 모양 모두 선 하나", () => {
   ] as const)("%o (%s)", async (health, _shape) => {
     const { container } = await render(<RepositoryCard slug="acme" owner="acme" repo="web" branch="main" archived={false} health={Promise.resolve(health as ConnectionHealth)} account={Promise.resolve({ status: "ok", login: "octo" })} appSlug="malmoi" />);
     await act(async () => { await Promise.resolve(); });
-    const lines = headLines(card(container, m.settings.repository.title));
+    const lines = headLines(card(container, en.settings.repository.title));
     expect(lines).toEqual({ owners: 1, ownerIsNotice: true, firstBodyTop: false });
   });
 });
@@ -66,7 +66,7 @@ describe("Sources 상세 Status 카드 — 결과 줄 유무", () => {
 
   it("결과 줄이 없으면 선은 머리 하나다", async () => {
     await draw();
-    const status = card(document, m.sources.status);
+    const status = card(document, en.sources.status);
     expect(rules(status)).toHaveLength(1);
     expect(lined(status.querySelector("header"), "b")).toBe(true);
   });
@@ -74,7 +74,7 @@ describe("Sources 상세 Status 카드 — 결과 줄 유무", () => {
   /** 결과 줄은 카드 `notice`다(🔴 J — `Alert inset`) — 머리 아래 선이 notice 아래로 내려가 선은 여전히 하나다(4-Y1). */
   it("결과 줄이 있으면 선은 notice 아래 하나다 — 머리도 첫 줄도 선을 들지 않는다", async () => {
     await draw({ text: "Synced 3 keys.", tone: "success" });
-    const status = card(document, m.sources.status);
+    const status = card(document, en.sources.status);
     expect(rules(status)).toHaveLength(1);
     expect(lined(status.querySelector("header"), "b")).toBe(false);
     const notice = status.querySelector("[data-card-notice]");

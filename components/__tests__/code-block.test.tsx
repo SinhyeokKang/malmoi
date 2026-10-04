@@ -3,7 +3,7 @@ import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CodeBlock } from "@/components/ui/code-block";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { render } from "./helpers/dom";
 
@@ -37,8 +37,8 @@ describe("CodeBlock — Copy", () => {
     expect(live(container).textContent).toBe("");
     await click(container);
     expect(writeText).toHaveBeenCalledWith("on: push");
-    expect(button(container).textContent).toBe(m.common.copied);
-    expect(live(container).textContent).toBe(m.common.copied);
+    expect(button(container).textContent).toBe(en.common.copied);
+    expect(live(container).textContent).toBe(en.common.copied);
   });
 
   it("2초 뒤 `Copy`로 돌아온다", async () => {
@@ -47,11 +47,11 @@ describe("CodeBlock — Copy", () => {
     await act(async () => {
       vi.advanceTimersByTime(1999);
     });
-    expect(button(container).textContent).toBe(m.common.copied);
+    expect(button(container).textContent).toBe(en.common.copied);
     await act(async () => {
       vi.advanceTimersByTime(1);
     });
-    expect(button(container).textContent).toBe(m.common.copy);
+    expect(button(container).textContent).toBe(en.common.copy);
     expect(live(container).textContent).toBe("");
   });
 
@@ -67,27 +67,27 @@ describe("CodeBlock — Copy", () => {
     await act(async () => {
       resolve();
     });
-    expect(live(container).textContent).toBe(m.common.copied);
+    expect(live(container).textContent).toBe(en.common.copied);
     // 되돌림 타이머도 다시 선다 — 첫 클릭의 타이머가 둘째 `Copied`를 일찍 걷지 않는다
     await act(async () => {
       vi.advanceTimersByTime(1999);
     });
-    expect(button(container).textContent).toBe(m.common.copied);
+    expect(button(container).textContent).toBe(en.common.copied);
   });
 
   it("복사가 거부되면 실패 라벨 — 조용히 삼키지 않는다", async () => {
     writeText.mockRejectedValueOnce(new Error("denied"));
     const { container } = await render(<CodeBlock code="x" filename={null} />);
     await click(container);
-    expect(button(container).textContent).toBe(m.common.copyFailed);
-    expect(live(container).textContent).toBe(m.common.copyFailed);
+    expect(button(container).textContent).toBe(en.common.copyFailed);
+    expect(live(container).textContent).toBe(en.common.copyFailed);
   });
 
   it("`navigator.clipboard`가 없으면(비보안 컨텍스트) 던지지 않고 실패 라벨이다", async () => {
     vi.stubGlobal("navigator", {});
     const { container } = await render(<CodeBlock code="x" filename={null} />);
     await click(container);
-    expect(button(container).textContent).toBe(m.common.copyFailed);
+    expect(button(container).textContent).toBe(en.common.copyFailed);
   });
 });
 

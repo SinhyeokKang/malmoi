@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import { planPublishButton, planPublishView, planWithheldLines } from "../plan";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { buildPublishDiff, type PublishCell } from "../diff";
 import { summarizeWarnings } from "../warnings";
 import { adapterErrorMessage } from "@/lib/i18n/adapter-errors";
@@ -34,7 +34,7 @@ it("skipped/withheld는 Not sent 틀이다 — No changes가 아니다", () => {
   expect(planPublishView({ status: "skipped", reason: "no-changes" })).toBe("no-changes");
 });
 it("보류 줄 — 사유별 한 줄 + 역할별 다음 행동 · 보류 0이면 줄이 없다 (짝)", () => {
-  const p = m.translations.publish;
+  const p = en.translations.publish;
   expect(planWithheldLines({ ...committed, withheld: { file: 2, key: 0 } }, "EDITOR")).toEqual([`${p.withheld.file(2)} ${p.withheld.editor}`]);
   // #129 — Revert를 가리키는 것은 보류된 셀 전부에 기준이 있을 때뿐이다(`revertable`). 모르면 Revert 없는 안내다 — 화면에서 꺼진 버튼을 가리키지 않는다.
   expect(planWithheldLines({ ...committed, withheld: { file: 0, key: 1 } }, "OWNER")).toEqual([`${p.withheld.key(1)} ${p.withheld.owner.keyNoRevert}`]);
@@ -78,7 +78,7 @@ it("경고를 파일별로 묶되 파서 원문의 개행을 보존한다", () =
     { surfaceSlug: "web", path: "ko.yml", code: "parse-failed", detail: "bad\n  x\n  ^" },
     { surfaceSlug: "web", path: "ko.yml", code: "root-not-object" },
   ], (warning) => adapterErrorMessage(warning));
-  expect(groups).toEqual([{ file: "web: ko.yml", messages: [`${m.adapterErrors["parse-failed"]} (bad\n  x\n  ^)`, m.adapterErrors["root-not-object"]] }]);
+  expect(groups).toEqual([{ file: "web: ko.yml", messages: [`${en.adapterErrors["parse-failed"]} (bad\n  x\n  ^)`, en.adapterErrors["root-not-object"]] }]);
 });
 it("PR URL은 원본 리포·origin·양의 안전 정수를 검증하고 삼상태를 보존한다", () => {
   const repo = { repoOwner: "o", repoName: "r" };

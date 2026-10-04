@@ -33,7 +33,7 @@ vi.mock("@/components/publish-button", async (importActual) => {
 });
 
 import { TranslationWorkspace } from "@/components/translations/workspace/workspace";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { props } from "./helpers/workspace-props";
 
@@ -64,7 +64,7 @@ it("Sync가 도는 동안 Publish와 Revert가 꺼지고 사유를 든다 — �
   expect(button(/^Publish/).getAttribute("aria-disabled")).toBe("true");
   const revert = button("Revert to last sent");
   expect(revert.getAttribute("aria-disabled")).toBe("true");
-  expect(reason(revert)).toBe(m.translations.workspace.revert.busy);
+  expect(reason(revert)).toBe(en.translations.workspace.revert.busy);
 });
 
 it("Publish가 도는 동안 Sync와 Revert가 꺼지고, Sync 확인 창은 예약되지 않는다", async () => {
@@ -78,10 +78,10 @@ it("Publish가 도는 동안 Sync와 Revert가 꺼지고, Sync 확인 창은 예
   const sync = button("Sync");
   expect(sync.getAttribute("aria-disabled")).toBe("true");
   // 라벨이 더는 `Publishing…`을 말하지 않으므로(D1) 사유가 원인을 든다 (audit-ux #10).
-  expect(reason(sync)).toBe(m.repositorySync.waitPublish);
+  expect(reason(sync)).toBe(en.repositorySync.waitPublish);
   const revert = button("Revert to last sent");
   expect(revert.getAttribute("aria-disabled")).toBe("true");
-  expect(reason(revert)).toBe(m.translations.workspace.revert.busy);
+  expect(reason(revert)).toBe(en.translations.workspace.revert.busy);
   await act(async () => user.click(sync));
   mocks.publishing.value = false;
   await rerender(<TranslationWorkspace {...initial} />);
@@ -152,7 +152,7 @@ it("Publish가 도는 동안 Save가 aria-disabled로 잠기고 사유를 보이
   const save = button("Save");
   expect(save.disabled).toBe(false);
   expect(save.getAttribute("aria-disabled")).toBe("true");
-  expect(reason(save)).toBe(m.repositorySync.waitPublish);
+  expect(reason(save)).toBe(en.repositorySync.waitPublish);
   // 보이는 사유 — describedby 대상이 sr-only가 아니다.
   expect(document.getElementById(save.getAttribute("aria-describedby") ?? "")?.className ?? "").not.toContain("sr-only");
   await user.click(save);
@@ -178,9 +178,9 @@ it("번역 화면의 Sync가 8초를 넘기면 지연 문구가 선다", async (
   try {
     await act(async () => userEvent.setup({ advanceTimers: vi.advanceTimersByTime }).click(button("Discard changes and sync")));
     await act(async () => { vi.advanceTimersByTime(7_000); });
-    expect(document.body.textContent).not.toContain(m.common.slow);
+    expect(document.body.textContent).not.toContain(en.common.slow);
     await act(async () => { vi.advanceTimersByTime(1_000); });
-    expect(document.body.textContent).toContain(m.common.slow);
+    expect(document.body.textContent).toContain(en.common.slow);
     await act(async () => { settle({ ok: false, error: "unavailable" }); });
   } finally { vi.useRealTimers(); }
 });

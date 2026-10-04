@@ -1,10 +1,10 @@
 import { expect, it } from "vitest";
 
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { sessionRevocationMessage } from "../message";
 
-const SESSIONS = m.account.sessions;
+const SESSIONS = en.account.sessions;
 
 /**
  * `?sessionRevocation=` → 문구 (account-settings 태스크 5·10).

@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ConnectedAppsCard, type ConnectedAppData } from "@/components/mcp/connected-apps-card";
 
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { find, render } from "./helpers/dom";
 
@@ -77,7 +77,7 @@ describe("목록", () => {
     expect(card().querySelectorAll("[data-app-row]")).toHaveLength(3);
     expect(card().querySelector("h2 + span")?.textContent).toContain("3");
     // 숫자는 aria-hidden이고 sr 문장은 연결 수다 — 카드 제목을 되읽지 않는다(U3 r1).
-    expect(card().querySelector("h2 + span")?.querySelector(".sr-only")?.textContent).toBe(m.mcpConnector.apps.count(3));
+    expect(card().querySelector("h2 + span")?.querySelector(".sr-only")?.textContent).toBe(en.mcpConnector.apps.count(3));
     const first = find<HTMLElement>(card(), '[data-app-row="c1"]');
     expect(first.textContent).toContain("claude.ai/oauth/claude-code-client-metadata");
     // 권한마다 배지 하나다(2026-09-30 사용자).

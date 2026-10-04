@@ -29,7 +29,7 @@ import { CiCard } from "@/components/settings/ci-card";
 import { GeneralCard } from "@/components/settings/general-card";
 import { SourceStatus } from "@/components/sources/source-status";
 import { SurfaceSelector } from "@/components/surface-selector";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { utcMinute } from "@/lib/utc-time";
 
 beforeEach(() => { for (const fn of Object.values(mocks)) fn.mockReset(); });
@@ -49,8 +49,8 @@ describe("꺼진 컨트롤의 사유 (#37)", () => {
   it("멈춘 [Sync]는 포커스를 받고 사유를 든다 — 눌러도 확인 창이 열리지 않는다", async () => {
     function Host() { const [open, setOpen] = useState(false); return <SyncButton slug="acme" name="acme" branch="main" role="OWNER" unsent={0} paused open={open} onOpenChange={setOpen} onResult={vi.fn()} />; }
     await render(<Host />);
-    const sync = byText(m.repositorySync.action);
-    expectReasoned(sync, m.repositorySync.paused);
+    const sync = byText(en.repositorySync.action);
+    expectReasoned(sync, en.repositorySync.paused);
     await act(async () => { await userEvent.setup().click(sync); });
     expect(document.querySelector('[role="dialog"]')).toBeNull();
   });
@@ -68,18 +68,18 @@ describe("꺼진 컨트롤의 사유 (#37)", () => {
 
   it("마지막 로그인 수단의 [Disconnect]는 포커스를 받고 사유를 든다", async () => {
     await render(<LoginMethods rows={[{ provider: "github", connected: true }, { provider: "google", connected: false }]} />);
-    const disconnect = document.querySelector<HTMLElement>(`[aria-label="${m.link.methods.disconnectLabel("GitHub")}"]`)!;
-    expectReasoned(disconnect, m.link.methods.lastMethod);
+    const disconnect = document.querySelector<HTMLElement>(`[aria-label="${en.link.methods.disconnectLabel("GitHub")}"]`)!;
+    expectReasoned(disconnect, en.link.methods.lastMethod);
     await act(async () => { await userEvent.setup().click(disconnect); });
     expect(document.querySelector('[role="dialog"]')).toBeNull();
   });
 
   it("보관·소스 없음의 워크플로 행은 포커스를 받고 사유를 든다 — 짝: 둘 다 아니면 켜진다", async () => {
     const view = await render(<CiCard slug="acme" archived stale={[]}>{"yaml"}</CiCard>);
-    const row = () => [...document.querySelectorAll<HTMLButtonElement>("button")].find(b => b.textContent?.includes(m.settings.ci.workflow))!;
-    expectReasoned(row(), m.settings.archivedReason);
+    const row = () => [...document.querySelectorAll<HTMLButtonElement>("button")].find(b => b.textContent?.includes(en.settings.ci.workflow))!;
+    expectReasoned(row(), en.settings.archivedReason);
     await view.rerender(<CiCard slug="acme" archived={false} stale={[]}>{false}</CiCard>);
-    expectReasoned(row(), m.settings.ci.noSources);
+    expectReasoned(row(), en.settings.ci.noSources);
     await view.rerender(<CiCard slug="acme" archived={false} stale={[]}>{"yaml"}</CiCard>);
     expect(row().getAttribute("aria-disabled")).toBeNull();
   });
@@ -98,7 +98,7 @@ describe("꺼진 컨트롤의 사유 (#37)", () => {
 
   it("보이는 사람에게도 사유가 보인다 — 워크플로 행·수동 확인은 글자로, 머리의 Sync·Try again은 title로 (§6.646의 Publish와 같다)", async () => {
     await render(<CiCard slug="acme" archived={false} stale={[]}>{false}</CiCard>);
-    const reason = [...document.querySelectorAll("p, span")].find(node => node.textContent === m.settings.ci.noSources);
+    const reason = [...document.querySelectorAll("p, span")].find(node => node.textContent === en.settings.ci.noSources);
     expect(reason?.classList.contains("sr-only")).toBe(false);
     expect(read("components/sources/add-sources-modal.tsx")).not.toMatch(/className="sr-only">\{m\.settings\.sources\.manualReason/);
     // 멈춘 사유는 호스트가 원인을 넘긴다 (audit-ux #10) — 기본값은 `paused`, Publish 진행이면 `waitPublish`다.
@@ -133,9 +133,9 @@ describe("성공은 전부터 있던 live 영역에 쓴다 (#39)", () => {
     expect(region?.getAttribute("role")).toBe("status");
     expect(region?.textContent).toBe("");
     await input(container.querySelector<HTMLInputElement>("#project-name")!, "Renamed");
-    await act(async () => { await userEvent.setup().click(byText(m.settings.repository.fields.save)); });
+    await act(async () => { await userEvent.setup().click(byText(en.settings.repository.fields.save)); });
     expect(container.querySelector('[data-save-status="project-name"]')).toBe(region);
-    expect(region?.textContent).toContain(m.settings.repository.fields.saved);
+    expect(region?.textContent).toContain(en.settings.repository.fields.saved);
   });
 
   it("Base branch · 표시 이름 저장도 같은 형이다", async () => {
@@ -145,18 +145,18 @@ describe("성공은 전부터 있던 live 영역에 쓴다 (#39)", () => {
     const region = container.querySelector('[role="status"]');
     expect(region?.textContent).toBe("");
     await input(container.querySelector<HTMLInputElement>("#profile-name")!, "Jane");
-    await act(async () => { await userEvent.setup().click(byText(m.account.profile.save)); });
+    await act(async () => { await userEvent.setup().click(byText(en.account.profile.save)); });
     expect(container.querySelector('[role="status"]')).toBe(region);
-    expect(region?.textContent).toContain(m.account.profile.saved);
+    expect(region?.textContent).toContain(en.account.profile.saved);
   });
 
   it("CopyLink의 접근 이름이 보이는 Copied를 덮지 않는다 (WCAG 2.5.3)", async () => {
     const user = userEvent.setup();
-    const { container } = await render(<CopyButton variant="link" value="https://example.com/fixture" label={m.translations.workspace.detail.copyLink} />);
+    const { container } = await render(<CopyButton variant="link" value="https://example.com/fixture" label={en.translations.workspace.detail.copyLink} />);
     const button = container.querySelector("button")!;
-    expect(button.getAttribute("aria-label")).toBe(m.translations.workspace.detail.copyLink);
+    expect(button.getAttribute("aria-label")).toBe(en.translations.workspace.detail.copyLink);
     await act(async () => { await user.click(button); });
-    expect(button.textContent).toBe(m.common.copied);
+    expect(button.textContent).toBe(en.common.copied);
     expect(button.hasAttribute("aria-label")).toBe(false);
   });
 });

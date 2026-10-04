@@ -6,7 +6,7 @@ import { encodeCursor, parseLogFilter } from "@/lib/events/filter";
 import { loadEvents } from "@/lib/events/query";
 import { loadConnectionHealth } from "@/lib/github";
 import { logFailure } from "@/lib/github-connect/log";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { loadProjectListAggregates, loadSurfaceCounts } from "@/lib/keys/query";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
 import { renderProjectWorkflowYaml, workflowApiUrl, workflowSurfaceOf } from "@/lib/onboarding/workflow";
@@ -69,7 +69,7 @@ export const getProject = defineTool({
         slug: surface.slug, adapter: surface.adapterName, pathTemplate: surface.pathTemplate, baseLocale: surface.baseLocale,
         declaredBaseLocale: surface.declaredBaseLocale, keys: keysOf.get(surface.id) ?? 0, locales: surface.locales.map(l => l.code),
       })),
-    }, m.mcp.summary.project(project.name));
+    }, en.mcp.summary.project(project.name));
   },
 });
 
@@ -91,7 +91,7 @@ export const listEvents = defineTool({
         payload: row.payload,
       })),
       nextCursor: page.nextCursor === null ? null : encodeCursor(page.nextCursor),
-    }, m.mcp.summary.events(page.rows.length));
+    }, en.mcp.summary.events(page.rows.length));
   },
 });
 
@@ -111,7 +111,7 @@ export const listMembers = defineTool({
     return ok({
       members: members.map(member => ({ userId: member.userId, name: member.name, emailLabel: member.emailLabel, role: member.role, joinedAt: member.joinedAt.toISOString() })),
       pendingInvitations: pending.map(invitation => ({ id: invitation.id, emailLabel: invitation.emailLabel, role: invitation.role, expiresAt: invitation.expiresAt.toISOString() })),
-    }, m.mcp.summary.members(members.length));
+    }, en.mcp.summary.members(members.length));
   },
 });
 
@@ -132,6 +132,6 @@ export const getWorkflow = defineTool({
     // `api-url`은 이 요청이 들어온 앱을 가리킨다 — 프로덕션·모르는 origin은 생략(`workflowApiUrl`).
     const apiUrl = workflowApiUrl(origin);
     const yaml = renderProjectWorkflowYaml({ slug, baseBranch: project.baseBranch, surfaces: project.surfaces.map(workflowSurfaceOf), ...(apiUrl === undefined ? {} : { apiUrl }) });
-    return ok({ path: ".github/workflows/malmoi-i18n.yml", yaml, secretName: "PUSH_TOKEN" }, m.mcp.summary.workflow);
+    return ok({ path: ".github/workflows/malmoi-i18n.yml", yaml, secretName: "PUSH_TOKEN" }, en.mcp.summary.workflow);
   },
 });

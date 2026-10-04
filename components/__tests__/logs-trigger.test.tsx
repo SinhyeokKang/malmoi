@@ -18,7 +18,7 @@ import { EventRow } from "@/components/logs/event-row";
 import { LogFilters } from "@/components/logs/log-filters";
 import { parseLogFilter } from "@/lib/events/filter";
 import type { EventRow as Row } from "@/lib/events/query";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 beforeEach(() => { mocks.push.mockReset(); });
 
@@ -43,23 +43,23 @@ const actorText = (container: HTMLElement) => container.querySelector(".font-med
 
 describe("행위자 — 야간·CI·사람", () => {
   it.each([
-    ["야간 스킵", row(), m.logs.trigger.cron],
-    ["야간 적재", row({ subtype: "import.nightly", result: "imported" }), m.logs.trigger.cron],
-    ["CI 적재", row({ subtype: "import.ci", result: "imported", payload: { ...importPayload, source: "ci" } }), m.logs.trigger.ci],
+    ["야간 스킵", row(), en.logs.trigger.cron],
+    ["야간 적재", row({ subtype: "import.nightly", result: "imported" }), en.logs.trigger.cron],
+    ["CI 적재", row({ subtype: "import.ci", result: "imported", payload: { ...importPayload, source: "ci" } }), en.logs.trigger.ci],
     ["야간 Publish", row({ kind: "PUBLISH", subtype: "publish.run", result: "sent", payload: { kind: "PUBLISH", surfaceSlugs: [], refusal: null },
-      run: { changed: 1, changedValues: 4, warnings: 0, withheld: 0, prUrl: null, errorCode: null } }), m.logs.trigger.cron],
+      run: { changed: 1, changedValues: 4, warnings: 0, withheld: 0, prUrl: null, errorCode: null } }), en.logs.trigger.cron],
   ])("%s 행의 행위자와 상세 Trigger가 같은 낱말이다", async (_, value, word) => {
     const { container } = await render(<EventRow row={value} href="/logs" now={now} archived={false} />);
     expect(actorText(container)).toBe(word);
     const opened = await detail(value);
-    expect(field(opened.container, m.logs.detail.labels.trigger)).toBe(word);
+    expect(field(opened.container, en.logs.detail.labels.trigger)).toBe(word);
   });
 
   it("사람 행은 마스킹된 이름 그대로다", async () => {
     const value = row({ subtype: "import.run", result: "imported", actor: human, payload: { ...importPayload, source: "manual" } });
     const { container } = await render(<EventRow row={value} href="/logs" now={now} archived={false} />);
     expect(actorText(container)).toBe("ki***@acme.dev");
-    expect(field((await detail(value)).container, m.logs.detail.labels.trigger)).toBe("ki***@acme.dev");
+    expect(field((await detail(value)).container, en.logs.detail.labels.trigger)).toBe("ki***@acme.dev");
   });
 });
 
@@ -68,22 +68,22 @@ describe("보류 사유와 바뀐 값 수", () => {
     const value = row({ subtype: "import.ci", result: "deferred", payload: { ...importPayload, source: "ci", deferReason: "open-pr", pendingEdits: 0 } });
     const { container } = await render(<EventRow row={value} href="/logs" now={now} archived={false} />);
     expect(container.textContent).not.toContain("0 unsent edits");
-    expect(container.textContent).toContain(m.logs.deferReasons["open-pr"]);
+    expect(container.textContent).toContain(en.logs.deferReasons["open-pr"]);
     const opened = await detail(value);
     expect(opened.container.textContent).not.toContain("0 unsent edits");
-    expect(opened.container.textContent).toContain(m.logs.deferReasons["open-pr"]);
+    expect(opened.container.textContent).toContain(en.logs.deferReasons["open-pr"]);
   });
 
   it("changedValues가 있으면 'N values changed', 없으면 —", async () => {
     const withValues = row({ subtype: "import.nightly", result: "imported", payload: { ...importPayload, changedValues: 3 } });
-    expect(field((await detail(withValues)).container, m.logs.detail.labels.values)).toBe(m.logs.meta.values(3));
+    expect(field((await detail(withValues)).container, en.logs.detail.labels.values)).toBe(en.logs.meta.values(3));
     const without = row({ subtype: "import.nightly", result: "imported" });
-    expect(field((await detail(without)).container, m.logs.detail.labels.values)).toBe(m.logs.none);
+    expect(field((await detail(without)).container, en.logs.detail.labels.values)).toBe(en.logs.none);
   });
 
   it("실패 실행은 값이 실려 있어도 0이 아니라 —다", async () => {
     const failed = row({ subtype: "import.nightly", result: "failed", payload: { ...importPayload, changedValues: 0 } });
-    expect(field((await detail(failed)).container, m.logs.detail.labels.values)).toBe(m.logs.none);
+    expect(field((await detail(failed)).container, en.logs.detail.labels.values)).toBe(en.logs.none);
   });
 });
 
@@ -95,31 +95,31 @@ describe("Publish 상세 — 바뀐 값 수", () => {
   const publish = (run: Row["run"], result: Row["result"] = "sent") => row({ kind: "PUBLISH", subtype: "publish.run", result,
     payload: { kind: "PUBLISH", surfaceSlugs: ["web"], refusal: null }, run });
   const run = { changed: 2, changedValues: 24, warnings: 0, withheld: 0, prUrl: "https://github.com/o/r/pull/12", errorCode: null };
-  const notRecorded = `${m.logs.none} ${m.logs.detail.notRecordedForRun}`;
+  const notRecorded = `${en.logs.none} ${en.logs.detail.notRecordedForRun}`;
 
   it("커밋한 실행은 'N values changed'다", async () => {
-    expect(field((await detail(publish(run))).container, m.logs.detail.labels.values)).toBe(m.logs.meta.values(24));
+    expect(field((await detail(publish(run))).container, en.logs.detail.labels.values)).toBe(en.logs.meta.values(24));
   });
 
   it("스킵(0)은 0이다 — 관측이 있다", async () => {
     const skipped = publish({ ...run, changed: 0, changedValues: 0, prUrl: null }, "nothingToSend");
-    expect(field((await detail(skipped)).container, m.logs.detail.labels.values)).toBe(m.logs.meta.values(0));
+    expect(field((await detail(skipped)).container, en.logs.detail.labels.values)).toBe(en.logs.meta.values(0));
   });
 
   it("기록 이전·실패(null)는 — + not recorded다 — 0이 아니다 (짝)", async () => {
-    expect(field((await detail(publish({ ...run, changedValues: null }))).container, m.logs.detail.labels.values)).toBe(notRecorded);
+    expect(field((await detail(publish({ ...run, changedValues: null }))).container, en.logs.detail.labels.values)).toBe(notRecorded);
     const failed = publish({ ...run, changed: null, changedValues: null, prUrl: null, errorCode: "github-error" }, "failed");
-    expect(field((await detail(failed)).container, m.logs.detail.labels.values)).toBe(notRecorded);
+    expect(field((await detail(failed)).container, en.logs.detail.labels.values)).toBe(notRecorded);
   });
 
   it("실행 행이 없는 거부도 — + not recorded다", async () => {
-    expect(field((await detail(publish(null, "notStarted"))).container, m.logs.detail.labels.values)).toBe(notRecorded);
+    expect(field((await detail(publish(null, "notStarted"))).container, en.logs.detail.labels.values)).toBe(notRecorded);
   });
 
   it("칸 순서는 Trigger · Files · Values · Pull request다", async () => {
     const { container } = await detail(publish(run));
     const labels = [...container.querySelectorAll("tr th")].map((th) => th.textContent);
-    const d = m.logs.detail.labels;
+    const d = en.logs.detail.labels;
     // 머리의 공통 칸(Reference 등)은 이 칸들 앞에 선다 — 종류가 정하는 칸들의 순서만 본다.
     const start = labels.indexOf(d.trigger);
     expect(start).toBeGreaterThanOrEqual(0);
@@ -128,7 +128,7 @@ describe("Publish 상세 — 바뀐 값 수", () => {
 
   it("행 보조줄에는 값 수가 없다", async () => {
     const { container } = await render(<EventRow row={publish(run)} href="/logs" now={now} archived={false} />);
-    expect(container.textContent).not.toContain(m.logs.meta.values(24));
+    expect(container.textContent).not.toContain(en.logs.meta.values(24));
   });
 });
 
@@ -141,7 +141,7 @@ describe("행위자 메뉴 — CI · Nightly", () => {
   };
   const items = () => [...document.querySelectorAll<HTMLElement>('[role="menu"] [role^="menuitem"]')];
 
-  it.each([["ci", m.logs.trigger.ci], ["nightly", m.logs.trigger.cron]] as const)("%s 항목을 고르면 URL ?actor=로 가고, 그 URL이 칩 라벨로 돌아온다", async (value, label) => {
+  it.each([["ci", en.logs.trigger.ci], ["nightly", en.logs.trigger.cron]] as const)("%s 항목을 고르면 URL ?actor=로 가고, 그 URL이 칩 라벨로 돌아온다", async (value, label) => {
     const user = userEvent.setup();
     const { rerender } = await render(<LogFilters {...props} filter={parseLogFilter({})} />);
     trigger().focus();
@@ -152,7 +152,7 @@ describe("행위자 메뉴 — CI · Nightly", () => {
     const url = new URL(String(mocks.push.mock.calls.at(-1)?.[0]), "http://x");
     expect(url.searchParams.get("actor")).toBe(value);
     await rerender(<LogFilters {...props} filter={parseLogFilter(Object.fromEntries(url.searchParams))} />);
-    expect(trigger().getAttribute("aria-label")).toBe(`${m.logs.filters.axis.actor}: ${label}`);
+    expect(trigger().getAttribute("aria-label")).toBe(`${en.logs.filters.axis.actor}: ${label}`);
   });
 
   it("메뉴에 옛 automation 항목이 없고 CI·Nightly 둘이 선다", async () => {
@@ -161,14 +161,14 @@ describe("행위자 메뉴 — CI · Nightly", () => {
     trigger().focus();
     await act(async () => user.keyboard("{Enter}"));
     const labels = items().map((node) => node.textContent);
-    expect(labels).toContain(m.logs.trigger.ci);
-    expect(labels).toContain(m.logs.trigger.cron);
-    expect(labels.filter((label) => label === m.logs.trigger.cron)).toHaveLength(1);
+    expect(labels).toContain(en.logs.trigger.ci);
+    expect(labels).toContain(en.logs.trigger.cron);
+    expect(labels.filter((label) => label === en.logs.trigger.cron)).toHaveLength(1);
   });
 
-  it.each([["ci", m.logs.trigger.ci], ["nightly", m.logs.trigger.cron], ["automation", m.logs.filters.automation]] as const)(
+  it.each([["ci", en.logs.trigger.ci], ["nightly", en.logs.trigger.cron], ["automation", en.logs.filters.automation]] as const)(
     "?actor=%s의 칩이 Unreadable이 아니다", async (value, label) => {
       await render(<LogFilters {...props} filter={parseLogFilter({ actor: value })} />);
-      expect(trigger().getAttribute("aria-label")).toBe(`${m.logs.filters.axis.actor}: ${label}`);
+      expect(trigger().getAttribute("aria-label")).toBe(`${en.logs.filters.axis.actor}: ${label}`);
     });
 });

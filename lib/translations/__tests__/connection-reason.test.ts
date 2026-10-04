@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 
 import type { ConnectionHealth } from "@/lib/github-connect/health";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { connectionReason } from "../connection-reason";
 
@@ -26,6 +26,6 @@ it.each(["ok", "unknown", "repo-moved"] as const)("%s는 연결 사유가 없다
 });
 
 it("제목은 Home 배너와 같은 키다", () => {
-  expect(connectionReason("unpinned", "EDITOR")).toContain(m.home.banner.disconnected.title);
-  expect(connectionReason("not-connected", "EDITOR")).toContain(m.home.banner.notConnected.title);
+  expect(connectionReason("unpinned", "EDITOR")).toContain(en.home.banner.disconnected.title);
+  expect(connectionReason("not-connected", "EDITOR")).toContain(en.home.banner.notConnected.title);
 });

@@ -23,6 +23,7 @@ import { readSession } from "@/lib/auth/read-session";
 import { getPrisma } from "@/lib/db";
 import { logCaught } from "@/lib/failure";
 import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { routes } from "@/lib/routes";
 import logo from "@/public/brand/malmoi-icon-black.svg";
 import { firstQueryValues, type Raw } from "@/lib/search-params";
@@ -47,7 +48,7 @@ import { acceptInvitation } from "../actions";
  * 토큰 URL이 색인된다. `no-referrer`는 Analytics 방어다 — 푸터 링크를 새 탭으로 열면 같은 출처 referrer가 전체 URL이고
  * Vercel 스크립트가 그것을 싣는데 `beforeSend`는 `url`만 바꿀 수 있다.
  */
-export const metadata: Metadata = { title: m.invite.title, robots: { index: false, follow: false }, referrer: "no-referrer" };
+export const metadata: Metadata = { title: en.invite.title, robots: { index: false, follow: false }, referrer: "no-referrer" };
 
 export default async function InvitePage({
   params,

@@ -1,7 +1,7 @@
 import "server-only";
 import { z } from "zod";
 
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { revalidateTranslationReaders } from "@/lib/keys/revalidate-readers";
 import type { RevertBlockReason } from "@/lib/keys/revert";
 import { RevertExecuteInput, runRevert } from "@/lib/keys/revert-translation";
@@ -46,29 +46,29 @@ export const setTranslations = defineTool({
       results: result.results.map(({ keyId, result: r }) => r.ok
         ? { keyId, status: "saved", cells: r.cells }
         : { keyId, status: "rejected", error: r.error, message: keyRejection(r), ...("localeCodes" in r ? { localeCodes: r.localeCodes } : {}) }),
-    }, m.mcp.summary.saved(saved.length, result.results.length - saved.length));
+    }, en.mcp.summary.saved(saved.length, result.results.length - saved.length));
   },
 });
 
 /** 키 하나의 거부 → 번역 화면 저장 바닥의 같은 문장(`components/translations/workspace/workspace.tsx`의 `ALERTS`). */
 function keyRejection(r: { error: string; localeCodes?: string[] }): string {
-  const footer = m.translations.workspace.footer;
+  const footer = en.translations.workspace.footer;
   if (r.error === "cannot-clear") return `${footer.cannotClear.title((r.localeCodes ?? []).join(", "))} ${footer.cannotClear.body}`;
   if (r.error === "key-unavailable") return footer.keyGone;
   return footer.saveFailed.body;
 }
 
 const REVERT_BLOCKED = {
-  forbidden: m.translations.workspace.revert.forbidden,
-  busy: m.translations.workspace.revert.busy,
+  forbidden: en.translations.workspace.revert.forbidden,
+  busy: en.translations.workspace.revert.busy,
   // 서버 경로에서는 안 난다(`draftDirty: false`) — 갈래가 union에 있어 `satisfies`가 요구한다. 화면의 같은 갈래 문장이다.
-  unsaved: m.translations.workspace.revert.unsaved,
-  "baseline-unknown": m.translations.workspace.revert.unavailable,
-  "baseline-stale": m.translations.workspace.revert.unavailable,
-  unsettled: m.translations.workspace.revert.unavailable,
-  nothing: m.translations.workspace.revert.failed.body,
-  "key-unavailable": m.errors.access["not-found"],
-  "sync-running": m.repositorySync.errors["already-running"],
+  unsaved: en.translations.workspace.revert.unsaved,
+  "baseline-unknown": en.translations.workspace.revert.unavailable,
+  "baseline-stale": en.translations.workspace.revert.unavailable,
+  unsettled: en.translations.workspace.revert.unavailable,
+  nothing: en.translations.workspace.revert.failed.body,
+  "key-unavailable": en.errors.access["not-found"],
+  "sync-running": en.repositorySync.errors["already-running"],
 } satisfies Record<RevertBlockReason, string>;
 
 export const revertToLastSent = defineTool({
@@ -79,13 +79,13 @@ export const revertToLastSent = defineTool({
     if (gate.status !== "ok") return gate;
     const result = await runRevert(prisma, coreSubject(subject), input);
     if (result.status === "error") return { status: "refused", code: result.error };
-    if (result.status === "reconfirm") return { status: "refused", code: "reconfirm", message: m.translations.workspace.revert.changed.body };
+    if (result.status === "reconfirm") return { status: "refused", code: "reconfirm", message: en.translations.workspace.revert.changed.body };
     if (result.status === "blocked") {
       // 문장은 `MESSAGE["sync-running"]`(같은 키)이 고른다 — 여기서는 시각을 실을 뿐이다.
       if (result.reason === "sync-running") return syncRunning(result);
       return { status: "refused", code: result.reason, message: REVERT_BLOCKED[result.reason] };
     }
     revalidateTranslationReaders(input.slug);
-    return ok({ cells: result.cells }, m.translations.workspace.revert.reverted);
+    return ok({ cells: result.cells }, en.translations.workspace.revert.reverted);
   },
 });

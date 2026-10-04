@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { eventSentence } from "../view";
 
@@ -15,13 +15,13 @@ describe("eventSentence — translation.reverted", () => {
     const nodes = { actor: "Owner", key: "greet" };
     for (const after of ["안녕", ""]) {
       const sentence = eventSentence({ kind: "TRANSLATION", subtype: "translation.reverted", result: null, payload: payload(after) }, nodes);
-      expect(sentence).toEqual(m.logs.sentence.translation.reverted("Owner", "greet", expect.any(String)));
+      expect(sentence).toEqual(en.logs.sentence.translation.reverted("Owner", "greet", expect.any(String)));
     }
   });
 
   it("저장은 그대로 updated다 (위 대조)", () => {
     const nodes = { actor: "Editor", key: "greet" };
     const sentence = eventSentence({ kind: "TRANSLATION", subtype: "translation.saved", result: null, payload: payload("x") }, nodes);
-    expect(sentence).not.toEqual(m.logs.sentence.translation.reverted("Editor", "greet", expect.any(String)));
+    expect(sentence).not.toEqual(en.logs.sentence.translation.reverted("Editor", "greet", expect.any(String)));
   });
 });

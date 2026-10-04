@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { PrismaClient } from "@/generated/prisma/client";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { planImportRefusal } from "@/lib/import/refusal";
 
 /**
@@ -40,14 +40,14 @@ describe("importRepository — 연결 거부 둘", () => {
     const { outcome } = await importRepository(prismaWith(project()), subject, { slug: "acme", approval: null });
     expect(outcome).toEqual({ ok: false, error: "not-connected" });
     expect(h.runFromReader).not.toHaveBeenCalled();
-    expect(m.repositorySync.errors["not-connected"]).not.toMatch(/disconnected/i);
-    expect(m.repositorySync.errors["not-connected"]).toMatch(/account/i);
+    expect(en.repositorySync.errors["not-connected"]).not.toMatch(/disconnected/i);
+    expect(en.repositorySync.errors["not-connected"]).toMatch(/account/i);
     // 리포를 다시 연결하는 버튼이 아니다 — 계정 복구는 설정의 계정 줄이 든다.
     expect(planImportRefusal("not-connected").action).not.toBe("reconnect");
   });
 
   it("unpinned만 Disconnected 낱말과 [Reconnect]를 든다", () => {
-    expect(m.repositorySync.errors.unpinned).toBe(m.home.banner.disconnected.title);
+    expect(en.repositorySync.errors.unpinned).toBe(en.home.banner.disconnected.title);
     expect(planImportRefusal("unpinned")).toEqual({ tone: "warning", dismissible: false, action: "reconnect" });
   });
 });

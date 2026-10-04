@@ -21,7 +21,7 @@ vi.mock("@/app/(edit)/projects/actions", () => ({ runFirstIngest: vi.fn(), addSu
 vi.mock("@/app/(edit)/projects/[slug]/settings/actions", () => ({ startGithubConnect: vi.fn(), connectRepository: vi.fn(), updateProjectName: vi.fn(), updateRepositorySettings: vi.fn(), uploadProjectImage: vi.fn(), deleteProjectImage: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), replace: vi.fn() }), redirect: vi.fn() }));
 import SettingsPage from "@/app/(edit)/projects/[slug]/settings/page";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 let fixup: MutationObserver | undefined;
 beforeEach(() => {
@@ -44,19 +44,19 @@ it("보관이 성공하면 맨 위로 옮겨 선 [Restore project]로, 복원이
   const archived = deferred<{ ok: true }>();
   state.archive.mockReturnValue(archived.promise);
   const view = await render(await page());
-  await act(async () => user.click(button(m.archive.action)));
-  await act(async () => user.click(button(m.archive.action)));
+  await act(async () => user.click(button(en.archive.action)));
+  await act(async () => user.click(button(en.archive.action)));
   // revalidate가 실린 커밋 — 서버가 보관 상태로 다시 그린 페이지가 응답과 함께 온다.
   state.archived = true;
   const next = await page();
   await act(async () => { archived.resolve({ ok: true }); await view.rerender(next); });
-  expect(document.activeElement).toBe(button(m.archive.restore));
+  expect(document.activeElement).toBe(button(en.archive.restore));
 
   const restored = deferred<{ ok: true }>();
   state.unarchive.mockReturnValue(restored.promise);
-  await act(async () => user.click(button(m.archive.restore)));
+  await act(async () => user.click(button(en.archive.restore)));
   state.archived = false;
   const back = await page();
   await act(async () => { restored.resolve({ ok: true }); await view.rerender(back); });
-  expect(document.activeElement).toBe(button(m.archive.action));
+  expect(document.activeElement).toBe(button(en.archive.action));
 });

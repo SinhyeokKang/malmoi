@@ -24,7 +24,7 @@ vi.mock("@/app/(edit)/projects/actions", () => ({
 
 import { ReconnectButton } from "@/components/reconnect-button";
 import { AddSourcesModal } from "@/components/sources/add-sources-modal";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import type { CandidateSummary } from "@/lib/onboarding/detect";
 
 beforeEach(() => { vi.clearAllMocks(); });
@@ -147,7 +147,7 @@ it.each(["connect", "manual"] as const)("AddSourcesModal %s의 조상14px는 실
       await input(document.querySelector<HTMLInputElement>("#manual-path")!, "i18n/{locale}.json");
       await input(document.querySelector<HTMLInputElement>("#manual-base")!, "en");
     }
-    const button = byText(operation === "connect" ? m.newProject.empty.connect.reauthorize : m.surfaces.confirm);
+    const button = byText(operation === "connect" ? en.newProject.empty.connect.reauthorize : en.surfaces.confirm);
     await click(button);
     expect(button.querySelector(".animate-spin")?.classList.contains("size-3.5")).toBe(true);
     expect(button.getAttribute("aria-busy")).toBe(operation === "manual" ? "true" : null);

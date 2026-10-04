@@ -16,6 +16,7 @@ import { getPrisma } from "@/lib/db";
 import { logCaught } from "@/lib/failure";
 import { requestOrigin } from "@/lib/github-connect/origin";
 import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { withLinkStart } from "@/lib/login-link/http";
 import { linkErrorMessage, providerLabel } from "@/lib/login-link/message";
 import { linkCookie, outcomeUrl, type LinkDest, type LoginProvider } from "@/lib/login-link/policy";
@@ -26,7 +27,7 @@ import logo from "@/public/brand/malmoi-icon-black.svg";
 import { utcMonth } from "@/lib/utc-time";
 
 /** ⚠️ **색인 거부 + referrer 없음** — `/invite/<token>`과 같은 이유다(challenge가 경로에 실린다). */
-export const metadata: Metadata = { title: m.link.title, robots: { index: false, follow: false }, referrer: "no-referrer" };
+export const metadata: Metadata = { title: en.link.title, robots: { index: false, follow: false }, referrer: "no-referrer" };
 
 /**
  * 병합 안내 화면 — **거부를 안내로 바꾸는 자리다** (PRODUCT §4.3 ④).

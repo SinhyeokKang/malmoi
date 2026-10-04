@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { Badge } from "@/components/ui/badge";
 import type { EventTone } from "@/lib/events/view";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import type { SurfaceImportStatus } from "@/lib/import/surface-status";
 
 import { STATE, type StateKey, type StateTone, type StateVariant } from "../canon";
@@ -33,7 +33,7 @@ describe("STATE", () => {
   });
 
   it.each(entries)("%s의 낱말은 사전 값이다", (_key, row) => {
-    expect(dictionaryStrings(m).has(row.label)).toBe(true);
+    expect(dictionaryStrings(en).has(row.label)).toBe(true);
   });
 
   /** 붉은 면 없는 글자(`danger` variant)는 소비자가 사라진 언어 하나라 지웠다(D3②) — danger 톤은 언제나 `soft-red` 면이다. */

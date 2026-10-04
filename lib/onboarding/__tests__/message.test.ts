@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { isAccessError } from "@/lib/auth/message";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { ingestHeadline, isOnboardError, onboardErrorMessage, type OnboardError } from "../message";
 
@@ -170,14 +170,14 @@ describe("다른 union과 겹치는 값", () => {
 });
 
 /**
- * ⚠️ **`satisfies`는 잉여 키를 못 잡는다** (2026-09-08 code-review ⚪9). `m.errors.x satisfies
+ * ⚠️ **`satisfies`는 잉여 키를 못 잡는다** (2026-09-08 code-review ⚪9). `en.errors.x satisfies
  * Record<Union, string>`은 **없는 키**를 컴파일 에러로 만들지만, union에서 갈래를 지웠을 때 사전에 남는
  * **죽은 문구**에는 침묵한다(신선한 객체 리터럴이 아니라 excess property check가 안 걸린다).
  * 그래서 반대 방향은 런타임으로 센다.
  */
 describe("사전에 죽은 문구가 남지 않는다", () => {
   it("errors.onboarding의 키가 전부 OnboardError다 (fallback 제외)", () => {
-    for (const key of Object.keys(m.errors.onboarding)) {
+    for (const key of Object.keys(en.errors.onboarding)) {
       if (key === "fallback") continue;
       expect(isOnboardError(key), key).toBe(true);
     }

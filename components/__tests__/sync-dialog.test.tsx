@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { SyncButton as Control } from "@/components/home/sync-button";
 import type { RepositoryImportOutcome } from "@/lib/import/result";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { render } from "./helpers/dom";
 
 // user-event의 실시간 지연이 병렬 실행에서 기본 5초를 넘긴다 (POSTMORTEM 2026-09-13).
@@ -148,7 +148,7 @@ it("Action이 throw하면 unconfirmed 결과로 바뀌고 닫기가 돌아온다
   await render(<SyncButton />);
   await click("Sync"); await click("Sync from repository");
   await act(async () => run.reject(new Error("offline")));
-  await vi.waitFor(() => expect(dialog()?.textContent).toContain(m.repositorySync.resultHeadline.unconfirmed));
+  await vi.waitFor(() => expect(dialog()?.textContent).toContain(en.repositorySync.resultHeadline.unconfirmed));
   expect(props.onResult).toHaveBeenCalledWith({ ok: false, error: "unconfirmed" });
   expect(mocks.refresh).toHaveBeenCalledOnce();
   expect(button("Close").disabled).toBe(false);

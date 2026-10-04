@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { act } from "react";
 import { expect, it, vi } from "vitest";
 import { TokenGrantFields, initialGrantFields } from "@/components/mcp/token-grant-fields";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { render, find } from "./helpers/dom";
 
 it("Tab reaches the unavailable scope reason while Space and Enter never change grants", async () => {
@@ -20,7 +20,7 @@ it("Tab reaches the unavailable scope reason while Space and Enter never change 
   expect(reached).toBe(true);
   expect(unavailable.getAttribute("aria-disabled")).toBe("true");
   expect(unavailable.disabled).toBe(false);
-  expect(document.getElementById(unavailable.getAttribute("aria-describedby")!)?.textContent).toBe(m.mcpConnector.form.noMembership);
+  expect(document.getElementById(unavailable.getAttribute("aria-describedby")!)?.textContent).toBe(en.mcpConnector.form.noMembership);
   await act(async () => { await user.keyboard(" {Enter}"); });
   expect(change).not.toHaveBeenCalled();
   expect(unavailable.getAttribute("aria-checked")).toBe("false");

@@ -9,7 +9,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { render } from "./helpers/dom";
 
@@ -75,7 +75,7 @@ it("Alert 닫기는 그 자리의 다음 컨트롤로 착지한다", async () =>
   // jsdom은 rect가 비어 있어 모든 요소가 "안 보인다" — 착지의 가시성 판정을 통과시킨다.
   const rects = vi.spyOn(Element.prototype, "getClientRects").mockReturnValue([{}] as unknown as DOMRectList);
   await render(<Host />);
-  await click(document.querySelector(`[aria-label="${m.common.dismiss}"]`)!);
+  await click(document.querySelector(`[aria-label="${en.common.dismiss}"]`)!);
   rects.mockRestore();
   expect(document.body.textContent).not.toContain("Synced");
   expect(document.activeElement).toBe(byText("After"));
@@ -219,7 +219,7 @@ it("호출부가 막지 않고 안쪽으로 포커스를 옮겼으면 표식으�
   await render(<Confirm inner={<input aria-label="From" />} onOpenAutoFocus={() => document.querySelector<HTMLElement>('[aria-label="From"]')?.focus()} />);
   await click(byText("Open"));
   expect(document.activeElement).not.toBe(byText("Cancel"));
-  expect(document.activeElement?.getAttribute("aria-label")).toBe(m.common.close);
+  expect(document.activeElement?.getAttribute("aria-label")).toBe(en.common.close);
 });
 
 it("표식이 없으면 Radix 기본이다 — 첫 tabbable(헤더 닫기)", async () => {
@@ -234,7 +234,7 @@ it("표식이 없으면 Radix 기본이다 — 첫 tabbable(헤더 닫기)", asy
   }
   await render(<Plain />);
   await click(byText("Open"));
-  expect(document.activeElement?.getAttribute("aria-label")).toBe(m.common.close);
+  expect(document.activeElement?.getAttribute("aria-label")).toBe(en.common.close);
 });
 
 /**

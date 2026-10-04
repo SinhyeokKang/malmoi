@@ -3,7 +3,7 @@ import { act } from "react";
 import { beforeEach, expect, it, vi } from "vitest";
 
 import { render } from "@/components/__tests__/helpers/dom";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { encodeUserFields } from "@/lib/credentials/records";
 
 const mocks = vi.hoisted(() => ({ requireUser: vi.fn(), getPrisma: vi.fn(), loadAccountView: vi.fn(), loadInstalledRepoCount: vi.fn() }));
@@ -133,24 +133,24 @@ it("연결됐을 때만 설치 집계를 한 번 조회한다", async () => {
  */
 it("행 본문이 한 줄로 이름과 상태를 함께 들고, 보조 줄이 그것을 대신하지 않는다", async () => {
   const container = await screen();
-  const app = card(container, m.account.github.title).querySelector("li")!;
+  const app = card(container, en.account.github.title).querySelector("li")!;
   const [body, detail] = bodyLines(app);
   expect(body).not.toBeUndefined();
   expect(body!.textContent).toContain("@octocat");
-  expect(body!.textContent).toContain(m.account.github.connected);
+  expect(body!.textContent).toContain(en.account.github.connected);
   // 이름만 굵다 — 상태가 같은 무게로 서면 행이 무엇을 묻는지가 흐려진다.
   const strong = body!.querySelector(".font-medium");
   expect(strong).not.toBeNull();
   expect(strong!.textContent).toBe("@octocat");
   // 보조 줄은 **다음에 할 일**이다. 상태를 여기로 내리면 부연으로 읽힌다.
   expect(detail).not.toBeUndefined();
-  expect(detail!.textContent).not.toContain(m.account.github.connected);
+  expect(detail!.textContent).not.toContain(en.account.github.connected);
 
-  const methods = card(container, m.link.methods.title).querySelector("li")!;
+  const methods = card(container, en.link.methods.title).querySelector("li")!;
   const methodLines = bodyLines(methods);
   expect(methodLines[0]).not.toBeUndefined();
-  expect(methodLines[0]!.textContent).toContain(m.link.providers.github);
-  expect(methodLines[0]!.textContent).toContain(m.link.methods.connected);
+  expect(methodLines[0]!.textContent).toContain(en.link.providers.github);
+  expect(methodLines[0]!.textContent).toContain(en.link.methods.connected);
   /**
    * ⚠️ **수단 행에는 보조 줄이 없다** — 캔버스의 `Signed in with this method last on {date}.`는
    * 데이터가 리포에 없고(`Account`에 마지막 사용 컬럼이 없다), 한쪽만 그리면 두 행 높이가 갈린다.
@@ -165,13 +165,13 @@ it("행 본문이 한 줄로 이름과 상태를 함께 들고, 보조 줄이 �
  * 구별하지 못하고, 사용자가 **멀쩡한 설치를 다시 만든다** (POSTMORTEM 2026-09-03의 축).
  */
 it.each([
-  ["연결됨", { status: "ok", login: "octocat" }, m.account.github.connected],
-  ["미연동", { status: "ok", login: null }, m.account.github.notConnected],
-  ["인가 만료", { status: "reauthorize" }, m.account.github.statusReauthorize],
-  ["조회 실패", { status: "unavailable" }, m.account.github.statusUnavailable],
+  ["연결됨", { status: "ok", login: "octocat" }, en.account.github.connected],
+  ["미연동", { status: "ok", login: null }, en.account.github.notConnected],
+  ["인가 만료", { status: "reauthorize" }, en.account.github.statusReauthorize],
+  ["조회 실패", { status: "unavailable" }, en.account.github.statusUnavailable],
 ])("GitHub App %s 갈래의 상태가 본문에 선다", async (_label, view, status) => {
   const container = await screen({}, undefined, view);
-  const body = bodyLines(card(container, m.account.github.title).querySelector("li")!)[0];
+  const body = bodyLines(card(container, en.account.github.title).querySelector("li")!)[0];
   expect(body).not.toBeUndefined();
   expect(body!.textContent).toContain(status);
 });
@@ -193,7 +193,7 @@ it.each([
   ["수단 0", []],
 ])("%s 에서도 Sessions 두 행이 같은 모양이다", async (_label, methods) => {
   const container = await screen({}, methods);
-  const rows = [...card(container, m.account.sessionsSection.title).querySelectorAll("li")];
+  const rows = [...card(container, en.account.sessionsSection.title).querySelectorAll("li")];
   expect(rows).toHaveLength(2);
   const shapes = rows.map((row) => {
     const spans = bodyLines(row);
@@ -204,7 +204,7 @@ it.each([
   // 둘이 같이 있거나 같이 없다 — 한쪽만 있으면 행 높이가 갈린다.
   expect(shapes[0]!.hasHint).toBe(shapes[1]!.hasHint);
   // ⚠️ provider 이름이 행에 없다 — 그것이 들어가면 위 갈래에서 이 줄만 사라진다.
-  expect(shapes[1]!.body).not.toContain(m.link.providers.github);
+  expect(shapes[1]!.body).not.toContain(en.link.providers.github);
 });
 
 /**
@@ -216,9 +216,9 @@ it("연결 행의 상태는 배지이고 대시가 없다 — 연결됨 초록 �
   for (const row of container.querySelectorAll("section[aria-labelledby] li")) {
     expect(bodyLines(row)[0]?.textContent ?? "").not.toContain(" — ");
   }
-  const methods = [...card(container, m.link.methods.title).querySelectorAll("li")];
+  const methods = [...card(container, en.link.methods.title).querySelectorAll("li")];
   const pills = methods.map((row) => row.querySelector(".rounded-full"));
-  expect(pills.map((p) => p?.textContent)).toEqual([m.link.methods.connected, m.link.methods.connected]);
+  expect(pills.map((p) => p?.textContent)).toEqual([en.link.methods.connected, en.link.methods.connected]);
   expect(pills[0]!.className).toContain("bg-green-100/80");
 });
 
@@ -232,14 +232,14 @@ it("연결 행의 상태는 배지이고 대시가 없다 — 연결됨 초록 �
  */
 it("본문이 카드 넷이고 heading 순서가 고정이다", async () => {
   const container = await screen();
-  expect(container.querySelector("h1")?.textContent).toBe(m.common.nav.account);
+  expect(container.querySelector("h1")?.textContent).toBe(en.common.nav.account);
 
   // 순서는 나 → 들어오는 길 → 붙어 있는 것 → 나가는 길이다.
   expect([...container.querySelectorAll("h2")].map((h) => h.textContent)).toEqual([
-    m.account.profile.title,
-    m.link.methods.title,
-    m.account.github.title,
-    m.account.sessionsSection.title,
+    en.account.profile.title,
+    en.link.methods.title,
+    en.account.github.title,
+    en.account.sessionsSection.title,
   ]);
 
   const cards = [...container.querySelectorAll("section")];
@@ -274,19 +274,19 @@ it("카드 넷 중 셋만 행 목록을 들고, 항목이 자기 래퍼를 갖�
  */
 it("수단 카드 헤더가 연결 수를 들고, 다른 카드에는 배지가 없다", async () => {
   const container = await screen({}, [{ provider: "github" }]);
-  expect(card(container, m.link.methods.title).querySelector("h2")!.parentElement!.textContent)
-    .toContain(m.link.methods.count(1, 2));
+  expect(card(container, en.link.methods.title).querySelector("h2")!.parentElement!.textContent)
+    .toContain(en.link.methods.count(1, 2));
 
   const both = await screen({}, [{ provider: "github" }, { provider: "google" }]);
-  expect(card(both, m.link.methods.title).querySelector("h2")!.parentElement!.textContent)
-    .toContain(m.link.methods.count(2, 2));
+  expect(card(both, en.link.methods.title).querySelector("h2")!.parentElement!.textContent)
+    .toContain(en.link.methods.count(2, 2));
   /**
    * 배지는 수단 카드에만 있다 — app 카드는 연결이 하나이고 세션 카드는 동작 둘이라 셀 값이 없다.
    * ⚠️ **헤더 텍스트 전체를 비교하지 않는다** — 오른쪽 설명 한 줄이 같은 머리에 살아서, 그 문구를
    * 고치는 것만으로 이 단언이 깨진다(배지와 무관한 red다). 세는 것은 배지 요소 자체다.
    */
-  expect(card(both, m.link.methods.title).querySelector("h2")!.parentElement!.querySelectorAll("span")).toHaveLength(1);
-  for (const title of [m.account.profile.title, m.account.github.title, m.account.sessionsSection.title]) {
+  expect(card(both, en.link.methods.title).querySelector("h2")!.parentElement!.querySelectorAll("span")).toHaveLength(1);
+  for (const title of [en.account.profile.title, en.account.github.title, en.account.sessionsSection.title]) {
     expect(card(both, title).querySelector("h2")!.parentElement!.querySelectorAll("span"), title).toHaveLength(0);
   }
 });
@@ -306,10 +306,10 @@ it("되돌릴 수 없는 것마다 확인이 붙고, 직접 제출하는 것이 
    * 수단이 하나만 연결된 화면에서 이 단언이 거짓이 되므로, **어느 것이 확인을 지나는가**를 센다.
    */
   expect(labels).toEqual([
-    m.link.methods.disconnectLabel(m.link.providers.github),
-    m.link.methods.disconnectLabel(m.link.providers.google),
-    m.account.sessions.title,
-    m.settings.account.disconnectLabel,
+    en.link.methods.disconnectLabel(en.link.providers.github),
+    en.link.methods.disconnectLabel(en.link.providers.google),
+    en.account.sessions.title,
+    en.settings.account.disconnectLabel,
   ].sort());
   // 접근 이름 충돌은 아래 전용 검사가 든다 — 여기서 세면 비활성 컨트롤이 빠진다.
 
@@ -319,7 +319,7 @@ it("되돌릴 수 없는 것마다 확인이 붙고, 직접 제출하는 것이 
    * **로그아웃은 확인이 없다**(ux-drift-unify Q4 — 셸 메뉴와 같은 동작, 잃는 것이 재로그인 한 번이다). 그래서 폼이 둘이다.
    */
   const forms = [...container.querySelectorAll("form")];
-  expect(forms.map((form) => form.querySelector("button")?.textContent)).toEqual([m.account.profile.save, m.common.nav.signOut]);
+  expect(forms.map((form) => form.querySelector("button")?.textContent)).toEqual([en.account.profile.save, en.common.nav.signOut]);
 });
 
 it("마지막 수단은 확인이 아니라 비활성이다 — 지날 문이 없다", async () => {
@@ -327,7 +327,7 @@ it("마지막 수단은 확인이 아니라 비활성이다 — 지날 문이 �
   const labels = [...container.querySelectorAll('[aria-haspopup="dialog"]')]
     .map((trigger) => trigger.getAttribute("aria-label") ?? trigger.textContent ?? "");
   // 마지막 수단은 비활성이라 Dialog를 지날 문이 없다 — 그래도 이름은 축을 든다(아래 검사).
-  expect(labels).not.toContain(m.link.methods.disconnectLabel(m.link.providers.github));
+  expect(labels).not.toContain(en.link.methods.disconnectLabel(en.link.providers.github));
   // 남는 확인은 둘이다 — Sign out everywhere · GitHub App 해제(로그아웃은 확인이 없다, Q4).
   expect(labels).toHaveLength(2);
 });
@@ -359,7 +359,7 @@ it("수단 해제 실패는 수단 카드 안에 서고 닫기가 없다", async
   expect(alert).not.toBeNull();
   const card = alert!.closest("section");
   expect(card).not.toBeNull();
-  expect(card!.querySelector("h2")!.textContent).toBe(m.link.methods.title);
+  expect(card!.querySelector("h2")!.textContent).toBe(en.link.methods.title);
   // 헤더 아래·리스트 위다 — 리스트 안으로 들어가면 항목 하나처럼 읽힌다.
   expect(card!.querySelector("ul")!.compareDocumentPosition(alert!) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
   expect(alert!.querySelector("button")).toBeNull();
@@ -380,10 +380,10 @@ it("`?e=`와 `?link=`가 함께 와도 본문 첫 블록 Alert는 하나다", as
 it("`?sessionRevocation=`는 Sessions 구역 안에 닿는다", async () => {
   const container = await screen({ sessionRevocation: "expired" });
   const alert = container.querySelector('[role="alert"]');
-  expect(alert?.textContent).toContain(m.account.sessions.expired);
+  expect(alert?.textContent).toContain(en.account.sessions.expired);
   const section = alert!.closest("section");
   expect(section).not.toBeNull();
-  expect(section!.querySelector("h2")?.textContent).toBe(m.account.sessionsSection.title);
+  expect(section!.querySelector("h2")?.textContent).toBe(en.account.sessionsSection.title);
   // 구역 Alert는 헤더 아래·리스트 위다 — 리스트 안으로 들어가면 항목 하나처럼 읽힌다.
   expect(section!.querySelector("ul")!.compareDocumentPosition(alert!) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
 });
@@ -431,7 +431,7 @@ it.each([
    * 통째로 못 본다. 아래가 보는 것은 충돌이 아니라 **"저마다 무엇의 해제인지 말하는가"**다.
    * ⚠️ **루프가 0회면 두 단언이 증발한다** — 라벨이 바뀌면 그 순간 검사가 사라진다.
    */
-  const disconnects = controls.filter((c) => c.visible === m.link.methods.disconnect);
+  const disconnects = controls.filter((c) => c.visible === en.link.methods.disconnect);
   expect(disconnects.length).toBeGreaterThan(0);
   for (const control of disconnects) {
     // 접근 이름이 보이는 텍스트를 **포함**해야 음성 입력이 라벨로 컨트롤을 찾는다 (WCAG 2.5.3).
@@ -456,12 +456,12 @@ it.each([
  * (그 순간 "우측 컨트롤이 줄바꿈되지 않는다"가 깨진다).
  */
 it.each([
-  ["ok-not-connected", { status: "ok", login: null }, m.settings.account.connect],
-  ["reauthorize", { status: "reauthorize" }, m.settings.account.reconnect],
+  ["ok-not-connected", { status: "ok", login: null }, en.settings.account.connect],
+  ["reauthorize", { status: "reauthorize" }, en.settings.account.reconnect],
   ["unavailable", { status: "unavailable" }, null],
 ])("GitHub %s 갈래의 컨트롤이 우측 클러스터 하나뿐이다", async (_name, view, label) => {
   const container = await screen({}, [{ provider: "github" }, { provider: "google" }], view);
-  const row = card(container, m.account.github.title).querySelector("li")!;
+  const row = card(container, en.account.github.title).querySelector("li")!;
   const right = row.querySelector(":scope > div:last-child");
   if (label === null) {
     // 조회 실패에는 컨트롤을 주지 않는다 — 그 자리의 재시도는 페이지 새로고침이다.
@@ -488,7 +488,7 @@ it.each([
   actions.startGithubConnectForUser.mockResolvedValue({ ok: false, error: "unavailable" });
   actions.disconnectGithub.mockResolvedValue({ ok: false, error: "unavailable" });
   const container = await screen({}, [{ provider: "github" }, { provider: "google" }], view);
-  const section = card(container, m.account.github.title);
+  const section = card(container, en.account.github.title);
   const row = section.querySelector("li")!;
   const trigger = row.querySelector("button")!;
   await act(async () => { trigger.click(); });
@@ -570,7 +570,7 @@ it("사유 없는 disabled가 0이다", async () => {
  */
 it("수단 해제의 확정 버튼이 Action에 닿는다", async () => {
   const container = await screen();
-  const section = card(container, m.link.methods.title);
+  const section = card(container, en.link.methods.title);
   const trigger = [...section.querySelectorAll("li button")]
     .find((button) => button.getAttribute("aria-haspopup") === "dialog") as HTMLButtonElement;
   await act(async () => { trigger.click(); });
@@ -604,14 +604,14 @@ it("사진 업로드가 도는 동안 삭제를 누를 수 없다", async () => 
   await act(async () => { file.dispatchEvent(new Event("change", { bubbles: true })); });
 
   const remove = [...container.querySelectorAll("button")]
-    .find((button) => (button.textContent ?? "").trim() === m.account.picture.delete)!;
+    .find((button) => (button.textContent ?? "").trim() === en.account.picture.delete)!;
   expect(remove.hasAttribute("disabled")).toBe(true);
   /**
    * ⚠️ **막기만 하면 절반이다** — 스피너가 이 버튼에 없으므로, 사유가 없으면 스크린리더에는
    * *"…, 버튼, 사용 불가"*까지만 들린다. 참조가 **끊기지 않았는지**까지 센다.
    */
   const reason = container.ownerDocument.getElementById(remove.getAttribute("aria-describedby")!);
-  expect(reason?.textContent).toBe(m.account.picture.busy);
+  expect(reason?.textContent).toBe(en.account.picture.busy);
   await act(async () => { finish({ ok: true }); });
   expect(remove.hasAttribute("disabled")).toBe(false);
 });
@@ -625,11 +625,11 @@ it("사진 삭제가 도는 동안 업로드를 누를 수 없다", async () => 
   accountActions.deleteProfileImage.mockReturnValueOnce(new Promise((resolve) => { finish = resolve; }));
   const container = await screen({}, undefined, undefined, "https://images.example/a.png");
   const remove = [...container.querySelectorAll("button")]
-    .find((button) => (button.textContent ?? "").trim() === m.account.picture.delete)!;
+    .find((button) => (button.textContent ?? "").trim() === en.account.picture.delete)!;
   await act(async () => { remove.click(); });
 
   const upload = [...container.querySelectorAll("button")]
-    .find((button) => (button.textContent ?? "").trim() === m.account.picture.upload)!;
+    .find((button) => (button.textContent ?? "").trim() === en.account.picture.upload)!;
   expect(upload.hasAttribute("disabled")).toBe(true);
   // 숨은 `<input>`도 함께 막힌다 — 버튼만 막으면 키보드로 파일 대화상자가 열린다.
   expect(container.querySelector("input[type='file']")!.hasAttribute("disabled")).toBe(true);
@@ -646,6 +646,6 @@ it("사진 삭제가 도는 동안 업로드를 누를 수 없다", async () => 
  */
 it("연결된 행이 프로젝트 수를 말하지 않는다", async () => {
   const container = await screen();
-  const row = card(container, m.account.github.title).querySelector("li")!;
+  const row = card(container, en.account.github.title).querySelector("li")!;
   expect(row.textContent).not.toMatch(/\d+\s+projects?/);
 });

@@ -8,7 +8,7 @@ vi.mock("@/app/(edit)/projects/actions", () => mocks);
 
 import { ResultStep } from "@/components/onboarding/steps/result";
 import { PushTokenPanel } from "@/components/settings/push-token-panel";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { render } from "./helpers/dom";
 
@@ -26,8 +26,8 @@ it("온보딩 ④와 Settings 회전 결과의 토큰 칸이 같은 형이다", 
     const node = [...document.querySelectorAll("button")].filter((b) => b.textContent?.trim() === label).at(-1)!;
     await act(async () => { await userEvent.setup().click(node); });
   };
-  await click(m.settings.token.rotate);
-  await click(m.settings.token.confirmAction);
+  await click(en.settings.token.rotate);
+  await click(en.settings.token.confirmAction);
   const b = settings.container.querySelector<HTMLInputElement>("[data-secret-field]")!;
 
   expect(a.value).toBe("tok-a");
@@ -35,6 +35,6 @@ it("온보딩 ④와 Settings 회전 결과의 토큰 칸이 같은 형이다", 
   expect(b.className).toBe(a.className);
   expect(a.className).toContain("h-9");
   expect(a.readOnly && b.readOnly).toBe(true);
-  expect(a.getAttribute("aria-label")).toBe(m.newProject.result.token.title);
-  expect(b.getAttribute("aria-label")).toBe(m.settings.token.title);
+  expect(a.getAttribute("aria-label")).toBe(en.newProject.result.token.title);
+  expect(b.getAttribute("aria-label")).toBe(en.settings.token.title);
 });

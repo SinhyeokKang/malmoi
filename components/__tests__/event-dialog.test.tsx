@@ -38,7 +38,7 @@ vi.mock("next/link", () => ({
 import { EventDialog } from "@/components/logs/event-dialog";
 import { EventRow } from "@/components/logs/event-row";
 import type { EventRow as Row } from "@/lib/events/query";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 let replaceState: ReturnType<typeof vi.spyOn>;
 beforeEach(() => {
@@ -87,7 +87,7 @@ it("Esc가 서버를 부르지 않고 닫는다 — 주소는 `replaceState`로 
 it("×도 같은 길로 닫는다", async () => {
   await visit("event=evt_a");
   await render(dialog());
-  const close = find<HTMLButtonElement>(document, `button[aria-label="${m.logs.detail.actions.close}"]`);
+  const close = find<HTMLButtonElement>(document, `button[aria-label="${en.logs.detail.actions.close}"]`);
   await act(async () => close.click());
   expect(isOpen()).toBe(false);
   expect(replaceState).toHaveBeenCalledTimes(1);

@@ -8,7 +8,7 @@ import { render } from "./helpers/dom";
 vi.mock("@/app/(edit)/projects/actions", () => ({ revokeInvitation: vi.fn(), resendInvitation: vi.fn() }));
 import { PendingInvitations } from "@/components/members/pending-invitations";
 import type { PendingInvitation } from "@/lib/auth/query";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 const strip = (source: string) => source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\{\/\*[\s\S]*?\*\/\}/g, "").replace(/\/\/.*$/gm, "");
 
@@ -31,7 +31,7 @@ it("경로·리포 셀이 break-all이 아니라 overflow-wrap:anywhere이고 / 
 it("초대한 사람 칸이 잘려도 title로 전문을 든다", async () => {
   const invite: PendingInvitation = { id: "i1", emailLabel: "t***@example.com", readable: true, role: "EDITOR", expiresAt: new Date("2026-09-24T00:00:00Z"), invitedByName: "SinhyeokKang" };
   await render(<PendingInvitations slug="acme" invitations={[invite]} role="OWNER" now={new Date("2026-09-17T00:00:00Z")} headingId="h" />);
-  const text = m.members.pending.invitedBy("SinhyeokKang");
+  const text = en.members.pending.invitedBy("SinhyeokKang");
   const cell = [...document.querySelectorAll<HTMLElement>(".truncate")].find(node => node.textContent === text);
   expect(cell?.getAttribute("title")).toBe(text);
 });

@@ -1,10 +1,10 @@
 import { expect, it } from "vitest";
 
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { uploadRejectMessage } from "../message";
 
-const UPLOAD = m.errors.upload;
+const UPLOAD = en.errors.upload;
 
 /**
  * 업로드 거부 → 문구 (account-settings 태스크 4b).

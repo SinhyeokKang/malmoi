@@ -11,7 +11,7 @@ vi.mock("@/lib/credentials/records", () => ({ decodeInvitation: (row: unknown) =
 vi.mock("@/lib/credentials/access", () => ({ credentialIO: (read: () => Promise<unknown>) => read() }));
 vi.mock("@/components/signin/dot-field", () => ({ DotField: () => null }));
 import Page from "../[token]/page";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { inviteErrorMessage } from "@/lib/auth/message";
 
 const invitation = {
@@ -43,7 +43,7 @@ it("제목이 선다 — 설명이 제목을 겸하지 않는다", async () => {
     const markup = await html(status);
     expect(markup).toContain("<h1");
     // `renderToStaticMarkup`이 아포스트로피를 이스케이프하므로 사전 값을 같은 규칙으로 접는다.
-    expect(markup).toContain(m.invite.title.replace(/'/g, "&#x27;"));
+    expect(markup).toContain(en.invite.title.replace(/'/g, "&#x27;"));
   }
 });
 
@@ -52,8 +52,8 @@ it("쓸 수 없는 초대는 제목이 그 사실을 말한다", async () => {
   state.session.mockResolvedValue({ status: "ok", userId: "u1" });
   state.row.mockResolvedValue(null);
   const markup = renderToStaticMarkup(await Page({ params: Promise.resolve({ token: "t" }), searchParams: Promise.resolve({}) }));
-  expect(markup).toContain(m.invite.unavailableTitle.replace(/'/g, "&#x27;"));
-  expect(markup).not.toContain(m.invite.title.replace(/'/g, "&#x27;"));
+  expect(markup).toContain(en.invite.unavailableTitle.replace(/'/g, "&#x27;"));
+  expect(markup).not.toContain(en.invite.title.replace(/'/g, "&#x27;"));
 });
 
 /**
@@ -64,12 +64,12 @@ it("비로그인에는 프로젝트 카드가 없고 로그인에는 있다", as
   const signedOut = await html("none");
   expect(signedOut).not.toContain("bugshot-2");
   // ⚠️ **`/signin`과 같은 문구·같은 버튼이다** — 이 화면만 다른 말을 쓰던 드리프트를 2026-09-12에 걷었다.
-  expect(signedOut).toContain(m.signIn.github);
-  expect(signedOut).toContain(m.signIn.google);
+  expect(signedOut).toContain(en.signIn.github);
+  expect(signedOut).toContain(en.signIn.google);
 
   const signedIn = await html("ok");
   expect(signedIn).toContain("bugshot-2");
-  expect(signedIn).toContain(m.projects.role.EDITOR);
+  expect(signedIn).toContain(en.projects.role.EDITOR);
   // 국기는 CSS background-image다 — 번역자가 자기 언어가 있는지 보는 값이다.
   expect(signedIn).toContain("/flags/kr.svg");
 });
@@ -109,11 +109,11 @@ it.each([
   state.viewer.mockResolvedValue({ id: "u1", email });
   state.member.mockResolvedValue(member ? { userId: "u1" } : null);
   const markup = await renderPage();
-  expect(markup.split(m.invite.otherAccount).length - 1).toBe(other);
-  expect(markup.split(m.invite.accept).length - 1).toBe(accept);
+  expect(markup.split(en.invite.otherAccount).length - 1).toBe(other);
+  expect(markup.split(en.invite.accept).length - 1).toBe(accept);
   if (other || member) {
     const notice = member ? "already-member" : "email-mismatch";
-    expect(markup).toContain(escaped(m.errors.invite[notice]));
+    expect(markup).toContain(escaped(en.errors.invite[notice]));
     expect(markup.indexOf('role="alert"')).toBeLessThan(markup.indexOf("bugshot-2"));
   }
 });
@@ -131,9 +131,9 @@ it("already-member는 프로젝트로 가는 링크를 준다 — 로그아웃�
   state.member.mockResolvedValue({ userId: "u1" });
   const markup = await renderPage();
   expect(markup).toContain('href="/projects/bugshot-2"');
-  expect(markup).toContain(m.invite.openProject);
-  expect(markup).not.toContain(m.invite.otherAccount);
-  expect(markup).not.toContain(m.invite.accept);
+  expect(markup).toContain(en.invite.openProject);
+  expect(markup).not.toContain(en.invite.otherAccount);
+  expect(markup).not.toContain(en.invite.accept);
 });
 
 it("비로그인과 막힌 초대는 멤버를 조회하지 않는다", async () => {
@@ -161,15 +161,15 @@ it("사용자 또는 멤버 조회 장애는 토큰 보존 재시도만 낸다",
     query.mockRejectedValueOnce(new Error("offline"));
     const markup = await renderPage();
     expect(markup).toContain('action="/invite/t"');
-    expect(markup).toContain(m.common.retry);
+    expect(markup).toContain(en.common.retry);
     // 페이지의 유일한 출구라 `primary lg w-full`이다 — 형제 CTA·OAuth 동의 화면의 Retry와 같은 형(ux-drift-unify 3-⚪14).
     const retry = /<button[^>]*>[^<]*<\/button>/.exec(markup.slice(markup.indexOf('action="/invite/t"')))?.[0] ?? "";
-    expect(retry).toContain(m.common.retry);
+    expect(retry).toContain(en.common.retry);
     expect(retry).toMatch(/bg-primary/);
     expect(retry).toMatch(/w-full/);
     expect(retry).toMatch(/h-10/);
-    expect(markup).not.toContain(m.invite.accept);
-    expect(markup).not.toContain(m.invite.otherAccount);
+    expect(markup).not.toContain(en.invite.accept);
+    expect(markup).not.toContain(en.invite.otherAccount);
     expect(markup).not.toContain("bugshot-2");
   }
 });
@@ -179,13 +179,13 @@ it.each(["unauthorized", "unavailable"] as const)("%s도 초대의 인라인 알
     await html(status);
     const markup = await renderPage(e);
     expect(markup).toContain('role="alert"');
-    expect(markup).toContain(escaped(m.errors.invite[e]));
+    expect(markup).toContain(escaped(en.errors.invite[e]));
   }
 });
 
 /**
  * OWNER 초대의 상한 거부(operator-account C8)도 수락 폼이 되돌린 `?e=`로 화면에 닿는다. ⚠️ 기댓값은 `inviteErrorMessage`로 만든다 —
- * 사전 값이 숫자를 받는 함수라 `m.errors.invite[e]`로는 문장이 안 나온다. Action → `planInviteView`는 `membership.test.ts`가 잇는다.
+ * 사전 값이 숫자를 받는 함수라 `en.errors.invite[e]`로는 문장이 안 나온다. Action → `planInviteView`는 `membership.test.ts`가 잇는다.
  */
 it("limit-reached도 초대의 인라인 알림이다", async () => {
   await html("ok");
@@ -193,5 +193,5 @@ it("limit-reached도 초대의 인라인 알림이다", async () => {
   expect(markup).toContain('role="alert"');
   expect(markup).toContain(escaped(inviteErrorMessage("limit-reached")));
   // 초대는 소비되지 않았다 — 자리를 비운 뒤 같은 링크로 다시 수락하는 버튼이 남는다.
-  expect(markup).toContain(m.invite.accept);
+  expect(markup).toContain(en.invite.accept);
 });

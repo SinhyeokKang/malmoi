@@ -6,7 +6,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { HomeActions, HomeHeaderActions, HomeNotices } from "@/components/home/actions";
 import { PanelBody } from "@/components/shell/content-panel";
 import { render } from "./helpers/dom";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 // user-event의 실시간 지연이 병렬 실행에서 기본 5초를 넘긴다 (POSTMORTEM 2026-09-13).
 vi.setConfig({ testTimeout: 20_000 });
@@ -106,11 +106,11 @@ it("Sync가 8초를 넘기면 지연 문구가 서고 끝나면 사라진다", a
   try {
     await act(async () => { await userEvent.setup({ advanceTimers: vi.advanceTimersByTime }).click(button("Discard changes and sync")); });
     await act(async () => { vi.advanceTimersByTime(7_000); });
-    expect(document.body.textContent).not.toContain(m.common.slow);
+    expect(document.body.textContent).not.toContain(en.common.slow);
     await act(async () => { vi.advanceTimersByTime(1_000); });
-    expect(document.body.textContent).toContain(m.common.slow);
+    expect(document.body.textContent).toContain(en.common.slow);
     await act(async () => { run.resolve({ ok: true, surfaces: [], remainingEdits: 0 }); await run.promise; });
-    expect(document.body.textContent).not.toContain(m.common.slow);
+    expect(document.body.textContent).not.toContain(en.common.slow);
   } finally { vi.useRealTimers(); }
 });
 
@@ -125,7 +125,7 @@ it("Publish가 도는 동안 Sync가 잠기고 확인 Dialog도 열리지 않는
   await act(async () => { (document.querySelector('button[aria-label="Close"]') as HTMLButtonElement).click(); });
   expect(locked(button("Sync"))).toBe(true);
   // 사유가 원인을 든다 — `Publishing…` 라벨이 사라져 옆 버튼이 더는 그것을 말하지 않는다 (audit-ux #10).
-  expect(document.getElementById(button("Sync").getAttribute("aria-describedby") ?? "")?.textContent).toBe(m.repositorySync.waitPublish);
+  expect(document.getElementById(button("Sync").getAttribute("aria-describedby") ?? "")?.textContent).toBe(en.repositorySync.waitPublish);
   expect(button("Publish").getAttribute("aria-busy")).toBe("true");
 
   await click("Sync");
@@ -199,14 +199,13 @@ it("Publish가 도는 동안 연 확인 Dialog가 Publish 종료 시점에 혼�
  */
 it("보관 배너에서 복원이 거부되면 사유 Alert가 배너 밖 형제로 선다", async () => {
   mocks.unarchive.mockResolvedValue({ ok: false, error: "forbidden" });
-  const { m } = await import("@/lib/i18n");
   await render(<HomeActions slug="acme" writeLock={null}><HomeNotices {...props} state="archived" failedSurface={null} reason={null} lastSyncAt={null} now={new Date("2026-09-15T12:00:00Z")} /></HomeActions>);
   await click("Restore project");
-  const failure = [...document.querySelectorAll('[role="alert"]')].find(node => node.textContent?.includes(m.errors.access.forbidden));
+  const failure = [...document.querySelectorAll('[role="alert"]')].find(node => node.textContent?.includes(en.errors.access.forbidden));
   expect(failure).toBeDefined();
   // 배너 = [Restore project]에서 위로 올라가며 처음 만나는, 배너 제목으로 시작하는 조상(가장 안쪽 — 바깥 래퍼가 아니다).
   let banner: HTMLElement | null = button("Restore project");
-  while (banner && !banner.textContent?.startsWith(m.home.banner.archived.title)) banner = banner.parentElement;
+  while (banner && !banner.textContent?.startsWith(en.home.banner.archived.title)) banner = banner.parentElement;
   expect(banner).not.toBeNull();
   expect(banner!.contains(failure!)).toBe(false);
   expect(failure!.parentElement?.closest('[role="alert"], [role="status"]')).toBeNull();
@@ -250,7 +249,7 @@ it("배너 [Try again] → Enter → Esc면 포커스가 그 [Try again]에 선�
  */
 it("동기화 실패 배너의 본문을 muted로 덮지 않는다", async () => {
   await render(<HomeActions slug="acme" writeLock={null}><Host /></HomeActions>);
-  const banner = [...document.querySelectorAll('[role="alert"]')].find(node => node.textContent?.includes(m.home.banner.syncFailed.title));
+  const banner = [...document.querySelectorAll('[role="alert"]')].find(node => node.textContent?.includes(en.home.banner.syncFailed.title));
   expect(banner).toBeDefined();
   expect(banner!.querySelector(".text-muted-foreground")).toBeNull();
 });
@@ -265,15 +264,15 @@ it("partial-import 배너는 warning Partially synced이고 실패·마지막 �
     <HomeNotices {...props} state="import_failed" failedSurface="web" reason="partial-import" lastSyncAt={new Date("2026-09-15T11:00:00Z")} now={now} />
   </HomeActions>);
   const banner = container.querySelector('[data-alert="warning"]');
-  expect(banner?.textContent).toContain(m.home.banner.partial.title);
-  expect(banner?.textContent).toContain(m.home.banner.partial.body("web", "main", m.projects.importFailure.partialImport));
+  expect(banner?.textContent).toContain(en.home.banner.partial.title);
+  expect(banner?.textContent).toContain(en.home.banner.partial.body("web", "main", en.projects.importFailure.partialImport));
   expect(banner?.textContent).not.toMatch(/fail|couldn['’]t finish|could not/i);
   expect(banner?.textContent).not.toContain("last successful sync");
   // 대조 — 진짜 실패는 danger 실패 제목이다
   const failed = await render(<HomeActions slug="acme" writeLock={null}>
     <HomeNotices {...props} state="import_failed" failedSurface="web" reason="import-failed" lastSyncAt={null} now={now} />
   </HomeActions>);
-  expect(failed.container.querySelector('[data-alert="danger"]')?.textContent).toContain(m.home.banner.syncFailed.title);
+  expect(failed.container.querySelector('[data-alert="danger"]')?.textContent).toContain(en.home.banner.syncFailed.title);
 });
 
 /**
@@ -338,7 +337,7 @@ it("착지 lease가 있으면 머리 [Sync]와 배너 [Try again]이 같은 사�
   for (const name of ["Sync", "Try again"]) {
     const node = button(name);
     expect(node.getAttribute("aria-disabled")).toBe("true");
-    expect(document.getElementById(node.getAttribute("aria-describedby") ?? "")?.textContent).toBe(m.repositorySync.running);
+    expect(document.getElementById(node.getAttribute("aria-describedby") ?? "")?.textContent).toBe(en.repositorySync.running);
   }
   await click("Sync");
   await click("Try again");

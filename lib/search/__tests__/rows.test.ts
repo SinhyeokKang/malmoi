@@ -1,7 +1,7 @@
 import { Box, CircleHelp, Compass, Languages, Plus } from "lucide-react";
 import { describe, expect, it } from "vitest";
 
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { routes } from "@/lib/routes";
 import { navWorkItems, type NavItem, type NavProject } from "@/lib/shell/nav";
 import { Q_MAX_LENGTH } from "@/lib/translations/query";
@@ -36,7 +36,7 @@ describe("searchRows — 그룹·행·ids 한 원천", () => {
     }
     const found = searchRows({ index: index([project("demo")]), keys: [hit("demo-key")], q: "demo", activeSlug: null });
     expect(found.groups.map(g => g.kind)).toEqual(["projects", "pages", "keys", "docs"]);
-    expect(found.groups.map(g => g.heading)).toEqual([m.search.groups.projects, m.search.groups.pages, m.search.groups.keys, m.search.groups.docs]);
+    expect(found.groups.map(g => g.heading)).toEqual([en.search.groups.projects, en.search.groups.pages, en.search.groups.keys, en.search.groups.docs]);
   });
 
   it("미리보기 — 프로젝트 3 + Go to your projects, Pages 3, Docs 3 + Go to docs", () => {
@@ -44,10 +44,10 @@ describe("searchRows — 그룹·행·ids 한 원천", () => {
     const [projects, pages, docsGroup] = result.groups;
     expect(projects?.rows.map(r => r.id)).toEqual(["project:c", "project:a", "project:b", "go-to-projects"]);
     expect(projects?.rows.at(-1)).toMatchObject({ href: routes.projects(), tile: { kind: "glyph", icon: Box } });
-    expect(text(projects?.rows.at(-1)?.title)).toBe(m.notFound.action);
+    expect(text(projects?.rows.at(-1)?.title)).toBe(en.notFound.action);
     expect(pages?.rows).toHaveLength(3);
     expect(docsGroup?.rows.at(-1)).toMatchObject({ href: routes.docs(), tile: { kind: "glyph", icon: CircleHelp } });
-    expect(text(docsGroup?.rows.at(-1)?.title)).toBe(m.search.goToDocs);
+    expect(text(docsGroup?.rows.at(-1)?.title)).toBe(en.search.goToDocs);
   });
 
   // 미리보기 상한의 정본은 rows.ts의 PREVIEW_LIMIT 하나다(R-B1 Y5 — match.ts의 리터럴 3이 이기던 것을 걷었다).
@@ -205,24 +205,24 @@ describe("searchStatuses", () => {
     const result = searchStatuses({ membership: "loading", docs: "loading", keys: "loading" });
     expect(result).toEqual({
       pending: true, failed: false,
-      lines: [{ tone: "muted", text: m.projects.loading }, { tone: "muted", text: m.search.loadingKeys }, { tone: "muted", text: m.search.loadingDocs }],
+      lines: [{ tone: "muted", text: en.projects.loading }, { tone: "muted", text: en.search.loadingKeys }, { tone: "muted", text: en.search.loadingDocs }],
     });
   });
 
   it("줄 순서는 그룹 순서(Projects → Pages → Keys → Docs)를 따른다 — Keys 줄이 Docs 줄보다 앞이다(#175)", () => {
     expect(searchStatuses({ ...ready, docs: "failed", keys: "unavailable" }).lines).toEqual([
-      { tone: "danger", text: m.search.keysUnavailable }, { tone: "danger", text: m.search.docsUnavailable },
+      { tone: "danger", text: en.search.keysUnavailable }, { tone: "danger", text: en.search.docsUnavailable },
     ]);
   });
 
   it("멤버십 unauthorized ↔ unavailable는 다른 문장이고 실패다", () => {
-    expect(searchStatuses({ ...ready, membership: "unauthorized" })).toEqual({ pending: false, failed: true, lines: [{ tone: "danger", text: m.search.sessionEnded }] });
-    expect(searchStatuses({ ...ready, membership: "unavailable" })).toEqual({ pending: false, failed: true, lines: [{ tone: "danger", text: m.search.projectsUnavailable }] });
+    expect(searchStatuses({ ...ready, membership: "unauthorized" })).toEqual({ pending: false, failed: true, lines: [{ tone: "danger", text: en.search.sessionEnded }] });
+    expect(searchStatuses({ ...ready, membership: "unavailable" })).toEqual({ pending: false, failed: true, lines: [{ tone: "danger", text: en.search.projectsUnavailable }] });
   });
 
   it("Keys unauthorized ↔ unavailable는 다른 문장이다 (멤버십 성공 + Keys만 unauthorized)", () => {
-    expect(searchStatuses({ ...ready, keys: "unauthorized" }).lines).toEqual([{ tone: "danger", text: m.search.sessionEnded }]);
-    expect(searchStatuses({ ...ready, keys: "unavailable" }).lines).toEqual([{ tone: "danger", text: m.search.keysUnavailable }]);
+    expect(searchStatuses({ ...ready, keys: "unauthorized" }).lines).toEqual([{ tone: "danger", text: en.search.sessionEnded }]);
+    expect(searchStatuses({ ...ready, keys: "unavailable" }).lines).toEqual([{ tone: "danger", text: en.search.keysUnavailable }]);
   });
 
   it("Keys·Docs 동시 실패 → danger 줄 둘, 실패라 NoMatch를 그리지 않는다", () => {
@@ -235,10 +235,10 @@ describe("searchStatuses", () => {
 
   // 순수 함수 계약 — 멤버십·Keys가 둘 다 세션 종료여도 문장은 한 번이다(줄 key 충돌도 막는다).
   it("세션 종료 줄은 한 번만 낸다", () => {
-    expect(searchStatuses({ membership: "unauthorized", docs: "ready", keys: "unauthorized" }).lines).toEqual([{ tone: "danger", text: m.search.sessionEnded }]);
+    expect(searchStatuses({ membership: "unauthorized", docs: "ready", keys: "unauthorized" }).lines).toEqual([{ tone: "danger", text: en.search.sessionEnded }]);
   });
 
   it("세션 종료 문장은 기존 형을 따른다", () => {
-    expect(m.search.sessionEnded).toMatch(/^Your session ended\. Sign in again to /);
+    expect(en.search.sessionEnded).toMatch(/^Your session ended\. Sign in again to /);
   });
 });

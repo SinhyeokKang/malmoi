@@ -8,7 +8,7 @@ import { parseLogFilter } from "@/lib/events/filter";
 import { EventDetail } from "@/components/logs/event-detail";
 import { EventRow } from "@/components/logs/event-row";
 import type { EventRow as Row } from "@/lib/events/query";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { render } from "./helpers/dom";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }) }));
@@ -34,15 +34,15 @@ describe("활동 행과 상세의 실제 동작", () => {
   it.each([["https://github.com/o/r/pull/4", true], [null, false]] as const)("스킵 실행의 prUrl(%s)은 닫은 PR로 선다", async (url, shown) => {
     const { container } = await detail(row({ kind: "PUBLISH", subtype: "publish.run", result: "nothingToSend",
       payload: { kind: "PUBLISH", surfaceSlugs: ["web"], refusal: null }, run: { changed: 0, changedValues: 0, warnings: 0, withheld: 0, prUrl: url, errorCode: null } }));
-    expect(container.textContent?.includes(m.logs.detail.labels.closedPullRequest)).toBe(shown);
-    expect(container.textContent?.includes(m.logs.detail.closedPullRequest)).toBe(shown);
+    expect(container.textContent?.includes(en.logs.detail.labels.closedPullRequest)).toBe(shown);
+    expect(container.textContent?.includes(en.logs.detail.closedPullRequest)).toBe(shown);
   });
 
   /** delivery-invariants D7 — Logs 상세가 모달과 같은 수를 한 줄로 말한다. 짝: 보류 0이면 줄이 없다. */
   it.each([[2, true], [0, false]] as const)("Publish 상세는 보류 %i건을 한 줄로 말한다(%s)", async (n, shown) => {
     const { container } = await detail(row({ kind: "PUBLISH", subtype: "publish.run", result: n > 0 ? "notSent" : "nothingToSend",
       payload: { kind: "PUBLISH", surfaceSlugs: ["web"], refusal: null }, run: { changed: 0, changedValues: 0, warnings: 0, withheld: n, prUrl: null, errorCode: null } }));
-    expect(container.textContent?.includes(m.logs.detail.withheld(2))).toBe(shown);
+    expect(container.textContent?.includes(en.logs.detail.withheld(2))).toBe(shown);
   });
 
   it("수동 적재 성공은 보호 보류라고 말하지 않고 소스별 결과를 보인다", async () => {
@@ -59,7 +59,7 @@ describe("활동 행과 상세의 실제 동작", () => {
     if (value.payload?.kind !== "IMPORT") throw new Error("fixture");
     value.payload.pendingEdits = 2;
     const { container } = await detail(value);
-    expect(container.textContent).toContain(m.repositorySync.kept(2));
+    expect(container.textContent).toContain(en.repositorySync.kept(2));
     expect(container.textContent).not.toContain("Nothing was imported");
   });
 
@@ -68,7 +68,7 @@ describe("활동 행과 상세의 실제 동작", () => {
     if (value.payload?.kind !== "IMPORT") throw new Error("fixture");
     value.payload.errorCode = "parse-failed";
     const { container } = await detail(value);
-    expect(container.textContent).toContain(m.projects.importFailure.parseFailed);
+    expect(container.textContent).toContain(en.projects.importFailure.parseFailed);
   });
 
   /**
@@ -97,19 +97,19 @@ describe("활동 행과 상세의 실제 동작", () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
     const { container } = await detail(row());
-    const button = [...container.querySelectorAll("button")].find(button => button.textContent === m.logs.detail.actions.copy);
+    const button = [...container.querySelectorAll("button")].find(button => button.textContent === en.logs.detail.actions.copy);
     expect(button).toBeDefined();
     await act(async () => button!.click());
     expect(writeText).toHaveBeenCalledWith("evt_test");
-    expect(container.textContent).toContain(m.common.copied);
+    expect(container.textContent).toContain(en.common.copied);
   });
 
   it("Home과 상세에도 Publish의 dropped 경고가 보인다", async () => {
     const value = row({ kind: "PUBLISH", subtype: "publish.run", result: "sent", payload: { kind: "PUBLISH", surfaceSlugs: ["web"], refusal: null },
       run: { changed: 1, changedValues: 1, warnings: 2, withheld: 0, prUrl: null, errorCode: null } });
     const { container } = await render(<EventRow row={value} href="/logs" now={now} archived={false} showTime={false} />);
-    expect(container.textContent).toContain(m.logs.warnings(2));
-    expect((await detail(value)).container.textContent).toContain(m.logs.warnings(2));
+    expect(container.textContent).toContain(en.logs.warnings(2));
+    expect((await detail(value)).container.textContent).toContain(en.logs.warnings(2));
   });
 });
 
@@ -137,7 +137,7 @@ it("검색 URL이 바뀌면 입력값도 따라간다", async () => {
 });
 
 it("보관된 Publish의 행과 상세 모두 야간 재시도를 약속하지 않는다", async () => {
-  const code = Object.entries(m.logs.reasons).find(([, value]) => value.includes("nightly"))?.[0];
+  const code = Object.entries(en.logs.reasons).find(([, value]) => value.includes("nightly"))?.[0];
   expect(code).toBeDefined();
   const value = row({ kind: "PUBLISH", subtype: "publish.run", result: "failed",
     run: { changed: null, changedValues: null, warnings: 0, withheld: 0, prUrl: null, errorCode: code! },
@@ -173,7 +173,7 @@ describe("상세 껍데기 — 실측이 잡은 자리", () => {
     const { container } = await detail(value);
     const footer = container.querySelector("[data-event-detail-footer]");
     expect(footer).not.toBeNull();
-    expect(footer!.textContent).toContain(m.logs.detail.actions.close);
+    expect(footer!.textContent).toContain(en.logs.detail.actions.close);
   });
 
   /**
@@ -192,7 +192,7 @@ describe("상세 껍데기 — 실측이 잡은 자리", () => {
     const { container } = await detail(row());
     const head = [...container.querySelectorAll("[data-event-detail-body] table th")];
     expect(head.map(th => th.getAttribute("scope"))).toEqual(head.map(() => "row"));
-    expect(head[0]?.textContent).toBe(m.logs.detail.labels.reference);
+    expect(head[0]?.textContent).toBe(en.logs.detail.labels.reference);
   });
 
   /**
@@ -215,7 +215,7 @@ describe("상세 머리·바닥 — 행과 한 문법 (4-Y21 · 3-Y6)", () => {
     const kind = rowView.querySelector("[data-event-meta] .rounded-full")?.textContent;
     const { container } = await detail(value);
     const badges = [...container.querySelectorAll("[data-event-detail-kind] .rounded-full")].map((node) => node.textContent);
-    expect(badges).toEqual([kind, m.logs.status.imported]);
+    expect(badges).toEqual([kind, en.logs.status.imported]);
     // 옛 muted 글자 `Sync run`은 걷혔다 — 같은 종류가 두 낱말이었다.
     expect(container.querySelector("[data-event-detail-kind]")?.className).not.toContain("text-muted-foreground");
   });
@@ -258,15 +258,15 @@ describe("상세 — Result per source", () => {
       { surfaceSlug: "old", status: "superseded", count: null, reason: null },
     ];
     const { container } = await detail(value);
-    const head = [...container.querySelectorAll("[data-event-detail-kind] .rounded-full")].find((b) => b.textContent === m.logs.status.imported)!;
+    const head = [...container.querySelectorAll("[data-event-detail-kind] .rounded-full")].find((b) => b.textContent === en.logs.status.imported)!;
     const perSource = (word: string) => [...container.querySelectorAll(".rounded-full")].filter((b) => b.textContent === word && !b.closest("[data-event-detail-kind]"));
-    const synced = perSource(m.logs.status.imported);
+    const synced = perSource(en.logs.status.imported);
     expect(synced).toHaveLength(1);
     expect(synced[0]!.className).toBe(head.className);
     expect(synced[0]!.className).not.toMatch(/green/);
-    expect(perSource(m.logs.status.partial)[0]!.className).toMatch(/amber/);
-    expect(perSource(m.logs.status.failed)[0]!.className).toContain("text-destructive");
-    expect(perSource(m.logs.status.superseded)[0]!.className).toContain("bg-foreground/5");
+    expect(perSource(en.logs.status.partial)[0]!.className).toMatch(/amber/);
+    expect(perSource(en.logs.status.failed)[0]!.className).toContain("text-destructive");
+    expect(perSource(en.logs.status.superseded)[0]!.className).toContain("bg-foreground/5");
   });
 });
 
@@ -301,8 +301,8 @@ it.each([
 });
 
 it.each([
-  [row({ result: "running" }), m.logs.detail.noResult, null],
-  [row({ kind: "SETTINGS", result: null, subtype: "settings.pushTokenRotated", payload: null }), m.logs.meta.tokenEffect, m.logs.detail.notes.token],
+  [row({ result: "running" }), en.logs.detail.noResult, null],
+  [row({ kind: "SETTINGS", result: null, subtype: "settings.pushTokenRotated", payload: null }), en.logs.meta.tokenEffect, en.logs.detail.notes.token],
 ] as const)("정보 Note는 기존 문구와 비live 슬롯을 유지한다", async (value, body, note) => {
   const { container } = await detail(value);
   const wrapper = container.querySelector("[data-event-note]")!;

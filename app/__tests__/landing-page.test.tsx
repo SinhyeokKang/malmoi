@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "@/components/__tests__/helpers/dom";
 import { GithubIcon } from "@/components/signin/brand-icons";
 import type { SessionRead } from "@/lib/auth/read-session";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { GITHUB_REPO_URL } from "@/lib/links";
 import { routes } from "@/lib/routes";
 import { navFooterItems } from "@/lib/shell/nav";
@@ -51,7 +51,7 @@ describe.each(["none", "unavailable"] as const)("`/` — `%s`는 랜딩이다", 
     expect(container.querySelectorAll("main")).toHaveLength(1);
 
     const h1 = container.querySelector("h1");
-    expect(h1?.textContent).toBe(m.landing.hero.title.join(""));
+    expect(h1?.textContent).toBe(en.landing.hero.title.join(""));
     expect(container.querySelectorAll("h1 br")).toHaveLength(1);
     expect(container.querySelector("[aria-label='How Malmoi works']")).not.toBeNull();
 
@@ -67,13 +67,13 @@ describe.each(["none", "unavailable"] as const)("`/` — `%s`는 랜딩이다", 
     }
 
     const closing = container.querySelector("h2");
-    expect(closing?.textContent).toBe(m.landing.closing.title);
+    expect(closing?.textContent).toBe(en.landing.closing.title);
 
-    const starts = [...container.querySelectorAll("main a")].filter((a) => a.textContent === m.landing.shell.getStarted);
+    const starts = [...container.querySelectorAll("main a")].filter((a) => a.textContent === en.landing.shell.getStarted);
     // 히어로 · 마무리 CTA — 헤더의 것은 `<main>` 밖이다.
     expect(starts).toHaveLength(2);
     for (const a of starts) expect(a.getAttribute("href")).toBe(routes.signIn());
-    const docs = [...container.querySelectorAll("main a")].filter((a) => a.textContent === m.landing.shell.docs);
+    const docs = [...container.querySelectorAll("main a")].filter((a) => a.textContent === en.landing.shell.docs);
     expect(docs.map((a) => a.getAttribute("href"))).toEqual([routes.docs()]);
   });
 
@@ -87,8 +87,8 @@ describe.each(["none", "unavailable"] as const)("`/` — `%s`는 랜딩이다", 
     expect(closing?.className).toMatch(/(^|\s)py-60(\s|$)/);
     const links = [...(closing?.querySelectorAll("a") ?? [])];
     expect(links.map((a) => [a.textContent, a.getAttribute("href")])).toEqual([
-      [m.landing.shell.github, GITHUB_REPO_URL],
-      [m.landing.shell.getStarted, routes.signIn()],
+      [en.landing.shell.github, GITHUB_REPO_URL],
+      [en.landing.shell.getStarted, routes.signIn()],
     ]);
     const [github, start] = links;
     expect([github?.getAttribute("target"), github?.getAttribute("rel")]).toEqual(["_blank", "noreferrer noopener"]);
@@ -157,7 +157,7 @@ describe.each(["none", "unavailable"] as const)("`/` — `%s`는 랜딩이다", 
   it("목업 프레임은 `aria-hidden`이고 캡션 다섯은 숨은 `<ol>`이 든다", async () => {
     const { container } = await render(await page(status));
     expect(container.querySelector("[data-landing-frame]")?.getAttribute("aria-hidden")).toBe("true");
-    expect([...container.querySelectorAll("ol li")].map((li) => li.textContent)).toEqual([...m.landing.stage.captions]);
+    expect([...container.querySelectorAll("ol li")].map((li) => li.textContent)).toEqual([...en.landing.stage.captions]);
   });
 });
 

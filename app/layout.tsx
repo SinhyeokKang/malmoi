@@ -6,7 +6,7 @@ import { Toaster } from "sonner";
 import { SiteAnalytics } from "@/components/analytics";
 import { MessagesProvider } from "@/components/i18n/messages-provider";
 import { NavigationDim } from "@/components/shell/navigation-dim";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { getUiLocale } from "@/lib/i18n/server";
 import { OG_IMAGE, SITE_ORIGIN } from "@/lib/seo/site";
 
@@ -31,9 +31,9 @@ const geist = localFont({
  */
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_ORIGIN),
-  title: { default: m.common.appName, template: `%s · ${m.common.appName}` },
-  description: m.landing.hero.body,
-  openGraph: { siteName: m.common.appName, type: "website", images: [OG_IMAGE] },
+  title: { default: en.common.appName, template: `%s · ${en.common.appName}` },
+  description: en.landing.hero.body,
+  openGraph: { siteName: en.common.appName, type: "website", images: [OG_IMAGE] },
   twitter: { card: "summary_large_image", images: [OG_IMAGE.url] },
 };
 

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { ReleaseEntry } from "@/components/changelog/release-entry";
 import { SECTION_HEADING, SUB_HEADING } from "@/components/docs/classes";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { releaseTagUrl } from "@/lib/links";
 
 import { render } from "./helpers/dom";

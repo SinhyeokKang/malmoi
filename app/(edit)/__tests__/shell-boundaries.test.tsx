@@ -2,7 +2,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it } from "vitest";
 
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import ShellError from "../error";
 import LogsError from "../projects/[slug]/logs/error";
@@ -23,11 +23,11 @@ const shape = (html: string) => {
 };
 
 it.each([
-  ["프로젝트 not-found", () => <ProjectNotFound />, m.notFound.title, 0],
-  ["표면 not-found", () => <SurfaceNotFound />, m.surfaces.missingTitle, 0],
-  ["셸 오류 경계", () => <ShellError error={new Error("x")} retry={() => {}} />, m.crash.title, 1],
+  ["프로젝트 not-found", () => <ProjectNotFound />, en.notFound.title, 0],
+  ["표면 not-found", () => <SurfaceNotFound />, en.surfaces.missingTitle, 0],
+  ["셸 오류 경계", () => <ShellError error={new Error("x")} retry={() => {}} />, en.crash.title, 1],
   // Logs 경계는 `[slug]/layout`의 `ContentPanel` 안이다 — 자기 `<main>`이 없다.
-  ["Logs 오류 경계", () => <LogsError error={new Error("x")} retry={() => {}} />, m.logs.queryError.title, 0],
+  ["Logs 오류 경계", () => <LogsError error={new Error("x")} retry={() => {}} />, en.logs.queryError.title, 0],
 ] as const)("%s — PanelBody 안에서 세로 중앙이다", (_, view, title, mains) => {
   const html = renderToStaticMarkup(view());
   // 이스케이프된 HTML(`&#x27;`)이 아니라 파싱한 글자로 대조한다.

@@ -3,7 +3,7 @@ import { expect, it, vi } from "vitest";
 
 import { FilesStep, type FilesStepState } from "@/components/onboarding/steps/files";
 import type { CandidateSummary } from "@/lib/onboarding/detect";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { render } from "./helpers/dom";
 
@@ -38,7 +38,7 @@ const state: FilesStepState = {
 };
 
 const noop = vi.fn();
-const count = m.newProject.files.summaryShort(3, m.newProject.files.keys(903));
+const count = en.newProject.files.summaryShort(3, en.newProject.files.keys(903));
 
 function truncated(list: Element, text: string): HTMLElement | undefined {
   return [...list.querySelectorAll<HTMLElement>(".truncate")].find((node) => node.textContent === text);
@@ -51,7 +51,7 @@ it.each([
   const { container } = await render(
     <FilesStep state={state} selection={selection} onPick={noop} onLocale={noop} onManual={noop} onRetry={noop} />,
   );
-  const list = container.querySelector(`ul[aria-label="${m.newProject.files.candidates}"]`);
+  const list = container.querySelector(`ul[aria-label="${en.newProject.files.candidates}"]`);
   if (!list) throw new Error("Missing candidate list");
   expect(truncated(list, candidate.pathTemplate)?.getAttribute("title")).toBe(candidate.pathTemplate);
   expect(truncated(list, count)?.getAttribute("title")).toBe(count);

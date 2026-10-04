@@ -1,7 +1,6 @@
 import "server-only";
 import { z } from "zod";
 
-import { m } from "@/lib/i18n";
 import { listLinkedBranches, listNewRepoBranches } from "@/lib/onboarding-run/branches";
 import { detectFormats, detectProjectFormats, DetectInput } from "@/lib/onboarding-run/detect";
 import { listRepositories } from "@/lib/onboarding-run/repos";
@@ -37,7 +36,7 @@ export const listRepositoriesTool = defineTool({
     if (gate.status !== "ok") return gate;
     const result = await listRepositories(prisma, coreSubject(subject));
     if (!result.ok) return refusedOrBrowser(ctx, result.error);
-    return ok({ repositories: result.repos, installRequestPending: result.pending }, m.mcp.summary.repositories(result.repos.length));
+    return ok({ repositories: result.repos, installRequestPending: result.pending }, en.mcp.summary.repositories(result.repos.length));
   },
 });
 
@@ -77,7 +76,7 @@ export const listBranches = defineTool({
     if (!result.ok) return refusedOrBrowser(ctx, result.error);
     // sync 브랜치는 기준 브랜치가 될 수 없다(malmoi#126) — 설정 화면의 목록과 같은 필터다.
     const names = result.names.filter(name => !isSyncBranchName(name));
-    return ok({ branches: names, defaultBranch: result.defaultBranch, truncated: result.truncated }, m.mcp.summary.branches(names.length));
+    return ok({ branches: names, defaultBranch: result.defaultBranch, truncated: result.truncated }, en.mcp.summary.branches(names.length));
   },
 });
 
@@ -108,6 +107,6 @@ export const detectFormatsTool = defineTool({
     }
     // 후보는 화면 문구를 싣지 않는다(ui-locales B1′) — 도구 응답의 계약인 영어 형식 이름을 여기서 붙인다(어댑터 이름은 화면 어휘가 아니다).
     const candidates = result.candidates.map(({ adapter, ...rest }) => ({ adapter, label: en.newProject.formats[adapter].label, ...rest }));
-    return ok({ candidates }, m.mcp.summary.formats(candidates.length));
+    return ok({ candidates }, en.mcp.summary.formats(candidates.length));
   },
 });

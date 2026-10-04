@@ -22,7 +22,7 @@ import { hashPushToken } from "@/lib/push/token";
 
 import { loadEvents } from "@/lib/events/query";
 import { changedValuesText } from "@/lib/events/view";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { parseLogFilter } from "@/lib/events/filter";
 import { runSync } from "@/lib/sync/run";
 import { planWithheldLines } from "@/lib/publish/plan";
@@ -365,7 +365,7 @@ describe("#3 · D3 — 보류 셀이 있는 Publish 뒤에도 OWNER Revert가 �
     expect(row?.run?.withheld).toBe(1);
     expect(row?.run?.changedValues).toBe(2);
     // 상세가 그 칸을 그리는 함수로 — 조회 값이 화면 문구까지 같은 수로 간다.
-    expect(changedValuesText(row?.result ?? null, row?.run?.changedValues ?? null)).toBe(m.logs.meta.values(2));
+    expect(changedValuesText(row?.result ?? null, row?.run?.changedValues ?? null)).toBe(en.logs.meta.values(2));
     expect(planWithheldLines(outcome, "OWNER")).toHaveLength(1);
   });
 

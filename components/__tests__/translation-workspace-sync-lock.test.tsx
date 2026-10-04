@@ -25,7 +25,7 @@ vi.mock("@/app/(edit)/publish-actions", () => ({ loadPublishPreview: vi.fn() }))
 vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: vi.fn(), checkOpenPullRequest: vi.fn().mockResolvedValue(null), prepareRepositorySync: vi.fn().mockResolvedValue(undefined) }));
 
 import { TranslationWorkspace } from "@/components/translations/workspace/workspace";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { props } from "./helpers/workspace-props";
 
@@ -64,12 +64,12 @@ it("저장이 sync-running이면 Syncing… Dialog가 다시 열리는 시각을
   await user.type(area(container, "zh"), "空");
   await user.click(button("Save"));
   await vi.waitFor(() => expect(dialog()).not.toBeNull());
-  expect(dialog()?.textContent).toContain(m.translations.workspace.syncLock.title);
+  expect(dialog()?.textContent).toContain(en.translations.workspace.syncLock.title);
   const time = dialog()?.querySelector("time");
   expect(time?.getAttribute("dateTime")).toBe(reopensBy.toISOString());
   expect(time?.textContent).toBe("Oct 1, 2026 16:36 UTC");
   expect(dialog()?.textContent).toContain("You can't save edits until the sync finishes");
-  expect(document.body.textContent).not.toContain(m.translations.workspace.footer.saveFailed.title);
+  expect(document.body.textContent).not.toContain(en.translations.workspace.footer.saveFailed.title);
   expect(area(container, "zh").value).toBe("空");
 
   await user.click(button("OK"));
@@ -81,7 +81,7 @@ it("저장이 sync-running이면 Syncing… Dialog가 다시 열리는 시각을
   mocks.save.mockResolvedValueOnce({ ok: true, keyId: "k1", cells: [{ localeCode: "zh", value: "空" }] });
   await user.click(button("Save"));
   expect(mocks.save).toHaveBeenLastCalledWith(expect.objectContaining({ changes: [{ localeCode: "zh", value: "空" }] }));
-  await vi.waitFor(() => expect(document.body.textContent).toContain(m.translations.workspace.footer.saved));
+  await vi.waitFor(() => expect(document.body.textContent).toContain(en.translations.workspace.footer.saved));
 });
 
 it("단축키로 저장했다 거부되면 닫힌 뒤 포커스가 그 입력으로 돌아간다", async () => {
@@ -99,15 +99,15 @@ it("Revert 미리보기가 sync-running이면 같은 Dialog이고 unavailable �
   mocks.preview.mockResolvedValueOnce({ status: "blocked", reason: "sync-running", startedAt, reopensBy });
   const user = userEvent.setup();
   await render(<TranslationWorkspace {...props()} />);
-  await user.click(button(m.translations.workspace.revert.button));
-  await vi.waitFor(() => expect(dialog()?.textContent).toContain(m.translations.workspace.syncLock.title));
+  await user.click(button(en.translations.workspace.revert.button));
+  await vi.waitFor(() => expect(dialog()?.textContent).toContain(en.translations.workspace.syncLock.title));
   expect(dialog()?.querySelector("time")?.getAttribute("dateTime")).toBe(reopensBy.toISOString());
   await user.click(button("OK"));
-  expect(document.body.textContent).not.toContain(m.translations.workspace.revert.unavailable);
+  expect(document.body.textContent).not.toContain(en.translations.workspace.revert.unavailable);
   // 닫히면 연 자리 — Revert 버튼이다.
-  await vi.waitFor(() => expect(document.activeElement).toBe(button(m.translations.workspace.revert.button)));
+  await vi.waitFor(() => expect(document.activeElement).toBe(button(en.translations.workspace.revert.button)));
   // 거부는 그 순간의 사실이다 — Revert를 사유로 잠그지 않는다(lease가 끝나면 바로 다시 된다).
-  expect(button(m.translations.workspace.revert.button).getAttribute("aria-disabled")).not.toBe("true");
+  expect(button(en.translations.workspace.revert.button).getAttribute("aria-disabled")).not.toBe("true");
 });
 
 it("Revert 확정이 sync-running이면 같은 Dialog다 (R4)", async () => {
@@ -115,15 +115,15 @@ it("Revert 확정이 sync-running이면 같은 Dialog다 (R4)", async () => {
   mocks.revert.mockResolvedValueOnce({ status: "blocked", reason: "sync-running", startedAt, reopensBy });
   const user = userEvent.setup();
   await render(<TranslationWorkspace {...props()} />);
-  await user.click(button(m.translations.workspace.revert.button));
-  await vi.waitFor(() => expect(dialog()?.textContent).toContain(m.translations.workspace.revert.title));
-  await user.click(button(m.translations.workspace.revert.confirm));
-  await vi.waitFor(() => expect(dialog()?.textContent).toContain(m.translations.workspace.syncLock.title));
-  expect(document.body.textContent).not.toContain(m.translations.workspace.revert.failed.title);
+  await user.click(button(en.translations.workspace.revert.button));
+  await vi.waitFor(() => expect(dialog()?.textContent).toContain(en.translations.workspace.revert.title));
+  await user.click(button(en.translations.workspace.revert.confirm));
+  await vi.waitFor(() => expect(dialog()?.textContent).toContain(en.translations.workspace.syncLock.title));
+  expect(document.body.textContent).not.toContain(en.translations.workspace.revert.failed.title);
   await user.click(button("OK"));
-  expect(document.body.textContent).not.toContain(m.translations.workspace.revert.unavailable);
+  expect(document.body.textContent).not.toContain(en.translations.workspace.revert.unavailable);
   // 확정 경로는 기록 순서가 다르다(Revert Dialog 닫힘 → busy → 이 Dialog) — 그래도 Revert 버튼으로 간다.
-  await vi.waitFor(() => expect(document.activeElement).toBe(button(m.translations.workspace.revert.button)));
+  await vi.waitFor(() => expect(document.activeElement).toBe(button(en.translations.workspace.revert.button)));
 });
 
 /**
@@ -157,7 +157,7 @@ it("착지 때 lease가 살아 있으면 배너가 서고 Save는 켜진 채이�
   expect(save.getAttribute("aria-disabled")).not.toBe("true");
   const sync = button("Sync");
   expect(sync.getAttribute("aria-disabled")).toBe("true");
-  expect(document.getElementById(sync.getAttribute("aria-describedby") ?? "")?.textContent).toBe(m.repositorySync.running);
+  expect(document.getElementById(sync.getAttribute("aria-describedby") ?? "")?.textContent).toBe(en.repositorySync.running);
 });
 
 it("lease가 없으면 배너도 Dialog도 없다 — 짝 단언", async () => {

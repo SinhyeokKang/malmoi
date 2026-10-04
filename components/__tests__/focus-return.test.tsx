@@ -45,7 +45,7 @@ import { GeneralCard } from "@/components/settings/general-card";
 import { PushTokenPanel } from "@/components/settings/push-token-panel";
 import { RepositoryForm } from "@/components/settings/repository-form";
 import type { MemberView, PendingInvitation } from "@/lib/auth/query";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { input } from "./helpers/dom";
 
@@ -89,16 +89,16 @@ describe("폼 [Save] — 끝난 뒤 착지 (#32)", () => {
     const { container } = await render(<GeneralCard slug="acme" name="Acme" image={null} archived={false} />);
     const name = container.querySelector<HTMLInputElement>("#project-name")!;
     await input(name, "Renamed");
-    await click(byText(m.settings.repository.fields.save));
+    await click(byText(en.settings.repository.fields.save));
     await ok.resolve({ ok: true, name: "Renamed" });
     expect(document.activeElement).toBe(name);
 
     const failed = deferred<{ ok: false; error: string }>();
     mocks.updateProjectName.mockReturnValueOnce(failed.promise);
     await input(name, "Again");
-    await click(byText(m.settings.repository.fields.save));
+    await click(byText(en.settings.repository.fields.save));
     await failed.resolve({ ok: false, error: "unavailable" });
-    expect(document.activeElement).toBe(byText(m.settings.repository.fields.save));
+    expect(document.activeElement).toBe(byText(en.settings.repository.fields.save));
   });
 
   it("Base branch 저장이 성공하면 브랜치 필드로 돌아온다", async () => {
@@ -108,7 +108,7 @@ describe("폼 [Save] — 끝난 뒤 착지 (#32)", () => {
     const { container } = await render(<RepositoryForm owner="acme" repo="web" slug="acme" baseBranch="main" />);
     await click(container.querySelector<HTMLElement>('[role="combobox"]')!);
     await click([...document.querySelectorAll<HTMLElement>('[role="option"]')].find(n => n.textContent === "dev")!);
-    await click(byText(m.settings.repository.fields.save));
+    await click(byText(en.settings.repository.fields.save));
     await ok.resolve({ ok: true });
     expect(document.activeElement?.id).toBe("base-branch");
   });
@@ -119,13 +119,13 @@ describe("Dialog 트리거 — 진행 중에도 포커스를 지킨다 (#32·#32
     const response = deferred<{ ok: true; pushToken: string }>();
     mocks.rotatePushToken.mockReturnValue(response.promise);
     await render(<PushTokenPanel slug="acme" />);
-    await click(byText(m.settings.token.rotate));
-    await click(byText(m.settings.token.confirmAction));
-    const trigger = byText(m.settings.token.rotate);
+    await click(byText(en.settings.token.rotate));
+    await click(byText(en.settings.token.confirmAction));
+    const trigger = byText(en.settings.token.rotate);
     expect(document.activeElement).toBe(trigger);
     expect(trigger.getAttribute("aria-disabled")).toBe("true");
     await response.resolve({ ok: true, pushToken: "tok" });
-    expect(document.activeElement).toBe(byText(m.settings.token.rotate));
+    expect(document.activeElement).toBe(byText(en.settings.token.rotate));
   });
 
   /**
@@ -137,9 +137,9 @@ describe("Dialog 트리거 — 진행 중에도 포커스를 지킨다 (#32·#32
     const response = deferred<void>();
     mocks.startSessionRevocation.mockReturnValue(response.promise);
     await render(<SessionsSection outcome={undefined} signOut={() => {}} confirmProvider="GitHub" />);
-    await click(byText(m.account.sessions.title));
-    await click(byText(m.account.sessions.confirmAction("GitHub")));
-    const trigger = byText(m.account.sessions.title);
+    await click(byText(en.account.sessions.title));
+    await click(byText(en.account.sessions.confirmAction("GitHub")));
+    const trigger = byText(en.account.sessions.title);
     expect(document.querySelector('[role="dialog"]')).toBeNull();
     expect(document.activeElement).toBe(trigger);
     expect(trigger.getAttribute("aria-disabled")).toBe("true");
@@ -148,20 +148,20 @@ describe("Dialog 트리거 — 진행 중에도 포커스를 지킨다 (#32·#32
     expect(mocks.startSessionRevocation).toHaveBeenCalledTimes(1);
     // 돌아왔다는 것 자체가 실패다(성공은 provider로 redirect) — 사유가 Dialog 밖 구역에 서고 트리거가 다시 켜진다.
     await response.resolve();
-    expect(document.querySelector('[role="alert"]')?.textContent).toContain(m.account.sessions.failed);
-    expect(byText(m.account.sessions.title).getAttribute("aria-disabled")).toBeNull();
-    expect(document.activeElement).toBe(byText(m.account.sessions.title));
+    expect(document.querySelector('[role="alert"]')?.textContent).toContain(en.account.sessions.failed);
+    expect(byText(en.account.sessions.title).getAttribute("aria-disabled")).toBeNull();
+    expect(document.activeElement).toBe(byText(en.account.sessions.title));
   });
 
   it("보관이 성공해 카드가 [Restore project]로 바뀌면 그 버튼으로 착지한다", async () => {
     const response = deferred<{ ok: true }>();
     mocks.archiveProject.mockReturnValue(response.promise);
     const view = await render(<ArchiveCard slug="acme" name="Acme" archived={false} openPrUrl={Promise.resolve(null)} />);
-    await click(byText(m.archive.action));
-    await click(byText(m.archive.action));
+    await click(byText(en.archive.action));
+    await click(byText(en.archive.action));
     // 서버 revalidate가 같은 커밋에 보관 상태를 싣는다.
     await act(async () => { response.resolve({ ok: true }); await view.rerender(<ArchiveCard slug="acme" name="Acme" archived />); });
-    expect(document.activeElement).toBe(byText(m.archive.restore));
+    expect(document.activeElement).toBe(byText(en.archive.restore));
   });
 
   it("초대 철회를 기다리는 동안 포커스가 그 행의 Revoke에 있다", async () => {
@@ -169,9 +169,9 @@ describe("Dialog 트리거 — 진행 중에도 포커스를 지킨다 (#32·#32
     const response = deferred<{ ok: false; error: string }>();
     mocks.revokeInvitation.mockReturnValue(response.promise);
     await render(<PendingInvitations slug="acme" invitations={[invite]} role="OWNER" now={new Date("2026-09-17T00:00:00Z")} headingId="pending-heading" />);
-    await click(byLabel(m.members.pending.revokeLabel("t***@example.com")));
-    await click(byText(m.members.pending.confirmRevokeAction));
-    expect(document.activeElement).toBe(byLabel(m.members.pending.revokeLabel("t***@example.com")));
+    await click(byLabel(en.members.pending.revokeLabel("t***@example.com")));
+    await click(byText(en.members.pending.confirmRevokeAction));
+    expect(document.activeElement).toBe(byLabel(en.members.pending.revokeLabel("t***@example.com")));
     await response.resolve({ ok: false, error: "unavailable" });
   });
 
@@ -186,8 +186,8 @@ describe("Dialog 트리거 — 진행 중에도 포커스를 지킨다 (#32·#32
     await render(<MemberList slug="acme" members={members} role="OWNER" viewerId="u1" now={now} headingId="members-heading" />);
     const select = document.getElementById("role-u2")!;
     await click(select);
-    await click([...document.querySelectorAll<HTMLElement>('[role="option"]')].find(n => n.textContent === m.projects.role.OWNER)!);
-    await click(byText(m.members.confirmRoleAction));
+    await click([...document.querySelectorAll<HTMLElement>('[role="option"]')].find(n => n.textContent === en.projects.role.OWNER)!);
+    await click(byText(en.members.confirmRoleAction));
     expect(document.activeElement).toBe(document.getElementById("role-u2"));
     await response.resolve({ ok: true });
     expect(document.activeElement).toBe(document.getElementById("role-u2"));
@@ -200,25 +200,25 @@ describe("해제 뒤 행이 바뀌면 그 행의 새 컨트롤로 (#32)", () => 
     mocks.unlinkLoginMethod.mockReturnValue(response.promise);
     const both = [{ provider: "github" as const, connected: true }, { provider: "google" as const, connected: true }];
     const view = await render(<LoginMethods rows={both} />);
-    await click(byLabel(m.link.methods.disconnectLabel("Google")));
-    await click(byText(m.link.methods.disconnectConfirm));
+    await click(byLabel(en.link.methods.disconnectLabel("Google")));
+    await click(byText(en.link.methods.disconnectConfirm));
     // `redirect`가 싣는 새 행은 transition이 끝나는 커밋에 함께 온다 — 행이 먼저 바뀌고 pending이 그 뒤에 풀린다.
     await view.rerender(<LoginMethods rows={[both[0]!, { provider: "google", connected: false }]} />);
     await response.resolve();
-    expect(document.activeElement).toBe(byLabel(m.link.methods.connectLabel("Google")));
+    expect(document.activeElement).toBe(byLabel(en.link.methods.connectLabel("Google")));
   });
 
   it("GitHub 연결을 해제하면 같은 행의 연결 버튼으로 착지한다", async () => {
     const response = deferred<{ ok: true }>();
     mocks.disconnectGithub.mockReturnValue(response.promise);
     const view = await render(<GithubSection account={{ status: "ok", login: "octo" }} installedRepoCount={1} settingsUrl={null} />);
-    await click(byLabel(m.settings.account.disconnectLabel));
-    await click(byText(m.settings.account.disconnectConfirm));
+    await click(byLabel(en.settings.account.disconnectLabel));
+    await click(byText(en.settings.account.disconnectConfirm));
     await act(async () => {
       response.resolve({ ok: true });
       await view.rerender(<GithubSection account={{ status: "ok", login: null }} installedRepoCount={null} settingsUrl={null} />);
     });
-    expect(document.activeElement?.textContent).toBe(m.settings.account.connect);
+    expect(document.activeElement?.textContent).toBe(en.settings.account.connect);
   });
 });
 
@@ -236,6 +236,6 @@ it("actual GitHub unavailable omits actions box; connected retains contents ref 
   expect(controls?.querySelector("a")?.getAttribute("href")).toBe("https://github.com/settings/installations");
   expect(row().textContent).toContain("Installed on 2 repositories.");
   await view.rerender(<GithubSection account={{status: "ok", login: null}} installedRepoCount={null} settingsUrl={null} />);
-  expect(document.activeElement?.textContent).toBe(m.settings.account.connect);
+  expect(document.activeElement?.textContent).toBe(en.settings.account.connect);
   expect(row().lastElementChild?.firstElementChild?.className).toBe("contents");
 });

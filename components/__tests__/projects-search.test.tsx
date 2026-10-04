@@ -26,7 +26,7 @@ vi.mock("next/link", () => ({
 }));
 
 import { ProjectList } from "@/components/projects/project-list";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import type { ProjectListRow } from "@/lib/keys/query";
 
 const BASE: ProjectListRow = {
@@ -68,7 +68,7 @@ beforeEach(() => {
 });
 
 const rows = (container: HTMLElement) => [...container.querySelectorAll('a[href^="/projects/"]:not([href^="/projects/new"])')].map((a) => a.getAttribute("href"));
-const search = (container: HTMLElement) => find<HTMLInputElement>(container, `input[aria-label="${m.projects.search.label}"]`);
+const search = (container: HTMLElement) => find<HTMLInputElement>(container, `input[aria-label="${en.projects.search.label}"]`);
 
 it("Enter가 곧바로 거르고 서버로 이동하지 않는다 — URL은 `replaceState`로만 따라간다", async () => {
   const { container } = await render(<ProjectList all={ALL} />);
@@ -79,7 +79,7 @@ it("Enter가 곧바로 거르고 서버로 이동하지 않는다 — URL은 `re
   await key(field, "Enter");
 
   expect(rows(container)).toEqual(["/projects/chrome-extension"]);
-  expect(container.textContent).toContain(m.projects.resultsFor("chrome"));
+  expect(container.textContent).toContain(en.projects.resultsFor("chrome"));
   expect(navigation.push).not.toHaveBeenCalled();
   expect(navigation.replace).not.toHaveBeenCalled();
   expect(replaceState).toHaveBeenCalledTimes(1);
@@ -115,7 +115,7 @@ it("뒤로·앞으로 가기로 주소의 `q`가 바뀌면 목록과 입력이 �
 it("[Clear search]도 로컬로 되돌린다 — 새 탭 열기용 href는 그대로 `/projects`다", async () => {
   navigation.params = new URLSearchParams("q=chrome");
   const { container } = await render(<ProjectList all={ALL} />);
-  const clear = [...container.querySelectorAll("a")].find((a) => a.textContent === m.projects.clearSearch);
+  const clear = [...container.querySelectorAll("a")].find((a) => a.textContent === en.projects.clearSearch);
   expect(clear?.getAttribute("href")).toBe("/projects");
   await act(async () => clear?.click());
 
@@ -130,7 +130,7 @@ it("0건 카드의 출구도 로컬이다", async () => {
   const field = search(container);
   await input(field, "zzz");
   await key(field, "Enter");
-  const reset = [...container.querySelectorAll("a")].find((a) => a.textContent === m.projects.narrowed.reset);
+  const reset = [...container.querySelectorAll("a")].find((a) => a.textContent === en.projects.narrowed.reset);
   await act(async () => reset?.click());
   expect(rows(container)).toHaveLength(3);
   expect(navigation.push).not.toHaveBeenCalled();
@@ -141,7 +141,7 @@ it("[New project]가 지금 걸러진 검색어를 싣는다 — 모달 뒤 목�
   const field = search(container);
   await input(field, "chrome");
   await key(field, "Enter");
-  const button = [...container.querySelectorAll("a")].find((a) => a.textContent === m.common.nav.newProject);
+  const button = [...container.querySelectorAll("a")].find((a) => a.textContent === en.common.nav.newProject);
   expect(button?.getAttribute("href")).toBe("/projects/new?q=chrome");
 });
 

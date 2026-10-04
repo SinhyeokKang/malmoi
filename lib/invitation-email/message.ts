@@ -1,5 +1,5 @@
 import type { Role } from "@/lib/auth/permission";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { routes } from "@/lib/routes";
 import { hueOf, type Hue } from "@/lib/hue";
 import { planProjectImageDelete } from "@/lib/upload/image";
@@ -80,7 +80,7 @@ export function buildInvitationEmail(input: {
     LOGO_URL: INVITATION_EMAIL_LOGO_URL,
     INVITE_URL: escapeHtml(url),
     PROJECT_NAME: escapeHtml(emailProjectName(input.project.name)),
-    ROLE: escapeHtml(m.projects.role[input.role]),
+    ROLE: escapeHtml(en.projects.role[input.role]),
     TILE: key === null ? INVITATION_EMAIL_TILE_FALLBACK : INVITATION_EMAIL_TILE_IMAGE,
     // 메일은 PNG 변환 경로다 (#140 — Gmail이 WebP 알파를 버리고 iOS에서 깨뜨렸다). 앱 화면은 `/api/images/` WebP 그대로다.
     TILE_SRC: key === null ? BOX_URL : escapeHtml(`${IMAGE_PROXY_ORIGIN}/api/images/email/${key}`),

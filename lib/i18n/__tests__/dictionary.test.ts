@@ -2,7 +2,8 @@ import { createElement, isValidElement, type ReactElement } from "react";
 
 import { describe, expect, it } from "vitest";
 
-import { m, pick } from "@/lib/i18n";
+import { pick } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 /**
  * 사전의 **함수 값**만 테스트한다 (CLAUDE.md 코드 컨벤션). 문자열 값은 `as const` 접근이 곧 타입 검사라
@@ -10,23 +11,23 @@ import { m, pick } from "@/lib/i18n";
  */
 describe("사전 — 카운터는 단수·복수를 가른다", () => {
   it("0·1·2", () => {
-    expect(m.translations.keys(0)).toBe("0 keys");
-    expect(m.translations.keys(1)).toBe("1 key");
-    expect(m.translations.keys(2)).toBe("2 keys");
+    expect(en.translations.keys(0)).toBe("0 keys");
+    expect(en.translations.keys(1)).toBe("1 key");
+    expect(en.translations.keys(2)).toBe("2 keys");
   });
 
   it("첫 적재 헤드라인은 실패 0건일 때만 성공 문장이다 — 버린 값을 숨기지 않는다 (ARCHITECTURE §0 불변식 9)", () => {
-    expect(m.newProject.imported(4, 0)).toBe("Synced 4 keys.");
-    expect(m.newProject.imported(1, 0)).toBe("Synced 1 key.");
-    expect(m.newProject.imported(903, 2)).toContain("2 couldn't be read");
+    expect(en.newProject.imported(4, 0)).toBe("Synced 4 keys.");
+    expect(en.newProject.imported(1, 0)).toBe("Synced 1 key.");
+    expect(en.newProject.imported(903, 2)).toContain("2 couldn't be read");
   });
 
   it("Publish 카운터는 경고 행을 세고 쿨다운은 서버 초를 표시한다", () => {
-    expect(m.translations.publish.warnings(3)).toBe("3 warnings \u00b7 values still saved in Malmoi");
-    expect(m.translations.publish.warnings(1)).toBe("1 warning \u00b7 values still saved in Malmoi");
+    expect(en.translations.publish.warnings(3)).toBe("3 warnings \u00b7 values still saved in Malmoi");
+    expect(en.translations.publish.warnings(1)).toBe("1 warning \u00b7 values still saved in Malmoi");
     // ⚠️ **초가 버튼 라벨이고 서버 값 그대로다** — 화면이 대기 간격 상수를 따로 들면 둘이 갈린다.
-    expect(m.translations.publish.wait(1)).toBe("Try again in 1s");
-    expect(m.translations.publish.wait(18)).toBe("Try again in 18s");
+    expect(en.translations.publish.wait(1)).toBe("Try again in 1s");
+    expect(en.translations.publish.wait(18)).toBe("Try again in 18s");
   });
 
   /**
@@ -34,22 +35,22 @@ describe("사전 — 카운터는 단수·복수를 가른다", () => {
    * "can be lost … automatically"는 절반이 거짓이다.
    */
   it("배너는 1건과 여러 건의 문장이 갈리고 손실을 예고하지 않는다", () => {
-    expect(m.translations.banner.paused(1)).toBe("Repository updates are held until 1 unsent edit is sent.");
-    expect(m.translations.banner.paused(4)).toBe("Repository updates are held until 4 unsent edits are sent.");
-    expect(m.translations.banner.paused(2)).not.toMatch(/can be lost|automatically/);
+    expect(en.translations.banner.paused(1)).toBe("Repository updates are held until 1 unsent edit is sent.");
+    expect(en.translations.banner.paused(4)).toBe("Repository updates are held until 4 unsent edits are sent.");
+    expect(en.translations.banner.paused(2)).not.toMatch(/can be lost|automatically/);
   });
 
   it("[C12] Home 발송 카드의 보류 보조 줄", () => {
-    expect(m.home.cards.held["pending-edits"]).toBe("repository updates held");
+    expect(en.home.cards.held["pending-edits"]).toBe("repository updates held");
   });
 
   it("Publish의 수는 미리보기 제목이 든다", () => {
-    expect(m.translations.publish.previewTitle(3)).toBe("Publish 3 changes");
+    expect(en.translations.publish.previewTitle(3)).toBe("Publish 3 changes");
     // ⚠️ **한 건짜리가 실물에서 "Publish 1 changes"로 나갔다** (2026-09-16 실측) — 갈래 넷이 같은 수를 든다.
-    expect(m.translations.publish.previewTitle(1)).toBe("Publish 1 change");
-    expect(m.translations.publish.previewCounts(1, 1)).toBe("1 change in 1 key.");
-    expect(m.translations.publish.previewSummary(1, 1, 1)).toBe("1 change \u00b7 1 key \u00b7 1 file");
-    expect(m.translations.publish.createdDescription(1)).toContain("1 change is in a pull request.");
+    expect(en.translations.publish.previewTitle(1)).toBe("Publish 1 change");
+    expect(en.translations.publish.previewCounts(1, 1)).toBe("1 change in 1 key.");
+    expect(en.translations.publish.previewSummary(1, 1, 1)).toBe("1 change \u00b7 1 key \u00b7 1 file");
+    expect(en.translations.publish.createdDescription(1)).toContain("1 change is in a pull request.");
   });
 });
 
@@ -64,11 +65,11 @@ describe("사전 — 관사는 데이터를 따라가지 못한다", () => {
    * 지금 데이터를 문장에 넣는 자리는 병합 화면의 provider 이름 둘이다.
    */
   it("데이터를 문장에 넣는 자리에 부정관사를 붙이지 않는다", () => {
-    expect(m.invite.title).not.toMatch(/ an? /);
-    expect(m.link.confirm("GitHub")).toBe("Confirm with GitHub");
+    expect(en.invite.title).not.toMatch(/ an? /);
+    expect(en.link.confirm("GitHub")).toBe("Confirm with GitHub");
     for (const provider of ["GitHub", "Google"]) {
-      expect(m.link.confirm(provider)).not.toMatch(/ an? /);
-      expect(m.link.description(provider, "GitHub")).not.toMatch(/ an? /);
+      expect(en.link.confirm(provider)).not.toMatch(/ an? /);
+      expect(en.link.description(provider, "GitHub")).not.toMatch(/ an? /);
     }
   });
 });
@@ -77,7 +78,7 @@ describe("사전 — 노드를 삽입하는 값", () => {
   it("받은 노드를 그대로(참조 동일성) 문장 안에 둔다 — 문장은 사전이 소유한다", () => {
     // ⚠️ 2026-10-01 전엔 `settings.workflow.saveAs(path)`로 쟀다 — 경로가 코드 블록 머리로 옮겨 그 값이 문자열이 됐다.
     const hook = createElement("code", null, "useTranslations()");
-    const sentence = m.settings.workflow.hookHint(hook, "wrapper", "the guide");
+    const sentence = en.settings.workflow.hookHint(hook, "wrapper", "the guide");
 
     expect(isValidElement(sentence)).toBe(true);
     const children = (sentence as ReactElement<{ children: unknown[] }>).props.children;
@@ -121,8 +122,8 @@ describe("사전 — Revert 확인 문장의 주어와 동사가 수를 맞춘�
   // T19 실브라우저에서 "Your 1 language … go back"을 봤다 — 관계절 동사만 갈라 주동사가 복수로 고정돼 있었다.
   // fix1 — 주어가 언제나 복수(`unsent edits`)라 동사는 go back 하나다. 수는 언어 명사만 가른다("aren't sent yet"은 미전달 금지어였다).
   it("주어는 unsent edits이고 언어 수만 단수·복수로 갈린다", () => {
-    expect(m.translations.workspace.revert.body(1, "ko")).toContain("Your unsent edits in 1 language — ko — go back");
-    expect(m.translations.workspace.revert.body(2, "ko, ja")).toContain("Your unsent edits in 2 languages — ko, ja — go back");
+    expect(en.translations.workspace.revert.body(1, "ko")).toContain("Your unsent edits in 1 language — ko — go back");
+    expect(en.translations.workspace.revert.body(2, "ko, ja")).toContain("Your unsent edits in 2 languages — ko, ja — go back");
   });
 });
 
@@ -142,10 +143,10 @@ describe("사전 — label 값에 줄임표가 없다", () => {
   };
   const labels = (root: unknown) => leaves(root, "", []).filter(({ path }) => /(?:^|\.)label$/.test(path));
   it("사전을 실제로 걸었다", () => {
-    expect(labels(m).length).toBeGreaterThan(15);
+    expect(labels(en).length).toBeGreaterThan(15);
   });
   it("경로 끝이 label인 값에 …가 없다(placeholder·loading의 …는 정상)", () => {
-    expect(labels(m).filter(({ text }) => text.includes("…")).map(({ path, text }) => `${path}: ${text}`)).toEqual([]);
+    expect(labels(en).filter(({ text }) => text.includes("…")).map(({ path, text }) => `${path}: ${text}`)).toEqual([]);
   });
   it("검사기가 label의 줄임표를 잡고 placeholder는 통과시킨다", () => {
     const hits = labels({ a: { label: "Find project…", placeholder: "Search projects…" }, b: { search: { label: "Search projects" } } });

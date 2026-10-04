@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createHarness } from "@/app/(edit)/__tests__/harness";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { accessErrorMessage } from "@/lib/auth/message";
-import { m } from "@/lib/i18n";
 import { en } from "@/messages/en";
 
 import { toolCatalog } from "../../catalog";
@@ -140,7 +139,7 @@ describe("set_translations 입력", () => {
 
   it("중복 키 거부는 그 keyId를 싣는다", async () => {
     expect(toToolResult(await run("set_translations", subject("owner"), { ...S, entries: [entry("k1"), entry("k1")] })).structuredContent)
-      .toMatchObject({ status: "duplicate-key", keyId: "k1", message: m.mcp.errors["duplicate-key"] });
+      .toMatchObject({ status: "duplicate-key", keyId: "k1", message: en.mcp.errors["duplicate-key"] });
   });
 
   it("거부된 키는 그 키만 rejected이고 나머지는 saved — 저장된 셀이 있으면 번역 화면들을 다시 그린다", async () => {
@@ -150,7 +149,7 @@ describe("set_translations 입력", () => {
     ] });
     const outcome = await run("set_translations", subject("editor"), { ...S, entries: [entry("k1"), entry("k2")] });
     expect(outcome.status === "ok" && outcome.data.results).toEqual([
-      { keyId: "k1", status: "rejected", error: "key-unavailable", message: m.translations.workspace.footer.keyGone },
+      { keyId: "k1", status: "rejected", error: "key-unavailable", message: en.translations.workspace.footer.keyGone },
       { keyId: "k2", status: "saved", cells: [{ localeCode: "ko", value: "v" }] },
     ]);
     expect(h.revalidatePath.mock.calls).toEqual([["/projects/acme", "layout"], ["/projects"], ["/projects/new"]]);
@@ -171,7 +170,7 @@ describe("sync-running", () => {
     const outcome = await run("set_translations", subject("editor"), { ...S, entries: [{ keyId: "k1", changes: [{ localeCode: "ko", value: "v" }] }, { keyId: "k2", changes: [{ localeCode: "ko", value: "v" }] }] });
     expect(outcome).toEqual({ status: "refused", code: "sync-running", detail });
     const result = toToolResult(outcome);
-    expect(result.structuredContent).toEqual({ ...detail, status: "sync-running", message: m.repositorySync.errors["already-running"], retryable: true });
+    expect(result.structuredContent).toEqual({ ...detail, status: "sync-running", message: en.repositorySync.errors["already-running"], retryable: true });
     expect("results" in result.structuredContent).toBe(false);
     expect(h.revalidatePath).not.toHaveBeenCalled();
   });
@@ -180,10 +179,10 @@ describe("sync-running", () => {
     const input = { ...S, keyId: "k1", confirmation: "c".repeat(64) };
     h.core.mockResolvedValueOnce({ status: "blocked", reason: "sync-running", startedAt, reopensBy });
     expect(toToolResult(await run("revert_to_last_sent", subject("owner"), input)).structuredContent)
-      .toEqual({ ...detail, status: "sync-running", message: m.repositorySync.errors["already-running"], retryable: true });
+      .toEqual({ ...detail, status: "sync-running", message: en.repositorySync.errors["already-running"], retryable: true });
     h.core.mockResolvedValueOnce({ status: "blocked", reason: "busy" });
     expect(toToolResult(await run("revert_to_last_sent", subject("owner"), input)).structuredContent)
-      .toEqual({ status: "busy", message: m.translations.workspace.revert.busy });
+      .toEqual({ status: "busy", message: en.translations.workspace.revert.busy });
   });
 });
 
@@ -194,7 +193,7 @@ describe("preview_publish", () => {
   });
   it("base 파일이 없으면 Publish 화면의 같은 문장이다", async () => {
     h.core.mockResolvedValueOnce({ status: "refused", reason: "base-file-missing", path: "i18n/en.json", branch: "main" });
-    expect(toToolResult(await preview()).content[0]?.text).toBe(m.translations.publish.baseFileMissing.description("i18n/en.json", "main"));
+    expect(toToolResult(await preview()).content[0]?.text).toBe(en.translations.publish.baseFileMissing.description("i18n/en.json", "main"));
   });
   it("읽기 실패는 unavailable · retryable", async () => {
     h.core.mockResolvedValueOnce({ status: "failed" });
@@ -210,8 +209,8 @@ describe("publish 실패 — 코드(`SyncErrorCode`)로 가른다", () => {
     failed({ error: "The base language file couldn't be read.", code: "base-unreadable", retryable: false });
     const result = toToolResult(await publishNow());
     const text = result.content[0]?.text ?? "";
-    expect(text).toContain(m.translations.publish.configError);
-    expect(text).toContain(m.translations.publish.configErrorDescription("o/r", "main"));
+    expect(text).toContain(en.translations.publish.configError);
+    expect(text).toContain(en.translations.publish.configErrorDescription("o/r", "main"));
     expect(result.structuredContent).toMatchObject({ status: "base-unreadable", reason: "The base language file couldn't be read.", delivery: "not-started" });
     expect("retryable" in result.structuredContent).toBe(false);
   });
@@ -225,7 +224,7 @@ describe("publish 실패 — 코드(`SyncErrorCode`)로 가른다", () => {
 
   it("too-soon은 retryAfterSeconds를 싣는다", async () => {
     failed({ error: "too-soon", retryable: true, retryAfterSeconds: 17 });
-    expect(toToolResult(await publishNow()).structuredContent).toMatchObject({ status: "too-soon", retryAfterSeconds: 17, message: m.translations.publish.tooSoonBody });
+    expect(toToolResult(await publishNow()).structuredContent).toMatchObject({ status: "too-soon", retryAfterSeconds: 17, message: en.translations.publish.tooSoonBody });
   });
 
   it("실행 전 거부(잠금 뒤 인가)는 그 코드의 화면 문장이다", async () => {
@@ -254,16 +253,16 @@ describe("publish — writer 경고", () => {
 describe("결과 문장은 화면과 같은 키", () => {
   it("Publish 거부 — reconfirm은 Logs의 문장, 동시 실행·간격은 Publish 모달의 문장", async () => {
     h.core.mockResolvedValueOnce({ outcome: { status: "skipped", reason: "reconfirm" }, attempted: true });
-    expect(toToolResult(await run("publish", subject("editor"), { slug: "acme", fingerprint: "f" })).content[0]?.text).toBe(m.logs.reasons.reconfirm);
+    expect(toToolResult(await run("publish", subject("editor"), { slug: "acme", fingerprint: "f" })).content[0]?.text).toBe(en.logs.reasons.reconfirm);
     h.core.mockResolvedValueOnce({ outcome: { status: "failed", error: "already-running", delivery: "not-started", retryable: false }, attempted: true });
-    expect(toToolResult(await run("publish", subject("editor"), { slug: "acme", fingerprint: "f" })).content[0]?.text).toBe(m.translations.publish.alreadyRunningBody);
+    expect(toToolResult(await run("publish", subject("editor"), { slug: "acme", fingerprint: "f" })).content[0]?.text).toBe(en.translations.publish.alreadyRunningBody);
     // 실행기에 닿았으면 거부에도 다시 그린다(웹과 같다).
     expect(h.revalidatePath).toHaveBeenCalled();
   });
 
   it("Sync 거부는 Home의 Sync 결과 문장이다", async () => {
     h.core.mockResolvedValueOnce({ outcome: { ok: false, error: "reconfirm" }, attempted: true });
-    expect(toToolResult(await run("sync_repository", subject("owner"), { slug: "acme", approval: "a" })).content[0]?.text).toBe(m.repositorySync.errors.reconfirm);
+    expect(toToolResult(await run("sync_repository", subject("owner"), { slug: "acme", approval: "a" })).content[0]?.text).toBe(en.repositorySync.errors.reconfirm);
   });
 
   /**
@@ -279,16 +278,16 @@ describe("결과 문장은 화면과 같은 키", () => {
   it("Sync 거부 unpinned는 출력 경계에서 not-connected 코드이고 문장은 화면의 Disconnected다", async () => {
     h.core.mockResolvedValueOnce({ outcome: { ok: false, error: "unpinned" }, attempted: true });
     expect(await run("sync_repository", subject("owner"), { slug: "acme", approval: "a" }))
-      .toMatchObject({ status: "refused", code: "not-connected", message: m.repositorySync.errors.unpinned });
+      .toMatchObject({ status: "refused", code: "not-connected", message: en.repositorySync.errors.unpinned });
     h.core.mockResolvedValueOnce({ outcome: { ok: false, error: "not-connected" }, attempted: true });
     expect(await run("sync_repository", subject("owner"), { slug: "acme", approval: "a" }))
-      .toMatchObject({ status: "refused", code: "not-connected", message: m.repositorySync.errors["not-connected"] });
+      .toMatchObject({ status: "refused", code: "not-connected", message: en.repositorySync.errors["not-connected"] });
   });
 
   it("Revert의 잠금 뒤 재측정 불일치는 번역 화면의 문장", async () => {
     h.core.mockResolvedValueOnce({ status: "reconfirm" });
     expect(toToolResult(await run("revert_to_last_sent", subject("owner"), { ...S, keyId: "k1", confirmation: "c".repeat(64) })).content[0]?.text)
-      .toBe(m.translations.workspace.revert.changed.body);
+      .toBe(en.translations.workspace.revert.changed.body);
   });
 
   it("코어의 접근 거부(잠금 뒤 재판정)는 화면의 접근 문장", async () => {
@@ -299,7 +298,7 @@ describe("결과 문장은 화면과 같은 키", () => {
   it("초대의 메일 실패는 멤버 화면의 문장이고 초대는 다시 그린다", async () => {
     h.core.mockResolvedValueOnce({ result: { ok: false, error: "email-rejected", retryAt: "2026-09-29T00:00:00.000Z" }, issued: true });
     const result = toToolResult(await run("invite_members", subject("owner"), { slug: "acme", recipients: [{ email: "x@y.com", role: "EDITOR" }] }));
-    expect(result.content[0]?.text).toBe(m.members.invite.sendFailed);
+    expect(result.content[0]?.text).toBe(en.members.invite.sendFailed);
     expect(result.structuredContent).toMatchObject({ status: "email-rejected", retryAt: "2026-09-29T00:00:00.000Z" });
     expect(h.revalidatePath).toHaveBeenCalledWith("/projects/acme/members");
   });
@@ -331,7 +330,7 @@ describe("update_project — 이름 커밋 뒤 브랜치 코어가 던지면", (
     const result = await exec("update_project", subject("owner"), { slug: "acme", name: "New", baseBranch: "release" });
     expect(result.isError).toBe(false);
     expect(result.structuredContent).toEqual({ changed: { name: "New" }, unconfirmed: ["baseBranch"] });
-    expect(result.content[0]?.text).toBe(m.mcp.summary.branchUnconfirmed);
+    expect(result.content[0]?.text).toBe(en.mcp.summary.branchUnconfirmed);
     expect(JSON.stringify(result)).not.toContain("connection reset");
   });
 
@@ -376,7 +375,7 @@ describe("publish — 실행 뒤 리포 라벨 조회가 실패하면", () => {
     expect(labelCalls).toBe(1);
     expect(result.structuredContent).toMatchObject({ status: "base-unreadable", delivery: "not-started" });
     expect("retryable" in result.structuredContent).toBe(false);
-    expect(result.content[0]?.text).toContain(m.translations.publish.configErrorDescription("acme", ""));
+    expect(result.content[0]?.text).toContain(en.translations.publish.configErrorDescription("acme", ""));
   });
 });
 

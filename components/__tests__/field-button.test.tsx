@@ -6,14 +6,14 @@ import { expect, it, vi } from "vitest";
 
 import { FieldButton } from "@/components/ui/field-button";
 import { Kbd } from "@/components/ui/kbd";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { find, render } from "./helpers/dom";
 
 const props = { icon: <Search />, placeholder: "Search…", "aria-label": "Search", "aria-haspopup": "dialog", onClick: () => {} } satisfies ComponentProps<typeof FieldButton>;
 
 it("캡슐 치수·패널 면·장식 슬롯과 접근 이름을 그린다", async () => {
-  const { container } = await render(<FieldButton {...props} shortcut={<Kbd>{m.common.keys.search.mac}</Kbd>} aria-keyshortcuts="Meta+K" />);
+  const { container } = await render(<FieldButton {...props} shortcut={<Kbd>{en.common.keys.search.mac}</Kbd>} aria-keyshortcuts="Meta+K" />);
   const button = find<HTMLButtonElement>(container, "button");
   expect(button.type).toBe("button");
   for (const token of ["rounded-full", "h-10", "w-80", "bg-background", "border", "border-border-subtle", "shadow-low", "hover:bg-primary-foreground", "focus-visible:border-ring", "focus-visible:ring-ring", "focus-visible:ring-1", "focus-visible:outline-none"]) {
@@ -27,7 +27,7 @@ it("캡슐 치수·패널 면·장식 슬롯과 접근 이름을 그린다", asy
   expect(find(button, "svg").closest('[aria-hidden="true"]')).not.toBeNull();
   expect(button.children[1]?.textContent).toBe("Search…");
   expect(button.children[1]?.classList.contains("text-muted-foreground")).toBe(true);
-  expect(button.children[2]?.querySelector("kbd")?.textContent).toBe(m.common.keys.search.mac);
+  expect(button.children[2]?.querySelector("kbd")?.textContent).toBe(en.common.keys.search.mac);
 });
 
 it("단축키 수화 전후에 같은 폭의 빈 슬롯을 유지한다", async () => {
@@ -39,9 +39,9 @@ it("단축키 수화 전후에 같은 폭의 빈 슬롯을 유지한다", async 
   expect(shortcut.classList.contains("w-16")).toBe(true);
   expect(shortcut.classList.contains("shrink-0")).toBe(true);
   expect(button.hasAttribute("aria-keyshortcuts")).toBe(false);
-  await view.rerender(<FieldButton {...props} shortcut={<Kbd>{m.common.keys.search.other}</Kbd>} aria-keyshortcuts="Control+K" />);
+  await view.rerender(<FieldButton {...props} shortcut={<Kbd>{en.common.keys.search.other}</Kbd>} aria-keyshortcuts="Control+K" />);
   expect(button.lastElementChild).toBe(shortcut);
-  expect(shortcut.querySelector("kbd")?.textContent).toBe(m.common.keys.search.other);
+  expect(shortcut.querySelector("kbd")?.textContent).toBe(en.common.keys.search.other);
 });
 
 it("트리거가 넘긴 열림 상태를 aria-expanded로 말한다", async () => {

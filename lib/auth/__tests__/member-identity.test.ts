@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { planMemberIdentity } from "@/lib/auth/member-identity";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 /**
  * **행의 두 줄 배치와 아바타 씨앗** (members-rework design §1).
@@ -36,7 +36,7 @@ describe("planMemberIdentity — 갈래 넷", () => {
 
   it("이름도 주소도 없으면 자리 채움 문구가 선다", () => {
     expect(planMemberIdentity({ name: null, emailLabel: null, readable: true })).toEqual({
-      primary: m.members.unnamed,
+      primary: en.members.unnamed,
       secondary: null,
       unnamed: true,
       avatarSeed: null,
@@ -45,12 +45,12 @@ describe("planMemberIdentity — 갈래 넷", () => {
   });
 
   /**
-   * ⚠️ **못 읽은 행은 `readable`이 정한다 — 라벨 문자열을 비교하지 않는다.** `m.common.unreadable`과
+   * ⚠️ **못 읽은 행은 `readable`이 정한다 — 라벨 문자열을 비교하지 않는다.** `en.common.unreadable`과
    * 값을 견주는 코드는 리포에 0건이고, 넣는 순간 리포 최초의 문자열 센티널을 만드는 것이다.
    */
   it("못 읽은 행은 이름·주소가 있어 보여도 전용 문구가 선다", () => {
     expect(planMemberIdentity({ name: "Jane", emailLabel: "j***@acme.com", readable: false })).toEqual({
-      primary: m.members.unreadableLabel,
+      primary: en.members.unreadableLabel,
       secondary: null,
       unnamed: true,
       avatarSeed: null,

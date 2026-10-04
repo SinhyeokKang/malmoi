@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { Sidebar } from "@/components/shell/sidebar";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { routes } from "@/lib/routes";
 
 import { render } from "./helpers/dom";
@@ -23,7 +23,7 @@ describe("사이드바 — 사용자 구역", () => {
     const work = container.querySelector('nav[aria-label="Kim"]')!;
     expect([...work.querySelectorAll("a")].map((a) => a.getAttribute("href"))).toEqual(["/projects", "/mcp", "/account"]);
     expect(container.querySelector(`a[href="${routes.newProject()}"]`)).toBeNull();
-    expect(container.textContent).not.toContain(m.common.nav.newProject);
+    expect(container.textContent).not.toContain(en.common.nav.newProject);
   });
 
   it("머리 줄이 없다 — 아바타도 이름 글자도 그리지 않는다", async () => {
@@ -54,6 +54,6 @@ describe("사이드바 — 개수 배지", () => {
     const { container } = await render(<Sidebar memberships={memberships} userName="Kim" />);
     const pill = container.querySelector('a[href="/projects"] .rounded-full')!;
     expect(pill.querySelector("[aria-hidden]")?.textContent).toBe("1");
-    expect(pill.querySelector(".sr-only")?.textContent).toBe(m.projects.count(1));
+    expect(pill.querySelector(".sr-only")?.textContent).toBe(en.projects.count(1));
   });
 });

@@ -13,7 +13,7 @@ vi.mock("@/app/(edit)/publish-actions", () => ({ loadPublishPreview: vi.fn() }))
 
 import { TranslationWorkspace } from "@/components/translations/workspace/workspace";
 import type { ConnectionHealth } from "@/lib/github-connect/health";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { STATE } from "@/lib/status/canon";
 import { connectionReason } from "@/lib/translations/connection-reason";
 
@@ -26,7 +26,7 @@ import { props } from "./helpers/workspace-props";
 const buttons = (container: HTMLElement) => {
   const all = [...container.querySelectorAll("button")];
   return {
-    sync: all.find((b) => b.textContent?.trim() === m.repositorySync.action),
+    sync: all.find((b) => b.textContent?.trim() === en.repositorySync.action),
     publish: all.find((b) => b.textContent?.startsWith("Publish")),
   };
 };
@@ -62,14 +62,14 @@ describe("첫 렌더 — DB 판정", () => {
    */
   it("unpinned면 보류 배너에 Send with Publish가 없고 끊김 사유를 잇는다", async () => {
     const { container } = await render(<TranslationWorkspace {...props({ unpublished: 2, connection: { status: "unpinned" } })} />);
-    const banner = [...container.querySelectorAll('[role="status"], [role="alert"], div')].find((el) => el.textContent?.startsWith(m.translations.banner.paused(2)))!;
+    const banner = [...container.querySelectorAll('[role="status"], [role="alert"], div')].find((el) => el.textContent?.startsWith(en.translations.banner.paused(2)))!;
     expect(banner.textContent).toContain(connectionReason("unpinned", "OWNER")!);
-    expect([...container.querySelectorAll("button")].some((b) => b.textContent?.includes(m.translations.banner.sendWithPublish))).toBe(false);
+    expect([...container.querySelectorAll("button")].some((b) => b.textContent?.includes(en.translations.banner.sendWithPublish))).toBe(false);
   });
 
   it("연결되면 보류 배너가 Send with Publish를 든다", async () => {
     const { container } = await render(<TranslationWorkspace {...props({ unpublished: 2, connection: { status: "unknown" } })} />);
-    expect([...container.querySelectorAll("button")].some((b) => b.textContent?.includes(m.translations.banner.sendWithPublish))).toBe(true);
+    expect([...container.querySelectorAll("button")].some((b) => b.textContent?.includes(en.translations.banner.sendWithPublish))).toBe(true);
   });
 
   /** 첫 페인트(SSR HTML — hydration 전)부터 꺼져 있다. 클라이언트 effect에 기대면 hydration 전 한동안 눌린다(U7 r1 — 런타임 (b)4에서 옮겼다). */
@@ -166,13 +166,13 @@ describe("표시 — Unsent · 보류 배너 · Revert", () => {
 
   it("pending-edits 보류 배너는 neutral이다 — 이 화면만의 예외(DESIGN §2.4 예외 1)", async () => {
     const { container } = await render(<TranslationWorkspace {...props({ unpublished: 3 })} />);
-    const banner = [...container.querySelectorAll("div")].find((el) => /\bbg-(muted|amber-50)\b/.test(el.className) && el.textContent?.includes(m.translations.banner.paused(3)));
+    const banner = [...container.querySelectorAll("div")].find((el) => /\bbg-(muted|amber-50)\b/.test(el.className) && el.textContent?.includes(en.translations.banner.paused(3)));
     expect(banner?.className).toContain("bg-muted");
   });
 
   it("Revert 트리거는 danger다 — 확정이 danger라서다", async () => {
     const { container } = await render(<TranslationWorkspace {...props()} />);
-    const revert = [...container.querySelectorAll("button")].find((b) => b.textContent === m.translations.workspace.revert.button);
+    const revert = [...container.querySelectorAll("button")].find((b) => b.textContent === en.translations.workspace.revert.button);
     expect(revert?.className).toContain("destructive");
   });
 });

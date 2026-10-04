@@ -13,7 +13,7 @@ vi.mock("next/navigation", () => ({ usePathname: () => "/projects" }));
 
 import { Sidebar } from "@/components/shell/sidebar";
 import { UserMenu } from "@/components/shell/user-menu";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { routes } from "@/lib/routes";
 
 /**
@@ -26,7 +26,7 @@ function held() {
   return { run: vi.fn(() => promise), settle: () => act(async () => settle()) };
 }
 const signOutItem = () => {
-  const node = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(b => b.textContent?.trim() === m.common.nav.signOut);
+  const node = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(b => b.textContent?.trim() === en.common.nav.signOut);
   if (!node) throw new Error("no sign out");
   return node;
 };
@@ -37,11 +37,11 @@ const signOutItem = () => {
 it("사이드바 하단에 Sign out이 없고 Changelog · Docs 순이다 — 둘 다 같은 탭", async () => {
   const { container } = await render(<Sidebar memberships={[]} userName="Kim" />);
   expect(container.querySelector("form")).toBeNull();
-  expect([...container.querySelectorAll("button")].some(b => b.textContent?.trim() === m.common.nav.signOut)).toBe(false);
+  expect([...container.querySelectorAll("button")].some(b => b.textContent?.trim() === en.common.nav.signOut)).toBe(false);
   const footer = [...container.querySelectorAll<HTMLAnchorElement>('[data-sidebar-zone="footer"] a')];
   expect(footer.map(a => [a.textContent?.trim(), a.getAttribute("href"), a.getAttribute("target"), a.getAttribute("rel")])).toEqual([
-    [m.changelog.title, routes.changelog(), null, null],
-    [m.publicDocs.docs.title, routes.docs(), null, null],
+    [en.changelog.title, routes.changelog(), null, null],
+    [en.publicDocs.docs.title, routes.docs(), null, null],
   ]);
 });
 
@@ -49,7 +49,7 @@ it("사용자 메뉴 Sign out은 제출 중에도 메뉴가 열린 채 disabled 
   const { run: signOut, settle } = held();
   const user = userEvent.setup();
   await render(<UserMenu name="Kim" email="k***@acme.com" image={null} signOut={signOut} />);
-  await act(async () => user.click(document.querySelector<HTMLButtonElement>(`button[aria-label="${m.common.nav.userMenu}"]`)!));
+  await act(async () => user.click(document.querySelector<HTMLButtonElement>(`button[aria-label="${en.common.nav.userMenu}"]`)!));
   await act(async () => user.click(signOutItem()));
   expect(signOut).toHaveBeenCalledOnce();
   // 메뉴가 열린 채다 — 닫히면 진행 표시를 세울 자리가 사라진다.

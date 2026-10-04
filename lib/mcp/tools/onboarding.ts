@@ -2,7 +2,7 @@ import "server-only";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { addSources, AddSurfacesInput } from "@/lib/onboarding-run/add";
 import { CreateProjectInput, createProjectFromRepo } from "@/lib/onboarding-run/create";
 import { settleRevalidate } from "@/lib/revalidate-after-commit";
@@ -48,7 +48,7 @@ export const createProject = defineTool({
     return ok({
       slug: result.slug, defaultSourceSlug: result.defaultSurfaceSlug, baseBranch: result.baseBranch, sources: result.surfaces, keys: result.count,
       pushToken: result.pushToken, secretName: "PUSH_TOKEN", workflow: { path: ".github/workflows/malmoi-i18n.yml", yaml: result.yaml },
-    }, m.mcp.summary.created(result.slug, result.count));
+    }, en.mcp.summary.created(result.slug, result.count));
   },
 });
 
@@ -64,6 +64,6 @@ export const addSourcesTool = defineTool({
     if (!result.ok) return failure(result);
     settleRevalidate("add-sources", () => revalidatePath(`/projects/${input.slug}`, "layout"));
     settleRevalidate("add-sources", () => revalidatePath("/projects"));
-    return ok({ sources: result.results, workflowSteps: result.yaml }, m.mcp.summary.sourcesAdded(result.results.length));
+    return ok({ sources: result.results, workflowSteps: result.yaml }, en.mcp.summary.sourcesAdded(result.results.length));
   },
 });

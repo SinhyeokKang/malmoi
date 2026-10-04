@@ -7,7 +7,7 @@ import { McpIcon } from "@/components/signin/brand-icons";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { Role } from "@/lib/auth/permission";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { activeProject, navFooterItems, navZones, projectSections, type NavProject } from "../nav";
 
 /**
@@ -230,7 +230,7 @@ describe("navZones — 사용자 축과 프로젝트 축 (PRODUCT §7.7 · 8-3 �
     ]);
     // MCP connector — 공식 MCP 로고(`McpIcon`, 2026-09-29 사용자 — 옛 `Plug`) · 정확히 일치 · 배지 없음 · 라벨이 페이지 제목과 같은 키(핸드오프 §4).
     const mcp = items.find((i) => i.key === "mcp");
-    expect(mcp?.label).toBe(m.common.nav.mcp);
+    expect(mcp?.label).toBe(en.common.nav.mcp);
     expect(mcp?.icon).toBe(McpIcon);
     expect(mcp?.exact).toBe(true);
     expect(mcp?.badge).toBeUndefined();
@@ -321,8 +321,8 @@ describe("navFooterItems", () => {
   // 외부 링크 항목이 없어져 `NavItem.external`도 사라졌다 — 새 탭 여부는 사이드바 DOM 테스트(`sign-out-pending`)가 본다.
   it("Changelog(`/changelog`) 다음 Docs(`/docs`)다", () => {
     expect(navFooterItems().map((i) => ({ key: i.key, label: i.label, href: i.href }))).toEqual([
-      { key: "changelog", label: m.changelog.title, href: "/changelog" },
-      { key: "docs", label: m.publicDocs.docs.title, href: "/docs" },
+      { key: "changelog", label: en.changelog.title, href: "/changelog" },
+      { key: "docs", label: en.publicDocs.docs.title, href: "/docs" },
     ]);
     expect(navFooterItems().map((i) => i.icon)).toEqual([Compass, CircleHelp]);
   });
