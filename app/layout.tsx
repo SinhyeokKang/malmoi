@@ -81,6 +81,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             주입해 규약 5("CSS는 Tailwind로") 밖의 **두 번째 CSS 출처**가 되고, `Alert`와 같은 뜻을
             다른 형으로 말한다.
 
+            ⚠️ **유틸마다 `!`(important)를 붙인다** (#184) — `sonner`의 `[data-sonner-toast][data-styled=true]`는
+            **CSS 레이어 밖**이라 Tailwind의 `@layer utilities` 일반 선언을 이긴다(`!` 없이는 radius 8·#ededed·0 4px 12px가
+            그대로 나왔다). important는 일반 선언을 레이어와 무관하게 넘는다. 고정은 `app/__tests__/toaster-specificity.test.ts`.
+
             ⚠️ **루트에 둔다** — 8단계가 화면마다 토스트를 쓰므로 화면별로 두면 사본이 늘어난다.
           */}
           <Toaster
@@ -88,7 +92,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             position="bottom-right"
             toastOptions={{
               classNames: {
-                toast: "bg-background border-border text-foreground rounded-lg border shadow-sm",
+                toast: "bg-background! border-border! text-foreground! rounded-lg! border! shadow-sm!",
+                icon: "[&>svg]:size-4!",
                 description: "text-muted-foreground",
                 actionButton: "bg-primary text-primary-foreground",
                 closeButton: "bg-background border-border text-muted-foreground",
