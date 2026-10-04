@@ -131,6 +131,26 @@ it("Action이 reject되어도(배포 skew·오프라인) `data-theme`을 되돌�
   expect(find(document.body, "[data-card-notice] [data-alert]").textContent).toBe("We couldn't change the theme. Try again.");
 });
 
+it("시작할 때 `<html>`에 `data-theme`이 없었으면 실패 뒤에도 속성이 없다 — 기본값으로 덮어쓰지 않는다", async () => {
+  // 레이아웃이 속성을 달기 전(또는 다는 쪽이 빠진 화면)의 시작 상태다. "light"로 되돌리면 System 사용자의 OS 다크를 덮는다.
+  delete document.documentElement.dataset.theme;
+  mocks.setColorScheme.mockResolvedValueOnce("failed");
+  await render(<ThemeCard current="light" />);
+  await choose("Dark");
+  expect(document.documentElement.hasAttribute("data-theme")).toBe(false);
+  expect(trigger().textContent).toBe("Light");
+});
+
+it("시작할 때 `data-theme`이 없었으면 reject 뒤에도 속성이 없다", async () => {
+  delete document.documentElement.dataset.theme;
+  mocks.setColorScheme.mockRejectedValueOnce(new Error("Failed to fetch"));
+  const error = vi.spyOn(console, "error").mockImplementation(() => {});
+  await render(<ThemeCard current="light" />);
+  await choose("Dark");
+  error.mockRestore();
+  expect(document.documentElement.hasAttribute("data-theme")).toBe(false);
+});
+
 it("닫힌 트리거에서 글자 키로 테마가 바뀌지 않는다 — 즉시 적용이라 지나가다 친 글자가 화면 전체를 바꾸면 안 된다", async () => {
   await render(<ThemeCard current="light" />);
   await act(async () => { trigger().focus(); });

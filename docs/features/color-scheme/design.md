@@ -147,7 +147,7 @@ ui-locales의 `parseUiLocale`·`resolveUiLocale`(`lib/i18n/locales.ts`)와 **모
 
 - `getColorScheme()`(`lib/color-scheme/server.ts`, `server-only`, React `cache`): 입력은 `readSession()`의 `colorScheme` + `cookies()`의 `malmoi-color-scheme`, 판정은 `resolveColorScheme`. ui-locales `getUiLocale()`(`lib/i18n/server.ts:31`)과 같은 형.
 - 루트 레이아웃(`app/layout.tsx`)이 `<html data-theme={await getColorScheme()}>`를 달고, 같은 값을 `<Toaster theme>`에 넘긴다(sonner의 값 집합 `system|light|dark`가 `COLOR_SCHEMES`와 같다 — §3.5). 루트 레이아웃은 이미 `await connection()`(CSP nonce)·`getUiLocale()`로 `readSession()`(React `cache`)·`cookies()`를 부르므로 새로 동적이 되는 페이지도, 추가 쿼리도 없다(`force-static`은 sitemap·llms·search-index Route Handler뿐).
-- ⚠️ **소비자는 루트 레이아웃 하나다.** ui-locales가 "레이아웃이 흘려보내지 않고 소비자마다 묻는다"(POSTMORTEM 2026-08-31)를 택한 것은 페이지가 문구를 직접 읽어야 해서였다. 테마는 CSS가 `<html>` 속성 하나로 읽으므로 컴포넌트가 물을 일이 없다 — 클라이언트 훅·provider를 만들지 않는다(선반영 금지). 예외는 §3.5의 Canvas 하나이고 그것도 DOM에서 읽는다.
+- ⚠️ **서버 소비자는 둘이다 — 루트 레이아웃(`<html data-theme>`·`<Toaster theme>`)과 `/preferences` page(Theme 카드의 초기값 prop, §3.7).** 둘 다 같은 `getColorScheme`(요청 캐시)이라 값이 갈리지 않는다. ui-locales가 "레이아웃이 흘려보내지 않고 소비자마다 묻는다"(POSTMORTEM 2026-08-31)를 택한 것은 페이지가 문구를 직접 읽어야 해서였다. 테마는 CSS가 `<html>` 속성 하나로 읽으므로 컴포넌트가 물을 일이 없다 — 클라이언트 훅·provider를 만들지 않는다(선반영 금지). 예외는 §3.5의 Canvas 하나이고 그것도 DOM에서 읽는다.
 - `global-error.tsx`는 루트 레이아웃 밖이고 `globals.css`도 import하지 않는다(그 파일 머리 주석) → `data-theme`도 토큰도 없이 **브라우저 기본값으로** 라이트다(완료 조건 17 — 검사는 "import 없음 · `data-theme` 없음").
 
 ### 3.5 화면 밖 자산
