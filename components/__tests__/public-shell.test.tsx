@@ -131,7 +131,8 @@ describe("공개 셸 — 헤더", () => {
     expect(bar?.classList.contains("mb-1.5")).toBe(true);
     // 헤더 44(2026-10-04): 위 6 + 헤더 44 + 아래 6 = 패널 시작 56 — 바깥 `pt-1.5`와 헤더 `mb-1.5`, 헤더 `h-11`.
     expect(bar?.classList.contains("h-11")).toBe(true);
-    expect(container.querySelector(".pt-1\\.5")).not.toBeNull();
+    // 바깥 셸 div(`main`의 부모)가 `pt-1.5`를 든다 — 아무 자손이 아니다. 산술은 `header-44.test.tsx`.
+    expect(container.querySelector("main")?.parentElement?.classList.contains("pt-1.5")).toBe(true);
     expect(bar?.children).toHaveLength(3);
     const start = bar!.children[0]!;
     expect(start.className).toBe("justify-self-start");
@@ -294,7 +295,7 @@ describe("푸터 — `/signin`·초대·계정 병합도 공개 셸 푸터 하�
     expect(signin().querySelector("footer")?.outerHTML).toBe(own);
   });
 
-  it("공개 셸과 같은 좌표다 — 바깥 `px-2 pt-2`, 푸터가 바닥 40을 든다", () => {
+  it("바깥 `px-2 pt-2`(헤더가 없어 위 8 — 공개 셸의 6+44+6과 다르다), 푸터가 바닥 40을 든다", () => {
     const outer = signin().querySelector("footer")?.parentElement;
     expect(outer?.className.split(/\s+/)).toEqual(expect.arrayContaining(["flex", "flex-col", "min-h-svh", "min-w-shell-min", "px-2", "pt-2"]));
     expect(outer?.className.split(/\s+/)).not.toContain("p-2");

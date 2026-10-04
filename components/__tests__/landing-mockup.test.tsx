@@ -137,12 +137,16 @@ describe("목업 — 제품과 같은 구조다", () => {
     for (const [index, scene] of [0, 1, 2, 3, 4].map((k) => [k, layer(container, k)] as const)) {
       const header = scene.querySelector("header")!;
       expect(header.className, `scene ${index}`).toContain("grid-cols-[1fr_auto_1fr]");
+      // 헤더 44에서도 목업 헤더 줄은 40이다 — `h-10`이 빠지거나 `h-11`이 같이 남으면 목업 프레임 안 줄이 4 커진다.
+      expect(header.classList.contains("h-10"), `scene ${index}`).toBe(true);
+      expect(header.classList.contains("h-11"), `scene ${index}`).toBe(false);
       const search = find<HTMLElement>(header, "[data-landing-global-search]");
       expect(search.tagName).toBe("SPAN");
       // 헤더 44 이후 실물은 `h-11`이고 목업은 40을 지킨다(`h-10`) — 높이만 다르다.
       const classes = (el: Element) => new Set(el.className.split(" ").filter((c) => c !== "h-10" && c !== "h-11"));
       expect(classes(search)).toEqual(classes(real));
       expect(search.classList.contains("h-10")).toBe(true);
+      expect(search.classList.contains("h-11")).toBe(false);
       expect(search.querySelector("svg")?.getAttribute("class")).toContain("lucide-search");
       expect(search.textContent).toBe(`${en.search.placeholder}${en.common.keys.search.mac}`);
     }

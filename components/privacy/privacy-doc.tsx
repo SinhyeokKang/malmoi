@@ -66,7 +66,7 @@ export function PrivacyDoc({ m, uiLocale }: { m: Messages; uiLocale: UiLocale })
               ) : "ul" in block ? (
                 <ul key={blockIndex} className={`${LIST} list-disc`}>
                   {block.ul.map((item, itemIndex) => (
-                    <li key={itemIndex}>{section.id === "changes" ? <RevisionLine item={item} /> : item}</li>
+                    <li key={itemIndex}>{section.id === "changes" ? <RevisionLine item={item} uiLocale={uiLocale} /> : item}</li>
                   ))}
                 </ul>
               ) : (
@@ -93,9 +93,9 @@ const REVISION = /^(\d{4}-\d{2}-\d{2}) — /;
  * 이력은 ISO였다). ⚠️ **사전 값은 ISO 그대로다** — 본문 해시(`policy-gate.test.tsx`)가 사전을 보고, 날짜 형을 바꾸는 것은 방침 개정이
  * 아니다. 날짜로 시작하지 않는 줄은 그대로 둔다.
  */
-function RevisionLine({ item }: { item: ReactNode }) {
+function RevisionLine({ item, uiLocale }: { item: ReactNode; uiLocale: UiLocale }) {
   const match = typeof item === "string" ? REVISION.exec(item) : null;
   if (match === null || typeof item !== "string") return <>{item}</>;
   const iso = match[1] ?? "";
-  return <><time dateTime={iso}>{utcDay(new Date(iso))}</time> — {item.slice(match[0].length)}</>;
+  return <><time dateTime={iso}>{utcDay(new Date(iso), uiLocale)}</time> — {item.slice(match[0].length)}</>;
 }
