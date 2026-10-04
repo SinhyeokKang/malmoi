@@ -19,8 +19,8 @@ export const UI_LOCALE_NAMES: Record<UiLocale, string> = { en: "English", ko: "�
 
 /**
  * 언어 메뉴·Select 옵션 앞의 국기 — **en GB · ko KR · es ES**(2026-10-04 사용자). `LocaleFlag`에 넘길 지역 붙은 코드다 —
- * 프로젝트 로케일용 `flagFor`는 지역 하위태그가 이기므로 이 값이 그 국기를 고른다. ⚠️ `flagFor("es")`는 사용국이 여럿이라 일부러 `null`이고
- * 그 판정은 건드리지 않는다 — 화면 언어 축만 여기서 국가를 정한다.
+ * 프로젝트 로케일용 `flagFor`는 지역 하위태그가 이기므로 이 값이 그 국기를 고른다. ⚠️ 프로젝트 로케일 `es`도 `flagFor`에서 ES(2026-10-05 사용자 고정)라 두 축이 같은 국기를 낸다 —
+ * 이 표는 그것과 독립이고 화면 언어 축만 여기서 국가를 정한다.
  */
 export const UI_LOCALE_FLAGS: Record<UiLocale, string> = { en: "en-GB", ko: "ko-KR", es: "es-ES" };
 

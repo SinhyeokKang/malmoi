@@ -62,9 +62,10 @@ export const FLAG_INVENTORY: readonly string[] = [
  * 체코 말고 없다.
  *
  * ⚠️ **일부러 뺀 것들이 있고, 그게 이 표의 경계다.** 주요 사용국이 둘 이상이라 **고르는 순간
- * 절반에게 틀린 국기**가 되는 것들이다: `es`(ES·MX·AR…) · `pt`(PT·BR) · `ar`(22개국) ·
+ * 절반에게 틀린 국기**가 되는 것들이다: `pt`(PT·BR) · `ar`(22개국) ·
  * `sw`(KE·TZ) · `ta`(IN·LK·SG) · `ca`·`eu`·`gl`(한 나라 안의 지역어) · `cy`.
  * **틀린 국기는 없는 것보다 나쁘다** — 그쪽은 `null`로 떨어져 코드만 그린다.
+ * ⚠️ **`es`만 예외다** — 사용국이 여럿이지만 사용자가 스페인 국기로 못 박았다(2026-10-05, `en → gb`와 같은 "고른 대표국").
  * ⚠️ 다만 **`es-MX`·`pt-BR`처럼 하위태그가 붙으면 정확히 선다** — 그 경우 이 표를 지나지 않는다.
  */
 export const LANGUAGE_FLAGS = new Map<string, string>([
@@ -74,6 +75,7 @@ export const LANGUAGE_FLAGS = new Map<string, string>([
   ["ja", "jp"],
   ["zh", "cn"],
   ["fr", "fr"],
+  ["es", "es"], // 사용국이 여럿이나 사용자가 대표국을 고정(2026-10-05).
 
   // 유럽 — 언어명과 나라가 사실상 1:1인 것들.
   ["de", "de"], ["it", "it"], ["ru", "ru"], ["nl", "nl"], ["pl", "pl"],
