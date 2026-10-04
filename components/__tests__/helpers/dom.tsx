@@ -25,10 +25,13 @@ async function resolveServer(input: ReactNode | Promise<ReactNode>): Promise<Rea
 
 /**
  * `uiLocale`(또는 `timeZone`)을 주면 루트 레이아웃처럼 provider로 감싼다 — 둘 다 안 주면 provider 없이 그린다(`useMessages()`의 기본값 en · UTC).
- * ⚠️ ko·es 사전은 비동기 로더가 운반하므로(첫 렌더가 suspend한다) 그려질 때까지 기다린다.
+ * ⚠️ ko·es 사전은 비동기 로더가 운반하므로(첫 렌더가 suspend한다) 그려질 때까지 기다린다. **그릴 사전을 먼저 import해 모듈 캐시를 데운다** — 변환·로드는
+ * 느린 러너·병렬 부하에서 아래 틱 50번(수십 ms)을 넘기고, 그러면 빈 컨테이너로 돌아와 다음 단언이 "Missing element"로 죽는다(CI에서만 red였다).
  */
 export async function render(input: ReactNode | Promise<ReactNode>, { uiLocale, timeZone }: { uiLocale?: UiLocale; timeZone?: TimeZone } = {}) {
   const ui = await resolveServer(input);
+  if (uiLocale === "ko") await import("@/messages/ko");
+  if (uiLocale === "es") await import("@/messages/es");
   const container = document.createElement("div");
   document.body.append(container);
   const root = createRoot(container);
