@@ -30,11 +30,11 @@
 - [x] B-T9. `/api/push`·`/failure` `surface removed` + `NOT_STARTED_REASONS` 일곱째 + `ApplyGuardError` 분리 — 검증: `surface-boundary.test.ts` 갱신(removed vs missing·foreign) + 경합 실 PG(`pg_sleep` 트리거 형)에서 응답·refusal이 `surface-removed` `[C] feat(push): refuse removed sources distinctly`
 
 ### B-UI
-- [ ] B-T10. 상세 모달 바닥: `notice` 문구 제거 → [Remove source](OWNER, busy·로딩·실패·`refreshFailed`·마지막 소스 상태), Open 꺼짐 사유 sr-only — 검증: jsdom(OWNER만 보임, last-source 사유 보임, busy 중 aria-disabled, EDITOR 버튼 0)
-- [ ] B-T11. 확인 창(sync-button 형: 지문 대기 `busy`·발급 실패·stale 재확인, Alert 하나, 초안 동시 폐기, 성공 뒤 h1 포커스 + 결과 배너 `m.sources.workflow`) — 검증: jsdom(미전달·PR·워크플로 줄 조건부, 초안 있을 때 확인 창 하나, 닫힘 후 포커스)
-- [ ] B-T12. Logs 필터 `(removed)` + 제거 소스 행 링크 없음 — 검증: `logs` 페이지 테스트 케이스
-- [ ] B-T13. 사전 키 en·ko·es(확인 창·사유·배너·사건 문장·거부 문장·MCP 도구 설명, 복수형) — 검증: `dictionary-consistency`·`registry.test.ts` green `[C] feat(sources): remove a source from the detail modal`
-- [ ] B-T14. 소비자 회귀 단언 — 제거 뒤 Home·Inbox·검색·셸 전환·야간·Publish에서 사라짐 — 검증: `test:projects:postgres` 케이스
+- [x] B-T10. 상세 모달 바닥: `notice` 문구 제거 → [Remove source](OWNER, busy·로딩·실패·`refreshFailed`·마지막 소스 상태), Open 꺼짐 사유 sr-only — 검증: jsdom(OWNER만 보임, last-source 사유 보임, busy 중 aria-disabled, EDITOR 버튼 0)
+- [x] B-T11. 확인 창(sync-button 형: 지문 대기 `busy`·발급 실패·stale 재확인, Alert 하나, 초안 동시 폐기, 성공 뒤 h1 포커스 + 결과 배너 `m.sources.workflow`) — 검증: jsdom(미전달·PR·워크플로 줄 조건부, 초안 있을 때 확인 창 하나, 닫힘 후 포커스)
+- [x] B-T12. Logs 필터 `(removed)` + 제거 소스 행 링크 없음 — 검증: `logs` 페이지 테스트 케이스
+- [x] B-T13. 사전 키 en·ko·es(확인 창·사유·배너·사건 문장·거부 문장·MCP 도구 설명, 복수형) — 검증: `dictionary-consistency`·`registry.test.ts` green `[C] feat(sources): remove a source from the detail modal`
+- [x] B-T14. 소비자 회귀 단언 — 제거 뒤 Home·Inbox·검색·셸 전환·야간·Publish에서 사라짐 — 검증: `test:projects:postgres` 케이스
 - [ ] B-T15. `/design-sync` R 프레임 대조 — 검증: computed style 차이 0 보고
 
 ## 마무리
