@@ -90,3 +90,4 @@
 - **D fix1**(3 docs 커밋: 스킬 2곳 "라이트 단일" · CLAUDE 스타일 행 · 가이드 #next 세 벌) gate ok @45e81dff. D 해제 — 통합은 Q2 인계 뒤(워크트리 유지). 미처리 ⚪: sonner action/close classNames(코드, 죽은 클래스) · guide stale 샷.
 - **Q2 완료**(1440·1280 · 다크→라이트): 다크 토큰 42/43 일치 · off-token 색 0 · 라이트 회귀 0(의도된 LargeModal 1px만) · B1–B6 일치. 결함 1: **#187** 다크 scrim `#0a0a0a`(README `black`) → **C fix2**(라이트 불변, 다크 black, Refs #187). 시안과 다른 자리 7(구분선 `border` vs `divider` · 체크박스 · 코드 블록 · 빈 상태 글리프 · 골격 · Publish scrim /32 · Theme 머리 min-h 48)은 라이트부터 같은 기존 코드라 결함 아님. 못 본 것: 연결 앱 로고 칸(연결 없음) · 로딩 골격 · 보관 행 · danger/violet/removed-locale 상태 → Q3. dev DB 원복(colorScheme null · uiLocale ko). Q2 해제.
 - **D 통합** cherry-pick 12(docs 11 + `test(theme)` why 문자열).
+- **C fix2**(`b6f63a60` 다크 scrim `black`, 라이트 바이트 동일, Refs #187) 통합 + 지휘자 `docs(DESIGN)` scrim 불변 문구 3곳 정정. #187은 Q3 재확인 뒤 닫는다.
