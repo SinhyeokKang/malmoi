@@ -193,6 +193,9 @@ it.each([
   const alerts = dialog.querySelectorAll('[data-removal-warning]');
   expect(alerts).toHaveLength(1);
   expect(alerts[0]!.textContent).toContain(en.repositorySync.unsentCount(12));
+  // 제거는 편집을 버리지 않는다 — 재추가 첫 적재가 리포에 값이 있는 칸만 덮는다(ARCHITECTURE §5.9 · 사용자 결정 2026-10-06).
+  expect(alerts[0]!.textContent).toContain("Re-adding it later replaces 12 unsent edits with the repository's values.");
+  expect(alerts[0]!.textContent).not.toMatch(/discard/i);
   expect(alerts[0]!.textContent).toContain(line);
   expect(alerts[0]!.textContent).toContain(en.sources.removal.workflowLine);
   // 확정 라벨은 트리거와 같은 낱말이다 — Sync처럼 손실로 갈지 않는다.

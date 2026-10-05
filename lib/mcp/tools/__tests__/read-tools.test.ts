@@ -338,6 +338,9 @@ describe("preview_source_removal", () => {
     h.previewSurfaceRemoval.mockResolvedValue({ ok: true, pendingCount: 2, approval: "f", openPr: "unknown" });
     const outcome = await call("preview_source_removal", subject("owner"), SURFACE);
     expect(outcome).toMatchObject({ status: "ok", data: { approval: "f", unsentEdits: 2, pullRequest: "unknown" }, summary: en.mcp.summary.sourceRemovalPreview(2) });
+    // 제거가 편집을 버린다고 말하지 않는다 — 재추가가 리포 값으로 바꾼다(사용자 결정 2026-10-06).
+    expect(en.mcp.summary.sourceRemovalPreview(2)).toBe("The source can be removed. Re-adding it later replaces 2 unsent edits with the repository's values. Remove it with this approval.");
+    expect(en.mcp.summary.sourceRemovalPreview(1)).toContain("replaces 1 unsent edit with");
     expect(h.previewSurfaceRemoval).toHaveBeenCalledWith(expect.anything(), { userId: "owner", credential: { kind: "api-token", tokenHash: "hash-owner" } }, SURFACE);
   });
 
