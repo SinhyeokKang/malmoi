@@ -38,7 +38,7 @@ Use this skill when the user asks to run the migrated source command `orchestrat
    | Claude Code | Claude Code / Sonnet·Opus |
 
    **패밀리 교차는 사용자의 명시 허가가 있을 때만** 가능하다. 잔여 토큰 부족·도구 부재·실패·속도 때문에 임의로 교차하지 않는다. 허가한 범위를 계획의 결정 기록에 남긴다.
-   패밀리 안에서는 단순·기계적 구현은 Sol/Sonnet, 복잡한 불변식 판단·독립 리뷰는 Astra/Opus를 우선 고려한다. 실제 사용 가능한 모델 ID와 effort는 현재 런타임에서 확인하고 선택 이유를 한 줄 적는다. Claude 워커의 기존 effort 범위는 low·medium·high이며 Codex는 선택한 모델이 지원하는 effort를 쓴다. 이름이 비슷한 다른 패밀리로 대체하지 않는다.
+   패밀리 안에서는 단순·기계적 구현은 Sol/Sonnet, 복잡한 불변식 판단·독립 리뷰는 Astra/Opus를 우선 고려한다. 실제 사용 가능한 모델 ID와 effort는 현재 런타임에서 확인하고 선택 이유를 한 줄 적는다. Claude 워커의 기존 effort 범위는 low·medium·high이며 Codex는 선택한 모델이 지원하는 effort를 쓴다. ⚠️ **Astra의 effort 상한은 medium이다** (2026-10-05 사용자 — high에서 토큰 소모가 과했다). 재시도·수정 라운드에서도 올리지 않는다. 이름이 비슷한 다른 패밀리로 대체하지 않는다.
 4. **파일 겹침 행렬로 병렬/직렬을 가른다.** 두 배치가 같은 파일을 고치면 병렬로 띄우지 않는다 — 선행이 dev에 들어간 뒤 후행을 띄우거나,
    후행에게 "T6 전에 멈추고 `WAITING FOR <X>`를 찍어라, 신호를 받으면 `git rebase dev`"를 브리프에 넣는다.
    ⚠️ **`messages/{en,ko,es}.tsx`(새 키는 세 사전에 같이 들어간다)·`workspace.tsx`·`publish-button.tsx`는 거의 모든 UI 배치가 건드린다** — 겹침 판정에서 빠뜨리지 않는다. 번역 일괄 검수 배치(톤·용어)는 `/translate` 검수 모드(모드 ②)로 브리프하고, 같은 런의 다른 배치가 고칠 사전 절을 범위에서 뺀다.
