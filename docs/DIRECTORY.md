@@ -38,6 +38,8 @@ app/
   layout.tsx            루트 레이아웃(Geist next/font/local 변수 · Pretendard 폴백 <link> · 머리 기본값 · components/analytics · MessagesProvider).
                         ⚠️ lang은 요청의 화면 언어(getUiLocale)이고 provider도 같은 값으로 하나 렌더한다(+ getDateStyle의 timeZone — user-timezone) — app/__tests__/root-layout-i18n이 provider 존재를 고정한다
                         (빠지면 provider 기본값이 en이라 조용히 영어다)
+                        ⚠️ <html data-theme>은 getColorScheme(lib/color-scheme/server — 계정 > 쿠키 > light)이고 같은 값을 <Toaster theme>에 넘긴다.
+                        인라인 스크립트가 없다(color-scheme 2026-10-05, ARCHITECTURE §6.357) — lib/color-scheme/__tests__/theme-surfaces가 고정한다
                         ⚠️ metadata에 canonical·og:url이 없다 — 얕은 병합으로 앱·/signin·/invite·404 전부에 홈 canonical이 번진다
   robots.ts · sitemap.ts  크롤러용 파일 둘(lib/seo/crawl). robots는 force-dynamic(요청 시점 VERCEL_ENV), sitemap은 빌드 prerender.
                         ⚠️ sitemap이 guide/를 읽는데 트레이싱은 /docs 함수에만 싣는다 — 동적으로 바꾸면 Vercel에서만 500
@@ -83,9 +85,9 @@ app/
                         ⚠️ 온보딩(생성 경로)은 사용자 수준 인증뿐이다(인가할 프로젝트가 없다) — 모달이라
                         readSession으로 거부를 값으로 돌려받고 checkRepoAccess를 지난다
     preferences/        Preferences(`/preferences`, 2026-10-04 ui-locales). 사용자 축 — requireUser만 지난다(account/·mcp/와 같은 형 · layout.tsx가
-                        ContentPanel을 든다 · loading.tsx). page.tsx는 Language · Time zone 카드 둘(components/preferences/)이고 now ISO를 Time zone 카드에
+                        ContentPanel을 든다 · loading.tsx). page.tsx는 Language · Time zone · Theme 카드 셋(components/preferences/)이고 now ISO를 Time zone 카드에
                         내린다(옵션 정렬·미리보기 — 하이드레이션). Language의 Action은 app/ui-locale/에 있고(공개 푸터와 공유) Time zone의 Action은
-                        actions.ts(setTimeZone — 로그인 전용이라 여기 산다, user-timezone 2026-10-05). ⚠️ 보호 경로라 isProtectedPath와 lib/seo/crawl의 robots disallow 두 곳에 각각 등재된다(따로 하드코딩된 목록)
+                        actions.ts(setTimeZone — 로그인 전용이라 여기 산다, user-timezone 2026-10-05 · setColorScheme — 같은 이유, 쿠키도 쓴다, color-scheme 2026-10-05). ⚠️ 보호 경로라 isProtectedPath와 lib/seo/crawl의 robots disallow 두 곳에 각각 등재된다(따로 하드코딩된 목록)
     account/            사용자 축 화면(프로필·로그인 수단·세션). requireUser만 지난다 · layout.tsx · loading.tsx 스켈레톤 ·
                         actions.ts(프로필 이름·사진 둘 · 전체 세션 회수 · 로그인 수단 연결/해제 — 여섯 다
                         requireUser만 지난다. 인가할 프로젝트가 없는 축이다)
@@ -180,10 +182,12 @@ middleware.ts           인증 차단의 유일한 1차 지점 + CSP의 유일�
 
 ```
 components/
-  ui/                   ⚠️ 이 리포가 소유하는 프리미티브(목록은 `components/ui/*.tsx` — 2026-09-28 IconTile · 2026-10-01 StatusBadge·CountBadge·CloseButton·CodeBlock) + tone.ts·focus.ts 헬퍼 (focus.ts는 2026-09-24 audit B5 —
+  ui/                   ⚠️ 이 리포가 소유하는 프리미티브(목록은 `components/ui/*.tsx` — 2026-09-28 IconTile · 2026-10-01 StatusBadge·CountBadge·CloseButton·CodeBlock · 2026-10-05 MalmoiMark) + tone.ts·focus.ts 헬퍼 (focus.ts는 2026-09-24 audit B5 —
                         포커스 착지 넷 landFocus·neighbourFocus·useLandAfter·useLandAfterCommit, DESIGN §7) (skeleton이 2026-09-13에
                         붙었다 — 회색 블록 값이 두 벌로 갈리지 않게 bg-foreground/5 하나를 든다). CLI로 신규 추가는
-                        허용하되 기존 파일을 덮어쓰지 않는다. 라이트 단일, dark: 0곳
+                        허용하되 기존 파일을 덮어쓰지 않는다. 다크는 토큰 값이 든다 — dark: 0곳(DESIGN §3).
+                        malmoi-mark(Malmoi 로고 — 토큰으로 칠하는 인라인 SVG, 면 foreground · 마크 background라 다크에서 저절로 뒤집힌다. 셸·공개 셸 헤더 ·
+                        로그인·초대·링크 확인·OAuth 동의 · 랜딩 목업 일곱 자리. path는 public/brand/malmoi-icon-black.svg의 사본 — 갈라지면 malmoi-mark.test가 잡는다)
                         ⚠️ 포커스 링 셋을 여는 태그에 리터럴로 적는다 — cva 베이스나 공유 상수에
                         모으면 focus-ring 스캐너가 그 파일을 통째로 못 본다(Button에 asChild가 없는 것도 같은 이유).
                         동적 ListRow·Radix Slot 경로는 같은 검사의 렌더 fixture가 실제 포커스 노드도 확인한다
@@ -332,7 +336,7 @@ components/
                         결과 미확인은 이 세션에만 산다) · token-modal(LargeModal 2단계 — ① 폼 ② 원문 1회, Done이 유일한 출구) ·
                         token-grant-fields(권한·범위 **필드만** — 모달과 동의 화면이 공유한다, columns 1|2 · 상태 슬롯·버튼·Alert는 호스트 소유) ·
                         connected-apps-card(OAuth 연결 목록 · 머리의 Copy server URL · 행 왼쪽 로고 칸 · 끊기 Dialog · 조회 장애 ≠ 빈 목록 · CardList) ·
-                        brand-logo(에이전트 공식 로고를 `<img>`로 그대로 — 색을 입히지 않는다) · grant-badges(`Allowed actions` — 권한마다 배지 하나).
+                        brand-logo(에이전트 공식 로고를 `<img>`로 그대로 — 색을 입히지 않는다. OpenAI 칸의 흰 판 PLATE `bg-[#ffffff]`가 생산 소스 색 리터럴 허용 자리 셋 중 하나다 — DESIGN §6.2) · grant-badges(`Allowed actions` — 권한마다 배지 하나).
                         ⚠️ Connect 카드(조각 · 방식·에이전트 탭)는 2026-09-30에 걷었다 — 연결 조각의 정본은 가이드(guide/ai-agents/)다.
                         ⚠️ grant 어휘·만료 선택지를 **다시 적는다** — TOKEN_GRANTS를 값으로 import하면 lib/auth/access가
                         클라이언트 그래프에 들어온다(client-graph). 두 벌의 대가는 components/__tests__/mcp-token이 순서까지 고정해 진다
@@ -356,11 +360,12 @@ components/
                         ⚠️ ko·es 사전의 유일한 클라이언트 import 자리 = next/dynamic 운반체 CARRIERS 한 줄씩. 루트 레이아웃이 서버에서 import하는
                         client 모듈은 한 청크 그룹에 실려 언어별 provider 셋으로는 en도 ko를 받았다 · 언어별 껍데기·key={uiLocale} 금지 — 재마운트) ·
                         locale-switcher(공개 푸터 스위처 — TextTrigger + DropdownMenu selected 세 줄, busy 형, 실패는 sonner 토스트, reject도 failed로 받는다)
-  preferences/          `/preferences` 조각 — preference-select-card(카드 둘의 공용 조립: Card + Select 하나, 고르는 즉시 적용 · 낙관적 표시 ·
+  preferences/          `/preferences` 조각 — preference-select-card(카드 셋의 공용 조립: Card + Select 하나, 고르는 즉시 적용 · 낙관적 표시 ·
                         RoleSelect 가드 · 닫힌 트리거 typeahead 차단(Enter·Space·↑↓·Tab만) · 실패는 Card notice의 Alert danger inset · after 슬롯이
-                        낙관 값을 받는다. 2026-10-05에 language-card의 손 조립을 뽑았다 — 소비자가 둘 다 Preferences 카드라 components/ui가 아니다) ·
+                        낙관 값을 받는다. 2026-10-05에 language-card의 손 조립을 뽑았다 — 소비자가 전부 Preferences 카드라 components/ui가 아니다) ·
                         language-card(setUiLocale) · time-zone-card(setTimeZone — 옵션 timeZoneOptions(now) · 열린 목록 글자 이동은 도시 이름 ·
-                        미리보기 `Now: …`가 유일한 피드백)
+                        미리보기 `Now: …`가 유일한 피드백) · theme-card(setColorScheme — 글리프 Monitor·Sun·Moon은 옵션 label 안 · Action보다 먼저
+                        <html data-theme>을 쓰고 ok가 아니면 되돌린다)
   privacy/              `/privacy` 읽기 그릇 — privacy-doc(서버 — 1120 · 본문 720 + 목차 200, 본문은 사전 그대로)
   docs/                 `/docs/*` 조각 — guide-markdown(서버 — react-markdown에 로더 트리 사본을 꽂고 요소를 매핑한다.
                         ⚠️ urlTransform을 덮지 않는다 · rehype-raw 없음 — raw HTML은 글자로 나가므로 원고에서 게이트가 막는다) · doc-frame(그릇 · 이전/다음 · 장 개요 행 · 개요 두 갈래) ·
@@ -923,12 +928,17 @@ lib/
                         timeZone을 명시한 숫자 부품 추출에만 쓴다 — 런타임 TZ를 읽지 않아야 서버·브라우저가 같은 값을 찍는다(ARCHITECTURE §6.356)
   time-zone/            ⚠️ 잎 둘(user-timezone). zones(선별 목록 TIME_ZONES · parseTimeZone — Object.hasOwn, 런타임 Intl에 유효성을 묻지 않는다 ·
                         resolveTimeZone — 밖은 UTC. import 0) · options(timeZoneOptions(now) — Preferences Select 옵션, UTC 첫 줄 + 오프셋 순)
+  color-scheme/         화면 테마(color-scheme 2026-10-05 — ARCHITECTURE §6.357). scheme(⚠️ 잎 — COLOR_SCHEMES · parseColorScheme(Object.hasOwn) ·
+                        resolveColorScheme(계정 > 쿠키 > light, OS 입력 없음) · COLOR_SCHEME_COOKIE. Theme 카드가 값으로 읽는다) ·
+                        server(server-only — getColorScheme, React cache. 소비자는 루트 레이아웃 · /preferences page 둘). __tests__/helpers/는 대비 검사 전용
+                        순수 헬퍼(oklch → sRGB · WCAG 대비 · globals.css의 light-dark() 두 값 읽기) — contrast(두 테마 대비 + 수용 예외 여섯) ·
+                        theme-surfaces(테마가 닿는 자리와 안 닿는 자리 — 전역 오류 화면 · 초대 메일은 라이트)
   url-token.ts          ⚠️ 잎. 키셋 커서의 문자열 ↔ base64url 하나 — Logs(클라이언트)와 번역 목록(서버)이 같이 쓴다.
                         Buffer 대신 btoa + 퍼센트 인코딩이라 번들에 실린다. 디코드는 던지지 않는다(주소창 값)
   env.ts db.ts githash.ts utils.ts relative-time.ts hue.ts
 ```
 
-⚠️ **잎 모듈이 잎인 데는 이유가 있다** — `relative-time`·`date-format`·`time-zone/`·`compare`·`ref-slug`·`flag`는
+⚠️ **잎 모듈이 잎인 데는 이유가 있다** — `relative-time`·`date-format`·`time-zone/`·`color-scheme/scheme`·`compare`·`ref-slug`·`flag`는
 클라이언트가 값으로 읽는 판정이라 무거운 그래프를 물면 그대로 번들이 된다. **재수출도 하지 않는다.**
 `vitest.setup.ts`가 `server-only`를 전역 mock하므로 "테스트가 죽는다"는 더 이상 그 압력이 아니고,
 **남은 방어선은 `components/__tests__/client-graph.test.ts` 하나**다.
