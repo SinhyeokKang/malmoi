@@ -457,6 +457,9 @@ components/
   onboarding/steps/     단계 넷(repo · files · naming · result). ⚠️ new-project.tsx가 상태를 전부 들고
                         단계는 본문만 그린다 — 모달이 단계 간 상태를 공유하므로 무효화 경계가 코드에
                         명시돼 있어야 한다(브랜치·리포·재탐지). 체크·상세·표면별 기준 언어를 독립 보존한다
+  onboarding/steps/base-locales.tsx
+                        SurfaceBaseLocales · BaseLocaleFields — 소스별 경로 줄 + 기준 언어 블록. 신규 프로젝트 ③과
+                        Add sources ②가 같은 컴포넌트를 쓴다(손 사본 0 — sources-add-remove A4)
   ui/project-thumbnail.tsx
                         ProjectThumbnail — 프로젝트를 가리키는 타일(xs16/sm28/md32/lg56). 이름 기반 hueFill 폴백과 ImageTile을 조립한다.
                         ⚠️ 2026-09-17까지 화면마다 따로 구현돼 있었고 Home만 고정 bg-foreground였다(POSTMORTEM 2026-09-17).
