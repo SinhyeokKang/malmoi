@@ -16,6 +16,7 @@
 5. (2026-10-05 사용자) **랜딩 목업(`components/landing/mockup/`) stale 전부 수정** — 헤더 Inbox 반영 + 검색 버튼 높이 등 현재 앱 셸과 다른 곳. B가 R-B 수정 라운드와 함께 맡는다.
 3. T9 design-sync: 통합 뒤 main 체크아웃 Claude QA 워커가 시안 프레임별로 실측(computed style + AX 트리) → 결함은 BugShot → B가 고친다
    (메모리: 정본이 준비된 변경은 design-sync를 건너뛰지 않는다).
+6. 보조줄 표기: **지휘자 판단 — keep**(`{소스} · {Locale.name}`, Home `title()` 공유). 실데이터 name=code라 시안과 시각 차이 0, 바꾸면 Home과 같은 개념이 갈린다(DESIGN §2.4).
 
 ## 배치
 
