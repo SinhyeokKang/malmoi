@@ -399,7 +399,7 @@ function BannerAction({
 }) {
   const m = useMessages();
   const internal = (href: string, label: string) => (
-    <Link href={href} className="text-muted-foreground ml-1 inline-flex shrink-0 gap-0.5">
+    <Link href={href} className="text-muted-foreground ml-1 inline-flex shrink-0 items-center gap-0.5">
       {label}
       <ChevronRight className="size-3" aria-hidden />
     </Link>

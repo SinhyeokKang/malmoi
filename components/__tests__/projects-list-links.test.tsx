@@ -40,6 +40,9 @@ describe("띠 링크 — 파랑은 새 탭 외부만", () => {
     expect(found?.className).toContain("text-muted-foreground");
     expect(found?.getAttribute("target")).toBeNull();
     expect(found?.querySelector("svg.lucide-chevron-right")).not.toBeNull();
+    // 12px 화살표가 텍스트 줄 상단에 붙지 않도록 교차축 중앙 정렬을 유지한다.
+    expect(found?.classList.contains("inline-flex")).toBe(true);
+    expect(found?.classList.contains("items-center")).toBe(true);
   });
 
   it.each([
