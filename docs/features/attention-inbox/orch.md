@@ -19,7 +19,7 @@
 
 | 배치 | 항목 | 워커 | 소유 파일(요지) | 선행 | 상태 |
 |---|---|---|---|---|---|
-| A | T1 · T2 · T3 · T4 · T5 · T6 · T10 · T11 · T13 | Codex `gpt-6-astra` high — 명세·테스트 목록이 닫혀 기계적 | `lib/home/**` · `lib/inbox/**` · `lib/routes.ts` · `components/home/attention-card.tsx` · `components/projects/project-list.tsx`(import만) · Home `page.tsx` · `lib/keys/query.ts` + 테스트 · `prisma/**` · `lib/privacy/**` · `app/(edit)/inbox/actions.ts` · `app/__tests__/entry-points.test.ts` · PRODUCT · ARCHITECTURE · CLAUDE.md · `/privacy` 본문 | — | 대기 |
+| A | T1 · T2 · T3 · T4 · T5 · T6 · T10 · T11 · T13 | Codex `gpt-6-astra` medium(Astra 상한 — 2026-10-05 사용자) — 명세·테스트 목록이 닫혀 기계적 | `lib/home/**` · `lib/inbox/**` · `lib/routes.ts` · `components/home/attention-card.tsx` · `components/projects/project-list.tsx`(import만) · Home `page.tsx` · `lib/keys/query.ts` + 테스트 · `prisma/**` · `lib/privacy/**` · `app/(edit)/inbox/actions.ts` · `app/__tests__/entry-points.test.ts` · PRODUCT · ARCHITECTURE · CLAUDE.md · `/privacy` 본문 | — | 대기 |
 | B | T8a → (WAITING FOR A) → T7 · T8b · T12 · T14 | Claude Opus 5.5 high — 시안 대조·포커스/로빙 함정·프리미티브 이관 | `components/ui/{list-row,list-group,dropdown-menu,command}.tsx` + 테스트 · `components/shell/{attention-inbox,header}.tsx` · `components/__tests__/shell-header.test.tsx` · `messages/{en,ko,es}.tsx` · DESIGN · DIRECTORY · `guide/**` · `public/guide/**` | T8b는 A가 dev에 들어간 뒤 | 대기 |
 | R-A / R-B | 독립 리뷰 | Claude Opus 5.5 high, 리포트 전용 | — | 각 배치 인계 | — |
 | Q | T9 `/design-sync` + `/runtime-test`(인계 (b) 목록) + 레이아웃 QA | Claude Opus 5.5 high, main 체크아웃 | — | A·B 통합 | — |
