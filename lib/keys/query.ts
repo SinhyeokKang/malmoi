@@ -451,6 +451,7 @@ export type ProjectListAggregates = {
   /** ⑤ 안 보낸 편집 수. */
   unsent: Map<string, number>;
   unsentSurfaces: Map<string, string>;
+  unsentAt: Map<string, Date>;
   /**
    * ④⑤의 **표면(surfaceId)별** 분해 — 같은 쿼리의 소스 축이다(translation-tree-range design §5). Home 카드가 일치가 있는 첫 소스로 착지하는 근거다
    * (`surfaceQueues`). 프로젝트 합(`newKeys`·`unsent`)은 이 행들의 합이다.
@@ -465,7 +466,7 @@ export async function loadProjectListAggregates(
 ): Promise<ProjectListAggregates> {
   // 빈 `in`으로 왕복을 만들지 않는다 — `loadActors`가 같은 이유로 같은 가드를 든다.
   if (projectIds.length === 0) {
-    return { locales: [], keyTotals: new Map(), cells: [], newKeys: new Map(), unsent: new Map(), unsentSurfaces: new Map(), newKeysBySurface: new Map(), unsentBySurface: new Map() };
+    return { locales: [], keyTotals: new Map(), cells: [], newKeys: new Map(), unsent: new Map(), unsentSurfaces: new Map(), unsentAt: new Map(), newKeysBySurface: new Map(), unsentBySurface: new Map() };
   }
   const ids = [...projectIds];
 
@@ -517,8 +518,8 @@ export async function loadProjectListAggregates(
      * 그 셀은 export에 안 나가므로 세면 Publish로 영영 0이 안 되는 수가 되고, 보호 배포 뒤엔 CI가 영구 보류된다.
      * `p."archivedAt" IS NULL`은 목록 Summary의 **프로젝트 선택 조건**이지 셀 술어가 아니다.
      */
-    prisma.$queryRaw<{ projectId: string; surfaceId: string; surfaceSlug: string; n: number }[]>`
-      SELECT t."projectId", t."surfaceId", s."slug" AS "surfaceSlug", COUNT(*)::int AS n
+    prisma.$queryRaw<{ projectId: string; surfaceId: string; surfaceSlug: string; n: number; at: Date }[]>`
+      SELECT t."projectId", t."surfaceId", s."slug" AS "surfaceSlug", COUNT(*)::int AS n, MAX(t."updatedAt") AS "at"
       FROM "Translation" t JOIN "Project" p ON p."id" = t."projectId"
       JOIN "TranslationSurface" s ON s."projectId" = t."projectId" AND s."id" = t."surfaceId"
       JOIN "StringKey" k ON k."projectId" = t."projectId" AND k."surfaceId" = t."surfaceId" AND k."id" = t."keyId"
@@ -539,7 +540,10 @@ export async function loadProjectListAggregates(
     return out;
   };
   const unsentSurfaces = new Map<string, string>();
+  const unsentAt = new Map<string, Date>();
   for (const row of unsentRows) {
+    const latest = unsentAt.get(row.projectId);
+    if (latest === undefined || row.at > latest) unsentAt.set(row.projectId, row.at);
     const seen = unsentSurfaces.get(row.projectId);
     if (seen === undefined || row.surfaceSlug < seen) unsentSurfaces.set(row.projectId, row.surfaceSlug);
   }
@@ -566,6 +570,7 @@ export async function loadProjectListAggregates(
     newKeys: sumBy(newRows),
     unsent: sumBy(unsentRows),
     unsentSurfaces,
+    unsentAt,
     newKeysBySurface: new Map(newRows.map((r) => [r.surfaceId, r.n])),
     unsentBySurface: new Map(unsentRows.map((r) => [r.surfaceId, r.n])),
   };
@@ -579,7 +584,7 @@ export async function loadProjectListAggregates(
  */
 
 /** 검토 대기 항목 하나의 재료. `updatedBy`는 **그 로케일의 가장 최근 편집 행**의 값이다. */
-export type ReviewAttentionRow = { surfaceId: string; localeCode: string; count: number; at: Date; updatedBy: string | null };
+export type ReviewAttentionRow = { projectId: string; surfaceId: string; localeCode: string; count: number; at: Date; updatedBy: string | null };
 
 /**
  * 로케일별 검토 대기 수 + **그 로케일의 마지막 편집자·시각** (DESIGN §6.64).
@@ -607,26 +612,28 @@ export type ReviewAttentionRow = { surfaceId: string; localeCode: string; count:
  * 세우면 번역자를 **편집할 수 없는 행**으로 데려가고, 카드의 수는 그것을 빼므로 **pill과 카드가
  * 같은 화면에서 어긋난다** (code-review 2026-09-15 🔴1).
  */
-export async function loadReviewAttention(prisma: PrismaClient, projectId: string): Promise<ReviewAttentionRow[]> {
-  const rows = await prisma.$queryRaw<{ surfaceId: string; localeCode: string; at: Date; updatedBy: string | null; n: number }[]>`
-    SELECT DISTINCT ON (t."surfaceId", t."localeCode")
-      t."surfaceId", t."localeCode",
-      MAX(t."updatedAt") OVER (PARTITION BY t."surfaceId", t."localeCode") AS "at",
+export async function loadReviewAttention(prisma: PrismaClient, projectIds: readonly string[]): Promise<ReviewAttentionRow[]> {
+  if (projectIds.length === 0) return [];
+  const ids = [...projectIds];
+  const rows = await prisma.$queryRaw<{ projectId: string; surfaceId: string; localeCode: string; at: Date; updatedBy: string | null; n: number }[]>`
+    SELECT DISTINCT ON (t."projectId", t."surfaceId", t."localeCode")
+      t."projectId", t."surfaceId", t."localeCode",
+      MAX(t."updatedAt") OVER (PARTITION BY t."projectId", t."surfaceId", t."localeCode") AS "at",
       t."updatedBy",
-      COUNT(*) FILTER (WHERE t."needsReview") OVER (PARTITION BY t."surfaceId", t."localeCode")::int AS n
+      COUNT(*) FILTER (WHERE t."needsReview") OVER (PARTITION BY t."projectId", t."surfaceId", t."localeCode")::int AS n
     FROM "Translation" t
     JOIN "TranslationSurface" s ON s."projectId" = t."projectId" AND s."id" = t."surfaceId"
     JOIN "StringKey" k ON k."projectId" = t."projectId" AND k."id" = t."keyId"
     JOIN "Locale" l ON l."projectId" = t."projectId" AND l."surfaceId" = t."surfaceId" AND l."code" = t."localeCode"
-    WHERE t."projectId" = ${projectId}
+    WHERE t."projectId" = ANY(${ids}::text[])
       AND s."archivedAt" IS NULL
       AND k."orphaned" = false
       AND l."orphaned" = false
       AND t."value" <> ''
-    ORDER BY t."surfaceId", t."localeCode", (t."updatedBy" IS NOT NULL) DESC, t."updatedAt" DESC, t."keyId" ASC`;
+    ORDER BY t."projectId", t."surfaceId", t."localeCode", (t."updatedBy" IS NOT NULL) DESC, t."updatedAt" DESC, t."keyId" ASC`;
   // 검토 대기가 0인 로케일은 항목이 아니다 — 파티션이 그 로케일 전체라 여기서 거른다.
   return rows.flatMap((row) => (row.n === 0 ? [] : [{
-    surfaceId: row.surfaceId, localeCode: row.localeCode, count: row.n, at: row.at, updatedBy: row.updatedBy,
+    projectId: row.projectId, surfaceId: row.surfaceId, localeCode: row.localeCode, count: row.n, at: row.at, updatedBy: row.updatedBy,
   }]));
 }
 

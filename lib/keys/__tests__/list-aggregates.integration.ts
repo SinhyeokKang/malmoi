@@ -349,7 +349,8 @@ async function seed(input: { id: string; lastPulledAt: Date | null; archived: bo
 it("⑤가 countPending과, 그리고 번역 화면의 목록·상세 투영과 같다 — orphan 키는 셋 다 뺀다 [C9]", async () => {
   await seed({ id: "p1", lastPulledAt: PULLED, archived: false });
 
-  const { unsent } = await loadProjectListAggregates(prisma, ["p1"]);
+  const { unsent, unsentAt } = await loadProjectListAggregates(prisma, ["p1"]);
+  expect(unsentAt.get("p1")).toEqual(AFTER);
   const counted = await countPending(prisma, "p1");
 
   // 토큰 없는 `old`는 빠지고 orphan 키 `gone`도 빠진다 — 남는 것은 `same`과 `new` 둘이다. 시각은 판정에 안 쓴다.
@@ -444,7 +445,8 @@ it("④⑤의 표면 축이 표면별 판정과 같고, Home 카드가 일치가
 it("첫 pull 전에도 세 판정이 같다", async () => {
   await seed({ id: "p1", lastPulledAt: null, archived: false });
 
-  const { unsent } = await loadProjectListAggregates(prisma, ["p1"]);
+  const { unsent, unsentAt } = await loadProjectListAggregates(prisma, ["p1"]);
+  expect(unsentAt.get("p1")).toEqual(AFTER);
   const counted = await countPending(prisma, "p1");
   expect(unsent.get("p1")).toBe(2);
   expect(unsent.get("p1")).toBe(counted);
@@ -905,7 +907,7 @@ it("검토 항목이 orphaned 로케일을 빼고 `reviewByLocale`과 같은 답
   }
   await prisma.translation.updateMany({ where: { projectId: "p1", localeCode: "ko" }, data: { needsReview: true } });
 
-  const rows = await loadReviewAttention(prisma, "p1");
+  const rows = await loadReviewAttention(prisma, ["p1"]);
   const aggregates = await loadProjectListAggregates(prisma, ["p1"]);
   const byLocale = reviewByLocale(aggregates.locales, aggregates.cells).get("p1") ?? [];
 
@@ -922,8 +924,8 @@ it("검토 항목의 대표 행이 결정적이다 — 같은 시각이면 keyId
   await prisma.translation.update({ where: { keyId_localeCode: { keyId: "p1-new", localeCode: "ko" } },
     data: { updatedBy: "u-first" } });
 
-  const first = await loadReviewAttention(prisma, "p1");
-  const again = await loadReviewAttention(prisma, "p1");
+  const first = await loadReviewAttention(prisma, ["p1"]);
+  const again = await loadReviewAttention(prisma, ["p1"]);
   expect(first).toEqual(again);
   // `p1-gone`·`p1-new`·`p1-old`·`p1-same` 중 orphaned 키는 빠지고 남은 셋의 최소 keyId가 `p1-new`다.
   expect(first[0]).toMatchObject({ localeCode: "ko", updatedBy: "u-first", count: 3 });
@@ -945,7 +947,7 @@ it("검토 대기 셀의 저자가 비어 있어도 그 로케일의 마지막 �
   await prisma.translation.update({ where: { keyId_localeCode: { keyId: "p1-same", localeCode: "ko" } },
     data: { needsReview: false, updatedBy: "u-human", updatedAt: AFTER } });
 
-  const [row] = await loadReviewAttention(prisma, "p1");
+  const [row] = await loadReviewAttention(prisma, ["p1"]);
   // 검토 대기는 셋 중 `gone`(orphaned 키)이 빠진 둘이다.
   expect(row).toMatchObject({ localeCode: "ko", count: 2, updatedBy: "u-human" });
   // 정렬 키는 그 로케일의 마지막 변경 시각이다 — 대표 행의 시각과 우연히 같을 뿐이 아니다.
@@ -958,7 +960,7 @@ it("사람 편집이 없으면 저자가 null이고 항목은 남는다", async 
   await prisma.translation.updateMany({ where: { projectId: "p1", localeCode: "ko" },
     data: { needsReview: true, updatedBy: null } });
 
-  const [row] = await loadReviewAttention(prisma, "p1");
+  const [row] = await loadReviewAttention(prisma, ["p1"]);
   expect(row).toMatchObject({ localeCode: "ko", updatedBy: null });
   expect(row?.count).toBe(3);
 });
@@ -1051,4 +1053,17 @@ it("잠금 뒤 다시 읽은 토큰이 없으면(폐기·재발급) 표면을 �
   expect(await prisma.translationSurface.count({ where: { projectId: "add", id: { not: "surface-add" } } })).toBe(0);
   await prisma.apiToken.update({ where: { userId: "owner" }, data: { grants: ["project:settings"] } });
   expect(await addSurfacesFromSnapshot(prisma, { projectSlug: "add", inputs: [input], credential: { kind: "api-token", tokenHash: "live" } })).toMatchObject([{ surfaceSlug: "second" }]);
+});
+
+it("검토 집계는 프로젝트 두 개의 같은 로케일을 섞지 않는다", async () => {
+  await seed({ id: "p1", lastPulledAt: PULLED, archived: false });
+  await seed({ id: "p2", lastPulledAt: PULLED, archived: false });
+  await prisma.translation.updateMany({ where: { projectId: "p1" }, data: { needsReview: true, updatedBy: "person-1", updatedAt: BEFORE } });
+  await prisma.translation.updateMany({ where: { projectId: "p2", keyId: "p2-new" }, data: { needsReview: true, updatedBy: "person-2", updatedAt: AFTER } });
+  const rows = await loadReviewAttention(prisma, ["p1", "p2"]);
+  expect(rows).toEqual([
+    { projectId: "p1", surfaceId: "surface-p1", localeCode: "ko", count: 3, at: BEFORE, updatedBy: "person-1" },
+    { projectId: "p2", surfaceId: "surface-p2", localeCode: "ko", count: 1, at: AFTER, updatedBy: "person-2" },
+  ]);
+  expect(await loadReviewAttention(prisma, [])).toEqual([]);
 });

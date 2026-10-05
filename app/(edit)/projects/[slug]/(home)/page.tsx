@@ -152,7 +152,7 @@ export default async function ProjectHomePage({
      * ⚠️ **`try`로 감싸지 않는다** (결정 16) — 실패는 Home 전체가 오류 화면이 되어야 한다.
      */
     loadEvents(prisma, m, projectId, parseLogFilter({}), { limit: HOME_EVENT_LIMIT, timeZone: style.timeZone }),
-    loadReviewAttention(prisma, projectId),
+    loadReviewAttention(prisma, [projectId]),
     // ⚠️ **상세는 Home 위에서 연다** — Logs로 튕겨 보내지 않는다(캔버스 `1h`).
     openRef === null ? Promise.resolve(null) : loadEvent(prisma, m, projectId, openRef),
     /**

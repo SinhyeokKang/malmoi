@@ -121,6 +121,9 @@ const GUARDS = [...PROJECT_GUARDS, USER_GUARD];
  * 여기 이름을 더하려면 그 둘 중 어느 쪽인지 적는다.
  */
 const USER_SCOPED_ACTIONS = new Set([
+  // 세션 사용자의 비보관 멤버십에서 범위를 정하고, 읽음 시각도 그 사용자 행 하나에만 쓴다.
+  "inbox/actions.ts#loadAttentionBadgeAction",
+  "inbox/actions.ts#openAttentionInboxAction",
   // 멤버십은 세션 사용자가 소유한 목록이다.
   "search/actions.ts#loadSearchMembershipsAction",
   // Session revocation affects only the authenticated user, including users without projects.
@@ -225,6 +228,7 @@ function hasUserGuard(body: string): boolean {
   if (body.includes("requireUser(")) return true;
   if (!body.includes("await readSession()")) return false;
   if (/if \(session\.status !== "ok"\) return "failed";/.test(body)) return true;
+  if (/if \(session\.status !== "ok"\) return \{ status: "failed" \};/.test(body)) return true;
   return /if \(session.status === "none"\) return \{ ok: false, error: "unauthorized" \}/.test(body) &&
     /if \(session.status === "unavailable"\) return \{ ok: false, error: "unavailable" \}/.test(body);
 }
@@ -244,6 +248,9 @@ it("사용자 Action의 readSession은 두 거부 반환 없이는 인증으로 
   const none = 'if (session.status === "none") return { ok: false, error: "unauthorized" };';
   const outage = 'if (session.status === "unavailable") return { ok: false, error: "unavailable" };';
   expect(hasUserGuard(read)).toBe(false);
+  expect(hasUserGuard(read + 'if (session.status !== "ok") return { status: "failed" };')).toBe(true);
+  expect(hasUserGuard(read + 'if (session.status === "none") return { status: "failed" };')).toBe(false);
+  expect(hasUserGuard('if (session.status !== "ok") return { status: "failed" };')).toBe(false);
   expect(hasUserGuard(read + none)).toBe(false);
   expect(hasUserGuard(read + outage)).toBe(false);
   expect(hasUserGuard(read + none + outage)).toBe(true);

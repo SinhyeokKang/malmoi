@@ -46,7 +46,7 @@ it("표면 실패를 평탄화하지 않고 설정·첫 적재 대기를 같은 
   const base = member("p").project.surfaces[0]!;
   const { prisma } = database([
     member("p", { surfaces: [{ ...base, lastImportError: "parse-failed", lastImportFailedAt: at }, { ...base, id: "s2", slug: "mail", lastImportError: "parse-failed", lastImportStartedAt: at }] }),
-    member("setup", { surfaces: [] }),
+    member("setup", { installationId: null, surfaces: [] }),
     member("awaiting", { surfaces: [{ ...base, lastCommitSha: null }] }),
   ]);
   const plan = await loadAttentionInbox(prisma, "user");
