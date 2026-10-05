@@ -76,12 +76,12 @@ const ACCEPTED: Readonly<Record<string, { light?: number; dark?: number; why: st
   "ring/background": { light: 2.54, why: "DESIGN §7 — blue-400 링, 시각 무게를 대비보다 앞에 둔 결정(2026-09-11). 다크 blue-500은 통과" },
   "destructive/destructive@8%": { light: 4.26, why: "DESIGN §2.3 — 실패 알약·칸의 글자(약 4.3)" },
   "muted-foreground/muted": { light: 4.34, why: "DESIGN §2.2 — muted 위 글자는 `text-foreground/60`을 쓴다(4.34)" },
-  "muted-foreground/canvas": { light: 4.38, why: "canvas 위 muted 글자(셸 사이드바·헤더) — muted-foreground/muted와 같은 성격, Phase 1 라이트 무변화(2026-10-05 사용자 — DESIGN 등재는 P2-6)" },
-  // 아바타 이니셜 — 식별색 위 흰 글자(테마 불변이라 두 테마 같은 수치). rose·indigo·fuchsia는 4.5를 넘어 예외가 아니다. DESIGN 등재는 P2-6.
+  "muted-foreground/canvas": { light: 4.38, why: "DESIGN §2.2 · §7 — canvas 위 muted 글자(셸 사이드바·헤더), muted-foreground/muted와 같은 성격, Phase 1 라이트 무변화(2026-10-05 사용자)" },
+  // 아바타 이니셜 — 식별색 위 흰 글자(테마 불변이라 두 테마 같은 수치). rose·indigo·fuchsia는 4.5를 넘어 예외가 아니다. DESIGN §6.2 · §7.
   ...Object.fromEntries(
     ([["orange", 3.59], ["amber", 3.19], ["emerald", 3.65], ["teal", 3.66], ["sky", 4.02]] as const).map(([hue, value]) => [
       `on-hue/hue-${hue} (avatar initial)`,
-      { light: value, dark: value, why: "아바타 이니셜 — 식별색 위 흰 글자, 라이트 최저 amber 3.19" },
+      { light: value, dark: value, why: "DESIGN §6.2 · §7 — 아바타 이니셜, 식별색 위 흰 글자, 라이트 최저 amber 3.19" },
     ]),
   ),
   "gray-dim/background": { light: 2.58, dark: 3.78, why: "DESIGN §6.2 — 본문 아님, 옆 값이 뜻을 완성하는 자리만(2026-10-05 사용자 — 다섯째 예외)" },
