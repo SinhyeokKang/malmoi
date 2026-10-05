@@ -210,7 +210,7 @@ it("Logs는 제거된 소스를 필터 항목으로 남기고 그 소스로 걸�
 async function mcp(name: string, input: Record<string, unknown>) {
   const subject: ApiTokenSubject = { userId: "owner", credential: { kind: "api-token", tokenHash: "hash-owner" }, grants: ["translation:write", "project:settings"], scope: { kind: "all" } };
   if (await prisma.apiToken.count({ where: { userId: "owner" } }) === 0) {
-    await prisma.apiToken.create({ data: { userId: "owner", tokenHash: "hash-owner", grants: subject.grants, allProjects: true, projectIds: [], expiresAt: new Date(Date.now() + 86_400_000) } });
+    await prisma.apiToken.create({ data: { userId: "owner", tokenHash: "hash-owner", grants: [...subject.grants], allProjects: true, projectIds: [], expiresAt: new Date(Date.now() + 86_400_000) } });
   }
   const outcome = await TOOLS.find(tool => tool.name === name)!.run({ prisma, subject, now: new Date(), origin: null }, input as never);
   if (outcome.status !== "ok") throw new Error(`${name} refused: ${JSON.stringify(outcome)}`);
