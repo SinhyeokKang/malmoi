@@ -319,6 +319,8 @@ components/
                         판정(다른 pathname만)은 lib/shell/navigation-dim.ts
                         new-project-icon.tsx  헤더 [New project] 링크의 앞 아이콘을 ui/LinkProgress에 넘기는 클라이언트 잎.
                         링크 자손의 useLinkStatus와 기존 아이콘 교체를 위임하고 header.tsx는 서버에 남는다
+                        nav-count.ts  LNB 개수 배지의 sr 문장(navCountLabel) — 사이드바("use client")와 랜딩 목업(서버)이 같이 쓰는 순수 잎.
+                        클라이언트 파일의 export는 서버 컴포넌트에서 값이 아니라 참조라 sidebar.tsx에서 뗐다
                         shell-panels.tsx  LNB ↔ 콘텐츠 리사이저. 서버 레이아웃과 PanelGroup 사이의
                         "use client" 경계이고 sidebar·children을 prop으로 통과시킨다
                         ⚠️ 사이드바 폭이 aside가 아니라 여기 Panel에 있다(200/240/320) — 둘 다 들면
