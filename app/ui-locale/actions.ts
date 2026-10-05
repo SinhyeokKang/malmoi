@@ -1,17 +1,14 @@
 "use server";
 
-import { cookies, headers } from "next/headers";
-
 import { readSession } from "@/lib/auth/read-session";
 import { getPrisma } from "@/lib/db";
 import { describeFailure } from "@/lib/failure";
-import { UI_LOCALE_COOKIE, parseUiLocale, planUiLocaleWrite } from "@/lib/i18n/locales";
+import { setUiLocaleCookie } from "@/lib/i18n/cookie";
+import { parseUiLocale, planUiLocaleWrite } from "@/lib/i18n/locales";
 import { revalidateAfterCommit } from "@/lib/revalidate-after-commit";
 
 /** ⚠️ **문장이 아니라 코드다** — 호출부가 `useMessages()`로 그린다. 무효화 뒤 렌더가 새 언어라 Action이 고른 언어로 문장을 만들 수 없다. */
 export type SetUiLocaleResult = "ok" | "invalid" | "failed";
-
-const ONE_YEAR = 60 * 60 * 24 * 365;
 
 /**
  * **화면 언어 바꾸기** (ui-locales design §4) — 공개 푸터(비로그인 포함)와 `/preferences`가 같이 부른다. 그래서 보호 경로 밖
@@ -40,9 +37,7 @@ export async function setUiLocale(raw: unknown): Promise<SetUiLocaleResult> {
     }
   }
 
-  // 프록시가 둘 이상이면 `https,http`처럼 목록으로 온다 — 앞이 클라이언트 쪽이다(`requestOrigin`과 같은 판정).
-  const proto = (await headers()).get("x-forwarded-proto")?.split(",")[0]?.trim().toLowerCase();
-  (await cookies()).set(UI_LOCALE_COOKIE, uiLocale, { httpOnly: true, sameSite: "lax", secure: proto === "https", path: "/", maxAge: ONE_YEAR });
+  await setUiLocaleCookie(uiLocale);
 
   // 루트 레이아웃이 `<html lang>`과 provider를 이 값으로 고른다 — 전 화면이다. 커밋 뒤라 던져도 결과를 뒤집지 않는다.
   revalidateAfterCommit("ui-locale");
