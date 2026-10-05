@@ -3059,8 +3059,12 @@ export const en = {
       title: (slug: string): string => `Remove ${slug} from this project?`,
       /** 늘 선다 — 어디까지 사라지나의 경계(여기서 멈춘다 / 리포는 그대로 / 다시 더하면 돌아온다). */
       body: "It stops syncing here. Files in the repository aren't changed. Add it again anytime to bring its translations back.",
-      /** 미전달 > 0일 때만. `count`는 `repositorySync.unsentCount` 그대로(500으로 앞세운다). */
-      unsent: (n: number, count: ReactNode): ReactNode => <>{count} will be discarded.</>,
+      /**
+       * 미전달 > 0일 때만. `count`는 `repositorySync.unsentCount` 그대로(500으로 앞세운다).
+       * ⚠️ **"버려진다"가 아니다** (사용자 결정 2026-10-06) — 제거는 번역을 건드리지 않고, 재추가 첫 적재가 **리포에 값이 있는 칸만** 리포 값으로
+       * 덮는다(ARCHITECTURE §5.9). 어느 칸이 남을지는 제거 시점에 알 수 없어 수를 쪼개지 않는다.
+       */
+      unsent: (n: number, count: ReactNode): ReactNode => <>Re-adding it later replaces {count} with the repository&apos;s values.</>,
       /** 서버는 PR이 이 소스의 파일을 바꿨는지 보지 않는다 — 그래서 조건문이다(시안 R5). */
       openPr: "If the open pull request changes its files, those changes drop out at the next publish.",
       /** PR 조회 실패 — 제거를 막지 않는다. 열려 있을 수 있다는 것만 같은 결과로 말한다. */
@@ -3068,7 +3072,7 @@ export const en = {
       /** 늘 선다 — 앱은 대상 리포 워크플로에 그 step이 있는지 알 수 없다(PRODUCT §7.1). */
       workflowLine: "Remove its step from your GitHub workflow — otherwise the next run fails and stops the sources after it.",
       /** 지문 발급 실패 — Sync와 달리 확정을 막고 [Try again]이 다시 받는다(시안 R6 · 닫힌 결정 1). */
-      previewFailed: "We couldn't check what removing it would discard. Try again before you remove it.",
+      previewFailed: "We couldn't check its unsent edits. Try again before you remove it.",
       /** 응답 유실 — 서버가 끝냈을 수 있다. 다시 실행하지 않고 화면을 다시 읽는다. */
       unconfirmed: "We couldn't confirm whether it was removed. The list shows the current state.",
       /** 성공 배너 첫 줄(시안 R8). */
@@ -3697,7 +3701,7 @@ export const en = {
       revert_to_last_sent: "Revert one key's unsent languages to the version last confirmed as sent. Call preview_revert first and pass its confirmation.",
       update_project: "Change a project's name or base branch.",
       set_base_locale: "Declare a source's base language. It takes effect after the next sync from the repository.",
-      remove_source: "Remove a source from the project. Its keys, translations, and history are kept, and files in the repository aren't changed. Adding the same path with the same file format again brings it back and loads the repository's values over its unsent edits. If it has unsent edits, call preview_source_removal first and pass its approval. The last source can't be removed.",
+      remove_source: "Remove a source from the project. Its keys, translations, and history are kept, and files in the repository aren't changed. Adding the same path with the same file format again brings it back and replaces its unsent edits with the repository's values, only where the repository has a value. If it has unsent edits, call preview_source_removal first and pass its approval. The last source can't be removed.",
       rotate_push_token: "Issue a new push token. The old one stops working at once. Set it with gh secret set PUSH_TOKEN --repo OWNER/REPO, passing the token on standard input — don't use --body (--body - stores a literal \"-\").",
       invite_members: "Invite people by email. Each invitation goes out by email and the link isn't returned.",
       revoke_invitation: "Revoke a pending invitation.",
@@ -3751,7 +3755,7 @@ export const en = {
         : `Synced from the repository. ${kept.toLocaleString("en-US")} unsent ${kept === 1 ? "edit remains" : "edits remain"}, so automatic updates stay held.`,
       sourceRemovalPreview: (unsent: number): string => unsent === 0
         ? "The source can be removed. It has no unsent edits."
-        : `The source can be removed. ${unsent.toLocaleString("en-US")} ${unsent === 1 ? "unsent edit" : "unsent edits"} will be discarded when it's added again. Remove it with this approval.`,
+        : `The source can be removed. Re-adding it later replaces ${unsent.toLocaleString("en-US")} ${unsent === 1 ? "unsent edit" : "unsent edits"} with the repository's values. Remove it with this approval.`,
       sourceRemoved: (slug: string): string => `Removed ${slug}. Remove its step from the repository's workflow file, or the next run fails.`,
       syncPreview: (unsent: number): string => unsent === 0
         ? "Sync will load the repository's values. No unsent edits will be discarded."
