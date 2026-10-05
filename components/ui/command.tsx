@@ -8,6 +8,7 @@ import { nextActive, reconcileActive } from "@/lib/search/keys";
 import { cn } from "@/lib/utils";
 import { Input } from "./input";
 import { Kbd } from "./kbd";
+import { ListGroup } from "./list-group";
 import { ListRow } from "./list-row";
 import { useImeGuard } from "./use-ime-guard";
 
@@ -113,22 +114,15 @@ export function CommandList({ label, children }: { label: string; children: Reac
   return <div ref={ref} id={listId} role="listbox" aria-label={label} className="min-h-0 flex-1 overflow-y-auto py-2">{children}</div>;
 }
 
-/**
- * 그룹은 세로 padding이 없고 두 번째부터 위쪽 선 하나다 — 선이 앞 그룹 마지막 행에 바로 붙어 활성 면이 선에서 뜨지 않는다.
- * 그룹 위 간격은 머리 `pt-4` 하나가 든다. 머리 `text-gray-dim`은 경계 표시라 행 보조 글자(#737373)와 층을 가른다(D15 — DESIGN §6.2 등재 이탈).
- */
+/** 그룹 형은 `ListGroup`이 든다(attention-inbox T8a — 헤더 Inbox와 같은 부품). */
 export function CommandGroup({ heading, children }: { heading: string; children: ReactNode }) {
-  const headingId = useId();
-  return <div role="group" aria-labelledby={headingId} className="not-first:border-divider not-first:border-t">
-    <div id={headingId} className="text-gray-dim px-4 pt-4 pb-1 text-xs font-medium">{heading}</div>
-    {children}
-  </div>;
+  return <ListGroup heading={heading}>{children}</ListGroup>;
 }
 
 /**
  * 행은 **`ListRow`다**(search-ux-unify C15) — Logs·Sources·Account 행과 같은 타일 + 제목 + 설명 조합. `icon`은 28 타일
  * (`ProjectThumbnail sm`·`IconTile sm`)이고 소비자가 넘긴다.
- * ⚠️ **활성은 `selected` 7% 하나다**(C16) — 비활성 행의 hover 면을 끈다. 마우스를 둔 채 ↑↓를 눌러도 칠해진 행이 하나다.
+ * ⚠️ **활성은 `selected` 7% 하나다**(C16) — 비활성 행의 hover 면을 끈다(`hoverFill={false}`). 마우스를 둔 채 ↑↓를 눌러도 칠해진 행이 하나다.
  * 활성 행에는 hover 클래스를 덧대지 않는다(`ListRow`가 selected일 땐 hover를 안 붙인다) — 덮으면 커서 아래 활성 면이 사라진다.
  * ⚠️ **`Go to ↵`는 늘 렌더하고 비활성은 `invisible`이다**(C19) — 활성일 때만 붙이면 행 높이·제목 폭이 출렁인다.
  * `aria-current={false}` — option 활성은 "현재 페이지"가 아니다(`ListRow`는 selected를 `aria-current`로 읽는다).
@@ -156,8 +150,8 @@ export function CommandItem({ id, href, title, icon, context, description, badge
   // 이미 옮겨 둔 행에서 움직일 때는 `activate`가 같은 상태를 돌려줘 다시 그리지 않는다.
   return <div id={optionId(id)} role="option" aria-selected={selected} onMouseMove={() => activate(id)}
     onMouseDown={event => event.preventDefault()}>
-    <ListRow ref={anchor} href={href} tabIndex={-1} variant="canvas" selected={selected} aria-current={false}
-      className={cn("text-sm", !selected && "hover:bg-transparent")}
+    <ListRow ref={anchor} href={href} tabIndex={-1} variant="canvas" selected={selected} hoverFill={false} aria-current={false}
+      className="text-sm"
       icon={icon}
       title={<span className="block truncate">{title}{context !== undefined && <span className="text-muted-foreground text-xs"> · {context}</span>}</span>}
       description={description === undefined ? undefined : <span className="block truncate whitespace-nowrap">{description}</span>}

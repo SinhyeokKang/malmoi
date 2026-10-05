@@ -106,7 +106,8 @@ it("행은 option 안의 ListRow이고 활성 면만 칠하며 힌트가 모든 
     expect(link.getAttribute("aria-current")).not.toBe("true");
   }
   expect(links[0]!.classList.contains("bg-foreground/[0.07]")).toBe(true);
-  expect(links.slice(1).every(link => !link.classList.contains("bg-foreground/[0.07]") && link.classList.contains("hover:bg-transparent"))).toBe(true);
+  // 비활성 행엔 hover 면 자체가 없다(`ListRow hoverFill={false}` — 예전 `hover:bg-transparent` 덮어쓰기와 같은 계산값).
+  expect(links.slice(1).every(link => !link.classList.contains("bg-foreground/[0.07]") && ![...link.classList].some(token => token.startsWith("hover:bg-")))).toBe(true);
   expect(container.querySelectorAll('[role="option"] kbd')).toHaveLength(options.length);
   const hints = options.map(option => find(option, "kbd").parentElement!);
   const before = hints.map(hint => hint.className.replace(/\binvisible\b/, "").trim());
