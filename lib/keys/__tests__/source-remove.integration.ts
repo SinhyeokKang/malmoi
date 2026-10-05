@@ -9,6 +9,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 
 import { PrismaClient } from "@/generated/prisma/client";
 import { optionalEnv } from "@/lib/env";
+import { hashPushToken } from "@/lib/push/token";
 import { addSurfacesFromSnapshot, type AddSurfaceSnapshot } from "@/lib/surfaces/create";
 import { previewSurfaceRemoval, removeSurface } from "@/lib/surfaces/remove";
 
@@ -23,7 +24,8 @@ import { previewSurfaceRemoval, removeSurface } from "@/lib/surfaces/remove";
 
 const db = vi.hoisted(() => ({ prisma: undefined as unknown }));
 vi.mock("@/lib/db", () => ({ getPrisma: () => db.prisma }));
-vi.mock("@/lib/projects/open-pr", () => ({ loadOpenPrUrl: async () => null }));
+vi.mock("@/lib/projects/open-pr", () => ({ loadOpenPrUrl: async () => null, loadOpenPrForImportGate: async () => null }));
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 const directory = mkdtempSync(join(tmpdir(), "malmoi-source-remove-"));
 let binaries: string;
@@ -50,6 +52,7 @@ afterAll(async () => {
   rmSync(directory, { recursive: true, force: true });
 });
 
+const PUSH_TOKEN = "isolated-source-remove-fixture";
 const REPOSITORY = { repositoryId: "123", installationId: "456", repoOwner: "o", repoName: "r", baseBranch: "main" };
 const OWNER = { userId: "owner" };
 const OLD_COMMIT_AT = new Date("2026-12-01T00:00:00Z");
@@ -77,7 +80,7 @@ beforeEach(async () => {
     if (name === "migration_lock.toml") continue;
     await pool.query(readFileSync(join("prisma/migrations", name, "migration.sql"), "utf8"));
   }
-  await prisma.project.create({ data: { id: "p", slug: "p", name: "p", ...REPOSITORY } });
+  await prisma.project.create({ data: { id: "p", slug: "p", name: "p", ...REPOSITORY, pushTokenHash: hashPushToken(PUSH_TOKEN) } });
   await prisma.user.create({ data: { id: "owner", email: "owner-fixture" } });
   await prisma.user.create({ data: { id: "editor", email: "editor-fixture" } });
   await prisma.projectMember.create({ data: { projectId: "p", userId: "owner", role: "OWNER" } });
@@ -252,5 +255,58 @@ describe("재추가 = 되살림", () => {
     await prisma.translationSurface.update({ where: { id: "s-app" }, data: { pathTemplate: "web/{locale}.json" } });
     await expect(readd()).rejects.toMatchObject({ code: "path-conflict" });
     expect((await prisma.translationSurface.findUniqueOrThrow({ where: { id: "s-web" } })).archivedAt).not.toBeNull();
+  });
+});
+
+describe("제거된 소스로 온 CI", () => {
+  const ciBody = (surfaceSlug: string) => ({ projectSlug: "p", surfaceSlug, commitSha: "d".repeat(40), commitAt: "2026-12-02T00:00:00Z" });
+  const pushRequest = (surfaceSlug = "app") => new Request("http://localhost/api/push", { method: "POST", headers: { authorization: `Bearer ${PUSH_TOKEN}` }, body: JSON.stringify({
+    ...ciBody(surfaceSlug), format: { adapter: "json-catalog", pathTemplate: `${surfaceSlug}/{locale}.json`, baseLocale: "en", nested: false },
+    locales: ["en", "ko"], keys: [{ key: "hello", namespace: "_root", sourceText: "Hello" }],
+    translations: [{ key: "hello", locale: "en", value: "Hello" }, { key: "hello", locale: "ko", value: "From-ci" }], refs: [],
+  }) });
+  const refusals = () => prisma.projectEvent.findMany({ where: { projectId: "p", subtype: "import.ci" }, select: { result: true, surfaceIds: true, payload: true } });
+
+  it.each(["push", "failure"] as const)("/api/%s는 적재하지 않고 409 surface removed를 돌려주며 거부로 남긴다", async kind => {
+    expect(await remove("app")).toEqual({ ok: true });
+    const response = kind === "push"
+      ? await (await import("@/app/api/push/route")).POST(pushRequest())
+      : await (await import("@/app/api/push/failure/route")).POST(new Request("http://localhost/api/push/failure", { method: "POST", headers: { authorization: `Bearer ${PUSH_TOKEN}` }, body: JSON.stringify({ ...ciBody("app"), code: "parse-failed" }) }));
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({ error: "surface removed" });
+    const events = await refusals();
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ result: "notStarted", surfaceIds: ["s-app"], payload: { refusal: "surface-removed" } });
+    expect(await prisma.translationSurface.findUniqueOrThrow({ where: { id: "s-app" } })).toMatchObject({ lastImportError: null, lastImportStartedAt: null, lastCommitSha: "a".repeat(40) });
+    expect((await translations("s-app")).find(row => row.localeCode === "ko")?.value).toBe("Old");
+  });
+
+  async function waitForLockWaiters(count: number) {
+    for (let attempt = 0; attempt < 200; attempt++) {
+      const { rows } = await pool.query<{ n: number }>("SELECT count(*)::int AS n FROM pg_stat_activity WHERE wait_event_type = 'Lock'");
+      if ((rows[0]?.n ?? 0) >= count) return;
+      await new Promise(resolve => setTimeout(resolve, 25));
+    }
+    throw new Error(`lock waiters never reached ${count}`);
+  }
+
+  it("제거와 push가 경합하면 — 사전 가드를 지난 push가 잠금 뒤 제거를 보고 surface removed로 거부된다(archived와 섞지 않는다)", async () => {
+    const { POST } = await import("@/app/api/push/route");
+    const holder = await pool.connect();
+    await holder.query("BEGIN");
+    await holder.query(`SELECT "id" FROM "Project" WHERE "id" = 'p' FOR UPDATE`);
+    const pending = POST(pushRequest());
+    await waitForLockWaiters(1);
+    await holder.query(`UPDATE "TranslationSurface" SET "archivedAt" = now() WHERE "id" = 's-app'`);
+    await holder.query("COMMIT");
+    holder.release();
+
+    const response = await pending;
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({ error: "surface removed" });
+    expect((await refusals())[0]).toMatchObject({ result: "notStarted", payload: { refusal: "surface-removed" } });
+    // 실패가 아니다 — 제거된 소스에 import-failed를 남기면 되살린 뒤의 상태가 옛 실패를 말한다.
+    expect(await prisma.translationSurface.findUniqueOrThrow({ where: { id: "s-app" } })).toMatchObject({ lastImportError: null, lastImportStartedAt: null, lastImportToken: null });
+    expect((await translations("s-app")).find(row => row.localeCode === "ko")?.value).toBe("Old");
   });
 });
