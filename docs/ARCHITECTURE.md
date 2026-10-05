@@ -1396,6 +1396,9 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
   목록 밖 값을 UTC로 떨어뜨린다) **봉투를 지나지 않으며**(사람을 식별하지 않는다. 대략의 지역을 말하므로 방침 수집 표에는 있다) 세션 공개 허용 목록에
   들어가 `readSession()`이 추가 쿼리 0으로 싣는다. 쓰는 자리는 `setTimeZone`(`app/(edit)/preferences/actions.ts`) 하나이고 UTC를 골라도 `"UTC"`를 쓴다.
   ⚠️ **목록에서 id를 빼면 그 값을 저장한 사람의 화면이 조용히 UTC로 바뀐다** — 빼기 전 건수 확인은 OPERATIONS.
+- **`User.colorScheme String?`** (2026-10-05, `20261004213608_add_user_color_scheme` — color-scheme). 화면 테마(`system`·`light`·`dark`)이고 `null`이면
+  쿠키 → light로 넘어간다(§6.357). `uiLocale`과 같은 이유로 **enum이 아니고**(읽을 때 `parseColorScheme`이 모르는 값을 다음 층으로 넘긴다) **봉투를
+  지나지 않으며** 세션 공개 허용 목록에 들어가 `readSession()`이 추가 쿼리 0으로 싣는다. 쓰는 자리는 `setColorScheme`(`app/(edit)/preferences/actions.ts`) 하나다.
 
 - ⚠️ **앞의 네 테이블의 모양은 우리가 정한 것이 아니다.** `@auth/prisma-adapter`가 부르는 델리게이트와
   `where` 키가 그것을 정한다 — 현재 `credentialAdapter.getUserByEmail`은 `emailLookup @unique`를 요구하고, `account`의
@@ -2737,6 +2740,8 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
   유일한 생산자. 값 import 0 — `UiLocale`·`TimeZone` 타입만 읽고 `Intl`은 전역이다. `publish-button`·`log-filters`·`sync-lock`·Preferences 카드 등 클라이언트 컴포넌트가 값으로 읽는다) ·
   **`lib/time-zone/zones.ts`**(선별 목록 `TIME_ZONES`·`parseTimeZone`·`resolveTimeZone` — **import 0**) · **`lib/time-zone/options.ts`**(`timeZoneOptions(now)` —
   `date-format`·`zones`만 문다. Preferences Time zone 카드가 값으로 읽는다). 셋 다 `client-graph.test.ts`의 `CLIENT_LIB_FILES`에 있다.
+- ⚠️ **화면 테마가 잎 하나를 더했다** (2026-10-05, color-scheme — §6.357): **`lib/color-scheme/scheme.ts`**(`COLOR_SCHEMES`·`parseColorScheme`·`resolveColorScheme`·
+  쿠키 이름 `COLOR_SCHEME_COOKIE` — **import 0**. Preferences Theme 카드가 값으로 읽는다). `CLIENT_LIB_FILES`에 있고 같은 파일이 잎 성질을 직접 건다.
 - ⚠️ **그 명부가 실제로 낡아 있었다** (2026-09-18 전수 대조). 손으로 잇는 목록이라 `/doc-check` 사이에 조용히 갈린다 — **정본은 `components/__tests__/client-graph.test.ts`가 실제로 걷는 그래프이고**, 세는 법은 "`\"use client\"` 파일이 무는 `@/lib/*`를 전부 모아 각 모듈의 import 수를 본다" 하나다. 그때 **미등재 잎이 열셋** 나왔다:
   - **클라이언트가 값으로 읽는 것 열하나** (T16에서 `lib/keys/edit-command.ts`가 빠졌다) — `lib/publish/warnings.ts`·`lib/publish/words.ts`(`components/publish-button.tsx`) · `lib/search-params.ts`(쿼리 정규화 — ⚠️ `Object.create(null)`을 쓰는 자리라 §6.36의 프로토타입 규칙이 여기도 산다) · `lib/account/plan.ts` · `lib/import/confirm.ts` · `lib/onboarding/branch.ts`·`key-gap.ts`·`language-name.ts`·`locale-picker.ts` · `lib/shell/panel-size.ts` · `lib/upload/image.ts`. **열하나 전부 import가 0이다.**
   - **서버만 소비하는 것 하나** — `lib/protection/plan.ts`(소비자는 `lib/pull/run.ts`·`lib/push/apply.ts`·`lib/import/run.ts` 셋, 클라이언트 소비자 0). 그래도 `client-graph.test.ts`가 **파일 목록을 `toEqual`로** 고정한다: 같은 디렉터리의 `./fingerprint`를 한 줄만 물어도 `node:crypto`가 번들로 오고, 음성 대조로 `fingerprint.ts` 쪽은 실제로 걸리는지까지 센다. `lib/i18n`·`lib/keys/flag.ts`와 같은 형이다.
@@ -2865,6 +2870,33 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
   ② **tzdata 차이** — 두 런타임이 규칙 변경 직후 시점을 서로 다르게 알 때(낡은 브라우저 × `America/Mexico_City`·`America/Santiago`·`Africa/Cairo`). 선별 목록이라
   범위가 작고, 갈리면 하이드레이션 경고 한 번에 클라이언트 값이 이긴다. **수용한다** — `suppressHydrationWarning`을 달지 않는다(다른 불일치까지 숨긴다).
   - **대가: 자정을 넘겨 열어 둔 Logs 탭의 `Today`·프리셋은 Refresh 전까지 하루 늦다** — 서버 `now`를 받은 대가이고 수용했다(내비게이션·Refresh가 새 `now`를 받는다).
+
+### 6.357 화면 테마 — 서버가 `<html data-theme>`을 싣는다 (2026-10-05, color-scheme)
+
+**테마는 System · Light · Dark이고 판정은 계정(`User.colorScheme`) > 쿠키(`malmoi-color-scheme`) > `light`다**(제품 판정은 PRODUCT §4.1 "화면 테마",
+시각 규칙은 DESIGN §3). 색은 화면에만 있으므로 export 결정성·blob SHA(§1·§2)·PR 본문·MCP 응답에 영향이 없다.
+
+- **판정은 잎 `lib/color-scheme/scheme.ts`다** — `parseColorScheme`은 지원 집합 안의 문자열만 통과시키고 **`Object.hasOwn`으로 판정한다**(쿠키는 남이
+  정한 값이다 — `__proto__`·`constructor` 불통과). `resolveColorScheme({ account, cookie })`의 입력에 **OS 설정이 없다** — 서버는 모르고, System의 해석은
+  CSS(`color-scheme: light dark`)가 한다. ui-locales의 `parseUiLocale`·`resolveUiLocale`과 모양이 같지만 값 집합·기본값이 달라 합치지 않는다.
+- **서버 입구는 `getColorScheme()` 하나**(`lib/color-scheme/server.ts`, `server-only`, React `cache`) — `readSession()`의 `colorScheme`(세션 `unavailable`이면
+  거부가 아니라 쿠키로 넘어간다 — 인가가 아니다) + `cookies()`. **소비자는 둘이다**: 루트 레이아웃(`<html data-theme>` · `<Toaster theme>`)과 `/preferences`
+  page(Theme 카드의 초기값 prop). 둘 다 같은 요청 캐시라 값이 갈리지 않는다. 루트 레이아웃은 이미 CSP nonce·`getUiLocale()`로 동적이라 새로 동적이 된 페이지도,
+  추가 쿼리도 없다.
+- ⚠️ **클라이언트 훅·provider가 없다** — §6.355가 "소비자마다 묻는다"를 택한 것은 페이지가 문구를 직접 읽어야 해서였고, 테마는 CSS가 `<html>` 속성 하나로
+  읽으므로 컴포넌트가 물을 일이 없다. 예외 둘도 DOM에서 읽는다: 로그인 Canvas 점(`dot-field.tsx` — 계산된 `color`를 읽고 System이면 `prefers-color-scheme`
+  변화에 다시 읽는다) · Theme 카드(Action보다 먼저 `document.documentElement.dataset.theme`을 쓰고 `ok`가 아니면 되돌린다 — 한 줄 DOM 쓰기다).
+- **인라인 스크립트 없는 첫 페인트** — 서버가 쿠키·계정으로 정한 `data-theme`을 첫 HTML에 싣는다. 테마 깜빡임 방지 관용구(`<script>`로 `localStorage`
+  읽기)를 쓰지 않으므로 CSP nonce에 새 스크립트가 없고(§8) 깜빡임도 없다. 그 대가로 **기기 층이 localStorage가 아니라 http-only 쿠키**다 — 클라이언트는
+  쿠키를 읽지 않는다(`<html>` 속성만 본다).
+- **쓰기는 `setColorScheme` 하나**(`app/(edit)/preferences/actions.ts` — 보호 경로 아래, 인가 등재는 `app/__tests__/entry-points.test.ts`의 USER 축):
+  `parseColorScheme` 불통과면 `invalid` → `readSession()`이 `ok`가 아니면 무기록 `failed`(redirect하지 않는다) → 세션 `userId`로 계정 갱신(실패면 무기록
+  `failed` — 쿠키만 쓰면 다음 렌더에서 계정의 옛 값이 이긴다) → 쿠키를 **무조건** 쓴다(`httpOnly` · `sameSite: "lax"` · `secure`는 `x-forwarded-proto`
+  첫 항목이 `https`일 때 — `setUiLocale`과 같은 판정 · 1년. 로그인 중에도 쓰는 것은 로그아웃 뒤 공개 페이지가 같은 테마를 보게 하려는 것이다) →
+  `revalidateAfterCommit("color-scheme")`(커밋 뒤라 던져도 `ok`). `ProjectEvent`를 남기지 않는다.
+- **`global-error.tsx`는 이 축 밖이다** — 루트 레이아웃 밖이고 `globals.css`를 import하지 않아 `data-theme`도 토큰도 없이 브라우저 기본값(라이트)이다.
+- **방침**: `User.colorScheme`은 `lib/privacy/collected.ts`에 `collected`로 있고, 쿠키 `malmoi-color-scheme`은 `/privacy`의 쿠키 표·보존 목록·목적에 en·ko 두 본으로
+  든다(§6.035 동형 게이트 — 쿠키 표의 행은 이름이 아니라 용도 `Theme`이다).
 
 ### 6.36 목록 필터의 순수 판정 (`lib/projects/list.ts`, 2026-09-10 8-3)
 
