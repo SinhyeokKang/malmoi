@@ -129,6 +129,9 @@ collects code references, so each key shows where your code uses it.
   (screenshots show the English interface), and the privacy policy in English
   and Korean. New visitors always start in English
   ([details](https://mal-moi.com/docs/language)).
+- **Light and dark themes** — choose Light, Dark, or System in Preferences;
+  Malmoi starts light and remembers your choice with your account
+  ([details](https://mal-moi.com/docs/language#theme)).
 - **AI agents over MCP** — add the server URL to Claude Code, Codex, or a
   claude.ai custom connector and sign in through your browser: you choose what the app may do on a consent screen
   and never see or copy a token. Connected apps are listed on the MCP connector
