@@ -37,6 +37,7 @@ const confirmDialog = () => [...document.querySelectorAll('[role="dialog"]')].fi
 const inConfirm = (text: string) => [...(confirmDialog()?.querySelectorAll("button") ?? [])].find(node => node.textContent === text) as HTMLButtonElement | undefined;
 const user = () => userEvent.setup();
 async function openDetail() { await act(async () => { await user().click([...document.querySelectorAll("[data-source-row]")].find(row => row.textContent?.includes("web"))!); }); }
+async function openDetailOf(slug: string) { await act(async () => { await user().click([...document.querySelectorAll("[data-source-row]")].find(row => row.textContent?.startsWith(slug))!); }); }
 async function openConfirm() { await act(async () => { await user().click(removeTrigger()!); }); }
 const ready = (over: Partial<{ pendingCount: number; approval: string | null; openPr: "open" | "none" | "unknown" }> = {}) => ({ ok: true, pendingCount: 0, approval: null, openPr: "none", ...over });
 
@@ -223,14 +224,26 @@ it("stale-approval은 결과 단계다 — 설명·경고를 걷고 danger 한 �
   expect(inConfirm(en.sources.removal.action)).toBeDefined();
 });
 
-it("응답을 잃은 제거는 확인하지 못했다고 말하고 한 번 refresh한다", async () => {
+/**
+ * 응답을 잃은 제거 — 서버가 끝냈을 수 있다. ⚠️ **결과를 확인 창에 두지 않는다**(리뷰 🟡1 · POSTMORTEM 2026-09-07): refresh가 바꾼 `data`가
+ * 상세를 다시 읽고, 제거됐으면 `rejected`가 되어 상세째 확인 창이 사라지며 문장을 씻었다. 호스트 배너로 올리고 상세를 닫는다.
+ */
+it("응답을 잃은 제거는 상세를 닫고 배너로 확인하지 못했다고 말하며 한 번 refresh한다", async () => {
   mocks.remove.mockRejectedValue(new Error("lost"));
-  await render(<SourcesScreen slug="p" role="OWNER" data={two} adapters={[]} now={new Date()} />);
+  const view = await render(<SourcesScreen slug="p" role="OWNER" data={two} adapters={[]} now={new Date()} />);
   await openDetail();
   await openConfirm();
   await act(async () => { await user().click(inConfirm(en.sources.removal.action)!); });
-  expect(confirmDialog()!.textContent).toContain(en.sources.removal.unconfirmed);
   expect(mocks.refresh).toHaveBeenCalledTimes(1);
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
+  expect(document.querySelector('[role="dialog"]')).toBeNull();
+  // refresh 트리가 와도(제거됐든 아니든) 배너는 남고 상세를 다시 읽지 않는다.
+  await view.rerender(<SourcesScreen slug="p" role="OWNER" data={{ ...two, sources: [emails] }} adapters={[]} now={new Date()} />);
+  expect(document.querySelector('[data-sources-screen] [role="status"]')?.textContent).toContain(en.sources.removal.unconfirmed);
+  expect(mocks.load).toHaveBeenCalledTimes(1);
+  // 상세 모달이 다시 닫힐 수 있다 — 화면이 바쁨에 묶이지 않았다.
+  await openDetailOf("emails");
+  expect(button(en.common.close)?.disabled).toBe(false);
 });
 
 it("성공은 재검증 커밋 뒤에 모달을 닫고 결과 배너를 세우며 포커스는 h1이다", async () => {
@@ -252,6 +265,37 @@ it("성공은 재검증 커밋 뒤에 모달을 닫고 결과 배너를 세우�
   expect(document.activeElement?.id).toBe("sources-heading");
   // 열린 상세의 재조회가 제거된 소스를 다시 부르지 않는다.
   expect(mocks.load).toHaveBeenCalledTimes(1);
+});
+
+/** 리뷰 🔴1 — 성공 뒤 확인 창 열림 상태가 남아, 다른 소스를 열면 누르지 않은 제거 확인 창이 떴다. */
+it("제거 성공 뒤 다른 소스를 열면 확인 창 없이 상세만 열린다", async () => {
+  mocks.remove.mockResolvedValue({ ok: true });
+  const view = await render(<SourcesScreen slug="p" role="OWNER" data={two} adapters={[]} now={new Date()} />);
+  await openDetail();
+  await openConfirm();
+  await act(async () => { await user().click(inConfirm(en.sources.removal.action)!); });
+  await view.rerender(<SourcesScreen slug="p" role="OWNER" data={{ ...two, sources: [emails] }} adapters={[]} now={new Date()} />);
+  mocks.load.mockResolvedValue({ ok: true, detail: detail({ id: "s-emails", slug: "emails" }) });
+  mocks.preview.mockClear();
+  await openDetailOf("emails");
+  expect(document.querySelectorAll('[role="dialog"]')).toHaveLength(1);
+  expect(mocks.preview).not.toHaveBeenCalled();
+});
+
+/** 리뷰 🟡2 — 확인 창이 마운트될 때 호스트의 바쁨을 false로 덮었다. 첫 Sync가 도는 동안 상세가 다시 그려지면 닫기가 풀렸다. */
+it("확인 창의 마운트는 호스트의 바쁨을 건드리지 않는다", async () => {
+  let finish: (value: unknown) => void = () => {};
+  mocks.load.mockResolvedValue({ ok: true, detail: detail({ lastCommitSha: null }) });
+  mocks.runFirstIngest.mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+  const view = await render(<SourcesScreen slug="p" role="OWNER" data={two} adapters={[]} now={new Date()} />);
+  await openDetail();
+  await act(async () => { await user().click(button("Run first sync")!); });
+  // 상세가 한 번 실패를 거쳐 다시 ready가 된다 — 확인 창이 새로 마운트된다.
+  mocks.load.mockResolvedValueOnce({ rejected: "not-found" }).mockResolvedValue({ ok: true, detail: detail({ lastCommitSha: null }) });
+  await view.rerender(<SourcesScreen slug="p" role="OWNER" data={{ ...two }} adapters={[]} now={new Date()} />);
+  await view.rerender(<SourcesScreen slug="p" role="OWNER" data={{ ...two }} adapters={[]} now={new Date()} />);
+  expect(button(en.common.close)?.disabled).toBe(true);
+  await act(async () => { finish({ ok: true, count: 1, failed: 0 }); });
 });
 
 it("기준 언어 초안이 있어도 [Remove source]는 제거 확인 창 하나만 연다", async () => {
