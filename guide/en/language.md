@@ -70,4 +70,4 @@ If the change fails, the card shows **We couldn't change the theme. Try again.**
 
 ## What happens next {#next}
 
-Return to your projects. Your next sign-in on another device uses the same language.
+Return to your projects. Your next sign-in on another device uses the same language, time zone, and theme.

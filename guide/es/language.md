@@ -70,4 +70,4 @@ Si el cambio falla, la tarjeta muestra **No pudimos cambiar el tema. Inténtalo 
 
 ## Qué pasa después {#next}
 
-Vuelve a tus proyectos. Tu próximo inicio de sesión en otro dispositivo usará el mismo idioma.
+Vuelve a tus proyectos. Tu próximo inicio de sesión en otro dispositivo usará el mismo idioma, la misma zona horaria y el mismo tema.
