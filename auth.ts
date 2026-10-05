@@ -130,16 +130,6 @@ const authConfig = NextAuth(async () => ({
       noteAuthError(error);
     },
   },
-  events: {
-    /**
-     * **로그인이 끝나는 모든 경로의 끝이다** — 로그인 수단 연결·challenge 왕복(`login-link`·`session-revocation`)도 마지막엔 이 Auth.js 콜백으로 돌아와
-     * 세션을 만든다. 계정의 화면 테마를 이 기기 쿠키로 옮겨 적는다(`syncColorSchemeCookieOnSignIn` — 계정 값이 없으면 쿠키를 건드리지 않고, 던지지 않는다).
-     * `cookies().set`은 Route Handler 문맥이라 응답에 실린다.
-     */
-    async signIn({ user }) {
-      if (typeof user.id === "string") await syncColorSchemeCookieOnSignIn(user.id);
-    },
-  },
   callbacks: {
     /**
      * 인가 지점. **`handleLoginOrRegister`보다 먼저 돈다**(`@auth/core`의 callback 라우트) —
@@ -228,6 +218,16 @@ const authConfig = NextAuth(async () => ({
      */
     session({ session, user }) {
       return publicSession({ session, user });
+    },
+  },
+  events: {
+    /**
+     * **로그인이 끝나는 모든 경로의 끝이다** — 로그인 수단 연결·challenge 왕복(`login-link`·`session-revocation`)도 마지막엔 이 Auth.js 콜백으로 돌아와
+     * 세션을 만든다. 계정의 화면 테마를 이 기기 쿠키로 옮겨 적는다(`syncColorSchemeCookieOnSignIn` — 계정 값이 없으면 쿠키를 건드리지 않고, 던지지 않는다).
+     * `cookies().set`은 Route Handler 문맥이라 응답에 실린다.
+     */
+    async signIn({ user }) {
+      if (typeof user.id === "string") await syncColorSchemeCookieOnSignIn(user.id);
     },
   },
 }));
