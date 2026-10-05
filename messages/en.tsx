@@ -2277,7 +2277,7 @@ export const en = {
       repos: {
         title: "Add a repository",
         description: "Choose which repositories the Malmoi GitHub App can access.",
-        action: "Choose repositories",
+        action: "Add repositories",
       },
       /**
        * 설치 **요청** 뒤 (`Account.installRequestedAt`). ⚠️ **설치 화면 제목이 여기 서지 않는다** — 요청자는
