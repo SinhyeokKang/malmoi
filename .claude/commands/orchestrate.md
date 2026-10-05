@@ -70,6 +70,9 @@ description: 여러 배치를 Orca 워커 세션에 나눠 병렬로 ship하고,
 - ⚠️ **`orchestration send`(status 메시지)는 입력을 기다리며 멈춘 워커를 깨우지 않는다** (2026-10-05 — B가 `WAITING FOR A`에서 "A is in dev" 메시지를 받지 못하고 멈춰 있었다).
   워커에게 보내는 지시는 **항상** 둘 중 하나로 보낸다: ① 활성 Dispatch가 턴을 돌고 있으면 `send` + 같은 내용을 `orca terminal send --terminal <handle> --text … --enter`로도 넣는다,
   ② 턴이 끝난(대기·`worker_done` 뒤) 워커에게는 `terminal send`로 넣거나 새 Task/Dispatch로 보낸다. 보낸 뒤 `worker-read`로 **그 입력에 착수했는지 확인**한다 — 확인 전엔 전달로 치지 않는다.
+- ⚠️ **턴을 돌고 있는 워커에게 다음 일을 예약하지 않는다** (2026-10-05 — B fix4 도중 fix5를 "끝나면 이어서, Dispatch는 따로 온다"로 걸었더니 바쁜 터미널에 건 `worker-start --terminal`이 `agent_readiness`에서 `failed`였고, B는 일을 끝낸 채 오지 않는 ID를 기다렸다).
+  다음 일은 **`worker_done`을 받은 뒤 새 Task/Dispatch 하나로** 보낸다. `worker-start` 뒤엔 반환된 ID가 아니라 **`worker-show`의 `outcome`이 `failed`가 아니고 `activity`가 `working`인지**를 본다.
+  워커의 완료 신호를 "나중에 올 ID"에 묶지 않는다 — 브리프에 그런 문장을 쓰지 않는다.
 
 ## 3. 리뷰 → 수정 라운드
 
