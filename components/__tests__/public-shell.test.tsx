@@ -4,8 +4,10 @@ import { join } from "node:path";
 
 import { act, createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
+import userEvent from "@testing-library/user-event";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { AttentionBadgeResult, OpenAttentionInboxResult } from "@/app/inbox/actions";
 import { PublicFooter } from "@/components/public-shell/footer";
 import { PublicShell } from "@/components/public-shell/public-shell";
 import { AuthLayout } from "@/components/signin/auth-layout";
@@ -20,6 +22,12 @@ import { render } from "./helpers/dom";
 
 // 헤더가 로그아웃 Action을 참조로 넘긴다 — 실물은 `@/auth`를 물어 jsdom에서 세울 수 없다.
 vi.mock("@/lib/auth/sign-out", () => ({ signOutAction: async () => {} }));
+// 헤더 Inbox(로그인일 때만)의 Action 둘 — 배지 호출 수로 "비로그인 방문자에게는 부르지 않는다"를 센다.
+const inbox = vi.hoisted(() => ({
+  badge: vi.fn(async (): Promise<AttentionBadgeResult> => ({ status: "failed" })),
+  open: vi.fn(async (): Promise<OpenAttentionInboxResult> => ({ status: "failed" })),
+}));
+vi.mock("@/app/inbox/actions", () => ({ loadAttentionBadgeAction: inbox.badge, openAttentionInboxAction: inbox.open }));
 
 const GUEST = publicAccount({ status: "none" });
 const SIGNED_IN = publicAccount({ status: "ok", userId: "u1", name: "Ada", email: "ada@x.dev", image: null, uiLocale: null, timeZone: null, colorScheme: null });
@@ -217,16 +225,24 @@ describe("공개 셸 — 헤더", () => {
     expect(container.querySelector("header")?.textContent).not.toContain("Open Malmoi");
   });
 
-  /** primary와 GitHub 사이에 연한 세로 구분선 하나 — 장식이라 접근성 트리에 안 선다. */
-  it("우측은 GitHub · 구분선 · primary 순서다", async () => {
+  /**
+   * primary와 GitHub 사이에 연한 세로 구분선 하나 — 장식이라 접근성 트리에 안 선다. 로그인이면 앱 셸 헤더처럼
+   * 세로선 오른쪽·아바타 왼쪽에 Inbox가 선다(2026-10-05 사용자 — attention-inbox 범위 변경).
+   */
+  it("우측은 GitHub · 구분선 · primary 순서다 — 로그인이면 primary 앞에 Inbox", async () => {
     for (const account of [GUEST, SIGNED_IN]) {
       const { container } = await render(h(PublicShell, { m: en, account, children: h("p", null, "body") }));
       const right = container.querySelector("header > .justify-self-end > div");
       const kids = [...(right?.children ?? [])];
-      expect(kids).toHaveLength(3);
+      expect(kids).toHaveLength(account === null ? 3 : 4);
       expect(kids[1]?.getAttribute("aria-hidden")).toBe("true");
       expect(kids[1]?.className).toContain("bg-border-subtle");
       expect(kids[0]?.getAttribute("href")).toBe(GITHUB_REPO_URL);
+      if (account !== null) {
+        expect(kids[2]?.getAttribute("aria-haspopup")).toBe("menu");
+        expect(kids[2]?.getAttribute("aria-label")).toBe(en.inbox.label);
+        expect(kids[3]?.getAttribute("aria-label")).toBe(en.common.nav.userMenu);
+      }
     }
   });
 
@@ -355,5 +371,43 @@ describe("공개 셸 — 소스 계약", () => {
     const clients = files.filter((name) => /^["']use client["']/.test(read(name)));
     expect(clients).toEqual(["scroller.tsx"]);
     expect(read("scroller.tsx")).not.toMatch(/from\s+["']@\/lib\//);
+  });
+});
+
+/**
+ * **공개 셸 헤더의 Inbox** (2026-10-05 사용자 — attention-inbox 범위 변경). 앱 셸과 같은 `AttentionInbox` 하나이고 로그인(`publicAccount`가
+ * 값)일 때만 선다. ⚠️ 헤더는 세션을 직접 읽지 않는다 — 페이지가 넘긴 `account`로만 가르고, 데이터는 Inbox가 자기 Action으로 읽는다.
+ */
+describe("공개 셸 — 헤더 Inbox", () => {
+  beforeEach(() => {
+    inbox.badge.mockReset().mockResolvedValue({ status: "ok", unread: 2 });
+    inbox.open.mockReset().mockResolvedValue({ status: "ok", plan: { groups: [], unread: 0 }, loadedAt: new Date("2026-10-05T00:00:00Z"), marked: true });
+  });
+
+  it("비로그인(none · unavailable)이면 Inbox가 없고 배지 Action을 부르지 않는다", async () => {
+    for (const session of [{ status: "none" }, { status: "unavailable" }] as const) {
+      const { container } = await render(h(PublicShell, { m: en, account: publicAccount(session), children: h("p", null, "body") }));
+      await act(async () => {});
+      expect(container.querySelector('header button[aria-haspopup="menu"]')).toBeNull();
+    }
+    expect(inbox.badge).not.toHaveBeenCalled();
+    expect(inbox.open).not.toHaveBeenCalled();
+  });
+
+  it("로그인이면 배지를 한 번 읽어 수를 보이고, 열면 메뉴가 서고 닫아도 셸이 산다", async () => {
+    const { container } = await render(h(PublicShell, { m: en, account: SIGNED_IN, children: h("p", null, "body") }));
+    await act(async () => {});
+    expect(inbox.badge).toHaveBeenCalledTimes(1);
+    const trigger = container.querySelector<HTMLButtonElement>(`header button[aria-label="${en.inbox.labelUnread(2)}"]`)!;
+    expect(trigger).not.toBeNull();
+    expect(trigger.querySelector("[data-inbox-badge]")?.textContent).toBe("2");
+    await act(async () => { await userEvent.setup().click(trigger); });
+    expect(inbox.open).toHaveBeenCalledTimes(1);
+    expect(document.querySelector('[role="menu"]')).not.toBeNull();
+    await act(async () => { await userEvent.setup().keyboard("{Escape}"); });
+    expect(document.querySelector('[role="menu"]')).toBeNull();
+    expect(trigger.isConnected).toBe(true);
+    expect(document.activeElement).toBe(trigger);
+    expect(container.querySelector("header")).not.toBeNull();
   });
 });
