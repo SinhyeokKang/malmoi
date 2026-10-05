@@ -2943,7 +2943,8 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 `lib/routes.ts`의 `bannerTranslationsHref`가 공유한다. 동시각은 프로젝트 항목(setup → unsent) → 표면 slug → 로케일 순이고,
 묶음은 최신 항목 시각 내림차순 → 프로젝트 slug다. 시각 null은 가장 오래된 값이다.
 
-**데이터 경로**: 입력 없는 `loadAttentionBadgeAction`·`openAttentionInboxAction` → `readSession` → `loadAttentionInbox(prisma, userId)`.
+**데이터 경로**: 입력 없는 `loadAttentionBadgeAction`·`openAttentionInboxAction`(`app/inbox/actions.ts` — 편집 셸 헤더와 **로그인한 공개 셸 헤더**가 같이 부르므로 `(edit)` 밖이다, 2026-10-05 · `app/search/actions.ts`와 같은 자리) → `readSession` → `loadAttentionInbox(prisma, userId)`.
+공개 셸 헤더는 세션을 읽지 않고 페이지가 넘긴 `publicAccount`가 값일 때만 Inbox를 마운트한다 — 비로그인 방문자에게는 Action 호출이 0이다.
 전용 멤버십 조회가 `userId`·프로젝트 `archivedAt: null`로 범위를 확정하고 같은 조회에 `User.attentionSeenAt`을 붙인다.
 셸의 공용 멤버십 조회를 넓히지 않는다. 집계와 검토 조회는 그 ids로 제한해 병렬 실행하고, 검토 행의 행위자만 추가 조회한다.
 프로젝트 수와 무관하게 Prisma 조회 호출 수는 상수(멤버십 1 + 집계 5 + 검토 1 + 행위자 최대 1)다. 관계 조회의 내부 SQL 수는 Prisma의
