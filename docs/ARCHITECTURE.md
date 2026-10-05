@@ -3327,7 +3327,7 @@ MCP는 무상태이고 에이전트는 미리보기와 실행 사이에 무엇�
 
 #### 6.45.5 도구 목록과 쓰기 범위 — 정본 (`lib/mcp/catalog.ts`)
 
-**28개 — 읽기 14 · 쓰기 14.** 이름·순서·annotations·요구 조건의 코드 정본은 `toolCatalog()`(잎 데이터 모듈 — 값으로 읽는 것은 서버 쪽
+**30개 — 읽기 15 · 쓰기 15** (2026-10-05 sources-add-remove가 `preview_source_removal`·`remove_source`를 더했다). 이름·순서·annotations·요구 조건의 코드 정본은 `toolCatalog()`(잎 데이터 모듈 — 값으로 읽는 것은 서버 쪽
 `lib/mcp/server.ts`·`lib/mcp/tools/access.ts`이고 `/mcp` 화면은 읽지 않는다. `lib/auth/lock.ts`는 import하지 않는다 — 쓰기 grant = 역할 permission이라는
 사실은 `lock-grant.test.ts`가 카탈로그로 고정한다. 잎인 이유: 구현 → 카탈로그 방향이 뒤집히면 순환이 생기고,
 `server-only`도 없어 순수 테스트가 바로 import한다 — `catalog.test.ts`)이고 이 표가 그 판정의 근거다. 도구 구현은 조건을 자기 파일에 다시 적지 않는다.
@@ -3349,6 +3349,7 @@ MCP는 무상태이고 에이전트는 미리보기와 실행 사이에 무엇�
 | `preview_publish` | OWNER / EDITOR | 없음 | Publish 미리보기 + Publish 지문 + 지금 열린 PR — `pullRequest: { status: "open", number, url } \| { status: "none" } \| { status: "unknown" }`. ⚠️ 조회 실패·시간 초과(`loadOpenPrUrl`의 `undefined`)를 "없음"으로 접지 않는다 — `undefined`는 JSON에서 필드째 사라지므로 상태가 값이다(Codex review CR-04) |
 | `preview_sync` | OWNER | 없음 | 폐기 지문 + 확인 문장. 열린 PR은 조회하지 않는다(화면 Dialog의 별도 GitHub 조회라) |
 | `preview_revert` | OWNER (표면) | 없음 | Revert 확인값 |
+| `preview_source_removal` | OWNER (표면) | 없음 | 제거 지문(미전달이 있을 때만) · 미전달 수(그 소스 전체 — orphaned 포함) · 열린 PR `open`·`none`·`unknown`. 판정 거부(`last-source`·`importing`)도 여기서 난다 — §5.9 |
 | `list_events` | OWNER / EDITOR | 없음 | Logs. **보관 중 읽기 예외는 이것만** 넘긴다. 행은 `kind`·`subtype`·`result`·`payload`를 가공 없이 싣는다 — 2026-09-30(nightly-sync)부터 subtype `import.nightly`·`nightly.skip`, 결과 `upToDate`, IMPORT payload의 `source: "nightly"`·`deferReason`(넷)·`changedValues`(부재 `null`)가 그대로 나간다. `query`는 Logs 주소와 같은 해석이라 `actor=ci`·`actor=nightly`(옛 `automation`)도 받는다. **`from`·`to`의 날짜 경계는 UTC다**(`loadEvents(…, { timeZone: "UTC" })` — 세션이 없어 보는 사람의 시간대가 없다, §6.356) |
 | `get_workflow` | OWNER | 없음 | 생성 YAML. push 토큰 원문 없음(`${{ secrets.PUSH_TOKEN }}`만) |
 | `list_members` | OWNER / EDITOR | 없음 | 남의 이메일 마스킹 유지 |
@@ -3370,6 +3371,7 @@ MCP는 무상태이고 에이전트는 미리보기와 실행 사이에 무엇�
 | `revert_to_last_sent` | 표면 `project:settings` | 키 하나의 미전달 셀 복원 | Revert 확인값 | destructive |
 | `update_project` | `project:settings` | 이름 · base branch | — | — |
 | `set_base_locale` | 표면 `project:settings` | 기준 로케일 선언 | — | — |
+| `remove_source` | 표면 `project:settings` | `archivedAt`·기본 소스 승계·`surface.removed` 사건 — 번역은 안 건드린다(편집 폐기는 재추가의 첫 적재) | 제거 지문(미전달이 있을 때) · `approval`은 필수(`null` 명시) | destructive |
 | `rotate_push_token` | `project:settings` + 리포 push | push 토큰 교체(원문 반환) | — | destructive |
 | `invite_members` | `member:manage` | 초대 발급 + 메일 발송 | — | — |
 | `revoke_invitation` · `change_member` | `member:manage` | 초대 무효 · 역할 변경/제거 | — | destructive |
