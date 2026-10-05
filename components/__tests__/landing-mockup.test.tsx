@@ -36,7 +36,7 @@ const fixture = en.landing.mockup;
 const p = en.translations.publish;
 
 // 실물 Inbox 트리거를 렌더해 목업 사본과 견준다 — 배지 0(정적 목업과 같은 상태)으로 고정한다.
-vi.mock("@/app/(edit)/inbox/actions", () => ({
+vi.mock("@/app/inbox/actions", () => ({
   loadAttentionBadgeAction: vi.fn(async () => ({ status: "ok", unread: 0 })),
   openAttentionInboxAction: vi.fn(async () => ({ status: "failed" })),
 }));

@@ -5,7 +5,7 @@ import { act } from "react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-import type { AttentionBadgeResult, OpenAttentionInboxResult } from "@/app/(edit)/inbox/actions";
+import type { AttentionBadgeResult, OpenAttentionInboxResult } from "@/app/inbox/actions";
 import { AttentionInbox } from "@/components/shell/attention-inbox";
 import { attentionHref } from "@/lib/home/attention-view";
 import type { InboxPlan } from "@/lib/inbox/plan";
@@ -19,7 +19,7 @@ import { render } from "./helpers/dom";
  * ⚠️ **pending promise는 테스트 끝에서 푼다**(POSTMORTEM 2026-09-18) — 안 끝난 async transition이 다음 테스트를 붙잡는다.
  */
 const mocks = vi.hoisted(() => ({ badge: vi.fn(), open: vi.fn() }));
-vi.mock("@/app/(edit)/inbox/actions", () => ({ loadAttentionBadgeAction: mocks.badge, openAttentionInboxAction: mocks.open }));
+vi.mock("@/app/inbox/actions", () => ({ loadAttentionBadgeAction: mocks.badge, openAttentionInboxAction: mocks.open }));
 
 type Deferred<T> = { promise: Promise<T>; resolve: (value: T) => void };
 function deferred<T>(): Deferred<T> {

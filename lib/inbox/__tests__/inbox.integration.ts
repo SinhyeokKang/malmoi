@@ -8,7 +8,7 @@ import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 import { encodeUserFields } from "@/lib/credentials/records";
 import { optionalEnv } from "@/lib/env";
-import { loadAttentionBadgeAction, openAttentionInboxAction } from "@/app/(edit)/inbox/actions";
+import { loadAttentionBadgeAction, openAttentionInboxAction } from "@/app/inbox/actions";
 import { loadAttentionInbox } from "../load";
 import { attentionHref } from "@/lib/home/attention-view";
 

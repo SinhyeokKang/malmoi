@@ -32,7 +32,7 @@ vi.mock("next/link", () => {
 
 vi.mock("next/navigation", () => ({ usePathname: () => "/projects" }));
 // 헤더 Inbox는 마운트 때 배지 Action을 부른다 — 이 파일은 배치만 본다(동작은 `attention-inbox.test.tsx`).
-vi.mock("@/app/(edit)/inbox/actions", () => ({
+vi.mock("@/app/inbox/actions", () => ({
   loadAttentionBadgeAction: vi.fn(async () => ({ status: "failed" })),
   openAttentionInboxAction: vi.fn(async () => ({ status: "failed" })),
 }));

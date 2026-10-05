@@ -3,7 +3,7 @@
 import { CircleCheck, Inbox, Loader2, RotateCw } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { loadAttentionBadgeAction, openAttentionInboxAction } from "@/app/(edit)/inbox/actions";
+import { loadAttentionBadgeAction, openAttentionInboxAction } from "@/app/inbox/actions";
 import { useMessages, useUiLocale } from "@/components/i18n/messages-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
