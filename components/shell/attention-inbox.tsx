@@ -65,7 +65,8 @@ export function AttentionInbox() {
         if (open.current) clearOnClose.current = true;
         else setUnread(0);
       }
-      settle(result.status === "ok" ? { status: "ok", plan: result.plan, loadedAt: result.loadedAt } : { status: "failed" });
+      // 닫힌 뒤 도착한 marked 응답은 곧바로 "읽은 목록"으로 캐시한다 — 다음 열기가 응답 전에 이 목록을 그린다(#191).
+      settle(result.status !== "ok" ? { status: "failed" } : { status: "ok", plan: result.marked && !open.current ? readAll(result.plan) : result.plan, loadedAt: result.loadedAt });
     }, () => settle({ status: "failed" }));
   }, []);
 
@@ -74,7 +75,13 @@ export function AttentionInbox() {
     <DropdownMenu onOpenChange={next => {
       open.current = next;
       if (next) load();
-      else if (clearOnClose.current) { clearOnClose.current = false; setUnread(0); }
+      else if (clearOnClose.current) {
+        clearOnClose.current = false;
+        setUnread(0);
+        // ⚠️ **캐시 목록의 행 표시도 함께 지운다**(#191 · spec 7 "다음 열람부터 사라진다") — 다시 열면 응답 전에 이 목록이 그대로 그려지므로,
+        // 안 지우면 이미 읽은 행에 점·sr `Unread`가 응답 도착까지 다시 선다. 응답이 오면 워터마크보다 새 행만 다시 안 읽음이다.
+        setList(current => current.status === "ok" ? { ...current, plan: readAll(current.plan) } : current);
+      }
     }}>
       <DropdownMenuTrigger asChild>
         {/*
@@ -175,6 +182,11 @@ function Loading() {
       <DropdownMenuRowSkeleton widths={["w-[80%]", "w-[44%]"]} />
     </ListGroup>
   </div>;
+}
+
+/** 읽음이 기록된 목록 — 행의 안 읽음 표시만 내린다(순서·항목은 그대로). */
+function readAll(plan: InboxPlan): InboxPlan {
+  return { ...plan, groups: plan.groups.map(group => ({ ...group, items: group.items.map(item => ({ ...item, unread: false })) })) };
 }
 
 /** 종류·프로젝트·표면·로케일이 키다 — 응답이 와도 같은 행이 같은 노드로 남는다. */

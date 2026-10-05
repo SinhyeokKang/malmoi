@@ -370,3 +370,56 @@ it("골격의 묶음 위에도 선이 없다", async () => {
   const group = menu()!.querySelector<HTMLElement>('[aria-busy] [role="group"]')!;
   expect(group.matches('[role="group"] + [role="group"]')).toBe(false);
 });
+
+/** #191 — spec 7: "이번 열람 동안 남고 다음 열람부터 사라진다". 다시 열면 응답 전에 보이는 캐시 목록도 읽은 행에 점·sr `Unread`가 없다. */
+it("marked 뒤 닫고 다시 열면(응답 전) 캐시 목록에 안 읽음 점·sr Unread가 0이다 — 골격도 없다", async () => {
+  await mount(3);
+  const first = nextOpen();
+  await openMenu();
+  await settle(first, ok());
+  expect(menu()!.querySelectorAll("[data-unread-dot]").length).toBeGreaterThan(0);
+  await escape();
+  nextOpen();
+  await openMenu();
+  expect(menu()!.querySelectorAll("[data-skeleton-line]")).toHaveLength(0);
+  expect(items()).toHaveLength(5);
+  expect(menu()!.querySelectorAll("[data-unread-dot]")).toHaveLength(0);
+  expect(items().filter(row => row.textContent!.startsWith(en.inbox.unread))).toHaveLength(0);
+});
+
+it("marked가 아니면(기록 실패) 다시 열어도 캐시 목록의 안 읽음 표시가 남는다 — 서버 워터마크가 안 움직였다", async () => {
+  await mount(3);
+  const first = nextOpen();
+  await openMenu();
+  await settle(first, ok(PLAN, false));
+  await escape();
+  nextOpen();
+  await openMenu();
+  expect(menu()!.querySelectorAll("[data-unread-dot]")).toHaveLength(3);
+});
+
+it("닫힌 뒤 도착한 marked 응답의 목록도 읽은 것으로 캐시된다 — 다시 열면 점이 없다", async () => {
+  await mount(3);
+  const first = nextOpen();
+  await openMenu();
+  await escape();
+  await settle(first, ok());
+  nextOpen();
+  await openMenu();
+  expect(items()).toHaveLength(5);
+  expect(menu()!.querySelectorAll("[data-unread-dot]")).toHaveLength(0);
+});
+
+it("다시 연 뒤 새 응답의 안 읽음(워터마크보다 새 항목)은 점이 다시 선다", async () => {
+  await mount(3);
+  const first = nextOpen();
+  await openMenu();
+  await settle(first, ok());
+  await escape();
+  const second = nextOpen();
+  await openMenu();
+  const fresh: InboxPlan = { unread: 1, groups: [{ ...PLAN.groups[0]!, items: PLAN.groups[0]!.items.map((item, index) => ({ ...item, unread: index === 0 })) }, ...PLAN.groups.slice(1).map(group => ({ ...group, items: group.items.map(item => ({ ...item, unread: false })) }))] };
+  await settle(second, ok(fresh));
+  expect(menu()!.querySelectorAll("[data-unread-dot]")).toHaveLength(1);
+});
+
