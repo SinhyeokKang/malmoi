@@ -52,6 +52,7 @@ export function RemoveSourceDialog({ open, onOpenChange, slug, surfaceSlug, onPe
   const request = useRef(0);
   const busy = useRef(false);
   const closeRef = useRef<HTMLButtonElement | null>(null);
+  const cancelRef = useRef<HTMLButtonElement | null>(null);
   useEffect(() => {
     const id = ++request.current;
     setPreview({ kind: "loading" });
@@ -109,7 +110,7 @@ export function RemoveSourceDialog({ open, onOpenChange, slug, surfaceSlug, onPe
         ? <DialogClose asChild><Button ref={closeRef} variant="primary">{m.common.close}</Button></DialogClose>
         : <>
           {/* 첫 포커스는 [Cancel]이다 — Enter 한 번으로 되돌릴 수 없는 동작이 실행되지 않는다. 도는 동안은 꺼지되 포커스는 남는다. */}
-          <DialogClose asChild><Button data-initial-focus aria-disabled={pending || undefined} onClick={event => { if (pending) event.preventDefault(); }}>{m.common.cancel}</Button></DialogClose>
+          <DialogClose asChild><Button ref={cancelRef} data-initial-focus aria-disabled={pending || undefined} onClick={event => { if (pending) event.preventDefault(); }}>{m.common.cancel}</Button></DialogClose>
           <Button variant="danger" spinnerSize="sm" busy={preview.kind === "loading" || pending}
             aria-disabled={preview.kind === "failed" || undefined} onClick={() => { if (preview.kind === "ready") void confirm(); }}>
             {m.sources.removal.action}
@@ -135,7 +136,11 @@ export function RemoveSourceDialog({ open, onOpenChange, slug, surfaceSlug, onPe
               <Skeleton className="absolute inset-0 rounded-md" />
             </div>
             : preview.kind === "failed"
-              ? <Alert variant="danger" size="sm" live="off" actions={<Button size="sm" onClick={() => setAttempt(value => value + 1)}>{m.sources.retry}</Button>}>{m.sources.removal.previewFailed}</Alert>
+              ? <Alert variant="danger" size="sm" live="off" actions={<Button size="sm" onClick={() => {
+                // ⚠️ 누른 버튼이 골격과 함께 사라진다 — 두면 포커스가 `div[role=dialog]`로 빠진다(#193 · POSTMORTEM 2026-09-24). 창의 첫 포커스와 같은 [Cancel]이다.
+                cancelRef.current?.focus();
+                setAttempt(value => value + 1);
+              }}>{m.sources.retry}</Button>}>{m.sources.removal.previewFailed}</Alert>
               /* ⚠️ 글리프는 블록 머리에 하나다 — 한 경고("제거하면 이것들이 함께 간다")의 근거 셋이다. 손실이 큰 것부터 선다. */
               : <Alert id={warningId} variant="warning" size="sm" live="off">
                 <div data-removal-warning className="space-y-1.5">
