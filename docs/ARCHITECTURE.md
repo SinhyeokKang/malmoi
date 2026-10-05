@@ -2168,7 +2168,8 @@ Logs 행위자·상세 Trigger·보조줄·Home 메타 열이 이것 하나를 �
 ## 5.9 소스 제거와 되살림 (sources-add-remove — 2026-10-05)
 
 소스(표면) 제거는 **되돌릴 수 있는 사실 하나**다 — `TranslationSurface.archivedAt`(프로젝트 보관 `Project.archivedAt`과 같은 형, §5.6.4).
-읽는 쪽은 전부 이미 `archivedAt: null`로 좁혀 "제거됨"으로 읽어도 참이었다(Sources·셸·Home·Inbox·검색·Publish·야간·온보딩·MCP).
+읽는 쪽은 전부 이미 `archivedAt: null`로 좁혀 "제거됨"으로 읽어도 참이었다(Sources·셸·Home·Inbox·검색·Publish·야간·온보딩·MCP — 소비자 회귀는 `lib/keys/__tests__/source-remove-consumers.integration.ts`가 뷰 모델 출력으로 잰다).
+⚠️ **Logs만 보관 행을 읽는다** — 사건이 남으므로 소스 필터 항목(`logSourceOptions` — 활성 뒤에 `removed`)과 slug→id 해석(`lib/events/query.ts`의 `surfaceIds`)이 제거된 소스를 포함한다. 번역 사건의 이동 링크(`translationLinkFor`)는 활성만 찾는다.
 쓰는 자리는 둘뿐이다 — 제거(`lib/surfaces/remove.ts`)와 되살림(`lib/surfaces/create.ts`의 revive 갈래).
 
 - **제거는 한 트랜잭션이다.** `lockProjectAccess`(`project:settings`, `Project`→`TranslationSurface`) 뒤 활성 표면·기본 id·적재(동기화) 진행 여부·
