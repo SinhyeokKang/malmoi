@@ -574,7 +574,7 @@ model User {
   /// **읽을 때 `parseTimeZone`을 지난다**(선별 목록 밖 값은 UTC). enum이 아닌 이유는 `uiLocale`과 같다 — 목록에서 빼는 것이 destructive가 되면 안 된다.
   /// ⚠️ **봉투를 지나지 않는다** — 사람을 식별하는 값이 아니다(`uiLocale`과 같다). 대략의 지역을 말하므로 방침에는 적는다.
   timeZone      String?
-  /// 화면 테마(color-scheme). null = 정하지 않음 → 쿠키 → light. **읽을 때 `parseColorScheme`을 지난다** —
+  /// 화면 테마(color-scheme). null = 정하지 않음 → 쿠키 → system. **읽을 때 `parseColorScheme`을 지난다** —
   /// enum으로 두지 않는다(값 하나를 빼는 것이 destructive 마이그레이션이 된다 — `uiLocale`과 같은 이유).
   /// ⚠️ **봉투를 지나지 않는다** — 사람을 식별하는 값이 아니다(`uiLocale`과 같다).
   colorScheme   String?
