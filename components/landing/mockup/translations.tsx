@@ -300,14 +300,15 @@ function TypedRow({ m, phase }: { m: Messages; phase: Phase }) {
   return (
     <LocaleRow m={m} code={selected.typedCode} first={false} status={status}>
       {phase === "missing" ? (
-        <span className="text-muted-foreground min-h-[62px] rounded-md border border-dashed border-gray-light p-2.5 text-sm leading-translation">{selected.text}</span>
+        // 실물 빈 입력은 64다 — 래퍼 바닥 62보다 점선 1·1 + `p-2.5` 10·10 + 빈 textarea `min-h-[42px]`가 크다(#189). textarea를 둘 수 없어 하한으로 든다.
+        <span className="text-muted-foreground min-h-[64px] rounded-md border border-dashed border-gray-light p-2.5 text-sm leading-translation">{selected.text}</span>
       ) : (
         /*
           ② 실물 `Textarea`의 포커스 형(링 색 테두리 + ring-1). ⚠️ 접두가 아직 비면(스크럽 맨 앞) 실물은 빈 입력의 형이다 — 점선 `gray-light` 래퍼 ·
           바탕 없음 · 래퍼 ring-2 · 원문이 첫 줄 자리에 겹친다(`locale-panel.tsx`). 스테이지가 `[data-landing-typed]`에 글자를 쓰므로 `:empty`로 가른다.
         */
         <span className={cn("border-input bg-background relative min-h-[62px] rounded-md border px-2.5 py-2.5 text-sm leading-translation",
-          phase === "typing" && "border-ring ring-ring ring-1 has-[[data-landing-typed]:empty]:border-dashed has-[[data-landing-typed]:empty]:border-gray-light has-[[data-landing-typed]:empty]:bg-transparent has-[[data-landing-typed]:empty]:ring-2")}>
+          phase === "typing" && "border-ring ring-ring ring-1 has-[[data-landing-typed]:empty]:min-h-[64px] has-[[data-landing-typed]:empty]:border-dashed has-[[data-landing-typed]:empty]:border-gray-light has-[[data-landing-typed]:empty]:bg-transparent has-[[data-landing-typed]:empty]:ring-2")}>
           {phase === "typing" ? <span data-landing-typed="" className="peer" /> : selected.typed}
           {phase === "typing" && <span data-landing-typed-source="" className="text-muted-foreground pointer-events-none absolute inset-0 hidden p-2.5 peer-empty:block">{selected.text}</span>}
           {phase === "typing" && <span className="bg-foreground ml-px inline-block h-4 w-px translate-y-[3px]" />}

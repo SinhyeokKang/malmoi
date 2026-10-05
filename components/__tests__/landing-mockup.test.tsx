@@ -660,3 +660,31 @@ describe("목업 — 씬 안쪽이 실물과 같다 (fix2)", () => {
     for (const flag of scene.querySelectorAll<HTMLElement>("[data-landing-diff-flag]")) expect(flag.classList.contains("shrink-0")).toBe(true);
   });
 });
+
+/**
+ * #189 — 실물 빈 번역 입력의 높이는 64다: 래퍼 `min-h-[62px]` + 점선 테두리 1·1 + `p-2.5` 10·10 + 빈 textarea `min-h-[42px]`(래퍼 바닥 62를 넘는다).
+ * 목업은 textarea를 둘 수 없어(인터랙티브 태그 0) 같은 64를 상자 하한으로 든다 — 값을 실물 소스에서 다시 셈해 견준다.
+ */
+describe("목업 — 빈 번역 입력 높이가 실물과 같다 (#189)", () => {
+  const live = readFileSync(join(process.cwd(), "components/translations/workspace/locale-panel.tsx"), "utf8");
+  const px = (re: RegExp) => Number(re.exec(live)?.[1]);
+  const textarea = px(/empty \? "col-start-1 row-start-1 min-h-\[(\d+)px\]/);
+  const wrapperFloor = px(/grid min-h-\[(\d+)px\] rounded-md border border-dashed border-gray-light p-2\.5/);
+  const expected = Math.max(wrapperFloor, 1 + 10 + textarea + 10 + 1);
+
+  it("실물 소스에서 64를 다시 셈한다", () => {
+    expect(textarea).toBe(42);
+    expect(wrapperFloor).toBe(62);
+    expect(expected).toBe(64);
+  });
+
+  it("① 빈 `fr` 상자와 ② 접두가 빈 타이핑 상자가 실물 높이를 하한으로 든다", async () => {
+    const container = await mount();
+    const empty = [...layer(container, 0).querySelectorAll<HTMLElement>("span")].find((node) => node.textContent === fixture.selected.text && node.className.includes("border-dashed"))!;
+    expect(empty.classList.contains(`min-h-[${expected}px]`)).toBe(true);
+    const typing = find(layer(container, 1), "[data-landing-typed]").parentElement!;
+    expect(typing.classList.contains(`has-[[data-landing-typed]:empty]:min-h-[${expected}px]`)).toBe(true);
+    // 채운 상자는 실물 채운 textarea와 같은 62 그대로다.
+    expect(typing.classList.contains("min-h-[62px]")).toBe(true);
+  });
+});
