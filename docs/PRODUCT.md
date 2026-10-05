@@ -73,6 +73,7 @@ Crowdin·Tolgee의 대체품으로 설명하면 번역 메모리·기계 번역�
 | base branch **변경** | O | X |
 | 기준 로케일 **변경** | O | X |
 | 멤버 관리·프로젝트 **보관** | O | X |
+| **소스 추가·제거** (sources-add-remove — 2026-10-05) | O | X |
 | **보관된 프로젝트의 이력 읽기** | O | O |
 | Home 메타 열 열람 — 리포 · Connection · CI 설정 여부 · 멤버 수 · 마지막 Sync/Publish | O | O |
 
@@ -93,7 +94,7 @@ permission을 거부하는데, 그러면 **보관 사건과 그 직전 기록을
 
 **역할 둘 아래에 permission은 셋이다** (`lib/auth/permission.ts`의 `Permission`) — 표의 칸이 그중
 하나로 내려간다. `translation:write`(OWNER·EDITOR — 조회·수정·Publish) · `project:settings`(OWNER —
-리포 재연결·재적재·base branch·기준 로케일·표면 추가·보관 · push 토큰 재발급 · 프로젝트 이름·이미지 · **Revert**) · `member:manage`(OWNER — `createInvitations`·`resendInvitation`·
+리포 재연결·재적재·base branch·기준 로케일·표면 추가·**표면 제거**·보관 · push 토큰 재발급 · 프로젝트 이름·이미지 · **Revert**) · `member:manage`(OWNER — `createInvitations`·`resendInvitation`·
 `revokeInvitation`·`changeMember`). ⚠️ **아래에서 "넷째 permission을 만들지 않는다"고 말할 때의 셋이
 이것이다** — 그 문장이 무엇을 세는지 이 목록 없이는 문서 안에서 확인할 수 없었다.
 
@@ -148,6 +149,11 @@ ARCHITECTURE §0 불변식 2와 정면 충돌한다.
 전달 확인 시점에 DB가 export에 넣은 값 하나만 쓴다(ARCHITECTURE §5.8). **OWNER 전용**이고(`project:settings`, 넷째 permission 없음)
 Sync와 같이 서버 발급 지문으로만 열린다. EDITOR에게는 숨기지 않고 꺼진 버튼 + 사유다. 한 언어라도 기준이 없으면 전체가 불가능하고,
 `needsReview`는 해제하지 않는다(복원은 검토 완료가 아니다).
+
+⚠️ **셋째 경로 — 제거된 소스를 다시 추가하는 첫 적재** (2026-10-05, sources-add-remove — 사용자 확정). 소스 제거는 번역을 건드리지
+않는다. 그 소스를 같은 경로·어댑터로 다시 추가하면 옛 행이 되살아나고, 그 첫 적재가 그 소스의 미전달 편집 **전부**를 승인한 strict 적재라
+리포 값이 있는 칸을 덮는다(수동 Sync와 같은 장치, 리포에 값이 없는 칸은 미전달로 남는다). 그래서 미전달 편집이 있으면 **제거 자체가**
+그 소스에만 묶인 서버 발급 지문을 요구하고 확인 창이 "미전달 편집 n건이 사라진다"를 말한다. **OWNER 전용**이다(`project:settings`).
 
 **수술적 표면의 비-base 셀은 비울 수 없다** (결정 2026-09-24, delivery-invariants D2 — **명시적 빈값 export(§10)가 생기기 전까지의 임시 규칙**).
 `ts-dict`·`yaml-catalog`·`code-dict` 표면에서 base 아닌 언어를 비워 저장하면 키 전체가 거부되고(`… can't be left empty` — 아무것도 저장되지 않는다)
@@ -276,7 +282,7 @@ GitHub·Google 어느 쪽으로 들어와도 같은 사람을 가리키고, 프�
   - **방문마다 Logs 행은 최대 하나다** — 편집 없는 밤의 행은 옛 "Nightly publish had nothing to send"(Publish 종류)에서 `Up to date`
     (Imports 종류)로 옮겨 갔다. 행 수는 같다.
   - **서버 적재는 CI 적재와 같은 보호를 받는다** — 적재 중 누가 편집을 저장하면 그 소스를 되돌리고 멈춘다(앞 소스가 들어갔으면
-    `partial`, 아니면 보류). 편집을 버리는 경로는 여전히 OWNER의 수동 Sync와 Revert 둘뿐이다.
+    `partial`, 아니면 보류). 편집을 버리는 경로는 여전히 OWNER 전용 셋뿐이다 — 수동 Sync · Revert · 제거된 소스의 재추가(§3).
   - ⚠️ **서버 전용 한도는 실패 상태를 쓰지 않는다** (2026-09-30 사용자 판정) — 파일 예산(200파일 · 파일당 2MB · 합계 10MB)·트리 잘림은 보류(`too-large`),
     GitHub 일시 장애·설치 토큰·내려받기 실패는 Logs에만 실패로 남고 Home을 실패로 뒤집지 않는다. CI로 건강한 프로젝트를 야간이
     실패로 보이게 하지 않으려는 것이다. 파싱 실패·0키처럼 CI도 같이 실패할 것은 수동과 같이 실패로 선다. `too-large` 프로젝트는
@@ -570,7 +576,15 @@ sync 브랜치는 계속 `malmoi-i18n/sync-<project-slug>`다. 기존 여러 Pro
 확정 거부 뒤 선택을 보존하고, 성공 뒤 기존 PUSH_TOKEN을 사용하는 workflow 반영 안내를 남긴다.
 다른 표면은 같은 키·언어 코드를 가질 수 있지만 출력 경로는 겹칠 수 없다.
 신규 생성에서는 후보 여럿을 체크해 한 번에 추가한다. 기본 표면은 체크된 후보 중 탐지 순서가 가장 앞선 표면이다.
-표면 보관·복원은 다음 라운드다.
+**소스 제거·재추가** (2026-10-05, sources-add-remove — 옛 판정 "표면 보관·복원은 다음 라운드"의 결론). OWNER가 소스 상세 모달
+바닥 왼쪽의 [Remove source]로 소스를 뺀다. 제거는 `TranslationSurface.archivedAt`을 세울 뿐 키·번역·이력을 지우지 않고 리포 파일도
+건드리지 않는다 — Sources 목록·셸 전환·Home·Inbox·검색·Publish·야간 적재에서 사라지고 그 URL은 `notFound()`다. "보관됨" 목록·Restore
+UI는 없다 — **같은 경로를 다시 추가하는 것이 유일한 복원 길이다**: 같은 `pathTemplate` + 같은 어댑터면 옛 행이 되살아나고(`id`·`slug`·이력
+유지, 화면에서는 새 추가와 구별되지 않는다), 어댑터가 다르면 새 행(slug 접미사)이다. **마지막 활성 소스는 제거할 수 없다**(`last-source`).
+보관된 프로젝트에서는 `archived`, 첫 적재 중인 소스는 `importing`으로 거부된다. 기본 소스를 빼면 남은 활성 소스 중 slug 오름차순 첫째가
+기본이 된다(화면 안내 없음). 확인 창은 대상을 slug로 부르고 — 미전달 편집이 사라진다(있을 때) · 열린 Malmoi PR의 이 소스 변경은 다음
+Publish에서 빠진다(PR이 있을 때) · 워크플로의 이 소스 step을 지우지 않으면 다음 실행이 실패하고 뒤 step의 다른 소스도 적재되지 않는다(**항상** —
+앱은 워크플로 등록 여부를 모른다) · 리포 파일은 바뀌지 않는다(항상)를 한 Alert에 담는다. MCP `remove_source`가 같은 코어를 쓴다.
 
 설정은 General·Repository·CI integration·Archive 네 카드다. CI 카드의 Sources 링크가 소스 관리로 잇는다.
 Sources 목록·상세가 추가·기준 언어·언어 상태를 소유한다. 소스별 상태는
@@ -1000,7 +1014,10 @@ slug로 행을 찾아 대조하면 오배송된 페이로드가 인증 대상을
 (`commitAt`)는 그대로다.
 
 인증 뒤 보관·프로젝트 오배송·표면 조회·`checkFormat`·커밋 역행 순으로 거부한다.
-없는·다른 프로젝트의·비활성 표면은 모두 동일한 **409 `surface mismatch`**다. 목록을 노출하지 않는다.
+없는·다른 프로젝트의 표면은 동일한 **409 `surface mismatch`**다. 목록을 노출하지 않는다.
+⚠️ **제거된 소스는 `409 surface removed`로 가른다** (2026-10-05, sources-add-remove — 옛 "비활성 표면도 같은 409"의 반전). 할 일이
+"워크플로에서 그 step을 지운다"로 달라서이고, 노출은 그 프로젝트의 push 토큰 보유자에게 "그 slug가 있었다"는 사실뿐이다. 적재하지 않고
+Logs에 거부로 남는다. `/api/push/failure`도 같다. 제거와 push가 경합해도 응답은 `surface removed`다(프로젝트 보관 `archived`와 섞지 않는다).
 포맷·커밋 기준·base 변경 선언·실패 보고는 대상 Surface에만 적용한다. `path-template`을 고정해
 탐지 2순위를 선택해도 CI가 1순위로 바꾸지 않게 한다. 정당한 경로 이전도 409이며 재설정 UI는 아직 없다.
 
