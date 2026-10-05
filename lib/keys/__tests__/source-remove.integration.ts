@@ -10,6 +10,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import { PrismaClient } from "@/generated/prisma/client";
 import { optionalEnv } from "@/lib/env";
 import { hashPushToken } from "@/lib/push/token";
+import { countPending } from "@/lib/protection/where";
 import { addSurfacesFromSnapshot, type AddSurfaceSnapshot } from "@/lib/surfaces/create";
 import { previewSurfaceRemoval, removeSurface } from "@/lib/surfaces/remove";
 import { parseLogFilter } from "@/lib/events/filter";
@@ -27,9 +28,9 @@ import { renderToStaticMarkup } from "react-dom/server";
  * ⚠️ **`pnpm test`에 없다** (`vitest.projects.config.ts`).
  */
 
-const db = vi.hoisted(() => ({ prisma: undefined as unknown }));
+const db = vi.hoisted(() => ({ prisma: undefined as unknown, openPr: null as string | null | undefined }));
 vi.mock("@/lib/db", () => ({ getPrisma: () => db.prisma }));
-vi.mock("@/lib/projects/open-pr", () => ({ loadOpenPrUrl: async () => null, loadOpenPrForImportGate: async () => null }));
+vi.mock("@/lib/projects/open-pr", () => ({ loadOpenPrUrl: async () => db.openPr, loadOpenPrForImportGate: async () => null }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 const directory = mkdtempSync(join(tmpdir(), "malmoi-source-remove-"));
@@ -93,6 +94,7 @@ beforeEach(async () => {
   await seedSurface("s-web", "web", { orphanKey: true });
   await seedSurface("s-app", "app");
   await prisma.project.update({ where: { id: "p" }, data: { defaultSurfaceId: "s-web" } });
+  db.openPr = null;
 });
 
 const remove = (surfaceSlug: string, approval: string | null = null, subject: { userId: string } = OWNER) =>
@@ -184,6 +186,20 @@ describe("removeSurface", () => {
     const fresh = await previewSurfaceRemoval(prisma, OWNER, { slug: "p", surfaceSlug: "web" });
     if (!fresh.ok) throw new Error("expected preview");
     expect(await remove("web", fresh.approval)).toEqual({ ok: true });
+  });
+
+  it.each([
+    ["open", "https://github.com/o/r/pull/7"],
+    ["unknown", undefined],
+  ] as const)("열린 PR 조회가 %s면 미리보기가 그대로 말하고 판정·지문은 바뀌지 않는다", async (openPr, url) => {
+    await prisma.translation.update({ where: { keyId_localeCode: { keyId: "s-web-hello", localeCode: "ko" } }, data: { pendingEditToken: "t1" } });
+    const none = await previewSurfaceRemoval(prisma, OWNER, { slug: "p", surfaceSlug: "web" });
+    db.openPr = url;
+    const preview = await previewSurfaceRemoval(prisma, OWNER, { slug: "p", surfaceSlug: "web" });
+    expect(preview).toEqual({ ...none, openPr });
+    if (!preview.ok) throw new Error("expected preview");
+    // 조회 실패는 제거를 막지 않는다 — 같은 지문으로 제거된다.
+    expect(await remove("web", preview.approval)).toEqual({ ok: true });
   });
 
   it("미전달이 없으면 미리보기의 지문은 null이고 지문 없이 제거된다", async () => {
@@ -324,5 +340,60 @@ describe("제거된 소스로 온 CI", () => {
     // 실패가 아니다 — 제거된 소스에 import-failed를 남기면 되살린 뒤의 상태가 옛 실패를 말한다.
     expect(await prisma.translationSurface.findUniqueOrThrow({ where: { id: "s-app" } })).toMatchObject({ lastImportError: null, lastImportStartedAt: null, lastImportToken: null });
     expect((await translations("s-app")).find(row => row.localeCode === "ko")?.value).toBe("Old");
+  });
+});
+
+/**
+ * **orphan이 된 승인 셀** (리뷰 B1 🔴1 — 수동 Sync의 delivery-invariants D1과 같은 장치). 제거된 동안 리포가 키를 지웠으면 되살림 첫 적재가
+ * 그 키를 orphan시킨다. 승인 토큰을 안 풀면 화면 미전달 수는 0인데(`pendingWhere`가 orphan을 뺀다) 그 키를 되살린 CI가 매번 `deferred`다.
+ */
+describe("되살림이 orphan시킨 승인 셀", () => {
+  const editHello = () => prisma.translation.update({ where: { keyId_localeCode: { keyId: "s-web-hello", localeCode: "ko" } }, data: { value: "Edited", pendingEditToken: "t1", updatedBy: "editor" } });
+  async function removeWithApproval() {
+    const preview = await previewSurfaceRemoval(prisma, OWNER, { slug: "p", surfaceSlug: "web" });
+    if (!preview.ok) throw new Error("expected preview");
+    expect(await remove("web", preview.approval)).toEqual({ ok: true });
+  }
+  const pushTo = (keys: string[], commitAt: string) => new Request("http://localhost/api/push", { method: "POST", headers: { authorization: `Bearer ${PUSH_TOKEN}` }, body: JSON.stringify({
+    projectSlug: "p", surfaceSlug: "web", commitSha: "d".repeat(40), commitAt,
+    format: { adapter: "json-catalog", pathTemplate: "web/{locale}.json", baseLocale: "en", nested: false },
+    locales: ["en", "ko"], keys: keys.map(key => ({ key, namespace: "_root", sourceText: key })),
+    translations: keys.map(key => ({ key, locale: "en", value: key })), refs: [],
+  }) });
+  const tokens = () => prisma.translation.count({ where: { projectId: "p", surfaceId: "s-web", pendingEditToken: { not: null } } });
+
+  it("토큰이 풀리고, 그 키를 되살린 CI가 deferred 없이 적재된다 — 화면 미전달 수와 원장이 같다", async () => {
+    await editHello();
+    await removeWithApproval();
+    // 제거된 동안 리포가 `hello`·`gone`을 지웠다.
+    await readd(snapshot({ blobs: new Map([["web/en.json", '{"other":"Other"}'], ["web/ko.json", '{"other":"Other-ko"}']]) }));
+    expect(await prisma.stringKey.findUniqueOrThrow({ where: { id: "s-web-hello" } })).toMatchObject({ orphaned: true });
+    expect(await prisma.translation.findUniqueOrThrow({ where: { keyId_localeCode: { keyId: "s-web-hello", localeCode: "ko" } } })).toMatchObject({ pendingEditToken: null });
+    expect(await tokens()).toBe(0);
+    expect(await countPending(prisma, "p")).toBe(0);
+
+    const { POST } = await import("@/app/api/push/route");
+    const response = await POST(pushTo(["hello", "other"], "2026-12-02T00:00:00Z"));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ status: "applied" });
+    expect(await prisma.stringKey.findUniqueOrThrow({ where: { id: "s-web-hello" } })).toMatchObject({ orphaned: false });
+  });
+
+  it("제거 때 이미 orphan이던 승인 셀도 풀린다 — 지문이 그 셀을 셌다", async () => {
+    await prisma.translation.update({ where: { keyId_localeCode: { keyId: "s-web-gone", localeCode: "ko" } }, data: { value: "Gone-edit", pendingEditToken: "t2" } });
+    await removeWithApproval();
+    await readd(snapshot({ blobs: new Map([["web/en.json", '{"hello":"Hello"}'], ["web/ko.json", '{"hello":"Repo-ko"}']]) }));
+    expect(await prisma.translation.findUniqueOrThrow({ where: { keyId_localeCode: { keyId: "s-web-gone", localeCode: "ko" } } })).toMatchObject({ pendingEditToken: null, value: "Gone-edit" });
+    expect(await tokens()).toBe(0);
+  });
+
+  it("실패 파일이 섞인 되살림은 옛 키를 orphan시키지 않고 승인 토큰도 남긴다 — 불완전 적재(audit #7)", async () => {
+    await editHello();
+    await removeWithApproval();
+    // en에는 `hello`가 없지만 ko 파일이 깨졌다 — 이 실행으로는 키가 지워졌는지 모른다.
+    expect(await readd(snapshot({ blobs: new Map([["web/en.json", '{"other":"Other"}'], ["web/ko.json", "{"]]) }))).toMatchObject([{ surfaceSlug: "web", failed: 1 }]);
+    expect(await prisma.stringKey.findUniqueOrThrow({ where: { id: "s-web-hello" } })).toMatchObject({ orphaned: false });
+    expect(await prisma.translation.findUniqueOrThrow({ where: { keyId_localeCode: { keyId: "s-web-hello", localeCode: "ko" } } })).toMatchObject({ pendingEditToken: "t1", value: "Edited" });
+    expect(await countPending(prisma, "p")).toBe(await tokens());
   });
 });
