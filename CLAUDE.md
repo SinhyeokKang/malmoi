@@ -72,7 +72,7 @@
 | 방문 집계 | Vercel Web Analytics — **공개 페이지 페이지뷰 하나**(쿠키·커스텀 이벤트 없음). ⚠️ **`lib/seo/analytics.ts`의 추적 경로 허용 목록이 유일한 거름망이다** — 앱 URL엔 초대 토큰·slug·검색어가 실린다 |
 | 이미지 정규화 | `sharp` — 업로드 원본을 저장하지 않는다(192px 이내 WebP 재인코딩) |
 | 스타일 | Tailwind CSS 4 — **`tailwind.config.js`가 없다.** 토큰 등록은 `app/globals.css`의 `@theme`, 값(라이트·다크)은 같은 파일 `:root`의 `light-dark()` |
-| UI | **`components/ui/`를 이 리포가 소유한다** — 프리미티브 모듈 51개(`components/ui/*.tsx` 파일 기준; `.ts` 헬퍼 제외) + `radix-ui`(단일 통합 패키지)에서 DropdownMenu·Dialog·Slot·RadioGroup·Checkbox·Select·Popover·Tabs 여덟. **라이트·다크 — 토큰이 든다, `dark:` 금지**(테마는 `<html data-theme>` + `globals.css`의 `light-dark()`). 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) |
+| UI | **`components/ui/`를 이 리포가 소유한다** — 프리미티브 모듈 52개(`components/ui/*.tsx` 파일 기준; `.ts` 헬퍼 제외) + `radix-ui`(단일 통합 패키지)에서 DropdownMenu·Dialog·Slot·RadioGroup·Checkbox·Select·Popover·Tabs 여덟. **라이트·다크 — 토큰이 든다, `dark:` 금지**(테마는 `<html data-theme>` + `globals.css`의 `light-dark()`). 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) |
 | 토스트 | `sonner` — **루트 레이아웃이 렌더하는 유일한 서드파티 UI 컴포넌트다**(그 옆 `SiteAnalytics`는 화면이 없다). ⚠️ **테마를 우리가 넘긴다** — `theme`에 `<html data-theme>`과 같은 값을 주고 sonner 변수를 `style`로 토큰에 묶는다(sonner는 테마를 스스로 감지하고 `classNames`만으로는 다크에서 sonner CSS에 진다 — `app/layout.tsx` 머리 주석 · DESIGN §6.25) |
 | 패널 리사이즈 | `react-resizable-panels` — `resizable.tsx` 하나가 쓴다. ⚠️ **jsdom에서는 화면의 모든 클릭을 삼킨다** — `vitest.setup.ts`가 막는다 |
 | 아이콘·폰트 | `lucide-react` / **Geist Sans 우선 → Pretendard Variable 동적 서브셋 폴백, 둘 다 자사 호스트** |
