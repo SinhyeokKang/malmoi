@@ -578,6 +578,8 @@ model User {
   /// enum으로 두지 않는다(값 하나를 빼는 것이 destructive 마이그레이션이 된다 — `uiLocale`과 같은 이유).
   /// ⚠️ **봉투를 지나지 않는다** — 사람을 식별하는 값이 아니다(`uiLocale`과 같다).
   colorScheme   String?
+  /// 안 읽음은 사용자당 시각 하나로 판정한다 — 항목별 열람 이력을 쌓지 않는다.
+  attentionSeenAt DateTime?
 
   accounts        Account[]
   sessions        Session[]
