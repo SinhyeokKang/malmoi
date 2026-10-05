@@ -119,7 +119,7 @@ pnpm db:status     # dev를 본다
 - **코드에서 새 `process.env.*`를 읽음** → **.env.example** (⚠️ diff에 `process.env`가 보이면 무조건 확인한다. 빠지면 새 체크아웃·Vercel 재설정에서 원인 불명으로 죽는다)
 - `.github/workflows/*.yml`·`.npmrc`·`postcss.config.mjs`·`components.json` 변경 → **CLAUDE.md의 해당 섹션**
 - **`lib/adapters/**`·`lib/survey/**` 변경 → docs/ARCHITECTURE.md §1.9 + `pnpm adapter-survey` 재실행** (아래 4d)
-- `app/globals.css` 토큰 변경, 새 raw 색 도입, `components/ui/` 추가, `lib/utils.ts` 변경 → **docs/DESIGN.md**
+- `app/globals.css` 토큰 변경(라이트·다크 값), 새 의미 토큰, `components/ui/` 추가, `lib/utils.ts` 변경 → **docs/DESIGN.md**
 - 사용자에게 보이는 기능·지원 포맷·한도·역할 권한·개인정보 전송처 변경, `guide/` 페이지 경로 변경, `public/guide/translation-editor.webp`·`publish-preview.webp`·`workflow-file.webp` 파일명 변경 → **README.md** (방문자용 서비스 소개라 제품 사실을 요약해 들고, 세 가이드 이미지를 참조한다)
 - **`lib/credentials/**`·`lib/session-revocation/**`·`lib/login-link/**` 변경, 암호화 키 env 추가·의미 변경, `pnpm credentials:*`·`test:credentials:postgres`의 동작 변경 → docs/OPERATIONS.md** (⚠️ **"나중에 다시 실행할 절차"의 정본이다.** 절차가 낡으면 그걸 발견하는 시점이 **키를 잃은 뒤**다 — 그때 PII 키면 회원 이메일·이름을 복구할 수 없다)
 - **`.github/actions/**` 변경, `lib/onboarding/workflow.ts`가 만드는 YAML 변경, action `inputs`·red 조건 변경, 태그(`malmoi-i18n-push-v1`) 릴리스 → docs/ACTIONS.md** (⚠️ **외부 계약이다** — 남의 리포가 이 문서를 보고 붙인다. 이 스텝에 대상 리포의 `secrets.PUSH_TOKEN`이 들어가므로 참조·권한 서술이 틀리면 남의 리포의 보안 경계가 틀어진다)
@@ -130,7 +130,7 @@ pnpm db:status     # dev를 본다
 - 리포트에 **"가이드 stale 후보: <목록> → `/guide`·`/guide-shots`"**로 남기고 **계속 진행한다.** 화면이 바뀌었으니 다시 찍으라는 신호는 red로 막을 일이 아니다 — 찍을 수 있는 런타임이 로컬뿐이다. 걸린 것이 없으면 "없음" 한 줄.
 
 **4b. 후보 정밀 검사.** 걸린 문서만 실제로 읽고 대조한다.
-- **docs/DESIGN.md** — 토큰 값·대비 함정·mono 표면·라이트 단일 강제 장치가 `app/globals.css`·`lib/utils.ts`와 맞는지. 새 raw 색을 늘렸으면 §6.2에 등재한다. prefix `docs(DESIGN): ...`
+- **docs/DESIGN.md** — 토큰 값(두 테마)·대비 함정·mono 표면·`dark:` 금지 강제 장치가 `app/globals.css`·`lib/utils.ts`와 맞는지. raw 색은 0이다 — 새 색은 §6.2에 의미 토큰 + 두 테마 값으로 등재한다. prefix `docs(DESIGN): ...`
 - **docs/PRODUCT.md** — 역할·권한표·범위·비범위·설계 결정이 코드와 맞는지. §10 "아직 안 정한 것"에서 결정된 항목은 본문으로 올리고 목록에서 뺀다. prefix `docs(PRODUCT): ...`
 - **docs/ARCHITECTURE.md** — §0 불변식 열하나가 코드와 맞는지, 함정·계약이 실제 구현과 맞는지. `(미구현)` 표시가 남아 있는데 구현됐으면 제거하고 실제 동작으로 갱신. prefix `docs(ARCHITECTURE): ...`
 - **docs/DIRECTORY.md** — 트리가 실제 파일과 맞는지(없는 파일·새 파일·옮긴 파일). prefix `docs(DIRECTORY): ...`

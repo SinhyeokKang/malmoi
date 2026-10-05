@@ -94,7 +94,7 @@ await page.evaluate(() => getComputedStyle(el).getPropertyValue("padding"))
 
 ### 7. 정본 반영과 커밋
 
-- `docs/DESIGN.md`에 **측정값과 근거**를 올린다. ⚠️ **새 raw 색·새 토큰은 §6.2 등재가 규칙이다.**
+- `docs/DESIGN.md`에 **측정값과 근거**를 올린다. ⚠️ **raw 색은 0이다 — 새 색은 §6.2의 의미 토큰 + 두 테마 값으로 등재한다.**
 - ⚠️ **문서가 코드보다 앞서가지 않는다.** 아직 참이 아닌 것을 사실로 적으면, 그것을 믿은 사람이 의심해야 할 곳을 의심하지 않는다.
 - 게이트: `pnpm typecheck` → `pnpm test` → `pnpm build`. **셋 다 green이어야 커밋한다.**
 - 커밋은 코드 하나 + **문서별로 하나씩**(CLAUDE.md 규칙).
