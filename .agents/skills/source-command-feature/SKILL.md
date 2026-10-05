@@ -28,7 +28,7 @@ Use this skill when the user asks to run the migrated source command `feature`.
 
 ## 1. 산출물
 
-`docs/features/<slug>/` 아래 3개 파일. slug는 kebab-case.
+`docs/features/<slug>/` 아래 3개 파일 + 조건부로 `design-brief.md`. slug는 kebab-case.
 
 ### `spec.md` — 무엇을, 누구를 위해
 - **사용자**: 개발자(나) / 번역 편집자(비개발자 동료) 중 누구를 위한 것인지 명시. 이 프로젝트는 사용자가 둘뿐이고 둘의 요구가 자주 상충한다.
@@ -47,20 +47,41 @@ Use this skill when the user asks to run the migrated source command `feature`.
 - 태스크마다 **검증 방법 한 줄**을 붙인다 ("`pnpm test` green", "UI에서 X가 보임", "`git hash-object`와 일치")
 - 순수 함수 → 껍데기 → UI 순서. 역순은 테스트 못 하는 코드를 먼저 쌓는 것
 - 커밋 경계를 표시한다 (`/ship`이 이 분리를 지킨다)
+- `design-brief.md`를 만들었으면 **첫 태스크가 시안 수령**이고, UI 태스크 뒤에 `/design-sync` 대조 태스크를 둔다
+
+### `design-brief.md` — Claude Design 핸드오프 (조건부)
+
+**만드는 경우**:
+- 신규 UI 표면(페이지·셸 요소·모달 등)의 **최초 구현**
+- 기존 화면의 재구현이지만 **디자인 변경이 클 때**(레이아웃·정보 구조가 바뀐다)
+- 사용자가 만들라고 지시했을 때
+
+**모호하면 작성 전에 묻는다** — 문구·간격 정도의 작은 UI 변경인지, 시안이 필요한 변경인지를 스스로 판정하지 않는다. UI가 없는 기능이면 만들지 않는다.
+
+**그릴 것만 든다** — 기능 정의는 `spec.md`, 데이터·판정은 `design.md`가 정본이고 브리프는 그것을 반복하지 않는다. 담는 것:
+- **한 줄** — 무엇이 어디에 생기는가
+- **놓이는 자리** — 기존 화면의 실측 구성(클래스·치수는 코드에서 읽어 적는다)
+- **프리미티브** — `components/ui/`의 무엇으로 짓는가(새로 만들지 않는다 — UI primitives first). 새 색이 필요하면 §6.2 의미 토큰으로만
+- **상태·항목·문구** — 표로. 문구는 기존 사전 재사용을 먼저, 새 en 키는 목록으로
+- **그릴 프레임** — 번호 붙은 표(기본·많음·권한별·빈·불러오는 중·오류·다크)
+- **동작 주석** — 열기·닫기·키보드·포커스
+- **그리지 않는 것** — 비목표의 시각 버전
+
+머리에 "신규 페이지의 첫 구현 동안만 시안이 SoT이고, dev에 들어간 뒤로는 코드 + DESIGN.md가 정본"이라는 한 줄을 둔다.
 
 ## 2. 절차
 
 1. **범위 게이트** (위 0단계). 걸리면 되묻고 대기.
 2. **기존 문서 대조** — `docs/PRODUCT.md`·`docs/ARCHITECTURE.md` §0(불변식)·`docs/ARCHITECTURE.md`를 읽어 이미 정해진 것과 충돌하지 않게 한다. 이미 결정된 사항을 다시 설계하지 않는다.
 3. **`docs/POSTMORTEM.md` grep** — 이 기능이 건드릴 영역에 과거 함정이 있으면 design.md에 인용한다.
-4. **3개 파일 작성.**
+4. **3개 파일 작성.** UI가 있으면 `design-brief.md` 조건(1절)을 판정하고, 모호하면 묻고 나서 쓴다.
 5. **불확실한 지점을 목록으로 제시하고 확인받는다.** 여러 해석이 가능한 곳을 조용히 하나 고르지 않는다.
 
 ## 3. 리포트
 
 ```
 📋 feature: <slug>
-문서: docs/features/<slug>/{spec,design,tasks}.md
+문서: docs/features/<slug>/{spec,design,tasks}.md (+ design-brief.md / 브리프 없음: <사유>)
 범위 게이트: 통과 / PRODUCT.md 갱신 필요(<항목>)
 순수 함수 대상: <목록>  ← /tdd 진입점
 스키마 변경: 없음 / additive / destructive(2단계 배포)
