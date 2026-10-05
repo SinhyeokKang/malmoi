@@ -47,6 +47,23 @@ export const en = {
     results: (count: number): string => `${count.toLocaleString("en-US")} ${count === 1 ? "result" : "results"}`,
   },
   /**
+   * **헤더 Inbox** (attention-inbox) — 멤버 프로젝트 전체의 "지금 손볼 것" 드롭다운. 행 문장은 Home 카드(`home.attention.*`)와
+   * 목록 띠(`projects.banner.unsent`·`setup`)를 그대로 쓰고, 빈 상태 제목은 `home.attention.empty.title`, 다시 시도는 `common.retry`다.
+   * ⚠️ **트리거 이름이 메뉴 이름이다** — 메뉴 머리 제목이 없다(`aria-labelledby` → 트리거). 낱말은 Home 카드 제목과 같다.
+   */
+  inbox: {
+    label: "Needs your attention",
+    /** 배지는 `9+`로 접어도 이 이름은 실제 수를 읽는다 — 숫자 배지는 `aria-hidden`이다. */
+    labelUnread: (n: number): string => `Needs your attention, ${n.toLocaleString("en-US")} unread`,
+    /** 행 접근 이름 맨 앞의 sr 낱말 — 보이는 표시는 점이다. */
+    unread: "Unread",
+    emptyDescription: "Nothing needs your attention across your projects.",
+    /** 목록 자리의 실패 줄 — 다음 행동은 바로 아래 `common.retry` 메뉴 항목이 든다. */
+    failed: "Couldn't load this list.",
+    /** 골격은 `aria-hidden`이라 이 sr 문장이 "불러오는 중"을 말한다. */
+    loading: "Loading items…",
+  },
+  /**
    * **리포 재적재(화면 이름 `Sync`)** — 확인 Dialog · 결과 · 거부.
    * 시안: Claude Design `design_handoff_sync_repository/Sync Repository.dc.html` 아트보드 `4a`~`4f`.
    *

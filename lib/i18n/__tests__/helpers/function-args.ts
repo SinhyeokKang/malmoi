@@ -26,6 +26,7 @@ type At<T, P extends string> = P extends `${infer H}.${infer R}` ? (H extends ke
 export const FUNCTION_ARGS: { readonly [P in FunctionPaths<Messages>]: Parameters<Extract<At<Messages, P>, Fn>> } = {
   "search.noResults": ["X"],
   "search.results": [2],
+  "inbox.labelUnread": [12],
   "repositorySync.title": ["X"],
   "repositorySync.body": ["X"],
   "repositorySync.unsentCount": [2],

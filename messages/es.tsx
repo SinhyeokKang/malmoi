@@ -28,6 +28,14 @@ export const es = {
     goTo: "Ir a",
     results: (count: number): string => `${count.toLocaleString("es")} ${count === 1 ? "resultado" : "resultados"}`,
   },
+  inbox: {
+    label: "Requiere tu atención",
+    labelUnread: (n: number): string => `Requiere tu atención, ${n.toLocaleString("es")} sin leer`,
+    unread: "Sin leer",
+    emptyDescription: "Nada requiere tu atención en tus proyectos.",
+    failed: "No pudimos cargar esta lista.",
+    loading: "Cargando elementos…",
+  },
   repositorySync: {
     action: "Sincronizar",
     paused: "La sincronización no está disponible en este momento.",

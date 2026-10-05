@@ -31,6 +31,14 @@ export const ko = {
     goTo: "이동",
     results: (count: number): string => `결과 ${count.toLocaleString("ko-KR")}건`,
   },
+  inbox: {
+    label: "확인이 필요한 항목",
+    labelUnread: (n: number): string => `확인이 필요한 항목, 읽지 않은 항목 ${n.toLocaleString("ko-KR")}개`,
+    unread: "읽지 않음",
+    emptyDescription: "모든 프로젝트에 확인할 항목이 없습니다.",
+    failed: "목록을 불러오지 못했습니다.",
+    loading: "항목을 불러오는 중…",
+  },
   repositorySync: {
     action: "동기화",
     paused: "지금은 동기화할 수 없습니다.",
