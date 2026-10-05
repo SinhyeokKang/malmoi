@@ -19,6 +19,7 @@
 6. 보조줄 표기: **지휘자 판단 — keep**(`{소스} · {Locale.name}`, Home `title()` 공유). 실데이터 name=code라 시안과 시각 차이 0, 바꾸면 Home과 같은 개념이 갈린다(DESIGN §2.4).
 7. (2026-10-05 사용자) **범위 변경 — 공개 셸 헤더에도 Inbox**(로그인 `ok`일 때). 지휘자 판단: 배치 `[GitHub] | [Inbox] [avatar]`(편집 셸과 같은 형) · 같은 컴포넌트 · Action을 `app/inbox/actions.ts`로 이동(공개 호출 Action 선례 `app/search/`·`app/ui-locale/`). B round 3.
 8. 지휘자 판단 — #191: spec 완료 조건 7 우선(marked로 닫으면 캐시 목록의 unread도 지운다). #190: 첫 구현은 시안이 정본 → Inbox 행 시각은 짧은 상대 시각 형(`relativeTime` 옵션, Home은 긴 형 유지). #189: 목업 빈 입력 64로.
+9. (2026-10-05 사용자) **가이드 IA 개편** — `account.md`·`language.md`를 한 장으로: `Account and preferences`(account/README.md) > `Account`(account/profile.md) · `Preferences`(account/preferences.md). 장 제목은 지휘자 추천(LNB 라벨 두 낱말). 옛 URL·절 id는 넘김 처리(`SECTION_LEGACY_ANCHORS` 선례). Q3 인계 뒤 가이드 배치.
 
 ## 배치
 
@@ -59,3 +60,4 @@ A가 `prisma migrate diff`(더미 `DIRECT_URL`)로 SQL만 만든다 → 지휘�
 - 2026-10-05 사용자 보고(prod): `/projects` 배너 `Review ›` 쉐브론 세로 정렬 어긋남(`project-list.tsx:402` inline-flex에 items-center 없음) → A fix2 dispatch `ctx_f9ffb7430c0d`(Codex medium).
 - 2026-10-05 A fix2(`a6f470e6`: 배너 쉐브론 items-center · Select 설명형 체크 첫 줄 · 후보 68곳 판정) — Q2 인계 뒤 통합. 재측정: Projects 배너 · Members 초대 역할 메뉴.
 - 2026-10-05 Q2 완료: design-sync 차이 0(그룹 경계선·골격·짧은 시각 포함, 라이트·다크) · #189 #190 #191 닫힘 · 공개 헤더 Inbox 통과(로그아웃 POST 0). 미검증: rAF 애니메이션(창 스로틀) · prod 배지 POST 수 · 실제 스크린리더. A fix2 통합, gate ok.
+- 2026-10-05 push `f41f79a8`. Q3 dispatch `ctx_6bd71136b78c` — 가이드 컷 전부 재촬영 + 새 `inbox-open` + 쉐브론·Select 재측정. Q2 터미널 닫음.
