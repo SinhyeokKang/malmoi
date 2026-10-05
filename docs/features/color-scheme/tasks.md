@@ -151,7 +151,7 @@ Phase 1은 ui-locales의 E 배치(화면 파일 이관)와 W10(`globals.css`·Pr
 
 ──
 
-### P2-7 검증
+### P2-7 검증 ✅ Q2 · Q3
 
 - `/design-sync` — S2 핸드오프 대비 대표 화면을 다크에서 computed style + CDP로 대조.
 - `/runtime-test` — **전 화면 × Light·Dark·System(OS 다크)**: 첫 페인트부터 고른 테마(깜빡임 없음) · Theme 카드 선택 즉시 전환 · 다른 기기 로그인 시 계정 값 · 로그아웃 뒤 공개 페이지에 쿠키 값 · 네이티브 컨트롤 · Malmoi·에이전트 로고 · 키비주얼 · 토스트 면·테두리·글자가 토큰 값(완료 조건 19) · 오버레이 · 포커스 링 가시성 · OS 다크 토글 시 로그인 점 · 가이드 스크린샷이 다크 본문에서 읽히는지(변경 없음 확인) · `public-shell`·`auth-layout`의 `<style>{body{background-color:var(--canvas)}}`가 다크 값을 받는지.
