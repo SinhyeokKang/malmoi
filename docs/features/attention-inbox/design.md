@@ -83,7 +83,7 @@ Server Action 둘(배지 읽기 하나 · 열기 = 조회+읽음 기록 하나),
 - **`unsent`의 시각**: `loadProjectListAggregates`의 미전달 행 쿼리에 `MAX("updatedAt")`을 더한다 — ⚠️ **새 술어를 만들지 않고 `pendingWhere` 공유 조각 그대로**, 쿼리 모양도 그대로다.
   `lib/keys/`를 건드리므로 `scripts/gate-plan.ts` 트리거로 `pnpm test:projects:postgres`가 붙는다(손으로 판정하지 않는다).
   ⚠️ 이 집계의 관계 필터 `groupBy`(`query.ts:518·524`)는 POSTMORTEM 2026-09-18이 "적재 직후 느릴 수 있는 후보"로 적은 자리다 — Inbox가 그 경로의 빈도를 늘린다(마운트·열기마다). 측정은 T5.
-- **Server Action 둘** (`app/(edit)/inbox/actions.ts`):
+- **Server Action 둘** (`app/inbox/actions.ts` — 2026-10-05에 `(edit)` 밖으로 옮겼다(공개 셸 헤더도 부른다)):
   - `loadAttentionBadgeAction()` — 읽기 전용, 배지 수만 돌려준다. `readSession` → userId로만 좁힌다(입력 없음). `revalidatePath` 없음. 세션 none·unavailable/장애는 union(`{ status: "failed" }`) — 셸을 던지지 않는다.
   - `openAttentionInboxAction()` — 입력 없음. `now`를 먼저 잡고 → `loadAttentionInbox` → 워터마크 `updateMany` → `{ status: "ok", plan, loadedAt, marked }`. 쓰는 대상은 세션이 정한다. `revalidatePath` 없음(배지는 클라이언트 상태다).
   - ⚠️ **인가 게이트는 `isProtectedPath`가 아니다** — Action은 현재 페이지 URL로 POST되고 middleware 1차 차단은 GET·HEAD만 본다. 두 Action을 `app/__tests__/entry-points.test.ts`의

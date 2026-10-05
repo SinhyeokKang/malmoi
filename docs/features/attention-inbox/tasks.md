@@ -46,7 +46,7 @@
       - **모든 조회 인자가 인가된 ids뿐**(`list-aggregates.test.ts:57` 형) · **왕복 수 상수**(프로젝트 1개·40개 모두 같은 수).
       - 하위 조회 하나가 던지면 전체가 던진다.
       - 같은 사람 두 행 픽스처 → 직렬화 결과에 원문 이메일 0(POSTMORTEM 2026-09-29).
-- [ ] T6. `app/(edit)/inbox/actions.ts` — `loadAttentionBadgeAction` · `openAttentionInboxAction`(조회 전 `now` → 조회 → `updateMany` 단조 → `marked`). `revalidatePath` 없음.
+- [ ] T6. `app/inbox/actions.ts`(2026-10-05에 `(edit)` 밖으로 이동) — `loadAttentionBadgeAction` · `openAttentionInboxAction`(조회 전 `now` → 조회 → `updateMany` 단조 → `marked`). `revalidatePath` 없음.
       `app/__tests__/entry-points.test.ts`의 `USER_SCOPED_ACTIONS`에 둘을 사유와 함께 등재.
       검증: `pnpm test` — Action 단위 테스트(`getPrisma` mock — `app/(edit)/preferences/__tests__/actions.test.ts` 형):
       - 세션 none·unavailable → `failed` + prisma 미호출.
@@ -98,7 +98,7 @@
 - [ ] T11. ARCHITECTURE — 읽음 워터마크 계약(단조 `updateMany`·조회 전 `now`·review 제외 사유)·데이터 경로·왕복 수 상수. CLAUDE.md "데이터 변경 경로" 표에 Action 두 행. `docs(ARCHITECTURE): ...`
       검증: `pnpm sync:agents:check` green(CLAUDE.md 미러).
 - [ ] T12. DESIGN — :871·:2230 "헤더 카운터" 금지를 Inbox 배지 하나의 예외로 정정 · 헤더 우측 구성 갱신(§6.5 — 트리거가 ghost의 글자·hover를 덮는 의도된 이탈, 값은 `PUBLIC_HEADER_LINK`) · Inbox 드롭다운 절(버튼 안 배지 형 등재 — 선례 0, 닫을 때 배지 0) ·
-      §6.4 메뉴: `DropdownMenuItem`(동작·필터 메뉴, inset `bg-accent`) vs `DropdownMenuRow`(결과 목록, 전폭 7% — 검색과 같은 형)의 경계 · `ListGroup`·`ListRow hoverFill` 등재 · DIRECTORY — `lib/inbox/`·`app/(edit)/inbox/`·`lib/home/attention-view.ts`·`components/ui/list-group.tsx`.
+      §6.4 메뉴: `DropdownMenuItem`(동작·필터 메뉴, inset `bg-accent`) vs `DropdownMenuRow`(결과 목록, 전폭 7% — 검색과 같은 형)의 경계 · `ListGroup`·`ListRow hoverFill` 등재 · DIRECTORY — `lib/inbox/`·`app/inbox/`·`lib/home/attention-view.ts`·`components/ui/list-group.tsx`.
       검증: `pnpm test` green(`visual-system` 등 DESIGN 대조 테스트) · grep으로 :871·:2230 정정 확인.
 - [ ] T13. `/privacy` 본문 참 여부(새 목적: 안 읽음 표시) — 고치면 개정 이력·시행일(`policy-gate`).
       검증: `pnpm test` green(`policy-gate.test.tsx`) · `/push` 4단계 개인정보 넷 확인.
