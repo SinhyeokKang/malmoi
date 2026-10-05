@@ -2936,6 +2936,28 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
   봤고 그건 정말로 없었다 — 그래서 "트리 셰이킹이 떼어냈다"는 **틀린 결론을 주석으로 남겼다.** 한 번의
   grep은 자신이 고른 패턴만 답한다.
 
+### 6.365 Attention inbox — 사용자 읽음 워터마크 (2026-10-05)
+
+`lib/inbox/plan.ts`가 현재 상태를 프로젝트별로 정렬하고 배지 수를 센다. Home은 `collectAttention` 위에 보관·배너 제외·상한 5를
+얹으며, Inbox는 상한 없이 그대로 쓴다. 빈 로케일은 `neverFilledLocales`, 링크·타일·문장은 `lib/home/attention-view.ts`, 목록 띠 링크는
+`lib/routes.ts`의 `bannerTranslationsHref`가 공유한다. 동시각은 프로젝트 항목(setup → unsent) → 표면 slug → 로케일 순이고,
+묶음은 최신 항목 시각 내림차순 → 프로젝트 slug다. 시각 null은 가장 오래된 값이다.
+
+**데이터 경로**: 입력 없는 `loadAttentionBadgeAction`·`openAttentionInboxAction` → `readSession` → `loadAttentionInbox(prisma, userId)`.
+전용 멤버십 조회가 `userId`·프로젝트 `archivedAt: null`로 범위를 확정하고 같은 조회에 `User.attentionSeenAt`을 붙인다.
+셸의 공용 멤버십 조회를 넓히지 않는다. 집계와 검토 조회는 그 ids로 제한해 병렬 실행하고, 검토 행의 행위자만 추가 조회한다.
+프로젝트 수와 무관하게 Prisma 조회 호출 수는 상수(멤버십 1 + 집계 5 + 검토 1 + 행위자 최대 1)다. 관계 조회의 내부 SQL 수는 Prisma의
+relation load strategy에 따른다. 멤버십이 없으면 나머지는 0회다. GitHub은 부르지 않고, 하위 조회가 실패하면 전체가 실패다.
+검토 조회는 `ANY(ids)`·`PARTITION BY projectId, surfaceId, localeCode`, 미전달 시각은 기존 pending 토큰 술어의 `MAX(updatedAt)`이다.
+응답에는 `projectId`와 원문 이메일이 없으며 행위자는 `actorLabel`의 마스킹을 지난 문자열만 나온다.
+
+**읽음 계약**: nullable `User.attentionSeenAt` 하나. `review`가 아니고, seenAt이 null이거나 항목 시각이 seenAt보다 엄격하게 클 때만
+안 읽음이다(같으면 읽음). `review`는 push도 `updatedAt`을 바꾸므로 정렬에는 쓰되 배지·읽음에서 뺀다.
+열기 Action은 **조회 전 now**로 목록을 만든 뒤 `updateMany({ where: { id, OR: [{ attentionSeenAt: null },
+{ attentionSeenAt: { lt: now } }] }, data: { attentionSeenAt: now } })`로 기록한다. 다른 탭의 더 늦은 시각을 되돌리지 않으며,
+조회 도중 생긴 일은 다음에도 안 읽음이다. 쓰기 실패는 목록과 `marked: false`를 반환한다. 두 Action은 `revalidatePath`를 부르지 않는다.
+열람 기록은 계정에만 남고 별도 쿠키·항목별 이력·외부 전송을 만들지 않는다. `lib/privacy/collected.ts`가 개인정보로 등재한다.
+
 ### 6.37 검색의 공개·사용자 경계 (`app/search/actions.ts` · `lib/search/`, global-search)
 
 - **공개 색인은 Docs만 든다.** `app/api/search-index/[uiLocale]/route.ts`는 질의를 받지 않는 GET으로 `{ docs: DocsEntry[] }`를 준다.
