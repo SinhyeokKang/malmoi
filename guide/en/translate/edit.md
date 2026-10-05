@@ -40,6 +40,8 @@ The inbox button between the divider and your avatar at the top right — in the
 2. Select an item. A sync problem opens **Sources**, where you can read why; only project owners can try the sync again. The other items open **Translations** with the matching filter, and setup opens the project's **Settings**.
 3. Close the list. Opening it marks everything in it as seen, and the number clears when the list closes. If the list doesn't load, choose **Try again**.
 
+![The inbox open at the top right, with items grouped by project: a failed sync and a partial sync, then an unsent edit and text waiting for review](/guide/inbox-open.webp "Choose an item to go where you can resolve it.")
+
 An item counts again only when it is new or has changed since you last opened the list, and it leaves the list once it is resolved. Text waiting for review is always listed but never counted, because every sync from the repository would make it look new. When nothing needs you, the list shows **Nothing needs you**. Archived projects aren't included.
 
 ## Edit and save {#save}

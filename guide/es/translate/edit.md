@@ -40,6 +40,8 @@ El botón de bandeja de entrada, entre la línea divisoria y tu avatar arriba a 
 2. Selecciona un elemento. Un problema de sincronización abre **Fuentes**, donde puedes leer el motivo; solo los propietarios del proyecto pueden volver a intentar la sincronización. Los demás elementos abren **Traducciones** con el filtro correspondiente, y la configuración abre **Configuración** del proyecto.
 3. Cierra la lista. Al abrirla, todo lo que contiene queda marcado como visto, y el número desaparece cuando la cierras. Si la lista no carga, elige **Intentar de nuevo**.
 
+![La bandeja de entrada abierta arriba a la derecha, con los elementos agrupados por proyecto: una sincronización fallida y otra parcial, y después una edición sin enviar y texto que espera revisión](/guide/inbox-open.webp "Elige un elemento para ir a donde puedes resolverlo.")
+
 Un elemento vuelve a contar solo cuando es nuevo o cambió desde la última vez que abriste la lista, y sale de la lista cuando se resuelve. El texto que espera revisión siempre aparece, pero nunca cuenta en el número, porque cada sincronización desde el repositorio lo haría parecer nuevo. Cuando nada requiere tu atención, la lista muestra **Nada requiere tu atención**. Los proyectos archivados no se incluyen.
 
 ## Edita y guarda {#save}
