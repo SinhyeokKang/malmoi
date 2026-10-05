@@ -66,3 +66,4 @@ A가 `prisma migrate diff`(더미 `DIRECT_URL`)로 SQL만 만든다 → 지휘�
 - 2026-10-05 push `aa5bc413`. G(Opus medium — 사실 대조·옛 URL 넘김 판단) dispatch `ctx_df455c87f95f`: IA 개편 + FAQ.
 - 2026-10-05 G 완료(`5ed077c5`: 계정 장 3페이지 · FAQ 15문항 · `/docs/account#id` SECTION_LEGACY_ANCHORS · `/docs/language` LEGACY_PAGES permanentRedirect). R-G(Opus medium) dispatch `ctx_9046feb59eed`. 남음: 리다이렉트 런타임 확인(preview) · 루트 README의 `/docs/language` 링크(지휘자).
 - 2026-10-05 R-G: 🔴0 🟡2(README 링크 — 지휘자 수정 · 308 런타임 — preview) 🟢3. G 통합 + README 링크 `/docs/account/preferences`. gate ok.
+- 2026-10-05 push `2d86b2aa`, preview 확인: `/docs/language` 308 → `/docs/account/preferences` 200 · `/docs/account` 200 · `/docs/faq` 200(308 본문이 404 HTML — 화면 영향 없음, 기록만). Q4(Sonnet medium — 문서화된 절차 반복) dispatch `ctx_c78cfa86df37`: `create-ready` 일회용 프로젝트 절차(지휘자 판단 — dev 전용·문서화된 절차).
