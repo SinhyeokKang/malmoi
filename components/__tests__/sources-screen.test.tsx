@@ -196,7 +196,8 @@ it.each([
 ])("목록 행은 적재 상태를 색이 아니라 낱말로도 말한다 $state · $label", async ({ state, row, tone, label }) => {
   await render(<SourcesScreen slug="p" role="EDITOR" data={{ ...data, sources: [row] }} adapters={[]} now={new Date()} />);
   const all = [...document.querySelectorAll(`[data-source-status="${state}"]`)];
-  expect(all).toHaveLength(2);
+  // 좁은 폭 셋째 줄 사본이 없다 — 상태는 언제나 행 오른쪽 한 곳이다(2026-10-06).
+  expect(all).toHaveLength(1);
   // 상태는 배지다(2026-09-30 사용자) — 바깥 칸이 표시·표식을, 안의 알약이 낱말을 든다.
   const status = all[0]!.firstElementChild!;
   expect(status.className).toContain("rounded-full");
@@ -386,7 +387,7 @@ it.each([
 });
 
 
-it("Sources chevron shares the button while preserving wide 28px separation and narrow top 8px", async () => {
+it("Sources chevron shares the button and keeps 28px separation at every panel width", async () => {
   await render(<SourcesScreen slug="p" role="EDITOR" data={data} adapters={[]} now={new Date()} />);
   const row = document.querySelector<HTMLButtonElement>("[data-source-row]")!;
   const chevron = row.querySelector("svg.lucide-chevron-right")!;
@@ -397,13 +398,12 @@ it("Sources chevron shares the button while preserving wide 28px separation and 
   expect(body.lastElementChild?.hasAttribute("data-source-status")).toBe(true);
   expect(row.classList.contains("gap-3")).toBe(true);
   expect(row.classList.contains("pr-4")).toBe(true);
-  // Narrow geometry: the chevron is offset8 from the unpadded button; content alone has row padding13.
+  // Content alone carries row padding; the chevron stays vertically centred on the unpadded button.
   expect(row.classList.contains("p-0")).toBe(true);
   expect(row.classList.contains("py-row-y")).toBe(false);
   expect(body.classList.contains("py-row-y")).toBe(true);
-  expect(row.classList.contains("@max-[1016px]/panel:items-start")).toBe(true);
-  expect(body.classList.contains("@max-[1016px]/panel:items-start")).toBe(true);
-  expect(chevron.classList.contains("@max-[1016px]/panel:mt-2")).toBe(true);
+  // No narrow-panel branch: the path wraps (wrap-anywhere) while status and chevron stay put (2026-10-06).
+  for (const node of [row, body, chevron, ...row.querySelectorAll("*")]) expect(node.getAttribute("class") ?? "").not.toContain("@max-[1016px]/panel");
   expect(chevron.parentElement).toBe(row);
   await act(async () => { await userEvent.setup().click(chevron); });
   expect(mocks.load).toHaveBeenCalledExactlyOnceWith({ slug: "p", surfaceSlug: source.slug });
