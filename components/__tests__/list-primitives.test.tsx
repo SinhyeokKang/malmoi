@@ -41,12 +41,15 @@ it("ListGroup은 role=group + 머리 id로 이름을 받고, 그룹 사이 선�
   expect(groups.map(group => document.getElementById(group.getAttribute("aria-labelledby")!)?.textContent)).toEqual(["One", "Two"]);
   for (const group of groups) {
     const classes = [...group.classList];
-    // 선은 `not-first:` 하나가 든다 — 첫 그룹엔 서지 않는다. 세로 padding은 그룹이 아니라 머리 `pt-4`가 든다.
-    expect(classes).toEqual(expect.arrayContaining(["not-first:border-t", "not-first:border-divider"]));
+    // 선은 "그룹 뒤의 그룹"에만 붙는다(`[role=group]+&`) — 앞에 상태 줄 같은 다른 형제가 있어도 첫 그룹엔 서지 않는다. 세로 padding은 머리 `pt-4`가 든다.
+    expect(classes).toEqual(expect.arrayContaining(["[[role=group]+&]:border-t", "[[role=group]+&]:border-divider"]));
+    expect(classes.some(token => token.startsWith("not-first:"))).toBe(false);
     expect(classes.filter(token => /^(?:p|py|pt|pb)-/.test(token) || token === "border-t")).toEqual([]);
     const heading = document.getElementById(group.getAttribute("aria-labelledby")!)!;
     expect([...heading.classList]).toEqual(expect.arrayContaining(["text-gray-dim", "px-4", "pt-4", "pb-1", "text-xs", "font-medium"]));
   }
+  expect(groups[0]!.matches('[role="group"] + [role="group"]')).toBe(false);
+  expect(groups[1]!.matches('[role="group"] + [role="group"]')).toBe(true);
   const [plain, withIcon] = groups.map(group => document.getElementById(group.getAttribute("aria-labelledby")!)!);
   // 글자만인 머리(검색)는 블록 그대로 — 아이콘이 있을 때만 한 줄 정렬과 이름 자르기가 붙는다.
   expect(plain!.classList.contains("flex")).toBe(false);

@@ -347,3 +347,26 @@ it("Inbox 소스는 행 형 클래스를 직접 쓰지 않는다 — 행·그룹
   for (const token of ["px-4", "py-2.5", "py-row-y", "bg-foreground/[0.07]", "data-[highlighted]", "border-divider"]) expect(source, token).not.toContain(token);
   for (const primitive of ["<ListGroup", "<DropdownMenuRow", "<CommandStatus"]) expect(source, primitive).toContain(primitive);
 });
+
+/** 사용자 보고(2026-10-05) — 첫 프로젝트 묶음 위에 선이 섰다. 늘 마운트된 상태 줄 둘이 앞에 있어 `:first-child`가 아니었다. */
+it("첫 프로젝트 묶음 위에는 선이 없고 둘째부터 선다 — 선은 '그룹 뒤의 그룹'에만 붙는다", async () => {
+  await mount(0);
+  const d = nextOpen();
+  await openMenu();
+  await settle(d, ok());
+  const groups = [...menu()!.querySelectorAll<HTMLElement>('[role="group"]')];
+  expect(groups).toHaveLength(2);
+  for (const group of groups) expect([...group.classList]).toEqual(expect.arrayContaining(["[[role=group]+&]:border-t", "[[role=group]+&]:border-divider"]));
+  expect(groups[0]!.classList.contains("not-first:border-t")).toBe(false);
+  // 선택자 `[role=group]+&`가 실제로 고르는 것 — 앞 형제가 그룹인 그룹만.
+  expect(groups[0]!.matches('[role="group"] + [role="group"]')).toBe(false);
+  expect(groups[1]!.matches('[role="group"] + [role="group"]')).toBe(true);
+});
+
+it("골격의 묶음 위에도 선이 없다", async () => {
+  await mount(0);
+  nextOpen();
+  await openMenu();
+  const group = menu()!.querySelector<HTMLElement>('[aria-busy] [role="group"]')!;
+  expect(group.matches('[role="group"] + [role="group"]')).toBe(false);
+});

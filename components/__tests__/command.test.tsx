@@ -87,11 +87,14 @@ it("그룹 머리는 gray-dim·pt-4 pb-1이고 그룹은 세로 padding 없이 �
   for (const group of groups) {
     const classes = [...group.classList];
     expect(classes.filter(token => /^(?:p|py|pt|pb)-/.test(token)), group.className).toEqual([]);
-    expect(classes).toEqual(expect.arrayContaining(["not-first:border-t", "not-first:border-divider"]));
+    // 2026-10-05 — 선택자만 `not-first:`에서 "그룹 뒤의 그룹"으로 바뀌었다. 검색 목록은 그룹끼리 형제라 계산값이 같다(첫 그룹 0 · 둘째부터 선).
+    expect(classes).toEqual(expect.arrayContaining(["[[role=group]+&]:border-t", "[[role=group]+&]:border-divider"]));
     const heading = document.getElementById(group.getAttribute("aria-labelledby")!)!;
     expect([...heading.classList]).toEqual(expect.arrayContaining(["px-4", "pt-4", "pb-1", "text-xs", "font-medium", "text-gray-dim"]));
     expect(heading.classList.contains("text-foreground")).toBe(false);
   }
+  expect(groups[0]!.matches('[role="group"] + [role="group"]')).toBe(false);
+  expect(groups[1]!.matches('[role="group"] + [role="group"]')).toBe(true);
   expect(find(container, '[role="listbox"]').classList.contains("py-2")).toBe(true);
 });
 
