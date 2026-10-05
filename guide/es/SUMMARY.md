@@ -19,7 +19,7 @@
   - [Deshacer y resincronizar](sync/revert.md)
   - [Consulta la actividad en Registros](sync/logs.md)
 - [Tu cuenta](account.md)
-- [Cambia el idioma de la interfaz y la zona horaria](language.md)
+- [Cambia el idioma de la interfaz, la zona horaria y el tema](language.md)
 - [Conecta un agente de IA](ai-agents/README.md)
   - [Inicia sesión desde el navegador](ai-agents/browser.md)
   - [Usa un token personal](ai-agents/token.md)

@@ -1,6 +1,6 @@
-# Change the interface language and time zone
+# Change the interface language, time zone, and theme
 
-Choose whether Malmoi's screens appear in English, Korean, or Spanish. This changes only Malmoi itself, not the languages your projects translate into. You can also choose the time zone Malmoi uses for dates and times.
+Choose whether Malmoi's screens appear in English, Korean, or Spanish. This changes only Malmoi itself, not the languages your projects translate into. You can also choose the time zone Malmoi uses for dates and times, and whether Malmoi looks light or dark.
 
 ## Before you sign in {#footer}
 
@@ -54,6 +54,19 @@ Before you start: Open your avatar menu at the top right and choose **Preference
 The time zone is saved to your account, so it is the same on every device you sign in on. It isn't saved in a cookie. Public pages, such as the changelog and the Privacy Policy, always use UTC, even when you're signed in.
 
 If the change fails, the card shows **We couldn't change the time zone. Try again.** and the menu keeps the previous time zone.
+
+## Choose a theme {#theme}
+
+Malmoi appears in the **Light** theme by default. Choose **Dark**, or **System** to follow your device's appearance setting.
+
+Before you start: Open your avatar menu at the top right and choose **Preferences**.
+
+1. In the **Theme** card, open the menu and pick **System**, **Light**, or **Dark**. There is no Save button; the change applies right away.
+2. Malmoi switches every screen to the new theme. With **System**, Malmoi changes between light and dark whenever your device does.
+
+Malmoi uses the theme saved to your account while you're signed in, then the theme last chosen on this device, then **Light**. It doesn't read your device setting unless you choose **System**, so your first visit is light. The choice is saved to your account and to this device, so after you sign out, the public pages on this device keep your theme. You can change the theme only in Preferences; the footer has no theme menu. The screenshots in this guide always show the light theme.
+
+If the change fails, the card shows **We couldn't change the theme. Try again.** and the screen goes back to the previous theme.
 
 ## What happens next {#next}
 

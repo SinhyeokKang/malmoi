@@ -1,6 +1,6 @@
-# Cambia el idioma de la interfaz y la zona horaria
+# Cambia el idioma de la interfaz, la zona horaria y el tema
 
-Elige si las pantallas de Malmoi aparecen en inglés, coreano o español. Esto cambia solo Malmoi, no los idiomas a los que traducen tus proyectos. También puedes elegir la zona horaria que Malmoi usa para las fechas y las horas.
+Elige si las pantallas de Malmoi aparecen en inglés, coreano o español. Esto cambia solo Malmoi, no los idiomas a los que traducen tus proyectos. También puedes elegir la zona horaria que Malmoi usa para las fechas y las horas, y si Malmoi se ve claro u oscuro.
 
 ## Antes de iniciar sesión {#footer}
 
@@ -54,6 +54,19 @@ Antes de empezar: abre el menú de tu avatar, arriba a la derecha, y elige **Pre
 La zona horaria se guarda en tu cuenta, así que es la misma en todos los dispositivos donde inicies sesión. No se guarda en una cookie. Las páginas públicas, como el registro de cambios y la Política de privacidad, siempre usan UTC, incluso con la sesión iniciada.
 
 Si el cambio falla, la tarjeta muestra **No pudimos cambiar la zona horaria. Inténtalo de nuevo.** y el menú conserva la zona horaria anterior.
+
+## Elige un tema {#theme}
+
+Malmoi aparece con el tema **Claro** de forma predeterminada. Elige **Oscuro**, o **Sistema** para seguir la configuración de apariencia de tu dispositivo.
+
+Antes de empezar: abre el menú de tu avatar, arriba a la derecha, y elige **Preferencias**.
+
+1. En la tarjeta **Tema**, abre el menú y elige **Sistema**, **Claro** u **Oscuro**. No hay botón de guardar; el cambio se aplica al momento.
+2. Malmoi cambia todas las pantallas al nuevo tema. Con **Sistema**, Malmoi pasa de claro a oscuro cada vez que lo hace tu dispositivo.
+
+Malmoi usa el tema guardado en tu cuenta mientras tienes la sesión iniciada; si no, el último tema elegido en este dispositivo; y si no, **Claro**. No lee la configuración de tu dispositivo salvo que elijas **Sistema**, así que tu primera visita se ve en claro. La elección se guarda en tu cuenta y en este dispositivo, así que, después de cerrar sesión, las páginas públicas de este dispositivo conservan tu tema. Solo puedes cambiar el tema en Preferencias; el pie de página no tiene menú de tema. Las capturas de esta guía siempre muestran el tema claro.
+
+Si el cambio falla, la tarjeta muestra **No pudimos cambiar el tema. Inténtalo de nuevo.** y la pantalla vuelve al tema anterior.
 
 ## Qué pasa después {#next}
 

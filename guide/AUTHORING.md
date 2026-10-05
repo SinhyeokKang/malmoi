@@ -50,7 +50,7 @@
 | `sync/revert.md` | Undo and resync | 개발자 |
 | `sync/logs.md` | Check activity in Logs | 공통 |
 | `account.md` | Your account | 공통 |
-| `language.md` | Change the interface language and time zone | 공통 |
+| `language.md` | Change the interface language, time zone, and theme | 공통 |
 | `ai-agents/README.md` | Connect an AI agent | 공통 |
 | `ai-agents/browser.md` | Sign in through your browser | 공통 |
 | `ai-agents/token.md` | Use a personal token | 공통 |
@@ -171,7 +171,7 @@
 | `sync/revert.md` | OWNER 전용 복원·수동 Sync, 지문 확인·미전달 처리 | `lib/keys/revert.ts`, `lib/protection/`, `lib/sync/`, `app/(edit)/actions.ts`, `docs/ARCHITECTURE.md` §5.8 |
 | `sync/logs.md` | 필터(행위자 `CI`·`Nightly`)·상세(`Values`·`Held because`)·수동 갱신·보관 이력 | `app/(edit)/projects/[slug]/logs/page.tsx`, `components/logs/`, `lib/events/`(`triggerOf`·`trigger-where.ts`), `docs/ARCHITECTURE.md` §5.7 |
 | `account.md` | 프로필·로그인 수단·GitHub 연결·전체 로그아웃 | `app/(edit)/account/`, `components/account/`, `lib/account-connect/`, `lib/login-link/`, `lib/session-revocation/`, `docs/PRODUCT.md` §4.1·§7.7 |
-| `language.md` | 공개 푸터 스위처·Preferences Language 카드·판정 순서(계정 > 기기 쿠키 > English)·실패 문구·가이드와 방침의 제공 언어 | `components/i18n/locale-switcher.tsx`, `components/public-shell/footer.tsx`, `components/preferences/language-card.tsx`, `components/preferences/time-zone-card.tsx`, `app/ui-locale/actions.ts`, `app/(edit)/preferences/actions.ts`, `lib/date-format.ts`, `lib/i18n/locales.ts`(`resolveUiLocale`·`planUiLocaleWrite`), `lib/shell/nav.ts`, `app/privacy/page.tsx`, `app/docs/layout.tsx`, `messages/{en,ko,es}.tsx`의 `uiLocale`·`preferences` |
+| `language.md` | 공개 푸터 스위처·Preferences Language 카드·판정 순서(계정 > 기기 쿠키 > English)·실패 문구·가이드와 방침의 제공 언어 · Theme 카드(계정 > 기기 쿠키 > Light, 푸터 스위처 없음) | `components/i18n/locale-switcher.tsx`, `components/public-shell/footer.tsx`, `components/preferences/language-card.tsx`, `components/preferences/time-zone-card.tsx`, `components/preferences/theme-card.tsx`, `lib/color-scheme/scheme.ts`(`resolveColorScheme`), `app/ui-locale/actions.ts`, `app/(edit)/preferences/actions.ts`, `lib/date-format.ts`, `lib/i18n/locales.ts`(`resolveUiLocale`·`planUiLocaleWrite`), `lib/shell/nav.ts`, `app/privacy/page.tsx`, `app/docs/layout.tsx`, `messages/{en,ko,es}.tsx`의 `uiLocale`·`preferences` |
 | `ai-agents/README.md` | 연결 방식 둘·MCP 주소·사전 조건 | `app/(edit)/mcp/`, `docs/ARCHITECTURE.md` §6.45, `docs/PRODUCT.md` §4.1 |
 | `ai-agents/browser.md` | 브라우저 로그인 연결(조각 둘·claude.ai 커넥터 단계·동의 화면·재동의 대체·요청 10분), Connected apps·끊기 | `app/oauth/authorize/`, `components/oauth/`, `lib/oauth/authorize-view.ts`, `app/(edit)/mcp/`, `components/mcp/`, 가이드 조각이 정본(2026-09-30 앱 안 사본인 Connect 카드를 걷었다 — `content.test.ts`는 `MALMOI_TOKEN` 참조만 본다), `messages/en.tsx`의 `mcpConnector` |
 | `ai-agents/token.md` | 토큰 발급·회전·폐기, 토큰 조각 셋 | `app/(edit)/mcp/`, `components/mcp/`, `lib/mcp/snippets.ts`(조각 — `content.test.ts`가 글자 단위로 대조), `messages/en.tsx`의 `mcpConnector` |
