@@ -37,18 +37,32 @@ async function select() {
 
 
 
+/** ①의 [Next] — 확정 버튼은 ② 소스별 기준 언어에서만 선다 (sources-add-remove A1). */
+const nextButton = (container: HTMLElement) => {
+  const node = [...container.querySelectorAll<HTMLButtonElement>("button")].find(b => b.textContent?.trim() === en.newProject.modal.next);
+  if (!node) throw new Error("Missing Next");
+  return node;
+};
+/** 지금 단계의 주 버튼 — ①은 [Next], ②는 [Add selected sources]다. */
+const primary = (container: HTMLElement) => container.querySelector<HTMLButtonElement>('[data-add-sources]') ?? nextButton(container);
 /** 꺼짐은 `aria-disabled`다 (audit #37) — 포커스를 받아 describedby의 사유에 닿는다. 진행 중의 `loading`만 진짜 `disabled`다. */
 const blocked = (container: HTMLElement) => {
-  const node = find<HTMLButtonElement>(container, '[data-add-sources]');
+  const node = primary(container);
   return node.disabled || node.getAttribute("aria-disabled") === "true";
 };
+/** ①에서 고른 뒤 ②로 넘어가 확정한다. */
+async function submit(container: HTMLElement) {
+  const user = userEvent.setup();
+  await act(async () => user.click(nextButton(container)));
+  await act(async () => user.click(find(container, '[data-add-sources]')));
+}
 
 it("선택한 표면의 실패 뒤에도 후보와 입력을 보존하고 재시도한다", async () => {
   mocks.add.mockResolvedValue({ ok: false, error: "ingest-failed" });
   const user = userEvent.setup();
   const { container } = await draw();
   await select();
-  await act(async () => user.click(find(container, '[data-add-sources]')));
+  await submit(container);
   expect(mocks.add).toHaveBeenCalledWith({ slug: "acme", picks: [{ adapter: "json-catalog", pathTemplate: "second/{locale}.json", baseLocale: "en" }] });
   expect(container.textContent).toContain("second/{locale}.json");
   expect(blocked(container)).toBe(false);
@@ -60,7 +74,7 @@ it("추가 결과는 새 토큰 없이 기존 workflow step과 부분 실패를 
   const user = userEvent.setup();
   const { container, revalidate } = await draw();
   await select();
-  await act(async () => user.click(find(container, '[data-add-sources]')));
+  await submit(container);
   await revalidate();
   expect(container.textContent).toContain("Update the workflow");
   expect(container.textContent).not.toContain("Save this in your repository as");
@@ -120,7 +134,7 @@ it("리포 정체성 변경은 재시도로 고칠 수 없는 원인을 안내�
   const user = userEvent.setup();
   const { container } = await draw();
   await select();
-  await act(async () => user.click(find(container, '[data-add-sources]')));
+  await submit(container);
   expect(container.textContent).toContain("different repository");
 });
 
@@ -164,7 +178,7 @@ it.each([
 it("고르기 전엔 사유가 보이고 버튼이 그것을 가리키며, 고른 뒤엔 둘 다 사라진다", async () => {
   const { container } = await draw();
   await act(async () => { await new Promise(r => setTimeout(r, 0)); });
-  const add = () => find<HTMLButtonElement>(container, '[data-add-sources]');
+  const add = () => nextButton(container);
   expect(blocked(container)).toBe(true);
   expect(document.getElementById(add().getAttribute("aria-describedby") ?? "")?.textContent).toBe(en.settings.sources.selectHelp);
   await select();

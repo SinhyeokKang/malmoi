@@ -1,19 +1,20 @@
 "use client";
 
 import { unstable_rethrow } from "next/navigation";
+import { ArrowRight } from "lucide-react";
 import { useEffect, useState, useTransition, type RefObject } from "react";
 import { addSurfaces, confirmManualFormat, detectRepoFormats, loadCandidateSample } from "@/app/(edit)/projects/actions";
 import { startGithubConnect } from "@/app/(edit)/projects/[slug]/settings/actions";
 import { FilesStep, failedPreview, samplePreview, type ManualEntry, type PreviewState } from "@/components/onboarding/steps/files";
 import { failureText } from "@/components/onboarding/failure";
 import { useCommitWait } from "@/components/commit-wait";
-import { SlowNotice } from "@/components/slow-notice";
+import { SlowLine, useSlow } from "@/components/slow-notice";
+import { SurfaceBaseLocales } from "@/components/onboarding/steps/base-locales";
 import { LargeModal } from "@/components/ui/large-modal";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMessages } from "@/components/i18n/messages-provider";
-import { planAddBlock } from "@/lib/sources/add-block";
+import { planAddBlock, planAddStep } from "@/lib/sources/add-block";
 import type { CandidateSummary } from "@/lib/onboarding/detect";
 import type { AdapterChoice } from "@/lib/onboarding/types";
 import { planSurfaceSelection } from "@/lib/onboarding/select-surfaces";
@@ -26,6 +27,12 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
   server: unknown;
 }) {
   const m = useMessages();
+  /**
+   * ① 소스 선택 → ② 소스별 기준 언어 (sources-add-remove A1). ⚠️ **상태는 전부 이 모달에 있고 단계는 본문만 바꾼다** — [Back]이
+   * 체크·포커스 행·미리보기 언어·②에서 고른 기준 언어를 지우지 않는 것은 이 배치 때문이다(A5). 단계를 컴포넌트로 쪼개 상태를 그 안에 두면
+   * 언마운트가 선택을 지운다.
+   */
+  const [step, setStep] = useState<1 | 2>(1);
   const [candidates, setCandidates] = useState<CandidateSummary[]>([]);
   const [checked, setChecked] = useState<Set<number>>(new Set());
   const [bases, setBases] = useState<Record<number, string>>({});
@@ -73,7 +80,7 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
   useEffect(() => {
     if (!open) return;
     let active = true;
-    setDetecting(true); setDetectError(undefined); setError(undefined); setUnknown(false);
+    setDetecting(true); setDetectError(undefined); setError(undefined); setUnknown(false); setStep(1);
     void detectRepoFormats({ owner, repo, ref: branch }).then(result => {
       if (!active) return;
       const next = result.ok ? result.candidates : [];
@@ -101,64 +108,93 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
     `loading`(진짜 `disabled`)과 `aria-disabled`를 겸하지 않는다(DESIGN §6.65). 사유는 둘 다 **보이는 글자**다.
   */
   // ⚠️ 사유는 꺼진 동안만 서고, 막은 갈래를 말한다 (malmoi#93) — 켜진 버튼이 옛 문장을 describedby로 들고 있었다.
-  const addReason = planAddBlock(m, { detecting, detectError: !!detectError, formats: selection.formats, conflicts: selection.conflicts.length });
+  const blockInput = { detecting, detectError: !!detectError, formats: selection.formats, conflicts: selection.conflicts.length };
+  // ⚠️ ①은 기준 언어를 보지 않는다 — 그 값을 정하는 컨트롤이 ②에만 있다(`planAddStep`).
+  const stepReason = planAddStep(m, blockInput);
+  const addReason = planAddBlock(m, blockInput);
   const addBlocked = addReason !== null;
+  const reason = step === 1 ? stepReason : addReason;
+  // 지연 문구는 ②의 단계 표시 자리를 지연 뒤에만 빌린다 — 짧게 끝나는 추가에서 문장이 깜빡이지 않는다.
+  const slow = useSlow(pending && operation === "add");
+  /** ②의 블록 — ①에서 **새로** 체크한 후보뿐이다. 잠긴 기존 소스의 기준 언어는 이 모달이 바꾸지 않는다(A3). */
+  const fresh = candidates.flatMap((c, index) => checked.has(index) && !locked.has(index) ? [{ c, index }] : []);
   const manualBlocked = !manual.pathTemplate.trim() || !manual.baseLocale.trim();
   return <LargeModal open={open} closeDisabled={pending} onClose={() => { if (!pending) onClose(); }} returnFocusRef={returnFocusRef}
-    title={m.settings.sources.add} description={m.settings.sources.description} bodyScroll="hidden"
+    title={step === 1 ? m.settings.sources.add : m.settings.sources.baseTitle}
+    description={step === 1 ? m.settings.sources.description : m.settings.sources.baseDescription}
+    // ①은 좌·우 패널이 각자 흐르고, ②는 블록이 세로로 쌓여 본문만 흐른다 — 머리·바닥은 고정이라 확정 버튼이 화면 밖으로 안 나간다.
+    bodyScroll={step === 1 ? "hidden" : "auto"} transitionKey={String(step)}
     className="h-[min(680px,calc(100svh-var(--spacing-modal-gutter)))] min-h-0" actions={<>
-      <Button size="lg" disabled={pending} onClick={onClose}>{m.surfaces.cancel}</Button>
-      <Button spinnerSize="sm" size="lg" data-add-sources variant="primary" busy={pending && operation === "add"} aria-disabled={addBlocked || pending || undefined} aria-describedby={addBlocked ? "add-source-help" : undefined} onClick={() => {
-        if (addBlocked) return;
-        const plan = planAddSources({ picked: candidates.filter((_, i) => checked.has(i)), existing });
-        if (!plan.ok || plan.add.length === 0 || pending) return;
-        setError(undefined); setManualError(undefined); setUnknown(false); setConflicts([]); setOperation("add");
-        setAdding(true);
-        void (async () => {
-          try {
-            const result = await addSurfaces({ slug, picks: plan.add.map(c => ({ adapter: c.adapter, pathTemplate: c.pathTemplate, baseLocale: bases[candidates.indexOf(c)] ?? c.baseLocale })) });
-            if (result.ok) { setAdded(result.results); commit.wait(); }
-            else { setError(result.error); setConflicts(result.conflicts ?? []); }
-          } catch { setUnknown(true); }
-          setAdding(false);
-        })();
-      }}>{m.settings.sources.confirm}</Button>
-    </>} notice={addReason !== null ? <span id="add-source-help" className="text-muted-foreground text-xs">{addReason}</span>
+      {step === 1 ? <>
+        <Button size="lg" disabled={pending} onClick={onClose}>{m.surfaces.cancel}</Button>
+        {/* [Next]는 서버를 부르지 않는 즉시 전이다 — ②의 언어 목록은 탐지 응답(`candidate.locales`)에 이미 있다. */}
+        <Button size="lg" variant="primary" aria-disabled={stepReason !== null || pending || undefined} aria-describedby={stepReason !== null ? "add-source-help" : undefined} onClick={() => {
+          if (stepReason !== null || pending) return;
+          setStep(2);
+        }}>{m.newProject.modal.next}<ArrowRight className="size-4" aria-hidden /></Button>
+      </> : <>
+        {/* 추가 중 ①로 돌아가 체크를 바꾸면 화면이 보내지 않은 선택을 말한다 — 닫기 넷과 함께 막는다. */}
+        <Button size="lg" disabled={pending} onClick={() => { setError(undefined); setConflicts([]); setStep(1); }}>{m.newProject.modal.back}</Button>
+        <Button spinnerSize="sm" size="lg" data-add-sources variant="primary" busy={pending && operation === "add"} aria-disabled={addBlocked || pending || undefined} aria-describedby={addBlocked ? "add-source-help" : undefined} onClick={() => {
+          if (addBlocked) return;
+          const plan = planAddSources({ picked: candidates.filter((_, i) => checked.has(i)), existing });
+          if (!plan.ok || plan.add.length === 0 || pending) return;
+          setError(undefined); setManualError(undefined); setUnknown(false); setConflicts([]); setOperation("add");
+          setAdding(true);
+          void (async () => {
+            try {
+              const result = await addSurfaces({ slug, picks: plan.add.map(c => ({ adapter: c.adapter, pathTemplate: c.pathTemplate, baseLocale: bases[candidates.indexOf(c)] ?? c.baseLocale })) });
+              if (result.ok) { setAdded(result.results); commit.wait(); }
+              else { setError(result.error); setConflicts(result.conflicts ?? []); }
+            } catch { setUnknown(true); }
+            setAdding(false);
+          })();
+        }}>{m.settings.sources.confirm}</Button>
+      </>}
+    </>} notice={reason !== null ? <span id="add-source-help" className="text-muted-foreground text-xs">{reason}</span>
       /* 추가는 첫 적재까지 돈다 (audit-ux #23) — 큰 리포면 버튼 스피너 하나로 30초를 넘긴다. */
-      : pending && operation === "add" ? <SlowNotice active /> : undefined}>
-    {error && <Alert variant="danger"><p>{m.settings.sources.nothingAdded}</p><p>{error === "repo-replaced" ? m.settings.repository.health["repo-replaced"] : error === "path-conflict" ? m.surfaces.conflict : error === "ingest-failed" ? m.surfaces.failed : failureText(m, error)}</p>{conflicts.map(c => <p key={c.path}>{c.path} · {c.surfaceSlugs.join(", ")}</p>)}</Alert>}
-    {manualError && <Alert variant="danger">{failureText(m, manualError)}</Alert>}
+      : step === 2 && slow ? <SlowLine /> : m.settings.sources.step(step)}>
+    {error && <Alert variant="danger"><p>{m.settings.sources.nothingAdded}</p><p>{error === "repo-replaced" ? m.settings.repository.health["repo-replaced"] : error === "path-conflict" ? m.surfaces.conflict : error === "ingest-failed" ? m.surfaces.failed : failureText(m, error)}</p>{conflicts.map(c => <p key={c.path}>{c.path} · {c.surfaceSlugs.join(", ")}</p>)}{error === "path-conflict" && <p>{m.settings.sources.conflictBack}</p>}</Alert>}
+    {step === 1 && manualError && <Alert variant="danger">{failureText(m, manualError)}</Alert>}
     {unknown && <Alert variant="warning">{m.settings.sources.unknown}</Alert>}
     {/* ⚠️ 성공은 GitHub으로 가는 redirect라 되던진다 (audit-ux #14) — 그 밖의 throw는 거부와 같은 자리로 접는다. */}
     {connect && <Button spinnerSize="sm" disabled={pending && operation !== "connect"} loading={pending && operation === "connect"} onClick={() => { setOperation("connect"); run(async () => {
       try { const result = await startGithubConnect({ slug, returnTo: "add-surface" }); if (!result.ok) setError(result.error); }
       catch (thrown) { unstable_rethrow(thrown); setError("unavailable"); }
     }); }}>{connect === "reauthorize" ? m.newProject.empty.connect.reauthorize : m.newProject.empty.connect.action}</Button>}
-    <div className="flex min-h-0 flex-1">
-      <FilesStep pending={pending} previewNone={m.settings.sources.previewNone} state={{ detecting, detectError, candidates, picked, locale, preview, manual, manualMatched: false, adapters, repoLabel: `${owner}/${repo}`, branch, banner: null }}
-        selection={{ checked, locked, conflicts: selection.conflicts, onToggle: index => setChecked(previous => { const next = new Set(previous); if (next.has(index)) next.delete(index); else next.add(index); return next; }) }}
-        onPick={index => { setPicked(index); setLocale(candidates[index]?.baseLocale ?? ""); }} onLocale={setLocale}
-        onManual={value => { setPicked(null); setManual(value); setManualError(undefined); }} onRetry={() => setRevision(v => v + 1)} />
-    </div>
-    <div className="flex shrink-0 items-center gap-3">
-      {picked === null && !detecting && <Button spinnerSize="sm" busy={pending && operation === "manual"} aria-disabled={manualBlocked || pending || undefined} aria-describedby={manualBlocked ? "add-source-manual-reason" : undefined} onClick={() => { if (manualBlocked || pending) return; setOperation("manual"); run(async () => {
-        setManualError(undefined);
-        try {
-          const result = await confirmManualFormat({ owner, repo, ref: branch, ...manual });
-          if (!result.ok) { setManualError(result.error); return; }
-          const found = candidates.findIndex(c => c.pathTemplate === result.candidate.pathTemplate);
-          const index = found < 0 ? candidates.length : found;
-          if (found < 0) setCandidates([...candidates, result.candidate]);
-          else if (!locked.has(found)) setCandidates(candidates.map((candidate, i) => i === found ? result.candidate : candidate));
-          setPicked(index); setLocale(result.candidate.baseLocale); setBases(previous => ({ ...previous, [index]: result.candidate.baseLocale }));
-          setChecked(previous => new Set([...previous, index]));
-        } catch { setManualError("unavailable"); }
-      }); }}>{m.surfaces.confirm}</Button>}
-      {picked === null && !detecting && manualBlocked && <span id="add-source-manual-reason" className="text-muted-foreground text-xs">{m.settings.sources.manualReason}</span>}
-      {candidate && <><span className="text-muted-foreground text-xs">{m.surfaces.baseLocale}</span><Select disabled={pending || locked.has(picked!)} value={bases[picked!] ?? candidate.baseLocale} onValueChange={value => { if (!pending && !locked.has(picked!)) setBases(previous => ({ ...previous, [picked!]: value })); }}>
-        <SelectTrigger width={160}  aria-label={m.surfaces.baseLocale}><SelectValue /></SelectTrigger>
-        <SelectContent>{candidate.locales.map(code => <SelectItem disabled={pending || locked.has(picked!)} key={code} value={code}>{code}</SelectItem>)}</SelectContent>
-      </Select></>}
-    </div>
+    {step === 1 ? <>
+      <div className="flex min-h-0 flex-1">
+        <FilesStep pending={pending} previewNone={m.settings.sources.previewNone} state={{ detecting, detectError, candidates, picked, locale, preview, manual, manualMatched: false, adapters, repoLabel: `${owner}/${repo}`, branch, banner: null }}
+          selection={{ checked, locked, conflicts: selection.conflicts, onToggle: index => setChecked(previous => { const next = new Set(previous); if (next.has(index)) next.delete(index); else next.add(index); return next; }) }}
+          onPick={index => { setPicked(index); setLocale(candidates[index]?.baseLocale ?? ""); }} onLocale={setLocale}
+          onManual={value => { setPicked(null); setManual(value); setManualError(undefined); }} onRetry={() => setRevision(v => v + 1)} />
+      </div>
+      {/* ⚠️ 이 줄은 수동 경로일 때만 선다 — 비면 본문 `gap-4`가 미리보기 아래 죽은 공간이 된다(A6: 공통 기준 언어 셀렉트를 걷었다). */}
+      {picked === null && !detecting && <div className="flex shrink-0 items-center gap-3">
+        <Button spinnerSize="sm" busy={pending && operation === "manual"} aria-disabled={manualBlocked || pending || undefined} aria-describedby={manualBlocked ? "add-source-manual-reason" : undefined} onClick={() => { if (manualBlocked || pending) return; setOperation("manual"); run(async () => {
+          setManualError(undefined);
+          try {
+            const result = await confirmManualFormat({ owner, repo, ref: branch, ...manual });
+            if (!result.ok) { setManualError(result.error); return; }
+            const found = candidates.findIndex(c => c.pathTemplate === result.candidate.pathTemplate);
+            const index = found < 0 ? candidates.length : found;
+            if (found < 0) setCandidates([...candidates, result.candidate]);
+            else if (!locked.has(found)) setCandidates(candidates.map((candidate, i) => i === found ? result.candidate : candidate));
+            setPicked(index); setLocale(result.candidate.baseLocale); setBases(previous => ({ ...previous, [index]: result.candidate.baseLocale }));
+            setChecked(previous => new Set([...previous, index]));
+          } catch { setManualError("unavailable"); }
+        }); }}>{m.surfaces.confirm}</Button>
+        {manualBlocked && <span id="add-source-manual-reason" className="text-muted-foreground text-xs">{m.settings.sources.manualReason}</span>}
+      </div>}
+    </> : <div className="flex flex-col gap-4">
+      {/* ③과 같은 블록이다(A4) — 손 사본을 두지 않는다. 기본 선택은 이번 탐지값이다(`bases`가 후보 인덱스로 든다). */}
+      <SurfaceBaseLocales disabled={pending} surfaces={fresh.map(({ c, index }) => ({
+        pathTemplate: c.pathTemplate, locales: c.locales, baseLocale: bases[index] ?? c.baseLocale,
+        keyCounts: Object.fromEntries(c.samples.map(sample => [sample.locale, sample.total])),
+      }))} onBaseLocale={(position, value) => {
+        const target = fresh[position];
+        if (target && !pending) setBases(previous => ({ ...previous, [target.index]: value }));
+      }} />
+    </div>}
   </LargeModal>;
 }

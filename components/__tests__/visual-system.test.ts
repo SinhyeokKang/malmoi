@@ -464,7 +464,7 @@ describe("T1 동치 철자와 값 보존 예외", () => {
  * 꺼진 Scope 행의 `text-gray-dim` 칸은 같은 행 라벨이 이미 꺼짐을 말했다. 면(`bg-muted`·`bg-background` — 선택 면)은 T28 허용 목록이다.
  */
 describe("후보 행 IconTile의 덮기", () => {
-  const FILES = ["components/onboarding/steps/naming.tsx", "components/onboarding/steps/files.tsx", "components/onboarding/steps/repo.tsx", "components/mcp/token-grant-fields.tsx"];
+  const FILES = ["components/onboarding/steps/base-locales.tsx", "components/onboarding/steps/files.tsx", "components/onboarding/steps/repo.tsx", "components/mcp/token-grant-fields.tsx"];
   const tokens = (path: string) => openingTags(read(path), "IconTile").flatMap((tag) =>
     [...tag.matchAll(/"([^"]*)"/g)].flatMap((match) => (match[1] ?? "").split(/\s+/)).filter((token) => /^(?:text|bg)-/.test(token)));
   it.each(FILES)("%s — 면 색만 덮는다", (path) => {
@@ -667,7 +667,7 @@ describe("화면 간 불변식 — grep 규칙 (T28)", () => {
     });
 
     it("카나리아 — 온보딩 후보 칸의 면을 호박으로 덮으면 잡는다", () => {
-      const path = "components/onboarding/steps/naming.tsx";
+      const path = "components/onboarding/steps/base-locales.tsx";
       const source = real(path);
       const mutated = source.replace('className={active ? "bg-background" : "bg-muted"}', 'className={active ? "bg-background" : "bg-warning-soft text-warning-soft-foreground"}');
       expect(mutated).not.toBe(source);

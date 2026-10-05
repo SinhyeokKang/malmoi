@@ -293,6 +293,7 @@ export const FUNCTION_ARGS: { readonly [P in FunctionPaths<Messages>]: Parameter
   "members.pending.revoked": ["X"],
   "members.pending.confirmRevoke": ["X"],
   "settings.repository.health.moved": ["X"],
+  "settings.sources.step": [2],
   "settings.token.description": ["X"],
   "settings.workflow.hookHint": ["X", "X", "X"],
   "invite.signInHint": ["X"],

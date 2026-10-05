@@ -3383,6 +3383,13 @@ export const en = {
       },
       /** 꺼진 수동 확인([Check files])의 사유 (audit #37). */
       manualReason: "Enter a file path and a base language to check.",
+      /** 2단계 모달 바닥 왼쪽의 단계 표시 (sources-add-remove A1) — `newProject.modal.step`은 "of 4" 고정이라 빌리지 않는다. */
+      step: (n: number): string => `Step ${n.toLocaleString("en-US")} of 2`,
+      /** ② 소스별 기준 언어의 머리 — 블록마다 `newProject.baseLocale.hint`가 붙으므로 설명은 짧다. */
+      baseTitle: "Choose base languages",
+      baseDescription: "Pick the language each source is written in.",
+      /** ② 경로 충돌 실패의 끝줄 — ②에는 체크를 바꿀 컨트롤이 없고 바로 옆 [Back]이 ①로 간다. */
+      conflictBack: "Go back to change the selection.",
     },
     ci: { description: "Your workflow pushes source strings into Malmoi on every merge.", title: "CI integration", workflow: "Workflow file", sourcesLead: "One workflow covers every source. Add or change sources in", stale: "Some sources haven't been synced yet. Check that the workflow includes them.",
       /** 소스가 없어 꺼진 워크플로 행의 사유 (audit #37) — 워크플로는 소스 목록에서 만들어진다. */
