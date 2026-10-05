@@ -37,6 +37,8 @@ const POSTGRES_SUITES: readonly { step: GateStep; triggers: readonly string[] }[
       "lib/protection/",
       "lib/nightly/",
       "lib/home/",
+      "lib/inbox/",
+      "app/(edit)/inbox/actions.ts",
       "lib/mcp/",
       "lib/onboarding-run/",
       // 상한 재집계(복원·승격·수락)와 운영자 판정 — 동시 복원·생성 시나리오가 `lib/keys/`에 있다.
