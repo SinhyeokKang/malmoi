@@ -247,3 +247,15 @@ describe("브랜드 아이콘의 자리", () => {
     expect(src).toMatch(/<svg/);
   });
 });
+
+describe("KeyVisual — 앞 카드 세 장 (2026-10-06 사용자)", () => {
+  it("반투명 카드가 뒤 프로젝트 카드를 그대로 비추지 않고 backdrop-blur로 흐린다", () => {
+    const html = renderToStaticMarkup(createElement(AuthLayout, { m: en, decoration: true, children: null }));
+    const cards = [...html.matchAll(/<div class="group [^"]*"><img[^>]*class="([^"]*)"/g)].map((match) => match[1] ?? "");
+    expect(cards).toHaveLength(3);
+    for (const className of cards) {
+      expect(className).toContain("opacity-90");
+      expect(className).toContain("backdrop-blur-md");
+    }
+  });
+});
