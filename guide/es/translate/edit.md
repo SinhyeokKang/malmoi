@@ -32,6 +32,16 @@ Si una parte de la búsqueda falla, una línea bajo el cuadro de búsqueda indic
 
 Con la búsqueda vacía, ves vistas previas de **Proyectos**, **Páginas** y **Documentación**. **Páginas** te lleva a pantallas de Malmoi, como las Traducciones de un proyecto. **Proyectos** incluye los proyectos archivados, mientras que los resultados de claves no. Elige **Ir a tus proyectos** para ver todos tus proyectos, o **Ir a la documentación** para abrirla. **Documentación** busca en los títulos y el texto de la guía y abre la sección que coincide. Escape cierra la búsqueda. Malmoi no guarda el texto de tu búsqueda en el historial ni en el almacenamiento del navegador.
 
+## Mira lo que requiere tu atención en todos tus proyectos {#inbox}
+
+El botón de bandeja de entrada, entre la línea divisoria y tu avatar arriba a la derecha, reúne lo que requiere tu atención en todos los proyectos a los que perteneces, para que no tengas que abrir el **Inicio** de cada proyecto. Cuando hay algo nuevo desde la última vez que miraste, el botón muestra cuántos elementos hay; a partir de diez muestra 9+.
+
+1. Elige el botón de bandeja de entrada. Los elementos se agrupan por proyecto, y primero aparece el proyecto con el elemento más reciente. Verás fuentes cuya última sincronización falló o solo se sincronizó en parte, texto que espera revisión, idiomas sin traducciones y ediciones sin enviar. Los propietarios del proyecto también ven los proyectos cuya configuración no ha terminado.
+2. Selecciona un elemento. Un problema de sincronización abre **Fuentes**, donde puedes leer el motivo; solo los propietarios del proyecto pueden volver a intentar la sincronización. Los demás elementos abren **Traducciones** con el filtro correspondiente, y la configuración abre **Configuración** del proyecto.
+3. Cierra la lista. Al abrirla, todo lo que contiene queda marcado como visto, y el número desaparece cuando la cierras. Si la lista no carga, elige **Intentar de nuevo**.
+
+Un elemento vuelve a contar solo cuando es nuevo o cambió desde la última vez que abriste la lista, y sale de la lista cuando se resuelve. El texto que espera revisión siempre aparece, pero nunca cuenta en el número, porque cada sincronización desde el repositorio lo haría parecer nuevo. Cuando nada requiere tu atención, la lista muestra **Nada requiere tu atención**. Los proyectos archivados no se incluyen.
+
 ## Edita y guarda {#save}
 
 1. Selecciona una fila de la lista de claves.

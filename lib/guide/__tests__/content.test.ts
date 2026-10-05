@@ -86,6 +86,10 @@ const SEARCH_PROSE: Partial<Record<UiLocale, { min: (n: number) => string; group
 const ARIA_ONLY: ReadonlySet<string> = new Set([
   "logs.filters.axis",
   "translations.workspace.filters.state.axis",
+  // 헤더 Inbox(attention-inbox)의 트리거 이름·행 sr 낱말·불러오는 중 sr 문장 — 화면에 글자가 없다.
+  "inbox.label",
+  "inbox.unread",
+  "inbox.loading",
 ]);
 
 function headingsBefore(treeValue: ReturnType<typeof parseMd>, node: { position?: { start: { line: number } } }): string | null {
