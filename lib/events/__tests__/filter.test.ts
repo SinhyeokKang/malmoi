@@ -8,6 +8,7 @@ import type { TimeZone } from "@/lib/time-zone/zones";
 import {
   PROJECT_WIDE,
   clearedLogsQuery,
+  logSourceOptions,
   decodeCursor,
   encodeCursor,
   filterChanged,
@@ -470,5 +471,29 @@ describe("parseLogFilter — 주체 필터 ci · nightly (nightly-sync)", () => 
     expect(filterChanged(filter({ actor: "ci" }), filter({ actor: "nightly" }))).toBe(true);
     expect(filterChanged(filter({ actor: "automation" }), filter({ actor: "ci" }))).toBe(true);
     expect(filterChanged(filter({ actor: "ci" }), filter({ actor: "ci" }))).toBe(false);
+  });
+});
+
+/**
+ * 소스 필터 항목 (sources-add-remove B-T12 · 시안 L1). 사건은 지우지 않으므로 제거된 소스로 거를 길도 남는다 —
+ * 활성이 먼저(지금 일하는 소스), 제거된 것은 그 뒤에 `removed` 표식으로 선다. 되살린 소스는 활성 하나다.
+ */
+describe("logSourceOptions", () => {
+  it("활성 slug 순 → 제거된 slug 순이고 제거된 것만 removed다", () => {
+    const at = new Date("2026-10-05T00:00:00Z");
+    expect(logSourceOptions([
+      { slug: "web", archivedAt: null },
+      { slug: "emails", archivedAt: at },
+      { slug: "admin", archivedAt: null },
+      { slug: "billing", archivedAt: at },
+    ])).toEqual([
+      { slug: "admin", removed: false },
+      { slug: "web", removed: false },
+      { slug: "billing", removed: true },
+      { slug: "emails", removed: true },
+    ]);
+  });
+  it("소스가 없으면 빈 목록이다", () => {
+    expect(logSourceOptions([])).toEqual([]);
   });
 });
