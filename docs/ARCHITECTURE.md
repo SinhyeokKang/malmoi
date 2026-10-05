@@ -17,6 +17,10 @@
    ⚠️ **미전달 편집을 버리는 길이 둘이다 — (translation-rework, 2026-09-23 · 프로덕션, #71)** — 수동 Sync(리포 값으로 덮는다)와
    **`Revert to last sent`**(키 하나의 미전달 셀을 **마지막으로 전달 확인된 DB 값**으로 되돌린다). 둘 다 OWNER 전용이고 서버가 발급한
    지문을 되돌려 받을 때만 열린다. Revert가 풀어 준 셀도 미전달이 아니게 되므로 CI 보류를 푸는 셋째 경로가 된다. §5.8.
+   ⚠️ **셋째 길 — 제거된 소스를 다시 추가하는 첫 적재** (2026-10-05, sources-add-remove · §5.9). 소스 제거는 번역을 건드리지 않고
+   `TranslationSurface.archivedAt`만 세운다. 같은 경로·어댑터로 다시 추가하면 그 행이 되살아나고, 그 첫 적재가 **그 소스의 미전달 토큰
+   전부를 승인**한 strict 적재라(수동 Sync와 같은 `approvedTokens` 장치) 남아 있던 편집을 리포 값으로 덮는다. 미전달 편집이 있으면 제거
+   자체가 **그 소스에만 묶인** 서버 발급 지문을 요구한다 — 사람의 승인은 제거 시점에 받는다. 셋 다 OWNER(`project:settings`) 전용이다.
    ⚠️ **Publish가 보내지 못한 셀도 유예를 잇는다** (2026-09-24, delivery-invariants) — 비-base 로케일 파일이 base에 없거나 ts-dict
    로케일 객체에 그 키의 자리가 없으면 그 셀은 **보류**되어 토큰이 남는다(§3). 풀리는 길은 파일 복구 뒤 Publish · Revert · 폐기 승인 Sync다.
    ⚠️ **셋째 경우: per-locale base 원본에 그 키가 없다** (2026-09-27, B3.4 — 코드에서 지웠다). base 키 집합은 원본이 정하므로 그 셀은 보류되고
@@ -34,6 +38,8 @@
    적재가 실제로 바꾼 셀 수(`changedValues`)는 적재 **뒤** 관측값이고 어떤 판정도 읽지 않는다(§5.5.2).
 3. 키와 번역을 **삭제하지 않고** 비활성으로 보존한다. **코드에서 번역을 지우는 방법은 없다** — 지우려면
    UI에서 비운다. push 페이로드의 `""`·부재는 "모름"이지 "삭제"가 아니다(§5.5.2, 2026-09-17 명문화).
+   ⚠️ **소스(표면) 제거도 삭제가 아니다** (2026-10-05, §5.9) — `archivedAt`을 세울 뿐 키·로케일·번역·이력 행은 그대로이고,
+   재추가가 같은 행을 되살린다(`id`·`slug` 유지). 하드 삭제·보존 기간은 없다.
    ⚠️ **수술적 표면(`ts-dict`·`yaml-catalog`·`code-dict`)의 비-base 셀은 UI에서도 비울 수 없다** (2026-09-24, delivery-invariants D2) —
    저장이 `cannot-clear`로 거부한다. 명시적 빈값 export(PRODUCT §10)가 생기기 전까지의 임시 규칙이다(§5.5.2).
 4. 같은 DB 상태와 **같은 원본 파일**은 **같은 바이트**를 만든다 — 원본은 구조·표현과 **base 키 집합**(B3.4)을 준다.
@@ -1698,7 +1704,7 @@ CI push가 unorphan → 재집계 1 → 롤백 → `deferred`를 매번 반복�
 
 ⚠️ **라우트의 그 판정이 유일한 자리가 아니다** (2026-09-15). 진입점이 둘이 되면서 `applyPushInTransaction`이
 `Project` → `TranslationSurface`를 잠근 **뒤** 보관·오배송·포맷·역행을 **다시** 판정하고 `ApplyGuardError`로
-던진다 — 라우트가 읽은 시점과 적용 시점 사이에 표면 설정이 바뀔 수 있고, 그 창에서 옛 포맷의 페이로드가
+던진다(⚠️ 보관은 둘로 갈린다 — 프로젝트 보관 `archived` · 표면 제거 `surface-removed`. 제거와 push가 경합해도 응답은 `surface removed`다) — 라우트가 읽은 시점과 적용 시점 사이에 표면 설정이 바뀔 수 있고, 그 창에서 옛 포맷의 페이로드가
 들어가면 잘못된 표면을 통째로 덮는다. **라우트의 검사를 지우고 이쪽만 남기지 않는다**: 409 응답의 갈래는
 라우트가 들고, 트랜잭션 안의 것은 마지막 방어선이다.
 
@@ -1709,7 +1715,7 @@ CI push가 unorphan → 재집계 1 → 롤백 → `deferred`를 매번 반복�
 |---|---|---|
 | `Project.archivedAt` ≠ null | DB 컬럼 | **보관.** ⚠️ **판정이 다섯 중 맨 앞이다**(7단계, `checkArchived` — 표면 검사가 2026-09-14에 늘어 넷에서 다섯이 됐다) — 멈춘 프로젝트에서는 페이로드가 맞는지가 답할 질문이 아니고, 사용자가 할 일은 나머지 넷과 달리 "워크플로를 뗀다"다 |
 | `projectSlug` ≠ 토큰이 정한 `Project.slug` | DB 행 (`pushTokenHash` 조회) | **오배송.** 남의 프로젝트 키가 전부 orphan되고 이물 키가 삽입되는데, `PushPlan`에 `toDelete`가 없고 FK가 `RESTRICT`라 **지울 수 없다** |
-| `(projectId, surfaceSlug)` 활성 표면 없음 | TranslationSurface | **표면 불일치.** 없음·타 프로젝트·비활성 모두 동일 본문 `{"error":"surface mismatch"}`. 목록을 노출하지 않는다 |
+| `(projectId, surfaceSlug)` 활성 표면 없음 | TranslationSurface | **표면 불일치.** 없음·타 프로젝트는 동일 본문 `{"error":"surface mismatch"}`(기록 없음). 목록을 노출하지 않는다. ⚠️ **같은 프로젝트에 그 slug의 제거된(보관) 행이 있으면 `{"error":"surface removed"}`이고 Logs에 거부(`surface-removed`)로 남는다** (2026-10-05, sources-add-remove — `classifyMissingSurface`). 노출은 그 프로젝트의 push 토큰 보유자에게 "그 slug가 있었다"는 사실뿐이고, 할 일(워크플로에서 그 step을 지운다)이 불일치와 달라서 가른다 |
 | `format`(adapter·pathTemplate·baseLocale) ≠ 저장된 셋 | DB 컬럼 셋 | **표면 교체.** 같은 프로젝트인데 **다른 번역 표면**을 보낸 경우다 (2026-09-07 추가). ⚠️ `baseLocale`만 예외가 하나 있다 — 아래 |
 | `commitAt` < `TranslationSurface.lastCommitAt` | DB 컬럼 | **역행.** 오래된 run을 Re-run하면 strict가 그 시점으로 DB를 되돌린다(키 orphan + 번역값 회귀 + permalink가 옛 SHA) |
 
@@ -2158,6 +2164,29 @@ Logs 행위자·상세 Trigger·보조줄·Home 메타 열이 이것 하나를 �
   ⚠️ **실행은 `Project`→`TranslationSurface` 잠금을 얻은 뒤 OWNER 멤버십과 활성 프로젝트·표면을 다시 잰다** (2026-09-23 리뷰) —
   미리보기와 실행 사이의 강등·제거·보관이 잠금 대기 동안 끝날 수 있어, 진입점 판정만으로는 권한 잃은 사람의 쓰기와 사건이 남는다
   (`revert-key.integration.ts`가 실제 PG 잠금 대기로 세 경합을 재현한다). 키 저장(`save-key`)과 수동 Publish 시작(`lib/sync/run.ts`)도 2026-09-24에 같은 재확인(`lockProjectAccess`)을 얻었다.
+
+## 5.9 소스 제거와 되살림 (sources-add-remove — 2026-10-05)
+
+소스(표면) 제거는 **되돌릴 수 있는 사실 하나**다 — `TranslationSurface.archivedAt`(프로젝트 보관 `Project.archivedAt`과 같은 형, §5.6.4).
+읽는 쪽은 전부 이미 `archivedAt: null`로 좁혀 "제거됨"으로 읽어도 참이었다(Sources·셸·Home·Inbox·검색·Publish·야간·온보딩·MCP).
+쓰는 자리는 둘뿐이다 — 제거(`lib/surfaces/remove.ts`)와 되살림(`lib/surfaces/create.ts`의 revive 갈래).
+
+- **제거는 한 트랜잭션이다.** `lockProjectAccess`(`project:settings`, `Project`→`TranslationSurface`) 뒤 활성 표면·기본 id·첫 적재 진행 여부·
+  그 소스의 미전달 토큰을 다시 읽고 `planSurfaceRemoval`로 판정한다 — 거부는 `last-source`(마지막 활성 소스) · `archived`(프로젝트 보관) ·
+  `importing`(첫 적재 진행 중) · `not-found`. 같은 tx에서 `archivedAt`을 세우고, 기본 소스였으면 `Project.defaultSurfaceId`를 남은 활성 중
+  **slug 오름차순 첫째**로 옮기고(복합 FK `(id, defaultSurfaceId)`가 같은 프로젝트를 강제한다), `ProjectEvent { kind: SURFACE, subtype:
+  "surface.removed" }`를 남긴다. **번역 행은 건드리지 않는다.**
+- ⚠️ **미전달이 있으면 지문이 필요하다** — `removalFingerprint`는 `["remove-surface", userId, projectId, surfaceId, 그 소스의 토큰 정렬]`이다.
+  세는 집합과 승인하는 집합이 같아야 하므로 토큰은 **`surfaceId` 전체**(orphaned 키·로케일 포함)에서 읽는다 — 화면용 `pendingWhere`(활성만)가
+  아니다(POSTMORTEM "세는 집합 ≠ 바꾸는 집합"). 용도 접두가 달라 수동 Sync 지문과 섞이지 않는다. 낡으면 `stale-approval`이고 아무것도 안 바뀐다.
+- **되살림** — 추가(`createSurfaces`)가 tx 안에서 `planSurfaceRevival`로 요청마다 갈래를 고른다: 같은 `pathTemplate` + 같은 어댑터의
+  보관 행이 있으면 `archivedAt`이 가장 최신인 행을 되살리고(`id`·`slug` 유지 — 키·번역·이력이 그대로 붙는다), 어댑터가 다르면 새 행(slug 접미사)이다.
+  되살린 행은 `lastCommitSha`·`lastCommitAt`·import 오류를 비우고, 첫 적재를 **`previousBaseLocale: null` + 그 소스의 현재 미전달 토큰
+  전부를 `approvedTokens`로** 돈다 — strict 첫 적재(불변식 1의 셋째 길). 리포에 값이 없는 칸은 덮일 값이 없어 미전달로 남는다.
+  옛 `lastCommitAt`이 남으면 `stale-commit`이 나므로 비운다.
+- **push** — 활성 표면이 없으면 `classifyMissingSurface`가 `removed`(같은 slug의 보관 행) / `mismatch`를 가른다. `/api/push`·`/failure` 둘 다
+  `409 surface removed` + 거부 기록, 거부 어휘 `NOT_STARTED_REASONS`의 일곱째다. 잠금 뒤 `ApplyGuardError`도 `archived`와 `surface-removed`로 갈린다.
+- **Publish는 활성 소스만 렌더한다** — 열린 PR에 있던 제거된 소스의 변경은 다음 Publish에서 빠진다. 리포 파일은 건드리지 않는다.
 
 ## 6. 인증 경계
 
