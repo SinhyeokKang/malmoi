@@ -12,6 +12,11 @@ import { optionalEnv } from "@/lib/env";
 import { hashPushToken } from "@/lib/push/token";
 import { addSurfacesFromSnapshot, type AddSurfaceSnapshot } from "@/lib/surfaces/create";
 import { previewSurfaceRemoval, removeSurface } from "@/lib/surfaces/remove";
+import { parseLogFilter } from "@/lib/events/filter";
+import { loadEvents } from "@/lib/events/query";
+import { eventMeta, eventSentence } from "@/lib/events/view";
+import { en } from "@/messages/en";
+import { renderToStaticMarkup } from "react-dom/server";
 
 /**
  * **소스 제거와 되살림** (sources-add-remove B-T4·B-T5 — ARCHITECTURE §5.9).
@@ -109,6 +114,14 @@ function snapshot(over: Partial<AddSurfaceSnapshot> & { blobs?: Map<string, stri
     ...over,
   };
 }
+/** Logs 화면이 그리는 문장·메타 — 끝 단언은 DB 행이 아니라 이 출력이다(/ship 6.2). */
+async function logLines() {
+  const page = await loadEvents(prisma, en, "p", parseLogFilter({}), { timeZone: "UTC" });
+  return page.rows.map(row => ({
+    sentence: renderToStaticMarkup(eventSentence(en, "en", row, { actor: "Owner", key: null })),
+    meta: eventMeta(en, row, false).map(part => (typeof part === "string" ? part : "text" in part ? String(part.text) : "")).join(" | "),
+  }));
+}
 const readd = (input: AddSurfaceSnapshot = snapshot()) => addSurfacesFromSnapshot(prisma, { projectSlug: "p", inputs: [input], credential: undefined });
 
 describe("removeSurface", () => {
@@ -123,6 +136,7 @@ describe("removeSurface", () => {
     const event = await prisma.projectEvent.findFirstOrThrow({ where: { projectId: "p", subtype: "surface.removed" } });
     expect(event).toMatchObject({ kind: "SURFACE", actorUserId: "owner", surfaceIds: ["s-web"] });
     expect(event.payload).toMatchObject({ surfaceSlug: "web" });
+    expect((await logLines()).map(line => line.sentence)).toContain("Owner removed the web source");
   });
 
   it("기본이 아닌 소스는 기본을 옮기지 않는다", async () => {
@@ -277,6 +291,8 @@ describe("제거된 소스로 온 CI", () => {
     const events = await refusals();
     expect(events).toHaveLength(1);
     expect(events[0]).toMatchObject({ result: "notStarted", surfaceIds: ["s-app"], payload: { refusal: "surface-removed" } });
+    // Logs가 그 거부를 워크플로 처방 문장으로 그린다.
+    expect((await logLines()).some(line => line.meta.includes(en.logs.refusals["surface-removed"]))).toBe(true);
     expect(await prisma.translationSurface.findUniqueOrThrow({ where: { id: "s-app" } })).toMatchObject({ lastImportError: null, lastImportStartedAt: null, lastCommitSha: "a".repeat(40) });
     expect((await translations("s-app")).find(row => row.localeCode === "ko")?.value).toBe("Old");
   });
