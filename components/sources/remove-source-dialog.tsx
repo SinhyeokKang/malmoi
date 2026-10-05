@@ -125,8 +125,15 @@ export function RemoveSourceDialog({ open, onOpenChange, slug, surfaceSlug, onPe
         */
         : <div aria-live="polite">
           {preview.kind === "loading"
-            // 워크플로 줄은 늘 오므로 Alert는 반드시 선다 — 골격은 그 한 줄짜리 Alert의 높이다(시안 R6 ①).
-            ? <div data-removal-skeleton aria-hidden><Skeleton className="h-[66px] w-full rounded-md" /></div>
+            /*
+              워크플로 줄은 늘 오므로 Alert는 반드시 선다 — 골격은 그 줄만 든 Alert의 높이다(시안 R6 ①). ⚠️ **치수를 박지 않는다** (#192): 고정 66은
+              시안의 13/1.6 가정이었고 실제 `Alert sm`(`text-xs` 줄높이)는 59라 지문이 오면 창이 줄어 버튼이 튀었다. 같은 Alert를 `invisible`로
+              깔아 높이를 얻고 그 위에 골격 면을 덮는다 — 폭·줄바꿈·글꼴이 바뀌어도 대체될 가장 짧은 Alert와 같다.
+            */
+            ? <div data-removal-skeleton aria-hidden className="relative">
+              <div data-removal-skeleton-shape className="invisible"><Alert variant="warning" size="sm" live="off"><p>{m.sources.removal.workflowLine}</p></Alert></div>
+              <Skeleton className="absolute inset-0 rounded-md" />
+            </div>
             : preview.kind === "failed"
               ? <Alert variant="danger" size="sm" live="off" actions={<Button size="sm" onClick={() => setAttempt(value => value + 1)}>{m.sources.retry}</Button>}>{m.sources.removal.previewFailed}</Alert>
               /* ⚠️ 글리프는 블록 머리에 하나다 — 한 경고("제거하면 이것들이 함께 간다")의 근거 셋이다. 손실이 큰 것부터 선다. */
