@@ -51,7 +51,7 @@ it.each([1, 5, 40])("프로젝트가 %i개여도 집계는 다섯 번이다", as
 it("프로젝트가 0개면 아무것도 조회하지 않는다", async () => {
   const got = await loadProjectListAggregates(db, []);
   expect(calls()).toBe(0);
-  expect(got).toEqual({ locales: [], keyTotals: new Map(), cells: [], newKeys: new Map(), unsent: new Map(), unsentSurfaces: new Map(), newKeysBySurface: new Map(), unsentBySurface: new Map() });
+  expect(got).toEqual({ locales: [], keyTotals: new Map(), cells: [], newKeys: new Map(), unsent: new Map(), unsentSurfaces: new Map(), unsentAt: new Map(), newKeysBySurface: new Map(), unsentBySurface: new Map() });
 });
 
 it("모든 조회가 인가된 id 집합으로 좁혀진다 — 테넌트 간 유출 경로가 여기다", async () => {
@@ -130,4 +130,16 @@ it("로케일이 59개여도 왕복이 늘지 않는다", async () => {
   );
   await loadProjectListAggregates(db, ["p1"]);
   expect(calls()).toBe(5);
+});
+
+it("미전달 시각은 표면 MAX 중 가장 최근 값이다", async () => {
+  const early = new Date("2026-10-01T00:00:00Z"), late = new Date("2026-10-02T00:00:00Z");
+  hoisted.queryRaw.mockResolvedValueOnce([]).mockResolvedValueOnce([
+    { projectId: "p1", surfaceId: "s1", surfaceSlug: "a", n: 2, at: early },
+    { projectId: "p1", surfaceId: "s2", surfaceSlug: "z", n: 3, at: late },
+  ]);
+  const got = await loadProjectListAggregates(db, ["p1"]);
+  expect(got.unsentAt.get("p1")).toEqual(late);
+  expect(got.unsentSurfaces.get("p1")).toBe("a");
+  expect(got.unsent.get("p1")).toBe(5);
 });
