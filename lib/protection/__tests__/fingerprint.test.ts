@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { discardFingerprint, sameFingerprint, type DiscardFingerprintInput } from "../fingerprint";
+import { discardFingerprint, removalFingerprint, sameFingerprint, type DiscardFingerprintInput, type RemovalFingerprintInput } from "../fingerprint";
 
 /**
  * 폐기 승인 지문 (ARCHITECTURE §5.5.2). 서버가 발급하고 잠금 뒤 재계산해 대조한다 — **상태가 바뀌면 지문이 바뀐다**가
@@ -108,5 +108,34 @@ describe("sameFingerprint", () => {
   it("길이가 다른 입력에서 던지지 않고 false — timingSafeEqual은 길이 불일치에 던진다", () => {
     expect(sameFingerprint("abc", current)).toBe(false);
     expect(sameFingerprint("", current)).toBe(false);
+  });
+});
+
+describe("removalFingerprint", () => {
+  const INPUT: RemovalFingerprintInput = { userId: "owner", projectId: "p1", surfaceId: "s1", pending: [{ id: "t1", token: "a" }, { id: "t2", token: "b" }] };
+
+  it("결정적이고 sha256 hex 하나다", () => {
+    expect(removalFingerprint(INPUT)).toBe(removalFingerprint(structuredClone(INPUT)));
+    expect(removalFingerprint(INPUT)).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("목록 순서에 흔들리지 않는다", () => {
+    expect(removalFingerprint({ ...INPUT, pending: [...INPUT.pending].reverse() })).toBe(removalFingerprint(INPUT));
+  });
+
+  it.each([
+    ["사용자", { userId: "other" }],
+    ["프로젝트", { projectId: "p2" }],
+    ["대상 소스", { surfaceId: "s2" }],
+    ["토큰 하나 바뀜", { pending: [{ id: "t1", token: "a" }, { id: "t2", token: "c" }] }],
+    ["편집 하나 늘어남", { pending: [...INPUT.pending, { id: "t3", token: "d" }] }],
+    ["편집 0건", { pending: [] }],
+  ] as const)("%s → 다른 지문", (_, change) => {
+    expect(removalFingerprint({ ...INPUT, ...change })).not.toBe(removalFingerprint(INPUT));
+  });
+
+  it("같은 사용자·프로젝트·토큰이어도 수동 Sync 지문과 겹치지 않는다 — 용도 접두가 갈라 놓는다", () => {
+    const sync = discardFingerprint({ userId: "owner", projectId: "p1", repository: BASE.repository, surfaces: [], pending: INPUT.pending });
+    expect(removalFingerprint(INPUT)).not.toBe(sync);
   });
 });
