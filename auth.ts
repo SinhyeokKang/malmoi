@@ -14,6 +14,7 @@ import { authorizeLoginLink, linkAuthCookies, withLoginLink } from "@/lib/login-
 import { destFromCallbackUrl, isLoginProvider } from "@/lib/login-link/policy";
 import { beginLink, loadLinkOffer } from "@/lib/login-link/store";
 import { cookies } from "next/headers";
+import { syncColorSchemeCookieOnSignIn } from "@/lib/color-scheme/cookie";
 import { noteAuthError } from "@/lib/auth/outage";
 import { githubApi, githubUserinfo } from "@/lib/auth/profile";
 import { publicSession } from "@/lib/auth/public-session";
@@ -127,6 +128,16 @@ const authConfig = NextAuth(async () => ({
       const type = error instanceof Error ? error.name : typeof error;
       console.error("[auth]", type);
       noteAuthError(error);
+    },
+  },
+  events: {
+    /**
+     * **로그인이 끝나는 모든 경로의 끝이다** — 로그인 수단 연결·challenge 왕복(`login-link`·`session-revocation`)도 마지막엔 이 Auth.js 콜백으로 돌아와
+     * 세션을 만든다. 계정의 화면 테마를 이 기기 쿠키로 옮겨 적는다(`syncColorSchemeCookieOnSignIn` — 계정 값이 없으면 쿠키를 건드리지 않고, 던지지 않는다).
+     * `cookies().set`은 Route Handler 문맥이라 응답에 실린다.
+     */
+    async signIn({ user }) {
+      if (typeof user.id === "string") await syncColorSchemeCookieOnSignIn(user.id);
     },
   },
   callbacks: {
