@@ -21,14 +21,14 @@ Open **Sources** from the project navigation. Each row shows the source's status
 ## Remove a source {#remove-source}
 
 1. Open the source's details from **Sources** and choose **Remove source**. It is available to project owners only, and not for the last source in a project.
-2. Read the confirmation, then choose **Remove source** again. If the source has unsent edits, the dialog says they will be discarded. If a Malmoi pull request is open, the dialog says the source's changes in it drop out at the next publish.
+2. Read the confirmation, then choose **Remove source** again. If the source has unsent edits, the dialog says how many; re-adding the source later replaces them with the repository's values. If a Malmoi pull request is open, the dialog says the source's changes in it drop out at the next publish.
 3. Remove the source's step from your repository's workflow file. Until you do, the next run fails and stops the sources after it.
 
 Removing a source stops syncing it. Files in your repository aren't changed, and the source disappears from **Sources**, Publish, and the nightly update. Its keys, translations, and history are kept.
 
 ## Add a removed source again {#re-add}
 
-Choose **Add sources** and select the same path with the same file format. The removed source comes back with its translations. The first sync after that loads the repository's values over any unsent edits it had. If you choose a different file format for the path, Malmoi adds a new source instead; update the workflow as for any new source.
+Choose **Add sources** and select the same path with the same file format. The removed source comes back with its translations. The first sync after that replaces its unsent edits with the repository's values wherever the repository has one; edits the repository has no value for stay unsent. If you choose a different file format for the path, Malmoi adds a new source instead; update the workflow as for any new source.
 
 ## Change the base language {#base-language}
 
