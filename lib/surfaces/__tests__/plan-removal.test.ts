@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { planSurfaceRemoval, type RemovalInput } from "../plan-removal";
+import { en } from "@/messages/en";
+
+import { planSurfaceRemoval, removalReason, type RemovalInput } from "../plan-removal";
 
 /**
  * 소스 제거 판정 (sources-add-remove design §2·§3.1). 사전 차단(화면)과 서버 거부가 같은 판정을 지난다.
@@ -53,5 +55,20 @@ describe("planSurfaceRemoval", () => {
 
   it("not-found가 importing·last-source보다 앞이다", () => {
     expect(planSurfaceRemoval({ ...BASE, targetId: "gone", importing: true, active: [{ id: "s1", slug: "web" }] })).toEqual({ ok: false, error: "not-found" });
+  });
+});
+
+describe("removalReason", () => {
+  it("판정 거부 셋은 제 문장, 인가 거부는 errors.access 문장이다 — 사전 차단과 서버 거부가 같은 함수다", () => {
+    expect(removalReason(en, "last-source")).toBe(en.sources.removal.reasons["last-source"]);
+    expect(removalReason(en, "importing")).toBe(en.sources.removal.reasons.importing);
+    expect(removalReason(en, "stale-approval")).toBe(en.sources.removal.reasons["stale-approval"]);
+    expect(removalReason(en, "archived")).toBe(en.errors.access.archived);
+    expect(removalReason(en, "forbidden")).toBe(en.errors.access.forbidden);
+    expect(removalReason(en, "not-found")).toBe(en.errors.access["not-found"]);
+  });
+
+  it("판정이 내는 거부는 전부 문장이 있다", () => {
+    for (const error of ["last-source", "archived", "importing", "not-found"] as const) expect(removalReason(en, error)).not.toBe("");
   });
 });
