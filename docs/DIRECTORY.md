@@ -948,7 +948,11 @@ lib/
                         resolveTimeZone — 밖은 UTC. import 0) · options(timeZoneOptions(now) — Preferences Select 옵션, UTC 첫 줄 + 오프셋 순)
   color-scheme/         화면 테마(color-scheme 2026-10-05 — ARCHITECTURE §6.357). scheme(⚠️ 잎 — COLOR_SCHEMES · parseColorScheme(Object.hasOwn) ·
                         resolveColorScheme(계정 > 쿠키 > system, OS 입력 없음) · COLOR_SCHEME_COOKIE. Theme 카드가 값으로 읽는다) ·
-                        server(server-only — getColorScheme, React cache. 소비자는 루트 레이아웃 · /preferences page 둘). __tests__/helpers/는 대비 검사 전용
+                        server(server-only — getColorScheme, React cache. 소비자는 루트 레이아웃 · /preferences page 둘) ·
+                        cookie-spec(⚠️ 잎 — 쿠키 속성의 유일한 출처 colorSchemeCookieSpec · serializeCookieSpec · isSecureForwardedProto) ·
+                        cookie(server-only — setColorSchemeCookie, Server Action용 cookies().set) ·
+                        sign-in(server-only — 로그인 동기화: recordColorSchemeAtSignIn(AsyncLocalStorage 기록) · withColorSchemeSync(handlers 가장 바깥 래퍼가 응답 헤더에 한 줄 append —
+                        Route Handler의 cookies().set은 Set-Cookie를 재직렬화한다, ARCHITECTURE §6.357)). __tests__/helpers/는 대비 검사 전용
                         순수 헬퍼(oklch → sRGB · WCAG 대비 · globals.css의 light-dark() 두 값 읽기) — contrast(두 테마 대비 + 수용 예외 여섯) ·
                         theme-surfaces(테마가 닿는 자리와 안 닿는 자리 — 전역 오류 화면 · 초대 메일은 라이트)
   url-token.ts          ⚠️ 잎. 키셋 커서의 문자열 ↔ base64url 하나 — Logs(클라이언트)와 번역 목록(서버)이 같이 쓴다.
@@ -1065,5 +1069,6 @@ vitest.credentials.config.ts
                         (`pnpm test:credentials:postgres`, include는 `lib/credentials/__tests__/*.integration.ts`).
                         ⚠️ 이쪽도 `pnpm test` 밖이다 — `lib/credentials/**`를 건드리면 `pnpm gate`가 붙인다
 auth.ts                 Auth.js v5. 어댑터가 credentialAdapter(그 아래가 safePrismaAdapter)이고
-                        세션 토큰은 우리가 만든다(DB엔 digest만). handlers는 withRevocation으로 감싼다
+                        세션 토큰은 우리가 만든다(DB엔 digest만). handlers는 withColorSchemeSync(가장 바깥) → withRevocation으로 감싼다.
+                        events.signIn은 계정 테마를 요청 스코프에 기록만 한다(lib/color-scheme/sign-in)
 ```
