@@ -54,3 +54,4 @@ A가 `prisma migrate diff`(더미 `DIRECT_URL`)로 SQL만 만든다 → 지휘�
 - 2026-10-05 B fix3(`bc4e1dd4..77fcc896`) R-B3: 🔴0 🟡1(공개 페이지 테스트가 실제 배지 Action→getPrisma) 🟢5. route 표 변화 0. B fix4 dispatch `ctx_83bd51a750ab`(🟡 + 문서 🟢 + 7949fbd1 squash).
 - 2026-10-05 Q1 완료: 이슈 #189 [landing] · #190 [design-sync] · #191 [inbox](모두 B 소유) · 보조줄 keep · 미검증: 실제 스크린리더 · prod 배지 호출 수(dev StrictMode 2회) · 지연 badge 450–770ms / open 485–546ms(dev). dev DB 원복. → B fix5(fix4 뒤 이어서).
 - 2026-10-05 B fix3+4 dev 통합(`f9dfbecb..776fd0f7` 재적용). gate **FAILED at test:projects:postgres** — `search-performance.integration.ts` 중앙값 385ms > 300(검색 코드 변경 0, load 5–8, B gate 동시 실행). push 보류 — fix5 통합 뒤 낮은 부하에서 재실행. B fix5 dispatch `ctx_28a45db577c8`.
+- 2026-10-05 B fix5(`1b52f245..7ed495da`: 첫 그룹 선 · Refs #191 #190 #189 · DESIGN/design) 통합. fix5 dispatch `ctx_28a45db577c8`는 바쁜 터미널에 붙다 failed — 인계·커밋으로 수락. gate 재실행 ok(load 1.9) → 앞선 search-performance red는 부하 흔들림으로 판단.
