@@ -319,7 +319,7 @@
    *
    * ⚠️ **`light-dark(라이트, 다크)` 한 줄이다**(color-scheme Phase 2) — 다크 값의 정본은 시안 핸드오프 README §5다. `[data-theme=dark]` 블록과
    * System 미디어 블록에 두 벌 적지 않는다(한 벌만 고치면 명시 다크와 System 다크가 조용히 갈린다). 다크에서도 같은 값인 것(`hue-*`·`on-hue`·
-   * `scrim`·`warning-emphasis`)은 감싸지 않는다 — `globals-css.test.ts`의 테마 불변 목록이 그 이름을 든다.
+   * `warning-emphasis`)은 감싸지 않는다 — `globals-css.test.ts`의 테마 불변 목록이 그 이름을 든다.
    * ⚠️ **라이트 값은 옮겨 온 raw 그대로다** — 팔레트 변수를 가리키고, 알파가 박혀 있던 것은 `color-mix`로 같은 색을 만든다.
    * 손으로 hex를 옮기지 않는다: v4 팔레트는 oklch라 hex 사본은 반올림만큼 어긋난다.
    * `globals-css.test.ts`가 이 값을 옮겨 온 raw와 문자열로 대조한다 — 값을 바꾸는 것은 시안의 일이다.
@@ -357,8 +357,9 @@
   /**
    * 오버레이(어둡게 덮기) — `/40`(Dialog)·`/32`(LargeModal)로 쓴다. 라이트 값은 `--foreground`와 같다.
    * ⚠️ **`--foreground`를 가리키지 않는다** — 글자색은 다크에서 밝아지지만 덮개는 계속 어두워야 한다.
+   * ⚠️ **다크는 순검정이다**(#187 — 시안 README §5.2). 라이트 값을 두 테마에 두면 다크 덮개가 `#0a0a0a`라 바탕(`neutral-900`)과 거의 같은 색이 덮인다.
    */
-  --scrim: hsl(0 0% 3.9%);
+  --scrim: light-dark(hsl(0 0% 3.9%), var(--color-black));
 
   /* Publish diff — 삭제(`-` 기호·삭제 낱말 면 `/[0.14]`)와 추가(`+` 기호·추가 낱말 면 `/[0.16]`)가 한 쌍이다. 성공·실패와 뜻이 다르다. */
   --diff-removed: light-dark(var(--color-red-700), var(--color-red-400));

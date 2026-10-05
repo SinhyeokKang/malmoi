@@ -118,3 +118,14 @@ describe("대비 수용 예외 표", () => {
     expect([...kinds].sort()).toEqual(["avatar", "destructive/destructive@8%", "gray-dim", "muted-foreground/canvas", "muted-foreground/muted", "ring/background"]);
   });
 });
+
+/**
+ * **덮개(`scrim`)는 두 테마 모두 어둡게 덮는다** (#187 — 시안 README §5.2 `black`). 라이트 값을 두 테마에 두면 다크 덮개가 `#0a0a0a`라
+ * 다크 바탕(`neutral-900`)과 거의 같은 색이 덮인다. 라이트는 Phase 1 값(= `--foreground` 라이트) 그대로다.
+ */
+describe("오버레이 덮개", () => {
+  it("라이트는 `#0a0a0a` 그대로, 다크는 순검정이다", () => {
+    expect(TOKENS.light["--scrim"]).toEqual({ r: 10, g: 10, b: 10, a: 1 });
+    expect(TOKENS.dark["--scrim"]).toEqual({ r: 0, g: 0, b: 0, a: 1 });
+  });
+});

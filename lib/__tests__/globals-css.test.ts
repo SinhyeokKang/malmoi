@@ -299,7 +299,6 @@ describe("globals.css — 다크 값 (light-dark)", () => {
     "--hue-indigo": "식별색",
     "--hue-fuchsia": "식별색",
     "--on-hue": "식별색 위 흰 글자 — 면이 그대로라 글자도 그대로",
-    "--scrim": "덮개는 다크에서도 어둡게 덮는다(design §2.2)",
     "--warning-emphasis": "시안 §5.2 '그대로' — 호박 막대·대기 테두리는 두 테마 같은 값",
   };
 
@@ -346,6 +345,8 @@ describe("globals.css — 다크 값 (light-dark)", () => {
     // 시안·핸드오프의 `subtle` = 코드 `surface-subtle`(background보다 한 단계 어둡게 — design §3.8).
     "--surface-subtle": "#121212",
     "--shadow-color": p("black"),
+    // 덮개는 다크에서도 어둡게 덮는다 — 시안 §5.2 `black`(#187: 라이트 값을 그대로 두면 다크가 `#0a0a0a`였다).
+    "--scrim": p("black"),
   };
 
   const colors = [...declared.keys()].filter((name) => !NOT_COLOR.has(name));
