@@ -6,6 +6,8 @@ import { PUBLIC_HEADER_LINK } from "@/components/public-shell/header";
 import { HeaderBar } from "@/components/shell/header-bar";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { CountBadge } from "@/components/ui/count-badge";
+import { navCountLabel } from "@/components/shell/nav-count";
 import { buttonClass } from "@/components/ui/button";
 import { FIELD_BUTTON_CLASS } from "@/components/ui/field-button";
 import { Kbd } from "@/components/ui/kbd";
@@ -108,13 +110,13 @@ export function AppFrame({ m, children, overlay }: { m: Messages; children: Reac
                 </p>
               )}
               {zone.items.map((item) => (
-                <Item key={item.key} item={item} active={item.key === "translations"} />
+                <Item key={item.key} m={m} item={item} active={item.key === "translations"} />
               ))}
             </div>
           ))}
           <div data-landing-zone="footer" className="mt-auto flex flex-col gap-0.5 pt-2">
             {navFooterItems(m).map((item) => (
-              <Item key={item.key} item={item} active={false} />
+              <Item key={item.key} m={m} item={item} active={false} />
             ))}
             <span
               data-landing-collapse=""
@@ -145,7 +147,7 @@ export function AppFrame({ m, children, overlay }: { m: Messages; children: Reac
 const ROW = "flex h-8 items-center gap-2 rounded-sm px-2 text-sm whitespace-nowrap";
 
 /** `sidebar.tsx`의 `Item`과 같은 클래스 — 선택은 면(알파) 하나로만 말한다. */
-function Item({ item, active }: { item: NavItem; active: boolean }) {
+function Item({ m, item, active }: { m: Messages; item: NavItem; active: boolean }) {
   const Icon = item.icon;
   return (
     <span data-landing-nav={item.key} className={cn(ROW, "text-foreground", active && "bg-foreground/[0.07]")}>
@@ -153,7 +155,10 @@ function Item({ item, active }: { item: NavItem; active: boolean }) {
         <Icon className="size-4" aria-hidden />
       </span>
       <span className="min-w-0 truncate">{item.label}</span>
-      {item.badge !== undefined && (
+      {/* 개수는 실물처럼 `CountBadge`(0이면 서지 않는다 · 숫자 `aria-hidden` + sr 문장)이고 문자열 배지(버전)는 `Badge`다. */}
+      {typeof item.badge === "number" ? (
+        <CountBadge count={item.badge} label={navCountLabel(m, item.key)?.(item.badge) ?? String(item.badge)} className="ml-auto shrink-0" />
+      ) : item.badge !== undefined && (
         <Badge variant="soft-neutral" className="ml-auto shrink-0">
           {item.badge}
         </Badge>
