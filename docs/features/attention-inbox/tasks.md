@@ -86,7 +86,7 @@
       - pending promise는 테스트 끝에서 푼다(POSTMORTEM 2177) · ko·es 렌더는 조건으로 기다린다(POSTMORTEM 2649).
       **회귀 갱신 대상** `components/__tests__/shell-header.test.tsx:77`("우측은 New project · 구분선 · 사용자 메뉴 순서다").
       `client-graph` green. 라이트·다크 눈 확인은 **(수동 — `/runtime-test`)**.
-- [ ] T9. `/design-sync` — 시안(spec 머리 링크) 대비 computed style·접근성 트리. 검색 목록과 행·그룹 computed style이 같은지도 본다.
+- [x] T9. `/design-sync` — 시안(spec 머리 링크) 대비 computed style·접근성 트리. 검색 목록과 행·그룹 computed style이 같은지도 본다.
       검증 **(수동)**: `/design-sync` 리포트의 차이 0(남은 차이는 사용자 승인 기록).
 - `[C] refactor(ui): share list row and group primitives with search` (T8a만 — 검색 동작 변화 0)
 - `[C] feat(shell): attention inbox in header`

@@ -58,3 +58,4 @@ A가 `prisma migrate diff`(더미 `DIRECT_URL`)로 SQL만 만든다 → 지휘�
 - 2026-10-05 push `ce8e8e61`. Q2(Opus high, main 체크아웃) dispatch `ctx_0d2c80d902da` — design-sync 재측정(그룹 경계선 포함) · #189–#191 재확인/닫기 · 공개 헤더 Inbox. Q1 터미널 닫음. 다음: Q3 `/guide-shots` 전부 재촬영.
 - 2026-10-05 사용자 보고(prod): `/projects` 배너 `Review ›` 쉐브론 세로 정렬 어긋남(`project-list.tsx:402` inline-flex에 items-center 없음) → A fix2 dispatch `ctx_f9ffb7430c0d`(Codex medium).
 - 2026-10-05 A fix2(`a6f470e6`: 배너 쉐브론 items-center · Select 설명형 체크 첫 줄 · 후보 68곳 판정) — Q2 인계 뒤 통합. 재측정: Projects 배너 · Members 초대 역할 메뉴.
+- 2026-10-05 Q2 완료: design-sync 차이 0(그룹 경계선·골격·짧은 시각 포함, 라이트·다크) · #189 #190 #191 닫힘 · 공개 헤더 Inbox 통과(로그아웃 POST 0). 미검증: rAF 애니메이션(창 스로틀) · prod 배지 POST 수 · 실제 스크린리더. A fix2 통합, gate ok.
