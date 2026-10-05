@@ -602,7 +602,7 @@ lib/
                         `N projects use this connection.`을 그리던 조회인데, 세던 것이 내가 OWNER인
                         **모든** 프로젝트라 이 연결에 의존하지 않는 것까지 들어갔다. 해제가 실제로
                         막는 것은 리포 (재)연결뿐이고 야간 pull·PR은 설치 토큰이 낸다
-  push/ pull/ sync/     payload(생산자 하나) · assemble · plan · apply · auth · guard · token · json-bounds(placeholders 자원 상한) /
+  push/ pull/ sync/     payload(생산자 하나) · assemble · plan · apply · auth · guard · surface-refusal(활성 표면 미발견 → 제거됨/불일치) · token · json-bounds(placeholders 자원 상한) /
                         plan · run · render · load · client · targets · trigger · sync-branch · branch-name · ref-slug ·
                         message · payload · changed-values(2026-10-04 — Publish가 리포 파일에서 바꾼 엔트리 수, 수정+추가. 관측값이고 판정에 안 쓴다 →
                         SyncRun.changedValues) /
@@ -672,7 +672,9 @@ lib/
   revalidate-after-commit.ts  커밋 뒤 재검증 실패를 저장 실패로 뒤집지 않는 공유 helper(account/settings/sources).
   surfaces/            plan(정렬·slug·경로 라벨·소유권, client-safe) · access(프로젝트 인가 뒤 표면 좁힘)
                         push·편집 조회는 projectId + surfaceId. Publish는 프로젝트 단위 단일 PR
-  surfaces/create.ts   Project 잠금 후 인가·리포·출력 경로 재검사, 다중 생성+첫 적재 한 tx 확정
+  surfaces/create.ts   Project 잠금 후 인가·리포·출력 경로 재검사, 다중 생성+첫 적재 한 tx 확정. 같은 경로·어댑터의 제거된 행은 되살린다(id·slug 유지, 그 소스 토큰 승인 strict 첫 적재)
+  surfaces/remove.ts   소스 제거 공유 코어(웹 Action·MCP) — lockProjectAccess 뒤 판정·지문·archivedAt·기본 승계·사건 한 tx. 번역은 안 건드린다
+  surfaces/plan-removal.ts · plan-revival.ts  제거 판정(last-source·archived·importing·not-found, slug 승계)·거부 문장 / 되살릴 행 고르기 — 순수
   surfaces/plan-add.ts  기존 소스 잠금·중복 템플릿·추가 결과/부분 적재 경고·집계 문구 순수 판정
   keys/query.ts         loadSurfaceCounts — 활성 표면의 non-orphan 키/언어 수를 SQL 하나로 집계
   import/surface-status.ts  소스 적재 상태 다섯 갈래와 최초 적재 재시도 가능 여부 — planSurfaceImportStatus가 { state, tone, labelKey, at }을
@@ -770,7 +772,7 @@ lib/
                         token(생성·해시·Bearer 파싱·planApiTokenUse·shouldTouch) · grant(planToolAccess — 범위 → 멤버십 → 역할 →
                         보관 → 토큰) · issue-plan · batch(100키 상한·중복) · confirm(샘플 확인값 소비) · locked-token(잠금 뒤 재판정) ·
                         result(toToolResult — 화면과 같은 문장) · http(checkOrigin) · view(/mcp 카드) · brand(연결 로고 — client_id 호스트 정확
-                        일치만, 이름으로 고르지 않는다) · catalog(도구 28 — 이름·순서·annotations·요구 조건의 코드 정본).
+                        일치만, 이름으로 고르지 않는다) · catalog(도구 30 — 이름·순서·annotations·요구 조건의 코드 정본).
                         server-only: server(요청마다 McpServer — listChanged: false · 설명은 messages/en.tsx mcp.tools, 없으면 서지 않는다) · token-store(resolveApiToken) · tools/.
                         ⚠️ catalog·brand는 잎이다(import 0). brand는 /mcp 클라이언트(connected-apps-card · brand-logo)가 값으로 읽는다(client-graph).
                         catalog의 소비자는 서버 쪽(server · tools/access)이다 — 그래도 잎으로 두는 이유는 도구 구현 → catalog 방향이
@@ -778,7 +780,7 @@ lib/
                         순수 모듈에 server-only가 없는 것은 lib/mcp/__tests__/pure-boundary가 센다
   mcp/tools/            도구 구현(전부 server-only). access(입구 판정 — GitHub·코어보다 먼저, 조건은 catalog에서) · define(appUrl — needs-browser 링크를 허용 호스트 origin의 절대 URL로) ·
                         execute(⚠️ 던지면 SDK가 예외 문구를 결과에 싣는다 — 여기서 잡아 unavailable로 접는다) · 도메인별
-                        account·project·keys·repos·sync·publish·translations·settings·members·onboarding · index(TOOLS).
+                        account·project·keys·repos·sync·publish·translations·settings·sources·members·onboarding · index(TOOLS).
                         ⚠️ Action을 import하지 않는다 — 같은 코어의 형제 껍데기다(세션이 없다)
   oauth/                MCP OAuth의 **순수 판정만**(mcp-oauth — 껍데기는 oauth-server/). authorize(쿼리 파싱 — Object.hasOwn) · authorize-view(화면 판정 순서 ·
                         returnHost) ·
