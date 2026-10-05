@@ -11,6 +11,7 @@ import { prepareFirstSnapshot, type FirstSnapshotInput } from "@/lib/onboarding/
 import { runTokenFor } from "@/lib/events/payload";
 import { recordEvent, recordRun } from "@/lib/events/record";
 import { applyPushInTransaction } from "@/lib/push/apply";
+import { releaseOrphanedApproved } from "@/lib/protection/release-orphaned";
 import { resolveLocalePaths } from "@/lib/pull/plan";
 import { planSurfaceSlug, surfaceOwnership } from "./plan";
 import { planSurfaceRevival } from "./plan-revival";
@@ -117,7 +118,16 @@ export async function addSurfacesFromSnapshot(prisma: PrismaClient, input: { pro
         surfaceIds: [surfaceId],
         payload: { kind: "SURFACE", surfaceSlug: slug, adapter: item.format.adapter, baseLocale: { before: null, after: item.baseLocale } },
       });
-      const applied = await applyPushInTransaction(tx, { projectId: first.projectId, surfaceId }, { ...payload, surfaceSlug: slug }, { refsMode: "replace", previousBaseLocale: null, startedAt, token, importOutcome: result.failed === 0 ? null : "partial-import", approvedTokens });
+      const applied = await applyPushInTransaction(tx, { projectId: first.projectId, surfaceId }, { ...payload, surfaceSlug: slug }, {
+        refsMode: "replace", previousBaseLocale: null, startedAt, token, importOutcome: result.failed === 0 ? null : "partial-import", approvedTokens,
+        // 다운로드·파싱 실패가 있으면 빠진 파일의 옛 키를 삭제로 읽지 않는다(audit #7) — 되살린 행에만 옛 키가 있다. 아래 해제와 짝이다.
+        suppressOrphan: result.errors.length > 0,
+      });
+      /**
+       * ⚠️ **이번 적재로 orphan인 승인 셀의 토큰을 푼다** — 수동 Sync와 같은 장치(delivery-invariants D1). 제거된 동안 리포가 키를 지웠으면
+       * 그 셀은 덮일 자리가 없어 토큰이 남고, 화면엔 0인데 그 키를 되살린 CI가 매번 `deferred`다(리뷰 B1 🔴1).
+       */
+      await releaseOrphanedApproved(tx, { projectId: first.projectId, surfaceId }, approvedTokens);
       changedValues += applied.changedValues;
       results.push({ pathTemplate: item.format.pathTemplate, surfaceSlug: slug, count: result.count, failed: result.failed });
     }

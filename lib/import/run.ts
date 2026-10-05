@@ -12,6 +12,7 @@ import { importOutcomeFields } from "@/lib/projects/import-status";
 import { applyPushInTransaction } from "@/lib/push/apply";
 import { sameFingerprint } from "@/lib/protection/fingerprint";
 import { planDiscardConfirmation, planProtectedImport } from "@/lib/protection/plan";
+import { releaseOrphanedApproved } from "@/lib/protection/release-orphaned";
 import { countPending } from "@/lib/protection/where";
 import { importEventPayload as importPayload, runTokenFor } from "@/lib/events/payload";
 import { finishRun, recordEvent, recordImportRefusal, recordRun } from "@/lib/events/record";
@@ -204,31 +205,6 @@ async function current(tx: Prisma.TransactionClient, lease: Lease, captured: Tra
   // CI가 새 revision을 커밋하기 전에 진행 중일 수 있다. 그 실행 표시도 우선한다.
   if (surface.lastImportToken !== lease.token && hasActiveImport(surface.lastImportStartedAt, now)) return { ok: false, reason: "superseded" } as const;
   return { ok: true, surface } as const;
-}
-
-/**
- * **이번 적재로 orphan이 된 승인 셀의 토큰을 비운다** (delivery-invariants D1 · 감사 #1). upsert는 페이로드에 없는 셀에 안 닿아서, 폐기를
- * 승인한 Sync가 떨어뜨린 키·로케일의 셀에 토큰이 남았다. `pendingWhere`가 orphan을 빼므로 화면 어디에도 0으로 보이다가, 그 키가 코드에
- * 되살아나면 CI push가 unorphan → 사후 재집계 1 → 롤백 → `deferred`를 **매번** 반복했다.
- *
- * - "이번 적재로 orphan이 됐다"를 따로 계산하지 않는다 — 승인 집합은 `pendingWhere` 기준이라 승인 시점에 이미 orphan인 셀은 들어 있지
- *   않다. 그래서 지금 orphan인 승인 셀은 전부 이번 적재가 만든 것이다(뒤집으면: 배포 전 잔존 유령 토큰은 여기서 안 풀린다).
- * - ⚠️ **빈 값·실패 파일 승인 셀은 그대로다** — 토큰이 남아 `remainingEdits`로 보인다. "전부 해제"는 리포에 값이 없던 셀의 편집값을 pending
- *   아닌 채 남겨 다른 Publish에 조용히 싣는다(`/feature-review` CTO).
- * - ⚠️ **적재가 확정된 갈래(`payload`·`empty`)에서만 부른다** — tx 끝에 공통으로 두면 적재 안 된 표면의 편집이 사라진다(POSTMORTEM
- *   2026-09-09 "일회용 허가를 이벤트로 비웠다").
- * - `updatedAt`을 건드리지 않는다 — raw SQL이라 `@updatedAt`이 개입하지 않는다(`acknowledgeDelivered`와 같은 이유).
- */
-async function releaseOrphanedApproved(tx: Prisma.TransactionClient, scope: { projectId: string; surfaceId: string }, approvedTokens: readonly string[]): Promise<void> {
-  if (approvedTokens.length === 0) return;
-  await tx.$executeRaw`
-    UPDATE "Translation" AS t SET "pendingEditToken" = NULL
-    FROM "StringKey" k, "Locale" l
-    WHERE t."projectId" = ${scope.projectId} AND t."surfaceId" = ${scope.surfaceId}
-      AND t."pendingEditToken" = ANY(${[...approvedTokens]}::text[])
-      AND k."projectId" = t."projectId" AND k."surfaceId" = t."surfaceId" AND k."id" = t."keyId"
-      AND l."projectId" = t."projectId" AND l."surfaceId" = t."surfaceId" AND l."code" = t."localeCode"
-      AND (k."orphaned" OR l."orphaned")`;
 }
 
 /** 커밋된 표면 트랜잭션이 실제로 바꾼 값 수의 합 — 롤백된 표면은 더하지 않는다(트랜잭션이 끝난 뒤에 더한다). */
