@@ -21,7 +21,7 @@
 <h3 align="center"><a href="https://mal-moi.com"><ins>Get started</ins></a> · <a href="https://mal-moi.com/docs">Read the docs</a></h3>
 
 <p>
-  <img src="docs/assets/readme/hero.webp" alt="The translation editor: source tree, key list, and one key in English, French, and Korean" width="960" />
+  <img src="docs/assets/readme/hero.webp" alt="The translation editor: source tree, key list, and one key in English, German, French, and Japanese" width="960" />
 </p>
 
 Translators never touch Git: they sign in, edit, and hit **Publish**.
@@ -63,7 +63,7 @@ one **Save** writes every changed language of a key at once.
 
 </td>
 <td width="50%">
-  <img src="public/guide/translation-editor.webp" alt="The translation screen with a key selected and its English source and French and Korean translations" width="100%" />
+  <img src="public/guide/translation-editor.webp" alt="The translation screen with a key selected, its English source, and its German and French fields" width="100%" />
 </td>
 </tr>
 <tr>
@@ -90,7 +90,7 @@ before and after. History is kept for the life of the project.
 
 </td>
 <td width="50%">
-  <img src="docs/assets/readme/logs.webp" alt="Logs filtered to Publish, listing sent, held-back, and nothing-to-send runs grouped by UTC date" width="100%" />
+  <img src="docs/assets/readme/logs.webp" alt="Logs filtered to Publish, listing sent, held-back, and nothing-to-send runs with UTC times" width="100%" />
 </td>
 </tr>
 <tr>
