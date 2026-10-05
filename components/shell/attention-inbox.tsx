@@ -41,11 +41,13 @@ export function AttentionInbox() {
   const open = useRef(false);
   const clearOnClose = useRef(false);
   const latest = useRef(0);
+  // 서버 워터마크가 실제로 움직였나 — 그 뒤 도착한 배지 수는 옛 사실이다. 실패·`marked: false` 열기는 워터마크를 안 움직였으니 배지를 버리지 않는다.
+  const marked = useRef(false);
 
   useEffect(() => {
     void loadAttentionBadgeAction().then(result => {
-      // 그 사이 한 번이라도 열었으면 그 응답이 더 새 사실이다 — 늦게 온 배지 수로 지운 배지를 되살리지 않는다.
-      if (result.status === "ok" && latest.current === 0) setUnread(result.unread);
+      // 읽음이 기록된 뒤 도착한 배지 수로 지운 배지를 되살리지 않는다.
+      if (result.status === "ok" && !marked.current) setUnread(result.unread);
     }, () => {});
   }, []);
 
@@ -59,6 +61,7 @@ export function AttentionInbox() {
     };
     openAttentionInboxAction().then(result => {
       if (result.status === "ok" && result.marked) {
+        marked.current = true;
         if (open.current) clearOnClose.current = true;
         else setUnread(0);
       }
@@ -88,7 +91,12 @@ export function AttentionInbox() {
       </DropdownMenuTrigger>
       {/* 그릇은 전역 검색 목록과 같은 형이다 — 폭 360, 높이 min(560, 가용), 한 겹 스크롤. 머리 제목은 없다(트리거 이름이 메뉴 이름이다). */}
       <DropdownMenuContent align="end" className="max-h-[min(560px,var(--radix-dropdown-menu-content-available-height))] w-90 p-0">
-        <div className="py-2" aria-busy={list.status === "idle" || undefined}>
+        <div className="py-2">
+          {/*
+            ⚠️ **로딩·빈 상태의 sr 문장은 aria-busy 밖의 region 하나가 든다**(R-B 🟡2) — busy 안의 변화는 AT가 미뤄도 되고,
+            빈 상태는 메뉴 항목이 0이라 포커스로 닿지 않는다. 오류 줄은 아래 `CommandStatus`(보이는 줄)가 든다.
+          */}
+          <LiveStatus text={list.status === "idle" ? m.inbox.loading : list.status === "ok" && list.plan.groups.length === 0 ? m.home.attention.empty.title : ""} />
           {list.status === "idle" && <Loading />}
           {/* 상태 줄은 늘 마운트된 live region이다 — 목록 자리가 오류로 바뀌는 순간 내용만 들어와 읽힌다. */}
           <div className={list.status === "failed" ? "pb-1" : undefined}>
@@ -144,19 +152,29 @@ function Row({ slug, item, now }: { slug: string; item: InboxPlan["groups"][numb
   );
 }
 
-/** 첫 조회 전 골격 — 그룹 머리 한 줄 + 행 셋. 메뉴 항목이 0개라 ↓는 아무 데도 가지 않고, 골격이 `aria-hidden`이라 sr 상태 문장이 든다. */
+/**
+ * sr 상태 문장 — region이 **먼저 빈 채로 서고** 문장은 한 박자 뒤에 들어온다. 메뉴 면은 열 때마다 새로 마운트되므로, 문장과 함께
+ * 나타나는 region은 낭독이 보장되지 않는다(`CommandStatus` 머리 주석과 같은 이유).
+ */
+const ANNOUNCE_DELAY_MS = 100;
+function LiveStatus({ text }: { text: string }) {
+  const [shown, setShown] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => setShown(text), ANNOUNCE_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [text]);
+  return <div data-inbox-live role="status" aria-live="polite" className="sr-only">{shown}</div>;
+}
+
+/** 첫 조회 전 골격 — 그룹 머리 한 줄 + 행 셋. 메뉴 항목이 0개라 ↓는 아무 데도 가지 않는다. `aria-busy`는 골격에만 선다(상태 문장은 `LiveStatus`). */
 function Loading() {
-  const m = useMessages();
-  return <>
-    <p role="status" className="sr-only">{m.inbox.loading}</p>
-    <div aria-hidden>
-      <ListGroup heading={<Skeleton size="xs" className="w-24" />} icon={<Skeleton className="size-4" />}>
-        <DropdownMenuRowSkeleton widths={["w-[88%]", "w-[40%]"]} />
-        <DropdownMenuRowSkeleton widths={["w-[72%]", "w-[32%]"]} />
-        <DropdownMenuRowSkeleton widths={["w-[80%]", "w-[44%]"]} />
-      </ListGroup>
-    </div>
-  </>;
+  return <div aria-hidden aria-busy="true">
+    <ListGroup heading={<Skeleton size="xs" className="w-24" />} icon={<Skeleton className="size-4" />}>
+      <DropdownMenuRowSkeleton widths={["w-[88%]", "w-[40%]"]} />
+      <DropdownMenuRowSkeleton widths={["w-[72%]", "w-[32%]"]} />
+      <DropdownMenuRowSkeleton widths={["w-[80%]", "w-[44%]"]} />
+    </ListGroup>
+  </div>;
 }
 
 /** 종류·프로젝트·표면·로케일이 키다 — 응답이 와도 같은 행이 같은 노드로 남는다. */

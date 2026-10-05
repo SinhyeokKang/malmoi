@@ -5,7 +5,7 @@ import { Search } from "lucide-react";
 import { expect, it, vi } from "vitest";
 
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuRow, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuRow, DropdownMenuRowSkeleton, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ListGroup } from "@/components/ui/list-group";
 import { ListRow } from "@/components/ui/list-row";
 
@@ -102,4 +102,13 @@ it("DropdownMenuRow 버튼 갈래는 Enter로 onSelect를 부른다", async () =
   await act(async () => { retry.focus(); });
   await key(retry, "Enter");
   expect(onSelect).toHaveBeenCalledTimes(1);
+});
+
+it("DropdownMenuRowSkeleton은 실물 행과 같은 상자다 — py-2.5, 제목 줄 text-sm, 보조줄 text-xs + leading-normal", async () => {
+  const { container } = await render(<DropdownMenuRowSkeleton widths={["w-1/2", "w-1/3"]} />);
+  const row = container.firstElementChild!;
+  expect([...row.classList]).toEqual(expect.arrayContaining(["py-2.5", "px-4", "gap-3"]));
+  const [title, description] = [...row.querySelectorAll<HTMLElement>("[data-skeleton-line]")];
+  expect(title!.classList.contains("text-sm")).toBe(true);
+  expect([...description!.classList]).toEqual(expect.arrayContaining(["text-xs", "leading-normal"]));
 });

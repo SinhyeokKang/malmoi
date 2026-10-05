@@ -182,16 +182,90 @@ it("항목 0이면 빈 상태 — Home 제목과 Inbox 보조 문장, 메뉴 항
   expect(items()).toHaveLength(0);
 });
 
+/** 늦게 채우는 live region의 지연(`ANNOUNCE_DELAY_MS`)을 넘겨 기다린다. */
+async function announced() { await act(async () => { await new Promise(r => setTimeout(r, 150)); }); }
+const liveRegion = () => menu()!.querySelector<HTMLElement>("[data-inbox-live]");
+
 it("첫 조회 전엔 골격 + aria-busy + sr 상태 문장이고 메뉴 항목이 0이다", async () => {
   await mount(0);
   nextOpen();
   await openMenu();
   const busy = menu()!.querySelector('[aria-busy="true"]');
   expect(busy).not.toBeNull();
-  const status = [...menu()!.querySelectorAll('[role="status"]')].find(node => node.textContent === en.inbox.loading);
-  expect(status?.classList.contains("sr-only")).toBe(true);
   expect(menu()!.querySelectorAll("[data-skeleton-line]").length).toBeGreaterThan(0);
   expect(items()).toHaveLength(0);
+  // ⚠️ 상태 문장은 aria-busy 서브트리 밖의 polite region이다 — busy 안의 변화는 AT가 busy가 풀릴 때까지 미뤄도 된다(R-B 🟡2).
+  const region = liveRegion()!;
+  expect(region.getAttribute("role")).toBe("status");
+  expect(region.getAttribute("aria-live")).toBe("polite");
+  expect(region.classList.contains("sr-only")).toBe(true);
+  expect(busy!.contains(region)).toBe(false);
+  expect(region.closest("[aria-busy]")).toBeNull();
+  // region이 먼저 서고 문장은 뒤에 들어온다 — 내용과 함께 나타나는 region은 낭독이 보장되지 않는다(CommandStatus 머리 주석).
+  expect(region.textContent).toBe("");
+  await announced();
+  expect(region.textContent).toBe(en.inbox.loading);
+});
+
+it("골격 행은 실물 행과 같은 줄 높이다 — 보조줄 줄 래퍼가 leading-normal을 든다", async () => {
+  await mount(0);
+  nextOpen();
+  await openMenu();
+  const rows = [...menu()!.querySelectorAll<HTMLElement>("[aria-busy] [data-row-copy]")];
+  expect(rows).toHaveLength(3);
+  for (const row of rows) {
+    const [title, description] = [...row.querySelectorAll<HTMLElement>("[data-skeleton-line]")];
+    expect(title?.classList.contains("text-sm")).toBe(true);
+    // `Skeleton size="xs"`의 `text-xs`는 `--tw-leading`을 상속받지 않아 부모 `leading-normal`을 덮는다 — 줄 래퍼가 직접 든다.
+    expect([...description!.classList]).toEqual(expect.arrayContaining(["text-xs", "leading-normal"]));
+  }
+});
+
+it("빈 목록이 도착하면 같은 live region이 빈 상태 제목을 읽는다", async () => {
+  await mount(0);
+  const d = nextOpen();
+  await openMenu();
+  await announced();
+  const region = liveRegion()!;
+  await settle(d, ok({ groups: [], unread: 0 }));
+  await announced();
+  // 로딩 때의 그 노드가 그대로 남아 문장만 바뀐다 — 새 region이 문장과 함께 서지 않는다.
+  expect(liveRegion()).toBe(region);
+  expect(region.textContent).toBe(en.home.attention.empty.title);
+  expect(region.closest("[aria-busy]")).toBeNull();
+});
+
+it("목록이 있으면 live region은 비어 있다 — 항목은 메뉴 로빙이 읽는다", async () => {
+  await mount(0);
+  const d = nextOpen();
+  await openMenu();
+  await settle(d, ok());
+  await announced();
+  expect(liveRegion()!.textContent).toBe("");
+});
+
+it("배지 응답보다 먼저 연 open이 marked가 아니면 늦게 온 배지 수를 버리지 않는다", async () => {
+  let resolveBadge!: (value: AttentionBadgeResult) => void;
+  mocks.badge.mockImplementation(() => new Promise<AttentionBadgeResult>(r => { resolveBadge = r; }));
+  await render(<AttentionInbox />);
+  const d = nextOpen();
+  await openMenu();
+  await settle(d, ok(PLAN, false));
+  await escape();
+  await act(async () => { resolveBadge({ status: "ok", unread: 4 }); });
+  expect(badgeNode()?.textContent).toBe("4");
+});
+
+it("marked 응답이 먼저 왔으면 늦게 온 배지 수로 지운 배지를 되살리지 않는다", async () => {
+  let resolveBadge!: (value: AttentionBadgeResult) => void;
+  mocks.badge.mockImplementation(() => new Promise<AttentionBadgeResult>(r => { resolveBadge = r; }));
+  await render(<AttentionInbox />);
+  const d = nextOpen();
+  await openMenu();
+  await settle(d, ok());
+  await escape();
+  await act(async () => { resolveBadge({ status: "ok", unread: 4 }); });
+  expect(badgeNode()).toBeNull();
 });
 
 it("오류면 CommandStatus danger 줄 + Try again 메뉴 항목 — ↓로 닿고 Enter로 다시 조회하며 시도 중엔 disabled다", async () => {
