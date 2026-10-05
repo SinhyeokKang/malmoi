@@ -1366,7 +1366,7 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
   쓰는 자리는 **전부 여기 적힌 것뿐이다**(새 자리를 만들면 여기에 더한다): 키 단위 저장 `applyKeySave`(`saveTranslationKey`)와 그 배치판 `applyKeySaveBatch`(MCP `set_translations`)가 값이 실제로 바뀐 셀에만 새 UUID를 쓰고(no-op은 안 쓴다. T16에서 지운 옛 **셀 단위** 저장 `saveTranslation`은 복원 기준을 기록하지 않는 쓰기 경로였다 — 지금 같은 이름의 `lib/keys/save-translation.ts#saveTranslation`은 `applyKeySave`를 부르는 키 단위 공유 코어다) ·
   `applyPush`의 `DO UPDATE`가 덮은 셀에서 비우고(페이로드에 없는 셀은 남는다) · Publish가 `committed`와 **`no-changes` 둘 다**에서
   캡처한 `(id, token)`이 아직 같은 셀만 조건부 UPDATE로 비우고(§3 흐름 절 — `lastPulledAt`과 한 트랜잭션) · backfill 스크립트가 배포 A 이전 편집에 채우고 ·
-  Revert가 미리보기 때 캡처한 토큰 조건으로 비우고(translation-rework, `lib/keys/revert.ts` · §5.8) · 폐기 승인 Sync가 이번 적재로 orphan이 된 승인 셀에서 비운다(delivery-invariants D1, `lib/import/run.ts#releaseOrphanedApproved` · §5.5.2).
+  Revert가 미리보기 때 캡처한 토큰 조건으로 비우고(translation-rework, `lib/keys/revert.ts` · §5.8) · 폐기 승인 Sync와 제거된 소스의 되살림 첫 적재가 이번 적재로 orphan인 승인 셀에서 비운다(delivery-invariants D1, `lib/protection/release-orphaned.ts#releaseOrphanedApproved` · §5.5.2 · §5.9).
   ⚠️ **시각으로 대체하지 않는다** — 같은 밀리초의 재저장을 `updatedAt`으로는 가를 수 없다.
   ⚠️ **배포 B(2026-09-18)부터 미전달 판정의 유일한 근거다** — 미배포 집계·1층 스킵·Publish 미리보기·셀 배지·목록 raw SQL·CI 보류·수동 Sync 폐기 승인이
   전부 `pendingWhere`(또는 그 SQL 사본)를 지난다. ⚠️ **공유되는 것은 객체가 아니라 술어 함수다** — `pendingWhere(projectId, surfaceId?)`는
@@ -2171,9 +2171,9 @@ Logs 행위자·상세 Trigger·보조줄·Home 메타 열이 이것 하나를 �
 읽는 쪽은 전부 이미 `archivedAt: null`로 좁혀 "제거됨"으로 읽어도 참이었다(Sources·셸·Home·Inbox·검색·Publish·야간·온보딩·MCP).
 쓰는 자리는 둘뿐이다 — 제거(`lib/surfaces/remove.ts`)와 되살림(`lib/surfaces/create.ts`의 revive 갈래).
 
-- **제거는 한 트랜잭션이다.** `lockProjectAccess`(`project:settings`, `Project`→`TranslationSurface`) 뒤 활성 표면·기본 id·첫 적재 진행 여부·
+- **제거는 한 트랜잭션이다.** `lockProjectAccess`(`project:settings`, `Project`→`TranslationSurface`) 뒤 활성 표면·기본 id·적재(동기화) 진행 여부·
   그 소스의 미전달 토큰을 다시 읽고 `planSurfaceRemoval`로 판정한다 — 거부는 `last-source`(마지막 활성 소스) · `archived`(프로젝트 보관) ·
-  `importing`(첫 적재 진행 중) · `not-found`. 같은 tx에서 `archivedAt`을 세우고, 기본 소스였으면 `Project.defaultSurfaceId`를 남은 활성 중
+  `importing`(그 소스의 적재·동기화가 진행 중 — CI·수동 Sync의 살아 있는 표시, 만료된 표시는 막지 않는다) · `not-found`. 같은 tx에서 `archivedAt`을 세우고, 기본 소스였으면 `Project.defaultSurfaceId`를 남은 활성 중
   **slug 오름차순 첫째**로 옮기고(복합 FK `(id, defaultSurfaceId)`가 같은 프로젝트를 강제한다), `ProjectEvent { kind: SURFACE, subtype:
   "surface.removed" }`를 남긴다. **번역 행은 건드리지 않는다.**
 - ⚠️ **미전달이 있으면 지문이 필요하다** — `removalFingerprint`는 `["remove-surface", userId, projectId, surfaceId, 그 소스의 토큰 정렬]`이다.
@@ -2182,7 +2182,10 @@ Logs 행위자·상세 Trigger·보조줄·Home 메타 열이 이것 하나를 �
 - **되살림** — 추가(`createSurfaces`)가 tx 안에서 `planSurfaceRevival`로 요청마다 갈래를 고른다: 같은 `pathTemplate` + 같은 어댑터의
   보관 행이 있으면 `archivedAt`이 가장 최신인 행을 되살리고(`id`·`slug` 유지 — 키·번역·이력이 그대로 붙는다), 어댑터가 다르면 새 행(slug 접미사)이다.
   되살린 행은 `lastCommitSha`·`lastCommitAt`·import 오류를 비우고, 첫 적재를 **`previousBaseLocale: null` + 그 소스의 현재 미전달 토큰
-  전부를 `approvedTokens`로** 돈다 — strict 첫 적재(불변식 1의 셋째 길). 리포에 값이 없는 칸은 덮일 값이 없어 미전달로 남는다.
+  전부를 `approvedTokens`로** 돈다 — strict 첫 적재(불변식 1의 셋째 길). 수동 Sync와 같은 말이다 — 리포에 값이 없는 칸(빈 값)은 덮일 값이 없어 미전달로 남고,
+  **orphan이 된 승인 셀은 풀린다**(`releaseOrphanedApproved` — 제거된 동안 리포가 키를 지웠으면 안 풀린 토큰이 화면엔 0인 채 그 키를 되살린 CI를
+  매번 `deferred`로 만든다. 제거 때 이미 orphan이던 셀도 지문이 셌으므로 함께 풀린다). ⚠️ 다운로드·파싱 실패가 섞이면 `suppressOrphan`이라 옛 키를
+  orphan시키지 않고, 그 셀의 승인 토큰도 남는다(audit #7).
   옛 `lastCommitAt`이 남으면 `stale-commit`이 나므로 비운다.
 - **push** — 활성 표면이 없으면 `classifyMissingSurface`가 `removed`(같은 slug의 보관 행) / `mismatch`를 가른다. `/api/push`·`/failure` 둘 다
   `409 surface removed` + 거부 기록, 거부 어휘 `NOT_STARTED_REASONS`의 일곱째다. 잠금 뒤 `ApplyGuardError`도 `archived`와 `surface-removed`로 갈린다.
