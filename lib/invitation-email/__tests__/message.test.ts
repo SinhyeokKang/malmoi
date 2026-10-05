@@ -106,7 +106,7 @@ describe("buildInvitationEmail — html", () => {
     expect(html).not.toContain("Accept the invitation to get started.");
   });
 
-  it("카드가 문장과 버튼 사이에 선다 — 폭 100%, 테두리 #e5e5e5, radius 12", () => {
+  it("카드가 문장과 버튼 사이에 선다 — 폭 100%(최대 400), 테두리 #e5e5e5, radius 12", () => {
     const { html } = buildInvitationEmail(base);
     const sentence = html.indexOf("You've been invited to join this project");
     const name = html.indexOf(">Acme Web<");
@@ -174,9 +174,15 @@ describe("buildInvitationEmail — 가운데 정렬 (2026-10-04 사용자)", () 
     expect(openTag(/<table([^>]*)>\s*<tr><td align="center" bgcolor="#171717"/)).toContain("border-collapse:separate");
   });
 
-  it("카드 안의 타일·이름 묶음이 가운데에 서고, 이름·역할 두 줄은 타일 옆에서 왼쪽 정렬이다", () => {
+  it("카드 자체는 최대 400px로 가운데에 서고, 안의 타일·이름 묶음은 왼쪽 정렬이다 (2026-10-06 사용자)", () => {
+    const card = openTag(/<table([^>]*)>\s*<tr><td style="padding:12px;/);
+    expect(card).toContain('align="center"');
+    expect(card).toContain("max-width:400px");
+    expect(card).toContain("margin:0 auto 28px auto");
+    expect(openTag(/<tr><td( style="padding:12px;[^>]*)>/)).toContain("text-align:left");
     const row = openTag(/<table([^>]*)>\s*<tr>\s*<td width="32"/);
-    expect(row).toContain('align="center"');
+    expect(row).not.toContain('align="center"');
+    expect(row).not.toContain("margin:0 auto");
     expect(row).not.toContain('width="100%"');
     expect(openTag(/<td([^>]*)>\s*<div style="font-size:14px/)).toContain("text-align:left");
   });

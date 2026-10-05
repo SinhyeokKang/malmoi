@@ -10,6 +10,9 @@
  * ⚠️ 원격 이미지는 전부 `mal-moi.com` 고정 경로다(로고 · Box PNG · `/api/images/<key>`). 썸네일은 프로젝트
  *   단위 값이라 수신자를 가르지 않아 열람 추적 픽셀이 되지 않는다.
  * ⚠️ 치환은 `message.ts`가 이스케이프한 값으로만 한다. 여기서 문자열을 조립하지 않는다.
+ * ⚠️ 본문은 가운데 정렬이지만 **카드는 예외다** (2026-10-06 사용자) — 카드 자체는 최대 400px로 가운데에 서고, 안의 타일·이름은
+ *   왼쪽 정렬이다. 본문 칸의 `text-align:center`가 상속되므로 카드 칸이 `text-align:left`를 다시 건다. Outlook(mso)은
+ *   `max-width`를 무시해 카드가 본문 폭으로 선다.
  * ⚠️ 테두리+radius를 든 칸의 표(카드·버튼)는 `border-collapse:separate`다 — 전역 `table{border-collapse:collapse}` 아래선
  *   radius가 테두리에 안 걸려 각진 1px 테두리와 모서리 흰 틈이 남는다(2026-10-04 실측 — 버튼에만 빠져 있었다).
  */
@@ -66,9 +69,9 @@ export const INVITATION_EMAIL_HTML = `<!DOCTYPE html>
         <tr><td class="mm-card-pad" align="center" style="padding:36px 0 32px 0;text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
           <h1 class="mm-h1" style="margin:0 0 12px 0;font-size:24px;line-height:32px;font-weight:600;letter-spacing:-0.01em;color:#0a0a0a;">You're invited to a project on Malmoi</h1>
           <p style="margin:0 0 16px 0;font-size:15px;line-height:24px;color:#0a0a0a;">You've been invited to join this project on Malmoi.</p>
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 28px 0;border:1px solid #e5e5e5;border-radius:12px;border-collapse:separate;">
-            <tr><td style="padding:12px;">
-              <table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
+          <table role="presentation" width="100%" align="center" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:400px;margin:0 auto 28px auto;border:1px solid #e5e5e5;border-radius:12px;border-collapse:separate;">
+            <tr><td style="padding:12px;text-align:left;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                 <tr>
                   {{TILE}}
                   <td style="padding:0 0 0 12px;text-align:left;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;letter-spacing:0.02em;font-weight:400;word-break:break-word;overflow-wrap:anywhere;">
