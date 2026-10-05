@@ -423,3 +423,14 @@ it("다시 연 뒤 새 응답의 안 읽음(워터마크보다 새 항목)은 �
   expect(menu()!.querySelectorAll("[data-unread-dot]")).toHaveLength(1);
 });
 
+/** #190 — 행 시각은 시안의 짧은 형(`12m ago`)이다. Home은 긴 형을 그대로 쓴다. */
+it("행 시각은 짧은 상대 시각이다", async () => {
+  await mount(0);
+  const d = nextOpen();
+  await openMenu();
+  await settle(d, ok());
+  expect(items()[0]!.textContent).toContain("12m ago");
+  expect(items()[0]!.textContent).not.toContain("minutes ago");
+  expect(items()[4]!.textContent).toContain("1d ago");
+});
+

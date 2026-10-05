@@ -154,7 +154,8 @@ function Row({ slug, item, now }: { slug: string; item: InboxPlan["groups"][numb
         {sub !== "" && <span className="block truncate">{sub}</span>}
         {item.ownerRetries && <span className="mt-copy-gap block">{m.projects.importFailure.ownerRetries}</span>}
       </>}
-      aside={item.at === null ? undefined : <span className="text-muted-foreground shrink-0 text-xs">{relativeTime(item.at, now, uiLocale)}</span>}
+      // 시각은 시안의 짧은 형(`12m ago`)이다 — 360 메뉴의 문장 칸(226)을 지킨다(#190). Home 카드는 긴 형 그대로다.
+      aside={item.at === null ? undefined : <span className="text-muted-foreground shrink-0 text-xs">{relativeTime(item.at, now, uiLocale, { style: "narrow" })}</span>}
     />
   );
 }
