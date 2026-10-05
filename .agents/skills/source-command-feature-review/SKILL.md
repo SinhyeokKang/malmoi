@@ -182,7 +182,7 @@ Use this skill when the user asks to run the migrated source command `feature-re
 ### CDO 프롬프트 핵심
 
 - 편집 흐름이 자연스러운가? 불필요한 클릭/전환이 있는가?
-- `docs/DESIGN.md`의 시각 규칙과 충돌하지 않는가? 특히 **라이트 단일**(`dark:` 금지)과 mono 표면 불변식.
+- `docs/DESIGN.md`의 시각 규칙과 충돌하지 않는가? 특히 **`dark:` 금지 — 다크는 토큰 값이 든다**와 mono 표면 불변식.
 - 새 색이 필요한가? raw는 0이다 — 새 색은 §6.2 의미 토큰 + 두 테마 값(`light-dark()`)이고, DESIGN.md §6.2 등재와 두 테마 대비 확인이 태스크에 있는가?
 - 기존 컴포넌트(`components/translations/workspace/locale-panel.tsx`, `components/ui/`)의 인터랙션 패턴과 일관적인가? 같은 역할에 새 패턴을 만들지 않았는가?
 - 빈 상태·로딩 상태·에러 상태(저장 실패, 권한 만료)가 고려됐는가?
