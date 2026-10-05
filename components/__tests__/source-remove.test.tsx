@@ -139,6 +139,33 @@ it("확인 창은 지문을 받는 동안 확정을 busy로 두고, 경고 없�
  * 리뷰 B2 🟡1 — live region은 **내용보다 먼저** 있어야 한다. 지문이 도착한 순간 내용을 든 채 새로 마운트되면 대부분의 스크린 리더가
  * 첫 내용을 읽지 않고, 포커스는 이미 [Cancel]이라 늘어난 `aria-describedby`도 다시 읽히지 않는다 — 손실 줄이 전달되지 않은 채 확정할 수 있다.
  */
+/**
+ * #192 — 골격이 고정 66px이었고 실제 한 줄짜리 경고 Alert는 `text-xs` 줄높이로 59px라, 지문이 도착하면 창이 줄어 버튼이 위로 튀었다.
+ * 골격은 **대체될 가장 짧은 Alert(워크플로 줄만)와 같은 마크업**에서 높이를 얻는다 — 고정 치수가 없다.
+ */
+let warningAlertClass = "";
+it("경고 Alert의 형 — 아래 골격 단언의 기준값", async () => {
+  await render(<SourcesScreen slug="p" role="OWNER" data={two} adapters={[]} now={new Date()} />);
+  await openDetail();
+  await openConfirm();
+  warningAlertClass = confirmDialog()!.querySelector("[data-removal-warning]")!.closest("[aria-live='polite'] > *")!.className;
+  expect(warningAlertClass).not.toBe("");
+});
+it("지문 대기 골격은 워크플로 줄만 든 경고 Alert와 같은 마크업이라 높이가 같다 (#192)", async () => {
+  mocks.preview.mockReturnValue(new Promise(() => {}));
+  await render(<SourcesScreen slug="p" role="OWNER" data={two} adapters={[]} now={new Date()} />);
+  await openDetail();
+  await openConfirm();
+  const skeleton = confirmDialog()!.querySelector("[data-removal-skeleton]")!;
+  expect(skeleton.getAttribute("aria-hidden")).toBe("true");
+  expect(skeleton.querySelector("[class*='h-[']")).toBeNull();
+  const shape = skeleton.querySelector("[data-removal-skeleton-shape]")!;
+  expect(shape.className).toContain("invisible");
+  expect(shape.textContent).toBe(en.sources.removal.workflowLine);
+  // 실제 경고 Alert와 같은 형(warning · sm)이라 패딩·줄높이·글리프가 같다 — 클래스가 같은지로 잰다.
+  expect(shape.firstElementChild?.className).toBe(warningAlertClass);
+});
+
 it("경고 줄 묶음의 live region은 지문 대기 중부터 있고 도착한 줄이 같은 노드에 들어간다", async () => {
   let resolve!: (value: unknown) => void;
   mocks.preview.mockReturnValue(new Promise(r => { resolve = r; }));
@@ -190,6 +217,17 @@ it.each([
   expect(mocks.preview).toHaveBeenCalledTimes(2);
   expect(dialog.textContent).not.toContain(en.sources.removal.previewFailed);
   expect(inConfirm(en.sources.removal.action)!.getAttribute("aria-disabled")).toBeNull();
+});
+
+/** #193 — [Try again]이 사라지면 포커스가 `div[role=dialog]`로 떨어졌다. 창의 첫 포커스와 같은 [Cancel]로 옮긴다(POSTMORTEM 2026-09-24). */
+it("[Try again]이 지문을 다시 받으면 포커스는 [Cancel]이다 (#193)", async () => {
+  mocks.preview.mockResolvedValueOnce({ ok: false, error: "unavailable" });
+  await render(<SourcesScreen slug="p" role="OWNER" data={two} adapters={[]} now={new Date()} />);
+  await openDetail();
+  await openConfirm();
+  await act(async () => { await user().click(inConfirm(en.sources.retry)!); });
+  expect(confirmDialog()!.textContent).toContain(en.sources.removal.workflowLine);
+  expect(document.activeElement).toBe(inConfirm(en.common.cancel));
 });
 
 it("미리보기가 판정 거부를 내면 그 문장과 [Close]만 남는다", async () => {
