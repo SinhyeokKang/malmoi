@@ -14,7 +14,7 @@ import { authorizeLoginLink, linkAuthCookies, withLoginLink } from "@/lib/login-
 import { destFromCallbackUrl, isLoginProvider } from "@/lib/login-link/policy";
 import { beginLink, loadLinkOffer } from "@/lib/login-link/store";
 import { cookies } from "next/headers";
-import { syncColorSchemeCookieOnSignIn } from "@/lib/color-scheme/cookie";
+import { recordColorSchemeAtSignIn, withColorSchemeSync } from "@/lib/color-scheme/sign-in";
 import { noteAuthError } from "@/lib/auth/outage";
 import { githubApi, githubUserinfo } from "@/lib/auth/profile";
 import { publicSession } from "@/lib/auth/public-session";
@@ -223,21 +223,21 @@ const authConfig = NextAuth(async () => ({
   events: {
     /**
      * **로그인이 끝나는 모든 경로의 끝이다** — 로그인 수단 연결·challenge 왕복(`login-link`·`session-revocation`)도 마지막엔 이 Auth.js 콜백으로 돌아와
-     * 세션을 만든다. 계정의 화면 테마를 이 기기 쿠키로 옮겨 적는다(`syncColorSchemeCookieOnSignIn` — 계정 값이 없으면 쿠키를 건드리지 않고, 던지지 않는다).
-     * `cookies().set`은 Route Handler 문맥이라 응답에 실린다.
+     * 세션을 만든다. 계정의 화면 테마를 요청 스코프에 **기록만** 한다(`recordColorSchemeAtSignIn`) — 쿠키는 아래 `handlers`의 바깥 래퍼가 응답 헤더에 덧붙인다.
+     * ⚠️ 여기서 `cookies().set`을 쓰지 않는다: Route Handler에서는 응답의 Set-Cookie 전체를 재직렬화해 `Max-Age=0` 삭제를 잃는다(`lib/color-scheme/sign-in.ts`).
      */
     async signIn({ user }) {
-      if (typeof user.id === "string") await syncColorSchemeCookieOnSignIn(user.id);
+      if (typeof user.id === "string") await recordColorSchemeAtSignIn(user.id);
     },
   },
 }));
 
 export const { auth, signIn, signOut } = authConfig;
 /**
- * 회수 → 연결 → 병합 순서다. 연결은 현재 세션을 증명에 쓰므로,
+ * 테마 쿠키 동기화가 가장 바깥이고(안쪽 래퍼의 재직렬화를 지나지 않는다), 안은 회수 → 연결 → 병합 순서다. 연결은 현재 세션을 증명에 쓰므로,
  * 세션 쿠키를 뗀 요청 사본을 만드는 withLoginLink보다 먼저 판정해야 한다.
  */
 export const handlers = {
-  GET: (request: NextRequest) => withRevocation(request, () => withConnect(request, () => withLoginLink(request, (callbackRequest) => authConfig.handlers.GET(callbackRequest)))),
-  POST: (request: NextRequest) => withRevocation(request, () => withConnect(request, () => withLoginLink(request, (callbackRequest) => authConfig.handlers.POST(callbackRequest)))),
+  GET: (request: NextRequest) => withColorSchemeSync(request, () => withRevocation(request, () => withConnect(request, () => withLoginLink(request, (callbackRequest) => authConfig.handlers.GET(callbackRequest))))),
+  POST: (request: NextRequest) => withColorSchemeSync(request, () => withRevocation(request, () => withConnect(request, () => withLoginLink(request, (callbackRequest) => authConfig.handlers.POST(callbackRequest))))),
 };
