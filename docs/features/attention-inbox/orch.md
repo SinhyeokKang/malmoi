@@ -36,3 +36,5 @@ A가 `prisma migrate diff`(더미 `DIRECT_URL`)로 SQL만 만든다 → 지휘�
 
 - 2026-10-05 A 재시작: Astra high → medium(사용자, dispatch `ctx_8ab8edafcf13`). B dispatch `ctx_a41dfdd47b86`.
 - 2026-10-05 T13 A → B 이관: 방침 본문이 `messages/*`(B 소유)에 있다. A는 인계에 "방침에 들어갈 사실"만 남긴다.
+- 2026-10-05 A 완료(`a0e5b899..d3bfcf3c`, 커밋 10, gate ok — Node 26). R-A(Opus high): 🔴0 🟡4 🟢7. fix1(🟡1–3 · 🟢1·2·5) → A dispatch `ctx_f6793875abc1`. 🟡4는 B T8b DOM 테스트로 전달.
+  보류: 🟢3(배지 경로가 review/actors 조회도 돈다 — 측정 뒤 판단) · 🟢4(관계 필터 groupBy 빈도 증가 측정 — Q) · 🟢7(방침 공백 — A·B를 같은 push로 낸다 → **A만 먼저 push하지 않는다**).
