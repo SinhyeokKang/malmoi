@@ -34,6 +34,7 @@ description: 여러 배치를 Orca 워커 세션에 나눠 병렬로 ship하고,
    패밀리 안에서는 단순·기계적 구현은 Sol/Sonnet, 복잡한 불변식 판단·독립 리뷰는 Astra/Opus를 우선 고려한다. 실제 사용 가능한 모델 ID와 effort는 현재 런타임에서 확인하고 선택 이유를 한 줄 적는다. Claude 워커의 기존 effort 범위는 low·medium·high이며 Codex는 선택한 모델이 지원하는 effort를 쓴다. ⚠️ **Astra의 effort 상한은 medium이다** (2026-10-05 사용자 — high에서 토큰 소모가 과했다). 재시도·수정 라운드에서도 올리지 않는다. 이름이 비슷한 다른 패밀리로 대체하지 않는다.
 4. **파일 겹침 행렬로 병렬/직렬을 가른다.** 두 배치가 같은 파일을 고치면 병렬로 띄우지 않는다 — 선행이 dev에 들어간 뒤 후행을 띄우거나,
    후행에게 "T6 전에 멈추고 `WAITING FOR <X>`를 찍어라, 신호를 받으면 `git rebase dev`"를 브리프에 넣는다.
+   대기 지점이 있는 브리프에는 **"대기 중에도 신호는 터미널 입력으로 온다 — 입력을 받으면 `orca orchestration check`로 쌓인 메시지부터 읽어라"**를 함께 적는다.
    ⚠️ **`messages/{en,ko,es}.tsx`(새 키는 세 사전에 같이 들어간다)·`workspace.tsx`·`publish-button.tsx`는 거의 모든 UI 배치가 건드린다** — 겹침 판정에서 빠뜨리지 않는다. 번역 일괄 검수 배치(톤·용어)는 `/translate` 검수 모드(모드 ②)로 브리프하고, 같은 런의 다른 배치가 고칠 사전 절을 범위에서 뺀다.
 5. **`orch.md`를 dev에 로컬 커밋한 뒤 첫 워커를 띄운다** — 채팅 속 계획만으로 시작하지 않는다. 워크트리는 로컬 dev에서 갈라지므로, 커밋 안 된 계획은 워커가 못 읽는다. 브리프는 원본 계획과 `orch.md`를 함께 가리킨다. 이후 배치 분리·순서·소유권 변경, 리뷰/수정 라운드, 통합 커밋·검증 결과·미완 항목도 이 문서에 갱신한다.
 
@@ -65,6 +66,9 @@ description: 여러 배치를 Orca 워커 세션에 나눠 병렬로 ship하고,
 - heartbeat만 온 알림은 `check` → `--ack` 뒤 **`<워커> hb`**(`A hb`·`B Q0 hb`)로만 답한다 — 문장·상태 설명을 쓰지 않는다(2026-10-05 사용자). 침묵(빈 응답)은 쓰지 않는다 — 하네스가 출력을 다시 요구해 루프가 생긴다.
 - 완료된 워커는 Delivery 확인 전에 다음 태스크로 재사용하거나 명시적으로 유지·해제한다. 새 태스크는 새 Dispatch로 보내며, 종료된 lifecycle ID로 계속 지시하지 않는다.
 - 사용자가 결정해야 하는 질문은 전달하고, 코드 수정은 소유 워커에게 돌려보낸다. 받은 메시지는 처리 후 확인하고 미처리 배치를 누락하지 않는다.
+- ⚠️ **`orchestration send`(status 메시지)는 입력을 기다리며 멈춘 워커를 깨우지 않는다** (2026-10-05 — B가 `WAITING FOR A`에서 "A is in dev" 메시지를 받지 못하고 멈춰 있었다).
+  워커에게 보내는 지시는 **항상** 둘 중 하나로 보낸다: ① 활성 Dispatch가 턴을 돌고 있으면 `send` + 같은 내용을 `orca terminal send --terminal <handle> --text … --enter`로도 넣는다,
+  ② 턴이 끝난(대기·`worker_done` 뒤) 워커에게는 `terminal send`로 넣거나 새 Task/Dispatch로 보낸다. 보낸 뒤 `worker-read`로 **그 입력에 착수했는지 확인**한다 — 확인 전엔 전달로 치지 않는다.
 
 ## 3. 리뷰 → 수정 라운드
 
@@ -90,7 +94,7 @@ gh run watch $(gh run list --branch dev --workflow ci.yml --commit $(git rev-par
 - 마이그레이션이 든 배치: dev DB에 `pnpm exec prisma migrate deploy`(PRISMA_TARGET 없음 = dev) → `db:status` → anon 권한 0 확인(`/db` 5단계). **prod `db:deploy`는 `/merge` 1단계다.**
 - 문서 신선도(`/push` 4단계)는 리뷰가 찾은 문서 드리프트를 **문서별 커밋**으로 얹는다.
 - 원본 계획의 항목 체크와 `orch.md`의 배치 상태·완료 증거를 갱신하는 커밋을 같이 얹는다.
-- 겹침 때문에 기다리던 워커에게 "`<X>`가 dev에 들어갔다 — `git rebase dev` 후 계속"을 보낸다.
+- 겹침 때문에 기다리던 워커에게 "`<X>`가 dev에 들어갔다 — `git rebase dev` 후 계속"을 **터미널 입력으로** 보내고 착수를 확인한다(§2 — `send`만으로는 깨어나지 않는다).
 - ⚠️ **QA 워커가 main 체크아웃에서 `pnpm dev`를 돌리는 동안에는 cherry-pick·`pnpm build`를 하지 않는다** — HMR이 섞인 상태를 보이고, build는 서버 컴포넌트를 낡게 남긴다. QA 인계 뒤에 몰아서 통합한다.
 
 ## 5. 런타임 검증 (모든 배치가 dev에 들어간 뒤)
