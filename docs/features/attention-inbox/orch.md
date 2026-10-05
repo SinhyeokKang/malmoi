@@ -61,3 +61,4 @@ A가 `prisma migrate diff`(더미 `DIRECT_URL`)로 SQL만 만든다 → 지휘�
 - 2026-10-05 A fix2(`a6f470e6`: 배너 쉐브론 items-center · Select 설명형 체크 첫 줄 · 후보 68곳 판정) — Q2 인계 뒤 통합. 재측정: Projects 배너 · Members 초대 역할 메뉴.
 - 2026-10-05 Q2 완료: design-sync 차이 0(그룹 경계선·골격·짧은 시각 포함, 라이트·다크) · #189 #190 #191 닫힘 · 공개 헤더 Inbox 통과(로그아웃 POST 0). 미검증: rAF 애니메이션(창 스로틀) · prod 배지 POST 수 · 실제 스크린리더. A fix2 통합, gate ok.
 - 2026-10-05 push `f41f79a8`. Q3 dispatch `ctx_6bd71136b78c` — 가이드 컷 전부 재촬영 + 새 `inbox-open` + 쉐브론·Select 재측정. Q2 터미널 닫음.
+- 2026-10-05 Q3 완료: 재촬영 29(셸 컷 27 + README hero·logs) + 새 `inbox-open`(en·ko·es #inbox 참조) · 재측정 통과(쉐브론 Δ0.16px · Select Δ0) · README alt 셋 정정(지휘자 문서 신선도). 남음: `create-ready`(프로젝트 생성 필요 — 벽 절차). gate ok. 다음: 가이드 배치 G(IA 개편 + Malmoi 아래 FAQ, 사용자 2026-10-05).
