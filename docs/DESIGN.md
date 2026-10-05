@@ -79,7 +79,7 @@ size="lg"`(40)는 그대로 **셸 밖 카드 전용**이다(로그인·초대 �
 | `kind-blue` · `kind-teal` · `kind-violet` (+`-surface`) | Logs 활동 칩의 **종류** 색(§6.68 · §6.2) | §6.2 의미 토큰 표 |
 | `surface-subtle` | 흰 카드 안 한 단계 꺼진 면(§6.2). ⚠️ `border-subtle`(패널 가장자리 선)과 다른 토큰이다 — 이름을 `border-*`와 겹쳐 읽히지 않게 지었다 | `#121212` — background보다 **어둡다**(라이트의 "꺼진 면" 방향 유지) |
 | `hue-*` 여덟 / `on-hue` | 프로젝트·사람 식별색과 그 위 글자(§6.2) | 테마 불변 |
-| `scrim` | 오버레이(어둡게 덮기) — `--foreground`와 라이트 값이 같지만 그 변수를 가리키지 않는다(§6.2) | 테마 불변(`hsl(0 0% 3.9%)`) — 다크에서도 어둡게 덮는다 |
+| `scrim` | 오버레이(어둡게 덮기) — `--foreground`와 라이트 값이 같지만 그 변수를 가리키지 않는다(§6.2) | `black` — 다크에서도 어둡게 덮는다(라이트 `hsl(0 0% 3.9%)`, 2026-10-05 #187 시안 정합) |
 | `border` / `input` / `ring` | 테두리 · 입력 테두리 · 포커스 링 | `neutral-800` / `#3a3a3a` / `blue-500` |
 | `divider` | 그룹 안 구분선 `#f0f0f0` — 알파 선과는 별개(§6.2) | `#1e1e1e` |
 | `border-subtle` | ⚠️ **`--border`보다 한 단계 연하다** (8-1b) — 캔버스 위에 뜬 패널의 가장자리 정리용. 경계를 만드는 것은 흰색 대비와 `shadow-low`이고 이 선은 윤곽만 남긴다 | `#1f1f1f` |
@@ -202,7 +202,7 @@ size="lg"`(40)는 그대로 **셸 밖 카드 전용**이다(로그인·초대 �
 - **색 변수 하나가 한 줄이다** — `[data-theme=dark]` 블록과 `@media (prefers-color-scheme: dark)` 안의 System 블록에 다크 값을 두 벌 적는 형을 쓰지 않는다(한 벌만 고치면 System 다크와 명시 다크가 조용히 갈린다). ⚠️ **`light-dark()`는 색만 받는다** — 색이 아닌 테마 값은 지금 0개다. 생기면 `:root[data-theme="dark"]` + System 미디어 블록 둘에 두고, 셋을 넘으면 설계를 다시 본다.
 - **테마는 `<html data-theme>` 속성 하나가 고른다** — 루트 레이아웃이 서버에서 `getColorScheme()`(계정 > 쿠키 `malmoi-color-scheme` > light)으로 정해 첫 HTML에 싣는다. **인라인 스크립트가 없다**(첫 페인트부터 고른 테마이고 CSP nonce에 새 스크립트가 없다). System은 `color-scheme: light dark`라 OS 변경을 **CSS만으로** 따라간다. `color-scheme`이 상속되므로 네이티브 컨트롤·스크롤바·자동완성 면도 함께 바뀐다.
 - ⚠️ **`color-scheme`을 고르는 자리는 `globals.css`의 그 세 블록 하나다** — 다른 자리에서 `color-scheme`을 바꾸면 네이티브 컨트롤만 바뀌고 토큰은 안 따라간다(아래 폴리필이 그 블록을 토글로 바꾸기 때문이다). 세 블록은 본문 `:root {` **뒤**에 둔다 — `globals-css.test.ts`와 대비 헬퍼가 **첫** `:root {`를 본문으로 잡는다.
-- **테마 불변 토큰**: `hue-*` 여덟 · `on-hue` · `scrim` · `warning-emphasis`(`light-dark()`로 감싸지 않는다 — `globals-css.test.ts` `THEME_INVARIANT`가 "감싼 것 = 다크 값 표, 안 감싼 것 = 불변 목록"을 정확히 센다).
+- **테마 불변 토큰**: `hue-*` 여덟 · `on-hue`  · `warning-emphasis`(`light-dark()`로 감싸지 않는다 — `globals-css.test.ts` `THEME_INVARIANT`가 "감싼 것 = 다크 값 표, 안 감싼 것 = 불변 목록"을 정확히 센다).
 - **값을 바꾸면 대비를 두 테마에서 잰다** — `lib/color-scheme/__tests__/contrast.test.ts`가 `globals.css`의 `light-dark()` 두 값을 풀어 실제 비율을 계산한다(이름·존재가 아니라 값 — 2026-09-11 `--ring`은 검사가 green인 채로 안 보였다). 수용 예외는 §7의 여섯뿐이다.
 
 **지원 하한은 사용자 정의 속성 + `color-mix()`다 — `light-dark()` 지원이 아니다.** 산출 CSS(`.next/static/chunks/*.css`)에 `light-dark()`가 남지 않는다: Next의 lightningcss가 기본 대상(리포에 browserslist 없음)에 맞춰 `--lightningcss-light/dark` 토글 폴리필로 낮추고, 위 `color-scheme` 세 블록(System의 미디어 쿼리 포함)도 그 토글로 바꾼다(2026-10-05 실측). `color-mix` 값에는 Tailwind가 hex 폴백 + `@supports` 재선언을 붙인다. ⚠️ Safari·Firefox의 실제 계산은 아직 실측하지 않았다(Chromium만).
@@ -580,7 +580,7 @@ computed style로 잰 것이다.
 | `kind-blue` · `kind-teal` · `kind-violet` (+`-surface`) | Logs 활동 칩의 **종류** 색(번역 · 소스/로케일 · 멤버) | `blue-700`/`50` · `teal-700`/`50` · `violet-700`/`50` | `blue-300`/`500`@14% · `teal-300`/`500`@14% · `violet-300`/`500`@16% | `logs/glyph.tsx` 하나 — 아래 종류 칩 규칙 |
 | `surface-subtle` | 흰 카드 안 한 단계 꺼진 면 | `neutral-50`(`#fafafa`) | `#121212` | Logs 상세의 `Before` 면과 값이 아닌 상태의 점선 블록 **둘뿐**. ⚠️ **`--muted`(#f5f5f5)로 대신하지 않는다** — 흰 `After`와 나란히 서고 두 면의 차이가 "같은 값의 두 시점"을 말하는 유일한 신호다. 새 자리에 번지게 하지 않는다 — 리포의 회색 면은 여전히 `--muted`다 |
 | `hue-rose` … `hue-fuchsia`(8) + `on-hue` | 프로젝트·사람 **식별색**과 그 위 글자·글리프 | `-600` 여덟 · `white` | 테마 불변 | `ui/tone.ts`의 `hueFill`만 — 아래 "이름에서 뽑는 색 8종" |
-| `scrim` | 오버레이(어둡게 덮기) — `/40`(Dialog) · `/32`(LargeModal · logs 상세 · 랜딩 목업) | `--foreground`와 같은 값 | 테마 불변 | ⚠️ **`--foreground`를 가리키지 않는다** — 글자색은 테마를 따라 밝아질 수 있지만 덮개는 계속 어두워야 한다. `--foreground` 알파의 나머지 관용구(hover `/[0.03]` · 선택 `/[0.07]` · `text-foreground/60` 등)는 "표면 위에 글자색을 얇게 깐다"는 뜻이라 그대로다 |
+| `scrim` | 오버레이(어둡게 덮기) — `/40`(Dialog) · `/32`(LargeModal · logs 상세 · 랜딩 목업) | `--foreground`와 같은 값 | `black`(#187) | ⚠️ **`--foreground`를 가리키지 않는다** — 글자색은 테마를 따라 밝아질 수 있지만 덮개는 계속 어두워야 한다. `--foreground` 알파의 나머지 관용구(hover `/[0.03]` · 선택 `/[0.07]` · `text-foreground/60` 등)는 "표면 위에 글자색을 얇게 깐다"는 뜻이라 그대로다 |
 | `link` | 외부 링크 · 검색 일치 · `New from GitHub` | `blue-600` | `blue-400` | §6.3 · 아래 "목록 재설계가 데려온 넷". `--signin-dot`이 같은 값이다 |
 | `gray-light` | 라디오·**체크박스** 지시자의 비선택 테두리 · 번역 빈 칸의 **점선 상자** · 멤버 역할 칩의 **자물쇠**(§6.65) | `neutral-300`(`#d4d4d4`) | `neutral-700` | 16px 원·사각에서 `--input`(#e5e5e5)은 안 보인다. 자리는 아래 B6 표 |
 | `gray-dim` | `--muted-foreground`(#737373)보다 한 단계 **물러난** 층 — 라벨·시각·비활성 글리프 | `neutral-400`(`#a1a1a1` — v4) | `neutral-500` | ⚠️ **본문 금지**(흰 배경 2.58:1 · canvas 2.39:1, 다크 3.78 · 4.17 — 두 테마 모두 4.5 미달, **대비 수용 예외** §7) — 옆의 값이 뜻을 완성하는 자리만. 등재된 이탈 둘: `/projects` 보관 행의 이름·메타(§6.63) · 검색 Dialog 그룹 머리(§6.54). 자리는 아래 B6·Home 표 |
