@@ -444,7 +444,9 @@ components/
                         생성 흐름의 상태를 소유하고 LargeModal + WizardFooter로 단계 본문·바닥을 조립한다.
                         이전 onboarding/modal.tsx 재수출과 ui/modal.tsx 경로는 제거했다
   sources/              sources-screen · source-detail-modal · source-status · base-language-form · add-sources-modal ·
-                        sources-archived 여섯.
+                        remove-source-dialog · sources-archived 일곱.
+                        remove-source-dialog는 상세 모달 바닥 왼쪽 [Remove source]의 확인 창이다(Sync 확인 창 형 — 지문은
+                        여는 순간 받는다). 성공·응답 유실은 목록 소유자(sources-screen)가 상세를 닫고 배너로 받는다.
                         목록 소유자가 선택·쓰기 결과를 유지. 로딩/거부/장애를 구별하고 쓰기는 기존 Action 경계를 따른다.
                         sources-archived는 보관 프로젝트의 안내 한 장이고 목록·상세를 아예 열지 않는다
                         (판정이 조회 **전에** 선다). GitHub 글리프는 여기 없다 — 리포 전체가 signin/brand-icons의
