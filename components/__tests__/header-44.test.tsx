@@ -15,6 +15,11 @@ import { render } from "./helpers/dom";
 
 vi.mock("next/navigation", () => ({ usePathname: () => "/projects" }));
 vi.mock("@/lib/auth/sign-out", () => ({ signOutAction: async () => {} }));
+// 앱 셸 헤더는 Inbox를 든다 — 실물 배지 Action이 세션·DB까지 가지 않게 막는다(R-B3 🟡1).
+vi.mock("@/app/inbox/actions", () => ({
+  loadAttentionBadgeAction: vi.fn(async () => ({ status: "failed" as const })),
+  openAttentionInboxAction: vi.fn(async () => ({ status: "failed" as const })),
+}));
 
 /**
  * **헤더 44의 불변식을 클래스 값 산술로 잰다** (D8, 2026-10-04) — jsdom에는 레이아웃이 없어 실제 y는 못 잰다(런타임 실측이 정본).

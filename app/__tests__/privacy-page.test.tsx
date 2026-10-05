@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { render } from "@/components/__tests__/helpers/dom";
+import type { AttentionBadgeResult, OpenAttentionInboxResult } from "@/app/inbox/actions";
 import type { SessionRead } from "@/lib/auth/read-session";
 import type { UiLocale } from "@/lib/i18n/locales";
 import { es } from "@/messages/es";
@@ -27,6 +28,13 @@ vi.mock("@/lib/auth/read-session", () => ({
 }));
 // 헤더가 로그아웃 Action을 참조로 넘긴다 — 실물은 `@/auth`를 물어 jsdom에서 세울 수 없다.
 vi.mock("@/lib/auth/sign-out", () => ({ signOutAction: async () => {} }));
+// 로그인이면 헤더 Inbox가 마운트되어 배지 Action을 부른다 — 실물은 `getPrisma()`까지 가므로 막고, 호출 수로 페이지 배선을 센다(R-B3 🟡1).
+const inbox = vi.hoisted(() => ({
+  badge: vi.fn(async (): Promise<AttentionBadgeResult> => ({ status: "failed" })),
+  open: vi.fn(async (): Promise<OpenAttentionInboxResult> => ({ status: "failed" })),
+}));
+vi.mock("@/app/inbox/actions", () => ({ loadAttentionBadgeAction: inbox.badge, openAttentionInboxAction: inbox.open }));
+
 
 beforeEach(() => {
   mocks.uiLocale = "en";
@@ -55,6 +63,14 @@ describe("`/privacy` — 헤더 primary가 세션으로 갈린다", () => {
   it.each(["none", "unavailable"] as const)("`%s` → Get started · `/signin`", async (status) => {
     const { container } = await page(status);
     expect(primary(container)).toEqual([en.landing.shell.getStarted, routes.signIn()]);
+  });
+
+  /** 페이지가 `publicAccount`를 넘겨 헤더 Inbox가 선다 — 비로그인이면 서지 않고 배지 Action도 부르지 않는다(attention-inbox fix3). */
+  it.each([["ok", 1], ["none", 0], ["unavailable", 0]] as const)("세션 `%s` → 헤더 Inbox %i개 · 배지 조회 %i회", async (status, n) => {
+    inbox.badge.mockClear();
+    const { container } = await page(status);
+    expect(container.querySelectorAll(`header button[aria-haspopup="menu"][aria-label="${en.inbox.label}"]`)).toHaveLength(n);
+    expect(inbox.badge).toHaveBeenCalledTimes(n);
   });
 });
 
