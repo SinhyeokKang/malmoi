@@ -108,7 +108,7 @@ Server Action 둘(배지 읽기 하나 · 열기 = 조회+읽음 기록 하나),
   - 행 안 읽음: 점 6 `bg-primary`를 행 왼쪽 여백 16 안(x 5–11)에 `absolute`로 — 칩이 그룹 머리와 같은 x16에 남는다. 접근 이름 **맨 앞** sr `Unread`. 검토 대기는 점이 없다.
   - 행 문장: Home 행과 같다 — 굵은 사실 + 근거 꼬리, 보조줄(표면·로케일)은 본문 **아래** 13 muted truncate, EDITOR 실패·일부 반영은 그 아래 **따로 한 줄** `m.projects.importFailure.ownerRetries`(Home `AttentionRow`와 같은 키·형). 시각은 aside 13 muted, 없으면 비운다.
   - 프로젝트 단위 항목(`unsent`·`setup`)은 프로젝트 이름을 다시 쓰지 않는다(그룹 머리와 중복). `unsent`는 대상 표면 slug를 보조줄로, `setup`은 보조줄 없음.
-  - 시각 형은 상대 시각(`lib/relative-time.ts`)이고 `now`는 서버의 `loadedAt`이다 — Home 카드와 같다.
+  - 시각 형은 상대 시각(`lib/relative-time.ts`)이고 `now`는 서버의 `loadedAt`이다. ⚠️ **형은 Home과 다르다** — Inbox 행은 시안의 짧은 형(`relativeTime(…, { style: "narrow" })` → `12m ago` · `3h ago` · `1d ago`, numeric always)이고 Home 카드는 긴 형 그대로다(2026-10-05 #190 — 긴 형이 360 메뉴의 문장 칸 226을 164–192로 줄였다).
 
 ### 재사용 설계 — 손 조립 없이 프리미티브로 (UI primitives first)
 
