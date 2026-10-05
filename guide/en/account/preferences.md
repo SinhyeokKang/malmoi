@@ -57,14 +57,14 @@ If the change fails, the card shows **We couldn't change the time zone. Try agai
 
 ## Choose a theme {#theme}
 
-Malmoi appears in the **Light** theme by default. Choose **Dark**, or **System** to follow your device's appearance setting.
+Malmoi follows your device's appearance setting (**System**) by default. Choose **Light** or **Dark** to set it yourself.
 
 Before you start: Open your avatar menu at the top right and choose **Preferences**.
 
 1. In the **Theme** card, open the menu and pick **System**, **Light**, or **Dark**. There is no Save button; the change applies right away.
 2. Malmoi switches every screen to the new theme. With **System**, Malmoi changes between light and dark whenever your device does.
 
-Malmoi uses the theme saved to your account while you're signed in, then the theme last chosen on this device, then **Light**. It doesn't read your device setting unless you choose **System**, so your first visit is light. The choice is saved to your account and to this device, so after you sign out, the public pages on this device keep your theme. You can change the theme only in Preferences; the footer has no theme menu. The screenshots in this guide always show the light theme.
+Malmoi uses the theme saved to your account while you're signed in, then the theme last chosen on this device, then **System**, which follows your device's light or dark setting, so your first visit matches your device. The choice is saved to your account and to this device, so after you sign out, the public pages on this device keep your theme. You can change the theme only in Preferences; the footer has no theme menu. The screenshots in this guide always show the light theme.
 
 If the change fails, the card shows **We couldn't change the theme. Try again.** and the screen goes back to the previous theme.
 
