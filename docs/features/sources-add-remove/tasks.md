@@ -4,7 +4,7 @@
 
 ## 0. 준비
 - [x] T0. design-brief로 Claude Design 시안 수령 — 검증: 프레임 A1–A8·R1–R9·L1 링크가 spec 머리에 붙음 (2026-10-05)
-- [ ] T0.1. 정본 계약 먼저(CLAUDE.md "계약이 바뀌면 코드보다 먼저") — ARCHITECTURE §0(편집 버리는 길 셋)·§5.5.x·§5.8·`archivedAt` 서술 · PRODUCT §3·§4.1·§7.1·§7.8 · CLAUDE.md 코어 원칙·데이터 변경 경로 표 · ACTIONS `:162` red 조건 — 검증: `pnpm sync:agents:check` green, 문서별 커밋 `[C] docs(...)`
+- [x] T0.1. 정본 계약 먼저(CLAUDE.md "계약이 바뀌면 코드보다 먼저") — ARCHITECTURE §0(편집 버리는 길 셋)·§5.5.x·§5.8·`archivedAt` 서술 · PRODUCT §3·§4.1·§7.1·§7.8 · CLAUDE.md 코어 원칙·데이터 변경 경로 표 · ACTIONS `:162` red 조건 — 검증: `pnpm sync:agents:check` green, 문서별 커밋 `[C] docs(...)`
 
 ## A. 2단계 추가
 - [x] A-T1. `planAddStep` 분리(`planAddBlock`) — 검증: `lib/sources/__tests__/add-block.test.ts` 갱신 + 새 케이스 green
@@ -15,19 +15,19 @@
 
 ## B. 제거·되살림
 ### B-순수
-- [ ] B-T1. `planSurfaceRevival` — 최신 보관 행 / 어댑터 불일치 create / 활성 행 대상 아님 — 검증: `pnpm test` green
-- [ ] B-T2. `planSurfaceRemoval` + `removalReason` — last-source · archived · importing · slug 승계(동률 없음) — 검증: `pnpm test` green
-- [ ] B-T3. `classifyMissingSurface` · `removalFingerprint`(용도 구분 — Sync 지문과 충돌 0 케이스) — 검증: `pnpm test` green `[C] test+feat(surfaces): removal planners`
+- [x] B-T1. `planSurfaceRevival` — 최신 보관 행 / 어댑터 불일치 create / 활성 행 대상 아님 — 검증: `pnpm test` green
+- [x] B-T2. `planSurfaceRemoval` + `removalReason` — last-source · archived · importing · slug 승계(동률 없음) — 검증: `pnpm test` green
+- [x] B-T3. `classifyMissingSurface` · `removalFingerprint`(용도 구분 — Sync 지문과 충돌 0 케이스) — 검증: `pnpm test` green `[C] test+feat(surfaces): removal planners`
 
 ### B-코어 (실 PG — `lib/surfaces/`·`lib/protection/`·`app/api/push/`가 gate 트리거라 `pnpm gate`가 `test:projects:postgres`를 항상 붙인다)
-- [ ] B-T4. `create.ts` 되살림 갈래 — 검증 실 PG 케이스(`lib/keys/__tests__/list-aggregates.integration.ts` 형): ① id·slug 유지 ② 옛 번역·orphaned 키 복귀 ③ 기준 언어 변경 + `previousBaseLocale: null` ④ 옛 `lastCommitAt`이 있어도 `stale-commit` 없음 ⑤ 미전달 토큰(orphaned 포함)이 승인돼 덮이고 리포 값 없는 칸은 남음 ⑥ 제거→다른 어댑터 재추가→제거→원 어댑터 재추가에서 최신 일치 행·slug 무충돌 ⑦ owner 경로 계산이 되살린 행 로케일을 씀
-- [ ] B-T5. `remove.ts` — 검증 실 PG: 기본 승계 + 복합 FK 유효 · 남은 활성 둘 동시 제거에서 `last-source` 유지 · `importing` 거부 · `stale-approval` · 사건 실패 시 전부 롤백(`lib/events/__tests__/record.integration.ts:161-178` 형) · 번역 행 변경 0
-- [ ] B-T6. 사건 렌더 — `view.ts` `surface.removed` 문장, payload 파서 — 검증: `lib/events/__tests__/view.test.ts` 케이스 green `[C] feat(surfaces): remove and revive sources`
+- [x] B-T4. `create.ts` 되살림 갈래 — 검증 실 PG 케이스(`lib/keys/__tests__/list-aggregates.integration.ts` 형): ① id·slug 유지 ② 옛 번역·orphaned 키 복귀 ③ 기준 언어 변경 + `previousBaseLocale: null` ④ 옛 `lastCommitAt`이 있어도 `stale-commit` 없음 ⑤ 미전달 토큰(orphaned 포함)이 승인돼 덮이고 리포 값 없는 칸은 남음 ⑥ 제거→다른 어댑터 재추가→제거→원 어댑터 재추가에서 최신 일치 행·slug 무충돌 ⑦ owner 경로 계산이 되살린 행 로케일을 씀
+- [x] B-T5. `remove.ts` — 검증 실 PG: 기본 승계 + 복합 FK 유효 · 남은 활성 둘 동시 제거에서 `last-source` 유지 · `importing` 거부 · `stale-approval` · 사건 실패 시 전부 롤백(`lib/events/__tests__/record.integration.ts:161-178` 형) · 번역 행 변경 0
+- [x] B-T6. 사건 렌더 — `view.ts` `surface.removed` 문장, payload 파서 — 검증: `lib/events/__tests__/view.test.ts` 케이스 green `[C] feat(surfaces): remove and revive sources`
 
 ### B-껍데기
-- [ ] B-T7. Server Action `removeSource`·`previewSourceRemoval` + `locked-access` `SITES` 등록 — 검증: `app/(edit)/__tests__/sources-actions.test.ts`에 EDITOR `forbidden`·archived·stale-approval·`revalidateAfterCommit` 인자 단언 + `locked-access.test.ts` green
-- [ ] B-T8. MCP `preview_source_removal`·`remove_source` + `TOKEN_SITES` — 검증: `catalog.test.ts`(순서 배열·"읽기 n 다음 쓰기 n" 제목) · `registry.test.ts`(`en.mcp.tools` 키) · `tools.integration.ts` 웹 패리티 green
-- [ ] B-T9. `/api/push`·`/failure` `surface removed` + `NOT_STARTED_REASONS` 일곱째 + `ApplyGuardError` 분리 — 검증: `surface-boundary.test.ts` 갱신(removed vs missing·foreign) + 경합 실 PG(`pg_sleep` 트리거 형)에서 응답·refusal이 `surface-removed` `[C] feat(push): refuse removed sources distinctly`
+- [x] B-T7. Server Action `removeSource`·`previewSourceRemoval` + `locked-access` `SITES` 등록 — 검증: `app/(edit)/__tests__/sources-actions.test.ts`에 EDITOR `forbidden`·archived·stale-approval·`revalidateAfterCommit` 인자 단언 + `locked-access.test.ts` green
+- [x] B-T8. MCP `preview_source_removal`·`remove_source` + `TOKEN_SITES` — 검증: `catalog.test.ts`(순서 배열·"읽기 n 다음 쓰기 n" 제목) · `registry.test.ts`(`en.mcp.tools` 키) · `tools.integration.ts` 웹 패리티 green
+- [x] B-T9. `/api/push`·`/failure` `surface removed` + `NOT_STARTED_REASONS` 일곱째 + `ApplyGuardError` 분리 — 검증: `surface-boundary.test.ts` 갱신(removed vs missing·foreign) + 경합 실 PG(`pg_sleep` 트리거 형)에서 응답·refusal이 `surface-removed` `[C] feat(push): refuse removed sources distinctly`
 
 ### B-UI
 - [ ] B-T10. 상세 모달 바닥: `notice` 문구 제거 → [Remove source](OWNER, busy·로딩·실패·`refreshFailed`·마지막 소스 상태), Open 꺼짐 사유 sr-only — 검증: jsdom(OWNER만 보임, last-source 사유 보임, busy 중 aria-disabled, EDITOR 버튼 0)
