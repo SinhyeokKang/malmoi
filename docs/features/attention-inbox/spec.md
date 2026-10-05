@@ -35,6 +35,7 @@
 
 1. 편집 셸(`(edit)` 레이아웃) 헤더 우측, **세로선 오른쪽·사용자 메뉴(아바타) 왼쪽**에 Inbox 아이콘 버튼이 선다 → `[+ New project] | [Inbox] [avatar]`.
    접근 이름은 하나로 합쳐진다 — 안 읽음 0이면 `Needs your attention`, n이면 `Needs your attention, {n} unread`(숫자 배지는 `aria-hidden`).
+   **공개 셸 헤더**(`/docs`·`/changelog`·`/privacy`)도 로그인이면 같은 Inbox를 같은 자리에 세운다 → `[GitHub] | [Inbox] [avatar]`(2026-10-05 사용자). 비로그인(`Get started`)이면 서지 않고 배지 Action도 부르지 않는다.
 2. 버튼을 누르면 드롭다운이 열리고, **비보관 멤버 프로젝트 전체**의 항목이 프로젝트별로 묶여 **상한 없이** 보인다(메뉴는 최대 높이까지 커지고 그 안에서 스크롤). 항목 종류는 다섯이다:
    적재 실패 · 검토 대기 · 빈 로케일(Home 세 종과 같은 판정) + 미전달 편집 · 설정 미완(목록 띠와 같은 판정, DB만).
 3. 설정 미완은 **OWNER에게만** 보인다. 적재 실패는 Home처럼 두 역할 모두에게 보이고 EDITOR에게는 "Owner가 재시도한다" 꼬리를 단다.
@@ -68,5 +69,5 @@
 - **사건 기반 알림**(누가 초대했다·PR이 머지됐다·누가 번역을 고쳤다·새 버전) — `ProjectEvent`를 알림으로 돌리는 것은 범위 밖이다.
 - **원격 신호**(`repo_ahead`·`pr_open`·`pr_check_failed`·App 설치 해제 같은 원격 연결 끊김) — 헤더에서 GitHub을 부르지 않는다. 연결 끊김은 Home·설정에서만 보인다.
 - **`needs_reconnect`**(`repositoryId === null`) — sec-audit-2 이전 행의 유산이라 새로 생기지 않는다(생산자 없는 갈래를 두지 않는다 — `lib/projects/list.ts:97`).
-- 공개 셸·MCP 도구·`/projects` 목록·Home 카드의 동작 변경.
+- MCP 도구·`/projects` 목록·Home 카드의 동작 변경. (공개 셸 헤더는 2026-10-05 사용자 결정으로 범위에 들었다 — 완료 조건 1)
 - 보관된 프로젝트의 항목.
