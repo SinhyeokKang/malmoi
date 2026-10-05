@@ -5,7 +5,7 @@ import { unstable_rethrow, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 
 import { disconnectOAuthConnection, type OAuthDisconnectResult } from "@/app/(edit)/mcp/actions";
-import { BrandLogo } from "@/components/mcp/brand-logo";
+import { BrandLogo, brandPlate } from "@/components/mcp/brand-logo";
 import { GrantBadges } from "@/components/mcp/grant-badges";
 import { CopyButton } from "@/components/ui/copy-button";
 import { McpIcon } from "@/components/signin/brand-icons";
@@ -17,11 +17,11 @@ import { IconTile } from "@/components/ui/icon-tile";
 import { type CountProps } from "@/components/ui/count-badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Card, CardList } from "@/components/ui/card";
-import { m } from "@/lib/i18n";
+import { useDateStyle, useMessages } from "@/components/i18n/messages-provider";
 import type { Brand } from "@/lib/mcp/brand";
 import type { TokenGrant } from "@/lib/mcp/grant";
 import { relativeTime } from "@/lib/relative-time";
-import { utcDay } from "@/lib/utc-time";
+import { formatDay } from "@/lib/date-format";
 import { cn } from "@/lib/utils";
 
 /**
@@ -51,6 +51,7 @@ const TITLE_ID = "mcp-apps-title";
 
 /** `serverUrl` — 이 요청의 origin으로 만든 MCP 주소(preview·로컬이면 그 주소). Connect 카드를 걷고 머리의 복사 버튼 하나로 남겼다(2026-09-30 사용자). */
 export function ConnectedAppsCard({ apps, now, serverUrl }: { apps: readonly ConnectedAppData[] | null; now: string; serverUrl: string }) {
+  const m = useMessages();
   const router = useRouter();
   // 대상은 닫힌 뒤에도 남긴다 — Dialog가 닫히는 동안 제목이 비지 않고, 닫힘 포커스 처리가 같은 콘텐츠에서 돈다.
   const [target, setTarget] = useState<ConnectedAppData | null>(null);
@@ -194,7 +195,7 @@ export function ConnectedAppsCard({ apps, now, serverUrl }: { apps: readonly Con
               {/* 이름만으로는 같은 이름의 두 연결을 못 가른다 — 식별 줄까지 보인다(핸드오프 §7.5). */}
               <div data-disconnect-app className="border-border flex items-center gap-3 rounded-lg border p-3">
                 {/* 행과 같은 로고 칸이다 — 무엇을 끊는지 목록에서 본 모양 그대로 알아본다. */}
-                <IconTile size="lg">
+                <IconTile size="lg" className={brandPlate(target.brand)}>
                   {target.brand === null ? <McpIcon /> : <BrandLogo brand={target.brand} className="size-5" />}
                 </IconTile>
                 <div className="flex min-w-0 flex-col gap-px">
@@ -212,6 +213,8 @@ export function ConnectedAppsCard({ apps, now, serverUrl }: { apps: readonly Con
 }
 
 function AppRow({ app, now, onDisconnect }: { app: ConnectedAppData; now: Date; onDisconnect: () => void }) {
+  const style = useDateStyle();
+  const m = useMessages();
   const expired = app.state === "expired";
   const expires = new Date(app.expiresAt);
   const lastUsed = app.lastUsedAt === null ? null : new Date(app.lastUsedAt);
@@ -220,13 +223,13 @@ function AppRow({ app, now, onDisconnect }: { app: ConnectedAppData; now: Date; 
   const facts: [string, ReactNode][] = [
     [m.mcpConnector.token.facts.grants, <GrantBadges key="g" grants={app.grants} dimmed={expired} />],
     [m.mcpConnector.token.facts.scope, scope],
-    [m.mcpConnector.token.facts.lastUsed, lastUsed === null ? m.mcpConnector.token.never : <time dateTime={app.lastUsedAt ?? ""}>{expired ? utcDay(lastUsed) : relativeTime(lastUsed, now)}</time>],
-    [m.mcpConnector.token.facts.expires, <time dateTime={app.expiresAt}>{expired ? utcDay(expires) : relativeTime(expires, now)}</time>],
+    [m.mcpConnector.token.facts.lastUsed, lastUsed === null ? m.mcpConnector.token.never : <time dateTime={app.lastUsedAt ?? ""}>{expired ? formatDay(lastUsed, style) : relativeTime(lastUsed, now, style.uiLocale)}</time>],
+    [m.mcpConnector.token.facts.expires, <time dateTime={app.expiresAt}>{expired ? formatDay(expires, style) : relativeTime(expires, now, style.uiLocale)}</time>],
   ];
   return (
     <div data-app-row={app.id} className="flex items-center gap-4 px-4 py-row-y">
       {/* 왼쪽 로고 칸은 40(`lg`)이다(2026-09-30 사용자). 만료 행도 로고는 그대로다 — 흐리게 하면 원본 색이 바뀐다. */}
-      <IconTile size="lg" data-app-logo className="self-start">
+      <IconTile size="lg" data-app-logo className={cn("self-start", brandPlate(app.brand))}>
         {app.brand === null ? <McpIcon /> : <BrandLogo brand={app.brand} className="size-5" />}
       </IconTile>
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">

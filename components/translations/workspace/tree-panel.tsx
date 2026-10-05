@@ -7,7 +7,7 @@ import { CountBadge } from "@/components/ui/count-badge";
 import { Input } from "@/components/ui/input";
 import { ListRow } from "@/components/ui/list-row";
 import type { TranslationTree } from "@/lib/keys/translation-list";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import { ALL_NAMESPACES } from "@/lib/translations/query";
 import { cn } from "@/lib/utils";
 
@@ -47,6 +47,7 @@ export function TreePanel({ tree, nodes = tree, surfaceSlug, ns, allSources = nu
   onSelectAll?: () => void;
   className?: string;
 }) {
+  const m = useMessages();
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set(tree.surfaces.filter(s => s.slug !== surfaceSlug && tree.surfaces.length > 1).map(s => s.slug)));
   const [filter, setFilter] = useState("");
   const namespaceCount = tree.surfaces.reduce((sum, s) => sum + s.namespaces.length, 0);

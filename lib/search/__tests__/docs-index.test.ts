@@ -5,12 +5,12 @@ import { headings, parseMd } from "@/lib/guide/parse";
 import { flattenNav, parseSummary } from "@/lib/guide/summary";
 import { routes } from "@/lib/routes";
 import { docsSearchEntries } from "../docs-index";
-const read = (file: string) => parseMd(readFileSync(join(process.cwd(), "guide", file), "utf8"));
+const read = (file: string) => parseMd(readFileSync(join(process.cwd(), "guide", "en", file), "utf8"));
 describe("가이드 색인", () => {
   it("실물 SUMMARY 페이지와 표식 H2 전량·순서·주소가 맞는다", () => {
     const summary = parseSummary(read("SUMMARY.md"));
     const pages = flattenNav(summary);
-    expect(pages).toHaveLength(28);
+    expect(pages).toHaveLength(29);
     const entries = docsSearchEntries(summary, read);
     expect(entries).toHaveLength(pages.length + pages.reduce((n, p) => n + headings(read(p.file)).filter(h => h.depth === 2 && h.id !== null).length, 0));
     expect(entries.filter(e => e.anchor === null).map(e => e.page)).toEqual(pages.map(p => p.slug.join("/")));

@@ -1,0 +1,100 @@
+/**
+ * **쓰지 않는 말** — DESIGN §10.1 개념 표 ko·es 열의 정본을 그대로 든다(ui-locales B2). 표를 고치면 이 목록도 같은 커밋에서 고친다.
+ * 형: `[쓰지 않는 말, 쓰는 말]`.
+ *
+ * 사전(`dictionary-consistency.test.ts`)과 번역 가이드 산문(`lib/guide/__tests__/content.test.ts`)이 같은 목록을 쓴다 —
+ * 화면과 가이드가 같은 개념을 다른 낱말로 부르면 독자가 가이드의 낱말을 화면에서 찾지 못한다.
+ */
+export const BANNED_TERMS: Readonly<Record<"ko" | "es", readonly (readonly [banned: string, use: string])[]>> = {
+  // ⚠️ 문맥으로만 갈리는 말(`관리자`는 GitHub 조직 관리자로 맞다 · `대기`는 초대·승인 대기로 맞다)은 부분 문자열로 셀 수 없어 뺐다 — 검수가 본다.
+  ko: [
+    ["발행", "게시"],
+    ["퍼블리시", "게시"],
+    ["변경 사항 보내기", "게시"],
+    ["로케일", "언어"],
+    ["원본 언어", "기준 언어"],
+    ["소스 언어", "기준 언어"],
+    ["표면", "소스"],
+    ["가져오기", "동기화"],
+    ["임포트", "동기화"],
+    ["오너", "프로젝트 소유자"],
+    ["재시도", "다시 시도"],
+    ["동기화 오류", "동기화 실패"],
+    ["읽을 수 없음", "사용할 수 없음"],
+    ["일부 실패", "일부 동기화됨"],
+    ["실행 중…", "동기화 중… · 게시 중…"],
+    ["일시 중지", "멈춥니다"],
+    ["미게시", "미전송"],
+    ["미발행", "미전송"],
+    ["보내지 않은 변경", "미전송 변경 사항"],
+    ["누락만", "미번역"],
+    ["불러오지 못함", "확인하지 못함"],
+    ["인증 만료", "만료됨"],
+    ["초대 취소", "철회"],
+    ["Malmoi 앱", "Malmoi GitHub App · 앱"],
+    ["계정 설정", "계정"],
+    ["이미지 업로드", "업로드"],
+    ["모든 프로젝트 보기", "내 프로젝트로 이동"],
+    ["모든 문서 보기", "문서로 이동"],
+    ["”와 일치하는", "”에 해당하는"],
+    ["보관됨 —", "{date}에 보관됨"],
+    // 토큰 카드 제목이 `푸시 토큰`이다(`settings.token.title`) — 가이드 초안이 `push 토큰`으로 갈렸다(W4 R4 🟡2). §10.1 행은 정본 갱신 때 더한다.
+    ["push 토큰", "푸시 토큰"],
+    // 2026-10-05 K2 용어 2차 검수 — 화면과 가이드 산문이 같은 낱말을 쓰게 옛 말을 막는다(DESIGN §10.0·§10.1).
+    ["풀 리퀘스트", "PR"],
+    ["보내지 않은 편집", "미전송 변경 사항"],
+    ["수정 사항", "변경 사항"],
+    ["허용 동작", "권한"],
+    ["로그인이 종료", "로그인이 만료"],
+    ["이벤트", "활동"],
+    ["초대 이메일", "초대 메일"],
+    ["전송본", "마지막으로 보낸 값"],
+    // 2026-10-05 F1 — Q1 검수에서 K2 표와 어긋난 화면 문구를 걷었다. `갱신`은 `업데이트`로, Logs 필터 칩은 축 이름 `작업자`를 따른다.
+    ["갱신", "업데이트"],
+    ["모든 사람", "모든 작업자"],
+    ["마지막 수정", "마지막 변경 사항"],
+    // `저장소`는 한국어로 repository의 다른 이름이라 리포지토리와 같은 것인지 되묻게 한다.
+    ["저장소", "리포지토리 · 데이터베이스"],
+    // GitHub[깃허브]는 모음으로 끝나 받침 없는 조사를 쓴다.
+    ["GitHub이 ", "GitHub가"],
+    ["GitHub은 ", "GitHub는"],
+    ["GitHub을 ", "GitHub를"],
+    ["GitHub으로", "GitHub로"],
+    // 합니다체에서 축약형과 본딧말이 한 화면에 섞이지 않게 본딧말로 맞춘다.
+    ["됐", "되었"],
+    ["돼 ", "되어 "],
+  ],
+  // 대소문자를 가르므로 문장 첫머리 형도 함께 둔다.
+  es: [
+    ["superficie", "fuente"],
+    ["importar", "sincronizar"],
+    ["Importar", "Sincronizar"],
+    ["enviar cambios", "publicar"],
+    ["Enviar cambios", "Publicar"],
+    ["configuración regional", "idioma"],
+    ["idioma de origen", "idioma base"],
+    ["dueño", "propietario del proyecto"],
+    ["Reintentar", "Intentar de nuevo"],
+    ["Volver a comprobar", "Intentar de nuevo"],
+    ["error de sincronización", "Sincronización fallida"],
+    ["No se pudo leer", "No disponible"],
+    ["Ejecutando…", "Sincronizando… · Publicando…"],
+    ["en pausa", "se detienen"],
+    ["en espera", "Retenido"],
+    ["aplazado", "Retenido"],
+    ["sin publicar", "sin enviar"],
+    ["cambios sin enviar", "ediciones sin enviar"],
+    ["Solo faltantes", "Sin traducir"],
+    ["No se pudo cargar", "No se pudo comprobar"],
+    ["autorización caducada", "Caducado"],
+    ["cancelar la invitación", "Revocar"],
+    ["app de Malmoi", "Malmoi GitHub App · la app"],
+    ["configuración de la cuenta", "Cuenta"],
+    ["carga de imagen", "Subir"],
+    ["Menús", "Páginas"],
+    ["Ver todos los proyectos", "Ir a tus proyectos"],
+    ["Ver toda la documentación", "Ir a la documentación"],
+    ["No se encontraron", "Ningún {objeto} coincide con “{q}”"],
+    ["Archivado —", "Archivado el {date}"],
+  ],
+};

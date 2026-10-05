@@ -6,7 +6,7 @@ import { SourcesScreen } from "@/components/sources/sources-screen";
 import type { AdapterChoice } from "@/lib/onboarding/types";
 vi.setConfig({ testTimeout: 20_000 });
 import { render } from "./helpers/dom";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 const actions = vi.hoisted(() => ({ load: vi.fn(), runFirstIngest: vi.fn(), detectRepoFormats: vi.fn(), addSurfaces: vi.fn(), confirmManualFormat: vi.fn(), loadCandidateSample: vi.fn() }));
 vi.mock("@/app/(edit)/projects/[slug]/sources/actions", () => ({ loadSourceDetail: actions.load, updateBaseLocale: vi.fn() }));
 vi.mock("@/app/(edit)/projects/actions", () => actions);
@@ -105,11 +105,11 @@ it("추가가 8초를 넘기면 지연 문구가 서고 끝나면 사라진다",
   try {
     await act(async () => { await userEvent.setup({ advanceTimers: vi.advanceTimersByTime }).click(document.querySelector('[data-add-sources]')!); });
     await act(async () => { vi.advanceTimersByTime(7_000); });
-    expect(document.body.textContent).not.toContain(m.common.slow);
+    expect(document.body.textContent).not.toContain(en.common.slow);
     await act(async () => { vi.advanceTimersByTime(1_000); });
-    expect(document.body.textContent).toContain(m.common.slow);
+    expect(document.body.textContent).toContain(en.common.slow);
     await act(async () => { resolve({ ok: false, error: "resource-limit" }); });
-    expect(document.body.textContent).not.toContain(m.common.slow);
+    expect(document.body.textContent).not.toContain(en.common.slow);
   } finally { vi.useRealTimers(); }
 });
 
@@ -121,9 +121,9 @@ it("수동 확인 실패는 추가 실패 문장 없이 그 사유만 말한다"
   await act(async () => { await user.click(find("Add sources")); });
   await act(async () => { await user.click(find("Set the path yourself")); });
   await act(async () => { await user.type(document.querySelector('#manual-path')!, "app/{{locale}.json"); await user.type(document.querySelector('#manual-base')!, "en"); });
-  await act(async () => { await user.click(find(m.surfaces.confirm)); });
-  expect(document.body.textContent).toContain(m.errors.onboarding["manual-no-match"]);
-  expect(document.body.textContent).not.toContain(m.settings.sources.nothingAdded);
+  await act(async () => { await user.click(find(en.surfaces.confirm)); });
+  expect(document.body.textContent).toContain(en.errors.onboarding["manual-no-match"]);
+  expect(document.body.textContent).not.toContain(en.settings.sources.nothingAdded);
 });
 
 /**
@@ -138,9 +138,9 @@ it("수동 지정의 빈 미리보기는 프로젝트 생성을 말하지 않는
   await act(async () => { await user.click(find("Set the path yourself")); });
   // 경로를 치기 시작해야 선택이 풀리고 우측이 빈 미리보기로 바뀐다(`clearsSelection`).
   await act(async () => { await user.type(document.querySelector('#manual-path')!, "nope"); });
-  expect(document.body.textContent).toContain(m.newProject.files.preview.none);
+  expect(document.body.textContent).toContain(en.newProject.files.preview.none);
   expect(document.body.textContent).not.toContain("the project isn't created");
-  expect(document.body.textContent).toContain(m.settings.sources.previewNone);
+  expect(document.body.textContent).toContain(en.settings.sources.previewNone);
 });
 
 /**
@@ -152,11 +152,11 @@ it("수동 지정의 빈 미리보기에는 이전 후보의 총량 줄이 없�
   await render(<Screen {...props} adapters={[{ adapter: "json-catalog", layout: "per-locale", label: "JSON", example: "app/{locale}.json" }]} />);
   const user = userEvent.setup();
   await act(async () => { await user.click(find("Add sources")); });
-  expect(document.body.textContent).toContain(m.newProject.files.preview.more(19));
+  expect(document.body.textContent).toContain(en.newProject.files.preview.more(19));
   await act(async () => { await user.click(find("Set the path yourself")); });
   await act(async () => { await user.type(document.querySelector('#manual-path')!, "nope"); });
-  expect(document.body.textContent).toContain(m.newProject.files.preview.none);
-  expect(document.body.textContent).not.toContain(m.newProject.files.preview.more(19));
+  expect(document.body.textContent).toContain(en.newProject.files.preview.none);
+  expect(document.body.textContent).not.toContain(en.newProject.files.preview.more(19));
 });
 
 /** malmoi#80 부수 관찰 — 경로를 고치면 옛 확인 실패가 새 입력 옆에 남지 않는다. 짝: 고치기 전에는 선다. */
@@ -167,10 +167,10 @@ it("경로를 고치면 이전 수동 확인 실패를 지운다 (#80)", async (
   await act(async () => { await user.click(find("Add sources")); });
   await act(async () => { await user.click(find("Set the path yourself")); });
   await act(async () => { await user.type(document.querySelector('#manual-path')!, "app/{{locale}.json"); await user.type(document.querySelector('#manual-base')!, "en"); });
-  await act(async () => { await user.click(find(m.surfaces.confirm)); });
-  expect(document.body.textContent).toContain(m.errors.onboarding["manual-no-match"]);
+  await act(async () => { await user.click(find(en.surfaces.confirm)); });
+  expect(document.body.textContent).toContain(en.errors.onboarding["manual-no-match"]);
   await act(async () => { await user.clear(document.querySelector('#manual-path')!); });
-  expect(document.body.textContent).not.toContain(m.errors.onboarding["manual-no-match"]);
+  expect(document.body.textContent).not.toContain(en.errors.onboarding["manual-no-match"]);
 });
 
 /** audit #31 — 첫 가져오기가 도는 동안 상세 푸터가 "Saving…"이라고 말하지 않는다 — 저장한 것이 없다. */
@@ -181,7 +181,7 @@ it("첫 Sync 중 상세 푸터는 저장 중이 아니라 Sync 중이다", async
   await act(async () => { await userEvent.setup().click(document.querySelector("[data-source-row]")!); });
   await act(async () => { await userEvent.setup().click(find("Run first sync")); });
   const footer = document.getElementById("source-open-reason")?.textContent ?? "";
-  expect(footer).toBe(m.settings.sources.importing);
-  expect(footer).not.toBe(m.locales.field.saving);
+  expect(footer).toBe(en.settings.sources.importing);
+  expect(footer).not.toBe(en.locales.field.saving);
   await act(async () => { finish({ ok: true, count: 1, failed: 0, errors: [] }); });
 });

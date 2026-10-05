@@ -3,15 +3,23 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { render } from "@/components/__tests__/helpers/dom";
 import type { SessionRead } from "@/lib/auth/read-session";
-import { m } from "@/lib/i18n";
-import { FOOTER_LINKS } from "@/lib/links";
+import type { UiLocale } from "@/lib/i18n/locales";
+import { es } from "@/messages/es";
+import { koPrivacy } from "@/messages/ko-privacy";
+import { en } from "@/messages/en";
+import { footerLinks } from "@/lib/links";
 import { routes } from "@/lib/routes";
+
+vi.mock("@/lib/i18n/server", async () => {
+  const dictionaries = { en: (await import("@/messages/en")).en, ko: (await import("@/messages/ko")).ko, es: (await import("@/messages/es")).es };
+  return { getMessages: async () => dictionaries[mocks.uiLocale], getUiLocale: async () => mocks.uiLocale };
+});
 
 /**
  * **`/privacy`는 공개 셸 안에 선다** (DESIGN §6.616). 세션은 차단이 아니라 **헤더 primary 하나**를 가른다 —
  * 로그인이면 앱 셸과 같은 아바타 메뉴, 아니면(장애 포함) `Get started`.
  */
-const mocks = vi.hoisted(() => ({ status: "none" as SessionRead["status"] }));
+const mocks = vi.hoisted(() => ({ status: "none" as SessionRead["status"], uiLocale: "en" as UiLocale }));
 
 vi.mock("@/lib/auth/read-session", () => ({
   readSession: async () =>
@@ -21,6 +29,7 @@ vi.mock("@/lib/auth/read-session", () => ({
 vi.mock("@/lib/auth/sign-out", () => ({ signOutAction: async () => {} }));
 
 beforeEach(() => {
+  mocks.uiLocale = "en";
   vi.stubGlobal("matchMedia", () => ({ matches: false, addEventListener() {}, removeEventListener() {} }));
 });
 afterEach(() => { vi.unstubAllGlobals(); });
@@ -39,13 +48,13 @@ const primary = (container: HTMLElement) => {
 describe("`/privacy` — 헤더 primary가 세션으로 갈린다", () => {
   it("`ok` → 아바타 메뉴, Get started 없음", async () => {
     const { container } = await page("ok");
-    expect(container.querySelector(`header button[aria-label="${m.common.nav.userMenu}"]`)).not.toBeNull();
+    expect(container.querySelector(`header button[aria-label="${en.common.nav.userMenu}"]`)).not.toBeNull();
     expect(container.querySelector(`header a[href="${routes.signIn()}"]`)).toBeNull();
   });
 
   it.each(["none", "unavailable"] as const)("`%s` → Get started · `/signin`", async (status) => {
     const { container } = await page(status);
-    expect(primary(container)).toEqual([m.landing.shell.getStarted, routes.signIn()]);
+    expect(primary(container)).toEqual([en.landing.shell.getStarted, routes.signIn()]);
   });
 });
 
@@ -54,12 +63,47 @@ describe("`/privacy` — 공개 셸", () => {
     const { container } = await page("none");
     const main = container.querySelectorAll("main");
     expect(main).toHaveLength(1);
-    expect(main[0]?.querySelector("h1")?.textContent).toBe(m.publicDocs.privacy.title);
+    expect(main[0]?.querySelector("h1")?.textContent).toBe(en.publicDocs.privacy.title);
     expect(container.querySelectorAll("header [aria-current]")).toHaveLength(0);
   });
 
   it("푸터가 공개 셸의 링크 목록이다", async () => {
     const { container } = await page("none");
-    expect([...container.querySelectorAll("footer a")].map((a) => a.getAttribute("href"))).toEqual(FOOTER_LINKS.map(({ href }) => href));
+    expect([...container.querySelectorAll("footer a")].map((a) => a.getAttribute("href"))).toEqual(footerLinks(en).map(({ href }) => href));
+  });
+});
+
+/**
+ * **본문은 두 벌이다** (ui-locales design §8) — ko 화면은 ko 본, en·es 화면은 en 본. es 본은 원어민 검수 없이 낼 수 없어 두지 않는다.
+ * 셸(헤더·푸터)은 화면 언어 그대로라 es 화면은 es 셸 + en 본문이다.
+ */
+describe("`/privacy` — 본문 언어", () => {
+  it.each([
+    ["en", en.publicDocs.privacy.title],
+    ["ko", koPrivacy.title],
+    ["es", en.publicDocs.privacy.title],
+  ] as const)("%s 화면 → %s", async (uiLocale, title) => {
+    mocks.uiLocale = uiLocale;
+    const { container } = await page("none");
+    expect(container.querySelector("main h1")?.textContent).toBe(title);
+  });
+
+  it("es 화면의 셸은 es다 — 본문만 en이다", async () => {
+    mocks.uiLocale = "es";
+    const { container } = await page("none");
+    expect(container.querySelector("footer")?.textContent).toContain(es.signIn.footer.privacy);
+    expect(container.querySelector("main h1")?.textContent).toBe(en.publicDocs.privacy.title);
+  });
+
+  /** WCAG 3.1.2 (R10 🟡1) — es 화면에서 영어 본문이 스페인어 음성 규칙으로 읽히지 않게 본문 그릇이 `lang="en"`을 든다. 셸 문구는 화면 언어다. */
+  it.each([["en", "en"], ["ko", "ko"], ["es", "en"]] as const)("%s 화면 → 본문·목차 lang=%s, 시행일 줄·이력 날짜는 화면 언어", async (uiLocale, lang) => {
+    mocks.uiLocale = uiLocale;
+    const { container } = await page("none");
+    const article = container.querySelector("main article");
+    expect(article?.closest("[lang]")?.getAttribute("lang")).toBe(lang);
+    expect(container.querySelector("main nav")?.closest("[lang]")?.getAttribute("lang")).toBe(lang);
+    const times = [...container.querySelectorAll("main article time")];
+    expect(times.length).toBeGreaterThan(1);
+    for (const time of times) expect(time.closest("[lang]")?.getAttribute("lang")).toBe(uiLocale);
   });
 });

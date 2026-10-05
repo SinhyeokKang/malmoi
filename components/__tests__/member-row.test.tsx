@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { MemberRow } from "@/components/members/member-row";
 import { RoleChip } from "@/components/members/role-chip";
 import { planMemberIdentity } from "@/lib/auth/member-identity";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { find, render } from "./helpers/dom";
 
@@ -19,7 +19,7 @@ import { find, render } from "./helpers/dom";
 const BAND = '[id^="band-"]';
 
 const identity = (name: string | null, emailLabel: string | null, readable = true) =>
-  planMemberIdentity({ name, emailLabel, readable });
+  planMemberIdentity(en, { name, emailLabel, readable });
 
 describe("MemberRow — 아바타 씨앗", () => {
   it("이름이 있으면 이니셜이 선다", async () => {
@@ -42,13 +42,13 @@ describe("MemberRow — 아바타 씨앗", () => {
 
 describe("MemberRow — 아바타 사진", () => {
   it("사진이 있으면 이니셜 대신 사진을 그린다", async () => {
-    const row = planMemberIdentity({ name: "Jane", emailLabel: null, image: "https://avatars.githubusercontent.com/u/1", readable: true });
+    const row = planMemberIdentity(en, { name: "Jane", emailLabel: null, image: "https://avatars.githubusercontent.com/u/1", readable: true });
     const { container } = await render(<MemberRow id="u1" identity={row} />);
     expect(find(container, "[data-avatar] img").getAttribute("src")).toBe("https://avatars.githubusercontent.com/u/1");
   });
 
   it("못 읽은 행은 사진 값이 있어도 `?`다", async () => {
-    const row = planMemberIdentity({ name: "Jane", emailLabel: null, image: "https://x/y.png", readable: false });
+    const row = planMemberIdentity(en, { name: "Jane", emailLabel: null, image: "https://x/y.png", readable: false });
     const { container } = await render(<MemberRow id="u1" identity={row} />);
     expect(container.querySelector("[data-avatar] img")).toBeNull();
     expect(find(container, "[data-avatar]").textContent).toBe("?");
@@ -71,9 +71,9 @@ describe("MemberRow — 두 줄과 자기 표식", () => {
   /** ⚠️ **자기 표식은 `planMemberIdentity` 밖이다** — 갈래 넷과 직교라 행 껍데기가 든다. */
   it("자기 행에만 You 표식이 붙는다", async () => {
     const mine = await render(<MemberRow id="u1" identity={identity("Jane", null)} you />);
-    expect(find(mine.container, "[data-primary]").textContent).toContain(m.members.you);
+    expect(find(mine.container, "[data-primary]").textContent).toContain(en.members.you);
     const theirs = await render(<MemberRow id="u2" identity={identity("Ann", null)} />);
-    expect(find(theirs.container, "[data-primary]").textContent).not.toContain(m.members.you);
+    expect(find(theirs.container, "[data-primary]").textContent).not.toContain(en.members.you);
   });
 });
 
@@ -122,11 +122,11 @@ describe("MemberRow — 사유 띠와 aria-describedby", () => {
    */
   it("문장이 둘이어도 띠는 하나다", async () => {
     const { container } = await render(
-      <MemberRow id="u1" identity={identity("A", null, false)} band={<>{m.members.unreadableHint} {m.errors.access["last-owner"]}</>} />,
+      <MemberRow id="u1" identity={identity("A", null, false)} band={<>{en.members.unreadableHint} {en.errors.access["last-owner"]}</>} />,
     );
     expect(container.querySelectorAll(BAND)).toHaveLength(1);
-    expect(find(container, BAND).textContent).toContain(m.members.unreadableHint);
-    expect(find(container, BAND).textContent).toContain(m.errors.access["last-owner"]);
+    expect(find(container, BAND).textContent).toContain(en.members.unreadableHint);
+    expect(find(container, BAND).textContent).toContain(en.errors.access["last-owner"]);
   });
 
   /**
@@ -136,7 +136,7 @@ describe("MemberRow — 사유 띠와 aria-describedby", () => {
    */
   it("띠가 언제나 muted다 — 사유가 붉지 않다", async () => {
     const { container } = await render(
-      <MemberRow id="u1" identity={identity("A", null)} band={m.errors.access["last-owner"]} />,
+      <MemberRow id="u1" identity={identity("A", null)} band={en.errors.access["last-owner"]} />,
     );
     const band = find<HTMLElement>(container, BAND);
     expect(band.className).toContain("text-muted-foreground");
@@ -153,9 +153,9 @@ describe("RoleChip", () => {
   it("보이는 역할 낱말이 낭독되는 문장 안에 들어 있다", async () => {
     const { container } = await render(<RoleChip role="EDITOR" reason="editor" />);
     const chip = find<HTMLElement>(container, "[data-role-chip]");
-    expect(chip.textContent).toContain(m.projects.role.EDITOR);
+    expect(chip.textContent).toContain(en.projects.role.EDITOR);
     expect(find<HTMLElement>(chip, ".sr-only").textContent).toBe(
-      m.members.roleLocked.editor(m.projects.role.EDITOR),
+      en.members.roleLocked.editor(en.projects.role.EDITOR),
     );
   });
 

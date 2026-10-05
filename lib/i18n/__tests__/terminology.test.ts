@@ -10,8 +10,8 @@ import { describe, expect, it } from "vitest";
 
 import { parseMd, stripHeadingMarker, toText } from "@/lib/guide/parse";
 import { servedGuideFiles } from "@/lib/guide/__tests__/helpers/served";
-import { m } from "@/lib/i18n";
-import { STATE } from "@/lib/status/canon";
+import { en } from "@/messages/en";
+import { stateLabel } from "@/lib/status/canon";
 
 /**
  * **화면 용어 표** (DESIGN §10.1 — audit #29). 사전 전체를 걸어 **보이는 문장**만 센다.
@@ -46,7 +46,7 @@ function walk(value: unknown, path: string, out: Found[]): void {
 
 const strings = (): Found[] => {
   const out: Found[] = [];
-  walk(m, "", out);
+  walk(en, "", out);
   return out;
 };
 
@@ -58,7 +58,8 @@ const strings = (): Found[] => {
  * 식별자라 코드로 쓰고, 그러면 표의 개념이 아니다. 헤딩의 `{#id}` 표식도 뗀다(`{#push}` 같은 id가 걸리지 않게).
  */
 function guideStrings(root: string): Found[] {
-  const dir = join(root, "guide");
+  // en 원고만 — 이 색인은 영어 낱말이다. 번역 원고의 라벨은 `content.test.ts`가 그 언어 사전과 대조한다(ui-locales I3)
+  const dir = join(root, "guide", "en");
   return servedGuideFiles(dir).flatMap((file) => {
     const out: Found[] = [];
     visit(parseMd(readFileSync(join(dir, file), "utf8")), (node) => {
@@ -296,9 +297,9 @@ describe("화면 용어 — DESIGN §10.1의 표를 사전 전체가 따른다 (
   });
 
   // `en.tsx`는 canon을 import할 수 없어(순환) 보관 문장 둘에 낱말이 리터럴이다 — 상태 낱말이 바뀌면 여기서 red가 난다(P fix1 Y2).
-  it("보관 시각 문장은 상태 낱말 STATE.archived.label로 시작한다", () => {
-    expect(String(m.logs.archived.restoreLine("x")).startsWith(`${STATE.archived.label} on `)).toBe(true);
-    expect(renderToStaticMarkup(m.archive.archivedBy("x") as ReactElement).startsWith(`${STATE.archived.label} on `)).toBe(true);
+  it("보관 시각 문장은 상태 낱말 stateLabel(en, 'archived')로 시작한다", () => {
+    expect(String(en.logs.archived.restoreLine("x")).startsWith(`${stateLabel(en, "archived")} on `)).toBe(true);
+    expect(renderToStaticMarkup(en.archive.archivedBy("x") as ReactElement).startsWith(`${stateLabel(en, "archived")} on `)).toBe(true);
   });
 
   it("개념 색인이 옛 동의어를 잡고 정본 낱말은 통과시킨다", () => {
@@ -408,7 +409,7 @@ describe("0건 제목 한 형 (C23)", () => {
     expect(titles.filter(({ text }) => !/^No [\p{L} ]+ match “X”$/u.test(text)).map(({ path, text }) => `${path}: ${text}`)).toEqual([]);
   });
   it("검색 Dialog만 예외 형이다", () => {
-    expect(m.search.noResults(ARG)).toBe("No results for “X”");
+    expect(en.search.noResults(ARG)).toBe("No results for “X”");
   });
 });
 
@@ -416,7 +417,7 @@ describe("0건 제목 한 형 (C23)", () => {
  * DESIGN §10 — **Alert 제목은 구두점 없는 문장 조각**이다 (audit #30). 번역 화면 저장줄의 제목 자리를 센다.
  */
 describe("Alert 제목에 마침표가 없다 (audit #30)", () => {
-  const w = m.translations.workspace;
+  const w = en.translations.workspace;
   it.each([
     ["footer.saveFailed.title", w.footer.saveFailed.title],
     ["footer.saveUnknown.title", w.footer.saveUnknown.title],
@@ -436,16 +437,16 @@ describe("Alert 제목에 마침표가 없다 (audit #30)", () => {
  */
 describe("링크 라벨이 도착 화면의 버튼 이름을 든다 (audit #28)", () => {
   it.each([
-    ["repositorySync.sendFirst", m.repositorySync.sendFirst],
-    ["projects.banner.action.send", m.projects.banner.action.send],
+    ["repositorySync.sendFirst", en.repositorySync.sendFirst],
+    ["projects.banner.action.send", en.projects.banner.action.send],
   ])("%s", (_, label) => {
-    expect(label).toContain(m.translations.publish.button);
+    expect(label).toContain(en.translations.publish.button);
   });
 });
 
 /** audit #31 — 프로젝트가 0개인 사람은 초대받은 번역자일 수도 있다. 리포 연결만 권하면 그 사람의 길이 없다. */
 it("프로젝트 0건 문장이 초대받은 사람의 길도 말한다 (audit #31)", () => {
-  expect(m.projects.empty.description).toMatch(/invit/i);
+  expect(en.projects.empty.description).toMatch(/invit/i);
 });
 
 /**
@@ -454,29 +455,29 @@ it("프로젝트 0건 문장이 초대받은 사람의 길도 말한다 (audit #
  */
 describe("사실을 단언하는 문장 (B4 r1)", () => {
   it("기준 언어 교체 배너는 덮어쓰기를 예고하지 않는다 — 미전달 편집이 있으면 Sync가 기다린다 (ARCHITECTURE §0-1)", () => {
-    const text = m.translations.banner.basePending("ja");
+    const text = en.translations.banner.basePending("ja");
     // malmoi#127 — 트리거를 댄다: 앱의 [Sync]는 선언을 적용하지 않고, 워크플로의 Sync는 미전달 편집이 있으면 기다린다.
     expect(text).toBe("The base language is changing to ja. It switches on the next sync from your repository's GitHub Actions workflow — the Sync button doesn't apply it. That sync waits while there are unsent edits, so publish them first.");
     expect(text).not.toMatch(/overwrite/i);
   });
   it("프로젝트 0건은 '발행 전엔 안 쓴다'고 하지 않는다 — 야간 cron이 발행한다 (PRODUCT)", () => {
-    expect(m.projects.empty.description).not.toMatch(/until you publish/i);
-    expect(m.projects.empty.description).toContain("it only writes back by opening a pull request");
+    expect(en.projects.empty.description).not.toMatch(/until you publish/i);
+    expect(en.projects.empty.description).toContain("it only writes back by opening a pull request");
   });
   it("Sync 권유 링크는 번역 화면을 연다고만 말한다 — Publish는 Home에도 있다", () => {
-    expect(textOf(m.repositorySync.sendHint(2, "LINK"))).toBe("To keep them, LINK — it opens the translation screen.");
-    expect(textOf(m.repositorySync.sendHint(1, "LINK"))).toBe("To keep it, LINK — it opens the translation screen.");
+    expect(textOf(en.repositorySync.sendHint(2, "LINK"))).toBe("To keep them, LINK — it opens the translation screen.");
+    expect(textOf(en.repositorySync.sendHint(1, "LINK"))).toBe("To keep it, LINK — it opens the translation screen.");
   });
   it("Publish 거부 폴백은 같은 모달의 'Trying again won't help'과 모순되지 않는다", () => {
-    expect(m.translations.publish.refused).not.toMatch(/try again/i);
-    expect(m.translations.publish.refused).toBe("Publishing couldn't start. Open this project again from your project list.");
+    expect(en.translations.publish.refused).not.toMatch(/try again/i);
+    expect(en.translations.publish.refused).toBe("Publishing couldn't start. Open this project again from your project list.");
   });
   it("lease-lost는 확인 안 된 원인(다른 Sync)을 단언하지 않는다", () => {
-    const text = m.repositorySync.errors["lease-lost"];
+    const text = en.repositorySync.errors["lease-lost"];
     expect(text).not.toMatch(/another sync/i);
     expect(text).toBe("This sync stopped before it could replace this source. Refresh to see the current state before trying again.");
   });
   it("Sources 추가 권한 문장은 주어 자리 복수형이다", () => {
-    expect(m.sources.ownerOnly).toBe("Only project owners can add sources.");
+    expect(en.sources.ownerOnly).toBe("Only project owners can add sources.");
   });
 });

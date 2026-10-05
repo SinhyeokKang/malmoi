@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import { routes } from "@/lib/routes";
 import { navWorkItems } from "@/lib/shell/nav";
+import { en } from "@/messages/en";
 
 /**
  * 화면 배선을 **소스에서** 센다 (translation-ui T8).
@@ -28,12 +29,13 @@ const INVITE = "app/invite/[token]/page.tsx";
 
 describe("문서 언어 (T8)", () => {
   /**
-   * ⚠️ **T4가 미뤄 둔 한 줄이다.** 화면 문구가 전부 영어가 되는 커밋이 이것이므로 여기서 바꾼다 —
    * `lang`이 틀리면 스크린리더가 영어 문장을 한국어 음성 엔진으로 읽고, 하이픈네이션·따옴표도 갈린다.
+   * 2026-09-08 T8이 `"en"`으로 고정했고, 화면 언어가 셋이 된 뒤(ui-locales D3)로는 **요청의 화면 언어**다 — 리터럴이 남으면 안 된다.
+   * provider까지의 계약은 `root-layout-i18n.test.ts`가 든다.
    */
-  it("`<html lang=\"en\">`이다 — 문구가 전부 영어가 됐다", () => {
-    expect(read(LAYOUT)).toMatch(/lang="en"/);
-    expect(read(LAYOUT)).not.toMatch(/lang="ko"/);
+  it("`<html lang>`이 요청의 화면 언어다 — 고정 리터럴이 없다", () => {
+    expect(read(LAYOUT)).toMatch(/<html lang=\{uiLocale\}/);
+    expect(read(LAYOUT)).not.toMatch(/lang="(en|ko|es)"/);
   });
 });
 
@@ -199,8 +201,8 @@ describe("계정 화면 — 옮겼고 복제하지 않았다 (6b-4)", () => {
   it("사용자 메뉴에 계정 항목이 있다 — 셸에서 도달하는 경로다", () => {
     // 2026-09-27부터 메뉴 첫 묶음이 사이드바 사용자 구역과 같은 목록(`navWorkItems`)을 읽는다 — 계정 항목은 그 목록에 있다.
     // 렌더 단언(라벨·주소·순서)은 `components/__tests__/user-menu.test.tsx`가 든다.
-    expect(read(USER_MENU)).toContain("navWorkItems()");
-    expect(navWorkItems().map((item) => item.href)).toContain(routes.account());
+    expect(read(USER_MENU)).toContain("navWorkItems(m)");
+    expect(navWorkItems(en).map((item) => item.href)).toContain(routes.account());
   });
 
   /**
@@ -275,10 +277,10 @@ describe("보관 — 네 화면이 같은 갈래를 그린다 (7단계)", () => 
     expect(read(LOGS)).toContain("m.logs.archived");
     // 추출된 판정에 보관 상태가 도달해야 야간 절이 사라진다 — 실제 문장은 DOM 회귀 테스트가 센다.
     // 보조줄은 `EventMetaLine`이 그린다(2026-09-30) — 행이 보관 상태를 넘기고, 그 컴포넌트가 판정에 넘긴다.
-    expect(read("components/logs/event-row.tsx")).toContain("<EventMetaLine row={row} archived={archived} />");
-    expect(read("components/logs/event-meta.tsx")).toContain("eventMeta(row, archived)");
-    expect(read("components/logs/event-detail.tsx")).toContain("eventFailureMessage(row, archived)");
-    expect(read("lib/events/view.ts")).toContain("planArchivedReason(row.run?.errorCode");
+    expect(read("components/logs/event-row.tsx")).toContain("<EventMetaLine row={row} archived={archived} m={m} />");
+    expect(read("components/logs/event-meta.tsx")).toContain("eventMeta(m, row, archived)");
+    expect(read("components/logs/event-detail.tsx")).toContain("eventFailureMessage(m, row, archived)");
+    expect(read("lib/events/view.ts")).toContain("planArchivedReason(m, row.run?.errorCode");
     expect(read(LOGS)).not.toContain("syncReasonMessage");
   });
 
@@ -296,7 +298,9 @@ describe("보관 — 네 화면이 같은 갈래를 그린다 (7단계)", () => 
    * 등록과 소비를 함께 센다. 실제 CSS 생성·값 동치는 spelling-equivalence.test.ts가 검사한다.
    */
   it("인라인 링크가 등록된 `text-link` 토큰을 쓴다", () => {
-    expect(read("app/globals.css")).toMatch(/--color-link:\s*var\(--color-blue-600\)/);
+    expect(read("app/globals.css")).toMatch(/--color-link:\s*var\(--link\)/);
+    // 라이트 값이 옛 `text-blue-600`과 같은 파랑이다(color-scheme — 다크 값은 `light-dark()` 둘째 인자).
+    expect(read("app/globals.css")).toMatch(/--link:\s*light-dark\(var\(--color-blue-600\),/);
     expect(read("components/ui/link.tsx")).toContain("text-link");
     for (const path of ["components/settings/ci-card.tsx", "components/sources/source-detail-modal.tsx", "components/sources/sources-screen.tsx"]) {
       expect(read(path), path).toContain("@/components/ui/link");

@@ -7,7 +7,7 @@ import { OVERVIEW_TRACKS } from "@/lib/guide/overview";
 import { parseMd } from "@/lib/guide/parse";
 import { flattenNav, parseSummary } from "@/lib/guide/summary";
 
-const nav = parseSummary(parseMd(readFileSync(join(process.cwd(), "guide/SUMMARY.md"), "utf8")));
+const nav = parseSummary(parseMd(readFileSync(join(process.cwd(), "guide/en/SUMMARY.md"), "utf8")));
 const slugs = new Set(flattenNav(nav).map((item) => item.slug.join("/")));
 
 describe("OVERVIEW_TRACKS — 개요의 두 갈래", () => {

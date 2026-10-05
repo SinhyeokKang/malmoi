@@ -1,7 +1,7 @@
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import type { Credential } from "@/lib/auth/subject";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { isOnboardError, onboardErrorMessage } from "@/lib/onboarding/message";
 import { isRepositorySettingsError, repositorySettingsErrorMessage } from "@/lib/settings/message";
 
@@ -11,7 +11,7 @@ import { BATCH_SAVE_LIMIT } from "./batch";
  * 도구 결과 변환 (mcp-connector design §2.3). 모든 도구의 union이 여기를 지나 MCP `CallToolResult`가 된다.
  *
  * - 거부는 `isError: true` + 기존 거부 코드 + **화면과 같은 문장**이다. 화면에 있는 거부는 화면의 키를 가리키고, 도구에만 있는
- *   갈래만 `m.mcp`에 있다 — 같은 거부에 문구가 두 벌이면 안 된다.
+ *   갈래만 `en.mcp`에 있다 — 같은 거부에 문구가 두 벌이면 안 된다.
  * - **장애는 거부가 아니다**(ARCHITECTURE §6.00 ②) — `unavailable`은 `retryable: true`를 싣는다. 거부 중에는 `sync-running`(적재 lease —
  *   기다리면 풀린다, sync-lock C4)만 같은 표시와 다시 열리는 시각(`detail`)을 싣는다.
  * - **예외 문구를 싣지 않는다**(§6.0) — 결과 모양에 예외 자리가 없고, 입력의 다른 필드는 읽지 않는다.
@@ -47,21 +47,21 @@ export type ToolResult = {
 };
 
 const MESSAGE = {
-  "not-found": m.errors.access["not-found"],
-  forbidden: m.errors.access.forbidden,
-  archived: m.errors.access.archived,
-  unavailable: m.errors.access.unavailable,
-  "token-scope": m.mcp.errors["token-scope"],
-  "repo-read-only": m.errors.connect["repo-read-only"],
-  "sample-expired": m.errors.onboarding["sample-expired"],
-  "manual-no-match": m.errors.onboarding["manual-no-match"],
-  "not-ready": m.errors.onboarding["not-ready"],
-  reconfirm: m.mcp.errors.reconfirm,
-  "invalid-input": m.mcp.errors["invalid-input"],
-  "too-many": m.mcp.errors["too-many"](BATCH_SAVE_LIMIT),
-  "duplicate-key": m.mcp.errors["duplicate-key"],
+  "not-found": en.errors.access["not-found"],
+  forbidden: en.errors.access.forbidden,
+  archived: en.errors.access.archived,
+  unavailable: en.errors.access.unavailable,
+  "token-scope": en.mcp.errors["token-scope"],
+  "repo-read-only": en.errors.connect["repo-read-only"],
+  "sample-expired": en.errors.onboarding["sample-expired"],
+  "manual-no-match": en.errors.onboarding["manual-no-match"],
+  "not-ready": en.errors.onboarding["not-ready"],
+  reconfirm: en.mcp.errors.reconfirm,
+  "invalid-input": en.mcp.errors["invalid-input"],
+  "too-many": en.mcp.errors["too-many"](BATCH_SAVE_LIMIT),
+  "duplicate-key": en.mcp.errors["duplicate-key"],
   // 적재 lease 중 번역 쓰기 거부(sync-lock C4) — Sync 결과 화면의 문장이다. 다시 열리는 시각은 호출부가 `detail`로 싣는다.
-  "sync-running": m.repositorySync.errors["already-running"],
+  "sync-running": en.repositorySync.errors["already-running"],
 } satisfies Record<ToolRejection, string>;
 
 const text = (value: string): ToolResult["content"] => [{ type: "text", text: value }];
@@ -73,16 +73,16 @@ const text = (value: string): ToolResult["content"] => [{ type: "text", text: va
 function rejectionMessage(code: string, credential: Credential["kind"] | undefined): string | null {
   if (code === "token-scope") return scopeMessage(credential);
   if (Object.hasOwn(MESSAGE, code)) return MESSAGE[code as ToolRejection];
-  if (isAccessError(code)) return accessErrorMessage(code);
-  if (isRepositorySettingsError(code)) return repositorySettingsErrorMessage(code);
-  if (isOnboardError(code)) return onboardErrorMessage(code);
-  if (isConnectError(code)) return connectErrorMessage(code);
+  if (isAccessError(code)) return accessErrorMessage(en, code);
+  if (isRepositorySettingsError(code)) return repositorySettingsErrorMessage(en, code);
+  if (isOnboardError(code)) return onboardErrorMessage(en, code);
+  if (isConnectError(code)) return connectErrorMessage(en, code);
   return null;
 }
 
 /** 주체를 모르면(세션 경로·테스트) 개인 토큰 문장이다 — 그 전부터 그 문장이었다. */
 function scopeMessage(credential: Credential["kind"] | undefined): string {
-  return credential === "oauth" ? m.mcp.errors["token-scope-oauth"] : MESSAGE["token-scope"];
+  return credential === "oauth" ? en.mcp.errors["token-scope-oauth"] : MESSAGE["token-scope"];
 }
 
 export function toToolResult(outcome: ToolOutcome, credential?: Credential["kind"]): ToolResult {
@@ -101,7 +101,7 @@ export function toToolResult(outcome: ToolOutcome, credential?: Credential["kind
     return { isError: true, content: text(message), structuredContent: { ...outcome.detail, status: outcome.code, message, ...retryable } };
   }
   if (outcome.status === "needs-browser") {
-    const message = m.mcp.needsBrowser[outcome.reason];
+    const message = en.mcp.needsBrowser[outcome.reason];
     return { isError: true, content: text(`${message} ${outcome.url}`), structuredContent: { status: "needs-browser", reason: outcome.reason, url: outcome.url, message } };
   }
   // ⚠️ 사전 조회는 `Object.hasOwn`으로 — 타입 밖의 값(`constructor` 등)이 프로토타입에서 문장을 찾지 않게(POSTMORTEM 2026-09-08).

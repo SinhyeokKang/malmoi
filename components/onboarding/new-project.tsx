@@ -12,7 +12,7 @@ import { WizardFooter } from "@/components/ui/wizard-footer";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import { ingestHeadline } from "@/lib/onboarding/message";
 import { planBranchChoice, type BranchChoice } from "@/lib/onboarding/branch";
 import type { CandidateSummary } from "@/lib/onboarding/detect";
@@ -69,6 +69,7 @@ export function NewProject({
   /** 경로가 문맥을 지정한다 — 인터셉트 뒤의 목록은 보존하고 딥링크는 목록 주소로 복귀한다. */
   closeMode: "back" | "list";
 }) {
+  const m = useMessages();
   const router = useRouter();
   // 같은 리포·후보로 돌아와도 이전 요청과 구별해야 하므로 값 비교 대신 세대를 센다.
   const repoRequest = useRef(0);
@@ -320,7 +321,7 @@ export function NewProject({
           if (detail === null) setManualCandidate((prev) => prev === undefined ? prev : update(prev));
           else setCandidates((prev) => prev.map((item, index) => index === detail ? update(item) : item));
         }
-        setAnnounce(result.ok ? undefined : previewFailureText(failedPreview(result.error)));
+        setAnnounce(result.ok ? undefined : previewFailureText(m, failedPreview(result.error)));
         setSamples((prev) => ({
           ...prev,
           // ⚠️ **실패를 빈 결과로 위장하지 않는다** — 빈 언어(빈 칸)와 화면에서 갈린다.
@@ -462,7 +463,7 @@ export function NewProject({
         : m.newProject.steps.files.description(candidates.length, repoLabel, branchValue),
     3: m.newProject.steps.naming.description,
     4: created === undefined ? m.newProject.steps.result.description
-      : `${ingestHeadline(created.count, 0)} ${m.newProject.steps.result.description}`,
+      : `${ingestHeadline(m, created.count, 0)} ${m.newProject.steps.result.description}`,
   } as const;
 
   return (
@@ -581,10 +582,10 @@ export function NewProject({
           <SlowNotice active={pending} />
           {creationFailure !== null && <Alert variant="danger">
             {creationFailure === "unknown" ? m.newProject.naming.resultUnknown : <>
-              <p>{m.newProject.naming.nothingCreated} {creationFailure.error === "path-conflict" ? m.newProject.files.conflicts : failureText(creationFailure.error)}</p>
+              <p>{m.newProject.naming.nothingCreated} {creationFailure.error === "path-conflict" ? m.newProject.files.conflicts : failureText(m, creationFailure.error)}</p>
               {creationFailure.surface && <>
                 <p>{m.newProject.naming.failedSurface(creationFailure.surface.pathTemplate, creationFailure.surface.failed)}</p>
-                {creationFailure.surface.errors.slice(0, 5).map((error, index) => <p key={index} className="whitespace-pre-wrap text-xs">{adapterErrorMessage(error)}</p>)}
+                {creationFailure.surface.errors.slice(0, 5).map((error, index) => <p key={index} className="whitespace-pre-wrap text-xs">{adapterErrorMessage(error, m.adapterErrors)}</p>)}
               </>}
               {creationFailure.conflicts?.map(conflict => <p key={conflict.path}>{conflict.path}</p>)}
             </>}

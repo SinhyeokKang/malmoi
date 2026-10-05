@@ -27,7 +27,28 @@ beforeEach(() => {
 it("같은 렌더 범위에서 두 번 읽어도 auth()는 한 번이다", async () => {
   const { readSession } = await import("../read-session");
   const [a, b] = await Promise.all([readSession(), readSession()]);
-  expect(a).toEqual({ status: "ok", userId: "u1", name: "Kim", email: "k@x.com", image: null });
+  expect(a).toEqual({ status: "ok", userId: "u1", name: "Kim", email: "k@x.com", image: null, uiLocale: null, timeZone: null, colorScheme: null });
   expect(b).toEqual(a);
   expect(hoisted.auth).toHaveBeenCalledTimes(1);
+});
+
+/** 화면 언어(ui-locales C2) — 세션 페이로드가 이미 싣는 값을 그대로 넘긴다. 판정은 `getUiLocale`이 한다. */
+it("세션의 uiLocale을 ok 갈래에 싣는다", async () => {
+  hoisted.auth.mockResolvedValue({ user: { id: "u1", name: null, email: null, image: null, uiLocale: "es" } });
+  const { readSession } = await import("../read-session");
+  expect(await readSession()).toMatchObject({ status: "ok", uiLocale: "es" });
+});
+
+/** 시간대(user-timezone B2) — 세션 페이로드가 이미 싣는 날 값을 그대로 넘긴다. 판정은 `parseTimeZone`이 읽는 쪽에서 한다. */
+it("세션의 timeZone을 ok 갈래에 싣는다", async () => {
+  hoisted.auth.mockResolvedValue({ user: { id: "u1", name: null, email: null, image: null, uiLocale: null, timeZone: "Asia/Kathmandu" } });
+  const { readSession } = await import("../read-session");
+  expect(await readSession()).toMatchObject({ status: "ok", timeZone: "Asia/Kathmandu" });
+});
+
+/** 화면 테마(color-scheme P2-2) — 세션 페이로드가 이미 싣는 날 값을 그대로 넘긴다. 판정은 `parseColorScheme`이 읽는 쪽에서 한다. */
+it("세션의 colorScheme을 ok 갈래에 싣는다", async () => {
+  hoisted.auth.mockResolvedValue({ user: { id: "u1", name: null, email: null, image: null, uiLocale: null, timeZone: null, colorScheme: "system" } });
+  const { readSession } = await import("../read-session");
+  expect(await readSession()).toMatchObject({ status: "ok", colorScheme: "system" });
 });

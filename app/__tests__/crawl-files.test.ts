@@ -36,7 +36,7 @@ describe("`/sitemap.xml`", () => {
 
   it("SUMMARY 전부 + `/` + `/changelog` + `/privacy`", async () => {
     const { default: sitemap } = await import("@/app/sitemap");
-    expect(sitemap()).toHaveLength(flattenNav(loadSummary()).length + 3);
+    expect(sitemap()).toHaveLength(flattenNav(loadSummary("en")).length + 3);
   });
 });
 

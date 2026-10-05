@@ -3,25 +3,25 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, it } from "vitest";
 
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { linkErrorMessage, providerLabel } from "../message";
 
 const ROOT = process.cwd();
 
 it("모르는 `?e=`에 던지지 않고 폴백 문구를 낸다", () => {
-  expect(linkErrorMessage("wrong-account")).toBe(m.errors.link["wrong-account"]);
-  expect(linkErrorMessage("already-linked")).toBe(m.errors.link["already-linked"]);
+  expect(linkErrorMessage(en, "wrong-account")).toBe(en.errors.link["wrong-account"]);
+  expect(linkErrorMessage(en, "already-linked")).toBe(en.errors.link["already-linked"]);
   // 주소창 값이다 — 프로토타입 키에서 값이 찾아져 문자열 자리에 함수가 오면 화면이 죽는다.
   for (const code of ["nope", "constructor", "toString", "__proto__", "fallback"]) {
-    expect(typeof linkErrorMessage(code)).toBe("string");
+    expect(typeof linkErrorMessage(en, code)).toBe("string");
   }
-  expect(linkErrorMessage("nope")).toBe(m.errors.link.fallback);
+  expect(linkErrorMessage(en, "nope")).toBe(en.errors.link.fallback);
 });
 
 it("provider 이름은 사전이 든다 — 화면이 문자열을 조립하지 않는다", () => {
-  expect(providerLabel("github")).toBe("GitHub");
-  expect(providerLabel("google")).toBe("Google");
+  expect(providerLabel(en, "github")).toBe("GitHub");
+  expect(providerLabel(en, "google")).toBe("Google");
 });
 
 /**

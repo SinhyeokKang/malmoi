@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PendingInvitations } from "@/components/members/pending-invitations";
 import type { PendingInvitation } from "@/lib/auth/query";
 import type { Role } from "@/lib/auth/permission";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { find, render } from "./helpers/dom";
 
@@ -74,9 +74,9 @@ describe("Resend — 누가 보나", () => {
   it("OWNER에게 역할 칩 → Resend → Revoke 순서로 선다", async () => {
     await draw();
     const buttons = [...rows()[0]!.querySelectorAll("button")];
-    expect(buttons.map((b) => b.textContent)).toEqual([m.members.pending.resend, m.members.pending.revoke]);
-    expect(resend(0).getAttribute("aria-label")).toBe(m.members.pending.resendLabel("a***@acme.com"));
-    expect(m.members.pending.resendLabel("a***@acme.com")).toBe("Resend invitation to a***@acme.com");
+    expect(buttons.map((b) => b.textContent)).toEqual([en.members.pending.resend, en.members.pending.revoke]);
+    expect(resend(0).getAttribute("aria-label")).toBe(en.members.pending.resendLabel("a***@acme.com"));
+    expect(en.members.pending.resendLabel("a***@acme.com")).toBe("Resend invitation to a***@acme.com");
   });
 
   it("EDITOR에게는 없다", async () => {
@@ -128,8 +128,8 @@ describe("Resend — 성공", () => {
   it("토스트는 누른 행의 라벨로 말하고 카드 Alert를 세우지 않는다", async () => {
     await draw();
     await click(resend(0));
-    expect(mocks.toast).toHaveBeenCalledWith(m.members.pending.resentToast("a***@acme.com"));
-    expect(m.members.pending.resentToast("a***@acme.com")).toBe("Invitation resent to a***@acme.com");
+    expect(mocks.toast).toHaveBeenCalledWith(en.members.pending.resentToast("a***@acme.com"));
+    expect(en.members.pending.resentToast("a***@acme.com")).toBe("Invitation resent to a***@acme.com");
     expect(cardAlert()).toBeNull();
   });
 
@@ -144,13 +144,13 @@ describe("Resend — 성공", () => {
 
 describe("Resend — 실패는 카드 안 Alert 하나", () => {
   it.each([
-    [{ ok: false, error: "email-rejected", label: "a***@acme.com", retryAt: "2026-09-23T12:00:30Z" }, () => m.members.pending.resendFailed("a***@acme.com", "Sep 23, 2026 12:01 UTC")],
-    [{ ok: false, error: "email-unknown", label: "a***@acme.com", retryAt: "2026-09-23T12:00:30Z" }, () => m.members.pending.resendUnconfirmed("a***@acme.com")],
-    [{ ok: false, error: "rate-limited", retryAt: "2026-09-23T12:00:30Z", limit: "address" }, () => m.members.pending.resendLimited("a***@acme.com", "Sep 23, 2026 12:01 UTC")],
-    [{ ok: false, error: "rate-limited", retryAt: "2026-09-23T12:00:30Z", limit: "project", used: 20 }, () => m.members.pending.resendProjectLimited("a***@acme.com", 20, "Sep 23, 2026 12:01 UTC")],
-    [{ ok: false, error: "rate-limited", retryAt: "2026-09-23T12:00:30Z", limit: "user", used: 30 }, () => m.members.pending.resendUserLimited("a***@acme.com", 30, "Sep 23, 2026 12:01 UTC")],
-    [{ ok: false, error: "email-unavailable" }, () => m.members.pending.resendUnavailable("a***@acme.com")],
-    [{ ok: false, error: "not-found" }, () => m.members.pending.gone("a***@acme.com")],
+    [{ ok: false, error: "email-rejected", label: "a***@acme.com", retryAt: "2026-09-23T12:00:30Z" }, () => en.members.pending.resendFailed("a***@acme.com", "Sep 23, 2026 12:01 UTC")],
+    [{ ok: false, error: "email-unknown", label: "a***@acme.com", retryAt: "2026-09-23T12:00:30Z" }, () => en.members.pending.resendUnconfirmed("a***@acme.com")],
+    [{ ok: false, error: "rate-limited", retryAt: "2026-09-23T12:00:30Z", limit: "address" }, () => en.members.pending.resendLimited("a***@acme.com", "Sep 23, 2026 12:01 UTC")],
+    [{ ok: false, error: "rate-limited", retryAt: "2026-09-23T12:00:30Z", limit: "project", used: 20 }, () => en.members.pending.resendProjectLimited("a***@acme.com", 20, "Sep 23, 2026 12:01 UTC")],
+    [{ ok: false, error: "rate-limited", retryAt: "2026-09-23T12:00:30Z", limit: "user", used: 30 }, () => en.members.pending.resendUserLimited("a***@acme.com", 30, "Sep 23, 2026 12:01 UTC")],
+    [{ ok: false, error: "email-unavailable" }, () => en.members.pending.resendUnavailable("a***@acme.com")],
+    [{ ok: false, error: "not-found" }, () => en.members.pending.gone("a***@acme.com")],
   ])("%j는 대상 라벨을 넣어 카드 머리 아래에 선다", async (result, text) => {
     mocks.resendInvitation.mockResolvedValueOnce(result);
     await draw();
@@ -167,14 +167,14 @@ describe("Resend — 실패는 카드 안 Alert 하나", () => {
     await draw();
     await click(resend(0));
     await rerender(view([invitation({ id: "i9", emailLabel: "a***@acme.com" }), two[1]!]));
-    expect(cardAlert()?.textContent).toContain(m.members.pending.resendUnconfirmed("a***@acme.com"));
+    expect(cardAlert()?.textContent).toContain(en.members.pending.resendUnconfirmed("a***@acme.com"));
   });
 
   it("X로 닫히고, 다음 Resend가 시작되면 지워진다", async () => {
     mocks.resendInvitation.mockResolvedValueOnce({ ok: false, error: "not-found" });
     await draw();
     await click(resend(0));
-    await click(find<HTMLButtonElement>(cardAlert()!, `button[aria-label="${m.common.dismiss}"]`));
+    await click(find<HTMLButtonElement>(cardAlert()!, `button[aria-label="${en.common.dismiss}"]`));
     expect(cardAlert()).toBeNull();
 
     mocks.resendInvitation.mockResolvedValueOnce({ ok: false, error: "not-found" });
@@ -199,7 +199,7 @@ describe("Resend — 실패는 카드 안 Alert 하나", () => {
     mocks.resendInvitation.mockRejectedValueOnce(new Error("network"));
     await draw();
     await click(resend(0));
-    expect(cardAlert()?.textContent).toContain(m.members.pending.resendUnconfirmed("a***@acme.com"));
+    expect(cardAlert()?.textContent).toContain(en.members.pending.resendUnconfirmed("a***@acme.com"));
     expect(resend(0).disabled).toBe(false);
   });
 });

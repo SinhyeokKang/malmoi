@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { planAddBlock } from "@/lib/sources/add-block";
 
 /**
@@ -9,17 +9,17 @@ import { planAddBlock } from "@/lib/sources/add-block";
  */
 const base = { detecting: false, detectError: false, formats: [{ baseLocale: "en" }], conflicts: 0 };
 describe("planAddBlock", () => {
-  it("막는 것이 없으면 null이다", () => { expect(planAddBlock(base)).toBeNull(); });
+  it("막는 것이 없으면 null이다", () => { expect(planAddBlock(en, base)).toBeNull(); });
   it.each([
-    [{ detecting: true }, m.settings.sources.blocked.detecting],
-    [{ detectError: true }, m.settings.sources.blocked.detectFailed],
-    [{ formats: [] }, m.settings.sources.selectHelp],
-    [{ conflicts: 1 }, m.settings.sources.blocked.conflict],
-    [{ formats: [{ baseLocale: "" }] }, m.settings.sources.blocked.base],
+    [{ detecting: true }, en.settings.sources.blocked.detecting],
+    [{ detectError: true }, en.settings.sources.blocked.detectFailed],
+    [{ formats: [] }, en.settings.sources.selectHelp],
+    [{ conflicts: 1 }, en.settings.sources.blocked.conflict],
+    [{ formats: [{ baseLocale: "" }] }, en.settings.sources.blocked.base],
   ])("%o → 그 갈래의 문장", (patch, reason) => {
-    expect(planAddBlock({ ...base, ...patch })).toBe(reason);
+    expect(planAddBlock(en, { ...base, ...patch })).toBe(reason);
   });
   it("탐지가 먼저다 — 그동안은 고를 것이 아직 없다", () => {
-    expect(planAddBlock({ ...base, detecting: true, formats: [] })).toBe(m.settings.sources.blocked.detecting);
+    expect(planAddBlock(en, { ...base, detecting: true, formats: [] })).toBe(en.settings.sources.blocked.detecting);
   });
 });

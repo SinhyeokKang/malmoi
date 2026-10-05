@@ -1,3 +1,4 @@
+import { en } from "@/messages/en";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ADAPTERS, jsonCatalog, matchGlobPaths, tsDict } from "@/lib/adapters";
@@ -170,23 +171,23 @@ describe("formatLabel — 어댑터 이름을 화면에 쓰지 않는다 (PRODUC
 
   it("다섯 어댑터 전부에 라벨과 경로 예시가 있다", () => {
     for (const name of names) {
-      const { label, example } = formatLabel(name);
+      const { label, example } = formatLabel(en, name);
       expect(label.trim().length).toBeGreaterThan(0);
       expect(example.trim().length).toBeGreaterThan(0);
     }
   });
 
   it("라벨에 내부 이름이 들어가지 않는다", () => {
-    for (const name of names) expect(formatLabel(name).label).not.toContain(name);
+    for (const name of names) expect(formatLabel(en, name).label).not.toContain(name);
   });
 
   it("경로 예시가 구별자다 — '코드 딕셔너리'가 둘이라 라벨만으로는 못 가른다", () => {
-    expect(new Set(names.map((n) => formatLabel(n).example)).size).toBe(names.length);
+    expect(new Set(names.map((n) => formatLabel(en, n).example)).size).toBe(names.length);
   });
 
   it("per-locale 예시에는 `{locale}`이, multi-locale 예시에는 `*`가 있다 — 사용자가 자기 리포에서 확인할 단서다", () => {
     for (const a of ADAPTERS) {
-      const { example } = formatLabel(a.name);
+      const { example } = formatLabel(en, a.name);
       if (a.layout === "per-locale") expect(example).toContain("{locale}");
       else expect(example).toContain("*");
     }
@@ -235,11 +236,11 @@ describe("summarizeCandidates — 후보 + blob → 사용자 언어 요약", ()
     expect(out.map((s) => s.pathTemplate)).toEqual([c2.pathTemplate, c1.pathTemplate]);
   });
 
-  it("어댑터 이름은 값으로 실리되(확정 시 되돌려 보낸다) 라벨엔 없다", () => {
+  /** 화면 문구(`label`)는 싣지 않는다(ui-locales B1′) — 받는 쪽이 자기 언어로 `adapter`에서 고른다. MCP는 en 라벨을 붙인다. */
+  it("어댑터 이름은 값으로 실리고(확정 시 되돌려 보낸다) 화면 문구는 싣지 않는다", () => {
     const [s] = summarizeCandidates([c1], new Map());
     expect(s?.adapter).toBe("json-catalog");
-    expect(s?.label).toBe(formatLabel("json-catalog").label);
-    expect(s?.label).not.toContain("json-catalog");
+    expect(s).not.toHaveProperty("label");
   });
 
   it("로케일 목록은 정렬돼 있다 — 탐지 결과는 정렬돼 있지 않다", () => {

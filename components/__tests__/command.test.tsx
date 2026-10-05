@@ -6,7 +6,7 @@ import { Search } from "lucide-react";
 
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList, CommandStatus } from "@/components/ui/command";
 import { Badge } from "@/components/ui/badge";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { Highlight } from "@/components/ui/highlight";
 import { find, input, key, render } from "./helpers/dom";
 
@@ -142,10 +142,10 @@ it("입력 줄은 h-12 pl-3 pr-4이고 지우기 X와 끝의 Esc 칩을 든다",
   const row = combobox.closest(".border-b")!;
   expect([...row.classList]).toEqual(expect.arrayContaining(["flex", "h-12", "items-center", "gap-2", "pl-3", "pr-4", "border-divider"]));
   const esc = find(row, "kbd");
-  expect(esc.textContent).toBe(m.common.keys.esc);
+  expect(esc.textContent).toBe(en.common.keys.esc);
   expect([...esc.parentElement!.classList]).toEqual(expect.arrayContaining(["hidden", "sm:inline-flex"]));
   expect(row.lastElementChild).toBe(esc.parentElement);
-  const clear = find<HTMLButtonElement>(row, `button[aria-label="${m.common.clearSearch}"]`);
+  const clear = find<HTMLButtonElement>(row, `button[aria-label="${en.common.clearSearch}"]`);
   expect(clear.type).toBe("button");
   await act(async () => { clear.click(); });
   expect(onValueChange).toHaveBeenLastCalledWith("");
@@ -165,7 +165,7 @@ it("지우기 X에서 Enter·↑↓는 그 버튼의 것이다 — 결과로 이
       <CommandItem id="b" href="/b" icon={<Search />} title="B" onNavigate={onNavigate} />
     </CommandList>
   </Command>);
-  const clear = find<HTMLButtonElement>(container, `button[aria-label="${m.common.clearSearch}"]`);
+  const clear = find<HTMLButtonElement>(container, `button[aria-label="${en.common.clearSearch}"]`);
   const user = userEvent.setup();
   clear.focus();
   await act(async () => { await user.keyboard("{ArrowDown}"); });
@@ -215,7 +215,7 @@ it("↑↓가 DOM 순서대로 순환하고 선택 힌트는 활성 행에만 �
   await key(combobox, "ArrowDown");
   expect(active(container).textContent).toContain(initial[1]);
   expect(container.querySelectorAll('[role="option"] kbd')).toHaveLength(initial.length);
-  expect(find(active(container), "kbd").textContent).toBe(m.common.keys.enter);
+  expect(find(active(container), "kbd").textContent).toBe(en.common.keys.enter);
   expect(find(active(container), "kbd").parentElement?.classList.contains("invisible")).toBe(false);
   expect(active(container).textContent).toContain("Go to");
 });

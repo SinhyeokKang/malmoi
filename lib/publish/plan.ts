@@ -1,5 +1,5 @@
 import type { PullOutcome } from "@/lib/pull/message";
-import { m } from "@/lib/i18n";
+import type { Messages } from "@/lib/i18n";
 export type PublishView = "created" | "updated" | "partial" | "no-changes" | "config-error" | "transient-error" | "already-running" | "too-soon";
 export function planPublishView(outcome: PullOutcome): PublishView {
   switch (outcome.status) {
@@ -15,7 +15,7 @@ export function planPublishView(outcome: PullOutcome): PublishView {
   }
 }
 /** @param pausedReason 꺼진 원인을 호출부가 알 때의 사유 — 번역 화면의 연결 끊김(malmoi#160). 없으면 원인 없는 `paused`다. */
-export function planPublishButton({ count, paused, otherPending, publishPending, pausedReason }: { count: number; paused: boolean; otherPending: boolean; publishPending: boolean; pausedReason?: string }) {
+export function planPublishButton(m: Messages, { count, paused, otherPending, publishPending, pausedReason }: { count: number; paused: boolean; otherPending: boolean; publishPending: boolean; pausedReason?: string }) {
   return { mode: publishPending ? "progress" as const : "preview" as const,
     disabled: !publishPending && (count === 0 || paused || otherPending),
     badge: !publishPending && count > 0 ? count : null,
@@ -26,7 +26,7 @@ export function planPublishButton({ count, paused, otherPending, publishPending,
  * 이번 PR에 못 실은 편집의 줄 (delivery-invariants D7). 사유별 한 줄 — 파일이 없다 / 키 자리가 없다 — 에 역할별 다음 행동을 붙인다.
  * ⚠️ 화면에 있는 컨트롤만 가리킨다(POSTMORTEM 2026-09-14) — `Revert to last sent`는 OWNER에게만 선다.
  */
-export function planWithheldLines(outcome: PullOutcome, role: "OWNER" | "EDITOR"): string[] {
+export function planWithheldLines(m: Messages, outcome: PullOutcome, role: "OWNER" | "EDITOR"): string[] {
   const withheld = outcome.status === "committed" || (outcome.status === "skipped" && (outcome.reason === "no-changes" || outcome.reason === "withheld"))
     ? outcome.withheld : undefined;
   if (withheld === undefined) return [];

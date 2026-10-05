@@ -1,6 +1,5 @@
 import { clearAuthRoundtripCookies } from "@/lib/auth/roundtrip-cookies";
 import type { Metadata } from "next";
-import Image from "next/image";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -12,21 +11,24 @@ import { GithubIcon, GoogleIcon } from "@/components/signin/brand-icons";
 import { Alert } from "@/components/ui/alert";
 import { EntityCard } from "@/components/ui/entity-card";
 import { ButtonLink } from "@/components/ui/button";
+import { MalmoiMark } from "@/components/ui/malmoi-mark";
 import { getPrisma } from "@/lib/db";
 import { logCaught } from "@/lib/failure";
 import { requestOrigin } from "@/lib/github-connect/origin";
-import { m } from "@/lib/i18n";
+import type { Messages } from "@/lib/i18n";
+import type { UiLocale } from "@/lib/i18n/locales";
+import { getMessages, getUiLocale } from "@/lib/i18n/server";
+import { en } from "@/messages/en";
 import { withLinkStart } from "@/lib/login-link/http";
 import { linkErrorMessage, providerLabel } from "@/lib/login-link/message";
 import { linkCookie, outcomeUrl, type LinkDest, type LoginProvider } from "@/lib/login-link/policy";
 import { loadChallengeView } from "@/lib/login-link/view";
 import { routes } from "@/lib/routes";
 import { firstQueryValues, type Raw } from "@/lib/search-params";
-import logo from "@/public/brand/malmoi-icon-black.svg";
-import { utcMonth } from "@/lib/utc-time";
+import { formatMonth } from "@/lib/date-format";
 
 /** ⚠️ **색인 거부 + referrer 없음** — `/invite/<token>`과 같은 이유다(challenge가 경로에 실린다). */
-export const metadata: Metadata = { title: m.link.title, robots: { index: false, follow: false }, referrer: "no-referrer" };
+export const metadata: Metadata = { title: en.link.title, robots: { index: false, follow: false }, referrer: "no-referrer" };
 
 /**
  * 병합 안내 화면 — **거부를 안내로 바꾸는 자리다** (PRODUCT §4.3 ④).
@@ -47,6 +49,7 @@ export default async function LinkAccountPage({
   params: Promise<{ challenge: string }>;
   searchParams: Promise<Raw<"e">>;
 }) {
+  const [m, uiLocale] = await Promise.all([getMessages(), getUiLocale()]);
   const { challenge } = await params;
   const { e } = firstQueryValues(await searchParams);
 
@@ -61,12 +64,12 @@ export default async function LinkAccountPage({
   if (view === null) redirect(routes.signIn({ error: "LinkExpired" }));
 
   return (
-    <AuthLayout>
+    <AuthLayout m={m}>
       <AuthColumn>
-        <Image src={logo} alt="" width={48} height={48} priority />
+        <MalmoiMark size={48} />
         <AuthHeading
           title={m.link.title}
-          description={m.link.description(providerLabel(view.pending), providerLabel(view.have))}
+          description={m.link.description(providerLabel(m, view.pending), providerLabel(m, view.have))}
         />
 
         {/*
@@ -80,7 +83,7 @@ export default async function LinkAccountPage({
         */}
         {e !== undefined && (
           <Alert variant="danger" className="w-full">
-            {linkErrorMessage(e)}
+            {linkErrorMessage(m, e)}
           </Alert>
         )}
 
@@ -94,12 +97,12 @@ export default async function LinkAccountPage({
           name={view.emailLabel}
           avatarName={view.name ?? view.emailLabel}
           image={view.image}
-          description={<>{providerLabel(view.have)} · <time dateTime={view.joined.toISOString()}>{joinedLabel(view.joined)}</time></>}
+          description={<>{providerLabel(m, view.have)} · <time dateTime={view.joined.toISOString()}>{joinedLabel(m, uiLocale, view.joined)}</time></>}
           badge={view.have === "github" ? <GithubIcon className="size-4" /> : <GoogleIcon className="size-4" />}
         />
 
         <div className="flex w-full flex-col gap-2">
-          <ProviderButton provider={view.have} challenge={challenge} dest={view.dest} />
+          <ProviderButton m={m} provider={view.have} challenge={challenge} dest={view.dest} />
           <p className="text-muted-foreground text-center text-xs leading-relaxed">{m.link.footnote}</p>
         </div>
 
@@ -114,9 +117,9 @@ export default async function LinkAccountPage({
   );
 }
 
-/** 가입 월 — 앱의 날짜 형이 사는 `lib/utc-time.ts`가 만든다(ux-drift-unify 2-Y19 — 로케일 포맷터는 ICU·TZ에 기댄다). */
-function joinedLabel(joined: Date): string {
-  return m.link.joined(utcMonth(joined));
+/** 가입 월 — 앱의 날짜 형이 사는 `lib/date-format.ts`가 만든다(ux-drift-unify 2-Y19 — 로케일 포맷터는 ICU·TZ에 기댄다). */
+function joinedLabel(m: Messages, uiLocale: UiLocale, joined: Date): string {
+  return m.link.joined(formatMonth(joined, { uiLocale, timeZone: "UTC" }));
 }
 
 /**
@@ -125,10 +128,12 @@ function joinedLabel(joined: Date): string {
  * 방어선이다 — 이 화면이 **일반 로그인 진입점 셋째**라 버려진 회수 왕복을 먼저 지워야 한다.
  */
 function ProviderButton({
+  m,
   provider,
   challenge,
   dest,
 }: {
+  m: Messages;
   provider: LoginProvider;
   challenge: string;
   dest: LinkDest;
@@ -152,7 +157,7 @@ function ProviderButton({
       }}
     >
       <SubmitButton variant="primary" size="lg" className="w-full">
-        {m.link.confirm(providerLabel(provider))}
+        {m.link.confirm(providerLabel(m, provider))}
       </SubmitButton>
     </form>
   );

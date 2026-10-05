@@ -1,5 +1,5 @@
 import { accessErrorMessage, type AccessError } from "@/lib/auth/message";
-import { m } from "@/lib/i18n";
+import type { Messages } from "@/lib/i18n";
 
 /**
  * `updateRepositorySettings`의 거부 갈래 → 문구 (6b-3 — DESIGN §6.6).
@@ -11,23 +11,24 @@ import { m } from "@/lib/i18n";
  * ⚠️ **잎이다** — 설정 화면(클라이언트)이 값으로 읽는다. `@/lib/i18n`만 물고, 판정 함수
  * (`isValidBranchName`·`planBaseLocaleChange`)는 각자 자기 잎 모듈에 있다.
  */
-export type RepositorySettingsError = "invalid-branch" | "sync-branch" | "unknown-locale" | "orphaned-locale";
+const REPOSITORY_SETTINGS_ERRORS = ["invalid-branch", "sync-branch", "unknown-locale", "orphaned-locale"] as const;
 
-/** 갈래 누락은 `satisfies`가 컴파일 타임에 잡는다 — 옛 `never` 검사와 같은 힘이다. */
-const DICT = m.errors.repositorySettings satisfies Record<RepositorySettingsError, string>;
+export type RepositorySettingsError = (typeof REPOSITORY_SETTINGS_ERRORS)[number];
 
 export function isRepositorySettingsError(value: string | undefined): value is RepositorySettingsError {
-  return value !== undefined && Object.hasOwn(DICT, value);
+  return REPOSITORY_SETTINGS_ERRORS.some((code) => code === value);
 }
 
-export function repositorySettingsErrorMessage(error: RepositorySettingsError): string {
-  return DICT[error];
+export function repositorySettingsErrorMessage(m: Messages, error: RepositorySettingsError): string {
+  /** 갈래 누락은 `satisfies`가 컴파일 타임에 잡는다 — 옛 `never` 검사와 같은 힘이다. */
+  const dict = m.errors.repositorySettings satisfies Record<RepositorySettingsError, string>;
+  return dict[error];
 }
 
 /**
  * Settings 화면의 접근 거부 → 문구 (QA D1, 2026-09-24). `archived`만 갈린다 — 공용 문구(`errors.access.archived`)는
  * "설정에서 복원하라"를 말하는데 보는 사람이 이미 그 설정에 있다. 다른 행과 같은 `archivedReason` 한 문장을 쓴다.
  */
-export function settingsAccessMessage(error: AccessError): string {
-  return error === "archived" ? m.settings.archivedReason : accessErrorMessage(error);
+export function settingsAccessMessage(m: Messages, error: AccessError): string {
+  return error === "archived" ? m.settings.archivedReason : accessErrorMessage(m, error);
 }

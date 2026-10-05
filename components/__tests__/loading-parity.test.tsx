@@ -1,12 +1,14 @@
 // @vitest-environment jsdom
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 
 import HomeLoading from "@/app/(edit)/projects/[slug]/(home)/loading";
 import LogsLoading from "@/app/(edit)/projects/[slug]/logs/loading";
 
 import { render } from "./helpers/dom";
+
+vi.mock("@/lib/i18n/server", async () => ({ getUiLocale: async () => "en", getMessages: async () => (await import("@/messages/en")).en }));
 
 /**
  * 골격은 실물과 같은 지오메트리를 잡는다(#165) — jsdom은 레이아웃이 없어 px를 못 잰다. 그래서 **실물 소스의 클래스 문자열을

@@ -1,3 +1,4 @@
+import { en } from "@/messages/en";
 import { beginConnect, finishConnect } from "@/lib/account-connect/store";
 import { authorizeConnect, withConnect, withConnectStart, connectAuthCookies } from "@/lib/account-connect/http";
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
@@ -361,8 +362,8 @@ it("personal-data consumers decrypt on the server and omit ciphertext, lookups a
   await legacy(); await convertCredentials(prisma, { mode: "backfill", ...cutover });
   const { loadMembers, loadPendingInvitations } = await import("@/lib/auth/query");
   const { loadActors } = await import("@/lib/keys/query");
-  const members = await loadMembers(prisma, ids.p1);
-  const invitations = await loadPendingInvitations(prisma, ids.p1, new Date("2026-01-01"));
+  const members = await loadMembers(prisma, en, ids.p1);
+  const invitations = await loadPendingInvitations(prisma, en, ids.p1, new Date("2026-01-01"));
   expect(members[0]).toMatchObject({ name: "Alice" });
   expect(invitations[0]).toMatchObject({ invitedByName: "Alice" });
   const json = JSON.stringify({ members, invitations });
@@ -377,7 +378,7 @@ it("personal-data consumers decrypt on the server and omit ciphertext, lookups a
    * 옛 값을 그럴듯하게 보여줄 자리가 없다.
    */
   await prisma.user.update({ where: { id: ids.u1 }, data: { name: "damaged" } });
-  const damaged = await loadMembers(prisma, ids.p1);
+  const damaged = await loadMembers(prisma, en, ids.p1);
   expect(damaged.find(r => r.userId === ids.u1)).toMatchObject({ name: null, emailLabel: "Unavailable" });
   // 편집자 지도에서는 **빠진다** — `actorLabel`이 그때 `updatedBy` 원문을 내므로 셀이 비지 않는다.
   expect((await loadActors(prisma, [ids.u1])).has(ids.u1)).toBe(false);
@@ -385,7 +386,7 @@ it("personal-data consumers decrypt on the server and omit ciphertext, lookups a
 
   /** ⚠️ **키 자체가 없으면 장애다** — 행의 손상과 달리 여기서는 던져야 "전원 정보 없음"이 안 된다. */
   vi.stubEnv("PII_ENCRYPTION_KEYS", "");
-  await expect(loadMembers(prisma, ids.p1)).rejects.toThrow("credential storage unavailable");
+  await expect(loadMembers(prisma, en, ids.p1)).rejects.toThrow("credential storage unavailable");
   await expect(loadActors(prisma, [ids.u1])).rejects.toThrow("credential storage unavailable");
   vi.unstubAllEnvs();
 });

@@ -64,7 +64,7 @@ import { RepositoryCard } from "@/components/settings/repository-card";
 import { TranslationWorkspace } from "@/components/translations/workspace/workspace";
 import type { MemberView, PendingInvitation } from "@/lib/auth/query";
 import type { ConnectionHealth } from "@/lib/github-connect/health";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import type { ProjectListRow } from "@/lib/keys/query";
 
 import { render } from "./helpers/dom";
@@ -112,7 +112,7 @@ function Sync({ unsent }: { unsent: number }) {
  * 확인창을 가진 트리거 전부 — `file`은 아래 완결성 스캔이 대조한다. `trigger`는 창을 여는 버튼이다.
  */
 const CONFIRMS: { name: string; file: string[]; ui: () => ReactNode; trigger: () => HTMLElement }[] = [
-  { name: "push 토큰 Rotate token", file: ["components/settings/push-token-panel.tsx"], ui: () => <PushTokenPanel slug="acme" />, trigger: () => buttonByText(m.settings.token.rotate) },
+  { name: "push 토큰 Rotate token", file: ["components/settings/push-token-panel.tsx"], ui: () => <PushTokenPanel slug="acme" />, trigger: () => buttonByText(en.settings.token.rotate) },
   {
     name: "MCP 토큰 Rotate token", file: ["components/mcp/token-card.tsx", "components/mcp/token-modal.tsx"],
     ui: () => <TokenCard token={activeToken} projects={[]} now="2026-09-28T12:00:00.000Z" />, trigger: () => q('[data-token-action="rotate"]'),
@@ -127,29 +127,29 @@ const CONFIRMS: { name: string; file: string[]; ui: () => ReactNode; trigger: ()
   },
   {
     name: "멤버 Remove", file: ["components/members/member-list.tsx"],
-    ui: () => <MemberList slug="acme" members={[owner, alice]} role="OWNER" viewerId="u1" now={now} headingId="h" />, trigger: () => q(`[aria-label="${m.members.removeLabel("Alice")}"]`),
+    ui: () => <MemberList slug="acme" members={[owner, alice]} role="OWNER" viewerId="u1" now={now} headingId="h" />, trigger: () => q(`[aria-label="${en.members.removeLabel("Alice")}"]`),
   },
   {
     name: "초대 Revoke", file: ["components/members/pending-invitations.tsx"],
     ui: () => <PendingInvitations slug="acme" invitations={[invite]} role="OWNER" now={now} headingId="h" />,
-    trigger: () => q(`[aria-label="${m.members.pending.revokeLabel("t***@example.com")}"]`),
+    trigger: () => q(`[aria-label="${en.members.pending.revokeLabel("t***@example.com")}"]`),
   },
   {
     name: "GitHub 계정 Disconnect", file: ["components/github-account.tsx"],
-    ui: () => <GithubSection account={{ status: "ok", login: "octo" }} installedRepoCount={1} settingsUrl={null} />, trigger: () => q(`[aria-label="${m.settings.account.disconnectLabel}"]`),
+    ui: () => <GithubSection account={{ status: "ok", login: "octo" }} installedRepoCount={1} settingsUrl={null} />, trigger: () => q(`[aria-label="${en.settings.account.disconnectLabel}"]`),
   },
   {
     name: "로그인 수단 Disconnect", file: ["components/account/login-methods.tsx"],
     ui: () => <LoginMethods rows={[{ provider: "github", connected: true }, { provider: "google", connected: true }]} />,
-    trigger: () => q(`[aria-label="${m.link.methods.disconnectLabel("Google")}"]`),
+    trigger: () => q(`[aria-label="${en.link.methods.disconnectLabel("Google")}"]`),
   },
   {
     name: "Sign out everywhere", file: ["components/account/sessions-section.tsx"],
-    ui: () => <SessionsSection outcome={undefined} signOut={() => {}} confirmProvider="GitHub" />, trigger: () => buttonByText(m.account.sessions.title),
+    ui: () => <SessionsSection outcome={undefined} signOut={() => {}} confirmProvider="GitHub" />, trigger: () => buttonByText(en.account.sessions.title),
   },
   {
     name: "프로젝트 Archive", file: ["components/settings/archive-card.tsx"],
-    ui: () => <ArchiveCard slug="acme" name="Acme" archived={false} openPrUrl={Promise.resolve(null)} />, trigger: () => buttonByText(m.archive.action),
+    ui: () => <ArchiveCard slug="acme" name="Acme" archived={false} openPrUrl={Promise.resolve(null)} />, trigger: () => buttonByText(en.archive.action),
   },
   {
     name: "번역 Revert to last sent", file: ["components/translations/workspace/workspace.tsx"],
@@ -241,10 +241,10 @@ const META: MetaTabsInput = {
 };
 const BLUE: { name: string; file: string; ui: () => ReactNode; open?: () => Promise<void> }[] = [
   // 리포는 Project 탭, PR은 Publish 탭이다 — Radix가 비활성 패널의 자식을 그리지 않아 탭을 열어 센다.
-  { name: "Home 메타 — 리포 (Project 탭)", file: "components/home/meta-column.tsx", ui: () => <MetaColumn slug="acme" now={now} canOpenSettings={false} tabs={metaTabs(META)} /> },
+  { name: "Home 메타 — 리포 (Project 탭)", file: "components/home/meta-column.tsx", ui: () => <MetaColumn slug="acme" now={now} canOpenSettings={false} tabs={metaTabs(META)} uiLocale="en" m={en} /> },
   {
     name: "Home 메타 — PR (Publish 탭)", file: "components/home/meta-column.tsx",
-    ui: () => <MetaColumn slug="acme" now={now} canOpenSettings={false} tabs={metaTabs(META)} />,
+    ui: () => <MetaColumn slug="acme" now={now} canOpenSettings={false} tabs={metaTabs(META)} uiLocale="en" m={en} />,
     open: () => click([...document.querySelectorAll('[role="tab"]')].find((tab) => tab.textContent === "Publish")!),
   },
   { name: "/projects 행 띠 — 열린 PR", file: "components/projects/project-list.tsx", ui: () => <ProjectList all={[{ ...BLUE_ROW, openPr: { url: "https://github.com/o/r/pull/7", number: 7 } }]} /> },
@@ -253,7 +253,7 @@ const BLUE: { name: string; file: string; ui: () => ReactNode; open?: () => Prom
   {
     name: "Archive 확인 — 열린 PR (문장 안)", file: "components/settings/archive-card.tsx",
     ui: () => <ArchiveCard slug="acme" name="Acme" archived={false} openPrUrl={Promise.resolve("https://github.com/o/r/pull/7")} />,
-    open: () => click(buttonByText(m.archive.action)),
+    open: () => click(buttonByText(en.archive.action)),
   },
   {
     name: "Sync 확인 — Publish first (문장 안)", file: SYNC_FILE, ui: () => <Sync unsent={3} />,

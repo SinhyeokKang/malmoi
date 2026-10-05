@@ -7,7 +7,7 @@ import { SLOW_AFTER_MS, SlowNotice } from "@/components/slow-notice";
 import { FilesStep, type FilesStepState } from "@/components/onboarding/steps/files";
 import { ReconnectButton } from "@/components/reconnect-button";
 import type { CandidateSummary } from "@/lib/onboarding/detect";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { render } from "./helpers/dom";
 
@@ -36,22 +36,22 @@ it("도는 동안 8초가 지나야 문구가 서고, 끝나면 사라지며, �
   }
   const { container } = await render(<Host />);
   await advance(SLOW_AFTER_MS - 100);
-  expect(container.textContent).not.toContain(m.common.slow);
+  expect(container.textContent).not.toContain(en.common.slow);
   await advance(100);
   const notice = container.querySelector('[role="status"]');
-  expect(notice?.textContent).toBe(m.common.slow);
+  expect(notice?.textContent).toBe(en.common.slow);
   await act(async () => toggle(false));
-  expect(container.textContent).not.toContain(m.common.slow);
+  expect(container.textContent).not.toContain(en.common.slow);
   await act(async () => toggle(true));
   // 옛 경과를 이어 받지 않는다 — 다시 시작한 대기는 다시 8초다.
   await advance(SLOW_AFTER_MS - 100);
-  expect(container.textContent).not.toContain(m.common.slow);
+  expect(container.textContent).not.toContain(en.common.slow);
   await advance(100);
-  expect(container.textContent).toContain(m.common.slow);
+  expect(container.textContent).toContain(en.common.slow);
 });
 
 const candidate: CandidateSummary = {
-  outputPaths: ["locales/en.json"], adapter: "json-catalog", label: "JSON", pathTemplate: "locales/{locale}.json",
+  outputPaths: ["locales/en.json"], adapter: "json-catalog", pathTemplate: "locales/{locale}.json",
   locales: ["en"], baseLocale: "en", keys: { status: "counted", count: 1 }, samples: [],
 };
 function state(patch: Partial<FilesStepState>): FilesStepState {
@@ -71,12 +71,12 @@ it.each([
 ] as const)("FilesStep: %s가 8초를 넘기면 문구가 선다 — 짝 단언: 준비된 화면에는 없다", async (_, patch) => {
   const ready = await render(<FilesStep state={state({})} onPick={noop} onLocale={noop} onManual={noop} onRetry={noop} />);
   await advance(SLOW_AFTER_MS);
-  expect(ready.container.textContent).not.toContain(m.common.slow);
+  expect(ready.container.textContent).not.toContain(en.common.slow);
   const { container } = await render(<FilesStep state={state(patch as Partial<FilesStepState>)} onPick={noop} onLocale={noop} onManual={noop} onRetry={noop} />);
   await advance(SLOW_AFTER_MS - 100);
-  expect(container.textContent).not.toContain(m.common.slow);
+  expect(container.textContent).not.toContain(en.common.slow);
   await advance(100);
-  expect(container.textContent).toContain(m.common.slow);
+  expect(container.textContent).toContain(en.common.slow);
 });
 
 /** `RefreshCw` 옆에 스피너를 **더하지** 않고 **교체**한다 (audit-ux #25 — DESIGN §6.4 "아이콘이 있는 버튼"). */

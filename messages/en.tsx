@@ -351,6 +351,8 @@ export const en = {
        * `/mcp` (mcp-connector) — 사이드바 사용자 축의 `Account` 바로 앞. **페이지 제목도 이 키다**(DESIGN "메뉴명 = 페이지 제목").
        */
       mcp: "MCP connector",
+      /** `/preferences` (ui-locales) — `MCP connector`와 `Account` 사이. **페이지 제목도 이 키다**(DESIGN "메뉴명 = 페이지 제목"). */
+      preferences: "Preferences",
       /**
        * 프로젝트 구역의 항목 여섯. **`lib/shell/nav.ts`가 읽는다** — 라벨이 소스 리터럴이던 자리다.
        *
@@ -441,10 +443,58 @@ export const en = {
     consent: { before: "By clicking Continue through a third party you accept the Malmoi ", link: "Privacy Policy", after: "." },
     footer: { copyright: "© 2026 Malmoi", github: "GitHub", privacy: "Privacy Policy" },
     /**
-     * 우측 장식의 문구 둘. ⚠️ **키비주얼을 `alt=""`로 둘 수 있는 근거가 이 두 줄이다** — 이미지
-     * 안에 구운 텍스트가 말하는 것을 여기가 이미 말하고 있어야 그것이 장식이 된다.
+     * 우측 장식의 문구 둘. ⚠️ **키비주얼을 `alt=""`로 둘 수 있는 근거가 이 두 줄이다** — 이미지는 장식이고
+     * 의미는 이 문구가 진다. 이미지에 구운 영문과 ko·es 문구는 같은 말의 번역이지 같은 글자가 아니다(user-timezone T9).
      */
     hero: { top: "Connect your projects", bottom: "Translate & ship together" },
+  },
+
+  /**
+   * 화면 언어 바꾸기 (ui-locales design §4·§5.1) — 공개 푸터의 스위처와 `/preferences`가 같은 Action(`setUiLocale`)을 부른다.
+   * ⚠️ **언어 이름은 여기 없다** — endonym이라 번역하지 않는다(`UI_LOCALE_NAMES`, `lib/i18n/locales.ts`).
+   */
+  uiLocale: {
+    /** 스위처의 접근 이름 앞머리 — `aria-label`이 아니라 sr-only 조각 + 보이는 endonym이다(WCAG 2.5.3): "Language: English". */
+    label: "Language",
+    /** Action `invalid`·`failed` — 푸터는 오류 토스트, Preferences는 카드 Alert가 같은 문장을 쓴다. */
+    failed: "We couldn't change the language. Try again.",
+  },
+
+  /**
+   * `/preferences` (ui-locales design §5.2) — 제목은 `common.nav.preferences`, Language 카드 제목은 `uiLocale.label`이다(같은 낱말 두 벌을 두지 않는다).
+   * 카드는 Language · Time zone · Theme 셋이다(user-timezone design §6 · color-scheme design §3.7).
+   */
+  preferences: {
+    /** ⚠️ **골격은 `aria-hidden`이라 이 한 줄이 유일한 안내다.** */
+    loading: "Loading preferences…",
+    /** 카드 머리 설명 — 한 문장(DESIGN §6.67). */
+    description: "The language Malmoi uses on every screen.",
+    /** Select 아래 도움말 — 번역 화면의 언어 열과 혼동하지 않게 한다(design §0). */
+    help: "Your projects' languages don't change.",
+    /** Time zone 카드 (user-timezone design §6) — Language 카드와 같은 형. 시간대 id(`Asia/Seoul`)는 번역하지 않는다. */
+    timeZone: {
+      title: "Time zone",
+      description: "The time zone Malmoi uses for dates and times.",
+      /** 기본값과 공개 페이지 고정(spec 결정) — 공개 페이지는 로그인 여부와 무관하게 UTC다. */
+      help: "The default is UTC. Public pages always use UTC.",
+      /** 지금 시각 미리보기 — `time`은 `formatMinute`(`Oct 5, 2026 08:10 UTC+9`). 이 페이지에서 고른 결과가 보이는 유일한 자리다. */
+      now: (time: string) => `Now: ${time}`,
+      /** Action `invalid`·`failed` — 카드 Alert. */
+      failed: "We couldn't change the time zone. Try again.",
+    },
+    /**
+     * Theme 카드 (color-scheme design §3.7) — 같은 형. 식별자는 `colorScheme`이고 화면 라벨만 `Theme`이다.
+     * 옵션 키는 `COLOR_SCHEMES` 값이다 — 카드가 그 순서로 그린다.
+     */
+    theme: {
+      title: "Theme",
+      description: "How Malmoi looks on every screen.",
+      /** System의 뜻 — OS 설정을 따른다(서버는 모르고 CSS가 푼다). */
+      help: "System follows your device's appearance setting.",
+      options: { system: "System", light: "Light", dark: "Dark" },
+      /** Action `invalid`·`failed` — 카드 Alert. 화면은 원래 테마로 돌아간다. */
+      failed: "We couldn't change the theme. Try again.",
+    },
   },
 
   /**
@@ -603,7 +653,7 @@ export const en = {
        * ⚠️ **여기서 이름을 대는 저장 항목은 `lib/privacy/collected.ts`의 등재와 절 id로 묶인다** —
        * 표는 필드 여럿을 한 행으로 접으므로 대조 단위가 라벨이 아니라 절이다.
        */
-      effectiveDate: "2026-09-29",
+      effectiveDate: "2026-10-05",
       /**
        * 목차 이름 — ⚠️ **`sections` 밖에 둔다**: `policy-gate.test.tsx`가 `sections`를 해시하므로 안에 넣으면 개정 이력이 요구된다.
        */
@@ -659,6 +709,21 @@ export const en = {
                     "Deciding which projects you can open and what you can do in them, and emailing you the invitation link",
                   ],
                   [
+                    "The language you choose for Malmoi's screens",
+                    "You, when you pick a language",
+                    "Showing Malmoi in that language on every device you sign in on",
+                  ],
+                  [
+                    "The time zone you choose for dates and times",
+                    "You, when you pick a time zone",
+                    "Showing dates and times in that time zone on every device you sign in on",
+                  ],
+                  [
+                    "The theme you choose for Malmoi's screens",
+                    "You, when you pick a theme",
+                    "Showing Malmoi in that theme on every device you sign in on",
+                  ],
+                  [
                     "Who last changed a translation, and who asked for a sync",
                     "Your own edits",
                     "Showing your teammates who changed what",
@@ -691,6 +756,9 @@ export const en = {
             {
               ul: [
                 "Signing you in and keeping you signed in.",
+                "Showing Malmoi in the language you choose.",
+                "Showing dates and times in the time zone you choose.",
+                "Showing Malmoi in the theme you choose.",
                 "Deciding which projects you can open and what you can do in them.",
                 "Showing your teammates who changed a translation and who asked for a sync.",
                 "Writing translations back to the repository a project is connected to, as a pull request.",
@@ -715,6 +783,9 @@ export const en = {
             {
               ul: [
                 "Your account and its connections: kept until you ask us to delete them.",
+                "The language you choose: kept with your account until you choose another or ask us to delete your account. On a browser, the language cookie lasts a year from your last choice.",
+                "The time zone you choose: kept with your account until you choose another or ask us to delete your account. It is not stored in a cookie.",
+                "The theme you choose: kept with your account until you choose another or ask us to delete your account. On a browser, the theme cookie lasts a year from your last choice.",
                 "A session stops working 24 hours after your last activity. Its row goes away when you sign out, or when that expired session is next presented.",
                 "A challenge for linking an account or signing other sessions out stops working after 5 to 10 minutes. Its row goes away the next time you start the same step.",
                 "An invitation stops working after 7 days, or as soon as it is accepted, revoked or sent again. The row is kept after that, including the address it was sent to, as the record that the invitation happened — ask us and we will delete it.",
@@ -777,7 +848,7 @@ export const en = {
           heading: "Cookies",
           blocks: [
             {
-              p: "Every cookie Malmoi sets is needed to sign you in or to finish a round trip to GitHub or Google. There are no analytics, advertising or tracking cookies, so there is nothing here to consent to or turn off. All of them are http-only, which means scripts cannot read them.",
+              p: "Every cookie Malmoi sets is needed to sign you in, to finish a round trip to GitHub or Google, or to remember the language and theme you chose for Malmoi's screens. There are no analytics, advertising or tracking cookies, so there is nothing here to consent to or turn off. All of them are http-only, which means scripts cannot read them.",
             },
             {
               table: {
@@ -802,6 +873,8 @@ export const en = {
                     "5 to 15 minutes",
                     "The same, for adding a second sign-in method to one address and for signing other sessions out",
                   ],
+                  ["Language", "1 year from your last choice", "Shows Malmoi in the language you chose on this browser, even when you are signed out"],
+                  ["Theme", "1 year from your last choice", "Shows Malmoi in the theme you chose on this browser, even when you are signed out"],
                 ],
               },
             },
@@ -814,7 +887,7 @@ export const en = {
             {
               p: "The effective date at the top belongs to the text below it: whenever this policy changes, that date moves and the change is listed here.",
             },
-            { ul: ["2026-09-29 — you can also connect an app such as Claude Code or Codex by signing in through your browser, with no token to copy. Malmoi keeps the connection — the app's name and address, the actions and projects you allowed, when it was used — and only hashes of the tokens it issued; you can disconnect it on the MCP connector page.", "2026-09-29 — you can create a personal token for AI agents on the MCP connector page. Malmoi stores only a hash of it, with the actions and projects you allowed and when it was used.", "2026-09-28 — invitation emails show the name and picture of the project you are invited to, and your role in it. They still do not say who invited you.", "2026-09-27 — visits to the public pages are counted with Vercel Web Analytics, without cookies.", "2026-09-26 — the product name is written Malmoi. No change to what we collect or share.", "2026-09-24 — invitations can be sent by email through Resend.", "2026-09-19 — first version."] },
+            { ul: ["2026-10-05 — you can choose Malmoi's theme: System, Light or Dark. Malmoi remembers your choice with your account and in a cookie on this browser.", "2026-10-05 — you can choose the time zone Malmoi uses for dates and times. Malmoi remembers your choice with your account only, not in a cookie. Public pages always use UTC.", "2026-10-05 — you can choose the language of Malmoi's screens: English, Korean or Spanish. Malmoi remembers your choice with your account and in a cookie on this browser. This policy is also published in Korean.", "2026-09-29 — you can also connect an app such as Claude Code or Codex by signing in through your browser, with no token to copy. Malmoi keeps the connection — the app's name and address, the actions and projects you allowed, when it was used — and only hashes of the tokens it issued; you can disconnect it on the MCP connector page.", "2026-09-29 — you can create a personal token for AI agents on the MCP connector page. Malmoi stores only a hash of it, with the actions and projects you allowed and when it was used.", "2026-09-28 — invitation emails show the name and picture of the project you are invited to, and your role in it. They still do not say who invited you.", "2026-09-27 — visits to the public pages are counted with Vercel Web Analytics, without cookies.", "2026-09-26 — the product name is written Malmoi. No change to what we collect or share.", "2026-09-24 — invitations can be sent by email through Resend.", "2026-09-19 — first version."] },
           ],
         },
       ],
@@ -1170,14 +1243,19 @@ export const en = {
       yesterday: "Yesterday",
       last7: "Last 7 days",
       last30: "Last 30 days",
-      custom: "Custom range (UTC)",
+      custom: "Custom range",
       /** 메뉴 항목 — 눌러서 Dialog가 열린다는 것을 줄임표가 말한다 (audit #8 — 칸은 메뉴 밖에 산다). */
-      customOpen: "Custom range (UTC)…",
-      from: "From (UTC)",
-      to: "To (UTC)",
+      customOpen: "Custom range…",
+      from: "From",
+      to: "To",
       apply: "Apply range",
       /** Dialog 설명 — 한쪽을 비우면 열린 범위라는 것을 고르기 전에 말한다. */
       description: "Pick the first and last day to show. Leave one empty for an open-ended range.",
+      /**
+       * Dialog 설명 끝줄 — 날짜가 어느 시간대의 자정으로 끊기는지(user-timezone). 인자는 **시간대 id**(`Asia/Seoul`·`UTC`)다 —
+       * 지금의 오프셋 하나를 쓰면 서머타임을 넘는 범위(1월 범위를 7월에 고름)에서 거짓이 된다. id는 어느 날에도 참이다.
+       */
+      zoneNote: (zone: string) => `Days are in ${zone}.`,
     },
     /** ⚠️ **`aria-label`에는 줄임표가 없다** — 스크린리더가 읽는 이름이라 장식이 붙으면 안 된다. */
     search: { label: "Search logs", placeholder: "Search logs…" },
@@ -1216,8 +1294,8 @@ export const en = {
       upToDate: "Up to date",
     },
     /**
-     * 날짜 카드 머리에 붙는 낱말 (캔버스 `1a`). **UTC 자정으로 끊는다** — 로컬로 끊으면 밤 사이 실행이
-     * 보는 사람마다 다른 날에 선다. 머리의 날짜는 늘 `utcDay` 형이고, 이 낱말은 오늘·어제에만 덧붙는다.
+     * 날짜 카드 머리에 붙는 낱말 (캔버스 `1a`). **보는 사람이 고른 시간대(기본 UTC)의 자정으로 끊는다** — 런타임 TZ로 끊으면
+     * 서버와 브라우저가 다른 날을 낸다. 머리의 날짜는 늘 `formatDayKey` 형이고, 이 낱말은 오늘·어제에만 덧붙는다.
      */
     day: {
       today: "Today",
@@ -1503,7 +1581,7 @@ export const en = {
     action: "Archive project",
     /** 되돌리기는 확인을 묻지 않는다 — 잃는 것이 없다. */
     restore: "Restore project",
-    /** ⚠️ **절대 시각은 `<time dateTime>`이 든다** (L7.1) — 호출부가 `utcMinute`로 만든 노드를 넘긴다. */
+    /** ⚠️ **절대 시각은 `<time dateTime>`이 든다** (L7.1) — 호출부가 `formatDay`로 만든 노드를 넘긴다. */
     archivedBy: (when: ReactNode): ReactNode => <>Archived on {when}</>,
     confirm: {
       title: (name: string): string => `Archive ${name}?`,
@@ -2924,6 +3002,8 @@ export const en = {
     count: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "source" : "sources"}`,
     /** Sources 상세 Languages 카드의 개수 배지 sr 문장. */
     languageCount: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "language" : "languages"}`,
+    /** Sources 상세 언어 행의 오른쪽 수치 — 번역된 수 / 전체 수. */
+    translatedOfTotal: (translated: number, total: number): string => `${translated.toLocaleString("en-US")} of ${total.toLocaleString("en-US")}`,
     /**
      * 관리하지 않는 항목 (B2 r3 · QA5 — ARCHITECTURE §1 "read 오류의 두 갈래"). **실패 문장이 아니다** — 코드의 식·참조라
      * 파일에 그대로 남고 번역을 잃지 않는다. Sync 결과 문장 뒤에 안내로만 붙는다.

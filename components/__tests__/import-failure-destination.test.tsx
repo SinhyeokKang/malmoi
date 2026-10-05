@@ -14,13 +14,13 @@ vi.mock("next/navigation", () => ({ redirect: nav.redirect, useRouter: () => ({ 
 
 import { AttentionCard } from "@/components/home/attention-card";
 import { ProjectNotReady } from "@/components/project-not-ready";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { onboardErrorMessage } from "@/lib/onboarding/message";
 
 const now = new Date("2026-09-24T00:00:00Z");
 const failed = { kind: "import_failed" as const, at: now, surfaceSlug: "web", reason: "import-failed" as const };
 const card = (role: "OWNER" | "EDITOR") =>
-  render(<AttentionCard items={{ shown: [failed], more: [], count: 1 }} slug="acme" role={role} state="default" now={now} />);
+  render(<AttentionCard items={{ shown: [failed], more: [], count: 1 }} slug="acme" role={role} state="default" now={now} uiLocale="en" m={en} />);
 
 beforeEach(() => { nav.redirect.mockClear(); });
 
@@ -33,22 +33,22 @@ it("OWNER의 Home 가져오기 실패 항목은 Sources로 간다", async () => 
 it("EDITOR의 같은 항목도 Sources로 가고, 재시도는 소유자 몫이라는 한 줄이 붙는다", async () => {
   const { container } = await card("EDITOR");
   expect([...container.querySelectorAll("a")].map(a => a.getAttribute("href"))).toEqual(["/projects/acme/sources"]);
-  expect(container.textContent).toContain(m.home.attention.importFailed.title("web"));
-  expect(container.textContent).toContain(m.projects.importFailure.ownerRetries);
+  expect(container.textContent).toContain(en.home.attention.importFailed.title("web"));
+  expect(container.textContent).toContain(en.projects.importFailure.ownerRetries);
   const owner = await card("OWNER");
-  expect(owner.container.textContent).not.toContain(m.projects.importFailure.ownerRetries);
+  expect(owner.container.textContent).not.toContain(en.projects.importFailure.ownerRetries);
 });
 
 it("첫 적재 전 OWNER는 Sources로, 연결 전 OWNER는 Settings로 간다 — EDITOR는 이동하지 않는다", async () => {
-  expect(() => ProjectNotReady({ slug: "acme", role: "OWNER", readiness: "awaiting_first_sync" })).toThrow("redirect:/projects/acme/sources");
-  expect(() => ProjectNotReady({ slug: "acme", role: "OWNER", readiness: "setup" })).toThrow("redirect:/projects/acme/settings");
+  expect(() => ProjectNotReady({ slug: "acme", role: "OWNER", readiness: "awaiting_first_sync", m: en })).toThrow("redirect:/projects/acme/sources");
+  expect(() => ProjectNotReady({ slug: "acme", role: "OWNER", readiness: "setup", m: en })).toThrow("redirect:/projects/acme/settings");
   nav.redirect.mockClear();
-  await render(<ProjectNotReady slug="acme" role="EDITOR" readiness="awaiting_first_sync" />);
+  await render(<ProjectNotReady slug="acme" role="EDITOR" readiness="awaiting_first_sync" m={en} />);
   expect(nav.redirect).not.toHaveBeenCalled();
 });
 
 it("첫 적재 실패 문구가 Settings를 가리키지 않는다 — 재시도는 Sources에 있다", () => {
-  const text = onboardErrorMessage("ingest-failed");
+  const text = onboardErrorMessage(en, "ingest-failed");
   expect(text).not.toMatch(/settings/i);
   expect(text).toContain("Sources");
 });
@@ -56,9 +56,9 @@ it("첫 적재 실패 문구가 Settings를 가리키지 않는다 — 재시도
 /** 🔴 A2 — 일부만 반영된 표면의 항목은 "읽지 못했다·키가 안 들어왔다"를 말하지 않는다(데이터는 들어갔다). */
 it("partial-import 항목은 Partially synced 문장이고 실패 문장을 빌리지 않는다", async () => {
   const partial = { ...failed, reason: "partial-import" as const };
-  const { container } = await render(<AttentionCard items={{ shown: [partial], more: [], count: 1 }} slug="acme" role="OWNER" state="default" now={now} />);
-  expect(container.textContent).toContain(`${m.home.attention.partial.body}${m.home.attention.partial.tail}`);
-  expect(container.textContent).not.toContain(m.home.attention.importFailed.body);
+  const { container } = await render(<AttentionCard items={{ shown: [partial], more: [], count: 1 }} slug="acme" role="OWNER" state="default" now={now} uiLocale="en" m={en} />);
+  expect(container.textContent).toContain(`${en.home.attention.partial.body}${en.home.attention.partial.tail}`);
+  expect(container.textContent).not.toContain(en.home.attention.importFailed.body);
   expect(container.textContent).not.toMatch(/didn['’]t come in|couldn['’]t read/);
 });
 
@@ -67,8 +67,8 @@ it("partial-import 항목은 Partially synced 문장이고 실패 문장을 빌�
  * ux-drift-unify T18 — "Never"도 거짓이다(실패는 일어났고 시각만 기록되지 않았다). 시각 칸을 비운다.
  */
 it("실패 항목의 시각이 없으면 시각 칸이 비어 있다", async () => {
-  const { container } = await render(<AttentionCard items={{ shown: [{ ...failed, at: null }], more: [], count: 1 }} slug="acme" role="OWNER" state="default" now={now} />);
+  const { container } = await render(<AttentionCard items={{ shown: [{ ...failed, at: null }], more: [], count: 1 }} slug="acme" role="OWNER" state="default" now={now} uiLocale="en" m={en} />);
   expect(container.textContent).not.toMatch(/not synced yet/i);
-  expect(container.textContent).not.toContain(m.home.meta.never);
+  expect(container.textContent).not.toContain(en.home.meta.never);
   expect(container.querySelector("a > span.shrink-0.text-xs")).toBeNull();
 });

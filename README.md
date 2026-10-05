@@ -123,6 +123,15 @@ collects code references, so each key shows where your code uses it.
   ([details](https://mal-moi.com/docs/sync/nightly)).
 - **Two roles** — owners manage the repository, settings, and members; editors
   translate and publish. Invite teammates by email and pick a role per invite.
+- **English, Korean, or Spanish interface** — pick a language from the
+  footer of any public page or from Preferences once you're signed in; your
+  account remembers it across devices. The docs come in all three languages
+  (screenshots show the English interface), and the privacy policy in English
+  and Korean. New visitors always start in English
+  ([details](https://mal-moi.com/docs/language)).
+- **Light and dark themes** — choose Light, Dark, or System in Preferences;
+  Malmoi starts light and remembers your choice with your account
+  ([details](https://mal-moi.com/docs/language#theme)).
 - **AI agents over MCP** — add the server URL to Claude Code, Codex, or a
   claude.ai custom connector and sign in through your browser: you choose what the app may do on a consent screen
   and never see or copy a token. Connected apps are listed on the MCP connector

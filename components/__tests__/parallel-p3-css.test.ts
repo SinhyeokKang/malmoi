@@ -20,7 +20,8 @@ it("border-ring and ring-ring compile to the exact same root ring color", async 
   expect(border).toBeDefined();
   expect(border).toBe(ring);
   expect(border).toBe("var(--ring)");
-  expect(css.match(/--ring:\s*([^;]+);/)?.[1]).toBe("rgb(96 165 250)");
+  // 라이트 값이 blue-400 리터럴이다 — 다크 값은 `light-dark()` 둘째 인자(color-scheme Phase 2).
+  expect(css.match(/--ring:\s*([^;]+);/)?.[1]).toMatch(/^light-dark\(rgb\(96 165 250\), /);
 });
 
 it("native search clear is hidden once so the named Input clear is the only affordance", () => {

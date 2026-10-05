@@ -79,14 +79,14 @@ describe("logs — 시각과 페이지네이션", () => {
     for (const path of ["components/logs/event-row.tsx", "components/logs/event-detail.tsx"]) {
       expect(read(path), path).toMatch(/<time[^>]*dateTime=/);
     }
-    expect(read("components/logs/event-row.tsx")).toContain("aria-label={utcMinute(");
+    expect(read("components/logs/event-row.tsx")).toContain("aria-label={formatMinute(");
   });
 
-  /** 날짜만 쓰는 두 줄(coverage · 보관 복구)도 절대 날짜라 `utcDay`를 지난다 — ISO를 잘라 보이지 않는다. */
-  it("coverage · 보관 줄의 날짜가 `utcDay`다", () => {
+  /** 날짜만 쓰는 두 줄(coverage · 보관 복구)도 절대 날짜라 `formatDay`를 지난다 — ISO를 잘라 보이지 않는다. */
+  it("coverage · 보관 줄의 날짜가 `formatDay`다", () => {
     const src = read(PAGE);
-    expect(src).toMatch(/m\.logs\.coverage\(utcDay\(/);
-    expect(src).toMatch(/m\.logs\.archived\.restoreLine\(utcDay\(/);
+    expect(src).toMatch(/m\.logs\.coverage\(formatDay\(/);
+    expect(src).toMatch(/m\.logs\.archived\.restoreLine\(formatDay\(/);
     expect(src).not.toContain("slice(0, 10)");
   });
 
@@ -195,7 +195,7 @@ describe("logs 상세 — 껍데기 시각 값", () => {
    * 두던 판정(`/35`·blur 없음·`rounded-2xl`)을 접었다. Sources 상세와 나란히 서면 차이가 먼저 보였다.
    */
   it("dim과 radius가 1024 모달과 같다 — `/32` + blur 6 · `rounded-xl`", () => {
-    expect(shell).toContain("bg-foreground/32");
+    expect(shell).toContain("bg-scrim/32");
     expect(shell).toContain("backdrop-blur-[6px]");
     expect(shell).toContain("rounded-xl");
     expect(dialog).not.toContain("bg-foreground/35");

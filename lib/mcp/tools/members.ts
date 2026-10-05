@@ -2,7 +2,7 @@ import "server-only";
 import { revalidatePath } from "next/cache";
 
 import { changeMemberRole, MemberChangeInput, revokePendingInvitation, RevokeInput } from "@/lib/auth/members";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { InvitationsInput, inviteMembers, type InvitationsResult } from "@/lib/invitation-email/create";
 import { settleRevalidate } from "@/lib/revalidate-after-commit";
 
@@ -26,7 +26,7 @@ export const inviteMembersTool = defineTool({
     const { result, issued } = await inviteMembers(prisma, coreSubject(subject), input);
     // 발송 결과와 무관하게 초대가 생겼으면 다시 그린다 — Pending에 보여야 Resend로 복구할 수 있다.
     if (issued) settleRevalidate("invite", () => revalidatePath(`/projects/${input.slug}/members`));
-    if (result.ok) return ok({ invited: result.count }, m.mcp.summary.invited(result.count));
+    if (result.ok) return ok({ invited: result.count }, en.mcp.summary.invited(result.count));
     return inviteRefusal(result);
   },
 });
@@ -40,7 +40,7 @@ export const revokeInvitation = defineTool({
     const result = await revokePendingInvitation(prisma, coreSubject(subject), input);
     if (!result.ok) return { status: "refused", code: result.error };
     settleRevalidate("revoke-invitation", () => revalidatePath(`/projects/${input.slug}/members`));
-    return ok({ revoked: input.invitationId }, m.mcp.summary.revoked);
+    return ok({ revoked: input.invitationId }, en.mcp.summary.revoked);
   },
 });
 
@@ -53,7 +53,7 @@ export const changeMember = defineTool({
     const result = await changeMemberRole(prisma, coreSubject(subject), input);
     if (!result.ok) return { status: "refused", code: result.error };
     settleRevalidate("member-change", () => revalidatePath(`/projects/${input.slug}/members`));
-    return ok({ userId: input.targetUserId, role: input.nextRole }, input.nextRole === null ? m.mcp.summary.memberRemoved : m.mcp.summary.memberChanged(input.nextRole));
+    return ok({ userId: input.targetUserId, role: input.nextRole }, input.nextRole === null ? en.mcp.summary.memberRemoved : en.mcp.summary.memberChanged(input.nextRole));
   },
 });
 
@@ -62,14 +62,14 @@ export const changeMember = defineTool({
  * 가리키는 값(`rowErrors`·`retryAt`·`limit`)을 함께 싣는다. ⚠️ 초대가 생긴 뒤 메일이 못 나간 갈래(`email-*`)는 Pending의 Resend가 복구다.
  */
 function inviteRefusal(result: Exclude<InvitationsResult, { ok: true }>): ToolOutcome {
-  const invite = m.members.invite;
+  const invite = en.members.invite;
   const { ok: _ok, error, ...detail } = result;
   const message =
     error === "email-unknown" ? invite.unconfirmed.body
     : error === "email-rejected" ? invite.sendFailed
     : error === "email-unavailable" ? invite.emailUnavailable
     : error === "too-many" ? invite.tooMany(INVITATION_HOURLY_LIMIT)
-    : error === "member-limit" ? m.members.seatsFull(MEMBER_LIMIT)
+    : error === "member-limit" ? en.members.seatsFull(MEMBER_LIMIT)
     : error === "rate-limited" ? invite.limit.title
     : error === "invalid-rows" ? invite.failed
     : undefined;

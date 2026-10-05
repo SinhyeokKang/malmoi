@@ -18,6 +18,7 @@ import type { Raw } from "@/lib/search-params";
 import { requireSurfaceAccess } from "@/lib/surfaces/access";
 import { FIRST_KEY, isScreenCanonical, landOnFirstKey, MISSING_LANGUAGES, screenQuery, serializeScreenQuery, statusOf, treeFollowsSearch, withStatus, type TranslationQuery } from "@/lib/translations/query";
 import { firstRowAt, inRange, rangeOf, tallyRows } from "@/lib/translations/tree-narrow";
+import { getUiLocale, getMessages } from "@/lib/i18n/server";
 
 /**
  * 번역 화면 — **트리 · 요약 목록 · 선택 키 상세** 세 패널 (translation-rework — 핸드오프 `2a`, spec §3).
@@ -47,12 +48,14 @@ export default async function TranslationsPage({
   params: Promise<{ slug: string; surfaceSlug: string }>;
   searchParams: Promise<Search>;
 }) {
+  const m = await getMessages();
+  const uiLocale = await getUiLocale();
   const { slug, surfaceSlug } = await params;
   const raw = await searchParams;
 
   // ⚠️ **최상단에서 던진다.** 조건부 렌더로 막으면 App Router가 페이지를 이미 실행한 뒤라 RSC 페이로드에 키가 실린다 (POSTMORTEM 2026-08-31).
   const { projectId, surfaceId, role, archived, userId } = await requireSurfaceAccess({ slug, surfaceSlug, permission: "translation:write" });
-  if (archived) return <ProjectArchived slug={slug} role={role} />;
+  if (archived) return <ProjectArchived slug={slug} role={role} m={m} />;
 
   /*
     ⚠️ **화면 요청값은 `screenQuery`다** (translation-tree-range design §3) — 옛 주소(`Untranslated in`·`Complete`·검색어 없는 `scope`·cursor·
@@ -87,7 +90,7 @@ export default async function TranslationsPage({
   ]);
   if (!project) redirect(routes.projects());
   const readiness = planProjectReadiness(project);
-  if (readiness !== "ready") return <ProjectNotReady slug={slug} role={role} readiness={readiness} />;
+  if (readiness !== "ready") return <ProjectNotReady slug={slug} role={role} readiness={readiness} m={m} />;
 
   // 상세의 소스는 `keySurface`가 정한다 — 인가된 프로젝트의 **활성** 표면 안에서만 고른다. 모르는·보관된 소스는 버린다(다른 프로젝트로 넓히지 않는다).
   const keySurface = screen.keySurface === undefined ? undefined : tree.surfaces.find(s => s.slug === screen.keySurface);
@@ -161,7 +164,7 @@ export default async function TranslationsPage({
       publish={{
         /* ⚠️ **`syncBranchFor`를 서버가 부른다** — 그 모듈은 `lib/failure`(node:crypto)를 물어 클라이언트가 물면 안 된다. */
         repo: { owner: project.repoOwner, name: project.repoName, branch: project.baseBranch, syncBranch: syncBranchFor(slug) },
-        lastSentLabel: project.lastPublishedAt === null ? null : relativeTime(project.lastPublishedAt, new Date()),
+        lastSentLabel: project.lastPublishedAt === null ? null : relativeTime(project.lastPublishedAt, new Date(), uiLocale),
         lastPrUrl: project.lastPrUrl,
       }}
       sync={{ name: project.name, branch: project.baseBranch }}

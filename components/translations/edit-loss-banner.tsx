@@ -4,7 +4,7 @@ import { ArrowUp } from "lucide-react";
 
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 
 /**
  * 리포 갱신 보류 배너 (sync-edit-protection T13 · DESIGN §6.2). 미전달 편집이 있으면 CI 자동 적재가 통째로 보류되므로
@@ -21,6 +21,7 @@ import { m } from "@/lib/i18n";
  * 대신 같은 사유를 문장에 잇는다 — 이 화면엔 Home의 연결 배너가 없어 보이는 원인 문장이 여기뿐이다. 새 배너는 만들지 않는다.
  */
 export function EditLossBanner({ count, publishButtonId, blockedReason = null }: { count: number; publishButtonId: string; blockedReason?: string | null }) {
+  const m = useMessages();
   if (count === 0) return null;
   return (
     <Alert

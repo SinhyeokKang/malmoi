@@ -14,7 +14,7 @@ it("keeps shell transitions, one live region, body scrolling and shared geometry
   const view = await render(shell(1));
   const panel = find<HTMLElement>(document.body, '[role="dialog"]');
   for (const cls of LARGE_MODAL_PANEL.split(" ")) expect(panel.classList.contains(cls)).toBe(true);
-  expect(LARGE_MODAL_OVERLAY).toContain("bg-foreground/32");
+  expect(LARGE_MODAL_OVERLAY).toContain("bg-scrim/32");
   expect(panel.querySelectorAll("[aria-live]")).toHaveLength(1);
   expect(panel.querySelector("[aria-live]")?.textContent).toBe("");
   byName("Next").focus();

@@ -15,9 +15,9 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push, refres
 
 import { LogFilters } from "@/components/logs/log-filters";
 import { parseLogFilter } from "@/lib/events/filter";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
-const props = { slug: "alpha", sources: [{ slug: "web" }], actors: [], refreshable: true };
+const props = { slug: "alpha", sources: [{ slug: "web" }], actors: [], refreshable: true, now: "2026-10-04T23:10:00.000Z" };
 beforeEach(() => { mocks.push.mockReset(); });
 
 const trigger = (axis: string) => {
@@ -41,7 +41,7 @@ async function openCustom(user: ReturnType<typeof userEvent.setup>) {
   trigger("Date").focus();
   await act(async () => user.keyboard("{Enter}"));
   const menu = document.querySelector('[role="menu"]');
-  const item = [...(menu?.querySelectorAll('[role="menuitem"]') ?? [])].find(node => node.textContent === m.logs.range.customOpen);
+  const item = [...(menu?.querySelectorAll('[role="menuitem"]') ?? [])].find(node => node.textContent === en.logs.range.customOpen);
   if (!item) throw new Error("no custom item");
   for (let i = 0; i < 8 && document.activeElement !== item; i++) await act(async () => user.keyboard("{ArrowDown}"));
   expect(document.activeElement).toBe(item);
@@ -61,9 +61,9 @@ it("기간 메뉴 안에 입력 칸이 없고, 키보드로 고른 항목이 라
   const dialog = document.querySelector('[role="dialog"]');
   expect(dialog).not.toBeNull();
   // Radix가 설명 없는 Dialog에 경고를 낸다 — 설명이 실재하고 그것을 가리킨다.
-  expect(document.getElementById(dialog!.getAttribute("aria-describedby") ?? "")?.textContent).toBe(m.logs.range.description);
-  const from = field(m.logs.range.from);
-  const to = field(m.logs.range.to);
+  expect(document.getElementById(dialog!.getAttribute("aria-describedby") ?? "")?.textContent).toBe(`${en.logs.range.description} ${en.logs.range.zoneNote("UTC")}`);
+  const from = field(en.logs.range.from);
+  const to = field(en.logs.range.to);
   expect(from.type).toBe("date");
   expect(to.type).toBe("date");
   expect(from.hasAttribute("aria-describedby")).toBe(false);
@@ -72,7 +72,7 @@ it("기간 메뉴 안에 입력 칸이 없고, 키보드로 고른 항목이 라
   await input(to, "2026-09-10");
   // 칸을 바꾸는 것만으로는 이동하지 않는다 — 날짜를 한 칸씩 고치는 동안 목록이 매번 다시 그려지지 않는다.
   expect(mocks.push).not.toHaveBeenCalled();
-  await act(async () => user.click(dialogButton(m.logs.range.apply)));
+  await act(async () => user.click(dialogButton(en.logs.range.apply)));
   expect(mocks.push).toHaveBeenCalledOnce();
   expect(lastUrl().searchParams.get("from")).toBe("2026-09-01");
   expect(lastUrl().searchParams.get("to")).toBe("2026-09-10");
@@ -88,24 +88,24 @@ it("취소한 입력은 다시 열 때 남지 않는다", async () => {
   const user = userEvent.setup();
   await render(<LogFilters {...props} filter={parseLogFilter({ from: "2026-09-01", to: "2026-09-10" })} />);
   await openCustom(user);
-  await input(field(m.logs.range.from), "2026-01-01");
-  await act(async () => user.click(dialogButton(m.common.cancel)));
+  await input(field(en.logs.range.from), "2026-01-01");
+  await act(async () => user.click(dialogButton(en.common.cancel)));
   expect(mocks.push).not.toHaveBeenCalled();
   await openCustom(user);
-  expect(field(m.logs.range.from).value).toBe("2026-09-01");
-  expect(field(m.logs.range.to).value).toBe("2026-09-10");
+  expect(field(en.logs.range.from).value).toBe("2026-09-01");
+  expect(field(en.logs.range.to).value).toBe("2026-09-10");
 });
 
 it("프리셋으로 바꾼 뒤 다시 열면 그 프리셋의 범위에서 시작한다 — 옛 범위를 되살리지 않는다", async () => {
   const user = userEvent.setup();
   const view = await render(<LogFilters {...props} filter={parseLogFilter({ from: "2026-09-01", to: "2026-09-10" })} />);
   await openCustom(user);
-  await act(async () => user.click(dialogButton(m.common.cancel)));
+  await act(async () => user.click(dialogButton(en.common.cancel)));
   // 프리셋을 고른 뒤 서버가 새 URL로 다시 그린 상태를 재현한다.
   await view.rerender(<LogFilters {...props} filter={parseLogFilter({ from: "2026-09-20", to: "2026-09-24" })} />);
   await openCustom(user);
-  expect(field(m.logs.range.from).value).toBe("2026-09-20");
-  await act(async () => user.click(dialogButton(m.logs.range.apply)));
+  expect(field(en.logs.range.from).value).toBe("2026-09-20");
+  await act(async () => user.click(dialogButton(en.logs.range.apply)));
   expect(lastUrl().searchParams.get("from")).toBe("2026-09-20");
   expect(lastUrl().searchParams.get("to")).toBe("2026-09-24");
 });
@@ -130,20 +130,20 @@ it.each(["Kind", "Date", "Actor", "Source", "Result"])("%s 메뉴의 aria-labell
  * 적용한 뒤 스크린리더가 "아무것도 선택 안 됨"을 읽는다. 현재 범위와 같은 프리셋이 선택된 라디오다. `Custom…`은 동작이라 `menuitem`이다.
  */
 it("현재 범위와 같은 프리셋이 선택된 라디오다", async () => {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = "2026-10-04"; // props.now의 UTC 날짜 — 프리셋은 렌더 중 시계가 아니라 그 prop으로 오늘을 잡는다
   await render(<LogFilters {...props} filter={parseLogFilter({ from: today, to: today })} />);
   const user = userEvent.setup();
   trigger("Date").focus();
   await act(async () => user.keyboard("{Enter}"));
   const items = [...document.querySelectorAll('[role="menu"] [role^="menuitem"]')].map(node => [node.textContent, node.getAttribute("role"), node.getAttribute("aria-checked")]);
-  expect(items).toContainEqual([m.logs.filters.anyDate, "menuitemradio", "false"]);
-  expect(items).toContainEqual([m.logs.range.today, "menuitemradio", "true"]);
-  expect(items).toContainEqual([m.logs.range.last7, "menuitemradio", "false"]);
-  expect(items).toContainEqual([m.logs.range.customOpen, "menuitem", null]);
+  expect(items).toContainEqual([en.logs.filters.anyDate, "menuitemradio", "false"]);
+  expect(items).toContainEqual([en.logs.range.today, "menuitemradio", "true"]);
+  expect(items).toContainEqual([en.logs.range.last7, "menuitemradio", "false"]);
+  expect(items).toContainEqual([en.logs.range.customOpen, "menuitem", null]);
 });
 
 /**
- * **칩 글자의 날짜는 `lib/utc-time.ts`의 형이다** (2026-09-28 — 날짜 표기 통일이 놓친 자리). URL·입력 값은 ISO 그대로이고, 사람이 읽는
+ * **칩 글자의 날짜는 `lib/date-format.ts`의 형이다** (2026-09-28 — 날짜 표기 통일이 놓친 자리). URL·입력 값은 ISO 그대로이고, 사람이 읽는
  * 트리거 글자만 `Sep 27, 2026`이다. ⚠️ 전엔 URL 값을 그대로 내서 `… – 2026-09-27`이 화면에 섰다.
  */
 it.each([
@@ -168,9 +168,49 @@ it.each(["keyboard", "mouse"] as const)("%s로 열어도 메뉴의 복귀가 지
   if (how === "keyboard") await openCustom(user);
   else {
     await act(async () => user.click(trigger("Date")));
-    const item = [...document.querySelectorAll('[role="menu"] [role="menuitem"]')].find(node => node.textContent === m.logs.range.customOpen)!;
+    const item = [...document.querySelectorAll('[role="menu"] [role="menuitem"]')].find(node => node.textContent === en.logs.range.customOpen)!;
     await act(async () => user.click(item));
   }
   await act(async () => { await new Promise(resolve => setTimeout(resolve, 50)); });
-  expect(document.activeElement).toBe(field(m.logs.range.from));
+  expect(document.activeElement).toBe(field(en.logs.range.from));
+});
+
+/**
+ * **날짜 축은 보는 사람의 시간대다** (user-timezone C2). 프리셋의 "오늘"은 Logs 페이지가 내린 `now`를 그 시간대로 읽고(렌더 중 시계가 아니다 —
+ * 하이드레이션), 칩 글자는 날짜 키를 순간으로 바꾸지 않고 그린다(음수 오프셋에서 하루 밀리지 않는다). Dialog는 어느 시간대의 날짜인지 말한다.
+ */
+it.each([
+  ["UTC", "2026-10-04"],
+  ["Asia/Seoul", "2026-10-05"],
+  ["America/New_York", "2026-10-04"],
+] as const)("%s에서 Today 프리셋은 props.now의 그 시간대 날짜(%s)다 — 렌더 중 시계를 읽지 않는다", async (timeZone, today) => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2030-01-01T00:00:00Z"));
+  try {
+    await render(<LogFilters {...props} filter={parseLogFilter({})} />, { timeZone });
+    const user = userEvent.setup();
+    trigger("Date").focus();
+    await act(async () => user.keyboard("{Enter}"));
+    const item = [...document.querySelectorAll('[role="menu"] [role^="menuitem"]')].find(node => node.textContent === en.logs.range.today) as HTMLElement;
+    await act(async () => user.click(item));
+    expect(lastUrl().searchParams.get("from")).toBe(today);
+    expect(lastUrl().searchParams.get("to")).toBe(today);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it.each(["Asia/Seoul", "America/New_York"] as const)("%s에서도 날짜 칩은 고른 날짜 그대로다", async (timeZone) => {
+  await render(<LogFilters {...props} filter={parseLogFilter({ from: "2026-09-20", to: "2026-09-27" })} />, { timeZone });
+  expect(trigger("Date").textContent).toContain("Sep 20, 2026 – Sep 27, 2026");
+});
+
+it("Custom range Dialog가 날짜의 시간대를 id로 말하고, 라벨에 (UTC) 괄호가 없다", async () => {
+  const user = userEvent.setup();
+  await render(<LogFilters {...props} filter={parseLogFilter({})} />, { timeZone: "Asia/Seoul" });
+  await openCustom(user);
+  const dialog = document.querySelector('[role="dialog"]')!;
+  expect(dialog.textContent).toContain("Days are in Asia/Seoul.");
+  expect(dialog.textContent).not.toContain("(UTC)");
+  expect(field("From")).toBeInstanceOf(HTMLInputElement);
 });

@@ -16,7 +16,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 
 import { failureText } from "@/components/onboarding/failure";
 import { canPerform, type Role } from "@/lib/auth/permission";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import { ingestHeadline } from "@/lib/onboarding/message";
 import type { AdapterChoice } from "@/lib/onboarding/types";
 import { routes } from "@/lib/routes";
@@ -32,6 +32,7 @@ type Result = { tone: "success" | "warning" | "danger"; text?: string; added?: S
 export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = false }: {
   slug: string; role: Role; data: SourcesData; adapters: AdapterChoice[]; now: Date; initialOpen?: boolean;
 }) {
+  const m = useMessages();
   const router = useRouter();
   const canEdit = canPerform(role, "project:settings");
   const [adding, setAdding] = useState(initialOpen && canEdit);
@@ -132,7 +133,7 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
           // ⚠️ `not-awaiting`만 직접 다시 읽는다 — 다른 실행이 이미 적재한 갈래라 서버 상태는 바뀌었는데, Action이 `revalidatePath` 전에
           // 반환해 `data`가 안 바뀌고 상세가 옛 [Run first sync]에 남는다. 다른 조기 거부는 바뀐 것이 없어 읽을 것도 없다.
           if (!outcome.ok && outcome.error === "not-awaiting") void load(surfaceSlug, true);
-          setResult(outcome.ok ? { tone: outcome.failed > 0 ? "warning" : "success", text: ingestHeadline(outcome.count, outcome.failed, outcome.unmanaged), source: surfaceSlug } : { tone: "danger", text: failureText(outcome.error), source: surfaceSlug });
+          setResult(outcome.ok ? { tone: outcome.failed > 0 ? "warning" : "success", text: ingestHeadline(m, outcome.count, outcome.failed, outcome.unmanaged), source: surfaceSlug } : { tone: "danger", text: failureText(m, outcome.error), source: surfaceSlug });
         } catch {
           /*
             ⚠️ **"didn't finish"로 접지 않는다** (malmoi#135 — Sync의 #132와 같은 부류) — throw는 요청이 나간 뒤 응답을 잃은 것일 수 있고,

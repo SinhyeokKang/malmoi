@@ -1,5 +1,7 @@
+"use client";
+
 import { Alert } from "@/components/ui/alert";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import { basePending } from "@/lib/onboarding/base-pending";
 
 /**
@@ -25,6 +27,7 @@ export function BasePendingBanner({
   baseLocale: string | null;
   declaredBaseLocale: string | null;
 }) {
+  const m = useMessages();
   if (!basePending({ baseLocale, declaredBaseLocale }) || declaredBaseLocale === null) return null;
   return <Alert variant="warning">{m.translations.banner.basePending(declaredBaseLocale)}</Alert>;
 }

@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Kbd } from "@/components/ui/kbd";
 import { Input } from "@/components/ui/input";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import { isImeComposing } from "@/lib/keyboard";
 import { routes } from "@/lib/routes";
 import { switcherProjects } from "@/lib/shell/switcher";
@@ -51,6 +51,7 @@ export function ProjectSwitcher({
   current: string | null;
   trigger?: ReactElement;
 }) {
+  const m = useMessages();
   const [q, setQ] = useState("");
   const input = useRef<HTMLInputElement>(null);
   const content = useRef<HTMLDivElement>(null);

@@ -29,6 +29,7 @@ description: guide/ 가이드 스크린샷(public/guide/)을 ego-browser로 촬�
 ### 1. 전제 확인
 
 - `guide/SHOOTING.md`를 **먼저 전문으로 읽는다**(상수·환경·마스킹·매핑·벽·진행 상태).
+- **이미지는 en 화면 한 벌을 세 언어 원고가 공유한다** — 컷 목록·매핑의 페이지는 `guide/en/` 기준이고, **촬영 계정의 화면 언어는 en**이다(계정 `/preferences` Language와 기기 쿠키 둘 다 — 계정이 쿠키를 이긴다). ko·es 화면은 찍지 않는다(2026-10-05, ui-locales).
 - **진행 상태** 절에 이전 세션이 남긴 재개 지점이 있으면 거기서 이어간다.
 
 ### 2. stale 목록
@@ -103,6 +104,6 @@ SHOOTING 벽 절이 단일 출처. 요약: **GitHub App 설치 왕복**(①의 1
 - **SHOOTING.md 안 읽고 시작 금지.**
 - **stale 판정 복제 금지** — `pnpm guide:check`를 인용한다.
 - **능력 없는 런타임에서 촬영 시도 금지** — `check`만.
-- **본문(`guide/**.md` 페이지) 수정 금지** — `/guide` 몫. 이 스킬이 고치는 `guide/` 파일은 `SHOOTING.md` 하나다.
+- **본문(`guide/{en,ko,es}/**.md` 페이지) 수정 금지** — `/guide` 몫(새 컷의 참조는 `/guide`가 세 언어에 같은 경로로 넣는다). 이 스킬이 고치는 `guide/` 파일은 `SHOOTING.md` 하나다.
 - **코드 수정·`pnpm build`·커밋·푸시 금지.**
 - **마스킹 미적용 컷 반영 금지** — 공개 라우트다.

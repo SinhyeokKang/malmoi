@@ -32,9 +32,9 @@ const TONE: Readonly<Record<GlyphTone, { tone: StateTone } | { className: string
   amber: { tone: "warning" },
   red: { tone: "danger" },
   slate: { tone: "muted" },
-  blue: { className: "bg-blue-50 text-blue-700" },
-  teal: { className: "bg-teal-50 text-teal-700" },
-  purple: { className: "bg-violet-50 text-violet-700" },
+  blue: { className: "bg-kind-blue-surface text-kind-blue" },
+  teal: { className: "bg-kind-teal-surface text-kind-teal" },
+  purple: { className: "bg-kind-violet-surface text-kind-violet" },
 };
 
 /** ⚠️ **`Record`라 아이콘 이름이 늘면 여기서 컴파일이 걸린다** — 조용히 빈 칸이 되지 않는다. */

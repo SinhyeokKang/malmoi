@@ -11,7 +11,9 @@ import { ButtonLink } from "@/components/ui/button";
 import { appVersion } from "@/lib/app-version";
 import { rootView } from "@/lib/auth/landing";
 import { readSession } from "@/lib/auth/read-session";
-import { m } from "@/lib/i18n";
+import type { Messages } from "@/lib/i18n";
+import { getMessages } from "@/lib/i18n/server";
+import { en } from "@/messages/en";
 import { GITHUB_REPO_URL } from "@/lib/links";
 import { routes } from "@/lib/routes";
 import { navFooterItems } from "@/lib/shell/nav";
@@ -21,15 +23,15 @@ import { pageMetadata } from "@/lib/seo/site";
 
 /** 제목만 absolute다 — 템플릿(`%s · Malmoi`)을 지나면 브랜드가 두 번 선다. */
 export const metadata: Metadata = {
-  ...pageMetadata({ title: m.seo.homeTitle, description: m.landing.hero.body, path: "/" }),
-  title: { absolute: m.seo.homeTitle },
+  ...pageMetadata({ title: en.seo.homeTitle, description: en.landing.hero.body, path: "/" }),
+  title: { absolute: en.seo.homeTitle },
 };
 
 /**
  * 히어로 `Docs`의 아이콘은 앱 셸의 `Docs` 항목(`navFooterItems`)과 같은 것이다 — 같은 행선지가 화면마다 다른 글리프를 쓰지 않게
  * 정의에서 읽는다. 항목이 사라지면 지금의 글리프로 떨어진다.
  */
-const DocsIcon = navFooterItems().find((item) => item.key === "docs")?.icon ?? CircleHelp;
+const docsIcon = (m: Messages) => navFooterItems(m).find((item) => item.key === "docs")?.icon ?? CircleHelp;
 
 /**
  * **루트는 랜딩이다** (Claude Design `Landing.dc.html` 1a–1d). 로그인 화면은 `/signin`이 그린다.
@@ -44,13 +46,15 @@ const DocsIcon = navFooterItems().find((item) => item.key === "docs")?.icon ?? C
  * `/signin`으로 간다.
  */
 export default async function Root() {
+  const m = await getMessages();
+  const DocsIcon = docsIcon(m);
   const session = await readSession();
   const view = rootView(session.status);
   if ("redirect" in view) redirect(view.redirect);
 
   const { hero, stage, closing, mockup, shell } = m.landing;
   return (
-    <PublicShell account={null}>
+    <PublicShell m={m} account={null}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdHtml(LANDING_LD) }} />
       <section aria-labelledby="landing-hero" className="flex flex-col items-center px-8 pt-30 text-center">
         {/*
@@ -82,7 +86,7 @@ export default async function Root() {
         label={stage.label}
         captions={stage.captions}
         typed={mockup.selected.typed}
-        scenes={mockupScenes()}
+        scenes={mockupScenes(m)}
         closing={
           // 위아래 여백은 섹션 자신의 padding-block 240이다(2026-09-27 사용자 — 120의 두 배). 이웃의 margin으로 만들지 않는다.
           <section aria-labelledby="landing-closing" className="flex flex-col items-center px-8 py-60 text-center">

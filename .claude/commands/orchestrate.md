@@ -34,7 +34,7 @@ description: 여러 배치를 Orca 워커 세션에 나눠 병렬로 ship하고,
    패밀리 안에서는 단순·기계적 구현은 Sol/Sonnet, 복잡한 불변식 판단·독립 리뷰는 Astra/Opus를 우선 고려한다. 실제 사용 가능한 모델 ID와 effort는 현재 런타임에서 확인하고 선택 이유를 한 줄 적는다. Claude 워커의 기존 effort 범위는 low·medium·high이며 Codex는 선택한 모델이 지원하는 effort를 쓴다. 이름이 비슷한 다른 패밀리로 대체하지 않는다.
 4. **파일 겹침 행렬로 병렬/직렬을 가른다.** 두 배치가 같은 파일을 고치면 병렬로 띄우지 않는다 — 선행이 dev에 들어간 뒤 후행을 띄우거나,
    후행에게 "T6 전에 멈추고 `WAITING FOR <X>`를 찍어라, 신호를 받으면 `git rebase dev`"를 브리프에 넣는다.
-   ⚠️ **`messages/en.tsx`·`workspace.tsx`·`publish-button.tsx`는 거의 모든 UI 배치가 건드린다** — 겹침 판정에서 빠뜨리지 않는다.
+   ⚠️ **`messages/{en,ko,es}.tsx`(새 키는 세 사전에 같이 들어간다)·`workspace.tsx`·`publish-button.tsx`는 거의 모든 UI 배치가 건드린다** — 겹침 판정에서 빠뜨리지 않는다. 번역 일괄 검수 배치(톤·용어)는 `/translate` 검수 모드(모드 ②)로 브리프하고, 같은 런의 다른 배치가 고칠 사전 절을 범위에서 뺀다.
 5. **`orch.md`를 dev에 로컬 커밋한 뒤 첫 워커를 띄운다** — 채팅 속 계획만으로 시작하지 않는다. 워크트리는 로컬 dev에서 갈라지므로, 커밋 안 된 계획은 워커가 못 읽는다. 브리프는 원본 계획과 `orch.md`를 함께 가리킨다. 이후 배치 분리·순서·소유권 변경, 리뷰/수정 라운드, 통합 커밋·검증 결과·미완 항목도 이 문서에 갱신한다.
 
 ## 1. 워커 띄우기
@@ -62,6 +62,7 @@ description: 여러 배치를 Orca 워커 세션에 나눠 병렬로 ship하고,
 
 - `orchestration` 스킬의 `check --run <run> --wait`로 완료·질문·차단 메시지를 받는다. 도구 반환에 따라 실행 세션을 이어 기다리며, Claude 전용 `run_in_background`나 화면 마커 폴링을 필수로 삼지 않는다.
 - heartbeat·빈 대기·타임아웃은 완료나 실패가 아니다. 현재 Task/Dispatch와 보고서·실제 커밋을 대조한 뒤 다음 배치를 연결한다.
+- heartbeat만 온 알림은 `check` → `--ack` 뒤 **`<워커> hb`**(`A hb`·`B Q0 hb`)로만 답한다 — 문장·상태 설명을 쓰지 않는다(2026-10-05 사용자). 침묵(빈 응답)은 쓰지 않는다 — 하네스가 출력을 다시 요구해 루프가 생긴다.
 - 완료된 워커는 Delivery 확인 전에 다음 태스크로 재사용하거나 명시적으로 유지·해제한다. 새 태스크는 새 Dispatch로 보내며, 종료된 lifecycle ID로 계속 지시하지 않는다.
 - 사용자가 결정해야 하는 질문은 전달하고, 코드 수정은 소유 워커에게 돌려보낸다. 받은 메시지는 처리 후 확인하고 미처리 배치를 누락하지 않는다.
 
@@ -80,7 +81,10 @@ git status --porcelain                              # 비어 있어야 한다
 git cherry-pick $(git merge-base dev <branch>)..<branch>
 pnpm gate                                           # db:generate → typecheck → test → (트리거면) 격리 postgres → build → 미러. 끝줄만 본다
 git push                                            # = /push 1·3·4·5단계를 여기서 수행한다
+gh run watch $(gh run list --branch dev --workflow ci.yml --commit $(git rev-parse HEAD) --limit 1 --json databaseId -q '.[0].databaseId') --exit-status
 ```
+
+- ⚠️ **push 뒤 그 커밋의 dev CI 결론을 본다** (2026-10-05) — 로컬 `gate: ok`는 CI green을 뜻하지 않는다. user-timezone T4 push(`49547778`)의 CI red(`preferences-time-zone.test.tsx` 한 건)를 지휘자가 다음 push까지 몰랐고 F1 push(`26d589a2`)에서 또 red였다. 백그라운드로 걸어 두고 다음 배치를 진행해도 되지만, red면 그 배치 워커에게 돌려보내기 전에는 다음 push를 하지 않는다. 뒤 push가 앞 run을 `cancelled`로 만들면 마지막 run의 결론이 두 커밋 모두의 근거다.
 
 - ⚠️ **게이트를 손으로 조립하지 않는다** (2026-09-30) — `pnpm test | grep … | head`로 건 게이트는 파이프가 종료 코드를 삼켜 29건 red를 dev에 내보냈다. `pnpm gate`의 끝줄 `gate: ok`/`gate: FAILED at <step>`만 근거로 쓴다.
 - 마이그레이션이 든 배치: dev DB에 `pnpm exec prisma migrate deploy`(PRISMA_TARGET 없음 = dev) → `db:status` → anon 권한 0 확인(`/db` 5단계). **prod `db:deploy`는 `/merge` 1단계다.**

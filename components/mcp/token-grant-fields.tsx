@@ -7,7 +7,7 @@ import { IconTile } from "@/components/ui/icon-tile";
 import { RadioGroup } from "@/components/ui/radio";
 import { SelectRow } from "@/components/ui/select-row";
 import { SegmentedControl } from "@/components/ui/segmented-control";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import type { TokenGrant } from "@/lib/mcp/grant";
 import { cn } from "@/lib/utils";
 
@@ -86,6 +86,7 @@ export function TokenGrantFields({
   disabled: boolean;
   columns?: 1 | 2;
 }) {
+  const m = useMessages();
   // 두 화면이 같은 필드를 그린다 — id를 고정 문자열로 두면 한 문서에 둘이 설 때 `aria-labelledby`가 엉뚱한 라벨을 가리킨다.
   const id = useId();
   const grantsLabel = `${id}-grants-label`;

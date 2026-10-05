@@ -9,9 +9,9 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), useSea
 
 import { ProjectList } from "@/components/projects/project-list";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import type { ProjectListRow } from "@/lib/keys/query";
-import { STATE } from "@/lib/status/canon";
+import { STATE, stateLabel } from "@/lib/status/canon";
 
 /**
  * **목록의 그릇** — 아트보드 `1a`~`1d` (projects-panel-rework T4·T5·T6·T7).
@@ -69,9 +69,9 @@ describe("`1a` 그룹 카드 — 헤더가 카드 안으로 들어온다", () =>
     const container = await draw();
     expect(cards(container)).toHaveLength(3);
     expect(cards(container).map((card) => find(card, "h2").textContent)).toEqual([
-      m.projects.group.needsAttention,
-      m.projects.group.allSet,
-      m.projects.archived,
+      en.projects.group.needsAttention,
+      en.projects.group.allSet,
+      en.projects.archived,
     ]);
   });
 
@@ -88,7 +88,7 @@ describe("`1a` 그룹 카드 — 헤더가 카드 안으로 들어온다", () =>
       const rows = card.querySelectorAll("li").length;
       const badge = find<HTMLElement>(card, "h2 + span");
       expect(find<HTMLElement>(badge, "[aria-hidden]").textContent).toBe(String(rows));
-      expect(find<HTMLElement>(badge, ".sr-only").textContent).toBe(m.projects.count(rows));
+      expect(find<HTMLElement>(badge, ".sr-only").textContent).toBe(en.projects.count(rows));
     }
   });
 
@@ -135,7 +135,7 @@ describe("`1c` 검색 결과 — 결과 카드 하나", () => {
   it("그룹을 그리지 않고 결과 카드 하나가 선다", async () => {
     const container = await draw({ q: "chrome" });
     expect(cards(container)).toHaveLength(1);
-    expect(find(container, "section h2").textContent).toBe(m.projects.resultsFor("chrome"));
+    expect(find(container, "section h2").textContent).toBe(en.projects.resultsFor("chrome"));
   });
 
   /**
@@ -146,7 +146,7 @@ describe("`1c` 검색 결과 — 결과 카드 하나", () => {
     const container = await draw({ q: "chrome" });
     const total = find<HTMLElement>(container, "h1 + span");
     expect(find<HTMLElement>(total, "[aria-hidden]").textContent).toBe("3");
-    expect(find<HTMLElement>(total, ".sr-only").textContent).toBe(m.projects.count(3));
+    expect(find<HTMLElement>(total, ".sr-only").textContent).toBe(en.projects.count(3));
     expect(find<HTMLElement>(container, "section h2 + span [aria-hidden]").textContent).toBe("1");
   });
 
@@ -154,7 +154,7 @@ describe("`1c` 검색 결과 — 결과 카드 하나", () => {
   it("헤더 오른쪽에 `Clear search` 링크가 있다", async () => {
     const container = await draw({ q: "chrome" });
     const exit = find<HTMLAnchorElement>(container, "section a");
-    expect(exit.textContent).toBe(m.projects.clearSearch);
+    expect(exit.textContent).toBe(en.projects.clearSearch);
     expect(exit.getAttribute("href")).toBe("/projects");
   });
 });
@@ -166,8 +166,8 @@ describe("`1b`·`1d` 빈 상태 둘 — 같은 카드, 반대 출구", () => {
     // 점 필드는 `<canvas>`이고 그라데이션 면은 `from-auth-hero-*` 토큰이다 — 둘 다 자취가 없어야 한다.
     expect(container.querySelector("canvas")).toBeNull();
     expect(container.innerHTML).not.toContain("from-auth-hero-from");
-    expect(container.textContent).toContain(m.projects.empty.title);
-    expect(container.textContent).toContain(m.projects.empty.description);
+    expect(container.textContent).toContain(en.projects.empty.title);
+    expect(container.textContent).toContain(en.projects.empty.description);
   });
 
   /**
@@ -176,7 +176,7 @@ describe("`1b`·`1d` 빈 상태 둘 — 같은 카드, 반대 출구", () => {
    */
   it("0건의 머리가 제목뿐이다 — 개수 배지 0이 서지 않는다", async () => {
     const container = await draw({ all: [] });
-    expect(container.querySelector("h1")?.textContent).toBe(m.common.nav.projects);
+    expect(container.querySelector("h1")?.textContent).toBe(en.common.nav.projects);
     expect(container.querySelector("h1 + span")).toBeNull();
     expect(container.querySelector("input")).toBeNull();
   });
@@ -187,26 +187,26 @@ describe("`1b`·`1d` 빈 상태 둘 — 같은 카드, 반대 출구", () => {
     const links = [...container.querySelectorAll("a")];
     expect(links).toHaveLength(1);
     expect(links[0]!.getAttribute("href")).toBe("/projects/new");
-    expect(links[0]!.textContent).toContain(m.common.nav.newProject);
+    expect(links[0]!.textContent).toContain(en.common.nav.newProject);
   });
 
   /** 검색이 빈 것의 출구는 **되돌리기**다 — 링크이고 채운 버튼이 아니다. */
   it("검색 0건이 제목에 질의를 싣고 출구가 링크다", async () => {
     const container = await draw({ q: "stripe" });
     expect(cards(container)).toHaveLength(0);
-    expect(container.textContent).toContain(m.projects.narrowed.title("stripe"));
-    expect(container.textContent).toContain(m.projects.narrowed.description);
+    expect(container.textContent).toContain(en.projects.narrowed.title("stripe"));
+    expect(container.textContent).toContain(en.projects.narrowed.description);
     const exit = [...container.querySelectorAll("a")].filter((a) => a.getAttribute("href") === "/projects");
     expect(exit).toHaveLength(1);
-    expect(exit[0]!.textContent).toBe(m.projects.narrowed.reset);
+    expect(exit[0]!.textContent).toBe(en.projects.narrowed.reset);
   });
 
   /**
    * ⚠️ **둘이 한 갈래로 합쳐지지 않는다** — 출구의 무게가 반대다. 합치면 그 차이를 그리는 자리가 사라진다.
    */
   it("0건과 검색 0건이 다른 제목을 낸다", async () => {
-    expect((await draw({ all: [] })).textContent).not.toContain(m.projects.narrowed.description);
-    expect((await draw({ q: "stripe" })).textContent).not.toContain(m.projects.empty.description);
+    expect((await draw({ all: [] })).textContent).not.toContain(en.projects.narrowed.description);
+    expect((await draw({ q: "stripe" })).textContent).not.toContain(en.projects.empty.description);
   });
 });
 
@@ -216,10 +216,10 @@ describe("Summary 넷이 화면에서 사라진다", () => {
    * (`spec.md` §5). 여기서 재는 것은 **화면**이지 집계가 아니다.
    */
   it.each([
-    m.projects.summary.newFromGithub,
-    m.projects.summary.toTranslate,
-    m.projects.summary.toReview,
-    m.projects.summary.toSend,
+    en.projects.summary.newFromGithub,
+    en.projects.summary.toTranslate,
+    en.projects.summary.toReview,
+    en.projects.summary.toSend,
   ])("`%s`가 목록 화면에 없다", async (label) => {
     expect((await draw()).textContent).not.toContain(label);
   });
@@ -245,7 +245,7 @@ describe("보관 행이 한 단계 더 물러난다", () => {
     expect(nameOf(row).className).toContain("text-gray-dim");
     expect(metaOf(row).className).toContain("text-gray-dim");
     const badge = find<HTMLElement>(row, "span.rounded-full");
-    expect(badge.textContent).toBe(STATE.archived.label);
+    expect(badge.textContent).toBe(stateLabel(en, "archived"));
     expect(badge.className).not.toContain("text-gray-dim");
     const canon = (await render(<StatusBadge state="archived" />)).container.firstElementChild!;
     expect(badge.className).toBe(canon.className);

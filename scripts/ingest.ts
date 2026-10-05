@@ -12,6 +12,7 @@ import { findTarget, flagValue, hasFlag } from "../lib/cli/args";
 import { walkFiles } from "../lib/cli/walk";
 import { blobSha } from "../lib/githash";
 import { adapterErrorMessage } from "../lib/i18n/adapter-errors";
+import { en } from "../messages/en";
 import { matchGlobPaths } from "../lib/adapters/index";
 import { sameMeaning } from "../lib/adapters/shared";
 import { AppError } from "../lib/failure";
@@ -153,7 +154,7 @@ if (baseLocale) {
 
   if (result.errors.length) {
     console.error(`\n에러 ${result.errors.length}건:`);
-    for (const e of result.errors.slice(0, 15)) console.error(`  ${e.path}  ${adapterErrorMessage(e)}`);
+    for (const e of result.errors.slice(0, 15)) console.error(`  ${e.path}  ${adapterErrorMessage(e, en.adapterErrors)}`);
     if (result.errors.length > 15) console.error(`  ... ${result.errors.length - 15}건 더`);
     // `failure`가 없으면 push:local처럼 실패로 끝내지 않는다 — 경고(B7a r1)·`unmanaged`(2026-10-01)는 잃는 번역이 없다.
     if (result.errors.some((e) => adapterErrorKind(e.code) === "failure")) process.exitCode = 1;

@@ -1,6 +1,8 @@
+"use client";
+
 import { Lock } from "lucide-react";
 
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import type { Role } from "@/lib/auth/permission";
 
 /**
@@ -32,6 +34,7 @@ import type { Role } from "@/lib/auth/permission";
  * 낮다** — 그래서 자물쇠는 **보조 신호이고 사유를 지는 것은 위 `sr-only` 문장**이다(§6.65).
  */
 export function RoleChip({ role, reason }: { role: Role; reason: "pending" | "editor" }) {
+  const m = useMessages();
   const label = m.projects.role[role];
   return (
     <span

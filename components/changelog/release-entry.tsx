@@ -1,8 +1,9 @@
 import { Badge } from "@/components/ui/badge";
-import { m } from "@/lib/i18n";
+import type { Messages } from "@/lib/i18n";
+import type { UiLocale } from "@/lib/i18n/locales";
 import type { Release } from "@/lib/changelog/parse";
 import { releaseTagUrl } from "@/lib/links";
-import { utcDay } from "@/lib/utc-time";
+import { formatDay } from "@/lib/date-format";
 import { cn } from "@/lib/utils";
 
 import { ReleaseMarkdown } from "./release-markdown";
@@ -24,7 +25,7 @@ export const ENTRY_BLOCK = "border-border border-t py-12";
  * compare가 없는 첫 판에도 서도록 Release 페이지(`releaseTagUrl`)로 간다. 버전 주소의 해시 착지·포커스는 `h1`의 `id`를 `PublicScroller`가
  * 그대로 받는다. 태그가 `v<x.y.z>`만 지나오므로(`parseReleases`) `id`로 안전하다.
  */
-export function ReleaseEntry({ release, latest = false }: { release: Release; latest?: boolean }) {
+export function ReleaseEntry({ m, uiLocale, release, latest = false }: { m: Messages; uiLocale: UiLocale; release: Release; latest?: boolean }) {
   const { tag, publishedAt, body } = release;
   return (
     // 이름 없는 `<section>`을 두지 않는다 (POSTMORTEM 2026-09-15) — 이름은 버전 `h1`이 댄다.
@@ -46,8 +47,8 @@ export function ReleaseEntry({ release, latest = false }: { release: Release; la
         </a>
       </h1>
       <p className="text-muted-foreground mt-1 text-sm leading-body">
-        {/* 보이는 쪽은 UTC 날짜(`utcDay`), 정확한 값은 `dateTime`의 원 ISO다. UTC라는 사실은 소개 문장이 한 번 말한다. */}
-        <time dateTime={publishedAt}>{utcDay(new Date(publishedAt))}</time>
+        {/* 보이는 쪽은 UTC 날짜(`formatDay`), 정확한 값은 `dateTime`의 원 ISO다. UTC라는 사실은 소개 문장이 한 번 말한다. */}
+        <time dateTime={publishedAt}>{formatDay(new Date(publishedAt), { uiLocale, timeZone: "UTC" })}</time>
       </p>
       <div className="mt-6 [&>:first-child]:mt-0">
         <ReleaseMarkdown body={body} />

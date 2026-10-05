@@ -13,6 +13,8 @@ vi.mock("@/lib/login-link/view", () => ({
 }));
 import LinkAccountPage from "@/app/signin/link/[challenge]/page";
 
+vi.mock("@/lib/i18n/server", async () => ({ getMessages: async () => (await import("@/messages/en")).en, getUiLocale: async () => "en" }));
+
 /**
  * **origin을 판정 못 하면 병합 확인을 시작하지 않는다** (launch-readiness L7.6, audit #48). 전엔 `origin?.secure ?? false`로
  * 비-secure 쿠키를 심고 시작했는데 콜백 쪽 폴백은 `?? https`라 state 쿠키 이름이 갈렸고, 증상은 원인과 먼 **"계정 병합 실패"**로

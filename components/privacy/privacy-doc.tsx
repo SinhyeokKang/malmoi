@@ -1,8 +1,9 @@
 import { LIST, PROSE, SECTION_HEADING } from "@/components/docs/classes";
 import { DOC_TABLE, DocTable } from "@/components/public-doc-table";
 import { Toc } from "@/components/public-doc-toc";
-import { m } from "@/lib/i18n";
-import { utcDay } from "@/lib/utc-time";
+import type { Messages, PrivacyBody } from "@/lib/i18n";
+import type { UiLocale } from "@/lib/i18n/locales";
+import { formatDay } from "@/lib/date-format";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 
@@ -12,28 +13,33 @@ import type { ReactNode } from "react";
  *
  * ⚠️ **`<main>`을 그리지 않는다** — 랜드마크는 셸의 `<main>` 하나다.
  * ⚠️ **복귀 링크가 없다** — 헤더(로고 · Home · primary)가 나가는 길을 든다.
- * ⚠️ **본문은 사전 그대로다** (`m.publicDocs.privacy`) — 고치면 `effectiveDate`와 개정 이력이 따라와야 한다.
+ * ⚠️ **본문은 사전 그대로다** — `doc`은 페이지가 고른 본(en `en.publicDocs.privacy` · ko `messages/ko-privacy.tsx`)이다. 고치면 `effectiveDate`와
+ * 개정 이력이 따라와야 한다. 셸 라벨(`m`)과 본문(`doc`)이 따로 오는 것은 es 화면이 es 셸 + en 본문이기 때문이다(ui-locales design §8).
  */
 /** 3열 표의 열 폭 — 방침 문구가 아니라 열 수에서 온다. 셋째 열은 나머지다. */
 const TABLE_3COL = "[&_th:nth-child(1)]:w-[34%] [&_th:nth-child(2)]:w-[26%]";
 
-export function PrivacyDoc() {
-  const { title, effectiveDate, intro, sections, tocLabels } = m.publicDocs.privacy;
+/**
+ * ⚠️ **`lang`은 본문의 언어다**(R10 🟡1) — es 화면은 en 본문이라 `<html lang="es">` 안에서 본문·목차가 스페인어 음성 규칙으로 읽혔다(WCAG 3.1.2).
+ * 그릇 전체가 본문 언어를 들고, 셸 문구(시행일 줄)와 셸 형으로 만든 날짜(`formatDay(uiLocale)`)만 화면 언어로 되돌린다.
+ */
+export function PrivacyDoc({ m, uiLocale, doc, lang }: { m: Messages; uiLocale: UiLocale; doc: PrivacyBody; lang: "en" | "ko" }) {
+  const { title, effectiveDate, intro, sections, tocLabels, toc } = doc;
   // 키가 절 `id`(사전 데이터)라 프로토타입을 끊고 찾는다 — `constructor` 같은 id가 `Object.prototype`에서 값을 얻지 않게.
   const labels: Readonly<Record<string, string>> = tocLabels;
   const tocItems = sections.map(({ id, heading }) => ({ id, heading: Object.hasOwn(labels, id) ? (labels[id] ?? heading) : heading }));
 
   return (
-    <div className="mx-auto grid max-w-[1120px] grid-cols-[minmax(0,720px)_200px] justify-between gap-16 px-10 pt-16 pb-30">
+    <div lang={lang} className="mx-auto grid max-w-[1120px] grid-cols-[minmax(0,720px)_200px] justify-between gap-16 px-10 pt-16 pb-30">
       <article className="min-w-0">
         <h1 className="m-0 text-4xl leading-[1.3] font-semibold">{title}</h1>
         {/*
           메타 줄이라 보조 색이 맞다 — 본문의 muted 금지는 여기 안 걸린다(§6.61). 라벨 없이 날짜만 두면 무슨 날짜인지 모른다.
           사전의 `"YYYY-MM-DD"`는 `dateTime`에 그대로 넣고(날짜만 든 `datetime`은 올바른 HTML이다) 보이는 쪽만
-          앱의 날짜 형(`utcDay`)이다 — 사전 값을 바꾸면 `policy-gate`가 개정 이력을 요구한다.
+          앱의 날짜 형(`formatDay`)이다 — 사전 값을 바꾸면 `policy-gate`가 개정 이력을 요구한다.
         */}
-        <p className="text-muted-foreground mt-3 text-sm leading-body">
-          {m.publicDocs.effectiveDate} <time dateTime={effectiveDate}>{utcDay(new Date(effectiveDate))}</time>
+        <p lang={uiLocale} className="text-muted-foreground mt-3 text-sm leading-body">
+          {m.publicDocs.effectiveDate} <time dateTime={effectiveDate}>{formatDay(new Date(effectiveDate), { uiLocale, timeZone: "UTC" })}</time>
         </p>
         <p className={cn(PROSE, "mt-6")}>{intro}</p>
         <hr className="border-border mt-10" />
@@ -64,7 +70,7 @@ export function PrivacyDoc() {
               ) : "ul" in block ? (
                 <ul key={blockIndex} className={`${LIST} list-disc`}>
                   {block.ul.map((item, itemIndex) => (
-                    <li key={itemIndex}>{section.id === "changes" ? <RevisionLine item={item} /> : item}</li>
+                    <li key={itemIndex}>{section.id === "changes" ? <RevisionLine item={item} uiLocale={uiLocale} /> : item}</li>
                   ))}
                 </ul>
               ) : (
@@ -78,7 +84,7 @@ export function PrivacyDoc() {
           </section>
         ))}
       </article>
-      <Toc label={m.publicDocs.privacy.toc} items={tocItems} />
+      <Toc label={toc} items={tocItems} />
     </div>
   );
 }
@@ -87,13 +93,13 @@ export function PrivacyDoc() {
 const REVISION = /^(\d{4}-\d{2}-\d{2}) — /;
 
 /**
- * 개정 이력의 날짜를 머리의 시행일과 같은 형(`utcDay`)으로 보인다 (ux-drift-unify 2-Y19 — 한 페이지에서 머리는 `Sep 29, 2026`,
+ * 개정 이력의 날짜를 머리의 시행일과 같은 형(`formatDay`)으로 보인다 (ux-drift-unify 2-Y19 — 한 페이지에서 머리는 `Sep 29, 2026`,
  * 이력은 ISO였다). ⚠️ **사전 값은 ISO 그대로다** — 본문 해시(`policy-gate.test.tsx`)가 사전을 보고, 날짜 형을 바꾸는 것은 방침 개정이
  * 아니다. 날짜로 시작하지 않는 줄은 그대로 둔다.
  */
-function RevisionLine({ item }: { item: ReactNode }) {
+function RevisionLine({ item, uiLocale }: { item: ReactNode; uiLocale: UiLocale }) {
   const match = typeof item === "string" ? REVISION.exec(item) : null;
   if (match === null || typeof item !== "string") return <>{item}</>;
   const iso = match[1] ?? "";
-  return <><time dateTime={iso}>{utcDay(new Date(iso))}</time> — {item.slice(match[0].length)}</>;
+  return <><time lang={uiLocale} dateTime={iso}>{formatDay(new Date(iso), { uiLocale, timeZone: "UTC" })}</time> — {item.slice(match[0].length)}</>;
 }

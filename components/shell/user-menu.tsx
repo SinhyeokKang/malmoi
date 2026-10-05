@@ -14,7 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import { routes } from "@/lib/routes";
 import { navWorkItems, type NavItem } from "@/lib/shell/nav";
 
@@ -51,6 +51,7 @@ export function UserMenu({
   image: string | null;
   signOut: () => void;
 }) {
+  const m = useMessages();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -69,13 +70,13 @@ export function UserMenu({
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         {/* 첫 묶음은 사이드바 사용자 구역과 같은 목록이다(`navWorkItems`) — 두 벌이면 한쪽에만 항목이 는다. */}
-        {navWorkItems().map((item) => (
+        {navWorkItems(m).map((item) => (
           <MenuLink key={item.key} href={item.href} icon={item.icon} label={item.label} />
         ))}
         <DropdownMenuSeparator />
         <MenuLink href={routes.changelog()} icon={Compass} label={m.changelog.title} />
         <MenuLink href={routes.docs()} icon={CircleHelp} label={m.publicDocs.docs.title} />
-        <MenuLink href={routes.privacy()} icon={ShieldCheck} label={m.publicDocs.privacy.title} />
+        <MenuLink href={routes.privacy()} icon={ShieldCheck} label={m.signIn.footer.privacy} />
         <DropdownMenuSeparator />
         {/* 폼이 항목을 감싼다 — 항목이 가장 가까운 폼을 제출한다(`SignOutItem`). */}
         <form action={signOut}>
@@ -91,6 +92,7 @@ export function UserMenu({
  * 세울 자리 자체가 사라진다. 이동이 끝나면 페이지가 바뀌므로 열린 채 남는 일은 없다.
  */
 function SignOutItem() {
+  const m = useMessages();
   const { pending } = useFormStatus();
   return (
     /*

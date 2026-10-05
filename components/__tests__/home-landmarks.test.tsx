@@ -8,6 +8,7 @@ import { LogsCard } from "@/components/home/logs-card";
 import { MetaColumn } from "@/components/home/meta-column";
 import { metaTabs, type MetaTabsInput } from "@/lib/home/meta";
 import { render } from "./helpers/dom";
+import { en } from "@/messages/en";
 
 // ⚠️ Radix + user-event는 jsdom에서 실시간 지연이 있다(POSTMORTEM 2026-09-13).
 vi.setConfig({ testTimeout: 20_000 });
@@ -43,12 +44,12 @@ function labelledBy(root: HTMLElement, selector: string): string | null {
 
 describe("Home의 블록 셋이 이름 있는 랜드마크다", () => {
   it("`Needs your attention`이 자기 제목으로 이름을 든다", async () => {
-    const { container } = await render(<AttentionCard items={empty} slug="acme" role="OWNER" state="default" now={now} />);
+    const { container } = await render(<AttentionCard items={empty} slug="acme" role="OWNER" state="default" now={now} uiLocale="en" m={en} />);
     expect(labelledBy(container, "section")).toContain("Needs your attention");
   });
 
   it("`Recent logs`가 자기 제목으로 이름을 든다", async () => {
-    const { container } = await render(<LogsCard rows={[]} slug="acme" now={now} archived={false} syncedBefore />);
+    const { container } = await render(<LogsCard rows={[]} slug="acme" now={now} archived={false} syncedBefore style={{ uiLocale: "en", timeZone: "UTC" }} m={en} />);
     expect(labelledBy(container, "section")).toContain("Recent logs");
   });
 
@@ -57,7 +58,7 @@ describe("Home의 블록 셋이 이름 있는 랜드마크다", () => {
    * 첫 탭 이름도 `Project`지만 역할이 달라(랜드마크 vs 탭) 스크린리더가 가른다 — 실측은 CDP(DESIGN §6.64).
    */
   it("`Project` 메타 열이 `complementary`이고 이름을 든다", async () => {
-    const { container } = await render(<MetaColumn slug="acme" now={now} canOpenSettings tabs={metaTabs(meta)} />);
+    const { container } = await render(<MetaColumn slug="acme" now={now} canOpenSettings tabs={metaTabs(meta)} uiLocale="en" m={en} />);
     expect(container.querySelector("aside")).not.toBeNull();
     expect(container.querySelector("aside")?.getAttribute("aria-label")).toBe("Project");
   });
@@ -80,7 +81,7 @@ describe("목록 시맨틱", () => {
 
   it("항목이 `<ul> > <li>`로 선다", async () => {
     const { container } = await render(
-      <AttentionCard items={{ shown: [item], more: [], count: 1 }} slug="acme" role="OWNER" state="default" now={now} />,
+      <AttentionCard items={{ shown: [item], more: [], count: 1 }} slug="acme" role="OWNER" state="default" now={now} uiLocale="en" m={en} />,
     );
     expect(container.querySelector("section > ul > li > a")).not.toBeNull();
   });
@@ -88,7 +89,7 @@ describe("목록 시맨틱", () => {
   /** ⚠️ **꼬리 절이 굵은 조각과 갈려야 한다** — 색이 아니라 무게로 가르는 것이 이 행의 규칙이다. */
   it("둘째 줄이 굵은 조각 + 문장으로 갈린다", async () => {
     const { container } = await render(
-      <AttentionCard items={{ shown: [item], more: [], count: 1 }} slug="acme" role="OWNER" state="default" now={now} />,
+      <AttentionCard items={{ shown: [item], more: [], count: 1 }} slug="acme" role="OWNER" state="default" now={now} uiLocale="en" m={en} />,
     );
     const strong = container.querySelector("a span.font-medium");
     expect(strong?.textContent).toContain("waiting for review");
@@ -97,7 +98,7 @@ describe("목록 시맨틱", () => {
 
   it("`+n more`가 `<details>`다 — 클라이언트 상태를 만들지 않는다", async () => {
     const { container } = await render(
-      <AttentionCard items={{ shown: [item], more: [{ ...item, code: "fr", name: "French" }], count: 2 }} slug="acme" role="OWNER" state="default" now={now} />,
+      <AttentionCard items={{ shown: [item], more: [{ ...item, code: "fr", name: "French" }], count: 2 }} slug="acme" role="OWNER" state="default" now={now} uiLocale="en" m={en} />,
     );
     expect(container.querySelector("details > summary")).not.toBeNull();
     expect(container.querySelector("details > ul > li")).not.toBeNull();
@@ -119,7 +120,7 @@ describe("메타 열 — 외부 링크 글리프", () => {
 
   it("리포 행도 PR 행도 글리프 없이 링크다", async () => {
     // 두 행이 다른 탭에 산다 — Radix는 비활성 패널의 자식을 그리지 않으므로 Publish 탭으로 옮겨 PR 행을 읽는다.
-    const { container } = await render(<MetaColumn slug="acme" now={now} canOpenSettings tabs={metaTabs({ ...meta, lastPublish: { ...meta.lastPublish!, at } })} />);
+    const { container } = await render(<MetaColumn slug="acme" now={now} canOpenSettings tabs={metaTabs({ ...meta, lastPublish: { ...meta.lastPublish!, at } })} uiLocale="en" m={en} />);
     const links = [...container.querySelectorAll("a[target=_blank]")];
     const publish = [...container.querySelectorAll<HTMLElement>('[role="tab"]')].find((tab) => tab.textContent === "Publish")!;
     await act(async () => { await userEvent.setup().click(publish); });

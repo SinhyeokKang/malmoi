@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { planMemberIdentity } from "@/lib/auth/member-identity";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 /**
  * **행의 두 줄 배치와 아바타 씨앗** (members-rework design §1).
@@ -11,7 +11,7 @@ import { m } from "@/lib/i18n";
  */
 describe("planMemberIdentity — 갈래 넷", () => {
   it("이름이 있으면 이름이 1행이고 마스킹 주소가 2행이다", () => {
-    expect(planMemberIdentity({ name: "Jane", emailLabel: "j***@acme.com", readable: true })).toEqual({
+    expect(planMemberIdentity(en, { name: "Jane", emailLabel: "j***@acme.com", readable: true })).toEqual({
       primary: "Jane",
       secondary: "j***@acme.com",
       unnamed: false,
@@ -25,7 +25,7 @@ describe("planMemberIdentity — 갈래 넷", () => {
    * 읽을 것은 그대로다.
    */
   it("이름이 없으면 마스킹 주소가 1행으로 올라가고 2행이 빈다", () => {
-    expect(planMemberIdentity({ name: null, emailLabel: "j***@acme.com", readable: true })).toEqual({
+    expect(planMemberIdentity(en, { name: null, emailLabel: "j***@acme.com", readable: true })).toEqual({
       primary: "j***@acme.com",
       secondary: null,
       unnamed: false,
@@ -35,8 +35,8 @@ describe("planMemberIdentity — 갈래 넷", () => {
   });
 
   it("이름도 주소도 없으면 자리 채움 문구가 선다", () => {
-    expect(planMemberIdentity({ name: null, emailLabel: null, readable: true })).toEqual({
-      primary: m.members.unnamed,
+    expect(planMemberIdentity(en, { name: null, emailLabel: null, readable: true })).toEqual({
+      primary: en.members.unnamed,
       secondary: null,
       unnamed: true,
       avatarSeed: null,
@@ -45,12 +45,12 @@ describe("planMemberIdentity — 갈래 넷", () => {
   });
 
   /**
-   * ⚠️ **못 읽은 행은 `readable`이 정한다 — 라벨 문자열을 비교하지 않는다.** `m.common.unreadable`과
+   * ⚠️ **못 읽은 행은 `readable`이 정한다 — 라벨 문자열을 비교하지 않는다.** `en.common.unreadable`과
    * 값을 견주는 코드는 리포에 0건이고, 넣는 순간 리포 최초의 문자열 센티널을 만드는 것이다.
    */
   it("못 읽은 행은 이름·주소가 있어 보여도 전용 문구가 선다", () => {
-    expect(planMemberIdentity({ name: "Jane", emailLabel: "j***@acme.com", readable: false })).toEqual({
-      primary: m.members.unreadableLabel,
+    expect(planMemberIdentity(en, { name: "Jane", emailLabel: "j***@acme.com", readable: false })).toEqual({
+      primary: en.members.unreadableLabel,
       secondary: null,
       unnamed: true,
       avatarSeed: null,
@@ -59,8 +59,8 @@ describe("planMemberIdentity — 갈래 넷", () => {
   });
 
   it("못 읽은 행은 이름·주소가 비어도 같은 결과다 — 갈래가 하나다", () => {
-    expect(planMemberIdentity({ name: null, emailLabel: null, readable: false })).toEqual(
-      planMemberIdentity({ name: "Jane", emailLabel: "j***@acme.com", readable: false }),
+    expect(planMemberIdentity(en, { name: null, emailLabel: null, readable: false })).toEqual(
+      planMemberIdentity(en, { name: "Jane", emailLabel: "j***@acme.com", readable: false }),
     );
   });
 });
@@ -73,8 +73,8 @@ describe("planMemberIdentity — 갈래 넷", () => {
  */
 describe("planMemberIdentity — 아바타 씨앗", () => {
   it("씨앗은 이름일 때만 있고, 1행이 주소로 대체된 갈래에서는 null이다", () => {
-    const named = planMemberIdentity({ name: "Jane", emailLabel: "j***@acme.com", readable: true });
-    const masked = planMemberIdentity({ name: null, emailLabel: "j***@acme.com", readable: true });
+    const named = planMemberIdentity(en, { name: "Jane", emailLabel: "j***@acme.com", readable: true });
+    const masked = planMemberIdentity(en, { name: null, emailLabel: "j***@acme.com", readable: true });
     expect(named.avatarSeed).toBe("Jane");
     expect(masked.avatarSeed).toBeNull();
     // 씨앗을 1행에서 주워 쓰면 이 단언이 깨진다 — 그것이 이 필드를 가른 이유다.
@@ -86,13 +86,13 @@ describe("planMemberIdentity — 아바타 씨앗", () => {
       { name: null, emailLabel: null, readable: true },
       { name: null, emailLabel: null, readable: false },
     ]) {
-      expect(planMemberIdentity(input).avatarSeed).toBeNull();
+      expect(planMemberIdentity(en, input).avatarSeed).toBeNull();
     }
   });
 
   /** ⚠️ **공백만 있는 이름은 이름이 아니다** — `Avatar`가 `"?"`로 떨어뜨리고 색도 빈 문자열에서 뽑힌다. */
   it("공백뿐인 이름은 이름으로 치지 않는다", () => {
-    expect(planMemberIdentity({ name: "   ", emailLabel: "j***@acme.com", readable: true })).toEqual({
+    expect(planMemberIdentity(en, { name: "   ", emailLabel: "j***@acme.com", readable: true })).toEqual({
       primary: "j***@acme.com",
       secondary: null,
       unnamed: false,
@@ -114,12 +114,12 @@ describe("planMemberIdentity — 아바타 사진", () => {
       { name: null, emailLabel: "j***@acme.com" },
       { name: null, emailLabel: null },
     ]) {
-      expect(planMemberIdentity({ ...input, image, readable: true }).avatarImage).toBe(image);
+      expect(planMemberIdentity(en, { ...input, image, readable: true }).avatarImage).toBe(image);
     }
   });
 
   /** ⚠️ 못 읽은 행은 이름도 못 읽었다 — 사진만 사람의 것으로 그리면 "못 읽음"이 "사람"으로 보인다. */
   it("못 읽은 행은 사진이 있어도 싣지 않는다", () => {
-    expect(planMemberIdentity({ name: null, emailLabel: null, image: "https://x/y.png", readable: false }).avatarImage).toBeNull();
+    expect(planMemberIdentity(en, { name: null, emailLabel: null, image: "https://x/y.png", readable: false }).avatarImage).toBeNull();
   });
 });

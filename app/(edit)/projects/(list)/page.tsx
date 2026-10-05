@@ -1,3 +1,4 @@
+import { getMessages } from "@/lib/i18n/server";
 import { ProjectList } from "@/components/projects/project-list";
 import { ContentPanel } from "@/components/shell/content-panel";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
@@ -35,6 +36,7 @@ export default async function ProjectsPage({
 }: {
   searchParams: Promise<Raw<"e" | "q">>;
 }) {
+  const m = await getMessages();
   const { userId } = await requireUser();
   /**
    * `requireProjectAccess`가 거부 사유를 `?e=`로 넘긴다. 주소창 값이라 판정 함수로 거른다 — 모르는 값은 무시.
@@ -50,9 +52,9 @@ export default async function ProjectsPage({
   // 타입에 남는 것은 이 라우트가 여전히 `?q=`의 수신자이기 때문이다.
   const { e } = firstQueryValues(await searchParams);
   const message = isAccessError(e)
-    ? accessErrorMessage(e)
+    ? accessErrorMessage(m, e)
     : isConnectError(e)
-      ? connectErrorMessage(e)
+      ? connectErrorMessage(m, e)
       : null;
 
   /**

@@ -7,7 +7,7 @@ import { buttonClass } from "@/components/ui/button";
 import { CountBadge } from "@/components/ui/count-badge";
 import { fieldClass } from "@/components/ui/input";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { m } from "@/lib/i18n";
+import type { Messages } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 /**
@@ -22,11 +22,9 @@ import { cn } from "@/lib/utils";
  */
 export type Phase = "missing" | "typing" | "saving" | "saved" | "published";
 
-const fixture = m.landing.mockup;
-const w = m.translations.workspace;
 const count = (n: number) => n.toLocaleString("en-US");
 /** 보고 있는 소스 — 트리에서 펼쳐진 항목이고 키 목록의 수가 그 소스의 키 수다(`This source`). */
-const current = fixture.sources.find(source => source.slug === fixture.source);
+const currentSource = (fixture: Messages["landing"]["mockup"]) => fixture.sources.find(source => source.slug === fixture.source);
 
 /** 씬 ③의 전·후 — 프레임의 `data-badge`가 1이 되는 순간 바뀐다(`group/frame`은 `components/landing/stage.tsx`). */
 function Swap({ phase, before, after, display = "inline-flex" }: { phase: Phase; before: ReactNode; after: ReactNode; display?: "inline-flex" | "flex" }) {
@@ -44,10 +42,10 @@ function Swap({ phase, before, after, display = "inline-flex" }: { phase: Phase;
  * ⚠️ **상태·개수 표시는 실물 프리미티브를 그대로 쓴다** (ux-drift-unify 🔴 G · Q3 · Q13) — Unsent는 `StatusBadge unsent`, 개수는 `CountBadge`다.
  * 사본을 들면 실물이 바뀔 때 목업만 낡는다(옛 테두리 알약 `Pill` 사본이 그렇게 남았다). 둘 다 `<span>`이라 프레임 규칙(인터랙티브 태그 0)을 지킨다.
  */
-const unsentBadge = <StatusBadge state="unsent" />;
+const unsentBadge = () => <StatusBadge state="unsent" />;
 
 /** Publish 버튼 안 개수 — 실물(`publish-button.tsx`)과 같은 어두운 면 덮개다. */
-function PublishCount({ n }: { n: number }) {
+function PublishCount({ m, n }: { m: Messages; n: number }) {
   return <CountBadge count={n} label={m.translations.publish.unsentCount(n)} className="bg-background/20 text-current" />;
 }
 
@@ -61,7 +59,9 @@ function FilterTrigger({ label, size }: { label: string; size: "md" | "sm" }) {
   );
 }
 
-export function TranslationsView({ phase }: { phase: Phase }) {
+export function TranslationsView({ m, phase }: { m: Messages; phase: Phase }) {
+  const fixture = m.landing.mockup;
+  const w = m.translations.workspace;
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="border-border flex shrink-0 flex-col gap-3 border-b px-4 py-3">
@@ -77,7 +77,7 @@ export function TranslationsView({ phase }: { phase: Phase }) {
             </span>
             <Swap phase={phase === "published" ? "missing" : phase}
               before={<span data-landing-publish="" aria-disabled className={cn(buttonClass({ variant: "primary" }), "bg-muted text-muted-foreground")}><Send aria-hidden />{m.translations.publish.button}</span>}
-              after={<span data-landing-publish="" className={buttonClass({ variant: "primary" })}><Send aria-hidden />{m.translations.publish.button}<PublishCount n={fixture.unsentAfter} /></span>}
+              after={<span data-landing-publish="" className={buttonClass({ variant: "primary" })}><Send aria-hidden />{m.translations.publish.button}<PublishCount m={m} n={fixture.unsentAfter} /></span>}
             />
             {phase === "published" && <span className={buttonClass({ variant: "default" })}>{m.translations.publish.viewResult}</span>}
           </span>
@@ -102,13 +102,13 @@ export function TranslationsView({ phase }: { phase: Phase }) {
       <div className="min-h-0 flex-1 overflow-hidden p-4">
         <div className="flex h-full min-h-0">
           <div className="border-border bg-background relative flex min-h-0 w-[652px] shrink-0 overflow-hidden rounded-lg border">
-            <SourceTree />
-            <KeyList phase={phase} />
+            <SourceTree m={m} />
+            <KeyList m={m} phase={phase} />
           </div>
           {/* 두 카드 사이 16px이 리사이즈 손잡이다 — 선을 그리지 않는다. */}
           <div className="w-4 shrink-0" />
           <div className="border-border bg-background flex min-h-0 min-w-0 flex-1 overflow-hidden rounded-lg border">
-            <LocaleDetail phase={phase} />
+            <LocaleDetail m={m} phase={phase} />
           </div>
         </div>
       </div>
@@ -120,8 +120,10 @@ export function TranslationsView({ phase }: { phase: Phase }) {
  * `tree-panel.tsx` — 소스 → 네임스페이스. 보고 있는 소스만 펼쳐지고(`All namespaces`가 선택), 나머지는 접힌다.
  * 네임스페이스가 13 미만이라 필터 입력이 없다(`FILTER_AT`).
  */
-function SourceTree() {
-  const t = w.tree;
+function SourceTree({ m }: { m: Messages }) {
+  const fixture = m.landing.mockup;
+  const current = currentSource(fixture);
+  const t = m.translations.workspace.tree;
   return (
     <div data-landing-tree="" className="border-border flex min-h-0 w-[260px] shrink-0 flex-col border-r">
       <div className="flex h-12 shrink-0 items-center gap-2 px-4">
@@ -168,7 +170,10 @@ function TreeItem({ icon, label, n, selected }: { icon: ReactNode; label: string
   );
 }
 
-function KeyList({ phase }: { phase: Phase }) {
+function KeyList({ m, phase }: { m: Messages; phase: Phase }) {
+  const fixture = m.landing.mockup;
+  const w = m.translations.workspace;
+  const current = currentSource(fixture);
   const list = w.list;
   const unsent = new Set<string>(fixture.diff.filter((row) => row.key !== fixture.selected.key).map((row) => row.key));
   return (
@@ -193,8 +198,8 @@ function KeyList({ phase }: { phase: Phase }) {
                 <span className="text-sm leading-[1.45]">{row.text}</span>
                 <span className="flex flex-wrap items-center gap-1.5">
                   <span className="text-muted-foreground text-xs">{row.key}</span>
-                  {phase !== "published" && unsent.has(row.key) && unsentBadge}
-                  {isSelected && phase !== "published" && phase !== "missing" && phase !== "typing" && <Swap phase={phase} before={null} after={unsentBadge} />}
+                  {phase !== "published" && unsent.has(row.key) && unsentBadge()}
+                  {isSelected && phase !== "published" && phase !== "missing" && phase !== "typing" && <Swap phase={phase} before={null} after={unsentBadge()} />}
                 </span>
               </span>
               {isSelected ? <Swap phase={phase} before={missing} after={complete} /> : row.missing > 0 ? missing : complete}
@@ -207,8 +212,9 @@ function KeyList({ phase }: { phase: Phase }) {
 }
 
 /** `locale-panel.tsx` — 경로 머리 · 고정 블록(키 · N of M · 복사 · 설명) · 로케일 행 · 저장 푸터. */
-function LocaleDetail({ phase }: { phase: Phase }) {
-  const d = w.detail;
+function LocaleDetail({ m, phase }: { m: Messages; phase: Phase }) {
+  const fixture = m.landing.mockup;
+  const d = m.translations.workspace.detail;
   const selected = fixture.selected;
   const filled = selected.values.length;
   const total = filled + 1;
@@ -243,24 +249,24 @@ function LocaleDetail({ phase }: { phase: Phase }) {
         {/* ⚠️ 실제 앱은 이 목록이 스크롤한다 — 목업은 잘라서 푸터 위로 칠하지 않게 한다(#112). 행 예산은 셋이다. */}
         <div data-landing-locales="" className="flex min-h-0 flex-1 flex-col overflow-hidden">
           {selected.values.map(({ code, value }, index) => (
-            <LocaleRow key={code} code={code} first={index === 0} base={index === 0} status={null}>
+            <LocaleRow key={code} m={m} code={code} first={index === 0} base={index === 0} status={null}>
               <span className="border-input bg-background min-h-[62px] rounded-md border px-2.5 py-2.5 text-sm leading-translation">{value}</span>
             </LocaleRow>
           ))}
-          <TypedRow phase={phase} />
+          <TypedRow m={m} phase={phase} />
         </div>
-        <Footer phase={phase} />
+        <Footer m={m} phase={phase} />
       </div>
     </div>
   );
 }
 
-function LocaleRow({ code, first, base = false, status, children }: { code: string; first: boolean; base?: boolean; status: ReactNode; children: ReactNode }) {
+function LocaleRow({ m, code, first, base = false, status, children }: { m: Messages; code: string; first: boolean; base?: boolean; status: ReactNode; children: ReactNode }) {
   return (
     <div className={cn("flex shrink-0 flex-col gap-2 px-4 py-3", !first && "border-border border-t")}>
       <div className="flex items-center gap-2">
         <LocaleBadge code={code} orphaned={false} />
-        {base && <span className="text-muted-foreground text-xs">{w.detail.source}</span>}
+        {base && <span className="text-muted-foreground text-xs">{m.translations.workspace.detail.source}</span>}
         <span className="ml-auto flex items-center gap-2">{status}</span>
       </div>
       {children}
@@ -269,14 +275,14 @@ function LocaleRow({ code, first, base = false, status, children }: { code: stri
 }
 
 /** `fr` 행 — ① 점선 안의 회색 원문 · ② 타이핑 · ③ 저장 전→후 · ④⑤ 저장됨(`Unsent` 배지). */
-function TypedRow({ phase }: { phase: Phase }) {
-  const selected = fixture.selected;
-  const d = w.detail;
-  const notSaved = <span className="text-xs text-amber-700">{d.notSaved}</span>;
-  const notSent = unsentBadge;
+function TypedRow({ m, phase }: { m: Messages; phase: Phase }) {
+  const selected = m.landing.mockup.selected;
+  const d = m.translations.workspace.detail;
+  const notSaved = <span className="text-warning-foreground text-xs">{d.notSaved}</span>;
+  const notSent = unsentBadge();
   const status = phase === "published" ? null : phase === "missing" ? <span className="text-muted-foreground text-xs">{d.missing}</span> : phase === "typing" ? notSaved : <Swap phase={phase} before={notSaved} after={notSent} />;
   return (
-    <LocaleRow code={selected.typedCode} first={false} status={status}>
+    <LocaleRow m={m} code={selected.typedCode} first={false} status={status}>
       {phase === "missing" ? (
         <span className="text-muted-foreground min-h-[62px] rounded-md border border-dashed border-gray-light p-2.5 text-sm leading-translation">{selected.text}</span>
       ) : (
@@ -293,9 +299,10 @@ function TypedRow({ phase }: { phase: Phase }) {
  * 저장 푸터 — 결과 줄 · (보낼 것이 있으면) `Revert to last sent` · Save. ⚠️ **Revert는 저장 뒤에 선다** — 실제 푸터가 이 키에 미전달
  * 편집이 있을 때만 그리고(`hasPending`), 보는 사람이 OWNER라 켜져 있다. 저장 전엔 이 키에 미전달이 없다.
  */
-function Footer({ phase }: { phase: Phase }) {
+function Footer({ m, phase }: { m: Messages; phase: Phase }) {
+  const w = m.translations.workspace;
   const f = w.footer;
-  const unsaved = <span className="text-xs text-amber-700">{f.unsaved(1)}</span>;
+  const unsaved = <span className="text-warning-foreground text-xs">{f.unsaved(1)}</span>;
   const saved = <span className="text-muted-foreground text-xs">{phase === "published" ? f.saved : f.savedNotSent}</span>;
   const text = phase === "missing" ? null : phase === "typing" ? unsaved : <Swap phase={phase} before={unsaved} after={saved} />;
   // 실물과 같은 `danger`다 — 편집을 버리는 동작이다(DESIGN §2.4 동작 규칙).

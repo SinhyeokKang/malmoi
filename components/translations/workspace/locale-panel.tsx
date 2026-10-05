@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Textarea } from "@/components/ui/textarea";
 import { localeTextAttrs } from "@/lib/translations/text-direction";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import { keyEditCommand, type KeyDraftState } from "@/lib/translations/draft";
 import { MISSING_LANGUAGES } from "@/lib/translations/query";
 import { cn } from "@/lib/utils";
@@ -50,6 +50,7 @@ export function LocalePanel({ detail, draft, language, languageLocked = false, o
   /** 저장 거부가 가리키는 로케일과 그 사유(푸터 Alert)의 id. 셀 옆에 새 패턴을 만들지 않는다 — 이유는 푸터 한 곳에 선다(delivery-invariants D2). */
   invalid?: { locales: readonly string[]; describedBy: string };
 }) {
+  const m = useMessages();
   const w = m.translations.workspace.detail;
   const filled = detail.locales.filter(l => l.value !== null && l.value !== "").length;
   const total = detail.locales.length;
@@ -199,6 +200,7 @@ function LocaleRow({ keyName, sourceText, sourceCode, locale, first, draft, save
   onReset: () => void;
   onSave: () => void;
 }) {
+  const m = useMessages();
   const w = m.translations.workspace.detail;
   const helpId = useId();
   const dirty = draft !== saved;
@@ -242,9 +244,9 @@ function LocaleRow({ keyName, sourceText, sourceCode, locale, first, draft, save
           {dirty && sending
             ? <span className="text-muted-foreground text-xs">{w.saving}</span>
             : dirty
-            ? <span className="text-xs text-amber-700">{w.notSaved}</span>
+            ? <span className="text-warning-foreground text-xs">{w.notSaved}</span>
             : missing && <span className="text-muted-foreground text-xs">{w.missing}</span>}
-          {locale.needsReview && !missing && <span className="text-xs text-amber-700">{m.translations.workspace.list.needsReview}</span>}
+          {locale.needsReview && !missing && <span className="text-warning-foreground text-xs">{m.translations.workspace.list.needsReview}</span>}
           {locale.pending && <StatusBadge state="unsent" className="shrink-0" />}
         </span>
       </div>
@@ -265,6 +267,7 @@ function LocaleRow({ keyName, sourceText, sourceCode, locale, first, draft, save
 
 /** 키 이름 블록 우측 28 버튼 (`2j`). 성공은 같은 자리에서 `Copied` 2초, 실패는 선택된 읽기 전용 주소 입력이다 — 토스트를 쓰지 않는다. */
 function CopyLink({ href }: { href: string }) {
+  const m = useMessages();
   const url = typeof window === "undefined" ? href : new URL(href, window.location.origin).toString();
   return <CopyButton value={url} label={m.translations.workspace.detail.copyLink} variant="link" />;
 }

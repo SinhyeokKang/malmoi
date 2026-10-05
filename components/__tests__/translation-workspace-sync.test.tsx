@@ -21,7 +21,7 @@ vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: mocks.run
 
 import { COMMIT_WAIT_MS } from "@/components/commit-wait";
 import { TranslationWorkspace, type WorkspaceProps } from "@/components/translations/workspace/workspace";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { props } from "./helpers/workspace-props";
 
@@ -51,7 +51,7 @@ it.each(["already-running", "reconfirm", "unauthorized"] as const)("거부(%s)�
   const status = [...document.querySelectorAll('[role="status"], [role="alert"]')].map(node => node.textContent ?? "").join(" ");
   // ⚠️ 세션 만료도 Sync 문장이다 (QA D2) — 공용 접근 문장("save your work")을 빌리지 않는다.
   // Dialog 결과 단계는 세션 만료의 헤드라인을 다음 행동으로 바꿔 쓴다(R6 r2 — 제목이 "didn't run"을 말한다).
-  const expected = error === "unauthorized" ? m.repositorySync.resultHeadline.unauthorized : m.repositorySync.errors[error];
+  const expected = error === "unauthorized" ? en.repositorySync.resultHeadline.unauthorized : en.repositorySync.errors[error];
   expect(status).toContain(expected);
   expect(mocks.refresh).not.toHaveBeenCalled();
 });
@@ -115,7 +115,7 @@ describe("Sync 뒤 목록", () => {
     // k2(Save)는 서버 목록에서 빠졌지만 자리에 남아 savedOut이다 — 목록이 전량이라 선택 키가 아니어도 부재가 곧 조건 이탈이다(T6).
     // k4는 끼워 넣지 않는다.
     expect(listText(container)).toContain("Save");
-    expect(container.querySelector('[data-key-row="k2"]')?.textContent).toContain(m.translations.workspace.list.saved);
+    expect(container.querySelector('[data-key-row="k2"]')?.textContent).toContain(en.translations.workspace.list.saved);
     expect(listText(container)).not.toContain("Later");
   }
 

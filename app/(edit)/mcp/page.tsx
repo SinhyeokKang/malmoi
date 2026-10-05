@@ -9,7 +9,7 @@ import { requireUser } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
 import { logCaught } from "@/lib/failure";
 import { requestOrigin } from "@/lib/github-connect/origin";
-import { m } from "@/lib/i18n";
+import { getMessages } from "@/lib/i18n/server";
 import { planConnectedApps, planTokenCard } from "@/lib/mcp/view";
 import { routes } from "@/lib/routes";
 
@@ -22,6 +22,7 @@ import { routes } from "@/lib/routes";
  * (허용 목록 밖 Host) 프로덕션 주소로 떨어진다.
  */
 export default async function McpPage() {
+  const m = await getMessages();
   const { userId } = await requireUser();
   const prisma = getPrisma();
   const [row, members] = await Promise.all([

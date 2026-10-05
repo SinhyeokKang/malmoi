@@ -1,4 +1,9 @@
+// ⚠️ import는 이 줄보다 먼저 평가되지만(ESM) Node는 `Date` 연산마다 `TZ`를 다시 읽어 테스트 본문에는 걸린다 — 걸렸는지는 아래 가드가 판정한다. 런타임 TZ를 UTC가 아닌 곳(분 단위 오프셋)에 두어야 "런타임 TZ로 새지 않는다"가 CI(UTC)에서 공허하게 통과하지 않는다.
+process.env.TZ = "Asia/Kathmandu";
+
 import { describe, expect, it } from "vitest";
+
+import type { TimeZone } from "@/lib/time-zone/zones";
 
 import {
   PROJECT_WIDE,
@@ -9,9 +14,15 @@ import {
   hasNarrowing,
   logsQuery,
   parseDateRange,
+  parseDayKey,
   parseLogFilter,
+  presetRange,
   type LogFilter,
 } from "../filter";
+
+it("TZ가 실제로 카트만두다 — 이 가드가 없으면 아래 단언이 UTC 런타임에서 공허하다", () => {
+  expect(new Date("2026-01-01T00:00:00Z").getTimezoneOffset()).toBe(-345);
+});
 
 /**
  * Logs의 URL 판정 (logs-rework design §6).
@@ -146,40 +157,151 @@ describe("parseLogFilter — 기간", () => {
 
 describe("parseDateRange — UTC 구간", () => {
   it("시작은 UTC 자정, 끝은 다음 UTC 자정(배타)이다", () => {
-    expect(parseDateRange("2026-09-01", "2026-09-10")).toEqual({
+    expect(parseDateRange("2026-09-01", "2026-09-10", "UTC")).toEqual({
       from: new Date("2026-09-01T00:00:00.000Z"),
       to: new Date("2026-09-11T00:00:00.000Z"),
     });
   });
 
   it("하루만 고르면 그 하루 전체가 들어온다", () => {
-    const range = parseDateRange("2026-09-10", "2026-09-10");
+    const range = parseDateRange("2026-09-10", "2026-09-10", "UTC");
     expect(range.from).toEqual(new Date("2026-09-10T00:00:00.000Z"));
     expect(range.to).toEqual(new Date("2026-09-11T00:00:00.000Z"));
   });
 
   it("한쪽만 있으면 그쪽만 닫힌다", () => {
-    expect(parseDateRange("2026-09-01", null)).toEqual({ from: new Date("2026-09-01T00:00:00.000Z"), to: null });
-    expect(parseDateRange(null, "2026-09-01")).toEqual({ from: null, to: new Date("2026-09-02T00:00:00.000Z") });
+    expect(parseDateRange("2026-09-01", null, "UTC")).toEqual({ from: new Date("2026-09-01T00:00:00.000Z"), to: null });
+    expect(parseDateRange(null, "2026-09-01", "UTC")).toEqual({ from: null, to: new Date("2026-09-02T00:00:00.000Z") });
   });
 
   it("무효·역전은 던지지 않고 비운다", () => {
-    expect(parseDateRange("nope", "also nope")).toEqual({ from: null, to: null });
-    expect(parseDateRange("2026-09-10", "2026-09-01")).toEqual({ from: null, to: null });
-    expect(parseDateRange(null, null)).toEqual({ from: null, to: null });
+    expect(parseDateRange("nope", "also nope", "UTC")).toEqual({ from: null, to: null });
+    expect(parseDateRange("2026-09-10", "2026-09-01", "UTC")).toEqual({ from: null, to: null });
+    expect(parseDateRange(null, null, "UTC")).toEqual({ from: null, to: null });
   });
 
   /** ⚠️ **로컬 타임존으로 새지 않는다** — `new Date("2026-09-01")`은 UTC지만 `new Date(y, m, d)`는 로컬이다. */
   it("월말·윤년 경계도 UTC로 넘어간다", () => {
-    expect(parseDateRange("2026-01-31", "2026-01-31").to).toEqual(new Date("2026-02-01T00:00:00.000Z"));
-    expect(parseDateRange("2024-02-28", "2024-02-29").to).toEqual(new Date("2024-03-01T00:00:00.000Z"));
-    expect(parseDateRange("2026-12-31", "2026-12-31").to).toEqual(new Date("2027-01-01T00:00:00.000Z"));
+    expect(parseDateRange("2026-01-31", "2026-01-31", "UTC").to).toEqual(new Date("2026-02-01T00:00:00.000Z"));
+    expect(parseDateRange("2024-02-28", "2024-02-29", "UTC").to).toEqual(new Date("2024-03-01T00:00:00.000Z"));
+    expect(parseDateRange("2026-12-31", "2026-12-31", "UTC").to).toEqual(new Date("2027-01-01T00:00:00.000Z"));
   });
 
   it("날짜 모양이 아닌 것은 전부 버린다 — 부분 파싱하지 않는다", () => {
     for (const bad of ["2026-9-1", "2026/09/01", "20260901", "2026-09-01T00:00:00Z", "  ", "2026-02-30"]) {
-      expect(parseDateRange(bad, null).from, bad).toBe(null);
+      expect(parseDateRange(bad, null, "UTC").from, bad).toBe(null);
     }
+  });
+});
+
+/**
+ * **보는 사람의 시간대 자정으로 끊는다**(user-timezone A3). `to`는 다음 날의 첫 순간(배타)이고 `+24시간`이 아니다 —
+ * 서머타임 날은 23·25시간이고, 0시가 없는 날은 그날 01:00에서 시작한다.
+ */
+describe("parseDateRange — 고른 시간대", () => {
+  const HOUR = 60 * 60 * 1000;
+  const length = (range: { from: Date | null; to: Date | null }) => (range.to?.getTime() ?? NaN) - (range.from?.getTime() ?? NaN);
+
+  it("서울 10월 5일 하루는 [10-04T15:00Z, 10-05T15:00Z)다", () => {
+    expect(parseDateRange("2026-10-05", "2026-10-05", "Asia/Seoul")).toEqual({
+      from: new Date("2026-10-04T15:00:00.000Z"),
+      to: new Date("2026-10-05T15:00:00.000Z"),
+    });
+  });
+
+  it("인도는 30분 단위로 끊는다", () => {
+    expect(parseDateRange("2026-10-05", "2026-10-05", "Asia/Kolkata")).toEqual({
+      from: new Date("2026-10-04T18:30:00.000Z"),
+      to: new Date("2026-10-05T18:30:00.000Z"),
+    });
+  });
+
+  it("뉴욕 서머타임 날은 23·25시간이다", () => {
+    const spring = parseDateRange("2026-03-08", "2026-03-08", "America/New_York");
+    expect(spring.from).toEqual(new Date("2026-03-08T05:00:00.000Z"));
+    expect(spring.to).toEqual(new Date("2026-03-09T04:00:00.000Z"));
+    expect(length(spring)).toBe(23 * HOUR);
+    const fall = parseDateRange("2026-11-01", "2026-11-01", "America/New_York");
+    expect(fall.from).toEqual(new Date("2026-11-01T04:00:00.000Z"));
+    expect(fall.to).toEqual(new Date("2026-11-02T05:00:00.000Z"));
+    expect(length(fall)).toBe(25 * HOUR);
+  });
+
+  it("0시가 없는 날(산티아고 2026-09-06)은 01:00에서 시작하고 23시간이다", () => {
+    const range = parseDateRange("2026-09-06", "2026-09-06", "America/Santiago");
+    expect(range.from).toEqual(new Date("2026-09-06T04:00:00.000Z"));
+    expect(range.to).toEqual(new Date("2026-09-07T03:00:00.000Z"));
+    expect(length(range)).toBe(23 * HOUR);
+  });
+
+  it.each<[TimeZone]>([["Asia/Seoul"], ["America/New_York"]])("%s — 무효·역전은 던지지 않고 비운다, 한쪽만이면 그쪽만", (zone) => {
+    expect(parseDateRange("nope", "also nope", zone)).toEqual({ from: null, to: null });
+    expect(parseDateRange("2026-09-10", "2026-09-01", zone)).toEqual({ from: null, to: null });
+    expect(parseDateRange(null, null, zone)).toEqual({ from: null, to: null });
+    expect(parseDateRange("2026-09-01", null, zone).to).toBe(null);
+    expect(parseDateRange(null, "2026-09-01", zone).from).toBe(null);
+    for (const bad of ["2026-9-1", "2026/09/01", "20260901", "2026-09-01T00:00:00Z", "  ", "2026-02-30"]) {
+      expect(parseDateRange(bad, null, zone).from, bad).toBe(null);
+    }
+  });
+
+  it("월말·윤년·연말 경계 — 서울·뉴욕", () => {
+    expect(parseDateRange("2026-01-31", "2026-01-31", "Asia/Seoul").to).toEqual(new Date("2026-01-31T15:00:00.000Z"));
+    expect(parseDateRange("2024-02-28", "2024-02-29", "Asia/Seoul").to).toEqual(new Date("2024-02-29T15:00:00.000Z"));
+    expect(parseDateRange("2026-12-31", "2026-12-31", "Asia/Seoul").to).toEqual(new Date("2026-12-31T15:00:00.000Z"));
+    expect(parseDateRange("2026-01-31", "2026-01-31", "America/New_York").to).toEqual(new Date("2026-02-01T05:00:00.000Z"));
+    expect(parseDateRange("2024-02-28", "2024-02-29", "America/New_York").to).toEqual(new Date("2024-03-01T05:00:00.000Z"));
+    expect(parseDateRange("2026-12-31", "2026-12-31", "America/New_York").to).toEqual(new Date("2027-01-01T05:00:00.000Z"));
+  });
+});
+
+/** ⚠️ **기간 판정은 시간대와 무관하다** — MCP·Home이 시간대 없이 같은 `parseLogFilter`를 부른다. */
+describe("parseLogFilter — 기간 판정은 키만 본다", () => {
+  it("시간대 인자가 없다", () => {
+    expect(parseLogFilter.length).toBe(1);
+  });
+
+  it("역전 쌍은 둘 다 버리고, 무효한 쪽만 버린다", () => {
+    expect(parseLogFilter({ from: "2026-09-10", to: "2026-09-01" })).toMatchObject({ from: null, to: null });
+    expect(parseLogFilter({ from: "2026-02-30", to: "2026-09-01" })).toMatchObject({ from: null, to: "2026-09-01" });
+    expect(parseLogFilter({ from: "2026-09-01", to: "2026-09-10" })).toMatchObject({ from: "2026-09-01", to: "2026-09-10" });
+    expect(parseLogFilter({ from: "2026-12-31", to: "2027-01-01" })).toMatchObject({ from: "2026-12-31", to: "2027-01-01" });
+  });
+
+  it("parseDayKey — 실재 날짜만 키로 돌려준다", () => {
+    expect(parseDayKey("2024-02-29")).toBe("2024-02-29");
+    expect(parseDayKey("2026-02-29")).toBe(null);
+    expect(parseDayKey("2026-9-1")).toBe(null);
+    expect(parseDayKey(null)).toBe(null);
+  });
+});
+
+/**
+ * 프리셋 — **보는 사람의 시간대에서 오늘을 잡고 달력으로 센다**. `now`는 호출부가 넘긴다.
+ * 서울 `2026-10-04T23:10Z`는 10월 5일 아침이다.
+ */
+describe("presetRange", () => {
+  const NOW = new Date("2026-10-04T23:10:00Z");
+
+  it("서울 — Today는 10-05, Yesterday는 10-04", () => {
+    expect(presetRange("today", NOW, "Asia/Seoul")).toEqual({ from: "2026-10-05", to: "2026-10-05" });
+    expect(presetRange("yesterday", NOW, "Asia/Seoul")).toEqual({ from: "2026-10-04", to: "2026-10-04" });
+    expect(presetRange("last7", NOW, "Asia/Seoul")).toEqual({ from: "2026-09-29", to: "2026-10-05" });
+    expect(presetRange("last30", NOW, "Asia/Seoul")).toEqual({ from: "2026-09-06", to: "2026-10-05" });
+  });
+
+  it("UTC — 같은 순간의 Today는 10-04다", () => {
+    expect(presetRange("today", NOW, "UTC")).toEqual({ from: "2026-10-04", to: "2026-10-04" });
+    expect(presetRange("yesterday", NOW, "UTC")).toEqual({ from: "2026-10-03", to: "2026-10-03" });
+    expect(presetRange("last7", NOW, "UTC")).toEqual({ from: "2026-09-28", to: "2026-10-04" });
+    expect(presetRange("last30", NOW, "UTC")).toEqual({ from: "2026-09-05", to: "2026-10-04" });
+  });
+
+  it("Yesterday는 `now - 24h`가 아니다 — 뉴욕 서머타임 다음 날 0시 30분", () => {
+    // 2026-03-09 00:30 EDT. 24시간 전은 03-07 23:30 EST라 `now - 24h`면 이틀 전을 고른다.
+    const now = new Date("2026-03-09T04:30:00Z");
+    expect(presetRange("today", now, "America/New_York")).toEqual({ from: "2026-03-09", to: "2026-03-09" });
+    expect(presetRange("yesterday", now, "America/New_York")).toEqual({ from: "2026-03-08", to: "2026-03-08" });
   });
 });
 

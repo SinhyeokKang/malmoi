@@ -1,5 +1,5 @@
 import { CodeBlock } from "@/components/ui/code-block";
-import { m } from "@/lib/i18n";
+import type { Messages } from "@/lib/i18n";
 
 /** 대상 리포에 둘 자리 — 블록 머리의 파일명 바가 든다. */
 const WORKFLOW_PATH = ".github/workflows/malmoi-i18n.yml";
@@ -15,7 +15,7 @@ const WORKFLOW_PATH = ".github/workflows/malmoi-i18n.yml";
  * 미리 말하면 그 화면이 읽어야 할 것(토큰·YAML) 옆에 지금 할 수 없는 일이 나란히 선다.
  * **설정 화면이 든다** — 거기는 참조가 0인 것을 이미 볼 수 있는 자리다.
  */
-export function WorkflowBlock({ yaml }: { yaml: string }) {
+export function WorkflowBlock({ yaml, m }: { yaml: string; m: Messages }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
       <p className="text-muted-foreground shrink-0 text-xs leading-body">{m.settings.workflow.saveAs}</p>

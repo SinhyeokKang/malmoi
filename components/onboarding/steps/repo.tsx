@@ -16,7 +16,7 @@ import { RadioGroup } from "@/components/ui/radio";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SelectRow } from "@/components/ui/select-row";
-import { m } from "@/lib/i18n";
+import { useMessages, useUiLocale } from "@/components/i18n/messages-provider";
 import type { BranchChoice } from "@/lib/onboarding/branch";
 import type { RepoOption } from "@/lib/onboarding/types";
 import { PROJECT_LIMIT } from "@/lib/onboarding/create-plan";
@@ -72,6 +72,8 @@ export function RepoStep({
   /** 모달의 live 영역 하나로 흘려보낸다 — 영역을 둘로 나누면 같은 전이가 두 번 읽힌다. */
   onAnnounce: (message: string) => void;
 }) {
+  const uiLocale = useUiLocale();
+  const m = useMessages();
   const { repos, query, listError, installUrl, now, selected } = state;
   // 화살표 훑기는 Radix 선택만 움직인다. 브랜치 조회는 명시적 확정에서만 시작한다.
   const [choice, setChoice] = useState(selected ?? "");
@@ -168,7 +170,7 @@ export function RepoStep({
       지켜야 목록이 길 때 본문(`overflow-y-auto`)이 그것을 스크롤한다.
     */
     <div className="flex flex-1 flex-col gap-4">
-      {state.banner !== null && <Alert variant="danger">{failureText(state.banner)}</Alert>}
+      {state.banner !== null && <Alert variant="danger">{failureText(m, state.banner)}</Alert>}
       {/* 다른 설치로 리포가 이미 보여도 요청이 사라진 것은 아니다 — 무음으로 두면 방금 한 요청이 안 먹은 것으로 읽힌다. */}
       {state.pending && <Alert variant="info">{m.newProject.empty.waiting.info}</Alert>}
 
@@ -253,7 +255,7 @@ export function RepoStep({
                           */}
                           <span className={cn("block truncate text-sm", active ? "text-foreground/60" : "text-muted-foreground")}>
                             {repo.owner}
-                            {repo.pushedAt !== null && ` · ${m.newProject.repo.pushedAt(relativeTime(new Date(repo.pushedAt), new Date(now)))}`}
+                            {repo.pushedAt !== null && ` · ${m.newProject.repo.pushedAt(relativeTime(new Date(repo.pushedAt), new Date(now), uiLocale))}`}
                           </span>
                         </span>
                       </>
@@ -276,6 +278,7 @@ export function RepoStep({
  * ⚠️ **같은 탭이다** (DESIGN §6.3 예외) — 리포 선택을 저장하면 GitHub이 callback으로 되돌려 ①에 착지한다.
  */
 function InstallHint({ installUrl }: { installUrl: string | null }) {
+  const m = useMessages();
   if (installUrl === null) return null;
   return (
     <p className="text-muted-foreground shrink-0 text-xs leading-body">
@@ -294,12 +297,13 @@ function InstallHint({ installUrl }: { installUrl: string | null }) {
  * 전용 default branch이고 캡션이 그 사실을 말한다. **[Next]는 그대로 활성이다.**
  */
 function BranchRow({ state, onChange }: { state: RepoStepState; onChange: (value: string) => void }) {
+  const m = useMessages();
   if (state.accessError !== undefined) {
     // 계정·세션 거부는 이미 상단 배너가 같은 문장으로 말한다 — 한 화면에 두 번 세우지 않는다 (#122).
     if (state.banner === state.accessError) return null;
     return (
       <BranchShell>
-        <Alert variant="danger">{failureText(state.accessError)}</Alert>
+        <Alert variant="danger">{failureText(m, state.accessError)}</Alert>
       </BranchShell>
     );
   }
@@ -376,6 +380,7 @@ function BranchShell({ children }: { children: React.ReactNode }) {
  * 달면 존재하지 않는 id를 가리키는 라벨이 남는다.
  */
 function BranchLabel({ htmlFor }: { htmlFor?: string }) {
+  const m = useMessages();
   return (
     <label id="repo-branch-label" htmlFor={htmlFor} className="flex shrink-0 items-center gap-1.5 text-sm font-medium">
       <GitBranch className="size-3.5" aria-hidden />
@@ -408,6 +413,7 @@ function Blocked({
   checking: boolean;
   onCheckAgain: () => void;
 }) {
+  const m = useMessages();
   /**
    * ⚠️ **한 블록의 버튼들이 pending 하나·오류 하나를 공유한다** — 주 버튼(Install)과 보조 링크(Authorize)가
    * 각자 들면 둘 다 눌려 state 쿠키가 덮이고, 먼저 떠난 왕복이 `state-mismatch`로 돌아온다.
@@ -536,7 +542,7 @@ function Blocked({
   */
   return (
     <Alert variant="danger" title={m.newProject.empty.listFailed}>
-      {failureText(error)}
+      {failureText(m, error)}
     </Alert>
   );
 }

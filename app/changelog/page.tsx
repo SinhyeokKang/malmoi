@@ -8,15 +8,17 @@ import { PublicShell } from "@/components/public-shell/public-shell";
 import { publicAccount } from "@/lib/auth/landing";
 import { readSession } from "@/lib/auth/read-session";
 import { loadReleases } from "@/lib/changelog/load";
-import { m } from "@/lib/i18n";
+import type { Messages } from "@/lib/i18n";
+import { getMessages, getUiLocale } from "@/lib/i18n/server";
+import { en } from "@/messages/en";
 import { GITHUB_RELEASES_URL } from "@/lib/links";
 import { pageMetadata } from "@/lib/seo/site";
 import { cn } from "@/lib/utils";
 
-export const metadata: Metadata = pageMetadata({ title: m.changelog.title, description: m.changelog.description, path: "/changelog" });
+export const metadata: Metadata = pageMetadata({ title: en.changelog.title, description: en.changelog.description, path: "/changelog" });
 
 /** 안내 문장 넷이 모두 받는 GitHub Releases 링크 — 새 탭 + `noreferrer`(공개 셸의 외부 링크 규칙). */
-const releases: ReactNode = (
+const releasesLink = (m: Messages): ReactNode => (
   <InlineLink href={GITHUB_RELEASES_URL} target="_blank" rel="noreferrer">
     {m.changelog.releases}
   </InlineLink>
@@ -47,10 +49,11 @@ function Sentence({ children }: { children: ReactNode }) {
  * 빈 열이 남아 본문이 왼쪽으로 쏠린다. 위 64는 이웃 `/docs`와 같다.
  */
 export default async function Changelog() {
-  const [session, loaded] = await Promise.all([readSession(), loadReleases()]);
+  const [session, loaded, m, uiLocale] = await Promise.all([readSession(), loadReleases(), getMessages(), getUiLocale()]);
+  const releases = releasesLink(m);
 
   return (
-    <PublicShell account={publicAccount(session)} current="changelog">
+    <PublicShell m={m} account={publicAccount(session)} current="changelog">
       <div className="mx-auto max-w-[800px] px-10 pt-16 pb-30">
         <h1 className="m-0 text-4xl leading-[1.3] font-semibold">{m.changelog.title}</h1>
         <p className={cn(PROSE, "mt-5")}>{m.changelog.intro(releases)}</p>
@@ -62,7 +65,7 @@ export default async function Changelog() {
               {loaded.releases.length === 0 ? (
                 <Sentence>{m.changelog.empty(releases)}</Sentence>
               ) : (
-                loaded.releases.map((release, index) => <ReleaseEntry key={release.tag} release={release} latest={index === 0} />)
+                loaded.releases.map((release, index) => <ReleaseEntry key={release.tag} m={m} uiLocale={uiLocale} release={release} latest={index === 0} />)
               )}
               {/*
                 ⚠️ 빈 목록에도 선다 — 원 배열 100칸을 액션 태그 릴리스가 다 채우면 거른 뒤 0건이어도 그 너머에 앱 릴리스가

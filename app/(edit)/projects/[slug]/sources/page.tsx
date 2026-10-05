@@ -6,7 +6,7 @@ import { requireProjectAccess } from "@/lib/auth/session";
 import { canPerform } from "@/lib/auth/permission";
 import { ADAPTERS } from "@/lib/adapters";
 import { getPrisma } from "@/lib/db";
-import { m } from "@/lib/i18n";
+import { getDateStyle, getMessages } from "@/lib/i18n/server";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
 import { formatLabel } from "@/lib/onboarding/detect";
 import { firstQueryValues, type Raw } from "@/lib/search-params";
@@ -14,20 +14,22 @@ import { loadSources } from "@/lib/sources/query";
 
 export const maxDuration = 60;
 export default async function SourcesPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<Raw<"add" | "e" | "source">> }) {
+  const style = await getDateStyle();
+  const m = await getMessages();
   const { slug } = await params;
   const { projectId, role, archived } = await requireProjectAccess({ slug, permission: "translation:write" });
   if (archived) {
     const project = await getPrisma().project.findUnique({ where: { id: projectId }, select: { archivedAt: true } });
-    return <SourcesArchived slug={slug} role={role} archivedAt={project?.archivedAt ?? null} />;
+    return <SourcesArchived slug={slug} role={role} archivedAt={project?.archivedAt ?? null} style={style} m={m} />;
   }
   const { add, e } = firstQueryValues(await searchParams);
   const canEdit = canPerform(role, "project:settings");
-  const data = await loadSources(getPrisma(), projectId, role);
+  const data = await loadSources(getPrisma(), m, projectId, role);
   if (data === null) notFound();
   return <>
-    {isConnectError(e) && <Alert variant="danger">{connectErrorMessage(e)}</Alert>}
+    {isConnectError(e) && <Alert variant="danger">{connectErrorMessage(m, e)}</Alert>}
     {add === "sources" && !canEdit && <Alert variant="warning">{m.sources.ownerOnly}</Alert>}
     <SourcesScreen slug={slug} role={role} data={data} now={new Date()} initialOpen={canEdit && add === "sources"}
-      adapters={canEdit ? ADAPTERS.map(a => ({ adapter: a.name, layout: a.layout, ...formatLabel(a.name) })) : []} />
+      adapters={canEdit ? ADAPTERS.map(a => ({ adapter: a.name, layout: a.layout, ...formatLabel(m, a.name) })) : []} />
   </>;
 }

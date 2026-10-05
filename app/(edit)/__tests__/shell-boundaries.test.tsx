@@ -1,13 +1,15 @@
 // @vitest-environment jsdom
 import { renderToStaticMarkup } from "react-dom/server";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import ShellError from "../error";
 import LogsError from "../projects/[slug]/logs/error";
 import ProjectNotFound from "../projects/[slug]/not-found";
 import SurfaceNotFound from "../projects/[slug]/surfaces/[surfaceSlug]/not-found";
+
+vi.mock("@/lib/i18n/server", async () => ({ getUiLocale: async () => "en", getMessages: async () => (await import("@/messages/en")).en }));
 
 /**
  * **셸 안 경계는 한 형이다** (malmoi#162) — 본문(`PanelBody`) 안에서 빈 상태가 **세로 중앙**에 선다(`ProjectArchived`와 같은 형 —
@@ -23,13 +25,13 @@ const shape = (html: string) => {
 };
 
 it.each([
-  ["프로젝트 not-found", () => <ProjectNotFound />, m.notFound.title, 0],
-  ["표면 not-found", () => <SurfaceNotFound />, m.surfaces.missingTitle, 0],
-  ["셸 오류 경계", () => <ShellError error={new Error("x")} retry={() => {}} />, m.crash.title, 1],
+  ["프로젝트 not-found", () => ProjectNotFound(), en.notFound.title, 0],
+  ["표면 not-found", () => SurfaceNotFound(), en.surfaces.missingTitle, 0],
+  ["셸 오류 경계", () => <ShellError error={new Error("x")} retry={() => {}} />, en.crash.title, 1],
   // Logs 경계는 `[slug]/layout`의 `ContentPanel` 안이다 — 자기 `<main>`이 없다.
-  ["Logs 오류 경계", () => <LogsError error={new Error("x")} retry={() => {}} />, m.logs.queryError.title, 0],
-] as const)("%s — PanelBody 안에서 세로 중앙이다", (_, view, title, mains) => {
-  const html = renderToStaticMarkup(view());
+  ["Logs 오류 경계", () => <LogsError error={new Error("x")} retry={() => {}} />, en.logs.queryError.title, 0],
+] as const)("%s — PanelBody 안에서 세로 중앙이다", async (_, view, title, mains) => {
+  const html = renderToStaticMarkup(await view());
   // 이스케이프된 HTML(`&#x27;`)이 아니라 파싱한 글자로 대조한다.
   expect(new DOMParser().parseFromString(html, "text/html").body.textContent).toContain(title);
   expect(shape(html)).toEqual({ mains, centred: true, body: true });

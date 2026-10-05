@@ -6,6 +6,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { describe, expect, it } from "vitest";
 import { AuthLayout } from "@/components/signin/auth-layout";
+import { en } from "@/messages/en";
 
 /**
  * 로그인 화면의 배선을 **소스에서** 센다 (8-1b).
@@ -39,7 +40,7 @@ const DOTS = "components/signin/dot-field.tsx";
 const ICONS = "components/signin/brand-icons.tsx";
 
 describe("키비주얼 — 개별 카드", () => {
-  const html = renderToStaticMarkup(createElement(AuthLayout, { decoration: true, children: null }));
+  const html = renderToStaticMarkup(createElement(AuthLayout, { m: en, decoration: true, children: null }));
   const images = html.match(/<img\b[^>]*>/g) ?? [];
 
   it("프로젝트와 번역 카드 세 장을 각각 장식 이미지로 렌더한다", () => {
@@ -74,8 +75,8 @@ describe("키비주얼 — 개별 카드", () => {
  * 기본값이 단일이라 새 셸 밖 화면(`/oauth/authorize`)은 손대지 않아도 단일로 선다.
  */
 describe("셸 밖 골격 — 장식은 로그인만", () => {
-  const plain = renderToStaticMarkup(createElement(AuthLayout, { children: createElement("p", null, "form") }));
-  const decorated = renderToStaticMarkup(createElement(AuthLayout, { decoration: true, children: null }));
+  const plain = renderToStaticMarkup(createElement(AuthLayout, { m: en, children: createElement("p", null, "form") }));
+  const decorated = renderToStaticMarkup(createElement(AuthLayout, { m: en, decoration: true, children: null }));
 
   it("기본은 폼 패널 단일이다 — KV·도트 필드·2열 그리드가 없다", () => {
     expect(plain).not.toMatch(/<img\b/);
@@ -94,13 +95,13 @@ describe("셸 밖 골격 — 장식은 로그인만", () => {
 
   it("단일에서도 폼 패널 규격이 같다 — true white · border-subtle · shadow-low", () => {
     const main = plain.match(/<main\b[^>]*>/)?.[0] ?? "";
-    for (const cls of ["bg-white", "border-border-subtle", "shadow-low", "rounded-xl"]) expect(main).toContain(cls);
+    for (const cls of ["bg-background", "border-border-subtle", "shadow-low", "rounded-xl"]) expect(main).toContain(cls);
   });
 
   it("`decoration`을 넘기는 소비자는 `/signin` 하나다", () => {
-    expect(read(SIGNIN)).toMatch(/<AuthLayout\s+decoration\b/);
+    expect(read(SIGNIN)).toMatch(/<AuthLayout\s+m=\{m\}\s+decoration\b/);
     for (const page of ["app/invite/[token]/page.tsx", "app/signin/link/[challenge]/page.tsx"]) {
-      expect(read(page)).toMatch(/<AuthLayout>/);
+      expect(read(page)).toMatch(/<AuthLayout m=\{m\}>/);
       expect(read(page)).not.toMatch(/\bdecoration\b/);
     }
   });
@@ -127,7 +128,7 @@ describe("로그인 화면 — 레이아웃 계약", () => {
     const shell = read(SHELL);
     expect(shell).not.toMatch(/<footer\b/);
     expect(shell).toContain('from "@/components/public-shell/footer"');
-    expect(shell).toContain("<PublicFooter />");
+    expect(shell).toContain("<PublicFooter m={m} />");
   });
 
   it("최소 너비 1280px를 든다 — 그 아래에서 스크롤이 나야 한다", () => {
@@ -158,7 +159,7 @@ describe("로그인 화면 — 레이아웃 계약", () => {
    */
   it("내부 링크가 `routes.*`를 지난다", () => {
     const links = read("lib/links.ts");
-    expect(read("components/public-shell/footer.tsx")).toMatch(/\bFOOTER_LINKS\b/);
+    expect(read("components/public-shell/footer.tsx")).toMatch(/\bfooterLinks\b/);
     expect(links).toMatch(/routes\.privacy\(\)/);
   });
 });
@@ -198,12 +199,13 @@ describe("토스트 배선", () => {
   const toast = read(TOAST);
 
   /**
-   * ⚠️ **`theme="light"`를 안 주면 OS 다크에서 토스트만 어두워진다** — `sonner`가 테마를
-   * 스스로 감지하므로, 라이트 단일(DESIGN §3)이 **그 컴포넌트에서만** 깨진다.
+   * ⚠️ **`theme`을 안 주면 OS 테마에 따라 토스트만 다른 테마가 된다** — `sonner`가 테마를 스스로 감지한다.
+   * 화면 테마(`<html data-theme>`)와 같은 값을 넘긴다(color-scheme design §3.5 — 8-1b의 `"light"` 고정을 바꿨다).
    */
-  it("Toaster가 라이트로 고정돼 있다", () => {
+  it("Toaster가 화면 테마를 받는다", () => {
     expect(layout).toMatch(/<Toaster\b/);
-    expect(layout).toMatch(/theme="light"/);
+    expect(layout).toMatch(/theme=\{colorScheme\}/);
+    expect(layout).not.toMatch(/theme="light"/);
   });
 
   /** ⚠️ StrictMode에서 effect가 두 번 돌아 **토스트가 둘**이 된다 — 같은 id는 갱신된다. */

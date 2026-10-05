@@ -47,7 +47,7 @@ const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 /** 프로젝트 인가를 지나지 않아도 되는 진입점. 경로는 `app/` 기준이다. */
 const EXEMPT = new Set([
   // 공개 Docs만 빌드 때 생성한다. 인증 없음이 정답이며 route 테스트가 세션·DB 호출을 금지한다.
-  "api/search-index/route.ts",
+  "api/search-index/[uiLocale]/route.ts",
   "api/push/route.ts",
   /**
    * CI 파싱 실패 보고 (PRODUCT §7.8). **세션 인가가 아니라 그 프로젝트의 push 토큰이
@@ -149,6 +149,10 @@ const USER_SCOPED_ACTIONS = new Set([
   "mcp/actions.ts#revokeApiToken",
   // `OAuthConnection`도 사용자 소유다 — 코어가 세션의 userId로 행을 다시 읽는다(mcp-oauth spec 조건 8)
   "mcp/actions.ts#disconnectOAuthConnection",
+  // `User.timeZone`은 사람에게 붙는다 — 프로젝트가 없어도 고를 수 있다. 코드를 돌려주는 Action이라 거부가 `failed` 하나다(user-timezone D1)
+  "preferences/actions.ts#setTimeZone",
+  // `User.colorScheme`도 사람에게 붙는다 — `setTimeZone`과 같은 형(세션이 `ok`가 아니면 `failed`, color-scheme design §3.6)
+  "preferences/actions.ts#setColorScheme",
 ]);
 
 /**
@@ -213,11 +217,15 @@ function exportGuarded(body: string, id: string): boolean {
     (USER_SCOPED_ACTIONS.has(id) && hasUserGuard(code));
 }
 
-/** readSession 호출만으로는 부족하다 — 비로그인·장애 두 갈래가 즉시 반환해야 인증이다. */
+/**
+ * readSession 호출만으로는 부족하다 — 비로그인·장애 두 갈래가 즉시 반환해야 인증이다.
+ * 결과 코드만 돌려주는 Action(`setTimeZone`)은 두 갈래를 `!== "ok"` 한 줄로 함께 끊는다 — `ok` 밖이 전부 거부라 빠지는 갈래가 없다.
+ */
 function hasUserGuard(body: string): boolean {
   if (body.includes("requireUser(")) return true;
-  return body.includes("await readSession()") &&
-    /if \(session.status === "none"\) return \{ ok: false, error: "unauthorized" \}/.test(body) &&
+  if (!body.includes("await readSession()")) return false;
+  if (/if \(session\.status !== "ok"\) return "failed";/.test(body)) return true;
+  return /if \(session.status === "none"\) return \{ ok: false, error: "unauthorized" \}/.test(body) &&
     /if \(session.status === "unavailable"\) return \{ ok: false, error: "unavailable" \}/.test(body);
 }
 
@@ -239,6 +247,10 @@ it("사용자 Action의 readSession은 두 거부 반환 없이는 인증으로 
   expect(hasUserGuard(read + none)).toBe(false);
   expect(hasUserGuard(read + outage)).toBe(false);
   expect(hasUserGuard(read + none + outage)).toBe(true);
+  // 코드를 돌려주는 Action은 `ok` 밖을 한 줄로 끊는다 — 한 갈래만 끊는 줄(`=== "none"`)은 인정하지 않는다.
+  expect(hasUserGuard(read + 'if (session.status !== "ok") return "failed";')).toBe(true);
+  expect(hasUserGuard(read + 'if (session.status === "none") return "failed";')).toBe(false);
+  expect(hasUserGuard('if (session.status !== "ok") return "failed";')).toBe(false);
 });
 
 describe("멤버십 조인 코어 위임", () => {
@@ -300,6 +312,11 @@ const EXEMPT_ACTIONS = new Set([
   "oauth/authorize/actions.ts#denyOAuthRequest",
   "oauth/authorize/actions.ts#checkOAuthRequest",
   "oauth/authorize/actions.ts#switchOAuthAccount",
+  /**
+   * 화면 언어 바꾸기 (ui-locales design §4). **비로그인이 정상 진입이다** — 공개 푸터가 부른다. 프로젝트를 건드리지 않고, 계정에 쓰는
+   * 대상은 `readSession`의 userId가 정한다(입력에 userId가 없다). 비로그인이면 기기 쿠키만 쓴다.
+   */
+  "ui-locale/actions.ts#setUiLocale",
 ]);
 
 /**
@@ -928,6 +945,10 @@ describe("보호 라우트가 1차 차단에 걸린다 — matcher는 전 페이
     expect(isProtectedPath("/%6Dcp")).toBe(true);
     expect(isProtectedPath("/mcpx")).toBe(false);
     expect(isProtectedPath("/api/mcp")).toBe(false);
+    // `/preferences` (ui-locales) — 같은 모양이다. 전송 변형(`.rsc`·`.json`·`_next/data`·세그먼트)과 인코딩된 경로도 덮고, 접두만 같은 경로는 아니다.
+    for (const path of ["/preferences", "/preferences/", "/preferences.rsc", "/preferences.json", "/_next/data/build/preferences.json",
+      "/preferences.segments/x.segment.rsc", "/%70references"]) expect(isProtectedPath(path), path).toBe(true);
+    for (const path of ["/preferencesx", "/preferences/x", "/api/preferences", "/ui-locale"]) expect(isProtectedPath(path), path).toBe(false);
     // 접두 문자열만 같은 경로는 보호 대상이 아니다 — 이 줄이 위 넷을 의미 있게 만든다.
     expect(isProtectedPath("/projectsx")).toBe(false);
     expect(isProtectedPath("/invite/sample")).toBe(false);

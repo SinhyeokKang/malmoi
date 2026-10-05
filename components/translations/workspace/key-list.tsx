@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ListRow } from "@/components/ui/list-row";
 import { StatusBadge } from "@/components/ui/status-badge";
 import type { TranslationListRow } from "@/lib/keys/translation-list";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import type { ListGeneration } from "@/lib/translations/saved-rows";
 import { cn } from "@/lib/utils";
 
@@ -43,6 +43,7 @@ export function KeyList({ list, title, titleRef, count, savedExtra, selectedKeyI
   filter?: ReactNode;
   empty: ReactNode;
 }) {
+  const m = useMessages();
   const w = m.translations.workspace.list;
   const headingId = useId();
   const listRef = useRef<HTMLUListElement>(null);
@@ -128,6 +129,7 @@ const KeyRow = memo(function KeyRow({ row, savedOut, first, selected, tabStop, s
   showSource: boolean;
   onSelect: (row: TranslationListRow) => void;
 }) {
+  const m = useMessages();
   const w = m.translations.workspace.list;
   return (
     <li>
@@ -146,7 +148,7 @@ const KeyRow = memo(function KeyRow({ row, savedOut, first, selected, tabStop, s
             </span>
             {/* 미전달은 `Badge neutral` 하나다(Q3 · 1-Y9 — 테두리 알약 `Pill`을 걷었다, 랜딩 목업·Sources와 같은 형). */}
             {row.hasPending && <StatusBadge state="unsent" className="shrink-0" />}
-            {row.hasReview && <span className="text-xs text-amber-700">{w.needsReview}</span>}
+            {row.hasReview && <span className="text-warning-foreground text-xs">{w.needsReview}</span>}
           </span>
         </span>
         <span className="text-muted-foreground shrink-0 text-xs">

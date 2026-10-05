@@ -59,6 +59,7 @@ Use this skill when the user asks to run the migrated source command `code-revie
 - **비범위 기능 슬며시 유입** (PRODUCT.md §4.2)
 - **N+1 쿼리** — 키가 수백 개인 리스트 화면에서 체감된다
 - **날짜를 로컬 타임존으로 저장**
+- **사전(`messages/*.tsx`) 변경이 `/translate` 모드 ① 체크리스트를 빠뜨림** — 영어 고정 표면 판정, 함수 키 등재, `SAME_AS_EN`, 가이드 인용, ko 보간 값 뒤 받침 조사
 
 ### ⚪ 참고
 

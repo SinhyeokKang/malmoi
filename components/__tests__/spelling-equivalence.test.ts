@@ -26,12 +26,27 @@ async function compiled(candidate: string): Promise<{ css: string; utilities: st
   return { css, utilities };
 }
 
+/** `light-dark(a, b)` → a. 최상위 쉼표로 가른다(`color-mix(…, transparent)`의 쉼표는 안쪽이다). */
+function lightSide(value: string): string {
+  const body = /^light-dark\(([\s\S]*)\)$/.exec(value)?.[1];
+  if (body === undefined) return value;
+  let depth = 0;
+  for (let i = 0; i < body.length; i++) {
+    if (body[i] === "(") depth++;
+    else if (body[i] === ")") depth--;
+    else if (body[i] === "," && depth === 0) return body.slice(0, i).trim();
+  }
+  return value;
+}
+
 function resolved(css: string, value: string): string {
   // 실제 루트 선언만 푼다. 색 합성·단위 변환·반올림은 하지 않는다.
+  // ⚠️ `:root`의 `color-mix` 값에는 Tailwind가 폴백 + `@supports` 재선언을 붙인다 — 한 단계 중첩까지 읽고 뒤 선언(최신 브라우저 값)이 이긴다.
+  // ⚠️ 테마 토큰은 `light-dark(라이트, 다크)`다(color-scheme Phase 2) — 철자 동치는 옛 raw 철자와의 대조라 **라이트 쪽**을 편다.
   const variables = new Map<string, string>();
-  for (const rule of css.matchAll(/:root(?:,\s*:host)?\s*\{([^{}]*)\}/g)) {
+  for (const rule of css.matchAll(/:root(?:,\s*:host)?\s*\{((?:[^{}]|\{[^{}]*\})*)\}/g)) {
     for (const declaration of (rule[1] ?? "").matchAll(/(--[\w-]+):\s*([^;]+);/g)) {
-      variables.set(declaration[1]!, declaration[2]!.trim());
+      variables.set(declaration[1]!, lightSide(declaration[2]!.trim()));
     }
   }
   const expand = (input: string, seen: Set<string>): string => input.replace(/var\((--[\w-]+)\)/g, (original, name: string) => {
@@ -123,7 +138,6 @@ describe("T2 토큰은 값과 적용 경계를 보존한다", () => {
     ["[&_p]:leading-[1.6]", "[&_p]:leading-body"],
     ["[&_td]:leading-[1.6]", "[&_td]:leading-body"],
     ["[&_th]:leading-[1.6]", "[&_th]:leading-body"],
-    ["bg-blue-600/[0.14]", "bg-link/[0.14]"],
     ["border-neutral-300", "border-gray-light"],
     ["gap-[3px]", "gap-copy-gap"],
     ["h-[min(640px,calc(100svh-96px))]", "h-[min(640px,calc(100svh-var(--spacing-modal-gutter)))]"],
@@ -197,14 +211,15 @@ describe("T2 토큰은 값과 적용 경계를 보존한다", () => {
     expect(await utility("[&_p]:leading-body")).not.toBe(await utility("[&_td]:leading-body"));
   });
 
-  it("추가한 열두 토큰의 값·Tailwind 팔레트 별칭이 승인 표와 같다", () => {
+  it("추가한 열두 토큰의 값·`:root` 별칭이 승인 표와 같다", () => {
     const theme = /@theme inline\s*\{([\s\S]*?)\n\}/.exec(readFileSync(globalsPath, "utf8"))?.[1] ?? "";
     const values = new Map([...theme.matchAll(/^\s*(--[\w-]+):\s*([^;]+);/gm)].map((m) => [m[1], m[2]?.trim()]));
     for (const [name, value] of Object.entries({
-      "--color-link": "var(--color-blue-600)",
-      "--color-gray-light": "var(--color-neutral-300)",
-      "--color-gray-dim": "var(--color-neutral-400)",
-      "--color-gray-strong": "var(--color-neutral-600)",
+      // 팔레트 값은 color-scheme Phase 1에서 `:root`로 내려갔다 — 라이트 값 대조는 `globals-css.test.ts`가 든다.
+      "--color-link": "var(--link)",
+      "--color-gray-light": "var(--gray-light)",
+      "--color-gray-dim": "var(--gray-dim)",
+      "--color-gray-strong": "var(--gray-strong)",
       "--leading-body": "1.6",
       "--leading-prose": "1.7",
       "--leading-translation": "1.55",
@@ -214,5 +229,77 @@ describe("T2 토큰은 값과 적용 경계를 보존한다", () => {
       "--container-form": "640px",
       "--spacing-shell-min": "1280px",
     })) expect(values.get(name), name).toBe(value);
+  });
+});
+
+/**
+ * **color-scheme Phase 1 — 의미 색 유틸이 생성되고 옛 raw와 같은 색이다** (design §2.4 · 2026-09-23 `text-link` 함정).
+ *
+ * ⚠️ 옛 알파 철자(`bg-green-100/80`)는 폴백 + `@supports` 두 선언을 낸다 — 비교는 **최신 브라우저가 쓰는 마지막 선언**을 루트 변수로 푼 값이다.
+ * 새 토큰은 `:root`의 `color-mix`가 같은 식을 든다.
+ */
+const PROPERTY: Readonly<Record<string, string>> = { bg: "background-color", text: "color", border: "border-color" };
+
+async function effective(candidate: string): Promise<string> {
+  const { css, utilities } = await compiled(candidate);
+  const property = PROPERTY[/^(?:[a-z-]+:)*(bg|text|border)-/.exec(candidate)?.[1] ?? ""];
+  expect(property, candidate).toBeDefined();
+  const values = [...utilities.matchAll(new RegExp(`(?<![\\w-])${property}:\\s*([^;]+);`, "g"))].map((match) => match[1]!.trim());
+  expect(values, candidate).not.toEqual([]);
+  return resolved(css, values.at(-1)!);
+}
+
+describe("color-scheme 의미 색은 옮겨 온 raw와 같은 색이다", () => {
+  it.each([
+    ["bg-green-50", "bg-success-surface"],
+    ["bg-green-100/80", "bg-success-soft"],
+    ["text-green-800", "text-success-foreground"],
+    ["bg-amber-50", "bg-warning-surface"],
+    ["bg-amber-100/80", "bg-warning-soft"],
+    ["text-amber-800", "text-warning-soft-foreground"],
+    ["text-amber-700", "text-warning-foreground"],
+    ["bg-amber-500", "bg-warning-emphasis"],
+    ["border-amber-500/50", "border-warning-emphasis/50"],
+    ["bg-red-50", "bg-danger-surface"],
+    ["bg-blue-50", "bg-info-surface"],
+    ["bg-rose-600", "bg-hue-rose"],
+    ["bg-orange-600", "bg-hue-orange"],
+    ["bg-amber-600", "bg-hue-amber"],
+    ["bg-emerald-600", "bg-hue-emerald"],
+    ["bg-teal-600", "bg-hue-teal"],
+    ["bg-sky-600", "bg-hue-sky"],
+    ["bg-indigo-600", "bg-hue-indigo"],
+    ["bg-fuchsia-600", "bg-hue-fuchsia"],
+    ["text-white", "text-on-hue"],
+    ["bg-foreground/40", "bg-scrim/40"],
+    ["bg-foreground/32", "bg-scrim/32"],
+    ["text-red-700", "text-diff-removed"],
+    ["bg-red-700/[0.14]", "bg-diff-removed/[0.14]"],
+    ["text-green-800", "text-diff-added"],
+    ["bg-green-800/[0.16]", "bg-diff-added/[0.16]"],
+    ["bg-blue-50", "bg-kind-blue-surface"],
+    ["text-blue-700", "text-kind-blue"],
+    ["bg-teal-50", "bg-kind-teal-surface"],
+    ["text-teal-700", "text-kind-teal"],
+    ["bg-violet-50", "bg-kind-violet-surface"],
+    ["text-violet-700", "text-kind-violet"],
+    ["bg-neutral-50", "bg-surface-subtle"],
+    // T2 쌍. `link`가 `:root` 변수가 되면서 color-mix 미지원 브라우저용 폴백만 단색이 됐다(값을 못 푸는 토큰 알파의 공통 형 — `bg-foreground/40`과 같다).
+    ["bg-blue-600/[0.14]", "bg-link/[0.14]"],
+  ])("%s → %s", async (before, after) => {
+    expect(await effective(after)).toBe(await effective(before));
+  });
+
+  it("다른 단계·다른 뜻은 같다고 판정하지 않는다 (카나리아)", async () => {
+    expect(await effective("text-warning-foreground")).not.toBe(await effective("text-amber-800"));
+    expect(await effective("bg-success-soft")).not.toBe(await effective("bg-green-100"));
+    expect(await effective("bg-scrim/32")).not.toBe(await effective("bg-foreground/40"));
+  });
+
+  it("그림자 둘이 옛 리터럴과 같은 색을 낸다 — srgb 혼합은 `rgb(r g b / a)`와 같은 색이다", async () => {
+    const { css } = await compiled("shadow-low");
+    expect(resolved(css, "var(--shadow-color)")).toBe("rgb(22 24 27)");
+    expect(css).toMatch(/0 4px 12px 4px var\(--tw-shadow-color, color-mix\(in srgb, var\(--shadow-color\) 5%, transparent\)\)/);
+    expect((await compiled("shadow-medium")).css).toMatch(/0 6px 16px 2px var\(--tw-shadow-color, color-mix\(in srgb, var\(--shadow-color\) 15%, transparent\)\)/);
   });
 });

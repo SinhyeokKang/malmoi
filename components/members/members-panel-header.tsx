@@ -6,7 +6,7 @@ import { useRef, useState } from "react";
 import { InviteModal } from "@/components/members/invite-modal";
 import { Button } from "@/components/ui/button";
 import type { SeatNotice } from "@/lib/auth/seat-notice";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 
 /**
  * 멤버 패널 머리의 우측 — **좌석 잔량 + [Invite]** 와 초대 모달의 소유자 (DESIGN §6.65).
@@ -28,6 +28,7 @@ import { m } from "@/lib/i18n";
 const REASON_ID = "invite-reason";
 
 export function MembersPanelHeader({ slug, notice }: { slug: string; notice: SeatNotice }) {
+  const m = useMessages();
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLElement | null>(null);
 

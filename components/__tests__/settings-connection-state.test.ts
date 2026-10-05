@@ -1,8 +1,9 @@
+import { en } from "@/messages/en";
 import { describe, expect, it } from "vitest";
 
 import type { ConnectionHealth } from "@/lib/github-connect/health";
 import { connectionProblem, repositoryConnectionState } from "@/lib/home/state";
-import { STATE } from "@/lib/status/canon";
+import { STATE, stateLabel } from "@/lib/status/canon";
 
 /**
  * **Settings 연결 행의 상태 키** (ux-drift-unify 1-Y15 · DESIGN §2.4 연결 행). 배지와 아이콘 칸이 같은 키에서 톤을 읽는다 —
@@ -29,6 +30,6 @@ describe("repositoryConnectionState", () => {
   });
 
   it("연결됨은 §2.4의 success · Connected다", () => {
-    expect(STATE.connected).toMatchObject({ tone: "success", label: "Connected" });
+    expect({ ...STATE.connected, label: stateLabel(en, "connected") }).toMatchObject({ tone: "success", label: "Connected" });
   });
 });

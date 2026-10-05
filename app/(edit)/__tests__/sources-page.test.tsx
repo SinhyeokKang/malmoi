@@ -10,6 +10,8 @@ vi.mock("next/navigation", () => ({ redirect: mocks.redirect, notFound: () => { 
 import Page from "../projects/[slug]/sources/page";
 import Legacy from "../projects/[slug]/locales/page";
 import SurfaceLegacy from "../projects/[slug]/surfaces/[surfaceSlug]/locales/page";
+vi.mock("@/lib/i18n/server", async () => ({ getUiLocale: async () => "en", getDateStyle: async () => ({ uiLocale: "en", timeZone: "UTC" }), getMessages: async () => (await import("@/messages/en")).en }));
+
 beforeEach(() => { vi.clearAllMocks(); mocks.guard.mockResolvedValue({ projectId: "p", role: "OWNER", archived: false }); mocks.surfaceGuard.mockResolvedValue({ projectId: "p", role: "OWNER", archived: false }); mocks.read.mockResolvedValue({ installed: true, sources: [] }); mocks.project.mockResolvedValue({ archivedAt: new Date("2026-09-18T00:00:00Z") }); });
 it("반복 add/e는 첫 값만 읽고 source 쿼리는 상세 선택에 사용하지 않는다", async () => {
   renderToStaticMarkup(await Page({ params: Promise.resolve({ slug: "p" }), searchParams: Promise.resolve({ add: ["sources", "other"], e: ["reauthorize", "other"], source: "web" }) }));

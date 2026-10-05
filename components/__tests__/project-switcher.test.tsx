@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { ProjectSwitcher } from "@/components/shell/project-switcher";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { routes } from "@/lib/routes";
 
 import { render } from "./helpers/dom";
@@ -33,9 +33,9 @@ const projects = [
   { slug: "old", name: "old-site", archived: true, image: null },
   { slug: "course-chatbot", name: "course-chatbot", archived: false, image: null },
 ];
-const OLD = `old-site${m.projects.status.archived}`;
+const OLD = `old-site${en.projects.status.archived}`;
 
-const trigger = () => document.querySelector<HTMLButtonElement>(`button[aria-label="${m.common.nav.projectSwitcher.label}"]`)!;
+const trigger = () => document.querySelector<HTMLButtonElement>(`button[aria-label="${en.common.nav.projectSwitcher.label}"]`)!;
 const input = () => document.querySelector<HTMLInputElement>('[role="menu"] input')!;
 const items = () => [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"], [role="menu"] [role="menuitemradio"]')];
 const names = () => items().map((node) => node.textContent?.trim());
@@ -56,13 +56,13 @@ describe("ProjectSwitcher", () => {
     // 접근 이름엔 줄임표가 없고 placeholder만 `…`다(search-ux-unify C24).
     expect(input().getAttribute("aria-label")).toBe("Search projects");
     expect(input().placeholder).toBe("Search projects…");
-    expect(document.querySelector('[role="menu"] kbd')?.textContent).toBe(m.common.keys.esc);
+    expect(document.querySelector('[role="menu"] kbd')?.textContent).toBe(en.common.keys.esc);
     expect(document.querySelector('[role="menu"] kbd')?.getAttribute("aria-hidden")).toBe("true");
   });
 
   it("보관까지 전부이고 보관은 맨 뒤(`/projects` 기본 순서), 지금 프로젝트만 체크다", async () => {
     await open();
-    expect(names()).toEqual(["bugshot-web", "malmoi", "course-chatbot", OLD, m.common.nav.newProject]);
+    expect(names()).toEqual(["bugshot-web", "malmoi", "course-chatbot", OLD, en.common.nav.newProject]);
     const radios = [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')];
     expect(radios.map((r) => [r.textContent?.trim(), r.getAttribute("aria-checked")])).toEqual([
       ["bugshot-web", "false"],
@@ -88,9 +88,9 @@ describe("ProjectSwitcher", () => {
     const user = await open();
     await act(async () => user.keyboard("CHAT"));
     expect(input().value).toBe("CHAT");
-    expect(names()).toEqual(["course-chatbot", m.common.nav.newProject]);
+    expect(names()).toEqual(["course-chatbot", en.common.nav.newProject]);
     await act(async () => user.keyboard("zzz"));
-    expect(names()).toEqual([m.common.nav.newProject]);
+    expect(names()).toEqual([en.common.nav.newProject]);
     // 0건 제목 한 형(C23) — 메뉴 안이라 `<p>` 한 줄이다.
     const empty = [...document.querySelectorAll('[role="menu"] p')].find(p => p.textContent === "No projects match “CHATzzz”");
     expect(empty).toBeDefined();
@@ -103,7 +103,7 @@ describe("ProjectSwitcher", () => {
     await act(async () => user.keyboard("m"));
     expect(document.activeElement).toBe(input());
     expect(input().value).toBe("m");
-    expect(names()).toEqual(["malmoi", m.common.nav.newProject]);
+    expect(names()).toEqual(["malmoi", en.common.nav.newProject]);
     await act(async () => user.keyboard("{ArrowDown}"));
     expect(document.activeElement).toBe(items()[0]);
     await act(async () => user.keyboard("{ArrowUp}"));
@@ -142,7 +142,7 @@ describe("ProjectSwitcher", () => {
     await act(async () => user.click(trigger()));
     const row = [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')].find((r) => r.getAttribute("href") === routes.project("old"))!;
     expect(row.getAttribute("aria-checked")).toBe("true");
-    const badge = [...row.children].find((node) => node.textContent === m.projects.status.archived) as HTMLElement;
+    const badge = [...row.children].find((node) => node.textContent === en.projects.status.archived) as HTMLElement;
     // 칩 여백은 `Badge` 기본 `px-1.5` 한 형이다 — `px-2` 덧칠을 걷었다(search-ux-polish O8).
     expect(badge.classList.contains("px-1.5")).toBe(true);
     expect(badge.classList.contains("px-2")).toBe(false);
@@ -154,7 +154,7 @@ describe("ProjectSwitcher", () => {
     expect(row.lastElementChild).toBe(badge.nextElementSibling);
     // 보관 아닌 행엔 배지가 없다.
     const active = [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')].find((r) => r.getAttribute("href") === routes.project("malmoi"))!;
-    expect(active.textContent).not.toContain(m.projects.status.archived);
+    expect(active.textContent).not.toContain(en.projects.status.archived);
   });
 
   /** ⚠️ 항목이 처리한 Space(선택)가 질의로 새지 않는다 — 새면 다음에 열 때 입력에 공백이 남는다. */

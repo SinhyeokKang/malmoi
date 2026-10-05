@@ -12,7 +12,8 @@ import { llmsIndex } from "@/lib/seo/llms";
 export const dynamic = "force-static";
 
 export function GET(): Response {
-  const nav = loadSummary();
-  const leads = new Map(flattenNav(nav).map((item) => [item.file, leadParagraph(loadPage(item.file))]));
+  // 크롤러는 쿠키가 없다 — 원문 en만 낸다(ui-locales design §6.1)
+  const nav = loadSummary("en");
+  const leads = new Map(flattenNav(nav).map((item) => [item.file, leadParagraph(loadPage("en", item.file))]));
   return new Response(llmsIndex(nav, leads), { headers: { "content-type": "text/plain; charset=utf-8" } });
 }

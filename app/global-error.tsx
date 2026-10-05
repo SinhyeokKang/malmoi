@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 /**
  * 루트 레이아웃까지 죽었을 때 (audit #17). **루트 레이아웃을 대신하므로 `<html>`·`<body>`를 스스로 든다.**
@@ -16,10 +16,10 @@ export default function GlobalError({ retry }: { error: Error & { digest?: strin
     <html lang="en">
       <body>
         <main>
-          <h1>{m.crash.title}</h1>
-          <p>{m.crash.description}</p>
+          <h1>{en.crash.title}</h1>
+          <p>{en.crash.description}</p>
           {/* 프리미티브를 지난다(`focus-ring.test.ts`) — 스타일은 안 붙어도 포커스 규약의 소유자는 한 곳이다. */}
-          <Button type="button" onClick={() => retry()}>{m.common.retry}</Button>
+          <Button type="button" onClick={() => retry()}>{en.common.retry}</Button>
         </main>
       </body>
     </html>

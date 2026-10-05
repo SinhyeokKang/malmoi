@@ -21,10 +21,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { FieldTrigger } from "@/components/ui/field-trigger";
 import { EVENT_RESULTS, LOG_KINDS, type EventResult, type LogKind } from "@/lib/events/payload";
-import { PROJECT_WIDE, clearedLogsQuery, hasNarrowing, logsQuery, type LogFilter } from "@/lib/events/filter";
-import { m } from "@/lib/i18n";
+import { LOG_PRESETS, PROJECT_WIDE, clearedLogsQuery, hasNarrowing, logsQuery, presetRange, type LogFilter, type LogPreset } from "@/lib/events/filter";
+import { useDateStyle, useMessages } from "@/components/i18n/messages-provider";
 import { routes } from "@/lib/routes";
-import { utcDay as dayText } from "@/lib/utc-time";
+import { formatDayKey } from "@/lib/date-format";
+import type { Messages } from "@/lib/i18n";
+import type { UiLocale } from "@/lib/i18n/locales";
+import type { TimeZone } from "@/lib/time-zone/zones";
 
 /**
  * 필터 다섯 + 검색 + [Refresh] (캔버스 `1a`·`1m`).
@@ -50,13 +53,22 @@ export function LogFilters({
   actors,
   /** 보관된 프로젝트에는 [Refresh]가 없다 — 진행 중 실행이 생길 수 없다 (캔버스 `1j`). */
   refreshable,
+  now,
 }: {
   slug: string;
   filter: LogFilter;
   sources: readonly { slug: string }[];
   actors: readonly { id: string; label: string }[];
   refreshable: boolean;
+  /**
+   * 프리셋의 "오늘"을 잡는 기준 시각(ISO) — **Logs 페이지가 렌더한 순간이다.** 렌더 중 `Date.now()`를 쓰면 보는 사람 시간대의 자정이
+   * 서버 렌더와 하이드레이션 사이에 낄 때 두 쪽의 프리셋 판정이 갈린다(user-timezone design §0 하이드레이션 ①).
+   */
+  now: string;
 }) {
+  const m = useMessages();
+  const style = useDateStyle();
+  const range = (preset: LogPreset) => presetRange(preset, new Date(now), style.timeZone);
   const router = useRouter();
 
   /**
@@ -143,15 +155,15 @@ export function LogFilters({
           ))}
         </Filter>
 
-        <Filter triggerRef={dateTrigger} onCloseAutoFocus={handOffToCustom} axis={m.logs.filters.axis.date} label={dateLabel(filter)} on={filter.from !== null || filter.to !== null}>
+        <Filter triggerRef={dateTrigger} onCloseAutoFocus={handOffToCustom} axis={m.logs.filters.axis.date} label={dateLabel(m, style.uiLocale, filter)} on={filter.from !== null || filter.to !== null}>
           <DropdownMenuItem selected={filter.from === null && filter.to === null} onSelect={() => go({ from: null, to: null })}>
             {m.logs.filters.anyDate}
           </DropdownMenuItem>
           {/* ⚠️ 프리셋도 선택 상태를 든다 (B5 리뷰 r1) — 다른 필터 넷과 같은 단일 선택이고, 없으면 프리셋을 적용한 뒤 스크린리더가
               "아무것도 선택 안 됨"을 읽는다. 판정은 지금 범위가 그 프리셋의 범위와 같은가다. `Custom…`은 값이 아니라 동작이다. */}
-          {PRESETS.map((preset) => (
-            <DropdownMenuItem key={preset.key} selected={sameRange(filter, preset.range())} onSelect={() => go(preset.range())}>
-              {m.logs.range[preset.key]}
+          {LOG_PRESETS.map((preset) => (
+            <DropdownMenuItem key={preset} selected={sameRange(filter, range(preset))} onSelect={() => go(range(preset))}>
+              {m.logs.range[preset]}
             </DropdownMenuItem>
           ))}
           <DropdownMenuSeparator />
@@ -162,7 +174,7 @@ export function LogFilters({
           <DropdownMenuItem onSelect={() => { customHandoff.current = true; }}>{m.logs.range.customOpen}</DropdownMenuItem>
         </Filter>
 
-        <Filter axis={m.logs.filters.axis.actor} label={actorLabel(filter, actors)} on={filter.actor !== null}>
+        <Filter axis={m.logs.filters.axis.actor} label={actorLabel(m, filter, actors)} on={filter.actor !== null}>
           <DropdownMenuItem selected={filter.actor === null} onSelect={() => go({ actor: null })}>
             {m.logs.filters.anyone}
           </DropdownMenuItem>
@@ -215,8 +227,8 @@ export function LogFilters({
           {/* 이 축이 **실행에만** 적용된다는 사실을 고르기 전에 말한다. */}
           <p className="text-muted-foreground max-w-54 px-2 py-1.5 text-xs">{m.logs.filters.resultScope}</p>
           {RESULT_GROUPS.map((group) => (
-            <div key={group.label}>
-              <DropdownMenuLabel>{group.label}</DropdownMenuLabel>
+            <div key={group.key}>
+              <DropdownMenuLabel>{m.logs.filters[GROUP_LABEL[group.key]]}</DropdownMenuLabel>
               {group.results.map((result) => (
                 <DropdownMenuCheckboxItem
                   key={result}
@@ -294,6 +306,8 @@ function CustomRangeDialog({ open, onOpenChange, filter, returnFocusRef, onApply
   returnFocusRef: RefObject<HTMLButtonElement | null>;
   onApply: (range: { from: string | null; to: string | null }) => void;
 }) {
+  const m = useMessages();
+  const { timeZone } = useDateStyle();
   const [from, setFrom] = useState(filter.from ?? "");
   const [to, setTo] = useState(filter.to ?? "");
   const fromId = useId();
@@ -302,7 +316,7 @@ function CustomRangeDialog({ open, onOpenChange, filter, returnFocusRef, onApply
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         title={m.logs.range.custom}
-        description={m.logs.range.description}
+        description={description(m, timeZone)}
         onCloseAutoFocus={event => { event.preventDefault(); returnFocusRef.current?.focus(); }}
         actions={<>
           <DialogClose asChild><Button>{m.common.cancel}</Button></DialogClose>
@@ -331,17 +345,12 @@ function CustomRangeDialog({ open, onOpenChange, filter, returnFocusRef, onApply
   );
 }
 
-/** 프리셋 넷 — **UTC 기준으로 오늘을 잡는다**(로컬 자정으로 끊으면 밤 사이 실행이 하루 어긋난다). */
-const PRESETS = [
-  { key: "today" as const, range: () => ({ from: utcDay(0), to: utcDay(0) }) },
-  { key: "yesterday" as const, range: () => ({ from: utcDay(-1), to: utcDay(-1) }) },
-  { key: "last7" as const, range: () => ({ from: utcDay(-6), to: utcDay(0) }) },
-  { key: "last30" as const, range: () => ({ from: utcDay(-29), to: utcDay(0) }) },
-];
-
-function utcDay(offset: number): string {
-  const at = new Date(Date.now() + offset * 24 * 60 * 60 * 1000);
-  return at.toISOString().slice(0, 10);
+/**
+ * Dialog 설명 — 칸의 날짜가 **보는 사람이 고른 시간대의 자정**으로 끊긴다는 것을 끝줄이 말한다(라벨의 `(UTC)` 괄호를 대신한다).
+ * 런타임 TZ가 아니다 — 프리셋(`presetRange`)·서버 구간(`parseDateRange`)이 같은 시간대를 받는다.
+ */
+function description(m: Messages, timeZone: TimeZone): string {
+  return `${m.logs.range.description} ${m.logs.range.zoneNote(timeZone)}`;
 }
 
 function sameRange(filter: LogFilter, range: { from: string; to: string }): boolean {
@@ -349,17 +358,17 @@ function sameRange(filter: LogFilter, range: { from: string; to: string }): bool
 }
 
 /**
- * 칩 글자만 `lib/utc-time.ts`의 형이다(`Sep 27, 2026`) — URL·입력 값·프리셋 판정은 ISO 그대로다. `new Date("YYYY-MM-DD")`는 UTC 자정이라
- * 날짜가 밀리지 않는다. ⚠️ 위의 지역 `utcDay(offset)`는 ISO를 만드는 다른 함수라 import에 별칭을 붙였다.
+ * 칩 글자만 `lib/date-format.ts`의 형이다(`Sep 27, 2026`) — URL·입력 값·프리셋 판정은 ISO 그대로다.
+ * ⚠️ 키를 순간으로 바꾸지 않는다(`formatDayKey`) — `new Date(key)`를 시간대로 그리면 음수 오프셋에서 하루 밀린다.
  */
-function dateLabel(filter: LogFilter): string {
+function dateLabel(m: Messages, uiLocale: UiLocale, filter: LogFilter): string {
   if (filter.from === null && filter.to === null) return m.logs.filters.anyDate;
-  const day = (iso: string | null) => (iso === null ? "…" : dayText(new Date(iso)));
+  const day = (iso: string | null) => (iso === null ? "…" : formatDayKey(iso, uiLocale));
   if (filter.from !== null && filter.from === filter.to) return day(filter.from);
   return `${day(filter.from)} – ${day(filter.to)}`;
 }
 
-function actorLabel(filter: LogFilter, actors: readonly { id: string; label: string }[]): string {
+function actorLabel(m: Messages, filter: LogFilter, actors: readonly { id: string; label: string }[]): string {
   if (filter.actor === null) return m.logs.filters.anyone;
   if (filter.actor === "ci") return m.logs.trigger.ci;
   if (filter.actor === "nightly") return m.logs.trigger.cron;
@@ -370,7 +379,7 @@ function actorLabel(filter: LogFilter, actors: readonly { id: string; label: str
 }
 
 /** 결과 어휘 → 사전 키. **`Record`라 어휘가 늘면 여기서 컴파일이 걸린다.** */
-const RESULT_KEY: Readonly<Record<EventResult, keyof typeof m.logs.status>> = {
+const RESULT_KEY: Readonly<Record<EventResult, keyof Messages["logs"]["status"]>> = {
   running: "inProgress",
   sent: "succeeded",
   nothingToSend: "skipped",
@@ -406,14 +415,13 @@ const RESULT_GROUP_OF: Readonly<Record<EventResult, "imports" | "publish" | "bot
   upToDate: "both",
 };
 
-/** 어느 종류의 결과인지 그룹으로 보인다 (캔버스 `1m`). 순서는 `EVENT_RESULTS`가 든다. */
-const RESULT_GROUPS: readonly { label: string; results: readonly EventResult[] }[] = (
-  [
-    { key: "imports", label: m.logs.filters.groupImports },
-    { key: "publish", label: m.logs.filters.groupPublish },
-    { key: "both", label: m.logs.filters.groupBoth },
-  ] as const
-).map((group) => ({
-  label: group.label,
-  results: EVENT_RESULTS.filter((result) => RESULT_GROUP_OF[result] === group.key),
+/** 어느 종류의 결과인지 그룹으로 보인다 (캔버스 `1m`). 순서는 `EVENT_RESULTS`가 든다. 낱말은 화면이 사전에서 읽는다(`GROUP_LABEL`). */
+const RESULT_GROUPS: readonly { key: "imports" | "publish" | "both"; results: readonly EventResult[] }[] = (
+  ["imports", "publish", "both"] as const
+).map((key) => ({
+  key,
+  results: EVENT_RESULTS.filter((result) => RESULT_GROUP_OF[result] === key),
 }));
+
+const GROUP_LABEL = { imports: "groupImports", publish: "groupPublish", both: "groupBoth" } as const;
+

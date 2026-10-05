@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { decodeUser, readable } from "@/lib/credentials/records";
 import { APP_ACCOUNT_PROVIDER } from "@/lib/github-connect/account-link";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
 
 import { inScope } from "../grant";
@@ -41,7 +41,7 @@ export const whoami = defineTool({
         scope: subject.scope.kind === "all" ? { kind: "all" } : { kind: "projects", projects: scoped },
         expiresAt: token?.expiresAt.toISOString() ?? null,
       },
-    }, name === null ? m.mcp.summary.signedIn : m.mcp.summary.signedInAs(name));
+    }, name === null ? en.mcp.summary.signedIn : en.mcp.summary.signedInAs(name));
   },
 });
 
@@ -72,6 +72,6 @@ export const listProjects = defineTool({
       archived: project.archivedAt !== null,
       readiness: planProjectReadiness(project),
     }));
-    return ok({ projects }, m.mcp.summary.projects(projects.length));
+    return ok({ projects }, en.mcp.summary.projects(projects.length));
   },
 });

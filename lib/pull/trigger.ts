@@ -50,7 +50,8 @@ export async function triggerPull(prisma: PrismaClient, slug: string, runId: str
   // 1층이 토큰으로 판정하므로 미전달 편집이 없는 프로젝트는 여전히 GitHub을 안 부른다. 로그에는 계속 남긴다 —
   // cron 응답 JSON을 놓쳐도 Vercel 로그에서 찾을 수 있어야 한다.
   if (result.status === "skipped" && result.reason === "writer-warnings") {
-    for (const w of result.warnings) console.warn(`[pull:${slug}] ${w}`);
+    // 코드로 남긴다 — `lib/pull`은 사전을 읽지 않는다(ui-locales B1′). 키·파서 원문이 있으면 그대로 붙여 grep으로 찾게 한다.
+    for (const w of result.warnings) console.warn(`[pull:${slug}] ${w.surfaceSlug}: ${w.path}: ${w.code}${w.key === undefined ? "" : ` key=${w.key}`}${w.detail === undefined ? "" : ` (${w.detail})`}`);
   }
   // 보류도 남긴다 — 사람이 파일을 되돌리거나 Revert할 때까지 매 밤 같은 판정이 반복되는데, cron 응답을 놓치면 흔적이 없다(delivery-invariants D3).
   const withheld = result.status === "committed" || (result.status === "skipped" && (result.reason === "no-changes" || result.reason === "withheld")) ? result.withheld : undefined;

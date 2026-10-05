@@ -50,7 +50,7 @@ export function BannerLine({
       className={cn(
         "border-foreground/[0.06] bg-foreground/[0.02] flex items-center gap-2 border-t py-2 pr-3.5 text-xs",
         indent === "avatar" ? "pl-15" : "pl-14",
-        tone === "danger" ? "text-destructive" : tone === "warning" ? "text-amber-800" : "text-muted-foreground",
+        tone === "danger" ? "text-destructive" : tone === "warning" ? "text-warning-soft-foreground" : "text-muted-foreground",
       )}
     >
       {icon}

@@ -12,7 +12,7 @@ import { LargeModal } from "@/components/ui/large-modal";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import { planAddBlock } from "@/lib/sources/add-block";
 import type { CandidateSummary } from "@/lib/onboarding/detect";
 import type { AdapterChoice } from "@/lib/onboarding/types";
@@ -25,6 +25,7 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
   /** 서버가 렌더할 때마다 새 객체가 되는 prop — 추가 뒤 닫기를 재검증 트리 커밋까지 미룬다(`useCommitWait`). */
   server: unknown;
 }) {
+  const m = useMessages();
   const [candidates, setCandidates] = useState<CandidateSummary[]>([]);
   const [checked, setChecked] = useState<Set<number>>(new Set());
   const [bases, setBases] = useState<Record<number, string>>({});
@@ -100,7 +101,7 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
     `loading`(진짜 `disabled`)과 `aria-disabled`를 겸하지 않는다(DESIGN §6.65). 사유는 둘 다 **보이는 글자**다.
   */
   // ⚠️ 사유는 꺼진 동안만 서고, 막은 갈래를 말한다 (malmoi#93) — 켜진 버튼이 옛 문장을 describedby로 들고 있었다.
-  const addReason = planAddBlock({ detecting, detectError: !!detectError, formats: selection.formats, conflicts: selection.conflicts.length });
+  const addReason = planAddBlock(m, { detecting, detectError: !!detectError, formats: selection.formats, conflicts: selection.conflicts.length });
   const addBlocked = addReason !== null;
   const manualBlocked = !manual.pathTemplate.trim() || !manual.baseLocale.trim();
   return <LargeModal open={open} closeDisabled={pending} onClose={() => { if (!pending) onClose(); }} returnFocusRef={returnFocusRef}
@@ -125,8 +126,8 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
     </>} notice={addReason !== null ? <span id="add-source-help" className="text-muted-foreground text-xs">{addReason}</span>
       /* 추가는 첫 적재까지 돈다 (audit-ux #23) — 큰 리포면 버튼 스피너 하나로 30초를 넘긴다. */
       : pending && operation === "add" ? <SlowNotice active /> : undefined}>
-    {error && <Alert variant="danger"><p>{m.settings.sources.nothingAdded}</p><p>{error === "repo-replaced" ? m.settings.repository.health["repo-replaced"] : error === "path-conflict" ? m.surfaces.conflict : error === "ingest-failed" ? m.surfaces.failed : failureText(error)}</p>{conflicts.map(c => <p key={c.path}>{c.path} · {c.surfaceSlugs.join(", ")}</p>)}</Alert>}
-    {manualError && <Alert variant="danger">{failureText(manualError)}</Alert>}
+    {error && <Alert variant="danger"><p>{m.settings.sources.nothingAdded}</p><p>{error === "repo-replaced" ? m.settings.repository.health["repo-replaced"] : error === "path-conflict" ? m.surfaces.conflict : error === "ingest-failed" ? m.surfaces.failed : failureText(m, error)}</p>{conflicts.map(c => <p key={c.path}>{c.path} · {c.surfaceSlugs.join(", ")}</p>)}</Alert>}
+    {manualError && <Alert variant="danger">{failureText(m, manualError)}</Alert>}
     {unknown && <Alert variant="warning">{m.settings.sources.unknown}</Alert>}
     {/* ⚠️ 성공은 GitHub으로 가는 redirect라 되던진다 (audit-ux #14) — 그 밖의 throw는 거부와 같은 자리로 접는다. */}
     {connect && <Button spinnerSize="sm" disabled={pending && operation !== "connect"} loading={pending && operation === "connect"} onClick={() => { setOperation("connect"); run(async () => {

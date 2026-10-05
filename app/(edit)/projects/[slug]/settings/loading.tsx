@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { Skeleton } from "@/components/ui/skeleton";
-import { m } from "@/lib/i18n";
+import { getMessages } from "@/lib/i18n/server";
 
 /**
  * Settings가 서버에서 오는 동안의 골격 (audit-ux #5 · DESIGN §6.64 로딩 행 — 형제 화면도 같은 규칙).
@@ -16,7 +16,8 @@ import { m } from "@/lib/i18n";
  *
  * ⚠️ **사실 표의 두 열(96 + 값)은 카드 폭 640 이상의 모양이다** — 셸이 최소 1280이라 카드가 그 아래로 안 좁는다.
  */
-export default function SettingsLoading() {
+export default async function SettingsLoading() {
+  const m = await getMessages();
   return (
     <>
       <span className="sr-only" role="status">{m.settings.loading}</span>

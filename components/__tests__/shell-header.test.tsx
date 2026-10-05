@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 import { PUBLIC_HEADER_LINK } from "@/components/public-shell/header";
 import { HeaderBar } from "@/components/shell/header-bar";
 import { Header } from "@/components/shell/header";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { routes } from "@/lib/routes";
 
 import { render } from "./helpers/dom";
@@ -32,14 +32,14 @@ vi.mock("next/link", () => {
 
 vi.mock("next/navigation", () => ({ usePathname: () => "/projects" }));
 
-const header = () => render(<Header name="Kim" email="kim@acme.com" image={null} signOut={vi.fn()} memberships={[]} />);
+const header = () => render(<Header m={en} name="Kim" email="kim@acme.com" image={null} signOut={vi.fn()} memberships={[]} />);
 
 describe("HeaderBar — 세 슬롯", () => {
   it("동일 폭 양옆 칸과 세 정렬 슬롯으로 가운데를 고정한다", async () => {
     const { container } = await render(<HeaderBar start={<span>Start</span>} center={<span>Center</span>} end={<span>End</span>} />);
     const bar = container.querySelector("header");
     expect(bar).not.toBeNull();
-    expect(bar?.className.split(/\s+/)).toEqual(expect.arrayContaining(["grid", "h-10", "shrink-0", "grid-cols-[1fr_auto_1fr]", "items-center", "px-1"]));
+    expect(bar?.className.split(/\s+/)).toEqual(expect.arrayContaining(["grid", "h-11", "shrink-0", "grid-cols-[1fr_auto_1fr]", "items-center", "px-1"]));
     expect([...bar!.children].map(slot => slot.className)).toEqual(["justify-self-start", "justify-self-center", "justify-self-end"]);
     expect([...bar!.children].map(slot => slot.textContent)).toEqual(["Start", "Center", "End"]);
   });
@@ -49,7 +49,7 @@ describe("HeaderBar — 세 슬롯", () => {
 describe("로고 링크 radius", () => {
   it("앱 셸 헤더 로고가 rounded-sm이다", async () => {
     const { container } = await header();
-    const logo = container.querySelector<HTMLAnchorElement>(`a[aria-label="${m.common.nav.appHome}"]`);
+    const logo = container.querySelector<HTMLAnchorElement>(`a[aria-label="${en.common.nav.appHome}"]`);
     expect(logo).not.toBeNull();
     expect(logo!.classList.contains("rounded-sm")).toBe(true);
     expect(logo!.classList.contains("rounded-lg")).toBe(false);
@@ -82,13 +82,13 @@ describe("앱 셸 헤더", () => {
     expect(kids[0]?.getAttribute("href")).toBe(routes.newProject());
     expect(kids[1]?.getAttribute("aria-hidden")).toBe("true");
     expect(kids[1]?.className).toContain("bg-border-subtle");
-    expect(kids[2]?.getAttribute("aria-label")).toBe(m.common.nav.userMenu);
+    expect(kids[2]?.getAttribute("aria-label")).toBe(en.common.nav.userMenu);
   });
 
   it("New project는 Plus 아이콘 + 글자이고 공개 셸 GitHub 링크와 같은 모양이다 — 같은 탭", async () => {
     const { container } = await header();
     const link = container.querySelector(`header a[href="${routes.newProject()}"]`);
-    expect(link?.textContent).toBe(m.common.nav.newProject);
+    expect(link?.textContent).toBe(en.common.nav.newProject);
     expect(link?.className).toBe(PUBLIC_HEADER_LINK);
     expect(link?.hasAttribute("target")).toBe(false);
     const icon = link?.querySelector("svg");

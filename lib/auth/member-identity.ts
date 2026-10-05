@@ -1,4 +1,4 @@
-import { m } from "@/lib/i18n";
+import type { Messages } from "@/lib/i18n";
 
 /**
  * 멤버 행·대기 초대 행의 **두 줄 배치**와 아바타 씨앗 (DESIGN §6.65).
@@ -36,7 +36,7 @@ export type MemberIdentity = {
   avatarImage: string | null;
 };
 
-export function planMemberIdentity(member: {
+export function planMemberIdentity(m: Messages, member: {
   name: string | null;
   emailLabel: string | null;
   /** 대기 초대에는 계정이 없어 사진도 없다 — 그 호출부는 넘기지 않는다. */

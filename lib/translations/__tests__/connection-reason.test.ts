@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 
 import type { ConnectionHealth } from "@/lib/github-connect/health";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { connectionReason } from "../connection-reason";
 
@@ -18,14 +18,14 @@ it.each([
   [{ status: "repo-replaced" }, "OWNER", "This connection points to a different repository. Check it in Settings."],
   [{ status: "repo-replaced" }, "EDITOR", "This connection points to a different repository. Ask a project owner to check it."],
 ] as const)("%o · %s → %s", (health, role, sentence) => {
-  expect(connectionReason((health as ConnectionHealth).status, role)).toBe(sentence);
+  expect(connectionReason(en, (health as ConnectionHealth).status, role)).toBe(sentence);
 });
 
 it.each(["ok", "unknown", "repo-moved"] as const)("%s는 연결 사유가 없다 — 버튼을 끄지 않는 갈래다", status => {
-  expect(connectionReason(status, "OWNER")).toBeNull();
+  expect(connectionReason(en, status, "OWNER")).toBeNull();
 });
 
 it("제목은 Home 배너와 같은 키다", () => {
-  expect(connectionReason("unpinned", "EDITOR")).toContain(m.home.banner.disconnected.title);
-  expect(connectionReason("not-connected", "EDITOR")).toContain(m.home.banner.notConnected.title);
+  expect(connectionReason(en, "unpinned", "EDITOR")).toContain(en.home.banner.disconnected.title);
+  expect(connectionReason(en, "not-connected", "EDITOR")).toContain(en.home.banner.notConnected.title);
 });

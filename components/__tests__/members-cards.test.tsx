@@ -11,7 +11,7 @@ import { accessErrorMessage } from "@/lib/auth/message";
 import { planSeatNotice } from "@/lib/auth/seat-notice";
 import type { MemberView, PendingInvitation } from "@/lib/auth/query";
 import type { Role } from "@/lib/auth/permission";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { find, render } from "./helpers/dom";
 
@@ -64,7 +64,7 @@ describe("#1 OWNER · 정상", () => {
 
   it("카드 배지가 멤버 수를 말한다 — `projects`의 문장을 물려받지 않는다", async () => {
     const container = await draw([owner, second]);
-    expect(find(container, "h2 + span .sr-only").textContent).toBe(m.members.count(2));
+    expect(find(container, "h2 + span .sr-only").textContent).toBe(en.members.count(2));
   });
 });
 
@@ -123,7 +123,7 @@ describe("#2 OWNER · 오너 1명", () => {
     trigger.focus();
     await act(async () => { await userEvent.setup().keyboard("e"); });
     expect(changeMember).not.toHaveBeenCalled();
-    expect(trigger.textContent).toContain(m.projects.role.OWNER);
+    expect(trigger.textContent).toContain(en.projects.role.OWNER);
   });
 
   /**
@@ -134,7 +134,7 @@ describe("#2 OWNER · 오너 1명", () => {
    */
   it("띠 문구가 서버 거부 문구와 같은 문자열이다", async () => {
     const container = await draw([owner, editor]);
-    expect(bands(container)[0]!.textContent).toBe(accessErrorMessage("last-owner"));
+    expect(bands(container)[0]!.textContent).toBe(accessErrorMessage(en, "last-owner"));
   });
 });
 
@@ -143,9 +143,9 @@ describe("#5 · #6 복호화 실패 행", () => {
     const container = await draw([owner, member({ userId: "u2", readable: false })]);
     expect(rows(container)).toHaveLength(2);
     const broken = rows(container)[1]!;
-    expect(find(broken, "[data-primary]").textContent).toContain(m.members.unreadableLabel);
+    expect(find(broken, "[data-primary]").textContent).toContain(en.members.unreadableLabel);
     expect(broken.querySelector("[data-secondary]")).toBeNull();
-    expect(find<HTMLElement>(broken, '[id^="band-"]').textContent).toBe(m.members.unreadableHint);
+    expect(find<HTMLElement>(broken, '[id^="band-"]').textContent).toBe(en.members.unreadableHint);
     // 역할 컨트롤은 정상으로 선다 — 못 읽은 것은 PII뿐이다.
     expect(broken.querySelector('[role="combobox"]')?.getAttribute("aria-disabled")).toBeNull();
   });
@@ -160,11 +160,11 @@ describe("#5 · #6 복호화 실패 행", () => {
     const container = await draw([member({ userId: "u1", role: "OWNER", readable: false }), editor]);
     const band = bands(container)[0]!;
     expect(bands(container)).toHaveLength(1);
-    expect(band.textContent).toContain(m.members.unreadableHint);
-    expect(band.textContent).toContain(accessErrorMessage("last-owner"));
+    expect(band.textContent).toContain(en.members.unreadableHint);
+    expect(band.textContent).toContain(accessErrorMessage(en, "last-owner"));
     // 순서가 못 읽음 → 마지막 오너다.
-    expect(band.textContent!.indexOf(m.members.unreadableHint)).toBeLessThan(
-      band.textContent!.indexOf(accessErrorMessage("last-owner")),
+    expect(band.textContent!.indexOf(en.members.unreadableHint)).toBeLessThan(
+      band.textContent!.indexOf(accessErrorMessage(en, "last-owner")),
     );
   });
 });
@@ -190,10 +190,10 @@ describe("#7 · #9 EDITOR 시야", () => {
     const chip = find<HTMLElement>(container, "[data-role-chip]");
     expect(chip.getAttribute("aria-label")).toBeNull();
     expect(find<HTMLElement>(chip, ".sr-only").textContent).toBe(
-      m.members.roleLocked.editor(m.projects.role.OWNER),
+      en.members.roleLocked.editor(en.projects.role.OWNER),
     );
     // 보이는 낱말은 그 문장 안에 이미 있으므로 중복 낭독을 막는다.
-    expect(find<HTMLElement>(chip, "[aria-hidden]").textContent).toBe(m.projects.role.OWNER);
+    expect(find<HTMLElement>(chip, "[aria-hidden]").textContent).toBe(en.projects.role.OWNER);
   });
 
   /** ⚠️ **오너가 하나여도 띠를 안 그린다** — EDITOR에게는 그 사유가 설명할 행동이 없다. */
@@ -206,7 +206,7 @@ describe("#7 · #9 EDITOR 시야", () => {
   it("못 읽은 행의 사유는 EDITOR도 본다", async () => {
     const container = await draw([owner, member({ userId: "u2", readable: false })], "EDITOR");
     expect(bands(container)).toHaveLength(1);
-    expect(bands(container)[0]!.textContent).toBe(m.members.unreadableHint);
+    expect(bands(container)[0]!.textContent).toBe(en.members.unreadableHint);
   });
 });
 
@@ -249,7 +249,7 @@ describe("#4 Pending 0건", () => {
   /** ⚠️ **버튼이 없다** — 여기서 할 일은 헤더의 [Invite]이고, 카드가 그것을 두 번 말하지 않는다. */
   it("빈 상태가 카드 안에 서고 출구 버튼이 없다", async () => {
     const container = await drawPending([]);
-    expect(container.textContent).toContain(m.members.pending.empty.title);
+    expect(container.textContent).toContain(en.members.pending.empty.title);
     expect(container.querySelector("ul")).toBeNull();
     expect(container.querySelector("button")).toBeNull();
     expect(container.querySelector("a")).toBeNull();
@@ -265,7 +265,7 @@ describe("#4 Pending 0건", () => {
   it("0건이면 배지가 없고, 있으면 초대 수를 말한다", async () => {
     expect((await drawPending([])).querySelector("h2 + span")).toBeNull();
     const one = await drawPending([invitation({ id: "i1" })]);
-    expect(one.querySelector("h2 + span")?.querySelector(".sr-only")?.textContent).toBe(m.members.pending.count(1));
+    expect(one.querySelector("h2 + span")?.querySelector(".sr-only")?.textContent).toBe(en.members.pending.count(1));
   });
 });
 
@@ -274,8 +274,8 @@ describe("Pending — 못 읽은 초대", () => {
   it("행이 남고 전용 문구와 띠가 선다", async () => {
     const container = await drawPending([invitation({ id: "i1", readable: false })]);
     const row = find<HTMLElement>(container, "li");
-    expect(find(row, "[data-primary]").textContent).toContain(m.members.unreadableLabel);
-    expect(find<HTMLElement>(row, '[id^="band-"]').textContent).toBe(m.members.unreadableHint);
+    expect(find(row, "[data-primary]").textContent).toContain(en.members.unreadableLabel);
+    expect(find<HTMLElement>(row, '[id^="band-"]').textContent).toBe(en.members.unreadableHint);
     expect(row.querySelector('[aria-label^="Revoke "]')).not.toBeNull();
   });
 });
@@ -294,7 +294,7 @@ const invite = (container: HTMLElement) => find<HTMLButtonElement>(container, "b
 describe("#1 · #3 패널 머리 — OWNER", () => {
   it("자리가 남으면 잔량을 말하고 [Invite]가 열린다", async () => {
     const container = await drawHeader("OWNER", 4);
-    expect(container.textContent).toContain(m.members.seats(4, MEMBER_LIMIT));
+    expect(container.textContent).toContain(en.members.seats(4, MEMBER_LIMIT));
     expect(invite(container).getAttribute("aria-disabled")).toBeNull();
   });
 
@@ -305,11 +305,11 @@ describe("#1 · #3 패널 머리 — OWNER", () => {
   it("좌석이 차면 사유와 함께 꺼지고, 그 사유를 버튼이 가리킨다", async () => {
     const container = await drawHeader("OWNER", MEMBER_LIMIT);
     const button = invite(container);
-    expect(container.textContent).toContain(m.members.seatsFull(MEMBER_LIMIT));
+    expect(container.textContent).toContain(en.members.seatsFull(MEMBER_LIMIT));
     expect(button.getAttribute("aria-disabled")).toBe("true");
     expect(button.disabled).toBe(false);
     const reason = document.getElementById(button.getAttribute("aria-describedby") ?? "");
-    expect(reason?.textContent).toBe(m.members.seatsFull(MEMBER_LIMIT));
+    expect(reason?.textContent).toBe(en.members.seatsFull(MEMBER_LIMIT));
   });
 
   /** ⚠️ **열 창이 없는 갈래에는 모달을 세우지 않는다.** */
@@ -323,15 +323,15 @@ describe("#1 · #3 패널 머리 — OWNER", () => {
 describe("#7 · #8 패널 머리 — EDITOR", () => {
   it("역할 사유가 서고 [Invite]는 꺼진 채 남는다", async () => {
     const container = await drawHeader("EDITOR", 4);
-    expect(container.textContent).toContain(m.members.ownerOnly);
+    expect(container.textContent).toContain(en.members.ownerOnly);
     expect(invite(container).getAttribute("aria-disabled")).toBe("true");
   });
 
   /** ⚠️ **이 단언이 열린 결정 하나를 닫는다** — 좌석을 비워도 EDITOR는 초대할 수 없다. */
   it("좌석이 차 있어도 역할 사유가 이긴다", async () => {
     const container = await drawHeader("EDITOR", MEMBER_LIMIT);
-    expect(container.textContent).toContain(m.members.ownerOnly);
-    expect(container.textContent).not.toContain(m.members.seatsFull(MEMBER_LIMIT));
+    expect(container.textContent).toContain(en.members.ownerOnly);
+    expect(container.textContent).not.toContain(en.members.seatsFull(MEMBER_LIMIT));
   });
 });
 
@@ -346,11 +346,11 @@ describe("캔버스 대조로 되돌린 자리", () => {
   /** ⚠️ 열 머리를 지운 대가가 이 라벨이다 — 없으면 `2 days ago`가 무엇의 시각인지 화면이 말하지 않는다. */
   it("값이 자기 라벨을 든다 — 가입일과 만료", async () => {
     const members = await draw([owner, editor]);
-    expect(find(members, "li").textContent).toContain(m.members.joined(""));
+    expect(find(members, "li").textContent).toContain(en.members.joined(""));
 
     const pending = await drawPending([invitation({ id: "i1" })]);
-    expect(find(pending, "li").textContent).toContain(m.members.pending.expires(""));
-    expect(find(pending, "li").textContent).toContain(m.members.pending.invitedBy("Owner"));
+    expect(find(pending, "li").textContent).toContain(en.members.pending.expires(""));
+    expect(find(pending, "li").textContent).toContain(en.members.pending.invitedBy("Owner"));
   });
 
   /**
@@ -364,7 +364,7 @@ describe("캔버스 대조로 되돌린 자리", () => {
     expect(bands(blocked)[0]!.className).not.toContain("text-destructive");
 
     const unreadable = await draw([owner, second, member({ userId: "u9", readable: false })]);
-    const band = bands(unreadable).find((b) => b.textContent === m.members.unreadableHint);
+    const band = bands(unreadable).find((b) => b.textContent === en.members.unreadableHint);
     expect(band?.className).toContain("text-muted-foreground");
   });
 
@@ -375,8 +375,8 @@ describe("캔버스 대조로 되돌린 자리", () => {
    */
   it("last-owner 문구가 시안 문장이 아니라 사전 값이다", async () => {
     const container = await draw([owner, editor]);
-    expect(bands(container)[0]!.textContent).toBe(accessErrorMessage("last-owner"));
-    expect(accessErrorMessage("last-owner")).toContain("at least one owner");
+    expect(bands(container)[0]!.textContent).toBe(accessErrorMessage(en, "last-owner"));
+    expect(accessErrorMessage(en, "last-owner")).toContain("at least one owner");
   });
 
   /**
@@ -435,7 +435,7 @@ describe("행별 진행 상태 — 동시 요청", () => {
     await draw([owner, alice, bob]);
     for (const who of ["Alice", "Bob"]) {
       await clickEl(document.querySelector(`[aria-label="Remove ${who}"]`)!);
-      await clickEl(dialogButton(m.members.removeConfirm));
+      await clickEl(dialogButton(en.members.removeConfirm));
     }
     return calls;
   }
@@ -483,7 +483,7 @@ describe("행별 진행 상태 — 동시 요청", () => {
     await drawPending([inviteA, inviteB]);
     for (const id of ["i1", "i2"]) {
       await clickEl(document.getElementById(`revoke-${id}`)!);
-      await clickEl(dialogButton(m.members.pending.confirmRevokeAction));
+      await clickEl(dialogButton(en.members.pending.confirmRevokeAction));
     }
     return calls;
   }
@@ -533,9 +533,9 @@ describe("역할 셀렉트 키보드 선택 (malmoi#133)", () => {
     await act(async () => { await user.keyboard("{Enter}"); });
     await vi.waitFor(() => expect(document.activeElement?.getAttribute("role")).toBe("option"));
     await act(async () => { await user.keyboard("{ArrowUp}"); });
-    await vi.waitFor(() => expect(document.activeElement?.textContent).toContain(m.projects.role.OWNER));
+    await vi.waitFor(() => expect(document.activeElement?.textContent).toContain(en.projects.role.OWNER));
     await press(key);
-    expect(document.querySelector('[role="dialog"]')?.textContent).toContain(m.members.confirmRole("Name u3", m.projects.role.OWNER));
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain(en.members.confirmRole("Name u3", en.projects.role.OWNER));
     expect(changeMember).not.toHaveBeenCalled();
   });
 });
@@ -564,10 +564,10 @@ it("승격이 owner-limit-reached면 그 행 아래 Alert가 사유를 말하고
   await draw([owner, editor]);
   const click = async (node: Element) => { await act(async () => { await userEvent.setup().click(node); }); };
   await click(find(document.body, "#role-u3"));
-  await click([...document.querySelectorAll('[role="option"]')].find((o) => o.textContent?.trim() === m.projects.role.OWNER)!);
-  await click([...document.querySelectorAll('[role="dialog"] button')].find((b) => b.textContent?.trim() === m.members.confirmRoleAction)!);
+  await click([...document.querySelectorAll('[role="option"]')].find((o) => o.textContent?.trim() === en.projects.role.OWNER)!);
+  await click([...document.querySelectorAll('[role="dialog"] button')].find((b) => b.textContent?.trim() === en.members.confirmRoleAction)!);
   expect(changeMember).toHaveBeenCalledWith({ slug: "acme", targetUserId: "u3", nextRole: "OWNER" });
   const row = document.getElementById("role-u3")!.closest("li")!;
-  expect(row.querySelector('[role="alert"]')?.textContent).toBe(accessErrorMessage("owner-limit-reached"));
-  expect(find(document.body, "#role-u3").textContent).toContain(m.projects.role.EDITOR);
+  expect(row.querySelector('[role="alert"]')?.textContent).toBe(accessErrorMessage(en, "owner-limit-reached"));
+  expect(find(document.body, "#role-u3").textContent).toContain(en.projects.role.EDITOR);
 });

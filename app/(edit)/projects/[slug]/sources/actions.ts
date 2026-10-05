@@ -1,5 +1,6 @@
 "use server";
 
+import { getMessages } from "@/lib/i18n/server";
 import { revalidateAfterCommit } from "@/lib/revalidate-after-commit";
 import { loadSource } from "@/lib/sources/query";
 import { logFailure } from "@/lib/github-connect/log";
@@ -58,6 +59,7 @@ export async function updateBaseLocale(raw: {
 
 export type SourceDetailResult = { ok: true; detail: import("@/lib/sources/query").SourceDetail } | { rejected: string } | { failed: true };
 export async function loadSourceDetail(raw: { slug: string; surfaceSlug: string }): Promise<SourceDetailResult> {
+  const m = await getMessages();
   if (!raw || typeof raw.slug !== "string" || !raw.slug || typeof raw.surfaceSlug !== "string" || !raw.surfaceSlug) return { rejected: "invalid input" };
   const session = await readSession();
   if (session.status === "none") return { rejected: "unauthorized" };
@@ -67,7 +69,7 @@ export async function loadSourceDetail(raw: { slug: string; surfaceSlug: string 
     const access = await getSurfaceAccess(prisma, { userId: session.userId, slug: raw.slug, surfaceSlug: raw.surfaceSlug, permission: "translation:write" });
     if (access.status !== "ok") return { rejected: access.status };
     if (access.archived) return { rejected: "archived" };
-    const detail = await loadSource(prisma, access.projectId, access.surfaceId, access.role);
+    const detail = await loadSource(prisma, m, access.projectId, access.surfaceId, access.role);
     return detail === null ? { rejected: "not-found" } : { ok: true, detail };
   } catch (error) { logFailure("source-detail", error); return { failed: true }; }
 }

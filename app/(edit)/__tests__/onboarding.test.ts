@@ -1,3 +1,4 @@
+import { en } from "@/messages/en";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ProbeResult } from "@/lib/github-connect/health";
@@ -588,7 +589,6 @@ describe("detectRepoFormats — 3중 검증을 지난 뒤 2패스로 탐지한�
         {
           adapter: "json-catalog",
           confirmation: expect.any(String),
-          label: "JSON catalog",
           pathTemplate: "i18n/{locale}.json",
           outputPaths: ["i18n/en.json", "i18n/fr.json", "i18n/ko.json"],
           locales: ["en", "fr", "ko"],
@@ -969,12 +969,12 @@ describe("createProject — 재검증한 값만 저장한다 (ARCHITECTURE §3.1
 
   it("`sync-branch`가 온보딩 사전에 문구를 갖는다", () => {
     expect(isOnboardError("sync-branch")).toBe(true);
-    expect(onboardErrorMessage("sync-branch")).toContain("Malmoi");
+    expect(onboardErrorMessage(en, "sync-branch")).toContain("Malmoi");
   });
 
   it("`invalid-branch`가 온보딩 사전에 문구를 갖는다 — 판정만 있고 문구가 없으면 화면이 침묵한다", () => {
     expect(isOnboardError("invalid-branch")).toBe(true);
-    expect(onboardErrorMessage("invalid-branch").length).toBeGreaterThan(0);
+    expect(onboardErrorMessage(en, "invalid-branch").length).toBeGreaterThan(0);
   });
 
   /**

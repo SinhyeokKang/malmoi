@@ -5,7 +5,7 @@ import { LocaleFlag } from "@/components/translations/locale-badge";
 import { Alert } from "@/components/ui/alert";
 import { buttonClass } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { m } from "@/lib/i18n";
+import type { Messages } from "@/lib/i18n";
 import { diffWords } from "@/lib/publish/words";
 import { cn } from "@/lib/utils";
 
@@ -19,9 +19,6 @@ import { cn } from "@/lib/utils";
  *
  * ⚠️ 실제 모달은 `<table>`이지만 여기는 `aria-hidden` 프레임 안의 그림이라 시맨틱을 복제하지 않는다 — 칸 폭(220 · 84)만 맞춘다.
  */
-const fixture = m.landing.mockup;
-const p = m.translations.publish;
-
 function Shell({ title, description, children, meta, action, tall }: { title: string; description: string; children: ReactNode; meta: ReactNode; action: ReactNode; tall: boolean }) {
   return (
     <div className={cn("bg-background shadow-medium flex w-[1024px] flex-col overflow-hidden rounded-xl", tall ? "h-[620px]" : "h-[420px]")}>
@@ -44,15 +41,15 @@ function Shell({ title, description, children, meta, action, tall }: { title: st
   );
 }
 
-function DiffLine({ sign, parts, before = false }: { sign: string; parts: readonly { text: string; changed: boolean }[]; before?: boolean }) {
+function DiffLine({ p, sign, parts, before = false }: { p: Messages["translations"]["publish"]; sign: string; parts: readonly { text: string; changed: boolean }[]; before?: boolean }) {
   return (
     <span className="flex gap-2">
       {/* 전·후 라벨은 실제 모달에서 sr-only다 — 목업에선 글리프가 그 자리를 보여 준다. */}
       <span className="sr-only">{before ? p.beforeLabel : p.afterLabel}</span>
-      <span className={cn("w-2.5 shrink-0 text-xs leading-5", before ? "text-red-700" : "text-green-800")}>{sign}</span>
+      <span className={cn("w-2.5 shrink-0 text-xs leading-5", before ? "text-diff-removed" : "text-diff-added")}>{sign}</span>
       <span className={cn("min-w-0 flex-1 text-sm leading-5 break-words whitespace-pre-wrap", before && "text-muted-foreground")}>
         {parts.map((part, i) => (
-          <span key={i} className={!part.changed ? undefined : before ? "text-foreground rounded-[3px] bg-red-700/[0.14]" : "rounded-[3px] bg-green-800/[0.16]"}>
+          <span key={i} className={!part.changed ? undefined : before ? "text-foreground rounded-[3px] bg-diff-removed/[0.14]" : "rounded-[3px] bg-diff-added/[0.16]"}>
             {part.text}
           </span>
         ))}
@@ -73,7 +70,9 @@ function KeyName({ name }: { name: string }) {
   );
 }
 
-export function PreviewModal() {
+export function PreviewModal({ m }: { m: Messages }) {
+  const fixture = m.landing.mockup;
+  const p = m.translations.publish;
   const rows = fixture.diff;
   const keys = new Set(rows.map((row) => row.key)).size;
   return (
@@ -114,8 +113,8 @@ export function PreviewModal() {
                 </span>
                 <span className="flex min-w-0 flex-1 items-start gap-2.5 px-3.5 py-[11px]">
                   <span className="flex min-w-0 flex-1 flex-col gap-copy-gap">
-                    {row.before !== null && <DiffLine sign="−" parts={diff.before} before />}
-                    <DiffLine sign="+" parts={diff.after} />
+                    {row.before !== null && <DiffLine p={p} sign="−" parts={diff.before} before />}
+                    <DiffLine p={p} sign="+" parts={diff.after} />
                   </span>
                   <span data-landing-author="" className="text-muted-foreground shrink-0 text-xs leading-5">{author}</span>
                 </span>
@@ -128,7 +127,9 @@ export function PreviewModal() {
   );
 }
 
-export function ResultModal() {
+export function ResultModal({ m }: { m: Messages }) {
+  const fixture = m.landing.mockup;
+  const p = m.translations.publish;
   const rows = fixture.diff.length;
   return (
     <Shell

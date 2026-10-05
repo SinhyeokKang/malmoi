@@ -55,26 +55,26 @@ describe("relativeTime — 마지막으로 보낸 시각", () => {
   const now = new Date("2026-09-08T12:00:00Z");
 
   it("방금 보낸 것은 '초'로 말하지 않는다", () => {
-    expect(relativeTime(new Date("2026-09-08T11:59:50Z"), now)).toBe("now");
+    expect(relativeTime(new Date("2026-09-08T11:59:50Z"), now, "en")).toBe("now");
   });
 
   it("분·시간·일 단위로 올라간다", () => {
-    expect(relativeTime(new Date("2026-09-08T11:55:00Z"), now)).toBe("5 minutes ago");
-    expect(relativeTime(new Date("2026-09-08T09:00:00Z"), now)).toBe("3 hours ago");
-    expect(relativeTime(new Date("2026-09-06T12:00:00Z"), now)).toBe("2 days ago");
+    expect(relativeTime(new Date("2026-09-08T11:55:00Z"), now, "en")).toBe("5 minutes ago");
+    expect(relativeTime(new Date("2026-09-08T09:00:00Z"), now, "en")).toBe("3 hours ago");
+    expect(relativeTime(new Date("2026-09-06T12:00:00Z"), now, "en")).toBe("2 days ago");
   });
 
   it("어제는 '어제'다 — numeric auto가 숫자보다 읽기 쉽다", () => {
-    expect(relativeTime(new Date("2026-09-07T12:00:00Z"), now)).toBe("yesterday");
+    expect(relativeTime(new Date("2026-09-07T12:00:00Z"), now, "en")).toBe("yesterday");
   });
 
   it("⚠️ 미래 시각도 던지지 않는다 — 서버·DB 시계가 어긋날 수 있다", () => {
-    expect(relativeTime(new Date("2026-09-08T12:00:30Z"), now)).toBe("now");
+    expect(relativeTime(new Date("2026-09-08T12:00:30Z"), now, "en")).toBe("now");
   });
 
   it("같은 입력 → 같은 결과 (결정성)", () => {
     const then = new Date("2026-09-01T00:00:00Z");
-    expect(relativeTime(then, now)).toBe(relativeTime(then, now));
+    expect(relativeTime(then, now, "en")).toBe(relativeTime(then, now, "en"));
   });
 });
 

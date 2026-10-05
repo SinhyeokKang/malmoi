@@ -1,5 +1,5 @@
 import { connectErrorMessage } from "@/lib/github-connect/message";
-import { m, pick } from "@/lib/i18n";
+import { pick, type Messages } from "@/lib/i18n";
 
 import { PROJECT_LIMIT } from "./create-plan";
 import { PROJECT_SLUG_MAX } from "./slug";
@@ -123,27 +123,26 @@ export function isOnboardError(value: unknown): value is OnboardError {
 type SharedWithConnect = "installation-forbidden" | "repo-forbidden" | "repo-read-only" | "repo-not-installed" | "unavailable";
 type Interpolated = "limit-reached" | "invalid-slug";
 
-const ONBOARD = m.errors.onboarding satisfies Record<
-  Exclude<OnboardError, SharedWithConnect | Interpolated> | "fallback",
-  string
-> &
-  Record<Interpolated, (value: number) => string>;
-
-export function onboardErrorMessage(error: OnboardError): string {
+export function onboardErrorMessage(m: Messages, error: OnboardError): string {
+  const onboard = m.errors.onboarding satisfies Record<
+    Exclude<OnboardError, SharedWithConnect | Interpolated> | "fallback",
+    string
+  > &
+    Record<Interpolated, (value: number) => string>;
   switch (error) {
     case "installation-forbidden":
     case "repo-forbidden":
     case "repo-read-only":
     case "repo-not-installed":
     case "unavailable":
-      return connectErrorMessage(error);
+      return connectErrorMessage(m, error);
     case "limit-reached":
-      return ONBOARD["limit-reached"](PROJECT_LIMIT);
+      return onboard["limit-reached"](PROJECT_LIMIT);
     case "invalid-slug":
-      return ONBOARD["invalid-slug"](PROJECT_SLUG_MAX);
+      return onboard["invalid-slug"](PROJECT_SLUG_MAX);
     default:
       // 모르는 값은 접는다 — `?e=`는 주소창에 있다.
-      return pick(ONBOARD, error, ONBOARD.fallback);
+      return pick(onboard, error, onboard.fallback);
   }
 }
 
@@ -154,7 +153,7 @@ export function onboardErrorMessage(error: OnboardError): string {
  * @param failed 실패 갈래 read 에러 + 다운로드 실패 + `duplicateKeys` (`adapterErrorKind`)
  * @param unmanaged 코드에 남아 관리하지 않는 항목 수 — 실패 문장 뒤에 안내로 붙는다
  */
-export function ingestHeadline(count: number, failed: number, unmanaged = 0): string {
+export function ingestHeadline(m: Messages, count: number, failed: number, unmanaged = 0): string {
   // 관리하지 않는 항목은 실패 문장을 대신하지 않고 뒤에 안내로 붙는다 (B2 r3 · QA5).
   const headline = m.newProject.imported(count, failed);
   return unmanaged > 0 ? `${headline} ${m.sources.unmanaged(unmanaged)}` : headline;

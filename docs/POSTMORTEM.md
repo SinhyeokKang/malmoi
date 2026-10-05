@@ -2645,3 +2645,14 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - **근본 원인**: 조상 승격은 “상위 카탈로그가 정본”이라고 가정했지만, 그 가정은 최소 2언어 필터 뒤에서만 실측됐다. 후보 허용 범위를 넓히면서 기존 순위 후처리의 전제도 달라졌다.
 - **그물**: 단일 언어의 개별 탐지·등록 테스트와 정적 리뷰는 놓쳤고, 사용자 승인으로 수행한 학습 코퍼스 재측정이 잡았다. 변경 전 코드(`05d557c8`)로 같은 리포를 재측정해 회귀임을 확인했다. `detect-candidates.test.ts`의 실제 경로 모양 회귀 테스트로 red→green을 확인했다.
 - **재발 방지**: `rg -n 'liftAncestors|rankTemplateCandidates|compareTemplates' lib/adapters`로 어댑터 안과 어댑터 간 순위를 함께 확인한다. 후보 범위를 넓힐 때 새 후보와 기존 정본이 경쟁하는 입력을 `detectCandidatesAcross`에서 검증한다. 단일 언어 후보는 남기되 여러 언어 후보 위로 조상 승격하지 않는다.
+
+### 2026-10-05 — 지휘자가 dev CI red를 두 push 동안 몰랐다 — 로컬 `gate: ok`·CI red인 jsdom 사전 로드 대기
+
+- **영역**: `/orchestrate` §4(통합 → push) · `components/__tests__/helpers/dom.tsx`(`render`의 `uiLocale` 갈래)
+- **증상**: user-timezone 런에서 T4 통합 push(`49547778`, run 37230477013)와 F1 통합 push(`26d589a2`, run 37234393809)의 dev CI가 둘 다 red였다 — `components/__tests__/preferences-time-zone.test.tsx:182` es 케이스 `Missing element: section h2` 한 건. 로컬 `pnpm gate`는 매번 `gate: ok`(단독 3/3 green)였고, 지휘자는 두 번째 push 뒤에야 알았다. 그 사이 사이의 run 둘은 다음 push에 `cancelled`돼 결론이 없었다.
+- **근본 원인**: 두 겹이다. ① `/orchestrate` §4가 통합을 `/push` **1·3·4·5단계**로 정의하고 6단계(CI 안내, 논블로킹)를 빼서, push 뒤 그 커밋의 CI 결론을 보는 단계가 어디에도 없었다 — `/push`도 "`gh run watch`로 대기하지 않는다"이고, 다음 push의 `cancel-in-progress`가 앞 run을 지워 red가 화면에서 사라진다. ② 테스트 쪽: `render(…, { uiLocale: "es" })`가 ko·es 사전을 비동기 로더로 받는데(첫 렌더가 suspend) 헬퍼가 **고정 틱 50번**만 기다렸다. 느린 CI 러너에서는 사전 청크의 변환·로드가 그보다 길어 빈 컨테이너에 단언했다 — 로컬 재현 실패, 코드 분석 가설이다(F2 `bc2b2541`이 렌더 전에 `await import("@/messages/es")`로 모듈 캐시를 데워 고쳤고 `c8ef56bb` CI green).
+- **그물**: 잡은 것 — dev CI `verify`(실패를 정확히 냈다) · 지휘자가 다음 통합 때 우연히 본 run 목록. 놓친 것 — 로컬 게이트(빠른 머신에서 틱 50번이 충분했다) · 지휘 절차(CI 결론을 읽는 단계 없음) · `cancelled` run(결론이 없어 red가 이어졌는지 안 보인다).
+- **재발 방지**:
+  - `/orchestrate` §4가 push 바로 뒤 `gh run watch <그 커밋의 run> --exit-status`를 건다(`58a4f570`). 백그라운드로 걸고 다음 배치를 진행해도 되지만 red면 소유 워커에게 돌려보내기 전엔 다음 push를 하지 않는다. grep: `rg -n "gh run watch" .claude/commands/orchestrate.md` → 1건 이상이어야 한다.
+  - 비동기 로드를 **고정 틱 수로 기다리는** 테스트 대기를 찾는다: `rg -n "i < [0-9]+; i\+\+\)" components app lib --glob '*test*' --glob '**/helpers/**'` — 2026-10-05 실행: `global-search.test.tsx:135`(타이머 큐 비우기 — 모듈 로드 대기가 아니라 해당 없음) · `message.test.ts:342`(반복 생성 — 해당 없음). 남은 동형 자리 0건.
+  - 로컬 green·CI red인 DOM 테스트를 "flaky"로 재실행해 넘기지 않는다 — 대기가 **조건**(`findBy*`·대상 요소 출현)인지 **횟수**인지부터 본다.

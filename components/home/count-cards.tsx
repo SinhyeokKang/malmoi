@@ -4,11 +4,12 @@ import type { ComponentType } from "react";
 
 import { HoldLater } from "@/components/home/hold-later";
 import { CARD_STATE, type CardSubline, type HomeCard } from "@/lib/home/cards";
-import { m } from "@/lib/i18n";
 import type { HoldReason } from "@/lib/protection/plan";
 import { relativeTime } from "@/lib/relative-time";
 import { ALL_NAMESPACES, routes } from "@/lib/routes";
 import { cn } from "@/lib/utils";
+import type { UiLocale } from "@/lib/i18n/locales";
+import type { Messages } from "@/lib/i18n";
 
 /**
  * 카운트 카드 넷 (캔버스 `2a` · DESIGN §6.64).
@@ -32,7 +33,7 @@ const GLYPH: Record<HomeCard["key"], ComponentType<{ className?: string }>> = {
  *   ⚠️ **링크가 표면 경로를 직접 가리킨다** (audit-ux #4b) — 옛 `routes.translations`는 기본 표면으로 redirect하는 공가 라우트라 누를 때마다
  *   서버 왕복이 하나 더 붙었다. `null`(기본 표면 없음)이면 옛 경로로 남는다 — 그 라우트가 "표면이 없다"를 말하는 자리다.
  */
-export function CountCards({ cards, slug, surfaceSlugs, now, heldLater }: {
+export function CountCards({ cards, slug, surfaceSlugs, now, heldLater, uiLocale, m }: {
   cards: readonly HomeCard[];
   slug: string;
   surfaceSlugs: Readonly<Record<HomeCard["key"], string | null>>;
@@ -42,6 +43,8 @@ export function CountCards({ cards, slug, surfaceSlugs, now, heldLater }: {
    * 도착 전에는 `nothing to send`(편집 0이라 참이다)가 선다. ⚠️ 받는 것은 클라이언트 섬(`HoldLater`)이다 — `use()`로 받으면 전환이 조회를 기다린다(U7 r1).
    */
   heldLater?: Promise<HoldReason | null>;
+  uiLocale: UiLocale;
+  m: Messages;
 }) {
   return (
     /*
@@ -98,7 +101,7 @@ export function CountCards({ cards, slug, surfaceSlugs, now, heldLater }: {
                   <Glyph
                     className={cn(
                       "ml-auto size-4",
-                      card.tone === "accent" ? "text-link" : card.tone === "warning" ? "text-amber-700" : "text-gray-dim",
+                      card.tone === "accent" ? "text-link" : card.tone === "warning" ? "text-warning-foreground" : "text-gray-dim",
                     )}
                     aria-hidden
                   />
@@ -122,7 +125,7 @@ export function CountCards({ cards, slug, surfaceSlugs, now, heldLater }: {
                     {m.home.cards.unit[card.unit]} ·{" "}
                     {card.key === "toSend" && heldLater !== undefined
                       ? <HoldLater hold={heldLater} identity={slug} />
-                      : sublineText(card.subline, now)}
+                      : sublineText(m, uiLocale, card.subline, now)}
                   </span>
                 </span>
               </Link>
@@ -147,8 +150,8 @@ function value(card: HomeCard): string {
 }
 
 /** 문장은 사전이 소유한다 — 판정(`countCards`)은 갈래와 재료만 낸다. */
-function sublineText(subline: CardSubline, now: Date): string {
-  const when = (at: Date | null): string | null => (at === null ? null : relativeTime(at, now));
+function sublineText(m: Messages, uiLocale: UiLocale, subline: CardSubline, now: Date): string {
+  const when = (at: Date | null): string | null => (at === null ? null : relativeTime(at, now, uiLocale));
   switch (subline.kind) {
     case "synced":
       return m.home.cards.synced(when(subline.at));

@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 
 import { render } from "@/components/__tests__/helpers/dom";
 
 import ProjectNotFound from "../projects/[slug]/not-found";
 import SurfaceNotFound from "../projects/[slug]/surfaces/[surfaceSlug]/not-found";
+
+vi.mock("@/lib/i18n/server", async () => ({ getUiLocale: async () => "en", getMessages: async () => (await import("@/messages/en")).en }));
 
 /**
  * **셸 안 404도 칸 글리프를 든다** (ux-drift-unify 4-W6) — 셸 안 다른 `EmptyState`는 전부 아이콘이 있어, 글리프 없는 404만

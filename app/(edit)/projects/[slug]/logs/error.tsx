@@ -6,7 +6,7 @@ import { ErrorState } from "@/components/ui/error-state";
 import { PanelBody } from "@/components/shell/content-panel";
 
 
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 
 /**
  * Logs의 **조회 실패 화면** (logs-rework 결정 16).
@@ -26,6 +26,7 @@ import { m } from "@/lib/i18n";
  * 글리프는 §2.4 글리프 열의 실패 `CircleX`다(2026-10-01 — `CircleAlert`는 필드 오류 전용). 셸 공용 경계(`(edit)/error.tsx`)가 같은 형이다.
  */
 export default function LogsError({ retry }: { error: Error & { digest?: string }; retry: () => void }) {
+  const m = useMessages();
   return (
     // 세로 중앙은 `flex-1`이 든다 — 셸 오류 경계·not-found 둘과 같은 형(malmoi#162).
     <PanelBody className="flex flex-col">

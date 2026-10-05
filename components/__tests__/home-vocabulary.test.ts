@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { Node, Project } from "ts-morph";
 
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 /**
  * Home의 **표현 규칙 셋**을 소스에서 센다 (DESIGN §6.64).
@@ -328,7 +328,7 @@ it("면제 목록의 경로가 전부 실재한다", () => {
  * 이력을 보지 않는다 — 다 채웠다가 비운 로케일에 *"has never been filled"*가 섰다.
  */
 describe("빈 로케일 항목 문구 (malmoi#134)", () => {
-  const { body, tail } = m.home.attention.neverFilled;
+  const { body, tail } = en.home.attention.neverFilled;
   it("이력을 단언하지 않는다", () => {
     const text = `${body("ko")}${tail(4)}`;
     expect(text).not.toMatch(/\bnever\b|\byet\b|\bever\b/i);

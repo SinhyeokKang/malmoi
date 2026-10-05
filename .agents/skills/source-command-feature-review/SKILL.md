@@ -102,7 +102,7 @@ Use this skill when the user asks to run the migrated source command `feature-re
 |---|---|---|
 | ui-pattern | 기존 동일 역할 UI와 패턴 일치 여부 | 문서가 언급한 컴포넌트의 기존 구현, `components/`, `components/ui/` |
 | ux-flow | 기존 편집 흐름(선택 키의 로케일 상세·명시 저장·이동 확인·토스트)과 일관성 | `components/translations/workspace/*`, `app/(edit)/actions.ts` |
-| design-token | `docs/DESIGN.md` 규칙(라이트 단일·mono 표면·토큰) 준수 여부, 새 raw 색 도입 여부 | `app/globals.css`, `docs/DESIGN.md`, 기존 컴포넌트의 클래스 사용례 |
+| design-token | `docs/DESIGN.md` 규칙(`dark:` 금지 — 다크는 토큰 값·mono 표면·토큰) 준수 여부, raw 색 도입 여부(0이어야 한다) | `app/globals.css`, `docs/DESIGN.md`, 기존 컴포넌트의 클래스 사용례 |
 
 ---
 
@@ -182,8 +182,8 @@ Use this skill when the user asks to run the migrated source command `feature-re
 ### CDO 프롬프트 핵심
 
 - 편집 흐름이 자연스러운가? 불필요한 클릭/전환이 있는가?
-- `docs/DESIGN.md`의 시각 규칙과 충돌하지 않는가? 특히 **라이트 단일**(`dark:` 금지)과 mono 표면 불변식.
-- 새 raw 색·새 토큰을 늘리는가? 늘리면 DESIGN.md §6.2 등재가 태스크에 있는가?
+- `docs/DESIGN.md`의 시각 규칙과 충돌하지 않는가? 특히 **`dark:` 금지 — 다크는 토큰 값이 든다**와 mono 표면 불변식.
+- 새 색이 필요한가? raw는 0이다 — 새 색은 §6.2 의미 토큰 + 두 테마 값(`light-dark()`)이고, DESIGN.md §6.2 등재와 두 테마 대비 확인이 태스크에 있는가?
 - 기존 컴포넌트(`components/translations/workspace/locale-panel.tsx`, `components/ui/`)의 인터랙션 패턴과 일관적인가? 같은 역할에 새 패턴을 만들지 않았는가?
 - 빈 상태·로딩 상태·에러 상태(저장 실패, 권한 만료)가 고려됐는가?
 - 키가 수백 행인 화면에서 성립하는가? **가상화는 도입하지 않는 결정**이므로 렌더 비용을 늘리는 설계인지 본다.

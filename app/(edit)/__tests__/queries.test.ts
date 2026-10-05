@@ -1,3 +1,4 @@
+import { en } from "@/messages/en";
 import { describe, expect, it, vi } from "vitest";
 
 // `lib/keys/query.ts`가 `server-only`를 문다 — vitest에서 그 패키지는 `react-server` 조건 밖이라
@@ -209,13 +210,13 @@ function memberSeed(): Seed {
 describe("loadMembers", () => {
   it("그 프로젝트의 멤버만 낸다 — 다른 테넌트가 표에 섞이지 않는다", async () => {
     const db = createHarness(memberSeed());
-    const rows = await loadMembers(db.prisma, "p1");
+    const rows = await loadMembers(db.prisma, en, "p1");
     expect(rows.map((r) => r.userId)).toEqual(["u1", "u2"]);
   });
 
   it("가입 순서다 — 목록이 렌더마다 흔들리면 행을 근육 기억으로 못 찾는다", async () => {
     const db = createHarness(memberSeed());
-    const rows = await loadMembers(db.prisma, "p1");
+    const rows = await loadMembers(db.prisma, en, "p1");
     expect(rows.map((r) => r.joinedAt.toISOString())).toEqual([
       "2026-09-01T00:00:00.000Z",
       "2026-09-02T00:00:00.000Z",
@@ -224,7 +225,7 @@ describe("loadMembers", () => {
 
   it("이름·이메일 라벨·역할을 함께 낸다 — 이름이 없는 사용자는 null이다 (Google 계정에 핸들이 없다)", async () => {
     const db = createHarness(memberSeed());
-    const rows = await loadMembers(db.prisma, "p1");
+    const rows = await loadMembers(db.prisma, en, "p1");
     // ⚠️ 원문이 아니라 라벨이다 (sec-audit 발견 4) — 이 값이 그대로 RSC 페이로드로 나간다.
     expect(rows[0]).toMatchObject({ name: "Owner", emailLabel: "o***@x.com", role: "OWNER" });
     expect(rows[1]).toMatchObject({ name: null, emailLabel: "e***@x.com", role: "EDITOR" });
@@ -232,21 +233,21 @@ describe("loadMembers", () => {
 
   it("멤버가 없으면 빈 목록이다", async () => {
     const db = createHarness({ projects: [{ id: "p1", slug: "acme" }] });
-    expect(await loadMembers(db.prisma, "p1")).toEqual([]);
+    expect(await loadMembers(db.prisma, en, "p1")).toEqual([]);
   });
 
   /** 2026-09-28 — `image`를 select하지 않아 모든 행이 이니셜이었다. 순수 함수·DOM 테스트는 이 층을 못 본다. */
   it("계정 사진을 복호화해 싣고, 사진이 없으면 null이다", async () => {
     const base = memberSeed();
     const db = createHarness({ ...base, users: (base.users ?? []).map((u) => u.id === "u1" ? { ...u, image: "https://avatars.githubusercontent.com/u/1" } : u) });
-    const rows = await loadMembers(db.prisma, "p1");
+    const rows = await loadMembers(db.prisma, en, "p1");
     expect(rows.map((r) => r.image)).toEqual(["https://avatars.githubusercontent.com/u/1", null]);
   });
 
   it("못 읽은 행은 사진도 null이다 — 이름과 같은 봉투다", async () => {
     const base = memberSeed();
     const db = createHarness({ ...base, users: (base.users ?? []).map((u) => u.id === "u1" ? { ...u, image: "https://x/y.png", unreadable: true } : u) });
-    const rows = await loadMembers(db.prisma, "p1");
+    const rows = await loadMembers(db.prisma, en, "p1");
     expect(rows[0]).toMatchObject({ image: null, readable: false });
   });
 });
@@ -254,25 +255,25 @@ describe("loadMembers", () => {
 describe("loadPendingInvitations", () => {
   it("수락되지 않고 아직 살아 있는 것만 낸다", async () => {
     const db = createHarness(memberSeed());
-    const rows = await loadPendingInvitations(db.prisma, "p1", NOW);
+    const rows = await loadPendingInvitations(db.prisma, en, "p1", NOW);
     expect(rows.map((r) => r.id)).toEqual(["i-live"]);
   });
 
   it("다른 프로젝트의 대기 초대가 섞이지 않는다", async () => {
     const db = createHarness(memberSeed());
-    const rows = await loadPendingInvitations(db.prisma, "p2", NOW);
+    const rows = await loadPendingInvitations(db.prisma, en, "p2", NOW);
     expect(rows.map((r) => r.id)).toEqual(["i-other"]);
   });
 
   it("초대한 사람의 이름을 함께 낸다 — 누가 보냈는지가 행의 정보다", async () => {
     const db = createHarness(memberSeed());
-    const [row] = await loadPendingInvitations(db.prisma, "p1", NOW);
+    const [row] = await loadPendingInvitations(db.prisma, en, "p1", NOW);
     expect(row).toMatchObject({ emailLabel: "a***@x.com", role: "EDITOR", invitedByName: "Owner" });
   });
 
   it("대기 0건이면 빈 목록이다 — 화면이 빈 상태를 그린다", async () => {
     const db = createHarness({ projects: [{ id: "p1", slug: "acme" }] });
-    expect(await loadPendingInvitations(db.prisma, "p1", NOW)).toEqual([]);
+    expect(await loadPendingInvitations(db.prisma, en, "p1", NOW)).toEqual([]);
   });
 });
 
@@ -298,7 +299,7 @@ describe("loadMembers·loadPendingInvitations — 원문 이메일이 안 나온
 
   it("멤버 행에 `email`이 없고 마스킹 라벨만 있다", async () => {
     const { prisma } = createHarness(withEmails());
-    const rows = await loadMembers(prisma, "p1");
+    const rows = await loadMembers(prisma, en, "p1");
     for (const row of rows) expect(row).not.toHaveProperty("email");
     expect(rows.map((r) => r.emailLabel)).toEqual(["al***@acme.com", "an***@acme.com"]);
   });
@@ -311,7 +312,7 @@ describe("loadMembers·loadPendingInvitations — 원문 이메일이 안 나온
         { id: "u2", email: "bob@other.com", name: null },
       ],
     });
-    expect((await loadMembers(prisma, "p1")).map((r) => r.emailLabel)).toEqual([
+    expect((await loadMembers(prisma, en, "p1")).map((r) => r.emailLabel)).toEqual([
       "a***@acme.com",
       "b***@other.com",
     ]);
@@ -335,7 +336,7 @@ describe("loadMembers·loadPendingInvitations — 원문 이메일이 안 나온
         { id: "u2", email: "andrew@acme.com", name: "Andrew", unreadable: true },
       ],
     });
-    const rows = await loadMembers(db.prisma, "p1");
+    const rows = await loadMembers(db.prisma, en, "p1");
     expect(rows.map((r) => r.emailLabel)).toEqual(["a***@acme.com", "Unavailable"]);
     // 못 읽은 행은 이름도 못 읽는다 — 옛 값을 그럴듯하게 보여주지 않는다.
     expect(rows[1]?.name).toBeNull();
@@ -354,7 +355,7 @@ describe("loadMembers·loadPendingInvitations — 원문 이메일이 안 나온
         { ...pending, id: "i-ok", email: "zoe@acme.com", tokenHash: "h-ok" },
       ],
     });
-    const rows = await loadPendingInvitations(db.prisma, "p1", NOW);
+    const rows = await loadPendingInvitations(db.prisma, en, "p1", NOW);
     // 못 읽은 행이 알파벳순으로는 앞인데 **맨 뒤로** 간다 — 손상 하나가 나머지 순서를 흔들지 않는다.
     expect(rows.map((r) => r.emailLabel)).toEqual(["z***@acme.com", "Unavailable"]);
   });
@@ -376,7 +377,7 @@ describe("loadMembers·loadPendingInvitations — 원문 이메일이 안 나온
         { ...pending, id: "i-b", email: "zack@acme.com", tokenHash: "h-b" },
       ],
     });
-    const rows = await loadPendingInvitations(db.prisma, "p1", NOW);
+    const rows = await loadPendingInvitations(db.prisma, en, "p1", NOW);
     expect(rows.map((r) => [r.id, r.emailLabel])).toEqual([["i-b", "za***@acme.com"], ["i-a1", "zo***@acme.com"], ["i-a2", "zo***@acme.com"]]);
     expect(JSON.stringify(rows)).not.toContain("zoe@acme.com");
   });
@@ -384,7 +385,7 @@ describe("loadMembers·loadPendingInvitations — 원문 이메일이 안 나온
   it("⚠️ **키가 통째로 없으면 던진다** — 그것은 행의 손상이 아니라 장애다", async () => {
     const db = createHarness(withEmails());
     vi.stubEnv("PII_ENCRYPTION_KEYS", "");
-    await expect(loadMembers(db.prisma, "p1")).rejects.toThrow();
+    await expect(loadMembers(db.prisma, en, "p1")).rejects.toThrow();
     vi.unstubAllEnvs();
   });
 
@@ -394,7 +395,7 @@ describe("loadMembers·loadPendingInvitations — 원문 이메일이 안 나온
       users: [{ id: "u1", email: null, name: null }],
       members: [{ projectId: "p1", userId: "u1", role: "OWNER" }],
     });
-    expect((await loadMembers(prisma, "p1"))[0]?.emailLabel).toBeNull();
+    expect((await loadMembers(prisma, en, "p1"))[0]?.emailLabel).toBeNull();
   });
 
   it("대기 초대도 같다 — 여기가 더 민감하다(아직 멤버가 아닌 외부인의 주소다)", async () => {
@@ -406,7 +407,7 @@ describe("loadMembers·loadPendingInvitations — 원문 이메일이 안 나온
         { id: "i2", projectId: "p1", email: "qa-signed-out@example.com", role: "EDITOR", tokenHash: "h2", expiresAt: new Date("2026-09-10T00:00:00Z"), acceptedAt: null, invitedBy: "u1" },
       ],
     });
-    const rows = await loadPendingInvitations(prisma, "p1", now);
+    const rows = await loadPendingInvitations(prisma, en, "p1", now);
     for (const row of rows) expect(row).not.toHaveProperty("email");
     // 둘 다 `q***@example.com`이 되면 [Revoke]가 엉뚱한 링크를 무효화한다 (malmoi#18)
     expect(new Set(rows.map((r) => r.emailLabel)).size).toBe(2);

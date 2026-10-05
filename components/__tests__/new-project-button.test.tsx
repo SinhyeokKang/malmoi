@@ -22,7 +22,7 @@ vi.mock("next/link", () => ({
 }));
 
 import { NewProjectButton } from "@/components/projects/new-project-button";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { routes } from "@/lib/routes";
 
 beforeEach(() => navigation.push.mockReset());
@@ -47,14 +47,14 @@ it.each([undefined, "hello & 말모이"])("검색 %s를 유지하며 모달 도�
   const { container } = await render(<Harness />);
   const link = find<HTMLAnchorElement>(container, "a");
   expect(link.getAttribute("href")).toBe(routes.newProject({ q }));
-  expect(link.textContent).toBe(m.common.nav.newProject);
+  expect(link.textContent).toBe(en.common.nav.newProject);
   expect(link.querySelector(".animate-spin")).toBeNull();
   await act(async () => link.click());
   expect(link.getAttribute("aria-busy")).toBe("true");
   expect(link.getAttribute("aria-disabled")).toBe("true");
   expect(link.querySelector(".animate-spin")).not.toBeNull();
   expect(link.querySelector(".lucide-plus")).toBeNull();
-  expect(link.textContent).toBe(m.common.nav.newProject);
+  expect(link.textContent).toBe(en.common.nav.newProject);
   expect(container.querySelector('[role="dialog"]')).toBeNull();
   await act(async () => link.click());
   expect(navigation.push).toHaveBeenCalledExactlyOnceWith(routes.newProject({ q }));

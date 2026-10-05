@@ -8,7 +8,8 @@ import { HomeActions, HomeTitle, HomeHeaderActions, HomeNotices } from "@/compon
 import { TranslationWorkspace } from "@/components/translations/workspace/workspace";
 import { props as workspaceProps } from "./helpers/workspace-props";
 import { render } from "./helpers/dom";
-import { m } from "@/lib/i18n";
+import { formatMinute } from "@/lib/date-format";
+import { en } from "@/messages/en";
 const mocks = vi.hoisted(() => ({ preview: vi.fn(), pull: vi.fn(), refresh: vi.fn() }));
 vi.mock("@/app/(edit)/publish-actions", () => ({ loadPublishPreview: mocks.preview }));
 vi.mock("@/app/(edit)/actions", () => ({ triggerPullAction: mocks.pull, saveTranslationKey: vi.fn(), previewTranslationRevert: vi.fn(), revertTranslationKey: vi.fn() }));
@@ -64,7 +65,7 @@ it("닫힌 동안 실행을 유지하고 완료가 자동으로 열리지 않는
   await click("Publish"); expect(mocks.pull).toHaveBeenCalledTimes(1);
   expect(document.body.textContent).not.toContain("Publishing\u2026");
   await click("Close");
-  await act(async () => run.resolve({ status: "skipped", reason: "writer-warnings", warnings: ["web: ko.json: bad\n ^"] }));
+  await act(async () => run.resolve({ status: "skipped", reason: "writer-warnings", warnings: [{ surfaceSlug: "web", path: "ko.json", code: "parse-failed", detail: "bad\n ^" }] }));
   expect(document.querySelector('[role="dialog"]')).toBeNull();
   // 재검증 트리가 커밋되기 전까지는 Publish가 잠긴 채다 (malmoi#103) — 서버 렌더를 흉내 낸다.
   await view.rerender(<Host />);
@@ -91,11 +92,11 @@ it("진행 모달의 단계 목록은 시간이 흘러도 바뀌지 않고, 8초
     expect(before).toBeDefined();
     await act(async () => { vi.advanceTimersByTime(7_000); });
     expect(steps()).toBe(before);
-    expect(document.body.textContent).not.toContain(m.common.slow);
+    expect(document.body.textContent).not.toContain(en.common.slow);
     await act(async () => { vi.advanceTimersByTime(1_000); });
-    expect(document.body.textContent).toContain(m.common.slow);
+    expect(document.body.textContent).toContain(en.common.slow);
     await act(async () => run.resolve({ status: "skipped", reason: "no-edits" }));
-    expect(document.body.textContent).not.toContain(m.common.slow);
+    expect(document.body.textContent).not.toContain(en.common.slow);
   } finally { vi.useRealTimers(); }
 });
 it.each([true, false])("이전 조회의 늦은 응답을 무시한다 (성공=%s)", async success => {
@@ -265,43 +266,43 @@ it.each([[2, true], [0, false]] as const)("파일이 없어 빠진 셀 %i개를 
 const committedWith = (withheld?: { file: number; key: number; revertable?: true }) => ({ status: "committed", delivered: 2, pr: "created", commitSha: "c", changed: ["ko.yml"],
   prUrl: "https://github.com/owner/repo/pull/7", ...(withheld === undefined ? {} : { withheld }) });
 it.each([
-  ["created", committedWith({ file: 1, key: 0 }), m.translations.publish.createdDescription(2)],
-  ["updated", { ...committedWith({ file: 1, key: 0 }), pr: "updated" }, m.translations.publish.updatedDescription(7, 2)],
-  ["no-changes", { status: "skipped", reason: "no-changes", withheld: { file: 1, key: 0 } }, m.translations.publish.withheldDescription?.noChanges],
-  ["withheld", { status: "skipped", reason: "withheld", withheld: { file: 1, key: 0 } }, m.translations.publish.withheldDescription?.withheld],
+  ["created", committedWith({ file: 1, key: 0 }), en.translations.publish.createdDescription(2)],
+  ["updated", { ...committedWith({ file: 1, key: 0 }), pr: "updated" }, en.translations.publish.updatedDescription(7, 2)],
+  ["no-changes", { status: "skipped", reason: "no-changes", withheld: { file: 1, key: 0 } }, en.translations.publish.withheldDescription?.noChanges],
+  ["withheld", { status: "skipped", reason: "withheld", withheld: { file: 1, key: 0 } }, en.translations.publish.withheldDescription?.withheld],
 ] as const)("결과 %s는 실린 수로 말하고 보류 한 줄을 붙인다", async (_name, outcome, description) => {
   mocks.preview.mockResolvedValue(ok({ ...preview, total: 3, withoutFile: 1, sendable: { total: 2, keys: 1 } }));
   mocks.pull.mockResolvedValueOnce(outcome);
   await render(<Host count={3} />); await click("Publish3"); await click("Open pull request");
   const text = document.body.textContent ?? "";
   expect(text).toContain(description);
-  expect(text).toContain(`${m.translations.publish.withheld.file(1)} ${m.translations.publish.withheld.editor}`);
-  if (_name === "withheld") expect(text).not.toContain(m.translations.publish.noChanges);
+  expect(text).toContain(`${en.translations.publish.withheld.file(1)} ${en.translations.publish.withheld.editor}`);
+  if (_name === "withheld") expect(text).not.toContain(en.translations.publish.noChanges);
 });
 it("보류가 없으면 결과에 보류 줄이 없다 (짝) · OWNER에게는 Revert를 가리킨다", async () => {
   mocks.pull.mockResolvedValueOnce(committedWith());
   await render(<Host />); await click("Publish1"); await click("Open pull request");
   expect(document.body.textContent).not.toContain("wasn't sent");
-  expect(document.body.textContent).toContain(m.translations.publish.createdDescription(2));
+  expect(document.body.textContent).toContain(en.translations.publish.createdDescription(2));
 });
 it("OWNER의 보류 줄은 파일 추가나 Revert to last sent를 가리킨다", async () => {
   mocks.pull.mockResolvedValueOnce(committedWith({ file: 0, key: 1, revertable: true }));
   await render(<Host role="OWNER" />); await click("Publish1"); await click("Open pull request");
-  expect(document.body.textContent).toContain(`${m.translations.publish.withheld.key(1)} ${m.translations.publish.withheld.owner.key}`);
+  expect(document.body.textContent).toContain(`${en.translations.publish.withheld.key(1)} ${en.translations.publish.withheld.owner.key}`);
   // 코드에서 지운 키(B3.4)도 같은 줄이다 — Revert를 먼저 가리키고, 키를 "다시" 넣는 것을 둘째로 둔다(B3 r3).
-  expect(m.translations.publish.withheld.owner.key).toBe("Use Revert to last sent, or add the keys back to the language file.");
+  expect(en.translations.publish.withheld.owner.key).toBe("Use Revert to last sent, or add the keys back to the language file.");
 });
 it("#129 — 보류된 셀에 되돌릴 기준이 없으면 OWNER 줄이 Revert를 가리키지 않는다", async () => {
   mocks.pull.mockResolvedValueOnce(committedWith({ file: 0, key: 1 }));
   await render(<Host role="OWNER" />); await click("Publish1"); await click("Open pull request");
-  const w = m.translations.publish.withheld;
+  const w = en.translations.publish.withheld;
   expect(document.body.textContent).toContain(`${w.key(1)} ${w.owner.keyNoRevert}`);
   expect(document.body.textContent).not.toContain(w.owner.key);
 });
 it("미리보기가 키 자리 없는 셀을 따로 말한다", async () => {
   mocks.preview.mockResolvedValue(ok({ ...preview, total: 2, withoutFile: 0, withoutKey: 1, sendable: { total: 1, keys: 1 } }));
   await render(<Host count={2} />); await click("Publish2");
-  expect(document.body.textContent).toContain(m.translations.publish.withoutKey(1));
+  expect(document.body.textContent).toContain(en.translations.publish.withoutKey(1));
 });
 /**
  * **base 언어 파일 부재는 전용 거부다** (coordinator review r1 — 사용자 결정). 원인(경로·브랜치)과 고칠 곳을 말하고 Try again을 두지 않는다 —
@@ -312,7 +313,7 @@ it.each(["OWNER", "EDITOR"] as const)("미리보기 base 파일 부재(%s)는 �
   await render(<Host role={role} />);
   await click("Publish1");
   const text = document.body.textContent ?? "";
-  const r = m.translations.publish.baseFileMissing;
+  const r = en.translations.publish.baseFileMissing;
   expect(text).toContain(r.title);
   expect(text).toContain(r.description("config/locales/en.yml", "main"));
   expect(text).toContain(role === "OWNER" ? r.owner : r.editor);
@@ -327,11 +328,11 @@ it.each(["OWNER", "EDITOR"] as const)("미리보기 base 파일 읽기 불가(%s
   await render(<Host role={role} />);
   await click("Publish1");
   const text = document.body.textContent ?? "";
-  const r = m.translations.publish.baseFileUnreadable;
+  const r = en.translations.publish.baseFileUnreadable;
   expect(text).toContain(r.title);
   expect(text).toContain(r.description("en.json", "main"));
   expect(text).toContain(role === "OWNER" ? r.owner : r.editor);
-  expect(text).not.toContain(m.translations.publish.baseFileMissing.title);
+  expect(text).not.toContain(en.translations.publish.baseFileMissing.title);
   expect([...document.querySelectorAll("button")].some(b => b.textContent === "Try again")).toBe(false);
   expect(mocks.pull).not.toHaveBeenCalled();
 });
@@ -342,7 +343,7 @@ it.each(["OWNER", "EDITOR"] as const)("미리보기 base 파일 읽기 불가(%s
 it("보류가 섞인 미리보기는 나가는 수로 말하고 '전부 간다'고 하지 않는다", async () => {
   mocks.preview.mockResolvedValue(ok({ ...preview, total: 2, keys: 1, withoutFile: 1, sendable: { total: 1, keys: 1 } }));
   await render(<Host count={2} />); await click("Publish2");
-  const p = m.translations.publish;
+  const p = en.translations.publish;
   const text = document.body.textContent ?? "";
   expect(text).toContain(p.previewTitle(1));
   expect(text).not.toContain(p.previewTitle(2));
@@ -356,13 +357,13 @@ it("보류가 섞인 미리보기는 나가는 수로 말하고 '전부 간다'�
  * 다르게 그렸고 경고도 무색 글리프였다. 단언은 클래스가 아니라 `data-alert`다.
  */
 it.each([
-  ["열린 PR 없음", null, "neutral", (p: typeof m.translations.publish): string => p.prNone.title("owner/repo")],
-  ["열린 PR", { number: 9, url: "https://github.com/owner/repo/pull/9" }, "neutral", (p: typeof m.translations.publish): string => p.prOpen.title(9)],
-  ["PR 조회 실패", undefined, "warning", (p: typeof m.translations.publish): string => p.prUnknown.title],
+  ["열린 PR 없음", null, "neutral", (p: typeof en.translations.publish): string => p.prNone.title("owner/repo")],
+  ["열린 PR", { number: 9, url: "https://github.com/owner/repo/pull/9" }, "neutral", (p: typeof en.translations.publish): string => p.prOpen.title(9)],
+  ["PR 조회 실패", undefined, "warning", (p: typeof en.translations.publish): string => p.prUnknown.title],
 ] as const)("미리보기 PR 줄(%s)은 뜻에 맞는 Alert tone이다", async (_name, openPr, tone, title) => {
   mocks.preview.mockResolvedValue(ok({ ...preview, openPr }));
   await render(<Host />); await click("Publish1");
-  const block = [...document.querySelectorAll("[data-alert]")].find(node => node.textContent?.includes(title(m.translations.publish)));
+  const block = [...document.querySelectorAll("[data-alert]")].find(node => node.textContent?.includes(title(en.translations.publish)));
   expect(block?.getAttribute("data-alert")).toBe(tone);
 });
 it.each([
@@ -374,7 +375,7 @@ it.each([
   await render(<Host />); await click("Publish1"); await click("Open pull request");
   const blocks = [...document.querySelectorAll('[role="dialog"] [data-alert]')];
   expect(blocks.map(node => node.getAttribute("data-alert"))).toEqual([tone]);
-  if (name === "updated") expect(blocks[0]?.textContent).toContain(m.translations.publish.replacedTitle);
+  if (name === "updated") expect(blocks[0]?.textContent).toContain(en.translations.publish.replacedTitle);
 });
 /**
  * **열린 PR 줄 본문은 한 줄에 선다** (r1) — 본문이 14px `Alert`로 커지며 긴 문장이 1024 모달에서 두 줄로 접히면, 한 줄 골격(`AlertSkeleton`)에서
@@ -383,26 +384,32 @@ it.each([
 it("열린 PR 줄 본문은 한 줄 길이다", async () => {
   mocks.preview.mockResolvedValue(ok({ ...preview, openPr: { number: 12345, url: "https://github.com/owner/repo/pull/12345" }, sendable: { total: 123456, keys: 1 } }));
   await render(<Host />); await click("Publish1");
-  const block = [...document.querySelectorAll('[data-alert="neutral"]')].find(node => node.textContent?.includes(m.translations.publish.prOpen.title(12345)));
+  const block = [...document.querySelectorAll('[data-alert="neutral"]')].find(node => node.textContent?.includes(en.translations.publish.prOpen.title(12345)));
   const body = block?.querySelector("p + div")?.textContent ?? "";
   expect(body.length).toBeGreaterThan(0);
   expect(body.length).toBeLessThanOrEqual(100);
 });
 /** 4-W2 · 1-Y5 — 버린 값 목록은 카드 규격(radius 12)이고 개수는 배지(`CountBadge`)이며 머리 글리프가 warning 톤이다. */
 it("writer 경고 목록은 카드 radius · 개수 배지 · warning 글리프다", async () => {
-  mocks.pull.mockResolvedValueOnce({ status: "skipped", reason: "writer-warnings", warnings: ["web: ko.json: bad", "web: ko.json: worse"] });
+  mocks.pull.mockResolvedValueOnce({ status: "skipped", reason: "writer-warnings", warnings: [
+    { surfaceSlug: "web", path: "ko.json", code: "parse-failed", detail: "bad" }, { surfaceSlug: "web", path: "ko.json", code: "root-not-object" },
+  ] });
   await render(<Host />); await click("Publish1"); await click("Open pull request");
   const list = document.querySelector('[role="dialog"] section');
   expect(list?.className).toContain("rounded-lg");
   const head = list?.firstElementChild;
   expect(head?.querySelector('[aria-hidden="true"]:not(svg)')?.textContent).toBe("2");
-  expect(head?.querySelector(".sr-only")?.textContent).toBe(m.translations.publish.warnings(2));
-  expect(head?.querySelector("svg")?.getAttribute("class")).toContain("text-amber-700");
+  expect(head?.querySelector(".sr-only")?.textContent).toBe(en.translations.publish.warnings(2));
+  expect(head?.querySelector("svg")?.getAttribute("class")).toContain("text-warning-foreground");
+  // 실행은 코드만 싣고 모달이 사전으로 문장을 조립한다(ui-locales B1′) — 표면·파일 한 묶음에 문장 둘.
+  expect(list?.textContent).toContain("web: ko.json");
+  expect(list?.textContent).toContain(`${en.adapterErrors["parse-failed"]} (bad)`);
+  expect(list?.textContent).toContain(en.adapterErrors["root-not-object"]);
 });
 it("전부 보류면 PR 버튼이 없고 이유를 말한다 · 실행하지 않는다", async () => {
   mocks.preview.mockResolvedValue(ok({ ...preview, total: 1, keys: 1, withoutFile: 1, sendable: { total: 0, keys: 0 }, openPr: { number: 9, url: "https://github.com/owner/repo/pull/9" } }));
   await render(<Host count={1} />); await click("Publish1");
-  const p = m.translations.publish;
+  const p = en.translations.publish;
   const text = document.body.textContent ?? "";
   expect(text).toContain(p.nothingSendable.title);
   expect(text).toContain(p.nothingSendable.body);
@@ -414,7 +421,7 @@ it("전부 보류면 PR 버튼이 없고 이유를 말한다 · 실행하지 않
 it("no-changes에 보류가 있으면 Not sent 틀이고 nothing-to-send 약속이 없다", async () => {
   mocks.pull.mockResolvedValueOnce({ status: "skipped", reason: "no-changes", withheld: { file: 1, key: 0 } });
   await render(<Host />); await click("Publish1"); await click("Open pull request");
-  const p = m.translations.publish;
+  const p = en.translations.publish;
   const text = document.body.textContent ?? "";
   expect(text).not.toContain(p.noChangesDescription);
   expect(text).not.toContain(p.inLogs);
@@ -425,8 +432,8 @@ it("skipped/withheld 설명은 writer 경고 문장이 아니다", async () => {
   mocks.pull.mockResolvedValueOnce({ status: "skipped", reason: "withheld", withheld: { file: 1, key: 0 } });
   await render(<Host />); await click("Publish1"); await click("Open pull request");
   const text = document.body.textContent ?? "";
-  expect(text).not.toContain(m.translations.publish.notSentDescription);
-  expect(text).toContain(m.translations.publish.withheldDescription.withheld);
+  expect(text).not.toContain(en.translations.publish.notSentDescription);
+  expect(text).toContain(en.translations.publish.withheldDescription.withheld);
 });
 /**
  * B1 r3 — no-changes 실행이 열린 PR을 닫았으면 결과가 그 사실과 이유를 말한다(역할별 — DESIGN §10.1). 전에는 "Nothing was written"만 서고
@@ -435,17 +442,17 @@ it("skipped/withheld 설명은 writer 경고 문장이 아니다", async () => {
 it.each(["OWNER", "EDITOR"] as const)("no-changes가 PR #4를 닫았으면 결과가 그 이유를 말한다(%s)", async role => {
   mocks.pull.mockResolvedValueOnce({ status: "skipped", reason: "no-changes", closedPr: { number: 4, url: "https://github.com/owner/repo/pull/4" } });
   await render(<Host role={role} />); await click("Publish1"); await click("Open pull request");
-  const c = m.translations.publish.closedPr;
+  const c = en.translations.publish.closedPr;
   const text = document.body.textContent ?? "";
   expect(text).toContain(c.description("main"));
   expect(text).toContain(`${c.line(4, "main")} ${role === "OWNER" ? c.owner : c.editor}`);
-  expect(text).not.toContain(m.translations.publish.noChangesDescription);
+  expect(text).not.toContain(en.translations.publish.noChangesDescription);
   expect([...document.querySelectorAll('[role="dialog"] a')].some(a => a.getAttribute("href") === "https://github.com/owner/repo/pull/4")).toBe(true);
 });
 it("닫은 PR이 없으면 그 줄이 없다 (짝)", async () => {
   mocks.pull.mockResolvedValueOnce({ status: "skipped", reason: "no-changes" });
   await render(<Host />); await click("Publish1"); await click("Open pull request");
-  expect(document.body.textContent).toContain(m.translations.publish.noChangesDescription);
+  expect(document.body.textContent).toContain(en.translations.publish.noChangesDescription);
   expect(document.body.textContent).not.toContain("was closed because");
 });
 /**
@@ -460,18 +467,18 @@ const withRows = (rows: object[], openPr: object | null, changedFiles = rows.eve
 it("열린 PR의 변경을 되돌리는 행은 그렇다고 말한다 · PR이 없으면 이미 리포에 있다고 말한다", async () => {
   mocks.preview.mockResolvedValue(withRows([sameRow, otherRow], { number: 9, url: "https://github.com/owner/repo/pull/9" }));
   await render(<Host count={2} />); await click("Publish2");
-  const s = m.translations.publish.same;
+  const s = en.translations.publish.same;
   expect(document.body.textContent).toContain(s.undoes(9));
-  expect(document.body.textContent).toContain(m.translations.publish.replacePr(9));
+  expect(document.body.textContent).toContain(en.translations.publish.replacePr(9));
 });
 it("전부 되돌린 편집이고 PR이 열려 있으면 미리보기가 그 PR을 닫는다고 말하고 버튼이 그 일을 든다", async () => {
   mocks.preview.mockResolvedValue(withRows([sameRow], { number: 9, url: "https://github.com/owner/repo/pull/9" }));
   await render(<Host />); await click("Publish1");
-  const s = m.translations.publish.same;
+  const s = en.translations.publish.same;
   const text = document.body.textContent ?? "";
   expect(text).toContain(s.closesTitle(9));
   expect(text).toContain(s.closesBody(9, "main"));
-  expect(text).not.toContain(m.translations.publish.prOpen.title(9));
+  expect(text).not.toContain(en.translations.publish.prOpen.title(9));
   await click(s.closeAction(9));
   expect(mocks.pull).toHaveBeenCalledTimes(1);
 });
@@ -482,7 +489,7 @@ it("전부 되돌린 편집이고 PR이 열려 있으면 미리보기가 그 PR�
 it("#128 r5 — 편집은 전부 base와 같지만 다른 파일이 바뀌면 PR을 닫는다고 말하지 않는다", async () => {
   mocks.preview.mockResolvedValue(withRows([sameRow], { number: 9, url: "https://github.com/owner/repo/pull/9" }, ["ja.json"]));
   await render(<Host />); await click("Publish1");
-  const p = m.translations.publish;
+  const p = en.translations.publish;
   const text = document.body.textContent ?? "";
   expect(text).not.toContain(p.same.closesTitle(9));
   expect([...document.querySelectorAll("button")].some(b => b.textContent === p.same.closeAction(9))).toBe(false);
@@ -493,17 +500,17 @@ it("#128 r5 — 전부 보류면 실행이 아무 파일도 안 바꾸므로 편
   mocks.preview.mockResolvedValue(ok({ ...preview, total: 1, keys: 1, withoutKey: 1, changedFiles: ["ja.json"], sendable: { total: 0, keys: 0 } }));
   await render(<Host count={1} />); await click("Publish1");
   const text = document.body.textContent ?? "";
-  expect(text).toContain(m.translations.publish.nothingSendable.title);
-  expect(text).not.toContain(m.translations.publish.otherFile.label);
+  expect(text).toContain(en.translations.publish.nothingSendable.title);
+  expect(text).not.toContain(en.translations.publish.otherFile.label);
   expect(text).not.toContain("ja.json");
 });
 it("전부 base와 같고 PR이 없으면 파일이 바뀌지 않는다고 말한다", async () => {
   mocks.preview.mockResolvedValue(withRows([sameRow], null));
   await render(<Host />); await click("Publish1");
-  const s = m.translations.publish.same;
+  const s = en.translations.publish.same;
   expect(document.body.textContent).toContain(s.nothingTitle("main"));
   expect(document.body.textContent).toContain(s.already);
-  expect([...document.querySelectorAll("button")].some(b => b.textContent === m.translations.publish.openPr)).toBe(false);
+  expect([...document.querySelectorAll("button")].some(b => b.textContent === en.translations.publish.openPr)).toBe(false);
 });
 /**
  * #94 — 전부 base와 같으면 실행이 파일을 하나도 안 쓴다(결과·Logs `0 files`). 푸터가 편집이 사는 파일(`groups`)을 세면 한 흐름 안에서 1과 0이 갈린다.
@@ -512,7 +519,7 @@ it("전부 base와 같고 PR이 없으면 파일이 바뀌지 않는다고 말�
 it.each([[{ number: 9, url: "https://github.com/owner/repo/pull/9" }], [null]])("전부 base와 같으면 푸터가 파일 수를 세지 않는다 (PR %#)", async openPr => {
   mocks.preview.mockResolvedValue(withRows([sameRow], openPr));
   await render(<Host />); await click("Publish1");
-  const p = m.translations.publish;
+  const p = en.translations.publish;
   const text = document.body.textContent ?? "";
   expect(text).toContain(p.fileSummary(1, 1));
   expect(text).not.toContain(p.previewSummary(1, 1, 1));
@@ -520,7 +527,7 @@ it.each([[{ number: 9, url: "https://github.com/owner/repo/pull/9" }], [null]])(
 it("바뀌는 편집이 있으면 푸터가 파일 수를 센다 (짝)", async () => {
   mocks.preview.mockResolvedValue(withRows([otherRow], null));
   await render(<Host />); await click("Publish1");
-  expect(document.body.textContent).toContain(m.translations.publish.previewSummary(1, 1, 1));
+  expect(document.body.textContent).toContain(en.translations.publish.previewSummary(1, 1, 1));
 });
 /**
  * #128 — PR이 바꾸는 파일은 편집이 사는 파일보다 많을 수 있다(orphan 줄 제거, 닫힌 PR에 실렸던 값의 재전송). 미리보기가 그 파일을 이름으로 세우고
@@ -529,7 +536,7 @@ it("바뀌는 편집이 있으면 푸터가 파일 수를 센다 (짝)", async (
 it("#128 — 편집 없이 바뀌는 파일도 표에 서고, 푸터가 실행의 파일 수를 센다", async () => {
   mocks.preview.mockResolvedValue(withRows([otherRow], null, ["ja.json", "ko.json"]));
   await render(<Host />); await click("Publish1");
-  const p = m.translations.publish;
+  const p = en.translations.publish;
   const text = document.body.textContent ?? "";
   expect(text).toContain(p.previewSummary(1, 1, 2));
   expect(text).toContain("ja.json");
@@ -539,7 +546,7 @@ it("#128 — 편집 없이 바뀌는 파일도 표에 서고, 푸터가 실행�
 it("#128 — 상한 밖 행이 있으면 편집 없는 파일로 단정하지 않는다 · 파일 수는 그대로 실행의 수다 (짝)", async () => {
   mocks.preview.mockResolvedValue(ok({ ...(withRows([otherRow], null, ["ja.json", "ko.json"]).preview as object), total: 3, truncated: 2, sendable: { total: 3, keys: 1 } }));
   await render(<Host count={3} />); await click("Publish3");
-  const p = m.translations.publish;
+  const p = en.translations.publish;
   const text = document.body.textContent ?? "";
   expect(text).toContain(p.previewSummary(3, 1, 2));
   expect(text).not.toContain(p.otherFile.label);
@@ -579,13 +586,13 @@ it.each(["invalid input", "weird-code"])("코드 없는 모르는 거부 %s는 �
   await render(<Host />); await click("Publish1"); await click("Open pull request");
   const text = document.body.textContent ?? "";
   expect(text).not.toContain(error);
-  expect(text).not.toContain(m.errors.access.forbidden);
-  expect(text).toContain(m.translations.publish.refused);
+  expect(text).not.toContain(en.errors.access.forbidden);
+  expect(text).toContain(en.translations.publish.refused);
 });
 it("아는 거부는 그 문장이 선다 — 폴백이 모든 거부를 삼키지 않는다", async () => {
   mocks.pull.mockResolvedValue({ status: "failed", error: "not-ready", delivery: "not-started", retryable: false });
   await render(<Host />); await click("Publish1"); await click("Open pull request");
-  expect(document.body.textContent).toContain(m.errors.onboarding["not-ready"]);
+  expect(document.body.textContent).toContain(en.errors.onboarding["not-ready"]);
 });
 it("실패의 alert만 낭독하고 닫힌 동안 완료는 포커스를 빼앗지 않는다", async () => {
   const run = deferred<unknown>(); mocks.pull.mockReturnValueOnce(run.promise);
@@ -625,6 +632,16 @@ it("실패 시각은 <time dateTime>에 UTC 라벨로 선다", async () => {
   const time = document.querySelector("time");
   expect(time?.textContent).toMatch(/^[A-Z][a-z]{2} \d{1,2}, \d{4} \d{2}:\d{2} UTC$/);
   expect(new Date(time?.getAttribute("dateTime") ?? "").toISOString()).toBe(time?.getAttribute("dateTime"));
+});
+/** user-timezone C2 — 보는 사람이 고른 시간대로 말하고 오프셋을 단다. `dateTime`은 그대로 UTC ISO다. */
+it("실패 시각은 고른 시간대(Asia/Seoul)로 서고 UTC+9 라벨을 단다", async () => {
+  mocks.pull.mockResolvedValueOnce({ status: "failed", error: "unavailable", retryable: true, code: "ref-1" });
+  await render(<Host />, { timeZone: "Asia/Seoul" }); await click("Publish1"); await click("Open pull request");
+  const time = document.querySelector("time");
+  const iso = time?.getAttribute("dateTime") ?? "";
+  expect(new Date(iso).toISOString()).toBe(iso);
+  expect(time?.textContent).toMatch(/ UTC\+9$/);
+  expect(time?.textContent).toBe(formatMinute(new Date(iso), { uiLocale: "en", timeZone: "Asia/Seoul" }));
 });
 
 });

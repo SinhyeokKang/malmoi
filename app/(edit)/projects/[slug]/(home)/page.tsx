@@ -17,7 +17,7 @@ import { canPerform } from "@/lib/auth/permission";
 import { requireProjectAccess } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
 import { parseLogFilter, type LogSearchParams } from "@/lib/events/filter";
-import { m } from "@/lib/i18n";
+import { getDateStyle, getMessages, getUiLocale } from "@/lib/i18n/server";
 import { HOME_EVENT_LIMIT, loadEvent, loadEvents } from "@/lib/events/query";
 import { loadConnectionHealth } from "@/lib/github";
 import { logFailure } from "@/lib/github-connect/log";
@@ -83,6 +83,9 @@ export default async function ProjectHomePage({
   /** ⚠️ **`event` 하나를 받는다** — Recent logs가 **Home 위에서** 상세를 연다 (캔버스 `1h`). */
   searchParams: Promise<LogSearchParams>;
 }) {
+  const uiLocale = await getUiLocale();
+  const style = await getDateStyle();
+  const m = await getMessages();
   const { slug } = await params;
   const { projectId, role, archived } = await requireProjectAccess({ slug, permission: "translation:write" });
   const openRef = parseLogFilter(await searchParams).event;
@@ -129,7 +132,7 @@ export default async function ProjectHomePage({
    * 갈래를 만나고, 이 화면이 착지점이라 그것을 **먼저** 만나는 자리가 여기다.
    */
   const readiness = planProjectReadiness(project);
-  if (readiness !== "ready") return <ProjectNotReady slug={slug} role={role} readiness={readiness} />;
+  if (readiness !== "ready") return <ProjectNotReady slug={slug} role={role} readiness={readiness} m={m} />;
 
   /**
    * ⚠️ **한 라운드다** (POSTMORTEM 2026-09-05 — 병목이 행 수가 아니라 함수 리전이었다). 조회가
@@ -148,10 +151,10 @@ export default async function ProjectHomePage({
      *
      * ⚠️ **`try`로 감싸지 않는다** (결정 16) — 실패는 Home 전체가 오류 화면이 되어야 한다.
      */
-    loadEvents(prisma, projectId, parseLogFilter({}), { limit: HOME_EVENT_LIMIT }),
+    loadEvents(prisma, m, projectId, parseLogFilter({}), { limit: HOME_EVENT_LIMIT, timeZone: style.timeZone }),
     loadReviewAttention(prisma, projectId),
     // ⚠️ **상세는 Home 위에서 연다** — Logs로 튕겨 보내지 않는다(캔버스 `1h`).
-    openRef === null ? Promise.resolve(null) : loadEvent(prisma, projectId, openRef),
+    openRef === null ? Promise.resolve(null) : loadEvent(prisma, m, projectId, openRef),
     /**
      * ⚠️ **여기서만 던지는 것을 삼킨다** (code-review 2026-09-15 🟡4). `probeRepo`는 GitHub 실패를
      * 값으로 주지만 `createApp()`은 `GITHUB_APP_ID`·PEM이 깨졌을 때 **던진다** — 설정 화면에서는
@@ -368,10 +371,10 @@ export default async function ProjectHomePage({
             // 카드마다 그 수가 있는 첫 소스로 — 번역 화면의 범위가 트리 위치라 기본 소스로 가면 0건일 수 있다(translation-tree-range §5).
             surfaceSlugs={cardLandings(surfaceQueues(projectId, surfaces, aggregates), defaultSurface)}
             now={now}
-            heldLater={heldLater}
+            heldLater={heldLater} uiLocale={uiLocale} m={m}
           />
-          <AttentionCard items={items} slug={slug} role={role} state={state} now={now} />
-          <LogsCard rows={events.rows} slug={slug} now={now} archived={archived} syncedBefore={lastSyncAt !== null} />
+          <AttentionCard items={items} slug={slug} role={role} state={state} now={now} uiLocale={uiLocale} m={m} />
+          <LogsCard rows={events.rows} slug={slug} now={now} archived={archived} syncedBefore={lastSyncAt !== null} style={style} m={m} />
         </div>
 
         <MetaColumn
@@ -379,7 +382,7 @@ export default async function ProjectHomePage({
           slug={slug}
           now={now}
           canOpenSettings={canPerform(role, "project:settings")}
-          late={heldLater?.then(homeLate)}
+          late={heldLater?.then(homeLate)} uiLocale={uiLocale} m={m}
         />
       </PanelBody>
 
@@ -403,7 +406,7 @@ export default async function ProjectHomePage({
               archived={archived}
               canOpenSettings={canPerform(role, "project:settings")}
               repoUrl={`https://github.com/${project.repoOwner}/${project.repoName}`}
-              translationHref={translationHref}
+              translationHref={translationHref} style={style} m={m}
             />
           )}
         </EventDialog>

@@ -1,5 +1,6 @@
-import { m, pick } from "@/lib/i18n";
+import { pick, type Messages } from "@/lib/i18n";
 import { PROJECT_LIMIT } from "@/lib/onboarding/create-plan";
+import { en } from "@/messages/en";
 
 /**
  * 인가 거부 → 사용자 문구. 문구는 사전(`messages/en.tsx`)이 들고, **케이스 누락은 `satisfies
@@ -45,7 +46,7 @@ const ACCESS_ERRORS: ReadonlySet<string> = new Set<AccessError>([
 /**
  * 화면이 `error: string`을 받아 문구를 고를 때의 판정. 전에는 화면 셋이 각자 `Set`을 들고 `as AccessError`로
  * 단언했다 — 사유가 늘면 셋 중 하나가 빠진다. `satisfies` 검사로 union과 목록이 같은 크기임을 강제하지는
- * 못하므로, 아래 `ACCESS`의 `satisfies`와 `lib/auth/__tests__/message.test.ts`가 함께 본다.
+ * 못하므로, 아래 `accessErrorMessage`의 `satisfies`와 `lib/auth/__tests__/message.test.ts`가 함께 본다.
  */
 export function isAccessError(value: unknown): value is AccessError {
   return typeof value === "string" && ACCESS_ERRORS.has(value);
@@ -55,16 +56,15 @@ export function isAccessError(value: unknown): value is AccessError {
  * 갈래가 늘면 **사전에 키가 없어 컴파일 에러**다 — 지금까지의 `never` 검사와 같은 힘이고 코드는 줄어든다.
  * 던져도 되는 이유는 인자가 우리 코드가 만든 값만 들어오기 때문이다(아래 둘과 다르다).
  */
-// `token-scope`는 MCP 도구 결과와 같은 문장이다 — 사전에 한 벌만 둔다.
+// `token-scope`는 MCP 도구 결과와 같은 문장이다 — 사전에 한 벌만 둔다. 세션 경로에서는 나오지 않아 `mcp` 절(영어 고정)에서 읽는다.
 // 상한 문구는 숫자를 상수에서 보간한다 — 사전은 잎이라 `PROJECT_LIMIT`을 import하지 않는다(`onboardErrorMessage`와 같은 형).
-const ACCESS = {
-  ...m.errors.access,
-  "token-scope": m.mcp.errors["token-scope"],
-  "owner-limit-reached": m.errors.access["owner-limit-reached"](PROJECT_LIMIT),
-} satisfies Record<AccessError, string>;
-
-export function accessErrorMessage(error: AccessError): string {
-  return ACCESS[error];
+export function accessErrorMessage(m: Messages, error: AccessError): string {
+  const access = {
+    ...m.errors.access,
+    "token-scope": en.mcp.errors["token-scope"],
+    "owner-limit-reached": m.errors.access["owner-limit-reached"](PROJECT_LIMIT),
+  } satisfies Record<AccessError, string>;
+  return access[error];
 }
 
 /**
@@ -102,10 +102,6 @@ export type InviteError =
  * 통째로 죽고, 그건 외부인이 여는 화면이다. `accessErrorMessage`가 던져도 되는 것과 다르다(그쪽 인자는
  * 우리 코드가 만든 값만 들어온다).
  */
-const INVITE = {
-  ...m.errors.invite,
-  "limit-reached": m.errors.invite["limit-reached"](PROJECT_LIMIT),
-} satisfies Record<InviteError | "fallback", string>;
 
 /**
  * ⚠️ **인자가 `string`이다 — `InviteError`가 아니다** (2026-09-08). 이 함수의 계약은 "모르는 값에
@@ -113,9 +109,13 @@ const INVITE = {
  * `as InviteError`를 걸고 있었다 — **단언은 그 계약을 검사에서 지우는 것이다.** `signInErrorMessage`가
  * 같은 이유로 처음부터 `string`을 받는다.
  */
-export function inviteErrorMessage(error: string): string {
+export function inviteErrorMessage(m: Messages, error: string): string {
+  const invite = {
+    ...m.errors.invite,
+    "limit-reached": m.errors.invite["limit-reached"](PROJECT_LIMIT),
+  } satisfies Record<InviteError | "fallback", string>;
   // 모르는 값은 접는다 — `?e=`는 주소창에 있어 사용자가 손댈 수 있고, 던지면 외부인이 여는 화면이 죽는다.
-  return pick(INVITE, error, INVITE.fallback);
+  return pick(invite, error, invite.fallback);
 }
 
 /**
@@ -127,10 +127,9 @@ export function inviteErrorMessage(error: string): string {
  *
  * ⚠️ **코드를 그대로 노출하지 않는다.** 읽는 사람은 비개발자 동료다 (PRODUCT §3).
  */
-const SIGN_IN = m.errors.signIn;
-
-export function signInErrorMessage(code: string): string {
+export function signInErrorMessage(m: Messages, code: string): string {
+  const signIn = m.errors.signIn;
   // Auth.js의 코드 집합은 우리 union이 아니다 — 아는 것만 갈라 말하고 나머지는 재시도로 접는다.
   // `fallback` 자체는 코드가 아니므로 사전에서 직접 꺼내 온다.
-  return code === "fallback" ? SIGN_IN.fallback : pick(SIGN_IN, code, SIGN_IN.fallback);
+  return code === "fallback" ? signIn.fallback : pick(signIn, code, signIn.fallback);
 }

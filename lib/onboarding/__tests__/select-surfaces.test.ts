@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { planSurfaceSelection } from "../select-surfaces";
 import type { CandidateSummary } from "../detect";
 const candidate = (path: string, outputPaths: string[]): CandidateSummary => ({
-  adapter: "json-catalog", label: "JSON", pathTemplate: path, outputPaths,
+  adapter: "json-catalog", pathTemplate: path, outputPaths,
   locales: ["en", "ko"], baseLocale: "en", keys: { status: "counted", count: 1 }, samples: [],
 });
 const candidates = [candidate("a/i18n/{locale}.json", ["a/i18n/en.json"]), candidate("b/i18n/{locale}.json", ["b/i18n/en.json"])];

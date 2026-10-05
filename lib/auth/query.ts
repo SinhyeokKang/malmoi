@@ -1,7 +1,7 @@
 import "server-only";
 import { decodeUser, decodeInvitation, readable } from "@/lib/credentials/records";
 import { validatePiiReadKeys } from "@/lib/credentials/storage";
-import { m } from "@/lib/i18n";
+import type { Messages } from "@/lib/i18n";
 import type { PrismaClient } from "@/generated/prisma/client";
 
 import { planProjectAccess, type ArchivedPolicy, type ProjectAccess } from "./access";
@@ -88,7 +88,7 @@ export type MemberView = {
 };
 
 /** 가입 순서. 목록이 렌더마다 흔들리면 사용자가 행을 근육 기억으로 못 찾는다 (`loadMemberships`와 같은 이유). */
-export async function loadMembers(prisma: PrismaClient, projectId: string): Promise<MemberView[]> {
+export async function loadMembers(prisma: PrismaClient, m: Messages, projectId: string): Promise<MemberView[]> {
   const storedRows = await prisma.projectMember.findMany({
     where: { projectId },
     // ⚠️ `email`을 **읽되 돌려주지 않는다** — 가리려면 원문이 필요하고, 나가면 안 되는 것은 반환값이다.
@@ -145,6 +145,7 @@ export type PendingInvitation = {
  */
 export async function loadPendingInvitations(
   prisma: PrismaClient,
+  m: Messages,
   projectId: string,
   now: Date,
 ): Promise<PendingInvitation[]> {

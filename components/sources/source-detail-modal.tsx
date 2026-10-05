@@ -21,15 +21,15 @@ import { LocaleFlag } from "@/components/translations/locale-badge";
 import { relativeTime } from "@/lib/relative-time";
 import { CopyButton } from "@/components/ui/copy-button";
 import { canPerform, type Role } from "@/lib/auth/permission";
-import { m } from "@/lib/i18n";
+import { useDateStyle, useMessages } from "@/components/i18n/messages-provider";
 import { planSurfaceImportStatus, type SurfaceImportStatus } from "@/lib/import/surface-status";
 import { basePending } from "@/lib/onboarding/base-pending";
 import { importFailureMessage, isImportFailureCode } from "@/lib/projects/import-failure";
 import { routes, ALL_NAMESPACES } from "@/lib/routes";
 import { planSourceActions } from "@/lib/sources/actions";
-import { STATE } from "@/lib/status/canon";
+import { STATE, stateLabel } from "@/lib/status/canon";
 import type { SourceDetail } from "@/lib/sources/query";
-import { utcMinute } from "@/lib/utc-time";
+import { formatMinute } from "@/lib/date-format";
 import { BaseLanguageForm } from "./base-language-form";
 import { IconTile } from "@/components/ui/icon-tile";
 
@@ -42,6 +42,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
   onBusy: (busy: boolean) => void; onClose: () => void; onReload: () => void; onImport: () => void; onSaved: () => void;
   returnFocusRef: RefObject<HTMLElement | null>; fallbackFocusRef: RefObject<HTMLElement | null>;
 }) {
+  const m = useMessages();
   const [fieldError, setFieldError] = useState(false);
   /**
    * ⚠️ **모달을 떠나는 길 전부가 같은 문을 지난다** (시안 `1j`) — 목록으로 돌아가는 넷(× · Esc ·
@@ -103,11 +104,11 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
         <ListRow>
           {importStatus && <IconTile data-source-status-tile tone={importStatus.tone}><StatusGlyph labelKey={importStatus.labelKey} /></IconTile>}
           <span className="flex min-w-0 flex-1 flex-col gap-copy-gap">
-            <span className="text-base"><span className="font-medium">{importStatus && STATE[importStatus.labelKey].label}</span>
+            <span className="text-base"><span className="font-medium">{importStatus && stateLabel(m, importStatus.labelKey)}</span>
               {statusAt !== null && <> — {importStatus?.state === "importing" && <>{m.sources.started} </>}{importStatus?.state === "not-imported" && <>{m.sources.addedAgo} </>}<RelativeAt at={statusAt} now={now} /></>}</span>
             {/* 보조 문장은 본문 색이다 — 톤은 칸과 낱말이 든다(§6.2 "Alert는 글자를 본문 색으로"와 같은 규칙, 옛 판은 호출부가 호박·빨강 글자를 골랐다). */}
             <span className="text-muted-foreground text-xs leading-body">
-              {isImportFailureCode(detail.lastImportError) ? importFailureMessage(detail.lastImportError)
+              {isImportFailureCode(detail.lastImportError) ? importFailureMessage(m, detail.lastImportError)
                 : detail.lastCommitSha ? m.sources.importedSummary(detail.keys, detail.locales)
                 : m.sources.notImportedHelp}
               {statusFailed && !canEdit && <> {importStatus?.state === "failed-after" ? m.sources.askOwnerRerun : m.sources.askOwner}</>}
@@ -154,7 +155,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
             </span>
             <span className="flex w-[300px] shrink-0 flex-col gap-1.5 @max-[850px]:w-auto @max-[850px]:flex-1">
               <span className={cn("flex items-baseline text-xs", row.orphaned ? "text-gray-dim" : "text-muted-foreground")}>
-                <span className={cn(!row.orphaned && "text-foreground")}>{row.percent}%</span><span className="ml-auto">{row.translated} of {row.total}</span>
+                <span className={cn(!row.orphaned && "text-foreground")}>{row.percent}%</span><span className="ml-auto">{m.sources.translatedOfTotal(row.translated, row.total)}</span>
               </span>
               <Meter done={row.total === 0 ? 0 : (done / row.total) * 100} review={row.orphaned || row.total === 0 ? 0 : (review / row.total) * 100} dimmed={row.orphaned} />
             </span>
@@ -198,7 +199,8 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
 function slashBreaks(text: string) {
   return text.split("/").map((part, index) => <Fragment key={index}>{index > 0 && <>/<wbr /></>}{part}</Fragment>);
 }
-function SourceTime({ at }: { at: Date }) { return <time dateTime={at.toISOString()} aria-label={utcMinute(at)}>{utcMinute(at)}</time>; }
+function SourceTime({ at }: { at: Date }) {
+  const style = useDateStyle(); return <time dateTime={at.toISOString()} aria-label={formatMinute(at, style)}>{formatMinute(at, style)}</time>; }
 /**
  * 상세 칸의 글리프 — §2.4 글리프 열이다(5-Y4): 실패 `CircleX` · 경고 `TriangleAlert` · 성공 `CircleCheck` · 그 밖 `Info`.
  * 진행 중은 `LoaderCircle` 회전이다(5-Y14 — 옛 손 조립 원 스피너. 칸 안 자리 교체라 `Button loading`으로 못 옮긴다).
@@ -212,5 +214,6 @@ function StatusGlyph({ labelKey }: { labelKey: SurfaceImportStatus["labelKey"] }
     case "notSyncedYet": return <Info aria-hidden />;
   }
 }
-/** 상대 표기여도 절대 값을 함께 든다 — 화면의 낱말이 "5분 전"이어도 접근 이름은 UTC다 (DESIGN §6.68). */
-function RelativeAt({ at, now }: { at: Date; now: Date }) { return <time dateTime={at.toISOString()} aria-label={utcMinute(at)}>{relativeTime(at, now)}</time>; }
+/** 상대 표기여도 절대 값을 함께 든다 — 화면의 낱말이 "5분 전"이어도 접근 이름은 절대 시각이다 (DESIGN §6.68). */
+function RelativeAt({ at, now }: { at: Date; now: Date }) {
+  const style = useDateStyle(); return <time dateTime={at.toISOString()} aria-label={formatMinute(at, style)}>{relativeTime(at, now, style.uiLocale)}</time>; }

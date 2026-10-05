@@ -12,5 +12,6 @@ import { sitemapEntries } from "@/lib/seo/crawl";
 export const dynamic = "force-static";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  return sitemapEntries(flattenNav(loadSummary()));
+  // URL은 언어와 무관하다 — 페이지 집합은 원문 en의 SUMMARY다(세 벌이 같은 집합인 것은 `locales.test.ts`)
+  return sitemapEntries(flattenNav(loadSummary("en")));
 }

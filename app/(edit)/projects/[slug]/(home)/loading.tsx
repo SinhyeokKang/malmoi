@@ -2,7 +2,7 @@ import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { SEGMENT, SELECTED, TRACK, UNSELECTED } from "@/components/ui/segment";
 import { SegmentBody } from "@/components/ui/segmented-control";
 import { Skeleton } from "@/components/ui/skeleton";
-import { m } from "@/lib/i18n";
+import { getMessages } from "@/lib/i18n/server";
 import { cn } from "@/lib/utils";
 
 /**
@@ -21,7 +21,8 @@ import { cn } from "@/lib/utils";
  *
  * ⚠️ **`motion-safe:`가 붙어 있다** — 움직임을 줄인 사용자에게는 정지한 회색 블록으로 선다.
  */
-export default function ProjectHomeLoading() {
+export default async function ProjectHomeLoading() {
+  const m = await getMessages();
   return (
     <>
       {/*

@@ -13,7 +13,7 @@ import { ArchiveCard } from "@/components/settings/archive-card";
 import { FileInput } from "@/components/ui/file-input";
 import { Button } from "@/components/ui/button";
 import type { MemberView } from "@/lib/auth/query";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { find, render } from "./helpers/dom";
 
@@ -199,16 +199,16 @@ describe("Button progress semantics before the API rename", () => {
       <ArchiveCard slug="fixture" name="Fixture" archived={false} openPrUrl={Promise.resolve(null)} />
       <MemberList slug="fixture" members={members} role="OWNER" viewerId="owner" now={now} headingId="members" />
     </>);
-    const archive = [...container.querySelectorAll<HTMLButtonElement>("button")].find(button => button.textContent === m.archive.action)!;
+    const archive = [...container.querySelectorAll<HTMLButtonElement>("button")].find(button => button.textContent === en.archive.action)!;
     try {
       await click(archive);
-      const confirmArchive = [...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')].find(button => button.textContent === m.archive.action)!;
+      const confirmArchive = [...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')].find(button => button.textContent === en.archive.action)!;
       await click(confirmArchive);
       expect(archive.getAttribute("aria-busy")).toBe("true");
       expect(await spinnerDimensions(archive)).toEqual([14, 14]);
       const remove = find<HTMLButtonElement>(container, "#remove-editor");
       await click(remove);
-      const confirmRemove = [...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')].find(button => button.textContent === m.members.removeConfirm)!;
+      const confirmRemove = [...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')].find(button => button.textContent === en.members.removeConfirm)!;
       await click(confirmRemove);
       expect(remove.getAttribute("aria-busy")).toBe("true");
       expect(await spinnerDimensions(remove)).toEqual([16, 16]);

@@ -4,7 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 import { SearchInput } from "@/components/ui/search-input";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import { routes } from "@/lib/routes";
 
 /**
@@ -18,6 +18,7 @@ import { routes } from "@/lib/routes";
  * 페이지 안의 링크 생성기가 옛 경로를 하드코딩해 사이드바가 전부 404였다).
  */
 export function ProjectSearch({ q, onSearch }: { q: string; onSearch: (query: string) => void }) {
+  const m = useMessages();
   return (
     <SearchInput
       value={q}

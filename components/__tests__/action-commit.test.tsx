@@ -42,7 +42,7 @@ import { MemberList } from "@/components/members/member-list";
 import { PendingInvitations } from "@/components/members/pending-invitations";
 import { SourcesScreen } from "@/components/sources/sources-screen";
 import type { MemberView, PendingInvitation } from "@/lib/auth/query";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import type { SourceDetail, SourcesData } from "@/lib/sources/query";
 
 let commit: () => void = () => {};
@@ -90,7 +90,7 @@ describe("#12 — 중복 refresh를 지우고 대기가 커밋을 덮는다", ()
       return <><SyncButton slug="acme" name="acme" branch="main" role="OWNER" unsent={0} open={open} onOpenChange={setOpen} onResult={outcome => setResult(outcome.ok ? "synced" : "failed")} /><output>{result}</output></>;
     }
     await render(<Host />);
-    await click(byName(m.repositorySync.action));
+    await click(byName(en.repositorySync.action));
     await click(byName("Sync from repository"));
     expect(document.querySelector("output")?.textContent).toBe("synced");
     expect(mocks.refresh).not.toHaveBeenCalled();
@@ -139,7 +139,7 @@ describe("#13 — 행 잠금과 토스트·닫기가 커밋 뒤다", () => {
     mocks.changeMember.mockImplementation(revalidating({ ok: true }));
     await render(<MemberList slug="acme" members={[owner, alice]} role="OWNER" viewerId="u1" now={now} headingId="h" />);
     await click(byName("Remove Alice"));
-    await click(inDialog(m.members.removeConfirm));
+    await click(inDialog(en.members.removeConfirm));
     expect(spinning(byName("Remove Alice"))).toBe(true);
     await finishCommit();
     expect(spinning(byName("Remove Alice"))).toBe(false);
@@ -156,8 +156,8 @@ describe("#13 — 행 잠금과 토스트·닫기가 커밋 뒤다", () => {
   it("역할 변경: Select만 돌고 [Remove]는 잠기기만 한다 — 커밋까지", async () => {
     mocks.changeMember.mockImplementation(revalidating({ ok: true }));
     await render(<MemberList slug="acme" members={[owner, alice]} role="OWNER" viewerId="u1" now={now} headingId="h" />);
-    await pickRole("u2", m.projects.role.OWNER);
-    await click(inDialog(m.members.confirmRoleAction));
+    await pickRole("u2", en.projects.role.OWNER);
+    await click(inDialog(en.members.confirmRoleAction));
     const select = document.getElementById("role-u2")!;
     expect(select.getAttribute("aria-busy")).toBe("true");
     expect(spinning(byName("Remove Alice"))).toBe(false);
@@ -171,7 +171,7 @@ describe("#13 — 행 잠금과 토스트·닫기가 커밋 뒤다", () => {
     mocks.changeMember.mockImplementation(revalidating({ ok: true }));
     await render(<MemberList slug="acme" members={[owner, alice]} role="OWNER" viewerId="u1" now={now} headingId="h" />);
     await click(byName("Remove Alice"));
-    await click(inDialog(m.members.removeConfirm));
+    await click(inDialog(en.members.removeConfirm));
     const select = document.getElementById("role-u2")!;
     expect(spinning(byName("Remove Alice"))).toBe(true);
     expect(select.getAttribute("aria-busy")).toBeNull();
@@ -183,7 +183,7 @@ describe("#13 — 행 잠금과 토스트·닫기가 커밋 뒤다", () => {
     await render(<PendingInvitations slug="acme" invitations={[invite]} role="OWNER" now={now} headingId="h" />);
     const revoke = byName("Revoke invitation for t***@example.com");
     await click(revoke);
-    await click(inDialog(m.members.pending.confirmRevokeAction));
+    await click(inDialog(en.members.pending.confirmRevokeAction));
     expect(spinning(revoke)).toBe(true);
     await finishCommit();
     expect(spinning(revoke)).toBe(false);

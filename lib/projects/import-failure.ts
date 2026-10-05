@@ -1,4 +1,4 @@
-import { m } from "@/lib/i18n";
+import type { Messages } from "@/lib/i18n";
 
 // 클라이언트에 실어도 되는 실패 낱말. 검증은 import-status.ts에 남는다.
 /**
@@ -33,28 +33,27 @@ export function isImportFailureCode(raw: string | null | undefined): raw is Impo
 }
 
 /**
- * 갈래 누락을 **컴파일 타임에** 잡는다 — 사전이 잎이라 union을 그쪽에서 import할 수 없으므로
- * 소비자가 `satisfies`를 건다 (`adapterErrorMessage`와 같은 관용구).
- */
-const FAILURE_SENTENCE = {
-  "parse-failed": m.projects.importFailure.parseFailed,
-  "parse-crashed": m.projects.importFailure.parseCrashed,
-  "invalid-locale-data": m.projects.importFailure.invalidLocaleData,
-  "prepare-failed": m.projects.importFailure.prepareFailed,
-  "partial-import": m.projects.importFailure.partialImport,
-  "import-failed": m.projects.importFailure.importFailed,
-} satisfies Record<ImportFailureCode, string>;
-
-/**
  * 코드 → 화면 문장. **파서 원문은 애초에 저장되지 않으므로 여기서 뺄 것이 없다.**
  *
- * ⚠️ **`FAILURE_SENTENCE[code]`를 그대로 쓰지 않는다** — 이 값은 DB 컬럼에서 오고, 프로토타입 키가
+ * 갈래 누락을 **컴파일 타임에** 잡는다 — 사전이 잎이라 union을 그쪽에서 import할 수 없으므로
+ * 소비자가 `satisfies`를 건다 (`adapterErrorMessage`와 같은 관용구).
+ *
+ * ⚠️ **`sentences[code]`를 그대로 쓰지 않는다** — 이 값은 DB 컬럼에서 오고, 프로토타입 키가
  * 코드 자리에 오면 `Object.prototype`에서 **함수**가 찾아져 문자열 자리에 들어간다
  * (POSTMORTEM 2026-09-08 🔴1).
  */
-export function importFailureMessage(code: ImportFailureCode): string {
-  const sentence = Object.hasOwn(FAILURE_SENTENCE, code) ? FAILURE_SENTENCE[code] : undefined;
-  return typeof sentence === "string" ? sentence : m.projects.importFailure.importFailed;
+export function importFailureMessage(m: Messages, code: ImportFailureCode): string {
+  const failure = m.projects.importFailure;
+  const sentences = {
+    "parse-failed": failure.parseFailed,
+    "parse-crashed": failure.parseCrashed,
+    "invalid-locale-data": failure.invalidLocaleData,
+    "prepare-failed": failure.prepareFailed,
+    "partial-import": failure.partialImport,
+    "import-failed": failure.importFailed,
+  } satisfies Record<ImportFailureCode, string>;
+  const sentence = Object.hasOwn(sentences, code) ? sentences[code] : undefined;
+  return typeof sentence === "string" ? sentence : failure.importFailed;
 }
 
 /**

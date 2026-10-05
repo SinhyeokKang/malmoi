@@ -2,7 +2,6 @@ import { clearAuthRoundtripCookies } from "@/lib/auth/roundtrip-cookies";
 import { decodeInvitation, decodeUser } from "@/lib/credentials/records";
 import { credentialIO } from "@/lib/credentials/access";
 import type { Metadata } from "next";
-import Image from "next/image";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
@@ -15,6 +14,7 @@ import { ProviderSubmit } from "@/components/signin/provider-button";
 import { Alert } from "@/components/ui/alert";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { SubmitButton } from "@/components/submit-button";
+import { MalmoiMark } from "@/components/ui/malmoi-mark";
 import { maskEmail } from "@/lib/auth/email";
 import { hashInviteToken } from "@/lib/auth/invitation";
 import { planInviteView } from "@/lib/auth/invite-view";
@@ -22,9 +22,10 @@ import { inviteErrorMessage } from "@/lib/auth/message";
 import { readSession } from "@/lib/auth/read-session";
 import { getPrisma } from "@/lib/db";
 import { logCaught } from "@/lib/failure";
-import { m } from "@/lib/i18n";
+import type { Messages } from "@/lib/i18n";
+import { getMessages } from "@/lib/i18n/server";
+import { en } from "@/messages/en";
 import { routes } from "@/lib/routes";
-import logo from "@/public/brand/malmoi-icon-black.svg";
 import { firstQueryValues, type Raw } from "@/lib/search-params";
 
 import { acceptInvitation } from "../actions";
@@ -47,7 +48,7 @@ import { acceptInvitation } from "../actions";
  * 토큰 URL이 색인된다. `no-referrer`는 Analytics 방어다 — 푸터 링크를 새 탭으로 열면 같은 출처 referrer가 전체 URL이고
  * Vercel 스크립트가 그것을 싣는데 `beforeSend`는 `url`만 바꿀 수 있다.
  */
-export const metadata: Metadata = { title: m.invite.title, robots: { index: false, follow: false }, referrer: "no-referrer" };
+export const metadata: Metadata = { title: en.invite.title, robots: { index: false, follow: false }, referrer: "no-referrer" };
 
 export default async function InvitePage({
   params,
@@ -58,6 +59,7 @@ export default async function InvitePage({
   // 화면은 그대로라, 사용자에게는 버튼이 안 눌린 것으로 보인다 (issue #2, POSTMORTEM 2026-09-06).
   searchParams: Promise<Raw<"e">>;
 }) {
+  const m = await getMessages();
   const { token } = await params;
   const { e } = firstQueryValues(await searchParams);
   const session = await readSession();
@@ -129,8 +131,8 @@ export default async function InvitePage({
     case "sign-in":
       cta = (
         <div className="flex w-full flex-col gap-2">
-          <ProviderButton provider="github" token={token} />
-          <ProviderButton provider="google" token={token} />
+          <ProviderButton m={m} provider="github" token={token} />
+          <ProviderButton m={m} provider="google" token={token} />
           {/* 로그인 약관과 같이 행동을 먼저 읽도록 캡션은 버튼 아래에 둔다. */}
           <p className="text-muted-foreground text-center text-xs leading-relaxed">
             {m.invite.signInHint(email ?? "")}
@@ -173,9 +175,9 @@ export default async function InvitePage({
   }
 
   return (
-    <Card>
+    <Card m={m}>
       <AuthHeading title={view.kind === "blocked" && !view.retry ? m.invite.unavailableTitle : m.invite.title} description={email === null ? undefined : m.invite.sentTo(email)} />
-      {view.notice !== null && <Alert variant="danger" className="w-full">{inviteErrorMessage(view.notice)}</Alert>}
+      {view.notice !== null && <Alert variant="danger" className="w-full">{inviteErrorMessage(m, view.notice)}</Alert>}
       {(view.kind === "accept" || view.kind === "wrong-account") && invitation != null && (
         <InviteProjectCard
           name={invitation.project.name}
@@ -194,11 +196,11 @@ export default async function InvitePage({
  * 셸 밖 카드 — **로그인 화면과 같은 2열 골격을 쓴다** (8-1b). 번역자에게는 이 화면이 제품의 첫
  * 얼굴이라 따로 그리면 같은 제품이 두 얼굴이 된다.
  */
-function Card({ children }: { children: ReactNode }) {
+function Card({ m, children }: { m: Messages; children: ReactNode }) {
   return (
-    <AuthLayout>
+    <AuthLayout m={m}>
       <AuthColumn>
-        <Image src={logo} alt="" width={48} height={48} priority />
+        <MalmoiMark size={48} />
         {children}
       </AuthColumn>
     </AuthLayout>
@@ -218,7 +220,7 @@ function Card({ children }: { children: ReactNode }) {
  *
  * ⚠️ **함수 이름을 바꾸지 않는다** — `normal-login.test.tsx`가 이것을 이름으로 찾는다.
  */
-function ProviderButton({ provider, token }: { provider: "github" | "google"; token: string }) {
+function ProviderButton({ m, provider, token }: { m: Messages; provider: "github" | "google"; token: string }) {
   return (
     <form
       className="w-full"

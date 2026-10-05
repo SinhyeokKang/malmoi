@@ -9,8 +9,11 @@ import { LEGACY_ANCHORS, SECTION_LEGACY_ANCHORS } from "../legacy-anchors";
 import { headings, parseMd } from "../parse";
 import { leadParagraph, parseMdTable } from "../sections";
 import { flattenNav, parseSummary, slugToFile } from "../summary";
+import { guideTrees } from "./helpers/served";
 
-const GUIDE = fileURLToPath(new URL("../../../guide/", import.meta.url));
+const MANUALS = fileURLToPath(new URL("../../../guide/", import.meta.url));
+// 원문(en) 트리 — 번역 트리의 구조는 `locales.test.ts`가 en과 견준다
+const GUIDE = join(MANUALS, "en");
 const read = (file: string) => parseMd(readFileSync(join(GUIDE, file), "utf8"));
 const nav = () => flattenNav(parseSummary(read("SUMMARY.md")));
 
@@ -26,15 +29,17 @@ describe("실물 가이드 구조", () => {
   it("SUMMARY와 실제 원고가 일치하고 운영 매뉴얼만 서빙 밖에 둔다", () => {
     const files = nav().map(({ file }) => file);
     expect(files.length).toBeGreaterThan(0);
-    expect(markdownFiles(GUIDE).filter((file) => !["SUMMARY.md", "AUTHORING.md", "SHOOTING.md"].includes(file)).sort()).toEqual([...files].sort());
+    expect(markdownFiles(GUIDE).filter((file) => file !== "SUMMARY.md").sort()).toEqual([...files].sort());
     expect(files).toContain("README.md");
     expect(slugToFile(["AUTHORING"], files)).toBeNull();
     expect(slugToFile(["SHOOTING"], files)).toBeNull();
   });
 
-  it("페이지마다 H1 하나와 도입 문단이 있고 H2 앵커가 빠지거나 겹치지 않는다", () => {
-    for (const { file, title } of nav()) {
-      const tree = read(file);
+  // 번역 트리도 같은 규칙이다 — H1이 그 언어 SUMMARY의 제목이어야 내비와 본문 제목이 갈리지 않는다
+  it.each(guideTrees(MANUALS).map(({ uiLocale, dir }) => [uiLocale, dir] as const))("페이지마다 H1 하나와 도입 문단이 있고 H2 앵커가 빠지거나 겹치지 않는다 — %s", (_uiLocale, dir) => {
+    const readIn = (file: string) => parseMd(readFileSync(join(dir, file), "utf8"));
+    for (const { file, title } of flattenNav(parseSummary(readIn("SUMMARY.md")))) {
+      const tree = readIn(file);
       const all = headings(tree);
       expect(all.filter(({ depth }) => depth === 1), file).toHaveLength(1);
       expect(all.find(({ depth }) => depth === 1)?.text, file).toBe(title);
@@ -89,7 +94,7 @@ describe("실물 가이드 구조", () => {
   });
 
   it("작성 규약의 외부 라벨 표가 GitHub 라벨을 고정한다", () => {
-    expect(parseMdTable(read("AUTHORING.md"), "external-labels")).toEqual(expect.arrayContaining([
+    expect(parseMdTable(parseMd(readFileSync(join(MANUALS, "AUTHORING.md"), "utf8")), "external-labels")).toEqual(expect.arrayContaining([
       expect.objectContaining({ "라벨": "Settings" }),
       expect.objectContaining({ "라벨": "Secrets and variables" }),
       expect.objectContaining({ "라벨": "Actions" }),

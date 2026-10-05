@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-import { servedGuideFiles } from "@/lib/guide/__tests__/helpers/served";
+import { guideTrees, servedGuideFiles } from "@/lib/guide/__tests__/helpers/served";
 
 /**
  * **화면에 닿는 소스에 한글 리터럴이 없다** (CLAUDE.md 코드 컨벤션).
@@ -69,6 +69,14 @@ const KOREAN_ALLOWED = [
   // ⚠️ 사용자 문자열이 아니라 `$queryRaw` 템플릿 안의 **SQL 주석**(`--`)이다 — 스캐너는 JS 주석만 벗기므로 남고, 화면에 닿지 않아 옮길 대상이 아니다.
   // 이 목록에 이름이 있어야 스캐너가 루트 파일을 실제로 훑는다는 것이 고정된다.
   "lib/push/apply.ts",
+  // 화면 언어 이름 `한국어`(endonym) — 번역하지 않는 상수라 사전에 둘 수 없다(ui-locales design §2 `UI_LOCALE_NAMES`). 그 밖의 한글은 두지 않는다.
+  "lib/i18n/locales.ts",
+  // ko 날짜 단위(`년`·`월`·`일`) — 형식을 손으로 만드는 자리라(`Intl` 날짜 포맷터 배제는 `lib/date-format.ts` 머리 주석) 사전에 둘 수 없다. 한글은 ko 조립 두 줄에만 둔다.
+  "lib/date-format.ts",
+  // ko 화면 사전 — 화면 문구의 한글은 이 파일에만 둔다(ui-locales design §6). 위 두 줄은 문구가 아니라 상수다.
+  "messages/ko.tsx",
+  // ko 방침 본 — 법적 문서라 ko 화면 사전과 따로 둔다(ui-locales design §8). `/privacy` 페이지만 import한다.
+  "messages/ko-privacy.tsx",
 ];
 
 /**
@@ -103,8 +111,10 @@ const countKorean = (text: string): number => (text.match(/[가-힣]/g) ?? []).l
  * 같은 글롭의 `/*`를 블록 주석 시작으로 먹어 **그 뒤 본문이 통째로 사라진다**(거짓 음성).
  */
 function guideScanned(root: string): { path: string; korean: number }[] {
-  const dir = join(root, "guide");
-  return servedGuideFiles(dir).map((file) => ({ path: relative(root, join(dir, file)), korean: countKorean(readFileSync(join(dir, file), "utf8")) }));
+  // ko 트리만 한국어가 정상이다 — en·es 원고에 한글이 새면 그 언어 독자에게 깨진 문장이다(ui-locales design §6.1)
+  return guideTrees(join(root, "guide"))
+    .filter(({ uiLocale }) => uiLocale !== "ko")
+    .flatMap(({ dir }) => servedGuideFiles(dir).map((file) => ({ path: relative(root, join(dir, file)), korean: countKorean(readFileSync(join(dir, file), "utf8")) })));
 }
 
 function scanned(): { path: string; korean: number }[] {
@@ -178,13 +188,13 @@ describe("원고 스캔 — 서빙되는 md만, 주석 벗기기 없이", () => 
   const FIXTURE = fileURLToPath(new URL("../../guide/__tests__/fixtures/scan", import.meta.url));
 
   it("SUMMARY에 오른 md만 훑는다 — AUTHORING·SHOOTING·미등재 파일은 빠진다", () => {
-    expect(guideScanned(FIXTURE).map(({ path }) => path)).toEqual(["guide/SUMMARY.md", "guide/formats.md"]);
+    expect(guideScanned(FIXTURE).map(({ path }) => path)).toEqual(["guide/en/SUMMARY.md", "guide/en/formats.md"]);
   });
 
   it("글롭 `/*` 뒤의 한글이 잡힌다 — 벗기기를 건너뛰었다는 증거", () => {
-    const source = readFileSync(join(FIXTURE, "guide/formats.md"), "utf8");
+    const source = readFileSync(join(FIXTURE, "guide/en/formats.md"), "utf8");
     // 같은 본문을 벗기면 한글이 사라진다 — md에 벗기기를 걸면 이 검사가 조용해진다
     expect(countKorean(stripComments(source))).toBe(0);
-    expect(guideScanned(FIXTURE).find(({ path }) => path === "guide/formats.md")?.korean).toBeGreaterThan(0);
+    expect(guideScanned(FIXTURE).find(({ path }) => path === "guide/en/formats.md")?.korean).toBeGreaterThan(0);
   });
 });

@@ -4,9 +4,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "@/components/__tests__/helpers/dom";
 import type { SessionRead } from "@/lib/auth/read-session";
 import type { LoadedReleases } from "@/lib/changelog/load";
-import { m } from "@/lib/i18n";
-import { FOOTER_LINKS, GITHUB_RELEASES_URL } from "@/lib/links";
+import { en } from "@/messages/en";
+import { footerLinks, GITHUB_RELEASES_URL } from "@/lib/links";
 import { routes } from "@/lib/routes";
+
+vi.mock("@/lib/i18n/server", async () => ({ getMessages: async () => (await import("@/messages/en")).en, getUiLocale: async () => "en" }));
 
 /**
  * **`/changelog`는 공개 셸 안의 공개 페이지다** (spec 결정). GitHub가 실패하거나 0건이어도 페이지는 서고
@@ -56,21 +58,21 @@ describe("`/changelog` — 공개 셸", () => {
   it("본문 랜드마크 하나 안에 제목이 서고, 헤더의 Changelog만 current다", async () => {
     const container = await page({ ok: true, releases: TWO, truncated: false });
     expect(container.querySelectorAll("main")).toHaveLength(1);
-    expect(main(container).querySelector("h1")?.textContent).toBe(m.changelog.title);
+    expect(main(container).querySelector("h1")?.textContent).toBe(en.changelog.title);
     const current = [...container.querySelectorAll("header [aria-current]")];
     expect(current.map((a) => [a.textContent, a.getAttribute("href"), a.getAttribute("aria-current")])).toEqual([
-      [m.changelog.title, routes.changelog(), "page"],
+      [en.changelog.title, routes.changelog(), "page"],
     ]);
   });
 
   it("푸터가 공개 셸의 링크 목록이다", async () => {
     const container = await page({ ok: false });
-    expect([...container.querySelectorAll("footer a")].map((a) => a.getAttribute("href"))).toEqual(FOOTER_LINKS.map(({ href }) => href));
+    expect([...container.querySelectorAll("footer a")].map((a) => a.getAttribute("href"))).toEqual(footerLinks(en).map(({ href }) => href));
   });
 
   it("헤더 primary는 세션으로 갈린다", async () => {
     const container = await page({ ok: false }, "ok");
-    expect(container.querySelector(`header button[aria-label="${m.common.nav.userMenu}"]`)).not.toBeNull();
+    expect(container.querySelector(`header button[aria-label="${en.common.nav.userMenu}"]`)).not.toBeNull();
     expect(container.querySelector(`header a[href="${routes.signIn()}"]`)).toBeNull();
   });
 
@@ -131,8 +133,8 @@ describe("`/changelog` — 목록", () => {
     const sections = [...main(container).querySelectorAll("section")];
     const badge = sections[0]!.firstElementChild;
     expect(badge?.textContent).toBe("Latest");
-    expect(badge?.className).toContain("bg-green-100/80");
-    expect(badge?.className).toContain("text-green-800");
+    expect(badge?.className).toContain("bg-success-soft");
+    expect(badge?.className).toContain("text-success-foreground");
     expect(badge?.nextElementSibling?.tagName).toBe("H1");
     expect(badge?.nextElementSibling?.textContent).toBe(TWO[0]!.tag);
     expect(badge?.nextElementSibling?.nextElementSibling?.querySelector("time")?.textContent).toBe("Sep 27, 2026");

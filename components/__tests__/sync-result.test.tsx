@@ -4,13 +4,13 @@ import { SyncResult, syncResultTitle } from "@/components/home/sync-result";
 import type { RepositoryImportOutcome, SurfaceImportResult } from "@/lib/import/result";
 import { planImportRefusal } from "@/lib/import/refusal";
 import { STATE } from "@/lib/status/canon";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { render } from "./helpers/dom";
 
 const props = { slug: "acme", branch: "main" };
 const row = (surfaceSlug: string, status: SurfaceImportResult["status"], reason: SurfaceImportResult["reason"]): SurfaceImportResult =>
   ({ surfaceSlug, status, reason, count: status === "imported" ? 4 : 0, failed: 0, unmanaged: 0, errors: [] });
-const retryButton = (container: HTMLElement) => [...container.querySelectorAll("button")].find(b => b.textContent?.trim() === m.common.retry) ?? null;
+const retryButton = (container: HTMLElement) => [...container.querySelectorAll("button")].find(b => b.textContent?.trim() === en.common.retry) ?? null;
 function alert(container: HTMLElement) { return container.querySelector('[role="status"], [role="alert"]'); }
 /** `Alert`의 본문 블록 — 있으면 두 줄 형이고 없으면 한 줄 형이다. */
 /**
@@ -165,7 +165,7 @@ it("거부는 tone·닫기·액션이 갈래마다 갈린다", async () => {
   await view.rerender(<SyncResult {...props} onRetry={vi.fn()} outcome={{ ok: false, error: "not-ready" }} />);
   expect(retryButton(view.container)).toBeNull();
   expect(view.container.querySelector('a[href="/projects/acme/settings"]')?.textContent).toBe("Open settings");
-  expect(alert(view.container)?.className).toContain("bg-amber-50");
+  expect(alert(view.container)?.className).toContain("bg-warning-surface");
 
   // 리포 id 미고정은 [Reconnect], 계정 미연결(ConnectError)은 리포가 멀쩡하므로 끊김을 말하지 않고 설정으로 보낸다(ux-drift-unify r1).
   await view.rerender(<SyncResult {...props} onRetry={vi.fn()} outcome={{ ok: false, error: "unpinned" }} />);
@@ -173,9 +173,9 @@ it("거부는 tone·닫기·액션이 갈래마다 갈린다", async () => {
   expect(view.container.textContent).toContain("This repository is disconnected");
   // 1-Y14 — 끊김 거부는 Home 배너·목록 칩의 Disconnected와 같은 톤이다(호박). 미연결(설치 없음)은 readiness가 먼저 막는다(`not-ready`).
   expect(planImportRefusal("unpinned").tone).toBe(STATE.disconnected.tone);
-  expect(alert(view.container)?.className).toContain("bg-amber-50");
+  expect(alert(view.container)?.className).toContain("bg-warning-surface");
   await view.rerender(<SyncResult {...props} onRetry={vi.fn()} outcome={{ ok: false, error: "not-connected" }} />);
-  expect(view.container.querySelector('a[href="/account"]')?.textContent).toBe(m.repositorySync.openAccount);
+  expect(view.container.querySelector('a[href="/account"]')?.textContent).toBe(en.repositorySync.openAccount);
   expect(view.container.textContent).toContain("Account");
   expect(view.container.textContent).not.toMatch(/disconnected/i);
 
@@ -208,12 +208,11 @@ it("[C4][C10] 남은 편집이 있으면 두 줄 warning이고 브랜치 헤드�
  * [Sign in]은 **새 탭**이다 — 같은 화면의 편집자 세션 Alert와 같은 형(이 탭의 draft·화면을 떠나지 않는다).
  */
 it("unauthorized 거부는 Sync 문장 + 새 탭 [Sign in]을 들고 [Try again]은 없다", async () => {
-  const { m } = await import("@/lib/i18n");
   const { container } = await render(<SyncResult {...props} onRetry={vi.fn()} outcome={{ ok: false, error: "unauthorized" }} />);
   const text = container.textContent ?? "";
-  expect(text).toContain(m.repositorySync.resultHeadline.unauthorized);
+  expect(text).toContain(en.repositorySync.resultHeadline.unauthorized);
   expect(text).not.toContain("save your work");
-  const signIn = [...container.querySelectorAll("a")].find(a => a.textContent?.trim() === m.repositorySync.signIn);
+  const signIn = [...container.querySelectorAll("a")].find(a => a.textContent?.trim() === en.repositorySync.signIn);
   expect(signIn?.getAttribute("href")).toBe("/signin");
   expect(signIn?.getAttribute("target")).toBe("_blank");
   expect(retryButton(container)).toBeNull();
@@ -285,7 +284,7 @@ it.each([
   ["unconfirmed", false], ["unauthorized", false], ["repo-replaced", false], ["not-ready", false],
 ] as const)("거부 %s의 [Try again]은 %s", async (error, shown) => {
   const { container } = await render(<SyncResult {...props} onRetry={vi.fn()} outcome={{ ok: false, error }} />);
-  expect([...container.querySelectorAll("button")].some(b => b.textContent?.trim() === m.common.retry)).toBe(shown);
+  expect([...container.querySelectorAll("button")].some(b => b.textContent?.trim() === en.common.retry)).toBe(shown);
 });
 
 it("onRetry가 없으면 거부에도 [Try again]이 서지 않는다", async () => {
@@ -302,7 +301,7 @@ it("onRetry가 없으면 거부에도 [Try again]이 서지 않는다", async ()
  */
 const surface = (status: SurfaceImportResult["status"], reason: SurfaceImportResult["reason"] = null): SurfaceImportResult =>
   ({ ...row("web", status, reason), count: status === "imported" || status === "partial" ? 4 : 0, failed: status === "partial" ? 1 : 0 });
-const t = m.repositorySync.resultTitle;
+const t = en.repositorySync.resultTitle;
 const PAIRS: [string, RepositoryImportOutcome, string][] = [
   ["성공", { ok: true, remainingEdits: 0, surfaces: [surface("imported")] }, t.complete],
   ["남은 편집", { ok: true, remainingEdits: 2, surfaces: [surface("imported")] }, t.issues],
@@ -320,7 +319,7 @@ const PAIRS: [string, RepositoryImportOutcome, string][] = [
 const IGNORED = new Set(["sync", "synced", "the", "a", "is", "was", "were", "with"]);
 const words = (text: string) => new Set(text.toLowerCase().replace(/[^a-z' ]/g, " ").split(/\s+/).filter(word => word !== "" && !IGNORED.has(word)));
 it.each(PAIRS)("결과 제목 — %s", async (_, outcome, title) => {
-  expect(syncResultTitle(outcome)).toBe(title);
+  expect(syncResultTitle(en, outcome)).toBe(title);
   const { container } = await render(<SyncResult {...props} outcome={outcome} />);
   const headline = alert(container)?.querySelector("p.font-medium")?.textContent ?? "";
   expect(headline).not.toBe("");

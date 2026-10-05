@@ -12,6 +12,8 @@ vi.mock("@/app/(edit)/projects/actions", () => ({ runFirstIngest: vi.fn(), addSu
 vi.mock("@/app/(edit)/projects/[slug]/settings/actions", () => ({ startGithubConnect: vi.fn(), connectRepository: vi.fn(), updateProjectName: vi.fn(), updateRepositorySettings: vi.fn(), uploadProjectImage: vi.fn(), deleteProjectImage: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), replace: vi.fn() }), redirect: vi.fn() }));
 import SettingsPage from "@/app/(edit)/projects/[slug]/settings/page";
+vi.mock("@/lib/i18n/server", async () => ({ getUiLocale: async () => "en", getDateStyle: async () => ({ uiLocale: "en", timeZone: "UTC" }), getMessages: async () => (await import("@/messages/en")).en }));
+
 beforeEach(() => { state.archived = false; state.image = null; state.find.mockImplementation(async () => ({ name: "Acme", image: state.image, repoOwner: "owner", repoName: "repo", installationId: "1", repositoryId: "r1", baseBranch: "main", archivedAt: state.archived ? new Date("2026-09-20") : null, surfaces: [] })); });
 const page = () => SettingsPage({ params: Promise.resolve({ slug: "acme" }), searchParams: Promise.resolve({}) });
 it.each([false, true])("활성·보관 상태 모두 네 카드이고 복원이 첫 자리다: %s", async archived => {
@@ -32,7 +34,7 @@ it.each(["/saved.webp", "/replaced.webp", null])("설정 서버 조회가 보낸
 });
 
 /**
- * **보관 일시는 UTC라고 말한다** (launch-readiness L7.1 — `lib/utc-time.ts`·Logs 화면이 정본).
+ * **보관 일시는 UTC라고 말한다** (launch-readiness L7.1 — `lib/date-format.ts`·Logs 화면이 정본).
  * 라벨 없는 로컬 날짜는 보는 사람이 어느 시간대인지 모른다: KST 09-21 08:30에 보관한 사람이
  * "9/20/2026"을 보면 자기가 어제 보관한 것으로 읽는다. 정확한 값은 `<time dateTime>`이 든다.
  */

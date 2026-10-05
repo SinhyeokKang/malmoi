@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { OG_IMAGE, pageMetadata, SITE_ORIGIN } from "../site";
 
@@ -26,7 +26,7 @@ describe("pageMetadata", () => {
       title: "Create a project",
       description: "Connect a repository.",
       url,
-      siteName: m.common.appName,
+      siteName: en.common.appName,
       type: "website",
       images: [OG_IMAGE],
     });
@@ -54,7 +54,7 @@ describe("pageMetadata", () => {
 
 describe("OG_IMAGE", () => {
   it("정적 1장 `/og.png` 1200×630 — 대체 텍스트는 사전에서", () => {
-    expect(OG_IMAGE).toEqual({ url: "/og.png", width: 1200, height: 630, alt: m.seo.ogImageAlt });
+    expect(OG_IMAGE).toEqual({ url: "/og.png", width: 1200, height: 630, alt: en.seo.ogImageAlt });
   });
 
   /** ⚠️ **선언만 맞고 파일이 없으면 og:image가 404다** — 실제 PNG의 IHDR 치수를 선언과 견준다. */
@@ -68,7 +68,7 @@ describe("OG_IMAGE", () => {
 
 describe("m.seo", () => {
   it("홈 제목은 브랜드를 스스로 담는다(absolute) · 로그인 제목은 템플릿과 브랜드가 두 번 서지 않는다", () => {
-    expect(m.seo.homeTitle).toContain("Malmoi");
-    expect(m.seo.signInTitle).not.toContain("Malmoi");
+    expect(en.seo.homeTitle).toContain("Malmoi");
+    expect(en.seo.signInTitle).not.toContain("Malmoi");
   });
 });

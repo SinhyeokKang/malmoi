@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import type { PublicAccount } from "@/lib/auth/landing";
+import type { Messages } from "@/lib/i18n";
 
 import { PublicFooter } from "./footer";
 import { PublicHeader, type HeaderCurrent } from "./header";
@@ -21,11 +22,14 @@ import { PublicScroller } from "./scroller";
  * ⚠️ **`min-w-shell-min`**: 그 아래는 가로 스크롤이 정상이다(DESIGN §5 — 앱 셸과 같다).
  */
 export function PublicShell({
+  m,
   account,
   current,
   bare = false,
   children,
 }: {
+  /** 화면 언어의 사전 — 헤더·푸터가 읽는다. 공용 컴포넌트(`"use client"` 없음)라 부모가 넘긴다(ui-locales design §3.2). */
+  m: Messages;
   /** 세션 판정은 페이지가 한다(`publicAccount`) — 헤더는 세션을 직접 읽지 않는다. `null`이면 `Get started`다. */
   account: PublicAccount | null;
   /** 헤더 링크 중 지금 서 있는 곳. 랜딩·`/privacy`처럼 헤더에 없는 화면이면 비운다. */
@@ -45,12 +49,12 @@ export function PublicShell({
       */}
       <style>{`body{background-color:var(--canvas)}`}</style>
 
-      <div className="bg-canvas flex h-svh min-w-shell-min flex-col overflow-hidden px-2 pt-2">
-        <PublicHeader account={account} current={current} />
+      <div className="bg-canvas flex h-svh min-w-shell-min flex-col overflow-hidden px-2 pt-1.5">
+        <PublicHeader m={m} account={account} current={current} />
         <main className="border-border-subtle bg-background shadow-low relative flex min-h-0 flex-1 overflow-hidden rounded-xl border">
           {bare ? children : <PublicScroller>{children}</PublicScroller>}
         </main>
-        <PublicFooter />
+        <PublicFooter m={m} />
       </div>
     </>
   );

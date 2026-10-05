@@ -4,7 +4,7 @@ vi.mock("@/lib/auth/read-session", () => ({ readSession: mock.session }));
 vi.mock("@/lib/db", () => ({ getPrisma: mock.prisma }));
 import { loadSearchMembershipsAction, searchKeysAction } from "@/app/search/actions";
 import { navSearchEntries } from "@/lib/search/nav-index";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { searchGroups } from "@/lib/search/match";
 import { keySearchText, searchRows, searchStatuses } from "@/lib/search/rows";
 import { searchFixture } from "./search-fixture";
@@ -23,7 +23,7 @@ beforeEach(async () => {
 async function index() {
   const response = await loadSearchMembershipsAction();
   if (!response.ok) throw new Error("Search memberships unavailable");
-  return { ...navSearchEntries(response.memberships, { activeSlug: null, userName: "Fixture" }), docs: [] };
+  return { ...navSearchEntries(en, response.memberships, { activeSlug: null, userName: "Fixture" }), docs: [] };
 }
 it("public reopen model reflects creation, archive and role changes after real Actions", async () => {
   const before = await index();
@@ -33,7 +33,7 @@ it("public reopen model reflects creation, archive and role changes after real A
   await db.prisma.projectMember.updateMany({ where: { projectId: "demo", userId: "u1" }, data: { role: "EDITOR" } });
   const after = await index();
   expect(after.projects.find(p => p.slug === "demo")).toMatchObject({ archived: true });
-  expect(searchRows({ index: after, keys: [], q: "", activeSlug: null }).groups[0]!.rows.map(e => e.id)).toEqual(["project:created", "project:demo", "go-to-projects"]);
+  expect(searchRows(en, { index: after, keys: [], q: "", activeSlug: null }).groups[0]!.rows.map(e => e.id)).toEqual(["project:created", "project:demo", "go-to-projects"]);
   expect(searchGroups(after, "settings demo", { activeSlug: null })).toEqual([]);
 });
 it("whole-string Keys and token-AND pages feed the same rendered search contract", async () => {
@@ -44,7 +44,7 @@ it("whole-string Keys and token-AND pages feed the same rendered search contract
   expect(response.hits.map(h => h.id)).toEqual(["literal"]);
   const hit = response.hits[0]!;
   // 렌더 계약 = `searchRows`의 행이다(R-B1 Y1) — 그룹 순서·행 id·칠하는 조각·스니펫·착지 주소를 행에서 잰다.
-  const rows = searchRows({ index: await index(), keys: response.hits, q: "settings demo", activeSlug: null });
+  const rows = searchRows(en, { index: await index(), keys: response.hits, q: "settings demo", activeSlug: null });
   expect(rows.groups.map(g => g.kind)).toEqual(["pages", "keys"]);
   expect(rows.ids).toEqual(["page:demo:settings", "key:literal"]);
   const keyRow = rows.groups[1]!.rows[0]!;
@@ -67,12 +67,12 @@ it("unauthorized Actions fold to a Docs-only view with one session-ended line", 
   expect(memberships).toEqual({ ok: false, error: "unauthorized" });
   const keys = await searchKeysAction("settings demo", null);
   expect(keys).toEqual({ ok: false, error: "unauthorized" });
-  const nav = navSearchEntries(memberships.ok ? memberships.memberships : null, { activeSlug: null, userName: "Fixture" });
+  const nav = navSearchEntries(en, memberships.ok ? memberships.memberships : null, { activeSlug: null, userName: "Fixture" });
   const docs = [{ id: "docs:start", title: "Settings demo guide", href: "/docs/start" }];
   for (const q of ["", "settings demo"]) {
     expect(keySearchText(q, nav.authenticated)).toBeNull();
-    expect(searchRows({ index: { ...nav, docs }, keys: [], q, activeSlug: null }).groups.map(g => g.kind)).toEqual(["docs"]);
+    expect(searchRows(en, { index: { ...nav, docs }, keys: [], q, activeSlug: null }).groups.map(g => g.kind)).toEqual(["docs"]);
   }
-  const status = searchStatuses({ membership: memberships.ok ? "ready" : memberships.error, docs: "ready", keys: keys.ok ? "ready" : keys.error });
-  expect(status).toEqual({ pending: false, failed: true, lines: [{ tone: "danger", text: m.search.sessionEnded }] });
+  const status = searchStatuses(en, { membership: memberships.ok ? "ready" : memberships.error, docs: "ready", keys: keys.ok ? "ready" : keys.error });
+  expect(status).toEqual({ pending: false, failed: true, lines: [{ tone: "danger", text: en.search.sessionEnded }] });
 });

@@ -1,5 +1,4 @@
 import { LogIn } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 
 import { SearchTrigger } from "@/components/search/search-trigger";
@@ -7,12 +6,12 @@ import { HeaderBar } from "@/components/shell/header-bar";
 import { UserMenu } from "@/components/shell/user-menu";
 import { GithubIcon } from "@/components/signin/brand-icons";
 import { ButtonLink } from "@/components/ui/button";
+import { MalmoiMark } from "@/components/ui/malmoi-mark";
 import type { PublicAccount } from "@/lib/auth/landing";
 import { signOutAction } from "@/lib/auth/sign-out";
-import { m } from "@/lib/i18n";
+import type { Messages } from "@/lib/i18n";
 import { GITHUB_REPO_URL } from "@/lib/links";
 import { routes } from "@/lib/routes";
-import logo from "@/public/brand/malmoi-icon-black.svg";
 
 /** 시안 1a: 14/500(2026-09-30 사용자 — 400에서 올렸다) · 6/10 · radius 8 · hover `foreground/[0.03]`. */
 const NAV_LINK =
@@ -40,10 +39,10 @@ export type HeaderCurrent = "docs" | "changelog";
  * ⚠️ **primary는 페이지가 정한다**(`publicAccount`) — 비로그인(장애 포함)은 `Get started`, 로그인이면 **앱 셸과 같은 아바타 메뉴**다
  * (옛 `Open Malmoi` 버튼 대체). 헤더는 세션을 직접 읽지 않는다. 랜딩은 `ok`에서 안 그려져 늘 `Get started`다.
  */
-export function PublicHeader({ account, current }: { account: PublicAccount | null; current?: HeaderCurrent }) {
+export function PublicHeader({ m, account, current }: { m: Messages; account: PublicAccount | null; current?: HeaderCurrent }) {
   return (
     <HeaderBar
-      className="mb-2"
+      className="mb-1.5"
       center={<SearchTrigger account={account} />}
       start={
         <div className="flex items-center gap-5">
@@ -52,7 +51,7 @@ export function PublicHeader({ account, current }: { account: PublicAccount | nu
             aria-label={m.landing.shell.logo}
             className="focus-visible:ring-ring flex size-8 shrink-0 items-center justify-center rounded-sm focus-visible:ring-2 focus-visible:outline-none"
           >
-            <Image src={logo} alt="" width={32} height={32} priority />
+            <MalmoiMark size={32} />
           </Link>
           <nav aria-label={m.landing.shell.nav} className="flex items-center gap-0.5">
             <Link href={routes.docs()} aria-current={current === "docs" ? "page" : undefined} className={NAV_LINK}>
@@ -71,7 +70,7 @@ export function PublicHeader({ account, current }: { account: PublicAccount | nu
             <GithubIcon className="size-4 shrink-0" />
             {m.landing.shell.github}
           </a>
-          {/* 장식이다 — 캔버스(#f5f6f7) 위에서 보이는 가장 연한 선이 `border-subtle`이다(`divider`는 캔버스보다 옅어 안 보인다). */}
+          {/* 장식이다 — 캔버스(#f5f6f7) 위에서 보이는 가장 연한 선이 `border-border-subtle`이다(`divider`는 캔버스보다 옅어 안 보인다). */}
           <span aria-hidden className="bg-border-subtle h-5 w-px" />
           {account === null ? (
             <ButtonLink href={routes.signIn()} variant="primary" size="md">

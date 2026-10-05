@@ -13,7 +13,7 @@ import { SITE_ORIGIN } from "../site";
 describe("robotsFor — 프로덕션만 연다", () => {
   it("`production`은 전체 허용 + 앱·API 거부 + sitemap 위치", () => {
     expect(robotsFor("production")).toEqual({
-      rules: [{ userAgent: "*", allow: "/", disallow: ["/api/", "/projects", "/account"] }],
+      rules: [{ userAgent: "*", allow: "/", disallow: ["/api/", "/projects", "/account", "/preferences"] }],
       sitemap: "https://mal-moi.com/sitemap.xml",
     });
   });
@@ -31,7 +31,7 @@ describe("robotsFor — 프로덕션만 연다", () => {
 });
 
 describe("sitemapEntries — `/` · docs 전부 · `/changelog` · `/privacy`", () => {
-  const flat = flattenNav(loadSummary());
+  const flat = flattenNav(loadSummary("en"));
 
   it("항목 수가 SUMMARY 전부 + 3이고 SUMMARY 순서다 — `/changelog`는 `/privacy` 앞", () => {
     const urls = sitemapEntries(flat).map((entry) => entry.url);

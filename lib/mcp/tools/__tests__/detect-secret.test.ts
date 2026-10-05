@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import type { ApiTokenSubject } from "../../token-store";
 
@@ -35,7 +35,7 @@ afterEach(() => { vi.unstubAllEnvs(); });
 it("비밀값이 비면 unavailable · retryable — 후보 없음·만료로 접지 않는다", async () => {
   vi.stubEnv("APP_SIGNING_SECRET", "");
   const result = await executeTool(detect, context, { owner: "o", repo: "r" });
-  expect(result).toEqual({ isError: true, content: [{ type: "text", text: m.errors.access.unavailable }], structuredContent: { status: "unavailable", message: m.errors.access.unavailable, retryable: true } });
+  expect(result).toEqual({ isError: true, content: [{ type: "text", text: en.errors.access.unavailable }], structuredContent: { status: "unavailable", message: en.errors.access.unavailable, retryable: true } });
 });
 
 it("대조: 비밀값이 있으면 후보와 확인값을 준다", async () => {

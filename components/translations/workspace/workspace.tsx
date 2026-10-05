@@ -25,7 +25,8 @@ import { planActionAvailability } from "@/lib/home/state";
 import { connectionReason } from "@/lib/translations/connection-reason";
 import { importRevalidates, type RepositoryImportOutcome } from "@/lib/import/result";
 import type { TranslationList, TranslationListRow, TranslationTree } from "@/lib/keys/translation-list";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
+import type { Messages } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
 import { dirtyLocales, initKeyDraft, planDraftRecovery, reduceKeyDraft, type KeyDraftAction, type KeyDraftState } from "@/lib/translations/draft";
 import { planTranslationPanelLayout, stepPanelWidth, PANEL } from "@/lib/translations/layout";
@@ -122,10 +123,10 @@ type DialogState =
   | { kind: "revert-changed" };
 
 const REVERT_REASONS = {
-  forbidden: () => m.translations.workspace.revert.forbidden,
-  unsaved: () => m.translations.workspace.revert.unsaved,
-  busy: () => m.translations.workspace.revert.busy,
-  unavailable: () => m.translations.workspace.revert.unavailable,
+  forbidden: (m: Messages) => m.translations.workspace.revert.forbidden,
+  unsaved: (m: Messages) => m.translations.workspace.revert.unsaved,
+  busy: (m: Messages) => m.translations.workspace.revert.busy,
+  unavailable: (m: Messages) => m.translations.workspace.revert.unavailable,
 } as const;
 type RevertReason = keyof typeof REVERT_REASONS;
 
@@ -148,17 +149,18 @@ const landsHere = (mark: Landing | null | undefined, routeSurfaceSlug: string) =
   mark !== null && mark !== undefined && mark.surfaceSlug === routeSurfaceSlug && Date.now() - mark.at <= LANDING_TTL_MS;
 
 const STATUS_LABEL = {
-  all: () => m.translations.workspace.filters.state.any,
-  incomplete: () => m.translations.workspace.filters.state.incomplete,
-  review: () => m.translations.workspace.filters.state.review,
-  unsent: () => m.translations.workspace.filters.state.unsent,
-  new: () => m.translations.workspace.filters.state.new,
-} as const satisfies Record<Status, () => string>;
+  all: (m: Messages) => m.translations.workspace.filters.state.any,
+  incomplete: (m: Messages) => m.translations.workspace.filters.state.incomplete,
+  review: (m: Messages) => m.translations.workspace.filters.state.review,
+  unsent: (m: Messages) => m.translations.workspace.filters.state.unsent,
+  new: (m: Messages) => m.translations.workspace.filters.state.new,
+} as const satisfies Record<Status, (m: Messages) => string>;
 
 const storageKey = (userId: string, slug: string) => `malmoi.translation-draft.${userId}.${slug}`;
 const widthKey = (userId: string, slug: string) => `malmoi.translation-panels.${userId}.${slug}`;
 
 export function TranslationWorkspace(props: WorkspaceProps) {
+  const m = useMessages();
   const { slug, routeSurfaceSlug, role, userId, tree, list } = props;
   const router = useRouter();
   /*
@@ -616,7 +618,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   const arrived = useArrived(props.connection.later, `${slug}/${routeSurfaceSlug}`)?.status ?? null;
   const availability = planActionAvailability({ archived: false, connection: arrived ?? props.connection.status });
   // 꺼진 원인 문장 (malmoi#160) — 이 화면엔 Home의 연결 배너가 없어서 Publish·Sync 사유와 보류 배너가 원인·해법을 직접 말한다.
-  const connectionBlock = availability.publish ? null : connectionReason(arrived ?? props.connection.status, role);
+  const connectionBlock = availability.publish ? null : connectionReason(m, arrived ?? props.connection.status, role);
   /**
    * [Sync]를 열 수 있나 — 연결과 착지 lease 둘이다. ⚠️ **미저장 가로채기와 `openSync`가 이 한 값을 본다** (U 리뷰 🔴) — 가로채기가 연결만 보던 때
    * lease로 멈춘 [Sync]를 누르면 "Discard your changes?"가 서고, 확정하면 초안이 버려진 채 Sync Dialog는 열리지 않았다.
@@ -825,9 +827,9 @@ export function TranslationWorkspace(props: WorkspaceProps) {
               treeButton={treeCollapsed ? { ref: treeAnchor, open: treeOverlay, controls: treeOverlayId, onToggle: () => setTreeOverlay(v => !v), breadcrumb: <span data-range-label="" className="text-muted-foreground text-xs">{rangeLabel}</span> } : undefined}
               empty={listEmpty}
               filter={
-                <FilterMenu axis={w.filters.state.axis} label={STATUS_LABEL[shownStatus]()} on={shownStatus !== "all"} size="sm" disabled={noKeys} align="end"
+                <FilterMenu axis={w.filters.state.axis} label={STATUS_LABEL[shownStatus](m)} on={shownStatus !== "all"} size="sm" disabled={noKeys} align="end"
                   value={shownStatus} hint={w.filters.state.newHint}
-                  options={STATUSES.map(status => ({ value: status, label: STATUS_LABEL[status]() }))}
+                  options={STATUSES.map(status => ({ value: status, label: STATUS_LABEL[status](m) }))}
                   onSelect={value => go(withStatus(view.query, value as Status), "filter")}
                 />
               }
@@ -918,6 +920,7 @@ function Footer({ alertId, dirty, status, saving, resultRef, saveRef, hasPending
   hasPending: boolean; revertBlocked: RevertReason | null; revertBusy: boolean; publishing: boolean; saveDisabled: boolean;
   onSave: () => void; onRevert: () => void; onCheck: () => void; slug: string; storageBlocked: boolean;
 }) {
+  const m = useMessages();
   const w = m.translations.workspace;
   const reasonId = useId();
   const saveReasonId = useId();
@@ -934,17 +937,17 @@ function Footer({ alertId, dirty, status, saving, resultRef, saveRef, hasPending
   return (
     <div className="border-border shrink-0 border-t">
       {status !== null && ALERTS[status.kind] !== undefined && (
-        <div id={alertId} className="px-4 pt-3">{ALERTS[status.kind]?.({ onCheck, slug, storageBlocked, status })}</div>
+        <div id={alertId} className="px-4 pt-3">{ALERTS[status.kind]?.({ m, onCheck, slug, storageBlocked, status })}</div>
       )}
       <div className="flex items-center gap-3 px-4 py-3">
         {/* ⚠️ 사유는 결과 줄(`aria-live`) 밖의 형제다 — 안에 두면 사유가 바뀔 때마다 결과처럼 다시 낭독된다.
             세로로 묶는 래퍼가 결과 아래에 쌓이는 자리를 지킨다. */}
         <span className="flex min-w-0 flex-col">
           <span ref={resultRef} tabIndex={-1} data-footer-result="true" aria-live="polite"
-            className={cn("min-w-0 text-xs focus:outline-none", dirty > 0 ? "text-amber-700" : "text-muted-foreground")}>
+            className={cn("min-w-0 text-xs focus:outline-none", dirty > 0 ? "text-warning-foreground" : "text-muted-foreground")}>
             {text}
           </span>
-          {hasPending && revertBlocked !== null && <span id={reasonId} className="text-muted-foreground min-w-0 text-xs">{REVERT_REASONS[revertBlocked]()}</span>}
+          {hasPending && revertBlocked !== null && <span id={reasonId} className="text-muted-foreground min-w-0 text-xs">{REVERT_REASONS[revertBlocked](m)}</span>}
           {saveLocked && <span id={saveReasonId} className="text-muted-foreground min-w-0 text-xs">{m.repositorySync.waitPublish}</span>}
         </span>
         <span className="ml-auto inline-flex items-center gap-2">
@@ -966,27 +969,27 @@ function Footer({ alertId, dirty, status, saving, resultRef, saveRef, hasPending
   );
 }
 
-const ALERTS: Partial<Record<FooterStatus["kind"], (ctx: { onCheck: () => void; slug: string; storageBlocked: boolean; status: FooterStatus }) => ReactNode>> = {
+const ALERTS: Partial<Record<FooterStatus["kind"], (ctx: { m: Messages; onCheck: () => void; slug: string; storageBlocked: boolean; status: FooterStatus }) => ReactNode>> = {
   // 거부 단위는 키 전체다 — 제목이 로케일을, 본문이 "아무것도 저장되지 않았다"를 말한다(delivery-invariants D2).
-  "cannot-clear": ({ status }) => status.kind === "cannot-clear" && (
+  "cannot-clear": ({ m, status }) => status.kind === "cannot-clear" && (
     <Alert variant="danger" title={m.translations.workspace.footer.cannotClear.title(status.locales.join(", "))}>{m.translations.workspace.footer.cannotClear.body}</Alert>
   ),
-  "save-failed": () => <Alert variant="danger" title={m.translations.workspace.footer.saveFailed.title}>{m.translations.workspace.footer.saveFailed.body}</Alert>,
-  "key-gone": () => <Alert variant="danger" title={m.translations.workspace.footer.saveFailed.title}>{m.translations.workspace.footer.keyGone}</Alert>,
-  "not-ready": () => <Alert variant="warning" title={m.translations.workspace.footer.saveFailed.title}>{m.translations.workspace.footer.notReady}</Alert>,
-  "save-unknown": () => <Alert variant="danger" title={m.translations.workspace.footer.saveUnknown.title}>{m.translations.workspace.footer.saveUnknown.body}</Alert>,
+  "save-failed": ({ m }) => <Alert variant="danger" title={m.translations.workspace.footer.saveFailed.title}>{m.translations.workspace.footer.saveFailed.body}</Alert>,
+  "key-gone": ({ m }) => <Alert variant="danger" title={m.translations.workspace.footer.saveFailed.title}>{m.translations.workspace.footer.keyGone}</Alert>,
+  "not-ready": ({ m }) => <Alert variant="warning" title={m.translations.workspace.footer.saveFailed.title}>{m.translations.workspace.footer.notReady}</Alert>,
+  "save-unknown": ({ m }) => <Alert variant="danger" title={m.translations.workspace.footer.saveUnknown.title}>{m.translations.workspace.footer.saveUnknown.body}</Alert>,
   // ⚠️ 사본이 없으면 "이 탭에서 다시 로그인"이 입력을 지우는 안내가 된다 — 먼저 복사하라고 말한다 (ARCHITECTURE §6.04).
-  session: ({ storageBlocked }) => (
+  session: ({ m, storageBlocked }) => (
     <Alert variant="danger" title={m.translations.workspace.footer.session.title}>
       {storageBlocked ? m.translations.workspace.footer.session.storageBlocked : m.translations.workspace.footer.session.body}{" "}
       <InlineLink href={routes.signIn()} target="_blank" rel="noreferrer">{m.translations.workspace.footer.session.signIn}</InlineLink>
     </Alert>
   ),
   // 보관은 회색이다 — 실패가 아니다(2026-09-30 상태 통일).
-  archived: () => <Alert variant="neutral" title={m.translations.workspace.footer.archived} />,
-  "lost-access": () => <Alert variant="danger" title={m.translations.workspace.footer.lostAccess} />,
-  "revert-failed": () => <Alert variant="danger" title={m.translations.workspace.revert.failed.title}>{m.translations.workspace.revert.failed.body}</Alert>,
-  "revert-unknown": ({ onCheck }) => (
+  archived: ({ m }) => <Alert variant="neutral" title={m.translations.workspace.footer.archived} />,
+  "lost-access": ({ m }) => <Alert variant="danger" title={m.translations.workspace.footer.lostAccess} />,
+  "revert-failed": ({ m }) => <Alert variant="danger" title={m.translations.workspace.revert.failed.title}>{m.translations.workspace.revert.failed.body}</Alert>,
+  "revert-unknown": ({ m, onCheck }) => (
     <Alert variant="danger" title={m.translations.workspace.revert.unknown.title}>
       {m.translations.workspace.revert.unknown.body}{" "}
       <Button size="sm" onClick={onCheck}>{m.translations.workspace.revert.unknown.check}</Button>
@@ -998,6 +1001,7 @@ function WorkspaceDialog({ dialog, keyName, projectName, onClose, onPreview, onR
   dialog: DialogState | null; keyName: string; projectName: string;
   onClose: () => void; onPreview: () => void; onRevert: (confirmation: string) => void; onReview: () => void;
 }) {
+  const m = useMessages();
   const w = m.translations.workspace;
   const open = dialog !== null;
   let title = "";
@@ -1041,6 +1045,7 @@ function WorkspaceDialog({ dialog, keyName, projectName, onClose, onPreview, onR
  * ⚠️ `react-resizable-panels`를 쓰지 않는다 — 이 계약은 **px**이고(목록 → 트리 → 접힘 순서), 그 라이브러리는 % 전용이다.
  */
 function ResizeHandle({ layout, onChange }: { layout: ReturnType<typeof planTranslationPanelLayout>; onChange: (value: number) => void }) {
+  const m = useMessages();
   const [drag, setDrag] = useState<{ start: number; origin: number } | null>(null);
   const [value, setValue] = useState<number | null>(null);
   const current = value ?? layout?.left ?? PANEL.tree + PANEL.list;

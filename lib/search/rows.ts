@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 
-import { m } from "@/lib/i18n";
+import type { Messages } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
 import { navFooterItems, navWorkItems, projectSections } from "@/lib/shell/nav";
 import { Q_MAX_LENGTH } from "@/lib/translations/query";
@@ -38,10 +38,10 @@ export type SearchRowGroup = { kind: "projects" | "pages" | "keys" | "docs"; hea
  * 글리프는 같은 목적지의 nav 항목에서 **key로** 꺼낸다(C17) — href로 찾지 않는다(Keys href엔 쿼리, Docs href엔 해시가 붙는다).
  * 호출마다 계산한다: `m`·nav는 모듈 최상위에서 평가하지 않는다.
  */
-function glyphs(): { projects: Glyph; keys: Glyph; docs: Glyph } {
-  const projects = navWorkItems().find(item => item.key === "projects")?.icon;
-  const keys = projectSections("OWNER").find(section => section.key === "translations")?.icon;
-  const docs = navFooterItems().find(item => item.key === "docs")?.icon;
+function glyphs(m: Messages): { projects: Glyph; keys: Glyph; docs: Glyph } {
+  const projects = navWorkItems(m).find(item => item.key === "projects")?.icon;
+  const keys = projectSections(m, "OWNER").find(section => section.key === "translations")?.icon;
+  const docs = navFooterItems(m).find(item => item.key === "docs")?.icon;
   if (!projects || !keys || !docs) throw new Error("search rows: nav item missing for a search glyph");
   return { projects, keys, docs };
 }
@@ -57,8 +57,8 @@ export function keySearchText(q: string, authenticated: boolean): string | null 
   return authenticated && query.length >= KEY_QUERY_MIN ? query : null;
 }
 
-export function searchRows({ index, keys, q, activeSlug }: { index: SearchIndex<Glyph>; keys: readonly KeyHit[]; q: string; activeSlug: string | null }): { groups: SearchRowGroup[]; ids: string[] } {
-  const icon = glyphs();
+export function searchRows(m: Messages, { index, keys, q, activeSlug }: { index: SearchIndex<Glyph>; keys: readonly KeyHit[]; q: string; activeSlug: string | null }): { groups: SearchRowGroup[]; ids: string[] } {
+  const icon = glyphs(m);
   const tokens = searchTokens(q);
   const mark = (text: string, parts: readonly string[] = tokens): SearchSegments => highlightSegments(text, parts);
   const entryRow = (kind: "projects" | "pages" | "docs", entry: SearchEntry<Glyph>): SearchRow => ({
@@ -119,7 +119,7 @@ type Failure = "unauthorized" | "unavailable";
  * 상태 줄 — 로딩은 muted, 실패는 danger다(C3). `failed`면 컴포넌트가 0건(`NoMatch`)을 그리지 않는다 — 조회가 실패했는데
  * "결과 없음"을 말하면 거짓이다. 세션 종료는 실패 종류와 무관하게 같은 문장이다(C2).
  */
-export function searchStatuses({ membership, docs, keys }: {
+export function searchStatuses(m: Messages, { membership, docs, keys }: {
   membership: Load | Failure; docs: Load | "failed"; keys: "idle" | Load | Failure;
 }): { pending: boolean; lines: { tone: "muted" | "danger"; text: string }[]; failed: boolean } {
   const lines: { tone: "muted" | "danger"; text: string }[] = [];

@@ -8,14 +8,16 @@ import { describe, expect, it } from "vitest";
 import { collectImages } from "../collect";
 import { parseMd } from "../parse";
 import { parseMdTable } from "../sections";
-import { servedGuideFiles } from "./helpers/served";
+import { guideTrees, servedGuideFiles } from "./helpers/served";
 
 type GateProblem = { asset: string; reason: string };
 
 async function imageGate(root: string): Promise<GateProblem[]> {
   const guide = join(root, "guide");
-  const files = servedGuideFiles(guide);
-  const images = (await Promise.all(files.map(async (file) => collectImages(parseMd(await readFile(join(guide, file)))).map((image) => ({ ...image, file }))))).flat();
+  // 이미지는 언어 사이에 공유된다 — en 원고가 기준이고, 번역 트리가 같은 경로를 쓰는지는 `locales.test.ts`가 본다
+  const en = join(guide, "en");
+  const files = servedGuideFiles(en);
+  const images = (await Promise.all(files.map(async (file) => collectImages(parseMd(await readFile(join(en, file)))).map((image) => ({ ...image, file }))))).flat();
   const referenced = new Set(images.map(({ src }) => src));
   const publicGuide = join(root, "public", "guide");
   const assets = await readdir(publicGuide).catch(() => [] as string[]);
@@ -38,7 +40,8 @@ async function imageGate(root: string): Promise<GateProblem[]> {
   const masking = parseMdTable(parseMd(shootingText), "masking");
   if (masking === null || masking.some((row) => !row["원본"] || !row["치환"])) problems.push({ asset: "SHOOTING.md", reason: "invalid-masking" });
   if (masking) {
-    const servedText = await Promise.all(files.map((file) => readFile(join(guide, file))));
+    // 마스킹은 문장이라 언어마다 따로 새어 나올 수 있다 — 존재하는 트리 전부를 훑는다
+    const servedText = await Promise.all(guideTrees(guide).flatMap(({ dir }) => servedGuideFiles(dir).map((file) => readFile(join(dir, file)))));
     for (const row of masking) {
       const original = row["원본"];
       if (original && servedText.some((text) => text.includes(original))) problems.push({ asset: original, reason: "unmasked-text" });
@@ -68,10 +71,10 @@ async function readFile(path: string): Promise<string> {
 
 async function fixture(page: string, options: { asset?: string; shooting?: string; file?: boolean; dimensions?: { width: number; height: number } } = {}): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), "malmoi-guide-images-"));
-  await mkdir(join(root, "guide"), { recursive: true });
+  await mkdir(join(root, "guide", "en"), { recursive: true });
   await mkdir(join(root, "public", "guide"), { recursive: true });
-  await writeFile(join(root, "guide", "SUMMARY.md"), "# Summary\n\n- [Page](page.md)\n");
-  await writeFile(join(root, "guide", "page.md"), `# Page\n\nA page lead.\n\n## Shot {#shot}\n\n${page}\n`);
+  await writeFile(join(root, "guide", "en", "SUMMARY.md"), "# Summary\n\n- [Page](page.md)\n");
+  await writeFile(join(root, "guide", "en", "page.md"), `# Page\n\nA page lead.\n\n## Shot {#shot}\n\n${page}\n`);
   if (options.shooting) await writeFile(join(root, "guide", "SHOOTING.md"), options.shooting);
   if (options.file && options.asset) {
     await sharp({

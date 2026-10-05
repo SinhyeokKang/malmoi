@@ -6,10 +6,10 @@ import { describe, expect, it, vi } from "vitest";
 import { MetaColumn } from "@/components/home/meta-column";
 import { homeLate, metaTabs, type HomeLate, type MetaTabsInput } from "@/lib/home/meta";
 import { connectionProblem, repositoryConnectionState, type RepositoryConnectionState } from "@/lib/home/state";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { relativeTime } from "@/lib/relative-time";
 import { routes } from "@/lib/routes";
-import { STATE } from "@/lib/status/canon";
+import { STATE, stateLabel } from "@/lib/status/canon";
 
 import { find, render } from "./helpers/dom";
 
@@ -53,7 +53,7 @@ function expectMutedValue(dd: Element) {
 
 async function setup(over: Partial<MetaTabsInput> = {}, opts: { canOpenSettings?: boolean; late?: Promise<HomeLate> } = {}) {
   const { container } = await render(
-    <MetaColumn tabs={metaTabs({ ...input, ...over })} slug="acme" now={now} canOpenSettings={opts.canOpenSettings ?? true} late={opts.late} />,
+    <MetaColumn tabs={metaTabs({ ...input, ...over })} slug="acme" now={now} canOpenSettings={opts.canOpenSettings ?? true} late={opts.late} uiLocale="en" m={en} />,
   );
   const user = userEvent.setup();
   const open = async (label: string) => {
@@ -75,13 +75,13 @@ describe("메타 열 — 구조", () => {
   it("카드 머리 없이 탭 목록이 머리다 — aside가 aria-label로 `Project`를 든다", async () => {
     const { container } = await setup();
     const aside = find(container, "aside");
-    expect(aside.getAttribute("aria-label")).toBe(m.home.meta.title);
+    expect(aside.getAttribute("aria-label")).toBe(en.home.meta.title);
     expect(aside.hasAttribute("aria-labelledby")).toBe(false);
     expect(container.querySelector("h2")).toBeNull();
-    expect(find(container, '[role="tablist"]').getAttribute("aria-label")).toBe(m.home.meta.tabs.list);
+    expect(find(container, '[role="tablist"]').getAttribute("aria-label")).toBe(en.home.meta.tabs.list);
     expect([...container.querySelectorAll('[role="tab"]')].map((tab) => tab.textContent))
-      .toEqual([m.home.meta.tabs.project, m.home.meta.tabs.sync, m.home.meta.tabs.publish]);
-    expect(find(container, '[role="tab"][aria-selected="true"]').textContent).toBe(m.home.meta.tabs.project);
+      .toEqual([en.home.meta.tabs.project, en.home.meta.tabs.sync, en.home.meta.tabs.publish]);
+    expect(find(container, '[role="tab"][aria-selected="true"]').textContent).toBe(en.home.meta.tabs.project);
     expect(container.querySelectorAll(SHOWN)).toHaveLength(1);
   });
 
@@ -118,7 +118,7 @@ describe("메타 열 — 구조", () => {
   /** spec 완료 조건 — 한 행 = 라벨 하나 + 사실 하나. 값 안에 `·`로 이은 둘째 사실이 없다. */
   it("세 탭 어느 값에도 `·`가 없다", async () => {
     const { open, panel } = await setup({ held: "open-pr", prState: "absent" });
-    for (const tab of [m.home.meta.tabs.project, m.home.meta.tabs.sync, m.home.meta.tabs.publish]) {
+    for (const tab of [en.home.meta.tabs.project, en.home.meta.tabs.sync, en.home.meta.tabs.publish]) {
       await open(tab);
       for (const dd of panel().querySelectorAll("dd")) expect(dd.textContent, tab).not.toContain("·");
     }
@@ -137,14 +137,14 @@ describe("메타 열 — Project 탭", () => {
   it("행과 값", async () => {
     const { rows } = await setup();
     expect(rows()).toEqual({
-      [m.home.meta.repository]: "acme/web",
-      [m.home.meta.connection]: `[${STATE.connected.label}]`,
-      [m.home.meta.branch]: "main",
-      [m.home.meta.ci]: m.home.meta.configured,
-      [m.home.meta.sources]: "2",
-      [m.home.meta.keys]: "1,207",
-      [m.home.meta.members]: "4 (2)",
-      [m.home.meta.created]: relativeTime(input.createdAt, now),
+      [en.home.meta.repository]: "acme/web",
+      [en.home.meta.connection]: `[${stateLabel(en, "connected")}]`,
+      [en.home.meta.branch]: "main",
+      [en.home.meta.ci]: en.home.meta.configured,
+      [en.home.meta.sources]: "2",
+      [en.home.meta.keys]: "1,207",
+      [en.home.meta.members]: "4 (2)",
+      [en.home.meta.created]: relativeTime(input.createdAt, now, "en"),
     });
   });
 
@@ -157,8 +157,8 @@ describe("메타 열 — Project 탭", () => {
 
   it("대기 초대가 없어도 `(0)`이다 · CI 미설정", async () => {
     const { rows } = await setup({ pendingInvites: 0, ciConfigured: false });
-    expect(rows()[m.home.meta.members]).toBe("4 (0)");
-    expect(rows()[m.home.meta.ci]).toBe(m.home.meta.notSetUp);
+    expect(rows()[en.home.meta.members]).toBe("4 (0)");
+    expect(rows()[en.home.meta.ci]).toBe(en.home.meta.notSetUp);
   });
 
   it("리포는 GitHub으로 나가는 파랑 링크이고 Sources는 앱 안 검정 링크 + chevron이다", async () => {
@@ -179,53 +179,53 @@ describe("메타 열 — Project 탭", () => {
     ["wrongRepository", false],
   ] as const satisfies readonly (readonly [RepositoryConnectionState, boolean])[])("연결 %s — Connection 배지 · 리포 링크 %s", async (connection, linked) => {
     const { panel, rows } = await setup({ repository: { ...input.repository, connection } });
-    expect(rows()[m.home.meta.connection]).toBe(`[${STATE[connection].label}]`);
+    expect(rows()[en.home.meta.connection]).toBe(`[${stateLabel(en, connection)}]`);
     expect(panel().querySelector('a[target="_blank"]') !== null).toBe(linked);
-    expect(rows()[m.home.meta.repository]).toBe("acme/web");
+    expect(rows()[en.home.meta.repository]).toBe("acme/web");
   });
 
   /** 페이지는 연결 조회가 던지면 `{ status: "unknown" }`으로 접는다 — 그 값이 설정 카드와 같은 판정을 지나 `Couldn't check`로 선다. */
   it("연결 조회 실패(unknown)는 Couldn't check다 — 끊김으로 접지 않는다", async () => {
     const connection = repositoryConnectionState("unknown", connectionProblem("unknown"));
     const { rows } = await setup({ repository: { ...input.repository, connection } });
-    expect(rows()[m.home.meta.connection]).toBe(`[${STATE.couldNotCheck.label}]`);
+    expect(rows()[en.home.meta.connection]).toBe(`[${stateLabel(en, "couldNotCheck")}]`);
   });
 
   it("보관이면 Archived 행이 시각만 든다", async () => {
     const archivedAt = new Date("2026-10-01T00:00:00Z");
     const { rows } = await setup({ archivedAt });
-    expect(rows()[m.home.meta.archived]).toBe(relativeTime(archivedAt, now));
+    expect(rows()[en.home.meta.archived]).toBe(relativeTime(archivedAt, now, "en"));
   });
 });
 
 describe("메타 열 — Sync 탭", () => {
   it("한 실행의 사실 — 주체 배지 · 종료 시각 · 결과 배지 · 수치 · 소스", async () => {
     const { open, rows } = await setup();
-    await open(m.home.meta.tabs.sync);
+    await open(en.home.meta.tabs.sync);
     expect(rows()).toEqual({
-      [m.home.meta.lastSync]: `[${m.logs.meta.runType.IMPORT.nightly}]`,
-      [m.home.meta.synced]: relativeTime(synced, now),
-      [m.home.meta.result]: `[${STATE.partiallySynced.label}]`,
-      [m.home.meta.changed]: m.home.meta.values(128),
-      [m.home.meta.keysSeen]: "903",
-      [m.home.meta.sources]: "mobile, web",
+      [en.home.meta.lastSync]: `[${en.logs.meta.runType.IMPORT.nightly}]`,
+      [en.home.meta.synced]: relativeTime(synced, now, "en"),
+      [en.home.meta.result]: `[${stateLabel(en, "partiallySynced")}]`,
+      [en.home.meta.changed]: en.home.meta.values(128),
+      [en.home.meta.keysSeen]: "903",
+      [en.home.meta.sources]: "mobile, web",
     });
   });
 
   it("첫 Sync 전은 Not synced yet 배지 · 기록 이전 적재는 회색 평문", async () => {
     const first = await setup({ lastSync: null });
-    await first.open(m.home.meta.tabs.sync);
-    expect(first.rows()).toEqual({ [m.home.meta.lastSync]: `[${STATE.notSyncedYet.label}]` });
+    await first.open(en.home.meta.tabs.sync);
+    expect(first.rows()).toEqual({ [en.home.meta.lastSync]: `[${stateLabel(en, "notSyncedYet")}]` });
     const unrecorded = await setup({ lastSync: "unrecorded" });
-    await unrecorded.open(m.home.meta.tabs.sync);
-    expect(unrecorded.rows()).toEqual({ [m.home.meta.lastSync]: m.home.meta.unrecorded });
+    await unrecorded.open(en.home.meta.tabs.sync);
+    expect(unrecorded.rows()).toEqual({ [en.home.meta.lastSync]: en.home.meta.unrecorded });
     expectMutedValue(find(unrecorded.panel(), "dd"));
   });
 
   it("첫 렌더에 아는 보류는 Hold 배지 행이다", async () => {
     const { open, rows } = await setup({ held: "pending-edits" });
-    await open(m.home.meta.tabs.sync);
-    expect(rows()[m.home.meta.hold]).toBe(`[${STATE.held.label}]`);
+    await open(en.home.meta.tabs.sync);
+    expect(rows()[en.home.meta.hold]).toBe(`[${stateLabel(en, "held")}]`);
   });
 });
 
@@ -238,13 +238,13 @@ describe("메타 열 — 늦게 오는 Hold · PR state", () => {
    */
   it("Hold가 마지막 묶음 끝에 붙고 탭 전환 뒤에도 비지 않는다", async () => {
     const { open, panel } = await setup(pending, { late: Promise.resolve(homeLate("open-pr")) });
-    await open(m.home.meta.tabs.sync);
+    await open(en.home.meta.tabs.sync);
     const last = () => [...panel().querySelectorAll("dl")].at(-1)!;
-    expect(last().lastElementChild?.querySelector("dt")?.textContent).toBe(m.home.meta.hold);
-    await open(m.home.meta.tabs.publish);
-    await open(m.home.meta.tabs.sync);
-    expect(last().lastElementChild?.querySelector("dt")?.textContent).toBe(m.home.meta.hold);
-    expect(last().lastElementChild?.querySelector("dd")?.textContent).toBe(STATE.held.label);
+    expect(last().lastElementChild?.querySelector("dt")?.textContent).toBe(en.home.meta.hold);
+    await open(en.home.meta.tabs.publish);
+    await open(en.home.meta.tabs.sync);
+    expect(last().lastElementChild?.querySelector("dt")?.textContent).toBe(en.home.meta.hold);
+    expect(last().lastElementChild?.querySelector("dd")?.textContent).toBe(stateLabel(en, "held"));
   });
 
   /**
@@ -255,7 +255,7 @@ describe("메타 열 — 늦게 오는 Hold · PR state", () => {
     const late = Promise.resolve(homeLate("open-pr"));
     const then = vi.spyOn(late, "then");
     const { open } = await setup(pending, { late });
-    for (const tab of [m.home.meta.tabs.sync, m.home.meta.tabs.publish, m.home.meta.tabs.sync, m.home.meta.tabs.project]) await open(tab);
+    for (const tab of [en.home.meta.tabs.sync, en.home.meta.tabs.publish, en.home.meta.tabs.sync, en.home.meta.tabs.project]) await open(tab);
     expect(then).toHaveBeenCalledTimes(1);
   });
 
@@ -265,81 +265,81 @@ describe("메타 열 — 늦게 오는 Hold · PR state", () => {
    */
   it("프로젝트가 바뀌면 옛 프로젝트의 Hold가 서지 않는다", async () => {
     const user = userEvent.setup();
-    const view = await render(<MetaColumn tabs={metaTabs({ ...input, ...pending })} slug="acme" now={now} canOpenSettings late={Promise.resolve(homeLate("open-pr"))} />);
-    const sync = () => [...view.container.querySelectorAll<HTMLElement>('[role="tab"]')].find((tab) => tab.textContent === m.home.meta.tabs.sync)!;
+    const view = await render(<MetaColumn tabs={metaTabs({ ...input, ...pending })} slug="acme" now={now} canOpenSettings late={Promise.resolve(homeLate("open-pr"))} uiLocale="en" m={en} />);
+    const sync = () => [...view.container.querySelectorAll<HTMLElement>('[role="tab"]')].find((tab) => tab.textContent === en.home.meta.tabs.sync)!;
     await act(async () => { await user.click(sync()); });
-    const holdRows = () => [...view.container.querySelectorAll(`${SHOWN} dt`)].filter((dt) => dt.textContent === m.home.meta.hold);
+    const holdRows = () => [...view.container.querySelectorAll(`${SHOWN} dt`)].filter((dt) => dt.textContent === en.home.meta.hold);
     expect(holdRows()).toHaveLength(1);
-    await view.rerender(<MetaColumn tabs={metaTabs({ ...input, ...pending })} slug="globex" now={now} canOpenSettings late={new Promise(() => {})} />);
+    await view.rerender(<MetaColumn tabs={metaTabs({ ...input, ...pending })} slug="globex" now={now} canOpenSettings late={new Promise(() => {})} uiLocale="en" m={en} />);
     expect(holdRows()).toHaveLength(0);
   });
 
   /** 첫 Sync 전은 `Last sync` 한 행뿐이다 — 늦게 도착한 보류도 그 갈래엔 붙지 않는다(`metaTabs`의 `lateHold`). */
   it("첫 Sync 전에는 늦게 오는 Hold가 붙지 않는다", async () => {
     const { open, rows } = await setup({ ...pending, lastSync: null }, { late: Promise.resolve(homeLate("open-pr")) });
-    await open(m.home.meta.tabs.sync);
-    expect(rows()).toEqual({ [m.home.meta.lastSync]: `[${STATE.notSyncedYet.label}]` });
+    await open(en.home.meta.tabs.sync);
+    expect(rows()).toEqual({ [en.home.meta.lastSync]: `[${stateLabel(en, "notSyncedYet")}]` });
   });
 
   it("도착 전에는 Hold 자리가 없다", async () => {
     const { open, rows } = await setup(pending, { late: new Promise(() => {}) });
-    await open(m.home.meta.tabs.sync);
-    expect(rows()[m.home.meta.hold]).toBeUndefined();
+    await open(en.home.meta.tabs.sync);
+    expect(rows()[en.home.meta.hold]).toBeUndefined();
   });
 
   it("PR state는 도착 전 56px 스켈레톤이 자리를 잡는다", async () => {
     const { open, panel } = await setup(pending, { late: new Promise(() => {}) });
-    await open(m.home.meta.tabs.publish);
-    const row = [...panel().querySelectorAll("dl > div")].find((node) => node.querySelector("dt")?.textContent === m.home.meta.prState);
+    await open(en.home.meta.tabs.publish);
+    const row = [...panel().querySelectorAll("dl > div")].find((node) => node.querySelector("dt")?.textContent === en.home.meta.prState);
     expect(row?.querySelector("dd [data-skeleton-line], dd .w-14")).not.toBeNull();
   });
 
   it.each([
-    ["open-pr", `[${STATE.prOpen.label}]`],
-    [null, m.home.meta.notOpen],
-    ["pr-check-failed", `[${STATE.couldNotCheck.label}]`],
+    ["open-pr", `[${stateLabel(en, "prOpen")}]`],
+    [null, en.home.meta.notOpen],
+    ["pr-check-failed", `[${stateLabel(en, "couldNotCheck")}]`],
   ] as const)("PR 조회 결론 %s → PR state %s", async (reason, text) => {
     const { open, rows } = await setup(pending, { late: Promise.resolve(homeLate(reason)) });
-    await open(m.home.meta.tabs.publish);
-    expect(rows()[m.home.meta.prState]).toBe(text);
+    await open(en.home.meta.tabs.publish);
+    expect(rows()[en.home.meta.prState]).toBe(text);
   });
 
   it("Publish 탭 — PR 번호 링크 · 주체 배지 · 시각 · 값 수 · 소스", async () => {
     const { open, rows, panel } = await setup();
-    await open(m.home.meta.tabs.publish);
+    await open(en.home.meta.tabs.publish);
     expect(rows()).toEqual({
-      [m.home.meta.lastPublish]: `[${m.logs.meta.runType.PUBLISH.manual}]`,
-      [m.home.meta.published]: relativeTime(published, now),
-      [m.home.meta.pullRequest]: m.home.meta.pr(127),
-      [m.home.meta.changed]: m.home.meta.values(24),
-      [m.home.meta.sources]: "mobile, web",
+      [en.home.meta.lastPublish]: `[${en.logs.meta.runType.PUBLISH.manual}]`,
+      [en.home.meta.published]: relativeTime(published, now, "en"),
+      [en.home.meta.pullRequest]: en.home.meta.pr(127),
+      [en.home.meta.changed]: en.home.meta.values(24),
+      [en.home.meta.sources]: "mobile, web",
     });
     expect(find(panel(), 'a[target="_blank"]').getAttribute("href")).toBe("https://github.com/acme/web/pull/127");
   });
 
   it("미연결이면 PR 번호가 평문이다", async () => {
     const { open, panel, rows } = await setup({ repository: { ...input.repository, connection: "disconnected" } });
-    await open(m.home.meta.tabs.publish);
+    await open(en.home.meta.tabs.publish);
     expect(panel().querySelector('a[target="_blank"]')).toBeNull();
-    expect(rows()[m.home.meta.pullRequest]).toBe(m.home.meta.pr(127));
+    expect(rows()[en.home.meta.pullRequest]).toBe(en.home.meta.pr(127));
   });
 
   it("발송 전 — Never 회색 평문 한 행", async () => {
     const { open, rows, panel } = await setup({ lastPublish: null });
-    await open(m.home.meta.tabs.publish);
-    expect(rows()).toEqual({ [m.home.meta.lastPublish]: m.home.meta.never });
+    await open(en.home.meta.tabs.publish);
+    expect(rows()).toEqual({ [en.home.meta.lastPublish]: en.home.meta.never });
     expectMutedValue(find(panel(), "dd"));
   });
 
   /** 닫아도 풀린다 — Logs 사유 문장("merged or closed")과 같은 조건을 말한다. */
   it("PR 보류 사유는 머지와 닫기 둘 다를 푸는 조건으로 말한다", () => {
-    expect(m.home.cards.held["open-pr"]).toContain("merged or closed");
-    expect(m.logs.deferReasons["open-pr"]).toContain("merged or closed");
+    expect(en.home.cards.held["open-pr"]).toContain("merged or closed");
+    expect(en.logs.deferReasons["open-pr"]).toContain("merged or closed");
   });
 
   /** PR 조회 실패도 보류다(게이트 fail-closed) — 목적어를 붙인다(홀로 서는 "Couldn't check"는 연결 확인 실패 낱말이다). */
   it("PR 조회 실패 사유는 Couldn't check for an open pull request다", () => {
-    expect(m.home.cards.held["pr-check-failed"].toLowerCase()).toContain("couldn't check for an open pull request");
+    expect(en.home.cards.held["pr-check-failed"].toLowerCase()).toContain("couldn't check for an open pull request");
   });
 });
 
@@ -352,10 +352,10 @@ describe("메타 열 — 바닥 링크", () => {
 
   it.each([true, false])("canOpenSettings=%s", async (canOpenSettings) => {
     const { open, panel } = await setup({ lastSync: null, lastPublish: null, archivedAt: new Date("2026-10-01T00:00:00Z") }, { canOpenSettings });
-    expect(footer(panel())).toEqual(canOpenSettings ? [[m.home.meta.settings, routes.settings("acme")]] : []);
-    await open(m.home.meta.tabs.sync);
-    expect(footer(panel())).toEqual([[m.home.meta.syncLogs, routes.logs("acme", { kind: "imports" })]]);
-    await open(m.home.meta.tabs.publish);
-    expect(footer(panel())).toEqual([[m.home.meta.publishLogs, routes.logs("acme", { kind: "publish" })]]);
+    expect(footer(panel())).toEqual(canOpenSettings ? [[en.home.meta.settings, routes.settings("acme")]] : []);
+    await open(en.home.meta.tabs.sync);
+    expect(footer(panel())).toEqual([[en.home.meta.syncLogs, routes.logs("acme", { kind: "imports" })]]);
+    await open(en.home.meta.tabs.publish);
+    expect(footer(panel())).toEqual([[en.home.meta.publishLogs, routes.logs("acme", { kind: "publish" })]]);
   });
 });

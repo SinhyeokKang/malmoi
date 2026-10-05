@@ -30,7 +30,7 @@ import SignIn from "@/app/signin/page";
 import InvitePage from "@/app/invite/[token]/page";
 import OAuthAuthorizePage from "@/app/oauth/authorize/page";
 import { ProviderSubmit } from "@/components/signin/provider-button";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 type ProviderProps = { provider: string; children?: ReactNode };
 function providers(node: ReactNode): ReactElement<ProviderProps>[] {
@@ -61,7 +61,7 @@ it.each(cases)("$entry/$provider keeps one glyph, its label and native submit lo
   mocks.signIn.mockReturnValue(new Promise<void>(resolve => { finish = resolve; }));
   const { container } = await render(form);
   const button = find<HTMLButtonElement>(container, "button");
-  const text = provider === "github" ? m.signIn.github : m.signIn.google;
+  const text = provider === "github" ? en.signIn.github : en.signIn.google;
   expect(button.textContent).toBe(text);
   expect(button.querySelectorAll("svg")).toHaveLength(1);
   expect(button.disabled).toBe(false);

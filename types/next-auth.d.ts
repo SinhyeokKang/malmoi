@@ -10,6 +10,7 @@ import type { DefaultSession } from "next-auth";
  */
 declare module "next-auth" {
   interface Session {
-    user: { id: string } & DefaultSession["user"];
+    /** `uiLocale` — 고른 화면 언어(ui-locales C2), `timeZone` — 고른 시간대(user-timezone), `colorScheme` — 고른 화면 테마(color-scheme). `publicSession`이 싣는다. */
+    user: { id: string; uiLocale?: string | null; timeZone?: string | null; colorScheme?: string | null } & DefaultSession["user"];
   }
 }

@@ -9,7 +9,7 @@ import { loadMembers, loadPendingInvitations } from "@/lib/auth/query";
 import { planSeatNotice } from "@/lib/auth/seat-notice";
 import { requireProjectAccess } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
-import { m } from "@/lib/i18n";
+import { getMessages } from "@/lib/i18n/server";
 import { routes } from "@/lib/routes";
 
 /**
@@ -31,9 +31,10 @@ import { routes } from "@/lib/routes";
  * `components/__tests__/members-screen.test.ts`가 그 짝을 강제한다.
  */
 export default async function MembersPage({ params }: { params: Promise<{ slug: string }> }) {
+  const m = await getMessages();
   const { slug } = await params;
   const { projectId, role, userId, archived } = await requireProjectAccess({ slug, permission: "translation:write" });
-  if (archived) return <ProjectArchived slug={slug} role={role} />;
+  if (archived) return <ProjectArchived slug={slug} role={role} m={m} />;
 
   const prisma = getPrisma();
   const project = await prisma.project.findUnique({ where: { id: projectId }, select: { name: true } });
@@ -46,8 +47,8 @@ export default async function MembersPage({ params }: { params: Promise<{ slug: 
    */
   const now = new Date();
   const [members, pending] = await Promise.all([
-    loadMembers(prisma, projectId),
-    loadPendingInvitations(prisma, projectId, now),
+    loadMembers(prisma, m, projectId),
+    loadPendingInvitations(prisma, m, projectId, now),
   ]);
 
   return (

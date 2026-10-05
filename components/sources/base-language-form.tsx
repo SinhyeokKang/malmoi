@@ -6,7 +6,7 @@ import { FieldError } from "@/components/ui/form-group";
 import { useLandAfter } from "@/components/ui/focus";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import { baseLocaleFieldValue } from "@/lib/onboarding/base-pending";
 import { isRepositorySettingsError, repositorySettingsErrorMessage } from "@/lib/settings/message";
 import { createBaseLanguageForm, planBaseLanguageForm } from "@/lib/sources/base-language";
@@ -20,6 +20,7 @@ export function BaseLanguageForm({ slug, surfaceSlug, baseLocale, declaredBaseLo
   /** 미저장 변경 — 모달을 떠나는 길 전부가 이 값 하나로 확인창을 지난다 (시안 `1j`). */
   onDirty: (draft: string | null) => void;
 }) {
+  const m = useMessages();
   const [state, setState] = useState(() => createBaseLanguageForm({ baseLocale, declaredBaseLocale }));
   const submit = useRef<HTMLButtonElement>(null);
   const server = baseLocaleFieldValue({ baseLocale, declaredBaseLocale }) ?? "";
@@ -48,7 +49,7 @@ export function BaseLanguageForm({ slug, surfaceSlug, baseLocale, declaredBaseLo
       <div className="flex flex-wrap items-center gap-3">
         {/* ⚠️ 잠겨도 Tab만 통과시킨다 (audit #18 · `member-list.tsx`의 형) — 포커스가 갇히면 키보드 사용자가 폼을 떠날 수 없다. */}
         <Select value={state.draft} onValueChange={value => { if (!locked) setState(s => planBaseLanguageForm(s, { type: "change", value })); }}>
-          <SelectTrigger width={160} id="base-locale" aria-labelledby="base-locale-label base-locale" aria-disabled={locked || undefined} aria-describedby={unavailable ? "base-unavailable" : undefined} data-base-pending={awaiting || undefined} className={cn(error !== null ? "border-destructive/50" : awaiting && "border-amber-500/50")}
+          <SelectTrigger width={160} id="base-locale" aria-labelledby="base-locale-label base-locale" aria-disabled={locked || undefined} aria-describedby={unavailable ? "base-unavailable" : undefined} data-base-pending={awaiting || undefined} className={cn(error !== null ? "border-destructive/50" : awaiting && "border-warning-emphasis/50")}
             onPointerDown={event => { if (locked) event.preventDefault(); }} onClick={event => { if (locked) event.preventDefault(); }} onKeyDown={event => { if (locked && event.key !== "Tab") event.preventDefault(); }}><SelectValue /></SelectTrigger>
           <SelectContent>{locales.map(code => <SelectItem key={code} value={code}>{code}</SelectItem>)}</SelectContent>
         </Select>
@@ -59,6 +60,6 @@ export function BaseLanguageForm({ slug, surfaceSlug, baseLocale, declaredBaseLo
         <p className="text-muted-foreground min-w-0 basis-full text-xs leading-prose">{m.locales.field.help}</p>
       </div>
     {unavailable && <p id="base-unavailable" className="text-muted-foreground text-xs">{baseLocale === null ? m.sources.firstImport : m.locales.field.noLocales}</p>}
-    {error && <FieldError>{isRepositorySettingsError(error) ? repositorySettingsErrorMessage(error) : isAccessError(error) ? accessErrorMessage(error) : m.locales.field.failed}</FieldError>}
+    {error && <FieldError>{isRepositorySettingsError(error) ? repositorySettingsErrorMessage(m, error) : isAccessError(error) ? accessErrorMessage(m, error) : m.locales.field.failed}</FieldError>}
   </form>;
 }

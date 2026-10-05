@@ -1,6 +1,6 @@
 import { ContentPanel, PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { Skeleton } from "@/components/ui/skeleton";
-import { m } from "@/lib/i18n";
+import { getMessages } from "@/lib/i18n/server";
 
 /**
  * 목록이 서버에서 오는 동안의 스켈레톤 (2026-09-11 사용자).
@@ -31,7 +31,8 @@ import { m } from "@/lib/i18n";
  * ⚠️ **`motion-safe:`가 붙어 있다** — 움직임을 줄인 사용자에게는 정지한 회색 블록으로 선다
  * (로그인 화면의 점 필드가 같은 판정이다).
  */
-export default function ProjectsLoading() {
+export default async function ProjectsLoading() {
+  const m = await getMessages();
   return (
     <ContentPanel>
       {/* 골격이 `aria-hidden`이라 접근성 트리가 통째로 빈다 — 이 한 줄이 그 자리를 메운다(4-Y17 — 형제 화면의 골격과 같은 형). */}

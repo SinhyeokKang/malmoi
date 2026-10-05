@@ -3,7 +3,7 @@ import { expect, it, vi } from "vitest";
 
 import { render } from "@/components/__tests__/helpers/dom";
 import type { AccountView } from "@/lib/github-connect/account-view";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 vi.mock("@/app/(edit)/projects/actions", () => ({ disconnectGithub: vi.fn(), startGithubConnectForUser: vi.fn() }));
 vi.mock("@/app/(edit)/projects/[slug]/settings/actions", () => ({ startGithubConnect: vi.fn() }));
@@ -44,7 +44,7 @@ async function section(
  */
 function installationLinks(container: ParentNode): HTMLAnchorElement[] {
   return [...container.querySelectorAll("a")].filter((a) =>
-    (a.textContent ?? "").includes(m.account.github.installationSettings),
+    (a.textContent ?? "").includes(en.account.github.installationSettings),
   );
 }
 
@@ -53,14 +53,14 @@ it("연결됐으면 설치 설정으로 나가는 링크와 해제 버튼이 함
   const links = installationLinks(container);
   expect(links).toHaveLength(1);
   expect(links[0]!.href).toBe(SETTINGS_URL);
-  expect(links[0]!.textContent).toContain(m.account.github.installationSettings);
+  expect(links[0]!.textContent).toContain(en.account.github.installationSettings);
   // 나가는 링크는 새 탭이다 (DESIGN §6.3) — 설정을 고치러 간 사이에 이 화면을 잃지 않는다.
   expect(links[0]!.target).toBe("_blank");
   expect(links[0]!.rel).toBe("noreferrer noopener");
   // ⚠️ **나가는 것이 왼쪽, 파괴적인 것이 오른쪽 끝이다** — 세션 카드와 같은 순서다.
   const controls = [...container.querySelectorAll("a, button")];
   const linkAt = controls.indexOf(links[0]!);
-  const disconnectAt = controls.findIndex((el) => el.textContent === m.settings.account.disconnect);
+  const disconnectAt = controls.findIndex((el) => el.textContent === en.settings.account.disconnect);
   expect(disconnectAt).toBeGreaterThan(-1);
   expect(linkAt).toBeLessThan(disconnectAt);
 });
@@ -78,7 +78,7 @@ it("GITHUB_APP_SLUG가 없으면 링크만 사라지고 해제 버튼은 그대�
   expect(installationLinks(container)).toHaveLength(0);
   // 링크 하나가 없다고 연결 상태를 장애로 위장하지 않는다.
   expect(container.textContent).toContain("@octocat");
-  expect([...container.querySelectorAll("button")].map((b) => b.textContent)).toContain(m.settings.account.disconnect);
+  expect([...container.querySelectorAll("button")].map((b) => b.textContent)).toContain(en.settings.account.disconnect);
 });
 
 /**
@@ -101,15 +101,15 @@ function lines(container: ParentNode): { body: string; hint: string | null } {
 
 it("설치 리포 수는 본문이 아니라 보조 줄이 든다", async () => {
   const { body, hint } = lines(await section());
-  expect(hint).toBe(m.account.github.installedOn(4));
+  expect(hint).toBe(en.account.github.installedOn(4));
   // 본문은 상태만 든다 — 집계를 여기 붙이면 상태가 숫자에 묻힌다.
   expect(body).not.toContain("Installed on");
-  expect(body).toContain(m.account.github.connected);
+  expect(body).toContain(en.account.github.connected);
 });
 
 it("리포가 하나면 단수로 읽힌다", async () => {
   const { hint } = lines(await section({ status: "ok", login: "octocat" }, 1));
-  expect(hint).toBe(m.account.github.installedOn(1));
+  expect(hint).toBe(en.account.github.installedOn(1));
   // 단복수를 안 가르면 `1 repositories`가 그대로 화면에 선다.
   expect(hint).not.toContain("1 repositories");
 });
@@ -121,7 +121,7 @@ it.each<[string, number | null]>([
   const { body, hint } = lines(await section({ status: "ok", login: "octocat" }, count));
   // ⚠️ **보조 줄이 없다**를 센다 — 전엔 `textContent`를 봐서 상태가 본문으로 옮겨가도 통과했다.
   expect(hint).toBeNull();
-  expect(body).toContain(m.account.github.connected);
+  expect(body).toContain(en.account.github.connected);
 });
 
 /**
@@ -131,9 +131,9 @@ it.each<[string, number | null]>([
  * 유일한 그물이다.**
  */
 it.each<[string, AccountView, string, string]>([
-  ["미연동", { status: "ok", login: null }, m.account.github.notConnected, m.account.github.hintNotConnected],
-  ["인가 만료", { status: "reauthorize" }, m.account.github.statusReauthorize, m.account.github.hintReauthorize],
-  ["조회 실패", { status: "unavailable" }, m.account.github.statusUnavailable, m.account.github.hintUnavailable],
+  ["미연동", { status: "ok", login: null }, en.account.github.notConnected, en.account.github.hintNotConnected],
+  ["인가 만료", { status: "reauthorize" }, en.account.github.statusReauthorize, en.account.github.hintReauthorize],
+  ["조회 실패", { status: "unavailable" }, en.account.github.statusUnavailable, en.account.github.hintUnavailable],
 ])("%s 갈래의 상태와 보조 줄이 짝이다", async (_label, account, status, hint) => {
   const measured = lines(await section(account));
   expect(measured.body).toContain(status);

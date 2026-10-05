@@ -1,6 +1,6 @@
 import { beforeEach, expect, it, vi } from "vitest";
 
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import type { ApiTokenSubject } from "../../token-store";
 
@@ -22,11 +22,11 @@ beforeEach(() => { vi.spyOn(console, "error").mockImplementation(() => {}); });
 it("OAuth 연결의 권한 밖 호출은 다시 연결하라고 말한다", async () => {
   const result = await run({ kind: "oauth", connectionId: "c1" });
   expect(result.isError).toBe(true);
-  expect(result.content[0]?.text).toBe(m.mcp.errors["token-scope-oauth"]);
+  expect(result.content[0]?.text).toBe(en.mcp.errors["token-scope-oauth"]);
   expect(result.structuredContent).toMatchObject({ status: "token-scope" });
 });
 
 it("대조: 개인 토큰은 재발급 문장 그대로다", async () => {
   const result = await run({ kind: "api-token", tokenHash: "hash" });
-  expect(result.content[0]?.text).toBe(m.mcp.errors["token-scope"]);
+  expect(result.content[0]?.text).toBe(en.mcp.errors["token-scope"]);
 });

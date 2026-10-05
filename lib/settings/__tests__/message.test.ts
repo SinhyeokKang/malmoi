@@ -1,3 +1,4 @@
+import { en } from "@/messages/en";
 import { describe, expect, it } from "vitest";
 import { isRepositorySettingsError, repositorySettingsErrorMessage } from "../message";
 
@@ -8,8 +9,8 @@ import { isRepositorySettingsError, repositorySettingsErrorMessage } from "../me
 describe("isRepositorySettingsError", () => {
   it.each(["invalid-branch", "unknown-locale", "orphaned-locale"] as const)("%s는 갈래이고 문구가 있다", (error) => {
     expect(isRepositorySettingsError(error)).toBe(true);
-    expect(repositorySettingsErrorMessage(error)).toEqual(expect.any(String));
-    expect(repositorySettingsErrorMessage(error).length).toBeGreaterThan(0);
+    expect(repositorySettingsErrorMessage(en, error)).toEqual(expect.any(String));
+    expect(repositorySettingsErrorMessage(en, error).length).toBeGreaterThan(0);
   });
 
   it.each(["constructor", "toString", "__proto__", "hasOwnProperty"])("프로토타입 키 %s는 갈래가 아니다", (key) => {
@@ -25,6 +26,6 @@ describe("isRepositorySettingsError", () => {
 describe("sync-branch (malmoi#126)", () => {
   it("갈래이고 sync 브랜치라서 안 된다고 말한다", () => {
     expect(isRepositorySettingsError("sync-branch")).toBe(true);
-    expect(repositorySettingsErrorMessage("sync-branch")).toContain("Malmoi");
+    expect(repositorySettingsErrorMessage(en, "sync-branch")).toContain("Malmoi");
   });
 });

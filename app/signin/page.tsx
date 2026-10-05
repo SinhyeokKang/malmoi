@@ -1,7 +1,6 @@
 import { Link as InlineLink } from "@/components/ui/link";
 import { clearAuthRoundtripCookies } from "@/lib/auth/roundtrip-cookies";
 import type { Metadata } from "next";
-import Image from "next/image";
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -12,16 +11,17 @@ import { AuthLayout } from "@/components/signin/auth-layout";
 import { AuthToast } from "@/components/signin/auth-toast";
 import { GithubIcon, GoogleIcon } from "@/components/signin/brand-icons";
 import { ProviderSubmit } from "@/components/signin/provider-button";
+import { MalmoiMark } from "@/components/ui/malmoi-mark";
 import { signInErrorMessage } from "@/lib/auth/message";
 import { readSession } from "@/lib/auth/read-session";
-import { m } from "@/lib/i18n";
+import { getMessages } from "@/lib/i18n/server";
+import { en } from "@/messages/en";
 import { routes } from "@/lib/routes";
 import { destFromCallbackUrl } from "@/lib/login-link/policy";
-import logo from "@/public/brand/malmoi-icon-black.svg";
 import { firstQueryValues, type Raw } from "@/lib/search-params";
 
 /** 로그인 폼은 검색 가치가 없다 — 브랜드 검색은 랜딩이 받는다(seo-geo spec D6). robots.txt로는 막지 않는다(`/invite`와 같은 이유). */
-export const metadata: Metadata = { title: m.seo.signInTitle, robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: en.seo.signInTitle, robots: { index: false, follow: false } };
 
 /**
  * 로그인 진입점. 미들웨어가 세션 없는 보호 라우트 요청을 여기로 보낸다.
@@ -47,6 +47,7 @@ export default async function SignIn({
 }: {
   searchParams: Promise<Raw<"error" | "sessions">>;
 }) {
+  const m = await getMessages();
   const { error, sessions } = firstQueryValues(await searchParams);
   const session = await readSession();
   if (session.status === "ok") redirect(routes.projects());
@@ -56,9 +57,9 @@ export default async function SignIn({
   const shown = error ?? (session.status === "unavailable" ? "Unavailable" : undefined);
 
   return (
-    <AuthLayout decoration>
+    <AuthLayout m={m} decoration>
       <AuthColumn>
-        <Image src={logo} alt="" width={48} height={48} priority />
+        <MalmoiMark size={48} />
         {/* ⚠️ **설명이 없다** — 제품 설명은 랜딩이 맡는다 (8-1b). */}
         <AuthHeading title={m.signIn.title} />
 
@@ -91,7 +92,7 @@ export default async function SignIn({
       </AuthColumn>
 
       {/* 렌더하지 않는다 — `?error=`·`?sessions=`를 토스트로 옮기는 조각이다. */}
-      <AuthToast error={shown === undefined ? undefined : signInErrorMessage(shown)} sessions={sessions} />
+      <AuthToast error={shown === undefined ? undefined : signInErrorMessage(m, shown)} sessions={sessions} />
     </AuthLayout>
   );
 }

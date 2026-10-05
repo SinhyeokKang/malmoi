@@ -119,6 +119,8 @@ const CLIENT_LIB_FILES = [
   "lib/home/state.ts",
   "lib/i18n/adapter-errors.ts",
   "lib/i18n/index.ts",
+  // 공개 푸터의 언어 스위처가 지원 집합·endonym·국기 매핑을 값으로 읽는다(ui-locales F2) — import 0인 잎이다(아래 잎 검사).
+  "lib/i18n/locales.ts",
   "lib/import/confirm.ts",
   "lib/import/refusal.ts",
   "lib/import/result.ts",
@@ -171,6 +173,11 @@ const CLIENT_LIB_FILES = [
   // D5 Command의 순환·활성 보존 판정 — import 0인 잎이다. 다른 검색 모듈은 E의 실제 소비 때 등록한다.
   "lib/search/keys.ts",
   "lib/search/match.ts",
+  // Preferences Time zone 카드가 선별 목록 판정·옵션을 값으로 읽는다(user-timezone D2) — 아래 잎 검사가 두 파일의 그래프를 고정한다.
+  "lib/time-zone/options.ts",
+  "lib/time-zone/zones.ts",
+  // Preferences Theme 카드가 지원 집합·판정을 값으로 읽는다(color-scheme P2-5) — import 0인 잎이다(아래 잎 검사). 서버 입구 `server.ts`는 없다.
+  "lib/color-scheme/scheme.ts",
   "lib/search/highlight.ts",
   "lib/search/nav-index.ts",
   "lib/search/key-href.ts",
@@ -210,7 +217,8 @@ const CLIENT_LIB_FILES = [
   "lib/upload/message.ts",
   // Logs 커서의 base64url 코덱 (audit #73) — import가 없는 잎이다.
   "lib/url-token.ts",
-  "lib/utc-time.ts",
+  // 절대 날짜·시각의 생산자(user-timezone — 옛 `lib/utc-time.ts`). 값 import 0인 잎이다(시간대·언어 타입만).
+  "lib/date-format.ts",
   "lib/utils.ts",
 ];
 
@@ -370,13 +378,20 @@ describe("클라이언트 그래프", () => {
    * 읽으므로 그 그래프가 곧 번들이다 — 사전이 `@/lib/**`를 하나라도 물면 7.2MB 사고의 재현이다.
    * 실 소비자는 T6부터 생기고, **그 전까지 이 검사가 공허하지 않도록** 여기서 직접 건다.
    */
-  it("`@/lib/i18n`은 잎이다 — 사전 말고 아무것도 물지 않는다", () => {
+  it("`@/lib/i18n`은 잎이다 — 사전도 값으로 물지 않는다(타입만)", () => {
     const { files, packages } = walk([join(ROOT, "lib/i18n/index.ts")]);
     expect([...packages].filter((name) => !allowed(name))).toEqual([]);
-    expect([...files].map((file) => file.slice(ROOT.length)).sort()).toEqual([
-      "lib/i18n/index.ts",
-      "messages/en.tsx",
-    ]);
+    expect([...files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/i18n/index.ts"]);
+  });
+
+  /**
+   * ⚠️ **화면 언어 판정 `lib/i18n/locales.ts`도 잎이다**(ui-locales design §3.3) — 날짜·상대 시각·언어명 헬퍼가 그 타입을,
+   * 클라이언트 provider·스위처가 값을 읽는다. 사전도 물지 않는다(en 사전을 물면 ko·es 사용자 번들에도 en이 실린다).
+   */
+  it("`lib/i18n/locales.ts`는 잎이다 — 사전도 물지 않는다", () => {
+    const { files, packages } = walk([join(ROOT, "lib/i18n/locales.ts")]);
+    expect([...packages]).toEqual([]);
+    expect([...files].map((file) => file.slice(ROOT.length))).toEqual(["lib/i18n/locales.ts"]);
   });
 
   /**
@@ -430,10 +445,43 @@ describe("클라이언트 그래프", () => {
     expect([...redact.packages]).toEqual([]);
   });
 
-  /** 상태 정본은 클라이언트 프리미티브(`StatusBadge`·`IconTile`)가 값으로 읽는다 — 사전 밖의 것을 무는 순간을 여기서 직접 건다. */
-  it("`lib/status/canon.ts`는 사전만 문다", () => {
+  /** 상태 정본은 클라이언트 프리미티브(`StatusBadge`·`IconTile`)가 값으로 읽는다 — 무언가를 무는 순간을 여기서 직접 건다. 낱말은 `stateLabel`이 인자로 받은 사전에서 고른다. */
+  /**
+   * ⚠️ **시간대 판정과 옵션은 Preferences 카드(클라이언트)가 값으로 읽는다**(user-timezone) — 소비자가 붙기 전에도 검사가 공허하지 않도록
+   * 여기서 직접 건다. 소비자가 생기면 `CLIENT_LIB_FILES`에 등재한다(위 정확 대조가 그때 요구한다).
+   */
+  /** ⚠️ **화면 테마 판정 `lib/color-scheme/scheme.ts`도 잎이다**(color-scheme design §0) — Theme 카드(클라이언트)가 값으로 읽는다. */
+  it("`lib/color-scheme/scheme.ts`는 잎이다 — 아무것도 물지 않는다", () => {
+    const scheme = walk([join(ROOT, "lib/color-scheme/scheme.ts")]);
+    expect([...scheme.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/color-scheme/scheme.ts"]);
+    expect([...scheme.packages]).toEqual([]);
+  });
+
+  it("`lib/time-zone/zones.ts`는 잎이다 — 아무것도 물지 않는다", () => {
+    const zones = walk([join(ROOT, "lib/time-zone/zones.ts")]);
+    expect([...zones.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/time-zone/zones.ts"]);
+    expect([...zones.packages]).toEqual([]);
+  });
+
+  it("`lib/time-zone/options.ts`는 목록과 날짜 형만 문다", () => {
+    const options = walk([join(ROOT, "lib/time-zone/options.ts")]);
+    expect([...options.files].map((file) => file.slice(ROOT.length)).sort()).toEqual([
+      "lib/date-format.ts",
+      "lib/time-zone/options.ts",
+      "lib/time-zone/zones.ts",
+    ]);
+    expect([...options.packages]).toEqual([]);
+  });
+
+  it("`lib/date-format.ts`는 잎이다 — 시간대·언어는 타입으로만 읽는다", () => {
+    const format = walk([join(ROOT, "lib/date-format.ts")]);
+    expect([...format.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/date-format.ts"]);
+    expect([...format.packages]).toEqual([]);
+  });
+
+  it("`lib/status/canon.ts`는 잎이다 — 사전도 물지 않는다", () => {
     const canon = walk([join(ROOT, "lib/status/canon.ts")]);
-    expect([...canon.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/i18n/index.ts", "lib/status/canon.ts", "messages/en.tsx"]);
+    expect([...canon.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/status/canon.ts"]);
     expect([...canon.packages].filter((name) => !allowed(name))).toEqual([]);
   });
 
@@ -455,23 +503,23 @@ describe("클라이언트 그래프", () => {
   it("`lib/events`의 판정 모듈 셋은 잎이다 — 조회를 물지 않는다", () => {
     const view = walk([join(ROOT, "lib/events/view.ts")]);
     expect([...view.files].map((file) => file.slice(ROOT.length)).sort()).toEqual([
+      // 날짜 카드 머리·그룹 키 — import 0인 잎이다(`publish-button.tsx`가 클라이언트에서 같은 파일을 읽는다).
+      "lib/date-format.ts",
       // 어휘 사전(import 0) — 주체 판정 `triggerOf`가 야간 subtype 목록을 값으로 읽는다(nightly-sync).
       "lib/events/payload.ts",
       "lib/events/view.ts",
-      "lib/i18n/index.ts",
       // 언어 이름은 이미 잎이다(import 0) — 온보딩 ③이 같은 함수를 쓴다.
       "lib/onboarding/language-name.ts",
       "lib/projects/import-failure.ts",
-      // 결과 키가 읽는 상태 정본도 사전만 무는 잎이다.
+      // 결과 키가 읽는 상태 정본도 잎이다 — 문구는 모두 인자로 받은 사전에서 고른다.
       "lib/status/canon.ts",
-      // 날짜 카드 머리의 날짜 형 — import 0인 잎이다(`publish-button.tsx`가 클라이언트에서 같은 파일을 읽는다).
-      "lib/utc-time.ts",
-      "messages/en.tsx",
     ]);
     expect([...view.packages].filter((name) => !allowed(name))).toEqual([]);
 
     const filter = walk([join(ROOT, "lib/events/filter.ts")]);
     expect([...filter.files].map((file) => file.slice(ROOT.length)).sort()).toEqual([
+      // 기간 구간·프리셋이 시간대 자정을 값으로 읽는다(user-timezone A3).
+      "lib/date-format.ts",
       "lib/events/filter.ts",
       "lib/events/payload.ts",
       "lib/url-token.ts",
@@ -510,7 +558,7 @@ describe("클라이언트 그래프", () => {
     const graph = walk([join(ROOT, "lib/search/nav-index.ts")]);
     expect([...graph.files].map(file => file.slice(ROOT.length)).sort()).toEqual([
       "components/signin/brand-icons.tsx", "lib/app-version.ts", "lib/auth/permission.ts",
-      "lib/i18n/index.ts", "lib/routes.ts", "lib/search/nav-index.ts", "lib/shell/nav.ts", "messages/en.tsx",
+      "lib/routes.ts", "lib/search/nav-index.ts", "lib/shell/nav.ts",
     ]);
     expect([...graph.packages].filter(name => !allowed(name))).toEqual([]);
   });
@@ -518,9 +566,9 @@ describe("클라이언트 그래프", () => {
   it("검색 rows는 nav-index와 같은 내비·사전에 검색 잎·번역 질의 상수만 더 문다", () => {
     const graph = walk([join(ROOT, "lib/search/rows.ts")]);
     expect([...graph.files].map(file => file.slice(ROOT.length)).sort()).toEqual([
-      "components/signin/brand-icons.tsx", "lib/app-version.ts", "lib/auth/permission.ts", "lib/i18n/index.ts", "lib/routes.ts",
+      "components/signin/brand-icons.tsx", "lib/app-version.ts", "lib/auth/permission.ts", "lib/routes.ts",
       "lib/search/highlight.ts", "lib/search/key-href.ts", "lib/search/match.ts", "lib/search/rows.ts", "lib/shell/nav.ts",
-      "lib/translations/query.ts", "messages/en.tsx",
+      "lib/translations/query.ts",
     ]);
     expect([...graph.packages].filter(name => !allowed(name))).toEqual([]);
   });

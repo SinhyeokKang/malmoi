@@ -28,7 +28,7 @@ const badge = cva("inline-flex min-w-5 items-center justify-center rounded-full 
       // 4.34:1로 AA 미달이다 (§2.2). 배지가 사는 곳은 표 셀·목록 행(흰 배경)이고, 표 헤더처럼
       // muted인 자리에 놓을 일이 생기면 호출부가 `text-foreground/60`으로 덮는다.
       text: "text-muted-foreground",
-      "soft-amber": "bg-amber-100/80 text-amber-800",
+      "soft-amber": "bg-warning-soft text-warning-soft-foreground",
       /**
        * 초록 (2026-09-11 사용자 — 목록 행의 `Active`).
        *
@@ -39,7 +39,7 @@ const badge = cva("inline-flex min-w-5 items-center justify-center rounded-full 
        *
        * ⚠️ amber와 같은 형이다(`-100/80` 배경 + `-800` 글자) — 채도를 맞춰야 둘이 같은 계열로 읽힌다.
        */
-      "soft-green": "bg-green-100/80 text-green-800",
+      "soft-green": "bg-success-soft text-success-foreground",
       /**
        * 채운 붉은 알약 — **danger 톤의 배지는 이것 하나다** (DESIGN §2.4 · D3②). 실패 알약(Logs 결과 · Sources 상태) · 사라진 언어 ·
        * 다른 리포가 같은 면이다. 면·글자는 붉은 면 조합(`bg-destructive/8 text-destructive` — 버튼 `danger`·아이콘 칸과 같다, §2.3).

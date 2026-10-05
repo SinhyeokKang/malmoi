@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ConnectedAppsCard, type ConnectedAppData } from "@/components/mcp/connected-apps-card";
 
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { find, render } from "./helpers/dom";
 
@@ -77,7 +77,7 @@ describe("목록", () => {
     expect(card().querySelectorAll("[data-app-row]")).toHaveLength(3);
     expect(card().querySelector("h2 + span")?.textContent).toContain("3");
     // 숫자는 aria-hidden이고 sr 문장은 연결 수다 — 카드 제목을 되읽지 않는다(U3 r1).
-    expect(card().querySelector("h2 + span")?.querySelector(".sr-only")?.textContent).toBe(m.mcpConnector.apps.count(3));
+    expect(card().querySelector("h2 + span")?.querySelector(".sr-only")?.textContent).toBe(en.mcpConnector.apps.count(3));
     const first = find<HTMLElement>(card(), '[data-app-row="c1"]');
     expect(first.textContent).toContain("claude.ai/oauth/claude-code-client-metadata");
     // 권한마다 배지 하나다(2026-09-30 사용자).
@@ -259,6 +259,18 @@ describe("연결 행 — 왼쪽 로고 칸(IconTile lg)", () => {
     await mount([app({}), app({ id: "c3", ident: "chatgpt.com/oauth/codex/x/client.json", brand: "openai" })]);
     expect(tile("c3").querySelector("img")?.className).toContain("scale-150");
     expect(tile("c1").querySelector("img")?.className).not.toContain("scale-150");
+  });
+
+  /** OpenAI 마크는 검정 하나뿐이라 다크 칸에서 사라진다 — 두 테마 같은 흰 판 위에 둔다(color-scheme design §3.5). Claude 칸은 회색 면 그대로다. */
+  it("OpenAI 칸만 흰 판이다 — 행과 끊기 확인창 둘 다", async () => {
+    await mount([app({}), app({ id: "c3", ident: "chatgpt.com/oauth/codex/x/client.json", brand: "openai" })]);
+    expect(tile("c3").className.split(" ")).toContain("bg-[#ffffff]");
+    expect(tile("c3").className.split(" ")).not.toContain("bg-foreground/5");
+    expect(tile("c1").className.split(" ")).toContain("bg-foreground/5");
+    expect(tile("c1").className).not.toContain("#ffffff");
+    await click(rowButton("c3"));
+    const box = find<HTMLElement>(dialog()!, "[data-disconnect-app]");
+    expect(box.querySelector("span")?.className.split(" ")).toContain("bg-[#ffffff]");
   });
 
   it("Disconnect는 danger다 — 행의 다른 동작과 구분된다", async () => {

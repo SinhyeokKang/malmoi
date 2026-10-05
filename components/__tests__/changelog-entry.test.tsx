@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { ReleaseEntry } from "@/components/changelog/release-entry";
 import { SECTION_HEADING, SUB_HEADING } from "@/components/docs/classes";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { releaseTagUrl } from "@/lib/links";
 
 import { render } from "./helpers/dom";
@@ -44,7 +44,7 @@ See [protocol-relative](//example.com/x).
 const release = { tag: "v1.0.1", publishedAt: "2026-09-27T16:34:14Z", body: BODY };
 
 async function entry() {
-  return (await render(<ReleaseEntry release={release} />)).container;
+  return (await render(<ReleaseEntry m={en} uiLocale="en" release={release} />)).container;
 }
 
 describe("ReleaseEntry — 머리", () => {

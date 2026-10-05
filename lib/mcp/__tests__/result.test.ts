@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { accessErrorMessage } from "@/lib/auth/message";
 import { connectErrorMessage } from "@/lib/github-connect/message";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { onboardErrorMessage } from "@/lib/onboarding/message";
 import { repositorySettingsErrorMessage } from "@/lib/settings/message";
 
@@ -15,21 +15,21 @@ import { TOOL_REJECTIONS, toToolResult, type ToolRejection } from "../result";
  */
 
 const EXPECTED_MESSAGE: Record<ToolRejection, string> = {
-  "not-found": m.errors.access["not-found"],
-  forbidden: m.errors.access.forbidden,
-  archived: m.errors.access.archived,
-  unavailable: m.errors.access.unavailable,
-  "repo-read-only": m.errors.connect["repo-read-only"],
-  "sample-expired": m.errors.onboarding["sample-expired"],
-  "manual-no-match": m.errors.onboarding["manual-no-match"],
-  "not-ready": m.errors.onboarding["not-ready"],
-  "token-scope": m.mcp.errors["token-scope"],
-  reconfirm: m.mcp.errors.reconfirm,
-  "invalid-input": m.mcp.errors["invalid-input"],
-  "too-many": m.mcp.errors["too-many"](100),
-  "duplicate-key": m.mcp.errors["duplicate-key"],
+  "not-found": en.errors.access["not-found"],
+  forbidden: en.errors.access.forbidden,
+  archived: en.errors.access.archived,
+  unavailable: en.errors.access.unavailable,
+  "repo-read-only": en.errors.connect["repo-read-only"],
+  "sample-expired": en.errors.onboarding["sample-expired"],
+  "manual-no-match": en.errors.onboarding["manual-no-match"],
+  "not-ready": en.errors.onboarding["not-ready"],
+  "token-scope": en.mcp.errors["token-scope"],
+  reconfirm: en.mcp.errors.reconfirm,
+  "invalid-input": en.mcp.errors["invalid-input"],
+  "too-many": en.mcp.errors["too-many"](100),
+  "duplicate-key": en.mcp.errors["duplicate-key"],
   // 적재 lease 중 번역 쓰기 거부(sync-lock C4) — Sync 결과 화면의 문장이다. 다시 열리는 시각은 `detail`이 든다.
-  "sync-running": m.repositorySync.errors["already-running"],
+  "sync-running": en.repositorySync.errors["already-running"],
 };
 
 describe("toToolResult — 성공", () => {
@@ -68,13 +68,13 @@ describe("toToolResult — 거부", () => {
     const result = toToolResult(leaky);
     expect(JSON.stringify(result)).not.toContain("ECONNREFUSED");
     expect(JSON.stringify(result)).not.toContain("db.ts");
-    expect(result.content[0]?.text).toBe(m.errors.access.unavailable);
+    expect(result.content[0]?.text).toBe(en.errors.access.unavailable);
   });
 
   it("모르는 status는 unavailable 문장으로 접힌다 — 던지지 않는다", () => {
     const result = toToolResult({ status: "constructor" } as unknown as { status: "unavailable" });
     expect(result.isError).toBe(true);
-    expect(result.content[0]?.text).toBe(m.errors.access.unavailable);
+    expect(result.content[0]?.text).toBe(en.errors.access.unavailable);
   });
 });
 
@@ -83,8 +83,8 @@ describe("toToolResult — needs-browser", () => {
     const url = "https://mal-moi.com/account";
     const result = toToolResult({ status: "needs-browser", reason, url });
     expect(result.isError).toBe(true);
-    expect(result.structuredContent).toEqual({ status: "needs-browser", reason, url, message: m.mcp.needsBrowser[reason] });
-    expect(result.content[0]?.text).toContain(m.mcp.needsBrowser[reason]);
+    expect(result.structuredContent).toEqual({ status: "needs-browser", reason, url, message: en.mcp.needsBrowser[reason] });
+    expect(result.content[0]?.text).toContain(en.mcp.needsBrowser[reason]);
     expect(result.content[0]?.text).toContain(url);
     expect("retryable" in result.structuredContent).toBe(false);
   });
@@ -96,14 +96,14 @@ describe("toToolResult — needs-browser", () => {
  */
 describe("toToolResult — refused(코어 거부 코드)", () => {
   it.each([
-    ["forbidden", accessErrorMessage("forbidden")],
+    ["forbidden", accessErrorMessage(en, "forbidden")],
     // 복원·승격의 상한 재집계(operator-account) — `unarchive_project`·`change_member`가 같은 코어라 같은 문장이다.
-    ["owner-limit-reached", accessErrorMessage("owner-limit-reached")],
-    ["repo-not-installed", onboardErrorMessage("repo-not-installed")],
-    ["limit-reached", onboardErrorMessage("limit-reached")],
-    ["no-candidates", onboardErrorMessage("no-candidates")],
-    ["invalid-branch", repositorySettingsErrorMessage("invalid-branch")],
-    ["exchange-failed", connectErrorMessage("exchange-failed")],
+    ["owner-limit-reached", accessErrorMessage(en, "owner-limit-reached")],
+    ["repo-not-installed", onboardErrorMessage(en, "repo-not-installed")],
+    ["limit-reached", onboardErrorMessage(en, "limit-reached")],
+    ["no-candidates", onboardErrorMessage(en, "no-candidates")],
+    ["invalid-branch", repositorySettingsErrorMessage(en, "invalid-branch")],
+    ["exchange-failed", connectErrorMessage(en, "exchange-failed")],
   ])("%s → 화면 사전의 문장, status는 그 코드", (code, message) => {
     const result = toToolResult({ status: "refused", code });
     expect(result.isError).toBe(true);
@@ -112,7 +112,7 @@ describe("toToolResult — refused(코어 거부 코드)", () => {
   });
 
   it("도구 전용 갈래(token-scope)도 같은 경로로 찾는다", () => {
-    expect(toToolResult({ status: "refused", code: "token-scope" }).content[0]?.text).toBe(m.mcp.errors["token-scope"]);
+    expect(toToolResult({ status: "refused", code: "token-scope" }).content[0]?.text).toBe(en.mcp.errors["token-scope"]);
   });
 
   /**
@@ -122,15 +122,15 @@ describe("toToolResult — refused(코어 거부 코드)", () => {
   it("token-scope 문장은 자격증명 종류로 갈린다 — OAuth는 다시 연결, 개인 토큰은 재발급", () => {
     for (const outcome of [{ status: "token-scope" } as const, { status: "refused", code: "token-scope" } as const]) {
       const oauth = toToolResult(outcome, "oauth");
-      expect(oauth.content[0]?.text).toBe(m.mcp.errors["token-scope-oauth"]);
-      expect(oauth.structuredContent).toMatchObject({ status: "token-scope", message: m.mcp.errors["token-scope-oauth"] });
-      expect(toToolResult(outcome, "api-token").content[0]?.text).toBe(m.mcp.errors["token-scope"]);
+      expect(oauth.content[0]?.text).toBe(en.mcp.errors["token-scope-oauth"]);
+      expect(oauth.structuredContent).toMatchObject({ status: "token-scope", message: en.mcp.errors["token-scope-oauth"] });
+      expect(toToolResult(outcome, "api-token").content[0]?.text).toBe(en.mcp.errors["token-scope"]);
       // 주체를 모르면(세션 경로 등) 지금 문장 그대로다.
-      expect(toToolResult(outcome).content[0]?.text).toBe(m.mcp.errors["token-scope"]);
+      expect(toToolResult(outcome).content[0]?.text).toBe(en.mcp.errors["token-scope"]);
     }
-    expect(m.mcp.errors["token-scope-oauth"]).not.toMatch(/new token|Issue/);
+    expect(en.mcp.errors["token-scope-oauth"]).not.toMatch(/new token|Issue/);
     // 다른 거부는 주체와 무관하다.
-    expect(toToolResult({ status: "not-found" }, "oauth").content[0]?.text).toBe(m.errors.access["not-found"]);
+    expect(toToolResult({ status: "not-found" }, "oauth").content[0]?.text).toBe(en.errors.access["not-found"]);
   });
 
   it("unavailable은 refused로 와도 retryable이다", () => {
@@ -146,8 +146,8 @@ describe("toToolResult — refused(코어 거부 코드)", () => {
     const result = toToolResult({ status: "refused", code: "sync-running", detail });
     expect(result).toEqual({
       isError: true,
-      content: [{ type: "text", text: m.repositorySync.errors["already-running"] }],
-      structuredContent: { ...detail, status: "sync-running", message: m.repositorySync.errors["already-running"], retryable: true },
+      content: [{ type: "text", text: en.repositorySync.errors["already-running"] }],
+      structuredContent: { ...detail, status: "sync-running", message: en.repositorySync.errors["already-running"], retryable: true },
     });
     // 호출부가 화면 문장을 골라 넘겨도(Revert) 재시도 표시는 코드가 정한다.
     expect(toToolResult({ status: "refused", code: "sync-running", message: "x", detail }).structuredContent).toMatchObject({ status: "sync-running", retryable: true, ...detail });
@@ -163,6 +163,6 @@ describe("toToolResult — refused(코어 거부 코드)", () => {
 });
 
 it("refused의 message는 호출부가 고른 화면 문장이 이긴다", () => {
-  expect(toToolResult({ status: "refused", code: "already-running", message: m.translations.publish.alreadyRunningBody }).structuredContent)
-    .toEqual({ status: "already-running", message: m.translations.publish.alreadyRunningBody });
+  expect(toToolResult({ status: "refused", code: "already-running", message: en.translations.publish.alreadyRunningBody }).structuredContent)
+    .toEqual({ status: "already-running", message: en.translations.publish.alreadyRunningBody });
 });

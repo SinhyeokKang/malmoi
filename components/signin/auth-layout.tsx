@@ -2,7 +2,7 @@ import Image from "next/image";
 import type { ReactNode } from "react";
 
 import { PublicFooter } from "@/components/public-shell/footer";
-import { m } from "@/lib/i18n";
+import type { Messages } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import projectCard from "@/public/brand/malmoi-kv-1.png";
 import koreanCard from "@/public/brand/malmoi-kv-2.png";
@@ -23,13 +23,13 @@ import { DotField } from "./dot-field";
  * grid가 그냥 압축되고 우측 키비주얼만 잘린다. 규약이 허용한 것은 스크롤이지 잘림이 아니다.
  *
  * ⚠️ **푸터는 공개 셸의 `PublicFooter`이고 패널 줄 아래 전폭 한 줄이다** (2026-09-26 사용자 — 옛 형은 좌측 패널 안
- * `absolute bottom-6`의 14px 줄이었다). 좌표도 공개 셸과 같다: 바깥 `px-2 pt-2` · 패널 줄 · 푸터 40이 바닥 띠다.
+ * `absolute bottom-6`의 14px 줄이었다). 좌표는 헤더가 없어 공개 셸(위 6 + 헤더 44 + 6)과 다르다: 바깥 `px-2 pt-2`(패널 y 8) · 패널 줄 · 푸터 40이 바닥 띠다.
  */
 /**
  * ⚠️ **`scroll`은 `/oauth/authorize` 동의 단계만 넘긴다** (mcp-oauth 핸드오프 §7.1) — 폼이 뷰포트보다 길어 `<main>` **안**이 스크롤한다(문서가
  * 아니라). 바깥이 뷰포트 높이로 고정되고 `<main>`은 가운데 정렬·좌우 여백을 버린다 — 스크롤 영역과 여백은 자식이 든다.
  */
-export function AuthLayout({ children, decoration = false, scroll = false }: { children: ReactNode; decoration?: boolean; scroll?: boolean }) {
+export function AuthLayout({ m, children, decoration = false, scroll = false }: { m: Messages; children: ReactNode; decoration?: boolean; scroll?: boolean }) {
   /**
    * ⚠️ **탭 두 장이 배경 위에 떠 있는 구조다** (시안 검산: 프레임 1920 → body가 x=8 y=8의
    * 1904×1064이고, 좌 탭 x=0(948)·우 탭 x=956 → **바깥 padding 8 · 탭 간 gap 8**).
@@ -55,16 +55,16 @@ export function AuthLayout({ children, decoration = false, scroll = false }: { c
         <div className={cn("grid flex-1 gap-2", decoration && "grid-cols-2", scroll && "min-h-0")}>
           {/*
             ⚠️ `<main>`은 **좌측**이다 — 우측은 장식이고 랜드마크가 아니다.
-            ⚠️ **true white다** — 바깥이 연한 회색이라 그 대비가 탭의 경계를 만든다.
-            ⚠️ **`border-subtle`이다** — 시안의 `#f5f6f7`은 배경과 거의 같은 톤이라, 패널을 떼어내는
+            ⚠️ **`bg-background`(라이트 #fff)다** — 바깥이 연한 회색이라 그 대비가 탭의 경계를 만든다. 옛 `bg-white`와 같은 값이다(color-scheme Phase 1).
+            ⚠️ **`border-border-subtle`이다** — 시안의 `#f5f6f7`은 배경과 거의 같은 톤이라, 패널을 떼어내는
             것은 흰색 대비와 `shadow-low`이고 border는 가장자리를 정리할 뿐이다.
           */}
-          <main className={cn("border-border-subtle relative flex flex-col overflow-hidden rounded-xl border bg-white shadow-low", scroll ? "min-h-0" : "items-center justify-center px-8")}>
+          <main className={cn("border-border-subtle relative flex flex-col overflow-hidden rounded-xl border bg-background shadow-low", scroll ? "min-h-0" : "items-center justify-center px-8")}>
             {children}
           </main>
-          {decoration && <Decoration />}
+          {decoration && <Decoration m={m} />}
         </div>
-        <PublicFooter />
+        <PublicFooter m={m} />
       </div>
     </>
   );
@@ -78,9 +78,9 @@ export function AuthLayout({ children, decoration = false, scroll = false }: { c
  * 맞춰 줄어들어, 1280px에서 우측 컬럼 628 − 128 = 500px이라 **넘치지 않는다.**
  *
  * ⚠️ **이 패널엔 border가 없다** (시안) — 그라데이션 자체가 면을 만들어 선이 필요 없다. 좌측
- * 폼 패널만 `border-subtle`을 든다.
+ * 폼 패널만 `border-border-subtle`을 든다.
  */
-function Decoration() {
+function Decoration({ m }: { m: Messages }) {
   return (
     <div className="from-auth-hero-from to-auth-hero-to relative flex flex-col items-center justify-between overflow-hidden rounded-xl bg-gradient-to-b px-16 py-20">
       <DotField className="absolute inset-0 size-full" />

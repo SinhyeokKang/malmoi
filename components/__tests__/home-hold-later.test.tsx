@@ -4,7 +4,7 @@ import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { HoldLater } from "@/components/home/hold-later";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import type { HoldReason } from "@/lib/protection/plan";
 
 /**
@@ -30,7 +30,7 @@ async function mount(ui: React.ReactNode) {
 
 describe("HoldLater", () => {
   it("새 promise가 대기 중이어도 전환이 커밋되고 옛 사유가 남는다", async () => {
-    const text = m.home.cards.held["open-pr"];
+    const text = en.home.cards.held["open-pr"];
     const view = await mount(<Host label="A" hold={Promise.resolve("open-pr")} />);
     expect(view.container.textContent).toContain(text);
     await view.transition(<Host label="B" hold={new Promise(() => {})} />);
@@ -40,9 +40,9 @@ describe("HoldLater", () => {
 
   it("도착 전 줄은 nothing to send다 — 새 사유가 도착하면 바뀐다", async () => {
     const line = await mount(<Host label="A" hold={new Promise(() => {})} />);
-    expect(line.container.textContent).toContain(m.home.cards.nothingPending);
+    expect(line.container.textContent).toContain(en.home.cards.nothingPending);
     await line.transition(<Host label="B" hold={Promise.resolve("pr-check-failed")} />);
-    expect(line.container.textContent).toContain(m.home.cards.held["pr-check-failed"]);
+    expect(line.container.textContent).toContain(en.home.cards.held["pr-check-failed"]);
   });
 
   it("늦게 풀린 옛 promise가 새 값을 덮지 않는다", async () => {
@@ -51,7 +51,7 @@ describe("HoldLater", () => {
     const view = await mount(<Host label="A" hold={old} />);
     await view.transition(<Host label="B" hold={Promise.resolve("open-pr")} />);
     await act(async () => resolveOld(null));
-    expect(view.container.textContent).toContain(m.home.cards.held["open-pr"]);
+    expect(view.container.textContent).toContain(en.home.cards.held["open-pr"]);
   });
 
   /**
@@ -59,7 +59,7 @@ describe("HoldLater", () => {
    * 식별 키가 바뀌면 그 자리에서 비운다 — 그 사이 다른 프로젝트의 Held를 말하지 않는다.
    */
   it("프로젝트가 바뀌면 옛 프로젝트의 사유가 서지 않는다", async () => {
-    const text = m.home.cards.held["open-pr"];
+    const text = en.home.cards.held["open-pr"];
     const view = await mount(<Host label="A" hold={Promise.resolve("open-pr")} project="acme" />);
     expect(view.container.textContent).toContain(text);
     await view.transition(<Host label="B" hold={new Promise(() => {})} project="globex" />);

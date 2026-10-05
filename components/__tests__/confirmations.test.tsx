@@ -8,7 +8,7 @@ import { MemberList } from "@/components/members/member-list";
 import { PendingInvitations } from "@/components/members/pending-invitations";
 import { PushTokenPanel } from "@/components/settings/push-token-panel";
 import type { MemberView, PendingInvitation } from "@/lib/auth/query";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { find, input, render } from "./helpers/dom";
 
@@ -57,44 +57,44 @@ describe("#20 역할 변경은 확인을 받는다", () => {
   it("고르기만 하면 쓰지 않고, 확인하면 그 역할로 쓴다", async () => {
     mocks.changeMember.mockResolvedValue({ ok: true });
     await draw();
-    await pickRole("u2", m.projects.role.OWNER);
+    await pickRole("u2", en.projects.role.OWNER);
     expect(mocks.changeMember).not.toHaveBeenCalled();
-    expect(dialog()?.textContent).toContain(m.members.confirmRole("Alice", m.projects.role.OWNER));
-    await click(inDialog(m.members.confirmRoleAction));
+    expect(dialog()?.textContent).toContain(en.members.confirmRole("Alice", en.projects.role.OWNER));
+    await click(inDialog(en.members.confirmRoleAction));
     expect(mocks.changeMember).toHaveBeenCalledWith({ slug: "acme", targetUserId: "u2", nextRole: "OWNER" });
   });
 
   it("취소하면 쓰지 않는다", async () => {
     await draw();
-    await pickRole("u2", m.projects.role.OWNER);
-    await click(inDialog(m.members.cancel));
+    await pickRole("u2", en.projects.role.OWNER);
+    await click(inDialog(en.members.cancel));
     expect(mocks.changeMember).not.toHaveBeenCalled();
     expect(dialog()).toBeNull();
     // 셀렉트가 옛 역할을 그대로 보인다 — 값이 서버 값에 묶여 있어 취소가 되돌릴 것이 없다.
-    expect(find(document.body, "#role-u2").textContent).toContain(m.projects.role.EDITOR);
+    expect(find(document.body, "#role-u2").textContent).toContain(en.projects.role.EDITOR);
   });
 
   it("자기 강등은 잃는 것을 말한다 — 남의 변경에는 그 문장이 없다", async () => {
     await draw("u1", [owner, second, alice]);
-    await pickRole("u1", m.projects.role.EDITOR);
-    expect(dialog()?.textContent).toContain(m.members.confirmSelfDemote);
+    await pickRole("u1", en.projects.role.EDITOR);
+    expect(dialog()?.textContent).toContain(en.members.confirmSelfDemote);
     // 자기 강등은 본인에게 되돌릴 수 없다 — 확정 버튼이 danger다 (r1). 남의 변경은 primary로 남는다(아래).
-    expect(inDialog(m.members.confirmRoleAction).className).toContain("text-destructive");
+    expect(inDialog(en.members.confirmRoleAction).className).toContain("text-destructive");
     // EDITOR도 Members를 읽는다 — 잃는 것은 "접근"이 아니라 관리다 (code-review 🟡1).
-    expect(m.members.confirmSelfDemote).not.toMatch(/lose access/i);
-    await click(inDialog(m.members.cancel));
-    await pickRole("u3", m.projects.role.EDITOR);
-    expect(dialog()?.textContent).not.toContain(m.members.confirmSelfDemote);
-    expect(inDialog(m.members.confirmRoleAction).className).not.toContain("text-destructive");
+    expect(en.members.confirmSelfDemote).not.toMatch(/lose access/i);
+    await click(inDialog(en.members.cancel));
+    await pickRole("u3", en.projects.role.EDITOR);
+    expect(dialog()?.textContent).not.toContain(en.members.confirmSelfDemote);
+    expect(inDialog(en.members.confirmRoleAction).className).not.toContain("text-destructive");
   });
 
   it("모르는 거부 코드를 문장에 끼우지 않는다 (#21)", async () => {
     mocks.changeMember.mockResolvedValue({ ok: false, error: "invalid input" });
     await draw();
-    await pickRole("u2", m.projects.role.OWNER);
-    await click(inDialog(m.members.confirmRoleAction));
+    await pickRole("u2", en.projects.role.OWNER);
+    await click(inDialog(en.members.confirmRoleAction));
     expect(alertText()).not.toContain("invalid input");
-    expect(alertText()).toContain(m.members.changeFailed);
+    expect(alertText()).toContain(en.members.changeFailed);
   });
 });
 
@@ -104,37 +104,37 @@ describe("#20 초대 철회는 확인을 받는다", () => {
   it("누르기만 하면 쓰지 않고, 확인하면 쓴다", async () => {
     mocks.revokeInvitation.mockResolvedValue({ ok: true });
     await draw();
-    await click(byLabel(m.members.pending.revokeLabel("t***@example.com")));
+    await click(byLabel(en.members.pending.revokeLabel("t***@example.com")));
     expect(mocks.revokeInvitation).not.toHaveBeenCalled();
-    expect(dialog()?.textContent).toContain(m.members.pending.confirmRevoke("t***@example.com"));
-    await click(inDialog(m.members.pending.confirmRevokeAction));
+    expect(dialog()?.textContent).toContain(en.members.pending.confirmRevoke("t***@example.com"));
+    await click(inDialog(en.members.pending.confirmRevokeAction));
     expect(mocks.revokeInvitation).toHaveBeenCalledWith({ slug: "acme", invitationId: "i1" });
   });
 
   it("이미 없는 초대는 OWNER에게 초대 링크를 확인하라고 하지 않는다 (#22)", async () => {
     mocks.revokeInvitation.mockResolvedValue({ ok: false, error: "not-found" });
     await draw();
-    await click(byLabel(m.members.pending.revokeLabel("t***@example.com")));
-    await click(inDialog(m.members.pending.confirmRevokeAction));
+    await click(byLabel(en.members.pending.revokeLabel("t***@example.com")));
+    await click(inDialog(en.members.pending.confirmRevokeAction));
     expect(alertText()).not.toContain("invite link");
-    expect(alertText()).toContain(m.members.pending.gone("t***@example.com"));
+    expect(alertText()).toContain(en.members.pending.gone("t***@example.com"));
   });
 
   it("모르는 거부 코드를 문장에 끼우지 않는다 (#21)", async () => {
     mocks.revokeInvitation.mockResolvedValue({ ok: false, error: "weird-code" });
     await draw();
-    await click(byLabel(m.members.pending.revokeLabel("t***@example.com")));
-    await click(inDialog(m.members.pending.confirmRevokeAction));
+    await click(byLabel(en.members.pending.revokeLabel("t***@example.com")));
+    await click(inDialog(en.members.pending.confirmRevokeAction));
     expect(alertText()).not.toContain("weird-code");
-    expect(alertText()).toContain(m.members.pending.revokeFailed);
+    expect(alertText()).toContain(en.members.pending.revokeFailed);
   });
 
   it("재발송의 모르는 거부 코드도 끼우지 않는다 (#21)", async () => {
     mocks.resendInvitation.mockResolvedValue({ ok: false, error: "weird-code" });
     await draw();
-    await click(byLabel(m.members.pending.resendLabel("t***@example.com")));
+    await click(byLabel(en.members.pending.resendLabel("t***@example.com")));
     expect(document.body.textContent).not.toContain("weird-code");
-    expect(document.body.textContent).toContain(m.members.pending.resendError("t***@example.com"));
+    expect(document.body.textContent).toContain(en.members.pending.resendError("t***@example.com"));
   });
 });
 
@@ -146,7 +146,7 @@ describe("#21 초대 폼의 모르는 거부", () => {
     await input(find<HTMLInputElement>(document.body, 'input[inputmode="email"]'), "a@example.com");
     await click(find(document.body, 'button[type="submit"]'));
     expect(document.body.textContent).not.toContain("weird-code");
-    expect(document.body.textContent).toContain(m.members.invite.failed);
+    expect(document.body.textContent).toContain(en.members.invite.failed);
   });
 });
 
@@ -154,28 +154,28 @@ describe("#19 push 토큰 회전은 확인을 받는다", () => {
   it("누르기만 하면 회전하지 않고, 확인하면 회전한다", async () => {
     mocks.rotatePushToken.mockResolvedValue({ ok: true, pushToken: "tok_new" });
     await render(<PushTokenPanel slug="acme" />);
-    const trigger = [...document.querySelectorAll("button")].find((b) => b.textContent?.includes(m.settings.token.rotate));
+    const trigger = [...document.querySelectorAll("button")].find((b) => b.textContent?.includes(en.settings.token.rotate));
     if (!trigger) throw new Error("Missing rotate");
     await click(trigger);
     expect(mocks.rotatePushToken).not.toHaveBeenCalled();
-    expect(dialog()?.textContent).toContain(m.settings.token.confirmTitle);
-    await click(inDialog(m.settings.token.confirmAction));
+    expect(dialog()?.textContent).toContain(en.settings.token.confirmTitle);
+    await click(inDialog(en.settings.token.confirmAction));
     expect(mocks.rotatePushToken).toHaveBeenCalledTimes(1);
     expect(document.querySelector<HTMLInputElement>("input[data-secret-field]")?.value).toBe("tok_new");
     // 방금 받은 토큰도 다시 누르면 확인부터 — 재클릭 한 번으로 죽지 않는다.
     await click(trigger);
     expect(mocks.rotatePushToken).toHaveBeenCalledTimes(1);
-    expect(dialog()?.textContent).toContain(m.settings.token.confirmTitle);
+    expect(dialog()?.textContent).toContain(en.settings.token.confirmTitle);
   });
 
   it("장애 거부는 '입력이 남아 있다'를 말하지 않는다 — 이 화면엔 입력이 없다 (#22)", async () => {
     mocks.rotatePushToken.mockResolvedValue({ ok: false, error: "unavailable" });
     await render(<PushTokenPanel slug="acme" />);
-    const trigger = [...document.querySelectorAll("button")].find((b) => b.textContent?.includes(m.settings.token.rotate));
+    const trigger = [...document.querySelectorAll("button")].find((b) => b.textContent?.includes(en.settings.token.rotate));
     if (!trigger) throw new Error("Missing rotate");
     await click(trigger);
-    await click(inDialog(m.settings.token.confirmAction));
+    await click(inDialog(en.settings.token.confirmAction));
     expect(document.body.textContent).not.toMatch(/text is kept/i);
-    expect(document.body.textContent).toContain(m.errors.access.unavailable);
+    expect(document.body.textContent).toContain(en.errors.access.unavailable);
   });
 });

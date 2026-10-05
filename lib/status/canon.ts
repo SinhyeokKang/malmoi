@@ -1,4 +1,4 @@
-import { m } from "@/lib/i18n";
+import type { Messages } from "@/lib/i18n";
 
 /**
  * **상태 톤·낱말의 코드판 정본** (DESIGN §2.4 · ux-drift-unify §3.6). 같은 상태는 형태(배지·Alert·띠·아이콘 칸)가 달라도 톤과 낱말이 같다 —
@@ -27,41 +27,76 @@ export type StateKey =
   | "logsSynced" | "logsSent" | "logsFailed" | "publishing" | "nothingToSend" | "heldBack" | "superseded" | "notStarted" | "upToDate"
   | "expired" | "waitingToApply" | "removedFromRepository";
 
-/** `label`은 사전 값을 가리킨다 — 새 문자열을 만들지 않는다(테스트가 사전 전수와 대조한다). */
-export const STATE: Readonly<Record<StateKey, { tone: StateTone; variant: StateVariant; label: string }>> = {
-  synced: { tone: "success", variant: "soft-green", label: m.settings.sources.imported },
-  syncing: { tone: "muted", variant: "soft-neutral", label: m.settings.sources.importing },
-  notSyncedYet: { tone: "muted", variant: "soft-neutral", label: m.settings.sources.notImported },
+/** 톤과 variant — 언어와 무관하다. 낱말은 `stateLabel`이 그 화면의 사전에서 고른다. */
+export const STATE: Readonly<Record<StateKey, { tone: StateTone; variant: StateVariant }>> = {
+  synced: { tone: "success", variant: "soft-green" },
+  syncing: { tone: "muted", variant: "soft-neutral" },
+  notSyncedYet: { tone: "muted", variant: "soft-neutral" },
   // 첫·마지막 실패 모두 같은 낱말이다(§2.4).
-  syncFailed: { tone: "danger", variant: "soft-red", label: m.settings.sources.failedAfter },
+  syncFailed: { tone: "danger", variant: "soft-red" },
   // 데이터는 들어갔다 — 어느 화면에서도 빨강·"failed"로 말하지 않는다(🔴 A1).
-  partiallySynced: { tone: "warning", variant: "soft-amber", label: m.logs.status.partial },
-  held: { tone: "warning", variant: "soft-amber", label: m.logs.status.deferred },
+  partiallySynced: { tone: "warning", variant: "soft-amber" },
+  held: { tone: "warning", variant: "soft-amber" },
   // 정상 작업 흐름이라 면만 있는 무색이다(Q3) — 손 조립 알약을 쓰지 않는다.
-  unsent: { tone: "muted", variant: "soft-neutral", label: m.translations.workspace.list.notSent },
-  prOpen: { tone: "muted", variant: "soft-neutral", label: m.translations.publish.prState },
+  unsent: { tone: "muted", variant: "soft-neutral" },
+  prOpen: { tone: "muted", variant: "soft-neutral" },
   // Settings 연결 행(`ok`·`repo-moved`) — 배지와 아이콘 칸이 같은 초록이다(§2.4 연결 행).
-  connected: { tone: "success", variant: "soft-green", label: m.settings.repository.health.ok },
-  notConnected: { tone: "muted", variant: "soft-neutral", label: m.settings.repository.notConnected },
+  connected: { tone: "success", variant: "soft-green" },
+  notConnected: { tone: "muted", variant: "soft-neutral" },
   // 끊김은 셋이다 — App 제거 · 설치 교체 · 설치는 있고 리포 id가 없음(`unpinned`, D1).
-  disconnected: { tone: "warning", variant: "soft-amber", label: m.settings.repository.disconnected },
-  wrongRepository: { tone: "danger", variant: "soft-red", label: m.settings.repository.wrongRepository },
-  couldNotCheck: { tone: "warning", variant: "soft-amber", label: m.settings.repository.unknown },
-  archived: { tone: "muted", variant: "soft-neutral", label: m.projects.status.archived },
-  setup: { tone: "muted", variant: "soft-neutral", label: m.projects.status.setup },
+  disconnected: { tone: "warning", variant: "soft-amber" },
+  wrongRepository: { tone: "danger", variant: "soft-red" },
+  couldNotCheck: { tone: "warning", variant: "soft-amber" },
+  archived: { tone: "muted", variant: "soft-neutral" },
+  setup: { tone: "muted", variant: "soft-neutral" },
   // 목록은 훑어보는 화면이라 정상도 색을 든다(DESIGN §6.63의 예외).
-  active: { tone: "success", variant: "soft-green", label: m.projects.status.active },
+  active: { tone: "success", variant: "soft-green" },
   // Logs·Recent logs는 이력이라 성공도 회색이다. 실패는 종류 배지가 앞에 서므로 "Failed"다.
-  logsSynced: { tone: "muted", variant: "soft-neutral", label: m.logs.status.imported },
-  logsSent: { tone: "muted", variant: "soft-neutral", label: m.logs.status.succeeded },
-  logsFailed: { tone: "danger", variant: "soft-red", label: m.logs.status.failed },
-  publishing: { tone: "muted", variant: "soft-neutral", label: m.logs.status.publishing },
-  nothingToSend: { tone: "muted", variant: "soft-neutral", label: m.logs.status.skipped },
-  heldBack: { tone: "warning", variant: "soft-amber", label: m.logs.status.notSent },
-  superseded: { tone: "muted", variant: "soft-neutral", label: m.logs.status.superseded },
-  notStarted: { tone: "warning", variant: "soft-amber", label: m.logs.status.notStarted },
-  upToDate: { tone: "muted", variant: "soft-neutral", label: m.logs.status.upToDate },
-  expired: { tone: "warning", variant: "soft-amber", label: m.mcpConnector.token.expired },
-  waitingToApply: { tone: "warning", variant: "soft-amber", label: m.sources.waiting },
-  removedFromRepository: { tone: "danger", variant: "soft-red", label: m.sources.missingRepo },
+  logsSynced: { tone: "muted", variant: "soft-neutral" },
+  logsSent: { tone: "muted", variant: "soft-neutral" },
+  logsFailed: { tone: "danger", variant: "soft-red" },
+  publishing: { tone: "muted", variant: "soft-neutral" },
+  nothingToSend: { tone: "muted", variant: "soft-neutral" },
+  heldBack: { tone: "warning", variant: "soft-amber" },
+  superseded: { tone: "muted", variant: "soft-neutral" },
+  notStarted: { tone: "warning", variant: "soft-amber" },
+  upToDate: { tone: "muted", variant: "soft-neutral" },
+  expired: { tone: "warning", variant: "soft-amber" },
+  waitingToApply: { tone: "warning", variant: "soft-amber" },
+  removedFromRepository: { tone: "danger", variant: "soft-red" },
 };
+
+/** 상태의 낱말 — 사전 값을 가리킨다. 새 문자열을 만들지 않는다(테스트가 사전 전수와 대조한다). */
+export function stateLabel(m: Messages, key: StateKey): string {
+  const labels: Readonly<Record<StateKey, string>> = {
+    synced: m.settings.sources.imported,
+    syncing: m.settings.sources.importing,
+    notSyncedYet: m.settings.sources.notImported,
+    syncFailed: m.settings.sources.failedAfter,
+    partiallySynced: m.logs.status.partial,
+    held: m.logs.status.deferred,
+    unsent: m.translations.workspace.list.notSent,
+    prOpen: m.translations.publish.prState,
+    connected: m.settings.repository.health.ok,
+    notConnected: m.settings.repository.notConnected,
+    disconnected: m.settings.repository.disconnected,
+    wrongRepository: m.settings.repository.wrongRepository,
+    couldNotCheck: m.settings.repository.unknown,
+    archived: m.projects.status.archived,
+    setup: m.projects.status.setup,
+    active: m.projects.status.active,
+    logsSynced: m.logs.status.imported,
+    logsSent: m.logs.status.succeeded,
+    logsFailed: m.logs.status.failed,
+    publishing: m.logs.status.publishing,
+    nothingToSend: m.logs.status.skipped,
+    heldBack: m.logs.status.notSent,
+    superseded: m.logs.status.superseded,
+    notStarted: m.logs.status.notStarted,
+    upToDate: m.logs.status.upToDate,
+    expired: m.mcpConnector.token.expired,
+    waitingToApply: m.sources.waiting,
+    removedFromRepository: m.sources.missingRepo,
+  };
+  return labels[key];
+}

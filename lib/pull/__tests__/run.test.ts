@@ -780,7 +780,11 @@ describe("runPull — writer가 값을 버리면 GitHub에 쓰기 전에 멈춘�
     const result = await runPull(deps);
     expect(result.status).toBe("skipped");
     expect(result).toMatchObject({ reason: "writer-warnings" });
-    expect(result.status === "skipped" && result.reason === "writer-warnings" ? result.warnings[0] : "").toMatch(/^default: i18n\/en\.json: /);
+    // 경고는 문장이 아니라 코드다(ui-locales B1′) — 받는 쪽(화면·cron·MCP)이 자기 언어로 조립한다. 렌더의 로케일 좌표는 싣지 않는다.
+    const warning = result.status === "skipped" && result.reason === "writer-warnings" ? result.warnings[0] : undefined;
+    expect(warning).toMatchObject({ surfaceSlug: "default", path: "i18n/en.json" });
+    expect(typeof warning?.code).toBe("string");
+    expect(warning).not.toHaveProperty("locale");
     const writes = ["createTree", "createCommit", "createRef", "updateRefForce", "createPr", "updatePrTitle"];
     expect(calls.map((c) => c.method).filter((m) => writes.includes(m))).toEqual([]);
     expect(saved).toEqual([]);

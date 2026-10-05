@@ -4,7 +4,7 @@ import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { headings, parseMd } from "@/lib/guide/parse";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { flattenNav, parseSummary, slugToFile } from "@/lib/guide/summary";
 
 /**
@@ -15,7 +15,7 @@ import { flattenNav, parseSummary, slugToFile } from "@/lib/guide/summary";
  * 잇는 자리는 `docHref`(`lib/guide/href.ts`)이고 이 생성기를 부르지 않는다.
  */
 const ROOT = process.cwd();
-const GUIDE = join(ROOT, "guide");
+const GUIDE = join(ROOT, "guide", "en");
 const SKIP = new Set(["__tests__", "node_modules"]);
 
 function sources(dir: string): string[] {
@@ -81,7 +81,7 @@ describe("`routes.docs(...)` 호출 대상", () => {
 describe("`/mcp` 가이드 링크", () => {
   it("라벨이 대상 페이지(ai-agents)의 SUMMARY 제목이다", () => {
     const nav = flattenNav(parseSummary(parseMd(readFileSync(join(GUIDE, "SUMMARY.md"), "utf8"))));
-    expect(nav.find((item) => item.file === "ai-agents/README.md")?.title).toBe(m.mcpConnector.guide.link);
+    expect(nav.find((item) => item.file === "ai-agents/README.md")?.title).toBe(en.mcpConnector.guide.link);
     expect(readFileSync(join(ROOT, "app/(edit)/mcp/page.tsx"), "utf8")).toContain('routes.docs("ai-agents")');
   });
 });

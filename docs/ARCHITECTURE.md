@@ -1,6 +1,6 @@
 # ARCHITECTURE
 
-**코어 로직(`lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/github-connect/`·`lib/db.ts`·`lib/env.ts`·`lib/failure.ts`·`lib/scan/`·`lib/push/`·`lib/pull/`·`lib/import/`·`lib/keys/`·`lib/search/`·`lib/surfaces/`·`lib/auth/`·`lib/cli/`·`lib/survey/`·`lib/onboarding/`·`lib/i18n/`·`lib/shell/`·`lib/home/`·`lib/settings/`·`lib/sources/`·`lib/sync/`·`lib/credentials/`·`lib/session-revocation/`·`lib/login-link/`·`lib/account-connect/`·`lib/account/`·`lib/upload/`·`lib/projects/`·`lib/publish/`·`lib/protection/`·`lib/privacy/`·`lib/signin/`·`lib/translations/`·`lib/invitation-email/`·`lib/events/`·`lib/routes.ts`·`lib/locale-code.ts`·`lib/compare.ts`·`lib/cause.ts`·`lib/relative-time.ts`·`lib/utc-time.ts`·`lib/hue.ts`)을 건드리기 전에 읽는다** — ⚠️ **이 목록은 `.claude/commands/push.md` 4단계 트리거와 같아야 한다**(2026-09-13 전까지 세 곳이었고 실제로 셋이 갈렸다 — CLAUDE.md 쪽 사본을 없애 둘로 줄였다). ⚠️ **목록에 있다고 이 문서에 전용 절이 있는 것은 아니다** — `shell`·`home`·`settings`·`projects`·`signin`·`routes.ts`·`locale-code.ts`·`relative-time.ts`·`hue.ts`는 잎에 가까운 얕은 모듈이라 불변식이 **코드 주석과 [DIRECTORY.md](./DIRECTORY.md)**에 있고, 여기에 사본을 만들면 같은 규칙이 세 곳이 된다. 그 아홉을 건드릴 때 이 문서에서 볼 것은 §6.35(잎 모듈 규칙)다. 무엇을 만드는지는 [PRODUCT.md](./PRODUCT.md), 어떻게 작업하는지는 [../CLAUDE.md](../CLAUDE.md), 디렉터리별 "왜 이렇게 생겼나"는 [DIRECTORY.md](./DIRECTORY.md)다. 이 문서는 **불변식과 함정**만 다룬다.
+**코어 로직(`lib/adapters/`·`lib/githash.ts`·`lib/github.ts`·`lib/github-connect/`·`lib/db.ts`·`lib/env.ts`·`lib/failure.ts`·`lib/scan/`·`lib/push/`·`lib/pull/`·`lib/import/`·`lib/keys/`·`lib/search/`·`lib/surfaces/`·`lib/auth/`·`lib/cli/`·`lib/survey/`·`lib/onboarding/`·`lib/i18n/`·`lib/shell/`·`lib/home/`·`lib/settings/`·`lib/sources/`·`lib/sync/`·`lib/credentials/`·`lib/session-revocation/`·`lib/login-link/`·`lib/account-connect/`·`lib/account/`·`lib/upload/`·`lib/projects/`·`lib/publish/`·`lib/protection/`·`lib/privacy/`·`lib/signin/`·`lib/translations/`·`lib/invitation-email/`·`lib/events/`·`lib/routes.ts`·`lib/locale-code.ts`·`lib/compare.ts`·`lib/cause.ts`·`lib/relative-time.ts`·`lib/date-format.ts`·`lib/time-zone/`·`lib/hue.ts`)을 건드리기 전에 읽는다** — ⚠️ **이 목록은 `.claude/commands/push.md` 4단계 트리거와 같아야 한다**(2026-09-13 전까지 세 곳이었고 실제로 셋이 갈렸다 — CLAUDE.md 쪽 사본을 없애 둘로 줄였다). ⚠️ **목록에 있다고 이 문서에 전용 절이 있는 것은 아니다** — `shell`·`home`·`settings`·`projects`·`signin`·`routes.ts`·`locale-code.ts`·`relative-time.ts`·`hue.ts`는 잎에 가까운 얕은 모듈이라 불변식이 **코드 주석과 [DIRECTORY.md](./DIRECTORY.md)**에 있고, 여기에 사본을 만들면 같은 규칙이 세 곳이 된다. 그 아홉을 건드릴 때 이 문서에서 볼 것은 §6.35(잎 모듈 규칙)다. 무엇을 만드는지는 [PRODUCT.md](./PRODUCT.md), 어떻게 작업하는지는 [../CLAUDE.md](../CLAUDE.md), 디렉터리별 "왜 이렇게 생겼나"는 [DIRECTORY.md](./DIRECTORY.md)다. 이 문서는 **불변식과 함정**만 다룬다.
 
 > 이 문서는 **선 코드의 계약만** 적는다. 아직 서지 않은 것은 `docs/PRODUCT.md` §10(아직 안 정한 것)이나 진행 중인 `docs/features/<slug>/`가 든다 — 여기에 미래형을 섞으면 "불변식"이 지켜야 할 것과 지키고 싶은 것으로 갈린다.
 
@@ -353,8 +353,8 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 - **`setDeep`이 문자열 자리를 빈 객체로 조용히 갈아끼웠다.** → **판정이 `setDeep` 앞으로 올라갔다** (`lib/adapters/json-catalog.ts` — 키 집합 위에서 그림자를 먼저 계산한다) **그리고 얕은 쪽 키를 버린다**: 얕은 쪽을 살리면 그 아래 전부를 잃는다. `setDeep` 자체엔 판정이 남아 있지 않다. 어느 쪽이든 **어느 키에서 잃었는지 알려주는 것**이 최소 조건이다. 값을 잃더라도 **어느 키에서 잃었는지 알려주는 것**이 최소 조건이다. ✅ **read 쪽도 같은 규칙이다** (2026-09-17, launch-readiness L1.4): 중첩(`errors: {messages: {blank}}`)과 점 키(`"errors.messages.blank"`)가 같은 평탄 키를 내면 하나만 싣고(마지막이 이긴다 — 적재의 `lastWins`와 같은 규칙) `duplicate-key`로 보고한다. 전에는 둘 다 실어 뒤의 `lastWins`가 조용히 하나를 버렸고, `surveyOne`의 키 충돌 지표가 그 중복을 세고 있었다 — 지금은 그 지표가 `classify`가 `key-collision`으로 가르는 에러(`duplicate-key`·`duplicate-property`)를 센다.
   - **키 단위 스킵도 같은 통로로 보고한다** (2026-09-04). 수술적 어댑터 셋이 값을 넣지 못하고 건너뛰는 자리가 있다 — `code-dict`의 비리터럴 자리·구조 변경이 필요한 삽입, `yaml-catalog`의 알리아스·맵·시퀀스 자리, `ts-dict`의 **로케일 객체 부재**(그 로케일 번역이 통째로 반영되지 않는데 호출부가 "변경 없음"으로 읽었다). 건너뛰는 판단 자체는 옳다(구조를 바꾸는 일이고, 알리아스는 값의 출처가 앵커 쪽이다) — 틀린 것은 **조용한 것**이었다.
   - `lib/adapters/__tests__/contract.test.ts`가 `contract.ts`의 헬퍼로 그 계약을 `ADAPTERS` 순회로 고정한다(판정과 순회가 갈려 있다 — §1.1): 수술적 어댑터는 `writeWithErrors`를 **구현해야 하고**, 값이 안 바뀌면 **원본 바이트를 그대로** 내야 하고, 정상 입력에 에러를 내지 않아야 하고, `writeWithErrors`의 `content`가 `write`와 갈라지지 않아야 한다. 마지막 항목이 있는 이유는 한쪽만 고치면 프로덕션(pull)과 측정(survey)이 서로 다른 함수를 부르게 되기 때문이다.
-  - 그 에러가 닿는 곳은 `Adapter.writeWithErrors`다. **pull이 이쪽을 우선 쓴다** (2026-09-04 — 전에는 survey만 썼고 프로덕션에서는 아무 데도 보고되지 않았다): `renderLocaleFiles`가 `LocalFile.errors`에 싣고 `runPull`이 `PullResult.warnings`(`표면: 파일: 문장`)로 올린다. ⚠️ **2026-09-18(T10)부터 그 자리는 `skipped/writer-warnings` 한 갈래뿐이다** — 경고가 있으면 GitHub에 쓰기 전에 멈추고(§3), `committed`·`no-changes`에는 `warnings`가 없다.
-    ⚠️ **`AdapterError`는 문장을 안 든다 — 코드를 든다** (2026-09-08, 6b-1): `{ path, code: AdapterErrorCode, key?, detail? }`이고 문장은 `lib/i18n/adapter-errors.ts`의 `adapterErrorMessage`가 사전(`messages/en.tsx`의 `adapterErrors`)에서 꺼내 조립한다 — `key`는 앞에, `detail`(파서 원문)은 뒤 괄호에. 어댑터가 자유 문자열을 만들던 시절엔 **화면에 닿는 문구가 사전 밖에 있어** en으로 고쳐도 ko가 따라오지 않았다 . ⚠️ **`lib/survey/one.ts`의 `classify`가 같은 코드로 §1.9 지표 ③을 가르므로 갈래를 합치면 회차 간 대조가 무의미해진다** — `parse-failed`와 `parse-crashed`가 옛 문구 기준으로 다른 통이라 갈라져 있고, `__tests__/classify.test.ts`가 옛 문구 22개와 옛 분류기 본문을 픽스처로 들고 그 표를 고정한다. 편집 UI에서는 **결과 자체가 갈린다**: writer 경고는 **보내지 않은** 결과라 `planPublishView`의 `partial` 갈래로 서고(보류 `withheld`와 같은 갈래), 성공 문구에 한 줄 덧붙이지 않는다 — 그러면 버린 값이 success 안에 숨는다(§0 불변식 9). **어느 파일인지는 화면이 직접 보인다** — Publish 모달이 `파일: 메시지`를 **펼친 목록**으로 세운다(DESIGN §6.646). ⚠️ **2026-09-16에 `<details>`가 사라졌다** — 접힌 목록은 불변식 9의 경계선이었다. 같은 날 `pullMessage`도 사라졌다: tone 넷을 내던 그 함수 대신 화면이 `PullOutcome`을 직접 갈래로 옮기고(`lib/publish/plan.ts`) `lib/pull/message.ts`에는 **`PullOutcome` 타입과 `pullRevalidates` 판정**(그리고 뒤에 더해진 `UNCONFIRMED_PULL` — §3.1)만 남았다. 문구의 정본은 `messages/en.tsx`다(cron 응답 JSON·Action 반환에는 `PullOutcome`이 그대로 실린다). 수술적 어댑터 셋도 같은 계약으로 **파싱 실패·default export 부재를 에러로 낸다** — 전엔 원본을 그대로 돌려줘 "변경 없음"으로 읽혔고, 그 파일이 PR에서 조용히 빠졌다.
+  - 그 에러가 닿는 곳은 `Adapter.writeWithErrors`다. **pull이 이쪽을 우선 쓴다** (2026-09-04 — 전에는 survey만 썼고 프로덕션에서는 아무 데도 보고되지 않았다): `renderLocaleFiles`가 `LocalFile.errors`에 싣고 `runPull`이 `PullResult.warnings`로 올린다. ⚠️ **2026-10-04(ui-locales B1′)부터 경고는 문장이 아니라 코드다** — `PullWarning = { surfaceSlug } & AdapterError`(`path`·`code`·`key?`·`detail?`)이고 `lib/pull/**`·`lib/push/**`는 사전을 import하지 않는다(`dictionary-consistency.test.ts` ⑦ — 전이 import까지 센다). cron에는 누구의 언어로 쓸지 정할 사용자가 없어서다. 문장은 **받는 쪽이 조립한다**: 화면은 요청 사전으로(`pullWarningLine(w, m.adapterErrors)` — `표면: 파일: 문장`), **외부 계약 둘(`/api/pull` cron JSON · MCP `publish` 응답)은 `withWarningLines(…, en.adapterErrors)`로 옛 영어 문장 모양 그대로** 낸다. **서버 로그는 코드다** — `lib/pull/trigger.ts`의 `console.warn`이 `[pull:<slug>] <surface>: <path>: <code> key=<key> (<detail>)` 꼴로 남긴다(전엔 영어 문장이었다 — Vercel 로그를 옛 문장으로 grep하던 습관은 코드로 바꾼다). ⚠️ **2026-09-18(T10)부터 그 자리는 `skipped/writer-warnings` 한 갈래뿐이다** — 경고가 있으면 GitHub에 쓰기 전에 멈추고(§3), `committed`·`no-changes`에는 `warnings`가 없다.
+    ⚠️ **`AdapterError`는 문장을 안 든다 — 코드를 든다** (2026-09-08, 6b-1): `{ path, code: AdapterErrorCode, key?, detail? }`이고 문장은 `lib/i18n/adapter-errors.ts`의 `adapterErrorMessage(error, m.adapterErrors)`가 **넘겨받은** 사전의 `adapterErrors`에서 꺼내 조립한다(화면은 요청 사전, 외부 계약은 `en`) — `key`는 앞에, `detail`(파서 원문)은 뒤 괄호에. 어댑터가 자유 문자열을 만들던 시절엔 **화면에 닿는 문구가 사전 밖에 있어** en으로 고쳐도 ko가 따라오지 않았다 . ⚠️ **`lib/survey/one.ts`의 `classify`가 같은 코드로 §1.9 지표 ③을 가르므로 갈래를 합치면 회차 간 대조가 무의미해진다** — `parse-failed`와 `parse-crashed`가 옛 문구 기준으로 다른 통이라 갈라져 있고, `__tests__/classify.test.ts`가 옛 문구 22개와 옛 분류기 본문을 픽스처로 들고 그 표를 고정한다. 편집 UI에서는 **결과 자체가 갈린다**: writer 경고는 **보내지 않은** 결과라 `planPublishView`의 `partial` 갈래로 서고(보류 `withheld`와 같은 갈래), 성공 문구에 한 줄 덧붙이지 않는다 — 그러면 버린 값이 success 안에 숨는다(§0 불변식 9). **어느 파일인지는 화면이 직접 보인다** — Publish 모달이 `파일: 메시지`를 **펼친 목록**으로 세운다(DESIGN §6.646). ⚠️ **2026-09-16에 `<details>`가 사라졌다** — 접힌 목록은 불변식 9의 경계선이었다. 같은 날 `pullMessage`도 사라졌다: tone 넷을 내던 그 함수 대신 화면이 `PullOutcome`을 직접 갈래로 옮기고(`lib/publish/plan.ts`) `lib/pull/message.ts`에는 **`PullOutcome` 타입과 `pullRevalidates` 판정**(그리고 뒤에 더해진 `UNCONFIRMED_PULL` — §3.1)만 남았다. 문구의 정본은 사전 셋(`messages/{en,ko,es}.tsx`의 `adapterErrors`)이다(Action 반환에는 코드가 든 `PullOutcome`이 그대로 실리고, cron 응답 JSON만 위의 en 문장 모양이다). 수술적 어댑터 셋도 같은 계약으로 **파싱 실패·default export 부재를 에러로 낸다** — 전엔 원본을 그대로 돌려줘 "변경 없음"으로 읽혔고, 그 파일이 PR에서 조용히 빠졌다.
 
 **⚠️ 이 손실 계열은 "에러 건수" 지표로는 원리적으로 안 잡힌다.** 실측에서 충돌 카운터가 *정확히 같은 키*만 봤기 때문에 0을 냈다 — **접두 충돌**(`a.b`와 `a.b.c`)을 세도록 고친 뒤에야 345건이 드러났고, 그 리포 집합이 왕복 실패 리포와 정확히 일치했다. **왕복 검증이 없으면 이 계열은 통째로 안 보인다.**
 
@@ -1386,6 +1386,20 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
 모양) + `ProjectMember`·`ProjectInvitation`(우리 것). 기존 다섯 테이블의 컬럼·제약은 한 줄도 바뀌지
 않았다(마이그레이션 SQL에 그 다섯을 대상으로 하는 `ALTER`·`DROP` 0건).
 
+- **`User.uiLocale String?`** (2026-10-04, `20261004102735_add_user_ui_locale` — ui-locales). 화면 언어이고 `null`이면 쿠키 → en으로 넘어간다.
+  **enum이 아니다** — 지원 목록에서 언어 하나를 빼는 것이 destructive 마이그레이션이 되지 않게, 읽을 때 `parseUiLocale`(`Object.hasOwn`)을 지나
+  모르는 값은 다음 층으로 넘긴다. **봉투를 지나지 않는다**(사람을 식별하는 값이 아니다 — `encodeUserFields` 루프 밖). 세션 공개 허용 목록
+  (`lib/auth/public-session.ts`)에 들어가 `readSession()`이 싣는다 — `getSessionAndUser`가 이미 User 행을 돌려주므로 **추가 쿼리는 0**이고,
+  대가로 `/api/auth/session` 응답 본문에 실린다. 쓰는 자리는 `setUiLocale` 하나이고 대상은 세션의 `userId`다(입력 userId 없음).
+- **`User.timeZone String?`** (2026-10-05, `20261004180102_add_user_time_zone` — user-timezone). 보는 사람이 고른 시간대(IANA id)이고 `null`이면 UTC다
+  (쿠키 층이 없다 — §6.356). `uiLocale`과 같은 이유로 **enum이 아니고**(선별 목록에서 id를 빼는 것이 destructive가 되지 않게 — 읽을 때 `parseTimeZone`이
+  목록 밖 값을 UTC로 떨어뜨린다) **봉투를 지나지 않으며**(사람을 식별하지 않는다. 대략의 지역을 말하므로 방침 수집 표에는 있다) 세션 공개 허용 목록에
+  들어가 `readSession()`이 추가 쿼리 0으로 싣는다. 쓰는 자리는 `setTimeZone`(`app/(edit)/preferences/actions.ts`) 하나이고 UTC를 골라도 `"UTC"`를 쓴다.
+  ⚠️ **목록에서 id를 빼면 그 값을 저장한 사람의 화면이 조용히 UTC로 바뀐다** — 빼기 전 건수 확인은 OPERATIONS.
+- **`User.colorScheme String?`** (2026-10-05, `20261004213608_add_user_color_scheme` — color-scheme). 화면 테마(`system`·`light`·`dark`)이고 `null`이면
+  쿠키 → light로 넘어간다(§6.357). `uiLocale`과 같은 이유로 **enum이 아니고**(읽을 때 `parseColorScheme`이 모르는 값을 다음 층으로 넘긴다) **봉투를
+  지나지 않으며** 세션 공개 허용 목록에 들어가 `readSession()`이 추가 쿼리 0으로 싣는다. 쓰는 자리는 `setColorScheme`(`app/(edit)/preferences/actions.ts`) 하나다.
+
 - ⚠️ **앞의 네 테이블의 모양은 우리가 정한 것이 아니다.** `@auth/prisma-adapter`가 부르는 델리게이트와
   `where` 키가 그것을 정한다 — 현재 `credentialAdapter.getUserByEmail`은 `emailLookup @unique`를 요구하고, `account`의
   `where:{provider_providerAccountId}`가 복합 키를 요구하는 식이다. `Account`의 snake_case 컬럼은
@@ -1794,7 +1808,7 @@ $transaction(tx):
   Revert는 lease 갈래만 `sync-running`이고 Publish RUNNING 갈래는 `busy` 그대로다.
   - **판정에 넣지 않는 것**: 표면 표시(`TranslationSurface.lastImportStartedAt` — CI push·첫 적재)는 입력이 아니다(`hasLiveInternalImport`를 쓰지 않는다).
     넣으면 CI push마다 편집자를 막는다. 소스 추가·base locale 선언도 막지 않는다.
-  - `reopensBy`는 **표시용**이다 — `startedAt + STALE_AFTER_SECONDS`를 다음 분으로 올린다(`utcMinute`이 초를 버리고 정각도 활성이라 그대로 내면 최대 59초
+  - `reopensBy`는 **표시용**이다 — `startedAt + STALE_AFTER_SECONDS`를 다음 분으로 올린다(`formatMinute`이 초를 버리고 정각도 활성이라 그대로 내면 최대 59초
     이르다). 그 시각에는 반드시 풀려 있다.
   - ⚠️ **대가: 죽은 적재 하나가 그 프로젝트의 편집자 전원을 최대 300초 막는다.** 해제 트랜잭션 실패는 로그만 남기고(`lib/import/run.ts`의 `finally`)
     lease는 stale 경계에서야 풀린다. OWNER가 수동으로 푸는 수단은 없다(비범위) — 경계를 줄이지 않는다(§5.6.2의 `maxDuration` 근거).
@@ -2033,6 +2047,11 @@ warnings·종료 시각을 복사하지 않는다 — `RUNNING` 행이 나중에
 - **원문 이메일이 나가지 않는다** — 행위자 라벨은 목록 전체를 보고 만들고(`maskedEmailLabels`),
   payload의 멤버 대상은 이름 대신 저장 시점의 `maskEmail` 라벨만 남긴다. **사건은 지우지 않으므로**, 원문을
   넣으면 계정 삭제가 지우지 못하는 자리가 하나 늘어난다.
+- **저장되는 대체 라벨은 en 고정이고 화면 언어는 렌더 때 치환한다** (2026-10-04 D9, ui-locales). 대상이 사라진 멤버 사건의
+  `targetLabel`은 고정 상수 `STORED_REMOVED_USER`·`STORED_UNREADABLE`(`lib/events/member-label.ts` — 사전 값이 아니다)로 저장되고,
+  `lib/events/query.ts`의 행 모델이 `displayMemberPayload(m, payload)`로 그 화면 언어의 낱말로 바꾼다(저장 계약 불변, MCP는 `m = en`이라 항등).
+  ⚠️ **비교 키를 사전 문구에 묶지 않는다** — en 문구를 고치면 그 전에 저장된 사건이 조용히 치환을 잃는다(사건은 지우지 않으니 영원히).
+  대가: Logs 검색(`searchText`)은 저장된 영어 낱말로 걸린다.
 - **토큰 값·해시·초대 링크 원문이 payload에 없다** — 남는 것은 "발급/교체했다"는 사실뿐이다.
 - **검색은 `searchText` 한 컬럼이고 조립은 `buildSearchText` 하나가 독점한다.** 번역 본문·사람
   이름·원문 이메일은 넣지 않는다 — 적재 지점이 그 관문을 안 지나면 그 종류가 조용히 검색에서 빠진다.
@@ -2149,7 +2168,7 @@ Logs 행위자·상세 Trigger·보조줄·Home 메타 열이 이것 하나를 �
 | 편집 UI **로그인** | GitHub·Google OAuth **App** (Auth.js, DB 세션 / `AUTH_GITHUB_*`) | 신원 확인까지다 — **무엇을 할 수 있는지는 정하지 않는다** |
 | 편집 UI **인가** | `ProjectMember` 행 (`getProjectAccess`) | 로그인 provider가 권한을 정하지 않는다 (§0 불변식 7). 허용 핸들 목록은 2026-09-06에 사라졌다 |
 | 운영자 판정 (`isOperatorUser`, 2026-10-03) | `User.emailLookup` × `OPERATOR_EMAILS` | **인가 아님** — 사용자당 프로젝트 상한 면제 하나만 바꾼다. 로그인·`ProjectMember` 인가·화면 표시와 무관하다 (§6.2.2) |
-| `/api/search-index` | **공개 · 세션 없음 · `force-static`** | SUMMARY에 등재된 공개 가이드만 빌드 때 JSON으로 만든다. 인증·DB·쿠키 조회가 없고 원고 실패는 빌드를 실패시킨다. `entry-points.test.ts`의 `EXEMPT` 사유도 이 경계다 (§6.37) |
+| `/api/search-index/[uiLocale]` | **공개 · 세션 없음 · `force-static`** | 그 언어 원고(`guide/<uiLocale>/`) SUMMARY에 등재된 공개 가이드만 빌드 때 JSON으로 만든다 — 언어별 정적 파일 셋(`generateStaticParams` = `guideLocales()`, `dynamicParams = false`). 인증·DB·쿠키 조회가 없고 원고 실패는 빌드를 실패시킨다. `entry-points.test.ts`의 `EXEMPT` 사유도 이 경계다 (§6.37) |
 | Keys 조회 — `searchKeysAction` (`app/search/actions.ts`) | 세션(`readSession`) + 코어 `searchKeys`의 **`ProjectMember.userId` 조인** | 서버의 userId로 비보관 멤버 프로젝트 id를 확정한다. 클라이언트 프로젝트 목록을 받지 않고 `activeSlug`는 순위에만 쓴다 (§6.37) |
 | 검색 멤버십 — `loadSearchMembershipsAction` (같은 파일) | 세션(`readSession`) + `loadMemberships`의 **userId 제한** | 보관 포함 자기 멤버십만 읽고 `toNavProjects`의 일곱 필드만 반환한다. 성공·실패 모두 다음 호출에 캐시하지 않는다 (§6.37) |
 | GitHub **연결** | GitHub App **user-to-server** 토큰 (`GITHUB_APP_CLIENT_*`, `lib/github-connect/user.ts`) | "이 사람이 이 설치·리포를 볼 수 있는가"를 묻는 데만 쓴다. **GET만 부른다** — 이름에 OAuth가 들어가지만 로그인 토큰과 client id가 다르다 |
@@ -2297,7 +2316,7 @@ JWT는 권한 회수가 최대 24시간 지연되는데 SaaS에서는 **멤버 �
 
 #### 6.035 개인정보 방침의 게이트 셋 (privacy, 2026-09-24)
 
-방침(`messages/en.tsx`의 `publicDocs.privacy`)이 코드보다 뒤처지는 것을 셋이 막는다. ⚠️ **넷째 축은 사람이다** — 아래 셋이
+방침이 코드보다 뒤처지는 것을 아래가 막는다. ⚠️ **방침은 두 벌이다**(2026-10-04, ui-locales) — en 본 `messages/en.tsx`의 `publicDocs.privacy`(`Messages`에서 빠진 영어 고정 절)와 ko 본 `messages/ko-privacy.tsx`(같은 타입, import는 `/privacy` 페이지 하나 — ko 화면 사전에 넣으면 ko 사용자 번들에 실린다). ko 화면이면 ko 본, en·es 화면은 en 본이고 본문 그릇이 그 본의 `lang`을 든다. ⚠️ **넷째 축은 사람이다** — 아래 셋이
 못 보는 새 목적·새 전송처·쿠키·보존·본문 모순은 `/push` 4단계 판단 게이트가 묻는다.
 
 - **(A) 전수 등재 — `pnpm typecheck`.** `lib/privacy/collected.ts`의 `MODEL_CLASSES`는 `satisfies Record<Prisma.ModelName, …>`,
@@ -2309,6 +2328,10 @@ JWT는 권한 회수가 최대 24시간 지연되는데 SaaS에서는 **멤버 �
   날짜이고, 모든 개정 날짜가 `changes` 절에 적혀 있다. 본문을 고치면 행을 하나 더 써야 하고 **그 행의 날짜가 곧 시행일 갱신**이다.
   ⚠️ **git log로 대신하지 않는다** — CI 체크아웃이 깊이 1이라 파일 이력이 없다. ⚠️ `docText`는 jsdom 없이
   `renderToStaticMarkup` + 태그 제거다.
+- **(D) 두 본의 동형·사실 대조 — `pnpm test`**(ui-locales): 절 id와 순서 · 시행일 · 개정 이력 항목 수와 날짜 · 수집 항목·쿠키 표의 행·열 수 ·
+  `collected.ts` ↔ ko 본의 절이 같고, ko 본 해시도 마지막 개정 행의 ko 값과 같다(ko만 고쳐도 새 개정 행이 필요하다). 그 위에 **문단·목록 항목·표 셀
+  단위로 짝을 맞춰 사실 집합(숫자·시간 단위·고정 고유명·href)을 비교한다** — 다중집합이 아니라 집합인 것은 번역의 주어 생략이 문체로 red가 되지
+  않게 하려는 것이다. 한쪽 본문만 고치면 red다.
 - ⚠️ **외부 전송처 허용목록 검사는 만들지 않았다** (2026-09-24 사용자) — 다섯째(Resend)가 생기면 만들기로 했던 판정이
   충족됐지만, 호스트가 SDK·env 안에 있어 리터럴 전수가 원리적으로 못 본다. 판단 게이트(`/push`)로 갈음한다.
 
@@ -2710,9 +2733,15 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 
 - **판정은 잎 모듈에 둔다.** `lib/pull/ref-slug.ts`는 **import이 0**이고 `trigger.ts`가 재수출한다 —
   규칙은 한 벌이고 무게는 따라오지 않는다.
-- ⚠️ **화면 문구는 영어 단일이고 출처가 `messages/en.tsx` 하나다** (2026-09-08, SaaS 6a). 화면은 `@/lib/i18n`의 `m`으로 읽고 `<html lang="en">`이며, **소스의 한글 UI 리터럴을 `lib/i18n/__tests__/no-korean-ui.test.ts`가 상시로 0으로 고정한다**(허용 목록 `KOREAN_ALLOWED`는 화면이 아니다 — `lib/push/apply.ts`의 SQL 주석). ko를 여는 시점은 PRODUCT §10에 있다.
+- ⚠️ **화면 문구는 사전 셋(`messages/en.tsx`·`ko.tsx`·`es.tsx`)이고 요청마다 언어가 다르다** (2026-10-05, ui-locales — 2026-09-08 SaaS 6a의 "영어 단일, `@/lib/i18n`의 상수 `m`"을 대체했다. 제품 판정은 PRODUCT §4.1 "화면 언어"). 정본은 §6.355다. 소스의 한글 UI 리터럴 0은 그대로다 — `no-korean-ui.test.ts`의 허용 목록 `KOREAN_ALLOWED`는 다섯이고 화면 문구는 ko 사전 둘뿐이다(`lib/push/apply.ts` SQL 주석 · `lib/i18n/locales.ts` endonym `한국어` · `lib/date-format.ts` ko 날짜 단위 · `messages/ko.tsx` · `messages/ko-privacy.tsx`). 파일 단위 허용이라 그 다섯에 새 한글 UI 리터럴이 들어가도 못 잡는다 — 앞의 셋은 잎·상수라 위험이 작다.
 - ⚠️ **잎이 다섯 늘었다** (2026-09-08, SaaS 6a): **`lib/i18n/`**(→ `messages/en.tsx`) · **`lib/routes.ts`** · **`lib/shell/nav.ts`** · **`lib/auth/permission.ts`**(⚠️ 사이드바 → `nav.ts` 경로로 **권한표가 브라우저에 나간다** — 판정만 담고 조회가 없어 안전하다) · ~~`lib/keys/refocus.ts`~~(셀 편집과 함께 T16에서 지웠다).
-- ⚠️ **그 뒤로 아홉이 더 생겼다** (6b~8단계): **`lib/hue.ts`**(이름 해시 → 색 여덟 — 셸 헤더가 매 페이지에서 렌더하는 클라이언트 트리가 읽는다. 클래스 맵은 `components/ui/tone.ts`가 들어 판정과 층이 갈린다) · **`lib/locale-code.ts`**(§5.5.05) · **`lib/pull/branch-name.ts`**(설정 폼이 읽는다) · **`lib/relative-time.ts`**(멤버·이력 화면 — ⚠️ `lib/keys/view.ts`에서 **내린** 것이고 그쪽은 잎이 아니다, 재수출도 하지 않는다) · **`lib/onboarding/base-pending.ts`** · **`lib/signin/dot-field.ts`**(Canvas 판정) · **`lib/projects/list.ts`**(목록 필터·상태) · ~~`lib/keys/filters.ts`~~(8-4 칩 판정 — 옛 칩과 함께 T16에서 지웠다. ⚠️ **이웃한 `lib/keys/view.ts`는 잎이 아니다**(`compareKeys` → `lib/adapters/shared`) — 같은 디렉터리에 있다는 것이 안전을 뜻하지 않는다) · **`lib/keys/flag.ts`**(8-4 — 로케일 코드 → 국기 id. **import 0**이고, 로케일 배지가 `?ns=*`에서 2,709번 렌더되는 트리에 산다). **명부가 낡으면 규칙이 실측 없이 서 있다** — 잎을 새로 만들면 여기 더한다.
+- ⚠️ **그 뒤로 아홉이 더 생겼다** (6b~8단계): **`lib/hue.ts`**(이름 해시 → 색 여덟 — 셸 헤더가 매 페이지에서 렌더하는 클라이언트 트리가 읽는다. 클래스 맵은 `components/ui/tone.ts`가 들어 판정과 층이 갈린다) · **`lib/locale-code.ts`**(§5.5.05) · **`lib/pull/branch-name.ts`**(설정 폼이 읽는다) · **`lib/relative-time.ts`**(멤버·이력 화면 — ⚠️ `lib/keys/view.ts`에서 **내린** 것이고 그쪽은 잎이 아니다, 재수출도 하지 않는다) · **`lib/onboarding/base-pending.ts`** · **`lib/signin/dot-field.ts`**(Canvas 판정) · **`lib/projects/list.ts`**(목록 필터·상태) · ~~`lib/keys/filters.ts`~~(8-4 칩 판정 — 옛 칩과 함께 T16에서 지웠다. ⚠️ **이웃한 `lib/keys/view.ts`는 잎이 아니다**(`compareKeys` → `lib/adapters/shared`) — 같은 디렉터리에 있다는 것이 안전을 뜻하지 않는다) · **`lib/keys/flag.ts`**(8-4 — 로케일 코드 → 국기 id. **import 0**이고, 로케일 배지가 `?ns=*`에서 2,709번 렌더되는 트리에 산다) · **`lib/i18n/locales.ts`**(2026-10-04, ui-locales — 화면 언어 집합 `UI_LOCALES`·endonym·국기·`parseUiLocale`·`resolveUiLocale`·`planUiLocaleWrite`. **import 0**이고 클라이언트 provider·날짜 헬퍼·스위처가 값으로 읽는다. `lib/date-format.ts`(옛 `lib/utc-time.ts`)·`lib/relative-time.ts`·`lib/onboarding/language-name.ts`는 그 타입만 가져와 잎으로 남는다). **명부가 낡으면 규칙이 실측 없이 서 있다** — 잎을 새로 만들면 여기 더한다.
+- ⚠️ **시간대가 잎 둘을 더하고 하나의 이름을 바꿨다** (2026-10-05, user-timezone — §6.356): **`lib/date-format.ts`**(옛 `lib/utc-time.ts` — 절대 날짜·시각의
+  유일한 생산자. 값 import 0 — `UiLocale`·`TimeZone` 타입만 읽고 `Intl`은 전역이다. `publish-button`·`log-filters`·`sync-lock`·Preferences 카드 등 클라이언트 컴포넌트가 값으로 읽는다) ·
+  **`lib/time-zone/zones.ts`**(선별 목록 `TIME_ZONES`·`parseTimeZone`·`resolveTimeZone` — **import 0**) · **`lib/time-zone/options.ts`**(`timeZoneOptions(now)` —
+  `date-format`·`zones`만 문다. Preferences Time zone 카드가 값으로 읽는다). 셋 다 `client-graph.test.ts`의 `CLIENT_LIB_FILES`에 있다.
+- ⚠️ **화면 테마가 잎 하나를 더했다** (2026-10-05, color-scheme — §6.357): **`lib/color-scheme/scheme.ts`**(`COLOR_SCHEMES`·`parseColorScheme`·`resolveColorScheme`·
+  쿠키 이름 `COLOR_SCHEME_COOKIE` — **import 0**. Preferences Theme 카드가 값으로 읽는다). `CLIENT_LIB_FILES`에 있고 같은 파일이 잎 성질을 직접 건다.
 - ⚠️ **그 명부가 실제로 낡아 있었다** (2026-09-18 전수 대조). 손으로 잇는 목록이라 `/doc-check` 사이에 조용히 갈린다 — **정본은 `components/__tests__/client-graph.test.ts`가 실제로 걷는 그래프이고**, 세는 법은 "`\"use client\"` 파일이 무는 `@/lib/*`를 전부 모아 각 모듈의 import 수를 본다" 하나다. 그때 **미등재 잎이 열셋** 나왔다:
   - **클라이언트가 값으로 읽는 것 열하나** (T16에서 `lib/keys/edit-command.ts`가 빠졌다) — `lib/publish/warnings.ts`·`lib/publish/words.ts`(`components/publish-button.tsx`) · `lib/search-params.ts`(쿼리 정규화 — ⚠️ `Object.create(null)`을 쓰는 자리라 §6.36의 프로토타입 규칙이 여기도 산다) · `lib/account/plan.ts` · `lib/import/confirm.ts` · `lib/onboarding/branch.ts`·`key-gap.ts`·`language-name.ts`·`locale-picker.ts` · `lib/shell/panel-size.ts` · `lib/upload/image.ts`. **열하나 전부 import가 0이다.**
   - **서버만 소비하는 것 하나** — `lib/protection/plan.ts`(소비자는 `lib/pull/run.ts`·`lib/push/apply.ts`·`lib/import/run.ts` 셋, 클라이언트 소비자 0). 그래도 `client-graph.test.ts`가 **파일 목록을 `toEqual`로** 고정한다: 같은 디렉터리의 `./fingerprint`를 한 줄만 물어도 `node:crypto`가 번들로 오고, 음성 대조로 `fingerprint.ts` 쪽은 실제로 걸리는지까지 센다. `lib/i18n`·`lib/keys/flag.ts`와 같은 형이다.
@@ -2721,7 +2750,7 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 - ⚠️ **`lib/onboarding/readiness.ts`도 8-3에 잎이 됐다** — `readinessLabel`이 나가면서 `@/lib/i18n` import가 사라졌다. 잎이 된 것은 의도가 아니라 **결과**이고, 그래서 §1.3의 "온보딩 판정층이 사전을 문다"가 셋에서 둘로 줄었다.
   앞의 것은 위 문구 모듈 **넷이 전부** 물게 됐으므로 — 즉 클라이언트가 문구를 읽는 모든 경로가 사전을
   지난다 — 사전이 `@/lib/**`를 하나라도 물면 그 무게가 세 화면에 붙는다. 그래서 `messages/en.tsx`의
-  import는 `react`의 `ReactNode` **타입 하나**이고, `client-graph.test.ts`가 그 잎 성질을 직접 건다
+  import는 `react`의 `ReactNode` **타입 하나**이고(ko·es 사전도 `ReactNode`와 `@/lib/i18n`의 `Messages` 타입뿐이다), `client-graph.test.ts`가 그 잎 성질을 직접 건다
   (실 소비자가 생기기 전에도 공허하지 않도록 `lib/i18n/index.ts`에서 출발하는 케이스를 따로 둔다).
 - ⚠️ **사전 조회는 `Object.hasOwn`을 지난다** (`lib/i18n`의 `pick`). `DICT[key] ?? fallback`은
   프로토타입 키(`constructor`·`toString`…)에서 값이 찾아져 폴백을 우회하고, **문자열 자리에 함수가
@@ -2743,6 +2772,132 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
   ⚠️ **2026-09-27에 `@vercel/analytics`가 여섯째로 늘었다**(seo-geo — `components/analytics.tsx`, 번들에 드는 것은 로더뿐이다).
   **메타 테스트는 아직 앞의 다섯만 고정한다** — 이 하나는 목록에서 빠져도 red가 나지 않는다. 목록의 정본은 `ALLOWED`다. `SKIP_DIR`의 `ui`는 **진입점 탐색만**
   건너뛰고 import는 따라가므로, **프리미티브가 무는 것이 곧 이 목록의 결정**이 된다.
+### 6.355 화면 문구 — 입구와 영어 고정 표면 (2026-10-05, ui-locales)
+
+화면 언어는 `en`·`ko`·`es`이고(제품 판정은 PRODUCT §4.1 "화면 언어"), **요청마다 다르다.** 이 축은 프로젝트의 번역 대상 언어(`Locale`)와
+다르므로 식별자는 전부 `uiLocale`·`UiLocale`이다 — 맨 `locale`을 쓰지 않아 grep 한 번으로 두 축이 섞인 코드를 찾는다(Action 디렉터리도 `app/ui-locale/`).
+
+- **모듈 상수 `m`은 없다.** 서버는 요청 여럿을 한 프로세스에서 동시에 렌더하므로 언어를 모듈 상수에 담으면 요청끼리 섞인다. ⚠️ **루트 레이아웃이 언어를
+  정해 아래로 흘려보내지도 않는다** — 레이아웃과 페이지는 병렬로 렌더된다(POSTMORTEM 2026-08-31). 그래서 **소비자마다 입구를 직접 묻는다**:
+
+  | 소비자 | 입구 |
+  |---|---|
+  | 서버 컴포넌트·페이지·레이아웃·Server Action | `const m = await getMessages()` (`lib/i18n/server.ts`, `server-only`). 언어는 `getUiLocale()`이 React `cache`로 요청당 한 번 정한다 — `readSession()`의 `uiLocale`(추가 쿼리 0, §5.1) + 쿠키 `malmoi-ui-locale` → `resolveUiLocale`. 세션을 못 읽으면 거부가 아니라 쿠키로 넘어간다(화면 언어는 인가가 아니다) |
+  | 클라이언트 컴포넌트 | `useMessages()` · `useUiLocale()` (`components/i18n/messages-provider.tsx`). 사전 객체를 prop으로 넘기지 않는다 — 함수·ReactNode 값이 RSC 경계를 못 넘는다 |
+  | `"use client"` 없는 공용 컴포넌트 | 서버 페이지만 부르면 부모가 `m`(+ 날짜가 있으면 `style: DateStyle` — §6.356)을 prop으로 넘긴다. **서버·클라이언트가 섞여 부르는 작은 잎은 `"use client"` + `useMessages()`**다 — props가 직렬화 가능할 때만(`StatusBadge`·`WizardFooter`·`LocaleBadge`·`RoleChip` 등). 그래서 `Input`은 `"use client"`를 달 수 없어(`fieldClass`를 서버가 읽는다) 지우기 버튼을 `input-clear-button.tsx`로 뗐다 |
+  | `lib/`의 문구 조립 모듈 | **`m: Messages`를 인자로 받는다.** 최상위에서 `m.…` 상수를 만들던 파일은 `m`을 받는 함수가 됐다 |
+  | **영어 고정 표면** | `import { en } from "@/messages/en"`로 **명시한다** — 이름이 `en`이라 "일부러 영어"가 코드에 보인다 |
+
+- **영어로 고정되는 표면**: MCP 도구 응답(`lib/mcp/**` — 에이전트가 읽는다) · 초대 메일(`lib/invitation-email/**` — 받는 사람의 언어를 모른다) ·
+  SEO 메타·정적 `metadata`(탭 제목 — 크롤러와 같은 축이라 `generateMetadata`로 바꾸지 않는다)·`llms*.txt`·sitemap · `/api/*` JSON(검색 색인은 언어별 정적 파일 —
+  §6.37) · cron 응답·서버 로그 · CLI(`scripts/**`) · `app/global-error.tsx`(루트 레이아웃 밖이라 provider가 없다, `lang="en"`) · 방침 en 본(§6.035) ·
+  숫자 형식(`en-US`) · 리포에 남는 문장(PR 제목·본문·커밋 메시지 — 누가 Publish했느냐로 같은 DB 상태에서 다른 PR이 나오면 안 된다) ·
+  저장되는 값(`ProjectEvent` payload — §5.7.4의 렌더 치환). 사전에서는 최상위 `mcp`·`seo`·`crash`와 중첩 `publicDocs.privacy`가 `Messages`에서 빠진다(ko·es는 그 절이 없다).
+  ⚠️ **공유 코어(`planPublishView`·`loadEvents` 등 MCP 도구와 화면이 같이 부르는 것)는 `getMessages()`를 부르지 않고 `m`을 인자로만 받는다** —
+  코어가 스스로 언어를 물으면 MCP 응답이 요청자의 언어를 따라간다. 소스 검사 `dictionary-consistency.test.ts` ⑧이 영어 고정 표면의 입구 import와
+  `lib/** → lib/i18n/server`를 막는다. 테스트도 `en`을 명시 import한다.
+- **사전 정합**: `type Messages`(`lib/i18n/index.ts`)는 en의 리터럴을 넓힌 `Widen<typeof en>`에서 영어 고정 절을 뺀 것이고(함수는 재귀하지 않고 문자열 반환만 넓힌다 —
+  `ReactNode` 반환을 객체로 보고 재귀하면 `ReactElement` 구조를 매핑한다), `messages/ko.tsx`·`es.tsx`가 `satisfies Messages`라 빠진 키·남는 키·인자 다른 함수가 typecheck red다.
+  `dictionary-consistency.test.ts`가 ① en과 같은 문자열은 **키 경로** 허용 목록에만(값으로 허용하면 es의 `Error`·`General` 같은 동철어가 다른 키의 누락까지 통과시킨다 —
+  함수 값은 대표 인자로 호출, JSX는 `renderToStaticMarkup`) ② 키 경로 집합 ③ 빈 문자열 ④ DESIGN §10.1 ko·es 열의 "쓰지 않는 말"(`helpers/banned-terms.ts`)과
+  링크↔버튼 이름을 잰다.
+- **클라이언트 번들 — 렌더된 언어의 사전만** (orch D7 스파이크 1b, Next 16.3.3 Turbopack 실측). ⚠️ **설계 때의 "언어별 `"use client"` provider 셋을 레이아웃이 하나만
+  렌더한다"는 성립하지 않았다** — 루트 레이아웃이 서버에서 import하는 client 모듈은 정적이든 `await import()`든 레이아웃의 청크 그룹 하나에 실려 en 페이지도
+  ko 사전을 받았다. 지금 형: provider 파일 하나가 en을 정적으로 들고, **ko·es는 `next/dynamic` 운반체(`CARRIERS`) 한 줄씩이 그 언어의 유일한 import 자리**다.
+  운반체가 사전을 언어별 슬롯에 맡기고 안정된 `Inner`가 `use()`로 기다린다 — 그 언어 페이지의 SSR HTML만 청크를 `<link rel="preload">`로 싣고(쿠키 없는 en HTML은 0회)
+  하이드레이션 폭포가 없다. 서버 쪽 import 자리는 `lib/i18n/server.ts`의 `DICTIONARIES` 한 줄이다. 새 언어 = 그 두 줄.
+  - ⚠️ **사전 하나당 import 자리는 로더 하나다** — 같은 모듈을 다른 자리에서 또 읽으면 Turbopack이 청크 둘로 복제하고 그쪽은 preload되지 않는다.
+    `dictionary-consistency.test.ts` ⑥이 "ko·es를 읽는 비테스트 소스 = provider의 `next/dynamic` + `server.ts`"와 `ko-privacy`의 importer = `/privacy` 페이지 하나를 고정한다.
+  - ⚠️ **언어별 껍데기로 자식을 감싸지 않고 `key={uiLocale}`도 걸지 않는다** — 요소 타입이 바뀌면 언어를 바꿀 때 트리가 다시 마운트돼 포커스·상태가 사라진다
+    (POSTMORTEM 2026-09-07과 같은 형). 자식은 늘 `Inner` 아래다.
+  - provider가 없으면 **en**이다(`global-error`와 컴포넌트만 렌더하는 DOM 테스트가 그대로 돈다). 대가 "provider를 빠뜨리면 조용히 영어"는
+    `app/__tests__/root-layout-i18n.test.ts`가 막는다.
+  - **측정(2026-10-05, D11 — 사용자 수용)**: en HTML의 ko·es 청크 0, ko 청크 +26KB·es +27KB gz는 그 언어 사용자만 받는다. 대신 en 사용자의 라우트별 first-load gzip이
+    착수 전 기준선 대비 **+4.1~6.1KB** 늘었다(`/` 268,997 → 275,069 · `/projects/[slug]` 307,067 → 311,196 등) — `next/dynamic` 런타임·provider ≈ 3–4KB와,
+    비동기 경계가 생겨 Turbopack이 공유 모듈 그룹을 다시 묶으며 생긴 중복(`components/ui/button.tsx` 2부→3부 등, 소스 diff 0)이다. 구조적이라 수용했고 모듈 중복은
+    이 기능 밖 후속 후보다. ⚠️ `pnpm build` 라우트 표는 청크 크기를 말하지 않는다 — 다시 잴 때는 `.next/static/chunks`와 라우트별 first-load 합으로 잰다(POSTMORTEM 2026-09-07).
+- **`<html lang>`은 요청의 화면 언어다** — 루트 레이아웃이 `getUiLocale()`로 정한다(이미 CSP nonce로 동적이라 새로 동적이 된 페이지는 없다). 언어 이름(endonym)처럼
+  그 화면 언어가 아닌 낱말에는 요소마다 `lang={code}`를 단다. ko는 `:lang(ko)` 줄바꿈 규칙(`app/globals.css` — DESIGN)이 이 값으로 켜진다.
+- **날짜·상대 시각·언어명은 화면 언어를 인자로 받는다** — 절대 날짜·시각은 `formatDay`·`formatMinute`·`formatMonth` 등(`lib/date-format.ts` — 입력이
+  `DateStyle = { uiLocale, timeZone }`이다, 시간대 축은 §6.356), `relativeTime`(`Intl.RelativeTimeFormat(uiLocale)`), `languageName`(`Intl.DisplayNames([uiLocale])`).
+  **기본값이 없다** — 호출부가 언어를 빠뜨리면 typecheck가 잡는다.
+- **Action은 문장이 아니라 코드를 돌려준다** — 무효화 뒤 렌더가 새 언어라 Action이 고른 언어로 문장을 만들 수 없다. 화면이 코드를 들고 `useMessages()`로 그린다.
+  `setUiLocale`(`app/ui-locale/actions.ts`)도 `ok`·`invalid`·`failed`이고, 클라이언트가 reject를 `failed` 갈래로 받는다(오류 경계로 보내지 않는다).
+- **`setUiLocale`의 쓰기 순서는 계정 → 쿠키 → `revalidateAfterCommit`으로 고정이다.** 세션 읽기가 `unavailable`이거나 계정 쓰기가 실패하면 **아무것도 쓰지 않고
+  `failed`**다 — 쿠키만 쓰면 다음 렌더에서 세션이 살아날 때 계정의 옛 값이 쿠키를 이겨 화면이 조용히 되돌아간다(그래서 "이 기기에만" 갈래가 없다). 쿠키는 http-only·
+  `SameSite=Lax`·https면 `Secure`(`x-forwarded-proto` 첫 값)·`Path=/`·1년이다(방침의 "All of them are http-only"가 참이어야 한다). 공개 Action이지만 계정에 쓰는 대상은
+  세션이 정한다. CSRF는 Next의 Action Origin 검사가 1층이고, 세션 쿠키가 Lax라 교차 사이트 POST로는 남의 계정 행에 닿지 못한다(최악은 기기 언어 하나). `ProjectEvent`를 남기지 않는다.
+- **가이드 원고도 언어 축을 탄다** — `lib/guide/load.ts`가 `guide/<uiLocale>/`을 읽고 `/docs`가 `getUiLocale()`로 고른다. **없는 언어를 en으로 메우지 않는다**(던지거나 404),
+  세 트리의 구조 동형은 `lib/guide/__tests__/locales.test.ts`가 지킨다. 크롤러 표면(`llms*.txt`·sitemap)은 `"en"`을 명시한다. 스크린샷은 en 한 벌 공유(`public/guide/`).
+
+### 6.356 시간대 — 보는 사람이 고른 것 (2026-10-05, user-timezone)
+
+**절대 날짜·시각은 보는 사람이 `/preferences`에서 고른 시간대(기본 UTC)로 말하고, 시각에는 그 오프셋을 라벨로 단다**(`Oct 5, 2026 08:10 UTC+9`).
+옛 규칙 "절대 시각은 UTC로 말한다"가 막으려던 것은 **라벨 없는 로컬 시각**(서버 TZ나 브라우저 TZ가 조용히 끼는 것 — POSTMORTEM 2026-09-20)이고, 이 규칙은
+그것을 다시 열지 않는다: 라벨은 그대로 달리고 시간대는 런타임이 아니라 사람이 고른 값이다. 저장은 계속 UTC이고(`ProjectEvent.occurredAt` 등 `timestamptz`)
+`<time dateTime>`은 UTC ISO다. 날짜 문장은 화면에서만 조립되므로 export 결정성·blob SHA(§1·§2)·PR 본문·커밋 메시지에 영향이 없다.
+
+- **생산자는 `lib/date-format.ts` 하나다.** `Intl.DateTimeFormat`은 그 파일에서 **`timeZone`을 명시한 숫자 부품 추출**(`zonedParts` — `en-US`·`h23`·numeric
+  `formatToParts`)에만 쓰고 월 이름·어순·라벨은 손으로 조립한다 — 런타임 TZ를 읽을 길이 없어야 서버(Vercel UTC)와 브라우저가 같은 값을 찍고, 로케일 문자열
+  출력은 ICU 빌드마다 다르다. `timeZone === "UTC"`는 `getUTC*`로 직행해 기본 경로에 Intl이 없다(옛 `utcDay`·`utcMinute`와 바이트가 같다). `toLocale*`은 0건이다.
+  `lib/__tests__/date-format-consumers.test.ts`가 "Intl.DateTimeFormat은 그 파일에서만"·`toLocale*` 0·`toISOString().slice(11` 0(생산자 우회 시각)을 센다.
+- **입구는 소비자가 직접 묻는다**(§6.355와 같은 이유 — 레이아웃·페이지 병렬 렌더): 서버 `await getDateStyle()`(`lib/i18n/server.ts`, React `cache` — `readSession()`의
+  `timeZone` → `resolveTimeZone`, 세션 `unavailable`·비로그인은 UTC. 화면 표시라 거부가 아니다) · 클라이언트 `useDateStyle()`(`MessagesProvider`의 context에 필드
+  하나 — 루트 레이아웃이 `timeZone` 문자열을 prop으로 넘기고, 훅은 provider가 `useMemo`로 든 같은 객체를 돌려준다. **provider 없음 = UTC**). 시간대를 바꿔도
+  트리를 다시 마운트하지 않는다(`key` 없음 — §6.355와 같은 규칙). `lib/` 코어는 `style`·`timeZone`을 **인자로만** 받고 `getDateStyle()`을 부르지 않는다.
+- **쿠키 층이 없다** — 계정(`User.timeZone`, §5.1) 하나이고 비로그인은 UTC다. 시간대를 고르는 화면이 로그인 전용 `/preferences`뿐이라서다. 쓰기는
+  `setTimeZone`(`app/(edit)/preferences/actions.ts` — 입력 id 하나, 대상은 세션 `userId`, 성공 뒤에만 `revalidateAfterCommit`으로 루트 레이아웃을 무효화,
+  코드 `ok`·`invalid`·`failed` 반환, `ProjectEvent` 없음).
+- **지원 집합은 선별 목록이다** — `lib/time-zone/zones.ts`의 `TIME_ZONES`(UTC + IANA id 41개). `parseTimeZone`은 `Object.hasOwn`으로 판정하고(대소문자·공백·
+  프로토타입 키 거부) **런타임 `Intl`에 유효성을 묻지 않는다**(ICU마다 다르다). ⚠️ `resolvedOptions().timeZone`을 읽지 않는다 — Node ICU가 `Asia/Kolkata`→`Asia/Calcutta`
+  처럼 옛 이름을 돌려준다. 저장·비교·표시는 우리 목록의 id 문자열만 쓴다. Preferences 옵션은 `timeZoneOptions(now)`(`lib/time-zone/options.ts` — UTC 첫 줄, 나머지는
+  `now` 기준 오프셋 오름차순).
+- **UTC로 고정되는 표면** — 보는 사람의 시간대가 없거나 모두에게 같아야 하는 자리는 `timeZone: "UTC"`를 **명시**한다: 공개 셸(`/changelog`의 `Dates are in UTC.`가
+  로그인 여부와 무관하게 참이어야 한다 · `/privacy` 시행일·개정 이력) · `/signin/link/:challenge`(세션 없는 흐름) · MCP(세션·쿠키를 읽지 않는다 — `list_events`의
+  날짜 구간은 UTC) · provider 밖 기본값. **이 리터럴이 나오는 `app/**`·`components/**`·`lib/**` 파일 집합은 같은 테스트의 `FIXED_UTC`와 정확히 같아야 한다** —
+  사용자 시간대 호출부를 `"UTC"`로 되돌리면 red다. 새 고정 표면은 이유와 함께 그 목록에 등재한다. 공개 셸 경로가 `getDateStyle`·`useDateStyle`을 import하지 않는 것도
+  같은 파일이 센다(이름이 바뀌면 공허하게 green이 되지 않게 센티넬이 export를 확인한다).
+- **Logs의 날짜 경계는 보는 사람의 시간대다.** 날짜 카드(`groupByDay` — 키 `dayKeyAt(occurredAt, tz)`, 머리는 키를 순간으로 바꾸지 않는 `formatDayKey`) ·
+  `Today`·`Yesterday` · 프리셋(`presetRange` — `addDays` 달력 산술이라 서머타임 날도 23·25시간이 맞다) · Custom range의 구간(`parseDateRange(from, to, tz)` —
+  `[startOfDay(from), startOfDay(addDays(to, 1)))`)이 전부 `tz`를 받고, `loadEvents`는 `timeZone`을 필수로 받는다(Logs 페이지·Home Recent logs는 `getDateStyle()`의 값,
+  MCP는 `"UTC"`). ⚠️ **URL 판정 `parseLogFilter`는 시간대와 무관하다** — 날짜 키의 형식·실재·`from ≤ to`(키 문자열 비교)만 보므로 같은 주소가 MCP와 화면에서
+  같은 필터로 해석되고, 구간이 순간으로 바뀌는 자리는 `loadEvents`의 `narrow` 하나다. ⚠️ `startOfDay`는 **0시가 없는 날**(자정에 서머타임이 시작하는
+  `America/Santiago`·`Atlantic/Azores`·`Africa/Cairo`)을 그날 첫 순간으로 보정한다 — 보정 없이 오프셋 반복만 하면 전날 23시가 나온다(`date-format.test.ts`가 표로 고정).
+  ⚠️ 키를 `new Date(key)`나 `startOfDay`로 순간을 만든 뒤 `formatDay`에 넘기지 않는다 — 음수 오프셋에서 칩 날짜가 하루 밀린다.
+- **하이드레이션 — `now`는 서버가 내린다.** 서버(Node ICU)와 브라우저가 같은 `timeZone` 문자열로 같은 순간의 부품을 뽑으므로 출력이 갈리는 원인은 둘이다.
+  ① **`now`의 출처** — 클라이언트 렌더 중 `Date.now()`로 오늘·오프셋·정렬을 계산하면 그 시간대의 자정이나 전환 순간이 서버 렌더와 하이드레이션 사이에 낄 때 갈린다
+  (UTC 자정보다 사용자가 더 자주 겪는다). 그래서 `now`의 함수(Logs 프리셋·Today·`timeZoneOptions`·Preferences 미리보기)는 **페이지가 내린 `now` ISO prop**을 쓴다.
+  ② **tzdata 차이** — 두 런타임이 규칙 변경 직후 시점을 서로 다르게 알 때(낡은 브라우저 × `America/Mexico_City`·`America/Santiago`·`Africa/Cairo`). 선별 목록이라
+  범위가 작고, 갈리면 하이드레이션 경고 한 번에 클라이언트 값이 이긴다. **수용한다** — `suppressHydrationWarning`을 달지 않는다(다른 불일치까지 숨긴다).
+  - **대가: 자정을 넘겨 열어 둔 Logs 탭의 `Today`·프리셋은 Refresh 전까지 하루 늦다** — 서버 `now`를 받은 대가이고 수용했다(내비게이션·Refresh가 새 `now`를 받는다).
+
+### 6.357 화면 테마 — 서버가 `<html data-theme>`을 싣는다 (2026-10-05, color-scheme)
+
+**테마는 System · Light · Dark이고 판정은 계정(`User.colorScheme`) > 쿠키(`malmoi-color-scheme`) > `light`다**(제품 판정은 PRODUCT §4.1 "화면 테마",
+시각 규칙은 DESIGN §3). 색은 화면에만 있으므로 export 결정성·blob SHA(§1·§2)·PR 본문·MCP 응답에 영향이 없다.
+
+- **판정은 잎 `lib/color-scheme/scheme.ts`다** — `parseColorScheme`은 지원 집합 안의 문자열만 통과시키고 **`Object.hasOwn`으로 판정한다**(쿠키는 남이
+  정한 값이다 — `__proto__`·`constructor` 불통과). `resolveColorScheme({ account, cookie })`의 입력에 **OS 설정이 없다** — 서버는 모르고, System의 해석은
+  CSS(`color-scheme: light dark`)가 한다. ui-locales의 `parseUiLocale`·`resolveUiLocale`과 모양이 같지만 값 집합·기본값이 달라 합치지 않는다.
+- **서버 입구는 `getColorScheme()` 하나**(`lib/color-scheme/server.ts`, `server-only`, React `cache`) — `readSession()`의 `colorScheme`(세션 `unavailable`이면
+  거부가 아니라 쿠키로 넘어간다 — 인가가 아니다) + `cookies()`. **소비자는 둘이다**: 루트 레이아웃(`<html data-theme>` · `<Toaster theme>`)과 `/preferences`
+  page(Theme 카드의 초기값 prop). 둘 다 같은 요청 캐시라 값이 갈리지 않는다. 루트 레이아웃은 이미 CSP nonce·`getUiLocale()`로 동적이라 새로 동적이 된 페이지도,
+  추가 쿼리도 없다.
+- ⚠️ **클라이언트 훅·provider가 없다** — §6.355가 "소비자마다 묻는다"를 택한 것은 페이지가 문구를 직접 읽어야 해서였고, 테마는 CSS가 `<html>` 속성 하나로
+  읽으므로 컴포넌트가 물을 일이 없다. 예외 둘도 DOM에서 읽는다: 로그인 Canvas 점(`dot-field.tsx` — 계산된 `color`를 읽고 System이면 `prefers-color-scheme`
+  변화에 다시 읽는다) · Theme 카드(Action보다 먼저 `document.documentElement.dataset.theme`을 쓰고 `ok`가 아니면 되돌린다 — 한 줄 DOM 쓰기다).
+- **인라인 스크립트 없는 첫 페인트** — 서버가 쿠키·계정으로 정한 `data-theme`을 첫 HTML에 싣는다. 테마 깜빡임 방지 관용구(`<script>`로 `localStorage`
+  읽기)를 쓰지 않으므로 CSP nonce에 새 스크립트가 없고(§8) 깜빡임도 없다. 그 대가로 **기기 층이 localStorage가 아니라 http-only 쿠키**다 — 클라이언트는
+  쿠키를 읽지 않는다(`<html>` 속성만 본다).
+- **쓰기는 `setColorScheme` 하나**(`app/(edit)/preferences/actions.ts` — 보호 경로 아래, 인가 등재는 `app/__tests__/entry-points.test.ts`의 USER 축):
+  `parseColorScheme` 불통과면 `invalid` → `readSession()`이 `ok`가 아니면 무기록 `failed`(redirect하지 않는다) → 세션 `userId`로 계정 갱신(실패면 무기록
+  `failed` — 쿠키만 쓰면 다음 렌더에서 계정의 옛 값이 이긴다) → 쿠키를 **무조건** 쓴다(`httpOnly` · `sameSite: "lax"` · `secure`는 `x-forwarded-proto`
+  첫 항목이 `https`일 때 — `setUiLocale`과 같은 판정 · 1년. 로그인 중에도 쓰는 것은 로그아웃 뒤 공개 페이지가 같은 테마를 보게 하려는 것이다) →
+  `revalidateAfterCommit("color-scheme")`(커밋 뒤라 던져도 `ok`). `ProjectEvent`를 남기지 않는다.
+- **`global-error.tsx`는 이 축 밖이다** — 루트 레이아웃 밖이고 `globals.css`를 import하지 않아 `data-theme`도 토큰도 없이 브라우저 기본값(라이트)이다.
+- **방침**: `User.colorScheme`은 `lib/privacy/collected.ts`에 `collected`로 있고, 쿠키 `malmoi-color-scheme`은 `/privacy`의 쿠키 표·보존 목록·목적에 en·ko 두 본으로
+  든다(§6.035 동형 게이트 — 쿠키 표의 행은 이름이 아니라 용도 `Theme`이다).
+
 ### 6.36 목록 필터의 순수 판정 (`lib/projects/list.ts`, 2026-09-10 8-3)
 
 - ⚠️ **좁히는 축은 검색(`?q=`) 하나다.** 상태 필터 탭 여섯과 그것이 쓰던 `parseProjectFilter`·`filterProjects`는
@@ -2783,8 +2938,11 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 
 ### 6.37 검색의 공개·사용자 경계 (`app/search/actions.ts` · `lib/search/`, global-search)
 
-- **공개 색인은 Docs만 든다.** `app/api/search-index/route.ts`는 질의를 받지 않는 GET으로 `{ docs: DocsEntry[] }`를 준다.
-  `loadSummary`·`loadPage` → `docsSearchEntries`가 SUMMARY 순서로 페이지 도입부와 표식 있는 H2 절의 평문을 만든다.
+- **공개 색인은 Docs만 든다.** `app/api/search-index/[uiLocale]/route.ts`는 질의를 받지 않는 GET으로 `{ docs: DocsEntry[] }`를 준다.
+  ⚠️ **언어가 URL에 실린다**(2026-10-04, ui-locales) — `force-static`은 쿠키로 갈라질 수 없어 원고 트리가 있는 언어마다(`generateStaticParams` = `guideLocales()`)
+  정적 파일 하나이고 `dynamicParams = false`라 목록 밖 값은 404다. 클라이언트 검색이 `useUiLocale()`로 골라 받는다. 옛 `/api/search-index`는 지웠다(배포 직후 옛 JS를 든 탭은
+  404로 Docs 그룹이 `failed` — 새로고침으로 풀린다).
+  `loadSummary(uiLocale)`·`loadPage(uiLocale, …)` → `docsSearchEntries`가 SUMMARY 순서로 페이지 도입부와 표식 있는 H2 절의 평문을 만든다.
   프로젝트·키·번역값·Changelog 본문은 이 응답에 없다. `force-static`은 `/llms-full.txt`와 같은 빌드 생성 형이라
   가이드 원고의 런타임 트레이싱·ISR이 없고 원고 읽기 실패를 빈 색인으로 삼키지 않는다.
   `/api/*`는 미들웨어 matcher 밖이며 `isProtectedPath`에 넣지 않는다. route 테스트가 세션·DB·쿠키 호출을 던지는 mock으로 막는다.
@@ -2805,7 +2963,7 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
   Projects·Pages·Docs의 토큰 AND 판정과 다르다. 순위는 키 이름 > 원문 > 번역값, 같은 급은 지금 프로젝트 →
   키 이름 → 키 id(`COLLATE "C"`)이고 상한은 5(`SEARCH_GROUP_LIMIT` — SQL `LIMIT`에 바인드 파라미터로 들어간다)다. 번역값의 여러 일치는 C 순서 첫 로케일 한 셀, 중복 제거는 키 id다.
   검색 코어의 조건부 두 SQL과 최종 실행 계획·실측은 §1.965가 든다.
-- **캐시 정책은 공개·개인 데이터가 다르다.** `lib/search/load-index.ts`만 동시 호출 Promise와 성공 결과를 탭 수명 동안 재사용한다.
+- **캐시 정책은 공개·개인 데이터가 다르다.** `lib/search/load-index.ts`만 동시 호출 Promise와 성공 결과를 **화면 언어별 키로** 탭 수명 동안 재사용한다.
   네트워크·HTTP·JSON 파싱 실패는 Promise를 비워 다음 호출이 재시도한다. `lib/search/load-memberships.ts`는 매 호출마다 Action을
   실행하고 성공·실패를 저장하지 않는다. 결과는 Action의 union(`{ ok: true, memberships } | { ok: false, error: "unauthorized" | "unavailable" }`)
   그대로이고 네트워크 throw만 `unavailable`로 접는다 — **실패를 비로그인으로 접지 않는다**(2026-10-03, search-ux-unify C1: 헤더에 아바타가
@@ -3130,7 +3288,7 @@ MCP는 무상태이고 에이전트는 미리보기와 실행 사이에 무엇�
 | `preview_publish` | OWNER / EDITOR | 없음 | Publish 미리보기 + Publish 지문 + 지금 열린 PR — `pullRequest: { status: "open", number, url } \| { status: "none" } \| { status: "unknown" }`. ⚠️ 조회 실패·시간 초과(`loadOpenPrUrl`의 `undefined`)를 "없음"으로 접지 않는다 — `undefined`는 JSON에서 필드째 사라지므로 상태가 값이다(Codex review CR-04) |
 | `preview_sync` | OWNER | 없음 | 폐기 지문 + 확인 문장. 열린 PR은 조회하지 않는다(화면 Dialog의 별도 GitHub 조회라) |
 | `preview_revert` | OWNER (표면) | 없음 | Revert 확인값 |
-| `list_events` | OWNER / EDITOR | 없음 | Logs. **보관 중 읽기 예외는 이것만** 넘긴다. 행은 `kind`·`subtype`·`result`·`payload`를 가공 없이 싣는다 — 2026-09-30(nightly-sync)부터 subtype `import.nightly`·`nightly.skip`, 결과 `upToDate`, IMPORT payload의 `source: "nightly"`·`deferReason`(넷)·`changedValues`(부재 `null`)가 그대로 나간다. `query`는 Logs 주소와 같은 해석이라 `actor=ci`·`actor=nightly`(옛 `automation`)도 받는다 |
+| `list_events` | OWNER / EDITOR | 없음 | Logs. **보관 중 읽기 예외는 이것만** 넘긴다. 행은 `kind`·`subtype`·`result`·`payload`를 가공 없이 싣는다 — 2026-09-30(nightly-sync)부터 subtype `import.nightly`·`nightly.skip`, 결과 `upToDate`, IMPORT payload의 `source: "nightly"`·`deferReason`(넷)·`changedValues`(부재 `null`)가 그대로 나간다. `query`는 Logs 주소와 같은 해석이라 `actor=ci`·`actor=nightly`(옛 `automation`)도 받는다. **`from`·`to`의 날짜 경계는 UTC다**(`loadEvents(…, { timeZone: "UTC" })` — 세션이 없어 보는 사람의 시간대가 없다, §6.356) |
 | `get_workflow` | OWNER | 없음 | 생성 YAML. push 토큰 원문 없음(`${{ secrets.PUSH_TOKEN }}`만) |
 | `list_members` | OWNER / EDITOR | 없음 | 남의 이메일 마스킹 유지 |
 

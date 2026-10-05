@@ -6,7 +6,7 @@ import { encodeCursor, parseLogFilter } from "@/lib/events/filter";
 import { loadEvents } from "@/lib/events/query";
 import { loadConnectionHealth } from "@/lib/github";
 import { logFailure } from "@/lib/github-connect/log";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { loadProjectListAggregates, loadSurfaceCounts } from "@/lib/keys/query";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
 import { renderProjectWorkflowYaml, workflowApiUrl, workflowSurfaceOf } from "@/lib/onboarding/workflow";
@@ -69,7 +69,7 @@ export const getProject = defineTool({
         slug: surface.slug, adapter: surface.adapterName, pathTemplate: surface.pathTemplate, baseLocale: surface.baseLocale,
         declaredBaseLocale: surface.declaredBaseLocale, keys: keysOf.get(surface.id) ?? 0, locales: surface.locales.map(l => l.code),
       })),
-    }, m.mcp.summary.project(project.name));
+    }, en.mcp.summary.project(project.name));
   },
 });
 
@@ -83,7 +83,8 @@ export const listEvents = defineTool({
     const access = await getProjectAccess(prisma, { userId: subject.userId, slug, permission: "translation:write", archivedPolicy: "read" });
     if (access.status !== "ok") return { status: "refused", code: access.status };
     // 필터·커서는 Logs 화면과 같은 해석이다 — 주소창 값과 같은 이름을 받는다.
-    const page = await loadEvents(prisma, access.projectId, parseLogFilter(query ?? {}));
+    // ⚠️ 기간은 **UTC 자정으로 끊는다** — MCP는 세션·쿠키를 읽지 않으므로 보는 사람의 시간대가 없다(응답 시각도 ISO다).
+    const page = await loadEvents(prisma, en, access.projectId, parseLogFilter(query ?? {}), { timeZone: "UTC" });
     return ok({
       events: page.rows.map(row => ({
         ref: row.ref, kind: row.kind, subtype: row.subtype, occurredAt: row.occurredAt.toISOString(), finishedAt: row.finishedAt?.toISOString() ?? null,
@@ -91,7 +92,7 @@ export const listEvents = defineTool({
         payload: row.payload,
       })),
       nextCursor: page.nextCursor === null ? null : encodeCursor(page.nextCursor),
-    }, m.mcp.summary.events(page.rows.length));
+    }, en.mcp.summary.events(page.rows.length));
   },
 });
 
@@ -105,13 +106,13 @@ export const listMembers = defineTool({
     if (access.status !== "ok") return { status: "refused", code: access.status };
     // 이메일은 마스킹 라벨만 — 로더가 원문을 내지 않는다(sec-audit 발견 4). 대기 초대는 초대할 수 있는 OWNER에게만 보인다(멤버 화면과 같다).
     const [members, pending] = await Promise.all([
-      loadMembers(prisma, access.projectId),
-      access.role === "OWNER" ? loadPendingInvitations(prisma, access.projectId, now) : Promise.resolve([]),
+      loadMembers(prisma, en, access.projectId),
+      access.role === "OWNER" ? loadPendingInvitations(prisma, en, access.projectId, now) : Promise.resolve([]),
     ]);
     return ok({
       members: members.map(member => ({ userId: member.userId, name: member.name, emailLabel: member.emailLabel, role: member.role, joinedAt: member.joinedAt.toISOString() })),
       pendingInvitations: pending.map(invitation => ({ id: invitation.id, emailLabel: invitation.emailLabel, role: invitation.role, expiresAt: invitation.expiresAt.toISOString() })),
-    }, m.mcp.summary.members(members.length));
+    }, en.mcp.summary.members(members.length));
   },
 });
 
@@ -132,6 +133,6 @@ export const getWorkflow = defineTool({
     // `api-url`은 이 요청이 들어온 앱을 가리킨다 — 프로덕션·모르는 origin은 생략(`workflowApiUrl`).
     const apiUrl = workflowApiUrl(origin);
     const yaml = renderProjectWorkflowYaml({ slug, baseBranch: project.baseBranch, surfaces: project.surfaces.map(workflowSurfaceOf), ...(apiUrl === undefined ? {} : { apiUrl }) });
-    return ok({ path: ".github/workflows/malmoi-i18n.yml", yaml, secretName: "PUSH_TOKEN" }, m.mcp.summary.workflow);
+    return ok({ path: ".github/workflows/malmoi-i18n.yml", yaml, secretName: "PUSH_TOKEN" }, en.mcp.summary.workflow);
   },
 });

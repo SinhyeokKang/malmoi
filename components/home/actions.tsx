@@ -13,7 +13,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { landFocus } from "@/components/ui/focus";
-import { m } from "@/lib/i18n";
+import { useMessages, useUiLocale } from "@/components/i18n/messages-provider";
 import { importRevalidates, type RepositoryImportOutcome } from "@/lib/import/result";
 import { homeBannerState, type ConnectionProblem, type HomeState } from "@/lib/home/state";
 import { importFailureMessage } from "@/lib/projects/import-failure";
@@ -144,6 +144,7 @@ export function HomeHeaderActions({ slug, surfaceSlug, name, branch, role, unsen
    */
   paused: boolean;
 }) {
+  const m = useMessages();
   const { syncOpen, setSyncOpen, syncPending, setSyncPending, publishPending, publish, onSyncResult, leased, titleRef } = useHomeActions();
   return (
     <div className="flex items-center gap-2">
@@ -201,6 +202,8 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
   lastSyncAt: Date | null;
   now: Date;
 }) {
+  const uiLocale = useUiLocale();
+  const m = useMessages();
   const { publish, titleRef, setSyncOpen, publishPending, leased } = useHomeActions();
   // 배너의 [Try again]은 머리 [Sync]와 같은 잠금·같은 사유다 — Publish 진행이 먼저, 그다음 착지 lease(R5).
   const retryBlock = publishPending ? m.repositorySync.waitPublish : leased ? m.repositorySync.running : null;
@@ -255,9 +258,9 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
             여기만 muted로 덮었고, Alert가 그 규칙을 들게 된 뒤로 덮개가 이 배너만 흐리게 했다.
           */}
           {partial
-            ? m.home.banner.partial.body(failedSurface, branch, importFailureMessage(reason))
-            : <>{m.home.banner.syncFailed.body(failedSurface, branch, importFailureMessage(reason))}{" "}
-              {m.home.banner.syncFailed.safe(lastSyncAt === null ? null : relativeTime(lastSyncAt, now))}</>}
+            ? m.home.banner.partial.body(failedSurface, branch, importFailureMessage(m, reason))
+            : <>{m.home.banner.syncFailed.body(failedSurface, branch, importFailureMessage(m, reason))}{" "}
+              {m.home.banner.syncFailed.safe(lastSyncAt === null ? null : relativeTime(lastSyncAt, now, uiLocale))}</>}
           {!owner && <> {m.home.banner.syncFailed.editor}</>}
         </Alert>
       )}

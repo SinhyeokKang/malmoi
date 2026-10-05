@@ -33,6 +33,8 @@ vi.mock("@/components/signin/dot-field", () => ({ DotField: () => null }));
 vi.mock("@/components/signin/auth-toast", () => ({ AuthToast: () => null }));
 import Page from "../[token]/page";
 
+vi.mock("@/lib/i18n/server", async () => ({ getMessages: async () => (await import("@/messages/en")).en, getUiLocale: async () => "en" }));
+
 it("표면이 둘이어도 로케일 국기가 코드당 한 번, 코드 순으로 선다", async () => {
   state.session.mockResolvedValue({ status: "ok", userId: "u1" });
   const errors = vi.spyOn(console, "error").mockImplementation(() => {});

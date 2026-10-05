@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 import { Toc } from "@/components/public-doc-toc";
 import type { TocItem } from "@/lib/guide/toc";
-import { m } from "@/lib/i18n";
+import type { Messages } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 const ROW_HOVER = "hover:bg-foreground/[0.03] focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none";
@@ -24,7 +24,7 @@ function Arrow() {
  * 본문 스크롤러 안의 그릇 — **Privacy 그릇 그대로**(DESIGN §6.61 · 시안 `Docs.dc.html` 1b): 본문 720 + 목차 200 · 사이 64 ·
  * 최대 1064 가운데 · 위 64 아래 120. 목차가 없으면(H2 둘 미만 · 개요 · 장 개요) **열만 비운다** — 본문 폭이 페이지마다 흔들리지 않는다.
  */
-export function DocFrame({ toc, children }: { toc: readonly TocItem[]; children: ReactNode }) {
+export function DocFrame({ m, toc, children }: { m: Messages; toc: readonly TocItem[]; children: ReactNode }) {
   return (
     <div className="mx-auto grid max-w-[1064px] grid-cols-[minmax(0,720px)_200px] justify-between gap-16 px-10 pt-16 pb-30">
       {/* 도입 문단(h1 바로 뒤)은 위 20 — 본문 문단의 16과 다르다(시안 1a–1d, #119). 원고 문단은 react-markdown이 그려 그릇이 누른다. */}
@@ -99,7 +99,7 @@ export function DocTracks({ tracks }: { tracks: readonly DocTrack[] }) {
 }
 
 /** 이전/다음 — 본문 끝 위 64 · 선 뒤 반반 카드(p16 · 라벨 13 muted · 제목 15/500). SUMMARY 선위 순서, 장 경계를 넘는다. */
-export function DocNeighbours({ previous, next }: { previous: { href: string; title: string } | null; next: { href: string; title: string } | null }) {
+export function DocNeighbours({ m, previous, next }: { m: Messages; previous: { href: string; title: string } | null; next: { href: string; title: string } | null }) {
   if (previous === null && next === null) return null;
   const card = (item: { href: string; title: string }, label: string, className: string) => (
     <Link href={item.href} className={cn("border-border block rounded-lg border p-4", ROW_HOVER, className)}>

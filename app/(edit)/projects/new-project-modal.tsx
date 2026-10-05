@@ -1,3 +1,4 @@
+import { getMessages } from "@/lib/i18n/server";
 import "server-only";
 
 import { Suspense } from "react";
@@ -12,14 +13,15 @@ import type { AdapterChoice, RepoOption } from "@/lib/onboarding/types";
 import { listConnectableRepos } from "./actions";
 
 /** 두 진입점이 인가한 뒤 사용한다. 배경 목록을 읽지 않아 인터셉트가 원격 집계를 다시 기다리지 않는다. */
-export function NewProjectModal({ initialError, backQuery, closeMode }: {
+export async function NewProjectModal({ initialError, backQuery, closeMode }: {
   initialError: string | undefined;
   backQuery: { q?: string };
   closeMode: "back" | "list";
 }) {
+  const m = await getMessages();
   // 어댑터 그래프는 서버에 남겨야 클라이언트 번들로 파서가 따라오지 않는다.
   const adapters: AdapterChoice[] = ADAPTERS.map((adapter) => ({
-    adapter: adapter.name, layout: adapter.layout, ...formatLabel(adapter.name),
+    adapter: adapter.name, layout: adapter.layout, ...formatLabel(m, adapter.name),
   }));
   return (
     // 리포 조회가 끝나기 전에 껍데기와 로딩 상태를 보내야 모달이 네트워크 대기 뒤에 뜨지 않는다.

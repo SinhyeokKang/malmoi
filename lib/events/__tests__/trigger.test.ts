@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { EVENT_KINDS, NIGHTLY_SUBTYPES, readPayload } from "../payload";
 import { eventGlyph, eventView, triggerOf } from "../view";
@@ -64,14 +64,14 @@ describe("readPayload — 야간 source는 ci로 폴백하지 않는다", () => 
 
 describe("upToDate — 새 결과어", () => {
   it("nothingToSend와 다른 라벨이다", () => {
-    const upToDate = eventView({ kind: "IMPORT", result: "upToDate", warnings: 0, errorCode: null }).label;
-    const nothing = eventView({ kind: "PUBLISH", result: "nothingToSend", warnings: 0, errorCode: null }).label;
-    expect(upToDate).toBe(m.logs.status.upToDate);
+    const upToDate = eventView(en, { kind: "IMPORT", result: "upToDate", warnings: 0, errorCode: null }).label;
+    const nothing = eventView(en, { kind: "PUBLISH", result: "nothingToSend", warnings: 0, errorCode: null }).label;
+    expect(upToDate).toBe(en.logs.status.upToDate);
     expect(upToDate).not.toBe(nothing);
   });
 
   it("muted · slate — 보낼 것도 받을 것도 없던 밤은 성공도 경고도 아니다", () => {
-    expect(eventView({ kind: "IMPORT", result: "upToDate", warnings: 0, errorCode: null }).tone).toBe("muted");
+    expect(eventView(en, { kind: "IMPORT", result: "upToDate", warnings: 0, errorCode: null }).tone).toBe("muted");
     expect(eventGlyph({ kind: "IMPORT", result: "upToDate", subtype: "nightly.skip" }).tone).toBe("slate");
   });
 });

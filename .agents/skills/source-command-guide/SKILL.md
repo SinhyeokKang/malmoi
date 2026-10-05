@@ -1,6 +1,6 @@
 ---
 name: "source-command-guide"
-description: "guide/ 사용자 가이드(en)를 AUTHORING.md 규칙대로 작성·갱신. 검증은 pnpm test. 빌드·커밋 안 함."
+description: "guide/ 사용자 가이드(en 원문 + ko·es 번역)를 AUTHORING.md 규칙대로 세 언어 함께 작성·갱신. 검증은 pnpm test. 빌드·커밋 안 함."
 ---
 
 # source-command-guide
@@ -11,7 +11,7 @@ Use this skill when the user asks to run the migrated source command `guide`.
 
 `guide/**.md`(`/docs`로 서빙되는 사용자 가이드)를 **작성·갱신**하는 전용 스킬. 코드는 건드리지 않고 `guide/`만 다룬다. 작성 규칙·IA·표기 규약·톤·사실 대조 소스·외부 라벨 허용 목록은 전부 **`guide/AUTHORING.md`가 단일 출처**다 — 이 스킬은 그 매뉴얼을 로드해 실행하는 손이다.
 
-**본문은 en 단일이다.** 로케일 대칭·언어 전환은 없다(bugshot-2와 다른 점). AUTHORING·SHOOTING은 한국어이고 서빙되지 않는다.
+**본문은 화면 언어마다 한 벌 — `guide/en/`·`guide/ko/`·`guide/es/`다**(2026-10-05, ui-locales). en이 원문이고 ko·es는 구조가 같은 번역이다. ⚠️ **en을 고치면 ko·es를 같은 작업에서 고친다** — 문장 드리프트는 게이트가 못 본다(구조 동형만 본다). 언어 규칙(앵커 번역 금지·라벨은 그 언어 사전·톤·이미지 공유)은 AUTHORING `#languages`가 정본이다. ko·es 원고의 용어(DESIGN §10.1·쓰지 않는 말)를 범위로 검수하거나 사전 용어 변경을 원고에 퍼뜨리는 일은 `/translate`가 맡는다. AUTHORING·SHOOTING은 한국어이고 서빙되지 않는다.
 
 **진입 신호**: `/implement` 보고의 **"가이드 영향"** 플래그, 또는 `/push` 4단계의 **"가이드 stale 후보"** 경고. 둘 다 차단이 아니라 이 스킬을 부르라는 신호다.
 
@@ -20,7 +20,7 @@ Use this skill when the user asks to run the migrated source command `guide`.
 - `/guide` — 직전 컨텍스트(방금 구현한 기능, "가이드 영향" 플래그)에서 갱신 대상 추론.
 - `/guide <페이지 경로 또는 설명>` — 대상 명시. 예: `/guide setup/workflow`, `/guide 초대 한도 안내`.
 - `/guide sync` — 전체 대조. AUTHORING 사실 대조 표의 소스 전부를 현재 코드와 견줘 낡은 페이지를 모두 갱신.
-- `/guide new <절>` — 페이지·절 추가(IA 변경) — `guide/SUMMARY.md`와 AUTHORING IA 표까지.
+- `/guide new <절>` — 페이지·절 추가(IA 변경) — 세 언어의 `guide/<언어>/SUMMARY.md`와 AUTHORING IA 표까지.
 
 ## 다른 스킬과의 분리
 
@@ -45,7 +45,7 @@ Use this skill when the user asks to run the migrated source command `guide`.
 
 ### 2. 코드 대조 (사실 확정)
 
-**AUTHORING "사실 대조 소스" 표의 경로를 읽어** 현재 코드의 사실을 확정한다 — 화면 라벨은 `messages/en.tsx`, 한도·상수·워크플로 경로는 표가 가리키는 정본 파일. **추측 금지** — 라벨은 화면 문구와 글자 단위로 같아야 하고, 상수는 `pnpm test`가 절 단위로 정본과 대조한다.
+**AUTHORING "사실 대조 소스" 표의 경로를 읽어** 현재 코드의 사실을 확정한다 — 화면 라벨은 그 원고 언어의 사전(`messages/en.tsx`·`ko.tsx`·`es.tsx` — 같은 키), 한도·상수·워크플로 경로는 표가 가리키는 정본 파일. **추측 금지** — 라벨은 화면 문구와 글자 단위로 같아야 하고, 상수는 `pnpm test`가 절 단위로 정본과 대조한다.
 
 - 코드명이 아니라 **화면 문구**를 쓴다(`Sources`).
 - 편집자 장은 **EDITOR 계정이 보는 화면만** 약속한다.
@@ -54,7 +54,8 @@ Use this skill when the user asks to run the migrated source command `guide`.
 ### 3. 작성·갱신 (메인 스레드 단일)
 
 - AUTHORING 규칙대로 쓴다. 모든 페이지는 H1 하나 + **도입 문단** + H2마다 `{#id}`.
-- IA가 바뀌면 `guide/SUMMARY.md`와 AUTHORING IA 표를 함께 고친다. **앵커 id를 바꾸지 않는다** — 옛 링크가 깨진다. 바꿔야 하면 `routes.docs(...)` 호출부와 옛 해시 매핑을 같이 본다.
+- **세 언어를 같이 쓴다** — en을 먼저 확정하고 ko(합니다체)·es(tú)를 같은 구조로 옮긴다. 파일·SUMMARY 순서·앵커·이미지 경로·링크·번호 단계 수가 en과 같아야 한다(`lib/guide/__tests__/locales.test.ts`). 낱말은 DESIGN §10.1 ko·es 열.
+- IA가 바뀌면 세 언어의 SUMMARY와 AUTHORING IA 표를 함께 고친다. **앵커 id를 바꾸지 않는다** — 옛 링크가 깨진다. 바꿔야 하면 `routes.docs(...)` 호출부와 옛 해시 매핑을 같이 본다.
 - 이미지는 `/guide/<name>.webp` 절대경로 + 의미 있는 alt. **새 이미지 파일은 이 스킬이 만들지 않는다** — `/guide-shots` 몫이다.
 - **외과적**: 대상 페이지만. 무관한 페이지 톤·문구 임의 변경 금지.
 
@@ -72,7 +73,7 @@ Use this skill when the user asks to run the migrated source command `guide`.
 
 ```
 대상: <페이지 N개 / sync / 경로>
-갱신 파일: <guide/… 목록>
+갱신 파일: <guide/{en,ko,es}/… 목록 — 세 언어가 같은 집합>
 사실 대조: <확인한 소스 — 라벨·상수 일치 여부>
 AUTHORING 동기: <갱신함(표) / 변경 없음>
 이미지: <영향 없음 / pnpm guide:check 출력 인용 → /guide-shots 필요>
@@ -84,9 +85,9 @@ AUTHORING 동기: <갱신함(표) / 변경 없음>
 ## 금지 사항
 
 - **AUTHORING.md 안 읽고 시작 금지** — 0단계는 필수.
-- **코드 수정 금지** — `guide/`만. `messages/en.tsx`·`app/`·`lib/`는 읽기만 한다.
+- **코드 수정 금지** — `guide/`만. `messages/*.tsx`·`app/`·`lib/`는 읽기만 한다.
 - **사실 추측 금지** — 라벨·상수는 코드 재확인.
 - **stale 판정 복제 금지** — `pnpm guide:check` 출력을 인용한다.
-- **ko 본문 작성 금지** — 서빙 본문은 en 단일이다.
+- **한 언어만 고치고 끝내기 금지** — en·ko·es를 같은 작업에서 고친다. 앵커 id 번역 금지.
 - **빌드·커밋·푸시 금지**.
 - **범위 밖 페이지 임의 워싱 금지**.

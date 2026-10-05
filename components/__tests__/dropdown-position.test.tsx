@@ -28,11 +28,11 @@ vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: vi.fn(), 
 
 import { TranslationWorkspace } from "@/components/translations/workspace/workspace";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { props } from "./helpers/workspace-props";
 
-const w = m.translations.workspace;
+const w = en.translations.workspace;
 
 beforeEach(() => {
   captured.props.length = 0;

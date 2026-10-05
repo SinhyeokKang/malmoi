@@ -5,7 +5,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { FieldButton } from "@/components/ui/field-button";
 import { Kbd } from "@/components/ui/kbd";
 import type { PublicAccount } from "@/lib/auth/landing";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import { searchShortcut } from "@/lib/keyboard";
 import { shouldIgnoreShortcut } from "@/lib/search/keys";
 import type { NavProject } from "@/lib/shell/nav";
@@ -16,6 +16,7 @@ const platformSnapshot = () => navigator.platform;
 const serverSnapshot = () => null;
 
 export function SearchTrigger({ account, memberships }: { account: PublicAccount | null; memberships?: readonly NavProject[] }) {
+  const m = useMessages();
   const platform = useSyncExternalStore(subscribe, platformSnapshot, serverSnapshot);
   const [open, setOpen] = useState(false);
   const [generation, setGeneration] = useState(0);

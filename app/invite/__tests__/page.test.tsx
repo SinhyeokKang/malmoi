@@ -7,6 +7,8 @@ vi.mock("@/lib/db", () => ({ getPrisma: () => ({ projectInvitation: { findUnique
 vi.mock("../actions", () => ({ acceptInvitation: vi.fn() }));
 import Page from "../[token]/page";
 import { encodeInvitationEmail, encodeUserFields } from "@/lib/credentials/records";
+
+vi.mock("@/lib/i18n/server", async () => ({ getMessages: async () => (await import("@/messages/en")).en, getUiLocale: async () => "en" }));
 it("damaged invitation shows unavailable and a retry preserving its link; missing invitation does not", async () => {
   state.session.mockResolvedValue({ status: "none" });
   state.row.mockResolvedValue({ id: "i1", projectId: "p1", email: "damaged" });

@@ -566,6 +566,18 @@ model User {
   /// 사용자 식별자를 담으므로 봉투를 지난다.
   image         String?
   createdAt     DateTime  @default(now())
+  /// 화면 언어(ui-locales). null = 정하지 않음 → 기기 쿠키 → en 순으로 넘어간다. **읽을 때 `parseUiLocale`을 지난다** —
+  /// 언어를 지원 목록에서 빼도 남은 값 때문에 화면이 깨지지 않는다. enum으로 두지 않는 이유가 이것이다(enum이면 값 하나를 빼는 것이
+  /// destructive 마이그레이션이 된다). ⚠️ **봉투를 지나지 않는다** — 사람을 식별하는 값이 아니다(`name`·`image`와 다르다).
+  uiLocale      String?
+  /// 보는 사람의 시간대(user-timezone) — 절대 날짜·시각과 Logs 날짜 경계. null = 고르지 않음 → UTC.
+  /// **읽을 때 `parseTimeZone`을 지난다**(선별 목록 밖 값은 UTC). enum이 아닌 이유는 `uiLocale`과 같다 — 목록에서 빼는 것이 destructive가 되면 안 된다.
+  /// ⚠️ **봉투를 지나지 않는다** — 사람을 식별하는 값이 아니다(`uiLocale`과 같다). 대략의 지역을 말하므로 방침에는 적는다.
+  timeZone      String?
+  /// 화면 테마(color-scheme). null = 정하지 않음 → 쿠키 → light. **읽을 때 `parseColorScheme`을 지난다** —
+  /// enum으로 두지 않는다(값 하나를 빼는 것이 destructive 마이그레이션이 된다 — `uiLocale`과 같은 이유).
+  /// ⚠️ **봉투를 지나지 않는다** — 사람을 식별하는 값이 아니다(`uiLocale`과 같다).
+  colorScheme   String?
 
   accounts        Account[]
   sessions        Session[]

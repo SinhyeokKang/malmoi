@@ -1,6 +1,6 @@
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { Skeleton } from "@/components/ui/skeleton";
-import { m } from "@/lib/i18n";
+import { getMessages } from "@/lib/i18n/server";
 
 /**
  * Sources가 서버에서 오는 동안의 골격 (audit-ux #5 · DESIGN §6.64 로딩 행 — 형제 화면도 같은 규칙).
@@ -21,7 +21,8 @@ import { m } from "@/lib/i18n";
  * ⚠️ **행은 하나다** — 프로젝트의 가장 흔한 모양이 소스 하나다. [Add source]는 OWNER에게만 서지만 골격은 그린다:
  * 버튼 없는 머리와 높이가 같아(제목 행이 `min-h`가 아니라 버튼 36이 정한다 — 없으면 28) 8px 차이를 받아들인다.
  */
-export default function SourcesLoading() {
+export default async function SourcesLoading() {
+  const m = await getMessages();
   return (
     // 실물 뿌리(`data-sources-screen`)와 같은 컨테이너 — 이름 있는 질의가 걸릴 곳이 여기다.
     <div className="@container/panel flex min-h-0 flex-1 flex-col">

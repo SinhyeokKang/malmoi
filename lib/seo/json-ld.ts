@@ -1,4 +1,4 @@
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { GITHUB_REPO_URL } from "@/lib/links";
 
 import { SITE_ORIGIN } from "./site";
@@ -23,9 +23,9 @@ export const LANDING_LD: readonly Ld[] = [
   {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    name: m.common.appName,
+    name: en.common.appName,
     url: `${SITE_ORIGIN}/`,
-    description: m.landing.hero.body,
+    description: en.landing.hero.body,
     applicationCategory: "DeveloperApplication",
     operatingSystem: "Web",
     offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
@@ -33,7 +33,7 @@ export const LANDING_LD: readonly Ld[] = [
   {
     "@context": "https://schema.org",
     "@type": "Organization",
-    name: m.common.appName,
+    name: en.common.appName,
     url: `${SITE_ORIGIN}/`,
     logo: `${SITE_ORIGIN}/brand/malmoi-icon-black.svg`,
     sameAs: [GITHUB_REPO_URL],
@@ -55,7 +55,7 @@ export function docLd({
   url: string;
   chapter: { title: string; url: string } | null;
 }): Ld[] {
-  const trail = [{ name: m.publicDocs.docs.title, item: `${SITE_ORIGIN}/docs` }, ...(chapter ? [{ name: chapter.title, item: chapter.url }] : []), { name: title, item: url }];
+  const trail = [{ name: en.publicDocs.docs.title, item: `${SITE_ORIGIN}/docs` }, ...(chapter ? [{ name: chapter.title, item: chapter.url }] : []), { name: title, item: url }];
   return [
     {
       "@context": "https://schema.org",
@@ -64,7 +64,7 @@ export function docLd({
       description,
       url,
       inLanguage: "en",
-      publisher: { "@type": "Organization", name: m.common.appName, url: `${SITE_ORIGIN}/` },
+      publisher: { "@type": "Organization", name: en.common.appName, url: `${SITE_ORIGIN}/` },
     },
     {
       "@context": "https://schema.org",

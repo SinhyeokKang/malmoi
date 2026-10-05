@@ -71,9 +71,9 @@
 | 초대 메일 | Resend REST API — **SDK 없이 `fetch`**. 환경변수 셋이 전부 `optionalEnv`라 **비거나 틀려도 발급·발송만 막힌다** |
 | 방문 집계 | Vercel Web Analytics — **공개 페이지 페이지뷰 하나**(쿠키·커스텀 이벤트 없음). ⚠️ **`lib/seo/analytics.ts`의 추적 경로 허용 목록이 유일한 거름망이다** — 앱 URL엔 초대 토큰·slug·검색어가 실린다 |
 | 이미지 정규화 | `sharp` — 업로드 원본을 저장하지 않는다(192px 이내 WebP 재인코딩) |
-| 스타일 | Tailwind CSS 4 — **`tailwind.config.js`가 없다.** 테마는 `app/globals.css`의 `@theme` |
-| UI | **`components/ui/`를 이 리포가 소유한다** — 프리미티브 모듈 48개(`components/ui/*.tsx` 파일 기준; `.ts` 헬퍼 제외) + `radix-ui`(단일 통합 패키지)에서 DropdownMenu·Dialog·Slot·RadioGroup·Checkbox·Select·Popover·Tabs 여덟. **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) |
-| 토스트 | `sonner` — **루트 레이아웃이 렌더하는 유일한 서드파티 UI 컴포넌트다**(그 옆 `SiteAnalytics`는 화면이 없다) |
+| 스타일 | Tailwind CSS 4 — **`tailwind.config.js`가 없다.** 토큰 등록은 `app/globals.css`의 `@theme`, 값(라이트·다크)은 같은 파일 `:root`의 `light-dark()` |
+| UI | **`components/ui/`를 이 리포가 소유한다** — 프리미티브 모듈 51개(`components/ui/*.tsx` 파일 기준; `.ts` 헬퍼 제외) + `radix-ui`(단일 통합 패키지)에서 DropdownMenu·Dialog·Slot·RadioGroup·Checkbox·Select·Popover·Tabs 여덟. **라이트·다크 — 토큰이 든다, `dark:` 금지**(테마는 `<html data-theme>` + `globals.css`의 `light-dark()`). 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) |
+| 토스트 | `sonner` — **루트 레이아웃이 렌더하는 유일한 서드파티 UI 컴포넌트다**(그 옆 `SiteAnalytics`는 화면이 없다). ⚠️ **테마를 우리가 넘긴다** — `theme`에 `<html data-theme>`과 같은 값을 주고 sonner 변수를 `style`로 토큰에 묶는다(sonner는 테마를 스스로 감지하고 `classNames`만으로는 다크에서 sonner CSS에 진다 — `app/layout.tsx` 머리 주석 · DESIGN §6.25) |
 | 패널 리사이즈 | `react-resizable-panels` — `resizable.tsx` 하나가 쓴다. ⚠️ **jsdom에서는 화면의 모든 클릭을 삼킨다** — `vitest.setup.ts`가 막는다 |
 | 아이콘·폰트 | `lucide-react` / **Geist Sans 우선 → Pretendard Variable 동적 서브셋 폴백, 둘 다 자사 호스트** |
 | 검증 | Zod 4 — `/api/push` 페이로드 등 외부 진입점 |
@@ -85,9 +85,9 @@
 | Node | `.nvmrc` **24**. **정본은 Vercel 프로젝트의 Node.js Version이다** — 프로덕션이 그 버전으로 빌드하므로 로컬·CI가 따라간다 |
 | DB 접속 | Supabase 리전 `ap-northeast-1`(도쿄). 직결은 IPv6 전용이라 Vercel에서 안 붙으므로 **마이그레이션도 pooler**를 쓴다. ⚠️ **Vercel 함수도 같은 리전에 둔다**(`vercel.json`의 `regions: ["hnd1"]`) — 기본 `iad1`에서는 홉당 ~375ms였다 |
 
-**린터·다크모드·가상 스크롤·테이블 라이브러리는 없다.** 필요해지면 그때 넣는다 — ⚠️ **가상화를 넣지 않는 근거는 실측이고 [ARCHITECTURE §1.95](./docs/ARCHITECTURE.md)에 있다**(24키 프로젝트도 3.29초였다: 병목이 행 수가 아니라 함수 리전이었다). `pnpm lint`는 존재하지 않고 스타일 게이트는 `pnpm typecheck` + `pnpm test`뿐이다.
+**린터·가상 스크롤·테이블 라이브러리는 없다.** 필요해지면 그때 넣는다 — ⚠️ **가상화를 넣지 않는 근거는 실측이고 [ARCHITECTURE §1.95](./docs/ARCHITECTURE.md)에 있다**(24키 프로젝트도 3.29초였다: 병목이 행 수가 아니라 함수 리전이었다). `pnpm lint`는 존재하지 않고 스타일 게이트는 `pnpm typecheck` + `pnpm test`뿐이다.
 
-⚠️ **`app/globals.css`의 `@custom-variant dark` 한 줄이 라이트를 고정한다.** Tailwind v4는 `dark:`의 기본 동작이 `prefers-color-scheme`이라, **그 줄을 지우면 누가 `dark:`를 하나 쓰는 순간 OS 다크에서 살아난다.** 지금 소스에 `dark:`는 0곳이지만 그 줄은 남긴다 — 막는 것이 요지다 (DESIGN §3.1).
+⚠️ **`app/globals.css`의 `@custom-variant dark` 한 줄이 `dark:` 유틸을 죽여 둔다.** 다크는 토큰 값이 든다(2026-10-05, color-scheme) — 컴포넌트가 `dark:`로 분기하면 다크 값의 집이 둘로 갈린다. Tailwind v4는 `dark:`의 기본 동작이 `prefers-color-scheme`이라, **그 줄을 지우면 누가 `dark:`를 하나 쓰는 순간 그 유틸이 OS 다크에서 살아나 토큰 밖의 둘째 다크 출처가 된다.** 테마는 클래스가 아니라 `data-theme` 속성이라 `.dark`는 DOM에 붙지 않는다. 소스의 `dark:` 0곳은 `visual-system.test.ts`가 센다 (DESIGN §3.1).
 
 ### Prisma 7 — v6와 배선이 다르다
 
@@ -112,6 +112,9 @@
 | 번역 값 저장, pull 트리거 | **Server Action** (`app/(edit)/actions.ts`) | 편집 UI |
 | 초대·멤버·보관·프로젝트 생성·온보딩 | **Server Action** (`app/(edit)/projects/actions.ts` 등) | 편집 UI |
 | 기준 로케일 선언, 소스 상세 조회 | **Server Action** (`app/(edit)/projects/[slug]/sources/actions.ts`) | 편집 UI — `updateBaseLocale`이 `Project`→`TranslationSurface` 잠금과 같은 트랜잭션의 `ProjectEvent`를 든다 |
+| 화면 언어 바꾸기(`setUiLocale`) | **Server Action** (`app/ui-locale/actions.ts`) — **공개** | 공개 푸터 스위처(비로그인 포함)와 `/preferences` — 그래서 보호 경로 밖에 산다. 입력은 언어 코드 하나(`parseUiLocale`)이고 **계정에 쓰는 대상은 세션이 정한다**(입력 userId 없음). 순서 고정 계정 → 쿠키(`malmoi-ui-locale`, http-only) → `revalidateAfterCommit`. 세션을 못 읽었거나 계정 쓰기가 실패하면 **아무것도 쓰지 않고 `failed`**다(쿠키만 쓰면 다음 렌더에서 계정의 옛 값이 이긴다). 문장이 아니라 코드(`ok`·`invalid`·`failed`)를 돌려준다 |
+| 시간대 바꾸기(`setTimeZone`) | **Server Action** (`app/(edit)/preferences/actions.ts`) | `/preferences` Time zone 카드 — 로그인 전용이라 `setUiLocale`과 달리 보호 경로 아래다. 입력은 IANA id 하나(`parseTimeZone` — 선별 목록 밖이면 세션도 읽지 않고 `invalid`)이고 **계정에 쓰는 대상은 세션이 정한다**. 세션이 `ok`가 아니거나 쓰기가 실패하면 아무것도 쓰지 않고 `failed`다. **쿠키 층이 없다**(계정 하나에만 쓴다). UTC를 골라도 `"UTC"`를 저장한다. 성공 뒤에만 `revalidateAfterCommit`(루트 레이아웃 — provider가 시간대를 싣는다). 코드(`ok`·`invalid`·`failed`)를 돌려준다 |
+| 테마 바꾸기(`setColorScheme`) | **Server Action** (`app/(edit)/preferences/actions.ts`) | `/preferences` Theme 카드 — 입력은 `system`·`light`·`dark` 하나(`parseColorScheme` 불통과면 `invalid`)이고 **계정에 쓰는 대상은 세션이 정한다**. 세션이 `ok`가 아니거나 계정 쓰기가 실패하면 아무것도 쓰지 않고 `failed`다. 순서 고정 계정 → 쿠키(`malmoi-color-scheme`, http-only — 로그아웃 뒤 공개 페이지도 같은 테마) → `revalidateAfterCommit`(루트 레이아웃이 `<html data-theme>`을 싣는다). 카드는 Action보다 먼저 `data-theme`을 바꾸고 `ok`가 아니면 되돌린다. 코드(`ok`·`invalid`·`failed`)를 돌려준다 |
 | 초대 수락 | **Server Action** (`app/invite/actions.ts`) | 초대 링크 — **인가 예외**, 토큰이 대신한다 |
 | 계정 — 프로필·로그인 수단 연결·해제·세션 폐기 | **Server Action** (`app/(edit)/account/actions.ts`) | `/account` — `requireUser`만 |
 | MCP 개인 토큰 발급·폐기, OAuth 연결 끊기 | **Server Action** (`app/(edit)/mcp/actions.ts`) | `/mcp` — `requireUser`만, `userId`로 좁힌다. 발급 = 기존 행 삭제 + 삽입 한 tx라 Create·Rotate가 같은 Action이다. ⚠️ **MCP 도구에 개인 토큰 발급·폐기가 없다** — 개인 토큰이 개인 토큰을 만들지 않는다(프로젝트 push 토큰 회전 `rotate_push_token`은 별개) |
@@ -120,7 +123,7 @@
 | 읽기 전용 조회 — Revert 미리보기(`previewTranslationRevert`) | **Server Action** (`app/(edit)/actions.ts`) | 편집 UI — Publish 미리보기와 같이 **`revalidatePath`를 부르지 않는다.** 인증·인가·readiness는 쓰기 Action과 같은 판정을 지난다. 키 목록은 전량이라 "다음 페이지" Action이 없다(2026-10-01, translation-filter-scope) |
 | 읽기 전용 조회 — Keys 검색(`searchKeysAction`) | **Server Action** (`app/search/actions.ts`) | 세션(`readSession`)의 userId로 코어 `searchKeys`가 **비보관 멤버 프로젝트 id를 SQL 안에서 확정**한다. q와 순위 힌트 `activeSlug`만 받고 클라이언트 프로젝트 목록을 받지 않는다. 보관·첫 적재 전 소스·orphaned 키/로케일 값 제외, 검색 코어 SQL 최대 둘. `redirect`·`revalidatePath`·검색어 로그 없음(ARCHITECTURE §6.37·§1.965) |
 | 읽기 전용 조회 — 검색 멤버십(`loadSearchMembershipsAction`) | **Server Action** (`app/search/actions.ts`) | 공개 셸용 읽기 — `readSession` → `loadMemberships(prisma, userId)` → `toNavProjects`의 일곱 필드(보관 포함). 로더는 호출마다 조회하며 성공·실패를 캐시하지 않는다. 세션 없음/장애는 union으로 반환, `redirect`·`revalidatePath` 없음(ARCHITECTURE §6.37) |
-| `/api/search-index` | Route Handler — **공개 · `force-static`** | 질의·세션·DB·쿠키 조회 없이 SUMMARY에 등재된 가이드 절 색인 `{ docs }`를 빌드 때 생성한다. 원고 실패는 빌드 실패다. Docs 로더만 성공 Promise를 탭 수명 재사용하며 실패는 다음 호출에 재시도한다(ARCHITECTURE §6.37) |
+| `/api/search-index/[uiLocale]` | Route Handler — **공개 · `force-static`, 화면 언어별 정적 파일 셋** | 질의·세션·DB·쿠키 조회 없이 그 언어 원고(`guide/<uiLocale>/`) SUMMARY에 등재된 가이드 절 색인 `{ docs }`를 빌드 때 생성한다. `force-static`은 쿠키로 갈라질 수 없어 **언어가 URL에 실린다**(`generateStaticParams` = 원고 트리가 있는 언어, `dynamicParams = false` — 목록 밖은 404). 원고 실패는 빌드 실패다. 클라이언트가 `useUiLocale()`로 골라 받고, Docs 로더만 성공 Promise를 **언어별 키로** 탭 수명 재사용하며 실패는 다음 호출에 재시도한다(ARCHITECTURE §6.37) |
 | `/api/push` | Route Handler | GitHub Actions — Bearer가 **그 프로젝트의 토큰 원문**이다 |
 | `/api/push/failure` | Route Handler | GitHub Actions — 같은 프로젝트 토큰. **적재는 안 한다**(키·번역은 물론 `lastCommitSha`도 안 움직인다 — 전진시키면 다음 정상 push가 `stale-commit` 409를 받는다). 로케일 파일을 못 읽어 `/api/push`가 아예 안 불린 경우를 앱에 남기는 자리다 |
 | `/api/mcp` | Route Handler | CLI·코딩 에이전트 — Bearer가 **그 사용자의 개인 토큰**(`ApiToken`, `mlm_`) 또는 **OAuth access**(`OAuthConnection`, `mlo_`)이고 입구는 `resolveBearer` 하나다. **쿠키를 읽지 않는다**(CSRF 방어의 전부). 도구는 Action과 **같은 코어의 형제 껍데기**이고 Action을 부르지 않는다(ARCHITECTURE §6.45) |
@@ -231,11 +234,12 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 
 ## 워크플로우 (스킬 라인업)
 
-스킬 **22개**의 역할·단계별 게이트는 `.claude/commands/<name>.md`에 있고, 모두 `.agents/skills/source-command-<name>/SKILL.md`로 미러된다. Claude Code와 Codex 모두 같은 권한·브랜치·검증 게이트로 실행한다. Codex의 `/design-sync`는 사용자 제공 로컬 핸드오프를 받고, Claude Code는 DesignSync로 확보한다. 브라우저 등은 실제 도구 가용성을 확인하며, 없는 도구의 검증을 통과로 취급하지 않는다. 모든 워커·서브에이전트 생성·재사용의 모델 경계는 **Codex 지휘 → Sol·Astra, Claude Code 지휘 → Sonnet·Opus**이며 사용자 명시 허가 없이 교차하지 않는다. `/orchestrate`뿐 아니라 단독 `/design-sync`·`/doc-check`·`/feature-review` 등에도 적용한다.
+스킬 **23개**의 역할·단계별 게이트는 `.claude/commands/<name>.md`에 있고, 모두 `.agents/skills/source-command-<name>/SKILL.md`로 미러된다. Claude Code와 Codex 모두 같은 권한·브랜치·검증 게이트로 실행한다. Codex의 `/design-sync`는 사용자 제공 로컬 핸드오프를 받고, Claude Code는 DesignSync로 확보한다. 브라우저 등은 실제 도구 가용성을 확인하며, 없는 도구의 검증을 통과로 취급하지 않는다. 모든 워커·서브에이전트 생성·재사용의 모델 경계는 **Codex 지휘 → Sol·Astra, Claude Code 지휘 → Sonnet·Opus**이며 사용자 명시 허가 없이 교차하지 않는다. `/orchestrate`뿐 아니라 단독 `/design-sync`·`/doc-check`·`/feature-review` 등에도 적용한다.
 
 **권장 흐름**: `/feature` → `/tdd interface` → `/implement` → `/code-review` → `/refactor` → (`/design-sync`) → (`/db`) → `/push`(dev) → `/merge`(프로덕션 + 릴리스). ⚠️ **`/design-sync`는 신규 페이지를 핸드오프로 처음 구현할 때만** 끼고, `/ship`도 6.5단계에서 같은 조건으로 부른다. 작은 변경은 `/ship` 하나로 `/push`까지 오케스트레이션하며, **`/ship`은 dev까지다 — 프로덕션 배포는 `/merge`를 따로 부른다**(브랜치를 나눈 목적이 프로덕션 앞에 사람 판단을 하나 더 두는 것이므로).
 
-- **사용자 가이드(`/docs`)는 흐름 옆에 붙는다** — 사용자 노출 변경이면 `/implement` 보고의 **"가이드 영향"** 플래그나 `/push` 4단계의 **"가이드 stale 후보"** 경고(둘 다 차단 아님)를 받아 `/guide`(본문, en 단일)와 `/guide-shots`(스크린샷, ego-browser)를 부른다. 작성 규칙은 `guide/AUTHORING.md`, 촬영 규칙·매핑 표는 `guide/SHOOTING.md`가 정본이고 스킬은 그것을 로드해 실행하는 손이다.
+- **사용자 가이드(`/docs`)는 흐름 옆에 붙는다** — 사용자 노출 변경이면 `/implement` 보고의 **"가이드 영향"** 플래그나 `/push` 4단계의 **"가이드 stale 후보"** 경고(둘 다 차단 아님)를 받아 `/guide`(본문, en 원문 + ko·es 번역을 같은 커밋에서)와 `/guide-shots`(스크린샷, ego-browser)를 부른다. 작성 규칙은 `guide/AUTHORING.md`, 촬영 규칙·매핑 표는 `guide/SHOOTING.md`가 정본이고 스킬은 그것을 로드해 실행하는 손이다.
+- **번역(ko·es)은 `/translate`가 맡는다** (2026-10-05) — 기능 배치 안의 사전 키 추가·수정(모드 ①)과 범위를 정한 일괄 검수(모드 ②). 규칙은 DESIGN §10·§10.0·§10.1 · `banned-terms.ts` · AUTHORING `#languages`가 정본이고 스킬은 절차만 든다. ko는 사용자가 `/merge` 전에 일괄 검수하고 es는 에이전트 초안이다.
 
 - **`/feature`가 기능의 시작점이다.** 산출물은 `docs/features/<name>/`에 `spec`·`design`·`tasks`로 남고, **기능이 끝나면 결론을 정본(PRODUCT — 제품 판정 / ARCHITECTURE — 불변식·함정 / DESIGN — 시각 규칙)으로 올리고 그 디렉터리는 지운다.** 근거 기록을 쌓아 두지 않는다 — 되살릴 일이 생기면 `git log`가 답한다.
 - **`/audit`은 이 흐름 밖이다.** 변경분이 아니라 **코드베이스 전체**를 불변식·원칙·경계·부채 네 차원으로 감사하고 `docs/POSTMORTEM.md` 전 항목의 재발 방지 grep을 전수로 돌린다 — `/code-review`는 변경분에 걸린 항목만 소환하므로 손대지 않은 코드에 남은 같은 패턴은 이쪽만 잡는다. 리포트 전용이라 배포 경로와 무관하다.
@@ -258,12 +262,12 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 | [docs/PRODUCT.md](./docs/PRODUCT.md) | **제품 판정의 정본** — 완료 조건·포지셔닝·역할과 권한표·범위/비범위·설계 결정·IA(URL 구조) | 기능을 추가/삭제했거나 비범위를 범위로 끌어들였거나 §10이 결정됐을 때 |
 | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | **불변식과 함정** — §0 불변식 11 · 결정성 · 어댑터 실측 근거 · blob SHA · 스키마 · 보안 모델 | `lib/` 코어를 건드리기 전에 읽고, 계약이 바뀌면 코드보다 먼저 고친다 |
 | [docs/DIRECTORY.md](./docs/DIRECTORY.md) | 어디에 무엇이 있고 **왜 그렇게 생겼나** | 파일·디렉터리를 새로 만들거나 옮겼을 때 |
-| [docs/DESIGN.md](./docs/DESIGN.md) | UI 시각 규칙 (라이트 단일, 토큰의 진실은 `app/globals.css`) | UI를 만들거나 고칠 때 필독. 새 raw 색을 늘렸으면 §6.2에 등재 |
+| [docs/DESIGN.md](./docs/DESIGN.md) | UI 시각 규칙 (라이트·다크 — 토큰의 진실은 `app/globals.css`) | UI를 만들거나 고칠 때 필독. raw 색은 0이다 — 새 색은 §6.2의 의미 토큰 + 두 테마 값 |
 | [docs/OPERATIONS.md](./docs/OPERATIONS.md) | 키 회전·복구·전면 재발급 — **나중에 다시 실행할 절차만** | 그 절차가 바뀌었을 때 |
 | [docs/ACTIONS.md](./docs/ACTIONS.md) | **대상 리포**에 붙이는 워크플로 (외부 계약) | `inputs`나 red 조건을 바꿨을 때 |
 | [docs/POSTMORTEM.md](./docs/POSTMORTEM.md) | 회고 누적 (append-only, `/postmortem` 전담) | — |
 | [README.md](./README.md) | **방문자용 서비스 소개**(en 단일) — 기능·포맷·한도·비범위·설계 요지·개인정보 요약. 개발 절차는 이 파일(CLAUDE.md)로 보낸다. 이미지는 `docs/assets/readme/` + `public/guide/` 세 장 | 사용자에게 보이는 기능·포맷·한도·역할·전송처가 바뀌면 같이 — 사실의 정본은 PRODUCT·가이드·`/privacy`이고 README가 틀린 쪽이다 |
-| [guide/AUTHORING.md](./guide/AUTHORING.md) | 사용자 가이드 작성 매뉴얼(한국어, **서빙 안 함**) — IA 표·표기 규약·사실 대조 소스·외부 라벨 허용 목록 | `/guide`가 작성 기준 자체를 바꿨을 때(새 페이지·새 사실 소스·새 외부 라벨) |
+| [guide/AUTHORING.md](./guide/AUTHORING.md) | 사용자 가이드 작성 매뉴얼(한국어, **서빙 안 함**) — IA 표·표기 규약·사실 대조 소스·외부 라벨 허용 목록·**언어 규칙**(원고는 `guide/en·ko·es/` 세 벌 — en이 원문, ko·es는 구조 동형 번역, 스크린샷은 en 한 벌 공유) | `/guide`가 작성 기준 자체를 바꿨을 때(새 페이지·새 사실 소스·새 외부 라벨) |
 | [guide/SHOOTING.md](./guide/SHOOTING.md) | 촬영 매뉴얼(한국어, **서빙 안 함**) — 규격·마스킹 표·**에셋 매핑 표**(소스·blob SHA·치수 — `pnpm guide:check`의 기준값)·벽·진행 상태 | `/guide-shots`가 컷을 찍을 때마다(매핑 행·진행 상태) |
 
 `docs/adapter-survey/`는 문서가 아니라 **`pnpm adapter-survey`가 읽는 살아 있는 입력**이다. `.env.example`도 문서로 취급한다 — **새 환경변수를 코드에서 읽었으면 같은 커밋에서 추가**한다.
@@ -271,7 +275,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 ## 코드 컨벤션
 
 - **커밋 메시지는 영문**, Conventional Commits (`feat:` `fix:` `test:` `refactor:` `docs(scope):` `chore:`).
-- **⚠️ 화면 문구는 `messages/en.tsx`를 지난다 — 소스에 한글 UI 리터럴 금지.** `lib/i18n/__tests__/no-korean-ui.test.ts`가 `app`·`components`·`lib`·`messages` + 루트 `auth.ts`·`middleware.ts`를 훑고(`lib/survey/`·`lib/scan/`은 CLI 출력이라 `EXCLUDED_PREFIX`로 뺀다) 허용 목록은 하나뿐이다(`lib/push/apply.ts`의 `$queryRaw` 안 SQL 주석 — 스캐너가 JS 주석만 벗긴다). **주석은 벗기고 세므로 아래 항목과 충돌하지 않는다.**
+- **⚠️ 화면 문구는 사전 셋(`messages/en.tsx`·`ko.tsx`·`es.tsx`)을 지난다 — 화면 언어는 `en`·`ko`·`es`이고 기본은 `en`이다**(2026-10-05, ui-locales). 입구는 서버 `await getMessages()`(`lib/i18n/server.ts` — 요청의 언어는 `getUiLocale()`이 계정 > 기기 쿠키 > en으로 정한다) · 클라이언트 `useMessages()`·`useUiLocale()`(`components/i18n/messages-provider.tsx`)이다. **모듈 상수 `m`은 없다** — 요청마다 언어가 달라서다. `lib/` 코어는 `m: Messages`를 인자로만 받고 `getMessages()`를 부르지 않는다. **영어로 고정되는 표면**(MCP 응답·초대 메일·SEO 메타·cron·CLI 등 — 목록은 ARCHITECTURE)은 `import { en } from "@/messages/en"`로 명시한다. ko·es 사전은 en과 `satisfies Messages`로 키·시그니처가 묶이고, **새 키는 세 사전에 같은 커밋에서** 넣는다. ⚠️ **ko·es 사전을 import하는 비테스트 소스는 `lib/i18n/server.ts`와 provider 하나뿐이다** — 다른 클라이언트 모듈이 import하면 모든 사용자 번들에 실린다(`dictionary-consistency.test.ts`). **소스에 한글 UI 리터럴 금지는 그대로다** — `lib/i18n/__tests__/no-korean-ui.test.ts`가 `app`·`components`·`lib`·`messages` + 루트 `auth.ts`·`middleware.ts` + 서빙되는 가이드 원고(ko 트리 제외)를 훑고(`lib/survey/`·`lib/scan/`은 CLI 출력이라 `EXCLUDED_PREFIX`로 뺀다) 허용 목록은 다섯이다 — `lib/push/apply.ts`(`$queryRaw` 안 SQL 주석 — 스캐너가 JS 주석만 벗긴다) · `lib/i18n/locales.ts`(endonym `한국어`) · `lib/date-format.ts`(ko 날짜 단위) · `messages/ko.tsx` · `messages/ko-privacy.tsx`(ko 방침 본). **주석은 벗기고 세므로 아래 항목과 충돌하지 않는다.**
 - **⚠️ 제품 이름은 화면에서 `Malmoi`이고 식별자에서 `malmoi`다.** `lib/i18n/__tests__/brand-spelling.test.ts`가 이웃 글자로 둘을 가르고 그 밖의 변형을 0으로 고정한다. ⚠️ **식별자를 대문자로 올리지 않는다** — 암호 문맥(`malmoi/pii` 등)이 바뀌면 저장된 봉투를 못 연다.
 - **주석은 한국어로, "왜"만 쓴다.** 코드가 말하는 "무엇"을 반복하지 않는다. 특히 **비자명한 제약·함정·과거에 밟은 지뢰**를 남긴다.
 - **순수 함수를 먼저 분리한다.** export 생성·blob SHA·키 추출·정렬은 I/O 없는 순수 함수여야 하고, 그래서 테스트가 가능하다. DB·GitHub 호출은 얇은 껍데기로 감싼다.
@@ -281,7 +285,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 - **환경변수는 한 곳에서 읽는다** (`lib/env.ts`의 `requireEnv`·`optionalEnv`). 인가 판정에 넘기는 값(`CRON_SECRET`)은 `optionalEnv`다 — 던지면 fail-closed 판정에 닿기 전에 본문 없는 500이 된다.
 - **⚠️ 환경변수를 읽는 코드를 모듈 최상위에서 평가하지 않는다.** 최상위 평가는 "파일을 읽기만 해도 죽는다"를 뜻하고, `.env`가 없는 CI에서 import·빌드만으로 실패한다. 함수 안에 있어도 그 함수를 최상위 `const`가 부르면 같은 문제다.
 - **서버 전용 모듈엔 `import "server-only"`.** 단 테스트가 직접 import하는 순수 모듈엔 붙이지 않는다. ⚠️ **`vitest.setup.ts`가 그것을 전역 mock하므로 "테스트가 죽는다"는 더 이상 잎 모듈을 분리시키는 압력이 아니다** — **남은 방어선은 `components/__tests__/client-graph.test.ts` 하나**이고 그것은 `"use client"` 그래프만 본다.
-- **날짜는 UTC로 저장하고, 절대 날짜·시각도 UTC로 말한다** — `<time dateTime>` 안에 `lib/utc-time.ts`가 export하는 형만 쓴다(날짜만 `Sep 27, 2026`(`utcDay`), 시각까지 `Sep 27, 2026 16:34 UTC`(`utcMinute`) 등 — 목록은 그 파일이 정본). 생산자는 그 파일 하나이고 `toLocaleDateString`은 쓰지 않는다. 라벨 없는 로컬 시각은 보는 사람이 어느 시간대인지 모른다. 상대 시각(`lib/relative-time.ts`)만 보는 시점 기준이다.
+- **날짜는 UTC로 저장한다. 절대 날짜·시각은 보는 사람이 고른 시간대(기본 UTC)로 말하고, 시각에는 그 오프셋을 라벨로 단다**(2026-10-05, user-timezone — `Sep 27, 2026 16:34 UTC` · `Oct 5, 2026 08:10 UTC+9`). 라벨 없는 로컬 시각은 보는 사람이 어느 시간대인지 모른다 — 시간대는 서버 TZ도 브라우저 TZ도 아니고 사람이 `/preferences`에서 **고른** 것이다. 생산자는 `lib/date-format.ts` 하나이고(`formatDay`·`formatMinute`·`formatMonth`·`formatClock` 등 — 목록은 그 파일이 정본) `<time dateTime>`은 UTC ISO다. 입력은 `DateStyle = { uiLocale, timeZone }`이고 입구는 서버 `await getDateStyle()`(`lib/i18n/server.ts`) · 클라이언트 `useDateStyle()`이다 — 기본값이 없어 호출부가 빠뜨리면 typecheck가 잡는다. **형식은 화면 언어별로 손으로 만든다**(ko `2026년 9월 27일 16:34 UTC` · es `27 sept 2026 16:34 UTC`) — 오프셋 라벨은 세 언어 모두 남는다. ⚠️ **`Intl.DateTimeFormat`은 그 파일에서 `timeZone`을 명시한 숫자 부품 추출에만 쓴다**(런타임 TZ를 읽을 길이 없어야 서버와 브라우저가 같은 값을 찍는다). `toLocale*`은 쓰지 않는다. ⚠️ **UTC로 고정되는 표면**(공개 셸 · `/signin/link/:challenge` · MCP — 목록은 ARCHITECTURE §6.356)은 `timeZone: "UTC"`를 명시하고 `lib/__tests__/date-format-consumers.test.ts`의 `FIXED_UTC`가 그 파일 집합을 정확히 고정한다. `lib/` 코어는 `getDateStyle()`을 부르지 않는다 — 부르면 MCP 응답이 요청자의 시간대를 따라간다. 상대 시각(`lib/relative-time.ts`)만 보는 시점 기준이다.
 - **일회성 실험 스크립트는 `.scratch/`에 둔다.** 리포 **안**이어야 tsconfig·경로 별칭이 잡히고, `.gitignore`에 있어야 `git add -A`에 안 딸려간다.
 - **⚠️ 차단은 두 층이고, 조건부 렌더는 어느 층도 아니다.** 1차 `middleware.ts`는 렌더 요청(GET·HEAD)에 쿠키 이름만 보는 값싼 차단이고, **본판정은 진입점**이다 — 페이지는 최상단 `requireProjectAccess`, Server Action은 `getProjectAccess`. App Router가 레이아웃과 페이지를 병렬로 렌더해 페이지가 이미 실행되고 RSC 페이로드가 응답에 실린다(실측 1.3MB 노출). **새 보호 라우트는 `isProtectedPath`(`lib/auth/cookie.ts`)에 추가한다** — matcher는 CSP nonce 때문에 전 페이지다(ARCHITECTURE §8).
 - **⚠️ 로케일 파일이 키의 진실, 코드 스캔은 `refs`만 준다.** 스캔 실패로 적재를 막지 않는다 — 남의 리포 CI를 우리 규칙으로 실패시키지 않는다.

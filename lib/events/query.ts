@@ -4,8 +4,10 @@ import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { maskedEmailLabels } from "@/lib/auth/invite-label";
 import { decodeUser, readable } from "@/lib/credentials/records";
 import { validatePiiReadKeys } from "@/lib/credentials/storage";
-import { m } from "@/lib/i18n";
+import type { Messages } from "@/lib/i18n";
+import type { TimeZone } from "@/lib/time-zone/zones";
 
+import { displayMemberPayload } from "./member-label";
 import { PROJECT_WIDE, parseDateRange, type EventCursor, type LogFilter } from "./filter";
 import { triggerWhere } from "./trigger-where";
 import {
@@ -100,13 +102,15 @@ type Selected = Prisma.ProjectEventGetPayload<{ select: typeof SELECT }>;
 
 export async function loadEvents(
   prisma: PrismaClient,
+  m: Messages,
   projectId: string,
   filter: LogFilter,
-  options: { limit?: number } = {},
+  // ⚠️ 시간대는 **필수**다 — 기간 필터의 날짜를 어느 자정으로 끊을지 호출부가 정한다. 화면은 보는 사람의 것, MCP는 `"UTC"`를 명시한다.
+  options: { limit?: number; timeZone: TimeZone },
 ): Promise<EventPage> {
   const limit = options.limit ?? EVENT_PAGE_SIZE;
   const rows = await prisma.projectEvent.findMany({
-    where: { projectId, ...narrow(filter, await surfaceIds(prisma, projectId, filter)) },
+    where: { projectId, ...narrow(filter, await surfaceIds(prisma, projectId, filter), options.timeZone) },
     // ⚠️ 정렬 키 둘이 커서 둘과 **같아야 한다** — 하나라도 어긋나면 페이지 경계에서 행이 사라지거나 겹친다.
     orderBy: [{ occurredAt: "desc" }, { id: "desc" }],
     // 한 개 더 읽어 "다음 페이지가 있나"를 조회 하나로 답한다 (기존 관용구).
@@ -117,7 +121,7 @@ export async function loadEvents(
   const page = rows.slice(0, limit);
   const last = page.at(-1);
   return {
-    rows: present(page),
+    rows: present(m, page),
     nextCursor:
       rows.length > limit && last !== undefined ? { occurredAt: last.occurredAt, id: last.id } : null,
   };
@@ -127,9 +131,9 @@ export async function loadEvents(
  * 상세 하나. **목록 필터와 독립이다** (결정 15) — 다른 페이지·필터 밖의 사건도 열되, 배경 목록에
  * 끼워 넣거나 필터를 해제하지 않는다. 없는 참조·다른 프로젝트의 참조는 같은 `null`이다.
  */
-export async function loadEvent(prisma: PrismaClient, projectId: string, ref: string): Promise<EventRow | null> {
+export async function loadEvent(prisma: PrismaClient, m: Messages, projectId: string, ref: string): Promise<EventRow | null> {
   const row = await prisma.projectEvent.findFirst({ where: { projectId, ref }, select: SELECT });
-  return row === null ? null : (present([row])[0] ?? null);
+  return row === null ? null : (present(m, [row])[0] ?? null);
 }
 
 /**
@@ -139,6 +143,7 @@ export async function loadEvent(prisma: PrismaClient, projectId: string, ref: st
  */
 export async function loadEventActors(
   prisma: PrismaClient,
+  m: Messages,
   projectId: string,
 ): Promise<{ id: string; label: string }[]> {
   const rows = await prisma.projectEvent.findMany({
@@ -167,7 +172,7 @@ export async function loadEventActors(
  * 경쟁자로 센다 — 사건이 둘 이상인 사람은 자기 주소와 충돌하고, 같은 문자열은 어떤 접두로도 안 갈려 **원문으로 떨어진다.** v1.0.0부터 Logs
  * RSC 페이로드와 MCP `list_events`가 그 원문을 모든 멤버에게 실었다. 그래서 사용자 id로 모은 **distinct 주소 목록**에서 라벨을 만들고 행에 되돌린다.
  */
-function present(rows: readonly Selected[]): EventRow[] {
+function present(m: Messages, rows: readonly Selected[]): EventRow[] {
   // 행 하나가 못 열려도 이력은 산다 — 키 부재만 장애로 남긴다 (`loadMembers`와 같은 규칙).
   validatePiiReadKeys();
   const decoded = rows.map((row) => (row.actor === null ? null : readable(() => decodeUser(row.actor!))));
@@ -209,7 +214,7 @@ function present(rows: readonly Selected[]): EventRow[] {
       },
       surfaceIds: row.surfaceIds,
       surfaceScope: scope(row.surfaceScope),
-      payload: readPayload(row.kind, row.payload),
+      payload: displayMemberPayload(m, readPayload(row.kind, row.payload)),
       run:
         row.syncRun === null
           ? null
@@ -289,14 +294,14 @@ async function surfaceIds(prisma: PrismaClient, projectId: string, filter: LogFi
   return rows.map((row) => row.id);
 }
 
-function narrow(filter: LogFilter, sourceIds: readonly string[]): Prisma.ProjectEventWhereInput {
+function narrow(filter: LogFilter, sourceIds: readonly string[], timeZone: TimeZone): Prisma.ProjectEventWhereInput {
   const where: Prisma.ProjectEventWhereInput = {};
   const and: Prisma.ProjectEventWhereInput[] = [];
 
   const kind = eventKindOf(filter.kind);
   if (kind !== null) where.kind = kind;
 
-  const range = parseDateRange(filter.from, filter.to);
+  const range = parseDateRange(filter.from, filter.to, timeZone);
   if (range.from !== null || range.to !== null) {
     where.occurredAt = {
       ...(range.from === null ? {} : { gte: range.from }),

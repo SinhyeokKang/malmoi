@@ -16,9 +16,9 @@ import { getPrisma } from "@/lib/db";
 import { clearedLogsQuery, encodeCursor, hasNarrowing, logsQuery, parseLogFilter, type LogSearchParams } from "@/lib/events/filter";
 import { loadEvent, loadEventActors, loadEvents } from "@/lib/events/query";
 import { coverageBoundaryIndex, groupByDay } from "@/lib/events/view";
-import { m } from "@/lib/i18n";
+import { getDateStyle, getMessages } from "@/lib/i18n/server";
 import { routes } from "@/lib/routes";
-import { utcDay } from "@/lib/utc-time";
+import { formatDay } from "@/lib/date-format";
 
 /**
  * 프로젝트 **전체 활동 이력** (logs-rework — 시안 `design_handoff_project_logs`, 아트보드 1a–1l).
@@ -45,6 +45,9 @@ export default async function LogsPage({
   params: Promise<{ slug: string }>;
   searchParams: Promise<LogSearchParams>;
 }) {
+  // 날짜 카드·Today·구간 경계·행 시각이 전부 보는 사람의 시간대다(user-timezone) — 같은 값 하나를 조회와 그리기에 쓴다.
+  const style = await getDateStyle();
+  const m = await getMessages();
   const { slug } = await params;
   const { projectId, role, archived } = await requireProjectAccess({
     slug,
@@ -63,10 +66,10 @@ export default async function LogsPage({
 
   const [sources, actors, page, openEvent] = await Promise.all([
     prisma.translationSurface.findMany({ where: { projectId, archivedAt: null }, select: { slug: true }, orderBy: { slug: "asc" } }),
-    loadEventActors(prisma, projectId),
-    loadEvents(prisma, projectId, filter),
+    loadEventActors(prisma, m, projectId),
+    loadEvents(prisma, m, projectId, filter, { timeZone: style.timeZone }),
     // ⚠️ **상세 조회는 목록 필터와 독립이다** (결정 15) — 필터 밖 이벤트도 열되 목록은 그대로 둔다.
-    filter.event === null ? Promise.resolve(null) : loadEvent(prisma, projectId, filter.event),
+    filter.event === null ? Promise.resolve(null) : loadEvent(prisma, m, projectId, filter.event),
   ]);
 
   // 번역 사건은 키 **이름**을 든다 — 그 키의 현재 id로 해석해야 상세가 선택된 채로 착지한다(translation-rework T12).
@@ -74,9 +77,9 @@ export default async function LogsPage({
     ? await translationLinkFor(prisma, { projectId, slug, surfaceSlug: openEvent.payload.surfaceSlug, key: openEvent.payload.key })
     : null;
 
-  // ⚠️ **`now`를 한 번 만들어 내린다** — 행마다 만들면 같은 페이지 안에서 기준이 흔들린다.
+  // ⚠️ **`now`를 한 번 만들어 내린다** — 행마다 만들면 같은 페이지 안에서 기준이 흔들린다. 필터의 프리셋도 이 값을 받는다(하이드레이션).
   const now = new Date();
-  const groups = groupByDay(page.rows, now);
+  const groups = groupByDay(m, style, page.rows, now);
   const boundary = coverageBoundaryIndex(page.rows, project.activityCoverageStartedAt, filter.cursor);
   const href = (ref: string) => routes.logs(slug, { ...logsQuery(filter), event: ref });
   const closeHref = routes.logs(slug, { ...logsQuery(filter), event: undefined });
@@ -100,7 +103,7 @@ export default async function LogsPage({
         필터가 이미 말하는 목록이었다.
       */}
       <PanelHeader description={archived ? m.logs.archived.description : undefined}>
-        <LogFilters slug={slug} filter={filter} sources={sources} actors={actors} refreshable={!archived} />
+        <LogFilters slug={slug} filter={filter} sources={sources} actors={actors} refreshable={!archived} now={now.toISOString()} />
       </PanelHeader>
 
       <PanelBody className="space-y-4">
@@ -145,13 +148,13 @@ export default async function LogsPage({
                       <div className="flex items-center gap-3 px-4 py-3">
                         <span className="bg-border h-px flex-1" />
                         <span className="text-muted-foreground text-center text-xs text-pretty">
-                          {m.logs.coverage(utcDay(project.activityCoverageStartedAt!))}
+                          {m.logs.coverage(formatDay(project.activityCoverageStartedAt!, style))}
                         </span>
                         <span className="bg-border h-px flex-1" />
                       </div>
                     )}
                     <div id={`event-${row.ref}`} tabIndex={-1}>
-                      <EventRow row={row} href={href(row.ref)} now={now} archived={archived} />
+                      <EventRow row={row} href={href(row.ref)} now={now} archived={archived} style={style} m={m} />
                     </div>
                   </div>
                 );
@@ -185,7 +188,7 @@ export default async function LogsPage({
             /* ⚠️ **복원 링크는 OWNER에게만** — EDITOR에게 누를 수 없는 것을 보이지 않는다. */
             actions={canPerform(role, "project:settings") ? <ButtonLink href={routes.settings(slug)}>{m.archive.empty.action}</ButtonLink> : undefined}
           >
-            {m.logs.archived.restoreLine(utcDay(project.archivedAt))}
+            {m.logs.archived.restoreLine(formatDay(project.archivedAt, style))}
           </Alert>
         )}
       </PanelBody>
@@ -206,7 +209,7 @@ export default async function LogsPage({
               archived={archived}
               canOpenSettings={canPerform(role, "project:settings")}
               repoUrl={`https://github.com/${project.repoOwner}/${project.repoName}`}
-              translationHref={translationHref}
+              translationHref={translationHref} style={style} m={m}
             />
           )}
         </EventDialog>

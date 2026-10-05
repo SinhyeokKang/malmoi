@@ -1,3 +1,4 @@
+import { en } from "@/messages/en";
 import { expect, it } from "vitest";
 
 import type { AdapterError } from "@/lib/adapters/types";
@@ -95,14 +96,14 @@ it("isImportFailureCode accepts every stored code including the server-only two"
 
 it("importFailureMessage returns a sentence for every stored code", () => {
   for (const code of ["parse-failed", "parse-crashed", "invalid-locale-data", "prepare-failed", "partial-import", "import-failed"] as const) {
-    expect(typeof importFailureMessage(code)).toBe("string");
-    expect(importFailureMessage(code).length).toBeGreaterThan(0);
+    expect(typeof importFailureMessage(en, code)).toBe("string");
+    expect(importFailureMessage(en, code).length).toBeGreaterThan(0);
   }
 });
 
 /** 파서 원문·경로는 화면에 나가지 않는다 — 문장은 사전이 내고 코드만 저장된다. */
 it("importFailureMessage never leaks a parser detail", () => {
-  expect(importFailureMessage("parse-failed")).not.toMatch(/SyntaxError|line \d|\.json/);
+  expect(importFailureMessage(en, "parse-failed")).not.toMatch(/SyntaxError|line \d|\.json/);
 });
 
 const AT = new Date("2026-09-15T09:00:00Z");

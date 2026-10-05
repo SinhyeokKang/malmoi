@@ -22,6 +22,7 @@ import { reportPushResponse } from "../lib/cli/push-response";
 import { isAllowedPushUrl } from "../lib/cli/push-url";
 import { adapterErrorKind } from "../lib/adapters/types";
 import { adapterErrorMessage } from "../lib/i18n/adapter-errors";
+import { en } from "../messages/en";
 import {
   representativeFailureCode,
   type ReportedImportFailure,
@@ -199,14 +200,14 @@ const warnings = read.errors.filter((e) => adapterErrorKind(e.code) !== "failure
 const blocking = read.errors.filter((e) => adapterErrorKind(e.code) === "failure");
 if (blocking.length) {
   console.error(`적재 에러 ${blocking.length}건 — CI를 실패시킨다:`);
-  for (const e of blocking.slice(0, 10)) console.error(`  ${e.path}  ${adapterErrorMessage(e)}`);
+  for (const e of blocking.slice(0, 10)) console.error(`  ${e.path}  ${adapterErrorMessage(e, en.adapterErrors)}`);
   // 섞인 오류에서 대표 코드 하나를 고른다 — 화면이 문장 하나를 그리므로 판정도 하나여야 한다.
   await reportFailure(representativeFailureCode(blocking));
   process.exit(1);
 }
 if (warnings.length) {
   console.error(`적재 경고 ${warnings.length}건 — CI는 계속한다:`);
-  for (const e of warnings.slice(0, 10)) console.error(`  ${e.path}  ${adapterErrorMessage(e)}`);
+  for (const e of warnings.slice(0, 10)) console.error(`  ${e.path}  ${adapterErrorMessage(e, en.adapterErrors)}`);
 }
 
 // ── 사용처 (컨텍스트) — 실패가 경고다 ──────────────────────────────────────

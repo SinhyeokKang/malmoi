@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { ADAPTERS } from "@/lib/adapters";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 /**
  * 수동 지정의 Path 힌트가 **선택된 포맷의 layout에 따라** 갈리는지 센다.
@@ -28,7 +28,7 @@ describe("manual format hint", () => {
   it("사전이 어댑터 layout 갈래를 전부 든다", () => {
     const layouts = new Set(ADAPTERS.map((a) => a.layout));
     expect(layouts.size).toBeGreaterThan(1);
-    expect(Object.keys(m.newProject.files.manual.pathHint).sort()).toEqual([...layouts].sort());
+    expect(Object.keys(en.newProject.files.manual.pathHint).sort()).toEqual([...layouts].sort());
   });
 
   it("서버가 어댑터의 layout을 그대로 내려준다", () => {

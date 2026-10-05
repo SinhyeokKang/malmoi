@@ -1,6 +1,6 @@
 "use client";
 import { Link as InlineLink } from "@/components/ui/link";
-import { utcMinute } from "@/lib/utc-time";
+import { formatMinute, type DateStyle } from "@/lib/date-format";
 import { flagFor } from "@/lib/keys/flag";
 import { diffWords } from "@/lib/publish/words";
 import { FileJson2, GitPullRequestArrow, History, Info, LoaderCircle, Send, TriangleAlert } from "lucide-react";
@@ -15,7 +15,7 @@ import { CountBadge } from "@/components/ui/count-badge";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LargeModal } from "@/components/ui/large-modal";
-import { m } from "@/lib/i18n";
+import { useDateStyle, useMessages } from "@/components/i18n/messages-provider";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { onboardErrorMessage, isOnboardError } from "@/lib/onboarding/message";
 import { pullRevalidates, UNCONFIRMED_PULL, type PullOutcome } from "@/lib/pull/message";
@@ -24,8 +24,11 @@ import { routes } from "@/lib/routes";
 import type { PublishModalState, PublishPreview } from "@/lib/publish/preview";
 import { planPublishButton, planPublishView, planWithheldLines } from "@/lib/publish/plan";
 import { summarizeWarnings } from "@/lib/publish/warnings";
+import { adapterErrorMessage } from "@/lib/i18n/adapter-errors";
+import type { PullWarning } from "@/lib/pull/run";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { SlowNotice } from "@/components/slow-notice";
+import type { Messages } from "@/lib/i18n";
 
 /** 실행 결과에 **그때의 사실**을 붙여 둔다 — 결과를 다시 열 때 `count`는 이미 재검증으로 줄어 있다. */
 type PublishResultState = { outcome: PullOutcome; at: Date; total: number };
@@ -118,7 +121,9 @@ export type PublishController = ReturnType<typeof usePublish>;
 
 /** @param id 번역 화면의 보류 배너가 포커스를 옮기는 대상 — 둘째 트리거를 만들지 않으려는 것이다 (sync-edit-protection T13). */
 export function PublishButton({ id, count, publish, disabled = false, pausedReason }: { id?: string; count: number; publish: PublishController; disabled?: boolean; pausedReason?: string }) {
-  const plan = planPublishButton({ count, paused: disabled, otherPending: false, publishPending: publish.pending, pausedReason });
+  const m = useMessages();
+  const p = m.translations.publish;
+  const plan = planPublishButton(m, { count, paused: disabled, otherPending: false, publishPending: publish.pending, pausedReason });
   const reasonId = useId();
   // ⚠️ **꺼진 Publish는 `aria-disabled`다** — 진짜 `disabled`면 사유가 hover `title`에만 남아 키보드·스크린리더로
   // 닿지 않는다 (DESIGN §6.65). 포커스를 받으므로 모달을 닫으면 이 버튼으로 돌아온다.
@@ -141,8 +146,6 @@ export function PublishButton({ id, count, publish, disabled = false, pausedReas
     {!publish.pending && publish.result && <Button onClick={event => { publish.triggerRef.current = event.currentTarget; publish.showResult(); }}>{m.translations.publish.viewResult}</Button>}
   </div>;
 }
-
-const p = m.translations.publish;
 
 /**
  * ⚠️ **갈래마다 높이를 고정한다** (시안 §7) — 한 값으로 묶으면 단계가 짧은 갈래에서 바닥 버튼이
@@ -223,6 +226,8 @@ function PrCard({ repo, number, note }: { repo: string; number: number | null; n
 
 /** `1e`·`1g`가 공유하는 브랜치 경고 — 조건은 `pr === "updated"` 하나다(warnings와 무관하다). */
 function Replaced({ branch, base }: { branch: string; base: string }) {
+  const m = useMessages();
+  const p = m.translations.publish;
   return <Alert variant="neutral" className="shrink-0" title={p.replacedTitle}>{p.replacedBody(branch, base)}</Alert>;
 }
 
@@ -234,6 +239,8 @@ function Replaced({ branch, base }: { branch: string; base: string }) {
  * ⚠️ **`border-separate`다** — `collapse`는 `sticky` 머리에서 테두리가 같이 안 붙는다.
  */
 function TableHead() {
+  const m = useMessages();
+  const p = m.translations.publish;
   return <thead className="bg-primary-foreground">
     <tr>
       {/* ⚠️ 아래는 구조선(`#e5e5e5`), 옆은 그룹 안의 선(`#f0f0f0`) — 한 클래스로 주면 뒤엣것이 네 변을 다 덮는다. */}
@@ -250,17 +257,21 @@ function TableShell({ children }: { children: ReactNode }) {
 }
 
 function DiffLine({ sign, parts, before }: { sign: string; parts: readonly { text: string; changed: boolean }[]; before?: boolean }) {
+  const m = useMessages();
+  const p = m.translations.publish;
   return <span className="flex gap-2">
     {/* 글리프는 장식이고 뜻은 `sr-only`가 든다 — 낭독에 "All … All actions"만 남으면 어느 쪽이 리포인지 모른다. */}
     <span className="sr-only">{before ? p.beforeLabel : p.afterLabel}</span>
-    <span className={`w-2.5 shrink-0 text-xs leading-5 ${before ? "text-red-700" : "text-green-800"}`} aria-hidden>{sign}</span>
+    <span className={`w-2.5 shrink-0 text-xs leading-5 ${before ? "text-diff-removed" : "text-diff-added"}`} aria-hidden>{sign}</span>
     <span className={`min-w-0 flex-1 text-sm leading-5 break-words whitespace-pre-wrap ${before ? "text-muted-foreground" : ""}`}>
-      {parts.map((part, i) => <span key={i} className={!part.changed ? undefined : before ? "text-foreground rounded-[3px] bg-red-700/[0.14]" : "rounded-[3px] bg-green-800/[0.16]"}>{part.text}</span>)}
+      {parts.map((part, i) => <span key={i} className={!part.changed ? undefined : before ? "text-foreground rounded-[3px] bg-diff-removed/[0.14]" : "rounded-[3px] bg-diff-added/[0.16]"}>{part.text}</span>)}
     </span>
   </span>;
 }
 
 function PreviewTable({ preview }: { preview: PublishPreview }) {
+  const m = useMessages();
+  const p = m.translations.publish;
   return <TableShell>
     <div className="min-h-0 flex-1 overflow-y-auto">
       <table className="w-full table-fixed border-separate border-spacing-0">
@@ -334,6 +345,8 @@ function PreviewTable({ preview }: { preview: PublishPreview }) {
  * 오래 걸리면 `SlowNotice`가 그 사실만 말한다.
  */
 function Progress({ branch }: { branch: string }) {
+  const m = useMessages();
+  const p = m.translations.publish;
   return <>
     <div className="border-border flex shrink-0 gap-3 rounded-lg border px-4 py-3.5">
       <span className="flex h-5 shrink-0 items-center"><LoaderCircle className="size-4 animate-spin" aria-hidden /></span>
@@ -346,12 +359,15 @@ function Progress({ branch }: { branch: string }) {
 }
 
 /** `1g` — 펼친 목록이다(불변식 9). 단위가 **파일**이고 키 이름이 없다 — 경고 문자열에 없다. */
-function Warnings({ warnings }: { warnings: readonly string[] }) {
-  const groups = summarizeWarnings(warnings);
+function Warnings({ warnings }: { warnings: readonly PullWarning[] }) {
+  const m = useMessages();
+  const p = m.translations.publish;
+  // 실행은 코드만 싣는다(ui-locales B1′) — 문장은 여기서 화면의 사전으로 조립한다. 렌더 블록의 개행 보존은 `multiline-detail.test.ts`가 마커로 센다.
+  const groups = summarizeWarnings(warnings, (w) => adapterErrorMessage(w, m.adapterErrors));
   // 4-W2 · 1-Y5 — 카드 규격(radius 12)이고 개수는 배지다. 머리 글리프는 Held back(warning)의 톤을 든다 — 무색이면 결과가 경고인지 안 읽힌다.
   return <section className="border-border flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border">
     <div className="border-divider flex shrink-0 items-center gap-2 border-b px-4 py-3">
-      <TriangleAlert className="size-3.5 shrink-0 text-amber-700" aria-hidden />
+      <TriangleAlert className="text-warning-foreground size-3.5 shrink-0" aria-hidden />
       <h3 className="text-sm font-medium">{p.notWritten}</h3>
       <CountBadge count={warnings.length} label={p.warnings(warnings.length)} className="ml-auto shrink-0" />
     </div>
@@ -365,9 +381,9 @@ function Warnings({ warnings }: { warnings: readonly string[] }) {
   </section>;
 }
 
-function failureText(outcome: Extract<PullOutcome, { status: "failed" }>) {
-  if (isAccessError(outcome.error)) return accessErrorMessage(outcome.error);
-  if (isOnboardError(outcome.error)) return onboardErrorMessage(outcome.error);
+function failureText(m: Messages, outcome: Extract<PullOutcome, { status: "failed" }>) {
+  if (isAccessError(outcome.error)) return accessErrorMessage(m, outcome.error);
+  if (isOnboardError(outcome.error)) return onboardErrorMessage(m, outcome.error);
   /*
     ⚠️ **코드가 있는 실패만 서버 문장을 그대로 싣는다** — 그 문장은 `runSync`가 고른 safe 메시지다(DESIGN §6.646).
     코드가 없는 거부의 모르는 문자열은 사람이 읽을 문장이 아니다 (audit #21). `invalid input`은 슬러그가 깨진 것이라
@@ -377,7 +393,7 @@ function failureText(outcome: Extract<PullOutcome, { status: "failed" }>) {
 }
 
 // 절대 시각은 UTC라고 말한다 — 브라우저 로컬을 라벨 없이 내면 참조 코드로 Logs(UTC)와 대조할 때 어긋나 보인다 (launch-readiness L7.1).
-const stamp = (at: Date) => <time dateTime={at.toISOString()}>{utcMinute(at)}</time>;
+const stamp = (at: Date, style: DateStyle) => <time dateTime={at.toISOString()}>{formatMinute(at, style)}</time>;
 
 export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, role }: {
   slug: string;
@@ -397,6 +413,9 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
    */
   repo: { owner: string; name: string; branch: string; syncBranch: string };
 }) {
+  const style = useDateStyle();
+  const m = useMessages();
+  const p = m.translations.publish;
   const { state, result, runTotal } = publish;
   const label = `${repo.owner}/${repo.name}`;
   let title: string; let body: ReactNode; let description: string | undefined;
@@ -503,7 +522,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
       // ⚠️ **성공은 서버가 센 실린 수로 말한다** (delivery-invariants D7) — 미리보기 `total`은 보류를 안 뺀 미발송 전체라, 그 수로 말하면
       // "3 changes are in a pull request" 아래 "1 wasn't sent"가 서는 모순이 된다.
       const total = outcome.status === "committed" ? outcome.delivered : result?.total ?? count;
-      const withheld = planWithheldLines(outcome, role).map(line => <p key={line} className="text-muted-foreground text-xs">{line}</p>);
+      const withheld = planWithheldLines(m, outcome, role).map(line => <p key={line} className="text-muted-foreground text-xs">{line}</p>);
       // no-changes 실행이 닫은 PR (B1 r3) — 조용히 닫힌 채 두지 않고 이유와 링크를 보인다. 보류가 섞여 Not sent 틀이어도 같은 줄이다.
       const closed = outcome.status === "skipped" && outcome.reason === "no-changes" ? outcome.closedPr : undefined;
       const closedLine = closed === undefined ? null : <p className="text-muted-foreground text-xs">
@@ -575,7 +594,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
           // 실행 전 거부 다섯은 `SYNC_ERROR_CODES`를 지나지 않아 **실행 행 자체가 안 생긴다** —
           // 그래서 사실 표도 `Reference`도 "Logs에도 있다"도 함께 빠진다.
           const hasCode = failed?.code !== undefined;
-          title = hasCode ? p.configError : failed ? failureText(failed) : p.configError;
+          title = hasCode ? p.configError : failed ? failureText(m, failed) : p.configError;
           description = hasCode ? p.configErrorDescription(label, repo.branch) : undefined;
           footer = failed?.delivery === "unknown" ? p.unknownDelivery : p.notStarted;
           quiet = true;
@@ -587,12 +606,12 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
               : null;
           body = <Stack>
             {/* ⚠️ **서버의 safe 메시지를 버리지 않는다** — 코드만 남기면 "안 된대요"가 "base-unreadable이래요"로 바뀔 뿐이다(DESIGN §6.646). 코드가 없는 갈래는 그 문장이 이미 제목이라 본문을 비운다. */}
-            <Alert variant="danger" title={p.wontHelp}>{hasCode && failed ? failureText(failed) : null}</Alert>
+            <Alert variant="danger" title={p.wontHelp}>{hasCode && failed ? failureText(m, failed) : null}</Alert>
             {hasCode && failed && <>
               <div className="border-border grid shrink-0 grid-cols-[130px_1fr] gap-x-3.5 gap-y-2.5 rounded-lg border px-4 py-3.5 text-xs">
                 <span className="text-muted-foreground">{p.repository}</span><span>{label}</span>
                 <span className="text-muted-foreground">{p.baseBranch}</span><span>{repo.branch}</span>
-                <span className="text-muted-foreground">{p.failedAt}</span><span>{at === null ? "" : stamp(at)}</span>
+                <span className="text-muted-foreground">{p.failedAt}</span><span>{at === null ? "" : stamp(at, style)}</span>
                 <span className="text-muted-foreground">{p.reference}</span><span className="text-muted-foreground">{failed.code}</span>
               </div>
               <Hint>{p.sendReference}</Hint>
@@ -615,7 +634,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
             {failed?.code !== undefined && <div className="border-border flex shrink-0 items-center gap-3 rounded-lg border px-4 py-3 text-xs">
               <span className="text-muted-foreground">{p.reference}</span>
               <span>{failed.code}</span>
-              {at !== null && <span className="text-muted-foreground ml-auto">{stamp(at)}</span>}
+              {at !== null && <span className="text-muted-foreground ml-auto">{stamp(at, style)}</span>}
             </div>}
           </Stack>;
           break;

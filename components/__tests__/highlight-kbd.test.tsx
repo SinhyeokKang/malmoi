@@ -3,14 +3,14 @@ import { describe, expect, it } from "vitest";
 
 import { Highlight } from "@/components/ui/highlight";
 import { Kbd } from "@/components/ui/kbd";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { render } from "./helpers/dom";
 
 describe("기존 손 사본을 잇는 프리미티브", () => {
   /** search-ux-unify D14·C13 — 회색 면(테두리 없음) + `text-foreground/60`, 높이 20 고정, 장식이라 기본 `aria-hidden`. */
   it("Kbd는 회색 면·h-5 키 칩이고 낭독되지 않는다", async () => {
-    const { container } = await render(<Kbd>{m.common.keys.esc}</Kbd>);
+    const { container } = await render(<Kbd>{en.common.keys.esc}</Kbd>);
     const chip = container.querySelector("kbd");
     expect(chip).not.toBeNull();
     expect(chip?.textContent).toBe("Esc");

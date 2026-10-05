@@ -8,7 +8,8 @@ import { GithubIcon } from "@/components/signin/brand-icons";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
+import type { Messages } from "@/lib/i18n";
 import { isOnboardError, onboardErrorMessage } from "@/lib/onboarding/message";
 
 /**
@@ -77,6 +78,7 @@ export function useGithubConnect({
   back?: { filter?: string; q?: string };
   onResult?: (message: string | null) => void;
 }): { pending: boolean; via: ConnectVia | null; error: string | null; start: (via: ConnectVia) => void } {
+  const m = useMessages();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   /** 마지막으로 누른 갈래 — 막는 것은 `pending` 하나이고, 스피너 자리만 이것이 정한다 (audit-ux #27). */
@@ -96,14 +98,14 @@ export function useGithubConnect({
         let result: Awaited<ReturnType<typeof startGithubConnectForUser>>;
         try { result = await startGithubConnectForUser(dest, back ?? {}, next); }
         catch (thrown) { unstable_rethrow(thrown); report(m.settings.repository.connectFailed); return; }
-        if (!result.ok) report(messageFor(result.error));
+        if (!result.ok) report(messageFor(m, result.error));
       });
     },
   };
 }
 
-function messageFor(error: string): string {
-  if (isOnboardError(error)) return onboardErrorMessage(error);
-  if (isConnectError(error)) return connectErrorMessage(error);
+function messageFor(m: Messages, error: string): string {
+  if (isOnboardError(error)) return onboardErrorMessage(m, error);
+  if (isConnectError(error)) return connectErrorMessage(m, error);
   return m.settings.repository.connectFailed;
 }

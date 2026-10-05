@@ -1,12 +1,11 @@
-import Image from "next/image";
 import Link from "next/link";
 
 import { SearchTrigger } from "@/components/search/search-trigger";
 import type { NavProject } from "@/lib/shell/nav";
 import { PUBLIC_HEADER_LINK } from "@/components/public-shell/header";
-import { m } from "@/lib/i18n";
+import { MalmoiMark } from "@/components/ui/malmoi-mark";
+import type { Messages } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
-import logo from "@/public/brand/malmoi-icon-black.svg";
 
 import { HeaderBar } from "./header-bar";
 import { NewProjectIcon } from "./new-project-icon";
@@ -28,12 +27,14 @@ import { UserMenu } from "./user-menu";
  * 든다. 8-3이 그것을 `[slug]` 레이아웃으로 옮길 자리다.
  */
 export function Header({
+  m,
   name,
   email,
   image,
   signOut,
   memberships,
 }: {
+  m: Messages;
   name: string;
   email: string | null;
   image: string | null;
@@ -42,6 +43,7 @@ export function Header({
 }) {
   return (
     <HeaderBar
+      className="mb-1.5"
       center={<SearchTrigger account={{ name, email, image }} memberships={memberships} />}
       start={
         <Link
@@ -49,8 +51,8 @@ export function Header({
           aria-label={m.common.nav.appHome}
           className="focus-visible:ring-ring flex size-8 items-center justify-center rounded-sm focus-visible:ring-2 focus-visible:outline-none"
         >
-          {/* 로고는 커밋된 원본이다(`public/brand/`) — 폰트와 달리 생성물이 아니다 (규약 2). */}
-          <Image src={logo} alt="" width={32} height={32} priority />
+          {/* 로고는 토큰으로 칠하는 인라인 SVG다 — 다크에서 면·마크가 저절로 뒤집힌다(`MalmoiMark`). */}
+          <MalmoiMark size={32} />
         </Link>
       }
       end={
@@ -59,7 +61,7 @@ export function Header({
             <NewProjectIcon />
             {m.common.nav.newProject}
           </Link>
-          {/* 장식이다 — 공개 셸 헤더와 같은 선(`border-subtle`이 캔버스 위에서 보이는 가장 연한 선이다). */}
+          {/* 장식이다 — 공개 셸 헤더와 같은 선(`border-border-subtle`이 캔버스 위에서 보이는 가장 연한 선이다). */}
           <span aria-hidden className="bg-border-subtle h-5 w-px" />
           <UserMenu name={name} email={email} image={image} signOut={signOut} />
         </div>

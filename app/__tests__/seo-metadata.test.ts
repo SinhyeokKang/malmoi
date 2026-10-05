@@ -5,7 +5,7 @@ import nextConfig from "../../next.config";
 import { loadPage, loadSummary } from "@/lib/guide/load";
 import { leadParagraph } from "@/lib/guide/sections";
 import { flattenNav } from "@/lib/guide/summary";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { OG_IMAGE } from "@/lib/seo/site";
 
 /**
@@ -17,6 +17,9 @@ import { OG_IMAGE } from "@/lib/seo/site";
 vi.mock("@/auth", () => ({ signIn: vi.fn(), signOut: vi.fn() }));
 vi.mock("@/lib/db", () => ({ getPrisma: vi.fn() }));
 vi.mock("@/app/invite/actions", () => ({ acceptInvitation: vi.fn() }));
+// 요청의 화면 언어를 ko로 둔다 — `/docs` 메타는 그래도 en 원고여야 한다(크롤러는 쿠키가 없고 URL이 언어와 무관하다, ui-locales design §6.1).
+// 지금은 `generateMetadata`가 화면 언어를 묻지 않아 참이다 — 누가 넣으면 아래 SUMMARY 전 항목 단언이 ko 제목으로 red가 된다.
+vi.mock("@/lib/i18n/server", async () => ({ getUiLocale: async () => "ko", getMessages: async () => (await import("@/messages/en")).en }));
 // next/font는 Next 빌드가 변환한다. 여기서는 SEO 값만 읽고 실제 로더·글리프는 font-loading.test.ts가 검사한다.
 vi.mock("next/font/local", () => ({
   default: () => ({ className: "geist-font-fixture", variable: "geist-variable-fixture", style: { fontFamily: "Geist" } }),
@@ -35,7 +38,7 @@ describe("루트 레이아웃", () => {
     const { metadata } = await import("@/app/layout");
     expect(String(metadata.metadataBase)).toBe("https://mal-moi.com/");
     expect(metadata.title).toEqual({ default: "Malmoi", template: "%s · Malmoi" });
-    expect(metadata.description).toBe(m.landing.hero.body);
+    expect(metadata.description).toBe(en.landing.hero.body);
     expect(metadata.alternates).toBeUndefined();
     expect(metadata.openGraph).toEqual({ siteName: "Malmoi", type: "website", images: [OG_IMAGE] });
     expect((metadata.openGraph as { url?: unknown }).url).toBeUndefined();
@@ -47,16 +50,16 @@ describe("루트 레이아웃", () => {
 describe("공개 페이지 — canonical 있음 · noindex 없음", () => {
   it("`/` — 제목 absolute · 설명 hero.body · canonical 홈", async () => {
     const { metadata } = await import("@/app/page");
-    expect(metadata.title).toEqual({ absolute: m.seo.homeTitle });
-    expect(metadata.description).toBe(m.landing.hero.body);
+    expect(metadata.title).toEqual({ absolute: en.seo.homeTitle });
+    expect(metadata.description).toBe(en.landing.hero.body);
     expect(metadata.alternates).toEqual({ canonical: "https://mal-moi.com/" });
-    expect((metadata.openGraph as { title: string }).title).toBe(m.seo.homeTitle);
+    expect((metadata.openGraph as { title: string }).title).toBe(en.seo.homeTitle);
     expect(metadata.robots).toBeUndefined();
   });
 
   it("`/privacy` — `Privacy Policy`(템플릿이 `· Malmoi`를 붙인다) · canonical", async () => {
     const { metadata } = await import("@/app/privacy/page");
-    expect(metadata.title).toBe(m.publicDocs.privacy.title);
+    expect(metadata.title).toBe(en.publicDocs.privacy.title);
     expect(metadata.alternates).toEqual({ canonical: "https://mal-moi.com/privacy" });
     expect(metadata.robots).toBeUndefined();
   });
@@ -73,13 +76,13 @@ describe("공개 페이지 — canonical 있음 · noindex 없음", () => {
     expect((meta.openGraph as { title: string }).title).toBe("Malmoi Docs");
   });
 
-  it("SUMMARY 전 항목 — 제목은 SUMMARY 제목 · 설명은 첫 문단(없으면 hero.body) · canonical 절대 URL", async () => {
-    const flat = flattenNav(loadSummary()).filter((item) => item.slug.length > 0);
+  it("SUMMARY 전 항목 — 제목은 en SUMMARY 제목 · 설명은 en 첫 문단(없으면 hero.body) · canonical 절대 URL — 화면 언어가 ko여도", async () => {
+    const flat = flattenNav(loadSummary("en")).filter((item) => item.slug.length > 0);
     expect(flat.length).toBeGreaterThan(10);
     for (const item of flat) {
       const meta = await docsMetadata(item.slug);
       expect(meta.title).toBe(item.title);
-      expect(meta.description).toBe(leadParagraph(loadPage(item.file)) ?? m.landing.hero.body);
+      expect(meta.description).toBe(leadParagraph(loadPage("en", item.file)) ?? en.landing.hero.body);
       expect(meta.alternates).toEqual({ canonical: `https://mal-moi.com/docs/${item.slug.join("/")}` });
       expect((meta.openGraph as { images: unknown[] }).images).toEqual([OG_IMAGE]);
       expect(meta.robots).toBeUndefined();
@@ -88,7 +91,7 @@ describe("공개 페이지 — canonical 있음 · noindex 없음", () => {
 
   it("없는 slug — 404 제목 · canonical 없음", async () => {
     const meta = await docsMetadata(["no-such-page"]);
-    expect(meta.title).toBe(m.publicDocs.docs.notFound.title);
+    expect(meta.title).toBe(en.publicDocs.docs.notFound.title);
     expect(meta.alternates).toBeUndefined();
     expect(meta.openGraph).toBeUndefined();
   });
@@ -97,22 +100,22 @@ describe("공개 페이지 — canonical 있음 · noindex 없음", () => {
 describe("색인 거부 셋 — canonical 없음", () => {
   it("`/invite/<token>` — noindex · no-referrer", async () => {
     const { metadata } = await import("@/app/invite/[token]/page");
-    expect(metadata).toEqual({ title: m.invite.title, robots: NOINDEX, referrer: "no-referrer" });
+    expect(metadata).toEqual({ title: en.invite.title, robots: NOINDEX, referrer: "no-referrer" });
   });
 
   it("`/signin/link/<challenge>` — noindex · no-referrer", async () => {
     const { metadata } = await import("@/app/signin/link/[challenge]/page");
-    expect(metadata).toEqual({ title: m.link.title, robots: NOINDEX, referrer: "no-referrer" });
+    expect(metadata).toEqual({ title: en.link.title, robots: NOINDEX, referrer: "no-referrer" });
   });
 
   it("`/signin` — noindex (referrer는 기본값)", async () => {
     const { metadata } = await import("@/app/signin/page");
-    expect(metadata).toEqual({ title: m.seo.signInTitle, robots: NOINDEX });
+    expect(metadata).toEqual({ title: en.seo.signInTitle, robots: NOINDEX });
   });
 
   it("루트 404 — 화면 h1 값 · canonical 없음", async () => {
     const { metadata } = await import("@/app/not-found");
-    expect(metadata).toEqual({ title: m.notFound.title });
+    expect(metadata).toEqual({ title: en.notFound.title });
   });
 });
 

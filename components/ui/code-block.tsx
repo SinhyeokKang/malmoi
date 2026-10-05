@@ -1,7 +1,7 @@
 "use client";
 
 import { CopyButton } from "@/components/ui/copy-button";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import { cn } from "@/lib/utils";
 
 /**
@@ -25,6 +25,7 @@ export function CodeBlock({ code, filename, fill = false, className }: {
   fill?: boolean;
   className?: string;
 }) {
+  const m = useMessages();
   const button = <CopyButton value={code} variant="code" />;
 
   return (

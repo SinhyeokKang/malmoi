@@ -3,7 +3,7 @@ import { expect, it } from "vitest";
 
 import { LocaleMeter } from "@/components/locale-meter";
 import { LocaleBadge } from "@/components/translations/locale-badge";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { GrantBadges } from "@/components/mcp/grant-badges";
 
@@ -18,10 +18,10 @@ it.each([
   ["nothingToSend", "Nothing to send", "bg-foreground/5"],
   ["superseded", "Superseded", "bg-foreground/5"],
   ["upToDate", "Up to date", "bg-foreground/5"],
-  ["heldBack", "Held back", "bg-amber-100/80"],
-  ["held", "Held", "bg-amber-100/80"],
-  ["partiallySynced", "Partially synced", "bg-amber-100/80"],
-  ["notStarted", "Not started", "bg-amber-100/80"],
+  ["heldBack", "Held back", "bg-warning-soft"],
+  ["held", "Held", "bg-warning-soft"],
+  ["partiallySynced", "Partially synced", "bg-warning-soft"],
+  ["notStarted", "Not started", "bg-warning-soft"],
   ["logsFailed", "Failed", "bg-destructive/8"],
 ] as const)("StatusBadge %s의 낱말과 기존 면", async (state, label, face) => {
   const { container } = await render(<StatusBadge state={state} />);
@@ -59,7 +59,7 @@ it.each([false, true])("로케일 orphaned=%s도 코드·국기와 접근 설명
   const visibleCode = [...pill.children].find(node => node.textContent === "fr");
   expect(visibleCode).toBeDefined();
   expect(visibleCode?.classList.contains("sr-only")).toBe(false);
-  expect(pill.querySelector(".sr-only")?.textContent ?? null).toBe(orphaned ? m.locales.orphaned.badge : null);
+  expect(pill.querySelector(".sr-only")?.textContent ?? null).toBe(orphaned ? en.locales.orphaned.badge : null);
   expect(pill.classList.contains(orphaned ? "bg-destructive/8" : "bg-foreground/5")).toBe(true);
   expect(pill.classList.contains("gap-1")).toBe(true);
 });

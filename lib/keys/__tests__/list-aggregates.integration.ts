@@ -1,3 +1,4 @@
+import { en } from "@/messages/en";
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -843,7 +844,7 @@ it("복원은 생성과 같은 상한을 잠금 안에서 다시 세고, 동시 
   expect(restore).toEqual({ ok: false, error: "owner-limit-reached" });
   expect(await activeOwned()).toBe(3);
   expect(await prisma.projectEvent.count({ where: { subtype: "settings.restored" } })).toBe(0);
-  expect(accessErrorMessage("owner-limit-reached")).toContain("3");
+  expect(accessErrorMessage(en, "owner-limit-reached")).toContain("3");
 
   // 자리가 하나 남은 상태에서 복원과 생성이 동시에 들어오면 하나만 이긴다.
   expect(await runArchive(prisma, subject, { slug: "limit-2" })).toEqual({ ok: true });

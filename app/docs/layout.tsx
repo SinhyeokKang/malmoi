@@ -7,7 +7,7 @@ import { publicAccount } from "@/lib/auth/landing";
 import { readSession } from "@/lib/auth/read-session";
 import { docHref } from "@/lib/guide/href";
 import { loadSummary } from "@/lib/guide/load";
-import { m } from "@/lib/i18n";
+import { getMessages, getUiLocale } from "@/lib/i18n/server";
 import { DOCS_TITLE } from "@/lib/seo/site";
 
 export const metadata: Metadata = { title: { template: `%s · ${DOCS_TITLE}`, default: DOCS_TITLE } };
@@ -23,11 +23,12 @@ export const metadata: Metadata = { title: { template: `%s · ${DOCS_TITLE}`, de
  * ⚠️ **SUMMARY를 못 읽으면 던진다**(`loadSummary`) — 빈 내비로 삼키면 트레이스 누락이 "모든 페이지 404"로 둔갑한다.
  */
 export default async function DocsLayout({ children }: { children: ReactNode }) {
-  const session = await readSession();
-  const nav = loadSummary();
+  const [session, m] = await Promise.all([readSession(), getMessages()]);
+  // 내비 제목은 화면 언어의 SUMMARY다 — 본문(페이지)과 같은 트리를 읽어야 제목이 둘로 갈리지 않는다
+  const nav = loadSummary(await getUiLocale());
 
   return (
-    <PublicShell account={publicAccount(session)} current="docs" bare>
+    <PublicShell m={m} account={publicAccount(session)} current="docs" bare>
       <nav aria-label={m.publicDocs.docs.nav} className="border-border w-[264px] shrink-0 overflow-y-auto border-r p-4">
         <ul className="m-0 list-none space-y-3 p-0">
           {nav.map((chapter) => (

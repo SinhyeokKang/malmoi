@@ -1,5 +1,7 @@
+"use client";
+
 import { Badge } from "@/components/ui/badge";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import { flagFor } from "@/lib/keys/flag";
 import { cn } from "@/lib/utils";
 
@@ -76,6 +78,7 @@ export function LocaleFlag({ code, size = "sm" }: { code: string; size?: "sm" | 
 }
 
 export function LocaleBadge({ code, orphaned }: { code: string; orphaned: boolean }) {
+  const m = useMessages();
   return (
     // 사라진 언어는 `soft-red` 하나다(DESIGN §2.4 · D3②) — 국기는 상태 글리프가 아니라 면제라 배지 안에 남는다.
     <Badge variant={orphaned ? "soft-red" : "soft-neutral"} className="gap-1">

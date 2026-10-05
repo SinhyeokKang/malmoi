@@ -11,7 +11,8 @@ import { LocaleFlag } from "@/components/translations/locale-badge";
 import { RadioGroup } from "@/components/ui/radio";
 import { SelectRow } from "@/components/ui/select-row";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { m } from "@/lib/i18n";
+import { useMessages, useUiLocale } from "@/components/i18n/messages-provider";
+import type { Messages } from "@/lib/i18n";
 import { keyGap } from "@/lib/onboarding/key-gap";
 import { languageName } from "@/lib/onboarding/language-name";
 import { cn } from "@/lib/utils";
@@ -60,6 +61,7 @@ export function NamingStep({
   onBaseLocale?: (index: number, value: string) => void;
   onChange: (next: Partial<NamingStepState>) => void;
 }) {
+  const m = useMessages();
   const verdict = planSlug(state.slug);
   // 거부 상태는 aria-invalid에, 렌더된 설명의 선택은 FormGroup에 맡긴다.
   const slugRejected = state.slugTaken || verdict !== "ok";
@@ -67,7 +69,7 @@ export function NamingStep({
 
   return (
     <div className="flex flex-col gap-4">
-      {state.banner !== null && <Alert variant="danger">{failureText(state.banner)}</Alert>}
+      {state.banner !== null && <Alert variant="danger">{failureText(m, state.banner)}</Alert>}
 
       {/* ⚠️ **읽기 전용임을 말한다** — 리포에 아무것도 쓰지 않는다(불변식). */}
       <Alert variant="info">{m.newProject.naming.info(state.pathTemplate, state.branch)}</Alert>
@@ -86,7 +88,7 @@ export function NamingStep({
         label={m.newProject.naming.slug}
         htmlFor="project-slug"
         /** ⚠️ **`error`가 `help`를 대신한다** — 둘을 같이 보이면 무엇을 고쳐야 하는지가 두 줄로 갈린다. */
-        error={state.slugTaken ? m.newProject.naming.slugTaken(state.slugTakenAlt) : slugFormatHelp(verdict)}
+        error={state.slugTaken ? m.newProject.naming.slugTaken(state.slugTakenAlt) : slugFormatHelp(m, verdict)}
         /*
           ⚠️ **mono가 아니다** (핸드오프 1c). 이 둘은 **읽는 값**이지 사람이 옮겨 적는 값이 아니다 —
           mono는 푸시 토큰·워크플로 YAML처럼 그대로 베껴야 하는 것에만 남는다. 시안은 색만 올린다.
@@ -150,9 +152,12 @@ export function NamingStep({
   );
 }
 
-function BaseLocaleFields({ state, onChange, id = "base-locale", label = m.newProject.baseLocale.title, disabled }: {
+function BaseLocaleFields({ state, onChange, id = "base-locale", label: labelProp, disabled }: {
   state: NamingStepState; onChange: (next: Partial<NamingStepState>) => void; id?: string; label?: ReactNode; disabled: boolean;
 }) {
+  const m = useMessages();
+  const uiLocale = useUiLocale();
+  const label = labelProp ?? m.newProject.baseLocale.title;
   const { locales, keyCounts } = state;
   const selectId = id === "base-locale" ? "project-base-locale" : `${id}-select`;
   /** 키 수를 **아는** 언어 중 가장 많은 것. 모르면 배지가 아예 안 선다. */
@@ -209,7 +214,7 @@ function BaseLocaleFields({ state, onChange, id = "base-locale", label = m.newPr
                     <LocaleFlag code={code} />
                     {/* 배지 자리가 라벨로 간다 — 키 수와 `Most keys`는 **아는 언어에만** 붙는다. */}
                     {m.newProject.naming.baseOption(
-                      languageName(code),
+                      languageName(code, uiLocale),
                       countOf(code) === undefined ? undefined : m.newProject.files.keys(countOf(code) ?? 0),
                       code === leader && known.length > 1,
                     )}
@@ -255,7 +260,7 @@ function BaseLocaleFields({ state, onChange, id = "base-locale", label = m.newPr
                             <LocaleFlag code={code} size="md" />
                           </IconTile>
                           <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                            <span className="block truncate text-base font-medium">{languageName(code)}</span>
+                            <span className="block truncate text-base font-medium">{languageName(code, uiLocale)}</span>
                             <span className={cn("block truncate text-sm", active ? "text-foreground/60" : "text-muted-foreground")}>
                               {m.newProject.baseLocale.row(
                                 /*
@@ -292,7 +297,7 @@ function BaseLocaleFields({ state, onChange, id = "base-locale", label = m.newPr
 }
 
 /** `planSlug`의 갈래 넷 → 필드 아래 help. `ok`면 `undefined`라 기본 안내가 선다. */
-function slugFormatHelp(verdict: ReturnType<typeof planSlug>): string | undefined {
+function slugFormatHelp(m: Messages, verdict: ReturnType<typeof planSlug>): string | undefined {
   switch (verdict) {
     case "ok":
       return undefined;

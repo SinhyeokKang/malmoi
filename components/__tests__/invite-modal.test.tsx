@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { InviteModal } from "@/components/members/invite-modal";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { find, input, key, render } from "./helpers/dom";
 
@@ -55,13 +55,13 @@ const email = (i: number) => find<HTMLInputElement>(rows()[i]!, 'input[inputmode
 const role = (i: number) => find<HTMLElement>(rows()[i]!, '[role="combobox"]');
 const remove = (i: number) => find<HTMLButtonElement>(rows()[i]!, "button[data-remove]");
 const reason = (i: number) => rows()[i]!.querySelector("[data-row-reason]")?.textContent ?? null;
-const addAnother = () => [...panel().querySelectorAll("button")].find((b) => b.textContent === m.members.invite.addAnother) as HTMLButtonElement;
+const addAnother = () => [...panel().querySelectorAll("button")].find((b) => b.textContent === en.members.invite.addAnother) as HTMLButtonElement;
 const status = () => find<HTMLElement>(panel(), "[data-invite-status]");
 const formAlert = () => panel().querySelector<HTMLElement>("[data-form-alert] > div");
 /** `aria-labelledby`를 따라 접근 이름을 조립한다 — 역할 셀렉트는 라벨 + 현재 값이다. */
 const nameOf = (el: Element) =>
   (el.getAttribute("aria-labelledby") ?? "").split(" ").filter(Boolean).map((id) => document.getElementById(id)?.textContent ?? "").join(" ").replace(/\s+/g, " ").trim() || el.getAttribute("aria-label");
-const closeButton = () => find<HTMLButtonElement>(document.body, `button[aria-label="${m.common.close}"]`);
+const closeButton = () => find<HTMLButtonElement>(document.body, `button[aria-label="${en.common.close}"]`);
 const click = async (node: HTMLElement) => { await act(async () => { await userEvent.setup().click(node); }); };
 /**
  * ⚠️ **Radix의 포커스 이동은 렌더 뒤 매크로태스크다** — `act`는 React만 비우므로 그 전에 단언하면
@@ -103,11 +103,11 @@ describe("1a 입력 — 빈 행 하나", () => {
   it("제목·설명·열 머리·좌석이 시안 문구다", async () => {
     await open();
     const text = panel().textContent ?? "";
-    expect(text).toContain(m.members.invite.title);
-    expect(text).toContain(m.members.invite.description);
-    expect(text).toContain(m.members.invite.columns.email);
-    expect(text).toContain(m.members.invite.columns.role);
-    expect(status().textContent).toBe(m.members.invite.seatsUsed(4, 10));
+    expect(text).toContain(en.members.invite.title);
+    expect(text).toContain(en.members.invite.description);
+    expect(text).toContain(en.members.invite.columns.email);
+    expect(text).toContain(en.members.invite.columns.role);
+    expect(status().textContent).toBe(en.members.invite.seatsUsed(4, 10));
     expect(status().getAttribute("aria-live")).toBe("polite");
   });
 
@@ -131,13 +131,13 @@ describe("1a 입력 — 빈 행 하나", () => {
   it("빈 폼에서는 주 버튼이 꺼져 있고 라벨이 Send invitations다", async () => {
     await open();
     expect(submit().disabled).toBe(true);
-    expect(submit().textContent).toBe(m.members.invite.send(0));
+    expect(submit().textContent).toBe(en.members.invite.send(0));
   });
 
   it("한 행일 때 제거 버튼은 꺼진 채 자리를 지킨다", async () => {
     await open();
     expect(remove(0).disabled).toBe(true);
-    expect(remove(0).getAttribute("aria-label")).toBe(m.members.invite.removeRecipient("recipient 1"));
+    expect(remove(0).getAttribute("aria-label")).toBe(en.members.invite.removeRecipient("recipient 1"));
   });
 
   /** ⚠️ 제출 버튼이 `<form>` 바깥이다 — `form=`이 없으면 버튼 제출이 조용히 죽는다 (POSTMORTEM 2026-09-08). */
@@ -153,11 +153,11 @@ describe("1b 입력 — 여러 명 · 역할 혼합", () => {
   it("주 버튼 라벨이 채운 행 수를 든다", async () => {
     await open();
     await fill(["a@x.com"]);
-    expect(submit().textContent).toBe(m.members.invite.send(1));
+    expect(submit().textContent).toBe(en.members.invite.send(1));
     await fill(["a@x.com", "b@x.com", "c@x.com"]);
-    expect(submit().textContent).toBe(m.members.invite.send(3));
-    expect(m.members.invite.send(1)).toBe("Send invitation");
-    expect(m.members.invite.send(3)).toBe("Send 3 invitations");
+    expect(submit().textContent).toBe(en.members.invite.send(3));
+    expect(en.members.invite.send(1)).toBe("Send invitation");
+    expect(en.members.invite.send(3)).toBe("Send 3 invitations");
   });
 
   it("행마다 역할을 들고 빈 행은 보내지 않는다", async () => {
@@ -178,10 +178,10 @@ describe("1b 입력 — 여러 명 · 역할 혼합", () => {
     await open();
     await fill(["mina@example.com"]);
     // ⚠️ 이름에 현재 값이 들어간다 — `aria-label`만 주면 버튼형 combobox가 값을 안 읽어 행마다 역할을 확인할 길이 없다.
-    expect(nameOf(role(0))).toBe(`${m.members.invite.roleFor("mina@example.com")} ${m.projects.role.EDITOR}`);
+    expect(nameOf(role(0))).toBe(`${en.members.invite.roleFor("mina@example.com")} ${en.projects.role.EDITOR}`);
     await pickOwner(0);
-    expect(nameOf(role(0))).toBe(`${m.members.invite.roleFor("mina@example.com")} ${m.projects.role.OWNER}`);
-    expect(remove(0).getAttribute("aria-label")).toBe(m.members.invite.removeRecipient("mina@example.com"));
+    expect(nameOf(role(0))).toBe(`${en.members.invite.roleFor("mina@example.com")} ${en.projects.role.OWNER}`);
+    expect(remove(0).getAttribute("aria-label")).toBe(en.members.invite.removeRecipient("mina@example.com"));
   });
 
   it("이메일에서 Enter는 아래에 행을 추가하고 그 입력으로 옮긴다 — 제출하지 않는다", async () => {
@@ -213,8 +213,8 @@ describe("1b 입력 — 여러 명 · 역할 혼합", () => {
     await pickOwner(0);
     await paste(email(0), "a@x.com b@x.com");
     expect(rows().map((_, i) => email(i).value)).toEqual(["keep@x.com", "a@x.com", "b@x.com"]);
-    expect(role(0).textContent).toContain(m.projects.role.OWNER);
-    expect(role(1).textContent).toContain(m.projects.role.EDITOR);
+    expect(role(0).textContent).toContain(en.projects.role.OWNER);
+    expect(role(1).textContent).toContain(en.projects.role.EDITOR);
   });
 
   it("주소 하나 붙여 넣기는 평범한 붙여 넣기다", async () => {
@@ -241,8 +241,8 @@ describe("1c 입력 오류 — 제출 전 전체 검증", () => {
     await click(submit());
     expect(mocks.createInvitations).not.toHaveBeenCalled();
     expect(reason(0)).toBeNull();
-    expect(reason(1)).toBe(m.members.invite.rowError.invalidEmail);
-    expect(reason(2)).toBe(m.members.invite.rowError.duplicate(1));
+    expect(reason(1)).toBe(en.members.invite.rowError.invalidEmail);
+    expect(reason(2)).toBe(en.members.invite.rowError.duplicate(1));
     // 행 사유는 alert가 아니다 — 알림은 바닥 상태 문장이 한 번 한다(행마다 alert면 줄 수만큼 끼어든다).
     for (const line of document.querySelectorAll("[data-row-reason]")) expect(line.hasAttribute("role")).toBe(false);
     await settle();
@@ -255,9 +255,9 @@ describe("1c 입력 오류 — 제출 전 전체 검증", () => {
     await fill(["mina@example.com", "MINA@Example.com "]);
     await pickOwner(1);
     await click(submit());
-    expect(reason(0)).toBe(m.members.invite.rowError.roleConflict(2, m.projects.role.OWNER));
-    expect(reason(1)).toBe(m.members.invite.rowError.roleConflict(1, m.projects.role.EDITOR));
-    expect(m.members.invite.rowError.roleConflict(2, "Owner")).toBe("Also in row 2 as Owner. Keep one role for this address.");
+    expect(reason(0)).toBe(en.members.invite.rowError.roleConflict(2, en.projects.role.OWNER));
+    expect(reason(1)).toBe(en.members.invite.rowError.roleConflict(1, en.projects.role.EDITOR));
+    expect(en.members.invite.rowError.roleConflict(2, "Owner")).toBe("Also in row 2 as Owner. Keep one role for this address.");
   });
 
   it("입력은 몰래 고치지 않는다 — 오류로 남은 폼의 표시는 원문이다", async () => {
@@ -273,23 +273,23 @@ describe("1c 입력 오류 — 제출 전 전체 검증", () => {
     await click(submit());
     await input(email(0), "good@x.com");
     expect(reason(0)).toBeNull();
-    expect(reason(1)).toBe(m.members.invite.rowError.invalidEmail);
+    expect(reason(1)).toBe(en.members.invite.rowError.invalidEmail);
   });
 
   it("행을 지우면 남은 사유의 행 번호가 따라 움직인다 — 자기 자신을 가리키지 않는다", async () => {
     await open();
     await fill(["x@x.com", "keep@x.com", "dup@x.com", "dup@x.com"]);
     await click(submit());
-    expect(reason(3)).toBe(m.members.invite.rowError.duplicate(3));
+    expect(reason(3)).toBe(en.members.invite.rowError.duplicate(3));
     await click(remove(0));
-    expect(reason(2)).toBe(m.members.invite.rowError.duplicate(2));
+    expect(reason(2)).toBe(en.members.invite.rowError.duplicate(2));
   });
 
   it("짝이 되는 행을 지우면 중복 사유가 사라진다", async () => {
     await open();
     await fill(["dup@x.com", "dup@x.com"]);
     await click(submit());
-    expect(reason(1)).toBe(m.members.invite.rowError.duplicate(1));
+    expect(reason(1)).toBe(en.members.invite.rowError.duplicate(1));
     await click(remove(0));
     expect(reason(0)).toBeNull();
   });
@@ -300,7 +300,7 @@ describe("1c 입력 오류 — 제출 전 전체 검증", () => {
     await pickOwner(2);
     await click(submit());
     await pickOwner(0);
-    expect(reason(0)).toBe(m.members.invite.rowError.invalidEmail);
+    expect(reason(0)).toBe(en.members.invite.rowError.invalidEmail);
     await pickOwner(1);
     expect(reason(1)).toBeNull();
   });
@@ -310,7 +310,7 @@ describe("1c 입력 오류 — 제출 전 전체 검증", () => {
     await fill(["a@x.com", "a@x.com"]);
     await pickOwner(1);
     await click(submit());
-    expect(reason(0)).toBe(m.members.invite.rowError.roleConflict(2, m.projects.role.OWNER));
+    expect(reason(0)).toBe(en.members.invite.rowError.roleConflict(2, en.projects.role.OWNER));
     // 1행을 Owner로 맞춘다(2행에서 이어 치면 Radix 타이프어헤드가 "oe"로 누적해 안 바뀐다).
     await pickOwner(0);
     expect(reason(0)).toBeNull();
@@ -331,7 +331,7 @@ describe("1c 입력 오류 — 제출 전 전체 검증", () => {
     await click(remove(1));
     expect(mocks.toast).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
-    expect(submit().textContent).toBe(m.members.invite.send(1));
+    expect(submit().textContent).toBe(en.members.invite.send(1));
   });
 });
 
@@ -348,8 +348,8 @@ describe("1d 전송 중 — 전부 잠긴다", () => {
     expect(addAnother().disabled).toBe(true);
     expect(closeButton().disabled).toBe(true);
     expect(submit().disabled).toBe(true);
-    expect(submit().textContent).toContain(m.members.invite.send(2));
-    expect(status().textContent).toBe(m.members.invite.sending);
+    expect(submit().textContent).toContain(en.members.invite.send(2));
+    expect(status().textContent).toBe(en.members.invite.sending);
     await act(async () => { resolve({ ok: true, count: 2 }); });
   });
 });
@@ -364,7 +364,7 @@ describe("1e 성공 — 닫힘 + 토스트", () => {
     await fill(Array.from({ length: count }, (_, i) => `u${i}@x.com`));
     await click(submit());
     expect(mocks.toast).toHaveBeenCalledWith(text);
-    expect(m.members.invite.sentToast(count)).toBe(text);
+    expect(en.members.invite.sentToast(count)).toBe(text);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
@@ -377,10 +377,10 @@ describe("1f 서버 거부 — 그 행 아래", () => {
     await fill(["a@x.com", "", "member@x.com"]);
     await click(submit());
     await settle();
-    expect(reason(2)).toBe(m.members.invite.alreadyMember);
+    expect(reason(2)).toBe(en.members.invite.alreadyMember);
     expect(reason(0)).toBeNull();
-    expect(status().textContent).toBe(m.members.invite.nothingSent);
-    expect(m.members.invite.nothingSent).toBe("Nothing was sent by this request. Fix or remove the highlighted row, then send again.");
+    expect(status().textContent).toBe(en.members.invite.nothingSent);
+    expect(en.members.invite.nothingSent).toBe("Nothing was sent by this request. Fix or remove the highlighted row, then send again.");
     expect(document.activeElement).toBe(email(2));
     expect(onClose).not.toHaveBeenCalled();
   });
@@ -391,7 +391,7 @@ describe("1f 서버 거부 — 그 행 아래", () => {
     await fill(["member@x.com"]);
     await click(submit());
     await input(email(0), "new@x.com");
-    expect(status().textContent).toBe(m.members.invite.seatsUsed(4, 10));
+    expect(status().textContent).toBe(en.members.invite.seatsUsed(4, 10));
   });
 });
 
@@ -405,9 +405,9 @@ describe("1g·1h 폼 Alert — 같은 자리 하나", () => {
     await click(submit());
     await settle();
     const alert = formAlert();
-    expect(alert?.textContent).toContain(m.members.invite.limit.title);
-    expect(alert?.textContent).toContain(m.members.invite.limit.user(30, 29, 2, "Sep 23, 2026 12:01 UTC"));
-    expect(alert?.className).toContain("amber");
+    expect(alert?.textContent).toContain(en.members.invite.limit.title);
+    expect(alert?.textContent).toContain(en.members.invite.limit.user(30, 29, 2, "Sep 23, 2026 12:01 UTC"));
+    expect(alert?.className).toContain("warning-surface");
   });
 
   it("프로젝트 한도는 warning이고 서버 수·시각을 문장으로 적는다", async () => {
@@ -417,9 +417,9 @@ describe("1g·1h 폼 Alert — 같은 자리 하나", () => {
     await click(submit());
     await settle();
     const alert = formAlert();
-    expect(alert?.textContent).toContain(m.members.invite.limit.title);
-    expect(alert?.textContent).toContain(m.members.invite.limit.project(20, 18, 3, "Sep 23, 2026 12:01 UTC"));
-    expect(alert?.className).toContain("amber");
+    expect(alert?.textContent).toContain(en.members.invite.limit.title);
+    expect(alert?.textContent).toContain(en.members.invite.limit.project(20, 18, 3, "Sep 23, 2026 12:01 UTC"));
+    expect(alert?.className).toContain("warning-surface");
     expect(email(2).value).toBe("c@x.com");
     expect(document.activeElement).toBe(submit());
   });
@@ -429,7 +429,7 @@ describe("1g·1h 폼 Alert — 같은 자리 하나", () => {
     await open();
     await fill(["a@x.com", "mina@example.com"]);
     await click(submit());
-    expect(formAlert()?.textContent).toContain(m.members.invite.limit.address("mina@example.com", "Sep 23, 2026 12:01 UTC"));
+    expect(formAlert()?.textContent).toContain(en.members.invite.limit.address("mina@example.com", "Sep 23, 2026 12:01 UTC"));
   });
 
   it("결과 미확인은 warning이고 일부가 갔을 수 있다고 말한다", async () => {
@@ -437,14 +437,14 @@ describe("1g·1h 폼 Alert — 같은 자리 하나", () => {
     await open();
     await fill(["a@x.com"]);
     await click(submit());
-    expect(formAlert()?.textContent).toContain(m.members.invite.unconfirmed.title);
-    expect(formAlert()?.textContent).toContain(m.members.invite.unconfirmed.body);
-    expect(formAlert()?.className).toContain("amber");
+    expect(formAlert()?.textContent).toContain(en.members.invite.unconfirmed.title);
+    expect(formAlert()?.textContent).toContain(en.members.invite.unconfirmed.body);
+    expect(formAlert()?.className).toContain("warning-surface");
   });
 
   it.each([
-    ["email-rejected", () => m.members.invite.sendFailed],
-    ["email-unavailable", () => m.members.invite.emailUnavailable],
+    ["email-rejected", () => en.members.invite.sendFailed],
+    ["email-unavailable", () => en.members.invite.emailUnavailable],
   ])("%s는 danger다", async (error, text) => {
     mocks.createInvitations.mockResolvedValueOnce({ ok: false, error, retryAt: RETRY });
     await open();
@@ -455,7 +455,7 @@ describe("1g·1h 폼 Alert — 같은 자리 하나", () => {
   });
 
   it("메일 설정 없음 문구에 workspace가 없다", () => {
-    expect(m.members.invite.emailUnavailable).toBe("Email is unavailable right now. Try again later.");
+    expect(en.members.invite.emailUnavailable).toBe("Email is unavailable right now. Try again later.");
   });
 
   it("Action 호출 자체가 실패하면 결과 미확인이고 잠금이 풀린다", async () => {
@@ -464,7 +464,7 @@ describe("1g·1h 폼 Alert — 같은 자리 하나", () => {
     await fill(["a@x.com"]);
     await click(submit());
     await settle();
-    expect(formAlert()?.textContent).toContain(m.members.invite.unconfirmed.title);
+    expect(formAlert()?.textContent).toContain(en.members.invite.unconfirmed.title);
     expect(email(0).disabled).toBe(false);
     expect(document.activeElement).toBe(submit());
   });

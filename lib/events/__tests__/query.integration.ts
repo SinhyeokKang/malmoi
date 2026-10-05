@@ -1,3 +1,4 @@
+import { en } from "@/messages/en";
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -132,7 +133,7 @@ describe("loadEvents — 정렬과 페이지 경계", () => {
     for (const [index, kind] of (["TRANSLATION", "IMPORT", "PUBLISH", "SURFACE", "MEMBER", "SETTINGS"] as const).entries()) {
       ids.push(await event({ kind, occurredAt: new Date(AT.getTime() + index * 1000) }));
     }
-    const page = await loadEvents(prisma, "p1", base());
+    const page = await loadEvents(prisma, en, "p1", base(), { timeZone: "UTC" });
     expect(page.rows.map((row) => row.ref)).toEqual([...ids].reverse());
   });
 
@@ -141,11 +142,11 @@ describe("loadEvents — 정렬과 페이지 경계", () => {
     const ids: string[] = [];
     for (let index = 0; index < 21; index += 1) ids.push(await event({ occurredAt: AT }));
 
-    const first = await loadEvents(prisma, "p1", base());
+    const first = await loadEvents(prisma, en, "p1", base(), { timeZone: "UTC" });
     expect(first.rows).toHaveLength(20);
     expect(first.nextCursor).not.toBe(null);
 
-    const second = await loadEvents(prisma, "p1", base({ cursor: first.nextCursor }));
+    const second = await loadEvents(prisma, en, "p1", base({ cursor: first.nextCursor }), { timeZone: "UTC" });
     expect(second.rows).toHaveLength(1);
     expect(second.nextCursor).toBe(null);
 
@@ -156,12 +157,12 @@ describe("loadEvents — 정렬과 페이지 경계", () => {
 
   it("마지막 페이지는 커서를 내지 않는다", async () => {
     await event();
-    expect((await loadEvents(prisma, "p1", base())).nextCursor).toBe(null);
+    expect((await loadEvents(prisma, en, "p1", base(), { timeZone: "UTC" })).nextCursor).toBe(null);
   });
 
   it("Home은 같은 함수를 limit 6으로 부른다", async () => {
     for (let index = 0; index < 8; index += 1) await event({ occurredAt: new Date(AT.getTime() + index * 1000) });
-    const page = await loadEvents(prisma, "p1", base(), { limit: 6 });
+    const page = await loadEvents(prisma, en, "p1", base(), { limit: 6, timeZone: "UTC" });
     expect(page.rows).toHaveLength(6);
     expect(page.nextCursor).not.toBe(null);
   });
@@ -170,22 +171,22 @@ describe("loadEvents — 정렬과 페이지 경계", () => {
 describe("테넌트 격리 (불변식 5)", () => {
   it("다른 프로젝트의 사건은 목록에 없다", async () => {
     await event({ projectId: "p2" });
-    expect((await loadEvents(prisma, "p1", base())).rows).toEqual([]);
+    expect((await loadEvents(prisma, en, "p1", base(), { timeZone: "UTC" })).rows).toEqual([]);
   });
 
   it("다른 프로젝트의 참조는 상세에서도 null이다", async () => {
     const ref = await event({ projectId: "p2" });
-    expect(await loadEvent(prisma, "p1", ref)).toBe(null);
-    expect(await loadEvent(prisma, "p2", ref)).not.toBe(null);
+    expect(await loadEvent(prisma, en, "p1", ref)).toBe(null);
+    expect(await loadEvent(prisma, en, "p2", ref)).not.toBe(null);
   });
 
   it("없는 참조도 null이고 던지지 않는다", async () => {
-    expect(await loadEvent(prisma, "p1", "nope")).toBe(null);
+    expect(await loadEvent(prisma, en, "p1", "nope")).toBe(null);
   });
 
   it("다른 프로젝트의 소스로 좁히면 0건이다", async () => {
     await event({ surfaceIds: ["sA"] });
-    expect((await loadEvents(prisma, "p1", base({ sources: ["z"] }))).rows).toEqual([]);
+    expect((await loadEvents(prisma, en, "p1", base({ sources: ["z"] }), { timeZone: "UTC" })).rows).toEqual([]);
   });
 });
 
@@ -193,31 +194,31 @@ describe("소스 필터 — 사건 당시 대상 집합 (결정 14)", () => {
   it("A·B를 처리한 실행이 각 필터에 한 번씩 나오고 C에는 없다", async () => {
     const ref = await event({ kind: "IMPORT", surfaceIds: ["sA", "sB"] });
     for (const source of ["a", "b"]) {
-      const rows = (await loadEvents(prisma, "p1", base({ sources: [source] }))).rows;
+      const rows = (await loadEvents(prisma, en, "p1", base({ sources: [source] }), { timeZone: "UTC" })).rows;
       expect(rows.map((row) => row.ref), source).toEqual([ref]);
     }
-    expect((await loadEvents(prisma, "p1", base({ sources: ["c"] }))).rows).toEqual([]);
+    expect((await loadEvents(prisma, en, "p1", base({ sources: ["c"] }), { timeZone: "UTC" })).rows).toEqual([]);
   });
 
   it("나중에 소스를 추가해도 과거 실행의 집합은 바뀌지 않는다", async () => {
     const ref = await event({ surfaceIds: ["sA"] });
     await prisma.translationSurface.create({ data: { id: "sD", projectId: "p1", slug: "d" } });
-    expect((await loadEvents(prisma, "p1", base({ sources: ["d"] }))).rows).toEqual([]);
-    expect((await loadEvents(prisma, "p1", base({ sources: ["a"] }))).rows.map((row) => row.ref)).toEqual([ref]);
+    expect((await loadEvents(prisma, en, "p1", base({ sources: ["d"] }), { timeZone: "UTC" })).rows).toEqual([]);
+    expect((await loadEvents(prisma, en, "p1", base({ sources: ["a"] }), { timeZone: "UTC" })).rows.map((row) => row.ref)).toEqual([ref]);
   });
 
   it("프로젝트 전역 사건만 따로 좁혀진다", async () => {
     const wide = await event({ kind: "MEMBER", surfaceIds: [], surfaceScope: "project-wide" });
     await event({ surfaceIds: ["sA"] });
-    expect((await loadEvents(prisma, "p1", base({ sources: [PROJECT_WIDE] }))).rows.map((row) => row.ref)).toEqual([wide]);
+    expect((await loadEvents(prisma, en, "p1", base({ sources: [PROJECT_WIDE] }), { timeZone: "UTC" })).rows.map((row) => row.ref)).toEqual([wide]);
   });
 
   /** ⚠️ **백필은 과거 대상 소스를 모른다** — 전체 목록엔 남고 특정 소스·전역 필터엔 안 들어간다. */
   it("백필된 Publish는 전체 목록에만 있다", async () => {
     const ref = await event({ kind: "PUBLISH", surfaceIds: [], surfaceScope: "not-recorded" });
-    expect((await loadEvents(prisma, "p1", base())).rows.map((row) => row.ref)).toEqual([ref]);
-    expect((await loadEvents(prisma, "p1", base({ sources: ["a"] }))).rows).toEqual([]);
-    expect((await loadEvents(prisma, "p1", base({ sources: [PROJECT_WIDE] }))).rows).toEqual([]);
+    expect((await loadEvents(prisma, en, "p1", base(), { timeZone: "UTC" })).rows.map((row) => row.ref)).toEqual([ref]);
+    expect((await loadEvents(prisma, en, "p1", base({ sources: ["a"] }), { timeZone: "UTC" })).rows).toEqual([]);
+    expect((await loadEvents(prisma, en, "p1", base({ sources: [PROJECT_WIDE] }), { timeZone: "UTC" })).rows).toEqual([]);
   });
 });
 
@@ -227,7 +228,7 @@ describe("Publish 결과는 조인이 든다 (결정 1)", () => {
       await resetSchema();
       await seed();
       await publishRun(`run-${status}`, status);
-      const [row] = (await loadEvents(prisma, "p1", base())).rows;
+      const [row] = (await loadEvents(prisma, en, "p1", base(), { timeZone: "UTC" })).rows;
       expect(row?.result, status).toBe(expected);
     }
   });
@@ -236,10 +237,10 @@ describe("Publish 결과는 조인이 든다 (결정 1)", () => {
   it("SKIPPED + withheld > 0은 notSent이고 run.withheld를 든다 · 필터가 nothingToSend와 가른다", async () => {
     const notSent = await publishRun("run-w", "SKIPPED", { withheld: 2, changed: 0, occurredAt: new Date(AT.getTime() + 1000) });
     const nothing = await publishRun("run-n", "SKIPPED", { changed: 0 });
-    const rows = (await loadEvents(prisma, "p1", base())).rows;
+    const rows = (await loadEvents(prisma, en, "p1", base(), { timeZone: "UTC" })).rows;
     expect(rows.map((r) => [r.ref, r.result, r.run?.withheld])).toEqual([[notSent, "notSent", 2], [nothing, "nothingToSend", 0]]);
-    expect((await loadEvents(prisma, "p1", base({ results: ["notSent"] }))).rows.map((r) => r.ref)).toEqual([notSent]);
-    expect((await loadEvents(prisma, "p1", base({ results: ["nothingToSend"] }))).rows.map((r) => r.ref)).toEqual([nothing]);
+    expect((await loadEvents(prisma, en, "p1", base({ results: ["notSent"] }), { timeZone: "UTC" })).rows.map((r) => r.ref)).toEqual([notSent]);
+    expect((await loadEvents(prisma, en, "p1", base({ results: ["nothingToSend"] }), { timeZone: "UTC" })).rows.map((r) => r.ref)).toEqual([nothing]);
   });
 
   /**
@@ -249,24 +250,24 @@ describe("Publish 결과는 조인이 든다 (결정 1)", () => {
   it("SKIPPED + warnings > 0도 notSent다 · 필터가 nothingToSend와 가른다", async () => {
     const refused = await publishRun("run-x", "SKIPPED", { warnings: 1, changed: 0, occurredAt: new Date(AT.getTime() + 1000) });
     const nothing = await publishRun("run-n", "SKIPPED", { changed: 0 });
-    expect((await loadEvents(prisma, "p1", base())).rows.map((r) => [r.ref, r.result])).toEqual([[refused, "notSent"], [nothing, "nothingToSend"]]);
-    expect((await loadEvents(prisma, "p1", base({ results: ["notSent"] }))).rows.map((r) => r.ref)).toEqual([refused]);
-    expect((await loadEvents(prisma, "p1", base({ results: ["nothingToSend"] }))).rows.map((r) => r.ref)).toEqual([nothing]);
+    expect((await loadEvents(prisma, en, "p1", base(), { timeZone: "UTC" })).rows.map((r) => [r.ref, r.result])).toEqual([[refused, "notSent"], [nothing, "nothingToSend"]]);
+    expect((await loadEvents(prisma, en, "p1", base({ results: ["notSent"] }), { timeZone: "UTC" })).rows.map((r) => r.ref)).toEqual([refused]);
+    expect((await loadEvents(prisma, en, "p1", base({ results: ["nothingToSend"] }), { timeZone: "UTC" })).rows.map((r) => r.ref)).toEqual([nothing]);
   });
 
   /** mcp-connector T6.5 r1 — 지문 불일치로 쓰기 전에 멈춘 실행(SKIPPED + errorCode reconfirm)도 Nothing to send가 아니다. 조회와 필터가 같은 술어다. */
   it("SKIPPED + errorCode reconfirm도 notSent다 · 필터가 nothingToSend와 가른다", async () => {
     const reconfirm = await publishRun("run-r", "SKIPPED", { errorCode: "reconfirm", changed: null, occurredAt: new Date(AT.getTime() + 1000) });
     const nothing = await publishRun("run-n", "SKIPPED", { changed: 0 });
-    expect((await loadEvents(prisma, "p1", base())).rows.map((r) => [r.ref, r.result, r.run?.errorCode])).toEqual([[reconfirm, "notSent", "reconfirm"], [nothing, "nothingToSend", null]]);
-    expect((await loadEvents(prisma, "p1", base({ results: ["notSent"] }))).rows.map((r) => r.ref)).toEqual([reconfirm]);
-    expect((await loadEvents(prisma, "p1", base({ results: ["nothingToSend"] }))).rows.map((r) => r.ref)).toEqual([nothing]);
+    expect((await loadEvents(prisma, en, "p1", base(), { timeZone: "UTC" })).rows.map((r) => [r.ref, r.result, r.run?.errorCode])).toEqual([[reconfirm, "notSent", "reconfirm"], [nothing, "nothingToSend", null]]);
+    expect((await loadEvents(prisma, en, "p1", base({ results: ["notSent"] }), { timeZone: "UTC" })).rows.map((r) => r.ref)).toEqual([reconfirm]);
+    expect((await loadEvents(prisma, en, "p1", base({ results: ["nothingToSend"] }), { timeZone: "UTC" })).rows.map((r) => r.ref)).toEqual([nothing]);
   });
 
   it("실행이 나중에 닫혀도 이벤트 쪽 값이 갈리지 않는다", async () => {
     await publishRun("run-1", "RUNNING");
     await prisma.syncRun.update({ where: { id: "run-1" }, data: { status: "SUCCEEDED", changed: 3, changedValues: 24, warnings: 2, prUrl: "https://x/1" } });
-    const [row] = (await loadEvents(prisma, "p1", base())).rows;
+    const [row] = (await loadEvents(prisma, en, "p1", base(), { timeZone: "UTC" })).rows;
     expect(row?.result).toBe("sent");
     expect(row?.run).toEqual({ changed: 3, changedValues: 24, warnings: 2, withheld: 0, prUrl: "https://x/1", errorCode: null });
   });
@@ -280,40 +281,40 @@ describe("Publish 결과는 조인이 든다 (결정 1)", () => {
     await prisma.syncRun.update({ where: { id: "run-counted" }, data: { status: "SUCCEEDED", changed: 1, changedValues: 0, finishedAt: new Date() } });
     const legacy = await publishRun("run-legacy", "RUNNING");
     await prisma.syncRun.update({ where: { id: "run-legacy" }, data: { status: "SUCCEEDED", changed: 2, finishedAt: new Date() } });
-    const byRef = new Map((await loadEvents(prisma, "p1", base())).rows.map(r => [r.ref, r.run?.changedValues]));
+    const byRef = new Map((await loadEvents(prisma, en, "p1", base(), { timeZone: "UTC" })).rows.map(r => [r.ref, r.run?.changedValues]));
     expect(byRef.get(counted)).toBe(0);
     expect(byRef.get(legacy)).toBeNull();
   });
 
   it("완료 시각은 SyncRun에서 읽고 상세와 목록이 같다", async () => {
     const ref = await publishRun("run-time", "RUNNING");
-    expect((await loadEvent(prisma, "p1", ref))?.finishedAt).toBe(null);
+    expect((await loadEvent(prisma, en, "p1", ref))?.finishedAt).toBe(null);
     const finishedAt = new Date(AT.getTime() + 12_000);
     await prisma.syncRun.update({ where: { id: "run-time", projectId: "p1" }, data: { status: "SUCCEEDED", finishedAt } });
-    expect((await loadEvent(prisma, "p1", ref))?.finishedAt).toEqual(finishedAt);
-    expect((await loadEvents(prisma, "p1", base())).rows[0]?.finishedAt).toEqual(finishedAt);
+    expect((await loadEvent(prisma, en, "p1", ref))?.finishedAt).toEqual(finishedAt);
+    expect((await loadEvents(prisma, en, "p1", base(), { timeZone: "UTC" })).rows[0]?.finishedAt).toEqual(finishedAt);
   });
 
   it("결과 필터가 조인한 Publish도 잡는다", async () => {
     const sent = await publishRun("run-ok", "SUCCEEDED", { occurredAt: new Date(AT.getTime() + 1000) });
     const imported = await event({ kind: "IMPORT", result: "imported" });
-    expect((await loadEvents(prisma, "p1", base({ results: ["sent"] }))).rows.map((row) => row.ref)).toEqual([sent]);
-    expect((await loadEvents(prisma, "p1", base({ results: ["imported"] }))).rows.map((row) => row.ref)).toEqual([imported]);
+    expect((await loadEvents(prisma, en, "p1", base({ results: ["sent"] }), { timeZone: "UTC" })).rows.map((row) => row.ref)).toEqual([sent]);
+    expect((await loadEvents(prisma, en, "p1", base({ results: ["imported"] }), { timeZone: "UTC" })).rows.map((row) => row.ref)).toEqual([imported]);
   });
 
   it("저장된 결과와 조인한 상태를 함께 본다 — 선행 거부도 실패도 각자 잡힌다", async () => {
     await publishRun("run-fail", "FAILED", { errorCode: "github-error", occurredAt: new Date(AT.getTime() + 1000) });
     const refusal = await event({ kind: "PUBLISH", result: "notStarted", payload: { kind: "PUBLISH", surfaceSlugs: [], refusal: "archived" } });
-    const failed = (await loadEvents(prisma, "p1", base({ results: ["failed"] }))).rows;
+    const failed = (await loadEvents(prisma, en, "p1", base({ results: ["failed"] }), { timeZone: "UTC" })).rows;
     expect(failed).toHaveLength(1);
-    expect((await loadEvents(prisma, "p1", base({ results: ["notStarted"] }))).rows.map((row) => row.ref)).toEqual([refusal]);
+    expect((await loadEvents(prisma, en, "p1", base({ results: ["notStarted"] }), { timeZone: "UTC" })).rows.map((row) => row.ref)).toEqual([refusal]);
   });
 });
 
 describe("행위자 — 원문 이메일이 나가지 않는다", () => {
   it("직렬화 결과 어디에도 원문 주소가 없다", async () => {
     await event({ actorUserId: "u1" });
-    const page = await loadEvents(prisma, "p1", base());
+    const page = await loadEvents(prisma, en, "p1", base(), { timeZone: "UTC" });
     expect(JSON.stringify(page)).not.toContain("kim@example.com");
     expect(page.rows[0]?.actor.emailLabel).toContain("***");
   });
@@ -322,7 +323,7 @@ describe("행위자 — 원문 이메일이 나가지 않는다", () => {
   it("같은 도메인 두 사람의 라벨이 갈린다", async () => {
     await event({ actorUserId: "u1", occurredAt: new Date(AT.getTime() + 1000) });
     await event({ actorUserId: "u2" });
-    const labels = (await loadEvents(prisma, "p1", base())).rows.map((row) => row.actor.emailLabel);
+    const labels = (await loadEvents(prisma, en, "p1", base(), { timeZone: "UTC" })).rows.map((row) => row.actor.emailLabel);
     expect(new Set(labels).size).toBe(2);
   });
 
@@ -332,13 +333,13 @@ describe("행위자 — 원문 이메일이 나가지 않는다", () => {
    */
   it("같은 사람의 사건이 셋이어도 원문이 아니라 마스킹 라벨이다", async () => {
     for (let i = 0; i < 3; i += 1) await event({ actorUserId: "u2", occurredAt: new Date(AT.getTime() + i * 1000) });
-    const labels = (await loadEvents(prisma, "p1", base())).rows.map((row) => row.actor.emailLabel);
+    const labels = (await loadEvents(prisma, en, "p1", base(), { timeZone: "UTC" })).rows.map((row) => row.actor.emailLabel);
     expect(labels).toEqual(["k***@example.com", "k***@example.com", "k***@example.com"]);
   });
 
   it("같은 도메인 두 사람이 여러 행에 있어도 멤버 표와 같은 만큼만 넓힌다", async () => {
     for (let i = 0; i < 4; i += 1) await event({ actorUserId: i % 2 === 0 ? "u1" : "u2", occurredAt: new Date(AT.getTime() + (4 - i) * 1000) });
-    const rows = (await loadEvents(prisma, "p1", base())).rows;
+    const rows = (await loadEvents(prisma, en, "p1", base(), { timeZone: "UTC" })).rows;
     const [kim, kang] = maskedEmailLabels(["kim@example.com", "kang@example.com"]);
     expect(rows.map((row) => row.actor.emailLabel)).toEqual([kim, kang, kim, kang]);
     expect(kim).toBe("ki***@example.com");
@@ -346,9 +347,9 @@ describe("행위자 — 원문 이메일이 나가지 않는다", () => {
 
   it("어느 행위자 조합에서도 직렬화 결과에 원문 주소가 없다 — 목록·상세·행위자 필터", async () => {
     for (let i = 0; i < 6; i += 1) await event({ actorUserId: i % 3 === 2 ? "u1" : "u2", occurredAt: new Date(AT.getTime() + i * 1000) });
-    const page = await loadEvents(prisma, "p1", base());
-    const detail = await loadEvent(prisma, "p1", page.rows[0]!.ref);
-    const actors = await loadEventActors(prisma, "p1");
+    const page = await loadEvents(prisma, en, "p1", base(), { timeZone: "UTC" });
+    const detail = await loadEvent(prisma, en, "p1", page.rows[0]!.ref);
+    const actors = await loadEventActors(prisma, en, "p1");
     for (const raw of ["kim@example.com", "kang@example.com"]) {
       expect(JSON.stringify([page, detail, actors])).not.toContain(raw);
     }
@@ -357,7 +358,7 @@ describe("행위자 — 원문 이메일이 나가지 않는다", () => {
   it("계정이 지워진 USER만 removed다 — AUTOMATION과 구별된다", async () => {
     await event({ actorKind: "USER", actorUserId: null, occurredAt: new Date(AT.getTime() + 2000) });
     await event({ actorKind: "AUTOMATION", actorUserId: null, occurredAt: new Date(AT.getTime() + 1000) });
-    const rows = (await loadEvents(prisma, "p1", base())).rows;
+    const rows = (await loadEvents(prisma, en, "p1", base(), { timeZone: "UTC" })).rows;
     expect(rows.map((row) => [row.actor.kind, row.actor.removed])).toEqual([["USER", true], ["AUTOMATION", false]]);
   });
 
@@ -365,16 +366,16 @@ describe("행위자 — 원문 이메일이 나가지 않는다", () => {
     const mine = await event({ actorUserId: "u1", occurredAt: new Date(AT.getTime() + 2000) });
     const auto = await event({ actorKind: "AUTOMATION", actorUserId: null, occurredAt: new Date(AT.getTime() + 1000) });
     const gone = await event({ actorKind: "USER", actorUserId: null });
-    expect((await loadEvents(prisma, "p1", base({ actor: "u1" }))).rows.map((row) => row.ref)).toEqual([mine]);
-    expect((await loadEvents(prisma, "p1", base({ actor: ACTOR_AUTOMATION }))).rows.map((row) => row.ref)).toEqual([auto]);
-    expect((await loadEvents(prisma, "p1", base({ actor: ACTOR_REMOVED }))).rows.map((row) => row.ref)).toEqual([gone]);
+    expect((await loadEvents(prisma, en, "p1", base({ actor: "u1" }), { timeZone: "UTC" })).rows.map((row) => row.ref)).toEqual([mine]);
+    expect((await loadEvents(prisma, en, "p1", base({ actor: ACTOR_AUTOMATION }), { timeZone: "UTC" })).rows.map((row) => row.ref)).toEqual([auto]);
+    expect((await loadEvents(prisma, en, "p1", base({ actor: ACTOR_REMOVED }), { timeZone: "UTC" })).rows.map((row) => row.ref)).toEqual([gone]);
   });
 
   it("행위자 목록은 등장한 사람 distinct이고 원문 주소를 담지 않는다", async () => {
     await event({ actorUserId: "u1" });
     await event({ actorUserId: "u1" });
     await event({ actorKind: "AUTOMATION", actorUserId: null });
-    const actors = await loadEventActors(prisma, "p1");
+    const actors = await loadEventActors(prisma, en, "p1");
     expect(actors.map((actor) => actor.id)).toEqual(["u1"]);
     expect(JSON.stringify(actors)).not.toContain("kim@example.com");
   });
@@ -384,43 +385,43 @@ describe("검색·기간", () => {
   it("검색은 술어 하나이고 대소문자를 가리지 않는다", async () => {
     const hit = await event({ searchText: "e900 home.title a ko" });
     await event({ searchText: "e901 other.key b en" });
-    expect((await loadEvents(prisma, "p1", base({ q: "HOME.title" }))).rows.map((row) => row.ref)).toEqual([hit]);
+    expect((await loadEvents(prisma, en, "p1", base({ q: "HOME.title" }), { timeZone: "UTC" })).rows.map((row) => row.ref)).toEqual([hit]);
   });
 
   it("기간은 고른 날 하루를 통째로 담는다", async () => {
     const inside = await event({ occurredAt: new Date("2026-09-20T23:59:59.999Z") });
     await event({ occurredAt: new Date("2026-09-21T00:00:00.000Z") });
     const filter = base({ from: "2026-09-20", to: "2026-09-20" });
-    expect((await loadEvents(prisma, "p1", filter)).rows.map((row) => row.ref)).toEqual([inside]);
+    expect((await loadEvents(prisma, en, "p1", filter, { timeZone: "UTC" })).rows.map((row) => row.ref)).toEqual([inside]);
   });
 });
 
 describe("payload", () => {
   it("형을 못 알아봐도 던지지 않고 null이다", async () => {
     await event({ payload: { nope: true } as object, kind: "TRANSLATION" });
-    const [row] = (await loadEvents(prisma, "p1", base())).rows;
+    const [row] = (await loadEvents(prisma, en, "p1", base(), { timeZone: "UTC" })).rows;
     expect(row?.payload).toEqual({ kind: "TRANSLATION", surfaceSlug: "", key: "", locale: "", before: null, after: null });
   });
 
   it("번역 payload의 전후 값이 전문 그대로 돌아온다", async () => {
     const long = "x".repeat(10_000);
     await event({ payload: { kind: "TRANSLATION", surfaceSlug: "a", key: "k", locale: "ko", before: "", after: long } });
-    const [row] = (await loadEvents(prisma, "p1", base())).rows;
+    const [row] = (await loadEvents(prisma, en, "p1", base(), { timeZone: "UTC" })).rows;
     expect(row?.payload).toMatchObject({ before: "", after: long });
   });
 });
 
 it("진행 중 Import는 Running 필터와 목록에서 같은 결과다", async () => {
   const ref = await event({ kind: "IMPORT", result: null, payload: { kind: "IMPORT", source: "manual" } });
-  expect((await loadEvent(prisma, "p1", ref))?.result).toBe("running");
-  expect((await loadEvents(prisma, "p1", base({ results: ["running"] }))).rows.map(row => row.ref)).toEqual([ref]);
+  expect((await loadEvent(prisma, en, "p1", ref))?.result).toBe("running");
+  expect((await loadEvents(prisma, en, "p1", base({ results: ["running"] }), { timeZone: "UTC" })).rows.map(row => row.ref)).toEqual([ref]);
 });
 
 it("project-wide라는 실제 소스와 프로젝트 전역 사건이 구별된다", async () => {
   await prisma.translationSurface.create({ data: { id: "sWide", projectId: "p1", slug: "project-wide" } });
   const source = await event({ surfaceIds: ["sWide"] });
   await event({ kind: "SETTINGS", surfaceIds: [], surfaceScope: "project-wide" });
-  expect((await loadEvents(prisma, "p1", base({ sources: ["project-wide"] }))).rows.map(row => row.ref)).toEqual([source]);
+  expect((await loadEvents(prisma, en, "p1", base({ sources: ["project-wide"] }), { timeZone: "UTC" })).rows.map(row => row.ref)).toEqual([source]);
 });
 
 /**
@@ -451,7 +452,7 @@ describe("주체 필터 ci · nightly · automation (nightly-sync)", () => {
     return rows;
   }
 
-  const refs = async (filter: Partial<LogFilter>) => (await loadEvents(prisma, "p1", base(filter))).rows.map((row) => row.ref).sort();
+  const refs = async (filter: Partial<LogFilter>) => (await loadEvents(prisma, en, "p1", base(filter), { timeZone: "UTC" })).rows.map((row) => row.ref).sort();
 
   it("?actor=ci · nightly · 옛 automation이 각각 기대 행만 낸다", async () => {
     const r = await seedRows();
@@ -463,7 +464,7 @@ describe("주체 필터 ci · nightly · automation (nightly-sync)", () => {
 
   it("모든 행에서 triggerOf(행)와 필터 소속이 일치한다 — URL로 파싱한 값 그대로", async () => {
     await seedRows();
-    const all = (await loadEvents(prisma, "p1", base())).rows;
+    const all = (await loadEvents(prisma, en, "p1", base(), { timeZone: "UTC" })).rows;
     expect(all.length).toBe(11);
     const ci = new Set(await refs(parseLogFilter({ actor: "ci" })));
     const nightly = new Set(await refs(parseLogFilter({ actor: "nightly" })));
@@ -477,14 +478,14 @@ describe("주체 필터 ci · nightly · automation (nightly-sync)", () => {
   it("결과 필터 deferred가 사유 넷(과 사유 없는 옛 행)을 다 잡는다", async () => {
     const r = await seedRows();
     expect(await refs({ results: ["deferred"] })).toEqual([r.ciOld, r.ciPending, r.ciCheck, r.nightlyLarge, r.skipOpenPr].sort());
-    const rows = (await loadEvents(prisma, "p1", base({ results: ["deferred"] }))).rows;
+    const rows = (await loadEvents(prisma, en, "p1", base({ results: ["deferred"] }), { timeZone: "UTC" })).rows;
     expect(new Set(rows.map((row) => row.payload?.kind === "IMPORT" ? row.payload.deferReason : "x")))
       .toEqual(new Set([null, "pending-edits", "pr-check-failed", "too-large", "open-pr"]));
   });
 
   it("upToDate 행은 결과가 비지 않는다 — 목록과 결과 필터가 같은 행", async () => {
     const r = await seedRows();
-    const row = (await loadEvents(prisma, "p1", base())).rows.find((item) => item.ref === r.skipUpToDate);
+    const row = (await loadEvents(prisma, en, "p1", base(), { timeZone: "UTC" })).rows.find((item) => item.ref === r.skipUpToDate);
     expect(row?.result).toBe("upToDate");
     expect(await refs({ results: ["upToDate"] })).toEqual([r.skipUpToDate]);
   });

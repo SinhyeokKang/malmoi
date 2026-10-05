@@ -6,6 +6,8 @@ vi.mock("@/lib/login-link/view", () => ({ loadChallengeView: state.load }));
 vi.mock("next/navigation", () => ({ redirect: (url: string) => { throw new Error(`REDIRECT:${url}`); } }));
 import Page from "../link/[challenge]/page";
 
+vi.mock("@/lib/i18n/server", async () => ({ getMessages: async () => (await import("@/messages/en")).en, getUiLocale: async () => "en" }));
+
 /**
  * 조회 장애는 `Unavailable`로 접혀 로그인 화면으로 간다 — 원인을 볼 곳이 서버 로그 한 줄뿐이다 (launch-readiness L5.2).
  */

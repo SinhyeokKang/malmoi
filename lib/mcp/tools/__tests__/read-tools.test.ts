@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createHarness } from "@/app/(edit)/__tests__/harness";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { routes } from "@/lib/routes";
+import { en } from "@/messages/en";
 
 import type { TokenGrant, TokenScope } from "../../grant";
 import type { ToolOutcome } from "../../result";
@@ -105,6 +106,14 @@ describe("역할 × 빈 grants", () => {
     expect(h.listRepositories).not.toHaveBeenCalled();
     expect(h.listNewRepoBranches).not.toHaveBeenCalled();
     expect(h.detectFormats).not.toHaveBeenCalled();
+  });
+
+  /** 후보는 화면 문구를 싣지 않는다(ui-locales B1′) — 도구 응답의 계약인 en 형식 이름을 도구가 붙인다. */
+  it("detect_formats 후보는 en 형식 이름(label)을 싣는다", async () => {
+    const candidate = { adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", locales: ["en"], baseLocale: "en", keys: { status: "counted", count: 1 }, samples: [], outputPaths: ["i18n/en.json"] };
+    h.detectFormats.mockResolvedValueOnce({ ok: true, candidates: [candidate] });
+    const outcome = await call("detect_formats", subject("owner", ["project:create"]), { owner: "o", repo: "r" });
+    expect(outcome).toMatchObject({ status: "ok", data: { candidates: [{ ...candidate, label: en.newProject.formats["json-catalog"].label }] } });
   });
 
   it("기존 detect_formats — OWNER는 token-scope, EDITOR는 forbidden(역할이 먼저다)", async () => {
@@ -275,7 +284,7 @@ describe("get_project — 마지막 Publish의 PR", () => {
   });
 
   it("도구 설명이 열린 PR 여부는 preview_publish가 답한다고 말한다", async () => {
-    const { m } = await import("@/lib/i18n");
+    const { en: m } = await import("@/messages/en");
     expect(m.mcp.tools.get_project).not.toMatch(/open pull request/i);
     expect(m.mcp.tools.get_project).toContain("preview_publish");
   });

@@ -49,7 +49,7 @@ it.each(boxes)("%s preserves normal transparent, missing, broken and src retry b
   expect(fallback.children).toHaveLength(1);
   expect(fallback.parentElement?.tagName).not.toBe("SPAN");
   expect(fallback.getAttribute("aria-hidden")).toBe("true");
-  for (const token of [size, radius, "text-white", hueFill("Acme")]) expect(fallback.classList.contains(token), token).toBe(true);
+  for (const token of [size, radius, "text-on-hue", hueFill("Acme")]) expect(fallback.classList.contains(token), token).toBe(true);
   expect(box.classList.contains(glyph)).toBe(true);
   const brokenMarkup = fallback.outerHTML;
   await rerender(view(null));

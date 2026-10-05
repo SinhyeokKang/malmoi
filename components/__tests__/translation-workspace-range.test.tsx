@@ -34,12 +34,12 @@ vi.mock("@/components/ui/list-row", async (orig) => {
 
 import { TranslationWorkspace, type WorkspaceProps } from "@/components/translations/workspace/workspace";
 import type { TranslationListRow } from "@/lib/keys/translation-list";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { tallyRows } from "@/lib/translations/tree-narrow";
 
 import { props } from "./helpers/workspace-props";
 
-const w = m.translations.workspace;
+const w = en.translations.workspace;
 const rowOf = (keyId: string, surfaceSlug: string, namespace: string): TranslationListRow => ({
   keyId, surfaceSlug, namespace, key: `${namespace}.${keyId}`, sourceText: keyId, missingCount: 1, totalLocales: 3, hasPending: false, hasReview: true, isNew: false,
 });

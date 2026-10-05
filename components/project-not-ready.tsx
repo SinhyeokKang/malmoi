@@ -4,9 +4,9 @@ import { redirect } from "next/navigation";
 import { PanelBody } from "@/components/shell/content-panel";
 import { EmptyState } from "@/components/ui/empty-state";
 import { canPerform, type Role } from "@/lib/auth/permission";
-import { m } from "@/lib/i18n";
 import type { ProjectReadiness } from "@/lib/onboarding/readiness";
 import { routes } from "@/lib/routes";
+import type { Messages } from "@/lib/i18n";
 
 /**
  * 첫 적재 전 프로젝트 화면 (PRODUCT §7.5). **정책과 문구를 한 곳이 든다** — Home과 번역 화면이
@@ -20,7 +20,7 @@ import { routes } from "@/lib/routes";
  * 그 시점에 프로젝트 데이터는 아직 페이로드에 없다. 인가 차단과는 다른 축이다 — 그쪽은 최상단
  * `requireProjectAccess`가 이미 지났다 (ARCHITECTURE §6.1).
  */
-export function ProjectNotReady({ slug, role, readiness }: { slug: string; role: Role; readiness: Exclude<ProjectReadiness, "ready"> }) {
+export function ProjectNotReady({ slug, role, readiness, m }: { slug: string; role: Role; readiness: Exclude<ProjectReadiness, "ready">; m: Messages }) {
   if (canPerform(role, "project:settings")) redirect(readiness === "setup" ? routes.settings(slug) : routes.sources(slug));
   return (
     /*

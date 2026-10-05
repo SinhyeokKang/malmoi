@@ -38,7 +38,7 @@ vi.mock("next/link", () => ({
 import { EventDialog } from "@/components/logs/event-dialog";
 import { EventRow } from "@/components/logs/event-row";
 import type { EventRow as Row } from "@/lib/events/query";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 let replaceState: ReturnType<typeof vi.spyOn>;
 beforeEach(() => {
@@ -87,7 +87,7 @@ it("Esc가 서버를 부르지 않고 닫는다 — 주소는 `replaceState`로 
 it("×도 같은 길로 닫는다", async () => {
   await visit("event=evt_a");
   await render(dialog());
-  const close = find<HTMLButtonElement>(document, `button[aria-label="${m.logs.detail.actions.close}"]`);
+  const close = find<HTMLButtonElement>(document, `button[aria-label="${en.logs.detail.actions.close}"]`);
   await act(async () => close.click());
   expect(isOpen()).toBe(false);
   expect(replaceState).toHaveBeenCalledTimes(1);
@@ -152,12 +152,12 @@ const row: Row = {
 
 it("행을 누르면 상세가 뜨기 전까지 행의 chevron이 스피너로 바뀐다 — 폭은 그대로다", async () => {
   const now = new Date("2026-09-21T00:00:00Z");
-  const idle = await render(<EventRow row={row} href="/logs?event=evt_a" now={now} archived={false} />);
+  const idle = await render(<EventRow row={row} href="/logs?event=evt_a" now={now} archived={false} style={{ uiLocale: "en", timeZone: "UTC" }} m={en} />);
   expect(idle.container.querySelector(".lucide-chevron-right")).not.toBeNull();
   expect(idle.container.querySelector(".animate-spin")).toBeNull();
 
   linkStatus.pending = true;
-  const busy = await render(<EventRow row={row} href="/logs?event=evt_a" now={now} archived={false} />);
+  const busy = await render(<EventRow row={row} href="/logs?event=evt_a" now={now} archived={false} style={{ uiLocale: "en", timeZone: "UTC" }} m={en} />);
   expect(busy.container.querySelector(".lucide-chevron-right")).toBeNull();
   const spinner = find<SVGElement>(busy.container, ".animate-spin");
   // 교체한 아이콘이 같은 16 정방이어야 행이 안 흔들린다 (DESIGN §6 `Button loading`).

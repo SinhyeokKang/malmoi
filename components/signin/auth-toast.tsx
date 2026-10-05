@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { toast } from "sonner";
 
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 
 /**
  * 로그인 화면의 피드백 (8-1b). **인라인 `Alert`를 대체한다** — 규약 8이 8단계 전체를 토스트로
@@ -24,6 +24,7 @@ import { m } from "@/lib/i18n";
  */
 
 export function AuthToast({ error, sessions }: { error?: string; sessions?: string }) {
+  const m = useMessages();
   /**
    * ⚠️ **의존성 배열이 없다 — 매 렌더 돈다.** 초대 수락은 실패 사유를 `?e=<사유>`로 넘기고 **같은
    * URL로 되돌아오므로**, 사용자가 토스트를 닫고 [Accept]를 다시 눌러 같은 사유로 실패하면 `error`가

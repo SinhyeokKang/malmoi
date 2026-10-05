@@ -14,10 +14,10 @@ vi.mock("next/navigation", () => ({ useRouter: () => mocks }));
 
 import { LogFilters } from "@/components/logs/log-filters";
 import { parseLogFilter } from "@/lib/events/filter";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { routes } from "@/lib/routes";
 
-const props = { slug: "alpha", sources: [{ slug: "web" }], actors: [], refreshable: true };
+const props = { slug: "alpha", sources: [{ slug: "web" }], actors: [], refreshable: true, now: "2026-10-04T23:10:00.000Z" };
 beforeEach(() => { mocks.push.mockReset(); mocks.refresh.mockReset(); });
 
 /** 라우터 응답이 오기 전까지 transition을 붙들어 두는 목적지 — 서버 렌더가 아직 안 온 상태다. */
@@ -50,7 +50,7 @@ const button = (label: string) => {
 it("[Refresh]는 새로 그린 목록이 올 때까지 `RefreshCw`를 스피너로 바꾸고 다시 누를 수 없다", async () => {
   const { Harness, finish } = harness(parseLogFilter({}));
   await render(<Harness />);
-  const refresh = button(m.logs.refresh);
+  const refresh = button(en.logs.refresh);
   expect(refresh.querySelector(".lucide-refresh-cw")).not.toBeNull();
 
   await act(async () => refresh.click());
@@ -59,7 +59,7 @@ it("[Refresh]는 새로 그린 목록이 올 때까지 `RefreshCw`를 스피너�
   expect(refresh.getAttribute("aria-busy")).toBe("true");
   expect(refresh.getAttribute("aria-disabled")).toBe("true");
   // 라벨은 그대로다 — 문구를 바꾸지 않는다.
-  expect(refresh.textContent?.trim()).toBe(m.logs.refresh);
+  expect(refresh.textContent?.trim()).toBe(en.logs.refresh);
   await act(async () => refresh.click());
   expect(mocks.refresh).toHaveBeenCalledOnce();
 
@@ -74,7 +74,7 @@ it("[Clear filters]도 이동이 끝날 때까지 `RotateCcw`를 스피너로 �
   const filter = parseLogFilter({ kind: "publish" });
   const { Harness, finish } = harness(filter);
   await render(<Harness />);
-  const clear = button(m.logs.filters.clear);
+  const clear = button(en.logs.filters.clear);
   expect(clear.querySelector(".lucide-rotate-ccw")).not.toBeNull();
 
   await act(async () => clear.click());

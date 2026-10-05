@@ -1,10 +1,10 @@
 import { expect, it } from "vitest";
 
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 import { uploadRejectMessage } from "../message";
 
-const UPLOAD = m.errors.upload;
+const UPLOAD = en.errors.upload;
 
 /**
  * 업로드 거부 → 문구 (account-settings 태스크 4b).
@@ -21,28 +21,28 @@ const REASONS = ["too-large", "too-many-pixels", "unsupported-type", "not-a-file
 it.each(REASONS)(
   "거부 %s가 각자 다른 문구로 화면에 닿는다",
   (reason) => {
-    const message = uploadRejectMessage(reason);
+    const message = uploadRejectMessage(en, reason);
     expect(typeof message).toBe("string");
     expect(message).not.toBe("");
   },
 );
 
 it("갈래마다 문구가 갈린다 — 하나로 접히면 사유가 사라진다", () => {
-  const all = REASONS.map(uploadRejectMessage);
+  const all = REASONS.map((reason) => uploadRejectMessage(en, reason));
   expect(new Set(all).size).toBe(all.length);
 });
 
 /** 사전 절이 하나다 — 화면이 문자열을 조립하면 같은 거부가 화면마다 다르게 읽힌다. */
 it("사전 값을 그대로 쓴다", () => {
-  expect(uploadRejectMessage("too-large")).toBe(UPLOAD["too-large"]);
-  expect(uploadRejectMessage("too-many-pixels")).toBe(UPLOAD["too-many-pixels"]);
-  expect(uploadRejectMessage("unsupported-type")).toBe(UPLOAD["unsupported-type"]);
+  expect(uploadRejectMessage(en, "too-large")).toBe(UPLOAD["too-large"]);
+  expect(uploadRejectMessage(en, "too-many-pixels")).toBe(UPLOAD["too-many-pixels"]);
+  expect(uploadRejectMessage(en, "unsupported-type")).toBe(UPLOAD["unsupported-type"]);
 });
 
 /** ⚠️ 모르는 값은 폴백이다 — 던지면 거부가 화면 대신 콘솔로 간다 (POSTMORTEM 2026-09-08). */
 it.each(["constructor", "toString", "valueOf", "hasOwnProperty", "__proto__", "nope", ""])(
   "모르는 갈래 %s에도 문자열 폴백을 낸다",
   (reason) => {
-    expect(uploadRejectMessage(reason)).toBe(UPLOAD.fallback);
+    expect(uploadRejectMessage(en, reason)).toBe(UPLOAD.fallback);
   },
 );

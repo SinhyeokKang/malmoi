@@ -4,13 +4,16 @@ import { RoleBadges } from "@/components/logs/role-badges";
 import { LocaleFlag } from "@/components/translations/locale-badge";
 import { Badge } from "@/components/ui/badge";
 import { eventMeta, isBadgePart, type EventMetaRow } from "@/lib/events/view";
+import type { Messages } from "@/lib/i18n";
 
 /**
  * 사건 보조줄 — **`[배지…]  사실 · 사실`** 한 문법이다(2026-09-30 사용자 — `eventMeta` 주석). Home 최근 로그와 Logs가
  * 이 컴포넌트 하나를 쓴다 — 두 화면의 보조줄은 글자 하나까지 같다(결과 배지는 보조줄 밖, 행 오른쪽이다).
  */
-export function EventMetaLine({ row, archived }: { row: EventMetaRow; archived: boolean }) {
-  const parts = eventMeta(row, archived);
+export function EventMetaLine({ row, archived, m }: { row: EventMetaRow; archived: boolean;
+  m: Messages;
+}) {
+  const parts = eventMeta(m, row, archived);
   const badges = parts.filter(isBadgePart);
   const facts = parts.filter((part) => !isBadgePart(part));
   if (parts.length === 0) return null;

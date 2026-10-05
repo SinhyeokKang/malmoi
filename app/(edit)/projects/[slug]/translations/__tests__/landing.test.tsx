@@ -37,6 +37,8 @@ vi.mock("@/components/project-not-ready", () => ({ ProjectNotReady: () => null }
 import Page from "../../surfaces/[surfaceSlug]/translations/page";
 import { bannerTranslationsHref } from "@/components/projects/project-list";
 
+vi.mock("@/lib/i18n/server", async () => ({ getUiLocale: async () => "en", getMessages: async () => (await import("@/messages/en")).en }));
+
 // 트리 순서(slug)다 — 경로 소스는 `default`(id `s`), 다른 활성 소스는 `app`(id `s2`).
 const TREE = { projectKeyCount: 4, surfaces: [
   { id: "s2", slug: "app", baseLocale: "en", locales: ["en", "ja"], keyCount: 1, namespaces: [{ name: "common", keyCount: 1 }] },

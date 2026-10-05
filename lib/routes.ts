@@ -156,6 +156,8 @@ export const routes = {
   account: (query: { e?: string; sessionRevocation?: string; link?: string; connect?: string } = {}): string => withQuery("/account", query),
   /** MCP connector (mcp-connector) — 개인 토큰 발급·회전·폐기. 사용자 축이다(토큰은 계정에 붙는다). 쿼리가 없다 — 모달은 클라이언트 상태다. */
   mcp: (): string => "/mcp",
+  /** Preferences (ui-locales) — 화면 언어. 사용자 축이다(`/account`·`/mcp` 옆). 쿼리가 없다 — 실패는 클라이언트 상태다. */
+  preferences: (): string => "/preferences",
   /**
    * MCP 클라이언트의 동의 화면 (mcp-oauth design §1 · §6.1). 클라이언트가 여는 첫 주소는 OAuth 쿼리이고, 검증 뒤 서버가 `?request=`로 정규화한다 —
    * 앱이 만드는 링크는 전부 이 정규형이다(로그인 복귀 · 계정 연결 착지 · `/signin` 복귀 링크).

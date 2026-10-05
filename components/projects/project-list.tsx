@@ -30,7 +30,8 @@ import { BannerLine } from "@/components/ui/row-card";
 import { Card, CardList } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { canPerform } from "@/lib/auth/permission";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
+import type { Messages } from "@/lib/i18n";
 import type { ProjectListRow } from "@/lib/keys/query";
 import { importFailureMessage, importFailureTone } from "@/lib/projects/import-failure";
 import { highlightSegments } from "@/lib/search/highlight";
@@ -68,12 +69,12 @@ import { cn } from "@/lib/utils";
  * 896px에서는 겹친다.
  */
 
-const GROUP_LABEL = {
+const groupLabel = (m: Messages): Record<ProjectGroup, string> => ({
   needs_attention: m.projects.group.needsAttention,
   all_set: m.projects.group.allSet,
   // ⚠️ 행 배지와 **같은 낱말**이다 — 두 벌로 두면 하나가 낡는다.
   archived: m.projects.archived,
-} as const satisfies Record<ProjectGroup, string>;
+});
 
 export function ProjectList({
   all,
@@ -83,6 +84,7 @@ export function ProjectList({
   /** 페이지 수준 거부. 모달 라우트는 사유를 모달 안에서 말하므로 여기로 안 넘긴다. */
   message?: ReactNode;
 }) {
+  const m = useMessages();
   const [query, search] = useProjectQuery();
   // `listBody`·`searchTokens`·`routes.newProject`가 전부 빈 값을 "질의 없음"으로 읽는다.
   const q = query === "" ? undefined : query;
@@ -145,7 +147,7 @@ export function ProjectList({
           body.cards.map((card) => (
             <Card
               key={card.group}
-              title={GROUP_LABEL[card.group]}
+              title={groupLabel(m)[card.group]}
               count={card.rows.length}
               countLabel={m.projects.count(card.rows.length)}
             >
@@ -185,9 +187,9 @@ export function ProjectList({
             <RowList rows={body.rows} q={q} />
           </Card>
         ) : body.kind === "empty" ? (
-          <EmptyProjects />
+          <EmptyProjects m={m} />
         ) : (
-          <NoProjectsMatch query={body.query} onReset={clear} />
+          <NoProjectsMatch m={m} query={body.query} onReset={clear} />
         )}
       </PanelBody>
     </>
@@ -211,6 +213,7 @@ function RowList({ rows, q }: { rows: readonly ProjectListRow[]; q?: string }) {
 }
 
 function ProjectRow({ row, q }: { row: ProjectListRow; q?: string }) {
+  const m = useMessages();
   const status = projectStatus(row);
   /*
     칩은 **그 프로젝트의 가장 나쁜 상태 하나**다(2026-09-30 상태 통일 — 실패 중인데 초록 `Active`가 섰다). 순서는 `rowChip`이 정한다:
@@ -332,6 +335,7 @@ function ProjectRow({ row, q }: { row: ProjectListRow; q?: string }) {
  * "누가 할 수 있는지"를 말한다. **판정은 여기서 하고 `rowBanner`는 역할을 안 받는다** (DESIGN §6.63).
  */
 function ProjectBanner({ row, banner }: { row: ProjectListRow; banner: NonNullable<RowBanner> }) {
+  const m = useMessages();
   const canSettle = canPerform(row.role, "project:settings");
 
   return (
@@ -350,7 +354,7 @@ function ProjectBanner({ row, banner }: { row: ProjectListRow; banner: NonNullab
       {banner.kind === "needs_reconnect" && m.projects.banner.needsReconnect}
       {banner.kind === "import_failed" && (
         <>
-          {importFailureMessage(banner.reason)}{" "}
+          {importFailureMessage(m, banner.reason)}{" "}
           {canSettle ? m.projects.banner.checkDetails : m.projects.importFailure.ownerRetries}
         </>
       )}
@@ -393,6 +397,7 @@ function BannerAction({
   banner: NonNullable<RowBanner>;
   canSettle: boolean;
 }) {
+  const m = useMessages();
   const internal = (href: string, label: string) => (
     <Link href={href} className="text-muted-foreground ml-1 inline-flex shrink-0 gap-0.5">
       {label}

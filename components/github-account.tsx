@@ -7,7 +7,7 @@ import { disconnectGithub } from "@/app/(edit)/projects/actions";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 
 /**
  * 연결 해제 — **사용자 수준이라 slug를 받지 않는다** (2026-09-07 리뷰 🟡9).
@@ -26,6 +26,7 @@ export function DisconnectGithubButton({ onFailure }: {
    */
   onFailure?: (message: string | null) => void;
 } = {}) {
+  const m = useMessages();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -59,7 +60,7 @@ export function DisconnectGithubButton({ onFailure }: {
                       let result: Awaited<ReturnType<typeof disconnectGithub>> | null;
                       try { result = await disconnectGithub(); } catch { result = null; }
                       if (result?.ok) report(null);
-                      else report(result !== null && isAccessError(result.error) ? accessErrorMessage(result.error) : m.settings.account.disconnectFailed);
+                      else report(result !== null && isAccessError(result.error) ? accessErrorMessage(m, result.error) : m.settings.account.disconnectFailed);
                     });
                   }}
                 >

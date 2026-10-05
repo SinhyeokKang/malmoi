@@ -41,7 +41,7 @@ import { MemberList } from "@/components/members/member-list";
 import { PendingInvitations } from "@/components/members/pending-invitations";
 import { ReconnectButton } from "@/components/reconnect-button";
 import type { MemberView, PendingInvitation } from "@/lib/auth/query";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
 const now = new Date("2026-09-17T00:00:00Z");
 const alice: MemberView = { userId: "u2", name: "Alice", emailLabel: "a***@example.com", image: null, readable: true, role: "EDITOR", joinedAt: now };
@@ -67,8 +67,8 @@ it("멤버 제거 호출이 던지면 행이 풀리고 확인 불가를 말한�
   mocks.changeMember.mockRejectedValue(new Error("offline"));
   await render(<MemberList slug="acme" members={[owner, alice]} role="OWNER" viewerId="u1" now={now} headingId="h" />);
   await click(byLabel("Remove Alice"));
-  await click(inDialog(m.members.removeConfirm));
-  expect(alert()).toContain(m.members.changeUnconfirmed);
+  await click(inDialog(en.members.removeConfirm));
+  expect(alert()).toContain(en.members.changeUnconfirmed);
   expect(byLabel("Remove Alice").hasAttribute("disabled")).toBe(false);
 });
 
@@ -76,29 +76,29 @@ it("초대 철회 호출이 던지면 행이 풀리고 확인 불가를 말한�
   mocks.revokeInvitation.mockRejectedValue(new Error("offline"));
   await render(<PendingInvitations slug="acme" invitations={[invite]} role="OWNER" now={now} headingId="h" />);
   await click(byLabel("Revoke invitation for t***@example.com"));
-  await click(inDialog(m.members.pending.confirmRevokeAction));
-  expect(alert()).toContain(m.members.pending.revokeUnconfirmed);
+  await click(inDialog(en.members.pending.confirmRevokeAction));
+  expect(alert()).toContain(en.members.pending.revokeUnconfirmed);
   expect(byLabel("Revoke invitation for t***@example.com").hasAttribute("disabled")).toBe(false);
 });
 
 it("GitHub 연결 해제 호출이 던지면 실패 문구를 세운다", async () => {
   mocks.disconnectGithub.mockRejectedValue(new Error("offline"));
   await render(<DisconnectGithubButton />);
-  await click(byLabel(m.settings.account.disconnectLabel));
-  await click(inDialog(m.settings.account.disconnectConfirm));
-  expect(alert()).toContain(m.settings.account.disconnectFailed);
+  await click(byLabel(en.settings.account.disconnectLabel));
+  await click(inDialog(en.settings.account.disconnectConfirm));
+  expect(alert()).toContain(en.settings.account.disconnectFailed);
 });
 
 it("Reconnect 호출이 던지면 실패 문구를 세운다 — onFailure가 있으면 그쪽으로 보낸다", async () => {
   mocks.connectRepository.mockRejectedValue(new Error("offline"));
   await render(<ReconnectButton slug="acme" label="Reconnect" server={{}} />);
   await click([...document.querySelectorAll("button")].find(b => b.textContent?.includes("Reconnect"))!);
-  expect(alert()).toContain(m.settings.repository.connectFailed);
+  expect(alert()).toContain(en.settings.repository.connectFailed);
 
   const onFailure = vi.fn();
   await render(<ReconnectButton slug="acme" label="Reconnect again" onFailure={onFailure} server={{}} />);
   await click([...document.querySelectorAll("button")].find(b => b.textContent?.includes("Reconnect again"))!);
-  expect(onFailure).toHaveBeenLastCalledWith(m.settings.repository.connectFailed);
+  expect(onFailure).toHaveBeenLastCalledWith(en.settings.repository.connectFailed);
 });
 
 /**
@@ -112,25 +112,25 @@ const alerts = () => [...document.querySelectorAll('[role="alert"]')].map(node =
 it("push 토큰 재발급이 던지면 확인 불가를 말한다 — 옛 토큰이 이미 죽었을 수 있다", async () => {
   mocks.rotatePushToken.mockRejectedValue(offline());
   await render(<PushTokenPanel slug="acme" />);
-  await click(buttonByText(m.settings.token.rotate));
-  await click(inDialog(m.settings.token.confirmAction));
-  expect(alerts()).toContain(m.settings.token.unconfirmed);
+  await click(buttonByText(en.settings.token.rotate));
+  await click(inDialog(en.settings.token.confirmAction));
+  expect(alerts()).toContain(en.settings.token.unconfirmed);
 });
 
 it.each(["upload", "delete"] as const)("프로필 사진 %s 호출이 던지면 실패 문구를 세운다", async kind => {
   mocks.uploadProfileImage.mockRejectedValue(offline());
   mocks.deleteProfileImage.mockRejectedValue(offline());
   await render(<ProfilePicture hasPicture />);
-  if (kind === "delete") await click(buttonByText(m.account.picture.delete));
+  if (kind === "delete") await click(buttonByText(en.account.picture.delete));
   else await act(async () => { await userEvent.setup().upload(document.querySelector<HTMLInputElement>('input[type="file"]')!, new File([new Uint8Array(8)], "me.png", { type: "image/png" })); });
-  expect(alerts()).toContain(uploadRejectMessage("unavailable"));
+  expect(alerts()).toContain(uploadRejectMessage(en, "unavailable"));
 });
 
 it("표시 이름 저장이 던지면 제자리에서 실패를 말하고 입력을 지킨다", async () => {
   mocks.updateProfileName.mockRejectedValue(offline());
   await render(<ProfileNameForm name="Jane" inputId="name" />);
-  await click(buttonByText(m.account.profile.save));
-  expect(alerts()).toContain(m.account.profile.errors.unavailable);
+  await click(buttonByText(en.account.profile.save));
+  expect(alerts()).toContain(en.account.profile.errors.unavailable);
   expect(document.querySelector<HTMLInputElement>("#name")?.value).toBe("Jane");
 });
 
@@ -138,32 +138,32 @@ it("GitHub 계정 연결 시작이 던지면 실패 문구를 세운다", async 
   mocks.startGithubConnectForUser.mockRejectedValue(offline());
   await render(<ConnectGithubButton dest="account" label="Connect GitHub" />);
   await click(buttonByText("Connect GitHub"));
-  expect(alerts()).toContain(m.settings.repository.connectFailed);
+  expect(alerts()).toContain(en.settings.repository.connectFailed);
 });
 
 it("Add sources의 GitHub 재연결이 던지면 모달 안에서 말한다", async () => {
   mocks.detectRepoFormats.mockResolvedValue({ ok: false, error: "reauthorize" });
   mocks.startGithubConnect.mockRejectedValue(offline());
   await render(<AddSourcesModal open onClose={vi.fn()} onAdded={vi.fn()} returnFocusRef={{ current: null }} slug="acme" owner="o" repo="r" branch="main" existing={[]} adapters={[]} server={{}} />);
-  await click(buttonByText(m.newProject.empty.connect.reauthorize));
-  expect(alerts()).toContain(failureText("unavailable"));
+  await click(buttonByText(en.newProject.empty.connect.reauthorize));
+  expect(alerts()).toContain(failureText(en, "unavailable"));
 });
 
 const methods = [{ provider: "github" as const, connected: true }, { provider: "google" as const, connected: true }];
 it("로그인 수단 해제가 던지면 카드 머리에 확인 불가를 말한다", async () => {
   mocks.unlinkLoginMethod.mockRejectedValue(offline());
   await render(<LoginMethods rows={methods} />);
-  await click(byLabel(m.link.methods.disconnectLabel("GitHub")));
-  await click(inDialog(m.link.methods.disconnectConfirm));
-  expect(alerts()).toContain(m.link.methods.unlinkUnconfirmed);
+  await click(byLabel(en.link.methods.disconnectLabel("GitHub")));
+  await click(inDialog(en.link.methods.disconnectConfirm));
+  expect(alerts()).toContain(en.link.methods.unlinkUnconfirmed);
 });
 
 it("모든 세션 로그아웃 시작이 던지면 구역 실패 문구를 세운다", async () => {
   mocks.startSessionRevocation.mockRejectedValue(offline());
   await render(<SessionsSection outcome={undefined} signOut={vi.fn()} confirmProvider={null} />);
-  await click(buttonByText(m.account.sessions.title));
-  await click(inDialog(m.account.sessions.button));
-  expect(alerts()).toContain(m.account.sessions.failed);
+  await click(buttonByText(en.account.sessions.title));
+  await click(inDialog(en.account.sessions.button));
+  expect(alerts()).toContain(en.account.sessions.failed);
 });
 
 class Boundary extends Component<{ children: ReactNode }, { error: unknown }> {
@@ -176,9 +176,9 @@ it("redirect는 삼키지 않는다 — 해제 성공의 redirect가 실패 문�
   mocks.unlinkLoginMethod.mockRejectedValue(redirect);
   const error = vi.spyOn(console, "error").mockImplementation(() => {});
   await render(<Boundary><LoginMethods rows={methods} /></Boundary>);
-  await click(byLabel(m.link.methods.disconnectLabel("GitHub")));
-  await click(inDialog(m.link.methods.disconnectConfirm));
+  await click(byLabel(en.link.methods.disconnectLabel("GitHub")));
+  await click(inDialog(en.link.methods.disconnectConfirm));
   error.mockRestore();
-  expect(alerts()).not.toContain(m.link.methods.unlinkUnconfirmed);
+  expect(alerts()).not.toContain(en.link.methods.unlinkUnconfirmed);
   expect(document.querySelector("[data-caught]")?.textContent).toContain("NEXT_REDIRECT");
 });

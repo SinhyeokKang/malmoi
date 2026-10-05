@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mockupScenes } from "@/components/landing/mockup";
 import { Stage } from "@/components/landing/stage";
 import { buttonClass } from "@/components/ui/button";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { navFooterItems, navZones } from "@/lib/shell/nav";
 
 import { Search } from "lucide-react";
@@ -27,8 +27,8 @@ import { find, render } from "./helpers/dom";
  */
 // ⚠️ jsdom 환경에서는 `import.meta.url`이 file 스킴이 아니다 — `public-shell.test.tsx`와 같이 cwd에서 잡는다.
 const DIR = join(process.cwd(), "components/landing/mockup");
-const fixture = m.landing.mockup;
-const p = m.translations.publish;
+const fixture = en.landing.mockup;
+const p = en.translations.publish;
 
 // jsdom에 `matchMedia`가 없다 — 스테이지가 effect에서 읽는다. 재생 배선은 `landing-stage.test.tsx`가 본다.
 beforeEach(() => {
@@ -39,7 +39,7 @@ afterEach(() => { vi.unstubAllGlobals(); });
 async function mount() {
   const { container } = await render(
     <div data-public-scroller="">
-      <Stage label={m.landing.stage.label} captions={m.landing.stage.captions} typed={fixture.selected.typed} scenes={mockupScenes()} closing={null} />
+      <Stage label={en.landing.stage.label} captions={en.landing.stage.captions} typed={fixture.selected.typed} scenes={mockupScenes(en)} closing={null} />
     </div>,
   );
   return container;
@@ -80,12 +80,12 @@ describe("목업 — 조작 대상이 아니다", () => {
  * 컴포넌트의 구획에서 뽑아 견준다 — 손으로 목록을 두 벌 두면 사이드바가 바뀔 때 목업만 낡는다.
  */
 describe("목업 — 제품과 같은 구조다", () => {
-  const zones = navZones(
+  const zones = navZones(en, 
     { slug: "acme-web", name: fixture.project, role: "OWNER", archived: false, counts: { sources: fixture.sources.length, members: fixture.memberCount, keys: fixture.keyCount } },
     { userName: fixture.user, projectCount: fixture.projectCount },
   );
 
-  it("LNB가 사이드바와 같은 구역·항목·배지다 — 사용자 구역(Projects · MCP connector · Account, 머리 없음) · 프로젝트 구역 · 하단 목록", async () => {
+  it("LNB가 사이드바와 같은 구역·항목·배지다 — 사용자 구역(Projects · MCP connector · Preferences · Account, 머리 없음) · 프로젝트 구역 · 하단 목록", async () => {
     const scene = layer(await mount(), 0);
     const zoneText = (key: string) => find(scene, `[data-landing-zone="${key}"]`);
     const items = (key: string) => [...zoneText(key).querySelectorAll("[data-landing-nav]")].map((node) => node.textContent);
@@ -96,10 +96,10 @@ describe("목업 — 제품과 같은 구조다", () => {
     // 머리 줄은 프로젝트 구역에만 있다 — 사용자 구역의 아바타·이름 줄은 2026-09-30에 빠졌다(사이드바와 같다).
     expect(zoneText("project").querySelector("p > span.truncate")?.textContent).toBe(fixture.project);
     expect(zoneText("work").querySelector("p")).toBeNull();
-    expect(items("work")).toEqual([`${m.common.nav.projects}${fixture.projectCount}`, m.common.nav.mcp, m.common.nav.account]);
-    expect(items("footer")).toEqual(navFooterItems().map((item) => item.label));
+    expect(items("work")).toEqual([`${en.common.nav.projects}${fixture.projectCount}`, en.common.nav.mcp, en.common.nav.preferences, en.common.nav.account]);
+    expect(items("footer")).toEqual(navFooterItems(en).map((item) => item.label));
     // Sign out은 하단이 아니라 아바타 메뉴의 것이다(MISC 배치) — 목업 LNB에 따로 서지 않는다.
-    expect(scene.querySelector("[data-landing-lnb]")?.textContent).not.toContain(m.common.nav.signOut);
+    expect(scene.querySelector("[data-landing-lnb]")?.textContent).not.toContain(en.common.nav.signOut);
     // 선택은 Translations 하나다.
     expect([...scene.querySelectorAll("[data-landing-nav]")].filter((node) => node.className.includes("bg-foreground/[0.07]")).map((node) => node.getAttribute("data-landing-nav"))).toEqual(["translations"]);
   });
@@ -125,23 +125,30 @@ describe("목업 — 제품과 같은 구조다", () => {
     const right = find(scene, "[data-landing-header-right]");
     const kids = [...right.children];
     expect(kids).toHaveLength(3);
-    expect(kids[0]?.textContent).toBe(m.common.nav.newProject);
+    expect(kids[0]?.textContent).toBe(en.common.nav.newProject);
     expect(kids[0]?.querySelector("svg")?.getAttribute("class")).toContain("lucide-plus");
     expect(kids[1]?.className).toContain("bg-border-subtle");
   });
 
   /** 앱 셸 헤더의 center 슬롯(`SearchTrigger`)이 목업에서 빠져 있었다(2026-10-03 사용자). */
   it("헤더 가운데에 실물 `FieldButton`과 같은 검색 캡슐이 있다 — 태그만 `<span>`이다", async () => {
-    const real = (await render(<FieldButton icon={<Search />} placeholder={m.search.placeholder} aria-label={m.search.label} onClick={() => {}} />)).container.querySelector("button")!;
+    const real = (await render(<FieldButton icon={<Search />} placeholder={en.search.placeholder} aria-label={en.search.label} onClick={() => {}} />)).container.querySelector("button")!;
     const container = await mount();
     for (const [index, scene] of [0, 1, 2, 3, 4].map((k) => [k, layer(container, k)] as const)) {
       const header = scene.querySelector("header")!;
       expect(header.className, `scene ${index}`).toContain("grid-cols-[1fr_auto_1fr]");
+      // 헤더 44에서도 목업 헤더 줄은 40이다 — `h-10`이 빠지거나 `h-11`이 같이 남으면 목업 프레임 안 줄이 4 커진다.
+      expect(header.classList.contains("h-10"), `scene ${index}`).toBe(true);
+      expect(header.classList.contains("h-11"), `scene ${index}`).toBe(false);
       const search = find<HTMLElement>(header, "[data-landing-global-search]");
       expect(search.tagName).toBe("SPAN");
-      expect(new Set(search.className.split(" "))).toEqual(new Set(real.className.split(" ")));
+      // 헤더 44 이후 실물은 `h-11`이고 목업은 40을 지킨다(`h-10`) — 높이만 다르다.
+      const classes = (el: Element) => new Set(el.className.split(" ").filter((c) => c !== "h-10" && c !== "h-11"));
+      expect(classes(search)).toEqual(classes(real));
+      expect(search.classList.contains("h-10")).toBe(true);
+      expect(search.classList.contains("h-11")).toBe(false);
       expect(search.querySelector("svg")?.getAttribute("class")).toContain("lucide-search");
-      expect(search.textContent).toBe(`${m.search.placeholder}${m.common.keys.search.mac}`);
+      expect(search.textContent).toBe(`${en.search.placeholder}${en.common.keys.search.mac}`);
     }
   });
 
@@ -151,7 +158,7 @@ describe("목업 — 제품과 같은 구조다", () => {
       const footer = find(layer(container, k), '[data-landing-zone="footer"]');
       const collapse = find<HTMLElement>(footer, "[data-landing-collapse]");
       expect(footer.lastElementChild).toBe(collapse);
-      expect(collapse.textContent).toBe(m.common.nav.collapseSidebar);
+      expect(collapse.textContent).toBe(en.common.nav.collapseSidebar);
       expect(collapse.tagName).toBe("SPAN");
       expect(collapse.querySelector("svg.lucide-panel-left-close")).not.toBeNull();
       expect(collapse.className.split(" ")).toEqual(expect.arrayContaining(["h-8", "px-2", "font-normal", "justify-start"]));
@@ -166,27 +173,27 @@ describe("목업 — 제품과 같은 구조다", () => {
     const scene = layer(await mount(), 0);
     const tree = find<HTMLElement>(scene, "[data-landing-tree]");
     expect(tree.className).toContain("w-[260px]");
-    expect(tree.textContent).toContain(m.translations.workspace.tree.title);
+    expect(tree.textContent).toContain(en.translations.workspace.tree.title);
     const current = fixture.sources.find(source => source.slug === fixture.source);
     const rest = fixture.sources.filter(source => source.slug !== fixture.source);
     expect([...tree.querySelectorAll("[data-landing-source]")].map(node => node.getAttribute("data-landing-source"))).toEqual(fixture.sources.map(source => source.slug).sort());
     const open = find(tree, `[data-landing-source="${current?.slug}"]`);
-    expect(open.textContent).toContain(m.translations.workspace.tree.allNamespaces);
+    expect(open.textContent).toContain(en.translations.workspace.tree.allNamespaces);
     for (const namespace of current?.namespaces ?? []) expect(open.textContent).toContain(namespace.name);
     // 네임스페이스 합이 소스의 키 수이고, 소스 합이 프로젝트 키 수다.
     expect((current?.namespaces ?? []).reduce((sum, n) => sum + n.keyCount, 0)).toBe(current?.keyCount);
     expect(fixture.sources.reduce((sum, source) => sum + source.keyCount, 0)).toBe(fixture.keyCount);
     for (const source of rest) expect(find(tree, `[data-landing-source="${source.slug}"]`).children).toHaveLength(1);
     // 선택된 네임스페이스 칸은 보고 있는 소스 안의 `All namespaces` 하나다. 면은 실물 `ListRow selected`의 0.07이다(5-Y7).
-    expect([...tree.querySelectorAll(".bg-foreground\\/\\[0\\.07\\]")].map((node) => node.textContent)).toEqual([`${m.translations.workspace.tree.allNamespaces}${current?.keyCount}`]);
+    expect([...tree.querySelectorAll(".bg-foreground\\/\\[0\\.07\\]")].map((node) => node.textContent)).toEqual([`${en.translations.workspace.tree.allNamespaces}${current?.keyCount}`]);
   });
 
   it("머리는 검색 하나이고, Status 필터는 키 목록 머리에 있다 — 범위 콤보가 없다", async () => {
     const scene = layer(await mount(), 0);
-    const f = m.translations.workspace.filters;
+    const f = en.translations.workspace.filters;
     expect(scene.textContent).not.toContain("This source");
     expect(find(scene, "[data-landing-search]").textContent).toBe(f.searchPlaceholder);
-    const listHead = [...scene.querySelectorAll<HTMLElement>("span")].find(el => el.textContent === m.translations.workspace.list.keys)?.parentElement;
+    const listHead = [...scene.querySelectorAll<HTMLElement>("span")].find(el => el.textContent === en.translations.workspace.list.keys)?.parentElement;
     expect(listHead?.textContent).toContain(f.state.any);
     expect(listHead?.textContent).not.toContain("Incomplete first");
   });
@@ -201,7 +208,7 @@ describe("목업 — 제품과 같은 구조다", () => {
     const scene = layer(await mount(), 3);
     const text = scene.textContent ?? "";
     expect(text).toContain(p.openPr);
-    expect(text).not.toContain(m.common.cancel);
+    expect(text).not.toContain(en.common.cancel);
     expect(text).toContain(p.prNone.title(fixture.repo));
     expect([...scene.querySelectorAll("[data-landing-author]")].map((node) => node.textContent)).toEqual(
       fixture.diff.map((row) => (row.key === fixture.selected.key ? fixture.user : fixture.teammate)),
@@ -214,14 +221,14 @@ describe("목업 — 제품과 같은 구조다", () => {
 
   it("③ 저장 뒤 푸터에 `Revert to last sent`가 선다 — 이 키에 미전달 편집이 생긴다", async () => {
     const container = await mount();
-    expect(layer(container, 1).textContent).not.toContain(m.translations.workspace.revert.button);
-    expect(layer(container, 3).textContent).toContain(m.translations.workspace.revert.button);
+    expect(layer(container, 1).textContent).not.toContain(en.translations.workspace.revert.button);
+    expect(layer(container, 3).textContent).toContain(en.translations.workspace.revert.button);
   });
 
   /** 실물의 Revert는 편집을 버리는 동작이라 `danger`다(§2.4 동작 규칙) — 목업만 `default`면 랜딩이 실물과 갈린다. */
   it("③ `Revert to last sent`가 실물과 같은 danger다", async () => {
     const container = await mount();
-    const revert = [...layer(container, 3).querySelectorAll("span")].find((node) => node.textContent === m.translations.workspace.revert.button);
+    const revert = [...layer(container, 3).querySelectorAll("span")].find((node) => node.textContent === en.translations.workspace.revert.button);
     expect(revert?.className).toBe(buttonClass({ variant: "danger" }));
   });
 });
@@ -233,9 +240,9 @@ describe("목업 — 씬이 이야기를 든다", () => {
     expect(publish.getAttribute("aria-disabled")).toBe("true");
     expect(publish.textContent).toBe(p.button);
     expect(scene.textContent).toContain(p.viewResult);
-    expect(scene.textContent).not.toContain(m.translations.workspace.list.notSent);
-    expect(scene.textContent).not.toContain(m.translations.workspace.footer.savedNotSent);
-    expect(scene.textContent).not.toContain(m.translations.workspace.revert.button);
+    expect(scene.textContent).not.toContain(en.translations.workspace.list.notSent);
+    expect(scene.textContent).not.toContain(en.translations.workspace.footer.savedNotSent);
+    expect(scene.textContent).not.toContain(en.translations.workspace.revert.button);
     expect(scene.querySelector("[data-landing-hold]")).toBeNull();
   });
 
@@ -246,7 +253,7 @@ describe("목업 — 씬이 이야기를 든다", () => {
     for (const k of [0, 1]) {
       const scene = layer(container, k);
       expect(scene.querySelector("[data-landing-hold]")).toBeNull();
-      expect(scene.textContent).not.toContain(m.translations.workspace.list.notSent);
+      expect(scene.textContent).not.toContain(en.translations.workspace.list.notSent);
       const publish = find(scene, "[data-landing-publish]");
       expect(publish.getAttribute("aria-disabled")).toBe("true");
       expect(publish.textContent).toBe(p.button);
@@ -254,7 +261,7 @@ describe("목업 — 씬이 이야기를 든다", () => {
     const saving = find(layer(container, 2), "[data-landing-hold]");
     expect(saving.closest('[data-landing-badge="after"]')).not.toBeNull();
     const saved = find(layer(container, 3), "[data-landing-hold]");
-    expect(saved.textContent).toContain(m.translations.banner.paused(1));
+    expect(saved.textContent).toContain(en.translations.banner.paused(1));
     expect(fixture.diff).toEqual([{ key: fixture.selected.key, code: fixture.selected.typedCode, before: null, after: fixture.selected.typed }]);
   });
 
@@ -277,10 +284,10 @@ describe("목업 — 씬이 이야기를 든다", () => {
 
   it("① 번역 화면 — 실제 사전의 화면 이름·Publish·키 목록, `fr`은 비어 있다", async () => {
     const text = layer(await mount(), 0).textContent ?? "";
-    expect(text).toContain(m.common.nav.translations);
+    expect(text).toContain(en.common.nav.translations);
     expect(text).toContain(p.button);
     expect(text).toContain(fixture.selected.key);
-    expect(text).toContain(m.translations.workspace.detail.missing);
+    expect(text).toContain(en.translations.workspace.detail.missing);
     expect(text).not.toContain(fixture.selected.typed);
   });
 
@@ -288,7 +295,7 @@ describe("목업 — 씬이 이야기를 든다", () => {
     const container = await mount();
     expect(container.querySelectorAll("[data-landing-typed]")).toHaveLength(1);
     expect(layer(container, 1).querySelector("[data-landing-typed]")).not.toBeNull();
-    expect(layer(container, 1).textContent).toContain(m.translations.workspace.detail.notSaved);
+    expect(layer(container, 1).textContent).toContain(en.translations.workspace.detail.notSaved);
   });
 
   it("③ 저장 → 배지 — 전·후 숫자가 `group-data-[badge=1]/frame`으로 갈린다", async () => {
@@ -300,7 +307,7 @@ describe("목업 — 씬이 이야기를 든다", () => {
     expect(after.textContent).toContain(String(fixture.unsentAfter));
     expect(before.className).toContain("group-data-[badge=1]/frame:hidden");
     expect(after.className).toMatch(/(^|\s)hidden(\s|$)/);
-    expect(scene.textContent).toContain(m.translations.workspace.footer.savedNotSent);
+    expect(scene.textContent).toContain(en.translations.workspace.footer.savedNotSent);
   });
 
   it("④ Publish 미리보기 — 제목·diff·전후 라벨이 실제 사전에서 온다", async () => {
@@ -455,7 +462,7 @@ describe("목업 — 상태 표시가 실물과 같다", () => {
   it("Unsent는 실물 `StatusBadge unsent`다 — 손 조립 알약이 아니다 (Q3)", async () => {
     const real = await classes(<StatusBadge state="unsent" />);
     const scene = layer(await mount(), 3);
-    const badges = [...scene.querySelectorAll("span")].filter((node) => node.textContent === m.translations.workspace.list.notSent && node.children.length === 0);
+    const badges = [...scene.querySelectorAll("span")].filter((node) => node.textContent === en.translations.workspace.list.notSent && node.children.length === 0);
     expect(badges.length).toBeGreaterThan(0);
     for (const badge of badges) expect(badge.className).toBe(real);
   });
@@ -488,7 +495,7 @@ describe("목업 — 상태 표시가 실물과 같다", () => {
     const scene = layer(await mount(), 0);
     const tree = find(scene, "[data-landing-tree]");
     expect(tree.querySelector('[aria-hidden="true"]')?.textContent).toBe(String(fixture.sources.length));
-    expect(tree.querySelector(".sr-only")?.textContent).toBe(m.sources.count(fixture.sources.length));
+    expect(tree.querySelector(".sr-only")?.textContent).toBe(en.sources.count(fixture.sources.length));
   });
 
   it("모달 닫기 X는 실물 `CloseButton`과 같은 클래스다 — 태그만 `<span>`이다", async () => {

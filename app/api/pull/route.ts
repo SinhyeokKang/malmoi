@@ -5,10 +5,12 @@ import { NextResponse } from "next/server";
 import { getPrisma } from "@/lib/db";
 import { classifyFailure, fail } from "@/lib/failure";
 import { optionalEnv } from "@/lib/env";
+import { withWarningLines } from "@/lib/i18n/adapter-errors";
 import { checkBearer, statusFor } from "@/lib/push/auth";
 import { runNightly } from "@/lib/nightly/run";
 import { summarizeNightly } from "@/lib/nightly/summary";
 import { PULL_BATCH_LIMIT, PULL_TIME_BUDGET_MS, selectPullTargets, type PullItem } from "@/lib/pull/targets";
+import { en } from "@/messages/en";
 
 /**
  * 야간 동기화 (nightly-sync) — 프로젝트마다 `runNightly`가 **Publish(DB → PR) · 서버 적재(리포 → DB) · 스킵** 중 하나를 고른다.
@@ -111,7 +113,8 @@ export async function GET(request: Request): Promise<NextResponse> {
     console.log(summarizeNightly(results, unprocessed).line);
     // ⚠️ **미처리를 배열 밖에 싣는다** — 항목으로 섞으면 `PullItem` 계약이 흔들리고, 소비자가
     // 그것을 프로젝트 하나로 센다. 0이어도 필드를 뺀 적이 없어야 부재와 0이 구별된다.
-    return NextResponse.json({ results, unprocessed });
+    // writer 경고는 코드로 온다(ui-locales B1′) — cron 응답의 계약은 영어 문장이라 내보내기 직전에 en으로 조립한다.
+    return NextResponse.json({ results: results.map((item) => withWarningLines(item, en.adapterErrors)), unprocessed });
   } catch (error) {
     // ⚠️ **던진 메시지를 그대로 싣지 않는다** (2026-09-04 audit #15). 우리가 만든 오류
     // (`MissingEnvError` — 변수 이름만 담는다)는 본문에 남긴다: 그게 POSTMORTEM 2026-09-03이

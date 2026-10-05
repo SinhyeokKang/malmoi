@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { Skeleton } from "@/components/ui/skeleton";
-import { m } from "@/lib/i18n";
+import { getMessages } from "@/lib/i18n/server";
 
 /**
  * 프로필·수단·GitHub 상태가 서버에서 오는 동안의 골격 (핸드오프 `2f`).
@@ -32,7 +32,8 @@ import { m } from "@/lib/i18n";
  *
  * ⚠️ **글자 줄은 `Skeleton`이다** (4-W8) — 줄 높이를 px로 적으면 `--text-*` 토큰이 바뀔 때 골격만 떠내려간다.
  */
-export default function AccountLoading() {
+export default async function AccountLoading() {
+  const m = await getMessages();
   return (
     <>
       <span className="sr-only" role="status">{m.account.loading}</span>

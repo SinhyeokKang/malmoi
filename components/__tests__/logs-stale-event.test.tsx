@@ -16,19 +16,19 @@ vi.mock("next/navigation", () => ({ useRouter: () => mocks }));
 
 import { LogFilters } from "@/components/logs/log-filters";
 import { parseLogFilter } from "@/lib/events/filter";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 
-const props = { slug: "alpha", sources: [{ slug: "web" }], actors: [], refreshable: true };
+const props = { slug: "alpha", sources: [{ slug: "web" }], actors: [], refreshable: true, now: "2026-10-04T23:10:00.000Z" };
 beforeEach(() => { mocks.push.mockReset(); });
 const lastUrl = () => new URL(String(mocks.push.mock.calls.at(-1)?.[0]), "http://x");
 
 it("종류를 고른 주소에 닫힌 상세의 `event`가 없다", async () => {
   const user = userEvent.setup();
   await render(<LogFilters {...props} filter={parseLogFilter({ event: "evt_closed" })} />);
-  const trigger = document.querySelector<HTMLButtonElement>(`button[aria-label^="${m.logs.filters.axis.kind}:"]`)!;
+  const trigger = document.querySelector<HTMLButtonElement>(`button[aria-label^="${en.logs.filters.axis.kind}:"]`)!;
   trigger.focus();
   await act(async () => user.keyboard("{Enter}"));
-  const item = [...document.querySelectorAll('[role="menu"] [role^="menuitem"]')].find((n) => n.textContent === m.logs.kinds.translations)!;
+  const item = [...document.querySelectorAll('[role="menu"] [role^="menuitem"]')].find((n) => n.textContent === en.logs.kinds.translations)!;
   await act(async () => user.click(item));
 
   expect(mocks.push).toHaveBeenCalledOnce();
@@ -38,7 +38,7 @@ it("종류를 고른 주소에 닫힌 상세의 `event`가 없다", async () => 
 
 it("검색 주소에도 `event`가 없다", async () => {
   await render(<LogFilters {...props} filter={parseLogFilter({ event: "evt_closed" })} />);
-  const field = document.querySelector<HTMLInputElement>(`input[aria-label="${m.logs.search.label}"]`)!;
+  const field = document.querySelector<HTMLInputElement>(`input[aria-label="${en.logs.search.label}"]`)!;
   await input(field, "hello");
   await key(field, "Enter");
   expect(lastUrl().searchParams.get("q")).toBe("hello");
@@ -47,7 +47,7 @@ it("검색 주소에도 `event`가 없다", async () => {
 
 it("[Clear filters] 주소에도 `event`가 없다", async () => {
   await render(<LogFilters {...props} filter={parseLogFilter({ kind: "publish", event: "evt_closed" })} />);
-  const clear = [...document.querySelectorAll("button")].find((b) => b.textContent?.trim() === m.logs.filters.clear)!;
+  const clear = [...document.querySelectorAll("button")].find((b) => b.textContent?.trim() === en.logs.filters.clear)!;
   await act(async () => clear.click());
   expect(mocks.push).toHaveBeenCalledOnce();
   expect(lastUrl().search).toBe("");

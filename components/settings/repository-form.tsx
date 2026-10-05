@@ -14,11 +14,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { isAccessError } from "@/lib/auth/message";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import { isValidBranchName } from "@/lib/pull/branch-name";
 import { isSyncBranchName } from "@/lib/pull/ref-slug";
 import { isRepositorySettingsError, repositorySettingsErrorMessage, settingsAccessMessage } from "@/lib/settings/message";
 import { cn } from "@/lib/utils";
+import type { Messages } from "@/lib/i18n";
 
 /** 기준 브랜치 캡션의 배치 — 오류(`FieldError`)와 안내가 같은 자리에 선다. */
 const CAPTION = "min-w-0 flex-1 basis-40 @max-form:basis-full";
@@ -29,6 +30,7 @@ const CAPTION = "min-w-0 flex-1 basis-40 @max-form:basis-full";
  * (malmoi#159). 거부될 조회를 부르지 않고 저장된 값을 문단으로 세운 채 연결 행과 같은 해법을 말한다.
  */
 export function RepositoryForm({ slug, owner, repo, baseBranch, disabled = false, unpinned = false }: { slug: string; owner: string; repo: string; baseBranch: string; disabled?: boolean; unpinned?: boolean }) {
+  const m = useMessages();
   const [pending, startTransition] = useTransition();
   const [branch, setBranch] = useState(baseBranch);
   const [result, setResult] = useState<"idle" | "saved" | { error: string }>("idle");
@@ -115,7 +117,7 @@ export function RepositoryForm({ slug, owner, repo, baseBranch, disabled = false
                 onChange={event => { setBranch(event.target.value); setResult("idle"); }} />
             </div>}
           <Button spinnerSize="sm" ref={saveRef} type="submit" loading={pending} aria-busy={pending} disabled={!editable || branch === current}>{m.settings.repository.fields.save}</Button>
-          {lookupError || failure !== null ? <FieldError id="base-branch-caption" className={CAPTION}>{lookupError ? failureText(lookupError) : failure !== null ? messageFor(failure) : null}</FieldError> : (
+          {lookupError || failure !== null ? <FieldError id="base-branch-caption" className={CAPTION}>{lookupError ? failureText(m, lookupError) : failure !== null ? messageFor(m, failure) : null}</FieldError> : (
             <p id="base-branch-caption" className={cn(CAPTION, "text-foreground/60 text-xs")}>
               {disabled ? m.settings.archivedReason : unpinned ? m.settings.repository.fields.branchDisconnected : result === "saved" ? <><Check className="mr-1 inline size-3.5" aria-hidden />{m.settings.repository.fields.saved}</> : choice?.mode === "input" ? m.newProject.repo.branchTooMany : m.settings.repository.fields.branchHelp}
             </p>
@@ -129,8 +131,8 @@ export function RepositoryForm({ slug, owner, repo, baseBranch, disabled = false
 }
 
 /** 갈래 이름을 문구로. 모르는 값은 재시도 가능한 실패로 접는다 (`PushTokenPanel`과 같은 형). */
-function messageFor(error: string): string {
-  if (isRepositorySettingsError(error)) return repositorySettingsErrorMessage(error);
-  if (isAccessError(error)) return settingsAccessMessage(error);
+function messageFor(m: Messages, error: string): string {
+  if (isRepositorySettingsError(error)) return repositorySettingsErrorMessage(m, error);
+  if (isAccessError(error)) return settingsAccessMessage(m, error);
   return m.settings.repository.fields.failed;
 }

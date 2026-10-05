@@ -10,7 +10,8 @@ import { Button, type ButtonProps } from "@/components/ui/button";
 import { accessErrorMessage, isAccessError, type AccessError } from "@/lib/auth/message";
 import { settingsAccessMessage } from "@/lib/settings/message";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
+import type { Messages } from "@/lib/i18n";
 
 /**
  * 리포 재연결 (DESIGN §6.6). **결과를 인라인으로 보이고 redirect하지 않는다**
@@ -36,6 +37,7 @@ export function ReconnectButton({ slug, label, variant, spinnerSize, onFailure, 
    */
   server: unknown;
 }) {
+  const m = useMessages();
   const [running, setRunning] = useState(false);
   const commit = useCommitWait(server);
   const pending = running || commit.waiting;
@@ -61,7 +63,7 @@ export function ReconnectButton({ slug, label, variant, spinnerSize, onFailure, 
             if (error === null) commit.wait();
             else {
               // Settings가 받는 쪽이면 보관 거부를 그 화면의 문구로 말한다 — 공용 문구는 "설정에서 복원하라"다 (QA D1).
-              if (onFailure) onFailure(messageFor(error, settingsAccessMessage));
+              if (onFailure) onFailure(messageFor(m, error, settingsAccessMessage));
               else setError(error);
             }
             setRunning(false);
@@ -72,7 +74,7 @@ export function ReconnectButton({ slug, label, variant, spinnerSize, onFailure, 
         <RefreshCw aria-hidden />
         {label}
       </Button>
-      {error !== null && <Alert variant="danger">{messageFor(error)}</Alert>}
+      {error !== null && <Alert variant="danger">{messageFor(m, error)}</Alert>}
     </div>
   );
 }
@@ -84,8 +86,8 @@ const FAILED = "thrown";
  * 두 union이 겹치는 값은 `unavailable` 하나이고 뜻이 같다 — 먼저 보는 쪽이 이겨도 문제가 없다.
  * 모르는 값에 던지지 않는다: Action이 새 갈래를 늘려도 화면이 죽지 않아야 한다.
  */
-function messageFor(error: string, access: (error: AccessError) => string = accessErrorMessage): string {
-  if (isAccessError(error)) return access(error);
-  if (isConnectError(error)) return connectErrorMessage(error);
+function messageFor(m: Messages, error: string, access: typeof accessErrorMessage = accessErrorMessage): string {
+  if (isAccessError(error)) return access(m, error);
+  if (isConnectError(error)) return connectErrorMessage(m, error);
   return m.settings.repository.connectFailed;
 }

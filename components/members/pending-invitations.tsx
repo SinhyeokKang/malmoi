@@ -16,11 +16,13 @@ import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { canPerform, type Role } from "@/lib/auth/permission";
 import { planMemberIdentity } from "@/lib/auth/member-identity";
 import type { PendingInvitation } from "@/lib/auth/query";
-import { m } from "@/lib/i18n";
+import { useDateStyle, useMessages, useUiLocale } from "@/components/i18n/messages-provider";
 import { INVITATION_HOURLY_LIMIT, USER_HOURLY_LIMIT } from "@/lib/invitation-email/limits";
+import type { DateStyle } from "@/lib/date-format";
 import { retryAtLabel } from "@/lib/invitation-email/retry-at";
 import { relativeTime } from "@/lib/relative-time";
 import { IconTile } from "@/components/ui/icon-tile";
+import type { Messages } from "@/lib/i18n";
 
 /**
  * 대기 중인 초대 (DESIGN §6.65). **멤버 카드와 같은 그릇·같은 행 껍데기다.**
@@ -53,6 +55,9 @@ export function PendingInvitations({
   /** 철회 뒤 포커스 착지점 — 이 카드의 제목이고, 마지막 초대를 지워 빈 상태로 접혀도 남는다 (malmoi#51). */
   headingId: string;
 }) {
+  const uiLocale = useUiLocale();
+  const style = useDateStyle();
+  const m = useMessages();
   const manage = canPerform(role, "member:manage");
   /** `error: null`은 **확인 불가**다 — 호출이 던져 서버가 철회했는지 모른다 (audit #24). */
   const [failed, setFailed] = useState<{ id: string; error: string | null } | null>(null);
@@ -117,7 +122,7 @@ export function PendingInvitations({
         setLanding({ kind: "heading" });
         return;
       }
-      setCardAlert(resendAlert(result, who));
+      setCardAlert(resendAlert(m, style, result, who));
       // 발급 뒤 메일 단계의 실패면 행이 이미 새 초대로 바뀌었다 — 성공 여부가 아니라 행이 남는지로 고른다.
       const replaced = result === null || result.error === "email-rejected" || result.error === "email-unknown";
       setLanding(replaced ? { kind: "heading" } : { kind: "resend", id: invitationId });
@@ -179,7 +184,7 @@ export function PendingInvitations({
             {invitations.map((invitation) => {
               /* ⚠️ **`name: null`을 박는다** — `PendingInvitation`에는 이름이 없다(`invitedByName`은
                  초대한 **다른** 사람이다). 그래서 마스킹 라벨이 1행으로 올라가고 아바타는 중립 원이다. */
-              const identity = planMemberIdentity({
+              const identity = planMemberIdentity(m, {
                 name: null,
                 emailLabel: invitation.emailLabel,
                 readable: invitation.readable,
@@ -204,7 +209,7 @@ export function PendingInvitations({
                          세로로 쌓으면 행 높이가 멤버 카드와 달라져 두 카드가 다른 표처럼 읽힌다. */
                       <>
                         <span className="text-muted-foreground w-[150px] shrink-0 text-xs">
-                          {m.members.pending.expires(relativeTime(invitation.expiresAt, now))}
+                          {m.members.pending.expires(relativeTime(invitation.expiresAt, now, uiLocale))}
                         </span>
                         {/* ⚠️ 잘리는 유일한 가변 칸이라 전문을 `title`로 든다 (malmoi#90) — 1280에서 112px라 12자 이름부터 잘리고,
                             초대한 사람을 말하는 자리가 이 칸뿐이다. 보이는 문장이 곧 접근 이름이라 스크린리더는 원래 전문을 읽는다. */}
@@ -276,7 +281,7 @@ export function PendingInvitations({
                             : failed.error === "not-found"
                               ? m.members.pending.gone(invitation.emailLabel)
                               : isAccessError(failed.error)
-                                ? accessErrorMessage(failed.error)
+                                ? accessErrorMessage(m, failed.error)
                                 : m.members.pending.revokeFailed}
                         </Alert>
                       ) : null
@@ -293,11 +298,11 @@ export function PendingInvitations({
 }
 
 /** Resend 거부 → 카드 Alert 한 장. `null`은 호출 자체가 끊긴 경우다(결과 미확인). */
-function resendAlert(result: Exclude<ResendResult, { ok: true }> | null, who: string): { variant: "warning" | "danger"; text: string } {
+function resendAlert(m: Messages, style: DateStyle, result: Exclude<ResendResult, { ok: true }> | null, who: string): { variant: "warning" | "danger"; text: string } {
   const p = m.members.pending;
   if (result === null || result.error === "email-unknown") return { variant: "warning", text: p.resendUnconfirmed(who) };
   if (result.error === "rate-limited" && "limit" in result) {
-    const time = retryAtLabel(result.retryAt);
+    const time = retryAtLabel(result.retryAt, style);
     const text =
       result.limit === "project"
         ? p.resendProjectLimited(who, INVITATION_HOURLY_LIMIT, time)
@@ -306,11 +311,11 @@ function resendAlert(result: Exclude<ResendResult, { ok: true }> | null, who: st
           : p.resendLimited(who, time);
     return { variant: "warning", text };
   }
-  if (result.error === "email-rejected" && "retryAt" in result) return { variant: "danger", text: p.resendFailed(who, retryAtLabel(result.retryAt)) };
+  if (result.error === "email-rejected" && "retryAt" in result) return { variant: "danger", text: p.resendFailed(who, retryAtLabel(result.retryAt, style)) };
   if (result.error === "email-unavailable") return { variant: "danger", text: p.resendUnavailable(who) };
   if (result.error === "not-found") return { variant: "danger", text: p.gone(who) };
   if (result.error === "already-member") return { variant: "danger", text: m.members.invite.alreadyMember };
-  if (isAccessError(result.error)) return { variant: "danger", text: accessErrorMessage(result.error) };
+  if (isAccessError(result.error)) return { variant: "danger", text: accessErrorMessage(m, result.error) };
   // ⚠️ 코드 원문을 문장에 끼우지 않는다 (audit #21).
   return { variant: "danger", text: p.resendError(who) };
 }

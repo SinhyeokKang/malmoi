@@ -386,7 +386,19 @@ describe("HUE_HEX", () => {
   const globals = readFileSync("app/globals.css", "utf8");
   // 실제 앱의 override/별칭을 기본 팔레트 뒤에 적용한다. 이메일 런타임에는 CSS를 넣지 않는다.
   const css = `${readFileSync("node_modules/tailwindcss/theme.css", "utf8")}\n${globals}`;
-  const variables = new Map([...css.matchAll(/^\s*(--[\w-]+):\s*([^;]+);/gm)].map((match) => [match[1]!, match[2]!.trim()]));
+  // ⚠️ 앱 토큰은 `light-dark(라이트, 다크)`다(color-scheme Phase 2). 메일은 라이트 고정(`color-scheme: light` 메타)이라 **라이트 쪽**과 대조한다.
+  const lightSide = (value: string): string => {
+    const body = /^light-dark\(([\s\S]*)\)$/.exec(value)?.[1];
+    if (body === undefined) return value;
+    let depth = 0;
+    for (let i = 0; i < body.length; i++) {
+      if (body[i] === "(") depth++;
+      else if (body[i] === ")") depth--;
+      else if (body[i] === "," && depth === 0) return body.slice(0, i).trim();
+    }
+    return value;
+  };
+  const variables = new Map([...css.matchAll(/^\s*(--[\w-]+):\s*([^;]+);/gm)].map((match) => [match[1]!, lightSide(match[2]!.trim())]));
 
   function channelsHex(channels: number[]): string {
     if (!channels.every(Number.isFinite)) throw new Error("비유한 색 채널");
@@ -447,6 +459,9 @@ describe("HUE_HEX", () => {
     }
     const rgb = rgbPattern.exec(value);
     if (rgb) return channelsHex(numericChannels(rgb.slice(1)));
+    // theme.css의 `--color-white: #fff` — 식별색 위 글자 `--on-hue`가 가리킨다(color-scheme Phase 1).
+    const hex = /^#([\da-f]{3}|[\da-f]{6})$/i.exec(value);
+    if (hex) return `#${hex[1]!.length === 3 ? [...hex[1]!].map((digit) => digit + digit).join("") : hex[1]!}`.toLowerCase();
     const oklch = oklchPattern.exec(value);
     if (oklch) {
       const [l, c, h] = numericChannels([oklch[1]!, oklch[2]!, oklch[3] === "none" ? "0" : oklch[3]!]);
@@ -492,7 +507,17 @@ describe("HUE_HEX", () => {
     expect(EXCEPTIONS["#262626"]).not.toBe("");
     expect(template.match(/#262626/g)).toHaveLength(1);
     expect(template).toContain("a.mm-btn:hover{background:#262626!important}");
-    const customColors = [...globals.matchAll(/^\s*(--color-[\w-]+):/gm)].map((match) => colorHex(match[1]!));
+    // 알파 토큰(별칭 끝이 `color-mix(… transparent)`)은 불투명 `#262626`과 같을 수 없어 거른다 — color-scheme Phase 1의
+    // `--color-success-soft`·`--color-warning-soft`(`-100/80`)다. 나머지 불투명 토큰은 전부 hex로 풀어 계속 센다.
+    const terminal = (name: string): string => {
+      const value = variables.get(name) ?? "";
+      const alias = /^var\((--[\w-]+)\)$/.exec(value);
+      return alias ? terminal(alias[1]!) : value;
+    };
+    const names = [...globals.matchAll(/^\s*(--color-[\w-]+):/gm)].map((match) => match[1]!);
+    const translucent = names.filter((name) => /^color-mix\(/.test(terminal(name)));
+    expect(translucent).toEqual(["--color-success-soft", "--color-warning-soft"]);
+    const customColors = names.filter((name) => !translucent.includes(name)).map((name) => colorHex(name));
     expect(customColors).not.toContain("#262626");
   });
 

@@ -14,7 +14,7 @@ import { Alert } from "@/components/ui/alert";
 import { landFocus } from "@/components/ui/focus";
 import { ButtonLink } from "@/components/ui/button";
 import type { AccountView } from "@/lib/github-connect/account-view";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 
 /**
  * GitHub account 구역 — **리포 쓰기 권한이고 로그인 수단이 아니다** (account-settings 태스크 4).
@@ -40,6 +40,7 @@ export function GithubSection({
   /** `GITHUB_APP_SLUG`가 없으면 `null`이고 그 링크만 조용히 사라진다. */
   settingsUrl: string | null;
 }) {
+  const m = useMessages();
   const [failure, setFailure] = useState<string | null>(null);
   const connected = account.status === "ok" && account.login !== null;
   /**

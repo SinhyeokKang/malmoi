@@ -4,11 +4,12 @@ import { z } from "zod";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { logFailure } from "@/lib/github-connect/log";
 import type { OpenImportPr } from "@/lib/import/confirm";
-import { m } from "@/lib/i18n";
+import { withWarningLines } from "@/lib/i18n/adapter-errors";
 import { revalidateTranslationReaders } from "@/lib/keys/revalidate-readers";
 import { loadPreview } from "@/lib/publish/load-preview";
 import { planPublishView } from "@/lib/publish/plan";
 import { publishProject } from "@/lib/sync/publish";
+import { en } from "@/messages/en";
 
 import type { ToolOutcome } from "../result";
 import { checkProjectTool } from "./access";
@@ -32,7 +33,7 @@ export const previewPublish = defineTool({
     if (result.status === "rejected") return { status: "refused", code: result.error };
     if (result.status === "failed") return { status: "unavailable" };
     if (result.status === "refused") {
-      const copy = result.reason === "base-file-missing" ? m.translations.publish.baseFileMissing : m.translations.publish.baseFileUnreadable;
+      const copy = result.reason === "base-file-missing" ? en.translations.publish.baseFileMissing : en.translations.publish.baseFileUnreadable;
       return { status: "refused", code: result.reason, message: copy.description(result.path, result.branch) };
     }
     const { preview } = result;
@@ -43,7 +44,7 @@ export const previewPublish = defineTool({
       unsent: { total: preview.total, keys: preview.keys, withoutFile: preview.withoutFile, withoutKey: preview.withoutKey },
       pullRequest: pullRequestState(preview.openPr),
       groups: preview.groups,
-    }, m.mcp.summary.publishPreview(preview.sendable.total));
+    }, en.mcp.summary.publishPreview(preview.sendable.total));
   },
 });
 
@@ -92,18 +93,18 @@ async function publishOutcome(
   outcome: Awaited<ReturnType<typeof publishProject>>["outcome"],
   repoOf: () => Promise<{ label: string; branch: string }>,
 ): Promise<ToolOutcome> {
-  if (outcome.status === "skipped" && outcome.reason === "reconfirm") return { status: "refused", code: "reconfirm", message: m.logs.reasons.reconfirm };
+  if (outcome.status === "skipped" && outcome.reason === "reconfirm") return { status: "refused", code: "reconfirm", message: en.logs.reasons.reconfirm };
   if (outcome.status === "failed") {
     const delivery = outcome.delivery;
-    if (outcome.error === "already-running") return { status: "refused", code: outcome.error, message: m.translations.publish.alreadyRunningBody, detail: { delivery } };
+    if (outcome.error === "already-running") return { status: "refused", code: outcome.error, message: en.translations.publish.alreadyRunningBody, detail: { delivery } };
     if (outcome.error === "too-soon") {
-      return { status: "refused", code: outcome.error, message: m.translations.publish.tooSoonBody,
+      return { status: "refused", code: outcome.error, message: en.translations.publish.tooSoonBody,
         detail: { delivery, ...(outcome.retryAfterSeconds === undefined ? {} : { retryAfterSeconds: outcome.retryAfterSeconds }) } };
     }
     if (outcome.code !== undefined) {
       // 장애 — 거부가 아니다(§6.00 ②). 문장은 싣지 않고(`internal (ref …)`일 수 있다) 코드·전송 여부만 싣는다. Logs가 같은 코드를 든다.
       if (outcome.retryable === true) return { status: "refused", code: "unavailable", detail: { code: outcome.code, delivery } };
-      const p = m.translations.publish;
+      const p = en.translations.publish;
       const repo = await repoOf();
       return { status: "refused", code: outcome.code, message: `${p.configError}. ${p.configErrorDescription(repo.label, repo.branch)}`,
         detail: { reason: outcome.error, delivery } };
@@ -112,5 +113,6 @@ async function publishOutcome(
     return { status: "refused", code: outcome.error, detail: { delivery } };
   }
   const view = planPublishView(outcome);
-  return ok({ result: view, outcome }, m.mcp.summary.published(view));
+  // 실행은 writer 경고를 코드로 싣는다(ui-locales B1′) — 도구 응답의 계약은 영어 문장이라 여기서 en으로 조립한다.
+  return ok({ result: view, outcome: withWarningLines(outcome, en.adapterErrors) }, en.mcp.summary.published(view));
 }

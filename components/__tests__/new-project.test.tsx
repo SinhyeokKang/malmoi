@@ -3,7 +3,7 @@ import { act } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { isAccessLost } from "@/components/onboarding/failure";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { NewProject } from "@/components/onboarding/new-project";
 import type { CandidateSummary } from "@/lib/onboarding/detect";
 import type { RepoOption } from "@/lib/onboarding/types";
@@ -43,7 +43,7 @@ const repos: RepoOption[] = ["web", "mobile"].map((repo) => ({
   owner: "acme", repo, fullName: `acme/${repo}`, suggestedSlug: `acme-${repo}`, pushedAt: null,
 }));
 const candidate = (path = "i18n/{locale}.json"): CandidateSummary => ({
-  adapter: "json-catalog", label: "JSON", pathTemplate: path, locales: ["en", "fr", "ko", "de", "ja"],
+  adapter: "json-catalog", pathTemplate: path, locales: ["en", "fr", "ko", "de", "ja"],
   outputPaths: [path.replace("{locale}", "en")],
   baseLocale: "en", keys: { status: "counted", count: 2 },
   samples: [{ locale: "en", rows: [{ key: "hello", value: path }], total: 2 }],
@@ -327,11 +327,11 @@ it("생성이 8초를 넘기면 지연 문구가 서고 끝나면 사라진다",
   try {
     await click(button("Create project"));
     await act(async () => { vi.advanceTimersByTime(7_000); });
-    expect(document.body.textContent).not.toContain(m.common.slow);
+    expect(document.body.textContent).not.toContain(en.common.slow);
     await act(async () => { vi.advanceTimersByTime(1_000); });
-    expect(document.body.textContent).toContain(m.common.slow);
+    expect(document.body.textContent).toContain(en.common.slow);
     await act(async () => pending.resolve({ ok: false, error: "unavailable" }));
-    expect(document.body.textContent).not.toContain(m.common.slow);
+    expect(document.body.textContent).not.toContain(en.common.slow);
   } finally { vi.useRealTimers(); }
 });
 
@@ -368,8 +368,8 @@ it("샘플 확인값이 만료되면 다시 탐지하라고 말한다", async ()
   mocks.loadCandidateSample.mockResolvedValue({ ok: false, error: "sample-expired" });
   await files();
   await select('[role="combobox"]', "fr");
-  expect(document.body.textContent).toContain(m.errors.onboarding["sample-expired"]);
-  expect(document.body.textContent).not.toContain(m.newProject.files.preview.unavailable);
+  expect(document.body.textContent).toContain(en.errors.onboarding["sample-expired"]);
+  expect(document.body.textContent).not.toContain(en.newProject.files.preview.unavailable);
 });
 
 // audit #14 — 초기 샘플의 읽기 실패는 지연 조회 실패와 같은 갈래다. 0키 ready로 캐시하면 "정말 비었다"로 보인다.
@@ -379,10 +379,10 @@ it("초기 샘플에서 못 읽은 언어는 빈 표가 아니라 읽지 못했�
   ] }] });
   await files();
   await select('[role="combobox"]', "fr");
-  expect(document.body.textContent).toContain(m.newProject.files.preview.unavailable);
+  expect(document.body.textContent).toContain(en.newProject.files.preview.unavailable);
   // 짝: 정상 빈 언어는 실패 문장이 아니다.
   await select('[role="combobox"]', "ko");
-  expect(document.body.textContent).not.toContain(m.newProject.files.preview.unavailable);
+  expect(document.body.textContent).not.toContain(en.newProject.files.preview.unavailable);
   expect(mocks.loadCandidateSample).not.toHaveBeenCalled();
 });
 

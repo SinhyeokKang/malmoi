@@ -12,7 +12,7 @@ import { Card, CardRows } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import { sessionRevocationMessage } from "@/lib/session-revocation/message";
 
 /**
@@ -31,6 +31,7 @@ export function SessionsSection({ outcome, signOut, confirmProvider }: {
   /** 확인 상대는 서버가 결정적으로 고른다(`pickLoginAccount`) — 화면은 그 이름만 쓴다. */
   confirmProvider: string | null;
 }) {
+  const m = useMessages();
   /**
    * ⚠️ **성공하면 여기서 돌아오지 않는다** — Action이 provider로 `redirect`한다. 그래서 **다음 줄에 도달했다는 것 자체가
    * 실패**다. Dialog는 확정과 함께 이미 닫혀 있어(절차 (a)) 사유가 구역 Alert에 그대로 보인다.
@@ -41,7 +42,7 @@ export function SessionsSection({ outcome, signOut, confirmProvider }: {
     return true;
   }, false);
   // 제출 실패는 `?sessionRevocation=invalid`·`=unavailable`과 같은 문구로 접힌다 — 할 일이 같다.
-  const message = failed ? m.account.sessions.failed : sessionRevocationMessage(outcome);
+  const message = failed ? m.account.sessions.failed : sessionRevocationMessage(m, outcome);
 
   return (
     <Card
@@ -111,6 +112,7 @@ function SignOutButton({ signOut }: { signOut: () => void }) {
 }
 
 function SubmitSignOut() {
+  const m = useMessages();
   const { pending } = useFormStatus();
   return (
     <Button type="submit" variant="default" loading={pending}>

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import type { ImperativePanelGroupHandle } from "react-resizable-panels";
 
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import { panelConstraints, panelLayout, panelPercent, type PanelPx } from "@/lib/shell/panel-size";
 import { cn } from "@/lib/utils";
 
@@ -61,6 +61,7 @@ const FALLBACK = panelConstraints(FALLBACK_AVAILABLE, SHELL_SIDEBAR_PX) ?? undef
  * 전환 중 두 `ContentPanel`이 공존해도 같은 셀을 써서 폭을 나누지 않는다.
  */
 export function ShellPanels({ sidebar, children }: { sidebar: ReactNode; children: ReactNode }) {
+  const m = useMessages();
   const [available, setAvailable] = useState<number | null>(null);
   const [group, setGroup] = useState<HTMLElement | null>(null);
 

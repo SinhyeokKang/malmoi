@@ -26,7 +26,7 @@ vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: vi.fn(), 
 
 import { TranslationWorkspace, type WorkspaceProps } from "@/components/translations/workspace/workspace";
 import type { TranslationListRow } from "@/lib/keys/translation-list";
-import { m } from "@/lib/i18n";
+import { en } from "@/messages/en";
 import { DEFAULT_TRANSLATION_QUERY } from "@/lib/translations/query";
 
 import { props } from "./helpers/workspace-props";
@@ -137,17 +137,17 @@ it("필터를 고르면 응답 전에 트리거 라벨이 바뀐다 — 필터�
   const b = gate();
   respond = () => ({ next: { ...initial, query: { ...initial.query, completion: "incomplete" }, list: { ...initial.list } }, gate: b });
   const { container } = await render(<Harness initial={initial} />);
-  const trigger = () => container.querySelector<HTMLButtonElement>(`button[aria-label^="${m.translations.workspace.filters.state.axis}:"]`)!;
-  expect(trigger().getAttribute("aria-label")).toBe(`${m.translations.workspace.filters.state.axis}: ${m.translations.workspace.filters.state.any}`);
+  const trigger = () => container.querySelector<HTMLButtonElement>(`button[aria-label^="${en.translations.workspace.filters.state.axis}:"]`)!;
+  expect(trigger().getAttribute("aria-label")).toBe(`${en.translations.workspace.filters.state.axis}: ${en.translations.workspace.filters.state.any}`);
   await user.click(trigger());
-  await user.click(menuItem(m.translations.workspace.filters.state.incomplete));
+  await user.click(menuItem(en.translations.workspace.filters.state.incomplete));
   expect(mocks.push).toHaveBeenCalledTimes(1);
-  expect(trigger().getAttribute("aria-label")).toBe(`${m.translations.workspace.filters.state.axis}: ${m.translations.workspace.filters.state.incomplete}`);
+  expect(trigger().getAttribute("aria-label")).toBe(`${en.translations.workspace.filters.state.axis}: ${en.translations.workspace.filters.state.incomplete}`);
   expect(panel(container, "list").getAttribute("aria-busy")).toBe("true");
   // 필터는 선택을 옮기지 않는다 — 상세는 같은 키라 골격으로 바꾸지 않는다.
   expect(panel(container, "detail").querySelector("[data-skeleton-detail]")).toBeNull();
   await arrive(b);
-  expect(trigger().getAttribute("aria-label")).toBe(`${m.translations.workspace.filters.state.axis}: ${m.translations.workspace.filters.state.incomplete}`);
+  expect(trigger().getAttribute("aria-label")).toBe(`${en.translations.workspace.filters.state.axis}: ${en.translations.workspace.filters.state.incomplete}`);
 });
 
 // ── #18 ─────────────────────────────────────────────────────────────────────
@@ -169,7 +169,7 @@ it("트리 클릭은 첫 키 예약값으로 한 번만 push하고, 응답이 �
   await arrive(b);
   // 트리 클릭은 그 노드가 범위다(translation-tree-range) — 누른 네임스페이스가 강조로 남는다.
   expect(node.getAttribute("aria-current")).toBe("true");
-  expect(container.textContent).not.toContain(m.translations.workspace.detail.selectKey);
+  expect(container.textContent).not.toContain(en.translations.workspace.detail.selectKey);
   expect(container.textContent).toContain("common.k2");
   expect(mocks.replace).not.toHaveBeenCalled();
   expect(mocks.push).toHaveBeenCalledTimes(1);
@@ -191,8 +191,8 @@ it("검색 0건 + 위치로 좁힌 검색의 Search all sources는 범위만 넓
   const b = gate();
   respond = () => ({ next: { ...initial, query: { ...narrowedQuery, scope: "project" }, list: { ...base.list, rows: [rowOf("k7")], selectedInResult: null } }, gate: b });
   const { container } = await render(<Harness initial={initial} />);
-  expect(button(m.translations.workspace.filters.clear)).toBeDefined();
-  const searchAll = button(m.translations.workspace.empty.searchAll)!;
+  expect(button(en.translations.workspace.filters.clear)).toBeDefined();
+  const searchAll = button(en.translations.workspace.empty.searchAll)!;
   await user.click(searchAll);
   expect(mocks.push).toHaveBeenCalledOnce();
   const next = new URL(mocks.push.mock.calls[0]![0] as string, "http://x").searchParams;
@@ -202,7 +202,7 @@ it("검색 0건 + 위치로 좁힌 검색의 Search all sources는 범위만 넓
   expect(searchAll.getAttribute("aria-busy")).toBe("true");
   // 대기 중에도 누른 버튼이 같은 라벨로 남는다 — 표시는 빈 문구와 같은 서버 쿼리다(TFS r2 🔴1).
   expect(searchAll.isConnected).toBe(true);
-  expect(searchAll.textContent?.trim()).toBe(m.translations.workspace.empty.searchAll);
+  expect(searchAll.textContent?.trim()).toBe(en.translations.workspace.empty.searchAll);
   expect(document.activeElement).toBe(searchAll);
   await arrive(b);
   expect(rowIds(container)).toEqual(["k7"]);
@@ -219,7 +219,7 @@ it("전 소스 검색 0건 + Status가 켜졌으면 주 버튼은 Clear search, 
   const { container } = await render(<Harness initial={initial} />);
   // 목록 머리에 Status 트리거가 있다 — 빈 상태 안의 버튼만 본다.
   const emptyButtons = () => [...panel(container, "list").querySelectorAll<HTMLButtonElement>("[data-list-empty] button")].map(b => b.textContent?.trim());
-  expect(emptyButtons()).toEqual([m.translations.workspace.empty.clearSearch, m.translations.workspace.filters.clear]);
+  expect(emptyButtons()).toEqual([en.translations.workspace.empty.clearSearch, en.translations.workspace.filters.clear]);
   await user.click([...panel(container, "list").querySelectorAll<HTMLButtonElement>("[data-list-empty] button")][1]!);
   const next = new URL(mocks.push.mock.calls[0]![0] as string, "http://x").searchParams;
   expect(next.get("q")).toBe("zz");
@@ -368,11 +368,11 @@ it("조건이 바뀐 첫 커밋부터 새 행이다 — 새 라벨 아래 옛 �
   const frames: { title: string; rows: (string | undefined)[] }[] = [];
   let host: HTMLElement | null = null;
   // 목록 제목은 고정(`Keys`)이라 키 목록 머리의 Status 라벨로 조건을 잰다 — 서버 조건이 그대로 서는 재렌더라 낙관값이 아니다.
-  const onRender = () => { if (host !== null) frames.push({ title: host.querySelector(`[data-panel=list] button[aria-label^="${m.translations.workspace.filters.state.axis}:"]`)?.getAttribute("aria-label") ?? "", rows: rowIds(host) }); };
+  const onRender = () => { if (host !== null) frames.push({ title: host.querySelector(`[data-panel=list] button[aria-label^="${en.translations.workspace.filters.state.axis}:"]`)?.getAttribute("aria-label") ?? "", rows: rowIds(host) }); };
   const { container, rerender } = await render(<Profiler id="w" onRender={onRender}><TranslationWorkspace {...initial} /></Profiler>);
   host = container;
   await rerender(<Profiler id="w" onRender={onRender}><TranslationWorkspace {...initial} query={{ ...initial.query, completion: "incomplete" }} list={{ ...initial.list, rows: [rowOf("k9")] }} /></Profiler>);
-  const titled = frames.filter(f => f.title === `${m.translations.workspace.filters.state.axis}: ${m.translations.workspace.filters.state.incomplete}`);
+  const titled = frames.filter(f => f.title === `${en.translations.workspace.filters.state.axis}: ${en.translations.workspace.filters.state.incomplete}`);
   // 짝 단언 — 새 조건의 프레임이 실제로 있다.
   expect(titled.length).toBeGreaterThan(0);
   expect(titled.every(f => f.rows.join() === "k9")).toBe(true);
@@ -390,17 +390,17 @@ it("전송 중인 셀은 Saving…이고, 보낸 뒤 더 친 셀은 Not saved로
   await user.clear(area(container, "ko")!);
   await user.type(area(container, "ko")!, "새");
   const status = (code: string) => area(container, code)!.closest("div.flex.shrink-0")?.textContent ?? "";
-  expect(status("zh")).toContain(m.translations.workspace.detail.notSaved);
-  await user.click(button(m.translations.workspace.footer.save)!);
-  expect(status("zh")).toContain(m.translations.workspace.detail.saving);
-  expect(status("zh")).not.toContain(m.translations.workspace.detail.notSaved);
+  expect(status("zh")).toContain(en.translations.workspace.detail.notSaved);
+  await user.click(button(en.translations.workspace.footer.save)!);
+  expect(status("zh")).toContain(en.translations.workspace.detail.saving);
+  expect(status("zh")).not.toContain(en.translations.workspace.detail.notSaved);
   // 보낸 뒤 친 입력은 이번 요청에 없다 — Saving…이 아니다.
   await user.type(area(container, "ko")!, "!");
-  expect(status("ko")).toContain(m.translations.workspace.detail.notSaved);
-  expect(status("ko")).not.toContain(m.translations.workspace.detail.saving);
+  expect(status("ko")).toContain(en.translations.workspace.detail.notSaved);
+  expect(status("ko")).not.toContain(en.translations.workspace.detail.saving);
   // 이 테스트는 전송 중 표시만 본다 — 성공 확정은 아래에서 본다.
   await act(async () => settle({ ok: true, keyId: "k1", cells: [{ localeCode: "zh", value: "空" }, { localeCode: "ko", value: "새" }] }));
-  expect(status("zh")).not.toContain(m.translations.workspace.detail.saving);
+  expect(status("zh")).not.toContain(en.translations.workspace.detail.saving);
 });
 
 it("저장 성공의 첫 표시부터 Saved · not sent이고, 저장한 셀에 Not sent가 선다 — 서버 상세를 기다리지 않는다", async () => {
@@ -409,12 +409,12 @@ it("저장 성공의 첫 표시부터 Saved · not sent이고, 저장한 셀에 
   const { container } = await render(<TranslationWorkspace {...props({ detail: detailOf("k1", { pending: false }) })} />);
   const cell = () => area(container, "zh")!.closest("div.flex.shrink-0")?.textContent ?? "";
   // 짝 단언 — 저장 전에는 그 셀에 보낼 것이 없다.
-  expect(cell()).not.toContain(m.translations.workspace.list.notSent);
+  expect(cell()).not.toContain(en.translations.workspace.list.notSent);
   await user.type(area(container, "zh")!, "空");
-  await user.click(button(m.translations.workspace.footer.save)!);
+  await user.click(button(en.translations.workspace.footer.save)!);
   const result = container.querySelector("[data-footer-result]");
-  expect(result?.textContent).toBe(m.translations.workspace.footer.savedNotSent);
-  expect(cell()).toContain(m.translations.workspace.list.notSent);
+  expect(result?.textContent).toBe(en.translations.workspace.footer.savedNotSent);
+  expect(cell()).toContain(en.translations.workspace.list.notSent);
 });
 
 // ── SyncButton 표면 ──────────────────────────────────────────────────────────
@@ -425,7 +425,7 @@ it("번역 화면의 Sync 확인창이 권하는 Publish 링크는 지금 소스
   mocks.prepare.mockResolvedValue({ approval: "digest-1", unsent: 1 });
   await render(<TranslationWorkspace {...props({ routeSurfaceSlug: "app", detail: null, query: { ...props().query, key: undefined, keySurface: undefined } })} />);
   await act(async () => user.click(button("Sync")!));
-  const link = [...document.querySelectorAll<HTMLAnchorElement>("a")].find(a => a.textContent === m.repositorySync.sendFirst);
+  const link = [...document.querySelectorAll<HTMLAnchorElement>("a")].find(a => a.textContent === en.repositorySync.sendFirst);
   expect(link?.getAttribute("href")).toBe("/projects/acme/surfaces/app/translations");
 });
 
@@ -440,8 +440,8 @@ it("응답 전에 Status와 검색을 잇달아 고르면 둘째 이동이 첫 �
   const initial = props();
   respond = () => ({ next: initial, gate: gate() });
   const { container } = await render(<Harness initial={initial} />);
-  await user.click(container.querySelector<HTMLButtonElement>(`button[aria-label^="${m.translations.workspace.filters.state.axis}:"]`)!);
-  await user.click(menuItem(m.translations.workspace.filters.state.incomplete));
+  await user.click(container.querySelector<HTMLButtonElement>(`button[aria-label^="${en.translations.workspace.filters.state.axis}:"]`)!);
+  await user.click(menuItem(en.translations.workspace.filters.state.incomplete));
   await user.type(container.querySelector<HTMLInputElement>('input[type="search"]')!, "zz{Enter}");
   expect(mocks.push).toHaveBeenCalledTimes(2);
   // 짝 — 첫 이동은 Status만, 둘째는 둘 다.
@@ -457,8 +457,8 @@ it("응답 전에 키를 고른 뒤 필터를 고르면 필터 이동이 새 키
   respond = () => ({ next: initial, gate: gate() });
   const { container } = await render(<Harness initial={initial} />);
   await user.click(row(container, "k2")!);
-  await user.click(container.querySelector<HTMLButtonElement>(`button[aria-label^="${m.translations.workspace.filters.state.axis}:"]`)!);
-  await user.click(menuItem(m.translations.workspace.filters.state.unsent));
+  await user.click(container.querySelector<HTMLButtonElement>(`button[aria-label^="${en.translations.workspace.filters.state.axis}:"]`)!);
+  await user.click(menuItem(en.translations.workspace.filters.state.unsent));
   expect(mocks.push.mock.calls[0]?.[0]).toContain("key=k2");
 });
 
@@ -506,9 +506,9 @@ it("Status를 고르면 도착(0건 빈 상태 포함)까지 모든 커밋에서
   const b = gate();
   respond = () => ({ next: { ...initial, query: { ...initial.query, state: "unsent" }, list: { ...initial.list, rows: [], matchedKeyCount: 0, incompleteKeyCount: 0, selectedInResult: false } }, gate: b });
   const { container } = await render(<Harness initial={initial} />);
-  const trigger = () => container.querySelector<HTMLButtonElement>(`[data-panel="list"] button[aria-label^="${m.translations.workspace.filters.state.axis}:"]`)!;
+  const trigger = () => container.querySelector<HTMLButtonElement>(`[data-panel="list"] button[aria-label^="${en.translations.workspace.filters.state.axis}:"]`)!;
   await user.click(trigger());
-  await user.click(menuItem(m.translations.workspace.filters.state.unsent));
+  await user.click(menuItem(en.translations.workspace.filters.state.unsent));
   expect(mocks.push).toHaveBeenCalledOnce();
   expect(document.activeElement).toBe(trigger());
   commitFocus.length = 0;

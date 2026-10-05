@@ -7,12 +7,12 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { eventGlyph, eventSentence, eventView, triggerOf } from "@/lib/events/view";
 import type { EventRow as Row } from "@/lib/events/query";
-import { m } from "@/lib/i18n";
 import { relativeTime } from "@/lib/relative-time";
-import { utcMinute } from "@/lib/utc-time";
+import { formatClock, formatMinute, type DateStyle } from "@/lib/date-format";
+import type { Messages } from "@/lib/i18n";
 
 /**
- * 이벤트 행 (캔버스 §7): `[시각 48] [글리프 28] [문장 + 보조] [결과 172] [chevron]`.
+ * 이벤트 행 (캔버스 §7): `[시각 112] [글리프 28] [문장 + 보조] [결과 172] [chevron]`.
  *
  * ⚠️ **세로로 맞추는 값이 셋뿐이다** — 시각 · 글리프 · 결과. 나머지는 문장 안에서 산다. 표 다섯 열을
  * 걷은 이유가 그것이고, 종류가 여섯이면 빈 칸이 "없음"과 "해당 없음"을 구별하지 못한다.
@@ -28,12 +28,11 @@ import { utcMinute } from "@/lib/utc-time";
  * 확인 수단이 되어 키보드·터치에서 값이 사라진다 — 행 높이가 들쭉날쭉해지는 비용은 받아들인다.
  */
 export function EventRow({
-  row,
-  href,
-  now,
-  archived,
-  showTime = true,
-}: {
+      row,
+      href,
+      now,
+      archived,
+      showTime = true, style, m }: {
   row: Row;
   href: string;
   now: Date;
@@ -41,11 +40,14 @@ export function EventRow({
   archived: boolean;
   /** Home에는 시각 열이 없다 — 날짜 카드가 없으므로 오른쪽에 상대 시각이 선다 (캔버스 `1h`). */
   showTime?: boolean;
+  /** 화면 언어 + 보는 사람의 시간대 — 서버 부모가 `getDateStyle()`로 넘긴다. */
+  style: DateStyle;
+  m: Messages;
 }) {
-  const view = eventView({ kind: row.kind, result: row.result, warnings: row.run?.warnings ?? 0, errorCode: row.run?.errorCode ?? null });
+  const view = eventView(m, { kind: row.kind, result: row.result, warnings: row.run?.warnings ?? 0, errorCode: row.run?.errorCode ?? null });
   const glyph = eventGlyph({ kind: row.kind, result: row.result, subtype: row.subtype });
-  const sentence = eventSentence(row, {
-    actor: <span className="font-medium">{actorLabel(row)}</span>,
+  const sentence = eventSentence(m, style.uiLocale, row, {
+    actor: <span className="font-medium">{actorLabel(m, row)}</span>,
     key: translationKey(row),
   });
 
@@ -58,21 +60,22 @@ export function EventRow({
     >
       {showTime && (
         /*
-          ⚠️ **정확한 값이 `dateTime`과 접근 이름에 있다** — 행은 `09:42`만 들지만 "어느 밤인지"를
+          ⚠️ **정확한 값이 `dateTime`과 접근 이름에 있다** — 행은 `09:42 UTC`만 들지만 "어느 밤인지"를
           스크린리더·브라우저가 잃으면 안 된다 (캔버스 근거 카드).
+          ⚠️ **행마다 오프셋 라벨을 단다**(user-timezone — 시각에는 라벨, 예외 없음). 폭은 가장 긴 `08:10 UTC+5:30`이 한 줄에 서는 값이다.
         */
         <time
           dateTime={row.occurredAt.toISOString()}
-          aria-label={utcMinute(row.occurredAt)}
-          className="text-muted-foreground w-12 shrink-0 text-sm tabular-nums"
+          aria-label={formatMinute(row.occurredAt, style)}
+          className="text-muted-foreground w-28 shrink-0 text-sm whitespace-nowrap tabular-nums"
         >
-          {row.occurredAt.toISOString().slice(11, 16)}
+          {formatClock(row.occurredAt, style)}
         </time>
       )}
       <EventGlyph icon={glyph.icon} tone={glyph.tone} />
       <span className="flex min-w-0 flex-1 flex-col gap-copy-gap">
         <span className="text-base wrap-anywhere">{sentence}</span>
-        <EventMetaLine row={row} archived={archived} />
+        <EventMetaLine row={row} archived={archived} m={m} />
       </span>
       {/* 결과 배지는 보조줄 밖, 행 오른쪽이다 — Logs는 172 칸의 오른쪽 끝(chevron 옆), Home 최근 로그는 시각 앞(2026-09-30 사용자). */}
       {showTime ? (
@@ -84,7 +87,7 @@ export function EventRow({
         <span className="flex shrink-0 items-center gap-2">
           {view.state !== null && <StatusBadge state={view.state} />}
           {view.warningsLabel !== null && <Badge variant="soft-amber">{view.warningsLabel}</Badge>}
-          <span className="text-muted-foreground text-xs">{relativeTime(row.occurredAt, now)}</span>
+          <span className="text-muted-foreground text-xs">{relativeTime(row.occurredAt, now, style.uiLocale)}</span>
         </span>
       )}
     </ListRow>
@@ -95,7 +98,7 @@ export function EventRow({
  * 행위자 폴백 순서 — 이름 → 마스킹 라벨 → `Removed user`, 자동화는 그 자리를 그대로 쓴다.
  * ⚠️ 자동화 낱말은 `triggerOf`(subtype)가 정한다 — 종류로 가르면 야간 적재·스킵이 `CI`로 선다(nightly-sync).
  */
-function actorLabel(row: Row): string {
+function actorLabel(m: Messages, row: Row): string {
   if (row.actor.kind === "AUTOMATION") return triggerOf({ actorKind: row.actor.kind, kind: row.kind, subtype: row.subtype }) === "nightly" ? m.logs.trigger.cron : m.logs.trigger.ci;
   if (row.actor.removed) return m.logs.trigger.removed;
   return row.actor.name ?? row.actor.emailLabel ?? m.logs.trigger.removed;

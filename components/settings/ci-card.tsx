@@ -10,9 +10,10 @@ import { Button } from "@/components/ui/button";
 import { FileCode2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { PushTokenPanel } from "./push-token-panel";
-import { m } from "@/lib/i18n";
+import { useMessages } from "@/components/i18n/messages-provider";
 import { IconTile } from "@/components/ui/icon-tile";
 export function CiCard({ slug, archived, unpinned = false, stale, children }: { slug: string; archived: boolean; unpinned?: boolean; stale: readonly string[]; children: ReactNode }) {
+  const m = useMessages();
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   const archivedId = useId();

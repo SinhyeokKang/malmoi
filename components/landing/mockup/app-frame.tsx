@@ -1,5 +1,4 @@
 import { ChevronsUpDown, PanelLeftClose, Plus, Search } from "lucide-react";
-import Image from "next/image";
 import type { ReactNode } from "react";
 
 import { ProjectThumbnail } from "@/components/ui/project-thumbnail";
@@ -8,11 +7,12 @@ import { HeaderBar } from "@/components/shell/header-bar";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { buttonClass } from "@/components/ui/button";
+import { FIELD_BUTTON_CLASS } from "@/components/ui/field-button";
 import { Kbd } from "@/components/ui/kbd";
-import { m } from "@/lib/i18n";
+import { MalmoiMark } from "@/components/ui/malmoi-mark";
+import type { Messages } from "@/lib/i18n";
 import { navFooterItems, navZones, type NavItem } from "@/lib/shell/nav";
 import { cn } from "@/lib/utils";
-import logo from "@/public/brand/malmoi-icon-black.svg";
 
 /**
  * 목업 안의 앱 셸 — 헤더 40 · LNB 240 · 핸들 8 · `ContentPanel`을 **정적 복제**로 그린다(DESIGN §6.615 — 실제 셸은 Server Action·세션에 묶여 있다).
@@ -24,16 +24,14 @@ import logo from "@/public/brand/malmoi-icon-black.svg";
  * ⚠️ **인터랙티브 태그를 두지 않는다** — 프레임은 `aria-hidden` + `inert`이지만 jsdom이 `inert`를 모르므로 태그 수로 센다.
  * 링크·폼 자리는 `<span>`에 같은 클래스를 입힌다.
  */
-const fixture = m.landing.mockup;
-
 /**
  * LNB 하단 목록의 **출처 한 곳** — 사이드바 하단(`sidebar.tsx`)이 그리는 항목과 같은 판정이다. ⚠️ Sign out은 하단에서 빠져 아바타
  * 메뉴에만 남는다(MISC 배치, 2026-09-27) — 목업은 그것을 따로 그리지 않는다. 접기 버튼은 실제 사이드바처럼 이 목록 다음에 따로 그린다.
  */
-const FOOTER_ITEMS: () => NavItem[] = navFooterItems;
-
-export function AppFrame({ children, overlay }: { children: ReactNode; overlay?: ReactNode }) {
+export function AppFrame({ m, children, overlay }: { m: Messages; children: ReactNode; overlay?: ReactNode }) {
+  const fixture = m.landing.mockup;
   const zones = navZones(
+    m,
     {
       slug: "acme-web",
       name: fixture.project,
@@ -46,17 +44,19 @@ export function AppFrame({ children, overlay }: { children: ReactNode; overlay?:
   return (
     <div className="bg-canvas relative flex h-full flex-col gap-2 p-2">
       {/* 앱 셸 헤더(`components/shell/header.tsx`)와 같은 `HeaderBar` — 로고 · 가운데 검색 · 우측 New project · 연한 세로선 · 아바타. */}
+      {/* 목업 헤더는 40을 지킨다(2026-10-04 헤더 44 — 앱 셸·공개 셸만 44). 검색 캡슐 사본도 `h-10`이다. */}
       <HeaderBar
+        className="h-10"
         start={
           <span className="flex size-8 items-center justify-center rounded-lg">
-            <Image src={logo} alt="" width={32} height={32} />
+            <MalmoiMark size={32} />
           </span>
         }
         center={
-          /* `FieldButton`(`SearchTrigger`)과 같은 클래스다(태그만 `<span>`). 수화 전 플랫폼을 모르는 정적 복제라 칩은 Mac 표기 하나로 고정한다. `landing-mockup.test.tsx`가 실물을 렌더해 견준다. */
+          /* `FieldButton`(`SearchTrigger`)의 `FIELD_BUTTON_CLASS` 그대로다(태그만 `<span>`, 높이만 목업 40으로 덮는다 — 사본 없음). 수화 전 플랫폼을 모르는 정적 복제라 칩은 Mac 표기 하나로 고정한다. `landing-mockup.test.tsx`가 실물을 렌더해 견준다. */
           <span
             data-landing-global-search=""
-            className="bg-background border-border-subtle shadow-low inline-flex h-10 w-80 cursor-pointer items-center gap-2 rounded-full border px-3 text-sm transition-colors hover:bg-primary-foreground focus-visible:border-ring focus-visible:ring-ring focus-visible:ring-1 focus-visible:outline-none"
+            className={cn(FIELD_BUTTON_CLASS, "h-10")}
           >
             <span aria-hidden className="text-muted-foreground shrink-0">
               <Search className="size-4" />
@@ -101,7 +101,7 @@ export function AppFrame({ children, overlay }: { children: ReactNode; overlay?:
             </div>
           ))}
           <div data-landing-zone="footer" className="mt-auto flex flex-col gap-0.5 pt-2">
-            {FOOTER_ITEMS().map((item) => (
+            {navFooterItems(m).map((item) => (
               <Item key={item.key} item={item} active={false} />
             ))}
             <span
@@ -120,7 +120,7 @@ export function AppFrame({ children, overlay }: { children: ReactNode; overlay?:
         <div className="border-border-subtle bg-background shadow-low flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl border">{children}</div>
       </div>
       {overlay !== undefined && (
-        <div className="bg-foreground/32 absolute inset-0 flex items-center justify-center backdrop-blur-[6px]">{overlay}</div>
+        <div className="bg-scrim/32 absolute inset-0 flex items-center justify-center backdrop-blur-[6px]">{overlay}</div>
       )}
     </div>
   );

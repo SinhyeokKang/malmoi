@@ -1,4 +1,4 @@
-import { m } from "@/lib/i18n";
+import type { Messages } from "@/lib/i18n";
 
 /**
  * `?sessionRevocation=` → 문구 (account-settings 태스크 5·10).
@@ -13,7 +13,7 @@ import { m } from "@/lib/i18n";
  * ⚠️ **제출 실패는 여기 없다** — 그것은 주소창이 아니라 컴포넌트의 상태이고, 문구만 `failed`를
  * 공유한다.
  */
-export function sessionRevocationMessage(outcome: string | undefined): string | null {
+export function sessionRevocationMessage(m: Messages, outcome: string | undefined): string | null {
   const SESSIONS = m.account.sessions;
   if (outcome === "cancelled") return SESSIONS.cancelled;
   if (outcome === "wrong-account") return SESSIONS.wrongAccount;
