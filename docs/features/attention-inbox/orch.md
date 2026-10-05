@@ -18,6 +18,7 @@
    (메모리: 정본이 준비된 변경은 design-sync를 건너뛰지 않는다).
 6. 보조줄 표기: **지휘자 판단 — keep**(`{소스} · {Locale.name}`, Home `title()` 공유). 실데이터 name=code라 시안과 시각 차이 0, 바꾸면 Home과 같은 개념이 갈린다(DESIGN §2.4).
 7. (2026-10-05 사용자) **범위 변경 — 공개 셸 헤더에도 Inbox**(로그인 `ok`일 때). 지휘자 판단: 배치 `[GitHub] | [Inbox] [avatar]`(편집 셸과 같은 형) · 같은 컴포넌트 · Action을 `app/inbox/actions.ts`로 이동(공개 호출 Action 선례 `app/search/`·`app/ui-locale/`). B round 3.
+8. 지휘자 판단 — #191: spec 완료 조건 7 우선(marked로 닫으면 캐시 목록의 unread도 지운다). #190: 첫 구현은 시안이 정본 → Inbox 행 시각은 짧은 상대 시각 형(`relativeTime` 옵션, Home은 긴 형 유지). #189: 목업 빈 입력 64로.
 
 ## 배치
 
@@ -51,3 +52,4 @@ A가 `prisma migrate diff`(더미 `DIRECT_URL`)로 SQL만 만든다 → 지휘�
 - 2026-10-05 push `97b60ed0`. Q1(Opus high, main 체크아웃) dispatch `ctx_da688d8f2d49` — design-sync 감사(수정 없음) + runtime (b) + 레이아웃 + Action 지연 1회. **Q1 동안 지휘자는 cherry-pick·build 금지.** Q2 `/guide-shots`는 UI 결함 수정이 끝난 뒤.
 - 2026-10-05 범위 변경(공개 셸 Inbox) → B round 3 dispatch `ctx_42a5d3a096af`. Q1은 그대로 진행, fix3은 Q1 인계 뒤 통합 + 재확인 QA.
 - 2026-10-05 B fix3(`bc4e1dd4..77fcc896`) R-B3: 🔴0 🟡1(공개 페이지 테스트가 실제 배지 Action→getPrisma) 🟢5. route 표 변화 0. B fix4 dispatch `ctx_83bd51a750ab`(🟡 + 문서 🟢 + 7949fbd1 squash).
+- 2026-10-05 Q1 완료: 이슈 #189 [landing] · #190 [design-sync] · #191 [inbox](모두 B 소유) · 보조줄 keep · 미검증: 실제 스크린리더 · prod 배지 호출 수(dev StrictMode 2회) · 지연 badge 450–770ms / open 485–546ms(dev). dev DB 원복. → B fix5(fix4 뒤 이어서).
