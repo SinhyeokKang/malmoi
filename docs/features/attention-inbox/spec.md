@@ -2,6 +2,8 @@
 
 헤더의 Inbox 트리거에서 **멤버로 속한 모든 프로젝트의 "지금 손볼 것"**을 드롭다운 하나로 본다. 발송(이메일·브라우저 푸시)은 없다.
 
+**시안 (첫 구현 SoT — `/design-sync` 대상)**: https://claude.ai/design/p/b99d54cd-3034-44f1-8446-0a864da9d767?file=Attention+Inbox.dc.html
+
 ## 범위 게이트 (2026-10-05 사용자 확정 · feature-review로 재확인)
 
 - PRODUCT §4.2 **"범용 알림 시스템"**은 이름으로 "**열람 추적**"을 막고(PRODUCT:420), DESIGN은 "**헤더 카운터는 여전히 넣지 않는다**"(DESIGN:871 · §9.2 :2230)다.
