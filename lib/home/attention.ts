@@ -45,9 +45,18 @@ export type AttentionInput = {
   actors: ReadonlyMap<string, Actor>;
 };
 
-export function attentionItems(input: AttentionInput & { state: HomeState; bannerSurface?: string | null }): AttentionList {
+export function attentionItems(input: AttentionInput & {
+  state: HomeState;
+  /** `2b`에서 배너가 지목한 표면. 그 하나만 목록에서 빠진다 — 나머지 실패는 남는다. */
+  bannerSurface?: string | null;
+}): AttentionList {
+  // `2d`: 할 수 있는 일이 하나도 없다 — 항목 카드가 통째로 `EmptyState`다 (DESIGN §6.64).
   if (input.state === "archived") return { shown: [], more: [], count: 0 };
-  // 배너가 이미 말한 실패 하나만 Home 요약에서 뺀다.
+  /**
+   * ⚠️ **배너가 지목한 표면 하나만 뺀다** (2026-09-15 리뷰 🟡6). 전에는 `2b`에서 파서 항목을 **전부**
+   * 버렸는데, 배너는 표면 하나만 말한다 — 표면 둘이 같은 Sync에서 깨지면 둘째가 배너에도 항목에도
+   * 없고 로그 한 줄로만 남았다. 그 줄에는 `[Try again]`도 설정 링크도 없고 7일 창 밖이면 사라진다.
+   */
   const items = collectAttention(input.surfaces, input.review, input.neverFilled, input.actors).filter(item =>
     !(input.state === "import_failed" && item.kind === "import_failed" && item.surfaceSlug === input.bannerSurface));
   const capped = items.slice(0, CAP);
@@ -84,7 +93,18 @@ function who(updatedBy: string | null, actors: ReadonlyMap<string, Actor>): stri
   return updatedBy === null || !actors.has(updatedBy) ? null : actorLabel(updatedBy, actors);
 }
 
-/** 채웠다가 비운 로케일도 포함한다 — 이력이 아니라 현재 빈 상태를 묻는다. */
+/**
+ * 빈 로케일 — 그 로케일에 **지금 값이 있는 셀이 하나도 없는** 경우다. ⚠️ **이력은 보지 않는다** — 채웠다가 비운 로케일도
+ * 여기 서므로 문구가 "한 번도"를 말하면 거짓이다(malmoi#134). 이름 `neverFilled`는 옛 판정의 흔적이다.
+ *
+ * ⚠️ **`localeProgress`에 먹이지 않는다** (code-review 2026-09-15 🟡1). 그 함수는 셀을 행으로
+ * 받는데 여기 있는 것은 그룹 카운트라, 먹이려면 `count`만큼 객체를 만들어야 한다 — 903키 × 59로케일
+ * 리포에서 5만 개다. 답할 질문이 "합이 0인가" 하나라 카운트에서 바로 센다.
+ *
+ * ⚠️ **orphaned 로케일은 뺀다** — 그 파일은 리포에서 사라졌고 편집이 막혀 있어 일이 아니다.
+ * ⚠️ **분모가 0이면 항목이 아니다** — 키가 없는 표면에서 "한 번도 안 채워졌다"는 참이지만 채울
+ * 것이 없다.
+ */
 export function neverFilledLocales(
   surfaces: readonly { id: string; slug: string; locales: readonly { code: string; name: string; orphaned: boolean; createdAt: Date }[] }[],
   aggregates: { keyTotals: ReadonlyMap<string, number>; cells: readonly { surfaceId: string; localeCode: string; count: number }[] },

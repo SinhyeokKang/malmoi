@@ -1,6 +1,6 @@
 import type { AttentionItem } from "@/lib/home/attention";
 import { compare } from "@/lib/home/attention-view";
-import type { Role } from "@/lib/auth/permission";
+import { canPerform, type Role } from "@/lib/auth/permission";
 import type { ProjectStatus } from "@/lib/projects/list";
 
 export type InboxItem = AttentionItem
@@ -39,7 +39,7 @@ export function planInbox(input: { projects: readonly InboxProject[]; seenAt: Da
   let unread = 0;
   const groups: InboxPlan["groups"] = input.projects.flatMap(project => {
     const items: InboxItem[] = [...project.attention];
-    if (project.status === "setup" && project.role === "OWNER") items.push({ kind: "setup", at: project.createdAt });
+    if (project.status === "setup" && canPerform(project.role, "project:settings")) items.push({ kind: "setup", at: project.createdAt });
     if (project.unsent !== null && project.unsent.count > 0) items.push({ kind: "unsent", ...project.unsent });
     if (items.length === 0) return [];
     return [{
@@ -47,7 +47,7 @@ export function planInbox(input: { projects: readonly InboxProject[]; seenAt: Da
       items: items.sort(compareItems).map(item => {
         const fresh = isUnread(item.kind, item.at, input.seenAt);
         if (fresh) unread++;
-        return { ...item, unread: fresh, ownerRetries: item.kind === "import_failed" && project.role === "EDITOR" };
+        return { ...item, unread: fresh, ownerRetries: item.kind === "import_failed" && !canPerform(project.role, "project:settings") };
       }),
     }];
   });

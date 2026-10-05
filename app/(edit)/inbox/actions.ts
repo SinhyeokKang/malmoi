@@ -1,6 +1,7 @@
 "use server";
 
 import { readSession } from "@/lib/auth/read-session";
+import { describeFailure } from "@/lib/failure";
 import { getPrisma } from "@/lib/db";
 import { loadAttentionInbox } from "@/lib/inbox/load";
 import type { InboxPlan } from "@/lib/inbox/plan";
@@ -14,7 +15,8 @@ export async function loadAttentionBadgeAction(): Promise<AttentionBadgeResult> 
   try {
     const plan = await loadAttentionInbox(getPrisma(), session.userId);
     return { status: "ok", unread: plan.unread };
-  } catch {
+  } catch (error) {
+    console.error("Attention badge load failed.", { userId: session.userId, cause: describeFailure(error) });
     return { status: "failed" };
   }
 }
@@ -22,7 +24,7 @@ export async function loadAttentionBadgeAction(): Promise<AttentionBadgeResult> 
 export async function openAttentionInboxAction(): Promise<OpenAttentionInboxResult> {
   const session = await readSession();
   if (session.status !== "ok") return { status: "failed" };
-  // 조회 도중 생긴 일을 보지도 않고 읽었다고 기록하지 않는다.
+  // 조회 전 시각을 써야 그보다 늦은 시각의 항목을 보지도 않고 읽었다고 기록하지 않는다.
   const now = new Date();
   try {
     const prisma = getPrisma();
@@ -34,11 +36,13 @@ export async function openAttentionInboxAction(): Promise<OpenAttentionInboxResu
         where: { id: session.userId, OR: [{ attentionSeenAt: null }, { attentionSeenAt: { lt: now } }] },
         data: { attentionSeenAt: now },
       });
-    } catch {
+    } catch (error) {
+      console.error("Attention watermark write failed.", { userId: session.userId, cause: describeFailure(error) });
       marked = false;
     }
     return { status: "ok", plan, loadedAt: now, marked };
-  } catch {
+  } catch (error) {
+    console.error("Attention inbox load failed.", { userId: session.userId, cause: describeFailure(error) });
     return { status: "failed" };
   }
 }
