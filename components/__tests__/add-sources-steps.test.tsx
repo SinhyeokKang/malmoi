@@ -155,9 +155,13 @@ it("A→B→A 포커스 전환의 늦은 미리보기 응답이 최신 선택을
 });
 
 it("② 추가 실패는 ②에 머물고 선택이 남는다 — 경로 충돌만 [Back]으로 고치라고 말한다", async () => {
-  mocks.addSurfaces.mockResolvedValueOnce({ ok: false, error: "path-conflict", conflicts: [{ path: emails.pathTemplate, surfaceSlugs: ["mail"] }, { path: "other/{locale}.json", surfaceSlugs: [] }] });
+  mocks.addSurfaces.mockResolvedValueOnce({ ok: false, error: "ingest-failed" });
   await open([web, emails]);
   await click(include(emails.pathTemplate)); await click(next());
+  await click(confirm());
+  expect(dialog().textContent).toContain(en.settings.sources.nothingAdded);
+  expect(dialog().textContent).not.toContain(en.settings.sources.conflictBack);
+  mocks.addSurfaces.mockResolvedValueOnce({ ok: false, error: "path-conflict", conflicts: [{ path: emails.pathTemplate, surfaceSlugs: ["mail"] }, { path: "other/{locale}.json", surfaceSlugs: [] }] });
   await click(confirm());
   const alert = dialog().textContent ?? "";
   expect(alert).toContain(en.settings.sources.nothingAdded);
@@ -168,11 +172,33 @@ it("② 추가 실패는 ②에 머물고 선택이 남는다 — 경로 충돌�
   expect(lines).toContain(`${emails.pathTemplate} · mail`);
   expect(lines).toContain("other/{locale}.json");
   expect(dialog().querySelector("h2")?.textContent).toBe(en.settings.sources.baseTitle);
-  mocks.addSurfaces.mockResolvedValueOnce({ ok: false, error: "ingest-failed" });
-  await click(confirm());
-  expect(dialog().textContent).not.toContain(en.settings.sources.conflictBack);
   await click(back());
   expect(include(emails.pathTemplate).getAttribute("aria-checked")).toBe("true");
+});
+
+/**
+ * **서버가 경로 충돌로 거부하면 [Back] 뒤 ①이 그 후보를 짚는다** (malmoi#195). 전엔 [Back]이 서버의 충돌을 지워 ①이 평범한 체크 행만
+ * 보였고 [Next]가 켜져 같은 거부를 다시 밟았다 — `selection.conflicts`는 고른 후보끼리의 충돌만 안다.
+ */
+it("경로 충돌 거부 뒤 [Back]하면 ①이 충돌 후보를 Alert로 짚고 [Next]를 막는다 — 체크를 풀면 풀린다", async () => {
+  mocks.addSurfaces.mockResolvedValueOnce({ ok: false, error: "path-conflict", conflicts: [{ path: emails.pathTemplate, surfaceSlugs: ["mail"] }] });
+  await open([web, emails]);
+  await click(include(web.pathTemplate)); await click(include(emails.pathTemplate)); await click(next());
+  await click(confirm());
+  // ②에서 다시 눌러도 같은 거부다 — 고칠 자리가 ①이라 확정이 꺼지고 사유가 선다.
+  expect(confirm().getAttribute("aria-disabled")).toBe("true");
+  await click(back());
+  const lines = () => [...dialog().querySelectorAll('[role="alert"] p, [data-slot="alert"] p')].map(p => p.textContent);
+  expect(lines()).toContain(en.newProject.files.conflicts);
+  expect(lines()).toContain(`${emails.pathTemplate} · mail`);
+  expect(next().getAttribute("aria-disabled")).toBe("true");
+  expect(document.getElementById(next().getAttribute("aria-describedby")!)?.textContent).toBe(en.settings.sources.blocked.conflict);
+  await click(include(emails.pathTemplate));
+  expect(lines()).not.toContain(`${emails.pathTemplate} · mail`);
+  expect(next().getAttribute("aria-disabled")).toBeNull();
+  // 다시 체크하면 서버가 말한 충돌이 그대로 다시 선다 — 그 사이 리포·소스가 바뀐 것을 화면이 모른다.
+  await click(include(emails.pathTemplate));
+  expect(lines()).toContain(`${emails.pathTemplate} · mail`);
 });
 
 it("② 추가 중에는 [Back]·라디오·Portal 셀렉트가 잠기고 확정은 busy로 포커스를 지킨다", async () => {
