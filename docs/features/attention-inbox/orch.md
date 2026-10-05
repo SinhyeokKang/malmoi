@@ -44,3 +44,4 @@ A가 `prisma migrate diff`(더미 `DIRECT_URL`)로 SQL만 만든다 → 지휘�
 - 2026-10-05 B 완료(`b054a86e..ebcadac3`, 커밋 7, gate ok). 결정 1(오류 줄 CommandStatus polite vs 시안 role=alert)은 design.md 닫힌 결정 11대로 polite 유지. R-B(Opus high) dispatch `ctx_b2cf4bc77a29`.
   남은 일: CLAUDE.md 프리미티브 51→52(지휘자 문서 신선도) · `/guide-shots` 셸 컷 전체 재촬영 범위(사용자 판단) · T9 design-sync · 런타임 (b).
 - 2026-10-05 R-B(Opus high): 🔴0 🟡2 🟢6, 인계 1–8 전부 accept. B fix1(🟡1 골격 행간 · 🟡2 로딩/빈 상태 live region · 🟢1 배지 가드) + **랜딩 목업 stale 전부**(Inbox 복제 · 검색 캡슐 높이 · 프레임 전수) → B dispatch `ctx_139885f4fcec`. 🟢4 CLAUDE.md 51→52는 통합 때 지휘자. 🟢6(보조줄 `web · ko` vs `{소스} · {언어}`)은 design-sync에서 확인.
+- 2026-10-05 B fix1(`71ffa118` 인박스 🟡1·🟡2·🟢1 · `d6cb86b8` 목업 셸 · `10380a5c` DESIGN) 확인 → B 전체 dev 통합 + CLAUDE.md 52. `pnpm gate` ok. A·B 함께 push(🟢7 해소). 목업 씬 내용 미대조 → B fix2 dispatch `ctx_77d29a4c3214`.
