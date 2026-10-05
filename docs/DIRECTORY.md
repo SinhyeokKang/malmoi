@@ -84,9 +84,6 @@ app/
                         ⚠️ actions.ts의 인가가 export마다 따로다 — 공용 헬퍼로 빼면 entry-points가 못 센다
                         ⚠️ 온보딩(생성 경로)은 사용자 수준 인증뿐이다(인가할 프로젝트가 없다) — 모달이라
                         readSession으로 거부를 값으로 돌려받고 checkRepoAccess를 지난다
-    inbox/              헤더 Inbox의 Action 둘만 산다(attention-inbox, 2026-10-05) — page.tsx가 없어 라우트가 없다. actions.ts(loadAttentionBadgeAction ·
-                        openAttentionInboxAction — 입력 없음, 세션의 userId로만 좁힌다, revalidatePath 없음). ⚠️ 인가 게이트는 isProtectedPath가 아니다 —
-                        Action은 현재 페이지 URL로 POST되므로 entry-points의 USER_SCOPED_ACTIONS가 센다
     preferences/        Preferences(`/preferences`, 2026-10-04 ui-locales). 사용자 축 — requireUser만 지난다(account/·mcp/와 같은 형 · layout.tsx가
                         ContentPanel을 든다 · loading.tsx). page.tsx는 Language · Time zone · Theme 카드 셋(components/preferences/)이고 now ISO를 Time zone 카드에
                         내린다(옵션 정렬·미리보기 — 하이드레이션). Language의 Action은 app/ui-locale/에 있고(공개 푸터와 공유) Time zone의 Action은
@@ -144,6 +141,10 @@ app/
   invite/actions.ts     acceptInvitation 하나. ⚠️ **인가 예외** — 지날 프로젝트 인가가 없고 토큰이 대신한다.
                         entry-points의 면제가 파일이 아니라 **export 단위**(EXEMPT_ACTIONS)다 — 파일 단위면
                         여기 붙는 둘째 export가 조용히 무인가로 열린다
+  inbox/actions.ts     헤더 Inbox의 Action 둘(loadAttentionBadgeAction · openAttentionInboxAction — attention-inbox, 2026-10-05). page.tsx가 없어 라우트가 없다.
+                        편집 셸 헤더와 로그인한 공개 셸 헤더(/docs·/changelog·/privacy)가 같이 부르므로 (edit) 밖이다(2026-10-05 사용자 — search/와 같은 자리).
+                        입력 없음, 세션의 userId로만 좁힌다, revalidatePath 없음. ⚠️ 인가 게이트는 isProtectedPath가 아니다 — Action은 현재 페이지 URL로
+                        POST되므로 entry-points의 USER_SCOPED_ACTIONS가 센다
   search/actions.ts    검색 읽기 전용 Action 둘(searchKeysAction · loadSearchMembershipsAction). page.tsx가 없어 검색 라우트는 없다.
                         readSession union → 세션 userId로 키 코어/멤버십을 좁힌다. redirect·revalidate·질의 로그 없음.
                         __tests__/actions.test.ts는 만료·장애·입력·일곱 NavProject 필드 투영을 센다
