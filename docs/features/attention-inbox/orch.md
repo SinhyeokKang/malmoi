@@ -17,6 +17,7 @@
 3. T9 design-sync: 통합 뒤 main 체크아웃 Claude QA 워커가 시안 프레임별로 실측(computed style + AX 트리) → 결함은 BugShot → B가 고친다
    (메모리: 정본이 준비된 변경은 design-sync를 건너뛰지 않는다).
 6. 보조줄 표기: **지휘자 판단 — keep**(`{소스} · {Locale.name}`, Home `title()` 공유). 실데이터 name=code라 시안과 시각 차이 0, 바꾸면 Home과 같은 개념이 갈린다(DESIGN §2.4).
+7. (2026-10-05 사용자) **범위 변경 — 공개 셸 헤더에도 Inbox**(로그인 `ok`일 때). 지휘자 판단: 배치 `[GitHub] | [Inbox] [avatar]`(편집 셸과 같은 형) · 같은 컴포넌트 · Action을 `app/inbox/actions.ts`로 이동(공개 호출 Action 선례 `app/search/`·`app/ui-locale/`). B round 3.
 
 ## 배치
 
@@ -48,3 +49,4 @@ A가 `prisma migrate diff`(더미 `DIRECT_URL`)로 SQL만 만든다 → 지휘�
 - 2026-10-05 B fix1(`71ffa118` 인박스 🟡1·🟡2·🟢1 · `d6cb86b8` 목업 셸 · `10380a5c` DESIGN) 확인 → B 전체 dev 통합 + CLAUDE.md 52. `pnpm gate` ok. A·B 함께 push(🟢7 해소). 목업 씬 내용 미대조 → B fix2 dispatch `ctx_77d29a4c3214`.
 - 2026-10-05 B fix2(`2ad100b7` 목업 씬 전수 · `dd63b826` DESIGN · `c8815c93` DIRECTORY) 통합, gate ok. 지휘자 판단 — 별도 리뷰 생략(목업 한정 변경이고 값마다 실물 대비 테스트로 고정, 시각은 Q가 본다). `da4eb19d` CI success.
 - 2026-10-05 push `97b60ed0`. Q1(Opus high, main 체크아웃) dispatch `ctx_da688d8f2d49` — design-sync 감사(수정 없음) + runtime (b) + 레이아웃 + Action 지연 1회. **Q1 동안 지휘자는 cherry-pick·build 금지.** Q2 `/guide-shots`는 UI 결함 수정이 끝난 뒤.
+- 2026-10-05 범위 변경(공개 셸 Inbox) → B round 3 dispatch `ctx_42a5d3a096af`. Q1은 그대로 진행, fix3은 Q1 인계 뒤 통합 + 재확인 QA.
