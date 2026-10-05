@@ -3048,7 +3048,7 @@ export const en = {
     removal: {
       reasons: {
         "last-source": "A project needs at least one source.",
-        importing: "This source's first sync is still running. Try again when it finishes.",
+        importing: "This source is syncing. Try again when it finishes.",
         "stale-approval": "Couldn't confirm that what you reviewed is still current — nothing was removed. Open Remove again to review.",
       },
     },
@@ -3674,7 +3674,7 @@ export const en = {
       revert_to_last_sent: "Revert one key's unsent languages to the version last confirmed as sent. Call preview_revert first and pass its confirmation.",
       update_project: "Change a project's name or base branch.",
       set_base_locale: "Declare a source's base language. It takes effect after the next sync from the repository.",
-      remove_source: "Remove a source from the project. Its keys, translations, and history are kept, and files in the repository aren't changed. Adding the same path again brings it back and loads the repository's values over its unsent edits. If it has unsent edits, call preview_source_removal first and pass its approval. The last source can't be removed.",
+      remove_source: "Remove a source from the project. Its keys, translations, and history are kept, and files in the repository aren't changed. Adding the same path with the same file format again brings it back and loads the repository's values over its unsent edits. If it has unsent edits, call preview_source_removal first and pass its approval. The last source can't be removed.",
       rotate_push_token: "Issue a new push token. The old one stops working at once. Set it with gh secret set PUSH_TOKEN --repo OWNER/REPO, passing the token on standard input — don't use --body (--body - stores a literal \"-\").",
       invite_members: "Invite people by email. Each invitation goes out by email and the link isn't returned.",
       revoke_invitation: "Revoke a pending invitation.",

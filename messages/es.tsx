@@ -1558,7 +1558,7 @@ export const es = {
     removal: {
       reasons: {
         "last-source": "Un proyecto necesita al menos una fuente.",
-        importing: "La primera sincronización de esta fuente todavía está en curso. Vuelve a intentarlo cuando termine.",
+        importing: "Esta fuente se está sincronizando. Vuelve a intentarlo cuando termine.",
         "stale-approval": "No pudimos confirmar que lo que revisaste siga vigente, así que no se quitó nada. Vuelve a abrir la confirmación para revisarlo.",
       },
     },
