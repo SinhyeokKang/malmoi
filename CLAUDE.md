@@ -72,8 +72,8 @@
 | 방문 집계 | Vercel Web Analytics — **공개 페이지 페이지뷰 하나**(쿠키·커스텀 이벤트 없음). ⚠️ **`lib/seo/analytics.ts`의 추적 경로 허용 목록이 유일한 거름망이다** — 앱 URL엔 초대 토큰·slug·검색어가 실린다 |
 | 이미지 정규화 | `sharp` — 업로드 원본을 저장하지 않는다(192px 이내 WebP 재인코딩) |
 | 스타일 | Tailwind CSS 4 — **`tailwind.config.js`가 없다.** 테마는 `app/globals.css`의 `@theme` |
-| UI | **`components/ui/`를 이 리포가 소유한다** — 프리미티브 모듈 50개(`components/ui/*.tsx` 파일 기준; `.ts` 헬퍼 제외) + `radix-ui`(단일 통합 패키지)에서 DropdownMenu·Dialog·Slot·RadioGroup·Checkbox·Select·Popover·Tabs 여덟. **라이트 단일, `dark:` 금지**. 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) |
-| 토스트 | `sonner` — **루트 레이아웃이 렌더하는 유일한 서드파티 UI 컴포넌트다**(그 옆 `SiteAnalytics`는 화면이 없다) |
+| UI | **`components/ui/`를 이 리포가 소유한다** — 프리미티브 모듈 51개(`components/ui/*.tsx` 파일 기준; `.ts` 헬퍼 제외) + `radix-ui`(단일 통합 패키지)에서 DropdownMenu·Dialog·Slot·RadioGroup·Checkbox·Select·Popover·Tabs 여덟. **라이트·다크 — 토큰이 든다, `dark:` 금지**(테마는 `<html data-theme>` + `globals.css`의 `light-dark()`). 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) |
+| 토스트 | `sonner` — **루트 레이아웃이 렌더하는 유일한 서드파티 UI 컴포넌트다**(그 옆 `SiteAnalytics`는 화면이 없다). ⚠️ **테마를 우리가 넘긴다** — `theme`에 `<html data-theme>`과 같은 값을 주고 sonner 변수를 `style`로 토큰에 묶는다(sonner는 테마를 스스로 감지하고 `classNames`만으로는 다크에서 sonner CSS에 진다 — `app/layout.tsx` 머리 주석 · DESIGN §6.25) |
 | 패널 리사이즈 | `react-resizable-panels` — `resizable.tsx` 하나가 쓴다. ⚠️ **jsdom에서는 화면의 모든 클릭을 삼킨다** — `vitest.setup.ts`가 막는다 |
 | 아이콘·폰트 | `lucide-react` / **Geist Sans 우선 → Pretendard Variable 동적 서브셋 폴백, 둘 다 자사 호스트** |
 | 검증 | Zod 4 — `/api/push` 페이로드 등 외부 진입점 |
@@ -85,9 +85,9 @@
 | Node | `.nvmrc` **24**. **정본은 Vercel 프로젝트의 Node.js Version이다** — 프로덕션이 그 버전으로 빌드하므로 로컬·CI가 따라간다 |
 | DB 접속 | Supabase 리전 `ap-northeast-1`(도쿄). 직결은 IPv6 전용이라 Vercel에서 안 붙으므로 **마이그레이션도 pooler**를 쓴다. ⚠️ **Vercel 함수도 같은 리전에 둔다**(`vercel.json`의 `regions: ["hnd1"]`) — 기본 `iad1`에서는 홉당 ~375ms였다 |
 
-**린터·다크모드·가상 스크롤·테이블 라이브러리는 없다.** 필요해지면 그때 넣는다 — ⚠️ **가상화를 넣지 않는 근거는 실측이고 [ARCHITECTURE §1.95](./docs/ARCHITECTURE.md)에 있다**(24키 프로젝트도 3.29초였다: 병목이 행 수가 아니라 함수 리전이었다). `pnpm lint`는 존재하지 않고 스타일 게이트는 `pnpm typecheck` + `pnpm test`뿐이다.
+**린터·가상 스크롤·테이블 라이브러리는 없다.** 필요해지면 그때 넣는다 — ⚠️ **가상화를 넣지 않는 근거는 실측이고 [ARCHITECTURE §1.95](./docs/ARCHITECTURE.md)에 있다**(24키 프로젝트도 3.29초였다: 병목이 행 수가 아니라 함수 리전이었다). `pnpm lint`는 존재하지 않고 스타일 게이트는 `pnpm typecheck` + `pnpm test`뿐이다.
 
-⚠️ **`app/globals.css`의 `@custom-variant dark` 한 줄이 라이트를 고정한다.** Tailwind v4는 `dark:`의 기본 동작이 `prefers-color-scheme`이라, **그 줄을 지우면 누가 `dark:`를 하나 쓰는 순간 OS 다크에서 살아난다.** 지금 소스에 `dark:`는 0곳이지만 그 줄은 남긴다 — 막는 것이 요지다 (DESIGN §3.1).
+⚠️ **`app/globals.css`의 `@custom-variant dark` 한 줄이 `dark:` 유틸을 죽여 둔다.** 다크는 토큰 값이 든다(2026-10-05, color-scheme) — 컴포넌트가 `dark:`로 분기하면 다크 값의 집이 둘로 갈린다. Tailwind v4는 `dark:`의 기본 동작이 `prefers-color-scheme`이라, **그 줄을 지우면 누가 `dark:`를 하나 쓰는 순간 그 유틸이 OS 다크에서 살아나 토큰 밖의 둘째 다크 출처가 된다.** 테마는 클래스가 아니라 `data-theme` 속성이라 `.dark`는 DOM에 붙지 않는다. 소스의 `dark:` 0곳은 `visual-system.test.ts`가 센다 (DESIGN §3.1).
 
 ### Prisma 7 — v6와 배선이 다르다
 
@@ -114,6 +114,7 @@
 | 기준 로케일 선언, 소스 상세 조회 | **Server Action** (`app/(edit)/projects/[slug]/sources/actions.ts`) | 편집 UI — `updateBaseLocale`이 `Project`→`TranslationSurface` 잠금과 같은 트랜잭션의 `ProjectEvent`를 든다 |
 | 화면 언어 바꾸기(`setUiLocale`) | **Server Action** (`app/ui-locale/actions.ts`) — **공개** | 공개 푸터 스위처(비로그인 포함)와 `/preferences` — 그래서 보호 경로 밖에 산다. 입력은 언어 코드 하나(`parseUiLocale`)이고 **계정에 쓰는 대상은 세션이 정한다**(입력 userId 없음). 순서 고정 계정 → 쿠키(`malmoi-ui-locale`, http-only) → `revalidateAfterCommit`. 세션을 못 읽었거나 계정 쓰기가 실패하면 **아무것도 쓰지 않고 `failed`**다(쿠키만 쓰면 다음 렌더에서 계정의 옛 값이 이긴다). 문장이 아니라 코드(`ok`·`invalid`·`failed`)를 돌려준다 |
 | 시간대 바꾸기(`setTimeZone`) | **Server Action** (`app/(edit)/preferences/actions.ts`) | `/preferences` Time zone 카드 — 로그인 전용이라 `setUiLocale`과 달리 보호 경로 아래다. 입력은 IANA id 하나(`parseTimeZone` — 선별 목록 밖이면 세션도 읽지 않고 `invalid`)이고 **계정에 쓰는 대상은 세션이 정한다**. 세션이 `ok`가 아니거나 쓰기가 실패하면 아무것도 쓰지 않고 `failed`다. **쿠키 층이 없다**(계정 하나에만 쓴다). UTC를 골라도 `"UTC"`를 저장한다. 성공 뒤에만 `revalidateAfterCommit`(루트 레이아웃 — provider가 시간대를 싣는다). 코드(`ok`·`invalid`·`failed`)를 돌려준다 |
+| 테마 바꾸기(`setColorScheme`) | **Server Action** (`app/(edit)/preferences/actions.ts`) | `/preferences` Theme 카드 — 입력은 `system`·`light`·`dark` 하나(`parseColorScheme` 불통과면 `invalid`)이고 **계정에 쓰는 대상은 세션이 정한다**. 세션이 `ok`가 아니거나 계정 쓰기가 실패하면 아무것도 쓰지 않고 `failed`다. 순서 고정 계정 → 쿠키(`malmoi-color-scheme`, http-only — 로그아웃 뒤 공개 페이지도 같은 테마) → `revalidateAfterCommit`(루트 레이아웃이 `<html data-theme>`을 싣는다). 카드는 Action보다 먼저 `data-theme`을 바꾸고 `ok`가 아니면 되돌린다. 코드(`ok`·`invalid`·`failed`)를 돌려준다 |
 | 초대 수락 | **Server Action** (`app/invite/actions.ts`) | 초대 링크 — **인가 예외**, 토큰이 대신한다 |
 | 계정 — 프로필·로그인 수단 연결·해제·세션 폐기 | **Server Action** (`app/(edit)/account/actions.ts`) | `/account` — `requireUser`만 |
 | MCP 개인 토큰 발급·폐기, OAuth 연결 끊기 | **Server Action** (`app/(edit)/mcp/actions.ts`) | `/mcp` — `requireUser`만, `userId`로 좁힌다. 발급 = 기존 행 삭제 + 삽입 한 tx라 Create·Rotate가 같은 Action이다. ⚠️ **MCP 도구에 개인 토큰 발급·폐기가 없다** — 개인 토큰이 개인 토큰을 만들지 않는다(프로젝트 push 토큰 회전 `rotate_push_token`은 별개) |
@@ -261,7 +262,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 | [docs/PRODUCT.md](./docs/PRODUCT.md) | **제품 판정의 정본** — 완료 조건·포지셔닝·역할과 권한표·범위/비범위·설계 결정·IA(URL 구조) | 기능을 추가/삭제했거나 비범위를 범위로 끌어들였거나 §10이 결정됐을 때 |
 | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | **불변식과 함정** — §0 불변식 11 · 결정성 · 어댑터 실측 근거 · blob SHA · 스키마 · 보안 모델 | `lib/` 코어를 건드리기 전에 읽고, 계약이 바뀌면 코드보다 먼저 고친다 |
 | [docs/DIRECTORY.md](./docs/DIRECTORY.md) | 어디에 무엇이 있고 **왜 그렇게 생겼나** | 파일·디렉터리를 새로 만들거나 옮겼을 때 |
-| [docs/DESIGN.md](./docs/DESIGN.md) | UI 시각 규칙 (라이트 단일, 토큰의 진실은 `app/globals.css`) | UI를 만들거나 고칠 때 필독. 새 raw 색을 늘렸으면 §6.2에 등재 |
+| [docs/DESIGN.md](./docs/DESIGN.md) | UI 시각 규칙 (라이트·다크 — 토큰의 진실은 `app/globals.css`) | UI를 만들거나 고칠 때 필독. raw 색은 0이다 — 새 색은 §6.2의 의미 토큰 + 두 테마 값 |
 | [docs/OPERATIONS.md](./docs/OPERATIONS.md) | 키 회전·복구·전면 재발급 — **나중에 다시 실행할 절차만** | 그 절차가 바뀌었을 때 |
 | [docs/ACTIONS.md](./docs/ACTIONS.md) | **대상 리포**에 붙이는 워크플로 (외부 계약) | `inputs`나 red 조건을 바꿨을 때 |
 | [docs/POSTMORTEM.md](./docs/POSTMORTEM.md) | 회고 누적 (append-only, `/postmortem` 전담) | — |
