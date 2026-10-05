@@ -12,6 +12,7 @@
    범위: 배치 A(백엔드 — 순수 함수·스키마·껍데기·Action, 테스트로 판정이 닫힌다)만 Codex `gpt-6-astra`.
    UI(B)·리뷰·QA·design-sync는 Claude Code(Opus 5.5) — DesignSync가 Claude Code 전용이고 시안 대조가 필요하다.
 2. 제품·설계 결정은 design.md "닫힌 결정" 1–11이 전부다. 새 🔒 없음.
+4. (2026-10-05 사용자) `/guide-shots`: 셸이 든 컷 전부 + README hero·logs + 새 `#inbox` 컷을 이번 런에서 재촬영(QA 끝, 직렬).
 3. T9 design-sync: 통합 뒤 main 체크아웃 Claude QA 워커가 시안 프레임별로 실측(computed style + AX 트리) → 결함은 BugShot → B가 고친다
    (메모리: 정본이 준비된 변경은 design-sync를 건너뛰지 않는다).
 
