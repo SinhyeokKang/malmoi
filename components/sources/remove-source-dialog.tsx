@@ -118,20 +118,27 @@ export function RemoveSourceDialog({ open, onOpenChange, slug, surfaceSlug, onPe
       {/* ⚠️ 본문은 표현식 하나다 — 형제가 둘이면 `children`이 배열이 되어 `DialogContent`가 빈 본문 블록을 세운다(`sync-button.tsx`). */}
       {outcome !== null
         ? <Alert variant="danger" size="sm">{outcome}</Alert>
-        : preview.kind === "loading"
-          // 워크플로 줄은 늘 오므로 Alert는 반드시 선다 — 골격은 그 한 줄짜리 Alert의 높이다(시안 R6 ①).
-          ? <div data-removal-skeleton aria-hidden><Skeleton className="h-[66px] w-full rounded-md" /></div>
-          : preview.kind === "failed"
-            ? <Alert variant="danger" size="sm" actions={<Button size="sm" onClick={() => setAttempt(value => value + 1)}>{m.sources.retry}</Button>}>{m.sources.removal.previewFailed}</Alert>
-            /* ⚠️ 글리프는 블록 머리에 하나다 — 한 경고("제거하면 이것들이 함께 간다")의 근거 셋이다. 손실이 큰 것부터 선다. */
-            : <Alert id={warningId} variant="warning" size="sm">
-              <div data-removal-warning aria-live="polite" className="space-y-1.5">
-                {preview.pendingCount > 0 && <p>{m.sources.removal.unsent(preview.pendingCount, <span className="font-medium">{m.repositorySync.unsentCount(preview.pendingCount)}</span>)}</p>}
-                {preview.openPr === "open" && <p>{m.sources.removal.openPr}</p>}
-                {preview.openPr === "unknown" && <p>{m.sources.removal.prUnknown}</p>}
-                <p>{m.sources.removal.workflowLine}</p>
-              </div>
-            </Alert>}
+        /*
+          ⚠️ **live region은 지문 대기 중부터 선다** (리뷰 B2 🟡1) — 내용을 든 채 새로 마운트된 live region은 대부분의 스크린 리더가 읽지 않고,
+          포커스는 이미 [Cancel]이라 늘어난 `aria-describedby`도 다시 읽히지 않는다. 같은 노드 안에서 골격 → 경고(또는 발급 실패)로 바꿔 끼운다
+          (`sync-button.tsx`의 live 블록이 PR 줄이 바뀌기 전부터 있는 것과 같은 이유). 안쪽 Alert는 `off`다 — 알림은 이 컨테이너 하나가 든다.
+        */
+        : <div aria-live="polite">
+          {preview.kind === "loading"
+            // 워크플로 줄은 늘 오므로 Alert는 반드시 선다 — 골격은 그 한 줄짜리 Alert의 높이다(시안 R6 ①).
+            ? <div data-removal-skeleton aria-hidden><Skeleton className="h-[66px] w-full rounded-md" /></div>
+            : preview.kind === "failed"
+              ? <Alert variant="danger" size="sm" live="off" actions={<Button size="sm" onClick={() => setAttempt(value => value + 1)}>{m.sources.retry}</Button>}>{m.sources.removal.previewFailed}</Alert>
+              /* ⚠️ 글리프는 블록 머리에 하나다 — 한 경고("제거하면 이것들이 함께 간다")의 근거 셋이다. 손실이 큰 것부터 선다. */
+              : <Alert id={warningId} variant="warning" size="sm" live="off">
+                <div data-removal-warning className="space-y-1.5">
+                  {preview.pendingCount > 0 && <p>{m.sources.removal.unsent(preview.pendingCount, <span className="font-medium">{m.repositorySync.unsentCount(preview.pendingCount)}</span>)}</p>}
+                  {preview.openPr === "open" && <p>{m.sources.removal.openPr}</p>}
+                  {preview.openPr === "unknown" && <p>{m.sources.removal.prUnknown}</p>}
+                  <p>{m.sources.removal.workflowLine}</p>
+                </div>
+              </Alert>}
+        </div>}
     </DialogContent>
   </Dialog>;
 }
