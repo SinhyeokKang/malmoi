@@ -84,6 +84,9 @@ app/
                         ⚠️ actions.ts의 인가가 export마다 따로다 — 공용 헬퍼로 빼면 entry-points가 못 센다
                         ⚠️ 온보딩(생성 경로)은 사용자 수준 인증뿐이다(인가할 프로젝트가 없다) — 모달이라
                         readSession으로 거부를 값으로 돌려받고 checkRepoAccess를 지난다
+    inbox/              헤더 Inbox의 Action 둘만 산다(attention-inbox, 2026-10-05) — page.tsx가 없어 라우트가 없다. actions.ts(loadAttentionBadgeAction ·
+                        openAttentionInboxAction — 입력 없음, 세션의 userId로만 좁힌다, revalidatePath 없음). ⚠️ 인가 게이트는 isProtectedPath가 아니다 —
+                        Action은 현재 페이지 URL로 POST되므로 entry-points의 USER_SCOPED_ACTIONS가 센다
     preferences/        Preferences(`/preferences`, 2026-10-04 ui-locales). 사용자 축 — requireUser만 지난다(account/·mcp/와 같은 형 · layout.tsx가
                         ContentPanel을 든다 · loading.tsx). page.tsx는 Language · Time zone · Theme 카드 셋(components/preferences/)이고 now ISO를 Time zone 카드에
                         내린다(옵션 정렬·미리보기 — 하이드레이션). Language의 Action은 app/ui-locale/에 있고(공개 푸터와 공유) Time zone의 Action은
@@ -219,6 +222,8 @@ components/
   ui/list-row.tsx       ListRow/ListRowChevron. 링크·button·비상호작용 li/div의 실제 태그와 슬롯(title/description/icon/aside/actions)을 공유한다.
                         card/canvas hover와 selected·명시 aria-current, 원래 inset 포커스 자리를 보존한다.
                         배너를 함께 드는 li와 목록 의미론은 소비자가 소유한다. ListRowChevron은 busy 표시를 받아 서버 행의 훅을 늘리지 않는다
+  ui/list-group.tsx     ListGroup — 결과 목록의 묶음(role=group + 머리 aria-labelledby · 두 번째부터 위 선). 전역 검색 CommandGroup과 헤더 Inbox가
+                        같이 쓴다(attention-inbox T8a). icon(16 썸네일)이 있을 때만 머리가 한 줄 정렬이다
   ui/facts.tsx          export는 Fact다. 소비자가 dl·grid·값 의미를 소유하고 라벨/값 배치(row/stacked/inline, width96/120)를 공유한다.
                         as="tr"는 TableRow/Head/Cell을 조립하며 행 라벨은 scope="row"다. align="end"는 값 오른쪽 정렬(Home 메타 열)
   ui/tabs.tsx · ui/segment.ts
@@ -307,6 +312,9 @@ components/
                         ⚠️ 사이드바 항목 노출은 편의이고 차단이 아니다(방어는 페이지) — 판정은 lib/shell/nav.ts
                         header-bar.tsx  앱·공개 헤더의 공통3칸 grid(start/center/end), 검색을 뷰포트 가운데에 둔다.
                         header.tsx는 받은 멤버십을 검색에 넘기고 public-shell/header.tsx는 계정만 넘긴다
+                        attention-inbox.tsx  헤더 Inbox(attention-inbox, 2026-10-05) — 세로선 오른쪽·아바타 왼쪽의 클라이언트 잎. 마운트 때 배지 Action 한 번,
+                        열 때마다 open Action 한 번이다. ⚠️ 레이아웃 렌더에 싣지 않는다(클라이언트 이동에서 배지가 굳는다) ·
+                        배지 0은 메뉴가 닫힐 때 · 행·그룹은 ui/의 ListGroup·DropdownMenuRow만 든다(DESIGN §6.545)
                         navigation-dim.tsx  화면 이동 dim — 셸이 아니라 루트 레이아웃이 든다(공개 셸·로그인에도 선다).
                         판정(다른 pathname만)은 lib/shell/navigation-dim.ts
                         new-project-icon.tsx  헤더 [New project] 링크의 앞 아이콘을 ui/LinkProgress에 넘기는 클라이언트 잎.
@@ -805,6 +813,8 @@ lib/
                         repositoryConnectionState(연결 배지 키 다섯 — 설정 카드와 Home 메타 Connection 행이 같이 읽는다, 망라형)와
                         planActionAvailability(보관·끊김이면 Publish·Sync를 끈다 — Home·번역 화면이 같이 읽는다)가, cards에 planHomeHold(보류 사유의
                         **지금** 판정 — 편집 수와 열린 PR 조회, 2026-10-01)가 산다
+                        attention-view(attention-inbox — Home 카드와 헤더 Inbox가 같이 읽는 칩·문장·목적지 attentionTile·title·body·tail·attentionHref와
+                        정렬 compare. ⚠️ 클라이언트 그래프에 든다 — 수집 attention.ts를 값으로 물면 어댑터가 따라온다, client-graph CLIENT_LIB_FILES)
                         ⚠️ **전부 I/O가 없고 server-only를 안 붙인다** — 테스트가 직접 import한다
                         ⚠️ **예외 하나 — runs(2026-09-30, nightly-sync · 2026-10-04 project-card-tabs)는 server-only 조회다**: 메타 열 Sync·Publish 탭의
                         사건 둘(시각을 전진시킨 마지막 적재 — SQL `ADVANCED_IMPORT_WHERE` · 마지막 성공 Publish + 조인한 SyncRun)을 읽어
@@ -879,6 +889,8 @@ lib/
                         시각은 semver 숫자순 · truncated = 거르기 전 100건) · markdown(본문 mdast 손질 셋 — shiftHeadings · dropFullChangelog ·
                         imagesToLinks) · load(server-only 껍데기 — fetch · revalidate 3600 · 3초 타임아웃 · ⚠️ 던지지 않는다, 로그엔 status와
                         남은 한도만). ⚠️ GitHub 자격증명 셋 중 어느 것도 쓰지 않는다 — Authorization 없음을 load.test가 단언한다
+  inbox/                헤더 Inbox(attention-inbox, 2026-10-05 — ARCHITECTURE). plan(순수 — planInbox · isUnread · badgeLabel, projectId를 입력에 두지 않는다.
+                        클라이언트 그래프에 든다) · load(server-only — 전용 멤버십 조회 + 병렬 집계, 왕복 수가 프로젝트 수와 무관한 상수)
   search/               match(토큰 AND·순위·상한·빈 입력 미리보기. matchesAllTokens는 검색·`/projects`·LNB 스위처(lib/shell/switcher.ts)가 같이 쓴다) · nav-index(역할별 내비→Projects/Pages + nav 글리프 · 멤버십이 없으면 빈 색인 → Docs만) ·
                         rows(검색 Dialog 뷰모델 — searchRows 그룹·행·ids 한 원천 · searchStatuses 상태 줄 · keySearchText 하한(UTF-16)) ·
                         docs-index(순수 함수 — SUMMARY 원고→페이지 도입/H2 절·평문) · highlight(원문 위치 보존 강조·일치 주변 snippet) ·
