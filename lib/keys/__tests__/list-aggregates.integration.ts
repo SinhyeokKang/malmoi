@@ -13,7 +13,7 @@ import { PrismaClient } from "@/generated/prisma/client";
 import { applyPush } from "@/lib/push/apply";
 import { finishImportRun, markImportStarted, recordReportedFailure } from "@/lib/projects/import-status-store";
 import { cardQuery } from "@/components/home/count-cards";
-import { bannerTranslationsHref } from "@/components/projects/project-list";
+import { bannerTranslationsHref } from "@/lib/routes";
 import { CARD_KEYS, CARD_STATE, cardLandings, surfaceQueues } from "@/lib/home/cards";
 import { inRange, rangeOf } from "@/lib/translations/tree-narrow";
 import { reviewByLocale, rowBanner, rowChip, summaryQueue } from "@/lib/projects/list";

@@ -24,7 +24,7 @@ it("공유 수집은 상한도 배너 제외도 없다", () => {
 });
 it("Home과 Inbox 링크·문장·부분 반영 칩은 같은 생성기를 쓴다", () => {
   const failed = { kind: "import_failed" as const, at, surfaceSlug: "web", reason: "parse-failed" as const };
-  const partial = { ...failed, reason: "partial" as const };
+  const partial = { ...failed, reason: "partial-import" as const };
   const review = { kind: "review" as const, at, surfaceSlug: "web", code: "ko", name: "Korean", count: 3, who: null };
   const empty = { kind: "never_filled" as const, at, surfaceSlug: "web", code: "ko", name: "Korean", keys: 3 };
   expect(attentionHref("demo", failed)).toBe(routes.sources("demo"));
@@ -36,4 +36,17 @@ it("Home과 Inbox 링크·문장·부분 반영 칩은 같은 생성기를 쓴�
   expect(body(en, partial)).toBe(en.home.attention.partial.body);
   expect(tail(en, review)).toBe(".");
   expect(title(en, empty)).toBe(en.home.attention.neverFilled.title("web", "Korean"));
+});
+it("프로젝트 항목도 목록 띠와 같은 링크와 문장을 쓴다", () => {
+  const setup = { kind: "setup" as const, at };
+  const unsent = { kind: "unsent" as const, at, count: 3, surfaceSlug: "web" };
+  expect(attentionHref("demo", setup)).toBe(routes.settings("demo"));
+  expect(attentionHref("demo", unsent)).toBe(bannerTranslationsHref("demo", "web", "unsent"));
+  expect(body(en, setup)).toBe(en.projects.banner.setup);
+  expect(body(en, unsent)).toBe(en.projects.banner.unsent(3));
+  expect(title(en, setup)).toBe("");
+  expect(title(en, unsent)).toBe("web");
+  expect(tail(en, unsent)).toBe("");
+  expect(attentionTile(setup).tone).toBe("muted");
+  expect(attentionTile(unsent).tone).toBe("muted");
 });

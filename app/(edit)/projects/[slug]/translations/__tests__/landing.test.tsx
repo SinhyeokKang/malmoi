@@ -35,7 +35,7 @@ vi.mock("@/components/translations/workspace/workspace", () => ({ TranslationWor
 vi.mock("@/components/project-archived", () => ({ ProjectArchived: () => null }));
 vi.mock("@/components/project-not-ready", () => ({ ProjectNotReady: () => null }));
 import Page from "../../surfaces/[surfaceSlug]/translations/page";
-import { bannerTranslationsHref } from "@/components/projects/project-list";
+import { bannerTranslationsHref } from "@/lib/routes";
 
 vi.mock("@/lib/i18n/server", async () => ({ getUiLocale: async () => "en", getMessages: async () => (await import("@/messages/en")).en }));
 

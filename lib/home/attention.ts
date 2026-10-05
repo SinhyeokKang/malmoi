@@ -35,42 +35,41 @@ export type AttentionList = {
   count: number;
 };
 
-export function attentionItems(input: {
-  state: HomeState;
+export type AttentionInput = {
   surfaces: readonly { slug: string; importError: ImportFailureCode | null; importing: boolean; lastImportFailedAt: Date | null }[];
   review: readonly { surfaceSlug: string; code: string; name: string; count: number; at: Date; updatedBy: string | null }[];
   neverFilled: readonly { surfaceSlug: string; code: string; name: string; keys: number; at: Date }[];
   /** `actorLabel`이 보는 그 맵 그대로다 — 폴백 판정이 **키의 존재**를 봐야 한다. */
   actors: ReadonlyMap<string, Actor>;
-  /** `2b`에서 배너가 지목한 표면. 그 하나만 목록에서 빠진다 — 나머지 실패는 남는다. */
-  bannerSurface?: string | null;
-}): AttentionList {
-  // `2d`: 할 수 있는 일이 하나도 없다 — 항목 카드가 통째로 `EmptyState`다 (DESIGN §6.64).
-  if (input.state === "archived") return { shown: [], more: [], count: 0 };
+};
 
+export function attentionItems(input: AttentionInput & { state: HomeState; bannerSurface?: string | null }): AttentionList {
+  if (input.state === "archived") return { shown: [], more: [], count: 0 };
+  // 배너가 이미 말한 실패 하나만 Home 요약에서 뺀다.
+  const items = collectAttention(input.surfaces, input.review, input.neverFilled, input.actors).filter(item =>
+    !(input.state === "import_failed" && item.kind === "import_failed" && item.surfaceSlug === input.bannerSurface));
+  const capped = items.slice(0, CAP);
+  return { shown: capped.slice(0, VISIBLE), more: capped.slice(VISIBLE), count: capped.length };
+}
+
+export function collectAttention(
+  surfaces: AttentionInput["surfaces"], review: AttentionInput["review"],
+  neverFilled: AttentionInput["neverFilled"], actors: AttentionInput["actors"],
+): AttentionItem[] {
   const items: AttentionItem[] = [];
-  /**
-   * ⚠️ **배너가 지목한 표면 하나만 뺀다** (2026-09-15 리뷰 🟡6). 전에는 `2b`에서 파서 항목을 **전부**
-   * 버렸는데, 배너는 표면 하나만 말한다 — 표면 둘이 같은 Sync에서 깨지면 둘째가 배너에도 항목에도
-   * 없고 로그 한 줄로만 남았다. 그 줄에는 `[Try again]`도 설정 링크도 없고 7일 창 밖이면 사라진다.
-   */
-  for (const surface of input.surfaces) {
+  for (const surface of surfaces) {
     // 돌고 있는 중이면 남은 코드는 이전 실행의 것이다 — 목록·설정과 **같은 술어**다.
     if (!failing(surface) || surface.importError === null) continue;
-    // 배너가 이미 말한 표면은 같은 화면에서 두 번 말하지 않는다.
-    if (input.state === "import_failed" && surface.slug === input.bannerSurface) continue;
     items.push({ kind: "import_failed", at: surface.lastImportFailedAt, surfaceSlug: surface.slug, reason: surface.importError });
   }
-  for (const row of input.review) {
-    items.push({ kind: "review", at: row.at, surfaceSlug: row.surfaceSlug, code: row.code, name: row.name, count: row.count, who: who(row.updatedBy, input.actors) });
+  for (const row of review) {
+    items.push({ kind: "review", at: row.at, surfaceSlug: row.surfaceSlug, code: row.code, name: row.name, count: row.count, who: who(row.updatedBy, actors) });
   }
-  for (const row of input.neverFilled) {
+  for (const row of neverFilled) {
     items.push({ kind: "never_filled", at: row.at, surfaceSlug: row.surfaceSlug, code: row.code, name: row.name, keys: row.keys });
   }
 
-  items.sort(compare);
-  const capped = items.slice(0, CAP);
-  return { shown: capped.slice(0, VISIBLE), more: capped.slice(VISIBLE), count: capped.length };
+  return items.sort(compare);
 }
 
 /**
@@ -90,7 +89,7 @@ function who(updatedBy: string | null, actors: ReadonlyMap<string, Actor>): stri
  * ⚠️ **`localeCompare`를 쓰지 않는다** — 로케일 설정에 따라 답이 달라져 같은 DB 상태가 다른 화면을
  * 낸다. export 정렬과 같은 규칙이다 (ARCHITECTURE §1.1).
  */
-function compare(a: AttentionItem, b: AttentionItem): number {
+export function compare(a: AttentionItem, b: AttentionItem): number {
   // 시각 없는 항목끼리는 아래 보조 키로 갈린다 — 뺄셈으로 접으면 `-Infinity - -Infinity`가 NaN이다.
   if (a.at === null || b.at === null) {
     if (a.at !== b.at) return a.at === null ? 1 : -1;
@@ -101,4 +100,24 @@ function compare(a: AttentionItem, b: AttentionItem): number {
   // 파서 실패에는 로케일이 없다 — 빈 문자열이 같은 표면의 로케일 항목들보다 앞에 온다.
   const code = (item: AttentionItem): string => ("code" in item ? item.code : "");
   return code(a) === code(b) ? 0 : code(a) < code(b) ? -1 : 1;
+}
+
+/** 채웠다가 비운 로케일도 포함한다 — 이력이 아니라 현재 빈 상태를 묻는다. */
+export function neverFilledLocales(
+  surfaces: readonly { id: string; slug: string; locales: readonly { code: string; name: string; orphaned: boolean; createdAt: Date }[] }[],
+  aggregates: { keyTotals: ReadonlyMap<string, number>; cells: readonly { surfaceId: string; localeCode: string; count: number }[] },
+): AttentionInput["neverFilled"] {
+  const filled = new Map<string, Set<string>>();
+  for (const cell of aggregates.cells) {
+    if (cell.count <= 0) continue;
+    const codes = filled.get(cell.surfaceId) ?? new Set<string>();
+    codes.add(cell.localeCode);
+    filled.set(cell.surfaceId, codes);
+  }
+  return surfaces.flatMap(surface => {
+    const total = aggregates.keyTotals.get(surface.id) ?? 0;
+    if (total === 0) return [];
+    return surface.locales.filter(locale => !locale.orphaned && !filled.get(surface.id)?.has(locale.code))
+      .map(locale => ({ surfaceSlug: surface.slug, code: locale.code, name: locale.name, keys: total, at: locale.createdAt }));
+  });
 }

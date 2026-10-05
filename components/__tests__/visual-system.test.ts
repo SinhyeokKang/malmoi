@@ -692,7 +692,7 @@ describe("화면 간 불변식 — grep 규칙 (T28)", () => {
 
     it.each([
       ["components/ui/alert.tsx", "danger: CircleX", "danger: TriangleAlert"],
-      ["components/home/attention-card.tsx", 'import_failed: { icon: CircleX, tone: "danger" }', 'import_failed: { icon: TriangleAlert, tone: "danger" }'],
+      ["lib/home/attention-view.ts", 'import_failed: { icon: CircleX, tone: "danger" }', 'import_failed: { icon: TriangleAlert, tone: "danger" }'],
       ["components/projects/project-list.tsx", '"danger" ? CircleX : TriangleAlert', '"danger" ? TriangleAlert : CircleX'],
     ])("카나리아 — %s의 실패 글리프를 삼각으로 바꾸면 잡는다", (path, from, to) => {
       const source = real(path);

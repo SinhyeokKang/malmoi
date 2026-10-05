@@ -1,6 +1,5 @@
 import { ListRow } from "@/components/ui/list-row";
-import { Archive, ChevronRight, CircleCheck, CircleX, Eye, Languages, TriangleAlert } from "lucide-react";
-import type { ComponentType } from "react";
+import { Archive, ChevronRight, CircleCheck } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -8,10 +7,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { canPerform, type Role } from "@/lib/auth/permission";
 import type { AttentionItem, AttentionList } from "@/lib/home/attention";
 import type { HomeState } from "@/lib/home/state";
-import { importFailureTone } from "@/lib/projects/import-failure";
+import { attentionHref, attentionTile, title, body, tail } from "@/lib/home/attention-view";
 import { relativeTime } from "@/lib/relative-time";
-import { ALL_NAMESPACES, routes } from "@/lib/routes";
-import type { StateTone } from "@/lib/status/canon";
 import { IconTile } from "@/components/ui/icon-tile";
 import type { UiLocale } from "@/lib/i18n/locales";
 import type { Messages } from "@/lib/i18n";
@@ -25,25 +22,6 @@ import type { Messages } from "@/lib/i18n";
  * ⚠️ **행에 버튼도 바닥 링크도 없다** — 이 항목은 DB 상태에서 파생된 **사실**이라 지워도 원인이
  * 남고, 전체 목록 화면을 만들면 Home과 같은 것이 둘이 된다 (캔버스 근거 열).
  */
-
-/**
- * 항목 종류별 타일 — **28 · radius 4 · 글리프 16** (캔버스).
- *
- * ⚠️ **미채움 타일이 캔버스와 다르다.** 캔버스는 `#0891b2` 면에 `mail` 글리프인데 그것은 **그
- * 표면(emails)의 아이콘**이지 항목 종류의 색이 아니다 — 표면별 아이콘·색을 정하는 데이터가 없고
- * (`TranslationSurface`에 그런 컬럼이 없다) `#0891b2`는 §6.2 미등재 raw 색이다. 검토와 같은 무채색
- * 타일에 `languages`를 놓는다. **의도된 이탈이고 `docs/DESIGN.md`에 있다.**
- */
-const TILE: Record<AttentionItem["kind"], { icon: ComponentType<{ className?: string }>; tone: StateTone }> = {
-  // 실패는 어디서나 붉은 면 + `CircleX`다(DESIGN §2.4 글리프 열 — `TriangleAlert`는 danger 옆에 서지 않는다, 5-Y4).
-  import_failed: { icon: CircleX, tone: "danger" },
-  // 검토 대기는 호박 + `Eye`다 — 같은 Home의 카운트 카드·목록 띠와 같은 글리프(5-Y5).
-  review: { icon: Eye, tone: "warning" },
-  never_filled: { icon: Languages, tone: "muted" },
-};
-
-/** 일부 반영은 경고 칸 + `TriangleAlert`다 — 실패 원을 빌리지 않는다(🔴 A2 · §2.4 글리프 열). */
-const PARTIAL_TILE = { icon: TriangleAlert, tone: "warning" } as const;
 
 export function AttentionCard({ items, slug, role, state, now, uiLocale, m }: {
   items: AttentionList;
@@ -127,17 +105,8 @@ function AttentionRow({ item, slug, role, now, uiLocale, m }: { item: AttentionI
   m: Messages;
 }) {
   const ownerRetries = item.kind === "import_failed" && !canPerform(role, "project:settings");
-  const href =
-    item.kind === "import_failed"
-      ? routes.sources(slug)
-      : routes.surfaceTranslations(slug, item.surfaceSlug, item.kind === "review"
-          // 그 로케일의 검토 대기 — 상세 언어를 그 로케일로 좁힌다(translation-rework T12).
-          ? { ns: ALL_NAMESPACES, state: "review", language: item.code }
-          // 그 로케일이 비어 있는 키 — `Incomplete` + 상세 언어 그 로케일이다(translation-tree-range — `Untranslated in` 목록 필터가 사라졌다).
-          // 다른 로케일만 빈 키가 섞이는 것은 사용자가 수용한 대가다(spec "잃는 것").
-          : { ns: ALL_NAMESPACES, completion: "incomplete", language: item.code });
-  // 실패 칩의 톤은 코드가 정한다 — 일부 반영은 호박(2026-09-30 상태 통일).
-  const tile = item.kind === "import_failed" && importFailureTone(item.reason) === "warning" ? PARTIAL_TILE : TILE[item.kind];
+  const href = attentionHref(slug, item);
+  const tile = attentionTile(item);
   const Tile = tile.icon;
 
   return (
@@ -168,30 +137,6 @@ function AttentionRow({ item, slug, role, now, uiLocale, m }: { item: AttentionI
       {item.at !== null && <span className="text-muted-foreground shrink-0 text-xs">{relativeTime(item.at, now, uiLocale)}</span>}
     </ListRow>
   );
-}
-
-function title(m: Messages, item: AttentionItem): string {
-  if (item.kind === "import_failed") return m.home.attention.importFailed.title(item.surfaceSlug);
-  const label = item.kind === "review" ? m.home.attention.review : m.home.attention.neverFilled;
-  return label.title(item.surfaceSlug, item.name);
-}
-
-function body(m: Messages, item: AttentionItem): string {
-  // 일부만 반영된 표면은 실패 문장을 빌리지 않는다(DESIGN §2.4 — 데이터는 들어갔다).
-  if (item.kind === "import_failed") return importFailureTone(item.reason) === "warning" ? m.home.attention.partial.body : m.home.attention.importFailed.body;
-  if (item.kind === "review") return m.home.attention.review.body(item.count);
-  return m.home.attention.neverFilled.body(item.name);
-}
-
-/**
- * ⚠️ **꼬리 절이 통째로 빠지는 갈래가 있다** (DESIGN §6.64) — 이름을 못 찾으면
- * `8 cells are waiting for review.`로 끝난다. `who`가 `null`인지가 그 판정이고, 그 `null`은
- * `actorLabel`이 아니라 **`actors` 맵의 키 존재**에서 왔다.
- */
-function tail(m: Messages, item: AttentionItem): string {
-  if (item.kind === "import_failed") return importFailureTone(item.reason) === "warning" ? m.home.attention.partial.tail : m.home.attention.importFailed.tail;
-  if (item.kind === "review") return item.who === null ? "." : m.home.attention.review.tail(item.who);
-  return m.home.attention.neverFilled.tail(item.keys);
 }
 
 /** 표면·로케일이 키다 — 같은 표면에 같은 코드가 둘일 수 없다(`@@id([projectId, surfaceId, code])`). */

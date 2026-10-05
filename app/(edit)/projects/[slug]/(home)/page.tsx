@@ -21,7 +21,7 @@ import { getDateStyle, getMessages, getUiLocale } from "@/lib/i18n/server";
 import { HOME_EVENT_LIMIT, loadEvent, loadEvents } from "@/lib/events/query";
 import { loadConnectionHealth } from "@/lib/github";
 import { logFailure } from "@/lib/github-connect/log";
-import { attentionItems } from "@/lib/home/attention";
+import { attentionItems, neverFilledLocales } from "@/lib/home/attention";
 import { cardLandings, countCards, planHomeHold, surfaceQueues } from "@/lib/home/cards";
 import { homeLastSync, homeLate, metaTabs } from "@/lib/home/meta";
 import { loadHomeRuns } from "@/lib/home/runs";
@@ -208,28 +208,7 @@ export default async function ProjectHomePage({
   const keys = [...aggregates.keyTotals.values()].reduce((sum, n) => sum + n, 0);
   const bySurface = new Map(surfaces.map((s) => [s.id, s]));
 
-  /**
-   * 빈 로케일 — 그 로케일에 **지금 값이 있는 셀이 하나도 없는** 경우다. ⚠️ **이력은 보지 않는다** — 채웠다가 비운 로케일도
-   * 여기 서므로 문구가 "한 번도"를 말하면 거짓이다(malmoi#134). 이름 `neverFilled`는 옛 판정의 흔적이다.
-   *
-   * ⚠️ **`localeProgress`에 먹이지 않는다** (code-review 2026-09-15 🟡1). 그 함수는 셀을 행으로
-   * 받는데 여기 있는 것은 그룹 카운트라, 먹이려면 `count`만큼 객체를 만들어야 한다 — 903키 × 59로케일
-   * 리포에서 5만 개다. 답할 질문이 "합이 0인가" 하나라 카운트에서 바로 센다.
-   *
-   * ⚠️ **orphaned 로케일은 뺀다** — 그 파일은 리포에서 사라졌고 편집이 막혀 있어 일이 아니다.
-   * ⚠️ **분모가 0이면 항목이 아니다** — 키가 없는 표면에서 "한 번도 안 채워졌다"는 참이지만 채울
-   * 것이 없다.
-   */
-  const filled = new Set(
-    aggregates.cells.filter((cell) => cell.count > 0).map((cell) => `${cell.surfaceId} ${cell.localeCode}`),
-  );
-  const neverFilled = surfaces.flatMap((surface) => {
-    const total = aggregates.keyTotals.get(surface.id) ?? 0;
-    if (total === 0) return [];
-    return surface.locales
-      .filter((locale) => !locale.orphaned && !filled.has(`${surface.id} ${locale.code}`))
-      .map((locale) => ({ surfaceSlug: surface.slug, code: locale.code, name: locale.name, keys: total, at: locale.createdAt }));
-  });
+  const neverFilled = neverFilledLocales(surfaces, aggregates);
 
   // 배너가 지목하는 표면 하나 — 목록 칩·띠와 같은 판정으로 **가장 나쁜 것**(danger > warning, 같은 급이면 slug 순)이다. 나머지 실패는 항목으로 남는다.
   const failed = worstFailingSurface(surfaces);
