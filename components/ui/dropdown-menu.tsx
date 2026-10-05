@@ -7,6 +7,7 @@ import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 import { ListRow } from "./list-row";
+import { Skeleton } from "./skeleton";
 import { useImeGuard } from "./use-ime-guard";
 
 /**
@@ -182,6 +183,14 @@ export function DropdownMenuRow({
       <ListRow {...target} hoverFill={false} icon={icon} title={title} description={description} aside={aside} className={cn("cursor-pointer py-2.5 text-sm outline-none focus-visible:ring-0 data-[highlighted]:bg-foreground/[0.07] data-[disabled]:pointer-events-none data-[disabled]:opacity-50", className)}>{children}</ListRow>
     </Primitive.Item>
   );
+}
+
+/**
+ * `DropdownMenuRow`의 골격 — 칩 28 + 제목·보조줄 두 줄. ⚠️ **행과 같은 파일에 둔다** — 세로 여백(`py-2.5`)이 행과 따로 떠내려가면
+ * 골격이 실물과 다른 높이로 선다(POSTMORTEM 2026-09-16). 글자 줄은 `Skeleton size`가 실물 line box를 세운다. 메뉴 항목이 아니다.
+ */
+export function DropdownMenuRowSkeleton({ widths }: { widths: readonly [title: string, description: string] }) {
+  return <ListRow as="div" className="py-2.5 text-sm" icon={<Skeleton className="size-7" />} title={<Skeleton size="sm" className={widths[0]} />} description={<Skeleton size="xs" className={widths[1]} />} />;
 }
 
 export function DropdownMenuSeparator({ className }: { className?: string }) {

@@ -574,6 +574,8 @@ describe("화면 간 불변식 — grep 규칙 (T28)", () => {
       "components/publish-button.tsx": { count: 2, why: "clickable while pending · progress list" },
       // `DropdownMenuItem`이다 — `Button`이 아니라 메뉴 항목 형(focus-ring 게이트가 raw `<button>`을 막는다).
       "components/shell/user-menu.tsx": { count: 1, why: "menu item" },
+      // Inbox `Try again` — `SignOutItem`과 같은 형(메뉴 항목이 닫히지 않고 disabled + 글리프 교체, 시안 D6).
+      "components/shell/attention-inbox.tsx": { count: 1, why: "menu item" },
       // 서버 헤더의 `Link` 안 `useLinkStatus` 조각 — `ButtonLink`에는 `loading`이 없고 링크 자손에서만 값이 난다.
       // `buttonClass`를 입은 `Link` + `useTransition` — `ButtonLink`는 `loading`·`onNavigate`를 받지 않는다.
       // 행 끝 chevron 자리 교체 — 버튼이 아니다(행 전체가 `Link`).

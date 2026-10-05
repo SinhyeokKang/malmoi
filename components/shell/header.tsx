@@ -7,12 +7,13 @@ import { MalmoiMark } from "@/components/ui/malmoi-mark";
 import type { Messages } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
 
+import { AttentionInbox } from "./attention-inbox";
 import { HeaderBar } from "./header-bar";
 import { NewProjectIcon } from "./new-project-icon";
 import { UserMenu } from "./user-menu";
 
 /**
- * 셸의 전폭 헤더 — **로고 좌측 · 가운데 검색 · 우측 `New project | 사용자 메뉴`** (8-2, 시안 `212:937`의 `header`).
+ * 셸의 전폭 헤더 — **로고 좌측 · 가운데 검색 · 우측 `New project | Inbox 사용자 메뉴`** (8-2, 시안 `212:937`의 `header` · attention-inbox H1).
  *
  * ⚠️ **우측은 공개 셸 헤더(`components/public-shell/header.tsx`)와 같은 패턴이다** (2026-09-30 사용자) — 링크 모양·`gap-3`·연한 세로선이
  * 같고 GitHub 자리만 `New project`다. LNB·사용자 메뉴의 `New project`는 이때 빠졌다(`navWorkItems`).
@@ -63,6 +64,8 @@ export function Header({
           </Link>
           {/* 장식이다 — 공개 셸 헤더와 같은 선(`border-border-subtle`이 캔버스 위에서 보이는 가장 연한 선이다). */}
           <span aria-hidden className="bg-border-subtle h-5 w-px" />
+          {/* Inbox는 세로선 오른쪽·아바타 왼쪽이다(attention-inbox) — 같은 32 아이콘 버튼끼리 사용자 축으로 묶인다. */}
+          <AttentionInbox />
           <UserMenu name={name} email={email} image={image} signOut={signOut} />
         </div>
       }
