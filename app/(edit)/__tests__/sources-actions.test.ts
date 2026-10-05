@@ -44,7 +44,7 @@ it("제거 성공은 그 프로젝트 레이아웃과 목록을 무효화하고 
   expect(removal.remove).toHaveBeenCalledWith({}, { userId: "u" }, { slug: "p", surfaceSlug: "web", approval: null });
   expect(mocks.revalidate.mock.calls).toEqual([["/projects/p", "layout"], ["/projects"]]);
 });
-it.each(["forbidden", "archived", "stale-approval", "last-source", "importing", "not-found"])("제거 거부 %s는 그대로 돌려주고 무효화하지 않는다", async error => {
+it.each(["forbidden", "stale-approval", "last-source", "importing", "not-found"])("제거 거부 %s는 그대로 돌려주고 무효화하지 않는다", async error => {
   removal.remove.mockResolvedValue({ ok: false, error });
   expect(await removeSource({ slug: "p", surfaceSlug: "web", approval: "f" })).toEqual({ ok: false, error });
   expect(mocks.revalidate).not.toHaveBeenCalled();
@@ -69,4 +69,11 @@ it("제거 미리보기는 읽기만 한다 — 무효화하지 않는다", asyn
 it("미리보기 장애는 거부가 아니라 실패다", async () => {
   removal.preview.mockRejectedValue(new Error("database"));
   expect(await previewSourceRemoval({ slug: "p", surfaceSlug: "web" })).toEqual({ ok: false, error: "unavailable" });
+});
+
+/** POSTMORTEM 2026-09-24 — 상태 때문에 거부했으면 그 화면을 다시 그린다. 권한 거부는 그리지 않는다. */
+it("보관 거부는 그 프로젝트 레이아웃을 다시 그린다", async () => {
+  removal.remove.mockResolvedValue({ ok: false, error: "archived" });
+  expect(await removeSource({ slug: "p", surfaceSlug: "web", approval: null })).toEqual({ ok: false, error: "archived" });
+  expect(mocks.revalidate.mock.calls).toEqual([["/projects/p", "layout"]]);
 });

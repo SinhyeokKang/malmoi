@@ -404,6 +404,12 @@ describe("remove_source", () => {
     expect(h.revalidatePath.mock.calls).toEqual([["/projects/acme", "layout"], ["/projects"]]);
   });
 
+  it("보관 거부는 그 프로젝트 레이아웃을 다시 그린다 (POSTMORTEM 2026-09-24)", async () => {
+    h.core.mockResolvedValue({ ok: false, error: "archived" });
+    expect(code(await run("remove_source", subject("owner"), { ...S, approval: null }))).toBe("archived");
+    expect(h.revalidatePath.mock.calls).toEqual([["/projects/acme", "layout"]]);
+  });
+
   it.each(["stale-approval", "last-source", "importing"] as const)("%s는 거부이고 화면과 같은 문장이며 무효화하지 않는다", async error => {
     h.core.mockResolvedValue({ ok: false, error });
     expect(await run("remove_source", subject("owner"), { ...S, approval: null })).toEqual({ status: "refused", code: error, message: en.sources.removal.reasons[error] });
