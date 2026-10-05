@@ -19,7 +19,7 @@
 6. 보조줄 표기: **지휘자 판단 — keep**(`{소스} · {Locale.name}`, Home `title()` 공유). 실데이터 name=code라 시안과 시각 차이 0, 바꾸면 Home과 같은 개념이 갈린다(DESIGN §2.4).
 7. (2026-10-05 사용자) **범위 변경 — 공개 셸 헤더에도 Inbox**(로그인 `ok`일 때). 지휘자 판단: 배치 `[GitHub] | [Inbox] [avatar]`(편집 셸과 같은 형) · 같은 컴포넌트 · Action을 `app/inbox/actions.ts`로 이동(공개 호출 Action 선례 `app/search/`·`app/ui-locale/`). B round 3.
 8. 지휘자 판단 — #191: spec 완료 조건 7 우선(marked로 닫으면 캐시 목록의 unread도 지운다). #190: 첫 구현은 시안이 정본 → Inbox 행 시각은 짧은 상대 시각 형(`relativeTime` 옵션, Home은 긴 형 유지). #189: 목업 빈 입력 64로.
-9. (2026-10-05 사용자) **가이드 IA 개편** — `account.md`·`language.md`를 한 장으로: `Account and preferences`(account/README.md) > `Account`(account/profile.md) · `Preferences`(account/preferences.md). 장 제목 en `Account and preferences`(사용자 확정) · ko `계정과 환경설정` · es `Cuenta y preferencias` — LNB 라벨 두 낱말 규칙(하위 페이지도 LNB 라벨: 계정·환경설정 / Cuenta·Preferencias). 옛 URL·절 id는 넘김 처리(`SECTION_LEGACY_ANCHORS` 선례). Q3 인계 뒤 가이드 배치.
+9. (2026-10-05 사용자) **가이드 IA 개편** — `account.md`·`language.md`를 한 장으로: `Account and preferences`(account/README.md) > `Account`(account/profile.md) · `Preferences`(account/preferences.md). 장 제목 en `Account and preferences`(사용자 확정) · ko `계정 및 환경설정`(사용자 확정) · es `Cuenta y preferencias` — LNB 라벨 두 낱말 규칙(하위 페이지도 LNB 라벨: 계정·환경설정 / Cuenta·Preferencias). 옛 URL·절 id는 넘김 처리(`SECTION_LEGACY_ANCHORS` 선례). Q3 인계 뒤 가이드 배치.
 
 ## 배치
 
