@@ -47,7 +47,7 @@ export const EVENT_RESULTS = [
 export type EventResult = (typeof EVENT_RESULTS)[number];
 
 /**
- * `Not started`로 남기는 거부 **여섯뿐이다** (spec §6.1 — 결정 7). 다음 번에도 같은 이유로 거부될
+ * `Not started`로 남기는 거부 **일곱뿐이다** (spec §6.1 — 결정 7). 다음 번에도 같은 이유로 거부될
  * 것만 남긴다. `already-running`·`too-soon`·400 검증 오류·no-op은 쓰지 않는다.
  *
  * ⚠️ **`wrong-format`이지 `format-mismatch`가 아니다** — `lib/push/guard.ts`의 `GuardResult`가 쓰는
@@ -60,6 +60,8 @@ export const NOT_STARTED_REASONS = [
   "wrong-format",
   "repo-replaced",
   "not-installed",
+  /** 제거된 소스로 온 CI(`/api/push`·`/failure` — sources-add-remove). 워크플로에서 그 step을 지울 때까지 같은 이유로 거부된다. */
+  "surface-removed",
 ] as const;
 
 export type NotStartedReason = (typeof NOT_STARTED_REASONS)[number];

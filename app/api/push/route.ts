@@ -11,6 +11,7 @@ import { logFailure } from "@/lib/github-connect/log";
 import { loadOpenPrForImportGate } from "@/lib/projects/open-pr";
 import { abandonImportRun, finishImportRun, markImportStarted } from "@/lib/projects/import-status-store";
 import { applyProtectedPush, ApplyGuardError } from "@/lib/push/apply";
+import { classifyMissingSurface } from "@/lib/push/surface-refusal";
 import type { PushResponse } from "@/lib/push/payload";
 import { planOpenPrGate } from "@/lib/protection/plan";
 import { countPending } from "@/lib/protection/where";
@@ -165,7 +166,13 @@ export async function POST(request: Request): Promise<NextResponse> {
     const surface = await prisma.translationSurface.findFirst({
       where: { projectId: project.id, slug: parsed.data.surfaceSlug, archivedAt: null },
     });
-    if (!surface) return NextResponse.json({ error: "surface mismatch" }, { status: 409 });
+    if (!surface) {
+      // 제거된 소스는 거부로 남긴다 — 처방(워크플로에서 그 step을 지운다)이 불일치와 다르다. 없음·다른 프로젝트는 기록 없이 같은 409다.
+      const removed = await prisma.translationSurface.findFirst({ where: { projectId: project.id, slug: parsed.data.surfaceSlug } });
+      if (removed === null || classifyMissingSurface(removed) === "mismatch") return NextResponse.json({ error: "surface mismatch" }, { status: 409 });
+      await record({ surface: { id: removed.id, slug: removed.slug }, result: "notStarted", refusal: "surface-removed" });
+      return NextResponse.json({ error: "surface removed" }, { status: 409 });
+    }
     const formatCheck = checkFormat(parsed.data.format, surface);
     if (formatCheck !== "ok") {
       await record({ surface, result: "notStarted", refusal: "wrong-format" });
@@ -273,13 +280,14 @@ export async function POST(request: Request): Promise<NextResponse> {
       // ⚠️ **자기 실행 토큰을 대조해서만 지운다** — 그 사이 다른 실행이 시작했으면 그쪽 표시를 뺏지 않는다.
       // ⚠️ **트랜잭션 안의 `stale-commit`은 실패가 아니다** — 위 사전 가드를 함께 지난 더 새 커밋이 먼저 적재됐다는
       // 뜻이라 이 실행은 아무것도 안 했다. 실패로 닫으면 방금 성공한 적재를 `import-failed`로 덮는다 (launch-readiness L3.7).
-      if (error instanceof ApplyGuardError && error.code === "stale-commit") await abandonImportRun(prisma, { ...scope, token });
+      // 제거 경합도 실패가 아니다 — 제거된 소스에 `import-failed`를 남기면 되살린 뒤 옛 실패로 선다(되살림이 비우지만 그 사이 화면이 없다).
+      if (error instanceof ApplyGuardError && (error.code === "stale-commit" || error.code === "surface-removed")) await abandonImportRun(prisma, { ...scope, token });
       else await finishImportRun(prisma, { ...scope, token, code: "import-failed" });
       if (error instanceof ApplyGuardError) {
         // ⚠️ **`wrong-project`는 거부 여섯에 없다** (spec §6.1) — 오배송은 다음에도 같은 이유로
         // 거부되지만 **이 프로젝트에서 일어난 일이 아니다.** 기록하면 남의 실수가 내 이력에 선다.
         if (error.code !== "wrong-project") await record({ surface, result: "notStarted", refusal: error.code });
-        const message = { archived: "archived", "wrong-format": "format mismatch", "wrong-project": "project mismatch", "stale-commit": "stale commit" }[error.code];
+        const message = { archived: "archived", "surface-removed": "surface removed", "wrong-format": "format mismatch", "wrong-project": "project mismatch", "stale-commit": "stale commit" }[error.code];
         return NextResponse.json({ error: message }, { status: guardStatus(error.code) });
       }
       // 적재 실패도 서버가 관측한 종료다 — 롤백 밖에서 기록하되 회전된 토큰에는 쓰지 않는다.
