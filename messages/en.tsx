@@ -308,7 +308,7 @@ export const en = {
   },
   surfaces: {
     sourceCounts: (keys: number, locales: number): string => `${keys.toLocaleString("en-US")} ${keys === 1 ? "key" : "keys"} · ${locales.toLocaleString("en-US")} ${locales === 1 ? "language" : "languages"}`,
-    label: "Source", baseLocale: "Base language", confirm: "Check files", cancel: "Cancel", conflict: "These files already belong to another source:",
+    label: "Source", confirm: "Check files", cancel: "Cancel", conflict: "These files already belong to another source:",
     failed: "We couldn't add this source. Your existing translations are unchanged. Try again.",
     missingTitle: "Source unavailable",
     missingDescription: "This page may have moved or the source may no longer be active. Open your projects to continue.",

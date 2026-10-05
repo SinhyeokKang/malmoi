@@ -117,7 +117,7 @@ export const es = {
   },
   surfaces: {
     sourceCounts: (keys: number, locales: number): string => `${keys.toLocaleString("es")} ${keys === 1 ? "clave" : "claves"} · ${locales.toLocaleString("es")} ${locales === 1 ? "idioma" : "idiomas"}`,
-    label: "Fuente", baseLocale: "Idioma base", confirm: "Comprobar archivos", cancel: "Cancelar", conflict: "Estos archivos ya pertenecen a otra fuente:",
+    label: "Fuente", confirm: "Comprobar archivos", cancel: "Cancelar", conflict: "Estos archivos ya pertenecen a otra fuente:",
     failed: "No se pudo añadir esta fuente. Tus traducciones actuales no cambiaron. Vuelve a intentarlo.",
     missingTitle: "Fuente no disponible",
     missingDescription: "Es posible que esta página se haya movido o que la fuente ya no esté activa. Abre tus proyectos para continuar.",

@@ -120,7 +120,7 @@ export const ko = {
   },
   surfaces: {
     sourceCounts: (keys: number, locales: number): string => `키 ${keys.toLocaleString("ko-KR")}개 · 언어 ${locales.toLocaleString("ko-KR")}개`,
-    label: "소스", baseLocale: "기준 언어", confirm: "파일 확인", cancel: "취소", conflict: "이 파일은 이미 다른 소스에 속해 있습니다:",
+    label: "소스", confirm: "파일 확인", cancel: "취소", conflict: "이 파일은 이미 다른 소스에 속해 있습니다:",
     failed: "이 소스를 추가하지 못했습니다. 기존 번역은 그대로입니다. 다시 시도하세요.",
     missingTitle: "소스를 사용할 수 없음",
     missingDescription: "페이지가 이동했거나 소스가 비활성화되었을 수 있습니다. 내 프로젝트에서 다시 확인하세요.",

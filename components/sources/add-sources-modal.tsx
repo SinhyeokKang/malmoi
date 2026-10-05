@@ -1,7 +1,6 @@
 "use client";
 
 import { unstable_rethrow } from "next/navigation";
-import { ArrowRight } from "lucide-react";
 import { useEffect, useState, useTransition, type RefObject } from "react";
 import { addSurfaces, confirmManualFormat, detectRepoFormats, loadCandidateSample } from "@/app/(edit)/projects/actions";
 import { startGithubConnect } from "@/app/(edit)/projects/[slug]/settings/actions";
@@ -13,6 +12,7 @@ import { SurfaceBaseLocales } from "@/components/onboarding/steps/base-locales";
 import { LargeModal } from "@/components/ui/large-modal";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { WizardFooter } from "@/components/ui/wizard-footer";
 import { useMessages } from "@/components/i18n/messages-provider";
 import { planAddBlock, planAddStep } from "@/lib/sources/add-block";
 import type { CandidateSummary } from "@/lib/onboarding/detect";
@@ -128,15 +128,12 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
       {step === 1 ? <>
         <Button size="lg" disabled={pending} onClick={onClose}>{m.surfaces.cancel}</Button>
         {/* [Next]는 서버를 부르지 않는 즉시 전이다 — ②의 언어 목록은 탐지 응답(`candidate.locales`)에 이미 있다. */}
-        <Button size="lg" variant="primary" aria-disabled={stepReason !== null || pending || undefined} aria-describedby={stepReason !== null ? "add-source-help" : undefined} onClick={() => {
-          if (stepReason !== null || pending) return;
-          setStep(2);
-        }}>{m.newProject.modal.next}<ArrowRight className="size-4" aria-hidden /></Button>
+        <WizardFooter nextBlocked={stepReason !== null || pending} nextDescribedBy={stepReason !== null ? "add-source-help" : undefined} onNext={() => setStep(2)} />
       </> : <>
-        {/* 추가 중 ①로 돌아가 체크를 바꾸면 화면이 보내지 않은 선택을 말한다 — 닫기 넷과 함께 막는다. */}
-        <Button size="lg" disabled={pending} onClick={() => { setError(undefined); setConflicts([]); setStep(1); }}>{m.newProject.modal.back}</Button>
-        <Button spinnerSize="sm" size="lg" data-add-sources variant="primary" busy={pending && operation === "add"} aria-disabled={addBlocked || pending || undefined} aria-describedby={addBlocked ? "add-source-help" : undefined} onClick={() => {
-          if (addBlocked) return;
+        {/* 추가 중 ①로 돌아가 체크를 바꾸면 화면이 보내지 않은 선택을 말한다 — 닫기 넷과 함께 막는다. 스피너는 확정에만 선다(audit-ux #26). */}
+        <WizardFooter showBack backDisabled={pending} onBack={() => { setError(undefined); setConflicts([]); setStep(1); }}
+          nextLabel={m.settings.sources.confirm} nextArrow={false} spinnerSize="sm" data-add-sources
+          busy={pending && operation === "add"} nextBlocked={addBlocked || pending} nextDescribedBy={addBlocked ? "add-source-help" : undefined} onNext={() => {
           const plan = planAddSources({ picked: candidates.filter((_, i) => checked.has(i)), existing });
           if (!plan.ok || plan.add.length === 0 || pending) return;
           setError(undefined); setManualError(undefined); setUnknown(false); setConflicts([]); setOperation("add");
@@ -149,7 +146,7 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
             } catch { setUnknown(true); }
             setAdding(false);
           })();
-        }}>{m.settings.sources.confirm}</Button>
+        }} />
       </>}
     </>} notice={reason !== null ? <span id="add-source-help" className="text-muted-foreground text-xs">{reason}</span>
       /* 추가는 첫 적재까지 돈다 (audit-ux #23) — 큰 리포면 버튼 스피너 하나로 30초를 넘긴다. */
