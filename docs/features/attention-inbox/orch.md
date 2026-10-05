@@ -57,3 +57,4 @@ A가 `prisma migrate diff`(더미 `DIRECT_URL`)로 SQL만 만든다 → 지휘�
 - 2026-10-05 B fix5(`1b52f245..7ed495da`: 첫 그룹 선 · Refs #191 #190 #189 · DESIGN/design) 통합. fix5 dispatch `ctx_28a45db577c8`는 바쁜 터미널에 붙다 failed — 인계·커밋으로 수락. gate 재실행 ok(load 1.9) → 앞선 search-performance red는 부하 흔들림으로 판단.
 - 2026-10-05 push `ce8e8e61`. Q2(Opus high, main 체크아웃) dispatch `ctx_0d2c80d902da` — design-sync 재측정(그룹 경계선 포함) · #189–#191 재확인/닫기 · 공개 헤더 Inbox. Q1 터미널 닫음. 다음: Q3 `/guide-shots` 전부 재촬영.
 - 2026-10-05 사용자 보고(prod): `/projects` 배너 `Review ›` 쉐브론 세로 정렬 어긋남(`project-list.tsx:402` inline-flex에 items-center 없음) → A fix2 dispatch `ctx_f9ffb7430c0d`(Codex medium).
+- 2026-10-05 A fix2(`a6f470e6`: 배너 쉐브론 items-center · Select 설명형 체크 첫 줄 · 후보 68곳 판정) — Q2 인계 뒤 통합. 재측정: Projects 배너 · Members 초대 역할 메뉴.
