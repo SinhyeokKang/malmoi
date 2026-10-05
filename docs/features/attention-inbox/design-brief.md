@@ -1,5 +1,8 @@
 # attention-inbox — design brief (Claude Design 핸드오프용)
 
+> ⚠️ **시안 수령 완료(2026-10-05)** — 이후 정본은 시안(`spec.md` 머리 링크)이다. 이 브리프와 시안이 다르면 시안이 이긴다
+> (행·그룹 = 검색 목록 형, 메뉴 머리 제목 없음, 배지 0은 닫을 때, EDITOR 안내는 따로 한 줄, 트리거 글리프 foreground). 이 파일은 요청 기록으로만 남는다.
+
 > 신규 UI 표면의 **첫 구현**이라 시안이 SoT다(CLAUDE.md `/design-sync`). 구현이 dev에 들어간 뒤로는 코드 + DESIGN.md가 정본이다.
 > 기능 정의는 `spec.md`, 데이터·판정은 `design.md`. 이 문서는 **그릴 것**만 든다.
 
@@ -21,7 +24,7 @@
 | 트리거 | `Button size="icon-md" variant="ghost"` + lucide `Inbox` 16 |
 | 안 읽음 수 | `Badge soft-neutral`을 **Button 안 자식**으로(`CountBadge`는 `9+`를 못 낸다). 겹치는 형이 필요하면 그 형만 제안 — 리포에 선례가 없다. 새 색은 쓰지 않는다(§6.2 의미 토큰) |
 | 드롭다운 | `DropdownMenu`(사용자 메뉴·프로젝트 스위처와 같은 계열). 스위처 폭은 256 — Inbox는 문장이 두 줄이라 **360 내외** 제안 |
-| 프로젝트 묶음 머리 | `ProjectThumbnail` 16 + 프로젝트 이름(스위처 행과 같은 형) — `DropdownMenuGroup`으로 묶는다 |
+| 프로젝트 묶음 머리 | `ProjectThumbnail` 16 + 프로젝트 이름(스위처 행과 같은 형) — 묶음은 `ListGroup`(시안 반영 뒤 설계) |
 | 항목 칩 | `IconTile` + Home `Needs your attention` 카드와 **같은 아이콘·톤 맵** |
 | 시각 | 상대 시각(`3h ago`) — Home 카드와 같다 |
 | 빈·오류 | `EmptyState placement="inset"` / 오류 문장(비대화형) + `Try again`은 **메뉴 항목**(`ErrorState`의 버튼은 메뉴 로빙에 안 닿는다) |

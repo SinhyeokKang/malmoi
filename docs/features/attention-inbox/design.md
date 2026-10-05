@@ -3,7 +3,7 @@
 ## 영향 받는 흐름
 
 **편집 UI만.** push·pull·export·Sync·Publish 경로는 건드리지 않는다. 헤더(`components/shell/header.tsx`)에 클라이언트 컴포넌트 하나,
-Server Action 둘(배지 읽기 하나 · 열기 = 조회+읽음 기록 하나), `User` 컬럼 하나.
+Server Action 둘(배지 읽기 하나 · 열기 = 조회+읽음 기록 하나), `User` 컬럼 하나, 검색과 공유하는 프리미티브 셋(`ListGroup` 신설 · `DropdownMenuRow` 신설 · `ListRow hoverFill`).
 
 ## 판정 출처 — 새로 만들지 않고 모은다
 
@@ -88,22 +88,45 @@ Server Action 둘(배지 읽기 하나 · 열기 = 조회+읽음 기록 하나),
   - `openAttentionInboxAction()` — 입력 없음. `now`를 먼저 잡고 → `loadAttentionInbox` → 워터마크 `updateMany` → `{ status: "ok", plan, loadedAt, marked }`. 쓰는 대상은 세션이 정한다. `revalidatePath` 없음(배지는 클라이언트 상태다).
   - ⚠️ **인가 게이트는 `isProtectedPath`가 아니다** — Action은 현재 페이지 URL로 POST되고 middleware 1차 차단은 GET·HEAD만 본다. 두 Action을 `app/__tests__/entry-points.test.ts`의
     `USER_SCOPED_ACTIONS`(`:123`)에 사유와 함께 등재하고, 본문은 `hasUserGuard`가 인정하는 형(none·unavailable 두 거부 반환)이어야 한다.
-- **UI `components/shell/attention-inbox.tsx`** (`"use client"`)
-  - 마운트 시 한 번 `loadAttentionBadgeAction`. 드롭다운을 열 때마다 `openAttentionInboxAction` → `marked`면 배지 0, 아니면 그대로.
+- **UI `components/shell/attention-inbox.tsx`** (`"use client"`) — 시안(spec 머리 링크)이 정본이다.
+  - 마운트 시 한 번 `loadAttentionBadgeAction`. 드롭다운을 열 때마다 `openAttentionInboxAction`.
+  - ⚠️ **배지 0은 메뉴가 닫힐 때 반영한다** — 읽음 기록은 열 때 서버가 하지만, 화면 배지는 `marked`를 기억해 두었다가 `onOpenChange(false)`에서 0으로 바꾼다
+    (응답이 닫힌 뒤에 오면 도착 즉시). 열린 채 배지가 빠지면 트리거가 52 → 32로 줄어 `New project`가 20 밀리고, 트리거에 붙은 메뉴도 따라 움직인다.
   - ⚠️ **레이아웃 렌더에 싣지 않는다** — `(edit)` 레이아웃은 클라이언트 이동에서 다시 렌더되지 않아 배지가 굳고, 모든 페이지 응답에 집계 쿼리를 더한다.
   - ⚠️ **스켈레톤은 첫 조회 전에만** — 이후 열기는 받은 목록을 즉시 보이고 뒤에서 갱신한다. 항목 key는 `kind:project:surface:locale`로 고정해 응답이 와도 같은 행이 다시 마운트되지 않는다
     (키보드로 고른 로빙 위치를 잃지 않는다 — POSTMORTEM 2026-09-20·09-24 포커스 부류).
-  - 프리미티브: `DropdownMenu`(사용자 메뉴·스위처와 같은 계열) · 행은 **`DropdownMenuItem asChild` + `Link`**(ListRow를 쓰지 않는다 — Slot이 hover 클래스를 두 벌 합친다; 하이라이트는 메뉴 항목의 `hover/focus:bg-accent`) ·
-    `Button size="icon-md" variant="ghost"` · `ProjectThumbnail` · `IconTile`(sm) + `attentionTile`.
-  - 프로젝트 묶음은 `DropdownMenuGroup`(지금 `components/ui/dropdown-menu.tsx`가 export하지 않는다 — 소비자가 실재하므로 export) + 머리 `aria-labelledby`.
-  - 오류: 비대화형 `<p role="alert">` + **`Try again`은 `DropdownMenuItem`**(`onSelect`에서 `preventDefault` 후 재조회 — `SignOutItem` 형, `user-menu.tsx:103`). `ErrorState`를 넣지 않는다(평범한 Button이라 메뉴의 로빙에 안 닿고 page 크기다).
-  - 빈 상태: `EmptyState placement="inset"` + Home 사전의 `Nothing needs you`(§2.4 같은 개념 = 같은 낱말), 보조 문장만 "across your projects".
-  - 불러오는 중: 콘텐츠에 `aria-busy` + sr 상태 문장.
-  - 행 안 읽음: 앞쪽 점(`bg-primary` 등 기존 토큰) + 접근 이름 **맨 앞** sr `Unread`.
-  - 프로젝트 단위 항목(`unsent`·`setup`)은 머리에 프로젝트 이름을 다시 쓰지 않는다 — 묶음 머리와 중복된다. `unsent`는 대상 표면 slug를 보조줄로.
-  - 배지: `CountBadge`는 `toLocaleString`을 그대로 찍어(`count-badge.tsx:17`) `9+`를 못 낸다 → `Badge soft-neutral`을 **Button 안 자식으로** 조립한다(형제 금지 — POSTMORTEM 2026-09-09). 새 색 없음.
-  - 메뉴 폭 360 내외, 높이 `max-h-[min(560px,var(--radix-dropdown-menu-content-available-height))]` + 스크롤.
+  - **트리거**: `Button size="icon-md" variant="ghost"` + lucide `Inbox` 16. ghost 기본 둘을 덮는다 — 글리프 늘 `text-foreground`, 면 `hover:bg-foreground/[0.03]`이고 열린 동안(`data-[state=open]`)도 같은 면.
+    값은 같은 헤더의 `New project` 링크(`PUBLIC_HEADER_LINK`, `components/public-shell/header.tsx:25`)와 같다. 소비자가 하나라 variant를 만들지 않는다 — DESIGN 헤더 절에 의도된 이탈로 등재(T12).
+    안 읽음이 있을 때만 정사각을 풀어 `w-auto px-1.5 gap-1`(32 → 52 · `9+` 58), 그 안에 `Badge soft-neutral` 자식(형제 금지 — POSTMORTEM 2026-09-09). 겹치는 형은 쓰지 않는다(반투명 배지가 글리프를 덮지 못한다).
+    `CountBadge`는 `toLocaleString`을 그대로 찍어(`count-badge.tsx:17`) `9+`를 못 낸다. 접근 이름은 하나 — `aria-label`이 실제 수(`…, 12 unread`), 배지는 `aria-hidden`.
+  - **메뉴 그릇 = 전역 검색 목록과 같은 형**: `DropdownMenuContent` `w-90 p-0` + 안쪽 `py-2`, `max-h-[min(560px,var(--radix-dropdown-menu-content-available-height))]` 한 겹 스크롤.
+    **머리 제목 없음**(트리거 이름이 메뉴 이름 — `aria-labelledby` → 트리거), Mark all as read 없음.
+  - 빈 상태: `EmptyState placement="inset"` + `CircleCheck` + Home 사전의 `Nothing needs you`(§2.4), 보조 문장만 "across your projects".
+  - 불러오는 중: 그룹 머리 한 줄 + 행 셋 `Skeleton`(`aria-hidden`) + 콘텐츠 `aria-busy` + sr-only `role=status` 문장. 항목 0개라 ↓는 아무 데도 가지 않는다.
+  - 오류: 문장은 **`CommandStatus`의 danger 줄을 재사용**(`role=status aria-live=polite` · `text-destructive` 13 — 검색 실패 줄과 같은 형) + `Try again`은 아래 `DropdownMenuRow`(`onSelect`에서 `preventDefault` 후 재조회,
+    시도 중 disabled + `Loader2` — `SignOutItem` 형, `user-menu.tsx:103`). `ErrorState`를 넣지 않는다(평범한 Button이라 메뉴 로빙에 안 닿는다).
+  - 행 안 읽음: 점 6 `bg-primary`를 행 왼쪽 여백 16 안(x 5–11)에 `absolute`로 — 칩이 그룹 머리와 같은 x16에 남는다. 접근 이름 **맨 앞** sr `Unread`. 검토 대기는 점이 없다.
+  - 행 문장: Home 행과 같다 — 굵은 사실 + 근거 꼬리, 보조줄(표면·로케일)은 본문 **아래** 13 muted truncate, EDITOR 실패·일부 반영은 그 아래 **따로 한 줄** `m.projects.importFailure.ownerRetries`(Home `AttentionRow`와 같은 키·형). 시각은 aside 13 muted, 없으면 비운다.
+  - 프로젝트 단위 항목(`unsent`·`setup`)은 프로젝트 이름을 다시 쓰지 않는다(그룹 머리와 중복). `unsent`는 대상 표면 slug를 보조줄로, `setup`은 보조줄 없음.
   - 시각 형은 상대 시각(`lib/relative-time.ts`)이고 `now`는 서버의 `loadedAt`이다 — Home 카드와 같다.
+
+### 재사용 설계 — 손 조립 없이 프리미티브로 (UI primitives first)
+
+시안의 행·그룹은 **전역 검색 목록과 같은 형**이고, 같은 헤더의 사용자 메뉴·스위처(`DropdownMenuItem` 기본 `mx-1 rounded px-2 py-1.5 bg-accent`)와는 다르다. 그 형을 `className`으로 덮어 조립하지 않고,
+**검색이 이미 쓰는 부품을 프리미티브로 떼어 두 소비자가 같이 쓴다**(실재하는 사본 이관 — 소비자 없는 선반영이 아니다).
+
+| 부품 | 지금 | 바꾼 뒤 | 소비자 |
+|---|---|---|---|
+| 행 면 규칙 | `CommandItem`이 `ListRow`에 `!selected && "hover:bg-transparent"`로 hover 면을 끈다(`command.tsx`) — 덮어쓰기 | `ListRow`에 `hoverFill?: boolean`(기본 true). `false`면 hover 면을 붙이지 않는다 | `CommandItem`(이관) · `DropdownMenuRow` |
+| 그룹 | `CommandGroup`(`command.tsx:120`) — `role=group` + `aria-labelledby` + `not-first:border-divider border-t` + 머리 `text-gray-dim px-4 pt-4 pb-1 text-xs font-medium`(D15) | **`ListGroup`**(`components/ui/list-group.tsx`) — 같은 마크업, 머리는 `ReactNode`(썸네일 + 이름을 받는다). `CommandGroup`은 `ListGroup`을 그대로 쓴다 | `CommandGroup`(이관) · Inbox 프로젝트 묶음 |
+| 메뉴 행 | 없음 | **`DropdownMenuRow`**(`components/ui/dropdown-menu.tsx`) — `Primitive.Item asChild` + `ListRow`(`href`면 `Link`, 아니면 `as="button"`), `hoverFill={false}`, 활성 면 `data-[highlighted]:bg-foreground/[0.07]` 하나(검색 C16과 같은 값), `py-2.5 text-sm outline-none`. 슬롯은 `ListRow` 그대로(`icon`·`title`·`description`·`aside`) | Inbox 항목 · `Try again` |
+| 상태 줄 | `CommandStatus`(`command.tsx:99`) | 그대로 재사용(컨텍스트 의존 없음) | 검색 · Inbox 오류 |
+
+- ⚠️ **`DropdownMenuGroup`을 export하지 않는다** — 그룹은 `ListGroup`이 든다(Radix 메뉴는 Group을 요구하지 않는다). 앞선 설계의 export 계획은 철회.
+- ⚠️ **활성 면은 Radix `data-highlighted` 하나다** — 포인터·키보드가 같은 상태를 칠해 칠해진 행이 늘 하나다(검색 C16과 같은 규칙). 문자열은 리터럴로 쓴다 — 상수를 접두로 붙인 `data-[…]:` 조립은 Tailwind가 CSS를 만들지 않는다(`tabs.tsx` 머리 주석).
+- ⚠️ **`ListRow`의 `focus-visible` 링은 메뉴 행에서 끈다** — 로빙 포커스의 표시는 활성 면이다(`CommandItem`이 `tabIndex={-1}`로 같은 결론).
+- ⚠️ **`asChild` 형제 금지** — `ListRow`는 단일 요소(`Link`/`button`)를 렌더하므로 Slot이 붙는다. `DropdownMenuItem`처럼 형제(`Check`)를 붙이지 않는다. `slottable-item.test.ts`의 이름 고정 목록에 `DropdownMenuRow`를 더한다.
+- 두 헤더 메뉴의 하이라이트 차이(사용자 메뉴·스위처 = `bg-accent` inset, Inbox = 전폭 7%)는 **시안의 결정**이다 — 행이 두 줄짜리 결과 목록이라 검색과 같은 개념으로 묶였다. DESIGN §6.4(메뉴)·§2.4에 그 경계를 적는다(T12).
 
 ## 스키마 변경
 
@@ -135,7 +158,7 @@ Server Action 둘(배지 읽기 하나 · 열기 = 조회+읽음 기록 하나),
 - **2026-09-20 / 2026-09-24 포커스 복귀·body로 빠짐** — 재조회가 행을 다시 마운트하지 않게 key를 고정하고, Esc 뒤 트리거 복귀를 단언한다.
 - **2026-09-29 행위자 라벨이 원문 이메일을 실었다** — 응답 직렬화 결과에 원문 이메일 0을 같은 사람 두 행 픽스처로 센다.
 
-## 닫힌 결정 (feature-review 2026-10-05)
+## 닫힌 결정 (feature-review 2026-10-05 · 시안 검토 2026-10-05)
 
 1. 읽음 워터마크 + 배지 숫자를 유지하고 PRODUCT §4.2 · DESIGN :871·:2230을 개정한다.
 2. `review`는 안 읽음·배지에서 뺀다(push가 `updatedAt`을 덮어 시각이 거짓이다).
@@ -145,3 +168,6 @@ Server Action 둘(배지 읽기 하나 · 열기 = 조회+읽음 기록 하나),
 6. 트리거는 세로선 오른쪽, 아바타 왼쪽.
 7. `setup`은 OWNER 전용(목록 띠와의 차이는 의도).
 8. 창 focus 재조회는 더하지 않는다(비목표 — 실시간 갱신).
+9. 배지 0은 메뉴를 닫을 때 반영한다(열린 채 트리거 폭이 바뀌지 않도록 — 시안 D1).
+10. 행·그룹은 전역 검색 형이고, `ListGroup`·`DropdownMenuRow`·`ListRow hoverFill`로 검색과 같은 부품을 공유한다.
+11. EDITOR 실패 안내는 Home처럼 따로 한 줄. 오류 문장은 `CommandStatus` danger 줄.
