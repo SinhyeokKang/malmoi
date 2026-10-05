@@ -78,3 +78,13 @@ export function flattenNav(nav: readonly NavNode[]): FlatNavItem[] {
     nodes.flatMap(({ title, file, slug, children }) => [{ title, file, slug, parent }, ...walk(children, title)]);
   return walk(nav, null);
 }
+
+/** 그 파일을 자식으로 둔 노드의 slug — 최상위이거나 미등재면 null. 개요(`README.md`) 아래 페이지는 `[]`이다. */
+export function parentSlugOf(nav: readonly NavNode[], file: string): string[] | null {
+  for (const node of nav) {
+    if (node.children.some((child) => child.file === file)) return node.slug;
+    const found = parentSlugOf(node.children, file);
+    if (found) return found;
+  }
+  return null;
+}

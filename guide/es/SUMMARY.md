@@ -1,6 +1,7 @@
 # Summary
 
 - [Malmoi](README.md)
+  - [Preguntas frecuentes](faq.md)
 - [Configura un proyecto](setup/README.md)
   - [Crea un proyecto](setup/create-project.md)
   - [Añade el workflow](setup/workflow.md)
@@ -18,8 +19,9 @@
   - [Cada noche](sync/nightly.md)
   - [Deshacer y resincronizar](sync/revert.md)
   - [Consulta la actividad en Registros](sync/logs.md)
-- [Tu cuenta](account.md)
-- [Cambia el idioma de la interfaz, la zona horaria y el tema](language.md)
+- [Cuenta y preferencias](account/README.md)
+  - [Cuenta](account/profile.md)
+  - [Preferencias](account/preferences.md)
 - [Conecta un agente de IA](ai-agents/README.md)
   - [Inicia sesión desde el navegador](ai-agents/browser.md)
   - [Usa un token personal](ai-agents/token.md)

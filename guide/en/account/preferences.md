@@ -1,4 +1,4 @@
-# Change the interface language, time zone, and theme
+# Preferences
 
 Choose whether Malmoi's screens appear in English, Korean, or Spanish. This changes only Malmoi itself, not the languages your projects translate into. You can also choose the time zone Malmoi uses for dates and times, and whether Malmoi looks light or dark.
 
@@ -49,7 +49,7 @@ Malmoi shows dates and times in UTC by default. Choose another time zone if you'
 Before you start: Open your avatar menu at the top right and choose **Preferences**.
 
 1. In the **Time zone** card, open the menu and pick a time zone. The first entry is `UTC`; the others show their offset and name, such as `UTC+9 · Asia/Seoul`. There is no Save button; the change applies right away.
-2. Check the line under the menu. It shows the current time in the zone you picked, such as `Now: Oct 5, 2026 08:10 UTC+9`. Times across Malmoi, including [Logs](sync/logs.md), now use that zone, and each one shows its offset.
+2. Check the line under the menu. It shows the current time in the zone you picked, such as `Now: Oct 5, 2026 08:10 UTC+9`. Times across Malmoi, including [Logs](../sync/logs.md), now use that zone, and each one shows its offset.
 
 The time zone is saved to your account, so it is the same on every device you sign in on. It isn't saved in a cookie. Public pages, such as the changelog and the Privacy Policy, always use UTC, even when you're signed in.
 

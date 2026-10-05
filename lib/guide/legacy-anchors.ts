@@ -34,4 +34,21 @@ export const SECTION_LEGACY_ANCHORS: Readonly<Record<string, Readonly<Record<str
     "fill-and-publish": "/docs/ai-agents/prompts#fill-and-publish",
     next: "/docs/ai-agents/prompts#next",
   },
+  // `account.md`가 `account/profile.md`로 내려가고 `/docs/account`는 장 개요가 됐다 — 옛 절 id 다섯이 개요 맨 위에 멈춘다.
+  account: {
+    profile: "/docs/account/profile#profile",
+    "sign-in-methods": "/docs/account/profile#sign-in-methods",
+    "github-connection": "/docs/account/profile#github-connection",
+    sessions: "/docs/account/profile#sessions",
+    next: "/docs/account/profile#next",
+  },
+};
+
+/**
+ * **사라진 페이지 slug → 새 페이지 경로.** `language.md`가 `account/preferences.md`로 옮겨 `/docs/language`가 404가 됐다.
+ * 서버 리다이렉트라 해시를 볼 수 없다 — 브라우저가 Location에 해시가 없으면 원래 해시를 붙여 주므로, 대상 페이지가 옛 절
+ * id를 그대로 지키는 것이 이 표의 전제다(`structure.test.ts`가 본다).
+ */
+export const LEGACY_PAGES: Readonly<Record<string, string>> = {
+  language: "/docs/account/preferences",
 };

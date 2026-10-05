@@ -4,8 +4,8 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-import { legacyAnchorTarget } from "../legacy";
-import { LEGACY_ANCHORS, SECTION_LEGACY_ANCHORS } from "../legacy-anchors";
+import { legacyAnchorTarget, legacyPageTarget } from "../legacy";
+import { LEGACY_ANCHORS, LEGACY_PAGES, SECTION_LEGACY_ANCHORS } from "../legacy-anchors";
 import { headings, parseMd } from "../parse";
 import { leadParagraph, parseMdTable } from "../sections";
 import { flattenNav, parseSummary, slugToFile } from "../summary";
@@ -91,6 +91,36 @@ describe("실물 가이드 구조", () => {
       expect(file, target).not.toBeNull();
       expect(headings(read(file!)).map(({ id: heading }) => heading), `${id} → ${target}`).toContain(anchor);
     }
+  });
+
+  /**
+   * **`account.md`·`language.md`를 장 `account/`로 묶었다** (attention-inbox G). 옛 `/docs/account`는 장 개요가 되어
+   * 해시 표가 받고, 옛 `/docs/language`는 페이지가 없어 서버 리다이렉트가 받는다 — 해시는 브라우저가 그대로 넘기므로
+   * 새 페이지가 옛 절 id를 전부 지켜야 한다. 목록은 옮기기 전 원고(aa5bc413)의 id 전부다.
+   */
+  it("옛 /docs/account 해시 다섯이 account/profile의 실재하는 절로 간다", () => {
+    const old = ["profile", "sign-in-methods", "github-connection", "sessions", "next"];
+    const table = SECTION_LEGACY_ANCHORS["account"] ?? {};
+    expect(Object.keys(table).sort()).toEqual([...old].sort());
+    const files = nav().map(({ file }) => file);
+    expect(slugToFile(["account"], files)).toBe("account/README.md");
+    for (const [id, target] of Object.entries(table)) {
+      expect(legacyAnchorTarget(`#${id}`, table)).toBe(target);
+      expect(target, id).toBe(`/docs/account/profile#${id}`);
+      expect(headings(read("account/profile.md")).map(({ id: heading }) => heading), id).toContain(id);
+    }
+  });
+
+  it("옛 /docs/language가 account/preferences로 가고 옛 절 id 일곱을 그 페이지가 지킨다", () => {
+    expect(LEGACY_PAGES).toEqual({ language: "/docs/account/preferences" });
+    const files = nav().map(({ file }) => file);
+    expect(slugToFile(["language"], files)).toBeNull();
+    const target = legacyPageTarget(["language"], LEGACY_PAGES);
+    expect(target).toBe("/docs/account/preferences");
+    const file = slugToFile(target!.slice("/docs/".length).split("/"), files);
+    expect(file).toBe("account/preferences.md");
+    const ids = headings(read(file!)).map(({ id }) => id);
+    for (const id of ["footer", "preferences", "order", "projects", "time-zone", "theme", "next"]) expect(ids, id).toContain(id);
   });
 
   it("작성 규약의 외부 라벨 표가 GitHub 라벨을 고정한다", () => {

@@ -1,6 +1,7 @@
 # Summary
 
 - [Malmoi](README.md)
+  - [자주 묻는 질문](faq.md)
 - [프로젝트 설정](setup/README.md)
   - [프로젝트 만들기](setup/create-project.md)
   - [워크플로 추가](setup/workflow.md)
@@ -18,8 +19,9 @@
   - [매일 밤](sync/nightly.md)
   - [되돌리기와 다시 동기화](sync/revert.md)
   - [로그에서 활동 확인](sync/logs.md)
-- [내 계정](account.md)
-- [화면 언어, 시간대, 테마 바꾸기](language.md)
+- [계정 및 환경설정](account/README.md)
+  - [계정](account/profile.md)
+  - [환경설정](account/preferences.md)
 - [AI 에이전트 연결](ai-agents/README.md)
   - [브라우저로 로그인](ai-agents/browser.md)
   - [개인 토큰 사용](ai-agents/token.md)

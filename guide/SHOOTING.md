@@ -26,7 +26,7 @@
 - **편집자 장(`translate/*`)의 컷은 EDITOR 계정으로 찍는다** — OWNER에게만 보이는 동작이 편집자 가이드 이미지에 들어가면 거짓이다.
 - GitHub 화면은 github.com에서 폐기용 리포의 설정 화면으로 찍는다. **폼을 채워도 저장·제출하지 않고**, 촬영 뒤 새로고침해 되돌린다.
 - 로그인(OAuth)은 사람이 한다. 계정을 바꿔야 하는 컷은 한 계정의 컷을 모아 찍는다.
-- **촬영 계정의 화면 언어는 en이다** — `/preferences`의 Language가 `English`이고 기기 쿠키 `malmoi-ui-locale`도 en(또는 없음)인지 촬영 전에 본다. 계정 값이 쿠키를 이기므로(계정 > 쿠키 > en) 한쪽만 보면 틀린다. 언어 화면 컷(`language.md`)도 en 화면에서 찍는다.
+- **촬영 계정의 화면 언어는 en이다** — `/preferences`의 Language가 `English`이고 기기 쿠키 `malmoi-ui-locale`도 en(또는 없음)인지 촬영 전에 본다. 계정 값이 쿠키를 이기므로(계정 > 쿠키 > en) 한쪽만 보면 틀린다. 언어 화면 컷(`account/preferences.md`)도 en 화면에서 찍는다.
 
 ### 상주 촬영 프로젝트 `Acme web` {#resident}
 
@@ -102,9 +102,9 @@
 | `/guide/revert-confirm.webp` | `sync/revert.md#revert` | OWNER | Revert to last sent 확인창(`_locales` 셀 하나) |
 | `/guide/sync-discard.webp` | `sync/revert.md#resync` | OWNER | Sync 확인창 — 미전달 1건 폐기 경고(확정 안 함) |
 | `/guide/logs-event.webp` | `sync/logs.md#event-details` | OWNER | Logs(Kind: Publish)에서 연 Publish 사건 상세 |
-| `/guide/account.webp` | `account.md#profile` | OWNER | Account — Profile · Sign-in methods · GitHub App |
-| `/guide/footer-language-menu.webp` | `language.md#footer` | 비로그인 | `/docs` — 푸터 언어 메뉴가 위로 열림(English 체크 · 국기 셋) |
-| `/guide/preferences-language.webp` | `language.md#preferences` | OWNER | Preferences — Language 카드 English, 메뉴 닫힘·도움말 보임 |
+| `/guide/account.webp` | `account/profile.md#profile` | OWNER | Account — Profile · Sign-in methods · GitHub App |
+| `/guide/footer-language-menu.webp` | `account/preferences.md#footer` | 비로그인 | `/docs` — 푸터 언어 메뉴가 위로 열림(English 체크 · 국기 셋) |
+| `/guide/preferences-language.webp` | `account/preferences.md#preferences` | OWNER | Preferences — Language 카드 English, 메뉴 닫힘·도움말 보임 |
 | `/guide/mcp-create-token.webp` | `ai-agents/token.md#token` | EDITOR | MCP connector → Create token 모달 ①단계(만들지 않음 — ② 토큰 원문은 찍지 않는다) |
 | `/guide/mcp-connector.webp` | `ai-agents/browser.md#connected-apps` | OWNER | MCP connector — Connected apps(연결 둘, 로고 칸) + 토큰 카드(원문 없음) — Connect 카드는 2026-09-30에 걷었다 |
 | `/guide/oauth-consent.webp` | `ai-agents/browser.md#browser` | OWNER | `/oauth/authorize` 동의 화면 — claude.ai CIMD 요청(Authorize 누르지 않음), Translate & publish 하나 체크 |

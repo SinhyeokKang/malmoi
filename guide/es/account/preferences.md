@@ -1,4 +1,4 @@
-# Cambia el idioma de la interfaz, la zona horaria y el tema
+# Preferencias
 
 Elige si las pantallas de Malmoi aparecen en inglés, coreano o español. Esto cambia solo Malmoi, no los idiomas a los que traducen tus proyectos. También puedes elegir la zona horaria que Malmoi usa para las fechas y las horas, y si Malmoi se ve claro u oscuro.
 
@@ -49,7 +49,7 @@ Malmoi muestra las fechas y las horas en UTC de forma predeterminada. Elige otra
 Antes de empezar: abre el menú de tu avatar, arriba a la derecha, y elige **Preferencias**.
 
 1. En la tarjeta **Zona horaria**, abre el menú y elige una zona horaria. La primera opción es `UTC`; las demás muestran su desfase y su nombre, como `UTC+9 · Asia/Seoul`. No hay botón de guardar; el cambio se aplica al momento.
-2. Revisa la línea bajo el menú. Muestra la hora actual en la zona que elegiste, como `Ahora: Oct 5, 2026 08:10 UTC+9`. Las horas de todo Malmoi, incluidos los [Registros](sync/logs.md), usan ahora esa zona, y cada una muestra su desfase.
+2. Revisa la línea bajo el menú. Muestra la hora actual en la zona que elegiste, como `Ahora: Oct 5, 2026 08:10 UTC+9`. Las horas de todo Malmoi, incluidos los [Registros](../sync/logs.md), usan ahora esa zona, y cada una muestra su desfase.
 
 La zona horaria se guarda en tu cuenta, así que es la misma en todos los dispositivos donde inicies sesión. No se guarda en una cookie. Las páginas públicas, como el registro de cambios y la Política de privacidad, siempre usan UTC, incluso con la sesión iniciada.
 
