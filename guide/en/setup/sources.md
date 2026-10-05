@@ -16,7 +16,7 @@ Open **Sources** from the project navigation. Each row shows the source's status
 2. Under **Choose base languages**, choose the **Base language** for each new source, then choose **Add selected sources**. Choose **Back** to change your selection; your choices are kept. A file can fail while the other files are added, so check each result. If nothing is added, you stay on this step with your selection intact.
 3. Follow the result's **Settings** link and copy the new source steps from the generated workflow into your repository's workflow file. Adding sources does not edit that file automatically.
 
-![The Add sources dialog with detected translation files on the left, a preview of their keys and values, and a base language menu](/guide/add-sources.webp "Select files, check the preview, and choose a base language.")
+![The Choose base languages step of Add sources, with one source's path and its languages as radio options, step 2 of 2, and Back and Add selected sources buttons](/guide/add-sources.webp "Choose the base language for each new source, then add the selected sources.")
 
 ## Remove a source {#remove-source}
 

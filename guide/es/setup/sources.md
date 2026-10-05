@@ -16,7 +16,7 @@ Abre **Fuentes** desde la navegación del proyecto. Cada fila muestra el estado 
 2. En **Elige los idiomas base**, elige el **Idioma base** de cada fuente nueva y luego **Añadir las fuentes seleccionadas**. Elige **Atrás** para cambiar tu selección; tus elecciones se conservan. Un archivo puede fallar mientras se añaden los demás, así que revisa cada resultado. Si no se añade nada, te quedas en este paso con tu selección intacta.
 3. Sigue el enlace **Configuración** del resultado y copia los pasos de la nueva fuente del workflow generado en el archivo de workflow de tu repositorio. Añadir fuentes no edita ese archivo automáticamente.
 
-![The Add sources dialog with detected translation files on the left, a preview of their keys and values, and a base language menu](/guide/add-sources.webp "Select files, check the preview, and choose a base language.")
+![El paso Elige los idiomas base de Añadir fuentes, con la ruta de una fuente y sus idiomas como opciones de radio, el paso 2 de 2 y los botones Atrás y Añadir las fuentes seleccionadas](/guide/add-sources.webp "Elige el idioma base de cada fuente nueva y luego añade las fuentes seleccionadas.")
 
 ## Quita una fuente {#remove-source}
 
