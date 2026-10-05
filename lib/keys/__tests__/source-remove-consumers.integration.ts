@@ -130,7 +130,7 @@ async function seen() {
     homeUnsentSurface: aggregates.unsentSurfaces.get("p") ?? null,
     inbox: inbox.groups.flatMap(group => group.items.map(item => "surfaceSlug" in item ? item.surfaceSlug : null)).filter(slug => slug !== null),
     search: hits.map(hit => hit.surfaceSlug),
-    shell: { sources: nav?.counts.sources, default: nav?.defaultSurfaceSlug },
+    shell: { sources: nav?.counts?.sources, default: nav?.defaultSurfaceSlug },
     tree: tree.surfaces.map(surface => surface.slug),
     publish: pull.surfaces.map(surface => surface.slug),
     publishUnsent: pull.unpublished,

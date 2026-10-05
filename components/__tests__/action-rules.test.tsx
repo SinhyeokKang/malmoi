@@ -167,7 +167,7 @@ const CONFIRMS: { name: string; file: string[]; ui: () => ReactNode; trigger: ()
   {
     name: "소스 Remove source", file: ["components/sources/remove-source-dialog.tsx"],
     ui: () => <SourceDetailModal slug="acme" sourceSlug="web" role="OWNER" state={{ status: "ready", detail: sourceDetail }} now={now} busy={false}
-      sources={[{ id: "s-web", slug: "web" }, { id: "s-app", slug: "app" }]} onRemoved={() => {}} onBusy={() => {}} onClose={() => {}} onReload={() => {}} onImport={() => {}} onSaved={() => {}}
+      sources={[{ id: "s-web", slug: "web" }, { id: "s-app", slug: "app" }]} onRemoved={() => {}} onLost={() => {}} onBusy={() => {}} onClose={() => {}} onReload={() => {}} onImport={() => {}} onSaved={() => {}}
       returnFocusRef={{ current: null }} fallbackFocusRef={{ current: null }} />,
     trigger: () => buttonByText(en.sources.removal.action), host: 1,
   },

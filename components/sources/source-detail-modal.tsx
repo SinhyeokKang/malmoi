@@ -5,7 +5,7 @@ import { ListRow } from "@/components/ui/list-row";
 import { Fact } from "@/components/ui/facts";
 
 import { ChevronRight, CircleCheck, CircleX, Info, LoaderCircle, Lock, TriangleAlert } from "lucide-react";
-import { Fragment, useState, type RefObject } from "react";
+import { Fragment, useEffect, useState, type RefObject } from "react";
 import { useRouter } from "next/navigation";
 import { LargeModal } from "@/components/ui/large-modal";
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
@@ -36,12 +36,14 @@ import { planSurfaceRemoval, removalReason } from "@/lib/surfaces/plan-removal";
 import { IconTile } from "@/components/ui/icon-tile";
 
 export type DetailState = { status: "loading" } | { status: "failed" | "rejected" } | { status: "ready"; detail: SourceDetail; refreshFailed?: boolean };
-export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, importing = false, importResult, sources, onBusy, onClose, onReload, onImport, onSaved, onRemoved, returnFocusRef, fallbackFocusRef }: {
+export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, importing = false, importResult, sources, onBusy, onClose, onReload, onImport, onSaved, onRemoved, onLost, returnFocusRef, fallbackFocusRef }: {
   slug: string; sourceSlug: string | null; role: Role; state: DetailState; now: Date; busy: boolean;
   /** 프로젝트의 활성 소스 전부 — 마지막 소스 판정(`planSurfaceRemoval`)의 입력이다. */
   sources: readonly { id: string; slug: string }[];
   /** 제거가 성공했다 — 호스트가 재검증 커밋 뒤 모달을 닫고 결과 배너를 세운다. */
   onRemoved: (surfaceSlug: string) => void;
+  /** 제거 응답을 잃었다 — 호스트가 상세를 닫고 배너를 세운 뒤 다시 읽는다. */
+  onLost: () => void;
   /** `busy`가 첫 Sync 때문인가 — 아니면 기준 언어 저장이다. 푸터가 무엇을 기다리는지 말한다 (audit #31). */
   importing?: boolean;
   importResult?: { text: string; tone: "success" | "warning" | "danger" };
@@ -58,6 +60,8 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
   const [draft, setDraft] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<{ href: string } | null>(null);
   const [removing, setRemoving] = useState(false);
+  // ⚠️ 소스가 바뀌면(닫힘 포함) 확인 창 열림을 버린다 — 성공 뒤 남은 `true`가 다음 소스의 상세가 서는 순간 누르지 않은 확인 창을 열었다.
+  useEffect(() => { setRemoving(false); }, [sourceSlug]);
   const router = useRouter();
   const leave = (href?: string) => {
     if (busy) return;
@@ -209,7 +213,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
         </div>)}
       </Card>
     </div>}
-    {canEdit && detail && <RemoveSourceDialog open={removing} onOpenChange={setRemoving} slug={slug} surfaceSlug={detail.slug} onPending={onBusy} onRemoved={() => onRemoved(detail.slug)} />}
+    {canEdit && detail && <RemoveSourceDialog open={removing} onOpenChange={setRemoving} slug={slug} surfaceSlug={detail.slug} onPending={onBusy} onRemoved={() => onRemoved(detail.slug)} onLost={onLost} />}
     {confirm !== null && detail && <Dialog open onOpenChange={next => { if (!next) setConfirm(null); }}>
       <DialogContent title={m.sources.discardTitle} description={m.sources.discardBody(draft ?? "", detail.baseLocale ?? "")}
         actions={<>

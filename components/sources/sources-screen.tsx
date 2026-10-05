@@ -139,7 +139,13 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
       </Card>
     </PanelBody>
     {canEdit && data.repository && <AddSourcesModal open={adding} onClose={closeAdd} onAdded={added => { const summary = summarizeAddResults(added); setResult({ tone: summary.tone, added }); }} returnFocusRef={trigger} slug={slug} owner={data.repository.repoOwner} repo={data.repository.repoName} branch={data.repository.baseBranch} server={data} existing={data.sources.map(source => ({ pathTemplate: source.connection?.pathTemplate ?? null }))} adapters={adapters} />}
-    <SourceDetailModal slug={slug} sourceSlug={selected} role={role} state={detail} now={now} importResult={result?.source === selected && result?.text ? { text: result.text, tone: result.tone } : undefined} busy={busy} importing={importing} sources={data.sources} onBusy={setBusy} onClose={close} onRemoved={surfaceSlug => { ++request.current; selection.current = null; commit.wait(); setRemoved(surfaceSlug); }} onReload={reload} onSaved={reload} returnFocusRef={returnFocus} fallbackFocusRef={heading} onImport={() => {
+    <SourceDetailModal slug={slug} sourceSlug={selected} role={role} state={detail} now={now} importResult={result?.source === selected && result?.text ? { text: result.text, tone: result.tone } : undefined} busy={busy} importing={importing} sources={data.sources} onBusy={setBusy} onClose={close} onRemoved={surfaceSlug => { ++request.current; selection.current = null; commit.wait(); setRemoved(surfaceSlug); }}
+      onLost={() => {
+        // 상세를 먼저 닫는다 — refresh 트리가 제거된 소스를 다시 읽으면 상세째 결과가 사라진다. 오프라인이면 부르지 않는다(MPA 폴백, `sync-button.tsx`).
+        ++request.current; selection.current = null; setBusy(false); setSelected(null);
+        setResult({ tone: "warning", text: m.sources.removal.unconfirmed });
+        if (navigator.onLine !== false) router.refresh();
+      }} onReload={reload} onSaved={reload} returnFocusRef={returnFocus} fallbackFocusRef={heading} onImport={() => {
       if (!selected || busy) return;
       const surfaceSlug = selected; setBusy(true); setImporting(true);
       void (async () => {

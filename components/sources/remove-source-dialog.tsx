@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useId, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 
 import { previewSourceRemoval, removeSource } from "@/app/(edit)/projects/[slug]/sources/actions";
 import { useMessages } from "@/components/i18n/messages-provider";
@@ -29,20 +28,24 @@ type Preview =
   | { kind: "loading" }
   | { kind: "ready"; pendingCount: number; approval: string | null; openPr: "open" | "none" | "unknown" }
   | { kind: "failed" };
-type Outcome = { tone: "danger" | "warning"; text: string };
 
-export function RemoveSourceDialog({ open, onOpenChange, slug, surfaceSlug, onPending, onRemoved }: {
+export function RemoveSourceDialog({ open, onOpenChange, slug, surfaceSlug, onPending, onRemoved, onLost }: {
   open: boolean; onOpenChange: (open: boolean) => void; slug: string; surfaceSlug: string;
   /** 도는 동안 아래 상세 모달도 닫히지 않는다 — 호스트의 `busy`다. */
   onPending: (pending: boolean) => void;
   onRemoved: () => void;
+  /**
+   * 응답을 잃었다 — 서버가 끝냈을 수 있다. ⚠️ **결과를 이 창에 세우지 않고 호스트로 올린다** (POSTMORTEM 2026-09-07): 호스트의 refresh가
+   * 바꾼 `data`가 상세를 다시 읽고, 제거됐으면 상세째 이 창이 사라져 문장을 씻는다. 호스트가 상세를 닫고 배너를 세운 뒤 다시 읽는다.
+   */
+  onLost: () => void;
 }) {
   const m = useMessages();
-  const router = useRouter();
   const describedId = useId();
   const warningId = useId();
   const [preview, setPreview] = useState<Preview>({ kind: "loading" });
-  const [outcome, setOutcome] = useState<Outcome | null>(null);
+  /** 결과 단계의 거부 문장(stale·판정 거부) — danger 한 장이다. */
+  const [outcome, setOutcome] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   /** [Try again]마다 늘어 지문을 다시 받는다. */
   const [attempt, setAttempt] = useState(0);
@@ -60,7 +63,7 @@ export function RemoveSourceDialog({ open, onOpenChange, slug, surfaceSlug, onPe
         if (value.ok) setPreview({ kind: "ready", pendingCount: value.pendingCount, approval: value.approval, openPr: value.openPr });
         // 장애만 다시 받을 수 있다 — 판정 거부(마지막 소스·적재 중·권한)는 다시 받아도 같다.
         else if (value.error === "unavailable") setPreview({ kind: "failed" });
-        else setOutcome({ tone: "danger", text: refusalText(m, value.error) });
+        else setOutcome(refusalText(m, value.error));
       },
       () => { if (request.current === id) setPreview({ kind: "failed" }); },
     );
@@ -68,26 +71,32 @@ export function RemoveSourceDialog({ open, onOpenChange, slug, surfaceSlug, onPe
   }, [open, slug, surfaceSlug, attempt]); // m은 화면 언어가 바뀌어도 이미 받은 지문을 다시 받을 이유가 아니다.
   // 결과로 바뀌면 확정 버튼이 사라진다 — 포커스를 [Close]로 옮긴다(POSTMORTEM 2026-09-24).
   useEffect(() => { if (outcome !== null) closeRef.current?.focus(); }, [outcome]);
-  useEffect(() => { onPending(pending); }, [pending]); // onPending의 참조 변경은 트리거가 아니다.
+  /*
+    ⚠️ **전이할 때만 알린다** — effect로 `pending`을 미러링하면 마운트마다 `onPending(false)`가 나가 호스트의 다른 바쁨(첫 Sync)을 덮었다.
+    도는 채로 언마운트되면(성공 뒤 호스트가 상세째 닫는다) 되돌려 둔다 — 호스트가 이미 내렸으면 같은 값이다.
+  */
+  const announce = useRef(onPending);
+  announce.current = onPending;
+  useEffect(() => () => { if (busy.current) announce.current(false); }, []);
 
   async function confirm() {
     if (busy.current || preview.kind !== "ready") return;
     busy.current = true;
     setPending(true);
+    onPending(true);
     try {
       const result = await removeSource({ slug, surfaceSlug, approval: preview.approval });
       if (result.ok) { onRemoved(); return; }
-      setOutcome({ tone: "danger", text: refusalText(m, result.error) });
+      setOutcome(refusalText(m, result.error));
     } catch {
-      /*
-        ⚠️ **응답을 잃은 제거는 서버가 끝냈을 수 있다** (Sync malmoi#132와 같은 부류) — 다시 실행하지 않고 화면만 다시 읽는다.
-        오프라인이면 부르지 않는다 — RSC fetch 실패가 MPA 폴백이 되어 오류 페이지가 결과를 덮는다(`sync-button.tsx`).
-      */
-      setOutcome({ tone: "warning", text: m.sources.removal.unconfirmed });
-      if (navigator.onLine !== false) router.refresh();
+      // 응답을 잃은 제거는 서버가 끝냈을 수 있다(Sync malmoi#132와 같은 부류) — 다시 실행하지 않는다. 다시 읽기는 호스트가 한다(`onLost`).
+      busy.current = false;
+      onLost();
+      return;
     }
     busy.current = false;
     setPending(false);
+    onPending(false);
   }
 
   const ready = preview.kind === "ready" ? preview : null;
@@ -108,7 +117,7 @@ export function RemoveSourceDialog({ open, onOpenChange, slug, surfaceSlug, onPe
         </>}>
       {/* ⚠️ 본문은 표현식 하나다 — 형제가 둘이면 `children`이 배열이 되어 `DialogContent`가 빈 본문 블록을 세운다(`sync-button.tsx`). */}
       {outcome !== null
-        ? <Alert variant={outcome.tone} size="sm" live={outcome.tone === "danger" ? "alert" : "status"}>{outcome.text}</Alert>
+        ? <Alert variant="danger" size="sm">{outcome}</Alert>
         : preview.kind === "loading"
           // 워크플로 줄은 늘 오므로 Alert는 반드시 선다 — 골격은 그 한 줄짜리 Alert의 높이다(시안 R6 ①).
           ? <div data-removal-skeleton aria-hidden><Skeleton className="h-[66px] w-full rounded-md" /></div>
