@@ -6,6 +6,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
+import { encodeUserFields } from "@/lib/credentials/records";
 import { optionalEnv } from "@/lib/env";
 import { loadAttentionBadgeAction, openAttentionInboxAction } from "@/app/(edit)/inbox/actions";
 import { loadAttentionInbox } from "../load";
@@ -81,7 +82,9 @@ it("Action에서 모든 종류를 읽고 닫기 뒤 다음 배지는 0, 새 일�
   expect((await loadAttentionInbox(prisma, "u1")).groups.flatMap(group => group.items).some(item => item.kind === "unsent")).toBe(false);
 });
 it("보관·다른 사용자는 SQL에서 빠지고 EDITOR는 설정을 못 본다", async () => {
-  await project("archived", { archived: true, setup: true });
+  await project("archived", { archived: true, setup: false });
+  await prisma.translationSurface.update({ where: { id: "s-archived" }, data: { lastImportError: "parse-failed", lastImportFailedAt: early } });
+  await prisma.translation.updateMany({ where: { projectId: "archived", localeCode: "ko" }, data: { pendingEditToken: "archived-edit", updatedAt: early } });
   await project("other", { userId: "u2", setup: true });
   await project("editor", { role: "EDITOR", setup: true });
   expect(await loadAttentionBadgeAction()).toEqual({ status: "ok", unread: 0 });
@@ -102,4 +105,23 @@ it("표면 하나가 동기화 중이어도 다른 실패와 EDITOR 안내는 �
   await prisma.translationSurface.create({ data: { projectId: "p", slug: "mail", lastImportError: "parse-failed", lastImportStartedAt: early } });
   const result = await openAttentionInboxAction();
   expect(result).toMatchObject({ status: "ok", plan: { unread: 1, groups: [{ items: [{ kind: "import_failed", surfaceSlug: "web", ownerRetries: true }] }] } });
+});
+
+it("같은 web/ko 검토 항목도 Action 결과에서 프로젝트별 수와 저자가 섞이지 않는다", async () => {
+  await project("p1");
+  await project("p2");
+  await prisma.user.update({ where: { id: "u1" }, data: encodeUserFields("u1", { name: "First editor", email: "first@example.com" }) });
+  await prisma.user.update({ where: { id: "u2" }, data: encodeUserFields("u2", { name: "Second editor", email: "second@example.com" }) });
+  for (const [id, updatedBy] of [["p1", "u1"], ["p2", "u2"]] as const) {
+    await prisma.translation.updateMany({ where: { projectId: id, localeCode: "ko" }, data: { needsReview: true, updatedBy, updatedAt: early } });
+  }
+  await prisma.stringKey.create({ data: { id: "k-p2-second", projectId: "p2", surfaceId: "s-p2", key: "second", namespace: "_root", sourceText: "Second", sourceHash: "hash" } });
+  await prisma.translation.create({ data: { projectId: "p2", surfaceId: "s-p2", keyId: "k-p2-second", localeCode: "ko", value: "Second", needsReview: true, updatedBy: "u2", updatedAt: early } });
+  const result = await openAttentionInboxAction();
+  expect(result.status).toBe("ok");
+  if (result.status !== "ok") throw new Error("Inbox failed");
+  expect(result.plan.groups.map(group => ({ slug: group.project.slug, review: group.items.filter(item => item.kind === "review") }))).toEqual([
+    { slug: "p1", review: [{ kind: "review", surfaceSlug: "web", code: "ko", name: "ko", count: 1, who: "First editor", at: early, unread: false, ownerRetries: false }] },
+    { slug: "p2", review: [{ kind: "review", surfaceSlug: "web", code: "ko", name: "ko", count: 2, who: "Second editor", at: early, unread: false, ownerRetries: false }] },
+  ]);
 });
