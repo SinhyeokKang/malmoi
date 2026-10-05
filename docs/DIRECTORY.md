@@ -38,7 +38,7 @@ app/
   layout.tsx            루트 레이아웃(Geist next/font/local 변수 · Pretendard 폴백 <link> · 머리 기본값 · components/analytics · MessagesProvider).
                         ⚠️ lang은 요청의 화면 언어(getUiLocale)이고 provider도 같은 값으로 하나 렌더한다(+ getDateStyle의 timeZone — user-timezone) — app/__tests__/root-layout-i18n이 provider 존재를 고정한다
                         (빠지면 provider 기본값이 en이라 조용히 영어다)
-                        ⚠️ <html data-theme>은 getColorScheme(lib/color-scheme/server — 계정 > 쿠키 > light)이고 같은 값을 <Toaster theme>에 넘긴다.
+                        ⚠️ <html data-theme>은 getColorScheme(lib/color-scheme/server — 계정 > 쿠키 > system)이고 같은 값을 <Toaster theme>에 넘긴다.
                         인라인 스크립트가 없다(color-scheme 2026-10-05, ARCHITECTURE §6.357) — lib/color-scheme/__tests__/theme-surfaces가 고정한다
                         ⚠️ metadata에 canonical·og:url이 없다 — 얕은 병합으로 앱·/signin·/invite·404 전부에 홈 canonical이 번진다
   robots.ts · sitemap.ts  크롤러용 파일 둘(lib/seo/crawl). robots는 force-dynamic(요청 시점 VERCEL_ENV), sitemap은 빌드 prerender.
@@ -947,7 +947,7 @@ lib/
   time-zone/            ⚠️ 잎 둘(user-timezone). zones(선별 목록 TIME_ZONES · parseTimeZone — Object.hasOwn, 런타임 Intl에 유효성을 묻지 않는다 ·
                         resolveTimeZone — 밖은 UTC. import 0) · options(timeZoneOptions(now) — Preferences Select 옵션, UTC 첫 줄 + 오프셋 순)
   color-scheme/         화면 테마(color-scheme 2026-10-05 — ARCHITECTURE §6.357). scheme(⚠️ 잎 — COLOR_SCHEMES · parseColorScheme(Object.hasOwn) ·
-                        resolveColorScheme(계정 > 쿠키 > light, OS 입력 없음) · COLOR_SCHEME_COOKIE. Theme 카드가 값으로 읽는다) ·
+                        resolveColorScheme(계정 > 쿠키 > system, OS 입력 없음) · COLOR_SCHEME_COOKIE. Theme 카드가 값으로 읽는다) ·
                         server(server-only — getColorScheme, React cache. 소비자는 루트 레이아웃 · /preferences page 둘). __tests__/helpers/는 대비 검사 전용
                         순수 헬퍼(oklch → sRGB · WCAG 대비 · globals.css의 light-dark() 두 값 읽기) — contrast(두 테마 대비 + 수용 예외 여섯) ·
                         theme-surfaces(테마가 닿는 자리와 안 닿는 자리 — 전역 오류 화면 · 초대 메일은 라이트)
