@@ -1397,7 +1397,7 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
   들어가 `readSession()`이 추가 쿼리 0으로 싣는다. 쓰는 자리는 `setTimeZone`(`app/(edit)/preferences/actions.ts`) 하나이고 UTC를 골라도 `"UTC"`를 쓴다.
   ⚠️ **목록에서 id를 빼면 그 값을 저장한 사람의 화면이 조용히 UTC로 바뀐다** — 빼기 전 건수 확인은 OPERATIONS.
 - **`User.colorScheme String?`** (2026-10-05, `20261004213608_add_user_color_scheme` — color-scheme). 화면 테마(`system`·`light`·`dark`)이고 `null`이면
-  쿠키 → light로 넘어간다(§6.357). `uiLocale`과 같은 이유로 **enum이 아니고**(읽을 때 `parseColorScheme`이 모르는 값을 다음 층으로 넘긴다) **봉투를
+  쿠키 → system으로 넘어간다(§6.357). `uiLocale`과 같은 이유로 **enum이 아니고**(읽을 때 `parseColorScheme`이 모르는 값을 다음 층으로 넘긴다) **봉투를
   지나지 않으며** 세션 공개 허용 목록에 들어가 `readSession()`이 추가 쿼리 0으로 싣는다. 쓰는 자리는 `setColorScheme`(`app/(edit)/preferences/actions.ts`) 하나다.
 
 - ⚠️ **앞의 네 테이블의 모양은 우리가 정한 것이 아니다.** `@auth/prisma-adapter`가 부르는 델리게이트와
@@ -2873,7 +2873,7 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 
 ### 6.357 화면 테마 — 서버가 `<html data-theme>`을 싣는다 (2026-10-05, color-scheme)
 
-**테마는 System · Light · Dark이고 판정은 계정(`User.colorScheme`) > 쿠키(`malmoi-color-scheme`) > `light`다**(제품 판정은 PRODUCT §4.1 "화면 테마",
+**테마는 System · Light · Dark이고 판정은 계정(`User.colorScheme`) > 쿠키(`malmoi-color-scheme`) > `system`이다**(제품 판정은 PRODUCT §4.1 "화면 테마",
 시각 규칙은 DESIGN §3). 색은 화면에만 있으므로 export 결정성·blob SHA(§1·§2)·PR 본문·MCP 응답에 영향이 없다.
 
 - **판정은 잎 `lib/color-scheme/scheme.ts`다** — `parseColorScheme`은 지원 집합 안의 문자열만 통과시키고 **`Object.hasOwn`으로 판정한다**(쿠키는 남이
