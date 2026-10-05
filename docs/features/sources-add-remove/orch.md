@@ -19,7 +19,7 @@
 
 | 배치 | 항목 | 소유 파일(주) | 선행 | 모델·effort | 출시 차단 | 게이트 | 상태 |
 |---|---|---|---|---|---|---|---|
-| A | A-T1~T4 | `components/sources/add-sources-modal.tsx` · `components/onboarding/steps/naming.tsx`(+ 추출 컴포넌트) · `lib/sources/add-block.ts` · 해당 테스트 · `messages/*`(A-T4 키) | — | Opus 5.5 medium — DOM 상태 보존·역전 테스트가 까다롭지만 서버 불변식 없음 | 예 | `pnpm gate --base dev` | 리뷰 중 (gate ok, `05c9c5b6`) |
+| A | A-T1~T4 | `components/sources/add-sources-modal.tsx` · `components/onboarding/steps/naming.tsx`(+ 추출 컴포넌트) · `lib/sources/add-block.ts` · 해당 테스트 · `messages/*`(A-T4 키) | — | Opus 5.5 medium — DOM 상태 보존·역전 테스트가 까다롭지만 서버 불변식 없음 | 예 | `pnpm gate --base dev` | dev 반영(리뷰 🔴0 🟡4 → fix1, 라운드 1) |
 | B1 | T0.1 · B-T1~T9 | `docs/{ARCHITECTURE,PRODUCT,ACTIONS}.md` · `CLAUDE.md` · `lib/surfaces/*` · `lib/protection/fingerprint.ts` · `lib/push/*` · `app/api/push/**` · `lib/events/{payload,view}.ts` · `lib/mcp/tools/*`·catalog · `app/(edit)/projects/[slug]/sources/actions.ts` · `app/__tests__/locked-access.test.ts` · `prisma/schema.prisma`(주석만) · `messages/*`(MCP·거부·사건 문장) | — (messages 편집만 A 뒤) | Opus 5.5 high — 병합 없음·잠금·지문·경합 판단 | 예 | `pnpm gate --base dev`(postgres 트리거) | 대기 |
 | B2 | B-T10~T14 · T22 정본 | `components/sources/{source-detail-modal,sources-screen}.tsx` · 확인 창 컴포넌트 · `app/(edit)/projects/[slug]/logs/**` · `messages/*`(UI 키) · `docs/DESIGN.md` · 소비자 회귀 postgres 케이스 | A·B1 dev 반영 | Opus 5.5 medium — 기존 sync-button 형 조립 | 예 | `pnpm gate --base dev` | 대기 |
 | G | T20 가이드 세 벌 + 스크린샷 | `guide/{en,ko,es}/**` · `public/guide/**` · `guide/SHOOTING.md` | A·B2 dev 반영 | Sonnet 5.5 medium — 원고 갱신(촬영은 main 체크아웃 QA 단계) | 아니오 | `pnpm test` · `pnpm guide:check` | 대기 |
@@ -37,4 +37,6 @@
 
 - 14:09 run `run_5c78a4a666af`, A·B1 시작
 - 14:22 A worker_done(gate ok) → 리뷰 워커 RA 시작, A 터미널 retain
-- T 시작(사용자 요청 — 테마 기본 system)
+- T 시작(사용자 요청 — 테마 기본 system) · fix1 로그인 시 계정 테마 → 쿠키(사용자 추가 요청)
+- A fix1(🟡4 + DESIGN) → dev cherry-pick, `pnpm gate` ok
+- T worker_done → 리뷰 RT

@@ -7,10 +7,10 @@
 - [ ] T0.1. 정본 계약 먼저(CLAUDE.md "계약이 바뀌면 코드보다 먼저") — ARCHITECTURE §0(편집 버리는 길 셋)·§5.5.x·§5.8·`archivedAt` 서술 · PRODUCT §3·§4.1·§7.1·§7.8 · CLAUDE.md 코어 원칙·데이터 변경 경로 표 · ACTIONS `:162` red 조건 — 검증: `pnpm sync:agents:check` green, 문서별 커밋 `[C] docs(...)`
 
 ## A. 2단계 추가
-- [ ] A-T1. `planAddStep` 분리(`planAddBlock`) — 검증: `lib/sources/__tests__/add-block.test.ts` 갱신 + 새 케이스 green
-- [ ] A-T2. `NamingStep`에서 소스 블록 추출(`SurfaceBaseLocales`, `disabled`를 Select·RadioGroup에 직접 전달) — 검증: `new-project.test.tsx`·`naming-hint.test.tsx`·`form-help-described.test.tsx`·`parallel-p3-consumers.test.tsx` green + 손 사본 0 소스 스캔 케이스
-- [ ] A-T3. Add sources 2단계(`token-modal` 형: `transitionKey` + 자체 notice, 현행 버튼 배선 `busy`/`aria-disabled` 유지, 확정 `m.settings.sources.confirm`, ②만 `bodyScroll="auto"`, 공통 셀렉트 제거) — 검증: 새 jsdom 테스트(①→②→① 보존, A→B→A, 늦은 미리보기 응답 역전, 진행 중 Radix `disabled`·`pointerType: "mouse"`) + `long-action-transition`·`action-throws`·`a11y-reasons` 갱신 green
-- [ ] A-T4. 사전 키(②의 제목·설명) en·ko·es(`/translate` ①) — 검증: `dictionary-consistency`·`no-korean-ui` green `[C] feat(sources): two-step add with per-source base language`
+- [x] A-T1. `planAddStep` 분리(`planAddBlock`) — 검증: `lib/sources/__tests__/add-block.test.ts` 갱신 + 새 케이스 green
+- [x] A-T2. `NamingStep`에서 소스 블록 추출(`SurfaceBaseLocales`, `disabled`를 Select·RadioGroup에 직접 전달) — 검증: `new-project.test.tsx`·`naming-hint.test.tsx`·`form-help-described.test.tsx`·`parallel-p3-consumers.test.tsx` green + 손 사본 0 소스 스캔 케이스
+- [x] A-T3. Add sources 2단계(`token-modal` 형: `transitionKey` + 자체 notice, 현행 버튼 배선 `busy`/`aria-disabled` 유지, 확정 `m.settings.sources.confirm`, ②만 `bodyScroll="auto"`, 공통 셀렉트 제거) — 검증: 새 jsdom 테스트(①→②→① 보존, A→B→A, 늦은 미리보기 응답 역전, 진행 중 Radix `disabled`·`pointerType: "mouse"`) + `long-action-transition`·`action-throws`·`a11y-reasons` 갱신 green
+- [x] A-T4. 사전 키(②의 제목·설명) en·ko·es(`/translate` ①) — 검증: `dictionary-consistency`·`no-korean-ui` green `[C] feat(sources): two-step add with per-source base language`
 - [ ] A-T5. `/design-sync` A 프레임 대조 — 검증: computed style 차이 0 보고
 
 ## B. 제거·되살림
