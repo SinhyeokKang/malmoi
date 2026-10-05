@@ -50,3 +50,4 @@ A가 `prisma migrate diff`(더미 `DIRECT_URL`)로 SQL만 만든다 → 지휘�
 - 2026-10-05 B fix2(`2ad100b7` 목업 씬 전수 · `dd63b826` DESIGN · `c8815c93` DIRECTORY) 통합, gate ok. 지휘자 판단 — 별도 리뷰 생략(목업 한정 변경이고 값마다 실물 대비 테스트로 고정, 시각은 Q가 본다). `da4eb19d` CI success.
 - 2026-10-05 push `97b60ed0`. Q1(Opus high, main 체크아웃) dispatch `ctx_da688d8f2d49` — design-sync 감사(수정 없음) + runtime (b) + 레이아웃 + Action 지연 1회. **Q1 동안 지휘자는 cherry-pick·build 금지.** Q2 `/guide-shots`는 UI 결함 수정이 끝난 뒤.
 - 2026-10-05 범위 변경(공개 셸 Inbox) → B round 3 dispatch `ctx_42a5d3a096af`. Q1은 그대로 진행, fix3은 Q1 인계 뒤 통합 + 재확인 QA.
+- 2026-10-05 B fix3(`bc4e1dd4..77fcc896`) R-B3: 🔴0 🟡1(공개 페이지 테스트가 실제 배지 Action→getPrisma) 🟢5. route 표 변화 0. B fix4 dispatch `ctx_83bd51a750ab`(🟡 + 문서 🟢 + 7949fbd1 squash).
