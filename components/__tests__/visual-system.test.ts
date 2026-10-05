@@ -687,7 +687,7 @@ describe("화면 간 불변식 — grep 규칙 (T28)", () => {
 
     it("0곳이다", () => {
       expect(SOURCES.filter(({ source }) => /\bTriangleAlert\b/.test(source)).length).toBeGreaterThanOrEqual(4);
-      expect(offenders(SOURCES)).toEqual([]);
+      expect(offenders(ALL_SOURCES)).toEqual([]);
     });
 
     it.each([

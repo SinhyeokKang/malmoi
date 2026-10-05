@@ -1,4 +1,5 @@
-import { compare, type AttentionItem } from "@/lib/home/attention";
+import type { AttentionItem } from "@/lib/home/attention";
+import { compare } from "@/lib/home/attention-view";
 import type { Role } from "@/lib/auth/permission";
 import type { ProjectStatus } from "@/lib/projects/list";
 

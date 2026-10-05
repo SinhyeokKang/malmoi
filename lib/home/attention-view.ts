@@ -1,6 +1,7 @@
 import { CircleX, Eye, Languages, TriangleAlert, CircleDashed, GitPullRequestArrow } from "lucide-react";
 import type { ComponentType } from "react";
 import type { Messages } from "@/lib/i18n";
+import type { AttentionItem } from "./attention";
 import type { InboxItem } from "@/lib/inbox/plan";
 import { importFailureTone } from "@/lib/projects/import-failure";
 import { ALL_NAMESPACES, routes, bannerTranslationsHref } from "@/lib/routes";
@@ -65,3 +66,23 @@ export function tail(m: Messages, item: InboxItem): string {
   return m.home.attention.neverFilled.tail(item.keys);
 }
 
+
+/**
+ * ⚠️ **시각이 없는 항목은 가장 오래된 것이다** (ARCHITECTURE §5). 에러는 있는데 `lastImportFailedAt`이
+ * `null`인 행은 마이그레이션 이전 행뿐이고, 임의 위치를 주면 배포 직후 목록이 흔들린다.
+ *
+ * ⚠️ **`localeCompare`를 쓰지 않는다** — 로케일 설정에 따라 답이 달라져 같은 DB 상태가 다른 화면을
+ * 낸다. export 정렬과 같은 규칙이다 (ARCHITECTURE §1.1).
+ */
+export function compare(a: AttentionItem, b: AttentionItem): number {
+  // 시각 없는 항목끼리는 아래 보조 키로 갈린다 — 뺄셈으로 접으면 `-Infinity - -Infinity`가 NaN이다.
+  if (a.at === null || b.at === null) {
+    if (a.at !== b.at) return a.at === null ? 1 : -1;
+  } else if (a.at.getTime() !== b.at.getTime()) {
+    return b.at.getTime() - a.at.getTime();
+  }
+  if (a.surfaceSlug !== b.surfaceSlug) return a.surfaceSlug < b.surfaceSlug ? -1 : 1;
+  // 파서 실패에는 로케일이 없다 — 빈 문자열이 같은 표면의 로케일 항목들보다 앞에 온다.
+  const code = (item: AttentionItem): string => ("code" in item ? item.code : "");
+  return code(a) === code(b) ? 0 : code(a) < code(b) ? -1 : 1;
+}

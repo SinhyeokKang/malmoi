@@ -581,6 +581,14 @@ describe("클라이언트 그래프", () => {
     expect([...graph.packages].filter(name => !allowed(name))).toEqual([]);
   });
 
+  it("Inbox의 공유 뷰·계획은 조회·어댑터·컴포넌트 그래프를 끌지 않는다", () => {
+    const graph = walk([join(ROOT, "lib/inbox/plan.ts"), join(ROOT, "lib/home/attention-view.ts")]);
+    expect([...graph.files].map(file => file.slice(ROOT.length)).sort()).toEqual([
+      "lib/home/attention-view.ts", "lib/inbox/plan.ts", "lib/projects/import-failure.ts", "lib/routes.ts",
+    ]);
+    expect([...graph.packages].filter(name => !allowed(name))).toEqual([]);
+  });
+
   it("클라이언트 그래프가 닿는 `lib/**` 파일이 허용 목록과 정확히 같다", () => {
     const { files } = walk(CLIENT_ENTRIES);
     const reached = [...files].map((file) => file.slice(ROOT.length)).filter((rel) => rel.startsWith("lib/")).sort();

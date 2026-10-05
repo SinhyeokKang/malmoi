@@ -453,4 +453,3 @@ function BannerAction({
 function ownerOnly(sentence: string) {
   return <span className="ml-1 shrink-0">{sentence}</span>;
 }
-
