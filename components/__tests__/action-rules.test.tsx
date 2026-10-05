@@ -45,6 +45,7 @@ vi.mock("@/app/(edit)/mcp/actions", () => ({
 }));
 vi.mock("@/app/(edit)/actions", () => ({ saveTranslationKey: vi.fn(), previewTranslationRevert: mocks.preview, revertTranslationKey: mocks.revert, triggerPullAction: vi.fn() }));
 vi.mock("@/app/(edit)/publish-actions", () => ({ loadPublishPreview: vi.fn() }));
+vi.mock("@/app/(edit)/projects/[slug]/sources/actions", () => ({ updateBaseLocale: vi.fn(), removeSource: vi.fn(), previewSourceRemoval: async () => ({ ok: true, pendingCount: 0, approval: null, openPr: "none" }) }));
 
 import { GithubSection } from "@/components/account/github-section";
 import { LoginMethods } from "@/components/account/login-methods";
@@ -62,6 +63,8 @@ import { CiCard } from "@/components/settings/ci-card";
 import { PushTokenPanel } from "@/components/settings/push-token-panel";
 import { RepositoryCard } from "@/components/settings/repository-card";
 import { TranslationWorkspace } from "@/components/translations/workspace/workspace";
+import { SourceDetailModal } from "@/components/sources/source-detail-modal";
+import type { SourceDetail } from "@/lib/sources/query";
 import type { MemberView, PendingInvitation } from "@/lib/auth/query";
 import type { ConnectionHealth } from "@/lib/github-connect/health";
 import { en } from "@/messages/en";
@@ -97,6 +100,11 @@ const now = new Date("2026-09-17T00:00:00Z");
 const owner: MemberView = { userId: "u1", name: "Owner", emailLabel: "o***@example.com", image: null, readable: true, role: "OWNER", joinedAt: now };
 const alice: MemberView = { userId: "u2", name: "Alice", emailLabel: "a***@example.com", image: null, readable: true, role: "EDITOR", joinedAt: now };
 const invite: PendingInvitation = { id: "i1", emailLabel: "t***@example.com", readable: true, role: "EDITOR", expiresAt: new Date("2026-09-24T00:00:00Z"), invitedByName: "Owner" };
+const sourceDetail = {
+  id: "s-web", slug: "web", baseLocale: "en", declaredBaseLocale: null, lastCommitSha: "abc", lastCommitAt: now, lastImportStartedAt: null, lastImportError: null,
+  lastImportFailedAt: null, lastImportedAt: now, createdAt: now, keys: 1, locales: 1, orphanedLocales: 0, progress: { total: 1, done: 1, review: 0, percent: 100 },
+  installed: true, importActive: false, languages: [{ code: "en", isBase: true, orphaned: false, total: 1, translated: 1, needsReview: 0, untranslated: 0, percent: 100 }],
+} as unknown as SourceDetail;
 const activeToken: TokenCardData = { state: "active", grants: [], scope: { kind: "all" }, createdAt: "2026-09-28T00:00:00.000Z", lastUsedAt: null, expiresAt: "2026-12-27T12:00:00.000Z" };
 const connectedApp: ConnectedAppData = {
   id: "c1", name: "Claude Code", ident: "claude.ai/oauth/claude-code-client-metadata", state: "active", grants: [], scope: { kind: "all" },
@@ -111,7 +119,8 @@ function Sync({ unsent }: { unsent: number }) {
 /**
  * 확인창을 가진 트리거 전부 — `file`은 아래 완결성 스캔이 대조한다. `trigger`는 창을 여는 버튼이다.
  */
-const CONFIRMS: { name: string; file: string[]; ui: () => ReactNode; trigger: () => HTMLElement }[] = [
+/** `host` — 트리거가 이미 열린 창(상세 모달) 안에 있다. 그 창은 확인창이 아니므로 클릭 뒤 **새로 선** 창만 잰다. */
+const CONFIRMS: { name: string; file: string[]; ui: () => ReactNode; trigger: () => HTMLElement; host?: number }[] = [
   { name: "push 토큰 Rotate token", file: ["components/settings/push-token-panel.tsx"], ui: () => <PushTokenPanel slug="acme" />, trigger: () => buttonByText(en.settings.token.rotate) },
   {
     name: "MCP 토큰 Rotate token", file: ["components/mcp/token-card.tsx", "components/mcp/token-modal.tsx"],
@@ -155,6 +164,13 @@ const CONFIRMS: { name: string; file: string[]; ui: () => ReactNode; trigger: ()
     name: "번역 Revert to last sent", file: ["components/translations/workspace/workspace.tsx"],
     ui: () => <TranslationWorkspace {...workspaceProps()} />, trigger: () => buttonByText("Revert to last sent"),
   },
+  {
+    name: "소스 Remove source", file: ["components/sources/remove-source-dialog.tsx"],
+    ui: () => <SourceDetailModal slug="acme" sourceSlug="web" role="OWNER" state={{ status: "ready", detail: sourceDetail }} now={now} busy={false}
+      sources={[{ id: "s-web", slug: "web" }, { id: "s-app", slug: "app" }]} onRemoved={() => {}} onBusy={() => {}} onClose={() => {}} onReload={() => {}} onImport={() => {}} onSaved={() => {}}
+      returnFocusRef={{ current: null }} fallbackFocusRef={{ current: null }} />,
+    trigger: () => buttonByText(en.sources.removal.action), host: 1,
+  },
 ];
 
 /**
@@ -173,9 +189,10 @@ describe("확인 Dialog의 확정이 danger면 트리거도 danger다 (DESIGN §
   it.each(CONFIRMS.map((entry) => [entry.name, entry] as const))("%s", async (_name, entry) => {
     await render(entry.ui());
     const trigger = entry.trigger();
-    expect(layers()).toHaveLength(0);
+    const before = layers();
+    expect(before).toHaveLength(entry.host ?? 0);
     await click(trigger);
-    const confirms = layers().flatMap((layer) => [...layer.querySelectorAll<HTMLButtonElement>("button")]).filter(danger);
+    const confirms = layers().filter((layer) => !before.includes(layer)).flatMap((layer) => [...layer.querySelectorAll<HTMLButtonElement>("button")]).filter(danger);
     // 이 목록의 창은 전부 파괴 확정을 든다 — 0이면 이 행이 규칙을 재지 않는다.
     expect(confirms.length).toBeGreaterThan(0);
     expect(danger(trigger)).toBe(true);

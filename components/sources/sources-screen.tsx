@@ -27,8 +27,9 @@ import { AddSourcesModal } from "./add-sources-modal";
 import { SourceDetailModal, type DetailState } from "./source-detail-modal";
 import { SourceStatus } from "./source-status";
 import { IconTile } from "@/components/ui/icon-tile";
+import { useCommitWait } from "@/components/commit-wait";
 
-type Result = { tone: "success" | "warning" | "danger"; text?: string; added?: SurfaceAdded[]; source?: string };
+type Result = { tone: "success" | "warning" | "danger"; text?: string; added?: SurfaceAdded[]; source?: string; removed?: string };
 export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = false }: {
   slug: string; role: Role; data: SourcesData; adapters: AdapterChoice[]; now: Date; initialOpen?: boolean;
 }) {
@@ -63,6 +64,18 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
   // 재검증 커밋만으로 클라이언트 상세는 바뀌지 않는다. 화면 소유자는 유지하고 열린 상세만 다시 읽는다 — 첫 적재 뒤의 유일한 재조회다.
   useEffect(() => { if (selection.current) void load(selection.current, true); }, [data, load]);
   useEffect(() => { if (initialOpen && canEdit) setAdding(true); }, [initialOpen, canEdit]);
+  /*
+    제거 성공 — **닫기와 배너를 재검증 커밋 뒤로 미룬다** (추가와 같은 `useCommitWait` 규칙, 시안 R8). 먼저 닫으면 배너가 선 뒤에야 행이 사라진다.
+    ⚠️ 응답 즉시 `selection`을 비운다 — 커밋이 바꾼 `data`를 받는 위 effect가 제거된 소스를 다시 읽지 않게.
+    톤은 success다 — 미전달을 버린 제거도 확인 창이 말했고 사람이 동의했다(시안 닫힌 결정 4).
+  */
+  const commit = useCommitWait(data);
+  const [removed, setRemoved] = useState<string | null>(null);
+  useEffect(() => {
+    if (removed === null || commit.waiting) return;
+    setRemoved(null); setBusy(false); setSelected(null);
+    setResult({ tone: "success", removed });
+  }, [removed, commit.waiting]);
   const reload = () => { if (selected) void load(selected, true); };
   const closeAdd = () => { setAdding(false); if (initialOpen) router.replace(routes.sources(slug), { scroll: false }); };
   const close = () => { if (busy) return; ++request.current; selection.current = null; setSelected(null); };
@@ -84,6 +97,8 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
         */
         notice={result ? <Alert inset variant={result.tone} live={result.tone === "danger" ? "alert" : "status"} onDismiss={() => setResult(null)}>
           <div className="space-y-copy-gap">
+            {result.removed && <><p className="font-medium">{m.sources.removal.removed(result.removed)}</p>
+              <p className="text-muted-foreground text-xs">{m.sources.removal.workflowStep(<InlineLink href={routes.settings(slug)}>{m.common.nav.projectSettings}</InlineLink>)}</p></>}
             {result.text && <p>{result.source && <><span className="font-medium">{result.source}</span> — </>}{result.text}</p>}
             {result.added && <><p><span className="font-medium">{m.sources.addedCount(result.added.length)}</span> — {result.added.map((source, index) => <Fragment key={source.surfaceSlug}>
                 {index > 0 && ", "}<span className={source.failed > 0 ? "text-destructive" : undefined}>{source.surfaceSlug}</span> {source.failed > 0 ? m.sources.addedFailed : m.sources.addedOne(source.count)}
@@ -124,7 +139,7 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
       </Card>
     </PanelBody>
     {canEdit && data.repository && <AddSourcesModal open={adding} onClose={closeAdd} onAdded={added => { const summary = summarizeAddResults(added); setResult({ tone: summary.tone, added }); }} returnFocusRef={trigger} slug={slug} owner={data.repository.repoOwner} repo={data.repository.repoName} branch={data.repository.baseBranch} server={data} existing={data.sources.map(source => ({ pathTemplate: source.connection?.pathTemplate ?? null }))} adapters={adapters} />}
-    <SourceDetailModal slug={slug} sourceSlug={selected} role={role} state={detail} now={now} importResult={result?.source === selected && result?.text ? { text: result.text, tone: result.tone } : undefined} busy={busy} importing={importing} onBusy={setBusy} onClose={close} onReload={reload} onSaved={reload} returnFocusRef={returnFocus} fallbackFocusRef={heading} onImport={() => {
+    <SourceDetailModal slug={slug} sourceSlug={selected} role={role} state={detail} now={now} importResult={result?.source === selected && result?.text ? { text: result.text, tone: result.tone } : undefined} busy={busy} importing={importing} sources={data.sources} onBusy={setBusy} onClose={close} onRemoved={surfaceSlug => { ++request.current; selection.current = null; commit.wait(); setRemoved(surfaceSlug); }} onReload={reload} onSaved={reload} returnFocusRef={returnFocus} fallbackFocusRef={heading} onImport={() => {
       if (!selected || busy) return;
       const surfaceSlug = selected; setBusy(true); setImporting(true);
       void (async () => {

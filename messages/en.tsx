@@ -1241,6 +1241,8 @@ export const en = {
       anyDate: "Any date",
       anyone: "Anyone",
       anySource: "Any source",
+      /** 제거된 소스의 꼬리(시안 L1) — 이력은 남으므로 그 소스로 거를 길도 남는다. */
+      removed: "(removed)",
       anyResult: "Any result",
       clear: "Clear filters",
       people: "People",
@@ -3051,6 +3053,28 @@ export const en = {
         importing: "This source is syncing. Try again when it finishes.",
         "stale-approval": "Couldn't confirm that what you reviewed is still current — nothing was removed. Open Remove again to review.",
       },
+      /** [Remove source] — 트리거와 확인 창 확정이 같은 낱말이다(시안 R4). */
+      action: "Remove source",
+      /** 멤버 `confirmRemove`와 같은 골격(§10). 대상은 slug다. */
+      title: (slug: string): string => `Remove ${slug} from this project?`,
+      /** 늘 선다 — 어디까지 사라지나의 경계(여기서 멈춘다 / 리포는 그대로 / 다시 더하면 돌아온다). */
+      body: "It stops syncing here. Files in the repository aren't changed. Add it again anytime to bring its translations back.",
+      /** 미전달 > 0일 때만. `count`는 `repositorySync.unsentCount` 그대로(500으로 앞세운다). */
+      unsent: (n: number, count: ReactNode): ReactNode => <>{count} will be discarded.</>,
+      /** 서버는 PR이 이 소스의 파일을 바꿨는지 보지 않는다 — 그래서 조건문이다(시안 R5). */
+      openPr: "If the open pull request changes its files, those changes drop out at the next publish.",
+      /** PR 조회 실패 — 제거를 막지 않는다. 열려 있을 수 있다는 것만 같은 결과로 말한다. */
+      prUnknown: "We couldn't check for an open pull request. If one changes its files, those changes drop out at the next publish.",
+      /** 늘 선다 — 앱은 대상 리포 워크플로에 그 step이 있는지 알 수 없다(PRODUCT §7.1). */
+      workflowLine: "Remove its step from your GitHub workflow — otherwise the next run fails and stops the sources after it.",
+      /** 지문 발급 실패 — Sync와 달리 확정을 막고 [Try again]이 다시 받는다(시안 R6 · 닫힌 결정 1). */
+      previewFailed: "We couldn't check what removing it would discard. Try again before you remove it.",
+      /** 응답 유실 — 서버가 끝냈을 수 있다. 다시 실행하지 않고 화면을 다시 읽는다. */
+      unconfirmed: "We couldn't confirm whether it was removed. The list shows the current state.",
+      /** 성공 배너 첫 줄(시안 R8). */
+      removed: (slug: string): string => `Removed ${slug}.`,
+      /** 성공 배너 둘째 줄 — `link`는 Settings 링크다. */
+      workflowStep: (link: ReactNode): ReactNode => <>Remove its step from the workflow in {link}.</>,
     },
     files: "Files",
     path: "Path pattern",
@@ -3093,7 +3117,6 @@ export const en = {
     needReview: (count: number): string => `${count.toLocaleString("en-US")} need review`,
     missingRepo: "Removed from repository",
     editorBase: "Only project owners can change the base language of a source.",
-    readOnlyNote: "Name, path and file format are read from the repository.",
     started: "started",
     addedAgo: "added",
     lastSuccess: "Last successful sync",

@@ -20,7 +20,7 @@ const detail = {
 } as unknown as SourceDetail;
 
 const draw = (uiLocale: "en" | "ko" | "es") => render(
-  <SourceDetailModal slug="p" sourceSlug="web" role="OWNER" state={{ status: "ready", detail }} now={new Date("2026-09-21T00:00:00Z")} busy={false}
+  <SourceDetailModal slug="p" sourceSlug="web" role="OWNER" state={{ status: "ready", detail }} now={new Date("2026-09-21T00:00:00Z")} busy={false} sources={[{ id: "s", slug: "web" }]} onRemoved={() => {}}
     onBusy={() => {}} onClose={() => {}} onReload={() => {}} onImport={() => {}} onSaved={() => {}}
     returnFocusRef={{ current: null }} fallbackFocusRef={{ current: null }} />,
   { uiLocale },

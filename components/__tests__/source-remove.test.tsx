@@ -53,7 +53,7 @@ it("OWNER는 바닥 왼쪽에 [Remove source]를 받고 옛 안내 문구는 없
   const trigger = removeTrigger();
   expect(trigger?.textContent).toBe(en.sources.removal.action);
   expect(trigger?.getAttribute("aria-disabled")).toBeNull();
-  expect(document.body.textContent).not.toContain(en.sources.readOnlyNote);
+  expect(document.body.textContent).not.toContain("are read from the repository");
   const reason = document.getElementById("source-open-reason");
   expect(reason?.className).toContain("sr-only");
   expect(reason?.textContent).toBe(en.sources.firstImport);
@@ -243,6 +243,8 @@ it("성공은 재검증 커밋 뒤에 모달을 닫고 결과 배너를 세우�
   expect(confirmDialog()).toBeDefined();
   expect(document.body.textContent).not.toContain(en.sources.removal.removed("web"));
   await view.rerender(<SourcesScreen slug="p" role="OWNER" data={{ ...two, sources: [emails] }} adapters={[]} now={new Date()} />);
+  // Radix의 닫힘 포커스 복귀는 다음 태스크에 돈다.
+  await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); });
   expect(document.querySelector('[role="dialog"]')).toBeNull();
   const banner = document.querySelector('[data-sources-screen] [role="status"]');
   expect(banner?.textContent).toContain(en.sources.removal.removed("web"));

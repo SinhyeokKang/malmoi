@@ -1,5 +1,6 @@
 import { addDays, dayKeyAt, startOfDay } from "@/lib/date-format";
 import type { TimeZone } from "@/lib/time-zone/zones";
+import { compareCodeUnits } from "@/lib/compare";
 import { decodeUrlToken, encodeUrlToken } from "@/lib/url-token";
 
 import { EVENT_RESULTS, LOG_KINDS, type EventResult, type LogKind } from "./payload";
@@ -10,7 +11,7 @@ import { EVENT_RESULTS, LOG_KINDS, type EventResult, type LogKind } from "./payl
  * ⚠️ **주소창 값이라 무엇을 받아도 던지지 않는다.** 모르는 값·해독 불가는 기본값이고 화면은 첫
  * 페이지를 그린다 — `decodeCursor`·`pick`과 같은 축이다 (POSTMORTEM 2026-09-08).
  *
- * ⚠️ **잎이다** — `./payload`·`@/lib/url-token`·`@/lib/date-format`(전부 잎)까지다. 필터 UI가 클라이언트 컴포넌트라 이 그래프가 곧
+ * ⚠️ **잎이다** — `./payload`·`@/lib/url-token`·`@/lib/date-format`·`@/lib/compare`(전부 잎)까지다. 필터 UI가 클라이언트 컴포넌트라 이 그래프가 곧
  * 번들이다 (`components/__tests__/client-graph.test.ts`).
  */
 
@@ -249,4 +250,15 @@ function text(value: string | string[] | undefined): string | null {
  */
 function oneOf<T extends string>(values: readonly T[], raw: string | null): T | null {
   return raw !== null && (values as readonly string[]).includes(raw) ? (raw as T) : null;
+}
+
+/**
+ * 소스 필터 항목 (sources-add-remove · 시안 L1). 사건은 지우지 않으므로 제거된 소스로 거를 길도 남는다 — 활성이 먼저(지금 일하는
+ * 소스), 제거된 것이 그 뒤다. slug는 보관 행까지 프로젝트 안에서 유일하다(`lib/surfaces/create.ts`의 slug 계획이 보관 행을 센다).
+ */
+export function logSourceOptions(surfaces: readonly { slug: string; archivedAt: Date | null }[]): { slug: string; removed: boolean }[] {
+  const bySlug = (a: { slug: string }, b: { slug: string }) => compareCodeUnits(a.slug, b.slug);
+  const active = surfaces.filter(surface => surface.archivedAt === null).sort(bySlug);
+  const removed = surfaces.filter(surface => surface.archivedAt !== null).sort(bySlug);
+  return [...active.map(({ slug }) => ({ slug, removed: false })), ...removed.map(({ slug }) => ({ slug, removed: true }))];
 }

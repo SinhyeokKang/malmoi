@@ -57,7 +57,8 @@ export function LogFilters({
 }: {
   slug: string;
   filter: LogFilter;
-  sources: readonly { slug: string }[];
+  /** 활성 → 제거된 순(`logSourceOptions`). 제거된 소스도 이력이 남아 거를 수 있다(시안 L1). */
+  sources: readonly { slug: string; removed?: boolean }[];
   actors: readonly { id: string; label: string }[];
   refreshable: boolean;
   /**
@@ -197,7 +198,7 @@ export function LogFilters({
           </DropdownMenuItem>
         </Filter>
 
-        <Filter axis={m.logs.filters.axis.source} label={filter.sources.length === 0 ? m.logs.filters.anySource : filter.sources.map(source => source === PROJECT_WIDE ? m.logs.filters.projectWide : source).join(", ")} on={filter.sources.length > 0}>
+        <Filter axis={m.logs.filters.axis.source} label={filter.sources.length === 0 ? m.logs.filters.anySource : filter.sources.map(source => source === PROJECT_WIDE ? m.logs.filters.projectWide : sources.some(row => row.slug === source && row.removed) ? `${source} ${m.logs.filters.removed}` : source).join(", ")} on={filter.sources.length > 0}>
           {/* 소스가 없는 사건(멤버 · 설정)을 고른다 — 그 사건에 가짜 소스 값을 넣지 않기 때문이다. */}
           <DropdownMenuCheckboxItem
             checked={filter.sources.includes(PROJECT_WIDE)}
@@ -212,7 +213,8 @@ export function LogFilters({
               checked={filter.sources.includes(source.slug)}
               onCheckedChange={() => go({ sources: toggle(filter.sources, source.slug) })}
             >
-              {source.slug}
+              {/* 꼬리만 muted다 — 이름은 활성 항목과 같은 글자다. */}
+              {source.slug}{source.removed && <span className="text-muted-foreground"> {m.logs.filters.removed}</span>}
             </DropdownMenuCheckboxItem>
           ))}
           {filter.sources.length > 0 && (

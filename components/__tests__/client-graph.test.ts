@@ -162,6 +162,8 @@ const CLIENT_LIB_FILES = [
   // Analytics `beforeSend` 허용 목록 — 값 import 0인 잎이다(아래 잎 검사). `SITE_ORIGIN`·`m`도 물지 않는다.
   "lib/seo/analytics.ts",
   "lib/surfaces/plan-add.ts",
+  // 상세 모달의 [Remove source] 사전 차단 — 서버와 같은 판정·문장(sources-add-remove). `./plan`·`lib/auth/message`까지 잎이다.
+  "lib/surfaces/plan-removal.ts",
   "lib/projects/pr-url.ts",
   "lib/publish/plan.ts",
   "lib/publish/warnings.ts",
@@ -521,6 +523,8 @@ describe("클라이언트 그래프", () => {
 
     const filter = walk([join(ROOT, "lib/events/filter.ts")]);
     expect([...filter.files].map((file) => file.slice(ROOT.length)).sort()).toEqual([
+      // 소스 필터 항목 정렬(sources-add-remove — 제거된 소스) — 결정적 정렬의 기준 비교다.
+      "lib/compare.ts",
       // 기간 구간·프리셋이 시간대 자정을 값으로 읽는다(user-timezone A3).
       "lib/date-format.ts",
       "lib/events/filter.ts",
