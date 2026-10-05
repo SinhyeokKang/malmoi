@@ -35,6 +35,27 @@ export function discardFingerprint(input: DiscardFingerprintInput): string {
   return createHash("sha256").update(canonical).digest("hex");
 }
 
+export type RemovalFingerprintInput = {
+  userId: string;
+  projectId: string;
+  surfaceId: string;
+  /**
+   * ⚠️ **그 소스의 토큰 전부다 — orphaned 키·로케일 포함** (POSTMORTEM "세는 집합 ≠ 바꾸는 집합"). 되살림 첫 적재가 승인하는 집합이
+   * `surfaceId` 전체라, 화면용 `pendingWhere`(활성만)로 세면 승인 안 받은 orphan 편집이 덮인다.
+   */
+  pending: readonly { id: string; token: string }[];
+};
+
+/**
+ * 소스 제거 승인 지문 (sources-add-remove — ARCHITECTURE §5.9). 수동 Sync 지문과 같은 형(HMAC·만료 없음, 잠금 뒤 재계산)이고
+ * 용도 접두 `"remove-surface"`가 둘을 가른다 — 같은 토큰 집합의 Sync 승인이 제거 승인으로 통과하지 않는다.
+ */
+export function removalFingerprint(input: RemovalFingerprintInput): string {
+  const byId = (a: { id: string }, b: { id: string }) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+  const canonical = JSON.stringify(["remove-surface", input.userId, input.projectId, input.surfaceId, [...input.pending].sort(byId).map(p => [p.id, p.token])]);
+  return createHash("sha256").update(canonical).digest("hex");
+}
+
 export function sameFingerprint(approved: string | null, current: string): boolean {
   if (approved === null) return false;
   const a = Buffer.from(approved);
