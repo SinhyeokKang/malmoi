@@ -175,6 +175,8 @@ const DELEGATED_CORES = new Map([
   ["changeBaseBranch", "lib/settings/update.ts"],
   ["renameProject", "lib/settings/update.ts"],
   ["declareBaseLocale", "lib/sources/base-locale.ts"],
+  ["removeSurface", "lib/surfaces/remove.ts"],
+  ["previewSurfaceRemoval", "lib/surfaces/remove.ts"],
   ["runArchive", "lib/projects/archive.ts"],
   ["runUnarchive", "lib/projects/archive.ts"],
   ["revokePendingInvitation", "lib/auth/members.ts"],
