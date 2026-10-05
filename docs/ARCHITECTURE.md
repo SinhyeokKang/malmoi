@@ -2927,14 +2927,14 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
   `failed` — 쿠키만 쓰면 다음 렌더에서 계정의 옛 값이 이긴다) → 쿠키를 **무조건** 쓴다(`httpOnly` · `sameSite: "lax"` · `secure`는 `x-forwarded-proto`
   첫 항목이 `https`일 때 — `setUiLocale`과 같은 판정 · 1년. 로그인 중에도 쓰는 것은 로그아웃 뒤 공개 페이지가 같은 테마를 보게 하려는 것이다) →
   `revalidateAfterCommit("color-scheme")`(커밋 뒤라 던져도 `ok`). `ProjectEvent`를 남기지 않는다. 쿠키 속성의 출처는 `lib/color-scheme/cookie-spec.ts`의
-  `colorSchemeCookieSpec` 한 곳이다(Action은 `cookies().set`, 로그인 동기화는 직렬화).
-- **둘째 쿠키 쓰기는 로그인 동기화다**(2026-10-05, fix1·fix2) — 로그인이 끝나면 계정의 테마를 이 기기 쿠키로 옮겨 적어, 로그아웃 뒤·다음 로그인 직전 화면이 계정 값과
+  `lib/device-cookies/spec.ts`의 `deviceCookieSpec` 한 곳이다(화면 언어 쿠키와 공유 — Action은 `cookies().set`, 로그인 동기화는 직렬화).
+- **둘째 쿠키 쓰기는 로그인 동기화다**(2026-10-05, fix1·fix2 — 2026-10-06 fix3에서 **화면 언어 쿠키 `malmoi-ui-locale`(`User.uiLocale`, §6.355)도 같은 장치로 옮겼다**: 래퍼 하나가 두 쿠키를 각각 비교해 덧붙이고, 속성은 `setUiLocale` Action과 `lib/device-cookies/spec.ts` 한 곳이다) — 로그인이 끝나면 계정의 테마·언어를 이 기기 쿠키로 옮겨 적어, 로그아웃 뒤·다음 로그인 직전 화면이 계정 값과
   같게 한다(첫 로그인 순간의 한 번 전환은 남는다). 계정 값이 없거나 지원 밖이면 **쓰지 않고**(기기 선택 보존), 요청 쿠키가 이미 같은 값이어도 쓰지 않는다. DB 쓰기 0, 던지지 않는다.
   모든 로그인 경로(OAuth·login-link 왕복)의 끝이 Auth.js 콜백의 `events.signIn`이다 — `session-revocation`·`account-connect`는 세션을 만들지 않아 지나지 않는다.
   ⚠️ **Route Handler에서 `cookies().set`을 쓰지 않는다** — Next가 응답의 Set-Cookie **전체를 파싱·재직렬화**하고(`appendMutableCookies`), 파서가 falsy 필드를 버려
   `Max-Age=0` 삭제 쿠키(Auth.js pkce·state, `withLoginLink`의 link 쿠키)가 삭제가 아닌 **빈 세션 쿠키**로 나간다(POSTMORTEM 2026-09-10과 같은 부류). 그래서 **기록과 쓰기를 쪼갠다**:
-  `events.signIn`은 값을 AsyncLocalStorage에 기록만 하고(`recordColorSchemeAtSignIn`), `auth.ts`의 `handlers` **가장 바깥** 래퍼(`withColorSchemeSync`)가 응답 `Headers` 사본에
-  직렬화한 한 줄을 `append`한다 — 기존 헤더는 바이트 그대로이고 안쪽 래퍼의 재직렬화를 지나지 않는다. 회귀는 `lib/color-scheme/__tests__/sign-in.test.ts`가 잡는다.
+  `events.signIn`은 값을 AsyncLocalStorage에 기록만 하고(`recordDeviceCookiesAtSignIn`), `auth.ts`의 `handlers` **가장 바깥** 래퍼(`withDeviceCookieSync`)가 응답 `Headers` 사본에
+  직렬화한 한 줄을 `append`한다 — 기존 헤더는 바이트 그대로이고 안쪽 래퍼의 재직렬화를 지나지 않는다. 회귀는 `lib/device-cookies/__tests__/sign-in.test.ts`가 잡는다.
 - **`global-error.tsx`는 이 축 밖이다** — 루트 레이아웃 밖이고 `globals.css`를 import하지 않아 `data-theme`도 토큰도 없이 브라우저 기본값(라이트)이다.
 - **방침**: `User.colorScheme`은 `lib/privacy/collected.ts`에 `collected`로 있고, 쿠키 `malmoi-color-scheme`은 `/privacy`의 쿠키 표·보존 목록·목적에 en·ko 두 본으로
   든다(§6.035 동형 게이트 — 쿠키 표의 행은 이름이 아니라 용도 `Theme`이다).
