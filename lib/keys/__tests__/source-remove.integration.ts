@@ -283,7 +283,8 @@ describe("재추가 = 되살림", () => {
   it("되살릴 행의 경로를 다른 활성 소스가 쥐고 있으면 path-conflict이고 되살아나지 않는다", async () => {
     expect(await remove("web")).toEqual({ ok: true });
     await prisma.translationSurface.update({ where: { id: "s-app" }, data: { pathTemplate: "web/{locale}.json" } });
-    await expect(readd()).rejects.toMatchObject({ code: "path-conflict" });
+    // 줄은 "추가하려던 템플릿 · 지금 쥔 소스"다 — 되살릴 행의 slug(`web`)는 소유자가 아니다 (malmoi#194).
+    await expect(readd()).rejects.toMatchObject({ code: "path-conflict", conflicts: [{ path: "web/{locale}.json", surfaceSlugs: ["app"] }] });
     expect((await prisma.translationSurface.findUniqueOrThrow({ where: { id: "s-web" } })).archivedAt).not.toBeNull();
   });
 });

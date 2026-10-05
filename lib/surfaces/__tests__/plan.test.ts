@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compareSurfaces, planSurfaceSlug, selectDefaultSurface, surfaceOwnership, surfaceLabel } from "../plan";
+import { compareSurfaces, planAddConflicts, planSurfaceSlug, selectDefaultSurface, surfaceOwnership, surfaceLabel } from "../plan";
 import { planMultiSurfacePull } from "@/lib/pull/surfaces";
 import { renderSurfaceWorkflowStep } from "@/lib/onboarding/workflow";
 
@@ -57,4 +57,29 @@ it("renders a deterministic surface step with an explicit path", () => {
   expect(output).toContain('path-template: "src/i18n/{locale}.json"');
   expect(output).toContain("${{ secrets.PUSH_TOKEN }}");
   expect(output).not.toContain("concurrency:");
+});
+
+/**
+ * **추가 거부의 충돌 줄은 "추가하려던 템플릿 · 지금 그 파일을 쥔 소스"다** (malmoi#194). 전엔 파일마다 한 줄에 계획 slug까지 섞여
+ * `i18n/emails/de.json · emails, emails-2`로 읽혔다 — `emails-2`는 거부된 추가가 받을 뻔한 slug라 존재한 적이 없다.
+ */
+describe("planAddConflicts", () => {
+  const existing = [{ surfaceId: "s-emails", surfaceSlug: "emails", paths: ["i18n/emails/de.json", "i18n/emails/en.json"] }, { surfaceId: "s-web", surfaceSlug: "web", paths: ["web/en.json"] }];
+  const addition = (surfaceId: string, pathTemplate: string, paths: string[]) => ({ surfaceId, pathTemplate, paths });
+
+  it("충돌이 없으면 ok다", () => {
+    expect(planAddConflicts(existing, [addition("new", "app/{locale}.json", ["app/en.json"])])).toEqual({ ok: true });
+  });
+  it("템플릿 하나에 한 줄이고, 계획 slug 없이 기존 소유자만 든다", () => {
+    expect(planAddConflicts(existing, [addition("new", "i18n/emails/{locale}.json", ["i18n/emails/de.json", "i18n/emails/en.json", "i18n/emails/fr.json"])]))
+      .toEqual({ ok: false, conflicts: [{ path: "i18n/emails/{locale}.json", surfaceSlugs: ["emails"] }] });
+  });
+  it("여러 기존 소스와 겹치면 그 slug를 정렬해 한 번씩 든다", () => {
+    expect(planAddConflicts(existing, [addition("new", "{locale}/all.json", ["web/en.json", "i18n/emails/de.json", "i18n/emails/en.json"])]))
+      .toEqual({ ok: false, conflicts: [{ path: "{locale}/all.json", surfaceSlugs: ["emails", "web"] }] });
+  });
+  it("추가끼리만 겹치면 둘 다 거부 줄이고 소유자는 비어 있다 — 아직 아무도 그 파일을 쥐지 않았다", () => {
+    expect(planAddConflicts([], [addition("a", "x/{locale}.json", ["x/en.json"]), addition("b", "x/{locale}/m.json", ["x/en.json"])]))
+      .toEqual({ ok: false, conflicts: [{ path: "x/{locale}.json", surfaceSlugs: [] }, { path: "x/{locale}/m.json", surfaceSlugs: [] }] });
+  });
 });

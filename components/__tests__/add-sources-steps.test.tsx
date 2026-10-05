@@ -155,7 +155,7 @@ it("A→B→A 포커스 전환의 늦은 미리보기 응답이 최신 선택을
 });
 
 it("② 추가 실패는 ②에 머물고 선택이 남는다 — 경로 충돌만 [Back]으로 고치라고 말한다", async () => {
-  mocks.addSurfaces.mockResolvedValueOnce({ ok: false, error: "path-conflict", conflicts: [{ path: "emails/en.json", surfaceSlugs: ["mail"] }] });
+  mocks.addSurfaces.mockResolvedValueOnce({ ok: false, error: "path-conflict", conflicts: [{ path: emails.pathTemplate, surfaceSlugs: ["mail"] }, { path: "other/{locale}.json", surfaceSlugs: [] }] });
   await open([web, emails]);
   await click(include(emails.pathTemplate)); await click(next());
   await click(confirm());
@@ -163,6 +163,10 @@ it("② 추가 실패는 ②에 머물고 선택이 남는다 — 경로 충돌�
   expect(alert).toContain(en.settings.sources.nothingAdded);
   expect(alert).toContain(en.surfaces.conflict);
   expect(alert).toContain(en.settings.sources.conflictBack);
+  // 템플릿 한 줄 · 지금 그 파일을 쥔 소스 — 쥔 소스가 없으면(추가끼리 겹침) 템플릿만 선다 (malmoi#194).
+  const lines = [...dialog().querySelectorAll('[role="alert"] p, [data-slot="alert"] p')].map(p => p.textContent);
+  expect(lines).toContain(`${emails.pathTemplate} · mail`);
+  expect(lines).toContain("other/{locale}.json");
   expect(dialog().querySelector("h2")?.textContent).toBe(en.settings.sources.baseTitle);
   mocks.addSurfaces.mockResolvedValueOnce({ ok: false, error: "ingest-failed" });
   await click(confirm());
