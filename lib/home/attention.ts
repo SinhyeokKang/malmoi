@@ -3,6 +3,8 @@ import type { ImportFailureCode } from "@/lib/projects/import-status";
 import { failing } from "@/lib/projects/list";
 
 import type { HomeState } from "./state";
+import { compare } from "./attention-view";
+export { compare } from "./attention-view";
 
 /**
  * `Needs your attention` — 세 종을 **한 시간축**에 세운다 (DESIGN §6.64 · ARCHITECTURE §5).
@@ -35,42 +37,50 @@ export type AttentionList = {
   count: number;
 };
 
-export function attentionItems(input: {
-  state: HomeState;
+export type AttentionInput = {
   surfaces: readonly { slug: string; importError: ImportFailureCode | null; importing: boolean; lastImportFailedAt: Date | null }[];
   review: readonly { surfaceSlug: string; code: string; name: string; count: number; at: Date; updatedBy: string | null }[];
   neverFilled: readonly { surfaceSlug: string; code: string; name: string; keys: number; at: Date }[];
   /** `actorLabel`이 보는 그 맵 그대로다 — 폴백 판정이 **키의 존재**를 봐야 한다. */
   actors: ReadonlyMap<string, Actor>;
+};
+
+export function attentionItems(input: AttentionInput & {
+  state: HomeState;
   /** `2b`에서 배너가 지목한 표면. 그 하나만 목록에서 빠진다 — 나머지 실패는 남는다. */
   bannerSurface?: string | null;
 }): AttentionList {
   // `2d`: 할 수 있는 일이 하나도 없다 — 항목 카드가 통째로 `EmptyState`다 (DESIGN §6.64).
   if (input.state === "archived") return { shown: [], more: [], count: 0 };
-
-  const items: AttentionItem[] = [];
   /**
    * ⚠️ **배너가 지목한 표면 하나만 뺀다** (2026-09-15 리뷰 🟡6). 전에는 `2b`에서 파서 항목을 **전부**
    * 버렸는데, 배너는 표면 하나만 말한다 — 표면 둘이 같은 Sync에서 깨지면 둘째가 배너에도 항목에도
    * 없고 로그 한 줄로만 남았다. 그 줄에는 `[Try again]`도 설정 링크도 없고 7일 창 밖이면 사라진다.
    */
-  for (const surface of input.surfaces) {
+  const items = collectAttention(input.surfaces, input.review, input.neverFilled, input.actors).filter(item =>
+    !(input.state === "import_failed" && item.kind === "import_failed" && item.surfaceSlug === input.bannerSurface));
+  const capped = items.slice(0, CAP);
+  return { shown: capped.slice(0, VISIBLE), more: capped.slice(VISIBLE), count: capped.length };
+}
+
+export function collectAttention(
+  surfaces: AttentionInput["surfaces"], review: AttentionInput["review"],
+  neverFilled: AttentionInput["neverFilled"], actors: AttentionInput["actors"],
+): AttentionItem[] {
+  const items: AttentionItem[] = [];
+  for (const surface of surfaces) {
     // 돌고 있는 중이면 남은 코드는 이전 실행의 것이다 — 목록·설정과 **같은 술어**다.
     if (!failing(surface) || surface.importError === null) continue;
-    // 배너가 이미 말한 표면은 같은 화면에서 두 번 말하지 않는다.
-    if (input.state === "import_failed" && surface.slug === input.bannerSurface) continue;
     items.push({ kind: "import_failed", at: surface.lastImportFailedAt, surfaceSlug: surface.slug, reason: surface.importError });
   }
-  for (const row of input.review) {
-    items.push({ kind: "review", at: row.at, surfaceSlug: row.surfaceSlug, code: row.code, name: row.name, count: row.count, who: who(row.updatedBy, input.actors) });
+  for (const row of review) {
+    items.push({ kind: "review", at: row.at, surfaceSlug: row.surfaceSlug, code: row.code, name: row.name, count: row.count, who: who(row.updatedBy, actors) });
   }
-  for (const row of input.neverFilled) {
+  for (const row of neverFilled) {
     items.push({ kind: "never_filled", at: row.at, surfaceSlug: row.surfaceSlug, code: row.code, name: row.name, keys: row.keys });
   }
 
-  items.sort(compare);
-  const capped = items.slice(0, CAP);
-  return { shown: capped.slice(0, VISIBLE), more: capped.slice(VISIBLE), count: capped.length };
+  return items.sort(compare);
 }
 
 /**
@@ -84,21 +94,32 @@ function who(updatedBy: string | null, actors: ReadonlyMap<string, Actor>): stri
 }
 
 /**
- * ⚠️ **시각이 없는 항목은 가장 오래된 것이다** (ARCHITECTURE §5). 에러는 있는데 `lastImportFailedAt`이
- * `null`인 행은 마이그레이션 이전 행뿐이고, 임의 위치를 주면 배포 직후 목록이 흔들린다.
+ * 빈 로케일 — 그 로케일에 **지금 값이 있는 셀이 하나도 없는** 경우다. ⚠️ **이력은 보지 않는다** — 채웠다가 비운 로케일도
+ * 여기 서므로 문구가 "한 번도"를 말하면 거짓이다(malmoi#134). 이름 `neverFilled`는 옛 판정의 흔적이다.
  *
- * ⚠️ **`localeCompare`를 쓰지 않는다** — 로케일 설정에 따라 답이 달라져 같은 DB 상태가 다른 화면을
- * 낸다. export 정렬과 같은 규칙이다 (ARCHITECTURE §1.1).
+ * ⚠️ **`localeProgress`에 먹이지 않는다** (code-review 2026-09-15 🟡1). 그 함수는 셀을 행으로
+ * 받는데 여기 있는 것은 그룹 카운트라, 먹이려면 `count`만큼 객체를 만들어야 한다 — 903키 × 59로케일
+ * 리포에서 5만 개다. 답할 질문이 "합이 0인가" 하나라 카운트에서 바로 센다.
+ *
+ * ⚠️ **orphaned 로케일은 뺀다** — 그 파일은 리포에서 사라졌고 편집이 막혀 있어 일이 아니다.
+ * ⚠️ **분모가 0이면 항목이 아니다** — 키가 없는 표면에서 "한 번도 안 채워졌다"는 참이지만 채울
+ * 것이 없다.
  */
-function compare(a: AttentionItem, b: AttentionItem): number {
-  // 시각 없는 항목끼리는 아래 보조 키로 갈린다 — 뺄셈으로 접으면 `-Infinity - -Infinity`가 NaN이다.
-  if (a.at === null || b.at === null) {
-    if (a.at !== b.at) return a.at === null ? 1 : -1;
-  } else if (a.at.getTime() !== b.at.getTime()) {
-    return b.at.getTime() - a.at.getTime();
+export function neverFilledLocales(
+  surfaces: readonly { id: string; slug: string; locales: readonly { code: string; name: string; orphaned: boolean; createdAt: Date }[] }[],
+  aggregates: { keyTotals: ReadonlyMap<string, number>; cells: readonly { surfaceId: string; localeCode: string; count: number }[] },
+): AttentionInput["neverFilled"] {
+  const filled = new Map<string, Set<string>>();
+  for (const cell of aggregates.cells) {
+    if (cell.count <= 0) continue;
+    const codes = filled.get(cell.surfaceId) ?? new Set<string>();
+    codes.add(cell.localeCode);
+    filled.set(cell.surfaceId, codes);
   }
-  if (a.surfaceSlug !== b.surfaceSlug) return a.surfaceSlug < b.surfaceSlug ? -1 : 1;
-  // 파서 실패에는 로케일이 없다 — 빈 문자열이 같은 표면의 로케일 항목들보다 앞에 온다.
-  const code = (item: AttentionItem): string => ("code" in item ? item.code : "");
-  return code(a) === code(b) ? 0 : code(a) < code(b) ? -1 : 1;
+  return surfaces.flatMap(surface => {
+    const total = aggregates.keyTotals.get(surface.id) ?? 0;
+    if (total === 0) return [];
+    return surface.locales.filter(locale => !locale.orphaned && !filled.get(surface.id)?.has(locale.code))
+      .map(locale => ({ surfaceSlug: surface.slug, code: locale.code, name: locale.name, keys: total, at: locale.createdAt }));
+  });
 }

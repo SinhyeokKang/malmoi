@@ -25,6 +25,29 @@ describe("relativeTime — 세 언어", () => {
     expect(relativeTime(at(then), now, "es")).toBe(es);
   });
 
+  /**
+   * `style: "narrow"`(attention-inbox #190 — 시안의 `12m ago` · `3h ago` · `1d ago`). `numeric: "always"`라 하루 전도 `yesterday`가 아니라 `1d ago`다.
+   * 1분 미만은 짧은 형도 `now`다(초를 읽지 않는다). 기본(긴 형)은 그대로 — Home 등 기존 호출부의 출력이 바뀌지 않는다.
+   */
+  const narrow: Array<[then: string, en: string, ko: string, es: string]> = [
+    ["2026-09-08T11:59:10Z", "now", "지금", "ahora"],
+    ["2026-09-08T11:48:00Z", "12m ago", "12분 전", "hace 12 min"],
+    ["2026-09-08T09:00:00Z", "3h ago", "3시간 전", "hace 3 h"],
+    ["2026-09-07T12:00:00Z", "1d ago", "1일 전", "hace 1 d"],
+    ["2026-09-03T12:00:00Z", "5d ago", "5일 전", "hace 5 d"],
+    ["2026-09-10T12:00:00Z", "in 2d", "2일 후", "dentro de 2 d"],
+  ];
+  it.each(narrow)("narrow %s → en %s · ko %s · es %s", (then, en, ko, es) => {
+    expect(relativeTime(at(then), now, "en", { style: "narrow" })).toBe(en);
+    expect(relativeTime(at(then), now, "ko", { style: "narrow" })).toBe(ko);
+    expect(relativeTime(at(then), now, "es", { style: "narrow" })).toBe(es);
+  });
+
+  it("기본은 긴 형이다 — 옵션을 안 주면 옛 출력 그대로", () => {
+    expect(relativeTime(at("2026-09-07T12:00:00Z"), now, "en")).toBe("yesterday");
+    expect(relativeTime(at("2026-09-08T11:48:00Z"), now, "en", {})).toBe("12 minutes ago");
+  });
+
   it("언어를 넘기지 않으면 en이다 — 이행 중 기존 호출부의 출력이 바뀌지 않는다", () => {
     expect(relativeTime(at("2026-09-06T12:00:00Z"), now, "en")).toBe("2 days ago");
   });

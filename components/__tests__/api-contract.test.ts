@@ -313,7 +313,8 @@ function scan(sources: readonly Source[], restDemand: readonly { path: string; s
               const imported = imports.get(parent.openingElement.tagName.getText(file));
               // An actual DropdownMenuItem has its own pending semantics (T6 coordinator
               // decision); this excludes the control, never the whole user-menu file.
-              menuItem = imported?.path === "components/ui/dropdown-menu.tsx" && imported.symbol === "DropdownMenuItem";
+              // `DropdownMenuRow`(attention-inbox — Inbox `Try again`)도 같은 Radix Item이라 같은 예외다.
+              menuItem = imported?.path === "components/ui/dropdown-menu.tsx" && (imported.symbol === "DropdownMenuItem" || imported.symbol === "DropdownMenuRow");
               break;
             }
             parent = parent.parent;

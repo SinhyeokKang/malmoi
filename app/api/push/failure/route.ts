@@ -11,6 +11,7 @@ import { logFailure } from "@/lib/github-connect/log";
 import { ImportFailureReport } from "@/lib/projects/import-status";
 import { recordReportedFailure } from "@/lib/projects/import-status-store";
 import { checkArchived, checkCommitOrder, checkProjectSlug, guardStatus } from "@/lib/push/guard";
+import { classifyMissingSurface } from "@/lib/push/surface-refusal";
 import { hashPushToken } from "@/lib/push/token";
 
 /**
@@ -94,7 +95,20 @@ export async function POST(request: Request): Promise<NextResponse> {
     const surface = await prisma.translationSurface.findFirst({
       where: { projectId: project.id, slug: parsed.data.surfaceSlug, archivedAt: null },
     });
-    if (!surface) return NextResponse.json({ error: "surface mismatch" }, { status: 409 });
+    if (!surface) {
+      // `/api/push`와 같은 갈래다 — 제거된 소스는 실패 보고도 쓰지 않고 거부로만 남긴다.
+      const removed = await prisma.translationSurface.findFirst({ where: { projectId: project.id, slug: parsed.data.surfaceSlug } });
+      if (removed === null || classifyMissingSurface(removed) === "mismatch") return NextResponse.json({ error: "surface mismatch" }, { status: 409 });
+      try {
+        await recordCiImport(prisma, {
+          projectId: project.id, pushTokenHash: tokenHash, executionId: parsed.data.executionId ?? randomUUID(),
+          surface: { id: removed.id, slug: removed.slug }, result: "notStarted", refusal: "surface-removed",
+        });
+      } catch (error) {
+        logFailure("push-failure-event", error);
+      }
+      return NextResponse.json({ error: "surface removed" }, { status: 409 });
+    }
     const commitAt = new Date(parsed.data.commitAt);
     const order = checkCommitOrder(commitAt, surface.lastCommitAt);
     if (order !== "ok") {

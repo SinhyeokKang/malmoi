@@ -58,6 +58,8 @@ describe("Select before the API rename", () => {
     expect(lines.children[1]?.querySelector("em")?.textContent).toBe("Edit translations");
     expect(editor?.getAttribute("aria-selected")).toBe("true");
     expect(editor?.querySelector(".lucide-check")).not.toBeNull();
+    // 설명 전체가 아니라 20px 첫 줄 가운데에 16px 체크를 맞춘다.
+    expect(editor?.querySelector(".lucide-check")?.parentElement?.classList.contains("mt-0.5")).toBe(true);
     expect(disabled?.getAttribute("aria-disabled")).toBe("true");
     expect(disabled?.classList.contains("data-[disabled]:pointer-events-none")).toBe(true);
     expect(disabled?.classList.contains("data-[disabled]:opacity-50")).toBe(true);

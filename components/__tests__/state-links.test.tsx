@@ -24,7 +24,8 @@ vi.mock("@/lib/db", () => ({ getPrisma: () => ({ project: { findUnique: async ()
 import LegacyTranslations from "@/app/(edit)/projects/[slug]/translations/page";
 import { AttentionCard } from "@/components/home/attention-card";
 import { CountCards } from "@/components/home/count-cards";
-import { bannerTranslationsHref, ProjectList } from "@/components/projects/project-list";
+import { ProjectList } from "@/components/projects/project-list";
+import { bannerTranslationsHref } from "@/lib/routes";
 import type { ProjectListRow } from "@/lib/keys/query";
 import { en } from "@/messages/en";
 import type { HomeCard } from "@/lib/home/cards";

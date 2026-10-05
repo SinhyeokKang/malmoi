@@ -14,6 +14,11 @@ type Slots = {
   selected?: boolean;
   variant?: "card" | "canvas";
   ringInset?: boolean;
+  /**
+   * 비활성 행의 hover 면. ⚠️ **활성 면 하나로 칠하는 목록(전역 검색 option · 메뉴 행)은 끈다** — 포인터와 키보드가 각자 면을
+   * 칠하면 칠해진 행이 둘이 된다(search-ux-unify C16). `selected` 면은 이것과 무관하다.
+   */
+  hoverFill?: boolean;
 };
 type Props = Slots & (
   | (Omit<ComponentPropsWithRef<typeof Link>, "title"> & { href: string; as?: never })
@@ -23,14 +28,14 @@ type Props = Slots & (
 );
 
 /** Server-safe row. Callers retain li ownership when an item also has a banner. */
-export function ListRow({ icon, title, description, actions, aside, chevron, selected = false, variant = "card", ringInset = false, children, className, ...props }: Props) {
+export function ListRow({ icon, title, description, actions, aside, chevron, selected = false, variant = "card", ringInset = false, hoverFill = true, children, className, ...props }: Props) {
   const interactive = props.href !== undefined || props.as === "button" || props.onClick !== undefined;
   const blocked = ("disabled" in props && props.disabled) || props["aria-disabled"] === true || props["aria-disabled"] === "true";
   const classes = cn(
     "flex items-center gap-3 px-4 py-row-y",
     interactive && "w-full text-left focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
     interactive && ringInset && "focus-visible:ring-inset",
-    selected ? "bg-foreground/[0.07]" : interactive && !blocked && (variant === "canvas" ? "hover:bg-foreground/[0.03]" : "hover:bg-foreground/[0.02]"),
+    selected ? "bg-foreground/[0.07]" : interactive && !blocked && hoverFill && (variant === "canvas" ? "hover:bg-foreground/[0.03]" : "hover:bg-foreground/[0.02]"),
     className,
   );
   const content = <>{icon}{title === undefined && description === undefined ? children : <span data-row-copy className="flex min-w-0 flex-1 flex-col gap-copy-gap"><span>{title ?? children}</span>{description !== undefined && <span className="text-muted-foreground text-xs leading-normal">{description}</span>}</span>}{aside}{actions !== undefined && <div className="flex shrink-0 items-center gap-2">{actions}</div>}{chevron && <ListRowChevron />}</>;

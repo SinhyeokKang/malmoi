@@ -5,7 +5,7 @@ import { ListRow } from "@/components/ui/list-row";
 import { Fact } from "@/components/ui/facts";
 
 import { ChevronRight, CircleCheck, CircleX, Info, LoaderCircle, Lock, TriangleAlert } from "lucide-react";
-import { Fragment, useState, type RefObject } from "react";
+import { Fragment, useEffect, useState, type RefObject } from "react";
 import { useRouter } from "next/navigation";
 import { LargeModal } from "@/components/ui/large-modal";
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
@@ -31,11 +31,19 @@ import { STATE, stateLabel } from "@/lib/status/canon";
 import type { SourceDetail } from "@/lib/sources/query";
 import { formatMinute } from "@/lib/date-format";
 import { BaseLanguageForm } from "./base-language-form";
+import { RemoveSourceDialog } from "./remove-source-dialog";
+import { planSurfaceRemoval, removalReason } from "@/lib/surfaces/plan-removal";
 import { IconTile } from "@/components/ui/icon-tile";
 
 export type DetailState = { status: "loading" } | { status: "failed" | "rejected" } | { status: "ready"; detail: SourceDetail; refreshFailed?: boolean };
-export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, importing = false, importResult, onBusy, onClose, onReload, onImport, onSaved, returnFocusRef, fallbackFocusRef }: {
+export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, importing = false, importResult, sources, onBusy, onClose, onReload, onImport, onSaved, onRemoved, onLost, returnFocusRef, fallbackFocusRef }: {
   slug: string; sourceSlug: string | null; role: Role; state: DetailState; now: Date; busy: boolean;
+  /** 프로젝트의 활성 소스 전부 — 마지막 소스 판정(`planSurfaceRemoval`)의 입력이다. */
+  sources: readonly { id: string; slug: string }[];
+  /** 제거가 성공했다 — 호스트가 재검증 커밋 뒤 모달을 닫고 결과 배너를 세운다. */
+  onRemoved: (surfaceSlug: string) => void;
+  /** 제거 응답을 잃었다 — 호스트가 상세를 닫고 배너를 세운 뒤 다시 읽는다. */
+  onLost: () => void;
   /** `busy`가 첫 Sync 때문인가 — 아니면 기준 언어 저장이다. 푸터가 무엇을 기다리는지 말한다 (audit #31). */
   importing?: boolean;
   importResult?: { text: string; tone: "success" | "warning" | "danger" };
@@ -51,6 +59,9 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
    */
   const [draft, setDraft] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<{ href: string } | null>(null);
+  const [removing, setRemoving] = useState(false);
+  // ⚠️ 소스가 바뀌면(닫힘 포함) 확인 창 열림을 버린다 — 성공 뒤 남은 `true`가 다음 소스의 상세가 서는 순간 누르지 않은 확인 창을 열었다.
+  useEffect(() => { setRemoving(false); }, [sourceSlug]);
   const router = useRouter();
   const leave = (href?: string) => {
     if (busy) return;
@@ -69,6 +80,13 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
     상태의 시각은 판정이 든다(`planSurfaceImportStatus().at` — 6-⚪13, 목록과 같은 값). 미적재만 판정에 시각이 없고,
     여기서는 "언제 더했나"(`createdAt`)를 따로 말한다 — 없으면 시각을 생략하고 추정하지 않는다.
   */
+  /*
+    [Remove source]의 사전 차단 — 서버와 같은 판정·같은 문장이다(`planSurfaceRemoval`·`removalReason`). 보관은 이 화면에 오지 않는다(`archived` 거부).
+    ⚠️ **바쁨이 이긴다** — 지나가는 상태가 먼저고, 끝나면 마지막 소스 사유로 바뀐다(시안 R2). 문장은 옛 Open 꺼짐 자리의 것을 옮겼다.
+  */
+  const removal = detail === null ? null : planSurfaceRemoval({ targetId: detail.id, active: sources, defaultSurfaceId: null, projectArchived: false, importing: detail.importActive });
+  const removeBlocked = busy ? (importing ? m.settings.sources.importing : m.locales.field.saving)
+    : removal !== null && !removal.ok ? removalReason(m, removal.error) : null;
   const statusAt = detail === null || importStatus === null ? null : importStatus.state === "not-imported" ? detail.createdAt : importStatus.at;
   return <LargeModal open={sourceSlug !== null} title={sourceSlug ?? m.sources.details} description={detail ? `${m.surfaces.sourceCounts(detail.keys, detail.locales)}${detail.connection ? ` · ${detail.connection.format ?? (detail.connection.adapterName === null ? m.sources.notConfigured : m.sources.unknownFormat)}` : ""}` : failed ? undefined : m.sources.loading}
     onClose={() => leave()} closeDisabled={busy} returnFocusRef={returnFocusRef} fallbackFocusRef={fallbackFocusRef} quiet={fieldError}
@@ -79,7 +97,20 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
       {canOpen && sourceSlug && !busy
         ? <ButtonLink size="lg" variant="primary" href={routes.surfaceTranslations(slug, sourceSlug, { ns: ALL_NAMESPACES })} onClick={event => { if (draft !== null) { event.preventDefault(); leave(routes.surfaceTranslations(slug, sourceSlug, { ns: ALL_NAMESPACES })); } }}>{m.sources.open}</ButtonLink>
         : detail ? <Button size="lg" variant="primary" aria-disabled aria-describedby="source-open-reason" onClick={event => event.preventDefault()}>{m.sources.open}</Button> : null}
-    </>} notice={<span id="source-open-reason" className="text-muted-foreground text-xs">{!canOpen && detail ? (busy ? importing ? m.settings.sources.importing : m.locales.field.saving : disabledReason) : m.sources.readOnlyNote}</span>}>
+      {/* Open 꺼짐 사유는 sr-only다 — 보이는 글자는 Status·Languages 카드가 든다(시안 R1). 바닥 왼쪽은 제거 자리다. */}
+      {!canOpen && detail && <span id="source-open-reason" className="sr-only">{busy ? importing ? m.settings.sources.importing : m.locales.field.saving : disabledReason}</span>}
+    </>}
+    /*
+      ⚠️ **바닥 왼쪽 = 위험 동작** (DESIGN §6.4) — 오른쪽은 "이 모달을 어떻게 떠나나"([Close]·[Open translations])에 답하는 자리라, 제거를 거기 두면
+      세 번째 답으로 읽히고 primary 옆 danger는 손이 미끄러지는 자리다. EDITOR·불러오는 중·실패에는 없다 — 무엇을 지우는지 화면이 아직 말하지 못한다.
+      꺼지면 숨기지 않고 `aria-disabled` + 보이는 사유다(§6.65 — OWNER가 가진 동작이 지금 막혀 있다).
+    */
+    notice={canEdit && detail && sourceSlug ? <span data-source-remove className="flex min-w-0 items-center gap-3">
+      <Button size="lg" variant="danger" aria-disabled={removeBlocked !== null || undefined} aria-describedby={removeBlocked !== null ? "source-remove-reason" : undefined}
+        // ⚠️ 기준 언어 초안이 있어도 미저장 확인을 거치지 않는다 — 제거가 초안도 버리고, 두 창을 연달아 띄우면 두 번째 질문이 첫 번째를 덮는다(시안 R1).
+        onClick={event => { if (removeBlocked !== null) { event.preventDefault(); return; } setRemoving(true); }}>{m.sources.removal.action}</Button>
+      {removeBlocked !== null && <span id="source-remove-reason" className="text-muted-foreground text-xs">{removeBlocked}</span>}
+    </span> : undefined}>
     {/* 골격은 장식이다 — 불러오는 중은 대화상자 설명(`description`)이 말한다. 역할 없는 div의 `aria-label`은 읽히지 않는다 (audit #89). */}
     {state.status === "loading" && <div className="space-y-6" data-source-loading aria-hidden>
       {[1, 2, 3].map(n => <div key={n} className="space-y-3"><Skeleton className="h-4 w-32" /><Skeleton className="h-5 w-64" /></div>)}
@@ -182,6 +213,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
         </div>)}
       </Card>
     </div>}
+    {canEdit && detail && <RemoveSourceDialog open={removing} onOpenChange={setRemoving} slug={slug} surfaceSlug={detail.slug} onPending={onBusy} onRemoved={() => onRemoved(detail.slug)} onLost={onLost} />}
     {confirm !== null && detail && <Dialog open onOpenChange={next => { if (!next) setConfirm(null); }}>
       <DialogContent title={m.sources.discardTitle} description={m.sources.discardBody(draft ?? "", detail.baseLocale ?? "")}
         actions={<>

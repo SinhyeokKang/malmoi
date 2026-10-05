@@ -92,7 +92,8 @@ export function SelectItem({ className, children, description, ...props }: Compo
         </span>
       )}
       {/* 체크 자리는 켜질 때만 그려지고 `ml-auto`가 오른쪽으로 민다 (`DropdownMenuCheckboxItem`과 같은 형). */}
-      <Primitive.ItemIndicator className="ml-auto">
+      {/* 설명이 있으면 첫 줄(20px)에 체크(16px)를 맞춘다. */}
+      <Primitive.ItemIndicator className={cn("ml-auto", description !== undefined && "mt-0.5")}>
         <Check className="size-4" aria-hidden />
       </Primitive.ItemIndicator>
     </Primitive.Item>

@@ -1,4 +1,4 @@
-# Your account
+# Account
 
 Manage your profile, sign-in methods, GitHub connection, and active sessions in Account.
 

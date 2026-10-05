@@ -8,7 +8,8 @@
  * 읽기만 해도 죽는다"를 뜻해 CI를 red로 만든 전례가 있다 (POSTMORTEM 2026-08-31).
  * `lib/push/auth.ts`가 `expected`를 인자로 받는 것과 같은 이유다.
  */
-export type GuardResult = "ok" | "wrong-project" | "stale-commit" | "wrong-format" | "archived";
+/** `surface-removed` — 잠금 뒤 대상 소스가 제거돼 있었다(sources-add-remove). 프로젝트 보관 `archived`와 처방이 달라 가른다. */
+export type GuardResult = "ok" | "wrong-project" | "stale-commit" | "wrong-format" | "archived" | "surface-removed";
 
 /**
  * 보관된 프로젝트는 CI push도 안 받는다 (7단계 — PRODUCT §7.9).

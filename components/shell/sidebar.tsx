@@ -14,6 +14,7 @@ import type { Messages } from "@/lib/i18n";
 import { activeProject, navFooterItems, navZones, type NavItem, type NavProject } from "@/lib/shell/nav";
 import { cn } from "@/lib/utils";
 
+import { navCountLabel } from "./nav-count";
 import { useSidebarCollapse } from "./sidebar-collapse";
 
 /**
@@ -184,20 +185,6 @@ function isActive(pathname: string, item: NavItem): boolean {
   return item.exact ? pathname === path : pathname.startsWith(path);
 }
 
-/**
- * 개수 배지의 sr 문장 — 숫자는 `aria-hidden`이다(`CountBadge`). **개수를 드는 항목만** 여기 있고, 문자열 배지(Changelog 버전)는 개수가 아니다.
- * ⚠️ 문장을 `lib/shell/nav.ts`가 아니라 여기서 고른다 — 그쪽은 개수만 내고, 그 개수를 읽히는 방식은 화면의 몫이다.
- */
-function countLabel(m: Messages, key: string): ((n: number) => string) | undefined {
-  const labels: Readonly<Record<string, (n: number) => string>> = {
-    projects: m.projects.count,
-    sources: m.sources.count,
-    translations: m.translations.keys,
-    members: m.members.count,
-  };
-  return Object.hasOwn(labels, key) ? labels[key] : undefined;
-}
-
 /** 항목 하나 — 시안 치수는 `p-6 · gap-8 · radius-8 · 아이콘 16 · 14px`이다. */
 function Item({ item, active, collapsed = false }: { item: NavItem; active: boolean; collapsed?: boolean }) {
   const m = useMessages();
@@ -247,7 +234,7 @@ function Item({ item, active, collapsed = false }: { item: NavItem; active: bool
       {typeof item.badge === "number" ? (
         <CountBadge
           count={item.badge}
-          label={countLabel(m, item.key)?.(item.badge) ?? String(item.badge)}
+          label={navCountLabel(m, item.key)?.(item.badge) ?? String(item.badge)}
           className={cn("ml-auto shrink-0", FADE, collapsed && "opacity-0")}
         />
       ) : item.badge !== undefined && (

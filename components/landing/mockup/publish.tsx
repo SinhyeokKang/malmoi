@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * 목업의 Publish 모달 둘 — 씬 ④ 미리보기(`preview-ready`, 열린 PR 없음)와 씬 ⑤ 결과(`created`)의 **정적 복제**다
- * (`components/publish-button.tsx`의 `PublishModal` · 껍데기는 `components/ui/modal.tsx`의 `LargeModal`). 제목·라벨·수 문장은
+ * (`components/publish-button.tsx`의 `PublishModal` · 껍데기는 `components/ui/large-modal.tsx`의 `LargeModal`). 제목·라벨·수 문장은
  * 실제 사전(`m.translations.publish`)을 읽는다.
  *
  * 치수는 껍데기의 것이다 — 폭 `min(100% − 96, 1024)`, 높이는 갈래별 하한(미리보기 620 · 결과 420), 머리 `px-8 pt-8 pb-5`, 본문 `gap-4 px-8 pb-6`,
@@ -21,7 +21,8 @@ import { cn } from "@/lib/utils";
  */
 function Shell({ title, description, children, meta, action, tall }: { title: string; description: string; children: ReactNode; meta: ReactNode; action: ReactNode; tall: boolean }) {
   return (
-    <div className={cn("bg-background shadow-medium flex w-[1024px] flex-col overflow-hidden rounded-xl", tall ? "h-[620px]" : "h-[420px]")}>
+    // 면·테두리·모서리·그림자는 실물 `LARGE_MODAL_PANEL`의 것이다(위치·폭 계산은 정적 목업에 없다).
+    <div data-landing-modal="" className={cn("bg-background border-border shadow-medium flex w-[1024px] flex-col overflow-hidden rounded-xl border", tall ? "h-[620px]" : "h-[420px]")}>
       <div className="flex items-start justify-between gap-2 px-8 pt-8 pb-5">
         <div className="flex min-w-0 flex-col gap-1.5">
           <span className="text-xl font-medium">{title}</span>
@@ -46,7 +47,7 @@ function DiffLine({ p, sign, parts, before = false }: { p: Messages["translation
     <span className="flex gap-2">
       {/* 전·후 라벨은 실제 모달에서 sr-only다 — 목업에선 글리프가 그 자리를 보여 준다. */}
       <span className="sr-only">{before ? p.beforeLabel : p.afterLabel}</span>
-      <span className={cn("w-2.5 shrink-0 text-xs leading-5", before ? "text-diff-removed" : "text-diff-added")}>{sign}</span>
+      <span data-landing-diff-sign="" aria-hidden className={cn("w-2.5 shrink-0 text-xs leading-5", before ? "text-diff-removed" : "text-diff-added")}>{sign}</span>
       <span className={cn("min-w-0 flex-1 text-sm leading-5 break-words whitespace-pre-wrap", before && "text-muted-foreground")}>
         {parts.map((part, i) => (
           <span key={i} className={!part.changed ? undefined : before ? "text-foreground rounded-[3px] bg-diff-removed/[0.14]" : "rounded-[3px] bg-diff-added/[0.16]"}>
@@ -101,17 +102,18 @@ export function PreviewModal({ m }: { m: Messages }) {
                 <span className="truncate">{fixture.file(row.code)}</span>
                 <span className="text-muted-foreground ml-auto shrink-0">{p.fileSummary(1, 1)}</span>
               </span>
-              <div className="flex border-b last:border-b-0 border-border">
-                <span className="border-divider w-[220px] shrink-0 border-r px-3.5 py-[11px]">
+              {/* 실물 표 칸은 **위 선**(`border-divider border-t`)이고 행 아래 선이 없다 — 파일 머리의 아래 선 밑에 칸의 위 선이 한 번 더 선다. */}
+              <div data-landing-diff-row="" className="flex">
+                <span data-landing-diff-cell="" className="border-divider w-[220px] shrink-0 border-t border-r px-3.5 py-[11px]">
                   <KeyName name={row.key} />
                 </span>
-                <span className="border-divider flex w-[84px] shrink-0 items-start gap-2 border-r px-3 py-[11px]">
-                  <span data-landing-diff-flag="" className="mt-[5px] flex rounded-xs ring-1 ring-foreground/[0.06]">
+                <span data-landing-diff-cell="" className="border-divider flex w-[84px] shrink-0 items-start gap-2 border-t border-r px-3 py-[11px]">
+                  <span data-landing-diff-flag="" className="mt-[5px] flex shrink-0 rounded-xs ring-1 ring-foreground/[0.06]">
                     <LocaleFlag code={row.code} />
                   </span>
                   <span className="text-xs leading-5 font-medium">{row.code}</span>
                 </span>
-                <span className="flex min-w-0 flex-1 items-start gap-2.5 px-3.5 py-[11px]">
+                <span data-landing-diff-cell="" className="border-divider flex min-w-0 flex-1 items-start gap-2.5 border-t px-3.5 py-[11px]">
                   <span className="flex min-w-0 flex-1 flex-col gap-copy-gap">
                     {row.before !== null && <DiffLine p={p} sign="−" parts={diff.before} before />}
                     <DiffLine p={p} sign="+" parts={diff.after} />

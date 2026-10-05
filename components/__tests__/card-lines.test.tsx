@@ -57,7 +57,7 @@ describe("Sources 상세 Status 카드 — 결과 줄 유무", () => {
     installed: true, languages: [{ code: "en", isBase: true, orphaned: false, total: 3, translated: 3, needsReview: 0, untranslated: 0, percent: 100 }],
   } as unknown as SourceDetail;
   const draw = (importResult?: { text: string; tone: "success" }) => render(
-    <SourceDetailModal slug="p" sourceSlug="web" role="OWNER" state={{ status: "ready", detail }} now={new Date("2026-09-21T00:00:00Z")} busy={false}
+    <SourceDetailModal slug="p" sourceSlug="web" role="OWNER" state={{ status: "ready", detail }} now={new Date("2026-09-21T00:00:00Z")} busy={false} sources={[{ id: "s", slug: "web" }]} onRemoved={() => {}} onLost={() => {}}
       importResult={importResult} onBusy={() => {}} onClose={() => {}} onReload={() => {}} onImport={() => {}} onSaved={() => {}}
       returnFocusRef={{ current: null }} fallbackFocusRef={{ current: null }} />,
   );

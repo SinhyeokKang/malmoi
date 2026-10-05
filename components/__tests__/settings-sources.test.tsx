@@ -22,6 +22,8 @@ function Screen({ sources = props.sources, installed = true, adapters = props.ad
 }
 beforeEach(() => { vi.resetAllMocks(); actions.load.mockResolvedValue({ ok: true, detail: { ...toSource(source), installed: true, languages: [] } }); actions.detectRepoFormats.mockResolvedValue({ ok: true, candidates: [candidate("web"), candidate("app")] }); });
 const find = (label: string) => [...document.querySelectorAll("button")].find(b => b.textContent === label)!;
+/** ②로 넘어간다 — 확정 버튼은 소스별 기준 언어 단계에만 선다 (sources-add-remove A1). */
+const next = async () => { await act(async () => { await userEvent.setup().click(find(en.newProject.modal.next)); }); };
 it("재시도는 한 소스만 보내고 리프레시 뒤에도 카드 결과를 유지한다", async () => {
   actions.runFirstIngest.mockResolvedValue({ ok: true, count: 10, failed: 1, errors: [] });
   const { container, rerender } = await render(<Screen {...props} />);
@@ -45,19 +47,23 @@ it("추가 실패에도 선택을 유지하고 기존 소스는 요청에서 제
   const boxes = [...document.querySelectorAll<HTMLButtonElement>('[role="checkbox"]')];
   expect(boxes[0]?.disabled).toBe(true); expect(boxes[0]?.getAttribute("aria-checked")).toBe("true");
   await act(async () => { await userEvent.setup().click(boxes[1]!); });
+  await next();
   const submit = document.querySelector<HTMLButtonElement>('[data-add-sources]')!;
   await act(async () => { await userEvent.setup().click(submit); });
   expect(actions.addSurfaces).toHaveBeenCalledWith({ slug: "acme", picks: [{ adapter: "json-catalog", pathTemplate: "app/{locale}.json", baseLocale: "en" }] });
   expect(document.querySelector('[role="dialog"]')).not.toBeNull();
-  expect(boxes[1]?.getAttribute("aria-checked")).toBe("true");
   expect(submit.disabled).toBe(false);
   expect(document.body.textContent).toContain("Nothing was added");
+  // 실패는 ②에 머문다 — [Back]으로 ①에 가도 체크가 남는다.
+  await act(async () => { await userEvent.setup().click(find(en.newProject.modal.back)); });
+  expect(document.querySelectorAll('[role="checkbox"]')[1]?.getAttribute("aria-checked")).toBe("true");
 });
 it("새 소스의 SHA가 생겨도 YAML 수정 안내는 추가 결과와 함께 남는다", async () => {
   actions.addSurfaces.mockResolvedValue({ ok: true, results: [{ surfaceSlug: "app", pathTemplate: "app/{locale}.json", count: 5, failed: 0 }], yaml: "step" });
   const { container, rerender } = await render(<Screen {...props} />);
   await act(async () => { await userEvent.setup().click(find("Add sources")); });
   await act(async () => { await userEvent.setup().click(document.querySelectorAll('[role="checkbox"]')[1]!); });
+  await next();
   await act(async () => { await userEvent.setup().click(document.querySelector('[data-add-sources]')!); });
   await rerender(<Screen {...props} sources={[{ ...source, lastCommitSha: "done" }]} />);
   expect(document.querySelector('[role="dialog"]')).toBeNull();
@@ -75,6 +81,7 @@ it("수동 확정은 잠기지 않은 같은 경로의 자동 후보 어댑터�
   await act(async () => { await user.click([...document.querySelectorAll('[role="option"]')].find(n => n.textContent === "YAML")!); });
   await act(async () => { await user.type(document.querySelector('#manual-path')!, "app/{{locale}.json"); await user.type(document.querySelector('#manual-base')!, "en"); });
   await act(async () => { await user.click(find("Check files")); });
+  await next();
   await act(async () => { await user.click(document.querySelector('[data-add-sources]')!); });
   expect(actions.addSurfaces).toHaveBeenCalledWith({ slug: "acme", picks: [{ adapter: "yaml-catalog", pathTemplate: "app/{locale}.json", baseLocale: "en" }] });
 });
@@ -86,6 +93,7 @@ it("추가 중에는 닫기와 모든 입력을 잠그고 완료 뒤 트리거�
   const user = userEvent.setup();
   await act(async () => { await user.click(find("Add sources")); });
   await act(async () => { await user.click(document.querySelectorAll('[role="checkbox"]')[1]!); });
+  await next();
   await act(async () => { await user.click(document.querySelector('[data-add-sources]')!); });
   expect(document.querySelector<HTMLButtonElement>('[role="dialog"] button[aria-label="Close"]')?.disabled).toBe(true);
   for (const checkbox of document.querySelectorAll<HTMLButtonElement>('[role="checkbox"]')) expect(checkbox.disabled).toBe(true);
@@ -103,6 +111,7 @@ it("추가가 8초를 넘기면 지연 문구가 서고 끝나면 사라진다",
   await act(async () => { await user.click(document.querySelectorAll('[role="checkbox"]')[1]!); });
   vi.useFakeTimers({ shouldAdvanceTime: true });
   try {
+    await next();
     await act(async () => { await userEvent.setup({ advanceTimers: vi.advanceTimersByTime }).click(document.querySelector('[data-add-sources]')!); });
     await act(async () => { vi.advanceTimersByTime(7_000); });
     expect(document.body.textContent).not.toContain(en.common.slow);

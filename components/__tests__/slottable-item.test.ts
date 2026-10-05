@@ -71,4 +71,19 @@ describe("Slot에 형제를 넘기지 않는다", () => {
     const body = (dropdown?.source ?? "").slice((dropdown?.source ?? "").indexOf("export function DropdownMenuItem"));
     expect(body).toMatch(/<Slot\.Slottable>\s*\{children\}\s*<\/Slot\.Slottable>/);
   });
+
+  /**
+   * ⚠️ **`DropdownMenuRow`는 늘 `asChild`다**(attention-inbox T8a) — 행 요소(`ListRow`의 `<a>`·`<button>`) 하나에 Slot이 붙어야
+   * menuitem 역할이 그 요소에 선다. `Item` 안에 `ListRow` 말고 다른 노드가 붙는 순간 Slot이 던지므로, 여는 `Item` 바로 다음이
+   * `ListRow`이고 닫는 `Item` 바로 앞이 그 끝(`/>`·`</ListRow>`)인 형을 고정한다.
+   */
+  it("`DropdownMenuRow`의 `Item asChild` 안은 `ListRow` 하나다", () => {
+    const dropdown = FILES.find((f) => f.name === "dropdown-menu.tsx");
+    const source = dropdown?.source ?? "";
+    const start = source.indexOf("export function DropdownMenuRow");
+    expect(start).toBeGreaterThan(-1);
+    const body = source.slice(start, source.indexOf("\nexport ", start + 1) === -1 ? undefined : source.indexOf("\nexport ", start + 1));
+    expect(body).toMatch(/<Primitive\.Item asChild\b[^>]*>\s*<ListRow\b[\s\S]*?(?:\/>|<\/ListRow>)\s*<\/Primitive\.Item>/);
+    expect(body.match(/<ListRow\b/g)).toHaveLength(1);
+  });
 });

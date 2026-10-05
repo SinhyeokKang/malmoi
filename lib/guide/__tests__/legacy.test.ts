@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { legacyAnchorTarget } from "../legacy";
+import { legacyAnchorTarget, legacyPageTarget } from "../legacy";
 
 /** 형태만 고정한다 — 옛 id 일곱의 실제 표는 IA 확정(1.2)과 같은 커밋에 선다. */
 const TABLE = {
@@ -28,5 +28,24 @@ describe("legacyAnchorTarget — 옛 `/docs#<id>` → 새 페이지", () => {
 
   it("인코딩된 해시를 풀지 않는다 — 옛 id는 전부 `[a-z-]`다", () => {
     expect(legacyAnchorTarget("#form%61ts", TABLE)).toBeNull();
+  });
+});
+
+describe("legacyPageTarget — 옛 `/docs/<slug>` → 새 페이지", () => {
+  const PAGES = { language: "/docs/account/preferences" };
+
+  it("표의 slug면 새 경로", () => {
+    expect(legacyPageTarget(["language"], PAGES)).toBe("/docs/account/preferences");
+  });
+
+  it("표에 없거나 빈 slug·하위 경로면 null", () => {
+    expect(legacyPageTarget([], PAGES)).toBeNull();
+    expect(legacyPageTarget(["nope"], PAGES)).toBeNull();
+    expect(legacyPageTarget(["language", "x"], PAGES)).toBeNull();
+  });
+
+  it("프로토타입 키가 찾아지지 않는다", () => {
+    expect(legacyPageTarget(["__proto__"], PAGES)).toBeNull();
+    expect(legacyPageTarget(["constructor"], PAGES)).toBeNull();
   });
 });

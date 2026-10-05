@@ -8,12 +8,17 @@ import { mockupScenes } from "@/components/landing/mockup";
 import { Stage } from "@/components/landing/stage";
 import { buttonClass } from "@/components/ui/button";
 import { en } from "@/messages/en";
+import { navCountLabel } from "@/components/shell/nav-count";
 import { navFooterItems, navZones } from "@/lib/shell/nav";
 
 import { Search } from "lucide-react";
 
+import { AttentionInbox } from "@/components/shell/attention-inbox";
 import { CloseButton } from "@/components/ui/close-button";
 import { FieldButton } from "@/components/ui/field-button";
+import { FieldTrigger } from "@/components/ui/field-trigger";
+import { Input } from "@/components/ui/input";
+import { LARGE_MODAL_PANEL } from "@/components/ui/large-modal";
 import { ListRow } from "@/components/ui/list-row";
 import { StatusBadge } from "@/components/ui/status-badge";
 
@@ -29,6 +34,12 @@ import { find, render } from "./helpers/dom";
 const DIR = join(process.cwd(), "components/landing/mockup");
 const fixture = en.landing.mockup;
 const p = en.translations.publish;
+
+// 실물 Inbox 트리거를 렌더해 목업 사본과 견준다 — 배지 0(정적 목업과 같은 상태)으로 고정한다.
+vi.mock("@/app/inbox/actions", () => ({
+  loadAttentionBadgeAction: vi.fn(async () => ({ status: "ok", unread: 0 })),
+  openAttentionInboxAction: vi.fn(async () => ({ status: "failed" })),
+}));
 
 // jsdom에 `matchMedia`가 없다 — 스테이지가 effect에서 읽는다. 재생 배선은 `landing-stage.test.tsx`가 본다.
 beforeEach(() => {
@@ -90,13 +101,20 @@ describe("목업 — 제품과 같은 구조다", () => {
     const zoneText = (key: string) => find(scene, `[data-landing-zone="${key}"]`);
     const items = (key: string) => [...zoneText(key).querySelectorAll("[data-landing-nav]")].map((node) => node.textContent);
     expect(zones.map((zone) => zone.key)).toEqual(["work", "project"]);
+    // 개수는 실물 사이드바처럼 `CountBadge`다 — 숫자 뒤에 sr 문장이 붙는다(`navCountLabel` — 사이드바와 같은 함수).
+    const shown = (item: (typeof zones)[number]["items"][number]) =>
+      typeof item.badge === "number" ? `${item.label}${item.badge}${navCountLabel(en, item.key)?.(item.badge) ?? item.badge}` : `${item.label}${item.badge ?? ""}`;
     for (const zone of zones) {
-      expect(items(zone.key)).toEqual(zone.items.map((item) => `${item.label}${item.badge ?? ""}`));
+      expect(items(zone.key)).toEqual(zone.items.map(shown));
     }
     // 머리 줄은 프로젝트 구역에만 있다 — 사용자 구역의 아바타·이름 줄은 2026-09-30에 빠졌다(사이드바와 같다).
     expect(zoneText("project").querySelector("p > span.truncate")?.textContent).toBe(fixture.project);
     expect(zoneText("work").querySelector("p")).toBeNull();
-    expect(items("work")).toEqual([`${en.common.nav.projects}${fixture.projectCount}`, en.common.nav.mcp, en.common.nav.preferences, en.common.nav.account]);
+    expect(items("work")).toEqual([`${en.common.nav.projects}${fixture.projectCount}${en.projects.count(fixture.projectCount)}`, en.common.nav.mcp, en.common.nav.preferences, en.common.nav.account]);
+    // 숫자는 `aria-hidden`, 문장은 sr-only — 실물 `CountBadge`의 형이다.
+    const projects = find(zoneText("work"), '[data-landing-nav="projects"]');
+    expect(projects.querySelector('span[aria-hidden="true"]')?.textContent).toBe(String(fixture.projectCount));
+    expect(projects.querySelector(".sr-only")?.textContent).toBe(en.projects.count(fixture.projectCount));
     expect(items("footer")).toEqual(navFooterItems(en).map((item) => item.label));
     // Sign out은 하단이 아니라 아바타 메뉴의 것이다(MISC 배치) — 목업 LNB에 따로 서지 않는다.
     expect(scene.querySelector("[data-landing-lnb]")?.textContent).not.toContain(en.common.nav.signOut);
@@ -111,7 +129,9 @@ describe("목업 — 제품과 같은 구조다", () => {
     const switcher = find<HTMLElement>(head, "[data-landing-switcher]");
     expect(head.lastElementChild).toBe(switcher);
     expect(switcher.tagName.toLowerCase()).toBe("span");
-    for (const cls of ["ml-auto", "size-6", "rounded-sm", "p-0"]) expect(switcher.className.split(" ")).toContain(cls);
+    // 실물(`project-switcher.tsx`)은 `Button size="icon-xs" variant="ghost"` + `-my-0.5 ml-auto shrink-0 rounded-sm`이다 — 목업은 같은 `buttonClass`를 입는다.
+    for (const cls of buttonClass({ variant: "ghost", size: "icon-xs" }).split(" ").filter(Boolean)) expect(switcher.className.split(" "), cls).toContain(cls);
+    for (const cls of ["-my-0.5", "ml-auto", "shrink-0", "rounded-sm"]) expect(switcher.className.split(" ")).toContain(cls);
     const glyph = switcher.querySelector("svg");
     expect(glyph?.getAttribute("class")).toContain("lucide-chevrons-up-down");
     expect(glyph?.getAttribute("class")).toContain("size-4");
@@ -119,35 +139,63 @@ describe("목업 — 제품과 같은 구조다", () => {
     expect(find(scene, '[data-landing-zone="work"]').querySelector("[data-landing-switcher]")).toBeNull();
   });
 
-  /** 앱 셸 헤더와 같다(2026-09-30) — 우측 `New project · 구분선 · 아바타`. */
-  it("헤더 우측이 New project · 구분선 · 아바타다", async () => {
+  /** 앱 셸 헤더와 같다(2026-10-05 attention-inbox) — 우측 `New project · 구분선 · Inbox · 아바타`. */
+  it("헤더 우측이 New project · 구분선 · Inbox · 아바타다", async () => {
     const scene = layer(await mount(), 0);
     const right = find(scene, "[data-landing-header-right]");
     const kids = [...right.children];
-    expect(kids).toHaveLength(3);
+    expect(kids).toHaveLength(4);
     expect(kids[0]?.textContent).toBe(en.common.nav.newProject);
     expect(kids[0]?.querySelector("svg")?.getAttribute("class")).toContain("lucide-plus");
     expect(kids[1]?.className).toContain("bg-border-subtle");
+    expect(kids[2]?.hasAttribute("data-landing-inbox")).toBe(true);
+    expect(kids[3]?.querySelector("[data-avatar], span")).not.toBeNull();
   });
 
-  /** 앱 셸 헤더의 center 슬롯(`SearchTrigger`)이 목업에서 빠져 있었다(2026-10-03 사용자). */
-  it("헤더 가운데에 실물 `FieldButton`과 같은 검색 캡슐이 있다 — 태그만 `<span>`이다", async () => {
+  /** 실물 트리거(`attention-inbox.tsx`)를 렌더해 클래스를 견준다 — 포커스 링은 실물 `Button`이 덧대는 것이라 뺀다(목업은 포커스를 받지 않는다). */
+  it("헤더 Inbox 사본은 실물 트리거와 같은 형이고 배지가 없다 — 태그만 `<span>`이다", async () => {
+    await render(<AttentionInbox />);
+    const real = document.querySelector<HTMLButtonElement>('button[aria-haspopup="menu"]')!;
+    const tokens = (el: Element) => new Set(el.className.split(" ").filter((c) => c !== "" && !c.startsWith("focus-visible:")));
+    const container = await mount();
+    for (let k = 0; k < 5; k += 1) {
+      const inbox = find<HTMLElement>(layer(container, k), "[data-landing-inbox]");
+      expect(inbox.tagName).toBe("SPAN");
+      expect(tokens(inbox), `scene ${k}`).toEqual(tokens(real));
+      expect(inbox.querySelector("svg")?.getAttribute("class")).toContain("lucide-inbox");
+      expect(inbox.children).toHaveLength(1);
+    }
+  });
+
+  it("셸 여백이 실물과 같다 — 위 6 · 헤더 44 · 헤더 아래 6, 로고 칸은 rounded-sm", async () => {
+    const scene = layer(await mount(), 0);
+    const root = scene.querySelector<HTMLElement>("[data-landing-shell]")!;
+    for (const cls of ["px-2", "pt-1.5", "pb-2"]) expect(root.classList.contains(cls), cls).toBe(true);
+    expect(root.classList.contains("gap-2")).toBe(false);
+    const header = root.querySelector("header")!;
+    expect(header.classList.contains("mb-1.5")).toBe(true);
+    expect(find(header, "[data-landing-logo]").classList.contains("rounded-sm")).toBe(true);
+  });
+
+  /**
+   * 앱 셸 헤더의 center 슬롯(`SearchTrigger`)이 목업에서 빠져 있었다(2026-10-03 사용자). ⚠️ **헤더 줄·캡슐 높이도 실물과 같은 44다**
+   * (2026-10-05 사용자 — 목업만 40을 지키던 `h-10` 덮기를 걷었다. 셸 위·아래 여백이 6이라 패널 윗변 56은 그대로다).
+   */
+  it("헤더 가운데에 실물 `FieldButton`과 같은 검색 캡슐이 있다 — 태그만 `<span>`이고 클래스가 같다", async () => {
     const real = (await render(<FieldButton icon={<Search />} placeholder={en.search.placeholder} aria-label={en.search.label} onClick={() => {}} />)).container.querySelector("button")!;
     const container = await mount();
     for (const [index, scene] of [0, 1, 2, 3, 4].map((k) => [k, layer(container, k)] as const)) {
       const header = scene.querySelector("header")!;
       expect(header.className, `scene ${index}`).toContain("grid-cols-[1fr_auto_1fr]");
-      // 헤더 44에서도 목업 헤더 줄은 40이다 — `h-10`이 빠지거나 `h-11`이 같이 남으면 목업 프레임 안 줄이 4 커진다.
-      expect(header.classList.contains("h-10"), `scene ${index}`).toBe(true);
-      expect(header.classList.contains("h-11"), `scene ${index}`).toBe(false);
+      expect(header.classList.contains("h-11"), `scene ${index}`).toBe(true);
+      expect(header.classList.contains("h-10"), `scene ${index}`).toBe(false);
       const search = find<HTMLElement>(header, "[data-landing-global-search]");
       expect(search.tagName).toBe("SPAN");
-      // 헤더 44 이후 실물은 `h-11`이고 목업은 40을 지킨다(`h-10`) — 높이만 다르다.
-      const classes = (el: Element) => new Set(el.className.split(" ").filter((c) => c !== "h-10" && c !== "h-11"));
-      expect(classes(search)).toEqual(classes(real));
-      expect(search.classList.contains("h-10")).toBe(true);
-      expect(search.classList.contains("h-11")).toBe(false);
+      expect(search.className).toBe(real.className);
+      // placeholder·단축키 자리는 실물과 같은 클래스다. 글리프 칸만 `[&>svg]:size-4` 대신 svg에 `size-4`를 직접 준다(소스 스캐너가 `>`를 텍스트로 읽는다).
+      expect([...search.children].slice(1).map((child) => child.className)).toEqual([...real.children].slice(1).map((child) => child.className));
       expect(search.querySelector("svg")?.getAttribute("class")).toContain("lucide-search");
+      expect(search.querySelector("svg")?.getAttribute("class")).toContain("size-4");
       expect(search.textContent).toBe(`${en.search.placeholder}${en.common.keys.search.mac}`);
     }
   });
@@ -265,15 +313,30 @@ describe("목업 — 씬이 이야기를 든다", () => {
     expect(fixture.diff).toEqual([{ key: fixture.selected.key, code: fixture.selected.typedCode, before: null, after: fixture.selected.typed }]);
   });
 
-  it("② 타이핑 입력에 실제 Textarea의 활성 링이 있다", async () => {
+  /**
+   * ② 실물 `Textarea`의 포커스는 링 1 + 링 색 테두리다(`focus-visible:border-ring ring-1` — 옛 목업은 ring-2였다). ⚠️ 아직 한 글자도 안 쳤으면
+   * 실물은 빈 입력의 점선 래퍼 + 원문 겹침 + 래퍼의 ring-2다(`locale-panel.tsx`) — 스테이지가 쓰는 접두가 비면 같은 형으로 선다(CSS `:empty`).
+   */
+  it("② 타이핑 입력은 실물 Textarea의 활성 형이고, 접두가 비면 실물 빈 입력의 점선 형이다", async () => {
     const field = find(layer(await mount(), 1), "[data-landing-typed]").parentElement!;
-    expect(field.className.split(" ")).toEqual(expect.arrayContaining(["ring-ring", "ring-2"]));
+    const tokens = field.className.split(" ");
+    expect(tokens).toEqual(expect.arrayContaining(["border-ring", "ring-ring", "ring-1"]));
+    expect(tokens).not.toContain("ring-2");
+    expect(tokens).toEqual(expect.arrayContaining([
+      "has-[[data-landing-typed]:empty]:border-dashed", "has-[[data-landing-typed]:empty]:border-gray-light",
+      "has-[[data-landing-typed]:empty]:bg-transparent", "has-[[data-landing-typed]:empty]:ring-2",
+    ]));
+    const overlay = find<HTMLElement>(field, "[data-landing-typed-source]");
+    expect(overlay.textContent).toBe(fixture.selected.text);
+    expect(overlay.className.split(" ")).toEqual(expect.arrayContaining(["hidden", "peer-empty:block", "text-muted-foreground", "absolute", "pointer-events-none"]));
+    expect(find(field, "[data-landing-typed]").classList.contains("peer")).toBe(true);
   });
 
   it("공통 사이드바의 머리와 행은 실제 ROW의 h-8 px-2를 따른다", async () => {
     const scene = layer(await mount(), 0);
     const rows = [...scene.querySelectorAll('[data-landing-nav]'), find(scene, '[data-landing-zone="project"] > p')];
-    for (const row of rows) expect(row.className.split(" ")).toEqual(expect.arrayContaining(["h-8", "px-2"]));
+    // 실물 `sidebar.tsx`의 `ROW`(`flex h-8 items-center gap-2 rounded-sm px-2 text-sm whitespace-nowrap`) 그대로다.
+    for (const row of rows) expect(row.className.split(" ")).toEqual(expect.arrayContaining(["flex", "h-8", "items-center", "gap-2", "rounded-sm", "px-2", "text-sm", "whitespace-nowrap"]));
   });
 
   it("④ diff 국기에 실제 표와 같은 얇은 윤곽선이 있다", async () => {
@@ -460,7 +523,8 @@ describe("목업 — 상태 표시가 실물과 같다", () => {
   const classes = async (node: React.ReactNode) => (await render(<>{node}</>)).container.firstElementChild!.className;
 
   it("Unsent는 실물 `StatusBadge unsent`다 — 손 조립 알약이 아니다 (Q3)", async () => {
-    const real = await classes(<StatusBadge state="unsent" />);
+    // 실물 키 목록·로케일 행은 `shrink-0`을 덧댄다(`key-list.tsx` · `locale-panel.tsx`).
+    const real = await classes(<StatusBadge state="unsent" className="shrink-0" />);
     const scene = layer(await mount(), 3);
     const badges = [...scene.querySelectorAll("span")].filter((node) => node.textContent === en.translations.workspace.list.notSent && node.children.length === 0);
     expect(badges.length).toBeGreaterThan(0);
@@ -503,5 +567,124 @@ describe("목업 — 상태 표시가 실물과 같다", () => {
     const scene = layer(await mount(), 4);
     const x = scene.querySelector("svg.lucide-x")!.parentElement!;
     expect(new Set(x.className.split(" "))).toEqual(real);
+  });
+});
+
+/** fix2(2026-10-05 사용자 — "목업의 낡은 곳은 전부 고친다") — 씬 안쪽을 실물 컴포넌트와 견준다. */
+describe("목업 — 씬 안쪽이 실물과 같다 (fix2)", () => {
+  it("Sync 글리프는 OWNER 버튼의 14다", async () => {
+    const scene = layer(await mount(), 0);
+    const sync = [...scene.querySelectorAll("span")].find((node) => node.textContent === en.repositorySync.action && node.querySelector("svg"))!;
+    expect(sync.querySelector("svg")?.getAttribute("class")).toContain("size-3.5");
+  });
+
+  it("검색 입력은 실물 `Input icon`의 글리프 칸 · 필드 형이고 자리표시 글자는 preflight 색(foreground 50%)이다", async () => {
+    const { container } = await render(<Input width={320} icon={<Search />} aria-label="q" placeholder="p" />);
+    const realGlyph = container.querySelector("span[aria-hidden]")!;
+    const realField = container.querySelector("input")!;
+    const search = find<HTMLElement>(layer(await mount(), 0), "[data-landing-search]");
+    const glyph = search.querySelector("span[aria-hidden]")!;
+    // 실물 글리프 칸의 `[&>svg]:size-4`만 빼고 같다 — 목업은 svg에 `size-4`를 직접 준다(목업 소스 스캐너가 클래스 안의 `>`를 텍스트로 읽는다).
+    const drop = (tokens: string) => tokens.split(" ").filter((c) => c !== "" && !c.startsWith("[&>svg]"));
+    expect(drop(glyph.className)).toEqual(drop(realGlyph.className));
+    expect(glyph.querySelector("svg")?.getAttribute("class")).toContain("size-4");
+    const field = glyph.nextElementSibling!;
+    for (const token of realField.className.split(" ").filter((c) => c !== "" && !/^(?:disabled|read-only|aria-|focus-visible|placeholder|hover)/.test(c))) expect(field.className.split(" "), token).toContain(token);
+    expect(field.classList.contains("text-foreground/50")).toBe(true);
+  });
+
+  it("툴바는 실물처럼 줄바꿈하고, 보류 안내 그릇은 `space-y-3`이다", async () => {
+    const scene = layer(await mount(), 2);
+    expect(find(scene, "[data-landing-toolbar-row]").className.split(" ")).toEqual(expect.arrayContaining(["flex", "flex-wrap", "items-center", "gap-2"]));
+    expect(find(scene, "[data-landing-hold]").className.split(" ")).toContain("space-y-3");
+  });
+
+  it("Publish 묶음은 실물처럼 `flex gap-2` 안의 감싼 버튼이다", async () => {
+    const publish = find<HTMLElement>(layer(await mount(), 4), "[data-landing-publish-group]");
+    expect(publish.className.split(" ")).toEqual(expect.arrayContaining(["flex", "items-center", "gap-2"]));
+    expect(publish.querySelector("[data-landing-publish]")?.parentElement?.parentElement).toBe(publish);
+    expect(publish.textContent).toContain(en.translations.publish.viewResult);
+  });
+
+  it("키 목록 머리는 실물처럼 빈 `+n saved` 칸이 필터를 오른쪽 끝으로 민다 — 필터는 실물 `FieldTrigger sm` 형이다", async () => {
+    const real = (await render(<FieldTrigger size="sm" active={false}>{en.translations.workspace.filters.state.any}</FieldTrigger>)).container.querySelector("button")!;
+    const scene = layer(await mount(), 0);
+    const head = find<HTMLElement>(scene, "[data-landing-list-head]");
+    const slot = find<HTMLElement>(head, "[data-landing-saved-extra]");
+    expect(slot.className.split(" ")).toEqual(expect.arrayContaining(["text-muted-foreground", "ml-auto", "shrink-0", "text-xs"]));
+    expect(slot.textContent).toBe("");
+    const trigger = slot.nextElementSibling!;
+    // 상호작용 상태(hover·disabled·focus·open)와 자식 선택자(`[&>span]`)는 정적 사본에 없다.
+    const kept = (c: string) => c !== "" && !/^(?:hover|disabled|aria-|focus-visible|data-|\[&)/.test(c);
+    for (const token of real.className.split(" ").filter(kept)) expect(trigger.className.split(" "), token).toContain(token);
+    expect(trigger.textContent).toBe(en.translations.workspace.filters.state.any);
+  });
+
+  it("긴 키 이름은 목록·상세 둘 다 `wrap-anywhere`다", async () => {
+    const scene = layer(await mount(), 0);
+    const row = find<HTMLElement>(scene, `[data-landing-row="${fixture.selected.key}"]`);
+    const listKey = [...row.querySelectorAll("span")].find((node) => node.textContent === fixture.selected.key && node.children.length === 0)!;
+    expect(listKey.classList.contains("wrap-anywhere")).toBe(true);
+    const detailKey = find<HTMLElement>(scene, "[data-landing-detail-key]");
+    expect(detailKey.textContent).toBe(fixture.selected.key);
+    expect(detailKey.classList.contains("wrap-anywhere")).toBe(true);
+  });
+
+  it("복사 버튼은 실물 `CopyButton link`처럼 감싼 칸 안이다", async () => {
+    const copy = find<HTMLElement>(layer(await mount(), 0), "[data-landing-copy]");
+    expect(copy.parentElement?.className.split(" ")).toEqual(expect.arrayContaining(["flex", "shrink-0", "items-center", "gap-1.5"]));
+    expect(copy.classList.contains("h-7")).toBe(true);
+    expect(copy.className.split(" ").filter((c) => c === "h-7")).toHaveLength(1);
+  });
+
+  it("푸터 결과 줄은 ①에서도 빈 채로 선다 — 실물은 늘 렌더한다", async () => {
+    const result = find<HTMLElement>(layer(await mount(), 0), "[data-landing-footer-result]");
+    expect(result.textContent).toBe("");
+    expect(result.className.split(" ")).toEqual(expect.arrayContaining(["min-w-0", "text-xs"]));
+  });
+
+  it("Publish 모달 껍데기는 실물 `LARGE_MODAL_PANEL`의 면·테두리·모서리·그림자다", async () => {
+    const shell = find<HTMLElement>(layer(await mount(), 3), "[data-landing-modal]");
+    const expected = LARGE_MODAL_PANEL.split(" ").filter((c) => ["bg-background", "border-border", "border", "flex", "flex-col", "overflow-hidden", "rounded-xl", "shadow-medium"].includes(c));
+    expect(expected).toHaveLength(8);
+    for (const token of expected) expect(shell.className.split(" "), token).toContain(token);
+  });
+
+  it("④ diff 칸은 실물처럼 위 선(`border-divider border-t`)이고 행 아래 선이 없다 · 부호는 `aria-hidden` · 국기는 `shrink-0`", async () => {
+    const scene = layer(await mount(), 3);
+    const cells = [...scene.querySelectorAll<HTMLElement>("[data-landing-diff-cell]")];
+    expect(cells.length).toBe(fixture.diff.length * 3);
+    for (const cell of cells) expect(cell.className.split(" ")).toEqual(expect.arrayContaining(["border-divider", "border-t"]));
+    for (const row of scene.querySelectorAll<HTMLElement>("[data-landing-diff-row]")) expect(row.className).not.toContain("border-b");
+    for (const sign of scene.querySelectorAll<HTMLElement>("[data-landing-diff-sign]")) expect(sign.getAttribute("aria-hidden")).toBe("true");
+    for (const flag of scene.querySelectorAll<HTMLElement>("[data-landing-diff-flag]")) expect(flag.classList.contains("shrink-0")).toBe(true);
+  });
+});
+
+/**
+ * #189 — 실물 빈 번역 입력의 높이는 64다: 래퍼 `min-h-[62px]` + 점선 테두리 1·1 + `p-2.5` 10·10 + 빈 textarea `min-h-[42px]`(래퍼 바닥 62를 넘는다).
+ * 목업은 textarea를 둘 수 없어(인터랙티브 태그 0) 같은 64를 상자 하한으로 든다 — 값을 실물 소스에서 다시 셈해 견준다.
+ */
+describe("목업 — 빈 번역 입력 높이가 실물과 같다 (#189)", () => {
+  const live = readFileSync(join(process.cwd(), "components/translations/workspace/locale-panel.tsx"), "utf8");
+  const px = (re: RegExp) => Number(re.exec(live)?.[1]);
+  const textarea = px(/empty \? "col-start-1 row-start-1 min-h-\[(\d+)px\]/);
+  const wrapperFloor = px(/grid min-h-\[(\d+)px\] rounded-md border border-dashed border-gray-light p-2\.5/);
+  const expected = Math.max(wrapperFloor, 1 + 10 + textarea + 10 + 1);
+
+  it("실물 소스에서 64를 다시 셈한다", () => {
+    expect(textarea).toBe(42);
+    expect(wrapperFloor).toBe(62);
+    expect(expected).toBe(64);
+  });
+
+  it("① 빈 `fr` 상자와 ② 접두가 빈 타이핑 상자가 실물 높이를 하한으로 든다", async () => {
+    const container = await mount();
+    const empty = [...layer(container, 0).querySelectorAll<HTMLElement>("span")].find((node) => node.textContent === fixture.selected.text && node.className.includes("border-dashed"))!;
+    expect(empty.classList.contains(`min-h-[${expected}px]`)).toBe(true);
+    const typing = find(layer(container, 1), "[data-landing-typed]").parentElement!;
+    expect(typing.classList.contains(`has-[[data-landing-typed]:empty]:min-h-[${expected}px]`)).toBe(true);
+    // 채운 상자는 실물 채운 textarea와 같은 62 그대로다.
+    expect(typing.classList.contains("min-h-[62px]")).toBe(true);
   });
 });

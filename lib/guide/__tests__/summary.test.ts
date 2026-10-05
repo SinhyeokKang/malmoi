@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { GuideError, parseMd } from "../parse";
-import { flattenNav, parseSummary, pathToSlug, slugToFile } from "../summary";
+import { flattenNav, parentSlugOf, parseSummary, pathToSlug, slugToFile } from "../summary";
 
 const fixture = (name: string) => readFileSync(new URL(`./fixtures/summary/${name}`, import.meta.url), "utf8");
 const summaryOf = (text: string) => parseSummary(parseMd(text));
@@ -136,5 +136,22 @@ describe("flattenNav — 선위 순회가 이전/다음 순서다", () => {
 
   it("빈 트리는 빈 목록이다", () => {
     expect(flattenNav([])).toEqual([]);
+  });
+});
+
+describe("parentSlugOf — JSON-LD 장 URL", () => {
+  const nav = parseSummary(parseMd("- [Malmoi](README.md)\n  - [FAQ](faq.md)\n- [Account](account/README.md)\n  - [Profile](account/profile.md)\n"));
+
+  it("개요 아래 페이지의 장은 `/docs`(빈 slug)다 — `slug[0]`이 아니다", () => {
+    expect(parentSlugOf(nav, "faq.md")).toEqual([]);
+  });
+
+  it("장 아래 페이지는 그 장의 slug", () => {
+    expect(parentSlugOf(nav, "account/profile.md")).toEqual(["account"]);
+  });
+
+  it("최상위·미등재는 null", () => {
+    expect(parentSlugOf(nav, "account/README.md")).toBeNull();
+    expect(parentSlugOf(nav, "nope.md")).toBeNull();
   });
 });

@@ -13,7 +13,7 @@ import { EmptyState, NoMatch } from "@/components/ui/empty-state";
 import { canPerform } from "@/lib/auth/permission";
 import { requireProjectAccess } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
-import { clearedLogsQuery, encodeCursor, hasNarrowing, logsQuery, parseLogFilter, type LogSearchParams } from "@/lib/events/filter";
+import { clearedLogsQuery, encodeCursor, hasNarrowing, logSourceOptions, logsQuery, parseLogFilter, type LogSearchParams } from "@/lib/events/filter";
 import { loadEvent, loadEventActors, loadEvents } from "@/lib/events/query";
 import { coverageBoundaryIndex, groupByDay } from "@/lib/events/view";
 import { getDateStyle, getMessages } from "@/lib/i18n/server";
@@ -65,7 +65,8 @@ export default async function LogsPage({
   if (project === null) redirect(routes.projects({ e: "not-found" }));
 
   const [sources, actors, page, openEvent] = await Promise.all([
-    prisma.translationSurface.findMany({ where: { projectId, archivedAt: null }, select: { slug: true }, orderBy: { slug: "asc" } }),
+    // 제거된 소스도 싣는다 — 사건은 지우지 않으므로 그 소스로 거를 길도 남는다(sources-add-remove · 시안 L1).
+    prisma.translationSurface.findMany({ where: { projectId }, select: { slug: true, archivedAt: true } }),
     loadEventActors(prisma, m, projectId),
     loadEvents(prisma, m, projectId, filter, { timeZone: style.timeZone }),
     // ⚠️ **상세 조회는 목록 필터와 독립이다** (결정 15) — 필터 밖 이벤트도 열되 목록은 그대로 둔다.
@@ -103,7 +104,7 @@ export default async function LogsPage({
         필터가 이미 말하는 목록이었다.
       */}
       <PanelHeader description={archived ? m.logs.archived.description : undefined}>
-        <LogFilters slug={slug} filter={filter} sources={sources} actors={actors} refreshable={!archived} now={now.toISOString()} />
+        <LogFilters slug={slug} filter={filter} sources={logSourceOptions(sources)} actors={actors} refreshable={!archived} now={now.toISOString()} />
       </PanelHeader>
 
       <PanelBody className="space-y-4">

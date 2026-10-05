@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { COLOR_SCHEME_COOKIE, COLOR_SCHEMES, parseColorScheme, resolveColorScheme } from "../scheme";
 
 /**
- * 화면 테마(color-scheme) 판정 — **계정 > 기기 쿠키 > light**. OS 설정은 입력에 없다(서버는 모르고, System의 해석은 CSS가 한다).
+ * 화면 테마(color-scheme) 판정 — **계정 > 기기 쿠키 > system**. OS 설정은 입력에 없다(서버는 모르고, System의 해석은 CSS가 한다).
  * 쿠키·DB 값은 남이 정한 값이라 지원 집합 밖의 값은 다음 층으로 넘긴다(design §3.3).
  */
 describe("COLOR_SCHEMES", () => {
@@ -34,8 +34,8 @@ describe("resolveColorScheme", () => {
     ["system", undefined, "system"],
     [null, "dark", "dark"], // 계정이 비면 쿠키
     ["blue", "dark", "dark"], // 계정 값이 지원 밖이면 쿠키로 넘어간다
-    [null, "__proto__", "light"], // 둘 다 없거나 깨졌으면 light
-    [undefined, undefined, "light"],
+    [null, "__proto__", "system"], // 둘 다 없거나 깨졌으면 system
+    [undefined, undefined, "system"],
   ];
   it.each(cases)("account=%s cookie=%s → %s", (account, cookie, expected) => {
     expect(resolveColorScheme({ account, cookie })).toBe(expected);
@@ -43,6 +43,6 @@ describe("resolveColorScheme", () => {
 
   it("입력은 계정·쿠키 둘뿐이다 — OS 설정을 받을 자리가 없다", () => {
     // @ts-expect-error — os는 시그니처에 없다
-    expect(resolveColorScheme({ account: null, cookie: null, os: "dark" })).toBe("light");
+    expect(resolveColorScheme({ account: null, cookie: null, os: "dark" })).toBe("system");
   });
 });

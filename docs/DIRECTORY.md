@@ -38,7 +38,7 @@ app/
   layout.tsx            루트 레이아웃(Geist next/font/local 변수 · Pretendard 폴백 <link> · 머리 기본값 · components/analytics · MessagesProvider).
                         ⚠️ lang은 요청의 화면 언어(getUiLocale)이고 provider도 같은 값으로 하나 렌더한다(+ getDateStyle의 timeZone — user-timezone) — app/__tests__/root-layout-i18n이 provider 존재를 고정한다
                         (빠지면 provider 기본값이 en이라 조용히 영어다)
-                        ⚠️ <html data-theme>은 getColorScheme(lib/color-scheme/server — 계정 > 쿠키 > light)이고 같은 값을 <Toaster theme>에 넘긴다.
+                        ⚠️ <html data-theme>은 getColorScheme(lib/color-scheme/server — 계정 > 쿠키 > system)이고 같은 값을 <Toaster theme>에 넘긴다.
                         인라인 스크립트가 없다(color-scheme 2026-10-05, ARCHITECTURE §6.357) — lib/color-scheme/__tests__/theme-surfaces가 고정한다
                         ⚠️ metadata에 canonical·og:url이 없다 — 얕은 병합으로 앱·/signin·/invite·404 전부에 홈 canonical이 번진다
   robots.ts · sitemap.ts  크롤러용 파일 둘(lib/seo/crawl). robots는 force-dynamic(요청 시점 VERCEL_ENV), sitemap은 빌드 prerender.
@@ -141,6 +141,10 @@ app/
   invite/actions.ts     acceptInvitation 하나. ⚠️ **인가 예외** — 지날 프로젝트 인가가 없고 토큰이 대신한다.
                         entry-points의 면제가 파일이 아니라 **export 단위**(EXEMPT_ACTIONS)다 — 파일 단위면
                         여기 붙는 둘째 export가 조용히 무인가로 열린다
+  inbox/actions.ts     헤더 Inbox의 Action 둘(loadAttentionBadgeAction · openAttentionInboxAction — attention-inbox, 2026-10-05). page.tsx가 없어 라우트가 없다.
+                        편집 셸 헤더와 로그인한 공개 셸 헤더(/docs·/changelog·/privacy)가 같이 부르므로 (edit) 밖이다(2026-10-05 사용자 — search/와 같은 자리).
+                        입력 없음, 세션의 userId로만 좁힌다, revalidatePath 없음. ⚠️ 인가 게이트는 isProtectedPath가 아니다 — Action은 현재 페이지 URL로
+                        POST되므로 entry-points의 USER_SCOPED_ACTIONS가 센다
   search/actions.ts    검색 읽기 전용 Action 둘(searchKeysAction · loadSearchMembershipsAction). page.tsx가 없어 검색 라우트는 없다.
                         readSession union → 세션 userId로 키 코어/멤버십을 좁힌다. redirect·revalidate·질의 로그 없음.
                         __tests__/actions.test.ts는 만료·장애·입력·일곱 NavProject 필드 투영을 센다
@@ -219,6 +223,8 @@ components/
   ui/list-row.tsx       ListRow/ListRowChevron. 링크·button·비상호작용 li/div의 실제 태그와 슬롯(title/description/icon/aside/actions)을 공유한다.
                         card/canvas hover와 selected·명시 aria-current, 원래 inset 포커스 자리를 보존한다.
                         배너를 함께 드는 li와 목록 의미론은 소비자가 소유한다. ListRowChevron은 busy 표시를 받아 서버 행의 훅을 늘리지 않는다
+  ui/list-group.tsx     ListGroup — 결과 목록의 묶음(role=group + 머리 aria-labelledby · 두 번째부터 위 선). 전역 검색 CommandGroup과 헤더 Inbox가
+                        같이 쓴다(attention-inbox T8a). icon(16 썸네일)이 있을 때만 머리가 한 줄 정렬이다
   ui/facts.tsx          export는 Fact다. 소비자가 dl·grid·값 의미를 소유하고 라벨/값 배치(row/stacked/inline, width96/120)를 공유한다.
                         as="tr"는 TableRow/Head/Cell을 조립하며 행 라벨은 scope="row"다. align="end"는 값 오른쪽 정렬(Home 메타 열)
   ui/tabs.tsx · ui/segment.ts
@@ -307,10 +313,15 @@ components/
                         ⚠️ 사이드바 항목 노출은 편의이고 차단이 아니다(방어는 페이지) — 판정은 lib/shell/nav.ts
                         header-bar.tsx  앱·공개 헤더의 공통3칸 grid(start/center/end), 검색을 뷰포트 가운데에 둔다.
                         header.tsx는 받은 멤버십을 검색에 넘기고 public-shell/header.tsx는 계정만 넘긴다
+                        attention-inbox.tsx  헤더 Inbox(attention-inbox, 2026-10-05) — 세로선 오른쪽·아바타 왼쪽의 클라이언트 잎. 마운트 때 배지 Action 한 번,
+                        열 때마다 open Action 한 번이다. ⚠️ 레이아웃 렌더에 싣지 않는다(클라이언트 이동에서 배지가 굳는다) ·
+                        배지 0은 메뉴가 닫힐 때 · 행·그룹은 ui/의 ListGroup·DropdownMenuRow만 든다(DESIGN §6.545)
                         navigation-dim.tsx  화면 이동 dim — 셸이 아니라 루트 레이아웃이 든다(공개 셸·로그인에도 선다).
                         판정(다른 pathname만)은 lib/shell/navigation-dim.ts
                         new-project-icon.tsx  헤더 [New project] 링크의 앞 아이콘을 ui/LinkProgress에 넘기는 클라이언트 잎.
                         링크 자손의 useLinkStatus와 기존 아이콘 교체를 위임하고 header.tsx는 서버에 남는다
+                        nav-count.ts  LNB 개수 배지의 sr 문장(navCountLabel) — 사이드바("use client")와 랜딩 목업(서버)이 같이 쓰는 순수 잎.
+                        클라이언트 파일의 export는 서버 컴포넌트에서 값이 아니라 참조라 sidebar.tsx에서 뗐다
                         shell-panels.tsx  LNB ↔ 콘텐츠 리사이저. 서버 레이아웃과 PanelGroup 사이의
                         "use client" 경계이고 sidebar·children을 prop으로 통과시킨다
                         ⚠️ 사이드바 폭이 aside가 아니라 여기 Panel에 있다(200/240/320) — 둘 다 들면
@@ -433,7 +444,9 @@ components/
                         생성 흐름의 상태를 소유하고 LargeModal + WizardFooter로 단계 본문·바닥을 조립한다.
                         이전 onboarding/modal.tsx 재수출과 ui/modal.tsx 경로는 제거했다
   sources/              sources-screen · source-detail-modal · source-status · base-language-form · add-sources-modal ·
-                        sources-archived 여섯.
+                        remove-source-dialog · sources-archived 일곱.
+                        remove-source-dialog는 상세 모달 바닥 왼쪽 [Remove source]의 확인 창이다(Sync 확인 창 형 — 지문은
+                        여는 순간 받는다). 성공·응답 유실은 목록 소유자(sources-screen)가 상세를 닫고 배너로 받는다.
                         목록 소유자가 선택·쓰기 결과를 유지. 로딩/거부/장애를 구별하고 쓰기는 기존 Action 경계를 따른다.
                         sources-archived는 보관 프로젝트의 안내 한 장이고 목록·상세를 아예 열지 않는다
                         (판정이 조회 **전에** 선다). GitHub 글리프는 여기 없다 — 리포 전체가 signin/brand-icons의
@@ -446,6 +459,9 @@ components/
   onboarding/steps/     단계 넷(repo · files · naming · result). ⚠️ new-project.tsx가 상태를 전부 들고
                         단계는 본문만 그린다 — 모달이 단계 간 상태를 공유하므로 무효화 경계가 코드에
                         명시돼 있어야 한다(브랜치·리포·재탐지). 체크·상세·표면별 기준 언어를 독립 보존한다
+  onboarding/steps/base-locales.tsx
+                        SurfaceBaseLocales · BaseLocaleFields — 소스별 경로 줄 + 기준 언어 블록. 신규 프로젝트 ③과
+                        Add sources ②가 같은 컴포넌트를 쓴다(손 사본 0 — sources-add-remove A4)
   ui/project-thumbnail.tsx
                         ProjectThumbnail — 프로젝트를 가리키는 타일(xs16/sm28/md32/lg56). 이름 기반 hueFill 폴백과 ImageTile을 조립한다.
                         ⚠️ 2026-09-17까지 화면마다 따로 구현돼 있었고 Home만 고정 bg-foreground였다(POSTMORTEM 2026-09-17).
@@ -588,7 +604,7 @@ lib/
                         `N projects use this connection.`을 그리던 조회인데, 세던 것이 내가 OWNER인
                         **모든** 프로젝트라 이 연결에 의존하지 않는 것까지 들어갔다. 해제가 실제로
                         막는 것은 리포 (재)연결뿐이고 야간 pull·PR은 설치 토큰이 낸다
-  push/ pull/ sync/     payload(생산자 하나) · assemble · plan · apply · auth · guard · token · json-bounds(placeholders 자원 상한) /
+  push/ pull/ sync/     payload(생산자 하나) · assemble · plan · apply · auth · guard · surface-refusal(활성 표면 미발견 → 제거됨/불일치) · token · json-bounds(placeholders 자원 상한) /
                         plan · run · render · load · client · targets · trigger · sync-branch · branch-name · ref-slug ·
                         message · payload · changed-values(2026-10-04 — Publish가 리포 파일에서 바꾼 엔트리 수, 수정+추가. 관측값이고 판정에 안 쓴다 →
                         SyncRun.changedValues) /
@@ -658,7 +674,9 @@ lib/
   revalidate-after-commit.ts  커밋 뒤 재검증 실패를 저장 실패로 뒤집지 않는 공유 helper(account/settings/sources).
   surfaces/            plan(정렬·slug·경로 라벨·소유권, client-safe) · access(프로젝트 인가 뒤 표면 좁힘)
                         push·편집 조회는 projectId + surfaceId. Publish는 프로젝트 단위 단일 PR
-  surfaces/create.ts   Project 잠금 후 인가·리포·출력 경로 재검사, 다중 생성+첫 적재 한 tx 확정
+  surfaces/create.ts   Project 잠금 후 인가·리포·출력 경로 재검사, 다중 생성+첫 적재 한 tx 확정. 같은 경로·어댑터의 제거된 행은 되살린다(id·slug 유지, 그 소스 토큰 승인 strict 첫 적재)
+  surfaces/remove.ts   소스 제거 공유 코어(웹 Action·MCP) — lockProjectAccess 뒤 판정·지문·archivedAt·기본 승계·사건 한 tx. 번역은 안 건드린다
+  surfaces/plan-removal.ts · plan-revival.ts  제거 판정(last-source·archived·importing·not-found, slug 승계)·거부 문장 / 되살릴 행 고르기 — 순수
   surfaces/plan-add.ts  기존 소스 잠금·중복 템플릿·추가 결과/부분 적재 경고·집계 문구 순수 판정
   keys/query.ts         loadSurfaceCounts — 활성 표면의 non-orphan 키/언어 수를 SQL 하나로 집계
   import/surface-status.ts  소스 적재 상태 다섯 갈래와 최초 적재 재시도 가능 여부 — planSurfaceImportStatus가 { state, tone, labelKey, at }을
@@ -756,7 +774,7 @@ lib/
                         token(생성·해시·Bearer 파싱·planApiTokenUse·shouldTouch) · grant(planToolAccess — 범위 → 멤버십 → 역할 →
                         보관 → 토큰) · issue-plan · batch(100키 상한·중복) · confirm(샘플 확인값 소비) · locked-token(잠금 뒤 재판정) ·
                         result(toToolResult — 화면과 같은 문장) · http(checkOrigin) · view(/mcp 카드) · brand(연결 로고 — client_id 호스트 정확
-                        일치만, 이름으로 고르지 않는다) · catalog(도구 28 — 이름·순서·annotations·요구 조건의 코드 정본).
+                        일치만, 이름으로 고르지 않는다) · catalog(도구 30 — 이름·순서·annotations·요구 조건의 코드 정본).
                         server-only: server(요청마다 McpServer — listChanged: false · 설명은 messages/en.tsx mcp.tools, 없으면 서지 않는다) · token-store(resolveApiToken) · tools/.
                         ⚠️ catalog·brand는 잎이다(import 0). brand는 /mcp 클라이언트(connected-apps-card · brand-logo)가 값으로 읽는다(client-graph).
                         catalog의 소비자는 서버 쪽(server · tools/access)이다 — 그래도 잎으로 두는 이유는 도구 구현 → catalog 방향이
@@ -764,7 +782,7 @@ lib/
                         순수 모듈에 server-only가 없는 것은 lib/mcp/__tests__/pure-boundary가 센다
   mcp/tools/            도구 구현(전부 server-only). access(입구 판정 — GitHub·코어보다 먼저, 조건은 catalog에서) · define(appUrl — needs-browser 링크를 허용 호스트 origin의 절대 URL로) ·
                         execute(⚠️ 던지면 SDK가 예외 문구를 결과에 싣는다 — 여기서 잡아 unavailable로 접는다) · 도메인별
-                        account·project·keys·repos·sync·publish·translations·settings·members·onboarding · index(TOOLS).
+                        account·project·keys·repos·sync·publish·translations·settings·sources·members·onboarding · index(TOOLS).
                         ⚠️ Action을 import하지 않는다 — 같은 코어의 형제 껍데기다(세션이 없다)
   oauth/                MCP OAuth의 **순수 판정만**(mcp-oauth — 껍데기는 oauth-server/). authorize(쿼리 파싱 — Object.hasOwn) · authorize-view(화면 판정 순서 ·
                         returnHost) ·
@@ -805,6 +823,8 @@ lib/
                         repositoryConnectionState(연결 배지 키 다섯 — 설정 카드와 Home 메타 Connection 행이 같이 읽는다, 망라형)와
                         planActionAvailability(보관·끊김이면 Publish·Sync를 끈다 — Home·번역 화면이 같이 읽는다)가, cards에 planHomeHold(보류 사유의
                         **지금** 판정 — 편집 수와 열린 PR 조회, 2026-10-01)가 산다
+                        attention-view(attention-inbox — Home 카드와 헤더 Inbox가 같이 읽는 칩·문장·목적지 attentionTile·title·body·tail·attentionHref와
+                        정렬 compare. ⚠️ 클라이언트 그래프에 든다 — 수집 attention.ts를 값으로 물면 어댑터가 따라온다, client-graph CLIENT_LIB_FILES)
                         ⚠️ **전부 I/O가 없고 server-only를 안 붙인다** — 테스트가 직접 import한다
                         ⚠️ **예외 하나 — runs(2026-09-30, nightly-sync · 2026-10-04 project-card-tabs)는 server-only 조회다**: 메타 열 Sync·Publish 탭의
                         사건 둘(시각을 전진시킨 마지막 적재 — SQL `ADVANCED_IMPORT_WHERE` · 마지막 성공 Publish + 조인한 SyncRun)을 읽어
@@ -879,6 +899,8 @@ lib/
                         시각은 semver 숫자순 · truncated = 거르기 전 100건) · markdown(본문 mdast 손질 셋 — shiftHeadings · dropFullChangelog ·
                         imagesToLinks) · load(server-only 껍데기 — fetch · revalidate 3600 · 3초 타임아웃 · ⚠️ 던지지 않는다, 로그엔 status와
                         남은 한도만). ⚠️ GitHub 자격증명 셋 중 어느 것도 쓰지 않는다 — Authorization 없음을 load.test가 단언한다
+  inbox/                헤더 Inbox(attention-inbox, 2026-10-05 — ARCHITECTURE). plan(순수 — planInbox · isUnread · badgeLabel, projectId를 입력에 두지 않는다.
+                        클라이언트 그래프에 든다) · load(server-only — 전용 멤버십 조회 + 병렬 집계, 왕복 수가 프로젝트 수와 무관한 상수)
   search/               match(토큰 AND·순위·상한·빈 입력 미리보기. matchesAllTokens는 검색·`/projects`·LNB 스위처(lib/shell/switcher.ts)가 같이 쓴다) · nav-index(역할별 내비→Projects/Pages + nav 글리프 · 멤버십이 없으면 빈 색인 → Docs만) ·
                         rows(검색 Dialog 뷰모델 — searchRows 그룹·행·ids 한 원천 · searchStatuses 상태 줄 · keySearchText 하한(UTF-16)) ·
                         docs-index(순수 함수 — SUMMARY 원고→페이지 도입/H2 절·평문) · highlight(원문 위치 보존 강조·일치 주변 snippet) ·
@@ -928,9 +950,13 @@ lib/
                         timeZone을 명시한 숫자 부품 추출에만 쓴다 — 런타임 TZ를 읽지 않아야 서버·브라우저가 같은 값을 찍는다(ARCHITECTURE §6.356)
   time-zone/            ⚠️ 잎 둘(user-timezone). zones(선별 목록 TIME_ZONES · parseTimeZone — Object.hasOwn, 런타임 Intl에 유효성을 묻지 않는다 ·
                         resolveTimeZone — 밖은 UTC. import 0) · options(timeZoneOptions(now) — Preferences Select 옵션, UTC 첫 줄 + 오프셋 순)
+  device-cookies/       기기 쿠키(화면 테마 malmoi-color-scheme · 화면 언어 malmoi-ui-locale)의 속성과 로그인 동기화(ARCHITECTURE §6.357). spec(⚠️ 잎 — 쿠키 속성의 유일한 출처
+                        deviceCookieSpec · serializeCookieSpec · isSecureForwardedProto) · sign-in(server-only — recordDeviceCookiesAtSignIn(events.signIn이 AsyncLocalStorage에 기록) ·
+                        withDeviceCookieSync(handlers 가장 바깥 래퍼가 응답 헤더에 줄을 append — Route Handler의 cookies().set은 Set-Cookie를 재직렬화한다))
   color-scheme/         화면 테마(color-scheme 2026-10-05 — ARCHITECTURE §6.357). scheme(⚠️ 잎 — COLOR_SCHEMES · parseColorScheme(Object.hasOwn) ·
-                        resolveColorScheme(계정 > 쿠키 > light, OS 입력 없음) · COLOR_SCHEME_COOKIE. Theme 카드가 값으로 읽는다) ·
-                        server(server-only — getColorScheme, React cache. 소비자는 루트 레이아웃 · /preferences page 둘). __tests__/helpers/는 대비 검사 전용
+                        resolveColorScheme(계정 > 쿠키 > system, OS 입력 없음) · COLOR_SCHEME_COOKIE. Theme 카드가 값으로 읽는다) ·
+                        server(server-only — getColorScheme, React cache. 소비자는 루트 레이아웃 · /preferences page 둘) ·
+                        cookie(server-only — setColorSchemeCookie, Server Action용 cookies().set. 속성은 device-cookies/spec). 로그인 동기화는 lib/device-cookies/. __tests__/helpers/는 대비 검사 전용
                         순수 헬퍼(oklch → sRGB · WCAG 대비 · globals.css의 light-dark() 두 값 읽기) — contrast(두 테마 대비 + 수용 예외 여섯) ·
                         theme-surfaces(테마가 닿는 자리와 안 닿는 자리 — 전역 오류 화면 · 초대 메일은 라이트)
   url-token.ts          ⚠️ 잎. 키셋 커서의 문자열 ↔ base64url 하나 — Logs(클라이언트)와 번역 목록(서버)이 같이 쓴다.
@@ -1047,5 +1073,6 @@ vitest.credentials.config.ts
                         (`pnpm test:credentials:postgres`, include는 `lib/credentials/__tests__/*.integration.ts`).
                         ⚠️ 이쪽도 `pnpm test` 밖이다 — `lib/credentials/**`를 건드리면 `pnpm gate`가 붙인다
 auth.ts                 Auth.js v5. 어댑터가 credentialAdapter(그 아래가 safePrismaAdapter)이고
-                        세션 토큰은 우리가 만든다(DB엔 digest만). handlers는 withRevocation으로 감싼다
+                        세션 토큰은 우리가 만든다(DB엔 digest만). handlers는 withDeviceCookieSync(가장 바깥) → withRevocation으로 감싼다.
+                        events.signIn은 계정 테마·언어를 요청 스코프에 기록만 한다(lib/device-cookies/sign-in)
 ```

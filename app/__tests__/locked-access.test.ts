@@ -39,6 +39,8 @@ const SITES = [
   "app/(edit)/projects/[slug]/settings/actions.ts#deleteProjectImage",
   // updateBaseLocale (MCP set_base_locale)
   "lib/sources/base-locale.ts#declareBaseLocale",
+  // removeSource (MCP remove_source)
+  "lib/surfaces/remove.ts#removeSurface",
   // saveTranslationKey
   "lib/keys/save-key.ts#applyKeySave",
   // MCP set_translations — 배치 한 번에 잠금 한 번
@@ -60,6 +62,7 @@ const TOKEN_SITES = [
   "lib/settings/update.ts#changeBaseBranch",
   "lib/settings/update.ts#renameProject",
   "lib/sources/base-locale.ts#declareBaseLocale",
+  "lib/surfaces/remove.ts#removeSurface",
   "lib/keys/save-key.ts#applyKeySave",
   "lib/keys/save-key.ts#applyKeySaveBatch",
   "lib/sync/run.ts#startRun",

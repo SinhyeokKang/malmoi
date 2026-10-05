@@ -10,3 +10,9 @@ export function legacyAnchorTarget(hash: string, table: Readonly<Record<string, 
   const id = hash.startsWith("#") ? hash.slice(1) : hash;
   return id !== "" && Object.hasOwn(table, id) ? (table[id] ?? null) : null;
 }
+
+/** 옛 페이지 slug → 새 경로. slug는 남이 정한 키라 `Object.hasOwn`으로만 찾는다. */
+export function legacyPageTarget(slug: readonly string[], table: Readonly<Record<string, string>>): string | null {
+  const key = slug.join("/");
+  return key !== "" && Object.hasOwn(table, key) ? (table[key] ?? null) : null;
+}

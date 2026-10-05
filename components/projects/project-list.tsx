@@ -46,7 +46,7 @@ import {
   type ProjectGroup,
   type RowBanner,
 } from "@/lib/projects/list";
-import { ALL_NAMESPACES, routes } from "@/lib/routes";
+import { bannerTranslationsHref, routes } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
 /**
@@ -399,7 +399,7 @@ function BannerAction({
 }) {
   const m = useMessages();
   const internal = (href: string, label: string) => (
-    <Link href={href} className="text-muted-foreground ml-1 inline-flex shrink-0 gap-0.5">
+    <Link href={href} className="text-muted-foreground ml-1 inline-flex shrink-0 items-center gap-0.5">
       {label}
       <ChevronRight className="size-3" aria-hidden />
     </Link>
@@ -452,13 +452,4 @@ function BannerAction({
 /** 링크를 뺀 자리. **버튼처럼 보이지 않아야 한다** — 누를 것이 없다. */
 function ownerOnly(sentence: string) {
   return <span className="ml-1 shrink-0">{sentence}</span>;
-}
-
-/**
- * 목록 띠의 번역 링크 — 그 일이 있는 소스(`reviewSurfaceSlug`·`unsentSurfaceSlug`)를 그 Status로 연다(translation-tree-range 결정 기록, 2026-10-02).
- * Home 카운트 카드와 같은 생성기(`routes.surfaceTranslations`)·같은 모양이다. ⚠️ `ns=*`를 남긴다 — 빼면 상태 링크가 네임스페이스로도 좁혀져 0건
- * 착지한다(POSTMORTEM 2026-09-15). 화면은 `ns=*`를 생략과 같은 정규 주소로 본다(redirect 없음).
- */
-export function bannerTranslationsHref(slug: string, surfaceSlug: string, state: "review" | "unsent"): string {
-  return routes.surfaceTranslations(slug, surfaceSlug, { ns: ALL_NAMESPACES, state });
 }

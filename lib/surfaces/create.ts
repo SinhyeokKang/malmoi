@@ -11,8 +11,10 @@ import { prepareFirstSnapshot, type FirstSnapshotInput } from "@/lib/onboarding/
 import { runTokenFor } from "@/lib/events/payload";
 import { recordEvent, recordRun } from "@/lib/events/record";
 import { applyPushInTransaction } from "@/lib/push/apply";
+import { releaseOrphanedApproved } from "@/lib/protection/release-orphaned";
 import { resolveLocalePaths } from "@/lib/pull/plan";
-import { planSurfaceSlug, surfaceOwnership } from "./plan";
+import { planAddConflicts, planSurfaceSlug } from "./plan";
+import { planSurfaceRevival } from "./plan-revival";
 
 export type AddSurfaceErrorCode = "not-found" | "forbidden" | "archived" | "repo-replaced" | "path-conflict" | "ingest-failed"
   /** MCP 토큰 주체만 — 잠금 뒤 다시 읽은 토큰이 무효이거나 grant가 없다(`lockCredential`). */
@@ -64,17 +66,48 @@ export async function addSurfacesFromSnapshot(prisma: PrismaClient, input: { pro
       const saved = layout === "per-locale" ? resolveLocalePaths(format, layout, first.paths).map(path => path.path) : [];
       return { surfaceId: surface.id, surfaceSlug: surface.slug, paths: [...saved, ...templatePaths(surface.adapterName, surface.pathTemplate, first.paths)] };
     });
-    const additions = prepared.map(value => {
-      const slug = planSurfaceSlug(value.item.format.pathTemplate, slugs); slugs.push(slug);
-      owners.push({ surfaceId: value.surfaceId, surfaceSlug: slug, paths: [...value.item.targets, ...resolveLocalePaths(value.item.format, adapterFor(value.item.format).layout, value.item.paths).map(path => path.path)] });
-      return { ...value, slug };
+    /**
+     * ⚠️ **제거된 소스의 재추가는 그 행을 되살린다** (sources-add-remove — ARCHITECTURE §5.9). 되살릴 행의 id가 `prepared`의 난수 id를
+     * **대신한다** — 그 id가 owners·사건·적재·실행 기록으로 그대로 흐르므로 여기 한 곳에서 바꾼다. slug 계획은 새 행에만 돈다.
+     */
+    const revivals = planSurfaceRevival(prepared.map(value => ({ pathTemplate: value.item.format.pathTemplate, adapter: value.item.format.adapter })), surfaces);
+    const additions = prepared.map((value, index) => {
+      const revival = revivals[index];
+      const revive = revival?.kind === "revive" ? revival : null;
+      const surfaceId = revive?.surfaceId ?? value.surfaceId;
+      const slug = revive?.slug ?? planSurfaceSlug(value.item.format.pathTemplate, slugs);
+      if (revive === null) slugs.push(slug);
+      const paths = [...value.item.targets, ...resolveLocalePaths(value.item.format, adapterFor(value.item.format).layout, value.item.paths).map(path => path.path)];
+      return { ...value, surfaceId, slug, revived: revive !== null, paths };
     });
-    const ownership = surfaceOwnership(owners);
+    // 충돌 줄은 추가 템플릿 · 기존 소유자다 — 계획 slug는 소유자가 아니다 (malmoi#194).
+    const ownership = planAddConflicts(owners, additions.map(addition => ({ surfaceId: addition.surfaceId, pathTemplate: addition.item.format.pathTemplate, paths: addition.paths })));
     if (!ownership.ok) throw new SurfaceCreationError("path-conflict", ownership.conflicts);
     const results = [];
     let changedValues = 0;
-    for (const { item, surfaceId, slug, token, startedAt, payload, result } of additions) {
-      await tx.translationSurface.create({ data: { id: surfaceId, projectId: first.projectId, slug, adapterName: item.format.adapter, pathTemplate: item.format.pathTemplate, baseLocale: item.baseLocale, lastImportStartedAt: startedAt, lastImportToken: token } });
+    for (const { item, surfaceId, slug, revived, token, startedAt, payload, result } of additions) {
+      let approvedTokens: string[] = [];
+      if (revived) {
+        /**
+         * ⚠️ **커밋 기준·실패 표시를 비운다** — 옛 `lastCommitAt`이 남으면 지금 head가 그보다 옛 커밋일 때 첫 적재가 `stale-commit`으로
+         * 막히고, 옛 실패가 되살린 소스의 상태로 선다. 첫 적재 의미는 `previousBaseLocale: null`이 든다(아래).
+         */
+        await tx.translationSurface.update({
+          where: { id: surfaceId, projectId: first.projectId },
+          data: {
+            archivedAt: null, adapterName: item.format.adapter, pathTemplate: item.format.pathTemplate, baseLocale: item.baseLocale, declaredBaseLocale: null,
+            lastCommitSha: null, lastCommitAt: null, lastImportError: null, lastImportFailedAt: null, lastImportStartedAt: startedAt, lastImportToken: token,
+          },
+        });
+        /**
+         * ⚠️ **그 소스의 미전달 토큰 전부를 승인한다 — orphaned 포함** (편집을 버리는 셋째 길, ARCHITECTURE §0). 사람의 승인은 제거 때
+         * 그 소스에만 묶인 지문으로 받았다. 같은 장치(`approvedTokens`)라 리포에 값이 없는 칸은 덮이지 않고 미전달로 남는다.
+         */
+        const pending = await tx.translation.findMany({ where: { projectId: first.projectId, surfaceId, pendingEditToken: { not: null } }, select: { pendingEditToken: true } });
+        approvedTokens = pending.flatMap(row => row.pendingEditToken === null ? [] : [row.pendingEditToken]);
+      } else {
+        await tx.translationSurface.create({ data: { id: surfaceId, projectId: first.projectId, slug, adapterName: item.format.adapter, pathTemplate: item.format.pathTemplate, baseLocale: item.baseLocale, lastImportStartedAt: startedAt, lastImportToken: token } });
+      }
       /**
        * ⚠️ **소스당 하나다** (결정 13) — 생성 때 붙은 소스와 나중에 추가한 소스가 **같은 모양**으로
        * 남아야 소스 필터가 둘을 같이 다룬다.
@@ -86,7 +119,16 @@ export async function addSurfacesFromSnapshot(prisma: PrismaClient, input: { pro
         surfaceIds: [surfaceId],
         payload: { kind: "SURFACE", surfaceSlug: slug, adapter: item.format.adapter, baseLocale: { before: null, after: item.baseLocale } },
       });
-      const applied = await applyPushInTransaction(tx, { projectId: first.projectId, surfaceId }, { ...payload, surfaceSlug: slug }, { refsMode: "replace", previousBaseLocale: null, startedAt, token, importOutcome: result.failed === 0 ? null : "partial-import" });
+      const applied = await applyPushInTransaction(tx, { projectId: first.projectId, surfaceId }, { ...payload, surfaceSlug: slug }, {
+        refsMode: "replace", previousBaseLocale: null, startedAt, token, importOutcome: result.failed === 0 ? null : "partial-import", approvedTokens,
+        // 다운로드·파싱 실패가 있으면 빠진 파일의 옛 키를 삭제로 읽지 않는다(audit #7) — 되살린 행에만 옛 키가 있다. 아래 해제와 짝이다.
+        suppressOrphan: result.errors.length > 0,
+      });
+      /**
+       * ⚠️ **이번 적재로 orphan인 승인 셀의 토큰을 푼다** — 수동 Sync와 같은 장치(delivery-invariants D1). 제거된 동안 리포가 키를 지웠으면
+       * 그 셀은 덮일 자리가 없어 토큰이 남고, 화면엔 0인데 그 키를 되살린 CI가 매번 `deferred`다(리뷰 B1 🔴1).
+       */
+      await releaseOrphanedApproved(tx, { projectId: first.projectId, surfaceId }, approvedTokens);
       changedValues += applied.changedValues;
       results.push({ pathTemplate: item.format.pathTemplate, surfaceSlug: slug, count: result.count, failed: result.failed });
     }

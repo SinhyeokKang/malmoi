@@ -117,6 +117,9 @@ const CLIENT_LIB_FILES = [
   "lib/guide/legacy.ts",
   // Settings 연결 카드가 Home과 같은 연결 판정(`connectionProblem`)을 읽는다(ux-drift-unify D1) — 값 import는 `lib/projects/list.ts` 하나다.
   "lib/home/state.ts",
+  // 헤더 Inbox(attention-inbox)가 Home 카드와 같은 칩·문장·목적지와 읽음 판정을 값으로 읽는다 — 수집(`lib/home/attention.ts`)은 그래프에 없다.
+  "lib/home/attention-view.ts",
+  "lib/inbox/plan.ts",
   "lib/i18n/adapter-errors.ts",
   "lib/i18n/index.ts",
   // 공개 푸터의 언어 스위처가 지원 집합·endonym·국기 매핑을 값으로 읽는다(ui-locales F2) — import 0인 잎이다(아래 잎 검사).
@@ -159,6 +162,8 @@ const CLIENT_LIB_FILES = [
   // Analytics `beforeSend` 허용 목록 — 값 import 0인 잎이다(아래 잎 검사). `SITE_ORIGIN`·`m`도 물지 않는다.
   "lib/seo/analytics.ts",
   "lib/surfaces/plan-add.ts",
+  // 상세 모달의 [Remove source] 사전 차단 — 서버와 같은 판정·문장(sources-add-remove). `./plan`·`lib/auth/message`까지 잎이다.
+  "lib/surfaces/plan-removal.ts",
   "lib/projects/pr-url.ts",
   "lib/publish/plan.ts",
   "lib/publish/warnings.ts",
@@ -518,6 +523,8 @@ describe("클라이언트 그래프", () => {
 
     const filter = walk([join(ROOT, "lib/events/filter.ts")]);
     expect([...filter.files].map((file) => file.slice(ROOT.length)).sort()).toEqual([
+      // 소스 필터 항목 정렬(sources-add-remove — 제거된 소스) — 결정적 정렬의 기준 비교다.
+      "lib/compare.ts",
       // 기간 구간·프리셋이 시간대 자정을 값으로 읽는다(user-timezone A3).
       "lib/date-format.ts",
       "lib/events/filter.ts",
@@ -577,6 +584,14 @@ describe("클라이언트 그래프", () => {
     const graph = walk([join(ROOT, "lib/search/key-href.ts")]);
     expect([...graph.files].map(file => file.slice(ROOT.length)).sort()).toEqual([
       "lib/routes.ts", "lib/search/key-href.ts", "lib/translations/query.ts",
+    ]);
+    expect([...graph.packages].filter(name => !allowed(name))).toEqual([]);
+  });
+
+  it("Inbox의 공유 뷰·계획은 조회·어댑터·컴포넌트 그래프를 끌지 않는다", () => {
+    const graph = walk([join(ROOT, "lib/inbox/plan.ts"), join(ROOT, "lib/home/attention-view.ts")]);
+    expect([...graph.files].map(file => file.slice(ROOT.length)).sort()).toEqual([
+      "lib/auth/permission.ts", "lib/home/attention-view.ts", "lib/inbox/plan.ts", "lib/projects/import-failure.ts", "lib/routes.ts",
     ]);
     expect([...graph.packages].filter(name => !allowed(name))).toEqual([]);
   });

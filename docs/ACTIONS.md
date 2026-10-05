@@ -159,8 +159,10 @@ action 안의 두 판은 `workflow-pins.test.ts`가 기대 SHA로 박는다 — 
 
 `surface`는 서버에 등록된 slug이며 action 기본값은 `default`다. `path-template`은 등록된 후보를 정확히 고른다.
 CLI의 대응 옵션은 `--surface`·`--path-template`이다. 서버의 `surfaceSlug`는 성공·실패 보고 모두 필수이며 기본값이 없다.
-없는·비활성·다른 프로젝트 표면은 동일한 `409 {"error":"surface mismatch"}`다. 따라서 409 가드는 보관 → 프로젝트 slug
-→ 표면 → 포맷 → 커밋 순서의 다섯 개다. 아래 step은 동일 프로젝트 토큰과 concurrency job을 공유한다.
+없는·다른 프로젝트 표면은 동일한 `409 {"error":"surface mismatch"}`다. ⚠️ **앱에서 제거한 소스는 `409 {"error":"surface removed"}`다**
+(2026-10-05) — 적재하지 않고 Logs에 거부로 남는다. 처방은 **워크플로에서 그 소스의 step을 지우는 것**이다. step이 남아 있으면 그 job이
+red가 되고 **뒤 step의 다른 소스도 적재되지 않는다**(step은 순서대로 돌고 첫 실패에서 멈춘다). 따라서 409 가드는 보관 → 프로젝트 slug
+→ 표면(불일치·제거) → 포맷 → 커밋 순서의 다섯 개다. 아래 step은 동일 프로젝트 토큰과 concurrency job을 공유한다.
 Sources의 Add sources 결과에서 실제 등록 slug·path-template을 담은 step을 복사한다.
 그 화면을 벗어났으면 **Settings의 워크플로 블록이 활성 표면 전부의 step을 담은 파일 전체를 낸다**
 (`renderProjectWorkflowYaml`) — slug·path-template을 손으로 조립하지 않는다. 틀린 `surface:`는
@@ -224,7 +226,7 @@ Sources의 Add sources 결과에서 실제 등록 slug·path-template을 담은 
 | 로케일 파일이 깨졌다·base 파일이 없다 | **red** — 연동이 성립하지 않는다 |
 | **로케일 파일을 읽지 못했다**(권한·I/O 오류) | **red** (exit 1 — **서버까지 가지 않는다**, `prepare-failed`로 보고). 빈 파일로 읽으면 그 파일의 키가 페이로드에서 빠져 말모이가 삭제로 읽는다 — 부분 페이로드를 보내지 않는다 (2026-09-27, audit #7). ⚠️ **구 태그 `@malmoi-i18n-push-v1`에는 이 판정이 없다** — action이 그 태그의 `scripts/push-local.ts`를 clone해 돌리므로, v2로 옮기기(워크플로 재복사) 전까지 그 리포는 여전히 부분 페이로드를 보낸다 |
 | **YAML·JSON 카탈로그에서 같은 키가 두 번** — YAML의 중복 키, JSON의 중첩·점 키 충돌(`{ "a": { "b": … }, "a.b": … }`) | **red** — `duplicate-key`. 두 값 중 하나가 사라지는 파일이라 서버까지 가지 않는다. 처방은 둘 중 하나를 지우는 것. ⚠️ JSON 충돌은 2026-09-17까지 조용히 마지막 값으로 적재됐다(green) — 그 뒤로 red다. ⚠️ **`duplicate-key`를 내는 어댑터는 이 둘뿐이다.** YAML의 점 키·중첩 충돌(`a.b: …` + `a: { b: … }`)도 2026-09-24부터 같은 red다. `ts-dict`·`code-dict`는 코드 객체의 같은 키(점 키·중첩 충돌 포함)를 **`duplicate-property` 경고**로 알린다 — JS 의미대로 마지막 값이 적재되고 malmoi가 그 자리를 고치므로 잃는 값이 없다. CI 로그에 `적재 경고 N건 — CI는 계속한다:`와 키 목록이 찍히고 **green이다**. `chrome-locales`는 중복 감지가 없어(JSON 파서가 접는다) 마지막 값만 남는다: **green이다** |
-| `/api/push`가 4xx·5xx | **red** — **409가 다섯**(판정 순서대로 **보관** · 오배송 · **표면 불일치 `surface mismatch`** · **표면 교체 `format mismatch`** · 커밋 역행)·스키마 위반(400)이 여기 걸린다 |
+| `/api/push`가 4xx·5xx | **red** — **409가 다섯**(판정 순서대로 **보관** · 오배송 · **표면 불일치 `surface mismatch`**(앱에서 제거한 소스면 `surface removed`) · **표면 교체 `format mismatch`** · 커밋 역행)·스키마 위반(400)이 여기 걸린다 |
 | **프로젝트가 보관됐다** | **red** — 409 `{"error":"archived"}`. ⚠️ **판정이 다섯 중 맨 앞이다**(`checkArchived`): 멈춘 프로젝트에서는 페이로드가 맞는지가 답할 질문이 아니다. **처방이 다른 넷과 다르다** — `adapter`·`base-locale`을 아무리 고쳐도 안 풀린다. 할 일은 **이 워크플로를 떼는 것**이거나 설정 화면에서 보관을 되돌리는 것이다 |
 | `wrapper`·`adapter` 값이 형식·등록 목록에 안 맞는다 | **red** (exit 2 — 스캐너 규칙이 아니라 입력 형식이다) |
 | `api-url`이 https가 아니다(루프백 `http:` 제외) | **red** (exit 2 — 토큰을 평문으로 보내기 전에 멈춘다) |
@@ -251,7 +253,7 @@ Sources의 Add sources 결과에서 실제 등록 slug·path-template을 담은 
 |---|---|
 | 인증 | **같은 `PUSH_TOKEN`** — 새 토큰도 새 input도 없다 |
 | 본문 | `{ projectSlug, surfaceSlug, commitSha, commitAt, code, executionId }` — 코드는 넷(`parse-failed` · `parse-crashed` · `invalid-locale-data` · `prepare-failed`). **닫힌 스키마라 `surfaceSlug`가 빠지면 400 `invalid report`다**(기본값이 없다 — 위 §"표면별 입력") |
-| 응답 | 성공은 **204**(본문 없음). 거부는 401 · 400(`body too large` — 본문 상한 **4096바이트** · `invalid json` · `invalid report`) · 409(`archived` · `project mismatch` · `surface mismatch` · `stale commit` · `stale report`) · 500 `{"error":"internal","ref":"…"}` — **전부 경고 한 줄로 접힌다** |
+| 응답 | 성공은 **204**(본문 없음). 거부는 401 · 400(`body too large` — 본문 상한 **4096바이트** · `invalid json` · `invalid report`) · 409(`archived` · `project mismatch` · `surface mismatch` · `surface removed` · `stale commit` · `stale report`) · 500 `{"error":"internal","ref":"…"}` — **전부 경고 한 줄로 접힌다** |
 | 제한 | **5초 · 재시도 없음**. 비정상 응답·네트워크 실패는 경고 한 줄로 남고 **원래 진단과 exit 1은 그대로다** |
 | 안 보내는 것 | 파서 원문 · 소스 문자열 · 로컬 절대경로 · 토큰 |
 

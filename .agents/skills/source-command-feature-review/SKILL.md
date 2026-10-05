@@ -41,7 +41,7 @@ Use this skill when the user asks to run the migrated source command `feature-re
 
 ### 1. 문서 로드
 
-- `docs/features/<slug>/`에서 `spec.md`, `design.md`, `tasks.md` 3개를 읽는다.
+- `docs/features/<slug>/`에서 `spec.md`, `design.md`, `tasks.md` 3개를 읽는다. `design-brief.md`가 있으면 함께 읽어 CDO에게 담당 문서로 넘긴다(조건부 산출물이라 없어도 불완전이 아니다).
 - 하나라도 없으면 즉시 종료: "문서가 불완전합니다. `/feature`를 먼저 실행해주세요."
 - 컨텍스트용으로 `CLAUDE.md`, `docs/PRODUCT.md`, `docs/ARCHITECTURE.md`도 읽는다 (에이전트에게 전달). CDO가 활성이면 `docs/DESIGN.md`도.
 - `docs/POSTMORTEM.md`를 이 기능이 건드릴 영역으로 grep해 결과를 에이전트에게 넘긴다 — 과거 함정을 재지적하지 못하면 그 로그는 죽은 로그다.

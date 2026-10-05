@@ -17,7 +17,7 @@ import type { ApiTokenSubject } from "../../token-store";
 const h = vi.hoisted(() => ({
   listRepositories: vi.fn(), listNewRepoBranches: vi.fn(), listLinkedBranches: vi.fn(),
   detectFormats: vi.fn(), detectProjectFormats: vi.fn(),
-  loadTranslationList: vi.fn(), previewRevert: vi.fn(), prepareSync: vi.fn(),
+  loadTranslationList: vi.fn(), previewRevert: vi.fn(), prepareSync: vi.fn(), previewSurfaceRemoval: vi.fn(),
 }));
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/onboarding-run/repos", () => ({ listRepositories: h.listRepositories }));
@@ -26,6 +26,7 @@ vi.mock("@/lib/onboarding-run/detect", async (orig) => ({ ...(await orig<object>
 vi.mock("@/lib/keys/translation-list", async (orig) => ({ ...(await orig<object>()), loadTranslationList: h.loadTranslationList }));
 vi.mock("@/lib/keys/revert-translation", async (orig) => ({ ...(await orig<object>()), previewRevert: h.previewRevert }));
 vi.mock("@/lib/import/prepare", () => ({ prepareSync: h.prepareSync }));
+vi.mock("@/lib/surfaces/remove", async (orig) => ({ ...(await orig<object>()), previewSurfaceRemoval: h.previewSurfaceRemoval }));
 vi.mock("@/lib/keys/query", async (orig) => ({ ...(await orig<object>()),
   loadProjectListAggregates: async () => ({ locales: [], keyTotals: new Map(), cells: [], newKeys: new Map(), unsent: new Map(), unsentSurfaces: new Map() }),
   loadSurfaceCounts: async () => [] }));
@@ -55,6 +56,7 @@ beforeEach(() => {
     users: [{ id: "owner", email: "o@a.com" }, { id: "editor", email: "e@a.com" }],
   }).prisma as unknown as PrismaClient;
   for (const fn of Object.values(h)) fn.mockReset();
+  h.previewSurfaceRemoval.mockResolvedValue({ ok: true, pendingCount: 0, approval: null, openPr: "none" });
   h.listRepositories.mockResolvedValue({ ok: true, repos: [{ owner: "o", repo: "r", fullName: "o/r", pushedAt: null }], pending: false });
   h.listNewRepoBranches.mockResolvedValue({ ok: true, names: ["main", "malmoi-i18n/sync-acme"], defaultBranch: "main", truncated: false });
   h.listLinkedBranches.mockResolvedValue({ ok: true, names: ["main"], defaultBranch: "main", truncated: false });
@@ -88,11 +90,13 @@ describe("역할 × 빈 grants", () => {
   it.each([
     ["preview_sync", { slug: "acme" }],
     ["preview_revert", { ...SURFACE, keyId: "k1" }],
+    ["preview_source_removal", SURFACE],
     ["get_workflow", { slug: "acme" }],
   ] as const)("%s는 OWNER만 — EDITOR는 forbidden이고 코어에 닿지 않는다", async (name, input) => {
     expect(status(await call(name, subject("editor"), input))).toBe("forbidden");
     expect(h.previewRevert).not.toHaveBeenCalled();
     expect(h.prepareSync).not.toHaveBeenCalled();
+    expect(h.previewSurfaceRemoval).not.toHaveBeenCalled();
     // 대조: OWNER는 입구를 지난다(get_workflow는 표면 없는 하네스 행이라 not-ready가 아닌 이상 ok).
     expect(status(await call(name, subject("owner"), input))).not.toBe("forbidden");
   });
@@ -162,6 +166,7 @@ describe("범위", () => {
     ["get_project", { slug: "acme" }], ["list_keys", SURFACE], ["get_key", { ...SURFACE, keyId: "k1" }], ["preview_sync", { slug: "acme" }],
     ["preview_revert", { ...SURFACE, keyId: "k1" }], ["list_events", { slug: "acme" }], ["get_workflow", { slug: "acme" }],
     ["list_members", { slug: "acme" }], ["list_branches", { slug: "acme" }], ["detect_formats", { slug: "acme" }],
+    ["preview_source_removal", SURFACE],
   ];
 
   it.each(PROJECT_TOOLS)("범위 밖 프로젝트의 %s는 not-found — 역할·보관이 새지 않는다", async (name, input) => {
@@ -324,5 +329,23 @@ describe("preview_revert — sync-running", () => {
     h.previewRevert.mockResolvedValueOnce({ status: "blocked", reason: "busy" });
     const busy = await call("preview_revert", subject("owner", ["project:settings"]), { ...SURFACE, keyId: "k1" });
     expect(busy.status === "ok" && busy.data).toEqual({ revertable: false, reason: "busy" });
+  });
+});
+
+/** 소스 제거 미리보기 (sources-add-remove B-T8) — 웹 `previewSourceRemoval`과 같은 코어. 지문·미전달 수·열린 PR 여부를 그대로 싣는다. */
+describe("preview_source_removal", () => {
+  it("코어 결과를 그대로 싣고 요약이 미전달 수를 말한다", async () => {
+    h.previewSurfaceRemoval.mockResolvedValue({ ok: true, pendingCount: 2, approval: "f", openPr: "unknown" });
+    const outcome = await call("preview_source_removal", subject("owner"), SURFACE);
+    expect(outcome).toMatchObject({ status: "ok", data: { approval: "f", unsentEdits: 2, pullRequest: "unknown" }, summary: en.mcp.summary.sourceRemovalPreview(2) });
+    // 제거가 편집을 버린다고 말하지 않는다 — 재추가가 리포 값으로 바꾼다(사용자 결정 2026-10-06).
+    expect(en.mcp.summary.sourceRemovalPreview(2)).toBe("The source can be removed. Re-adding it later replaces 2 unsent edits with the repository's values. Remove it with this approval.");
+    expect(en.mcp.summary.sourceRemovalPreview(1)).toContain("replaces 1 unsent edit with");
+    expect(h.previewSurfaceRemoval).toHaveBeenCalledWith(expect.anything(), { userId: "owner", credential: { kind: "api-token", tokenHash: "hash-owner" } }, SURFACE);
+  });
+
+  it("마지막 소스는 거부이고 화면과 같은 문장이다", async () => {
+    h.previewSurfaceRemoval.mockResolvedValue({ ok: false, error: "last-source" });
+    expect(await call("preview_source_removal", subject("owner"), SURFACE)).toEqual({ status: "refused", code: "last-source", message: en.sources.removal.reasons["last-source"] });
   });
 });

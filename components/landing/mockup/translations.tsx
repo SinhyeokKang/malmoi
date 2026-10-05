@@ -11,7 +11,7 @@ import type { Messages } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 /**
- * 목업의 번역 화면 — 실제 `components/translations/workspace/`의 **정적 복제**다: 머리(제목 · Sync · Publish / 필터 셋 · 검색) ·
+ * 목업의 번역 화면 — 실제 `components/translations/workspace/`의 **정적 복제**다: 머리(제목 · Sync · Publish / 검색) ·
  * 본문 `p-4` 안의 카드 둘 — 왼쪽 **소스 트리 260 + 키 목록 392**(`TreePanel` · `KeyList`), 핸들 16, 오른쪽 로케일 상세(`LocalePanel`).
  * 1440 창의 폭 계약(`lib/translations/layout.ts` — 카드 영역 1142에서 트리가 접히지 않는다)이 그 배치를 정한다.
  *
@@ -42,19 +42,22 @@ function Swap({ phase, before, after, display = "inline-flex" }: { phase: Phase;
  * ⚠️ **상태·개수 표시는 실물 프리미티브를 그대로 쓴다** (ux-drift-unify 🔴 G · Q3 · Q13) — Unsent는 `StatusBadge unsent`, 개수는 `CountBadge`다.
  * 사본을 들면 실물이 바뀔 때 목업만 낡는다(옛 테두리 알약 `Pill` 사본이 그렇게 남았다). 둘 다 `<span>`이라 프레임 규칙(인터랙티브 태그 0)을 지킨다.
  */
-const unsentBadge = () => <StatusBadge state="unsent" />;
+const unsentBadge = () => <StatusBadge state="unsent" className="shrink-0" />;
 
 /** Publish 버튼 안 개수 — 실물(`publish-button.tsx`)과 같은 어두운 면 덮개다. */
 function PublishCount({ m, n }: { m: Messages; n: number }) {
   return <CountBadge count={n} label={m.translations.publish.unsentCount(n)} className="bg-background/20 text-current" />;
 }
 
-/** `filter-menu.tsx`의 꺼진 트리거 — md 36(머리) · sm 28(카드 머리). */
-function FilterTrigger({ label, size }: { label: string; size: "md" | "sm" }) {
+/**
+ * `filter-menu.tsx`의 꺼진 트리거 — 실물 `FieldTrigger size="sm" active={false}`(28)의 정적 형이다. 카드 머리 둘(키 목록 Status · 로케일 상세 언어)이 쓴다.
+ * 상호작용 상태(hover·disabled·focus·open)와 자식 선택자는 정적 사본에 없다 — `landing-mockup.test.tsx`가 나머지 토큰을 실물과 견준다.
+ */
+function FilterTrigger({ label }: { label: string }) {
   return (
-    <span className={cn("bg-background border-border text-muted-foreground inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border", size === "md" ? "h-9 px-2.5 text-sm" : "h-7 px-2 text-xs")}>
+    <span className={cn(fieldClass, "group inline-flex cursor-pointer items-center justify-between gap-1.5 whitespace-nowrap", "h-7 px-2 text-xs", "border-border text-muted-foreground shrink-0")}>
       {label}
-      <ChevronDown className={cn("shrink-0", size === "md" ? "size-4" : "size-3.5")} aria-hidden />
+      <ChevronDown className="size-3.5 shrink-0" aria-hidden />
     </span>
   );
 }
@@ -71,27 +74,38 @@ export function TranslationsView({ m, phase }: { m: Messages; phase: Phase }) {
             <CountBadge count={fixture.keyCount} label={m.translations.keys(fixture.keyCount)} />
           </span>
           <span className="ml-auto flex items-center gap-2">
+            {/* OWNER의 Sync 버튼(`components/home/sync-button.tsx`) — 글리프 14다(16은 EDITOR 갈래). */}
             <span className={buttonClass({ variant: "default" })}>
-              <ArrowDownToLine className="text-gray-strong" aria-hidden />
+              <ArrowDownToLine className="size-3.5 text-gray-strong" aria-hidden />
               {m.repositorySync.action}
             </span>
-            <Swap phase={phase === "published" ? "missing" : phase}
-              before={<span data-landing-publish="" aria-disabled className={cn(buttonClass({ variant: "primary" }), "bg-muted text-muted-foreground")}><Send aria-hidden />{m.translations.publish.button}</span>}
-              after={<span data-landing-publish="" className={buttonClass({ variant: "primary" })}><Send aria-hidden />{m.translations.publish.button}<PublishCount m={m} n={fixture.unsentAfter} /></span>}
-            />
-            {phase === "published" && <span className={buttonClass({ variant: "default" })}>{m.translations.publish.viewResult}</span>}
+            {/* `publish-button.tsx`와 같은 묶음 — `flex gap-2` 안에 사유 `title`을 드는 감싼 칸 + 버튼, 결과가 있으면 `View result`. */}
+            <span data-landing-publish-group="" className="flex items-center gap-2">
+              <span>
+                <Swap phase={phase === "published" ? "missing" : phase}
+                  before={<span data-landing-publish="" aria-disabled className={cn(buttonClass({ variant: "primary" }), "bg-muted text-muted-foreground")}><Send aria-hidden />{m.translations.publish.button}</span>}
+                  after={<span data-landing-publish="" className={buttonClass({ variant: "primary" })}><Send aria-hidden />{m.translations.publish.button}<PublishCount m={m} n={fixture.unsentAfter} /></span>}
+                />
+              </span>
+              {phase === "published" && <span className={buttonClass({ variant: "default" })}>{m.translations.publish.viewResult}</span>}
+            </span>
           </span>
         </div>
-        <div className="flex items-center gap-2">
-          {/* 툴바는 검색 하나뿐이고 왼쪽에 선다 — Status는 키 목록 머리가 든다(2026-10-02). `search-input.tsx` — 320 입력 + 왼쪽 16 글리프. 값이 없어 placeholder가 보인다. */}
-          <span data-landing-search="" className="relative flex">
-            <Search className="text-muted-foreground pointer-events-none absolute top-2.5 left-2 size-4" aria-hidden />
-            <span className={cn(fieldClass, "text-muted-foreground flex h-9 w-80 items-center pl-8")}>{w.filters.searchPlaceholder}</span>
+        <div data-landing-toolbar-row="" className="flex flex-wrap items-center gap-2">
+          {/*
+            툴바는 검색 하나뿐이고 왼쪽에 선다 — Status는 키 목록 머리가 든다(2026-10-02). `SearchInput width={320}` → `Input icon`의 형:
+            글리프 칸은 세로 가운데 `left-2.5`, 필드는 `pl-8`. 값이 없어 자리표시 글자가 보이고 그 색은 preflight의 `currentcolor 50%`다.
+          */}
+          <span data-landing-search="" className="relative block w-fit min-w-0">
+            <span aria-hidden className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2">
+              <Search className="size-4" />
+            </span>
+            <span className={cn(fieldClass, "h-9 w-80 pl-8", "text-foreground/50 flex items-center")}>{w.filters.searchPlaceholder}</span>
           </span>
         </div>
         {phase !== "published" && (
           <Swap phase={phase} display="flex" before={null} after={
-            <div data-landing-hold="" className="w-full">
+            <div data-landing-hold="" className="w-full space-y-3">
               <Alert variant="neutral" actions={<span className={buttonClass({ variant: "default" })}>{m.translations.banner.sendWithPublish}<ArrowUp className="size-3.5" aria-hidden /></span>}>
                 {m.translations.banner.paused(fixture.unsentAfter)}
               </Alert>
@@ -157,7 +171,7 @@ function SourceTree({ m }: { m: Messages }) {
   );
 }
 
-/** 선택 면은 `ListItemButton selected`의 `bg-foreground/[0.07]`이다(DESIGN §5 — 키 목록 행과 같다, 5-Y7). `landing-mockup.test.tsx`가 실물을 렌더해 견준다. */
+/** 선택 면은 `ListRow selected`의 `bg-foreground/[0.07]`이다(DESIGN §5 — 키 목록 행과 같다, 5-Y7). `landing-mockup.test.tsx`가 실물을 렌더해 견준다. */
 const SELECTED = "bg-foreground/[0.07]";
 
 function TreeItem({ icon, label, n, selected }: { icon: ReactNode; label: string; n: number; selected: boolean }) {
@@ -178,13 +192,12 @@ function KeyList({ m, phase }: { m: Messages; phase: Phase }) {
   const unsent = new Set<string>(fixture.diff.filter((row) => row.key !== fixture.selected.key).map((row) => row.key));
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <div className="flex h-12 shrink-0 items-center gap-2 px-4">
+      <div data-landing-list-head="" className="flex h-12 shrink-0 items-center gap-2 px-4">
         <span className="text-base font-medium">{list.keys}</span>
         <CountBadge count={current?.keyCount ?? 0} label={m.translations.keys(current?.keyCount ?? 0)} />
-        {/* 이 목록을 좁히는 필터는 머리 오른쪽 끝이다 — 실물 `key-list.tsx`의 `filter` 자리(번역값 패널의 언어 메뉴와 같은 자리). 정렬 문구는 없다(2026-10-02). */}
-        <span className="ml-auto flex">
-          <FilterTrigger label={w.filters.state.any} size="sm" />
-        </span>
+        {/* 실물 `key-list.tsx`처럼 `+n saved` 칸이 비어도 남아 필터를 오른쪽 끝으로 민다(번역값 패널의 언어 메뉴와 같은 자리). 정렬 문구는 없다(2026-10-02). */}
+        <span data-landing-saved-extra="" className="text-muted-foreground ml-auto shrink-0 text-xs" />
+        <FilterTrigger label={w.filters.state.any} />
       </div>
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {fixture.rows.map((row, index) => {
@@ -197,7 +210,7 @@ function KeyList({ m, phase }: { m: Messages; phase: Phase }) {
               <span className="flex min-w-0 flex-1 flex-col gap-copy-gap">
                 <span className="text-sm leading-[1.45]">{row.text}</span>
                 <span className="flex flex-wrap items-center gap-1.5">
-                  <span className="text-muted-foreground text-xs">{row.key}</span>
+                  <span className="text-muted-foreground text-xs wrap-anywhere">{row.key}</span>
                   {phase !== "published" && unsent.has(row.key) && unsentBadge()}
                   {isSelected && phase !== "published" && phase !== "missing" && phase !== "typing" && <Swap phase={phase} before={null} after={unsentBadge()} />}
                 </span>
@@ -228,20 +241,23 @@ function LocaleDetail({ m, phase }: { m: Messages; phase: Phase }) {
           <span className="text-foreground min-w-0 truncate font-medium">{fixture.namespace}</span>
         </span>
         <span className="ml-auto">
-          <FilterTrigger label={d.allLanguages} size="sm" />
+          <FilterTrigger label={d.allLanguages} />
         </span>
       </div>
       <div className="border-divider flex min-h-0 flex-1 flex-col overflow-hidden border-t">
         <div className="border-divider flex shrink-0 flex-col gap-1 border-b px-4 py-3.5">
           <div className="flex items-center gap-2.5">
-            <span className="min-w-0 flex-1 text-base font-medium">{selected.key}</span>
+            <span data-landing-detail-key="" className="min-w-0 flex-1 text-base font-medium wrap-anywhere">{selected.key}</span>
             <Swap
               phase={phase}
               before={<span className="text-muted-foreground shrink-0 text-xs">{d.languages(filled, total)}</span>}
               after={<span className="text-muted-foreground shrink-0 text-xs">{d.languages(total, total)}</span>}
             />
-            <span className={cn(buttonClass({ variant: "default", size: "sm" }), "h-7 min-w-7 gap-1 px-1.5")}>
-              <Link2 className="size-3.5 text-gray-strong" aria-hidden />
+            {/* 실물 `CopyButton variant="link"` — 실패 줄을 세울 칸(`flex shrink-0 items-center gap-1.5`) 안의 sm 버튼이다. */}
+            <span className="flex shrink-0 items-center gap-1.5">
+              <span data-landing-copy="" className={cn(buttonClass({ variant: "default", size: "sm" }), "min-w-7 gap-1 px-1.5")}>
+                <Link2 className="size-3.5 text-gray-strong" aria-hidden />
+              </span>
             </span>
           </div>
           <span className="text-muted-foreground text-xs leading-normal">{selected.description}</span>
@@ -284,10 +300,17 @@ function TypedRow({ m, phase }: { m: Messages; phase: Phase }) {
   return (
     <LocaleRow m={m} code={selected.typedCode} first={false} status={status}>
       {phase === "missing" ? (
-        <span className="text-muted-foreground min-h-[62px] rounded-md border border-dashed border-gray-light p-2.5 text-sm leading-translation">{selected.text}</span>
+        // 실물 빈 입력은 64다 — 래퍼 바닥 62보다 점선 1·1 + `p-2.5` 10·10 + 빈 textarea `min-h-[42px]`가 크다(#189). textarea를 둘 수 없어 하한으로 든다.
+        <span className="text-muted-foreground min-h-[64px] rounded-md border border-dashed border-gray-light p-2.5 text-sm leading-translation">{selected.text}</span>
       ) : (
-        <span className={cn("border-input bg-background min-h-[62px] rounded-md border px-2.5 py-2.5 text-sm leading-translation", phase === "typing" && "ring-ring ring-2")}>
-          {phase === "typing" ? <span data-landing-typed="" /> : selected.typed}
+        /*
+          ② 실물 `Textarea`의 포커스 형(링 색 테두리 + ring-1). ⚠️ 접두가 아직 비면(스크럽 맨 앞) 실물은 빈 입력의 형이다 — 점선 `gray-light` 래퍼 ·
+          바탕 없음 · 래퍼 ring-2 · 원문이 첫 줄 자리에 겹친다(`locale-panel.tsx`). 스테이지가 `[data-landing-typed]`에 글자를 쓰므로 `:empty`로 가른다.
+        */
+        <span className={cn("border-input bg-background relative min-h-[62px] rounded-md border px-2.5 py-2.5 text-sm leading-translation",
+          phase === "typing" && "border-ring ring-ring ring-1 has-[[data-landing-typed]:empty]:min-h-[64px] has-[[data-landing-typed]:empty]:border-dashed has-[[data-landing-typed]:empty]:border-gray-light has-[[data-landing-typed]:empty]:bg-transparent has-[[data-landing-typed]:empty]:ring-2")}>
+          {phase === "typing" ? <span data-landing-typed="" className="peer" /> : selected.typed}
+          {phase === "typing" && <span data-landing-typed-source="" className="text-muted-foreground pointer-events-none absolute inset-0 hidden p-2.5 peer-empty:block">{selected.text}</span>}
           {phase === "typing" && <span className="bg-foreground ml-px inline-block h-4 w-px translate-y-[3px]" />}
         </span>
       )}
@@ -313,7 +336,10 @@ function Footer({ m, phase }: { m: Messages; phase: Phase }) {
   return (
     <div className="border-border shrink-0 border-t">
       <div className="flex items-center gap-3 px-4 py-3">
-        <span className="flex min-w-0 flex-col">{text}</span>
+        {/* 실물처럼 결과 줄은 늘 선다 — ①에선 빈 채다(`workspace.tsx`의 `data-footer-result`). */}
+        <span className="flex min-w-0 flex-col">
+          <span data-landing-footer-result="" className="min-w-0 text-xs">{text}</span>
+        </span>
         <span className="ml-auto inline-flex items-center gap-2">
           {phase === "saved" ? revert : phase === "saving" ? <Swap phase={phase} before={null} after={revert} /> : null}
           {phase === "typing" ? saveOn : phase === "saving" ? <Swap phase={phase} before={saveOn} after={saveOff} /> : saveOff}

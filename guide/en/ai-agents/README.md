@@ -2,7 +2,7 @@
 
 Let an AI agent such as Claude Code, Codex, claude.ai, or Cursor work in Malmoi for you, by signing in through your browser or with a personal token.
 
-Before you start: Sign in to Malmoi. To let the agent create projects, connect GitHub and install the Malmoi GitHub App in [Your account](../account.md#github-connection) first.
+Before you start: Sign in to Malmoi. To let the agent create projects, connect GitHub and install the Malmoi GitHub App in [Account](../account/profile.md#github-connection) first.
 
 The agent connects over MCP (Model Context Protocol) at `https://mal-moi.com/api/mcp`. Malmoi doesn't write translations itself: the agent writes the values, and Malmoi saves them as your edits, with the same checks as the browser.
 

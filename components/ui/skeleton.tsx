@@ -15,8 +15,16 @@ import { cn } from "@/lib/utils";
  * ⚠️ **`aria-hidden`이 여기 있다.** 호출부가 감싸는 컨테이너마다 붙이면 하나가 빠지고, 그 순간
  * 스크린리더가 회색 블록을 읽는다 (`projects/(list)/loading.tsx`에서 실제로 둘로 갈렸다).
  */
-export function Skeleton({ className, size }: { className?: string; size?: "xs" | "sm" | "md" | "lg" }) {
-  if (size) return <div data-skeleton-line className={cn("flex min-w-0 items-center", LINE_TEXT[size])}>
+export function Skeleton({ className, size, lineHeight }: {
+  className?: string;
+  size?: "xs" | "sm" | "md" | "lg";
+  /**
+   * 줄 래퍼의 행간 — 실물 줄이 `leading-normal`(`ListRow` 보조줄 등)이면 골격도 같이 든다. ⚠️ **바깥에서 감싸면 안 된다** —
+   * `text-*`가 `--tw-leading`(상속 안 됨)이 없으면 자기 기본 행간으로 되돌아가 부모의 `leading-normal`을 덮는다(xs 17.33 vs 19.5, R-B 🟡1).
+   */
+  lineHeight?: "normal";
+}) {
+  if (size) return <div data-skeleton-line className={cn("flex min-w-0 items-center", LINE_TEXT[size], lineHeight === "normal" && "leading-normal")}>
     {"\u200b"}<Skeleton className={cn("h-[0.8em] rounded-md", className)} />
   </div>;
   return <div aria-hidden className={cn("bg-foreground/5 motion-safe:animate-pulse rounded", className)} />;

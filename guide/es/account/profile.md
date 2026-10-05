@@ -1,4 +1,4 @@
-# Tu cuenta
+# Cuenta
 
 Gestiona tu perfil, tus métodos de inicio de sesión, la conexión con GitHub y tus sesiones activas en Cuenta.
 

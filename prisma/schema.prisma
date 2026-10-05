@@ -115,9 +115,9 @@ model TranslationSurface {
   id                  String        @id @default(cuid())
   projectId           String
   slug                String
-  /// ⚠️ **쓰는 곳이 0이다** — 읽기(필터·미발송 술어)만 있다. 표면 보관·복원은 다음 라운드(PRODUCT §7.1)이고,
-  /// 그때까지 이 컬럼은 항상 null이다. 지우지 않는 이유: 읽기 ~40곳과 술어 넷이 걸려 있고, drop은
-  /// additive-first 순서를 역전해야 해서 런칭 직전에 뗄 이득이 없다(launch-readiness L3.11, 2026-09-17).
+  /// **소스 제거 = 이 값** (sources-add-remove, 2026-10-05 — ARCHITECTURE §5.9). 하드 삭제가 없다. 쓰는 자리는 둘뿐이다 —
+  /// 제거(`lib/surfaces/remove.ts`)와 같은 경로·어댑터 재추가의 되살림(`lib/surfaces/create.ts`). 읽는 쪽은 전부 `archivedAt: null`로
+  /// 좁혀 "제거됨"으로 읽는다(필터·미발송 술어). 새 쓰는 자리를 만들면 여기에 더한다(POSTMORTEM 2026-09-15 쓰는 자리 전수).
   archivedAt          DateTime?
   adapterName         String?
   pathTemplate        String?
@@ -574,10 +574,12 @@ model User {
   /// **읽을 때 `parseTimeZone`을 지난다**(선별 목록 밖 값은 UTC). enum이 아닌 이유는 `uiLocale`과 같다 — 목록에서 빼는 것이 destructive가 되면 안 된다.
   /// ⚠️ **봉투를 지나지 않는다** — 사람을 식별하는 값이 아니다(`uiLocale`과 같다). 대략의 지역을 말하므로 방침에는 적는다.
   timeZone      String?
-  /// 화면 테마(color-scheme). null = 정하지 않음 → 쿠키 → light. **읽을 때 `parseColorScheme`을 지난다** —
+  /// 화면 테마(color-scheme). null = 정하지 않음 → 쿠키 → system. **읽을 때 `parseColorScheme`을 지난다** —
   /// enum으로 두지 않는다(값 하나를 빼는 것이 destructive 마이그레이션이 된다 — `uiLocale`과 같은 이유).
   /// ⚠️ **봉투를 지나지 않는다** — 사람을 식별하는 값이 아니다(`uiLocale`과 같다).
   colorScheme   String?
+  /// 안 읽음은 사용자당 시각 하나로 판정한다 — 항목별 열람 이력을 쌓지 않는다.
+  attentionSeenAt DateTime?
 
   accounts        Account[]
   sessions        Session[]

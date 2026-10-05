@@ -2,6 +2,7 @@ import { LogIn } from "lucide-react";
 import Link from "next/link";
 
 import { SearchTrigger } from "@/components/search/search-trigger";
+import { AttentionInbox } from "@/components/shell/attention-inbox";
 import { HeaderBar } from "@/components/shell/header-bar";
 import { UserMenu } from "@/components/shell/user-menu";
 import { GithubIcon } from "@/components/signin/brand-icons";
@@ -28,7 +29,7 @@ export const PUBLIC_HEADER_LINK =
 export type HeaderCurrent = "docs" | "changelog";
 
 /**
- * 공개 셸 헤더 — 로고 · `Main` 내비(`Docs · Changelog`) · 가운데 검색 · 우측 GitHub | primary (시안 1a · 1e).
+ * 공개 셸 헤더 — 로고 · `Main` 내비(`Docs · Changelog`) · 가운데 검색 · 우측 GitHub | (로그인이면 Inbox) primary (시안 1a · 1e).
  *
  * ⚠️ **`Home`이 없다** (2026-09-28 사용자) — 로고가 곧 홈 링크다(`aria-label` `Malmoi home`).
  * ⚠️ **GitHub는 내비가 아니라 우측, primary 왼쪽이다** (같은 날 — 내비는 앱 안 목적지만 든다는 판정은 그대로다). primary와 사이에 연한 세로선 하나.
@@ -38,6 +39,8 @@ export type HeaderCurrent = "docs" | "changelog";
  *
  * ⚠️ **primary는 페이지가 정한다**(`publicAccount`) — 비로그인(장애 포함)은 `Get started`, 로그인이면 **앱 셸과 같은 아바타 메뉴**다
  * (옛 `Open Malmoi` 버튼 대체). 헤더는 세션을 직접 읽지 않는다. 랜딩은 `ok`에서 안 그려져 늘 `Get started`다.
+ * ⚠️ **로그인이면 세로선 오른쪽·아바타 왼쪽에 헤더 Inbox가 선다**(2026-10-05 사용자 — 앱 셸 헤더와 같은 `AttentionInbox` 하나). 판정은 페이지가 넘긴
+ * `account`뿐이고, 목록·배지는 Inbox가 자기 Action(`app/inbox/actions.ts`)으로 읽는다 — 비로그인이면 서지 않아 Action도 부르지 않는다.
  */
 export function PublicHeader({ m, account, current }: { m: Messages; account: PublicAccount | null; current?: HeaderCurrent }) {
   return (
@@ -72,6 +75,7 @@ export function PublicHeader({ m, account, current }: { m: Messages; account: Pu
           </a>
           {/* 장식이다 — 캔버스(#f5f6f7) 위에서 보이는 가장 연한 선이 `border-border-subtle`이다(`divider`는 캔버스보다 옅어 안 보인다). */}
           <span aria-hidden className="bg-border-subtle h-5 w-px" />
+          {account !== null && <AttentionInbox />}
           {account === null ? (
             <ButtonLink href={routes.signIn()} variant="primary" size="md">
               <LogIn aria-hidden />

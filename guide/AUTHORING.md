@@ -10,7 +10,7 @@
 - 개요의 두 갈래 카드와 나머지 장 목록, 장 개요의 하위 목록은 SUMMARY와 각 페이지의 도입 문단에서 생성한다. 원고에 카드·목록을 중복 작성하지 않는다. 개요는 H1과 도입, 그리고 대표 화면 스크린샷 한 장만 둔다(카드보다 위에 선다). 장 개요는 H1과 도입에 필요한 본문만 둔다.
 - 두 갈래의 선택은 `lib/guide/overview.ts`가 소유한다(렌더링 단계에서 추가). 제목은 SUMMARY, 설명은 도입 문단에서 가져온다.
 - `AUTHORING.md`와 `SHOOTING.md`는 SUMMARY에 올리지 않고 공개 페이지로 제공하지 않는다. SUMMARY 자신도 페이지가 아니라 내비 데이터다.
-- 실제 화면은 스크린샷으로 기록하며 촬영 규약은 `SHOOTING.md`가 소유한다. 화면을 안내하는 작업 페이지는 적어도 한 장을 둔다 — 화면이 없는 참조 페이지(`reference/formats.md`·`reference/limits.md` 등)와 GitHub 쪽 동작만 설명하는 페이지(`sync/merging.md`·`sync/nightly.md`)는 예외다. 이미지는 절의 단계 목록 뒤(또는 그 화면을 여는 단계 앞)에 둔다.
+- 실제 화면은 스크린샷으로 기록하며 촬영 규약은 `SHOOTING.md`가 소유한다. 화면을 안내하는 작업 페이지는 적어도 한 장을 둔다 — 화면이 없는 참조 페이지(`faq.md`·`reference/formats.md`·`reference/limits.md` 등)와 GitHub 쪽 동작만 설명하는 페이지(`sync/merging.md`·`sync/nightly.md`)는 예외다. 이미지는 절의 단계 목록 뒤(또는 그 화면을 여는 단계 앞)에 둔다.
 
 ## 언어 {#languages}
 
@@ -32,6 +32,7 @@
 | 페이지 | 제목 | 독자 |
 | --- | --- | --- |
 | `README.md` | Malmoi | 공통 |
+| `faq.md` | FAQ | 공통 |
 | `setup/README.md` | Set up a project | 개발자 |
 | `setup/create-project.md` | Create a project | 개발자 |
 | `setup/workflow.md` | Add the workflow | 개발자 |
@@ -49,8 +50,9 @@
 | `sync/nightly.md` | Every night | 공통 |
 | `sync/revert.md` | Undo and resync | 개발자 |
 | `sync/logs.md` | Check activity in Logs | 공통 |
-| `account.md` | Your account | 공통 |
-| `language.md` | Change the interface language, time zone, and theme | 공통 |
+| `account/README.md` | Account and preferences | 공통 |
+| `account/profile.md` | Account | 공통 |
+| `account/preferences.md` | Preferences | 공통 |
 | `ai-agents/README.md` | Connect an AI agent | 공통 |
 | `ai-agents/browser.md` | Sign in through your browser | 공통 |
 | `ai-agents/token.md` | Use a personal token | 공통 |
@@ -154,7 +156,7 @@
 
 | 페이지 | 확인할 사실 | 대조 소스 |
 | --- | --- | --- |
-| `README.md`, `setup/README.md`, `translate/README.md`, `reference/README.md` | 독자별 진입·장 구성·도입 설명 | `guide/SUMMARY.md`, 각 하위 페이지 도입, `docs/PRODUCT.md` §3·§7.7 |
+| `README.md`, `setup/README.md`, `translate/README.md`, `account/README.md`, `reference/README.md` | 독자별 진입·장 구성·도입 설명 | `guide/SUMMARY.md`, 각 하위 페이지 도입, `docs/PRODUCT.md` §3·§7.7 |
 | `setup/create-project.md` | GitHub 연결·설치, 생성 ①–④, 첫 적재 | `components/onboarding/`, `lib/onboarding/`, `lib/github-connect/`, `app/(edit)/projects/actions.ts`, `docs/PRODUCT.md` §7.1–§7.5 |
 | `setup/sources.md` | 소스 추가, 상태·기준 언어 선언, OWNER 제한 | `app/(edit)/projects/[slug]/sources/page.tsx`, 같은 디렉터리 `actions.ts`, `components/sources/`, `lib/sources/`, `lib/surfaces/`, `docs/PRODUCT.md` §7.1 |
 | `setup/workflow.md` | 생성 YAML, 파일 경로, `PUSH_TOKEN`, 첫 실행 | `lib/onboarding/workflow.ts`, `components/settings/ci-card.tsx`, `.github/actions/malmoi-i18n-push/action.yml`, `docs/ACTIONS.md` |
@@ -162,7 +164,7 @@
 | `setup/members.md` | 역할, 초대 메일·재발급·멤버 관리 | `lib/auth/permission.ts`, `lib/auth/invitation.ts`, `lib/invitation-email/`, `app/(edit)/projects/actions.ts`, `components/members/`, `docs/PRODUCT.md` §3·§4.1 |
 | `setup/archive.md` | 보관·복원, 열린 PR 유지, 이력 읽기 | `components/settings/archive-card.tsx`, `app/(edit)/projects/actions.ts`, `lib/auth/permission.ts`, `docs/PRODUCT.md` §7.9 |
 | `translate/join.md` | 초대 주소·로그인·수락·거부 | `app/invite/`, `lib/auth/invitation.ts`, `lib/login-link/`, `docs/PRODUCT.md` §3 |
-| `translate/edit.md` | EDITOR의 화면 검색·글로벌 검색·필터·저장·미저장 확인·플래그 | `components/translations/workspace/`, `app/(edit)/actions.ts`, `lib/keys/save-key.ts`, `lib/keys/save.ts`, `lib/keys/translation-list.ts`, `components/search/`, `lib/search/`, `app/search/actions.ts`, `lib/keys/search.ts`, `lib/translations/query.ts`(`Q_MAX_LENGTH`), `lib/search/match.ts`(`KEY_QUERY_MIN`·`SEARCH_GROUP_LIMIT` — 산문의 `two`·`five`·`200`은 `content.test.ts`가 상수에 묶는다), `lib/keyboard.ts`(단축키), `docs/PRODUCT.md` §3·§4.1·§4.2 |
+| `translate/edit.md` | EDITOR의 화면 검색·글로벌 검색·헤더 Inbox·필터·저장·미저장 확인·플래그 | `components/translations/workspace/`, `app/(edit)/actions.ts`, `lib/keys/save-key.ts`, `lib/keys/save.ts`, `lib/keys/translation-list.ts`, `components/search/`, `lib/search/`, `app/search/actions.ts`, `lib/keys/search.ts`, `lib/translations/query.ts`(`Q_MAX_LENGTH`), `lib/search/match.ts`(`KEY_QUERY_MIN`·`SEARCH_GROUP_LIMIT` — 산문의 `two`·`five`·`200`은 `content.test.ts`가 상수에 묶는다), `lib/keyboard.ts`(단축키), 헤더 Inbox(`#inbox` — `components/shell/attention-inbox.tsx`, `lib/inbox/plan.ts`, `lib/home/attention-view.ts`의 목적지, `messages/en.tsx`의 `inbox`), `docs/PRODUCT.md` §3·§4.1·§4.2 |
 | `translate/publish.md` | EDITOR의 미리보기·실행·결과, PR 표시 범위, 열린 PR 동안의 적재 보류 | `components/translations/`, `app/(edit)/publish-actions.ts`, `lib/publish/`, `lib/pull/`, `docs/PRODUCT.md` §3·§7.6 |
 | `sync/README.md` | 코드와 DB의 경계, 병합 없음 | `docs/ARCHITECTURE.md` §0, `lib/push/apply.ts`, `lib/pull/run.ts` |
 | `sync/push.md` | strict 적재, 보류 사유(미전달 편집·열린 PR·PR 조회 실패), 사라진 키 보존 | `app/api/push/route.ts`, `lib/push/apply.ts`, `lib/protection/where.ts`, `lib/protection/plan.ts`(`planOpenPrGate`), `lib/projects/open-pr.ts`, `lib/cli/push-response.ts`, `docs/ARCHITECTURE.md` §5.5.2 |
@@ -170,8 +172,9 @@
 | `sync/nightly.md` | 하루 한 번 프로젝트마다 Publish·서버 적재·스킵 중 하나, 대상·보류 사유(열린 PR·PR 조회 실패·`too-large`·base 읽기 실패), 워크플로와의 관계 | `vercel.json`, `app/api/pull/route.ts`, `lib/pull/`, `lib/nightly/plan.ts`, `lib/import/run.ts`·`lib/import/automation.ts`, `messages/en.tsx`의 `logs.deferReasons`, `docs/PRODUCT.md` §4.1·§7.6, `docs/ARCHITECTURE.md` §3.05 |
 | `sync/revert.md` | OWNER 전용 복원·수동 Sync, 지문 확인·미전달 처리 | `lib/keys/revert.ts`, `lib/protection/`, `lib/sync/`, `app/(edit)/actions.ts`, `docs/ARCHITECTURE.md` §5.8 |
 | `sync/logs.md` | 필터(행위자 `CI`·`Nightly`)·상세(`Values`·`Held because`)·수동 갱신·보관 이력 | `app/(edit)/projects/[slug]/logs/page.tsx`, `components/logs/`, `lib/events/`(`triggerOf`·`trigger-where.ts`), `docs/ARCHITECTURE.md` §5.7 |
-| `account.md` | 프로필·로그인 수단·GitHub 연결·전체 로그아웃 | `app/(edit)/account/`, `components/account/`, `lib/account-connect/`, `lib/login-link/`, `lib/session-revocation/`, `docs/PRODUCT.md` §4.1·§7.7 |
-| `language.md` | 공개 푸터 스위처·Preferences Language 카드·판정 순서(계정 > 기기 쿠키 > English)·실패 문구·가이드와 방침의 제공 언어 · Theme 카드(계정 > 기기 쿠키 > Light, 푸터 스위처 없음) | `components/i18n/locale-switcher.tsx`, `components/public-shell/footer.tsx`, `components/preferences/language-card.tsx`, `components/preferences/time-zone-card.tsx`, `components/preferences/theme-card.tsx`, `lib/color-scheme/scheme.ts`(`resolveColorScheme`), `app/ui-locale/actions.ts`, `app/(edit)/preferences/actions.ts`, `lib/date-format.ts`, `lib/i18n/locales.ts`(`resolveUiLocale`·`planUiLocaleWrite`), `lib/shell/nav.ts`, `app/privacy/page.tsx`, `app/docs/layout.tsx`, `messages/{en,ko,es}.tsx`의 `uiLocale`·`preferences` |
+| `account/profile.md` | 프로필·로그인 수단·GitHub 연결·전체 로그아웃 | `app/(edit)/account/`, `components/account/`, `lib/account-connect/`, `lib/login-link/`, `lib/session-revocation/`, `docs/PRODUCT.md` §4.1·§7.7 |
+| `account/preferences.md` | 공개 푸터 스위처·Preferences Language 카드·판정 순서(계정 > 기기 쿠키 > English)·실패 문구·가이드와 방침의 제공 언어 · Theme 카드(계정 > 기기 쿠키 > Light, 푸터 스위처 없음) | `components/i18n/locale-switcher.tsx`, `components/public-shell/footer.tsx`, `components/preferences/language-card.tsx`, `components/preferences/time-zone-card.tsx`, `components/preferences/theme-card.tsx`, `lib/color-scheme/scheme.ts`(`resolveColorScheme`), `app/ui-locale/actions.ts`, `app/(edit)/preferences/actions.ts`, `lib/date-format.ts`, `lib/i18n/locales.ts`(`resolveUiLocale`·`planUiLocaleWrite`), `lib/shell/nav.ts`, `app/privacy/page.tsx`, `app/docs/layout.tsx`, `messages/{en,ko,es}.tsx`의 `uiLocale`·`preferences` |
+| `faq.md` | 질문마다 짧은 답 + 자세한 페이지 링크. **답은 정본에서만 쓴다** — 포지셔닝·역할·비범위(기계 번역·승인 단계·과금 없음)는 PRODUCT, "그러면 어떻게 되나"(병합 없음·보류·키 보존·고정 PR)는 ARCHITECTURE §0, 저장 항목·삭제 절차는 `/privacy` 본문. 링크한 페이지와 숫자·낱말이 갈리면 그 페이지가 정본이다. 가격·로드맵을 약속하지 않는다 | `docs/PRODUCT.md` §2·§3·§4.2, `docs/ARCHITECTURE.md` §0, `messages/en.tsx`의 `publicDocs.privacy`(`collected`·`purposes`·`deletion`), 각 답이 링크한 가이드 페이지 |
 | `ai-agents/README.md` | 연결 방식 둘·MCP 주소·사전 조건 | `app/(edit)/mcp/`, `docs/ARCHITECTURE.md` §6.45, `docs/PRODUCT.md` §4.1 |
 | `ai-agents/browser.md` | 브라우저 로그인 연결(조각 둘·claude.ai 커넥터 단계·동의 화면·재동의 대체·요청 10분), Connected apps·끊기 | `app/oauth/authorize/`, `components/oauth/`, `lib/oauth/authorize-view.ts`, `app/(edit)/mcp/`, `components/mcp/`, 가이드 조각이 정본(2026-09-30 앱 안 사본인 Connect 카드를 걷었다 — `content.test.ts`는 `MALMOI_TOKEN` 참조만 본다), `messages/en.tsx`의 `mcpConnector` |
 | `ai-agents/token.md` | 토큰 발급·회전·폐기, 토큰 조각 셋 | `app/(edit)/mcp/`, `components/mcp/`, `lib/mcp/snippets.ts`(조각 — `content.test.ts`가 글자 단위로 대조), `messages/en.tsx`의 `mcpConnector` |

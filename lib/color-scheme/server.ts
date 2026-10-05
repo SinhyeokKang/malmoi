@@ -7,7 +7,7 @@ import { readSession } from "@/lib/auth/read-session";
 import { COLOR_SCHEME_COOKIE, resolveColorScheme, type ColorScheme } from "@/lib/color-scheme/scheme";
 
 /**
- * **요청의 화면 테마** — 계정(`User.colorScheme`) > 기기 쿠키 > light(`resolveColorScheme`). React `cache`로 렌더 요청 하나에 한 번 정한다.
+ * **요청의 화면 테마** — 계정(`User.colorScheme`) > 기기 쿠키 > system(`resolveColorScheme`). React `cache`로 렌더 요청 하나에 한 번 정한다.
  * `getUiLocale`(`lib/i18n/server.ts`)과 같은 형이다 — 세션 읽기는 `readSession`과 같은 요청 캐시를 지나 왕복이 늘지 않는다.
  *
  * ⚠️ 세션을 못 읽으면(`unavailable`) 거부가 아니라 쿠키로 넘어간다 — 화면 테마는 인가가 아니다.

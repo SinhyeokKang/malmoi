@@ -1,4 +1,4 @@
-# Cambia el idioma de la interfaz, la zona horaria y el tema
+# Preferencias
 
 Elige si las pantallas de Malmoi aparecen en inglés, coreano o español. Esto cambia solo Malmoi, no los idiomas a los que traducen tus proyectos. También puedes elegir la zona horaria que Malmoi usa para las fechas y las horas, y si Malmoi se ve claro u oscuro.
 
@@ -49,7 +49,7 @@ Malmoi muestra las fechas y las horas en UTC de forma predeterminada. Elige otra
 Antes de empezar: abre el menú de tu avatar, arriba a la derecha, y elige **Preferencias**.
 
 1. En la tarjeta **Zona horaria**, abre el menú y elige una zona horaria. La primera opción es `UTC`; las demás muestran su desfase y su nombre, como `UTC+9 · Asia/Seoul`. No hay botón de guardar; el cambio se aplica al momento.
-2. Revisa la línea bajo el menú. Muestra la hora actual en la zona que elegiste, como `Ahora: Oct 5, 2026 08:10 UTC+9`. Las horas de todo Malmoi, incluidos los [Registros](sync/logs.md), usan ahora esa zona, y cada una muestra su desfase.
+2. Revisa la línea bajo el menú. Muestra la hora actual en la zona que elegiste, como `Ahora: Oct 5, 2026 08:10 UTC+9`. Las horas de todo Malmoi, incluidos los [Registros](../sync/logs.md), usan ahora esa zona, y cada una muestra su desfase.
 
 La zona horaria se guarda en tu cuenta, así que es la misma en todos los dispositivos donde inicies sesión. No se guarda en una cookie. Las páginas públicas, como el registro de cambios y la Política de privacidad, siempre usan UTC, incluso con la sesión iniciada.
 
@@ -57,14 +57,14 @@ Si el cambio falla, la tarjeta muestra **No pudimos cambiar la zona horaria. Int
 
 ## Elige un tema {#theme}
 
-Malmoi aparece con el tema **Claro** de forma predeterminada. Elige **Oscuro**, o **Sistema** para seguir la configuración de apariencia de tu dispositivo.
+Malmoi sigue de forma predeterminada la configuración de apariencia de tu dispositivo (**Sistema**). Elige **Claro** u **Oscuro** para fijarlo tú.
 
 Antes de empezar: abre el menú de tu avatar, arriba a la derecha, y elige **Preferencias**.
 
 1. En la tarjeta **Tema**, abre el menú y elige **Sistema**, **Claro** u **Oscuro**. No hay botón de guardar; el cambio se aplica al momento.
 2. Malmoi cambia todas las pantallas al nuevo tema. Con **Sistema**, Malmoi pasa de claro a oscuro cada vez que lo hace tu dispositivo.
 
-Malmoi usa el tema guardado en tu cuenta mientras tienes la sesión iniciada; si no, el último tema elegido en este dispositivo; y si no, **Claro**. No lee la configuración de tu dispositivo salvo que elijas **Sistema**, así que tu primera visita se ve en claro. La elección se guarda en tu cuenta y en este dispositivo, así que, después de cerrar sesión, las páginas públicas de este dispositivo conservan tu tema. Solo puedes cambiar el tema en Preferencias; el pie de página no tiene menú de tema. Las capturas de esta guía siempre muestran el tema claro.
+Malmoi usa el tema guardado en tu cuenta mientras tienes la sesión iniciada; si no, el último tema elegido en este dispositivo; y si no, **Sistema**, que sigue la configuración clara u oscura de tu dispositivo, así que tu primera visita se ve como tu dispositivo. La elección se guarda en tu cuenta y en este dispositivo, así que, después de cerrar sesión, las páginas públicas de este dispositivo conservan tu tema. Solo puedes cambiar el tema en Preferencias; el pie de página no tiene menú de tema. Las capturas de esta guía siempre muestran el tema claro.
 
 Si el cambio falla, la tarjeta muestra **No pudimos cambiar el tema. Inténtalo de nuevo.** y la pantalla vuelve al tema anterior.
 

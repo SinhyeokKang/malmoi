@@ -1,16 +1,17 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 
 import { DocEyebrow, DocFrame, DocNeighbours, DocRows, DocTracks, type DocLinkRow } from "@/components/docs/doc-frame";
 import { GuideMarkdown } from "@/components/docs/guide-markdown";
 import { LegacyHashRedirect } from "@/components/docs/legacy-hash";
 import { PublicScroller } from "@/components/public-shell/scroller";
 import { docHref } from "@/lib/guide/href";
-import { LEGACY_ANCHORS, SECTION_LEGACY_ANCHORS } from "@/lib/guide/legacy-anchors";
+import { legacyPageTarget } from "@/lib/guide/legacy";
+import { LEGACY_ANCHORS, LEGACY_PAGES, SECTION_LEGACY_ANCHORS } from "@/lib/guide/legacy-anchors";
 import { loadPage, loadPageBySlug, loadShotSizes, loadSummary } from "@/lib/guide/load";
 import { OVERVIEW_TRACKS } from "@/lib/guide/overview";
 import { leadParagraph } from "@/lib/guide/sections";
-import { flattenNav, type NavNode } from "@/lib/guide/summary";
+import { flattenNav, parentSlugOf, type NavNode } from "@/lib/guide/summary";
 import { extractToc } from "@/lib/guide/toc";
 import { getMessages, getUiLocale } from "@/lib/i18n/server";
 import { en } from "@/messages/en";
@@ -50,7 +51,12 @@ export default async function DocsPage({ params }: { params: Promise<{ slug?: st
   const { slug = [] } = await params;
   const [uiLocale, m] = await Promise.all([getUiLocale(), getMessages()]);
   const page = loadPageBySlug(uiLocale, slug);
-  if (page === null) notFound();
+  if (page === null) {
+    // 옮긴 페이지의 옛 주소 — 해시는 브라우저가 리다이렉트 너머로 넘긴다(대상이 옛 절 id를 지킨다).
+    const moved = legacyPageTarget(slug, LEGACY_PAGES);
+    if (moved !== null) permanentRedirect(moved);
+    notFound();
+  }
 
   const nav = loadSummary(uiLocale);
   const flat = flattenNav(nav);
@@ -99,13 +105,14 @@ export default async function DocsPage({ params }: { params: Promise<{ slug?: st
   const chapterIndex = children.length > 0;
   // 한 페이지였다가 섹션으로 나뉜 장의 옛 해시 (malmoi#152) — slug는 남이 정한 키라 `Object.hasOwn`으로만 찾는다.
   const legacy = Object.hasOwn(SECTION_LEGACY_ANCHORS, slug.join("/")) ? SECTION_LEGACY_ANCHORS[slug.join("/")] : undefined;
-  // ⚠️ 장 URL이 `slug[0]`인 것은 SUMMARY가 2단이라는 전제다 — `FlatNavItem.parent`는 제목 문자열뿐이다.
+  // 장 URL은 부모 노드의 slug다 — 개요(`README.md`) 아래의 FAQ는 장이 `/docs`라 `slug[0]`이 아니다.
+  const parentSlug = parentSlugOf(nav, page.file);
   // JSON-LD는 본문과 같은 화면 언어다(메타와 달리) — 크롤러는 쿠키가 없어 en만 받고, 사람에게는 본문과 갈리지 않는 쪽이 맞다.
   const ld = docLd({
     title: self?.title ?? "",
     description: leadParagraph(page.tree) ?? m.landing.hero.body,
     url: `${SITE_ORIGIN}${docHref(slug)}`,
-    chapter: self?.parent ? { title: self.parent, url: `${SITE_ORIGIN}${docHref(slug.slice(0, 1))}` } : null,
+    chapter: self?.parent && parentSlug !== null ? { title: self.parent, url: `${SITE_ORIGIN}${docHref(parentSlug)}` } : null,
   });
 
   return (

@@ -13,13 +13,15 @@ import type { UiLocale } from "@/lib/i18n/locales";
  *
  * 화면 언어(`uiLocale`)로 말한다 — 문자열은 `Intl`이 만들고 경계(초 → 분 → 시간 → 일)는 언어와 무관하다.
  *
+ * `style: "narrow"`는 좁은 칸의 짧은 형이다(헤더 Inbox 행 — 시안 `12m ago` · `3h ago` · `1d ago`, attention-inbox #190). ⚠️ **`numeric: "always"`다** —
+ * `auto`면 하루 전이 `yesterday`가 되어 시안의 `1d ago`와 다르다. 1분 미만만 `now`로 둔다(초를 읽지 않는 규칙은 같다). 기본은 긴 형이다.
  */
-export function relativeTime(then: Date, now: Date, uiLocale: UiLocale): string {
-  const format = new Intl.RelativeTimeFormat(uiLocale, { numeric: "auto" });
+export function relativeTime(then: Date, now: Date, uiLocale: UiLocale, { style = "long" }: { style?: "long" | "narrow" } = {}): string {
+  const format = style === "narrow" ? new Intl.RelativeTimeFormat(uiLocale, { numeric: "always", style: "narrow" }) : new Intl.RelativeTimeFormat(uiLocale, { numeric: "auto" });
   const seconds = Math.round((then.getTime() - now.getTime()) / 1000);
   const abs = Math.abs(seconds);
   // 초 단위를 읽어 주지 않는다 — "12 seconds ago"는 정보가 아니라 소음이다.
-  if (abs < 60) return format.format(0, "second");
+  if (abs < 60) return new Intl.RelativeTimeFormat(uiLocale, { numeric: "auto" }).format(0, "second");
   if (abs < 3600) return format.format(Math.round(seconds / 60), "minute");
   if (abs < 86400) return format.format(Math.round(seconds / 3600), "hour");
   return format.format(Math.round(seconds / 86400), "day");

@@ -7,6 +7,7 @@ import { isAdapterName } from "@/lib/adapters";
 import { baseLocaleLine } from "@/lib/onboarding/workflow";
 import { formatLabel } from "@/lib/onboarding/detect";
 import type { Messages } from "@/lib/i18n";
+import { hasActiveImport } from "@/lib/import/plan";
 
 const sourceSelect = {
   id: true, slug: true, adapterName: true, pathTemplate: true, baseLocale: true, declaredBaseLocale: true,
@@ -59,7 +60,13 @@ export async function loadSource(prisma: PrismaClient, m: Messages, projectId: s
     loadLocaleCounts(prisma, projectId, surfaceId),
   ]);
   if (project === null) return null;
-  return { ...sourceView(m, source, role), ...projectView(project, role), ...(canPerform(role, "project:settings") && source.declaredBaseLocale ? { workflowLine: baseLocaleLine(source.declaredBaseLocale) } : {}), keys: counts.total, locales: locales.filter(locale => !locale.orphaned).length, languages: localeProgress({ ...counts, locales }) };
+  return { ...sourceView(m, source, role), ...projectView(project, role), ...(canPerform(role, "project:settings") && source.declaredBaseLocale ? { workflowLine: baseLocaleLine(source.declaredBaseLocale) } : {}), keys: counts.total, locales: locales.filter(locale => !locale.orphaned).length, languages: localeProgress({ ...counts, locales }),
+    /**
+     * 살아 있는 적재 표시 — [Remove source]의 사전 차단이 서버 판정(`removeSurface`의 `importing`)과 같은 입력을 쓰게 서버가 계산한다.
+     * ⚠️ `lastImportStartedAt !== null`(목록 상태 판정)로 대신하지 않는다 — 만료된 표시는 제거를 막지 않는다. `hasActiveImport`는
+     * `lib/adapters`를 끌어와 클라이언트 번들에 못 싣는다(`client-graph.test.ts`).
+     */
+    importActive: hasActiveImport(source.lastImportStartedAt, new Date()) };
 }
 export type SourcesData = NonNullable<Awaited<ReturnType<typeof loadSources>>>;
 export type SourceDetail = NonNullable<Awaited<ReturnType<typeof loadSource>>>;

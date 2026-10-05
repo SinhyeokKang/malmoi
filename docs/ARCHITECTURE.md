@@ -17,6 +17,10 @@
    ⚠️ **미전달 편집을 버리는 길이 둘이다 — (translation-rework, 2026-09-23 · 프로덕션, #71)** — 수동 Sync(리포 값으로 덮는다)와
    **`Revert to last sent`**(키 하나의 미전달 셀을 **마지막으로 전달 확인된 DB 값**으로 되돌린다). 둘 다 OWNER 전용이고 서버가 발급한
    지문을 되돌려 받을 때만 열린다. Revert가 풀어 준 셀도 미전달이 아니게 되므로 CI 보류를 푸는 셋째 경로가 된다. §5.8.
+   ⚠️ **셋째 길 — 제거된 소스를 다시 추가하는 첫 적재** (2026-10-05, sources-add-remove · §5.9). 소스 제거는 번역을 건드리지 않고
+   `TranslationSurface.archivedAt`만 세운다. 같은 경로·어댑터로 다시 추가하면 그 행이 되살아나고, 그 첫 적재가 **그 소스의 미전달 토큰
+   전부를 승인**한 strict 적재라(수동 Sync와 같은 `approvedTokens` 장치) 남아 있던 편집을 리포 값으로 덮는다. 미전달 편집이 있으면 제거
+   자체가 **그 소스에만 묶인** 서버 발급 지문을 요구한다 — 사람의 승인은 제거 시점에 받는다. 셋 다 OWNER(`project:settings`) 전용이다.
    ⚠️ **Publish가 보내지 못한 셀도 유예를 잇는다** (2026-09-24, delivery-invariants) — 비-base 로케일 파일이 base에 없거나 ts-dict
    로케일 객체에 그 키의 자리가 없으면 그 셀은 **보류**되어 토큰이 남는다(§3). 풀리는 길은 파일 복구 뒤 Publish · Revert · 폐기 승인 Sync다.
    ⚠️ **셋째 경우: per-locale base 원본에 그 키가 없다** (2026-09-27, B3.4 — 코드에서 지웠다). base 키 집합은 원본이 정하므로 그 셀은 보류되고
@@ -34,6 +38,8 @@
    적재가 실제로 바꾼 셀 수(`changedValues`)는 적재 **뒤** 관측값이고 어떤 판정도 읽지 않는다(§5.5.2).
 3. 키와 번역을 **삭제하지 않고** 비활성으로 보존한다. **코드에서 번역을 지우는 방법은 없다** — 지우려면
    UI에서 비운다. push 페이로드의 `""`·부재는 "모름"이지 "삭제"가 아니다(§5.5.2, 2026-09-17 명문화).
+   ⚠️ **소스(표면) 제거도 삭제가 아니다** (2026-10-05, §5.9) — `archivedAt`을 세울 뿐 키·로케일·번역·이력 행은 그대로이고,
+   재추가가 같은 행을 되살린다(`id`·`slug` 유지). 하드 삭제·보존 기간은 없다.
    ⚠️ **수술적 표면(`ts-dict`·`yaml-catalog`·`code-dict`)의 비-base 셀은 UI에서도 비울 수 없다** (2026-09-24, delivery-invariants D2) —
    저장이 `cannot-clear`로 거부한다. 명시적 빈값 export(PRODUCT §10)가 생기기 전까지의 임시 규칙이다(§5.5.2).
 4. 같은 DB 상태와 **같은 원본 파일**은 **같은 바이트**를 만든다 — 원본은 구조·표현과 **base 키 집합**(B3.4)을 준다.
@@ -1360,7 +1366,7 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
   쓰는 자리는 **전부 여기 적힌 것뿐이다**(새 자리를 만들면 여기에 더한다): 키 단위 저장 `applyKeySave`(`saveTranslationKey`)와 그 배치판 `applyKeySaveBatch`(MCP `set_translations`)가 값이 실제로 바뀐 셀에만 새 UUID를 쓰고(no-op은 안 쓴다. T16에서 지운 옛 **셀 단위** 저장 `saveTranslation`은 복원 기준을 기록하지 않는 쓰기 경로였다 — 지금 같은 이름의 `lib/keys/save-translation.ts#saveTranslation`은 `applyKeySave`를 부르는 키 단위 공유 코어다) ·
   `applyPush`의 `DO UPDATE`가 덮은 셀에서 비우고(페이로드에 없는 셀은 남는다) · Publish가 `committed`와 **`no-changes` 둘 다**에서
   캡처한 `(id, token)`이 아직 같은 셀만 조건부 UPDATE로 비우고(§3 흐름 절 — `lastPulledAt`과 한 트랜잭션) · backfill 스크립트가 배포 A 이전 편집에 채우고 ·
-  Revert가 미리보기 때 캡처한 토큰 조건으로 비우고(translation-rework, `lib/keys/revert.ts` · §5.8) · 폐기 승인 Sync가 이번 적재로 orphan이 된 승인 셀에서 비운다(delivery-invariants D1, `lib/import/run.ts#releaseOrphanedApproved` · §5.5.2).
+  Revert가 미리보기 때 캡처한 토큰 조건으로 비우고(translation-rework, `lib/keys/revert.ts` · §5.8) · 폐기 승인 Sync와 제거된 소스의 되살림 첫 적재가 이번 적재로 orphan인 승인 셀에서 비운다(delivery-invariants D1, `lib/protection/release-orphaned.ts#releaseOrphanedApproved` · §5.5.2 · §5.9).
   ⚠️ **시각으로 대체하지 않는다** — 같은 밀리초의 재저장을 `updatedAt`으로는 가를 수 없다.
   ⚠️ **배포 B(2026-09-18)부터 미전달 판정의 유일한 근거다** — 미배포 집계·1층 스킵·Publish 미리보기·셀 배지·목록 raw SQL·CI 보류·수동 Sync 폐기 승인이
   전부 `pendingWhere`(또는 그 SQL 사본)를 지난다. ⚠️ **공유되는 것은 객체가 아니라 술어 함수다** — `pendingWhere(projectId, surfaceId?)`는
@@ -1397,7 +1403,7 @@ bugshot-2 실측: 이름 기반 매칭 시절 **0키 / 에러 1391건** → 지�
   들어가 `readSession()`이 추가 쿼리 0으로 싣는다. 쓰는 자리는 `setTimeZone`(`app/(edit)/preferences/actions.ts`) 하나이고 UTC를 골라도 `"UTC"`를 쓴다.
   ⚠️ **목록에서 id를 빼면 그 값을 저장한 사람의 화면이 조용히 UTC로 바뀐다** — 빼기 전 건수 확인은 OPERATIONS.
 - **`User.colorScheme String?`** (2026-10-05, `20261004213608_add_user_color_scheme` — color-scheme). 화면 테마(`system`·`light`·`dark`)이고 `null`이면
-  쿠키 → light로 넘어간다(§6.357). `uiLocale`과 같은 이유로 **enum이 아니고**(읽을 때 `parseColorScheme`이 모르는 값을 다음 층으로 넘긴다) **봉투를
+  쿠키 → system으로 넘어간다(§6.357). `uiLocale`과 같은 이유로 **enum이 아니고**(읽을 때 `parseColorScheme`이 모르는 값을 다음 층으로 넘긴다) **봉투를
   지나지 않으며** 세션 공개 허용 목록에 들어가 `readSession()`이 추가 쿼리 0으로 싣는다. 쓰는 자리는 `setColorScheme`(`app/(edit)/preferences/actions.ts`) 하나다.
 
 - ⚠️ **앞의 네 테이블의 모양은 우리가 정한 것이 아니다.** `@auth/prisma-adapter`가 부르는 델리게이트와
@@ -1698,7 +1704,7 @@ CI push가 unorphan → 재집계 1 → 롤백 → `deferred`를 매번 반복�
 
 ⚠️ **라우트의 그 판정이 유일한 자리가 아니다** (2026-09-15). 진입점이 둘이 되면서 `applyPushInTransaction`이
 `Project` → `TranslationSurface`를 잠근 **뒤** 보관·오배송·포맷·역행을 **다시** 판정하고 `ApplyGuardError`로
-던진다 — 라우트가 읽은 시점과 적용 시점 사이에 표면 설정이 바뀔 수 있고, 그 창에서 옛 포맷의 페이로드가
+던진다(⚠️ 보관은 둘로 갈린다 — 프로젝트 보관 `archived` · 표면 제거 `surface-removed`. 제거와 push가 경합해도 응답은 `surface removed`다) — 라우트가 읽은 시점과 적용 시점 사이에 표면 설정이 바뀔 수 있고, 그 창에서 옛 포맷의 페이로드가
 들어가면 잘못된 표면을 통째로 덮는다. **라우트의 검사를 지우고 이쪽만 남기지 않는다**: 409 응답의 갈래는
 라우트가 들고, 트랜잭션 안의 것은 마지막 방어선이다.
 
@@ -1709,7 +1715,7 @@ CI push가 unorphan → 재집계 1 → 롤백 → `deferred`를 매번 반복�
 |---|---|---|
 | `Project.archivedAt` ≠ null | DB 컬럼 | **보관.** ⚠️ **판정이 다섯 중 맨 앞이다**(7단계, `checkArchived` — 표면 검사가 2026-09-14에 늘어 넷에서 다섯이 됐다) — 멈춘 프로젝트에서는 페이로드가 맞는지가 답할 질문이 아니고, 사용자가 할 일은 나머지 넷과 달리 "워크플로를 뗀다"다 |
 | `projectSlug` ≠ 토큰이 정한 `Project.slug` | DB 행 (`pushTokenHash` 조회) | **오배송.** 남의 프로젝트 키가 전부 orphan되고 이물 키가 삽입되는데, `PushPlan`에 `toDelete`가 없고 FK가 `RESTRICT`라 **지울 수 없다** |
-| `(projectId, surfaceSlug)` 활성 표면 없음 | TranslationSurface | **표면 불일치.** 없음·타 프로젝트·비활성 모두 동일 본문 `{"error":"surface mismatch"}`. 목록을 노출하지 않는다 |
+| `(projectId, surfaceSlug)` 활성 표면 없음 | TranslationSurface | **표면 불일치.** 없음·타 프로젝트는 동일 본문 `{"error":"surface mismatch"}`(기록 없음). 목록을 노출하지 않는다. ⚠️ **같은 프로젝트에 그 slug의 제거된(보관) 행이 있으면 `{"error":"surface removed"}`이고 Logs에 거부(`surface-removed`)로 남는다** (2026-10-05, sources-add-remove — `classifyMissingSurface`). 노출은 그 프로젝트의 push 토큰 보유자에게 "그 slug가 있었다"는 사실뿐이고, 할 일(워크플로에서 그 step을 지운다)이 불일치와 달라서 가른다 |
 | `format`(adapter·pathTemplate·baseLocale) ≠ 저장된 셋 | DB 컬럼 셋 | **표면 교체.** 같은 프로젝트인데 **다른 번역 표면**을 보낸 경우다 (2026-09-07 추가). ⚠️ `baseLocale`만 예외가 하나 있다 — 아래 |
 | `commitAt` < `TranslationSurface.lastCommitAt` | DB 컬럼 | **역행.** 오래된 run을 Re-run하면 strict가 그 시점으로 DB를 되돌린다(키 orphan + 번역값 회귀 + permalink가 옛 SHA) |
 
@@ -2158,6 +2164,33 @@ Logs 행위자·상세 Trigger·보조줄·Home 메타 열이 이것 하나를 �
   ⚠️ **실행은 `Project`→`TranslationSurface` 잠금을 얻은 뒤 OWNER 멤버십과 활성 프로젝트·표면을 다시 잰다** (2026-09-23 리뷰) —
   미리보기와 실행 사이의 강등·제거·보관이 잠금 대기 동안 끝날 수 있어, 진입점 판정만으로는 권한 잃은 사람의 쓰기와 사건이 남는다
   (`revert-key.integration.ts`가 실제 PG 잠금 대기로 세 경합을 재현한다). 키 저장(`save-key`)과 수동 Publish 시작(`lib/sync/run.ts`)도 2026-09-24에 같은 재확인(`lockProjectAccess`)을 얻었다.
+
+## 5.9 소스 제거와 되살림 (sources-add-remove — 2026-10-05)
+
+소스(표면) 제거는 **되돌릴 수 있는 사실 하나**다 — `TranslationSurface.archivedAt`(프로젝트 보관 `Project.archivedAt`과 같은 형, §5.6.4).
+읽는 쪽은 전부 이미 `archivedAt: null`로 좁혀 "제거됨"으로 읽어도 참이었다(Sources·셸·Home·Inbox·검색·Publish·야간·온보딩·MCP — 소비자 회귀는 `lib/keys/__tests__/source-remove-consumers.integration.ts`가 뷰 모델·MCP 도구 출력과 준비 판정으로 잰다).
+⚠️ **Logs만 보관 행을 읽는다** — 사건이 남으므로 소스 필터 항목(`logSourceOptions` — 활성 뒤에 `removed`)과 slug→id 해석(`lib/events/query.ts`의 `surfaceIds`)이 제거된 소스를 포함한다. 번역 사건의 이동 링크(`translationLinkFor`)는 활성만 찾는다.
+쓰는 자리는 둘뿐이다 — 제거(`lib/surfaces/remove.ts`)와 되살림(`lib/surfaces/create.ts`의 revive 갈래).
+
+- **제거는 한 트랜잭션이다.** `lockProjectAccess`(`project:settings`, `Project`→`TranslationSurface`) 뒤 활성 표면·기본 id·적재(동기화) 진행 여부·
+  그 소스의 미전달 토큰을 다시 읽고 `planSurfaceRemoval`로 판정한다 — 거부는 `last-source`(마지막 활성 소스) · `archived`(프로젝트 보관) ·
+  `importing`(그 소스의 적재·동기화가 진행 중 — CI·수동 Sync의 살아 있는 표시, 만료된 표시는 막지 않는다) · `not-found`. 같은 tx에서 `archivedAt`을 세우고, 기본 소스였으면 `Project.defaultSurfaceId`를 남은 활성 중
+  **slug 오름차순 첫째**로 옮기고(복합 FK `(id, defaultSurfaceId)`가 같은 프로젝트를 강제한다), `ProjectEvent { kind: SURFACE, subtype:
+  "surface.removed" }`를 남긴다. **번역 행은 건드리지 않는다.**
+- ⚠️ **미전달이 있으면 지문이 필요하다** — `removalFingerprint`는 `["remove-surface", userId, projectId, surfaceId, 그 소스의 토큰 정렬]`이다.
+  세는 집합과 승인하는 집합이 같아야 하므로 토큰은 **`surfaceId` 전체**(orphaned 키·로케일 포함)에서 읽는다 — 화면용 `pendingWhere`(활성만)가
+  아니다(POSTMORTEM "세는 집합 ≠ 바꾸는 집합"). 용도 접두가 달라 수동 Sync 지문과 섞이지 않는다. 낡으면 `stale-approval`이고 아무것도 안 바뀐다.
+- **되살림** — 추가(`createSurfaces`)가 tx 안에서 `planSurfaceRevival`로 요청마다 갈래를 고른다: 같은 `pathTemplate` + 같은 어댑터의
+  보관 행이 있으면 `archivedAt`이 가장 최신인 행을 되살리고(`id`·`slug` 유지 — 키·번역·이력이 그대로 붙는다), 어댑터가 다르면 새 행(slug 접미사)이다.
+  되살린 행은 `lastCommitSha`·`lastCommitAt`·import 오류를 비우고, 첫 적재를 **`previousBaseLocale: null` + 그 소스의 현재 미전달 토큰
+  전부를 `approvedTokens`로** 돈다 — strict 첫 적재(불변식 1의 셋째 길). 수동 Sync와 같은 말이다 — 리포에 값이 없는 칸(빈 값)은 덮일 값이 없어 미전달로 남고,
+  **orphan이 된 승인 셀은 풀린다**(`releaseOrphanedApproved` — 제거된 동안 리포가 키를 지웠으면 안 풀린 토큰이 화면엔 0인 채 그 키를 되살린 CI를
+  매번 `deferred`로 만든다. 제거 때 이미 orphan이던 셀도 지문이 셌으므로 함께 풀린다). ⚠️ 다운로드·파싱 실패가 섞이면 `suppressOrphan`이라 옛 키를
+  orphan시키지 않고, 그 셀의 승인 토큰도 남는다(audit #7).
+  옛 `lastCommitAt`이 남으면 `stale-commit`이 나므로 비운다.
+- **push** — 활성 표면이 없으면 `classifyMissingSurface`가 `removed`(같은 slug의 보관 행) / `mismatch`를 가른다. `/api/push`·`/failure` 둘 다
+  `409 surface removed` + 거부 기록, 거부 어휘 `NOT_STARTED_REASONS`의 일곱째다. 잠금 뒤 `ApplyGuardError`도 `archived`와 `surface-removed`로 갈린다.
+- **Publish는 활성 소스만 렌더한다** — 열린 PR에 있던 제거된 소스의 변경은 다음 Publish에서 빠진다. 리포 파일은 건드리지 않는다.
 
 ## 6. 인증 경계
 
@@ -2873,7 +2906,7 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 
 ### 6.357 화면 테마 — 서버가 `<html data-theme>`을 싣는다 (2026-10-05, color-scheme)
 
-**테마는 System · Light · Dark이고 판정은 계정(`User.colorScheme`) > 쿠키(`malmoi-color-scheme`) > `light`다**(제품 판정은 PRODUCT §4.1 "화면 테마",
+**테마는 System · Light · Dark이고 판정은 계정(`User.colorScheme`) > 쿠키(`malmoi-color-scheme`) > `system`이다**(제품 판정은 PRODUCT §4.1 "화면 테마",
 시각 규칙은 DESIGN §3). 색은 화면에만 있으므로 export 결정성·blob SHA(§1·§2)·PR 본문·MCP 응답에 영향이 없다.
 
 - **판정은 잎 `lib/color-scheme/scheme.ts`다** — `parseColorScheme`은 지원 집합 안의 문자열만 통과시키고 **`Object.hasOwn`으로 판정한다**(쿠키는 남이
@@ -2889,11 +2922,19 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 - **인라인 스크립트 없는 첫 페인트** — 서버가 쿠키·계정으로 정한 `data-theme`을 첫 HTML에 싣는다. 테마 깜빡임 방지 관용구(`<script>`로 `localStorage`
   읽기)를 쓰지 않으므로 CSP nonce에 새 스크립트가 없고(§8) 깜빡임도 없다. 그 대가로 **기기 층이 localStorage가 아니라 http-only 쿠키**다 — 클라이언트는
   쿠키를 읽지 않는다(`<html>` 속성만 본다).
-- **쓰기는 `setColorScheme` 하나**(`app/(edit)/preferences/actions.ts` — 보호 경로 아래, 인가 등재는 `app/__tests__/entry-points.test.ts`의 USER 축):
+- **DB 쓰기는 `setColorScheme` 하나이고 쿠키 쓰기는 둘이다**(`app/(edit)/preferences/actions.ts` — 보호 경로 아래, 인가 등재는 `app/__tests__/entry-points.test.ts`의 USER 축):
   `parseColorScheme` 불통과면 `invalid` → `readSession()`이 `ok`가 아니면 무기록 `failed`(redirect하지 않는다) → 세션 `userId`로 계정 갱신(실패면 무기록
   `failed` — 쿠키만 쓰면 다음 렌더에서 계정의 옛 값이 이긴다) → 쿠키를 **무조건** 쓴다(`httpOnly` · `sameSite: "lax"` · `secure`는 `x-forwarded-proto`
   첫 항목이 `https`일 때 — `setUiLocale`과 같은 판정 · 1년. 로그인 중에도 쓰는 것은 로그아웃 뒤 공개 페이지가 같은 테마를 보게 하려는 것이다) →
-  `revalidateAfterCommit("color-scheme")`(커밋 뒤라 던져도 `ok`). `ProjectEvent`를 남기지 않는다.
+  `revalidateAfterCommit("color-scheme")`(커밋 뒤라 던져도 `ok`). `ProjectEvent`를 남기지 않는다. 쿠키 속성의 출처는 `lib/color-scheme/cookie-spec.ts`의
+  `lib/device-cookies/spec.ts`의 `deviceCookieSpec` 한 곳이다(화면 언어 쿠키와 공유 — Action은 `cookies().set`, 로그인 동기화는 직렬화).
+- **둘째 쿠키 쓰기는 로그인 동기화다**(2026-10-05, fix1·fix2 — 2026-10-06 fix3에서 **화면 언어 쿠키 `malmoi-ui-locale`(`User.uiLocale`, §6.355)도 같은 장치로 옮겼다**: 래퍼 하나가 두 쿠키를 각각 비교해 덧붙이고, 속성은 `setUiLocale` Action과 `lib/device-cookies/spec.ts` 한 곳이다) — 로그인이 끝나면 계정의 테마·언어를 이 기기 쿠키로 옮겨 적어, 로그아웃 뒤·다음 로그인 직전 화면이 계정 값과
+  같게 한다(첫 로그인 순간의 한 번 전환은 남는다). 계정 값이 없거나 지원 밖이면 **쓰지 않고**(기기 선택 보존), 요청 쿠키가 이미 같은 값이어도 쓰지 않는다. DB 쓰기 0, 던지지 않는다.
+  모든 로그인 경로(OAuth·login-link 왕복)의 끝이 Auth.js 콜백의 `events.signIn`이다 — `session-revocation`·`account-connect`는 세션을 만들지 않아 지나지 않는다.
+  ⚠️ **Route Handler에서 `cookies().set`을 쓰지 않는다** — Next가 응답의 Set-Cookie **전체를 파싱·재직렬화**하고(`appendMutableCookies`), 파서가 falsy 필드를 버려
+  `Max-Age=0` 삭제 쿠키(Auth.js pkce·state, `withLoginLink`의 link 쿠키)가 삭제가 아닌 **빈 세션 쿠키**로 나간다(POSTMORTEM 2026-09-10과 같은 부류). 그래서 **기록과 쓰기를 쪼갠다**:
+  `events.signIn`은 값을 AsyncLocalStorage에 기록만 하고(`recordDeviceCookiesAtSignIn`), `auth.ts`의 `handlers` **가장 바깥** 래퍼(`withDeviceCookieSync`)가 응답 `Headers` 사본에
+  직렬화한 한 줄을 `append`한다 — 기존 헤더는 바이트 그대로이고 안쪽 래퍼의 재직렬화를 지나지 않는다. 회귀는 `lib/device-cookies/__tests__/sign-in.test.ts`가 잡는다.
 - **`global-error.tsx`는 이 축 밖이다** — 루트 레이아웃 밖이고 `globals.css`를 import하지 않아 `data-theme`도 토큰도 없이 브라우저 기본값(라이트)이다.
 - **방침**: `User.colorScheme`은 `lib/privacy/collected.ts`에 `collected`로 있고, 쿠키 `malmoi-color-scheme`은 `/privacy`의 쿠키 표·보존 목록·목적에 en·ko 두 본으로
   든다(§6.035 동형 게이트 — 쿠키 표의 행은 이름이 아니라 용도 `Theme`이다).
@@ -2935,6 +2976,30 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 - ⚠️ **grep 한 번으로 확인했다고 하지 않는다.** T6에서 이 경계를 의심해 산출물을 grep했는데 `@octokit`만
   봤고 그건 정말로 없었다 — 그래서 "트리 셰이킹이 떼어냈다"는 **틀린 결론을 주석으로 남겼다.** 한 번의
   grep은 자신이 고른 패턴만 답한다.
+
+### 6.365 Attention inbox — 사용자 읽음 워터마크 (2026-10-05)
+
+`lib/inbox/plan.ts`가 현재 상태를 프로젝트별로 정렬하고 배지 수를 센다. Home은 `collectAttention` 위에 보관·배너 제외·상한 5를
+얹으며, Inbox는 상한 없이 그대로 쓴다. 빈 로케일은 `neverFilledLocales`, 링크·타일·문장은 `lib/home/attention-view.ts`, 목록 띠 링크는
+`lib/routes.ts`의 `bannerTranslationsHref`가 공유한다. 동시각은 프로젝트 항목(setup → unsent) → 표면 slug → 로케일 순이고,
+묶음은 최신 항목 시각 내림차순 → 프로젝트 slug다. 시각 null은 가장 오래된 값이다.
+
+**데이터 경로**: 입력 없는 `loadAttentionBadgeAction`·`openAttentionInboxAction`(`app/inbox/actions.ts` — 편집 셸 헤더와 **로그인한 공개 셸 헤더**가 같이 부르므로 `(edit)` 밖이다, 2026-10-05 · `app/search/actions.ts`와 같은 자리) → `readSession` → `loadAttentionInbox(prisma, userId)`.
+공개 셸 헤더는 세션을 읽지 않고 페이지가 넘긴 `publicAccount`가 값일 때만 Inbox를 마운트한다 — 비로그인 방문자에게는 Action 호출이 0이다.
+전용 멤버십 조회가 `userId`·프로젝트 `archivedAt: null`로 범위를 확정하고 같은 조회에 `User.attentionSeenAt`을 붙인다.
+셸의 공용 멤버십 조회를 넓히지 않는다. 집계와 검토 조회는 그 ids로 제한해 병렬 실행하고, 검토 행의 행위자만 추가 조회한다.
+프로젝트 수와 무관하게 Prisma 조회 호출 수는 상수(멤버십 1 + 집계 5 + 검토 1 + 행위자 최대 1)다. 관계 조회의 내부 SQL 수는 Prisma의
+relation load strategy에 따른다. 멤버십이 없으면 나머지는 0회다. GitHub은 부르지 않고, 하위 조회가 실패하면 전체가 실패다.
+검토 조회는 `ANY(ids)`·`PARTITION BY projectId, surfaceId, localeCode`, 미전달 시각은 기존 pending 토큰 술어의 `MAX(updatedAt)`이다.
+응답에는 `projectId`와 원문 이메일이 없으며 행위자는 `actorLabel`의 마스킹을 지난 문자열만 나온다.
+
+**읽음 계약**: nullable `User.attentionSeenAt` 하나. `review`가 아니고, seenAt이 null이거나 항목 시각이 seenAt보다 엄격하게 클 때만
+안 읽음이다(같으면 읽음). `review`는 push도 `updatedAt`을 바꾸므로 정렬에는 쓰되 배지·읽음에서 뺀다.
+열기 Action은 **조회 전 now**로 목록을 만든 뒤 `updateMany({ where: { id, OR: [{ attentionSeenAt: null },
+{ attentionSeenAt: { lt: now } }] }, data: { attentionSeenAt: now } })`로 기록한다. 다른 탭의 더 늦은 시각을 되돌리지 않으며,
+배지 대상 중 `at > now`인 항목만 다음에도 안 읽음이다(`at === now`는 읽음). 쓰기 실패는 목록과 `marked: false`를 반환한다. 두 Action은 `revalidatePath`를 부르지 않는다.
+⚠️ `at ≤ now`로 찍혔지만 조회 뒤에 커밋된 행은 한 번도 보이지 않은 채 읽음이 될 수 있는 잔여 창이 있다.
+열람 기록은 계정에만 남고 별도 쿠키·항목별 이력·외부 전송을 만들지 않는다. `lib/privacy/collected.ts`가 개인정보로 등재한다.
 
 ### 6.37 검색의 공개·사용자 경계 (`app/search/actions.ts` · `lib/search/`, global-search)
 
@@ -3266,7 +3331,7 @@ MCP는 무상태이고 에이전트는 미리보기와 실행 사이에 무엇�
 
 #### 6.45.5 도구 목록과 쓰기 범위 — 정본 (`lib/mcp/catalog.ts`)
 
-**28개 — 읽기 14 · 쓰기 14.** 이름·순서·annotations·요구 조건의 코드 정본은 `toolCatalog()`(잎 데이터 모듈 — 값으로 읽는 것은 서버 쪽
+**30개 — 읽기 15 · 쓰기 15** (2026-10-05 sources-add-remove가 `preview_source_removal`·`remove_source`를 더했다). 이름·순서·annotations·요구 조건의 코드 정본은 `toolCatalog()`(잎 데이터 모듈 — 값으로 읽는 것은 서버 쪽
 `lib/mcp/server.ts`·`lib/mcp/tools/access.ts`이고 `/mcp` 화면은 읽지 않는다. `lib/auth/lock.ts`는 import하지 않는다 — 쓰기 grant = 역할 permission이라는
 사실은 `lock-grant.test.ts`가 카탈로그로 고정한다. 잎인 이유: 구현 → 카탈로그 방향이 뒤집히면 순환이 생기고,
 `server-only`도 없어 순수 테스트가 바로 import한다 — `catalog.test.ts`)이고 이 표가 그 판정의 근거다. 도구 구현은 조건을 자기 파일에 다시 적지 않는다.
@@ -3288,6 +3353,7 @@ MCP는 무상태이고 에이전트는 미리보기와 실행 사이에 무엇�
 | `preview_publish` | OWNER / EDITOR | 없음 | Publish 미리보기 + Publish 지문 + 지금 열린 PR — `pullRequest: { status: "open", number, url } \| { status: "none" } \| { status: "unknown" }`. ⚠️ 조회 실패·시간 초과(`loadOpenPrUrl`의 `undefined`)를 "없음"으로 접지 않는다 — `undefined`는 JSON에서 필드째 사라지므로 상태가 값이다(Codex review CR-04) |
 | `preview_sync` | OWNER | 없음 | 폐기 지문 + 확인 문장. 열린 PR은 조회하지 않는다(화면 Dialog의 별도 GitHub 조회라) |
 | `preview_revert` | OWNER (표면) | 없음 | Revert 확인값 |
+| `preview_source_removal` | OWNER (표면) | 없음 | 제거 지문(미전달이 있을 때만) · 미전달 수(그 소스 전체 — orphaned 포함) · 열린 PR `open`·`none`·`unknown`. 판정 거부(`last-source`·`importing`)도 여기서 난다 — §5.9 |
 | `list_events` | OWNER / EDITOR | 없음 | Logs. **보관 중 읽기 예외는 이것만** 넘긴다. 행은 `kind`·`subtype`·`result`·`payload`를 가공 없이 싣는다 — 2026-09-30(nightly-sync)부터 subtype `import.nightly`·`nightly.skip`, 결과 `upToDate`, IMPORT payload의 `source: "nightly"`·`deferReason`(넷)·`changedValues`(부재 `null`)가 그대로 나간다. `query`는 Logs 주소와 같은 해석이라 `actor=ci`·`actor=nightly`(옛 `automation`)도 받는다. **`from`·`to`의 날짜 경계는 UTC다**(`loadEvents(…, { timeZone: "UTC" })` — 세션이 없어 보는 사람의 시간대가 없다, §6.356) |
 | `get_workflow` | OWNER | 없음 | 생성 YAML. push 토큰 원문 없음(`${{ secrets.PUSH_TOKEN }}`만) |
 | `list_members` | OWNER / EDITOR | 없음 | 남의 이메일 마스킹 유지 |
@@ -3309,6 +3375,7 @@ MCP는 무상태이고 에이전트는 미리보기와 실행 사이에 무엇�
 | `revert_to_last_sent` | 표면 `project:settings` | 키 하나의 미전달 셀 복원 | Revert 확인값 | destructive |
 | `update_project` | `project:settings` | 이름 · base branch | — | — |
 | `set_base_locale` | 표면 `project:settings` | 기준 로케일 선언 | — | — |
+| `remove_source` | 표면 `project:settings` | `archivedAt`·기본 소스 승계·`surface.removed` 사건 — 번역은 안 건드린다(편집 폐기는 재추가의 첫 적재) | 제거 지문(미전달이 있을 때) · `approval`은 필수(`null` 명시) | destructive |
 | `rotate_push_token` | `project:settings` + 리포 push | push 토큰 교체(원문 반환) | — | destructive |
 | `invite_members` | `member:manage` | 초대 발급 + 메일 발송 | — | — |
 | `revoke_invitation` · `change_member` | `member:manage` | 초대 무효 · 역할 변경/제거 | — | destructive |

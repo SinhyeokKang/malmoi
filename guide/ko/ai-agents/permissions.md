@@ -13,7 +13,7 @@
 | 권한 | 에이전트가 할 수 있는 일 | 쓸 수 있는 사람 |
 | --- | --- | --- |
 | **번역·게시** | 번역을 저장하고 PR로 게시합니다. | 소유자와 편집자 |
-| **프로젝트 설정** | 소스 추가와 푸시 토큰 교체(둘 다 리포지토리 쓰기 권한도 필요), 연결된 리포지토리의 형식 감지, 리포지토리에서 동기화, 마지막으로 보낸 값으로 되돌리기, 이름·기준 브랜치·기준 언어 변경, 보관 또는 복원. | 소유자 |
+| **프로젝트 설정** | 소스 추가와 푸시 토큰 교체(둘 다 리포지토리 쓰기 권한도 필요), 소스 제거, 연결된 리포지토리의 형식 감지, 리포지토리에서 동기화, 마지막으로 보낸 값으로 되돌리기, 이름·기준 브랜치·기준 언어 변경, 보관 또는 복원. | 소유자 |
 | **멤버** | 사람 초대, 초대 철회, 역할 변경, 멤버 제거. | 소유자 |
 | **프로젝트 만들기** | 내 GitHub 리포지토리와 브랜치 나열, 형식 감지, 프로젝트 만들기(만들려면 리포지토리 쓰기 권한도 필요). | 로그인한 누구나, [프로젝트 한도](../reference/limits.md#limits)까지 |
 
@@ -27,10 +27,11 @@
 | --- | --- |
 | 누구인지, 무엇이 있는지 확인 | `whoami`, `list_projects`, `get_project`, `list_members`, `list_events` |
 | 프로젝트 설정 | `list_repositories`, `list_branches`, `detect_formats`, `create_project`, `add_sources`, `get_workflow`, `rotate_push_token` |
+| 소스 제거 | `preview_source_removal`, `remove_source` |
 | 번역 | `list_keys`, `get_key`, `set_translations` |
 | 게시 | `preview_publish`, `publish` |
 | 되돌리기와 다시 동기화 | `preview_revert`, `revert_to_last_sent`, `preview_sync`, `sync_repository` |
 | 프로젝트 관리 | `update_project`, `set_base_locale`, `archive_project`, `unarchive_project` |
 | 멤버 관리 | `invite_members`, `revoke_invitation`, `change_member` |
 
-`sync_repository`, `revert_to_last_sent`, `rotate_push_token`, `archive_project`, `revoke_invitation`, `change_member`처럼 작업을 버리거나 접근을 끊을 수 있는 도구는 파괴적 도구로 표시되어 있어, 대부분의 에이전트가 실행하기 전에 묻습니다. 게시, 동기화, 되돌리기는 각각 미리보기부터 시작합니다. 미리보기 뒤에 무언가 바뀌었으면 아무 일도 일어나지 않고 에이전트에게 다시 미리 보라고 요청합니다. `set_translations`는 호출 한 번에 키를 100개까지 저장합니다. 저장할 수 없는 키는 보고되고 나머지는 저장됩니다. 프로젝트 소유자의 **동기화**나 야간 업데이트가 진행되는 동안에는 `set_translations`와 `revert_to_last_sent`가 아무것도 바꾸지 않고 언제 다시 시도할 수 있는지 에이전트에게 알려 줍니다.
+`sync_repository`, `revert_to_last_sent`, `rotate_push_token`, `remove_source`, `archive_project`, `revoke_invitation`, `change_member`처럼 작업을 버리거나, 무언가를 제거하거나, 접근을 끊을 수 있는 도구는 파괴적 도구로 표시되어 있어, 대부분의 에이전트가 실행하기 전에 묻습니다. 게시, 동기화, 되돌리기는 각각 미리보기부터 시작하고, 소스 제거도 미전송 편집이 있으면 그렇게 합니다. 미리보기 뒤에 무언가 바뀌었으면 아무 일도 일어나지 않고 에이전트에게 다시 미리 보라고 요청합니다. `set_translations`는 호출 한 번에 키를 100개까지 저장합니다. 저장할 수 없는 키는 보고되고 나머지는 저장됩니다. 프로젝트 소유자의 **동기화**나 야간 업데이트가 진행되는 동안에는 `set_translations`와 `revert_to_last_sent`가 아무것도 바꾸지 않고 언제 다시 시도할 수 있는지 에이전트에게 알려 줍니다.

@@ -112,7 +112,7 @@ export type ApplyOptions = {
 type PushScope = { projectId: string; surfaceId: string };
 
 export class ApplyGuardError extends Error {
-  constructor(readonly code: "archived" | "wrong-format" | "stale-commit" | "wrong-project") { super(code); }
+  constructor(readonly code: "archived" | "surface-removed" | "wrong-format" | "stale-commit" | "wrong-project") { super(code); }
 }
 
 export function applyPush(prisma: PrismaClient, scope: PushScope, payload: PushPayloadType, options: ApplyOptions): Promise<PushOutcome> {
@@ -176,7 +176,9 @@ export async function applyPushInTransaction(tx: Prisma.TransactionClient, scope
   await tx.$executeRaw`SELECT "id" FROM "TranslationSurface" WHERE "projectId" = ${scope.projectId} AND "id" = ${scope.surfaceId} FOR UPDATE`;
   const project = await tx.project.findUnique({ where: { id: scope.projectId } });
   const surface = await tx.translationSurface.findUnique({ where: { id: scope.surfaceId, projectId: scope.projectId } });
-  if (project === null || surface === null || project.archivedAt !== null || surface.archivedAt !== null) throw new ApplyGuardError("archived");
+  if (project === null || surface === null || project.archivedAt !== null) throw new ApplyGuardError("archived");
+  // ⚠️ 소스 제거는 프로젝트 보관과 다른 거부다 — 사전 가드를 지난 뒤 제거가 먼저 커밋된 경합도 응답이 `surface removed`다.
+  if (surface.archivedAt !== null) throw new ApplyGuardError("surface-removed");
   if (checkProjectSlug(payload.projectSlug, project.slug) !== "ok" || surface.slug !== payload.surfaceSlug) throw new ApplyGuardError("wrong-project");
   if (checkFormat(payload.format, surface) !== "ok") throw new ApplyGuardError("wrong-format");
   // Repository Sync는 force-push 뒤에도 현재 base를 받는다. CI는 기존 순서 가드를 유지한다.

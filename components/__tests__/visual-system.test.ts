@@ -464,7 +464,7 @@ describe("T1 동치 철자와 값 보존 예외", () => {
  * 꺼진 Scope 행의 `text-gray-dim` 칸은 같은 행 라벨이 이미 꺼짐을 말했다. 면(`bg-muted`·`bg-background` — 선택 면)은 T28 허용 목록이다.
  */
 describe("후보 행 IconTile의 덮기", () => {
-  const FILES = ["components/onboarding/steps/naming.tsx", "components/onboarding/steps/files.tsx", "components/onboarding/steps/repo.tsx", "components/mcp/token-grant-fields.tsx"];
+  const FILES = ["components/onboarding/steps/base-locales.tsx", "components/onboarding/steps/files.tsx", "components/onboarding/steps/repo.tsx", "components/mcp/token-grant-fields.tsx"];
   const tokens = (path: string) => openingTags(read(path), "IconTile").flatMap((tag) =>
     [...tag.matchAll(/"([^"]*)"/g)].flatMap((match) => (match[1] ?? "").split(/\s+/)).filter((token) => /^(?:text|bg)-/.test(token)));
   it.each(FILES)("%s — 면 색만 덮는다", (path) => {
@@ -574,6 +574,8 @@ describe("화면 간 불변식 — grep 규칙 (T28)", () => {
       "components/publish-button.tsx": { count: 2, why: "clickable while pending · progress list" },
       // `DropdownMenuItem`이다 — `Button`이 아니라 메뉴 항목 형(focus-ring 게이트가 raw `<button>`을 막는다).
       "components/shell/user-menu.tsx": { count: 1, why: "menu item" },
+      // Inbox `Try again` — `SignOutItem`과 같은 형(메뉴 항목이 닫히지 않고 disabled + 글리프 교체, 시안 D6).
+      "components/shell/attention-inbox.tsx": { count: 1, why: "menu item" },
       // 서버 헤더의 `Link` 안 `useLinkStatus` 조각 — `ButtonLink`에는 `loading`이 없고 링크 자손에서만 값이 난다.
       // `buttonClass`를 입은 `Link` + `useTransition` — `ButtonLink`는 `loading`·`onNavigate`를 받지 않는다.
       // 행 끝 chevron 자리 교체 — 버튼이 아니다(행 전체가 `Link`).
@@ -665,7 +667,7 @@ describe("화면 간 불변식 — grep 규칙 (T28)", () => {
     });
 
     it("카나리아 — 온보딩 후보 칸의 면을 호박으로 덮으면 잡는다", () => {
-      const path = "components/onboarding/steps/naming.tsx";
+      const path = "components/onboarding/steps/base-locales.tsx";
       const source = real(path);
       const mutated = source.replace('className={active ? "bg-background" : "bg-muted"}', 'className={active ? "bg-background" : "bg-warning-soft text-warning-soft-foreground"}');
       expect(mutated).not.toBe(source);
@@ -687,12 +689,12 @@ describe("화면 간 불변식 — grep 규칙 (T28)", () => {
 
     it("0곳이다", () => {
       expect(SOURCES.filter(({ source }) => /\bTriangleAlert\b/.test(source)).length).toBeGreaterThanOrEqual(4);
-      expect(offenders(SOURCES)).toEqual([]);
+      expect(offenders(ALL_SOURCES)).toEqual([]);
     });
 
     it.each([
       ["components/ui/alert.tsx", "danger: CircleX", "danger: TriangleAlert"],
-      ["components/home/attention-card.tsx", 'import_failed: { icon: CircleX, tone: "danger" }', 'import_failed: { icon: TriangleAlert, tone: "danger" }'],
+      ["lib/home/attention-view.ts", 'import_failed: { icon: CircleX, tone: "danger" }', 'import_failed: { icon: TriangleAlert, tone: "danger" }'],
       ["components/projects/project-list.tsx", '"danger" ? CircleX : TriangleAlert', '"danger" ? TriangleAlert : CircleX'],
     ])("카나리아 — %s의 실패 글리프를 삼각으로 바꾸면 잡는다", (path, from, to) => {
       const source = real(path);

@@ -1,9 +1,8 @@
 "use server";
 
-import { cookies, headers } from "next/headers";
-
 import { readSession } from "@/lib/auth/read-session";
-import { COLOR_SCHEME_COOKIE, parseColorScheme } from "@/lib/color-scheme/scheme";
+import { setColorSchemeCookie } from "@/lib/color-scheme/cookie";
+import { parseColorScheme } from "@/lib/color-scheme/scheme";
 import { getPrisma } from "@/lib/db";
 import { describeFailure } from "@/lib/failure";
 import { revalidateAfterCommit } from "@/lib/revalidate-after-commit";
@@ -42,8 +41,6 @@ export async function setTimeZone(raw: unknown): Promise<SetTimeZoneResult> {
 /** ⚠️ **문장이 아니라 코드다** — `SetTimeZoneResult`와 같은 형. */
 export type SetColorSchemeResult = "ok" | "invalid" | "failed";
 
-const ONE_YEAR = 60 * 60 * 24 * 365;
-
 /**
  * **화면 테마 바꾸기** (color-scheme design §3.6) — `/preferences`의 Theme 카드가 부른다. 공개 스위처가 없어 보호 경로 아래에 산다.
  *
@@ -68,9 +65,7 @@ export async function setColorScheme(raw: unknown): Promise<SetColorSchemeResult
     return "failed";
   }
 
-  // 프록시가 둘 이상이면 `https,http`처럼 목록으로 온다 — 앞이 클라이언트 쪽이다(`setUiLocale`과 같은 판정).
-  const proto = (await headers()).get("x-forwarded-proto")?.split(",")[0]?.trim().toLowerCase();
-  (await cookies()).set(COLOR_SCHEME_COOKIE, colorScheme, { httpOnly: true, sameSite: "lax", secure: proto === "https", path: "/", maxAge: ONE_YEAR });
+  await setColorSchemeCookie(colorScheme);
 
   // 루트 레이아웃이 `<html data-theme>`을 이 값으로 단다 — 전 화면이다. ⚠️ 둘째 인자는 경로다(`("/", "layout")`이 아니다).
   // 커밋 뒤라 던져도 결과를 뒤집지 않는다.

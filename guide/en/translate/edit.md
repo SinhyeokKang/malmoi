@@ -32,6 +32,18 @@ If part of the search fails, a line under the search box says which part failed 
 
 With an empty search, you see previews of **Projects**, **Pages**, and **Docs**. **Pages** takes you to screens in Malmoi, such as a project's Translations. **Projects** includes archived projects, while key results do not. Choose **Go to your projects** to see all of your projects, or **Go to docs** to open the docs. **Docs** searches guide titles and text and opens the matching section. Escape closes the search. Malmoi doesn't keep your search text in history or browser storage.
 
+## See what needs you across projects {#inbox}
+
+The inbox button between the divider and your avatar at the top right — in the app, and on the docs, changelog, and privacy pages while you're signed in — lists what needs your attention in every project you belong to, so you don't have to open each project's **Home**. When something is new since you last looked, the button shows how many items; above nine it shows 9+.
+
+1. Choose the inbox button. Items are grouped by project, and the project with the newest item comes first. You see sources whose last sync failed or was only partly synced, text waiting for review, languages that have no translations, and unsent edits. Project owners also see projects that still need setup.
+2. Select an item. A sync problem opens **Sources**, where you can read why; only project owners can try the sync again. The other items open **Translations** with the matching filter, and setup opens the project's **Settings**.
+3. Close the list. Opening it marks everything in it as seen, and the number clears when the list closes. If the list doesn't load, choose **Try again**.
+
+![The inbox open at the top right, with items grouped by project: a failed sync and a partial sync, then an unsent edit and text waiting for review](/guide/inbox-open.webp "Choose an item to go where you can resolve it.")
+
+An item counts again only when it is new or has changed since you last opened the list, and it leaves the list once it is resolved. Text waiting for review is always listed but never counted, because every sync from the repository would make it look new. When nothing needs you, the list shows **Nothing needs you**. Archived projects aren't included.
+
 ## Edit and save {#save}
 
 1. Select a row in the key list.

@@ -47,6 +47,23 @@ export const en = {
     results: (count: number): string => `${count.toLocaleString("en-US")} ${count === 1 ? "result" : "results"}`,
   },
   /**
+   * **헤더 Inbox** (attention-inbox) — 멤버 프로젝트 전체의 "지금 손볼 것" 드롭다운. 행 문장은 Home 카드(`home.attention.*`)와
+   * 목록 띠(`projects.banner.unsent`·`setup`)를 그대로 쓰고, 빈 상태 제목은 `home.attention.empty.title`, 다시 시도는 `common.retry`다.
+   * ⚠️ **트리거 이름이 메뉴 이름이다** — 메뉴 머리 제목이 없다(`aria-labelledby` → 트리거). 낱말은 Home 카드 제목과 같다.
+   */
+  inbox: {
+    label: "Needs your attention",
+    /** 배지는 `9+`로 접어도 이 이름은 실제 수를 읽는다 — 숫자 배지는 `aria-hidden`이다. */
+    labelUnread: (n: number): string => `Needs your attention, ${n.toLocaleString("en-US")} unread`,
+    /** 행 접근 이름 맨 앞의 sr 낱말 — 보이는 표시는 점이다. */
+    unread: "Unread",
+    emptyDescription: "Nothing needs your attention across your projects.",
+    /** 목록 자리의 실패 줄 — 다음 행동은 바로 아래 `common.retry` 메뉴 항목이 든다. */
+    failed: "Couldn't load this list.",
+    /** 골격은 `aria-hidden`이라 이 sr 문장이 "불러오는 중"을 말한다. */
+    loading: "Loading items…",
+  },
+  /**
    * **리포 재적재(화면 이름 `Sync`)** — 확인 Dialog · 결과 · 거부.
    * 시안: Claude Design `design_handoff_sync_repository/Sync Repository.dc.html` 아트보드 `4a`~`4f`.
    *
@@ -291,7 +308,7 @@ export const en = {
   },
   surfaces: {
     sourceCounts: (keys: number, locales: number): string => `${keys.toLocaleString("en-US")} ${keys === 1 ? "key" : "keys"} · ${locales.toLocaleString("en-US")} ${locales === 1 ? "language" : "languages"}`,
-    label: "Source", baseLocale: "Base language", confirm: "Check files", cancel: "Cancel", conflict: "These files already belong to another source:",
+    label: "Source", confirm: "Check files", cancel: "Cancel", conflict: "These files already belong to another source:",
     failed: "We couldn't add this source. Your existing translations are unchanged. Try again.",
     missingTitle: "Source unavailable",
     missingDescription: "This page may have moved or the source may no longer be active. Open your projects to continue.",
@@ -724,6 +741,11 @@ export const en = {
                     "Showing Malmoi in that theme on every device you sign in on",
                   ],
                   [
+                    "When you last opened the “Needs your attention” list in the header",
+                    "Malmoi, when you open that list",
+                    "Marking which items in it are new since you last looked",
+                  ],
+                  [
                     "Who last changed a translation, and who asked for a sync",
                     "Your own edits",
                     "Showing your teammates who changed what",
@@ -759,6 +781,7 @@ export const en = {
                 "Showing Malmoi in the language you choose.",
                 "Showing dates and times in the time zone you choose.",
                 "Showing Malmoi in the theme you choose.",
+                "Marking which items in the “Needs your attention” list are new since you last opened it.",
                 "Deciding which projects you can open and what you can do in them.",
                 "Showing your teammates who changed a translation and who asked for a sync.",
                 "Writing translations back to the repository a project is connected to, as a pull request.",
@@ -783,9 +806,10 @@ export const en = {
             {
               ul: [
                 "Your account and its connections: kept until you ask us to delete them.",
-                "The language you choose: kept with your account until you choose another or ask us to delete your account. On a browser, the language cookie lasts a year from your last choice.",
+                "The language you choose: kept with your account until you choose another or ask us to delete your account. On a browser, the language cookie lasts a year from the last time you chose a language or signed in with a language saved to your account.",
                 "The time zone you choose: kept with your account until you choose another or ask us to delete your account. It is not stored in a cookie.",
-                "The theme you choose: kept with your account until you choose another or ask us to delete your account. On a browser, the theme cookie lasts a year from your last choice.",
+                "The theme you choose: kept with your account until you choose another or ask us to delete your account. On a browser, the theme cookie lasts a year from the last time you chose a theme or signed in with a theme saved to your account.",
+                "When you last opened the “Needs your attention” list: one time per account, replaced each time you open the list and kept until you ask us to delete your account. There is no record of which items you saw, and no cookie.",
                 "A session stops working 24 hours after your last activity. Its row goes away when you sign out, or when that expired session is next presented.",
                 "A challenge for linking an account or signing other sessions out stops working after 5 to 10 minutes. Its row goes away the next time you start the same step.",
                 "An invitation stops working after 7 days, or as soon as it is accepted, revoked or sent again. The row is kept after that, including the address it was sent to, as the record that the invitation happened — ask us and we will delete it.",
@@ -873,8 +897,8 @@ export const en = {
                     "5 to 15 minutes",
                     "The same, for adding a second sign-in method to one address and for signing other sessions out",
                   ],
-                  ["Language", "1 year from your last choice", "Shows Malmoi in the language you chose on this browser, even when you are signed out"],
-                  ["Theme", "1 year from your last choice", "Shows Malmoi in the theme you chose on this browser, even when you are signed out"],
+                  ["Language", "1 year from your last choice or sign-in", "Shows Malmoi in the language you chose on this browser, even when you are signed out. Signing in copies the language saved to your account into it"],
+                  ["Theme", "1 year from your last choice or sign-in", "Shows Malmoi in the theme you chose on this browser, even when you are signed out. Signing in copies the theme saved to your account into it"],
                 ],
               },
             },
@@ -887,7 +911,7 @@ export const en = {
             {
               p: "The effective date at the top belongs to the text below it: whenever this policy changes, that date moves and the change is listed here.",
             },
-            { ul: ["2026-10-05 — you can choose Malmoi's theme: System, Light or Dark. Malmoi remembers your choice with your account and in a cookie on this browser.", "2026-10-05 — you can choose the time zone Malmoi uses for dates and times. Malmoi remembers your choice with your account only, not in a cookie. Public pages always use UTC.", "2026-10-05 — you can choose the language of Malmoi's screens: English, Korean or Spanish. Malmoi remembers your choice with your account and in a cookie on this browser. This policy is also published in Korean.", "2026-09-29 — you can also connect an app such as Claude Code or Codex by signing in through your browser, with no token to copy. Malmoi keeps the connection — the app's name and address, the actions and projects you allowed, when it was used — and only hashes of the tokens it issued; you can disconnect it on the MCP connector page.", "2026-09-29 — you can create a personal token for AI agents on the MCP connector page. Malmoi stores only a hash of it, with the actions and projects you allowed and when it was used.", "2026-09-28 — invitation emails show the name and picture of the project you are invited to, and your role in it. They still do not say who invited you.", "2026-09-27 — visits to the public pages are counted with Vercel Web Analytics, without cookies.", "2026-09-26 — the product name is written Malmoi. No change to what we collect or share.", "2026-09-24 — invitations can be sent by email through Resend.", "2026-09-19 — first version."] },
+            { ul: ["2026-10-05 — the “Needs your attention” list in the header marks items that are new since you last opened it. Malmoi keeps one time per account — when you last opened the list — and no record of which items you saw.", "2026-10-05 — you can choose Malmoi's theme: System, Light or Dark. Malmoi remembers your choice with your account and in a cookie on this browser, and signing in copies the theme saved to your account into that cookie.", "2026-10-05 — you can choose the time zone Malmoi uses for dates and times. Malmoi remembers your choice with your account only, not in a cookie. Public pages always use UTC.", "2026-10-05 — you can choose the language of Malmoi's screens: English, Korean or Spanish. Malmoi remembers your choice with your account and in a cookie on this browser, and signing in copies the language saved to your account into that cookie. This policy is also published in Korean.", "2026-09-29 — you can also connect an app such as Claude Code or Codex by signing in through your browser, with no token to copy. Malmoi keeps the connection — the app's name and address, the actions and projects you allowed, when it was used — and only hashes of the tokens it issued; you can disconnect it on the MCP connector page.", "2026-09-29 — you can create a personal token for AI agents on the MCP connector page. Malmoi stores only a hash of it, with the actions and projects you allowed and when it was used.", "2026-09-28 — invitation emails show the name and picture of the project you are invited to, and your role in it. They still do not say who invited you.", "2026-09-27 — visits to the public pages are counted with Vercel Web Analytics, without cookies.", "2026-09-26 — the product name is written Malmoi. No change to what we collect or share.", "2026-09-24 — invitations can be sent by email through Resend.", "2026-09-19 — first version."] },
           ],
         },
       ],
@@ -1217,6 +1241,8 @@ export const en = {
       anyDate: "Any date",
       anyone: "Anyone",
       anySource: "Any source",
+      /** 제거된 소스의 꼬리(시안 L1) — 이력은 남으므로 그 소스로 거를 길도 남는다. */
+      removed: "(removed)",
       anyResult: "Any result",
       clear: "Clear filters",
       people: "People",
@@ -1431,6 +1457,8 @@ export const en = {
       },
       surface: {
         added: (who: ReactNode, source: string): ReactNode => <>{who} added the {source} source</>,
+        /** 소스 제거 (sources-add-remove). 되살림은 `added`와 같은 사건이라 문장이 따로 없다. */
+        removed: (who: ReactNode, source: string): ReactNode => <>{who} removed the {source} source</>,
         baseLocale: (who: ReactNode, source: string): ReactNode => (
           <>{who} changed the base language of {source}</>
         ),
@@ -1567,6 +1595,8 @@ export const en = {
       "wrong-format": "The repository no longer matches the saved format.",
       "repo-replaced": "The connected repository changed.",
       "not-installed": "The app wasn't connected to the repository.",
+      /** 제거된 소스로 온 CI — 처방은 워크플로에서 그 step을 지우는 것이다(ACTIONS). */
+      "surface-removed": "This source was removed from the project. Remove its step from your GitHub workflow.",
       fallback: "The run was refused before it started.",
     },
   },
@@ -3013,6 +3043,43 @@ export const en = {
     open: "Open translations",
     openLanguage: "Open",
     details: "Source details",
+    /**
+     * 소스 제거의 거부 사유 (sources-add-remove). 화면의 사전 차단과 서버 거부가 같은 문장을 지난다(`removalReason`).
+     * 인가 거부(`forbidden`·`archived`·`not-found`…)는 `errors.access`가 든다.
+     */
+    removal: {
+      reasons: {
+        "last-source": "A project needs at least one source.",
+        importing: "This source is syncing. Try again when it finishes.",
+        "stale-approval": "Couldn't confirm that what you reviewed is still current — nothing was removed. Open Remove again to review.",
+      },
+      /** [Remove source] — 트리거와 확인 창 확정이 같은 낱말이다(시안 R4). */
+      action: "Remove source",
+      /** 멤버 `confirmRemove`와 같은 골격(§10). 대상은 slug다. */
+      title: (slug: string): string => `Remove ${slug} from this project?`,
+      /** 늘 선다 — 어디까지 사라지나의 경계(여기서 멈춘다 / 리포는 그대로 / 다시 더하면 돌아온다). */
+      body: "It stops syncing here. Files in the repository aren't changed. Add it again anytime to bring its translations back.",
+      /**
+       * 미전달 > 0일 때만. `count`는 `repositorySync.unsentCount` 그대로(500으로 앞세운다).
+       * ⚠️ **"버려진다"가 아니다** (사용자 결정 2026-10-06) — 제거는 번역을 건드리지 않고, 재추가 첫 적재가 **리포에 값이 있는 칸만** 리포 값으로
+       * 덮는다(ARCHITECTURE §5.9). 어느 칸이 남을지는 제거 시점에 알 수 없어 수를 쪼개지 않는다.
+       */
+      unsent: (n: number, count: ReactNode): ReactNode => <>Re-adding it later replaces {count} with the repository&apos;s values.</>,
+      /** 서버는 PR이 이 소스의 파일을 바꿨는지 보지 않는다 — 그래서 조건문이다(시안 R5). */
+      openPr: "If the open pull request changes its files, those changes drop out at the next publish.",
+      /** PR 조회 실패 — 제거를 막지 않는다. 열려 있을 수 있다는 것만 같은 결과로 말한다. */
+      prUnknown: "We couldn't check for an open pull request. If one changes its files, those changes drop out at the next publish.",
+      /** 늘 선다 — 앱은 대상 리포 워크플로에 그 step이 있는지 알 수 없다(PRODUCT §7.1). */
+      workflowLine: "Remove its step from your GitHub workflow — otherwise the next run fails and stops the sources after it.",
+      /** 지문 발급 실패 — Sync와 달리 확정을 막고 [Try again]이 다시 받는다(시안 R6 · 닫힌 결정 1). */
+      previewFailed: "We couldn't check its unsent edits. Try again before you remove it.",
+      /** 응답 유실 — 서버가 끝냈을 수 있다. 다시 실행하지 않고 화면을 다시 읽는다. */
+      unconfirmed: "We couldn't confirm whether it was removed. The list shows the current state.",
+      /** 성공 배너 첫 줄(시안 R8). */
+      removed: (slug: string): string => `Removed ${slug}.`,
+      /** 성공 배너 둘째 줄 — `link`는 Settings 링크다. */
+      workflowStep: (link: ReactNode): ReactNode => <>Remove its step from the workflow in {link}.</>,
+    },
     files: "Files",
     path: "Path pattern",
     format: "File format",
@@ -3054,7 +3121,6 @@ export const en = {
     needReview: (count: number): string => `${count.toLocaleString("en-US")} need review`,
     missingRepo: "Removed from repository",
     editorBase: "Only project owners can change the base language of a source.",
-    readOnlyNote: "Name, path and file format are read from the repository.",
     started: "started",
     addedAgo: "added",
     lastSuccess: "Last successful sync",
@@ -3359,6 +3425,13 @@ export const en = {
       },
       /** 꺼진 수동 확인([Check files])의 사유 (audit #37). */
       manualReason: "Enter a file path and a base language to check.",
+      /** 2단계 모달 바닥 왼쪽의 단계 표시 (sources-add-remove A1) — `newProject.modal.step`은 "of 4" 고정이라 빌리지 않는다. */
+      step: (n: number): string => `Step ${n.toLocaleString("en-US")} of 2`,
+      /** ② 소스별 기준 언어의 머리 — 블록마다 `newProject.baseLocale.hint`가 붙으므로 설명은 짧다. */
+      baseTitle: "Choose base languages",
+      baseDescription: "Pick the language each source is written in.",
+      /** ② 경로 충돌 실패의 끝줄 — ②에는 체크를 바꿀 컨트롤이 없고 바로 옆 [Back]이 ①로 간다. */
+      conflictBack: "Go back to change the selection.",
     },
     ci: { description: "Your workflow pushes source strings into Malmoi on every merge.", title: "CI integration", workflow: "Workflow file", sourcesLead: "One workflow covers every source. Add or change sources in", stale: "Some sources haven't been synced yet. Check that the workflow includes them.",
       /** 소스가 없어 꺼진 워크플로 행의 사유 (audit #37) — 워크플로는 소스 목록에서 만들어진다. */
@@ -3616,6 +3689,7 @@ export const en = {
       preview_publish: "Preview what Publish would send in a pull request. Returns a fingerprint to pass to publish, and pullRequest: open (with its url), none, or unknown when GitHub couldn't be checked.",
       preview_sync: "Preview a sync from the repository and how many unsent edits it would discard. Returns an approval to pass to sync_repository.",
       preview_revert: "Preview reverting one key to the version last confirmed as sent. Returns a confirmation to pass to revert_to_last_sent.",
+      preview_source_removal: "Preview removing a source: how many unsent edits it has, and whether a Malmoi pull request is open (open, none, or unknown). Returns an approval to pass to remove_source when there are unsent edits.",
       list_events: "List a project's activity log, newest first. Takes the same filters as the Logs screen and a cursor.",
       get_workflow: "Get the GitHub Actions workflow file for the project's repository. It reads the push token from the PUSH_TOKEN secret.",
       list_members: "List a project's members with masked email labels. Owners also see pending invitations.",
@@ -3627,6 +3701,7 @@ export const en = {
       revert_to_last_sent: "Revert one key's unsent languages to the version last confirmed as sent. Call preview_revert first and pass its confirmation.",
       update_project: "Change a project's name or base branch.",
       set_base_locale: "Declare a source's base language. It takes effect after the next sync from the repository.",
+      remove_source: "Remove a source from the project. Its keys, translations, and history are kept, and files in the repository aren't changed. Adding the same path with the same file format again brings it back and replaces its unsent edits with the repository's values, only where the repository has a value. If it has unsent edits, call preview_source_removal first and pass its approval. The last source can't be removed.",
       rotate_push_token: "Issue a new push token. The old one stops working at once. Set it with gh secret set PUSH_TOKEN --repo OWNER/REPO, passing the token on standard input — don't use --body (--body - stores a literal \"-\").",
       invite_members: "Invite people by email. Each invitation goes out by email and the link isn't returned.",
       revoke_invitation: "Revoke a pending invitation.",
@@ -3678,6 +3753,10 @@ export const en = {
       synced: (kept: number): string => kept === 0
         ? "Synced from the repository."
         : `Synced from the repository. ${kept.toLocaleString("en-US")} unsent ${kept === 1 ? "edit remains" : "edits remain"}, so automatic updates stay held.`,
+      sourceRemovalPreview: (unsent: number): string => unsent === 0
+        ? "The source can be removed. It has no unsent edits."
+        : `The source can be removed. Re-adding it later replaces ${unsent.toLocaleString("en-US")} ${unsent === 1 ? "unsent edit" : "unsent edits"} with the repository's values. Remove it with this approval.`,
+      sourceRemoved: (slug: string): string => `Removed ${slug}. Remove its step from the repository's workflow file, or the next run fails.`,
       syncPreview: (unsent: number): string => unsent === 0
         ? "Sync will load the repository's values. No unsent edits will be discarded."
         : `Sync will load the repository's values and discard ${unsent.toLocaleString("en-US")} ${unsent === 1 ? "unsent edit" : "unsent edits"}.`,

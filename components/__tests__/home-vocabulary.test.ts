@@ -202,6 +202,8 @@ const NOT_A_COUNT: Record<string, string> = {
   // 상한이 **코드 상수**로 강제된다 — 재검토가 필요 없는 부류다. 운영자는 상한에서 빠지지만(`OPERATOR_EMAILS`) 정적 allowlist의
   // 몇 명이라 네 자리에 닿을 수가 없다.
   "projects.count": "PROJECT_LIMIT = 3",
+  // 수는 `count`(= `repositorySync.unsentCount`, 구분자를 쓴다)가 그린다 — `n`은 es 동사 수 일치에만 쓴다.
+  "sources.removal.unsent": "count is repositorySync.unsentCount",
   // 좌석 넷도 같은 상수가 강제한다 — 분모가 `MEMBER_LIMIT`이고 분자는 그보다 클 수 없다.
   "members.seats": "MEMBER_LIMIT = 10",
   "members.seatsFull": "MEMBER_LIMIT = 10",

@@ -2,7 +2,7 @@
 
 Claude Code, Codex, claude.ai, Cursor 같은 AI 에이전트가 브라우저 로그인이나 개인 토큰으로 Malmoi에서 대신 작업하게 합니다.
 
-시작하기 전에: Malmoi에 로그인합니다. 에이전트가 프로젝트를 만들게 하려면 먼저 [내 계정](../account.md#github-connection)에서 GitHub를 연결하고 Malmoi GitHub App을 설치합니다.
+시작하기 전에: Malmoi에 로그인합니다. 에이전트가 프로젝트를 만들게 하려면 먼저 [계정](../account/profile.md#github-connection)에서 GitHub를 연결하고 Malmoi GitHub App을 설치합니다.
 
 에이전트는 `https://mal-moi.com/api/mcp`에서 MCP(Model Context Protocol)로 연결합니다. Malmoi가 직접 번역을 쓰지는 않습니다. 에이전트가 값을 쓰고, Malmoi는 브라우저와 같은 검사를 거쳐 그 값을 내가 저장한 변경 사항으로 기록합니다.
 

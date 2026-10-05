@@ -23,9 +23,9 @@ export function parseColorScheme(raw: unknown): ColorScheme | null {
 }
 
 /**
- * **계정 > 기기 쿠키 > light.** 계정 값이 지원 밖이면(값을 목록에서 뺀 뒤 남은 값) 화면이 깨지지 않고 쿠키로 넘어간다.
+ * **계정 > 기기 쿠키 > system.** 계정 값이 지원 밖이면(값을 목록에서 뺀 뒤 남은 값) 화면이 깨지지 않고 쿠키로 넘어간다.
  * `resolveUiLocale`과 모양이 같지만 합치지 않는다 — 값 집합·기본값이 다르고 공통 "설정 저장소"는 선반영이다(design §3.3).
  */
 export function resolveColorScheme({ account, cookie }: { account: unknown; cookie: unknown }): ColorScheme {
-  return parseColorScheme(account) ?? parseColorScheme(cookie) ?? "light";
+  return parseColorScheme(account) ?? parseColorScheme(cookie) ?? "system";
 }

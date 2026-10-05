@@ -6,6 +6,8 @@ import type { ComponentProps, ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
+import { ListRow } from "./list-row";
+import { Skeleton } from "./skeleton";
 import { useImeGuard } from "./use-ime-guard";
 
 /**
@@ -144,6 +146,51 @@ export function DropdownMenuCheckboxItem({
       </Primitive.ItemIndicator>
     </Primitive.CheckboxItem>
   );
+}
+
+/**
+ * **결과 목록 행** (attention-inbox T8a — DESIGN §6.4). 동작·필터 메뉴의 `DropdownMenuItem`(inset `mx-1 rounded` + `bg-accent`)과 달리
+ * 전역 검색 option과 같은 형이다 — `ListRow` 전폭 `px-4`, 두 줄(제목 + 보조줄) + aside. 소비자는 헤더 Inbox다.
+ *
+ * ⚠️ **활성 면은 Radix `data-highlighted` 하나다** — 포인터와 키보드가 같은 상태를 칠해 칠해진 행이 늘 하나다(검색 C16). 그래서 hover 면을
+ * 끄고(`hoverFill={false}`) `ListRow`의 `focus-visible` 링도 끈다 — 로빙 포커스의 표시는 활성 면이다(`CommandItem`의 `tabIndex={-1}`와 같은 결론).
+ * 클래스는 리터럴로 쓴다 — 상수를 접두로 붙인 `data-[…]:` 조립은 Tailwind가 CSS를 만들지 않는다(`tabs.tsx` 머리 주석).
+ *
+ * ⚠️ **늘 `asChild`이고 안은 `ListRow` 하나다** — menuitem 역할이 행 요소(`href`면 `<a>`, 아니면 `<button>`) 자체에 선다. 형제를 붙이면
+ * Slot이 던진다(POSTMORTEM 2026-09-09 — `slottable-item.test.ts`가 이 형을 고정한다).
+ */
+export function DropdownMenuRow({
+  href,
+  icon,
+  title,
+  description,
+  aside,
+  children,
+  className,
+  ...props
+}: Omit<ComponentProps<typeof Primitive.Item>, "asChild" | "children" | "title" | "className"> & {
+  href?: string;
+  icon?: ReactNode;
+  title?: ReactNode;
+  description?: ReactNode;
+  aside?: ReactNode;
+  children?: ReactNode;
+  className?: string;
+}) {
+  const target = href === undefined ? { as: "button" as const } : { href };
+  return (
+    <Primitive.Item asChild {...props}>
+      <ListRow {...target} hoverFill={false} icon={icon} title={title} description={description} aside={aside} className={cn("cursor-pointer py-2.5 text-sm outline-none focus-visible:ring-0 data-[highlighted]:bg-foreground/[0.07] data-[disabled]:pointer-events-none data-[disabled]:opacity-50", className)}>{children}</ListRow>
+    </Primitive.Item>
+  );
+}
+
+/**
+ * `DropdownMenuRow`의 골격 — 칩 28 + 제목·보조줄 두 줄. ⚠️ **행과 같은 파일에 둔다** — 세로 여백(`py-2.5`)이 행과 따로 떠내려가면
+ * 골격이 실물과 다른 높이로 선다(POSTMORTEM 2026-09-16). 글자 줄은 `Skeleton size`가 실물 line box를 세운다. 메뉴 항목이 아니다.
+ */
+export function DropdownMenuRowSkeleton({ widths }: { widths: readonly [title: string, description: string] }) {
+  return <ListRow as="div" className="py-2.5 text-sm" icon={<Skeleton className="size-7" />} title={<Skeleton size="sm" className={widths[0]} />} description={<Skeleton size="xs" lineHeight="normal" className={widths[1]} />} />;
 }
 
 export function DropdownMenuSeparator({ className }: { className?: string }) {

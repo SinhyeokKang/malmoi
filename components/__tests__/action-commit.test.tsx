@@ -113,7 +113,7 @@ describe("#12 — 중복 refresh를 지우고 대기가 커밋을 덮는다", ()
 
   const source = { id: "s", slug: "web", baseLocale: "en", declaredBaseLocale: null, lastCommitSha: null, lastCommitAt: null, lastImportStartedAt: null, lastImportError: null, lastImportFailedAt: null, lastImportedAt: null, createdAt: new Date("2026-09-19T00:00:00Z"), keys: 0, locales: 1, orphanedLocales: 0, progress: { total: 0, done: 0, review: 0, percent: 0 } };
   const data: SourcesData = { installed: true, sources: [source], repository: { repoOwner: "o", repoName: "r", baseBranch: "main" } };
-  const detail: SourceDetail = { ...source, installed: true, languages: [{ code: "en", isBase: true, orphaned: false, total: 0, translated: 0, needsReview: 0, untranslated: 0, percent: 0 }] };
+  const detail: SourceDetail = { ...source, installed: true, importActive: false, languages: [{ code: "en", isBase: true, orphaned: false, total: 0, translated: 0, needsReview: 0, untranslated: 0, percent: 0 }] };
 
   it("Sources 첫 적재: 상세는 재검증된 data로 한 번만 다시 읽는다 — refresh·직접 재조회 없음", async () => {
     mocks.loadSourceDetail.mockResolvedValue({ ok: true, detail });

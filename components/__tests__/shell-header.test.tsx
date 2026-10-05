@@ -31,6 +31,11 @@ vi.mock("next/link", () => {
 });
 
 vi.mock("next/navigation", () => ({ usePathname: () => "/projects" }));
+// 헤더 Inbox는 마운트 때 배지 Action을 부른다 — 이 파일은 배치만 본다(동작은 `attention-inbox.test.tsx`).
+vi.mock("@/app/inbox/actions", () => ({
+  loadAttentionBadgeAction: vi.fn(async () => ({ status: "failed" })),
+  openAttentionInboxAction: vi.fn(async () => ({ status: "failed" })),
+}));
 
 const header = () => render(<Header m={en} name="Kim" email="kim@acme.com" image={null} signOut={vi.fn()} memberships={[]} />);
 
@@ -74,15 +79,18 @@ describe("앱 셸 헤더", () => {
     expect(bar!.children[1]!.querySelector('button[aria-label="Search"]')).not.toBeNull();
     expect(bar?.children[2]?.className).toBe("justify-self-end");
   });
-  it("우측은 New project · 구분선 · 사용자 메뉴 순서다", async () => {
+  /** attention-inbox H1 — Inbox는 세로선 오른쪽·아바타 왼쪽이다: `[New project] | [Inbox] [avatar]`. */
+  it("우측은 New project · 구분선 · Inbox · 사용자 메뉴 순서다", async () => {
     const { container } = await header();
     const right = container.querySelector("header > .justify-self-end > div");
     const kids = [...(right?.children ?? [])];
-    expect(kids).toHaveLength(3);
+    expect(kids).toHaveLength(4);
     expect(kids[0]?.getAttribute("href")).toBe(routes.newProject());
     expect(kids[1]?.getAttribute("aria-hidden")).toBe("true");
     expect(kids[1]?.className).toContain("bg-border-subtle");
-    expect(kids[2]?.getAttribute("aria-label")).toBe(en.common.nav.userMenu);
+    expect(kids[2]?.getAttribute("aria-label")).toBe(en.inbox.label);
+    expect(kids[2]?.getAttribute("aria-haspopup")).toBe("menu");
+    expect(kids[3]?.getAttribute("aria-label")).toBe(en.common.nav.userMenu);
   });
 
   it("New project는 Plus 아이콘 + 글자이고 공개 셸 GitHub 링크와 같은 모양이다 — 같은 탭", async () => {
