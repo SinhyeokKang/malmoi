@@ -94,6 +94,9 @@ describe("꺼진 컨트롤의 사유 (#37)", () => {
     // 스피너는 누른 쪽에만 선다 (audit-ux #26) — 둘 다 `busy`이되 갈래를 가른다.
     expect(source.match(/busy=\{pending && operation === "(add|manual)"\}/g) ?? []).toHaveLength(2);
     expect(source).not.toMatch(/busy=\{pending\}/);
+    // ①의 [Next]도 같은 계약이다 — `WizardFooter`의 aria 갈래(`nextBlocked`)이고 진짜 `disabled`·`loading` 갈래(`nextDisabled`)가 아니다.
+    expect(source).toMatch(/nextBlocked=\{stepReason !== null/);
+    expect(source).not.toMatch(/nextDisabled=/);
   });
 
   it("보이는 사람에게도 사유가 보인다 — 워크플로 행·수동 확인은 글자로, 머리의 Sync·Try again은 title로 (§6.646의 Publish와 같다)", async () => {

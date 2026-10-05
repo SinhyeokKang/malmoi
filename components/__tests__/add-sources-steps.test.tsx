@@ -4,7 +4,7 @@ import { act } from "react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
 
-import { find, render } from "./helpers/dom";
+import { find, input, render } from "./helpers/dom";
 
 /**
  * **Add sources는 ① 소스 선택 → ② 소스별 기준 언어 2단계다** (sources-add-remove A1–A7). 전엔 기준 언어 셀렉트가 하나이고
@@ -70,7 +70,8 @@ beforeEach(() => { vi.clearAllMocks(); });
 it("① 하단에 공통 기준 언어 셀렉트가 없다 — 단계 표시와 [Next]만 선다", async () => {
   await open([web, emails]);
   await click(include(emails.pathTemplate));
-  expect(dialog().querySelector(`[aria-label="${en.surfaces.baseLocale}"]`)).toBeNull();
+  // 언어 둘이라 미리보기 언어는 세그먼트다 — ①에 combobox가 하나도 없다(옛 공통 기준 언어 셀렉트).
+  expect(dialog().querySelector('[role="combobox"]')).toBeNull();
   expect(dialog().textContent).toContain(en.settings.sources.step(1));
   expect(next().getAttribute("aria-disabled")).toBeNull();
   expect(document.querySelector("[data-add-sources]")).toBeNull();
@@ -188,6 +189,44 @@ it("② 추가 중에는 [Back]·라디오·Portal 셀렉트가 잠기고 확정
   } finally { await act(async () => { call.resolve({ ok: false, error: "unavailable" }); }); }
 });
 
+it("② 추가가 던지면 ②에 머물고 확인 불가 경고를 세우며 [Back] 뒤에도 그 경고와 체크가 남는다 (A7)", async () => {
+  mocks.addSurfaces.mockRejectedValueOnce(new Error("offline"));
+  await open([web, emails]);
+  await click(include(emails.pathTemplate)); await click(next());
+  await click(confirm());
+  expect(dialog().querySelector("h2")?.textContent).toBe(en.settings.sources.baseTitle);
+  expect(dialog().textContent).toContain(en.settings.sources.unknown);
+  expect(confirm().getAttribute("aria-disabled")).toBeNull();
+  await click(back());
+  expect(dialog().textContent).toContain(en.settings.sources.unknown);
+  expect(include(emails.pathTemplate).getAttribute("aria-checked")).toBe("true");
+});
+
+it("단계 전이는 포커스를 본문으로 옮기고 그 단계의 제목을 live 영역에 쓴다", async () => {
+  await open([web, emails]);
+  await click(include(emails.pathTemplate)); await click(next());
+  const body = find<HTMLElement>(dialog(), "[data-onboarding-body]");
+  const live = () => find<HTMLElement>(dialog(), '[aria-live="polite"]').textContent;
+  expect(document.activeElement).toBe(body);
+  expect(live()).toBe(en.settings.sources.baseTitle);
+  await click(back());
+  expect(document.activeElement).toBe(body);
+  expect(live()).toBe(en.settings.sources.add);
+});
+
+it("① 수동 확인이 도는 동안 [Next]는 진짜 disabled가 아니라 aria-disabled다 — 포커스와 사유가 남는다", async () => {
+  const call = deferred<unknown>(); mocks.confirmManualFormat.mockReturnValueOnce(call.promise);
+  mocks.detectRepoFormats.mockResolvedValue({ ok: true, candidates: [] });
+  await render(<AddSourcesModal open onClose={() => {}} onAdded={() => {}} returnFocusRef={{ current: null }} slug="acme" owner="o" repo="r" branch="main" existing={[]} adapters={[]} server={{}} />);
+  await input(find<HTMLInputElement>(document.body, "#manual-path"), "i18n/{locale}.json");
+  await input(find<HTMLInputElement>(document.body, "#manual-base"), "en");
+  try {
+    await click(button(en.surfaces.confirm));
+    expect(next().disabled).toBe(false);
+    expect(next().getAttribute("aria-disabled")).toBe("true");
+  } finally { await act(async () => { call.resolve({ ok: false, error: "unavailable" }); }); }
+});
+
 it("손 사본 0 — ②와 신규 프로젝트 ③이 같은 소스 블록 컴포넌트를 쓴다 (A4)", () => {
   const read = (path: string) => readFileSync(path, "utf8");
   const modal = read("components/sources/add-sources-modal.tsx");
@@ -197,6 +236,8 @@ it("손 사본 0 — ②와 신규 프로젝트 ③이 같은 소스 블록 컴�
   for (const source of [modal, naming]) {
     expect(source).not.toMatch(/function BaseLocaleFields|<RadioGroup\b|<SelectRow\b/);
   }
-  // 공통 셀렉트가 사라졌다 (A6).
-  expect(modal).not.toMatch(/m\.surfaces\.baseLocale/);
+  // 경로 줄을 모달이 손으로 다시 그리지 않는다 — 블록은 `SurfaceBaseLocales` 하나다.
+  expect(modal).not.toMatch(/BaseLocaleFields/);
+  // ①·②의 바닥 [Next]·[Back]·확정은 `WizardFooter`다 — 마크업 사본을 두지 않는다 (fix1 🟡2).
+  expect(modal.match(/<WizardFooter\b/g) ?? []).toHaveLength(2);
 });
