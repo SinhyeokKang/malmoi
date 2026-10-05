@@ -2,7 +2,7 @@ import "server-only";
 import { z } from "zod";
 
 import { en } from "@/messages/en";
-import { settleRevalidate } from "@/lib/revalidate-after-commit";
+import { redrawIfArchived, settleRevalidate } from "@/lib/revalidate-after-commit";
 import { removalReason, type SourceRemovalError } from "@/lib/surfaces/plan-removal";
 import { previewSurfaceRemoval, removeSurface } from "@/lib/surfaces/remove";
 import { revalidatePath } from "next/cache";
@@ -42,7 +42,7 @@ export const removeSourceTool = defineTool({
     const gate = await checkProjectTool(prisma, subject, { name: "remove_source", slug: input.slug });
     if (gate.status !== "ok") return gate;
     const result = await removeSurface(prisma, coreSubject(subject), input);
-    if (!result.ok) return refused(result.error);
+    if (!result.ok) return redrawIfArchived(input.slug, result.error, refused(result.error));
     // 웹 `removeSource`와 같은 둘이다.
     settleRevalidate("source-remove", () => {
       revalidatePath(`/projects/${input.slug}`, "layout");

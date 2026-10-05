@@ -11,7 +11,7 @@ import { BaseLocaleInput, declareBaseLocale } from "@/lib/sources/base-locale";
 import { readSession } from "@/lib/auth/read-session";
 import { getPrisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import { settleRevalidate } from "@/lib/revalidate-after-commit";
+import { redrawIfArchived, settleRevalidate } from "@/lib/revalidate-after-commit";
 import {
   PreviewSourceRemovalInput, previewSurfaceRemoval, RemoveSourceInput, removeSurface,
   type SourceRemovalError, type SourceRemovalPreview,
@@ -93,7 +93,8 @@ export async function removeSource(raw: { slug: string; surfaceSlug: string; app
   if (session.status === "unavailable") return { ok: false, error: "unavailable" };
   if (session.status === "none") return { ok: false, error: "unauthorized" };
   const result = await removeSurface(getPrisma(), { userId: session.userId }, parsed.data);
-  if (!result.ok) return result;
+  // 상태 때문에 거부했으면 화면을 다시 그린다 — 연 채로 보관된 Sources가 켜진 버튼으로 남지 않게(POSTMORTEM 2026-09-24).
+  if (!result.ok) return redrawIfArchived(parsed.data.slug, result.error, result);
   /**
    * 소스 추가(`addSurfaces`)와 같은 둘이다 — 셸 소스 전환·Sources·Home·번역 화면이 그 프로젝트 레이아웃 아래이고, 목록의
    * 미전달 수가 제거된 소스를 빼고 다시 센다. 커밋 뒤 캐시 장애가 성공을 실패로 뒤집지 않는다.
