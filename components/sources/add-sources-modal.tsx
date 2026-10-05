@@ -80,7 +80,7 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
   useEffect(() => {
     if (!open) return;
     let active = true;
-    setDetecting(true); setDetectError(undefined); setError(undefined); setUnknown(false); setStep(1);
+    setDetecting(true); setDetectError(undefined); setError(undefined); setUnknown(false); setConflicts([]); setStep(1);
     void detectRepoFormats({ owner, repo, ref: branch }).then(result => {
       if (!active) return;
       const next = result.ok ? result.candidates : [];
@@ -108,7 +108,14 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
     `loading`(진짜 `disabled`)과 `aria-disabled`를 겸하지 않는다(DESIGN §6.65). 사유는 둘 다 **보이는 글자**다.
   */
   // ⚠️ 사유는 꺼진 동안만 서고, 막은 갈래를 말한다 (malmoi#93) — 켜진 버튼이 옛 문장을 describedby로 들고 있었다.
-  const blockInput = { detecting, detectError: !!detectError, formats: selection.formats, conflicts: selection.conflicts.length };
+  /**
+   * 서버가 경로 충돌로 거부한 후보 중 **아직 새로 체크된 것** (malmoi#195). `selection.conflicts`는 고른 후보끼리의 충돌만 알아, 다른 탭이 같은
+   * 소스를 먼저 더한 경우를 ①이 짚지 못했다. ⚠️ **[Back]이 지우지 않는다** — 고칠 자리가 ①이다. 체크를 풀면 빠지고 다시 체크하면 다시 선다
+   * (그 사이 리포·소스가 바뀐 것을 화면은 모른다 — 모달을 다시 열면 탐지와 함께 비운다).
+   */
+  const rejected = conflicts.filter(conflict => candidates.some((c, index) => c.pathTemplate === conflict.path && checked.has(index) && !locked.has(index)));
+  const conflictLine = (conflict: { path: string; surfaceSlugs: string[] }) => conflict.surfaceSlugs.length ? `${conflict.path} · ${conflict.surfaceSlugs.join(", ")}` : conflict.path;
+  const blockInput = { detecting, detectError: !!detectError, formats: selection.formats, conflicts: selection.conflicts.length + rejected.length };
   // ⚠️ ①은 기준 언어를 보지 않는다 — 그 값을 정하는 컨트롤이 ②에만 있다(`planAddStep`).
   const stepReason = planAddStep(m, blockInput);
   const addReason = planAddBlock(m, blockInput);
@@ -131,7 +138,7 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
         <WizardFooter nextBlocked={stepReason !== null || pending} nextDescribedBy={stepReason !== null ? "add-source-help" : undefined} onNext={() => setStep(2)} />
       </> : <>
         {/* 추가 중 ①로 돌아가 체크를 바꾸면 화면이 보내지 않은 선택을 말한다 — 닫기 넷과 함께 막는다. 스피너는 확정에만 선다(audit-ux #26). */}
-        <WizardFooter showBack backDisabled={pending} onBack={() => { setError(undefined); setConflicts([]); setStep(1); }}
+        <WizardFooter showBack backDisabled={pending} onBack={() => { setError(undefined); setStep(1); }}
           nextLabel={m.settings.sources.confirm} nextArrow={false} spinnerSize="sm" data-add-sources
           busy={pending && operation === "add"} nextBlocked={addBlocked || pending} nextDescribedBy={addBlocked ? "add-source-help" : undefined} onNext={() => {
           const plan = planAddSources({ picked: candidates.filter((_, i) => checked.has(i)), existing });
@@ -151,7 +158,7 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
     </>} notice={reason !== null ? <span id="add-source-help" className="text-muted-foreground text-xs">{reason}</span>
       /* 추가는 첫 적재까지 돈다 (audit-ux #23) — 큰 리포면 버튼 스피너 하나로 30초를 넘긴다. */
       : step === 2 && slow ? <SlowLine /> : m.settings.sources.step(step)}>
-    {error && <Alert variant="danger"><p>{m.settings.sources.nothingAdded}</p><p>{error === "repo-replaced" ? m.settings.repository.health["repo-replaced"] : error === "path-conflict" ? m.surfaces.conflict : error === "ingest-failed" ? m.surfaces.failed : failureText(m, error)}</p>{conflicts.map(c => <p key={c.path}>{c.surfaceSlugs.length ? `${c.path} · ${c.surfaceSlugs.join(", ")}` : c.path}</p>)}{error === "path-conflict" && <p>{m.settings.sources.conflictBack}</p>}</Alert>}
+    {error && <Alert variant="danger"><p>{m.settings.sources.nothingAdded}</p><p>{error === "repo-replaced" ? m.settings.repository.health["repo-replaced"] : error === "path-conflict" ? m.surfaces.conflict : error === "ingest-failed" ? m.surfaces.failed : failureText(m, error)}</p>{conflicts.map(c => <p key={c.path}>{conflictLine(c)}</p>)}{error === "path-conflict" && <p>{m.settings.sources.conflictBack}</p>}</Alert>}
     {step === 1 && manualError && <Alert variant="danger">{failureText(m, manualError)}</Alert>}
     {unknown && <Alert variant="warning">{m.settings.sources.unknown}</Alert>}
     {/* ⚠️ 성공은 GitHub으로 가는 redirect라 되던진다 (audit-ux #14) — 그 밖의 throw는 거부와 같은 자리로 접는다. */}
@@ -162,7 +169,7 @@ export function AddSourcesModal({ open, onClose, onAdded, returnFocusRef, slug, 
     {step === 1 ? <>
       <div className="flex min-h-0 flex-1">
         <FilesStep pending={pending} previewNone={m.settings.sources.previewNone} state={{ detecting, detectError, candidates, picked, locale, preview, manual, manualMatched: false, adapters, repoLabel: `${owner}/${repo}`, branch, banner: null }}
-          selection={{ checked, locked, conflicts: selection.conflicts, onToggle: index => setChecked(previous => { const next = new Set(previous); if (next.has(index)) next.delete(index); else next.add(index); return next; }) }}
+          selection={{ checked, locked, conflicts: [...selection.conflicts, ...rejected.map(conflict => ({ path: conflictLine(conflict) }))], onToggle: index => setChecked(previous => { const next = new Set(previous); if (next.has(index)) next.delete(index); else next.add(index); return next; }) }}
           onPick={index => { setPicked(index); setLocale(candidates[index]?.baseLocale ?? ""); }} onLocale={setLocale}
           onManual={value => { setPicked(null); setManual(value); setManualError(undefined); }} onRetry={() => setRevision(v => v + 1)} />
       </div>
