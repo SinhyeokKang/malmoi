@@ -179,7 +179,7 @@ export function Stage({
             <li key={text}>{text}</li>
           ))}
         </ol>
-        {/* `98px` = 공개 셸의 윗 여백 8 · 헤더 40 + 8 · 푸터 40 · 패널 테두리 2(`public-shell.tsx`) — 셸 치수가 바뀌면 트랙과 함께 고친다. JS 전 폴백일 뿐이고 준비 뒤엔 `--landing-stage-h`가 잰 값이다. */}
+        {/* `98px` = 공개 셸의 윗 여백 6 · 헤더 44 + 6 · 푸터 40 · 패널 테두리 2(`public-shell.tsx` — 2026-10-04 D8 뒤에도 합은 같다) — 셸 치수가 바뀌면 트랙과 함께 고친다. JS 전 폴백일 뿐이고 준비 뒤엔 `--landing-stage-h`가 잰 값이다. */}
         <div className="pointer-events-none sticky top-0 h-[var(--landing-stage-h,calc(100svh-98px))]">
           <div
             ref={frameRef}

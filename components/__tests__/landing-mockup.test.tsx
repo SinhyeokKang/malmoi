@@ -12,6 +12,7 @@ import { navFooterItems, navZones } from "@/lib/shell/nav";
 
 import { Search } from "lucide-react";
 
+import { AttentionInbox } from "@/components/shell/attention-inbox";
 import { CloseButton } from "@/components/ui/close-button";
 import { FieldButton } from "@/components/ui/field-button";
 import { ListRow } from "@/components/ui/list-row";
@@ -29,6 +30,12 @@ import { find, render } from "./helpers/dom";
 const DIR = join(process.cwd(), "components/landing/mockup");
 const fixture = en.landing.mockup;
 const p = en.translations.publish;
+
+// 실물 Inbox 트리거를 렌더해 목업 사본과 견준다 — 배지 0(정적 목업과 같은 상태)으로 고정한다.
+vi.mock("@/app/(edit)/inbox/actions", () => ({
+  loadAttentionBadgeAction: vi.fn(async () => ({ status: "ok", unread: 0 })),
+  openAttentionInboxAction: vi.fn(async () => ({ status: "failed" })),
+}));
 
 // jsdom에 `matchMedia`가 없다 — 스테이지가 effect에서 읽는다. 재생 배선은 `landing-stage.test.tsx`가 본다.
 beforeEach(() => {
@@ -111,7 +118,9 @@ describe("목업 — 제품과 같은 구조다", () => {
     const switcher = find<HTMLElement>(head, "[data-landing-switcher]");
     expect(head.lastElementChild).toBe(switcher);
     expect(switcher.tagName.toLowerCase()).toBe("span");
-    for (const cls of ["ml-auto", "size-6", "rounded-sm", "p-0"]) expect(switcher.className.split(" ")).toContain(cls);
+    // 실물(`project-switcher.tsx`)은 `Button size="icon-xs" variant="ghost"` + `-my-0.5 ml-auto shrink-0 rounded-sm`이다 — 목업은 같은 `buttonClass`를 입는다.
+    for (const cls of buttonClass({ variant: "ghost", size: "icon-xs" }).split(" ").filter(Boolean)) expect(switcher.className.split(" "), cls).toContain(cls);
+    for (const cls of ["-my-0.5", "ml-auto", "shrink-0", "rounded-sm"]) expect(switcher.className.split(" ")).toContain(cls);
     const glyph = switcher.querySelector("svg");
     expect(glyph?.getAttribute("class")).toContain("lucide-chevrons-up-down");
     expect(glyph?.getAttribute("class")).toContain("size-4");
@@ -119,35 +128,63 @@ describe("목업 — 제품과 같은 구조다", () => {
     expect(find(scene, '[data-landing-zone="work"]').querySelector("[data-landing-switcher]")).toBeNull();
   });
 
-  /** 앱 셸 헤더와 같다(2026-09-30) — 우측 `New project · 구분선 · 아바타`. */
-  it("헤더 우측이 New project · 구분선 · 아바타다", async () => {
+  /** 앱 셸 헤더와 같다(2026-10-05 attention-inbox) — 우측 `New project · 구분선 · Inbox · 아바타`. */
+  it("헤더 우측이 New project · 구분선 · Inbox · 아바타다", async () => {
     const scene = layer(await mount(), 0);
     const right = find(scene, "[data-landing-header-right]");
     const kids = [...right.children];
-    expect(kids).toHaveLength(3);
+    expect(kids).toHaveLength(4);
     expect(kids[0]?.textContent).toBe(en.common.nav.newProject);
     expect(kids[0]?.querySelector("svg")?.getAttribute("class")).toContain("lucide-plus");
     expect(kids[1]?.className).toContain("bg-border-subtle");
+    expect(kids[2]?.hasAttribute("data-landing-inbox")).toBe(true);
+    expect(kids[3]?.querySelector("[data-avatar], span")).not.toBeNull();
   });
 
-  /** 앱 셸 헤더의 center 슬롯(`SearchTrigger`)이 목업에서 빠져 있었다(2026-10-03 사용자). */
-  it("헤더 가운데에 실물 `FieldButton`과 같은 검색 캡슐이 있다 — 태그만 `<span>`이다", async () => {
+  /** 실물 트리거(`attention-inbox.tsx`)를 렌더해 클래스를 견준다 — 포커스 링은 실물 `Button`이 덧대는 것이라 뺀다(목업은 포커스를 받지 않는다). */
+  it("헤더 Inbox 사본은 실물 트리거와 같은 형이고 배지가 없다 — 태그만 `<span>`이다", async () => {
+    await render(<AttentionInbox />);
+    const real = document.querySelector<HTMLButtonElement>('button[aria-haspopup="menu"]')!;
+    const tokens = (el: Element) => new Set(el.className.split(" ").filter((c) => c !== "" && !c.startsWith("focus-visible:")));
+    const container = await mount();
+    for (let k = 0; k < 5; k += 1) {
+      const inbox = find<HTMLElement>(layer(container, k), "[data-landing-inbox]");
+      expect(inbox.tagName).toBe("SPAN");
+      expect(tokens(inbox), `scene ${k}`).toEqual(tokens(real));
+      expect(inbox.querySelector("svg")?.getAttribute("class")).toContain("lucide-inbox");
+      expect(inbox.children).toHaveLength(1);
+    }
+  });
+
+  it("셸 여백이 실물과 같다 — 위 6 · 헤더 44 · 헤더 아래 6, 로고 칸은 rounded-sm", async () => {
+    const scene = layer(await mount(), 0);
+    const root = scene.querySelector<HTMLElement>("[data-landing-shell]")!;
+    for (const cls of ["px-2", "pt-1.5", "pb-2"]) expect(root.classList.contains(cls), cls).toBe(true);
+    expect(root.classList.contains("gap-2")).toBe(false);
+    const header = root.querySelector("header")!;
+    expect(header.classList.contains("mb-1.5")).toBe(true);
+    expect(find(header, "[data-landing-logo]").classList.contains("rounded-sm")).toBe(true);
+  });
+
+  /**
+   * 앱 셸 헤더의 center 슬롯(`SearchTrigger`)이 목업에서 빠져 있었다(2026-10-03 사용자). ⚠️ **헤더 줄·캡슐 높이도 실물과 같은 44다**
+   * (2026-10-05 사용자 — 목업만 40을 지키던 `h-10` 덮기를 걷었다. 셸 위·아래 여백이 6이라 패널 윗변 56은 그대로다).
+   */
+  it("헤더 가운데에 실물 `FieldButton`과 같은 검색 캡슐이 있다 — 태그만 `<span>`이고 클래스가 같다", async () => {
     const real = (await render(<FieldButton icon={<Search />} placeholder={en.search.placeholder} aria-label={en.search.label} onClick={() => {}} />)).container.querySelector("button")!;
     const container = await mount();
     for (const [index, scene] of [0, 1, 2, 3, 4].map((k) => [k, layer(container, k)] as const)) {
       const header = scene.querySelector("header")!;
       expect(header.className, `scene ${index}`).toContain("grid-cols-[1fr_auto_1fr]");
-      // 헤더 44에서도 목업 헤더 줄은 40이다 — `h-10`이 빠지거나 `h-11`이 같이 남으면 목업 프레임 안 줄이 4 커진다.
-      expect(header.classList.contains("h-10"), `scene ${index}`).toBe(true);
-      expect(header.classList.contains("h-11"), `scene ${index}`).toBe(false);
+      expect(header.classList.contains("h-11"), `scene ${index}`).toBe(true);
+      expect(header.classList.contains("h-10"), `scene ${index}`).toBe(false);
       const search = find<HTMLElement>(header, "[data-landing-global-search]");
       expect(search.tagName).toBe("SPAN");
-      // 헤더 44 이후 실물은 `h-11`이고 목업은 40을 지킨다(`h-10`) — 높이만 다르다.
-      const classes = (el: Element) => new Set(el.className.split(" ").filter((c) => c !== "h-10" && c !== "h-11"));
-      expect(classes(search)).toEqual(classes(real));
-      expect(search.classList.contains("h-10")).toBe(true);
-      expect(search.classList.contains("h-11")).toBe(false);
+      expect(search.className).toBe(real.className);
+      // placeholder·단축키 자리는 실물과 같은 클래스다. 글리프 칸만 `[&>svg]:size-4` 대신 svg에 `size-4`를 직접 준다(소스 스캐너가 `>`를 텍스트로 읽는다).
+      expect([...search.children].slice(1).map((child) => child.className)).toEqual([...real.children].slice(1).map((child) => child.className));
       expect(search.querySelector("svg")?.getAttribute("class")).toContain("lucide-search");
+      expect(search.querySelector("svg")?.getAttribute("class")).toContain("size-4");
       expect(search.textContent).toBe(`${en.search.placeholder}${en.common.keys.search.mac}`);
     }
   });
@@ -273,7 +310,8 @@ describe("목업 — 씬이 이야기를 든다", () => {
   it("공통 사이드바의 머리와 행은 실제 ROW의 h-8 px-2를 따른다", async () => {
     const scene = layer(await mount(), 0);
     const rows = [...scene.querySelectorAll('[data-landing-nav]'), find(scene, '[data-landing-zone="project"] > p')];
-    for (const row of rows) expect(row.className.split(" ")).toEqual(expect.arrayContaining(["h-8", "px-2"]));
+    // 실물 `sidebar.tsx`의 `ROW`(`flex h-8 items-center gap-2 rounded-sm px-2 text-sm whitespace-nowrap`) 그대로다.
+    for (const row of rows) expect(row.className.split(" ")).toEqual(expect.arrayContaining(["flex", "h-8", "items-center", "gap-2", "rounded-sm", "px-2", "text-sm", "whitespace-nowrap"]));
   });
 
   it("④ diff 국기에 실제 표와 같은 얇은 윤곽선이 있다", async () => {
