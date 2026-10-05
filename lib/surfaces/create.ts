@@ -13,7 +13,7 @@ import { recordEvent, recordRun } from "@/lib/events/record";
 import { applyPushInTransaction } from "@/lib/push/apply";
 import { releaseOrphanedApproved } from "@/lib/protection/release-orphaned";
 import { resolveLocalePaths } from "@/lib/pull/plan";
-import { planSurfaceSlug, surfaceOwnership } from "./plan";
+import { planAddConflicts, planSurfaceSlug } from "./plan";
 import { planSurfaceRevival } from "./plan-revival";
 
 export type AddSurfaceErrorCode = "not-found" | "forbidden" | "archived" | "repo-replaced" | "path-conflict" | "ingest-failed"
@@ -77,10 +77,11 @@ export async function addSurfacesFromSnapshot(prisma: PrismaClient, input: { pro
       const surfaceId = revive?.surfaceId ?? value.surfaceId;
       const slug = revive?.slug ?? planSurfaceSlug(value.item.format.pathTemplate, slugs);
       if (revive === null) slugs.push(slug);
-      owners.push({ surfaceId, surfaceSlug: slug, paths: [...value.item.targets, ...resolveLocalePaths(value.item.format, adapterFor(value.item.format).layout, value.item.paths).map(path => path.path)] });
-      return { ...value, surfaceId, slug, revived: revive !== null };
+      const paths = [...value.item.targets, ...resolveLocalePaths(value.item.format, adapterFor(value.item.format).layout, value.item.paths).map(path => path.path)];
+      return { ...value, surfaceId, slug, revived: revive !== null, paths };
     });
-    const ownership = surfaceOwnership(owners);
+    // 충돌 줄은 추가 템플릿 · 기존 소유자다 — 계획 slug는 소유자가 아니다 (malmoi#194).
+    const ownership = planAddConflicts(owners, additions.map(addition => ({ surfaceId: addition.surfaceId, pathTemplate: addition.item.format.pathTemplate, paths: addition.paths })));
     if (!ownership.ok) throw new SurfaceCreationError("path-conflict", ownership.conflicts);
     const results = [];
     let changedValues = 0;
