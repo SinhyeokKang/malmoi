@@ -67,3 +67,4 @@ A가 `prisma migrate diff`(더미 `DIRECT_URL`)로 SQL만 만든다 → 지휘�
 - 2026-10-05 G 완료(`5ed077c5`: 계정 장 3페이지 · FAQ 15문항 · `/docs/account#id` SECTION_LEGACY_ANCHORS · `/docs/language` LEGACY_PAGES permanentRedirect). R-G(Opus medium) dispatch `ctx_9046feb59eed`. 남음: 리다이렉트 런타임 확인(preview) · 루트 README의 `/docs/language` 링크(지휘자).
 - 2026-10-05 R-G: 🔴0 🟡2(README 링크 — 지휘자 수정 · 308 런타임 — preview) 🟢3. G 통합 + README 링크 `/docs/account/preferences`. gate ok.
 - 2026-10-05 push `2d86b2aa`, preview 확인: `/docs/language` 308 → `/docs/account/preferences` 200 · `/docs/account` 200 · `/docs/faq` 200(308 본문이 404 HTML — 화면 영향 없음, 기록만). Q4(Sonnet medium — 문서화된 절차 반복) dispatch `ctx_c78cfa86df37`: `create-ready` 일회용 프로젝트 절차(지휘자 판단 — dev 전용·문서화된 절차).
+- 2026-10-05 Q4 완료: `create-ready` 재촬영(일회용 `q4-shot-tmp` 생성→id 삭제, 상주 프로젝트 불변) · guide:check stale 0 · gate ok. 워크트리 A·B·G 삭제. **런 종료 — 다음은 /merge(사용자).**
