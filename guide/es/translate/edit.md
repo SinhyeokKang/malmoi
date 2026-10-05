@@ -34,7 +34,7 @@ Con la búsqueda vacía, ves vistas previas de **Proyectos**, **Páginas** y **D
 
 ## Mira lo que requiere tu atención en todos tus proyectos {#inbox}
 
-El botón de bandeja de entrada, entre la línea divisoria y tu avatar arriba a la derecha, reúne lo que requiere tu atención en todos los proyectos a los que perteneces, para que no tengas que abrir el **Inicio** de cada proyecto. Cuando hay algo nuevo desde la última vez que miraste, el botón muestra cuántos elementos hay; a partir de diez muestra 9+.
+El botón de bandeja de entrada, entre la línea divisoria y tu avatar arriba a la derecha —en la app y, con la sesión iniciada, también en las páginas de documentación, novedades y privacidad—, reúne lo que requiere tu atención en todos los proyectos a los que perteneces, para que no tengas que abrir el **Inicio** de cada proyecto. Cuando hay algo nuevo desde la última vez que miraste, el botón muestra cuántos elementos hay; a partir de diez muestra 9+.
 
 1. Elige el botón de bandeja de entrada. Los elementos se agrupan por proyecto, y primero aparece el proyecto con el elemento más reciente. Verás fuentes cuya última sincronización falló o solo se sincronizó en parte, texto que espera revisión, idiomas sin traducciones y ediciones sin enviar. Los propietarios del proyecto también ven los proyectos cuya configuración no ha terminado.
 2. Selecciona un elemento. Un problema de sincronización abre **Fuentes**, donde puedes leer el motivo; solo los propietarios del proyecto pueden volver a intentar la sincronización. Los demás elementos abren **Traducciones** con el filtro correspondiente, y la configuración abre **Configuración** del proyecto.

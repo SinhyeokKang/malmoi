@@ -34,7 +34,7 @@ With an empty search, you see previews of **Projects**, **Pages**, and **Docs**.
 
 ## See what needs you across projects {#inbox}
 
-The inbox button between the divider and your avatar at the top right lists what needs your attention in every project you belong to, so you don't have to open each project's **Home**. When something is new since you last looked, the button shows how many items; above nine it shows 9+.
+The inbox button between the divider and your avatar at the top right — in the app, and on the docs, changelog, and privacy pages while you're signed in — lists what needs your attention in every project you belong to, so you don't have to open each project's **Home**. When something is new since you last looked, the button shows how many items; above nine it shows 9+.
 
 1. Choose the inbox button. Items are grouped by project, and the project with the newest item comes first. You see sources whose last sync failed or was only partly synced, text waiting for review, languages that have no translations, and unsent edits. Project owners also see projects that still need setup.
 2. Select an item. A sync problem opens **Sources**, where you can read why; only project owners can try the sync again. The other items open **Translations** with the matching filter, and setup opens the project's **Settings**.
