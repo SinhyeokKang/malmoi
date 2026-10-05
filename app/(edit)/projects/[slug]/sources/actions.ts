@@ -10,6 +10,12 @@ import { getSurfaceAccess } from "@/lib/surfaces/access";
 import { BaseLocaleInput, declareBaseLocale } from "@/lib/sources/base-locale";
 import { readSession } from "@/lib/auth/read-session";
 import { getPrisma } from "@/lib/db";
+import { revalidatePath } from "next/cache";
+import { settleRevalidate } from "@/lib/revalidate-after-commit";
+import {
+  PreviewSourceRemovalInput, previewSurfaceRemoval, RemoveSourceInput, removeSurface,
+  type SourceRemovalError, type SourceRemovalPreview,
+} from "@/lib/surfaces/remove";
 import type { RepositorySettingsError } from "@/lib/settings/message";
 
 /**
@@ -72,4 +78,44 @@ export async function loadSourceDetail(raw: { slug: string; surfaceSlug: string 
     const detail = await loadSource(prisma, m, access.projectId, access.surfaceId, access.role);
     return detail === null ? { rejected: "not-found" } : { ok: true, detail };
   } catch (error) { logFailure("source-detail", error); return { failed: true }; }
+}
+
+export type RemoveSourceResult = { ok: true } | { ok: false; error: SourceRemovalError | "invalid input" };
+
+/**
+ * 소스 제거 (sources-add-remove — ARCHITECTURE §5.9). 본체는 공유 코어 `removeSurface`다(MCP `remove_source`와 같다).
+ * ⚠️ **미전달이 있으면 `approval`이 `previewSourceRemoval`이 낸 지문이어야 한다** — 없거나 낡으면 `stale-approval`이고 아무것도 안 바뀐다.
+ */
+export async function removeSource(raw: { slug: string; surfaceSlug: string; approval: string | null }): Promise<RemoveSourceResult> {
+  const parsed = RemoveSourceInput.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "invalid input" };
+  const session = await readSession();
+  if (session.status === "unavailable") return { ok: false, error: "unavailable" };
+  if (session.status === "none") return { ok: false, error: "unauthorized" };
+  const result = await removeSurface(getPrisma(), { userId: session.userId }, parsed.data);
+  if (!result.ok) return result;
+  /**
+   * 소스 추가(`addSurfaces`)와 같은 둘이다 — 셸 소스 전환·Sources·Home·번역 화면이 그 프로젝트 레이아웃 아래이고, 목록의
+   * 미전달 수가 제거된 소스를 빼고 다시 센다. 커밋 뒤 캐시 장애가 성공을 실패로 뒤집지 않는다.
+   */
+  settleRevalidate("source-remove", () => {
+    revalidatePath(`/projects/${parsed.data.slug}`, "layout");
+    revalidatePath("/projects");
+  });
+  return result;
+}
+
+/** 확인 창이 열릴 때 부른다 — **읽기만 한다**(`revalidatePath` 없음). 지문·미전달 수·열린 PR 여부를 준다. */
+export async function previewSourceRemoval(raw: { slug: string; surfaceSlug: string }): Promise<SourceRemovalPreview | { ok: false; error: "invalid input" }> {
+  const parsed = PreviewSourceRemovalInput.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "invalid input" };
+  const session = await readSession();
+  if (session.status === "unavailable") return { ok: false, error: "unavailable" };
+  if (session.status === "none") return { ok: false, error: "unauthorized" };
+  try {
+    return await previewSurfaceRemoval(getPrisma(), { userId: session.userId }, parsed.data);
+  } catch (error) {
+    logFailure("source-removal-preview", error);
+    return { ok: false, error: "unavailable" };
+  }
 }
