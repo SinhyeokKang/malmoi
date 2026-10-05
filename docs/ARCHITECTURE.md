@@ -2955,7 +2955,8 @@ relation load strategy에 따른다. 멤버십이 없으면 나머지는 0회다
 안 읽음이다(같으면 읽음). `review`는 push도 `updatedAt`을 바꾸므로 정렬에는 쓰되 배지·읽음에서 뺀다.
 열기 Action은 **조회 전 now**로 목록을 만든 뒤 `updateMany({ where: { id, OR: [{ attentionSeenAt: null },
 { attentionSeenAt: { lt: now } }] }, data: { attentionSeenAt: now } })`로 기록한다. 다른 탭의 더 늦은 시각을 되돌리지 않으며,
-조회 도중 생긴 일은 다음에도 안 읽음이다. 쓰기 실패는 목록과 `marked: false`를 반환한다. 두 Action은 `revalidatePath`를 부르지 않는다.
+배지 대상 중 `at > now`인 항목만 다음에도 안 읽음이다(`at === now`는 읽음). 쓰기 실패는 목록과 `marked: false`를 반환한다. 두 Action은 `revalidatePath`를 부르지 않는다.
+⚠️ `at ≤ now`로 찍혔지만 조회 뒤에 커밋된 행은 한 번도 보이지 않은 채 읽음이 될 수 있는 잔여 창이 있다.
 열람 기록은 계정에만 남고 별도 쿠키·항목별 이력·외부 전송을 만들지 않는다. `lib/privacy/collected.ts`가 개인정보로 등재한다.
 
 ### 6.37 검색의 공개·사용자 경계 (`app/search/actions.ts` · `lib/search/`, global-search)
