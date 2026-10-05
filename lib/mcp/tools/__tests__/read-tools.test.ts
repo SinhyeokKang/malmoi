@@ -56,6 +56,7 @@ beforeEach(() => {
     users: [{ id: "owner", email: "o@a.com" }, { id: "editor", email: "e@a.com" }],
   }).prisma as unknown as PrismaClient;
   for (const fn of Object.values(h)) fn.mockReset();
+  h.previewSurfaceRemoval.mockResolvedValue({ ok: true, pendingCount: 0, approval: null, openPr: "none" });
   h.listRepositories.mockResolvedValue({ ok: true, repos: [{ owner: "o", repo: "r", fullName: "o/r", pushedAt: null }], pending: false });
   h.listNewRepoBranches.mockResolvedValue({ ok: true, names: ["main", "malmoi-i18n/sync-acme"], defaultBranch: "main", truncated: false });
   h.listLinkedBranches.mockResolvedValue({ ok: true, names: ["main"], defaultBranch: "main", truncated: false });

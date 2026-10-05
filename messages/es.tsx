@@ -612,6 +612,7 @@ export const es = {
       },
       surface: {
         added: (who: ReactNode, source: string): ReactNode => <>{who} añadió la fuente {source}</>,
+        removed: (who: ReactNode, source: string): ReactNode => <>{who} quitó la fuente {source}</>,
         baseLocale: (who: ReactNode, source: string): ReactNode => (
           <>{who} cambió el idioma base de {source}</>
         ),
@@ -709,6 +710,7 @@ export const es = {
       "wrong-format": "El repositorio ya no coincide con el formato guardado.",
       "repo-replaced": "El repositorio conectado cambió.",
       "not-installed": "La app no estaba conectada al repositorio.",
+      "surface-removed": "Esta fuente se quitó del proyecto. Quita su paso de tu workflow de GitHub.",
       fallback: "La ejecución se rechazó antes de empezar.",
     },
   },
@@ -1553,6 +1555,13 @@ export const es = {
     open: "Abrir traducciones",
     openLanguage: "Abrir",
     details: "Detalles de la fuente",
+    removal: {
+      reasons: {
+        "last-source": "Un proyecto necesita al menos una fuente.",
+        importing: "La primera sincronización de esta fuente todavía está en curso. Vuelve a intentarlo cuando termine.",
+        "stale-approval": "No pudimos confirmar que lo que revisaste siga vigente, así que no se quitó nada. Vuelve a abrir la confirmación para revisarlo.",
+      },
+    },
     files: "Archivos",
     path: "Patrón de ruta",
     format: "Formato de archivo",

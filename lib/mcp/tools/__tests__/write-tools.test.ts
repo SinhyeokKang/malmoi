@@ -411,6 +411,9 @@ describe("remove_source", () => {
   });
 
   it("approval은 생략할 수 없다 — 미전달이 없으면 null을 명시한다", async () => {
-    expect(code(await exec("remove_source", subject("owner"), S))).toBe("invalid-input");
+    // 입력 검증은 SDK 서버가 이 스키마로 한다(도구 본문 전).
+    const schema = TOOLS.find(t => t.name === "remove_source")!.inputSchema;
+    expect(schema.safeParse(S).success).toBe(false);
+    expect(schema.safeParse({ ...S, approval: null }).success).toBe(true);
   });
 });

@@ -43,6 +43,9 @@ vi.mock("@/lib/github", async (orig) => ({
   }),
 }));
 
+// 소스 제거 미리보기의 열린 PR 줄 — GitHub 없이 "없음"이다. 이 파일의 다른 도구는 이 함수를 부르지 않는다.
+vi.mock("@/lib/projects/open-pr", async (orig) => ({ ...(await orig<object>()), loadOpenPrUrl: async () => null }));
+
 const { TOOLS } = await import("../tools");
 const { resolveBearer } = await import("../token-store");
 
@@ -420,5 +423,42 @@ describe("적재 lease 중 set_translations", () => {
     await prisma.project.update({ where: { id: "p" }, data: { repositoryImportToken: null, repositoryImportStartedAt: null } });
     expect(toToolResult(await call("set_translations", subject, { slug: "p", surfaceSlug: "default", entries })).isError).toBe(false);
     expect(await koValue()).toBe("새 값");
+  });
+});
+
+/**
+ * **소스 제거** (sources-add-remove B-T8). 웹 `removeSource`와 같은 코어(`removeSurface` — 판정·승계·사건은 `source-remove.integration.ts`)를
+ * 지나는지와, 토큰 주체의 잠금 뒤 재읽기가 실리는지를 본다.
+ */
+describe("preview_source_removal → remove_source", () => {
+  beforeEach(async () => {
+    await prisma.translationSurface.create({ data: { id: "s2", projectId: "p", slug: "web", adapterName: "json-catalog", pathTemplate: "web/{locale}.json", nested: false, baseLocale: "en", lastCommitSha: "c1" } });
+    await prisma.translation.update({ where: { id: "k1-ko" }, data: { value: "Edited", pendingEditToken: "t1" } });
+  });
+  const source = { slug: "p", surfaceSlug: "default" };
+
+  it("미리보기의 지문으로 제거된다 — 지문 없이는 stale-approval이고 아무것도 안 바뀐다", async () => {
+    const owner = await token("owner");
+    const preview = await call("preview_source_removal", owner, source);
+    expect(preview).toMatchObject({ status: "ok", data: { unsentEdits: 1, pullRequest: "none" } });
+    const approval = preview.status === "ok" ? (preview.data as { approval: string }).approval : null;
+    expect(await call("remove_source", owner, { ...source, approval: null })).toMatchObject({ status: "refused", code: "stale-approval" });
+    expect((await prisma.translationSurface.findUniqueOrThrow({ where: { id: "s" } })).archivedAt).toBeNull();
+    expect(code(await call("remove_source", owner, { ...source, approval }))).toBe("ok");
+    expect((await prisma.translationSurface.findUniqueOrThrow({ where: { id: "s" } })).archivedAt).not.toBeNull();
+    expect(await prisma.projectEvent.count({ where: { projectId: "p", subtype: "surface.removed" } })).toBe(1);
+    expect(await koValue()).toBe("Edited");
+  });
+
+  it("잠금 대기 중 토큰이 폐기되면 unauthorized이고 제거·사건이 없다", async () => {
+    await prisma.translation.update({ where: { id: "k1-ko" }, data: { pendingEditToken: null } });
+    const owner = await token("owner");
+    expect(code(await race({ table: "Project", id: "p" }, "revoked", "owner", () => call("remove_source", owner, { ...source, approval: null })))).toBe("unauthorized");
+    expect((await prisma.translationSurface.findUniqueOrThrow({ where: { id: "s" } })).archivedAt).toBeNull();
+    expect(await events()).toBe(0);
+  });
+
+  it("EDITOR는 forbidden — 코어 판정 전 입구에서 끝난다", async () => {
+    expect(code(await call("remove_source", await token("editor"), { ...source, approval: null }))).toBe("forbidden");
   });
 });

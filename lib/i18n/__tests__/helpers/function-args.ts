@@ -109,6 +109,7 @@ export const FUNCTION_ARGS: { readonly [P in FunctionPaths<Messages>]: Parameter
   "logs.sentence.member.removed": ["X", "X"],
   "logs.sentence.member.invitationRevoked": ["X"],
   "logs.sentence.surface.added": ["X", "X"],
+  "logs.sentence.surface.removed": ["X", "X"],
   "logs.sentence.surface.baseLocale": ["X", "X"],
   "logs.sentence.settings.created": ["X"],
   "logs.sentence.settings.name": ["X"],

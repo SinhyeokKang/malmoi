@@ -9,6 +9,7 @@ import { getProject, getWorkflow, listEvents, listMembers } from "./project";
 import { detectFormatsTool, listBranches, listRepositoriesTool } from "./repos";
 import { previewPublish, publish } from "./publish";
 import { archiveProject, rotatePushToken, setBaseLocale, unarchiveProject, updateProject } from "./settings";
+import { previewSourceRemovalTool, removeSourceTool } from "./sources";
 import { previewSync, syncRepository } from "./sync";
 import { revertToLastSent, setTranslations } from "./translations";
 
@@ -18,7 +19,7 @@ import { revertToLastSent, setTranslations } from "./translations";
  */
 export const TOOLS: readonly ToolDefinition[] = [
   whoami, listProjects, getProject, listRepositoriesTool, listBranches, detectFormatsTool,
-  listKeys, getKey, previewPublish, previewSync, previewRevertTool, listEvents, getWorkflow, listMembers,
-  createProject, addSourcesTool, setTranslations, publish, syncRepository, revertToLastSent, updateProject, setBaseLocale,
+  listKeys, getKey, previewPublish, previewSync, previewRevertTool, previewSourceRemovalTool, listEvents, getWorkflow, listMembers,
+  createProject, addSourcesTool, setTranslations, publish, syncRepository, revertToLastSent, updateProject, setBaseLocale, removeSourceTool,
   rotatePushToken, inviteMembersTool, revokeInvitation, changeMember, archiveProject, unarchiveProject,
 ];

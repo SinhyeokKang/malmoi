@@ -31,7 +31,7 @@ const DESTRUCTIVE = { readOnlyHint: false, destructiveHint: true } as const;
 const req = (rolePermission: RolePermission | null, tokenGrant: Grant | null): ToolRequirement => ({ rolePermission, tokenGrant });
 
 const CATALOG: readonly ToolSpec[] = [
-  // 읽기 14 — grant 없는 토큰은 내 프로젝트 안의 데이터를 읽는다. GitHub 계정 열거·파일 다운로드만 grant를 요구한다.
+  // 읽기 15 — grant 없는 토큰은 내 프로젝트 안의 데이터를 읽는다. GitHub 계정 열거·파일 다운로드만 grant를 요구한다.
   { name: "whoami", annotations: READ, access: req(null, null) },
   { name: "list_projects", annotations: READ, access: req(null, null) },
   { name: "get_project", annotations: READ, access: req("translation:write", null) },
@@ -44,10 +44,11 @@ const CATALOG: readonly ToolSpec[] = [
   { name: "preview_publish", annotations: READ, access: req("translation:write", null) },
   { name: "preview_sync", annotations: READ, access: req("project:settings", null) },
   { name: "preview_revert", annotations: READ, access: req("project:settings", null) },
+  { name: "preview_source_removal", annotations: READ, access: req("project:settings", null) },
   { name: "list_events", annotations: READ, access: req("translation:write", null) },
   { name: "get_workflow", annotations: READ, access: req("project:settings", null) },
   { name: "list_members", annotations: READ, access: req("translation:write", null) },
-  // 쓰기 14 — 역할과 grant 둘 다 요구한다. `project:create`만 프로젝트 역할이 없다.
+  // 쓰기 15 — 역할과 grant 둘 다 요구한다. `project:create`만 프로젝트 역할이 없다.
   { name: "create_project", annotations: WRITE, access: req(null, "project:create") },
   { name: "add_sources", annotations: WRITE, access: req("project:settings", "project:settings") },
   { name: "set_translations", annotations: WRITE, access: req("translation:write", "translation:write") },
@@ -56,6 +57,8 @@ const CATALOG: readonly ToolSpec[] = [
   { name: "revert_to_last_sent", annotations: DESTRUCTIVE, access: req("project:settings", "project:settings") },
   { name: "update_project", annotations: WRITE, access: req("project:settings", "project:settings") },
   { name: "set_base_locale", annotations: WRITE, access: req("project:settings", "project:settings") },
+  // 편집 폐기는 재추가 때 일어나지만 승인은 여기서 받는다 — 확인창 근거로 destructive다(`sync_repository`와 같다).
+  { name: "remove_source", annotations: DESTRUCTIVE, access: req("project:settings", "project:settings") },
   { name: "rotate_push_token", annotations: DESTRUCTIVE, access: req("project:settings", "project:settings") },
   { name: "invite_members", annotations: WRITE, access: req("member:manage", "member:manage") },
   { name: "revoke_invitation", annotations: DESTRUCTIVE, access: req("member:manage", "member:manage") },

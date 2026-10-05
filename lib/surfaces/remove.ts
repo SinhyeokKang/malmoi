@@ -10,7 +10,7 @@ import { hasActiveImport } from "@/lib/import/plan";
 import { loadOpenPrUrl } from "@/lib/projects/open-pr";
 import { removalFingerprint, sameFingerprint } from "@/lib/protection/fingerprint";
 import { getSurfaceAccess } from "./access";
-import { planSurfaceRemoval, type RemovalRefusal } from "./plan-removal";
+import { planSurfaceRemoval, type RemovalRefusal, type SourceRemovalError } from "./plan-removal";
 
 /**
  * **소스 제거의 공유 코어** (sources-add-remove — ARCHITECTURE §5.9). 편집 UI의 `removeSource`·`previewSourceRemoval`과 MCP
@@ -23,7 +23,7 @@ import { planSurfaceRemoval, type RemovalRefusal } from "./plan-removal";
 export const RemoveSourceInput = z.object({ slug: z.string().min(1), surfaceSlug: z.string().min(1), approval: z.string().min(1).nullable() });
 export const PreviewSourceRemovalInput = z.object({ slug: z.string().min(1), surfaceSlug: z.string().min(1) });
 
-export type SourceRemovalError = AccessError | RemovalRefusal | "stale-approval";
+export type { SourceRemovalError };
 export type SourceRemovalResult = { ok: true } | { ok: false; error: SourceRemovalError };
 
 /** `openPr` — `open`은 열린 Malmoi PR이 있다, `unknown`은 조회 실패(확인 창 줄만 바뀌고 제거를 막지 않는다). */

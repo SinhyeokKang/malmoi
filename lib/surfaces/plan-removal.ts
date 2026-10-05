@@ -1,3 +1,6 @@
+import { accessErrorMessage, type AccessError } from "@/lib/auth/message";
+import type { Messages } from "@/lib/i18n";
+
 import { compareSurfaces } from "./plan";
 
 /**
@@ -26,4 +29,16 @@ export function planSurfaceRemoval(input: RemovalInput): RemovalVerdict {
   const heir = [...rest].sort((a, b) => compareSurfaces(a.slug, b.slug))[0];
   if (heir === undefined) return { ok: false, error: "last-source" };
   return { ok: true, nextDefaultId: input.defaultSurfaceId === input.targetId ? heir.id : null };
+}
+
+/** 제거가 돌려주는 거부 전부 — 인가(잠금 뒤 재판정 포함) · 판정 · 낡은 지문. */
+export type SourceRemovalError = AccessError | RemovalRefusal | "stale-approval";
+
+/**
+ * 거부 → 문장 (멤버 `planMemberChange`와 같은 형). 화면의 사전 차단(마지막 소스)·확인 창의 서버 거부·MCP 결과가 이 하나를 지난다.
+ * `archived`·`not-found`는 인가 문장이 이미 있어 그쪽을 쓴다 — 같은 거부에 문장을 둘 두지 않는다.
+ */
+export function removalReason(m: Messages, error: SourceRemovalError): string {
+  if (error === "last-source" || error === "importing" || error === "stale-approval") return m.sources.removal.reasons[error];
+  return accessErrorMessage(m, error);
 }

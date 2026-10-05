@@ -322,6 +322,7 @@ export function eventSentence(
     }
     case "SURFACE": {
       const slug = payload?.kind === "SURFACE" ? payload.surfaceSlug : m.logs.none;
+      if (row.subtype === "surface.removed") return m.logs.sentence.surface.removed(actor, slug);
       return row.subtype.startsWith("surface.baseLocale")
         ? m.logs.sentence.surface.baseLocale(actor, slug)
         : m.logs.sentence.surface.added(actor, slug);

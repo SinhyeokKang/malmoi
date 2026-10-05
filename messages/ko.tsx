@@ -619,6 +619,7 @@ export const ko = {
       },
       surface: {
         added: (who: ReactNode, source: string): ReactNode => <>{who} — {source} 소스를 추가했습니다</>,
+        removed: (who: ReactNode, source: string): ReactNode => <>{who} — {source} 소스를 제거했습니다</>,
         baseLocale: (who: ReactNode, source: string): ReactNode => (
           <>{who} — {source} 소스의 기준 언어를 바꿨습니다</>
         ),
@@ -716,6 +717,7 @@ export const ko = {
       "wrong-format": "리포지토리의 파일 형식이 설정과 더 이상 맞지 않습니다.",
       "repo-replaced": "연결된 리포지토리가 바뀌었습니다.",
       "not-installed": "앱이 리포지토리에 연결되어 있지 않았습니다.",
+      "surface-removed": "이 소스는 프로젝트에서 제거되었습니다. GitHub 워크플로에서 이 소스의 단계(step)를 지우세요.",
       fallback: "실행이 시작되기 전에 거부되었습니다.",
     },
   },
@@ -1557,6 +1559,13 @@ export const ko = {
     open: "번역 열기",
     openLanguage: "열기",
     details: "소스 상세",
+    removal: {
+      reasons: {
+        "last-source": "프로젝트에는 소스가 하나 이상 있어야 합니다.",
+        importing: "이 소스의 첫 동기화가 아직 진행 중입니다. 끝난 뒤 다시 시도하세요.",
+        "stale-approval": "확인한 내용이 지금도 그대로인지 확인하지 못해 아무것도 제거하지 않았습니다. 제거 창을 다시 열어 확인하세요.",
+      },
+    },
     files: "파일",
     path: "경로 패턴",
     format: "파일 형식",
