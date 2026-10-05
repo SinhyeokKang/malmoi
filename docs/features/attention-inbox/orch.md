@@ -64,3 +64,4 @@ A가 `prisma migrate diff`(더미 `DIRECT_URL`)로 SQL만 만든다 → 지휘�
 - 2026-10-05 push `f41f79a8`. Q3 dispatch `ctx_6bd71136b78c` — 가이드 컷 전부 재촬영 + 새 `inbox-open` + 쉐브론·Select 재측정. Q2 터미널 닫음.
 - 2026-10-05 Q3 완료: 재촬영 29(셸 컷 27 + README hero·logs) + 새 `inbox-open`(en·ko·es #inbox 참조) · 재측정 통과(쉐브론 Δ0.16px · Select Δ0) · README alt 셋 정정(지휘자 문서 신선도). 남음: `create-ready`(프로젝트 생성 필요 — 벽 절차). gate ok. 다음: 가이드 배치 G(IA 개편 + Malmoi 아래 FAQ, 사용자 2026-10-05).
 - 2026-10-05 push `aa5bc413`. G(Opus medium — 사실 대조·옛 URL 넘김 판단) dispatch `ctx_df455c87f95f`: IA 개편 + FAQ.
+- 2026-10-05 G 완료(`5ed077c5`: 계정 장 3페이지 · FAQ 15문항 · `/docs/account#id` SECTION_LEGACY_ANCHORS · `/docs/language` LEGACY_PAGES permanentRedirect). R-G(Opus medium) dispatch `ctx_9046feb59eed`. 남음: 리다이렉트 런타임 확인(preview) · 루트 README의 `/docs/language` 링크(지휘자).
