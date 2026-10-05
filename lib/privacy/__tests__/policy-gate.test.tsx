@@ -43,6 +43,8 @@ const REVISIONS: readonly { effectiveDate: string; digest?: string; koDigest?: s
   { effectiveDate: "2026-10-05", digest: "c67d2592808e700f35af74f4670d58190a6718747175c0278f9629072ac8c8e8", koDigest: "d0f5f45fbe9eeb157f02b91a1fec22e5c516225024e0a920c34896979efc4b25" },
   // attention-inbox — 헤더 목록을 마지막으로 연 시각(`User.attentionSeenAt`, 계정마다 하나 · 쿠키 없음). 같은 날 네 번째 개정이다 — 머지일이 바뀌면 네 행의 날짜를 같이 옮긴다.
   { effectiveDate: "2026-10-05", digest: "ae54e321d19e81af1b68c449cd719ec9fb9b32c4dd5e2cc077c921e9674dba6c", koDigest: "c1a050ddb5ae6334e184f3da1b14705a07e35b052ba0000c9a90aacad289b279" },
+  // color-scheme fix1 — 로그인하면 계정 테마를 기기 쿠키로 복사한다(쿠키 보존 기산점이 로그인으로 늘었다). 같은 날 다섯 번째 개정이다 — 머지일이 바뀌면 다섯 행의 날짜를 같이 옮긴다.
+  { effectiveDate: "2026-10-05", digest: "c8e9666b274772c3cee471f8c9d54a7d74d1c89ae6b615000fa1c92536d361fe", koDigest: "965ae2d11b73741007da9ceee441db17b69018f97ccf000151e4d7ff953f8402" },
 ];
 
 const privacy = en.publicDocs.privacy;
