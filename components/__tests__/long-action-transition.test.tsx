@@ -92,6 +92,8 @@ describe("AddSourcesModal", () => {
     <AddSourcesModal open onClose={props.onClose ?? (() => {})} onAdded={props.onAdded ?? (() => {})} returnFocusRef={ref} slug="p" owner="o" repo="r" branch="main" existing={[]} adapters={[]} server={props.server} />;
   async function add() {
     await click(document.querySelector<HTMLElement>('[role="checkbox"]')!);
+    // ② 소스별 기준 언어로 넘어간 뒤에야 확정 버튼이 선다 (sources-add-remove A1).
+    await click(byText(en.newProject.modal.next));
     await click(document.querySelector<HTMLElement>("[data-add-sources]")!);
   }
 
