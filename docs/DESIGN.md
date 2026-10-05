@@ -2153,7 +2153,7 @@ Home 카드도 Card를 쓰되 details·Meter·aside 랜드마크의 의미론은
 | Select 옵션 | `System` · `Light` · `Dark`(`COLOR_SCHEMES` 순서) — 옵션·트리거 값 앞 글리프 `Monitor` · `Sun` · `Moon`(lucide 16 + gap 8). 글리프가 `ItemText` 안이라 Language의 국기처럼 트리거로 복제된다 — 공용 카드에 슬롯을 더하지 않았다(`items[].label`이 ReactNode다) |
 | 도움말 | `System follows your device's appearance setting.` — `aria-describedby` 대상 |
 | 즉시 적용 | **Action보다 먼저 `<html data-theme>`을 바꾼다** — 화면은 CSS가 그 속성 하나로 읽으므로 서버 왕복을 기다리지 않는다. `ok`가 아니면(던짐 포함) 이전 값으로 되돌린다(속성이 없던 `<html>`이면 속성을 지운다). provider·훅이 아니라 한 줄 DOM 쓰기다. revalidate 뒤 루트 레이아웃이 같은 값을 다시 싣는다 |
-| 초기값 | 서버의 `getColorScheme()`(계정 > 쿠키 > light) — 쿠키가 http-only라 클라이언트는 읽지 않는다 |
+| 초기값 | 서버의 `getColorScheme()`(계정 > 쿠키 > system) — 쿠키가 http-only라 클라이언트는 읽지 않는다 |
 | 낱말 | ko `테마`·`시스템`·`라이트`·`다크` / es `Tema`·`Sistema`·`Claro`·`Oscuro` — §10.1 |
 
 ## 7. 접근성
