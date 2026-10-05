@@ -49,3 +49,6 @@
 - G 시작
 - G worker_done → dev cherry-pick, `pnpm gate` ok
 - Q 1차: design-sync A1–A8·R1–R9·L1 + runtime (b) — 이슈 #192–#195, 미관찰 A3/A8 Select 갈래·A5 SlowNotice·R5 열린 PR 줄
+- QA 이슈 수정: A fix2(#194·#195) · B2 fix2(#192·#193) · B2 fix3(D8 문구) · T fix3(D9 언어 쿠키) → dev 반영, gate ok
+- ⚠️ 지휘자 실수: B2 수정분 gate 실패(`test:projects:postgres` 초대 동시 수락 1건 — 재실행 591/591 green, flake)를 확인 전에 push(`08474e20`). 사후 gate·postgres·CI 전부 green. 이슈 후보: 그 스위트의 간헐 red(A도 1회 관측)
+- Q2 시작: 이슈 재확인 + 가이드 4컷 촬영
