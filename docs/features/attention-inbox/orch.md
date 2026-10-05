@@ -20,6 +20,7 @@
 7. (2026-10-05 사용자) **범위 변경 — 공개 셸 헤더에도 Inbox**(로그인 `ok`일 때). 지휘자 판단: 배치 `[GitHub] | [Inbox] [avatar]`(편집 셸과 같은 형) · 같은 컴포넌트 · Action을 `app/inbox/actions.ts`로 이동(공개 호출 Action 선례 `app/search/`·`app/ui-locale/`). B round 3.
 8. 지휘자 판단 — #191: spec 완료 조건 7 우선(marked로 닫으면 캐시 목록의 unread도 지운다). #190: 첫 구현은 시안이 정본 → Inbox 행 시각은 짧은 상대 시각 형(`relativeTime` 옵션, Home은 긴 형 유지). #189: 목업 빈 입력 64로.
 9. (2026-10-05 사용자) **가이드 IA 개편** — `account.md`·`language.md`를 한 장으로: `Account and preferences`(account/README.md) > `Account`(account/profile.md) · `Preferences`(account/preferences.md). 장 제목 en `Account and preferences`(사용자 확정) · ko `계정 및 환경설정`(사용자 확정) · es `Cuenta y preferencias` — LNB 라벨 두 낱말 규칙(하위 페이지도 LNB 라벨: 계정·환경설정 / Cuenta·Preferencias). 옛 URL·절 id는 넘김 처리(`SECTION_LEGACY_ANCHORS` 선례). Q3 인계 뒤 가이드 배치.
+10. (2026-10-05 사용자) **가이드 FAQ** — `Malmoi`(README.md) 아래 `faq.md`(en FAQ · ko 자주 묻는 질문 · es Preguntas frecuentes). 형식 참고 https://bug-shot.com/en/docs/faq, 내용은 정본만.
 
 ## 배치
 
@@ -62,3 +63,4 @@ A가 `prisma migrate diff`(더미 `DIRECT_URL`)로 SQL만 만든다 → 지휘�
 - 2026-10-05 Q2 완료: design-sync 차이 0(그룹 경계선·골격·짧은 시각 포함, 라이트·다크) · #189 #190 #191 닫힘 · 공개 헤더 Inbox 통과(로그아웃 POST 0). 미검증: rAF 애니메이션(창 스로틀) · prod 배지 POST 수 · 실제 스크린리더. A fix2 통합, gate ok.
 - 2026-10-05 push `f41f79a8`. Q3 dispatch `ctx_6bd71136b78c` — 가이드 컷 전부 재촬영 + 새 `inbox-open` + 쉐브론·Select 재측정. Q2 터미널 닫음.
 - 2026-10-05 Q3 완료: 재촬영 29(셸 컷 27 + README hero·logs) + 새 `inbox-open`(en·ko·es #inbox 참조) · 재측정 통과(쉐브론 Δ0.16px · Select Δ0) · README alt 셋 정정(지휘자 문서 신선도). 남음: `create-ready`(프로젝트 생성 필요 — 벽 절차). gate ok. 다음: 가이드 배치 G(IA 개편 + Malmoi 아래 FAQ, 사용자 2026-10-05).
+- 2026-10-05 push `aa5bc413`. G(Opus medium — 사실 대조·옛 URL 넘김 판단) dispatch `ctx_df455c87f95f`: IA 개편 + FAQ.
