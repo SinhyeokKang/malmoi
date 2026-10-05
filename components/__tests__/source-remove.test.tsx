@@ -135,6 +135,25 @@ it("확인 창은 지문을 받는 동안 확정을 busy로 두고, 경고 없�
   expect(described).toContain(en.sources.removal.workflowLine);
 });
 
+/**
+ * 리뷰 B2 🟡1 — live region은 **내용보다 먼저** 있어야 한다. 지문이 도착한 순간 내용을 든 채 새로 마운트되면 대부분의 스크린 리더가
+ * 첫 내용을 읽지 않고, 포커스는 이미 [Cancel]이라 늘어난 `aria-describedby`도 다시 읽히지 않는다 — 손실 줄이 전달되지 않은 채 확정할 수 있다.
+ */
+it("경고 줄 묶음의 live region은 지문 대기 중부터 있고 도착한 줄이 같은 노드에 들어간다", async () => {
+  let resolve!: (value: unknown) => void;
+  mocks.preview.mockReturnValue(new Promise(r => { resolve = r; }));
+  await render(<SourcesScreen slug="p" role="OWNER" data={two} adapters={[]} now={new Date()} />);
+  await openDetail();
+  await openConfirm();
+  const live = confirmDialog()!.querySelector('[aria-live="polite"]');
+  expect(live).not.toBeNull();
+  expect(live!.querySelector("[data-removal-skeleton]")).not.toBeNull();
+  await act(async () => { resolve(ready({ pendingCount: 12, approval: "fp" })); });
+  expect(confirmDialog()!.querySelector('[aria-live="polite"]')).toBe(live);
+  expect(live!.textContent).toContain(en.repositorySync.unsentCount(12));
+  expect(live!.textContent).toContain(en.sources.removal.workflowLine);
+});
+
 it.each([
   { openPr: "open" as const, line: en.sources.removal.openPr },
   { openPr: "unknown" as const, line: en.sources.removal.prUnknown },

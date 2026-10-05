@@ -25,6 +25,7 @@ import { loadPreviewSnapshot, loadPullState } from "@/lib/pull/load";
 import { logSourceOptions, parseLogFilter } from "@/lib/events/filter";
 import { loadEvents } from "@/lib/events/query";
 import { en } from "@/messages/en";
+import type { ApiTokenSubject } from "@/lib/mcp/token-store";
 
 /**
  * **제거된 소스가 소비자 화면에서 사라진다** (sources-add-remove B-T14 · spec B3·B15). 제거 코어를 진짜로 부른 뒤 각 화면이 쓰는 뷰 모델의
@@ -39,8 +40,11 @@ vi.mock("@/lib/projects/open-pr", () => ({ loadOpenPrUrl: async () => null, load
 vi.mock("@/lib/github", () => ({
   createGitClient: async () => { if (db.client === undefined) throw new Error("no fake client"); return db.client; },
   openRepoReader: async () => { if (db.reader === undefined) throw new Error("no fake reader"); return db.reader; },
+  // MCP `get_project`의 연결 상태 — 이 스위트가 재는 것이 아니다.
+  loadConnectionHealth: async () => ({ status: "unknown" }),
 }));
 const { runNightly } = await import("@/lib/nightly/run");
+const { TOOLS } = await import("@/lib/mcp/tools");
 
 const directory = mkdtempSync(join(tmpdir(), "malmoi-source-remove-consumers-"));
 let binaries: string;
@@ -198,4 +202,40 @@ it("Logs는 제거된 소스를 필터 항목으로 남기고 그 소스로 걸�
   expect(page.rows.map(row => row.subtype)).toContain("surface.removed");
   expect(await translationLinkFor(prisma, { projectId: "p", slug: "p", surfaceSlug: "web", key: "greeting.hello" })).toBeNull();
   expect(await translationLinkFor(prisma, { projectId: "p", slug: "p", surfaceSlug: "app", key: "greeting.hello" })).not.toBeNull();
+});
+
+/**
+ * MCP·온보딩 준비 판정도 "읽는 쪽 전부"다(ARCHITECTURE §5.9) — 도구 응답과 `readiness`가 제거된 소스를 세지 않는다. 대조군은 같은 호출의 제거 전 값이다.
+ */
+async function mcp(name: string, input: Record<string, unknown>) {
+  const subject: ApiTokenSubject = { userId: "owner", credential: { kind: "api-token", tokenHash: "hash-owner" }, grants: ["translation:write", "project:settings"], scope: { kind: "all" } };
+  if (await prisma.apiToken.count({ where: { userId: "owner" } }) === 0) {
+    await prisma.apiToken.create({ data: { userId: "owner", tokenHash: "hash-owner", grants: subject.grants, allProjects: true, projectIds: [], expiresAt: new Date(Date.now() + 86_400_000) } });
+  }
+  const outcome = await TOOLS.find(tool => tool.name === name)!.run({ prisma, subject, now: new Date(), origin: null }, input as never);
+  if (outcome.status !== "ok") throw new Error(`${name} refused: ${JSON.stringify(outcome)}`);
+  return outcome.data as Record<string, unknown>;
+}
+
+it("MCP get_project·get_workflow는 제거된 소스를 싣지 않는다", async () => {
+  const sourcesOf = async () => ((await mcp("get_project", { slug: "p" })).sources as { slug: string }[]).map(source => source.slug);
+  const yaml = async () => String((await mcp("get_workflow", { slug: "p" })).yaml);
+  expect(await sourcesOf()).toEqual(["app", "web"]);
+  expect(await yaml()).toContain("web/{locale}.json");
+  await removeWeb();
+  expect(await sourcesOf()).toEqual(["app"]);
+  expect(await yaml()).not.toContain("web/{locale}.json");
+  expect(await yaml()).toContain("app/{locale}.json");
+});
+
+it("준비 판정(온보딩 readiness — MCP list_projects·get_project)은 제거된 소스의 적재를 세지 않는다", async () => {
+  // 남는 소스가 아직 적재 전이면, 적재된 소스를 빼는 순간 프로젝트는 첫 동기화 대기다.
+  await prisma.translationSurface.update({ where: { id: "s-app" }, data: { lastCommitSha: null, lastCommitAt: null } });
+  const readiness = async () => ({
+    list: ((await mcp("list_projects", {})).projects as { slug: string; readiness: string }[]).find(row => row.slug === "p")?.readiness,
+    project: (await mcp("get_project", { slug: "p" })).readiness,
+  });
+  expect(await readiness()).toEqual({ list: "ready", project: "ready" });
+  await removeWeb();
+  expect(await readiness()).toEqual({ list: "awaiting_first_sync", project: "awaiting_first_sync" });
 });
