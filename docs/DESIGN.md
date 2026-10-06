@@ -1167,7 +1167,7 @@ Keys는 trim 뒤 `KEY_QUERY_MIN`(2) 이상 — **UTF-16 길이**라 서로게이
 |---|---|---|
 | 문구 | `<title>`·h1 `You're invited to a project on Malmoi` · 본문 `You've been invited to join this project on Malmoi.` 하나 · preheader는 고정 | 받은편지함 목록(제목·preheader)에 OWNER 입력 문구를 세우지 않는다 |
 | 카드 | 테이블 `width="100%"` · 테두리 `1px #e5e5e5` · radius **12** · padding 12 · 타일↔텍스트 gap 12 | `InviteProjectCard`의 `w-full rounded-lg border p-3 gap-3`(`--radius` 0.75rem) — 국기 열만 뺐다 |
-| 여백 | 문장 → 카드 16 · 카드 → 버튼 28 | — |
+| 여백 | **`AuthColumn`의 두 단계** (2026-10-06 사용자 — 옛 로고 → 제목 36 · 제목 → 문장 12 · 카드·버튼 뒤 28): 덩어리(로고 / 제목+문장 / 카드 / 버튼+대체 링크) 사이 **16** · 덩어리 안 **8** — 로고 → 제목 16 · 제목 → 문장 8 · 문장 → 카드 16 · 카드 → 버튼 16 · 버튼 → 대체 안내 8 · 안내 → 링크 4 · 링크 → 구분선 24 · 구분선 → 만료 안내 16. 좁은 화면 덮기 없음 | `/signin` 폼 칼럼의 컬럼 16 · 덩어리 안 8 |
 | 폭 | **본문 칼럼 320**(2026-10-06 사용자 — 옛 560) — `/signin` 폼 칼럼(`auth-column.tsx` `w-[320px]`)과 같다. 바깥 표 `max-width:320px;width:100%` + mso 조건부 `width="320"` · 카드·버튼 표는 `width="100%"`로 칼럼을 채운다 · 버튼 `<a>`는 `display:block`, Outlook VML 버튼은 %를 못 받아 `width:320px` | 로그인 폼의 전폭 버튼·카드와 같은 칼럼 |
 | 정렬 | **가운데**(2026-10-04 사용자) — 로고 칸 `align="center"` + `<img>` `margin:0 auto` · 본문 칸(`mm-card-pad`)·만료 안내·꼬리말 `align="center"` + `text-align:center` · 버튼은 전폭이라 정렬이 아니라 라벨 `text-align:center` · ⚠️ **카드 안은 예외다** (2026-10-06 사용자 — 가운데 정렬이 카드 안까지 번져 타일·이름이 가운데로 몰렸다): 카드 칸이 `text-align:left`를 다시 걸어 타일·이름 묶음은 왼쪽이다 | 메일 클라이언트마다 `text-align` 상속이 갈려 `align` 속성과 style을 함께 건다 |
 | 타일 | **32×32 고정 중첩 표**(`<table width="32" height="32">`) 안의 셀 `width="32" height="32" align="center" valign="middle"` + style `width:32px;height:32px;max-height:32px;line-height:0;font-size:0;overflow:hidden` · radius 8. 카드 행에 붙는 바깥 셀은 **색 없이** `valign="middle"`만 | `size-8 rounded-sm` · `items-center` |
