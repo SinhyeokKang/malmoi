@@ -1047,7 +1047,7 @@ export const es = {
       repos: {
         title: "Añadir un repositorio",
         description: "Elige a qué repositorios puede acceder la Malmoi GitHub App.",
-        action: "Elegir repositorios",
+        action: "Añadir repositorios",
       },
       waiting: {
         title: "Esperando aprobación",

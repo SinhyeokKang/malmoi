@@ -79,9 +79,7 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
   const reload = () => { if (selected) void load(selected, true); };
   const closeAdd = () => { setAdding(false); if (initialOpen) router.replace(routes.sources(slug), { scroll: false }); };
   const close = () => { if (busy) return; ++request.current; selection.current = null; setSelected(null); };
-  return <div data-sources-screen className="@container/panel flex min-h-0 flex-1 flex-col">
-    {/* ⚠️ **좁은 폭 판정을 패널이 든다** (시안 `1h` — 콘텐츠 패널 1016). 카드도 `@container`라
-        이름 없는 질의는 카드를 잡는다 — `/panel`이 그 갈림을 막는다. */}
+  return <div data-sources-screen className="flex min-h-0 flex-1 flex-col">
     <PanelHeader><div className="flex items-center gap-3">
       {/* 총계는 카드 머리 한 곳이다(4-Y6) — 바로 아래 카드가 같은 제목·같은 배지를 든다. */}
       <h1 ref={heading} id="sources-heading" tabIndex={-1} className="text-lg font-medium">{m.sources.title}</h1>
@@ -115,24 +113,22 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
           // 칸만 상태 톤을 든다 — 행 전체를 칠하면 눈이 먼저 닿는 것이 파일 이름이 아니게 된다. 톤은 배지와 같은 판정이다(🔴 A1).
           const { tone } = planSurfaceImportStatus(source);
           return <li key={source.id} className="border-border border-t first:border-t-0">
-            {/* ⚠️ **1016 이하에서 행이 `items-start`가 되고 상태가 셋째 줄로 내려간다** (시안 `1h`).
-                상태를 오른쪽에 두면 긴 경로와 버튼 사이에서 먼저 줄바꿈되는 것이 경로가 된다. */}
-              <ListRow as="button" ringInset type="button" data-source-row id={`source-row-${source.id}`} aria-expanded={selected === source.slug} disabled={selected === source.slug} className="p-0 pr-4 text-sm transition-colors disabled:cursor-not-allowed disabled:bg-foreground/[0.07] min-w-0 whitespace-normal @max-[1016px]/panel:items-start" onClick={event => {
+            {/* 좁은 폭 분기를 두지 않는다(2026-10-06 사용자) — 행 버튼이 빠져 상태 배지만 남았고, 좁아지면 경로만 `wrap-anywhere`로 줄바꿈한다. */}
+              <ListRow as="button" ringInset type="button" data-source-row id={`source-row-${source.id}`} aria-expanded={selected === source.slug} disabled={selected === source.slug} className="p-0 pr-4 text-sm transition-colors disabled:cursor-not-allowed disabled:bg-foreground/[0.07] min-w-0 whitespace-normal" onClick={event => {
                 returnFocus.current = event.currentTarget; selection.current = source.slug; setSelected(source.slug); void load(source.slug, false);
               }}>
                 {/* Content retains its old padding; the chevron keeps the outer gap and top offset inside this button. */}
-                <span data-source-content className="flex min-w-0 flex-1 items-center gap-3 px-4 py-row-y @max-[1016px]/panel:items-start">
+                <span data-source-content className="flex min-w-0 flex-1 items-center gap-3 px-4 py-row-y">
                   <IconTile data-source-glyph tone={tone}><Glyph className="size-4" aria-hidden /></IconTile>
                   <span className="flex min-w-0 flex-1 flex-col gap-copy-gap"><span className="text-foreground text-base"><span className="font-medium">{source.slug}</span> — {source.connection && <>{source.connection.format ?? (source.connection.adapterName === null ? m.sources.notConfigured : m.sources.unknownFormat)} · </>}{m.surfaces.sourceCounts(source.keys, source.locales)}</span>
                     {/* ⚠️ 경로가 sans다 — mono는 `<pre>` 코드 블록 전용이다 (DESIGN §4.1, 2026-09-23). `text-xs`가 13px라 옛 `text-mono`와 크기는 같다. */}
                     {/* 경로 앞 `Folder` 14 — `/projects` 행 메타의 리포 앞 GitHub 로고와 같은 패턴이다(2026-09-30 사용자). 색은 글자를 상속한다. */}
                     {source.connection && <span className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-xs"><Folder className="size-3.5 shrink-0" aria-hidden /><span className="min-w-0 wrap-anywhere">{source.connection.pathTemplate ?? m.sources.notConfigured}</span></span>}
-                    <SourceStatus source={source} now={now} className="hidden pt-0.5 @max-[1016px]/panel:flex" />
                   </span>
-                  <SourceStatus source={source} now={now} className="@max-[1016px]/panel:hidden" />
+                  <SourceStatus source={source} now={now} />
                 </span>
                 {/* [Open translations]는 행에서 걷었다(2026-09-30 사용자) — 번역 화면으로 가는 길은 상세 모달의 같은 버튼이다. */}
-                <ChevronRight className="text-muted-foreground size-4 shrink-0 @max-[1016px]/panel:mt-2" aria-hidden />
+                <ChevronRight className="text-muted-foreground size-4 shrink-0" aria-hidden />
               </ListRow>
           </li>;
         })}</ul>}

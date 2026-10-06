@@ -10,6 +10,12 @@
  * ⚠️ 원격 이미지는 전부 `mal-moi.com` 고정 경로다(로고 · Box PNG · `/api/images/<key>`). 썸네일은 프로젝트
  *   단위 값이라 수신자를 가르지 않아 열람 추적 픽셀이 되지 않는다.
  * ⚠️ 치환은 `message.ts`가 이스케이프한 값으로만 한다. 여기서 문자열을 조립하지 않는다.
+ * ⚠️ 본문 칼럼은 320이다 — `/signin` 폼 칼럼(`auth-column.tsx`의 `w-[320px]`)과 같고, 카드·버튼이 그 폭을 채운다
+ *   (2026-10-06 사용자 — 옛 560). Outlook VML 버튼은 %를 못 받아 `width:320px`를 박는다 — 칼럼을 바꾸면 같이 바꾼다.
+ * ⚠️ 간격은 `AuthColumn`의 두 단계다(2026-10-06 사용자) — 덩어리(로고 / 제목+문장 / 카드 / 버튼+대체 링크) 사이 16 ·
+ *   덩어리 안 8. 좁은 화면에서도 같은 값이라 `.mm-card-pad` 미디어 덮기가 없다.
+ * ⚠️ 본문은 가운데 정렬이지만 **카드 안은 예외다** (2026-10-06 사용자) — 본문 칸의 `text-align:center`가 상속되므로
+ *   카드 칸이 `text-align:left`를 다시 걸어 타일·이름이 왼쪽에 선다.
  * ⚠️ 테두리+radius를 든 칸의 표(카드·버튼)는 `border-collapse:separate`다 — 전역 `table{border-collapse:collapse}` 아래선
  *   radius가 테두리에 안 걸려 각진 1px 테두리와 모서리 흰 틈이 남는다(2026-10-04 실측 — 버튼에만 빠져 있었다).
  */
@@ -49,7 +55,6 @@ export const INVITATION_EMAIL_HTML = `<!DOCTYPE html>
   a.mm-btn:hover{background:#262626!important}
   @media only screen and (max-width:600px){
     .mm-outer{padding:16px 12px!important}
-    .mm-card-pad{padding:28px 0!important}
     .mm-h1{font-size:22px!important;line-height:30px!important}
   }
 </style>
@@ -58,17 +63,17 @@ export const INVITATION_EMAIL_HTML = `<!DOCTYPE html>
 <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#ffffff;">You've been invited to a project on Malmoi. The link expires in 7 days.&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;">
 <tr><td class="mm-outer" align="center" style="padding:40px 16px;">
-  <!--[if mso]><table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;width:100%;">
+  <!--[if mso]><table role="presentation" width="320" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:320px;width:100%;">
     <tr><td align="center" style="padding:0;"><img src="{{LOGO_URL}}" width="40" height="40" alt="Malmoi" style="display:block;margin:0 auto;width:40px;height:40px;border:0;outline:none;text-decoration:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:17px;line-height:40px;font-weight:600;color:#0a0a0a;"></td></tr>
     <tr><td style="background-color:#ffffff;border-bottom:1px solid #e5e5e5;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-        <tr><td class="mm-card-pad" align="center" style="padding:36px 0 32px 0;text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-          <h1 class="mm-h1" style="margin:0 0 12px 0;font-size:24px;line-height:32px;font-weight:600;letter-spacing:-0.01em;color:#0a0a0a;">You're invited to a project on Malmoi</h1>
-          <p style="margin:0 0 16px 0;font-size:15px;line-height:24px;color:#0a0a0a;">You've been invited to join this project on Malmoi.</p>
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 28px 0;border:1px solid #e5e5e5;border-radius:12px;border-collapse:separate;">
-            <tr><td style="padding:12px;">
-              <table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
+        <tr><td class="mm-card-pad" align="center" style="padding:16px 0 24px 0;text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+          <h1 class="mm-h1" style="margin:0 0 8px 0;font-size:24px;line-height:32px;font-weight:600;letter-spacing:-0.01em;color:#0a0a0a;">You're invited to a project on Malmoi</h1>
+          <p style="margin:0 0 16px 0;font-size:15px;line-height:24px;color:#0a0a0a;">Malmoi is where your team translates your app's text and sends it back to GitHub.</p>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 16px 0;border:1px solid #e5e5e5;border-radius:12px;border-collapse:separate;">
+            <tr><td style="padding:12px;text-align:left;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                 <tr>
                   {{TILE}}
                   <td style="padding:0 0 0 12px;text-align:left;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;letter-spacing:0.02em;font-weight:400;word-break:break-word;overflow-wrap:anywhere;">
@@ -79,16 +84,16 @@ export const INVITATION_EMAIL_HTML = `<!DOCTYPE html>
               </table>
             </td></tr>
           </table>
-          <table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 28px auto;border-collapse:separate;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 8px 0;border-collapse:separate;">
             <tr><td align="center" bgcolor="#171717" style="background-color:#171717;border-radius:10px;border:1px solid #171717;">
-              <!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="{{INVITE_URL}}" style="height:40px;v-text-anchor:middle;width:160px;" arcsize="22%" fillcolor="#171717" strokecolor="#171717"><center style="color:#fafafa;font-family:Arial,sans-serif;font-size:14px;font-weight:500;">Accept invitation</center></v:roundrect><![endif]-->
-              <!--[if !mso]><!--><a class="mm-btn" href="{{INVITE_URL}}" target="_blank" style="display:inline-block;padding:10px 16px;min-width:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:20px;font-weight:500;color:#fafafa;text-decoration:none;text-align:center;border-radius:10px;background-color:#171717;">Accept invitation</a><!--<![endif]-->
+              <!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="{{INVITE_URL}}" style="height:40px;v-text-anchor:middle;width:320px;" arcsize="22%" fillcolor="#171717" strokecolor="#171717"><center style="color:#fafafa;font-family:Arial,sans-serif;font-size:14px;font-weight:500;">Accept invitation</center></v:roundrect><![endif]-->
+              <!--[if !mso]><!--><a class="mm-btn" href="{{INVITE_URL}}" target="_blank" style="display:block;padding:10px 16px;min-width:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:20px;font-weight:500;color:#fafafa;text-decoration:none;text-align:center;border-radius:10px;background-color:#171717;">Accept invitation</a><!--<![endif]-->
             </td></tr>
           </table>
-          <p style="margin:0 0 6px 0;font-size:13px;line-height:20px;color:#737373;">If the button doesn't work, paste this link into your browser:</p>
-          <p style="margin:0 0 28px 0;font-size:13px;line-height:20px;word-break:break-all;overflow-wrap:anywhere;"><a href="{{INVITE_URL}}" target="_blank" style="color:#0a0a0a;text-decoration:underline;">{{INVITE_URL}}</a></p>
+          <p style="margin:0 0 4px 0;font-size:13px;line-height:20px;color:#737373;">If the button doesn't work, paste this link into your browser:</p>
+          <p style="margin:0 0 24px 0;font-size:13px;line-height:20px;word-break:break-all;overflow-wrap:anywhere;"><a href="{{INVITE_URL}}" target="_blank" style="color:#0a0a0a;text-decoration:underline;">{{INVITE_URL}}</a></p>
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-            <tr><td align="center" style="border-top:1px solid #e5e5e5;padding-top:20px;text-align:center;font-size:13px;line-height:20px;color:#737373;">This link expires in 7 days. To accept, sign in with the email address this invitation was sent to.</td></tr>
+            <tr><td align="center" style="border-top:1px solid #e5e5e5;padding-top:16px;text-align:center;font-size:13px;line-height:20px;color:#737373;">This link expires in 7 days. To accept, sign in with the email address this invitation was sent to.</td></tr>
           </table>
         </td></tr>
       </table>

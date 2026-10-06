@@ -57,8 +57,9 @@ describe("키비주얼 — 개별 카드", () => {
   });
 
   it("번역 카드만 움직이고 모션 줄이기 설정을 존중한다", () => {
-    expect(images.filter((tag) => tag.includes("motion-safe:group-hover:-translate-y-2"))).toHaveLength(3);
-    expect(images.filter((tag) => tag.includes("motion-reduce:transition-none"))).toHaveLength(3);
+    // 이동·그림자는 블러를 든 감싼 칸이, opacity 전환은 이미지가 든다 — 둘 다 모션 줄이기를 존중한다.
+    expect(html.match(/motion-safe:group-hover:-translate-y-2/g)).toHaveLength(3);
+    expect(html.match(/motion-reduce:transition-none/g)).toHaveLength(6);
     expect(html).not.toMatch(/tabindex|role="button"/i);
   });
 
@@ -245,5 +246,23 @@ describe("브랜드 아이콘의 자리", () => {
     const src = read(ICONS);
     expect(src).not.toMatch(/from "lucide-react"/);
     expect(src).toMatch(/<svg/);
+  });
+});
+
+describe("KeyVisual — 앞 카드 세 장 (2026-10-06 사용자)", () => {
+  /*
+    ⚠️ 블러와 반투명은 **다른 요소**여야 한다. 한 요소에 같이 걸면 흐린 배경이 불투명 PNG 아래에 깔려 가려지고,
+    opacity가 비추는 10%는 흐리기 전의 배경이라 블러가 보이지 않는다(첫 수정이 그랬다).
+  */
+  it("감싼 칸이 backdrop-blur를, 그 안의 이미지가 opacity-90을 든다", () => {
+    const html = renderToStaticMarkup(createElement(AuthLayout, { m: en, decoration: true, children: null }));
+    const cards = [...html.matchAll(/<div class="group [^"]*"><div class="([^"]*)"><img[^>]*class="([^"]*)"/g)].map((match) => ({ glass: match[1] ?? "", image: match[2] ?? "" }));
+    expect(cards).toHaveLength(3);
+    for (const { glass, image } of cards) {
+      expect(glass).toContain("backdrop-blur-md");
+      expect(glass).not.toContain("opacity-90");
+      expect(image).toContain("opacity-90");
+      expect(image).not.toContain("backdrop-blur");
+    }
   });
 });

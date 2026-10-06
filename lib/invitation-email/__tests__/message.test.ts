@@ -101,14 +101,16 @@ describe("buildInvitationEmail — html", () => {
     const { html } = buildInvitationEmail(base);
     expect(html).toContain("<title>You're invited to a project on Malmoi</title>");
     expect(html).toMatch(/<h1[^>]*>You're invited to a project on Malmoi<\/h1>/);
-    expect(html).toContain("You've been invited to join this project on Malmoi.");
+    // 본문은 제목을 되풀이하지 않고 Malmoi가 무엇인지 말한다(2026-10-06 사용자) — 프로젝트·역할은 바로 아래 카드가 든다.
+    expect(html).toContain("Malmoi is where your team translates your app's text and sends it back to GitHub.");
+    expect(html).not.toContain("You've been invited to join this project");
     expect(html).not.toContain("Someone has");
     expect(html).not.toContain("Accept the invitation to get started.");
   });
 
   it("카드가 문장과 버튼 사이에 선다 — 폭 100%, 테두리 #e5e5e5, radius 12", () => {
     const { html } = buildInvitationEmail(base);
-    const sentence = html.indexOf("You've been invited to join this project");
+    const sentence = html.indexOf("Malmoi is where your team translates");
     const name = html.indexOf(">Acme Web<");
     const button = html.indexOf('class="mm-btn"');
     expect(sentence).toBeGreaterThan(-1);
@@ -165,8 +167,14 @@ describe("buildInvitationEmail — 가운데 정렬 (2026-10-04 사용자)", () 
     expect(openTag(/<td([^>]*)>If you weren't expecting this invitation/)).toContain("text-align:center");
   });
 
-  it("버튼 표가 가운데에 선다", () => {
-    expect(openTag(/<table([^>]*)>\s*<tr><td align="center" bgcolor="#171717"/)).toMatch(/align="center"[^>]*margin:0 auto 28px auto/);
+  it("버튼이 칼럼 폭 전체를 채운다 (2026-10-06 사용자 — 로그인 폼의 전폭 버튼과 같다)", () => {
+    const table = openTag(/<table([^>]*)>\s*<tr><td align="center" bgcolor="#171717"/);
+    expect(table).toContain('width="100%"');
+    expect(table).toContain("width:100%");
+    expect(table).toContain("margin:0 0 8px 0");
+    expect(/<a class="mm-btn"[^>]*style="([^"]*)"/.exec(html)?.[1]).toContain("display:block");
+    // Outlook VML 버튼은 %를 못 받는다 — 칼럼 폭 그대로다.
+    expect(html).toMatch(/<v:roundrect[^>]*style="[^"]*width:320px;/);
   });
 
   it("버튼 표는 border-collapse:separate다 — 전역 collapse 아래선 칸의 radius가 테두리에 안 걸려 각진 1px 테두리가 남는다", () => {
@@ -174,11 +182,46 @@ describe("buildInvitationEmail — 가운데 정렬 (2026-10-04 사용자)", () 
     expect(openTag(/<table([^>]*)>\s*<tr><td align="center" bgcolor="#171717"/)).toContain("border-collapse:separate");
   });
 
-  it("카드 안의 타일·이름 묶음이 가운데에 서고, 이름·역할 두 줄은 타일 옆에서 왼쪽 정렬이다", () => {
+  it("본문 칼럼이 로그인 폼 칼럼과 같은 320이다 (2026-10-06 사용자 — 옛 560)", () => {
+    expect(html).toMatch(/<!--\[if mso\]><table role="presentation" width="320"/);
+    expect(html).toContain("max-width:320px;width:100%;");
+    expect(html).not.toContain("560");
+  });
+
+  it("카드는 칼럼 폭 그대로이고, 안의 타일·이름 묶음은 왼쪽 정렬이다 (2026-10-06 사용자)", () => {
+    const card = openTag(/<table([^>]*)>\s*<tr><td style="padding:12px;/);
+    expect(card).toContain("width:100%");
+    expect(card).not.toContain("max-width");
+    expect(openTag(/<tr><td( style="padding:12px;[^>]*)>/)).toContain("text-align:left");
     const row = openTag(/<table([^>]*)>\s*<tr>\s*<td width="32"/);
-    expect(row).toContain('align="center"');
+    expect(row).not.toContain('align="center"');
+    expect(row).not.toContain("margin:0 auto");
     expect(row).not.toContain('width="100%"');
     expect(openTag(/<td([^>]*)>\s*<div style="font-size:14px/)).toContain("text-align:left");
+  });
+});
+
+describe("buildInvitationEmail — 간격은 로그인 폼 칼럼과 같은 두 단계다 (2026-10-06 사용자)", () => {
+  // `AuthColumn`: 덩어리 사이 16 · 덩어리 안 8. 덩어리는 로고 / 제목+문장 / 카드 / 버튼+대체 링크다.
+  const html = buildInvitationEmail(base).html;
+  const style = (re: RegExp) => re.exec(html)?.[1] ?? "";
+
+  it("로고 → 제목 16 · 제목 → 문장 8 · 문장 → 카드 16 · 카드 → 버튼 16", () => {
+    expect(style(/<td class="mm-card-pad"[^>]*style="([^"]*)"/)).toContain("padding:16px 0 24px 0");
+    expect(style(/<h1[^>]*style="([^"]*)"/)).toContain("margin:0 0 8px 0");
+    expect(style(/<p style="([^"]*)">Malmoi is where your team translates/)).toContain("margin:0 0 16px 0");
+    expect(style(/<table[^>]*style="([^"]*border:1px solid #e5e5e5[^"]*)"/)).toContain("margin:0 0 16px 0");
+  });
+
+  it("버튼 → 대체 안내 8 · 안내 → 링크 4 · 링크 → 구분선 24 · 구분선 → 만료 안내 16", () => {
+    expect(style(/<table[^>]*style="([^"]*)">\s*<tr><td align="center" bgcolor="#171717"/)).toContain("margin:0 0 8px 0");
+    expect(style(/<p style="([^"]*)">If the button doesn't work/)).toContain("margin:0 0 4px 0");
+    expect(style(/<p style="([^"]*)"><a href="https:\/\/mal-moi\.com\/invite\//)).toContain("margin:0 0 24px 0");
+    expect(style(/<td[^>]*style="([^"]*)">This link expires in 7 days\./)).toContain("padding-top:16px");
+  });
+
+  it("좁은 화면에서 본문 칸 여백을 다시 덮지 않는다 — 데스크톱과 같은 값이다", () => {
+    expect(html).not.toContain(".mm-card-pad{");
   });
 });
 

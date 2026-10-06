@@ -184,6 +184,9 @@ export function RepoStep({
         />
       </div>
 
+      {/* ⚠️ **목록 위다** — 목록 아래 두면 리포가 많을 때 스크롤해야 보인다. 검색 0건이면 빈 상태 블록 안의 것이 대신 선다. */}
+      {shown.length > 0 && <InstallHint installUrl={installUrl} />}
+
       {shown.length === 0 ? (
         /*
           ⚠️ **설치 힌트가 이 안으로 들어온다** (2026-09-13 ego 실측). 밖에 형제로 두면 빈 상태의
@@ -267,14 +270,12 @@ export function RepoStep({
         </ul>
         </RadioGroup>
       )}
-
-      {shown.length > 0 && <InstallHint installUrl={installUrl} />}
     </div>
   );
 }
 
 /**
- * 목록에 없는 리포로 가는 길 — 목록 아래, 검색 0건에서는 빈 상태 블록 아래. `GITHUB_APP_SLUG`가 없으면 사라진다.
+ * 목록에 없는 리포로 가는 길 — 검색 필드와 목록 사이, 검색 0건에서는 빈 상태 블록 아래. `GITHUB_APP_SLUG`가 없으면 사라진다.
  * ⚠️ **같은 탭이다** (DESIGN §6.3 예외) — 리포 선택을 저장하면 GitHub이 callback으로 되돌려 ①에 착지한다.
  */
 function InstallHint({ installUrl }: { installUrl: string | null }) {

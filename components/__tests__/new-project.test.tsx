@@ -1035,11 +1035,11 @@ it("① B 연결됨·설치 0: 같은 블록이지만 보조 링크가 없다", 
   expect(maybeButton("Connect your account")).toBeNull();
 });
 
-it("① C 리포 0: [Choose repositories]가 같은 탭 링크다", async () => {
+it("① C 리포 0: [Add repositories]가 같은 탭 링크다", async () => {
   await blocked("no-repos");
 
   expect(document.body.textContent).toContain("Add a repository");
-  const link = [...document.body.querySelectorAll("a")].find((a) => a.textContent?.trim() === "Choose repositories");
+  const link = [...document.body.querySelectorAll("a")].find((a) => a.textContent?.trim() === "Add repositories");
   expect(link?.getAttribute("href")).toBe(SETTINGS);
   expect(link?.getAttribute("target")).toBeNull();
 });
@@ -1112,13 +1112,29 @@ it.each([
   expect(count(REFRESH)).toBe(0);
 });
 
-it("① 목록 아래 힌트 링크도 같은 탭이다", async () => {
+it("① 목록 위 힌트 링크도 같은 탭이다", async () => {
   await render(<NewProject repos={repos} listError={undefined} installUrl={SETTINGS} now="2026-09-13T00:00:00Z"
     initialError={undefined} backQuery={{}} closeMode="list" adapters={[]} />);
 
   const link = [...document.body.querySelectorAll("a")].find((a) => a.getAttribute("href") === SETTINGS);
   expect(link).toBeDefined();
+  expect(link?.textContent?.trim()).toBe("Add repositories");
   expect(link?.getAttribute("target")).toBeNull();
+});
+
+it("① 힌트는 검색 필드와 목록 사이다 — 목록이 길어도 스크롤 없이 보인다", async () => {
+  await render(<NewProject repos={repos} listError={undefined} installUrl={SETTINGS} now="2026-09-13T00:00:00Z"
+    initialError={undefined} backQuery={{}} closeMode="list" adapters={[]} />);
+
+  const links = [...document.body.querySelectorAll("a")].filter((a) => a.getAttribute("href") === SETTINGS);
+  expect(links).toHaveLength(1);
+  const link = links[0]!;
+  const search = document.body.querySelector('input[aria-label="Search repositories"]');
+  const list = document.body.querySelector('[role="radiogroup"]');
+  expect(search).not.toBeNull();
+  expect(list).not.toBeNull();
+  expect(search!.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(link.compareDocumentPosition(list!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 });
 
 describe("① GITHUB_APP_SLUG 없음 — 항상 실패하는 설치 버튼을 세우지 않는다", () => {
@@ -1136,7 +1152,7 @@ describe("① GITHUB_APP_SLUG 없음 — 항상 실패하는 설치 버튼을 �
     await blocked(error, { installUrl: null });
 
     expect(maybeButton("Install GitHub App")).toBeNull();
-    expect(maybeButton("Choose repositories")).toBeNull();
+    expect(maybeButton("Add repositories")).toBeNull();
     expect(document.body.querySelector("a")).toBeNull();
     expect(document.body.textContent).toContain(NO_LINK);
   });

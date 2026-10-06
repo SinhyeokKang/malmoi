@@ -1055,7 +1055,7 @@ export const ko = {
       repos: {
         title: "리포지토리 추가",
         description: "Malmoi GitHub App이 접근할 수 있는 리포지토리를 고르세요.",
-        action: "리포지토리 선택",
+        action: "리포지토리 추가",
       },
       waiting: {
         title: "승인 대기 중",

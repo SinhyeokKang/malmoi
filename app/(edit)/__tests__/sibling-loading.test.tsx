@@ -95,25 +95,15 @@ describe("줄 수 — 실물의 가장 흔한 모양", () => {
 });
 
 /**
- * **골격이 실물의 패널 폭 질의를 같이 든다** (malmoi#101). Sources는 콘텐츠 패널 1016 이하에서 머리 설명을 버리고
- * 행 상태를 셋째 줄로 내리는데(`@max-[1016px]/panel:*`), 골격이 그 질의 없이 넓은 모양만 그려 1280(패널 1014)에서
- * 도착 순간 설명 막대가 사라지고 행이 한 줄만큼 늘었다. jsdom은 컨테이너 질의를 계산하지 못하므로 **변형 철자를 센다**.
+ * **골격과 실물 둘 다 패널 폭 분기가 없다** (2026-10-06 사용자 — 옛 판은 malmoi#101로 `@max-[1016px]/panel:*` 변형을 짝지어 셌다).
+ * 한쪽에만 분기가 되살아나면 1280(패널 1014)에서 도착 순간 행 높이가 튄다. jsdom은 컨테이너 질의를 계산하지 못하므로 **철자를 센다**.
  */
 describe("패널 폭 질의 — 실물과 같은 변형", () => {
-  const variants = (path: string) =>
-    new Set([...readFileSync(join(__dirname, "../../..", path), "utf8").matchAll(/@max-\[1016px\]\/panel:[^\s"`]+/g)].map((match) => match[0]));
+  const panelQueries = (path: string) => readFileSync(join(__dirname, "../../..", path), "utf8").match(/@(?:max|min)-\[[^\]]+\]\/panel|@container\/panel/g) ?? [];
 
-  it("Sources 골격은 실물이 쓰는 `/panel` 변형을 전부 든다", () => {
-    const real = variants("components/sources/sources-screen.tsx");
-    const skeleton = variants("app/(edit)/projects/[slug]/sources/loading.tsx");
-    // 짝 — 실물 쪽이 비어 있으면 이 검사는 아무것도 안 잰다.
-    expect(real.size).toBeGreaterThan(0);
-    expect([...real].filter((variant) => !skeleton.has(variant))).toEqual([]);
-  });
-
-  it("그 질의가 걸릴 이름 있는 컨테이너(`@container/panel`)를 골격 스스로 세운다", async () => {
-    const { container } = await render(<SourcesLoading />);
-    expect(container.querySelector('[class~="@container/panel"]')).not.toBeNull();
+  it("Sources 실물과 골격 어느 쪽도 `/panel` 질의를 들지 않는다", () => {
+    expect(panelQueries("components/sources/sources-screen.tsx")).toEqual([]);
+    expect(panelQueries("app/(edit)/projects/[slug]/sources/loading.tsx")).toEqual([]);
   });
 
   /*
