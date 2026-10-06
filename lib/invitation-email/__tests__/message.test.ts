@@ -101,14 +101,16 @@ describe("buildInvitationEmail — html", () => {
     const { html } = buildInvitationEmail(base);
     expect(html).toContain("<title>You're invited to a project on Malmoi</title>");
     expect(html).toMatch(/<h1[^>]*>You're invited to a project on Malmoi<\/h1>/);
-    expect(html).toContain("You've been invited to join this project on Malmoi.");
+    // 본문은 제목을 되풀이하지 않고 Malmoi가 무엇인지 말한다(2026-10-06 사용자) — 프로젝트·역할은 바로 아래 카드가 든다.
+    expect(html).toContain("Malmoi is where your team translates your app's text and sends it back to GitHub.");
+    expect(html).not.toContain("You've been invited to join this project");
     expect(html).not.toContain("Someone has");
     expect(html).not.toContain("Accept the invitation to get started.");
   });
 
   it("카드가 문장과 버튼 사이에 선다 — 폭 100%, 테두리 #e5e5e5, radius 12", () => {
     const { html } = buildInvitationEmail(base);
-    const sentence = html.indexOf("You've been invited to join this project");
+    const sentence = html.indexOf("Malmoi is where your team translates");
     const name = html.indexOf(">Acme Web<");
     const button = html.indexOf('class="mm-btn"');
     expect(sentence).toBeGreaterThan(-1);
@@ -207,7 +209,7 @@ describe("buildInvitationEmail — 간격은 로그인 폼 칼럼과 같은 두 
   it("로고 → 제목 16 · 제목 → 문장 8 · 문장 → 카드 16 · 카드 → 버튼 16", () => {
     expect(style(/<td class="mm-card-pad"[^>]*style="([^"]*)"/)).toContain("padding:16px 0 24px 0");
     expect(style(/<h1[^>]*style="([^"]*)"/)).toContain("margin:0 0 8px 0");
-    expect(style(/<p style="([^"]*)">You've been invited to join/)).toContain("margin:0 0 16px 0");
+    expect(style(/<p style="([^"]*)">Malmoi is where your team translates/)).toContain("margin:0 0 16px 0");
     expect(style(/<table[^>]*style="([^"]*border:1px solid #e5e5e5[^"]*)"/)).toContain("margin:0 0 16px 0");
   });
 

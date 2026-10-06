@@ -70,7 +70,7 @@ export const INVITATION_EMAIL_HTML = `<!DOCTYPE html>
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr><td class="mm-card-pad" align="center" style="padding:16px 0 24px 0;text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
           <h1 class="mm-h1" style="margin:0 0 8px 0;font-size:24px;line-height:32px;font-weight:600;letter-spacing:-0.01em;color:#0a0a0a;">You're invited to a project on Malmoi</h1>
-          <p style="margin:0 0 16px 0;font-size:15px;line-height:24px;color:#0a0a0a;">You've been invited to join this project on Malmoi.</p>
+          <p style="margin:0 0 16px 0;font-size:15px;line-height:24px;color:#0a0a0a;">Malmoi is where your team translates your app's text and sends it back to GitHub.</p>
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 16px 0;border:1px solid #e5e5e5;border-radius:12px;border-collapse:separate;">
             <tr><td style="padding:12px;text-align:left;">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0">
