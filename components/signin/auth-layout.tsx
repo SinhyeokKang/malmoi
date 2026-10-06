@@ -119,16 +119,19 @@ export function KeyVisual({ className }: { className?: string } = {}) {
         { src: japaneseCard, position: "left-[68.2320%]" },
       ].map(({ src, position }) => (
         // 고정된 hover 영역을 남겨 카드 하단에서 이동이 반복되지 않게 한다.
-        // opacity-90만 두면 뒤 프로젝트 카드의 경계가 비쳐 다크에서 어색하다 — backdrop-blur가 그 비침을 간유리처럼 뭉갠다.
+        // opacity-90만 두면 뒤 프로젝트 카드의 경계가 비쳐 다크에서 어색하다 — 감싼 칸의 backdrop-blur가 그 비침을 간유리처럼 뭉갠다.
+        // ⚠️ 블러와 opacity를 한 요소에 걸지 않는다 — 흐린 배경이 불투명 PNG 아래에 깔려 가려지고, opacity가 비추는 10%는 흐리기 전 배경이다.
         <div key={src.src} className={`group absolute top-[34.3373%] w-[29.8343%] ${position}`}>
-          <Image
-            src={src}
-            alt=""
-            priority
-            draggable={false}
-            sizes="(min-width: 1880px) 230px, (min-width: 1280px) calc(14.91715vw - 51.315px), 140px"
-            className="h-auto w-full rounded-[7.4074%/7.9208%] opacity-90 shadow-low backdrop-blur-md transition-[translate,box-shadow,opacity] duration-300 ease-out group-hover:opacity-100 group-hover:shadow-medium motion-safe:group-hover:-translate-y-2 motion-reduce:transition-none"
-          />
+          <div className="rounded-[7.4074%/7.9208%] shadow-low backdrop-blur-md transition-[translate,box-shadow] duration-300 ease-out group-hover:shadow-medium motion-safe:group-hover:-translate-y-2 motion-reduce:transition-none">
+            <Image
+              src={src}
+              alt=""
+              priority
+              draggable={false}
+              sizes="(min-width: 1880px) 230px, (min-width: 1280px) calc(14.91715vw - 51.315px), 140px"
+              className="block h-auto w-full opacity-90 transition-opacity duration-300 ease-out group-hover:opacity-100 motion-reduce:transition-none"
+            />
+          </div>
         </div>
       ))}
     </div>
