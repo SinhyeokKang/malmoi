@@ -169,7 +169,7 @@ describe("buildInvitationEmail — 가운데 정렬 (2026-10-04 사용자)", () 
     const table = openTag(/<table([^>]*)>\s*<tr><td align="center" bgcolor="#171717"/);
     expect(table).toContain('width="100%"');
     expect(table).toContain("width:100%");
-    expect(table).toContain("margin:0 0 28px 0");
+    expect(table).toContain("margin:0 0 8px 0");
     expect(/<a class="mm-btn"[^>]*style="([^"]*)"/.exec(html)?.[1]).toContain("display:block");
     // Outlook VML 버튼은 %를 못 받는다 — 칼럼 폭 그대로다.
     expect(html).toMatch(/<v:roundrect[^>]*style="[^"]*width:320px;/);
@@ -196,6 +196,30 @@ describe("buildInvitationEmail — 가운데 정렬 (2026-10-04 사용자)", () 
     expect(row).not.toContain("margin:0 auto");
     expect(row).not.toContain('width="100%"');
     expect(openTag(/<td([^>]*)>\s*<div style="font-size:14px/)).toContain("text-align:left");
+  });
+});
+
+describe("buildInvitationEmail — 간격은 로그인 폼 칼럼과 같은 두 단계다 (2026-10-06 사용자)", () => {
+  // `AuthColumn`: 덩어리 사이 16 · 덩어리 안 8. 덩어리는 로고 / 제목+문장 / 카드 / 버튼+대체 링크다.
+  const html = buildInvitationEmail(base).html;
+  const style = (re: RegExp) => re.exec(html)?.[1] ?? "";
+
+  it("로고 → 제목 16 · 제목 → 문장 8 · 문장 → 카드 16 · 카드 → 버튼 16", () => {
+    expect(style(/<td class="mm-card-pad"[^>]*style="([^"]*)"/)).toContain("padding:16px 0 24px 0");
+    expect(style(/<h1[^>]*style="([^"]*)"/)).toContain("margin:0 0 8px 0");
+    expect(style(/<p style="([^"]*)">You've been invited to join/)).toContain("margin:0 0 16px 0");
+    expect(style(/<table[^>]*style="([^"]*border:1px solid #e5e5e5[^"]*)"/)).toContain("margin:0 0 16px 0");
+  });
+
+  it("버튼 → 대체 안내 8 · 안내 → 링크 4 · 링크 → 구분선 24 · 구분선 → 만료 안내 16", () => {
+    expect(style(/<table[^>]*style="([^"]*)">\s*<tr><td align="center" bgcolor="#171717"/)).toContain("margin:0 0 8px 0");
+    expect(style(/<p style="([^"]*)">If the button doesn't work/)).toContain("margin:0 0 4px 0");
+    expect(style(/<p style="([^"]*)"><a href="https:\/\/mal-moi\.com\/invite\//)).toContain("margin:0 0 24px 0");
+    expect(style(/<td[^>]*style="([^"]*)">This link expires in 7 days\./)).toContain("padding-top:16px");
+  });
+
+  it("좁은 화면에서 본문 칸 여백을 다시 덮지 않는다 — 데스크톱과 같은 값이다", () => {
+    expect(html).not.toContain(".mm-card-pad{");
   });
 });
 
