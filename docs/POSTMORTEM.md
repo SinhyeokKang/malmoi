@@ -259,7 +259,9 @@ _이 아래에 새 항목을 추가한다._
   - **게이트가 목표를 못 맞추면 초과 건을 전수 조사한 뒤에 목표를 손댄다.** 이번엔 6건 전부에서 원인이 다른 축이었다 — 조사 없이 목표를 낮췄으면 "순서 보존이 21.7% 실패한다"는 거짓이 문서에 박혔다.
   - **원인 분해는 "원인 없음"이 진짜 없음을 뜻할 때만 쓸모가 있다.** 이름 없는 원인이 있으면 그 분류가 **다른 기능의 실패를 이 기능에 뒤집어씌운다.** 새 코퍼스에서 초과가 나오면 먼저 "이건 이름이 붙은 원인인가"를 묻는다.
 
+- **🔁 재발 (2026-10-07, audit 9)**: 현재 writer가 원본 세그먼트 경로를 보존하는 점 리터럴 키·중첩 공존도 `diffCauses.dottedWithNested`에 남아, 25키·base/non-base diff 0·의미/바이트 고정점 same인 리포가 clean 분모 0으로 집계됐다. `presentation.dottedWithNested` 관측으로 이관했다. 기존 왕복 테스트는 출력만, 기존 지표 테스트는 과거 손실 기대만 고정해 둘의 결합을 놓쳤다. RED `pnpm exec vitest run lib/survey/__tests__/order-metrics.test.ts`는 2 failed / 37 passed, 최종 GREEN `pnpm exec vitest run lib/scan lib/survey`는 16 files / 248 passed였다(handoff-B). 과거 JSON의 옛 원인 필드는 현재 분모 제외 근거로 읽지 않되 새 관측치를 추정해서 채우지 않는다. 재발 방지: `rg -n 'dottedWithNested|CAUSE_KEYS|cleanRatios' lib/survey`로 실제 writer 보존 fixture와 원인/관측 집계를 함께 대조했다. 남은 원인·관측 필드는 각각 유지하며 역사적 측정값은 바꾸지 않았다.
 ---
+
 
 ### 2026-09-03 — 빌드가 생성물을 안 만들었고, 게이트 둘이 각자 다른 이유로 가려 줬다
 
@@ -995,6 +997,9 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   - grep: `grep -rn 'statSync(' lib scripts | grep -v lstat` → 각각이 **남이 쓴 트리**를 도는지 보고, 그렇다면 `withFileTypes`/`lstat`으로 바꾼다.
   - **테스트가 만드는 픽스처에 링크·순환을 하나 넣는다.** `lib/cli/__tests__/walk.test.ts`가 이제 리포 밖 링크와 `ln -s . loop` 둘을 든다 — 없으면 이 부류는 원리적으로 green이다.
 
+- **🔁 원격 tree 경계 보강 (2026-10-07, audit 6 / RF-2)**: Git tree에서 blob만 남기며 mode를 버려 Publish가 symlink·gitlink를 정상 파일 또는 새 경로로 덮을 수 있었다. `GitClient.getTree`는 path·sha·mode를 보존하고 `renderProject`는 대상 `100644`/`100755`, 실제 조상 `040000`을 원본 렌더 전에 확인한다. 누락 mode는 unknown으로 거부하고 누락 path/sha는 실패한다. 비대상 링크는 base에 남는다. F 소유자 RED pull/API는 6 failed / 83 passed(제품 회귀 5개와 신규 fixture 기대 오류 1개를 구분), GREEN 관련 4 files / 151 passed였다(handoff-F). 실행 가능 파일의 변경 출력 `100644`는 기존 한계이며 새 보존 기능으로 쓰지 않는다.
+- **호출부 전파 후속**: RF는 smoke가 전체 tree 개수를 blob snapshot과 비교하는 새 진단 잡음을 찾았다. F-fix1은 `100644`/`100755`/`120000`만 세며 tree/gitlink는 제외했다. 실제 script 진입점 mock 테스트 RED `pnpm exec vitest run scripts/__tests__/smoke-tree.test.ts`는 2 failed, GREEN smoke-tree·smoke-budget은 2 files / 3 passed였다(handoff-F-fix1). 정상 3 vs 3의 경고 없음과 실제 누락 2 vs 3의 경고를 함께 검사하고 원격 smoke 실행으로 주장하지 않는다. `rg -n 'entry\.mode|unsupported Git file mode|blobCount' lib/github.ts lib/pull/run.ts scripts/smoke-github.ts`로 계약 변경의 소비자를 확인했다.
+
 ### 2026-09-09 — 문서가 단언한 통제가 배선되지 않아, 마스킹이 화장품이었다
 
 - **영역**: `lib/auth/query.ts`(두 로더) · `components/members/member-list.tsx`·`pending-invitations.tsx` · `app/(edit)/projects/[slug]/members/page.tsx`
@@ -1298,6 +1303,8 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - **근본 원인**: `İ`의 소문자 변환은 `i`와 결합 점 두 코드 유닛이다. 변환 후의 검색 위치를 길이가 다른 원문에 그대로 적용했다.
 - **그물**: 기존 영문 검색 테스트는 소문자화 전후 길이가 같았다. 길이가 늘어나는 문자의 앞·뒤 일치 회귀 테스트에서 red를 확인했고 변환 오프셋을 원문 경계에 대응시켜 수정했다. 검색은 전체 문자열을 소문자화하는 기존 규칙을 유지한다.
 - **재발 방지**: `rg -n 'toLowerCase\(\)|indexOf\(' lib/projects/list.ts lib/keys/view.ts`를 실행했다. 다른 검색은 포함 여부만 판단하며 그 인덱스로 원문을 자르지 않는다. 문자열 변환 뒤 원문을 자르는 코드에서는 UTF-16 길이 보존을 전제하지 않는다.
+
+- **🔁 재발 (2026-10-07, audit 12)**: 번역 목록의 key/source/translation과 MCP `list_keys`가 소문자 문자열 위치를 원문 UTF-16 위치로 반환해 `😀İİabc`의 abc 시작이 4 대신 6이었다. 기존 영문·페이지·범위 일치 테스트는 변환 전후 길이가 같아 놓쳤다. 실제 PG RED `pnpm test:projects:postgres lib/keys/__tests__/translation-list.integration.ts -t 'Unicode 원문 일치 범위'`는 3 failed / 56 skipped, GREEN 전체 대상 파일은 60 passed였다(handoff-D). 역매핑은 기존 Highlight의 `foldWithOffsets`를 공유하고 `firstMatchRange`는 첫 일치만 반환한다 — 강조용 인접 범위 합치기를 그대로 쓰면 `aaaa`/`aa`의 길이가 4가 된다. 새 인터페이스 RED `pnpm test lib/search/__tests__/highlight.test.ts`는 9 failed / 17 passed, 최종 Highlight·CLI·gate-plan 결합 GREEN은 82 passed였다. 재발 방지: `rg -n 'toLowerCase\(\)|indexOf\(|firstMatchRange|foldWithOffsets' lib/search/highlight.ts lib/keys/translation-list.ts`로 위치 생산·원문 소비를 같이 확인했다. 이번 경계는 역매핑 하나를 공유하며 DB 검색·정렬은 바꾸지 않았다.
 
 ### 2026-09-13 — 모달 딥링크가 배경 목록의 원격 조회를 다시 기다렸다
 
@@ -2202,6 +2209,9 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   - grep: `rg -n "httpStatus\(|status === 401" lib/github-connect` → 사용자 토큰을 쓰는 조회 실패 자리마다 401이 `reauthorize`로 올라가는지 본다. 지금 자리는 `token.ts`(`refreshFailure`)·`actions.ts`(`listFailure`)·`account-view.ts` 셋이다.
   - **화면이 컨트롤을 0개 세우는 상태를 만들 때는 그 상태가 영구일 수 있는지 먼저 묻는다** — `unavailable`처럼 "다시 열면 풀린다"를 전제한 갈래에 영구 조건이 섞이면 사용자가 갇힌다. 그 조합은 mock 기반 렌더 테스트로는 안 잡힌다(입력→갈래 판정이 mock 뒤에 있다).
 
+- **🔁 재발 (2026-10-07, audit 16 · C-fix1)**: `checkRepoAccess`가 설치별 GET 실패를 값으로 받아 바깥 catch의 401 분류를 우회했다. 요청 리포를 못 찾으면 전 실패는 `unavailable`, 다른 설치가 성공한 부분 실패는 `repo-not-installed`로 접혔다. 형제 목록 Action의 401 테스트와 이 경로의 503 테스트는 놓쳤다. RED `pnpm exec vitest run 'app/(edit)/__tests__/onboarding.test.ts' -t '설치별 401|다른 설치의 401'`는 2 failed / 1 passed / 215 skipped, GREEN은 3 passed / 215 skipped였다(handoff-C). 요청 리포가 정상 설치에 있으면 부분 성공을 유지하고, 없으면 실패 중 401의 재인가를 먼저 반환한다.
+  독립 리뷰 후 실제 생성 제출 DOM도 검사하니 ③의 재인가 안내가 가리키는 버튼이 없었다 — 목록 오류 분기의 컨트롤만 테스트해 제출 실패의 도달 경로를 놓쳤다. RED `pnpm exec vitest run components/__tests__/new-project.test.tsx -t '생성 제출의'`는 Missing button으로 1 failed / 1 passed / 103 skipped, 기존 `ConnectGithubButton` 재사용 후 GREEN은 2 passed / 103 skipped였다. 최종 신규 생성·hydration·클라이언트 그래프 대상은 3 files / 141 passed(handoff-C-fix1). 재발 방지: `rg -n 'httpStatus\(|status === 401|classifyRepoFailure|reauthorize' lib/onboarding-run/access.ts lib/github-connect`와 `rg -n 'ConnectGithubButton|creationFailure|reauthorize' components/onboarding/new-project.tsx components/onboarding/steps/repo.tsx`로 분류와 복구 컨트롤을 함께 확인했다. 계정 조회·목록·생성은 서로 다른 경로이며, Action 401 분류와 제출 DOM을 각각 검사한다. 이번 재현은 결정적 mock/DOM이고 실제 GitHub 철회·왕복은 별도 런타임 검증이다.
+
 ### 2026-09-19 — 개인정보처리방침이 코드와 어긋난 문장 셋을 실은 채 green이었다
 
 - **영역**: `messages/en.tsx`의 `publicDocs.privacy` · `lib/privacy/collected.ts`
@@ -2687,6 +2697,10 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 
 - **교차 검증 후속 (2026-10-07)**: 경합 보류에 `pr-check-failed`를 재사용해 Logs가 GitHub 장애로 설명했다. `publish-raced`를 별도 계약으로 추가하고 CI 응답·야간 사건·세 언어 문구·CLI 경고까지 연결했다. 알 수 없는 pending 수를 0으로 실어 보내지 않는다. 이벤트 문장과 실제 라우트 응답을 함께 검증한다.
 
+- **🔁 재발 보강 (2026-10-07, audit 1·15 / A-fix1)**: 표시용 Last sent만 비교해 `no-changes`의 토큰 해제를 놓쳤다. CI·야간은 사전 판정 전에 `lastPublishedAt`과 모든 소스 확인의 `(surfaceId, revision)` 집합을 캡처하고 잠금 안에서 둘 다 대조한다(`lib/pull/delivery-revision.ts`). 확인마다 새 UUID를 쓰며, 무효화·보관 행을 빼거나 조회 오류를 빈 집합으로 숨기지 않는다. Last sent 표시는 스킵에서 그대로다. A 소유자 RED `pnpm exec vitest run --config vitest.projects.config.ts lib/keys/__tests__/sync-edit-protection.integration.ts -t 'no-changes delivery after CI'`는 1 failed / 36 skipped, GREEN은 1 passed / 36 skipped였다(handoff-A).
+- **독립 리뷰 R1 보강**: 최초 A는 실행권·context가 무효인 늦은 완료에서도 CAS만 진행해 revision 없이 편집을 비웠다. A-fix1은 Project → 정렬된 Surface 잠금 뒤 모든 캡처 context·RUNNING을 먼저 검증하고, 하나라도 무효이면 시각·토큰·기준·확인을 전부 롤백한다. 소유자 RED는 실제 old POST 경합 2 failed와 실행권/context/authority 누락 3 failed, 최종 관련 PG는 8 files / 185 passed였다(handoff-A-fix1; 이 문서 작업에서 PG를 재실행하지 않았다). 실제 settings core의 main → release → main과 `runSync → triggerPull → runPull` 경합은 편집 유지·old POST `deferred/pending-edits`·Last sent 불변을 검사한다. HTTP/RSC 설정 Action 왕복·브라우저 관측은 아니다. 새 유효 확인 뒤 늦은 완료와 mixed context 원자성도 검사한다. `review-final.md`는 이 경계를 읽고 추가 확정 결함 없이 수락했다.
+- **재발 방지 보강**: `rg -n 'expectedDeliveryRevision|readDeliveryRevision|UNCONFIRMED_DELIVERY|RUNNING' app/api/push/route.ts lib/push/apply.ts lib/import/run.ts lib/nightly/run.ts lib/pull/load.ts lib/pull/delivery-revision.ts`로 실제 생산자와 잠금 안 소비자 및 CAS 이전의 검증 순서를 함께 확인했다. 전달 revision 없는 token-bearing 호출은 거부하며 빈 토큰 timestamp-only 호환은 별도다.
+
 ### 2026-10-07 — 파일 쓰기 성공과 요청한 값 전달을 같은 것으로 셌다
 
 - **영역**: `lib/keys/save.ts` · `lib/pull/run.ts` · `lib/adapters/code-dict.ts`
@@ -2697,6 +2711,12 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 
 - **교차 검증 후속 (2026-10-07)**: 빈값 방어가 실행에만 있어 미리보기는 전달을 약속했고, 원본에서 삭제된 키까지 전체 거부로 넓혔다. 순수 `planDelivery`를 미리보기·실행이 공유하고 셀 보류 뒤 남은 빈 편집만 경고한다. 실제 해석 경로와 own-property 조회를 사용한다. 같은 fixture의 미리보기·실행 및 웹·MCP 응답 테스트로 방어한다.
 
+- **🔁 TS 경계 보강 (2026-10-07, audit 2 / RF-1)**: TS의 후행 shorthand·참조·메서드·접근자도 앞 리터럴을 가리는데 string assignment만 찾았다. F는 read/write/slot의 `pairs`를 통일했다. 소유자 RED adapter는 4 failed / 41 passed, GREEN 45 passed(handoff-F). 독립 RF는 spread·computed에도 같은 거짓 전달이 남음을 실제 adapter·fake Git `runPull`로 재현했다. F-fix1은 정적 computed 별칭을 같은 키로 접고, spread·동적 computed 뒤 앞 키는 `key-shadowed` failure로 거부하며 뒤의 확정 리터럴은 허용한다. 임의 코드는 평가하지 않는다. RED `pnpm exec vitest run lib/adapters/__tests__/ts-dict.test.ts lib/pull/__tests__/run.test.ts`는 11 failed / 130 passed, GREEN 141 passed(handoff-F-fix1). 세 shadowing 실제 runPull 대조는 mutation·전달 확인 0회를 검사한다.
+- **허용한 한계**: 무관한 확정 키를 adapter가 쓸 수 있어도 파일 내 다른 `key-shadowed` failure가 preview 전체를 막을 수 있다. failure를 unmanaged로 낮추지 않아 첫 적재·재적재 오류 및 `suppressOrphan`을 유지한다. 이는 정적 호출 추적이며 실제 preview DOM 관측은 아니다. 최종 독립 리뷰는 별도의 비computed `__proto__` prototype setter 거짓 확인을 추가 재현했다 — F-fix2 확인 전까지 이 작은 의미 경계는 미완이다.
+- **재발 방지 보강**: `rg -n 'propertyKey|pairs\(|key-shadowed|isPrototypeSetter' lib/adapters/ts-dict.ts`와 `rg -n 'adapterErrorKind|suppressOrphan' lib/publish/read.ts lib/onboarding/ingest.ts lib/import/run.ts`를 실행해 read·write·slot 및 소비자의 실패 판정을 함께 확인했다. adapter 왕복뿐 아니라 고정 JS fixture의 own-property 값과 runPull의 mutation·ACK를 검사해야 같은 파서 오해로 green이 되지 않는다.
+
+- **RF-final-1 후속 (2026-10-07, F-fix2)**: 최종 독립 리뷰는 `{ ['__proto__']: 'Actual', __proto__: 'Ignored' }`에서 prototype setter를 마지막 own 값으로 읽어 런타임은 Actual인데 delivered=1인 잔존 결함을 실제 fake Git runPull과 고정 JS fixture로 확인했다. F-fix2의 `isPrototypeSetter`는 noncomputed PropertyAssignment만 read/write/파일 소유 키에서 제외하고 computed own 자리와 shorthand·메서드·접근자는 유지한다. 소유자 RED `pnpm exec vitest run lib/adapters/__tests__/ts-dict.test.ts lib/pull/__tests__/run.test.ts`는 11 failed / 146 passed, GREEN 157 passed였다(handoff-F-fix2). setter-only runPull은 withheld/key=1·mutation/확인 0회, computed 양성 대조는 실제 출력의 own 값 Edited와 정확히 1건 전달을 검사했다. 확장 검사 1 failed는 기존 contract fixture의 quoted noncomputed __proto__를 own 키로 둔 가정이어서 ts-dict fixture만 computed로 고쳤고 기대 assertion은 그대로다. 최종 adapter/pull은 53 files / 1268 passed(소유자 보고). 별도 독립 재리뷰 승인은 아직 남았으며 이 문서 반영을 그 승인으로 주장하지 않는다.
+
 ### 2026-10-07 — 비동기 경계와 검증 트리거가 구현의 끝까지 닿지 않았다
 
 - **영역**: `lib/upload/store.ts` · `lib/oauth-server/client-metadata-fetch.ts` · `scripts/gate-plan.ts`
@@ -2704,3 +2724,64 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - **근본 원인**: Promise 반환을 완료로, HTTPS 타이머를 전체 마감으로, 테스트 디렉터리 목록을 구현 의존성 목록으로 취급했다.
 - **그물**: 본문 reject 주입·미완료 DNS와 남은 HTTPS 시간의 fake timer·구현 경로 단독 gate-plan 테스트가 잡았다. 성공 응답과 include 디렉터리 대조만으로는 보이지 않았다.
 - **재발 방지**: `rg -n 'arrayBuffer|withinDeadline|timeoutMs' lib/upload/store.ts lib/oauth-server/client-metadata-fetch.ts`와 `rg -n 'oauth-server|lib/mcp' scripts/gate-plan.ts vitest.projects.config.ts`로 완료 경계 및 구현과 테스트의 다른 위치를 확인한다.
+
+- **🔁 재발 보강 (2026-10-07, audit 11)**: 격리 PG include와 트리거 디렉터리의 동일성만 검사해, 테스트가 직접 import하는 Project/Settings/Sources Action·초대 수락·검색 Action·push/failure Route 및 account-connect/login-link/session-revocation 구현의 단독 변경이 검증을 건너뛰었다. RED `pnpm test scripts/__tests__/gate-plan.test.ts`는 13 failed / 26 passed, GREEN은 39 passed였다(handoff-D). 기존 순서와 파일 단위 트리거를 유지하며 실제 호출 구현도 등재했다. 재발 방지: `rg -n 'app/|account-connect|login-link|session-revocation' scripts/gate-plan.ts`를 실제 PG fixture import와 대조했다 — include 디렉터리 밖 생산 경로도 별도로 세어야 한다.
+
+### 2026-10-07 — 번역 함수 이름과 내부 실패 문자열이 사용처 판정을 대신했다
+
+- **영역**: `lib/scan/ast.ts`
+- **증상**: 정상 namespace `unresolved`·지역 번역 함수 `unsupported`의 refs는 사라졌고, 일반 매개변수·블록·catch·hoisted var가 가린 같은 이름의 함수는 번역 사용처나 동적 키 경고로 잘못 잡혔다.
+- **근본 원인**: 사용자 문자열과 내부 실패 상태가 같은 문자열 union이었고, 번역 훅 반환 바인딩끼리의 수동 최협소 범위만 비교해 일반 선언에 의한 shadowing을 보지 않았다. 직접 래퍼·훅 import도 문자열 이름으로 구별했다.
+- **그물**: 기존 import 별칭·훅 컴포넌트별 namespace 테스트는 일반 선언 shadowing을 놓쳤다. sentinel RED `pnpm exec vitest run lib/scan/__tests__/ast.test.ts`는 3 failed / 5 passed, 선언 shadowing RED는 같은 파일에서 11 failed / 8 passed였다. 고유 실패 Symbol과 파일 내부 lexical symbol 비교로 수정 후 각각 ast+hook-wrapper 29 passed·전체 scan 4 files / 70 passed(handoff-B). 가리지 않는 closure는 refs를 유지하는 양성 대조군이다.
+- **재발 방지**: `rg -n 'getSymbol\(|UNRESOLVED|UNSUPPORTED|hookNames|directNames' lib/scan`로 사용자 문자열·실패 상태 및 래퍼 import·훅 반환·호출 symbol 경계를 함께 확인했다. 입력 코드는 실행하지 않고 외부 모듈 해석/lib 로드도 계속 끈다. refs와 동적 키 경고를 같은 lexical 판정으로 거른다.
+
+### 2026-10-07 — 사람 판정이 없는 리포를 미지원 오탐으로 셌다
+
+- **영역**: `lib/survey/summarize.ts`
+- **증상**: 지원 hit/miss·명시적 미지원·미판정을 섞은 집계에서 후보 기준 오탐이 정답 2/3 대신 3/4였다. 미판정만 있는 입력도 판정 없이 오탐으로 집계됐다.
+- **근본 원인**: optional lookup의 판정 부재와 `correctCatalogPath: null`인 명시적 미지원이 같은 nullish 비교로 접혔다. 판정 목록을 완전한 것으로 가정해 분모에도 미판정 리포를 넣었다.
+- **그물**: 모든 fixture에 판정이 있던 기존 테스트는 놓쳤다. RED `pnpm exec vitest run lib/survey/__tests__/summarize.test.ts`는 1 failed / 18 passed, GREEN은 19 passed(handoff-B). 미판정은 오탐 분자·분모에서 빠지되 전체 탐지율·unjudged에 남고, 미판정만 있으면 오탐 0/0이다.
+- **재발 방지**: `rg -n 'correctCatalogPath|judgedWithCandidate|falseOnUnsupported|unjudged' lib/survey/summarize.ts`로 원자료 없음·명시적 null·지원 경로 세 상태를 대조했다. acceptedPaths의 nullish 처리는 정답 경로 없음이라는 다른 질문이라 유지한다. 역사적 코퍼스 보고서는 고치지 않았다.
+
+### 2026-10-07 — 소스별 파일 예산이 신규 생성 요청 전체를 제한하지 못했다
+
+- **영역**: `lib/onboarding-run/create.ts` · `lib/import/read.ts`
+- **증상**: 두 소스가 각각 상한 아래여도 합계 202파일 또는 10.8MB인 신규 요청이 생성됐다. 같은 소스를 중복 제출하면 path-conflict 전에 blob 6회를 읽었다.
+- **근본 원인**: 소스마다 `readFiles`가 totalBytes를 0으로 시작했고, 출력 경로 충돌도 준비/다운로드 뒤에 판정했다. 파일당·소스당 성공을 요청 전체 성공으로 읽었다.
+- **그물**: 기존 단일 소스 예산 테스트는 합산 상한을 놓쳤다. RED `pnpm exec vitest run 'app/(edit)/__tests__/onboarding.test.ts' -t '신규 요청 합산 예산|조작된 클라이언트 경로'`는 4 failed / 217 skipped, 첫 GREEN 전체 온보딩은 221 passed였다. 다른 글롭의 실제 경로 겹침 회귀 추가 후 온보딩·budget·confirm·import·credential-separation 결합 GREEN은 17 files / 702 passed(handoff-C). 테스트 입력은 실제 snapshot 경로이며, 메타데이터·실제 수신 합계와 다운로드 0회 및 정상 단일 다운로드를 따로 단언한다.
+- **재발 방지**: `rg -n 'readFiles\(|checkDownloadBudget|totalBytes|FileContentBudgetError' lib/onboarding-run lib/import/read.ts`로 예산 초기화와 요청 경계를 대조했다. create는 다운로드 전 겹침 거부→합집합 한 번 읽기→소스별 재사용이며, add/import 등 다른 호출도 있다는 사실만으로 같은 결함이라고 단정하지 않는다. 본문 초과 하위 오류는 IngestBudgetError와 파일 경로를 함께 유지한다. 실제 원격 메모리·시간 검증은 별도다.
+
+### 2026-10-07 — 보류 재개 안내가 옛 커밋의 CI 재실행을 권했다
+
+- **영역**: `lib/cli/push-response.ts` · `docs/ACTIONS.md` §3
+- **증상**: 미전달 편집·PR 조회 실패·Publish 경합 보류와 reason 없는 옛 응답에서 현재 head 대신 옛 job 재실행을 안내했다. PR을 머지한 뒤 그 job은 옛 커밋의 리포 값을 다시 strict 적재할 수 있다. 실 리포에서 재실행해 값을 잃었다는 관측은 아니다.
+- **근본 원인**: 재시도는 최신 상태를 다시 읽는다는 전제를 썼지만 Actions job은 원래 커밋을 체크아웃한다. open-pr 안내만 이 경계를 알았고 다른 보류 사유로 전수 적용하지 않았다.
+- **그물**: 기존 exit 0·경고 존재 테스트는 안내하는 입력 커밋의 시점을 보지 않았다. RED `pnpm test lib/cli/__tests__/push-response.test.ts`는 5 failed / 12 passed, GREEN은 17 passed(handoff-D). 네 사유와 reason 없는 옛 응답 모두 현재 head의 새 push·야간 동기화를 안내하고 열린 PR 머지/닫기 및 미전달 편집 복원/폐기를 유지한다.
+- **재발 방지**: `rg -n 'current head|again|re-run' lib/cli/push-response.ts`와 `rg -n '다시 돌|현재 head|야간 동기화' docs/ACTIONS.md`로 모든 보류 안내를 함께 확인했다. 응답 파싱·exit code·서버 문자열 명령 주입 방어는 유지한다. 과거 job 재실행 금지는 보류 해제 후 최신 상태 적재 안내에 관한 것이며, 다른 오류나 수동 CLI 실행 일반에 확장하지 않는다.
+
+### 2026-10-07 — 야간 대상 선정과 원격 관측을 최신 상태로 취급했다
+
+- **영역**: `lib/sync/run.ts` · `lib/nightly/run.ts`
+- **증상**: 대상 선정 뒤 보관된 프로젝트도 cron이 RUNNING을 만들고, 지연된 branch-missing 응답은 그 뒤 설정 변경·성공 적재의 현재 건강성을 실패로 덮었다. 사건 보존과 현재 상태 쓰기를 같은 조건으로 취급했다.
+- **근본 원인**: 대상 스냅샷을 실행권 획득 시점과 실패 결과 기록 시점에 재검하지 않았다. 원격 호출 대기 동안 DB 상태가 바뀌는 경계가 검증 밖이었다.
+- **그물**: A 소유자 RED `pnpm exec vitest run lib/sync/__tests__/run.test.ts`는 1 failed / 1 passed, GREEN sync-run·Action sync-run은 2 files / 23 passed였다. RED `pnpm exec vitest run --config vitest.projects.config.ts lib/nightly/__tests__/nightly.integration.ts -t 'delayed branch-missing'`는 5 failed / 22 skipped, GREEN 당시 nightly 전체는 27 passed(handoff-A). A-fix1의 실제 applyPush·Sources/목록 집계·summaryQueue·planHomeState 대조는 건강 또는 보관 상태와 과거 사건 보존을 확인한다 — DOM/브라우저 검증은 아니다. 최초 대상 선정과 즉시 응답만 가진 기존 대조는 지연 경합을 놓쳤다.
+- **재발 방지**: `rg -n 'archivedAt|importRevision|FOR UPDATE|recordEvent' lib/sync/run.ts lib/nightly/run.ts`를 실행해 실행 시작과 원격 결과 반영 양쪽 잠금 안 대조를 확인했다. cron은 잠금 뒤 보관이면 행·사건·GitHub 호출 없이 거부한다. branch-missing은 Project → 정렬된 Surface 잠금에서 리포/설치/브랜치/보관 및 소스 revision/포맷/경로/base를 재검하고, 바뀐 소스에는 실패 상태를 쓰지 않으며 과거 관측 사건은 남긴다.
+
+### 2026-10-07 — 🔁 생성 제출의 복구 안내가 두 Alert에 반복됐다 (#199)
+
+- **영역·기존 경위**: `components/onboarding/new-project.tsx` · 2026-09-19 인가 철회 항목의 C-fix1 복구 컨트롤 후속이다. [#199](https://github.com/SinhyeokKang/malmoi/issues/199).
+- **증상·근본 원인**: Q의 실제 ③ 생성 제출에서 동일한 재인가 안내가 두 danger Alert에 나타났다. 생성 실패 Alert와 NamingStep의 `accessLost ?? banner`가 같은 코드를 각각 표시했다. 복구 버튼이 존재하는지 검사한 C-fix1은 안내 개수를 세지 않았다.
+- **그물·수정**: Q-fix1은 생성 실패가 이미 표시하는 코드만 NamingStep에서 숨기고 접근 상실 상태는 남겼다. 재인가 외 접근 거부 8종, Back 뒤 안내/Next 차단, 입력/선택 보존을 함께 고정했다. 소유자 RED는 9 failed / 1 passed, GREEN은 10 passed(각 103 skipped); 최종 DOM·hydration·client-graph는 149 passed, typecheck exit 0이다. E3가 이 테스트를 재실행한 결과가 아니라 [후속 검증 기록](https://github.com/SinhyeokKang/malmoi/issues/199#issuecomment-6038099327)의 증거다.
+- **재발 방지**: `rg -n 'creationFailure|accessLost|ConnectGithubButton' components/onboarding/new-project.tsx components/onboarding/steps/naming.tsx`로 같은 실패의 생산자·표시 소비자·복구 버튼을 대조했다. 회귀는 `components/__tests__/new-project.test.tsx`의 생성 제출 경로에서 한 Alert와 한 재인가 버튼을 세고 Back 이후 차단까지 검사한다. 상태를 지워 중복을 없애면 안 된다.
+- **검증 한계**: Q의 만료 원인은 dev Account의 만료 시각/refresh 부재 fixture였고 실제 원격 인가 철회가 아니다. 복구 버튼 뒤 실제 GitHub OAuth 왕복은 관측했지만 수정 후 #199 실제 재검증과 독립 RQ 결과는 E3 작성 시점에 남아 있다. 현재 상태는 [이슈 #199의 후속 기록](https://github.com/SinhyeokKang/malmoi/issues/199)가 소유한다.
+
+### 2026-10-07 — 🔁 결정적 Publish 거부를 연결 장애 재시도로 안내했다 (#200)
+
+- **영역·기존 경위**: `lib/publish/read.ts`·`load-preview.ts`, `lib/pull/run.ts`, Publish UI/MCP · 같은 날 파일 쓰기 성공/전달 및 원격 tree 경계 보강의 preview 소비자 후속이다. [#200](https://github.com/SinhyeokKang/malmoi/issues/200).
+- **증상·근본 원인**: Q의 실제 spread fixture는 실행이 writer 경고로 막고 pending을 남겼지만 미리보기는 리포 연결 확인과 Try again을 안내했다. 동적 computed도 실행 거부를 별도로 관측했다. target symlink도 같은 잘못된 안내였다. 표시용 read가 렌더 경고보다 먼저 일반 오류를 던졌고 파일 종류 거부도 일반 AppError로만 전달됐다.
+- **그물·수정**: Q-fix2는 같은 snapshot/head/tree의 render 판정을 표시 경로보다 먼저 수행하고 `blockingErrors`·`planDelivery` 및 보수적 read 거부를 `PreviewWriterWarnings → blocked`로 전달한다. 파일 종류는 `GitFileKindError`로 구조화하되 AppError 이름/메시지/분류와 실행 차단을 유지하고 preview만 `refused/unsupported-file-kind`로 옮긴다. 기존 내부 throw/no-write 검사만으로는 사용자 복구 안내를 검증하지 못했다.
+- **회귀 증거**: 소유자 초기 reader→Action RED 4 failed / 36 passed, UI/MCP·symlink 확장 RED 14 failed / 267 passed; 최종 관련 48 files / 911 passed, 전체 12122 passed / 2 skipped와 typecheck exit 0이다([후속 검증 기록](https://github.com/SinhyeokKang/malmoi/issues/200#issuecomment-6038100159)). 실제 reader/Action과 runPull은 DB/Git fixture를 쓰고 DOM은 결과 계약을 mock하며 MCP 도구 테스트도 공유 코어 결과를 mock한다. 실제 HTTP/RSC 또는 원격 전달 증거로 세지 않는다.
+- **재발 방지**: `rg -n 'PreviewWriterWarnings|GitFileKindError|blockingErrors|unsupported-file-kind|Preview path unavailable' lib/publish lib/pull/run.ts components/publish-button.tsx lib/mcp/tools/publish.ts`로 판정→공유 코어→UI/MCP를 함께 확인했다. `read.test.ts`의 shadowing/own-property/일시 blob 실패/파일 종류 및 누락 locale 양·음성 대조, `publish-button.test.tsx`의 두 호스트 안내·실행/재시도 버튼 부재, MCP `write-tools.test.ts`의 reason/경고·지문 부재를 유지한다. `error-codes.test.ts`는 fail 호출 스캔에서 옮겨진 파일 종류 한 항목만 AppError/분류기 계약의 직접 검사로 대체했다.
+- **검증 한계**: 무관한 키의 불확실성으로 파일 전체 preview를 거부하는 기존 보수 정책은 유지한다. 재시도로 풀리는 실제 읽기 장애와 구분하며 blob 중복 다운로드나 별도 snapshot은 없다. 수정 후 실제 화면·원격·MCP HTTP 재검증 및 독립 RQ 결과는 E3 작성 시점에 남아 있다. [이슈 #200의 후속 기록](https://github.com/SinhyeokKang/malmoi/issues/200)의 후속 결과 전에는 #200을 해결된 실물 증거로 쓰지 않는다.
+
+**2026-10-07 후속 검증 완료 (#199·#200)**: 독립 리뷰 red/yellow 0, Node 24 대상 403테스트 통과 뒤 실제 Create POST·GitHub OAuth 복구·Publish spread/computed 경고·symlink 파일 복구 안내·정상 literal preview를 재검증했다. 별도 dev 읽기 전용 seeded User/membership/token으로 실제 MCP HTTP의 Unicode 원문 UTF-16 범위와 만료/폐기 401도 확인하고 임시 자격증명을 제거했다. 두 이슈는 위 영문 검증 코멘트와 함께 종료했다. 실제 CI push HTTP·원격 race 유발·배포는 이 런타임 검증에 포함하지 않았다. 감사 작업 문서는 사용자 요청으로 정리했고 정본 계약·회귀 테스트·이슈 기록을 남겼다.
