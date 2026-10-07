@@ -2017,6 +2017,8 @@ Home 카드도 Card를 쓰되 details·Meter·aside 랜드마크의 의미론은
 
 **목록 로딩도 시각112·결과172의 줄지 않는 바깥 칸을 유지한다.** 안쪽 placeholder 막대는 짧아도 되지만 그 길이가 칸의 폭을 대신하지 않는다.
 
+**목록 로딩 머리는 기본 필터 다섯의 현재 화면 언어 라벨과 같은 `FieldTrigger` 기하, 검색320, 제목·Refresh36의 공간을 예약한다**(2026-10-08, #201). 장식 막대는 그 공간 안에 둔다. `loading.tsx`는 선택 질의·소스·행위자·보관 상태를 모르므로 기본 미필터 머리만 맞추고, 선택값·Clear filters·보관 안내의 기하 일치는 약속하지 않는다.
+
 - **시각은 `HH:mm` + 오프셋 라벨**이다(`09:42 UTC` · `08:10 UTC+9` · `14:12 UTC+5:30` — `formatClock`, 2026-10-05 user-timezone). 날짜는 카드 머리가 한 번 든다. **라벨을 행마다 단다** — "시각에는 오프셋 라벨" 규칙에 예외를 두지 않는다(사용자 2026-10-04). 칸은 **`w-28`(112) + `whitespace-nowrap` + `tabular-nums`**다 — 옛 `w-12`(48)는 `08:10 UTC+5:30`을 못 담는다(실측 `08:10 UTC+5:30`이 109px — 2026-10-05 Q1, 1280·Chrome). 정확한 값은 사라지지 않는다: `<time dateTime>`(UTC ISO) + `aria-label="Sep 20, 2026 09:42 UTC"`(`formatMinute` — 서울이면 `… 18:42 UTC+9`). ⚠️ **행마다 전체 날짜를 적던 옛 형은 활동이 하루 수십 건이 되면 같은 날짜를 스무 번 반복하고 그 폭(약 150)이 문장에서 빠져나간다.**
 - **문장이 행위자로 시작한다**(500 굵기). 자동 실행은 `Nightly`·`CI`가 그 자리를 그대로 쓴다 — 사람과 자동화를 같은 문법으로 읽는다. ⚠️ **방향은 낱말과 글리프가 함께 말한다**: 내보내기 `sent … to GitHub`/`git-pull-request-arrow`, 가져오기 `synced … from the repository`/`arrow-down-to-line`. 내부 이름이 하나(`SyncRun`)라는 사실이 두 방향을 섞을 근거가 되지 않는다.
   ⚠️ **자동화 낱말은 `triggerOf`(`lib/events/view.ts`)가 `subtype` 컬럼으로 정한다** (2026-09-30, nightly-sync) — AUTOMATION이 PUBLISH이거나 야간 subtype(`import.nightly`·`nightly.skip`)이면 `Nightly`, 그 밖이 `CI`다. 전엔 AUTOMATION IMPORT가 전부 `CI`였다. 행·상세의 행위자·Trigger 필드·Home 메타 열이 이 하나를 쓴다. 사람 행은 그대로 마스킹된 이름이다.
