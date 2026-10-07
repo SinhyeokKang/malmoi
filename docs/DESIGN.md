@@ -155,8 +155,9 @@ size="lg"`(40)는 그대로 **셸 밖 카드 전용**이다(로그인·초대 �
 | Publish 일부 보류 · 보류만 남은 Publish(Logs `notSent`) | warning | Held back — Sync 문장에는 쓰지 않는다. Unsent와 다른 개념이다(Publish 거부 결과). **지문 재확인으로 멈춘 Publish도 Logs 결과 배지는 Held back이다**(필터·Publish 결과 낱말과 같다 — 사유는 보조줄이 든다, 2026-10-01) |
 | 미전달 편집(정상 작업 흐름) | neutral | Unsent — `Badge soft-neutral`(손 조립 알약을 쓰지 않는다). 산문의 명사는 "unsent edit(s)" |
 | 거부(시작 안 함) | warning | Not started |
+| 변경 요청의 응답 유실·결과 미확인 | warning | 성공·실패를 단정하지 않고 확인 방법을 안내한다. 비동기 결과는 `role="status"`로 알리며, 이미 별도 알림 영역이 있는 화면은 그 영역을 유지한다. 확인된 실패는 danger다 |
 | PR 열림 | neutral | Open |
-| 열린 PR 조회 실패(`/projects` 띠) | warning | Couldn't check for an open pull request — 목적어를 붙인다(홀로 서는 "Couldn't check"는 연결 확인 실패 낱말이다). 목록의 PR 조회 실패 네 경로(거부 · 클라이언트/토큰 실패 · 전체 마감 · 행 조립)가 전부 "없음"이 아니라 이 띠다 — 전체 마감이면 PR 번호가 있는 모든 행에 선다 |
+| 열린 PR 조회 실패(`/projects` 띠·Home 메타) | warning | Couldn't check for an open pull request — 목적어를 붙인다(홀로 서는 "Couldn't check"는 연결 확인 실패 낱말이다). Home은 `prCheckFailed` 상태(`home.meta.prCheckFailed`)를 쓰고 `couldNotCheck`는 연결 확인에만 쓴다. 목록의 PR 조회 실패 네 경로(거부 · 클라이언트/토큰 실패 · 전체 마감 · 행 조립)가 전부 "없음"이 아니라 이 띠다 — 전체 마감이면 PR 번호가 있는 모든 행에 선다 |
 | 연결됨 | success | Connected |
 | 미연결(설치 없음) · 끊김(재연결 필요) · 다른 리포 | neutral · warning · danger | Not connected · Disconnected · Wrong repository (`connectionProblem`). **끊김은 셋이다** — App 제거 · 설치 교체 · **설치 기록은 있고 `repositoryId`가 null(`unpinned`)**(D1 — 목록·Home·Settings·적재 거부 문구가 같은 Disconnected를 말하고 버튼은 Reconnect). 결과 문장은 "Syncs and publishes stop until it's reconnected." — "paused"·연결 문맥의 "held"를 쓰지 않는다 |
 | 인가·토큰·연결 앱 만료 · 연결 확인 실패 | warning | Expired · Couldn't check |
@@ -170,6 +171,8 @@ size="lg"`(40)는 그대로 **셸 밖 카드 전용**이다(로그인·초대 �
 
 1. **번역 화면의 `pending-edits` 보류 배너는 `Alert neutral`이다**(D3①) — 편집 한 건마다 상시로 서고, 같은 화면의 Unsent가 neutral이다. 같은 보류가 Home 보조줄·메타·Logs에서는 warning Held다. 번역 화면에는 `pending-edits` 배너만 선다 — `open-pr`·`pr-check-failed` 보류는 Home 보조줄·메타가 warning으로 말한다.
 2. **Logs 스트림의 성공 결과(`Sent`·`Synced` 둘 다)는 배지·글리프 칸 모두 neutral이다**(D3③) — 이력은 성공이 대부분이라 초록이 배경이 된다. **Home의 Recent logs도 같은 스트림·같은 행 컴포넌트라 neutral이다.** Home 카드·메타 열·Sync 결과 Alert·Sources·`/projects` 목록의 성공은 success 그대로다. ⚠️ **Logs 상세의 소스별 결과 배지도 neutral이다**(malmoi#163) — 옛 별도 표(`SURFACE_VARIANT`)는 성공이 초록이라 같은 모달의 머리 Synced(무색)와 같은 낱말이 두 톤이었다. 지금은 `surfaceResultState`가 머리와 같은 Logs 상태 키를 준다(`event-detail.tsx`, `logs-events.test.tsx`가 초록 부재를 센다). ⚠️ **이 예외는 Logs·Recent logs의 표시 층이 적용한다** — 공유 결과 톤(`lib/events/view.ts`의 `TONES`)은 성공 = `success`를 유지한다.
+
+**페이지 오류 경계는 별도 예외다.** 공유 `ErrorState`는 §6.4·§6.69의 muted `EmptyState` 형과 Retry를 유지한다. 인라인 실패의 danger 규칙을 페이지 전체의 오류 화면에 적용하지 않는다. 위의 정상 작업 흐름 예외 둘과는 근거가 다르다.
 
 **Logs는 결과에서 종류를 빼고 말한다**(Q1) — 종류 배지(`Sync`·`Publish` …)가 앞에 서므로 결과 배지는 "Sync failed"가 아니라 **"Failed"**다. 다른 화면은 종류가 없어 "Sync failed"다.
 
@@ -1558,8 +1561,8 @@ diff 표가 **키 220 + 로케일 84 + 값**의 3열이라는 것이다 — 작�
 같은 결과를 두 번 읽지 않는다(시안의 블록별 `aria-live="polite"`를 이 규칙으로 정정했다).
 **`1i`의 응답 유실 형** (malmoi#135 — Sync의 `unconfirmed`와 같은 부류, §6 Sync 결과 표): `triggerPullAction` 호출이 throw하면
 (클라이언트만 낸다) 제목·설명이 `The response didn't come back` · `Malmoi may have sent your changes anyway. …`로 바뀌고
-바닥 한 줄은 `unknownDelivery`(`We couldn't confirm whether your changes were sent.`)다. 틀·높이·Alert·`Try again`(새 미리보기)은
-`1i` 그대로다. ⚠️ **`GitHub didn't answer`·`failed partway`를 쓰지 않는다** — 끊긴 것은 Malmoi의 응답이고 PR은 나갔을 수 있다.
+바닥 한 줄은 `unknownDelivery`(`We couldn't confirm whether your changes were sent.`)다. 틀·높이·`Try again`(새 미리보기)은
+`1i` 그대로이고, 결과 미확인 Alert는 `warning`·`role="status"`다. 확인된 실패 `1i`는 `danger`·`role="alert"`를 유지한다. ⚠️ **`GitHub didn't answer`·`failed partway`를 쓰지 않는다** — 끊긴 것은 Malmoi의 응답이고 PR은 나갔을 수 있다.
 무엇이 됐는지는 refresh로 다시 읽은 건수·PR 링크가 말한다(오프라인이면 다시 읽지 않는다 — ARCHITECTURE). Sources 상세의 첫 적재도
 같다 — 응답을 잃으면 `We couldn't confirm whether the sync finished.`이고 `didn't finish`를 단언하지 않는다.
 
@@ -2011,6 +2014,8 @@ Home 카드도 Card를 쓰되 details·Meter·aside 랜드마크의 의미론은
 ⚠️ **표 다섯 열이 사라졌다.** When·Started by·Result·Files·Reason은 **Publish 실행 하나에만** 맞고, 종류가 여섯이면 번역 편집 행의 Files·Reason이 영원히 빈 칸이다 — **빈 칸은 "값이 없다"와 "이 종류엔 해당 없다"를 구별하지 못한다**(§6.1의 부재 규칙). 그래서 세로로 맞추는 것은 **셋뿐**이다.
 
 **행**: `[시각 112] [글리프 28] [문장 15 + 보조 13] [결과 172] [chevron 16]`
+
+**목록 로딩도 시각112·결과172의 줄지 않는 바깥 칸을 유지한다.** 안쪽 placeholder 막대는 짧아도 되지만 그 길이가 칸의 폭을 대신하지 않는다.
 
 - **시각은 `HH:mm` + 오프셋 라벨**이다(`09:42 UTC` · `08:10 UTC+9` · `14:12 UTC+5:30` — `formatClock`, 2026-10-05 user-timezone). 날짜는 카드 머리가 한 번 든다. **라벨을 행마다 단다** — "시각에는 오프셋 라벨" 규칙에 예외를 두지 않는다(사용자 2026-10-04). 칸은 **`w-28`(112) + `whitespace-nowrap` + `tabular-nums`**다 — 옛 `w-12`(48)는 `08:10 UTC+5:30`을 못 담는다(실측 `08:10 UTC+5:30`이 109px — 2026-10-05 Q1, 1280·Chrome). 정확한 값은 사라지지 않는다: `<time dateTime>`(UTC ISO) + `aria-label="Sep 20, 2026 09:42 UTC"`(`formatMinute` — 서울이면 `… 18:42 UTC+9`). ⚠️ **행마다 전체 날짜를 적던 옛 형은 활동이 하루 수십 건이 되면 같은 날짜를 스무 번 반복하고 그 폭(약 150)이 문장에서 빠져나간다.**
 - **문장이 행위자로 시작한다**(500 굵기). 자동 실행은 `Nightly`·`CI`가 그 자리를 그대로 쓴다 — 사람과 자동화를 같은 문법으로 읽는다. ⚠️ **방향은 낱말과 글리프가 함께 말한다**: 내보내기 `sent … to GitHub`/`git-pull-request-arrow`, 가져오기 `synced … from the repository`/`arrow-down-to-line`. 내부 이름이 하나(`SyncRun`)라는 사실이 두 방향을 섞을 근거가 되지 않는다.
