@@ -6,7 +6,7 @@ import { ko } from "@/messages/ko";
 import { es } from "@/messages/es";
 
 const counts: Readonly<Record<string, (m: Messages) => string>> = {
-  "sources.sourceCounts": m => m.sources.sourceCounts(10000, 10000),
+  "surfaces.sourceCounts": m => m.surfaces.sourceCounts(10000, 10000),
   "sources.count": m => m.sources.count(10000),
   "sources.languageCount": m => m.sources.languageCount(10000),
   "repositorySync.unreadable": m => m.repositorySync.unreadable(10000),
