@@ -959,6 +959,8 @@ lib/
   keyboard.ts           ⚠️ 잎(import 0). 키보드·포인터 판정 하나 — isImeComposing · isPlainPrimaryClick · searchShortcut(플랫폼별 matches·칩
                         식별자·aria). 글자는 내지 않는다(컴포넌트가 m.common.keys로 푼다). React 호출부는 nativeEvent를 넘긴다
   cause.ts              ⚠️ 잎. causeMessage — 잡은 값의 메시지. `(cause as Error).message`는 Error 아닌 throw에서 undefined다
+  number-format.ts      ⚠️ 잎(type import만). formatNumber(value, uiLocale) — 화면 개수를 명시한 UI 언어로 표시한다. 기본 로케일 없음;
+                        서버·클라이언트가 공유하며 PR 번호 등 식별자에는 쓰지 않는다(ARCHITECTURE §6.355)
   date-format.ts        ⚠️ 잎(옛 utc-time.ts — 2026-10-05 user-timezone). 절대 날짜·시각의 유일한 생산자(`Sep 27, 2026` · `Oct 5, 2026 08:10 UTC+9`) —
                         입력 DateStyle { uiLocale, timeZone } · Logs 날짜 산술(dayKeyAt·addDays·startOfDay). Intl.DateTimeFormat은 이 파일에서
                         timeZone을 명시한 숫자 부품 추출에만 쓴다 — 런타임 TZ를 읽지 않아야 서버·브라우저가 같은 값을 찍는다(ARCHITECTURE §6.356)
@@ -978,7 +980,7 @@ lib/
   env.ts db.ts githash.ts utils.ts relative-time.ts hue.ts
 ```
 
-⚠️ **잎 모듈이 잎인 데는 이유가 있다** — `relative-time`·`date-format`·`time-zone/`·`color-scheme/scheme`·`compare`·`ref-slug`·`flag`는
+⚠️ **잎 모듈이 잎인 데는 이유가 있다** — `relative-time`·`date-format`·`number-format`·`time-zone/`·`color-scheme/scheme`·`compare`·`ref-slug`·`flag`는
 클라이언트가 값으로 읽는 판정이라 무거운 그래프를 물면 그대로 번들이 된다. **재수출도 하지 않는다.**
 `vitest.setup.ts`가 `server-only`를 전역 mock하므로 "테스트가 죽는다"는 더 이상 그 압력이 아니고,
 **남은 방어선은 `components/__tests__/client-graph.test.ts` 하나**다.
