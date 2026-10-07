@@ -143,6 +143,9 @@
 
 ---
 
+- **🔁 재발 (2026-10-07, audit #2)**: CI 적재가 보류된 동안 원본에만 중첩 키가 추가되면 저장된 `nested=false`가 현재 파일보다 우선해 구조를 평탄화했다. 반대 방향(중첩 원본에 점 포함 리터럴 키 추가)도 같은 계약 결함이다. 원본의 실제 세그먼트 경로를 보존하고 값만 DB에서 채운다. `json-current-structure.test.ts`가 두 방향·빈 이름·숫자 객체·null 충돌을 어댑터와 실제 render 경로에서 검사한다. 기존 golden/survey는 옛 손실을 기대값으로 굳혀 놓아 사용자 승인 뒤 갱신했다. survey의 점 접두 추정도 서로 다른 실제 경로를 충돌로 셌으므로 실제 `key-shadowed` 출력으로 바꿨다. 재발 방지: `rg -n 'nestedByPath|segmentsOf|duplicateCount|key-shadowed' lib/adapters/json-catalog.ts lib/survey/one.ts`로 구조 선택과 계측을 함께 대조한다.
+
+
 ### 2026-09-02 — 껍데기가 파일을 안 골라 어댑터가 "존재하지 않았다"
 
 - **영역**: `lib/survey/select.ts`, `lib/survey/one.ts`, `lib/pull/run.ts`
@@ -2185,6 +2188,9 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   - transition 완료 뒤 할 일은 `isPending`의 가장자리가 아니라 **클릭이 세우는 상태**(`awaiting`)와 `!isPending`의 조합으로 판정한다(`repo.tsx`).
   - grep: `rg -n "new Promise\(\(\) => \{\}\)" components app lib --glob '**/__tests__/**'` → 2026-09-18 기준 남은 3건(`app/(edit)/account/__tests__/structure.test.tsx:590·613` 프로필 사진 업로드·삭제, `components/__tests__/new-project.test.tsx:142` 브랜치 조회). 지금은 같은 파일 뒤쪽에 transition 완료를 단언하는 테스트가 없어 드러나지 않았을 뿐인 후보다 — 그 mock이 `startTransition(async …)` 안에서 불리면 같은 누수다.
 
+- **🔁 잠재 재발 (2026-10-07, audit #6)**: `mcp-token.test.tsx`의 pending 확인용 Action도 영원히 끝나지 않았다. 현재 25개 테스트는 통과했고 파일 격리 밖 영향은 없었다. 테스트 끝 `finally`에서 Promise를 resolve하고 `act`로 정리했다. `rg -n 'new Promise\(\(\) => \{\}\)' components app lib --glob '**/__tests__/**'`의 나머지는 타임아웃·Suspense·읽기 대기와 Action 대기가 섞인 후보이며 이 감사에서 모두 결함으로 판정하지 않았다. `translation-workspace-lock.test.tsx`의 Action 대기는 후속 점검 대상이다.
+
+
 ### 2026-09-19 — 인가를 철회한 사용자가 "잠시 뒤 다시"에 갇혔고, 그 자리만 401 규칙을 어기고 있었다
 
 - **영역**: `lib/github-connect/account-view.ts` · `components/account/github-section.tsx`(`unavailable`에 컨트롤 0) · 규칙의 정본은 ARCHITECTURE §6.5.1
@@ -2358,6 +2364,9 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - 🔁 **재발 (2026-09-20, 같은 날 · 같은 기능의 형제 Action 셋)**: 위 재발 방지의 grep이 **`app/(edit)/projects/actions.ts` 한 파일**이었고, 같은 변경이 `app/(edit)/projects/[slug]/settings/actions.ts`에 만든 `updateProjectName`·`uploadProjectImage`·`deleteProjectImage` 셋이 검사 범위 밖이었다. 셋 다 DB tx가 **커밋된 뒤** `cleanProjectImage` + `revalidatePath("/", "layout")`을 try 밖에서 부르므로, 그것이 던지면 Action이 reject되고 클라이언트 `catch`가 `setError`를 세운다 — 저장된 이름·이미지를 화면이 "실패"로 말하고, 사용자가 업로드를 다시 눌러 **두 번째 Blob 객체**를 만든다. 조치는 `revalidateAfterCommit(scope, projectId)` 하나를 셋이 지나게 한 것이고, 회귀 테스트는 `app/(edit)/__tests__/project-metadata.test.ts`가 `revalidatePath`에 예외를 주입해 `{ ok: true }`를 단언한다.
   - ⚠️ **"그 파일에서 다 봤다"가 재발 방지가 아니다** — 이 부류의 단위는 파일이 아니라 **"커밋 뒤에 무언가를 더 하는 Server Action"**이다. 같은 기능의 새 Action이 옆 디렉터리에 생기면 앞 항목의 grep은 그것을 영영 안 센다.
   - ⚠️ **전수 grep이 원본을 찾아냈다**: `for f in $(grep -rl '"use server"' app --include="*.ts"); do grep -n revalidatePath "$f"; done` → **`app/(edit)/account/actions.ts`의 `updateProfileName`·`uploadProfileImage`·`deleteProfileImage` 셋이 글자까지 같은 형이다**(커밋 뒤 `cleanImage` + `revalidatePath` + 결과 union). 프로젝트 쪽이 그 셋을 베껴 쓴 것이라 **원본이 뒤에 고쳐진 순서**가 됐다 — 같은 날 `4712d23`이 그 셋에 같은 `revalidateAfterCommit`을 붙였고, `unlink` 하나가 더 있었다(결과 union이 아니라 `redirect`라 증상이 다르다: 끊긴 뒤 계정 화면 대신 오류 화면에 착지한다). 회귀 테스트는 `app/(edit)/account/__tests__/image.test.ts`·`name.test.ts`가 `revalidatePath`와 `deleteImage` 양쪽에 예외를 주입해 `{ ok: true }`를 단언한다. ⚠️ **베낀 쪽을 고치고 원본을 안 세면 결함이 원본에 남는다** — 이 항목이 그 전수 grep으로만 원본을 찾았다.
+
+- **🔁 재발 (2026-10-07, audit #5)**: resendInvitation·disconnectGithub·connectRepository와 `runFirstIngest`의 후처리 예외가 확정된 성공을 reject했다. 특히 위의 “finally에 있어 같은 거짓 rollback union은 없었다”는 관측은 충분하지 않았다. **finally가 던져도 원래 성공 반환이 사라진다.** 네 경로를 `settleRevalidate`로 감싸고 예외 주입 시 성공을 유지하는 테스트를 붙였다. `rg -n 'revalidatePath|settleRevalidate' 'app/(edit)/projects/actions.ts' 'app/(edit)/projects/[slug]/settings/actions.ts'`로 추가 확인한 `addSurfaces`의 맨 호출 둘은 이미 별도 catch 안이라 수정 대상이 아니었다.
+
 
 ### 2026-09-20 — 화면 하나에 세운 규칙 셋을 새 화면이 다시 어겼고, 그 규칙의 그물이 전부 원래 화면에만 있었다
 
@@ -2667,3 +2676,27 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   - 셸이 Enter를 capture 단계에서 받아 `preventDefault` + 버튼과 같은 `toggle`을 부른다(라이브러리 리스너가 `defaultPrevented`로 물러난다). 회귀 테스트 `sidebar-collapse.test.tsx` "핸들에서 Enter를 누르면 토글한다".
   - 라이브러리 콜백에 상태 판정을 묶은 자리를 찾는다: `rg -n "onResize=|onCollapse=|onExpand=" components app` · `rg -n "collapsible" components app -g '!**/__tests__/**'` — 2026-10-07 실행: `collapsible` 패널은 `shell-panels.tsx` 하나다(번역 화면·온보딩의 패널은 접지 않는다). `collapsible` 패널이 새로 생기면 Enter 경로를 같은 방식으로 막는다.
   - "jsdom에서 안 도는 콜백"에 기댄 판정은 DOM 테스트 green을 근거로 삼지 않는다 — 브라우저에서 그 콜백이 실제로 불리는지 계측해 본다.
+
+### 2026-10-07 — 허용된 CI 경합이 재Publish 뒤 PR의 복구본까지 지울 수 있었다
+
+- **영역**: `app/api/push/route.ts` · `lib/push/apply.ts` · `lib/nightly/run.ts` · `lib/import/run.ts` · `lib/pull/load.ts`
+- **증상**: 사전 판정 뒤 편집과 Publish가 완료되면 토큰이 0이라 옛 리포 값이 DB에 적재된다. 머지 전 다른 편집을 Publish하면 DB로 다시 만드는 sync 브랜치에서도 앞의 값이 사라진다.
+- **근본 원인**: 잠금 안 재집계는 진행 중인 편집만 보고, 이미 전달 확인한 Publish가 사전 PR 판정을 낡게 했다는 사실은 못 봤다. 문서는 PR이 먼저 머지될 때의 복구만 적었다.
+- **그물**: 사전 timestamp를 받아 잠금 안에서 null 포함 불일치면 보류하는 실제 CI→PG→번역 상세 시나리오와 자동 적재 테스트가 잡는다. 단순 pending 수 테스트는 놓쳤다. 같은 밀리초에도 표식이 달라지도록 Publish 완료는 Project 잠금 안에서 직전 값보다 최소 1ms 전진시킨다.
+- **재발 방지**: `rg -n 'lastPublishedAt|applyProtectedPush|runAutomationImport' lib/push/apply.ts lib/nightly/run.ts lib/import/run.ts app/api/push/route.ts`로 CI와 야간 양쪽 생산자·소비자를 확인했다. 원본 값 대조나 트랜잭션 안 GitHub 호출은 추가하지 않는다.
+
+### 2026-10-07 — 파일 쓰기 성공과 요청한 값 전달을 같은 것으로 셌다
+
+- **영역**: `lib/keys/save.ts` · `lib/pull/run.ts` · `lib/adapters/code-dict.ts`
+- **증상**: 수술적 어댑터의 base 원문도 빈 경우 셀을 비워도 예전 파일 값이 남고 no-changes가 토큰을 해제했다. JS 중복 속성의 마지막이 shorthand인 경우 writer가 앞의 가려진 리터럴을 고치기도 했다.
+- **근본 원인**: base 폴백은 항상 전달된다는 가정과 writer의 속성 검색이 shorthand를 제외한 것이 겹쳤다. 미리보기 밖 실행에도 같은 보호가 필요했다.
+- **그물**: 저장 판정 테스트와 실제 `runPull`의 no-changes·미리보기 없는 실행에서 GitHub 쓰기와 전달 확인이 없음을 검사했다. 기존 writer 테스트와 TS 컴파일은 JS 경로를 놓쳤다.
+- **재발 방지**: `rg -n 'writeEmpty|propertyNamed|write-empty-unsupported|planClearability' lib/adapters lib/pull/run.ts lib/keys/save.ts`로 읽기·쓰기·전달 경계를 함께 확인한다. 신규 불가능한 빈 편집은 저장에서 거부하고 이미 저장된 것은 Publish 경고로 보류한다.
+
+### 2026-10-07 — 비동기 경계와 검증 트리거가 구현의 끝까지 닿지 않았다
+
+- **영역**: `lib/upload/store.ts` · `lib/oauth-server/client-metadata-fetch.ts` · `scripts/gate-plan.ts`
+- **증상**: Blob 본문 읽기 실패는 catch 밖으로 빠져 404 대신 500, CIMD는 DNS 시간에 HTTPS 5초가 더해졌다. OAuth token 구현 변경만으로는 그 구현을 검증하는 MCP PostgreSQL 테스트가 실행되지 않았다.
+- **근본 원인**: Promise 반환을 완료로, HTTPS 타이머를 전체 마감으로, 테스트 디렉터리 목록을 구현 의존성 목록으로 취급했다.
+- **그물**: 본문 reject 주입·미완료 DNS와 남은 HTTPS 시간의 fake timer·구현 경로 단독 gate-plan 테스트가 잡았다. 성공 응답과 include 디렉터리 대조만으로는 보이지 않았다.
+- **재발 방지**: `rg -n 'arrayBuffer|withinDeadline|timeoutMs' lib/upload/store.ts lib/oauth-server/client-metadata-fetch.ts`와 `rg -n 'oauth-server|lib/mcp' scripts/gate-plan.ts vitest.projects.config.ts`로 완료 경계 및 구현과 테스트의 다른 위치를 확인한다.
