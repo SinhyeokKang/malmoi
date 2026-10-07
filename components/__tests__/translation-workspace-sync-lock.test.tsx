@@ -24,6 +24,7 @@ vi.mock("@/app/(edit)/actions", () => ({ saveTranslationKey: mocks.save, preview
 vi.mock("@/app/(edit)/publish-actions", () => ({ loadPublishPreview: vi.fn() }));
 vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: vi.fn(), checkOpenPullRequest: vi.fn().mockResolvedValue(null), prepareRepositorySync: vi.fn().mockResolvedValue(undefined) }));
 
+import { SyncLockDialog } from "@/components/translations/sync-lock";
 import { TranslationWorkspace } from "@/components/translations/workspace/workspace";
 import { en } from "@/messages/en";
 
@@ -39,6 +40,9 @@ const button = (label: string) => {
   return found;
 };
 const dialog = () => document.querySelector<HTMLElement>('[role="dialog"]');
+async function waitForDialog(title: string) {
+  await vi.waitFor(() => expect(dialog()?.textContent).toContain(title));
+}
 const area = (container: HTMLElement, code: string) => container.querySelector<HTMLTextAreaElement>(`textarea[data-locale="${code}"]`)!;
 
 /** jsdom은 꺼진 버튼의 포커스를 놓지 않는다 — 브라우저처럼 `body`로 떨어뜨린다 (POSTMORTEM 2026-09-20). */
@@ -63,7 +67,7 @@ it("저장이 sync-running이면 Syncing… Dialog가 다시 열리는 시각을
   const { container } = await render(<TranslationWorkspace {...props()} />);
   await user.type(area(container, "zh"), "空");
   await user.click(button("Save"));
-  await vi.waitFor(() => expect(dialog()).not.toBeNull());
+  await waitForDialog(en.translations.workspace.syncLock.title);
   expect(dialog()?.textContent).toContain(en.translations.workspace.syncLock.title);
   const time = dialog()?.querySelector("time");
   expect(time?.getAttribute("dateTime")).toBe(reopensBy.toISOString());
@@ -90,7 +94,7 @@ it("단축키로 저장했다 거부되면 닫힌 뒤 포커스가 그 입력으
   const { container } = await render(<TranslationWorkspace {...props()} />);
   await user.type(area(container, "zh"), "空");
   await user.keyboard("{Control>}{Enter}{/Control}");
-  await vi.waitFor(() => expect(dialog()).not.toBeNull());
+  await waitForDialog(en.translations.workspace.syncLock.title);
   await user.click(button("OK"));
   await vi.waitFor(() => expect(document.activeElement).toBe(area(container, "zh")));
 });
@@ -100,7 +104,7 @@ it("Revert 미리보기가 sync-running이면 같은 Dialog이고 unavailable �
   const user = userEvent.setup();
   await render(<TranslationWorkspace {...props()} />);
   await user.click(button(en.translations.workspace.revert.button));
-  await vi.waitFor(() => expect(dialog()?.textContent).toContain(en.translations.workspace.syncLock.title));
+  await waitForDialog(en.translations.workspace.syncLock.title);
   expect(dialog()?.querySelector("time")?.getAttribute("dateTime")).toBe(reopensBy.toISOString());
   await user.click(button("OK"));
   expect(document.body.textContent).not.toContain(en.translations.workspace.revert.unavailable);
@@ -116,9 +120,9 @@ it("Revert 확정이 sync-running이면 같은 Dialog다 (R4)", async () => {
   const user = userEvent.setup();
   await render(<TranslationWorkspace {...props()} />);
   await user.click(button(en.translations.workspace.revert.button));
-  await vi.waitFor(() => expect(dialog()?.textContent).toContain(en.translations.workspace.revert.title));
+  await waitForDialog(en.translations.workspace.revert.title);
   await user.click(button(en.translations.workspace.revert.confirm));
-  await vi.waitFor(() => expect(dialog()?.textContent).toContain(en.translations.workspace.syncLock.title));
+  await waitForDialog(en.translations.workspace.syncLock.title);
   expect(document.body.textContent).not.toContain(en.translations.workspace.revert.failed.title);
   await user.click(button("OK"));
   expect(document.body.textContent).not.toContain(en.translations.workspace.revert.unavailable);
@@ -164,4 +168,39 @@ it("lease가 없으면 배너도 Dialog도 없다 — 짝 단언", async () => {
   await render(<TranslationWorkspace {...props()} />);
   expect(document.body.textContent).not.toContain("Syncing…");
   expect(button("Sync").getAttribute("aria-disabled")).not.toBe("true");
+});
+
+/** Hold Radix's real layer notification, not CSS or user-event's pointer checks. */
+it("Dialog DOM이 먼저 나타나도 포인터 준비까지 기다린 뒤 실제 OK 클릭으로 닫는다", async () => {
+  const dispatchEvent = document.dispatchEvent.bind(document);
+  let layerUpdate: Event | undefined;
+  const dispatchSpy = vi.spyOn(document, "dispatchEvent").mockImplementation(event => {
+    if (event.type === "dismissableLayer.update" && layerUpdate === undefined) {
+      layerUpdate = event;
+      return true;
+    }
+    return dispatchEvent(event);
+  });
+  const onClose = vi.fn();
+  try {
+    await render(<SyncLockDialog reopensBy={reopensBy} onClose={onClose} />);
+    expect(layerUpdate).toBeDefined();
+    expect(dialog()?.textContent).toContain(en.translations.workspace.syncLock.title);
+    expect(getComputedStyle(button("OK")).pointerEvents).toBe("none");
+    let ready = false;
+    const readiness = waitForDialog(en.translations.workspace.syncLock.title).then(() => { ready = true; });
+    // Flush microtasks without advancing time: DOM-only waiting would already finish.
+    await act(async () => {});
+    const completedBeforeLayerUpdate = ready;
+    // Release the actual notification before asserting, so failures leave no pending waiter.
+    dispatchSpy.mockRestore();
+    await act(async () => { dispatchEvent(layerUpdate!); });
+    await readiness;
+    expect(completedBeforeLayerUpdate).toBe(false);
+    expect(getComputedStyle(button("OK")).pointerEvents).toBe("auto");
+    await userEvent.setup().click(button("OK"));
+    expect(onClose).toHaveBeenCalledOnce();
+  } finally {
+    dispatchSpy.mockRestore();
+  }
 });
