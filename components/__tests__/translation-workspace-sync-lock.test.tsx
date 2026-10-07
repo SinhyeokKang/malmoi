@@ -41,7 +41,15 @@ const button = (label: string) => {
 };
 const dialog = () => document.querySelector<HTMLElement>('[role="dialog"]');
 async function waitForDialog(title: string) {
-  await vi.waitFor(() => expect(dialog()?.textContent).toContain(title));
+  // Radix mounts the DOM before its layer update enables pointer events. Wait for
+  // that real readiness signal; user-event still performs its native pointer check.
+  await vi.waitFor(() => {
+    const content = dialog();
+    expect(content?.textContent).toContain(title);
+    expect(content).not.toBeNull();
+    expect(content!.style.pointerEvents).toBe("auto");
+    expect(getComputedStyle(content!).pointerEvents).toBe("auto");
+  });
 }
 const area = (container: HTMLElement, code: string) => container.querySelector<HTMLTextAreaElement>(`textarea[data-locale="${code}"]`)!;
 
