@@ -630,7 +630,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
           quiet = true;
           actions = <Button variant="primary" size="lg" onClick={() => void publish.preview()}>{p.retry}</Button>;
           body = <Stack>
-            <Alert variant="danger">{p.transientErrorBody()}</Alert>
+            <Alert variant={lost ? "warning" : "danger"} live={lost ? "status" : "alert"}>{p.transientErrorBody()}</Alert>
             {/* ⚠️ 응답 유실에는 `Reference`를 만들어 붙이지 않는다 — 코드가 없으면 줄이 통째로 빠진다. */}
             {failed?.code !== undefined && <div className="border-border flex shrink-0 items-center gap-3 rounded-lg border px-4 py-3 text-xs">
               <span className="text-muted-foreground">{p.reference}</span>

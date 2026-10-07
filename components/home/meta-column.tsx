@@ -214,7 +214,7 @@ function publishFact(m: Messages, uiLocale: UiLocale, row: PublishTabRow, now: D
         <Row key={row.kind} label={label}>
           <LatePrState
             pending={<Skeleton size="sm" className="w-14" />}
-            values={{ prOpen: <StatusBadge state="prOpen" />, notOpen: m.home.meta.notOpen, couldNotCheck: <StatusBadge state="couldNotCheck" /> }}
+            values={{ prOpen: <StatusBadge state="prOpen" />, notOpen: m.home.meta.notOpen, couldNotCheck: <StatusBadge state="prCheckFailed" /> }}
           />
         </Row>
       );

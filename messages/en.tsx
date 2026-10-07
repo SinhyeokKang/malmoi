@@ -1120,6 +1120,7 @@ export const en = {
       published: "Published",
       pullRequest: "Pull request",
       prState: "PR state",
+      prCheckFailed: "Couldn't check for an open pull request",
       settings: "Settings",
       syncLogs: "Sync logs",
       publishLogs: "Publish logs",

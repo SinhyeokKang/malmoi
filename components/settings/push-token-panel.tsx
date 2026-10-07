@@ -112,7 +112,7 @@ export function PushTokenPanel({ slug, disabled = false, unpinned = false }: { s
       )}
     </div>
     {/* 보관 상태가 오면(`disabled`) 옛 거부를 내린다 — 카드 아래 `archivedReason`이 대신 말한다 (QA D1). */}
-    {error !== null && !disabled && <Alert inset variant="danger">{messageFor(m, error)}</Alert>}
+    {error !== null && !disabled && <Alert inset variant={error === UNCONFIRMED ? "warning" : "danger"} live={error === UNCONFIRMED ? "status" : "alert"}>{messageFor(m, error)}</Alert>}
     </>
   );
 }

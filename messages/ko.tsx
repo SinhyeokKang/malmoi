@@ -408,6 +408,7 @@ export const ko = {
       published: "게시 시각",
       pullRequest: "PR",
       prState: "PR 상태",
+      prCheckFailed: "열린 PR을 확인하지 못했습니다",
       settings: "설정",
       syncLogs: "동기화 로그",
       publishLogs: "게시 로그",

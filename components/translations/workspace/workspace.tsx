@@ -977,7 +977,7 @@ const ALERTS: Partial<Record<FooterStatus["kind"], (ctx: { m: Messages; onCheck:
   "save-failed": ({ m }) => <Alert variant="danger" title={m.translations.workspace.footer.saveFailed.title}>{m.translations.workspace.footer.saveFailed.body}</Alert>,
   "key-gone": ({ m }) => <Alert variant="danger" title={m.translations.workspace.footer.saveFailed.title}>{m.translations.workspace.footer.keyGone}</Alert>,
   "not-ready": ({ m }) => <Alert variant="warning" title={m.translations.workspace.footer.saveFailed.title}>{m.translations.workspace.footer.notReady}</Alert>,
-  "save-unknown": ({ m }) => <Alert variant="danger" title={m.translations.workspace.footer.saveUnknown.title}>{m.translations.workspace.footer.saveUnknown.body}</Alert>,
+  "save-unknown": ({ m }) => <Alert variant="warning" live="status" title={m.translations.workspace.footer.saveUnknown.title}>{m.translations.workspace.footer.saveUnknown.body}</Alert>,
   // ⚠️ 사본이 없으면 "이 탭에서 다시 로그인"이 입력을 지우는 안내가 된다 — 먼저 복사하라고 말한다 (ARCHITECTURE §6.04).
   session: ({ m, storageBlocked }) => (
     <Alert variant="danger" title={m.translations.workspace.footer.session.title}>
@@ -990,7 +990,7 @@ const ALERTS: Partial<Record<FooterStatus["kind"], (ctx: { m: Messages; onCheck:
   "lost-access": ({ m }) => <Alert variant="danger" title={m.translations.workspace.footer.lostAccess} />,
   "revert-failed": ({ m }) => <Alert variant="danger" title={m.translations.workspace.revert.failed.title}>{m.translations.workspace.revert.failed.body}</Alert>,
   "revert-unknown": ({ m, onCheck }) => (
-    <Alert variant="danger" title={m.translations.workspace.revert.unknown.title}>
+    <Alert variant="warning" live="status" title={m.translations.workspace.revert.unknown.title}>
       {m.translations.workspace.revert.unknown.body}{" "}
       <Button size="sm" onClick={onCheck}>{m.translations.workspace.revert.unknown.check}</Button>
     </Alert>

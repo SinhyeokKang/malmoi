@@ -402,6 +402,7 @@ export const es = {
       published: "Publicado",
       pullRequest: "Pull request",
       prState: "Estado de la PR",
+      prCheckFailed: "No se pudo comprobar si hay una pull request abierta",
       settings: "Configuración",
       syncLogs: "Registros de sincronización",
       publishLogs: "Registros de publicación",

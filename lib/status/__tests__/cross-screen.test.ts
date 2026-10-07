@@ -95,7 +95,7 @@ function bannerKey(banner: RowBanner): StateKey | null {
     case "setup": return "setup";
     case "unsent": return "unsent";
     case "pr_open": return "prOpen";
-    case "pr_check_failed": return "couldNotCheck";
+    case "pr_check_failed": return "prCheckFailed";
     case "repo_ahead": case "review": return null;
   }
 }
@@ -419,8 +419,8 @@ describe("교차 행렬 — 같은 입력은 어느 화면에서도 같은 STATE
 });
 
 describe("화면 매핑 사본이 낡지 않았다", () => {
-  it("띠의 PR 조회 실패 문장이 Couldn't check 축이다", () => {
-    expect(en.projects.banner.prCheckFailed.toLowerCase()).toContain(stateLabel(en, "couldNotCheck").toLowerCase());
+  it("띠와 Home 배지는 목적어가 있는 PR 조회 실패 낱말을 공유한다", () => {
+    expect(en.projects.banner.prCheckFailed).toBe(`${stateLabel(en, "prCheckFailed")}.`);
   });
 });
 

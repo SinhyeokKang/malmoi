@@ -50,7 +50,7 @@ export function LoginMethods({ rows, outcome = null, unlinkFailure = null }: {
   const [unconfirmed, setUnconfirmed] = useState(false);
   /** 왕복 결과와 해제 실패가 같은 슬롯을 나눠 쓴다 — 둘이 함께 서면 카드 머리가 두 겹이 된다. */
   const notice =
-    unconfirmed ? <Alert inset variant="danger">{m.link.methods.unlinkUnconfirmed}</Alert>
+    unconfirmed ? <Alert inset variant="warning" live="status">{m.link.methods.unlinkUnconfirmed}</Alert>
     : unlinkFailure !== null ? <Alert inset variant="danger">{unlinkFailure}</Alert>
     : outcome !== null ? <Alert inset variant={outcome === "connected" ? "success" : "danger"} live={outcome === "connected" ? "status" : undefined}>{m.errors.connectMethod[outcome]}</Alert>
     : undefined;

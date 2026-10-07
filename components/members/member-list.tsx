@@ -216,7 +216,7 @@ export function MemberList({
                   }
                   after={
                     failed?.userId === member.userId ? (
-                      <Alert variant="danger" className="mx-4 mb-3.5 text-left">
+                      <Alert variant={failed.error === null ? "warning" : "danger"} live={failed.error === null ? "status" : "alert"} className="mx-4 mb-3.5 text-left">
                         {failed.error === null
                           ? m.members.changeUnconfirmed
                           : isAccessError(failed.error)

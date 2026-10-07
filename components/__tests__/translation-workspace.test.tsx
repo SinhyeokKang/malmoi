@@ -528,7 +528,7 @@ it.each([true, false])("Revert 응답 유실=%s는 경고와 확정 실패를 �
   const user = userEvent.setup();
   mocks.preview.mockResolvedValue({ status: "ready", locales: [{ code: "ko", before: "비어 있음", after: "없음" }], confirmation: "f".repeat(64) });
   if (lost) mocks.revert.mockRejectedValue(new Error("lost"));
-  else mocks.revert.mockResolvedValue({ status: "failed" });
+  else mocks.revert.mockResolvedValue({ status: "error", error: "unavailable" });
   const { container } = await render(<TranslationWorkspace {...props()} />);
   await user.click(button("Revert to last sent"));
   await user.click(button("Revert translations"));
@@ -543,7 +543,7 @@ it.each([true, false])("Revert 응답 유실=%s는 경고와 확정 실패를 �
 
 it("저장 확정 실패는 danger이며 draft를 지킨다", async () => {
   const user = userEvent.setup();
-  mocks.save.mockResolvedValue({ ok: false, error: "failed" });
+  mocks.save.mockResolvedValue({ ok: false, error: "unavailable" });
   const { container } = await render(<TranslationWorkspace {...props()} />);
   await user.type(area(container, "zh"), "空");
   await user.click(button("Save"));

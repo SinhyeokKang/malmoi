@@ -22,7 +22,7 @@ export type StateVariant = "soft-green" | "soft-amber" | "soft-red" | "soft-neut
 export type StateKey =
   | "synced" | "syncing" | "notSyncedYet"
   | "syncFailed" | "partiallySynced" | "held" | "unsent"
-  | "prOpen" | "connected" | "notConnected" | "disconnected" | "wrongRepository" | "couldNotCheck"
+  | "prOpen" | "prCheckFailed" | "connected" | "notConnected" | "disconnected" | "wrongRepository" | "couldNotCheck"
   | "archived" | "setup" | "active"
   | "logsSynced" | "logsSent" | "logsFailed" | "publishing" | "nothingToSend" | "heldBack" | "superseded" | "notStarted" | "upToDate"
   | "expired" | "waitingToApply" | "removedFromRepository";
@@ -40,6 +40,7 @@ export const STATE: Readonly<Record<StateKey, { tone: StateTone; variant: StateV
   // 정상 작업 흐름이라 면만 있는 무색이다(Q3) — 손 조립 알약을 쓰지 않는다.
   unsent: { tone: "muted", variant: "soft-neutral" },
   prOpen: { tone: "muted", variant: "soft-neutral" },
+  prCheckFailed: { tone: "warning", variant: "soft-amber" },
   // Settings 연결 행(`ok`·`repo-moved`) — 배지와 아이콘 칸이 같은 초록이다(§2.4 연결 행).
   connected: { tone: "success", variant: "soft-green" },
   notConnected: { tone: "muted", variant: "soft-neutral" },
@@ -77,6 +78,7 @@ export function stateLabel(m: Messages, key: StateKey): string {
     held: m.logs.status.deferred,
     unsent: m.translations.workspace.list.notSent,
     prOpen: m.translations.publish.prState,
+    prCheckFailed: m.home.meta.prCheckFailed,
     connected: m.settings.repository.health.ok,
     notConnected: m.settings.repository.notConnected,
     disconnected: m.settings.repository.disconnected,
