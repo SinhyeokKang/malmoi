@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { Header } from "@/components/shell/header";
@@ -11,6 +12,7 @@ import { getPrisma } from "@/lib/db";
 import { getMessages } from "@/lib/i18n/server";
 import { loadMemberships } from "@/lib/keys/query";
 import { toNavProjects } from "@/lib/shell/nav";
+import { SIDEBAR_COLLAPSED_COOKIE, parseSidebarCollapsed } from "@/lib/shell/sidebar-cookie";
 
 /**
  * 편집 UI 셸 — **캔버스 위에 패널이 떠 있는 구조다** (8-2, 시안 `212:937`).
@@ -30,7 +32,7 @@ import { toNavProjects } from "@/lib/shell/nav";
  * 화면이라 눈에 잘 안 띈다).
  */
 export default async function EditLayout({ children }: { children: React.ReactNode }) {
-  const [session, m] = await Promise.all([readSession(), getMessages()]);
+  const [session, m, jar] = await Promise.all([readSession(), getMessages(), cookies()]);
 
   // 2차 방어. 차단의 1차는 미들웨어다(위 주석) — 장애는 `requireUser`와 같은 목적지로 보내
   // 비로그인과 같은 응답을 내지 않는다. 그 판정은 `rejectTarget`이 든다 (8-1a).
@@ -68,7 +70,9 @@ export default async function EditLayout({ children }: { children: React.ReactNo
         ⚠️ **`PanelGroup`이 클라이언트 전용이라 래퍼가 하나 선다.** `children`은 prop으로 통과하므로
         이 레이아웃의 서버 데이터 조회는 그대로 서버에 남는다.
       */}
+      {/* 접힘 여부는 기기 쿠키다 — 서버가 읽어야 첫 페인트부터 접혀 있다(`lib/shell/sidebar-cookie.ts`). */}
       <ShellPanels
+        initialCollapsed={parseSidebarCollapsed(jar.get(SIDEBAR_COLLAPSED_COOKIE)?.value)}
         sidebar={
           /*
             ⚠️ **일곱만 넘긴다** (2026-09-09, sec-audit 발견 23 — 7단계가 `archived`를, 2026-09-24가 썸네일 `image`를, 2026-09-25가 기본 표면 slug를, 2026-09-27이 배지 `counts`를 더했다). `memberships`는 `MembershipRow`(여덟 필드)이고

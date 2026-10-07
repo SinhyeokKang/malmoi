@@ -47,6 +47,8 @@ const REVISIONS: readonly { effectiveDate: string; digest?: string; koDigest?: s
   { effectiveDate: "2026-10-05", digest: "c8e9666b274772c3cee471f8c9d54a7d74d1c89ae6b615000fa1c92536d361fe", koDigest: "965ae2d11b73741007da9ceee441db17b69018f97ccf000151e4d7ff953f8402" },
   // device-cookies fix3 — 로그인하면 계정 화면 언어도 기기 쿠키로 복사한다. 같은 날 여섯 번째 개정이다 — 머지일이 바뀌면 여섯 행의 날짜를 같이 옮긴다.
   { effectiveDate: "2026-10-05", digest: "be9870931ac97177a830f8b4ce239e01aa4550281259b8ddca69b351d92aacd4", koDigest: "771e1396a905de08acba4b70d59e13734985e5f908253242305bb88306bfd749" },
+  // sidebar-cookie — LNB 접힘 여부 기기 쿠키(`malmoi-sidebar-collapsed`, 스크립트가 쓰는 유일한 쿠키 · 1년). 머지일이 바뀌면 날짜를 옮긴다.
+  { effectiveDate: "2026-10-07", digest: "9e7a7fe3769cc6e6e848c9ee84d909ecdcb9c64eba364cbf48242090cad57d83", koDigest: "fde6d9f89ade893e75810be5389923e7d99f88d43c46d29484cdb8f932a0388d" },
 ];
 
 const privacy = en.publicDocs.privacy;

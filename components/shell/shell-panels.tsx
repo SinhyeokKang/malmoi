@@ -6,6 +6,7 @@ import type { ImperativePanelGroupHandle } from "react-resizable-panels";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { useMessages } from "@/components/i18n/messages-provider";
 import { panelConstraints, panelLayout, panelPercent, type PanelPx } from "@/lib/shell/panel-size";
+import { sidebarCollapsedCookie } from "@/lib/shell/sidebar-cookie";
 import { cn } from "@/lib/utils";
 
 import { SidebarCollapseContext } from "./sidebar-collapse";
@@ -47,6 +48,13 @@ export const SHELL_HANDLE_PX = 8;
  */
 const FALLBACK_AVAILABLE = 1280 - 16 - SHELL_HANDLE_PX;
 const FALLBACK = panelConstraints(FALLBACK_AVAILABLE, SHELL_SIDEBAR_PX) ?? undefined;
+/** 쿠키가 접힘이면 마운트 몫도 접힌 폭이다 — `defaultSize`는 마운트 때만 읽히므로 여기서 틀리면 한 프레임 240으로 그려진다. */
+const FALLBACK_COLLAPSED = FALLBACK === undefined ? undefined : { ...FALLBACK, defaultSize: panelPercent(FALLBACK_AVAILABLE, SHELL_SIDEBAR_COLLAPSED_PX) };
+
+/** 접힘 여부를 기기 쿠키에 남긴다 — **사용자의 토글·드래그만** 부른다(마운트·창 크기 변화는 상태를 바꾸지 않는다). */
+function rememberCollapsed(collapsed: boolean) {
+  document.cookie = sidebarCollapsedCookie(collapsed, window.location.protocol === "https:");
+}
 
 /**
  * 셸의 본문 행 — **LNB ↔ 콘텐츠를 드래그로 가른다.**
@@ -59,8 +67,10 @@ const FALLBACK = panelConstraints(FALLBACK_AVAILABLE, SHELL_SIDEBAR_PX) ?? undef
  * `8 + 8 + 8`이 된다. 콘텐츠 쪽은 grid로 배치한다 — 2026-09-16까지 둘째 열의 프로젝트 패널이
  * `ml-2`로 간격을 들었고, 그 패널을 지운 지금도 grid를 유지한다(아래 전환 중 공존 근거).
  * 전환 중 두 `ContentPanel`이 공존해도 같은 셀을 써서 폭을 나누지 않는다.
+ *
+ * **`initialCollapsed`는 서버 레이아웃이 기기 쿠키에서 읽은 접힘 여부다**(`lib/shell/sidebar-cookie.ts`) — 첫 페인트부터 접힌 셸을 그린다.
  */
-export function ShellPanels({ sidebar, children }: { sidebar: ReactNode; children: ReactNode }) {
+export function ShellPanels({ sidebar, children, initialCollapsed = false }: { sidebar: ReactNode; children: ReactNode; initialCollapsed?: boolean }) {
   const m = useMessages();
   const [available, setAvailable] = useState<number | null>(null);
   const [group, setGroup] = useState<HTMLElement | null>(null);
@@ -93,8 +103,8 @@ export function ShellPanels({ sidebar, children }: { sidebar: ReactNode; childre
   const sidebarPx = useRef(SHELL_SIDEBAR_PX.default);
   const dragging = useRef(false);
   /** 접힘은 **패널의 실제 몫**에서 읽는다(`onResize`) — 버튼이든 드래그 스냅이든 같은 판정 하나다. */
-  const [collapsed, setCollapsed] = useState(false);
-  const collapsedRef = useRef(false);
+  const [collapsed, setCollapsed] = useState(initialCollapsed);
+  const collapsedRef = useRef(initialCollapsed);
   const [animating, setAnimating] = useState(false);
 
   useEffect(() => {
@@ -111,6 +121,7 @@ export function ShellPanels({ sidebar, children }: { sidebar: ReactNode; childre
     const width = available ?? FALLBACK_AVAILABLE;
     const layout = panelLayout(width, collapsedRef.current ? sidebarPx.current : SHELL_SIDEBAR_COLLAPSED_PX);
     if (layout === null) return;
+    rememberCollapsed(!collapsedRef.current);
     setAnimating(true);
     groupRef.current?.setLayout(layout);
     window.setTimeout(() => setAnimating(false), TOGGLE_MS);
@@ -127,7 +138,7 @@ export function ShellPanels({ sidebar, children }: { sidebar: ReactNode; childre
       */}
       <ResizablePanelGroup ref={groupRef} direction="horizontal" style={{ overflow: "visible" }}>
         <ResizablePanel
-          {...(constraints ?? FALLBACK)}
+          {...(constraints ?? (initialCollapsed ? FALLBACK_COLLAPSED : FALLBACK))}
           collapsible
           collapsedSize={panelPercent(available ?? FALLBACK_AVAILABLE, SHELL_SIDEBAR_COLLAPSED_PX)}
           // 버튼 토글만 부드럽게 잇는다 — 드래그 중에 전이가 걸리면 핸들이 포인터를 늦게 따라온다.
@@ -140,6 +151,8 @@ export function ShellPanels({ sidebar, children }: { sidebar: ReactNode; childre
           onResize={(size) => {
             const width = available ?? FALLBACK_AVAILABLE;
             const isCollapsed = size <= panelPercent(width, SHELL_SIDEBAR_COLLAPSED_PX) + 0.01;
+            // 드래그 스냅으로 접히고 펴진 것도 사용자의 선택이다 — 버튼 토글은 `toggle`이 이미 썼다.
+            if (dragging.current && isCollapsed !== collapsedRef.current) rememberCollapsed(isCollapsed);
             collapsedRef.current = isCollapsed;
             setCollapsed(isCollapsed);
             // 접힌 몫은 펼칠 폭이 아니다 — 드래그로 접어도 펼치면 마지막 펼친 폭으로 돌아간다.
@@ -158,7 +171,7 @@ export function ShellPanels({ sidebar, children }: { sidebar: ReactNode; childre
            */
           style={
             constraints === null
-              ? { overflow: "visible", flexGrow: 0, flexShrink: 0, flexBasis: `${SHELL_SIDEBAR_PX.default}px` }
+              ? { overflow: "visible", flexGrow: 0, flexShrink: 0, flexBasis: `${initialCollapsed ? SHELL_SIDEBAR_COLLAPSED_PX : SHELL_SIDEBAR_PX.default}px` }
               : { overflow: "visible", transitionDuration: `${TOGGLE_MS}ms` }
           }
         >

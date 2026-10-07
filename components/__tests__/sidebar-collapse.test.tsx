@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act } from "react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 
 import { SHELL_SIDEBAR_COLLAPSED_PX, ShellPanels } from "@/components/shell/shell-panels";
 import { Sidebar } from "@/components/shell/sidebar";
@@ -153,6 +153,13 @@ describe("셸 패널 — 접힘 쿠키", () => {
   });
 
   it("토글하면 바뀐 상태를 쿠키에 쓴다 — 펼침에서 접으면 1, 접힘에서 펴면 0", async () => {
+    // jsdom에는 패널 치수가 없어 라이브러리의 `setLayout`이 "Invalid 0 panel layout"을 던진다 — 쿠키는 그 전에 쓴다.
+    // 그 한 메시지만 삼킨다(실제 브라우저에는 없는 조건이고, 드래그·배치는 jsdom이 판정하지 못한다 — vitest.setup.ts).
+    const swallow = (event: ErrorEvent) => {
+      if (/Invalid \d+ panel layout/.test(event.message)) event.preventDefault();
+    };
+    window.addEventListener("error", swallow);
+    onTestFinished(() => window.removeEventListener("error", swallow));
     const expanded = await render(<ShellPanels initialCollapsed={false} sidebar={<Probe />}>{<main />}</ShellPanels>);
     await act(async () => expanded.container.querySelector<HTMLButtonElement>('[data-test="sidebar"] button')?.click());
     expect(document.cookie).toContain("malmoi-sidebar-collapsed=1");
