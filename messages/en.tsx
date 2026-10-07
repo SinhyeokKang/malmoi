@@ -3989,6 +3989,7 @@ export const en = {
     "write-parse-failed": "The file couldn't be parsed, so it was left untouched.",
     "write-no-default-export": "This file has no default-export object, so it was left untouched.",
     "write-locale-object-missing": "This language isn't in the file, so its translations weren't written.",
+    "write-empty-unsupported": "This format doesn't support publishing an empty value. Enter a value before publishing.",
     "write-slot-not-string-literal": "The value isn't in a plain text slot, so it wasn't written.",
     "write-slot-not-scalar": "The value isn't in a plain text slot (it's an alias, a map or a list), so it wasn't written.",
     "write-slot-missing": "There's no slot for this key, so it was skipped — the file's structure would have to change.",

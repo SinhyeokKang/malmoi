@@ -29,12 +29,14 @@ const state = vi.hoisted(() => ({
   runSync: vi.fn(),
   runAutomationImport: vi.fn(),
   closeExpiredImportRuns: vi.fn(),
+  lastPublishedAt: null as Date | null,
 }));
 
 vi.mock("@/lib/db", () => {
   const db = {
     project: {
       findMany: async () => state.rows,
+      findUniqueOrThrow: async () => ({ lastPublishedAt: state.lastPublishedAt }),
       update: async ({ where, data }: { where: { id: string }; data: { lastNightlyAt: Date } }) => {
         state.visits.push({ id: where.id, lastNightlyAt: data.lastNightlyAt });
         return {};
@@ -86,6 +88,7 @@ beforeEach(() => {
   vi.stubEnv("CRON_SECRET", "cron");
   state.rows = [];
   state.pending = {};
+  state.lastPublishedAt = null;
   state.events = [];
   state.visits = [];
   state.restores = [];
@@ -145,7 +148,7 @@ describe("갈래별 호출", () => {
     expect(calls[1]?.args).toEqual(["o:malmoi-i18n/sync-moved"]);
     expect(state.createGitClient).toHaveBeenCalledTimes(1);
     expect(state.runAutomationImport).toHaveBeenCalledWith(expect.anything(), {
-      projectId: p.id, repository: { repositoryId: "r-moved", installationId: "77", repoOwner: "o", repoName: "moved", baseBranch: "main" },
+      projectId: p.id, expectedLastPublishedAt: null, repository: { repositoryId: "r-moved", installationId: "77", repoOwner: "o", repoName: "moved", baseBranch: "main" },
     }, expect.any(Function));
     // 적재 사건은 적재가 쓴다 — 이 방문이 따로 쓰지 않는다(방문마다 최대 하나).
     expect(state.events).toEqual([]);
@@ -296,4 +299,14 @@ describe("방문 기록 · 격리 · 요약", () => {
     // Publish 갈래의 스킵(no-edits 가짜)은 보낸 것이 아니다 — published가 아니라 skipped.<사유>다(r2).
     expect(lines).toEqual(["[pull] targets=3 published=0 imported=0 skipped=2 deferred=1 failed=0 notReady=0 unprocessed=0 deadline=0 deferred.open-pr=1 skipped.no-edits=1"]);
   });
+});
+
+it("야간 PR 조회 전에 읽은 완료 표식을 적재에 전달한다", async () => {
+  const p = row("snapshot");
+  state.rows = [p];
+  const before = new Date("2026-09-20T00:00:00Z");
+  state.lastPublishedAt = before;
+  client(p, {}, { findOpenPr: async () => { state.lastPublishedAt = new Date("2026-09-21T00:00:00Z"); return null; } });
+  await call();
+  expect(state.runAutomationImport).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ expectedLastPublishedAt: before }), expect.any(Function));
 });

@@ -41,9 +41,20 @@ export async function fetchClientMetadata(clientId: string, deps: FetchDeps = NO
   // IPv6 literal은 `[...]`로 온다 — 해석기에는 괄호 없이 넘긴다.
   const hostname = url.hostname.replace(/^\[(.*)\]$/, "$1");
 
+  // DNS·HTTPS가 같은 마감을 쓴다. DNS가 늦게 끝나도 다음 단계로 가지 않는다.
+  const deadline = performance.now() + LIMITS.timeoutMs;
+  const remaining = () => Math.max(0, deadline - performance.now());
+  async function withinDeadline<T>(work: Promise<T>): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      return await Promise.race([work, new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error("metadata timeout")), remaining());
+      })]);
+    } finally { clearTimeout(timer); }
+  }
   let addresses: Address[];
   try {
-    addresses = await deps.resolve(hostname);
+    addresses = await withinDeadline(deps.resolve(hostname));
   } catch (error) {
     logFailure("oauth-cimd-resolve", error);
     return { ok: false, reason: "unreachable" };
@@ -53,7 +64,8 @@ export async function fetchClientMetadata(clientId: string, deps: FetchDeps = NO
 
   let response: PinnedResponse;
   try {
-    response = await deps.get(url, pinned, LIMITS);
+    if (remaining() <= 0) return { ok: false, reason: "unreachable" };
+    response = await withinDeadline(deps.get(url, pinned, { ...LIMITS, timeoutMs: remaining() }));
   } catch (error) {
     logFailure("oauth-cimd-fetch", error);
     return { ok: false, reason: "unreachable" };

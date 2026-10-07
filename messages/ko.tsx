@@ -2054,6 +2054,7 @@ export const ko = {
     "write-parse-failed": "파일을 해석하지 못해 변경하지 않았습니다.",
     "write-no-default-export": "이 파일에 default export 객체가 없어 변경하지 않았습니다.",
     "write-locale-object-missing": "이 언어가 파일에 없어 번역을 쓰지 않았습니다.",
+    "write-empty-unsupported": "이 형식에서는 빈 값을 보낼 수 없습니다. 값을 입력한 뒤 내보내세요.",
     "write-slot-not-string-literal": "값이 일반 텍스트 자리에 있지 않아 쓰지 않았습니다.",
     "write-slot-not-scalar": "값이 일반 텍스트 자리에 있지 않아(별칭, 맵 또는 목록) 쓰지 않았습니다.",
     "write-slot-missing": "이 키를 쓸 위치가 없어 건너뛰었습니다. 파일 구조를 수정해야 합니다.",

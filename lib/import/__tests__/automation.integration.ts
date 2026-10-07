@@ -100,7 +100,7 @@ function reader(options: {
   };
 }
 
-const run = (repo: RepoReader) => runAutomationImport(prisma, { projectId: "p", repository }, async () => repo);
+const run = (repo: RepoReader) => runAutomationImport(prisma, { projectId: "p", repository, expectedLastPublishedAt: null }, async () => repo);
 
 /** 편집 저장 한 번 — 셀 값과 편집 토큰을 함께 쓴다(`saveTranslationKey`가 남기는 모양). */
 async function edit(slug: string) {
@@ -252,7 +252,7 @@ it("base 브랜치 부재(경합) → failed · 표면 실패를 쓴다 — CI�
 
 it("reader 열기 실패(설치 토큰·리포 선택 해제) → failed ingest-failed · 표면 실패 무기록", async () => {
   await seed();
-  expect(await runAutomationImport(prisma, { projectId: "p", repository }, async () => { throw new Error("installation token"); }))
+  expect(await runAutomationImport(prisma, { projectId: "p", repository, expectedLastPublishedAt: null }, async () => { throw new Error("installation token"); }))
     .toEqual({ recorded: true, result: "failed", deferReason: null });
   await noSurfaceFailure();
   expect((await events())[0]?.payload).toMatchObject({ errorCode: "ingest-failed" });

@@ -173,7 +173,7 @@ it("생산자 — 야간 적재의 import.nightly 사건", async () => {
   await seed();
   await apply(BASE);
   const before = await surfaceImportedAt();
-  await runAutomationImport(prisma, { projectId: "p", repository }, async () => reader('{"a":"A new","b":"B new"}'));
+  await runAutomationImport(prisma, { projectId: "p", repository, expectedLastPublishedAt: null }, async () => reader('{"a":"A new","b":"B new"}'));
   expect(await importEvent("import.nightly")).toMatchObject({ source: "nightly", changedValues: 2 });
   await expectSyncedAtRunEnd("import.nightly", before);
 });

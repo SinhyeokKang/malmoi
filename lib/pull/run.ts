@@ -291,6 +291,16 @@ export async function runPull(deps: PullDeps, expectedFingerprint?: string): Pro
    * ⚠️ **대가: 경고가 지속 상태이면 매 밤 트리·blob을 다시 읽는다** — 사람이 Publish 모달에서 경고를 보고 해소할 때까지다
    * (ARCHITECTURE §3이 감수했다 — `lib/pull/trigger.ts`의 옛 주석이 물리친 정책의 반전이다).
    */
+  // 이미 저장된 빈 편집도 전달됐다고 확인하지 않는다. 원본 값과 견주지 않고 캡처한 export 값만 본다.
+  for (const edit of pendingEdits) {
+    const cell = edit.cell;
+    if (cell === undefined) continue;
+    const item = formats.find(item => item.surface.id === cell.surfaceId);
+    if (item === undefined || adapterFor(item.format).writeStrategy !== "surgical") continue;
+    const key = item.surface.keys.find(key => key.id === cell.keyId);
+    if (key === undefined || key.cells[cell.localeCode]?.value !== "" || (cell.localeCode === item.baseLocale && key.sourceText !== "")) continue;
+    warnings.push({ surfaceSlug: item.surface.slug, path: item.format.pathTemplate.replaceAll("{locale}", cell.localeCode), key: key.key, code: "write-empty-unsupported" });
+  }
   const decision = planProtectedPublish({ pending: unpublished, writerWarnings: warnings.length });
   if (decision.action === "reject") return { status: "skipped", reason: "writer-warnings", warnings };
 

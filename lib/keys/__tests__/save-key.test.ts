@@ -9,7 +9,7 @@ import { KEY_SAVE_LIMITS, KeySaveInput, planClearability, planKeySave } from "..
  */
 const current = (entries: Record<string, string | null>) => new Map(Object.entries(entries));
 /** 재생성 표면 — 비우기 판정이 끼지 않는 기존 계약의 입력이다. */
-const REGEN = { writeStrategy: "regenerate", baseLocale: "en" } as const;
+const REGEN = { writeStrategy: "regenerate", sourceText: "Source", baseLocale: "en" } as const;
 const planRegen = (c: ReadonlyMap<string, string | null>, changes: readonly { localeCode: string; value: string }[]) => planKeySave(c, changes, REGEN);
 
 describe("planKeySave — 정상", () => {
@@ -108,21 +108,21 @@ describe("KeySaveInput — 공개 엔드포인트 입력", () => {
  */
 describe("planClearability — 정규화 뒤 값으로 판정한다", () => {
   it("surgical · 비-base · \"\" → cannot-clear", () => {
-    expect(planClearability({ writeStrategy: "surgical", isBase: false, value: "" })).toBe("cannot-clear");
+    expect(planClearability({ sourceText: "Source", writeStrategy: "surgical", isBase: false, value: "" })).toBe("cannot-clear");
   });
   it("surgical · base · \"\" → ok (base는 원문으로 폴백한다)", () => {
-    expect(planClearability({ writeStrategy: "surgical", isBase: true, value: "" })).toBe("ok");
+    expect(planClearability({ sourceText: "Source", writeStrategy: "surgical", isBase: true, value: "" })).toBe("ok");
   });
   it("regenerate · 비-base · \"\" → ok (재생성은 키를 파일에서 뺀다)", () => {
-    expect(planClearability({ writeStrategy: "regenerate", isBase: false, value: "" })).toBe("ok");
+    expect(planClearability({ sourceText: "Source", writeStrategy: "regenerate", isBase: false, value: "" })).toBe("ok");
   });
   it("surgical · 비-base · 비빈 값 → ok", () => {
-    expect(planClearability({ writeStrategy: "surgical", isBase: false, value: "x" })).toBe("ok");
+    expect(planClearability({ sourceText: "Source", writeStrategy: "surgical", isBase: false, value: "x" })).toBe("ok");
   });
 });
 
 describe("planKeySave — 수술적 표면의 비-base 비우기는 키 전체 거부", () => {
-  const SURGICAL = { writeStrategy: "surgical", baseLocale: "en" } as const;
+  const SURGICAL = { writeStrategy: "surgical", sourceText: "Source", baseLocale: "en" } as const;
 
   it("비-base fr 비우기 → cannot-clear + localeCodes", () => {
     expect(planKeySave(current({ en: "Hi", fr: "Salut" }), [{ localeCode: "fr", value: "" }], SURGICAL))

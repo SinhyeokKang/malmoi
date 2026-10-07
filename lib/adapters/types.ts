@@ -159,6 +159,7 @@ export const ADAPTER_ERROR_CODES = [
   "write-no-default-export",
   "write-locale-object-missing",
   "write-slot-not-string-literal",
+  "write-empty-unsupported",
   "write-slot-not-scalar",
   "write-slot-missing",
   "original-file-missing",
@@ -189,6 +190,7 @@ const ERROR_KIND = {
   // 잃는 번역이 없으므로 **대상 리포 CI를 red로 만들지 않는다**(docs/ACTIONS.md §3). 실패로도 unmanaged로도 세지 않는다.
   "duplicate-property": "warning",
   "key-shadowed": "failure", "write-parse-failed": "failure", "write-no-default-export": "failure", "write-locale-object-missing": "failure",
+  "write-empty-unsupported": "failure",
   "write-slot-not-string-literal": "failure", "write-slot-not-scalar": "failure", "write-slot-missing": "failure", "original-file-missing": "failure",
   "download-failed": "failure",
 } as const satisfies Record<AdapterErrorCode, AdapterErrorKind>;

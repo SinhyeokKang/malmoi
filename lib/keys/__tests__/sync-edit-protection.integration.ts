@@ -371,7 +371,9 @@ const PUSH_TOKEN = "protection-fixture-token";
 vi.doMock("@/lib/db", () => ({ getPrisma: () => prisma }));
 vi.doMock("next/cache", () => ({ revalidatePath: vi.fn() }));
 // 열린 Malmoi PR 없음 — 이 파일은 게이트 뒤(적재)를 잰다. 게이트 자체는 `app/api/__tests__/push-open-pr.test.ts`(nightly-sync D1).
-vi.doMock("@/lib/projects/open-pr", () => ({ loadOpenPrForImportGate: async () => null }));
+const prCheck = vi.fn(async (): Promise<null> => null);
+beforeEach(() => prCheck.mockReset().mockResolvedValue(null));
+vi.doMock("@/lib/projects/open-pr", () => ({ loadOpenPrForImportGate: prCheck }));
 
 async function post(body: unknown) {
   const { POST } = await import("@/app/api/push/route");
@@ -386,6 +388,20 @@ describe("CI 적재 보류 (T7)", () => {
     await seed("p", { lastPulledAt: PULLED, cells: [{ key: "k1", locale: "ko", value: "edited", token }] });
     await prisma.project.update({ where: { id: "p" }, data: { pushTokenHash: hashPushToken(PUSH_TOKEN) } });
   }
+
+  it("CI 라우트의 PR 조회 도중 완료된 Publish는 보류되고 편집 화면에도 값이 남는다", async () => {
+    await fixture(null);
+    await prisma.project.update({ where: { id: "p" }, data: { lastPublishedAt: BEFORE } });
+    prCheck.mockImplementationOnce(async () => {
+      await prisma.project.update({ where: { id: "p" }, data: { lastPublishedAt: AFTER } });
+      return null;
+    });
+    expect((await post(ciPayload())).body).toMatchObject({ status: "deferred", reason: "pr-check-failed" });
+    const detail = await loadTranslationDetail(prisma, { projectId: "p", surfaceId: "surface-p", keyId: "p-k1" });
+    expect(detail).toMatchObject({ status: "ok", locales: expect.arrayContaining([expect.objectContaining({ code: "ko", value: "edited" })]) });
+    // 같은 non-null 표식이 유지되면 정상 적재된다.
+    expect((await post(ciPayload())).body).toMatchObject({ status: "applied" });
+  });
 
   it("[C1][C2] pending 1 → 200 deferred, 모든 테이블 행 불변(진행 표시·lastCommitAt 포함)", async () => {
     await fixture("tok-edit");
@@ -437,7 +453,7 @@ describe("CI 적재 보류 (T7)", () => {
   });
 
   const apply = () => applyProtectedPush(prisma, { projectId: "p", surfaceId: "surface-p" }, ciPayload(),
-    { token: "ci", startedAt: new Date(), previousBaseLocale: "en", refsMode: "replace", importOutcome: null, pushTokenHash: hashPushToken(PUSH_TOKEN) });
+    { token: "ci", startedAt: new Date(), previousBaseLocale: "en", refsMode: "replace", importOutcome: null, pushTokenHash: hashPushToken(PUSH_TOKEN), expectedLastPublishedAt: null });
 
   /**
    * ⚠️ **판정과 upsert 사이에 커밋된 저장** (ARCHITECTURE §5.5.2). 저장 경로엔 잠금이 없으므로, 다른 연결이 `StringKey` 행을 잠가 적용을
@@ -623,4 +639,22 @@ it("적재 트랜잭션이 실패하면 관측한 CI 실패 사건을 남긴다"
   expect((await post(ciPayload())).status).toBe(500);
   expect(await prisma.projectEvent.findMany({ where: { projectId: "p" }, select: { result: true, payload: true } }))
     .toEqual([expect.objectContaining({ result: "failed", payload: expect.objectContaining({ errorCode: "import-failed" }) })]);
+});
+
+it("같은 밀리초에 완료되거나 시계가 역행해도 Publish 표식은 달라진다", async () => {
+  await seed("p", { lastPulledAt: PULLED, cells: [] });
+  vi.useFakeTimers({ toFake: ["Date"] });
+  try {
+    vi.setSystemTime(AFTER);
+    const publish = () => saveLastPulledAt(prisma, "p", PULLED, { prUrl: "https://github.com/o/r/pull/1" }, [], { runId: "gone", contexts: [] });
+    await publish();
+    const first = await prisma.project.findUniqueOrThrow({ where: { id: "p" } });
+    await publish();
+    const second = await prisma.project.findUniqueOrThrow({ where: { id: "p" } });
+    expect(second.lastPublishedAt!.getTime()).toBeGreaterThan(first.lastPublishedAt!.getTime());
+    vi.setSystemTime(BEFORE);
+    await publish();
+    const third = await prisma.project.findUniqueOrThrow({ where: { id: "p" } });
+    expect(third.lastPublishedAt!.getTime()).toBeGreaterThan(second.lastPublishedAt!.getTime());
+  } finally { vi.useRealTimers(); }
 });

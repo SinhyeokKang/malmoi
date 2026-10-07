@@ -292,15 +292,15 @@ describe("생성 ① → ②", () => {
     const response = new Promise<void>(resolve => { finish = resolve; });
     mocks.issue.mockReturnValue(response);
     try {
-    await mount({ state: "none" });
-    await click(button(card(), en.mcpConnector.token.create));
-    await click(find(panel()!, '[data-grant="translation:write"]'));
-    const submit = button(panel()!, en.mcpConnector.form.create)!;
-    await click(submit);
-    await click(submit);
-    expect(mocks.issue).toHaveBeenCalledTimes(1);
-    expect(submit.getAttribute("aria-busy") === "true" || submit.disabled).toBe(true);
-    expect(find<HTMLElement>(panel()!, '[data-grant="translation:write"]').getAttribute("data-state")).toBe("checked");
+      await mount({ state: "none" });
+      await click(button(card(), en.mcpConnector.token.create));
+      await click(find(panel()!, '[data-grant="translation:write"]'));
+      const submit = button(panel()!, en.mcpConnector.form.create)!;
+      await click(submit);
+      await click(submit);
+      expect(mocks.issue).toHaveBeenCalledTimes(1);
+      expect(submit.getAttribute("aria-busy") === "true" || submit.disabled).toBe(true);
+      expect(find<HTMLElement>(panel()!, '[data-grant="translation:write"]').getAttribute("data-state")).toBe("checked");
     } finally {
       await act(async () => { finish(); await response; });
     }

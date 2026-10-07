@@ -124,7 +124,7 @@ class PendingEditsDuringApply extends Error {
   constructor(readonly pendingCount: number) { super("pending edits appeared during apply"); }
 }
 
-export type ProtectedPushResult = { status: "applied"; outcome: PushOutcome } | { status: "deferred"; pendingCount: number } | { status: "unauthorized" };
+export type ProtectedPushResult = { status: "applied"; outcome: PushOutcome } | { status: "deferred"; pendingCount: number; reason?: "pr-check-failed" } | { status: "unauthorized" };
 
 /**
  * 적재가 **확정되는 같은 트랜잭션에서** 부를 훅 (logs-rework design §3.2). 성공 사건을 밖에서 쓰면
@@ -135,7 +135,7 @@ export type AppliedHook = (tx: Prisma.TransactionClient, outcome: PushOutcome) =
 /**
  * **CI 자동 적재** — 프로젝트 전체에 미전달 편집이 하나라도 있으면 아무것도 쓰지 않고 보류한다 (sync-edit-protection — ARCHITECTURE §5.5.2).
  *
- * 리포 값을 보지 않는다 — **이 트랜잭션 안의** 재판정 입력은 DB의 pending 수 하나이고 리포 값과 DB 값을 견주지 않는다(병합이 아니다).
+ * 리포 값을 보지 않는다 — **이 트랜잭션 안의** 재판정은 pending 수와 사전 조회 때의 Publish 완료 표식이 유지됐는지를 본다. 리포 값과 DB 값을 견주지 않는다.
  * 열린 Malmoi PR 게이트는 트랜잭션 **밖** 사전 판정(`/api/push` — `planOpenPrGate`)이 이미 봤다 — 트랜잭션 안에서 GitHub을 부르지 않는다.
  *
  * ⚠️ **재집계를 지우지 않는다.** 저장은 이제 같은 `Project` → `TranslationSurface` 잠금 안이라 "판정 뒤·upsert 전" 저장은 끼지 못한다 —
@@ -144,19 +144,23 @@ export type AppliedHook = (tx: Prisma.TransactionClient, outcome: PushOutcome) =
  * 깬다. 그 토큰이 폐기 승인 Sync가 남긴 유령이던 경로는 D1이 막았다(delivery-invariants · 감사 #1·#61).
  * ⚠️ 이 판정은 CI 경로 전용이다 — 새 표면 추가·첫 적재는 다른 표면의 편집 때문에 막히면 안 된다(그 표면엔 토큰이 없다).
  */
-export async function applyProtectedPush(prisma: PrismaClient, scope: PushScope, payload: PushPayloadType, options: Omit<ApplyOptions, "approvedTokens"> & { pushTokenHash: string; onApplied?: AppliedHook }): Promise<ProtectedPushResult> {
+export async function applyProtectedPush(prisma: PrismaClient, scope: PushScope, payload: PushPayloadType, options: Omit<ApplyOptions, "approvedTokens"> & { pushTokenHash: string; expectedLastPublishedAt: Date | null; onApplied?: AppliedHook }): Promise<ProtectedPushResult> {
   try {
     return await prisma.$transaction(async tx => {
       // Project → Surface 잠금 순서를 지킨다(`applyPushInTransaction`이 같은 순서로 다시 잡는다 — 같은 트랜잭션이라 재진입이다).
-      const locked = await tx.$queryRaw<{ pushTokenHash: string | null }[]>`SELECT "pushTokenHash" FROM "Project" WHERE "id" = ${scope.projectId} FOR UPDATE`;
+      const locked = await tx.$queryRaw<{ pushTokenHash: string | null; lastPublishedAt: Date | null }[]>`SELECT "pushTokenHash", "lastPublishedAt" FROM "Project" WHERE "id" = ${scope.projectId} FOR UPDATE`;
       // ⚠️ **잠근 뒤에 토큰을 다시 대조한다** (launch-readiness L7.6). 라우트의 인증 조회는 트랜잭션 밖이라, 그 뒤 커밋된 회전을
       // 여기서 안 보면 옛 토큰의 push 하나가 적재된다 — 회전의 목적이 유출 토큰을 즉시 끊는 것이다. 회전이 이 잠금 뒤로 줄을 서면
       // 그 push는 회전 **전에** 일어난 것이라 받는다.
       if (locked[0]?.pushTokenHash !== options.pushTokenHash) return { status: "unauthorized" } as const;
+      // 사전 PR 판정 뒤 완료된 Publish는 토큰이 이미 0이다. 판정 자체가 낡았으므로 재시도 때까지 보류한다.
+      if ((locked[0]?.lastPublishedAt?.getTime() ?? null) !== (options.expectedLastPublishedAt?.getTime() ?? null)) {
+        return { status: "deferred", pendingCount: 0, reason: "pr-check-failed" } as const;
+      }
       const pending = await countPending(tx, scope.projectId);
       const decision = planProtectedImport({ mode: "auto", pending });
       if (decision.action !== "apply") return { status: "deferred", pendingCount: pending } as const;
-      const { pushTokenHash: _verified, onApplied, ...applyOptions } = options;
+      const { pushTokenHash: _verified, expectedLastPublishedAt: _observed, onApplied, ...applyOptions } = options;
       const outcome = await applyPushInTransaction(tx, scope, payload, { ...applyOptions, approvedTokens: [] });
       const after = await countPending(tx, scope.projectId);
       if (after > 0) throw new PendingEditsDuringApply(after);

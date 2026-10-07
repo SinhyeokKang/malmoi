@@ -56,7 +56,7 @@ export async function readImage(key: string): Promise<ArrayBuffer | null> {
     }
     // 200을 확정하기 전에 본문을 봐야 하므로 버퍼링한다 — 2~15KB라 스트리밍으로 얻을 것이 없다.
     // ⚠️ `ArrayBuffer`로 돌려준다 — `Uint8Array`는 `BodyInit`이 아니라 라우트가 복사를 한 번 더 한다.
-    return response.arrayBuffer();
+    return await response.arrayBuffer();
   } catch {
     // 오류 원문은 남기지 않는다 — 남의 메시지를 로그에 싣지 않는 규칙이 `lib/failure.ts`와 같다.
     console.error("Image proxy failed.", { stage: "fetch" });

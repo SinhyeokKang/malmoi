@@ -2043,6 +2043,7 @@ export const es = {
     "write-parse-failed": "No se pudo analizar el archivo, así que se dejó sin tocar.",
     "write-no-default-export": "Este archivo no tiene un objeto como export default, así que se dejó sin tocar.",
     "write-locale-object-missing": "Este idioma no está en el archivo, así que sus traducciones no se escribieron.",
+    "write-empty-unsupported": "Este formato no permite publicar un valor vacío. Introduce un valor antes de publicar.",
     "write-slot-not-string-literal": "El valor no está en un hueco de texto simple, así que no se escribió.",
     "write-slot-not-scalar": "El valor no está en un hueco de texto simple (es un alias, un mapa o una lista), así que no se escribió.",
     "write-slot-missing": "No hay un hueco para esta clave, así que se omitió; habría que cambiar la estructura del archivo.",
