@@ -2941,6 +2941,7 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 - **날짜·상대 시각·언어명은 화면 언어를 인자로 받는다** — 절대 날짜·시각은 `formatDay`·`formatMinute`·`formatMonth` 등(`lib/date-format.ts` — 입력이
   `DateStyle = { uiLocale, timeZone }`이다, 시간대 축은 §6.356), `relativeTime`(`Intl.RelativeTimeFormat(uiLocale)`), `languageName`(`Intl.DisplayNames([uiLocale])`).
   **기본값이 없다** — 호출부가 언어를 빠뜨리면 typecheck가 잡는다.
+- **화면의 개수도 명시한 화면 언어로 서식화한다** — `lib/number-format.ts`의 `formatNumber(value, uiLocale)`는 타입 import만 가진 잎이며 기본 로케일이 없다. 클라이언트는 `useUiLocale()`, 서버는 `getUiLocale()`로 받은 값을 넘긴다. 사전의 수량 문장과 같은 숫자 구분자를 쓰되 PR 번호 같은 식별자·코드 예제는 수량 서식을 씌우지 않는다.
 - **Action은 문장이 아니라 코드를 돌려준다** — 무효화 뒤 렌더가 새 언어라 Action이 고른 언어로 문장을 만들 수 없다. 화면이 코드를 들고 `useMessages()`로 그린다.
   `setUiLocale`(`app/ui-locale/actions.ts`)도 `ok`·`invalid`·`failed`이고, 클라이언트가 reject를 `failed` 갈래로 받는다(오류 경계로 보내지 않는다).
 - **`setUiLocale`의 쓰기 순서는 계정 → 쿠키 → `revalidateAfterCommit`으로 고정이다.** 세션 읽기가 `unavailable`이거나 계정 쓰기가 실패하면 **아무것도 쓰지 않고
