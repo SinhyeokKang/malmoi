@@ -5,7 +5,7 @@ vi.mock("@/lib/auth/query", () => ({ getProjectAccess: mocks.access }));
 vi.mock("@/lib/db", () => ({ getPrisma: () => mocks.db }));
 vi.mock("@/lib/publish/read", () => ({ readPublishPreview: mocks.read }));
 import { loadPublishPreview } from "../publish-actions";
-import { PreviewBaseFileMissing, PreviewBaseFileUnreadable } from "@/lib/publish/preview";
+import { PreviewBaseFileMissing, PreviewBaseFileUnreadable, PreviewWriterWarnings } from "@/lib/publish/preview";
 beforeEach(() => { vi.clearAllMocks(); mocks.session.mockResolvedValue({ status: "ok", userId: "editor" }); mocks.access.mockResolvedValue({ status: "ok", projectId: "authorized-id" }); });
 it("EDITOR도 translation:write 인가로 PR 번호를 읽고 인가가 준 projectId만 조회한다", async () => {
   const preview = { groups: [], total: 0, truncated: 0, openPr: { number: 12, url: "https://github.com/o/r/pull/12" } };
@@ -38,4 +38,10 @@ it("base 파일 부재는 경로·브랜치를 든 refused로 온다 — failed(
 it("base 원본을 못 읽으면 경로·브랜치를 든 refused(base-file-unreadable)로 온다 — failed로 접지 않는다 (B3 r3)", async () => {
   mocks.read.mockRejectedValue(new PreviewBaseFileUnreadable("en.json", "main"));
   expect(await loadPublishPreview({ slug: "acme" })).toEqual({ status: "refused", reason: "base-file-unreadable", path: "en.json", branch: "main" });
+});
+
+it("전달 불가 빈값은 다시 읽기 실패가 아닌 경고 차단으로 반환한다", async () => {
+  const warnings = [{ surfaceSlug: "web", path: "en.yml", code: "write-empty-unsupported" as const, key: "hello" }];
+  mocks.read.mockRejectedValue(new PreviewWriterWarnings(warnings));
+  expect(await loadPublishPreview({ slug: "acme" })).toEqual({ status: "blocked", warnings });
 });

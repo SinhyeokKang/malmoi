@@ -75,6 +75,7 @@ export async function runNightly(prisma: PrismaClient, target: NightlyTarget, el
     logCaught("nightly", "close-expired", error);
   }
 
+  const snapshot = await prisma.project.findUniqueOrThrow({ where: { id: target.id }, select: { lastPublishedAt: true } });
   const active = target.surfaces.filter((surface) => surface.archivedAt === null);
   const input: NightlyInput = {
     pending: await countPending(prisma, target.id),
@@ -110,7 +111,7 @@ export async function runNightly(prisma: PrismaClient, target: NightlyTarget, el
       const { installationId, repositoryId } = target;
       if (installationId === null) throw new AppError(`nightly import without installation: ${target.slug}`);
       const repository = { repositoryId, installationId, repoOwner: target.repoOwner, repoName: target.repoName, baseBranch: target.baseBranch };
-      const result = await runAutomationImport(prisma, { projectId: target.id, repository },
+      const result = await runAutomationImport(prisma, { projectId: target.id, repository, expectedLastPublishedAt: snapshot.lastPublishedAt },
         () => openRepoReader(target.repoOwner, target.repoName, installationId, repositoryId));
       return { action: "import", ...result };
     }

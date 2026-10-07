@@ -41,6 +41,14 @@ function Host({ count = 1, role = "EDITOR" }: { count?: number; role?: "OWNER" |
   </HomeActions>;
   return <TranslationWorkspace {...workspaceProps({ role, unpublished: count, publish: { repo: { owner: "owner", name: "repo", branch: "main", syncBranch: "malmoi-i18n/sync-acme" }, lastSentLabel: null, lastPrUrl: null } })} />;
 }
+it("미리보기의 빈값 경고는 실행 버튼 없이 표시한다", async () => {
+  mocks.preview.mockResolvedValue({ status: "blocked", warnings: [{ surfaceSlug: "web", path: "en.yml", key: "hello", code: "write-empty-unsupported" }] });
+  await render(<Host />); await click("Publish1");
+  expect(document.body.textContent).toContain("This format doesn't support publishing an empty value.");
+  expect(document.body.textContent).not.toContain("Try again");
+  expect([...document.querySelectorAll("button")].some(b => visible(b) === "Open pull request")).toBe(false);
+  expect(mocks.pull).not.toHaveBeenCalled();
+});
 it("확인 전에는 쓰지 않고 0건 refresh 뒤에도 결과와 재열기를 보존한다", async () => {
   const view = await render(<Host />);
   await click("Publish1");

@@ -100,3 +100,31 @@ describe("pinnedGet", () => {
     expect(all).toHaveBeenCalledWith(null, [pinned]);
   });
 });
+
+it("DNS 대기도 전체 5초 마감에 포함하고 늦은 응답으로 HTTPS를 시작하지 않는다", async () => {
+  vi.useFakeTimers();
+  let finish!: (value: { address: string; family: number }[]) => void;
+  resolve.mockReturnValue(new Promise(r => { finish = r; }));
+  let result: unknown;
+  const request = fetchClientMetadata(CLIENT, deps).then(value => { result = value; });
+  try {
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(result).toEqual({ ok: false, reason: "unreachable" });
+  } finally {
+    finish([{ address: "160.79.104.10", family: 4 }]);
+    await request;
+    vi.useRealTimers();
+  }
+  expect(get).not.toHaveBeenCalled();
+});
+
+it("DNS에 쓴 시간만큼 HTTPS 대기 한도가 줄어든다", async () => {
+  vi.useFakeTimers();
+  resolve.mockImplementation(() => new Promise(r => setTimeout(() => r([{ address: "160.79.104.10", family: 4 }]), 4_000)));
+  try {
+    const request = fetchClientMetadata(CLIENT, deps);
+    await vi.advanceTimersByTimeAsync(4_000);
+    await request;
+    expect(get.mock.calls[0]![2].timeoutMs).toBeLessThanOrEqual(1_000);
+  } finally { vi.useRealTimers(); }
+});

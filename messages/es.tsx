@@ -332,6 +332,7 @@ export const es = {
         "pending-edits": "actualizaciones del repositorio retenidas",
         "open-pr": "retenido hasta que se fusione o se cierre la pull request",
         "pr-check-failed": "retenido — no se pudo comprobar si hay una pull request abierta",
+        "publish-raced": "retenido — Publish terminó después de las comprobaciones de sincronización",
       },
       frozen: "congelado al archivar",
       neverSent: "nunca enviado",
@@ -527,6 +528,7 @@ export const es = {
     deferReasons: {
       "open-pr": "Todavía hay una pull request de Malmoi abierta. No se sincronizó nada: la sincronización se reanuda cuando se fusione o se cierre.",
       "pr-check-failed": "No se pudo comprobar en GitHub si hay una pull request de Malmoi abierta, así que no se sincronizó nada. La próxima ejecución lo vuelve a comprobar.",
+      "publish-raced": "Publish terminó después de las comprobaciones de sincronización, así que no se sincronizó nada. La próxima ejecución lo vuelve a comprobar.",
       "too-large": "El cambio del repositorio es demasiado grande para una sincronización desde el servidor. No se sincronizó nada. Reduce el tamaño de los archivos o entrégalo con el flujo de trabajo del repositorio.",
     },
     empty: {
@@ -601,6 +603,7 @@ export const es = {
         held: {
           "open-pr": (who: ReactNode): ReactNode => <>{who} retuvo la sincronización: todavía hay una pull request de Malmoi abierta</>,
           "pr-check-failed": (who: ReactNode): ReactNode => <>{who} retuvo la sincronización: GitHub no respondió sobre las pull requests</>,
+          "publish-raced": (who: ReactNode): ReactNode => <>{who} retuvo la sincronización: Publish terminó después de las comprobaciones de sincronización</>,
           "too-large": (who: ReactNode): ReactNode => <>{who} retuvo la sincronización: el cambio es demasiado grande para una sincronización desde el servidor</>,
         },
       },
@@ -2043,6 +2046,7 @@ export const es = {
     "write-parse-failed": "No se pudo analizar el archivo, así que se dejó sin tocar.",
     "write-no-default-export": "Este archivo no tiene un objeto como export default, así que se dejó sin tocar.",
     "write-locale-object-missing": "Este idioma no está en el archivo, así que sus traducciones no se escribieron.",
+    "write-empty-unsupported": "Este formato no permite publicar un valor vacío. Introduce un valor antes de publicar.",
     "write-slot-not-string-literal": "El valor no está en un hueco de texto simple, así que no se escribió.",
     "write-slot-not-scalar": "El valor no está en un hueco de texto simple (es un alias, un mapa o una lista), así que no se escribió.",
     "write-slot-missing": "No hay un hueco para esta clave, así que se omitió; habría que cambiar la estructura del archivo.",

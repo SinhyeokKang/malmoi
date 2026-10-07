@@ -288,16 +288,22 @@ describe("생성 ① → ②", () => {
   });
 
   it("세션 만료(응답이 오지 않는 redirect) — 중복 발급 없음 · 입력 유지 · 진행 표시", async () => {
-    mocks.issue.mockReturnValue(new Promise(() => {}));
-    await mount({ state: "none" });
-    await click(button(card(), en.mcpConnector.token.create));
-    await click(find(panel()!, '[data-grant="translation:write"]'));
-    const submit = button(panel()!, en.mcpConnector.form.create)!;
-    await click(submit);
-    await click(submit);
-    expect(mocks.issue).toHaveBeenCalledTimes(1);
-    expect(submit.getAttribute("aria-busy") === "true" || submit.disabled).toBe(true);
-    expect(find<HTMLElement>(panel()!, '[data-grant="translation:write"]').getAttribute("data-state")).toBe("checked");
+    let finish!: () => void;
+    const response = new Promise<void>(resolve => { finish = resolve; });
+    mocks.issue.mockReturnValue(response);
+    try {
+      await mount({ state: "none" });
+      await click(button(card(), en.mcpConnector.token.create));
+      await click(find(panel()!, '[data-grant="translation:write"]'));
+      const submit = button(panel()!, en.mcpConnector.form.create)!;
+      await click(submit);
+      await click(submit);
+      expect(mocks.issue).toHaveBeenCalledTimes(1);
+      expect(submit.getAttribute("aria-busy") === "true" || submit.disabled).toBe(true);
+      expect(find<HTMLElement>(panel()!, '[data-grant="translation:write"]').getAttribute("data-state")).toBe("checked");
+    } finally {
+      await act(async () => { finish(); await response; });
+    }
   });
 
   it("모달 취소 → 누른 Create token으로 돌아간다", async () => {

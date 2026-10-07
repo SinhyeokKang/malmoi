@@ -232,7 +232,7 @@ describe("잠금 경합", () => {
 
 it("야간 적재가 세운 lease도 저장을 막는다 — C1, 같은 acquire다", async () => {
   const pause = { entered: deferred(), release: deferred() };
-  const nightly = runAutomationImport(prisma, { projectId: "p", repository }, async () => reader(pause));
+  const nightly = runAutomationImport(prisma, { projectId: "p", repository, expectedLastPublishedAt: null }, async () => reader(pause));
   try {
     await pause.entered.promise;
     const before = await writable();

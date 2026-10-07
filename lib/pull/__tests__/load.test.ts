@@ -14,7 +14,8 @@ import { saveLastPulledAt } from "../load";
  */
 function fakePrisma() {
   const update = vi.fn(async (_args: unknown) => ({}));
-  return { prisma: { project: { update } } as unknown as PrismaClient, update };
+  const tx = { project: { update }, $queryRaw: vi.fn(async () => [{ lastPublishedAt: null }]), $executeRaw: vi.fn(async () => 0) };
+  return { prisma: { ...tx, $transaction: (work: (client: typeof tx) => Promise<void>) => work(tx) } as unknown as PrismaClient, update };
 }
 
 describe("saveLastPulledAt", () => {

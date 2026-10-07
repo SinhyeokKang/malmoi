@@ -17,8 +17,8 @@ import { causeMessage } from "@/lib/cause";
  *   - skillflo (`src/shared/i18n/locales/`) — flat 점 표기, 1446키 × 6로케일
  *   - bugshot-web (`src/lib/i18n/`) — next-intl 중첩, 배열값 포함
  *
- * **중첩은 `.`으로 평탄화해 읽고 write에서 복원한다.** 평탄화만 하고 복원하지 않으면 읽은
- * 포맷과 다른 모양으로 되돌려주게 되어 왕복이 깨진다 (ARCHITECTURE §1).
+ * **읽기는 `.`으로 평탄화하고, 쓰기는 현재 원본의 실제 키 경로를 따른다.** 원본에 없는 키만
+ * 중첩 관측으로 복원한다. 저장된 관측만 따르면 CI 보류 중 달라진 구조를 되돌린다 (ARCHITECTURE §1).
  *
  * `description`을 담을 곳이 없다 — DB엔 남지만 파일로 나가지 않는다.
  *
@@ -244,7 +244,7 @@ function writeWithErrors(
 ): { content: string | null; errors: AdapterError[] } {
   const usable = orderedEntries(input.entries);
   const errors: AdapterError[] = [];
-  // 파일별 관측값이 우선이다 — `nested`는 형제 파일 때문에 true가 될 수 있다.
+  // 현재 원본의 구조가 우선이고, 저장된 관측은 원본에 증거가 없을 때의 폴백이다.
   const path = format.pathTemplate.replaceAll("{locale}", input.locale);
   const original = format.currentFiles?.find((c) => c.path === path)?.content;
   // ⚠️ **원본이 있으면 `null`이 아니라 `{}`다** (audit #1 · launch-audit B3.1 A). `null`은 "이 파일을 안 낸다"라 원본이 그대로 남는데,
@@ -260,13 +260,15 @@ function writeWithErrors(
   // ⚠️ **원본이 `{}`이면 저장된 관측도 버린다** (malmoi#147) — read가 이제 `{}`를 관측하지 않지만, 이미 적재된 표면의 `nestedByPath`에는
   // 옛 `false`가 남아 있다. 다음 push가 그 값을 지우기 전까지의 Publish도 표면의 `nested`를 따라야 한다.
   const observed = byPath !== undefined && Object.hasOwn(byPath, path) && !isEmptyObjectText(original) ? byPath[path] : undefined;
-  const nested = observed ?? format.nested ?? false;
+  const structure = originalStructure(original);
+  const nested = structure.nested ?? observed ?? format.nested ?? false;
+  const segmentsOf = (key: string) => structure.paths.get(key) ?? (nested ? key.split(SEP) : [key]);
   // **표현은 원본에서 읽는다** (ARCHITECTURE §1.4를 재생성으로 옮긴 것). 원본이 없으면 기본값이다 —
   // 재생성은 원본 없이도 파일을 만들어야 한다(신규 로케일). ⚠️ `currentFiles?.[0]`가 아니라
   // **경로로 조회한다**: 호출부가 여러 파일을 실으면 다른 로케일의 스타일을 읽게 된다.
   const style = observeJsonStyle(original);
 
-  if (!nested) {
+  if (!nested && structure.paths.size === 0) {
     // flat 포맷 — 키를 그대로 쓴다. 정렬한 순서로 재조립한다. 충돌이 성립하지 않는다.
     // ⚠️ **프로토타입 없는 객체다** (sec-audit 발견 17). 평범한 `{}`에 `out["__proto__"] = v`를 하면
     // setter가 불려 own property가 안 생기고 **그 키가 조용히 사라진다** — 에러도 경고도 없다.
@@ -277,14 +279,13 @@ function writeWithErrors(
 
   // 접두 충돌을 먼저 걸러낸다. `a.b`가 `a.b.c`의 점 경계 접두이면 `a.b`를 버린다 —
   // 깊은 쪽을 살리는 것은 임의 선택이 아니다: 얕은 쪽을 살리면 그 아래 전부를 잃는다.
-  const keys = new Set(usable.map((e) => e.key));
+  const paths = new Map(usable.map(e => [e.key, segmentsOf(e.key)]));
+  const byPathKey = new Map([...paths].map(([key, segments]) => [JSON.stringify(segments), key]));
   const shadowed = new Set<string>();
-  for (const key of keys) {
-    for (const other of keys) {
-      if (other.length > key.length && other.startsWith(`${key}${SEP}`)) {
-        shadowed.add(key);
-        break;
-      }
+  for (const segments of paths.values()) {
+    for (let length = 1; length < segments.length; length++) {
+      const prefix = byPathKey.get(JSON.stringify(segments.slice(0, length)));
+      if (prefix !== undefined) shadowed.add(prefix);
     }
   }
   const root: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
@@ -293,13 +294,36 @@ function writeWithErrors(
       errors.push({ path, code: "key-shadowed", key: e.key });
       continue;
     }
-    setDeep(root, e.key.split(SEP), e.message);
+    setDeep(root, segmentsOf(e.key), e.message);
   }
   // ⚠️ **루트는 배열로 되돌리지 않는다** — 최상위 키가 `"0".."n-1"`이면 배열로 나가고, 다음 read가
   // `root-not-object`로 그 로케일 전체를 떨어뜨린다 (launch-readiness L3.6).
   const normalized: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
-  for (const name of Object.keys(root)) normalized[name] = normalizeArrays(root[name]);
+  for (const name of Object.keys(root)) normalized[name] = normalizeArrays(root[name], structure.containers, [name]);
   return { content: serializeJson(normalized, style), errors };
+}
+
+/** 원본은 값이 아니라 키의 실제 경로를 준다. 점이 든 이름과 중첩 경로를 구별한다. */
+function originalStructure(original: string | undefined): { paths: Map<string, string[]>; containers: Map<string, boolean>; nested?: boolean } {
+  const paths = new Map<string, string[]>();
+  const containers = new Map<string, boolean>();
+  if (original === undefined) return { paths, containers };
+  try {
+    const root: unknown = JSON.parse(stripBom(original));
+    if (root === null || typeof root !== "object" || Array.isArray(root)) return { paths, containers };
+    const walk = (node: object, prefix: string[], flatPrefix: string) => {
+      containers.set(JSON.stringify(prefix), Array.isArray(node));
+      for (const [name, value] of Object.entries(node)) {
+        const segments = [...prefix, name];
+        const key = flatPrefix === "" ? name : `${flatPrefix}${SEP}${name}`;
+        if (value !== null && typeof value === "object") walk(value, segments, key);
+        // read는 null·비문자열을 건너뛴다. 그 경로가 이미 읽힌 문자열 경로를 가리면 안 된다.
+        else if (typeof value === "string" || !paths.has(key)) paths.set(key, segments);
+      }
+    };
+    walk(root, [], "");
+    return { paths, containers, ...(Object.keys(root).length === 0 ? {} : { nested: Object.values(root).some(v => v !== null && typeof v === "object") }) };
+  } catch { return { paths, containers }; }
 }
 
 /** 원본이 항목 없는 객체(`{}`)인가 — 중첩의 증거가 없는 파일이다. 못 읽으면 `false`(관측을 그대로 둔다 — 없는 판정을 만들지 않는다). */
@@ -340,15 +364,15 @@ function setDeep(node: Record<string, unknown>, segments: readonly string[], val
  * 빈틈이 있으면 객체로 남긴다 — 배열로 만들면 `undefined` 구멍이 `null`로 직렬화되어
  * 원본에 없던 값이 파일에 나타난다.
  */
-function normalizeArrays(value: unknown): unknown {
+function normalizeArrays(value: unknown, containers: ReadonlyMap<string, boolean>, prefix: string[]): unknown {
   if (value === null || typeof value !== "object") return value;
   const obj = value as Record<string, unknown>;
   const names = Object.keys(obj);
   // 여기서 평범한 `{}`로 되돌리면 `setDeep`이 지킨 키가 이 한 줄에서 다시 사라진다.
   const converted: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
-  for (const name of names) converted[name] = normalizeArrays(obj[name]);
+  for (const name of names) converted[name] = normalizeArrays(obj[name], containers, [...prefix, name]);
 
-  const isDense = names.length > 0 && names.every((n, i) => n === String(i));
+  const isDense = containers.get(JSON.stringify(prefix)) !== false && names.length > 0 && names.every((n, i) => n === String(i));
   // ⚠️ **여기서 다시 정렬하지 않는다.** `setDeep`이 `orderedEntries`의 순서대로 트리를 만들고
   // `Object.keys`가 그 삽입 순서를 주므로, **각 층은 이미 파일에서의 첫 등장 순**이다. 전에는
   // 마지막에 `sortedByKey`로 다시 정렬해서, 최상위를 고쳐도 하위 층이 통째로 재정렬됐다 —

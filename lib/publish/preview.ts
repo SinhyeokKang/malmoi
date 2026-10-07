@@ -1,3 +1,4 @@
+import type { PullWarning } from "@/lib/pull/run";
 import type { OpenImportPr } from "@/lib/import/confirm";
 import type { PublishDiff } from "./diff";
 /** `keys`는 **미발송 전체**의 키 수다 — 표에 실린 행이 아니라 바닥 요약이 드는 값이다. */
@@ -45,7 +46,12 @@ export class PreviewBaseFileUnreadable extends Error {
   override readonly name = "PreviewBaseFileUnreadable";
   constructor(readonly path: string, readonly branch: string) { super("Preview base file unreadable"); }
 }
+export class PreviewWriterWarnings extends Error {
+  override readonly name = "PreviewWriterWarnings";
+  constructor(readonly warnings: PullWarning[]) { super("Preview cannot deliver empty values"); }
+}
 export type PublishPreviewResult =
+  | { status: "blocked"; warnings: PullWarning[] }
   | { status: "ok"; preview: PublishPreview }
   | { status: "refused"; reason: "base-file-missing" | "base-file-unreadable"; path: string; branch: string }
   | { status: "rejected"; error: "unauthorized" | "forbidden" | "not-found" | "archived" | "invalid input" }

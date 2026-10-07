@@ -110,3 +110,11 @@ describe("action.yml — 열린 PR 경고 문구가 게이트 이후의 사실�
     expect(action).toContain("머지하거나 닫을 때까지");
   });
 });
+
+it("Publish 경합은 GitHub 장애나 미전달 0건이 아닌 독립된 보류 경고다", () => {
+  const result = reportPushResponse(200, JSON.stringify({ status: "deferred", reason: "publish-raced" }));
+  expect(result.exitCode).toBe(0);
+  expect(result.lines.filter(line => line.startsWith("::warning"))).toEqual([
+    expect.stringContaining("Publish finished after the import checks"),
+  ]);
+});

@@ -1220,3 +1220,34 @@ describe("runPull — changedValues", () => {
     expect(await runPull(deps)).toMatchObject({ status: "committed", pr: "updated", changedValues: 2 });
   });
 });
+
+it("이미 저장된 수술적 빈 base 편집은 전달 확인하지 않는다", async () => {
+  const made = createFakeGitClient({ refSha: { "heads/dev": "basehead" },
+    tree: { basehead: [{ path: "i18n/en.yml", sha: blobSha("hello: Published\n") }] },
+    blobs: { [blobSha("hello: Published\n")]: "hello: Published\n" } });
+  const { deps, writes } = makeDeps({ loadState: async () => ({ project: PROJECT,
+    surfaces: [{ ...PROJECT, id: "s1", slug: "default", adapterName: "yaml-catalog", pathTemplate: "i18n/{locale}.yml",
+      localeCodes: ["en"], keys: [{ id: "k1", key: "hello", sourceText: "", orphaned: false, cells: { en: { value: "" } } }] }],
+    maxUpdatedAt: new Date(), unpublished: 1,
+    pendingEdits: [{ id: "t1", token: "pending", cell: { surfaceId: "s1", keyId: "k1", localeCode: "en", restoreValue: "" } }],
+  }) }, made);
+  expect(await runPull(deps)).toMatchObject({ status: "skipped", reason: "writer-warnings" });
+  expect(writes).toEqual([]);
+});
+
+it("미리보기 없는 Publish도 뒤 shorthand에 가린 편집을 전달 확인하지 않는다", async () => {
+  const en = "export default { a: 'Source' };\n";
+  const ko = "const a = 'Runtime'; export default { a: 'Hidden', a };\n";
+  const made = createFakeGitClient({ refSha: { "heads/dev": "basehead" },
+    tree: { basehead: [{ path: "i18n/en.js", sha: blobSha(en) }, { path: "i18n/ko.js", sha: blobSha(ko) }] },
+    blobs: { [blobSha(en)]: en, [blobSha(ko)]: ko } });
+  const { deps, writes, calls } = makeDeps({ loadState: async () => ({ project: PROJECT,
+    surfaces: [{ ...PROJECT, id: "s1", slug: "default", adapterName: "code-dict", pathTemplate: "i18n/{locale}.js",
+      localeCodes: ["en", "ko"], keys: [{ id: "k1", key: "a", sourceText: "Source", orphaned: false, cells: { en: { value: "Source" }, ko: { value: "Edited" } } }] }],
+    maxUpdatedAt: new Date(), unpublished: 1,
+    pendingEdits: [{ id: "t1", token: "pending", cell: { surfaceId: "s1", keyId: "k1", localeCode: "ko", restoreValue: "Edited" } }],
+  }) }, made);
+  expect(await runPull(deps)).toMatchObject({ status: "skipped", reason: "writer-warnings" });
+  expect(writes).toEqual([]);
+  expect(calls.some(call => ["createTree", "createCommit", "updateRefForce"].includes(call.method))).toBe(false);
+});

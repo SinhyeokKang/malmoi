@@ -160,3 +160,12 @@ describe("상류 응답", () => {
     expect(logged).not.toContain("upstream boom");
   });
 });
+
+ it("본문 스트림이 실패해도 빈 404다", async () => {
+   const response = upstream({});
+   vi.spyOn(response, "arrayBuffer").mockRejectedValue(new Error("body failed"));
+   fetchMock.mockResolvedValue(response);
+   const result = await call(["avatars", "u1", "n1.webp"]);
+   expect(result.status).toBe(404);
+   expect(await result.text()).toBe("");
+ });

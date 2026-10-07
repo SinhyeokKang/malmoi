@@ -45,7 +45,7 @@ describe("readPayload — 야간 source는 ci로 폴백하지 않는다", () => 
   });
 
   it("deferReason 넷을 읽는다", () => {
-    for (const reason of ["pending-edits", "open-pr", "pr-check-failed", "too-large"]) {
+    for (const reason of ["pending-edits", "open-pr", "pr-check-failed", "publish-raced", "too-large"]) {
       expect(readPayload("IMPORT", { source: "ci", deferReason: reason }), reason).toMatchObject({ deferReason: reason });
     }
   });

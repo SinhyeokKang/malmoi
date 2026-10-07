@@ -670,7 +670,7 @@ export const en = {
        * ⚠️ **여기서 이름을 대는 저장 항목은 `lib/privacy/collected.ts`의 등재와 절 id로 묶인다** —
        * 표는 필드 여럿을 한 행으로 접으므로 대조 단위가 라벨이 아니라 절이다.
        */
-      effectiveDate: "2026-10-05",
+      effectiveDate: "2026-10-07",
       /**
        * 목차 이름 — ⚠️ **`sections` 밖에 둔다**: `policy-gate.test.tsx`가 `sections`를 해시하므로 안에 넣으면 개정 이력이 요구된다.
        */
@@ -872,7 +872,7 @@ export const en = {
           heading: "Cookies",
           blocks: [
             {
-              p: "Every cookie Malmoi sets is needed to sign you in, to finish a round trip to GitHub or Google, or to remember the language and theme you chose for Malmoi's screens. There are no analytics, advertising or tracking cookies, so there is nothing here to consent to or turn off. All of them are http-only, which means scripts cannot read them.",
+              p: "Every cookie Malmoi sets is needed to sign you in, to finish a round trip to GitHub or Google, or to remember the language and theme you chose for Malmoi's screens and whether you collapsed the sidebar. There are no analytics, advertising or tracking cookies, so there is nothing here to consent to or turn off. All of them except the sidebar cookie are http-only, which means scripts cannot read them. The sidebar cookie holds only whether the sidebar is collapsed, so Malmoi's pages write it directly.",
             },
             {
               table: {
@@ -899,6 +899,7 @@ export const en = {
                   ],
                   ["Language", "1 year from your last choice or sign-in", "Shows Malmoi in the language you chose on this browser, even when you are signed out. Signing in copies the language saved to your account into it"],
                   ["Theme", "1 year from your last choice or sign-in", "Shows Malmoi in the theme you chose on this browser, even when you are signed out. Signing in copies the theme saved to your account into it"],
+                  ["Sidebar", "1 year from when you last collapsed or expanded it", "Keeps the sidebar collapsed or expanded the way you left it on this browser"],
                 ],
               },
             },
@@ -911,7 +912,7 @@ export const en = {
             {
               p: "The effective date at the top belongs to the text below it: whenever this policy changes, that date moves and the change is listed here.",
             },
-            { ul: ["2026-10-05 — the “Needs your attention” list in the header marks items that are new since you last opened it. Malmoi keeps one time per account — when you last opened the list — and no record of which items you saw.", "2026-10-05 — you can choose Malmoi's theme: System, Light or Dark. Malmoi remembers your choice with your account and in a cookie on this browser, and signing in copies the theme saved to your account into that cookie.", "2026-10-05 — you can choose the time zone Malmoi uses for dates and times. Malmoi remembers your choice with your account only, not in a cookie. Public pages always use UTC.", "2026-10-05 — you can choose the language of Malmoi's screens: English, Korean or Spanish. Malmoi remembers your choice with your account and in a cookie on this browser, and signing in copies the language saved to your account into that cookie. This policy is also published in Korean.", "2026-09-29 — you can also connect an app such as Claude Code or Codex by signing in through your browser, with no token to copy. Malmoi keeps the connection — the app's name and address, the actions and projects you allowed, when it was used — and only hashes of the tokens it issued; you can disconnect it on the MCP connector page.", "2026-09-29 — you can create a personal token for AI agents on the MCP connector page. Malmoi stores only a hash of it, with the actions and projects you allowed and when it was used.", "2026-09-28 — invitation emails show the name and picture of the project you are invited to, and your role in it. They still do not say who invited you.", "2026-09-27 — visits to the public pages are counted with Vercel Web Analytics, without cookies.", "2026-09-26 — the product name is written Malmoi. No change to what we collect or share.", "2026-09-24 — invitations can be sent by email through Resend.", "2026-09-19 — first version."] },
+            { ul: ["2026-10-07 — Malmoi remembers whether you collapsed the sidebar in a cookie on this browser. It is the only cookie that scripts can read, and it holds nothing else.", "2026-10-05 — the “Needs your attention” list in the header marks items that are new since you last opened it. Malmoi keeps one time per account — when you last opened the list — and no record of which items you saw.", "2026-10-05 — you can choose Malmoi's theme: System, Light or Dark. Malmoi remembers your choice with your account and in a cookie on this browser, and signing in copies the theme saved to your account into that cookie.", "2026-10-05 — you can choose the time zone Malmoi uses for dates and times. Malmoi remembers your choice with your account only, not in a cookie. Public pages always use UTC.", "2026-10-05 — you can choose the language of Malmoi's screens: English, Korean or Spanish. Malmoi remembers your choice with your account and in a cookie on this browser, and signing in copies the language saved to your account into that cookie. This policy is also published in Korean.", "2026-09-29 — you can also connect an app such as Claude Code or Codex by signing in through your browser, with no token to copy. Malmoi keeps the connection — the app's name and address, the actions and projects you allowed, when it was used — and only hashes of the tokens it issued; you can disconnect it on the MCP connector page.", "2026-09-29 — you can create a personal token for AI agents on the MCP connector page. Malmoi stores only a hash of it, with the actions and projects you allowed and when it was used.", "2026-09-28 — invitation emails show the name and picture of the project you are invited to, and your role in it. They still do not say who invited you.", "2026-09-27 — visits to the public pages are counted with Vercel Web Analytics, without cookies.", "2026-09-26 — the product name is written Malmoi. No change to what we collect or share.", "2026-09-24 — invitations can be sent by email through Resend.", "2026-09-19 — first version."] },
           ],
         },
       ],
@@ -1023,6 +1024,7 @@ export const en = {
         "pending-edits": "repository updates held",
         "open-pr": "held until the pull request is merged or closed",
         "pr-check-failed": "held — couldn't check for an open pull request",
+        "publish-raced": "held — Publish finished after the sync checks",
       },
       frozen: "frozen at archive",
       neverSent: "never sent",
@@ -1344,6 +1346,7 @@ export const en = {
     deferReasons: {
       "open-pr": "A Malmoi pull request is still open. Nothing was synced — syncing resumes once it's merged or closed.",
       "pr-check-failed": "We couldn't check GitHub for an open Malmoi pull request, so nothing was synced. The next run checks again.",
+      "publish-raced": "Publish finished after the sync checks, so nothing was synced. The next run checks again.",
       /**
        * ⚠️ 서버 적재 예산은 수동 Sync도 지난다 — [Sync]를 출구로 권하면 같은 이유로 또 실패한다. 출구는 둘이다: 파일을 줄인다
        * (`resource-limit` 문구와 같은 방향) · 예산 밖 경로인 리포 워크플로. 야간의 주 대상이 워크플로 없는 프로젝트라 앞엣것이 먼저다.
@@ -1445,6 +1448,7 @@ export const en = {
         held: {
           "open-pr": (who: ReactNode): ReactNode => <>{who} held the sync — a Malmoi pull request is still open</>,
           "pr-check-failed": (who: ReactNode): ReactNode => <>{who} held the sync — GitHub didn&rsquo;t answer about pull requests</>,
+          "publish-raced": (who: ReactNode): ReactNode => <>{who} held the sync — Publish finished after the sync checks</>,
           "too-large": (who: ReactNode): ReactNode => <>{who} held the sync — the change is too large for a server-side sync</>,
         },
       },
@@ -3988,6 +3992,7 @@ export const en = {
     "write-parse-failed": "The file couldn't be parsed, so it was left untouched.",
     "write-no-default-export": "This file has no default-export object, so it was left untouched.",
     "write-locale-object-missing": "This language isn't in the file, so its translations weren't written.",
+    "write-empty-unsupported": "This format doesn't support publishing an empty value. Enter a value before publishing.",
     "write-slot-not-string-literal": "The value isn't in a plain text slot, so it wasn't written.",
     "write-slot-not-scalar": "The value isn't in a plain text slot (it's an alias, a map or a list), so it wasn't written.",
     "write-slot-missing": "There's no slot for this key, so it was skipped — the file's structure would have to change.",

@@ -196,6 +196,8 @@ const CLIENT_LIB_FILES = [
   "lib/shell/navigation-dim.ts",
   "lib/shell/nav.ts",
   "lib/shell/panel-size.ts",
+  // LNB 접힘 기기 쿠키 — 서버 레이아웃과 셸 패널이 같이 읽는 잎(import 0)이다.
+  "lib/shell/sidebar-cookie.ts",
   "lib/signin/dot-field.ts",
   // 상태 톤·낱말의 정본(ux-drift-unify §3.6) — `lib/i18n`만 무는 잎이다(아래 잎 검사). Sources 상태 판정이 톤을 여기서 읽는다.
   "lib/status/canon.ts",

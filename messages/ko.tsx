@@ -337,6 +337,7 @@ export const ko = {
         "pending-edits": "리포지토리 업데이트 보류",
         "open-pr": "PR이 머지되거나 닫힐 때까지 보류",
         "pr-check-failed": "보류 — 열린 PR을 확인하지 못했습니다",
+        "publish-raced": "보류 — 동기화 확인 뒤 Publish가 완료되었습니다",
       },
       frozen: "보관 시점에 고정됨",
       neverSent: "전송 이력 없음",
@@ -533,6 +534,7 @@ export const ko = {
     deferReasons: {
       "open-pr": "Malmoi PR이 아직 열려 있습니다. 아무것도 동기화하지 않았습니다 — PR이 머지되거나 닫히면 동기화가 다시 시작됩니다.",
       "pr-check-failed": "GitHub에서 열린 Malmoi PR을 확인하지 못해 아무것도 동기화하지 않았습니다. 다음 실행에서 다시 확인합니다.",
+      "publish-raced": "동기화 확인 뒤 Publish가 완료되어 아무것도 동기화하지 않았습니다. 다음 실행에서 다시 확인합니다.",
       "too-large": "리포지토리 변경이 서버 동기화 한도를 초과했습니다. 아무것도 동기화하지 않았습니다. 파일 크기를 줄이거나 리포지토리 워크플로로 전달하세요.",
     },
     empty: {
@@ -608,6 +610,7 @@ export const ko = {
         held: {
           "open-pr": (who: ReactNode): ReactNode => <>{who} — 동기화를 보류했습니다. Malmoi PR이 아직 열려 있습니다</>,
           "pr-check-failed": (who: ReactNode): ReactNode => <>{who} — 동기화를 보류했습니다. GitHub가 PR 확인에 응답하지 않았습니다</>,
+          "publish-raced": (who: ReactNode): ReactNode => <>{who} — 동기화를 보류했습니다. 동기화 확인 뒤 Publish가 완료되었습니다</>,
           "too-large": (who: ReactNode): ReactNode => <>{who} — 동기화를 보류했습니다. 변경이 서버 동기화 한도를 초과했습니다</>,
         },
       },
@@ -2054,6 +2057,7 @@ export const ko = {
     "write-parse-failed": "파일을 해석하지 못해 변경하지 않았습니다.",
     "write-no-default-export": "이 파일에 default export 객체가 없어 변경하지 않았습니다.",
     "write-locale-object-missing": "이 언어가 파일에 없어 번역을 쓰지 않았습니다.",
+    "write-empty-unsupported": "이 형식에서는 빈 값을 보낼 수 없습니다. 값을 입력한 뒤 내보내세요.",
     "write-slot-not-string-literal": "값이 일반 텍스트 자리에 있지 않아 쓰지 않았습니다.",
     "write-slot-not-scalar": "값이 일반 텍스트 자리에 있지 않아(별칭, 맵 또는 목록) 쓰지 않았습니다.",
     "write-slot-missing": "이 키를 쓸 위치가 없어 건너뛰었습니다. 파일 구조를 수정해야 합니다.",

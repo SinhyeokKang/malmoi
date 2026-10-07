@@ -1,3 +1,7 @@
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { createElement, Fragment, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
@@ -47,6 +51,8 @@ const REVISIONS: readonly { effectiveDate: string; digest?: string; koDigest?: s
   { effectiveDate: "2026-10-05", digest: "c8e9666b274772c3cee471f8c9d54a7d74d1c89ae6b615000fa1c92536d361fe", koDigest: "965ae2d11b73741007da9ceee441db17b69018f97ccf000151e4d7ff953f8402" },
   // device-cookies fix3 — 로그인하면 계정 화면 언어도 기기 쿠키로 복사한다. 같은 날 여섯 번째 개정이다 — 머지일이 바뀌면 여섯 행의 날짜를 같이 옮긴다.
   { effectiveDate: "2026-10-05", digest: "be9870931ac97177a830f8b4ce239e01aa4550281259b8ddca69b351d92aacd4", koDigest: "771e1396a905de08acba4b70d59e13734985e5f908253242305bb88306bfd749" },
+  // sidebar-cookie — LNB 접힘 여부 기기 쿠키(`malmoi-sidebar-collapsed`, 스크립트가 쓰는 유일한 쿠키 · 1년). 머지일이 바뀌면 날짜를 옮긴다.
+  { effectiveDate: "2026-10-07", digest: "9e7a7fe3769cc6e6e848c9ee84d909ecdcb9c64eba364cbf48242090cad57d83", koDigest: "fde6d9f89ade893e75810be5389923e7d99f88d43c46d29484cdb8f932a0388d" },
 ];
 
 const privacy = en.publicDocs.privacy;
@@ -73,6 +79,48 @@ describe("방침 게이트 (B) — 등재 ↔ 본문의 절", () => {
         for (const row of block.table.rows) expect(row.length, `${section.id}: ${block.table.label}`).toBe(block.table.head.length);
       }
     }
+  });
+});
+
+/**
+ * **스크립트가 쓰는 쿠키는 하나다** (2026-10-07 사이드바 접힘 — `lib/shell/sidebar-cookie.ts`). 나머지는 전부 http-only라 본문이 "모두 http-only"라고
+ * 말해 왔다 — 클라이언트가 쓰는 쿠키가 생기면 그 문장이 거짓이 된다. 표에 행이 있고, 본문이 그것을 예외로 밝히는지 두 본 모두에서 센다.
+ */
+describe("방침 — 스크립트가 쓰는 사이드바 쿠키", () => {
+  const cookies = (body: typeof privacy | typeof koPrivacy) => body.sections.find((s) => s.id === "cookies");
+  it("en 본 쿠키 표에 Sidebar 행이 있고, 본문이 그것만 http-only가 아니라고 밝힌다", () => {
+    const section = cookies(privacy);
+    const table = section?.blocks.find((b) => "table" in b);
+    expect(table !== undefined && "table" in table ? table.table.rows.map((r) => r[0]) : []).toContain("Sidebar");
+    expect(docText(section === undefined ? [] : [section])).toMatch(/Sidebar[^.]*not http-only|except the sidebar/i);
+  });
+  it("ko 본 쿠키 표에 사이드바 행이 있다", () => {
+    const table = cookies(koPrivacy)?.blocks.find((b) => "table" in b);
+    expect(table !== undefined && "table" in table ? table.table.rows.map((r) => r[0]) : []).toContain("사이드바");
+  });
+});
+
+/**
+ * 위 문장("스크립트가 읽을 수 있는 유일한 쿠키")을 **세는 검사** — 표와 문구만 보면 다음에 `document.cookie` 쓰기나 `httpOnly: false`가
+ * 하나 더 생겨도 green이다(POSTMORTEM 2026-09-19 — 방침이 X를 말하려면 X를 세는 검사가 먼저 있어야 한다).
+ */
+describe("방침 — 스크립트가 쓰는 쿠키는 소스에서도 하나다", () => {
+  const ROOT = fileURLToPath(new URL("../../..", import.meta.url));
+  const sources = (dir: string): string[] =>
+    readdirSync(join(ROOT, dir)).flatMap((name) => {
+      const rel = join(dir, name);
+      if (name === "__tests__" || name === "node_modules") return [];
+      if (statSync(join(ROOT, rel)).isDirectory()) return sources(rel);
+      return /\.(ts|tsx)$/.test(name) ? [rel] : [];
+    });
+  const files = [...["app", "components", "lib"].flatMap(sources), "auth.ts", "middleware.ts"];
+  const hits = (pattern: RegExp) => files.filter((rel) => pattern.test(readFileSync(join(ROOT, rel), "utf8")));
+
+  it("`document.cookie` 대입은 셸 패널 하나다", () => {
+    expect(hits(/document\.cookie\s*=(?!=)/)).toEqual(["components/shell/shell-panels.tsx"]);
+  });
+  it("`httpOnly: false`는 0곳이다", () => {
+    expect(hits(/httpOnly:\s*false/)).toEqual([]);
   });
 });
 

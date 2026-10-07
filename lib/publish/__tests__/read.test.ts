@@ -462,3 +462,32 @@ it("fingerprint는 표시에 쓴 바로 그 스냅샷과 읽은 base head의 pub
 it("스냅샷이 인가된 프로젝트와 다른 프로젝트를 가리키면 보여 주지 않는다", async () => {
   await expect(readPublishPreview(db as unknown as PrismaClient, "other-project", "acme")).rejects.toThrow("Project changed");
 });
+
+it.each([false, true])("빈 base 편집: 원본에서 키가 제거됨=%s — 미리보기와 실행이 같은 판정이다", async absent => {
+  const { runPull } = await import("@/lib/pull/run");
+  const { createFakeGitClient } = await import("@/lib/pull/__tests__/fake-client");
+  const cols = { ...surface, adapterName: "yaml-catalog", pathTemplate: "{locale}.yml", nested: null, localeCodes: ["en"] };
+  const content = absent ? "en:\n  other: Other\n" : "en:\n  hello: Previous\n  other: Other\n";
+  const state = { project: { ...project, slug: "acme" }, surfaces: [{ ...cols, keys: [
+    { id: "k", key: "hello", sourceText: "", orphaned: false, cells: { en: { value: "" } } },
+    { id: "k2", key: "other", sourceText: "Other", orphaned: false, cells: { en: { value: "Edited" } } },
+  ] }], maxUpdatedAt: new Date(), unpublished: 2,
+    pendingEdits: [{ id: "t", token: "token", cell: { surfaceId: "s", keyId: "k", localeCode: "en", restoreValue: "" } }, { id: "t2", token: "token2", cell: { surfaceId: "s", keyId: "k2", localeCode: "en", restoreValue: "Edited" } }] };
+  mocks.load.mockResolvedValue(state);
+  db.translation.findMany.mockResolvedValue([{ ...rows[0], value: "" }, { ...rows[0], keyId: "k2", value: "Edited", stringKey: { key: "other" } }]);
+  db.translation.count.mockResolvedValue(2);
+  db.translation.groupBy.mockResolvedValue([{ keyId: "k" }, { keyId: "k2" }]);
+  mocks.client.getTree.mockResolvedValue([{ path: "en.yml", sha: "blob" }]);
+  mocks.client.getBlobText.mockResolvedValue(content);
+  const warning = { surfaceSlug: "web", path: "en.yml", key: "hello", code: "write-empty-unsupported" };
+  if (absent) {
+    expect(await readPublishPreview(db as unknown as PrismaClient, "p", "acme")).toMatchObject({ withoutKey: 1, sendable: { total: 1, keys: 1 } });
+  } else {
+    await expect(readPublishPreview(db as unknown as PrismaClient, "p", "acme")).rejects.toMatchObject({ name: "PreviewWriterWarnings", warnings: [warning] });
+  }
+  const { client } = createFakeGitClient({ refSha: { "heads/main": "head" }, tree: { head: [{ path: "en.yml", sha: "blob" }] }, blobs: { blob: content } });
+  const save = vi.fn();
+  const result = await runPull({ loadState: async () => state, createClient: async () => client, saveLastPulledAt: save, invalidateDelivery: async () => {}, syncBranch: "sync" });
+  expect(result).toMatchObject(absent ? { status: "committed", delivered: 1, withheld: { key: 1 } } : { status: "skipped", reason: "writer-warnings", warnings: [warning] });
+  expect(save).toHaveBeenCalledTimes(absent ? 1 : 0);
+});

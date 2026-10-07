@@ -16,7 +16,7 @@ import { planMultiSurfacePull } from "./surfaces";
 import { planProtectedPublish } from "@/lib/protection/plan";
 import { publishFingerprint } from "@/lib/publish/fingerprint";
 import { countFileChangedValues } from "./changed-values";
-import { blockingErrors, readSlotFiles, slotlessCells, splitEdits, withheldCoordinates } from "./undeliverable";
+import { blockingErrors, keySlot, readSlotFiles, slotlessCells, splitEdits, withheldCoordinates } from "./undeliverable";
 
 /**
  * pull 오케스트레이션. **판정은 전부 `plan.ts`·`payload.ts`·`render.ts`에 있고** 여기는 순서와
@@ -229,6 +229,56 @@ export async function renderProject(
   return { baseHead, tree, resolved, current, rendered, local, changes };
 }
 
+/** 미리보기와 실행이 같은 원본 자리·스냅샷으로 전달 가능 셀과 빈값 경고를 판정한다. */
+export function planDelivery(pendingEdits: readonly PendingEdit[], { resolved, current, rendered }: Pick<Awaited<ReturnType<typeof renderProject>>, "resolved" | "current" | "rendered">) {
+  // ⚠️ **보류 셀은 전달 확인에 싣지 않는다** — 불변식 9. `deliveryContexts`는 좁히지 않는다: 좁히면 그 표면의 확인이 무효로 남아
+  // 표면 안 모든 키의 Revert가 막힌다(delivery-invariants D3). 1층은 그대로 전체 pending 수라 보류가 남으면 매 실행 트리를 읽는다.
+  const keyById = new Map(resolved.flatMap(({ surface }) => surface.keys.flatMap(k => (k.id === undefined ? [] : [[k.id, k.key] as const]))));
+  const coordinates = withheldCoordinates(rendered);
+  // ⚠️ **키 자리가 원본에 없는 셀은 보류다** — 미리보기(`publish/read.ts`)가 같은 `keySlot`으로 판정한다. 원본만 읽는다 — 이 셀들의 자리는 렌더가 만들지 않는다.
+  //   - ts-dict(multi-locale 수술적): 표면의 어느 파일에도 자리가 없다(audit #1 B). writer는 삽입하지 않고 같은 파일의 다른 로케일이 가질 때만 경고한다
+  //   - per-locale: **base 파일**에 자리가 없다(B3.4). base의 키 집합은 원본이 정하므로 코드가 지운 키의 base 편집은 파일에 닿지 않는다.
+  //     base 파일만 읽는다 — `keySlot`이 그 밖의 로케일을 `no-locale`로 흘려 비-base 동작이 그대로다
+  for (const item of resolved) {
+    const adapter = adapterFor(item.format);
+    const multi = adapter.layout === "multi-locale";
+    if (multi && adapter.writeStrategy !== "surgical") continue;
+    const scope = multi ? item.paths : item.paths.filter(p => p.locale === item.baseLocale);
+    const files = readSlotFiles(adapter, item.format, scope.flatMap(p => {
+      const content = current.get(p.path);
+      return content === undefined ? [] : [{ path: p.path, content }];
+    }));
+    for (const cell of slotlessCells(item.surface.id, files, pendingEdits, keyId => keyById.get(keyId))) coordinates.cells.add(cell);
+  }
+  const split = splitEdits(pendingEdits, coordinates, keyId => keyById.get(keyId));
+  const warnings: PullWarning[] = [];
+  const slots = new Map<string, ReturnType<typeof readSlotFiles>>();
+  for (const edit of split.delivered) {
+    const cell = edit.cell;
+    if (cell === undefined) continue;
+    const item = resolved.find(item => item.surface.id === cell.surfaceId);
+    if (item === undefined) continue;
+    const adapter = adapterFor(item.format);
+    if (adapter.writeStrategy !== "surgical") continue;
+    const key = item.surface.keys.find(key => key.id === cell.keyId);
+    if (key === undefined || !Object.hasOwn(key.cells, cell.localeCode) || key.cells[cell.localeCode]?.value !== ""
+      || (cell.localeCode === item.baseLocale && key.sourceText !== "")) continue;
+    let files = slots.get(item.surface.id);
+    if (files === undefined) {
+      files = readSlotFiles(adapter, item.format, item.paths.flatMap(p => {
+        const content = current.get(p.path);
+        return content === undefined ? [] : [{ path: p.path, content }];
+      }));
+      slots.set(item.surface.id, files);
+    }
+    const slot = keySlot(files, cell.localeCode, key.key);
+    const paths = adapter.layout === "per-locale" ? item.paths.filter(p => p.locale === cell.localeCode).map(p => p.path)
+      : slot.kind === "slot" ? slot.paths : [];
+    for (const path of paths) warnings.push({ surfaceSlug: item.surface.slug, path, key: key.key, code: "write-empty-unsupported" });
+  }
+  return { split, warnings };
+}
+
 async function readBaseHead(project: Pick<PullProject, "baseBranch">, client: Pick<GitClient, "getRefSha">): Promise<string> {
   const baseHead = await client.getRefSha(`heads/${project.baseBranch}`);
   // ⚠️ **`null`을 "브랜치 없음"으로 읽고 진행하지 않는다.** GitHub은 권한 없는 리소스에 404를
@@ -291,29 +341,11 @@ export async function runPull(deps: PullDeps, expectedFingerprint?: string): Pro
    * ⚠️ **대가: 경고가 지속 상태이면 매 밤 트리·blob을 다시 읽는다** — 사람이 Publish 모달에서 경고를 보고 해소할 때까지다
    * (ARCHITECTURE §3이 감수했다 — `lib/pull/trigger.ts`의 옛 주석이 물리친 정책의 반전이다).
    */
+  const { split, warnings: emptyWarnings } = planDelivery(pendingEdits, { resolved, current, rendered });
+  warnings.push(...emptyWarnings);
   const decision = planProtectedPublish({ pending: unpublished, writerWarnings: warnings.length });
   if (decision.action === "reject") return { status: "skipped", reason: "writer-warnings", warnings };
 
-  // ⚠️ **보류 셀은 전달 확인에 싣지 않는다** — 불변식 9. `deliveryContexts`는 좁히지 않는다: 좁히면 그 표면의 확인이 무효로 남아
-  // 표면 안 모든 키의 Revert가 막힌다(delivery-invariants D3). 1층은 그대로 전체 pending 수라 보류가 남으면 매 실행 트리를 읽는다.
-  const keyById = new Map(surfaces.flatMap(surface => surface.keys.flatMap(k => (k.id === undefined ? [] : [[k.id, k.key] as const]))));
-  const coordinates = withheldCoordinates(rendered);
-  // ⚠️ **키 자리가 원본에 없는 셀은 보류다** — 미리보기(`publish/read.ts`)가 같은 `keySlot`으로 판정한다. 원본만 읽는다 — 이 셀들의 자리는 렌더가 만들지 않는다.
-  //   - ts-dict(multi-locale 수술적): 표면의 어느 파일에도 자리가 없다(audit #1 B). writer는 삽입하지 않고 같은 파일의 다른 로케일이 가질 때만 경고한다
-  //   - per-locale: **base 파일**에 자리가 없다(B3.4). base의 키 집합은 원본이 정하므로 코드가 지운 키의 base 편집은 파일에 닿지 않는다.
-  //     base 파일만 읽는다 — `keySlot`이 그 밖의 로케일을 `no-locale`로 흘려 비-base 동작이 그대로다
-  for (const item of resolved) {
-    const adapter = adapterFor(item.format);
-    const multi = adapter.layout === "multi-locale";
-    if (multi && adapter.writeStrategy !== "surgical") continue;
-    const scope = multi ? item.paths : item.paths.filter(p => p.locale === item.baseLocale);
-    const files = readSlotFiles(adapter, item.format, scope.flatMap(p => {
-      const content = current.get(p.path);
-      return content === undefined ? [] : [{ path: p.path, content }];
-    }));
-    for (const cell of slotlessCells(item.surface.id, files, pendingEdits, keyId => keyById.get(keyId))) coordinates.cells.add(cell);
-  }
-  const split = splitEdits(pendingEdits, coordinates, keyId => keyById.get(keyId));
   // 기준의 유무는 이 실행의 확정과 무관하다 — 보류 셀은 토큰을 지키고 기준 행의 revision만 다시 찍힌다(`saveLastPulledAt`). 그래서 쓰기 전에 묻는다.
   const revertable = split.withheld.length > 0 && deps.withheldRevertable !== undefined && await deps.withheldRevertable(project.id, split.withheld);
   const withheldBy: Withheld = revertable ? { ...split.withheldBy, revertable: true } : split.withheldBy;

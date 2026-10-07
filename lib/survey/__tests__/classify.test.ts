@@ -38,6 +38,7 @@ const LEGACY_MESSAGE: Record<AdapterErrorCode, string> = {
   "write-parse-failed": "구문 오류로 원본을 그대로 둔다: boom",
   "write-no-default-export": "default export 객체 리터럴을 찾을 수 없다 — 원본을 그대로 둔다",
   "write-locale-object-missing": "'fr' 로케일 객체가 파일에 없어 번역을 반영하지 못했다",
+  "write-empty-unsupported": "other",
   "write-slot-not-string-literal": "'k'가 문자열 리터럴 자리가 아니라 값을 넣지 못했다",
   "write-slot-not-scalar": "'k'가 스칼라 자리가 아니라 값을 넣지 못했다 (알리아스·맵·시퀀스)",
   "write-slot-missing": "'k'를 넣을 자리를 만들 수 없어 건너뛰었다 (구조 변경)",
@@ -84,7 +85,7 @@ function legacyClassify(message: string): ReadErrorKind {
  */
 const NON_READ = [
   "key-shadowed",
-  "write-parse-failed",
+  "write-parse-failed", "write-empty-unsupported",
   "write-no-default-export",
   "write-locale-object-missing",
   "write-slot-not-string-literal",

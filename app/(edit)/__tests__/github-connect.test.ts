@@ -442,3 +442,9 @@ describe("startGithubConnect — 나가는 쪽 (malmoi#7)", () => {
     expect(hoisted.cookieSet).not.toHaveBeenCalled();
   });
 });
+
+it("커밋 뒤 캐시 실패는 성공 응답을 뒤집지 않는다", async () => {
+hoisted.revalidatePath.mockImplementationOnce(() => { throw new Error("cache down"); });
+ await expect(connectRepository({ slug: "acme" })).resolves.toEqual({ ok: true });
+ expect(db.spies.updateProject).toHaveBeenCalledTimes(1);
+});

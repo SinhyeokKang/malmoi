@@ -4,6 +4,7 @@ import {
   type Expression,
   type ObjectLiteralExpression,
   type PropertyAssignment,
+  type ShorthandPropertyAssignment,
   type SourceFile,
   type StringLiteral,
 } from "ts-morph";
@@ -457,7 +458,7 @@ function locate(obj: ObjectLiteralExpression, segments: readonly string[]): Loca
     for (let len = segments.length - at; len >= 1; len -= 1) {
       const prop = propertyNamed(cur, segments.slice(at, at + len).join(SEP));
       if (prop === undefined) continue;
-      const init = unwrap(prop.getInitializer());
+      const init = prop.isKind(SyntaxKind.PropertyAssignment) ? unwrap(prop.getInitializer()) : undefined;
       if (at + len === segments.length) return { kind: "found", init };
       if (init?.isKind(SyntaxKind.ObjectLiteralExpression)) {
         cur = init;
@@ -473,10 +474,10 @@ function locate(obj: ObjectLiteralExpression, segments: readonly string[]): Loca
 }
 
 /** 같은 이름이 둘이면 **마지막**이다 — 런타임이 읽는 자리이고 read가 싣는 값이다(audit #51). */
-function propertyNamed(obj: ObjectLiteralExpression, name: string): PropertyAssignment | undefined {
-  let found: PropertyAssignment | undefined;
+function propertyNamed(obj: ObjectLiteralExpression, name: string): PropertyAssignment | ShorthandPropertyAssignment | undefined {
+  let found: PropertyAssignment | ShorthandPropertyAssignment | undefined;
   for (const prop of obj.getProperties()) {
-    if (!prop.isKind(SyntaxKind.PropertyAssignment)) continue;
+    if (!prop.isKind(SyntaxKind.PropertyAssignment) && !prop.isKind(SyntaxKind.ShorthandPropertyAssignment)) continue;
     const nameNode = prop.getNameNode();
     const got = nameNode.isKind(SyntaxKind.StringLiteral) ? nameNode.getLiteralValue() : nameNode.getText();
     if (got === name) found = prop;

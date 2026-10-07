@@ -322,3 +322,8 @@ describe("resendInvitation — 저장된 주소로 재발급 후 발송", () => 
     expect(hoisted.send).not.toHaveBeenCalled();
   });
 });
+
+it("커밋 뒤 캐시 실패는 성공 응답을 뒤집지 않는다", async () => {
+hoisted.revalidatePath.mockImplementationOnce(() => { throw new Error("cache down"); });
+ await expect(resendInvitation({ slug: "alpha", invitationId: "inv" })).resolves.toEqual({ ok: true, label: "p***@a.com" });
+});

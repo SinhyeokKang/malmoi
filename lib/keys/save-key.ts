@@ -132,7 +132,7 @@ async function saveKeysLocked(tx: Prisma.TransactionClient, target: KeySaveTarge
   for (const { keyId, changes } of entries) {
     const key = keyOf.get(keyId);
     if (key === undefined) { results.push({ ok: false, error: "key-unavailable" }); continue; }
-    const plan = planKeySave(new Map(locales.map(l => [l.code, cells.get(cellKey(keyId, l.code))?.value ?? null])), changes, { writeStrategy, baseLocale: surface.baseLocale });
+    const plan = planKeySave(new Map(locales.map(l => [l.code, cells.get(cellKey(keyId, l.code))?.value ?? null])), changes, { writeStrategy, baseLocale: surface.baseLocale, sourceText: key.sourceText });
     if (!plan.ok) { results.push(plan); continue; }
     if (plan.writes.length === 0) { results.push({ ok: true, keyId, cells: [] }); continue; }
     if (delivery === undefined) {

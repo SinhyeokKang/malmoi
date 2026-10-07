@@ -4,7 +4,7 @@ import { getProjectAccess } from "@/lib/auth/query";
 import type { Subject } from "@/lib/auth/subject";
 import { logFailure } from "@/lib/github-connect/log";
 
-import { PreviewBaseFileMissing, PreviewBaseFileUnreadable, type PublishPreviewResult } from "./preview";
+import { PreviewBaseFileMissing, PreviewBaseFileUnreadable, PreviewWriterWarnings, type PublishPreviewResult } from "./preview";
 import { readPublishPreview } from "./read";
 
 /**
@@ -22,6 +22,7 @@ export async function loadPreview(prisma: PrismaClient, subject: Subject, input:
     // 이유가 있는 거부다 — Try again으로 그리면 같은 거부를 영영 받는다(L3.3). 경로·브랜치는 설정값이라 화면에 실어도 된다.
     if (error instanceof PreviewBaseFileMissing) return { status: "refused", reason: "base-file-missing", path: error.path, branch: error.branch };
     if (error instanceof PreviewBaseFileUnreadable) return { status: "refused", reason: "base-file-unreadable", path: error.path, branch: error.branch };
+    if (error instanceof PreviewWriterWarnings) return { status: "blocked", warnings: error.warnings };
     logFailure("publish-preview", error); return { status: "failed" };
   }
 }

@@ -223,16 +223,25 @@ export async function saveLastPulledAt(
     await prisma.$transaction(tx => confirmDelivery(tx, projectId, project, delivered, delivery));
     return;
   }
-  if (delivered.length === 0) {
+  if (delivered.length === 0 && published === undefined) {
     await prisma.project.update(project);
     return;
   }
   // 같은 트랜잭션이다 — `lastPulledAt`만 전진하고 해제가 빠지면 옛 술어는 0인데 토큰이 남는 "유령 pending"이 된다
   // (ARCHITECTURE §3). 두 쓰기를 `Promise.all`로 겹치지 않는다(POSTMORTEM 2026-09-16).
   await prisma.$transaction(async (tx) => {
+    await lockPublication(tx, projectId, project.data);
     await tx.project.update(project);
     await acknowledgeDelivered(tx, projectId, delivered);
   });
+}
+
+/** 같은 밀리초·시계 역행에도 완료 표식이 재사용되지 않는다. 토큰 해제와 같은 Project 잠금 안이다. */
+async function lockPublication(tx: Prisma.TransactionClient, projectId: string, data: Prisma.ProjectUpdateInput): Promise<void> {
+  const [row] = await tx.$queryRaw<{ lastPublishedAt: Date | null }[]>`SELECT "lastPublishedAt" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
+  if (data.lastPublishedAt instanceof Date && row?.lastPublishedAt !== null && row?.lastPublishedAt !== undefined) {
+    data.lastPublishedAt = new Date(Math.max(data.lastPublishedAt.getTime(), row.lastPublishedAt.getTime() + 1));
+  }
 }
 
 /**
@@ -272,7 +281,7 @@ async function confirmDelivery(
   delivery: { runId: string; contexts: readonly DeliveryContext[]; withheld?: readonly PendingEdit[] },
 ): Promise<void> {
   const surfaceIds = [...new Set(delivery.contexts.map(c => c.surfaceId))].sort();
-  await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
+  await lockPublication(tx, projectId, project.data);
   // ⚠️ 한 문장·id 순이다 — 잠금 순서가 고정돼야 저장과 교착하지 않는다.
   if (surfaceIds.length > 0) {
     await tx.$executeRaw`SELECT "id" FROM "TranslationSurface" WHERE "projectId" = ${projectId} AND "id" = ANY(${surfaceIds}::text[]) ORDER BY "id" FOR UPDATE`;

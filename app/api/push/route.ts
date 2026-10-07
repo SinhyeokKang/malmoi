@@ -84,6 +84,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         // 영구 409가 된다. 타입이 그것을 컴파일 타임에 막는다 (ARCHITECTURE §5.5.5).
         // 보관 거부 (7단계) — 멈춘 프로젝트를 리포가 계속 덮으면 보관 중에 번역이 조용히 바뀐다.
         archivedAt: true,
+        lastPublishedAt: true,
         // 열린 PR 게이트(nightly-sync) — 조회 대상 리포와 installation 토큰 범위.
         repoOwner: true,
         repoName: true,
@@ -259,7 +260,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     try {
       result = await applyProtectedPush(prisma, scope, parsed.data, {
         refsMode: "replace", previousBaseLocale: surface.baseLocale,
-        startedAt, token, pushTokenHash,
+        startedAt, token, pushTokenHash, expectedLastPublishedAt: project.lastPublishedAt,
         // CI push는 전부 받거나 400이라 부분 실패가 없다 — 성공이면 이전 실패가 같은 트랜잭션에서 지워진다.
         importOutcome: null,
         /**
@@ -316,8 +317,9 @@ export async function POST(request: Request): Promise<NextResponse> {
     if (result.status === "deferred") {
       // 롤백됐으니 결과 필드는 옛 그대로다 — 진행 표시만 거둔다.
       await abandonImportRun(prisma, { ...scope, token });
-      await record({ surface, result: "deferred", deferReason: "pending-edits", pendingEdits: result.pendingCount });
-      return deferred(project.id, parsed.data.commitSha, { reason: "pending-edits", pendingCount: result.pendingCount });
+      await record({ surface, result: "deferred", deferReason: result.reason ?? "pending-edits", pendingEdits: result.reason === undefined ? result.pendingCount : null });
+      return deferred(project.id, parsed.data.commitSha, result.reason === undefined
+        ? { reason: "pending-edits", pendingCount: result.pendingCount } : { reason: result.reason });
     }
     const outcome = result.outcome;
     return NextResponse.json<PushResponse>({
@@ -356,7 +358,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 function deferred(
   projectId: string,
   commitSha: string,
-  detail: { reason: "pending-edits"; pendingCount: number } | { reason: "open-pr" | "pr-check-failed" },
+  detail: { reason: "pending-edits"; pendingCount: number } | { reason: "open-pr" | "pr-check-failed" | "publish-raced" },
 ): NextResponse {
   return NextResponse.json<Extract<PushResponse, { status: "deferred" }>>({ status: "deferred", ...detail, projectId, commitSha });
 }

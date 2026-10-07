@@ -157,8 +157,8 @@ Sync와 같이 서버 발급 지문으로만 열린다. EDITOR에게는 숨기�
 
 **수술적 표면의 비-base 셀은 비울 수 없다** (결정 2026-09-24, delivery-invariants D2 — **명시적 빈값 export(§10)가 생기기 전까지의 임시 규칙**).
 `ts-dict`·`yaml-catalog`·`code-dict` 표면에서 base 아닌 언어를 비워 저장하면 키 전체가 거부되고(`… can't be left empty` — 아무것도 저장되지 않는다)
-입력은 화면에 남는다. 그 writer는 값을 지울 줄 몰라, 전에는 비운 셀이 리포에 한 번도 닿지 않았는데 "보냈다"로 표시됐다. base 비우기와 재생성
-표면(`json-catalog`·`chrome-locales`)은 그대로 된다.
+입력은 화면에 남는다. 그 writer는 값을 지울 줄 몰라, 전에는 비운 셀이 리포에 한 번도 닿지 않았는데 "보냈다"로 표시됐다. base는 폴백할 원문이 비어 있지 않을 때만 비울 수 있다(2026-10-07 감사 후속). 재생성
+표면(`json-catalog`·`chrome-locales`)은 그대로 된다. 이미 저장된 전달 불가 빈 편집은 Publish가 경고로 멈추며, 값을 입력하기 전까지 미전달로 남는다.
 
 **번역 저장은 명시적이다** (결정·구현 2026-09-23, translation-rework — 옛 셀 blur 저장의 반전). 선택한 키 하나의 바뀐 언어 전부를
 `Save` 한 번(또는 Ctrl/Cmd+Enter)이 한 트랜잭션으로 보낸다. blur·Tab은 저장하지 않고 Escape는 그 입력만 되돌린다. 미저장이 있는 채로

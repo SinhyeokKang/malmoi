@@ -18,6 +18,8 @@ export function reportPushResponse(status: number, text: string): { exitCode: 0 
     lines.push("::warning title=Malmoi import deferred::a Malmoi pull request is still open — repository changes were not imported, so the translations in it aren't overwritten. Review the pull request and merge or close it; the next push or the nightly sync imports these changes.");
   } else if (held.reason === "pr-check-failed") {
     lines.push("::warning title=Malmoi import deferred::couldn't check whether the Malmoi pull request is still open — repository changes were not imported. Re-run this job later.");
+  } else if (held.reason === "publish-raced") {
+    lines.push("::warning title=Malmoi import deferred::Publish finished after the import checks — repository changes were not imported. Re-run this job later.");
   } else {
     const { pendingCount } = held;
     lines.push(`::warning title=Malmoi import deferred::${pendingCount} unsent translation change${pendingCount === 1 ? "" : "s"} in Malmoi — repository changes were not imported. Send them with Publish in Malmoi. For edits Publish can't send (their file or key is missing from the repository), add the file or key back to the repository, or discard them with Sync (or Revert to last sent where available). Then re-run this job.`);
@@ -30,7 +32,7 @@ export function reportPushResponse(status: number, text: string): { exitCode: 0 
  * 열린 PR 게이트(nightly-sync)의 두 사유는 `pendingCount`가 없다 — 수를 요구하면 경고가 사라지고, 0을 채우면 거짓 "0 unsent"다.
  * 그 밖(`pending-edits`·`reason` 없는 옛 모양·모르는 값)은 v2와 같이 **정수 `pendingCount`가 있을 때만** 미전달 보류로 읽는다 — 경고 문구엔 그 정수만 실린다.
  */
-function deferral(text: string): { reason: "open-pr" } | { reason: "pr-check-failed" } | { reason: "pending-edits"; pendingCount: number } | null {
+function deferral(text: string): { reason: "open-pr" } | { reason: "pr-check-failed" } | { reason: "publish-raced" } | { reason: "pending-edits"; pendingCount: number } | null {
   let body: unknown;
   try {
     body = JSON.parse(text);
@@ -42,5 +44,6 @@ function deferral(text: string): { reason: "open-pr" } | { reason: "pr-check-fai
   if (status !== "deferred") return null;
   if (reason === "open-pr") return { reason: "open-pr" };
   if (reason === "pr-check-failed") return { reason: "pr-check-failed" };
+  if (reason === "publish-raced") return { reason: "publish-raced" };
   return typeof pendingCount === "number" && Number.isInteger(pendingCount) && pendingCount >= 0 ? { reason: "pending-edits", pendingCount } : null;
 }

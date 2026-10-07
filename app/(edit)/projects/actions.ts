@@ -155,7 +155,7 @@ export async function resendInvitation(raw: { slug: string; invitationId: string
   if (issued.status !== "issued") return { ok: false, error: issued.status };
 
   const outcome = await sendInvitationEmails(config, issued.project, toMessages([issued.invitation]));
-  revalidatePath(`/projects/${input.slug}/members`);
+  settleRevalidate("invite-resend", () => revalidatePath(`/projects/${input.slug}/members`));
   // 한 주소를 가리는 자리라 충돌 판정이 필요 없다 — 단건 발급의 라벨과 같다.
   const label = maskedEmailLabels([issued.invitation.email])[0] ?? "";
   if (outcome === "accepted") return { ok: true, label };
@@ -383,7 +383,7 @@ export async function disconnectGithub(): Promise<DisconnectResult> {
    * 여기서는 slug를 모르므로 경로를 좁힐 수단도 없다. 해제는 드문 조작이라 넓은 무효화의 대가가
    * 사실상 0이고, 어느 화면이 이 상태를 보이든 맞는다.
    */
-  revalidatePath("/", "layout");
+  settleRevalidate("disconnect", () => revalidatePath("/", "layout"));
   return { ok: true };
 }
 
@@ -818,9 +818,9 @@ export async function runFirstIngest(raw: { slug: string; surfaceSlug?: string }
     return { ok: false, error: "ingest-failed" };
   } finally {
     // 조기 실패도 목록의 상태를 바꾼다 — 성공 때만 지우면 실패 사유 대신 캐시된 대기가 남는다.
-    revalidatePath(`/projects/${slug}`, "layout");
-    revalidatePath("/projects");
-    revalidatePath("/projects/new");
+    settleRevalidate("onboard-ingest", () => revalidatePath(`/projects/${slug}`, "layout"));
+    settleRevalidate("onboard-ingest", () => revalidatePath("/projects"));
+    settleRevalidate("onboard-ingest", () => revalidatePath("/projects/new"));
   }
 }
 

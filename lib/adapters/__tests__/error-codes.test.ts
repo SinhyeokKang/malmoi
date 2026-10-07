@@ -27,7 +27,7 @@ function producerFiles(): string[] {
   const adapters = readdirSync(join(ROOT, "lib/adapters"))
     .filter((name) => name.endsWith(".ts"))
     .map((name) => join("lib/adapters", name));
-  return [...adapters, "lib/pull/render.ts", "lib/onboarding/ingest.ts"];
+  return [...adapters, "lib/pull/render.ts", "lib/pull/run.ts", "lib/onboarding/ingest.ts"];
 }
 
 const stripComments = (source: string): string =>

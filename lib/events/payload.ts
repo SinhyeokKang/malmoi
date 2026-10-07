@@ -75,7 +75,7 @@ export type ImportSource = (typeof IMPORT_SOURCES)[number];
  * 적재 보류 사유 넷 (nightly-sync). 같은 조건은 CI·야간 모두 `deferred` + 이 낱말이다 — 결과어를 조건마다 새로 만들면
  * 같은 사실이 두 소비자에서 다른 어휘로 선다(POSTMORTEM 2026-09-27). `too-large`는 야간 전용이다.
  */
-export const DEFER_REASONS = ["pending-edits", "open-pr", "pr-check-failed", "too-large"] as const;
+export const DEFER_REASONS = ["pending-edits", "open-pr", "pr-check-failed", "publish-raced", "too-large"] as const;
 
 export type DeferReason = (typeof DEFER_REASONS)[number];
 

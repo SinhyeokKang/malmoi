@@ -233,14 +233,14 @@ export async function connectRepository(raw: { slug: string }): Promise<ConnectR
   }
   if (locked.status !== "ok") return redrawIfArchived(slug, locked.status, { ok: false, error: locked.status });
 
-  revalidatePath(`/projects/${slug}/settings`);
+  settleRevalidate("connect-repository", () => revalidatePath(`/projects/${slug}/settings`));
   /**
    * ⚠️ **Home이 `planConnectionHealth`의 새 소비자다** (2026-09-15 — project-home T10). 다시
    * 연결해도 Home의 미연결 배너가 다음 재검증까지 남으면, 사용자는 방금 누른 것이 안 먹은 줄 안다.
    */
-  revalidatePath(`/projects/${slug}`, "layout");
+  settleRevalidate("connect-repository", () => revalidatePath(`/projects/${slug}`, "layout"));
   // 목록도 리포 id로 Disconnected를 판정한다(ux-drift-unify D1) — 빠지면 Reconnect 뒤에도 목록 칩만 옛 상태로 남는다.
-  revalidatePath("/projects");
+  settleRevalidate("connect-repository", () => revalidatePath("/projects"));
   return { ok: true };
 }
 

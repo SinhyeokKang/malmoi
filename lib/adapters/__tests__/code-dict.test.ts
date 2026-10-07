@@ -834,3 +834,12 @@ it("code-dict — 중첩 shorthand는 전체 경로 키로 알린다", () => {
   const r = codeDict.read(base(), [f("src/locale/ko.ts", "export default { a: { hello }, hi: 'Hi' };\n")]);
   expect(r.errors).toEqual([{ path: "src/locale/ko.ts", code: "shorthand-property", key: "a.hello" }]);
 });
+
+it("뒤의 shorthand가 가린 리터럴을 수정하지 않고 쓰기 오류를 낸다", () => {
+  const source = "const a = 'runtime'; export default { a: 'hidden', a };\n";
+  const input = { locale: "ko", entries: [{ key: "a", message: "edited" }] };
+  const result = codeDict.writeWithErrors!(withSource(source), input);
+  expect(result.content).toBe(source);
+  expect(result.errors).toContainEqual(expect.objectContaining({ key: "a", code: "write-slot-not-string-literal" }));
+  expect(codeDict.writeWithErrors!(withSource(source), input)).toEqual(result);
+});

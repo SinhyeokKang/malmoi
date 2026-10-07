@@ -87,7 +87,7 @@ const NESTED_WITH_ARRAY = [
 /**
  * 점 포함 키가 중첩과 공존 — siyuan·musicblocks 형태.
  *
- * **순서 보존이 아니라 다른 미해결 문제를 재는 픽스처다** (아래 §알려진 한계).
+ * **점 포함 키와 중첩이 섞인 원본의 구조·순서 보존을 함께 잰다.**
  */
 const DOTTED_AND_NESTED = [
   "{",
@@ -213,23 +213,10 @@ describe("L2 — 엣지 케이스", () => {
   });
 });
 
-describe("L2 — 알려진 한계: `.`가 조인 구분자여서 생기는 모양 변형", () => {
-  /**
-   * ⚠️ **순서 보존과 다른 축의 문제다.** `.`가 우리 조인 구분자이면서 실제 키에 든 문자라
-   * flatten/unflatten이 단사가 아니다 (POSTMORTEM 2026-09-02). 파일에 중첩이 **하나라도** 있으면
-   * `nested`가 서고, 그러면 `"menu.open"`이 경로로 쪼개져 `{"menu": {"open": …}}`로 복원된다.
-   *
-   * 여기에 기대값을 박아 **기준선**으로 둔다 — 키 구분자를 계약으로 빼는 별 기능
-   * (`nested: boolean` → `tree: {style, separator}`, 키 구분자 계약)이 이걸 고치면
-   * 이 테스트가 red가 되고, 그때가 바로 이 한계가 사라지는 순간이다.
-   */
-  it("중첩과 공존하면 점 키가 경로로 쪼개진다 — 순서는 지켜지지만 구조가 바뀐다", () => {
+describe("L2 — 점 포함 키와 중첩의 원본 경로 보존", () => {
+  it("중첩과 공존하는 점 키도 원본 경로와 순서를 보존한다", () => {
     const out = roundtrip(jsonCatalog, jsonFmt, "i18n/en.json", DOTTED_AND_NESTED);
-    expect(out).toBe(
-      ["{", '  "menu": {', '    "open": "Open",', '    "close": "Close"', "  },", '  "dialog": {', '    "confirm": "Confirm",', '    "cancel": "Cancel"', "  }", "}", ""].join("\n"),
-    );
-    // **순서 자체는 지켜졌다** — `menu`가 먼저고 `dialog`가 뒤다(파일 순서). 쪼개진 것만이 문제다.
-    expect(out.indexOf('"menu"')).toBeLessThan(out.indexOf('"dialog"'));
+    expect(out).toBe(DOTTED_AND_NESTED);
   });
 
   it("중첩이 없으면 점 키가 그대로 남는다 — flat write는 키를 쪼개지 않는다", () => {
@@ -237,7 +224,7 @@ describe("L2 — 알려진 한계: `.`가 조인 구분자여서 생기는 모�
     expect(roundtrip(jsonCatalog, jsonFmt, "i18n/en.json", flatDotted)).toBe(flatDotted);
   });
 
-  it("고정점은 그래도 성립한다 — 한 번 바뀐 모양이 계속 흔들리지는 않는다", () => {
+  it("재실행해도 원본 구조와 바이트가 동일하다", () => {
     const once = roundtrip(jsonCatalog, jsonFmt, "i18n/en.json", DOTTED_AND_NESTED);
     expect(roundtrip(jsonCatalog, jsonFmt, "i18n/en.json", once)).toBe(once);
   });
@@ -250,8 +237,8 @@ describe("L2 — 알려진 한계: `.`가 조인 구분자여서 생기는 모�
 /**
  * ⑤ 4칸 들여쓰기 — jellyfin-web·vikunja 형태. 학습 코퍼스에서 12개가 이 폭이다.
  *
- * ⚠️ **점 키와 중첩을 섞지 않는다.** 섞으면 `read`가 nested를 관측해 점 키를 쪼개고, 그건
- * 들여쓰기 축이 아니라 `dottedWithNested`(키 구분자 계약의 몫)를 재게 된다.
+ * 점 키와 중첩의 혼합은 위 `DOTTED_AND_NESTED`가 별도로 검증한다.
+ * 이 픽스처는 들여쓰기 보존만 측정한다.
  */
 const FOUR_SPACE = [
   "{",
@@ -407,4 +394,3 @@ describe("L2 — 표현: 엔트리 필드 순서가 원본대로 나온다", () 
     expect(roundtrip(chromeLocales, chromeFmt, "_locales/en/messages.json", first)).toBe(first);
   });
 });
-
