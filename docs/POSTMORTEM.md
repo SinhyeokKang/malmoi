@@ -2656,3 +2656,14 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   - `/orchestrate` §4가 push 바로 뒤 `gh run watch <그 커밋의 run> --exit-status`를 건다(`58a4f570`). 백그라운드로 걸고 다음 배치를 진행해도 되지만 red면 소유 워커에게 돌려보내기 전엔 다음 push를 하지 않는다. grep: `rg -n "gh run watch" .claude/commands/orchestrate.md` → 1건 이상이어야 한다.
   - 비동기 로드를 **고정 틱 수로 기다리는** 테스트 대기를 찾는다: `rg -n "i < [0-9]+; i\+\+\)" components app lib --glob '*test*' --glob '**/helpers/**'` — 2026-10-05 실행: `global-search.test.tsx:135`(타이머 큐 비우기 — 모듈 로드 대기가 아니라 해당 없음) · `message.test.ts:342`(반복 생성 — 해당 없음). 남은 동형 자리 0건.
   - 로컬 green·CI red인 DOM 테스트를 "flaky"로 재실행해 넘기지 않는다 — 대기가 **조건**(`findBy*`·대상 요소 출현)인지 **횟수**인지부터 본다.
+
+### 2026-10-07 — 리사이즈 핸들 Enter가 폭만 바꾸고 셸의 접힘 상태를 그대로 뒀다
+
+- **영역**: `components/shell/shell-panels.tsx`(LNB 접기) · `react-resizable-panels` 2.1.9
+- **증상**: 접힌 LNB의 리사이즈 핸들에 포커스를 두고 Enter를 누르면 패널이 199px로 펴지는데 라벨·구역 머리는 숨은 채였고 `aria-expanded`도 `false`였다. 사이드바 접힘 쿠키(같은 날 추가)도 바뀌지 않아 새로고침하면 되돌아갔다. 2026-09-28에 접기가 돌아온 뒤로 계속 있었다.
+- **근본 원인**: 라이브러리의 핸들 `onKeyDown` Enter 갈래가 그룹 상태 setter(`setLayout(nextLayout)`)만 부르고 `callPanelCallbacks`를 건너뛴다 — 드래그·방향키·명령형 `setLayout`은 패널 `onResize`를 부르는데 이 갈래만 안 부른다. 셸은 접힘을 **`onResize`에서만** 읽으므로("판정은 패널의 실제 몫 하나") 그 경로가 판정 밖에 있었다.
+- **그물**: 놓친 것 — jsdom DOM 테스트(이 라이브러리는 jsdom에서 패널을 등록하지 않아 `onResize`가 한 번도 안 돈다 · 2026-10-07 probe 실측), 정적 리뷰("키보드 접기도 쿠키에 남는다"는 리뷰 지적이 그 전제로 수정됐고 실측 전엔 아무도 몰랐다). 잡은 것 — ego-browser 실측(Enter 뒤 `data-panel-size` 13.4인데 접힘 상태 그대로 · 계측한 `onResize` 호출 0건).
+- **재발 방지**:
+  - 셸이 Enter를 capture 단계에서 받아 `preventDefault` + 버튼과 같은 `toggle`을 부른다(라이브러리 리스너가 `defaultPrevented`로 물러난다). 회귀 테스트 `sidebar-collapse.test.tsx` "핸들에서 Enter를 누르면 토글한다".
+  - 라이브러리 콜백에 상태 판정을 묶은 자리를 찾는다: `rg -n "onResize=|onCollapse=|onExpand=" components app` · `rg -n "collapsible" components app -g '!**/__tests__/**'` — 2026-10-07 실행: `collapsible` 패널은 `shell-panels.tsx` 하나다(번역 화면·온보딩의 패널은 접지 않는다). `collapsible` 패널이 새로 생기면 Enter 경로를 같은 방식으로 막는다.
+  - "jsdom에서 안 도는 콜백"에 기댄 판정은 DOM 테스트 green을 근거로 삼지 않는다 — 브라우저에서 그 콜백이 실제로 불리는지 계측해 본다.
