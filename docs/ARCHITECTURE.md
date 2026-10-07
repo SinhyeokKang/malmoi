@@ -41,7 +41,7 @@
    ⚠️ **소스(표면) 제거도 삭제가 아니다** (2026-10-05, §5.9) — `archivedAt`을 세울 뿐 키·로케일·번역·이력 행은 그대로이고,
    재추가가 같은 행을 되살린다(`id`·`slug` 유지). 하드 삭제·보존 기간은 없다.
    ⚠️ **수술적 표면(`ts-dict`·`yaml-catalog`·`code-dict`)의 비-base 셀은 UI에서도 비울 수 없다** (2026-09-24, delivery-invariants D2) —
-   저장이 `cannot-clear`로 거부한다. 명시적 빈값 export(PRODUCT §10)가 생기기 전까지의 임시 규칙이다(§5.5.2).
+   저장이 `cannot-clear`로 거부한다. base도 폴백 원문이 빈 경우 같은 판정이다(2026-10-07). 이미 저장된 빈 편집은 Publish의 `write-empty-unsupported`로 멈추고 토큰을 유지한다. 명시적 빈값 export(PRODUCT §10)가 생기기 전까지의 임시 규칙이다(§5.5.2).
 4. 같은 DB 상태와 **같은 원본 파일**은 **같은 바이트**를 만든다 — 원본은 구조·표현과 **base 키 집합**(B3.4)을 준다.
 5. 프로젝트를 식별하는 모든 DB 쿼리는 **인가된 `projectId`로 제한**한다.
    표면 데이터는 그 뒤 **`surfaceId`로도 제한**한다. 역할·리포·push 토큰·SyncRun·Publish는 Project가,
@@ -331,9 +331,9 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 
 **고치지 못한 것 하나**: discourse의 `plugins/discourse-cakeday/config/locales/client.{locale}.yml`(27키)이 정본을 누른다. 플러그인 쪽 로케일 파일이 하나 더 많고(50 vs 49) 다른 서브트리라 두 규칙 모두 닿지 않는다. `plugins/` 감점을 넣으면 잡히지만 **관측 1건이라 만들지 않았다** — Ghost·payload가 `packages/`에 진짜 카탈로그를 두므로 "하위 디렉터리 감점"으로 일반화할 수도 없다.
 
-### 1.35 ⚠️ 키에 `.`이 들어 있으면 중첩 복원이 값을 삼킨다 (2026-09-02 실측)
+### 1.35 점 포함 키와 중첩 구조 보존 (2026-09-02 실측 · 2026-10-07 보강)
 
-**`json-catalog`의 유일한 데이터 손실 경로다.** 오픈소스 109개에서 왕복 의미 불일치 2건이 났고, 둘 다 **`read` 에러가 0**이었다 — CI 게이트도, 에러 카운터도 잡지 못하고 값만 사라진다.
+**옛 `json-catalog`의 중첩 복원이 값을 잃던 경로다.** 오픈소스 109개에서 왕복 의미 불일치 2건이 났고, 둘 다 **`read` 에러가 0**이었다 — CI 게이트도, 에러 카운터도 잡지 못하고 값만 사라진다.
 
 | 리포 | 손실 | 형태 |
 |---|---|---|
@@ -342,7 +342,12 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 
 **뿌리는 하나다: `.`가 우리 조인 구분자이면서 실제 키에 들어 있는 문자다.** ⚠️ **그 구분자의 주인은 `lib/adapters/json-style.ts`의 `KEY_SEP` 하나다** (2026-09-04 감사 #22 — 지역 `const SEP` 네 벌을 대체했다). 주인을 모르면 다음 수정이 지역 사본을 정당하게 되살린다. `flatten`/`setDeep` 쌍이 단사가 아니라, 한 키가 다른 키의 점 경계 접두이면 복원에서 문자열 자리가 객체로 덮인다.
 
-증폭 요인 둘을 함께 고쳤다:
+**현재 원본의 실제 키 경로가 저장된 중첩 관측보다 우선한다** (2026-10-07). CI 보류 중 flat 파일에 중첩 키를 더하거나,
+중첩 파일에 점이 든 리터럴 키를 더해도 그 경로를 유지한다. 빈 이름 컨테이너와 숫자 이름 객체도 배열로 바꾸지 않는다.
+원본은 구조만 주고 기존 키의 값은 DB에서 온다. 새 로케일처럼 원본 경로가 없는 키만 중첩 관측으로 복원한다.
+서로 다른 원본 경로가 같은 평탄 키를 내는 모호성(`duplicate-key`)은 여전히 남는다.
+
+기존 방어선은 다음과 같다:
 
 - **`ReadResult.nested`가 포맷 단위 boolean이었다.** musicblocks의 `th.json`은 최상위가 전부 문자열인데 **다른 로케일 파일** 하나에 객체가 있어서 포맷 전체가 nested로 판정되고, th.json의 평평한 키까지 `.`으로 쪼개졌다. → **파일 단위로 관측한다** (`ReadResult.nestedByPath`).
   - ⚠️ **이 수정이 프로덕션 경로에 닿기까지 홉이 넷 더 있었다** (2026-09-04 해소). 고친 직후엔 어댑터·survey만 `nestedByPath`를 썼고 push 페이로드·`Project`·`formatFromProject`는 포맷 단위 boolean만 날라서 **프로덕션 pull이 옛 동작이었다** — `json-catalog.write`가 `nestedByPath` 부재 시 그 boolean으로 폴백하므로 조용했다. 지금은 다섯 지점이 이어져 있고, **하나만 끊겨도 진입점 테스트가 red다**:
@@ -353,7 +358,7 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 | b | `buildPushPayload` | `format.nestedByPath` — 없으면 **필드를 만들지 않는다**(빈 객체는 "전부 flat"으로 읽힌다) |
 | c | `applyPush` | `TranslationSurface.nestedByPath Json?` (마이그레이션 `_add_project_nested_by_path`) |
 | d | `loadPullState`의 `select` → `formatFromProject` | `DetectedFormat.nestedByPath`. Json 컬럼이라 **boolean이 아닌 값은 버린다** |
-| e | `json-catalog.write` | 경로로 조회, 없으면 `nested` 폴백. **원본이 `{}`이면 저장된 관측도 버린다** — 이미 적재된 표면에 남은 옛 `false`가 다음 push로 지워지기 전까지의 Publish |
+| e | `json-catalog.write` | 현재 원본의 실제 경로·중첩 관측 우선. 원본에 증거가 없으면 저장된 경로 관측 → `nested` 폴백. **원본이 `{}`이면 저장된 관측도 버린다** — 이미 적재된 표면에 남은 옛 `false`가 다음 push로 지워지기 전까지의 Publish |
 
     `ProjectFormatColumns.nestedByPath`를 **optional로 두지 않았다** — 껍데기가 `select`에서 빼면 컴파일러가 막는다 (POSTMORTEM 2026-09-02 "공급 계약은 optional로 두지 않는다"). `lib/pull/__tests__/entry-order.test.ts`가 진입점에서 musicblocks 모양을 단언하고 `lib/push/__tests__/flow.test.ts`가 b→c 홉을 SQL 인자로 본다.
 - **`setDeep`이 문자열 자리를 빈 객체로 조용히 갈아끼웠다.** → **판정이 `setDeep` 앞으로 올라갔다** (`lib/adapters/json-catalog.ts` — 키 집합 위에서 그림자를 먼저 계산한다) **그리고 얕은 쪽 키를 버린다**: 얕은 쪽을 살리면 그 아래 전부를 잃는다. `setDeep` 자체엔 판정이 남아 있지 않다. 어느 쪽이든 **어느 키에서 잃었는지 알려주는 것**이 최소 조건이다. 값을 잃더라도 **어느 키에서 잃었는지 알려주는 것**이 최소 조건이다. ✅ **read 쪽도 같은 규칙이다** (2026-09-17, launch-readiness L1.4): 중첩(`errors: {messages: {blank}}`)과 점 키(`"errors.messages.blank"`)가 같은 평탄 키를 내면 하나만 싣고(마지막이 이긴다 — 적재의 `lastWins`와 같은 규칙) `duplicate-key`로 보고한다. 전에는 둘 다 실어 뒤의 `lastWins`가 조용히 하나를 버렸고, `surveyOne`의 키 충돌 지표가 그 중복을 세고 있었다 — 지금은 그 지표가 `classify`가 `key-collision`으로 가르는 에러(`duplicate-key`·`duplicate-property`)를 센다.
@@ -537,11 +542,29 @@ pnpm adapter-survey docs/adapter-survey/repos-heldout.txt  --verdicts docs/adapt
 - 판정 목록을 바꾸기 전의 최종 원자료 집계는 학습 4/105·홀드아웃 4/18 오탐이었다. 추가 확인한 단일 언어 사전 다섯의
   실제 내용에 따라 판정을 갱신하고, **동일한 원자료를 `summarize`로 재집계**했다. 판정 목록 변경을 탐지 개선으로 세지 않는다.
 
+**24차 (2026-10-07, audit #2 — 현재 원본 경로 보존 후)** — 같은 학습 109개·홀드아웃 20개와 기존 판정 목록으로 재측정했다. clone 실패는 둘 다 0이다.
+
+| 지표 | 학습 109 | 홀드아웃 20 |
+|---|---|---|
+| 지원 포맷 탐지 | 105/105 (100%) | 17/17 (100%) |
+| 오탐 — 후보가 있는 리포 기준 | 0/105 (0%) | 3/18 (16.7%) |
+| 오탐 — 지원 포맷 기준 | 0/105 (0%) | 2/17 (11.8%) |
+| 왕복 의미 동일 | 105/105 | 18/18 |
+| 바이트 고정점 | 105/105 | 18/18 |
+| `writeErrors` > 0 | 0 | 0 |
+| 편집 탐침 1헝크 | 32/32 | 4/4 |
+| 조용한 손실 | 0건 | 0건 |
+
+siyuan의 기존 의미 불일치와 쓰기 오류 22건이 모두 사라졌다. 홀드아웃 오탐 세 리포·경로는 23차와 같다.
+키 충돌 카운터도 점 접두 추정 대신 read의 중복 오류와 writer의 실제 `key-shadowed`를 센다.
+학습 124건·홀드아웃 0건이며, 정의가 달라 옛 충돌 총수와 단순 비교하지 않는다. 원본 경로가 없는 신규 로케일과
+같은 평탄 키를 내는 서로 다른 원본 경로의 모호성까지 해결했다는 뜻은 아니다.
+
 **판정 넷**
 
 - **① 지원 선언 포맷은 넷이다** — `chrome-locales` · `json-catalog` · `yaml-catalog` · `code-dict`.
-  근거가 위 표의 "오탐 0% · 바이트 고정점 100%"다. 남은 단서 하나: 중첩 JSON에서 키가 `.`을 품으면
-  값이 사라질 수 있고(siyuan 1건), **사라지는 것을 보고하므로 조용한 손실은 아니다.**
+  근거는 당시 학습 측정의 "오탐 0% · 바이트 고정점 100%"였다. 24차에서 원본 경로를 보존해
+  siyuan의 알려진 손실도 해소했다. 원본 경로 없는 새 파일의 접두 충돌은 여전히 보고하고 Publish를 보류한다.
 - **② 키 정렬 규칙은 개정됐다** — `LocaleEntry.order` 오름차순(없으면 `<` 비교)이다(§1.1). 알파벳
   정렬이던 시절 첫 write diff 중앙값이 **0.784**였고 순서 보존 뒤 **0.001**이다. 수술적 치환 어댑터가
   diff 0.000을 내는 것이 그 판정의 대조군이었다.
@@ -597,7 +620,8 @@ pnpm adapter-survey docs/adapter-survey/repos-heldout.txt  --verdicts docs/adapt
 ⏸️ **보류 중인 후속 하나 — 키 구분자를 계약으로 뺀다** (`nested: boolean` → `tree: {separator, style}`).
 2026-09-04에 보류했고 근거는 **실측이 고칠 대상을 줄였다는 것**이다: 손실 2건 중 musicblocks는
 `TranslationSurface.nestedByPath` 배선으로 해소됐고 **도입 대상 bugshot-2는 `ts-dict`라 효과가 0이다**(구분자 고정).
-남은 것은 siyuan 하나인데 대가가 스키마 컬럼 + 5홉 배선 + 신규 모듈 + 어댑터 8개 파일이다.
+당시 남은 것은 siyuan 하나였고 대가는 스키마 컬럼 + 5홉 배선 + 신규 모듈 + 어댑터 8개 파일이었다.
+2026-10-07에는 원본 경로 보존만으로 그 리포의 손실도 해소했다(24차). 구분자 계약 확장은 여전히 보류다.
 **되살릴 조건은 비-점 구분자 리포가 실제 도입 대상이 될 때**다(i18next의 `:` namespace 구분자가 같은
 축이고 코퍼스에 8개 있다).
 
@@ -873,9 +897,12 @@ backfill은 토큰을 더하기만 하므로 못 지운다. ⚠️ 해제 UPDATE
 `/api/push`·야간 서버 적재)가 **열린 Malmoi PR이 있으면 통째로 보류한다**(`open-pr` — §5.5.2). 토큰을 PR 머지까지 유지하는 안은 전달 확인의
 의미(§5 `pendingEditToken`)를 바꾸므로 버렸다 — **토큰 절은 불변이다.** 수동 Sync는 OWNER가 지문으로 승인하는 폐기 경로라 게이트가 없고
 `atRisk` 경고를 그대로 둔다.
-⚠️ **남은 창 — 판정과 적재 사이의 경합** (허용): 게이트 판정은 잠금 밖이다. 판정 뒤 Publish가 PR을 열고 토큰을 비우면 잠금 안의 재집계도 0이라
-그 적재는 덮는다. 창은 적재 한 번(수 초)이고, 덮인 값은 이미 커밋된 PR 스냅샷에 남아 **다음 Publish 전에 PR이 머지되면 복구된다.** 잠금 안에서
-PR을 다시 묻지 않는다 — 트랜잭션 안에서 GitHub을 부르지 않는다(§5.6.1).
+⚠️ **판정과 적재 사이 Publish 완료 경합도 닫는다** (2026-10-07 감사 후속). CI·야간은 pending·PR 사전 판정 전에
+`lastPublishedAt`을 읽고 Project 잠금 안에서 null을 포함해 같지 않으면 `pr-check-failed`로 보류한다. 진행 중인 Publish는
+기존 토큰 재집계가 막고, 완료된 Publish는 표식 변경이 막는다. 완료 표식은 토큰 해제와 같은 잠금 안에서
+`max(벽시계, 이전 값 + 1ms)`로 써 같은 밀리초·시계 역행에도 재사용하지 않는다. `no-changes`는 표식을 갱신하지 않는다.
+예전 경합이 DB 값을 되돌린 뒤 PR 머지 전에 다시 Publish하면 sync 브랜치 재생성으로 PR에서도 값이 사라져 자동 복구가 없었다.
+자동 적재는 이 경로를 막지만 OWNER 승인 수동 Sync·Revert의 의도된 폐기는 그대로다. 잠금 안에서 GitHub을 부르지 않는다.
 
 ⚠️ **writer 경고가 있으면 GitHub에 쓰기 전에 멈춘다** (2026-09-18, sync-edit-protection T10 — 2026-09-04 결정의 반전). 렌더 뒤·2층 비교 전에 **판정과 껍데기가 갈린다**: 순수 판정 `planProtectedPublish`(`lib/protection/plan.ts`)가 `{ action: "reject", reason: "writer-warnings" }`를 내고, 그것을 `PullResult`의 `skipped/writer-warnings`로 접는 것은 `lib/pull/run.ts`다 — `lastPulledAt`도 토큰도 쓰지 않는다. ⚠️ **같은 디렉터리의 적재 쪽 이름은 `planProtectedPush`가 아니다**: 판정이 `planProtectedImport`, 그것을 잠금·트랜잭션으로 감싸는 껍데기가 `applyProtectedPush`(`lib/push/apply.ts`)다. 전에는 경고를 커밋·스킵 결과에 실어 보냈는데, 그러면 **버린 값의 편집 토큰까지 전달 확인으로 비워져** 보내지 않은 편집을 보냈다고 기록한다. 경고는 `PullResult`의 그 갈래에만 있다(`committed`·`no-changes`에 자리가 없다). **대가**: `missingOriginal`처럼 **지속 상태**인 경고는 사람이 해소할 때까지 매 밤 트리·blob을 다시 읽는다 — 1층이 토큰으로 판정하므로 미전달 편집이 없는 프로젝트는 여전히 GitHub을 안 부른다. `lib/pull/trigger.ts`가 `console.warn`으로도 낸다.
 
@@ -1665,7 +1692,8 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 
 ⚠️ **그래서 수술적 표면의 비-base 비우기는 저장 단계에서 거부한다** (2026-09-24, delivery-invariants D2 · 감사 #2). 전에는 저장은 되고 pull이
 그 토큰을 전달 확인으로 해제해 "보냈다"가 거짓이었다. `planClearability`가 **정규화 뒤** 값으로 판정하고(공백만의 입력도 걸린다) 거부 단위는
-키 전체다(`cannot-clear` — 아무것도 저장되지 않는다). Revert의 `""` 복원은 이 판정을 지나지 않는다 — 원래 비어 있던 셀의 정당한 복원이다.
+키 전체다(`cannot-clear` — 아무것도 저장되지 않는다). base도 폴백 원문이 빈 경우 거부한다(2026-10-07).
+기존 미전달 빈 편집은 Publish가 `write-empty-unsupported`로 멈춰 완료 처리하지 않는다. Revert의 `""` 복원은 이 판정을 지나지 않는다 — 원래 비어 있던 셀의 정당한 복원이다.
 
 **폐기 승인 Sync는 이번 적재로 orphan이 된 승인 셀의 토큰을 비운다** (2026-09-24, delivery-invariants D1 · 감사 #1). upsert는 페이로드에 없는
 셀에 안 닿아서, 승인한 Sync가 떨어뜨린 키·로케일의 셀에 토큰이 남았다 — `pendingWhere`가 orphan을 빼므로 화면 어디에도 0이다가 그 키가 되살아나면
@@ -3464,7 +3492,7 @@ OAuth access로 부른 도구의 결과는 같은 grants·범위의 개인 토�
 | 발견 | 401 `WWW-Authenticate: Bearer resource_metadata=…`(Claude Code가 읽는다) · `/.well-known/oauth-protected-resource/api/mcp`(RFC 9728 — Codex는 헤더를 안 보고 이 경로를 추측한다) · `/.well-known/oauth-authorization-server`(RFC 8414). 문서는 요청 origin의 상수이고 허용 밖 호스트면 404다 | `lib/oauth/metadata.ts` · `app/.well-known/**` |
 | Bearer 갈래 | 접두로 먼저 가른다(`mlm_` 개인 토큰 · `mlo_` OAuth access) — 그 밖(refresh `mlr_`·push 토큰·임의 문자열)과 허용 밖 호스트의 `mlo_`는 **DB 조회 0회**로 401이다. OAuth access는 access 만료와 연결 수명을 둘 다 본다 | `lib/oauth/bearer.ts#resolveBearerKind` · `lib/mcp/token-store.ts#resolveBearer` · `lib/oauth/access.ts` |
 | 등록 | **CIMD만** — `client_id`가 HTTPS 문서 URL(기본 포트 · query·fragment·userinfo 없음 · 정규화해도 같은 문자열)이고 authorize 때 그 문서를 읽는다. **등록 테이블이 없다**(DCR 남용 문제가 원리적으로 없다). DCR은 claude.ai 실측 뒤에 정한다. `client_name`은 선택이고 200자를 넘으면 없는 것으로 본다(자르지 않는다) | `lib/oauth/client-metadata.ts` |
-| CIMD 가져오기(SSRF) | 해석된 주소 **전부** 공개 유니캐스트여야 하고 그 주소에 **고정해** 연결한다(DNS rebinding) · `agent: false`(keep-alive 소켓 재사용이 고정을 건너뛴다) · 리다이렉트 불추종(200만) · 5초 · 64 KiB · `application/json`만 · 캐시 없음. 실패 셋(`blocked-address`·`unreachable`·`invalid-document`)은 화면에서 **한 문구**다 — 어느 호스트가 사설로 풀리는지 말하지 않는다 | `lib/oauth-server/client-metadata-fetch.ts` · `lib/oauth/ssrf.ts` |
+| CIMD 가져오기(SSRF) | 해석된 주소 **전부** 공개 유니캐스트여야 하고 그 주소에 **고정해** 연결한다(DNS rebinding) · `agent: false`(keep-alive 소켓 재사용이 고정을 건너뛴다) · 리다이렉트 불추종(200만) · DNS와 HTTPS를 합쳐 5초(늦은 DNS 응답은 요청을 시작하지 않는다) · 64 KiB · `application/json`만 · 캐시 없음. 실패 셋(`blocked-address`·`unreachable`·`invalid-document`)은 화면에서 **한 문구**다 — 어느 호스트가 사설로 풀리는지 말하지 않는다 | `lib/oauth-server/client-metadata-fetch.ts` · `lib/oauth/ssrf.ts` |
 | `redirect_uri` | 문서가 선언한 값과 **완전 일치**. 예외는 loopback의 **포트만**이고 host가 **문자 그대로 같을 때**다 — `127.0.0.1` · `[::1]`(RFC 8252 §7.3) · **`localhost`**(Claude Code가 `localhost`만 쓴다 — T1 5/5. 교차 일치 없음). 문서가 받는 scheme은 `https:` 전부와 loopback의 `http:`뿐이다(`javascript:`·`data:`·원격 `http:` 거부 — 동의 뒤 되돌려 보내는 주소라 XSS·open redirect 경로다) | `lib/oauth/redirect.ts` |
 | authorize | 쿼리 판정 → CIMD → 콜백 대조 → 요청 행 저장(10분, 발급 issuer·resource 바인딩) → `?request=<id>` 정규화. ⚠️ **콜백 대조 전의 어떤 실패도 리다이렉트하지 않는다** — 화면이 끝낸다(대조 뒤의 쿼리 오류도 지금은 화면이 끝낸다). PKCE `S256`만 · `resource` 필수(두 CLI가 authorize·교환·refresh 전부에 보낸다) · `scope`는 읽지 않는다(권한은 동의 화면의 기존 grant 어휘다) | `lib/oauth/authorize.ts` · `app/oauth/authorize/page.tsx` |
 | 동의 | Authorize는 **User → 요청 행** 잠금 뒤 요청 상태·멤버십을 다시 읽는다. Deny는 **요청 행만** 잠그고 요청 상태만 다시 읽는다(발급할 것이 없어 사용자·멤버십을 보지 않는다 — 요청 소비 + `access_denied` 콜백). Authorize에서 같은 사용자·클라이언트의 이전 미교환 code 무효화 · 요청 소비 · code 삽입이 한 tx이고 요청당 code는 하나다(`requestId @unique`). 동의 입력이 틀리면 요청을 소비하지 않는다. 판정은 `planConsent` = `planApiTokenIssue`(같은 어휘·만료·현재 비보관 멤버십) | `lib/oauth-server/authorize.ts` |
