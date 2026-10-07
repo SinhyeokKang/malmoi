@@ -16,7 +16,7 @@ El panel **Fuentes** define qué claves muestra la lista. Selecciona **Todos los
 
 La búsqueda recorre todas las fuentes del proyecto. Mientras buscas en un proyecto con varias fuentes, aparece **Todas las fuentes** en la parte superior del panel **Fuentes**, y la lista muestra la fuente de cada clave antes de su nombre. En un proyecto con una sola fuente, usa **Todos los espacios de nombres** para buscar en toda la fuente. Cada fuente y grupo también muestra cuántas de sus claves coinciden con la búsqueda, y los grupos sin coincidencias se atenúan y no se pueden seleccionar. Selecciona **Todos los espacios de nombres** bajo una fuente, o un grupo, para acotar los resultados a ello, o **Todas las fuentes** para volver a buscar en todas partes; escribir una búsqueda nueva siempre busca en todas partes. Si seleccionas una clave de otra fuente, la pantalla pasa a esa fuente. Borra la búsqueda para volver al grupo de la clave que seleccionaste. Cuando nada coincide, elige **Buscar en todas las fuentes** para ampliar una búsqueda acotada, o **Borrar búsqueda**. **Borrar filtros** devuelve el filtro a **Todas las claves** y conserva el texto de tu búsqueda.
 
-![La pantalla de traducción con el filtro abierto y las opciones Todas las claves, Incompletas, Por revisar, Sin enviar y Nuevas de GitHub](/guide/state-filter.webp "Acota la lista por estado.")
+![La pantalla de traducción con el filtro abierto y las opciones Todas las claves, Incompletas, Por revisar, Sin enviar y Nuevas desde GitHub](/guide/state-filter.webp "Acota la lista por estado.")
 
 ## Busca texto en todos tus proyectos {#global-search}
 
