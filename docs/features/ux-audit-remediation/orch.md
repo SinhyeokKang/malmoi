@@ -20,9 +20,9 @@
 | Batch | Findings | Owned implementation | Model / effort | Dependencies | Release blocking | State |
 |---|---|---|---|---|---|---|
 | A | U1, U2 | Mutation-result tone consumers (account, settings, members, translations/workspace/workspace.tsx, publish-button.tsx), home/meta-column.tsx PR state, status canon, messages en/ko/es, associated tests | gpt-6-astra / medium — cross-surface result semantics and regression tests | None | Yes | Reviewed and integrated |
-| B | U3 | All user-facing numeric consumers incl CountBadge, tree-panel, home counts/meta, workspace, locale panel as required; minimal numeric formatting helper and tests; dictionary numeric consistency | gpt-6.1-sol / high — broad but mechanical locale propagation | A integrated; C integrated before editing locale-panel | Yes | Planned |
+| B | U3 | All user-facing numeric consumers incl CountBadge, tree-panel, home counts/meta, workspace, locale panel as required; minimal numeric formatting helper and tests; dictionary numeric consistency | gpt-6.1-sol / high — broad but mechanical locale propagation | A integrated; C integrated before editing locale-panel | Yes | Running |
 | C | U4, U6 | Logs loading.tsx, translations/workspace/locale-panel.tsx skeleton only; loading-parity and targeted skeleton tests | gpt-6.1-sol / medium — constrained geometry fixes | None | Yes | Reviewed and integrated |
-| D | U5, U7 | guide/es image alt/title (26), guide/en/ko/es/translate/edit.md scope prose, lib/guide/__tests__/locales.test.ts or targeted guide regression | gpt-6.1-sol / medium — translation and guide contracts | None | Yes | Running |
+| D | U5, U7 | guide/es image alt/title (26), guide/en/ko/es/translate/edit.md scope prose, lib/guide/__tests__/locales.test.ts or targeted guide regression | gpt-6.1-sol / medium — translation and guide contracts | None | Yes | Reviewed, one wording correction, integrated |
 | R | Independent review | Read-only batch diffs, evidence, test classification and document proposals | gpt-6-astra / medium | Completed batch | Yes | Planned |
 | Q | Runtime QA | Read-only browser verification on main checkout; evidence and BugShot issues only | gpt-6.1-sol / high | All batches integrated + gate | Yes for observed regressions | Planned |
 
@@ -46,7 +46,7 @@ Full test suites and final gates run serially: C → A → D → B. Concurrent f
 - First-wave implementation complete or in final verification; C owns the first isolated gate slot, A/D await explicit coordinator signals.
 - [x] A implemented, independently reviewed, integrated
 - [x] C implemented, independently reviewed, integrated
-- [ ] D implemented, independently reviewed, integrated
+- [x] D implemented, independently reviewed, integrated
 - [ ] B implemented, independently reviewed, integrated
 - [ ] Documentation freshness and final gate
 - [ ] dev push and exact-head CI
@@ -65,3 +65,5 @@ Full test suites and final gates run serially: C → A → D → B. Concurrent f
 - C: red 4 → targeted green 10; isolated final gate green, 12,126 passed / 2 skipped. First concurrent gate timed out twice in source scans; unchanged isolated run passed. Independent Astra review `ctx_2709f2e9b42d` PASS (no red/yellow); raw targeted red/green logs unavailable, claims distinguished from inspected final gate log. Integrated `a6b0251f`, `73b59d70`. Handoff and gate logs copied to coordinator scratch. Both terminals released; clean fully integrated child removed. Browser geometry remains Q scope.
 - A: isolated full suite 12,138 passed / 2 skipped; final gate green reported by worker, observed in live transcript. Independent Astra review `ctx_5b765fc10ccc` PASS; full-suite logs inspected, targeted/gate raw logs unavailable to reviewer. Coordinator final gate remains required. Integrated `6453da95`, `022c9e41`; handoff and full-suite logs copied, terminals released and clean integrated child removed. DESIGN D2/D3 and PR wording updated. A/C dependencies for B are fulfilled.
 - D: final isolated gate green (12,129 passed / 2 skipped); independent review `ctx_ffb8efa6fc7c` in progress. Full-test slot is now free for B.
+- D review completed PASS; minor D-R1 changed Spanish alt `Nuevas de GitHub` to actual `Nuevas desde GitHub`. Sol medium fix dispatch `ctx_ba1e7628eb9c`, commit `03cd94ae`, guide checks and full gate green with raw logs preserved. Coordinator inspected the one-line diff against the dictionary. Integrated `fe4cc8b4`, `c5ff7a40`, `d6127302`; handoff/logs copied, all D terminals and clean integrated child removed. AUTHORING verification description updated. Existing 7 stale screenshots remain warning-only, not D source changes.
+- B dispatch `ctx_13e3540b83b0`, branch `SinhyeokKang/ux-audit-numbers`, effective Sol high verified. D-fix gate ended; B owns full-test slot. Independent review follows completion.
