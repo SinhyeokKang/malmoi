@@ -19,10 +19,10 @@
 
 | Batch | Findings | Owned implementation | Model / effort | Dependencies | Release blocking | State |
 |---|---|---|---|---|---|---|
-| A | U1, U2 | Mutation-result tone consumers (account, settings, members, translations/workspace/workspace.tsx, publish-button.tsx), home/meta-column.tsx PR state, status canon, messages en/ko/es, associated tests | gpt-6-astra / medium — cross-surface result semantics and regression tests | None | Yes | Planned |
+| A | U1, U2 | Mutation-result tone consumers (account, settings, members, translations/workspace/workspace.tsx, publish-button.tsx), home/meta-column.tsx PR state, status canon, messages en/ko/es, associated tests | gpt-6-astra / medium — cross-surface result semantics and regression tests | None | Yes | Running |
 | B | U3 | All user-facing numeric consumers incl CountBadge, tree-panel, home counts/meta, workspace, locale panel as required; minimal numeric formatting helper and tests; dictionary numeric consistency | gpt-6.1-sol / high — broad but mechanical locale propagation | A integrated; C integrated before editing locale-panel | Yes | Planned |
-| C | U4, U6 | Logs loading.tsx, translations/workspace/locale-panel.tsx skeleton only; loading-parity and targeted skeleton tests | gpt-6.1-sol / medium — constrained geometry fixes | None | Yes | Planned |
-| D | U5, U7 | guide/es image alt/title (26), guide/en/ko/es/translate/edit.md scope prose, lib/guide/__tests__/locales.test.ts or targeted guide regression | gpt-6.1-sol / medium — translation and guide contracts | None | Yes | Planned |
+| C | U4, U6 | Logs loading.tsx, translations/workspace/locale-panel.tsx skeleton only; loading-parity and targeted skeleton tests | gpt-6.1-sol / medium — constrained geometry fixes | None | Yes | Running |
+| D | U5, U7 | guide/es image alt/title (26), guide/en/ko/es/translate/edit.md scope prose, lib/guide/__tests__/locales.test.ts or targeted guide regression | gpt-6.1-sol / medium — translation and guide contracts | None | Yes | Running |
 | R | Independent review | Read-only batch diffs, evidence, test classification and document proposals | gpt-6-astra / medium | Completed batch | Yes | Planned |
 | Q | Runtime QA | Read-only browser verification on main checkout; evidence and BugShot issues only | gpt-6.1-sol / high | All batches integrated + gate | Yes for observed regressions | Planned |
 
@@ -50,3 +50,13 @@ A/C/D form the first wave with disjoint source and test ownership. A and B overl
 - [ ] dev push and exact-head CI
 - [ ] Runtime QA and corrections
 - [ ] Resource cleanup and final report
+
+### Orca first wave
+
+- Run `run_db9bcfb9acba`; coordinator `term_8c00dc42-7f12-487e-9203-62237cec01c9`.
+- A task `task_bd26fa0dad25`, dispatch `ctx_da9fa15818e8`, branch `SinhyeokKang/ux-audit-state`.
+- C task `task_830d41f6fe0a`, dispatch `ctx_789618a6dc82`, branch `SinhyeokKang/ux-audit-skeleton`.
+- D task `task_3c9d89fb9ac2`, dispatch `ctx_095f5b042ab5`, branch `SinhyeokKang/ux-audit-guide`.
+- B queued task `task_36497f830e44`; coordinator holds dispatch until A/C integration.
+- Effective launches match planned models/efforts; first-wave turns observed.
+- A scope clarification: include MemberList changeUnconfirmed, the same unknown-result danger branch; no new product behavior.
