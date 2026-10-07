@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
 
 import { render } from "./helpers/dom";
+import { expectResultAlert } from "./helpers/result-alert";
 
 /**
  * **번역 작업 화면 — 한 소유자가 draft와 이동을 든다** (translation-rework T13–T15 — spec §3.4·§3.5·§3.6).
@@ -217,7 +218,7 @@ it("저장 응답이 유실되면 '확인 불가'로 말하고 draft를 지키�
   const { container } = await render(<TranslationWorkspace {...props()} />);
   await user.type(area(container, "zh"), "空");
   await user.click(button("Save"));
-  expect(container.textContent).toContain("We couldn't confirm the save");
+  expectResultAlert(en.translations.workspace.footer.saveUnknown.title, "warning", container);
   expect(area(container, "zh").value).toBe("空");
 });
 
@@ -521,4 +522,31 @@ it("RTL 로케일 셀은 dir=rtl·lang을 들고 LTR 셀은 ltr이다", async ()
   expect(hint?.textContent).toBe("Nothing here");
   expect(hint?.getAttribute("dir")).toBe("ltr");
   expect(hint?.getAttribute("lang")).toBe("en");
+});
+
+it.each([true, false])("Revert 응답 유실=%s는 경고와 확정 실패를 구분한다", async lost => {
+  const user = userEvent.setup();
+  mocks.preview.mockResolvedValue({ status: "ready", locales: [{ code: "ko", before: "비어 있음", after: "없음" }], confirmation: "f".repeat(64) });
+  if (lost) mocks.revert.mockRejectedValue(new Error("lost"));
+  else mocks.revert.mockResolvedValue({ status: "failed" });
+  const { container } = await render(<TranslationWorkspace {...props()} />);
+  await user.click(button("Revert to last sent"));
+  await user.click(button("Revert translations"));
+  expectResultAlert(lost ? en.translations.workspace.revert.unknown.title : en.translations.workspace.revert.failed.title, lost ? "warning" : "danger", container);
+  expect(mocks.revert).toHaveBeenCalledTimes(1);
+  if (lost) {
+    await user.click(button(en.translations.workspace.revert.unknown.check));
+    expect(mocks.refresh).toHaveBeenCalledTimes(1);
+    expect(mocks.revert).toHaveBeenCalledTimes(1);
+  }
+});
+
+it("저장 확정 실패는 danger이며 draft를 지킨다", async () => {
+  const user = userEvent.setup();
+  mocks.save.mockResolvedValue({ ok: false, error: "failed" });
+  const { container } = await render(<TranslationWorkspace {...props()} />);
+  await user.type(area(container, "zh"), "空");
+  await user.click(button("Save"));
+  expectResultAlert(en.translations.workspace.footer.saveFailed.title, "danger", container);
+  expect(area(container, "zh").value).toBe("空");
 });

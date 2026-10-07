@@ -7,6 +7,8 @@ import { MetaColumn } from "@/components/home/meta-column";
 import { homeLate, metaTabs, type HomeLate, type MetaTabsInput } from "@/lib/home/meta";
 import { connectionProblem, repositoryConnectionState, type RepositoryConnectionState } from "@/lib/home/state";
 import { en } from "@/messages/en";
+import { ko } from "@/messages/ko";
+import { es } from "@/messages/es";
 import { relativeTime } from "@/lib/relative-time";
 import { routes } from "@/lib/routes";
 import { STATE, stateLabel } from "@/lib/status/canon";
@@ -297,7 +299,7 @@ describe("메타 열 — 늦게 오는 Hold · PR state", () => {
   it.each([
     ["open-pr", `[${stateLabel(en, "prOpen")}]`],
     [null, en.home.meta.notOpen],
-    ["pr-check-failed", `[${stateLabel(en, "couldNotCheck")}]`],
+    ["pr-check-failed", "[Couldn't check for an open pull request]"],
   ] as const)("PR 조회 결론 %s → PR state %s", async (reason, text) => {
     const { open, rows } = await setup(pending, { late: Promise.resolve(homeLate(reason)) });
     await open(en.home.meta.tabs.publish);
@@ -358,4 +360,20 @@ describe("메타 열 — 바닥 링크", () => {
     await open(en.home.meta.tabs.publish);
     expect(footer(panel())).toEqual([[en.home.meta.publishLogs, routes.logs("acme", { kind: "publish" })]]);
   });
+});
+
+it.each([
+  ["en", en, "Couldn't check for an open pull request"],
+  ["ko", ko, "열린 PR을 확인하지 못했습니다"],
+  ["es", es, "No se pudo comprobar si hay una pull request abierta"],
+] as const)("%s Home PR 조회 실패는 목적어와 warning을 보인다", async (uiLocale, m, label) => {
+  const { container } = await render(
+    <MetaColumn tabs={metaTabs({ ...input, prState: "pending" })} slug="acme" now={now} canOpenSettings late={Promise.resolve(homeLate("pr-check-failed"))} uiLocale={uiLocale} m={m} />,
+    { uiLocale },
+  );
+  const tab = [...container.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find(node => node.textContent === m.home.meta.tabs.publish)!;
+  await act(async () => { await userEvent.setup().click(tab); });
+  const row = [...container.querySelectorAll(`${SHOWN} dl > div`)].find(node => node.querySelector("dt")?.textContent === m.home.meta.prState);
+  expect(row?.querySelector("dd")?.textContent).toBe(label);
+  expect(row?.querySelector(".bg-warning-soft")).not.toBeNull();
 });

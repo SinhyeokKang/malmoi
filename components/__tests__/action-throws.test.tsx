@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
 
 import { render } from "./helpers/dom";
+import { expectResultAlert } from "./helpers/result-alert";
 
 /**
  * **Server Action이 던져도 화면이 제자리로 돌아오고 사유를 말한다** (audit #24). 네 호출부가 `await`를 try 없이 불러,
@@ -68,7 +69,7 @@ it("멤버 제거 호출이 던지면 행이 풀리고 확인 불가를 말한�
   await render(<MemberList slug="acme" members={[owner, alice]} role="OWNER" viewerId="u1" now={now} headingId="h" />);
   await click(byLabel("Remove Alice"));
   await click(inDialog(en.members.removeConfirm));
-  expect(alert()).toContain(en.members.changeUnconfirmed);
+  expectResultAlert(en.members.changeUnconfirmed, "warning");
   expect(byLabel("Remove Alice").hasAttribute("disabled")).toBe(false);
 });
 
@@ -77,7 +78,7 @@ it("초대 철회 호출이 던지면 행이 풀리고 확인 불가를 말한�
   await render(<PendingInvitations slug="acme" invitations={[invite]} role="OWNER" now={now} headingId="h" />);
   await click(byLabel("Revoke invitation for t***@example.com"));
   await click(inDialog(en.members.pending.confirmRevokeAction));
-  expect(alert()).toContain(en.members.pending.revokeUnconfirmed);
+  expectResultAlert(en.members.pending.revokeUnconfirmed, "warning");
   expect(byLabel("Revoke invitation for t***@example.com").hasAttribute("disabled")).toBe(false);
 });
 
@@ -114,7 +115,7 @@ it("push 토큰 재발급이 던지면 확인 불가를 말한다 — 옛 토큰
   await render(<PushTokenPanel slug="acme" />);
   await click(buttonByText(en.settings.token.rotate));
   await click(inDialog(en.settings.token.confirmAction));
-  expect(alerts()).toContain(en.settings.token.unconfirmed);
+  expectResultAlert(en.settings.token.unconfirmed, "warning");
 });
 
 it.each(["upload", "delete"] as const)("프로필 사진 %s 호출이 던지면 실패 문구를 세운다", async kind => {
@@ -155,7 +156,7 @@ it("로그인 수단 해제가 던지면 카드 머리에 확인 불가를 말�
   await render(<LoginMethods rows={methods} />);
   await click(byLabel(en.link.methods.disconnectLabel("GitHub")));
   await click(inDialog(en.link.methods.disconnectConfirm));
-  expect(alerts()).toContain(en.link.methods.unlinkUnconfirmed);
+  expectResultAlert(en.link.methods.unlinkUnconfirmed, "warning");
 });
 
 it("모든 세션 로그아웃 시작이 던지면 구역 실패 문구를 세운다", async () => {
@@ -181,4 +182,32 @@ it("redirect는 삼키지 않는다 — 해제 성공의 redirect가 실패 문�
   error.mockRestore();
   expect(alerts()).not.toContain(en.link.methods.unlinkUnconfirmed);
   expect(document.querySelector("[data-caught]")?.textContent).toContain("NEXT_REDIRECT");
+});
+
+// 미확인과 확정 거부를 같은 테스트 표에서 대조한다 — warning 일괄 치환을 막는다.
+it.each(["member", "invitation", "token"] as const)("%s의 확정 실패는 danger다", async kind => {
+  if (kind === "member") {
+    mocks.changeMember.mockResolvedValue({ ok: false, error: "failed" });
+    await render(<MemberList slug="acme" members={[owner, alice]} role="OWNER" viewerId="u1" now={now} headingId="h" />);
+    await click(byLabel("Remove Alice"));
+    await click(inDialog(en.members.removeConfirm));
+    expectResultAlert(en.members.changeFailed, "danger");
+  } else if (kind === "invitation") {
+    mocks.revokeInvitation.mockResolvedValue({ ok: false, error: "failed" });
+    await render(<PendingInvitations slug="acme" invitations={[invite]} role="OWNER" now={now} headingId="h" />);
+    await click(byLabel("Revoke invitation for t***@example.com"));
+    await click(inDialog(en.members.pending.confirmRevokeAction));
+    expectResultAlert(en.members.pending.revokeFailed, "danger");
+  } else {
+    mocks.rotatePushToken.mockResolvedValue({ ok: false, error: "failed" });
+    await render(<PushTokenPanel slug="acme" />);
+    await click(buttonByText(en.settings.token.rotate));
+    await click(inDialog(en.settings.token.confirmAction));
+    expectResultAlert(en.settings.token.failed, "danger");
+  }
+});
+
+it("로그인 해제의 확정 거부는 danger다", async () => {
+  await render(<LoginMethods rows={methods} unlinkFailure="The last sign-in method cannot be disconnected." />);
+  expectResultAlert("The last sign-in method cannot be disconnected.", "danger");
 });

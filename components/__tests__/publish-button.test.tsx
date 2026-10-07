@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { expectResultAlert } from "./helpers/result-alert";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { act } from "react";
@@ -141,6 +142,7 @@ it("조회 실패와 응답 유실 재시도 모두 새 확인을 요구한다",
   await click("Try again"); expect(mocks.pull).not.toHaveBeenCalled(); await click("Open pull request");
   expect(document.body.textContent).toContain("We couldn't confirm whether your changes were sent.");
   expect(document.body.textContent).not.toContain("Nothing was sent");
+  expectResultAlert("This is usually temporary, and trying again is safe", "warning");
   await click("Try again"); expect(mocks.pull).toHaveBeenCalledTimes(1);
   await click("Open pull request"); expect(mocks.pull).toHaveBeenCalledTimes(2);
 });
