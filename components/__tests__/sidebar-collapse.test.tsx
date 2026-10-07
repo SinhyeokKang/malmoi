@@ -152,6 +152,32 @@ describe("셸 패널 — 접힘 쿠키", () => {
     expect(document.cookie).not.toContain("malmoi-sidebar-collapsed");
   });
 
+  /**
+   * **핸들 Enter는 버튼 토글과 같은 길을 탄다** (2026-10-07 실측) — `react-resizable-panels` 2.1.9의 Enter는 그룹 상태만 바꾸고 패널의
+   * `onResize`를 부르지 않아, 폭만 199가 되고 셸의 접힘 상태·쿠키는 그대로였다. 셸이 capture 단계에서 먼저 받아 `toggle`을 부른다.
+   */
+  it("핸들에서 Enter를 누르면 토글한다 — 라이브러리의 Enter는 막는다", async () => {
+    const swallow = (event: ErrorEvent) => {
+      if (/Invalid \d+ panel layout/.test(event.message)) event.preventDefault();
+    };
+    window.addEventListener("error", swallow);
+    onTestFinished(() => window.removeEventListener("error", swallow));
+    const { container } = await render(<ShellPanels initialCollapsed={false} sidebar={<Probe />}>{<main />}</ShellPanels>);
+    const handle = container.querySelector<HTMLElement>('[role="separator"]')!;
+    const event = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });
+    await act(async () => handle.dispatchEvent(event));
+    expect(event.defaultPrevented).toBe(true);
+    expect(document.cookie).toContain("malmoi-sidebar-collapsed=1");
+  });
+
+  it("핸들의 다른 키는 가로채지 않는다", async () => {
+    const { container } = await render(<ShellPanels initialCollapsed={false} sidebar={<Probe />}>{<main />}</ShellPanels>);
+    const handle = container.querySelector<HTMLElement>('[role="separator"]')!;
+    const event = new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true, cancelable: true });
+    await act(async () => handle.dispatchEvent(event));
+    expect(document.cookie).not.toContain("malmoi-sidebar-collapsed");
+  });
+
   it("토글하면 바뀐 상태를 쿠키에 쓴다 — 펼침에서 접으면 1, 접힘에서 펴면 0", async () => {
     // jsdom에는 패널 치수가 없어 라이브러리의 `setLayout`이 "Invalid 0 panel layout"을 던진다 — 쿠키는 그 전에 쓴다.
     // 그 한 메시지만 삼킨다(실제 브라우저에는 없는 조건이고, 드래그·배치는 jsdom이 판정하지 못한다 — vitest.setup.ts).
