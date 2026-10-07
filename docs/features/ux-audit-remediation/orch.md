@@ -50,8 +50,8 @@ Full test suites and final gates run serially: C → A → D → B. Concurrent f
 - [x] B implemented, independently reviewed, integrated
 - [x] Original batch documentation freshness and final gate (02ec5754)
 - [x] Original batch dev push and exact-head CI (02ec5754)
-- [ ] Runtime QA and corrections
-- [ ] Resource cleanup and final report
+- [x] Runtime QA and corrections
+- [x] Resource cleanup (final gate/push/CI report follows)
 
 ### Orca first wave
 
@@ -105,3 +105,9 @@ Full test suites and final gates run serially: C → A → D → B. Concurrent f
 
 - Q2 completed: Logs18 and landing18 combinations plus actual navigation/focus passed; #201 closed with measured verification. New BugShot #202 independently routed. Preferences/cookies/data and generated files restored, owned server stopped, tracked tree clean, space4 remains agent-owned for recheck. Q2 terminal released.
 - C-fix2 source8f9a8e39 integrated ase08d9bb8: title decoration left inset only. Existing13 targeted and worker gate12,264 passed/2 skipped; independent Astra medium reviewctx_8504ac745529 red0/yellow0. Review and implementation terminals released. Coordinator gate then Q3 same-space title-origin verification remain.
+
+### Runtime completion
+
+- Q3 Sol high dispatchctx_9846c2413753 verified sourcebbcc1bff in the same space4:18 unique Logs combinations, painted title/reservation/content x delta0px; header/filter/row baselines and112/172 slots preserved. Korean1280 selected skeleton frames preceded font completion; observed width precision0.015625px does not affect measured origin/heights. Representative narrow/wide light/dark images inspected. #202 closed with verification comment6047192048; #201 already closed.
+- Q2 landing18 combinations and actual GitHub new-tab/Docs same-tab/sign-in navigation plus keyboard focus passed. Original seven items and both observed runtime corrections are complete within recorded coverage. Actual10000 counts, forcedPR-failure paint and screen-reader speech remain unobserved; guide stale13 images/20mappings were not recaptured.
+- Q3 restored preferences/cookies/data aggregates, stopped owned server, restored next-env and removed own dev output. TaskSpace4 finish(keep[]) returned closedSpace:true exactly once. All20 supervised worker terminals released and all child worktrees removed; tracked tree clean. No migration or production deployment. Final exact-head gate/push/CI evidence is recorded in the coordinator completion report and scratch final-evidence.json to avoid a self-referential commit cycle.
