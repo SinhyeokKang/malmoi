@@ -104,6 +104,7 @@ it.each([["en", en], ["ko", ko], ["es", es]] as const)("Logs %s 기본 골격은
   expect(slots[5]!.className).toBe(search.parentElement!.parentElement!.className);
   expect(loadingSearch.disabled).toBe(true);
   expect(loadingSearch.tabIndex).toBe(-1);
+  expect(loadingSearch.parentElement!.querySelector("svg")!.classList.contains("invisible")).toBe(true);
 
   const titleRow = realRow.previousElementSibling!;
   const loadingTitle = loadingRow.previousElementSibling!;
@@ -111,11 +112,13 @@ it.each([["en", en], ["ko", ko], ["es", es]] as const)("Logs %s 기본 골격은
   const title = find(real, "h1");
   const titleSizer = find(loadingTitle, "h1");
   expect(titleSizer.textContent).toBe(title.textContent);
-  expect(titleSizer.className.replace(" invisible", "")).toBe(title.className);
-  expect(titleSizer.classList.contains("min-h-9")).toBe(true);
+  expect(titleSizer.className.replace(" invisible", "")).toBe(title.className.replace(" min-h-9", ""));
+  // 최소 높이는 PanelHeader가 소유한다 — 골격 제목이 중복 선언하지 않는다.
+  expect(loadingTitle.parentElement!.classList.contains("[&>:first-child]:min-h-9")).toBe(true);
   const refresh = find(titleRow, "button");
   const refreshSizer = find(loadingTitle, "button");
   expect(refreshSizer.className.replace(" invisible", "")).toBe(refresh.className);
+  expect(refreshSizer.classList.contains("h-9")).toBe(true);
   expect(refreshSizer.textContent).toBe(refresh.textContent);
   expect(skeleton.querySelector('[role="status"]')?.textContent).toBe(m.logs.loading.list);
   expect(loadingRow.closest('[aria-hidden="true"]')).not.toBeNull();
