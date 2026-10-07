@@ -124,7 +124,7 @@ class PendingEditsDuringApply extends Error {
   constructor(readonly pendingCount: number) { super("pending edits appeared during apply"); }
 }
 
-export type ProtectedPushResult = { status: "applied"; outcome: PushOutcome } | { status: "deferred"; pendingCount: number; reason?: "pr-check-failed" } | { status: "unauthorized" };
+export type ProtectedPushResult = { status: "applied"; outcome: PushOutcome } | { status: "deferred"; pendingCount: number; reason?: "publish-raced" } | { status: "unauthorized" };
 
 /**
  * 적재가 **확정되는 같은 트랜잭션에서** 부를 훅 (logs-rework design §3.2). 성공 사건을 밖에서 쓰면
@@ -155,7 +155,7 @@ export async function applyProtectedPush(prisma: PrismaClient, scope: PushScope,
       if (locked[0]?.pushTokenHash !== options.pushTokenHash) return { status: "unauthorized" } as const;
       // 사전 PR 판정 뒤 완료된 Publish는 토큰이 이미 0이다. 판정 자체가 낡았으므로 재시도 때까지 보류한다.
       if ((locked[0]?.lastPublishedAt?.getTime() ?? null) !== (options.expectedLastPublishedAt?.getTime() ?? null)) {
-        return { status: "deferred", pendingCount: 0, reason: "pr-check-failed" } as const;
+        return { status: "deferred", pendingCount: 0, reason: "publish-raced" } as const;
       }
       const pending = await countPending(tx, scope.projectId);
       const decision = planProtectedImport({ mode: "auto", pending });

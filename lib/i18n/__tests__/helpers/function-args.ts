@@ -102,6 +102,7 @@ export const FUNCTION_ARGS: { readonly [P in FunctionPaths<Messages>]: Parameter
   "logs.sentence.import.baseUnreadable": ["X"],
   "logs.sentence.import.held.open-pr": ["X"],
   "logs.sentence.import.held.pr-check-failed": ["X"],
+  "logs.sentence.import.held.publish-raced": ["X"],
   "logs.sentence.import.held.too-large": ["X"],
   "logs.sentence.member.invited": ["X", "X"],
   "logs.sentence.member.joined": ["X"],

@@ -396,7 +396,9 @@ describe("CI 적재 보류 (T7)", () => {
       await prisma.project.update({ where: { id: "p" }, data: { lastPublishedAt: AFTER } });
       return null;
     });
-    expect((await post(ciPayload())).body).toMatchObject({ status: "deferred", reason: "pr-check-failed" });
+    const held = (await post(ciPayload())).body;
+    expect(held).toMatchObject({ status: "deferred", reason: "publish-raced" });
+    expect(held).not.toHaveProperty("pendingCount");
     const detail = await loadTranslationDetail(prisma, { projectId: "p", surfaceId: "surface-p", keyId: "p-k1" });
     expect(detail).toMatchObject({ status: "ok", locales: expect.arrayContaining([expect.objectContaining({ code: "ko", value: "edited" })]) });
     // 같은 non-null 표식이 유지되면 정상 적재된다.

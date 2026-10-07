@@ -317,8 +317,9 @@ export async function POST(request: Request): Promise<NextResponse> {
     if (result.status === "deferred") {
       // 롤백됐으니 결과 필드는 옛 그대로다 — 진행 표시만 거둔다.
       await abandonImportRun(prisma, { ...scope, token });
-      await record({ surface, result: "deferred", deferReason: result.reason ?? "pending-edits", pendingEdits: result.pendingCount });
-      return deferred(project.id, parsed.data.commitSha, { reason: result.reason ?? "pending-edits", pendingCount: result.pendingCount });
+      await record({ surface, result: "deferred", deferReason: result.reason ?? "pending-edits", pendingEdits: result.reason === undefined ? result.pendingCount : null });
+      return deferred(project.id, parsed.data.commitSha, result.reason === undefined
+        ? { reason: "pending-edits", pendingCount: result.pendingCount } : { reason: result.reason });
     }
     const outcome = result.outcome;
     return NextResponse.json<PushResponse>({
@@ -357,7 +358,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 function deferred(
   projectId: string,
   commitSha: string,
-  detail: { reason: "pending-edits"; pendingCount: number } | { reason: "open-pr" | "pr-check-failed" },
+  detail: { reason: "pending-edits"; pendingCount: number } | { reason: "open-pr" | "pr-check-failed" | "publish-raced" },
 ): NextResponse {
   return NextResponse.json<Extract<PushResponse, { status: "deferred" }>>({ status: "deferred", ...detail, projectId, commitSha });
 }

@@ -4,7 +4,7 @@ import { z } from "zod";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { logFailure } from "@/lib/github-connect/log";
 import type { OpenImportPr } from "@/lib/import/confirm";
-import { withWarningLines } from "@/lib/i18n/adapter-errors";
+import { pullWarningLine, withWarningLines } from "@/lib/i18n/adapter-errors";
 import { revalidateTranslationReaders } from "@/lib/keys/revalidate-readers";
 import { loadPreview } from "@/lib/publish/load-preview";
 import { planPublishView } from "@/lib/publish/plan";
@@ -31,6 +31,8 @@ export const previewPublish = defineTool({
     if (gate.status !== "ok") return gate;
     const result = await loadPreview(prisma, coreSubject(subject), { slug });
     if (result.status === "rejected") return { status: "refused", code: result.error };
+    if (result.status === "blocked") return { status: "refused", code: "writer-warnings",
+      message: result.warnings.map(w => pullWarningLine(w, en.adapterErrors)).join("\n"), detail: { warnings: result.warnings } };
     if (result.status === "failed") return { status: "unavailable" };
     if (result.status === "refused") {
       const copy = result.reason === "base-file-missing" ? en.translations.publish.baseFileMissing : en.translations.publish.baseFileUnreadable;

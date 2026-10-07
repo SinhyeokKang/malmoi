@@ -2685,6 +2685,8 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - **그물**: 사전 timestamp를 받아 잠금 안에서 null 포함 불일치면 보류하는 실제 CI→PG→번역 상세 시나리오와 자동 적재 테스트가 잡는다. 단순 pending 수 테스트는 놓쳤다. 같은 밀리초에도 표식이 달라지도록 Publish 완료는 Project 잠금 안에서 직전 값보다 최소 1ms 전진시킨다.
 - **재발 방지**: `rg -n 'lastPublishedAt|applyProtectedPush|runAutomationImport' lib/push/apply.ts lib/nightly/run.ts lib/import/run.ts app/api/push/route.ts`로 CI와 야간 양쪽 생산자·소비자를 확인했다. 원본 값 대조나 트랜잭션 안 GitHub 호출은 추가하지 않는다.
 
+- **교차 검증 후속 (2026-10-07)**: 경합 보류에 `pr-check-failed`를 재사용해 Logs가 GitHub 장애로 설명했다. `publish-raced`를 별도 계약으로 추가하고 CI 응답·야간 사건·세 언어 문구·CLI 경고까지 연결했다. 알 수 없는 pending 수를 0으로 실어 보내지 않는다. 이벤트 문장과 실제 라우트 응답을 함께 검증한다.
+
 ### 2026-10-07 — 파일 쓰기 성공과 요청한 값 전달을 같은 것으로 셌다
 
 - **영역**: `lib/keys/save.ts` · `lib/pull/run.ts` · `lib/adapters/code-dict.ts`
@@ -2692,6 +2694,8 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - **근본 원인**: base 폴백은 항상 전달된다는 가정과 writer의 속성 검색이 shorthand를 제외한 것이 겹쳤다. 미리보기 밖 실행에도 같은 보호가 필요했다.
 - **그물**: 저장 판정 테스트와 실제 `runPull`의 no-changes·미리보기 없는 실행에서 GitHub 쓰기와 전달 확인이 없음을 검사했다. 기존 writer 테스트와 TS 컴파일은 JS 경로를 놓쳤다.
 - **재발 방지**: `rg -n 'writeEmpty|propertyNamed|write-empty-unsupported|planClearability' lib/adapters lib/pull/run.ts lib/keys/save.ts`로 읽기·쓰기·전달 경계를 함께 확인한다. 신규 불가능한 빈 편집은 저장에서 거부하고 이미 저장된 것은 Publish 경고로 보류한다.
+
+- **교차 검증 후속 (2026-10-07)**: 빈값 방어가 실행에만 있어 미리보기는 전달을 약속했고, 원본에서 삭제된 키까지 전체 거부로 넓혔다. 순수 `planDelivery`를 미리보기·실행이 공유하고 셀 보류 뒤 남은 빈 편집만 경고한다. 실제 해석 경로와 own-property 조회를 사용한다. 같은 fixture의 미리보기·실행 및 웹·MCP 응답 테스트로 방어한다.
 
 ### 2026-10-07 — 비동기 경계와 검증 트리거가 구현의 끝까지 닿지 않았다
 

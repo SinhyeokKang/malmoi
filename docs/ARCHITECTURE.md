@@ -41,7 +41,7 @@
    ⚠️ **소스(표면) 제거도 삭제가 아니다** (2026-10-05, §5.9) — `archivedAt`을 세울 뿐 키·로케일·번역·이력 행은 그대로이고,
    재추가가 같은 행을 되살린다(`id`·`slug` 유지). 하드 삭제·보존 기간은 없다.
    ⚠️ **수술적 표면(`ts-dict`·`yaml-catalog`·`code-dict`)의 비-base 셀은 UI에서도 비울 수 없다** (2026-09-24, delivery-invariants D2) —
-   저장이 `cannot-clear`로 거부한다. base도 폴백 원문이 빈 경우 같은 판정이다(2026-10-07). 이미 저장된 빈 편집은 Publish의 `write-empty-unsupported`로 멈추고 토큰을 유지한다. 명시적 빈값 export(PRODUCT §10)가 생기기 전까지의 임시 규칙이다(§5.5.2).
+   저장이 `cannot-clear`로 거부한다. base도 폴백 원문이 빈 경우 같은 판정이다(2026-10-07). 이미 저장된 빈 편집은 미리보기와 실행의 공통 `planDelivery`가 `write-empty-unsupported`로 멈추고 토큰을 유지한다. 키·파일 부재로 이미 보류된 셀은 이 전체 거부에서 제외한다. 명시적 빈값 export(PRODUCT §10)가 생기기 전까지의 임시 규칙이다(§5.5.2).
 4. 같은 DB 상태와 **같은 원본 파일**은 **같은 바이트**를 만든다 — 원본은 구조·표현과 **base 키 집합**(B3.4)을 준다.
 5. 프로젝트를 식별하는 모든 DB 쿼리는 **인가된 `projectId`로 제한**한다.
    표면 데이터는 그 뒤 **`surfaceId`로도 제한**한다. 역할·리포·push 토큰·SyncRun·Publish는 Project가,
@@ -345,6 +345,7 @@ grep -n "orderBy\|compareKeys\|\.sort(" lib/pull/*.ts lib/adapters/*.ts lib/keys
 **현재 원본의 실제 키 경로가 저장된 중첩 관측보다 우선한다** (2026-10-07). CI 보류 중 flat 파일에 중첩 키를 더하거나,
 중첩 파일에 점이 든 리터럴 키를 더해도 그 경로를 유지한다. 빈 이름 컨테이너와 숫자 이름 객체도 배열로 바꾸지 않는다.
 원본은 구조만 주고 기존 키의 값은 DB에서 온다. 새 로케일처럼 원본 경로가 없는 키만 중첩 관측으로 복원한다.
+⚠️ per-locale writer에는 대상 파일 원본만 전달된다. 비-base 파일에 없는 점 키는 그 파일의 중첩 관측으로 복원하므로, base의 리터럴 점 키와 구조가 다를 수 있다. 이 기존 한계는 `json-current-structure.test.ts`가 실제 렌더로 확인한다.
 서로 다른 원본 경로가 같은 평탄 키를 내는 모호성(`duplicate-key`)은 여전히 남는다.
 
 기존 방어선은 다음과 같다:
@@ -898,7 +899,7 @@ backfill은 토큰을 더하기만 하므로 못 지운다. ⚠️ 해제 UPDATE
 의미(§5 `pendingEditToken`)를 바꾸므로 버렸다 — **토큰 절은 불변이다.** 수동 Sync는 OWNER가 지문으로 승인하는 폐기 경로라 게이트가 없고
 `atRisk` 경고를 그대로 둔다.
 ⚠️ **판정과 적재 사이 Publish 완료 경합도 닫는다** (2026-10-07 감사 후속). CI·야간은 pending·PR 사전 판정 전에
-`lastPublishedAt`을 읽고 Project 잠금 안에서 null을 포함해 같지 않으면 `pr-check-failed`로 보류한다. 진행 중인 Publish는
+`lastPublishedAt`을 읽고 Project 잠금 안에서 null을 포함해 같지 않으면 `publish-raced`로 보류한다. 진행 중인 Publish는
 기존 토큰 재집계가 막고, 완료된 Publish는 표식 변경이 막는다. 완료 표식은 토큰 해제와 같은 잠금 안에서
 `max(벽시계, 이전 값 + 1ms)`로 써 같은 밀리초·시계 역행에도 재사용하지 않는다. `no-changes`는 표식을 갱신하지 않는다.
 예전 경합이 DB 값을 되돌린 뒤 PR 머지 전에 다시 Publish하면 sync 브랜치 재생성으로 PR에서도 값이 사라져 자동 복구가 없었다.
@@ -1639,6 +1640,7 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 | `pending-edits` | CI · 야간 | 미전달 편집이 있다(사전 집계 · 잠금 안 재집계 · 표면별 사후 재집계) | Publish · Revert · 폐기 승인 Sync |
 | `open-pr` | CI · 야간 | 열린 Malmoi PR이 있다 | PR 리뷰어가 머지하거나 닫는다 |
 | `pr-check-failed` | CI · 야간 | PR 조회가 실패하거나 마감(`GITHUB_WAIT_MS`)을 넘겼다 — **fail-closed** | 다음 실행이 다시 묻는다 |
+| `publish-raced` | CI · 야간 | 사전 판정 뒤 Publish 완료 표식이 바뀌었다 — GitHub 장애가 아니다 | 다음 실행이 PR·미전달을 다시 확인한다 |
 | `too-large` | **야간만** | 서버 적재의 영구 한도(파일 예산 `resource-limit` · 트리 잘림) — 아래 "야간의 서버 전용 한도" | 파일을 줄이거나 리포 워크플로로 받는다(CI 경로엔 이 예산이 없다) |
 
 **열린 PR 게이트** (2026-09-30, nightly-sync — `planOpenPrGate` in `lib/protection/plan.ts`). 입력은 조회의 삼상태 `string | null | undefined` 하나이고 결과는 `apply` 또는 적재 **전체**의 `defer`다 — `pending-edits`와 같은 부류라 셀을 고르지 않는다. ACTIONS의 옛 판정 "열린 PR 경고는 차단이 아니다 — 막으면 '어느 쪽이 이기는지'를 CI가 판정한다"의 반전이고, 그 판정이 막으려던 것(값을 견줘 승자를 고르는 것)은 여전히 0곳이다. 닫는 창은 §3 "머지 전 손실 창".
@@ -1646,7 +1648,7 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 - ⚠️ **`planProtectedImport`와 합치지 않는다** — `applyProtectedPush` 안의 재판정은 GitHub을 부르지 않으므로 늘 `null`을 박는 호출자가 되거나, 선택 입력이면 `undefined`로 모든 CI가 조용히 보류된다. 사전 판정(route·야간)만 게이트를 부른다.
 - ⚠️ **`installationId`·`repositoryId`가 null이면 게이트가 없다**(`null`) — PR을 낼 수 없는 프로젝트엔 열린 Malmoi PR도 없다(`loadOpenPrForImportGate` in `lib/projects/open-pr.ts`). 설정 화면용 `loadOpenPrUrl`은 `repositoryId null`을 `undefined`로 읽는데, 그것을 그대로 쓰면 고정 전 옛 행의 CI가 영구 보류된다. prod에서 installation이 있고 `repositoryId`가 null인 행은 0이다(2026-09-30 prod 읽기 전용 조회) — 이 갈래는 옛 행의 안전판이다.
 - ⚠️ **조회는 installation 토큰 GET이다** — `lib/github.ts`의 `createGitClient` → `findOpenPr`(`<owner>:malmoi-i18n/sync-<slug>`, `state=open`)라 자격증명 분리(`credential-separation.test.ts`)와 충돌하지 않는다. 닫힌(머지 안 된) PR은 열린 PR로 세지 않는다.
-- 응답: `PushResponse`의 `deferred`가 **사유별 union**이다 — `{ reason: "pending-edits", pendingCount }` | `{ reason: "open-pr" | "pr-check-failed" }`(`pendingCount` 없음). 생산자 `deferred()`에도 이 타입이 붙는다(POSTMORTEM 2026-08-31). v2 CLI는 `pendingCount`가 정수일 때만 경고하므로 새 사유는 **경고 없이 green**이고, v3 CLI가 사유별 경고를 낸다(ACTIONS).
+- 응답: `PushResponse`의 `deferred`가 **사유별 union**이다 — `{ reason: "pending-edits", pendingCount }` | `{ reason: "open-pr" | "pr-check-failed" | "publish-raced" }`(`pendingCount` 없음). 생산자 `deferred()`에도 이 타입이 붙는다(POSTMORTEM 2026-08-31). v2 CLI는 `pendingCount`가 정수일 때만 경고하므로 새 사유는 **경고 없이 green**이고, v3 CLI가 사유별 경고를 낸다(ACTIONS).
 
 - `/api/push`는 가드(보관·오배송·포맷·역행) 뒤에 사전 집계 → 0이 아니면 **200 `{status: "deferred", reason: "pending-edits", pendingCount}`** 이고 어떤 컬럼도 쓰지 않는다(진행 표시 포함). 0이면 `applyProtectedPush`가 Project 잠금 안에서 다시 세고, upsert 뒤 **재집계**가 0이 아니면 트랜잭션 전체를 롤백하고 `deferred`다 — 조건 불일치는 0행이라 조용하므로(POSTMORTEM 2026-09-14) 재집계 예외가 그 무음을 깬다. ⚠️ **저장도 같은 `Project` → `TranslationSurface` 잠금 안이라**(§5.7.1) "판정과 upsert 사이에 커밋된 저장"은 끼지 못한다 — 재집계가 잡는 것은 **이 적재가 unorphan시킨 토큰 셀**이다(사전 집계는 orphan을 빼서 0이었다가 키·로케일이 되살아나면 1이 된다).
 - 수동 Sync는 OWNER가 Dialog를 열 때 받은 **폐기 승인 지문**(사용자·프로젝트·**리포 연결(`repositoryId`·`installationId`·owner·name)과 기준 브랜치**·활성 표면의 revision과 설정·pending `(id, token)`의 sha256)을 되돌려 줄 때만 편집을 덮는다. ⚠️ **리포·브랜치가 입력인 이유** (audit #3): Action은 실행 시점의 Project로 대상 리포를 만들므로 승인과 실행 사이의 설정 변경은 `repo-replaced`에 안 걸리고, 연결·브랜치 변경은 `importRevision`도 안 올린다 — 빠지면 `main` 기준 승인이 `release`를 덮는다. ⚠️ **Dialog의 건수·라벨·경고는 지문과 같은 응답의 `unsent`다** (audit #2) — 호출부의 화면 건수로 그리면 동료가 방금 만든 편집의 지문을 "지울 것이 없다"는 창으로 승인시킨다(`components/home/sync-button.tsx`). 서버가 Project 잠금 뒤 재계산해 대조하고(POSTMORTEM 2026-09-13), 승인 집합의 토큰만 upsert 가드를 통과한다 — 승인 뒤 저장은 살아남아 결과의 `remainingEdits`로 선다.

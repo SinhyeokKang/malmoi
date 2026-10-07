@@ -32,7 +32,7 @@ describe("eventSentence — 야간 스킵과 야간 적재", () => {
     expect(text.startsWith("WHO")).toBe(true);
   });
 
-  it.each(["open-pr", "pr-check-failed", "too-large"] as const)("보류 %s는 사유별 문장이고 행위자로 시작한다", (reason) => {
+  it.each(["open-pr", "pr-check-failed", "publish-raced", "too-large"] as const)("보류 %s는 사유별 문장이고 행위자로 시작한다", (reason) => {
     const text = sentence(metaRow({ result: "deferred", payload: payload({ deferReason: reason, pendingEdits: 0 }) }));
     expect(text).toBe(renderToStaticMarkup(<>{en.logs.sentence.import.held[reason]("WHO")}</>));
     expect(text.startsWith("WHO")).toBe(true);
@@ -70,7 +70,7 @@ describe("eventMeta — 주체 낱말과 보류 사유", () => {
     expect(parts).toContain(en.logs.deferReasons["open-pr"]);
   });
 
-  it.each(["pr-check-failed", "too-large"] as const)("%s 보류도 편집 수가 아니라 사유를 말한다", (reason) => {
+  it.each(["pr-check-failed", "publish-raced", "too-large"] as const)("%s 보류도 편집 수가 아니라 사유를 말한다", (reason) => {
     const parts = eventMeta(en, metaRow({ result: "deferred", payload: payload({ deferReason: reason, pendingEdits: 0 }) }), false);
     expect(parts).toContain(en.logs.deferReasons[reason]);
     expect(parts.some((part) => typeof part === "string" && part.includes("unsent edit"))).toBe(false);

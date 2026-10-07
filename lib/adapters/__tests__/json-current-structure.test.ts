@@ -23,3 +23,12 @@ it.each([
   expect(JSON.parse(rendered!.content!)).toEqual(expected);
   expect(jsonCatalog.writeWithErrors!(format, { locale: "en", entries })).toEqual(result);
 });
+
+it("비-base에 없는 점 키는 대상 파일의 중첩 형태로 복원한다 — base 원본은 writer에 전달되지 않는다", () => {
+  const files = renderLocaleFiles({ adapter: "json-catalog", pathTemplate: "{locale}.json", locales: ["en", "ko"], nested: true },
+    "per-locale", [{ path: "en.json", locale: "en" }, { path: "ko.json", locale: "ko" }],
+    [{ key: "a.b", sourceText: "Base", orphaned: false, cells: { ko: { value: "Translated" } } }], "en",
+    new Map([["en.json", '{"a.b":"Base"}'], ["ko.json", '{"other":{"key":"Old"}}']]));
+  expect(JSON.parse(files[0]!.content!)).toEqual({ "a.b": "Base" });
+  expect(JSON.parse(files[1]!.content!)).toEqual({ a: { b: "Translated" } });
+});

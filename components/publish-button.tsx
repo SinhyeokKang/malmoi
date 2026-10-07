@@ -70,6 +70,7 @@ export function usePublish(slug: string, server?: unknown) {
       // 거부는 실행 전 거부와 같은 결과로 그린다(`1h`) — Retry가 같은 거부를 다시 받는 갈래를 만들지 않는다 (L3.3).
       const next: PublishModalState =
         data.status === "ok" ? { kind: "preview-ready", preview: data.preview }
+        : data.status === "blocked" ? { kind: "result", outcome: { status: "skipped", reason: "writer-warnings", warnings: data.warnings } }
         : data.status === "rejected" ? { kind: "result", outcome: { status: "failed", error: data.error, delivery: "not-started", retryable: false } }
         : data.status === "refused" ? { kind: "preview-refused", reason: data.reason, path: data.path, branch: data.branch }
         : { kind: "preview-error" };

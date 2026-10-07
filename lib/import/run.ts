@@ -61,7 +61,7 @@ function result(surface: TranslationSurface, status: SurfaceImportResult["status
   return { surfaceSlug: surface.slug, status, reason, count: 0, failed: status === "failed" ? 1 : 0, unmanaged: 0, errors: [] };
 }
 
-type Acquired = { ok: true; lease: Lease } | Extract<RepositoryImportOutcome, { ok: false }> | { ok: false; error: "pending-edits" } | { ok: false; error: "pr-check-failed" };
+type Acquired = { ok: true; lease: Lease } | Extract<RepositoryImportOutcome, { ok: false }> | { ok: false; error: "pending-edits" } | { ok: false; error: "publish-raced" };
 
 async function acquire(prisma: PrismaClient, input: CoreInput): Promise<Acquired> {
   return prisma.$transaction(async tx => {
@@ -106,8 +106,8 @@ async function acquire(prisma: PrismaClient, input: CoreInput): Promise<Acquired
       if ((project.lastPublishedAt?.getTime() ?? null) !== (actor.expectedLastPublishedAt?.getTime() ?? null)) {
         await recordEvent(tx, { projectId: input.projectId, subtype: vocabulary.subtype, actor: vocabulary.actor,
           surfaceIds: active.map(surface => surface.id), result: "deferred", finishedAt: new Date(),
-          payload: importPayload({ source: vocabulary.source, surfaceSlugs: active.map(surface => surface.slug), deferReason: "pr-check-failed" }) });
-        return { ok: false, error: "pr-check-failed" };
+          payload: importPayload({ source: vocabulary.source, surfaceSlugs: active.map(surface => surface.slug), deferReason: "publish-raced" }) });
+        return { ok: false, error: "publish-raced" };
       }
       // 자동 적재는 승인 경로가 없다 — 미전달 편집이 하나라도 있으면 통째로 보류한다(CI `/api/push`와 같은 판정). 리포 값은 보지 않는다.
       const pending = await countPending(tx, project.id);
@@ -270,7 +270,7 @@ export async function runRepositoryImportFromReader(prisma: PrismaClient, input:
   const outcome = await runImport(prisma, { projectId: input.projectId, repository: input.repository,
     actor: { kind: "USER", userId: input.userId, approval: input.approval, credential: input.credential } }, openReader, () => {});
   // USER는 승인 경로가 있어 `pending-edits`로 보류되지 않는다 — 그 갈래는 `reconfirm`이다.
-  if (!outcome.ok && (outcome.error === "pending-edits" || outcome.error === "pr-check-failed")) return { ok: false, error: "reconfirm" };
+  if (!outcome.ok && (outcome.error === "pending-edits" || outcome.error === "publish-raced")) return { ok: false, error: "reconfirm" };
   return outcome;
 }
 
@@ -286,13 +286,13 @@ export async function runAutomationImport(prisma: PrismaClient, input: { project
   const closed: { summary: ImportEventSummary | null } = { summary: null };
   const outcome = await runImport(prisma, { ...input, actor: { kind: "AUTOMATION", expectedLastPublishedAt: input.expectedLastPublishedAt } }, openReader, summary => { closed.summary = summary; });
   // 보류는 `acquire`가 같은 잠금 안에서 사건을 쓰고 돌아온다 — 실행 행(`recordRun`)을 만들지 않은 갈래다.
-  if (!outcome.ok && (outcome.error === "pending-edits" || outcome.error === "pr-check-failed")) return { recorded: true, result: "deferred", deferReason: outcome.error };
+  if (!outcome.ok && (outcome.error === "pending-edits" || outcome.error === "publish-raced")) return { recorded: true, result: "deferred", deferReason: outcome.error };
   if (closed.summary !== null) return { recorded: true, ...closed.summary };
   // `close`를 안 지난 반환은 실행권을 못 얻은 거부뿐이다(성공·실패 반환은 전부 `close`를 지난다).
   return { recorded: false, error: outcome.ok ? "unavailable" : outcome.error };
 }
 
-async function runImport(prisma: PrismaClient, input: CoreInput, openReader: () => Promise<RepoReader>, observe: (summary: ImportEventSummary) => void): Promise<RepositoryImportOutcome | { ok: false; error: "pending-edits" } | { ok: false; error: "pr-check-failed" }> {
+async function runImport(prisma: PrismaClient, input: CoreInput, openReader: () => Promise<RepoReader>, observe: (summary: ImportEventSummary) => void): Promise<RepositoryImportOutcome | { ok: false; error: "pending-edits" } | { ok: false; error: "publish-raced" }> {
   const acquired = await acquire(prisma, input);
   if (!acquired.ok) return acquired;
   const { lease } = acquired;

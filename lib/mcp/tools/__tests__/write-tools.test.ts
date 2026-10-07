@@ -190,6 +190,10 @@ describe("sync-running", () => {
 
 describe("preview_publish", () => {
   const preview = () => run("preview_publish", subject("editor", []), { slug: "acme" });
+  it("빈값 미리보기 경고는 지문 없이 writer-warnings 거부를 반환한다", async () => {
+    h.core.mockResolvedValueOnce({ status: "blocked", warnings: [{ surfaceSlug: "web", path: "en.yml", key: "hello", code: "write-empty-unsupported" }] });
+    expect(await preview()).toMatchObject({ status: "refused", code: "writer-warnings", detail: { warnings: [expect.objectContaining({ code: "write-empty-unsupported", path: "en.yml" })] } });
+  });
   it("grant 없는 EDITOR도 지문을 받는다 — 실행은 publish가 역할·grant를 다시 본다", async () => {
     expect(await preview()).toMatchObject({ status: "ok", data: { fingerprint: "f", sendable: { total: 1, keys: 1 } } });
   });

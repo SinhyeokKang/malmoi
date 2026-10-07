@@ -30,7 +30,7 @@ export function classifySurfaceFailure(prepared: { error: "resource-limit" | "in
 
 export type ImportEventSummary = {
   result: Extract<EventResult, "imported" | "partial" | "superseded" | "failed" | "deferred">;
-  deferReason: Extract<DeferReason, "pending-edits" | "too-large" | "pr-check-failed"> | null;
+  deferReason: Extract<DeferReason, "pending-edits" | "too-large" | "publish-raced"> | null;
 };
 
 /**
