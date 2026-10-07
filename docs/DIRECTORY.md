@@ -554,7 +554,7 @@ lib/
   adapters/             양방향 로케일 어댑터. ⚠️ layout(경로 모양)과 writeStrategy(write 기계)는 별개 축이다 —
                         yaml-catalog·code-dict가 per-locale인데 수술적이다. layout으로 가르는 코드가
                         남아 있으면 그 프로젝트의 PR이 조용히 비어 나간다
-                        index(detect/detectFormatWith/ADAPTERS) · types(계약 + 오류 코드 23) ·
+                        index(detect/detectFormatWith/ADAPTERS) · types(계약 + 오류 코드 24) ·
                         glob(역추적 없는 DP 매처) · shared(결정성 규칙) · quote-style · json-style ·
                         chrome-locales · json-catalog · yaml-catalog · code-dict · ts-dict(2026-09-14부터 자동 탐지 참여 — 씨앗은 tsDictProbePaths)
                         __tests__/contract.ts가 ADAPTERS를 순회하며 매트릭스를 검사한다
@@ -1068,7 +1068,8 @@ vitest.projects.config.ts
                         동시 CI push의 결과 표시(concurrent-import — barrier로 두 요청을 교차시킨다)와 전달 층 불변식
                         (delivery-invariants — 승인 Sync의 orphan 토큰 해제 · orphan 셀 적재 제외 · 로케일 재시도 · 보류 뒤 Revert)도
                         여기서만 잰다 — include가 디렉터리별 `__tests__/*.integration.ts`로 박혀 있어 그 밖에 만든 통합 테스트는 조용히 0건 수집된다.
-                        ⚠️ 디렉터리를 더하면 `scripts/gate-plan.ts` 트리거에도 더한다 — `__tests__/gate-plan.test.ts`가 둘을 대조한다
+                        ⚠️ 디렉터리를 더하면 `scripts/gate-plan.ts` 트리거에도 더한다 — `__tests__/gate-plan.test.ts`가 둘을 대조한다.
+                        테스트 위치와 구현 위치가 다를 때 구현도 등재한다: MCP의 OAuth 교환 테스트가 검증하는 `lib/oauth-server/**`도 트리거다
 vitest.credentials.config.ts
                         같은 형의 둘째다 — 자격증명 암·복호의 **격리 PostgreSQL** 검증
                         (`pnpm test:credentials:postgres`, include는 `lib/credentials/__tests__/*.integration.ts`).
