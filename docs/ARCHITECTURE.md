@@ -2858,7 +2858,7 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
   `setUiLocale`(`app/ui-locale/actions.ts`)도 `ok`·`invalid`·`failed`이고, 클라이언트가 reject를 `failed` 갈래로 받는다(오류 경계로 보내지 않는다).
 - **`setUiLocale`의 쓰기 순서는 계정 → 쿠키 → `revalidateAfterCommit`으로 고정이다.** 세션 읽기가 `unavailable`이거나 계정 쓰기가 실패하면 **아무것도 쓰지 않고
   `failed`**다 — 쿠키만 쓰면 다음 렌더에서 세션이 살아날 때 계정의 옛 값이 쿠키를 이겨 화면이 조용히 되돌아간다(그래서 "이 기기에만" 갈래가 없다). 쿠키는 http-only·
-  `SameSite=Lax`·https면 `Secure`(`x-forwarded-proto` 첫 값)·`Path=/`·1년이다(방침의 "All of them are http-only"가 참이어야 한다). 공개 Action이지만 계정에 쓰는 대상은
+  `SameSite=Lax`·https면 `Secure`(`x-forwarded-proto` 첫 값)·`Path=/`·1년이다(방침의 "사이드바 쿠키를 뺀 나머지는 모두 http-only"가 참이어야 한다 — 스크립트가 쓰는 쿠키는 LNB 접힘 `malmoi-sidebar-collapsed`(`lib/shell/sidebar-cookie.ts`, 2026-10-07) 하나이고 `policy-gate.test.tsx`가 소스에서 센다). 공개 Action이지만 계정에 쓰는 대상은
   세션이 정한다. CSRF는 Next의 Action Origin 검사가 1층이고, 세션 쿠키가 Lax라 교차 사이트 POST로는 남의 계정 행에 닿지 못한다(최악은 기기 언어 하나). `ProjectEvent`를 남기지 않는다.
 - **가이드 원고도 언어 축을 탄다** — `lib/guide/load.ts`가 `guide/<uiLocale>/`을 읽고 `/docs`가 `getUiLocale()`로 고른다. **없는 언어를 en으로 메우지 않는다**(던지거나 404),
   세 트리의 구조 동형은 `lib/guide/__tests__/locales.test.ts`가 지킨다. 크롤러 표면(`llms*.txt`·sitemap)은 `"en"`을 명시한다. 스크린샷은 en 한 벌 공유(`public/guide/`).
