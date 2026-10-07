@@ -26,7 +26,7 @@ export default async function LogsLoading() {
         <div className="flex items-center gap-2">
           <div className="relative flex">
             <h1 className="flex items-center text-lg font-medium invisible">{m.common.nav.logs}</h1>
-            <Skeleton size="lg" className="absolute top-1/2 w-16 -translate-y-1/2" />
+            <Skeleton size="lg" className="absolute left-0 top-1/2 w-16 -translate-y-1/2" />
           </div>
           <div className="ml-auto flex items-center gap-2">
             <div className="relative flex">
