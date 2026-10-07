@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { panelConstraints, panelLayout, panelPercent } from "../panel-size";
+import { collapseChange, panelConstraints, panelLayout, panelPercent } from "../panel-size";
 
 /**
  * **`react-resizable-panels`의 `minSize`·`defaultSize`·`maxSize`는 % 전용이다** (v2 `Panel.d.ts`:
@@ -91,5 +91,27 @@ describe("panelLayout", () => {
   it("못 잰 폭에는 null이다 — 0으로 나누면 100%가 된다", () => {
     expect(panelLayout(0, 240)).toBeNull();
     expect(panelLayout(Number.NaN, 240)).toBeNull();
+  });
+});
+
+/**
+ * **접힘 여부가 바뀐 순간만 알린다** (2026-10-07 — 기기 쿠키 쓰기의 판정). 버튼 토글·드래그 스냅·핸들 키보드(Enter·방향키) 어느 것으로
+ * 바뀌어도 같은 판정이다 — 드래그 여부를 입력으로 받지 않는다(받으면 키보드로 접은 상태가 쿠키에 안 남는다).
+ * 우리 `setLayout`과 라이브러리의 재평가는 접힘 여부를 보존하므로 여기서 `null`이다.
+ */
+describe("collapseChange", () => {
+  const W = 1000;
+  const C = 40;
+  it("펼침 → 접힌 몫이면 true, 접힘 → 펼친 몫이면 false", () => {
+    expect(collapseChange(false, (C / W) * 100, W, C)).toBe(true);
+    expect(collapseChange(true, (240 / W) * 100, W, C)).toBe(false);
+  });
+  it("여부가 그대로면 null — 폭만 바뀐 리사이즈·재측정은 쓰지 않는다", () => {
+    expect(collapseChange(false, (240 / W) * 100, W, C)).toBeNull();
+    expect(collapseChange(false, (320 / W) * 100, W, C)).toBeNull();
+    expect(collapseChange(true, (C / W) * 100, W, C)).toBeNull();
+  });
+  it("반올림 오차 0.01% 안은 접힌 몫이다", () => {
+    expect(collapseChange(false, (C / W) * 100 + 0.009, W, C)).toBe(true);
   });
 });

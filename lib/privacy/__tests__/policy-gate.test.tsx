@@ -1,3 +1,7 @@
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { createElement, Fragment, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
@@ -93,6 +97,30 @@ describe("방침 — 스크립트가 쓰는 사이드바 쿠키", () => {
   it("ko 본 쿠키 표에 사이드바 행이 있다", () => {
     const table = cookies(koPrivacy)?.blocks.find((b) => "table" in b);
     expect(table !== undefined && "table" in table ? table.table.rows.map((r) => r[0]) : []).toContain("사이드바");
+  });
+});
+
+/**
+ * 위 문장("스크립트가 읽을 수 있는 유일한 쿠키")을 **세는 검사** — 표와 문구만 보면 다음에 `document.cookie` 쓰기나 `httpOnly: false`가
+ * 하나 더 생겨도 green이다(POSTMORTEM 2026-09-19 — 방침이 X를 말하려면 X를 세는 검사가 먼저 있어야 한다).
+ */
+describe("방침 — 스크립트가 쓰는 쿠키는 소스에서도 하나다", () => {
+  const ROOT = fileURLToPath(new URL("../../..", import.meta.url));
+  const sources = (dir: string): string[] =>
+    readdirSync(join(ROOT, dir)).flatMap((name) => {
+      const rel = join(dir, name);
+      if (name === "__tests__" || name === "node_modules") return [];
+      if (statSync(join(ROOT, rel)).isDirectory()) return sources(rel);
+      return /\.(ts|tsx)$/.test(name) ? [rel] : [];
+    });
+  const files = [...["app", "components", "lib"].flatMap(sources), "auth.ts", "middleware.ts"];
+  const hits = (pattern: RegExp) => files.filter((rel) => pattern.test(readFileSync(join(ROOT, rel), "utf8")));
+
+  it("`document.cookie` 대입은 셸 패널 하나다", () => {
+    expect(hits(/document\.cookie\s*=(?!=)/)).toEqual(["components/shell/shell-panels.tsx"]);
+  });
+  it("`httpOnly: false`는 0곳이다", () => {
+    expect(hits(/httpOnly:\s*false/)).toEqual([]);
   });
 });
 

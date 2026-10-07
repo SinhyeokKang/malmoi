@@ -5,7 +5,7 @@ import type { ImperativePanelGroupHandle } from "react-resizable-panels";
 
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { useMessages } from "@/components/i18n/messages-provider";
-import { panelConstraints, panelLayout, panelPercent, type PanelPx } from "@/lib/shell/panel-size";
+import { collapseChange, panelConstraints, panelLayout, panelPercent, type PanelPx } from "@/lib/shell/panel-size";
 import { sidebarCollapsedCookie } from "@/lib/shell/sidebar-cookie";
 import { cn } from "@/lib/utils";
 
@@ -51,7 +51,7 @@ const FALLBACK = panelConstraints(FALLBACK_AVAILABLE, SHELL_SIDEBAR_PX) ?? undef
 /** 쿠키가 접힘이면 마운트 몫도 접힌 폭이다 — `defaultSize`는 마운트 때만 읽히므로 여기서 틀리면 한 프레임 240으로 그려진다. */
 const FALLBACK_COLLAPSED = FALLBACK === undefined ? undefined : { ...FALLBACK, defaultSize: panelPercent(FALLBACK_AVAILABLE, SHELL_SIDEBAR_COLLAPSED_PX) };
 
-/** 접힘 여부를 기기 쿠키에 남긴다 — **사용자의 토글·드래그만** 부른다(마운트·창 크기 변화는 상태를 바꾸지 않는다). */
+/** 접힘 여부를 기기 쿠키에 남긴다 — **사용자가 여부를 바꿨을 때만** 부른다(마운트·창 크기 변화는 여부를 보존한다 — `collapseChange`). */
 function rememberCollapsed(collapsed: boolean) {
   document.cookie = sidebarCollapsedCookie(collapsed, window.location.protocol === "https:");
 }
@@ -150,9 +150,11 @@ export function ShellPanels({ sidebar, children, initialCollapsed = false }: { s
            */
           onResize={(size) => {
             const width = available ?? FALLBACK_AVAILABLE;
-            const isCollapsed = size <= panelPercent(width, SHELL_SIDEBAR_COLLAPSED_PX) + 0.01;
-            // 드래그 스냅으로 접히고 펴진 것도 사용자의 선택이다 — 버튼 토글은 `toggle`이 이미 썼다.
-            if (dragging.current && isCollapsed !== collapsedRef.current) rememberCollapsed(isCollapsed);
+            const change = collapseChange(collapsedRef.current, size, width, SHELL_SIDEBAR_COLLAPSED_PX);
+            // 드래그 스냅·핸들 키보드로 바뀐 것도 사용자의 선택이다 — 드래그 여부로 거르면 키보드로 접은 상태가 안 남는다.
+            // 버튼 토글은 `toggle`이 먼저 같은 값을 썼다(jsdom에서는 라이브러리가 패널을 등록하지 않아 이 콜백이 안 돈다).
+            if (change !== null) rememberCollapsed(change);
+            const isCollapsed = change ?? collapsedRef.current;
             collapsedRef.current = isCollapsed;
             setCollapsed(isCollapsed);
             // 접힌 몫은 펼칠 폭이 아니다 — 드래그로 접어도 펼치면 마지막 펼친 폭으로 돌아간다.

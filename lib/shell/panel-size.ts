@@ -53,3 +53,14 @@ export function panelLayout(available: number, px: number): [number, number] | n
   const first = panelPercent(available, px);
   return [first, 100 - first];
 }
+
+/**
+ * 패널 몫(%)이 접힘 여부를 **바꿨으면** 새 여부, 그대로면 `null`. 접힌 몫은 `collapsedPx`의 %에 반올림 오차 0.01%를 더한 값까지다.
+ *
+ * ⚠️ **드래그 여부를 입력으로 받지 않는다** — 버튼·드래그 스냅·핸들 키보드(Enter·방향키) 어느 쪽으로 바뀌어도 사용자의 선택이고, 우리 `setLayout`과
+ * 라이브러리의 재평가는 접힘 여부를 보존해 여기서 `null`이다. 그래서 이 값이 곧 기기 쿠키를 쓸 때다(`lib/shell/sidebar-cookie.ts`).
+ */
+export function collapseChange(prev: boolean, sizePercent: number, available: number, collapsedPx: number): boolean | null {
+  const collapsed = sizePercent <= panelPercent(available, collapsedPx) + 0.01;
+  return collapsed === prev ? null : collapsed;
+}
