@@ -151,7 +151,7 @@ export function ShellPanels({ sidebar, children, initialCollapsed = false }: { s
           onResize={(size) => {
             const width = available ?? FALLBACK_AVAILABLE;
             const change = collapseChange(collapsedRef.current, size, width, SHELL_SIDEBAR_COLLAPSED_PX);
-            // 드래그 스냅·핸들 키보드로 바뀐 것도 사용자의 선택이다 — 드래그 여부로 거르면 키보드로 접은 상태가 안 남는다.
+            // 드래그 스냅으로 바뀐 것도 사용자의 선택이다 — 판정은 여부 변화 하나다(드래그 여부로 거르지 않는다 — `collapseChange`).
             // 버튼 토글은 `toggle`이 먼저 같은 값을 썼다(jsdom에서는 라이브러리가 패널을 등록하지 않아 이 콜백이 안 돈다).
             if (change !== null) rememberCollapsed(change);
             const isCollapsed = change ?? collapsedRef.current;
