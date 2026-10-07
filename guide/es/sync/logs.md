@@ -19,7 +19,7 @@ Si los filtros ocultan todos los eventos, la lista lo indica; elige **Borrar fil
 
 Abre un evento para inspeccionar sus detalles sin cambiar los filtros de la lista. Los eventos de traducción identifican la clave y la fuente; los eventos de sincronización y de Publicar muestran su resultado observado. En **Valores**, una sincronización muestra cuántas traducciones cambió, y una publicación muestra cuántas cambió en los archivos del repositorio. Una sincronización retenida por ediciones sin enviar las muestra en **Ediciones sin enviar**; una retenida por otro motivo, como una solicitud de cambios de Publicar que sigue abierta (un *pull request* en GitHub), lo explica en **Retenido porque**.
 
-![An event opened from Logs: a Publish run that sent two files to GitHub, with its trigger and a link to the pull request](/guide/logs-event.webp "Open an event to see its details.")
+![Un evento abierto desde Registros: una publicación que envió dos archivos a GitHub, con su desencadenante y un enlace a la pull request](/guide/logs-event.webp "Abre un evento para ver sus detalles.")
 
 ## Lee el historial archivado {#archived-history}
 

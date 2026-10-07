@@ -4,4 +4,4 @@ Malmoi es una herramienta de localización para repositorios de GitHub. Encuentr
 
 Configura un proyecto para conectar tu repositorio, o únete a tu equipo para editar y publicar traducciones.
 
-![A project's Home with counts for new keys, text to translate, text to review, and changes to send, next to the project's repository details](/guide/project-home.webp "Open a project to see what needs attention.")
+![La página de inicio de un proyecto con recuentos de claves nuevas, texto por traducir, texto por revisar y ediciones por enviar, junto a los datos del repositorio](/guide/project-home.webp "Abre un proyecto para ver qué necesita atención.")

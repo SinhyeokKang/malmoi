@@ -15,7 +15,7 @@ Elige **Propietario** solo para quien deba gestionar la conexión con el reposit
 3. Introduce las direcciones y elige un rol para cada fila.
 4. Envía las invitaciones.
 
-![The Invite members dialog with two email addresses, the Editor role chosen for each, and a button that sends both invitations](/guide/invite-members.webp "Enter each address, choose a role, and send the invitations.")
+![El diálogo Invitar miembros con dos direcciones de correo, el rol Editor elegido para ambas y un botón para enviar las dos invitaciones](/guide/invite-members.webp "Introduce cada dirección, elige un rol y envía las invitaciones.")
 
 Si alguna dirección superara un límite, no se envía ninguna invitación. Un correo fallido cuenta igualmente para el límite por hora.
 
@@ -25,7 +25,7 @@ Cada dirección aparece en **Invitaciones pendientes** cuando se crea la invitac
 
 Los propietarios del proyecto pueden cambiar el rol de un miembro, elegir **Quitar** para un miembro o gestionar las **Invitaciones pendientes** con **Revocar** y **Reenviar**. El rol de una invitación pendiente no se puede cambiar; revócala e invita de nuevo a la dirección. Consulta [Únete a un proyecto](../translate/join.md) para ver los pasos de quien recibe la invitación.
 
-![The Members list with an Owner and an Editor, each with a role menu and a Remove button, above an empty list of pending invitations](/guide/members.webp "Change a role or remove a member from the list.")
+![La lista de Miembros con un Propietario y un Editor, cada uno con un menú de rol y un botón Quitar, encima de una lista vacía de invitaciones pendientes](/guide/members.webp "Cambia un rol o quita a un miembro de la lista.")
 
 ## Qué pasa después {#next}
 

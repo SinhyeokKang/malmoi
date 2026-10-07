@@ -8,7 +8,7 @@ Cada fuente es un conjunto de archivos de traducción de tu repositorio. Los pro
 
 Abre **Fuentes** desde la navegación del proyecto. Cada fila muestra el estado de la fuente — **Sin sincronizar todavía**, **Sincronizando…**, **Sincronizada**, **Sincronizado en parte** o **Sincronización fallida** — y cuántas claves e idiomas tiene.
 
-![The Sources page listing two synced sources with their file paths, key counts, and languages](/guide/sources.webp "Each source is one set of translation files.")
+![La página Fuentes con dos fuentes sincronizadas, sus rutas de archivo, recuentos de claves e idiomas](/guide/sources.webp "Cada fuente es un conjunto de archivos de traducción.")
 
 ## Añade fuentes {#add-sources}
 

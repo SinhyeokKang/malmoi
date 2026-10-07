@@ -11,7 +11,7 @@ Antes de archivar, fusiona o cierra cualquier pull request de traducciones abier
 1. Abre **Configuración** y elige **Archivar proyecto**.
 2. Lee la confirmación y elige Archivar proyecto de nuevo. El botón pasa a ser **Restaurar proyecto**.
 
-![Project Settings scrolled down to the Archive project card below the repository and CI integration cards](/guide/archive-card.webp "Choose Archive project at the bottom of Settings.")
+![La Configuración del proyecto desplazada hasta la tarjeta Archivar proyecto, debajo de las tarjetas del repositorio y de integración con CI](/guide/archive-card.webp "Elige Archivar proyecto al final de Configuración.")
 
 Los miembros aún pueden abrir **Registros**; las demás páginas del proyecto no están disponibles mientras está archivado, aunque los propietarios pueden abrir Configuración.
 

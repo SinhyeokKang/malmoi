@@ -11,7 +11,7 @@ Antes de empezar: inicia sesión con un correo verificado, ve a **Proyectos** y 
 3. Si Malmoi muestra **Esperando aprobación**, pide a un propietario de la organización que la apruebe y luego elige **Intentar de nuevo**.
 4. Selecciona el repositorio, elige la **Rama** que contiene tus archivos de traducción y elige **Siguiente**. Es la rama base que Malmoi lee y contra la que abre los pull requests de traducciones.
 
-![Step 1 of 4 of New project with a repository selected in the list and dev chosen as its branch](/guide/create-repository.webp "Select the repository and its branch, then choose Next.")
+![El paso 1 de 4 de Nuevo proyecto con un repositorio seleccionado en la lista y dev como rama](/guide/create-repository.webp "Selecciona el repositorio y su rama y luego elige Siguiente.")
 
 ## Elige los archivos {#choose-files}
 
@@ -21,7 +21,7 @@ Antes de empezar: inicia sesión con un correo verificado, ve a **Proyectos** y 
 
 Malmoi muestra una fuente por cada conjunto de archivos seleccionado. Una fuente puede usar un idioma base distinto del de otra fuente.
 
-![Step 2 of 4 with two detected sets of translation files selected and a preview of one set's keys and values](/guide/create-files.webp "Select the detected files and check their keys.")
+![El paso 2 de 4 con dos conjuntos detectados de archivos de traducción seleccionados y una vista previa de las claves y los valores de uno de ellos](/guide/create-files.webp "Selecciona los archivos detectados y comprueba sus claves.")
 
 ## Completa los datos del proyecto {#confirm-project}
 
@@ -29,13 +29,13 @@ Malmoi muestra una fuente por cada conjunto de archivos seleccionado. Una fuente
 2. Introduce el **Nombre** y la **Dirección** del proyecto. La dirección es el nombre que aparece en la URL del proyecto; debe ser única en todo Malmoi y no se puede cambiar después.
 3. Revisa los límites de archivos y de tamaño en [Límites](../reference/limits.md#files) y elige **Crear proyecto**.
 
-![Step 3 of 4 with the project name and address filled in and English chosen as a source's base language](/guide/create-name.webp "Check the base language, name, and address before you create the project.")
+![El paso 3 de 4 con el nombre y la dirección del proyecto rellenados e inglés como idioma base de una fuente](/guide/create-name.webp "Comprueba el idioma base, el nombre y la dirección antes de crear el proyecto.")
 
 El proyecto queda listo al instante. El último paso dice **Malmoi está listo** y puedes traducir e invitar a tus compañeros de inmediato.
 
 ## Termina la configuración {#finish-setup}
 
-![Step 4 of 4, Malmoi is ready, with the push token, its Copy button, and the workflow file to save in the repository](/guide/create-ready.webp "Copy the push token and the workflow before you leave this page.")
+![El paso 4 de 4, Malmoi está listo, con el token de push, su botón Copiar y el archivo del flujo de trabajo que debes guardar en el repositorio](/guide/create-ready.webp "Copia el token de push y el flujo de trabajo antes de salir de esta página.")
 
 1. Copia el token de push que aparece en la página de finalización. Solo se muestra una vez; si lo pierdes, rótalo más tarde en **Configuración**.
 2. Añade el workflow y el secreto siguiendo [Añade el workflow](workflow.md).

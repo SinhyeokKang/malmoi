@@ -11,7 +11,7 @@ Claude Code, Codex y claude.ai pueden conectarse iniciando sesión en Malmoi en 
 5. Elige **Caduca en**, **Acciones permitidas** y **Alcance**, las mismas opciones que en un [token personal](token.md#token).
 6. Elige **Autorizar**. Tu navegador devuelve al agente su conexión y vuelves al agente. **Denegar** despide al agente sin una conexión.
 
-![The Connect an app to Malmoi screen for Claude, showing the signed-in account with Not you?, the app's name and address, Expires in set to 90 days, and Allowed actions with Translate & publish checked](/guide/oauth-consent.webp "Check the app's address, then choose what it can do.")
+![La pantalla Conectar una app a Malmoi para Claude, con la cuenta que ha iniciado sesión y el enlace ¿No eres tú?, el nombre y la dirección de la app, la caducidad en 90 días y Traducir y publicar marcado en Acciones permitidas](/guide/oauth-consent.webp "Comprueba la dirección de la app y luego elige qué puede hacer.")
 
 Si ya conectaste la misma aplicación antes, la pantalla lo indica: autorizar de nuevo reemplaza esa conexión, y la aplicación puede cerrar sesión en tus otros ordenadores. Una solicitud de inicio de sesión permanece abierta 10 minutos; si caduca o ya se respondió, empieza de nuevo desde el agente.
 
@@ -65,7 +65,7 @@ Cada agente que autorizas aparece en **Apps conectadas**, en la página **Conect
 2. Busca la aplicación. Dos conexiones pueden tener el mismo nombre; la dirección bajo el nombre las distingue.
 3. Elige **Desconectar** y luego **Desconectar app**.
 
-![The MCP connector page with two connected apps, Claude Code and a Codex app shown by its address, each with its allowed actions, scope, last use, expiry, and a Disconnect button, above the personal token card](/guide/mcp-connector.webp "Disconnect an app you no longer use.")
+![La página del conector MCP con dos apps conectadas, Claude Code y una app de Codex identificada por su dirección, cada una con sus acciones permitidas, alcance, último uso, caducidad y botón Desconectar, encima de la tarjeta de token personal](/guide/mcp-connector.webp "Desconecta una app que ya no uses.")
 
 La aplicación pierde el acceso desde su siguiente solicitud. Tus otras aplicaciones y tu token personal siguen funcionando. Quitar el conector dentro de claude.ai no lo desconecta aquí; elige **Desconectar** para terminarlo. Una conexión que caducó sigue en la lista con **Caducada**; autoriza la aplicación de nuevo desde el agente para seguir usándola.
 

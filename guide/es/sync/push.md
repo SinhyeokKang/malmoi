@@ -12,7 +12,7 @@ Ejecuta el workflow generado en la rama base. El workflow comprueba el token de 
 
 Si alguna traducción tiene una edición sin enviar, el workflow termina bien e informa `deferred`: la actualización del repositorio se retiene y Registros la muestra como **Retenido**. Las claves nuevas y las eliminadas también se retienen; el repositorio no se carga parcialmente. La pestaña **Sincronizar** de Inicio muestra **Retenido** en su fila **Espera**, y la tarjeta Por enviar explica el motivo. Publica las ediciones y ejecuta el workflow de nuevo, o un propietario del proyecto puede resolverlas con [Deshacer y resincronizar](revert.md).
 
-![A project's Home with one unsent edit to send and a note that repository updates are held](/guide/home-paused.webp "Repository updates are held until the unsent edits are published.")
+![La página de inicio de un proyecto con una edición sin enviar y un aviso de que las actualizaciones del repositorio están retenidas](/guide/home-paused.webp "Las actualizaciones del repositorio están retenidas hasta que se publiquen las ediciones sin enviar.")
 
 ## Fusiona o cierra el pull request abierto {#open-pull-request}
 

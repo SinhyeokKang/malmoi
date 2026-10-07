@@ -8,12 +8,12 @@ Antes de empezar: guarda los valores que quieres publicar. Publicar incluye toda
 
 Malmoi reúne los archivos en una única solicitud de cambios (un *pull request* en GitHub). No necesitas una cuenta de GitHub; el equipo de desarrollo lo revisa y lo fusiona.
 
-![A project's Home with one change to send and an active Publish button showing the count](/guide/home-publish.webp "Publish is at the top of Home.")
+![La página de inicio de un proyecto con una edición por enviar y un botón Publicar activo que muestra el recuento](/guide/home-publish.webp "Publicar está en la parte superior de Inicio.")
 
 1. Elige **Publicar** en la parte superior de **Inicio** o de **Traducciones**.
 2. Revisa en la vista previa los textos (claves) y los idiomas y usa la acción que se describe abajo.
 
-![The Publish preview listing one changed value, the language, and a button that opens a new pull request](/guide/publish-preview.webp "Review each change before you publish.")
+![La vista previa de publicación con un valor cambiado, el idioma y un botón para abrir una nueva pull request](/guide/publish-preview.webp "Revisa cada cambio antes de publicar.")
 
 ## Publica los cambios {#publish}
 
@@ -35,7 +35,7 @@ El resultado puede decir:
 - **GitHub no respondió** — tus valores guardados se conservan; inténtalo de nuevo más tarde.
 - **No pudimos confirmar si tus cambios se enviaron.** Revisa **Registros** antes de intentarlo de nuevo.
 
-![The Publish result saying nothing changed in the files because the edits were already in the repository](/guide/publish-result.webp "Read the result before you close it.")
+![El resultado de publicación que indica que los archivos no cambiaron porque las ediciones ya estaban en el repositorio](/guide/publish-result.webp "Lee el resultado antes de cerrarlo.")
 
 ## Publicación automática {#nightly}
 

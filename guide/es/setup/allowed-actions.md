@@ -14,7 +14,7 @@ Antes de empezar: abre **Settings** del repositorio o de la organización y lueg
 
 2. Guarda la política y ejecuta el workflow de nuevo.
 
-![GitHub Actions permissions with the select-actions option chosen and the four patterns entered](/guide/actions-policy.webp "Choose the select-actions option, enter the four patterns, and save.")
+![Los permisos de GitHub Actions con la opción de acciones seleccionadas marcada y los cuatro patrones introducidos](/guide/actions-policy.webp "Elige la opción de acciones seleccionadas, introduce los cuatro patrones y guarda.")
 
 Cuando se bloquea una acción, la ejecución se detiene en **Set up job** con “not allowed to be used.” El token de push no puede cambiar esta política de GitHub.
 

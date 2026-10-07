@@ -9,7 +9,7 @@ Antes de empezar: ten a mano el token de push de la página **Malmoi está listo
 1. En GitHub, abre **Settings** del repositorio, elige **Secrets and variables** y luego **Actions**.
 2. Elige **New repository secret**, escribe `PUSH_TOKEN`, pega el token de push y guárdalo.
 
-![GitHub's new secret form with PUSH_TOKEN entered as the name and an empty secret field](/guide/push-token-secret.webp "Enter PUSH_TOKEN as the name, paste the push token, and add the secret.")
+![El formulario de nuevo secreto de GitHub con PUSH_TOKEN como nombre y el campo del secreto vacío](/guide/push-token-secret.webp "Introduce PUSH_TOKEN como nombre, pega el token de push y añade el secreto.")
 
 ## Añade el workflow {#workflow}
 
@@ -17,7 +17,7 @@ Antes de empezar: ten a mano el token de push de la página **Malmoi está listo
 2. Si tu organización restringe las acciones, sigue [Permite las acciones](allowed-actions.md).
 3. Haz commit del archivo en la rama base que elegiste durante la configuración. El workflow generado tiene un paso por cada fuente.
 
-![The Workflow file dialog in Malmoi Settings showing the generated YAML and a Copy button](/guide/workflow-file.webp "Copy the YAML and save it as .github/workflows/malmoi-i18n.yml.")
+![El diálogo Archivo del flujo de trabajo en la Configuración de Malmoi con el YAML generado y un botón Copiar](/guide/workflow-file.webp "Copia el YAML y guárdalo como .github/workflows/malmoi-i18n.yml.")
 
 Si tu código lee las traducciones mediante una función envoltorio distinta de la predeterminada `@/i18n#t`, añade la entrada `wrapper` en el `with:` de ese paso. Usa `module#export` para una función directa, o añade `()` para un hook, como `next-intl#useTranslations()`. Para varios envoltorios, usa un bloque YAML `|` con uno por línea. La configuración no pide esta entrada. Ayuda a Malmoi a encontrar referencias de código; no decide qué claves de traducción existen.
 
