@@ -30,6 +30,8 @@
 
 A/C/D form the first wave with disjoint source and test ownership. A and B overlap home/meta-column.tsx, workspace.tsx, dictionaries and potentially related tests. C and B can overlap locale-panel.tsx. Start B only after A and C integration. D owns guide originals and guide tests exclusively. All repository documentation (DESIGN, ARCHITECTURE, DIRECTORY, POSTMORTEM, this plan) belongs to the coordinator; workers provide exact documentation proposals in handoffs and never edit those shared files. No other batch may edit a listed owner file without coordination.
 
+Full test suites and final gates run serially: C → A → D → B. Concurrent first-wave suites timed out in api-contract source scans at the existing 5000ms limit; C's earlier full suite passed. Preserve initial failures and rerun unchanged in isolation before deciding whether contention explains them. No timeout or assertion changes are authorized to make this pass.
+
 ## Acceptance gates
 
 1. Each worker reads repository rules and source-command-ship, follows ship bypass up to but not including step 11. Branch is dev-equivalent. Tests first with observed red, then implementation, full test/typecheck, self review; final worker gate is `pnpm gate --base dev` without output filtering. No .env.local copy, push, merge, sync, production deploy or schema edits.
@@ -41,7 +43,7 @@ A/C/D form the first wave with disjoint source and test ownership. A and B overl
 
 ## Evidence and progress
 
-- Intake complete; implementation not started.
+- First-wave implementation complete or in final verification; C owns the first isolated gate slot, A/D await explicit coordinator signals.
 - [ ] A implemented, independently reviewed, integrated
 - [ ] C implemented, independently reviewed, integrated
 - [ ] D implemented, independently reviewed, integrated
