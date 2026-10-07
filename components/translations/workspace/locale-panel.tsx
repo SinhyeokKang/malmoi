@@ -157,7 +157,7 @@ export function LocalePanelSkeleton() {
             {/* ⚠️ 비율 폭은 부모 폭이 있어야 선다 — flex 행의 `Skeleton`은 내용 폭이라 `flex-1`이 없으면 0으로 접힌다. */}
             <div className="min-w-0 flex-1"><Skeleton size="md" className="w-[45%]" /></div>
             <Skeleton className="ml-auto h-3 w-20 rounded-md" />
-            <Skeleton className="size-7 shrink-0 rounded-md" />
+            <Skeleton className="size-7 shrink-0 rounded-sm" />
           </div>
           <Skeleton size="xs" className="w-[60%]" />
         </div>
