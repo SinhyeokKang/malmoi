@@ -1,18 +1,26 @@
 // @vitest-environment jsdom
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { expect, it, vi } from "vitest";
+import { beforeEach, expect, it, vi } from "vitest";
 
 import HomeLoading from "@/app/(edit)/projects/[slug]/(home)/loading";
 import LogsLoading from "@/app/(edit)/projects/[slug]/logs/loading";
 import { EventRow } from "@/components/logs/event-row";
+import { LogFilters } from "@/components/logs/log-filters";
+import { PanelHeader } from "@/components/shell/content-panel";
 import { LocalePanel, LocalePanelSkeleton } from "@/components/translations/workspace/locale-panel";
 import type { EventRow as Row } from "@/lib/events/query";
 import { en } from "@/messages/en";
+import { ko } from "@/messages/ko";
+import { es } from "@/messages/es";
+import { getMessages } from "@/lib/i18n/server";
+import { parseLogFilter } from "@/lib/events/filter";
 
 import { find, render } from "./helpers/dom";
 
-vi.mock("@/lib/i18n/server", async () => ({ getUiLocale: async () => "en", getMessages: async () => (await import("@/messages/en")).en }));
+vi.mock("@/lib/i18n/server", async () => ({ getUiLocale: async () => "en", getMessages: vi.fn(async () => (await import("@/messages/en")).en) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }) }));
+beforeEach(() => { vi.mocked(getMessages).mockResolvedValue(en); });
 
 /**
  * 골격은 실물과 같은 지오메트리를 잡는다(#165) — jsdom은 레이아웃이 없어 px를 못 잰다. 그래서 **실물 소스의 클래스 문자열을
@@ -56,6 +64,61 @@ it("Logs 골격 머리는 필터 행을 든다 — 실물과 같은 행 클래�
   const row = container.querySelector<HTMLElement>("[data-skeleton-filter-row]")!;
   expect(row.className).toBe(filterRow);
   expect(row.querySelectorAll(".h-9").length).toBeGreaterThan(0);
+});
+
+it.each([["en", en], ["ko", ko], ["es", es]] as const)("Logs %s 기본 골격은 다섯 필터의 실제 라벨·프리미티브와 검색320으로 같은 줄바꿈 입력을 든다", async (uiLocale, m) => {
+  vi.mocked(getMessages).mockResolvedValue(m);
+  const { container: real } = await render(<PanelHeader><LogFilters
+    slug="alpha" filter={parseLogFilter({})} sources={[]} actors={[]} refreshable
+    now="2026-10-08T00:00:00Z"
+  /></PanelHeader>, { uiLocale });
+  const { container: skeleton } = await render(LogsLoading());
+  const realRow = find(real, "[data-log-filter-row]");
+  const loadingRow = find(skeleton, "[data-skeleton-filter-row]");
+  const filters = [...realRow.querySelectorAll<HTMLButtonElement>(":scope > button")];
+  expect(filters).toHaveLength(5);
+  expect(filters.map(node => node.textContent)).toEqual([
+    m.logs.kinds.all, m.logs.filters.anyDate, m.logs.filters.anyone,
+    m.logs.filters.anySource, m.logs.filters.anyResult,
+  ]);
+  expect(loadingRow.className).toBe(realRow.className);
+  const slots = [...loadingRow.children];
+  expect(slots).toHaveLength(6);
+  filters.forEach((control, index) => {
+    const slot = slots[index]!;
+    const sizingControl = find<HTMLButtonElement>(slot, "button");
+    expect(sizingControl.textContent).toBe(control.textContent);
+    expect(sizingControl.className.replace(" invisible", "")).toBe(control.className);
+    expect(sizingControl.classList.contains("h-9")).toBe(true);
+    expect(slot.classList.contains("shrink-0")).toBe(true);
+    expect(slot.classList.contains("flex")).toBe(true);
+    expect(slot.className).not.toMatch(/\bw-\S+/);
+    expect(sizingControl.disabled).toBe(true);
+    expect(sizingControl.tabIndex).toBe(-1);
+    expect(slot.querySelector(".absolute.inset-0")).not.toBeNull();
+  });
+  const search = find<HTMLInputElement>(realRow, 'input[type="search"]');
+  const loadingSearch = find<HTMLInputElement>(slots[5]!, 'input[type="search"]');
+  expect(search.classList.contains("w-80")).toBe(true);
+  expect(loadingSearch.className.replace(" invisible", "")).toBe(search.className);
+  expect(slots[5]!.className).toBe(search.parentElement!.parentElement!.className);
+  expect(loadingSearch.disabled).toBe(true);
+  expect(loadingSearch.tabIndex).toBe(-1);
+
+  const titleRow = realRow.previousElementSibling!;
+  const loadingTitle = loadingRow.previousElementSibling!;
+  expect(loadingTitle.className).toBe(titleRow.className);
+  const title = find(real, "h1");
+  const titleSizer = find(loadingTitle, "h1");
+  expect(titleSizer.textContent).toBe(title.textContent);
+  expect(titleSizer.className.replace(" invisible", "")).toBe(title.className);
+  expect(titleSizer.classList.contains("min-h-9")).toBe(true);
+  const refresh = find(titleRow, "button");
+  const refreshSizer = find(loadingTitle, "button");
+  expect(refreshSizer.className.replace(" invisible", "")).toBe(refresh.className);
+  expect(refreshSizer.textContent).toBe(refresh.textContent);
+  expect(skeleton.querySelector('[role="status"]')?.textContent).toBe(m.logs.loading.list);
+  expect(loadingRow.closest('[aria-hidden="true"]')).not.toBeNull();
 });
 
 it("Logs 골격 행은 실물 EventRow와 같은 padding·줄 묶음이고 보조 줄이 있다", async () => {
