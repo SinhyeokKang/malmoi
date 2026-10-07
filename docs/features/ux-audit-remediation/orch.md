@@ -21,7 +21,7 @@
 |---|---|---|---|---|---|---|
 | A | U1, U2 | Mutation-result tone consumers (account, settings, members, translations/workspace/workspace.tsx, publish-button.tsx), home/meta-column.tsx PR state, status canon, messages en/ko/es, associated tests | gpt-6-astra / medium — cross-surface result semantics and regression tests | None | Yes | Running |
 | B | U3 | All user-facing numeric consumers incl CountBadge, tree-panel, home counts/meta, workspace, locale panel as required; minimal numeric formatting helper and tests; dictionary numeric consistency | gpt-6.1-sol / high — broad but mechanical locale propagation | A integrated; C integrated before editing locale-panel | Yes | Planned |
-| C | U4, U6 | Logs loading.tsx, translations/workspace/locale-panel.tsx skeleton only; loading-parity and targeted skeleton tests | gpt-6.1-sol / medium — constrained geometry fixes | None | Yes | Running |
+| C | U4, U6 | Logs loading.tsx, translations/workspace/locale-panel.tsx skeleton only; loading-parity and targeted skeleton tests | gpt-6.1-sol / medium — constrained geometry fixes | None | Yes | Reviewed and integrated |
 | D | U5, U7 | guide/es image alt/title (26), guide/en/ko/es/translate/edit.md scope prose, lib/guide/__tests__/locales.test.ts or targeted guide regression | gpt-6.1-sol / medium — translation and guide contracts | None | Yes | Running |
 | R | Independent review | Read-only batch diffs, evidence, test classification and document proposals | gpt-6-astra / medium | Completed batch | Yes | Planned |
 | Q | Runtime QA | Read-only browser verification on main checkout; evidence and BugShot issues only | gpt-6.1-sol / high | All batches integrated + gate | Yes for observed regressions | Planned |
@@ -45,7 +45,7 @@ Full test suites and final gates run serially: C → A → D → B. Concurrent f
 
 - First-wave implementation complete or in final verification; C owns the first isolated gate slot, A/D await explicit coordinator signals.
 - [ ] A implemented, independently reviewed, integrated
-- [ ] C implemented, independently reviewed, integrated
+- [x] C implemented, independently reviewed, integrated
 - [ ] D implemented, independently reviewed, integrated
 - [ ] B implemented, independently reviewed, integrated
 - [ ] Documentation freshness and final gate
@@ -62,3 +62,4 @@ Full test suites and final gates run serially: C → A → D → B. Concurrent f
 - B queued task `task_36497f830e44`; coordinator holds dispatch until A/C integration.
 - Effective launches match planned models/efforts; first-wave turns observed.
 - A scope clarification: include MemberList changeUnconfirmed, the same unknown-result danger branch; no new product behavior.
+- C: red 4 → targeted green 10; isolated final gate green, 12,126 passed / 2 skipped. First concurrent gate timed out twice in source scans; unchanged isolated run passed. Independent Astra review `ctx_2709f2e9b42d` PASS (no red/yellow); raw targeted red/green logs unavailable, claims distinguished from inspected final gate log. Integrated `a6b0251f`, `73b59d70`. Handoff and gate logs copied to coordinator scratch. Both terminals released; clean fully integrated child removed. Browser geometry remains Q scope.
