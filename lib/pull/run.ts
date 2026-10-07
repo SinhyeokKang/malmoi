@@ -1,4 +1,4 @@
-import { fail } from "@/lib/failure";
+import { AppError, fail } from "@/lib/failure";
 import { adapterFor } from "@/lib/adapters";
 import type { AdapterError } from "@/lib/adapters/types";
 import type { GitClient } from "./client";
@@ -179,6 +179,13 @@ export function projectFormats(surfaces: PullState["surfaces"]) {
   });
 }
 
+/** 미리보기만 파일 종류 거부를 복구 안내로 옮긴다. 실행의 AppError 이름·메시지·실패 계약은 유지한다. */
+export class GitFileKindError extends AppError {
+  constructor(readonly path: string, readonly mode: string, readonly branch: string) {
+    super(`unsupported Git file mode at ${path}: ${mode}`);
+  }
+}
+
 /**
  * @param read 이미 읽은 base head·트리 — 미리보기가 셀 조회에 쓴 것을 넘긴다(#128 r5). 다시 읽으면 한 번 열 때 ref·트리를 두 번 부르고, 셀과 파일 목록이
  *   서로 다른 head를 볼 수 있다.
@@ -200,6 +207,22 @@ export async function renderProject(
   })));
   if (!ownership.ok) fail(ownership.conflicts.map(c => `Surface path conflict: ${c.path} (${c.surfaceSlugs.join(", ")})`).join("; "));
   const paths = resolved.flatMap(item => item.paths);
+  // 원본 blob 읽기·렌더보다 먼저 파일 종류를 확인한다. 링크를 파싱 실패/파일 부재로 접으면 재생성 writer가 덮어쓴다.
+  const entryByPath = new Map(tree.map(entry => [entry.path, entry]));
+  for (const { path } of paths) {
+    const entry = entryByPath.get(path);
+    if (entry !== undefined && entry.mode !== "100644" && entry.mode !== "100755") {
+      throw new GitFileKindError(path, entry.mode, project.baseBranch);
+    }
+    // 디렉터리 링크·gitlink 아래의 새 경로를 만드는 우회도 막는다. 실제 tree 조상만 허용한다.
+    const parts = path.split("/");
+    for (let depth = 1; depth < parts.length; depth++) {
+      const ancestor = entryByPath.get(parts.slice(0, depth).join("/"));
+      if (ancestor !== undefined && ancestor.mode !== "040000") {
+        throw new GitFileKindError(ancestor.path, ancestor.mode, project.baseBranch);
+      }
+    }
+  }
 
   // **어댑터 종류와 무관하게 원본을 읽는다.** 두 방식이 원본을 쓰는 이유가 다르다:
   //   - 수술적 치환 — write에 **필수**다. 없으면 치환할 대상이 없어 파일을 안 낸다 (§1.4)

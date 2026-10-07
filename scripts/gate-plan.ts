@@ -18,6 +18,7 @@ export type GateStep =
 /**
  * `pnpm test`에 없는 격리 PostgreSQL 스위트와 그것을 부르는 경로. `/`로 끝나면 그 아래 전부, 아니면 그 파일 하나다.
  * ⚠️ `vitest.projects.config.ts` include에 디렉터리를 더하면 여기에도 더한다 — 테스트가 설정을 읽어 대조한다.
+ * ⚠️ 테스트 위치 밖의 Action·Route·자격증명 구현도 트리거다 — 직접 import하는 생산 경로가 빠지면 단독 변경은 검증을 건너뛴다.
  */
 const POSTGRES_SUITES: readonly { step: GateStep; triggers: readonly string[] }[] = [
   {
@@ -47,14 +48,23 @@ const POSTGRES_SUITES: readonly { step: GateStep; triggers: readonly string[] }[
       "lib/projects/archive.ts",
       "lib/operator/",
       "app/(edit)/actions.ts",
+      "app/(edit)/projects/actions.ts",
+      "app/(edit)/projects/[slug]/settings/actions.ts",
+      "app/(edit)/projects/[slug]/sources/actions.ts",
+      "app/invite/actions.ts",
+      "app/search/actions.ts",
       "app/api/push/route.ts",
+      "app/api/push/failure/route.ts",
       "app/api/pull/",
       "app/api/mcp/",
       "prisma/migrations/",
       "vitest.projects.config.ts",
     ],
   },
-  { step: "test:credentials:postgres", triggers: ["lib/credentials/", "vitest.credentials.config.ts"] },
+  {
+    step: "test:credentials:postgres",
+    triggers: ["lib/credentials/", "lib/account-connect/", "lib/login-link/", "lib/session-revocation/", "vitest.credentials.config.ts"],
+  },
 ];
 
 function hits(path: string, trigger: string): boolean {

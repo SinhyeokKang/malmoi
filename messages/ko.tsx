@@ -1532,6 +1532,13 @@ export const ko = {
         owner: "그 브랜치의 파일을 고치거나, 설정에서 경로나 브랜치를 바꾸세요.",
         editor: "프로젝트 소유자에게 파일을 고치거나 설정에서 경로를 바꿔 달라고 요청하세요.",
       },
+      unsupportedFileKind: {
+        title: "리포지토리 경로가 일반 파일이 아닙니다",
+        description: (path: string, branch: string): string =>
+          `${branch} 브랜치의 ${path} 경로가 일반 파일이 아니거나, 상위 경로가 디렉터리가 아닙니다. 아무것도 보내지 않았습니다.`,
+        owner: "해당 브랜치의 디렉터리 안에 일반 언어 파일을 두거나, 설정에서 경로를 바꾸세요.",
+        editor: "프로젝트 소유자에게 해당 브랜치의 디렉터리 안에 일반 언어 파일을 두도록 요청하세요.",
+      },
       unknownDelivery: "변경 사항이 전송되었는지 확인하지 못했습니다.",
 
       alreadyRunning: "다른 사람이 지금 게시하고 있습니다",
@@ -2053,7 +2060,7 @@ export const ko = {
     "not-property-assignment": "속성 할당이 아닙니다.",
     "duplicate-key": "키가 중복되어 두 값 중 하나가 누락됩니다.",
     "duplicate-property": "키가 두 번 정의되어 있습니다. Malmoi는 편집하는 쪽을 쓰고 다른 쪽은 그대로 둡니다.",
-    "key-shadowed": "이 키가 다른 키의 경로와 겹쳐 값을 쓸 수 없습니다. 해당 값은 반영하지 않았습니다.",
+    "key-shadowed": "다른 키나 속성이 이 키의 자리를 가려 값을 안전하게 쓸 수 없습니다.",
     "write-parse-failed": "파일을 해석하지 못해 변경하지 않았습니다.",
     "write-no-default-export": "이 파일에 default export 객체가 없어 변경하지 않았습니다.",
     "write-locale-object-missing": "이 언어가 파일에 없어 번역을 쓰지 않았습니다.",

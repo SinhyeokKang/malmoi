@@ -73,7 +73,8 @@ function codeSource(keys: readonly string[]): string {
 function tsSource(keys: readonly string[]): string {
   const body = () =>
     [
-      ...keys.map((k) => `  ${JSON.stringify(k)}: ${JSON.stringify(srcVal(k))},`),
+      // 비computed __proto__는 own 키가 아니라 prototype setter다.
+      ...keys.map((k) => `  ${k === "__proto__" ? `[${JSON.stringify(k)}]` : JSON.stringify(k)}: ${JSON.stringify(srcVal(k))},`),
       `  ${JSON.stringify(ORPHAN_KEY)}: ${JSON.stringify(ORPHAN_SOURCE_VALUE)},`,
     ].join("\n");
   return [

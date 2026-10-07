@@ -1054,7 +1054,7 @@ export function createHarness(seed: Seed = {}) {
       },
     },
     /** 전달 확인 무효화(`invalidateDeliveryConfirmations`)만 부른다 — 기록만 하고 행은 없다. */
-    deliveryConfirmation: { updateMany: vi.fn(async () => ({ count: 0 })), findUnique: vi.fn(async () => null) },
+    deliveryConfirmation: { findMany: vi.fn(async () => []), updateMany: vi.fn(async () => ({ count: 0 })), findUnique: vi.fn(async () => null) },
     projectMember: {
       findUnique: findMember,
       findMany: findManyMembers,

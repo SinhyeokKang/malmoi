@@ -25,6 +25,7 @@ import { routes } from "@/lib/routes";
 import { SlowNotice } from "@/components/slow-notice";
 import { Alert } from "@/components/ui/alert";
 import { adapterErrorMessage } from "@/lib/i18n/adapter-errors";
+import { ConnectGithubButton } from "./connect-github";
 import { failureText, isAccessLost, isRepoScopedRefusal } from "./failure";
 import { LargeModal } from "@/components/ui/large-modal";
 import { FilesStep, failedPreview, previewFailureText, samplePreview, type ManualEntry, type PreviewState } from "./steps/files";
@@ -590,6 +591,10 @@ export function NewProject({
               {creationFailure.conflicts?.map(conflict => <p key={conflict.path}>{conflict.path}</p>)}
             </>}
           </Alert>}
+          {/* 생성 직전 인가가 만료되면 목록 오류 분기를 거치지 않으므로 이 자리에도 복구 경로가 필요하다. */}
+          {creationFailure !== null && creationFailure !== "unknown" && creationFailure.error === "reauthorize" && (
+            <ConnectGithubButton dest="new" back={backQuery} label={m.newProject.empty.connect.reauthorize} />
+          )}
           <NamingStep
             disabled={pending}
             surfaces={!usingManual && selectedCandidates.length > 1 ? selectedCandidates.map(({ item, index }) => ({
@@ -614,7 +619,9 @@ export function NewProject({
               pathTemplate: usingManual ? pathTemplate
                 : selectedCandidates.map(({ item }) => item.pathTemplate).join(", ") || pathTemplate,
               branch: branchValue,
-              banner: accessLost ?? banner,
+              // 생성 거부가 이미 같은 사유를 알렸어도 접근 상실 상태는 Back 뒤 차단에 남겨 둔다 (#199).
+              banner: creationFailure !== null && creationFailure !== "unknown" && creationFailure.error === (accessLost ?? banner)
+                ? null : accessLost ?? banner,
             }}
             onChange={(next) => {
               if (next.name !== undefined) setName(next.name);

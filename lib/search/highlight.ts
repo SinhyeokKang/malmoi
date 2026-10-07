@@ -1,7 +1,7 @@
 type Range = { start: number; end: number };
 
 /** Lowercasing may expand a character; every folded offset maps back to a whole code point. */
-function matchRanges(text: string, tokens: readonly string[]): Range[] {
+function foldWithOffsets(text: string) {
   const starts: number[] = [];
   const ends: number[] = [];
   let offset = 0;
@@ -14,6 +14,22 @@ function matchRanges(text: string, tokens: readonly string[]): Range[] {
   }
   // Fold the whole string to preserve contextual casing (e.g. Greek final sigma).
   const folded = text.toLowerCase();
+  return { folded, starts, ends };
+}
+
+/** First literal match in original UTF-16 offsets; adjacent occurrences stay separate. */
+export function firstMatchRange(text: string, query: string): Range | null {
+  if (query === "") return null;
+  const { folded, starts, ends } = foldWithOffsets(text);
+  const token = query.toLowerCase();
+  const at = folded.indexOf(token);
+  const start = starts[at];
+  const end = ends[at + token.length - 1];
+  return at < 0 || start === undefined || end === undefined ? null : { start, end };
+}
+
+function matchRanges(text: string, tokens: readonly string[]): Range[] {
+  const { folded, starts, ends } = foldWithOffsets(text);
   const ranges: Range[] = [];
   for (const raw of tokens) {
     const token = raw.toLowerCase();

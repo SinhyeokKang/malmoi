@@ -49,6 +49,25 @@ describe("planGate", () => {
     expect(planGate(["lib/credentials/rotate.ts"])).toEqual(["db:generate", "typecheck", "test", "test:credentials:postgres", "build", "sync:agents:check"]);
   });
 
+  it.each([
+    "app/(edit)/projects/actions.ts",
+    "app/(edit)/projects/[slug]/settings/actions.ts",
+    "app/(edit)/projects/[slug]/sources/actions.ts",
+    "app/invite/actions.ts",
+    "app/search/actions.ts",
+    "app/api/push/failure/route.ts",
+  ])("PostgreSQL 테스트가 직접 부르는 %s 단독 변경도 projects 스위트를 실행한다", path => {
+    expect(planGate([path])).toContain("test:projects:postgres");
+  });
+
+  it.each([
+    "lib/account-connect/store.ts", "lib/account-connect/http.ts",
+    "lib/login-link/store.ts", "lib/login-link/http.ts", "lib/login-link/policy.ts",
+    "lib/session-revocation/store.ts", "lib/session-revocation/http.ts",
+  ])("자격증명 통합 테스트가 직접 부르는 %s 단독 변경도 credentials 스위트를 실행한다", path => {
+    expect(planGate([path])).toContain("test:credentials:postgres");
+  });
+
   it("둘 다 건드리면 둘 다 — projects가 먼저다", () => {
     expect(planGate(["lib/credentials/rotate.ts", "lib/import/run.ts"])).toEqual([
       "db:generate",

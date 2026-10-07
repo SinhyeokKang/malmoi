@@ -35,7 +35,7 @@ export const previewPublish = defineTool({
       message: result.warnings.map(w => pullWarningLine(w, en.adapterErrors)).join("\n"), detail: { warnings: result.warnings } };
     if (result.status === "failed") return { status: "unavailable" };
     if (result.status === "refused") {
-      const copy = result.reason === "base-file-missing" ? en.translations.publish.baseFileMissing : en.translations.publish.baseFileUnreadable;
+      const copy = result.reason === "unsupported-file-kind" ? en.translations.publish.unsupportedFileKind : result.reason === "base-file-missing" ? en.translations.publish.baseFileMissing : en.translations.publish.baseFileUnreadable;
       return { status: "refused", code: result.reason, message: copy.description(result.path, result.branch) };
     }
     const { preview } = result;

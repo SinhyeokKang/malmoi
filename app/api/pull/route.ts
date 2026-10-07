@@ -63,7 +63,7 @@ export async function GET(request: Request): Promise<NextResponse> {
         repoOwner: true,
         repoName: true,
         baseBranch: true,
-        surfaces: { select: { id: true, slug: true, archivedAt: true, lastCommitSha: true, adapterName: true, pathTemplate: true, baseLocale: true, lastImportError: true } },
+        surfaces: { select: { id: true, slug: true, archivedAt: true, lastCommitSha: true, adapterName: true, pathTemplate: true, baseLocale: true, lastImportError: true, importRevision: true } },
         // 보관 제외 (7단계) — 순회 대상에서 빠지므로 게이트까지 가지도 않는다.
         archivedAt: true,
         // ⚠️ **정렬 재료다** — 마지막 야간 방문이 오래된 프로젝트부터 돈다. 상한에서 잘린 뒤쪽이

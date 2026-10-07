@@ -1,3 +1,4 @@
+import { readDeliveryRevision } from "@/lib/pull/delivery-revision";
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -101,7 +102,7 @@ function payload(keys: string[], opts: { value?: string; locales?: string[]; tra
 }
 const ci = (p: ReturnType<typeof payload>) => applyPush(prisma, { projectId: "p", surfaceId: "s" }, p, { token: "ci", startedAt: new Date(), previousBaseLocale: "en", refsMode: "replace" });
 const protectedCi = async (p: ReturnType<typeof payload>) => applyProtectedPush(prisma, { projectId: "p", surfaceId: "s" }, p,
-  { token: "ci", startedAt: new Date(), previousBaseLocale: "en", refsMode: "replace", pushTokenHash: hashPushToken(pushToken), expectedLastPublishedAt: (await prisma.project.findUniqueOrThrow({ where: { id: "p" } })).lastPublishedAt });
+  { token: "ci", startedAt: new Date(), previousBaseLocale: "en", refsMode: "replace", pushTokenHash: hashPushToken(pushToken), expectedDeliveryRevision: await readDeliveryRevision(prisma, "p"), expectedLastPublishedAt: (await prisma.project.findUniqueOrThrow({ where: { id: "p" } })).lastPublishedAt });
 
 const cellOf = async (key: string, locale: string) => {
   const k = await prisma.stringKey.findFirstOrThrow({ where: { projectId: "p", key } });

@@ -165,13 +165,15 @@ async function main(): Promise<void> {
     }
 
     const tree = await client.getTree(headSha);
-    console.log(`트리 blob: ${tree.length}개`);
+    // getTree는 디렉터리·gitlink도 담는다. snapshot.files와 같은 blob 모집단(심링크 포함)만 비교한다.
+    const blobCount = tree.filter(entry => ["100644", "100755", "120000"].includes(entry.mode)).length;
+    console.log(`트리 blob: ${blobCount}개`);
     // ⚠️ **같은 값을 두 경로로 읽고 대조한다.** 이 스모크의 존재 이유가 "단위 테스트가 못 보는 I/O
     // 껍데기의 조용한 404"다 (POSTMORTEM 2026-09-01) — 새 읽기 경로가 옛 경로와 갈리면 여기서 드러난다.
     if (snapshot.status === "ok") {
       if (snapshot.headSha !== headSha) console.log(`  ⚠️ 스냅샷 head가 다르다: ${snapshot.headSha}`);
-      if (snapshot.files.length !== tree.length) {
-        console.log(`  ⚠️ 스냅샷 파일 수가 다르다: ${snapshot.files.length} vs ${tree.length}`);
+      if (snapshot.files.length !== blobCount) {
+        console.log(`  ⚠️ 스냅샷 파일 수가 다르다: ${snapshot.files.length} vs ${blobCount}`);
       }
     }
 

@@ -194,6 +194,16 @@ describe("preview_publish", () => {
     h.core.mockResolvedValueOnce({ status: "blocked", warnings: [{ surfaceSlug: "web", path: "en.yml", key: "hello", code: "write-empty-unsupported" }] });
     expect(await preview()).toMatchObject({ status: "refused", code: "writer-warnings", detail: { warnings: [expect.objectContaining({ code: "write-empty-unsupported", path: "en.yml" })] } });
   });
+  it("#200 key-shadowed stays a writer warning without a fingerprint", async () => {
+    h.core.mockResolvedValueOnce({ status: "blocked", warnings: [{ surfaceSlug: "web", path: "a.ts", key: "hello", code: "key-shadowed" }] });
+    const result = await preview();
+    expect(result).toMatchObject({ status: "refused", code: "writer-warnings", message: expect.stringContaining(en.adapterErrors["key-shadowed"]) });
+    expect(result).not.toHaveProperty("data.fingerprint");
+  });
+  it("#200 file-kind refusal preserves its path and recovery", async () => {
+    h.core.mockResolvedValueOnce({ status: "refused", reason: "unsupported-file-kind", path: "i18n/ko.json", branch: "main" });
+    expect(await preview()).toMatchObject({ status: "refused", code: "unsupported-file-kind", message: expect.stringContaining("isn't a regular file or is inside a path that isn't a directory") });
+  });
   it("grant 없는 EDITOR도 지문을 받는다 — 실행은 publish가 역할·grant를 다시 본다", async () => {
     expect(await preview()).toMatchObject({ status: "ok", data: { fingerprint: "f", sendable: { total: 1, keys: 1 } } });
   });

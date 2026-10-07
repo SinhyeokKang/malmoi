@@ -52,7 +52,7 @@ describe("createFakeGitClient — 응답 주입", () => {
   });
 
   it("주입한 트리를 돌려준다", async () => {
-    const tree = [{ path: "i18n/ko.json", sha: "blob1" }];
+    const tree = [{ path: "i18n/ko.json", sha: "blob1", mode: "100644" }];
     const { client } = createFakeGitClient({ tree: { basehead: tree } });
     await expect(client.getTree("basehead")).resolves.toEqual(tree);
   });

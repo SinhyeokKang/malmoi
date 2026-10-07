@@ -84,12 +84,25 @@ describe("reportPushResponse — 보류 사유별 경고", () => {
     expect(warning).not.toContain("unsent");
   });
 
-  it("pr-check-failed → 경고 1줄: 확인하지 못했다 — 다시 돌린다", () => {
+  it("pr-check-failed → 경고 1줄: 확인하지 못했다 — 최신 head에서 재개한다", () => {
     const [warning, ...rest] = warnings(held("pr-check-failed"));
     expect(rest).toEqual([]);
     expect(warning).toContain("couldn't check");
     expect(warning).toMatch(/not imported/);
     expect(warning).not.toContain("unsent");
+  });
+
+  it.each([
+    { reason: "open-pr" },
+    { reason: "pr-check-failed" },
+    { reason: "publish-raced" },
+    { reason: "pending-edits", pendingCount: 3 },
+    { pendingCount: 2 },
+  ])("보류 %j는 현재 head의 새 push나 야간 sync를 권하고 옛 job 재실행을 권하지 않는다", body => {
+    const [warning] = warnings(JSON.stringify({ status: "deferred", ...body }));
+    expect(warning).toContain("current head");
+    expect(warning).toContain("nightly sync");
+    expect(warning).not.toMatch(/re-run this job/i);
   });
 
   it("옛 모양(reason 없이 pendingCount만)은 v2 그대로 미전달 경고다", () => {

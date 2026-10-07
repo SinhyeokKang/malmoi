@@ -3,6 +3,8 @@ import {
   SyntaxKind,
   type CallExpression,
   type Node,
+  type Identifier,
+  type Symbol as MorphSymbol,
   type SourceFile,
   type VariableDeclaration,
 } from "ts-morph";
@@ -25,18 +27,20 @@ const CHROME_CALL = "chrome.i18n.getMessage";
  */
 const HOOK_RETURN_PROP = "t";
 
+// 상태는 사용자 문자열과 겹치지 않는다.
+const UNRESOLVED = Symbol("unresolved");
+const UNSUPPORTED = Symbol("unsupported");
+
 /**
  * 훅이 만든 지역 바인딩 하나. `t`가 파일 어디에서나 같은 것을 가리키지 않으므로
- * **스코프와 선언 위치를 함께 들고 다닌다** — 한 파일에 컴포넌트가 여럿이면 같은 이름의
+ * **lexical symbol과 선언 위치를 함께 들고 다닌다** — 한 파일에 컴포넌트가 여럿이면 같은 이름의
  * `t`가 서로 다른 namespace를 갖는다(실측: bugshot-web).
  */
 type HookBinding = {
-  name: string;
+  symbol: MorphSymbol;
   /** next-intl의 namespace. 붙으면 키가 `${namespace}.${arg}`가 된다. */
   namespace: string | undefined;
   declEnd: number;
-  scopeStart: number;
-  scopeEnd: number;
 };
 
 /**
@@ -56,7 +60,7 @@ export function extractRefs(
   code: string,
   wrappers: readonly WrapperId[],
 ): { found: Array<{ key: string; ref: KeyRef }>; warnings: ScanWarning[] } {
-  // 타입 정보가 필요 없어(호출 형태만 본다) 컴파일러 옵션·lib을 로드하지 않는다 —
+  // 파일 안의 lexical symbol만 필요하므로 외부 모듈·lib을 로드하지 않는다 —
   // 수백 파일에서 이게 속도를 좌우한다.
   const project = new Project({
     useInMemoryFileSystem: true,
@@ -70,10 +74,10 @@ export function extractRefs(
   const warnings: ScanWarning[] = [];
 
   // 이 파일이 래퍼를 import했는가. 안 했으면 여기 있는 t()는 남의 것이므로 손대지 않는다.
-  const directNames = new Set<string>();
-  const hookNames = new Set<string>();
+  const directNames = new Set<MorphSymbol>();
+  const hookNames = new Set<MorphSymbol>();
   for (const wrapper of wrappers) {
-    const local = wrapperLocalName(sourceFile, wrapper);
+    const local = wrapperLocalSymbol(sourceFile, wrapper);
     if (local === undefined) continue;
     (wrapper.kind === "hook" ? hookNames : directNames).add(local);
   }
@@ -84,9 +88,11 @@ export function extractRefs(
     const callee = call.getExpression().getText();
     const start = call.getStart();
 
-    // direct를 먼저 본다 — 같은 이름이 import와 훅 바인딩 양쪽에 있으면 import가 더 좁은 근거다.
-    const isDirect = directNames.has(callee) || callee === CHROME_CALL;
-    const binding = isDirect ? undefined : bindingFor(bindings, callee, start);
+    // 이름이 같아도 매개변수·일반 선언이 가리면 다른 symbol이다.
+    const expression = call.getExpression();
+    const symbol = expression.isKind(SyntaxKind.Identifier) ? expression.getSymbol() : undefined;
+    const isDirect = (symbol !== undefined && directNames.has(symbol)) || callee === CHROME_CALL;
+    const binding = isDirect ? undefined : bindings.find((b) => b.symbol === symbol && start >= b.declEnd);
     if (!isDirect && !binding) continue;
 
     const line = lineOf(sourceFile, call);
@@ -132,7 +138,7 @@ export function extractRefs(
  */
 function collectHookBindings(
   sourceFile: SourceFile,
-  hookNames: ReadonlySet<string>,
+  hookNames: ReadonlySet<MorphSymbol>,
   path: string,
   warnings: ScanWarning[],
 ): HookBinding[] {
@@ -144,7 +150,7 @@ function collectHookBindings(
 
     const line = lineOf(sourceFile, call);
     const ns = namespaceOfHookCall(call);
-    if (ns === "unresolved") {
+    if (ns === UNRESOLVED) {
       // **접두사를 모르는 채로 잡으면 존재하지 않는 키가 refs에 실린다.** 0건이 낫다.
       warnings.push({
         path,
@@ -157,7 +163,7 @@ function collectHookBindings(
     }
 
     const name = boundName(decl);
-    if (name === "unsupported") {
+    if (name === UNSUPPORTED) {
       warnings.push({
         path,
         line,
@@ -168,13 +174,12 @@ function collectHookBindings(
     // 구조분해에 `t`가 없으면 그 훅의 다른 값을 쓴 것이다 (`const { language } = useI18n()`) — 정상이다.
     if (name === undefined) continue;
 
-    const scope = decl.getFirstAncestor((a) => a.isKind(SyntaxKind.Block) || a.isKind(SyntaxKind.SourceFile));
+    const symbol = name.getSymbol();
+    if (!symbol) continue;
     out.push({
-      name,
+      symbol,
       namespace: ns,
       declEnd: decl.getEnd(),
-      scopeStart: scope?.getStart() ?? 0,
-      scopeEnd: scope?.getEnd() ?? Number.MAX_SAFE_INTEGER,
     });
   }
 
@@ -182,25 +187,30 @@ function collectHookBindings(
 }
 
 /** 선언의 initializer가 훅 호출이면 그 호출. `await`는 벗긴다 (next-intl 서버 API가 async다). */
-function hookCallOf(decl: VariableDeclaration, hookNames: ReadonlySet<string>): CallExpression | undefined {
+function hookCallOf(decl: VariableDeclaration, hookNames: ReadonlySet<MorphSymbol>): CallExpression | undefined {
   let init: Node | undefined = decl.getInitializer();
   if (init?.isKind(SyntaxKind.AwaitExpression)) init = init.getExpression();
   if (!init?.isKind(SyntaxKind.CallExpression)) return undefined;
-  return hookNames.has(init.getExpression().getText()) ? init : undefined;
+  const expression = init.getExpression();
+  const symbol = expression.isKind(SyntaxKind.Identifier) ? expression.getSymbol() : undefined;
+  return symbol !== undefined && hookNames.has(symbol) ? init : undefined;
 }
 
 /**
  * 호출자가 될 지역 이름. 직접 대입이면 그 이름, 구조분해면 `t` 프로퍼티의 지역 이름
- * (`{ t: tr }`이면 `tr`). `t`가 없으면 `undefined`, 그 외 형태는 `"unsupported"`.
+ * (`{ t: tr }`이면 `tr`). `t`가 없으면 `undefined`, 그 외 형태는 `UNSUPPORTED`.
  */
-function boundName(decl: VariableDeclaration): string | undefined | "unsupported" {
+function boundName(decl: VariableDeclaration): Identifier | undefined | typeof UNSUPPORTED {
   const nameNode = decl.getNameNode();
-  if (nameNode.isKind(SyntaxKind.Identifier)) return nameNode.getText();
-  if (!nameNode.isKind(SyntaxKind.ObjectBindingPattern)) return "unsupported";
+  if (nameNode.isKind(SyntaxKind.Identifier)) return nameNode;
+  if (!nameNode.isKind(SyntaxKind.ObjectBindingPattern)) return UNSUPPORTED;
 
   for (const element of nameNode.getElements()) {
     const prop = element.getPropertyNameNode()?.getText() ?? element.getNameNode().getText();
-    if (prop === HOOK_RETURN_PROP) return element.getNameNode().getText();
+    if (prop === HOOK_RETURN_PROP) {
+      const local = element.getNameNode();
+      return local.isKind(SyntaxKind.Identifier) ? local : UNSUPPORTED;
+    }
   }
   return undefined;
 }
@@ -210,36 +220,17 @@ function boundName(decl: VariableDeclaration): string | undefined | "unsupported
  * `useTranslations("hero")`(문자열)와 `getTranslations({ locale, namespace: "meta" })`(객체).
  * 인자가 없거나 객체에 `namespace`가 없으면 namespace가 없는 것이고, 리터럴이 아니면 미해결이다.
  */
-function namespaceOfHookCall(call: CallExpression): string | undefined | "unresolved" {
+function namespaceOfHookCall(call: CallExpression): string | undefined | typeof UNRESOLVED {
   const arg = call.getArguments()[0];
   if (!arg) return undefined;
   if (arg.isKind(SyntaxKind.StringLiteral)) return arg.getLiteralValue();
-  if (!arg.isKind(SyntaxKind.ObjectLiteralExpression)) return "unresolved";
+  if (!arg.isKind(SyntaxKind.ObjectLiteralExpression)) return UNRESOLVED;
 
   const prop = arg.getProperty("namespace");
   if (!prop) return undefined;
-  if (!prop.isKind(SyntaxKind.PropertyAssignment)) return "unresolved";
+  if (!prop.isKind(SyntaxKind.PropertyAssignment)) return UNRESOLVED;
   const value = prop.getInitializer();
-  return value?.isKind(SyntaxKind.StringLiteral) ? value.getLiteralValue() : "unresolved";
-}
-
-/**
- * 이 호출 위치를 담당하는 바인딩. **스코프 안이면서 가장 좁은 것**을 고른다 — 밖의 같은 이름은
- * 남의 것이고(props로 받은 `t`), 안쪽 선언이 바깥 선언을 가린다.
- */
-function bindingFor(
-  bindings: readonly HookBinding[],
-  callee: string,
-  callStart: number,
-): HookBinding | undefined {
-  let best: HookBinding | undefined;
-  for (const b of bindings) {
-    if (b.name !== callee) continue;
-    if (callStart < b.declEnd) continue;
-    if (callStart < b.scopeStart || callStart > b.scopeEnd) continue;
-    if (!best || b.scopeEnd - b.scopeStart < best.scopeEnd - best.scopeStart) best = b;
-  }
-  return best;
+  return value?.isKind(SyntaxKind.StringLiteral) ? value.getLiteralValue() : UNRESOLVED;
 }
 
 function lineOf(sourceFile: SourceFile, node: Node): number {
@@ -256,17 +247,17 @@ function literalOf(arg: Node | undefined): string | undefined {
 }
 
 /**
- * 래퍼가 이 파일에서 불리는 이름. `import { t } from "@/i18n"`이면 `"t"`,
- * `import { t as translate }`면 `"translate"`. import가 없으면 `undefined`.
+ * 래퍼 import의 지역 lexical symbol. 별칭이 있으면 별칭의 symbol을 쓴다.
+ * import가 없으면 `undefined`.
  *
- * 타입 정보 없이 import 선언만 본다 — 컴파일러를 돌리지 않으므로 수백 파일에서도 빠르다.
+ * 외부 모듈을 해석하지 않고 import의 지역 symbol만 쓴다.
  */
-function wrapperLocalName(sourceFile: SourceFile, wrapper: WrapperId): string | undefined {
+function wrapperLocalSymbol(sourceFile: SourceFile, wrapper: WrapperId): MorphSymbol | undefined {
   for (const decl of sourceFile.getImportDeclarations()) {
     if (decl.getModuleSpecifierValue() !== wrapper.module) continue;
     for (const spec of decl.getNamedImports()) {
       if (spec.getName() !== wrapper.export) continue;
-      return spec.getAliasNode()?.getText() ?? spec.getName();
+      return (spec.getAliasNode() ?? spec.getNameNode()).getSymbol();
     }
   }
   return undefined;

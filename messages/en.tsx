@@ -2986,6 +2986,13 @@ export const en = {
         owner: "Fix the file on that branch, or change the path or branch in Settings.",
         editor: "Ask a project owner to fix the file or change the path in Settings.",
       },
+      unsupportedFileKind: {
+        title: "The repository path isn't a regular file",
+        description: (path: string, branch: string): string =>
+          `${path} on ${branch} isn't a regular file or is inside a path that isn't a directory. Nothing was sent.`,
+        owner: "Use regular language files inside directories on that branch, or change the path in Settings.",
+        editor: "Ask a project owner to use regular language files inside directories on that branch.",
+      },
       unknownDelivery: "We couldn't confirm whether your changes were sent.",
 
       /** `1j` — 행조차 생기지 않는 거부 둘. 폭 512이고 danger가 아니다. */
@@ -3988,7 +3995,7 @@ export const en = {
     "not-property-assignment": "This isn't a property assignment.",
     "duplicate-key": "The key appears twice, so one of the two values is lost.",
     "duplicate-property": "The key is defined twice. Malmoi uses the one it edits and leaves the other as it is.",
-    "key-shadowed": "The key is the start of a longer key, so it has no slot of its own — this value wasn't written.",
+    "key-shadowed": "The key's slot is obscured by another key or property, so this value can't be written safely.",
     "write-parse-failed": "The file couldn't be parsed, so it was left untouched.",
     "write-no-default-export": "This file has no default-export object, so it was left untouched.",
     "write-locale-object-missing": "This language isn't in the file, so its translations weren't written.",

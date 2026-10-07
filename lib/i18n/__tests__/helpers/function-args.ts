@@ -240,6 +240,7 @@ export const FUNCTION_ARGS: { readonly [P in FunctionPaths<Messages>]: Parameter
   "translations.publish.transientErrorBody": [],
   "translations.publish.baseFileMissing.description": ["X", "X"],
   "translations.publish.baseFileUnreadable.description": ["X", "X"],
+  "translations.publish.unsupportedFileKind.description": ["X", "X"],
   "translations.publish.wait": [2],
   "translations.publish.previewFailedDescription": ["X"],
   "translations.publish.previewFailedTitle": ["X"],

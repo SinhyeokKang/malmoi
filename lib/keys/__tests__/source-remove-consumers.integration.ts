@@ -183,7 +183,7 @@ it("야간 방문은 제거된 소스를 대상에 넣지 않는다", async () =
   db.reader = { snapshot: vi.fn(), blob: vi.fn() } as unknown as RepoReader;
   const target = await prisma.project.findUniqueOrThrow({ where: { id: "p" }, select: {
     id: true, slug: true, repoOwner: true, repoName: true, baseBranch: true, installationId: true, repositoryId: true, lastNightlyAt: true,
-    surfaces: { select: { id: true, slug: true, archivedAt: true, lastCommitSha: true, adapterName: true, pathTemplate: true, baseLocale: true, lastImportError: true } },
+    surfaces: { select: { id: true, slug: true, archivedAt: true, lastCommitSha: true, adapterName: true, pathTemplate: true, baseLocale: true, lastImportError: true, importRevision: true } },
   } });
   expect(target.surfaces.map(surface => surface.slug).sort()).toEqual(["app", "web"]);
   expect(await runNightly(prisma, target, () => 0)).toEqual({ action: "skip", outcome: "upToDate" });

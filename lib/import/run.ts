@@ -14,6 +14,7 @@ import { sameFingerprint } from "@/lib/protection/fingerprint";
 import { planDiscardConfirmation, planProtectedImport } from "@/lib/protection/plan";
 import { releaseOrphanedApproved } from "@/lib/protection/release-orphaned";
 import { countPending } from "@/lib/protection/where";
+import { readDeliveryRevision } from "@/lib/pull/delivery-revision";
 import { importEventPayload as importPayload, runTokenFor } from "@/lib/events/payload";
 import { finishRun, recordEvent, recordImportRefusal, recordRun } from "@/lib/events/record";
 import { readDiscardApproval } from "./approval";
@@ -33,7 +34,7 @@ type ImportRunInput = { projectId: string; userId: string; repository: Repositor
  * 실행 주체 (nightly-sync). `AUTOMATION`은 야간 cron이다 — 사용자·지문·자격증명이 없고, 폐기 승인 경로가 없으므로 **편집을 한 줄도 덮지 않는다**
  * (`approvedTokens: []` + 표면별 사후 재집계). 리포 신원은 `repositoryId`에 고정된 installation 토큰 범위와 `repo-replaced` 판정이 대신한다.
  */
-type RunActor = { kind: "USER"; userId: string; approval: string | null; credential: Credential | undefined } | { kind: "AUTOMATION"; expectedLastPublishedAt: Date | null };
+type RunActor = { kind: "USER"; userId: string; approval: string | null; credential: Credential | undefined } | { kind: "AUTOMATION"; expectedLastPublishedAt: Date | null; expectedDeliveryRevision: string };
 type CoreInput = { projectId: string; repository: Repository; actor: RunActor };
 /** @param approvedTokens 잠금 뒤 지문 대조를 지난 편집 토큰 — upsert는 토큰 없거나 이 목록인 셀만 덮는다. 자동화는 언제나 빈 배열이다. */
 type Lease = { project: Project; surfaces: TranslationSurface[]; token: string; startedAt: Date; actor: RunActor; approvedTokens: readonly string[] };
@@ -103,7 +104,8 @@ async function acquire(prisma: PrismaClient, input: CoreInput): Promise<Acquired
     const vocabulary = eventVocabulary(actor);
     let approvedTokens: readonly string[] = [];
     if (actor.kind === "AUTOMATION") {
-      if ((project.lastPublishedAt?.getTime() ?? null) !== (actor.expectedLastPublishedAt?.getTime() ?? null)) {
+      if ((project.lastPublishedAt?.getTime() ?? null) !== (actor.expectedLastPublishedAt?.getTime() ?? null)
+        || await readDeliveryRevision(tx, project.id) !== actor.expectedDeliveryRevision) {
         await recordEvent(tx, { projectId: input.projectId, subtype: vocabulary.subtype, actor: vocabulary.actor,
           surfaceIds: active.map(surface => surface.id), result: "deferred", finishedAt: new Date(),
           payload: importPayload({ source: vocabulary.source, surfaceSlugs: active.map(surface => surface.slug), deferReason: "publish-raced" }) });
@@ -282,9 +284,9 @@ export type AutomationImportResult =
   | ({ recorded: true } & ImportEventSummary)
   | { recorded: false; error: RepositoryImportError };
 
-export async function runAutomationImport(prisma: PrismaClient, input: { projectId: string; repository: Repository; expectedLastPublishedAt: Date | null }, openReader: () => Promise<RepoReader>): Promise<AutomationImportResult> {
+export async function runAutomationImport(prisma: PrismaClient, input: { projectId: string; repository: Repository; expectedLastPublishedAt: Date | null; expectedDeliveryRevision: string }, openReader: () => Promise<RepoReader>): Promise<AutomationImportResult> {
   const closed: { summary: ImportEventSummary | null } = { summary: null };
-  const outcome = await runImport(prisma, { ...input, actor: { kind: "AUTOMATION", expectedLastPublishedAt: input.expectedLastPublishedAt } }, openReader, summary => { closed.summary = summary; });
+  const outcome = await runImport(prisma, { ...input, actor: { kind: "AUTOMATION", expectedLastPublishedAt: input.expectedLastPublishedAt, expectedDeliveryRevision: input.expectedDeliveryRevision } }, openReader, summary => { closed.summary = summary; });
   // 보류는 `acquire`가 같은 잠금 안에서 사건을 쓰고 돌아온다 — 실행 행(`recordRun`)을 만들지 않은 갈래다.
   if (!outcome.ok && (outcome.error === "pending-edits" || outcome.error === "publish-raced")) return { recorded: true, result: "deferred", deferReason: outcome.error };
   if (closed.summary !== null) return { recorded: true, ...closed.summary };

@@ -1,5 +1,6 @@
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import { actorLabel } from "@/lib/keys/view";
+import { firstMatchRange } from "@/lib/search/highlight";
 import { effectiveCompletion, type EffectiveCompletion } from "@/lib/translations/summary";
 import { ALL_NAMESPACES, DEFAULT_TRANSLATION_QUERY, translationsHref, type TranslationQuery } from "@/lib/translations/query";
 import { decodeUrlToken, encodeUrlToken } from "@/lib/url-token";
@@ -231,14 +232,16 @@ async function shapeRows(prisma: PrismaClient, projectId: string, rows: readonly
 /** 일치 조각 — 키 이름 → 원문 → 활성 로케일 번역(코드순 첫 것). 텍스트와 범위만 주고 HTML을 만들지 않는다. */
 async function matchesFor(prisma: PrismaClient, projectId: string, rows: readonly Row[], q: string, pattern: string): Promise<Map<string, TranslationMatch>> {
   const out = new Map<string, TranslationMatch>();
-  const needle = q.toLowerCase();
-  const find = (text: string) => text.toLowerCase().indexOf(needle);
+  const find = (text: string) => {
+    const range = firstMatchRange(text, q);
+    return range === null ? null : { start: range.start, length: range.end - range.start };
+  };
   const rest: string[] = [];
   for (const row of rows) {
     const inKey = find(row.key);
-    if (inKey >= 0) { out.set(row.id, { field: "key", text: row.key, start: inKey, length: q.length }); continue; }
+    if (inKey !== null) { out.set(row.id, { field: "key", text: row.key, ...inKey }); continue; }
     const inSource = find(row.sourceText);
-    if (inSource >= 0) { out.set(row.id, { field: "source", text: row.sourceText, start: inSource, length: q.length }); continue; }
+    if (inSource !== null) { out.set(row.id, { field: "source", text: row.sourceText, ...inSource }); continue; }
     rest.push(row.id);
   }
   if (rest.length === 0) return out;
@@ -252,9 +255,9 @@ async function matchesFor(prisma: PrismaClient, projectId: string, rows: readonl
     WHERE t."projectId" = ${projectId} AND t."keyId" = ANY(${rest}::text[]) AND t."value" ILIKE ${pattern} ESCAPE '\\'
     ORDER BY t."keyId", t."localeCode" COLLATE "C"`;
   for (const cell of cells) {
-    const start = find(cell.value);
+    const range = find(cell.value);
     // DB의 대소문자 접기와 JS의 것이 다른 드문 문자면 범위를 모른다 — 틀린 강조보다 강조 없음이 낫다.
-    if (start >= 0) out.set(cell.keyId, { field: "translation", localeCode: cell.localeCode, text: cell.value, start, length: q.length });
+    if (range !== null) out.set(cell.keyId, { field: "translation", localeCode: cell.localeCode, text: cell.value, ...range });
   }
   return out;
 }

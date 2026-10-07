@@ -312,6 +312,7 @@ function mergeShape(survey: RepoSurvey, shape: JsonShape): void {
   }
   if (shape.escapedNonAscii) survey.presentation.escapedNonAscii = true;
   if (shape.compactContainer) survey.presentation.compactContainer = true;
+  if (shape.dottedWithNested) survey.presentation.dottedWithNested = true;
   if (shape.escapedSlash) survey.presentation.escapedSlash = true;
 }
 

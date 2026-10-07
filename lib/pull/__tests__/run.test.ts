@@ -1251,3 +1251,136 @@ it("미리보기 없는 Publish도 뒤 shorthand에 가린 편집을 전달 확�
   expect(writes).toEqual([]);
   expect(calls.some(call => ["createTree", "createCommit", "updateRefForce"].includes(call.method))).toBe(false);
 });
+
+it.each(["120000", "160000", "040000", "unknown"])("rejects unsupported catalog mode %s before any GitHub write or confirmation", async (mode) => {
+  const fake = createFakeGitClient({ refSha: { "heads/dev": "basehead" }, tree: { basehead: [
+    { path: "i18n/en.json", sha: "en", mode: "100644" },
+    { path: "i18n/ko.json", sha: "link", mode },
+  ] }, blobs: { en: EN_CONTENT, link: "en.json" } });
+  const { deps, writes, calls } = makeDeps({}, fake);
+  await expect(runPull(deps)).rejects.toThrow(/unsupported Git file mode/);
+  expect(writes).toEqual([]);
+  expect(calls.map(call => call.method)).toEqual(["getRefSha", "getTree"]);
+});
+
+it("ignores unrelated symlinks and continues exporting regular catalogs", async () => {
+  const fake = createFakeGitClient({ refSha: { "heads/dev": "basehead" }, tree: { basehead: [
+    { path: "i18n/en.json", sha: "en", mode: "100644" }, { path: "i18n/ko.json", sha: "ko", mode: "100755" },
+    { path: "README.md", sha: "link", mode: "120000" },
+  ] }, blobs: { en: EN_CONTENT, ko: '{"a.one":"old"}' } });
+  const { deps, writes, calls } = makeDeps({}, fake);
+  expect(await runPull(deps)).toMatchObject({ status: "committed" });
+  expect(writes).toHaveLength(1);
+  expect(calls.find(call => call.method === "createTree")?.args[0]).toMatchObject({ tree: expect.arrayContaining([expect.objectContaining({ path: "i18n/ko.json", mode: "100644" })]) });
+});
+
+it("ts-dict Publish does not acknowledge a literal hidden by final shorthand", async () => {
+  const source = "const a = 'Runtime'; const en = { a: 'Source' }; const ko = { a: 'Hidden', a };";
+  const made = createFakeGitClient({ refSha: { "heads/dev": "basehead" },
+    tree: { basehead: [{ path: "ns/x.ts", sha: blobSha(source) }] }, blobs: { [blobSha(source)]: source } });
+  const { deps, writes, calls } = makeDeps({ loadState: async () => ({ project: PROJECT,
+    surfaces: [{ ...PROJECT, id: "s1", slug: "default", adapterName: "ts-dict", pathTemplate: "ns/*.ts",
+      localeCodes: ["en", "ko"], keys: [{ id: "k1", key: "a", sourceText: "Source", orphaned: false, cells: { en: { value: "Source" }, ko: { value: "Edited" } } }] }],
+    maxUpdatedAt: new Date(), unpublished: 1,
+    pendingEdits: [{ id: "t1", token: "pending", cell: { surfaceId: "s1", keyId: "k1", localeCode: "ko", restoreValue: "Edited" } }],
+  }) }, made);
+  expect(await runPull(deps)).toMatchObject({ status: "skipped", reason: "writer-warnings" });
+  expect(writes).toEqual([]);
+  expect(calls.some(call => ["createTree", "createCommit", "createRef", "updateRefForce", "createPr", "closePr"].includes(call.method))).toBe(false);
+});
+
+it.each(["120000", "160000"])("a %s ancestor cannot be replaced with a generated catalog directory", async (mode) => {
+  const made = createFakeGitClient({ refSha: { "heads/dev": "basehead" }, tree: { basehead: [{ path: "i18n", sha: "link", mode }] } });
+  const { deps, writes, calls } = makeDeps({}, made);
+  await expect(runPull(deps)).rejects.toThrow(/unsupported Git file mode at i18n/);
+  expect(writes).toEqual([]);
+  expect(calls.map(call => call.method)).toEqual(["getRefSha", "getTree"]);
+});
+
+it("a target with omitted mode fails closed", async () => {
+  const made = createFakeGitClient({ refSha: { "heads/dev": "basehead" } });
+  made.client.getTree = async () => [{ path: "i18n/ko.json", sha: "link" }] as never;
+  const { deps, writes } = makeDeps({}, made);
+  await expect(runPull(deps)).rejects.toThrow(/unsupported Git file mode/);
+  expect(writes).toEqual([]);
+});
+
+it("normal Git tree directories are allowed as ancestors", async () => {
+  const made = createFakeGitClient({ refSha: { "heads/dev": "basehead" }, tree: { basehead: [{ path: "i18n", sha: "dir", mode: "040000" }] } });
+  const { deps, writes } = makeDeps({}, made);
+  expect(await runPull(deps)).toMatchObject({ status: "committed" });
+  expect(writes).toHaveLength(1);
+});
+
+it.each(["...rest", "[key]: runtime", "['a']: runtime"])("ts-dict 후행 %s는 GitHub 쓰기와 전달 확인을 모두 막는다", async (tail) => {
+  const source = `const runtime = 'R'; const key = 'a'; const rest = { a: runtime }; const en = { a: 'Source' }; const ko = { a: 'Hidden', ${tail} };`;
+  const made = createFakeGitClient({ refSha: { "heads/dev": "basehead" },
+    tree: { basehead: [{ path: "ns/x.ts", sha: blobSha(source) }] }, blobs: { [blobSha(source)]: source } });
+  const invalidateDelivery = vi.fn();
+  const { deps, writes, calls } = makeDeps({ invalidateDelivery, loadState: async () => ({ project: PROJECT,
+    surfaces: [{ ...PROJECT, id: "s1", slug: "default", adapterName: "ts-dict", pathTemplate: "ns/*.ts",
+      localeCodes: ["en", "ko"], keys: [{ id: "k1", key: "a", sourceText: "Source", orphaned: false, cells: { en: { value: "Source" }, ko: { value: "Edited" } } }] }],
+    maxUpdatedAt: new Date(), unpublished: 1,
+    pendingEdits: [{ id: "t1", token: "pending", cell: { surfaceId: "s1", keyId: "k1", localeCode: "ko", restoreValue: "Edited" } }],
+  }) }, made);
+  expect(await runPull(deps)).toMatchObject({ status: "skipped", reason: "writer-warnings" });
+  expect(writes).toEqual([]);
+  expect(invalidateDelivery).not.toHaveBeenCalled();
+  expect(calls.every(call => ["getRefSha", "getTree", "getBlobText"].includes(call.method))).toBe(true);
+});
+
+it.each(["...rest", "[key]: runtime"])("ts-dict %s 뒤의 마지막 리터럴은 정상 전달한다", async (unknown) => {
+  const source = `const runtime = 'R'; const key = 'a'; const rest = { a: runtime }; const en = { a: 'Source' }; const ko = { a: 'Hidden', ${unknown}, a: 'Final' };`;
+  const made = createFakeGitClient({ refSha: { "heads/dev": "basehead" },
+    tree: { basehead: [{ path: "ns/x.ts", sha: blobSha(source) }] }, blobs: { [blobSha(source)]: source } });
+  const { deps, writes, calls } = makeDeps({ loadState: async () => ({ project: PROJECT,
+    surfaces: [{ ...PROJECT, id: "s1", slug: "default", adapterName: "ts-dict", pathTemplate: "ns/*.ts",
+      localeCodes: ["en", "ko"], keys: [{ id: "k1", key: "a", sourceText: "Source", orphaned: false, cells: { en: { value: "Source" }, ko: { value: "Edited" } } }] }],
+    maxUpdatedAt: new Date(), unpublished: 1,
+    pendingEdits: [{ id: "t1", token: "pending", cell: { surfaceId: "s1", keyId: "k1", localeCode: "ko", restoreValue: "Edited" } }],
+  }) }, made);
+  expect(await runPull(deps)).toMatchObject({ status: "committed", delivered: 1 });
+  expect(writes).toHaveLength(1);
+  expect(calls.find(call => call.method === "createTree")?.args[0]).toMatchObject({ tree: [expect.objectContaining({ content: source.replace("a: 'Final'", "a: 'Edited'") })] });
+});
+
+it.each([
+  ["['__proto__']: 'Actual', __proto__: 'Hidden'", true],
+  ["['__proto__']: 'Actual', '__proto__': 'Hidden'", true],
+  ["__proto__: 'Hidden', ['__proto__']: 'Actual'", true],
+  ["__proto__: 'Hidden'", false],
+  ["'__proto__': 'Hidden'", false],
+] as const)("ts-dict Publish confirms only the own __proto__ slot: %s", async (body, hasOwnSlot) => {
+  const source = `const en = { ['__proto__']: 'Source' }; const ko = { ${body} };`;
+  const made = createFakeGitClient({ refSha: { "heads/dev": "basehead" },
+    tree: { basehead: [{ path: "ns/x.ts", sha: blobSha(source) }] }, blobs: { [blobSha(source)]: source } });
+  const createTree = vi.spyOn(made.client, "createTree");
+  const edit = { id: "t1", token: "pending", cell: { surfaceId: "s1", keyId: "k1", localeCode: "ko", restoreValue: "Edited" } };
+  const saveLastPulledAt = vi.fn();
+  const invalidateDelivery = vi.fn();
+  const { deps, calls } = makeDeps({ saveLastPulledAt, invalidateDelivery, loadState: async () => ({ project: PROJECT,
+    surfaces: [{ ...PROJECT, id: "s1", slug: "default", adapterName: "ts-dict", pathTemplate: "ns/*.ts",
+      localeCodes: ["en", "ko"], keys: [{ id: "k1", key: "__proto__", sourceText: "Source", orphaned: false,
+        cells: { en: { value: "Source" }, ko: { value: "Edited" } } }] }],
+    maxUpdatedAt: new Date(), unpublished: 1, pendingEdits: [edit],
+  }) }, made);
+  const result = await runPull(deps);
+  if (!hasOwnSlot) {
+    expect(result).toMatchObject({ status: "skipped", reason: "withheld", withheld: { file: 0, key: 1 } });
+    expect(saveLastPulledAt).not.toHaveBeenCalled();
+    expect(invalidateDelivery).not.toHaveBeenCalled();
+    expect(calls.every(call => ["getRefSha", "getTree", "getBlobText"].includes(call.method))).toBe(true);
+    expect(Object.getOwnPropertyDescriptor(new Function(`${source}; return ko;`)(), "__proto__")).toBeUndefined();
+    return;
+  }
+  expect(result).toMatchObject({ status: "committed", delivered: 1 });
+  expect(saveLastPulledAt).toHaveBeenCalledTimes(1);
+  expect(saveLastPulledAt.mock.calls[0]?.[3]).toEqual([edit]);
+  const expected = source.replace("'Actual'", "'Edited'");
+  expect(calls.find(call => call.method === "createTree")?.args[0]).toMatchObject({ tree: [expect.objectContaining({ content: expected })] });
+  // 고정한 테스트 픽스처만 실행해 AST 판정과 실제 own property 의미를 독립적으로 견준다.
+  const emitted = createTree.mock.calls[0]?.[0].tree[0]?.content;
+  expect(emitted).toBe(expected);
+  const runtime: unknown = new Function(`${emitted}; return ko;`)();
+  expect(Object.getOwnPropertyDescriptor(runtime, "__proto__")?.value).toBe("Edited");
+});

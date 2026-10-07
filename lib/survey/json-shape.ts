@@ -37,14 +37,6 @@ export type JsonDiffCauses = {
    * 책임질 수 없는 축이라 원인으로 센다.
    */
   emptyValues: boolean;
-  /**
-   * 점 포함 키가 중첩과 **공존한다** — 복원에서 `"a.b"`가 경로로 쪼개져 구조가 바뀐다.
-   *
-   * `.`가 우리 조인 구분자이면서 실제 키에 든 문자라 flatten/unflatten이 단사가 아니다
-   * (POSTMORTEM 2026-09-02). musicblocks·scratchblocks·siyuan이 이 축이고, 키 구분자를 계약으로
-   * 빼는 별 기능이 담당한다. **중첩이 없으면 원인이 아니다** — flat write는 키를 쪼개지 않는다.
-   */
-  dottedWithNested: boolean;
 };
 
 export type JsonShape = {
@@ -71,6 +63,8 @@ export type JsonShape = {
    * (2026-09-04, 10차가 드러낸 네 번째 표현 축).
    */
   escapedSlash: boolean;
+  /** 점 리터럴 키와 중첩의 공존. writer가 원본 경로를 보존하므로 손실 원인이 아니다. */
+  dottedWithNested: boolean;
   causes: JsonDiffCauses;
   /** 스캔이 끝까지 못 갔다 — 순서를 신뢰하면 안 된다. */
   failed: boolean;
@@ -80,7 +74,6 @@ export const emptyJsonDiffCauses = (): JsonDiffCauses => ({
   sparseArray: false,
   integerKeys: false,
   emptyValues: false,
-  dottedWithNested: false,
 });
 
 export function jsonShape(text: string): JsonShape {
@@ -94,14 +87,11 @@ export function jsonShape(text: string): JsonShape {
     escapedNonAscii: !scan.failed && scan.escapeNonAscii,
     compactContainer: !scan.failed && scan.compactPaths.size > 0,
     escapedSlash: !scan.failed && scan.escapeSlash,
+    dottedWithNested: !scan.failed && scan.nested && scan.sawDottedName,
     causes: {
       sparseArray: scan.sparseArray,
       integerKeys: scan.integerKeys,
       emptyValues: scan.emptyValues,
-      // 둘이 **공존할 때만** 구조가 바뀐다 — 중첩이 없으면 flat write가 키를 그대로 둔다.
-      // ⚠️ `keyOrder`의 `.`을 세면 안 된다 — 그건 **우리가 만든 조인 구분자**라 중첩이면 늘 있다.
-      // 봐야 하는 것은 **원본 키 이름 자체**에 든 점이다.
-      dottedWithNested: scan.nested && scan.sawDottedName,
     },
     failed: scan.failed,
   };

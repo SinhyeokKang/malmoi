@@ -457,19 +457,19 @@ describe("summarize — 순서 보존이 자기 책임 범위에서 닫히는가
     expect(metrics.diff.clean.overTarget).toMatchObject({ n: 0, of: 1 });
   });
 
-  it("`.`-키가 중첩과 공존하는 리포도 뺀다 — 키 구분자 계약이 담당하는 축이다", () => {
+  it("`.`-키와 중첩이 공존해도 원본 경로를 보존하므로 분모에 남긴다", () => {
     const rows = [
       row({
         repo: "a/dotted",
         chosen: cand("i/{locale}.json", "json-catalog"),
         keyCount: 500,
         diffRatio: 0.5,
-        diffCauses: { ...emptyDiffCauses(), dottedWithNested: true },
+        presentation: { ...emptyJsonPresentation(), dottedWithNested: true },
       }),
       row({ repo: "a/ok", chosen: cand("i/{locale}.json", "json-catalog"), keyCount: 500, diffRatio: 0.02, diffCauses: clean() }),
     ];
     const { metrics } = summarize(rows, []);
-    expect(metrics.diff.clean.repos).toBe(1);
+    expect(metrics.diff.clean.repos).toBe(2);
   });
 
   it("미번역 제외로 줄이 사라지는 리포도 원인이 있는 쪽이다", () => {
@@ -548,11 +548,45 @@ describe("summarize — 순서 일치율과 들여쓰기 분포", () => {
 
   it("표현 관측(이스케이프·한 줄 컨테이너)은 원인과 **다른 칸**에 센다 — clean 분모를 좁히지 않는다", () => {
     const rows = [
-      row({ repo: "a/1", presentation: { escapedNonAscii: true, compactContainer: true, escapedSlash: true } }),
-      row({ repo: "a/2", presentation: { escapedNonAscii: false, compactContainer: true, escapedSlash: false } }),
+      row({ repo: "a/1", presentation: { ...emptyJsonPresentation(), escapedNonAscii: true, compactContainer: true, escapedSlash: true } }),
+      row({ repo: "a/2", presentation: { ...emptyJsonPresentation(), escapedNonAscii: false, compactContainer: true, escapedSlash: false } }),
       row({ repo: "a/3" }),
     ];
     const { metrics } = summarize(rows, []);
-    expect(metrics.presentation).toEqual({ escapedNonAscii: 1, compactContainer: 2, escapedSlash: 1 });
+    expect(metrics.presentation).toEqual({ escapedNonAscii: 1, compactContainer: 2, escapedSlash: 1, dottedWithNested: 0 });
   });
+});
+
+it("writer가 보존하는 점 키·중첩 공존은 관측치이며 clean 분모에 남는다", () => {
+  const catalog = {
+    "literal.key": "Literal",
+    nested: Object.fromEntries(Array.from({ length: 24 }, (_, i) => [`key${i}`, `Value ${i}`])),
+  };
+  const text = two(catalog);
+  const survey = surveyOne(input("a/preserved", {
+    "src/i18n/en.json": text,
+    "src/i18n/ko.json": text,
+  }));
+  expect(survey.roundtrip).toEqual({ semantic: "same", byteFixpoint: "same" });
+  expect(survey.diffRatio).toBe(0);
+  expect(survey.diffRatioNonBase).toBe(0);
+  expect(summarize([survey], []).metrics.diff.clean.repos).toBe(1);
+  expect(survey.presentation).toMatchObject({ dottedWithNested: true });
+  expect(survey.diffCauses).not.toHaveProperty("dottedWithNested");
+  expect(summarize([survey], []).metrics.presentation).toMatchObject({ dottedWithNested: 1 });
+});
+
+it("과거 survey JSON의 점 키 원인 필드는 clean 제외 사유로 되살리지 않는다", () => {
+  const oldCauses = { ...emptyDiffCauses(), dottedWithNested: true };
+  const old = row({
+    repo: "a/legacy", chosen: cand("i/{locale}.json", "json-catalog"),
+    keyCount: 25, diffRatio: 0, diffCauses: oldCauses,
+  });
+  // 저장된 옛 JSON에는 presentation의 새 필드가 없다.
+  const legacy: RepoSurvey = JSON.parse(JSON.stringify(old, (key, value) =>
+    key === "presentation" ? { escapedNonAscii: false, compactContainer: false, escapedSlash: false } : value));
+  const metrics = summarize([legacy], []).metrics;
+  expect(metrics.diff.clean.repos).toBe(1);
+  expect(metrics.diffCauses).not.toHaveProperty("dottedWithNested");
+  expect(metrics.presentation.dottedWithNested).toBe(0);
 });

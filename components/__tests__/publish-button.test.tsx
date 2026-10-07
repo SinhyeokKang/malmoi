@@ -49,6 +49,26 @@ it("미리보기의 빈값 경고는 실행 버튼 없이 표시한다", async (
   expect([...document.querySelectorAll("button")].some(b => visible(b) === "Open pull request")).toBe(false);
   expect(mocks.pull).not.toHaveBeenCalled();
 });
+it.each(["key-shadowed", "write-slot-not-string-literal"] as const)("#200 %s 경고는 파일 수정 안내이며 재시도와 실행을 숨긴다", async code => {
+  mocks.preview.mockResolvedValue({ status: "blocked", warnings: [{ surfaceSlug: "web", path: "a.ts", key: "hello", code }] });
+  await render(<Host />); await click("Publish1");
+  expect(document.body.textContent).toContain(en.adapterErrors[code]);
+  expect(document.body.textContent).toContain("web: a.ts");
+  expect(document.body.textContent).not.toContain(en.translations.publish.previewFailed);
+  expect(document.body.textContent).not.toContain("Try again");
+  expect([...document.querySelectorAll("button")].some(b => visible(b) === "Open pull request")).toBe(false);
+  expect(mocks.pull).not.toHaveBeenCalled();
+});
+it.each(["OWNER", "EDITOR"] as const)("#200 symlink %s 거부는 파일과 브랜치를 고칠 곳으로 안내한다", async role => {
+  mocks.preview.mockResolvedValue({ status: "refused", reason: "unsupported-file-kind", path: "i18n/ko.json", branch: "main" });
+  await render(<Host role={role} />); await click("Publish1");
+  expect(document.body.textContent).toContain("The repository path isn't a regular file");
+  expect(document.body.textContent).toContain("i18n/ko.json on main");
+  expect(document.body.textContent).not.toContain("Try again");
+  expect(document.body.textContent).not.toContain(en.translations.publish.baseFileMissing.title);
+  expect([...document.querySelectorAll("button")].some(b => visible(b) === "Open pull request")).toBe(false);
+  expect(mocks.pull).not.toHaveBeenCalled();
+});
 it("확인 전에는 쓰지 않고 0건 refresh 뒤에도 결과와 재열기를 보존한다", async () => {
   const view = await render(<Host />);
   await click("Publish1");

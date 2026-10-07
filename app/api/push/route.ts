@@ -15,6 +15,7 @@ import { classifyMissingSurface } from "@/lib/push/surface-refusal";
 import type { PushResponse } from "@/lib/push/payload";
 import { planOpenPrGate } from "@/lib/protection/plan";
 import { countPending } from "@/lib/protection/where";
+import { readDeliveryRevision } from "@/lib/pull/delivery-revision";
 import { checkArchived, checkCommitOrder, checkFormat, checkProjectSlug, guardStatus } from "@/lib/push/guard";
 import { PushPayload } from "@/lib/push/plan";
 import { hashPushToken } from "@/lib/push/token";
@@ -232,6 +233,8 @@ export async function POST(request: Request): Promise<NextResponse> {
      * ⚠️ 옛 기능 문서는 `markImportStarted`를 적용 트랜잭션 안으로 옮기라고 했지만 그러면 롤백된 실패에서 표시가 없어
      * `finishImportRun`의 토큰 대조가 0행이 되고 `import-failed` 기록이 사라진다. 트랜잭션 밖 사전 집계로 같은 목적을 이룬다.
      */
+    // no-changes도 사전 판정을 낡게 한다 — 표시용 lastPublishedAt과 별개인 전달 확인 revision을 캡처한다.
+    const expectedDeliveryRevision = await readDeliveryRevision(prisma, project.id);
     const pendingBefore = await countPending(prisma, project.id);
     if (pendingBefore > 0) {
       await record({ surface, result: "deferred", deferReason: "pending-edits", pendingEdits: pendingBefore });
@@ -260,7 +263,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     try {
       result = await applyProtectedPush(prisma, scope, parsed.data, {
         refsMode: "replace", previousBaseLocale: surface.baseLocale,
-        startedAt, token, pushTokenHash, expectedLastPublishedAt: project.lastPublishedAt,
+        startedAt, token, pushTokenHash, expectedLastPublishedAt: project.lastPublishedAt, expectedDeliveryRevision,
         // CI push는 전부 받거나 400이라 부분 실패가 없다 — 성공이면 이전 실패가 같은 트랜잭션에서 지워진다.
         importOutcome: null,
         /**

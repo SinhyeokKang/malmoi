@@ -65,10 +65,20 @@ function localeObjects(sourceFile: SourceFile): Map<string, ObjectLiteralExpress
   return found;
 }
 
-/** 프로퍼티 이름 — 따옴표 키는 값으로, 식별자 키는 텍스트로. */
-function propertyKey(prop: PropertyAssignment): string {
+/** 실행 없이 확정할 수 있는 이름만 읽는다. computed 리터럴도 같은 런타임 키이며 식은 평가하지 않는다. */
+function propertyKey(prop: Pick<PropertyAssignment, "getNameNode">): string | undefined {
   const nameNode = prop.getNameNode();
-  return nameNode.isKind(SyntaxKind.StringLiteral) ? nameNode.getLiteralValue() : nameNode.getText();
+  const name = nameNode.isKind(SyntaxKind.ComputedPropertyName) ? nameNode.getExpression() : nameNode;
+  if (name.isKind(SyntaxKind.StringLiteral) || name.isKind(SyntaxKind.NoSubstitutionTemplateLiteral)) return name.getLiteralValue();
+  if (name.isKind(SyntaxKind.NumericLiteral)) return String(name.getLiteralValue());
+  return nameNode.isKind(SyntaxKind.Identifier) ? nameNode.getText() : undefined;
+}
+
+function isPrototypeSetter(prop: ReturnType<ObjectLiteralExpression["getProperties"]>[number]): boolean {
+  // `__proto__: value`는 own 키가 아니다. computed·shorthand·메서드는 같은 이름이어도 own 키다.
+  return prop.isKind(SyntaxKind.PropertyAssignment)
+    && !prop.getNameNode().isKind(SyntaxKind.ComputedPropertyName)
+    && propertyKey(prop) === "__proto__";
 }
 
 /** 객체 리터럴의 `"key": "value"` 쌍. 값이 문자열 리터럴이 아니면 에러로 보고한다. */
@@ -78,9 +88,31 @@ function pairs(
   errors: AdapterError[],
 ): Array<{ key: string; value: string; assignment: ReturnType<ObjectLiteralExpression["getProperties"]>[number] }> {
   const out = [];
+  // 먼저 실제 마지막 이름 있는 자리를 정한다. shorthand·메서드·접근자도 앞 리터럴을 가린다.
+  const last = new Map<string, ReturnType<ObjectLiteralExpression["getProperties"]>[number] | undefined>();
   for (const prop of obj.getProperties()) {
-    if (!prop.isKind(SyntaxKind.PropertyAssignment)) continue;
-    const key = propertyKey(prop);
+    if (isPrototypeSetter(prop)) continue;
+    const key = prop.isKind(SyntaxKind.SpreadAssignment) ? undefined : propertyKey(prop);
+    if (key === undefined) {
+      // 이름을 모르는 spread/computed는 앞 이름 전부를 가릴 수 있다. 뒤의 확정 속성은 다시 그 키의 주인이 된다.
+      for (const name of last.keys()) last.set(name, undefined);
+      continue;
+    }
+    if (last.has(key) && !errors.some(error => error.path === path && error.code === "duplicate-property" && error.key === key)) {
+      errors.push({ path, code: "duplicate-property", key });
+    }
+    last.set(key, prop);
+  }
+  for (const [key, prop] of last) {
+    if (prop === undefined) {
+      // unmanaged로 낮추면 불완전 적재가 성공으로 접혀 앞 키를 orphan시킨다. 기존 failure 분류를 유지한다.
+      errors.push({ path, code: "key-shadowed", key });
+      continue;
+    }
+    if (!prop.isKind(SyntaxKind.PropertyAssignment)) {
+      errors.push({ path, code: prop.isKind(SyntaxKind.ShorthandPropertyAssignment) ? "shorthand-property" : "not-property-assignment", key });
+      continue;
+    }
     const init = prop.getInitializer();
     if (!init?.isKind(SyntaxKind.StringLiteral)) {
       errors.push({ path, code: "value-not-string-literal", key, detail: init?.getKindName() ?? "none" });
@@ -325,7 +357,7 @@ function writeWithErrors(
 
   const skipped: AdapterError[] = [];
   const present = pairs(obj, file.path, skipped);
-  errors.push(...skipped.filter((e) => e.key !== undefined && wanted.has(e.key)));
+  errors.push(...skipped.filter((e) => e.code !== "duplicate-property" && e.key !== undefined && wanted.has(e.key)));
   /**
    * ⚠️ **자리가 없는 wanted 키도 보고한다** (delivery-invariants D4 · C). 삽입은 하지 않는다(ARCHITECTURE §1.4의 ts-dict 예외) —
    * 조용하면 파일은 그대로인데 pull이 토큰을 해제해 "보냈다"가 거짓이 된다. 보고받은 pull은 그 셀만 보류한다.
@@ -338,7 +370,11 @@ function writeWithErrors(
   const inFile = new Set<string>();
   for (const [locale, other] of localeObjects(sf)) {
     if (locale === input.locale) continue;
-    for (const prop of other.getProperties()) if (prop.isKind(SyntaxKind.PropertyAssignment)) inFile.add(propertyKey(prop));
+    for (const prop of other.getProperties()) {
+      if (prop.isKind(SyntaxKind.SpreadAssignment) || isPrototypeSetter(prop)) continue;
+      const key = propertyKey(prop);
+      if (key !== undefined) inFile.add(key);
+    }
   }
   for (const key of [...wanted.keys()].sort(compareKeys)) {
     if (!inObject.has(key) && inFile.has(key)) errors.push({ path: file.path, code: "write-slot-missing", key });

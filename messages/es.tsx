@@ -1526,6 +1526,13 @@ export const es = {
         owner: "Corrige el archivo en esa rama, o cambia la ruta o la rama en Configuración.",
         editor: "Pide a un propietario del proyecto que corrija el archivo o cambie la ruta en Configuración.",
       },
+      unsupportedFileKind: {
+        title: "La ruta del repositorio no es un archivo normal",
+        description: (path: string, branch: string): string =>
+          `${path} en ${branch} no es un archivo normal o está dentro de una ruta que no es un directorio. No se envió nada.`,
+        owner: "Usa archivos de idioma normales dentro de directorios en esa rama, o cambia la ruta en Configuración.",
+        editor: "Pide a un propietario del proyecto que use archivos de idioma normales dentro de directorios en esa rama.",
+      },
       unknownDelivery: "No pudimos confirmar si tus cambios se enviaron.",
 
       alreadyRunning: "Alguien está publicando ahora mismo",
@@ -2042,7 +2049,7 @@ export const es = {
     "not-property-assignment": "Esto no es una asignación de propiedad.",
     "duplicate-key": "La clave aparece dos veces, así que uno de los dos valores se pierde.",
     "duplicate-property": "La clave está definida dos veces. Malmoi usa la que edita y deja la otra como está.",
-    "key-shadowed": "La clave es el comienzo de una clave más larga, así que no tiene un hueco propio; este valor no se escribió.",
+    "key-shadowed": "Otra clave o propiedad oculta el espacio de esta clave, por lo que no se puede escribir este valor de forma segura.",
     "write-parse-failed": "No se pudo analizar el archivo, así que se dejó sin tocar.",
     "write-no-default-export": "Este archivo no tiene un objeto como export default, así que se dejó sin tocar.",
     "write-locale-object-missing": "Este idioma no está en el archivo, así que sus traducciones no se escribieron.",

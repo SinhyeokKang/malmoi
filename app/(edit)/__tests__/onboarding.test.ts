@@ -1207,6 +1207,23 @@ describe("createProject — 재검증한 값만 저장한다 (ARCHITECTURE §3.1
    *
    * 선례: POSTMORTEM 2026-09-06 "401이 not-installed로 접혀 있었다".
    */
+  it.each([false, true])("설치별 401은 부분 성공 %s에서도 재인가로 반환한다", async partial => {
+    hoisted.listUserInstallations.mockResolvedValue(partial ? ["77", "78"] : ["77"]);
+    hoisted.listInstallationRepos.mockRejectedValueOnce(Object.assign(new Error("revoked"), { status: 401 }));
+    if (partial) hoisted.listInstallationRepos.mockResolvedValueOnce([repoRow("acme/other")]);
+    expect(await createProject(createInput())).toEqual({ ok: false, error: "reauthorize" });
+    expect(hoisted.probeRepo).not.toHaveBeenCalled();
+    expect(hoisted.openRepoReader).not.toHaveBeenCalled();
+    expect(db.spies.createProject).not.toHaveBeenCalled();
+  });
+
+  it("다른 설치의 401에도 요청 리포를 찾았으면 진행한다", async () => {
+    hoisted.listUserInstallations.mockResolvedValue(["77", "78"]);
+    hoisted.listInstallationRepos.mockRejectedValueOnce(Object.assign(new Error("revoked"), { status: 401 }))
+      .mockResolvedValueOnce([repoRow("acme/web")]);
+    expect(await createProject(createInput())).toMatchObject({ ok: true });
+  });
+
   it("설치별 조회가 전부 실패하면 unavailable이다 — 설치 안 됨으로 접지 않는다", async () => {
     hoisted.listInstallationRepos.mockRejectedValue(Object.assign(new Error("boom"), { status: 503 }));
 
@@ -1881,6 +1898,8 @@ describe("신규 생성은 전체 준비와 적재가 성공해야 한다", () =
       { surfaceSlug: "i18n", baseLocale: "ko" }, { surfaceSlug: "other", baseLocale: "fr" },
     ] });
     expect(opened.snapshot).toHaveBeenCalledTimes(1);
+    expect(opened.blob).toHaveBeenCalledTimes(6);
+    expect(new Set(opened.blob.mock.calls.map(call => call[0])).size).toBe(6);
     expect(hoisted.applyPushInTransaction.mock.calls.map(c => c[2].format.baseLocale)).toEqual(["ko", "fr"]);
     expect(hoisted.applyPushInTransaction.mock.calls.every(c => c[2].commitSha === HEAD_SHA)).toBe(true);
     expect(result.ok && result.yaml).toContain("base-locale: ko");
@@ -1904,11 +1923,40 @@ describe("신규 생성은 전체 준비와 적재가 성공해야 한다", () =
     expect(hoisted.applyPushInTransaction).not.toHaveBeenCalled();
   });
   it("조작된 클라이언트 경로 목록과 무관하게 서버 snapshot의 출력 충돌을 거부한다", async () => {
-    twoReader();
+    const opened = twoReader();
     const result = await createProject(createInput({ surfaces: [formats[0], { ...formats[0], outputPaths: [] }] }));
     expect(result).toMatchObject({ ok: false, error: "path-conflict", conflicts: expect.arrayContaining([expect.objectContaining({ path: "i18n/en.json" })]) });
+    expect(opened.blob).not.toHaveBeenCalled();
     expect(db.spies.createProject).not.toHaveBeenCalled();
   });
+  it("서로 다른 글롭도 실제 파일이 겹치면 다운로드 전에 거부한다", async () => {
+    const opened = reader({ snapshot: { status: "ok", headSha: HEAD_SHA, headCommittedAt: HEAD_AT,
+      files: [{ path: "i18n/common.ts", sha: "common", size: 100 }] } });
+    hoisted.openRepoReader.mockResolvedValue(opened);
+    const surfaces = ["i18n/*.ts", "i18n/common.ts"].map(pathTemplate => ({ adapter: "ts-dict", pathTemplate, baseLocale: "en" }));
+    expect(await createProject(createInput({ surfaces }))).toMatchObject({ ok: false, error: "path-conflict",
+      conflicts: [expect.objectContaining({ path: "i18n/common.ts" })] });
+    expect(opened.blob).not.toHaveBeenCalled();
+    expect(db.spies.createProject).not.toHaveBeenCalled();
+  });
+
+  it.each(["file-count", "total-size", "actual-size"])("신규 요청 합산 예산 %s 초과는 전체 거부다", async kind => {
+    const count = kind === "file-count" ? 202 : 6;
+    const files = Array.from({ length: count }, (_, i) => ({
+      path: `${i < count / 2 ? "a" : "b"}/${i % (count / 2) === 0 ? "en" : String.fromCharCode(97 + Math.floor(i / 26)) + String.fromCharCode(97 + i % 26)}.json`,
+      sha: String(i), size: kind === "total-size" ? 1_800_000 : 100,
+    }));
+    // 유효한 JSON과 기준 로케일로 소스별 준비가 먼저 실패하지 않게 한다.
+    const content = kind === "actual-size" ? CATALOG + " ".repeat(1_800_000 - CATALOG.length) : CATALOG;
+    const opened = reader({ snapshot: { status: "ok", headSha: HEAD_SHA, headCommittedAt: HEAD_AT, files }, blobs: new Map(files.map(f => [f.sha, content])) });
+    hoisted.openRepoReader.mockResolvedValue(opened);
+    const surfaces = ["a", "b"].map(dir => ({ adapter: "json-catalog", pathTemplate: `${dir}/{locale}.json`, baseLocale: "en" }));
+    expect(await createProject(createInput({ surfaces }))).toMatchObject({ ok: false, error: "resource-limit" });
+    expect(db.spies.createProject).not.toHaveBeenCalled();
+    expect(hoisted.applyPushInTransaction).not.toHaveBeenCalled();
+    if (kind !== "actual-size") expect(opened.blob).not.toHaveBeenCalled();
+  });
+
   it("DB 실패는 롤백 결과이고 커밋 뒤 캐시 실패는 생성 거부가 아니다", async () => {
     hoisted.applyPushInTransaction.mockRejectedValueOnce(new Error("write failure"));
     expect(await createProject(createInput())).toMatchObject({ ok: false, error: "ingest-failed", surface: { pathTemplate: "i18n/{locale}.json" } });
