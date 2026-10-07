@@ -79,8 +79,8 @@ export const ko = {
     seeOpen: "열린 PR 보기",
     completed: (n: number, branch: string): string => `${branch} 브랜치에서 키 ${n.toLocaleString("ko-KR")}개를 동기화함`,
     syncedKeys: (n: number): string => `키 ${n.toLocaleString("ko-KR")}개를 동기화함`,
-    unreadable: (n: number): string => `소스 ${n}개를 읽지 못함`,
-    notReplaced: (n: number): string => `소스 ${n}개가 바뀌지 않음`,
+    unreadable: (n: number): string => `소스 ${n.toLocaleString("ko-KR")}개를 읽지 못함`,
+    notReplaced: (n: number): string => `소스 ${n.toLocaleString("ko-KR")}개가 바뀌지 않음`,
     withIssue: (base: string, issue: string): string => `${base} · ${issue}`,
     partial: (n: number): string => `항목 ${n.toLocaleString("ko-KR")}개가 동기화되지 않았습니다. 아래 상세 내용을 확인하세요.`,
     kept: (n: number): string => `미전송 변경 사항 ${n.toLocaleString("ko-KR")}건을 유지했습니다. 이 내용을 보낼 때까지 리포지토리 업데이트를 보류합니다.`,
@@ -323,7 +323,7 @@ export const ko = {
     cards: {
       unit: { keys: "키", cells: "번역" },
       synced: (when: string | null): string => (when === null ? "아직 동기화하지 않음" : `${when} 동기화됨`),
-      acrossSurfaces: (n: number): string => (n === 1 ? "이 리포지토리 전체" : `소스 ${n}개 전체`),
+      acrossSurfaces: (n: number): string => (n === 1 ? "이 리포지토리 전체" : `소스 ${n.toLocaleString("ko-KR")}개 전체`),
       reviewByLocale: (parts: string): string => parts,
       localeCount: (code: string, n: number): string => `${code} ${n.toLocaleString("ko-KR")}개`,
       allFilled: (n: number): string => `키 ${n.toLocaleString("ko-KR")}개 번역 완료`,
@@ -346,7 +346,7 @@ export const ko = {
     attention: {
       title: "확인이 필요한 항목",
       count: (n: number): string => `${n.toLocaleString("ko-KR")}개 항목`,
-      more: (n: number): string => `+${n}개 더 보기`,
+      more: (n: number): string => `+${n.toLocaleString("ko-KR")}개 더 보기`,
       importFailed: {
         title: (surface: string): string => `${surface} 소스`,
         body: "마지막 동기화에서 이 소스를 읽지 못했습니다",
@@ -769,7 +769,7 @@ export const ko = {
     },
     group: { needsAttention: "확인 필요", allSet: "모두 완료" },
     resultsFor: (q: string): string => `“${q}” 검색 결과`,
-    count: (n: number): string => `프로젝트 ${n}개`,
+    count: (n: number): string => `프로젝트 ${n.toLocaleString("ko-KR")}개`,
     clearSearch: "검색어 지우기",
     meter: {
       note: {
@@ -787,7 +787,7 @@ export const ko = {
       prOpen: (n: number): string => `PR #${n} 열림 — 머지하면 반영됩니다.`,
       prCheckFailed: "열린 PR을 확인하지 못했습니다.",
       repoAhead: (n: number, baseBranch: string): string =>
-        `마지막 동기화 뒤에 ${baseBranch} 브랜치에서 번역 파일 ${n}개가 바뀌었습니다.`,
+        `마지막 동기화 뒤에 ${baseBranch} 브랜치에서 번역 파일 ${n.toLocaleString("ko-KR")}개가 바뀌었습니다.`,
       setup: "번역을 시작하려면 설정을 마치세요.",
       needsReconnect: "이 리포지토리의 연결이 끊어졌습니다 — 다시 연결할 때까지 동기화와 게시가 멈춥니다.",
       checkDetails: "동기화 내역을 확인하세요.",
@@ -833,7 +833,7 @@ export const ko = {
       saved: "저장됨",
       errors: {
         empty: "다른 사람이 알아볼 수 있도록 이름을 입력하세요.",
-        tooLong: (max: number): string => `${max}자 이하로 입력하세요.`,
+        tooLong: (max: number): string => `${max.toLocaleString("ko-KR")}자 이하로 입력하세요.`,
         unavailable: "이름을 저장하지 못했습니다. 잠시 후 다시 시도하세요.",
       },
     },
@@ -1017,7 +1017,7 @@ export const ko = {
       next: "다음",
       back: "이전",
       close: "닫기",
-      step: (n: number): string => `4단계 중 ${n}단계`,
+      step: (n: number): string => `4단계 중 ${n.toLocaleString("ko-KR")}단계`,
     },
 
     steps: {
@@ -1028,7 +1028,7 @@ export const ko = {
       files: {
         title: "번역 파일 선택",
         description: (n: number, repo: string, branch: string): string =>
-          `${repo} · ${branch}에서 번역 파일 후보 ${n}개를 찾았습니다. 계속하기 전에 키를 확인하세요.`,
+          `${repo} · ${branch}에서 번역 파일 후보 ${n.toLocaleString("ko-KR")}개를 찾았습니다. 계속하기 전에 키를 확인하세요.`,
         loading: (repo: string, branch: string): string => `${repo} · ${branch} 읽는 중…`,
         emptyTitle: "번역 파일 경로 지정",
         emptyDescription: (repo: string, branch: string): string =>
@@ -1103,7 +1103,7 @@ export const ko = {
       previewCandidate: (path: string) => `${path} 미리보기`,
       conflicts: "같은 파일을 사용하는 항목이 중복 선택되었습니다. 하나만 남기고 선택을 해제하세요.",
       keys: (n: number): string => `키 ${n.toLocaleString("ko-KR")}개`,
-      summaryShort: (locales: number, keys: string): string => `언어 ${locales}개 · ${keys}`,
+      summaryShort: (locales: number, keys: string): string => `언어 ${locales.toLocaleString("ko-KR")}개 · ${keys}`,
       notListed: "목록에 없나요?",
       setPath: "경로 직접 지정",
       preview: {
@@ -1166,7 +1166,7 @@ export const ko = {
           : `이미 사용 중인 주소입니다. ${alt} 같은 다른 주소를 입력하세요.`,
       slugEmpty: "주소를 입력하세요.",
       slugFormat: "주소에는 영문 소문자, 숫자, '-', '.', '_'를 쓸 수 있습니다.",
-      slugTooLong: (max: number): string => `주소는 최대 ${max}자까지 쓸 수 있습니다.`,
+      slugTooLong: (max: number): string => `주소는 최대 ${max.toLocaleString("ko-KR")}자까지 쓸 수 있습니다.`,
       slugReserved: "예약된 주소입니다.",
     },
 
@@ -1672,10 +1672,10 @@ export const ko = {
 
   members: {
     loading: "멤버를 불러오는 중…",
-    seats: (n: number, limit: number): string => `정원 ${limit}명 중 ${n}명`,
-    seatsFull: (limit: number): string => `정원 ${limit}명 중 ${limit}명 — 초대하려면 멤버를 제거하세요`,
+    seats: (n: number, limit: number): string => `정원 ${limit.toLocaleString("ko-KR")}명 중 ${n.toLocaleString("ko-KR")}명`,
+    seatsFull: (limit: number): string => `정원 ${limit.toLocaleString("ko-KR")}명 중 ${limit.toLocaleString("ko-KR")}명 — 초대하려면 멤버를 제거하세요`,
     ownerOnly: "프로젝트 소유자만 초대하거나 역할을 바꿀 수 있습니다",
-    count: (n: number): string => `멤버 ${n}명`,
+    count: (n: number): string => `멤버 ${n.toLocaleString("ko-KR")}명`,
     unreadableLabel: UNAVAILABLE,
     unreadableHint: "이 멤버의 이름과 이메일을 복호화하지 못했습니다. 역할과 가입일에는 영향이 없습니다.",
     roleLocked: {
@@ -1719,7 +1719,7 @@ export const ko = {
       send: (n: number): string => (n === 0 ? "초대 보내기" : `초대 ${n.toLocaleString("ko-KR")}건 보내기`),
       sending: "초대를 보내는 중…",
       nothingSent: "이번 요청으로는 아무것도 보내지 않았습니다. 표시된 행을 고치거나 제거한 뒤 다시 보내세요.",
-      seatsUsed: (n: number, limit: number): string => `정원 ${limit}명 중 ${n}명`,
+      seatsUsed: (n: number, limit: number): string => `정원 ${limit.toLocaleString("ko-KR")}명 중 ${n.toLocaleString("ko-KR")}명`,
       rowError: {
         invalidEmail: "이메일 주소 형식이 아닙니다.",
         invalidRole: "이 주소의 역할을 고르세요.",
@@ -1916,7 +1916,7 @@ export const ko = {
     footnote: "이 로그인 수단을 그 계정에 추가합니다. 프로젝트와 번역은 그대로 있습니다.",
     methods: {
       title: "로그인 수단",
-      count: (connected: number, total: number): string => `${total}개 중 ${connected}개`,
+      count: (connected: number, total: number): string => `${total.toLocaleString("ko-KR")}개 중 ${connected.toLocaleString("ko-KR")}개`,
       connect: "연결",
       connectLabel: (provider: string): string => `${provider} 계정을 로그인 수단으로 연결`,
       connected: "연결됨",
@@ -1961,7 +1961,7 @@ export const ko = {
       unavailable: "문제가 생겼습니다. 잠시 후 다시 시도하세요.",
       archived: "이 프로젝트는 보관되었습니다. 프로젝트 소유자가 설정에서 복원할 수 있습니다.",
       "owner-limit-reached": (limit: number): string =>
-        `활성 프로젝트는 1인당 최대 ${limit}개까지 소유할 수 있습니다. 이 프로젝트의 소유자 중 이미 ${limit}개 이상을 소유한 사람이 있어, 해당 소유자가 먼저 기존 프로젝트를 보관해야 합니다.`,
+        `활성 프로젝트는 1인당 최대 ${limit.toLocaleString("ko-KR")}개까지 소유할 수 있습니다. 이 프로젝트의 소유자 중 이미 ${limit.toLocaleString("ko-KR")}개 이상을 소유한 사람이 있어, 해당 소유자가 먼저 기존 프로젝트를 보관해야 합니다.`,
     },
 
     invite: {
@@ -1973,7 +1973,7 @@ export const ko = {
       "already-member": "이미 이 프로젝트의 멤버입니다.",
       archived: "이 프로젝트는 보관되었습니다. 초대한 사람에게 복원을 요청한 뒤 이 링크를 다시 여세요.",
       "limit-reached": (limit: number): string =>
-        `이미 활성 프로젝트를 ${limit}개 이상 소유하고 있습니다. 소유한 프로젝트가 ${limit}개보다 적어질 때까지 보관한 뒤 이 링크를 다시 여세요.`,
+        `이미 활성 프로젝트를 ${limit.toLocaleString("ko-KR")}개 이상 소유하고 있습니다. 소유한 프로젝트가 ${limit.toLocaleString("ko-KR")}개보다 적어질 때까지 보관한 뒤 이 링크를 다시 여세요.`,
       unavailable: "문제가 생겼습니다. 잠시 후 다시 시도하세요.",
       fallback: "초대를 수락하지 못했습니다. 초대한 사람에게 새 링크를 요청하세요.",
     },
@@ -2025,9 +2025,9 @@ export const ko = {
       "manual-no-match": "그 경로에 해당 형식의 파일이 없습니다. 경로와 형식을 확인하세요.",
       "sample-expired": "이 미리보기는 만료되었습니다. 보려면 파일을 다시 찾으세요.",
       "slug-taken": "이미 쓰이는 주소입니다. 다른 주소를 고르세요.",
-      "limit-reached": (limit: number): string => `프로젝트는 최대 ${limit}개까지 만들 수 있습니다.`,
+      "limit-reached": (limit: number): string => `프로젝트는 최대 ${limit.toLocaleString("ko-KR")}개까지 만들 수 있습니다.`,
       "invalid-slug": (max: number): string =>
-        `주소에는 영문 소문자, 숫자, '-', '.', '_'를 최대 ${max}자까지 쓸 수 있습니다. 'new'는 예약되어 있습니다.`,
+        `주소에는 영문 소문자, 숫자, '-', '.', '_'를 최대 ${max.toLocaleString("ko-KR")}자까지 쓸 수 있습니다. 'new'는 예약되어 있습니다.`,
       "invalid-branch": "올바른 브랜치 이름이 아닙니다. 다른 브랜치를 고르세요.",
       "sync-branch": "Malmoi가 그 브랜치에서 번역을 게시하므로 기준 브랜치로 쓸 수 없습니다. 다른 브랜치를 고르세요.",
       "not-awaiting": "첫 동기화는 이미 끝났습니다. 여기서 다시 실행하면 편집한 번역을 덮어쓰게 되므로 막혀 있습니다.",

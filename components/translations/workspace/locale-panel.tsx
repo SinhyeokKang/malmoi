@@ -9,7 +9,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Textarea } from "@/components/ui/textarea";
 import { localeTextAttrs } from "@/lib/translations/text-direction";
-import { useMessages } from "@/components/i18n/messages-provider";
+import { useMessages, useUiLocale } from "@/components/i18n/messages-provider";
+import { formatNumber } from "@/lib/number-format";
 import { keyEditCommand, type KeyDraftState } from "@/lib/translations/draft";
 import { MISSING_LANGUAGES } from "@/lib/translations/query";
 import { cn } from "@/lib/utils";
@@ -51,6 +52,7 @@ export function LocalePanel({ detail, draft, language, languageLocked = false, o
   invalid?: { locales: readonly string[]; describedBy: string };
 }) {
   const m = useMessages();
+  const uiLocale = useUiLocale();
   const w = m.translations.workspace.detail;
   const filled = detail.locales.filter(l => l.value !== null && l.value !== "").length;
   const total = detail.locales.length;
@@ -107,7 +109,7 @@ export function LocalePanel({ detail, draft, language, languageLocked = false, o
                   ? <span title={w.noCommit}>{`${detail.refs[0].path}:${detail.refs[0].line}`}<span className="sr-only">{` (${w.noCommit})`}</span></span>
                   : <InlineLink href={detail.refs[0].href} target="_blank" rel="noreferrer">{`${lastSegment(detail.refs[0].path)}:${detail.refs[0].line}`}</InlineLink>}
                 {/* ⚠️ `title`만으로는 hover에서만 읽힌다 (audit #38) — 같은 문장을 sr-only로 겹친다. 보이는 `+N`은 숨긴다(두 번 읽힌다). */}
-                {detail.refs.length > 1 && <span title={w.referenced(detail.refs.length)}><span aria-hidden>{` +${detail.refs.length - 1}`}</span><span className="sr-only">{` · ${w.referenced(detail.refs.length)}`}</span></span>}
+                {detail.refs.length > 1 && <span title={w.referenced(detail.refs.length)}><span aria-hidden>{` +${formatNumber(detail.refs.length - 1, uiLocale)}`}</span><span className="sr-only">{` · ${w.referenced(detail.refs.length)}`}</span></span>}
               </>
             )}
           </span>

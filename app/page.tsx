@@ -12,7 +12,7 @@ import { appVersion } from "@/lib/app-version";
 import { rootView } from "@/lib/auth/landing";
 import { readSession } from "@/lib/auth/read-session";
 import type { Messages } from "@/lib/i18n";
-import { getMessages } from "@/lib/i18n/server";
+import { getMessages, getUiLocale } from "@/lib/i18n/server";
 import { en } from "@/messages/en";
 import { GITHUB_REPO_URL } from "@/lib/links";
 import { routes } from "@/lib/routes";
@@ -46,7 +46,7 @@ const docsIcon = (m: Messages) => navFooterItems(m).find((item) => item.key === 
  * `/signin`으로 간다.
  */
 export default async function Root() {
-  const m = await getMessages();
+  const [m, uiLocale] = await Promise.all([getMessages(), getUiLocale()]);
   const DocsIcon = docsIcon(m);
   const session = await readSession();
   const view = rootView(session.status);
@@ -86,7 +86,7 @@ export default async function Root() {
         label={stage.label}
         captions={stage.captions}
         typed={mockup.selected.typed}
-        scenes={mockupScenes(m)}
+        scenes={mockupScenes(m, uiLocale)}
         closing={
           // 위아래 여백은 섹션 자신의 padding-block 240이다(2026-09-27 사용자 — 120의 두 배). 이웃의 margin으로 만들지 않는다.
           <section aria-labelledby="landing-closing" className="flex flex-col items-center px-8 py-60 text-center">

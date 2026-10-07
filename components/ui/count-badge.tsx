@@ -1,4 +1,8 @@
+"use client";
+
+import { useUiLocale } from "@/components/i18n/messages-provider";
 import { Badge } from "@/components/ui/badge";
+import { formatNumber } from "@/lib/number-format";
 import { cn } from "@/lib/utils";
 
 /**
@@ -11,10 +15,11 @@ import { cn } from "@/lib/utils";
  * `className`은 배치만 덧댄다 — Publish 버튼 안처럼 어두운 면 위에서는 면·글자를 그 면에 맞춰 덮는다.
  */
 export function CountBadge({ count, label, className }: { count: number; label: string; className?: string }) {
+  const uiLocale = useUiLocale();
   if (count === 0) return null;
   return (
     <Badge variant="soft-neutral" className={cn(className)}>
-      <span aria-hidden>{count.toLocaleString("en-US")}</span>
+      <span aria-hidden>{formatNumber(count, uiLocale)}</span>
       <span className="sr-only">{label}</span>
     </Badge>
   );

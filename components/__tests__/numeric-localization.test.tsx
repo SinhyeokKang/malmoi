@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/card";
 import { SegmentBody } from "@/components/ui/segmented-control";
 import { countCards } from "@/lib/home/cards";
 import { metaTabs } from "@/lib/home/meta";
+import type { Messages } from "@/lib/i18n";
 import { en } from "@/messages/en";
 import { ko } from "@/messages/ko";
 import { es } from "@/messages/es";
@@ -59,6 +60,7 @@ describe.each(cases)("화면 수량 %s", (uiLocale, m, expected) => {
 
   it("상세의 추가 참조 수를 현지화하고 코드 행 번호는 유지한다", async () => {
     const detail = props().detail!;
+    if ("absent" in detail) throw new Error("Expected a key detail");
     const refs = Array.from({ length: 10001 }, () => ({ path: "src/a.tsx", line: 10000, href: null }));
     const { container } = await render(<LocalePanel detail={{ ...detail, refs }} draft={{ keyId: detail.key.id, order: [], draft: {}, saved: {} }} language={undefined} onLanguage={() => {}} onEdit={() => {}} onReset={() => {}} onSave={() => {}} copyHref="/projects/acme" readOnly footer={null} />, { uiLocale });
     expect(container.textContent).toContain(` +${expected}`);
@@ -67,9 +69,12 @@ describe.each(cases)("화면 수량 %s", (uiLocale, m, expected) => {
   });
 
   it("랜딩 UI 카운터를 현지화하고 영어 고정 키·원본 데이터는 유지한다", async () => {
-    const source = m.landing.mockup.sources[0]!;
-    const fixture = { ...m.landing.mockup, keyCount: 10000, source: source.slug, sources: [{ ...source, keyCount: 10000, namespaces: [{ name: "common", keyCount: 10000 }] }] };
-    const dict = { ...m, landing: { ...m.landing, mockup: fixture } };
+    const source = m.landing.mockup.sources[1];
+    const fixture: Messages["landing"]["mockup"] = { ...m.landing.mockup, keyCount: 10000, source: source.slug, sources: [
+      m.landing.mockup.sources[0],
+      { ...source, keyCount: 10000, namespaces: [{ ...source.namespaces[0], keyCount: 10000 }, source.namespaces[1], source.namespaces[2], source.namespaces[3]] },
+    ] };
+    const dict: Messages = { ...m, landing: { ...m.landing, mockup: fixture } };
     const { container } = await render(<TranslationsView m={dict} phase="missing" uiLocale={uiLocale} />, { uiLocale });
     expect(container.textContent).toContain(m.translations.keys(10000));
     expect([...container.querySelectorAll(".text-xs")].filter(node => node.textContent === expected).length).toBeGreaterThanOrEqual(3);

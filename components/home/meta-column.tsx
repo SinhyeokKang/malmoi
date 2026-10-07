@@ -14,6 +14,7 @@ import type { HomeLate, MetaTabs as Tabs, ProjectTabRow, PublishTabRow, SyncTabR
 import { pullNumberFrom } from "@/lib/projects/remote-plan";
 import { relativeTime } from "@/lib/relative-time";
 import { cn } from "@/lib/utils";
+import { formatNumber } from "@/lib/number-format";
 import { routes } from "@/lib/routes";
 import type { UiLocale } from "@/lib/i18n/locales";
 import type { Messages } from "@/lib/i18n";
@@ -118,9 +119,6 @@ function Muted({ children }: { children: ReactNode }) {
   return <span className="text-muted-foreground">{children}</span>;
 }
 
-// 로케일을 고정한다 — 서버 로케일에 따라 구분자가 갈리면 같은 DB 상태가 다른 화면을 낸다.
-const count = (n: number) => n.toLocaleString("en-US");
-
 function projectFact(m: Messages, uiLocale: UiLocale, row: ProjectTabRow, slug: string, now: Date): ReactNode {
   const label = m.home.meta[row.kind];
   switch (row.kind) {
@@ -147,13 +145,13 @@ function projectFact(m: Messages, uiLocale: UiLocale, row: ProjectTabRow, slug: 
       return (
         <Row key={row.kind} label={label}>
           <Link href={routes.sources(slug)} className="focus-visible:ring-ring inline-flex items-center gap-0.5 rounded-sm focus-visible:ring-2 focus-visible:outline-none">
-            {count(row.count)}
+            {formatNumber(row.count, uiLocale)}
             <ChevronRight className="text-muted-foreground size-4" aria-hidden />
           </Link>
         </Row>
       );
     case "keys":
-      return <Row key={row.kind} label={label}>{count(row.count)}</Row>;
+      return <Row key={row.kind} label={label}>{formatNumber(row.count, uiLocale)}</Row>;
     case "members":
       return <Row key={row.kind} label={label}>{m.home.meta.memberCount(row.count, row.pending)}</Row>;
     case "created":
@@ -176,7 +174,7 @@ function syncFact(m: Messages, uiLocale: UiLocale, row: SyncTabRow, now: Date): 
     case "changed":
       return <Row key={row.kind} label={label}>{m.home.meta.values(row.values)}</Row>;
     case "keysSeen":
-      return <Row key={row.kind} label={label}>{count(row.count)}</Row>;
+      return <Row key={row.kind} label={label}>{formatNumber(row.count, uiLocale)}</Row>;
     case "sources":
       return <Row key={row.kind} label={label}>{row.slugs.join(", ")}</Row>;
     case "hold":

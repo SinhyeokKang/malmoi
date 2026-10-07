@@ -76,8 +76,8 @@ export const es = {
     seeOpen: "Ver qué está abierto",
     completed: (n: number, branch: string): string => `${n.toLocaleString("es")} ${n === 1 ? "clave sincronizada" : "claves sincronizadas"} desde ${branch}`,
     syncedKeys: (n: number): string => `${n.toLocaleString("es")} ${n === 1 ? "clave sincronizada" : "claves sincronizadas"}`,
-    unreadable: (n: number): string => `No pudimos leer ${n} ${n === 1 ? "fuente" : "fuentes"}`,
-    notReplaced: (n: number): string => `${n} ${n === 1 ? "fuente no se reemplazó" : "fuentes no se reemplazaron"}`,
+    unreadable: (n: number): string => `No pudimos leer ${n.toLocaleString("es")} ${n === 1 ? "fuente" : "fuentes"}`,
+    notReplaced: (n: number): string => `${n.toLocaleString("es")} ${n === 1 ? "fuente no se reemplazó" : "fuentes no se reemplazaron"}`,
     withIssue: (base: string, issue: string): string => `${base}, pero ${issue}`,
     partial: (n: number): string => `${n.toLocaleString("es")} ${n === 1 ? "elemento quedó" : "elementos quedaron"} sin sincronizar. Revisa los detalles abajo.`,
     kept: (n: number): string => `Se ${n === 1 ? "conservó" : "conservaron"} ${n.toLocaleString("es")} ${n === 1 ? "edición sin enviar" : "ediciones sin enviar"}. Las actualizaciones del repositorio se retienen hasta que ${n === 1 ? "se envíe" : "se envíen"}.`,
@@ -318,7 +318,7 @@ export const es = {
     cards: {
       unit: { keys: "claves", cells: "celdas" },
       synced: (when: string | null): string => (when === null ? "aún sin sincronizar" : `sincronizado ${when}`),
-      acrossSurfaces: (n: number): string => (n === 1 ? "en este repositorio" : `en ${n} fuentes`),
+      acrossSurfaces: (n: number): string => (n === 1 ? "en este repositorio" : `en ${n.toLocaleString("es")} fuentes`),
       reviewByLocale: (parts: string): string => parts,
       localeCount: (code: string, n: number): string => `${n.toLocaleString("es")} ${code}`,
       allFilled: (n: number): string => `${n.toLocaleString("es")} claves, todas completas`,
@@ -341,7 +341,7 @@ export const es = {
     attention: {
       title: "Requiere tu atención",
       count: (n: number): string => `${n.toLocaleString("es")} ${n === 1 ? "elemento" : "elementos"}`,
-      more: (n: number): string => `+${n} más`,
+      more: (n: number): string => `+${n.toLocaleString("es")} más`,
       importFailed: {
         title: (surface: string): string => `Fuente ${surface}`,
         body: "La última sincronización no pudo leer esta fuente",
@@ -762,7 +762,7 @@ export const es = {
     },
     group: { needsAttention: "Requiere atención", allSet: "Todo listo" },
     resultsFor: (q: string): string => `Resultados para “${q}”`,
-    count: (n: number): string => `${n} ${n === 1 ? "proyecto" : "proyectos"}`,
+    count: (n: number): string => `${n.toLocaleString("es")} ${n === 1 ? "proyecto" : "proyectos"}`,
     clearSearch: "Borrar búsqueda",
     meter: {
       note: {
@@ -780,7 +780,7 @@ export const es = {
       prOpen: (n: number): string => `La pull request #${n} está abierta: fusiónala para terminar.`,
       prCheckFailed: "No se pudo comprobar si hay una pull request abierta.",
       repoAhead: (n: number, baseBranch: string): string =>
-        `${n === 1 ? "Cambió 1 archivo de traducción" : `Cambiaron ${n} archivos de traducción`} en ${baseBranch} después de tu última sincronización.`,
+        `${n === 1 ? "Cambió 1 archivo de traducción" : `Cambiaron ${n.toLocaleString("es")} archivos de traducción`} en ${baseBranch} después de tu última sincronización.`,
       setup: "Termina la configuración para empezar a traducir.",
       needsReconnect: "Este repositorio está desconectado: las sincronizaciones y publicaciones se detienen hasta que se vuelva a conectar.",
       checkDetails: "Revisa los detalles de la sincronización.",
@@ -825,7 +825,7 @@ export const es = {
       saved: "Guardado",
       errors: {
         empty: "Escribe un nombre para que los demás puedan reconocerte.",
-        tooLong: (max: number): string => `Usa ${max} caracteres o menos.`,
+        tooLong: (max: number): string => `Usa ${max.toLocaleString("es")} caracteres o menos.`,
         unavailable: "No se pudo guardar tu nombre. Vuelve a intentarlo en un momento.",
       },
     },
@@ -1009,7 +1009,7 @@ export const es = {
       next: "Siguiente",
       back: "Atrás",
       close: "Cerrar",
-      step: (n: number): string => `Paso ${n} de 4`,
+      step: (n: number): string => `Paso ${n.toLocaleString("es")} de 4`,
     },
 
     steps: {
@@ -1020,7 +1020,7 @@ export const es = {
       files: {
         title: "¿Qué archivos contienen tus textos?",
         description: (n: number, repo: string, branch: string): string =>
-          `${n === 1 ? "1 conjunto coincide" : `${n} conjuntos coinciden`} en ${repo} · ${branch}. Revisa las claves antes de continuar.`,
+          `${n === 1 ? "1 conjunto coincide" : `${n.toLocaleString("es")} conjuntos coinciden`} en ${repo} · ${branch}. Revisa las claves antes de continuar.`,
         loading: (repo: string, branch: string): string => `Leyendo ${repo} · ${branch}…`,
         emptyTitle: "¿Dónde están tus archivos de traducción?",
         emptyDescription: (repo: string, branch: string): string =>
@@ -1095,7 +1095,7 @@ export const es = {
       previewCandidate: (path: string) => `Vista previa de ${path}`,
       conflicts: "Estas selecciones escriben en los mismos archivos. Desmarca una selección para continuar.",
       keys: (n: number): string => (n === 1 ? "1 clave" : `${n.toLocaleString("es")} claves`),
-      summaryShort: (locales: number, keys: string): string => `${locales} idiomas · ${keys}`,
+      summaryShort: (locales: number, keys: string): string => `${locales.toLocaleString("es")} idiomas · ${keys}`,
       notListed: "¿No aparece?",
       setPath: "Indicar la ruta manualmente",
       preview: {
@@ -1157,7 +1157,7 @@ export const es = {
           : `Esa dirección ya está en uso. Prueba otra, como ${alt}.`,
       slugEmpty: "Elige una dirección.",
       slugFormat: "Una dirección puede usar letras minúsculas, números, '-', '.' y '_'.",
-      slugTooLong: (max: number): string => `Una dirección puede tener hasta ${max} caracteres.`,
+      slugTooLong: (max: number): string => `Una dirección puede tener hasta ${max.toLocaleString("es")} caracteres.`,
       slugReserved: "Esa dirección está reservada.",
     },
 
@@ -1666,10 +1666,10 @@ export const es = {
   },
   members: {
     loading: "Cargando miembros…",
-    seats: (n: number, limit: number): string => `${n} de ${limit} plazas`,
-    seatsFull: (limit: number): string => `${limit} de ${limit} plazas — quita a alguien para invitar`,
+    seats: (n: number, limit: number): string => `${n.toLocaleString("es")} de ${limit.toLocaleString("es")} plazas`,
+    seatsFull: (limit: number): string => `${limit.toLocaleString("es")} de ${limit.toLocaleString("es")} plazas — quita a alguien para invitar`,
     ownerOnly: "Solo los propietarios del proyecto pueden invitar o cambiar roles",
-    count: (n: number): string => `${n} ${n === 1 ? "miembro" : "miembros"}`,
+    count: (n: number): string => `${n.toLocaleString("es")} ${n === 1 ? "miembro" : "miembros"}`,
     unreadableLabel: UNAVAILABLE,
     unreadableHint: "No se pudieron descifrar el nombre ni la dirección de esta persona. El rol y la fecha de incorporación no se ven afectados.",
     roleLocked: {
@@ -1712,7 +1712,7 @@ export const es = {
       send: (n: number): string => (n === 0 ? "Enviar invitaciones" : n === 1 ? "Enviar invitación" : `Enviar ${n.toLocaleString("es")} invitaciones`),
       sending: "Enviando invitaciones…",
       nothingSent: "Esta solicitud no envió nada. Corrige o quita la fila resaltada y vuelve a enviar.",
-      seatsUsed: (n: number, limit: number): string => `${n} de ${limit} plazas ocupadas`,
+      seatsUsed: (n: number, limit: number): string => `${n.toLocaleString("es")} de ${limit.toLocaleString("es")} plazas ocupadas`,
       rowError: {
         invalidEmail: "Esto no parece una dirección de correo electrónico.",
         invalidRole: "Elige un rol para esta dirección.",
@@ -1908,7 +1908,7 @@ export const es = {
     footnote: "Añadiremos este método de inicio de sesión a esa cuenta. Tus proyectos y traducciones se quedan donde están.",
     methods: {
       title: "Métodos de inicio de sesión",
-      count: (connected: number, total: number): string => `${connected} de ${total}`,
+      count: (connected: number, total: number): string => `${connected.toLocaleString("es")} de ${total.toLocaleString("es")}`,
       connect: "Conectar",
       connectLabel: (provider: string): string => `Conectar ${provider} como método de inicio de sesión`,
       connected: "Conectado",
@@ -1952,7 +1952,7 @@ export const es = {
       unavailable: "Algo salió mal. Vuelve a intentarlo en un momento.",
       archived: "Este proyecto está archivado. Un propietario del proyecto puede restaurarlo en Configuración.",
       "owner-limit-reached": (limit: number): string =>
-        `Una persona puede ser propietaria de hasta ${limit} proyectos activos, y alguien aquí ya tiene ${limit} o más. Primero tiene que archivar proyectos.`,
+        `Una persona puede ser propietaria de hasta ${limit.toLocaleString("es")} proyectos activos, y alguien aquí ya tiene ${limit.toLocaleString("es")} o más. Primero tiene que archivar proyectos.`,
     },
 
     invite: {
@@ -1964,7 +1964,7 @@ export const es = {
       "already-member": "Ya eres miembro de este proyecto.",
       archived: "Este proyecto está archivado. Pide a la persona que te invitó que lo restaure y vuelve a abrir este enlace.",
       "limit-reached": (limit: number): string =>
-        `Ya eres propietario de ${limit} o más proyectos activos. Archiva proyectos hasta tener menos de ${limit} y vuelve a abrir este enlace.`,
+        `Ya eres propietario de ${limit.toLocaleString("es")} o más proyectos activos. Archiva proyectos hasta tener menos de ${limit.toLocaleString("es")} y vuelve a abrir este enlace.`,
       unavailable: "Algo salió mal. Vuelve a intentarlo en un momento.",
       fallback: "No se pudo aceptar la invitación. Pide un enlace nuevo a la persona que te invitó.",
     },
@@ -2014,9 +2014,9 @@ export const es = {
       "manual-no-match": "No hay archivos de ese formato en esa ruta. Revisa la ruta y el formato.",
       "sample-expired": "Esta vista previa caducó. Vuelve a detectar los archivos para verla.",
       "slug-taken": "Esa dirección ya está en uso. Elige otra.",
-      "limit-reached": (limit: number): string => `Puedes crear hasta ${limit} proyectos.`,
+      "limit-reached": (limit: number): string => `Puedes crear hasta ${limit.toLocaleString("es")} proyectos.`,
       "invalid-slug": (max: number): string =>
-        `Una dirección puede usar letras minúsculas, números, '-', '.' y '_', hasta ${max} caracteres. 'new' está reservada.`,
+        `Una dirección puede usar letras minúsculas, números, '-', '.' y '_', hasta ${max.toLocaleString("es")} caracteres. 'new' está reservada.`,
       "invalid-branch": "Ese nombre de rama no es válido. Elige otra rama.",
       "sync-branch": "Malmoi publica las traducciones desde esa rama, así que no puede ser la rama base. Elige otra rama.",
       "not-awaiting": "La primera sincronización ya terminó. Volver a ejecutarla aquí sobrescribiría traducciones editadas, así que está bloqueada.",
