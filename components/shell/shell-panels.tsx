@@ -183,6 +183,16 @@ export function ShellPanels({ sidebar, children, initialCollapsed = false }: { s
           aria-label={m.common.resizeSidebar}
           className="w-2"
           onDragging={(isDragging) => { dragging.current = isDragging; }}
+          /**
+           * ⚠️ **Enter는 셸이 먼저 받는다** — `react-resizable-panels` 2.1.9의 Enter는 그룹 상태만 바꾸고 패널 `onResize`를 부르지 않아
+           * (2026-10-07 실측) 폭만 199가 되고 접힘 상태·라벨·쿠키가 그대로였다. capture 단계에서 막으면 라이브러리 리스너가
+           * `defaultPrevented`를 보고 물러나고, 버튼과 같은 `toggle`이 마지막으로 펼쳤던 폭으로 편다.
+           */
+          onKeyDownCapture={(event) => {
+            if (event.key !== "Enter") return;
+            event.preventDefault();
+            toggle();
+          }}
         />
         {/*
           전환 중 콘텐츠 트리 둘을 한 셀에 둔다. ⚠️ **둘째 `auto` 열은 2026-09-16부터 비어 있다** —

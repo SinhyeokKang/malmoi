@@ -59,8 +59,7 @@ export function panelLayout(available: number, px: number): [number, number] | n
  *
  * ⚠️ **드래그 여부를 입력으로 받지 않는다** — 여부가 바뀌었으면 사용자의 선택이고, 우리 `setLayout`과 라이브러리의 재평가는 접힘 여부를 보존해
  * 여기서 `null`이다. 그래서 이 값이 곧 기기 쿠키를 쓸 때다(`lib/shell/sidebar-cookie.ts`).
- * ⚠️ **핸들 Enter 접기·펴기는 여기까지 오지 않는다** — `react-resizable-panels` 2.1.9가 그 경로에서 `onResize`를 부르지 않는다(2026-10-07 실측:
- * 폭만 199로 바뀌고 셸의 접힘 상태·쿠키는 그대로). 이 함수 밖의 기존 결함이다.
+ * ⚠️ 핸들 Enter는 라이브러리가 `onResize`를 부르지 않는 경로라 셸이 가로채 버튼 토글로 보낸다(`shell-panels.tsx`).
  */
 export function collapseChange(prev: boolean, sizePercent: number, available: number, collapsedPx: number): boolean | null {
   const collapsed = sizePercent <= panelPercent(available, collapsedPx) + 0.01;
