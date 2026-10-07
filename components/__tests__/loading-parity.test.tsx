@@ -5,8 +5,12 @@ import { expect, it, vi } from "vitest";
 
 import HomeLoading from "@/app/(edit)/projects/[slug]/(home)/loading";
 import LogsLoading from "@/app/(edit)/projects/[slug]/logs/loading";
+import { EventRow } from "@/components/logs/event-row";
+import { LocalePanel, LocalePanelSkeleton } from "@/components/translations/workspace/locale-panel";
+import type { EventRow as Row } from "@/lib/events/query";
+import { en } from "@/messages/en";
 
-import { render } from "./helpers/dom";
+import { find, render } from "./helpers/dom";
 
 vi.mock("@/lib/i18n/server", async () => ({ getUiLocale: async () => "en", getMessages: async () => (await import("@/messages/en")).en }));
 
@@ -65,6 +69,64 @@ it("Logs 골격 행은 실물 EventRow와 같은 padding·줄 묶음이고 보�
   const stack = row.querySelector<HTMLElement>("[data-skeleton-stack]")!;
   expect(stack.className).toContain("flex min-w-0 flex-1 flex-col gap-copy-gap");
   expect(stack.children).toHaveLength(2);
+});
+
+const eventTime = new Date("2026-10-08T12:00:00Z");
+const geometryEvent: Row = {
+  id: "e1", ref: "evt_geometry", kind: "IMPORT", subtype: "import.run",
+  occurredAt: eventTime, finishedAt: eventTime, result: "imported",
+  actor: { kind: "USER", removed: false, name: "Kim", emailLabel: null },
+  surfaceIds: ["s1"], surfaceScope: "sources", run: null, payload: null,
+};
+
+it("Logs 골격의 시각 슬롯은 실물과 같은 112px 고정 폭이다", async () => {
+  const { container: real } = await render(<EventRow row={geometryEvent} href="/logs" now={eventTime} archived={false} style={{ uiLocale: "en", timeZone: "UTC" }} m={en} />);
+  const { container: skeleton } = await render(LogsLoading());
+  const time = find(real, "a > time");
+  expect(time.classList.contains("w-28")).toBe(true);
+  expect(time.classList.contains("shrink-0")).toBe(true);
+  const rows = skeleton.querySelectorAll("[data-skeleton-event]");
+  expect(rows).toHaveLength(3);
+  for (const row of rows) {
+    const slot = find(row, ":scope > div:first-child");
+    expect(slot.classList.contains("w-28")).toBe(time.classList.contains("w-28"));
+    expect(slot.classList.contains("shrink-0")).toBe(true);
+  }
+});
+
+it.each(["imported", null] as const)("Logs 골격의 결과 슬롯은 결과(%s) 유무와 무관하게 실물과 같은 172px 고정 폭이다", async result => {
+  const { container: real } = await render(<EventRow row={{ ...geometryEvent, result }} href="/logs" now={eventTime} archived={false} style={{ uiLocale: "en", timeZone: "UTC" }} m={en} />);
+  const { container: skeleton } = await render(LogsLoading());
+  const realSlot = find(real, "a > :nth-last-child(2)");
+  expect(realSlot.classList.contains("w-[172px]")).toBe(true);
+  expect(realSlot.classList.contains("shrink-0")).toBe(true);
+  for (const row of skeleton.querySelectorAll("[data-skeleton-event]")) {
+    const slot = find(row, ":scope > :nth-last-child(2)");
+    expect(slot.classList.contains("w-[172px]")).toBe(realSlot.classList.contains("w-[172px]"));
+    expect(slot.classList.contains("shrink-0")).toBe(true);
+    expect(slot.classList.contains("justify-end")).toBe(realSlot.classList.contains("justify-end"));
+    // 짧은 막대가 고정 슬롯의 폭을 대신하지 않아야 한다.
+    expect(slot.querySelector("[data-skeleton-line]")).not.toBeNull();
+  }
+});
+
+it("번역 상세 복사 링크 골격은 실물 sm 버튼과 같은 28px 크기·radius8이다", async () => {
+  const { container: real } = await render(<LocalePanel
+    detail={{ key: { id: "k1", key: "title", namespace: "common", sourceText: "Title", description: null, surfaceSlug: "web" }, refs: [], locales: [] }}
+    draft={{ keyId: "k1", order: [], saved: {}, draft: {} }}
+    language={undefined} onLanguage={() => {}} onEdit={() => {}} onReset={() => {}} onSave={() => {}}
+    copyHref="/translations?key=k1" readOnly={false} footer={null}
+  />);
+  const { container: skeleton } = await render(<LocalePanelSkeleton />);
+  const button = find(real, `button[aria-label="${en.translations.workspace.detail.copyLink}"]`);
+  expect(button.classList.contains("h-7")).toBe(true);
+  expect(button.classList.contains("min-w-7")).toBe(true);
+  expect(button.classList.contains("rounded-sm")).toBe(true);
+  const slot = find(skeleton, "[data-skeleton-detail] > :nth-child(2) > :first-child > :first-child > :last-child");
+  expect(slot.classList.contains("size-7")).toBe(true);
+  expect(slot.classList.contains("shrink-0")).toBe(true);
+  expect(slot.classList.contains("rounded-sm")).toBe(button.classList.contains("rounded-sm"));
+  expect(slot.classList.contains("rounded-md")).toBe(false);
 });
 
 /**
