@@ -135,6 +135,13 @@ describe("셸 골격 — 바깥 padding 8 · 패널 간 gap 8 (8-2)", () => {
     expect(layout).toMatch(/min-w-shell-min/);
   });
 
+  /** 접힘 여부 쿠키를 서버에서 읽어 넘긴다 — 클라이언트가 읽으면 첫 페인트가 펼침이고 하이드레이션 뒤에 접힌다(2026-10-07). */
+  it("레이아웃이 접힘 쿠키를 읽어 `initialCollapsed`로 넘긴다", () => {
+    expect(layout).toMatch(/SIDEBAR_COLLAPSED_COOKIE/);
+    expect(layout).toMatch(/parseSidebarCollapsed\(/);
+    expect(layout).toMatch(/initialCollapsed=\{/);
+  });
+
   it("헤더가 전폭 44이고 로고와 사용자 메뉴 둘을 든다 — 32 컨트롤의 위아래가 6씩이다", () => {
     expect(headerBar).toMatch(/\bh-11\b/);
     expect(header).toContain("UserMenu");

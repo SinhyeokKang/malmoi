@@ -76,6 +76,24 @@ describe("방침 게이트 (B) — 등재 ↔ 본문의 절", () => {
   });
 });
 
+/**
+ * **스크립트가 쓰는 쿠키는 하나다** (2026-10-07 사이드바 접힘 — `lib/shell/sidebar-cookie.ts`). 나머지는 전부 http-only라 본문이 "모두 http-only"라고
+ * 말해 왔다 — 클라이언트가 쓰는 쿠키가 생기면 그 문장이 거짓이 된다. 표에 행이 있고, 본문이 그것을 예외로 밝히는지 두 본 모두에서 센다.
+ */
+describe("방침 — 스크립트가 쓰는 사이드바 쿠키", () => {
+  const cookies = (body: typeof privacy | typeof koPrivacy) => body.sections.find((s) => s.id === "cookies");
+  it("en 본 쿠키 표에 Sidebar 행이 있고, 본문이 그것만 http-only가 아니라고 밝힌다", () => {
+    const section = cookies(privacy);
+    const table = section?.blocks.find((b) => "table" in b);
+    expect(table !== undefined && "table" in table ? table.table.rows.map((r) => r[0]) : []).toContain("Sidebar");
+    expect(docText(section === undefined ? [] : [section])).toMatch(/Sidebar[^.]*not http-only|except the sidebar/i);
+  });
+  it("ko 본 쿠키 표에 사이드바 행이 있다", () => {
+    const table = cookies(koPrivacy)?.blocks.find((b) => "table" in b);
+    expect(table !== undefined && "table" in table ? table.table.rows.map((r) => r[0]) : []).toContain("사이드바");
+  });
+});
+
 describe("방침 게이트 (C) — 본문 ↔ 개정 이력", () => {
   it("본문이 비지 않았다 — 빈 본문을 해시해도 green이 되면 게이트가 아니다", () => {
     expect(text.length).toBeGreaterThan(3000);

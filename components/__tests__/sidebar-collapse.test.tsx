@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
 import { act } from "react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SHELL_SIDEBAR_COLLAPSED_PX, ShellPanels } from "@/components/shell/shell-panels";
 import { Sidebar } from "@/components/shell/sidebar";
-import { SidebarCollapseContext } from "@/components/shell/sidebar-collapse";
+import { SidebarCollapseContext, useSidebarCollapse } from "@/components/shell/sidebar-collapse";
 import { en } from "@/messages/en";
 
 import { render } from "./helpers/dom";
@@ -109,5 +109,57 @@ describe("셸 패널 — 접기", () => {
   it("LNB 패널이 `min-w-0`을 든다", async () => {
     const { container } = await render(<ShellPanels sidebar={<aside data-test="sidebar" />}>{<main />}</ShellPanels>);
     expect(container.querySelector('[data-test="sidebar"]')?.parentElement?.className).toContain("min-w-0");
+  });
+});
+
+/**
+ * **접힘 여부는 기기 쿠키에 남는다** (2026-10-07 사용자) — 서버 렌더가 쿠키를 읽어 `initialCollapsed`로 넘기면 첫 페인트부터 접힌 셸이다.
+ * 쓰는 것은 사용자의 토글·드래그뿐이다 — 마운트·창 크기 변화는 쓰지 않는다. 폭은 저장하지 않는다.
+ */
+describe("셸 패널 — 접힘 쿠키", () => {
+  function Probe() {
+    const { collapsed, toggle } = useSidebarCollapse();
+    return (
+      <aside data-test="sidebar" data-collapsed={String(collapsed)}>
+        <button type="button" onClick={toggle}>
+          toggle
+        </button>
+      </aside>
+    );
+  }
+
+  const clearCookie = () => {
+    document.cookie = "malmoi-sidebar-collapsed=; Path=/; Max-Age=0";
+  };
+  beforeEach(clearCookie);
+
+  it("`initialCollapsed`면 첫 렌더부터 접혀 있다 — 재기 전 폭도 40px다", async () => {
+    const { container } = await render(<ShellPanels initialCollapsed sidebar={<Probe />}>{<main />}</ShellPanels>);
+    const aside = container.querySelector<HTMLElement>('[data-test="sidebar"]');
+    expect(aside?.dataset.collapsed).toBe("true");
+    expect(aside?.parentElement?.style.flexBasis).toBe(`${SHELL_SIDEBAR_COLLAPSED_PX}px`);
+  });
+
+  it("쿠키가 없던 셸은 펼침이고 240px다", async () => {
+    const { container } = await render(<ShellPanels initialCollapsed={false} sidebar={<Probe />}>{<main />}</ShellPanels>);
+    const aside = container.querySelector<HTMLElement>('[data-test="sidebar"]');
+    expect(aside?.dataset.collapsed).toBe("false");
+    expect(aside?.parentElement?.style.flexBasis).toBe("240px");
+  });
+
+  it("마운트만으로는 쿠키를 쓰지 않는다", async () => {
+    await render(<ShellPanels initialCollapsed sidebar={<Probe />}>{<main />}</ShellPanels>);
+    expect(document.cookie).not.toContain("malmoi-sidebar-collapsed");
+  });
+
+  it("토글하면 바뀐 상태를 쿠키에 쓴다 — 펼침에서 접으면 1, 접힘에서 펴면 0", async () => {
+    const expanded = await render(<ShellPanels initialCollapsed={false} sidebar={<Probe />}>{<main />}</ShellPanels>);
+    await act(async () => expanded.container.querySelector<HTMLButtonElement>('[data-test="sidebar"] button')?.click());
+    expect(document.cookie).toContain("malmoi-sidebar-collapsed=1");
+
+    clearCookie();
+    const collapsed = await render(<ShellPanels initialCollapsed sidebar={<Probe />}>{<main />}</ShellPanels>);
+    await act(async () => collapsed.container.querySelector<HTMLButtonElement>('[data-test="sidebar"] button')?.click());
+    expect(document.cookie).toContain("malmoi-sidebar-collapsed=0");
   });
 });
