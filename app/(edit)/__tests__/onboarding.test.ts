@@ -1338,6 +1338,11 @@ describe("runFirstIngest — awaiting_first_sync에서만 돈다 (PRODUCT §7.5)
     expect(covered, JSON.stringify(hoisted.revalidatePath.mock.calls)).toBe(true);
   });
 
+  it("첫 적재의 finally 캐시 실패도 완료 결과를 뒤집지 않는다", async () => {
+    hoisted.revalidatePath.mockImplementationOnce(() => { throw new Error("cache down"); });
+    await expect(runFirstIngest({ slug: "acme" })).resolves.toMatchObject({ ok: true, count: 2 });
+  });
+
   it("스냅샷·blob을 값으로 넘겨 기존 적재 경로를 지난다", async () => {
     const result = await runFirstIngest({ slug: "acme" });
 
@@ -2193,4 +2198,9 @@ describe("설정의 다중 소스 추가와 소스별 첫 적재", () => {
     expect(await runFirstIngest({ slug: "acme", surfaceSlug: "foreign" })).toEqual({ ok: false, error: "not-found" });
     expect(hoisted.ingestFirstSnapshot).not.toHaveBeenCalled();
   });
+});
+
+it("커밋 뒤 캐시 실패는 성공 응답을 뒤집지 않는다", async () => {
+hoisted.revalidatePath.mockImplementationOnce(() => { throw new Error("cache down"); });
+ await expect(disconnectGithub()).resolves.toEqual({ ok: true });
 });

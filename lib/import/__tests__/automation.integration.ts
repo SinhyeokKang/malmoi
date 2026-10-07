@@ -292,3 +292,13 @@ it("한도 보류 + 적재 → partial", async () => {
   expect(await surface("a")).toMatchObject({ lastImportError: null, lastCommitSha: OLD });
   expect(await surface("b")).toMatchObject({ lastCommitSha: HEAD });
 });
+
+it("PR 사전 조회 뒤 Publish가 끝나면 야간 적재도 보류한다", async () => {
+  await seed();
+  const expectedLastPublishedAt = null;
+  await prisma.project.update({ where: { id: "p" }, data: { lastPublishedAt: new Date() } });
+  const openReader = vi.fn(async () => reader());
+  const input = { projectId: "p", repository, expectedLastPublishedAt };
+  expect(await runAutomationImport(prisma, input, openReader)).toMatchObject({ recorded: true, result: "deferred", deferReason: "pr-check-failed" });
+  expect(openReader).not.toHaveBeenCalled();
+});

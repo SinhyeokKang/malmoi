@@ -156,3 +156,9 @@ describe("planKeySave — 수술적 표면의 비-base 비우기는 키 전체 �
     ], SURGICAL)).toEqual({ ok: true, writes: [] });
   });
 });
+
+it("수술적 base도 폴백 원문이 비어 있으면 비우기를 거부한다", () => {
+  const surface = { writeStrategy: "surgical" as const, baseLocale: "en", sourceText: "" };
+  expect(planKeySave(current({ en: "Published" }), [{ localeCode: "en", value: "" }], surface))
+    .toEqual({ ok: false, error: "cannot-clear", localeCodes: ["en"] });
+});

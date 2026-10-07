@@ -423,6 +423,19 @@ describe("CI 적재 보류 (T7)", () => {
     expect(res.body.status).toBeUndefined();
   });
 
+  it.each([null, AFTER])("사전 집계 뒤 Publish 확인이 끝나면 토큰 0이어도 적재를 보류한다 (%s)", async (before) => {
+    await fixture(null);
+    await prisma.project.update({ where: { id: "p" }, data: { lastPublishedAt: before } });
+    const expectedLastPublishedAt = before;
+    // 역행하는 시계도 변화다. pending 0은 완료된 Publish의 상태다.
+    await prisma.project.update({ where: { id: "p" }, data: { lastPublishedAt: BEFORE } });
+    const options = { token: "ci", startedAt: new Date(), previousBaseLocale: "en", refsMode: "replace" as const,
+      pushTokenHash: hashPushToken(PUSH_TOKEN), expectedLastPublishedAt };
+    const result = await applyProtectedPush(prisma, { projectId: "p", surfaceId: "surface-p" }, ciPayload(), options);
+    expect(result).toMatchObject({ status: "deferred" });
+    expect(await cell("p", "k1", "ko")).toMatchObject({ value: "edited" });
+  });
+
   const apply = () => applyProtectedPush(prisma, { projectId: "p", surfaceId: "surface-p" }, ciPayload(),
     { token: "ci", startedAt: new Date(), previousBaseLocale: "en", refsMode: "replace", importOutcome: null, pushTokenHash: hashPushToken(PUSH_TOKEN) });
 

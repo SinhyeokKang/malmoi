@@ -21,6 +21,9 @@ describe("planGate", () => {
   });
 
   it.each([
+    "lib/oauth-server/token.ts",
+    "lib/oauth-server/authorize.ts",
+    "lib/oauth-server/revoke.ts",
     "lib/keys/source-counts.ts",
     "lib/events/view.ts",
     "lib/push/apply.ts",

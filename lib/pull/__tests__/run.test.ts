@@ -1220,3 +1220,17 @@ describe("runPull — changedValues", () => {
     expect(await runPull(deps)).toMatchObject({ status: "committed", pr: "updated", changedValues: 2 });
   });
 });
+
+it("이미 저장된 수술적 빈 base 편집은 전달 확인하지 않는다", async () => {
+  const made = createFakeGitClient({ refSha: { "heads/dev": "basehead" },
+    tree: { basehead: [{ path: "i18n/en.yml", type: "blob", sha: "enblob" }] },
+    blobs: { enblob: "hello: Published\n" } });
+  const { deps, writes } = makeDeps({ loadState: async () => ({ project: PROJECT,
+    surfaces: [{ ...PROJECT, id: "s1", slug: "default", adapterName: "yaml-catalog", pathTemplate: "i18n/{locale}.yml",
+      localeCodes: ["en"], keys: [{ id: "k1", key: "hello", sourceText: "", orphaned: false, cells: { en: { value: "" } } }] }],
+    maxUpdatedAt: new Date(), unpublished: 1,
+    pendingEdits: [{ id: "t1", token: "pending", cell: { surfaceId: "s1", keyId: "k1", localeCode: "en", restoreValue: "" } }],
+  }) }, made);
+  expect(await runPull(deps)).toMatchObject({ status: "skipped", reason: "writer-warnings" });
+  expect(writes).toEqual([]);
+});
