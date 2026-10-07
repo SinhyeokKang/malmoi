@@ -24,7 +24,7 @@
 | C | U4, U6 | Logs loading.tsx, translations/workspace/locale-panel.tsx skeleton only; loading-parity and targeted skeleton tests | gpt-6.1-sol / medium — constrained geometry fixes | None | Yes | Reviewed and integrated |
 | D | U5, U7 | guide/es image alt/title (26), guide/en/ko/es/translate/edit.md scope prose, lib/guide/__tests__/locales.test.ts or targeted guide regression | gpt-6.1-sol / medium — translation and guide contracts | None | Yes | Reviewed, one wording correction, integrated |
 | R | Independent review | Read-only batch diffs, evidence, test classification and document proposals | gpt-6-astra / medium | Completed committed implementation | Yes | All four PASS |
-| Q | Runtime QA | Read-only browser verification on main checkout; evidence and BugShot issues only | gpt-6.1-sol / high | All batches integrated + gate | Yes for observed regressions | Planned |
+| Q | Runtime QA | Read-only browser verification on main checkout; evidence and BugShot issues only | gpt-6.1-sol / high | All batches integrated + gate | Yes for observed regressions | Initial pass complete; follow-up blocked on browser control |
 
 ## Overlap and ordering
 
@@ -43,13 +43,13 @@ Full test suites and final gates run serially: C → A → D → B. Concurrent f
 
 ## Evidence and progress
 
-- All seven findings implemented, independently reviewed and integrated; coordinator final gate and runtime QA remain.
+- All seven findings implemented, independently reviewed, integrated, gated and pushed at 02ec5754. Initial runtime QA completed; the observed Logs follow-up and later landing request are integrated below, with browser recheck pending.
 - [x] A implemented, independently reviewed, integrated
 - [x] C implemented, independently reviewed, integrated
 - [x] D implemented, independently reviewed, integrated
 - [x] B implemented, independently reviewed, integrated
-- [ ] Documentation freshness and final gate
-- [ ] dev push and exact-head CI
+- [x] Original batch documentation freshness and final gate (02ec5754)
+- [x] Original batch dev push and exact-head CI (02ec5754)
 - [ ] Runtime QA and corrections
 - [ ] Resource cleanup and final report
 
@@ -79,3 +79,11 @@ Full test suites and final gates run serially: C → A → D → B. Concurrent f
 - User explicitly requested Hero `GitHub → Get Started`, footer CTA `Docs → Get Started`; preserve destinations, external-link behavior, icons, variants and localization.
 - E: Sol medium, isolated child from dev; owns `app/page.tsx` and existing landing assertions only. No overlap with C-fix1 Logs or its read-only review. Worker gate serial; no migration. Coordinator owns DESIGN/plan freshness.
 - C-fix1 source37989242/fe99c1a7 completed worker gate (12,263 passed /2 skipped). Independent Astra medium review dispatchctx_ae45707e8f0f active. QA completed and cleaned server/cookies/preferences/generated files; #201 remains open pending fix verification. TaskSpace4 entered user control; resumption permission requested, no takeover or replacement space.
+
+### Follow-up integration and remaining checks
+
+- BugShot issue [#201](https://github.com/SinhyeokKang/malmoi/issues/201) remains open for browser verification. C-fix1 Sol high worker gate passed (12,263 tests /2 skipped); independent Astra medium review ctx_ae45707e8f0f PASS, red0/yellow0. Integrated4cb6f6d6 and247cfc10. DESIGN/POSTMORTEM updated. Raw evidence copied before clean fully integrated child removal; both terminals released.
+- E Sol medium worker gate passed (12,260 tests /2 skipped); independent Astra medium review ctx_41f92bb1b848 PASS, red0/yellow0. Integrated0f6da477 andde446be1; DESIGN action placement updated. Existing B number-locale propagation preserved. Evidence copied, terminals released and clean fully integrated child removed.
+- Q runtime evidence: .scratch/ux-audit-2026-10-08/runtime-QA.md. Existing es Home/Logs/detail matrix at1280/1440/1890 in both themes, representative guide/landing/single-source search observed. Original copy skeleton radius8 and Logs112/172 slots measured correctly. Server stopped, account preferences/cookies/data and generated next-env restored; tracked tree clean.
+- Browser boundary: TaskSpace4 explicitly reported user takeover; no retry, replacement space or takeover attempted. Coordinator asked permission to resume and has no answer yet. Logs fix matrix and E layout/navigation therefore remain unverified, as do >=10000 real counts, PR-check failure paint and actual screen-reader speech. Original guide screenshot stale warning13 images/20 mappings remains outside image-recapture scope.
+- Source/doc snapshot is ready for coordinator pnpm gate and dev push; final exact-head gate/CI evidence belongs to the completion report. No migration, production deployment or remaining worker/worktree; retained TaskSpace4 is user-controlled. Runtime completion remains unchecked until control is returned and #201 is remeasured.
