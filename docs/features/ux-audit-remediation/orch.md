@@ -20,10 +20,10 @@
 | Batch | Findings | Owned implementation | Model / effort | Dependencies | Release blocking | State |
 |---|---|---|---|---|---|---|
 | A | U1, U2 | Mutation-result tone consumers (account, settings, members, translations/workspace/workspace.tsx, publish-button.tsx), home/meta-column.tsx PR state, status canon, messages en/ko/es, associated tests | gpt-6-astra / medium — cross-surface result semantics and regression tests | None | Yes | Reviewed and integrated |
-| B | U3 | All user-facing numeric consumers incl CountBadge, tree-panel, home counts/meta, workspace, locale panel as required; minimal numeric formatting helper and tests; dictionary numeric consistency | gpt-6.1-sol / high — broad but mechanical locale propagation | A integrated; C integrated before editing locale-panel | Yes | Running |
+| B | U3 | All user-facing numeric consumers incl CountBadge, tree-panel, home counts/meta, workspace, locale panel as required; minimal numeric formatting helper and tests; dictionary numeric consistency | gpt-6.1-sol / high — broad but mechanical locale propagation | A integrated; C integrated before editing locale-panel | Yes | Reviewed and integrated |
 | C | U4, U6 | Logs loading.tsx, translations/workspace/locale-panel.tsx skeleton only; loading-parity and targeted skeleton tests | gpt-6.1-sol / medium — constrained geometry fixes | None | Yes | Reviewed and integrated |
 | D | U5, U7 | guide/es image alt/title (26), guide/en/ko/es/translate/edit.md scope prose, lib/guide/__tests__/locales.test.ts or targeted guide regression | gpt-6.1-sol / medium — translation and guide contracts | None | Yes | Reviewed, one wording correction, integrated |
-| R | Independent review | Read-only batch diffs, evidence, test classification and document proposals | gpt-6-astra / medium | Completed batch | Yes | Planned |
+| R | Independent review | Read-only batch diffs, evidence, test classification and document proposals | gpt-6-astra / medium | Completed committed implementation | Yes | All four PASS |
 | Q | Runtime QA | Read-only browser verification on main checkout; evidence and BugShot issues only | gpt-6.1-sol / high | All batches integrated + gate | Yes for observed regressions | Planned |
 
 ## Overlap and ordering
@@ -43,11 +43,11 @@ Full test suites and final gates run serially: C → A → D → B. Concurrent f
 
 ## Evidence and progress
 
-- First-wave implementation complete or in final verification; C owns the first isolated gate slot, A/D await explicit coordinator signals.
+- All seven findings implemented, independently reviewed and integrated; coordinator final gate and runtime QA remain.
 - [x] A implemented, independently reviewed, integrated
 - [x] C implemented, independently reviewed, integrated
 - [x] D implemented, independently reviewed, integrated
-- [ ] B implemented, independently reviewed, integrated
+- [x] B implemented, independently reviewed, integrated
 - [ ] Documentation freshness and final gate
 - [ ] dev push and exact-head CI
 - [ ] Runtime QA and corrections
@@ -68,3 +68,5 @@ Full test suites and final gates run serially: C → A → D → B. Concurrent f
 - D review completed PASS; minor D-R1 changed Spanish alt `Nuevas de GitHub` to actual `Nuevas desde GitHub`. Sol medium fix dispatch `ctx_ba1e7628eb9c`, commit `03cd94ae`, guide checks and full gate green with raw logs preserved. Coordinator inspected the one-line diff against the dictionary. Integrated `fe4cc8b4`, `c5ff7a40`, `d6127302`; handoff/logs copied, all D terminals and clean integrated child removed. AUTHORING verification description updated. Existing 7 stale screenshots remain warning-only, not D source changes.
 - B dispatch `ctx_13e3540b83b0`, branch `SinhyeokKang/ux-audit-numbers`, effective Sol high verified. D-fix gate ended; B owns full-test slot. Independent review follows completion.
 - B source commits are finalized (`8f0fb33d`, `58c33a26`, `b537039c`), full unit/DOM suite green (12,253 passed / 2 skipped). Final gate additionally triggers isolated PostgreSQL because of the new `lib/__tests__/` file. Read-only independent source review may overlap this unchanged committed gate run; gate completion remains mandatory before integration. Any subsequent code correction requires review again.
+- B final gate: `gate: ok`, 12,253 unit/DOM tests passed / 2 skipped plus all 617 isolated PostgreSQL tests (37 files, 283.96s), build and mirror green. No timeout/skip changes. Independent Astra review `ctx_0c839c9e6255` PASS; coordinator inspected final raw gate completion after review. Integrated `62b2a38a`, `8bb44513`, `b9d5dab6`. Handoff/raw logs copied, implementation/review terminals released, clean fully integrated child removed.
+- Documentation freshness: DESIGN now covers D1/D2/D3 and fixed skeleton slots; ARCHITECTURE and DIRECTORY describe the pure numeric leaf; guide AUTHORING describes image-description checks; POSTMORTEM records four drift patterns. No schema/migration changes. Final consolidated gate is next.
