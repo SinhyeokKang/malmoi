@@ -211,7 +211,8 @@ describe("로딩 골격이 실물의 치수를 든다 (2026-09-16 실측)", () =
     // 두 줄 사이 간격도 실물 행과 같다(r1) — px 컨테이너가 사라져 gap 차이(4 vs 2)가 그대로 행 높이 2px가 됐다.
     const gap = (text: string) => text.match(/<span className="flex min-w-0 flex-1 flex-col[^"]*\b(gap-[\w.-]+)/)?.[1];
     expect(gap(source)).toBeDefined();
-    expect(gap(source)).toBe(gap(read("components/home/attention-card.tsx")));
+    // 행 문장 칸 마크업은 T3에서 `attentionRowSlots`를 거쳐 `ListRow`로 옮겨 갔다 — 실물 쪽 기준은 list-row.tsx다.
+    expect(gap(source)).toBe(gap(read("components/ui/list-row.tsx").replace("<span data-row-copy ", "<span ")));
     expect(source).toMatch(/flex h-\[45px\] items-center/);
   });
 

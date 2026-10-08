@@ -47,7 +47,8 @@ it("Home 골격의 할 일 행은 실물 행·줄 묶음과 같은 클래스다"
   const row = "flex items-center gap-3 border-t px-4 py-row-y";
   expect(real).toContain("<ListRow");
   expect(source("components/ui/list-row.tsx")).toContain("flex items-center gap-3 px-4 py-row-y");
-  expect(real).toContain("flex min-w-0 flex-1 flex-col gap-copy-gap");
+  // 행 문장 칸 마크업은 T3에서 `attentionRowSlots`를 거쳐 `ListRow`로 옮겨 갔다 — 실물 쪽 기준은 list-row.tsx다.
+  expect(source("components/ui/list-row.tsx")).toContain("flex min-w-0 flex-1 flex-col gap-copy-gap");
   const { container } = await render(HomeLoading());
   const li = [...container.querySelectorAll("li")].find((node) => node.className.includes("py-row-y"))!;
   expect(li.className).toContain(row);
@@ -128,7 +129,8 @@ it("Logs 골격 행은 실물 EventRow와 같은 padding·줄 묶음이고 보�
   const real = source("components/logs/event-row.tsx");
   expect(real).toContain("<ListRow");
   expect(source("components/ui/list-row.tsx")).toContain("flex items-center gap-3 px-4 py-row-y");
-  expect(real).toContain("flex min-w-0 flex-1 flex-col gap-copy-gap");
+  // 행 문장 칸 마크업은 T3에서 `attentionRowSlots`를 거쳐 `ListRow`로 옮겨 갔다 — 실물 쪽 기준은 list-row.tsx다.
+  expect(source("components/ui/list-row.tsx")).toContain("flex min-w-0 flex-1 flex-col gap-copy-gap");
   const { container } = await render(LogsLoading());
   const row = container.querySelector<HTMLElement>("[data-skeleton-event]")!;
   expect(row.className).toContain("gap-3 border-t px-4 py-row-y");

@@ -19,7 +19,8 @@ const now = new Date("2026-10-05T12:00:00Z");
 const ago = (minutes: number) => new Date(now.getTime() - minutes * 60_000);
 
 type Input = InboxItem & { ownerRetries: boolean; unread?: boolean };
-const failed: Input = { kind: "import_failed", at: ago(12), surfaceSlug: "web", reason: "parse-failed", ownerRetries: false };
+const failedAt = ago(12);
+const failed: Input = { kind: "import_failed", at: failedAt, surfaceSlug: "web", reason: "parse-failed", ownerRetries: false };
 const review: Input = { kind: "review", at: ago(180), surfaceSlug: "web", code: "ko", name: "Korean", count: 8, who: "Kim", ownerRetries: false };
 
 const row = (item: Input, time: "narrow" | "long" = "long") =>
@@ -69,10 +70,10 @@ it("시각이 없으면 aside 슬롯이 비어 있다 — `Never`를 적지 않�
 });
 
 it("time 인자가 시각의 형을 가른다 — narrow는 짧은 형, long은 긴 형", async () => {
-  const narrow = (await row(failed, "narrow")).container.querySelector(".shrink-0")!.textContent;
-  const long = (await row(failed, "long")).container.querySelector(".shrink-0")!.textContent;
-  expect(narrow).toBe(relativeTime(failed.at, now, "en", { style: "narrow" }));
-  expect(long).toBe(relativeTime(failed.at, now, "en"));
+  const narrow = (await row(failed, "narrow")).container.querySelector("span.shrink-0.text-xs")!.textContent;
+  const long = (await row(failed, "long")).container.querySelector("span.shrink-0.text-xs")!.textContent;
+  expect(narrow).toBe(relativeTime(failedAt, now, "en", { style: "narrow" }));
+  expect(long).toBe(relativeTime(failedAt, now, "en"));
   expect(narrow).not.toBe(long);
 });
 
@@ -80,5 +81,5 @@ it("화면 언어와 사전은 인자로 받는다", async () => {
   const { container } = await render(<ListRow {...attentionRowSlots(ko, "ko", "acme", { ...failed, unread: true }, now, { time: "long" })} />);
   expect(container.textContent).toContain(body(ko, failed));
   expect(container.querySelector(".sr-only")!.textContent).toBe(ko.inbox.unread);
-  expect(container.querySelector(".shrink-0")!.textContent).toBe(relativeTime(failed.at, now, "ko"));
+  expect(container.querySelector("span.shrink-0.text-xs")!.textContent).toBe(relativeTime(failedAt, now, "ko"));
 });

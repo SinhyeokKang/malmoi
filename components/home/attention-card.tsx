@@ -7,9 +7,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { canPerform, type Role } from "@/lib/auth/permission";
 import type { AttentionItem, AttentionList } from "@/lib/home/attention";
 import type { HomeState } from "@/lib/home/state";
-import { attentionHref, attentionTile, title, body, tail } from "@/lib/home/attention-view";
-import { relativeTime } from "@/lib/relative-time";
-import { IconTile } from "@/components/ui/icon-tile";
+import { attentionRowSlots } from "@/components/inbox/row-slots";
 import type { UiLocale } from "@/lib/i18n/locales";
 import type { Messages } from "@/lib/i18n";
 
@@ -104,39 +102,11 @@ function AttentionRow({ item, slug, role, now, uiLocale, m }: { item: AttentionI
   uiLocale: UiLocale;
   m: Messages;
 }) {
+  // ⚠️ 권한 판정은 이 호출부의 몫이다 — 공유 슬롯은 `ownerRetries`만 받고 다시 판정하지 않는다(inbox-page D3). Home 항목에는 `unread`가 없어 점도 안 선다.
   const ownerRetries = item.kind === "import_failed" && !canPerform(role, "project:settings");
-  const href = attentionHref(slug, item);
-  const tile = attentionTile(item);
-  const Tile = tile.icon;
+  const { href, ...slots } = attentionRowSlots(m, uiLocale, slug, { ...item, ownerRetries }, now, { time: "long" });
 
-  return (
-    <ListRow chevron
-      href={href}
-      className="border-border border-t"
-    >
-      <IconTile tone={tile.tone}>
-        <Tile aria-hidden />
-      </IconTile>
-      <span className="flex min-w-0 flex-1 flex-col gap-copy-gap">
-        <span className="text-base">
-          {/* 굵은 조각이 **사실**이고 나머지가 그 근거다 — 색이 아니라 무게로 가른다 (캔버스). */}
-          <span className="font-medium">{body(m, item)}</span>
-          {tail(m, item)}
-        </span>
-        {/*
-          보조줄(표면 · 로케일)은 본문 **아래**다(Q9 · 4-Y10 — 다른 모든 행과 같은 형, 옛 판은 이 행만 위였다).
-          ⚠️ **한 줄로 자른다** — 표면·로케일 이름이 길어지면 줄이 밀려 행 높이가 흔들린다.
-        */}
-        <span className="text-muted-foreground truncate text-xs">{title(m, item)}</span>
-        {ownerRetries && <span className="text-muted-foreground text-xs">{m.projects.importFailure.ownerRetries}</span>}
-      </span>
-      {/*
-        시각은 `muted`다(2026-09-30 사용자 — 같은 Home의 Log 행 시각과 맞췄다. 옛 `gray-dim`은 2.5:1이라 읽기 어려웠다).
-        ⚠️ **시각이 없으면 칸을 비운다** — 실패 시각이 기록되지 않은 실패 항목에 "Never"를 적으면 거짓이다(실패는 일어났다).
-      */}
-      {item.at !== null && <span className="text-muted-foreground shrink-0 text-xs">{relativeTime(item.at, now, uiLocale)}</span>}
-    </ListRow>
-  );
+  return <ListRow chevron href={href} className="border-border border-t text-base" {...slots} />;
 }
 
 /** 표면·로케일이 키다 — 같은 표면에 같은 코드가 둘일 수 없다(`@@id([projectId, surfaceId, code])`). */

@@ -5,18 +5,16 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { loadAttentionBadgeAction, openAttentionInboxAction } from "@/app/inbox/actions";
 import { useMessages, useUiLocale } from "@/components/i18n/messages-provider";
+import { attentionRowSlots } from "@/components/inbox/row-slots";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CommandStatus } from "@/components/ui/command";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRow, DropdownMenuRowSkeleton, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { EmptyState } from "@/components/ui/empty-state";
-import { IconTile } from "@/components/ui/icon-tile";
 import { ListGroup } from "@/components/ui/list-group";
 import { ProjectThumbnail } from "@/components/ui/project-thumbnail";
 import { Skeleton } from "@/components/ui/skeleton";
-import { attentionHref, attentionTile, body, tail, title } from "@/lib/home/attention-view";
 import { badgeLabel, type InboxItem, type InboxPlan } from "@/lib/inbox/plan";
-import { relativeTime } from "@/lib/relative-time";
 import { cn } from "@/lib/utils";
 
 type List = { status: "idle" } | { status: "ok"; plan: InboxPlan; loadedAt: Date } | { status: "failed" };
@@ -131,33 +129,14 @@ export function AttentionInbox() {
 }
 
 /**
- * 항목 하나 — Home `AttentionRow`와 같은 문장(굵은 사실 + 근거 꼬리, 보조줄은 아래, EDITOR 실패는 따로 한 줄 Owner 안내).
- * ⚠️ **안 읽음 점은 행 왼쪽 여백 16 안(x 5–11)에 선다** — 칩이 그룹 머리와 같은 x16에 남는다. 접근 이름 맨 앞이 sr `Unread`다.
+ * 항목 하나 — 내용은 Home 카드·`/inbox` 페이지와 같은 조각(`attentionRowSlots`)이고 이 그릇만 메뉴 행이다.
+ * ⚠️ 시각은 짧은 형(`12m ago`)이다 — 360 메뉴의 문장 칸(226)을 지킨다(#190). 점이 `absolute`라 행에 `relative`를 준다.
  */
 function Row({ slug, item, now }: { slug: string; item: InboxPlan["groups"][number]["items"][number]; now: Date }) {
   const m = useMessages();
   const uiLocale = useUiLocale();
-  const tile = attentionTile(item);
-  const Tile = tile.icon;
-  const sub = title(m, item);
-  return (
-    <DropdownMenuRow href={attentionHref(slug, item)} className="relative"
-      icon={<>
-        {item.unread && <>
-          <span className="sr-only">{m.inbox.unread}</span>
-          <span data-unread-dot aria-hidden className="bg-primary absolute top-1/2 left-1.25 size-1.5 -translate-y-1/2 rounded-full" />
-        </>}
-        <IconTile tone={tile.tone}><Tile aria-hidden /></IconTile>
-      </>}
-      title={<span className="text-pretty"><span className="font-medium">{body(m, item)}</span>{tail(m, item)}</span>}
-      description={sub === "" && !item.ownerRetries ? undefined : <>
-        {sub !== "" && <span className="block truncate">{sub}</span>}
-        {item.ownerRetries && <span className="mt-copy-gap block">{m.projects.importFailure.ownerRetries}</span>}
-      </>}
-      // 시각은 시안의 짧은 형(`12m ago`)이다 — 360 메뉴의 문장 칸(226)을 지킨다(#190). Home 카드는 긴 형 그대로다.
-      aside={item.at === null ? undefined : <span className="text-muted-foreground shrink-0 text-xs">{relativeTime(item.at, now, uiLocale, { style: "narrow" })}</span>}
-    />
-  );
+  const { href, ...slots } = attentionRowSlots(m, uiLocale, slug, item, now, { time: "narrow" });
+  return <DropdownMenuRow href={href} className="relative" {...slots} />;
 }
 
 /**
