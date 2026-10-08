@@ -71,3 +71,6 @@
 - 현재 모델 캐시에서 gpt-5.6-sol high / gpt-6-astra medium 지원 확인. 모든 launch 응답의 effective 모델을 다시 검사한다.
 - D1은 D 배치만 막는다. 상위 협업 지침에 따라 답이 필요 없는 A/B의 준비·구현은 독립 진행한다. D 착수 전 답변 및 설계 리뷰는 생략하지 않는다.
 - E 읽기 조회: malmoi 프로젝트에 apex·dev만 등록, www 없음. DNS는 Gabia(ns.gabia.co.kr/net, ns1.gabia.co.kr); Vercel API로 외부 DNS를 쓸 수 없다. 코드/원격 설정 변경 없음.
+- A 시작: `task_1fc0fdde8b30` / `ctx_1fce737ccae3`, `seo-a-content`, Sol high effective 확인·working. B의 Astra medium 시도 둘(`ctx_fbaa5cbd1e89`, `ctx_9dea33889fcf`)은 agent_readiness timeout, 과업 미실행을 Orca가 확인했다. 터미널 해제 후 같은 B Task를 Sol high로 재시도한다. 이는 승인된 Codex 패밀리 내부 조정이며 Astra effort를 올리지 않는다.
+- ego-browser TaskSpace `2`, `p1`를 이후 QA도 재사용한다. 변경 전 `/docs` 데스크톱 1440px 단발 측정 LCP 748ms, 최종 후보 IMG project-home.webp; loading lazy/priority auto. 도구 결과만이며 CrUX가 아니다.
+- B 재시도 `ctx_9aeb503be36c` Sol high effective·working 확인. 이 런의 남은 C·독립 리뷰·QA도 정상 기동 경로인 Sol high를 사용한다(위 표의 Astra 우선안 대체). 같은 패밀리이며 독립 리뷰 분리는 유지한다.
