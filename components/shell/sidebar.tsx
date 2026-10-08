@@ -63,7 +63,7 @@ export function Sidebar({ memberships, userName }: { memberships: NavProject[]; 
   const m = useMessages();
   const pathname = usePathname();
   const project = activeProject(pathname, memberships);
-  const zones = navZones(m, project, { userName, projectCount: memberships.length });
+  const zones = navZones(m, project, { userName, projectCount: memberships.length, projects: memberships });
   const { collapsed, toggle } = useSidebarCollapse();
 
   return (

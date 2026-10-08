@@ -147,6 +147,7 @@ export const es = {
       projectSettings: "Configuración",
       signOut: "Cerrar sesión",
       newProject: "Nuevo proyecto",
+      yourProjects: "Tus proyectos",
       userMenu: "Menú de la cuenta",
       collapseSidebar: "Contraer la barra lateral",
       expandSidebar: "Expandir la barra lateral",

@@ -150,6 +150,7 @@ export const ko = {
       projectSettings: "설정",
       signOut: "로그아웃",
       newProject: "새 프로젝트",
+      yourProjects: "내 프로젝트",
       userMenu: "계정 메뉴",
       collapseSidebar: "사이드바 접기",
       expandSidebar: "사이드바 펼치기",

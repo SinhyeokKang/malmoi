@@ -17,11 +17,13 @@ export function switcherProjects<T extends { slug: string; name: string; archive
   return [...matched.filter((row) => !row.archived), ...matched.filter((row) => row.archived)];
 }
 
-// export하지 않는다 — 소비자가 `menuProjects` 하나다. 메뉴 길이(최대 14줄)의 대가 상한이다.
+// export하지 않는다 — 읽는 함수가 `menuProjects` 하나다. 메뉴 길이(최대 14줄)의 대가 상한이고, LNB 목록 구역이 같은 값을 따라간다(아래).
 const MENU_LIMIT = 5;
 
 /**
  * 사용자 메뉴의 프로젝트 그룹 (2026-10-09 사용자, user-menu-projects) — 스위처의 빈 질의 순서에서 보관을 빼고 앞 5개.
+ * ⚠️ **소비자가 둘이다** — 사용자 메뉴와 프로젝트 밖 LNB 목록 구역(sidebar-projects, `lib/shell/nav.ts`의 `navZones`). 두 자리가 같은 목록이라야
+ * 순서가 갈리지 않는다 — 상한을 바꾸면 둘이 같이 바뀌는 것이 의도다(메뉴 길이가 사이드바의 근거는 아니다).
  * ⚠️ **정렬을 새로 만들지 않는다** — 스위처 순서가 바뀌면 메뉴도 따라가게 의도로 묶는다. ⌘K 미리보기(`previewGroups` —
  * 지금 먼저)와 다른 것은 의도다: 메뉴는 추천이 아니라 목록이라 열 때마다 자리가 바뀌지 않아야 손이 기억한다.
  */
