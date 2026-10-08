@@ -29,7 +29,7 @@
 | R | 배치별 독립 리뷰 | 읽기 전용, `.scratch/review-<batch>.md` | 각 구현 완료 | Opus 5.5 / medium — 리포트 전용 | 필수 | 대기 |
 | Q | T5 + T6 | main 체크아웃, 코드 수정 없음. 결함은 BugShot | C dev push + CI green | Opus 5.5 / medium — ego-browser 실측·DB 전후 | 필수 | 대기 |
 | G | 가이드 본문(`/guide`) + 셸 컷 재촬영(`/guide-shots`) | `guide/{en,ko,es}/**` · `public/guide/**` · `guide/SHOOTING.md` | Q 종료 | Opus 5.5 / medium — 세 언어 원고 + 촬영 셋업 | 필수 | 대기 |
-| T7 | 정본 문서 | PRODUCT · ARCHITECTURE · DESIGN · DIRECTORY · CLAUDE.md · `docs/features/inbox-page/` 삭제 | C 통합 | 지휘자 | 필수 | 대기 |
+| T7 | 정본 문서 | PRODUCT · ARCHITECTURE · DESIGN · DIRECTORY · CLAUDE.md · `docs/features/inbox-page/` 삭제 | C 통합 | 지휘자(서브에이전트 초안) | 필수 | ✅ 문서별 커밋 `7f1b2067..29ff724f` · 가이드는 G |
 
 ## 파일 겹침·실행 순서
 
@@ -58,3 +58,7 @@
 - B 리뷰(Opus medium): 🔴 R1 Logs 가드까지 덩달아 재지정(가드 상실) · R2 Home 보조줄이 ListRow `leading-normal`(19.5)로 바뀌어 골격(17.33)과 ≈2px 어긋남. fix1(`295bbea4`): Logs 가드 복구 · Home 골격 `lineHeight="normal"` + 가드 단언. 지휘자가 diff 확인.
 - B 통합 게이트 1회차 timeout 2건(load 73, A 동시 게이트) → 단독 재실행 `gate: ok`. push `dba3b650` CI green.
 - A 리뷰: 🔴0 🟡0 ⚪4. 통합 `gate: ok`(격리 postgres 포함). 리뷰 메모(MarkSeen은 `toISOString()` 문자열)를 brief-c에 이월.
+- C 리뷰(Opus high): 🔴0 🟡3 — 방침 표 출처 칸 옛 서술 · robots `/inbox` 누락(계획과 다른 점 6 기각, `crawl.ts` 머리 주석) · 배지 시나리오 (b)→(a). ⚪1(점 부활 직접 단언)·⚪4(골격 `bg-background`) 함께 fix1(`89975124`) — `seenThrough` 가드 제거 시 it.each 셋 red 확인(워커 mutation).
+- 범위 밖 기록: `/mcp`도 robots disallow에 없다(기존 누락 — `crawl.ts` 주석이 이미 표시). 이번 기능에서 손대지 않는다.
+- T7 정본 문서: 서브에이전트가 C 코드 대조로 작성, 문서별 커밋. "`app/search/` 선례" 표현은 코드와 달라 뺐다. PRODUCT `/mcp` 위치 서술("Projects 바로 아래" → "Inbox 아래") 동반 수정.
+- C 통합 `gate: ok`(격리 postgres 포함).
