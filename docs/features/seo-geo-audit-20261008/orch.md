@@ -15,7 +15,7 @@
 
 | ID | 결정 | 근거·상태 |
 | --- | --- | --- |
-| D1 | 공개 셸 모바일 대응 | 사용자 답변 대기. 6번은 PRODUCT의 1280px 승인 정책을 바꾸므로 종속 구현 미착수 |
+| D1 | 공개 셸 모바일 대응 | 사용자 후속 결정: 별도 responsive 작업 이후 재대응. 구체적 범위·1280px 정책 변경은 해당 설계에서 확정하며 이번 배치 구현은 보류 |
 | D2 | 경쟁사 이름은 새 FAQ에 넣지 않음 | 지휘자 판단 — PRODUCT §2의 대체품 프레이밍 회피와 리포트 10번에 따름 |
 | D3 | 무료·MIT는 현재 사실만, hero.body 고정 | 지휘자 판단 — AUTHORING이 과금 없음 FAQ 허용; 미래 약속 금지 |
 | D4 | 저자 실명·author/founder·dateModified 신규 노출 없음 | 지휘자 판단 — 기존 화면 노출 정책 유지, 결정적 날짜 출처 없음. README/LICENSE 기존 표기는 유지 |
@@ -118,3 +118,9 @@
 - Q owned 서버 종료 및 3000 포트 비점유 확인. QA Dispatch 터미널 해제 뒤 delivery ack, reclaimable 0, 총 12개 worker 터미널 released. TaskSpace 2 finish 완료. main 체크아웃 하나만 남는다.
 - A·B·C: 구현·독립 리뷰·dev 통합·CI·가용 런타임 QA 종료. D: 사용자 답변 대기. E: 운영안만 완료·프로덕션 승인/Gabia 접근 대기. 8: 추가 성능 개선 근거 미확보. 18: 재현 보존·미해결.
 - 이 기록을 담는 문서 커밋은 다시 pnpm gate를 통과시킨 뒤 dev에 push하고 해당 HEAD의 CI 결론을 확인한다. 검증 전 성공으로 기록하지 않으며 최종 해시·CI는 최종 전달에 명시한다.
+
+### 사용자 후속 결정 — 문서 보존·responsive 이후 재검토
+
+- 최종 실행 문서 커밋 `203768eb`도 pnpm gate 및 [해당 dev CI](https://github.com/SinhyeokKang/malmoi/actions/runs/37716552182)를 통과했고 preview 배포 성공을 확인했다.
+- 사용자가 감사 문서를 `docs/features/`에 남기고 responsive 작업 이후 재대응하는 방향을 정했다. 기존 D1의 답변 대기는 이 후속 순서로 대체한다. responsive 구현의 상세 범위나 프로덕션 작업 승인을 뜻하지 않는다.
+- 이 폴더는 후속 추적을 위해 보존한다. 재개 순서·검증 기준은 [results.md의 후속 순서](./results.md#후속-순서--responsive-이후-재대응)를 따른다. 16·18번은 responsive와 독립된 미해결 항목으로 유지한다.
