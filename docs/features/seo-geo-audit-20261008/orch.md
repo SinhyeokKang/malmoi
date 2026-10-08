@@ -31,13 +31,13 @@
 
 | 배치 | 항목 | 소유 파일 | 선행 | 모델 / effort 및 이유 | dev 완료 차단 | 상태 |
 | --- | --- | --- | --- | --- | --- | --- |
-| A 콘텐츠 | 1·5·7·10·11·12·13·14·22·23 이름 | `guide/{en,ko,es}/` 해당 원고, `messages/{en,ko,es}.tsx`, `app/page.tsx`, 관련 콘텐츠 테스트 | 결정 종료 | gpt-5.6-sol / high — 기존 패턴의 원고·사전·링크 수정 | 필수 | 계획 |
-| B 기술 메타 | 2·3·18·20·21 메타 | `lib/seo/{json-ld,site}.ts`, 해당 테스트, `app/docs/[[...slug]]/page.tsx`, docs layout/not-found, 필요시 404 전용 파일·테스트, `public/og.png` | 결정 종료 | gpt-6-astra / medium — Next SSR 404 경계와 metadata 계약 | 필수 | 계획 |
-| C LLM·캐시·이미지 | 4·9·15·19·23 봇 | `lib/seo/{llms,crawl}.ts`, llms routes/테스트, `components/docs/guide-markdown.tsx`·관련 테스트, `next.config.ts`·헤더 테스트 | A·B 통합 후 (메타/원고 변경을 소비) | gpt-6-astra / medium — AST 원문 보존·로딩·헤더 경계 | 필수 | 계획 |
+| A 콘텐츠 | 1·5·7·10·11·12·13·14·22·23 이름 | `guide/{en,ko,es}/` 해당 원고, `messages/{en,ko,es}.tsx`, `app/page.tsx`, 관련 콘텐츠 테스트 | 결정 종료 | gpt-5.6-sol / high — 기존 패턴의 원고·사전·링크 수정 | 필수 | 구현·리뷰·dev CI 완료 |
+| B 기술 메타 | 2·3·18·20·21 메타 | `lib/seo/{json-ld,site}.ts`, 해당 테스트, `app/docs/[[...slug]]/page.tsx`, docs layout/not-found, 필요시 404 전용 파일·테스트, `public/og.png` | 결정 종료 | gpt-6-astra / medium — Next SSR 404 경계와 metadata 계약 | 필수 | 구현·리뷰·dev CI 완료 |
+| C LLM·캐시·이미지 | 4·9·15·19·23 봇 | `lib/seo/{llms,crawl}.ts`, llms routes/테스트, `components/docs/guide-markdown.tsx`·관련 테스트, `next.config.ts`·헤더 테스트 | A·B 통합 후 (메타/원고 변경을 소비) | gpt-6-astra / medium — AST 원문 보존·로딩·헤더 경계 | 필수 | 구현·리뷰·dev CI 완료 |
 | D 모바일 | 6 | 공개 셸/문서 내비/프레임/랜딩 stage 및 관련 테스트; 필요 사전 키 | D1·feature/review + A·B·C 통합 후 | gpt-6-astra / medium — 뷰포트·포커스·스크롤 계약 | 승인 시 필수 | 결정 대기 |
-| E 운영 | 16 | 지휘자 운영 브리프·조회 결과만 | 설정 조회 후 승인 | 지휘자 — 프로덕션 변경은 별도 결정 | 미승인 시 미완 명시 | 조회 중 |
-| R 독립 리뷰 | 각 배치 인계·diff | 읽기 전용, `.scratch/review-*.md` | 각 구현 완료 | gpt-6-astra / medium — 독립 위험 검토 | 필수 | 계획 |
-| Q 런타임·측정 | 8 및 각 배치 b 항목 | main 체크아웃, 코드 수정 없음; QA 보고 | 모든 코드 통합·gate | gpt-6-astra / medium — ego-browser 측정/검증 | 가용 도구 범위 필수 | 계획 |
+| E 운영 | 16 | 지휘자 운영 브리프·조회 결과만 | 설정 조회 후 승인 | 지휘자 — 프로덕션 변경은 별도 결정 | 미승인 시 미완 명시 | 운영안 완료·승인 대기 |
+| R 독립 리뷰 | 각 배치 인계·diff | 읽기 전용, `.scratch/review-*.md` | 각 구현 완료 | gpt-6-astra / medium — 독립 위험 검토 | 필수 | 독립 리뷰·수정 검수 완료 |
+| Q 런타임·측정 | 8 및 각 배치 b 항목 | main 체크아웃, 코드 수정 없음; QA 보고 | 모든 코드 통합·gate | gpt-6-astra / medium — ego-browser 측정/검증 | 가용 도구 범위 필수 | QA 종료·캡처/LCP 미검증 |
 
 정본 문서(`PRODUCT`·`ARCHITECTURE`·`DESIGN`·`DIRECTORY`·`OPERATIONS`·`POSTMORTEM`)는 지휘자가 통합 단계에서 문서별로 갱신한다. 워커는 필요한 정확한 수정안을 인계에 남긴다. 보고 원본은 보존한다.
 
@@ -102,3 +102,19 @@
 - C fix `b65761f2`: escaped definition delimiter와 빈 destination 회귀 2건 RED→GREEN, 최종 worker gate 12,274 tests / 2 skipped 통과. 독립 재검수 `task_8cbe198fc89c` / `ctx_9f5efeb7fbb5`가 두 입력과 escape parity·title·whitespace를 다시 확인해 red 0 / yellow 0. C 세 커밋을 local dev로 통합한다.
 - A·B·C 구현 및 독립 리뷰 종료. PRODUCT·ARCHITECTURE·DESIGN·POSTMORTEM 갱신 완료. 통합 gate·push·CI·QA는 다음 단계이며 아직 완료로 표시하지 않는다.
 - `pnpm guide:check`는 기존 stale 13컷(20건), 이번 배치의 촬영 대상 화면 변경 없음. schema/migration diff 없음. 원격 dev 확인 결과 incoming 0으로 통합 충돌 없음.
+
+### 통합 배포·QA 착수
+
+- A·B·C 통합 코드 HEAD `b414d54a5937540302c7a88ef802ca079a97e7d6`의 `pnpm gate` 통과: 765 files passed / 1 skipped, 12,279 tests passed / 2 skipped, build·Codex 미러 통과.
+- `git push origin dev` 완료, [정확한 HEAD의 CI](https://github.com/SinhyeokKang/malmoi/actions/runs/37715062610) success. Vercel commit status도 success. production 배포 아님.
+- 구현·리뷰 워커 11개 Dispatch의 터미널 해제 완료. A/B/C 워크트리는 clean 및 `git cherry dev <branch>`의 `+` 0 확인 뒤 Orca로 제거했다. 필요한 handoff·gate·404 probe는 main `.scratch/seo-{a,b,c}-archive/`로 보존했다.
+- Q Task `task_a0d078456f80` / Dispatch `ctx_edf4342d3daa`: main 체크아웃, Sol high effective·working 확인. 이미 통과한 production build를 `pnpm start`로 검증한다. QA 중 build·cherry-pick 없음.
+- 영속 실행 결과는 [results.md](./results.md)에 기록한다. 원본 report.md는 수정하지 않는다.
+
+### QA 종료·최종 상태
+
+- Q worker_done를 인계와 대조해 수락했다. 로컬 production build에서 en/ko/es·light/dark·1280/1440/1890의 126조합, 내부 URL 80개, llms·메타·캐시·이미지 요청 검증. 새 Malmoi 결함 0, BugShot 이슈 0. 실제 클릭은 정상 이동했으며 초기 pointer interception은 최종 결함으로 남지 않았다.
+- 화면 캡처 timeout과 paint/LCP entry 부재로 비트맵 시각 검수·LCP 전후 비교는 미완. Vercel CDN·field·Safari/실기기도 미검증이다. audit 18은 계속 미해결. 상세 수치·범위는 results.md에 영속 기록했다.
+- Q owned 서버 종료 및 3000 포트 비점유 확인. QA Dispatch 터미널 해제 뒤 delivery ack, reclaimable 0, 총 12개 worker 터미널 released. TaskSpace 2 finish 완료. main 체크아웃 하나만 남는다.
+- A·B·C: 구현·독립 리뷰·dev 통합·CI·가용 런타임 QA 종료. D: 사용자 답변 대기. E: 운영안만 완료·프로덕션 승인/Gabia 접근 대기. 8: 추가 성능 개선 근거 미확보. 18: 재현 보존·미해결.
+- 이 기록을 담는 문서 커밋은 다시 pnpm gate를 통과시킨 뒤 dev에 push하고 해당 HEAD의 CI 결론을 확인한다. 검증 전 성공으로 기록하지 않으며 최종 해시·CI는 최종 전달에 명시한다.
