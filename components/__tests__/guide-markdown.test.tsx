@@ -37,6 +37,8 @@ plain
 ## Next {#next}
 
 Done.
+
+![The next screen](/guide/next.webp)
 `;
 
 const renderGuide = (md = MD) => render(<GuideMarkdown tree={parseMd(md)} file="setup/workflow.md" />);
@@ -104,13 +106,17 @@ describe("GuideMarkdown — 요소 매핑 (DESIGN §6.61)", () => {
     expect(container.querySelector("blockquote")).toBeNull();
   });
 
-  it("이미지 문단은 `<p>` 없이 `<figure>`로 선다 · 제목이 캡션이다 · lazy", async () => {
+  it("이미지 문단은 `<p>` 없이 `<figure>`로 선다 · 첫 이미지만 eager/high이고 다음은 lazy다", async () => {
     const { container } = await renderGuide();
-    const figure = container.querySelector("figure");
-    expect(figure?.parentElement?.tagName).not.toBe("P");
-    expect(figure?.querySelector("img")?.getAttribute("alt")).toBe("The settings screen");
-    expect(figure?.querySelector("img")?.getAttribute("loading")).toBe("lazy");
-    expect(figure?.querySelector("figcaption")?.textContent).toBe("Open Settings first");
+    const figures = [...container.querySelectorAll("figure")];
+    expect(figures).toHaveLength(2);
+    expect(figures[0]?.parentElement?.tagName).not.toBe("P");
+    expect(figures[0]?.querySelector("img")?.getAttribute("alt")).toBe("The settings screen");
+    expect(figures[0]?.querySelector("img")?.getAttribute("loading")).toBe("eager");
+    expect(figures[0]?.querySelector("img")?.getAttribute("fetchpriority")).toBe("high");
+    expect(figures[0]?.querySelector("figcaption")?.textContent).toBe("Open Settings first");
+    expect(figures[1]?.querySelector("img")?.getAttribute("loading")).toBe("lazy");
+    expect(figures[1]?.querySelector("img")?.hasAttribute("fetchpriority")).toBe(false);
   });
 
   it("SHOOTING 치수가 있으면 `<img>`가 고유 크기를 든다 — CLS", async () => {

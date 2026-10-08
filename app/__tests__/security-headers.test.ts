@@ -38,6 +38,17 @@ const valueOf = (headers: Header[], key: string): string | undefined =>
 afterEach(() => vi.unstubAllEnvs());
 
 describe("보안 응답 헤더 (sec-audit 9 · audit #75)", () => {
+  it("공개 font·guide 자산만 1시간 캐시하고 기존 전역 보안 헤더 규칙은 유지한다", async () => {
+    const configured = await rules();
+    const cached = configured.filter((rule) => valueOf(rule.headers, "Cache-Control") !== undefined);
+    expect(cached.map((rule) => rule.source)).toEqual(["/fonts/:path*", "/guide/:path*"]);
+    expect(cached.map((rule) => valueOf(rule.headers, "Cache-Control"))).toEqual([
+      "public, max-age=3600, stale-while-revalidate=86400",
+      "public, max-age=3600, stale-while-revalidate=86400",
+    ]);
+    expect(configured.filter((rule) => rule.source === "/(.*)")).toHaveLength(1);
+  });
+
   it("깨질 여지가 없는 넷은 그대로다", async () => {
     const headers = await all();
     expect(valueOf(headers, "X-Content-Type-Options")).toBe("nosniff");

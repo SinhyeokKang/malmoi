@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { loadSource, loadSummary } from "@/lib/guide/load";
 import { flattenNav, type NavNode } from "@/lib/guide/summary";
+import { GITHUB_REPO_URL } from "@/lib/links";
 import { en } from "@/messages/en";
 
 import { llmsFull, llmsIndex } from "../llms";
@@ -33,7 +34,9 @@ describe("llmsIndex", () => {
         "",
         `> ${en.landing.hero.body}`,
         "",
-        "## Malmoi",
+        "Malmoi currently has no paid plans and is open source under the MIT License. It works with GitHub repositories and supports external AI agents over MCP. It does not provide translation memory, built-in machine or AI translation, ICU plural or select syntax, approval workflows, fine-grained permissions, real-time co-editing, in-context editing, screenshot attachments, or translator notes.",
+        "",
+        "## Overview",
         "",
         "- [Malmoi](https://mal-moi.com/docs): Start here.",
         "",
@@ -41,6 +44,13 @@ describe("llmsIndex", () => {
         "",
         "- [Set \\[up\\] & *go*](https://mal-moi.com/docs/setup)",
         "- [Add the workflow](https://mal-moi.com/docs/setup/workflow): Add the action.",
+        "",
+        "## Optional",
+        "",
+        "- [Full documentation](https://mal-moi.com/llms-full.txt)",
+        "- [Changelog](https://mal-moi.com/changelog)",
+        "- [Privacy](https://mal-moi.com/privacy)",
+        `- [GitHub](${GITHUB_REPO_URL})`,
         "",
       ].join("\n"),
     );
@@ -62,10 +72,29 @@ describe("llmsIndex", () => {
 });
 
 describe("llmsFull", () => {
-  it("항목마다 제목 · Source 줄 · 원고 원문 그대로 — 상대 링크를 고치지 않는다", () => {
+  it("항목마다 제목 · Source 줄 · 원고의 문서 링크만 절대 공개 URL로 바꾼다", () => {
     const flat = flattenNav(nav);
     const sources = new Map([
-      ["README.md", "# Malmoi\n\nSee [setup](setup/README.md).\n"],
+      [
+        "README.md",
+        [
+          "# Malmoi",
+          "",
+          "See [setup](setup/README.md), [FAQ](faq.md#pricing), and [the overview](README.md#overview).",
+          "Reference [formats][format docs] and keep [encoded (external)](https://example.com/a%20b_(c)).",
+          "",
+          "[format docs]: reference/formats.md#formats \"Formats (reference)\"",
+          "",
+          "![Encoded image](/guide/a_(b)%20c.webp)",
+          "",
+          "`[inline code](setup/README.md)`",
+          "",
+          "```md",
+          "[fenced code](setup/README.md)",
+          "```",
+          "",
+        ].join("\n"),
+      ],
       ["setup/README.md", "# Set up\n\n## Steps {#steps}\n"],
       ["setup/workflow.md", "# Add the workflow\n"],
     ]);
@@ -76,7 +105,18 @@ describe("llmsFull", () => {
         "",
         "# Malmoi",
         "",
-        "See [setup](setup/README.md).",
+        "See [setup](https://mal-moi.com/docs/setup), [FAQ](https://mal-moi.com/docs/faq#pricing), and [the overview](https://mal-moi.com/docs#overview).",
+        "Reference [formats][format docs] and keep [encoded (external)](https://example.com/a%20b_(c)).",
+        "",
+        "[format docs]: https://mal-moi.com/docs/reference/formats#formats \"Formats (reference)\"",
+        "",
+        "![Encoded image](/guide/a_(b)%20c.webp)",
+        "",
+        "`[inline code](setup/README.md)`",
+        "",
+        "```md",
+        "[fenced code](setup/README.md)",
+        "```",
         "",
         "---",
         "",
