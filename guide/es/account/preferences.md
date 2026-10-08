@@ -4,7 +4,7 @@ Elige el idioma de la interfaz, la zona horaria y el tema claro u oscuro de Malm
 
 ## Antes de iniciar sesión {#footer}
 
-Las páginas públicas y las de inicio de sesión e invitación muestran el idioma actual como último elemento del pie de página.
+Las páginas públicas y las de inicio de sesión e invitación muestran el idioma actual en el extremo derecho del pie de página.
 
 1. Elige el nombre del idioma en el pie de página, por ejemplo English.
 2. Elige un idioma en el menú. Cada uno aparece con su propio nombre, como Español. La página aparece en ese idioma.
