@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
-import { act } from "react";
+import { act, type ReactNode } from "react";
 import userEvent from "@testing-library/user-event";
-import { expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
+import { ProjectMenuItem, ProjectMenuItemSkeleton } from "@/components/shell/project-menu-item";
 import { UserMenu } from "@/components/shell/user-menu";
+import { DropdownMenu, DropdownMenuContent } from "@/components/ui/dropdown-menu";
 import { en } from "@/messages/en";
 import { routes } from "@/lib/routes";
 import { navWorkItems } from "@/lib/shell/nav";
@@ -103,4 +105,80 @@ it("첫 묶음이 `navWorkItems`와 같은 라벨·주소·순서다", async () 
   expect(first.map((node) => [node.textContent?.trim(), node.getAttribute("href")])).toEqual(navWorkItems(en).map((i) => [i.label, i.href]));
   // 메뉴엔 개수 배지가 없다.
   expect(navWorkItems(en).every((i) => i.badge === undefined)).toBe(true);
+});
+
+/**
+ * **프로젝트 행 조각** (user-menu-projects D3) — 스위처와 사용자 메뉴가 같은 행을 쓴다. 골격은 행과 같은 파일에 서고
+ * 같은 패딩·gap·썸네일 슬롯이다(POSTMORTEM 2026-09-16 · 2026-10-08 — 골격이 실물과 따로 떠내려갔다).
+ */
+describe("ProjectMenuItem", () => {
+  const project = { slug: "demo", name: "Demo", archived: false, image: null };
+  async function menu(children: ReactNode) {
+    await render(<DropdownMenu open><DropdownMenuContent>{children}</DropdownMenuContent></DropdownMenu>);
+    return document.querySelector<HTMLElement>('[role="menu"]')!;
+  }
+  const ROW = ["mx-1", "flex", "items-center", "gap-2", "px-2", "py-1.5", "text-sm"];
+
+  it("골격 줄과 실물 행이 같은 패딩·gap이고, 첫 자식이 같은 16 썸네일 슬롯이다", async () => {
+    const root = await menu(<><ProjectMenuItem project={project} /><ProjectMenuItemSkeleton /></>);
+    const row = root.querySelector<HTMLElement>('[role="menuitem"]')!;
+    const skeleton = root.querySelector<HTMLElement>("[data-project-menu-item-skeleton]")!;
+    for (const cls of ROW) {
+      expect(row.classList.contains(cls)).toBe(true);
+      expect(skeleton.classList.contains(cls)).toBe(true);
+    }
+    for (const node of [row, skeleton]) {
+      const slot = node.firstElementChild as HTMLElement;
+      expect(slot.classList.contains("size-4")).toBe(true);
+      expect(slot.classList.contains("shrink-0")).toBe(true);
+    }
+    // 이름 줄은 text-sm line box 하나다 — 골격도 `Skeleton size="sm"`이 같은 줄 높이를 세운다.
+    expect(skeleton.querySelector("[data-skeleton-line]")?.classList.contains("text-sm")).toBe(true);
+    // 골격은 한 줄이다 — 실물보다 길지 않다.
+    expect(skeleton.querySelectorAll("[data-skeleton-line]")).toHaveLength(1);
+  });
+
+  it("골격은 메뉴 항목이 아니고 포커스를 받지 않으며 스크린리더에 숨는다", async () => {
+    const root = await menu(<ProjectMenuItemSkeleton />);
+    const skeleton = root.querySelector<HTMLElement>("[data-project-menu-item-skeleton]")!;
+    expect(skeleton.getAttribute("aria-hidden")).toBe("true");
+    expect(skeleton.getAttribute("role")).toBeNull();
+    expect(skeleton.hasAttribute("tabindex")).toBe(false);
+    expect(root.querySelectorAll('[role="menuitem"], [role="menuitemradio"]')).toHaveLength(0);
+  });
+
+  it("`selected`를 안 주면 일반 `menuitem`이고, 주면 `menuitemradio` + `aria-checked`다", async () => {
+    const root = await menu(<>
+      <ProjectMenuItem project={project} />
+      <ProjectMenuItem project={{ ...project, slug: "a", name: "A" }} selected={false} />
+      <ProjectMenuItem project={{ ...project, slug: "b", name: "B" }} selected />
+    </>);
+    expect([...root.querySelectorAll<HTMLElement>('[role="menuitem"], [role="menuitemradio"]')].map((n) => [n.getAttribute("role"), n.getAttribute("aria-checked")])).toEqual([
+      ["menuitem", null],
+      ["menuitemradio", "false"],
+      ["menuitemradio", "true"],
+    ]);
+  });
+
+  it("행은 그 프로젝트 Home 링크이고 이름은 줄여 쓰며, 보관이면 Archived 배지를 단다", async () => {
+    const root = await menu(<>
+      <ProjectMenuItem project={project} />
+      <ProjectMenuItem project={{ ...project, slug: "old", name: "Old", archived: true }} />
+    </>);
+    const [live, old] = [...root.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+    expect(live!.tagName).toBe("A");
+    expect(live!.getAttribute("href")).toBe(routes.project("demo"));
+    const name = [...live!.children].find((n) => n.textContent === "Demo") as HTMLElement;
+    for (const cls of ["min-w-0", "flex-1", "truncate"]) expect(name.classList.contains(cls)).toBe(true);
+    expect(live!.textContent).not.toContain(en.projects.status.archived);
+    expect(old!.textContent).toContain(en.projects.status.archived);
+  });
+
+  it("나머지 props를 항목으로 넘긴다 — 스위처의 포인터 핸들러가 닿는다", async () => {
+    const onPointerMove = vi.fn();
+    const root = await menu(<ProjectMenuItem project={project} onPointerMove={onPointerMove} />);
+    const row = root.querySelector<HTMLElement>('[role="menuitem"]')!;
+    await act(async () => { row.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, pointerType: "mouse" })); });
+    expect(onPointerMove).toHaveBeenCalled();
+  });
 });

@@ -4,8 +4,6 @@ import { ChevronsUpDown, Plus } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState, type KeyboardEvent, type PointerEvent, type ReactElement } from "react";
 
-import { ProjectThumbnail } from "@/components/ui/project-thumbnail";
-import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -17,6 +15,7 @@ import {
 import { Kbd } from "@/components/ui/kbd";
 import { Input } from "@/components/ui/input";
 import { useMessages } from "@/components/i18n/messages-provider";
+import { ProjectMenuItem } from "@/components/shell/project-menu-item";
 import { isImeComposing } from "@/lib/keyboard";
 import { routes } from "@/lib/routes";
 import { switcherProjects } from "@/lib/shell/switcher";
@@ -139,17 +138,7 @@ export function ProjectSwitcher({
           <p className="text-muted-foreground px-3 py-1.5 text-sm">{m.common.nav.projectSwitcher.empty(q)}</p>
         ) : (
           shown.map((project) => (
-            <DropdownMenuItem key={project.slug} asChild selected={project.slug === current} {...keepInputFocus}>
-              <Link href={routes.project(project.slug)}>
-                <ProjectThumbnail name={project.name} src={project.image} size="xs" />
-                {/* ⚠️ 이름이 남는 폭을 먹는다(`flex-1`) — 그래야 배지 뒤의 `Check`(`ml-auto`)가 배지에 붙는다. 둘 다 `ml-auto`면 빈 폭을 나눠 갖는다. */}
-                <span className="min-w-0 flex-1 truncate">{project.name}</span>
-                {project.archived && (
-                  // ⚠️ `/projects` 행 칩과 같은 형·같은 키다(`project-list.tsx`의 `archived` 칩) — 두 벌이면 하나가 낡는다.
-                  <StatusBadge state="archived" className="shrink-0" />
-                )}
-              </Link>
-            </DropdownMenuItem>
+            <ProjectMenuItem key={project.slug} project={project} selected={project.slug === current} {...keepInputFocus} />
           ))
         )}
         <DropdownMenuSeparator />
