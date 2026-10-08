@@ -82,3 +82,17 @@
 - A 독립 리뷰: red 0 / yellow 1(nav 이름) / white 1(ko 조사). 수정 `e96a8c6d`·`e97786af`의 정확한 diff와 새 DOM 단언을 지휘자가 확인했고 gate 원문 끝 `gate: ok` 확인. dev 통합 `5271f798`·`44325501`·`d7ad3f37`·`b760a665`; PRODUCT·DESIGN은 각각 별도 커밋으로 갱신. 배포 QA는 아직 미완.
 - A fix Task `task_e77f6ad88afd` / `ctx_291d923a3f46` 완료·터미널 해제. B에 A 통합 신호를 status+터미널로 보냈고 공유 테스트 수정에 착수했다.
 - C 선행 보정: 잠재 겹침을 실제 파일로 재검사한 결과 직접 겹침 없음. A 원고는 통합됐으므로 B 검증과 C 구현을 병렬로 진행한다. 위 배치 표의 C `A·B 통합 후` 선행은 이 기록으로 대체한다. B·C 모두 완료 뒤 통합 게이트를 함께 돈다.
+- B 최종 gate 12,276 tests / 2 skipped와 build·미러 통과, 독립 리뷰 `task_21f1336fba2a` / `ctx_3b964fca8f70` red/yellow/white 0. dev 통합 `5c881ad7`·`63636ba4`·`6725f2f8`·`4d4ce74a`. 18번은 D11의 미해결로 유지한다. 원문 로그·probe는 main `.scratch/seo-b-archive/`에 복사하고 clean·patch-equivalence 확인 뒤 B 워크트리를 정리했다.
+- B 로그 보존용 중복 gate에서 metadata 동적 import 5초 timeout이 한 번 발생했다. 코드/timeout 변경 없이 단독 테스트 4회와 순차 최종 gate가 통과했다. C와 동시 전체 테스트 시 load average 82.24, 252.54초였고 단독 최종 gate 테스트는 91.61초였다. 앞으로 전체 gate/build는 직렬, 구현/읽기 리뷰는 병렬이다. C의 동시 pre-gate 테스트에서도 T7 scan timeout 1건이 있었고 직렬 최종 gate로 해소됐다.
+- C Task `task_47fb013de03e` / `ctx_877b789f2f67`: `c1b2a765`·`a554fc19`, gate 12,272 tests / 2 skipped 및 build·미러 통과. 독립 리뷰 `task_2b49e17c2ff4` / `ctx_0d16ecdd5080`에서 escaped reference label 훼손 red 1, 빈 inline destination 빌드 실패 yellow 1. `brief-c-fix1.md`로 C 소유 워커에 반환했다. C는 아직 dev 미통합이며 두 발견이 해소될 때까지 통합하지 않는다.
+
+## 진행 현황 (2026-10-08 10:40 KST)
+
+| 배치 | 현재 상태 | 남은 일 |
+| --- | --- | --- |
+| A | 구현·독립 리뷰·fix1·worker gate 완료, local dev 통합 | 통합 gate·push·CI·브라우저 QA |
+| B | 구현·독립 리뷰·worker gate 완료, local dev 통합 | 공통 검증 및 18번 미해결 추적 |
+| C | 독립 리뷰 red 1 / yellow 1 수정 중 | fix1·재검수·통합·공통 검증 |
+| D | 공개 모바일 정책 사용자 답변 대기 | 승인 시 feature/review부터 |
+| E | www 설정 조회·구체적 변경안 작성 완료, 원격 변경 없음 | 별도 production 승인·Gabia 접근 |
+| Q | brief-qa.md 준비, TaskSpace 2 유지 | 코드 통합과 gate 후 직렬 QA |
