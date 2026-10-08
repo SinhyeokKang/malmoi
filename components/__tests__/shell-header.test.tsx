@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { createContext, useContext, type ReactNode } from "react";
+import { act, createContext, useContext, type ReactNode } from "react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { setUnread } from "@/lib/inbox/unread-store";
 
@@ -32,6 +33,9 @@ vi.mock("next/link", () => {
 });
 
 vi.mock("next/navigation", () => ({ usePathname: () => "/projects" }));
+// 사용자 메뉴는 멤버십을 못 받으면 지연 조회한다 — 앱 셸은 넘기므로 호출 0이어야 한다(user-menu-projects).
+const searchAction = vi.hoisted(() => ({ memberships: vi.fn() }));
+vi.mock("@/app/search/actions", () => ({ searchKeysAction: vi.fn(), loadSearchMembershipsAction: searchAction.memberships }));
 // 헤더 Inbox는 마운트 때 배지 Action을 부른다 — 이 파일은 배치만 본다(동작은 `attention-inbox.test.tsx`).
 vi.mock("@/app/inbox/actions", () => ({
   loadAttentionBadgeAction: vi.fn(async () => ({ status: "failed" })),
@@ -103,6 +107,18 @@ describe("앱 셸 헤더", () => {
     const icon = link?.querySelector("svg");
     expect(icon?.getAttribute("class")).toContain("lucide-plus");
     expect(icon?.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  /** user-menu-projects — 헤더가 이미 받은 멤버십을 사용자 메뉴로 넘긴다(새 조회 없음). 지금 프로젝트는 메뉴가 pathname으로 구한다. */
+  it("사용자 메뉴에 헤더의 멤버십을 넘긴다 — 프로젝트 행이 서고 지연 조회가 없다", async () => {
+    const demo = { slug: "demo", name: "Demo", role: "OWNER" as const, archived: false, image: null, defaultSurfaceSlug: null };
+    const { container } = await render(<Header m={en} name="Kim" email="kim@acme.com" image={null} signOut={vi.fn()} memberships={[demo]} />);
+    const trigger = container.querySelector<HTMLButtonElement>(`button[aria-label="${en.common.nav.userMenu}"]`)!;
+    await act(async () => userEvent.setup().click(trigger));
+    const row = document.querySelector<HTMLElement>(`[role="menu"] a[href="${routes.project("demo")}"]`);
+    expect(row?.textContent).toBe("Demo");
+    expect(row?.getAttribute("role")).toBe("menuitem");
+    expect(searchAction.memberships).not.toHaveBeenCalled();
   });
 
   /** POSTMORTEM 2026-09-17 — 모달 도착까지 1초 남짓 반응이 없으면 클릭이 안 먹은 것처럼 보인다. */

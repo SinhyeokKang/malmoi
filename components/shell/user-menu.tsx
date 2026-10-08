@@ -2,6 +2,7 @@
 
 import { CircleHelp, Compass, Loader2, LogOut, ShieldCheck } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useFormStatus } from "react-dom";
 
 import { Avatar } from "@/components/ui/avatar";
@@ -15,16 +16,23 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useMessages } from "@/components/i18n/messages-provider";
+import { ProjectMenuItem } from "@/components/shell/project-menu-item";
 import { routes } from "@/lib/routes";
-import { navWorkItems, type NavItem } from "@/lib/shell/nav";
+import { activeProject, navWorkItems, type NavItem, type NavProject } from "@/lib/shell/nav";
+import { menuProjects } from "@/lib/shell/switcher";
 
 /**
  * top bar 우측. **순서가 사용자 결정이다** (2026-09-27 — 2026-09-30에 New project가 헤더 버튼으로 빠졌다):
- * `Projects · MCP connector · Account | Changelog · Docs · Privacy Policy | Sign out`. 첫 묶음은 사이드바 사용자 구역과
- * **같은 목록**(`navWorkItems`)이고, LNB와 겹치는 항목은 의도다. **모든 줄이 필터 메뉴와 같은 `DropdownMenuItem` 모양이고 앞 아이콘 하나를 든다** —
- * 아이콘은 같은 목적지를 가리키는 다른 자리와 같은 글리프다(Projects `Box` · Account `CircleUser` ·
- * Docs `CircleHelp`는 LNB, Changelog `Compass`는 LNB 하단과 공유). 전부 앱 안 목적지다 — Changelog는 2026-09-28에 GitHub Releases
- * 외부 링크에서 `/changelog`로 바뀌었다.
+ * `Projects · Inbox · MCP connector · Preferences · Account | 내 프로젝트 ≤5 | Changelog · Docs · Privacy Policy | Sign out`.
+ * 첫 묶음은 사이드바 사용자 구역과 **같은 목록**(`navWorkItems`)이고, LNB와 겹치는 항목은 의도다. **모든 줄이 필터 메뉴와 같은
+ * `DropdownMenuItem` 모양이고 앞 아이콘 하나를 든다** — 아이콘은 같은 목적지를 가리키는 다른 자리와 같은 글리프다(Projects `Box` ·
+ * Account `CircleUser` · Docs `CircleHelp`는 LNB, Changelog `Compass`는 LNB 하단과 공유). 전부 앱 안 목적지다 — Changelog는
+ * 2026-09-28에 GitHub Releases 외부 링크에서 `/changelog`로 바뀌었다.
+ *
+ * ⚠️ **프로젝트 그룹은 LNB 스위처와 겹친다 — 새 결정이다** (2026-10-09 사용자, user-menu-projects). 공개 셸엔 사이드바가 없어
+ * 프로젝트로 가는 길이 두 번 이동이었다. 행은 스위처와 같은 조각(`ProjectMenuItem` — 썸네일이 글리프 자리)이고, 목록은 스위처
+ * 순서에서 보관을 뺀 앞 5개(`menuProjects`)다. "더 보기"가 없다 — 위 `Projects`가 목록으로 간다. 0개면 그룹·구분선이 없다.
+ * ⚠️ **메뉴 폭은 `w-60` 고정이다** — 긴 이름·이메일이 메뉴를 넓히지 않고 줄어든다.
  *
  * ⚠️ **아바타가 사진을 싣는다** (2026-09-13). 그 전엔 `SessionRead`가 `name`·`email`만 들어
  * 이니셜뿐이었고, **여기 적혀 있던 근거의 뒷문장이 거짓이었다**: *"`publicSession`이 필드를 하나 더
@@ -45,13 +53,21 @@ export function UserMenu({
   email,
   image,
   signOut,
+  memberships,
 }: {
   name: string;
   email: string | null;
   image: string | null;
   signOut: () => void;
+  /** 앱 셸 헤더가 이미 받은 멤버십 — 지금 프로젝트는 여기서 pathname으로 구한다(헤더는 서버 컴포넌트라 pathname이 없다). */
+  memberships?: readonly NavProject[];
 }) {
   const m = useMessages();
+  const pathname = usePathname();
+  const projects = menuProjects(memberships ?? []);
+  // 지금 프로젝트는 앱 셸(멤버십을 받는 자리)에만 있다 — 공개 셸엔 프로젝트 경로가 없다(`SearchDialog`의 `activeSlug`와 같은 판정).
+  // 없으면 `undefined`를 넘긴다 — `false`도 `menuitemradio`가 되므로(`ProjectMenuItem`).
+  const current = memberships === undefined ? null : activeProject(pathname, memberships)?.slug ?? null;
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -63,16 +79,24 @@ export function UserMenu({
           <Avatar name={name} src={image} size={32} />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent align="end" className="w-60">
         <DropdownMenuLabel>
-          <span className="text-foreground block text-sm font-medium">{name}</span>
-          {email !== null && <span className="block">{email}</span>}
+          <span className="text-foreground block truncate text-sm font-medium">{name}</span>
+          {email !== null && <span className="block truncate">{email}</span>}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         {/* 첫 묶음은 사이드바 사용자 구역과 같은 목록이다(`navWorkItems`) — 두 벌이면 한쪽에만 항목이 는다. */}
         {navWorkItems(m).map((item) => (
           <MenuLink key={item.key} href={item.href} icon={item.icon} label={item.label} />
         ))}
+        {projects.length > 0 && (
+          <>
+            <DropdownMenuSeparator />
+            {projects.map((project) => (
+              <ProjectMenuItem key={project.slug} project={project} selected={current === null ? undefined : project.slug === current} />
+            ))}
+          </>
+        )}
         <DropdownMenuSeparator />
         <MenuLink href={routes.changelog()} icon={Compass} label={m.changelog.title} />
         <MenuLink href={routes.docs()} icon={CircleHelp} label={m.publicDocs.docs.title} />

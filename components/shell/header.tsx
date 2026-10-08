@@ -66,7 +66,7 @@ export function Header({
           <span aria-hidden className="bg-border-subtle h-5 w-px" />
           {/* Inbox는 세로선 오른쪽·아바타 왼쪽이다(attention-inbox) — 같은 32 아이콘 버튼끼리 사용자 축으로 묶인다. */}
           <AttentionInbox />
-          <UserMenu name={name} email={email} image={image} signOut={signOut} />
+          <UserMenu name={name} email={email} image={image} signOut={signOut} memberships={memberships} />
         </div>
       }
     />

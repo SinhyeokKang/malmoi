@@ -1,35 +1,60 @@
 // @vitest-environment jsdom
 import { act, type ReactNode } from "react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ProjectMenuItem, ProjectMenuItemSkeleton } from "@/components/shell/project-menu-item";
 import { UserMenu } from "@/components/shell/user-menu";
 import { DropdownMenu, DropdownMenuContent } from "@/components/ui/dropdown-menu";
 import { en } from "@/messages/en";
 import { routes } from "@/lib/routes";
-import { navWorkItems } from "@/lib/shell/nav";
+import { navWorkItems, type NavProject } from "@/lib/shell/nav";
 
 import { render } from "./helpers/dom";
 
 /**
  * **헤더 사용자 메뉴** (2026-09-27 사용자) — 항목이 필터 메뉴와 같은 `DropdownMenuItem` 모양이고, 순서가
- * `Projects · MCP connector · Preferences · Account | Changelog · Docs · Privacy Policy | Sign out`이다. LNB와 겹치는 항목은 의도다.
+ * `Projects · Inbox · MCP connector · Preferences · Account | 내 프로젝트 ≤5 | Changelog · Docs · Privacy Policy | Sign out`이다.
+ * LNB와 겹치는 항목은 의도다 — 프로젝트 그룹은 스위처와 겹친다(user-menu-projects, 2026-10-09 사용자).
  */
-async function open() {
-  await render(<UserMenu name="Kim" email="kim@acme.com" image={null} signOut={vi.fn()} />);
+const nav = vi.hoisted(() => ({ pathname: "/projects", hrefs: [] as string[] }));
+vi.mock("next/navigation", () => ({ usePathname: () => nav.pathname }));
+vi.mock("next/link", () => ({
+  default: ({ href, children, onClick, ...props }: { href: string; children: ReactNode; onClick?: (e: unknown) => void }) => (
+    <a href={href} {...props} onClick={(event) => { onClick?.(event); event.preventDefault(); nav.hrefs.push(href); }}>
+      {children}
+    </a>
+  ),
+}));
+const action = vi.hoisted(() => ({ memberships: vi.fn() }));
+vi.mock("@/app/search/actions", () => ({ searchKeysAction: vi.fn(), loadSearchMembershipsAction: action.memberships }));
+beforeEach(() => {
+  nav.pathname = "/projects";
+  nav.hrefs = [];
+  action.memberships.mockReset();
+});
+
+const project = (slug: string, name = slug, archived = false): NavProject => ({ slug, name, role: "OWNER", archived, image: null, defaultSurfaceSlug: null });
+
+async function open(memberships: readonly NavProject[] | undefined = []) {
+  await render(<UserMenu name="Kim" email="kim@acme.com" image={null} signOut={vi.fn()} memberships={memberships} />);
   const trigger = document.querySelector<HTMLButtonElement>(`button[aria-label="${en.common.nav.userMenu}"]`)!;
   for (const token of ["size-8", "rounded-full", "px-0"]) expect(trigger.classList.contains(token)).toBe(true);
   await act(async () => userEvent.setup().click(trigger));
   return document.querySelector<HTMLElement>('[role="menu"]')!;
 }
-/** 메뉴의 줄 — 항목은 라벨, 구분선은 `---`. */
+const ITEMS = '[role="menuitem"], [role="menuitemradio"]';
+/** 메뉴의 줄 — 항목(`menuitem`·`menuitemradio` 둘 다)은 라벨, 구분선은 `---`. */
 const rows = (menu: HTMLElement) =>
-  [...menu.querySelectorAll<HTMLElement>('[role="menuitem"], [role="separator"]')].map((node) =>
+  [...menu.querySelectorAll<HTMLElement>(`${ITEMS}, [role="separator"]`)].map((node) =>
     node.getAttribute("role") === "separator" ? "---" : (node.textContent ?? "").trim(),
   );
 const item = (menu: HTMLElement, label: string) =>
-  [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((node) => node.textContent?.trim() === label)!;
+  [...menu.querySelectorAll<HTMLElement>(ITEMS)].find((node) => node.textContent?.trim() === label)!;
+/** 프로젝트 그룹의 행 — 프로젝트 Home(`/projects/<slug>`)으로 가는 항목. */
+const PROJECT_HOME = /^\/projects\/[^/]+$/;
+const projectRows = (menu: HTMLElement) =>
+  [...menu.querySelectorAll<HTMLElement>(ITEMS)].filter((node) => PROJECT_HOME.test(node.getAttribute("href") ?? ""));
 
 it("머리 뒤 항목 순서와 구분선이 사용자가 정한 그대로다", async () => {
   const menu = await open();
@@ -72,9 +97,12 @@ it("항목이 전부 앱 라우트이고 새 탭이 없다 — Changelog도 앱 
   }
 });
 
-it("모든 항목이 앞 아이콘 하나를 들고, 외부 링크 글리프를 따로 달지 않는다", async () => {
-  const menu = await open();
-  for (const node of menu.querySelectorAll<HTMLElement>('[role="menuitem"]')) {
+it("프로젝트 행을 뺀 모든 항목이 앞 아이콘 하나를 들고, 외부 링크 글리프를 따로 달지 않는다", async () => {
+  const menu = await open([project("demo")]);
+  expect(projectRows(menu)).toHaveLength(1);
+  for (const node of menu.querySelectorAll<HTMLElement>(ITEMS)) {
+    // 프로젝트 행은 글리프 대신 `ProjectThumbnail xs`다(DESIGN §6.8) — 아래 프로젝트 그룹 케이스가 따로 본다.
+    if (PROJECT_HOME.test(node.getAttribute("href") ?? "")) continue;
     const icons = node.querySelectorAll("svg");
     expect(icons).toHaveLength(1);
     expect(icons[0]!.getAttribute("aria-hidden")).toBe("true");
@@ -105,6 +133,101 @@ it("첫 묶음이 `navWorkItems`와 같은 라벨·주소·순서다", async () 
   expect(first.map((node) => [node.textContent?.trim(), node.getAttribute("href")])).toEqual(navWorkItems(en).map((i) => [i.label, i.href]));
   // 메뉴엔 개수 배지가 없다.
   expect(navWorkItems(en).every((i) => i.badge === undefined)).toBe(true);
+});
+
+/**
+ * **프로젝트 그룹** (user-menu-projects, 2026-10-09 사용자) — 계정 그룹과 공개 그룹 사이, 보관 안 된 멤버 프로젝트 최대 5개를
+ * 스위처 순서로. 앱 셸은 헤더가 이미 받은 멤버십을 넘긴다 — 새 조회가 없다.
+ */
+describe("UserMenu — 프로젝트 그룹 (멤버십을 받는다)", () => {
+  const five = ["alpha", "bravo", "charlie", "delta", "echo"];
+  const memberships = [project("old", "Old", true), ...five.map((slug) => project(slug)), project("foxtrot")];
+
+  it("다섯 구획 순서다 — 머리 / 계정 / 프로젝트 / 공개 / Sign out, 앞뒤를 구분선이 가른다", async () => {
+    const menu = await open(memberships);
+    expect(rows(menu)).toEqual([
+      "---",
+      ...navWorkItems(en).map((i) => i.label),
+      "---",
+      ...five,
+      "---",
+      en.changelog.title,
+      en.publicDocs.docs.title,
+      en.publicDocs.privacy.title,
+      "---",
+      en.common.nav.signOut,
+    ]);
+  });
+
+  it("보관을 빼고 최대 5개이며, 각 행은 그 프로젝트 Home이고 썸네일 16을 든다", async () => {
+    const menu = await open(memberships);
+    const shown = projectRows(menu);
+    expect(shown.map((n) => n.getAttribute("href"))).toEqual(five.map((slug) => routes.project(slug)));
+    expect(menu.textContent).not.toContain("Old");
+    expect(menu.textContent).not.toContain("foxtrot");
+    for (const node of shown) expect((node.firstElementChild as HTMLElement).classList.contains("size-4")).toBe(true);
+  });
+
+  it("앱 셸에서 지금 보는 프로젝트가 목록에 있으면 그 행이 스위처와 같은 체크다", async () => {
+    nav.pathname = "/projects/charlie/sources";
+    const menu = await open(memberships);
+    expect(projectRows(menu).map((n) => [n.getAttribute("role"), n.getAttribute("aria-checked")])).toEqual(
+      five.map((slug) => ["menuitemradio", slug === "charlie" ? "true" : "false"]),
+    );
+    expect(item(menu, "charlie").querySelectorAll("svg.lucide-check")).toHaveLength(1);
+  });
+
+  it.each(["/projects", "/inbox", "/account", "/docs", "/projects/new"])("지금 프로젝트가 없는 %s에서는 프로젝트 행이 전부 일반 menuitem이다", async (pathname) => {
+    nav.pathname = pathname;
+    const menu = await open(memberships);
+    expect(projectRows(menu)).toHaveLength(5);
+    expect(menu.querySelectorAll('[role="menuitemradio"]')).toHaveLength(0);
+  });
+
+  it("지금 프로젝트가 목록 밖(보관)이면 체크된 행이 없다", async () => {
+    nav.pathname = "/projects/old";
+    const menu = await open(memberships);
+    expect(menu.querySelectorAll('[aria-checked="true"]')).toHaveLength(0);
+  });
+
+  it.each([
+    ["멤버십 0", []],
+    ["보관만", [project("old", "Old", true)]],
+  ] as const)("%s이면 그룹과 그 구분선이 서지 않는다", async (_, list) => {
+    const menu = await open(list);
+    expect(projectRows(menu)).toHaveLength(0);
+    expect(rows(menu).filter((r) => r === "---")).toHaveLength(3);
+  });
+
+  it("멤버십을 받으면 로더를 부르지 않는다 — 열고 닫아도", async () => {
+    const menu = await open(memberships);
+    expect(projectRows(menu)).toHaveLength(5);
+    await act(async () => userEvent.setup().keyboard("{Escape}"));
+    expect(action.memberships).not.toHaveBeenCalled();
+  });
+
+  it("메뉴 폭이 `w-60` 고정이고 긴 이름·이메일은 줄여 쓴다", async () => {
+    const long = "a-very-long-project-name-that-would-push-the-menu-wider-than-its-width";
+    const menu = await open([project("long", long)]);
+    expect(menu.classList.contains("w-60")).toBe(true);
+    const name = [...item(menu, long).children].find((n) => n.textContent === long) as HTMLElement;
+    expect(name.classList.contains("truncate")).toBe(true);
+    const email = [...menu.querySelectorAll<HTMLElement>("span")].find((n) => n.textContent === "kim@acme.com")!;
+    expect(email.classList.contains("truncate")).toBe(true);
+    const userName = [...menu.querySelectorAll<HTMLElement>("span")].find((n) => n.textContent === "Kim")!;
+    expect(userName.classList.contains("truncate")).toBe(true);
+  });
+
+  /** ⚠️ POSTMORTEM 2026-09-09 — `asChild` + `selected`가 셸을 죽인 조합이다. 지금 프로젝트 행이 보이는 채로 열고 키보드로 고른다. */
+  it("지금 프로젝트 행이 보이는 채로 열고 키보드 Enter로 그 행을 고른다", async () => {
+    nav.pathname = "/projects/bravo";
+    const menu = await open(memberships);
+    const target = item(menu, "bravo");
+    expect(target.getAttribute("aria-checked")).toBe("true");
+    await act(async () => target.focus());
+    await act(async () => userEvent.setup().keyboard("{Enter}"));
+    expect(nav.hrefs).toEqual([routes.project("bravo")]);
+  });
 });
 
 /**
