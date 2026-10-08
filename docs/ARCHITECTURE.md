@@ -4010,6 +4010,8 @@ default ACL을 지우지 않고 닫는 층이라, 적용·확인이 끝나면 �
 - ⚠️ **sitemap·`llms*.txt`는 빌드 prerender가 전제다** — `guide/`를 읽는데 `outputFileTracingIncludes`는 `/docs/[[...slug]]` 함수에만
   싣는다. `force-static`을 빼거나 동적 API를 쓰면 Vercel에서만 500이다(로컬 `next start`는 리포 파일을 그대로 읽어 못 잡는다).
   셋은 **결정적**이다 — 같은 `guide/` 상태에서 같은 바이트(불변식 4의 정신: 크롤러가 “바뀜”을 판단하는 재료다), 정렬은 SUMMARY 하나.
+  `llms.txt`는 현재 도입 사실과 Optional 링크(전문·Changelog·Privacy·GitHub)를 함께 싣는다. `llms-full.txt`는 mdast 위치와 `resolveDocLink`로 실제 inline/reference 문서 링크의 **목적지 구간만** `SITE_ORIGIN` 절대 URL로 치환한다. 라벨·제목·코드·이미지·외부 링크와 목적지 밖 바이트는 보존한다. 참조 라벨의 escape와 현재 문서를 가리키는 빈 목적지도 회귀 테스트 대상이다.
+- **공개 정적 자산 캐시(2026-10-08)** — `next.config.ts`는 `/fonts/**`와 `/guide/**`에만 `public, max-age=3600, stale-while-revalidate=86400`을 준다. 전역 보안 헤더는 유지하고 동적 HTML에는 이 정책을 붙이지 않는다. 파일명에 해시가 없으므로 `immutable`은 금지한다. 교체한 파일은 freshness 1시간과 stale 허용 24시간 때문에 최대 약 25시간 이전 응답이 남을 수 있으므로 즉시 교체가 필요하면 새 URL을 사용한다. 실제 Vercel 응답 병합은 배포 후 확인한다.
 - **Analytics는 허용 목록이 유일한 거름망이다** — `<Analytics>`가 루트 레이아웃에 있어(추적 경로 — 정본은 `lib/seo/analytics.ts`의 `TRACKED`, 지금 `/`·`/signin`·`/privacy`·`/changelog`·`/docs/**` — 에
   공통 세그먼트가 없다) 앱 화면에서도 로드된다. `redactAnalyticsEvent`가 추적 경로만 통과시키고 쿼리·해시를 벗긴다(`utm_*`도 사라진다 —
   받아들인 손실). 앱 URL엔 초대 토큰·프로젝트 slug·검색어가 실리므로 차단 목록이 아니다. ⚠️ **`beforeSend`는 `url`만 바꿀 수 있다** —
