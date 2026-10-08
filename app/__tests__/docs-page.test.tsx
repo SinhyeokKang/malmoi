@@ -15,11 +15,20 @@ import { routes } from "@/lib/routes";
 */
 vi.setConfig({ testTimeout: 20_000 });
 
-const mocks = vi.hoisted(() => ({ path: "/docs", replace: vi.fn(), uiLocale: "en" as "en" | "ko" }));
+const mocks = vi.hoisted(() => ({ path: "/docs", replace: vi.fn(), uiLocale: "en" as "en" | "ko", i18nCalls: [] as string[] }));
 
 vi.mock("@/lib/auth/read-session", () => ({ readSession: async () => ({ status: "none" }) }));
 // 화면 언어는 쿠키·세션에서 오고 렌더 요청 밖에서는 `cookies()`가 던진다 — 요청의 언어를 여기서 정한다
-vi.mock("@/lib/i18n/server", async () => ({ getUiLocale: async () => mocks.uiLocale, getMessages: async () => (await import("@/messages/en")).en }));
+vi.mock("@/lib/i18n/server", async () => ({
+  getUiLocale: async () => {
+    mocks.i18nCalls.push("getUiLocale");
+    return mocks.uiLocale;
+  },
+  getMessages: async () => {
+    mocks.i18nCalls.push("getMessages");
+    return mocks.uiLocale === "ko" ? (await import("@/messages/ko")).ko : (await import("@/messages/en")).en;
+  },
+}));
 vi.mock("next/navigation", () => ({
   usePathname: () => mocks.path,
   useRouter: () => ({ replace: mocks.replace }),
@@ -32,6 +41,7 @@ beforeEach(() => {
   vi.stubGlobal("matchMedia", () => ({ matches: false, addEventListener() {}, removeEventListener() {} }));
   mocks.replace.mockReset();
   mocks.uiLocale = "en";
+  mocks.i18nCalls.length = 0;
 });
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -148,6 +158,12 @@ describe("`/docs/*` — 404", () => {
     await expect(Docs({ params: Promise.resolve({ slug }) })).rejects.toThrow("NEXT_NOT_FOUND");
   });
 
+  it("없는 slug는 동적 화면 언어 조회 전에 404를 확정한다 — 초기 HTML 스트리밍 회귀", async () => {
+    const { default: Docs } = await import("@/app/docs/[[...slug]]/page");
+    await expect(Docs({ params: Promise.resolve({ slug: ["nope"] }) })).rejects.toThrow("NEXT_NOT_FOUND");
+    expect(mocks.i18nCalls).toEqual([]);
+  });
+
   it("404 화면이 요청 주소를 되비치고 개요로 가는 링크 하나를 준다 — 내비 current 없음", async () => {
     mocks.path = "/docs/nope";
     const { default: NotFound } = await import("@/app/docs/not-found");
@@ -200,6 +216,22 @@ describe("`/docs/*` — JSON-LD", () => {
   it("장 개요 — 2항목", async () => {
     const { container } = await page(["translate"]);
     expect(ld(container)[0]?.[1]?.itemListElement?.map((crumb) => crumb.position)).toEqual([1, 2]);
+  });
+
+  it("FAQ는 Docs › FAQ — 루트 장을 중복하지 않는다", async () => {
+    const { container } = await page(["faq"]);
+    expect(ld(container)[0]?.[1]?.itemListElement).toEqual([
+      expect.objectContaining({ position: 1, name: "Docs", item: "https://mal-moi.com/docs" }),
+      expect.objectContaining({ position: 2, name: "FAQ", item: "https://mal-moi.com/docs/faq" }),
+    ]);
+  });
+
+  it("ko 문서는 inLanguage과 breadcrumb 루트 라벨을 본문 언어로 낸다", async () => {
+    mocks.uiLocale = "ko";
+    const { container } = await page(["translate", "edit"]);
+    const items = ld(container)[0] ?? [];
+    expect(items[0]).toMatchObject({ "@type": "TechArticle", inLanguage: "ko" });
+    expect(items[1]?.itemListElement?.[0]).toMatchObject({ name: "문서", item: "https://mal-moi.com/docs" });
   });
 });
 

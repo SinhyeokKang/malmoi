@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import sharp from "sharp";
 
 import { en } from "@/messages/en";
 
@@ -27,6 +29,7 @@ describe("pageMetadata", () => {
       description: "Connect a repository.",
       url,
       siteName: en.common.appName,
+      locale: "en_US",
       type: "website",
       images: [OG_IMAGE],
     });
@@ -34,7 +37,7 @@ describe("pageMetadata", () => {
       card: "summary_large_image",
       title: "Create a project",
       description: "Connect a repository.",
-      images: [OG_IMAGE.url],
+      images: [{ url: OG_IMAGE.url, alt: OG_IMAGE.alt }],
     });
   });
 
@@ -63,6 +66,13 @@ describe("OG_IMAGE", () => {
     expect(png.subarray(0, 8)).toEqual(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
     expect(png.subarray(12, 16).toString("ascii")).toBe("IHDR");
     expect({ width: png.readUInt32BE(16), height: png.readUInt32BE(20) }).toEqual({ width: OG_IMAGE.width, height: OG_IMAGE.height });
+  });
+
+  it("public/og.png는 300KB 미만이며 기준 픽셀과 바이트 단위로 같다", async () => {
+    const path = join(process.cwd(), "public", OG_IMAGE.url);
+    expect(readFileSync(path).byteLength).toBeLessThan(300_000);
+    const pixels = await sharp(path).raw().toBuffer();
+    expect(createHash("sha256").update(pixels).digest("hex")).toBe("521d794edb8aef77d3f9b38b29b31d3e4d39d1382e7f4b073160362e4ca15892");
   });
 });
 

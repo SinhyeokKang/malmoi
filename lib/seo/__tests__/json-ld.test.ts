@@ -20,9 +20,18 @@ describe("jsonLdHtml — 원고가 태그를 닫지 못한다", () => {
 describe("LANDING_LD", () => {
   const types = LANDING_LD.map((item) => item["@type"]);
 
-  it("SoftwareApplication + Organization", () => {
-    expect(types).toEqual(["SoftwareApplication", "Organization"]);
+  it("SoftwareApplication + Organization + WebSite", () => {
+    expect(types).toEqual(["SoftwareApplication", "Organization", "WebSite"]);
     for (const item of LANDING_LD) expect(item["@context"]).toBe("https://schema.org");
+  });
+
+  it("WebSite는 사이트 이름과 canonical origin만 든다", () => {
+    expect(LANDING_LD[2]).toEqual({
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      name: "Malmoi",
+      url: "https://mal-moi.com/",
+    });
   });
 
   it("평점·리뷰가 없다 — 없는 데이터다", () => {
@@ -40,13 +49,14 @@ describe("LANDING_LD", () => {
 describe("docLd — TechArticle + BreadcrumbList", () => {
   const page = { title: "Create a project", description: "Connect.", url: "https://mal-moi.com/docs/setup/create-project" };
   const chapter = { title: "Set up a project", url: "https://mal-moi.com/docs/setup" };
+  const context = { uiLocale: "en" as const, docsTitle: "Docs" };
 
   type Crumb = { "@type": string; position: number; name: string; item: string };
   const crumbs = (ld: ReturnType<typeof docLd>): Crumb[] =>
     (ld.find((item) => item["@type"] === "BreadcrumbList") as unknown as { itemListElement: Crumb[] }).itemListElement;
 
   it("장 아래 페이지는 Docs › 장 › 페이지 — position이 1부터 연속", () => {
-    const ld = docLd({ ...page, chapter });
+    const ld = docLd({ ...page, ...context, chapter });
     expect(ld.map((item) => item["@type"])).toEqual(["TechArticle", "BreadcrumbList"]);
     expect(crumbs(ld)).toEqual([
       { "@type": "ListItem", position: 1, name: "Docs", item: "https://mal-moi.com/docs" },
@@ -56,15 +66,26 @@ describe("docLd — TechArticle + BreadcrumbList", () => {
   });
 
   it("장 개요(장 없음)는 2항목", () => {
-    expect(crumbs(docLd({ ...page, chapter: null })).map((crumb) => crumb.position)).toEqual([1, 2]);
+    expect(crumbs(docLd({ ...page, ...context, chapter: null })).map((crumb) => crumb.position)).toEqual([1, 2]);
   });
 
-  it("TechArticle이 제목·설명·URL을 든다", () => {
-    expect(docLd({ ...page, chapter })[0]).toMatchObject({
+  it("TechArticle이 제목·설명·URL·실제 화면 언어를 들고 publisher 브랜드는 Malmoi다", () => {
+    expect(docLd({ ...page, chapter, uiLocale: "ko", docsTitle: "문서" })[0]).toMatchObject({
       "@context": "https://schema.org",
       headline: page.title,
       description: page.description,
       url: page.url,
+      inLanguage: "ko",
+      publisher: { "@type": "Organization", name: "Malmoi", url: "https://mal-moi.com/" },
+    });
+  });
+
+  it("breadcrumb 루트는 화면 언어의 Docs 라벨이다", () => {
+    expect(crumbs(docLd({ ...page, chapter: null, uiLocale: "es", docsTitle: "Documentación" }))[0]).toEqual({
+      "@type": "ListItem",
+      position: 1,
+      name: "Documentación",
+      item: "https://mal-moi.com/docs",
     });
   });
 });
