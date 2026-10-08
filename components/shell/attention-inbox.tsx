@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { loadAttentionBadgeAction, openAttentionInboxAction } from "@/app/inbox/actions";
 import { useMessages, useUiLocale } from "@/components/i18n/messages-provider";
 import { attentionItemKey, attentionRowSlots } from "@/components/inbox/row-slots";
+import { LiveStatus } from "@/components/shell/live-status";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CommandStatus } from "@/components/ui/command";
@@ -171,20 +172,6 @@ function Row({ slug, item, now }: { slug: string; item: InboxPlan["groups"][numb
   const uiLocale = useUiLocale();
   const { href, ...slots } = attentionRowSlots(m, uiLocale, slug, item, now, { time: "narrow" });
   return <DropdownMenuRow href={href} className="relative" {...slots} />;
-}
-
-/**
- * sr 상태 문장 — region이 **먼저 빈 채로 서고** 문장은 한 박자 뒤에 들어온다. 메뉴 면은 열 때마다 새로 마운트되므로, 문장과 함께
- * 나타나는 region은 낭독이 보장되지 않는다(`CommandStatus` 머리 주석과 같은 이유).
- */
-const ANNOUNCE_DELAY_MS = 100;
-function LiveStatus({ text }: { text: string }) {
-  const [shown, setShown] = useState("");
-  useEffect(() => {
-    const timer = setTimeout(() => setShown(text), ANNOUNCE_DELAY_MS);
-    return () => clearTimeout(timer);
-  }, [text]);
-  return <div data-inbox-live role="status" aria-live="polite" className="sr-only">{shown}</div>;
 }
 
 /** 첫 조회 전 골격 — 그룹 머리 한 줄 + 행 셋. 메뉴 항목이 0개라 ↓는 아무 데도 가지 않는다. `aria-busy`는 골격에만 선다(상태 문장은 `LiveStatus`). */

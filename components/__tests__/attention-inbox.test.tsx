@@ -188,7 +188,7 @@ it("항목 0이면 빈 상태 — Home 제목과 Inbox 보조 문장, 메뉴 항
 
 /** 늦게 채우는 live region의 지연(`ANNOUNCE_DELAY_MS`)을 넘겨 기다린다. */
 async function announced() { await act(async () => { await new Promise(r => setTimeout(r, 150)); }); }
-const liveRegion = () => menu()!.querySelector<HTMLElement>("[data-inbox-live]");
+const liveRegion = () => menu()!.querySelector<HTMLElement>("[data-live-status]");
 
 it("첫 조회 전엔 골격 + aria-busy + sr 상태 문장이고 메뉴 항목이 0이다", async () => {
   await mount(0);

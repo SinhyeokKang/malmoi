@@ -231,6 +231,187 @@ describe("UserMenu — 프로젝트 그룹 (멤버십을 받는다)", () => {
 });
 
 /**
+ * **공개 셸 — 열기 직전 읽기** (user-menu-projects D2). 공개 셸 헤더는 멤버십을 안 넘긴다 — 메뉴가 기존 `loadSearchMemberships`로
+ * 읽는다. 회차 규칙: ref에 Promise **하나**를 보유하고, hover·focus·열기 중 무엇이 와도 **보유한 것이 없을 때만** 시작하며, **닫힐 때 비운다**.
+ * 응답은 `ref.current === 그 Promise`일 때만 그린다(POSTMORTEM 2026-09-13 — 늦은 응답 재사용).
+ */
+describe("UserMenu — 공개 셸 지연 조회 (멤버십을 안 받는다)", () => {
+  type Result = { ok: true; memberships: NavProject[] } | { ok: false; error: "unauthorized" | "unavailable" };
+  function deferred() {
+    let resolve!: (value: Result) => void;
+    const promise = new Promise<Result>((r) => { resolve = r; });
+    return { promise, resolve: async (value: Result) => { await act(async () => resolve(value)); } };
+  }
+  const ok = (...slugs: string[]): Result => ({ ok: true, memberships: slugs.map((slug) => project(slug)) });
+  const trigger = () => document.querySelector<HTMLButtonElement>(`button[aria-label="${en.common.nav.userMenu}"]`)!;
+  const menuNode = () => document.querySelector<HTMLElement>('[role="menu"]');
+  const skeletons = () => document.querySelectorAll("[data-project-menu-item-skeleton]");
+  const region = () => menuNode()?.querySelector<HTMLElement>("[data-live-status]") ?? null;
+  async function mount() {
+    const view = await render(<UserMenu name="Kim" email="kim@acme.com" image={null} signOut={vi.fn()} />);
+    return { view, user: userEvent.setup() };
+  }
+  const separators = () => rows(menuNode()!).filter((r) => r === "---").length;
+
+  it("마운트만으로는 부르지 않는다", async () => {
+    await mount();
+    expect(action.memberships).not.toHaveBeenCalled();
+  });
+
+  it("hover 한 번이면 한 번 부른다 — 열지 않고 hover를 반복해도 한 번이다", async () => {
+    action.memberships.mockReturnValue(deferred().promise);
+    const { user } = await mount();
+    await act(async () => user.hover(trigger()));
+    expect(action.memberships).toHaveBeenCalledTimes(1);
+    for (let i = 0; i < 3; i++) {
+      await act(async () => user.unhover(trigger()));
+      await act(async () => user.hover(trigger()));
+    }
+    expect(action.memberships).toHaveBeenCalledTimes(1);
+    expect(menuNode()).toBeNull();
+  });
+
+  it("hover 뒤 열면 그 Promise를 쓴다 — 이미 온 응답이면 골격 없이 바로 목록이다", async () => {
+    const response = deferred();
+    action.memberships.mockReturnValue(response.promise);
+    const { user } = await mount();
+    await act(async () => user.hover(trigger()));
+    await response.resolve(ok("alpha", "bravo"));
+    await act(async () => user.click(trigger()));
+    expect(action.memberships).toHaveBeenCalledTimes(1);
+    expect(skeletons()).toHaveLength(0);
+    expect(projectRows(menuNode()!).map((n) => n.getAttribute("href"))).toEqual([routes.project("alpha"), routes.project("bravo")]);
+    // 공개 셸엔 지금 프로젝트가 없다 — 체크 없는 일반 menuitem이다.
+    expect(menuNode()!.querySelectorAll('[role="menuitemradio"]')).toHaveLength(0);
+  });
+
+  it("키보드만으로 — Tab으로 트리거에 닿으면 시작하고, Enter로 열어도 한 번이다", async () => {
+    action.memberships.mockReturnValue(deferred().promise);
+    const { user } = await mount();
+    await act(async () => user.tab());
+    expect(document.activeElement).toBe(trigger());
+    expect(action.memberships).toHaveBeenCalledTimes(1);
+    await act(async () => user.keyboard("{Enter}"));
+    expect(menuNode()).not.toBeNull();
+    expect(action.memberships).toHaveBeenCalledTimes(1);
+  });
+
+  /** 닫으면 Radix가 포커스를 트리거로 돌려준다 — 그 focus는 "열기 직전 신호"가 아니다. 닫을 때마다 조회가 하나씩 새면 안 된다. */
+  it("닫혀서 트리거로 돌아온 포커스는 새 조회를 시작하지 않는다", async () => {
+    action.memberships.mockReturnValue(deferred().promise);
+    const { user } = await mount();
+    await act(async () => user.click(trigger()));
+    await act(async () => user.keyboard("{Escape}"));
+    await vi.waitFor(() => expect(document.activeElement).toBe(trigger()));
+    expect(menuNode()).toBeNull();
+    expect(action.memberships).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["옛 응답이 먼저", "옛 응답이 나중에"])("열기 → 닫기 → 열기 — %s 와도 새 응답만 그린다", async (order) => {
+    const old = deferred();
+    const fresh = deferred();
+    action.memberships.mockReturnValueOnce(old.promise).mockReturnValueOnce(fresh.promise);
+    const { user } = await mount();
+    await act(async () => user.click(trigger()));
+    await act(async () => user.keyboard("{Escape}"));
+    await act(async () => user.click(trigger()));
+    expect(action.memberships).toHaveBeenCalledTimes(2);
+    if (order === "옛 응답이 먼저") {
+      await old.resolve(ok("stale"));
+      expect(menuNode()!.textContent).not.toContain("stale");
+      expect(skeletons()).toHaveLength(1);
+      await fresh.resolve(ok("fresh"));
+    } else {
+      await fresh.resolve(ok("fresh"));
+      await old.resolve(ok("stale"));
+    }
+    expect(projectRows(menuNode()!).map((n) => n.textContent)).toEqual(["fresh"]);
+    expect(menuNode()!.textContent).not.toContain("stale");
+  });
+
+  it("응답 전엔 골격 한 줄과 그 앞 구분선, 빈 채로 선 polite region이 있고 문장은 뒤에 들어온다 — 성공하면 목록이다", async () => {
+    const response = deferred();
+    action.memberships.mockReturnValue(response.promise);
+    const { user } = await mount();
+    await act(async () => user.click(trigger()));
+    expect(skeletons()).toHaveLength(1);
+    expect(separators()).toBe(4);
+    const live = region()!;
+    expect(live.getAttribute("role")).toBe("status");
+    expect(live.getAttribute("aria-live")).toBe("polite");
+    expect(live.closest("[aria-busy]")).toBeNull();
+    expect(live.textContent).toBe("");
+    await vi.waitFor(() => expect(region()!.textContent).toBe(en.projects.loading));
+    // 다른 그룹은 응답 전에도 그대로다.
+    expect(item(menuNode()!, en.common.nav.signOut)).toBeDefined();
+    const busy = (skeletons()[0] as HTMLElement).closest("[aria-busy='true']");
+    expect(busy).not.toBeNull();
+    await response.resolve(ok("alpha", "bravo", "charlie", "delta", "echo", "foxtrot"));
+    expect(skeletons()).toHaveLength(0);
+    expect(projectRows(menuNode()!)).toHaveLength(5);
+    expect(region()).toBe(live);
+    await vi.waitFor(() => expect(live.textContent).toBe(""));
+  });
+
+  it.each(["unauthorized", "unavailable"] as const)("%s면 그룹·구분선이 사라지고 다른 항목은 그대로다", async (error) => {
+    const response = deferred();
+    action.memberships.mockReturnValue(response.promise);
+    const { user } = await mount();
+    await act(async () => user.click(trigger()));
+    await response.resolve({ ok: false, error });
+    expect(skeletons()).toHaveLength(0);
+    expect(projectRows(menuNode()!)).toHaveLength(0);
+    expect(rows(menuNode()!)).toEqual([
+      "---",
+      ...navWorkItems(en).map((i) => i.label),
+      "---",
+      en.changelog.title,
+      en.publicDocs.docs.title,
+      en.publicDocs.privacy.title,
+      "---",
+      en.common.nav.signOut,
+    ]);
+  });
+
+  it("로더가 던지면(네트워크) unavailable로 접혀 그룹이 사라진다", async () => {
+    action.memberships.mockRejectedValue(new Error("offline"));
+    const { user } = await mount();
+    await act(async () => user.click(trigger()));
+    await vi.waitFor(() => expect(skeletons()).toHaveLength(0));
+    expect(projectRows(menuNode()!)).toHaveLength(0);
+    expect(separators()).toBe(3);
+  });
+
+  /** ⚠️ POSTMORTEM 2026-09-20 · 09-24 — "포커스가 남아 있다"는 jsdom에서 공회전한다. 노드 동일성으로 잰다. */
+  it("키보드로 연 뒤 응답이 와도 포커스가 같은 노드에 남는다", async () => {
+    const response = deferred();
+    action.memberships.mockReturnValue(response.promise);
+    const { user } = await mount();
+    await act(async () => user.tab());
+    await act(async () => user.keyboard("{Enter}"));
+    await vi.waitFor(() => expect(document.activeElement?.getAttribute("role")).toBe("menuitem"));
+    const focused = document.activeElement;
+    expect(focused?.textContent).toBe(en.common.nav.projects);
+    await response.resolve(ok("alpha", "bravo"));
+    expect(projectRows(menuNode()!)).toHaveLength(2);
+    expect(document.activeElement).toBe(focused);
+    expect(document.activeElement).not.toBe(document.body);
+  });
+
+  it("대기 중 언마운트되면 응답을 그리지 않고 경고도 없다", async () => {
+    const response = deferred();
+    action.memberships.mockReturnValue(response.promise);
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { user, view } = await mount();
+    await act(async () => user.click(trigger()));
+    await act(async () => view.rerender(null));
+    await response.resolve(ok("alpha"));
+    expect(error).not.toHaveBeenCalled();
+    error.mockRestore();
+  });
+});
+
+/**
  * **프로젝트 행 조각** (user-menu-projects D3) — 스위처와 사용자 메뉴가 같은 행을 쓴다. 골격은 행과 같은 파일에 서고
  * 같은 패딩·gap·썸네일 슬롯이다(POSTMORTEM 2026-09-16 · 2026-10-08 — 골격이 실물과 따로 떠내려갔다).
  */

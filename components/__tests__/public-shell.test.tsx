@@ -29,6 +29,9 @@ const inbox = vi.hoisted(() => ({
   open: vi.fn(async (): Promise<OpenAttentionInboxResult> => ({ status: "failed" })),
 }));
 vi.mock("@/app/inbox/actions", () => ({ loadAttentionBadgeAction: inbox.badge, openAttentionInboxAction: inbox.open }));
+// 사용자 메뉴의 프로젝트 그룹은 열기 직전에 읽는다(user-menu-projects D2) — 렌더·마운트만으로는 0이어야 한다.
+const search = vi.hoisted(() => ({ memberships: vi.fn(async () => ({ ok: false as const, error: "unavailable" as const })) }));
+vi.mock("@/app/search/actions", () => ({ searchKeysAction: vi.fn(), loadSearchMembershipsAction: search.memberships }));
 
 const GUEST = publicAccount({ status: "none" });
 const SIGNED_IN = publicAccount({ status: "ok", userId: "u1", name: "Ada", email: "ada@x.dev", image: null, uiLocale: null, timeZone: null, colorScheme: null });
@@ -224,6 +227,15 @@ describe("공개 셸 — 헤더", () => {
     expect([...container.querySelectorAll("header a")].filter((a) => a.getAttribute("href") === routes.signIn())).toHaveLength(0);
     expect(container.querySelector(`header button[aria-label="${en.common.nav.userMenu}"]`)).not.toBeNull();
     expect(container.querySelector("header")?.textContent).not.toContain("Open Malmoi");
+  });
+
+  /** user-menu-projects 완료 조건 7 — 공개 셸은 페이지 렌더에 멤버십 조회를 싣지 않고, 메뉴도 열기 직전까지 부르지 않는다. */
+  it("로그인한 공개 셸이 렌더·마운트만으로는 멤버십 Action을 부르지 않는다", async () => {
+    search.memberships.mockClear();
+    const { container } = await render(h(PublicShell, { m: en, account: SIGNED_IN, children: h("p", null, "body") }));
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    expect(container.querySelector(`header button[aria-label="${en.common.nav.userMenu}"]`)).not.toBeNull();
+    expect(search.memberships).not.toHaveBeenCalled();
   });
 
   /**
