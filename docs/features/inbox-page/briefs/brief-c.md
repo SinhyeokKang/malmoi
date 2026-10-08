@@ -18,3 +18,7 @@ Plan sources: `docs/features/inbox-page/{spec,design,tasks,orch}.md`. Your item:
 
 ## Handoff
 Write `.scratch/handoff-c.md`: commit SHAs, exact gate last line, changed files, differences from plan (each with reason), proposed canon doc edits (per document), guide impact, runtime (b) list. Then send `worker_done` once per your preamble and idle.
+
+## Carried from batch A review (`.scratch/inbox-page/review-a.md` in the main checkout)
+- `clampSeenAt` requires an exact `toISOString()` round-trip — `MarkSeen` must pass `now.toISOString()` (a `Date` silently becomes `invalid`). Assert the string form in the page/MarkSeen tests.
+- Optional: lower-bound assertion in `lib/inbox/__tests__/inbox.integration.ts:142`.
