@@ -98,7 +98,7 @@ export default async function Root() {
           <section aria-labelledby="landing-closing" className="flex flex-col items-center px-8 py-60 text-center">
             <h2 id="landing-closing" className="m-0 text-5xl leading-[1.1] font-semibold">{closing.title}</h2>
             <p className="mt-5 max-w-[40em] text-lg leading-body text-balance">{closing.body}</p>
-            <nav data-landing-doc-links className="text-muted-foreground mt-3 text-sm">
+            <nav aria-label={closing.links.label} data-landing-doc-links className="text-muted-foreground mt-3 text-sm">
               {closing.links.label}: <Link href={routes.docs("reference/formats")}>{closing.links.formats}</Link>
               {" · "}<Link href={routes.docs("ai-agents")}>{closing.links.aiAgents}</Link>
               {" · "}<Link href={routes.docs("faq")}>{closing.links.faq}</Link>
