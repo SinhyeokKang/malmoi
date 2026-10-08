@@ -206,7 +206,7 @@ describe("로딩 골격이 실물의 치수를 든다 (2026-09-16 실측)", () =
     // 할 일 행은 두 줄(문장 15 · 표면·로케일 13) · 로그 행은 한 줄 · 메타 행은 `text-sm`의 20이다.
     expect(source).not.toMatch(/h-\[(?:42|22|21|17)px\]/);
     expect(source).toContain('<Skeleton size="md" className="w-[72%]" />');
-    expect(source).toContain('{divided && <Skeleton size="xs" className="w-[62%]" />}');
+    expect(source).toContain('{divided && <Skeleton size="xs" lineHeight="normal" className="w-[62%]" />}');
     expect(source).toMatch(/flex h-5 items-center/);
     // 두 줄 사이 간격도 실물 행과 같다(r1) — px 컨테이너가 사라져 gap 차이(4 vs 2)가 그대로 행 높이 2px가 됐다.
     const gap = (text: string) => text.match(/<span className="flex min-w-0 flex-1 flex-col[^"]*\b(gap-[\w.-]+)/)?.[1];

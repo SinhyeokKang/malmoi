@@ -56,6 +56,10 @@ it("Home 골격의 할 일 행은 실물 행·줄 묶음과 같은 클래스다"
   expect(li.querySelector(":scope > span")!.className).toMatch(/flex-col.*gap-copy-gap/);
   // 실물은 문장(15) + 표면·로케일(13) 두 줄이다.
   expect(li.querySelectorAll("[data-skeleton-line]")).toHaveLength(3);
+  // 보조줄 행간은 실물(ListRow 문장 칸의 description)과 같다 — 실물이 `leading-normal`(19.5)인데 골격이 기본 행간(17.33)이면 행마다 ≈2px 밀린다.
+  const copy = source("components/ui/list-row.tsx").match(/text-muted-foreground text-xs (leading-normal)/)?.[1];
+  expect(copy).toBe("leading-normal");
+  expect(li.querySelectorAll("[data-skeleton-line]")[1]!.className).toContain(copy);
 });
 
 it("Logs 골격 머리는 필터 행을 든다 — 실물과 같은 행 클래스와 높이 36 컨트롤", async () => {
@@ -129,8 +133,7 @@ it("Logs 골격 행은 실물 EventRow와 같은 padding·줄 묶음이고 보�
   const real = source("components/logs/event-row.tsx");
   expect(real).toContain("<ListRow");
   expect(source("components/ui/list-row.tsx")).toContain("flex items-center gap-3 px-4 py-row-y");
-  // 행 문장 칸 마크업은 T3에서 `attentionRowSlots`를 거쳐 `ListRow`로 옮겨 갔다 — 실물 쪽 기준은 list-row.tsx다.
-  expect(source("components/ui/list-row.tsx")).toContain("flex min-w-0 flex-1 flex-col gap-copy-gap");
+  expect(real).toContain("flex min-w-0 flex-1 flex-col gap-copy-gap");
   const { container } = await render(LogsLoading());
   const row = container.querySelector<HTMLElement>("[data-skeleton-event]")!;
   expect(row.className).toContain("gap-3 border-t px-4 py-row-y");

@@ -132,7 +132,8 @@ function Card({ rows, footer, divided = true }: { rows: number; footer: boolean;
             <span className="flex min-w-0 flex-1 flex-col justify-center gap-copy-gap">
               {/* 할 일 행은 문장(15)이 먼저고 표면·로케일(13)이 아래다 — 실물과 같은 순서(Q9). */}
               <Skeleton size="md" className="w-[72%]" />
-              {divided && <Skeleton size="xs" className="w-[62%]" />}
+              {/* 보조줄 행간은 실물 `ListRow` 문장 칸과 같은 `leading-normal`이다(inbox-page T3 — 공유 행 조각으로 옮기며 19.5가 됐다). */}
+              {divided && <Skeleton size="xs" lineHeight="normal" className="w-[62%]" />}
             </span>
             <Skeleton size="xs" className="w-12" />
           </li>

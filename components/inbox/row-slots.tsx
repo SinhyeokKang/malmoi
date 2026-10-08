@@ -45,6 +45,7 @@ export function attentionRowSlots(
       {sub !== "" && <span className="block truncate">{sub}</span>}
       {item.ownerRetries && <span className="mt-copy-gap block">{m.projects.importFailure.ownerRetries}</span>}
     </>,
+    // 시각은 `muted`다(2026-09-30 사용자 — 같은 Home의 Log 행 시각과 맞췄다. 옛 `gray-dim`은 2.5:1이라 읽기 어려웠다).
     // 시각이 없으면 칸을 비운다 — 실패 시각이 기록되지 않은 항목에 "Never"를 적으면 거짓이다. `narrow`는 360 메뉴의 문장 칸(226)을 지킨다(#190).
     aside: item.at === null ? undefined : <span className="text-muted-foreground shrink-0 text-xs">{relativeTime(item.at, now, uiLocale, time === "narrow" ? { style: "narrow" } : undefined)}</span>,
   };
