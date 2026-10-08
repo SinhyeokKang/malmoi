@@ -49,17 +49,14 @@ export async function generateMetadata({ params }: { params: Promise<{ slug?: st
  */
 export default async function DocsPage({ params }: { params: Promise<{ slug?: string[] }> }) {
   const { slug = [] } = await params;
-  const routePage = loadPageBySlug("en", slug);
-  if (routePage === null) {
-    // 404를 쿠키·세션 조회 전에 확정해야 Next가 not-found 본문과 metadata를 초기 HTML에 함께 싣는다.
+  const [uiLocale, m] = await Promise.all([getUiLocale(), getMessages()]);
+  const page = loadPageBySlug(uiLocale, slug);
+  if (page === null) {
+    // 옮긴 페이지의 옛 주소 — 해시는 브라우저가 리다이렉트 너머로 넘긴다(대상이 옛 절 id를 지킨다).
     const moved = legacyPageTarget(slug, LEGACY_PAGES);
     if (moved !== null) permanentRedirect(moved);
     notFound();
   }
-
-  const [uiLocale, m] = await Promise.all([getUiLocale(), getMessages()]);
-  // 화면 언어 원고가 빠진 것은 존재하지 않는 route가 아니라 원고 트리 드리프트다. `loadPage`가 빌드·요청을 실패시킨다.
-  const page = uiLocale === "en" ? routePage : { file: routePage.file, tree: loadPage(uiLocale, routePage.file) };
 
   const nav = loadSummary(uiLocale);
   const flat = flattenNav(nav);

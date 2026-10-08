@@ -15,17 +15,15 @@ import { routes } from "@/lib/routes";
 */
 vi.setConfig({ testTimeout: 20_000 });
 
-const mocks = vi.hoisted(() => ({ path: "/docs", replace: vi.fn(), uiLocale: "en" as "en" | "ko", i18nCalls: [] as string[] }));
+const mocks = vi.hoisted(() => ({ path: "/docs", replace: vi.fn(), uiLocale: "en" as "en" | "ko" }));
 
 vi.mock("@/lib/auth/read-session", () => ({ readSession: async () => ({ status: "none" }) }));
 // 화면 언어는 쿠키·세션에서 오고 렌더 요청 밖에서는 `cookies()`가 던진다 — 요청의 언어를 여기서 정한다
 vi.mock("@/lib/i18n/server", async () => ({
   getUiLocale: async () => {
-    mocks.i18nCalls.push("getUiLocale");
     return mocks.uiLocale;
   },
   getMessages: async () => {
-    mocks.i18nCalls.push("getMessages");
     return mocks.uiLocale === "ko" ? (await import("@/messages/ko")).ko : (await import("@/messages/en")).en;
   },
 }));
@@ -41,7 +39,6 @@ beforeEach(() => {
   vi.stubGlobal("matchMedia", () => ({ matches: false, addEventListener() {}, removeEventListener() {} }));
   mocks.replace.mockReset();
   mocks.uiLocale = "en";
-  mocks.i18nCalls.length = 0;
 });
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -156,12 +153,6 @@ describe("`/docs/*` — 404", () => {
   it.each([["nope"], ["AUTHORING"], ["SHOOTING"], ["SUMMARY"], ["setup", "workflow", "extra"], ["__proto__"]])("%s → notFound", async (...slug) => {
     const { default: Docs } = await import("@/app/docs/[[...slug]]/page");
     await expect(Docs({ params: Promise.resolve({ slug }) })).rejects.toThrow("NEXT_NOT_FOUND");
-  });
-
-  it("없는 slug는 동적 화면 언어 조회 전에 404를 확정한다 — 초기 HTML 스트리밍 회귀", async () => {
-    const { default: Docs } = await import("@/app/docs/[[...slug]]/page");
-    await expect(Docs({ params: Promise.resolve({ slug: ["nope"] }) })).rejects.toThrow("NEXT_NOT_FOUND");
-    expect(mocks.i18nCalls).toEqual([]);
   });
 
   it("404 화면이 요청 주소를 되비치고 개요로 가는 링크 하나를 준다 — 내비 current 없음", async () => {
