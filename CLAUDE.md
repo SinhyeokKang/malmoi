@@ -68,7 +68,7 @@
 | 리포 쓰기 | GitHub App **installation 토큰** — `octokit`의 `App` |
 | 계정 연결 | 같은 App의 **user-to-server 토큰** — `@octokit/oauth-app`(`octokit`이 재수출하는 `OAuthApp`으로는 안 된다) |
 | 파일 저장 | Vercel Blob — **공개 읽기 + 키에 난수**. 소비자는 프로필 사진·프로젝트 썸네일 둘이다(ARCHITECTURE §6.7·§6.75) |
-| 초대 메일 | Resend REST API — **SDK 없이 `fetch`**. 환경변수 셋이 전부 `optionalEnv`라 **비거나 틀려도 발급·발송만 막힌다** |
+| 초대 메일 | Resend REST API — **SDK 없이 `fetch`**. 환경변수 셋이 전부 `optionalEnv`다. 누락·발신자/origin 오류는 발급 전 `email-unavailable`, 잘못된 API 키는 발급 후 `email-rejected`이며 부팅·로그인·멤버 조회는 유지된다 |
 | 방문 집계 | Vercel Web Analytics — **공개 페이지 페이지뷰 하나**(쿠키·커스텀 이벤트 없음). ⚠️ **`lib/seo/analytics.ts`의 추적 경로 허용 목록이 유일한 거름망이다** — 앱 URL엔 초대 토큰·slug·검색어가 실린다 |
 | 이미지 정규화 | `sharp` — 업로드 원본을 저장하지 않는다(192px 이내 WebP 재인코딩) |
 | 스타일 | Tailwind CSS 4 — **`tailwind.config.js`가 없다.** 토큰 등록은 `app/globals.css`의 `@theme`, 값(라이트·다크)은 같은 파일 `:root`의 `light-dark()` |
@@ -185,7 +185,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 
 `app/fonts/geist/Geist.woff2`는 저장소가 소유하는 Geist Sans 가변 폰트(100–900)다. 출처·고정 버전·SHA와 OFL 라이선스는 같은 디렉터리에 둔다. `app/layout.tsx`의 `next/font/local`이 자사 호스트 자산과 preload를 만들고 루트 `--font-geist` 변수를 공급한다. `app/globals.css`의 sans 순서는 Geist → Pretendard Variable → 시스템 폰트다. **`adjustFontFallback: false`는 자동 Arial 폴백이 Pretendard 앞에 끼지 않도록 한다.** 영문·숫자는 Geist, Geist에 없는 한글은 Pretendard로 내려간다. monospace 스택은 별개다.
 
-`scripts/copy-fonts.mjs`가 `node_modules/pretendard`에서 `public/fonts/pretendard/`로 복사하고 `predev`·`prebuild`가 자동 실행한다. **`public/fonts/`는 생성물이라 `.gitignore`에 있다**(3.1MB, 92파일). CSS의 `url()`이 상대 경로라 **디렉터리 구조를 바꾸면 폰트가 조용히 404가 되고 시스템 폰트로 떨어진다**. `<link>`로 `app/layout.tsx`가 불러온다(`@import`로 넣으면 스타일시트 체인이 직렬화돼 폰트 요청이 한 단계 늦게 시작된다). **`.npmrc`의 `enable-pre-post-scripts=true`가 그 자동 실행을 보장한다 — 이 파일을 지우지 않는다.**
+`scripts/copy-fonts.mjs`가 `node_modules/pretendard`에서 `public/fonts/pretendard/`로 복사하고 `predev`·`prebuild`가 자동 실행한다. **`public/fonts/`는 생성물이라 `.gitignore`에 있다**(폰트 서브셋 92개 + CSS 1개). CSS의 `url()`이 상대 경로라 **디렉터리 구조를 바꾸면 폰트가 조용히 404가 되고 시스템 폰트로 떨어진다**. `<link>`로 `app/layout.tsx`가 불러온다(`@import`로 넣으면 스타일시트 체인이 직렬화돼 폰트 요청이 한 단계 늦게 시작된다). **`.npmrc`의 `enable-pre-post-scripts=true`가 그 자동 실행을 보장한다 — 이 파일을 지우지 않는다.**
 
 ### CI (GitHub Actions)
 
@@ -201,7 +201,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 
 ## 브랜치 정책 & 배포
 
-**`main` / `dev` 두 브랜치다.** 그 아래 작업 브랜치는 두지 않는다 — 혼자 작업이라 층을 하나 더 얹으면 스스로 연 PR을 스스로 머지하는 형식만 남는다.
+**상시 브랜치는 `main` / `dev` 둘이다.** 일반 작업은 `dev`에서 한다. **`/orchestrate` 워커만 임시 로컬 워크트리 브랜치를 쓴다** — 워커는 푸시하지 않고, 지휘 세션이 결과를 `dev`에 통합한 뒤 임시 브랜치·워크트리를 정리한다(`.claude/commands/orchestrate.md`).
 
 | 브랜치 | 무엇 | 어떻게 들어가나 |
 |---|---|---|
