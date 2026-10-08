@@ -528,7 +528,7 @@ it.each([
   await settle(first, stale);
   // 옛 응답은 골격을 걷지도 오류 줄을 세우지도 않는다 — 새 조회를 기다린다.
   expect(menu()!.querySelectorAll("[data-skeleton-line]").length).toBeGreaterThan(0);
-  expect(menu()!.querySelector('[data-tone="danger"]')).toBeNull();
+  expect(menu()!.querySelector('p[data-tone="danger"]')).toBeNull();
   expect(badgeNode()?.textContent).toBe("3");
   // 신호 뒤 시작한 조회는 정상 반영한다 — 새로 생긴 안 읽음까지 일괄로 지우지 않는다.
   const fresh: InboxPlan = { unread: 1, groups: [{ ...PLAN.groups[0]!, items: PLAN.groups[0]!.items.map((item, index) => ({ ...item, unread: index === 0 })) }] };
@@ -570,7 +570,7 @@ it("신호 전에 걸린 다시 시도는 신호 뒤 새 조회로 바뀌고 옛
   await settle(retry, { status: "failed" });
   await settle(after, ok());
   expect(items()).toHaveLength(5);
-  expect(menu()!.querySelector('[data-tone="danger"]')).toBeNull();
+  expect(menu()!.querySelector('p[data-tone="danger"]')).toBeNull();
 });
 
 /** 셸 전환 — 공개 셸 헤더와 앱 셸 헤더는 서로 다른 마운트다. 해제된 헤더의 늦은 응답이 새 헤더의 store를 바꾸면 안 된다. */

@@ -184,7 +184,7 @@ describe("PanelBody — 같은 여백, 같은 등급", () => {
  * 이번이 **네 번째**다 (POSTMORTEM 2026-09-14 · 2026-09-15).
  * ⚠️ **`<PanelHeader`를 새로 쓰면 이 배열에 한 줄을 더한다** — 그러지 않으면 새 화면이 검사 밖이다.
  */
-describe("소비자 열여덟 — 여백을 넘기지 않는다", () => {
+describe("소비자 스물 — 여백을 넘기지 않는다", () => {
   const CONSUMERS = [
     "components/projects/project-list.tsx",
     "app/(edit)/projects/(list)/loading.tsx",
@@ -204,6 +204,9 @@ describe("소비자 열여덟 — 여백을 넘기지 않는다", () => {
     // `/preferences` (ui-locales) — 같은 사용자 축 한 장과 그 골격.
     "app/(edit)/preferences/page.tsx",
     "app/(edit)/preferences/loading.tsx",
+    // `/inbox` (inbox-page) — 같은 사용자 축 한 장과 그 골격.
+    "app/(edit)/inbox/page.tsx",
+    "app/(edit)/inbox/loading.tsx",
     // 형제 화면의 골격 (audit-ux #5) — 번역 골격은 작업 화면처럼 프리미티브를 안 쓴다.
     "app/(edit)/projects/[slug]/members/loading.tsx",
     "app/(edit)/projects/[slug]/settings/loading.tsx",
@@ -275,11 +278,12 @@ describe("소비자 열여덟 — 여백을 넘기지 않는다", () => {
     }
   });
 
-  it("소비자가 열여덟 + 본문 전용 여섯이다 — 수가 바뀌면 다시 센다", () => {
+  it("소비자가 스물 + 본문 전용 여섯이다 — 수가 바뀌면 다시 센다", () => {
     // translation-rework T16 — 옛 번역 머리가 빠졌다. 새 작업 화면은 `PanelHeader`를 쓰지 않는다(세 패널이 본문 전체를 든다).
     // mcp-connector — `/mcp`가 하나 더했다(15 → 16).
     // ui-locales — `/preferences`의 페이지·골격이 둘 더했다(16 → 18).
-    expect(CONSUMERS).toHaveLength(18);
+    // inbox-page — `/inbox`의 페이지·골격이 둘 더했다(18 → 20).
+    expect(CONSUMERS).toHaveLength(20);
     // malmoi#162 — 셸 안 not-found 둘이 더했다(4 → 6).
     expect(BODY_ONLY).toHaveLength(6);
   });

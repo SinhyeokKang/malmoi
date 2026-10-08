@@ -50,3 +50,8 @@ export function attentionRowSlots(
     aside: item.at === null ? undefined : <span className="text-muted-foreground shrink-0 text-xs">{relativeTime(item.at, now, uiLocale, time === "narrow" ? { style: "narrow" } : undefined)}</span>,
   };
 }
+
+/** 종류·프로젝트·표면·로케일이 키다 — 응답이 와도 같은 행이 같은 노드로 남는다(드롭다운 로빙 포커스 — POSTMORTEM 2026-09-20 · 09-24). */
+export function attentionItemKey(slug: string, item: InboxItem): string {
+  return `${item.kind}:${slug}:${"surfaceSlug" in item ? item.surfaceSlug : ""}:${"code" in item ? item.code : ""}`;
+}

@@ -267,7 +267,8 @@ describe("navZones — 사용자 축과 프로젝트 축 (PRODUCT §7.7 · 8-3 �
    */
   it("`Projects`에만 개수 배지가 붙고, 0도 값이다", () => {
     const items = navZones(en, null, { userName: "Shin", projectCount: 0 })[0]?.items ?? [];
-    expect(items.map((i) => i.badge)).toEqual([0, undefined, undefined, undefined]);
+    // Inbox도 여기서는 배지가 없다 — 안 읽음 수는 사이드바가 탭 안 store에서 붙인다(inbox-page D5).
+    expect(items.map((i) => i.badge)).toEqual([0, undefined, undefined, undefined, undefined]);
     expect(navZones(en, null, ctx)[0]?.items[0]?.badge).toBe(3);
   });
 
