@@ -155,7 +155,8 @@ app/
                         POST되므로 entry-points의 USER_SCOPED_ACTIONS가 센다
   search/actions.ts    검색 읽기 전용 Action 둘(searchKeysAction · loadSearchMembershipsAction). page.tsx가 없어 검색 라우트는 없다.
                         readSession union → 세션 userId로 키 코어/멤버십을 좁힌다. redirect·revalidate·질의 로그 없음.
-                        __tests__/actions.test.ts는 만료·장애·입력·일곱 NavProject 필드 투영을 센다
+                        __tests__/actions.test.ts는 만료·장애·입력·일곱 NavProject 필드 투영을 센다.
+                        loadSearchMembershipsAction의 소비자는 공개 셸의 검색 Dialog와 사용자 메뉴의 프로젝트 그룹 둘이다(2026-10-09 user-menu-projects)
   api/search-index/[uiLocale]/  route.ts — 그 언어 원고 SUMMARY 가이드 절의 공개 JSON { docs }, force-static. 질의·세션·DB·쿠키 없음.
                         ⚠️ 언어가 URL에 실린다 — force-static은 쿠키로 못 갈라서 generateStaticParams(= guideLocales()) + dynamicParams=false
                         (목록 밖 404). 옛 api/search-index/route.ts는 2026-10-04에 지웠다(ui-locales I2).
@@ -320,11 +321,17 @@ components/
                         ⚠️ 본문 랜드마크를 ContentPanel이 든다 — 화면은 자기 <main>을 안 든다
                         ⚠️ 사이드바 항목 노출은 편의이고 차단이 아니다(방어는 페이지) — 판정은 lib/shell/nav.ts
                         header-bar.tsx  앱·공개 헤더의 공통3칸 grid(start/center/end), 검색을 뷰포트 가운데에 둔다.
-                        header.tsx는 받은 멤버십을 검색에 넘기고 public-shell/header.tsx는 계정만 넘긴다
+                        header.tsx는 받은 멤버십을 검색·사용자 메뉴에 넘기고 public-shell/header.tsx는 계정만 넘긴다
+                        (사용자 메뉴가 열기 직전에 스스로 읽는다 — user-menu.tsx 머리 주석)
                         attention-inbox.tsx  헤더 Inbox(attention-inbox, 2026-10-05) — 세로선 오른쪽·아바타 왼쪽의 클라이언트 잎. 마운트 때 배지 Action 한 번,
                         열 때마다 open Action 한 번이다. ⚠️ 레이아웃 렌더에 싣지 않는다(클라이언트 이동에서 배지가 굳는다) ·
                         배지 0은 메뉴가 닫힐 때 · 행·그룹은 ui/의 ListGroup·DropdownMenuRow만 든다(DESIGN §6.545) ·
                         안 읽음 수의 유일한 writer다(lib/inbox/unread-store — 사이드바 InboxCount는 읽기만, 2026-10-09 inbox-page)
+                        project-menu-item.tsx  메뉴 안 프로젝트 행(ProjectThumbnail xs + 이름 → Home)과 그 한 줄 골격 — LNB 스위처와 헤더
+                        사용자 메뉴가 같이 쓴다(2026-10-09 user-menu-projects). ⚠️ 프로젝트 도메인 조각이라 ui/가 아니다 · 골격은 행과 같은 파일이다
+                        (패딩·썸네일 슬롯이 따로 떠내려가지 않게)
+                        live-status.tsx  메뉴 안 sr 상태 문장 — 빈 region이 먼저 서고 문장은 100ms 뒤. 헤더 Inbox와 사용자 메뉴 프로젝트 그룹이
+                        같이 쓴다(손 사본 둘이 되어 2026-10-09에 올렸다)
                         navigation-dim.tsx  화면 이동 dim — 셸이 아니라 루트 레이아웃이 든다(공개 셸·로그인에도 선다).
                         판정(다른 pathname만)은 lib/shell/navigation-dim.ts
                         new-project-icon.tsx  헤더 [New project] 링크의 앞 아이콘을 ui/LinkProgress에 넘기는 클라이언트 잎.
@@ -937,7 +944,7 @@ lib/
                         docs-index(순수 함수 — SUMMARY 원고→페이지 도입/H2 절·평문) · highlight(원문 UTF-16 역매핑을 강조·snippet·
                         firstMatchRange가 공유한다 — 번역 목록/MCP의 첫 일치는 인접 반복을 합치지 않는다) ·
                         keys(입력·열린 Dialog의 단축키 제외 · 활성 id — 플랫폼·조합 판정은 lib/keyboard) · key-href(KeyHit 타입·선택 키 번역 주소) ·
-                        load-index(공개 GET의 pending/성공 Promise 탭 재사용·실패 재시도) · load-memberships(매 호출 Action, 캐시 없음 — Action union 그대로, throw만 unavailable).
+                        load-index(공개 GET의 pending/성공 Promise 탭 재사용·실패 재시도) · load-memberships(매 호출 Action, 캐시 없음 — Action union 그대로, throw만 unavailable. 소비자는 검색 Dialog와 사용자 메뉴 — 메뉴는 열기 직전 미리 읽기를 그 열기 회차의 일부로 쓴다).
                         __tests__/는 각 계약 + scenarios의 세션/역할/판정 차이/스니펫 시나리오를 센다. 클라이언트 전이 그래프는 정확 일치로 등록한다
   public-doc/           toc(currentSection) · landing(documentTop · landDocumentHeading). 둘 다 서버 의존 없는 클라이언트 잎이다.
                         목차·검색이 같은48 오프셋/제목 포커스/해시 착지를 쓰고, 스크롤러-local 사건으로 목차의 현재 절 고정도 옮긴다
