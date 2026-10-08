@@ -2837,3 +2837,19 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - **수정**: Logs 로딩 제목 장식에 `left-0`만 추가해 기존 relative 예약 영역 왼쪽을 기준으로 삼았다. 공용 Skeleton·숨긴 제목의 크기·필터·행 슬롯은 그대로다. 독립 리뷰 red0/yellow0, 기존 대상13건 및 통합 gate12,264건 통과·2건 skip, 빌드·미러 성공을 확인했다.
 - **실측·재발 방지**: 같은 TaskSpace4의 실제 SSR en/ko/es ×1280/1440/1890 ×light/dark18조합에서 막대와 예약 영역의 x 차이0px, 헤더·필터 줄바꿈·본문 기준선·112/172 슬롯 일치를 확인했다. 장식의 실제 painted descendant와 containing block을 함께 측정해야 하며 클래스 문자열 검사는 CSS 좌표의 증명이 아니다.
 - **이전 기록 보완**: #201도 같은18조합에서 추가44px 이동이0px임을 확인하고 종료했다. 이전의 사용자 제어 귀속은 근거가 부족했다. 재개 시 관측한 상태는 `agentDelegatedToUser`였고 사용자는 직접 조작한 적 없다고 밝혔다. 사용자 재개 지시에 따라 같은 공간의 소유권을 복구했다. 도구 소유 상태만으로 사용자 행동을 단정하지 않는다.
+
+### 2026-10-08 — 번역된 문서의 JSON-LD는 영어를 선언하고 FAQ 경로는 개요를 중복했다
+
+- **영역**: `lib/seo/json-ld.ts`, `app/docs/[[...slug]]/page.tsx`.
+- **증상**: ko/es 본문·제목을 구조화 데이터에 실으면서 `inLanguage=en`과 영어 Docs 라벨이 남았다. FAQ breadcrumb에는 같은 `/docs`가 두 번 섰다.
+- **근본 원인**: 영어 고정 SEO metadata와 화면 본문을 설명하는 JSON-LD의 언어 경계를 함수 입력이 표현하지 않았다. SUMMARY의 빈 부모 slug도 일반 chapter로 취급해 이미 있는 Docs 루트를 다시 추가했다.
+- **그물**: 감사의 실제 응답 대조가 발견했다. 기존 영어 함수 테스트는 페이지의 번역 배선·빈 부모 경로를 못 잡았다. 실제 ko 페이지와 ko/es 함수 출력, FAQ의 2단 경로·일반 문서의 3단 경로를 단언하도록 보강했다.
+- **재발 방지**: `rg -n 'inLanguage|docLd\(' lib/seo app/docs`로 선언과 호출부를 함께 확인한다. 2026-10-08 실행 결과 문서 생성기 한 곳과 호출부 한 곳이며 다른 고정 언어 선언은 없었다. metadata는 en 원고, JSON-LD는 실제 본문 언어를 따른다는 경계를 각각 테스트한다.
+
+### 2026-10-08 — 404 상태·noindex 통과가 초기 HTML 본문을 보장하지 않았다
+
+- **영역**: 동적 `/docs/**`의 `notFound()`, Next 16.3.3 production build.
+- **증상**: 없는 문서 요청은 HTTP 404·noindex지만 script/style을 제외한 초기 본문이 0자이고 title은 `Malmoi Docs · Malmoi`였다. 의도한 not-found 화면은 Flight 데이터에만 있었다. 이 항목은 **미해결**이다.
+- **근본 원인**: 프레임워크 내부 원인은 미확정이다. 페이지 유효성 판정을 i18n 조회 앞으로 옮겨도 재현됐고, 유사 이슈 Next #97000은 다른 구성의 불완전한 재현으로 종료되어 원인 증명이 아니다. 검증의 빈틈은 컴포넌트 DOM·상태 코드만으로 실제 초기 응답을 추정한 데 있다.
+- **그물**: `next build`·`next start` 뒤 쿠키 없는 요청의 status, noindex, title, script를 제외한 body text를 분리한 probe가 잡았다. 컴포넌트 단위 테스트는 Next 응답 직렬화 경로를 실행하지 않아 놓쳤다.
+- **재발 방지**: `rg -n 'notFound\(' app/docs app/not-found.tsx`로 실제 진입점을 확인했다(문서 페이지 한 곳). 프레임워크 변경 시 built-server에서 없는 docs slug와 루트 404를 함께 확인한다. `docs/features/seo-geo-audit-20261008/orch.md` D11에 따라 middleware/CSP 확장·soft 200·임의 버전 변경으로 덮지 않는다.
