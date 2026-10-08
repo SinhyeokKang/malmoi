@@ -44,7 +44,13 @@ const nextConfig: NextConfig = {
    * ⚠️ **`tsc`는 이 함수의 형태를 못 본다** — `app/__tests__/security-headers.test.ts`가 설정을 **불러서** 검사한다.
    */
   async headers() {
-    return [{ source: "/(.*)", headers: securityHeaders() }];
+    const publicAssetCache = [{ key: "Cache-Control", value: "public, max-age=3600, stale-while-revalidate=86400" }];
+    return [
+      // 파일명에 해시가 없으므로 immutable은 쓰지 않는다. 교체본은 공유 캐시에서 최장 25시간 늦게 보일 수 있다.
+      { source: "/fonts/:path*", headers: publicAssetCache },
+      { source: "/guide/:path*", headers: publicAssetCache },
+      { source: "/(.*)", headers: securityHeaders() },
+    ];
   },
 };
 

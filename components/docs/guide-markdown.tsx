@@ -3,6 +3,7 @@ import type { Root } from "mdast";
 
 import type { ComponentProps, ReactNode } from "react";
 import Markdown, { type Components, type ExtraProps } from "react-markdown";
+import { visit } from "unist-util-visit";
 
 import { DOC_TABLE, DOC_TABLE_HEAD, DOC_TABLE_ROW, DocTableFrame } from "@/components/public-doc-table";
 import { Alert } from "@/components/ui/alert";
@@ -33,7 +34,15 @@ function isFigure(node: HastNode | undefined): boolean {
   return children.length === 1 && children[0]?.type === "element" && children[0].tagName === "img";
 }
 
-function components(sizes: Record<string, ShotSize>): Components {
+function firstImageOffset(tree: Root): number | null {
+  let offset: number | null = null;
+  visit(tree, "image", (node) => {
+    offset ??= node.position?.start.offset ?? null;
+  });
+  return offset;
+}
+
+function components(sizes: Record<string, ShotSize>, eagerImageOffset: number | null): Components {
   return {
     h1: ({ node: _node, ...props }) => <h1 {...props} className="m-0 text-4xl leading-[1.3] font-semibold" />,
     // `scroll-mt-12` — 하드 해시 착지도 목차 클릭과 같은 48 아래에 선다. `tabIndex`는 remarkGuide가 싣는다.
@@ -92,9 +101,9 @@ function components(sizes: Record<string, ShotSize>): Components {
         {children}
       </Td>
     ),
-    img: ({ node: _node, src, alt, title }) => {
+    img: ({ node, src, alt, title }) => {
       const size = typeof src === "string" && Object.hasOwn(sizes, src) ? sizes[src] : undefined;
-      return <Figure src={src} alt={alt ?? ""} caption={title} size={size} />;
+      return <Figure src={src} alt={alt ?? ""} caption={title} size={size} eager={node?.position?.start.offset === eagerImageOffset} />;
     },
   };
 }
@@ -105,11 +114,11 @@ function components(sizes: Record<string, ShotSize>): Components {
  * 치수(`width`·`height`)는 SHOOTING 에셋 표가 정본이다(`loadShotSizes`) — 고유 크기가 있어야 로드 때 본문이 안 밀린다(CLS).
  * `h-auto w-full`이 표시 크기를 칼럼에 맞추고, 속성은 비율만 준다.
  */
-function Figure({ src, alt, caption, size }: { src: ComponentProps<"img">["src"]; alt: string; caption?: string; size?: ShotSize }) {
+function Figure({ src, alt, caption, size, eager }: { src: ComponentProps<"img">["src"]; alt: string; caption?: string; size?: ShotSize; eager: boolean }) {
   return (
     <figure className="m-0 mt-6">
       {/* eslint 없음 — `next/image`를 쓰지 않는다: 원고 이미지는 `public/guide/`의 정적 WebP이고 치수는 표가 든다. */}
-      <img src={typeof src === "string" ? src : undefined} alt={alt} width={size?.width} height={size?.height} loading="lazy" className="border-border-subtle shadow-low block h-auto w-full rounded-lg border" />
+      <img src={typeof src === "string" ? src : undefined} alt={alt} width={size?.width} height={size?.height} loading={eager ? "eager" : "lazy"} fetchPriority={eager ? "high" : undefined} className="border-border-subtle shadow-low block h-auto w-full rounded-lg border" />
       {caption ? <figcaption className="text-muted-foreground mt-3 text-xs">{caption}</figcaption> : null}
     </figure>
   );
@@ -127,7 +136,7 @@ function Figure({ src, alt, caption, size }: { src: ComponentProps<"img">["src"]
 export function GuideMarkdown({ tree, file, sizes = NO_SIZES }: { tree: Root; file: string; sizes?: Record<string, ShotSize> }): ReactNode {
   const copy = structuredClone(tree);
   return (
-    <Markdown remarkPlugins={[() => () => copy, [remarkGuide, { file }]]} components={components(sizes)}>
+    <Markdown remarkPlugins={[() => () => copy, [remarkGuide, { file }]]} components={components(sizes, firstImageOffset(tree))}>
       {""}
     </Markdown>
   );

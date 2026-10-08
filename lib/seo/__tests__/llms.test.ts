@@ -66,7 +66,7 @@ describe("llmsIndex", () => {
     const flat = flattenNav(real);
     const leads = new Map(flat.map((item) => [item.file, `lead of ${item.file}`]));
     const once = llmsIndex(real, leads);
-    expect(once.match(/^- \[/gm)).toHaveLength(flat.length);
+    expect(once.match(/^- \[[^\n]+\]\(https:\/\/mal-moi\.com\/docs/gm)).toHaveLength(flat.length);
     expect(llmsIndex(real, leads)).toBe(once);
   });
 });
