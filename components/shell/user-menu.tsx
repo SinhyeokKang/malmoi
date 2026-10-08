@@ -113,7 +113,8 @@ export function UserMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-60" onCloseAutoFocus={() => {
-        // Radix가 이 핸들러 바로 뒤에 같은 틱에서 트리거를 포커스한다. 바깥을 눌러 닫아 포커스가 안 오면 다음 틱에 풀린다.
+        // Radix가 이 핸들러 바로 뒤에 같은 틱에서 트리거를 포커스한다(Escape·고르기·modal의 바깥 좌클릭 닫힘). 우클릭 바깥 닫힘은
+        // 포커스를 돌려주지 않는다(`hasInteractedOutside`) — 그때 선 플래그는 마이크로태스크가 풀어 다음 진짜 focus를 삼키지 않는다.
         focusReturning.current = true;
         queueMicrotask(() => { focusReturning.current = false; });
       }}>
