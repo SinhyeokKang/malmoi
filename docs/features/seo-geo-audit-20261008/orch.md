@@ -96,3 +96,9 @@
 | D | 공개 모바일 정책 사용자 답변 대기 | 승인 시 feature/review부터 |
 | E | www 설정 조회·구체적 변경안 작성 완료, 원격 변경 없음 | 별도 production 승인·Gabia 접근 |
 | Q | brief-qa.md 준비, TaskSpace 2 유지 | 코드 통합과 gate 후 직렬 QA |
+
+### 10:49 KST 갱신
+
+- C fix `b65761f2`: escaped definition delimiter와 빈 destination 회귀 2건 RED→GREEN, 최종 worker gate 12,274 tests / 2 skipped 통과. 독립 재검수 `task_8cbe198fc89c` / `ctx_9f5efeb7fbb5`가 두 입력과 escape parity·title·whitespace를 다시 확인해 red 0 / yellow 0. C 세 커밋을 local dev로 통합한다.
+- A·B·C 구현 및 독립 리뷰 종료. PRODUCT·ARCHITECTURE·DESIGN·POSTMORTEM 갱신 완료. 통합 gate·push·CI·QA는 다음 단계이며 아직 완료로 표시하지 않는다.
+- `pnpm guide:check`는 기존 stale 13컷(20건), 이번 배치의 촬영 대상 화면 변경 없음. schema/migration diff 없음. 원격 dev 확인 결과 incoming 0으로 통합 충돌 없음.
