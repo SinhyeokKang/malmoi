@@ -71,7 +71,8 @@ describe("OG_IMAGE", () => {
   it("public/og.png는 300KB 미만이며 기준 픽셀과 바이트 단위로 같다", async () => {
     const path = join(process.cwd(), "public", OG_IMAGE.url);
     expect(readFileSync(path).byteLength).toBeLessThan(300_000);
-    const pixels = await sharp(path).raw().toBuffer();
+    // 원본 alpha는 전 픽셀이 255였다. 인코더가 그 무의미한 채널을 빼도 RGBA로 복원한 픽셀은 같아야 한다.
+    const pixels = await sharp(path).ensureAlpha().raw().toBuffer();
     expect(createHash("sha256").update(pixels).digest("hex")).toBe("521d794edb8aef77d3f9b38b29b31d3e4d39d1382e7f4b073160362e4ca15892");
   });
 });

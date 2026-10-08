@@ -1,4 +1,5 @@
 import { en } from "@/messages/en";
+import type { UiLocale } from "@/lib/i18n/locales";
 import { GITHUB_REPO_URL } from "@/lib/links";
 
 import { SITE_ORIGIN } from "./site";
@@ -38,6 +39,12 @@ export const LANDING_LD: readonly Ld[] = [
     logo: `${SITE_ORIGIN}/brand/malmoi-icon-black.svg`,
     sameAs: [GITHUB_REPO_URL],
   },
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: en.common.appName,
+    url: `${SITE_ORIGIN}/`,
+  },
 ];
 
 /**
@@ -48,14 +55,18 @@ export function docLd({
   title,
   description,
   url,
+  uiLocale,
+  docsTitle,
   chapter,
 }: {
   title: string;
   description: string;
   url: string;
+  uiLocale: UiLocale;
+  docsTitle: string;
   chapter: { title: string; url: string } | null;
 }): Ld[] {
-  const trail = [{ name: en.publicDocs.docs.title, item: `${SITE_ORIGIN}/docs` }, ...(chapter ? [{ name: chapter.title, item: chapter.url }] : []), { name: title, item: url }];
+  const trail = [{ name: docsTitle, item: `${SITE_ORIGIN}/docs` }, ...(chapter ? [{ name: chapter.title, item: chapter.url }] : []), { name: title, item: url }];
   return [
     {
       "@context": "https://schema.org",
@@ -63,7 +74,7 @@ export function docLd({
       headline: title,
       description,
       url,
-      inLanguage: "en",
+      inLanguage: uiLocale,
       publisher: { "@type": "Organization", name: en.common.appName, url: `${SITE_ORIGIN}/` },
     },
     {
