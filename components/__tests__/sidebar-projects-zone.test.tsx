@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Sidebar } from "@/components/shell/sidebar";
 import { SidebarCollapseContext } from "@/components/shell/sidebar-collapse";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { LargeModal } from "@/components/ui/large-modal";
 import { setUnread } from "@/lib/inbox/unread-store";
 import { routes } from "@/lib/routes";
 import type { NavProject } from "@/lib/shell/nav";
@@ -312,7 +312,8 @@ describe("사이드바 — 구역이 바뀐 뒤 포커스 착지", () => {
     const tree = (modal: boolean) => <>
       <Button ref={(node) => { header = node; }}>New project</Button>
       {sidebar()}
-      {modal && <Dialog open onOpenChange={() => {}}><DialogContent title="Create project" actions={<Button>Close</Button>} /></Dialog>}
+      {/* 실제 New project 모달과 같은 껍데기 — 트리거 없음 · `open` 늘 참 · 닫기는 슬롯째 언마운트(#207 — `DialogContent`로 재면 기록 복귀가 있어 실물과 갈렸다). */}
+      {modal && <LargeModal open title="Create project" onClose={() => {}} actions={<Button>Close</Button>}><p>body</p></LargeModal>}
     </>;
     path.value = routes.project("acme");
     const { container, rerender } = await render(tree(false));

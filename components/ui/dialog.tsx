@@ -73,7 +73,7 @@ function returnTarget(): HTMLElement | null {
 }
 type AutoFocusHandler = (event: Event) => void;
 /**
- * 진입·복귀를 두 Content(`CommandDialog`·`DialogContent`)가 같이 쓴다 (D10) — 상태는 위 모듈 기록뿐이라 훅이 아니다.
+ * 진입·복귀를 두 Content(`CommandDialog`·`DialogContent`)가 같이 쓰고, 복귀는 `LargeModal`도 쓴다 (D10 · #207) — 상태는 위 모듈 기록뿐이라 훅이 아니다.
  * ⚠️ **소비자 핸들러가 먼저다** — 그것이 `preventDefault`했으면 손대지 않는다.
  */
 function openAutoFocus(event: Event, consumer?: AutoFocusHandler) {
@@ -85,7 +85,11 @@ function openAutoFocus(event: Event, consumer?: AutoFocusHandler) {
   event.preventDefault();
   target.focus();
 }
-function closeAutoFocus(event: Event, consumer?: AutoFocusHandler) {
+/**
+ * 닫힘 복귀 — `LargeModal`도 `returnFocusRef`가 없으면 이것을 쓴다(malmoi#207). Radix 모달 Content는 닫힘 자동 포커스를 늘 막고 `triggerRef`로 보내서,
+ * 트리거 없이 연 모달(헤더 링크가 여는 인터셉트 New project)은 이것이 없으면 `body`에 남는다.
+ */
+export function closeAutoFocus(event: Event, consumer?: AutoFocusHandler) {
   consumer?.(event);
   if (event.defaultPrevented) return;
   const target = returnTarget();
