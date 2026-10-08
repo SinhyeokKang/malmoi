@@ -21,6 +21,7 @@
 | D6 | 구현은 배치 하나(A = T1+T2) | 지휘자 판단 — T1·T2가 `nav.ts`·`sidebar.tsx`·`sidebar-work-zone.test.tsx`를 함께 고쳐 병렬 이득이 없다 |
 | D7 | T4 정본 문서(PRODUCT·DESIGN·responsive-app·가이드 본문 확인)는 지휘자가 통합 단계에서 문서별 커밋 | 지휘자 판단 — orchestrate §4 "문서 신선도는 지휘자가 문서별 커밋" |
 | D8 | T5 범위 = **프로젝트 밖** 셸 컷 전부(`create-repository`·`create-files`·`create-name`·`create-ready` 포함) + `inbox-page`·`inbox-open`·`account`·`preferences-language`·`mcp-*` 등 — 컷마다 판정. `create-ready`는 SHOOTING 벽 절 절차(일회용 프로젝트 → id로 삭제)로 찍는다. 프로젝트 라우트 컷·README(`hero`·`logs`)는 완료 조건 6(프로젝트 라우트 불변)이라 재촬영하지 않는다 | 지휘자 판단 — 선례 2026-10-09 inbox-page D3(셸 변경 → 셸 컷 전부, `create-ready` 일회용 프로젝트 포함) · SHOOTING:153 |
+| D10 | 포커스 착지는 **사이드바 옛 둘째 구역 안에서 누른 컨트롤이 사라졌을 때만** — 본문·사용자 구역·헤더·뒤로가기에서 시작한 전이는 사이드바로 옮기지 않는다. 폴백(첫 링크) 없음 | 지휘자 판단 — DESIGN :508 "누른 컨트롤이 사라질 때만 옮긴다"가 정한다(리뷰 R 🔴1 · 사용자 결정 항목 1) |
 | D9 | 모델: A Opus 5.5 high · R Opus 5.5 medium · Q Opus 5.5 medium · G Sonnet 5.5 high | 지휘자 판단 — 아래 표 |
 
 ## 배치·파일 소유권
@@ -48,3 +49,7 @@ A → R(→ 수정 라운드) → 통합·push·CI → Q ∥ T4(지휘자 문서
 ## 실행 기록
 
 - 2026-10-09: 인테이크. 결정 D1–D5는 feature-review에서, D6–D9는 지휘자 판단.
+- Run `run_39cc0a893ec3`. A `task_9a3a4bef04b4`/`ctx_f2ac5123b1cb`(Opus 5.5 high, 워크트리 `sp-a`, 브랜치 `SinhyeokKang/sp-a`) — 8분 뒤 worker_done: `da69fc7b`(T1) · `588e848b`(T2), `gate: ok` 둘. 계획과 다른 점 5(ARIA_ONLY 등록 · `data-sidebar-zone` · `useLayoutEffect` · client-graph 주석 · 행 key) — 리뷰가 전부 수용(3은 근거 문장만 틀림).
+- T4 지휘자 커밋(로컬): `5a6130a4` PRODUCT · `5177f04d` DESIGN · `a9258893` responsive-app. 가이드 본문 모순 없음(`guide/en` 사이드바 언급은 MCP connector·Inbox뿐).
+- R `task_746cecd74e51`/`ctx_e1167d3bef01`(Opus 5.5 medium): 🔴1 착지가 사이드바 밖에서 잃은 포커스(Safari 무포커스 클릭·본문 링크·뒤로가기)까지 받아 첫 행으로 튐 · 🟡1 모달 닫힘은 같은 커밋 경합 → jsdom으로 · 🟡2 (b) 재분류. → D10.
+- A fix1 `task_fb7dab925e33`/`ctx_78ffd0e7ba50` 같은 터미널 재사용, working 확인. R은 재리뷰용 retain.
