@@ -3998,6 +3998,7 @@ default ACL을 지우지 않고 닫는 층이라, 적용·확인이 끝나면 �
   **루트에 canonical·`og:url`을 두지 않는다**(자기 `alternates`가 없는 앱·`/signin`·`/invite`·404 전부에 홈 canonical이 번진다 —
   noindex와 모순, 404의 soft-404 신호). **OG 이미지는 파일 규약(`app/opengraph-image.png`)이 아니라 `OG_IMAGE` 상수**이고 루트와
   `pageMetadata`가 **항상** 싣는다(정적 파일 메타는 파일이 있는 세그먼트에서만 합쳐진다). `pageMetadata`가 매번 완전한 객체를 내는 이유다.
+  루트와 페이지 helper 모두 `og:locale=en_US`와 Twitter 이미지 대체텍스트를 싣는다(2026-10-08). `public/og.png`는 1200×630이며 불투명 alpha 제거 후 288,253바이트다. 복원 RGBA 픽셀 동일성은 테스트가 고정한다.
 - **robots는 요청 시점 판정이다**(`force-dynamic` + 함수 안 `optionalEnv("VERCEL_ENV")`). 빌드 시점 값이면 Promote to Production이
   preview 산출물을 올릴 때 프로덕션이 `Disallow: /`로 굳는다. **모르면 숨긴다** — `production` 밖은 전부 `Disallow: /`(보안 헤더의
   "모르면 프로덕션처럼 좁힌다"와 반대 방향의 fail-closed).
@@ -4027,6 +4028,8 @@ default ACL을 지우지 않고 닫는 층이라, 적용·확인이 끝나면 �
 - **제목 규약** — 루트 기본값 `Malmoi`(앱 탭), 랜딩과 `/docs` 인덱스(`Malmoi Docs`)만 absolute, docs 하위는 `<제목> · Malmoi Docs`, `og:title`엔 브랜드를 넣지 않고
   `og:site_name`이 든다. 루트 기본값을 바꾸면 앱 탭이 전부 마케팅 문구가 된다.
 - **JSON-LD에 평점·리뷰를 넣지 않는다** — 없는 데이터다.
+  홈은 `SoftwareApplication`·`Organization`·`WebSite{name,url}` 세 엔티티다. 문서 JSON-LD의 제목·설명·`inLanguage`·breadcrumb 라벨은 **실제 본문 언어**를 따른다(영어 고정 SEO metadata와 다른 축). publisher 브랜드는 `Malmoi`다. 빈 부모 slug는 이미 있는 Docs 루트이므로 chapter로 다시 추가하지 않는다 — FAQ는 두 단계, 일반 하위 문서는 세 단계다.
+- **404 초기 HTML 제한(2026-10-08, 미해결)** — Next 16.3.3 built-server의 없는 docs slug는 404·noindex지만 초기 본문이 비고 title이 `Malmoi Docs · Malmoi`로 남았다. 컴포넌트 DOM이나 Flight 안의 문구만으로 SSR 완료를 판정하지 않는다. 프레임워크 변경 시 상태·noindex·title·script를 제외한 본문을 실제 HTTP로 다시 확인한다. middleware/CSP 확장·soft 200 우회는 채택하지 않았다(`seo-geo-audit-20261008/orch.md` D11, POSTMORTEM 2026-10-08).
 
 ## 9. sec-audit-2 저장소 쓰기·스냅샷 경계 (2026-09-10)
 
