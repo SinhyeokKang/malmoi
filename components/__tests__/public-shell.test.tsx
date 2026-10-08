@@ -238,6 +238,19 @@ describe("공개 셸 — 헤더", () => {
     expect(search.memberships).not.toHaveBeenCalled();
   });
 
+  /** 리뷰 🟢5 — 헤더가 실수로 멤버십을 넘기기 시작하면(→ 0회) 또는 Inbox Action을 같이 부르면 여기서 red다. */
+  it("로그인한 공개 셸에서 아바타 메뉴를 열면 멤버십 Action은 정확히 1회, Inbox 열기 Action은 0회다", async () => {
+    search.memberships.mockClear();
+    inbox.open.mockClear();
+    const { container } = await render(h(PublicShell, { m: en, account: SIGNED_IN, children: h("p", null, "body") }));
+    const trigger = container.querySelector<HTMLButtonElement>(`header button[aria-label="${en.common.nav.userMenu}"]`)!;
+    await act(async () => userEvent.setup().click(trigger));
+    expect(document.querySelector('[role="menu"]')).not.toBeNull();
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    expect(search.memberships).toHaveBeenCalledTimes(1);
+    expect(inbox.open).not.toHaveBeenCalled();
+  });
+
   /**
    * primary와 GitHub 사이에 연한 세로 구분선 하나 — 장식이라 접근성 트리에 안 선다. 로그인이면 앱 셸 헤더처럼
    * 세로선 오른쪽·아바타 왼쪽에 Inbox가 선다(2026-10-05 사용자 — attention-inbox 범위 변경).

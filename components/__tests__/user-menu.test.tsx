@@ -184,10 +184,17 @@ describe("UserMenu — 프로젝트 그룹 (멤버십을 받는다)", () => {
     expect(menu.querySelectorAll('[role="menuitemradio"]')).toHaveLength(0);
   });
 
-  it("지금 프로젝트가 목록 밖(보관)이면 체크된 행이 없다", async () => {
-    nav.pathname = "/projects/old";
+  /** design D3 — `selected`는 `current == null ? undefined : slug === current`라, 지금 프로젝트가 있되 목록 밖이면 전부 `aria-checked=false` 라디오다. */
+  it.each([
+    ["보관", "/projects/old"],
+    ["상한 밖(6번째)", "/projects/foxtrot"],
+  ])("지금 프로젝트가 목록 밖(%s)이면 다섯 행이 전부 체크 안 된 menuitemradio다", async (_, pathname) => {
+    nav.pathname = pathname;
     const menu = await open(memberships);
     expect(menu.querySelectorAll('[aria-checked="true"]')).toHaveLength(0);
+    expect(projectRows(menu).map((n) => [n.getAttribute("role"), n.getAttribute("aria-checked")])).toEqual(
+      five.map(() => ["menuitemradio", "false"]),
+    );
   });
 
   it.each([
@@ -398,7 +405,67 @@ describe("UserMenu — 공개 셸 지연 조회 (멤버십을 안 받는다)", (
     expect(document.activeElement).not.toBe(document.body);
   });
 
-  it("대기 중 언마운트되면 응답을 그리지 않고 경고도 없다", async () => {
+  /**
+   * ⚠️ 응답으로 바뀌는 것은 그룹 자리이고, 재마운트되면 포커스를 잃는 것은 그 **뒤** 항목이다(리뷰 🟡1). 응답 전에 `End`로 `Sign out`에
+   * 가 있다가 성공·실패 응답이 와도 같은 노드다.
+   */
+  it.each([
+    ["성공", ok("alpha", "bravo")],
+    ["실패", { ok: false, error: "unavailable" } as Result],
+  ])("응답 전에 End로 Sign out에 가 있으면 %s 응답 뒤에도 포커스가 같은 노드다", async (_, result) => {
+    const response = deferred();
+    action.memberships.mockReturnValue(response.promise);
+    const { user } = await mount();
+    await act(async () => user.tab());
+    await act(async () => user.keyboard("{Enter}"));
+    await vi.waitFor(() => expect(document.activeElement?.getAttribute("role")).toBe("menuitem"));
+    await act(async () => user.keyboard("{End}"));
+    const focused = document.activeElement;
+    expect(focused?.textContent).toBe(en.common.nav.signOut);
+    expect(skeletons()).toHaveLength(1);
+    await response.resolve(result);
+    expect(skeletons()).toHaveLength(0);
+    expect(document.activeElement).toBe(focused);
+    expect(document.activeElement).not.toBe(document.body);
+  });
+
+  /**
+   * 닫힘 포커스 복귀 거름이 **과잉 억제**로 새지 않는다(리뷰 🟡2). Radix는 우클릭 바깥 닫힘에서 트리거로 포커스를 돌려주지 않는다
+   * (`hasInteractedOutside`) — 그때 선 플래그는 다음 틱에 풀려야 하고, 안 풀리면 다음 진짜 Tab 포커스의 미리 읽기를 삼킨다.
+   */
+  it("우클릭 바깥 닫힘 뒤(포커스 복귀 없음) 다음 진짜 Tab 포커스는 조회를 시작한다", async () => {
+    action.memberships.mockImplementation(() => deferred().promise);
+    const { user } = await mount();
+    await act(async () => user.click(trigger()));
+    expect(action.memberships).toHaveBeenCalledTimes(1);
+    const outside = userEvent.setup({ pointerEventsCheck: 0 });
+    await act(async () => outside.pointer({ keys: "[MouseRight]", target: document.body }));
+    await vi.waitFor(() => expect(menuNode()).toBeNull());
+    // 플래그가 섰다가 포커스 없이 남는 자리 — 복귀 setTimeout(0)이 지나가길 기다린다.
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 10)); });
+    expect(document.activeElement).not.toBe(trigger());
+    await act(async () => user.tab());
+    expect(document.activeElement).toBe(trigger());
+    expect(action.memberships).toHaveBeenCalledTimes(2);
+  });
+
+  it("Escape 닫힘에서 돌아온 포커스는 무시하고, 떠났다 돌아온 다음 진짜 포커스는 조회를 시작한다", async () => {
+    action.memberships.mockImplementation(() => deferred().promise);
+    await render(<><button type="button">before</button><UserMenu name="Kim" email="kim@acme.com" image={null} signOut={vi.fn()} /></>);
+    const user = userEvent.setup();
+    await act(async () => user.click(trigger()));
+    await act(async () => user.keyboard("{Escape}"));
+    await vi.waitFor(() => expect(document.activeElement).toBe(trigger()));
+    expect(action.memberships).toHaveBeenCalledTimes(1);
+    await act(async () => user.tab({ shift: true }));
+    expect(document.activeElement?.textContent).toBe("before");
+    await act(async () => user.tab());
+    expect(document.activeElement).toBe(trigger());
+    expect(action.memberships).toHaveBeenCalledTimes(2);
+  });
+
+  // 언마운트 뒤 setState 경고는 React 18+에서 원래 나지 않는다 — 이 케이스는 가드를 재지 못하고 "에러가 없다"만 본다(리뷰 🟢2).
+  it("대기 중 언마운트되어도 응답 도착에 에러가 없다", async () => {
     const response = deferred();
     action.memberships.mockReturnValue(response.promise);
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
