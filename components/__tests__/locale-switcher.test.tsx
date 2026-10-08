@@ -138,9 +138,12 @@ it("메뉴가 위로 열리고 끝 정렬이다 — 푸터가 화면 바닥이�
   expect(content.getAttribute("data-align")).toBe("end");
 });
 
-it("푸터의 마지막 항목이다 — 저작권 · 링크 뒤", async () => {
+it("푸터 오른쪽 끝에 홀로 선다 — 저작권 · 링크 묶음은 왼쪽 끝", async () => {
   const { container } = await render(<PublicFooter m={en} />);
   const footer = find(container, "footer");
+  expect(footer.className.split(/\s+/)).toContain("justify-between");
+  expect(footer.children).toHaveLength(2);
+  expect(footer.firstElementChild?.textContent).toBe("© 2026 MalmoiGitHubPrivacy Policy");
   expect(footer.lastElementChild).toBe(trigger());
   expect(footer.textContent).toBe("© 2026 MalmoiGitHubPrivacy PolicyLanguage: English");
 });
