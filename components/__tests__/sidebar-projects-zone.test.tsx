@@ -221,6 +221,41 @@ describe("사이드바 — 구역이 바뀐 뒤 포커스 착지", () => {
     expect(document.activeElement).toBe(container.querySelector(`nav[aria-label="Acme"] a[href="${routes.project("acme")}"]`));
   });
 
+  /**
+   * 리뷰 A2 🟡1 — **사이드바에서 누른 기록이 이동 없이 끝나면 사이드바 밖의 다음 상호작용이 그것을 덮어야 한다.** 목록 행을 새 탭으로 열거나
+   * (Cmd/가운데 클릭) 키보드로 목록에 들렀다가 본문 링크로 프로젝트에 가는 경로다 — 묵은 기록이 남으면 본문에서 시작한 이동을 사이드바가 가져간다.
+   */
+  it("목록 행을 눌렀지만 이동하지 않은 뒤 본문 링크로 프로젝트에 가면 옮기지 않는다 — 묵은 기록이 남지 않는다", async () => {
+    path.value = routes.projects();
+    const { container, rerender } = await render(sidebar());
+    rows(container)[0]!.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+    const body = document.createElement("a");
+    body.href = routes.project("acme");
+    document.body.append(body);
+    body.focus();
+    body.remove();
+    await navigate(rerender, routes.project("acme"));
+    expect(container.querySelector('nav[aria-label="Acme"]')).not.toBeNull();
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  /**
+   * 리뷰 A2 🟡2 — **착지가 낸 focus는 "누른 것"이 아니다.** 착지 직후 아무것도 누르지 않은 채(뒤로가기·키보드 단축 등) 포커스가 빠지고 구역이
+   * 다시 바뀌면, 착지의 focus 기록이 남아 있을 때 `New project` 행으로 튄다. 그래서 착지 뒤 기록을 지운다 — 이 케이스가 그 줄을 잠근다.
+   */
+  it("착지 뒤 누른 것 없이 /projects/new로 가면 New project 행으로 튀지 않는다 — 착지의 focus는 기록이 아니다", async () => {
+    path.value = "/inbox";
+    const { container, rerender } = await render(sidebar());
+    clickWithoutFocus(rows(container)[0]!);
+    await navigate(rerender, routes.project("acme"));
+    const home = container.querySelector<HTMLAnchorElement>(`nav[aria-label="Acme"] a[href="${routes.project("acme")}"]`)!;
+    expect(document.activeElement).toBe(home);
+    home.blur();
+    await navigate(rerender, routes.newProject());
+    expect(rows(container).at(-1)?.getAttribute("aria-current")).toBe("page");
+    expect(document.activeElement).toBe(document.body);
+  });
+
   it("사용자 구역 항목을 포커스 없이 눌러 프로젝트 밖으로 나가면 옮기지 않는다 — 목록 행으로 튀지 않는다", async () => {
     path.value = routes.project("acme");
     const { container, rerender } = await render(sidebar());

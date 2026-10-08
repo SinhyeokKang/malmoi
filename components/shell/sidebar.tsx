@@ -3,7 +3,7 @@
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
-import { useLayoutEffect, useRef, type SyntheticEvent } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 
 import { ProjectThumbnail } from "@/components/ui/project-thumbnail";
 import { ProjectSwitcher } from "@/components/shell/project-switcher";
@@ -70,19 +70,29 @@ export function Sidebar({ memberships, userName }: { memberships: NavProject[]; 
   const asideRef = useRef<HTMLElement>(null);
   const scope = zones[1]?.key;
   const lastScope = useRef(scope);
-  /** 사이드바 안에서 마지막으로 누르거나 포커스한 컨트롤의 구역 — 착지 판정 한 번에 소비된다. */
+  /** 문서에서 마지막으로 누르거나 포커스한 컨트롤의 사이드바 구역(밖이면 `null`) — 착지 판정 한 번에 소비된다. */
   const pressedZone = useRef<string | null>(null);
-  const notePressed = (event: SyntheticEvent) => {
-    pressedZone.current = event.target instanceof Element ? event.target.closest<HTMLElement>("nav[data-sidebar-zone]")?.dataset.sidebarZone ?? null : null;
-  };
+  useEffect(() => {
+    const note = (event: Event) => {
+      pressedZone.current = event.target instanceof Element ? event.target.closest<HTMLElement>("nav[data-sidebar-zone]")?.dataset.sidebarZone ?? null : null;
+    };
+    document.addEventListener("pointerdown", note, true);
+    document.addEventListener("focusin", note, true);
+    return () => {
+      document.removeEventListener("pointerdown", note, true);
+      document.removeEventListener("focusin", note, true);
+    };
+  }, []);
   /**
    * ⚠️ **누른 컨트롤이 사라졌을 때만 포커스를 새 구역에 앉힌다** (2026-10-09 sidebar-projects · orch D10 — DESIGN "누른 컨트롤이 사라질 때만").
    * 목록 구역의 프로젝트 행을 누르면 구역이 `projects` → `project`로 바뀌어 `<nav key>`가 다시 마운트되고 누른 링크가 사라진다 — 브라우저는
    * 포커스를 `body`로 떨어뜨린다(POSTMORTEM 2026-09-24 부류). 그때만 새 구역의 현재 항목(`aria-current` — 프로젝트 Home · `/projects/new`의
    * `New project`)으로 옮긴다. "첫 링크" 폴백은 두지 않는다 — 폴백이 필요한 실제 경로가 없고, 있으면 엉뚱한 행으로 튄다.
    * ⚠️ **본문·사용자 구역·헤더·뒤로가기에서 시작한 전이는 옮기지 않는다** — `focusLost()`만 보면 Safari·macOS Firefox 마우스 클릭(포커스를 주지
-   * 않는다)이나 본문 링크 언마운트에서도 참이라 사이드바가 남의 포커스를 가져갔다(리뷰 🔴1). 그래서 "누른 것"을 aside의 `pointerdown`·`focus`
-   * capture로 기록한다(`pointerdown`인 이유는 `dialog.tsx`의 기록과 같다 — 그 브라우저들에선 focus가 안 온다).
+   * 않는다)이나 본문 링크 언마운트에서도 참이라 사이드바가 남의 포커스를 가져갔다(리뷰 🔴1). 그래서 "누른 것"을 **document**의 `pointerdown`·`focusin`
+   * capture로 기록한다(`pointerdown`인 이유는 `dialog.tsx`의 기록과 같다 — 그 브라우저들에선 focus가 안 온다). ⚠️ **aside가 아니라 document다**
+   * (리뷰 A2 🟡1) — aside에서만 들으면 목록 행을 누르고 이동 없이 끝난 기록(새 탭 열기·키보드로 들렀다 나감)을 사이드바 밖의 다음 상호작용이
+   * 덮지 못해, 본문 링크로 시작한 이동을 사이드바가 가져갔다. 밖의 상호작용은 기록을 `null`로 덮는다.
    * ⚠️ **헤더에서 연 New project 모달을 닫는 커밋도 구역이 바뀐다**(`router.back()` = 슬롯이 비는 커밋 = pathname 복귀). 여기서 착지하면
    * Dialog의 포커스 기록에 Home이 최신으로 들어가 Radix 복귀가 연 자리 대신 Home으로 갔다 — 누른 것이 사이드바 밖이라 비켜서야 복귀가 헤더로 간다.
    * layout 단계인 것은 누른 링크가 착지와 **같은 커밋에서** 사라지기 때문이다(`useLandAfterCommit`과 같은 근거 — 칠해진 프레임에 `body`가 남지 않게).
@@ -95,15 +105,13 @@ export function Sidebar({ memberships, userName }: { memberships: NavProject[]; 
     pressedZone.current = null;
     if (pressed === null || pressed !== previous) return;
     landFocus(asideRef.current?.querySelector<HTMLElement>(`nav[data-sidebar-zone="${scope}"] [aria-current="page"]`));
-    // 착지가 낸 focus는 "누른 것"이 아니다 — 남기면 다음 전이(예: 헤더 클릭)가 사이드바에서 누른 것으로 읽힌다.
+    // 착지가 낸 focus(`focusin`)는 "누른 것"이 아니다 — 남기면 아무것도 누르지 않은 다음 전이(뒤로가기 등)가 사이드바에서 누른 것으로 읽힌다.
     pressedZone.current = null;
   }, [scope]);
 
   return (
     <aside
       ref={asideRef}
-      onPointerDownCapture={notePressed}
-      onFocusCapture={notePressed}
       // 자기 안에서 스크롤한다 — 항목이 늘어도 문서를 밀지 않는다 (malmoi#13).
       //
       // ⚠️ **폭이 여기 없다.** 옛 `w-60 shrink-0` 자리는 `components/shell/shell-panels.tsx`의
