@@ -42,6 +42,8 @@ La bandeja de entrada reúne lo que requiere tu atención en todos los proyectos
 
 ![La bandeja de entrada abierta arriba a la derecha, con los elementos agrupados por proyecto: una sincronización fallida y otra parcial, y después una edición sin enviar y texto que espera revisión](/guide/inbox-open.webp "Elige un elemento para ir a donde puedes resolverlo.")
 
+![La página de la bandeja de entrada, con una tarjeta por proyecto: una sincronización fallida y otra parcial marcadas como nuevas, y después una edición sin enviar y texto que espera revisión](/guide/inbox-page.webp "Abre la bandeja de entrada en la barra lateral para ver los mismos elementos en su propia página.")
+
 Un elemento vuelve a contar solo cuando es nuevo o cambió desde la última vez que abriste la lista o viste la página, y sale de la lista cuando se resuelve. El texto que espera revisión siempre aparece, pero nunca cuenta en el número, porque cada sincronización desde el repositorio lo haría parecer nuevo. Cuando nada requiere tu atención, la lista y la página muestran **Nada requiere tu atención**. Los proyectos archivados no se incluyen.
 
 ## Edita y guarda {#save}

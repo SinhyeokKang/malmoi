@@ -42,6 +42,8 @@ Inbox lists what needs your attention in every project you belong to, so you don
 
 ![The inbox open at the top right, with items grouped by project: a failed sync and a partial sync, then an unsent edit and text waiting for review](/guide/inbox-open.webp "Choose an item to go where you can resolve it.")
 
+![The Inbox page, with one card per project: a failed sync and a partial sync marked as new, then an unsent edit and text waiting for review](/guide/inbox-page.webp "Open Inbox in the sidebar to see the same items on their own page.")
+
 An item counts again only when it is new or has changed since you last opened the list or viewed the page, and it leaves the list once it is resolved. Text waiting for review is always listed but never counted, because every sync from the repository would make it look new. When nothing needs you, the list and the page show **Nothing needs you**. Archived projects aren't included.
 
 ## Edit and save {#save}
