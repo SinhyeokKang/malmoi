@@ -1,10 +1,10 @@
 # Batch C — LLM exports, image loading and static asset caching
 
-Read report.md/orch.md in this directory, AGENTS/CLAUDE, ARCHITECTURE §8/§8.1, guide parser head comments and related POSTMORTEM. Start only after coordinator integrates A and B. Rebase onto current dev if told to reuse an earlier checkout.
+Read report.md/orch.md in this directory, AGENTS/CLAUDE, ARCHITECTURE §8/§8.1, guide parser head comments and related POSTMORTEM. A is integrated. B runs in parallel and owns JSON-LD/site metadata, app/layout, docs route and landing/metadata tests; do not touch those paths. Rebase onto current dev if told to reuse an earlier checkout.
 
 Target audit 4, 9, 15, 19 and confirmation of existing AI-crawler policy (23). Own `lib/seo/llms.ts`, its tests, llms routes if needed, `components/docs/guide-markdown.tsx` and image tests, `next.config.ts` and narrow header tests. lib/seo/crawl.ts comment-only if useful; no new crawler blocking. No guide manuscripts, dictionaries, JSON-LD/site metadata, app/page.tsx, docs route/layout, public-shell/stage, schema/package/lock. Request coordinator before touching an unowned file. Authoritative documentation stays coordinator-owned; give exact edits in handoff.
 
-Use source-command-ship bypass. Worktree branch is dev-equivalent, stop before step 11 /push. No push/merge/sync/db:deploy/schema/.env.local copying. TDD and final `pnpm gate --base dev` unfiltered. Local commits with Codex trailer authorized.
+Use source-command-ship bypass. Worktree branch is dev-equivalent, stop before step 11 /push. No push/merge/sync/db:deploy/schema/.env.local copying. TDD and final `pnpm gate --base dev` unfiltered; preserve the full gate log under .scratch for review. Local commits with Codex trailer authorized.
 
 ## Required result
 

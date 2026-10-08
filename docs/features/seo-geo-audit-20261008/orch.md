@@ -47,7 +47,7 @@
 | --- | --- | --- |
 | A / B | 직접 소유 파일 없음. B가 사전 키를 요구하면 기존 키를 사용하거나 지휘자에게 조율 | 병렬 별도 워크트리 |
 | A / C | 원고를 C의 llms가 소비; tests/스냅샷 영향 가능 | A 먼저 통합 |
-| B / C | SEO 공통 테스트·Next 설정의 잠재 겹침 | B 먼저 통합 |
+| B / C | 실제 파일 확인: B는 json-ld/site·metadata/landing 테스트, C는 llms·guide-markdown·security-headers 테스트. B의 404 설정 우회 제외로 next.config 겹침도 없음 | A 통합 후 병렬 허용, 서로 소유 테스트 수정 금지 |
 | D / A·B·C | 사전·랜딩·docs 프레임/renderer 주변 겹침 | 마지막 직렬 |
 | Q / 통합·build | dev 서버 출력 혼합 위험 | QA 중 통합·build 금지 |
 
@@ -79,3 +79,6 @@
 - 공유 파일 보정: B의 WebSite 추가가 A 소유 `app/__tests__/landing-page.test.tsx` 기대값에도 영향을 준다. B는 그 파일 수정·최종 게이트 전에 A 통합을 기다리고 `git rebase dev` 뒤 계속한다. 다른 B 소유 파일 작업은 계속 가능하다. status와 터미널 입력을 함께 보냈고 B의 mailbox ack를 확인했다.
 - 모바일 추가 기준선: production `/docs/faq`, CDP 390×844에서 `innerWidth=1280`, `scrollWidth=1280`, main 폭 1264px. 1280 정책의 현 상태 관측이며 D1 승인 전에는 변경하지 않는다.
 - B 질문 `msg_9b1af48bb691`에 D11로 답변. [Next.js #97000](https://github.com/vercel/next.js/issues/97000)은 유사 증상 보고이며 invalid reproduction으로 자동 종료됐고 재현 조건도 다르므로 확정된 원인으로 인용하지 않는다. 요청 UA·런타임 조건·초기 HTML/Flight 분리 결과를 인계에 요구했다.
+- A 독립 리뷰: red 0 / yellow 1(nav 이름) / white 1(ko 조사). 수정 `e96a8c6d`·`e97786af`의 정확한 diff와 새 DOM 단언을 지휘자가 확인했고 gate 원문 끝 `gate: ok` 확인. dev 통합 `5271f798`·`44325501`·`d7ad3f37`·`b760a665`; PRODUCT·DESIGN은 각각 별도 커밋으로 갱신. 배포 QA는 아직 미완.
+- A fix Task `task_e77f6ad88afd` / `ctx_291d923a3f46` 완료·터미널 해제. B에 A 통합 신호를 status+터미널로 보냈고 공유 테스트 수정에 착수했다.
+- C 선행 보정: 잠재 겹침을 실제 파일로 재검사한 결과 직접 겹침 없음. A 원고는 통합됐으므로 B 검증과 C 구현을 병렬로 진행한다. 위 배치 표의 C `A·B 통합 후` 선행은 이 기록으로 대체한다. B·C 모두 완료 뒤 통합 게이트를 함께 돈다.
