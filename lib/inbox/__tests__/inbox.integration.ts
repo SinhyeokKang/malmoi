@@ -8,7 +8,7 @@ import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 import { encodeUserFields } from "@/lib/credentials/records";
 import { optionalEnv } from "@/lib/env";
-import { loadAttentionBadgeAction, openAttentionInboxAction } from "@/app/inbox/actions";
+import { loadAttentionBadgeAction, markAttentionSeenAction, openAttentionInboxAction } from "@/app/inbox/actions";
 import { loadAttentionInbox } from "../load";
 import { attentionHref } from "@/lib/home/attention-view";
 
@@ -124,4 +124,29 @@ it("같은 web/ko 검토 항목도 Action 결과에서 프로젝트별 수와 �
     { slug: "p1", review: [{ kind: "review", surfaceSlug: "web", code: "ko", name: "ko", count: 1, who: "First editor", at: early, unread: false, ownerRetries: false }] },
     { slug: "p2", review: [{ kind: "review", surfaceSlug: "web", code: "ko", name: "ko", count: 2, who: "Second editor", at: early, unread: false, ownerRetries: false }] },
   ]);
+});
+
+it("페이지 읽음은 열기와 같은 계약이다 — 조회 전 시각까지 읽음, 미래 위조는 서버 시각으로 잘리고, 늦은 워터마크는 안 되돌린다", async () => {
+  await project("p");
+  await prisma.translationSurface.update({ where: { id: "s-p" }, data: { lastImportError: "parse-failed", lastImportFailedAt: early } });
+  expect(await loadAttentionBadgeAction()).toEqual({ status: "ok", unread: 1 });
+  // 페이지는 조회 전에 시각을 잡고, 그 뒤에 생긴 일은 다음 방문에도 unread여야 한다.
+  const pageNow = new Date();
+  expect(await markAttentionSeenAction(pageNow.toISOString())).toEqual({ status: "ok", marked: true });
+  expect(await loadAttentionBadgeAction()).toEqual({ status: "ok", unread: 0 });
+  expect((await prisma.user.findUniqueOrThrow({ where: { id: "u1" } })).attentionSeenAt).toEqual(pageNow);
+  await prisma.translation.updateMany({ where: { projectId: "p", localeCode: "ko" }, data: { pendingEditToken: "edit", updatedAt: future } });
+  expect(await loadAttentionBadgeAction()).toEqual({ status: "ok", unread: 1 });
+  // 보지 않은 미래 항목을 위조한 시각으로 읽음 처리할 수 없다.
+  expect(await markAttentionSeenAction(future.toISOString())).toEqual({ status: "ok", marked: true });
+  const clamped = (await prisma.user.findUniqueOrThrow({ where: { id: "u1" } })).attentionSeenAt;
+  expect(clamped!.getTime()).toBeLessThanOrEqual(Date.now());
+  // 잘린 값은 서버 시각이다 — 옛 워터마크에 머무는 퇴화도 막는다(review-a ⚪3).
+  expect(clamped!.getTime()).toBeGreaterThan(pageNow.getTime());
+  expect(await loadAttentionBadgeAction()).toEqual({ status: "ok", unread: 1 });
+  // 뒤로 가기로 복원된 옛 시각은 워터마크를 되돌리지 않는다.
+  expect(await markAttentionSeenAction(pageNow.toISOString())).toEqual({ status: "ok", marked: true });
+  expect((await prisma.user.findUniqueOrThrow({ where: { id: "u1" } })).attentionSeenAt).toEqual(clamped);
+  expect(await markAttentionSeenAction("not-a-date")).toEqual({ status: "invalid" });
+  expect((await prisma.user.findUniqueOrThrow({ where: { id: "u1" } })).attentionSeenAt).toEqual(clamped);
 });

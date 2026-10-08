@@ -154,6 +154,8 @@ export const routes = {
    * (하나를 닫을 때 다른 하나까지 지워진다).
    */
   account: (query: { e?: string; sessionRevocation?: string; link?: string; connect?: string } = {}): string => withQuery("/account", query),
+  /** Inbox (inbox-page) — 멤버 프로젝트 전체의 "지금 손볼 것". 사용자 축이다(헤더 드롭다운과 같은 목록). 쿼리가 없다. */
+  inbox: (): string => "/inbox",
   /** MCP connector (mcp-connector) — 개인 토큰 발급·회전·폐기. 사용자 축이다(토큰은 계정에 붙는다). 쿼리가 없다 — 모달은 클라이언트 상태다. */
   mcp: (): string => "/mcp",
   /** Preferences (ui-locales) — 화면 언어. 사용자 축이다(`/account`·`/mcp` 옆). 쿼리가 없다 — 실패는 클라이언트 상태다. */

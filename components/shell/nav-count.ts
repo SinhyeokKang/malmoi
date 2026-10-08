@@ -9,6 +9,8 @@ import type { Messages } from "@/lib/i18n";
 export function navCountLabel(m: Messages, key: string): ((n: number) => string) | undefined {
   const labels: Readonly<Record<string, (n: number) => string>> = {
     projects: m.projects.count,
+    // Inbox 배지의 수는 서버 값이 아니라 탭 안 store 값이다(사이드바 `InboxCount`) — 문장은 다른 항목과 같이 여기서 고른다.
+    inbox: m.common.nav.inboxCount,
     sources: m.sources.count,
     translations: m.translations.keys,
     members: m.members.count,

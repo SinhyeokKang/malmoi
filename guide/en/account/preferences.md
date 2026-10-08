@@ -4,7 +4,7 @@ Choose Malmoi's screen language, time zone, and light or dark theme. Your projec
 
 ## Before you sign in {#footer}
 
-The public pages and the sign-in and invitation pages show the current language as the last item in the footer.
+The public pages and the sign-in and invitation pages show the current language at the right end of the footer.
 
 1. Choose the language name in the footer, for example English.
 2. Pick a language from the menu. Each one is listed by its own name, such as Español. The page appears in that language.

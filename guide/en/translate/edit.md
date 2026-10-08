@@ -34,15 +34,17 @@ With an empty search, you see previews of **Projects**, **Pages**, and **Docs**.
 
 ## See what needs you across projects {#inbox}
 
-The inbox button between the divider and your avatar at the top right — in the app, and on the docs, changelog, and privacy pages while you're signed in — lists what needs your attention in every project you belong to, so you don't have to open each project's **Home**. When something is new since you last looked, the button shows how many items; above nine it shows 9+.
+Inbox lists what needs your attention in every project you belong to, so you don't have to open each project's **Home**. Open it with the inbox button between the divider and your avatar at the top right, from **Inbox** in the sidebar, or from your avatar menu. The button is also there on the docs, changelog, and privacy pages while you're signed in. When something is new since you last looked, the button shows how many items, and above nine it shows 9+; **Inbox** in the sidebar shows the full number.
 
-1. Choose the inbox button. Items are grouped by project, and the project with the newest item comes first. You see sources whose last sync failed or was only partly synced, text waiting for review, languages that have no translations, and unsent edits. Project owners also see projects that still need setup.
+1. Choose the inbox button, or open **Inbox** in the sidebar to see the same items on their own page, one card per project. Items are grouped by project, and the project with the newest item comes first. You see sources whose last sync failed or was only partly synced, text waiting for review, languages that have no translations, and unsent edits. Project owners also see projects that still need setup.
 2. Select an item. A sync problem opens **Sources**, where you can read why; only project owners can try the sync again. The other items open **Translations** with the matching filter, and setup opens the project's **Settings**.
-3. Close the list. Opening it marks everything in it as seen, and the number clears when the list closes. If the list doesn't load, choose **Try again**.
+3. Close the list, or leave the page. Opening the list or viewing the page marks everything in it as seen. The number on the button clears when the list closes; viewing the page clears both numbers right away, and new items stay marked until your next visit. If the list doesn't load, choose **Try again**.
 
 ![The inbox open at the top right, with items grouped by project: a failed sync and a partial sync, then an unsent edit and text waiting for review](/guide/inbox-open.webp "Choose an item to go where you can resolve it.")
 
-An item counts again only when it is new or has changed since you last opened the list, and it leaves the list once it is resolved. Text waiting for review is always listed but never counted, because every sync from the repository would make it look new. When nothing needs you, the list shows **Nothing needs you**. Archived projects aren't included.
+![The Inbox page, with one card per project: a failed sync and a partial sync marked as new, then an unsent edit and text waiting for review](/guide/inbox-page.webp "Open Inbox in the sidebar to see the same items on their own page.")
+
+An item counts again only when it is new or has changed since you last opened the list or viewed the page, and it leaves the list once it is resolved. Text waiting for review is always listed but never counted, because every sync from the repository would make it look new. When nothing needs you, the list and the page show **Nothing needs you**. Archived projects aren't included.
 
 ## Edit and save {#save}
 

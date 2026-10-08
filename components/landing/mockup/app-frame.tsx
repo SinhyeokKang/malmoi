@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
  * 목업 안의 앱 셸 — 헤더 44 · LNB 240 · 핸들 8 · `ContentPanel`을 **정적 복제**로 그린다(DESIGN §6.615 — 실제 셸은 Server Action·세션에 묶여 있다).
  * 치수는 `app/(edit)/layout.tsx`(`px-2 pt-1.5 pb-2` + 헤더 `mb-1.5`) · `components/shell/shell-panels.tsx`(기본 240 · 핸들 `w-2`) · `sidebar.tsx`와 같다.
  *
- * ⚠️ **구역·항목·배지를 실제 판정(`navZones` · `navFooterItems`)에서 뽑는다** — 사용자 구역(Projects · MCP connector · Account, 머리 줄 없음)과 프로젝트 구역,
+ * ⚠️ **구역·항목·배지를 실제 판정(`navZones` · `navFooterItems`)에서 뽑는다** — 사용자 구역(Projects · Inbox · MCP connector · Preferences · Account, 머리 줄 없음 — Inbox 안 읽음 배지는 탭 안 store 값이라 목업엔 없다)과 프로젝트 구역,
  * 하단 목록까지 사이드바와 같은 목록이다. 손으로 나열하면 사이드바가 바뀔 때 목업만 낡는다(옛 목업엔 계정 구역이 없었다).
  *
  * ⚠️ **인터랙티브 태그를 두지 않는다** — 프레임은 `aria-hidden` + `inert`이지만 jsdom이 `inert`를 모르므로 태그 수로 센다.

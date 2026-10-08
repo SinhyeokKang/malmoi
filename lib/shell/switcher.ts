@@ -16,3 +16,17 @@ export function switcherProjects<T extends { slug: string; name: string; archive
   const matched = rows.filter((row) => matchesAllTokens(row.name, tokens));
   return [...matched.filter((row) => !row.archived), ...matched.filter((row) => row.archived)];
 }
+
+// export하지 않는다 — 소비자가 `menuProjects` 하나다. 메뉴 길이(최대 14줄)의 대가 상한이다.
+const MENU_LIMIT = 5;
+
+/**
+ * 사용자 메뉴의 프로젝트 그룹 (2026-10-09 사용자, user-menu-projects) — 스위처의 빈 질의 순서에서 보관을 빼고 앞 5개.
+ * ⚠️ **정렬을 새로 만들지 않는다** — 스위처 순서가 바뀌면 메뉴도 따라가게 의도로 묶는다. ⌘K 미리보기(`previewGroups` —
+ * 지금 먼저)와 다른 것은 의도다: 메뉴는 추천이 아니라 목록이라 열 때마다 자리가 바뀌지 않아야 손이 기억한다.
+ */
+export function menuProjects<T extends { slug: string; name: string; archived: boolean }>(rows: readonly T[]): T[] {
+  return switcherProjects(rows, "")
+    .filter((row) => !row.archived)
+    .slice(0, MENU_LIMIT);
+}

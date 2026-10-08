@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { loadAttentionBadgeAction, openAttentionInboxAction } from "../actions";
+import { loadAttentionBadgeAction, markAttentionSeenAction, openAttentionInboxAction } from "../actions";
 import { isUnread } from "@/lib/inbox/plan";
 const mocks = vi.hoisted(() => ({ session: vi.fn(), db: vi.fn(), load: vi.fn(), update: vi.fn(), revalidate: vi.fn() }));
 vi.mock("@/lib/auth/read-session", () => ({ readSession: mocks.session }));
@@ -53,4 +53,42 @@ it("조회 실패는 목록도 기록도 내지 않는다", async () => {
   expect(console.error).toHaveBeenCalledTimes(2);
   expect(console.error).toHaveBeenNthCalledWith(1, "Attention badge load failed.", { userId: "u1", cause: "TypeError" });
   expect(console.error).toHaveBeenNthCalledWith(2, "Attention inbox load failed.", { userId: "u1", cause: "TypeError" });
+});
+const seenWhere = (at: Date) => ({ where: { id: "u1", OR: [{ attentionSeenAt: null }, { attentionSeenAt: { lt: at } }] }, data: { attentionSeenAt: at } });
+it.each(["none", "unavailable"])("페이지 읽음: 세션 %s면 입력을 보기 전에 DB 없이 거부한다", async status => {
+  mocks.session.mockResolvedValue({ status });
+  expect(await markAttentionSeenAction("2026-10-04T00:00:00.000Z")).toEqual({ status: "failed" });
+  expect(await markAttentionSeenAction(42)).toEqual({ status: "failed" });
+  expect(mocks.db).not.toHaveBeenCalled();
+});
+it.each([
+  ["Date 객체", new Date("2026-10-04T00:00:00Z")],
+  ["숫자", now.getTime()],
+  ["잘못된 문자열", "not-a-date"],
+  ["ISO가 아닌 문자열", "Oct 4, 2026"],
+  ["undefined", undefined],
+])("페이지 읽음: %s 입력은 쓰지 않고 invalid다", async (_, input) => {
+  expect(await markAttentionSeenAction(input)).toEqual({ status: "invalid" });
+  expect(mocks.db).not.toHaveBeenCalled();
+  expect(mocks.update).not.toHaveBeenCalled();
+});
+it("페이지 읽음: 조회 전 시각을 그대로 단조 기록하고 목록은 다시 읽지 않는다", async () => {
+  const before = new Date(now.getTime() - 5000);
+  expect(await markAttentionSeenAction(before.toISOString())).toEqual({ status: "ok", marked: true });
+  expect(mocks.update).toHaveBeenCalledExactlyOnceWith(seenWhere(before));
+  expect(mocks.load).not.toHaveBeenCalled();
+  expect(mocks.revalidate).not.toHaveBeenCalled();
+});
+it("페이지 읽음: 서버 시각보다 늦은 입력은 서버 시각으로 자른다", async () => {
+  expect(await markAttentionSeenAction("2030-01-01T00:00:00.000Z")).toEqual({ status: "ok", marked: true });
+  expect(mocks.update).toHaveBeenCalledExactlyOnceWith(seenWhere(now));
+});
+it("페이지 읽음: 더 새 워터마크 때문에 0행이어도 marked다", async () => {
+  mocks.update.mockResolvedValue({ count: 0 });
+  expect(await markAttentionSeenAction(now.toISOString())).toEqual({ status: "ok", marked: true });
+});
+it("페이지 읽음: 쓰기 실패는 ok이되 marked가 아니고 원인 이름만 남긴다", async () => {
+  mocks.update.mockRejectedValue(new TypeError("private write payload"));
+  expect(await markAttentionSeenAction(now.toISOString())).toEqual({ status: "ok", marked: false });
+  expect(console.error).toHaveBeenCalledExactlyOnceWith("Attention watermark write failed.", { userId: "u1", cause: "TypeError" });
 });

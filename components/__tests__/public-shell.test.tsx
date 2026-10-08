@@ -5,7 +5,8 @@ import { join } from "node:path";
 import { act, createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { setUnread } from "@/lib/inbox/unread-store";
 
 import type { AttentionBadgeResult, OpenAttentionInboxResult } from "@/app/inbox/actions";
 import { PublicFooter } from "@/components/public-shell/footer";
@@ -28,6 +29,9 @@ const inbox = vi.hoisted(() => ({
   open: vi.fn(async (): Promise<OpenAttentionInboxResult> => ({ status: "failed" })),
 }));
 vi.mock("@/app/inbox/actions", () => ({ loadAttentionBadgeAction: inbox.badge, openAttentionInboxAction: inbox.open }));
+// 사용자 메뉴의 프로젝트 그룹은 열기 직전에 읽는다(user-menu-projects D2) — 렌더·마운트만으로는 0이어야 한다.
+const search = vi.hoisted(() => ({ memberships: vi.fn(async () => ({ ok: false as const, error: "unavailable" as const })) }));
+vi.mock("@/app/search/actions", () => ({ searchKeysAction: vi.fn(), loadSearchMembershipsAction: search.memberships }));
 
 const GUEST = publicAccount({ status: "none" });
 const SIGNED_IN = publicAccount({ status: "ok", userId: "u1", name: "Ada", email: "ada@x.dev", image: null, uiLocale: null, timeZone: null, colorScheme: null });
@@ -225,6 +229,28 @@ describe("공개 셸 — 헤더", () => {
     expect(container.querySelector("header")?.textContent).not.toContain("Open Malmoi");
   });
 
+  /** user-menu-projects 완료 조건 7 — 공개 셸은 페이지 렌더에 멤버십 조회를 싣지 않고, 메뉴도 열기 직전까지 부르지 않는다. */
+  it("로그인한 공개 셸이 렌더·마운트만으로는 멤버십 Action을 부르지 않는다", async () => {
+    search.memberships.mockClear();
+    const { container } = await render(h(PublicShell, { m: en, account: SIGNED_IN, children: h("p", null, "body") }));
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    expect(container.querySelector(`header button[aria-label="${en.common.nav.userMenu}"]`)).not.toBeNull();
+    expect(search.memberships).not.toHaveBeenCalled();
+  });
+
+  /** 리뷰 🟢5 — 헤더가 실수로 멤버십을 넘기기 시작하면(→ 0회) 또는 Inbox Action을 같이 부르면 여기서 red다. */
+  it("로그인한 공개 셸에서 아바타 메뉴를 열면 멤버십 Action은 정확히 1회, Inbox 열기 Action은 0회다", async () => {
+    search.memberships.mockClear();
+    inbox.open.mockClear();
+    const { container } = await render(h(PublicShell, { m: en, account: SIGNED_IN, children: h("p", null, "body") }));
+    const trigger = container.querySelector<HTMLButtonElement>(`header button[aria-label="${en.common.nav.userMenu}"]`)!;
+    await act(async () => userEvent.setup().click(trigger));
+    expect(document.querySelector('[role="menu"]')).not.toBeNull();
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    expect(search.memberships).toHaveBeenCalledTimes(1);
+    expect(inbox.open).not.toHaveBeenCalled();
+  });
+
   /**
    * primary와 GitHub 사이에 연한 세로 구분선 하나 — 장식이라 접근성 트리에 안 선다. 로그인이면 앱 셸 헤더처럼
    * 세로선 오른쪽·아바타 왼쪽에 Inbox가 선다(2026-10-05 사용자 — attention-inbox 범위 변경).
@@ -411,3 +437,6 @@ describe("공개 셸 — 헤더 Inbox", () => {
     expect(container.querySelector("header")).not.toBeNull();
   });
 });
+
+// 안 읽음 수는 모듈 store라 파일 안 테스트 사이로 샌다(inbox-page D2) — 헤더·사이드바를 그리는 파일은 매번 되돌린다.
+afterEach(() => { setUnread(0); });

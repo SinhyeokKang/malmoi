@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { act } from "react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
+import { setUnread } from "@/lib/inbox/unread-store";
 
 import { SHELL_SIDEBAR_COLLAPSED_PX, ShellPanels } from "@/components/shell/shell-panels";
 import { Sidebar } from "@/components/shell/sidebar";
@@ -196,3 +197,6 @@ describe("셸 패널 — 접힘 쿠키", () => {
     expect(document.cookie).toContain("malmoi-sidebar-collapsed=0");
   });
 });
+
+// 안 읽음 수는 모듈 store라 파일 안 테스트 사이로 샌다(inbox-page D2) — 헤더·사이드바를 그리는 파일은 매번 되돌린다.
+afterEach(() => { setUnread(0); });

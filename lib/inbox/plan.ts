@@ -20,6 +20,16 @@ export function isUnread(kind: InboxItem["kind"], at: Date | null, seenAt: Date 
   // push도 검토 셀 updatedAt을 바꾸므로 새 검토 시각이라고 말할 수 없다.
   return kind !== "review" && (seenAt === null || (at !== null && at > seenAt));
 }
+/**
+ * 클라이언트가 보낸 열람 시각은 `toISOString()` 형만 받는다 — `Date.parse`의 비ISO 해석은 구현 정의라 서버마다 갈린다.
+ * 미래는 서버 시각으로 자른다: 아직 보지 않은 항목을 읽음으로 만들지 못하게. 과거 위조는 자기 항목을 일찍 읽음 처리할 뿐이다.
+ */
+export function clampSeenAt(input: unknown, now: Date): Date | null {
+  if (typeof input !== "string") return null;
+  const at = new Date(input);
+  if (Number.isNaN(at.getTime()) || at.toISOString() !== input) return null;
+  return at > now ? new Date(now) : at;
+}
 export function badgeLabel(n: number): string | null {
   return n === 0 ? null : n > 9 ? "9+" : String(n);
 }

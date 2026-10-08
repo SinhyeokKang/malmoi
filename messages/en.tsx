@@ -49,12 +49,13 @@ export const en = {
   /**
    * **헤더 Inbox** (attention-inbox) — 멤버 프로젝트 전체의 "지금 손볼 것" 드롭다운. 행 문장은 Home 카드(`home.attention.*`)와
    * 목록 띠(`projects.banner.unsent`·`setup`)를 그대로 쓰고, 빈 상태 제목은 `home.attention.empty.title`, 다시 시도는 `common.retry`다.
-   * ⚠️ **트리거 이름이 메뉴 이름이다** — 메뉴 머리 제목이 없다(`aria-labelledby` → 트리거). 낱말은 Home 카드 제목과 같다.
+   * ⚠️ **트리거 이름이 메뉴 이름이다** — 메뉴 머리 제목이 없다(`aria-labelledby` → 트리거). 낱말은 사이드바 항목·`/inbox` 페이지 제목
+   * (`common.nav.inbox`)과 같다(inbox-page — 옛 값 `Needs your attention`은 Home 카드 제목으로만 남는다. 같은 목적지의 이름이 둘이면 하나가 낡는다).
    */
   inbox: {
-    label: "Needs your attention",
+    label: "Inbox",
     /** 배지는 `9+`로 접어도 이 이름은 실제 수를 읽는다 — 숫자 배지는 `aria-hidden`이다. */
-    labelUnread: (n: number): string => `Needs your attention, ${n.toLocaleString("en-US")} unread`,
+    labelUnread: (n: number): string => `Inbox, ${n.toLocaleString("en-US")} unread`,
     /** 행 접근 이름 맨 앞의 sr 낱말 — 보이는 표시는 점이다. */
     unread: "Unread",
     emptyDescription: "Nothing needs your attention across your projects.",
@@ -371,6 +372,12 @@ export const en = {
       /** `/preferences` (ui-locales) — `MCP connector`와 `Account` 사이. **페이지 제목도 이 키다**(DESIGN "메뉴명 = 페이지 제목"). */
       preferences: "Preferences",
       /**
+       * `/inbox` (inbox-page) — `Projects` 바로 뒤. **페이지 제목도 이 키다**(DESIGN "메뉴명 = 페이지 제목")이고 헤더 트리거 이름(`inbox.label`)과 같은 낱말이다.
+       */
+      inbox: "Inbox",
+      /** 사이드바 Inbox 배지의 sr 문장 — 숫자는 `aria-hidden`이다. 개수만 말하는 다른 항목(`projects.count`)과 같은 형이다. */
+      inboxCount: (n: number): string => `${n.toLocaleString("en-US")} unread`,
+      /**
        * 프로젝트 구역의 항목 여섯. **`lib/shell/nav.ts`가 읽는다** — 라벨이 소스 리터럴이던 자리다.
        *
        * ⚠️ **화면 제목도 이 키들을 쓴다** (2026-09-11 사용자 — "LNB 메뉴명과 페이지 타이틀은 항상
@@ -672,7 +679,7 @@ export const en = {
        * ⚠️ **여기서 이름을 대는 저장 항목은 `lib/privacy/collected.ts`의 등재와 절 id로 묶인다** —
        * 표는 필드 여럿을 한 행으로 접으므로 대조 단위가 라벨이 아니라 절이다.
        */
-      effectiveDate: "2026-10-07",
+      effectiveDate: "2026-10-09",
       /**
        * 목차 이름 — ⚠️ **`sections` 밖에 둔다**: `policy-gate.test.tsx`가 `sections`를 해시하므로 안에 넣으면 개정 이력이 요구된다.
        */
@@ -743,8 +750,8 @@ export const en = {
                     "Showing Malmoi in that theme on every device you sign in on",
                   ],
                   [
-                    "When you last opened the “Needs your attention” list in the header",
-                    "Malmoi, when you open that list",
+                    "When you last opened or viewed your Inbox",
+                    "Malmoi, when you open the list or view the Inbox page",
                     "Marking which items in it are new since you last looked",
                   ],
                   [
@@ -783,7 +790,7 @@ export const en = {
                 "Showing Malmoi in the language you choose.",
                 "Showing dates and times in the time zone you choose.",
                 "Showing Malmoi in the theme you choose.",
-                "Marking which items in the “Needs your attention” list are new since you last opened it.",
+                "Marking which items in your Inbox are new since you last opened or viewed it.",
                 "Deciding which projects you can open and what you can do in them.",
                 "Showing your teammates who changed a translation and who asked for a sync.",
                 "Writing translations back to the repository a project is connected to, as a pull request.",
@@ -811,7 +818,7 @@ export const en = {
                 "The language you choose: kept with your account until you choose another or ask us to delete your account. On a browser, the language cookie lasts a year from the last time you chose a language or signed in with a language saved to your account.",
                 "The time zone you choose: kept with your account until you choose another or ask us to delete your account. It is not stored in a cookie.",
                 "The theme you choose: kept with your account until you choose another or ask us to delete your account. On a browser, the theme cookie lasts a year from the last time you chose a theme or signed in with a theme saved to your account.",
-                "When you last opened the “Needs your attention” list: one time per account, replaced each time you open the list and kept until you ask us to delete your account. There is no record of which items you saw, and no cookie.",
+                "When you last opened or viewed your Inbox — the list in the header or the Inbox page: one time per account, replaced each time you open the list or the page and kept until you ask us to delete your account. There is no record of which items you saw, and no cookie.",
                 "A session stops working 24 hours after your last activity. Its row goes away when you sign out, or when that expired session is next presented.",
                 "A challenge for linking an account or signing other sessions out stops working after 5 to 10 minutes. Its row goes away the next time you start the same step.",
                 "An invitation stops working after 7 days, or as soon as it is accepted, revoked or sent again. The row is kept after that, including the address it was sent to, as the record that the invitation happened — ask us and we will delete it.",
@@ -914,7 +921,7 @@ export const en = {
             {
               p: "The effective date at the top belongs to the text below it: whenever this policy changes, that date moves and the change is listed here.",
             },
-            { ul: ["2026-10-07 — Malmoi remembers whether you collapsed the sidebar in a cookie on this browser. It is the only cookie that scripts can read, and it holds nothing else.", "2026-10-05 — the “Needs your attention” list in the header marks items that are new since you last opened it. Malmoi keeps one time per account — when you last opened the list — and no record of which items you saw.", "2026-10-05 — you can choose Malmoi's theme: System, Light or Dark. Malmoi remembers your choice with your account and in a cookie on this browser, and signing in copies the theme saved to your account into that cookie.", "2026-10-05 — you can choose the time zone Malmoi uses for dates and times. Malmoi remembers your choice with your account only, not in a cookie. Public pages always use UTC.", "2026-10-05 — you can choose the language of Malmoi's screens: English, Korean or Spanish. Malmoi remembers your choice with your account and in a cookie on this browser, and signing in copies the language saved to your account into that cookie. This policy is also published in Korean.", "2026-09-29 — you can also connect an app such as Claude Code or Codex by signing in through your browser, with no token to copy. Malmoi keeps the connection — the app's name and address, the actions and projects you allowed, when it was used — and only hashes of the tokens it issued; you can disconnect it on the MCP connector page.", "2026-09-29 — you can create a personal token for AI agents on the MCP connector page. Malmoi stores only a hash of it, with the actions and projects you allowed and when it was used.", "2026-09-28 — invitation emails show the name and picture of the project you are invited to, and your role in it. They still do not say who invited you.", "2026-09-27 — visits to the public pages are counted with Vercel Web Analytics, without cookies.", "2026-09-26 — the product name is written Malmoi. No change to what we collect or share.", "2026-09-24 — invitations can be sent by email through Resend.", "2026-09-19 — first version."] },
+            { ul: ["2026-10-09 — the “Needs your attention” list in the header is now called Inbox, and it also has its own page. Viewing that page counts as looking at your Inbox, the same as opening the list in the header.", "2026-10-07 — Malmoi remembers whether you collapsed the sidebar in a cookie on this browser. It is the only cookie that scripts can read, and it holds nothing else.", "2026-10-05 — the “Needs your attention” list in the header marks items that are new since you last opened it. Malmoi keeps one time per account — when you last opened the list — and no record of which items you saw.", "2026-10-05 — you can choose Malmoi's theme: System, Light or Dark. Malmoi remembers your choice with your account and in a cookie on this browser, and signing in copies the theme saved to your account into that cookie.", "2026-10-05 — you can choose the time zone Malmoi uses for dates and times. Malmoi remembers your choice with your account only, not in a cookie. Public pages always use UTC.", "2026-10-05 — you can choose the language of Malmoi's screens: English, Korean or Spanish. Malmoi remembers your choice with your account and in a cookie on this browser, and signing in copies the language saved to your account into that cookie. This policy is also published in Korean.", "2026-09-29 — you can also connect an app such as Claude Code or Codex by signing in through your browser, with no token to copy. Malmoi keeps the connection — the app's name and address, the actions and projects you allowed, when it was used — and only hashes of the tokens it issued; you can disconnect it on the MCP connector page.", "2026-09-29 — you can create a personal token for AI agents on the MCP connector page. Malmoi stores only a hash of it, with the actions and projects you allowed and when it was used.", "2026-09-28 — invitation emails show the name and picture of the project you are invited to, and your role in it. They still do not say who invited you.", "2026-09-27 — visits to the public pages are counted with Vercel Web Analytics, without cookies.", "2026-09-26 — the product name is written Malmoi. No change to what we collect or share.", "2026-09-24 — invitations can be sent by email through Resend.", "2026-09-19 — first version."] },
           ],
         },
       ],

@@ -11,13 +11,13 @@ import { SITE_ORIGIN } from "./site";
  * fail-closed다(그쪽은 모르면 프로덕션처럼 좁히고, 여기는 모르면 숨긴다).
  *
  * ⚠️ **`/invite`·`/signin`을 여기서 막지 않는다** — 막으면 크롤러가 페이지의 noindex를 못 보고 외부 링크만으로 URL이 색인된다
- * (토큰이 검색 결과에 뜬다). `/projects`·`/account`·`/preferences`는 비로그인에게 302라 본문이 없으므로 여기서 거부하는 것이 맞다.
+ * (토큰이 검색 결과에 뜬다). `/projects`·`/account`·`/preferences`·`/inbox`는 비로그인에게 302라 본문이 없으므로 여기서 거부하는 것이 맞다.
  * ⚠️ **`isProtectedPath`(`lib/auth/cookie.ts`)와 따로 적힌 목록이다** — 보호 경로를 늘리면 여기도 고친다(`/mcp`가 빠진 것은 ui-locales 범위 밖).
  */
 export function robotsFor(vercelEnv: string | undefined): MetadataRoute.Robots {
   if (vercelEnv !== "production") return { rules: [{ userAgent: "*", disallow: "/" }] };
   return {
-    rules: [{ userAgent: "*", allow: "/", disallow: ["/api/", routes.projects(), routes.account(), routes.preferences()] }],
+    rules: [{ userAgent: "*", allow: "/", disallow: ["/api/", routes.projects(), routes.account(), routes.preferences(), routes.inbox()] }],
     sitemap: `${SITE_ORIGIN}/sitemap.xml`,
   };
 }

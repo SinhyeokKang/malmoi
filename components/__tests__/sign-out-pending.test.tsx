@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { act } from "react";
 import userEvent from "@testing-library/user-event";
-import { expect, it, vi } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
+import { setUnread } from "@/lib/inbox/unread-store";
 
 import { render } from "./helpers/dom";
 
@@ -48,7 +49,8 @@ it("사이드바 하단에 Sign out이 없고 Changelog · Docs 순이다 — �
 it("사용자 메뉴 Sign out은 제출 중에도 메뉴가 열린 채 disabled + 스피너다", async () => {
   const { run: signOut, settle } = held();
   const user = userEvent.setup();
-  await render(<UserMenu name="Kim" email="k***@acme.com" image={null} signOut={signOut} />);
+  // 멤버십을 넘겨 지연 조회(실제 Server Action)에 닿지 않게 한다 — 이 파일은 Sign out만 본다(지연 경로는 user-menu.test.tsx).
+  await render(<UserMenu name="Kim" email="k***@acme.com" image={null} signOut={signOut} memberships={[]} />);
   await act(async () => user.click(document.querySelector<HTMLButtonElement>(`button[aria-label="${en.common.nav.userMenu}"]`)!));
   await act(async () => user.click(signOutItem()));
   expect(signOut).toHaveBeenCalledOnce();
@@ -59,3 +61,6 @@ it("사용자 메뉴 Sign out은 제출 중에도 메뉴가 열린 채 disabled 
   expect(signOutItem().querySelector(".animate-spin")).not.toBeNull();
   await settle();
 });
+
+// 안 읽음 수는 모듈 store라 파일 안 테스트 사이로 샌다(inbox-page D2) — 헤더·사이드바를 그리는 파일은 매번 되돌린다.
+afterEach(() => { setUnread(0); });

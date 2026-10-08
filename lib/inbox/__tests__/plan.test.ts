@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { badgeLabel, isUnread, planInbox, type InboxProject } from "../plan";
+import { badgeLabel, clampSeenAt, isUnread, planInbox, type InboxProject } from "../plan";
 const at = new Date("2026-10-01T00:00:00Z");
 const failed = { kind: "import_failed" as const, at, surfaceSlug: "web", reason: "parse-failed" as const };
 const project: InboxProject = { slug: "demo", name: "Demo", image: null, role: "OWNER", status: "active", createdAt: at, attention: [failed], unsent: null };
@@ -39,4 +39,29 @@ it("묶음은 최신 시각·slug 순, 빈 프로젝트는 빠진다", () => {
   ], seenAt: at });
   expect(result.groups.map(g => g.project.slug)).toEqual(["new", "a", "z", "old"]);
   expect(result.unread).toBe(1);
+});
+const serverNow = new Date("2026-10-09T12:00:00.000Z");
+it.each([
+  ["과거 ISO는 그대로", "2026-10-09T11:59:59.999Z", new Date("2026-10-09T11:59:59.999Z")],
+  ["now와 같은 값", "2026-10-09T12:00:00.000Z", serverNow],
+  ["미래는 서버 시각으로 자른다", "2026-10-09T12:00:00.001Z", serverNow],
+  ["먼 미래도 서버 시각", "9999-12-31T23:59:59.999Z", serverNow],
+  ["epoch은 받는다 — 단조 쓰기라 무해", "1970-01-01T00:00:00.000Z", new Date(0)],
+])("clampSeenAt: %s", (_, input, expected) => {
+  expect(clampSeenAt(input, serverNow)).toEqual(expected);
+});
+it.each([
+  ["Date 객체", new Date("2026-10-09T11:00:00.000Z")],
+  ["숫자", serverNow.getTime() - 1000],
+  ["NaN", Number.NaN],
+  ["null", null],
+  ["undefined", undefined],
+  ["빈 문자열", ""],
+  ["잘못된 문자열", "yesterday"],
+  ["Invalid Date 문자열", "2026-13-40T00:00:00.000Z"],
+  ["넘치는 날짜", "2026-02-30T00:00:00.000Z"],
+  ["ISO가 아닌 날짜 문자열", "Oct 9, 2026 11:00 UTC"],
+  ["오프셋 없는 로컬 시각", "2026-10-09T11:00:00"],
+])("clampSeenAt: %s → null", (_, input) => {
+  expect(clampSeenAt(input, serverNow)).toBeNull();
 });

@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 
-import { Box, CircleHelp, CircleUser, Compass, Files, History, House, Languages, Settings, SlidersHorizontal, Users } from "lucide-react";
+import { Box, CircleHelp, CircleUser, Compass, Files, History, House, Inbox, Languages, Settings, SlidersHorizontal, Users } from "lucide-react";
 
 import { McpIcon } from "@/components/signin/brand-icons";
 
@@ -20,7 +20,7 @@ import type { MembershipRow } from "@/lib/keys/query";
  * Translations보다 앞**이고, 하단에 **Help**가 붙었다.
  * ⚠️ **그 뒤 사용자 결정이 시안을 넘었다** (2026-09-27): 사용자 축은 `Projects · New project · Account` 셋이었고(2026-09-28에
  * `Account` 앞에 `MCP connector`가 들었고, 2026-09-30에 `New project`가 앱 셸 헤더로 옮겨 `Projects · MCP connector · Account`다)
- * (`navWorkItems` — 헤더 사용자 메뉴의 첫 묶음도 이 목록이다), 하단은 `Changelog · Docs`다(2026-09-28 — GitHub Releases 외부 링크였던 첫 항목이 앱 안 `/changelog`가 됐다).
+ * (`navWorkItems` — 헤더 사용자 메뉴의 첫 묶음도 이 목록이다 · 2026-10-09에 `Projects` 바로 뒤에 `Inbox`가 들었다), 하단은 `Changelog · Docs`다(2026-09-28 — GitHub Releases 외부 링크였던 첫 항목이 앱 안 `/changelog`가 됐다).
  */
 
 /**
@@ -169,6 +169,12 @@ export function navWorkItems(m: Messages, projectCount?: number): NavItem[] {
     exact: true,
     ...(projectCount === undefined ? {} : { badge: projectCount }),
   },
+  /**
+   * `Inbox` (inbox-page D5) — **`Projects` 바로 뒤**다. 글리프는 헤더 트리거와 같은 `Inbox`다(같은 목적지 = 같은 글리프 — DESIGN §6.5).
+   * ⚠️ **배지를 여기서 싣지 않는다** — 안 읽음 수는 서버 값이 아니라 탭 안 store(`lib/inbox/unread-store.ts`)이고 사이드바가 붙인다.
+   * 이 함수에 흘리면 같은 목록을 읽는 사용자 메뉴에도 배지 경로가 생긴다. 사용자 메뉴 · 검색 Pages 색인 · 랜딩 목업에 함께 서는 것은 의도다.
+   */
+  { key: "inbox", label: m.common.nav.inbox, icon: Inbox, href: routes.inbox(), exact: true },
   /**
    * ⚠️ **아이콘이 `CircleUser`다** (2026-09-11 사용자) — 헤더 우상단 서랍 **안**의 같은 항목과
    * 같은 글리프라야 "내 계정"이 한 어휘로 읽힌다. `Settings`(톱니)는 프로젝트 설정이 쓰므로,

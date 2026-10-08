@@ -922,8 +922,8 @@ writer가 버린 항목은 `PullResult`의 `skipped/writer-warnings` 갈래에�
 (`findOpenPr`) 값으로만 안 내고 있었다 — 편집자에게 "새로 보냈다"와 "먼저 보낸 것을 갱신했다"는 다른
 사실이다. **`Project`에 컬럼 둘이 따라온다**: `lastPublishedAt`·`lastPrUrl`은 `committed`일 때만 쓰고
 (`saveLastPulledAt`의 같은 `update` 한 번), `skipped`는 건드리지 않는다. ⚠️ **`lastPulledAt`과 뜻이 다르다** —
-그쪽은 벽시계가 아니라 캡처된 `max(updatedAt)`이고 **변경 없는 스킵에도 전진한다.** 미배포 집계의 기준은
-그쪽이고(진행 판정), 툴바의 "Last sent"가 읽는 것은 이쪽이다(사건 기록). 섞으면 아무것도 안 보낸 밤마다
+그쪽은 벽시계가 아니라 캡처된 `max(updatedAt)`이고 **변경 없는 스킵에도 전진한다.** 미배포 집계는 `lastPulledAt`이 아니라
+활성 소스·키·로케일의 `pendingEditToken != null`을 센다(`lib/protection/where.ts`). 툴바의 "Last sent"는 `lastPublishedAt`을 읽는다(사건 기록). 섞으면 아무것도 안 보낸 밤마다
 "보냈다"가 갱신된다.
 
 **`lastPulledAt`이 전진하는 두 자리에서 편집 토큰의 전달 확인이 같은 트랜잭션에 실린다** (2026-09-18, §5의 `pendingEditToken`).
@@ -1202,7 +1202,7 @@ snapshot → ingestTargets(순수) → readBlob × M
 `IngestBudgetError`의 하위형이며 파일 경로를 담아 실패한 소스 안내와 `resource-limit` 분류를 함께 유지한다.
 GitHub 읽기·파싱은 tx 밖이며 `prepareFirstSnapshot`의 `payload === null` 또는 `failed > 0`이면 저장하지 않는다.
 클라이언트의 `outputPaths`는 체크 충돌 안내용이다. 생성은 새 snapshot·서버 확정 포맷으로 출력 경로를 다시 계산한다.
-`manual`은 YAML에 어댑터·기준 언어를 명시할지 정하는 표시 메타데이터일 뿐 경로 재검증을 완화하지 않는다.
+`manual`과 무관하게 YAML에는 서버가 확정한 어댑터·기준 언어를 항상 명시한다. 수동 선택 여부는 경로 재검증도 완화하지 않는다.
 
 기존 User 행 잠금·OWNER 한도 재집계를 유지하고, Project 명시적 id·OWNER·Surface N개·기본 포인터와
 `applyPushInTransaction(tx, ...)`를 같은 callback tx에 저장한다(`maxWait: 10_000`, `timeout: 30_000`).
@@ -1453,10 +1453,10 @@ namespace `"unresolved"`와 지역 이름 `unsupported`도 정상 사용자 문�
   호출마다 새 `where`를 만든다(`lib/protection/where.ts`). 같은 모듈이 그 술어의 두 읽기 형태를 함께 든다:
   수를 세는 `countPending`과 `(id, token)` 쌍을 읽는 **`loadPendingEdits`**(Publish 캡처·폐기 승인 지문 — **원문이라 서버 안에서만 돈다**).
   둘 다 토큰 컬럼만 보는 count가 0이면 관계 조인을 아예 돌리지 않는다. **원문은 서버 밖으로 나가지 않는다** — 셀은 `pending: boolean` 투영이고 폐기 승인은 sha256 지문 하나다.
-  strict 적재는 토큰 있는 셀을 덮지 않는다(`WHERE "pendingEditToken" IS NULL OR = ANY(approvedTokens)`) — 승인 토큰은 수동 Sync만 넘긴다.
+  strict 적재는 토큰 있는 셀을 덮지 않는다(`WHERE "pendingEditToken" IS NULL OR = ANY(approvedTokens)`) — 승인 토큰은 수동 Sync와 제거된 소스를 되살리는 첫 적재(해당 소스 토큰만 — §5.9)가 넘긴다.
   배포 B의 precondition 마이그레이션(`20260917170000_pending_edit_token_precondition`)이 backfill 미수렴을 `db:deploy`에서 거부한다(복구 절차는 OPERATIONS).
   인덱스는 일반 복합 `[projectId, pendingEditToken]`이다 — btree가 `IS NOT NULL`을 Index Cond로 써서 격리 PG 합성 3만 행에서 3행만 읽었다(없으면 3만 행 비트맵 스캔) — 그래서 스키마로 표현되지 않는 partial 인덱스는 쓰지 않는다.
-- **`TranslationSurface.lastImportFailedAt`은 실패에만 시각을 준다** (2026-09-15, `20260915082003_home_attention_timestamps`). `lastImportError`는 코드만 들고 `lastImportStartedAt`은 끝나는 순간 비워져서, **실패에 시각이 없었다** — Home의 할 일 항목이 세 종을 한 시간축에 세우려면 셋 다 시각이 있어야 한다. 성공은 이 값을 건드리지 않는다(성공 시각은 `lastImportedAt`이 든다 — 아래 절. `lastCommitAt`은 리포 커밋 시각이라 성공 시각이 아니다 — malmoi#81에서 Home이 그것을 "Last sync"로 읽어 17시간 전 Sync가 "13 days ago"로 보였다). ⚠️ **종료 경로가 다섯이고 전부 `importOutcomeFields`를 지난다** — `applyPush`·`finishImportRun`·`recordReportedFailure`·정상 0키·표면 실패. 필드를 손으로 나열하면 컬럼이 늘 때 몇이 조용히 빠지고, **실제로 이 컬럼이 처음에 둘에만 붙었다.** ⚠️ **성공이 이 값을 `null`로 비운다** — 안 비우면 복구된 표면이 계속 옛 실패를 말한다. ⚠️ **backfill이 없다** — 에러는 있는데 시각이 `null`인 행은 마이그레이션 이전 행뿐이고, 읽는 쪽이 그것을 **가장 오래된 것**으로 고정한다(임의 순서를 만들지 않는다).
+- **`TranslationSurface.lastImportFailedAt`은 실패에만 시각을 준다** (2026-09-15, `20260915082003_home_attention_timestamps`). `lastImportError`는 코드만 들고 `lastImportStartedAt`은 끝나는 순간 비워져서, **실패에 시각이 없었다** — Home의 할 일 항목이 세 종을 한 시간축에 세우려면 셋 다 시각이 있어야 한다. 성공은 이 값을 `null`로 비운다(성공 시각은 `lastImportedAt`이 든다 — 아래 절. `lastCommitAt`은 리포 커밋 시각이라 성공 시각이 아니다 — malmoi#81에서 Home이 그것을 "Last sync"로 읽어 17시간 전 Sync가 "13 days ago"로 보였다). ⚠️ **종료 경로가 다섯이고 전부 `importOutcomeFields`를 지난다** — `applyPush`·`finishImportRun`·`recordReportedFailure`·정상 0키·표면 실패. 필드를 손으로 나열하면 컬럼이 늘 때 몇이 조용히 빠지고, **실제로 이 컬럼이 처음에 둘에만 붙었다.** ⚠️ **성공이 이 값을 `null`로 비운다** — 안 비우면 복구된 표면이 계속 옛 실패를 말한다. ⚠️ **backfill이 없다** — 에러는 있는데 시각이 `null`인 행은 마이그레이션 이전 행뿐이고, 읽는 쪽이 그것을 **가장 오래된 것**으로 고정한다(임의 순서를 만들지 않는다).
 - **`TranslationSurface.lastImportedAt`·`createdAt`은 그 옆의 다른 축이다** (2026-09-22, `20260922062014_add_surface_import_timestamps` — Sources 화면이 소비자다, `lib/sources/query.ts`의 `sourceSelect`·`sourceView`).
   - `lastImportedAt`은 **마지막 성공 적재 시각**이고 `lastCommitAt`이 아니다 — 커밋 시각을 그 자리에 쓰면 리포에 오래 전 커밋이 있는 소스가 "방금 적재됨"으로 읽힌다. ⚠️ **backfill이 없다**: 이 컬럼 이전의 성공에는 시각이 없고 화면이 그 자리를 **생략한다**(`lastCommitAt`으로 메우면 "적재 시각"이라는 거짓이 DB에 남는다).
   - `createdAt`은 **소스가 선언된 시각**이고, 첫 적재 전 화면이 "얼마나 기다렸나"에 답하는 유일한 값이다. ⚠️ **기존 행은 마이그레이션 시각으로 채워진다 — 진짜 시각이 아니다**(`Locale.createdAt`과 같은 사정). "정확히 언제 생겼나"의 답으로 믿는 코드를 만들지 않는다.
@@ -1804,11 +1804,11 @@ CI push가 unorphan → 재집계 1 → 롤백 → `deferred`를 매번 반복�
 
 ⚠️ **표면 교체 검사(`checkFormat`)가 왜 필요한가** (2026-09-07): `applyPush`가 페이로드 포맷으로
 `TranslationSurface.adapterName`·`pathTemplate`·`nested`·`nestedByPath`·`baseLocale`을 **덮어쓴다.** 그런데 온보딩은
-후보를 사용자에게 확정받아 재검증한 값을 저장하고(`planConfirmedFormat`), **자동 후보의 워크플로 YAML은
-`adapter:`를 박지 않는다**(`lib/onboarding/workflow.ts` — 탐지가 같은 답을 낸다는 전제였다).
-그 전제는 **1순위 후보에만 참이다**: 2순위를 확정한 프로젝트의 CI는 `detectFormat`의 1순위를 보내고,
-strict 덮어쓰기가 그 프로젝트의 키를 전부 orphan시킨 뒤 이물 키를 넣는다 — 오배송과 같은 피해이고 같은
-이유로 되돌릴 수 없다. 한 리포에 표면이 둘인 `i18n-format-check`가 실물이다 (PRODUCT §7.1).
+후보를 사용자에게 확정받아 재검증한 값을 저장하고(`planConfirmedFormat`), **과거 자동 후보의 워크플로 YAML은
+`adapter:`를 생략했다**(탐지가 같은 답을 낸다는 전제였다).
+그 전제는 **1순위 후보에만 참이었다**: 2순위를 확정해도 CI는 `detectFormat`의 1순위를 보내,
+포맷 검사가 없으면 strict 덮어쓰기가 기존 키를 orphan시키고 다른 후보의 키를 넣을 수 있었다.
+현재 `lib/onboarding/workflow.ts`는 자동·수동 여부와 무관하게 확정한 adapter·baseLocale을 항상 명시한다. 한 리포에 표면이 둘인 `i18n-format-check`가 실물이다 (PRODUCT §7.1).
 
 - **`baseLocale`도 본다** — 키 집합의 진실이라, 확정한 base와 다른 base로 적재하면 진짜 base에만 있는
   키가 빠져 orphaned로 떨어진다 (2026-09-04 audit #1의 손실).
@@ -2290,7 +2290,7 @@ Logs 행위자·상세 Trigger·보조줄·Home 메타 열이 이것 하나를 �
 | 운영자 판정 (`isOperatorUser`, 2026-10-03) | `User.emailLookup` × `OPERATOR_EMAILS` | **인가 아님** — 사용자당 프로젝트 상한 면제 하나만 바꾼다. 로그인·`ProjectMember` 인가·화면 표시와 무관하다 (§6.2.2) |
 | `/api/search-index/[uiLocale]` | **공개 · 세션 없음 · `force-static`** | 그 언어 원고(`guide/<uiLocale>/`) SUMMARY에 등재된 공개 가이드만 빌드 때 JSON으로 만든다 — 언어별 정적 파일 셋(`generateStaticParams` = `guideLocales()`, `dynamicParams = false`). 인증·DB·쿠키 조회가 없고 원고 실패는 빌드를 실패시킨다. `entry-points.test.ts`의 `EXEMPT` 사유도 이 경계다 (§6.37) |
 | Keys 조회 — `searchKeysAction` (`app/search/actions.ts`) | 세션(`readSession`) + 코어 `searchKeys`의 **`ProjectMember.userId` 조인** | 서버의 userId로 비보관 멤버 프로젝트 id를 확정한다. 클라이언트 프로젝트 목록을 받지 않고 `activeSlug`는 순위에만 쓴다 (§6.37) |
-| 검색 멤버십 — `loadSearchMembershipsAction` (같은 파일) | 세션(`readSession`) + `loadMemberships`의 **userId 제한** | 보관 포함 자기 멤버십만 읽고 `toNavProjects`의 일곱 필드만 반환한다. 성공·실패 모두 다음 호출에 캐시하지 않는다 (§6.37) |
+| 검색 멤버십 — `loadSearchMembershipsAction` (같은 파일) | 세션(`readSession`) + `loadMemberships`의 **userId 제한** | 보관 포함 자기 멤버십만 읽고 `toNavProjects`의 일곱 필드만 반환한다. 성공·실패 모두 다음 열기에 캐시하지 않는다. 소비자는 공개 셸의 검색 Dialog와 **사용자 메뉴 프로젝트 그룹**(2026-10-09 user-menu-projects — 검색용 이름의 Action에 검색 아닌 소비자가 붙었다. 반환 필드가 같아 새 노출이 없다) (§6.37) |
 | GitHub **연결** | GitHub App **user-to-server** 토큰 (`GITHUB_APP_CLIENT_*`, `lib/github-connect/user.ts`) | "이 사람이 이 설치·리포를 볼 수 있는가"를 묻는 데만 쓴다. **GET만 부른다** — 이름에 OAuth가 들어가지만 로그인 토큰과 client id가 다르다 |
 | `malmoi-i18n/sync` 쓰기 | GitHub App **installation** 토큰 (`GITHUB_APP_ID`·`GITHUB_APP_PRIVATE_KEY`) | OAuth 토큰으로 커밋하면 커밋이 개인 명의가 되고 그 사람이 org를 떠나면 깨진다 |
 | `/api/github/callback` | 세션(`requireUser`) + userId에 묶인 **state HMAC** + state 쿠키 | 브라우저가 돌아오는 지점이라 CSRF 축이 초대 토큰과 같다 (§6.4) |
@@ -2593,7 +2593,7 @@ login-link · session-revocation · `acceptInvitation`이다. 두지 않는 이�
 - ⚠️ **`/oauth/authorize`는 보호 경로에 넣지 않는다** (2026-09-29, mcp-oauth) — 무세션이 정상 진입이고 화면이 스스로 공급자 버튼을 그린다. 넣으면
   클라이언트가 연 authorize URL이 `/signin`으로 튕겨 **요청이 저장되기 전에** 사라진다(`/invite/[token]`·`/signin/link/[challenge]`와 같은 판단).
   비로그인에게 보이는 것은 앱 이름·clientId뿐이고, 동의 결과를 쓰는 Action이 세션을 다시 본다. `entry-points.test.ts`의 `PUBLIC`이 부정 단언한다.
-- **새 보호 라우트를 추가하면 `isProtectedPath`(`lib/auth/cookie.ts`)에 추가한다.** ⚠️ **2026-09-27(sec-audit-3 #11)까지는 `matcher` 자체였다** — CSP nonce 때문에 matcher가 전 페이지로 넓어져(§8) 보호 판정이 그 함수로 옮겨 갔다. 아래 "matcher에 넣지 않는다"는 전부 **"보호 경로에 넣지 않는다"**로 읽는다(`/api/*`는 matcher에서도 빠진다). ⚠️ **그 함수는 옛 matcher를 Next가 컴파일한 정규식 그대로이고(+ 같은 모양의 `/mcp` — mcp-connector, `/account`처럼 사용자 축 한 장짜리라 보호한다) raw·decode 경로를 둘 다 본다** (fix1) — Next가 matcher를 raw와 `decodeURIComponent` 결과 양쪽에 대고, 컴파일된 정규식은 `.rsc`·`.segments/…segment.rsc`·`/_next/data/<id>` 변형도 받는다. 문자열 접두 비교였던 첫 판은 쿠키 없는 `/%70rojects/…`·`/%61ccount`·`/account.rsc`를 307 없이 통과시켰다(`request.nextUrl.pathname`은 decode되지 않는다). decode 실패는 raw만 본다(Next와 같다). `entry-points.test.ts`가 `getMiddlewareMatchers(["/projects/:path*", "/account"])`로 옛 정규식을 다시 만들어 판정 표를 대조한다. ⚠️ **반대로 `/api/push`·`/api/pull`은 넣지 않는다** — 외부(CI·cron)가 부르는 진입점이라 세션이 없고, 넣으면 야간 pull이 조용히 리다이렉트된다. 그쪽 방어는 Bearer 토큰이다. **`/invite/[token]`도 넣지 않는다**: 비로그인으로 열려야 초대 링크의 토큰이 보존된다. **`/api/github/callback`도 넣지 않는데 이유가 다르다** — 로그인 화면으로 302되면 쿼리의 `code`·`state`·`setup_action`이 사라져 연결·착지가 성립하지 않는다(`entry-points.test.ts`가 부정 단언으로 고정한다). 설치·인가·리포 선택 변경이 전부 이 한 지점으로 돌아온다(§6.4 — 옛 Setup URL 라우트는 2026-09-18에 지웠다). ⚠️ **`/signin`·`/privacy`·`/docs`·`/changelog`도 넣지 않는다** (8-1a — 공개 목록의 정본은 `entry-points.test.ts`의 `PUBLIC`): 앞의 것은 넣으면 **로그인이 통째로 죽는다** — `isProtectedPath`가 보호로 판정하면 목적지 제외 규칙이 한 줄도 없으므로 쿠키 없는 모든 `GET /signin`이 자기 자신으로 307을 돈다. 바로 위 "새 보호 라우트를 추가하면 `isProtectedPath`에 추가한다"가 그 함정을 부르는 문장이라, `app/__tests__/entry-points.test.ts`가 **부정 단언**으로 상시 고정한다. 대신 그 라우트가 스스로 `requireUser`를 지난다(§6.4).
+- **새 보호 라우트를 추가하면 `isProtectedPath`(`lib/auth/cookie.ts`)에 추가한다.** ⚠️ **2026-09-27(sec-audit-3 #11)까지는 `matcher` 자체였다** — CSP nonce 때문에 matcher가 전 페이지로 넓어져(§8) 보호 판정이 그 함수로 옮겨 갔다. 아래 "matcher에 넣지 않는다"는 전부 **"보호 경로에 넣지 않는다"**로 읽는다(`/api/*`는 matcher에서도 빠진다). ⚠️ **그 함수는 옛 matcher를 Next가 컴파일한 정규식 그대로이고(+ 같은 모양의 `/mcp` — mcp-connector, `/account`처럼 사용자 축 한 장짜리라 보호한다 · 같은 이유로 `/preferences`(ui-locales)·`/inbox`(inbox-page)) raw·decode 경로를 둘 다 본다** (fix1) — Next가 matcher를 raw와 `decodeURIComponent` 결과 양쪽에 대고, 컴파일된 정규식은 `.rsc`·`.segments/…segment.rsc`·`/_next/data/<id>` 변형도 받는다. 문자열 접두 비교였던 첫 판은 쿠키 없는 `/%70rojects/…`·`/%61ccount`·`/account.rsc`를 307 없이 통과시켰다(`request.nextUrl.pathname`은 decode되지 않는다). decode 실패는 raw만 본다(Next와 같다). `entry-points.test.ts`가 `getMiddlewareMatchers(["/projects/:path*", "/account"])`로 옛 정규식을 다시 만들어 판정 표를 대조한다. ⚠️ **반대로 `/api/push`·`/api/pull`은 넣지 않는다** — 외부(CI·cron)가 부르는 진입점이라 세션이 없고, 넣으면 야간 pull이 조용히 리다이렉트된다. 그쪽 방어는 Bearer 토큰이다. **`/invite/[token]`도 넣지 않는다**: 비로그인으로 열려야 초대 링크의 토큰이 보존된다. **`/api/github/callback`도 넣지 않는데 이유가 다르다** — 로그인 화면으로 302되면 쿼리의 `code`·`state`·`setup_action`이 사라져 연결·착지가 성립하지 않는다(`entry-points.test.ts`가 부정 단언으로 고정한다). 설치·인가·리포 선택 변경이 전부 이 한 지점으로 돌아온다(§6.4 — 옛 Setup URL 라우트는 2026-09-18에 지웠다). ⚠️ **`/signin`·`/privacy`·`/docs`·`/changelog`도 넣지 않는다** (8-1a — 공개 목록의 정본은 `entry-points.test.ts`의 `PUBLIC`): 앞의 것은 넣으면 **로그인이 통째로 죽는다** — `isProtectedPath`가 보호로 판정하면 목적지 제외 규칙이 한 줄도 없으므로 쿠키 없는 모든 `GET /signin`이 자기 자신으로 307을 돈다. 바로 위 "새 보호 라우트를 추가하면 `isProtectedPath`에 추가한다"가 그 함정을 부르는 문장이라, `app/__tests__/entry-points.test.ts`가 **부정 단언**으로 상시 고정한다. 대신 그 라우트가 스스로 `requireUser`를 지난다(§6.4).
 - ⚠️ **`/account`는 matcher를 늘려야 했다** (2026-09-09, 6b-4). 그때까지 패턴이 `/projects/:path*`
   **하나**였고 `(edit)` 아래 모든 페이지가 **우연히** 그 접두를 갖고 있었다 — 사용자 축이 생기면서 그
   우연이 끝났다(PRODUCT §7.7). 그 한 줄을 빼면 `entry-points.test.ts`의 "(edit) 아래 모든 페이지가 어느
@@ -2616,7 +2616,7 @@ login-link · session-revocation · `acceptInvitation`이다. 두지 않는 이�
 
 `session: { strategy: "database", maxAge: 24h, updateAge: 1h, generateSessionToken }`. ⚠️ **넷째 키가 위 문단의 "32바이트 난수 세션 원문"의 발신처다** — `() => randomBytes(32).toString("base64url")`이고, 이것을 빼면 Auth.js 기본 생성기로 조용히 떨어진다(길이·엔트로피의 근거가 이 한 줄이라 코드 리뷰 말고는 신호가 없다). ⚠️ **`updateAge`를 명시하지 않으면 기본값(24h)이 `maxAge`와 같아** `session.js`의 갱신 조건이 `expires <= now`가 되고 **세션이 한 번도 연장되지 않는다** — 로그인 정각 24시간 뒤 편집 도중 끊기고, 브라우저가 쿠키를 지워 blur 저장이 미들웨어에 걸렸다(Codex 감사 #6). 지금은 활동 중인 세션이 시간당 한 번 DB 쓰기로 연장된다. `provider-config.test.ts`가 `strategy: "database"`와 `updateAge` 리터럴을 고정한다 — ⚠️ **`maxAge`는 검사하지 않으므로** 7일로 바꿔도 green이다.
 
-**`session` 콜백은 입력을 돌려주지 않는다.** DB 세션에서 콜백이 받는 `session`은 `Session` **행**이라 `sessionToken`이 들어 있고, 반환값이 곧 `/api/auth/session` 본문이다 — 입력에 `id`만 얹어 돌려주면 HttpOnly 쿠키의 값이 JSON으로 샌다(Codex 감사 #1, 2026-09-06까지 열려 있었다). `lib/auth/public-session.ts`가 `user.{id,name,email,image}`·`expires`만 허용 목록으로 새 객체에 담는다.
+**`session` 콜백은 입력을 돌려주지 않는다.** DB 세션에서 콜백이 받는 `session`은 `Session` **행**이라 `sessionToken`이 들어 있고, 반환값이 곧 `/api/auth/session` 본문이다 — 입력에 `id`만 얹어 돌려주면 HttpOnly 쿠키의 값이 JSON으로 샌다(Codex 감사 #1, 2026-09-06까지 열려 있었다). `lib/auth/public-session.ts`가 `user.{id,name,email,image,uiLocale,timeZone,colorScheme}`·`expires`만 허용 목록으로 새 객체에 담는다.
 
 **전체 세션 회수(#38, 2026-09-10)**: `/account` Server Action이 기존 로그인 Account를 서버에서 선택하고 새 OAuth 왕복을 시작한다. VerificationToken의 목적별 identifier에 userId/provider/account ID/session digest/state digest, token에는 nonce digest를 저장하며 5분간 유효하다. User 잠금 아래 현재 계정·세션·TTL을 재검사한 뒤 확인 요청의 조건부 소비와 사용자 Session 전체 삭제를 한 트랜잭션으로 처리한다. 다음 인증부터 거부되고 이미 실행 중인 요청은 중단하지 않는다.
 
@@ -2911,11 +2911,12 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 - **영어로 고정되는 표면**: MCP 도구 응답(`lib/mcp/**` — 에이전트가 읽는다) · 초대 메일(`lib/invitation-email/**` — 받는 사람의 언어를 모른다) ·
   SEO 메타·정적 `metadata`(탭 제목 — 크롤러와 같은 축이라 `generateMetadata`로 바꾸지 않는다)·`llms*.txt`·sitemap · `/api/*` JSON(검색 색인은 언어별 정적 파일 —
   §6.37) · cron 응답·서버 로그 · CLI(`scripts/**`) · `app/global-error.tsx`(루트 레이아웃 밖이라 provider가 없다, `lang="en"`) · 방침 en 본(§6.035) ·
-  숫자 형식(`en-US`) · 리포에 남는 문장(PR 제목·본문·커밋 메시지 — 누가 Publish했느냐로 같은 DB 상태에서 다른 PR이 나오면 안 된다) ·
+  리포에 남는 문장(PR 제목·본문·커밋 메시지 — 누가 Publish했느냐로 같은 DB 상태에서 다른 PR이 나오면 안 된다) ·
   저장되는 값(`ProjectEvent` payload — §5.7.4의 렌더 치환). 사전에서는 최상위 `mcp`·`seo`·`crash`와 중첩 `publicDocs.privacy`가 `Messages`에서 빠진다(ko·es는 그 절이 없다).
   ⚠️ **공유 코어(`planPublishView`·`loadEvents` 등 MCP 도구와 화면이 같이 부르는 것)는 `getMessages()`를 부르지 않고 `m`을 인자로만 받는다** —
   코어가 스스로 언어를 물으면 MCP 응답이 요청자의 언어를 따라간다. 소스 검사 `dictionary-consistency.test.ts` ⑧이 영어 고정 표면의 입구 import와
   `lib/** → lib/i18n/server`를 막는다. 테스트도 `en`을 명시 import한다.
+- **화면 숫자**: `lib/number-format.ts`의 `formatNumber(value, uiLocale)`가 명시적으로 받은 화면 언어의 구분자를 쓴다. PR 번호 같은 식별자는 숫자 표시 형식과 구분한다.
 - **사전 정합**: `type Messages`(`lib/i18n/index.ts`)는 en의 리터럴을 넓힌 `Widen<typeof en>`에서 영어 고정 절을 뺀 것이고(함수는 재귀하지 않고 문자열 반환만 넓힌다 —
   `ReactNode` 반환을 객체로 보고 재귀하면 `ReactElement` 구조를 매핑한다), `messages/ko.tsx`·`es.tsx`가 `satisfies Messages`라 빠진 키·남는 키·인자 다른 함수가 typecheck red다.
   `dictionary-consistency.test.ts`가 ① en과 같은 문자열은 **키 경로** 허용 목록에만(값으로 허용하면 es의 `Error`·`General` 같은 동철어가 다른 키의 누락까지 통과시킨다 —
@@ -3014,7 +3015,7 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
   `parseColorScheme` 불통과면 `invalid` → `readSession()`이 `ok`가 아니면 무기록 `failed`(redirect하지 않는다) → 세션 `userId`로 계정 갱신(실패면 무기록
   `failed` — 쿠키만 쓰면 다음 렌더에서 계정의 옛 값이 이긴다) → 쿠키를 **무조건** 쓴다(`httpOnly` · `sameSite: "lax"` · `secure`는 `x-forwarded-proto`
   첫 항목이 `https`일 때 — `setUiLocale`과 같은 판정 · 1년. 로그인 중에도 쓰는 것은 로그아웃 뒤 공개 페이지가 같은 테마를 보게 하려는 것이다) →
-  `revalidateAfterCommit("color-scheme")`(커밋 뒤라 던져도 `ok`). `ProjectEvent`를 남기지 않는다. 쿠키 속성의 출처는 `lib/color-scheme/cookie-spec.ts`의
+  `revalidateAfterCommit("color-scheme")`(커밋 뒤라 던져도 `ok`). `ProjectEvent`를 남기지 않는다. 쿠키 속성의 출처는
   `lib/device-cookies/spec.ts`의 `deviceCookieSpec` 한 곳이다(화면 언어 쿠키와 공유 — Action은 `cookies().set`, 로그인 동기화는 직렬화).
 - **둘째 쿠키 쓰기는 로그인 동기화다**(2026-10-05, fix1·fix2 — 2026-10-06 fix3에서 **화면 언어 쿠키 `malmoi-ui-locale`(`User.uiLocale`, §6.355)도 같은 장치로 옮겼다**: 래퍼 하나가 두 쿠키를 각각 비교해 덧붙이고, 속성은 `setUiLocale` Action과 `lib/device-cookies/spec.ts` 한 곳이다) — 로그인이 끝나면 계정의 테마·언어를 이 기기 쿠키로 옮겨 적어, 로그아웃 뒤·다음 로그인 직전 화면이 계정 값과
   같게 한다(첫 로그인 순간의 한 번 전환은 남는다). 계정 값이 없거나 지원 밖이면 **쓰지 않고**(기기 선택 보존), 요청 쿠키가 이미 같은 값이어도 쓰지 않는다. DB 쓰기 0, 던지지 않는다.
@@ -3089,6 +3090,30 @@ relation load strategy에 따른다. 멤버십이 없으면 나머지는 0회다
 ⚠️ `at ≤ now`로 찍혔지만 조회 뒤에 커밋된 행은 한 번도 보이지 않은 채 읽음이 될 수 있는 잔여 창이 있다.
 열람 기록은 계정에만 남고 별도 쿠키·항목별 이력·외부 전송을 만들지 않는다. `lib/privacy/collected.ts`가 개인정보로 등재한다.
 
+**`/inbox` 페이지** (2026-10-09, inbox-page) — `app/(edit)/inbox/page.tsx`가 `requireUser` → **조회 전** `now` → `loadAttentionInbox` →
+`InboxList`(서버) + 섬 `MarkSeen`이고, 섬이 **마운트 뒤** `markAttentionSeenAction(now.toISOString())`을 한 번 부른다. 목록은 드롭다운과 같은 `InboxPlan`이다.
+⚠️ **GET 렌더는 아무것도 쓰지 않는다** — 지금은 `loading.tsx`가 있는 동적 라우트의 기본 prefetch가 loading 경계까지만 받지만, `prefetch={true}`·
+`staleTimes`·Cache Components 설정 하나로 본체가 실행되면 보지 않은 목록이 읽음이 된다. 그 보장을 설정에 기대지 않는다(`app/(edit)/inbox/__tests__/page.test.tsx`가 렌더 중 쓰기 0회를 센다).
+드롭다운의 열기 Action을 다시 부르지 않는 것은 서버가 이미 그린 목록을 한 번 더 조회하기 때문이다.
+- **쓰기는 한 벌이다** — 두 Action 모두 `app/inbox/actions.ts`의 모듈 비공개 `markSeen`(위 단조 `updateMany`)을 부른다. 둘이면 단조 조건이 갈린다.
+  ⚠️ export하지 않는다 — `"use server"` 파일의 export는 전부 클라이언트가 부를 수 있는 Action이 된다.
+- **`at`은 클라이언트를 거친다** — `clampSeenAt`(`lib/inbox/plan.ts`)이 `toISOString()` 왕복이 같은 문자열만 받고(`Date` 객체·숫자·비ISO는 `null` → `invalid`, 쓰기 0)
+  `min(at, 서버 now)`로 자른다. 쓰는 대상은 세션 사용자 행 하나라 위조로 얻는 것은 자기 항목을 더 일찍 읽음 처리하는 것뿐이다(서명 토큰은 과하다).
+  `at`이 조회 전 시각이라 위 잔여 창은 드롭다운과 같다.
+- **반환** `{ status: "ok"; marked } | { status: "invalid" } | { status: "failed" }` — 세션 거부는 `failed`, 쓰기 예외는 `ok + marked: false`(목록은 이미 보였다),
+  갱신 0행(이미 더 늦은 워터마크 · 뒤로 가기로 복원된 옛 `now`)도 `marked: true`다. 그때 거짓 0이 된 배지는 다음 마운트의 배지 조회가 회복한다. `revalidatePath` 없음.
+  `USER_SCOPED_ACTIONS`에 등재돼 있다(세션 사용자 행 하나에만 쓴다).
+- **탭 안 안 읽음 수는 `lib/inbox/unread-store.ts` 모듈 store 하나다** — 헤더와 사이드바는 `(edit)` 레이아웃에 있어 페이지 이동에 다시 마운트되지 않으므로
+  각자의 상태로는 페이지의 기록을 모른다. **쓰는 쪽은 헤더 `AttentionInbox` 하나**(마운트 배지 Action · 닫힐 때 0)이고 사이드바 `InboxCount`는 읽기만 한다 —
+  배지 수 조회가 늘지 않는다. 페이지 섬은 `marked: true`일 때만 `notifySeen()`을 보내고, 헤더가 0으로 만들 시점(닫혀 있으면 즉시 + 캐시 목록 `readAll`, 열려 있으면 닫힐 때)을 정한다.
+  Provider가 아닌 이유는 공개 셸 헤더도 같은 `AttentionInbox`라서다(공개 셸엔 사이드바·페이지가 없다).
+  ⚠️ **서버 스냅샷은 늘 0이고 렌더 중 `setUnread`는 금지다** — 이 모듈은 SSR에서도 평가되어 서버 프로세스의 인스턴스 하나를 요청들이 공유한다. 사이드바 배지는
+  SSR에 없고 하이드레이션 뒤 헤더 응답이 오면 선다(레이아웃 렌더에 집계를 싣지 않는다는 위 결정을 지킨다).
+- ⚠️ **늦게 온 옛 응답이 지운 배지·점을 되살린다** — 응답 순서는 Action 큐가 아니라 네트워크가 정한다. 헤더는 **마운트 세대**(effect 정리가 올린다 — 셸 전환으로 해제된 헤더·
+  StrictMode 첫 effect의 응답 폐기)와 **읽음 신호 세대**(`seenThrough` — 신호 전에 띄운 목록 요청은 `marked`·성공·실패와 무관하게 폐기)로 거른다.
+  신호 뒤 도착한 배지 응답도 버린다(`/inbox` 직접 로드에서 배지 Action과 읽음 Action이 동시에 출발한다). 신호 뒤 새로 시작한 목록 조회는 실제 안 읽음을 그대로 보인다.
+- **다른 탭은 범위 밖이다** — 다음 마운트까지 옛 배지다(실시간 갱신이 없는 것과 같은 판정).
+
 ### 6.37 검색의 공개·사용자 경계 (`app/search/actions.ts` · `lib/search/`, global-search)
 
 - **공개 색인은 Docs만 든다.** `app/api/search-index/[uiLocale]/route.ts`는 질의를 받지 않는 GET으로 `{ docs: DocsEntry[] }`를 준다.
@@ -3104,6 +3129,9 @@ relation load strategy에 따른다. 멤버십이 없으면 나머지는 0회다
   `redirect`·`revalidatePath`·검색어 로그가 없다. 단 `searchKeysAction`의 비문자열 q는 세션 조회 전에 빈 성공 결과로 끝낸다.
   `loadSearchMembershipsAction`은 `loadMemberships(prisma, session.userId)` → `toNavProjects`로
   `slug`·`name`·`role`·`archived`·`image`·`defaultSurfaceSlug`·`counts`만 싣는다(보관 포함).
+  ⚠️ **소비자가 둘이다** (2026-10-09, user-menu-projects) — 공개 셸의 검색 Dialog와 **헤더 사용자 메뉴의 프로젝트 그룹**(`UserMenu`).
+  검색용 이름이지만 반환 필드가 공개 셸 검색이 이미 받는 일곱과 같아 새 노출이 없고, 인가는 이동한 페이지의 `requireProjectAccess`가 한다.
+  앱 셸은 헤더가 받은 멤버십을 메뉴에 넘겨 이 Action을 부르지 않는다.
 - **Keys의 테넌트 제한은 SQL 안에서 확정한다.** `searchKeys`는 세션 userId의 `ProjectMember`와 비보관 `Project`로 만든
   멤버 id 배열로 `projectId`를 좁힌다. 입력은 q와 순위 힌트 `activeSlug`뿐이며 클라이언트 id·slug 목록은 인가에 쓰지 않는다.
   양쪽 SQL은 보관 소스·첫 적재 전 소스(`lastCommitSha IS NULL`)·orphaned 키를 제외하고, 번역값은 orphaned 아닌 로케일만 본다.
@@ -3118,11 +3146,16 @@ relation load strategy에 따른다. 멤버십이 없으면 나머지는 0회다
   검색 코어의 조건부 두 SQL과 최종 실행 계획·실측은 §1.965가 든다.
 - **캐시 정책은 공개·개인 데이터가 다르다.** `lib/search/load-index.ts`만 동시 호출 Promise와 성공 결과를 **화면 언어별 키로** 탭 수명 동안 재사용한다.
   네트워크·HTTP·JSON 파싱 실패는 Promise를 비워 다음 호출이 재시도한다. `lib/search/load-memberships.ts`는 매 호출마다 Action을
-  실행하고 성공·실패를 저장하지 않는다. 결과는 Action의 union(`{ ok: true, memberships } | { ok: false, error: "unauthorized" | "unavailable" }`)
+  실행하고 성공·실패를 저장하지 않는다. ⚠️ **"다음 열기에 재사용하지 않는다"는 열기 회차 단위다** — 사용자 메뉴는 **열기 직전에 미리 읽는다**
+  (트리거의 hover·focus·열기 중 처음 온 신호가 하나를 시작하고, 그 Promise 하나를 ref에 보유하다 메뉴가 닫힐 때 비운다. 응답은 `ref.current === 그 Promise`일
+  때만 그린다 — 닫힌 뒤 응답·이전 회차·A→B 역전을 세대 번호 없이 가른다). 미리 읽기는 그 회차의 일부이고, 닫혀 트리거로 돌아온 포커스는 신호가 아니다. 결과는 Action의 union(`{ ok: true, memberships } | { ok: false, error: "unauthorized" | "unavailable" }`)
   그대로이고 네트워크 throw만 `unavailable`로 접는다 — **실패를 비로그인으로 접지 않는다**(2026-10-03, search-ux-unify C1: 헤더에 아바타가
   있는데 비로그인 검색이 서면 거짓이다). 멤버십이 없는 세 경우(비로그인 · `unauthorized` · `unavailable`)는 색인의 Projects·Pages가 비어
   공개 Docs만 찾는다 — 노출을 줄이는 쪽이라 서버 판정은 그대로다. 앱 셸은 레이아웃이 넘긴 멤버십을 쓰므로 `unauthorized`·`unavailable`은
-  공개 셸에서만 생긴다. 권한 회수·역할·보관 변경이 다음 서버 호출부터 반영되는 §6.00④를 지킨다.
+  공개 셸에서만 생긴다. 사용자 메뉴는 두 실패 모두 프로젝트 그룹을 조용히 지운다 — 위 `Projects` 항목이 같은 목적지다(DESIGN §6.5). 권한 회수·역할·보관 변경이 다음 서버 호출부터 반영되는 §6.00④를 지킨다.
+- **Pages 색인은 셸 내비에서 만든다**(`lib/search/nav-index.ts`의 `navSearchEntries` — `navWorkItems` · `New project` · 프로젝트 구역 · 하단 `changelog`).
+  내비와 따로 적으면 순서가 갈린다. 2026-10-09(inbox-page)부터 `Inbox`가 `Projects` 바로 뒤에 서서, 지금 프로젝트가 없는 빈 검색어 미리보기의 사용자 축 앞 셋이
+  `Projects · Inbox · MCP connector`다(`Preferences`·`Account`는 검색어로 찾는다).
 - **검사는 코어까지 내려간다.** `entry-points.test.ts`의 `MEMBER_JOIN_CORES`는 `searchKeys` 호출과 Action의 세션 거부를 함께
   요구하고, 코어 본문의 `ProjectMember`·userId 바인딩도 검사한다. 멤버십 Action은 `USER_SCOPED_ACTIONS`다.
   `lib/keys/__tests__/search.integration.ts`가 다른 사용자의 비노출·권한 회수·제외 조건·순위·왕복 상한을 실제 DB에서 잰다.
@@ -3776,8 +3809,8 @@ sharp 정규화(192px 이내 WebP)로 재사용하며 PII 봉투는 쓰지 않�
 `project:settings` 인가를 확인한다. 업로드는 tx 밖, Project 행 잠금 뒤 이전 URL 조회·새 URL 저장은 tx 안,
 이전 객체 삭제는 커밋 뒤다. DB 실패는 새 객체만 정리하고 삭제 실패는 스모크의 고아 후보로 남는다.
 
-`updateProjectName`은 생성과 공유하는 200자 상한·trim을 적용하고 slug를 바꾸지 않는다. 이름·이미지는
-번역 값이 아니므로 서버에서 archived를 거부하지 않는다. 보관 UI의 비활성과 의도적으로 갈린다.
+`updateProjectName`은 생성과 공유하는 200자 상한·trim을 적용하고 slug를 바꾸지 않는다.
+보관된 프로젝트에서는 이름·이미지 변경도 서버가 거부한다. 이미지 업로드는 사전 판정하고, 모든 변경은 Project 잠금 안에서 보관 상태를 다시 검사한다.
 성공 뒤 `/` layout을 갱신하고 설정·목록·Home·셸(사이드바·프로젝트 스위처)·초대 수락 화면과 초대 메일이 image를 읽는다. Blob 스모크는 avatars와
 projects를 각각 조회해 User.image/Project.image 참조와 대조하며 고아를 자동 삭제하지 않는다.
 
@@ -4003,7 +4036,7 @@ default ACL을 지우지 않고 닫는 층이라, 적용·확인이 끝나면 �
   preview 산출물을 올릴 때 프로덕션이 `Disallow: /`로 굳는다. **모르면 숨긴다** — `production` 밖은 전부 `Disallow: /`(보안 헤더의
   "모르면 프로덕션처럼 좁힌다"와 반대 방향의 fail-closed).
 - ⚠️ **noindex 셋(`/signin`·`/invite/**`·`/signin/link/**`)을 robots.txt로 막지 않는다** — 막으면 크롤러가 페이지의 noindex를 못 보고
-  외부 링크만으로 URL이 색인된다(토큰이 검색 결과에 뜬다). `/projects`·`/account`는 비로그인에게 302라 본문이 없어 robots 거부가 맞다.
+  외부 링크만으로 URL이 색인된다(토큰이 검색 결과에 뜬다). `/projects`·`/account`·`/preferences`·`/inbox`는 비로그인에게 302라 본문이 없어 robots 거부가 맞다.
 - ⚠️ **스트리밍 metadata를 전 UA에서 끈다**(`next.config.ts`의 `htmlLimitedBots: /.*/`). `/`·`/docs/**`가 세션을 읽어 동적이라 Next는
   metadata를 스트리밍하고, HTML-limited 목록 밖의 UA(GPTBot·ClaudeBot·PerplexityBot)는 `<title>`·canonical을 `<body>` 끝에서 받는다.
   정적 `metadata` export도 동적 페이지에서는 스트리밍되므로 페이지별로는 못 막는다.

@@ -11,6 +11,7 @@ import { CountBadge } from "@/components/ui/count-badge";
 import { Button } from "@/components/ui/button";
 import { useMessages } from "@/components/i18n/messages-provider";
 import type { Messages } from "@/lib/i18n";
+import { useInboxUnread } from "@/lib/inbox/unread-store";
 import { activeProject, navFooterItems, navZones, type NavItem, type NavProject } from "@/lib/shell/nav";
 import { cn } from "@/lib/utils";
 
@@ -231,7 +232,9 @@ function Item({ item, active, collapsed = false }: { item: NavItem; active: bool
         ⚠️ **개수는 0이면 서지 않는다** (2026-10-01 ux-drift-unify Q13 — 옛 규칙 "0도 보인다"의 철회). 같은 개수가 카드 머리에서는
         0에 사라지고 여기서만 `0`으로 서서 한 화면 안에서 규칙이 둘이었다. 문자열 배지(버전)는 개수가 아니라 그대로다.
       */}
-      {typeof item.badge === "number" ? (
+      {item.key === "inbox" ? (
+        <InboxCount className={cn("ml-auto shrink-0", FADE, collapsed && "opacity-0")} />
+      ) : typeof item.badge === "number" ? (
         <CountBadge
           count={item.badge}
           label={navCountLabel(m, item.key)?.(item.badge) ?? String(item.badge)}
@@ -244,6 +247,17 @@ function Item({ item, active, collapsed = false }: { item: NavItem; active: bool
       )}
     </Link>
   );
+}
+
+/**
+ * Inbox 항목의 배지 — **서버 값이 아니라 헤더 `AttentionInbox`가 쓰는 탭 안 store 값이다**(inbox-page D2). 배지 수를 따로 조회하지 않는다.
+ * 훅을 항목마다 조건부로 부르지 않도록 자식 하나로 뗐다. 서버 렌더 스냅샷은 0이라 배지 없이 그리고, 하이드레이션 뒤 헤더 응답이 오면 선다.
+ * 헤더는 `9+`로 접지만 여기는 다른 사이드바 배지처럼 실제 수다.
+ */
+function InboxCount({ className }: { className: string }) {
+  const m = useMessages();
+  const unread = useInboxUnread();
+  return <CountBadge count={unread} label={navCountLabel(m, "inbox")?.(unread) ?? String(unread)} className={className} />;
 }
 
 /** 이 링크의 이동이 진행 중이면 보이지 않는 표식 하나 — 면은 링크가 그린다(`Item`). */

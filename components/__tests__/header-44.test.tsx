@@ -3,7 +3,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { createElement as h } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { setUnread } from "@/lib/inbox/unread-store";
 
 import { AppFrame } from "@/components/landing/mockup/app-frame";
 import { PublicShell } from "@/components/public-shell/public-shell";
@@ -65,3 +66,6 @@ describe("헤더 44 — 패널 시작 56 · 요소 중심 28", () => {
     expect([...frame.classList].some((c) => c.startsWith("gap-"))).toBe(false);
   });
 });
+
+// 안 읽음 수는 모듈 store라 파일 안 테스트 사이로 샌다(inbox-page D2) — 헤더·사이드바를 그리는 파일은 매번 되돌린다.
+afterEach(() => { setUnread(0); });

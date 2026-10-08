@@ -45,6 +45,7 @@ export const FUNCTION_ARGS: { readonly [P in FunctionPaths<Messages>]: Parameter
   "repositorySync.baseBranchMissing.editor": ["X"],
   "surfaces.sourceCounts": [2, 2],
   "common.nav.projectSwitcher.empty": ["X"],
+  "common.nav.inboxCount": [12],
   "landing.hero.latest": ["X"],
   "landing.mockup.file": ["X"],
   "preferences.timeZone.now": ["X"],

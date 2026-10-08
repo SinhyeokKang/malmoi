@@ -5,18 +5,18 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { loadAttentionBadgeAction, openAttentionInboxAction } from "@/app/inbox/actions";
 import { useMessages, useUiLocale } from "@/components/i18n/messages-provider";
+import { attentionItemKey, attentionRowSlots } from "@/components/inbox/row-slots";
+import { LiveStatus } from "@/components/shell/live-status";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CommandStatus } from "@/components/ui/command";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRow, DropdownMenuRowSkeleton, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { EmptyState } from "@/components/ui/empty-state";
-import { IconTile } from "@/components/ui/icon-tile";
 import { ListGroup } from "@/components/ui/list-group";
 import { ProjectThumbnail } from "@/components/ui/project-thumbnail";
 import { Skeleton } from "@/components/ui/skeleton";
-import { attentionHref, attentionTile, body, tail, title } from "@/lib/home/attention-view";
-import { badgeLabel, type InboxItem, type InboxPlan } from "@/lib/inbox/plan";
-import { relativeTime } from "@/lib/relative-time";
+import { badgeLabel, type InboxPlan } from "@/lib/inbox/plan";
+import { onSeen, setUnread, useInboxUnread } from "@/lib/inbox/unread-store";
 import { cn } from "@/lib/utils";
 
 type List = { status: "idle" } | { status: "ok"; plan: InboxPlan; loadedAt: Date } | { status: "failed" };
@@ -32,34 +32,41 @@ type List = { status: "idle" } | { status: "ok"; plan: InboxPlan; loadedAt: Date
  *
  * ⚠️ **골격은 첫 조회 전에만** — 다시 열면 받은 목록을 바로 보이고 뒤에서 갱신한다. 항목 key가 고정이라 응답이 와도 같은 행이
  * 다시 마운트되지 않아 로빙 포커스를 잃지 않는다(POSTMORTEM 2026-09-20 · 09-24).
+ *
+ * ⚠️ **안 읽음 수는 탭 안 store다**(inbox-page D2) — 사이드바 Inbox 배지가 같은 n을 읽고, `/inbox` 페이지의 읽음 신호(`onSeen`)를 여기서 받는다.
+ * **수를 쓰는 쪽은 이 컴포넌트 하나다.** 헤더 수명 밖의 응답(셸 전환 · StrictMode 재설정)과 읽음 신호 전에 띄운 목록 요청의 응답은 버린다 —
+ * 응답 순서는 Action 큐가 아니라 네트워크가 정하므로 늦게 온 옛 사실이 지운 배지·점을 되살린다.
  */
 export function AttentionInbox() {
   const m = useMessages();
-  const [unread, setUnread] = useState(0);
-  const [list, setList] = useState<List>({ status: "idle" });
+  const unread = useInboxUnread();
+  const [list, setListState] = useState<List>({ status: "idle" });
+  // 읽음 신호 처리가 렌더 밖에서 지금 목록을 읽어야 한다(캐시 유무 · 읽은 목록으로 바꾸기). 쓰기는 늘 `setList`를 지난다.
+  const listRef = useRef<List>(list);
+  const setList = useCallback((next: List) => { listRef.current = next; setListState(next); }, []);
   const [loading, setLoading] = useState(false);
   const open = useRef(false);
   const clearOnClose = useRef(false);
   const latest = useRef(0);
+  // 이 마운트의 세대 — effect 정리가 올린다. 그 전 세대(해제된 헤더 · StrictMode의 첫 effect)가 띄운 요청의 응답은 store·목록을 못 바꾼다.
+  const mount = useRef(0);
+  // 읽음 신호가 온 때의 목록 요청 번호 — 그 이하는 신호 전 사실이라 `marked`·성공·실패와 무관하게 버린다.
+  const seenThrough = useRef(0);
   // 서버 워터마크가 실제로 움직였나 — 그 뒤 도착한 배지 수는 옛 사실이다. 실패·`marked: false` 열기는 워터마크를 안 움직였으니 배지를 버리지 않는다.
   const marked = useRef(false);
 
-  useEffect(() => {
-    void loadAttentionBadgeAction().then(result => {
-      // 읽음이 기록된 뒤 도착한 배지 수로 지운 배지를 되살리지 않는다.
-      if (result.status === "ok" && !marked.current) setUnread(result.unread);
-    }, () => {});
-  }, []);
-
   const load = useCallback(() => {
+    const generation = mount.current;
     const id = ++latest.current;
     setLoading(true);
+    const live = () => generation === mount.current && id > seenThrough.current;
     const settle = (next: List) => {
       if (id !== latest.current) return;
       setList(next);
       setLoading(false);
     };
     openAttentionInboxAction().then(result => {
+      if (!live()) return;
       if (result.status === "ok" && result.marked) {
         marked.current = true;
         if (open.current) clearOnClose.current = true;
@@ -67,8 +74,33 @@ export function AttentionInbox() {
       }
       // 닫힌 뒤 도착한 marked 응답은 곧바로 "읽은 목록"으로 캐시한다 — 다음 열기가 응답 전에 이 목록을 그린다(#191).
       settle(result.status !== "ok" ? { status: "failed" } : { status: "ok", plan: result.marked && !open.current ? readAll(result.plan) : result.plan, loadedAt: result.loadedAt });
-    }, () => settle({ status: "failed" }));
-  }, []);
+    }, () => { if (live()) settle({ status: "failed" }); });
+  }, [setList]);
+
+  useEffect(() => {
+    const generation = ++mount.current;
+    void loadAttentionBadgeAction().then(result => {
+      // 읽음이 기록된 뒤 도착한 배지 수로 지운 배지를 되살리지 않는다.
+      if (generation === mount.current && result.status === "ok" && !marked.current) setUnread(result.unread);
+    }, () => {});
+    // `/inbox` 페이지가 읽음을 기록했다 — 드롭다운에서 marked 응답을 받은 것과 같이 다루되, 신호 전 목록 요청은 무효로 만든다.
+    const stop = onSeen(() => {
+      marked.current = true;
+      seenThrough.current = latest.current;
+      setLoading(false);
+      const current = listRef.current;
+      if (open.current) {
+        // 열린 메뉴 밑에서 트리거가 줄지 않게 0은 닫힐 때다(시안 D1). 받아 둔 목록이 없으면 옛 요청을 기다리지 않고 새로 묻는다.
+        clearOnClose.current = true;
+        if (current.status !== "ok") load();
+      } else {
+        setUnread(0);
+        // 다시 열면 응답 전에 이 캐시가 그려진다 — 이미 읽은 행에 점이 서지 않게 지운다(#191).
+        if (current.status === "ok") setList({ ...current, plan: readAll(current.plan) });
+      }
+    });
+    return () => { mount.current++; stop(); };
+  }, [load, setList]);
 
   const badge = badgeLabel(unread);
   return (
@@ -80,7 +112,8 @@ export function AttentionInbox() {
         setUnread(0);
         // ⚠️ **캐시 목록의 행 표시도 함께 지운다**(#191 · spec 7 "다음 열람부터 사라진다") — 다시 열면 응답 전에 이 목록이 그대로 그려지므로,
         // 안 지우면 이미 읽은 행에 점·sr `Unread`가 응답 도착까지 다시 선다. 응답이 오면 워터마크보다 새 행만 다시 안 읽음이다.
-        setList(current => current.status === "ok" ? { ...current, plan: readAll(current.plan) } : current);
+        const current = listRef.current;
+        if (current.status === "ok") setList({ ...current, plan: readAll(current.plan) });
       }
     }}>
       <DropdownMenuTrigger asChild>
@@ -121,7 +154,7 @@ export function AttentionInbox() {
             : list.plan.groups.map(group => (
               <ListGroup key={group.project.slug} heading={group.project.name}
                 icon={<ProjectThumbnail size="xs" name={group.project.name} src={group.project.image} />}>
-                {group.items.map(item => <Row key={itemKey(group.project.slug, item)} slug={group.project.slug} item={item} now={list.loadedAt} />)}
+                {group.items.map(item => <Row key={attentionItemKey(group.project.slug, item)} slug={group.project.slug} item={item} now={list.loadedAt} />)}
               </ListGroup>
             )))}
         </div>
@@ -131,47 +164,14 @@ export function AttentionInbox() {
 }
 
 /**
- * 항목 하나 — Home `AttentionRow`와 같은 문장(굵은 사실 + 근거 꼬리, 보조줄은 아래, EDITOR 실패는 따로 한 줄 Owner 안내).
- * ⚠️ **안 읽음 점은 행 왼쪽 여백 16 안(x 5–11)에 선다** — 칩이 그룹 머리와 같은 x16에 남는다. 접근 이름 맨 앞이 sr `Unread`다.
+ * 항목 하나 — 내용은 Home 카드·`/inbox` 페이지와 같은 조각(`attentionRowSlots`)이고 이 그릇만 메뉴 행이다.
+ * ⚠️ 시각은 짧은 형(`12m ago`)이다 — 360 메뉴의 문장 칸(226)을 지킨다(#190). 점이 `absolute`라 행에 `relative`를 준다.
  */
 function Row({ slug, item, now }: { slug: string; item: InboxPlan["groups"][number]["items"][number]; now: Date }) {
   const m = useMessages();
   const uiLocale = useUiLocale();
-  const tile = attentionTile(item);
-  const Tile = tile.icon;
-  const sub = title(m, item);
-  return (
-    <DropdownMenuRow href={attentionHref(slug, item)} className="relative"
-      icon={<>
-        {item.unread && <>
-          <span className="sr-only">{m.inbox.unread}</span>
-          <span data-unread-dot aria-hidden className="bg-primary absolute top-1/2 left-1.25 size-1.5 -translate-y-1/2 rounded-full" />
-        </>}
-        <IconTile tone={tile.tone}><Tile aria-hidden /></IconTile>
-      </>}
-      title={<span className="text-pretty"><span className="font-medium">{body(m, item)}</span>{tail(m, item)}</span>}
-      description={sub === "" && !item.ownerRetries ? undefined : <>
-        {sub !== "" && <span className="block truncate">{sub}</span>}
-        {item.ownerRetries && <span className="mt-copy-gap block">{m.projects.importFailure.ownerRetries}</span>}
-      </>}
-      // 시각은 시안의 짧은 형(`12m ago`)이다 — 360 메뉴의 문장 칸(226)을 지킨다(#190). Home 카드는 긴 형 그대로다.
-      aside={item.at === null ? undefined : <span className="text-muted-foreground shrink-0 text-xs">{relativeTime(item.at, now, uiLocale, { style: "narrow" })}</span>}
-    />
-  );
-}
-
-/**
- * sr 상태 문장 — region이 **먼저 빈 채로 서고** 문장은 한 박자 뒤에 들어온다. 메뉴 면은 열 때마다 새로 마운트되므로, 문장과 함께
- * 나타나는 region은 낭독이 보장되지 않는다(`CommandStatus` 머리 주석과 같은 이유).
- */
-const ANNOUNCE_DELAY_MS = 100;
-function LiveStatus({ text }: { text: string }) {
-  const [shown, setShown] = useState("");
-  useEffect(() => {
-    const timer = setTimeout(() => setShown(text), ANNOUNCE_DELAY_MS);
-    return () => clearTimeout(timer);
-  }, [text]);
-  return <div data-inbox-live role="status" aria-live="polite" className="sr-only">{shown}</div>;
+  const { href, ...slots } = attentionRowSlots(m, uiLocale, slug, item, now, { time: "narrow" });
+  return <DropdownMenuRow href={href} className="relative" {...slots} />;
 }
 
 /** 첫 조회 전 골격 — 그룹 머리 한 줄 + 행 셋. 메뉴 항목이 0개라 ↓는 아무 데도 가지 않는다. `aria-busy`는 골격에만 선다(상태 문장은 `LiveStatus`). */
@@ -188,9 +188,4 @@ function Loading() {
 /** 읽음이 기록된 목록 — 행의 안 읽음 표시만 내린다(순서·항목은 그대로). */
 function readAll(plan: InboxPlan): InboxPlan {
   return { ...plan, groups: plan.groups.map(group => ({ ...group, items: group.items.map(item => ({ ...item, unread: false })) })) };
-}
-
-/** 종류·프로젝트·표면·로케일이 키다 — 응답이 와도 같은 행이 같은 노드로 남는다. */
-function itemKey(slug: string, item: InboxItem): string {
-  return `${item.kind}:${slug}:${"surfaceSlug" in item ? item.surfaceSlug : ""}:${"code" in item ? item.code : ""}`;
 }

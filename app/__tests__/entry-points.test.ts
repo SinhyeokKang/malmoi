@@ -124,6 +124,8 @@ const USER_SCOPED_ACTIONS = new Set([
   // 세션 사용자의 비보관 멤버십에서 범위를 정하고, 읽음 시각도 그 사용자 행 하나에만 쓴다.
   "inbox/actions.ts#loadAttentionBadgeAction",
   "inbox/actions.ts#openAttentionInboxAction",
+  // 페이지 읽음 기록 — 입력 시각은 서버 시각으로 잘리고 세션 사용자 행 하나에만 단조로 쓴다.
+  "inbox/actions.ts#markAttentionSeenAction",
   // 멤버십은 세션 사용자가 소유한 목록이다.
   "search/actions.ts#loadSearchMembershipsAction",
   // Session revocation affects only the authenticated user, including users without projects.
@@ -958,6 +960,10 @@ describe("보호 라우트가 1차 차단에 걸린다 — matcher는 전 페이
     for (const path of ["/preferences", "/preferences/", "/preferences.rsc", "/preferences.json", "/_next/data/build/preferences.json",
       "/preferences.segments/x.segment.rsc", "/%70references"]) expect(isProtectedPath(path), path).toBe(true);
     for (const path of ["/preferencesx", "/preferences/x", "/api/preferences", "/ui-locale"]) expect(isProtectedPath(path), path).toBe(false);
+    // `/inbox` (inbox-page) — 같은 사용자 축 한 장짜리라 같은 모양이다. 읽음 Action(`app/inbox/actions.ts`)은 페이지가 아니라 공개 셸도 부르는 진입점이다.
+    for (const path of ["/inbox", "/inbox/", "/inbox.rsc", "/inbox.json", "/_next/data/build/inbox.json",
+      "/inbox.segments/x.segment.rsc", "/%69nbox"]) expect(isProtectedPath(path), path).toBe(true);
+    for (const path of ["/inboxes", "/inbox/x", "/api/inbox"]) expect(isProtectedPath(path), path).toBe(false);
     // 접두 문자열만 같은 경로는 보호 대상이 아니다 — 이 줄이 위 넷을 의미 있게 만든다.
     expect(isProtectedPath("/projectsx")).toBe(false);
     expect(isProtectedPath("/invite/sample")).toBe(false);

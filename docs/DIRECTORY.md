@@ -48,7 +48,7 @@ app/
   not-found.tsx · error.tsx · global-error.tsx  셸 밖(/invite·/signin·오타 URL)의 경계. 앞 둘은 components/root-fallback.tsx를
                         쓰고, global-error는 루트 레이아웃을 대신하므로 html·body를 스스로 든 맨 HTML이다(전역 CSS 없음)
   fonts/geist/          Geist 정방향 가변 WOFF2 원본과 SIL OFL 라이선스·출처/SHA. git 추적 자산이며 next/font/local이 자사 호스트/swap/preload한다.
-  globals.css           Tailwind 4 @theme. ⚠️ @custom-variant dark 한 줄이 라이트를 고정한다
+  globals.css           Tailwind 4 @theme. ⚠️ @custom-variant dark는 dark: 유틸의 OS 다크 자동 적용을 막는다. 테마는 data-theme와 light-dark()가 담당한다
   __tests__/            entry-points(진입점 소스 스캔 — 모든 page·route·actions가 인가를 지나는지 fs로
                         센다. 예외 열을 이름으로 고정(2026-09-13에 api/push/failure가 붙어 하나 늘었다)
                         + routes.ts↔라우트 대조 + 쿼리 생성기/수신자 대조)
@@ -56,7 +56,7 @@ app/
                         · api/__tests__/pull-budget(야간 cron 시간 예산 — 가짜 시계로 넘긴 수가 unprocessed에 실리는지)
                         · locked-access(잠금 재판정 자리를 AST로 센다 — 자리 목록은 그 파일의 SITES·TOKEN_SITES가 정본,
                         `$transaction` 콜백 안의 호출만, 주석 제외)
-                        · exempt-route-guards(EXEMPT route → 필수 가드 호출 맵 — /api/mcp는 resolveApiToken. 2026-09-28)
+                        · exempt-route-guards(EXEMPT route → 필수 가드 호출 맵 — /api/mcp는 resolveBearer — 개인 토큰·OAuth access 공통 입구)
                         · root-boundaries · seo-metadata · crawl-files · landing-page · docs-page · privacy-page · changelog-page
                         · well-known(OAuth 발견 문서)
                         · api/__tests__/ github-callback · push-failure · push-open-pr · pull-nightly · route-diagnostics ·
@@ -99,6 +99,11 @@ app/
                         revokeApiToken · disconnectOAuthConnection — 세션의 userId + 연결 id, 코어는 lib/oauth-server/revoke).
                         ⚠️ 토큰이 토큰을 만들지 않는다 — MCP 도구에 발급·폐기가 없고 여기가 유일한 길이다.
                         ⚠️ 서버 URL은 이 요청의 origin이다 — preview에서 보면 preview 주소여야 조각을 그대로 쓴다
+    inbox/              Inbox(`/inbox`, 2026-10-09 inbox-page). 사용자 축 한 장 — requireUser만 지난다(preferences/·mcp/와 같은 형 · layout.tsx가
+                        ContentPanel을 든다 · loading.tsx). page.tsx는 requireUser → 조회 전 now → loadAttentionInbox → InboxList + MarkSeen(now ISO).
+                        ⚠️ 렌더는 아무것도 쓰지 않는다 — 읽음은 마운트 뒤 섬이 Action으로 쓴다(prefetch가 본체를 실행해도 읽음이 되지 않게).
+                        ⚠️ actions.ts가 여기 없다 — 공개 셸 헤더도 부르므로 app/inbox/actions.ts(괄호 밖)에 남는다. 두 디렉터리가 같은 세그먼트 /inbox로
+                        풀리지만 page.tsx가 이쪽 하나라 충돌하지 않는다. 보호 경로라 isProtectedPath와 robots disallow 두 곳에 등재된다
     projects/[slug]/    프로젝트 축. layout.tsx가 ContentPanel 하나를 든다 (우측 패널은 2026-09-16 제거 — DESIGN §6.55)
                         ⚠️ 레이아웃은 인가의 차단 지점이 될 수 없다(페이지와 병렬 렌더) — 서버 데이터를 안 읽는다
       (home)/           Home 전용 route group(URL 불변). ⚠️ loading.tsx를 [slug]/에 바로 두면
@@ -107,7 +112,8 @@ app/
         loading.tsx     Home 골격(⚠️ 여기도 ContentPanel을 안 든다 — 레이아웃이 이미 들어 둘이 된다)
       translations/    저장된 defaultSurfaceId로 보내는 legacy redirect
       locales/         Sources 목록으로 보내는 legacy redirect
-      sources/         소스 목록·상세 모달. actions.ts(updateBaseLocale + 읽기 전용 loadSourceDetail) · loading.tsx 골격
+      sources/         소스 목록·상세 모달. actions.ts(updateBaseLocale · removeSource · 읽기 전용 loadSourceDetail/previewSourceRemoval) · loading.tsx 골격
+                        제거는 미전달 편집이 있으면 소스별 승인 지문을 요구하고 미리보기는 쓰지 않는다
       surfaces/[surfaceSlug]/translations/  번역 작업 화면(트리·키 목록·로케일 세 패널 — translation-rework C4).
                         URL 계약은 lib/translations/query.ts 하나다(화면 층 — 옛 주소는 정규 주소로 redirect). 전 소스를 한 번 읽고 범위로 자른다.
                         선택 키의 permalink는 서버가 조립한다
@@ -141,13 +147,16 @@ app/
   invite/actions.ts     acceptInvitation 하나. ⚠️ **인가 예외** — 지날 프로젝트 인가가 없고 토큰이 대신한다.
                         entry-points의 면제가 파일이 아니라 **export 단위**(EXEMPT_ACTIONS)다 — 파일 단위면
                         여기 붙는 둘째 export가 조용히 무인가로 열린다
-  inbox/actions.ts     헤더 Inbox의 Action 둘(loadAttentionBadgeAction · openAttentionInboxAction — attention-inbox, 2026-10-05). page.tsx가 없어 라우트가 없다.
+  inbox/actions.ts     Inbox의 Action 셋(loadAttentionBadgeAction · openAttentionInboxAction — attention-inbox, 2026-10-05 · markAttentionSeenAction — `/inbox`
+                        페이지 섬이 마운트 뒤 부른다, inbox-page 2026-10-09). page.tsx는 여기 없고 (edit)/inbox/에 있다(같은 /inbox로 풀린다).
+                        두 열람 경로의 쓰기는 비공개 markSeen 한 벌이다(⚠️ export하지 않는다 — "use server" 파일의 export는 전부 Action이 된다).
                         편집 셸 헤더와 로그인한 공개 셸 헤더(/docs·/changelog·/privacy)가 같이 부르므로 (edit) 밖이다(2026-10-05 사용자 — search/와 같은 자리).
                         입력 없음, 세션의 userId로만 좁힌다, revalidatePath 없음. ⚠️ 인가 게이트는 isProtectedPath가 아니다 — Action은 현재 페이지 URL로
                         POST되므로 entry-points의 USER_SCOPED_ACTIONS가 센다
   search/actions.ts    검색 읽기 전용 Action 둘(searchKeysAction · loadSearchMembershipsAction). page.tsx가 없어 검색 라우트는 없다.
                         readSession union → 세션 userId로 키 코어/멤버십을 좁힌다. redirect·revalidate·질의 로그 없음.
-                        __tests__/actions.test.ts는 만료·장애·입력·일곱 NavProject 필드 투영을 센다
+                        __tests__/actions.test.ts는 만료·장애·입력·일곱 NavProject 필드 투영을 센다.
+                        loadSearchMembershipsAction의 소비자는 공개 셸의 검색 Dialog와 사용자 메뉴의 프로젝트 그룹 둘이다(2026-10-09 user-menu-projects)
   api/search-index/[uiLocale]/  route.ts — 그 언어 원고 SUMMARY 가이드 절의 공개 JSON { docs }, force-static. 질의·세션·DB·쿠키 없음.
                         ⚠️ 언어가 URL에 실린다 — force-static은 쿠키로 못 갈라서 generateStaticParams(= guideLocales()) + dynamicParams=false
                         (목록 밖 404). 옛 api/search-index/route.ts는 2026-10-04에 지웠다(ui-locales I2).
@@ -179,7 +188,7 @@ app/
                         설치·인가·리포 선택 변경이 전부 여기로 온다(state 없는 설치 계열 복귀는 착지만)
 middleware.ts           인증 차단의 유일한 1차 지점 + CSP의 유일한 출처(요청마다 nonce).
                         matcher는 전 페이지(/api·정적 자산 제외), 차단 대상은 isProtectedPath
-                        (/projects/** · /account · /mcp — 정본은 lib/auth/cookie.ts의 PROTECTED). 렌더 요청(GET·HEAD)만 막고 Action POST는 통과시킨다
+                        (/projects/** · /account · /preferences · /mcp — 정본은 lib/auth/cookie.ts의 PROTECTED). 렌더 요청(GET·HEAD)만 막고 Action POST는 통과시킨다
 ```
 
 ## components/
@@ -312,10 +321,17 @@ components/
                         ⚠️ 본문 랜드마크를 ContentPanel이 든다 — 화면은 자기 <main>을 안 든다
                         ⚠️ 사이드바 항목 노출은 편의이고 차단이 아니다(방어는 페이지) — 판정은 lib/shell/nav.ts
                         header-bar.tsx  앱·공개 헤더의 공통3칸 grid(start/center/end), 검색을 뷰포트 가운데에 둔다.
-                        header.tsx는 받은 멤버십을 검색에 넘기고 public-shell/header.tsx는 계정만 넘긴다
+                        header.tsx는 받은 멤버십을 검색·사용자 메뉴에 넘기고 public-shell/header.tsx는 계정만 넘긴다
+                        (사용자 메뉴가 열기 직전에 스스로 읽는다 — user-menu.tsx 머리 주석)
                         attention-inbox.tsx  헤더 Inbox(attention-inbox, 2026-10-05) — 세로선 오른쪽·아바타 왼쪽의 클라이언트 잎. 마운트 때 배지 Action 한 번,
                         열 때마다 open Action 한 번이다. ⚠️ 레이아웃 렌더에 싣지 않는다(클라이언트 이동에서 배지가 굳는다) ·
-                        배지 0은 메뉴가 닫힐 때 · 행·그룹은 ui/의 ListGroup·DropdownMenuRow만 든다(DESIGN §6.545)
+                        배지 0은 메뉴가 닫힐 때 · 행·그룹은 ui/의 ListGroup·DropdownMenuRow만 든다(DESIGN §6.545) ·
+                        안 읽음 수의 유일한 writer다(lib/inbox/unread-store — 사이드바 InboxCount는 읽기만, 2026-10-09 inbox-page)
+                        project-menu-item.tsx  메뉴 안 프로젝트 행(ProjectThumbnail xs + 이름 → Home)과 그 한 줄 골격 — LNB 스위처와 헤더
+                        사용자 메뉴가 같이 쓴다(2026-10-09 user-menu-projects). ⚠️ 프로젝트 도메인 조각이라 ui/가 아니다 · 골격은 행과 같은 파일이다
+                        (패딩·썸네일 슬롯이 따로 떠내려가지 않게)
+                        live-status.tsx  메뉴 안 sr 상태 문장 — 빈 region이 먼저 서고 문장은 100ms 뒤. 헤더 Inbox와 사용자 메뉴 프로젝트 그룹이
+                        같이 쓴다(손 사본 둘이 되어 2026-10-09에 올렸다)
                         navigation-dim.tsx  화면 이동 dim — 셸이 아니라 루트 레이아웃이 든다(공개 셸·로그인에도 선다).
                         판정(다른 pathname만)은 lib/shell/navigation-dim.ts
                         new-project-icon.tsx  헤더 [New project] 링크의 앞 아이콘을 ui/LinkProgress에 넘기는 클라이언트 잎.
@@ -440,6 +456,11 @@ components/
                         같은 promise의 결론 homeLate)의 **한 번 구독**만 든다 — 패널·라벨·바닥 링크는 meta-column(서버)이 렌더해 넘기고,
                         패널 속 자리(LateHold·LatePrState)는 컨텍스트를 읽기만 한다. ⚠️ Radix가 비활성 패널 자식을 언마운트해 패널 안에서
                         구독하면 탭 전환마다 한 프레임 빈다. lib는 타입만 import한다(client-graph)
+  inbox/                Inbox 조각(inbox-page, 2026-10-09). row-slots(attentionRowSlots — 주의 항목 한 줄의 **내용**(칩·문장·점·시각·Owner 안내)을
+                        헤더 드롭다운·/inbox·Home 할 일 카드가 나눠 쓴다. 그릇은 각자(DropdownMenuRow · ListRow) · attentionItemKey(행 key — 드롭다운 로빙 포커스).
+                        ⚠️ "use client"가 아니다 — 서버 페이지·Home도 쓴다, 그래서 m·uiLocale을 인자로 받는다. 권한을 판정하지 않는다(ownerRetries는 호출부)) ·
+                        inbox-list(서버 — 프로젝트마다 Card + ListRow, 빈 상태 EmptyState card) · mark-seen("use client" 섬 — 마운트 뒤
+                        markAttentionSeenAction, marked면 notifySeen. 아무것도 그리지 않는다)
   onboarding/new-project.tsx
                         생성 흐름의 상태를 소유하고 LargeModal + WizardFooter로 단계 본문·바닥을 조립한다.
                         이전 onboarding/modal.tsx 재수출과 ui/modal.tsx 경로는 제거했다
@@ -558,7 +579,7 @@ lib/
                         glob(역추적 없는 DP 매처) · shared(결정성 규칙) · quote-style · json-style ·
                         chrome-locales · json-catalog · yaml-catalog · code-dict · ts-dict(2026-09-14부터 자동 탐지 참여 — 씨앗은 tsDictProbePaths)
                         ts-dict의 pairs는 마지막 속성·spread/computed 가림을 read/write/slot에 공유하며, noncomputed __proto__ setter는 own 키에서 제외한다
-                        __tests__/contract.ts가 ADAPTERS를 순회하며 매트릭스를 검사한다
+                        __tests__/contract.test.ts가 ADAPTERS를 순회하며 매트릭스를 검사한다(contract.ts는 검사 헬퍼)
   auth/                 인증·인가. query(getProjectAccess — ⚠️ 원문 이메일을 안 낸다) ·
                         session(requireUser/requireProjectAccess — ⚠️ 보관만 redirect하지 않고 값으로 온다) ·
                         safe-adapter(linkAccount 거부. ⚠️ 만료 세션 조회의 근거도 여기 있고 구현은 credentials/adapter다) ·
@@ -702,7 +723,8 @@ lib/
                         fingerprint(폐기 승인 sha256 — ⚠️ node:crypto라 plan과 갈라 뒀다, client-graph가
                         파일 목록으로 고정) · where(토큰 술어 pendingWhere — **미전달 술어의 주인**. countPending·
                         loadPendingEdits는 토큰 컬럼만 보는 count가 0이면 관계 조인을 건너뛴다, POSTMORTEM 2026-09-18) ·
-                        backfill(옛 술어 ∧ 활성 ∧ 토큰 없음 SQL 한 문장 — 배포 B precondition 마이그레이션이 같은 조건을 복제한다)
+                        backfill(옛 술어 ∧ 활성 ∧ 토큰 없음 SQL 한 문장 — 배포 B precondition 마이그레이션이 같은 조건을 복제한다) ·
+                        release-orphaned(수동 Sync·제거 소스 되살림의 같은 tx에서 승인된 orphan 셀의 토큰만 해제한다)
                         plan의 planHoldNotice(2026-10-01)가 보류 표시 갈래(pending-edits · open-pr · pr-check-failed)를 하나로 고른다 —
                         Home 카드·메타·번역 화면 배너가 같이 읽는다
                         ⚠️ plan에 **열린 PR 게이트**(`planOpenPrGate`, 2026-09-30 nightly-sync)가 산다 — `/api/push` 사전 판정과
@@ -785,7 +807,7 @@ lib/
                         보관 → 토큰) · issue-plan · batch(100키 상한·중복) · confirm(샘플 확인값 소비) · locked-token(잠금 뒤 재판정) ·
                         result(toToolResult — 화면과 같은 문장) · http(checkOrigin) · view(/mcp 카드) · brand(연결 로고 — client_id 호스트 정확
                         일치만, 이름으로 고르지 않는다) · catalog(도구 30 — 이름·순서·annotations·요구 조건의 코드 정본).
-                        server-only: server(요청마다 McpServer — listChanged: false · 설명은 messages/en.tsx mcp.tools, 없으면 서지 않는다) · token-store(resolveApiToken) · tools/.
+                        server-only: server(요청마다 McpServer — listChanged: false · 설명은 messages/en.tsx mcp.tools, 없으면 서지 않는다) · token-store(resolveBearer — 개인 토큰 분기는 resolveApiToken) · tools/.
                         ⚠️ catalog·brand는 잎이다(import 0). brand는 /mcp 클라이언트(connected-apps-card · brand-logo)가 값으로 읽는다(client-graph).
                         catalog의 소비자는 서버 쪽(server · tools/access)이다 — 그래도 잎으로 두는 이유는 도구 구현 → catalog 방향이
                         뒤집히면 순환이기 때문이다. lib/auth/lock은 catalog를 물지 않는다(grant 요구 조건을 주석으로만 가리킨다).
@@ -880,8 +902,8 @@ lib/
   projects/pr-url.ts    parseGithubPrUrl(순수). ⚠️ 저장된 URL을 **그 프로젝트의 owner/name으로 다시 검증**한다
                         — DB 문자열을 그대로 링크로 내면 남의 리포를 가리키는 값이 화면에 선다
   projects/import-failure.ts
-                        ⚠️ **CI가 보고할 수 있는 실패 넷**만 드는 client-safe 어휘다. 검증(닫힌 보고
-                        스키마)은 import-status.ts에 남는다 — 갈라 두지 않으면 서버만 아는 판정
+                        화면용 실패 어휘 여섯과 문구·톤을 드는 client-safe 모듈이다. 외부 보고 가능한 넷은
+                        REPORTED_IMPORT_FAILURES로 분리하고 검증(닫힌 보고 스키마)은 import-status.ts에 남는다 — 갈라 두지 않으면 서버만 아는 판정
                         (partial-import)이 외부 계약으로 새어 나가 아무것도 안 들어간 프로젝트가
                         부분 성공으로 보인다
   onboarding/branch.ts  ⚠️ planBranchChoice — 목록/자유 입력/읽기 전용 셋을 가른다. 조회 실패를
@@ -897,7 +919,7 @@ lib/
                         재검증한 샘플 포맷의 HMAC 발급·검증. 사용자·리포 id·설치 id·ref·head에 묶는다.
                         파일 내용과 서버 캐시는 없고, node:crypto를 쓰므로 클라이언트가 값으로 읽지 않는다.
   onboarding/language-name.ts
-                        로케일 코드 → 영어 언어 이름(③의 기준 언어 행). ⚠️ 자국어가 아니다 —
+                        로케일 코드 → 화면 언어(en·ko·es)로 읽는 언어 이름(③의 기준 언어 행). ⚠️ 대상 언어의 자국어명이 아니다 —
                         Intl.DisplayNames([code])는 그 로케일 데이터가 없으면 보는 사람의 시스템
                         언어로 떨어져 Chrome(ko)에서 az-AZ가 "azərbaycan (아제르바이잔)"이었다
                         (Node는 "(Azərbaycan)"). ⚠️ 하위태그를 떼지 않는다 — zh-Hans/zh-Hant가
@@ -912,14 +934,17 @@ lib/
                         시각은 semver 숫자순 · truncated = 거르기 전 100건) · markdown(본문 mdast 손질 셋 — shiftHeadings · dropFullChangelog ·
                         imagesToLinks) · load(server-only 껍데기 — fetch · revalidate 3600 · 3초 타임아웃 · ⚠️ 던지지 않는다, 로그엔 status와
                         남은 한도만). ⚠️ GitHub 자격증명 셋 중 어느 것도 쓰지 않는다 — Authorization 없음을 load.test가 단언한다
-  inbox/                헤더 Inbox(attention-inbox, 2026-10-05 — ARCHITECTURE). plan(순수 — planInbox · isUnread · badgeLabel, projectId를 입력에 두지 않는다.
-                        클라이언트 그래프에 든다) · load(server-only — 전용 멤버십 조회 + 병렬 집계, 왕복 수가 프로젝트 수와 무관한 상수)
+  inbox/                Inbox(attention-inbox, 2026-10-05 · inbox-page, 2026-10-09 — ARCHITECTURE §6.365). plan(순수 — planInbox · isUnread · badgeLabel ·
+                        clampSeenAt(페이지가 보낸 at을 toISOString 왕복 형만 받아 서버 시각으로 자른다), projectId를 입력에 두지 않는다.
+                        클라이언트 그래프에 든다) · load(server-only — 전용 멤버십 조회 + 병렬 집계, 왕복 수가 프로젝트 수와 무관한 상수) ·
+                        unread-store(탭 안 안 읽음 수 store — 헤더·사이드바 배지가 같은 n을 읽고 /inbox 섬이 읽음 신호를 보낸다. Provider가 아닌 것은
+                        공개 셸 헤더도 같은 AttentionInbox라서다. ⚠️ 서버 스냅샷 0 · 렌더 중 setUnread 금지 — SSR에서 요청 간 공유되는 모듈 인스턴스다)
   search/               match(토큰 AND·순위·상한·빈 입력 미리보기. matchesAllTokens는 검색·`/projects`·LNB 스위처(lib/shell/switcher.ts)가 같이 쓴다) · nav-index(역할별 내비→Projects/Pages + nav 글리프 · 멤버십이 없으면 빈 색인 → Docs만) ·
                         rows(검색 Dialog 뷰모델 — searchRows 그룹·행·ids 한 원천 · searchStatuses 상태 줄 · keySearchText 하한(UTF-16)) ·
                         docs-index(순수 함수 — SUMMARY 원고→페이지 도입/H2 절·평문) · highlight(원문 UTF-16 역매핑을 강조·snippet·
                         firstMatchRange가 공유한다 — 번역 목록/MCP의 첫 일치는 인접 반복을 합치지 않는다) ·
                         keys(입력·열린 Dialog의 단축키 제외 · 활성 id — 플랫폼·조합 판정은 lib/keyboard) · key-href(KeyHit 타입·선택 키 번역 주소) ·
-                        load-index(공개 GET의 pending/성공 Promise 탭 재사용·실패 재시도) · load-memberships(매 호출 Action, 캐시 없음 — Action union 그대로, throw만 unavailable).
+                        load-index(공개 GET의 pending/성공 Promise 탭 재사용·실패 재시도) · load-memberships(매 호출 Action, 캐시 없음 — Action union 그대로, throw만 unavailable. 소비자는 검색 Dialog와 사용자 메뉴 — 메뉴는 열기 직전 미리 읽기를 그 열기 회차의 일부로 쓴다).
                         __tests__/는 각 계약 + scenarios의 세션/역할/판정 차이/스니펫 시나리오를 센다. 클라이언트 전이 그래프는 정확 일치로 등록한다
   public-doc/           toc(currentSection) · landing(documentTop · landDocumentHeading). 둘 다 서버 의존 없는 클라이언트 잎이다.
                         목차·검색이 같은48 오프셋/제목 포커스/해시 착지를 쓰고, 스크롤러-local 사건으로 목차의 현재 절 고정도 옮긴다

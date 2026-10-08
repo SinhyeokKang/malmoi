@@ -11,7 +11,7 @@ import { koPrivacy } from "@/messages/ko-privacy";
 
 import { CLASSIFIED, DISCLOSURE_SECTIONS, NOT_PERSONAL } from "../collected";
 import { sectionGaps } from "../disclosure";
-import { docDigest, docText } from "../doc-text";
+import { docDigest, docText, type DocSection } from "../doc-text";
 
 /**
  * **방침 실물의 게이트** (privacy design §2.2 (B)(C)).
@@ -53,6 +53,8 @@ const REVISIONS: readonly { effectiveDate: string; digest?: string; koDigest?: s
   { effectiveDate: "2026-10-05", digest: "be9870931ac97177a830f8b4ce239e01aa4550281259b8ddca69b351d92aacd4", koDigest: "771e1396a905de08acba4b70d59e13734985e5f908253242305bb88306bfd749" },
   // sidebar-cookie — LNB 접힘 여부 기기 쿠키(`malmoi-sidebar-collapsed`, 스크립트가 쓰는 유일한 쿠키 · 1년). 머지일이 바뀌면 날짜를 옮긴다.
   { effectiveDate: "2026-10-07", digest: "9e7a7fe3769cc6e6e848c9ee84d909ecdcb9c64eba364cbf48242090cad57d83", koDigest: "fde6d9f89ade893e75810be5389923e7d99f88d43c46d29484cdb8f932a0388d" },
+  // inbox-page — 헤더 목록 이름이 Inbox가 되고 `/inbox` 페이지를 보는 것도 열람으로 기록한다(같은 `User.attentionSeenAt` · 새 필드·쿠키 없음). 머지일이 바뀌면 날짜를 옮긴다.
+  { effectiveDate: "2026-10-09", digest: "93ef1af16b1d01bad8684674ce4e0f3090a384b00b3c890581e24c81b40f9c62", koDigest: "ba4125e3dfef10e445332fa60cf0804326a0e06766111cf673d75f68a871b674" },
 ];
 
 const privacy = en.publicDocs.privacy;
@@ -275,5 +277,23 @@ describe("방침 두 본(en·ko) — 사실 대조", () => {
     const all = units(privacy).flatMap((unit) => facts(unit.node, "en"));
     expect(units(privacy).length).toBeGreaterThan(60);
     for (const token of ["Resend", "Tokyo", "href:mailto:ox501501@gmail.com", "30", "365"]) expect(all, token).toContain(token);
+  });
+});
+
+/**
+ * inbox-page fix1 🟡1 — 열람 시각 행의 세 칸(무엇 · 출처 · 목적)이 같은 사실을 말한다. 출처 칸만 "목록을 열 때"로 남으면
+ * `/inbox` 페이지만 본 사용자의 기록이 방침에 없는 경로로 생긴다(본문 모순 — 자동 게이트가 못 보는 부류).
+ */
+describe("Inbox 열람 시각 행 — 헤더 목록과 페이지 둘 다", () => {
+  const row = (sections: readonly DocSection[], first: string) => sections.flatMap((section) => section.blocks)
+    .flatMap((block) => "table" in block ? block.table.rows : [])
+    .find((cells) => cells[0] === first);
+  it.each([
+    ["en", en.publicDocs.privacy.sections, "When you last opened or viewed your Inbox", "Inbox page"],
+    ["ko", koPrivacy.sections, "받은편지함을 마지막으로 열거나 본 시각", "받은편지함 페이지"],
+  ] as const)("%s 출처 칸이 페이지를 말한다", (_lang, sections, first, page) => {
+    const cells = row(sections, first);
+    expect(cells, first).toBeDefined();
+    expect(String(cells![1])).toContain(page);
   });
 });

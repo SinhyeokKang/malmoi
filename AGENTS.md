@@ -88,7 +88,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | 리포 쓰기 | GitHub App **installation 토큰** — `octokit`의 `App` |
 | 계정 연결 | 같은 App의 **user-to-server 토큰** — `@octokit/oauth-app`(`octokit`이 재수출하는 `OAuthApp`으로는 안 된다) |
 | 파일 저장 | Vercel Blob — **공개 읽기 + 키에 난수**. 소비자는 프로필 사진·프로젝트 썸네일 둘이다(ARCHITECTURE §6.7·§6.75) |
-| 초대 메일 | Resend REST API — **SDK 없이 `fetch`**. 환경변수 셋이 전부 `optionalEnv`라 **비거나 틀려도 발급·발송만 막힌다** |
+| 초대 메일 | Resend REST API — **SDK 없이 `fetch`**. 환경변수 셋이 전부 `optionalEnv`다. 누락·발신자/origin 오류는 발급 전 `email-unavailable`, 잘못된 API 키는 발급 후 `email-rejected`이며 부팅·로그인·멤버 조회는 유지된다 |
 | 방문 집계 | Vercel Web Analytics — **공개 페이지 페이지뷰 하나**(쿠키·커스텀 이벤트 없음). ⚠️ **`lib/seo/analytics.ts`의 추적 경로 허용 목록이 유일한 거름망이다** — 앱 URL엔 초대 토큰·slug·검색어가 실린다 |
 | 이미지 정규화 | `sharp` — 업로드 원본을 저장하지 않는다(192px 이내 WebP 재인코딩) |
 | 스타일 | Tailwind CSS 4 — **`tailwind.config.js`가 없다.** 토큰 등록은 `app/globals.css`의 `@theme`, 값(라이트·다크)은 같은 파일 `:root`의 `light-dark()` |
@@ -142,10 +142,11 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | OAuth 동의 — Authorize·Deny | **Server Action** (`app/oauth/authorize/actions.ts`) | `/oauth/authorize` — 세션을 Action 안에서 다시 읽는다(화면을 그린 뒤 끝났을 수 있다). 판정·소비는 `lib/oauth-server/` |
 | Inbox 배지 조회(`loadAttentionBadgeAction`) | **Server Action** (`app/inbox/actions.ts`) — 편집 셸 헤더와 로그인한 공개 셸 헤더가 같이 부른다(그래서 보호 경로 밖이다) | 입력 없이 `readSession`의 userId로 비보관 멤버 프로젝트만 조회한다. 개수만 반환하고 `revalidatePath` 없음(ARCHITECTURE §6.365) |
 | Inbox 열기(`openAttentionInboxAction`) | **Server Action** (`app/inbox/actions.ts`) | 조회 전 서버 시각으로 목록을 읽고 `User.attentionSeenAt`을 조건부 `updateMany`로 단조 기록한다. 실패한 쓰기는 `marked: false`, 입력·`revalidatePath` 없음(ARCHITECTURE §6.365) |
+| Inbox 페이지 읽음(`markAttentionSeenAction`) | **Server Action** (`app/inbox/actions.ts`) | `/inbox` 섬이 마운트 뒤 부른다(GET 렌더는 쓰지 않는다). 입력은 페이지가 조회 전 잡은 서버 시각 ISO 하나이고 `clampSeenAt`이 서버 시각으로 자른다(그 밖은 `invalid`, 쓰기 0). 쓰기는 열기 Action과 같은 비공개 `markSeen` — 0행도 `marked: true`, 예외는 `marked: false`. 목록 재조회·`revalidatePath` 없음(ARCHITECTURE §6.365) |
 | Publish 미리보기 | **Server Action** (`app/(edit)/publish-actions.ts`) | 편집 UI — **읽기만 한다.** 그래서 `revalidatePath`를 부르지 않는다 |
 | 읽기 전용 조회 — Revert 미리보기(`previewTranslationRevert`) | **Server Action** (`app/(edit)/actions.ts`) | 편집 UI — Publish 미리보기와 같이 **`revalidatePath`를 부르지 않는다.** 인증·인가·readiness는 쓰기 Action과 같은 판정을 지난다. 키 목록은 전량이라 "다음 페이지" Action이 없다(2026-10-01, translation-filter-scope) |
 | 읽기 전용 조회 — Keys 검색(`searchKeysAction`) | **Server Action** (`app/search/actions.ts`) | 세션(`readSession`)의 userId로 코어 `searchKeys`가 **비보관 멤버 프로젝트 id를 SQL 안에서 확정**한다. q와 순위 힌트 `activeSlug`만 받고 클라이언트 프로젝트 목록을 받지 않는다. 보관·첫 적재 전 소스·orphaned 키/로케일 값 제외, 검색 코어 SQL 최대 둘. `redirect`·`revalidatePath`·검색어 로그 없음(ARCHITECTURE §6.37·§1.965) |
-| 읽기 전용 조회 — 검색 멤버십(`loadSearchMembershipsAction`) | **Server Action** (`app/search/actions.ts`) | 공개 셸용 읽기 — `readSession` → `loadMemberships(prisma, userId)` → `toNavProjects`의 일곱 필드(보관 포함). 로더는 호출마다 조회하며 성공·실패를 캐시하지 않는다. 세션 없음/장애는 union으로 반환, `redirect`·`revalidatePath` 없음(ARCHITECTURE §6.37) |
+| 읽기 전용 조회 — 검색 멤버십(`loadSearchMembershipsAction`) | **Server Action** (`app/search/actions.ts`) | 공개 셸용 읽기 — **소비자 둘**: 검색 Dialog와 헤더 사용자 메뉴의 프로젝트 그룹(2026-10-09, 열기 직전 미리 읽기 — 앱 셸은 헤더가 멤버십을 넘겨 부르지 않는다). `readSession` → `loadMemberships(prisma, userId)` → `toNavProjects`의 일곱 필드(보관 포함). 로더는 호출마다 조회하며 성공·실패를 다음 열기에 캐시하지 않는다(열기 회차 단위). 세션 없음/장애는 union으로 반환, `redirect`·`revalidatePath` 없음(ARCHITECTURE §6.37) |
 | `/api/search-index/[uiLocale]` | Route Handler — **공개 · `force-static`, 화면 언어별 정적 파일 셋** | 질의·세션·DB·쿠키 조회 없이 그 언어 원고(`guide/<uiLocale>/`) SUMMARY에 등재된 가이드 절 색인 `{ docs }`를 빌드 때 생성한다. `force-static`은 쿠키로 갈라질 수 없어 **언어가 URL에 실린다**(`generateStaticParams` = 원고 트리가 있는 언어, `dynamicParams = false` — 목록 밖은 404). 원고 실패는 빌드 실패다. 클라이언트가 `useUiLocale()`로 골라 받고, Docs 로더만 성공 Promise를 **언어별 키로** 탭 수명 재사용하며 실패는 다음 호출에 재시도한다(ARCHITECTURE §6.37) |
 | `/api/push` | Route Handler | GitHub Actions — Bearer가 **그 프로젝트의 토큰 원문**이다 |
 | `/api/push/failure` | Route Handler | GitHub Actions — 같은 프로젝트 토큰. **적재는 안 한다**(키·번역은 물론 `lastCommitSha`도 안 움직인다 — 전진시키면 다음 정상 push가 `stale-commit` 409를 받는다). 로케일 파일을 못 읽어 `/api/push`가 아예 안 불린 경우를 앱에 남기는 자리다 |
@@ -205,7 +206,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 
 `app/fonts/geist/Geist.woff2`는 저장소가 소유하는 Geist Sans 가변 폰트(100–900)다. 출처·고정 버전·SHA와 OFL 라이선스는 같은 디렉터리에 둔다. `app/layout.tsx`의 `next/font/local`이 자사 호스트 자산과 preload를 만들고 루트 `--font-geist` 변수를 공급한다. `app/globals.css`의 sans 순서는 Geist → Pretendard Variable → 시스템 폰트다. **`adjustFontFallback: false`는 자동 Arial 폴백이 Pretendard 앞에 끼지 않도록 한다.** 영문·숫자는 Geist, Geist에 없는 한글은 Pretendard로 내려간다. monospace 스택은 별개다.
 
-`scripts/copy-fonts.mjs`가 `node_modules/pretendard`에서 `public/fonts/pretendard/`로 복사하고 `predev`·`prebuild`가 자동 실행한다. **`public/fonts/`는 생성물이라 `.gitignore`에 있다**(3.1MB, 92파일). CSS의 `url()`이 상대 경로라 **디렉터리 구조를 바꾸면 폰트가 조용히 404가 되고 시스템 폰트로 떨어진다**. `<link>`로 `app/layout.tsx`가 불러온다(`@import`로 넣으면 스타일시트 체인이 직렬화돼 폰트 요청이 한 단계 늦게 시작된다). **`.npmrc`의 `enable-pre-post-scripts=true`가 그 자동 실행을 보장한다 — 이 파일을 지우지 않는다.**
+`scripts/copy-fonts.mjs`가 `node_modules/pretendard`에서 `public/fonts/pretendard/`로 복사하고 `predev`·`prebuild`가 자동 실행한다. **`public/fonts/`는 생성물이라 `.gitignore`에 있다**(폰트 서브셋 92개 + CSS 1개). CSS의 `url()`이 상대 경로라 **디렉터리 구조를 바꾸면 폰트가 조용히 404가 되고 시스템 폰트로 떨어진다**. `<link>`로 `app/layout.tsx`가 불러온다(`@import`로 넣으면 스타일시트 체인이 직렬화돼 폰트 요청이 한 단계 늦게 시작된다). **`.npmrc`의 `enable-pre-post-scripts=true`가 그 자동 실행을 보장한다 — 이 파일을 지우지 않는다.**
 
 ### CI (GitHub Actions)
 
@@ -221,7 +222,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 
 ## 브랜치 정책 & 배포
 
-**`main` / `dev` 두 브랜치다.** 그 아래 작업 브랜치는 두지 않는다 — 혼자 작업이라 층을 하나 더 얹으면 스스로 연 PR을 스스로 머지하는 형식만 남는다.
+**상시 브랜치는 `main` / `dev` 둘이다.** 일반 작업은 `dev`에서 한다. **`/orchestrate` 워커만 임시 로컬 워크트리 브랜치를 쓴다** — 워커는 푸시하지 않고, 지휘 세션이 결과를 `dev`에 통합한 뒤 임시 브랜치·워크트리를 정리한다(`.claude/commands/orchestrate.md`).
 
 | 브랜치 | 무엇 | 어떻게 들어가나 |
 |---|---|---|
