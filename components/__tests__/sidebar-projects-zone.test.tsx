@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Sidebar } from "@/components/shell/sidebar";
 import { SidebarCollapseContext } from "@/components/shell/sidebar-collapse";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { setUnread } from "@/lib/inbox/unread-store";
 import { routes } from "@/lib/routes";
 import type { NavProject } from "@/lib/shell/nav";
@@ -47,6 +49,12 @@ const sidebar = (list: NavProject[] = memberships, collapsed = false) => (
     <Sidebar memberships={list} userName="Kim" />
   </SidebarCollapseContext.Provider>
 );
+/** Safari·macOS Firefox 마우스 클릭 — 포커스를 주지 않는다. jsdom의 링크 이동(미구현)은 막는다. */
+function clickWithoutFocus(node: Element) {
+  node.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+  node.addEventListener("click", (event) => event.preventDefault(), { once: true });
+  node.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+}
 const zone = (container: ParentNode) => container.querySelector<HTMLElement>(`nav[aria-label="${en.common.nav.yourProjects}"]`);
 const rows = (container: ParentNode) => [...(zone(container)?.querySelectorAll<HTMLAnchorElement>("a") ?? [])];
 
@@ -164,6 +172,9 @@ describe("사이드바 — 접힌 레일의 목록 구역", () => {
 /**
  * **구역이 바뀐 뒤 포커스가 `body`로 빠지지 않는다** (sidebar-projects D2 · POSTMORTEM 2026-09-20·09-24). 프로젝트 행을 누르면 둘째
  * 구역이 `projects` → `project`로 바뀌어 `<nav key>`가 다시 마운트되고 누른 링크가 사라진다. 그 뒤 새 구역의 현재 항목(Home)에 앉는다.
+ * ⚠️ **누른 것이 옛 둘째 구역 안이었을 때만이다** (orch D10 · DESIGN "누른 컨트롤이 사라질 때만") — 본문·사용자 구역·헤더·뒤로가기에서
+ * 시작한 전이는 사이드바로 포커스를 끌어오지 않는다. Safari·macOS Firefox는 마우스 클릭에 포커스를 주지 않으므로 `pointerdown`만으로도
+ * "누른 것"이 기록돼야 한다(`clickWithoutFocus` — `primitive-focus.test.tsx`와 같은 형).
  *
  * ⚠️ **pathname을 바꿔 실제로 재마운트시킨다** — 제자리 렌더 테스트는 언마운트를 못 본다(POSTMORTEM 2026-09-24).
  * ⚠️ **jsdom에는 focus fixup이 없다** (POSTMORTEM 2026-09-20) — 포커스된 노드가 문서에서 떨어지면 브라우저는 `activeElement`를 `body`로
@@ -200,12 +211,48 @@ describe("사이드바 — 구역이 바뀐 뒤 포커스 착지", () => {
     expect(document.activeElement).toBe(home);
   });
 
-  it("프로젝트 구역에서 New project 모달 경로로 가면 목록 구역의 New project에 앉는다 — 다른 전이도 같은 규칙", async () => {
+  it("목록 행을 포커스 없이 눌러도(Safari) 새 프로젝트 구역의 Home에 앉는다", async () => {
+    path.value = "/inbox";
+    const { container, rerender } = await render(sidebar());
+    const acme = rows(container)[0]!;
+    clickWithoutFocus(acme);
+    expect(document.activeElement).toBe(document.body);
+    await navigate(rerender, routes.project("acme"));
+    expect(document.activeElement).toBe(container.querySelector(`nav[aria-label="Acme"] a[href="${routes.project("acme")}"]`));
+  });
+
+  it("사용자 구역 항목을 포커스 없이 눌러 프로젝트 밖으로 나가면 옮기지 않는다 — 목록 행으로 튀지 않는다", async () => {
     path.value = routes.project("acme");
     const { container, rerender } = await render(sidebar());
-    container.querySelector<HTMLAnchorElement>(`nav[aria-label="Acme"] a[href="${routes.project("acme")}"]`)!.focus();
+    clickWithoutFocus(container.querySelector(`nav[aria-label="Kim"] a[href="${routes.inbox()}"]`)!);
+    await navigate(rerender, routes.inbox());
+    expect(zone(container)).not.toBeNull();
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it("본문 링크가 사라지며 프로젝트 밖으로 나가도 사이드바가 포커스를 가져가지 않는다", async () => {
+    path.value = routes.project("acme");
+    const { container, rerender } = await render(sidebar());
+    const body = document.createElement("a");
+    body.href = routes.projects();
+    document.body.append(body);
+    body.focus();
+    body.remove();
+    await navigate(rerender, routes.projects());
+    expect(zone(container)).not.toBeNull();
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it("헤더 역할 버튼으로 New project를 열어도 사이드바가 포커스를 가져가지 않는다", async () => {
+    path.value = routes.project("acme");
+    const { container, rerender } = await render(sidebar());
+    const header = document.createElement("button");
+    document.body.append(header);
+    clickWithoutFocus(header);
     await navigate(rerender, routes.newProject());
-    expect(document.activeElement).toBe(rows(container).at(-1));
+    expect(rows(container).at(-1)?.getAttribute("aria-current")).toBe("page");
+    expect(document.activeElement).toBe(document.body);
+    header.remove();
   });
 
   it("포커스가 사이드바 밖에 있으면 옮기지 않는다 — 사용자가 옮긴 포커스를 뺏지 않는다", async () => {
@@ -218,6 +265,34 @@ describe("사이드바 — 구역이 바뀐 뒤 포커스 착지", () => {
     expect(document.activeElement).toBe(outside);
     expect(container.querySelector('nav[aria-label="Acme"]')).not.toBeNull();
     outside.remove();
+  });
+
+  /**
+   * **New project 모달 닫힘** (리뷰 🟡1) — 모달(`(.)new` 인터셉트)의 닫기는 `router.back()`이라 `@modal` 슬롯이 비는 커밋 = pathname이 프로젝트로
+   * 돌아오는 커밋 = 사이드바 구역이 `projects` → `project`로 바뀌는 커밋이다. 그 커밋에서 사이드바가 착지하면 Dialog의 포커스 기록에 Home이
+   * 최신으로 들어가 Radix 복귀가 연 자리(헤더 버튼) 대신 Home으로 간다. 누른 것이 사이드바 밖이라 착지하지 않아야 복귀가 연 자리로 간다.
+   */
+  it("헤더에서 연 New project 모달을 닫으면(같은 커밋에 구역 복귀) 포커스가 헤더 버튼으로 돌아온다 — 사이드바 Home이 아니다", async () => {
+    let header: HTMLButtonElement | null = null;
+    const tree = (modal: boolean) => <>
+      <Button ref={(node) => { header = node; }}>New project</Button>
+      {sidebar()}
+      {modal && <Dialog open onOpenChange={() => {}}><DialogContent title="Create project" actions={<Button>Close</Button>} /></Dialog>}
+    </>;
+    path.value = routes.project("acme");
+    const { container, rerender } = await render(tree(false));
+    clickWithoutFocus(header!);
+    header!.focus();
+    path.value = routes.newProject();
+    await rerender(tree(true));
+    expect(document.querySelector('[role="dialog"]')?.contains(document.activeElement)).toBe(true);
+    clickWithoutFocus([...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')].find((b) => b.textContent === "Close")!);
+    // 한 rerender — pathname 복귀와 Dialog 제거가 같은 커밋이다.
+    path.value = routes.project("acme");
+    await rerender(tree(false));
+    expect(container.querySelector('nav[aria-label="Acme"]')).not.toBeNull();
+    // Radix 복귀는 FocusScope 언마운트의 타이머 뒤다 — 조건이 설 때까지 기다린다(`primitive-focus.test.tsx`).
+    await vi.waitFor(() => expect(document.activeElement).toBe(header));
   });
 
   it("구역이 그대로인 이동(사용자 구역 안)은 포커스를 건드리지 않는다", async () => {
