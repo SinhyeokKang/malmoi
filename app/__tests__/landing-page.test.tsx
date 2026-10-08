@@ -93,7 +93,7 @@ describe.each(["none", "unavailable"] as const)("`/` — `%s`는 랜딩이다", 
     ]);
     const closing = container.querySelector<HTMLElement>("section[aria-labelledby=landing-closing]");
     expect(closing?.className).toMatch(/(^|\s)py-60(\s|$)/);
-    const links = [...(closing?.querySelectorAll("a") ?? [])];
+    const links = [...(closing?.querySelectorAll("[data-landing-cta] a") ?? [])];
     expect(links.map((a) => [a.textContent, a.getAttribute("href")])).toEqual([
       [en.landing.shell.docs, routes.docs()],
       [en.landing.shell.getStarted, routes.signIn()],
@@ -139,7 +139,7 @@ describe.each(["none", "unavailable"] as const)("`/` — `%s`는 랜딩이다", 
     const { container } = await render(await page(status));
     const hero = container.querySelector("section[aria-labelledby=landing-hero]");
     const closing = container.querySelector("section[aria-labelledby=landing-closing]");
-    const buttons = [...(hero?.querySelectorAll("a:not([data-landing-latest])") ?? []), ...(closing?.querySelectorAll("a") ?? [])];
+    const buttons = [...(hero?.querySelectorAll("[data-landing-cta] a") ?? []), ...(closing?.querySelectorAll("[data-landing-cta] a") ?? [])];
     expect(buttons).toHaveLength(4);
     for (const a of buttons) {
       const first = a.firstElementChild;

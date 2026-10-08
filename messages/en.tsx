@@ -541,6 +541,7 @@ export const en = {
        * 분량을 늘리지 않는다(히어로 줄 수).
        */
       body: "Malmoi is a localization tool for GitHub repos: it finds your translation files, lets teammates edit them in the browser, and sends every change back as one pull request.",
+      fact: "No paid plans. Open source under the MIT License.",
       /** h1 위 알약(2026-09-30 사용자) — 배포된 앱 버전(`APP_VERSION`)이 비면 버전 없는 문구다. */
       latest: (version: string) => (version === "" ? "Latest changelog" : `What's new in v${version}`),
     },
@@ -558,7 +559,8 @@ export const en = {
     closing: {
       title: "Start from the files you already have",
       /** 지원 포맷을 문장으로 선다(seo-geo T12a) — 목록은 `guide/reference/formats.md`와 같다. 분량을 늘리지 않는다. */
-      body: "Connect a GitHub repository with JSON, YAML, JS/TS or Chrome extension translation files, invite your team, and send the first pull request.",
+      body: "Connect a GitHub repository with JSON, YAML, JS/TS or Chrome extension translation files, invite your team, and let AI agents work in the same projects over MCP.",
+      links: { label: "Learn more", formats: "Supported formats", aiAgents: "AI agents", faq: "FAQ" },
     },
     /**
      * 목업의 **가상 데이터** — 앱 라벨은 여기 없다. 라벨은 실제 사전 키를 읽는다(목업과 앱이 다른 말을 하면 랜딩이 거짓이다).

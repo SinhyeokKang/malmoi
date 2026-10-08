@@ -1,6 +1,6 @@
 # Límites
 
-Consulta los límites fijos de proyectos, miembros, invitaciones y archivos de traducción.
+Malmoi permite 3 proyectos activos en propiedad, bloquea invitaciones nuevas al llegar a 10 miembros y lee archivos del repositorio de hasta 2 MB cada uno.
 
 ## Límites de proyectos y miembros {#limits}
 

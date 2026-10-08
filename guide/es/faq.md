@@ -4,7 +4,7 @@ Respuestas breves a preguntas habituales sobre Malmoi, con un enlace a la págin
 
 ## ¿Qué hace Malmoi? {#what-is-malmoi}
 
-Malmoi encuentra los archivos de traducción que ya están en tu repositorio de GitHub, permite que tu equipo edite las traducciones en el navegador y devuelve los cambios guardados como un pull request. La organización de archivos de tu repositorio no cambia. Consulta [Cómo funciona la sincronización](sync/README.md#how-it-works).
+Malmoi es una herramienta de gestión de traducciones (i18n) para repositorios de GitHub. Encuentra tus archivos de traducción, permite que tu equipo los edite en el navegador y devuelve los cambios guardados como un pull request sin cambiar su organización. Consulta [Cómo funciona la sincronización](sync/README.md#how-it-works).
 
 ## ¿Los traductores necesitan Git o una cuenta de GitHub? {#translators}
 
@@ -38,6 +38,10 @@ Se conservan. Si la clave vuelve en un commit posterior, sus traducciones vuelve
 
 No. Sin él, la ejecución nocturna recoge los cambios del repositorio una vez al día. Con él, los cambios llegan en cada commit. Consulta [Sincronización nocturna o workflow](sync/nightly.md#workflow).
 
+## ¿Malmoi tiene planes de pago? {#pricing}
+
+No. Malmoi no tiene planes de pago y es código abierto con licencia MIT.
+
 ## ¿Malmoi traduce el texto por mí? {#machine-translation}
 
 No. Malmoi no tiene traducción automática ni memoria de traducción. Puedes conectar tu propio agente de IA; lo que escribe se guarda como tu edición, con las mismas comprobaciones que en el navegador. Consulta [Conecta un agente de IA](ai-agents/README.md).
@@ -45,6 +49,10 @@ No. Malmoi no tiene traducción automática ni memoria de traducción. Puedes co
 ## ¿Hay un paso de aprobación? {#review}
 
 No. **Por revisar** solo marca las traducciones cuyo texto de origen cambió, y guardar lo quita. Consulta [Edita traducciones](translate/edit.md#save).
+
+## ¿Qué no admite Malmoi? {#not-supported}
+
+Malmoi no admite plurales ICU, edición simultánea, permisos detallados, edición en contexto, capturas adjuntas, notas para traductores, flujos de aprobación, memoria de traducción ni traducción automática o con IA integrada.
 
 ## ¿Cuántos proyectos y miembros puedo tener? {#limits}
 
@@ -56,8 +64,8 @@ Sí, en **Preferencias**. Estos cambios solo afectan a cómo ves Malmoi, no a lo
 
 ## ¿Qué guarda Malmoi sobre mí? {#privacy}
 
-Tu nombre, tu dirección de correo y tu foto de perfil de GitHub o Google, tus membresías de proyecto y quién cambió por última vez cada traducción. Los nombres, las direcciones de correo y los tokens de conexión se guardan cifrados, y Malmoi no vende tus datos ni los usa para publicidad. La **Política de privacidad** del pie de página lo detalla todo.
+Tu nombre, tu dirección de correo y tu foto de perfil de GitHub o Google, tus membresías de proyecto y quién cambió por última vez cada traducción. Los nombres, las direcciones de correo y los tokens de conexión se guardan cifrados, y Malmoi no vende tus datos ni los usa para publicidad. La [Política de privacidad](https://mal-moi.com/privacy) lo detalla todo.
 
 ## ¿Cómo elimino mi cuenta? {#delete-account}
 
-No hay un botón para eliminarla. Escribe a la dirección que aparece en la **Política de privacidad**; las solicitudes se responden en un plazo de 30 días. Las traducciones se quedan en el proyecto, pero dejan de estar vinculadas a ti.
+No hay un botón para eliminarla. Escribe a la dirección que aparece en la [Política de privacidad](https://mal-moi.com/privacy); las solicitudes se responden en un plazo de 30 días. Las traducciones se quedan en el proyecto, pero dejan de estar vinculadas a ti.

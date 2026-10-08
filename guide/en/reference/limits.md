@@ -1,6 +1,6 @@
 # Limits
 
-Check the fixed limits for projects, members, invitations, and translation files.
+Malmoi allows 3 active owned projects, blocks new invitations at 10 members, and reads repository files up to 2 MB each.
 
 ## Project and member limits {#limits}
 

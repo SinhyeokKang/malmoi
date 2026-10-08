@@ -212,6 +212,7 @@ export const ko = {
       title: ["흩어진 말을 모아,", "함께 번역하고 전달하세요"] as const,
       // 첫 문장이 정의다 — 홈 description·og:description으로도 나가므로 분량을 늘리지 않는다.
       body: "Malmoi는 GitHub 리포지토리의 번역을 관리하는 도구입니다. 팀원들과 브라우저에서 번역 파일을 편집하고, 변경 사항을 PR 하나로 보낼 수 있습니다.",
+      fact: "유료 플랜이 없으며 MIT 라이선스로 공개한 오픈 소스입니다.",
       latest: (version: string) => (version === "" ? "최신 변경 기록" : `v${version} 업데이트`),
     },
     stage: {
@@ -226,7 +227,8 @@ export const ko = {
     },
     closing: {
       title: "이미 있는 번역 파일에서 시작하세요",
-      body: "JSON, YAML, JS/TS, Chrome 확장 프로그램 번역 파일을 지원합니다. GitHub 리포지토리를 연결하고 팀원들과 첫 PR을 만들어 보세요.",
+      body: "JSON, YAML, JS/TS, Chrome 확장 프로그램 번역 파일을 지원합니다. GitHub 리포지토리를 연결하고 팀원이나 AI 에이전트와 함께 작업하세요. AI 에이전트는 MCP로 연결됩니다.",
+      links: { label: "자세히 알아보기", formats: "지원 파일 형식", aiAgents: "AI 에이전트", faq: "자주 묻는 질문" },
     },
     // 목업 데이터는 가상 프로젝트의 리포 내용(원문 en·de·fr 값)이라 화면 언어와 함께 바꾸지 않는다.
     mockup: {

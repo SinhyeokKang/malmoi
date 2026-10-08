@@ -208,6 +208,7 @@ export const es = {
     hero: {
       title: ["Reúne tus textos,", "traduce y publica en equipo"] as const,
       body: "Malmoi es una herramienta de localización para repositorios de GitHub: encuentra tus archivos de traducción, permite que tu equipo los edite en el navegador y devuelve todos los cambios en una sola pull request.",
+      fact: "No tiene planes de pago. Es código abierto con licencia MIT.",
       latest: (version: string) => (version === "" ? "Últimas novedades" : `Novedades de la v${version}`),
     },
     stage: {
@@ -222,7 +223,8 @@ export const es = {
     },
     closing: {
       title: "Empieza con los archivos que ya tienes",
-      body: "Conecta un repositorio de GitHub con archivos de traducción JSON, YAML, JS/TS o de extensiones de Chrome, invita a tu equipo y envía la primera pull request.",
+      body: "Conecta un repositorio de GitHub con archivos de traducción JSON, YAML, JS/TS o de extensiones de Chrome, invita a tu equipo y permite que agentes de IA trabajen en los mismos proyectos mediante MCP.",
+      links: { label: "Más información", formats: "Formatos compatibles", aiAgents: "Agentes de IA", faq: "Preguntas frecuentes" },
     },
     mockup: {
       project: "Acme web",

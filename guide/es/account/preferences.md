@@ -1,6 +1,6 @@
 # Preferencias
 
-Elige si las pantallas de Malmoi aparecen en inglés, coreano o español. Esto cambia solo Malmoi, no los idiomas a los que traducen tus proyectos. También puedes elegir la zona horaria que Malmoi usa para las fechas y las horas, y si Malmoi se ve claro u oscuro.
+Elige el idioma de la interfaz, la zona horaria y el tema claro u oscuro de Malmoi. Los idiomas de traducción de tus proyectos no cambian.
 
 ## Antes de iniciar sesión {#footer}
 

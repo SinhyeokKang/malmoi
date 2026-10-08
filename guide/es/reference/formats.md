@@ -1,6 +1,6 @@
 # Formatos de archivo compatibles
 
-Comprueba qué formatos de archivo de traducción puede leer y escribir Malmoi.
+Malmoi lee y escribe catálogos JSON y YAML, mensajes de extensiones de Chrome y diccionarios de código TypeScript o JavaScript.
 
 ## Formatos compatibles {#formats}
 
@@ -15,6 +15,10 @@ Los formatos compatibles son catálogos JSON, catálogos YAML, mensajes de exten
 | **Diccionario en código (todos los idiomas en un archivo)** | `src/i18n/namespaces/*.ts` |
 
 `{locale}` representa un código de idioma como `en`; `*` coincide con un segmento de nombre de archivo dentro de ese directorio.
+
+Los catálogos JSON pueden usar archivos `.json` con el nombre del idioma, nombres con prefijo como `client.{locale}.json` o directorios de idioma como `{locale}/common.json`. Los catálogos YAML pueden usar `.yml` o `.yaml`, con un nombre de idioma simple o con prefijo. Los mensajes de extensiones de Chrome usan `_locales/{locale}/messages.json`.
+
+Los diccionarios de código con un archivo por idioma admiten `.ts`, `.tsx`, `.js` y `.mjs`. Un diccionario de código que contiene todos los idiomas solo admite `.ts` y `.tsx`.
 
 ## Conserva la estructura del archivo {#file-structure}
 

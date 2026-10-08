@@ -1,6 +1,6 @@
 # Supported file formats
 
-Check which translation file formats Malmoi can read and write.
+Malmoi reads and writes JSON and YAML catalogs, Chrome extension messages, and TypeScript or JavaScript code dictionaries.
 
 ## Supported formats {#formats}
 
@@ -15,6 +15,10 @@ The supported formats are JSON catalogs, YAML catalogs, Chrome extension message
 | **Code dictionary (all languages in one file)** | `src/i18n/namespaces/*.ts` |
 
 `{locale}` stands for a language code such as `en`; `*` matches a file-name segment within that directory.
+
+JSON catalogs can use `.json` files named for the language, prefixed names such as `client.{locale}.json`, or language directories such as `{locale}/common.json`. YAML catalogs can use `.yml` or `.yaml`, with a plain or prefixed language name. Chrome extension messages use `_locales/{locale}/messages.json`.
+
+Code dictionaries with one file per language support `.ts`, `.tsx`, `.js`, and `.mjs`. A code dictionary that contains all languages supports `.ts` and `.tsx` only.
 
 ## Preserve file structure {#file-structure}
 
