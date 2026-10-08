@@ -74,3 +74,6 @@
 - A 시작: `task_1fc0fdde8b30` / `ctx_1fce737ccae3`, `seo-a-content`, Sol high effective 확인·working. B의 Astra medium 시도 둘(`ctx_fbaa5cbd1e89`, `ctx_9dea33889fcf`)은 agent_readiness timeout, 과업 미실행을 Orca가 확인했다. 터미널 해제 후 같은 B Task를 Sol high로 재시도한다. 이는 승인된 Codex 패밀리 내부 조정이며 Astra effort를 올리지 않는다.
 - ego-browser TaskSpace `2`, `p1`를 이후 QA도 재사용한다. 변경 전 `/docs` 데스크톱 1440px 단발 측정 LCP 748ms, 최종 후보 IMG project-home.webp; loading lazy/priority auto. 도구 결과만이며 CrUX가 아니다.
 - B 재시도 `ctx_9aeb503be36c` Sol high effective·working 확인. 이 런의 남은 C·독립 리뷰·QA도 정상 기동 경로인 Sol high를 사용한다(위 표의 Astra 우선안 대체). 같은 패밀리이며 독립 리뷰 분리는 유지한다.
+- A 구현 인계: `c61cba17`(RED 테스트), `4d9d2e67`(구현), clean. `pnpm gate --base dev` 통과 보고와 실제 두 커밋 확인. 독립 리뷰 `task_5341241503d2` / `ctx_cef979d7d9dd`를 Sol high로 시작했고 구현 터미널은 완료 인계 뒤 해제했다. 아직 dev 통합 전이다.
+- 공유 파일 보정: B의 WebSite 추가가 A 소유 `app/__tests__/landing-page.test.tsx` 기대값에도 영향을 준다. B는 그 파일 수정·최종 게이트 전에 A 통합을 기다리고 `git rebase dev` 뒤 계속한다. 다른 B 소유 파일 작업은 계속 가능하다. status와 터미널 입력을 함께 보냈고 B의 mailbox ack를 확인했다.
+- 모바일 추가 기준선: production `/docs/faq`, CDP 390×844에서 `innerWidth=1280`, `scrollWidth=1280`, main 폭 1264px. 1280 정책의 현 상태 관측이며 D1 승인 전에는 변경하지 않는다.
