@@ -85,8 +85,9 @@ to the base branch — merging stays with your reviewers.
 
 ### Every change, on the record
 
-Logs records edits, syncs, and publishes with who made them and the value
-before and after. History is kept for the life of the project.
+Logs records edits, syncs, and publishes with who performed them and what
+happened. Translation edits include the value before and after. History is
+kept for the life of the project.
 
 </td>
 <td width="50%">
@@ -130,7 +131,7 @@ collects code references, so each key shows where your code uses it.
   and Korean. New visitors always start in English
   ([details](https://mal-moi.com/docs/account/preferences)).
 - **Light and dark themes** — choose Light, Dark, or System in Preferences;
-  Malmoi starts light and remembers your choice with your account
+  Malmoi follows your device by default and remembers your choice with your account
   ([details](https://mal-moi.com/docs/account/preferences#theme)).
 - **AI agents over MCP** — add the server URL to Claude Code, Codex, or a
   claude.ai custom connector and sign in through your browser: you choose what the app may do on a consent screen
@@ -173,7 +174,7 @@ fit.
 
 ## Under the hood
 
-**Exports are deterministic.** The same database state produces byte-identical
+**Exports are deterministic.** The same database state and original files produce byte-identical
 files, so Publish can compare file hashes (Git blob SHAs) and commit only the
 files that changed. A non-deterministic writer would open a meaningless pull
 request every night.
