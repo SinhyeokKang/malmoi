@@ -48,7 +48,7 @@ app/
   not-found.tsx · error.tsx · global-error.tsx  셸 밖(/invite·/signin·오타 URL)의 경계. 앞 둘은 components/root-fallback.tsx를
                         쓰고, global-error는 루트 레이아웃을 대신하므로 html·body를 스스로 든 맨 HTML이다(전역 CSS 없음)
   fonts/geist/          Geist 정방향 가변 WOFF2 원본과 SIL OFL 라이선스·출처/SHA. git 추적 자산이며 next/font/local이 자사 호스트/swap/preload한다.
-  globals.css           Tailwind 4 @theme. ⚠️ @custom-variant dark 한 줄이 라이트를 고정한다
+  globals.css           Tailwind 4 @theme. ⚠️ @custom-variant dark는 dark: 유틸의 OS 다크 자동 적용을 막는다. 테마는 data-theme와 light-dark()가 담당한다
   __tests__/            entry-points(진입점 소스 스캔 — 모든 page·route·actions가 인가를 지나는지 fs로
                         센다. 예외 열을 이름으로 고정(2026-09-13에 api/push/failure가 붙어 하나 늘었다)
                         + routes.ts↔라우트 대조 + 쿼리 생성기/수신자 대조)
@@ -56,7 +56,7 @@ app/
                         · api/__tests__/pull-budget(야간 cron 시간 예산 — 가짜 시계로 넘긴 수가 unprocessed에 실리는지)
                         · locked-access(잠금 재판정 자리를 AST로 센다 — 자리 목록은 그 파일의 SITES·TOKEN_SITES가 정본,
                         `$transaction` 콜백 안의 호출만, 주석 제외)
-                        · exempt-route-guards(EXEMPT route → 필수 가드 호출 맵 — /api/mcp는 resolveApiToken. 2026-09-28)
+                        · exempt-route-guards(EXEMPT route → 필수 가드 호출 맵 — /api/mcp는 resolveBearer — 개인 토큰·OAuth access 공통 입구)
                         · root-boundaries · seo-metadata · crawl-files · landing-page · docs-page · privacy-page · changelog-page
                         · well-known(OAuth 발견 문서)
                         · api/__tests__/ github-callback · push-failure · push-open-pr · pull-nightly · route-diagnostics ·
@@ -107,7 +107,8 @@ app/
         loading.tsx     Home 골격(⚠️ 여기도 ContentPanel을 안 든다 — 레이아웃이 이미 들어 둘이 된다)
       translations/    저장된 defaultSurfaceId로 보내는 legacy redirect
       locales/         Sources 목록으로 보내는 legacy redirect
-      sources/         소스 목록·상세 모달. actions.ts(updateBaseLocale + 읽기 전용 loadSourceDetail) · loading.tsx 골격
+      sources/         소스 목록·상세 모달. actions.ts(updateBaseLocale · removeSource · 읽기 전용 loadSourceDetail/previewSourceRemoval) · loading.tsx 골격
+                        제거는 미전달 편집이 있으면 소스별 승인 지문을 요구하고 미리보기는 쓰지 않는다
       surfaces/[surfaceSlug]/translations/  번역 작업 화면(트리·키 목록·로케일 세 패널 — translation-rework C4).
                         URL 계약은 lib/translations/query.ts 하나다(화면 층 — 옛 주소는 정규 주소로 redirect). 전 소스를 한 번 읽고 범위로 자른다.
                         선택 키의 permalink는 서버가 조립한다
@@ -179,7 +180,7 @@ app/
                         설치·인가·리포 선택 변경이 전부 여기로 온다(state 없는 설치 계열 복귀는 착지만)
 middleware.ts           인증 차단의 유일한 1차 지점 + CSP의 유일한 출처(요청마다 nonce).
                         matcher는 전 페이지(/api·정적 자산 제외), 차단 대상은 isProtectedPath
-                        (/projects/** · /account · /mcp — 정본은 lib/auth/cookie.ts의 PROTECTED). 렌더 요청(GET·HEAD)만 막고 Action POST는 통과시킨다
+                        (/projects/** · /account · /preferences · /mcp — 정본은 lib/auth/cookie.ts의 PROTECTED). 렌더 요청(GET·HEAD)만 막고 Action POST는 통과시킨다
 ```
 
 ## components/
@@ -558,7 +559,7 @@ lib/
                         glob(역추적 없는 DP 매처) · shared(결정성 규칙) · quote-style · json-style ·
                         chrome-locales · json-catalog · yaml-catalog · code-dict · ts-dict(2026-09-14부터 자동 탐지 참여 — 씨앗은 tsDictProbePaths)
                         ts-dict의 pairs는 마지막 속성·spread/computed 가림을 read/write/slot에 공유하며, noncomputed __proto__ setter는 own 키에서 제외한다
-                        __tests__/contract.ts가 ADAPTERS를 순회하며 매트릭스를 검사한다
+                        __tests__/contract.test.ts가 ADAPTERS를 순회하며 매트릭스를 검사한다(contract.ts는 검사 헬퍼)
   auth/                 인증·인가. query(getProjectAccess — ⚠️ 원문 이메일을 안 낸다) ·
                         session(requireUser/requireProjectAccess — ⚠️ 보관만 redirect하지 않고 값으로 온다) ·
                         safe-adapter(linkAccount 거부. ⚠️ 만료 세션 조회의 근거도 여기 있고 구현은 credentials/adapter다) ·
@@ -702,7 +703,8 @@ lib/
                         fingerprint(폐기 승인 sha256 — ⚠️ node:crypto라 plan과 갈라 뒀다, client-graph가
                         파일 목록으로 고정) · where(토큰 술어 pendingWhere — **미전달 술어의 주인**. countPending·
                         loadPendingEdits는 토큰 컬럼만 보는 count가 0이면 관계 조인을 건너뛴다, POSTMORTEM 2026-09-18) ·
-                        backfill(옛 술어 ∧ 활성 ∧ 토큰 없음 SQL 한 문장 — 배포 B precondition 마이그레이션이 같은 조건을 복제한다)
+                        backfill(옛 술어 ∧ 활성 ∧ 토큰 없음 SQL 한 문장 — 배포 B precondition 마이그레이션이 같은 조건을 복제한다) ·
+                        release-orphaned(수동 Sync·제거 소스 되살림의 같은 tx에서 승인된 orphan 셀의 토큰만 해제한다)
                         plan의 planHoldNotice(2026-10-01)가 보류 표시 갈래(pending-edits · open-pr · pr-check-failed)를 하나로 고른다 —
                         Home 카드·메타·번역 화면 배너가 같이 읽는다
                         ⚠️ plan에 **열린 PR 게이트**(`planOpenPrGate`, 2026-09-30 nightly-sync)가 산다 — `/api/push` 사전 판정과
@@ -785,7 +787,7 @@ lib/
                         보관 → 토큰) · issue-plan · batch(100키 상한·중복) · confirm(샘플 확인값 소비) · locked-token(잠금 뒤 재판정) ·
                         result(toToolResult — 화면과 같은 문장) · http(checkOrigin) · view(/mcp 카드) · brand(연결 로고 — client_id 호스트 정확
                         일치만, 이름으로 고르지 않는다) · catalog(도구 30 — 이름·순서·annotations·요구 조건의 코드 정본).
-                        server-only: server(요청마다 McpServer — listChanged: false · 설명은 messages/en.tsx mcp.tools, 없으면 서지 않는다) · token-store(resolveApiToken) · tools/.
+                        server-only: server(요청마다 McpServer — listChanged: false · 설명은 messages/en.tsx mcp.tools, 없으면 서지 않는다) · token-store(resolveBearer — 개인 토큰 분기는 resolveApiToken) · tools/.
                         ⚠️ catalog·brand는 잎이다(import 0). brand는 /mcp 클라이언트(connected-apps-card · brand-logo)가 값으로 읽는다(client-graph).
                         catalog의 소비자는 서버 쪽(server · tools/access)이다 — 그래도 잎으로 두는 이유는 도구 구현 → catalog 방향이
                         뒤집히면 순환이기 때문이다. lib/auth/lock은 catalog를 물지 않는다(grant 요구 조건을 주석으로만 가리킨다).
@@ -880,8 +882,8 @@ lib/
   projects/pr-url.ts    parseGithubPrUrl(순수). ⚠️ 저장된 URL을 **그 프로젝트의 owner/name으로 다시 검증**한다
                         — DB 문자열을 그대로 링크로 내면 남의 리포를 가리키는 값이 화면에 선다
   projects/import-failure.ts
-                        ⚠️ **CI가 보고할 수 있는 실패 넷**만 드는 client-safe 어휘다. 검증(닫힌 보고
-                        스키마)은 import-status.ts에 남는다 — 갈라 두지 않으면 서버만 아는 판정
+                        화면용 실패 어휘 여섯과 문구·톤을 드는 client-safe 모듈이다. 외부 보고 가능한 넷은
+                        REPORTED_IMPORT_FAILURES로 분리하고 검증(닫힌 보고 스키마)은 import-status.ts에 남는다 — 갈라 두지 않으면 서버만 아는 판정
                         (partial-import)이 외부 계약으로 새어 나가 아무것도 안 들어간 프로젝트가
                         부분 성공으로 보인다
   onboarding/branch.ts  ⚠️ planBranchChoice — 목록/자유 입력/읽기 전용 셋을 가른다. 조회 실패를
@@ -897,7 +899,7 @@ lib/
                         재검증한 샘플 포맷의 HMAC 발급·검증. 사용자·리포 id·설치 id·ref·head에 묶는다.
                         파일 내용과 서버 캐시는 없고, node:crypto를 쓰므로 클라이언트가 값으로 읽지 않는다.
   onboarding/language-name.ts
-                        로케일 코드 → 영어 언어 이름(③의 기준 언어 행). ⚠️ 자국어가 아니다 —
+                        로케일 코드 → 화면 언어(en·ko·es)로 읽는 언어 이름(③의 기준 언어 행). ⚠️ 대상 언어의 자국어명이 아니다 —
                         Intl.DisplayNames([code])는 그 로케일 데이터가 없으면 보는 사람의 시스템
                         언어로 떨어져 Chrome(ko)에서 az-AZ가 "azərbaycan (아제르바이잔)"이었다
                         (Node는 "(Azərbaycan)"). ⚠️ 하위태그를 떼지 않는다 — zh-Hans/zh-Hant가
