@@ -130,6 +130,12 @@ describe.each(["none", "unavailable"] as const)("`/` — `%s`는 랜딩이다", 
     ]);
   });
 
+  it("header and documentation navigation landmarks have distinct localized names", async () => {
+    const { container } = await render(await page(status));
+    const names = [...container.querySelectorAll("nav")].map((nav) => nav.getAttribute("aria-label"));
+    expect(names).toEqual([en.landing.shell.nav, en.landing.closing.links.label]);
+  });
+
   /**
    * **CTA 버튼마다 선행 아이콘 하나** (2026-09-27 사용자, DESIGN §6.615) — Docs는 앱 셸 `Docs` 항목과 같은 글리프 · Get started `LogIn` · GitHub는
    * 리포의 유일한 GitHub 글리프 `GithubIcon`(`components/signin/brand-icons.tsx` — lucide 1.37에 `github`가 없다). 전부 장식이라 `aria-hidden`이고,
