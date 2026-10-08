@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { beforeEach, expect, it, vi } from "vitest";
 
 import HomeLoading from "@/app/(edit)/projects/[slug]/(home)/loading";
+import InboxLoading from "@/app/(edit)/inbox/loading";
 import LogsLoading from "@/app/(edit)/projects/[slug]/logs/loading";
 import { EventRow } from "@/components/logs/event-row";
 import { LogFilters } from "@/components/logs/log-filters";
@@ -44,7 +45,7 @@ it("Home 골격의 숫자 카드 grid는 실물과 같은 컨테이너 쿼리 �
 
 it("Home 골격의 할 일 행은 실물 행·줄 묶음과 같은 클래스다", async () => {
   const real = source("components/home/attention-card.tsx");
-  const row = "flex items-center gap-3 border-t px-4 py-row-y";
+  const row = "flex items-center gap-3 px-4 py-row-y";
   expect(real).toContain("<ListRow");
   expect(source("components/ui/list-row.tsx")).toContain("flex items-center gap-3 px-4 py-row-y");
   // 행 문장 칸 마크업은 T3에서 `attentionRowSlots`를 거쳐 `ListRow`로 옮겨 갔다 — 실물 쪽 기준은 list-row.tsx다.
@@ -231,4 +232,29 @@ it("Home 골격의 메타 열 막대 폭이 시안의 행별 폭이다", async (
   const bar = (row: HTMLElement, i: 0 | 1) => row.children[i]?.querySelector("[data-skeleton-line] > div");
   expect(rows.map((row) => Number(width(bar(row, 0))) * 4)).toEqual([64, 72, 48, 24, 52, 36, 56, 52]);
   expect(rows.map((row) => Number(width(bar(row, 1))) * 4)).toEqual([120, 84, 40, 76, 20, 36, 20, 80]);
+});
+
+/**
+ * #204 — **머리 아래 선은 머리가 든다**(`Card`의 `border-divider border-b`). 실물은 그 1px을 `min-h-12` 안에 흡수하고(47.5 < 48) 첫 행은
+ * 자기 선을 내려놓아 71이다. 골격이 선을 첫 행 위(`border-t`)에 그으면 첫 행이 72라 도착하는 순간 아래가 전부 1px 올라간다.
+ */
+it.each([
+  ["Inbox", () => InboxLoading(), 2],
+  ["Home", () => HomeLoading(), 2],
+] as const)("%s 골격 카드는 머리에 선을 긋고 첫 행·첫 목록에는 위 선이 없다", async (_label, loading, cards) => {
+  const card = source("components/ui/card.tsx");
+  expect(card).toContain('notice === undefined && "border-divider border-b"');
+  const { container } = await render(loading());
+  const sections = [...container.querySelectorAll<HTMLElement>("section")];
+  expect(sections).toHaveLength(cards);
+  for (const section of sections) {
+    const head = section.firstElementChild as HTMLElement;
+    for (const token of ["min-h-12", "border-divider", "border-b"]) expect(head.classList, token).toContain(token);
+    const list = section.querySelector<HTMLElement>(":scope > ul")!;
+    expect(list.classList.contains("border-t"), list.className).toBe(false);
+    const rows = [...list.querySelectorAll<HTMLElement>(":scope > li")];
+    expect(rows[0]!.classList.contains("border-t"), rows[0]!.className).toBe(false);
+    // 행↔행은 `--border`다 — 실물 `Card` 규칙(4-Y4).
+    for (const row of rows.slice(1).filter(row => row.classList.contains("border-t"))) expect(row.classList).toContain("border-border");
+  }
 });

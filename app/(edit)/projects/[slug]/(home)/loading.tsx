@@ -111,15 +111,19 @@ export default async function ProjectHomeLoading() {
 function Card({ rows, footer, divided = true }: { rows: number; footer: boolean; divided?: boolean }) {
   return (
     <section className="border-border overflow-hidden rounded-lg border">
-      <div className="flex min-h-12 items-center px-4 py-3">
+      {/*
+        ⚠️ **머리 아래 선은 머리가 든다** (#204) — 실물 `Card`가 `min-h-12` 머리에 `border-b`를 긋고 그 1px을 48 안에 흡수한다.
+        전엔 첫 행(할 일)·목록(로그) 위 선이었고 첫 줄이 1px 높아 도착할 때 아래가 전부 올라갔다.
+      */}
+      <div className="border-divider flex min-h-12 items-center border-b px-4 py-3">
         <Skeleton size="md" className="w-40" />
       </div>
-      <ul className={divided ? undefined : "border-divider border-t px-4 pt-3.5"}>
+      <ul className={divided ? undefined : "px-4 pt-3.5"}>
         {Array.from({ length: rows }, (_, i) => (
           <li
             key={i}
-            // 선은 실물과 같은 `Card` 규칙이다(4-Y4) — 첫 줄이 머리 선(`--divider`), 행↔행은 `--border`.
-            className={divided ? cn("flex items-center gap-3 border-t px-4 py-row-y", i === 0 ? "border-divider" : "border-border") : "flex items-center gap-3 pb-4"}
+            // 선은 실물과 같은 `Card` 규칙이다(4-Y4) — 첫 행은 머리 선 아래라 자기 선이 없고, 행↔행은 `--border`.
+            className={divided ? cn("flex items-center gap-3 px-4 py-row-y", i > 0 && "border-border border-t") : "flex items-center gap-3 pb-4"}
           >
             {/* 두 카드 다 행 칸이 `IconTile sm`(28 · radius 4)이다 — Logs 카드의 옛 10 점은 실물(사건 칸 28)과 달라 도착 때 튀었다. */}
             <Skeleton className="size-7 shrink-0 rounded" />
