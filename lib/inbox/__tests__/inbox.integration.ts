@@ -141,6 +141,8 @@ it("페이지 읽음은 열기와 같은 계약이다 — 조회 전 시각까�
   expect(await markAttentionSeenAction(future.toISOString())).toEqual({ status: "ok", marked: true });
   const clamped = (await prisma.user.findUniqueOrThrow({ where: { id: "u1" } })).attentionSeenAt;
   expect(clamped!.getTime()).toBeLessThanOrEqual(Date.now());
+  // 잘린 값은 서버 시각이다 — 옛 워터마크에 머무는 퇴화도 막는다(review-a ⚪3).
+  expect(clamped!.getTime()).toBeGreaterThan(pageNow.getTime());
   expect(await loadAttentionBadgeAction()).toEqual({ status: "ok", unread: 1 });
   // 뒤로 가기로 복원된 옛 시각은 워터마크를 되돌리지 않는다.
   expect(await markAttentionSeenAction(pageNow.toISOString())).toEqual({ status: "ok", marked: true });
