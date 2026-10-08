@@ -117,27 +117,66 @@ describe("saveLastPulledAt — 성공 확정 tx", () => {
     expect((await confirmation())?.revision).not.toBe(before);
   });
 
-  it("실행권을 잃었으면(RUNNING 아님) 확인을 쓰지 않는다 — lastPulledAt·CAS는 기존대로 간다", async () => {
+  it("실행권을 잃었으면 확인·CAS·시각을 쓰지 않고 pending을 보존한다 (R1)", async () => {
     const state = await loadPullState(prisma, "p");
     await prisma.syncRun.update({ where: { id: "p-run" }, data: { status: "FAILED", errorCode: "stale", finishedAt: new Date() } });
-    await saveLastPulledAt(prisma, "p", AFTER, undefined, state.pendingEdits, { runId: "p-run", contexts: state.deliveryContexts ?? [] });
+    await expect(saveLastPulledAt(prisma, "p", AFTER, undefined, state.pendingEdits, { runId: "p-run", contexts: state.deliveryContexts ?? [] })).rejects.toThrow(/unsent edits were kept/);
     expect(await confirmation()).toBeNull();
-    expect(await token("p-k1-ko")).toBeNull();
-    expect((await prisma.project.findUnique({ where: { id: "p" } }))?.lastPulledAt).toEqual(AFTER);
+    expect(await token("p-k1-ko")).toBe("tok-k1-ko");
+    expect((await prisma.project.findUnique({ where: { id: "p" } }))?.lastPulledAt).toBeNull();
   });
 
   it("캡처 뒤 적재가 context를 바꿨으면(importRevision 증가) 확인을 쓰지 않는다 — 늦은 Publish가 무효화를 덮지 않는다", async () => {
     const state = await loadPullState(prisma, "p");
     await prisma.translationSurface.update({ where: { id: "p-s" }, data: { importRevision: { increment: 1 } } });
-    await saveLastPulledAt(prisma, "p", AFTER, undefined, state.pendingEdits, { runId: "p-run", contexts: state.deliveryContexts ?? [] });
+    await expect(saveLastPulledAt(prisma, "p", AFTER, undefined, state.pendingEdits, { runId: "p-run", contexts: state.deliveryContexts ?? [] })).rejects.toThrow(/unsent edits were kept/);
     expect(await confirmation()).toBeNull();
+    expect(await token("p-k1-ko")).toBe("tok-k1-ko");
   });
 
-  it("delivery를 안 넘기면 확인·기준을 건드리지 않는다 — 기존 호출부와 같다", async () => {
+  it("실행권 없이 토큰을 해제하지 않는다 — 모든 해제에는 전달 revision이 필요하다 (R1)", async () => {
     const state = await loadPullState(prisma, "p");
-    await saveLastPulledAt(prisma, "p", AFTER, undefined, state.pendingEdits);
+    await expect(saveLastPulledAt(prisma, "p", AFTER, undefined, state.pendingEdits)).rejects.toThrow(/unsent edits were kept/);
     expect(await confirmation()).toBeNull();
-    expect(await token("p-k1-ko")).toBeNull();
+    expect(await token("p-k1-ko")).toBe("tok-k1-ko");
+  });
+
+  it("누락된 context가 있는 셀은 revision 없이 해제하지 않는다 (R1)", async () => {
+    const state = await loadPullState(prisma, "p");
+    await expect(saveLastPulledAt(prisma, "p", AFTER, { prUrl: "u" }, state.pendingEdits,
+      { runId: "p-run", contexts: [] })).rejects.toThrow(/unsent edits were kept/);
+    expect(await token("p-k1-ko")).toBe("tok-k1-ko");
+    expect(await confirmation()).toBeNull();
+    expect((await prisma.project.findUniqueOrThrow({ where: { id: "p" } })).lastPublishedAt).toBeNull();
+  });
+
+  it("여러 context 중 하나라도 무효면 유효 소스의 CAS·확인도 전부 보류한다 (R1)", async () => {
+    const state = await loadPullState(prisma, "p");
+    await expect(saveLastPulledAt(prisma, "p", AFTER, { prUrl: "u" }, state.pendingEdits,
+      { runId: "p-run", contexts: [...state.deliveryContexts!, { surfaceId: "removed", fingerprint: "obsolete" }] }))
+      .rejects.toThrow(/unsent edits were kept/);
+    expect(await token("p-k1-ko")).toBe("tok-k1-ko");
+    expect(await confirmation()).toBeNull();
+    expect(await baselines()).toEqual([]);
+    expect((await prisma.project.findUniqueOrThrow({ where: { id: "p" } })).lastPublishedAt).toBeNull();
+  });
+
+  it("늦은 실행권 상실은 새 유효 확인·복원 기준·Last sent를 그대로 둔다 (R1)", async () => {
+    const old = await loadPullState(prisma, "p");
+    await prisma.syncRun.update({ where: { id: "p-run" }, data: { status: "FAILED" } });
+    await prisma.syncRun.create({ data: { id: "new", projectId: "p", status: "RUNNING", trigger: "MANUAL" } });
+    await prisma.translation.update({ where: { id: "p-k1-ko" }, data: { value: "B", pendingEditToken: "tok-B" } });
+    await saveLastPulledAt(prisma, "p", AFTER, { prUrl: "new-pr" }, old.pendingEdits,
+      { runId: "new", contexts: old.deliveryContexts! });
+    const snapshot = { confirmation: await confirmation(), baselines: await baselines(),
+      project: await prisma.project.findUniqueOrThrow({ where: { id: "p" } }) };
+    expect(snapshot.baselines).toHaveLength(1);
+    await expect(saveLastPulledAt(prisma, "p", new Date(AFTER.getTime() + 1), { prUrl: "old-pr" }, old.pendingEdits,
+      { runId: "p-run", contexts: old.deliveryContexts! })).rejects.toThrow(/unsent edits were kept/);
+    expect(await confirmation()).toEqual(snapshot.confirmation);
+    expect(await baselines()).toEqual(snapshot.baselines);
+    expect(await prisma.project.findUniqueOrThrow({ where: { id: "p" } })).toEqual(snapshot.project);
+    expect(await token("p-k1-ko")).toBe("tok-B");
   });
 
   it("한 문장이라도 실패하면 lastPulledAt·CAS·확인이 전부 롤백된다", async () => {

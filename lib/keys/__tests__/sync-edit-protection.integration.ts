@@ -1,3 +1,4 @@
+import { readDeliveryRevision } from "@/lib/pull/delivery-revision";
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -165,6 +166,14 @@ describe("적재의 토큰 정리 (T4)", () => {
   });
 });
 
+// Production confirmations always carry the captured contexts and a RUNNING execution.
+async function confirmationFor(projectId: string, state: Awaited<ReturnType<typeof loadPullState>>) {
+  const run = await prisma.syncRun.upsert({ where: { id: `fixture-confirm-${projectId}` },
+    create: { id: `fixture-confirm-${projectId}`, projectId, status: "RUNNING", trigger: "MANUAL" },
+    update: { status: "RUNNING" } });
+  return { runId: run.id, contexts: state.deliveryContexts ?? [] };
+}
+
 describe("Publish 캡처와 전달 확인 CAS (T4)", () => {
   const cells: CellSpec[] = [
     { key: "k1", locale: "ko", token: "tok-1" },
@@ -189,7 +198,7 @@ describe("Publish 캡처와 전달 확인 CAS (T4)", () => {
   it("committed → 캡처 토큰만 null, 제외 셀의 값·저자·토큰은 불변", async () => {
     await seed("p", { lastPulledAt: PULLED, cells });
     const state = await loadPullState(prisma, "p");
-    await saveLastPulledAt(prisma, "p", AFTER, { prUrl: "https://github.com/o/r/pull/1" }, state.pendingEdits);
+    await saveLastPulledAt(prisma, "p", AFTER, { prUrl: "https://github.com/o/r/pull/1" }, state.pendingEdits, await confirmationFor("p", state));
 
     expect((await cell("p", "k1", "ko"))?.pendingEditToken).toBeNull();
     expect((await cell("p", "k2", "ko"))?.pendingEditToken).toBeNull();
@@ -204,7 +213,7 @@ describe("Publish 캡처와 전달 확인 CAS (T4)", () => {
     const state = await loadPullState(prisma, "p");
     // 캡처 밖 셀 — 스냅샷 뒤 처음 편집된 셀
     await resave("p", "k2", "fr", "after-capture", "tok-late");
-    await saveLastPulledAt(prisma, "p", AFTER, undefined, state.pendingEdits);
+    await saveLastPulledAt(prisma, "p", AFTER, undefined, state.pendingEdits, await confirmationFor("p", state));
 
     expect((await cell("p", "k1", "ko"))?.pendingEditToken).toBeNull();
     expect(await cell("p", "k2", "fr")).toMatchObject({ value: "after-capture", pendingEditToken: "tok-late" });
@@ -216,7 +225,7 @@ describe("Publish 캡처와 전달 확인 CAS (T4)", () => {
     const state = await loadPullState(prisma, "p");
     // barrier: 캡처와 해제 사이에 저장이 커밋된다. updatedAt을 그대로 두어 시각으로는 구별이 불가능하게 만든다.
     await resave("p", "k1", "ko", "edited-again", "tok-1b", AFTER);
-    await saveLastPulledAt(prisma, "p", AFTER, { prUrl: "u" }, state.pendingEdits);
+    await saveLastPulledAt(prisma, "p", AFTER, { prUrl: "u" }, state.pendingEdits, await confirmationFor("p", state));
 
     expect(await cell("p", "k1", "ko")).toMatchObject({ value: "edited-again", pendingEditToken: "tok-1b" });
     expect((await cell("p", "k2", "ko"))?.pendingEditToken).toBeNull();
@@ -227,7 +236,7 @@ describe("Publish 캡처와 전달 확인 CAS (T4)", () => {
     await seed("b", { lastPulledAt: PULLED, cells: [{ key: "k1", locale: "ko", token: "same" }] });
     const state = await loadPullState(prisma, "a");
     // 다른 프로젝트의 행 id를 섞어 넣어도 해제되지 않아야 한다
-    await saveLastPulledAt(prisma, "a", AFTER, undefined, [...state.pendingEdits, { id: cellId("b", "k1", "ko"), token: "same" }]);
+    await saveLastPulledAt(prisma, "a", AFTER, undefined, [...state.pendingEdits, { id: cellId("b", "k1", "ko"), token: "same" }], await confirmationFor("a", state));
 
     expect((await cell("a", "k1", "ko"))?.pendingEditToken).toBeNull();
     expect((await cell("b", "k1", "ko"))?.pendingEditToken).toBe("same");
@@ -328,7 +337,7 @@ describe("backfill (T5)", () => {
     expect(await oldPredicateIds()).toHaveLength(1);
 
     const state = await loadPullState(prisma, "p");
-    await saveLastPulledAt(prisma, "p", state.maxUpdatedAt!, undefined, state.pendingEdits);
+    await saveLastPulledAt(prisma, "p", state.maxUpdatedAt!, undefined, state.pendingEdits, await confirmationFor("p", state));
 
     expect(await oldPredicateIds()).toEqual([]);
     expect(await activeTokenIds()).toEqual([]);
@@ -448,14 +457,14 @@ describe("CI 적재 보류 (T7)", () => {
     // 역행하는 시계도 변화다. pending 0은 완료된 Publish의 상태다.
     await prisma.project.update({ where: { id: "p" }, data: { lastPublishedAt: BEFORE } });
     const options = { token: "ci", startedAt: new Date(), previousBaseLocale: "en", refsMode: "replace" as const,
-      pushTokenHash: hashPushToken(PUSH_TOKEN), expectedLastPublishedAt };
+      pushTokenHash: hashPushToken(PUSH_TOKEN), expectedLastPublishedAt, expectedDeliveryRevision: "[]" };
     const result = await applyProtectedPush(prisma, { projectId: "p", surfaceId: "surface-p" }, ciPayload(), options);
     expect(result).toMatchObject({ status: "deferred" });
     expect(await cell("p", "k1", "ko")).toMatchObject({ value: "edited" });
   });
 
   const apply = () => applyProtectedPush(prisma, { projectId: "p", surfaceId: "surface-p" }, ciPayload(),
-    { token: "ci", startedAt: new Date(), previousBaseLocale: "en", refsMode: "replace", importOutcome: null, pushTokenHash: hashPushToken(PUSH_TOKEN), expectedLastPublishedAt: null });
+    { token: "ci", startedAt: new Date(), previousBaseLocale: "en", refsMode: "replace", importOutcome: null, pushTokenHash: hashPushToken(PUSH_TOKEN), expectedLastPublishedAt: null, expectedDeliveryRevision: "[]" });
 
   /**
    * ⚠️ **판정과 upsert 사이에 커밋된 저장** (ARCHITECTURE §5.5.2). 저장 경로엔 잠금이 없으므로, 다른 연결이 `StringKey` 행을 잠가 적용을
@@ -558,12 +567,12 @@ describe("Publish 전달 확인 실패 (T10)", () => {
     const state = await loadPullState(prisma, "p");
     await pool.query(`CREATE FUNCTION reject_ack() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'injected ack failure'; END $$;
       CREATE TRIGGER reject_ack BEFORE UPDATE ON "Translation" FOR EACH STATEMENT EXECUTE FUNCTION reject_ack()`);
-    await expect(saveLastPulledAt(prisma, "p", AFTER, { prUrl: "u" }, state.pendingEdits)).rejects.toThrow();
+    await expect(saveLastPulledAt(prisma, "p", AFTER, { prUrl: "u" }, state.pendingEdits, await confirmationFor("p", state))).rejects.toThrow();
     expect((await cell("p", "k1", "ko"))?.pendingEditToken).toBe("tok-1");
     expect(await prisma.project.findUniqueOrThrow({ where: { id: "p" } })).toMatchObject({ lastPulledAt: PULLED, lastPrUrl: null });
 
     await pool.query(`DROP TRIGGER reject_ack ON "Translation"`);
-    await saveLastPulledAt(prisma, "p", AFTER, { prUrl: "u" }, state.pendingEdits);
+    await saveLastPulledAt(prisma, "p", AFTER, { prUrl: "u" }, state.pendingEdits, await confirmationFor("p", state));
     expect((await cell("p", "k1", "ko"))?.pendingEditToken).toBeNull();
   });
 });
@@ -645,10 +654,11 @@ it("적재 트랜잭션이 실패하면 관측한 CI 실패 사건을 남긴다"
 
 it("같은 밀리초에 완료되거나 시계가 역행해도 Publish 표식은 달라진다", async () => {
   await seed("p", { lastPulledAt: PULLED, cells: [] });
+  const authority = await confirmationFor("p", await loadPullState(prisma, "p"));
   vi.useFakeTimers({ toFake: ["Date"] });
   try {
     vi.setSystemTime(AFTER);
-    const publish = () => saveLastPulledAt(prisma, "p", PULLED, { prUrl: "https://github.com/o/r/pull/1" }, [], { runId: "gone", contexts: [] });
+    const publish = () => saveLastPulledAt(prisma, "p", PULLED, { prUrl: "https://github.com/o/r/pull/1" }, [], authority);
     await publish();
     const first = await prisma.project.findUniqueOrThrow({ where: { id: "p" } });
     await publish();
@@ -659,4 +669,103 @@ it("같은 밀리초에 완료되거나 시계가 역행해도 Publish 표식은
     const third = await prisma.project.findUniqueOrThrow({ where: { id: "p" } });
     expect(third.lastPublishedAt!.getTime()).toBeGreaterThan(second.lastPublishedAt!.getTime());
   } finally { vi.useRealTimers(); }
+});
+
+it.each([false, true])("no-changes delivery after CI preflight defers the old payload without changing Last sent (prior=%s)", async (prior) => {
+  await seed("p", { lastPulledAt: PULLED, cells: [{ key: "k1", locale: "ko", value: "base-B", token: null }] });
+  await prisma.project.update({ where: { id: "p" }, data: { pushTokenHash: hashPushToken(PUSH_TOKEN) } });
+  await prisma.syncRun.create({ data: { id: "no-changes", projectId: "p", status: "RUNNING", trigger: "MANUAL" } });
+  if (prior) {
+    const state = await loadPullState(prisma, "p");
+    await saveLastPulledAt(prisma, "p", AFTER, undefined, state.pendingEdits, { runId: "no-changes", contexts: state.deliveryContexts! });
+  }
+  const expectedDeliveryRevision = await readDeliveryRevision(prisma, "p");
+  // CI preflight precedes the edit and confirmation, even when the same run reconfirms the same timestamp.
+  const options = { token: "ci", startedAt: new Date(), previousBaseLocale: "en", refsMode: "replace" as const,
+    pushTokenHash: hashPushToken(PUSH_TOKEN), expectedLastPublishedAt: null, expectedDeliveryRevision };
+  await resave("p", "k1", "ko", "base-B", "edit-B");
+  const state = await loadPullState(prisma, "p");
+  await saveLastPulledAt(prisma, "p", AFTER, undefined, state.pendingEdits,
+    { runId: "no-changes", contexts: state.deliveryContexts! });
+  expect(await countPending(prisma, "p")).toBe(0);
+  expect((await prisma.project.findUniqueOrThrow({ where: { id: "p" } })).lastPublishedAt).toBeNull();
+  expect(await applyProtectedPush(prisma, { projectId: "p", surfaceId: "surface-p" }, ciPayload(), options))
+    .toEqual({ status: "deferred", pendingCount: 0, reason: "publish-raced" });
+  expect(await cell("p", "k1", "ko")).toMatchObject({ value: "base-B", pendingEditToken: null });
+});
+
+it("CI route preserves a no-changes delivery completed during its PR preflight", async () => {
+  await seed("p", { lastPulledAt: PULLED, cells: [{ key: "k1", locale: "ko", value: "old", token: null }] });
+  await prisma.project.update({ where: { id: "p" }, data: { pushTokenHash: hashPushToken(PUSH_TOKEN) } });
+  prCheck.mockImplementationOnce(async () => {
+    await resave("p", "k1", "ko", "base-B", "edit-B");
+    await prisma.syncRun.create({ data: { id: "no-changes", projectId: "p", status: "RUNNING", trigger: "MANUAL" } });
+    const state = await loadPullState(prisma, "p");
+    await saveLastPulledAt(prisma, "p", AFTER, undefined, state.pendingEdits,
+      { runId: "no-changes", contexts: state.deliveryContexts! });
+    return null;
+  });
+  expect(await post(ciPayload())).toMatchObject({ status: 200, body: { status: "deferred", reason: "publish-raced" } });
+  expect(await cell("p", "k1", "ko")).toMatchObject({ value: "base-B", pendingEditToken: null });
+  expect((await prisma.project.findUniqueOrThrow({ where: { id: "p" } })).lastPublishedAt).toBeNull();
+});
+
+// R1 uses the production runSync -> triggerPull -> runPull -> confirmation path; only GitHub is fake.
+let latePullClient: import("@/lib/pull/client").GitClient;
+vi.doMock("@/lib/github", () => ({ createGitClient: async () => latePullClient }));
+
+it.each([{ prior: false, loss: "branch" }, { prior: true, loss: "branch" },
+  { prior: false, loss: "authority" }, { prior: true, loss: "authority" }])("R1 actual POST preserves late no-changes after $loss loss (prior=$prior)", async ({ prior, loss }) => {
+  const { changeBaseBranch } = await import("@/lib/settings/update");
+  const { runSync } = await import("@/lib/sync/run");
+  const { createFakeGitClient } = await import("@/lib/pull/__tests__/fake-client");
+  const { blobSha } = await import("@/lib/githash");
+  await seed("p", { lastPulledAt: PULLED, cells: [
+    { key: "k1", locale: "en", value: "k1" }, { key: "k2", locale: "en", value: "k2" },
+    { key: "k1", locale: "ko", value: "old" }, { key: "k2", locale: "ko", value: "k2-ko" },
+    { key: "k1", locale: "fr", value: "k1-fr" }, { key: "k2", locale: "fr", value: "k2-fr" },
+  ] });
+  await prisma.user.create({ data: { id: "owner", email: "owner" } });
+  await prisma.projectMember.create({ data: { projectId: "p", userId: "owner", role: "OWNER" } });
+  await prisma.project.update({ where: { id: "p" }, data: { repositoryId: "repo", pushTokenHash: hashPushToken(PUSH_TOKEN) } });
+  if (prior) {
+    await prisma.syncRun.create({ data: { id: "prior", projectId: "p", status: "RUNNING", trigger: "MANUAL" } });
+    const state = await loadPullState(prisma, "p");
+    await saveLastPulledAt(prisma, "p", PULLED, undefined, [], { runId: "prior", contexts: state.deliveryContexts! });
+    await prisma.syncRun.update({ where: { id: "prior" }, data: { status: "SKIPPED", finishedAt: BEFORE } });
+  }
+  const revisionBefore = await readDeliveryRevision(prisma, "p");
+  let publish: Awaited<ReturnType<typeof runSync>> | undefined;
+  prCheck.mockImplementationOnce(async () => {
+    await resave("p", "k1", "ko", "base-B", "edit-B");
+    const files = { en: { k1: "k1", k2: "k2" }, ko: { k1: "base-B", k2: "k2-ko" }, fr: { k1: "k1-fr", k2: "k2-fr" } };
+    const content = Object.entries(files).map(([locale, values]) => ({ path: `i18n/${locale}.json`, text: JSON.stringify(values, null, 2) + "\n" }));
+    const fake = createFakeGitClient({ refSha: { "heads/main": "base-B" },
+      tree: { "base-B": content.map(file => ({ path: file.path, sha: blobSha(file.text) })) },
+      blobs: Object.fromEntries(content.map(file => [blobSha(file.text), file.text])) });
+    latePullClient = { ...fake.client, getRefSha: async ref => {
+      if (ref !== "heads/main") {
+        if (loss === "branch") expect(await changeBaseBranch(prisma, { userId: "owner" }, { slug: "p", baseBranch: "release" })).toEqual({ ok: true });
+        else await prisma.syncRun.updateMany({ where: { projectId: "p", status: "RUNNING" }, data: { status: "FAILED", errorCode: "stale" } });
+        return null;
+      }
+      return fake.client.getRefSha(ref);
+    } };
+    publish = await runSync(prisma, { projectId: "p", slug: "p", trigger: "manual", requestedBy: "owner", credential: undefined });
+    if (loss === "branch") expect(await changeBaseBranch(prisma, { userId: "owner" }, { slug: "p", baseBranch: "main" })).toEqual({ ok: true });
+    expect(fake.calls.some(call => ["createTree", "createCommit", "createRef", "updateRefForce"].includes(call.method))).toBe(false);
+    return null;
+  });
+  const response = await post(ciPayload());
+  expect(response).toMatchObject({ status: 200, body: { status: "deferred", reason: "pending-edits" } });
+  expect(publish).toMatchObject({ status: "failed", delivery: "unknown" });
+  expect(publish).not.toHaveProperty("delivered");
+  expect(await cell("p", "k1", "ko")).toMatchObject({ value: "base-B", pendingEditToken: "edit-B" });
+  expect((await loadProjectListAggregates(prisma, ["p"])).unsent.get("p")).toBe(1);
+  expect(await readDeliveryRevision(prisma, "p")).toBe(revisionBefore);
+  const confirmation = await prisma.deliveryConfirmation.findFirst({ where: { projectId: "p" } });
+  if (prior && loss === "branch") expect(confirmation?.invalidatedAt).toBeInstanceOf(Date);
+  else if (prior) expect(confirmation?.invalidatedAt).toBeNull();
+  else expect(confirmation).toBeNull();
+  expect(await prisma.project.findUniqueOrThrow({ where: { id: "p" } })).toMatchObject({ lastPublishedAt: null, lastPulledAt: PULLED });
 });

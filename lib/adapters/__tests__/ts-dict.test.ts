@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { detectFormat, tsDict } from "../index";
+import { adapterErrorKind } from "../types";
+import { keySlot, readSlotFiles } from "@/lib/pull/undeliverable";
 
 /**
  * 픽스처는 bugshot-2 `src/i18n/namespaces/common.ts`의 실제 형태다 —
@@ -434,5 +436,137 @@ describe("ts-dict — 중복 키 (B7a r1)", () => {
 
   it("중복이 없으면 에러가 없다 (짝)", () => {
     expect(tsDict.read(fmt, [{ path: "ns/x.ts", content: SRC.replace("  a: 'last',\n", "") }]).errors).toEqual([]);
+  });
+});
+
+it.each(["a", "a: runtime", "get a() { return runtime; }", "a() { return runtime; }"])("last nonliteral property %s hides earlier literals in read and write", (last) => {
+  const source = `const runtime = 'runtime'; const a = runtime; const en = { a: 'hidden', ${last}, b: 'B' }; const ko = { a: '가', b: '나' };`;
+  const fmt = { adapter: "ts-dict" as const, pathTemplate: "ns/*.ts", locales: ["en", "ko"], currentFiles: [{ path: "ns/x.ts", content: source }] };
+  const read = tsDict.read(fmt, fmt.currentFiles);
+  expect(read.locales.find(locale => locale.locale === "en")?.entries).toEqual([{ key: "b", message: "B" }]);
+  const write = tsDict.writeWithErrors!(fmt, { locale: "en", entries: [{ key: "a", message: "edited" }] });
+  expect(write.content).toBe(source);
+  expect(write.errors.some(error => error.key === "a" && error.code !== "duplicate-property")).toBe(true);
+});
+
+it("a final literal supersedes shorthand and remains editable; unrelated shorthand does not block a wanted literal", () => {
+  const source = "const a = 'runtime'; const en = { a, a: 'last', b }; const ko = { a: '가' };";
+  const fmt = { adapter: "ts-dict" as const, pathTemplate: "ns/*.ts", locales: ["en", "ko"], currentFiles: [{ path: "ns/x.ts", content: source }] };
+  expect(tsDict.read(fmt, fmt.currentFiles).locales.find(locale => locale.locale === "en")?.entries).toEqual([{ key: "a", message: "last" }]);
+  const write = tsDict.writeWithErrors!(fmt, { locale: "en", entries: [{ key: "a", message: "edited" }] });
+  expect(write.content).toBe(source.replace("a: 'last'", "a: 'edited'"));
+  expect(write.errors.filter(error => error.code !== "duplicate-property")).toEqual([]);
+});
+
+describe("ts-dict — spread/computed의 마지막 유효 자리", () => {
+  const formatFor = (body: string) => ({
+    adapter: "ts-dict" as const, pathTemplate: "ns/*.ts", locales: ["en", "ko"],
+    currentFiles: [{ path: "ns/x.ts", content: `const runtime = 'R'; const key = 'a'; const rest = { a: runtime }; const en = { a: 'Source' }; const ko = { ${body} };` }],
+  });
+
+  it.each(["...rest", "[key]: runtime", "[key]() { return runtime; }", "get [key]() { return runtime; }"])("후행 %s는 앞 리터럴을 읽거나 쓰지 않는다", (tail) => {
+    const fmt = formatFor(`a: 'Hidden', ${tail}`);
+    const read = tsDict.read(fmt, fmt.currentFiles);
+    expect(read.locales.find(locale => locale.locale === "ko")?.entries).toEqual([]);
+    expect(read.errors).toContainEqual({ path: "ns/x.ts", key: "a", code: "key-shadowed" });
+    expect(read.errors.some(error => adapterErrorKind(error.code) === "failure")).toBe(true);
+    expect(keySlot(readSlotFiles(tsDict, fmt, fmt.currentFiles), "ko", "a")).toEqual({ kind: "absent" });
+    const write = tsDict.writeWithErrors!(fmt, { locale: "ko", entries: [{ key: "a", message: "Edited" }] });
+    expect(write.content).toBe(fmt.currentFiles[0]!.content);
+    expect(write.errors).toContainEqual({ path: "ns/x.ts", key: "a", code: "key-shadowed" });
+  });
+
+  it.each(["['a']", "[`a`]"])("정적인 computed 이름 %s도 같은 키로 판정한다", (name) => {
+    const fmt = formatFor(`a: 'Hidden', ${name}: runtime, b: 'B'`);
+    expect(tsDict.read(fmt, fmt.currentFiles).locales.find(locale => locale.locale === "ko")?.entries).toEqual([{ key: "b", message: "B" }]);
+    const write = tsDict.writeWithErrors!(fmt, { locale: "ko", entries: [{ key: "a", message: "Edited" }] });
+    expect(write.content).toBe(fmt.currentFiles[0]!.content);
+    expect(write.errors.some(error => error.key === "a" && error.code !== "duplicate-property")).toBe(true);
+  });
+
+  it.each(["...rest", "[key]: runtime"])("%s 뒤의 확정 리터럴은 편집 가능하며 바이트 고정점이다", (unknown) => {
+    const fmt = formatFor(`a: 'Hidden', ${unknown}, a: 'Final', b: 'B'`);
+    const read = tsDict.read(fmt, fmt.currentFiles);
+    expect(read.locales.find(locale => locale.locale === "ko")?.entries).toEqual([{ key: "a", message: "Final" }, { key: "b", message: "B" }]);
+    expect(read.errors.filter(error => error.code !== "duplicate-property")).toEqual([]);
+    const input = { locale: "ko", entries: [{ key: "a", message: "Edited" }] };
+    const write = tsDict.writeWithErrors!(fmt, input);
+    expect(write.content).toBe(fmt.currentFiles[0]!.content.replace("a: 'Final'", "a: 'Edited'"));
+    expect(write.errors).toEqual([]);
+    expect(tsDict.writeWithErrors!({ ...fmt, currentFiles: [{ path: "ns/x.ts", content: write.content! }] }, input)).toEqual(write);
+  });
+
+  it("무관한 static computed와 숫자 별칭은 런타임 이름으로 판정한다", () => {
+    const fmt = formatFor("a: 'A', ['b']: runtime, 1: 'Hidden', [0x1]: 'Final'");
+    const write = tsDict.writeWithErrors!(fmt, { locale: "ko", entries: [{ key: "a", message: "Edited" }, { key: "1", message: "One" }] });
+    expect(write.errors).toEqual([]);
+    expect(write.content).toBe(fmt.currentFiles[0]!.content.replace("a: 'A'", "a: 'Edited'").replace("[0x1]: 'Final'", "[0x1]: 'One'"));
+    expect(tsDict.read(fmt, fmt.currentFiles).locales.find(locale => locale.locale === "ko")?.entries).toEqual([{ key: "1", message: "Final" }, { key: "a", message: "A" }]);
+  });
+
+  it("앞 키가 불확실해도 뒤의 확정 키는 쓰며, read는 불완전 입력 진단을 유지한다", () => {
+    const fmt = formatFor("a: 'Hidden', ...rest, b: 'B'");
+    const read = tsDict.read(fmt, fmt.currentFiles);
+    expect(read.locales.find(locale => locale.locale === "ko")?.entries).toEqual([{ key: "b", message: "B" }]);
+    expect(read.errors.filter(error => adapterErrorKind(error.code) === "failure")).toEqual([{ path: "ns/x.ts", key: "a", code: "key-shadowed" }]);
+    const slots = readSlotFiles(tsDict, fmt, fmt.currentFiles);
+    expect(keySlot(slots, "ko", "a")).toEqual({ kind: "absent" });
+    expect(keySlot(slots, "ko", "b")).toEqual({ kind: "slot", paths: ["ns/x.ts"] });
+    expect(tsDict.writeWithErrors!(fmt, { locale: "ko", entries: [{ key: "b", message: "Edited" }] })).toEqual({
+      content: fmt.currentFiles[0]!.content.replace("b: 'B'", "b: 'Edited'"), errors: [],
+    });
+  });
+});
+
+describe("ts-dict — __proto__ own property syntax", () => {
+  const formatFor = (body: string) => ({
+    adapter: "ts-dict" as const, pathTemplate: "ns/*.ts", locales: ["en", "ko"],
+    currentFiles: [{ path: "ns/x.ts", content: `const __proto__ = 'Runtime'; const en = { ['__proto__']: 'Source' }; const ko = { ${body} };` }],
+  });
+
+  it.each(["__proto__", "'__proto__'", '"__proto__"'])("noncomputed %s is not an own slot", (name) => {
+    const fmt = formatFor(`${name}: 'Hidden'`);
+    expect(tsDict.read(fmt, fmt.currentFiles).locales.find(l => l.locale === "ko")?.entries).toEqual([]);
+    expect(keySlot(readSlotFiles(tsDict, fmt, fmt.currentFiles), "ko", "__proto__")).toEqual({ kind: "absent" });
+    expect(tsDict.writeWithErrors!(fmt, { locale: "ko", entries: [{ key: "__proto__", message: "Edited" }] })).toEqual({
+      content: fmt.currentFiles[0]!.content,
+      errors: [{ path: "ns/x.ts", code: "write-slot-missing", key: "__proto__" }],
+    });
+  });
+
+  it.each([
+    "['__proto__']: 'Actual', __proto__: 'Hidden'",
+    "['__proto__']: 'Actual', '__proto__': 'Hidden'",
+    "__proto__: 'Hidden', ['__proto__']: 'Actual'",
+  ])("only the computed own value is read and written: %s", (body) => {
+    const fmt = formatFor(body);
+    expect(tsDict.read(fmt, fmt.currentFiles)).toMatchObject({
+      errors: [], locales: expect.arrayContaining([{ locale: "ko", entries: [{ key: "__proto__", message: "Actual" }] }]),
+    });
+    expect(keySlot(readSlotFiles(tsDict, fmt, fmt.currentFiles), "ko", "__proto__")).toEqual({ kind: "slot", paths: ["ns/x.ts"] });
+    const input = { locale: "ko", entries: [{ key: "__proto__", message: "Edited" }] };
+    const write = tsDict.writeWithErrors!(fmt, input);
+    expect(write).toEqual({ content: fmt.currentFiles[0]!.content.replace("'Actual'", "'Edited'"), errors: [] });
+    expect(tsDict.writeWithErrors!({ ...fmt, currentFiles: [{ path: "ns/x.ts", content: write.content! }] }, input)).toEqual(write);
+  });
+
+  it.each([
+    ["__proto__", "shorthand-property"],
+    ["__proto__() { return 'Runtime'; }", "not-property-assignment"],
+    ["get __proto__() { return 'Runtime'; }", "not-property-assignment"],
+  ])("%s still shadows earlier own literals", (tail, code) => {
+    const fmt = formatFor(`['__proto__']: 'Hidden', ${tail}`);
+    expect(tsDict.read(fmt, fmt.currentFiles).locales.find(l => l.locale === "ko")?.entries).toEqual([]);
+    const write = tsDict.writeWithErrors!(fmt, { locale: "ko", entries: [{ key: "__proto__", message: "Edited" }] });
+    expect(write.content).toBe(fmt.currentFiles[0]!.content);
+    expect(write.errors).toEqual([{ path: "ns/x.ts", key: "__proto__", code }]);
+  });
+
+  it("a prototype setter in another locale does not establish file ownership", () => {
+    const fmt = formatFor("b: 'B'");
+    fmt.currentFiles[0]!.content = fmt.currentFiles[0]!.content.replace("['__proto__']: 'Source'", "__proto__: 'Source'");
+    expect(tsDict.writeWithErrors!(fmt, { locale: "ko", entries: [{ key: "__proto__", message: "Edited" }] })).toEqual({
+      content: fmt.currentFiles[0]!.content, errors: [],
+    });
   });
 });

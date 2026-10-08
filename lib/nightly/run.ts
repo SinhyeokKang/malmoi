@@ -11,6 +11,7 @@ import { GITHUB_WAIT_MS, withinGithubWait } from "@/lib/github-wait";
 import { closeExpiredImportRuns, runAutomationImport } from "@/lib/import/run";
 import { openPrGateApplies } from "@/lib/protection/plan";
 import { countPending } from "@/lib/protection/where";
+import { readDeliveryRevision } from "@/lib/pull/delivery-revision";
 import type { GitClient } from "@/lib/pull/client";
 import { syncBranchFor } from "@/lib/pull/sync-branch";
 import { runSync } from "@/lib/sync/run";
@@ -50,6 +51,7 @@ export type NightlyTarget = {
     baseLocale: string | null;
     /** 표면 실패 상태 — 있으면 같은 head여도 다시 적재한다(`NightlySurface.failed`). */
     lastImportError: string | null;
+    importRevision: number;
   }[];
 };
 
@@ -76,6 +78,7 @@ export async function runNightly(prisma: PrismaClient, target: NightlyTarget, el
   }
 
   const snapshot = await prisma.project.findUniqueOrThrow({ where: { id: target.id }, select: { lastPublishedAt: true } });
+  const expectedDeliveryRevision = await readDeliveryRevision(prisma, target.id);
   const active = target.surfaces.filter((surface) => surface.archivedAt === null);
   const input: NightlyInput = {
     pending: await countPending(prisma, target.id),
@@ -111,7 +114,7 @@ export async function runNightly(prisma: PrismaClient, target: NightlyTarget, el
       const { installationId, repositoryId } = target;
       if (installationId === null) throw new AppError(`nightly import without installation: ${target.slug}`);
       const repository = { repositoryId, installationId, repoOwner: target.repoOwner, repoName: target.repoName, baseBranch: target.baseBranch };
-      const result = await runAutomationImport(prisma, { projectId: target.id, repository, expectedLastPublishedAt: snapshot.lastPublishedAt },
+      const result = await runAutomationImport(prisma, { projectId: target.id, repository, expectedLastPublishedAt: snapshot.lastPublishedAt, expectedDeliveryRevision },
         () => openRepoReader(target.repoOwner, target.repoName, installationId, repositoryId));
       return { action: "import", ...result };
     }
@@ -140,7 +143,22 @@ export async function runNightly(prisma: PrismaClient, target: NightlyTarget, el
          */
         const { lastImportError, lastImportFailedAt } = importOutcomeFields("import-failed", new Date());
         await prisma.$transaction(async (tx) => {
-          await tx.translationSurface.updateMany({ where: { projectId: target.id, id: { in: active.map((surface) => surface.id) } }, data: { lastImportError, lastImportFailedAt } });
+          // 늦은 원격 관측은 사건으로 보존하되 새 설정·성공 적재의 현재 건강성을 덮지 않는다.
+          await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${target.id} FOR UPDATE`;
+          const current = await tx.project.findUnique({ where: { id: target.id } });
+          if (current !== null && current.archivedAt === null
+            && current.repositoryId === target.repositoryId && current.installationId === target.installationId
+            && current.repoOwner === target.repoOwner && current.repoName === target.repoName && current.baseBranch === target.baseBranch) {
+            const ids = active.map(surface => surface.id).sort();
+            await tx.$executeRaw`SELECT "id" FROM "TranslationSurface" WHERE "projectId" = ${target.id} AND "id" = ANY(${ids}::text[]) ORDER BY "id" FOR UPDATE`;
+            await tx.translationSurface.updateMany({
+              where: { projectId: target.id, archivedAt: null, OR: active.map(surface => ({
+                id: surface.id, importRevision: surface.importRevision, adapterName: surface.adapterName,
+                pathTemplate: surface.pathTemplate, baseLocale: surface.baseLocale,
+              })) },
+              data: { lastImportError, lastImportFailedAt },
+            });
+          }
           await recordEvent(tx, event);
         });
       } else {

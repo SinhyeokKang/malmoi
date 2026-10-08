@@ -1,0 +1,18 @@
+# Batch C — LLM exports, image loading and static asset caching
+
+Read report.md/orch.md in this directory, AGENTS/CLAUDE, ARCHITECTURE §8/§8.1, guide parser head comments and related POSTMORTEM. A is integrated. B runs in parallel and owns JSON-LD/site metadata, app/layout, docs route and landing/metadata tests; do not touch those paths. Rebase onto current dev if told to reuse an earlier checkout.
+
+Target audit 4, 9, 15, 19 and confirmation of existing AI-crawler policy (23). Own `lib/seo/llms.ts`, its tests, llms routes if needed, `components/docs/guide-markdown.tsx` and image tests, `next.config.ts` and narrow header tests. lib/seo/crawl.ts comment-only if useful; no new crawler blocking. No guide manuscripts, dictionaries, JSON-LD/site metadata, app/page.tsx, docs route/layout, public-shell/stage, schema/package/lock. Request coordinator before touching an unowned file. Authoritative documentation stays coordinator-owned; give exact edits in handoff.
+
+Use source-command-ship bypass. Worktree branch is dev-equivalent, stop before step 11 /push. No push/merge/sync/db:deploy/schema/.env.local copying. TDD and final `pnpm gate --base dev` unfiltered; preserve the full gate log under .scratch for review. Local commits with Codex trailer authorized.
+
+## Required result
+
+- llms.txt: retain concise hero blockquote, add one factual paragraph from existing PRODUCT/README (current no paid plans, MIT, GitHub, MCP, exclusions). Optional section links to llms-full, changelog, privacy and GitHub. Avoid duplicate Malmoi H2 by naming initial section Overview. English only is intentional. Keep SUMMARY ordering and deterministic bytes.
+- llms-full: reuse actual guide parser/link resolver to turn real inline/reference Markdown links into public absolute URLs, including README and hashes. Preserve fenced code, inline code, external links, image syntax, reference labels/titles, whitespace outside changed destinations. Do not regex-rewrite the entire document. Use AST positions if safe; demonstrate actual fixtures including encoded destinations and parentheses. No new dependency solely for stringify. If a safe small solution is not viable, ask coordinator with concrete evidence before broadening.
+- Keep `Source:` URLs and content deterministic, no current timestamps.
+- First actual image in each guide page eager/high priority; subsequent images lazy. Determine image order from parsed content rather than guessing filenames. Preserve alt and intrinsic width/height; no blanket next/image migration. Before/after /docs LCP must be in final QA, not asserted by unit tests.
+- Cache only public font/guide assets: start `public, max-age=3600, stale-while-revalidate=86400`. Do not add immutable to unhashed names or cache auth/public dynamic HTML. Preserve all existing security headers and CSP routing. Document maximum replacement staleness and verify production header behavior only after approved deployment (dev preview checks now).
+- ARCHITECTURE §8.1 already explicitly permits GPTBot/Google-Extended/ClaudeBot; no crawler policy decision is missing. Handoff can suggest PRODUCT cross-reference; do not invent a new policy.
+
+Acceptance: regression tests for original-link preservation and actual converted URLs, deterministic exports; first/subsequent images; header route scoping plus preserved security headers. Final gate must pass. Write `.scratch/handoff-C.md` with commits, exact test/gate outcomes, deviations, authoritative docs and only (b) runtime observations with reasons. Send worker_done exactly once under active preamble then idle. Codex Sol/Astra only; Astra maximum medium.

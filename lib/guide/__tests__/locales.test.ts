@@ -51,6 +51,61 @@ const read = (dir: string, file: string) => parseMd(readFileSync(join(dir, file)
 const summaryFiles = (dir: string) => flattenNav(parseSummary(read(dir, "SUMMARY.md"))).map(({ file }) => file);
 const en = trees.find(({ uiLocale }) => uiLocale === "en");
 
+// 고유명사만인 설명은 언어가 같아도 된다. 설명문 전체를 예외로 등록하지 않는다.
+const IMAGE_NAMES = new Set(["Malmoi", "GitHub", "Google", "Claude", "Claude Code", "Codex", "MCP", "OAuth"]);
+const normalizeDescription = (value: string) => value.trim().replace(/\s+/g, " ");
+
+function imageDescriptions(tree: Root) {
+  const images: { src: string; alt: string; title: string }[] = [];
+  visit(tree, "image", (node) => {
+    images.push({ src: node.url, alt: node.alt ?? "", title: node.title ?? "" });
+  });
+  return images;
+}
+
+function untranslatedImageDescriptions(source: Root, translated: Root): string[] {
+  const originals = imageDescriptions(source);
+  return imageDescriptions(translated).flatMap((image, index) => {
+    const original = originals[index];
+    if (!original || original.src !== image.src) return []; // 경로·순서는 구조 동형 게이트가 검사한다.
+    return (["alt", "title"] as const).flatMap((field) => {
+      const text = normalizeDescription(original[field]);
+      if (!text || IMAGE_NAMES.has(text)) return [];
+      const translation = normalizeDescription(image[field]);
+      return !translation || translation === text ? [`${image.src}:${field}`] : [];
+    });
+  });
+}
+
+describe("그림 설명 번역 누락", () => {
+  const source = parseMd('![The Malmoi screen](/guide/a.webp "Open Malmoi.")');
+  it("alt와 title을 각각 검사하고 공백만 바꾼 영어도 잡는다", () => {
+    expect(untranslatedImageDescriptions(source, parseMd('![ The  Malmoi screen ](/guide/a.webp "Open Malmoi.")')))
+      .toEqual(["/guide/a.webp:alt", "/guide/a.webp:title"]);
+    expect(untranslatedImageDescriptions(source, parseMd('![La pantalla de Malmoi](/guide/a.webp "Open Malmoi.")')))
+      .toEqual(["/guide/a.webp:title"]);
+    expect(untranslatedImageDescriptions(source, parseMd('![The Malmoi screen](/guide/a.webp "Abre Malmoi.")')))
+      .toEqual(["/guide/a.webp:alt"]);
+  });
+  it("번역과 고유명사만인 설명은 허용하지만 설명 삭제는 허용하지 않는다", () => {
+    expect(untranslatedImageDescriptions(source, parseMd('![La pantalla de Malmoi](/guide/a.webp "Abre Malmoi.")'))).toEqual([]);
+    const brand = parseMd('![Malmoi](/guide/a.webp "GitHub")');
+    expect(untranslatedImageDescriptions(brand, brand)).toEqual([]);
+    expect(untranslatedImageDescriptions(source, parseMd('![](/guide/a.webp)')))
+      .toEqual(["/guide/a.webp:alt", "/guide/a.webp:title"]);
+  });
+  it("コード例の画像は読者向けの画像として数えない", () => {
+    const code = parseMd('```md\n![The screen](/guide/a.webp "Open it.")\n```');
+    expect(untranslatedImageDescriptions(code, code)).toEqual([]);
+  });
+  it("실물 es의 모든 이미지 설명이 번역되어 있다", () => {
+    const es = trees.find(({ uiLocale }) => uiLocale === "es")!;
+    const untranslated = summaryFiles(en!.dir).flatMap((file) =>
+      untranslatedImageDescriptions(read(en!.dir, file), read(es.dir, file)).map((problem) => `${file}:${problem}`));
+    expect(untranslated).toEqual([]);
+  });
+});
+
 describe("guideShape", () => {
   it("앵커·이미지·링크·번호 단계를 잡고 문장은 보지 않는다", () => {
     const a = guideShape(parseMd("# A\n\nLead.\n\n## Step {#step}\n\n1. One [x](b.md#y)\n2. Two\n\n![Alt](/guide/a.webp)\n"));

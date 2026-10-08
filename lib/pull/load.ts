@@ -189,6 +189,8 @@ export async function invalidateDeliveryConfirmations(
   await db.deliveryConfirmation.updateMany({ where: { projectId, invalidatedAt: null }, data: { invalidatedAt: new Date() } });
 }
 
+const UNCONFIRMED_DELIVERY = "Delivery could not be confirmed; unsent edits were kept. Publish again.";
+
 /**
  * 2층까지 통과했을 때의 갱신. **`published`가 있으면 같은 `update`에 함께 실린다** — 왕복을 두 번
  * 만들지 않는다.
@@ -207,11 +209,12 @@ export async function saveLastPulledAt(
   published: { prUrl: string } | undefined,
   delivered: readonly PendingEdit[],
   /**
-   * 실행권과 캡처 context. 없으면(실행 행 없는 호출) 전달 확인·기준을 건드리지 않는다 — 늦은 성공을 가를 수 없다.
+   * 실행권과 캡처 context. 토큰 해제에는 필수다 — 없으면 확인 revision을 남길 수 없어 편집을 유지하고 실패한다.
    * `withheld`는 이번 PR에 못 실은 캡처 편집이다 — 토큰은 그대로 두고 기준 행의 revision만 새 확인으로 다시 찍는다.
    */
   delivery?: { runId: string; contexts: readonly DeliveryContext[]; withheld?: readonly PendingEdit[] },
 ): Promise<void> {
+  if (delivery === undefined && delivered.length > 0) fail(UNCONFIRMED_DELIVERY);
   const project = {
     where: { id: projectId },
     data: {
@@ -227,12 +230,10 @@ export async function saveLastPulledAt(
     await prisma.project.update(project);
     return;
   }
-  // 같은 트랜잭션이다 — `lastPulledAt`만 전진하고 해제가 빠지면 옛 술어는 0인데 토큰이 남는 "유령 pending"이 된다
-  // (ARCHITECTURE §3). 두 쓰기를 `Promise.all`로 겹치지 않는다(POSTMORTEM 2026-09-16).
+  // 토큰 없는 시각 갱신도 Project 잠금 안에서 완료 표식을 단조 증가시킨다.
   await prisma.$transaction(async (tx) => {
     await lockPublication(tx, projectId, project.data);
     await tx.project.update(project);
-    await acknowledgeDelivered(tx, projectId, delivered);
   });
 }
 
@@ -270,8 +271,9 @@ async function acknowledgeDelivered(tx: Prisma.TransactionClient, projectId: str
  *
  * ⚠️ **잠금은 Project → 정렬된 Surface다** — 번역 저장과 같은 순서라, 기준을 고르는 사이 저장이 끼어 토큰을 바꾸지 못한다.
  * ⚠️ **토큰 CAS와 기준 교체를 같은 조건으로 묶지 않는다** — 캡처 뒤 재편집된 셀은 pending이 남고 기준은 캡처값이다(현재 DB 값이 아니다).
- * ⚠️ 실행권(RUNNING)을 잃었거나 캡처 뒤 context가 바뀐 소스는 확인을 쓰지 않는다 — 늦은 Publish가 무효화를 덮지 않는다.
- * 그때도 `lastPulledAt`·CAS는 기존대로 간다 — 전달 자체는 일어났고, 그 판정은 이 기능 전부터의 계약이다.
+ * ⚠️ 실행권(RUNNING)을 잃었거나 캡처 뒤 context가 바뀌면 확정 전체를 거부한다 — pending·기준·시각도 그대로다.
+ * 확인 revision 없이 CAS만 성공하면 사전 판정을 마친 옛 CI가 편집을 덮는다(R1). 예외는 runSync의 failed 결과로 이어져
+ * 편집을 해제했다는 성공 안내도 막는다. 다음 유효한 Publish가 다시 확인하며 새 확인을 위조하거나 남의 확인을 무효화하지 않는다.
  */
 async function confirmDelivery(
   tx: Prisma.TransactionClient,
@@ -287,11 +289,25 @@ async function confirmDelivery(
     await tx.$executeRaw`SELECT "id" FROM "TranslationSurface" WHERE "projectId" = ${projectId} AND "id" = ANY(${surfaceIds}::text[]) ORDER BY "id" FOR UPDATE`;
   }
 
+  const run = await tx.syncRun.findFirst({ where: { id: delivery.runId, projectId }, select: { status: true } });
+  if (run?.status !== "RUNNING") fail(UNCONFIRMED_DELIVERY);
+
+  // 순차로 읽는다 — 대화형 트랜잭션은 커넥션 하나라 `Promise.all`이 왕복을 줄이지 못한다(POSTMORTEM 2026-09-16).
+  const owner = await tx.project.findUniqueOrThrow({ where: { id: projectId }, select: { repositoryId: true, baseBranch: true } });
+  const rows = await tx.translationSurface.findMany({ where: { projectId, id: { in: surfaceIds }, archivedAt: null } });
+  const confirmed = delivery.contexts.map(context => {
+    const row = rows.find(row => row.id === context.surfaceId);
+    if (row === undefined || contextOf(owner, row) !== context.fingerprint) fail(UNCONFIRMED_DELIVERY);
+    return { context, row };
+  });
+
   // CAS가 토큰을 비우기 전에 읽는다 — "캡처 뒤 바뀌었나"는 지금 값과 캡처 값의 비교다.
   const current = delivered.length === 0 ? [] : await tx.translation.findMany({
     where: { projectId, id: { in: delivered.map(d => d.id) } },
-    select: { id: true, pendingEditToken: true },
+    select: { id: true, pendingEditToken: true, surfaceId: true },
   });
+  // 캡처 context가 빠진 로컬 셀은 revision 없이 해제하지 않는다. 타 프로젝트 id는 조회/CAS 양쪽에서 제외된다.
+  if (current.some(row => !surfaceIds.includes(row.surfaceId))) fail(UNCONFIRMED_DELIVERY);
   await tx.project.update(project);
   if (delivered.length > 0) await acknowledgeDelivered(tx, projectId, delivered);
 
@@ -305,18 +321,10 @@ async function confirmDelivery(
     await tx.translationBaseline.deleteMany({ where: { projectId, OR: released.map(c => ({ surfaceId: c.surfaceId, keyId: c.keyId, localeCode: c.localeCode })) } });
   }
 
-  const run = await tx.syncRun.findFirst({ where: { id: delivery.runId, projectId }, select: { status: true } });
-  if (run?.status !== "RUNNING") return;
-
-  // 순차로 읽는다 — 대화형 트랜잭션은 커넥션 하나라 `Promise.all`이 왕복을 줄이지 못한다(POSTMORTEM 2026-09-16).
-  const owner = await tx.project.findUniqueOrThrow({ where: { id: projectId }, select: { repositoryId: true, baseBranch: true } });
-  const rows = await tx.translationSurface.findMany({ where: { projectId, id: { in: surfaceIds }, archivedAt: null } });
   const revisionBySurface = new Map<string, string>();
   /** 보류 셀 기준을 옮길 수 있는 표면 — 같은 context의 직전 확인 revision → 새 revision. 아래 재갱신 주석이 이유다. */
   const restamp = new Map<string, { from: string; to: string }>();
-  for (const context of delivery.contexts) {
-    const row = rows.find(r => r.id === context.surfaceId);
-    if (row === undefined || contextOf(owner, row) !== context.fingerprint) continue;
+  for (const { context, row } of confirmed) {
     const revision = randomUUID();
     revisionBySurface.set(row.id, revision);
     // 덮기 전에 읽는다 — 직전 확인이 어느 context의 것이었는지가 재갱신의 자격이다.

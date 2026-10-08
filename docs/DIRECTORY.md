@@ -557,6 +557,7 @@ lib/
                         index(detect/detectFormatWith/ADAPTERS) · types(계약 + 오류 코드 24) ·
                         glob(역추적 없는 DP 매처) · shared(결정성 규칙) · quote-style · json-style ·
                         chrome-locales · json-catalog · yaml-catalog · code-dict · ts-dict(2026-09-14부터 자동 탐지 참여 — 씨앗은 tsDictProbePaths)
+                        ts-dict의 pairs는 마지막 속성·spread/computed 가림을 read/write/slot에 공유하며, noncomputed __proto__ setter는 own 키에서 제외한다
                         __tests__/contract.ts가 ADAPTERS를 순회하며 매트릭스를 검사한다
   auth/                 인증·인가. query(getProjectAccess — ⚠️ 원문 이메일을 안 낸다) ·
                         session(requireUser/requireProjectAccess — ⚠️ 보관만 redirect하지 않고 값으로 온다) ·
@@ -607,7 +608,7 @@ lib/
   push/ pull/ sync/     payload(생산자 하나) · assemble · plan · apply · auth · guard · surface-refusal(활성 표면 미발견 → 제거됨/불일치) · token · json-bounds(placeholders 자원 상한) /
                         plan · run · render · load · client · targets · trigger · sync-branch · branch-name · ref-slug ·
                         message · payload · changed-values(2026-10-04 — Publish가 리포 파일에서 바꾼 엔트리 수, 수정+추가. 관측값이고 판정에 안 쓴다 →
-                        SyncRun.changedValues) /
+                        SyncRun.changedValues) · delivery-revision(CI·야간의 전달 장벽 — 모든 소스 확인의 surfaceId·revision 집합, no-changes 포함) /
                         run(진입점 둘이 지나는 유일한 껍데기 — ⚠️ 던지지 않는다) · plan
                         ⚠️ **payload가 두 축에 각각 있다**(push/payload = `/api/push` 본문, pull/payload =
                         Git Data API 요청 본문). 둘 다 **외부 계약이라 반환 타입을 명시하는 것이 요지**이고
@@ -618,7 +619,10 @@ lib/
                         ⚠️ pull/targets의 정렬 키는 `lastNightlyAt`(2026-09-30 — 편집 없는 프로젝트가 `SyncRun`을 안 만들어
                         옛 키로는 영원히 맨 앞이다)이고, 루프 상수 셋(`PULL_BATCH_LIMIT`·`PULL_TIME_BUDGET_MS`·
                         `NIGHTLY_IMPORT_START_MS`)도 여기 산다. 야간 판정 자체는 lib/nightly/다
-  import/               리포 재적재(화면 이름 `Sync`) — approval(폐기 승인 지문의 발급·재계산이 같은 함수) · read(파일 읽기·스냅샷 오류) · surface(읽기·준비
+                        ⚠️ pull/load는 RUNNING·모든 활성 소스 context 검증 뒤에만 시각·토큰·기준·확인을 쓴다.
+                        pull/run의 renderProject는 대상 blob mode와 실제 조상 tree mode를 검사한다(ARCHITECTURE §3).
+  import/               리포 재적재(화면 이름 `Sync`) — approval(폐기 승인 지문의 발급·재계산이 같은 함수) · read(파일 읽기·스냅샷 오류,
+                        FileContentBudgetError는 IngestBudgetError 하위형으로 실제 본문 예산 초과의 파일 경로를 보존한다) · surface(읽기·준비
                         추출) · empty(정상 빈 카탈로그와 깨진 파싱을 가른다) · plan(거부 순서·실행권) ·
                         apply-plan(revision·실행 토큰 대조) · run(진입점 껍데기) · confirm·result·refusal
                         ⚠️ **뒤의 셋은 화면이 값으로 부르는 잎이다**(client-graph) — confirm은 어느 경고
@@ -735,6 +739,7 @@ lib/
   import/locales.ts     localesToKeep — 다운로드 실패 로케일을 재탐지 목록에 되살린다(경로 → 로케일은 onboarding/confirm의
                         localeOfTemplatePath가 templatePaths와 같은 패턴으로 든다)
   github.ts             Git Data API 래퍼(App installation 토큰). openRepoReader가 토큰을 한 번만 발급한다
+                        getTree는 path·sha·mode의 전체 GitTreeEntry를 보존하고, snapshot.files는 기존 blob 목록이다
   github-wait.ts        GitHub 대기 마감(GITHUB_WAIT_MS 8초) 하나 — 목록 원격 신호·probe·열린 PR·계정 조회가 같은 값을
                         읽는다(ARCHITECTURE §6.5.2). octokit을 물지 않는 잎이라 lib/github를 mock한 테스트에서도 실물이 돈다
   github-connect/       사용자 토큰 전담 — App 개인키를 모른다. origin · state · account-link ·
@@ -770,6 +775,11 @@ lib/
                         (cli/push-response — `/api/push` 응답을 CI 로그·exit로 옮긴다. deferred면 exit 0 + ::warning 한 줄 ·
                         cli/push-url — `push-local --url` 판정. 토큰 원문을 싣는 요청이라 http는 루프백 셋만, 위반은 exit 2)
                         각 기능의 순수 판정층
+                        scan/ast는 직접 래퍼·훅 import·반환 변수의 파일 내부 lexical symbol을 비교한다. 일반 선언 shadowing은
+                        refs/경고에서 제외하고, 내부 실패 Symbol은 사용자 namespace·변수 문자열과 구별한다(ARCHITECTURE §4.0).
+                        survey는 실제 writer 왕복과 집계를 잇는다. 점 키·중첩 공존은 presentation 관측이고 clean 제외 사유가 아니다.
+                        미판정 리포는 unjudged·전체 탐지율에 남고 오탐 분자·분모에서는 제외한다(ARCHITECTURE §1.9).
+                        cli/push-response의 보류 재개 안내는 열린 PR 머지/닫기 뒤 현재 head의 새 push 또는 야간 동기화다 — 옛 job 재실행을 권하지 않는다
   mcp/                  MCP 커넥터(2026-09-28, ARCHITECTURE §6.45). **순수 판정이 대부분이고 server-only가 셋뿐이다** —
                         token(생성·해시·Bearer 파싱·planApiTokenUse·shouldTouch) · grant(planToolAccess — 범위 → 멤버십 → 역할 →
                         보관 → 토큰) · issue-plan · batch(100키 상한·중복) · confirm(샘플 확인값 소비) · locked-token(잠금 뒤 재판정) ·
@@ -802,6 +812,8 @@ lib/
                         같이 부른다: access(checkRepoAccess) · repos · branches · detect · add · create · import · rotate-token.
                         ⚠️ lib/onboarding/에 두지 않는 이유가 이 디렉터리의 존재 이유다 — 그 루트는 "두 자격증명 import 없음"이라
                         credential-separation이 red다. 여기는 Server Action과 같은 규칙 집합(MEETING_ROOTS)이다.
+                        access는 요청 리포를 못 찾은 설치별 실패에서 401→reauthorize를 우선한다. 요청 리포를 찾으면 부분 성공은 유지한다.
+                        create는 선택 경로의 겹침을 다운로드 전에 거부하고 합집합을 한 번 읽어 요청 전체 파일·본문 예산을 검사한 뒤 소스별로 재사용한다
                         ⚠️ 파일명이 동사형이다(lib/projects/archive처럼) — `*-run.ts` 접미 선례가 없고, 기존 run.ts는 도메인당
                         하나인 실행기 이름이라(lib/sync/run · lib/import/run) 그 이름을 쓰면 실행기가 여럿으로 읽힌다
   (공유 코어)           **Server Action과 MCP 도구가 같이 부르는 쓰기·읽기 코어**(2026-09-29, mcp-connector T4-a — ARCHITECTURE §6.45).
@@ -904,7 +916,8 @@ lib/
                         클라이언트 그래프에 든다) · load(server-only — 전용 멤버십 조회 + 병렬 집계, 왕복 수가 프로젝트 수와 무관한 상수)
   search/               match(토큰 AND·순위·상한·빈 입력 미리보기. matchesAllTokens는 검색·`/projects`·LNB 스위처(lib/shell/switcher.ts)가 같이 쓴다) · nav-index(역할별 내비→Projects/Pages + nav 글리프 · 멤버십이 없으면 빈 색인 → Docs만) ·
                         rows(검색 Dialog 뷰모델 — searchRows 그룹·행·ids 한 원천 · searchStatuses 상태 줄 · keySearchText 하한(UTF-16)) ·
-                        docs-index(순수 함수 — SUMMARY 원고→페이지 도입/H2 절·평문) · highlight(원문 위치 보존 강조·일치 주변 snippet) ·
+                        docs-index(순수 함수 — SUMMARY 원고→페이지 도입/H2 절·평문) · highlight(원문 UTF-16 역매핑을 강조·snippet·
+                        firstMatchRange가 공유한다 — 번역 목록/MCP의 첫 일치는 인접 반복을 합치지 않는다) ·
                         keys(입력·열린 Dialog의 단축키 제외 · 활성 id — 플랫폼·조합 판정은 lib/keyboard) · key-href(KeyHit 타입·선택 키 번역 주소) ·
                         load-index(공개 GET의 pending/성공 Promise 탭 재사용·실패 재시도) · load-memberships(매 호출 Action, 캐시 없음 — Action union 그대로, throw만 unavailable).
                         __tests__/는 각 계약 + scenarios의 세션/역할/판정 차이/스니펫 시나리오를 센다. 클라이언트 전이 그래프는 정확 일치로 등록한다
@@ -946,6 +959,8 @@ lib/
   keyboard.ts           ⚠️ 잎(import 0). 키보드·포인터 판정 하나 — isImeComposing · isPlainPrimaryClick · searchShortcut(플랫폼별 matches·칩
                         식별자·aria). 글자는 내지 않는다(컴포넌트가 m.common.keys로 푼다). React 호출부는 nativeEvent를 넘긴다
   cause.ts              ⚠️ 잎. causeMessage — 잡은 값의 메시지. `(cause as Error).message`는 Error 아닌 throw에서 undefined다
+  number-format.ts      ⚠️ 잎(type import만). formatNumber(value, uiLocale) — 화면 개수를 명시한 UI 언어로 표시한다. 기본 로케일 없음;
+                        서버·클라이언트가 공유하며 PR 번호 등 식별자에는 쓰지 않는다(ARCHITECTURE §6.355)
   date-format.ts        ⚠️ 잎(옛 utc-time.ts — 2026-10-05 user-timezone). 절대 날짜·시각의 유일한 생산자(`Sep 27, 2026` · `Oct 5, 2026 08:10 UTC+9`) —
                         입력 DateStyle { uiLocale, timeZone } · Logs 날짜 산술(dayKeyAt·addDays·startOfDay). Intl.DateTimeFormat은 이 파일에서
                         timeZone을 명시한 숫자 부품 추출에만 쓴다 — 런타임 TZ를 읽지 않아야 서버·브라우저가 같은 값을 찍는다(ARCHITECTURE §6.356)
@@ -965,7 +980,7 @@ lib/
   env.ts db.ts githash.ts utils.ts relative-time.ts hue.ts
 ```
 
-⚠️ **잎 모듈이 잎인 데는 이유가 있다** — `relative-time`·`date-format`·`time-zone/`·`color-scheme/scheme`·`compare`·`ref-slug`·`flag`는
+⚠️ **잎 모듈이 잎인 데는 이유가 있다** — `relative-time`·`date-format`·`number-format`·`time-zone/`·`color-scheme/scheme`·`compare`·`ref-slug`·`flag`는
 클라이언트가 값으로 읽는 판정이라 무거운 그래프를 물면 그대로 번들이 된다. **재수출도 하지 않는다.**
 `vitest.setup.ts`가 `server-only`를 전역 mock하므로 "테스트가 죽는다"는 더 이상 그 압력이 아니고,
 **남은 방어선은 `components/__tests__/client-graph.test.ts` 하나**다.
@@ -1069,11 +1084,13 @@ vitest.projects.config.ts
                         (delivery-invariants — 승인 Sync의 orphan 토큰 해제 · orphan 셀 적재 제외 · 로케일 재시도 · 보류 뒤 Revert)도
                         여기서만 잰다 — include가 디렉터리별 `__tests__/*.integration.ts`로 박혀 있어 그 밖에 만든 통합 테스트는 조용히 0건 수집된다.
                         ⚠️ 디렉터리를 더하면 `scripts/gate-plan.ts` 트리거에도 더한다 — `__tests__/gate-plan.test.ts`가 둘을 대조한다.
-                        테스트 위치와 구현 위치가 다를 때 구현도 등재한다: MCP의 OAuth 교환 테스트가 검증하는 `lib/oauth-server/**`도 트리거다
+                        테스트 위치와 구현 위치가 다를 때 구현도 등재한다: MCP의 OAuth 교환 테스트가 검증하는 `lib/oauth-server/**`와
+                        Project/Settings/Sources Action·초대 수락·검색 Action·push/failure Route 등 직접 호출하는 진입점도 트리거다
 vitest.credentials.config.ts
                         같은 형의 둘째다 — 자격증명 암·복호의 **격리 PostgreSQL** 검증
                         (`pnpm test:credentials:postgres`, include는 `lib/credentials/__tests__/*.integration.ts`).
-                        ⚠️ 이쪽도 `pnpm test` 밖이다 — `lib/credentials/**`를 건드리면 `pnpm gate`가 붙인다
+                        ⚠️ 이쪽도 `pnpm test` 밖이다 — credentials 외에 account-connect/login-link/session-revocation 구현도
+                        `scripts/gate-plan.ts` 트리거이고 `pnpm gate`가 붙인다
 auth.ts                 Auth.js v5. 어댑터가 credentialAdapter(그 아래가 safePrismaAdapter)이고
                         세션 토큰은 우리가 만든다(DB엔 digest만). handlers는 withDeviceCookieSync(가장 바깥) → withRevocation으로 감싼다.
                         events.signIn은 계정 테마·언어를 요청 스코프에 기록만 한다(lib/device-cookies/sign-in)

@@ -194,9 +194,9 @@ export const en = {
      * 한 문장에 출처와 사고를 함께 얹으면 `from main, but …`으로 절이 셋이 되어 사고가 뒤로 밀린다.
      */
     syncedKeys: (n: number): string => `Synced ${n.toLocaleString("en-US")} key${n === 1 ? "" : "s"}`,
-    unreadable: (n: number): string => `${n} source${n === 1 ? "" : "s"} couldn't be read`,
+    unreadable: (n: number): string => `${n.toLocaleString("en-US")} source${n === 1 ? "" : "s"} couldn't be read`,
     /** ⚠️ `couldn't be read`를 여기 쓰지 않는다 — 그 표면은 **읽혔고 적용만 안 됐다**. */
-    notReplaced: (n: number): string => `${n} source${n === 1 ? " wasn't" : "s weren't"} replaced`,
+    notReplaced: (n: number): string => `${n.toLocaleString("en-US")} source${n === 1 ? " wasn't" : "s weren't"} replaced`,
     withIssue: (base: string, issue: string): string => `${base}, but ${issue}`,
     partial: (n: number): string => `${n.toLocaleString("en-US")} item${n === 1 ? " wasn't" : "s weren't"} synced. Check the details below.`,
     /**
@@ -541,6 +541,7 @@ export const en = {
        * 분량을 늘리지 않는다(히어로 줄 수).
        */
       body: "Malmoi is a localization tool for GitHub repos: it finds your translation files, lets teammates edit them in the browser, and sends every change back as one pull request.",
+      fact: "No paid plans. Open source under the MIT License.",
       /** h1 위 알약(2026-09-30 사용자) — 배포된 앱 버전(`APP_VERSION`)이 비면 버전 없는 문구다. */
       latest: (version: string) => (version === "" ? "Latest changelog" : `What's new in v${version}`),
     },
@@ -558,7 +559,8 @@ export const en = {
     closing: {
       title: "Start from the files you already have",
       /** 지원 포맷을 문장으로 선다(seo-geo T12a) — 목록은 `guide/reference/formats.md`와 같다. 분량을 늘리지 않는다. */
-      body: "Connect a GitHub repository with JSON, YAML, JS/TS or Chrome extension translation files, invite your team, and send the first pull request.",
+      body: "Connect a GitHub repository with JSON, YAML, JS/TS or Chrome extension translation files, invite your team, and let AI agents work in the same projects over MCP.",
+      links: { label: "Learn more", formats: "Supported formats", aiAgents: "AI agents", faq: "FAQ" },
     },
     /**
      * 목업의 **가상 데이터** — 앱 라벨은 여기 없다. 라벨은 실제 사전 키를 읽는다(목업과 앱이 다른 말을 하면 랜딩이 거짓이다).
@@ -993,7 +995,7 @@ export const en = {
       unit: { keys: "keys", cells: "cells" },
       /** ⚠️ 상대 시각은 서버가 `relativeTime`으로 만들어 넘긴다 — 사전은 문장만 든다. */
       synced: (when: string | null): string => (when === null ? "not synced yet" : `synced ${when}`),
-      acrossSurfaces: (n: number): string => (n === 1 ? "in this repository" : `across ${n} sources`),
+      acrossSurfaces: (n: number): string => (n === 1 ? "in this repository" : `across ${n.toLocaleString("en-US")} sources`),
       /** `5 en, 3 ja` — 많은 쪽이 앞이다. 폭에 따라 뒤부터 잘리므로 큰 수가 남아야 한다. */
       reviewByLocale: (parts: string): string => parts,
       // ⚠️ 같은 카드의 수치가 `1,207`인데 이 줄만 `1207 en`이면 같은 수인지부터 다시 읽어야 한다.
@@ -1035,7 +1037,7 @@ export const en = {
       /** 머리 개수 배지의 sr 문장 — 숫자는 `aria-hidden`이다(`CountBadge`). */
       count: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "item" : "items"}`,
       /** `<summary>`의 라벨. **접힌 수만 말한다** — 전체 수는 머리의 pill이 든다. */
-      more: (n: number): string => `+${n} more`,
+      more: (n: number): string => `+${n.toLocaleString("en-US")} more`,
       /**
        * ⚠️ **로케일을 모른다** — `lastImportError`가 표면 단위 컬럼이라 캔버스의 `{surface} · {locale}
        * file`에서 문장을 **표면까지로 낮췄다** (DESIGN §6.64).
@@ -1120,6 +1122,7 @@ export const en = {
       published: "Published",
       pullRequest: "Pull request",
       prState: "PR state",
+      prCheckFailed: "Couldn't check for an open pull request",
       settings: "Settings",
       syncLogs: "Sync logs",
       publishLogs: "Publish logs",
@@ -1743,7 +1746,7 @@ export const en = {
      * 이미 쓴다(`m.translations.keys`). ⚠️ **CDP 접근성 트리로 `h2`의 이름만 보면 통과한다** —
      * 배지가 별개 노드라서다.
      */
-    count: (n: number): string => `${n} project${n === 1 ? "" : "s"}`,
+    count: (n: number): string => `${n.toLocaleString("en-US")} project${n === 1 ? "" : "s"}`,
     /** ⚠️ **`narrowed.reset`과 같은 값이어야 한다** — 한 화면에서 같은 동작이 두 이름을 갖지 않는다. */
     clearSearch: "Clear search",
     /**
@@ -1783,7 +1786,7 @@ export const en = {
       prCheckFailed: "Couldn't check for an open pull request.",
       /** ⚠️ **base 브랜치 이름을 그대로 넣는다** — `main`을 하드코딩하지 않는다. */
       repoAhead: (n: number, baseBranch: string): string =>
-        `${n} translation file${n === 1 ? "" : "s"} changed on ${baseBranch} after your last sync.`,
+        `${n.toLocaleString("en-US")} translation file${n === 1 ? "" : "s"} changed on ${baseBranch} after your last sync.`,
       setup: "Finish setup to start translating.",
       /** ⚠️ 목록이 아는 것은 `repositoryId === null`뿐이다 — "access was revoked"는 `unpinned`에서 거짓이었다(D1). Home 배너와 같은 Disconnected 문장이다. */
       needsReconnect: "This repository is disconnected — syncs and publishes stop until it's reconnected.",
@@ -1881,7 +1884,7 @@ export const en = {
       saved: "Saved",
       errors: {
         empty: "Enter a name so people can recognize you.",
-        tooLong: (max: number): string => `Use ${max} characters or fewer.`,
+        tooLong: (max: number): string => `Use ${max.toLocaleString("en-US")} characters or fewer.`,
         unavailable: "We couldn't save your name. Try again in a moment.",
       },
     },
@@ -2219,7 +2222,7 @@ export const en = {
       back: "Back",
       close: "Close",
       /** ⚠️ **스텝퍼를 세우지 않는다** — 네 칸이 누를 수 없는 장식이 된다. 진행은 이 한 줄이다. */
-      step: (n: number): string => `Step ${n} of 4`,
+      step: (n: number): string => `Step ${n.toLocaleString("en-US")} of 4`,
     },
 
     /** 단계 넷의 제목·설명. 제목이 모달 머리로 올라가면서 각 단계의 `title` 키가 여기로 모였다. */
@@ -2231,7 +2234,7 @@ export const en = {
       files: {
         title: "Which files hold your strings?",
         description: (n: number, repo: string, branch: string): string =>
-          `${n === 1 ? "1 set" : `${n} sets`} matched on ${repo} · ${branch}. Check the keys before you continue.`,
+          `${n === 1 ? "1 set" : `${n.toLocaleString("en-US")} sets`} matched on ${repo} · ${branch}. Check the keys before you continue.`,
         loading: (repo: string, branch: string): string => `Reading ${repo} · ${branch}…`,
         /** 예외 E — 후보 0개. ①로 되돌리지 않고 여기서 수동 지정을 편다. */
         emptyTitle: "Where are your translation files?",
@@ -2349,7 +2352,7 @@ export const en = {
       conflicts: "These selections write to the same files. Uncheck a selection to continue.",
       keys: (n: number): string => (n === 1 ? "1 key" : `${n.toLocaleString("en-US")} keys`),
       /** ② 좌측 후보 행의 보조 줄 — 폭 240이라 로케일 코드를 나열할 자리가 없다. */
-      summaryShort: (locales: number, keys: string): string => `${locales} languages · ${keys}`,
+      summaryShort: (locales: number, keys: string): string => `${locales.toLocaleString("en-US")} languages · ${keys}`,
       notListed: "Not listed?",
       setPath: "Set the path yourself",
       /** ② 우측 키·값 표. */
@@ -2462,7 +2465,7 @@ export const en = {
       /** `planSlug`의 나머지 갈래 넷 — **클라이언트 판정이라 왕복이 0이다.** */
       slugEmpty: "Pick an address.",
       slugFormat: "An address can use lowercase letters, numbers, '-', '.' and '_'.",
-      slugTooLong: (max: number): string => `An address can be up to ${max} characters.`,
+      slugTooLong: (max: number): string => `An address can be up to ${max.toLocaleString("en-US")} characters.`,
       /** ⚠️ **`new`가 여기다** — 그 예약의 근거가 바로 이 라우트다 (PRODUCT §7.7). */
       slugReserved: "That address is reserved.",
     },
@@ -2986,6 +2989,13 @@ export const en = {
         owner: "Fix the file on that branch, or change the path or branch in Settings.",
         editor: "Ask a project owner to fix the file or change the path in Settings.",
       },
+      unsupportedFileKind: {
+        title: "The repository path isn't a regular file",
+        description: (path: string, branch: string): string =>
+          `${path} on ${branch} isn't a regular file or is inside a path that isn't a directory. Nothing was sent.`,
+        owner: "Use regular language files inside directories on that branch, or change the path in Settings.",
+        editor: "Ask a project owner to use regular language files inside directories on that branch.",
+      },
       unknownDelivery: "We couldn't confirm whether your changes were sent.",
 
       /** `1j` — 행조차 생기지 않는 거부 둘. 폭 512이고 danger가 아니다. */
@@ -3183,9 +3193,9 @@ export const en = {
      * ⚠️ **상한을 문구가 따로 들지 않는다** — `limit`이 인자로 들어온다. 화면이 `MEMBER_LIMIT`을
      * import하면 그 상수와 서버 거부가 갈리는 날 둘이 다른 수를 말한다.
      */
-    seats: (n: number, limit: number): string => `${n} of ${limit} seats`,
+    seats: (n: number, limit: number): string => `${n.toLocaleString("en-US")} of ${limit.toLocaleString("en-US")} seats`,
     /** 자리가 없을 때 — 막힌 사실과 **무엇을 하면 되는지**를 함께 말한다. */
-    seatsFull: (limit: number): string => `${limit} of ${limit} seats — remove someone to invite`,
+    seatsFull: (limit: number): string => `${limit.toLocaleString("en-US")} of ${limit.toLocaleString("en-US")} seats — remove someone to invite`,
     /** EDITOR 시야. ⚠️ **좌석 초과보다 이 사유가 이긴다** (`planSeatNotice`의 단언이 그것을 고정한다). */
     ownerOnly: "Only project owners can invite or change roles",
     /**
@@ -3194,7 +3204,7 @@ export const en = {
      * ⚠️ **필수다** — `RowCard`의 배지가 `<span aria-hidden>{count}</span>` + sr-only 문장 형이고
      * 기본값이 `m.projects.count`라, 안 넘기면 멤버 카드가 "3 projects"를 낭독한다.
      */
-    count: (n: number): string => `${n} member${n === 1 ? "" : "s"}`,
+    count: (n: number): string => `${n.toLocaleString("en-US")} member${n === 1 ? "" : "s"}`,
     /**
      * 복호화 실패 행 (멤버·대기 초대 공용).
      *
@@ -3300,7 +3310,7 @@ export const en = {
       /** ⚠️ **"by this request"다** (design §6) — 앞선 요청이 결과 미확인이었을 수 있으므로 범위를 이번 요청으로 좁힌다. */
       nothingSent: "Nothing was sent by this request. Fix or remove the highlighted row, then send again.",
       /** 모달 바닥 왼쪽. 헤더의 `seats`와 다른 문장인 것은 시안이고, 수는 같은 값에서 온다. */
-      seatsUsed: (n: number, limit: number): string => `${n} of ${limit} seats used`,
+      seatsUsed: (n: number, limit: number): string => `${n.toLocaleString("en-US")} of ${limit.toLocaleString("en-US")} seats used`,
       rowError: {
         invalidEmail: "This doesn't look like an email address.",
         invalidRole: "Choose a role for this address.",
@@ -3631,7 +3641,7 @@ export const en = {
        *
        * ⚠️ **계산값이라 서버가 안 는다** — `loginMethodRows`가 준 행에서 `methodCounts`가 센다.
        */
-      count: (connected: number, total: number): string => `${connected} of ${total}`,
+      count: (connected: number, total: number): string => `${connected.toLocaleString("en-US")} of ${total.toLocaleString("en-US")}`,
       /**
        * ⚠️ **`Add ${provider}`였다** (2026-09-13). 행의 제목이 이미 provider 이름이라 버튼까지
        * 그것을 반복하면 같은 단어가 한 줄에 두 번 선다. 보이는 라벨은 짧게 두고 **접근 이름만**
@@ -3835,7 +3845,7 @@ export const en = {
        * 이미 넘긴 사람(C9)에게도 참이도록 "or more"·"projects"로 쓴다.
        */
       "owner-limit-reached": (limit: number): string =>
-        `A person can own up to ${limit} active projects, and someone here already has ${limit} or more. They need to archive projects first.`,
+        `A person can own up to ${limit.toLocaleString("en-US")} active projects, and someone here already has ${limit.toLocaleString("en-US")} or more. They need to archive projects first.`,
     },
 
     /** `inviteErrorMessage` — `InviteError` 여덟 + 폴백(모르는 `?e=`에 던지지 않는다). */
@@ -3855,7 +3865,7 @@ export const en = {
       // OWNER 초대만 걸린다(operator-account C8). 초대는 소비되지 않았다 — 자리를 비우면 같은 링크가 산다. 숫자는 `PROJECT_LIMIT`이다.
       // ⚠️ "or more"·"fewer than"인 이유: 옛 우회로(보관 → 생성 → 복원)로 이미 넘긴 사람도 이 거부를 받는다(C9) — 하나만 보관해선 안 풀린다.
       "limit-reached": (limit: number): string =>
-        `You already own ${limit} or more active projects. Archive projects until you own fewer than ${limit}, then open this link again.`,
+        `You already own ${limit.toLocaleString("en-US")} or more active projects. Archive projects until you own fewer than ${limit.toLocaleString("en-US")}, then open this link again.`,
       unavailable: "Something went wrong. Try again in a moment.",
       fallback: "We couldn't accept the invitation. Ask the person who invited you for a new link.",
     },
@@ -3928,9 +3938,9 @@ export const en = {
       // ⚠️ **경로를 의심하게 하지 않는다** — 입력은 멀쩡하고 확인값이 낡았다. 할 일은 재탐지 하나다.
       "sample-expired": "This preview has expired. Detect the files again to see it.",
       "slug-taken": "That address is taken. Pick another one.",
-      "limit-reached": (limit: number): string => `You can create up to ${limit} projects.`,
+      "limit-reached": (limit: number): string => `You can create up to ${limit.toLocaleString("en-US")} projects.`,
       "invalid-slug": (max: number): string =>
-        `An address can use lowercase letters, numbers, '-', '.' and '_', up to ${max} characters. 'new' is reserved.`,
+        `An address can use lowercase letters, numbers, '-', '.' and '_', up to ${max.toLocaleString("en-US")} characters. 'new' is reserved.`,
       // 온보딩은 브랜치를 **고르는** 자리다 — 설정 화면(고치는 자리)과 안내가 갈린다.
       "invalid-branch": "That branch name isn't valid. Pick another branch.",
       // malmoi#126 — 형식은 맞다. 왜 안 되는지(Malmoi가 쓰는 브랜치)를 말해야 사용자가 다른 이름을 고른다.
@@ -3988,7 +3998,7 @@ export const en = {
     "not-property-assignment": "This isn't a property assignment.",
     "duplicate-key": "The key appears twice, so one of the two values is lost.",
     "duplicate-property": "The key is defined twice. Malmoi uses the one it edits and leaves the other as it is.",
-    "key-shadowed": "The key is the start of a longer key, so it has no slot of its own — this value wasn't written.",
+    "key-shadowed": "The key's slot is obscured by another key or property, so this value can't be written safely.",
     "write-parse-failed": "The file couldn't be parsed, so it was left untouched.",
     "write-no-default-export": "This file has no default-export object, so it was left untouched.",
     "write-locale-object-missing": "This language isn't in the file, so its translations weren't written.",

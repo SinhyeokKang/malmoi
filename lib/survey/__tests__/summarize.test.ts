@@ -237,3 +237,14 @@ describe("summarize — 2층 표", () => {
     expect(b.formatTable).toBe(a.formatTable);
   });
 });
+
+it("미판정 후보는 오탐 분자와 분모에서 빼고 탐지 집계와 unjudged에는 남긴다", () => {
+  const unknown = base({ ...HIT, repo: "acme/unjudged" });
+  const { metrics } = summarize([HIT, MISS, UNSUPPORTED_DETECTED, unknown], VERDICTS);
+  expect(metrics.misdetect.withCandidate).toMatchObject({ n: 2, of: 3 });
+  expect(metrics.detect.all).toMatchObject({ n: 4, of: 4 });
+  expect(metrics.unjudged).toEqual(["acme/unjudged"]);
+  const unjudged = summarize([unknown], []).metrics;
+  expect(unjudged.misdetect.withCandidate).toMatchObject({ n: 0, of: 0 });
+  expect(unjudged.misdetect.supported).toMatchObject({ n: 0, of: 0 });
+});

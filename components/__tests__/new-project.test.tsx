@@ -218,6 +218,112 @@ it("createProject 실패는 ③의 입력값을 유지한다", async () => {
   expect(mocks.runFirstIngest).not.toHaveBeenCalled();
 });
 
+it("생성 제출의 reauthorize는 입력을 보존하고 재인가 실패 뒤 다시 연결할 수 있다", async () => {
+  mocks.createProject.mockResolvedValue({ ok: false, error: "reauthorize" });
+  const reconnect = deferred<{ ok: false; error: "unavailable" }>();
+  mocks.startGithubConnectForUser.mockReturnValueOnce(reconnect.promise);
+  await naming();
+  await input(field("project-name"), "Custom");
+  await input(field("project-slug"), "custom");
+  await click(button("Create project"));
+
+  expect(mocks.createProject).toHaveBeenCalledTimes(1);
+  expect(field("project-name").value).toBe("Custom");
+  expect(field("project-slug").value).toBe("custom");
+  expect(document.body.textContent).toContain("Step 3 of 4");
+  expect(document.body.textContent).toContain(en.newProject.naming.nothingCreated);
+  expect(document.body.textContent).toContain(en.errors.connect.reauthorize);
+  expect([...document.body.querySelectorAll('[role="alert"]')].map(alert => alert.textContent)).toEqual([
+    `${en.newProject.naming.nothingCreated} ${en.errors.connect.reauthorize}`,
+  ]);
+  expect([...document.body.querySelectorAll("button")].filter(button => button.textContent?.trim() === "Reauthorize GitHub App")).toHaveLength(1);
+  expect(button("Create project").disabled).toBe(true);
+  expect(document.body.querySelector("[data-secret-field]")).toBeNull();
+  expect(maybeButton("Open project")).toBeNull();
+  expect(mocks.runFirstIngest).not.toHaveBeenCalled();
+  expect(mocks.router.replace).not.toHaveBeenCalled();
+  expect(mocks.router.refresh).not.toHaveBeenCalled();
+
+  const reauthorize = button("Reauthorize GitHub App");
+  expect(reauthorize.disabled).toBe(false);
+  try {
+    await click(reauthorize);
+    expect(mocks.startGithubConnectForUser).toHaveBeenCalledWith("new", { q: "format" }, "authorize");
+    expect(reauthorize.disabled).toBe(true);
+  } finally {
+    await act(async () => reconnect.resolve({ ok: false, error: "unavailable" }));
+  }
+  expect(button("Reauthorize GitHub App").disabled).toBe(false);
+  expect([...document.body.querySelectorAll('[role="alert"]')].some(alert => alert.textContent === en.errors.connect.unavailable)).toBe(true);
+  mocks.startGithubConnectForUser.mockResolvedValue({ ok: false, error: "unavailable" });
+  await click(button("Reauthorize GitHub App"));
+  expect(mocks.startGithubConnectForUser).toHaveBeenCalledTimes(2);
+  expect(mocks.createProject).toHaveBeenCalledTimes(1);
+});
+
+it.each([
+  "unauthorized", "forbidden", "not-found", "not-connected", "repo-not-installed",
+  "installation-forbidden", "repo-forbidden", "repo-read-only",
+])("생성 제출의 접근 거부 %s는 안내 하나와 입력 및 Back 뒤 차단을 보존한다", async (error) => {
+  mocks.createProject.mockResolvedValue({ ok: false, error });
+  await naming();
+  await input(field("project-name"), "Custom");
+  await input(field("project-slug"), "custom");
+  await click(button("Create project"));
+
+  const alerts = document.body.querySelectorAll('[role="alert"]');
+  expect(alerts).toHaveLength(1);
+  expect(alerts[0]?.textContent).toContain(en.newProject.naming.nothingCreated);
+  const instruction = alerts[0]!.textContent!.replace(`${en.newProject.naming.nothingCreated} `, "");
+  expect(instruction).not.toBe("");
+  expect(field("project-name").value).toBe("Custom");
+  expect(field("project-slug").value).toBe("custom");
+  expect(button("Create project").disabled).toBe(true);
+
+  await click(button("Back"));
+  expect(document.body.textContent).toContain("Step 2 of 4");
+  expect(document.body.textContent).toContain(instruction);
+  expect(document.body.textContent).not.toContain(en.newProject.naming.nothingCreated);
+  expect(button("Next").disabled).toBe(true);
+  expect(find(document.body, '[aria-label="Include i18n/{locale}.json"]').getAttribute("aria-checked")).toBe("true");
+  expect(mocks.createProject).toHaveBeenCalledTimes(1);
+  expect(mocks.router.refresh).not.toHaveBeenCalled();
+});
+
+it("생성 제출의 요청 전체 resource-limit은 성공 화면 없이 입력을 보존하고 재시도할 수 있다", async () => {
+  mocks.createProject.mockResolvedValue({ ok: false, error: "resource-limit" });
+  await files();
+  await click(find(document.body, '[aria-label="Include other/{locale}.json"]'));
+  await click(button("Next"));
+  await input(field("project-name"), "Custom");
+  await input(field("project-slug"), "custom");
+  await click(button("Create project"));
+
+  expect(mocks.createProject).toHaveBeenCalledWith(expect.objectContaining({
+    name: "Custom", slug: "custom", surfaces: [
+      { adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en", surfaceSlug: "i18n" },
+      { adapter: "json-catalog", pathTemplate: "other/{locale}.json", baseLocale: "en", surfaceSlug: "other" },
+    ],
+  }));
+  expect(document.body.querySelector('[role="alert"]')?.textContent).toBe(
+    `${en.newProject.naming.nothingCreated} ${en.errors.onboarding["resource-limit"]}`,
+  );
+  expect(document.body.textContent).toContain("Step 3 of 4");
+  expect(document.body.textContent).not.toContain("Step 4 of 4");
+  expect(document.body.querySelector("[data-secret-field]")).toBeNull();
+  expect(maybeButton("Open project")).toBeNull();
+  expect(field("project-name").value).toBe("Custom");
+  expect(field("project-slug").value).toBe("custom");
+  expect(button("Create project").disabled).toBe(false);
+  expect(button("Back").disabled).toBe(false);
+  expect(mocks.runFirstIngest).not.toHaveBeenCalled();
+  expect(mocks.router.replace).not.toHaveBeenCalled();
+  expect(mocks.router.refresh).not.toHaveBeenCalled();
+  await click(button("Create project"));
+  expect(mocks.createProject).toHaveBeenCalledTimes(2);
+  expect(mocks.createProject.mock.calls[1]).toEqual(mocks.createProject.mock.calls[0]);
+});
+
 it("세션 만료 후 Back을 눌러도 차단 상태를 지우지 않는다", async () => {
   mocks.createProject.mockResolvedValue({ ok: false, error: "unauthorized" });
   await files();

@@ -3,7 +3,12 @@ import "server-only";
 import type { RepoReader, RepoSnapshot } from "@/lib/github";
 import type { AdapterFile } from "@/lib/adapters/types";
 import type { OnboardError } from "@/lib/onboarding/message";
-import { checkDownloadBudget, checkContentBudget } from "@/lib/onboarding/budget";
+import { IngestBudgetError, checkDownloadBudget, checkContentBudget } from "@/lib/onboarding/budget";
+
+/** 합집합 다운로드에서도 실패한 소스 안내를 유지한다. 경로는 같은 리포의 선택 파일이다. */
+export class FileContentBudgetError extends IngestBudgetError {
+  constructor(readonly path: string) { super(); }
+}
 
 /**
  * 트리 항목의 `sha`로 내려받는다 — contents API는 1MB에서 잘려 조용히 빈 내용을 준다.
@@ -27,7 +32,12 @@ export async function readFiles(
     if (sha === undefined) continue;
     const content = await reader.blob(sha);
     if (content === undefined) continue;
-    totalBytes = checkContentBudget(path, content, totalBytes);
+    try {
+      totalBytes = checkContentBudget(path, content, totalBytes);
+    } catch (error) {
+      if (error instanceof IngestBudgetError) throw new FileContentBudgetError(path);
+      throw error;
+    }
     out.push({ path, content });
   }
   return out;

@@ -10,6 +10,7 @@ import type { PushPayloadType } from "./plan";
 import { planPush, type ExistingKey, type PushPlan } from "./plan";
 import { planProtectedImport } from "@/lib/protection/plan";
 import { countPending } from "@/lib/protection/where";
+import { readDeliveryRevision } from "@/lib/pull/delivery-revision";
 
 /**
  * 계획(`plan.ts`)을 DB에 적용한다. **여기가 유일한 I/O 층이다.**
@@ -144,7 +145,7 @@ export type AppliedHook = (tx: Prisma.TransactionClient, outcome: PushOutcome) =
  * 깬다. 그 토큰이 폐기 승인 Sync가 남긴 유령이던 경로는 D1이 막았다(delivery-invariants · 감사 #1·#61).
  * ⚠️ 이 판정은 CI 경로 전용이다 — 새 표면 추가·첫 적재는 다른 표면의 편집 때문에 막히면 안 된다(그 표면엔 토큰이 없다).
  */
-export async function applyProtectedPush(prisma: PrismaClient, scope: PushScope, payload: PushPayloadType, options: Omit<ApplyOptions, "approvedTokens"> & { pushTokenHash: string; expectedLastPublishedAt: Date | null; onApplied?: AppliedHook }): Promise<ProtectedPushResult> {
+export async function applyProtectedPush(prisma: PrismaClient, scope: PushScope, payload: PushPayloadType, options: Omit<ApplyOptions, "approvedTokens"> & { pushTokenHash: string; expectedLastPublishedAt: Date | null; expectedDeliveryRevision: string; onApplied?: AppliedHook }): Promise<ProtectedPushResult> {
   try {
     return await prisma.$transaction(async tx => {
       // Project → Surface 잠금 순서를 지킨다(`applyPushInTransaction`이 같은 순서로 다시 잡는다 — 같은 트랜잭션이라 재진입이다).
@@ -154,13 +155,14 @@ export async function applyProtectedPush(prisma: PrismaClient, scope: PushScope,
       // 그 push는 회전 **전에** 일어난 것이라 받는다.
       if (locked[0]?.pushTokenHash !== options.pushTokenHash) return { status: "unauthorized" } as const;
       // 사전 PR 판정 뒤 완료된 Publish는 토큰이 이미 0이다. 판정 자체가 낡았으므로 재시도 때까지 보류한다.
-      if ((locked[0]?.lastPublishedAt?.getTime() ?? null) !== (options.expectedLastPublishedAt?.getTime() ?? null)) {
+      if ((locked[0]?.lastPublishedAt?.getTime() ?? null) !== (options.expectedLastPublishedAt?.getTime() ?? null)
+        || await readDeliveryRevision(tx, scope.projectId) !== options.expectedDeliveryRevision) {
         return { status: "deferred", pendingCount: 0, reason: "publish-raced" } as const;
       }
       const pending = await countPending(tx, scope.projectId);
       const decision = planProtectedImport({ mode: "auto", pending });
       if (decision.action !== "apply") return { status: "deferred", pendingCount: pending } as const;
-      const { pushTokenHash: _verified, expectedLastPublishedAt: _observed, onApplied, ...applyOptions } = options;
+      const { pushTokenHash: _verified, expectedLastPublishedAt: _observed, expectedDeliveryRevision: _revision, onApplied, ...applyOptions } = options;
       const outcome = await applyPushInTransaction(tx, scope, payload, { ...applyOptions, approvedTokens: [] });
       const after = await countPending(tx, scope.projectId);
       if (after > 0) throw new PendingEditsDuringApply(after);

@@ -1,7 +1,9 @@
 # Malmoi
 
-Malmoi es una herramienta de localización para repositorios de GitHub. Encuentra los archivos de traducción que ya hay en un repositorio, permite que tus compañeros editen traducciones en el navegador sin usar Git y envía los cambios guardados como un único pull request para que el equipo de desarrollo lo revise.
+Malmoi encuentra los archivos de traducción de un repositorio de GitHub, permite editarlos en el navegador sin Git y devuelve los cambios guardados en una sola pull request.
+
+En la década de 1910, un proyecto para compilar un diccionario coreano reunió palabras dispersas en una sola colección; este producto toma su nombre de ese trabajo.
 
 Configura un proyecto para conectar tu repositorio, o únete a tu equipo para editar y publicar traducciones.
 
-![A project's Home with counts for new keys, text to translate, text to review, and changes to send, next to the project's repository details](/guide/project-home.webp "Open a project to see what needs attention.")
+![La página de inicio de un proyecto con recuentos de claves nuevas, texto por traducir, texto por revisar y ediciones por enviar, junto a los datos del repositorio](/guide/project-home.webp "Abre un proyecto para ver qué necesita atención.")

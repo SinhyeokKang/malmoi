@@ -34,7 +34,7 @@ export function pageMetadata({ title, description, path }: { title: string; desc
     title,
     description,
     alternates: { canonical: url },
-    openGraph: { title, description, url, siteName: en.common.appName, type: "website", images: [OG_IMAGE] },
-    twitter: { card: "summary_large_image", title, description, images: [OG_IMAGE.url] },
+    openGraph: { title, description, url, siteName: en.common.appName, locale: "en_US", type: "website", images: [OG_IMAGE] },
+    twitter: { card: "summary_large_image", title, description, images: [{ url: OG_IMAGE.url, alt: OG_IMAGE.alt }] },
   };
 }

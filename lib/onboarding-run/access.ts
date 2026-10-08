@@ -92,11 +92,14 @@ export async function checkRepoAccess(
        * 접혀 있었다").
        *
        * ⚠️ **부분 실패는 그대로 진행한다** — 일시중지된 설치의 403은 영구 상태이고, 통째로 접으면
-       * 정상 설치의 리포도 연결하지 못한다. 가르는 축은 "성공한 조회가 하나라도 있었나"다.
+       * 정상 설치의 리포도 연결하지 못한다. 단, 요청 리포를 못 찾았고 401이 있으면 재인가가 먼저다.
        */
       const failures = settled.flatMap((r) => ("error" in r ? [r.error] : []));
       // 원인은 어느 갈래든 로그에만 남는다 — 화면에 실으면 존재 오라클이 된다.
       for (const error of failures) logFailure("onboard-access", error);
+      if (failures.some(error => httpStatus(error) === 401)) {
+        return { status: "rejected", error: "reauthorize" };
+      }
       if (failures.length > 0 && failures.length === settled.length) {
         return { status: "rejected", error: "unavailable" };
       }

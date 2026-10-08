@@ -15,14 +15,14 @@ export function reportPushResponse(status: number, text: string): { exitCode: 0 
   const held = ok ? deferral(text) : null;
   if (held === null) return { exitCode: ok ? 0 : 1, lines };
   if (held.reason === "open-pr") {
-    lines.push("::warning title=Malmoi import deferred::a Malmoi pull request is still open — repository changes were not imported, so the translations in it aren't overwritten. Review the pull request and merge or close it; the next push or the nightly sync imports these changes.");
+    lines.push("::warning title=Malmoi import deferred::a Malmoi pull request is still open — repository changes were not imported, so the translations in it aren't overwritten. Review the pull request and merge or close it; a new push from the current head or the nightly sync imports the latest repository state.");
   } else if (held.reason === "pr-check-failed") {
-    lines.push("::warning title=Malmoi import deferred::couldn't check whether the Malmoi pull request is still open — repository changes were not imported. Re-run this job later.");
+    lines.push("::warning title=Malmoi import deferred::couldn't check whether the Malmoi pull request is still open — repository changes were not imported. Once the check is available, a new push from the current head or the nightly sync imports the latest repository state.");
   } else if (held.reason === "publish-raced") {
-    lines.push("::warning title=Malmoi import deferred::Publish finished after the import checks — repository changes were not imported. Re-run this job later.");
+    lines.push("::warning title=Malmoi import deferred::Publish finished after the import checks — repository changes were not imported. After any Malmoi pull request is merged or closed, a new push from the current head or the nightly sync imports the latest repository state.");
   } else {
     const { pendingCount } = held;
-    lines.push(`::warning title=Malmoi import deferred::${pendingCount} unsent translation change${pendingCount === 1 ? "" : "s"} in Malmoi — repository changes were not imported. Send them with Publish in Malmoi. For edits Publish can't send (their file or key is missing from the repository), add the file or key back to the repository, or discard them with Sync (or Revert to last sent where available). Then re-run this job.`);
+    lines.push(`::warning title=Malmoi import deferred::${pendingCount} unsent translation change${pendingCount === 1 ? "" : "s"} in Malmoi — repository changes were not imported. Send them with Publish in Malmoi. For edits Publish can't send (their file or key is missing from the repository), add the file or key back to the repository, or discard them with Sync (or Revert to last sent where available). After any Malmoi pull request is merged or closed, a new push from the current head or the nightly sync imports the latest repository state.`);
   }
   return { exitCode: ok ? 0 : 1, lines };
 }

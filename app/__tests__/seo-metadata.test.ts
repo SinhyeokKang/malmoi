@@ -40,9 +40,9 @@ describe("루트 레이아웃", () => {
     expect(metadata.title).toEqual({ default: "Malmoi", template: "%s · Malmoi" });
     expect(metadata.description).toBe(en.landing.hero.body);
     expect(metadata.alternates).toBeUndefined();
-    expect(metadata.openGraph).toEqual({ siteName: "Malmoi", type: "website", images: [OG_IMAGE] });
+    expect(metadata.openGraph).toEqual({ siteName: "Malmoi", locale: "en_US", type: "website", images: [OG_IMAGE] });
     expect((metadata.openGraph as { url?: unknown }).url).toBeUndefined();
-    expect(metadata.twitter).toEqual({ card: "summary_large_image", images: [OG_IMAGE.url] });
+    expect(metadata.twitter).toEqual({ card: "summary_large_image", images: [{ url: OG_IMAGE.url, alt: OG_IMAGE.alt }] });
     expect(metadata.robots).toBeUndefined();
   });
 });

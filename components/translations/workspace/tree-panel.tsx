@@ -7,7 +7,8 @@ import { CountBadge } from "@/components/ui/count-badge";
 import { Input } from "@/components/ui/input";
 import { ListRow } from "@/components/ui/list-row";
 import type { TranslationTree } from "@/lib/keys/translation-list";
-import { useMessages } from "@/components/i18n/messages-provider";
+import { useMessages, useUiLocale } from "@/components/i18n/messages-provider";
+import { formatNumber } from "@/lib/number-format";
 import { ALL_NAMESPACES } from "@/lib/translations/query";
 import { cn } from "@/lib/utils";
 
@@ -48,6 +49,7 @@ export function TreePanel({ tree, nodes = tree, surfaceSlug, ns, allSources = nu
   className?: string;
 }) {
   const m = useMessages();
+  const uiLocale = useUiLocale();
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set(tree.surfaces.filter(s => s.slug !== surfaceSlug && tree.surfaces.length > 1).map(s => s.slug)));
   const [filter, setFilter] = useState("");
   const namespaceCount = tree.surfaces.reduce((sum, s) => sum + s.namespaces.length, 0);
@@ -110,7 +112,7 @@ export function TreePanel({ tree, nodes = tree, surfaceSlug, ns, allSources = nu
           >
             <span className="flex text-gray-strong"><Search className="size-4" aria-hidden /></span>
             <span className="min-w-0 flex-1 truncate font-medium">{m.translations.workspace.tree.allSources}</span>
-            {allSources.count !== null && <span className="text-muted-foreground text-xs">{allSources.count.toLocaleString("en-US")}</span>}
+            {allSources.count !== null && <span className="text-muted-foreground text-xs">{formatNumber(allSources.count, uiLocale)}</span>}
           </ListRow>
         )}
         {nodes.surfaces.map(surface => {
@@ -129,7 +131,7 @@ export function TreePanel({ tree, nodes = tree, surfaceSlug, ns, allSources = nu
                 <span className="flex text-gray-strong">{open ? <ChevronDown className="size-3.5" aria-hidden /> : <ChevronRight className="size-3.5" aria-hidden />}</span>
                 <span className="flex text-gray-strong"><FileJson2 className="size-4" aria-hidden /></span>
                 <span className="min-w-0 flex-1 truncate font-medium">{surface.slug}</span>
-                <span className="text-muted-foreground text-xs">{surface.keyCount.toLocaleString("en-US")}</span>
+                <span className="text-muted-foreground text-xs">{formatNumber(surface.keyCount, uiLocale)}</span>
               </ListRow>
               {open && (
                 <>
@@ -174,6 +176,7 @@ export function TreePanel({ tree, nodes = tree, surfaceSlug, ns, allSources = nu
 function TreeItem({ surface, ns, icon, label, count, counted, mark, onClick }: {
   surface: string; ns: string; icon: ReactNode; label: string; count: number; counted: boolean; mark: "true" | "location" | undefined; onClick: () => void;
 }) {
+  const uiLocale = useUiLocale();
   const location = mark === "location";
   const empty = counted && count === 0;
   return (
@@ -189,7 +192,7 @@ function TreeItem({ surface, ns, icon, label, count, counted, mark, onClick }: {
     >
       <span className={cn("flex", location ? "text-gray-strong" : "text-gray-dim")}>{icon}</span>
       <span className={cn("min-w-0 flex-1 truncate", location && "font-medium")}>{label}</span>
-      <span className={cn("text-xs", location ? "text-foreground" : "text-muted-foreground")}>{count.toLocaleString("en-US")}</span>
+      <span className={cn("text-xs", location ? "text-foreground" : "text-muted-foreground")}>{formatNumber(count, uiLocale)}</span>
     </ListRow>
   );
 }

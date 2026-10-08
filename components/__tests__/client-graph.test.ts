@@ -226,6 +226,8 @@ const CLIENT_LIB_FILES = [
   "lib/url-token.ts",
   // 절대 날짜·시각의 생산자(user-timezone — 옛 `lib/utc-time.ts`). 값 import 0인 잎이다(시간대·언어 타입만).
   "lib/date-format.ts",
+  // 수량의 생산자 — 화면 언어는 타입으로만 읽어 서버 입구·사전을 번들에 싣지 않는다.
+  "lib/number-format.ts",
   "lib/utils.ts",
 ];
 

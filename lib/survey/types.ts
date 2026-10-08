@@ -97,7 +97,7 @@ export const emptyChromeFields = (): ChromeFields => ({
 /**
  * 원본 JSON이 들고 있던 **표현** — 이제 재생성 writer가 되돌리므로 **diff 원인이 아니다.**
  *
- * ⚠️ 둘 다 전에는 `DiffCauses`였다. 태스크 1b가 되돌리게 만든 뒤로 원인으로 남겨 두면 그 리포들이
+ * ⚠️ 보존 전에는 `DiffCauses`였다. 태스크 1b가 되돌리게 만든 뒤로 원인으로 남겨 두면 그 리포들이
  * `clean` 분모에서 계속 빠져 **개선이 게이트에 나타나지 않는다** — chrome 필드에서 정확히 그 일이
  * 있었고 리포 13개가 부당하게 빠졌다 (POSTMORTEM 2026-09-03). 관측은 남긴다: 몇 개 리포가 그
  * 표현을 쓰는지가 이 기능의 근거다.
@@ -109,12 +109,15 @@ export type JsonPresentation = {
   compactContainer: boolean;
   /** `/`를 `\/`로 적었다 — 선택적 이스케이프라 `JSON.stringify`가 절대 안 낸다. */
   escapedSlash: boolean;
+  /** 점 리터럴 키와 중첩이 공존한다 — 원본 세그먼트 경로가 보존된다. */
+  dottedWithNested: boolean;
 };
 
 export const emptyJsonPresentation = (): JsonPresentation => ({
   escapedNonAscii: false,
   compactContainer: false,
   escapedSlash: false,
+  dottedWithNested: false,
 });
 
 export type SurveyCandidate = {

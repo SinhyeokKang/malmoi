@@ -110,8 +110,14 @@ async function startRun(
 ): Promise<Started> {
   return prisma.$transaction(async (tx) => {
     // 수동 실행은 사람이 연다 — 진입점 인가 뒤 잠금을 기다리는 동안 제거·보관됐으면 행을 만들지 않는다(감사 #10).
-    // cron은 사람이 없고 보관 프로젝트를 `selectPullTargets`가 이미 뺀다.
-    if (requestedBy === null) await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
+    // cron의 대상 선정 뒤 보관될 수 있으므로 실행권을 잡는 잠금 안에서 다시 확인한다.
+    if (requestedBy === null) {
+      await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
+      const project = await tx.project.findUnique({ where: { id: projectId }, select: { archivedAt: true } });
+      if (project === null || project.archivedAt !== null) {
+        return { status: "rejected", outcome: { status: "failed", error: project === null ? "not-found" : "archived", delivery: "not-started", retryable: false } };
+      }
+    }
     else {
       const locked = await lockProjectAccess(tx, { projectId, userId: requestedBy, permission: "translation:write", credential });
       if (locked.status !== "ok") return { status: "rejected", outcome: { status: "failed", error: locked.status, delivery: "not-started", retryable: false } };

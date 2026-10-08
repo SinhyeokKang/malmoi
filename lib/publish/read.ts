@@ -8,7 +8,7 @@ import { actorLabel } from "@/lib/keys/view";
 import { loadOpenPrUrl } from "@/lib/projects/open-pr";
 import { parseGithubPrUrl } from "@/lib/projects/pr-url";
 import { formatFromProject, resolveLocalePaths } from "@/lib/pull/plan";
-import { keySlot } from "@/lib/pull/undeliverable";
+import { blockingErrors, keySlot } from "@/lib/pull/undeliverable";
 import { loadPreviewSnapshot } from "@/lib/pull/load";
 import { planDelivery, projectFormats, renderProject } from "@/lib/pull/run";
 import { publishFingerprint } from "./fingerprint";
@@ -34,6 +34,21 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
   if (head === null) throw new Error("Base unavailable");
   const tree = await client.getTree(head);
   const shas = new Map(tree.map(t => [t.path, t.sha]));
+  // 표시 경로를 찾기 전에 실행과 같은 거부를 판정한다. 키 가림·파일 종류 오류를 조회 장애로 오인하지 않게 한다(#200).
+  // 같은 스냅샷·head·트리와 blob 캐시를 재사용하므로 중복 다운로드 없이 같은 지문 입력을 쓴다.
+  const { changes, rendered, resolved, current } = await renderProject(project, projectFormats(state.surfaces), client, { baseHead: head, tree });
+  for (const surface of rendered) {
+    for (const file of surface.files) for (const error of file.errors ?? []) {
+      if (error.locale !== surface.baseLocale) continue;
+      if (error.code === "original-file-missing") throw new PreviewBaseFileMissing(error.path, project.baseBranch);
+      if (error.code === "write-parse-failed" && file.locale === surface.baseLocale) throw new PreviewBaseFileUnreadable(error.path, project.baseBranch);
+    }
+  }
+  const { warnings } = planDelivery(state.pendingEdits, { resolved, current, rendered });
+  warnings.push(...blockingErrors(rendered).map(({ surfaceSlug, error: { path, code, key, detail } }) => (
+    { surfaceSlug, path, code, ...(key === undefined ? {} : { key }), ...(detail === undefined ? {} : { detail }) }
+  )));
+  if (warnings.length > 0) throw new PreviewWriterWarnings(warnings);
   const actors = await loadActors(prisma, [...new Set(rows.flatMap(r => r.updatedBy ? [r.updatedBy] : []))]);
   const base: BaseValues = Object.create(null);
   const cells: PublishCell[] = [];
@@ -67,7 +82,9 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
         const edited = new Set(surfaceRows.map(r => r.stringKey.key));
         // 경고(`duplicate-property`)도 막지 않는다 — 실행이 마지막 값을 싣고 그 자리를 고친다(B7a r1). `read.locales`가 이미 그 값이다.
         const preserved = (e: (typeof read.errors)[number]) => adapterErrorKind(e.code) === "unmanaged" && !(e.key !== undefined && edited.has(e.key));
-        if (!onlyForKeySet && read.errors.some(e => adapterErrorKind(e.code) !== "warning" && !preserved(e))) throw new Error("Preview cannot read all values");
+        const errors = onlyForKeySet ? [] : read.errors.filter(e => adapterErrorKind(e.code) !== "warning" && !preserved(e));
+        // 실행이 쓸 수 있는 키여도 같은 파일의 불확실한 read는 보수적으로 막는다. 장애 재시도가 아닌 파일 수정 경고다.
+        if (errors.length > 0) throw new PreviewWriterWarnings(errors.map(error => ({ ...error, surfaceSlug: surface.slug })));
         const file: BaseValues[string] = Object.create(null);
         for (const locale of read.locales) {
           const entries: Record<string, string> = Object.create(null);
@@ -112,23 +129,6 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
         after: row.value, author: actorLabel(row.updatedBy, actors) ?? "", updatedAt: row.updatedAt.toISOString() });
     }
   }
-  // ⚠️ **바뀌는 파일은 실행과 같은 렌더·blob 비교에서 온다** (#128) — 편집 셀의 파일만 세면 토큰 없이 바뀌는 파일(orphan 줄 제거, 닫힌 PR에 실렸던 값의
-  // 재전송)이 빠지고 결과에서야 "N files changed"가 나온다. blob은 위에서 읽은 것을 다시 쓴다(`cachedBlobs`).
-  // ⚠️ **읽은 head·트리를 넘긴다** (#128 r5) — 한 번 열 때 ref 1·트리 1이고, 셀과 파일 목록이 같은 head를 본다. blob은 실행 한 번과 같다(전 표면 전 로케일 파일).
-  const { changes, rendered, resolved, current } = await renderProject(project, projectFormats(state.surfaces), client, { baseHead: head, tree });
-  /**
-   * ⚠️ **편집이 없는 표면도 실행은 렌더하고, 그 표면의 base 파일 문제로 `writer-warnings` 거부한다** (#128 r5). 위 루프는 편집 있는 표면만 보므로 여기서
-   * 같은 전용 거부로 옮긴다 — 일반 실패(Retry)는 다시 눌러도 같다. 그 밖의 writer 오류는 옛 동작 그대로다(미리보기는 writer 경고를 약속하지 않는다).
-   */
-  for (const surface of rendered) {
-    for (const file of surface.files) for (const error of file.errors ?? []) {
-      if (error.locale !== surface.baseLocale) continue;
-      if (error.code === "original-file-missing") throw new PreviewBaseFileMissing(error.path, project.baseBranch);
-      if (error.code === "write-parse-failed" && file.locale === surface.baseLocale) throw new PreviewBaseFileUnreadable(error.path, project.baseBranch);
-    }
-  }
-  const { warnings } = planDelivery(state.pendingEdits, { resolved, current, rendered });
-  if (warnings.length > 0) throw new PreviewWriterWarnings(warnings);
   // `truncated`는 상한 때문에 **조회하지 않은** 행만이다 — 뺀 셀은 `withoutFile`·`withoutKey`가 따로 말한다.
   return { ...buildPublishDiff(cells, base), total, keys, truncated: Math.max(0, total - rows.length), withoutFile, withoutKey,
     // ⚠️ **화면이 말하는 수는 나가는 수다** (#84 — POSTMORTEM 2026-09-17). 결과의 `delivered`·Logs와 같은 모집단이어야 한다. 상한(200행) 밖 행은

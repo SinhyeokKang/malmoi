@@ -71,6 +71,7 @@ describe("jsonShape — 키 등장 순서", () => {
     expect(s.failed).toBe(true);
     expect(s.escapedNonAscii).toBe(false);
     expect(s.compactContainer).toBe(false);
+    expect(jsonShape('{"a.b":"flat","c":{"d":"nested"},}').dottedWithNested).toBe(false);
   });
 
   it("최상위가 객체가 아니면 failed다", () => {
@@ -161,17 +162,16 @@ describe("jsonShape — 잔여 diff 원인", () => {
     expect(c.emptyValues).toBe(false);
   });
 
-  it("점 포함 키가 중첩과 공존하면 원인으로 표시한다 — 경로로 쪼개져 구조가 바뀐다", () => {
-    // musicblocks·scratchblocks·siyuan이 이 축이다. 키 구분자 계약을 빼는 별 기능이 담당한다.
-    expect(jsonShape(two({ "a.b": "flat", c: { d: "nested" } })).causes.dottedWithNested).toBe(true);
+  it("점 포함 키와 중첩의 공존은 원인이 아니라 보존되는 관측치다", () => {
+    expect(jsonShape(two({ "a.b": "flat", c: { d: "nested" } })).dottedWithNested).toBe(true);
   });
 
   it("중첩이 없으면 점 키가 있어도 원인이 아니다 — flat write는 키를 쪼개지 않는다", () => {
-    expect(jsonShape(two({ "a.b": "x", "a.c": "y" })).causes.dottedWithNested).toBe(false);
+    expect(jsonShape(two({ "a.b": "x", "a.c": "y" })).dottedWithNested).toBe(false);
   });
 
   it("점이 없으면 중첩이 있어도 원인이 아니다", () => {
-    expect(jsonShape(two({ a: { b: "x" } })).causes.dottedWithNested).toBe(false);
+    expect(jsonShape(two({ a: { b: "x" } })).dottedWithNested).toBe(false);
   });
 
   it("한 줄에 담은 객체를 관측한다 — 이제 원인이 아니라 관측치다 (태스크 1b)", () => {

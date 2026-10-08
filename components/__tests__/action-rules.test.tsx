@@ -284,6 +284,7 @@ const BLUE: { name: string; file: string; ui: () => ReactNode; open?: () => Prom
  * 셸 안 파일은 소스에서 사유를 적는다 — 새 파일이 이 목록에 들어오면 렌더 목록으로 옮기는 것이 먼저다.
  */
 const BLUE_UNRENDERED: Record<string, string> = {
+  "app/page.tsx": "public landing inline documentation links",
   "app/changelog/page.tsx": "public documentation navigation, outside the shell",
   "app/docs/not-found.tsx": "public documentation navigation, outside the shell",
   "components/changelog/release-markdown.tsx": "public documentation links, outside the shell",

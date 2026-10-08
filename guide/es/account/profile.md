@@ -11,7 +11,7 @@ Antes de empezar: abre el menú de tu avatar, arriba a la derecha, y elige **Cue
 
 La foto se redimensiona automáticamente y el archivo original no se conserva.
 
-![The Account page with the profile, sign-in methods, and GitHub App sections](/guide/account.webp "Update your profile and sign-in methods in Account.")
+![La página Cuenta con las secciones de perfil, métodos de inicio de sesión y GitHub App](/guide/account.webp "Actualiza tu perfil y tus métodos de inicio de sesión en Cuenta.")
 
 ## Gestiona los métodos de inicio de sesión {#sign-in-methods}
 

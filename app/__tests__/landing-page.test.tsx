@@ -81,24 +81,59 @@ describe.each(["none", "unavailable"] as const)("`/` — `%s`는 랜딩이다", 
 
   /**
    * **마무리 CTA** (2026-09-27 사용자) — 위아래 여백은 섹션 자신의 padding-block 240(히어로 간격 120의 두 배)이고,
-   * primary 옆에 GitHub(default · 같은 `lg`)가 선다. 새 탭 · 외부 링크 글리프 없음(DESIGN §6.3).
+   * 히어로는 GitHub(default · 같은 `lg` · 새 탭), 마무리는 Docs(default · 같은 `lg`)가 primary 앞에 선다.
    */
-  it("마무리 CTA — padding-block 240 · GitHub(default lg, 새 탭) + Get started", async () => {
+  it("히어로 GitHub → Get started · 마무리 Docs → Get started · 링크 동작과 크기를 보존한다", async () => {
     const { container } = await render(await page(status));
-    const closing = container.querySelector<HTMLElement>("section[aria-labelledby=landing-closing]");
-    expect(closing?.className).toMatch(/(^|\s)py-60(\s|$)/);
-    const links = [...(closing?.querySelectorAll("a") ?? [])];
-    expect(links.map((a) => [a.textContent, a.getAttribute("href")])).toEqual([
+    const hero = container.querySelector("section[aria-labelledby=landing-hero]");
+    const heroLinks = [...(hero?.querySelectorAll("a:not([data-landing-latest])") ?? [])];
+    expect(heroLinks.map((a) => [a.textContent, a.getAttribute("href")])).toEqual([
       [en.landing.shell.github, GITHUB_REPO_URL],
       [en.landing.shell.getStarted, routes.signIn()],
     ]);
-    const [github, start] = links;
+    const closing = container.querySelector<HTMLElement>("section[aria-labelledby=landing-closing]");
+    expect(closing?.className).toMatch(/(^|\s)py-60(\s|$)/);
+    const links = [...(closing?.querySelectorAll("[data-landing-cta] a") ?? [])];
+    expect(links.map((a) => [a.textContent, a.getAttribute("href")])).toEqual([
+      [en.landing.shell.docs, routes.docs()],
+      [en.landing.shell.getStarted, routes.signIn()],
+    ]);
+    const [github, heroStart] = heroLinks;
+    const [docs, start] = links;
+    expect([docs?.getAttribute("target"), docs?.getAttribute("rel")]).toEqual([null, null]);
     expect([github?.getAttribute("target"), github?.getAttribute("rel")]).toEqual(["_blank", "noreferrer noopener"]);
     // 같은 크기 — `lg`(h-10 · rounded-lg). 변형은 default(테두리)와 primary다.
-    for (const a of links) expect(a.className).toContain("h-10");
+    for (const a of [...heroLinks, ...links]) expect(a.className).toContain("h-10");
+    expect(docs?.className).toContain("border-input");
+    expect(heroStart?.className).toContain("bg-primary");
     expect(github?.className).toContain("border-input");
     expect(start?.className).toContain("bg-primary");
     expect(github?.querySelector("svg.lucide-external-link, svg.lucide-arrow-up-right")).toBeNull();
+  });
+
+  it("current free/MIT and MCP facts link to the three decision pages", async () => {
+    const { container } = await render(await page(status));
+    const fact = container.querySelector("[data-landing-fact]")?.textContent ?? "";
+    expect(fact).toMatch(/no paid plans/i);
+    expect(fact).toMatch(/MIT/);
+    expect(fact).not.toMatch(/always|forever|future/i);
+
+    const closing = container.querySelector("section[aria-labelledby=landing-closing]")?.textContent ?? "";
+    expect(closing).toMatch(/MCP/);
+    expect(closing).toMatch(/AI agent/i);
+
+    const detailLinks = [...container.querySelectorAll<HTMLAnchorElement>("[data-landing-doc-links] a")];
+    expect(detailLinks.map((a) => a.getAttribute("href"))).toEqual([
+      routes.docs("reference/formats"),
+      routes.docs("ai-agents"),
+      routes.docs("faq"),
+    ]);
+  });
+
+  it("header and documentation navigation landmarks have distinct localized names", async () => {
+    const { container } = await render(await page(status));
+    const names = [...container.querySelectorAll("nav")].map((nav) => nav.getAttribute("aria-label"));
+    expect(names).toEqual([en.landing.shell.nav, en.landing.closing.links.label]);
   });
 
   /**
@@ -110,7 +145,7 @@ describe.each(["none", "unavailable"] as const)("`/` — `%s`는 랜딩이다", 
     const { container } = await render(await page(status));
     const hero = container.querySelector("section[aria-labelledby=landing-hero]");
     const closing = container.querySelector("section[aria-labelledby=landing-closing]");
-    const buttons = [...(hero?.querySelectorAll("a:not([data-landing-latest])") ?? []), ...(closing?.querySelectorAll("a") ?? [])];
+    const buttons = [...(hero?.querySelectorAll("[data-landing-cta] a") ?? []), ...(closing?.querySelectorAll("[data-landing-cta] a") ?? [])];
     expect(buttons).toHaveLength(4);
     for (const a of buttons) {
       const first = a.firstElementChild;
@@ -123,11 +158,11 @@ describe.each(["none", "unavailable"] as const)("`/` — `%s`는 랜딩이다", 
     const docsIcon = navFooterItems(en).find((item) => item.key === "docs")?.icon;
     expect(docsIcon).toBeDefined();
     const expected = docsIcon ? /class="([^"]*)"/.exec(renderToStaticMarkup(createElement(docsIcon)))?.[1] : undefined;
-    expect(icon(buttons[0])).toBe(expected);
+    expect(icon(buttons[2])).toBe(expected);
     expect(icon(buttons[1])).toContain("lucide-log-in");
     expect(icon(buttons[3])).toContain("lucide-log-in");
     // GitHub 글리프는 lucide 클래스가 없는 리포 자산이다 — `GithubIcon`과 마크업이 같은지로 가린다.
-    expect(buttons[2]?.firstElementChild?.outerHTML).toBe(renderToStaticMarkup(createElement(GithubIcon)));
+    expect(buttons[0]?.firstElementChild?.outerHTML).toBe(renderToStaticMarkup(createElement(GithubIcon)));
   });
 
   /**
@@ -165,11 +200,11 @@ describe.each(["none", "unavailable"] as const)("`/` — `%s`는 랜딩이다", 
 
 /** 구조화 데이터 (seo-geo T7) — 랜딩 1장. validator 대조는 배포 뒤 수동(M3)이다. */
 describe("`/` — JSON-LD", () => {
-  it("`SoftwareApplication`·`Organization` 한 장", async () => {
+  it("`SoftwareApplication`·`Organization`·`WebSite` 한 장", async () => {
     const { container } = await render(await page("none"));
     const scripts = container.querySelectorAll('script[type="application/ld+json"]');
     expect(scripts).toHaveLength(1);
     const ld = JSON.parse(scripts[0]?.textContent ?? "null") as { "@type": string }[];
-    expect(ld.map((item) => item["@type"])).toEqual(["SoftwareApplication", "Organization"]);
+    expect(ld.map((item) => item["@type"])).toEqual(["SoftwareApplication", "Organization", "WebSite"]);
   });
 });

@@ -7,6 +7,12 @@ import { Pool } from "pg";
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 
 import { PrismaClient } from "@/generated/prisma/client";
+import { en } from "@/messages/en";
+import { loadSources } from "@/lib/sources/query";
+import { planHomeState } from "@/lib/home/state";
+import { loadProjectListAggregates } from "@/lib/keys/query";
+import { summaryQueue } from "@/lib/projects/list";
+import { isImportFailureCode } from "@/lib/projects/import-status";
 import { optionalEnv } from "@/lib/env";
 import type { RepoReader } from "@/lib/github";
 import { applyPush } from "@/lib/push/apply";
@@ -89,7 +95,7 @@ async function seed() {
 async function target() {
   const row = await prisma.project.findUniqueOrThrow({ where: { id: "p" }, select: {
     id: true, slug: true, repoOwner: true, repoName: true, baseBranch: true, installationId: true, repositoryId: true, lastNightlyAt: true,
-    surfaces: { select: { id: true, slug: true, archivedAt: true, lastCommitSha: true, adapterName: true, pathTemplate: true, baseLocale: true, lastImportError: true } },
+    surfaces: { select: { id: true, slug: true, archivedAt: true, lastCommitSha: true, adapterName: true, pathTemplate: true, baseLocale: true, lastImportError: true, importRevision: true } },
   } });
   return row;
 }
@@ -200,7 +206,7 @@ it("마감으로 멈춘 프로젝트는 다음 밤 제때 방문한 프로젝트
   // q는 제때 방문했다(upToDate) — 방문 기록이 지금으로 전진한다.
   const q = await prisma.project.findUniqueOrThrow({ where: { id: "q" }, select: {
     id: true, slug: true, repoOwner: true, repoName: true, baseBranch: true, installationId: true, repositoryId: true, lastNightlyAt: true,
-    surfaces: { select: { id: true, slug: true, archivedAt: true, lastCommitSha: true, adapterName: true, pathTemplate: true, baseLocale: true, lastImportError: true } } } });
+    surfaces: { select: { id: true, slug: true, archivedAt: true, lastCommitSha: true, adapterName: true, pathTemplate: true, baseLocale: true, lastImportError: true, importRevision: true } } } });
   expect(await runNightly(prisma, q, () => 0)).toEqual({ action: "skip", outcome: "upToDate" });
   // p는 마감으로 멈췄다.
   github({});
@@ -380,4 +386,57 @@ it("잠금이 풀린 뒤의 방문은 같은 행을 닫는다 (짝)", async () =
   github({ refSha: { "heads/main": OLD } });
   await visit();
   expect(await prisma.projectEvent.findFirstOrThrow({ where: { ref: "evt_later" } })).toMatchObject({ result: "failed" });
+});
+
+it.each(["branch", "revision", "project-archive", "surface-archive", "format"] as const)(
+  "delayed branch-missing observation cannot overwrite newer %s state", async (change) => {
+    await seed();
+    github({ refSha: {} });
+    const captured = await target();
+    const client = fakes.client!;
+    fakes.client = { ...client, getRefSha: async () => {
+      if (change === "branch") await prisma.project.update({ where: { id: "p" }, data: { baseBranch: "release" } });
+      if (change === "revision") await applyPush(prisma, { projectId: "p", surfaceId: "s" }, {
+        projectSlug: "fixture", surfaceSlug: "default", commitSha: MERGE, commitAt: mergeAt,
+        format: { adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en", nested: false },
+        locales: ["en", "ko"], keys: [{ key: "hello", namespace: "_root", sourceText: "Hello" }],
+        translations: [{ key: "hello", locale: "en", value: "Hello" }, { key: "hello", locale: "ko", value: "안녕하세요" }], refs: [],
+      }, { token: "new-success", startedAt: new Date(), previousBaseLocale: "en", refsMode: "replace" });
+      if (change === "project-archive") await prisma.project.update({ where: { id: "p" }, data: { archivedAt: new Date() } });
+      if (change === "surface-archive") await prisma.translationSurface.update({ where: { id: "s" }, data: { archivedAt: new Date() } });
+      if (change === "format") await prisma.translationSurface.update({ where: { id: "s" }, data: { pathTemplate: "new/{locale}.json" } });
+      return null;
+    } };
+    expect(await runNightly(prisma, captured, () => 0)).toMatchObject({ action: "skip", outcome: "failed", branchMissing: true });
+    expect(await surfaceState()).toMatchObject({ lastImportError: null, lastImportFailedAt: null });
+    // Read the same Sources query and Home planner used by the pages, not only the DB columns.
+    const sources = await loadSources(prisma, en, "p", "OWNER");
+    if (change === "project-archive") expect(sources).toBeNull();
+    else {
+      expect(sources!.sources).toHaveLength(change === "surface-archive" ? 0 : 1);
+      for (const source of sources!.sources) expect(source).toMatchObject({ lastImportError: null, lastImportFailedAt: null });
+    }
+    const project = await prisma.project.findUniqueOrThrow({ where: { id: "p" }, include: { surfaces: { where: { archivedAt: null } } } });
+    const aggregates = await loadProjectListAggregates(prisma, ["p"]);
+    const health = planHomeState({ archived: project.archivedAt !== null, connection: { status: "ok" },
+      counts: summaryQueue({ projects: [{ projectId: "p", archived: false }], ...aggregates }),
+      surfaces: project.surfaces.map(surface => ({ importing: surface.lastImportStartedAt !== null,
+        importError: isImportFailureCode(surface.lastImportError) ? surface.lastImportError : null })) });
+    if (change === "project-archive") expect(health).toBe("archived");
+    else expect(["empty", "default"]).toContain(health);
+    // The old observation is still an event, never a claim about the newer source health.
+    expect(await events()).toHaveLength(1);
+  },
+);
+
+it("an archived project captured earlier cannot acquire a nightly Publish run", async () => {
+  await seed();
+  await prisma.translation.updateMany({ where: { projectId: "p", localeCode: "ko" }, data: { pendingEditToken: "unsent" } });
+  const captured = await target();
+  await prisma.project.update({ where: { id: "p" }, data: { archivedAt: new Date() } });
+  const calls = github({});
+  expect(await runNightly(prisma, captured, () => 0)).toEqual({ action: "publish", status: "failed", error: "archived", delivery: "not-started", retryable: false });
+  expect(await prisma.syncRun.count({ where: { projectId: "p" } })).toBe(0);
+  expect(await events()).toEqual([]);
+  expect(calls).toEqual([]);
 });

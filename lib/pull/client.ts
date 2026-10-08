@@ -13,8 +13,11 @@ import type { CommitPayload, TreePayload } from "./payload";
  * 메서드는 ARCHITECTURE §3의 호출 순서에 나오는 것만 둔다. 쓰지 않을 래핑을 늘리지 않는다.
  */
 
-/** 트리의 파일 하나. 디렉터리·심링크는 호출부가 쓰지 않으므로 담지 않는다. */
+/** 리포 읽기 스냅샷의 blob 하나. */
 export type GitTreeBlob = { path: string; sha: string; size?: number };
+
+/** Publish 비교 트리는 비정규 경로도 보존한다 — 누락시키면 없는 파일로 오인해 재생성한다. */
+export type GitTreeEntry = GitTreeBlob & { mode: string };
 
 /**
  * compare가 돌려주는 변경 파일 하나. **`previous_filename`은 rename에만 있다** — GitHub이 그때만
@@ -41,7 +44,7 @@ export type GitClient = {
    * 커밋의 전체 트리(recursive). **잘렸으면 던진다** — 일부만 보면 base에 있는 파일을
    * "없다"고 판정해 신규로 올리고, blob SHA 비교가 전부 틀어진다.
    */
-  getTree(commitSha: string): Promise<GitTreeBlob[]>;
+  getTree(commitSha: string): Promise<GitTreeEntry[]>;
 
   /** blob 내용(UTF-8). 수술적 치환 어댑터의 write가 원본을 요구한다 (ARCHITECTURE §1.4). */
   getBlobText(sha: string): Promise<string>;

@@ -9,6 +9,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 
 import { PrismaClient } from "@/generated/prisma/client";
 import { optionalEnv } from "@/lib/env";
+import { encodeUserFields } from "@/lib/credentials/records";
+import { listKeys } from "@/lib/mcp/tools/keys";
 import {
   loadTranslationDetail,
   loadTranslationList,
@@ -26,7 +28,8 @@ import { keyMatches, orderKeySummaries, summarizeKey } from "@/lib/translations/
 const host = vi.hoisted(() => ({ prisma: null as unknown, redirect: vi.fn((url: string) => { throw new Error(`redirect:${url}`); }) }));
 vi.mock("@/lib/db", () => ({ getPrisma: () => host.prisma }));
 vi.mock("next/navigation", () => ({ redirect: host.redirect, notFound: () => { throw new Error("notFound"); } }));
-vi.mock("@/lib/surfaces/access", () => ({
+vi.mock("@/lib/surfaces/access", async importOriginal => ({
+  ...await importOriginal<typeof import("@/lib/surfaces/access")>(),
   requireSurfaceAccess: async ({ surfaceSlug }: { surfaceSlug: string }) => ({ projectId: "p", surfaceId: `p-${surfaceSlug}`, role: "OWNER", archived: false, userId: "u" }),
 }));
 vi.mock("@/components/translations/workspace/workspace", () => ({ TranslationWorkspace: () => null }));
@@ -420,6 +423,40 @@ describe("화면 범위 — 실제 페이지가 전 소스를 한 번 읽고 자
     expect(props.list.rows.some(row => row.keyId === "q1")).toBe(false);
     // 위치로 좁힌 검색에서 다른 소스의 키는 범위 밖이다 — 로더의 전 소스 값(true)을 그대로 쓰지 않는다(POSTMORTEM 2026-09-23).
     expect((await open("web", { q: "a", scope: "source", key: "a1", keySurface: "app" })).list.selectedInResult).toBe(false);
+  });
+});
+
+describe("loadTranslationList — Unicode 원문 일치 범위", () => {
+  it.each(["key", "source", "translation"] as const)("%s의 소문자 확장 뒤 위치는 원문 UTF-16 offset이다", async field => {
+    const text = "😀İİabc";
+    await keys("p", "web", [{
+      id: "unicode", key: field === "key" ? text : "unicode.entry", ns: "unicode",
+      source: field === "source" ? text : "Original", sort: 0,
+      cells: [["en", "Original"], ["ko", field === "translation" ? text : "원문"]],
+    }]);
+    for (const pageSize of ["all", 100] as const) {
+      const result = await loadTranslationList(prisma, { projectId: "p", routeSurfaceId: "p-web", query: q({ q: "abc" }), pageSize });
+      const match = result.rows.find(row => row.keyId === "unicode")?.match;
+      expect(match).toEqual({ field, text, start: 4, length: 3, ...(field === "translation" ? { localeCode: "ko" } : {}) });
+      expect(match?.text.slice(match.start, match.start + match.length)).toBe("abc");
+    }
+  });
+
+  it("MCP list_keys도 원문 위치를 반환한다 — 도구 결과에서 자른 값은 검색어다", async () => {
+    const userFields = encodeUserFields("unicode-user", { email: "unicode@example.com", name: "Unicode" });
+    // email 입력을 준 같은 암호화 결과에서 필수 필드를 명시한다 — 평문 폴백이나 두 번째 암호화를 만들지 않는다.
+    await prisma.user.create({ data: { id: "unicode-user", ...userFields, email: userFields.email! } });
+    await prisma.projectMember.create({ data: { projectId: "p", userId: "unicode-user", role: "EDITOR" } });
+    await keys("p", "web", [{ id: "unicode", key: "unicode.entry", ns: "unicode", source: "😀İİabc", sort: 0, cells: [["en", "😀İİabc"]] }]);
+    const result = await listKeys.run({
+      prisma, subject: { userId: "unicode-user", credential: { kind: "api-token", tokenHash: "fixture" }, grants: [], scope: { kind: "all" } },
+      now: new Date(), origin: null,
+    }, { slug: "p", surfaceSlug: "web", query: { q: "abc" } });
+    expect(result.status).toBe("ok");
+    if (result.status !== "ok") return;
+    expect(result.data.keys).toEqual([
+      expect.objectContaining({ keyId: "unicode", match: { field: "source", text: "😀İİabc", start: 4, length: 3 } }),
+    ]);
   });
 });
 

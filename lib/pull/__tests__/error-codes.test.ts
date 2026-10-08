@@ -170,3 +170,18 @@ describe("lib/pull의 fail( 자리 — 코드를 드는 것과 안 드는 것이
     expect(stripComments(readFileSync(`${ROOT}lib/pull/run.ts`, "utf8"))).toContain('reason: "reconfirm"');
   });
 });
+
+// file-kind는 fail 호출 대신 구조화 오류를 던지므로 기존 실패 분류 계약을 직접 검증한다.
+
+it("#200 structured file-kind refusal keeps the execution error classification", async () => {
+  const { GitFileKindError } = await import("@/lib/pull/run");
+  const { AppError, classifyFailure } = await import("@/lib/failure");
+  const { classifySyncError } = await import("@/lib/sync/plan");
+  const message = "unsupported Git file mode at a.ts: 120000";
+  const error = new GitFileKindError("a.ts", "120000", "main");
+  expect(error).toMatchObject({ name: "AppError", message, path: "a.ts", branch: "main" });
+  expect(error).toBeInstanceOf(AppError);
+  expect(error.code).toBeUndefined();
+  expect(classifyFailure(error)).toEqual(classifyFailure(new AppError(message)));
+  expect(classifySyncError(error)).toEqual(classifySyncError(new AppError(message)));
+});

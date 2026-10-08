@@ -408,6 +408,7 @@ GitHub·Google 어느 쪽으로 들어와도 같은 사람을 가리키고, 프�
 **SaaS에서 새로 거절하는 것**:
 
 - **과금·플랜** — 수익 모델을 붙이지 않는다. 결제·플랜·한도 과금은 그 자체로 청구·환불·세금·실패한 결제의 복구가 딸려오고, 지금 이 도구가 답하는 질문이 아니다. 자원 상한은 전부 **고정값**으로 들고 플랜으로 갈리지 않는다.
+  - 공개 랜딩과 FAQ는 현재 사실인 **유료 플랜 없음·MIT 라이선스**를 말한다. 미래 가격 정책은 약속하지 않고, FAQ는 이 절의 비범위를 경쟁사 이름 없이 요약한다.
   - **계정 축** — 사용자당 프로젝트 **3**(`lib/onboarding/create-plan.ts`의 `PROJECT_LIMIT`) ·
     프로젝트당 멤버 **10**(`lib/auth/invitation.ts`의 `MEMBER_LIMIT`). 자율 가입의 대가다.
     - 프로젝트 상한은 **활성 OWNER 자리**(OWNER 행 · 비보관)를 세고, **늘리는 자리 넷이 같은 판정으로 막힌다**
@@ -440,7 +441,7 @@ GitHub·Google 어느 쪽으로 들어와도 같은 사람을 가리키고, 프�
 - **표시 시간대(§4.1)의 확장** (2026-10-05, user-timezone) — 쿠키 층·비로그인 시간대 선택 · 브라우저 시간대 자동 감지·"기기 시간대 따르기"(감지값 제안 힌트 포함 —
   서버가 첫 렌더 전에 알 수 없고, 자동으로 바꾸면 라벨 없는 로컬 시각과 같은 부류가 된다) · IANA 전체 목록·검색 콤보박스 · 시간대 약어(`KST`·`PST`) ·
   12시간제·초·요일 · 프로젝트 단위 시간대·야간 실행 시각 변경(이 기능은 *보는 사람*의 표시 축이다) · Logs URL에 시간대 싣기.
-- **화면 테마(§4.1)의 확장** (2026-10-05, color-scheme) — 공개 푸터 스위처(비로그인에게 테마를 고르게 하지 않는다) · System 기본값 · 셋째 이상의
+- **화면 테마(§4.1)의 확장** (2026-10-05, color-scheme) — 공개 푸터 스위처(비로그인에게 테마를 고르게 하지 않는다) · 셋째 이상의
   테마(고대비·세피아·브랜드)와 사용자 정의 색 · 다크 가이드 스크린샷·다크 키비주얼 PNG(라이트 그림이 다크 면에 놓이는 것은 수용한 대가 — 나중에 할지는
   열려 있다) · 투명 프로젝트 썸네일의 다크 처리 · 초대 메일 다크 · OG 이미지·파비콘 테마 분기 · 다른 탭의 테마 동기화 · `<meta name="theme-color">`.
 - **셀프서비스 계정 삭제 화면** (2026-09-19 privacy) — 방침이 공표하는 것은 **문의 주소와 30일 안의
@@ -629,8 +630,10 @@ Codex 검토는 연동 PR → 머지 → Actions를 온보딩의 전제로 뒀�
 
 신규 프로젝트는 **생성과 모든 첫 적재가 All-or-Nothing**이다(2026-09-14).
 한 표면의 일부 파일 실패·다운로드 누락·중복 키·0키·예산 초과·DB 실패도 전체 생성을 거부한다.
+첫 적재 예산(200파일·파일당 2MB·합계 10MB)은 **선택한 소스들의 요청 전체**에 걸린다. 겹치는 파일 선택은 다운로드 전에 거부한다.
 ③에서 체크한 각 표면의 기준 언어를 고르고 생성 완료를 기다린다. 실패하면 입력과 경로별 사유를 남기고,
 모두 저장된 뒤에만 ④에서 합산 키 수·토큰·활성 표면 전체의 workflow를 제공한다.
+생성 직전 GitHub 인가가 만료되면 ③에 재인가 버튼을 제공하고 생성은 막는다. 재인가 시도 실패 뒤에도 다시 연결할 수 있다.
 수동 지정은 탐지 체크와 섞지 않고 포맷 하나만 제출한다. 기존 Sources 재시도·Add sources의 부분 실패 정책은 유지한다.
 응답 유실은 미생성을 뜻하지 않는다. 자동 재제출하지 않고 목록에서 결과를 확인하며, 생성됐다면 Settings에서 토큰을 재발급한다.
 
@@ -711,7 +714,10 @@ PR 생성은 `published`가 아니라 `review requested`에 가깝고, 반영은
 **되돌린 편집만 남은 Publish는 열린 PR을 닫는다** (2026-09-24, B1 r3) — 파일이 base와 같아지면 그 PR에 머지할 것이 없다. 조용히 닫히게 두지 않고
 코멘트로 이유를 남겨 닫으며, 미리보기("Publishing closes pull request #N")·결과·Logs가 같은 사실을 말한다.
 **base 파일 부재는 여전히 `writer-warnings`다**(설정 오류) — 미리보기가 먼저 경로·브랜치를 말하며 막는다(Try again 없음).
+TS에서 후행 spread·동적 computed가 가린 키는 쓰거나 전달 확인하지 않는다. 뒤의 명시적 리터럴은 자기 키를 다시 확정하지만, 파일 안의 다른 불확실한 키 때문에 preview 전체가 막힐 수 있다(ARCHITECTURE §1.4).
+`no-changes`도 유효한 전달 확인이면 편집을 해제하지만 표시용 Last sent는 바꾸지 않는다. 자동 적재는 사전 편집·PR 판정 뒤 Last sent와 전달 확인 revision을 잠금 안에서 다시 비교해, 바뀌면 전체 보류한다(`publish-raced`). Publish 실행권·소스 context가 바뀐 늦은 완료는 확정 전체를 롤백하고 편집을 유지한다 — 결과는 실패·전달 여부 미확인이다(ARCHITECTURE §5.8).
 야간 cron은 미전달 편집이 있는 프로젝트를 Publish하고, 열린 PR이 있어도 새 편집이 있으면 오늘처럼 갱신한다.
+대상 선정 뒤 보관된 프로젝트는 실행 시작 잠금 안에서 거부한다. 늦은 브랜치 없음 응답도 그 뒤 바뀐 설정·성공 적재의 현재 건강성을 덮지 않고 관측 사건만 남긴다.
 ⚠️ **편집이 0인 프로젝트도 이제 GitHub에 닿는다** (2026-09-30, nightly-sync — §4.1) — base 브랜치 ref 하나를 읽어 적재할 새 커밋이
 있는지 본다. head가 그대로면 트리·파일·PR 목록은 안 부르고, 다르면 열린 PR을 확인한 뒤 적재하거나 보류한다. 편집이 있는
 프로젝트의 Publish 경로는 GitHub 호출이 늘지 않는다.
@@ -750,7 +756,7 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
                                앱 태그 v<x.y.z>만(draft·prerelease·액션 태그 제외) · GitHub 실패·0건도 200 + GitHub Releases 안내
 /robots.txt                    ✅ 요청 시점 VERCEL_ENV 판정 — production만 허용(/api/·/projects·/account·/preferences 거부 + sitemap), 그 밖은 Disallow: / ← seo-geo (2026-09-27)
 /sitemap.xml                   ✅ / · /docs/** 전부(SUMMARY 순서) · /changelog · /privacy — /signin은 noindex라 없다 ← seo-geo
-/llms.txt · /llms-full.txt     ✅ 가이드 목차(제목·절대 URL·첫 문단) · 원고 전문(페이지마다 Source 줄) — text/plain · en 원고만 ← seo-geo
+/llms.txt · /llms-full.txt     ✅ 가이드 목차·현재 도입 사실·Optional 링크 · 원고 전문(Source 줄·내부 문서 링크의 공개 절대 URL) — text/plain · en 원고만 ← seo-geo
                                색인: 공개 다섯(/·/docs·/docs/:slug·/changelog·/privacy)만 canonical · /signin·/invite·/signin/link·/oauth/authorize는 noindex(robots.txt로는 안 막는다)
 
 ── Your work (사용자 축 — 인가는 requireUser) ────────────────────
@@ -808,6 +814,8 @@ Changelog · GitHub | Get started — 2026-09-28에 Home이 빠지고 GitHub가 
 랜딩을 보는 사람은 늘 비로그인이고 CTA는 `Get started`(→ `/signin`) 하나다. 세션을 못 읽는 장애
 (`unavailable`)도 랜딩이다 — 공개 화면이 세션 장애로 안 열리는 것이 더 나쁘고, 장애 신호는 `/signin`·보호
 라우트가 계속 든다. 판정은 `lib/auth/landing.ts`의 `rootView`다.
+
+랜딩의 h1·hero.body는 유지한다. 별도 사실 줄은 유료 플랜 없음·MIT 라이선스를 말하고, 마무리 카피는 외부 AI 에이전트의 MCP 연결을 설명한다. 기존 마무리 영역의 문서 링크는 지원 형식·AI 에이전트·FAQ로 직접 연결한다(2026-10-08, SEO·GEO 감사 후속). 검색·학습 봇의 현행 허용 정책과 공개 텍스트 제공 범위는 ARCHITECTURE §8.1이 정한다.
 
 - 목적지를 만드는 자리는 **`lib/routes.ts`의 `signIn()` 하나**다. 쿼리를 `withQuery`로 만드는 것이
   계약의 절반이다 — 문자열 연결로 만들면 `entry-points.test.ts`의 "쿼리 파라미터 수신자" 검사를

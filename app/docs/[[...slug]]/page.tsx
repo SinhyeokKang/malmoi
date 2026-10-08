@@ -112,7 +112,9 @@ export default async function DocsPage({ params }: { params: Promise<{ slug?: st
     title: self?.title ?? "",
     description: leadParagraph(page.tree) ?? m.landing.hero.body,
     url: `${SITE_ORIGIN}${docHref(slug)}`,
-    chapter: self?.parent && parentSlug !== null ? { title: self.parent, url: `${SITE_ORIGIN}${docHref(parentSlug)}` } : null,
+    uiLocale,
+    docsTitle: m.publicDocs.docs.title,
+    chapter: self?.parent && parentSlug !== null && parentSlug.length > 0 ? { title: self.parent, url: `${SITE_ORIGIN}${docHref(parentSlug)}` } : null,
   });
 
   return (

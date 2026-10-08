@@ -48,18 +48,18 @@ export class PreviewBaseFileUnreadable extends Error {
 }
 export class PreviewWriterWarnings extends Error {
   override readonly name = "PreviewWriterWarnings";
-  constructor(readonly warnings: PullWarning[]) { super("Preview cannot deliver empty values"); }
+  constructor(readonly warnings: PullWarning[]) { super("Preview cannot safely deliver values"); }
 }
 export type PublishPreviewResult =
   | { status: "blocked"; warnings: PullWarning[] }
   | { status: "ok"; preview: PublishPreview }
-  | { status: "refused"; reason: "base-file-missing" | "base-file-unreadable"; path: string; branch: string }
+  | { status: "refused"; reason: "base-file-missing" | "base-file-unreadable" | "unsupported-file-kind"; path: string; branch: string }
   | { status: "rejected"; error: "unauthorized" | "forbidden" | "not-found" | "archived" | "invalid input" }
   | { status: "failed" };
 export type PublishModalState =
   | { kind: "preview-loading" }
   | { kind: "preview-ready"; preview: PublishPreview }
   | { kind: "preview-error" }
-  | { kind: "preview-refused"; reason: "base-file-missing" | "base-file-unreadable"; path: string; branch: string }
+  | { kind: "preview-refused"; reason: "base-file-missing" | "base-file-unreadable" | "unsupported-file-kind"; path: string; branch: string }
   | { kind: "running" }
   | { kind: "result"; outcome: import("@/lib/pull/message").PullOutcome };

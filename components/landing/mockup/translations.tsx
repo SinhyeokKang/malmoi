@@ -8,6 +8,8 @@ import { CountBadge } from "@/components/ui/count-badge";
 import { fieldClass } from "@/components/ui/input";
 import { StatusBadge } from "@/components/ui/status-badge";
 import type { Messages } from "@/lib/i18n";
+import type { UiLocale } from "@/lib/i18n/locales";
+import { formatNumber } from "@/lib/number-format";
 import { cn } from "@/lib/utils";
 
 /**
@@ -22,7 +24,6 @@ import { cn } from "@/lib/utils";
  */
 export type Phase = "missing" | "typing" | "saving" | "saved" | "published";
 
-const count = (n: number) => n.toLocaleString("en-US");
 /** 보고 있는 소스 — 트리에서 펼쳐진 항목이고 키 목록의 수가 그 소스의 키 수다(`This source`). */
 const currentSource = (fixture: Messages["landing"]["mockup"]) => fixture.sources.find(source => source.slug === fixture.source);
 
@@ -62,7 +63,7 @@ function FilterTrigger({ label }: { label: string }) {
   );
 }
 
-export function TranslationsView({ m, phase }: { m: Messages; phase: Phase }) {
+export function TranslationsView({ m, phase, uiLocale }: { m: Messages; phase: Phase; uiLocale: UiLocale }) {
   const fixture = m.landing.mockup;
   const w = m.translations.workspace;
   return (
@@ -116,7 +117,7 @@ export function TranslationsView({ m, phase }: { m: Messages; phase: Phase }) {
       <div className="min-h-0 flex-1 overflow-hidden p-4">
         <div className="flex h-full min-h-0">
           <div className="border-border bg-background relative flex min-h-0 w-[652px] shrink-0 overflow-hidden rounded-lg border">
-            <SourceTree m={m} />
+            <SourceTree m={m} uiLocale={uiLocale} />
             <KeyList m={m} phase={phase} />
           </div>
           {/* 두 카드 사이 16px이 리사이즈 손잡이다 — 선을 그리지 않는다. */}
@@ -134,7 +135,7 @@ export function TranslationsView({ m, phase }: { m: Messages; phase: Phase }) {
  * `tree-panel.tsx` — 소스 → 네임스페이스. 보고 있는 소스만 펼쳐지고(`All namespaces`가 선택), 나머지는 접힌다.
  * 네임스페이스가 13 미만이라 필터 입력이 없다(`FILTER_AT`).
  */
-function SourceTree({ m }: { m: Messages }) {
+function SourceTree({ m, uiLocale }: { m: Messages; uiLocale: UiLocale }) {
   const fixture = m.landing.mockup;
   const current = currentSource(fixture);
   const t = m.translations.workspace.tree;
@@ -153,13 +154,13 @@ function SourceTree({ m }: { m: Messages }) {
                 <span className="flex text-gray-strong">{open ? <ChevronDown className="size-3.5" aria-hidden /> : <ChevronRight className="size-3.5" aria-hidden />}</span>
                 <span className="flex text-gray-strong"><FileJson2 className="size-4" aria-hidden /></span>
                 <span className="min-w-0 flex-1 truncate font-medium">{source.slug}</span>
-                <span className="text-muted-foreground text-xs">{count(source.keyCount)}</span>
+                <span className="text-muted-foreground text-xs">{formatNumber(source.keyCount, uiLocale)}</span>
               </span>
               {open && (
                 <>
-                  <TreeItem icon={<Layers className="size-3.5" aria-hidden />} label={t.allNamespaces} n={source.keyCount} selected />
+                  <TreeItem icon={<Layers className="size-3.5" aria-hidden />} label={t.allNamespaces} n={source.keyCount} uiLocale={uiLocale} selected />
                   {source.namespaces.map((namespace) => (
-                    <TreeItem key={namespace.name} icon={<Folder className="size-3.5" aria-hidden />} label={namespace.name} n={namespace.keyCount} selected={false} />
+                    <TreeItem key={namespace.name} icon={<Folder className="size-3.5" aria-hidden />} label={namespace.name} n={namespace.keyCount} uiLocale={uiLocale} selected={false} />
                   ))}
                 </>
               )}
@@ -174,12 +175,12 @@ function SourceTree({ m }: { m: Messages }) {
 /** 선택 면은 `ListRow selected`의 `bg-foreground/[0.07]`이다(DESIGN §5 — 키 목록 행과 같다, 5-Y7). `landing-mockup.test.tsx`가 실물을 렌더해 견준다. */
 const SELECTED = "bg-foreground/[0.07]";
 
-function TreeItem({ icon, label, n, selected }: { icon: ReactNode; label: string; n: number; selected: boolean }) {
+function TreeItem({ icon, label, n, selected, uiLocale }: { icon: ReactNode; label: string; n: number; selected: boolean; uiLocale: UiLocale }) {
   return (
     <span className={cn("flex items-center gap-2 rounded-sm py-1.5 pr-2 pl-[30px] text-sm", selected && SELECTED)}>
       <span className="flex text-gray-dim">{icon}</span>
       <span className="min-w-0 flex-1 truncate">{label}</span>
-      <span className="text-muted-foreground text-xs">{count(n)}</span>
+      <span className="text-muted-foreground text-xs">{formatNumber(n, uiLocale)}</span>
     </span>
   );
 }

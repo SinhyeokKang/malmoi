@@ -151,3 +151,31 @@ describe("loadConnectionHealth probe 생략", () => {
     expect(hoisted.appRequest).toHaveBeenCalled();
   });
 });
+
+it("getTree preserves Git modes and non-blob paths so Publish cannot recreate unsupported targets", async () => {
+  const client = await createGitClient("o", "r", "7", "9");
+  const tree = [
+    { path: "en.json", sha: "normal", type: "blob", mode: "100644" },
+    { path: "ko.json", sha: "link", type: "blob", mode: "120000" },
+    { path: "fr.json", sha: "exec", type: "blob", mode: "100755" },
+    { path: "de.json", sha: "module", type: "commit", mode: "160000" },
+    { path: "es.json", sha: "dir", type: "tree", mode: "040000" },
+  ];
+  hoisted.request.mockResolvedValue({ data: { truncated: false, tree } });
+  expect(await client.getTree("head")).toEqual(tree.map(({ type: _, ...entry }) => entry));
+});
+
+it("getTree preserves a missing mode as unknown rather than assuming an ordinary file", async () => {
+  const client = await createGitClient("o", "r", "7", "9");
+  hoisted.request.mockResolvedValue({ data: { truncated: false, tree: [{ path: "ko.json", sha: "link", type: "blob" }] } });
+  expect(await client.getTree("head")).toEqual([{ path: "ko.json", sha: "link", mode: "unknown" }]);
+});
+
+it.each([
+  { path: "ko.json", type: "blob", mode: "120000" },
+  { sha: "link", type: "blob", mode: "120000" },
+])("getTree rejects incomplete entries rather than dropping an occupied path", async (entry) => {
+  const client = await createGitClient("o", "r", "7", "9");
+  hoisted.request.mockResolvedValue({ data: { truncated: false, tree: [entry] } });
+  await expect(client.getTree("head")).rejects.toThrow(/incomplete Git tree entry/);
+});

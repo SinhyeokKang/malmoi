@@ -35,8 +35,8 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_ORIGIN),
   title: { default: en.common.appName, template: `%s · ${en.common.appName}` },
   description: en.landing.hero.body,
-  openGraph: { siteName: en.common.appName, type: "website", images: [OG_IMAGE] },
-  twitter: { card: "summary_large_image", images: [OG_IMAGE.url] },
+  openGraph: { siteName: en.common.appName, locale: "en_US", type: "website", images: [OG_IMAGE] },
+  twitter: { card: "summary_large_image", images: [{ url: OG_IMAGE.url, alt: OG_IMAGE.alt }] },
 };
 
 /** sonner가 껍데기 밖 부품(액션 버튼·닫기)에 쓰는 변수 — 토큰에 묶는다(아래 `Toaster` 주석). */

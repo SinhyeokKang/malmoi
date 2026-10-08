@@ -10,7 +10,7 @@ Usa un token personal para los agentes que no pueden iniciar sesión desde tu na
 4. En **Alcance**, elige **Todos mis proyectos** o **Proyectos elegidos**.
 5. Elige **Crear** y luego **Copiar** el token. Solo se muestra una vez; elige **Cerrar** cuando lo hayas guardado.
 
-![Step 1 of 2 of the Create token dialog with 90 days selected, Translate & publish checked, and All my projects chosen](/guide/mcp-create-token.webp "Choose the expiry, the allowed actions, and the scope, then create the token.")
+![El paso 1 de 2 del diálogo Crear token con 90 días seleccionados, Traducir y publicar marcado y Todos mis proyectos elegido](/guide/mcp-create-token.webp "Elige la caducidad, las acciones permitidas y el alcance y luego crea el token.")
 
 No guardes el token en archivos ni en chats. Guárdalo en la variable de entorno `MALMOI_TOKEN` de la shell que inicia tu agente, por ejemplo con `read -s MALMOI_TOKEN && export MALMOI_TOKEN` y pegando después el token. Los fragmentos de conexión de abajo leen esa variable, así que el token en sí nunca aparece en un archivo de configuración.
 

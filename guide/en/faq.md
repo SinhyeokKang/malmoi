@@ -4,7 +4,7 @@ Short answers to common questions about Malmoi, with a link to the page that exp
 
 ## What does Malmoi do? {#what-is-malmoi}
 
-Malmoi finds the translation files already in your GitHub repository, lets your team edit translations in the browser, and sends saved changes back as a pull request. Your repository's file layout stays as it is. See [How syncing works](sync/README.md#how-it-works).
+Malmoi is a translation management (i18n) tool for GitHub repositories. It finds your existing translation files, lets your team edit them in the browser, and sends saved changes back as a pull request without changing the file layout. See [How syncing works](sync/README.md#how-it-works).
 
 ## Do translators need Git or a GitHub account? {#translators}
 
@@ -38,6 +38,10 @@ They are kept. If the key comes back in a later commit, its translations come ba
 
 No. Without it, the nightly run picks up repository changes once a day. With it, changes arrive on every commit. See [Nightly sync or the workflow](sync/nightly.md#workflow).
 
+## Does Malmoi have paid plans? {#pricing}
+
+No. Malmoi has no paid plans and is open source under the MIT License.
+
 ## Does Malmoi translate text for me? {#machine-translation}
 
 No. Malmoi has no machine translation or translation memory. You can connect your own AI agent; what it writes is saved as your edit, with the same checks as the browser. See [Connect an AI agent](ai-agents/README.md).
@@ -45,6 +49,10 @@ No. Malmoi has no machine translation or translation memory. You can connect you
 ## Is there an approval step? {#review}
 
 No. **Needs review** only marks translations whose source text changed, and saving clears it. See [Edit translations](translate/edit.md#save).
+
+## What doesn't Malmoi support? {#not-supported}
+
+Malmoi does not support ICU plural forms, concurrent editing, fine-grained permissions, in-context editing, screenshot attachments, translator notes, approval workflows, translation memory, or built-in machine or AI translation.
 
 ## How many projects and members can I have? {#limits}
 
@@ -56,8 +64,8 @@ Yes, in **Preferences**. These change only how Malmoi looks to you, not the lang
 
 ## What does Malmoi store about me? {#privacy}
 
-Your name, email address, and profile picture from GitHub or Google, your project memberships, and who last changed each translation. Names, email addresses, and connection tokens are stored encrypted, and Malmoi does not sell your data or use it for advertising. The **Privacy Policy** in the footer lists everything.
+Your name, email address, and profile picture from GitHub or Google, your project memberships, and who last changed each translation. Names, email addresses, and connection tokens are stored encrypted, and Malmoi does not sell your data or use it for advertising. The [Privacy Policy](https://mal-moi.com/privacy) lists everything.
 
 ## How do I delete my account? {#delete-account}
 
-There is no delete button. Write to the address in the **Privacy Policy**; requests are answered within 30 days. Translations stay with the project, but they no longer point to you.
+There is no delete button. Write to the address in the [Privacy Policy](https://mal-moi.com/privacy); requests are answered within 30 days. Translations stay with the project, but they no longer point to you.

@@ -8,6 +8,7 @@ import type { HoldReason } from "@/lib/protection/plan";
 import { relativeTime } from "@/lib/relative-time";
 import { ALL_NAMESPACES, routes } from "@/lib/routes";
 import { cn } from "@/lib/utils";
+import { formatNumber } from "@/lib/number-format";
 import type { UiLocale } from "@/lib/i18n/locales";
 import type { Messages } from "@/lib/i18n";
 
@@ -119,7 +120,7 @@ export function CountCards({ cards, slug, surfaceSlugs, now, heldLater, uiLocale
                       card.muted ? "text-gray-dim" : card.tone === "accent" ? "text-link" : undefined,
                     )}
                   >
-                    {value(card)}
+                    {value(card, uiLocale)}
                   </span>
                   <span className="text-muted-foreground text-xs">
                     {m.home.cards.unit[card.unit]} ·{" "}
@@ -141,11 +142,10 @@ export function CountCards({ cards, slug, surfaceSlugs, now, heldLater, uiLocale
  * ⚠️ **유입만 `+` 접두다** (캔버스 `+12`) — 목록 화면의 띠와 같은 관용구이고, 그 칸만 **늘어난 양**을
  * 말하기 때문이다. 나머지 셋은 **남아 있는 양**이라 부호가 뜻을 바꾼다.
  *
- * ⚠️ **로케일을 고정한다** — `toLocaleString()`은 서버 로케일에 따라 구분자가 갈리고, 그러면 같은 DB
- * 상태가 다른 화면을 낸다 (export 결정성과 같은 축).
+ * ⚠️ **화면 언어를 명시한다** — 서버 기본 로케일을 쓰면 사전의 수량 문장과 구분자가 갈린다.
  */
-function value(card: HomeCard): string {
-  const formatted = card.value.toLocaleString("en-US");
+function value(card: HomeCard, uiLocale: UiLocale): string {
+  const formatted = formatNumber(card.value, uiLocale);
   return card.key === "newFromGithub" && card.value > 0 ? `+${formatted}` : formatted;
 }
 

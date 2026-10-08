@@ -10,7 +10,7 @@ Una invitación está ligada a la dirección que la recibió. Puedes iniciar ses
 2. Inicia sesión con la dirección invitada. Con GitHub, la dirección invitada debe ser el correo principal de tu cuenta de GitHub.
 3. Elige **Aceptar invitación**. Malmoi abre el proyecto.
 
-![An invitation page showing the invited email address, the project with the Editor role, and an Accept invitation button](/guide/accept-invitation.webp "Check the address, then accept the invitation.")
+![Una página de invitación con la dirección de correo invitada, el proyecto con el rol Editor y un botón Aceptar invitación](/guide/accept-invitation.webp "Comprueba la dirección y luego acepta la invitación.")
 
 Las invitaciones a proyectos archivados no se pueden aceptar. El enlace deja de funcionar cuando lo aceptas, a los siete días, o si un propietario del proyecto lo revoca o lo reenvía. No lo reenvíes: solo funciona para la dirección invitada.
 

@@ -11,7 +11,7 @@ import { parsePrivateKey, requireEnv } from "@/lib/env";
 import { planConnectionHealth, probeFromError, storedConnection, type ConnectionHealth, type ProbeResult } from "@/lib/github-connect/health";
 import { logFailure } from "@/lib/github-connect/log";
 import { createProbeMemo, probeMemoKey, PROBE_MEMO_MAX, PROBE_MEMO_TTL_MS } from "@/lib/github-connect/probe-memo";
-import type { GitClient, GitTreeBlob } from "@/lib/pull/client";
+import type { GitClient, GitTreeBlob, GitTreeEntry } from "@/lib/pull/client";
 import type { CommitPayload, TreePayload } from "@/lib/pull/payload";
 
 /**
@@ -384,12 +384,11 @@ export async function createGitClient(
       if (res.data.truncated) {
         throw new Error(`tree is truncated (${commitSha}) — too many files for the comparison to be trusted`);
       }
-      const blobs: GitTreeBlob[] = [];
+      const blobs: GitTreeEntry[] = [];
       for (const entry of res.data.tree) {
-        // 디렉터리·심링크·서브모듈은 호출부가 쓰지 않는다.
-        if (entry.type !== "blob") continue;
-        if (entry.path === undefined || entry.sha === undefined) continue;
-        blobs.push({ path: entry.path, sha: entry.sha });
+        // 비정규 경로도 보존한다. Publish가 대상/조상 경로의 mode를 확인하기 전에 빼면 신규 파일로 덮는다.
+        if (entry.path === undefined || entry.sha === undefined) throw new Error("incomplete Git tree entry");
+        blobs.push({ path: entry.path, sha: entry.sha, mode: entry.mode ?? "unknown" });
       }
       return blobs;
     },

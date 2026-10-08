@@ -16,7 +16,7 @@ export type FakeGitOptions = {
   /** ref → 커밋 SHA. 없는 ref는 `null`이 되어 첫 실행 경로를 태운다. */
   refSha?: Record<string, string>;
   /** 커밋 SHA → 트리. 주입되지 않은 커밋을 요구하면 던진다. */
-  tree?: Record<string, GitTreeBlob[]>;
+  tree?: Record<string, (GitTreeBlob & { mode?: string })[]>;
   /** blob SHA → 내용. 주입되지 않은 SHA를 요구하면 던진다. */
   blobs?: Record<string, string>;
   /** 열린 PR. 없으면 `null`이 되어 생성 경로를 태운다. `title`은 마커 유무 판정의 입력이다. */
@@ -50,7 +50,7 @@ export function createFakeGitClient(opts: FakeGitOptions): {
       record("getTree", [commitSha]);
       const tree = opts.tree?.[commitSha];
       if (tree === undefined) throw new Error(`fake에 주입되지 않은 트리: ${commitSha}`);
-      return tree;
+      return tree.map(entry => ({ mode: "100644", ...entry }));
     },
     async getBlobText(sha) {
       record("getBlobText", [sha]);

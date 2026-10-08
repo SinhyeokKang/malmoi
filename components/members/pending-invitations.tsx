@@ -274,7 +274,7 @@ export function PendingInvitations({
                     )}
                     after={
                       failed?.id === invitation.id ? (
-                        <Alert variant="danger" className="mx-4 mb-3.5 text-left">
+                        <Alert variant={failed.error === null ? "warning" : "danger"} live={failed.error === null ? "status" : "alert"} className="mx-4 mb-3.5 text-left">
                           {failed.error === null
                             ? m.members.pending.revokeUnconfirmed
                             // ⚠️ `not-found`를 access 문장으로 보내지 않는다 (audit #22) — 그 문장은 초대받은 사람에게 하는 말이다.

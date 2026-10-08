@@ -78,6 +78,12 @@ const SEARCH_PROSE: Partial<Record<UiLocale, { min: (n: number) => string; group
   es: { min: (n) => `al menos ${({ 2: "dos" } as Record<number, string>)[n]} caracteres`, group: (n) => `hasta ${({ 5: "cinco" } as Record<number, string>)[n]} resultados`, max: (n) => `primeros ${n} caracteres` },
 };
 
+const CONTENT_FACTS: Record<UiLocale, { paid: RegExp; memberThreshold: RegExp; nameOrigin: RegExp }> = {
+  en: { paid: /no paid plans/i, memberThreshold: /can exceed (?:that|the) threshold/i, nameOrigin: /1910s.+Korean dictionary/i },
+  ko: { paid: /유료 플랜/, memberThreshold: /기준을 넘을 수/, nameOrigin: /1910년대.+조선어사전 편찬 사업/ },
+  es: { paid: /no tiene planes de pago/i, memberThreshold: /puede superar ese umbral/i, nameOrigin: /década de 1910.+diccionario coreano/i },
+};
+
 /**
  * **접근 이름에만 붙는 사전 값** — 필터 트리거는 현재 값(`Any state`)을 보이고 축 이름(`State`)은 `aria-label`에만 있다.
  * 가이드가 이것을 굵게 쓰면 독자는 화면에 없는 글자를 찾는다(ux-drift-unify 7-#3). 다른 키에 같은 문자열이 보이는 라벨로
@@ -167,6 +173,31 @@ describe(`실물 가이드 본문 게이트 — ${uiLocale}`, () => {
     expect(new Set(allowedActions()).size).toBe(4);
     expect(nav().length).toBeGreaterThan(0);
     expect(slugToFile(["setup", "workflow"], nav().map(({ file }) => file))).toBe("setup/workflow.md");
+  });
+
+  it("FAQ and Reference carry the public decision facts, links, formats, and thresholds", () => {
+    const facts = CONTENT_FACTS[uiLocale];
+    const faq = read("faq.md");
+    expect(faq).toMatch(facts.paid);
+    expect(faq).toContain("MIT");
+    expect(faq).toContain("ICU");
+    expect(faq).not.toMatch(/Crowdin|Tolgee/i);
+    expect(faq.match(/https:\/\/mal-moi\.com\/privacy/g)).toHaveLength(2);
+    expect(headings(tree("faq.md")).map(({ id }) => id)).toContain("not-supported");
+
+    const formatsLead = leadParagraph(tree("reference/formats.md")) ?? "";
+    for (const name of ["JSON", "YAML", "Chrome", "TypeScript", "JavaScript"]) expect(formatsLead).toContain(name);
+    const formats = sectionByAnchor(tree("reference/formats.md"), "formats");
+    for (const extension of [".json", ".yml", ".yaml", ".ts", ".tsx", ".js", ".mjs"]) expect(formats).toContain(extension);
+    expect(formats).toContain("{locale}/common.json");
+
+    const limitsLead = leadParagraph(tree("reference/limits.md")) ?? "";
+    for (const fact of ["3", "10", "2 MB"]) expect(limitsLead).toContain(fact);
+    expect(sectionByAnchor(tree("reference/limits.md"), "limits")).toMatch(facts.memberThreshold);
+
+    expect(read("README.md")).toMatch(facts.nameOrigin);
+    expect(leadParagraph(tree("README.md"))?.length ?? Infinity).toBeLessThanOrEqual(200);
+    expect(leadParagraph(tree("account/preferences.md"))?.length ?? Infinity).toBeLessThanOrEqual(200);
   });
 
   // 산문은 작은 수를 낱말로 쓴다("at least two characters") — `toContain(String(CONST))`로는 못 묶어 낱말 대응표를 둔다.

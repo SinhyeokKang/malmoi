@@ -14,7 +14,7 @@ import { requireEnv } from "@/lib/env";
 import { isUniqueViolation } from "@/lib/failure";
 import { openRepoReader } from "@/lib/github";
 import { logFailure } from "@/lib/github-connect/log";
-import { readFiles, snapshotError } from "@/lib/import/read";
+import { FileContentBudgetError, readFiles, snapshotError } from "@/lib/import/read";
 import { IngestBudgetError } from "@/lib/onboarding/budget";
 import { planConfirmedFormat, templatePaths } from "@/lib/onboarding/confirm";
 import { planProjectCreate, projectLimitFor } from "@/lib/onboarding/create-plan";
@@ -161,15 +161,35 @@ export async function createProjectFromRepo(
   }
 
   const paths = snapshot.files.map(f => f.path);
+  const selected: { requested: (typeof input.surfaces)[number]; id: string; surfaceSlug: string; attempted: string[] }[] = [];
+  for (const requested of input.surfaces) {
+    if (!isAdapterName(requested.adapter)) return { ok: false, error: "invalid input" };
+    selected.push({ requested, id: randomUUID(),
+      surfaceSlug: planSurfaceSlug(requested.pathTemplate, selected.map(item => item.surfaceSlug)),
+      attempted: templatePaths(requested.adapter, requested.pathTemplate, paths),
+    });
+  }
+  // 실제 트리의 겹친 선택은 파일을 받기 전에 거부한다. 확정 뒤 출력 경로 검사도 유지한다.
+  const selectedOwnership = surfaceOwnership(selected.map(item => ({ surfaceId: item.id, surfaceSlug: item.surfaceSlug, paths: item.attempted })));
+  if (!selectedOwnership.ok) return { ok: false, error: "path-conflict", conflicts: selectedOwnership.conflicts };
+  let downloaded: Awaited<ReturnType<typeof readFiles>>;
+  try {
+    // 소스별 준비 전에 한 번만 읽어 파일 수·트리 크기·실제 바이트 예산을 요청 전체에 적용한다.
+    downloaded = await readFiles(reader, snapshot, [...new Set(selected.flatMap(item => item.attempted))]);
+  } catch (error) {
+    logFailure("onboard-prepare", error);
+    const failed = error instanceof FileContentBudgetError
+      ? selected.find(item => item.attempted.includes(error.path)) : selected[0];
+    return { ok: false, error: error instanceof IngestBudgetError ? "resource-limit" : "ingest-failed",
+      ...(failed === undefined ? {} : { surface: { pathTemplate: failed.requested.pathTemplate, failed: 1, errors: [] } }) };
+  }
   const projectId = randomUUID();
   const startedAt = new Date();
   const token = randomUUID();
   const prepared: { id: string; surface: CreatedSurface; payload: NonNullable<ReturnType<typeof prepareFirstSnapshot>["payload"]>; targets: string[]; workflow: { adapter?: AdapterName; baseLocale?: string } }[] = [];
-  for (const requested of input.surfaces) {
-    if (!isAdapterName(requested.adapter)) return { ok: false, error: "invalid input" };
-    const attempted = templatePaths(requested.adapter, requested.pathTemplate, paths);
+  for (const { requested, attempted, id, surfaceSlug } of selected) {
     try {
-      const files = await readFiles(reader, snapshot, attempted);
+      const files = downloaded.filter(file => attempted.includes(file.path));
       const confirmed = planConfirmedFormat(requested, files);
       if (confirmed.status !== "ok") {
         const missing = attempted.filter(path => !files.some(file => file.path === path));
@@ -179,10 +199,6 @@ export async function createProjectFromRepo(
       }
       const format = confirmed.format;
       const targets = [...new Set([...attempted, ...ingestTargets(format, adapterFor(format).layout, paths)])];
-      const extra = targets.filter(path => !attempted.includes(path));
-      if (extra.length) files.push(...await readFiles(reader, snapshot, extra));
-      const id = randomUUID();
-      const surfaceSlug = planSurfaceSlug(format.pathTemplate, prepared.map(s => s.surface.surfaceSlug));
       const first = prepareFirstSnapshot({ projectId, surfaceId: id, surfaceSlug, startedAt, token,
         projectSlug: input.slug, format, baseLocale: confirmed.baseLocale,
         headSha: snapshot.headSha, headCommittedAt: snapshot.headCommittedAt, paths, targets,

@@ -1,6 +1,6 @@
 # Preferences
 
-Choose whether Malmoi's screens appear in English, Korean, or Spanish. This changes only Malmoi itself, not the languages your projects translate into. You can also choose the time zone Malmoi uses for dates and times, and whether Malmoi looks light or dark.
+Choose Malmoi's screen language, time zone, and light or dark theme. Your projects' translation languages do not change.
 
 ## Before you sign in {#footer}
 

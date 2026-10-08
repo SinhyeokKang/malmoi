@@ -36,3 +36,55 @@ it("비리터럴 키는 경고하고, 위의 @l10n-keys 지시자가 있으면 �
   const declared = extractRefs("src/a.ts", 'import { t } from "@/i18n";\n// @l10n-keys a, b\nt(key);\n', [T]);
   expect(declared.warnings).toEqual([]);
 });
+
+const HOOK: WrapperId = { module: "next-intl", export: "useTranslations", kind: "hook" };
+
+it.each([
+  ['const t = useTranslations("unresolved"); t("title");', "unresolved.title"],
+  ['const unsupported = useTranslations("hero"); unsupported("title");', "hero.title"],
+  ['const { t: unsupported } = useTranslations({ namespace: "unresolved" }); unsupported("title");', "unresolved.title"],
+])("상태와 같은 정상 문자열을 참조로 잇는다: %s", (code, key) => {
+  const r = extractRefs("src/a.ts", `import { useTranslations } from "next-intl";\n${code}`, [HOOK]);
+  expect(r.found.map((f) => f.key)).toEqual([key]);
+  expect(r.warnings).toEqual([]);
+});
+
+it.each([
+  'function inner(t) { t("other"); t(dynamic); }',
+  'function inner({ t }) { t("other"); }',
+  '{ const t = other; t("other"); }',
+  'try {} catch (t) { t("other"); }',
+  'function inner() { t("other"); var t = other; }',
+])("direct import의 lexical shadow를 참조로 세지 않는다: %s", (shadow) => {
+  const r = extractRefs("src/a.ts", `import { t } from "@/i18n";\n${shadow}\nt("ours");`, [T]);
+  expect(r.found.map((f) => f.key)).toEqual(["ours"]);
+  expect(r.warnings).toEqual([]);
+});
+
+it.each([
+  'function inner(t) { t("other"); t(dynamic); }',
+  'function inner({ t }) { t("other"); }',
+  '{ const t = other; t("other"); }',
+  'try {} catch (t) { t("other"); }',
+  'function inner() { t("other"); var t = other; }',
+])("hook 반환의 lexical shadow를 참조로 세지 않는다: %s", (shadow) => {
+  const r = extractRefs("src/a.ts", `import { useTranslations } from "next-intl";
+    function outer() {
+      const t = useTranslations("hero");
+      ${shadow}
+      function closure() { t("ours"); }
+    }`, [HOOK]);
+  expect(r.found.map((f) => f.key)).toEqual(["hero.ours"]);
+  expect(r.warnings).toEqual([]);
+});
+
+it("shadow된 hook import의 반환도 남의 함수다", () => {
+  const r = extractRefs("src/a.ts", `import { useTranslations } from "next-intl";
+    function inner(useTranslations) {
+      const t = useTranslations(dynamic);
+      t("other");
+    }
+    const t = useTranslations("hero"); t("ours");`, [HOOK]);
+  expect(r.found.map((f) => f.key)).toEqual(["hero.ours"]);
+  expect(r.warnings).toEqual([]);
+});

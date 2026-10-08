@@ -19,7 +19,14 @@ const mocks = vi.hoisted(() => ({ path: "/docs", replace: vi.fn(), uiLocale: "en
 
 vi.mock("@/lib/auth/read-session", () => ({ readSession: async () => ({ status: "none" }) }));
 // 화면 언어는 쿠키·세션에서 오고 렌더 요청 밖에서는 `cookies()`가 던진다 — 요청의 언어를 여기서 정한다
-vi.mock("@/lib/i18n/server", async () => ({ getUiLocale: async () => mocks.uiLocale, getMessages: async () => (await import("@/messages/en")).en }));
+vi.mock("@/lib/i18n/server", async () => ({
+  getUiLocale: async () => {
+    return mocks.uiLocale;
+  },
+  getMessages: async () => {
+    return mocks.uiLocale === "ko" ? (await import("@/messages/ko")).ko : (await import("@/messages/en")).en;
+  },
+}));
 vi.mock("next/navigation", () => ({
   usePathname: () => mocks.path,
   useRouter: () => ({ replace: mocks.replace }),
@@ -200,6 +207,22 @@ describe("`/docs/*` — JSON-LD", () => {
   it("장 개요 — 2항목", async () => {
     const { container } = await page(["translate"]);
     expect(ld(container)[0]?.[1]?.itemListElement?.map((crumb) => crumb.position)).toEqual([1, 2]);
+  });
+
+  it("FAQ는 Docs › FAQ — 루트 장을 중복하지 않는다", async () => {
+    const { container } = await page(["faq"]);
+    expect(ld(container)[0]?.[1]?.itemListElement).toEqual([
+      expect.objectContaining({ position: 1, name: "Docs", item: "https://mal-moi.com/docs" }),
+      expect.objectContaining({ position: 2, name: "FAQ", item: "https://mal-moi.com/docs/faq" }),
+    ]);
+  });
+
+  it("ko 문서는 inLanguage과 breadcrumb 루트 라벨을 본문 언어로 낸다", async () => {
+    mocks.uiLocale = "ko";
+    const { container } = await page(["translate", "edit"]);
+    const items = ld(container)[0] ?? [];
+    expect(items[0]).toMatchObject({ "@type": "TechArticle", inLanguage: "ko" });
+    expect(items[1]?.itemListElement?.[0]).toMatchObject({ name: "문서", item: "https://mal-moi.com/docs" });
   });
 });
 

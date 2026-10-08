@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { expectResultAlert } from "./helpers/result-alert";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { act } from "react";
@@ -46,6 +47,26 @@ it("미리보기의 빈값 경고는 실행 버튼 없이 표시한다", async (
   await render(<Host />); await click("Publish1");
   expect(document.body.textContent).toContain("This format doesn't support publishing an empty value.");
   expect(document.body.textContent).not.toContain("Try again");
+  expect([...document.querySelectorAll("button")].some(b => visible(b) === "Open pull request")).toBe(false);
+  expect(mocks.pull).not.toHaveBeenCalled();
+});
+it.each(["key-shadowed", "write-slot-not-string-literal"] as const)("#200 %s 경고는 파일 수정 안내이며 재시도와 실행을 숨긴다", async code => {
+  mocks.preview.mockResolvedValue({ status: "blocked", warnings: [{ surfaceSlug: "web", path: "a.ts", key: "hello", code }] });
+  await render(<Host />); await click("Publish1");
+  expect(document.body.textContent).toContain(en.adapterErrors[code]);
+  expect(document.body.textContent).toContain("web: a.ts");
+  expect(document.body.textContent).not.toContain(en.translations.publish.previewFailed);
+  expect(document.body.textContent).not.toContain("Try again");
+  expect([...document.querySelectorAll("button")].some(b => visible(b) === "Open pull request")).toBe(false);
+  expect(mocks.pull).not.toHaveBeenCalled();
+});
+it.each(["OWNER", "EDITOR"] as const)("#200 symlink %s 거부는 파일과 브랜치를 고칠 곳으로 안내한다", async role => {
+  mocks.preview.mockResolvedValue({ status: "refused", reason: "unsupported-file-kind", path: "i18n/ko.json", branch: "main" });
+  await render(<Host role={role} />); await click("Publish1");
+  expect(document.body.textContent).toContain("The repository path isn't a regular file");
+  expect(document.body.textContent).toContain("i18n/ko.json on main");
+  expect(document.body.textContent).not.toContain("Try again");
+  expect(document.body.textContent).not.toContain(en.translations.publish.baseFileMissing.title);
   expect([...document.querySelectorAll("button")].some(b => visible(b) === "Open pull request")).toBe(false);
   expect(mocks.pull).not.toHaveBeenCalled();
 });
@@ -121,6 +142,7 @@ it("조회 실패와 응답 유실 재시도 모두 새 확인을 요구한다",
   await click("Try again"); expect(mocks.pull).not.toHaveBeenCalled(); await click("Open pull request");
   expect(document.body.textContent).toContain("We couldn't confirm whether your changes were sent.");
   expect(document.body.textContent).not.toContain("Nothing was sent");
+  expectResultAlert("This is usually temporary, and trying again is safe", "warning");
   await click("Try again"); expect(mocks.pull).toHaveBeenCalledTimes(1);
   await click("Open pull request"); expect(mocks.pull).toHaveBeenCalledTimes(2);
 });

@@ -10,7 +10,7 @@ Antes de empezar: guarda o descarta cualquier edición de traducción abierta an
 2. Lee la confirmación, que lista los idiomas afectados. Se incluyen todas las ediciones sin enviar de esta clave, incluso las guardadas por otro compañero.
 3. Elige **Revertir traducciones** para restaurar sus últimos valores publicados confirmados, o **Cancelar** para conservar las ediciones.
 
-![The Revert confirmation naming the one language that goes back to its last confirmed version, with Cancel and Revert translations buttons](/guide/revert-confirm.webp "Check the listed languages, then choose Revert translations.")
+![La confirmación de reversión que indica el idioma que volverá a su última versión confirmada, con los botones Cancelar y Revertir traducciones](/guide/revert-confirm.webp "Comprueba los idiomas indicados y luego elige Revertir traducciones.")
 
 Si hay una sincronización en curso, Malmoi muestra **Sincronizando…** con la hora más próxima en que podrás volver a revertir, y no se revierte nada. Si no hay un valor publicado anterior para algún idioma afectado, no se revierte nada. Si alguien cambia los valores mientras el cuadro de diálogo está abierto, elige **Revisar de nuevo** antes de confirmar. Revertir deja **Por revisar** sin cambios.
 
@@ -21,7 +21,7 @@ Si hay una sincronización en curso, Malmoi muestra **Sincronizando…** con la 
 3. Elige **Descartar cambios y sincronizar** cuando hay ediciones sin enviar, o **Sincronizar desde el repositorio** cuando no hay ninguna. Cierra el cuadro de diálogo para conservar los cambios.
 4. Espera en el cuadro de diálogo. Permanece abierto mientras se ejecuta Sincronizar y muestra el resultado en el mismo lugar, bajo un título que nombra el desenlace; elige **Cerrar** cuando lo hayas leído.
 
-![The Sync confirmation warning that one unsent edit will be discarded, with a Discard changes and sync button](/guide/sync-discard.webp "Check how many edits will be discarded before you sync.")
+![La confirmación de sincronización que avisa de que se descartará una edición sin enviar, con el botón Descartar cambios y sincronizar](/guide/sync-discard.webp "Comprueba cuántas ediciones se descartarán antes de sincronizar.")
 
 Solo los propietarios del proyecto pueden usar Sincronizar; los editores lo ven desactivado en Traducciones. Si ya había otra sincronización en curso cuando abriste la página, **Sincronizar** aparece desactivado con ese motivo. Mientras se ejecuta Sincronizar, nadie puede guardar ni revertir traducciones en este proyecto; ven **Sincronizando…** con la hora más próxima en que podrán volver a guardar, y su texto se conserva. Si el cuadro de diálogo no muestra ningún resultado después de aproximadamente un minuto, indica que el resultado estará en [Registros](logs.md) y te permite cerrarlo. Sincronizar lee directamente los archivos de la rama base. El resultado lista cualquier fuente que no se pudo leer o no se reemplazó. Los archivos que se leyeron correctamente aportan los valores de reemplazo. Las ediciones guardadas después de que confirmaste, y las ediciones que no se pudieron reemplazar, siguen guardadas; revisa el recuento de ediciones restantes en el resultado.
 

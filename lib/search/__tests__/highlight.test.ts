@@ -1,7 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { highlightSegments, snippet } from "../highlight";
+import { firstMatchRange, highlightSegments, snippet } from "../highlight";
 import { searchTokens } from "../match";
 const matched = (text: string, tokens: string[]) => highlightSegments(text, tokens).filter(s => s.match).map(s => s.text);
+describe("원문의 첫 일치 범위", () => {
+  it.each([
+    ["İabc", "a", { start: 1, end: 2 }],
+    ["İabc", "i\u0307", { start: 0, end: 1 }],
+    ["i\u0307abc", "İa", { start: 0, end: 3 }],
+    ["İİabc", "abc", { start: 2, end: 5 }],
+    ["😀İabc", "a", { start: 3, end: 4 }],
+    ["ΟΣ", "ος", { start: 0, end: 2 }],
+    ["aaaa", "aa", { start: 0, end: 2 }],
+    ["abc", "", null],
+    ["abc", "z", null],
+  ])("%s / %s → UTF-16 원문 경계", (text, q, range) => {
+    expect(firstMatchRange(text, q)).toEqual(range);
+  });
+});
 describe("강조와 스니펫", () => {
   it("İ 소문자화의 위치를 원문 경계로 되돌린다", () => {
     expect(matched("İstanbul", ["stan"])).toEqual(["stan"]);

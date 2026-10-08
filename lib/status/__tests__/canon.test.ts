@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import type { Badge } from "@/components/ui/badge";
 import type { EventTone } from "@/lib/events/view";
 import { en } from "@/messages/en";
+import { ko } from "@/messages/ko";
+import { es } from "@/messages/es";
 import type { SurfaceImportStatus } from "@/lib/import/surface-status";
 
 import { STATE, stateLabel, type StateKey, type StateTone, type StateVariant } from "../canon";
@@ -67,4 +69,15 @@ it.each([
   ["removedFromRepository", "Removed from repository", "danger", "soft-red"],
 ] as const)("실제 소비자 상태 %s의 기존 낱말·색", (key, label, tone, variant) => {
   expect({ ...STATE[key], label: stateLabel(en, key) }).toEqual({ label, tone, variant });
+});
+
+it.each([
+  [en, "Couldn't check for an open pull request"],
+  [ko, "열린 PR을 확인하지 못했습니다"],
+  [es, "No se pudo comprobar si hay una pull request abierta"],
+] as const)("PR 조회 실패는 목적어가 있는 전용 warning 라벨이다", (m, label) => {
+  expect(STATE.prCheckFailed).toEqual({ tone: "warning", variant: "soft-amber" });
+  expect(stateLabel(m, "prCheckFailed")).toBe(label);
+  expect(stateLabel(m, "couldNotCheck")).toBe(m.settings.repository.unknown);
+  expect(stateLabel(m, "prCheckFailed")).not.toBe(stateLabel(m, "couldNotCheck"));
 });
