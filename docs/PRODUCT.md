@@ -232,6 +232,10 @@ GitHub·Google 어느 쪽으로 들어와도 같은 사람을 가리키고, 프�
   읽음은 사용자당 마지막 열람 시각 하나다. 검토 대기는 push가 셀 시각을 덮으므로 배지·안 읽음에서 제외하고 목록에만 보인다.
   열기 Action은 조회 시작 전 시각까지 읽음으로 기록한다. 목록 도착 전 닫아도 기록하고, 성공한 경우 메뉴를 닫을 때 배지를 지운다.
   0은 배지 없음, 10 이상은 `9+`다. 자기 편집과 방금 만든 설정 미완도 안 읽음에 포함한다.
+  **자리는 셋이다** (2026-10-09, inbox-page) — 헤더 드롭다운 · **`/inbox` 페이지**(같은 목록을 프로젝트마다 카드 하나로, URL이 있어 뒤로 가기·새 탭이 된다) ·
+  **사이드바 `Inbox` 항목의 안 읽음 배지**(헤더 배지와 같은 n의 실제 수 — 헤더만 `9+`로 접는다). 페이지를 보는 것도 같은 워터마크에 읽음을 기록한다
+  (조회 전 시각 · 화면이 마운트된 뒤 — 렌더 자체는 쓰지 않는다). 이번 방문의 점은 화면에 남고 다음 방문부터 사라지며, 같은 탭의 두 배지는 이동 없이 함께 0이 된다.
+  헤더 트리거 이름도 `Inbox`다(Home 카드 제목 `Needs your attention`은 그대로). 실시간 갱신·다른 탭 배지 동기화·드롭다운의 `View all`은 없다.
 
 - **글로벌 검색** (2026-10-03, global-search) — 앱·공개 셸 헤더의 `Search…`와 macOS ⌘K / 그 밖 Ctrl+K가
   같은 Dialog를 연다. 로그인 사용자는 어느 셸에서든 자기 프로젝트(보관 포함)·역할에 맞는 화면(Pages)·키·가이드를 찾는다.
@@ -431,7 +435,7 @@ GitHub·Google 어느 쪽으로 들어와도 같은 사람을 가리키고, 프�
   **생성하는** 기능에 남는다.
 - **실시간 공동 편집** — 위 "동시 편집"의 연장.
 - **범용 알림 시스템** — 멤버 초대 메일(§4.1) 밖의 발송은 없다(ARCHITECTURE §6.00). 발송 이력·배달·발송물(메일)의 열람 추적, 자동 재시도·작업 큐, 캠페인 발송도 만들지 않는다.
-  ⚠️ **헤더 Inbox는 이것이 아니다** — 발송 없이 현재 상태를 모으며 읽음은 사용자당 시각 하나다. 항목별 읽음·발송·구독·사건 기반 알림을 더하는 순간 이 비범위에 든다.
+  ⚠️ **Inbox(헤더 드롭다운 · `/inbox` 페이지)는 이것이 아니다** — 발송 없이 현재 상태를 모으며 읽음은 사용자당 시각 하나다. 항목별 읽음·발송·구독·사건 기반 알림을 더하는 순간 이 비범위에 든다.
 - **포맷별 무제한 설정 UI** — 어댑터 내부는 사용자에게 노출하지 않는다(§3).
 - **화면 언어(§4.1)의 확장** (2026-10-05, ui-locales) — 로케일 URL(`/ko/...`)·`hreflang`·언어별 색인(크롤러는 영어만 본다), `Accept-Language`·지역 기반
   자동 감지, changelog 본문 번역, 방침 es 본(법적 문서를 원어민 검수 없이 낼 수 없다), 언어별 가이드 스크린샷(ko 원고는 `게시`, 그림 속 버튼은
@@ -753,7 +757,7 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
                                옛 /docs#<id> 일곱은 개요가 새 페이지로 보낸다 · 앱 안 링크는 routes.docs(page?, anchor?)
 /changelog                     릴리스 노트 — 원문은 GitHub Release(공개 리포, 토큰 없이 1시간 캐시 · 배포마다 새로 받는다) · 공개 셸 · #v<x.y.z> 착지 ← changelog (2026-09-28)
                                앱 태그 v<x.y.z>만(draft·prerelease·액션 태그 제외) · GitHub 실패·0건도 200 + GitHub Releases 안내
-/robots.txt                    ✅ 요청 시점 VERCEL_ENV 판정 — production만 허용(/api/·/projects·/account·/preferences 거부 + sitemap), 그 밖은 Disallow: / ← seo-geo (2026-09-27)
+/robots.txt                    ✅ 요청 시점 VERCEL_ENV 판정 — production만 허용(/api/·/projects·/account·/preferences·/inbox 거부 + sitemap), 그 밖은 Disallow: / ← seo-geo (2026-09-27)
 /sitemap.xml                   ✅ / · /docs/** 전부(SUMMARY 순서) · /changelog · /privacy — /signin은 noindex라 없다 ← seo-geo
 /llms.txt · /llms-full.txt     ✅ 가이드 목차·현재 도입 사실·Optional 링크 · 원고 전문(Source 줄·내부 문서 링크의 공개 절대 URL) — text/plain · en 원고만 ← seo-geo
                                색인: 공개 다섯(/·/docs·/docs/:slug·/changelog·/privacy)만 canonical · /signin·/invite·/signin/link·/oauth/authorize는 noindex(robots.txt로는 안 막는다)
@@ -762,8 +766,10 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 /projects                      목록 + 생성 진입
 /projects/new                  ✅ 생성 — **`/projects` 위의 모달 딥링크** (뒤에 목록이 그대로 있다) ← new-project-modal (2026-09-13)
 /account                       ✅ 프로필 편집·사진 · 로그인 수단 목록/연결/해제 · GitHub App 연동/해제 · **전체 세션 회수** ← 6b-4 · account-linking · account-connect · account-settings
-/mcp                           MCP connector — Connected apps(OAuth 연결 목록·끊기) + 개인 토큰 발급·재발급·폐기 + 연결 예시(방식 둘) (사이드바 `Projects` 아래) ← mcp-connector (2026-09-28) · mcp-oauth (2026-09-29)
-/preferences                   Preferences — Language · Time zone · Theme 카드 셋(고르는 즉시 적용 · 저장 버튼 없음). 사용자 축 내비 Projects · MCP connector · Preferences · Account 순 ← ui-locales (2026-10-05) · user-timezone (2026-10-05) · color-scheme (2026-10-05)
+/mcp                           MCP connector — Connected apps(OAuth 연결 목록·끊기) + 개인 토큰 발급·재발급·폐기 + 연결 예시(방식 둘) (사이드바 `Inbox` 아래) ← mcp-connector (2026-09-28) · mcp-oauth (2026-09-29)
+/preferences                   Preferences — Language · Time zone · Theme 카드 셋(고르는 즉시 적용 · 저장 버튼 없음) ← ui-locales (2026-10-05) · user-timezone (2026-10-05) · color-scheme (2026-10-05)
+/inbox                         Inbox — 헤더 드롭다운과 같은 목록을 프로젝트마다 카드 하나로 · 마운트 뒤 읽음 기록 (사이드바 `Projects` 바로 아래, 안 읽음 배지) ← inbox-page (2026-10-09)
+                               사용자 축 내비 Projects · Inbox · MCP connector · Preferences · Account 순
 
 ── <project> (프로젝트 축 — 인가는 getProjectAccess) ─────────────
 /projects/:slug                ✅ Home — 개요 (착지점)            ← 6b-6 (2026-09-09, 프로덕션)
@@ -838,7 +844,7 @@ Changelog · GitHub | Get started — 2026-09-28에 Home이 빠지고 GitHub가 
 
 ⚠️ **MCP 토큰 화면은 전용 라우트 `/mcp`다** (2026-09-28 — §4.3 ⑤가 적었던 "라우트로 만들지 않는다, `settings`의 섹션이다"를
 뒤집었다). 토큰이 프로젝트가 아니라 **계정** 밑이라 사용자 축(`Your work`)에 선다 — 인가는 `requireUser`, 사이드바 사용자
-구역의 `Projects` 바로 아래 `MCP connector`(2026-09-30에 그 사이의 `New project`가 헤더로 옮겼다). "MCP로 무엇을 시킬 수 있나"의 정본은 페이지가 아니라 가이드다(페이지는
+구역의 `Projects` 아래 `MCP connector`(2026-09-30에 그 사이의 `New project`가 헤더로 옮겼다 · 2026-10-09에 그 사이에 `Inbox`가 섰다). "MCP로 무엇을 시킬 수 있나"의 정본은 페이지가 아니라 가이드다(페이지는
 링크 한 줄). 근거는 §4.1 "MCP 커넥터".
 
 **IA 결정 다섯** — 각각 이유가 있고, 이유가 사라지면 결정도 다시 본다:
@@ -939,7 +945,7 @@ Changelog · GitHub | Get started — 2026-09-28에 Home이 빠지고 GitHub가 
    - ⚠️ **순서**: 백로그의 조건이 *"착수 전에 어느 왕복이 얼마인지부터 재야 한다"* 다
      **재기 전에 스키마를 늘리는 것은 순서가 거꾸로다.**
 
-⚠️ **2026-09-27에 8-3의 두 결정이 다시 뒤집혔다** (사용자) — 사용자 축에 **`New project`**가 돌아왔고(`Projects · New project · Account` — 헤더 사용자 메뉴의 첫 묶음도 같은 목록이다. ⚠️ **2026-09-30에 다시 빠졌다** — 자리는 앱 셸 헤더의 아바타 왼쪽 버튼이고, 사용자 구역의 아바타·이름 머리 줄도 함께 걷혔다), 프로젝트 구역 머리에 **프로젝트 전환 메뉴**가 섰다(이름 검색 · 보관 포함 · 지금 프로젝트 체크 · 고르면 그 프로젝트 Home). 8-3은 스위처를 지워 "옮기는 길을 목록 하나로" 모았었고, 새 프로젝트는 목록 버튼 하나였다. 사이드바 **하단은 `Changelog · Docs` 둘**이다(2026-09-28 — GitHub Releases 외부 링크 `Release notes`였던 첫 항목이 앱 안 `/changelog`가 되고 라벨이 그 페이지 제목 `Changelog`와 같은 키가 됐다) — `Sign out`은 하단에서 빠져 사용자 메뉴에만 있다(`lib/shell/nav.ts`의 `navFooterItems`). **사용자 축은 지금 `Projects · MCP connector · Preferences · Account`다**(2026-10-05, ui-locales — `Preferences`가 `Account` 앞에 섰다. 사이드바 사용자 구역과 헤더 사용자 메뉴가 같은 `navWorkItems`를 읽는다).
+⚠️ **2026-09-27에 8-3의 두 결정이 다시 뒤집혔다** (사용자) — 사용자 축에 **`New project`**가 돌아왔고(`Projects · New project · Account` — 헤더 사용자 메뉴의 첫 묶음도 같은 목록이다. ⚠️ **2026-09-30에 다시 빠졌다** — 자리는 앱 셸 헤더의 아바타 왼쪽 버튼이고, 사용자 구역의 아바타·이름 머리 줄도 함께 걷혔다), 프로젝트 구역 머리에 **프로젝트 전환 메뉴**가 섰다(이름 검색 · 보관 포함 · 지금 프로젝트 체크 · 고르면 그 프로젝트 Home). 8-3은 스위처를 지워 "옮기는 길을 목록 하나로" 모았었고, 새 프로젝트는 목록 버튼 하나였다. 사이드바 **하단은 `Changelog · Docs` 둘**이다(2026-09-28 — GitHub Releases 외부 링크 `Release notes`였던 첫 항목이 앱 안 `/changelog`가 되고 라벨이 그 페이지 제목 `Changelog`와 같은 키가 됐다) — `Sign out`은 하단에서 빠져 사용자 메뉴에만 있다(`lib/shell/nav.ts`의 `navFooterItems`). **사용자 축은 지금 `Projects · Inbox · MCP connector · Preferences · Account`다**(2026-10-05, ui-locales — `Preferences`가 `Account` 앞에 섰다 · 2026-10-09, inbox-page — `Inbox`가 `Projects` 바로 뒤에 섰다. 사이드바 사용자 구역과 헤더 사용자 메뉴가 같은 `navWorkItems`를 읽는다).
 
 ⚠️ **그 뒤 뒤집혔다** (8-3, 2026-09-11) — 구역 라벨은 **이름 그대로**(사용자 이름 / 프로젝트 이름)이고 계정 항목은 `Settings`다. ⚠️ **계정 항목은 2026-09-23에 다시 `Account`가 됐다**(사용자) — 같은 사이드바에 `Project settings`가 서 있어 `Settings`가 축만 다른 동의어였고, 2인칭(`Your account`)으로 돌아간 것이 아니라 라우트·아이콘과 같은 낱말을 고른 것이다. 아래는 8-3 때의 판정이다. ~~**문구는 2인칭으로 통일한다** — 구역 `Your work`, 항목 `Your account`. 시안의 `My account`는 구역과
 인칭이 섞였다.~~
