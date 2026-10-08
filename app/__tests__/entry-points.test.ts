@@ -124,6 +124,8 @@ const USER_SCOPED_ACTIONS = new Set([
   // 세션 사용자의 비보관 멤버십에서 범위를 정하고, 읽음 시각도 그 사용자 행 하나에만 쓴다.
   "inbox/actions.ts#loadAttentionBadgeAction",
   "inbox/actions.ts#openAttentionInboxAction",
+  // 페이지 읽음 기록 — 입력 시각은 서버 시각으로 잘리고 세션 사용자 행 하나에만 단조로 쓴다.
+  "inbox/actions.ts#markAttentionSeenAction",
   // 멤버십은 세션 사용자가 소유한 목록이다.
   "search/actions.ts#loadSearchMembershipsAction",
   // Session revocation affects only the authenticated user, including users without projects.
