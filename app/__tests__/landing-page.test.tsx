@@ -111,6 +111,25 @@ describe.each(["none", "unavailable"] as const)("`/` — `%s`는 랜딩이다", 
     expect(github?.querySelector("svg.lucide-external-link, svg.lucide-arrow-up-right")).toBeNull();
   });
 
+  it("current free/MIT and MCP facts link to the three decision pages", async () => {
+    const { container } = await render(await page(status));
+    const fact = container.querySelector("[data-landing-fact]")?.textContent ?? "";
+    expect(fact).toMatch(/no paid plans/i);
+    expect(fact).toMatch(/MIT/);
+    expect(fact).not.toMatch(/always|forever|future/i);
+
+    const closing = container.querySelector("section[aria-labelledby=landing-closing]")?.textContent ?? "";
+    expect(closing).toMatch(/MCP/);
+    expect(closing).toMatch(/AI agent/i);
+
+    const detailLinks = [...container.querySelectorAll<HTMLAnchorElement>("[data-landing-doc-links] a")];
+    expect(detailLinks.map((a) => a.getAttribute("href"))).toEqual([
+      routes.docs("reference/formats"),
+      routes.docs("ai-agents"),
+      routes.docs("faq"),
+    ]);
+  });
+
   /**
    * **CTA 버튼마다 선행 아이콘 하나** (2026-09-27 사용자, DESIGN §6.615) — Docs는 앱 셸 `Docs` 항목과 같은 글리프 · Get started `LogIn` · GitHub는
    * 리포의 유일한 GitHub 글리프 `GithubIcon`(`components/signin/brand-icons.tsx` — lucide 1.37에 `github`가 없다). 전부 장식이라 `aria-hidden`이고,
