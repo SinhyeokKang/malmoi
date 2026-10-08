@@ -54,7 +54,7 @@ jobs:
   push:
     # ⚠️ **이 조건이 1차 방어다.** pull이 만든 커밋이 머지되면 push가 돌고, 그 push가 DB를 리포
     # 값으로 덮고, 다음 pull이 또 PR을 만든다 (ARCHITECTURE §3). action 안에도 같은 가드가 있어
-    # 빠뜨려도 루프는 막히지만, 그때는 러너가 말모이 clone·pnpm install까지 한 뒤에야 멈춘다.
+    # 빠뜨리면 러너 시작·action 다운로드 비용이 들지만, 내부 가드가 의존성 설치 전에 후속 스텝을 건너뛴다.
     if: "!contains(github.event.head_commit.message, '[skip-malmoi-i18n]')"
     runs-on: ubuntu-latest
     steps:
@@ -113,9 +113,9 @@ Node 20 사용 중단 경고는 옮기기 전까지 남는다.
 v2는 그 수정(`scripts/local-env.ts`) 뒤의 커밋이다 — `scripts/__tests__/push-local-graph.test.ts`가 그 그래프를 상시로 센다.
 판정의 근거·파일:줄은 `docs/features/action-run-cache/design.md` "v2가 v1과 다른 것"에 있었다 — 2026-09-28 v1.0.1 뒤 지웠으므로 `git log -- docs/features/action-run-cache`로 본다.
 
-### v3 (nightly-sync — 아직 안 끊었다)
+### v3 (nightly-sync — 2026-10-07 발행)
 
-**`malmoi-i18n-push-v3`는 서버가 `/merge`로 프로덕션에 나간 뒤에 끊는다** (아래 "서버 배포 → 태그 릴리스 → 사용 리포 전환"). 그 전까지 소비자는 전부 v2(또는 v1)이고, 이 절의 v3 동작은 **다음 릴리스 뒤에야** main의 스크립트로 나간다. v2와 다른 것은 **셋**이다 — 보류 사유별 CLI 경고(서버가 열린 PR 보류 §3 표의 `open-pr`·`pr-check-failed`를 더했고, 그 응답엔 `pendingCount`가 없다), 열린 PR 안내 스텝의 문구(아래 "열린 PR이 있으면…" 절), 그리고 **관리하지 않는 값(`unmanaged`)이 red가 아니다**(§3 표 — v2는 그 값에서 exit 1이다).
+**`malmoi-i18n-push-v3`는 `bc8b204f`(v1.2.3, 2026-10-07)에 발행됐다.** 현재 온보딩·설정의 워크플로 생성기와 이 문서의 복사 예시는 여전히 **v2**를 안내한다(`lib/onboarding/workflow.ts`). 따라서 재복사만으로 v3가 되지 않으며, v3를 쓰려면 `uses:`의 action 태그를 명시적으로 바꾼다. 이미 발행한 태그와 현재 코드의 동작은 구분한다. v2와 다른 것은 **셋**이다 — 보류 사유별 CLI 경고(서버가 열린 PR 보류 §3 표의 `open-pr`·`pr-check-failed`를 더했고, 그 응답엔 `pendingCount`가 없다), 열린 PR 안내 스텝의 문구(아래 "열린 PR이 있으면…" 절), 그리고 **관리하지 않는 값(`unmanaged`)이 red가 아니다**(§3 표 — v2는 그 값에서 exit 1이다).
 
 ⚠️ **v2 소비자는 서버 게이트가 나간 뒤 거짓 경고를 본다** — v2 태그의 `action.yml`은 열린 PR이 있으면 여전히 "이 push가 그 PR의 편집을 덮는다 (MVP 3.1의 손실 창)"를 찍는데, 서버가 적재를 보류하므로 그 문장은 더는 참이 아니다. 편집은 덮이지 않는다. **v3로 옮길 때까지** 이 경고는 무시해도 된다고 안내한다.
 
@@ -217,7 +217,7 @@ Sources의 Add sources 결과에서 실제 등록 slug·path-template을 담은 
 
 ## 3. 무엇이 red를 만드는가
 
-⚠️ **아래 표는 `@malmoi-i18n-push-v2` 기준이다.** 워크플로를 다시 복사하지 않은 리포가 쓰는 `@malmoi-i18n-push-v1`(8511d37, 2026-09-14)과 다른 판정은 §2 "v1과 v2" 표에 있다 — action이 그 태그의 스크립트를 clone해 돌리므로 v1 리포에서는 그 표의 v1 열대로 동작한다.
+⚠️ **아래 표의 CLI 기본 기준은 `@malmoi-i18n-push-v2`다.** 서버 판정은 배포된 서버를 따르며, v3 또는 현재 코드에만 있는 CLI 판정은 해당 행에 따로 표시한다. 워크플로를 다시 복사하지 않은 리포가 쓰는 `@malmoi-i18n-push-v1`(8511d37, 2026-09-14)과 다른 판정은 §2 "v1과 v2" 표에 있다 — action이 그 태그의 스크립트를 clone해 돌리므로 v1 리포에서는 그 표의 v1 열대로 동작한다.
 
 **적재 실패만 red다.** 스캔 실패는 경고이고 exit 0이다 — 키의 진실은 로케일 파일이고 스캔은 `refs` 전담이라, 남의 리포 CI를 우리 스캐너 규칙으로 실패시키지 않는다 (ARCHITECTURE §4).
 
@@ -235,7 +235,7 @@ Sources의 Add sources 결과에서 실제 등록 slug·path-template을 담은 
 | **말모이 번역 PR(`malmoi-i18n/sync-<project>`)이 아직 열려 있다** | **green + 적재 없음** — 200 `{"status":"deferred","reason":"open-pr",…}`(`pendingCount` 없음, 2026-09-30 nightly-sync). 미전달 편집이 0이어도 그렇다 — Publish가 커밋에 성공하면 편집 토큰이 비워지므로, PR이 머지되기 전에 적재하면 그 PR의 번역이 DB에서 옛 리포 값으로 덮인다. 이 run의 새 키·삭제도 앱에 **안 들어갔다.** 풀리는 길: **그 PR을 머지하거나 닫는다** — 그 뒤 **현재 head의 새 push나 야간 동기화가 최신 리포 상태를 받는다.** ⚠️ **이 job을 다시 돌리지 않는다** — PR이 머지된 뒤 옛 커밋의 job을 다시 돌리면 그 커밋의 옛 값이 방금 머지된 번역을 strict로 덮는다(야간이 이미 더 새 커밋을 적재했으면 409 `stale commit`이다). 닫은(머지 안 한) PR은 열린 PR로 세지 않는다. ⚠️ **GitHub App 설치나 리포 고정(`installationId`·`repositoryId`)이 없는 프로젝트엔 이 게이트가 없다** — PR을 낼 수 없으니 열린 PR도 없다. v2 CLI는 경고 없이 본문만 찍는다(§2 "v3") |
 | **말모이가 열린 PR을 확인하지 못했다**(GitHub 오류·설치 토큰 실패·마감 초과) | **green + 적재 없음** — 200 `{"status":"deferred","reason":"pr-check-failed",…}`. ⚠️ **"PR 없음"으로 읽지 않는다**(fail-closed) — 그렇게 읽으면 GitHub 장애 동안 열린 PR의 번역이 덮인다. 대가로 **CI 적재가 GitHub 가용성에 묶인다.** 할 일: 조회가 가능해지면 **현재 head의 새 push 또는 야간 동기화**로 최신 리포 상태를 받는다. 계속되면 말모이 설정의 GitHub 연결(설치·리포 선택)을 본다 |
 | **적재 확인 뒤 전달 확인이 바뀌었다** | **green + 적재 없음** — 200 `{"status":"deferred","reason":"publish-raced",…}`. 잠금 안에서 Last sent 또는 소스별 전달 확인 revision 변경을 감지하며 `no-changes` 완료도 포함한다. GitHub 조회 실패와 다른 사유다. 열린 말모이 PR이 있으면 머지하거나 닫은 뒤 현재 head의 새 push·야간 적재가 PR과 미전달을 다시 확인한다. 새 CLI는 별도 경고를 내며 이미 발행된 action 태그의 CLI는 본문만 표시할 수 있다 |
-| **TS 키가 후행 spread·동적 computed에 가려졌다** | **red** — `key-shadowed` failure. 앞 문자열을 실행 시점의 값으로 확정할 수 없어 적재하지 않는다. 뒤의 명시적 리터럴은 자기 키를 다시 확정한다(ARCHITECTURE §1.4). 일반 리터럴 중복의 `duplicate-property` warning과 다르다 |
+| **TS 키가 후행 spread·동적 computed에 가려졌다** | **현재 코드의 판정이며 발행된 v2·v3에는 없다**(v1.2.4에서 추가). 현재 CLI는 **red** — `key-shadowed` failure. 앞 문자열을 실행 시점의 값으로 확정할 수 없어 적재하지 않는다. 뒤의 명시적 리터럴은 자기 키를 다시 확정한다(ARCHITECTURE §1.4). 일반 리터럴 중복의 `duplicate-property` warning과 다르다 |
 | **malmoi가 관리하지 않는 값**(`ts-dict`·`code-dict`의 식·참조·shorthand, YAML의 숫자·불린 — `unmanaged`) | **green + 로그 경고** — 그 키만 적재에서 빠지고 파일의 값은 Publish가 그대로 남긴다(잃는 번역이 없다). CI 로그에 `적재 경고 N건 — CI는 계속한다:`와 키 목록이 찍힌다. ⚠️ **v3 판정이다** — v2 태그의 스크립트는 이 값에서 **red**(exit 1)다(§2 "v3") |
 | **`PUSH_TOKEN` secret이 비었다**(미등록·오타 이름) | **red** (exit 1 — 적재·스캔 전에 멈춘다. **서버까지 가지 않고 실패 보고도 없다**). composite action은 `required: true`를 강제하지 않아 빈 문자열이 넘어오고, 스크립트가 그것을 없음으로 읽는다. 401이 아니라 로그의 `PUSH_TOKEN이 없다`로 구별된다 |
 | `head_commit.message`에 `[skip-malmoi-i18n]` | **green + `::notice`, 적재 없음** — pull이 만든 커밋이 머지될 때 무한 루프를 막는 가드다. 마커는 **커밋 메시지와 PR 제목 둘 다**에 있어 squash·rebase·merge commit 어느 방식이든 잡힌다(아래 "머지 방식"). "적재가 안 됐다"의 흔한 원인이라 여기 적는다 |
@@ -304,7 +304,7 @@ Sources의 Add sources 결과에서 실제 등록 slug·path-template을 담은 
 
 ### 머지 방식은 무엇이든 된다 — 단, PR 제목의 마커를 지우지 않는다
 
-번역 PR은 squash · rebase · **merge commit** 어느 것으로 머지해도 된다. 루프 가드는 `head_commit.message`의 부분 문자열만 보는데, merge commit의 그 메시지는 `Merge pull request #N from …` + **PR 제목**이라 커밋 메시지의 마커가 실리지 않는다 — 그래서 마커는 **PR 제목에도** 든다(`malmoi-i18n: sync translations [skip-malmoi-i18n]`). PR 제목을 고쳐도 되지만 **`[skip-malmoi-i18n]`은 남긴다** — 지우면 머지 직후 push가 돌아 DB를 그 시점 값으로 덮고, 그 뒤에 저장한 번역이 사라진다. 제목에서 마커가 빠진 열린 PR은 다음 pull이 **그 제목 뒤에 마커를 다시 붙인다**(제목은 그대로다. 단 붙인 결과가 GitHub 상한인 **256자를 넘으면 기본 제목으로 돌아간다** — `PATCH /pulls`가 422로 pull 전체를 죽이는 것보다 낫다. 2026-09-17 이전에 열린 PR도 여기에 든다).
+번역 PR은 squash · rebase · **merge commit** 어느 것으로 머지해도 된다. 루프 가드는 `head_commit.message`의 부분 문자열만 보는데, merge commit의 그 메시지는 `Merge pull request #N from …` + **PR 제목**이라 커밋 메시지의 마커가 실리지 않는다 — 그래서 마커는 **PR 제목에도** 든다(`malmoi-i18n: sync translations [skip-malmoi-i18n]`). PR 제목을 고쳐도 되지만 **`[skip-malmoi-i18n]`은 남긴다** — 지우면 머지 직후 불필요한 적재 실행이 발생한다. 미전달 편집이 있으면 서버의 사전 집계·잠금 안 재판정이 적재 전체를 보류해 보호한다. 제목에서 마커가 빠진 열린 PR은 다음 pull이 **그 제목 뒤에 마커를 다시 붙인다**(제목은 그대로다. 단 붙인 결과가 GitHub 상한인 **256자를 넘으면 기본 제목으로 돌아간다** — `PATCH /pulls`가 422로 pull 전체를 죽이는 것보다 낫다. 2026-09-17 이전에 열린 PR도 여기에 든다).
 
 ## 4. 야간 pull은 대상 리포와 무관하다
 
