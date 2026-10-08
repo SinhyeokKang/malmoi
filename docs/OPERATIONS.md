@@ -99,7 +99,7 @@ logs-rework (ARCHITECTURE §5.7). **운영 차단이 없다** — 새 테이블�
 3. `cp .env.example .env.local` 후 값을 채운다. ⚠️ **암호화 키 셋(환경변수 여섯)이 비면 로그인·초대·멤버 조회가 통째로 죽는다** — TOKEN·PII는 `*_ENCRYPTION_KEYS`와 `*_ACTIVE_KEY_ID` 쌍이고 EMAIL_LOOKUP만 `EMAIL_LOOKUP_KEY`·`_KEY_ID`다. ⚠️ **서명 키 `APP_SIGNING_SECRET`도 비면 GitHub 연결(시작·callback)과 온보딩 탐지·샘플이 500이다**(MCP 탐지·생성 도구는 `unavailable`) — 로그인은 된다. 초대 메일 셋(`RESEND_API_KEY` 등)은 비어도 되고 그때 초대 발급만 막힌다. **⚠️ 이 파일은 에이전트가 편집하지 않는다** — 편집하면 하네스가 "파일이 바뀌었다" 알림으로 **전문을 컨텍스트에 넣어** 시크릿이 트랜스크립트에 남는다(2026-09-04에 실제로 유출돼 전면 재발급했다). 구조가 필요하면 **다른 경로에 템플릿을 쓰고** 사람이 값을 채워 옮긴다. ⚠️ **`vercel env pull`로는 못 가져온다** — 전부 Vercel의 **Sensitive**라 CLI도 대시보드도 값을 못 읽는다. **다른 머신의 `.env.local`을 옮기는 것이 정상 경로**다.
    - **GitHub OAuth 앱은 하나(`malmoi`)이고 세 환경이 같은 값을 쓴다** — Google과 같은 모양이다. ⚠️ **2026-09-14 이전 기록에 "앱이 셋"이 나오면 그건 낡았다**: GitHub이 OAuth App에 **Add redirect URI**를 열어 "callback URL은 앱당 하나"가 거짓이 됐고, 그래서 `malmoi-dev`·`malmoi-local`을 접었다.
    - prod 키 작업(`credentials:prod`·`credentials:finalize:prod`)을 할 머신이면 **`.env.prod.local`도 옮긴다** — prod 키를 담는 파일이고 같은 이유로 gitignore다(§1).
-   - ⚠️ **Google은 반대로 클라이언트가 하나다** — redirect URI를 여러 개 등록할 수 있어 로컬·preview·프로덕션 셋을 한 클라이언트에 넣고 같은 값을 세 곳에 둔다.
+   - ⚠️ **Google도 클라이언트가 하나다** — redirect URI를 여러 개 등록할 수 있어 로컬·preview·프로덕션 셋을 한 클라이언트에 넣고 같은 값을 세 곳에 둔다.
 4. `pnpm db:status`(dev) · `pnpm db:status:prod`(prod)로 접속을 확인한다. ⚠️ 두 출력이 **같아 보인다**(pooler 호스트가 같고 ref는 사용자명에 있다) — 구별 신호는 **적용된 마이그레이션 개수**다.
 5. `pnpm db:generate` — 안 하면 `@/generated/prisma/client`를 못 찾는다.
 6. `pnpm typecheck && pnpm test`로 셋업 확인. 폰트는 `predev`가 복사한다.
@@ -397,7 +397,7 @@ Preview는 `https://dev.mal-moi.com`에서 본다(배포별 URL은 로그인이 
 
 ## 시간대 선별 목록에서 id 빼기 (2026-10-05, user-timezone)
 
-`lib/time-zone/zones.ts`의 `TIME_ZONES`에서 id를 빼는 것은 마이그레이션 없이 되지만, **그 값을 저장한 사람의 화면이 조용히 UTC로 바뀐다**(읽을 때 `parseTimeZone`이
+`lib/time-zone/zones.ts`의 `TIME_ZONES`에서 id를 빼는 것은 마이그레이션 없이 되지만, **그 값을 저장한 사람의 화면이 조용히 UTC로 바뀐다**(읽을 때 `resolveTimeZone`이
 목록 밖 값을 UTC로 떨어뜨린다 — ARCHITECTURE §5.1). 빼기 전에 dev·prod 둘 다 저장 건수를 본다: `select count(*) from "User" where "timeZone" = '<id>';`
 0이 아니면 대체 id(같은 오프셋·같은 서머타임 규칙)를 목록에 두는지 먼저 정한다. 더할 때는 DB 확인이 없고, `lib/time-zone/__tests__/zones.test.ts`의 id별 1월·7월 오프셋 표에 행을 더한다(CI Node 24와 로컬 ICU 둘 다에서 green이어야 한다).
 
