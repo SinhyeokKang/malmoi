@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { act } from "react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-import type { MarkAttentionSeenResult } from "@/app/inbox/actions";
+import type { MarkAttentionSeenResult, OpenAttentionInboxResult } from "@/app/inbox/actions";
 import { MarkSeen } from "@/components/inbox/mark-seen";
 import { AttentionInbox } from "@/components/shell/attention-inbox";
 import { Sidebar } from "@/components/shell/sidebar";
@@ -68,4 +69,21 @@ it.each([
   await shell(true);
   expect(headerBadge()?.textContent).toBe("9+");
   expect(sidebarBadge()?.textContent).toBe("12");
+});
+
+/** review-c 🟡3 — 드롭다운 경로도 같은 store를 지난다. 열고 marked 응답 뒤 닫으면 사이드바 배지가 헤더와 함께 사라진다. */
+it("헤더 메뉴를 열어 읽음이 기록되면 닫는 순간 헤더·사이드바 배지가 함께 사라진다", async () => {
+  const response: OpenAttentionInboxResult = { status: "ok", plan: { groups: [], unread: 0 }, loadedAt: new Date(AT), marked: true };
+  mocks.open.mockResolvedValue(response);
+  await shell(false);
+  const trigger = document.querySelector<HTMLButtonElement>('button[aria-haspopup="menu"]')!;
+  await act(async () => { await userEvent.setup().click(trigger); });
+  expect(mocks.open).toHaveBeenCalledTimes(1);
+  // 열린 동안은 둘 다 그대로다 — 트리거가 열린 메뉴 밑에서 줄지 않는다(시안 D1).
+  expect(headerBadge()?.textContent).toBe("9+");
+  expect(sidebarBadge()?.textContent).toBe("12");
+  await act(async () => { await userEvent.setup().keyboard("{Escape}"); });
+  expect(headerBadge()).toBeNull();
+  expect(sidebarBadge()).toBeNull();
+  expect(mocks.badge).toHaveBeenCalledTimes(1);
 });

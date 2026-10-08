@@ -539,19 +539,30 @@ it.each([
   expect(badgeNode()).toBeNull();
 });
 
-it("신호 전 요청이 걸린 채 닫힌 메뉴는 조회를 새로 시작하지 않고 다음 열기에서 조회한다", async () => {
+/**
+ * 닫힌 메뉴에서는 신호 뒤 새 조회가 없어 옛 요청이 여전히 최신이다 — `id !== latest` 검사로는 못 거르고 신호 세대(`seenThrough`)만 거른다.
+ * 그래서 이 갈래가 "신호 전 목록 응답이 점을 되살리지 않는다"(tasks T4.5)의 직접 증거다.
+ */
+it.each([
+  ["marked 성공", ok(PLAN, true)],
+  ["marked: false", ok(PLAN, false)],
+  ["실패", { status: "failed" } as const],
+])("신호 전 요청(%s)이 걸린 채 닫힌 메뉴는 그 응답을 캐시하지 않고 다시 열면 점 없이 새로 조회한다", async (_label, stale) => {
   await mount(3);
   const first = nextOpen();
   await openMenu();
   await escape();
   await signal();
   expect(mocks.open).toHaveBeenCalledTimes(1);
-  await settle(first, ok(PLAN, true));
+  await settle(first, stale);
+  expect(badgeNode()).toBeNull();
   const second = nextOpen();
   await openMenu();
   expect(mocks.open).toHaveBeenCalledTimes(2);
-  // 옛 응답은 캐시되지 않았다 — 첫 조회 전처럼 골격이다.
+  // 옛 응답은 캐시되지 않았다 — 첫 조회 전처럼 골격이고, 점도 오류 줄도 없다.
   expect(menu()!.querySelectorAll("[data-skeleton-line]").length).toBeGreaterThan(0);
+  expect(menu()!.querySelectorAll("[data-unread-dot]")).toHaveLength(0);
+  expect(menu()!.querySelector('p[data-tone="danger"]')).toBeNull();
   await settle(second, ok());
   expect(items()).toHaveLength(5);
 });

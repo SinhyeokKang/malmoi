@@ -86,5 +86,7 @@ it("골격은 낭독 한 줄과 카드·행 자리다", async () => {
   const html = renderToStaticMarkup(await InboxLoading());
   expect(html).toContain(`role="status">${en.inbox.loading}</span>`);
   expect((html.match(/<section/g) ?? []).length).toBe(2);
+  // 골격 카드는 실물 `Card`와 같은 면이다(review-c ⚪4) — 패널과 같은 색이라 지금은 안 보이지만 면의 출처를 하나로 둔다.
+  for (const match of html.matchAll(/<section class="([^"]*)"/g)) expect(match[1]!.split(" "), match[1]).toContain("bg-background");
   expect((html.match(/<li/g) ?? []).length).toBeGreaterThan(0);
 });

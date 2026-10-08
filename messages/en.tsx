@@ -751,7 +751,7 @@ export const en = {
                   ],
                   [
                     "When you last opened or viewed your Inbox",
-                    "Malmoi, when you open that list",
+                    "Malmoi, when you open the list or view the Inbox page",
                     "Marking which items in it are new since you last looked",
                   ],
                   [

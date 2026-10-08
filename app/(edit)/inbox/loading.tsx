@@ -31,7 +31,7 @@ export default async function InboxLoading() {
 
 function CardSkeleton({ rows }: { rows: number }) {
   return (
-    <section className="border-border overflow-hidden rounded-lg border">
+    <section className="border-border bg-background overflow-hidden rounded-lg border">
       <div className="flex min-h-12 items-center gap-2 px-4 py-3">
         <Skeleton className="size-4 shrink-0 rounded" />
         <Skeleton size="md" className="w-32" />
