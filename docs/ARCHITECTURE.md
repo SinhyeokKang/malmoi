@@ -2593,7 +2593,7 @@ login-link · session-revocation · `acceptInvitation`이다. 두지 않는 이�
 - ⚠️ **`/oauth/authorize`는 보호 경로에 넣지 않는다** (2026-09-29, mcp-oauth) — 무세션이 정상 진입이고 화면이 스스로 공급자 버튼을 그린다. 넣으면
   클라이언트가 연 authorize URL이 `/signin`으로 튕겨 **요청이 저장되기 전에** 사라진다(`/invite/[token]`·`/signin/link/[challenge]`와 같은 판단).
   비로그인에게 보이는 것은 앱 이름·clientId뿐이고, 동의 결과를 쓰는 Action이 세션을 다시 본다. `entry-points.test.ts`의 `PUBLIC`이 부정 단언한다.
-- **새 보호 라우트를 추가하면 `isProtectedPath`(`lib/auth/cookie.ts`)에 추가한다.** ⚠️ **2026-09-27(sec-audit-3 #11)까지는 `matcher` 자체였다** — CSP nonce 때문에 matcher가 전 페이지로 넓어져(§8) 보호 판정이 그 함수로 옮겨 갔다. 아래 "matcher에 넣지 않는다"는 전부 **"보호 경로에 넣지 않는다"**로 읽는다(`/api/*`는 matcher에서도 빠진다). ⚠️ **그 함수는 옛 matcher를 Next가 컴파일한 정규식 그대로이고(+ 같은 모양의 `/mcp` — mcp-connector, `/account`처럼 사용자 축 한 장짜리라 보호한다) raw·decode 경로를 둘 다 본다** (fix1) — Next가 matcher를 raw와 `decodeURIComponent` 결과 양쪽에 대고, 컴파일된 정규식은 `.rsc`·`.segments/…segment.rsc`·`/_next/data/<id>` 변형도 받는다. 문자열 접두 비교였던 첫 판은 쿠키 없는 `/%70rojects/…`·`/%61ccount`·`/account.rsc`를 307 없이 통과시켰다(`request.nextUrl.pathname`은 decode되지 않는다). decode 실패는 raw만 본다(Next와 같다). `entry-points.test.ts`가 `getMiddlewareMatchers(["/projects/:path*", "/account"])`로 옛 정규식을 다시 만들어 판정 표를 대조한다. ⚠️ **반대로 `/api/push`·`/api/pull`은 넣지 않는다** — 외부(CI·cron)가 부르는 진입점이라 세션이 없고, 넣으면 야간 pull이 조용히 리다이렉트된다. 그쪽 방어는 Bearer 토큰이다. **`/invite/[token]`도 넣지 않는다**: 비로그인으로 열려야 초대 링크의 토큰이 보존된다. **`/api/github/callback`도 넣지 않는데 이유가 다르다** — 로그인 화면으로 302되면 쿼리의 `code`·`state`·`setup_action`이 사라져 연결·착지가 성립하지 않는다(`entry-points.test.ts`가 부정 단언으로 고정한다). 설치·인가·리포 선택 변경이 전부 이 한 지점으로 돌아온다(§6.4 — 옛 Setup URL 라우트는 2026-09-18에 지웠다). ⚠️ **`/signin`·`/privacy`·`/docs`·`/changelog`도 넣지 않는다** (8-1a — 공개 목록의 정본은 `entry-points.test.ts`의 `PUBLIC`): 앞의 것은 넣으면 **로그인이 통째로 죽는다** — `isProtectedPath`가 보호로 판정하면 목적지 제외 규칙이 한 줄도 없으므로 쿠키 없는 모든 `GET /signin`이 자기 자신으로 307을 돈다. 바로 위 "새 보호 라우트를 추가하면 `isProtectedPath`에 추가한다"가 그 함정을 부르는 문장이라, `app/__tests__/entry-points.test.ts`가 **부정 단언**으로 상시 고정한다. 대신 그 라우트가 스스로 `requireUser`를 지난다(§6.4).
+- **새 보호 라우트를 추가하면 `isProtectedPath`(`lib/auth/cookie.ts`)에 추가한다.** ⚠️ **2026-09-27(sec-audit-3 #11)까지는 `matcher` 자체였다** — CSP nonce 때문에 matcher가 전 페이지로 넓어져(§8) 보호 판정이 그 함수로 옮겨 갔다. 아래 "matcher에 넣지 않는다"는 전부 **"보호 경로에 넣지 않는다"**로 읽는다(`/api/*`는 matcher에서도 빠진다). ⚠️ **그 함수는 옛 matcher를 Next가 컴파일한 정규식 그대로이고(+ 같은 모양의 `/mcp` — mcp-connector, `/account`처럼 사용자 축 한 장짜리라 보호한다 · 같은 이유로 `/preferences`(ui-locales)·`/inbox`(inbox-page)) raw·decode 경로를 둘 다 본다** (fix1) — Next가 matcher를 raw와 `decodeURIComponent` 결과 양쪽에 대고, 컴파일된 정규식은 `.rsc`·`.segments/…segment.rsc`·`/_next/data/<id>` 변형도 받는다. 문자열 접두 비교였던 첫 판은 쿠키 없는 `/%70rojects/…`·`/%61ccount`·`/account.rsc`를 307 없이 통과시켰다(`request.nextUrl.pathname`은 decode되지 않는다). decode 실패는 raw만 본다(Next와 같다). `entry-points.test.ts`가 `getMiddlewareMatchers(["/projects/:path*", "/account"])`로 옛 정규식을 다시 만들어 판정 표를 대조한다. ⚠️ **반대로 `/api/push`·`/api/pull`은 넣지 않는다** — 외부(CI·cron)가 부르는 진입점이라 세션이 없고, 넣으면 야간 pull이 조용히 리다이렉트된다. 그쪽 방어는 Bearer 토큰이다. **`/invite/[token]`도 넣지 않는다**: 비로그인으로 열려야 초대 링크의 토큰이 보존된다. **`/api/github/callback`도 넣지 않는데 이유가 다르다** — 로그인 화면으로 302되면 쿼리의 `code`·`state`·`setup_action`이 사라져 연결·착지가 성립하지 않는다(`entry-points.test.ts`가 부정 단언으로 고정한다). 설치·인가·리포 선택 변경이 전부 이 한 지점으로 돌아온다(§6.4 — 옛 Setup URL 라우트는 2026-09-18에 지웠다). ⚠️ **`/signin`·`/privacy`·`/docs`·`/changelog`도 넣지 않는다** (8-1a — 공개 목록의 정본은 `entry-points.test.ts`의 `PUBLIC`): 앞의 것은 넣으면 **로그인이 통째로 죽는다** — `isProtectedPath`가 보호로 판정하면 목적지 제외 규칙이 한 줄도 없으므로 쿠키 없는 모든 `GET /signin`이 자기 자신으로 307을 돈다. 바로 위 "새 보호 라우트를 추가하면 `isProtectedPath`에 추가한다"가 그 함정을 부르는 문장이라, `app/__tests__/entry-points.test.ts`가 **부정 단언**으로 상시 고정한다. 대신 그 라우트가 스스로 `requireUser`를 지난다(§6.4).
 - ⚠️ **`/account`는 matcher를 늘려야 했다** (2026-09-09, 6b-4). 그때까지 패턴이 `/projects/:path*`
   **하나**였고 `(edit)` 아래 모든 페이지가 **우연히** 그 접두를 갖고 있었다 — 사용자 축이 생기면서 그
   우연이 끝났다(PRODUCT §7.7). 그 한 줄을 빼면 `entry-points.test.ts`의 "(edit) 아래 모든 페이지가 어느
@@ -3090,6 +3090,30 @@ relation load strategy에 따른다. 멤버십이 없으면 나머지는 0회다
 ⚠️ `at ≤ now`로 찍혔지만 조회 뒤에 커밋된 행은 한 번도 보이지 않은 채 읽음이 될 수 있는 잔여 창이 있다.
 열람 기록은 계정에만 남고 별도 쿠키·항목별 이력·외부 전송을 만들지 않는다. `lib/privacy/collected.ts`가 개인정보로 등재한다.
 
+**`/inbox` 페이지** (2026-10-09, inbox-page) — `app/(edit)/inbox/page.tsx`가 `requireUser` → **조회 전** `now` → `loadAttentionInbox` →
+`InboxList`(서버) + 섬 `MarkSeen`이고, 섬이 **마운트 뒤** `markAttentionSeenAction(now.toISOString())`을 한 번 부른다. 목록은 드롭다운과 같은 `InboxPlan`이다.
+⚠️ **GET 렌더는 아무것도 쓰지 않는다** — 지금은 `loading.tsx`가 있는 동적 라우트의 기본 prefetch가 loading 경계까지만 받지만, `prefetch={true}`·
+`staleTimes`·Cache Components 설정 하나로 본체가 실행되면 보지 않은 목록이 읽음이 된다. 그 보장을 설정에 기대지 않는다(`app/(edit)/inbox/__tests__/page.test.tsx`가 렌더 중 쓰기 0회를 센다).
+드롭다운의 열기 Action을 다시 부르지 않는 것은 서버가 이미 그린 목록을 한 번 더 조회하기 때문이다.
+- **쓰기는 한 벌이다** — 두 Action 모두 `app/inbox/actions.ts`의 모듈 비공개 `markSeen`(위 단조 `updateMany`)을 부른다. 둘이면 단조 조건이 갈린다.
+  ⚠️ export하지 않는다 — `"use server"` 파일의 export는 전부 클라이언트가 부를 수 있는 Action이 된다.
+- **`at`은 클라이언트를 거친다** — `clampSeenAt`(`lib/inbox/plan.ts`)이 `toISOString()` 왕복이 같은 문자열만 받고(`Date` 객체·숫자·비ISO는 `null` → `invalid`, 쓰기 0)
+  `min(at, 서버 now)`로 자른다. 쓰는 대상은 세션 사용자 행 하나라 위조로 얻는 것은 자기 항목을 더 일찍 읽음 처리하는 것뿐이다(서명 토큰은 과하다).
+  `at`이 조회 전 시각이라 위 잔여 창은 드롭다운과 같다.
+- **반환** `{ status: "ok"; marked } | { status: "invalid" } | { status: "failed" }` — 세션 거부는 `failed`, 쓰기 예외는 `ok + marked: false`(목록은 이미 보였다),
+  갱신 0행(이미 더 늦은 워터마크 · 뒤로 가기로 복원된 옛 `now`)도 `marked: true`다. 그때 거짓 0이 된 배지는 다음 마운트의 배지 조회가 회복한다. `revalidatePath` 없음.
+  `USER_SCOPED_ACTIONS`에 등재돼 있다(세션 사용자 행 하나에만 쓴다).
+- **탭 안 안 읽음 수는 `lib/inbox/unread-store.ts` 모듈 store 하나다** — 헤더와 사이드바는 `(edit)` 레이아웃에 있어 페이지 이동에 다시 마운트되지 않으므로
+  각자의 상태로는 페이지의 기록을 모른다. **쓰는 쪽은 헤더 `AttentionInbox` 하나**(마운트 배지 Action · 닫힐 때 0)이고 사이드바 `InboxCount`는 읽기만 한다 —
+  배지 수 조회가 늘지 않는다. 페이지 섬은 `marked: true`일 때만 `notifySeen()`을 보내고, 헤더가 0으로 만들 시점(닫혀 있으면 즉시 + 캐시 목록 `readAll`, 열려 있으면 닫힐 때)을 정한다.
+  Provider가 아닌 이유는 공개 셸 헤더도 같은 `AttentionInbox`라서다(공개 셸엔 사이드바·페이지가 없다).
+  ⚠️ **서버 스냅샷은 늘 0이고 렌더 중 `setUnread`는 금지다** — 이 모듈은 SSR에서도 평가되어 서버 프로세스의 인스턴스 하나를 요청들이 공유한다. 사이드바 배지는
+  SSR에 없고 하이드레이션 뒤 헤더 응답이 오면 선다(레이아웃 렌더에 집계를 싣지 않는다는 위 결정을 지킨다).
+- ⚠️ **늦게 온 옛 응답이 지운 배지·점을 되살린다** — 응답 순서는 Action 큐가 아니라 네트워크가 정한다. 헤더는 **마운트 세대**(effect 정리가 올린다 — 셸 전환으로 해제된 헤더·
+  StrictMode 첫 effect의 응답 폐기)와 **읽음 신호 세대**(`seenThrough` — 신호 전에 띄운 목록 요청은 `marked`·성공·실패와 무관하게 폐기)로 거른다.
+  신호 뒤 도착한 배지 응답도 버린다(`/inbox` 직접 로드에서 배지 Action과 읽음 Action이 동시에 출발한다). 신호 뒤 새로 시작한 목록 조회는 실제 안 읽음을 그대로 보인다.
+- **다른 탭은 범위 밖이다** — 다음 마운트까지 옛 배지다(실시간 갱신이 없는 것과 같은 판정).
+
 ### 6.37 검색의 공개·사용자 경계 (`app/search/actions.ts` · `lib/search/`, global-search)
 
 - **공개 색인은 Docs만 든다.** `app/api/search-index/[uiLocale]/route.ts`는 질의를 받지 않는 GET으로 `{ docs: DocsEntry[] }`를 준다.
@@ -3124,6 +3148,9 @@ relation load strategy에 따른다. 멤버십이 없으면 나머지는 0회다
   있는데 비로그인 검색이 서면 거짓이다). 멤버십이 없는 세 경우(비로그인 · `unauthorized` · `unavailable`)는 색인의 Projects·Pages가 비어
   공개 Docs만 찾는다 — 노출을 줄이는 쪽이라 서버 판정은 그대로다. 앱 셸은 레이아웃이 넘긴 멤버십을 쓰므로 `unauthorized`·`unavailable`은
   공개 셸에서만 생긴다. 권한 회수·역할·보관 변경이 다음 서버 호출부터 반영되는 §6.00④를 지킨다.
+- **Pages 색인은 셸 내비에서 만든다**(`lib/search/nav-index.ts`의 `navSearchEntries` — `navWorkItems` · `New project` · 프로젝트 구역 · 하단 `changelog`).
+  내비와 따로 적으면 순서가 갈린다. 2026-10-09(inbox-page)부터 `Inbox`가 `Projects` 바로 뒤에 서서, 지금 프로젝트가 없는 빈 검색어 미리보기의 사용자 축 앞 셋이
+  `Projects · Inbox · MCP connector`다(`Preferences`·`Account`는 검색어로 찾는다).
 - **검사는 코어까지 내려간다.** `entry-points.test.ts`의 `MEMBER_JOIN_CORES`는 `searchKeys` 호출과 Action의 세션 거부를 함께
   요구하고, 코어 본문의 `ProjectMember`·userId 바인딩도 검사한다. 멤버십 Action은 `USER_SCOPED_ACTIONS`다.
   `lib/keys/__tests__/search.integration.ts`가 다른 사용자의 비노출·권한 회수·제외 조건·순위·왕복 상한을 실제 DB에서 잰다.
@@ -4004,7 +4031,7 @@ default ACL을 지우지 않고 닫는 층이라, 적용·확인이 끝나면 �
   preview 산출물을 올릴 때 프로덕션이 `Disallow: /`로 굳는다. **모르면 숨긴다** — `production` 밖은 전부 `Disallow: /`(보안 헤더의
   "모르면 프로덕션처럼 좁힌다"와 반대 방향의 fail-closed).
 - ⚠️ **noindex 셋(`/signin`·`/invite/**`·`/signin/link/**`)을 robots.txt로 막지 않는다** — 막으면 크롤러가 페이지의 noindex를 못 보고
-  외부 링크만으로 URL이 색인된다(토큰이 검색 결과에 뜬다). `/projects`·`/account`는 비로그인에게 302라 본문이 없어 robots 거부가 맞다.
+  외부 링크만으로 URL이 색인된다(토큰이 검색 결과에 뜬다). `/projects`·`/account`·`/preferences`·`/inbox`는 비로그인에게 302라 본문이 없어 robots 거부가 맞다.
 - ⚠️ **스트리밍 metadata를 전 UA에서 끈다**(`next.config.ts`의 `htmlLimitedBots: /.*/`). `/`·`/docs/**`가 세션을 읽어 동적이라 Next는
   metadata를 스트리밍하고, HTML-limited 목록 밖의 UA(GPTBot·ClaudeBot·PerplexityBot)는 `<title>`·canonical을 `<body>` 끝에서 받는다.
   정적 `metadata` export도 동적 페이지에서는 스트리밍되므로 페이지별로는 못 막는다.
