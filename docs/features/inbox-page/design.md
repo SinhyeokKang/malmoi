@@ -29,6 +29,8 @@
 
 페이지(서버 컴포넌트)가 `now = new Date()`를 **조회 전에** 잡고 `loadAttentionInbox`로 그린다. 클라이언트 섬 `MarkSeen`이 마운트 뒤
 `markAttentionSeenAction(now.toISOString())`을 한 번 부른다.
+페이지 배선 테스트는 인증 선행·조회 전 시각 전달·렌더 중 쓰기 0회·조회 실패 시 `MarkSeen` 미생성을 고정한다.
+조회 mock 안에서 시계를 전진시켜도 `MarkSeen`에는 조회 전 ISO 시각이 전달돼야 한다.
 
 - **렌더 안에서 쓰지 않는 이유**: GET 렌더는 부작용이 없어야 한다. 지금 Next 16 기본 prefetch는 `loading.tsx`가 있는 동적 라우트에서 loading 경계까지만 받아
   page 본체를 실행하지 않지만, `prefetch={true}`·`staleTimes`·Cache Components 같은 설정 하나로 본체가 실행되면 보지 않은 목록이 읽음이 된다.
@@ -55,6 +57,11 @@
 - **페이지 섬**은 `marked: true`를 받으면 `notifySeen()`. 헤더의 `onSeen` 처리는 **셋**이다:
   ① `marked.current = true` — 그 뒤 도착한 배지 조회 응답을 버린다(`/inbox` 직접 로드에서 배지 Action과 mark Action이 동시에 출발한다 — Action 큐 순서에 기대지 않는다).
   ② 메뉴가 닫혀 있으면 `setUnread(0)` + 캐시 목록 `readAll`(#191 — 다시 열 때 응답 전 옛 점), ③ 열려 있으면 기존 `clearOnClose` 경로.
+- **헤더 수명 밖의 응답은 버린다** — effect 정리에서 구독을 해제하고 해당 마운트의 미완료 배지·목록 요청을 무효화한다. 성공·실패 콜백 모두 현재 마운트인지 확인한 뒤에만 store·목록·읽음 ref를 바꾼다.
+  공개 셸 A의 배지 요청 → 앱 셸 B로 전환 → B 읽음 성공 → A 응답 순서에서도 0을 유지한다. StrictMode의 effect 재설정도 이전 요청을 다시 유효하게 만들지 않도록 요청이 시작된 마운트 세대를 구분한다.
+- **읽음 신호 이전의 목록 요청도 무효화한다** — `onSeen`은 목록 요청 세대를 전진시키고 그 요청의 로딩 상태를 정리한다. 이전 응답은 `marked` 값이나 성공·실패와 무관하게 캐시·배지에 반영하지 않는다.
+  기존 캐시는 위의 열림/닫힘 규칙대로 보존한다. 캐시가 없고 메뉴가 열려 있으면 새 세대의 조회를 시작하고, 닫혀 있으면 다음 열기에서 조회한다. 따라서 무효화 뒤 골격만 남지 않는다.
+  신호 이후 시작한 새 조회는 정상 반영한다 — 새로 생긴 안 읽음까지 일괄 `readAll`하지 않는다.
 - Provider를 세우지 않는다 — 공개 셸 헤더도 같은 `AttentionInbox`이고 공개 셸엔 사이드바·페이지가 없다. 모듈 store면 양쪽 셸에 아무것도 박지 않는다.
 - ⚠️ **서버 스냅샷 0** — 사이드바는 서버 렌더에서 배지 없음으로 그린다. 레이아웃 렌더에 집계를 싣지 않는다는 기존 결정(attention-inbox 머리 주석)을 지킨다.
 - ⚠️ **렌더 중 `setUnread` 금지** — `"use client"` 모듈도 SSR에서 평가되어 서버 프로세스의 store 인스턴스가 요청 간 공유된다. 쓰기는 effect·콜백에서만 한다(파일 머리 주석).
@@ -66,13 +73,17 @@
 드롭다운 행은 `DropdownMenuRow`(메뉴 로빙 포커스), 페이지·Home 행은 `ListRow`(링크 목록)다. `DropdownMenuRow`가 `ListRow`를 감싸므로 슬롯이 같다.
 **문장·타일·점·시각·Owner 안내 슬롯은 한 함수**가 만든다: `attentionRowSlots(m, uiLocale, slug, item, now, { time: "narrow" | "long" })` → `{ href, icon, title, description, aside }`.
 드롭다운은 `narrow`(226 칸, #190), 페이지·Home은 긴 형. 안 읽음 점·sr `Unread`는 `unread`가 있는 항목(Inbox)에서만 선다(Home 항목엔 없음).
+입력 `item`은 `InboxItem & { ownerRetries: boolean; unread?: boolean }`이다. Inbox는 계획의 항목을 그대로 전달하고,
+Home 호출부는 기존 `item.kind === "import_failed" && !canPerform(role, "project:settings")` 판정을 유지해 `{ ...item, ownerRetries }`를 전달한다.
+공유 슬롯은 권한을 다시 판정하지 않는다. Home의 EDITOR 실패 안내는 남고 OWNER에는 없으며, 둘 다 안 읽음 점은 없다.
 `components/inbox/row-slots.tsx` — `"use client"`가 아니다(서버 페이지·Home도 쓴다). `useMessages`를 부르지 않고 `m`·`uiLocale`을 인자로 받는다.
 **페이지 행의 형(chevron · 글자 크기 · 행 사이 선)은 Home 카드 행과 같다** — 이관 뒤 같은 조각이라 갈리지 않는다.
 
 ### D4. 묶음 — 프로젝트마다 `Card`
 
 `InboxPlan.groups` 순서 그대로 프로젝트마다 `Card` 하나(머리 = `ProjectThumbnail xs` + 프로젝트 이름, Home 카드와 같은 머리 형) 안에 `ListRow` 목록.
-날짜 묶음은 쓰지 않는다 — 항목은 사건이 아니라 현재 상태이고, review는 push가 시각을 덮어 날짜를 말하지 못하며 미전달은 시각이 없다(2026-10-09 결정).
+날짜 묶음은 쓰지 않는다 — 항목은 사건이 아니라 현재 상태이고, review는 push가 시각을 덮어 새 검토가 생긴 날짜를 말하지 못한다(2026-10-09 결정).
+미전달 시각은 pending 토큰 술어의 `MAX(updatedAt)`을 집계해 `unsent.at`으로 전달하며, 시각이 없으면 `null`이다. 프로젝트 묶음 결정은 그대로다.
 빈 목록은 카드 없이 `EmptyState placement="card"` 하나.
 
 ### D5. 사이드바·메뉴 항목과 이름
@@ -94,20 +105,22 @@
 | 대상 | 테스트 파일 · 환경 | 케이스 |
 |---|---|---|
 | `clampSeenAt(input: unknown, now: Date): Date \| null` | `lib/inbox/__tests__/plan.test.ts` (node) | ISO 파싱 · 미래 → now · 과거 그대로 · now와 같은 값 · epoch(받되 단조라 무해) · `Date` 객체·숫자·NaN·잘못된 문자열 → null |
-| `unread-store.ts` | `lib/inbox/__tests__/unread-store.test.ts` (node: store · jsdom 블록: 훅) | set/get · 구독 해제 뒤 미호출 · 다중 구독자 · `notifySeen` 멱등 · 서버 스냅샷 0 |
+| `unread-store.ts` | `lib/inbox/__tests__/unread-store.test.ts` (node) | set/get · 구독 해제 뒤 미호출 · 다중 구독자 · `notifySeen` 멱등 |
+| `useInboxUnread` | `lib/inbox/__tests__/unread-store-hook.test.tsx` (파일 머리 `@vitest-environment jsdom`) | 구독 갱신 · 해제 · store 값이 있어도 서버 렌더 스냅샷 0 |
 | `navWorkItems` 순서 | 기존 nav 테스트 | `projects, inbox, mcp, preferences, account` · `inbox.exact === true` · inbox 배지 없음 |
 | `isProtectedPath` | 기존 cookie 테스트 | `/inbox` · `/inbox.rsc` · `/%69nbox` 참, `/inboxes` 거짓(`/preferences` 케이스 복제) |
 | `routes.inbox()` | `app/__tests__/entry-points.test.ts` 죽은 링크 검사 | page 실재 |
 | `markAttentionSeenAction` | `app/inbox/__tests__/actions.test.ts` (mock prisma) | 세션 없음 `failed` · invalid 입력 `invalid`(쓰기 0) · clamp된 at으로 단조 where · 0행도 `marked: true` · 쓰기 예외 `ok + marked:false` · `USER_SCOPED_ACTIONS` 등재 |
-| `attentionRowSlots` | `components/__tests__/inbox-row-slots.test.tsx` (jsdom) | 점 + sr `Unread` · `ownerRetries` 줄 · `at === null`이면 aside 없음 · narrow/long 분기 · unread 없는 Home 항목 |
-| `AttentionInbox` | 기존 `attention-inbox.test.tsx` | 접근 이름 `Inbox`/`Inbox, n unread` · 배지 응답이 store로 · `notifySeen` → 닫힘이면 배지 0 + 캐시 점 없음 · 열림이면 닫힐 때 · **신호 뒤 도착한 배지 응답 무시** |
+| `attentionRowSlots` · Home 호출부 | `components/__tests__/inbox-row-slots.test.tsx` (jsdom) · 기존 Home 테스트 | 점 + sr `Unread` · `ownerRetries` 줄 · `at === null`이면 aside 없음 · narrow/long 분기 · Home EDITOR 실패 안내 있음/OWNER 없음 · Home 점 없음 |
+| `AttentionInbox` | 기존 `attention-inbox.test.tsx` | 접근 이름 `Inbox`/`Inbox, n unread` · 배지 응답이 store로 · `notifySeen` → 닫힘이면 배지 0 + 캐시 점 없음 · 열림이면 닫힐 때 · 신호 뒤 도착한 배지 응답 무시 · 셸 전환 뒤 이전 마운트 응답 무시(StrictMode 포함) · 신호 전 목록의 지연 `marked:false`·성공·실패 응답 무시 · 캐시 없는 열린 메뉴 조회 재개 · 신호 후 새 조회의 unread 보존 |
+| 서버 페이지 | `app/(edit)/inbox/__tests__/page.test.tsx` (node, 의존성 mock) | 인증 거부 시 조회 0회 · 조회 전 now를 MarkSeen에 전달 · 렌더 중 읽음 Action·DB 쓰기 0회 · 조회 실패 전파 및 MarkSeen 미생성 |
 | `MarkSeen` | `components/__tests__/inbox-mark-seen.test.tsx` (jsdom) | `marked:true`면 `notifySeen` 1회 · `marked:false`·`failed`·`invalid`·reject면 0회(배지 유지) · 재렌더에 Action 1회 · StrictMode 이중 effect에서 `notifySeen` 두 번도 멱등 |
 | `InboxList` | `components/__tests__/inbox-list.test.tsx` (jsdom) | 카드·행 순서 = plan · 빈 상태 두 키 · 긴 시각 형 · 카드 머리 썸네일·이름 |
 | `Sidebar` | 기존 `sidebar-work-zone.test.tsx` | store n → Inbox `CountBadge` n(10 이상도 실제 수) · 0이면 없음 · sr `n unread` · store 변경 추종 |
 
 ⚠️ **store 모듈 상태가 테스트 사이로 샌다**(파일 사이 격리는 vitest 기본, 파일 안은 아니다) — `AttentionInbox`·`Sidebar`를 렌더하는 테스트 파일
 (`attention-inbox` · `public-shell` · `header-44` · `shell-header` · `privacy-page` · 사이드바 셋)의 `afterEach`에서 `setUnread(0)`. 리셋 전용 API를 새로 만들지 않는다.
-⚠️ **`components/__tests__/client-graph.test.ts`의 lib 허용 목록**에 `lib/inbox/unread-store.ts`를 더한다(사이드바·헤더가 값으로 import).
+⚠️ **`components/__tests__/client-graph.test.ts`의 lib 허용 목록**에 `lib/inbox/unread-store.ts`를 T4의 실제 소비 연결과 함께 더한다. T1에는 소비자가 없어 도달 집합과 정확히 일치하지 않는다.
 
 ## 스키마 변경
 
