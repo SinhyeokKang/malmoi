@@ -138,6 +138,43 @@ describe("llmsFull", () => {
     );
   });
 
+  it("escaped definition label을 보존하고 실제 닫는 괄호 뒤 destination만 바꾼다", () => {
+    const source = [
+      "Reference [odd][foo\\]:bar] and [even][pair\\\\].",
+      "",
+      '[foo\\]:bar]: setup/README.md "Odd title"',
+      "[pair\\\\]: setup/workflow.md  'Even title'",
+      "",
+    ].join("\n");
+
+    expect(llmsFull(flattenNav(nav).slice(0, 1), new Map([["README.md", source]]))).toBe(
+      [
+        "# Malmoi",
+        "Source: https://mal-moi.com/docs",
+        "",
+        "Reference [odd][foo\\]:bar] and [even][pair\\\\].",
+        "",
+        '[foo\\]:bar]: https://mal-moi.com/docs/setup "Odd title"',
+        "[pair\\\\]: https://mal-moi.com/docs/setup/workflow  'Even title'",
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("빈 현재 문서 destination을 그 자리의 절대 URL로 채우고 주변 바이트를 보존한다", () => {
+    const source = "Before [same]() / [spaced](   ) / [angled](<>  \"Current title\") after.\n";
+
+    expect(llmsFull(flattenNav(nav).slice(0, 1), new Map([["README.md", source]]))).toBe(
+      [
+        "# Malmoi",
+        "Source: https://mal-moi.com/docs",
+        "",
+        'Before [same](https://mal-moi.com/docs) / [spaced](   https://mal-moi.com/docs) / [angled](<https://mal-moi.com/docs>  "Current title") after.',
+        "",
+      ].join("\n"),
+    );
+  });
+
   it("실물 원고 — Source 줄 수가 항목 수이고 두 번 생성해도 바이트가 같다", () => {
     const flat = flattenNav(loadSummary("en"));
     const sources = new Map(flat.map((item) => [item.file, loadSource("en", item.file)]));

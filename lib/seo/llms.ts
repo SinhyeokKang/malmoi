@@ -62,9 +62,17 @@ function destinationSpan(source: string, node: Link | Definition): { start: numb
     if (source[cursor] !== "]" || source[cursor + 1] !== "(") return null;
     cursor += 2;
   } else {
-    const delimiter = source.indexOf("]:", range.start);
-    if (delimiter === -1 || delimiter >= range.end) return null;
-    cursor = delimiter + 2;
+    cursor = range.start + 1;
+    while (cursor < range.end) {
+      if (source[cursor] === "\\") {
+        cursor += 2;
+        continue;
+      }
+      if (source[cursor] === "]" && source[cursor + 1] === ":") break;
+      cursor += 1;
+    }
+    if (cursor >= range.end) return null;
+    cursor += 2;
   }
 
   while (cursor < range.end && /\s/.test(source[cursor] ?? "")) cursor += 1;
@@ -76,6 +84,7 @@ function destinationSpan(source: string, node: Link | Definition): { start: numb
   }
 
   const start = cursor;
+  if (node.url.length === 0) return { start, end: start };
   let nested = 0;
   while (cursor < range.end) {
     const char = source[cursor];
