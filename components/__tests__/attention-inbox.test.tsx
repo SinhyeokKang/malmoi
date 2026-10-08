@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { act } from "react";
+import { act, StrictMode, type ReactNode } from "react";
+import { createRoot } from "react-dom/client";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
@@ -9,6 +10,7 @@ import type { AttentionBadgeResult, OpenAttentionInboxResult } from "@/app/inbox
 import { AttentionInbox } from "@/components/shell/attention-inbox";
 import { attentionHref } from "@/lib/home/attention-view";
 import type { InboxPlan } from "@/lib/inbox/plan";
+import { getUnread, notifySeen, setUnread } from "@/lib/inbox/unread-store";
 import { en } from "@/messages/en";
 import { ko } from "@/messages/ko";
 
@@ -59,6 +61,8 @@ beforeEach(() => {
 });
 afterEach(async () => {
   for (const d of pending.splice(0)) await act(async () => { d.resolve({ status: "failed" }); });
+  // 안 읽음 수는 모듈 store라 파일 안 테스트 사이로 샌다(inbox-page D2).
+  setUnread(0);
 });
 
 const trigger = () => document.querySelector<HTMLButtonElement>('button[aria-haspopup="menu"]')!;
@@ -434,3 +438,188 @@ it("행 시각은 짧은 상대 시각이다", async () => {
   expect(items()[4]!.textContent).toContain("1d ago");
 });
 
+
+/**
+ * inbox-page D2 — 안 읽음 수는 탭 안 store 하나이고, `/inbox` 페이지의 읽음 신호(`notifySeen`)를 헤더가 받는다.
+ * ⚠️ 헤더 수명 밖·신호 전 요청의 응답은 버린다 — 응답 순서는 Action 큐가 아니라 네트워크가 정한다.
+ */
+async function signal() { await act(async () => { notifySeen(); }); }
+
+it("접근 이름은 사이드바 라벨과 같은 낱말 Inbox다", () => {
+  expect(en.inbox.label).toBe(en.common.nav.inbox);
+  expect(en.inbox.label).toBe("Inbox");
+  expect(en.inbox.labelUnread(3)).toBe("Inbox, 3 unread");
+});
+
+it("배지 응답은 store에 쓰인다 — 사이드바가 같은 n을 읽는다", async () => {
+  await mount(12);
+  expect(getUnread()).toBe(12);
+  expect(badgeNode()?.textContent).toBe("9+");
+});
+
+it("store가 바뀌면 헤더 배지도 따라간다", async () => {
+  await mount(0);
+  await act(async () => { setUnread(2); });
+  expect(badgeNode()?.textContent).toBe("2");
+});
+
+it("메뉴가 닫혀 있을 때 읽음 신호가 오면 배지가 곧바로 0이고 캐시 목록의 점도 없다", async () => {
+  await mount(3);
+  const first = nextOpen();
+  await openMenu();
+  await settle(first, ok(PLAN, false));
+  await escape();
+  expect(badgeNode()?.textContent).toBe("3");
+  await signal();
+  expect(badgeNode()).toBeNull();
+  expect(getUnread()).toBe(0);
+  nextOpen();
+  await openMenu();
+  expect(items()).toHaveLength(5);
+  expect(menu()!.querySelectorAll("[data-unread-dot]")).toHaveLength(0);
+});
+
+it("메뉴가 열려 있을 때 읽음 신호가 오면 배지는 닫힐 때 0이 된다 — 트리거가 열린 메뉴 밑에서 줄지 않는다", async () => {
+  await mount(3);
+  const first = nextOpen();
+  await openMenu();
+  await settle(first, ok(PLAN, false));
+  await signal();
+  expect(badgeNode()?.textContent).toBe("3");
+  expect(mocks.open).toHaveBeenCalledTimes(1);
+  await escape();
+  expect(badgeNode()).toBeNull();
+  expect(getUnread()).toBe(0);
+});
+
+it("읽음 신호를 거듭 받아도 같은 결과다 — 조회를 더 부르지 않는다", async () => {
+  await mount(3);
+  const first = nextOpen();
+  await openMenu();
+  await settle(first, ok(PLAN, false));
+  await escape();
+  await signal();
+  await signal();
+  expect(badgeNode()).toBeNull();
+  expect(mocks.open).toHaveBeenCalledTimes(1);
+});
+
+it("읽음 신호 뒤 도착한 배지 응답은 0을 되살리지 않는다", async () => {
+  let resolveBadge!: (value: AttentionBadgeResult) => void;
+  mocks.badge.mockImplementation(() => new Promise<AttentionBadgeResult>(r => { resolveBadge = r; }));
+  await render(<AttentionInbox />);
+  await signal();
+  await act(async () => { resolveBadge({ status: "ok", unread: 4 }); });
+  expect(badgeNode()).toBeNull();
+  expect(getUnread()).toBe(0);
+});
+
+it.each([
+  ["marked 성공", ok(PLAN, true)],
+  ["marked: false", ok(PLAN, false)],
+  ["실패", { status: "failed" } as const],
+])("신호 전에 시작한 목록 요청의 지연 응답(%s)은 캐시·배지에 반영되지 않고, 캐시 없는 열린 메뉴는 새 조회를 시작한다", async (_label, stale) => {
+  await mount(3);
+  const first = nextOpen();
+  await openMenu();
+  const second = nextOpen();
+  await signal();
+  expect(mocks.open).toHaveBeenCalledTimes(2);
+  await settle(first, stale);
+  // 옛 응답은 골격을 걷지도 오류 줄을 세우지도 않는다 — 새 조회를 기다린다.
+  expect(menu()!.querySelectorAll("[data-skeleton-line]").length).toBeGreaterThan(0);
+  expect(menu()!.querySelector('[data-tone="danger"]')).toBeNull();
+  expect(badgeNode()?.textContent).toBe("3");
+  // 신호 뒤 시작한 조회는 정상 반영한다 — 새로 생긴 안 읽음까지 일괄로 지우지 않는다.
+  const fresh: InboxPlan = { unread: 1, groups: [{ ...PLAN.groups[0]!, items: PLAN.groups[0]!.items.map((item, index) => ({ ...item, unread: index === 0 })) }] };
+  await settle(second, ok(fresh, true));
+  expect(items()).toHaveLength(3);
+  expect(menu()!.querySelectorAll("[data-unread-dot]")).toHaveLength(1);
+  await escape();
+  expect(badgeNode()).toBeNull();
+});
+
+it("신호 전 요청이 걸린 채 닫힌 메뉴는 조회를 새로 시작하지 않고 다음 열기에서 조회한다", async () => {
+  await mount(3);
+  const first = nextOpen();
+  await openMenu();
+  await escape();
+  await signal();
+  expect(mocks.open).toHaveBeenCalledTimes(1);
+  await settle(first, ok(PLAN, true));
+  const second = nextOpen();
+  await openMenu();
+  expect(mocks.open).toHaveBeenCalledTimes(2);
+  // 옛 응답은 캐시되지 않았다 — 첫 조회 전처럼 골격이다.
+  expect(menu()!.querySelectorAll("[data-skeleton-line]").length).toBeGreaterThan(0);
+  await settle(second, ok());
+  expect(items()).toHaveLength(5);
+});
+
+it("신호 전에 걸린 다시 시도는 신호 뒤 새 조회로 바뀌고 옛 실패가 그 결과를 덮지 않는다", async () => {
+  await mount(0);
+  const first = nextOpen();
+  await openMenu();
+  await settle(first, { status: "failed" });
+  const retry = nextOpen();
+  await act(async () => { await userEvent.setup().keyboard("{ArrowDown}{Enter}"); });
+  expect(items()[0]!.getAttribute("aria-disabled")).toBe("true");
+  const after = nextOpen();
+  await signal();
+  expect(mocks.open).toHaveBeenCalledTimes(3);
+  await settle(retry, { status: "failed" });
+  await settle(after, ok());
+  expect(items()).toHaveLength(5);
+  expect(menu()!.querySelector('[data-tone="danger"]')).toBeNull();
+});
+
+/** 셸 전환 — 공개 셸 헤더와 앱 셸 헤더는 서로 다른 마운트다. 해제된 헤더의 늦은 응답이 새 헤더의 store를 바꾸면 안 된다. */
+async function mountRoot(node: ReactNode) {
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  await act(async () => root.render(node));
+  return { unmount: async () => { await act(async () => root.unmount()); container.remove(); } };
+}
+
+it("해제된 헤더의 늦은 배지·목록 응답은 새 헤더의 store를 바꾸지 않는다", async () => {
+  const badges: ((value: AttentionBadgeResult) => void)[] = [];
+  mocks.badge.mockImplementation(() => new Promise<AttentionBadgeResult>(r => { badges.push(r); }));
+  const a = await mountRoot(<AttentionInbox />);
+  const lateOpen = nextOpen();
+  await openMenu();
+  await escape();
+  await a.unmount();
+  await render(<AttentionInbox />);
+  await act(async () => { badges[1]!({ status: "ok", unread: 4 }); });
+  expect(getUnread()).toBe(4);
+  // 옛 헤더의 배지·marked 목록 응답은 새 헤더가 쓴 수를 덮지 않는다.
+  await act(async () => { badges[0]!({ status: "ok", unread: 7 }); });
+  await settle(lateOpen, ok(PLAN, true));
+  expect(getUnread()).toBe(4);
+  expect(badgeNode()?.textContent).toBe("4");
+  await signal();
+  expect(getUnread()).toBe(0);
+});
+
+it("StrictMode의 effect 재설정이 첫 배지 요청을 다시 유효하게 만들지 않는다", async () => {
+  const badges: ((value: AttentionBadgeResult) => void)[] = [];
+  mocks.badge.mockImplementation(() => new Promise<AttentionBadgeResult>(r => { badges.push(r); }));
+  const view = await mountRoot(<StrictMode><AttentionInbox /></StrictMode>);
+  expect(badges.length).toBe(2);
+  await act(async () => { badges[1]!({ status: "ok", unread: 2 }); });
+  await act(async () => { badges[0]!({ status: "ok", unread: 9 }); });
+  expect(getUnread()).toBe(2);
+  expect(badgeNode()?.textContent).toBe("2");
+  await view.unmount();
+});
+
+it("해제된 헤더는 읽음 신호를 받지 않는다", async () => {
+  const view = await mountRoot(<AttentionInbox />);
+  await act(async () => {});
+  await view.unmount();
+  await act(async () => { setUnread(5); });
+  await signal();
+  // 받을 헤더가 없으면 수는 그대로다 — 0으로 만들 시점은 헤더가 정한다.
+  expect(getUnread()).toBe(5);
+});

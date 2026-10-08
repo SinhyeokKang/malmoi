@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { createContext, useContext, type ReactNode } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { setUnread } from "@/lib/inbox/unread-store";
 
 import { Sidebar } from "@/components/shell/sidebar";
 import { render } from "./helpers/dom";
@@ -56,3 +57,6 @@ describe("사이드바 이동 pending", () => {
     expect(link(container, "/projects/acme/surfaces/app/translations")).not.toBeNull();
   });
 });
+
+// 안 읽음 수는 모듈 store라 파일 안 테스트 사이로 샌다(inbox-page D2) — 헤더·사이드바를 그리는 파일은 매번 되돌린다.
+afterEach(() => { setUnread(0); });

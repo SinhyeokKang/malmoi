@@ -120,6 +120,8 @@ const CLIENT_LIB_FILES = [
   // 헤더 Inbox(attention-inbox)가 Home 카드와 같은 칩·문장·목적지와 읽음 판정을 값으로 읽는다 — 수집(`lib/home/attention.ts`)은 그래프에 없다.
   "lib/home/attention-view.ts",
   "lib/inbox/plan.ts",
+  // 헤더·사이드바·`/inbox` 읽음 섬이 나눠 쓰는 탭 안 안 읽음 수 store(inbox-page D2) — import는 `react` 하나인 잎이다.
+  "lib/inbox/unread-store.ts",
   "lib/i18n/adapter-errors.ts",
   "lib/i18n/index.ts",
   // 공개 푸터의 언어 스위처가 지원 집합·endonym·국기 매핑을 값으로 읽는다(ui-locales F2) — import 0인 잎이다(아래 잎 검사).

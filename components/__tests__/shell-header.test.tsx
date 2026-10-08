@@ -2,7 +2,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createContext, useContext, type ReactNode } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { setUnread } from "@/lib/inbox/unread-store";
 
 import { PUBLIC_HEADER_LINK } from "@/components/public-shell/header";
 import { HeaderBar } from "@/components/shell/header-bar";
@@ -113,3 +114,6 @@ describe("앱 셸 헤더", () => {
     pendingHref.value = "";
   });
 });
+
+// 안 읽음 수는 모듈 store라 파일 안 테스트 사이로 샌다(inbox-page D2) — 헤더·사이드바를 그리는 파일은 매번 되돌린다.
+afterEach(() => { setUnread(0); });

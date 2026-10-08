@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { act } from "react";
 import userEvent from "@testing-library/user-event";
-import { expect, it, vi } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
+import { setUnread } from "@/lib/inbox/unread-store";
 
 import { render } from "./helpers/dom";
 
@@ -59,3 +60,6 @@ it("사용자 메뉴 Sign out은 제출 중에도 메뉴가 열린 채 disabled 
   expect(signOutItem().querySelector(".animate-spin")).not.toBeNull();
   await settle();
 });
+
+// 안 읽음 수는 모듈 store라 파일 안 테스트 사이로 샌다(inbox-page D2) — 헤더·사이드바를 그리는 파일은 매번 되돌린다.
+afterEach(() => { setUnread(0); });

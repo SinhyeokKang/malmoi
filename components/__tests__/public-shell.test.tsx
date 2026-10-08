@@ -5,7 +5,8 @@ import { join } from "node:path";
 import { act, createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { setUnread } from "@/lib/inbox/unread-store";
 
 import type { AttentionBadgeResult, OpenAttentionInboxResult } from "@/app/inbox/actions";
 import { PublicFooter } from "@/components/public-shell/footer";
@@ -411,3 +412,6 @@ describe("공개 셸 — 헤더 Inbox", () => {
     expect(container.querySelector("header")).not.toBeNull();
   });
 });
+
+// 안 읽음 수는 모듈 store라 파일 안 테스트 사이로 샌다(inbox-page D2) — 헤더·사이드바를 그리는 파일은 매번 되돌린다.
+afterEach(() => { setUnread(0); });

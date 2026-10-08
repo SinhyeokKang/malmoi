@@ -3,6 +3,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { setUnread } from "@/lib/inbox/unread-store";
 
 import { mockupScenes } from "@/components/landing/mockup";
 import { Stage } from "@/components/landing/stage";
@@ -110,7 +111,7 @@ describe("목업 — 제품과 같은 구조다", () => {
     // 머리 줄은 프로젝트 구역에만 있다 — 사용자 구역의 아바타·이름 줄은 2026-09-30에 빠졌다(사이드바와 같다).
     expect(zoneText("project").querySelector("p > span.truncate")?.textContent).toBe(fixture.project);
     expect(zoneText("work").querySelector("p")).toBeNull();
-    expect(items("work")).toEqual([`${en.common.nav.projects}${fixture.projectCount}${en.projects.count(fixture.projectCount)}`, en.common.nav.mcp, en.common.nav.preferences, en.common.nav.account]);
+    expect(items("work")).toEqual([`${en.common.nav.projects}${fixture.projectCount}${en.projects.count(fixture.projectCount)}`, en.common.nav.inbox, en.common.nav.mcp, en.common.nav.preferences, en.common.nav.account]);
     // 숫자는 `aria-hidden`, 문장은 sr-only — 실물 `CountBadge`의 형이다.
     const projects = find(zoneText("work"), '[data-landing-nav="projects"]');
     expect(projects.querySelector('span[aria-hidden="true"]')?.textContent).toBe(String(fixture.projectCount));
@@ -688,3 +689,6 @@ describe("목업 — 빈 번역 입력 높이가 실물과 같다 (#189)", () =>
     expect(typing.classList.contains("min-h-[62px]")).toBe(true);
   });
 });
+
+// 안 읽음 수는 모듈 store라 파일 안 테스트 사이로 샌다(inbox-page D2) — 헤더·사이드바를 그리는 파일은 매번 되돌린다.
+afterEach(() => { setUnread(0); });

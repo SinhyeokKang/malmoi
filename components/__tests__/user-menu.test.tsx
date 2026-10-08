@@ -35,6 +35,7 @@ it("머리 뒤 항목 순서와 구분선이 사용자가 정한 그대로다", 
   expect(rows(menu)).toEqual([
     "---",
     en.common.nav.projects,
+    en.common.nav.inbox,
     en.common.nav.mcp,
     en.common.nav.preferences,
     en.common.nav.account,

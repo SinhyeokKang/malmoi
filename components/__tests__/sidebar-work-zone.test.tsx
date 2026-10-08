@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from "vitest";
+import { act } from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { Sidebar } from "@/components/shell/sidebar";
 import { en } from "@/messages/en";
 import { routes } from "@/lib/routes";
+import { setUnread } from "@/lib/inbox/unread-store";
 
 import { render } from "./helpers/dom";
 
@@ -15,13 +17,15 @@ const path = vi.hoisted(() => ({ value: "/projects" }));
 vi.mock("next/navigation", () => ({ usePathname: () => path.value }));
 
 const memberships = [{ slug: "acme", name: "Acme", role: "OWNER" as const, archived: false, image: null }];
+// 안 읽음 수는 모듈 store라 파일 안 테스트 사이로 샌다(inbox-page D2).
+afterEach(() => { setUnread(0); });
 
 describe("사이드바 — 사용자 구역", () => {
-  it("항목이 Projects · MCP connector · Preferences · Account 순이다 — New project가 없다", async () => {
+  it("항목이 Projects · Inbox · MCP connector · Preferences · Account 순이다 — New project가 없다", async () => {
     path.value = "/projects";
     const { container } = await render(<Sidebar memberships={[]} userName="Kim" />);
     const work = container.querySelector('nav[aria-label="Kim"]')!;
-    expect([...work.querySelectorAll("a")].map((a) => a.getAttribute("href"))).toEqual(["/projects", "/mcp", "/preferences", "/account"]);
+    expect([...work.querySelectorAll("a")].map((a) => a.getAttribute("href"))).toEqual(["/projects", "/inbox", "/mcp", "/preferences", "/account"]);
     expect(container.querySelector(`a[href="${routes.newProject()}"]`)).toBeNull();
     expect(container.textContent).not.toContain(en.common.nav.newProject);
   });
@@ -55,5 +59,42 @@ describe("사이드바 — 개수 배지", () => {
     const pill = container.querySelector('a[href="/projects"] .rounded-full')!;
     expect(pill.querySelector("[aria-hidden]")?.textContent).toBe("1");
     expect(pill.querySelector(".sr-only")?.textContent).toBe(en.projects.count(1));
+  });
+});
+
+/**
+ * **Inbox 배지는 서버 값이 아니라 탭 안 store 값이다** (inbox-page D2·D5 · spec 6a) — 헤더 배지와 같은 n이고 표시만 다르다(헤더는 `9+`, 사이드바는 실제 수).
+ * 배지 수를 위한 조회를 따로 하지 않는다 — 헤더 `AttentionInbox`가 쓴 수를 읽기만 한다.
+ */
+describe("사이드바 — Inbox 안 읽음 배지", () => {
+  const inbox = (container: HTMLElement) => container.querySelector<HTMLElement>(`a[href="${routes.inbox()}"]`)!;
+
+  it("store 수를 그대로 보인다 — 10 이상도 실제 수이고 sr 문장은 n unread다", async () => {
+    path.value = "/projects";
+    setUnread(12);
+    const { container } = await render(<Sidebar memberships={[]} userName="Kim" />);
+    const pill = inbox(container).querySelector(".rounded-full")!;
+    expect(pill.querySelector("[aria-hidden]")?.textContent).toBe("12");
+    expect(pill.querySelector(".sr-only")?.textContent).toBe(en.common.nav.inboxCount(12));
+    expect(en.common.nav.inboxCount(12)).toBe("12 unread");
+  });
+
+  it("0이면 배지가 없고, store가 바뀌면 따라간다", async () => {
+    path.value = "/projects";
+    const { container } = await render(<Sidebar memberships={[]} userName="Kim" />);
+    expect(inbox(container).querySelector(".rounded-full")).toBeNull();
+    await act(async () => { setUnread(3); });
+    expect(inbox(container).querySelector(".rounded-full [aria-hidden]")?.textContent).toBe("3");
+    await act(async () => { setUnread(0); });
+    expect(inbox(container).querySelector(".rounded-full")).toBeNull();
+  });
+
+  it("/inbox에서 Inbox 항목이 현재 페이지이고 라벨·글리프는 헤더 트리거와 같은 Inbox다", async () => {
+    path.value = "/inbox";
+    const { container } = await render(<Sidebar memberships={[]} userName="Kim" />);
+    expect(inbox(container).getAttribute("aria-current")).toBe("page");
+    expect(inbox(container).textContent).toContain(en.common.nav.inbox);
+    expect(inbox(container).querySelector("svg.lucide-inbox")).not.toBeNull();
+    expect(container.querySelector('a[href="/projects"]')?.getAttribute("aria-current")).toBeNull();
   });
 });
