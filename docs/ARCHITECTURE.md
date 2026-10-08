@@ -922,8 +922,8 @@ writer가 버린 항목은 `PullResult`의 `skipped/writer-warnings` 갈래에�
 (`findOpenPr`) 값으로만 안 내고 있었다 — 편집자에게 "새로 보냈다"와 "먼저 보낸 것을 갱신했다"는 다른
 사실이다. **`Project`에 컬럼 둘이 따라온다**: `lastPublishedAt`·`lastPrUrl`은 `committed`일 때만 쓰고
 (`saveLastPulledAt`의 같은 `update` 한 번), `skipped`는 건드리지 않는다. ⚠️ **`lastPulledAt`과 뜻이 다르다** —
-그쪽은 벽시계가 아니라 캡처된 `max(updatedAt)`이고 **변경 없는 스킵에도 전진한다.** 미배포 집계의 기준은
-그쪽이고(진행 판정), 툴바의 "Last sent"가 읽는 것은 이쪽이다(사건 기록). 섞으면 아무것도 안 보낸 밤마다
+그쪽은 벽시계가 아니라 캡처된 `max(updatedAt)`이고 **변경 없는 스킵에도 전진한다.** 미배포 집계는 `lastPulledAt`이 아니라
+활성 소스·키·로케일의 `pendingEditToken != null`을 센다(`lib/protection/where.ts`). 툴바의 "Last sent"는 `lastPublishedAt`을 읽는다(사건 기록). 섞으면 아무것도 안 보낸 밤마다
 "보냈다"가 갱신된다.
 
 **`lastPulledAt`이 전진하는 두 자리에서 편집 토큰의 전달 확인이 같은 트랜잭션에 실린다** (2026-09-18, §5의 `pendingEditToken`).
@@ -1202,7 +1202,7 @@ snapshot → ingestTargets(순수) → readBlob × M
 `IngestBudgetError`의 하위형이며 파일 경로를 담아 실패한 소스 안내와 `resource-limit` 분류를 함께 유지한다.
 GitHub 읽기·파싱은 tx 밖이며 `prepareFirstSnapshot`의 `payload === null` 또는 `failed > 0`이면 저장하지 않는다.
 클라이언트의 `outputPaths`는 체크 충돌 안내용이다. 생성은 새 snapshot·서버 확정 포맷으로 출력 경로를 다시 계산한다.
-`manual`은 YAML에 어댑터·기준 언어를 명시할지 정하는 표시 메타데이터일 뿐 경로 재검증을 완화하지 않는다.
+`manual`과 무관하게 YAML에는 서버가 확정한 어댑터·기준 언어를 항상 명시한다. 수동 선택 여부는 경로 재검증도 완화하지 않는다.
 
 기존 User 행 잠금·OWNER 한도 재집계를 유지하고, Project 명시적 id·OWNER·Surface N개·기본 포인터와
 `applyPushInTransaction(tx, ...)`를 같은 callback tx에 저장한다(`maxWait: 10_000`, `timeout: 30_000`).
@@ -1453,10 +1453,10 @@ namespace `"unresolved"`와 지역 이름 `unsupported`도 정상 사용자 문�
   호출마다 새 `where`를 만든다(`lib/protection/where.ts`). 같은 모듈이 그 술어의 두 읽기 형태를 함께 든다:
   수를 세는 `countPending`과 `(id, token)` 쌍을 읽는 **`loadPendingEdits`**(Publish 캡처·폐기 승인 지문 — **원문이라 서버 안에서만 돈다**).
   둘 다 토큰 컬럼만 보는 count가 0이면 관계 조인을 아예 돌리지 않는다. **원문은 서버 밖으로 나가지 않는다** — 셀은 `pending: boolean` 투영이고 폐기 승인은 sha256 지문 하나다.
-  strict 적재는 토큰 있는 셀을 덮지 않는다(`WHERE "pendingEditToken" IS NULL OR = ANY(approvedTokens)`) — 승인 토큰은 수동 Sync만 넘긴다.
+  strict 적재는 토큰 있는 셀을 덮지 않는다(`WHERE "pendingEditToken" IS NULL OR = ANY(approvedTokens)`) — 승인 토큰은 수동 Sync와 제거된 소스를 되살리는 첫 적재(해당 소스 토큰만 — §5.9)가 넘긴다.
   배포 B의 precondition 마이그레이션(`20260917170000_pending_edit_token_precondition`)이 backfill 미수렴을 `db:deploy`에서 거부한다(복구 절차는 OPERATIONS).
   인덱스는 일반 복합 `[projectId, pendingEditToken]`이다 — btree가 `IS NOT NULL`을 Index Cond로 써서 격리 PG 합성 3만 행에서 3행만 읽었다(없으면 3만 행 비트맵 스캔) — 그래서 스키마로 표현되지 않는 partial 인덱스는 쓰지 않는다.
-- **`TranslationSurface.lastImportFailedAt`은 실패에만 시각을 준다** (2026-09-15, `20260915082003_home_attention_timestamps`). `lastImportError`는 코드만 들고 `lastImportStartedAt`은 끝나는 순간 비워져서, **실패에 시각이 없었다** — Home의 할 일 항목이 세 종을 한 시간축에 세우려면 셋 다 시각이 있어야 한다. 성공은 이 값을 건드리지 않는다(성공 시각은 `lastImportedAt`이 든다 — 아래 절. `lastCommitAt`은 리포 커밋 시각이라 성공 시각이 아니다 — malmoi#81에서 Home이 그것을 "Last sync"로 읽어 17시간 전 Sync가 "13 days ago"로 보였다). ⚠️ **종료 경로가 다섯이고 전부 `importOutcomeFields`를 지난다** — `applyPush`·`finishImportRun`·`recordReportedFailure`·정상 0키·표면 실패. 필드를 손으로 나열하면 컬럼이 늘 때 몇이 조용히 빠지고, **실제로 이 컬럼이 처음에 둘에만 붙었다.** ⚠️ **성공이 이 값을 `null`로 비운다** — 안 비우면 복구된 표면이 계속 옛 실패를 말한다. ⚠️ **backfill이 없다** — 에러는 있는데 시각이 `null`인 행은 마이그레이션 이전 행뿐이고, 읽는 쪽이 그것을 **가장 오래된 것**으로 고정한다(임의 순서를 만들지 않는다).
+- **`TranslationSurface.lastImportFailedAt`은 실패에만 시각을 준다** (2026-09-15, `20260915082003_home_attention_timestamps`). `lastImportError`는 코드만 들고 `lastImportStartedAt`은 끝나는 순간 비워져서, **실패에 시각이 없었다** — Home의 할 일 항목이 세 종을 한 시간축에 세우려면 셋 다 시각이 있어야 한다. 성공은 이 값을 `null`로 비운다(성공 시각은 `lastImportedAt`이 든다 — 아래 절. `lastCommitAt`은 리포 커밋 시각이라 성공 시각이 아니다 — malmoi#81에서 Home이 그것을 "Last sync"로 읽어 17시간 전 Sync가 "13 days ago"로 보였다). ⚠️ **종료 경로가 다섯이고 전부 `importOutcomeFields`를 지난다** — `applyPush`·`finishImportRun`·`recordReportedFailure`·정상 0키·표면 실패. 필드를 손으로 나열하면 컬럼이 늘 때 몇이 조용히 빠지고, **실제로 이 컬럼이 처음에 둘에만 붙었다.** ⚠️ **성공이 이 값을 `null`로 비운다** — 안 비우면 복구된 표면이 계속 옛 실패를 말한다. ⚠️ **backfill이 없다** — 에러는 있는데 시각이 `null`인 행은 마이그레이션 이전 행뿐이고, 읽는 쪽이 그것을 **가장 오래된 것**으로 고정한다(임의 순서를 만들지 않는다).
 - **`TranslationSurface.lastImportedAt`·`createdAt`은 그 옆의 다른 축이다** (2026-09-22, `20260922062014_add_surface_import_timestamps` — Sources 화면이 소비자다, `lib/sources/query.ts`의 `sourceSelect`·`sourceView`).
   - `lastImportedAt`은 **마지막 성공 적재 시각**이고 `lastCommitAt`이 아니다 — 커밋 시각을 그 자리에 쓰면 리포에 오래 전 커밋이 있는 소스가 "방금 적재됨"으로 읽힌다. ⚠️ **backfill이 없다**: 이 컬럼 이전의 성공에는 시각이 없고 화면이 그 자리를 **생략한다**(`lastCommitAt`으로 메우면 "적재 시각"이라는 거짓이 DB에 남는다).
   - `createdAt`은 **소스가 선언된 시각**이고, 첫 적재 전 화면이 "얼마나 기다렸나"에 답하는 유일한 값이다. ⚠️ **기존 행은 마이그레이션 시각으로 채워진다 — 진짜 시각이 아니다**(`Locale.createdAt`과 같은 사정). "정확히 언제 생겼나"의 답으로 믿는 코드를 만들지 않는다.
@@ -1804,11 +1804,11 @@ CI push가 unorphan → 재집계 1 → 롤백 → `deferred`를 매번 반복�
 
 ⚠️ **표면 교체 검사(`checkFormat`)가 왜 필요한가** (2026-09-07): `applyPush`가 페이로드 포맷으로
 `TranslationSurface.adapterName`·`pathTemplate`·`nested`·`nestedByPath`·`baseLocale`을 **덮어쓴다.** 그런데 온보딩은
-후보를 사용자에게 확정받아 재검증한 값을 저장하고(`planConfirmedFormat`), **자동 후보의 워크플로 YAML은
-`adapter:`를 박지 않는다**(`lib/onboarding/workflow.ts` — 탐지가 같은 답을 낸다는 전제였다).
-그 전제는 **1순위 후보에만 참이다**: 2순위를 확정한 프로젝트의 CI는 `detectFormat`의 1순위를 보내고,
-strict 덮어쓰기가 그 프로젝트의 키를 전부 orphan시킨 뒤 이물 키를 넣는다 — 오배송과 같은 피해이고 같은
-이유로 되돌릴 수 없다. 한 리포에 표면이 둘인 `i18n-format-check`가 실물이다 (PRODUCT §7.1).
+후보를 사용자에게 확정받아 재검증한 값을 저장하고(`planConfirmedFormat`), **과거 자동 후보의 워크플로 YAML은
+`adapter:`를 생략했다**(탐지가 같은 답을 낸다는 전제였다).
+그 전제는 **1순위 후보에만 참이었다**: 2순위를 확정해도 CI는 `detectFormat`의 1순위를 보내,
+포맷 검사가 없으면 strict 덮어쓰기가 기존 키를 orphan시키고 다른 후보의 키를 넣을 수 있었다.
+현재 `lib/onboarding/workflow.ts`는 자동·수동 여부와 무관하게 확정한 adapter·baseLocale을 항상 명시한다. 한 리포에 표면이 둘인 `i18n-format-check`가 실물이다 (PRODUCT §7.1).
 
 - **`baseLocale`도 본다** — 키 집합의 진실이라, 확정한 base와 다른 base로 적재하면 진짜 base에만 있는
   키가 빠져 orphaned로 떨어진다 (2026-09-04 audit #1의 손실).
@@ -2616,7 +2616,7 @@ login-link · session-revocation · `acceptInvitation`이다. 두지 않는 이�
 
 `session: { strategy: "database", maxAge: 24h, updateAge: 1h, generateSessionToken }`. ⚠️ **넷째 키가 위 문단의 "32바이트 난수 세션 원문"의 발신처다** — `() => randomBytes(32).toString("base64url")`이고, 이것을 빼면 Auth.js 기본 생성기로 조용히 떨어진다(길이·엔트로피의 근거가 이 한 줄이라 코드 리뷰 말고는 신호가 없다). ⚠️ **`updateAge`를 명시하지 않으면 기본값(24h)이 `maxAge`와 같아** `session.js`의 갱신 조건이 `expires <= now`가 되고 **세션이 한 번도 연장되지 않는다** — 로그인 정각 24시간 뒤 편집 도중 끊기고, 브라우저가 쿠키를 지워 blur 저장이 미들웨어에 걸렸다(Codex 감사 #6). 지금은 활동 중인 세션이 시간당 한 번 DB 쓰기로 연장된다. `provider-config.test.ts`가 `strategy: "database"`와 `updateAge` 리터럴을 고정한다 — ⚠️ **`maxAge`는 검사하지 않으므로** 7일로 바꿔도 green이다.
 
-**`session` 콜백은 입력을 돌려주지 않는다.** DB 세션에서 콜백이 받는 `session`은 `Session` **행**이라 `sessionToken`이 들어 있고, 반환값이 곧 `/api/auth/session` 본문이다 — 입력에 `id`만 얹어 돌려주면 HttpOnly 쿠키의 값이 JSON으로 샌다(Codex 감사 #1, 2026-09-06까지 열려 있었다). `lib/auth/public-session.ts`가 `user.{id,name,email,image}`·`expires`만 허용 목록으로 새 객체에 담는다.
+**`session` 콜백은 입력을 돌려주지 않는다.** DB 세션에서 콜백이 받는 `session`은 `Session` **행**이라 `sessionToken`이 들어 있고, 반환값이 곧 `/api/auth/session` 본문이다 — 입력에 `id`만 얹어 돌려주면 HttpOnly 쿠키의 값이 JSON으로 샌다(Codex 감사 #1, 2026-09-06까지 열려 있었다). `lib/auth/public-session.ts`가 `user.{id,name,email,image,uiLocale,timeZone,colorScheme}`·`expires`만 허용 목록으로 새 객체에 담는다.
 
 **전체 세션 회수(#38, 2026-09-10)**: `/account` Server Action이 기존 로그인 Account를 서버에서 선택하고 새 OAuth 왕복을 시작한다. VerificationToken의 목적별 identifier에 userId/provider/account ID/session digest/state digest, token에는 nonce digest를 저장하며 5분간 유효하다. User 잠금 아래 현재 계정·세션·TTL을 재검사한 뒤 확인 요청의 조건부 소비와 사용자 Session 전체 삭제를 한 트랜잭션으로 처리한다. 다음 인증부터 거부되고 이미 실행 중인 요청은 중단하지 않는다.
 
@@ -2911,11 +2911,12 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 - **영어로 고정되는 표면**: MCP 도구 응답(`lib/mcp/**` — 에이전트가 읽는다) · 초대 메일(`lib/invitation-email/**` — 받는 사람의 언어를 모른다) ·
   SEO 메타·정적 `metadata`(탭 제목 — 크롤러와 같은 축이라 `generateMetadata`로 바꾸지 않는다)·`llms*.txt`·sitemap · `/api/*` JSON(검색 색인은 언어별 정적 파일 —
   §6.37) · cron 응답·서버 로그 · CLI(`scripts/**`) · `app/global-error.tsx`(루트 레이아웃 밖이라 provider가 없다, `lang="en"`) · 방침 en 본(§6.035) ·
-  숫자 형식(`en-US`) · 리포에 남는 문장(PR 제목·본문·커밋 메시지 — 누가 Publish했느냐로 같은 DB 상태에서 다른 PR이 나오면 안 된다) ·
+  리포에 남는 문장(PR 제목·본문·커밋 메시지 — 누가 Publish했느냐로 같은 DB 상태에서 다른 PR이 나오면 안 된다) ·
   저장되는 값(`ProjectEvent` payload — §5.7.4의 렌더 치환). 사전에서는 최상위 `mcp`·`seo`·`crash`와 중첩 `publicDocs.privacy`가 `Messages`에서 빠진다(ko·es는 그 절이 없다).
   ⚠️ **공유 코어(`planPublishView`·`loadEvents` 등 MCP 도구와 화면이 같이 부르는 것)는 `getMessages()`를 부르지 않고 `m`을 인자로만 받는다** —
   코어가 스스로 언어를 물으면 MCP 응답이 요청자의 언어를 따라간다. 소스 검사 `dictionary-consistency.test.ts` ⑧이 영어 고정 표면의 입구 import와
   `lib/** → lib/i18n/server`를 막는다. 테스트도 `en`을 명시 import한다.
+- **화면 숫자**: `lib/number-format.ts`의 `formatNumber(value, uiLocale)`가 명시적으로 받은 화면 언어의 구분자를 쓴다. PR 번호 같은 식별자는 숫자 표시 형식과 구분한다.
 - **사전 정합**: `type Messages`(`lib/i18n/index.ts`)는 en의 리터럴을 넓힌 `Widen<typeof en>`에서 영어 고정 절을 뺀 것이고(함수는 재귀하지 않고 문자열 반환만 넓힌다 —
   `ReactNode` 반환을 객체로 보고 재귀하면 `ReactElement` 구조를 매핑한다), `messages/ko.tsx`·`es.tsx`가 `satisfies Messages`라 빠진 키·남는 키·인자 다른 함수가 typecheck red다.
   `dictionary-consistency.test.ts`가 ① en과 같은 문자열은 **키 경로** 허용 목록에만(값으로 허용하면 es의 `Error`·`General` 같은 동철어가 다른 키의 누락까지 통과시킨다 —
@@ -3014,7 +3015,7 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
   `parseColorScheme` 불통과면 `invalid` → `readSession()`이 `ok`가 아니면 무기록 `failed`(redirect하지 않는다) → 세션 `userId`로 계정 갱신(실패면 무기록
   `failed` — 쿠키만 쓰면 다음 렌더에서 계정의 옛 값이 이긴다) → 쿠키를 **무조건** 쓴다(`httpOnly` · `sameSite: "lax"` · `secure`는 `x-forwarded-proto`
   첫 항목이 `https`일 때 — `setUiLocale`과 같은 판정 · 1년. 로그인 중에도 쓰는 것은 로그아웃 뒤 공개 페이지가 같은 테마를 보게 하려는 것이다) →
-  `revalidateAfterCommit("color-scheme")`(커밋 뒤라 던져도 `ok`). `ProjectEvent`를 남기지 않는다. 쿠키 속성의 출처는 `lib/color-scheme/cookie-spec.ts`의
+  `revalidateAfterCommit("color-scheme")`(커밋 뒤라 던져도 `ok`). `ProjectEvent`를 남기지 않는다. 쿠키 속성의 출처는
   `lib/device-cookies/spec.ts`의 `deviceCookieSpec` 한 곳이다(화면 언어 쿠키와 공유 — Action은 `cookies().set`, 로그인 동기화는 직렬화).
 - **둘째 쿠키 쓰기는 로그인 동기화다**(2026-10-05, fix1·fix2 — 2026-10-06 fix3에서 **화면 언어 쿠키 `malmoi-ui-locale`(`User.uiLocale`, §6.355)도 같은 장치로 옮겼다**: 래퍼 하나가 두 쿠키를 각각 비교해 덧붙이고, 속성은 `setUiLocale` Action과 `lib/device-cookies/spec.ts` 한 곳이다) — 로그인이 끝나면 계정의 테마·언어를 이 기기 쿠키로 옮겨 적어, 로그아웃 뒤·다음 로그인 직전 화면이 계정 값과
   같게 한다(첫 로그인 순간의 한 번 전환은 남는다). 계정 값이 없거나 지원 밖이면 **쓰지 않고**(기기 선택 보존), 요청 쿠키가 이미 같은 값이어도 쓰지 않는다. DB 쓰기 0, 던지지 않는다.
@@ -3776,8 +3777,8 @@ sharp 정규화(192px 이내 WebP)로 재사용하며 PII 봉투는 쓰지 않�
 `project:settings` 인가를 확인한다. 업로드는 tx 밖, Project 행 잠금 뒤 이전 URL 조회·새 URL 저장은 tx 안,
 이전 객체 삭제는 커밋 뒤다. DB 실패는 새 객체만 정리하고 삭제 실패는 스모크의 고아 후보로 남는다.
 
-`updateProjectName`은 생성과 공유하는 200자 상한·trim을 적용하고 slug를 바꾸지 않는다. 이름·이미지는
-번역 값이 아니므로 서버에서 archived를 거부하지 않는다. 보관 UI의 비활성과 의도적으로 갈린다.
+`updateProjectName`은 생성과 공유하는 200자 상한·trim을 적용하고 slug를 바꾸지 않는다.
+보관된 프로젝트에서는 이름·이미지 변경도 서버가 거부한다. 이미지 업로드는 사전 판정하고, 모든 변경은 Project 잠금 안에서 보관 상태를 다시 검사한다.
 성공 뒤 `/` layout을 갱신하고 설정·목록·Home·셸(사이드바·프로젝트 스위처)·초대 수락 화면과 초대 메일이 image를 읽는다. Blob 스모크는 avatars와
 projects를 각각 조회해 User.image/Project.image 참조와 대조하며 고아를 자동 삭제하지 않는다.
 
