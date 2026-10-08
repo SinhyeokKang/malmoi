@@ -2290,7 +2290,7 @@ Logs 행위자·상세 Trigger·보조줄·Home 메타 열이 이것 하나를 �
 | 운영자 판정 (`isOperatorUser`, 2026-10-03) | `User.emailLookup` × `OPERATOR_EMAILS` | **인가 아님** — 사용자당 프로젝트 상한 면제 하나만 바꾼다. 로그인·`ProjectMember` 인가·화면 표시와 무관하다 (§6.2.2) |
 | `/api/search-index/[uiLocale]` | **공개 · 세션 없음 · `force-static`** | 그 언어 원고(`guide/<uiLocale>/`) SUMMARY에 등재된 공개 가이드만 빌드 때 JSON으로 만든다 — 언어별 정적 파일 셋(`generateStaticParams` = `guideLocales()`, `dynamicParams = false`). 인증·DB·쿠키 조회가 없고 원고 실패는 빌드를 실패시킨다. `entry-points.test.ts`의 `EXEMPT` 사유도 이 경계다 (§6.37) |
 | Keys 조회 — `searchKeysAction` (`app/search/actions.ts`) | 세션(`readSession`) + 코어 `searchKeys`의 **`ProjectMember.userId` 조인** | 서버의 userId로 비보관 멤버 프로젝트 id를 확정한다. 클라이언트 프로젝트 목록을 받지 않고 `activeSlug`는 순위에만 쓴다 (§6.37) |
-| 검색 멤버십 — `loadSearchMembershipsAction` (같은 파일) | 세션(`readSession`) + `loadMemberships`의 **userId 제한** | 보관 포함 자기 멤버십만 읽고 `toNavProjects`의 일곱 필드만 반환한다. 성공·실패 모두 다음 호출에 캐시하지 않는다 (§6.37) |
+| 검색 멤버십 — `loadSearchMembershipsAction` (같은 파일) | 세션(`readSession`) + `loadMemberships`의 **userId 제한** | 보관 포함 자기 멤버십만 읽고 `toNavProjects`의 일곱 필드만 반환한다. 성공·실패 모두 다음 열기에 캐시하지 않는다. 소비자는 공개 셸의 검색 Dialog와 **사용자 메뉴 프로젝트 그룹**(2026-10-09 user-menu-projects — 검색용 이름의 Action에 검색 아닌 소비자가 붙었다. 반환 필드가 같아 새 노출이 없다) (§6.37) |
 | GitHub **연결** | GitHub App **user-to-server** 토큰 (`GITHUB_APP_CLIENT_*`, `lib/github-connect/user.ts`) | "이 사람이 이 설치·리포를 볼 수 있는가"를 묻는 데만 쓴다. **GET만 부른다** — 이름에 OAuth가 들어가지만 로그인 토큰과 client id가 다르다 |
 | `malmoi-i18n/sync` 쓰기 | GitHub App **installation** 토큰 (`GITHUB_APP_ID`·`GITHUB_APP_PRIVATE_KEY`) | OAuth 토큰으로 커밋하면 커밋이 개인 명의가 되고 그 사람이 org를 떠나면 깨진다 |
 | `/api/github/callback` | 세션(`requireUser`) + userId에 묶인 **state HMAC** + state 쿠키 | 브라우저가 돌아오는 지점이라 CSRF 축이 초대 토큰과 같다 (§6.4) |
@@ -3129,6 +3129,9 @@ relation load strategy에 따른다. 멤버십이 없으면 나머지는 0회다
   `redirect`·`revalidatePath`·검색어 로그가 없다. 단 `searchKeysAction`의 비문자열 q는 세션 조회 전에 빈 성공 결과로 끝낸다.
   `loadSearchMembershipsAction`은 `loadMemberships(prisma, session.userId)` → `toNavProjects`로
   `slug`·`name`·`role`·`archived`·`image`·`defaultSurfaceSlug`·`counts`만 싣는다(보관 포함).
+  ⚠️ **소비자가 둘이다** (2026-10-09, user-menu-projects) — 공개 셸의 검색 Dialog와 **헤더 사용자 메뉴의 프로젝트 그룹**(`UserMenu`).
+  검색용 이름이지만 반환 필드가 공개 셸 검색이 이미 받는 일곱과 같아 새 노출이 없고, 인가는 이동한 페이지의 `requireProjectAccess`가 한다.
+  앱 셸은 헤더가 받은 멤버십을 메뉴에 넘겨 이 Action을 부르지 않는다.
 - **Keys의 테넌트 제한은 SQL 안에서 확정한다.** `searchKeys`는 세션 userId의 `ProjectMember`와 비보관 `Project`로 만든
   멤버 id 배열로 `projectId`를 좁힌다. 입력은 q와 순위 힌트 `activeSlug`뿐이며 클라이언트 id·slug 목록은 인가에 쓰지 않는다.
   양쪽 SQL은 보관 소스·첫 적재 전 소스(`lastCommitSha IS NULL`)·orphaned 키를 제외하고, 번역값은 orphaned 아닌 로케일만 본다.
@@ -3143,11 +3146,13 @@ relation load strategy에 따른다. 멤버십이 없으면 나머지는 0회다
   검색 코어의 조건부 두 SQL과 최종 실행 계획·실측은 §1.965가 든다.
 - **캐시 정책은 공개·개인 데이터가 다르다.** `lib/search/load-index.ts`만 동시 호출 Promise와 성공 결과를 **화면 언어별 키로** 탭 수명 동안 재사용한다.
   네트워크·HTTP·JSON 파싱 실패는 Promise를 비워 다음 호출이 재시도한다. `lib/search/load-memberships.ts`는 매 호출마다 Action을
-  실행하고 성공·실패를 저장하지 않는다. 결과는 Action의 union(`{ ok: true, memberships } | { ok: false, error: "unauthorized" | "unavailable" }`)
+  실행하고 성공·실패를 저장하지 않는다. ⚠️ **"다음 열기에 재사용하지 않는다"는 열기 회차 단위다** — 사용자 메뉴는 **열기 직전에 미리 읽는다**
+  (트리거의 hover·focus·열기 중 처음 온 신호가 하나를 시작하고, 그 Promise 하나를 ref에 보유하다 메뉴가 닫힐 때 비운다. 응답은 `ref.current === 그 Promise`일
+  때만 그린다 — 닫힌 뒤 응답·이전 회차·A→B 역전을 세대 번호 없이 가른다). 미리 읽기는 그 회차의 일부이고, 닫혀 트리거로 돌아온 포커스는 신호가 아니다. 결과는 Action의 union(`{ ok: true, memberships } | { ok: false, error: "unauthorized" | "unavailable" }`)
   그대로이고 네트워크 throw만 `unavailable`로 접는다 — **실패를 비로그인으로 접지 않는다**(2026-10-03, search-ux-unify C1: 헤더에 아바타가
   있는데 비로그인 검색이 서면 거짓이다). 멤버십이 없는 세 경우(비로그인 · `unauthorized` · `unavailable`)는 색인의 Projects·Pages가 비어
   공개 Docs만 찾는다 — 노출을 줄이는 쪽이라 서버 판정은 그대로다. 앱 셸은 레이아웃이 넘긴 멤버십을 쓰므로 `unauthorized`·`unavailable`은
-  공개 셸에서만 생긴다. 권한 회수·역할·보관 변경이 다음 서버 호출부터 반영되는 §6.00④를 지킨다.
+  공개 셸에서만 생긴다. 사용자 메뉴는 두 실패 모두 프로젝트 그룹을 조용히 지운다 — 위 `Projects` 항목이 같은 목적지다(DESIGN §6.5). 권한 회수·역할·보관 변경이 다음 서버 호출부터 반영되는 §6.00④를 지킨다.
 - **Pages 색인은 셸 내비에서 만든다**(`lib/search/nav-index.ts`의 `navSearchEntries` — `navWorkItems` · `New project` · 프로젝트 구역 · 하단 `changelog`).
   내비와 따로 적으면 순서가 갈린다. 2026-10-09(inbox-page)부터 `Inbox`가 `Projects` 바로 뒤에 서서, 지금 프로젝트가 없는 빈 검색어 미리보기의 사용자 축 앞 셋이
   `Projects · Inbox · MCP connector`다(`Preferences`·`Account`는 검색어로 찾는다).
