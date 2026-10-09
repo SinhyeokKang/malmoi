@@ -170,7 +170,7 @@ export const es = {
     backToAuthorization: "Volver a la autorización de la app",
     github: "Continuar con GitHub",
     google: "Continuar con Google",
-    consent: { before: "Al hacer clic en Continuar con un servicio externo, aceptas la ", link: "Política de privacidad", after: " de Malmoi." },
+    consent: { before: "Al hacer clic en Continuar con un servicio externo, aceptas la ", link: "Política de privacidad", after: " de este sitio." },
     footer: { copyright: "© 2026 Malmoi", github: "GitHub", privacy: "Política de privacidad" },
     hero: { top: "Reúne tus textos", bottom: "Traduce y publica en equipo" },
   },
@@ -846,7 +846,7 @@ export const es = {
       installedOn: (n: number): string => `Instalada en ${n.toLocaleString("es")} ${n === 1 ? "repositorio" : "repositorios"}.`,
       installationSettings: "Configuración de la instalación",
       rowName: "GitHub",
-      confirmDisconnect: "¿Desconectar la Malmoi GitHub App?",
+      confirmDisconnect: "¿Desconectar la GitHub App?",
       confirmHint: "No podrás añadir ni volver a conectar repositorios hasta que vuelvas a conectarte. Los proyectos que ya están conectados siguen sincronizándose.",
     },
     sessionsSection: {
@@ -1048,19 +1048,19 @@ export const es = {
       },
       install: {
         title: "Conecta tus repositorios",
-        description: "Instala la Malmoi GitHub App en tu cuenta u organización para elegir repositorios.",
+        description: "Instala la GitHub App en tu cuenta u organización para elegir repositorios.",
         action: "Instalar la GitHub App",
         installed: "¿Ya está instalada en tu organización?",
         connect: "Conectar tu cuenta",
       },
       repos: {
         title: "Añadir un repositorio",
-        description: "Elige a qué repositorios puede acceder la Malmoi GitHub App.",
+        description: "Elige a qué repositorios puede acceder la GitHub App.",
         action: "Añadir repositorios",
       },
       waiting: {
         title: "Esperando aprobación",
-        description: "Un propietario de la organización tiene que aprobar tu solicitud para instalar la Malmoi GitHub App.",
+        description: "Un propietario de la organización tiene que aprobar tu solicitud para instalar la GitHub App.",
         action: "Intentar de nuevo",
         otherAccount: "Instalar en otra cuenta",
         still: "Todavía esperando aprobación.",
@@ -1073,9 +1073,9 @@ export const es = {
       },
       reconnect: {
         title: "Volver a conectar GitHub",
-        description: "Vuelve a autorizar la Malmoi GitHub App para ver tus repositorios.",
+        description: "Vuelve a autorizar la GitHub App para ver tus repositorios.",
       },
-      noLink: "Pide a quien administre tu cuenta u organización de GitHub que instale la Malmoi GitHub App y le dé acceso al repositorio.",
+      noLink: "Pide a quien administre tu cuenta u organización de GitHub que instale la GitHub App y le dé acceso al repositorio.",
       listFailed: "No pudimos cargar tus repositorios.",
     },
 
@@ -1088,7 +1088,7 @@ export const es = {
       branchDefault: "Se usa la rama predeterminada del repositorio.",
       branchTooMany: "Este repositorio tiene demasiadas ramas para mostrarlas; escribe el nombre de la rama.",
       notListed: "¿No ves un repositorio?",
-      loading: "Buscando repositorios que tengan instalada la Malmoi GitHub App…",
+      loading: "Buscando repositorios que tengan instalada la GitHub App…",
       searchEmpty: (q: string): string => `Ningún repositorio coincide con “${q}”`,
       clearSearch: "Borrar búsqueda",
     },
@@ -1814,7 +1814,7 @@ export const es = {
     archivedReason: "Restaura este proyecto para cambiar su configuración.",
     recovery: "Las sincronizaciones siguen funcionando. Gestiona tu autorización de GitHub en Cuenta para volver a conectar este repositorio o añadir fuentes.",
     accountLink: "Cuenta",
-    installed: "La Malmoi GitHub App está instalada en este repositorio.",
+    installed: "La GitHub App está instalada en este repositorio.",
     openRepo: "Abrir en GitHub",
 
     repository: {
@@ -1999,7 +1999,7 @@ export const es = {
       denied: "Se canceló la conexión en GitHub. Empiézala de nuevo para continuar.",
       "exchange-failed": "No se pudo completar la conexión con GitHub. Empiézala de nuevo.",
       "taken-by-other": "Esa cuenta de GitHub ya está conectada a otro usuario. Esa persona puede desconectarla para liberarla.",
-      "not-connected": "Primero autoriza la Malmoi GitHub App; usa Autorizar la GitHub App, más abajo.",
+      "not-connected": "Primero autoriza la GitHub App; usa Autorizar la GitHub App, más abajo.",
       reauthorize: "Tu autorización de la GitHub App caducó. Usa Volver a autorizar la GitHub App.",
       "repo-not-installed": "La app no está instalada en este repositorio. Instálala y vuelve a conectar.",
       "installation-forbidden": "Esta cuenta no tiene acceso a esa instalación. Pide acceso al propietario del repositorio.",
@@ -2010,8 +2010,8 @@ export const es = {
     },
 
     onboarding: {
-      "no-installations": "Tu cuenta de GitHub está conectada. Instala la Malmoi GitHub App en tu cuenta personal o en tu organización para elegir repositorios.",
-      "no-repos": "Tu cuenta de GitHub está conectada, pero no hay repositorios disponibles. Elige a qué repositorios puede acceder la Malmoi GitHub App en la configuración de la instalación en GitHub.",
+      "no-installations": "Tu cuenta de GitHub está conectada. Instala la GitHub App en tu cuenta personal o en tu organización para elegir repositorios.",
+      "no-repos": "Tu cuenta de GitHub está conectada, pero no hay repositorios disponibles. Elige a qué repositorios puede acceder la GitHub App en la configuración de la instalación en GitHub.",
       "no-candidates": "No encontramos archivos de traducción compatibles. Revisa el formato y la ruta de los archivos y vuelve a intentarlo.",
       "tree-truncated": "Este repositorio tiene demasiados archivos para buscar, e indicar la ruta a mano choca con el mismo límite. Malmoi todavía no puede conectar repositorios tan grandes.",
       "base-branch-missing": "No podemos leer la rama predeterminada. Comprueba que el repositorio tenga commits.",

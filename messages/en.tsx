@@ -474,7 +474,7 @@ export const en = {
     github: "Continue with GitHub",
     google: "Continue with Google",
     /** 약관 — 링크 앞뒤로 갈린다. Terms는 만들지 않는다(유료 서비스가 아니다). */
-    consent: { before: "By clicking Continue through a third party you accept the Malmoi ", link: "Privacy Policy", after: "." },
+    consent: { before: "By clicking Continue through a third party you accept the ", link: "Privacy Policy", after: "." },
     footer: { copyright: "© 2026 Malmoi", github: "GitHub", privacy: "Privacy Policy" },
     /**
      * 우측 장식의 문구 둘. ⚠️ **키비주얼을 `alt=""`로 둘 수 있는 근거가 이 두 줄이다** — 이미지는 장식이고
@@ -2292,7 +2292,7 @@ export const en = {
       },
       install: {
         title: "Connect your repositories",
-        description: "Install the Malmoi GitHub App on your account or organization to choose repositories.",
+        description: "Install the GitHub App on your account or organization to choose repositories.",
         action: "Install GitHub App",
         /** A에만 선다 — 이미 조직에 설치돼 있어 연결만 필요한 사람의 길이다. */
         installed: "Already installed on your organization?",
@@ -2300,7 +2300,7 @@ export const en = {
       },
       repos: {
         title: "Add a repository",
-        description: "Choose which repositories the Malmoi GitHub App can access.",
+        description: "Choose which repositories the GitHub App can access.",
         action: "Add repositories",
       },
       /**
@@ -2309,7 +2309,7 @@ export const en = {
        */
       waiting: {
         title: "Waiting for approval",
-        description: "An organization owner has to approve your request to install the Malmoi GitHub App.",
+        description: "An organization owner has to approve your request to install the GitHub App.",
         action: "Try again",
         otherAccount: "Install on a different account",
         /** [Try again] 뒤 아직이면 — live region이 읽는다. 승인됐으면 목록이 선다. */
@@ -2328,10 +2328,10 @@ export const en = {
       },
       reconnect: {
         title: "Reconnect GitHub",
-        description: "Authorize the Malmoi GitHub App again to see your repositories.",
+        description: "Authorize the GitHub App again to see your repositories.",
       },
       /** ⚠️ `GITHUB_APP_SLUG`가 없으면 설치 링크를 세울 수 없다 — 그때 할 수 있는 일을 말한다. */
-      noLink: "Ask your administrator to install the Malmoi GitHub App and grant access to the repository.",
+      noLink: "Ask your administrator to install the GitHub App and grant access to the repository.",
       listFailed: "We couldn't load your repositories.",
     },
 
@@ -2349,7 +2349,7 @@ export const en = {
       branchDefault: "Using the repository's default branch.",
       branchTooMany: "This repository has too many branches to list — type the branch name.",
       notListed: "Don't see a repository?",
-      loading: "Looking for repositories with the Malmoi GitHub App installed…",
+      loading: "Looking for repositories with the GitHub App installed…",
       /**
        * 예외 B′ — **예외 B(설치에 리포 없음)와 가른다.** 요구하는 일이 다르다: 검색어를 지워라 /
        * 설치에 리포를 넣어라 (DESIGN §6.7).
@@ -3470,7 +3470,7 @@ export const en = {
     archivedReason: "Restore this project to change its settings.",
     recovery: "Syncs keep running. Manage your GitHub authorization in Account to reconnect this repository or add sources.",
     accountLink: "Account",
-    installed: "The Malmoi GitHub App is installed on this repository.",
+    installed: "The GitHub App is installed on this repository.",
     openRepo: "Open on GitHub",
 
     repository: {
@@ -3799,7 +3799,7 @@ export const en = {
     needsBrowser: {
       "not-connected": "Connect your GitHub account in your browser, then call this tool again.",
       reauthorize: "Your GitHub authorization expired. Reauthorize in your browser, then call this tool again.",
-      "no-installations": "Install the Malmoi GitHub App in your browser, then call this tool again.",
+      "no-installations": "Install the GitHub App in your browser, then call this tool again.",
       // 수동 포맷 확정 도구는 없다(spec 비목표) — 브라우저의 수동 설정이 그 길이다.
       "no-candidates": "We couldn't find translation files automatically. Set up the format manually in your browser.",
     },
@@ -3923,7 +3923,7 @@ export const en = {
       "exchange-failed": "We couldn't finish connecting to GitHub. Start it again.",
       // 해제는 그 계정의 주인만 할 수 있다 — 무엇을 하면 되는지 말한다.
       "taken-by-other": "That GitHub account is already connected to another user. They can disconnect it to free it up.",
-      "not-connected": "Authorize the Malmoi GitHub App first — use Authorize GitHub App below.",
+      "not-connected": "Authorize the GitHub App first — use Authorize GitHub App below.",
       reauthorize: "Your GitHub App authorization expired. Use Reauthorize GitHub App.",
       "repo-not-installed": "The app isn't installed on this repository. Install it, then connect again.",
       "installation-forbidden": "This account can't reach that installation. Ask the repository owner for access.",
@@ -3942,8 +3942,8 @@ export const en = {
      * 연결 화면과 같은 거부라 `connect`의 문구를 그대로 쓴다. 같은 거부에 문구가 두 벌이면 안 된다.
      */
     onboarding: {
-      "no-installations": "Your GitHub account is connected. Install the Malmoi GitHub App on your personal account or organization to choose repositories.",
-      "no-repos": "Your GitHub account is connected, but no repositories are available. Choose repositories the Malmoi GitHub App can access in GitHub installation settings.",
+      "no-installations": "Your GitHub account is connected. Install the GitHub App on your personal account or organization to choose repositories.",
+      "no-repos": "Your GitHub account is connected, but no repositories are available. Choose repositories the GitHub App can access in GitHub installation settings.",
       "no-candidates": "We couldn't find supported translation files. Check the file format and path, then try again.",
       // 수동 지정을 권하지 않는다 — 확정의 재검증이 같은 스냅샷을 읽어 같은 갈래를 다시 낸다.
       // ⚠️ **막다른 길임을 끝에 말한다** (L2.7) — 안 말하면 사용자가 같은 리포로 다시 시도한다.

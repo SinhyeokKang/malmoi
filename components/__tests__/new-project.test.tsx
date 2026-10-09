@@ -1244,7 +1244,7 @@ it("① 힌트는 검색 필드와 목록 사이다 — 목록이 길어도 스�
 });
 
 describe("① GITHUB_APP_SLUG 없음 — 항상 실패하는 설치 버튼을 세우지 않는다", () => {
-  const NO_LINK = "Ask your administrator to install the Malmoi GitHub App";
+  const NO_LINK = "Ask your administrator to install the GitHub App";
 
   it("A는 Authorize + 관리자 안내", async () => {
     await blocked("not-connected", { installUrl: null });

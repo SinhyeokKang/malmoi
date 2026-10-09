@@ -173,7 +173,7 @@ export const ko = {
     backToAuthorization: "앱 승인으로 돌아가기",
     github: "GitHub로 계속하기",
     google: "Google로 계속하기",
-    consent: { before: "계속하면 Malmoi의 ", link: "개인정보 처리방침", after: "에 동의하게 됩니다." },
+    consent: { before: "계속하면 ", link: "개인정보 처리방침", after: "에 동의하게 됩니다." },
     footer: { copyright: "© 2026 Malmoi", github: "GitHub", privacy: "개인정보 처리방침" },
     hero: { top: "흩어진 말을 모아", bottom: "함께 번역하고 전달하세요" },
   },
@@ -1056,19 +1056,19 @@ export const ko = {
       },
       install: {
         title: "리포지토리 연결",
-        description: "리포지토리를 고르려면 계정이나 조직에 Malmoi GitHub App을 설치하세요.",
+        description: "리포지토리를 고르려면 계정이나 조직에 GitHub App을 설치하세요.",
         action: "GitHub App 설치",
         installed: "조직에 이미 설치되어 있나요?",
         connect: "계정 연결",
       },
       repos: {
         title: "리포지토리 추가",
-        description: "Malmoi GitHub App이 접근할 수 있는 리포지토리를 고르세요.",
+        description: "GitHub App이 접근할 수 있는 리포지토리를 고르세요.",
         action: "리포지토리 추가",
       },
       waiting: {
         title: "승인 대기 중",
-        description: "Malmoi GitHub App 설치 요청은 조직 소유자가 승인해야 합니다.",
+        description: "GitHub App 설치 요청은 조직 소유자가 승인해야 합니다.",
         action: "다시 시도",
         otherAccount: "다른 계정에 설치",
         still: "아직 승인을 기다리고 있습니다.",
@@ -1081,9 +1081,9 @@ export const ko = {
       },
       reconnect: {
         title: "GitHub 다시 연결",
-        description: "리포지토리를 보려면 Malmoi GitHub App을 다시 승인하세요.",
+        description: "리포지토리를 보려면 GitHub App을 다시 승인하세요.",
       },
-      noLink: "관리자에게 Malmoi GitHub App을 설치하고 리포지토리 접근 권한을 달라고 요청하세요.",
+      noLink: "관리자에게 GitHub App을 설치하고 리포지토리 접근 권한을 달라고 요청하세요.",
       listFailed: "리포지토리 목록을 불러오지 못했습니다.",
     },
 
@@ -1096,7 +1096,7 @@ export const ko = {
       branchDefault: "리포지토리의 기본 브랜치를 사용합니다.",
       branchTooMany: "이 리포지토리는 브랜치가 너무 많아 목록으로 보여 줄 수 없습니다. 브랜치 이름을 입력하세요.",
       notListed: "리포지토리가 보이지 않나요?",
-      loading: "Malmoi GitHub App이 설치된 리포지토리를 찾는 중…",
+      loading: "GitHub App이 설치된 리포지토리를 찾는 중…",
       searchEmpty: (q: string): string => `“${q}”에 해당하는 리포지토리 없음`,
       clearSearch: "검색어 지우기",
     },
@@ -1821,7 +1821,7 @@ export const ko = {
     archivedReason: "설정을 바꾸려면 이 프로젝트를 복원하세요.",
     recovery: "동기화는 계속 실행됩니다. 이 리포지토리를 다시 연결하거나 소스를 추가하려면 계정에서 GitHub 승인을 관리하세요.",
     accountLink: "계정",
-    installed: "이 리포지토리에 Malmoi GitHub App이 설치되어 있습니다.",
+    installed: "이 리포지토리에 GitHub App이 설치되어 있습니다.",
     openRepo: "GitHub에서 열기",
 
     repository: {
@@ -2009,7 +2009,7 @@ export const ko = {
       "exchange-failed": "GitHub 연결을 완료하지 못했습니다. 다시 시작하세요.",
       "taken-by-other": "이 GitHub 계정은 이미 다른 사용자에게 연결되어 있습니다. 그 사용자가 연결을 해제하면 쓸 수 있습니다.",
       // 가리키는 버튼 이름은 `settings.account.connect`·`reconnect`와 같은 글자여야 한다.
-      "not-connected": "먼저 Malmoi GitHub App을 승인하세요 — 아래에서 ‘GitHub App 승인’을 선택하세요.",
+      "not-connected": "먼저 GitHub App을 승인하세요 — 아래에서 ‘GitHub App 승인’을 선택하세요.",
       reauthorize: "GitHub App 승인이 만료되었습니다. ‘GitHub App 다시 승인’을 선택하세요.",
       "repo-not-installed": "이 리포지토리에 앱이 설치되어 있지 않습니다. 설치한 뒤 다시 연결하세요.",
       "installation-forbidden": "이 계정으로는 그 설치에 접근할 수 없습니다. 리포지토리 소유자에게 접근 권한을 요청하세요.",
@@ -2020,8 +2020,8 @@ export const ko = {
     },
 
     onboarding: {
-      "no-installations": "GitHub 계정이 연결되었습니다. 리포지토리를 고르려면 개인 계정이나 조직에 Malmoi GitHub App을 설치하세요.",
-      "no-repos": "GitHub 계정이 연결되었지만 쓸 수 있는 리포지토리가 없습니다. GitHub 설치 설정에서 Malmoi GitHub App이 접근할 리포지토리를 고르세요.",
+      "no-installations": "GitHub 계정이 연결되었습니다. 리포지토리를 고르려면 개인 계정이나 조직에 GitHub App을 설치하세요.",
+      "no-repos": "GitHub 계정이 연결되었지만 쓸 수 있는 리포지토리가 없습니다. GitHub 설치 설정에서 GitHub App이 접근할 리포지토리를 고르세요.",
       "no-candidates": "지원하는 번역 파일을 찾지 못했습니다. 파일 형식과 경로를 확인한 뒤 다시 시도하세요.",
       "tree-truncated": "이 리포지토리는 파일이 너무 많아 검색할 수 없고, 경로를 직접 지정해도 같은 한도에 걸립니다. Malmoi는 아직 이렇게 큰 리포지토리를 연결할 수 없습니다.",
       "base-branch-missing": "기본 브랜치를 읽을 수 없습니다. 리포지토리에 커밋이 있는지 확인하세요.",
