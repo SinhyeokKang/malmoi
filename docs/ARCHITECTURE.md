@@ -52,6 +52,9 @@
    이 불변식을 100% 지켜도 **앱을 통하지 않는 경로**가 열려 있었다. REVOKE로 닫았지만 `supabase_admin`
    소유 default ACL은 지울 수 없어 **대시보드로 만드는 테이블은 탐지에 의존한다.** 이 불변식은
    "앱 안의 쿼리"에 대한 것이고, "앱 밖의 경로가 없는가"는 CLAUDE.md의 Supabase 권한 절이 따로 답한다.
+   ⚠️ **위 문단은 호스팅 서비스(Supabase)의 이야기다** (2026-10-09, self-hosting). self-hosted 설치엔 Supabase 데이터 API가 없으므로
+   "앱 밖의 경로"는 **Postgres 포트와 런타임 롤의 권한**이 답한다 — DB 포트를 publish하지 않고, 앱은 DDL 없는 비-superuser 런타임 롤로 붙으며,
+   그 롤과 권한은 `deploy/bootstrap.sql`이 만든다(§7 "self-hosted DB"). 불변식 본문(인가된 `projectId`로 제한)은 두 배포에서 같다.
 6. GitHub 사용자 OAuth와 App installation token의 **역할을 섞지 않는다**.
    ⚠️ **Malmoi가 발급하는 MCP OAuth 토큰(`mlo_`·`mlr_`)은 이 축이 아니다** (2026-09-29, mcp-oauth) — GitHub 자격증명이 아니라 개인 토큰과
    같은 **Malmoi 신원**이고, GitHub에는 아무것도 요청하지 않는다(§6.45.9).
@@ -3937,6 +3940,21 @@ default ACL을 지우지 않고 닫는 층이라, 적용·확인이 끝나면 �
   ```
 - 스키마 모양은 안 바뀐다(권한만) — additive로 분류하고 코드와 배포 순서 제약이 없다. RLS·최소권한 런타임 롤 이관은 이 조치의 범위가 아니다(CLAUDE.md).
 
+### self-hosted DB — 일반 Postgres, 두 롤 (2026-10-09, self-hosting)
+
+위 Supabase 절(USAGE 회수·`anon`/`authenticated`·dev/prod 두 DB)은 호스팅 서비스의 것이다. self-hosted는 **일반 Postgres 17 하나**를 쓰고 롤을 둘로 가른다.
+
+- **마이그레이션 롤** — DB를 소유하는 비-superuser(`CREATEROLE` 필요). `prisma migrate deploy`와 bootstrap을 돌고, `DIRECT_URL`(self-hosted 운영 명령이 읽는 유일한 DB URL)이 이 롤이다. 앱(web)에는 `DIRECT_URL`을 주지 않는다 — DDL 자격증명이다.
+- **런타임 롤** — `deploy/bootstrap.sql`이 만든다(`NOSUPERUSER NOCREATEDB NOCREATEROLE`, CRUD만). `DATABASE_URL`이 이 롤이다.
+- **왜 bootstrap이 필요한가**: 마이그레이션 `20260926175555`의 `REVOKE USAGE ON SCHEMA public FROM PUBLIC` 때문에 런타임 롤은 명시 권한 없이는 쿼리 자체가 실패한다. 그 마이그레이션의 Supabase 롤 SQL은 `IF EXISTS (pg_roles)` 가드 안이라 일반 Postgres에서도 통과한다.
+- **bootstrap은 `prisma/migrations/` 밖(`deploy/`)이다** — 안에 두면 `/merge`의 `db:deploy`가 hosted prod에 적용한다. 설치 DB의 롤·권한 설정이지 제품 스키마가 아니다.
+- **매 업그레이드마다 `migrate deploy` 다음에 다시 돈다 — 전부 멱등이다.** 기존 객체엔 `GRANT … ON ALL TABLES/SEQUENCES`, 이후 객체엔 `ALTER DEFAULT PRIVILEGES FOR ROLE <마이그레이션 롤>`이 건다(후자는 이후에 만들어지는 객체에만 걸리므로 둘 다 필요하다). 런타임 롤은 `_prisma_migrations`를 읽지도 쓰지도 못한다.
+- **실패는 고정 사유 코드로 거절한다**(`bootstrap: <code>` — `runtime-role-is-migrate-role`·`runtime-role-privileged`·`cannot-create-role` 등). 이미 있는 롤이 superuser·CREATEROLE·CREATEDB·BYPASSRLS면 거절한다 — GRANT가 no-op으로 "성공"하고 앱이 DDL 자격증명으로 도는 길을 막는다.
+- **롤이 이미 있으면 비밀번호도 바꾸지 않는다** — 교체는 `ALTER ROLE`로 따로 한다. 비밀번호는 환경변수(`RUNTIME_DB_PASSWORD`)로 받는다(`psql -v`는 `ps`에 보인다). psql 15+(`\getenv`)가 필요하다.
+- ⚠️ **`log_statement=ddl/all`이나 `pg_stat_statements`(`track_utility`)가 켜져 있으면 성공한 `CREATE ROLE`의 비밀번호도 서버 쪽에 남는다** — bootstrap 동안 끄고 운영 문서가 그 절차를 든다.
+- **운영 명령은 `self-hosted` target을 가진다** — `pnpm credentials:self-hosted`·`pnpm credentials:finalize:self-hosted`(`CREDENTIAL_TARGET=self-hosted`). URL은 `DIRECT_URL`만 읽고, query는 `sslmode` 하나만 허용하며, TLS 생략/`disable`은 호스트가 정확히 `postgres`(Compose 내부 서비스)일 때만이고 그 밖은 `verify-full`이다. hosted Supabase ref를 담은 host/user는 거절한다. finalize는 `PRISMA_TARGET=self-hosted`를 명시해 hosted dev로 흘러가지 않게 한다.
+- **같은 위치에 둔다**: 요청당 DB 왕복이 여럿이라 DB를 앱과 멀리 두면 화면 시간이 홉당 지연에 묶인다(POSTMORTEM 2026-09-09).
+
 ## 8. Vercel
 
 - ⚠️ **함수는 DB 옆(`hnd1`)에서 돈다 — 기본값이 아니라 `vercel.json`이 정한다** (2026-09-09). `regions`를
@@ -3950,6 +3968,7 @@ default ACL을 지우지 않고 닫는 층이라, 적용·확인이 끝나면 �
     본문을 3.4초 붙들고 있을 수 있다 — `performance`의 **`responseEnd`와 `transferSize`를 함께** 본다
     (POSTMORTEM 2026-09-09: 그 오독이 원인을 "순차 DB 왕복"으로 진단하게 만들었다).
 - **Cron은 Hobby 플랜에서 하루 1회.** 야간 pull 1회가 요구사항이라 지금은 맞다.
+  - **이 절은 호스팅 서비스의 Vercel 전제다.** self-hosted는 스케줄러 컨테이너가 같은 `GET /api/pull`을 같은 시각에 `CRON_SECRET` Bearer로 부른다 — 시각의 집은 `lib/deployment/schedule.ts`의 `NIGHTLY_PULL`이고 `vercel.json`과의 일치를 테스트가 센다. `maxDuration`은 `next start`가 강제하지 않으므로 시간 상한은 `PULL_TIME_BUDGET_MS` 예산뿐이다.
   - ⚠️ **한 실행이 도는 프로젝트에 상한이 있다** (2026-09-09, sec-audit 발견 26 — `PULL_BATCH_LIMIT` 50).
     전에는 준비된 전 프로젝트를 직렬로 돌았고, `maxDuration = 60`을 넘으면 **slug 정렬 뒤쪽이 통째로
     안 돌았다.** 응답이 항상 200이라 cron 실행은 성공으로 표시되고 요약에도 그 사실이 없어 **관측값이
