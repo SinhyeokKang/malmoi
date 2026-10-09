@@ -19,6 +19,8 @@ import { describe, expect, it } from "vitest";
 const ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 
 const ROUTE = readFileSync(join(ROOT, "app/api/images/[...key]/route.ts"), "utf8");
+/** 초대 메일 썸네일 route — 같은 `readImage`를 지나 PNG로 바꿔 낸다. 같은 경계를 지켜야 하는 둘째 읽기 입구다. */
+const EMAIL_ROUTE = readFileSync(join(ROOT, "app/api/images/email/[...key]/route.ts"), "utf8");
 const STORE = readFileSync(join(ROOT, "lib/upload/store.ts"), "utf8");
 const FILE_STORE = readFileSync(join(ROOT, "lib/upload/file-store.ts"), "utf8");
 
@@ -68,19 +70,20 @@ describe("프록시는 요청을 상류로 흘리지 않는다", () => {
     expect(FETCH_HEADERS.test(body)).toBe(false);
   });
 
-  it("라우트가 스스로 상류를 부르지 않는다 — fetch는 readImage 하나다", () => {
-    expect(codeOnly(ROUTE)).not.toContain("fetch(");
+  it.each([["[...key]", ROUTE], ["email/[...key]", EMAIL_ROUTE]])("라우트 %s가 스스로 상류를 부르지 않는다 — fetch는 readImage 하나다", (_name, route) => {
+    expect(codeOnly(route)).not.toContain("fetch(");
+    expect(codeOnly(route)).toContain("readImage(");
   });
 
-  it("라우트도 readImage도 요청 헤더·쿠키를 읽지 않는다", () => {
-    expect(REQUEST_DERIVED.test(codeOnly(ROUTE))).toBe(false);
+  it.each([["[...key]", ROUTE], ["email/[...key]", EMAIL_ROUTE]])("라우트 %s도 readImage도 요청 헤더·쿠키를 읽지 않는다", (_name, route) => {
+    expect(REQUEST_DERIVED.test(codeOnly(route))).toBe(false);
     expect(REQUEST_DERIVED.test(body)).toBe(false);
   });
 
   it("상류 호스트는 `BLOB_PUBLIC_HOST` 하나에서만 온다", () => {
     const names = [...body.matchAll(ENV_READ)].map((m) => m[1] ?? m[2]);
     expect(names).toEqual(["BLOB_PUBLIC_HOST"]);
-    expect([...codeOnly(ROUTE).matchAll(ENV_READ)].map((m) => m[1] ?? m[2])).toEqual([]);
+    for (const route of [ROUTE, EMAIL_ROUTE]) expect([...codeOnly(route).matchAll(ENV_READ)].map((m) => m[1] ?? m[2])).toEqual([]);
   });
 
   /** 호스트 문자열은 `isBlobPublicHost`를 지나야 한다 — CSP와 같은 하나의 모양 판정이다. */

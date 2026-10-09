@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -68,6 +68,18 @@ describe("pnpm preflight", () => {
       "preflight: AUTH_URL auth-url-mismatch",
     ]));
     expect(`${stdout}${stderr}`).not.toMatch(/SENTINEL|other\.example\.com|preflight-entry-/);
+  }, 60_000);
+
+  it("업로드 디렉터리가 symlink면 not-directory다 — 경로는 있으니 not-found로 오진시키지 않는다", () => {
+    const link = join(dir, "..", `${dir.split("/").pop()}-link`);
+    symlinkSync(dir, link);
+    try {
+      const { status, stderr } = run({ ...VALID, MALMOI_UPLOAD_DIR: link });
+      expect(status).toBe(1);
+      expect(stderr.trim().split("\n")).toEqual(["preflight: MALMOI_UPLOAD_DIR not-directory"]);
+    } finally {
+      rmSync(link, { force: true });
+    }
   }, 60_000);
 
   it("MALMOI_ORIGIN이 없으면(hosted 설정) 기동을 막는다", () => {

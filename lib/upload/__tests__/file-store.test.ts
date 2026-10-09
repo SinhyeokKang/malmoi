@@ -67,7 +67,7 @@ describe("put / read / delete", () => {
 });
 
 describe("키 문법 밖은 디스크에 닿지 않는다", () => {
-  const BAD = ["../outside/x.webp", "avatars/../../outside/x.webp", "avatars/u1/../../x.webp", "/etc/passwd", "avatars/u1/n1.svg", "avatars/u1/.n1.webp", "avatars/u1", "other/u1/n1.webp", "avatars/u1/n1.webp/", "avatars\\u1\\n1.webp", ""];
+  const BAD = ["avatars/u1/%2e%2e.webp", "avatars/u1/n1.webp\0", "avatars/u1%2fn1.webp", "../outside/x.webp", "avatars/../../outside/x.webp", "avatars/u1/../../x.webp", "/etc/passwd", "avatars/u1/n1.svg", "avatars/u1/.n1.webp", "avatars/u1", "other/u1/n1.webp", "avatars/u1/n1.webp/", "avatars\\u1\\n1.webp", ""];
 
   it.each(BAD)("put %j는 거절하고 아무것도 만들지 않는다", async (key) => {
     await expect(putFileImage(root, key, bytes(1))).rejects.toThrow();
@@ -219,16 +219,19 @@ describe("probeUploadDir", () => {
     expect(probeUploadDir(`${root}/`)).toBe("ok");
   });
 
-  it("없거나 파일이면 missing", () => {
-    writeFileSync(join(base, "file"), "");
+  it("없으면 missing", () => {
     expect(probeUploadDir(join(base, "missing"))).toBe("missing");
-    expect(probeUploadDir(join(base, "file"))).toBe("missing");
   });
 
-  it("symlink면 missing — 저장 경계가 볼륨 밖 탈출로 거절할 디렉터리로 기동하지 않는다", () => {
+  it("파일이면 not-directory — 경로가 있으니 missing이라 하면 운영자가 오타를 찾는다", () => {
+    writeFileSync(join(base, "file"), "");
+    expect(probeUploadDir(join(base, "file"))).toBe("not-directory");
+  });
+
+  it("symlink면 not-directory — 저장 경계가 볼륨 밖 탈출로 거절할 디렉터리로 기동하지 않는다", () => {
     symlinkSync(root, join(base, "link"));
-    expect(probeUploadDir(join(base, "link"))).toBe("missing");
-    expect(probeUploadDir(join(base, "link") + "/")).toBe("missing");
+    expect(probeUploadDir(join(base, "link"))).toBe("not-directory");
+    expect(probeUploadDir(join(base, "link") + "/")).toBe("not-directory");
   });
 
   it.skipIf(asRoot)("읽기 전용이면 not-writable", () => {

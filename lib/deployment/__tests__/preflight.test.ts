@@ -148,8 +148,9 @@ describe("preflight — MALMOI_UPLOAD_DIR", () => {
     expect(probed).toBe(false);
   });
 
-  it("probe 결과를 사유로 싣는다 — 부재·쓰기 불가", () => {
+  it("probe 결과를 사유로 싣는다 — 부재·디렉터리 아님·쓰기 불가", () => {
     expect(reasons(VALID, () => "missing").MALMOI_UPLOAD_DIR).toBe("not-found");
+    expect(reasons(VALID, () => "not-directory").MALMOI_UPLOAD_DIR).toBe("not-directory");
     expect(reasons(VALID, () => "not-writable").MALMOI_UPLOAD_DIR).toBe("not-writable");
   });
 
