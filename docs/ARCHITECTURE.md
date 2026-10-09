@@ -3968,7 +3968,7 @@ default ACL을 지우지 않고 닫는 층이라, 적용·확인이 끝나면 �
     본문을 3.4초 붙들고 있을 수 있다 — `performance`의 **`responseEnd`와 `transferSize`를 함께** 본다
     (POSTMORTEM 2026-09-09: 그 오독이 원인을 "순차 DB 왕복"으로 진단하게 만들었다).
 - **Cron은 Hobby 플랜에서 하루 1회.** 야간 pull 1회가 요구사항이라 지금은 맞다.
-  - **이 절은 호스팅 서비스의 Vercel 전제다.** self-hosted는 스케줄러 컨테이너가 같은 `GET /api/pull`을 같은 시각에 `CRON_SECRET` Bearer로 부른다 — 시각의 집은 `lib/deployment/schedule.ts`의 `NIGHTLY_PULL`이고 `vercel.json`과의 일치를 테스트가 센다. `maxDuration`은 `next start`가 강제하지 않으므로 시간 상한은 `PULL_TIME_BUDGET_MS` 예산뿐이다.
+  - **이 절은 호스팅 서비스의 Vercel 전제다.** self-hosted는 스케줄러 컨테이너가 같은 `GET /api/pull`을 같은 시각에 `CRON_SECRET` Bearer로 부른다(`deploy/scheduler/` — 헤더는 명령줄이 아니라 umask 077 파일로 넘겨 `ps`에 비밀이 안 보인다) — 시각의 집은 `lib/deployment/schedule.ts`의 `NIGHTLY_PULL`이고 `vercel.json`과의 일치를 테스트가 센다. `maxDuration`은 `next start`가 강제하지 않으므로 시간 상한은 `PULL_TIME_BUDGET_MS` 예산뿐이다.
   - ⚠️ **한 실행이 도는 프로젝트에 상한이 있다** (2026-09-09, sec-audit 발견 26 — `PULL_BATCH_LIMIT` 50).
     전에는 준비된 전 프로젝트를 직렬로 돌았고, `maxDuration = 60`을 넘으면 **slug 정렬 뒤쪽이 통째로
     안 돌았다.** 응답이 항상 200이라 cron 실행은 성공으로 표시되고 요약에도 그 사실이 없어 **관측값이
