@@ -637,7 +637,7 @@ lib/
                         plan · run · render · load · client · targets · trigger · sync-branch · branch-name · ref-slug ·
                         message · payload · changed-values(2026-10-04 — Publish가 리포 파일에서 바꾼 엔트리 수, 수정+추가. 관측값이고 판정에 안 쓴다 →
                         SyncRun.changedValues) · delivery-revision(CI·야간의 전달 장벽 — 모든 소스 확인의 surfaceId·revision 집합, no-changes 포함) /
-                        run(진입점 둘이 지나는 유일한 껍데기 — ⚠️ 던지지 않는다) · plan
+                        run(진입점 둘이 지나는 유일한 껍데기) · plan · execution(240초 수명·실제 transport·결과 미확인 차단; execution/transport 테스트가 만료 뒤 전송을 검증)
                         ⚠️ **payload가 두 축에 각각 있다**(push/payload = `/api/push` 본문, pull/payload =
                         Git Data API 요청 본문). 둘 다 **외부 계약이라 반환 타입을 명시하는 것이 요지**이고
                         — 리터럴로 조립하면 필수 필드가 늘어도 컴파일러가 침묵한다(POSTMORTEM 2026-08-31).
