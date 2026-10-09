@@ -42,6 +42,17 @@ describe("parseOrigin — HTTPS origin만, 정규화 경계는 design §2", () =
     ["https://malmoi example.com", "malformed"],
     [" https://malmoi.example.com", "malformed"],
     ["https://malmoi_example.com", "malformed"],
+    // WHATWG 관대 파싱이 고쳐 받는 모양 — 원문 접두로 막는다.
+    ["https:malmoi.example.com", "malformed"],
+    ["https:/malmoi.example.com", "malformed"],
+    ["HTTPS://malmoi.example.com", "malformed"],
+    ["https://malmoi.example.com\\", "malformed"],
+    // 라벨 모양 — 끝 점은 브라우저 Host에 없어 런타임에 모든 요청이 null이 된다.
+    ["https://malmoi.example.com.", "malformed"],
+    ["https://malmoi..example.com", "malformed"],
+    ["https://-malmoi.example.com", "malformed"],
+    ["https://malmoi-.example.com", "malformed"],
+    ["https://.example.com", "malformed"],
   ] as const)("%s → %s", (raw, reason) => {
     expect(parseOrigin(raw)).toEqual({ ok: false, reason });
   });

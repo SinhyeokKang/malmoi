@@ -107,7 +107,9 @@ describe("SH-15 ① — hosted 리터럴·배포 모드 env의 직접 읽기는 
     expect(tokenCounts(files, "hosted-domain")).not.toEqual({ "lib/deployment/mode.ts": ALLOWED["hosted-domain"]["lib/deployment/mode.ts"] });
   });
 
-  it.each(Object.keys(TOKENS) as Token[])("%s — 현재 트리가 허용 목록과 정확히 같다", (token) => {
+  // ⚠️ 이 테스트가 red면: 늘었으면 그 리터럴·읽기를 `lib/deployment/mode.ts`로 옮긴다. **줄었으면(읽기를 옮겼으면) `ALLOWED`의 그 행을
+  // 같은 커밋에서 고치거나 지운다** — 낡은 허용이 다음 추가를 덮지 않게 개수가 정확히 같아야 통과한다.
+  it.each(Object.keys(TOKENS) as Token[])("%s — 현재 트리가 허용 목록과 정확히 같다(줄었으면 ALLOWED 행을 고친다)", (token) => {
     expect(tokenCounts(scanned(), token)).toEqual(ALLOWED[token]);
   });
 });

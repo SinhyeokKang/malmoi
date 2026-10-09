@@ -69,6 +69,19 @@ describe("self-hosted — 설정 호스트만 정확히 받는다", () => {
   });
 });
 
+describe("self-hosted — 비기본 포트 origin", () => {
+  it("Host가 포트까지 같아야 받는다 — proxy가 포트를 떼면 null이다", () => {
+    vi.stubEnv("MALMOI_ORIGIN", "https://malmoi.example.com:8443");
+    vi.stubEnv("VERCEL_ENV", "");
+    expect(requestOrigin({ host: "malmoi.example.com:8443", forwardedProto: null })).toEqual({ origin: "https://malmoi.example.com:8443", secure: true });
+    expect(isAllowedHost("malmoi.example.com:8443")).toBe(true);
+    for (const host of ["malmoi.example.com", "malmoi.example.com:443", "malmoi.example.com:8444"]) {
+      expect(requestOrigin({ host, forwardedProto: "https" }), host).toBeNull();
+    }
+    expect(workflowApiUrl(null)).toBe("https://malmoi.example.com:8443");
+  });
+});
+
 describe("판정이 무효면 아무 URL도 만들지 않는다", () => {
   it.each([
     ["VERCEL_ENV 동시 존재", { MALMOI_ORIGIN: ORIGIN, VERCEL_ENV: "production" }],
