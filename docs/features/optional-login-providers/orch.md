@@ -18,9 +18,9 @@
 
 | 배치 | 항목 | 소유 파일 | 선행 | 모델·effort | 차단 | 게이트 | 상태 |
 |---|---|---|---|---|---|---|---|
-| A | T1 T2 T4 T5 T6 (커밋 A) · T3 T7 (커밋 B) | `lib/auth/login-providers.ts`(새) · `lib/login-link/**` · `lib/session-revocation/**` · `lib/account-connect/**`(테스트) · `lib/credentials/__tests__/postgres.integration.ts` · `lib/deployment/**` · `scripts/__tests__/preflight-entry.test.ts` · `auth.ts` · `app/signin/**` · `app/invite/[token]/page.tsx` · `app/oauth/authorize/**` · `app/(edit)/account/**` · `components/account/**` · `components/__tests__/{provider-progress,login-methods}*` · `messages/{en,ko,es}.tsx` · `vitest.setup.ts` · `deploy/compose.yaml` · `.env.example` · `deploy/.env.example` | — | Opus 5.5 high — 계정 잠김·인증 경계 판정 | 예 | `pnpm gate --base dev`(격리 PG 붙는지 확인) | 인계 → 리뷰 중 |
-| D | T8 정본 · T9 가이드 · T9a(A 뒤) | `docs/PRODUCT.md` · `docs/ARCHITECTURE.md` · `docs/DESIGN.md` · `docs/SELF-HOSTING.md` · `guide/{en,ko,es}/self-hosting/{install,troubleshooting,README,operate}.md` · `guide/SHOOTING.md` | T9a·최종 대조는 A가 dev에 든 뒤 | Opus 5.5 medium — 문서·번역, 코드 대조 | 예(같은 push) | `pnpm gate --base dev` · `pnpm guide:check` | 작성 중 |
-| R-A · R-D | 독립 리뷰(리포트 전용) | — | 각 배치 인계 | Opus 5.5 high / medium | — | — | 대기 |
+| A | T1 T2 T4 T5 T6 (커밋 A) · T3 T7 (커밋 B) | `lib/auth/login-providers.ts`(새) · `lib/login-link/**` · `lib/session-revocation/**` · `lib/account-connect/**`(테스트) · `lib/credentials/__tests__/postgres.integration.ts` · `lib/deployment/**` · `scripts/__tests__/preflight-entry.test.ts` · `auth.ts` · `app/signin/**` · `app/invite/[token]/page.tsx` · `app/oauth/authorize/**` · `app/(edit)/account/**` · `components/account/**` · `components/__tests__/{provider-progress,login-methods}*` · `messages/{en,ko,es}.tsx` · `vitest.setup.ts` · `deploy/compose.yaml` · `.env.example` · `deploy/.env.example` | — | Opus 5.5 high — 계정 잠김·인증 경계 판정 | 예 | `pnpm gate --base dev`(격리 PG 붙는지 확인) | dev 통합(fix1 포함), 워커 유지(QA 결함 수신) |
+| D | T8 정본 · T9 가이드 · T9a(A 뒤) | `docs/PRODUCT.md` · `docs/ARCHITECTURE.md` · `docs/DESIGN.md` · `docs/SELF-HOSTING.md` · `guide/{en,ko,es}/self-hosting/{install,troubleshooting,README,operate}.md` · `guide/SHOOTING.md` | T9a·최종 대조는 A가 dev에 든 뒤 | Opus 5.5 medium — 문서·번역, 코드 대조 | 예(같은 push) | `pnpm gate --base dev` · `pnpm guide:check` | dev 통합(fix1 포함), 워커 해제 |
+| R-A · R-D | 독립 리뷰(리포트 전용) | — | 각 배치 인계 | Opus 5.5 high / medium | — | — | 완료(둘 다 🔴0) |
 | Q | T10 런타임 | 없음(main 체크아웃, QA 전용) | A·D가 dev에 든 뒤 | Opus 5.5 medium | 아니오(미실행이면 리포트에 남김) | `/runtime-test` 리포트 | 대기 |
 
 ### 겹침
@@ -44,3 +44,4 @@
   - A fix1 인계: `cedabc6d`(하네스 미러 + 시나리오 2) · `745e76e9`(ko 문구) · `cc47e0d7`(고아 키·분기 제거). 격리 PG 69 passed, 하네스 뮤테이션 2건 red. 지휘자가 diff 확인 후 통합 ③. 런타임 (b) 잔여: ②(실 Google 왕복) · ④(단일 공급자 시각) · ⑤(이전 동작 — 재현 불가).
   - R-D(`ctx_de27f977ceec`, Opus medium): 🔴0 🟡4 — README.md:197 · ko 가이드 인용 · (고아 — A가 이미 처리) · oauth-consent SHA. 리포트 `.scratch/review-olp-D.md`.
   - D fix1(`ctx_2410269317de`): 위 🟡 1·2·4 + troubleshooting "that email" 뉘앙스.
+  - D fix1 인계: `de85e790`(README) · `477413e6`(ko 인용 + that email) · `26a89de9`(oauth-consent SHA). 통합 ④. tasks T1~T9a 체크.
