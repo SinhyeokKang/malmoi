@@ -26,7 +26,7 @@ If authorization expires, choose **Reauthorize GitHub App**. Projects that are a
 ## Sign out of sessions {#sessions}
 
 1. Choose **Sign out everywhere**.
-2. Use the dialog's confirmation button: Continue to GitHub, Continue to Google, or **Confirm and sign out everywhere**. Malmoi chooses the provider; follow its sign-in confirmation.
+2. Use the dialog's confirmation button, Continue to GitHub or Continue to Google. Malmoi chooses one of your connected sign-in methods; follow its sign-in confirmation.
 
 This also signs out the device you are using.
 

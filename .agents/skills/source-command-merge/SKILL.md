@@ -189,6 +189,28 @@ git ls-remote --tags origin v<next>                # squash SHA여야 한다
 - ⚠️ **실패해도 10단계로 간다** — 머지는 끝났다. 리포트에 위 명령을 **SHA를 채운 그대로** 남기고 손으로 재실행한다. `/merge`를 다시 부르지 않는다(부르면 3단계가 `unreleased-on-main`으로 멈추고 같은 요구를 한다).
 - 태그 push는 어떤 워크플로도 돌리지 않는다 — `ci.yml`의 `on.push`는 `branches`만 가진다.
 
+### 9-b. 셀프 호스팅 이미지 발행 (2026-10-09, self-hosting)
+
+매 앱 태그마다 GHCR 공개 레지스트리에 이미지를 발행한다 — 셀프 호스팅 설치가 고정하는 단위가 이 이미지다(docs/SELF-HOSTING.md). **태그 = 앱 태그 `v<next>` 그대로**(`ghcr.io/sinhyeokkang/malmoi:v<next>`)이고 **action 태그(`malmoi-i18n-push-vN`)와 독립이다** — 앱 버전이 올라도 action 태그는 안 움직이고, 이미지 태그는 action 계약이 아니다. `latest` 태그는 만들지 않는다(설치는 태그나 digest로 고정한다).
+
+**전제(이 머신에 있어야 한다)**: Docker(buildx)와 `ghcr.io` 로그인 — `write:packages` 권한의 토큰으로 `docker login ghcr.io -u <user> --password-stdin`(토큰을 인자로 주지 않는다 — 셸 이력·`ps`에 남는다). 발행 머신이 arm64(Apple Silicon)면 `linux/amd64` 빌드가 **에뮬레이션**으로 돈다 — 이 머신은 Colima `vz` + Rosetta(`colima start --vm-type vz --vz-rosetta`)를 쓴다. 에뮬레이션이 없으면 `exec format error`로 실패하고, 있어도 `pnpm install`·`next build`가 느리다. 전제가 없으면 이 단계는 실패로 처리한다(아래).
+
+**순서: 먼저 태그가 이미 있는지 확인하고, 없을 때만 빌드·push한다.**
+
+```
+docker buildx imagetools inspect ghcr.io/sinhyeokkang/malmoi:v<next>      # 성공하면 이미 있다 → 아래 빌드·push를 하지 않고 그 Digest를 리포트에 적는다. 실패(not found)일 때만 계속
+git archive <squash SHA> | docker buildx build --platform linux/amd64 --push \
+  -t ghcr.io/sinhyeokkang/malmoi:v<next> --metadata-file .scratch/image-v<next>.json -
+docker buildx imagetools inspect ghcr.io/sinhyeokkang/malmoi:v<next>      # Digest가 metadata의 containerimage.digest와 같아야 한다
+```
+
+- **빌드 입력은 8단계의 squash SHA다** — 작업 트리가 아니다. `git archive`가 그 커밋의 추적 파일만 context로 만들고(`.env*`·로컬 상태가 딸려가지 않는다) `.dockerignore`가 나머지를 뺀다. 10단계의 `reset --hard`와 순서가 엇갈려도 안전하다.
+- **`--platform linux/amd64`** — sharp·Prisma 엔진이 빌드 플랫폼 바이너리를 받으므로 빌드·실행 플랫폼이 같아야 한다. 비밀을 빌드에 넣지 않는다(`--build-arg`·`--secret` 없음) — `pnpm build`가 env 없이 끝나는 이미지다.
+- **digest를 기록한다** — `.scratch/image-v<next>.json`의 `containerimage.digest`(`sha256:…`)를 리포트에 싣는다. 설치 문서는 태그 대신 `@sha256` digest로 고정하는 것을 권한다.
+- ⚠️ **첫 발행(패키지가 없을 때)은 GHCR이 비공개로 만든다.** GitHub의 패키지 설정에서 한 번 Public으로 바꾼 뒤 로그아웃 상태에서 `docker pull ghcr.io/sinhyeokkang/malmoi:v<next>`가 되는지 본다. 그 뒤 태그는 같은 패키지에 쌓인다.
+- ⚠️ **이미 발행된 태그를 덮지 않는다.** 같은 소스를 다시 빌드해도 digest가 달라질 수 있어 설치가 가리키던 이미지가 조용히 바뀐다 — 그래서 위 블록의 확인이 build·push **앞**에 있다. 손 재실행도 같은 순서다. 잘못 올렸으면 다음 버전으로 고친다(앱 태그와 같은 규칙).
+- ⚠️ **실패해도 10단계로 간다** — 머지와 9단계 Release는 끝났다. 리포트에 위 명령을 **SHA를 채운 그대로** 남기고 손으로 재실행한다. `/merge`를 다시 부르지 않는다(9단계와 같은 처리).
+
 ### 10. dev 동기화 — **`/sync`와 같은 안전 절차를 쓴다**
 
 squash 머지로 main의 커밋 해시가 dev와 달라지므로, 동기화하지 않으면 다음 PR diff에 이전 변경이 다시 나타난다. bump 커밋은 squash에 실렸으므로 tree 비교가 그대로 성립한다.
@@ -235,6 +257,7 @@ PR: #<n> (<url>) — 신규/재사용
 PR CI: success   ← 프로덕션 앞의 게이트
 머지: squash <해시> — "v<next>: <summary> (#<n>)"
 릴리스: <release url> (태그 v<next> = <squash SHA>) / ⚠️ 실패 — 재실행: gh release create v<next> --target <SHA> --title v<next> --notes-file .scratch/release-v<next>.md --latest
+이미지: ghcr.io/sinhyeokkang/malmoi:v<next> @<sha256 digest> / ⚠️ 실패(<사유>) — 재실행: 먼저 `docker buildx imagetools inspect ghcr.io/sinhyeokkang/malmoi:v<next>`(있으면 중단), 없을 때만 `git archive <SHA> | docker buildx build --platform linux/amd64 --push -t ghcr.io/sinhyeokkang/malmoi:v<next> --metadata-file .scratch/image-v<next>.json -`
 composite action: 변경 없음 / 변경 포함 — 소비자는 @malmoi-i18n-push-v1 그대로, **태그 이동 대기 중**
 dev 동기화: fetch→검사→reset→lease push 완료 / ⚠️ 보류(<사유>)
 프로덕션 배포: Vercel이 진행 중 — 결과는 <확인 경로>에서 확인
@@ -249,6 +272,7 @@ dev 동기화: fetch→검사→reset→lease push 완료 / ⚠️ 보류(<사�
 - **`version`을 4단계 밖에서 바꾸지 않는다** — 다음 버전 계산은 `pnpm release:plan` 한 곳이고, 손으로 바꾸면 3단계가 `invalid-version`·`behind-last-tag`·`unexpected-version`으로 멈춘다.
 - **Release `--draft` 금지** — 머지 = 배포다. **`--generate-notes` 금지** — 노트는 5단계가 직접 쓴다.
 - **태그 강제 이동·삭제 금지** — 잘못 만든 릴리스는 다음 버전으로 고친다. 같은 번호를 다시 쓰지 않는다.
+- **이미지 `latest` 태그 금지, 발행된 이미지 태그 덮어쓰기 금지** — 9-b단계. 이미지 태그는 앱 태그와 같은 값이고 action 태그와 독립이다.
 - **10단계에서 인자 없는 `--force-with-lease` 금지** — `=dev:<SHA>` 형태만. 이유는 `/sync` 4단계.
 - **`dev` 브랜치 삭제 금지.**
 - **main에 직접 push 금지.** `--admin` 머지 금지 — 프로텍션을 우회하는 경로가 절차에 없다.

@@ -1,3 +1,4 @@
+import { uncertainPublishWhere } from "@/lib/sync/execution";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { lockCredential } from "@/lib/auth/lock";
 import type { Credential } from "@/lib/auth/subject";
@@ -58,14 +59,17 @@ async function revertState(tx: Prisma.TransactionClient, target: RevertTarget): 
   // `isRunActive`와 같은 창이다(같은 `STALE_AFTER_SECONDS`, 경계 정각은 활성) — 쿼리에 싣느라 인라인으로 풀었다.
   const activeSince = new Date(now.getTime() - STALE_AFTER_SECONDS * 1000);
   const running = await tx.syncRun.count({ where: { projectId, status: "RUNNING", startedAt: { gte: activeSince } } });
+  const uncertain = await tx.syncRun.count({ where: uncertainPublishWhere(projectId, now) });
   const importing = await tx.project.findUnique({ where: { id: projectId }, select: { repositoryImportToken: true, repositoryImportStartedAt: true } });
   // 확인을 세운 실행보다 먼저 시작해 실패한 실행 중 가장 늦은 것 — 그보다 이른 실행은 더 일찍 끝났다.
   // ⚠️ 만료된 RUNNING도 실패와 같이 센다 — busy에서 빠진 흔적이 확인되지 않은 기준을 유효하게 만들면 안 된다.
   const unsettled = delivery === null ? null : await tx.syncRun.findFirst({
     where: {
       projectId,
-      startedAt: { lte: delivery.runStartedAt },
-      OR: [{ status: "FAILED" }, { status: "RUNNING", startedAt: { lt: activeSince } }],
+      OR: [
+        { status: "FAILED", errorCode: "execution-uncertain" },
+        { startedAt: { lte: delivery.runStartedAt }, OR: [{ status: "FAILED" }, { status: "RUNNING", startedAt: { lt: activeSince } }] },
+      ],
     },
     orderBy: { startedAt: "desc" },
     select: { startedAt: true },
@@ -74,6 +78,8 @@ async function revertState(tx: Prisma.TransactionClient, target: RevertTarget): 
   // 실행 경로에서는 `Project` 잠금 뒤에 읽은 lease다(`executeKeyRevert`) — 저장 거부와 같은 자리·같은 판정이다.
   const lock = importing === null ? null : planWriteLock({ now, ...importing });
   if (lock !== null) return { ok: false, blocked: { status: "blocked", reason: lock.reason, startedAt: lock.startedAt, reopensBy: lock.reopensBy } };
+
+  if (uncertain > 0) return { ok: false, blocked: { status: "blocked", reason: "unsettled" } };
 
   const cells = targets.flatMap(t => t.pendingEditToken === null ? [] : [{ localeCode: t.localeCode, token: t.pendingEditToken, currentValue: t.value, needsReview: t.needsReview }]);
   const plan = planKeyRevert({

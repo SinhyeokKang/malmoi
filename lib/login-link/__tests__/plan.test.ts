@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 
 import { planLinkConfirm, planLinkOffer } from "../plan";
-import type { Challenge } from "../policy";
+import type { Challenge, LoginProvider } from "../policy";
 
 /**
  * 거부를 안내로 바꾸는 판정 둘 (ARCHITECTURE "계정 병합").
@@ -15,6 +15,7 @@ const base = {
   providerAccountId: "g1",
   verifiedEmail: "a@example.com",
   existingUser: { id: "u1", methods: ["github"] as readonly string[] },
+  enabled: ["github", "google"] as readonly LoginProvider[],
 };
 
 it("검증 이메일이 없으면 거부다 — 현재 동작을 그대로 둔다", () => {
@@ -44,6 +45,26 @@ it("평범한 로그인·가입은 그대로 지나간다", () => {
   expect(planLinkOffer({ ...base, existingUser: { id: "u1", methods: ["google"] } })).toEqual({ kind: "sign-in" });
   // 알 수 없는 provider는 애초에 갈래가 아니다.
   expect(planLinkOffer({ ...base, provider: "github-app" })).toEqual({ kind: "sign-in" });
+});
+
+/**
+ * 꺼진 공급자로만 연결된 기존 사용자 (optional-login-providers spec §4.11) — 확인 상대가 없어 병합 안내를 열 수 없다. 기존
+ * `OAuthAccountNotLinked` 문구는 화면에 없는 버튼을 가리키므로 전용 거부(`method-unavailable`)로 가른다. **구제가 아니다** —
+ * 이메일 일치로 붙이지 않는다(ARCHITECTURE §6.2.1).
+ */
+it("연결 수단이 전부 꺼져 있으면 method-unavailable이다", () => {
+  expect(planLinkOffer({ ...base, enabled: ["google"] })).toEqual({ kind: "method-unavailable" });
+  expect(planLinkOffer({ ...base, provider: "github", providerAccountId: "gh9", existingUser: { id: "u1", methods: ["google"] }, enabled: ["github"] }))
+    .toEqual({ kind: "method-unavailable" });
+  // 켜진 연결 수단이 하나라도 있으면 그것이 확인 상대다.
+  expect(planLinkOffer({ ...base, provider: "github", providerAccountId: "gh9", existingUser: { id: "u1", methods: ["google"] }, enabled: ["github", "google"] }))
+    .toEqual({ kind: "offer", userId: "u1", have: "google" });
+  // 연결 0·같은 공급자는 지금처럼 sign-in — 켜진 집합과 무관하다.
+  expect(planLinkOffer({ ...base, existingUser: { id: "u1", methods: [] }, enabled: ["google"] })).toEqual({ kind: "sign-in" });
+  expect(planLinkOffer({ ...base, existingUser: { id: "u1", methods: ["github", "google"] }, enabled: ["google"] })).toEqual({ kind: "sign-in" });
+  expect(planLinkOffer({ ...base, existingUser: null, enabled: ["google"] })).toEqual({ kind: "sign-in" });
+  // 검증 이메일 없음은 여전히 거부가 먼저다.
+  expect(planLinkOffer({ ...base, verifiedEmail: null, enabled: ["google"] })).toEqual({ kind: "reject" });
 });
 
 const challenge: Challenge = {

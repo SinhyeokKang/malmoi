@@ -600,13 +600,20 @@ lib/
                         roundtrip-cookies(server-only. 새 왕복이 시작될 때 병합·회수·연결의 **버려진 쿠키를
                         전부 선점 해제**한다 — 목적이 셋이라 남은 쿠키가 다음 왕복의 갈래를 바꾼다)
                         ⚠️ 판정은 순수 함수, 조회·세션은 얇은 껍데기라는 규칙이 이 디렉터리의 형이다
+  deployment/           **배포 모드와 self-hosted 기동 판정** (self-hosting). mode(`MALMOI_ORIGIN`·`VERCEL_ENV` → hosted · self-hosted · invalid.
+                        ⚠️ **import 없는 잎**이다: middleware(Edge)가 부르므로 `lib/env.ts`를 못 물고 `process.env`를 직접 읽는다. 이 env 둘을 읽는 비테스트
+                        코드와 hosted 도메인 리터럴의 집이 여기 하나다 — 다음 기능이 리터럴을 하나 더 박으면 self-hosted-gates가 red) ·
+                        preflight(순수 판정 — env 맵과 디렉터리 probe를 주입받는다. `SELF_HOSTED_ENV`가 `lib/env.ts`가 읽는 이름을
+                        required · optional · hosted-only · command로 분류하고 `.env.example`과 키가 일치해야 한다. ⚠️ 결과에 값을 싣지 않는다 — 이름과 사유 코드뿐) ·
+                        schedule(`NIGHTLY_PULL` — 야간 pull의 경로·시각. `vercel.json`과의 일치를 테스트가 센다)
   upload/               프로필·프로젝트 이미지. image(형식·크기·키·삭제 allowlist 판정 +
                         planImagePick — 클라이언트 선검사 + imageSrc — 저장 URL → /api/images/<key> +
                         isStoredImageKey·storedImageContentType — 프록시가 받는 키의 술어).
                         ⚠️ imageSrc는 env를 읽지 않는다: 클라이언트가 닿는 잎이라 읽으면 조용한 no-op이고,
                         호스트는 라우트가 서버에서 붙인다. ⚠️ isStoredImageKey는 planImageDelete의 일반화가
                         아니다 — 그쪽 호스트 검사는 접미 일치라 남의 스토어를 통과시킨다(방향이 반대)
-                        · normalize(server-only. sharp로 EXIF 방향
+                        · file-store(self-hosted 업로드 볼륨 — put·read·delete 셋. 볼륨 루트를 인자로 받아 env를 안 읽는다. ⚠️ 모든 동작이 isStoredImageKey를 먼저 지나고 루트·마지막 성분의 symlink를 탈출로 본다) ·
+                        normalize(server-only. sharp로 EXIF 방향
                         적용 → 192px 이내 축소 → WebP 재인코딩) · email-thumbnail(server-only. 저장본 → 96×96 PNG, 초대 메일 전용 —
                         메일 클라이언트가 WebP 알파를 버린다, #140) · store(server-only Vercel Blob I/O +
                         readImage — 프록시의 상류 호출. ⚠️ fetch에 헤더를 하나도 안 넘긴다) ·
@@ -630,7 +637,7 @@ lib/
                         plan · run · render · load · client · targets · trigger · sync-branch · branch-name · ref-slug ·
                         message · payload · changed-values(2026-10-04 — Publish가 리포 파일에서 바꾼 엔트리 수, 수정+추가. 관측값이고 판정에 안 쓴다 →
                         SyncRun.changedValues) · delivery-revision(CI·야간의 전달 장벽 — 모든 소스 확인의 surfaceId·revision 집합, no-changes 포함) /
-                        run(진입점 둘이 지나는 유일한 껍데기 — ⚠️ 던지지 않는다) · plan
+                        run(진입점 둘이 지나는 유일한 껍데기) · plan · execution(240초 수명·실제 transport·결과 미확인 차단; execution/transport 테스트가 만료 뒤 전송을 검증)
                         ⚠️ **payload가 두 축에 각각 있다**(push/payload = `/api/push` 본문, pull/payload =
                         Git Data API 요청 본문). 둘 다 **외부 계약이라 반환 타입을 명시하는 것이 요지**이고
                         — 리터럴로 조립하면 필수 필드가 늘어도 컴파일러가 침묵한다(POSTMORTEM 2026-08-31).
@@ -954,9 +961,9 @@ lib/
                         표 이름 · 코드 파일명) · href(docHref — SUMMARY slug → 경로) · overview(개요 두 갈래 상수) · legacy(옛 해시 —
                         ⚠️ 잎, 클라이언트가 읽는다) · legacy-anchors(옛 id 일곱의 표 + 섹션으로 나뉜 장의 옛 id 표) · load(server-only — ⚠️ 모듈 최상위에서 읽지 않는다,
                         함수 안 + React cache) · shots(parseShotSize·shotSizes — SHOOTING 표의 치수를 <img width height>로. 한국어 열 이름 대신 **순서**로 읽는다 — load.test가 실물 표로 순서 읽기 = 이름 읽기를 잰다) · stale(staleShots — SHOOTING 매핑 표의 기록 blob SHA vs 현재 SHA. 한국어 열 이름은 읽지 않는다 — lib/는 no-korean-ui 범위라 열→필드 매핑은 scripts/guide-check 몫). ⚠️ routes.docs(page, anchor)의 인자는 리터럴이어야 한다(docs-links.test가 원고와 대조) —
-                        SUMMARY에서 온 slug는 docHref가 잇는다
+                        SUMMARY에서 온 slug는 docHref가 잇는다. __tests__/backup-shell.test는 세 언어 백업 명령을 sh·bash로 실행해 외부 명령 실패 뒤 중단·성공 출력 부재를 검증한다(Docker는 대역).
   seo/                  공개 페이지 머리·크롤러 파일의 순수 함수. site(SITE_ORIGIN — canonical·sitemap·llms·JSON-LD의 유일한 절대 기준,
-                        환경별로 안 바뀐다 · OG_IMAGE · DOCS_TITLE · pageMetadata — 매번 완전한 객체, Next 병합이 얕다) · crawl(robotsFor —
+                        환경별로 안 바뀐다 · metadataOrigin(링크 미리보기 og/twitter의 metadataBase — 배포 모드 origin, canonical은 그대로) · OG_IMAGE · DOCS_TITLE · pageMetadata — 매번 완전한 객체, Next 병합이 얕다) · crawl(robotsFor —
                         production만 허용, 모르면 숨긴다 · sitemapEntries) · json-ld(jsonLdHtml — dangerouslySetInnerHTML의 유일한 입력 ·
                         LANDING_LD · docLd) · llms(llmsIndex · llmsFull — 결정적) · analytics(redactAnalyticsEvent — 추적 경로 허용 목록.
                         ⚠️ 잎, 전 페이지 클라이언트 번들에 든다)
@@ -1035,7 +1042,34 @@ prisma/__tests__/       schema-contract · push-token-column · declared-base-lo
 prisma/maintenance/     backfill-surfaces.sql. ⚠️ 마이그레이션이 아니라 **손으로 한 번만 도는 SQL**이다 —
                         옛 writer를 멈춘 배포 1 창에서만 유효하고, 표면 편집이 시작된 뒤에는 돌리면 안 된다.
                         credential-cutover와 같은 함정(Prisma가 이 디렉터리를 안 봐서 상태 조회에 안 잡힌다)
-scripts/                adapter-survey · sync-agents · copy-fonts · scan · ingest · push-local ·
+Dockerfile · .dockerignore
+                        **self-hosted 이미지 한 벌** (self-hosting). web(`next start`)·migrate(`prisma migrate deploy` + bootstrap)·키 운영(`pnpm credentials:self-hosted`)이
+                        같은 이미지·같은 digest에서 돈다 — 마이그레이션과 앱 코드가 어긋난 채 뜨는 길(POSTMORTEM 2026-09-14)을 닫으려는 것이다.
+                        ⚠️ `output: standalone`을 쓰지 않는다 — 마이그레이션·키 운영에 prisma CLI·tsx·전체 node_modules가 어차피 필요하고, standalone은
+                        가이드 원고·sharp·Prisma client의 tracing 누락이라는 새 사고 표면을 만든다. ⚠️ 비밀을 빌드에 넣지 않는다 — env 없이 `pnpm build`가
+                        끝나야 하고(POSTMORTEM 2026-08-31) 운영 값은 전부 런타임 env다. `.dockerignore`가 `.env*`·키 파일·`.git`·`.scratch`·백업류·`deploy/certs`를
+                        context에서 뺀다. ⚠️ `postgresql-client`를 이미지에 넣는다(bookworm = psql 15 — bootstrap의 `\getenv`와 readiness의 `pg_isready`).
+                        pnpm은 corepack이 `packageManager`와 같은 버전으로 고정하고 `COREPACK_HOME`을 공용 경로에 둔다(non-root 실행이 런타임에 재다운로드하지 않게).
+                        코드·node_modules는 root 소유, `node`는 `.next/cache`·`/data/uploads`만 쓴다. 빌드 플랫폼 = 실행 플랫폼(`linux/amd64`).
+                        Node 메이저·pnpm 버전·`.npmrc` COPY·비밀 ENV 부재는 `lib/deployment/__tests__/self-hosted-gates.test.ts`가 센다
+deploy/                 **self-hosted 설치 배포물** (self-hosting). 이 디렉터리를 운영자가 복사해 쓴다 — 절차는 가이드 guide/<언어>/self-hosting/(/docs/self-hosting), 상류 유지자 몫과 실습 기록은 docs/SELF-HOSTING.md.
+                        compose.yaml — postgres → migrate → web → proxy·scheduler. ⚠️ `depends_on`은 `service_healthy`·`service_completed_successfully`로 묶는다
+                        ("실행 중"은 준비가 아니다). 망 둘: `edge`와 `db`(internal — postgres·migrate는 인터넷을 못 본다). postgres·web은 포트를 열지 않는다
+                        (POSTMORTEM 2026-09-09 DB 직접 공개) — 80/443은 proxy만. 서비스마다 필요한 비밀만 준다(superuser 비밀번호는 postgres만 ·
+                        DDL 자격증명(`DIRECT_URL`)은 web에 없다 · scheduler는 `CRON_SECRET`만). web의 `environment` 키 집합은 preflight 표와 같아야 한다(테스트가 센다)
+                        .env.example — compose가 보간하는 이름과 **정확히 같은** 키(테스트가 센다). 리포 루트 `.env.example`(hosted·로컬 개발)과 별개다
+                        bootstrap.sql — 런타임 롤 생성·권한(멱등, 매 업그레이드마다 `migrate deploy` 뒤에 돈다).
+                        ⚠️ `prisma/migrations/` 밖이다 — 안에 두면 `/merge`의 `db:deploy`가 hosted prod에 적용한다. 설치 DB의 롤·권한 설정이지 제품 스키마가 아니다.
+                        검증은 `lib/__tests__/self-hosted-bootstrap.integration.ts`(격리 postgres 스위트 — `scripts/gate-plan.ts` 트리거)
+                        postgres/10-migrate-role.sh — initdb 전용(빈 볼륨에서 한 번). superuser가 쓰이는 유일한 자리이고 마이그레이션 롤(DB 소유 비-superuser + CREATEROLE)을 만든다.
+                        ⚠️ 볼륨이 있으면 돌지 않는다 — 비밀번호 변경은 ALTER ROLE
+                        nginx/ — malmoi.conf(server·location·rate limit) + proxy-common.conf(헤더 조각). ⚠️ 이 rate limit이 hosted Vercel WAF 규칙의 대체다(앱 코드엔 제한이 없다).
+                        Host를 그대로 넘기고(`$host`) HSTS를 조각에 둔다 — nginx의 `add_header`는 location에 하나라도 있으면 바깥 것을 상속하지 않아서다.
+                        web은 변수 `proxy_pass` + `resolver 127.0.0.11`로 요청마다 다시 해석한다(`upstream`은 기동 때 IP를 고정해 web 재생성 뒤 영구 502)
+                        certs/ — TLS 인증서 자리(README만 커밋 — `fullchain.pem`·`privkey.pem`은 운영자가 붙이고 `.gitignore`·`.dockerignore`가 막는다)
+                        scheduler/ — busybox crond + curl 이미지(`malmoi-scheduler:local`, 로컬 빌드). crontab 시각은 `lib/deployment/schedule.ts`의 `NIGHTLY_PULL`과 같다(테스트가 센다).
+                        ⚠️ `CRON_SECRET`을 명령줄이 아니라 umask 077 헤더 파일(`curl -H @file`)로 넘긴다 — `ps`에 비밀이 안 보인다
+scripts/                adapter-survey · sync-agents · copy-fonts · scan · ingest · push-local · preflight(pnpm preflight — self-hosted 기동 전 판정의 진입. 사유 코드만 찍고 실패면 exit 1) ·
                         guide-check(pnpm guide:check — SHOOTING #shots 표 vs 작업 트리 git hash-object. 읽기 전용, exit 0 · 인자 오류만 2) ·
                         smoke-github · smoke-blob(⚠️ pnpm smoke:blob에 NODE_OPTIONS=--conditions=react-server가
                         붙는다 — PII 복호 모듈이 server-only라 그 조건 없이는 import에서 죽는다) ·
@@ -1083,6 +1117,7 @@ guide/                  **사용 가이드 원고** — 화면 언어마다 한 
                         ⚠️ guide/ 루트에는 비서빙 매뉴얼 둘과 언어 디렉터리만 있다. 없는 언어를 en으로 메우지 않는다.
                         AUTHORING.md·SHOOTING.md는 한국어 매뉴얼이고 SUMMARY 밖이라 서빙되지 않는다(`/docs/AUTHORING`은 404).
                         ⚠️ docs/(내부 문서)와 이름을 가르려고 guide/다 — 라우트만 /docs다. ⚠️ x.md와 x/README.md가 둘 다 있으면 red
+                        self-hosting/은 셀프 호스팅 운영자 장이다(설치·운영·문제 해결 — 절차 정본이고 OPERATIONS에 사본을 두지 않는다)
 public/guide/           원고 이미지(WebP, en 화면 한 벌을 세 언어 원고가 공유) — 커밋된 원본이고 복사 단계가 없다(목록은 guide/SHOOTING.md 매핑 표가 정본). md는 /guide/<name>.webp 절대경로로만 참조한다.
                         치수·매핑 소스·blob SHA는 guide/SHOOTING.md 표가 정본이다.
                         ⚠️ README가 translation-editor·publish-preview·workflow-file 세 장을 상대 경로로 참조한다 — 이름을 바꾸면 README 이미지가 깨진다

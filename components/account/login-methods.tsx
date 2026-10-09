@@ -21,7 +21,8 @@ import { canUnlink, methodCounts, type LoginProvider } from "@/lib/login-link/po
 import { providerLabel } from "@/lib/login-link/message";
 
 /**
- * Sign-in methods 구역 — **행이 언제나 둘이고 순서가 고정이다** (`loginMethodRows`).
+ * Sign-in methods 구역 — **행 = 이 설치에서 켜진 공급자, 순서가 고정이다** (`loginMethodRows`). 꺼진 공급자로 연결된 행은 서버가
+ * 이미 걸러 보낸다(숨김, 삭제 아님).
  *
  * ⚠️ **구역 전체를 든다** (`SessionsSection`과 같은 형). 왕복 결과 Alert가 **헤더 아래·리스트 위**에
  * 서야 하고 그 자리는 리스트 래퍼 바깥이라, 구역을 화면이 조립하면 Alert의 자리가 두 컴포넌트에
@@ -67,7 +68,8 @@ export function LoginMethods({ rows, outcome = null, unlinkFailure = null }: {
     >
       <CardRows>
         {rows.map((row) => (
-          <MethodRow key={row.provider} row={row} removable={canUnlink(connected, row.provider)} onUnconfirmed={setUnconfirmed} />
+          // 행이 곧 켜진 집합이다 — 해제 판정이 같은 집합을 보도록 새 prop 없이 행에서 넘긴다.
+          <MethodRow key={row.provider} row={row} removable={canUnlink(connected, row.provider, rows.map((r) => r.provider))} onUnconfirmed={setUnconfirmed} />
         ))}
       </CardRows>
     </Card>

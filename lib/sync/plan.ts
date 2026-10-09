@@ -23,9 +23,8 @@ export const PUBLISH_MIN_INTERVAL_SECONDS = 30;
 /**
  * 이보다 오래된 `RUNNING` 행은 죽은 프로세스가 남긴 것으로 본다.
  *
- * ⚠️ **`maxDuration`(60초)보다 넉넉해야 한다.** 같거나 작으면 **정상 실행이 스스로를 stale로 보고**
- * 두 번째 실행을 허용한다 (ARCHITECTURE §5.6.2). 그 전제가 수동 경로에서 서려면 번역 페이지가
- * `maxDuration = 60`을 선언해야 한다 — 없으면 프로젝트 기본값(300)이라 이 상수와 같아진다.
+ * 로컬 Publish 예산(240초)이 새 전송·늦은 DB 변경을 먼저 막는다. 이 300초 창은 결과 미확인 실패에도 유지한다.
+ * hosted의 maxDuration(60초)은 추가 종료 장치이며 self-hosted의 종료 근거가 아니다.
  */
 export const STALE_AFTER_SECONDS = 300;
 
@@ -64,8 +63,8 @@ export function planWriteLock(input: { now: Date; repositoryImportToken: string 
 // 위 둘이 여기 있는 이유는 소비자가 sync 경로 안에서 여럿(게이트·껍데기)이어서다.
 
 /**
- * `SyncRun.errorCode`에 남는 값. **생산자 없는 코드는 두지 않는다** — 여기 여덟은 전부
- * `lib/pull`의 특정 throw 자리이거나 껍데기가 만드는 것(`stale`)이거나 `runPull`의 반환(`reconfirm` — SKIPPED 행)이다.
+ * `SyncRun.errorCode`에 남는 값. **생산자 없는 코드는 두지 않는다** — 여기 코드는 전부
+ * `lib/pull`의 특정 throw 자리이거나 껍데기가 만드는 것(`stale`·`execution-uncertain`)이거나 `runPull`의 반환(`reconfirm` — SKIPPED 행)이다.
  * `lib/pull/__tests__/error-codes.test.ts`가 생산자 목록과 이 union을 양방향으로 고정한다.
  *
  * ⚠️ **없앤 것과 이유** (ARCHITECTURE §5.6.3): `adapter-write-failed`(어댑터 오류는 `warnings`로 접혀 실패가
@@ -73,6 +72,7 @@ export function planWriteLock(input: { now: Date; repositoryImportToken: string 
  * `base-unreadable` 하나) · `repo-unreachable`(status 판독 없이 못 만든다 → `github-error`).
  */
 export const SYNC_ERROR_CODES = [
+  "execution-uncertain",
   "base-unreadable",
   "not-installed",
   "glob-matched-nothing",
@@ -94,6 +94,7 @@ export type SyncErrorCode = (typeof SYNC_ERROR_CODES)[number];
  * 자동으로 다시 밟아도 같은 실패를 낸다.
  */
 const RETRYABLE: Readonly<Record<SyncErrorCode, boolean>> = {
+  "execution-uncertain": true,
   "base-unreadable": false,
   "not-installed": false,
   "glob-matched-nothing": false,

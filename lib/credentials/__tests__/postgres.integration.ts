@@ -25,7 +25,9 @@ import { beginRevocation, finishRevocation } from "@/lib/session-revocation/stor
 import { authorizeRevocation, withRevocation, withRevocationStart, revocationAuthCookies } from "@/lib/session-revocation/http";
 import { authorizeLoginLink, linkAuthCookies, withLinkStart, withLoginLink } from "@/lib/login-link/http";
 import { beginLink, finishLink, loadLinkOffer } from "@/lib/login-link/store";
-import { isLoginProvider } from "@/lib/login-link/policy";
+import { isLoginProvider, type LoginProvider } from "@/lib/login-link/policy";
+import { withEnabled } from "@/lib/auth/login-providers";
+import { signInErrorMessage } from "@/lib/auth/message";
 
 // A fresh Unix-socket-only cluster; never reads DATABASE_URL/DIRECT_URL or a shared DB.
 const directory = mkdtempSync(join(tmpdir(), "malmoi-credentials-"));
@@ -213,21 +215,27 @@ it("PII/token rotation, partial reindex, missing-key recovery and backup restore
  * ⚠️ **이 함수는 프로덕션 `auth.ts`를 import하지 않고 `signIn` 콜백을 손으로 다시 적는다.** 그래서
  * 아래 회귀들이 무엇을 검사하는지는 **이 사본이 무엇을 미러링하느냐**로 정해진다 — 갈래를 안
  * 옮기면 스위트가 green이면서 새 코드를 한 줄도 안 돈다 (POSTMORTEM 2026-09-10).
- * 지금 미러링하는 것은 셋이다: 회수 · 병합 확인 · 병합 제안.
+ * 지금 미러링하는 것은 넷이다: 회수 · 병합 확인 · 병합 제안 · 켜진 공급자(`providers`를 `withEnabled`로 거르고, 연결 수단이 전부
+ * 꺼진 사용자를 `MethodUnavailable`로 보낸다 — optional-login-providers spec §4.3·§4.11).
+ *
+ * `enabled`의 기본은 hosted(둘 다 켜짐)다 — 병합 제안은 같은 주소의 **다른** 공급자를 봐야 하므로 하나만 켜 두면 갈래가 바뀐다.
+ * `provider`는 그 테스트가 로그인하는 공급자의 이름표다(등록은 `enabled`가 정한다).
  */
-function fakeAuth(provider: "github" | "google", identity: string, revocation = false, link = false, connect = false) {
+function fakeAuth(provider: "github" | "google", identity: string, revocation = false, link = false, connect = false, enabled: readonly LoginProvider[] = ["github", "google"]) {
   const intercepted = revocation || link || connect;
+  const fake = (id: LoginProvider) => ({ id, name: id, type: "oauth" as const, checks: intercepted ? ["pkce" as const, "state" as const] : ["none" as const], clientId: "fixture", clientSecret: "fixture",
+    authorization: "https://provider.invalid/authorize", token: "https://provider.invalid/token", userinfo: "https://provider.invalid/user",
+    [customFetch]: async (input: string | URL | Request) => new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url).pathname === "/token"
+      ? Response.json({ access_token: "oauth-access", refresh_token: "oauth-refresh", token_type: "bearer", expires_in: 3600 })
+      : Response.json({ id: identity, email: `${identity}@example.com`, name: "Fixture" }),
+    profile: (profile: Record<string, unknown>) => ({ id: String(profile.id), email: String(profile.email), name: String(profile.name), image: null }),
+  });
   const handlers = NextAuth(() => ({
     cookies: revocationAuthCookies() ?? connectAuthCookies() ?? linkAuthCookies(),
     trustHost: true, secret: "fixture-secret-fixture-secret-fixture-secret", basePath: "/api/auth",
     adapter: credentialAdapter(prisma), session: { strategy: "database", maxAge: 86400, updateAge: 3600, generateSessionToken: () => randomBytes(32).toString("base64url") },
-    providers: [{ id: provider, name: provider, type: "oauth", checks: intercepted ? ["pkce", "state"] : ["none"], clientId: "fixture", clientSecret: "fixture",
-      authorization: "https://provider.invalid/authorize", token: "https://provider.invalid/token", userinfo: "https://provider.invalid/user",
-      [customFetch]: async input => new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url).pathname === "/token"
-        ? Response.json({ access_token: "oauth-access", refresh_token: "oauth-refresh", token_type: "bearer", expires_in: 3600 })
-        : Response.json({ id: identity, email: `${identity}@example.com`, name: "Fixture" }),
-      profile: profile => ({ id: String(profile.id), email: String(profile.email), name: String(profile.name), image: null }),
-    }],
+    // 프로덕션 `auth.ts`와 같은 호출이다 — 꺼진 공급자는 Auth.js 목록에 없다.
+    providers: withEnabled([fake("github"), fake("google")], enabled),
     callbacks: {
       session: ({ session, user }) => publicSession({ session, user }),
       // 프로덕션과 **같은 순서**다: 회수 → 병합 확인 → 이메일 갱신 → 병합 제안.
@@ -247,7 +255,9 @@ function fakeAuth(provider: "github" | "google", identity: string, revocation = 
         if (!link || !account || typeof user.email !== "string" || user.email === "") return true;
         const refresh = await refreshVerifiedEmail(prisma, account.provider, account.providerAccountId, user.email);
         if (refresh !== "unlinked" || !isLoginProvider(account.provider)) return true;
-        const offer = await loadLinkOffer(prisma, { provider: account.provider, providerAccountId: account.providerAccountId, verifiedEmail: user.email });
+        const offer = await loadLinkOffer(prisma, { provider: account.provider, providerAccountId: account.providerAccountId, verifiedEmail: user.email, enabled });
+        // `auth.ts`와 같은 자리다 — `offer` 갈래보다 앞이고, 문자열 반환이라 User·Account·Session이 0회 쓰인다.
+        if (offer.kind === "method-unavailable") return "/signin?error=MethodUnavailable";
         if (offer.kind !== "offer") return true;
         const token = await beginLink(prisma, { userId: offer.userId, provider: account.provider, providerAccountId: account.providerAccountId, dest: { kind: "projects" } });
         return token === null ? "/signin?error=Unavailable" : `/signin/link/${token}`;
@@ -453,7 +463,7 @@ async function revocationFixture(provider: "github" | "google" = "github", secon
   if (second) await prisma.account.create({ data: { userId: user.id, type: "oauth", provider: provider === "github" ? "google" : "github", providerAccountId: "second" } });
   for (const raw of ["current", "second-device"]) await adapter.createSession!({ userId: user.id, sessionToken: raw, expires: new Date(Date.now() + 600000) });
   await adapter.createSession!({ userId: other.id, sessionToken: "other-device", expires: new Date(Date.now() + 600000) });
-  const input = { userId: user.id, provider, providerAccountId: "same", sessionToken: "current", state: "state", nonce: randomBytes(32).toString("base64url") };
+  const input = { userId: user.id, provider, providerAccountId: "same", sessionToken: "current", state: "state", nonce: randomBytes(32).toString("base64url"), enabled: ["github", "google"] as LoginProvider[] };
   return { user, other, input, adapter };
 }
 /**
@@ -467,6 +477,22 @@ it("revocation still works for an account with two sign-in methods", async () =>
   expect(await finishRevocation(prisma, input)).toBe("revoked");
   expect(await prisma.session.findMany()).toEqual([expect.objectContaining({ userId: other.id })]);
   // 회수는 세션만 지운다 — 로그인 수단은 그대로다.
+  expect(await prisma.account.count()).toBe(2);
+});
+
+/**
+ * 공급자를 끈 설치 (optional-login-providers spec §4.7) — 확인 상대는 **켜진** 연결 수단 중에서만 고른다. 꺼진 GitHub 행은 DB에
+ * 남아 있지만 확인 상대가 되지 못하고, 켜진 Google로 회수가 끝난다.
+ */
+it("revocation confirms against the enabled method only when a provider is disabled", async () => {
+  const { input, other } = await revocationFixture("github", true);
+  expect(await beginRevocation(prisma, { ...input, enabled: ["google"] })).toBe("invalid");
+  expect(await prisma.verificationToken.count()).toBe(0);
+  const google = { ...input, provider: "google" as const, providerAccountId: "second", enabled: ["google"] as LoginProvider[] };
+  expect(await beginRevocation(prisma, google)).toBe("ready");
+  expect(await finishRevocation(prisma, google)).toBe("revoked");
+  expect(await prisma.session.findMany()).toEqual([expect.objectContaining({ userId: other.id })]);
+  // 꺼진 공급자의 행은 지우지 않는다 — 다시 켜면 돌아온다.
   expect(await prisma.account.count()).toBe(2);
 });
 
@@ -641,6 +667,59 @@ it("a second provider at the same address offers a merge instead of creating a u
   expect(rows).toHaveLength(1);
   expect(rows[0]!.identifier).toContain(`"${owner.id}"`);
   expect(rows[0]!.token).not.toBe(location.split("/").pop());
+});
+
+/** 일반 로그인 한 번 — csrf → signin POST → callback GET. state·PKCE가 켜진(가로채기) 하네스에서도 같은 왕복이다. */
+async function plainSignIn(handlers: ReturnType<typeof fakeAuth>, provider: LoginProvider) {
+  const csrf = await handlers.GET(new NextRequest("http://localhost/api/auth/csrf"));
+  const csrfToken = (await csrf.json()).csrfToken;
+  const csrfCookies = csrf.headers.getSetCookie().map(c => c.split(";")[0]!).join("; ");
+  const signin = await handlers.POST(new NextRequest(`http://localhost/api/auth/signin/${provider}`, { method: "POST", headers: { cookie: csrfCookies, "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ csrfToken, callbackUrl: "http://localhost/projects" }) }));
+  const state = new URL(signin.headers.get("location")!).searchParams.get("state")!;
+  const cookie = signin.headers.getSetCookie().map(c => c.split(";")[0]!).join("; ");
+  return handlers.GET(new NextRequest(`http://localhost/api/auth/callback/${provider}?code=fixture&state=${encodeURIComponent(state)}`, { headers: { cookie } }));
+}
+
+/**
+ * 꺼진 공급자로만 연결된 기존 사용자가 켜진 공급자로 로그인한다 (optional-login-providers spec §4.11) — 새 계정이 생기지 않고, `/signin`이
+ * 전용 문구를 보인다. ⚠️ **화면이 보일 문구까지 간다** — 행 수만 보면 "가입이 안 생겼다"만 알고 사용자가 무엇을 읽는지 모른다.
+ */
+it("a user whose only methods are disabled lands on MethodUnavailable without a new user", async () => {
+  await linkFixture();
+  const response = await plainSignIn(fakeAuth("google", "merge", false, true, false, ["google"]), "google");
+  const location = response.headers.get("location")!;
+  expect(location).toBe("http://localhost/signin?error=MethodUnavailable");
+  expect(await prisma.user.count()).toBe(2);
+  expect(await prisma.account.count()).toBe(2);
+  expect(await prisma.session.count()).toBe(0);
+  expect(await prisma.verificationToken.count()).toBe(0);
+  expect(signInErrorMessage(en, new URL(location).searchParams.get("error")!)).toBe(en.errors.signIn.MethodUnavailable);
+});
+
+/**
+ * 꺼진 공급자의 Auth.js 진입점을 직접 때려도 로그인·가입이 생기지 않는다 (optional-login-providers spec §4.3) — 화면 숨김이 유일한
+ * 방어선이 아니다. `@auth/core`가 provider를 목록에서 id로 찾으므로 목록 밖이면 결정적으로 실패한다.
+ */
+it("a disabled provider's signin and callback never sign anyone in", async () => {
+  const handlers = fakeAuth("github", "intruder", false, false, false, ["google"]);
+  const callback = await handlers.GET(new NextRequest("http://localhost/api/auth/callback/github?code=fixture"));
+  const csrf = await handlers.GET(new NextRequest("http://localhost/api/auth/csrf"));
+  const csrfToken = (await csrf.json()).csrfToken;
+  const csrfCookies = csrf.headers.getSetCookie().map(c => c.split(";")[0]!).join("; ");
+  const signin = await handlers.POST(new NextRequest("http://localhost/api/auth/signin/github", { method: "POST", headers: { cookie: csrfCookies, "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ csrfToken, callbackUrl: "http://localhost/projects" }) }));
+  for (const response of [callback, signin]) {
+    const location = response.headers.get("location") ?? "";
+    expect(location, String(response.status)).toMatch(/error=/);
+    expect(location).not.toContain("provider.invalid");
+    expect(response.headers.getSetCookie().some(c => c.startsWith("authjs.session-token="))).toBe(false);
+  }
+  expect(await prisma.user.count()).toBe(0);
+  expect(await prisma.account.count()).toBe(0);
+  expect(await prisma.session.count()).toBe(0);
+  // 켜진 쪽은 같은 하네스에서 그대로 로그인된다 — 위 실패가 하네스 고장이 아니다.
+  const google = await fakeAuth("google", "intruder", false, false, false, ["google"]).GET(new NextRequest("http://localhost/api/auth/callback/google?code=fixture"));
+  expect(google.headers.get("location")).toBe("http://localhost");
+  expect(await prisma.session.count()).toBe(1);
 });
 
 async function startLinkProof(identity: string, dest: { kind: "invite"; token: string } | { kind: "oauth"; requestId: string } | { kind: "projects" }) {

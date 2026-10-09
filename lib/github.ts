@@ -1,3 +1,4 @@
+import type { PublishExecution } from "@/lib/sync/execution";
 // ⚠️ **`server-only`를 일부러 붙이지 않았다.** 붙이면 `scripts/smoke-github.ts`(react-server 조건 없는 tsx)가 이 모듈을
 // **열 수조차 없어** 스모크가 프로덕션 코드 경로가 아닌 사본을 검증하게 된다 — `lib/env.ts`가 같은 이유의 선례다
 // (ARCHITECTURE §5.5.4). 클라이언트 유입은 `components/__tests__/client-graph.test.ts`의 허용 목록이 막는다 — 이 파일은
@@ -67,10 +68,12 @@ function expiresSoon(auth: unknown): boolean {
  * ⚠️ **App은 인자로 받는다** — 호출자가 `createApp()`을 한 번 부르고 넘긴다. 토큰 캐시가 App 인스턴스에 붙어 있어
  * 여기서 새로 만들면 호출마다 발급 왕복이 는다 (code-review 2026-09-07 🔴2 · audit-ux #8).
  */
-async function pinnedOctokit(app: App, installationId: string, repositoryId: string | null): Promise<{ octokit: Octokit; pinned: string }> {
+async function pinnedOctokit(app: App, installationId: string, repositoryId: string | null, execution?: PublishExecution): Promise<{ octokit: Octokit; pinned: string }> {
   const pinned = requirePinnedRepositoryId(repositoryId);
   const scope = { type: "installation", installationId: Number(installationId), repositoryIds: [Number(pinned)] } as const;
+  execution?.check();
   let auth = await app.octokit.auth(scope);
+  execution?.check();
   /*
     ⚠️ **토큰이 곧 만료되면 새로 받는다** (audit-ux #8 리뷰). App이 요청 사이에 남으면서 캐시(수명 59분)가 1분 남은
     토큰을 줄 수 있고, 아래 Octokit은 그 토큰을 **고정으로** 들어 스스로 갱신하지 않는다 — 60초짜리 Publish·야간 pull이
@@ -80,7 +83,8 @@ async function pinnedOctokit(app: App, installationId: string, repositoryId: str
   if (typeof auth !== "object" || auth === null || !("token" in auth) || typeof auth.token !== "string") {
     fail("installation token unavailable");
   }
-  return { octokit: new Octokit({ auth: auth.token }), pinned };
+  execution?.check();
+  return { octokit: new Octokit({ auth: auth.token, ...(execution === undefined ? {} : { request: { fetch: execution.fetch() }, retry: { enabled: false }, throttle: { enabled: false } }) }), pinned };
 }
 
 /** `null`을 주는 GitHub 404. 그 외 상태 코드는 그대로 던진다. */
@@ -348,8 +352,9 @@ export async function createGitClient(
   repo: string,
   installationId: string,
   repositoryId: string,
+  execution?: PublishExecution,
 ): Promise<GitClient> {
-  const { octokit, pinned } = await pinnedOctokit(createApp(), installationId, repositoryId);
+  const { octokit, pinned } = await pinnedOctokit(createApp(), installationId, repositoryId, execution);
   // 저장된 주소가 지금 무엇을 가리키는지 **쓰기 전에** 묻는다. 이름이 재사용됐으면 여기서 멈춘다.
   const identity = await octokit.request("GET /repos/{owner}/{repo}", { owner, repo });
   requireSameRepository(pinned, String(identity.data.id));

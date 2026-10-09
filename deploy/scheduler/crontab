@@ -1,0 +1,3 @@
+# 야간 pull — hosted의 vercel.json crons와 같은 식이다(`lib/deployment/schedule.ts`의 NIGHTLY_PULL, 테스트가 대조한다).
+# 컨테이너 TZ=UTC. 출력은 컨테이너 로그(PID 1)로 보낸다.
+0 18 * * * /usr/local/bin/nightly-pull >/proc/1/fd/1 2>/proc/1/fd/2

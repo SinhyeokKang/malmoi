@@ -11,6 +11,8 @@ import { describe, expect, it } from "vitest";
 import { parseMd, stripHeadingMarker, toText } from "@/lib/guide/parse";
 import { servedGuideFiles } from "@/lib/guide/__tests__/helpers/served";
 import { en } from "@/messages/en";
+import { es } from "@/messages/es";
+import { ko } from "@/messages/ko";
 import { stateLabel } from "@/lib/status/canon";
 
 /**
@@ -149,6 +151,7 @@ const CONCEPT_BANNED: readonly Ban[] = [
   ["Authorization expired", /^authorization expired[.!]?$/i],
   ["cancelled an invitation", /\bcancell?ed (?:an |the )?invitation\b|\binvitation was cancell?ed\b/i],
   ["Malmoi app", /\bMalmoi app\b/i],
+  ["Malmoi GitHub App", /\bMalmoi GitHub App\b/],
   ["account settings", /\baccount settings\b/i],
   ["Image upload", /\bimage upload\b/i],
   // 이미지(프로필 사진·프로젝트 썸네일)를 걷는 동작은 Remove다
@@ -320,7 +323,7 @@ describe("화면 용어 — DESIGN §10.1의 표를 사전 전체가 따른다 (
     for (const text of [
       "The last sync couldn't finish", "Unavailable", "Syncing…", "Publishing…", "Syncs and publishes stop until it's reconnected.",
       "3 unsent edits", "Saved · unsent", "Untranslated only", "Couldn't check", "Expired", "X revoked an invitation",
-      "Malmoi GitHub App", "the app", "Account", "Upload", "Remove", "Go to your projects", "Open on GitHub",
+      "the GitHub App", "the app", "Account", "Upload", "Remove", "Go to your projects", "Open on GitHub",
       "We couldn't load your repositories.", "X sources couldn't be read", "Your GitHub App authorization expired.",
       "You're still signed in.", "It's recorded in Logs.", "Leaves the other as it is.",
     ]) expect(sample(text), text).toEqual([]);
@@ -479,5 +482,18 @@ describe("사실을 단언하는 문장 (B4 r1)", () => {
   });
   it("Sources 추가 권한 문장은 주어 자리 복수형이다", () => {
     expect(en.sources.ownerOnly).toBe("Only project owners can add sources.");
+  });
+});
+
+/**
+ * **App 호칭·동의문은 두 배포에서 참이다** (self-hosting design §7). self-hosted에서 GitHub App의 소유자는 그 설치의 운영자라
+ * "Malmoi GitHub App"이라는 고유명은 거짓이고, 동의문의 방침도 Malmoi(hosted)의 것이 아니다.
+ *
+ * App 고유명 금지는 사전·원고 모두를 훑는 `banned-terms.ts`(ko·es)와 위 en `TERMS`가 든다(DESIGN §10.1 App 호칭 행) — 여기엔 동의문만 남는다.
+ */
+describe("App 호칭 · 동의문 (self-hosting)", () => {
+  it.each([["en", en], ["ko", ko], ["es", es]] as const)("%s 동의문이 방침의 소유자를 Malmoi로 단언하지 않는다", (_, dictionary) => {
+    const { before, link, after } = dictionary.signIn.consent;
+    expect(`${before}${link}${after}`).not.toContain("Malmoi");
   });
 });

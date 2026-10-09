@@ -5,6 +5,7 @@ import { hashInviteToken } from "@/lib/auth/invitation";
 
 import { beginLink, challengeTokenHash, finishLink, loadLinkOffer } from "../store";
 import { challengeIdentifier } from "../policy";
+import { encodeUserFields } from "@/lib/credentials/records";
 
 /** ⚠️ **해시 규칙이 한 곳이다** — 초대 토큰과 같은 함수를 쓴다 (ARCHITECTURE "계정 병합"). */
 it("URL 토큰은 초대 토큰과 같은 해시 규칙을 쓴다", () => {
@@ -134,11 +135,28 @@ it("조회는 새 Account일 때만 이메일을 본다 — 그 사용자의 수
   vi.resetModules();
   const offer = await loadLinkOffer(
     { ...db, user: { findUnique: vi.fn() } } as unknown as PrismaClient,
-    { provider: "google", providerAccountId: "g1", verifiedEmail: "" },
+    { provider: "google", providerAccountId: "g1", verifiedEmail: "", enabled: ["github", "google"] },
   );
   // 빈 이메일은 조회 없이 거부다 — 이메일이 같을 때만 병합한다.
   expect(offer).toEqual({ kind: "reject" });
   expect(findMany).not.toHaveBeenCalled();
+});
+
+/**
+ * 꺼진 공급자로만 연결된 기존 사용자 (optional-login-providers spec §4.7·§4.11) — 확인 상대가 없으므로 challenge를 굽지 않고
+ * `method-unavailable`로 접는다. 켜진 집합은 호출부(`auth.ts`)가 한 번 읽어 넘긴다.
+ */
+it("연결 수단이 전부 꺼져 있으면 method-unavailable이고, 켜져 있으면 그 수단으로 안내한다", async () => {
+  const findMany = vi.fn().mockResolvedValue([{ provider: "github" }]);
+  const db = {
+    account: { findMany },
+    user: { findUnique: vi.fn().mockResolvedValue({ id: "u1", ...encodeUserFields("u1", { email: "a@example.com" }) }) },
+  } as unknown as PrismaClient;
+  const input = { provider: "google", providerAccountId: "g1", verifiedEmail: "a@example.com" };
+  expect(await loadLinkOffer(db, { ...input, enabled: ["google"] })).toEqual({ kind: "method-unavailable" });
+  expect(await loadLinkOffer(db, { ...input, enabled: ["github", "google"] })).toEqual({ kind: "offer", userId: "u1", have: "github" });
+  // 꺼진 공급자의 행도 읽는다 — 판정이 "숨김"을 결정하려면 우주 전체를 봐야 한다.
+  expect(findMany).toHaveBeenCalledWith({ where: { userId: "u1", provider: { in: ["github", "google"] } }, select: { provider: true } });
 });
 
 // 장애가 null·"unavailable"로 접히는 자리다 — 원인을 볼 곳이 서버 로그 한 줄뿐이다 (launch-readiness L5.2).

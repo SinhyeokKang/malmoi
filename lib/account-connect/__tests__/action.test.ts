@@ -65,3 +65,23 @@ it("failed OAuth initiation records only the fixed stage", async () => {
   expect(log).toHaveBeenCalledExactlyOnceWith("Account connect start failed.", { stage: "oauth", cause: "Error" });
   expect(JSON.stringify(log.mock.calls)).not.toContain("provider secret");
 });
+
+/**
+ * 꺼진 공급자로는 연결을 시작하지 않는다 (optional-login-providers spec §4.6) — 화면에 그 행이 없으므로 직접 Action 호출에서만 닿는다.
+ * Auth.js `providers`에도 없지만, 그쪽에 닿기 전에 거부해 쿠키·challenge 행을 만들지 않는다.
+ */
+it("a disabled provider never starts OAuth, writes no challenge and no cookie", async () => {
+  vi.stubEnv("AUTH_GITHUB_ID", "");
+  try {
+    await expect(startLoginMethodConnect("github")).rejects.toThrow("REDIRECT:/account?connect=failed");
+    expect(s.signIn).not.toHaveBeenCalled();
+    expect(s.begin).not.toHaveBeenCalled();
+    expect(s.set).not.toHaveBeenCalled();
+    expect(s.clear).not.toHaveBeenCalled();
+    expect(s.count).not.toHaveBeenCalled();
+    // 켜진 쪽은 그대로 시작한다.
+    await expect(startLoginMethodConnect("google")).rejects.toThrow("REDIRECT:https://github.com");
+  } finally {
+    vi.unstubAllEnvs();
+  }
+});

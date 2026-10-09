@@ -460,6 +460,34 @@ describe("reissueInvitation — 수락·철회와의 교차", () => {
  * 미확정 멤버 행을 못 본다 — 최종 판정은 `ProjectMember`의 unique 제약이고, 진 쪽은 그 P2002를 받는다.
  */
 describe("acceptInvitation — 동시 수락", () => {
+  it("OWNER 수락이 User 잠금을 가진 동안 EDITOR 수락이 겹쳐도 교착하지 않는다", async () => {
+    await seedInvitation({ id: "inv-editor", email: "joiner@x.com", token: "tok-editor" });
+    await seedInvitation({ id: "inv-owner", email: "joiner@x.com", token: "tok-owner", role: "OWNER" });
+    const client = await pool.connect();
+    const pending: ReturnType<typeof acceptInvitation>[] = [];
+    try {
+      await client.query("BEGIN");
+      await client.query(`SELECT "id" FROM "ProjectInvitation" WHERE "id" = 'inv-owner' FOR UPDATE`);
+      pending.push(acceptInvitation({ token: "tok-owner" }));
+      // OWNER가 User 잠금을 잡고 초대 소비에서 멈춘 것을 관측한다.
+      await expect.poll(async () => (await pool.query(`SELECT count(*)::int AS n FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND query LIKE 'UPDATE%ProjectInvitation%'`)).rows[0].n, { timeout: 10_000 }).toBe(1);
+      pending.push(acceptInvitation({ token: "tok-editor" }));
+      // 기존 코드는 멤버 INSERT의 FK에서, 수정 코드는 Project 직렬화에서 기다린다.
+      await expect.poll(async () => (await pool.query(`SELECT count(*)::int AS n FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND (query LIKE 'INSERT%ProjectMember%' OR query LIKE 'SELECT%"Project"%FOR NO KEY UPDATE%')`)).rows[0].n, { timeout: 10_000 }).toBe(1);
+      await client.query("COMMIT");
+      const results = await Promise.all(pending);
+      expect(results.filter((r) => r.ok)).toHaveLength(1);
+      expect(results.filter((r) => !r.ok)).toEqual([{ ok: false, error: "already-member" }]);
+      expect(await prisma.projectMember.count({ where: { projectId: "p", userId: "u3" } })).toBe(1);
+      expect(await prisma.projectInvitation.count({ where: { projectId: "p", acceptedAt: { not: null } } })).toBe(1);
+      expect(await prisma.projectEvent.count({ where: { projectId: "p", subtype: "member.joined" } })).toBe(1);
+    } finally {
+      await client.query("ROLLBACK");
+      await Promise.allSettled(pending);
+      client.release();
+    }
+  });
+
   it("상대 수락의 멤버 행이 미확정인 채 조회를 지나면 P2002를 already-member로 접고 초대를 소비하지 않는다", async () => {
     await seedInvitation({ id: "inv", email: "joiner@x.com", token: "tok-inv" });
     const client = await pool.connect();

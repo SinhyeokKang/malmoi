@@ -1,0 +1,33 @@
+# 빌드 context에서 뺀다 — 비밀·로컬 상태가 image layer·history에 남지 않게 (self-hosting design §5).
+# 목록 일부를 `lib/deployment/__tests__/self-hosted-gates.test.ts`가 센다.
+
+# 비밀
+**/.env*
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+.vercel
+
+# 로컬 상태·생성물 — 이미지 안에서 다시 만든다
+.git
+.scratch
+node_modules
+.next
+generated
+public/fonts
+coverage
+**/*.tsbuildinfo
+.DS_Store
+.claude/worktrees
+.claude/settings.local.json
+# 테스트·픽스처 — 빌드는 import하지 않는다(실행 이미지의 노출면·크기만 늘린다)
+**/__tests__
+
+# 백업 — DB dump·업로드 사본을 리포 근처에 두었어도 들어가지 않게
+backup
+backups
+**/*.dump
+**/*.sql.gz
+**/*.tar.gz
+deploy/certs

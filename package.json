@@ -23,6 +23,7 @@
     "smoke:github": "tsx scripts/smoke-github.ts",
     "adapter-survey": "tsx scripts/adapter-survey.ts",
     "guide:check": "tsx scripts/guide-check.ts",
+    "preflight": "tsx scripts/preflight.ts",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "PRISMA_TARGET=prod prisma migrate deploy",
     "db:status": "prisma migrate status",
@@ -33,10 +34,12 @@
     "sync:agents:check": "node scripts/sync-agents.mjs --check",
     "credentials:dev": "CREDENTIAL_TARGET=dev NODE_OPTIONS=--conditions=react-server tsx scripts/credentials.ts",
     "credentials:prod": "CREDENTIAL_TARGET=prod NODE_OPTIONS=--conditions=react-server tsx scripts/credentials.ts",
+    "credentials:self-hosted": "CREDENTIAL_TARGET=self-hosted NODE_OPTIONS=--conditions=react-server tsx scripts/credentials.ts",
     "test:credentials:postgres": "vitest run --config vitest.credentials.config.ts",
     "test:projects:postgres": "vitest run --config vitest.projects.config.ts",
     "credentials:finalize:dev": "CREDENTIAL_TARGET=dev NODE_OPTIONS=--conditions=react-server tsx scripts/finalize-credentials.ts",
     "credentials:finalize:prod": "CREDENTIAL_TARGET=prod NODE_OPTIONS=--conditions=react-server tsx scripts/finalize-credentials.ts",
+    "credentials:finalize:self-hosted": "CREDENTIAL_TARGET=self-hosted NODE_OPTIONS=--conditions=react-server tsx scripts/finalize-credentials.ts",
     "release:plan": "tsx scripts/release-plan.ts",
     "gate": "tsx scripts/gate.ts"
   },
@@ -89,5 +92,5 @@
     "yaml": "2.9.0",
     "zod": "^4.5.4"
   },
-  "version": "1.2.6"
+  "version": "1.3.0"
 }

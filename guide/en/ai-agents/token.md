@@ -18,7 +18,7 @@ You have one personal token at a time; connected apps don't count toward it. To 
 
 ## Add Malmoi with a token {#connect}
 
-The snippets below use `https://mal-moi.com/api/mcp`. To copy the server address of the site you are using, choose **Copy server URL** on the **Connected apps** card of the **MCP connector** page.
+In the snippets below, replace `SERVER_URL` with the server address of the site you are using. To copy it, choose **Copy server URL** on the **Connected apps** card of the **MCP connector** page.
 
 ### Claude Code {#claude-code}
 
@@ -29,7 +29,7 @@ Add this to `.mcp.json` at the root of your project:
   "mcpServers": {
     "malmoi": {
       "type": "http",
-      "url": "https://mal-moi.com/api/mcp",
+      "url": "SERVER_URL",
       "headers": {
         "Authorization": "Bearer ${MALMOI_TOKEN}"
       }
@@ -44,7 +44,7 @@ Add this to your Codex configuration file:
 
 ```toml title="~/.codex/config.toml"
 [mcp_servers.malmoi]
-url = "https://mal-moi.com/api/mcp"
+url = "SERVER_URL"
 bearer_token_env_var = "MALMOI_TOKEN"
 ```
 
@@ -56,7 +56,7 @@ Add this to `.cursor/mcp.json` in your project:
 {
   "mcpServers": {
     "malmoi": {
-      "url": "https://mal-moi.com/api/mcp",
+      "url": "SERVER_URL",
       "headers": {
         "Authorization": "Bearer ${env:MALMOI_TOKEN}"
       }

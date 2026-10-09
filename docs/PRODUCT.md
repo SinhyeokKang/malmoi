@@ -270,8 +270,8 @@ GitHub·Google 어느 쪽으로 들어와도 같은 사람을 가리키고, 프�
   없어졌다** — 메일 장애 동안 초대는 지연되고, 발급 뒤 메일이 안 나간 초대는 Resend로 복구한다. 좌석은 발급 시점의
   현재 멤버 수로만 판정하므로(대기 초대를 예약으로 세지 않는다) 9명일 때 3명을 초대해 모두 수락하면 12명이 될 수 있다.
   방침이 전송처(Resend)·보존 30일을 공표한다(2026-09-24 개정, `third-parties`·`retention` 절).
-- **야간 동기화** (2026-09-30, nightly-sync — 2026-09-24 공지된 "야간 자동 Publish"를 넓혔다) — 하루 한 번(`vercel.json`, 프로덕션
-  배포에서만) 프로젝트마다 **Publish / 적재 / 스킵 중 하나**를 고른다. 워크플로를 안 붙인 프로젝트도 코드가 추가·삭제한 키를 하루
+- **야간 동기화** (2026-09-30, nightly-sync — 2026-09-24 공지된 "야간 자동 Publish"를 넓혔다) — 하루 한 번(호스팅 서비스는 `vercel.json`의 Vercel Cron — 프로덕션
+  배포에서만, self-hosted는 설치의 스케줄러가 같은 route를 같은 시각에 부른다 — §4.1 "셀프 호스팅") 프로젝트마다 **Publish / 적재 / 스킵 중 하나**를 고른다. 워크플로를 안 붙인 프로젝트도 코드가 추가·삭제한 키를 하루
   안에 받는다 — 전에는 첫 적재 뒤로 수동 Sync뿐이었고 그 공백이 어디에도 안 보였다. 온보딩 ④ 설명과 `/docs/sync/nightly`가 그 약속을 말한다.
 
   | 조건 (순서대로) | 한 일 | Logs |
@@ -398,6 +398,19 @@ GitHub·Google 어느 쪽으로 들어와도 같은 사람을 가리키고, 프�
   로그아웃 뒤 그 기기의 공개 페이지도 같은 테마다. 로그인하면 **계정 값을 쿠키로** 옮겨 적는다(`events.signIn` — 계정 값이 없으면 쿠키를 건드리지 않는다. 쿠키를 계정으로 올리는 방향은 없다 — 화면 언어와 같은 장치다). 그래서 로그아웃 뒤·다음 로그인 직전 화면이 계정 값과 같다. 이 기기의 첫 로그인 순간 한 번의 전환은 남는다.
   ③ **첫 페인트부터 고른 테마다** — 서버가 `<html data-theme>`을 싣고 인라인 스크립트가 없다.
   ④ **라이트로 남는 것**: 초대 메일(받는 사람의 테마를 모른다) · 가이드 스크린샷 · 로그인 키비주얼 PNG · OG 이미지·파비콘 · 루트 오류 화면(`global-error`).
+
+- **셀프 호스팅** (2026-10-09, self-hosting) — 개발자가 자기 서버에서 말모이를 설치·업데이트·복구하는 공식 경로 하나. **공식 지원은 Linux 단일 서버의
+  Docker Compose**(앱 한 인스턴스 + 일반 Postgres 17 + 업로드 볼륨 + 야간 스케줄러, HTTPS reverse proxy 뒤 도메인 루트, 최초 검증 linux/amd64)이고
+  이미지는 매 앱 태그 `v<x.y.z>`마다 GHCR(`ghcr.io/sinhyeokkang/malmoi`)에 발행한다. 지원 대상은 최신 앱 태그 하나, 창구는 GitHub Issues의 best-effort다.
+  운영자 절차(설치·업데이트·백업/복원·키 회전·진단·개인정보 재료)는 공개 가이드 `/docs/self-hosting` 장이 정본이다(README는 hosted 비교표만 두고 그리로 보낸다).
+  배포 모드는 `MALMOI_ORIGIN`의 존재로 판정한다 — 있으면 self-hosted이고 `VERCEL_ENV`와 함께 있으면 무효(fail-closed)다.
+  호스팅 서비스에서 달라지는 것: 업로드는 Vercel Blob 대신 볼륨 · 야간 동기화는 Vercel Cron 대신 스케줄러 컨테이너 · DB는 Supabase 대신 일반 Postgres(런타임 롤은 비-superuser) ·
+  `/privacy`는 운영자 정책 URL로 redirect · 페이지는 noindex · Analytics 없음 · 생성 워크플로는 **항상 `api-url`을 든다**(없으면 push 토큰이 호스팅 서비스로 간다 — ACTIONS).
+  **그대로인 것**: 로그인(운영자가 켠 공급자로 — GitHub OAuth App·Google OAuth 중 **완전한 쌍(ID·SECRET) 최소 하나**, 반쪽은 기동 거부. 화면은 켠 공급자의 버튼만 그린다 — 2026-10-09, optional-login-providers. 리포 연결용 GitHub App 등록은 어느 쪽이든 필수)·인가(`ProjectMember`)·번역 보존 규칙·push/편집/pull 계약. 가입은 호스팅 서비스와 같이
+  열려 있어 검증 이메일을 가진 누구나 `User` 행을 얻고 비운영자는 프로젝트 상한 3이다(운영자는 `OPERATOR_EMAILS`).
+  **대상 리포의 CI는 상류 리포의 action 태그를 실행한다**(공급망 의존 — ACTIONS). `/changelog`는 상류 Release를 보여 "Latest"가 설치본 버전이 아닐 수 있다.
+  **하지 않는 것**: Kubernetes·다중 인스턴스·고가용성·무중단/자동 업데이트 · 폐쇄망·GitHub Enterprise·GitLab · 로컬 비밀번호·SAML·이메일 로그인 · Resend 외 메일 transport ·
+  호스팅 서비스와 설치본 사이 계정·프로젝트 이전 · 관리 콘솔·설치 마법사·화이트라벨 · self-hosted용 sitemap·llms 산출물 · 앱 안 rate limit(proxy 예제가 든다).
 
 ### 4.2 만들지 않는 것
 
@@ -719,7 +732,7 @@ PR 생성은 `published`가 아니라 `review requested`에 가깝고, 반영은
 코멘트로 이유를 남겨 닫으며, 미리보기("Publishing closes pull request #N")·결과·Logs가 같은 사실을 말한다.
 **base 파일 부재는 여전히 `writer-warnings`다**(설정 오류) — 미리보기가 먼저 경로·브랜치를 말하며 막는다(Try again 없음).
 TS에서 후행 spread·동적 computed가 가린 키는 쓰거나 전달 확인하지 않는다. 뒤의 명시적 리터럴은 자기 키를 다시 확정하지만, 파일 안의 다른 불확실한 키 때문에 preview 전체가 막힐 수 있다(ARCHITECTURE §1.4).
-`no-changes`도 유효한 전달 확인이면 편집을 해제하지만 표시용 Last sent는 바꾸지 않는다. 자동 적재는 사전 편집·PR 판정 뒤 Last sent와 전달 확인 revision을 잠금 안에서 다시 비교해, 바뀌면 전체 보류한다(`publish-raced`). Publish 실행권·소스 context가 바뀐 늦은 완료는 확정 전체를 롤백하고 편집을 유지한다 — 결과는 실패·전달 여부 미확인이다(ARCHITECTURE §5.8).
+`no-changes`도 유효한 전달 확인이면 편집을 해제하지만 표시용 Last sent는 바꾸지 않는다. 자동 적재는 사전 편집·PR 판정 뒤 Last sent와 전달 확인 revision을 잠금 안에서 다시 비교해, 바뀌면 전체 보류한다(`publish-raced`). Publish는 플랫폼과 무관하게 240초 작업 예산을 갖는다. 리포 변경 시도 뒤 실패하면 결과 미확인으로 남고 시작 후 300초 정각까지 Publish·수동/야간 Sync를 막는다. 번역 저장은 허용하지만 Revert는 그 창 뒤의 새 전달 확인까지 막는다. 이미 GitHub가 받은 요청의 반영을 취소한다는 보장은 없다. Publish 실행권·소스 context가 바뀐 늦은 완료는 확정 전체를 롤백하고 편집을 유지한다 — 결과는 실패·전달 여부 미확인이다(ARCHITECTURE §5.8).
 야간 cron은 미전달 편집이 있는 프로젝트를 Publish하고, 열린 PR이 있어도 새 편집이 있으면 오늘처럼 갱신한다.
 대상 선정 뒤 보관된 프로젝트는 실행 시작 잠금 안에서 거부한다. 늦은 브랜치 없음 응답도 그 뒤 바뀐 설정·성공 적재의 현재 건강성을 덮지 않고 관측 사건만 남긴다.
 ⚠️ **편집이 0인 프로젝트도 이제 GitHub에 닿는다** (2026-09-30, nightly-sync — §4.1) — base 브랜치 ref 하나를 읽어 적재할 새 커밋이
@@ -755,6 +768,7 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
                                클라이언트가 연 OAuth 쿼리 → 검증 뒤 ?request=<id>로 정규화 · 로그인 왕복·계정 연결·/signin 복귀가 같은 요청으로 돌아온다
 /invite/:token                 초대 수락 (토큰이 인가를 대신한다)
 /privacy                       ✅ 방침 — 랜딩과 같은 공개 셸 안 (헤더 primary가 세션으로 갈린다) ← privacy-shell (2026-09-26)
+                               self-hosted는 본문 없이 운영자 정책 URL(`MALMOI_PRIVACY_URL`)로 307 — 언어 구분 없이 URL 하나 ← self-hosting (2026-10-09)
 /docs · /docs/:slug*           ✅ 사용 가이드 — 원고 guide/<uiLocale>/**.md · 순서 guide/<uiLocale>/SUMMARY.md · 공개 셸 + 문서 내비 ← docs-guide (2026-09-26)
                                화면 언어의 원고(en·ko·es 세 벌 — 구조 동형, 스크린샷은 en 한 벌 공유, 없는 언어를 en으로 메우지 않는다) ← ui-locales (2026-10-05)
                                /docs = 개요(독자 두 갈래 Set up / Translate) · 없는 slug·AUTHORING·SHOOTING은 404
@@ -762,6 +776,7 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 /changelog                     릴리스 노트 — 원문은 GitHub Release(공개 리포, 토큰 없이 1시간 캐시 · 배포마다 새로 받는다) · 공개 셸 · #v<x.y.z> 착지 ← changelog (2026-09-28)
                                앱 태그 v<x.y.z>만(draft·prerelease·액션 태그 제외) · GitHub 실패·0건도 200 + GitHub Releases 안내
 /robots.txt                    ✅ 요청 시점 VERCEL_ENV 판정 — production만 허용(/api/·/projects·/account·/preferences·/inbox 거부 + sitemap), 그 밖은 Disallow: / ← seo-geo (2026-09-27)
+                               self-hosted는 Vercel이 아니라 `VERCEL_ENV`가 비어 늘 Disallow: / — 거기에 middleware가 모든 페이지에 noindex, sitemap·llms 세 경로를 404로 더한다(색인 계약은 hosted만의 것) ← self-hosting (2026-10-09)
 /sitemap.xml                   ✅ / · /docs/** 전부(SUMMARY 순서) · /changelog · /privacy — /signin은 noindex라 없다 ← seo-geo
 /llms.txt · /llms-full.txt     ✅ 가이드 목차·현재 도입 사실·Optional 링크 · 원고 전문(Source 줄·내부 문서 링크의 공개 절대 URL) — text/plain · en 원고만 ← seo-geo
                                색인: 공개 다섯(/·/docs·/docs/:slug·/changelog·/privacy)만 canonical · /signin·/invite·/signin/link·/oauth/authorize는 noindex(robots.txt로는 안 막는다)

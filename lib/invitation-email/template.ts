@@ -7,7 +7,8 @@
  *   한 번만 들어가고 그 결과를 다시 훑지 않는다** — 연쇄 치환이면 `{{…}}`가 든 프로젝트 이름이 뒤 치환에서 다시
  *   전개된다. 다시 채우는 것은 `{{TILE}}` 하나뿐이다: 그 자리에 아래 조각(우리 상수) 둘 중 하나를 넣고 조각 안의
  *   `{{TILE_SRC}}`·`{{TILE_BG}}`를 풀며, 그 값도 상수 URL · allowlist를 지난 키 · hex뿐이다.
- * ⚠️ 원격 이미지는 전부 `mal-moi.com` 고정 경로다(로고 · Box PNG · `/api/images/<key>`). 썸네일은 프로젝트
+ * ⚠️ 원격 이미지는 전부 한 origin의 고정 경로다(로고 · Box PNG · `/api/images/<key>`) — hosted는 `mal-moi.com`, self-hosted는
+ *   설치 origin(`message.ts`의 `assetOrigin`). 썸네일은 프로젝트
  *   단위 값이라 수신자를 가르지 않아 열람 추적 픽셀이 되지 않는다.
  * ⚠️ 치환은 `message.ts`가 이스케이프한 값으로만 한다. 여기서 문자열을 조립하지 않는다.
  * ⚠️ 본문 칼럼은 320이다 — `/signin` 폼 칼럼(`auth-column.tsx`의 `w-[320px]`)과 같고, 카드·버튼이 그 폭을 채운다

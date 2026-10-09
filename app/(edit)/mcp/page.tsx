@@ -7,6 +7,7 @@ import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { ButtonLink } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
+import { deploymentMode, fallbackOrigin } from "@/lib/deployment/mode";
 import { logCaught } from "@/lib/failure";
 import { requestOrigin } from "@/lib/github-connect/origin";
 import { getMessages } from "@/lib/i18n/server";
@@ -47,7 +48,8 @@ export default async function McpPage() {
   const apps = await loadConnectedApps(userId, projects.map((p) => p.id), now);
 
   const head = await headers();
-  const origin = requestOrigin({ host: head.get("host"), forwardedProto: head.get("x-forwarded-proto") })?.origin ?? "https://mal-moi.com";
+  // Host를 못 믿으면 이 배포의 정본 origin이다 — self-hosted가 SaaS 주소를 보이지 않는다. 판정이 무효면 경로만 보인다.
+  const origin = requestOrigin({ host: head.get("host"), forwardedProto: head.get("x-forwarded-proto") })?.origin ?? fallbackOrigin(deploymentMode()) ?? "";
 
   return (
     <>

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act } from "react";
-import { beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { render } from "@/components/__tests__/helpers/dom";
 import { en } from "@/messages/en";
@@ -650,4 +650,49 @@ it("연결된 행이 프로젝트 수를 말하지 않는다", async () => {
   const container = await screen();
   const row = card(container, en.account.github.title).querySelector("li")!;
   expect(row.textContent).not.toMatch(/\d+\s+projects?/);
+});
+
+/**
+ * 공급자를 끈 설치 (optional-login-providers spec §4.4·§4.10) — 수단 카드는 켜진 공급자 행만 그리고 배지 분모가 켜진 수다.
+ * 꺼진 공급자로 연결된 행은 **숨길 뿐** 지우지 않는다(다시 켜면 돌아온다). 테스트 기본(setup)은 hosted 두 쌍이다.
+ */
+afterEach(() => vi.unstubAllEnvs());
+
+it("Google만 켜진 설치에서는 수단 행이 하나이고 배지가 1 of 1이다 — 꺼진 GitHub 행은 숨는다", async () => {
+  vi.stubEnv("AUTH_GITHUB_ID", "");
+  const container = await screen({}, [{ provider: "github" }, { provider: "google" }]);
+  const methods = card(container, en.link.methods.title);
+  const rows = [...methods.querySelectorAll("li")];
+  expect(rows).toHaveLength(1);
+  expect(rows[0]!.textContent).toContain(en.link.providers.google);
+  expect(methods.textContent).not.toContain(en.link.providers.github);
+  expect(methods.querySelector("h2")!.parentElement!.textContent).toContain(en.link.methods.count(1, 1));
+  // 꺼진 GitHub 행이 남아 있어도 켜진 Google은 마지막 수단이다 — 확인이 아니라 사유 동반 비활성이다.
+  expect(methods.textContent).toContain(en.link.methods.lastMethod);
+  expect(methods.querySelector('[aria-haspopup="dialog"]')).toBeNull();
+});
+
+it("켜진 연결 수단이 없으면 Sign out everywhere가 사유와 함께 비활성이다 — 다음 행동은 Connect다", async () => {
+  vi.stubEnv("AUTH_GITHUB_ID", "");
+  const container = await screen({}, [{ provider: "github" }]);
+  const sessions = card(container, en.account.sessionsSection.title);
+  const trigger = [...sessions.querySelectorAll("button")].find((b) => b.textContent === en.account.sessions.title)!;
+  expect(trigger).not.toBeUndefined();
+  expect(trigger.getAttribute("aria-disabled")).toBe("true");
+  expect(trigger.hasAttribute("disabled")).toBe(false);
+  expect(trigger.getAttribute("aria-haspopup")).toBeNull();
+  const reason = container.ownerDocument.getElementById(trigger.getAttribute("aria-describedby")!);
+  expect(reason?.textContent).toBe(en.account.sessions.needsMethod);
+  // 같은 화면에 [Connect]가 있다 — 사유가 가리키는 다음 행동이다.
+  const connect = card(container, en.link.methods.title).querySelector('button[type="submit"]');
+  expect(connect?.getAttribute("aria-label")).toBe(en.link.methods.connectLabel(en.link.providers.google));
+});
+
+it("켜진 연결 수단이 있으면 Sign out everywhere는 확인을 지난다 — hosted 그대로", async () => {
+  const container = await screen({}, [{ provider: "github" }]);
+  const sessions = card(container, en.account.sessionsSection.title);
+  const trigger = [...sessions.querySelectorAll("button")].find((b) => b.textContent === en.account.sessions.title)!;
+  expect(trigger.getAttribute("aria-haspopup")).toBe("dialog");
+  expect(trigger.getAttribute("aria-disabled")).toBeNull();
+  expect(sessions.textContent).not.toContain(en.account.sessions.needsMethod);
 });

@@ -1,4 +1,5 @@
 import type { Role } from "@/lib/auth/permission";
+import { deploymentMode, HOSTED_PRODUCTION_ORIGIN } from "@/lib/deployment/mode";
 import { en } from "@/messages/en";
 import { routes } from "@/lib/routes";
 import { hueOf, type Hue } from "@/lib/hue";
@@ -18,14 +19,19 @@ export const INVITATION_EMAIL_SUBJECT = "You're invited to a project on Malmoi";
  * ⚠️ **프로덕션 고정 URL이다** — dev·로컬 메일도 이 주소를 쓴다. preview 호스트는 Vercel SSO 뒤라 메일
  * 클라이언트가 이미지를 못 받는다. 파일이 프로덕션에 배포되기 전에는 alt 텍스트가 워드마크 자리를 채운다.
  */
-export const INVITATION_EMAIL_LOGO_URL = "https://mal-moi.com/email/logo@2x.png";
+export const INVITATION_EMAIL_LOGO_URL = `${HOSTED_PRODUCTION_ORIGIN}/email/logo@2x.png`;
 /** 폴백 타일의 흰 Box 글리프. 로고와 같은 이유로 프로덕션 고정이다 — 경로를 옮기면 이미 보낸 메일이 깨진다. */
-const BOX_URL = "https://mal-moi.com/email/box@2x.png";
+const BOX_PATH = "/email/box@2x.png";
 /**
  * ⚠️ **Blob 호스트를 수신 측에 주지 않는다**(ARCHITECTURE §6.7) — 사내 웹필터가 `*.vercel-storage.com`을 막아
  * 이미지를 직접 받는 메일 클라이언트도 같이 막힌다. 로고와 같이 프로덕션 고정이라 dev 스토어 키는 404(빈 칸)다.
+ *
+ * ⚠️ **self-hosted는 원격 자산 셋(로고·Box·썸네일 프록시) 전부가 메일 링크와 같은 설치 origin이다**(self-hosting design §7) — 운영자
+ * 볼륨의 키는 SaaS에 없고, 운영자 메일이 SaaS에서 이미지를 받게 두지 않는다. 그 origin은 config가 모드에서 파생한 `input.origin`이다.
  */
-const IMAGE_PROXY_ORIGIN = "https://mal-moi.com";
+function assetOrigin(origin: string): string {
+  return deploymentMode().kind === "self-hosted" ? origin : HOSTED_PRODUCTION_ORIGIN;
+}
 
 /**
  * 색조 → 폴백 셀 hex. 판정은 화면과 같은 `hueOf`이고 값만 hex다 — 메일 클라이언트는 oklch를 못 읽는다.
@@ -76,14 +82,16 @@ export function buildInvitationEmail(input: {
   const url = `${input.origin}${routes.invite(input.token)}`;
   // 키가 안 나오는 값(null·""·남의 URL)은 전부 폴백으로 간다 — 화면 `useImageFallback`의 "매핑 뒤 falsy면 폴백"과 같은 판정.
   const key = planProjectImageDelete(input.project.image);
+  const assets = assetOrigin(input.origin);
+  const boxUrl = `${assets}${BOX_PATH}`;
   const values: Record<string, string> = Object.assign(Object.create(null) as Record<string, string>, {
-    LOGO_URL: INVITATION_EMAIL_LOGO_URL,
+    LOGO_URL: assets === HOSTED_PRODUCTION_ORIGIN ? INVITATION_EMAIL_LOGO_URL : escapeHtml(`${assets}/email/logo@2x.png`),
     INVITE_URL: escapeHtml(url),
     PROJECT_NAME: escapeHtml(emailProjectName(input.project.name)),
     ROLE: escapeHtml(en.projects.role[input.role]),
     TILE: key === null ? INVITATION_EMAIL_TILE_FALLBACK : INVITATION_EMAIL_TILE_IMAGE,
     // 메일은 PNG 변환 경로다 (#140 — Gmail이 WebP 알파를 버리고 iOS에서 깨뜨렸다). 앱 화면은 `/api/images/` WebP 그대로다.
-    TILE_SRC: key === null ? BOX_URL : escapeHtml(`${IMAGE_PROXY_ORIGIN}/api/images/email/${key}`),
+    TILE_SRC: escapeHtml(key === null ? boxUrl : `${assets}/api/images/email/${key}`),
     // 색조는 자르기 전 원래 이름으로 고른다 — 잘린 이름으로 고르면 화면 타일과 색이 갈린다.
     TILE_BG: HUE_HEX[hueOf(input.project.name)],
   });

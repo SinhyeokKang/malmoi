@@ -1,3 +1,4 @@
+import { deploymentMode } from "@/lib/deployment/mode";
 import { isAllowedHost } from "@/lib/github-connect/origin";
 
 /**
@@ -18,5 +19,8 @@ export function checkOrigin(headers: Headers): boolean {
   }
   // 불투명 origin(`null`)·`file:`은 host가 비어 있다 — 호스트 대조가 거른다. 스킴은 보지 않는다: localhost는 http다.
   if (url.protocol !== "https:" && url.protocol !== "http:") return false;
+  // self-hosted엔 http 로컬 갈래가 없다 — 스킴까지 같은 설정 origin 하나만 받는다(self-hosting design §2).
+  const mode = deploymentMode();
+  if (mode.kind === "self-hosted") return url.origin === mode.origin;
   return isAllowedHost(url.host);
 }

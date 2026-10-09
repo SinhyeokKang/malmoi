@@ -1,5 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const s = vi.hoisted(() => ({
   session: { status: "none" } as { status: "none" } | { status: "unavailable" } | { status: "ok"; userId: string; name: null; email: null; image: null },
@@ -9,10 +9,11 @@ const s = vi.hoisted(() => ({
   redirect: vi.fn((url: string) => { throw Object.assign(new Error("NEXT_REDIRECT"), { url }); }),
   connection: null as null | Record<string, unknown>,
   accounts: [{ provider: "github" }] as { provider: string }[],
+  forwarded: { host: "localhost:3000", proto: "http" },
 }));
 vi.mock("@/auth", () => ({ signIn: vi.fn(), signOut: vi.fn() }));
 vi.mock("next/navigation", async (importOriginal) => ({ ...(await importOriginal<typeof import("next/navigation")>()), redirect: s.redirect, useRouter: () => ({ refresh: vi.fn() }) }));
-vi.mock("next/headers", () => ({ headers: async () => new Headers({ host: "localhost:3000", "x-forwarded-proto": "http" }), cookies: async () => ({ get: () => undefined, set: vi.fn() }) }));
+vi.mock("next/headers", () => ({ headers: async () => new Headers({ host: s.forwarded.host, "x-forwarded-proto": s.forwarded.proto }), cookies: async () => ({ get: () => undefined, set: vi.fn() }) }));
 vi.mock("@/lib/auth/read-session", () => ({ readSession: async () => s.session }));
 vi.mock("@/lib/oauth-server/authorize", () => ({ readAuthorizationRequest: s.read, storeAuthorizationRequest: s.store }));
 vi.mock("@/lib/oauth-server/client-metadata-fetch", () => ({ fetchClientMetadata: s.fetch }));
@@ -134,6 +135,25 @@ describe("?request= — 세션", () => {
     expect(page).not.toContain("You were signed out.");
   });
 
+  /**
+   * `Not you?` 뒤(`1s`)에는 **첫 공급자 버튼**에 포커스 (optional-login-providers spec §4.2) — 조건은 그대로이고 대상만 켜진 것 중
+   * 첫째다. Google 단독이면 Google이 첫째이자 primary다.
+   */
+  it("계정 전환 뒤엔 켜진 첫 공급자 버튼 하나에 autoFocus가 붙는다", async () => {
+    const autofocused = (page: string) => [...page.matchAll(/<button[^>]*autofocus[^>]*>([\s\S]*?)<\/button>/g)].map((m) => m[1]!.replace(/<[^>]+>/g, ""));
+    expect(autofocused(await html({ request: "req_1", e: "switch" }))).toEqual(["Continue with GitHub"]);
+    expect(autofocused(await html({ request: "req_1" }))).toEqual([]);
+    expect(autofocused(await html({ request: "req_1", e: "signed-out" }))).toEqual([]);
+    vi.stubEnv("AUTH_GITHUB_ID", "");
+    try {
+      const google = await html({ request: "req_1", e: "switch" });
+      expect(google).not.toContain("Continue with GitHub");
+      expect(autofocused(google)).toEqual(["Continue with Google"]);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("동의 중 세션이 끝났으면 경고가 먼저 낭독된다 (`1k`)", async () => {
     const page = await html({ request: "req_1", e: "signed-out" });
     expect(page).toMatch(/role="alert"[^>]*>.*You were signed out\./);
@@ -181,5 +201,28 @@ describe("?request= — 세션", () => {
     expect(page).toContain("&lt;img src=x onerror=alert(1)&gt;");
     const card = page.slice(page.indexOf("data-app-card"));
     expect(card.slice(0, 600)).not.toContain("truncate");
+  });
+});
+
+/** self-hosting design §7 — 동의 중에 같은 탭으로 운영자 방침에 나가면 이 요청으로 돌아올 길이 끊긴다(POSTMORTEM 2026-09-12). */
+describe("동의문 방침 링크", () => {
+  // 푸터에도 `/privacy` 링크가 있다 — 동의문 링크는 본문 링크 형(`text-link`)이다. 푸터는 같은 탭 그대로다.
+  const privacyAnchor = (page: string) => [...page.matchAll(/<a[^>]*href="\/privacy"[^>]*>/g)].map((m) => m[0]).find((a) => a.includes("text-link"));
+  afterEach(() => { vi.unstubAllEnvs(); s.forwarded = { host: "localhost:3000", proto: "http" }; });
+
+  it("hosted — 같은 탭", async () => {
+    const anchor = privacyAnchor(await html({ request: "req_1" }));
+    expect(anchor).toBeDefined();
+    expect(anchor).not.toContain("target=");
+  });
+
+  it("self-hosted — 새 탭 + noopener noreferrer", async () => {
+    vi.stubEnv("MALMOI_ORIGIN", "https://malmoi.example.com");
+    vi.stubEnv("VERCEL_ENV", "");
+    // self-hosted의 발급 origin은 `MALMOI_ORIGIN` 호스트만 받는다 — 다른 Host면 동의 화면 전에 끝난다.
+    s.forwarded = { host: "malmoi.example.com", proto: "https" };
+    const anchor = privacyAnchor(await html({ request: "req_1" }));
+    expect(anchor).toContain('target="_blank"');
+    expect(anchor).toContain('rel="noopener noreferrer"');
   });
 });

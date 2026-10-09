@@ -4,7 +4,7 @@ import { beginRevocation, finishRevocation } from "../store";
 import { challengeIdentifier, nonceHash, stateHash } from "../policy";
 import { hashSessionToken } from "@/lib/credentials/crypto";
 const nonce = Buffer.alloc(32, 12).toString("base64url");
-const input = { nonce, sessionToken: "raw", state: "state", provider: "github" as const, providerAccountId: "gh" };
+const input = { nonce, sessionToken: "raw", state: "state", provider: "github" as const, providerAccountId: "gh", enabled: ["github", "google"] as const };
 function fixture() {
   const context = { userId: "u", provider: "github" as const, providerAccountId: "gh", sessionDigest: hashSessionToken("raw"), stateDigest: stateHash("state") };
   const row = { identifier: challengeIdentifier(context), token: nonceHash(nonce), expires: new Date(Date.now() + 300000) };
@@ -41,6 +41,21 @@ it("start succeeds with two sign-in methods and confirms against github", async 
   tx.account.findMany.mockResolvedValue([{ provider: "google", providerAccountId: "g", userId: "u" }, { provider: "github", providerAccountId: "gh", userId: "u" }]);
   expect(await beginRevocation(db, { ...input, userId: "u" })).toBe("ready");
   expect(tx.verificationToken.create).toHaveBeenCalledWith({ data: expect.objectContaining({ identifier: expect.stringContaining('"github"') }) });
+});
+/**
+ * 확인 상대는 **켜진** 연결 수단 중에서만 고른다 (optional-login-providers spec §4.7) — Action과 store가 같은 켜진 집합을 받아야
+ * "서버가 고른 상대"의 대조가 성립한다.
+ */
+it("start confirms against an enabled method only — a disabled-only account is invalid", async () => {
+  const { db, tx } = fixture();
+  tx.account.findMany.mockResolvedValue([{ provider: "github", providerAccountId: "gh", userId: "u" }, { provider: "google", providerAccountId: "g", userId: "u" }]);
+  expect(await beginRevocation(db, { ...input, provider: "google", providerAccountId: "g", enabled: ["google"], userId: "u" })).toBe("ready");
+  expect(tx.verificationToken.create).toHaveBeenCalledWith({ data: expect.objectContaining({ identifier: expect.stringContaining('"google"') }) });
+  tx.verificationToken.create.mockClear();
+  // 꺼진 GitHub 행뿐이다 — 확인 왕복이 성립하지 않는다.
+  tx.account.findMany.mockResolvedValue([{ provider: "github", providerAccountId: "gh", userId: "u" }]);
+  expect(await beginRevocation(db, { ...input, enabled: ["google"], userId: "u" })).toBe("invalid");
+  expect(tx.verificationToken.create).not.toHaveBeenCalled();
 });
 it("finish consumes request before deleting only that user's sessions", async () => {
   const { db, tx } = fixture();

@@ -580,3 +580,14 @@ describe("Publish 지문 — 미리보기 뒤 바뀐 export 입력은 reconfirm 
     expect(await runSync(prisma, { projectId: "p", slug: "fixture", trigger: "cron", requestedBy: null, credential: undefined })).toMatchObject({ status: "committed", delivered: 1 });
   });
 });
+
+it("결과 미확인 Publish는 수동 Import를 막고 창이 지나면 같은 입력을 허용한다", async () => {
+  await seed();
+  await ci(payload(["key0"]));
+  await prisma.syncRun.create({ data: { id: "uncertain", projectId: "p", status: "FAILED", trigger: "MANUAL", errorCode: "execution-uncertain", startedAt: new Date(), finishedAt: new Date() } });
+  const repo = () => reader(Object.fromEntries(LOCALES.map(l => [`i18n/${l}.json`, '{"key0":"Repository"}'])));
+  expect(await sync(repo(), null)).toMatchObject({ ok: false, error: "publish-unsettled" });
+  expect((await prisma.project.findUniqueOrThrow({ where: { id: "p" } })).repositoryImportToken).toBeNull();
+  await prisma.syncRun.update({ where: { id: "uncertain" }, data: { startedAt: new Date(Date.now() - 301000) } });
+  expect(await sync(repo(), null)).toMatchObject({ ok: true });
+});

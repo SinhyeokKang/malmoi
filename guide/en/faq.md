@@ -64,8 +64,8 @@ Yes, in **Preferences**. These change only how Malmoi looks to you, not the lang
 
 ## What does Malmoi store about me? {#privacy}
 
-Your name, email address, and profile picture from GitHub or Google, your project memberships, and who last changed each translation. Names, email addresses, and connection tokens are stored encrypted, and Malmoi does not sell your data or use it for advertising. The [Privacy Policy](https://mal-moi.com/privacy) lists everything.
+Your name, email address, and profile picture from GitHub or Google, your project memberships, and who last changed each translation. Names, email addresses, and connection tokens are stored encrypted, and on mal-moi.com, Malmoi does not sell your data or use it for advertising. The **Privacy Policy** of the site you use lists everything; it is linked in the page footer.
 
 ## How do I delete my account? {#delete-account}
 
-There is no delete button. Write to the address in the [Privacy Policy](https://mal-moi.com/privacy); requests are answered within 30 days. Translations stay with the project, but they no longer point to you.
+There is no delete button. Write to the address in the **Privacy Policy** of the site you use, linked in the page footer. On mal-moi.com, requests are answered within 30 days; on another site, the operator's policy sets the time. Translations stay with the project, but they no longer point to you.

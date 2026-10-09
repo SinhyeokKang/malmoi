@@ -18,7 +18,7 @@ Cursor처럼 브라우저로 로그인할 수 없는 에이전트에는 개인 �
 
 ## 토큰으로 Malmoi 추가 {#connect}
 
-아래 조각은 `https://mal-moi.com/api/mcp`를 씁니다. 지금 사용하는 사이트의 서버 주소를 복사하려면 **MCP 커넥터** 페이지의 **연결된 앱** 카드에서 **서버 URL 복사**를 선택합니다.
+아래 조각의 `SERVER_URL`을 지금 사용하는 사이트의 서버 주소로 바꿉니다. 주소를 복사하려면 **MCP 커넥터** 페이지의 **연결된 앱** 카드에서 **서버 URL 복사**를 선택합니다.
 
 ### Claude Code {#claude-code}
 
@@ -29,7 +29,7 @@ Cursor처럼 브라우저로 로그인할 수 없는 에이전트에는 개인 �
   "mcpServers": {
     "malmoi": {
       "type": "http",
-      "url": "https://mal-moi.com/api/mcp",
+      "url": "SERVER_URL",
       "headers": {
         "Authorization": "Bearer ${MALMOI_TOKEN}"
       }
@@ -44,7 +44,7 @@ Codex 설정 파일에 다음을 추가합니다.
 
 ```toml title="~/.codex/config.toml"
 [mcp_servers.malmoi]
-url = "https://mal-moi.com/api/mcp"
+url = "SERVER_URL"
 bearer_token_env_var = "MALMOI_TOKEN"
 ```
 
@@ -56,7 +56,7 @@ bearer_token_env_var = "MALMOI_TOKEN"
 {
   "mcpServers": {
     "malmoi": {
-      "url": "https://mal-moi.com/api/mcp",
+      "url": "SERVER_URL",
       "headers": {
         "Authorization": "Bearer ${env:MALMOI_TOKEN}"
       }

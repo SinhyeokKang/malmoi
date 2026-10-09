@@ -34,7 +34,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 export type IssueRecipient = { email: string; role: Role };
 export type IssuedInvitation = { email: string; token: string; role: Role };
-/** 메일 카드에 싣는 값 — **잠금 뒤 읽은 것이다**(발급 사건과 같은 시점). `image`는 PII가 아닌 공개 Blob URL이다. */
+/** 메일 카드에 싣는 값 — **잠금 뒤 읽은 것이다**(발급 사건과 같은 시점). `image`는 PII가 아닌 이미지 참조다(hosted 공개 Blob URL · self-hosted `/api/images/<key>`). */
 export type IssuedProject = { name: string; image: string | null };
 type Refusal = Exclude<IssuePlan, { status: "ok" }>;
 

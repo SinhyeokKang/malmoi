@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isSessionReadError, noteAuthError, withOutageFlag } from "../outage";
+import { authErrorLabel, isSessionReadError, noteAuthError, withOutageFlag } from "../outage";
 
 /**
  * **"세션 없음"과 "세션을 못 읽었다"를 가른다** (POSTMORTEM 2026-09-06 — 리다이렉트 100%를 정상으로 읽었다).
@@ -9,6 +9,25 @@ import { isSessionReadError, noteAuthError, withOutageFlag } from "../outage";
  * (`@auth/core/lib/actions/session.js:123`). 반환값으로는 원리적으로 구별할 수 없으므로 **logger를 통해**
  * 요청 스코프에 표시를 남긴다. `AsyncLocalStorage`라 동시 요청이 서로의 표시를 보지 않는다.
  */
+
+// 프로덕션 빌드는 클래스명을 줄여 `error.name`이 `k`가 됐다(B7 실습 — `[auth] k`). Auth.js는 `type`을 정적 문자열로 둔다.
+describe("authErrorLabel — 로그에 남길 고정 분류", () => {
+  it("Auth.js 오류는 최소화된 클래스명이 아니라 type이다", () => {
+    class k extends Error { type = "OAuthCallbackError"; }
+    expect(authErrorLabel(new k("code=secret"))).toBe("OAuthCallbackError");
+  });
+
+  it("type이 없거나 식별자 모양이 아니면 기존 값(name)이다 — 오류 문장을 싣지 않는다", () => {
+    expect(authErrorLabel(new TypeError("x"))).toBe("TypeError");
+    expect(authErrorLabel(Object.assign(new Error("x"), { type: "has space=secret" }))).toBe("Error");
+    expect(authErrorLabel(Object.assign(new Error("x"), { type: 42 }))).toBe("Error");
+  });
+
+  it("Error가 아니면 typeof다", () => {
+    expect(authErrorLabel("boom")).toBe("string");
+    expect(authErrorLabel({ type: "SessionTokenError" })).toBe("object");
+  });
+});
 
 describe("isSessionReadError — Auth.js 오류의 type으로 판정한다", () => {
   it("SessionTokenError는 세션 읽기 실패다", () => {

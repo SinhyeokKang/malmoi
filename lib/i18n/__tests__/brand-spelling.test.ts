@@ -70,12 +70,14 @@ function identAfter(next: string, nextNext: string): boolean {
  * `[mcp_servers.malmoi]`)이고, 에이전트 도구 이름(`mcp__malmoi__…`)의 접두가 된다. 식별자라 소문자다. 2026-09-30에 앱 안 조각(Connect 카드)을 걷어 이제 가이드에만 선다.
  */
 // 가이드(`guide/ai-agents/token.md`·`browser.md`)는 그 조각을 JSON 그대로 싣는다 — 같은 서버 키의 JSON 형이다.
-const IDENT_EXCEPTIONS = new Set(['"User-Agent": "malmoi"', '"malmoi": {']);
+// 셀프 호스팅 가이드(`guide/<언어>/self-hosting/`)는 실측한 psql·pg_restore 명령을 그대로 싣는다 — `-d malmoi`는 compose가 만드는 DB 이름이다.
+const IDENT_EXCEPTIONS = new Set(['"User-Agent": "malmoi"', '"malmoi": {', "-d malmoi "]);
 /**
  * 대문자로 남는 자리 — **환경변수 이름**이다(셸 관례가 대문자다). 사용자가 셸에 두는 이름이라 화면 문장에도 그대로 선다
  * (`Set it as MALMOI_TOKEN in your shell`). 암호 문맥의 식별자(`malmoi/pii`)를 대문자로 올리지 않는다는 규칙과 축이 다르다.
+ * self-hosted 설정 셋(`MALMOI_ORIGIN`·`MALMOI_UPLOAD_DIR`·`MALMOI_PRIVACY_URL`)과 compose가 보간하는 `MALMOI_IMAGE`도 운영자가 env에 두는 이름이다.
  */
-const UPPER_EXCEPTIONS = new Set(["MALMOI_TOKEN"]);
+const UPPER_EXCEPTIONS = new Set(["MALMOI_TOKEN", "MALMOI_ORIGIN", "MALMOI_UPLOAD_DIR", "MALMOI_PRIVACY_URL", "MALMOI_IMAGE"]);
 
 /** 한 파일의 위반 목록 — 규칙 자체를 아래 메타 테스트가 고정한다. */
 function brandViolations(source: string): string[] {
@@ -151,12 +153,24 @@ describe("제품 이름 표기 — 화면은 Malmoi, 식별자는 malmoi", () =>
     expect(brandViolations('"MALMOI" "MalMoi"')).toHaveLength(2);
   });
 
-  it("환경변수 이름 MALMOI_TOKEN만 예외다", () => {
+  it("등록한 환경변수 이름만 예외다", () => {
     expect(brandViolations('"Set it as MALMOI_TOKEN in your shell"')).toEqual([]);
+    expect(brandViolations('process.env.MALMOI_ORIGIN "MALMOI_UPLOAD_DIR" `MALMOI_PRIVACY_URL`')).toEqual([]);
+    expect(brandViolations('"MALMOI_ORIGINS" "MALMOI_UPLOAD"')).toHaveLength(2);
     // 이름이 조금만 달라도 예외가 아니다 — 대문자 변형은 여전히 위반이다.
     expect(brandViolations('"MALMOI_TOKENS"')).toHaveLength(1);
     expect(brandViolations('"MALMOI rocks"')).toHaveLength(1);
     expect(brandViolations('const other = "malmoi";')).toHaveLength(1);
+  });
+
+  it("셀프 호스팅 명령의 `-d malmoi `와 `MALMOI_IMAGE`만 예외다 — 변형과 산문의 소문자는 여전히 틀리다", () => {
+    expect(brandViolations("psql -U postgres -d malmoi -Atc 'select 1'")).toEqual([]);
+    expect(brandViolations("`MALMOI_IMAGE=ghcr.io/sinhyeokkang/malmoi:v1.2.7`")).toEqual([]);
+    expect(brandViolations('"MALMOI_IMAGES"')).toHaveLength(1);
+    expect(brandViolations("psql -d malmoi")).toHaveLength(1);
+    expect(brandViolations("-d Malmoi ")).toHaveLength(0);
+    expect(brandViolations("run malmoi on your server")).toHaveLength(1);
+    expect(brandViolations("-d malmoi is installed")).toHaveLength(0);
   });
 
   it("GitHub User-Agent 값은 예외다 — 화면에 안 닿는다", () => {

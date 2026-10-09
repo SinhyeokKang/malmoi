@@ -26,7 +26,7 @@ Si la autorización caduca, elige **Volver a autorizar la GitHub App**. Los proy
 ## Cierra sesiones {#sessions}
 
 1. Elige **Cerrar sesión en todas partes**.
-2. Usa el botón de confirmación del cuadro de diálogo: Continuar con GitHub, Continuar con Google o **Confirmar y cerrar sesión en todas partes**. Malmoi elige el proveedor; sigue su confirmación de inicio de sesión.
+2. Usa el botón de confirmación del cuadro de diálogo, Continuar con GitHub o Continuar con Google. Malmoi elige uno de tus métodos de inicio de sesión conectados; sigue su confirmación de inicio de sesión.
 
 Esto también cierra la sesión del dispositivo que estás usando.
 

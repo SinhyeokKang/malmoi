@@ -4,7 +4,7 @@ Claude Code, Codex, claude.ai는 브라우저에서 Malmoi에 로그인하는 �
 
 ## 에이전트 연결하기 {#browser}
 
-1. 에이전트에 서버 주소를 추가합니다. 아래 조각에는 토큰이 들어 있지 않습니다.
+1. 에이전트에 서버 주소를 추가합니다. 주소를 복사하려면 **MCP 커넥터** 페이지의 **연결된 앱** 카드에서 **서버 URL 복사**를 선택하고, 아래 조각의 `SERVER_URL` 자리에 넣습니다. 조각에는 토큰이 들어 있지 않습니다.
 2. 에이전트에서 로그인을 시작합니다(각 조각 아래의 다음 줄 참고). 브라우저에 **Malmoi에 앱 연결**이 열립니다.
 3. Malmoi에 로그인되어 있지 않다면 **GitHub로 계속하기** 또는 **Google로 계속하기**를 선택합니다. 같은 화면으로 돌아옵니다. 표시된 계정이 내 것이 아니면 **다른 계정인가요?** 링크를 선택해 바꿉니다.
 4. 앱 이름과 그 아래의 주소를 확인합니다. 이름은 앱이 스스로 정한 것이므로, 어느 앱이 요청하는지는 주소로 알 수 있습니다.
@@ -24,7 +24,7 @@ Claude Code, Codex, claude.ai는 브라우저에서 Malmoi에 로그인하는 �
   "mcpServers": {
     "malmoi": {
       "type": "http",
-      "url": "https://mal-moi.com/api/mcp"
+      "url": "SERVER_URL"
     }
   }
 }
@@ -40,7 +40,7 @@ Codex 설정 파일에 다음을 추가합니다.
 
 ```toml title="~/.codex/config.toml"
 [mcp_servers.malmoi]
-url = "https://mal-moi.com/api/mcp"
+url = "SERVER_URL"
 ```
 
 그런 다음 `codex mcp login` 뒤에 조각에 있는 서버 이름을 붙여 실행합니다. 브라우저가 열려 Malmoi에 로그인합니다.
@@ -52,7 +52,7 @@ url = "https://mal-moi.com/api/mcp"
 claude.ai는 자체 설정에서 연결하므로 편집할 파일이 없습니다.
 
 1. claude.ai에서 **Customize** → **Connectors**를 열고 **Add**, 이어서 **Add custom connector**를 선택합니다.
-2. `https://mal-moi.com/api/mcp`를 붙여 넣고 Malmoi 같은 이름을 붙입니다.
+2. 복사한 서버 주소를 붙여 넣고 Malmoi 같은 이름을 붙입니다.
 3. **Connect**를 선택합니다. 창이 열리면 위 단계처럼 Malmoi에 로그인하고 승인합니다.
 
 Team 또는 Enterprise 요금제에서는 claude.ai 조직의 소유자만 사용자 지정 커넥터를 추가할 수 있습니다. 소유자에게 먼저 Malmoi를 추가해 달라고 요청한 뒤 직접 **Connect**를 선택하세요. Free 요금제에서는 사용자 지정 커넥터를 하나만 쓸 수 있습니다.

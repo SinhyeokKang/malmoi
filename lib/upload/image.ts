@@ -46,14 +46,23 @@ export function imageObjectKey(userId: string, ext: StoredImageType, nonce: stri
   return `avatars/${userId}/${nonce}.${ext}`;
 }
 
-export function planImageDelete(prev: string | null): string | null {
-  if (prev === null) return null;
+const STORED_PATH_PREFIX = "/api/images/";
+/**
+ * 저장된 참조의 키 부분. hosted는 공개 Blob URL이고 self-hosted는 `/api/images/<key>` 상대 경로다(self-hosting design §3) — 두 형태가
+ * 같은 키를 낸다. 키 모양은 호출자의 정규식이 판정한다.
+ */
+function storedKeyPart(prev: string): string | null {
+  if (prev.startsWith(STORED_PATH_PREFIX)) return prev.slice(STORED_PATH_PREFIX.length);
   try {
     const url = new URL(prev);
     if (url.protocol !== "https:" || url.username || url.password || url.port || !url.hostname.endsWith(".public.blob.vercel-storage.com")) return null;
-    const key = url.pathname.slice(1);
-    return /^avatars\/[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+\.(png|jpeg|webp)$/.test(key) ? key : null;
+    return url.pathname.slice(1);
   } catch { return null; }
+}
+
+export function planImageDelete(prev: string | null): string | null {
+  const key = prev === null ? null : storedKeyPart(prev);
+  return key !== null && /^avatars\/[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+\.(png|jpeg|webp)$/.test(key) ? key : null;
 }
 
 export function projectImageObjectKey(projectId: string, ext: StoredImageType, nonce: string): string {
@@ -64,13 +73,8 @@ export function projectImageObjectKey(projectId: string, ext: StoredImageType, n
 }
 
 export function planProjectImageDelete(prev: string | null): string | null {
-  if (prev === null) return null;
-  try {
-    const url = new URL(prev);
-    if (url.protocol !== "https:" || url.username || url.password || url.port || !url.hostname.endsWith(".public.blob.vercel-storage.com")) return null;
-    const key = url.pathname.slice(1);
-    return /^projects\/[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+\.(png|jpeg|webp)$/.test(key) ? key : null;
-  } catch { return null; }
+  const key = prev === null ? null : storedKeyPart(prev);
+  return key !== null && /^projects\/[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+\.(png|jpeg|webp)$/.test(key) ? key : null;
 }
 
 /**

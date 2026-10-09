@@ -16,8 +16,11 @@ import { signInErrorMessage } from "@/lib/auth/message";
 import { readSession } from "@/lib/auth/read-session";
 import { getMessages } from "@/lib/i18n/server";
 import { en } from "@/messages/en";
+import { deploymentMode } from "@/lib/deployment/mode";
 import { routes } from "@/lib/routes";
-import { destFromCallbackUrl } from "@/lib/login-link/policy";
+import { consentLinkProps } from "@/lib/seo/public-response";
+import { enabledLoginProviders } from "@/lib/auth/login-providers";
+import { destFromCallbackUrl, signInButtons, type LoginProvider } from "@/lib/login-link/policy";
 import { firstQueryValues, type Raw } from "@/lib/search-params";
 
 /** 로그인 폼은 검색 가치가 없다 — 브랜드 검색은 랜딩이 받는다(seo-geo spec D6). robots.txt로는 막지 않는다(`/invite`와 같은 이유). */
@@ -64,9 +67,13 @@ export default async function SignIn({
         <AuthHeading title={m.signIn.title} />
 
         <div className="flex w-full flex-col gap-2">
-          {/* ⚠️ **primary는 화면당 하나다** (DESIGN §2) — 시안이 GitHub을 채움으로 그렸다. */}
-          <ProviderButton provider="github" label={m.signIn.github} variant="primary" />
-          <ProviderButton provider="google" label={m.signIn.google} variant="default" />
+          {/*
+            ⚠️ **primary는 화면당 하나다** (DESIGN §2) — 켜진 공급자만 그리고 첫째가 primary다(`signInButtons`, 시안은 GitHub 채움).
+            꺼진 공급자의 버튼은 누르면 실패하므로 그리지 않는다(optional-login-providers spec §4.2).
+          */}
+          {signInButtons(enabledLoginProviders()).map(({ provider, variant }) => (
+            <ProviderButton key={provider} provider={provider} label={provider === "github" ? m.signIn.github : m.signIn.google} variant={variant} />
+          ))}
 
           {dest.kind === "invite" && (
             <InlineLink href={routes.invite(dest.token)} className="text-center text-sm ">
@@ -80,10 +87,8 @@ export default async function SignIn({
           )}
           <p className="text-muted-foreground text-center text-xs leading-relaxed">
             {m.signIn.consent.before}
-            <InlineLink
-              href={routes.privacy()}
-
-            >
+            {/* self-hosted에서는 운영자 방침으로 나가므로 새 탭이다 — 로그인 흐름을 떠나지 않는다(`consentLinkProps`). */}
+            <InlineLink href={routes.privacy()} {...consentLinkProps(deploymentMode())}>
               {m.signIn.consent.link}
             </InlineLink>
             {m.signIn.consent.after}
@@ -108,7 +113,7 @@ function ProviderButton({
   label,
   variant,
 }: {
-  provider: string;
+  provider: LoginProvider;
   label: string;
   variant: "primary" | "default";
 }) {

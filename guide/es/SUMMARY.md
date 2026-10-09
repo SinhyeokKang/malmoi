@@ -31,3 +31,7 @@
   - [Formatos de archivo compatibles](reference/formats.md)
   - [Límites](reference/limits.md)
   - [Solución de problemas](reference/troubleshooting.md)
+- [Autoalojamiento](self-hosting/README.md)
+  - [Instalar](self-hosting/install.md)
+  - [Actualizar, hacer copias y restaurar](self-hosting/operate.md)
+  - [Solución de problemas y privacidad](self-hosting/troubleshooting.md)

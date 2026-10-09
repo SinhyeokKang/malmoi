@@ -853,9 +853,12 @@ export function createHarness(seed: Seed = {}) {
   /** `status`는 등호와 `{ in: [...] }` 둘만 받는다 — 모르는 연산자는 던진다(조용한 빈 결과 금지). */
   const matchesSyncRun = (
     row: (typeof syncRuns)[number],
-    where: { projectId: string; status?: unknown; startedAt?: { lt?: Date } },
+    where: { projectId?: string; id?: string; errorCode?: string; status?: unknown; startedAt?: { lt?: Date; gte?: Date } },
   ): boolean => {
-    if (row.projectId !== where.projectId) return false;
+    if (where.projectId !== undefined && row.projectId !== where.projectId) return false;
+    if (where.id !== undefined && row.id !== where.id) return false;
+    if (where.errorCode !== undefined && row.errorCode !== where.errorCode) return false;
+    if (where.startedAt?.gte !== undefined && row.startedAt < where.startedAt.gte) return false;
     if (where.status !== undefined) {
       if (typeof where.status === "string") {
         if (row.status !== where.status) return false;

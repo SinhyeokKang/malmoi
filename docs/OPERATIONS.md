@@ -478,3 +478,7 @@ Hobby 플랜이라 `--duration`·system bypass를 못 쓴다. ⚠️ **`/oauth/t
 로컬 `.env.local` · Vercel Production · Vercel Preview · 다른 머신. 2026-09-06에 옛 키 하나를 지웠다가
 넷이 다 죽었고 **증상이 "App이 설치돼 있지 않다"로 보였다.** 지우기 전에 그 키를 누가 들고 있는지 세고,
 넷을 전부 옮긴 뒤에 지운다.
+
+## 셀프 호스팅
+
+상류 유지자 몫(이미지 발행 확인·복원 실습·실습 기록)과 기능 개발 체크리스트는 [docs/SELF-HOSTING.md](./SELF-HOSTING.md), 운영자 절차는 공개 가이드 `guide/<언어>/self-hosting/`이다. 이 문서에 사본을 두지 않는다.

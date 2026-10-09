@@ -22,6 +22,8 @@ import { readImage } from "@/lib/upload/store";
  * 받아들인 노출). 키를 모르면 못 읽고 키에는 난수가 있다.
  *
  * ⚠️ **`dynamic`·`revalidate`를 내보내지 않는다** — 캐시는 응답 헤더 둘이 정한다(아래).
+ *
+ * self-hosted에서는 같은 `readImage`가 Blob 대신 업로드 볼륨을 읽는다(self-hosting design §3) — 이 route의 검증·응답은 그대로다.
  */
 const notFound = (): Response => new Response(null, { status: 404 });
 

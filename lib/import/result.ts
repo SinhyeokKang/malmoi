@@ -23,7 +23,7 @@ export type SurfaceImportResult = {
  * `unconfirmed` — **클라이언트만 낸다**: Action 호출이 throw했다(malmoi#132). 요청이 나간 뒤 응답을 잃었으면 서버가 Sync를 끝냈을 수
  * 있으므로 `unavailable`("didn't go through")로 접지 않는다 — 되돌릴 수 없는 폐기를 안 일어난 일로 말하게 된다.
  */
-export type RepositoryImportError = AccessError | OnboardError | ConnectError | "invalid input" | "not-ready" | "not-connected" | "unpinned" | "repo-replaced" | "already-running" | "no-surfaces" | "reconfirm" | "unconfirmed";
+export type RepositoryImportError = AccessError | OnboardError | ConnectError | "invalid input" | "not-ready" | "not-connected" | "unpinned" | "repo-replaced" | "publish-unsettled" | "already-running" | "no-surfaces" | "reconfirm" | "unconfirmed";
 /**
  * @param remainingEdits 실행이 끝난 뒤 남은 미전달 편집 — 승인 뒤 저장됐거나 리포에 값이 없어 안 덮인 셀. 0이 아니면 리포 갱신은 계속 멈춘다.
  */

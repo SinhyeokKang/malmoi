@@ -9,8 +9,10 @@ import { MessagesProvider } from "@/components/i18n/messages-provider";
 import { NavigationDim } from "@/components/shell/navigation-dim";
 import { en } from "@/messages/en";
 import { getColorScheme } from "@/lib/color-scheme/server";
+import { deploymentMode } from "@/lib/deployment/mode";
 import { getDateStyle, getUiLocale } from "@/lib/i18n/server";
-import { OG_IMAGE, SITE_ORIGIN } from "@/lib/seo/site";
+import { analyticsEnabled } from "@/lib/seo/public-response";
+import { metadataOrigin, OG_IMAGE } from "@/lib/seo/site";
 
 import "./globals.css";
 
@@ -27,17 +29,21 @@ const geist = localFont({
 
 /**
  * 전 페이지의 머리 기본값. 앱 화면 탭은 그대로 `Malmoi`이고, 공개 페이지는 각자 `pageMetadata`로 덮는다(seo-geo spec D9).
+ * `metadataBase`만 요청마다 배포 모드로 고른다(`metadataOrigin` — hosted는 `SITE_ORIGIN` 그대로).
  *
  * ⚠️ **canonical·`og:url`을 두지 않는다** — metadata 병합이 얕아서 자기 `alternates`가 없는 페이지(앱·`/signin`·`/invite`·404)
  * 전부에 홈 canonical이 번진다(noindex + 홈 canonical 모순, 404의 soft-404 신호).
  */
-export const metadata: Metadata = {
-  metadataBase: new URL(SITE_ORIGIN),
+const METADATA: Metadata = {
   title: { default: en.common.appName, template: `%s · ${en.common.appName}` },
   description: en.landing.hero.body,
   openGraph: { siteName: en.common.appName, locale: "en_US", type: "website", images: [OG_IMAGE] },
   twitter: { card: "summary_large_image", images: [{ url: OG_IMAGE.url, alt: OG_IMAGE.alt }] },
 };
+
+export async function generateMetadata(): Promise<Metadata> {
+  return { metadataBase: new URL(metadataOrigin(deploymentMode())), ...METADATA };
+}
 
 /** sonner가 껍데기 밖 부품(액션 버튼·닫기)에 쓰는 변수 — 토큰에 묶는다(아래 `Toaster` 주석). */
 const SONNER_TOKENS = { "--normal-bg": "var(--popover)", "--normal-border": "var(--border)", "--normal-text": "var(--foreground)" } as CSSProperties;
@@ -119,7 +125,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           />
           {/* 앱 전체의 화면 이동에 걸린다 — 공개 셸·로그인·편집 셸이 레이아웃을 따로 들어 여기가 유일한 공통 자리다. */}
           <NavigationDim />
-          <SiteAnalytics />
+          {/*
+            ⚠️ **배포 모드 판정은 여기(서버)다** — `SiteAnalytics`는 클라이언트 컴포넌트라 env가 비어 거기서 판정하면 늘 hosted다
+            (self-hosting design §7). 위 `connection()`이 이 판정을 요청 시점으로 미룬다.
+          */}
+          {analyticsEnabled(deploymentMode()) && <SiteAnalytics />}
         </MessagesProvider>
       </body>
     </html>

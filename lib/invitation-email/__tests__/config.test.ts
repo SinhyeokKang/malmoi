@@ -122,3 +122,52 @@ describe("readInvitationEmailConfig — 환경 오배선", () => {
     });
   });
 });
+
+/**
+ * **self-hosted — origin은 `MALMOI_ORIGIN`에서 파생한다** (self-hosting design §2·§7). `INVITATION_EMAIL_ORIGIN`은 읽지 않는다 — 있으면
+ * preflight가 거부하고(정본 둘 방지), 여기서는 무시한다. hosted 판정(위 describe들)은 이 갈래가 열지 않는다.
+ */
+describe("readInvitationEmailConfig — self-hosted", () => {
+  const self = {
+    MALMOI_ORIGIN: "https://malmoi.example.com",
+    RESEND_API_KEY: "re_test_key",
+    INVITATION_EMAIL_FROM: "Malmoi <invite@malmoi.example.com>",
+  };
+
+  it("INVITATION_EMAIL_ORIGIN 없이 ready이고 origin은 설정 origin이다", () => {
+    expect(readInvitationEmailConfig(self)).toEqual({
+      status: "ready",
+      apiKey: "re_test_key",
+      from: "Malmoi <invite@malmoi.example.com>",
+      origin: "https://malmoi.example.com",
+    });
+  });
+
+  it("origin은 정규화된 값이다 — 끝 슬래시·대문자·:443", () => {
+    expect(readInvitationEmailConfig({ ...self, MALMOI_ORIGIN: "https://Malmoi.Example.com:443/" })).toMatchObject({ status: "ready", origin: "https://malmoi.example.com" });
+    expect(readInvitationEmailConfig({ ...self, MALMOI_ORIGIN: "https://malmoi.example.com:8443" })).toMatchObject({ status: "ready", origin: "https://malmoi.example.com:8443" });
+  });
+
+  it.each(["https://mal-moi.com", "https://dev.mal-moi.com", "http://localhost:3000", "https://evil.example"])("INVITATION_EMAIL_ORIGIN %s는 읽지 않는다 — 링크는 설정 origin이다", (stray) => {
+    expect(readInvitationEmailConfig({ ...self, INVITATION_EMAIL_ORIGIN: stray })).toMatchObject({ status: "ready", origin: "https://malmoi.example.com" });
+  });
+
+  it.each(["RESEND_API_KEY", "INVITATION_EMAIL_FROM"] as const)("%s가 없으면 missing이다", (name) => {
+    expect(readInvitationEmailConfig({ ...self, [name]: undefined })).toEqual({ status: "unavailable", reason: "missing" });
+    expect(readInvitationEmailConfig({ ...self, [name]: "" })).toEqual({ status: "unavailable", reason: "missing" });
+  });
+
+  it("발신자 모양은 hosted와 같은 규칙이다", () => {
+    expect(readInvitationEmailConfig({ ...self, INVITATION_EMAIL_FROM: "malmoi <invite>" })).toEqual({ status: "unavailable", reason: "invalid-from" });
+  });
+
+  it("VERCEL_ENV와 함께면 판정 무효라 invalid-origin이다 — hosted 값으로 떨어지지 않는다", () => {
+    for (const vercelEnv of ["production", "preview"]) {
+      expect(readInvitationEmailConfig({ ...self, VERCEL_ENV: vercelEnv, INVITATION_EMAIL_ORIGIN: "https://mal-moi.com" })).toEqual({ status: "unavailable", reason: "invalid-origin" });
+    }
+  });
+
+  it.each(["http://malmoi.example.com", "https://malmoi.example.com/app", "https://u:p@malmoi.example.com", "malmoi.example.com", "https://[::1]"])("형식 밖 MALMOI_ORIGIN %s는 invalid-origin이다", (origin) => {
+    expect(readInvitationEmailConfig({ ...self, MALMOI_ORIGIN: origin })).toEqual({ status: "unavailable", reason: "invalid-origin" });
+  });
+});

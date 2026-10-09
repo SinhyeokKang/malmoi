@@ -2853,3 +2853,29 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - **근본 원인**: 프레임워크 내부 원인은 미확정이다. 페이지 유효성 판정을 i18n 조회 앞으로 옮겨도 재현됐고, 유사 이슈 Next #97000은 다른 구성의 불완전한 재현으로 종료되어 원인 증명이 아니다. 검증의 빈틈은 컴포넌트 DOM·상태 코드만으로 실제 초기 응답을 추정한 데 있다.
 - **그물**: `next build`·`next start` 뒤 쿠키 없는 요청의 status, noindex, title, script를 제외한 body text를 분리한 probe가 잡았다. 컴포넌트 단위 테스트는 Next 응답 직렬화 경로를 실행하지 않아 놓쳤다.
 - **재발 방지**: `rg -n 'notFound\(' app/docs app/not-found.tsx`로 실제 진입점을 확인했다(문서 페이지 한 곳). 프레임워크 변경 시 built-server에서 없는 docs slug와 루트 404를 함께 확인한다. `docs/features/seo-geo-audit-20261008/orch.md` D11에 따라 middleware/CSP 확장·soft 200·임의 버전 변경으로 덮지 않는다.
+
+### 2026-10-09 — 백업 subshell의 set -e가 실패를 성공으로 숨겼다
+
+- **영역**: `guide/{en,ko,es}/self-hosting/operate.md` · `deploy/compose.yaml`
+- **증상**: 가이드 백업 블록에서 정지·덤프·아카이브·파일 복사 등이 실패해도 뒤 명령과 `backup ok`가 실행되었다. 복원 절차도 과거 자격증명·멤버십을 검토하기 전에 proxy를 공개했고, Compose 머리의 별도 업데이트 명령은 정지·백업을 빠뜨렸다. 실제 운영 데이터 사고는 관측하지 않았다.
+- **근본 원인**: `( set -eu; ... ) && echo ...`의 왼쪽 subshell은 종료 상태를 조건으로 검사하는 문맥이므로 안에서 켠 errexit까지 무효가 된다. 정지 명령도 그 바깥에 있었다. 복원에서는 데이터 복구와 접근 권한 복구를 같은 성공으로 취급했고, 업데이트 절차를 두 곳에 복제해 순서가 갈렸다.
+- **그물**: 가이드 구조·번역 검사와 과거 성공 경로 실습은 명령 실패를 주입하지 않았다. 실제 세 언어 코드 블록을 sh·bash로 실행하는 `lib/guide/__tests__/backup-shell.test.ts`가 66건 red를 냈고, 정지부터 성공 표시까지 독립 subshell에 넣은 뒤 78건 모두 통과했다. 외부 명령은 대역이라 실제 Docker 복원·방화벽은 미검증이다. 정적 리뷰로 복원 전 IP 제한·web 시작 전 세션 폐기·검토 완료 후 공개 순서를 확인했다. 후속 리뷰가 subshell 밖 `$B` 소실과 새 서버의 설정 준비 전 Compose 호출도 찾아, 복원할 경로 입력과 설정 준비 뒤 정지를 명시했다.
+- **재발 방지**: `rg -n '\) &&|set -eu' guide deploy --glob '*.md' --glob '*.sh'`로 실행 확인했다. 셸 가드가 있는 곳은 가이드 세 언어와 deploy 스크립트 셋이며, 남은 `) &&` 형태는 없었다. 백업 블록을 조건문으로 감싸지 않도록 명시하고, Compose의 업데이트 안내는 정본 가이드 링크만 남긴다. 복원 실습에서는 검토 전 외부 클라이언트의 접근 차단도 확인한다.
+
+### 2026-10-09 — OWNER·EDITOR 초대의 동시 수락이 교착했다
+
+- **영역**: `app/invite/actions.ts` · `lib/invitation-email/__tests__/invitation.integration.ts`
+- **증상**: 같은 사용자가 같은 프로젝트의 OWNER·EDITOR 초대를 동시에 수락하면 한쪽이 `already-member` 대신 `unavailable`을 받았다. self-hosting 수정의 전체 게이트에서 발견됐으며, 단독 재현의 PostgreSQL 로그에서도 `deadlock detected`를 확인했다.
+- **근본 원인**: OWNER만 상한 재집계를 위해 User를 먼저 잠갔다. EDITOR는 멤버 unique 삽입 뒤 User FK 잠금을 기다리고, OWNER는 User 잠금을 쥔 채 같은 unique 삽입을 기다렸다. P2002 처리는 데드락을 처리하지 못한다.
+- **수정**: 수락 트랜잭션 시작에서 Project를 `FOR NO KEY UPDATE`로 잠가 두 역할을 멤버 조회·User 잠금 전에 직렬화한다. 기존 Project→User 순서를 유지하고, 별도 멤버 INSERT의 Project FK `KEY SHARE`는 허용해 기존 P2002 처리를 보존한다.
+- **그물**: 기존 `Promise.all` 테스트는 실행 순서에 따라 통과했다. 새 회귀는 OWNER가 User를 쥔 뒤 초대 소비에서 기다리게 하고 EDITOR의 잠금 대기를 관측한 뒤 풀어, 기존 코드에서 같은 `unavailable`을 재현했다. 멤버·소비된 초대·가입 사건이 각각 하나인지도 검사한다.
+- **재발 방지**: 역할별 선행 잠금이 다르면 unique 제약뿐 아니라 FK 잠금까지 함께 그린다. 동시성 회귀는 고정 sleep 대신 `pg_stat_activity`로 필요한 대기를 관측하고 진행한다.
+
+### 2026-10-09 — self-hosted Publish의 stale 교체가 옛 실행을 멈추지 않았다
+
+- **영역**: `lib/sync/` · `lib/pull/` · GitHub transport · Import/Revert/저장 기준.
+- **증상**: 300초가 지난 RUNNING을 교체해도 `next start`는 옛 함수를 종료하지 않는다. 늦은 GitHub 쓰기가 새 실행의 PR을 덮을 수 있었고, 무조건적인 종료 UPDATE는 stale 실패를 늦은 성공으로 덮었다. 실제 사용자 데이터 사고는 관측하지 않았다.
+- **근본 원인**: DB 실행권의 만료를 프로세스 종료와 같다고 보았다. Vercel의 `maxDuration` 전제가 self-hosted에 없었다. 타임아웃 뒤 FAILED를 쓰는 것만으로도 부족하다 — 기존 게이트는 FAILED를 조회하지 않아 다음 실행이 즉시 시작한다.
+- **수정**: 진입부터 240초 단조 예산과 실행 시작 시각 기한을 함께 검사한다. 실제 transport·body 소비·늦은 DB 확정을 같은 수명에 묶고, 변경 시도 뒤 실패는 결과 미확인으로 300초 창까지 재실행을 막는다. 종료는 자기 RUNNING만 CAS한다. Publish 무효화는 Project 잠금 뒤 실행권을 다시 읽는다.
+- **그물**: stale 종료 덮어쓰기 red, 실제 Octokit의 PR 닫기·force ref·오류 재전송·늦은 토큰, 격리 PG 잠금 대기·Import·Revert·저장 테스트를 추가했다. 최소 Next 검증 앱의 실제 301초 지연 콜백도 신규 전송 0건이었다(SELF-HOSTING 실측 범위 참조).
+- **재발 방지**: 플랫폼 강제 종료와 앱 실행권을 분리한다. 실패 행을 새로 만들면 RUNNING 소비자뿐 아니라 FAILED 재시도·전달 기준 소비자도 함께 점검한다. 이미 원격이 받은 요청을 abort가 취소한다고 주장하지 않는다.

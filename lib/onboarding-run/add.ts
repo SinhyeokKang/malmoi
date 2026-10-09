@@ -53,6 +53,8 @@ export async function addSources(
   const project = await prisma.project.findUnique({ where: { id: access.projectId } });
   if (!project) return { ok: false, error: "not-found" };
   if (project.archivedAt !== null) return { ok: false, error: "archived" };
+  // ⚠️ 배포 판정이 무효면 여기서 던진다 — 표면을 커밋한 **뒤에** 던지면 사용자는 실패를 받고 표면은 남는다(create와 같은 순서).
+  const apiUrl = workflowApiUrl(options.origin);
   const inputs: AddSurfaceSnapshot[] = [];
   let results: import("@/lib/surfaces/plan-add").SurfaceAdded[];
   try {
@@ -95,7 +97,6 @@ export async function addSources(
     logFailure("onboard-add-surfaces", error);
     return { ok: false, error: "ingest-failed" };
   }
-  const apiUrl = workflowApiUrl(options.origin);
   const yaml = results.map((result, index) => {
     const source = inputs[index]!;
     return renderSurfaceWorkflowStep({ slug: input.slug, surfaceSlug: result.surfaceSlug, pathTemplate: source.format.pathTemplate, adapter: source.format.adapter, baseLocale: source.baseLocale,

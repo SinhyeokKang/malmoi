@@ -161,9 +161,10 @@ it("로그인 수단 해제가 던지면 카드 머리에 확인 불가를 말�
 
 it("모든 세션 로그아웃 시작이 던지면 구역 실패 문구를 세운다", async () => {
   mocks.startSessionRevocation.mockRejectedValue(offline());
-  await render(<SessionsSection outcome={undefined} signOut={vi.fn()} confirmProvider={null} />);
+  // 확인 상대가 없으면(`null`) 트리거가 사유와 함께 막힌다 — 던지는 갈래는 상대가 있을 때만 닿는다(optional-login-providers spec §4.10).
+  await render(<SessionsSection outcome={undefined} signOut={vi.fn()} confirmProvider="GitHub" />);
   await click(buttonByText(en.account.sessions.title));
-  await click(inDialog(en.account.sessions.button));
+  await click(inDialog(en.account.sessions.confirmAction("GitHub")));
   expect(alerts()).toContain(en.account.sessions.failed);
 });
 

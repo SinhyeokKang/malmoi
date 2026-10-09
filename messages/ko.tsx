@@ -98,6 +98,7 @@ export const ko = {
       "not-ready": "이 프로젝트는 아직 첫 동기화를 마치지 않았습니다",
       "not-connected": "GitHub 계정이 Malmoi에 연결되어 있지 않습니다 — 동기화하려면 계정에서 연결하세요",
       unpinned: "이 리포지토리는 연결이 끊어졌습니다",
+      "publish-unsettled": "이전 전송 결과를 확인하지 못했습니다. 시작 시각부터 5분이 지난 뒤 다시 시도하세요.",
       "already-running": "이미 동기화가 진행 중입니다",
       "reconfirm": "검토 이후 내용이 바뀌었는지 확인하지 못했습니다. 변경 사항은 그대로입니다. 동기화를 다시 눌러 확인하세요",
       "no-surfaces": "동기화할 활성 소스가 없습니다",
@@ -173,7 +174,7 @@ export const ko = {
     backToAuthorization: "앱 승인으로 돌아가기",
     github: "GitHub로 계속하기",
     google: "Google로 계속하기",
-    consent: { before: "계속하면 Malmoi의 ", link: "개인정보 처리방침", after: "에 동의하게 됩니다." },
+    consent: { before: "계속하면 ", link: "개인정보 처리방침", after: "에 동의하게 됩니다." },
     footer: { copyright: "© 2026 Malmoi", github: "GitHub", privacy: "개인정보 처리방침" },
     hero: { top: "흩어진 말을 모아", bottom: "함께 번역하고 전달하세요" },
   },
@@ -710,6 +711,7 @@ export const ko = {
     },
     nightlyRetry: NIGHTLY_RETRY,
     reasons: {
+      "execution-uncertain": "이전 전송 결과를 확인하지 못했습니다. 시작 시각부터 5분이 지난 뒤 다시 시도하세요.",
       "base-unreadable": "리포지토리를 읽지 못했습니다. 개발자에게 앱의 접근 권한을 확인해 달라고 요청하세요.",
       "not-installed": "앱이 리포지토리에 연결되어 있지 않았습니다. 개발자에게 다시 연결해 달라고 요청하세요.",
       "glob-matched-nothing": "번역 파일이 예상한 위치에 없었습니다. 개발자에게 문의하세요.",
@@ -868,12 +870,12 @@ export const ko = {
       confirmAction: (provider: string): string => `${provider}에서 계속`,
       confirmDetail: (provider: string): string => `로그아웃 전에 ${provider} 화면에서 본인 확인을 진행합니다.`,
       willConfirm: "로그인 서비스로 이동해 확인한 뒤 이 화면으로 돌아옵니다.",
-      button: "확인하고 모든 기기에서 로그아웃",
       complete: "모든 기기에서 로그아웃되었습니다. 계속하려면 다시 로그인하세요.",
       failed: "모든 기기에서 로그아웃하지 못했습니다. 다시 시도하세요.",
       cancelled: "확인이 취소되었습니다. 로그인 상태는 그대로입니다. 필요하면 다시 시도하세요.",
       expired: "본인 확인 요청이 만료되었습니다. 모든 기기에서 로그아웃하려면 처음부터 다시 시작하세요.",
       wrongAccount: "Malmoi 로그인에 쓰는 계정과 같은 계정을 고른 뒤 다시 시도하세요.",
+      needsMethod: "먼저 로그인 수단을 연결하세요.",
     },
     signOut: {
       title: "로그아웃",
@@ -1056,19 +1058,19 @@ export const ko = {
       },
       install: {
         title: "리포지토리 연결",
-        description: "리포지토리를 고르려면 계정이나 조직에 Malmoi GitHub App을 설치하세요.",
+        description: "리포지토리를 고르려면 계정이나 조직에 GitHub App을 설치하세요.",
         action: "GitHub App 설치",
         installed: "조직에 이미 설치되어 있나요?",
         connect: "계정 연결",
       },
       repos: {
         title: "리포지토리 추가",
-        description: "Malmoi GitHub App이 접근할 수 있는 리포지토리를 고르세요.",
+        description: "GitHub App이 접근할 수 있는 리포지토리를 고르세요.",
         action: "리포지토리 추가",
       },
       waiting: {
         title: "승인 대기 중",
-        description: "Malmoi GitHub App 설치 요청은 조직 소유자가 승인해야 합니다.",
+        description: "GitHub App 설치 요청은 조직 소유자가 승인해야 합니다.",
         action: "다시 시도",
         otherAccount: "다른 계정에 설치",
         still: "아직 승인을 기다리고 있습니다.",
@@ -1081,9 +1083,9 @@ export const ko = {
       },
       reconnect: {
         title: "GitHub 다시 연결",
-        description: "리포지토리를 보려면 Malmoi GitHub App을 다시 승인하세요.",
+        description: "리포지토리를 보려면 GitHub App을 다시 승인하세요.",
       },
-      noLink: "관리자에게 Malmoi GitHub App을 설치하고 리포지토리 접근 권한을 달라고 요청하세요.",
+      noLink: "관리자에게 GitHub App을 설치하고 리포지토리 접근 권한을 달라고 요청하세요.",
       listFailed: "리포지토리 목록을 불러오지 못했습니다.",
     },
 
@@ -1096,7 +1098,7 @@ export const ko = {
       branchDefault: "리포지토리의 기본 브랜치를 사용합니다.",
       branchTooMany: "이 리포지토리는 브랜치가 너무 많아 목록으로 보여 줄 수 없습니다. 브랜치 이름을 입력하세요.",
       notListed: "리포지토리가 보이지 않나요?",
-      loading: "Malmoi GitHub App이 설치된 리포지토리를 찾는 중…",
+      loading: "GitHub App이 설치된 리포지토리를 찾는 중…",
       searchEmpty: (q: string): string => `“${q}”에 해당하는 리포지토리 없음`,
       clearSearch: "검색어 지우기",
     },
@@ -1547,6 +1549,8 @@ export const ko = {
       },
       unknownDelivery: "변경 사항이 전송되었는지 확인하지 못했습니다.",
 
+      unsettled: "전송 결과 확인 불가",
+      unsettledBody: "이전 전송 결과를 확인하지 못했습니다. 시작 시각부터 5분이 지난 뒤 다시 시도하세요.",
       alreadyRunning: "다른 사람이 지금 게시하고 있습니다",
       alreadyRunningBody:
         "방금 다른 게시가 시작되었습니다. 끝날 때까지 기다리세요. 내 변경 사항은 그 게시에 포함되거나 다음 게시 때 보내집니다.",
@@ -1821,7 +1825,7 @@ export const ko = {
     archivedReason: "설정을 바꾸려면 이 프로젝트를 복원하세요.",
     recovery: "동기화는 계속 실행됩니다. 이 리포지토리를 다시 연결하거나 소스를 추가하려면 계정에서 GitHub 승인을 관리하세요.",
     accountLink: "계정",
-    installed: "이 리포지토리에 Malmoi GitHub App이 설치되어 있습니다.",
+    installed: "이 리포지토리에 GitHub App이 설치되어 있습니다.",
     openRepo: "GitHub에서 열기",
 
     repository: {
@@ -1998,6 +2002,7 @@ export const ko = {
       AccessDenied: "이 계정으로는 로그인할 수 없습니다. 이메일이 인증되지 않았을 수 있습니다.",
       Unavailable: "문제가 생겼습니다. 잠시 후 다시 열어 보세요.",
       LinkExpired: "본인 확인 요청이 더 이상 유효하지 않습니다. 계속하려면 다시 로그인하세요.",
+      MethodUnavailable: "쓰던 로그인 수단을 여기서는 쓸 수 없습니다. 관리자에게 문의하세요.",
       fallback: "로그인하지 못했습니다. 잠시 후 다시 시도하세요.",
     },
 
@@ -2009,7 +2014,7 @@ export const ko = {
       "exchange-failed": "GitHub 연결을 완료하지 못했습니다. 다시 시작하세요.",
       "taken-by-other": "이 GitHub 계정은 이미 다른 사용자에게 연결되어 있습니다. 그 사용자가 연결을 해제하면 쓸 수 있습니다.",
       // 가리키는 버튼 이름은 `settings.account.connect`·`reconnect`와 같은 글자여야 한다.
-      "not-connected": "먼저 Malmoi GitHub App을 승인하세요 — 아래에서 ‘GitHub App 승인’을 선택하세요.",
+      "not-connected": "먼저 GitHub App을 승인하세요 — 아래에서 ‘GitHub App 승인’을 선택하세요.",
       reauthorize: "GitHub App 승인이 만료되었습니다. ‘GitHub App 다시 승인’을 선택하세요.",
       "repo-not-installed": "이 리포지토리에 앱이 설치되어 있지 않습니다. 설치한 뒤 다시 연결하세요.",
       "installation-forbidden": "이 계정으로는 그 설치에 접근할 수 없습니다. 리포지토리 소유자에게 접근 권한을 요청하세요.",
@@ -2020,8 +2025,8 @@ export const ko = {
     },
 
     onboarding: {
-      "no-installations": "GitHub 계정이 연결되었습니다. 리포지토리를 고르려면 개인 계정이나 조직에 Malmoi GitHub App을 설치하세요.",
-      "no-repos": "GitHub 계정이 연결되었지만 쓸 수 있는 리포지토리가 없습니다. GitHub 설치 설정에서 Malmoi GitHub App이 접근할 리포지토리를 고르세요.",
+      "no-installations": "GitHub 계정이 연결되었습니다. 리포지토리를 고르려면 개인 계정이나 조직에 GitHub App을 설치하세요.",
+      "no-repos": "GitHub 계정이 연결되었지만 쓸 수 있는 리포지토리가 없습니다. GitHub 설치 설정에서 GitHub App이 접근할 리포지토리를 고르세요.",
       "no-candidates": "지원하는 번역 파일을 찾지 못했습니다. 파일 형식과 경로를 확인한 뒤 다시 시도하세요.",
       "tree-truncated": "이 리포지토리는 파일이 너무 많아 검색할 수 없고, 경로를 직접 지정해도 같은 한도에 걸립니다. Malmoi는 아직 이렇게 큰 리포지토리를 연결할 수 없습니다.",
       "base-branch-missing": "기본 브랜치를 읽을 수 없습니다. 리포지토리에 커밋이 있는지 확인하세요.",

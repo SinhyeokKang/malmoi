@@ -52,6 +52,7 @@ export type ImportRefusalPlan = {
 };
 
 const PLANS: Partial<Record<string, ImportRefusalPlan>> = {
+  "publish-unsettled": { tone: "warning", dismissible: true, action: null },
   "already-running": { tone: "info", dismissible: true, action: null },
   /**
    * 승인한 뒤 편집·설정이 바뀌었다 (sync-edit-protection T9). **닫을 수 있다** — 다음 행동은 `[Sync]`를 다시 열어 새 건수를

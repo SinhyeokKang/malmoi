@@ -1,5 +1,6 @@
 import type { AdapterName } from "@/lib/adapters/types";
 import { isAdapterName } from "@/lib/adapters";
+import { deploymentMode, HOSTED_PRODUCTION_ORIGIN } from "@/lib/deployment/mode";
 import { fail } from "@/lib/failure";
 import { isAllowedHost } from "@/lib/github-connect/origin";
 import { basePending } from "./base-pending";
@@ -82,7 +83,7 @@ export function renderProjectWorkflowYaml(input: {
 }
 
 /** action(`malmoi-i18n-push-v3`)의 `api-url` 기본값 — 이 origin이면 줄을 내지 않는다(출력이 줄 도입 전과 바이트 단위로 같다). */
-const PRODUCTION_ORIGIN = "https://mal-moi.com";
+const PRODUCTION_ORIGIN = HOSTED_PRODUCTION_ORIGIN;
 
 /**
  * **생성 워크플로의 `api-url` — 워크플로를 만든 앱을 가리킨다** (preview QA T9). 기본값이 프로덕션이라 dev·로컬에서 만든 프로젝트의 CI가
@@ -90,8 +91,15 @@ const PRODUCTION_ORIGIN = "https://mal-moi.com";
  *
  * ⚠️ **허용 호스트를 여기서 한 번 더 본다** — 호출부는 `requestOrigin`(웹)·도구 컨텍스트(MCP)로 검증한 값을 넘기지만, 이 값은 **남의 리포의
  * CI가 push 토큰을 보낼 곳**이다. 검증 안 된 Host가 한 번이라도 흘러오면 토큰 유출 경로가 되므로 모르는 origin은 생략(= 프로덕션)으로 접는다.
+ *
+ * ⚠️ **self-hosted에서는 생략이 곧 유출이다** — action 기본값이 hosted라 줄이 빠지면 그 설치의 push 토큰이 SaaS로 간다. 그래서
+ * self-hosted는 입력과 무관하게 설정 origin을 항상 내고, 판정이 무효면 생략하지 않고 **렌더 자체를 거부한다**(던진다). 무효는 Vercel
+ * env에 `MALMOI_ORIGIN`이 섞였거나 preflight를 지나지 않은 설치뿐이라, 그때는 `requestOrigin`도 null이다.
  */
 export function workflowApiUrl(origin: string | null | undefined): string | undefined {
+  const mode = deploymentMode();
+  if (mode.kind === "invalid") fail("deployment mode is invalid; refusing to render a workflow without api-url");
+  if (mode.kind === "self-hosted") return mode.origin;
   if (origin === null || origin === undefined) return undefined;
   let url: URL;
   try {

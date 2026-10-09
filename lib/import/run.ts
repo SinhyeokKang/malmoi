@@ -1,3 +1,4 @@
+import { uncertainPublishWhere } from "@/lib/sync/execution";
 import "server-only";
 
 import { randomUUID } from "node:crypto";
@@ -94,6 +95,8 @@ async function acquire(prisma: PrismaClient, input: CoreInput): Promise<Acquired
       project.repoName !== expected.repoName || project.baseBranch !== expected.baseBranch ? "repo-replaced" : "ok";
     const startedAt = new Date();
     // Publish가 스냅샷을 뜨는 중에 리포 값으로 덮으면 절반만 덮인 DB가 PR로 나간다 — 같은 Project 잠금 안에서 읽는다 (ARCHITECTURE §5.6.1).
+    const uncertain = await tx.syncRun.findFirst({ where: uncertainPublishWhere(project.id, new Date()), select: { id: true } });
+    if (uncertain !== null) return { ok: false, error: "publish-unsettled" };
     const runningSync = await tx.syncRun.findFirst({ where: { projectId: project.id, status: "RUNNING" }, orderBy: { startedAt: "desc" }, select: { startedAt: true } });
     const plan = planRepositoryImport({ ...project, now: startedAt, readiness: planProjectReadiness({ installationId: project.installationId, surfaces }), identity, surfaces, runningSync });
     if (!plan.ok) {

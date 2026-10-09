@@ -1,7 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { isProtectedPath, shouldRedirectToLogin } from "@/lib/auth/cookie";
+import { deploymentMode } from "@/lib/deployment/mode";
 import { routes } from "@/lib/routes";
+import { pageResponse } from "@/lib/seo/public-response";
 import { buildCsp, createNonce, cspEnvironment } from "@/lib/security-headers";
 
 /**
@@ -26,6 +28,11 @@ import { buildCsp, createNonce, cspEnvironment } from "@/lib/security-headers";
  * **CSP의 유일한 출처이기도 하다** (sec-audit-3 #11). nonce가 요청마다 바뀌므로 정적 헤더(`next.config.ts`)에 둘 수 없다.
  */
 export default function middleware(request: NextRequest): NextResponse {
+  // self-hosted는 hosted를 가리키는 정적 크롤 파일을 내지 않고 페이지를 색인에서 뺀다(`lib/seo/public-response.ts`). 모드는 런타임
+  // env다 — `next start`의 middleware가 빌드 때 인라인하지 않는 것을 실측했다(`lib/deployment/mode.ts`).
+  const policy = pageResponse(deploymentMode(), request.nextUrl.pathname);
+  if (policy.kind === "not-found") return new NextResponse(null, { status: 404 });
+
   // ⚠️ Server Action POST는 통과시킨다 — 307로 돌리면 `fetch`가 POST를 `/`로 재전송해 action id를 못 찾고
   // 페이지 오류가 된다. Action은 스스로 `auth()`를 지나 `unauthorized`를 낸다 (`lib/auth/cookie.ts`).
   const redirectToLogin =
@@ -48,6 +55,7 @@ export default function middleware(request: NextRequest): NextResponse {
   requestHeaders.set("Content-Security-Policy", csp);
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   response.headers.set("Content-Security-Policy", csp);
+  if (policy.noindex) response.headers.set("X-Robots-Tag", "noindex");
   return response;
 }
 

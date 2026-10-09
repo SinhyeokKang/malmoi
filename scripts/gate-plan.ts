@@ -58,6 +58,11 @@ const POSTGRES_SUITES: readonly { step: GateStep; triggers: readonly string[] }[
       "app/api/pull/",
       "app/api/mcp/",
       "prisma/migrations/",
+      // 셀프 호스팅 bootstrap(`self-hosted-bootstrap.integration.ts`)과 MCP·OAuth 통합 테스트가 단언하는 origin 판정 셋.
+      "deploy/",
+      "lib/onboarding/workflow.ts",
+      "lib/oauth/endpoint.ts",
+      "lib/github-connect/origin.ts",
       "vitest.projects.config.ts",
     ],
   },

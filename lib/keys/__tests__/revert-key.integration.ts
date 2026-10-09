@@ -1,3 +1,4 @@
+import { createPublishExecution } from "@/lib/sync/execution";
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -11,7 +12,7 @@ import { PrismaClient } from "@/generated/prisma/client";
 import { optionalEnv } from "@/lib/env";
 import { executeKeyRevert, previewKeyRevert } from "@/lib/keys/revert";
 import { applyKeySave } from "@/lib/keys/save-key";
-import { invalidateDeliveryConfirmations, loadPullState, saveLastPulledAt } from "@/lib/pull/load";
+import { invalidatePublishDelivery, invalidateDeliveryConfirmations, loadPullState, saveLastPulledAt } from "@/lib/pull/load";
 
 /**
  * **Revert to last sent** (translation-rework T11 — spec §3.6 · ARCHITECTURE §5.8).
@@ -268,4 +269,63 @@ it.each(["removed", "demoted", "archived"] as const)("잠금 대기 중 %s이면
     blocker.release();
     await reverting;
   }
+});
+
+it("결과 미확인 실행은 옛 확인보다 나중이어도 창 만료 뒤 Revert를 열지 않는다", async () => {
+  await edited();
+  const confirmation = await prisma.deliveryConfirmation.findFirstOrThrow({ where: { projectId: "p" } });
+  await prisma.syncRun.update({ where: { id: confirmation.syncRunId }, data: { startedAt: new Date(Date.now() - 600_000) } });
+  await prisma.syncRun.create({ data: { id: "uncertain", projectId: "p", status: "FAILED", trigger: "MANUAL", errorCode: "execution-uncertain", startedAt: new Date(Date.now() - 301_000), finishedAt: new Date() } });
+  expect(await previewKeyRevert(prisma, target)).toEqual({ status: "blocked", reason: "unsettled" });
+  await confirm();
+  await save([{ localeCode: "ko", value: "after-recovery" }]);
+  expect((await previewKeyRevert(prisma, target)).status).toBe("ready");
+});
+
+it("교체된 실행의 늦은 무효화는 새 확인 revision을 건드리지 않는다", async () => {
+  await edited();
+  const before = await prisma.deliveryConfirmation.findFirstOrThrow({ where: { projectId: "p" } });
+  await prisma.syncRun.create({ data: { id: "stale", projectId: "p", status: "FAILED", trigger: "MANUAL", errorCode: "stale" } });
+  await expect(invalidatePublishDelivery(prisma, "p", { runId: "stale", execution: createPublishExecution() })).rejects.toThrow();
+  expect(await prisma.deliveryConfirmation.findFirstOrThrow({ where: { projectId: "p" } })).toEqual(before);
+});
+
+it("Project 잠금을 기다리는 동안 종료된 Publish는 무효화·성공 확정을 모두 롤백한다", async () => {
+  const { createPublishExecution } = await import("@/lib/sync/execution");
+  await edited();
+  await prisma.syncRun.create({ data: { id: "late", projectId: "p", status: "RUNNING", trigger: "MANUAL" } });
+  const snapshot = await loadPullState(prisma, "p");
+  const before = await prisma.deliveryConfirmation.findFirstOrThrow({ where: { projectId: "p" } });
+  for (const kind of ["invalidate", "confirm"] as const) {
+    const execution = createPublishExecution();
+    const client = await pool.connect();
+    let pending: Promise<void> | undefined;
+    try {
+      await client.query("BEGIN");
+      await client.query(`SELECT "id" FROM "Project" WHERE "id" = 'p' FOR UPDATE`);
+      pending = kind === "invalidate"
+        ? invalidatePublishDelivery(prisma, "p", { runId: "late", execution })
+        : saveLastPulledAt(prisma, "p", new Date(), undefined, snapshot.pendingEdits, { runId: "late", contexts: snapshot.deliveryContexts ?? [], execution });
+      const rejection = expect(pending).rejects.toThrow();
+      await expect.poll(async () => (await pool.query(`SELECT count(*)::int AS n FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND query LIKE 'SELECT%Project%FOR UPDATE%'`)).rows[0].n).toBe(1);
+      execution.close();
+      await client.query("COMMIT");
+      await rejection;
+      expect(await prisma.deliveryConfirmation.findFirstOrThrow({ where: { projectId: "p" } })).toEqual(before);
+      expect((await cell("ko"))?.pendingEditToken).not.toBeNull();
+    } finally {
+      await client.query("ROLLBACK");
+      if (pending !== undefined) await Promise.allSettled([pending]);
+      client.release();
+    }
+  }
+});
+
+it("결과 미확인 중에도 저장은 되고 새 전달 기준은 생기지 않으며 Revert는 unsettled다", async () => {
+  await confirm();
+  await prisma.syncRun.create({ data: { id: "uncertain", projectId: "p", status: "FAILED", trigger: "MANUAL", errorCode: "execution-uncertain", startedAt: new Date() } });
+  await save([{ localeCode: "ko", value: "kept" }]);
+  expect((await cell("ko"))?.value).toBe("kept");
+  expect(await prisma.translationBaseline.count({ where: { projectId: "p" } })).toBe(0);
+  expect(await previewKeyRevert(prisma, target)).toEqual({ status: "blocked", reason: "unsettled" });
 });

@@ -52,6 +52,9 @@
    이 불변식을 100% 지켜도 **앱을 통하지 않는 경로**가 열려 있었다. REVOKE로 닫았지만 `supabase_admin`
    소유 default ACL은 지울 수 없어 **대시보드로 만드는 테이블은 탐지에 의존한다.** 이 불변식은
    "앱 안의 쿼리"에 대한 것이고, "앱 밖의 경로가 없는가"는 CLAUDE.md의 Supabase 권한 절이 따로 답한다.
+   ⚠️ **위 문단은 호스팅 서비스(Supabase)의 이야기다** (2026-10-09, self-hosting). self-hosted 설치엔 Supabase 데이터 API가 없으므로
+   "앱 밖의 경로"는 **Postgres 포트와 런타임 롤의 권한**이 답한다 — DB 포트를 publish하지 않고, 앱은 DDL 없는 비-superuser 런타임 롤로 붙으며,
+   그 롤과 권한은 `deploy/bootstrap.sql`이 만든다(§7 "self-hosted DB"). 불변식 본문(인가된 `projectId`로 제한)은 두 배포에서 같다.
 6. GitHub 사용자 OAuth와 App installation token의 **역할을 섞지 않는다**.
    ⚠️ **Malmoi가 발급하는 MCP OAuth 토큰(`mlo_`·`mlr_`)은 이 축이 아니다** (2026-09-29, mcp-oauth) — GitHub 자격증명이 아니라 개인 토큰과
    같은 **Malmoi 신원**이고, GitHub에는 아무것도 요청하지 않는다(§6.45.9).
@@ -1877,6 +1880,7 @@ CI push가 unorphan → 재집계 1 → 롤백 → `deferred`를 매번 반복�
 $transaction(tx):
   tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = … FOR UPDATE`
   cron이면 잠금 뒤 Project 존재·archivedAt 재검 → 거부면 RUNNING·사건·GitHub 호출 없음
+  uncertain   = 회복 경계 안의 FAILED/execution-uncertain 행 → publish-unsettled 거부(행 없음)
   running     = 최신 RUNNING 행
   lastSettled = 최신 SUCCEEDED|SKIPPED 행        ← FAILED·SKIPPED/reconfirm은 안 집는다
   planSyncStart(...)  → 거부면 값으로 반환(행 없음)
@@ -1928,10 +1932,11 @@ $transaction(tx):
   "리포에 두 번 쓰기"이지 재시도 억제가 아니므로, 아무것도 못 쓴 `FAILED`가 다음 시도를 30초 막으면
   사람이 고친 뒤에도 기다리게 된다. 그 술어는 껍데기(`lib/sync/run.ts`)가 `status ∈ {SUCCEEDED, SKIPPED}` ∧
   `errorCode ≠ "reconfirm"`(첫 쓰기 전에 끝난 실행 — §5.6.3, `errorCode`가 nullable이라 `null` 갈래를 함께 적는다)으로 들고, 판정 함수는 `null`만 받는다 — **시작 간격이 아니라 "쓴 뒤 쉬는 간격"이다.**
-- ⚠️ **`STALE_AFTER_SECONDS`(300)는 `maxDuration`(60)보다 넉넉해야 한다.** 같거나 작으면 **정상 실행이
-  스스로를 stale로 보고** 두 번째 실행을 허용한다. 그 전제가 수동 경로에서 서려면 번역 페이지가
-  `export const maxDuration = 60`을 들어야 한다 — Server Action은 **자기를 부른 페이지 세그먼트**의
-  값을 쓰고, 없으면 프로젝트 기본값(300)이라 두 수가 같아진다.
+- **Publish는 플랫폼과 무관하게 240초 로컬 예산을 가진다** (`lib/sync/execution.ts`). 진입부터 단조 시계로 세고, 실행권 시작 시각의 절대 기한도 함께 검사한다. 잠금·토큰 대기 뒤 예산을 다시 시작하지 않는다. 종료한 실행은 되살아나지 않는다.
+  실제 Octokit transport 직전에 검사하며 자동 재시도·throttle은 Publish 클라이언트에서 끈다. 요청 취소 신호와 응답 body 소비도 같은 수명에 묶는다. PR 닫기·force ref 이동도 예외가 없다. hosted의 `maxDuration=60`은 추가 플랫폼 종료 장치다.
+- **리포 변경을 시도한 뒤 실패하면 FAILED / `execution-uncertain`**이다. 시작+300초 정각까지 다음 Publish·수동/야간 Sync를 `publish-unsettled`로 거부한다. 최신 성공으로 앞선 미확정 실행을 가리지 않고 전체 이력에서 활성 흔적의 존재를 묻는다. 요청 전 실패는 기존처럼 즉시 재시도한다.
+  번역 저장은 계속 허용하지만 새 전달 기준은 만들지 않는다. Revert는 `unsettled`이며, 300초 창 뒤 시작한 유효한 전달 확인이 있어야 풀린다. 실패를 진행 중으로 표시하지 않는다. 종료 기록은 자기 RUNNING에 대한 CAS이고, 이미 교체됐다면 성공으로 덮거나 성공 응답을 내지 않는다.
+- **보장 한계**: 만료 뒤 새 요청 전송과 늦은 DB 변경을 막는다. GitHub가 이미 받은 요청의 반영 시각은 증명하지 못하며 AbortSignal은 원격 롤백이 아니다. 60초 여유를 GitHub 완료 SLA로 해석하지 않는다.
 - **`SKIPPED`를 `SUCCEEDED`로 접지 않는다** — `lastPublishedAt`이 skipped에서 안 움직이므로
   ("마지막으로 **보낸**" 것이지 시도한 것이 아니다) 그 구별이 행에도 남아야 `logs`가 "어제 밤엔 보낼
   게 없었다"와 "어제 밤에 보냈다"를 가른다. `warnings`는 **둘 다** 센다 (§0 불변식 9).
@@ -1965,20 +1970,20 @@ $transaction(tx):
 화면이 그 구별을 하려면 컬럼이 먼저다.
 
 - ⚠️ **`delivery`는 `retryable`과 다른 축이다** — "다시 해도 되나"와 "나갔나"는 별개다. 실행 **전**
-  명시적 거부(게이트 둘 · 입력·인가·준비 거부 다섯, 합쳐 일곱)만 `not-started`이고, **실행 중 실패와 클라이언트
+  명시적 거부(실행 게이트 · 입력·인가·준비 거부)만 `not-started`이고, **실행 중 실패와 클라이언트
   Action 응답 유실은 전부 `unknown`**이다. 보수적인 쪽으로 고정한 근거는 `saveLastPulledAt`이
   **PR을 연 뒤**에 돌기 때문이다 — 거기서 죽으면 리포에는 이미 반영돼 있다. **그래서 화면이
   "아무것도 안 나갔다"를 말할 수 있는 자리는 `not-started` 하나뿐이다**(PRODUCT §4.1).
-- ⚠️ **실행 전 거부 일곱은 `SYNC_ERROR_CODES`를 지나지 않는다** — `code`가 없고
-  **`SyncRun` 행 자체가 안 생긴다.** ⚠️ **`retryable`은 있다** — 일곱 전부 그 필드를 명시하고, 값이 `true`인 것은
-  `unavailable` 하나다(입력·세션 거부는 `app/(edit)/actions.ts` · 인가·`not-ready`는 `lib/sync/publish.ts`의 `publishProject` · 게이트 둘은 `lib/sync/run.ts`). 없는 것과 `false`인 것은
+- ⚠️ **실행 전 거부는 `SYNC_ERROR_CODES`를 지나지 않는다** — `code`가 없고
+  **`SyncRun` 행 자체가 안 생긴다.** ⚠️ **`retryable`은 있다** — 모두 그 필드를 명시하고, 값이 `true`인 것은
+  `unavailable`과 `publish-unsettled`다(입력·세션 거부는 `app/(edit)/actions.ts` · 인가·`not-ready`는 `lib/sync/publish.ts`의 `publishProject` · 실행 게이트는 `lib/sync/run.ts`). 없는 것과 `false`인 것은
   다르다: 화면이 "다시 해 보라"를 낼지 말지는 그 값으로 갈린다. 그래서 그 갈래의 화면은 `Reference`도, "Logs에도 있다"도
   함께 뺀다: 없는 곳을 가리키게 된다. 가르는 기준은 하나로 유지한다("사람이 다시 해서 통하나") —
-  `unavailable`만 재시도 쪽이고 나머지 여섯(`invalid input`·`unauthorized`·인가 거부·`not-ready`·`already-running`·`too-soon`)은 설정·상태 쪽이다.
+  `unavailable`은 장애 후, `publish-unsettled`는 `retryAfterSeconds` 뒤 재시도 쪽이고 나머지(`invalid input`·`unauthorized`·인가 거부·`not-ready`·`already-running`·`too-soon`)은 설정·상태 쪽이다.
 
 - **그 표가 담은 사실은 진짜다** — `base-unreadable`·`not-installed`·`glob-matched-nothing` 셋은
   **사람이 고치기 전까지 cron이 매일 밤 같은 실패를 반복한다**(리포 상태·설치·경로 설정이라 시간이
-  해결하지 않는다). 나머지(`db-unavailable`·`github-error`·`stale`·`unknown`·`reconfirm`)는 다음 실행에서 저절로 풀린다 — `reconfirm`은 새 미리보기를 받아 다시 부르면 된다.
+  해결하지 않는다). 나머지(`execution-uncertain`·`db-unavailable`·`github-error`·`stale`·`unknown`·`reconfirm`)는 다음 실행에서 복구를 시도한다 — `execution-uncertain`은 회복 경계 뒤에만 재시도한다 — `reconfirm`은 새 미리보기를 받아 다시 부르면 된다.
 - **표시하기로 하면 컬럼이 먼저다.** 지금 화면이 그 구별을 흉내 내려면 `errorCode`로 다시 분기해야 하고,
   그 순간 판정이 두 벌이 된다 — `lib/sync/plan.ts`가 그 축의 주인이다.
 
@@ -2235,13 +2240,8 @@ Logs 행위자·상세 Trigger·보조줄·Home 메타 열이 이것 하나를 �
   시각·토큰·기준을 쓰기 **전에** 실행권(`SyncRun`이 아직 RUNNING)과 캡처한 모든 소스의 활성 상태·context 지문을 검증한다. 하나라도 무효이거나 로컬 전달 셀에 해당 context가 없으면 확정 tx 전체를 거부한다 — `lastPulledAt`·Last sent·토큰 CAS·기준·확인을 모두 유지한다. 토큰을 해제하는 호출에는 실행권과 context가 필수이고, 빈 토큰의 timestamp-only 호환 호출은 별도다.
   ⚠️ **늦은 성공도 CAS만 진행하던 옛 계약은 폐기했다** (2026-10-07, A-fix1). 확인 revision 없이 편집을 비우면 사전 판정을 마친 옛 CI가 덮을 수 있다. 무효 완료는 `runSync`의 `failed`·`delivery: unknown`이며 성공 전달 수를 내지 않는다. 유효한 완료에서 캡처 뒤 재편집된 토큰을 유지하는 CAS 동작은 그대로다.
   **`triggerPull`의 `runId`가 필수 인자인 이유**가 이것이다 — 실행권 없이는 교체된 늦은 성공을 가를 수 없다.
-- **교체·실패 실행의 외부 쓰기 종료 근거는 플랫폼 `maxDuration` 강제 종료다**(사용자 결정 2026-09-23). sync 브랜치를 `updateRefForce`로 옮기므로
-  후속 실행의 성공은 증거가 아니다. 그 실행의 `startedAt + STALE_AFTER_SECONDS` 이후에 **시작해** 성공한 전달 확인이 있어야 Revert가 열린다.
-  ⚠️ **`maxDuration`을 `STALE_AFTER_SECONDS`(300) 넘게 올리면 이 근거가 깨진다.**
-  ⚠️ **Revert의 막힘도 같은 경계(`isRunActive`)다** (2026-09-27, 감사 #9) — 강제 종료가 남긴 RUNNING·import 토큰이
-  Revert를 영구히 막지 않는다. 2026-10-01(sync-lock)부터 import lease 갈래는 `busy`가 아니라 `sync-running`이고 판정 입구가 `planWriteLock`이다
-  (§5.6.1) — `busy`는 Publish RUNNING 갈래만 남는다. 대신 확인보다 먼저 시작해 **만료된 RUNNING은 FAILED와 같이** 위 종료 판정에 든다 — busy에서 빠진 흔적이
-  확인되지 않은 기준을 유효하게 만들지 않는다. 저장의 기준 기록(`publishInFlight`)은 아직 경계 없는 RUNNING 수를 본다(범위 밖으로 남겼다).
+- **교체·실패 실행의 새 외부 쓰기는 로컬 수명으로 막는다**(§5.6.2). 무효화·성공 확정은 Project 잠금 뒤 실행권과 기한을 다시 검사하며, 트랜잭션 반환 전 로컬 종료 검사로 대기 중 만료된 쓰기를 롤백한다. `triggerPull`의 실행권·수명 인자는 필수다.
+  Revert는 활성 RUNNING에는 `busy`, 결과 미확인 FAILED에는 `unsettled`를 낸다. 실패가 기존 확인보다 뒤에 시작했어도 다음 유효한 확인 전에는 열리지 않는다. 저장 기준 조회는 기존 모든 RUNNING 차단에 활성 결과 미확인 실패를 더한다. 이미 수신한 GitHub 요청의 종료를 증명한다는 뜻은 아니다.
 - **기준값은 "전달 확인된 DB 상태"이지 파일에 있던 문자열의 백업이 아니다.** 기준은 캡처한 DB 값에서 export 폴백으로 유도하고
   리포를 읽지 않는다 — 원본 파일에서 읽는 것은 여전히 구조·표현뿐이다(불변식 2). 그래서 수술적 writer가 비-base 빈값 자리에 원본 값을
   남긴 경우 파일에는 옛 문자열이 있어도 기준은 `""`다. ⚠️ **`no-changes`(리포가 이미 같은 값)도 전달 확인이다** — 기준이 서는 것은
@@ -2285,7 +2285,7 @@ Logs 행위자·상세 Trigger·보조줄·Home 메타 열이 이것 하나를 �
 
 | 용도 | 자격증명 | 이유 |
 |---|---|---|
-| 편집 UI **로그인** | GitHub·Google OAuth **App** (Auth.js, DB 세션 / `AUTH_GITHUB_*`) | 신원 확인까지다 — **무엇을 할 수 있는지는 정하지 않는다** |
+| 편집 UI **로그인** | GitHub·Google OAuth **App** 중 **켜진 것** (Auth.js, DB 세션 / `AUTH_GITHUB_*`·`AUTH_GOOGLE_*` — 완전한 쌍 최소 하나, 아래 "켜진 로그인 공급자") | 신원 확인까지다 — **무엇을 할 수 있는지는 정하지 않는다**. GitHub 로그인을 끈 설치도 리포 연결은 GitHub App user-to-server 인가로 한다 — 로그인 자격증명이 그 자리를 대신하지 않는다 |
 | 편집 UI **인가** | `ProjectMember` 행 (`getProjectAccess`) | 로그인 provider가 권한을 정하지 않는다 (§0 불변식 7). 허용 핸들 목록은 2026-09-06에 사라졌다 |
 | 운영자 판정 (`isOperatorUser`, 2026-10-03) | `User.emailLookup` × `OPERATOR_EMAILS` | **인가 아님** — 사용자당 프로젝트 상한 면제 하나만 바꾼다. 로그인·`ProjectMember` 인가·화면 표시와 무관하다 (§6.2.2) |
 | `/api/search-index/[uiLocale]` | **공개 · 세션 없음 · `force-static`** | 그 언어 원고(`guide/<uiLocale>/`) SUMMARY에 등재된 공개 가이드만 빌드 때 JSON으로 만든다 — 언어별 정적 파일 셋(`generateStaticParams` = `guideLocales()`, `dynamicParams = false`). 인증·DB·쿠키 조회가 없고 원고 실패는 빌드를 실패시킨다. `entry-points.test.ts`의 `EXEMPT` 사유도 이 경계다 (§6.37) |
@@ -2724,6 +2724,18 @@ challenge**가 그 둘을 묶을 것. 셋을 다 통과한 뒤에야 `Account`�
 (토큰을 남기지 않는 것은 같다). ⚠️ **`lib/login-link`의 challenge를 그대로 재사용할 수 있다고
 전제하지 않는다** — 그쪽은 세션이 **없는** 흐름이라 challenge가 담는 것이 다르다(누구를 인증시킬
 것인가 vs 누구에게 붙일 것인가).
+
+### 켜진 로그인 공급자 (2026-10-09, optional-login-providers)
+
+**공급자 상태는 env 한 쌍이 정한다** — `AUTH_<P>_ID`·`AUTH_<P>_SECRET`이 둘 다 값이 있으면 `enabled`, 둘 다 비면 `absent`, 하나만 있으면 `partial`(공백만 있는 값은 빈 값 — preflight `present`와 **같은 함수**를 쓴다. 두 벌이면 preflight와 런타임이 갈린다). **켜진 집합** = `enabled`인 공급자, 순서는 언제나 `github` → `google`(`lib/auth/login-providers.ts` — `loginProviderStates`·`enabledLoginProviders`·`LOGIN_PROVIDER_ENV`). self-hosted preflight는 `partial`을 `incomplete-pair`(빠진 쪽 이름)로, `enabled` 0개를 `no-login-provider`(두 ID 이름)로 거부한다. hosted엔 preflight가 없어 반쪽이면 그 버튼이 **조용히 사라진다** — 우리가 env를 넣고 `/signin` 첫 화면에서 바로 보이므로 신호를 따로 만들지 않는다. 판정은 모드로 가르지 않는다(hosted는 두 쌍이라 결과가 지금과 같다).
+
+- **Auth.js `providers`에 켜진 것만 들어간다**(`auth.ts` config 함수 안 `withEnabled`). 꺼진 공급자의 `/api/auth/signin/<p>`·callback은 성립하지 않는다 — **화면 숨김이 유일한 방어선이 아니다.** ⚠️ 방어선은 `withEnabled` 행동 테스트가 지고 `auth.ts`는 주석을 벗긴 **호출형**만 센다(POSTMORTEM 2026-09-18). ⚠️ 켜진 집합은 **요청마다 함수 호출로** 얻는다 — 모듈 최상위에서 env를 읽지 않는다(POSTMORTEM 2026-08-31).
+- ⚠️ **`LOGIN_PROVIDERS`(`lib/login-link/policy.ts`)는 우주(universe)로 남는다** — DB 조회·challenge 파싱·`safe-adapter`의 "추가 연결 금지"는 꺼진 공급자의 행도 읽어야 숨김을 판정할 수 있다. 판정 함수(`pickLoginAccount`·`loginMethodRows`·`canUnlink`·`signInButtons`·`planLinkOffer`)는 켜진 집합을 **기본값 없는 인자**로 받는다 — 기본값이 우주면 새 호출부가 꺼진 공급자를 조용히 통과시킨다. ⚠️ **policy는 `login-providers.ts`를 import하지 않는다** — 수단 카드(클라이언트)의 그래프라 `lib/env` → `node:crypto`가 번들에 실린다(POSTMORTEM 2026-09-07). 켜진 집합은 서버 진입점이 구해 인자·props로 내린다.
+- **해제(`canUnlink`)는 해제 뒤 켜진 연결 수단이 하나 이상 남을 때만이다.** 반례가 이 기능의 보안 요지다 — 연결 `[github, google]`, 켜짐 `[google]`이면 Google 해제는 거부다(행 수로 세면 허용되고, 해제 즉시 그 계정은 다시 로그인할 수 없다). 꺼진 공급자의 해제 요청은 `last-method`가 아니라 `unavailable`이다 — `unlinkLoginMethod`가 켜진 집합 밖의 공급자를 판정 전에 거른다(우주 밖 값, 예컨대 `github-app`도 같다 — 그 행은 로그인 수단이 아니다). 연결 시작(`startLoginMethodConnect`)도 꺼진 공급자를 Auth.js에 닿기 전에 `?connect=failed`로 거부한다(쿠키·challenge 행을 만들지 않는다).
+- **확인 상대는 켜진 연결 수단 중에서만 고른다**(`github` 우선, 결정적) — 전체 로그아웃(`beginRevocation`)·병합 안내(`loadLinkOffer`)·병합 확인 화면(`loadChallengeView`). 없으면 전체 로그아웃은 `unavailable`(화면 트리거는 사유 동반 비활성), 확인 화면은 `/signin`, 병합 안내는 새 kind `method-unavailable` → **`/signin?error=MethodUnavailable`**이다. ⚠️ **`OAuthAccountNotLinked`로 보내지 않는다** — 그 문구는 "가입한 수단을 쓰라"고 하는데 그 버튼이 화면에 없다. 같은 공급자의 다른 계정은 기존 코드 그대로다. 구제가 아니라 안내다 — 이메일 일치로 붙이면 §6.2.1이 금지한 자동 병합이고, 복구는 운영자가 그 공급자를 다시 켜는 것이다. ⚠️ `beginRevocation`은 Action이 고른 상대와 store가 다시 고른 상대를 대조하므로 **한 요청에서 한 번 읽은 집합**을 둘에 넘긴다.
+- **꺼진 공급자의 `Account` 행은 지우지 않고 숨긴다** — `/account` 수단 카드는 켜진 공급자 행만 그리고, 다시 켜면 그대로 돌아온다. 세션엔 공급자가 없어 공급자를 꺼도 살아 있는 세션은 끊기지 않는다(그 세션으로 켜진 공급자를 연결할 수 있다).
+- ⚠️ **이메일 갱신(`lib/credentials/access.ts`의 `loginMethods`)은 꺼진 행까지 센다** — 꺼진 GitHub 행이 남은 사용자가 Google로 로그인해도 `planEmailRefresh`는 `keep`이다. 다시 켜면 그대로 돌아온다는 보존과 같은 방향이라 의도다. 결함으로 오진하지 않는다.
+- 우주 하드코딩 사본(`beginRevocation`의 `["github", "google"]`·`lib/session-revocation/policy.ts`·`safe-adapter`·`lib/auth/email.ts`·`lib/credentials/*`)은 이 기능에서 바꾸지 않았다 — 한 곳만 켜진 집합으로 바꾸면 사본 간 정합만 깨진다.
 
 **인가는 fail-closed다.** 로그인은 이제 **누구에게나 열려 있고**(검증된 이메일만 요구한다), 그것이 아무것도 열지 않는다 — 멤버십이 없는 사용자는 `/projects`에서 "어느 프로젝트의 멤버도 아니다"를 보고, 어떤 slug를 직접 쳐도 `not-found`로 돌아간다.
 
@@ -3937,6 +3949,25 @@ default ACL을 지우지 않고 닫는 층이라, 적용·확인이 끝나면 �
   ```
 - 스키마 모양은 안 바뀐다(권한만) — additive로 분류하고 코드와 배포 순서 제약이 없다. RLS·최소권한 런타임 롤 이관은 이 조치의 범위가 아니다(CLAUDE.md).
 
+### self-hosted DB — 일반 Postgres, 두 롤 (2026-10-09, self-hosting)
+
+위 Supabase 절(USAGE 회수·`anon`/`authenticated`·dev/prod 두 DB)은 호스팅 서비스의 것이다. self-hosted는 **일반 Postgres 17 하나**를 쓰고 롤을 둘로 가른다.
+
+- **마이그레이션 롤** — DB를 소유하는 비-superuser(`CREATEROLE` 필요). `prisma migrate deploy`와 bootstrap을 돌고, `DIRECT_URL`(self-hosted 운영 명령이 읽는 유일한 DB URL)이 이 롤이다. 앱(web)에는 `DIRECT_URL`을 주지 않는다 — DDL 자격증명이다.
+- **런타임 롤** — `deploy/bootstrap.sql`이 만든다(`NOSUPERUSER NOCREATEDB NOCREATEROLE`, CRUD만). `DATABASE_URL`이 이 롤이다.
+- **왜 bootstrap이 필요한가**: 마이그레이션 `20260926175555`의 `REVOKE USAGE ON SCHEMA public FROM PUBLIC` 때문에 런타임 롤은 명시 권한 없이는 쿼리 자체가 실패한다. 그 마이그레이션의 Supabase 롤 SQL은 `IF EXISTS (pg_roles)` 가드 안이라 일반 Postgres에서도 통과한다.
+- **bootstrap은 `prisma/migrations/` 밖(`deploy/`)이다** — 안에 두면 `/merge`의 `db:deploy`가 hosted prod에 적용한다. 설치 DB의 롤·권한 설정이지 제품 스키마가 아니다.
+- **매 업그레이드마다 `migrate deploy` 다음에 다시 돈다 — 전부 멱등이다.** 기존 객체엔 `GRANT … ON ALL TABLES/SEQUENCES`, 이후 객체엔 `ALTER DEFAULT PRIVILEGES FOR ROLE <마이그레이션 롤>`이 건다(후자는 이후에 만들어지는 객체에만 걸리므로 둘 다 필요하다). 런타임 롤은 `_prisma_migrations`를 읽지도 쓰지도 못한다. 매번 `REVOKE USAGE ON SCHEMA public FROM PUBLIC`도 다시 건다 — 마이그레이션의 REVOKE는 이력에 "적용됨"으로 남아 다시 걸리지 않는데 `pg_restore --no-acl` 복원 DB는 PG 기본값(PUBLIC USAGE)으로 돌아간다.
+- **실패는 고정 사유 코드로 거절한다**(`bootstrap: <code>` — `runtime-role-is-migrate-role`·`runtime-role-privileged`·`cannot-create-role` 등). 이미 있는 롤이 superuser·CREATEROLE·CREATEDB·BYPASSRLS면 거절한다 — GRANT가 no-op으로 "성공"하고 앱이 DDL 자격증명으로 도는 길을 막는다.
+- **롤이 이미 있으면 비밀번호도 바꾸지 않는다** — 교체는 `ALTER ROLE`로 따로 한다. 비밀번호는 환경변수(`RUNTIME_DB_PASSWORD`)로 받는다(`psql -v`는 `ps`에 보인다). psql 15+(`\getenv`)가 필요하다.
+- ⚠️ **`log_statement=ddl/all`이나 `pg_stat_statements`(`track_utility`)가 켜져 있으면 성공한 `CREATE ROLE`의 비밀번호도 서버 쪽에 남는다** — bootstrap 동안 끄고 운영 문서가 그 절차를 든다.
+- **운영 명령은 `self-hosted` target을 가진다** — `pnpm credentials:self-hosted`·`pnpm credentials:finalize:self-hosted`(`CREDENTIAL_TARGET=self-hosted`). URL은 `DIRECT_URL`만 읽고, query는 `sslmode` 하나만 허용하며, TLS 생략/`disable`은 호스트가 정확히 `postgres`(Compose 내부 서비스)일 때만이고 그 밖은 `verify-full`이다. hosted Supabase ref를 담은 host/user는 거절한다. finalize는 `PRISMA_TARGET=self-hosted`를 명시해 hosted dev로 흘러가지 않게 한다.
+- **같은 위치에 둔다**: 요청당 DB 왕복이 여럿이라 DB를 앱과 멀리 두면 화면 시간이 홉당 지연에 묶인다(POSTMORTEM 2026-09-09).
+
+### self-hosted 업로드 볼륨 — 쓰기 주체는 web 하나여야 한다 (2026-10-09, self-hosting)
+
+`lib/upload/file-store.ts`의 symlink 거절(볼륨 루트 lstat, 디렉터리를 한 단계씩 만들며 lstat, `realpath` 뒤 볼륨 안 확인)은 **요청 시점에 이미 있는 링크에만 성립한다.** 검사와 `readFile`·`rename`·`unlink` 사이에 부모 디렉터리를 symlink로 바꾸면 검사를 통과한 경로 문자열이 볼륨 밖을 가리킨다(Astra 교차 리뷰 🟡1 — 실제 파일시스템에서 재현됐다). 웹 요청은 키 문법(`isStoredImageKey`)과 위 검사를 지나므로 링크를 만들 수 없다 — 경쟁을 걸 수 있는 것은 볼륨에 직접 쓰는 다른 주체뿐이다. **이 동시 교체는 코드로 방어하지 않고(핸들 기반 `openat`·`O_NOFOLLOW` 사슬 없음) 운영 계약으로 막는다: 업로드 볼륨의 쓰기 주체는 web 하나여야 한다.** ⚠️ **다른 주체(컨테이너·호스트 프로세스)에 쓰기를 주면 그 주체가 경쟁으로 web의 파일시스템(`/proc/self/environ`의 환경변수 포함)을 `/api/images/<key>`로 읽어 낼 수 있다** — 볼륨만 마운트한 사이드카는 원래 web 내부를 못 읽으므로 이것은 권한 상승이다(같은 권한이라고 볼 수 있는 것은 호스트 root·docker 그룹뿐이다). 그래서 `deploy/compose.yaml`에서 `uploads`를 마운트하는 서비스는 web 하나이고 `volumes_from`도 없다 — `lib/deployment/__tests__/self-hosted-gates.test.ts`가 센다.
+
 ## 8. Vercel
 
 - ⚠️ **함수는 DB 옆(`hnd1`)에서 돈다 — 기본값이 아니라 `vercel.json`이 정한다** (2026-09-09). `regions`를
@@ -3950,6 +3981,7 @@ default ACL을 지우지 않고 닫는 층이라, 적용·확인이 끝나면 �
     본문을 3.4초 붙들고 있을 수 있다 — `performance`의 **`responseEnd`와 `transferSize`를 함께** 본다
     (POSTMORTEM 2026-09-09: 그 오독이 원인을 "순차 DB 왕복"으로 진단하게 만들었다).
 - **Cron은 Hobby 플랜에서 하루 1회.** 야간 pull 1회가 요구사항이라 지금은 맞다.
+  - **이 절은 호스팅 서비스의 Vercel 전제다.** self-hosted는 스케줄러 컨테이너가 같은 `GET /api/pull`을 같은 시각에 `CRON_SECRET` Bearer로 부른다(`deploy/scheduler/` — 헤더는 명령줄이 아니라 umask 077 파일로 넘겨 `ps`에 비밀이 안 보인다) — 시각의 집은 `lib/deployment/schedule.ts`의 `NIGHTLY_PULL`이고 `vercel.json`과의 일치를 테스트가 센다. `maxDuration`은 `next start`가 강제하지 않으므로 야간 방문 예산은 `PULL_TIME_BUDGET_MS`, 개별 Publish의 로컬 수명은 §5.6.2의 240초다.
   - ⚠️ **한 실행이 도는 프로젝트에 상한이 있다** (2026-09-09, sec-audit 발견 26 — `PULL_BATCH_LIMIT` 50).
     전에는 준비된 전 프로젝트를 직렬로 돌았고, `maxDuration = 60`을 넘으면 **slug 정렬 뒤쪽이 통째로
     안 돌았다.** 응답이 항상 200이라 cron 실행은 성공으로 표시되고 요약에도 그 사실이 없어 **관측값이
@@ -4027,6 +4059,7 @@ default ACL을 지우지 않고 닫는 층이라, 적용·확인이 끝나면 �
 - **절대 기준은 `SITE_ORIGIN`(`https://mal-moi.com`) 하나다** — canonical·sitemap·llms·JSON-LD가 전부 이것을 쓰고 **환경별로 바뀌지
   않는다.** 비프로덕션은 robots가 통째로 막으니 canonical이 프로덕션을 가리키는 것이 맞다. `lib/invitation-email/config.ts`의 환경별
   origin(“지금 이 배포”)과 합치지 않는다.
+  **예외는 링크 미리보기 셋이다**(2026-10-09, self-hosting) — `og:url`·`og:image`·`twitter:image`는 루트 레이아웃 `generateMetadata`의 `metadataBase`(`lib/seo/site.ts`의 `metadataOrigin(deploymentMode())`)로 풀린다: hosted는 `SITE_ORIGIN` 그대로, self-hosted는 설치 origin, 무효 모드는 `SITE_ORIGIN`. canonical·JSON-LD는 그대로 `SITE_ORIGIN`이다(self-hosted는 noindex라 무해). 그래서 `pageMetadata`의 `openGraph.url`은 상대 경로다 — 절대 URL이면 `metadataBase`가 못 바꾼다.
 - ⚠️ **Next metadata 병합이 얕다** — 자식이 `openGraph`·`alternates`를 주면 부모 것이 통째로 갈린다. 그래서 둘이 따라온다:
   **루트에 canonical·`og:url`을 두지 않는다**(자기 `alternates`가 없는 앱·`/signin`·`/invite`·404 전부에 홈 canonical이 번진다 —
   noindex와 모순, 404의 soft-404 신호). **OG 이미지는 파일 규약(`app/opengraph-image.png`)이 아니라 `OG_IMAGE` 상수**이고 루트와

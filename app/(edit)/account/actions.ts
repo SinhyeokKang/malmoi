@@ -18,6 +18,7 @@ import { describeFailure, logCaught } from "@/lib/failure";
 import { requestOrigin } from "@/lib/github-connect/origin";
 import { routes } from "@/lib/routes";
 import { revalidatePath } from "next/cache";
+import { enabledLoginProviders } from "@/lib/auth/login-providers";
 import { canUnlink, isLoginProvider, LOGIN_PROVIDERS, pickLoginAccount } from "@/lib/login-link/policy";
 import { withRevocationStart } from "@/lib/session-revocation/http";
 import { beginRevocation } from "@/lib/session-revocation/store";
@@ -165,13 +166,18 @@ export async function startSessionRevocation(): Promise<{ error: "unavailable" }
      * 조건이라 store의 같은 판정보다 이쪽이 사용자에게 보인다. 확인 상대는 서버가 결정적으로
      * 고른다: 클라이언트가 고르게 하면 공격자가 확인 상대를 고른다.
      */
-    const account = pickLoginAccount(accounts);
+    /**
+     * 확인 상대는 **켜진** 연결 수단 중에서만 (optional-login-providers spec §4.7). ⚠️ **한 번 읽은 `enabled`를 store에도 넘긴다** —
+     * `beginRevocation`이 같은 판정으로 상대를 다시 골라 대조하므로, 둘이 다른 집합을 보면 대조가 성립하지 않는다.
+     */
+    const enabled = enabledLoginProviders();
+    const account = pickLoginAccount(accounts, enabled);
     if (account === null || !isLoginProvider(account.provider)) return { error: "unavailable" };
     destination = await withRevocationStart(origin.secure, () => signIn(account.provider, { redirect: false, redirectTo: routes.account({ sessionRevocation: "expired" }) }, { prompt: "select_account" }));
     const state = new URL(destination).searchParams.get("state");
     if (!state) return { error: "unavailable" };
     const nonce = randomBytes(32).toString("base64url");
-    const result = await beginRevocation(prisma, { userId, nonce, sessionToken, state, ...account });
+    const result = await beginRevocation(prisma, { userId, nonce, sessionToken, state, ...account, enabled });
     if (result !== "ready") return { error: "unavailable" };
     const cookie = revocationCookie(origin.secure);
     jar.set(cookie.name, nonce, cookie.options);
@@ -194,7 +200,13 @@ export async function startSessionRevocation(): Promise<{ error: "unavailable" }
 export async function unlinkLoginMethod(provider: string): Promise<void> {
   const { userId } = await requireUser();
   let outcome: "disconnected" | "last-method" | "unavailable";
-  try {
+  /**
+   * ⚠️ **꺼진 공급자 해제는 `last-method`가 아니라 `unavailable`이다** — "마지막 수단"이 사실이 아니다. 화면에 그 행이 없으므로 직접
+   * Action 호출에서만 닿고, 행은 지우지 않는다(다시 켜면 돌아온다 — optional-login-providers spec §4.5).
+   */
+  const enabled = enabledLoginProviders();
+  if (!isLoginProvider(provider) || !enabled.includes(provider)) outcome = "unavailable";
+  else try {
     outcome = await getPrisma().$transaction(async (tx) => {
       // 같은 사용자의 해제 둘이 동시에 오면 둘 다 "아직 둘이다"를 보고 마지막 수단까지 지운다.
       await tx.$executeRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
@@ -202,8 +214,8 @@ export async function unlinkLoginMethod(provider: string): Promise<void> {
         where: { userId, provider: { in: [...LOGIN_PROVIDERS] } },
         select: { provider: true },
       });
-      // 판정은 순수 함수가 한다 — Action이 유일한 방어선이 아니다.
-      if (!canUnlink(accounts.map((a) => a.provider), provider)) return "last-method" as const;
+      // 판정은 순수 함수가 한다 — Action이 유일한 방어선이 아니다. **켜진** 연결 수단이 하나 이상 남을 때만 해제한다.
+      if (!canUnlink(accounts.map((a) => a.provider), provider, enabled)) return "last-method" as const;
       const removed = await tx.account.deleteMany({ where: { userId, provider } });
       return removed.count > 0 ? ("disconnected" as const) : ("unavailable" as const);
     });
@@ -225,7 +237,8 @@ export async function startLoginMethodConnect(provider: string): Promise<void> {
   let ready = false;
   let stage = "provider-check";
   try {
-    if (isLoginProvider(provider)) {
+    // 꺼진 공급자는 OAuth 왕복을 시작하지 않는다 — Auth.js에 닿기 전에 거부해 쿠키·challenge 행을 만들지 않는다(optional-login-providers spec §4.6).
+    if (isLoginProvider(provider) && enabledLoginProviders().includes(provider)) {
       const prisma = getPrisma();
       const existing = await prisma.account.count({ where: { userId, provider } });
       if (existing > 0) destination = routes.account({ connect: "already-connected" });

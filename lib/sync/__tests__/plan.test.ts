@@ -263,6 +263,7 @@ describe("classifySyncError — 안정적 오류 코드", () => {
 
   it("코드 목록에 생산자 없는 값이 없다 — 목록이 곧 union이다", () => {
     expect([...SYNC_ERROR_CODES]).toEqual([
+      "execution-uncertain",
       "base-unreadable",
       "not-installed",
       "glob-matched-nothing",

@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
+import { notFound, redirect } from "next/navigation";
 
 import { PrivacyDoc } from "@/components/privacy/privacy-doc";
 import { PublicShell } from "@/components/public-shell/public-shell";
 import { publicAccount } from "@/lib/auth/landing";
 import { readSession } from "@/lib/auth/read-session";
+import { deploymentMode } from "@/lib/deployment/mode";
+import { optionalEnv } from "@/lib/env";
 import { getMessages, getUiLocale } from "@/lib/i18n/server";
 import { en } from "@/messages/en";
 import { koPrivacy } from "@/messages/ko-privacy";
+import { privacyDestination } from "@/lib/seo/public-response";
 import { pageMetadata } from "@/lib/seo/site";
 
 /** 설명은 방침 첫 문장이 아니라 제품 한 줄이다 — 검색 결과에서 이 페이지가 무엇의 방침인지가 먼저다. */
@@ -28,8 +32,14 @@ export const metadata: Metadata = pageMetadata({ title: en.publicDocs.privacy.ti
  *
  * ⚠️ **본문은 두 벌이다**(ui-locales design §8) — ko 화면은 ko 본(`messages/ko-privacy.tsx`), 그 밖(en·es)은 en 본이다. es 본은 원어민 검수 없이
  * 낼 수 없어 두지 않는다. ko 본을 import하는 비테스트 소스는 이 파일 하나다 — 클라이언트 그래프에 들면 ko 사용자 번들에 본문이 실린다.
+ *
+ * ⚠️ **self-hosted는 운영자 정책으로 임시 redirect한다**(self-hosting design §7) — 이 본문은 hosted 운영자의 방침이라 다른 설치에서는
+ * 거짓이다. URL은 하나이고 모든 화면 언어에 쓴다. 순환(자기 `/privacy`)은 preflight가 기동 전에 거부하므로 여기서는 고르기만 한다.
  */
 export default async function Privacy() {
+  const destination = privacyDestination(deploymentMode(), optionalEnv("MALMOI_PRIVACY_URL"));
+  if (destination.kind === "redirect") redirect(destination.url);
+  if (destination.kind === "unavailable") notFound();
   const [session, m, uiLocale] = await Promise.all([readSession(), getMessages(), getUiLocale()]);
 
   return (

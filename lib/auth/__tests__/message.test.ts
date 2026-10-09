@@ -80,6 +80,17 @@ describe("signInErrorMessage — 거부와 장애를 가른다", () => {
     expect(signInErrorMessage(en, "AccessDenied")).not.toMatch(/in a moment/i);
   });
 
+  /**
+   * 꺼진 공급자로만 연결된 사용자 (optional-login-providers spec §4.11) — 할 일이 관리자에게 있다. `OAuthAccountNotLinked`의
+   * "가입할 때 쓴 것을 써라"는 화면에 없는 버튼을 가리킨다.
+   */
+  it("MethodUnavailable은 관리자를 가리키고 가입 수단을 쓰라고 하지 않는다", () => {
+    const text = signInErrorMessage(en, "MethodUnavailable");
+    expect(text).toBe("Your sign-in method isn't available here. Ask your administrator.");
+    expect(text).not.toBe(signInErrorMessage(en, "OAuthAccountNotLinked"));
+    expect(text).not.toMatch(/in a moment/i);
+  });
+
   it("두 거부가 서로 다른 문구다 — 원인이 다르면 안내도 달라야 한다", () => {
     expect(signInErrorMessage(en, "OAuthAccountNotLinked")).not.toBe(signInErrorMessage(en, "AccessDenied"));
   });

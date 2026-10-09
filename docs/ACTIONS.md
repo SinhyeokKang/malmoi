@@ -194,7 +194,26 @@ Sources의 Add sources 결과에서 실제 등록 slug·path-template을 담은 
 | `adapter` | **말모이가 생성하는 YAML은 확정한 어댑터를 항상 명시한다.** 자동 탐지·수동 지정 여부와 무관하게 결과 화면과 설정 화면이 같은 값을 내므로, 복사 후 CI의 탐지 순위가 저장된 포맷을 바꾸지 않는다. **한 리포에 포맷이 둘이면 필수.** `ts-dict`도 2026-09-14부터 자동 탐지 후보에 오르지만(ARCHITECTURE §1.9 판정 ③) **1순위는 `detectCandidatesAcross`의 순위가 정한다** — bugshot-2는 `_locales` 4키가 크롬 버킷이라 `ts-dict` 903키보다 언제나 앞선다 → `adapter: ts-dict`. 명시가 없으면 순위가 다른 쪽을 골라 큰 쪽 키가 orphan된다 |
 | `base-locale` | **`en`이 없는 리포는 필수.** 없으면 사전순 첫 로케일을 base로 추정하고, 틀리면 진짜 base에만 있는 키가 적재에서 빠져 orphaned로 떨어진다 — 키 집합은 base 파일이 정한다 (2026-09-04). ⚠️ **말모이 설정 화면에서 기준 언어를 바꾸면 이 값도 함께 고쳐야 한다** (6b-3): 화면은 "선언"만 저장하고 실제 전환은 **이 값을 든 다음 push**가 한다 — 안 고치면 CI는 계속 옛 base를 보내 통과하고(409가 아니다) 변경이 **영영 일어나지 않는다.** 그래서 대기 중에는 설정 화면의 워크플로 YAML이 이 줄을 무조건 박아 낸다. ⚠️ **2026-09-14부터 말모이가 내는 YAML은 대기가 아닐 때도 이 줄을 든다** — 온보딩 ③에서 탐지 1순위가 아닌 기준 언어를 고를 수 있고, 그때 이 줄이 없으면 CI가 1순위를 보내 `format mismatch` 409가 된다. 결과 화면과 설정 화면이 같은 값을 낸다 |
 | `wrapper` | 기본값(`@/i18n#t`)이 아닐 때. 여러 개면 줄바꿈으로 나눈다 |
-| `api-url` | 기본값이 `https://mal-moi.com`이라 보통 생략. **Malmoi가 생성한 워크플로는 프로덕션이 아닌 앱(dev·로컬)에서 만들면 그 origin을 이 입력으로 박는다**(`workflowApiUrl`).  ⚠️ **`.vercel.app`을 쓰지 않는다** — 프로젝트 리네임에 404가 되고 Deployment Protection이 Bearer를 무시해 302로 튕긴다(2026-09-04 실측). ⚠️ **https여야 한다** — 요청이 push 토큰 원문을 싣는다. `http:`는 루프백(`localhost`·`127.0.0.1`·`[::1]`)만 받고 그 밖이면 스텝이 exit 2로 red다 |
+| `api-url` | 기본값이 `https://mal-moi.com`이라 호스팅 서비스에선 보통 생략. **self-hosted 설치의 워크플로엔 항상 있고 필수다**(아래 "self-hosted 설치").  **Malmoi가 생성한 워크플로는 프로덕션이 아닌 앱(dev·로컬)에서 만들면 그 origin을 이 입력으로 박는다**(`workflowApiUrl`).  ⚠️ **`.vercel.app`을 쓰지 않는다** — 프로젝트 리네임에 404가 되고 Deployment Protection이 Bearer를 무시해 302로 튕긴다(2026-09-04 실측). ⚠️ **https여야 한다** — 요청이 push 토큰 원문을 싣는다. `http:`는 루프백(`localhost`·`127.0.0.1`·`[::1]`)만 받고 그 밖이면 스텝이 exit 2로 red다 |
+
+### self-hosted 설치
+
+self-hosted 설치가 만든 워크플로는 **`api-url`을 항상 든다** — 값은 그 설치의 `MALMOI_ORIGIN`(HTTPS origin, 끝 슬래시 없음)이다. action의 기본값이 호스팅 서비스(`https://mal-moi.com`)라 이 줄이 빠지면 **push 토큰 원문이 우리 서비스로 간다**(그쪽은 401로 거절하지만 토큰은 이미 남의 서버에 도착했다). 그래서 설치 화면이 낸 파일을 그대로 쓰고, 손으로 옮겨 적을 때도 이 줄을 지우지 않는다. 설치의 판정이 무효(`invalid`)면 생성기가 줄을 생략하는 대신 워크플로 렌더를 거부한다(`workflowApiUrl`).
+
+```yaml
+      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v3
+        with:
+          push-token: ${{ secrets.PUSH_TOKEN }}
+          project: order-check
+          surface: default
+          path-template: "i18n/{locale}.json"
+          adapter: json-catalog
+          base-locale: en
+          api-url: "https://<설치 origin>"   # 필수 — 그 설치의 MALMOI_ORIGIN
+          github-token: ${{ secrets.GITHUB_TOKEN }}   # for the open-PR warning (read only)
+```
+
+⚠️ **공급망 의존이 하나 있다.** 위 `uses:`는 설치가 아니라 **상류 리포의 불변 태그**를 가리킨다 — self-hosted 설치의 대상 리포 CI도 우리 `malmoi-i18n-push-v3` 태그의 코드를 자기 러너에서 실행하고, 그 스텝에 그 프로젝트의 `PUSH_TOKEN`과 `GITHUB_TOKEN`이 들어간다. 설치를 고정 버전으로 두어도 이 태그는 설치 버전과 무관하게 움직일 수 있다(태그를 옮기는 것이 action 릴리스다 — 위). 이 의존을 받아들일 수 없는 운영자는 상류 리포를 포크해 `uses:`를 그 포크의 커밋 SHA에 고정할 수 있다 — 포크는 상류의 계약 변경을 자동으로 따라가지 않는다. 조직 허용 목록에 넣을 이름은 위 넷 그대로다.
 
 훅 기반 리포의 예 (실측 형태 — ARCHITECTURE §4.0):
 

@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { hueOf, HUES, type Hue } from "@/lib/hue";
 
@@ -608,5 +608,44 @@ describe("HUE_HEX", () => {
   it("HTML 숫자 엔티티는 CSS 색이 아니다", () => {
     expect(hexes("&#8199;&#847;")).toEqual([]);
     expect(hexes("color:#AbC;background:#AbCd;fill:#AbCdEf;stroke:#AbCdEf01")).toEqual(["#abc", "#abcd", "#abcdef", "#abcdef01"]);
+  });
+});
+
+/**
+ * **self-hosted 메일의 원격 자산은 설치 origin이다** (self-hosting design §7). hosted는 프로덕션 고정(위 describe들)이지만,
+ * self-hosted가 `mal-moi.com`의 로고·프록시를 가리키면 운영자 메일이 SaaS에서 이미지를 받고 그 서버엔 운영자 볼륨의 키가 없다.
+ */
+describe("buildInvitationEmail — self-hosted", () => {
+  const ORIGIN = "https://malmoi.example.com";
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+  function selfHosted() {
+    vi.stubEnv("VERCEL_ENV", "");
+    vi.stubEnv("MALMOI_ORIGIN", ORIGIN);
+  }
+  const srcs = (html: string) => [...html.matchAll(/<img\b[^>]*\bsrc="([^"]*)"/g)].map((m) => m[1] ?? "");
+
+  it.each([
+    ["Blob URL", BLOB],
+    ["상대 경로", "/api/images/projects/p_1/thumb-x.webp"],
+  ])("썸네일(%s)·로고는 설치 origin의 경로이고 mal-moi.com이 0건이다", (_name, image) => {
+    selfHosted();
+    const { html, text } = buildInvitationEmail({ ...base, origin: ORIGIN, project: { ...project, image } });
+    expect(text).toBe(`${ORIGIN}/invite/tok_abc-123`);
+    expect(srcs(html)).toEqual([`${ORIGIN}/email/logo@2x.png`, `${ORIGIN}/api/images/email/projects/p_1/thumb-x.webp`]);
+    expect(html).not.toContain("mal-moi.com");
+  });
+
+  it("폴백 Box도 설치 origin이다", () => {
+    selfHosted();
+    const { html } = buildInvitationEmail({ ...base, origin: ORIGIN, project: { ...project, image: null } });
+    expect(srcs(html)).toEqual([`${ORIGIN}/email/logo@2x.png`, `${ORIGIN}/email/box@2x.png`]);
+    expect(html).not.toContain("mal-moi.com");
+  });
+
+  it("hosted는 상대 경로 썸네일도 프로덕션 프록시로 싣는다 — 두 형태가 같은 키", () => {
+    const { html } = buildInvitationEmail({ ...base, project: { ...project, image: "/api/images/projects/p_1/thumb-x.webp" } });
+    expect(srcs(html)).toContain(PROXIED);
   });
 });
