@@ -2285,7 +2285,7 @@ Logs 행위자·상세 Trigger·보조줄·Home 메타 열이 이것 하나를 �
 
 | 용도 | 자격증명 | 이유 |
 |---|---|---|
-| 편집 UI **로그인** | GitHub·Google OAuth **App** (Auth.js, DB 세션 / `AUTH_GITHUB_*`) | 신원 확인까지다 — **무엇을 할 수 있는지는 정하지 않는다** |
+| 편집 UI **로그인** | GitHub·Google OAuth **App** 중 **켜진 것** (Auth.js, DB 세션 / `AUTH_GITHUB_*`·`AUTH_GOOGLE_*` — 완전한 쌍 최소 하나, 아래 "켜진 로그인 공급자") | 신원 확인까지다 — **무엇을 할 수 있는지는 정하지 않는다**. GitHub 로그인을 끈 설치도 리포 연결은 GitHub App user-to-server 인가로 한다 — 로그인 자격증명이 그 자리를 대신하지 않는다 |
 | 편집 UI **인가** | `ProjectMember` 행 (`getProjectAccess`) | 로그인 provider가 권한을 정하지 않는다 (§0 불변식 7). 허용 핸들 목록은 2026-09-06에 사라졌다 |
 | 운영자 판정 (`isOperatorUser`, 2026-10-03) | `User.emailLookup` × `OPERATOR_EMAILS` | **인가 아님** — 사용자당 프로젝트 상한 면제 하나만 바꾼다. 로그인·`ProjectMember` 인가·화면 표시와 무관하다 (§6.2.2) |
 | `/api/search-index/[uiLocale]` | **공개 · 세션 없음 · `force-static`** | 그 언어 원고(`guide/<uiLocale>/`) SUMMARY에 등재된 공개 가이드만 빌드 때 JSON으로 만든다 — 언어별 정적 파일 셋(`generateStaticParams` = `guideLocales()`, `dynamicParams = false`). 인증·DB·쿠키 조회가 없고 원고 실패는 빌드를 실패시킨다. `entry-points.test.ts`의 `EXEMPT` 사유도 이 경계다 (§6.37) |
@@ -2724,6 +2724,18 @@ challenge**가 그 둘을 묶을 것. 셋을 다 통과한 뒤에야 `Account`�
 (토큰을 남기지 않는 것은 같다). ⚠️ **`lib/login-link`의 challenge를 그대로 재사용할 수 있다고
 전제하지 않는다** — 그쪽은 세션이 **없는** 흐름이라 challenge가 담는 것이 다르다(누구를 인증시킬
 것인가 vs 누구에게 붙일 것인가).
+
+### 켜진 로그인 공급자 (2026-10-09, optional-login-providers)
+
+**공급자 상태는 env 한 쌍이 정한다** — `AUTH_<P>_ID`·`AUTH_<P>_SECRET`이 둘 다 값이 있으면 `enabled`, 둘 다 비면 `absent`, 하나만 있으면 `partial`(공백만 있는 값은 빈 값 — preflight `present`와 **같은 함수**를 쓴다. 두 벌이면 preflight와 런타임이 갈린다). **켜진 집합** = `enabled`인 공급자, 순서는 언제나 `github` → `google`(`lib/auth/login-providers.ts` — `loginProviderStates`·`enabledLoginProviders`·`LOGIN_PROVIDER_ENV`). self-hosted preflight는 `partial`을 `incomplete-pair`(빠진 쪽 이름)로, `enabled` 0개를 `no-login-provider`(두 ID 이름)로 거부한다. hosted엔 preflight가 없어 반쪽이면 그 버튼이 **조용히 사라진다** — 우리가 env를 넣고 `/signin` 첫 화면에서 바로 보이므로 신호를 따로 만들지 않는다. 판정은 모드로 가르지 않는다(hosted는 두 쌍이라 결과가 지금과 같다).
+
+- **Auth.js `providers`에 켜진 것만 들어간다**(`auth.ts` config 함수 안 `withEnabled`). 꺼진 공급자의 `/api/auth/signin/<p>`·callback은 성립하지 않는다 — **화면 숨김이 유일한 방어선이 아니다.** ⚠️ 방어선은 `withEnabled` 행동 테스트가 지고 `auth.ts`는 주석을 벗긴 **호출형**만 센다(POSTMORTEM 2026-09-18). ⚠️ 켜진 집합은 **요청마다 함수 호출로** 얻는다 — 모듈 최상위에서 env를 읽지 않는다(POSTMORTEM 2026-08-31).
+- ⚠️ **`LOGIN_PROVIDERS`(`lib/login-link/policy.ts`)는 우주(universe)로 남는다** — DB 조회·challenge 파싱·`safe-adapter`의 "추가 연결 금지"는 꺼진 공급자의 행도 읽어야 숨김을 판정할 수 있다. 판정 함수(`pickLoginAccount`·`loginMethodRows`·`canUnlink`·`signInButtons`·`planLinkOffer`)는 켜진 집합을 **기본값 없는 인자**로 받는다 — 기본값이 우주면 새 호출부가 꺼진 공급자를 조용히 통과시킨다. ⚠️ **policy는 `login-providers.ts`를 import하지 않는다** — 수단 카드(클라이언트)의 그래프라 `lib/env` → `node:crypto`가 번들에 실린다(POSTMORTEM 2026-09-07). 켜진 집합은 서버 진입점이 구해 인자·props로 내린다.
+- **해제(`canUnlink`)는 해제 뒤 켜진 연결 수단이 하나 이상 남을 때만이다.** 반례가 이 기능의 보안 요지다 — 연결 `[github, google]`, 켜짐 `[google]`이면 Google 해제는 거부다(행 수로 세면 허용되고, 해제 즉시 그 계정은 다시 로그인할 수 없다). 꺼진 공급자의 해제 요청은 `last-method`가 아니라 `unavailable`이고, 연결 시작(`startLoginMethodConnect`)도 꺼진 공급자를 Auth.js에 닿기 전에 `?connect=failed`로 거부한다(쿠키·challenge 행을 만들지 않는다).
+- **확인 상대는 켜진 연결 수단 중에서만 고른다**(`github` 우선, 결정적) — 전체 로그아웃(`beginRevocation`)·병합 안내(`loadLinkOffer`)·병합 확인 화면(`loadChallengeView`). 없으면 전체 로그아웃은 `unavailable`(화면 트리거는 사유 동반 비활성), 확인 화면은 `/signin`, 병합 안내는 새 kind `method-unavailable` → **`/signin?error=MethodUnavailable`**이다. ⚠️ **`OAuthAccountNotLinked`로 보내지 않는다** — 그 문구는 "가입한 수단을 쓰라"고 하는데 그 버튼이 화면에 없다. 같은 공급자의 다른 계정은 기존 코드 그대로다. 구제가 아니라 안내다 — 이메일 일치로 붙이면 §6.2.1이 금지한 자동 병합이고, 복구는 운영자가 그 공급자를 다시 켜는 것이다. ⚠️ `beginRevocation`은 Action이 고른 상대와 store가 다시 고른 상대를 대조하므로 **한 요청에서 한 번 읽은 집합**을 둘에 넘긴다.
+- **꺼진 공급자의 `Account` 행은 지우지 않고 숨긴다** — `/account` 수단 카드는 켜진 공급자 행만 그리고, 다시 켜면 그대로 돌아온다. 세션엔 공급자가 없어 공급자를 꺼도 살아 있는 세션은 끊기지 않는다(그 세션으로 켜진 공급자를 연결할 수 있다).
+- ⚠️ **이메일 갱신(`lib/credentials/access.ts`의 `loginMethods`)은 꺼진 행까지 센다** — 꺼진 GitHub 행이 남은 사용자가 Google로 로그인해도 `planEmailRefresh`는 `keep`이다. 다시 켜면 그대로 돌아온다는 보존과 같은 방향이라 의도다. 결함으로 오진하지 않는다.
+- 우주 하드코딩 사본(`beginRevocation`의 `["github", "google"]`·`lib/session-revocation/policy.ts`·`safe-adapter`·`lib/auth/email.ts`·`lib/credentials/*`)은 이 기능에서 바꾸지 않았다 — 한 곳만 켜진 집합으로 바꾸면 사본 간 정합만 깨진다.
 
 **인가는 fail-closed다.** 로그인은 이제 **누구에게나 열려 있고**(검증된 이메일만 요구한다), 그것이 아무것도 열지 않는다 — 멤버십이 없는 사용자는 `/projects`에서 "어느 프로젝트의 멤버도 아니다"를 보고, 어떤 slug를 직접 쳐도 `not-found`로 돌아간다.
 
