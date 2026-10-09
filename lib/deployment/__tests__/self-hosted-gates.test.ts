@@ -433,6 +433,8 @@ type ComposeService = {
   healthcheck?: unknown;
   image?: string;
   build?: unknown;
+  volumes?: (string | { type?: string; source?: string })[];
+  volumes_from?: unknown;
 };
 
 /** compose 자신의 변수 — 앱이 읽지 않는다. 비밀번호는 서비스별로 갈라 준다(superuser는 postgres에만). */
@@ -497,6 +499,19 @@ function orderProblems(compose: string): string[] {
   return problems;
 }
 
+/** 업로드 볼륨(`uploads`)의 마운트 주체. 짧은 문법(`uploads:/path[:ro]`)과 긴 문법(`source: uploads`)을 다 보고, `volumes_from`은 통째로 거부한다. */
+function uploadVolumeProblems(compose: string): string[] {
+  const problems: string[] = [];
+  const mounts = (def: ComposeService) =>
+    (def.volumes ?? []).some((v) => (typeof v === "string" ? v.split(":")[0] === "uploads" : v.source === "uploads"));
+  for (const [service, def] of Object.entries(composeServices(compose))) {
+    if (def.volumes_from !== undefined) problems.push(`${service} uses volumes_from`);
+    if (service !== "web" && mounts(def)) problems.push(`${service} mounts uploads`);
+    if (service === "web" && !mounts(def)) problems.push("web does not mount uploads");
+  }
+  return problems;
+}
+
 describe("SH-15 ② — compose 예제 ↔ preflight 표, 기동 순서", () => {
   const compose = () => readFileSync(join(ROOT, "deploy/compose.yaml"), "utf8");
   const example = () => exampleKeys(readFileSync(join(ROOT, "deploy/.env.example"), "utf8"));
@@ -521,6 +536,30 @@ describe("SH-15 ② — compose 예제 ↔ preflight 표, 기동 순서", () => 
     expect(orderProblems(base.replace("condition: service_completed_successfully", "condition: service_started"))).toContain("web before migrate succeeded");
     expect(orderProblems(base.replace('"-h", "127.0.0.1", ', ""))).toContain("postgres healthcheck not over TCP");
     expect(orderProblems(base.replace("connect(3000,'127.0.0.1')", "connect(1,'x')"))).toContain("web healthcheck lacks db ping or listen check");
+  });
+});
+
+// ── 업로드 볼륨은 web만 마운트한다 (ARCHITECTURE §7 "self-hosted 업로드 볼륨") ───────────────────────
+
+describe("compose — 업로드 볼륨을 마운트하는 서비스는 web 하나다", () => {
+  const compose = () => readFileSync(join(ROOT, "deploy/compose.yaml"), "utf8");
+
+  it("현재 트리가 맞는다", () => {
+    expect(uploadVolumeProblems(compose())).toEqual([]);
+  });
+
+  // 둘째 쓰기 주체가 생기면 검사와 사용 사이의 링크 교체로 web이 자기 파일시스템(`/proc/self/environ` 등)을 이미지 경로로 내보낸다.
+  it("다른 서비스가 마운트하면 red다 — 짧은 문법·긴 문법·volumes_from·web의 마운트 제거", () => {
+    const base = compose();
+    const scheduler = "    networks: [edge]\n\nnetworks:";
+    expect(base).toContain(scheduler);
+    expect(uploadVolumeProblems(base.replace(scheduler, "    volumes:\n      - uploads:/data/uploads:ro\n    networks: [edge]\n\nnetworks:")))
+      .toEqual(["scheduler mounts uploads"]);
+    expect(uploadVolumeProblems(base.replace(scheduler, "    volumes:\n      - type: volume\n        source: uploads\n        target: /x\n    networks: [edge]\n\nnetworks:")))
+      .toEqual(["scheduler mounts uploads"]);
+    expect(uploadVolumeProblems(base.replace(scheduler, "    volumes_from: [web]\n    networks: [edge]\n\nnetworks:")))
+      .toEqual(["scheduler uses volumes_from"]);
+    expect(uploadVolumeProblems(base.replace("      - uploads:/data/uploads\n", ""))).toEqual(["web does not mount uploads"]);
   });
 });
 
