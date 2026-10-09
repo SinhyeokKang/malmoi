@@ -24,18 +24,22 @@ export type DeploymentMode =
   | { kind: "self-hosted"; origin: string; host: string }
   | { kind: "invalid"; reason: OriginRejection | "vercel-env-present" };
 
-/** `origin.ts`의 `HOST`와 같은 모양 — 밑줄·비ASCII를 받지 않는다. 포트는 `URL.host`가 이미 갈라 둔다. */
-const HOSTNAME = /^[a-z0-9.-]+$/;
+/**
+ * `origin.ts`의 `HOST`보다 좁다 — 밑줄·비ASCII에 더해 빈 라벨·끝 점·하이픈으로 시작하거나 끝나는 라벨을 받지 않는다. 끝 점은 브라우저
+ * Host에 실리지 않아 preflight를 지나도 런타임에 모든 요청이 null이 된다. 포트는 `URL.host`가 이미 갈라 둔다.
+ */
+const LABEL = "[a-z0-9](?:[a-z0-9-]*[a-z0-9])?";
+const HOSTNAME = new RegExp(`^${LABEL}(?:\\.${LABEL})*$`);
 
 /**
  * 설정 origin 파서. 끝 슬래시·대문자 host·`:443`은 정규화하고 비기본 포트는 유지한다. 요청 헤더에서 추론하지 않는 값이라 모양 밖은
- * 고치지 않고 거절한다.
+ * 고치지 않고 거절한다. ⚠️ **원문이 `https://`로 시작해야 한다** — WHATWG `URL`은 `https:host`·`https:/host`·`\`를 고쳐 받는다.
  *
  * ⚠️ **IPv6 리터럴·IDN은 지원하지 않는다** — `origin.ts`의 `HOST`가 이미 거부하므로 받으면 모든 요청이 null이 된다. IDN은 `URL`이
  * punycode로 바꾸기 전에 원문으로 본다(바꾼 뒤엔 일반 ASCII와 구별되지 않는다).
  */
 export function parseOrigin(raw: string): { ok: true; origin: string; host: string } | { ok: false; reason: OriginRejection } {
-  if (/\s/.test(raw)) return { ok: false, reason: "malformed" };
+  if (/[\s\\]/.test(raw)) return { ok: false, reason: "malformed" };
   if (/[^\x00-\x7f]/.test(raw) || /(^|[/.@])xn--/i.test(raw)) return { ok: false, reason: "idn" };
   let url: URL;
   try {
@@ -44,6 +48,7 @@ export function parseOrigin(raw: string): { ok: true; origin: string; host: stri
     return { ok: false, reason: "malformed" };
   }
   if (url.protocol !== "https:") return { ok: false, reason: "not-https" };
+  if (!raw.startsWith("https://")) return { ok: false, reason: "malformed" };
   if (url.username !== "" || url.password !== "") return { ok: false, reason: "userinfo" };
   if (url.hostname.startsWith("[")) return { ok: false, reason: "ipv6" };
   if (!HOSTNAME.test(url.hostname)) return { ok: false, reason: "malformed" };

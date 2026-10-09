@@ -40,6 +40,7 @@ const HOST = /^[a-z0-9.-]+(:\d+)?$/i;
 const ALLOWED_HOSTS: readonly string[] = [
   new URL(HOSTED_PRODUCTION_ORIGIN).host,
   new URL(HOSTED_PREVIEW_ORIGIN).host,
+  // Vercel 브랜치 별칭은 hosted origin이 아니라 접근 호스트다 — 링크·canonical·메일을 만들지 않아 `mode.ts`로 모으지 않는다(과도기, 위).
   "malmoi-git-dev-ox501501-1046s-projects.vercel.app",
 ];
 /** 로컬 개발 — 포트는 고정하지 않는다(3000이 잡혀 있으면 Next가 다음 포트로 뜬다). */
