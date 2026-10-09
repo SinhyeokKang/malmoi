@@ -524,7 +524,7 @@ Hobby 플랜이라 `--duration`·system bypass를 못 쓴다. ⚠️ **`/oauth/t
 | `RESEND_API_KEY` · `INVITATION_EMAIL_FROM` | 운영자 | `re_`로 시작 · `이름 <주소>` 꼴 |
 | `OPERATOR_EMAILS` | 운영자(선택) | 비우면 운영자 0명 |
 
-그 밖에 compose가 보간하는 `MALMOI_IMAGE` · `POSTGRES_PASSWORD` · `MIGRATE_DB_PASSWORD` · `RUNTIME_DB_PASSWORD`는 `deploy/.env.example`이 정본이다. **DB 비밀번호 셋은 서로 다르게 `openssl rand -hex 32`로 만든다**(URL에 그대로 들어간다). `INVITATION_EMAIL_ORIGIN`·`VERCEL_ENV`·`BLOB_*`는 **넣지 않는다**(있으면 거부되거나 판정이 무효가 된다).
+그 밖에 compose가 보간하는 `MALMOI_IMAGE` · `POSTGRES_PASSWORD` · `MIGRATE_DB_PASSWORD` · `RUNTIME_DB_PASSWORD`는 `deploy/.env.example`이 정본이다. **DB 비밀번호 셋은 서로 다르게 `openssl rand -hex 32`로 만든다**(URL에 그대로 들어간다). `INVITATION_EMAIL_ORIGIN`·`VERCEL_ENV`·`BLOB_*`는 **넣지 않는다** — compose의 web `environment`는 명시 목록이라 `.env`에 넣어도 컨테이너에 전달되지 않는다. compose를 고쳐 넘기면 `INVITATION_EMAIL_ORIGIN`은 preflight가 `present`로 거부하고 `VERCEL_ENV`는 판정을 무효(`vercel-env-present`)로 만든다.
 
 ### 설치 (고정 버전)
 
@@ -545,7 +545,7 @@ Hobby 플랜이라 `--duration`·system bypass를 못 쓴다. ⚠️ **`/oauth/t
 2. 새 태그의 `deploy/`와 현재 `deploy/`를 비교해(`.env`는 건드리지 않는다) compose·nginx·scheduler 변경을 반영하고, `.env`의 `MALMOI_IMAGE`를 새 태그@digest로 바꾼다. `deploy/scheduler/`가 바뀐 릴리스면 `docker compose build scheduler`.
 3. `docker compose pull --ignore-buildable` — 로컬 빌드 이미지(`malmoi-scheduler:local`)는 레지스트리에 없어서 `--ignore-buildable` 없이는 pull이 실패한다.
 4. `docker compose run --rm migrate` — `prisma migrate deploy` 뒤 bootstrap이 다시 돈다(멱등: 롤이 있으면 만들지 않고 권한만 다시 건다). **과거 `up`의 migrate 성공을 재사용하지 않는다.**
-5. `docker compose up -d --force-recreate web proxy scheduler` — 같은 digest로 web을 재생성한다.
+5. `docker compose up -d --force-recreate --no-deps web proxy scheduler` — 같은 digest로 web을 재생성한다(`--no-deps`가 4단계에서 끝난 migrate를 다시 돌리지 않게 한다).
 6. **smoke**: `docker compose ps`가 healthy · 로그인 · 번역 화면 · 업로드 이미지 · `docker compose logs web --since 5m`에 `EACCES`·`preflight:` 없음.
 7. **실패하면** DB 호환성이 입증된 경우에만 `.env`의 이전 `MALMOI_IMAGE`로 되돌려 4~5를 다시 한다. 마이그레이션이 스키마를 이미 바꿨다면 **이전 DB·이전 이미지·이전 키 백업을 함께 복원한다**(아래) — down 마이그레이션은 없다.
 
@@ -565,22 +565,24 @@ cp .env "$B/env" && cp -r certs nginx "$B/" && chmod -R go-rwx "$B"
 - `docker compose up -d`로 재개한다.
 - ⚠️ **키를 DB dump와 쌍으로 보관한다.** PII 키를 잃으면 이메일·이름을, 토큰 키를 잃으면 GitHub 연결 토큰을 복구할 수 없다. 키 회전 뒤에도 **옛 키를 지우지 않는다** — 보존된 백업이 요구한다.
 - ⚠️ `log_statement`가 `ddl`/`all`이거나 `pg_stat_statements`(`track_utility`)가 켜져 있으면 서버 로그·통계에 `CREATE ROLE … PASSWORD`가 남는다. 기본 postgres 이미지는 둘 다 꺼져 있다 — 켰다면 bootstrap 동안 끈다.
-- **백업 성공만으로 통과시키지 않는다** — 복원 검증이 있어야 백업이다. 격리 환경(scheduler와 proxy를 안 띄운 별도 스택)에서 아래 복원을 한 번 해 본다. 복원 환경에서 **실제 리포에 쓰는 일**(Publish·야간 pull)은 테스트 리포로 제한한다.
+- **백업 성공만으로 통과시키지 않는다** — 복원 검증이 있어야 백업이다. **다른 호스트**의 격리 스택(scheduler를 안 띄운다)에서 아래 복원을 한 번 해 본다 — 같은 호스트에서는 하지 않는다(아래 경고). 복원 환경에서 **실제 리포에 쓰는 일**(Publish·야간 pull)은 테스트 리포로 제한한다.
 
 ### 빈 볼륨 복원
 
 새 서버(또는 `docker compose down -v` 뒤)에서 백업 셋으로 되살린다. **키는 백업 시점의 것이어야 한다** — 다른 키로는 암호문이 안 열린다.
 
+⚠️ **복원 실습·격리 검증은 운영 스택이 없는 다른 호스트에서만 한다.** `deploy/compose.yaml`이 프로젝트명을 `malmoi`로 고정하므로 같은 호스트에서는 디렉터리를 복사해도 같은 `malmoi_pgdata`·`malmoi_uploads` 볼륨을 쓰고, 2·4단계가 운영 DB·업로드 위에서 돌며 `down -v`는 운영 볼륨을 지운다. 굳이 같은 호스트에서 해야 하면 모든 compose 명령에 `-p <다른 이름>`을 붙이고, 4단계의 볼륨명을 `<그 이름>_uploads`로 바꾸고, proxy의 80/443 포트를 다른 값으로 바꾼다 — 하나라도 빠지면 운영 스택을 친다.
+
 1. 같은 태그의 `deploy/`를 받고 백업의 `env`를 `deploy/.env`로, `certs/`·`nginx/`를 되돌린다(`MALMOI_IMAGE`는 백업 시점 digest 또는 호환이 확인된 더 새 태그).
 2. `docker compose up -d postgres` — 빈 볼륨이라 initdb가 DB와 마이그레이션 롤을 만든다(`MIGRATE_DB_PASSWORD`는 `.env`의 값).
-3. 마이그레이션 롤로 dump를 올린다(소유자·ACL은 가져오지 않는다 — 소유자는 마이그레이션 롤이 되고 권한은 5단계 bootstrap이 다시 건다):
+3. 마이그레이션 롤로 dump를 올린다(소유자·ACL은 가져오지 않는다 — 소유자는 마이그레이션 롤이 되고 권한은 5단계 bootstrap이 다시 건다 — `REVOKE USAGE ON SCHEMA public FROM PUBLIC`도 `--no-acl`이 잃으므로 5단계가 필수다):
    `docker compose exec -T postgres pg_restore -U malmoi_migrate -d malmoi --no-owner --no-acl < "$B/db.dump"`
    — 끝의 `errors ignored on restore: N`을 읽는다. 빈 DB에 이미 있는 `public` 스키마의 `already exists`류만 허용하고, 그 밖의 오류가 하나라도 있으면 중단한다(부분 복원 위에서 migrate를 돌리지 않는다).
 4. 업로드 볼륨: `docker volume create malmoi_uploads && docker run --rm -v malmoi_uploads:/data -v "$B":/backup alpine sh -c 'tar xzf /backup/uploads.tar.gz -C /data && chown -R 1000:1000 /data'` (앱 사용자 `node` uid 1000).
-5. `docker compose run --rm migrate` — 복원된 `_prisma_migrations`가 최신이면 `migrate deploy`는 no-op이고, bootstrap이 런타임 롤을 만들고 권한을 건다.
-6. `docker compose up -d`. smoke: 로그인 · 프로젝트 번역 값 · 업로드 이미지 · `docker compose logs web`에 복호화 오류(`credential-…`) 없음.
+5. `docker compose run --rm migrate` — 복원된 `_prisma_migrations`가 최신이면 `migrate deploy`는 no-op이고, bootstrap이 런타임 롤을 만들고 권한을 걸며 PUBLIC의 USAGE를 다시 거둔다. **복원 뒤에는 이 단계를 반드시 다시 돈다** — 건너뛰면 복원된 DB만 PUBLIC USAGE를 가진 채 남는다.
+6. `docker compose up -d web proxy` — **scheduler는 올리지 않는다**(8단계). smoke: 로그인 · 프로젝트 번역 값 · 업로드 이미지 · `docker compose logs web`에 복호화 오류(`credential-…`) 없음.
 7. ⚠️ **과거 시점이 되살아난다 — 점검한다.** 백업 이후에 폐기된 MCP 개인 토큰·OAuth 연결, 로그아웃한 세션, 취소된 초대가 되살아난다. 세션은 `docker compose exec -T postgres psql -U postgres -d malmoi -c 'DELETE FROM "Session"'`로 전원 재로그인시키고, 사용자에게 `/mcp`의 토큰·연결 목록 확인을 알린다. 백업 이후의 번역 편집·Publish는 잃는다 — 대상 리포의 PR 상태와 대조한다.
-8. 격리 검증이 끝나기 전에는 scheduler를 올리지 않는다.
+8. 격리 검증이 끝나기 전에는 scheduler를 올리지 않는다. 검증이 끝나 이 스택이 새 운영이 되는 것이면 `docker compose up -d`로 scheduler까지 올린다.
 
 ### 키 회전
 
@@ -602,10 +604,10 @@ cp .env "$B/env" && cp -r certs nginx "$B/" && chmod -R go-rwx "$B"
    $RUN --mode=verify
    ```
    출력은 JSON 한 줄이다. `verify`의 `oldTokenKey`·`oldPiiKey`가 각각 0이어야 새 active kid를 앱에 켠다. 실패하면 `credential-conversion-failed: keep traffic blocked` 한 줄뿐이고 값은 안 찍힌다 — 원인은 바로 앞 stderr의 `[credentials] … credential-env: missing environment variable <이름>`이 말한다(active kid가 비었거나 keyring에 없을 때). **부분 교체 상태에서 서비스를 재개하지 않는다.**
-6. `unset DIRECT_URL` → `docker compose up -d --force-recreate web proxy scheduler`(web이 새 `.env`를 읽는다) → 로그인·초대 확인.
+6. `unset DIRECT_URL` → `docker compose up -d --force-recreate --no-deps web proxy scheduler`(web이 새 `.env`를 읽는다) → 로그인·초대 확인.
 7. 옛 키를 `.env`의 keyring에서 지우지 않는다(보존된 백업이 요구한다).
 
-- **마이그레이션 상태 확인**: `pnpm credentials:finalize:self-hosted`(같은 `RUN` 꼴, 기본 `--mode=backfill`)는 **읽기 전용 확인**이다 — 자격증명 저장 마무리 마이그레이션(`20260910060000_finalize_credential_storage`)이 적용됐는지를 보고 `{"pending":false,"applied":false}`를 찍는다. 새 설치·정상 업그레이드는 `migrate` 서비스가 모든 마이그레이션을 적용하므로 항상 `pending:false`다. `--apply`는 `prisma migrate deploy`를 `DIRECT_URL`로 직접 치는 길이라 **일반 절차가 아니다**(업그레이드는 `docker compose run --rm migrate`). 실패하면 `credential-finalization-failed` 한 줄이고 트래픽을 막은 채 둔다.
+- **마이그레이션 상태 확인**: `pnpm credentials:finalize:self-hosted`(같은 `RUN` 꼴, 기본 `--mode=backfill`)는 **읽기만 하는 확인**이다(먼저 `verify` 변환을 읽기로 돌린다) — 자격증명 저장 마무리 마이그레이션(`20260910060000_finalize_credential_storage`)이 적용됐는지를 보고 `{"target":"self-hosted","pending":false,"applied":false}`를 찍는다. 새 설치·정상 업그레이드는 `migrate` 서비스가 모든 마이그레이션을 적용하므로 항상 `pending:false`다. `--apply`는 `prisma migrate deploy`를 `DIRECT_URL`로 직접 치는 길이라 **일반 절차가 아니다**(업그레이드는 `docker compose run --rm migrate`). 실패하면 `credential-finalization-failed` 한 줄이고 트래픽을 막은 채 둔다.
 - **서명·세션·Cron 비밀**: `APP_SIGNING_SECRET`(차단 불필요 — 진행 중 연결 왕복·샘플 확인값이 한 번 실패한다)과 `AUTH_SECRET`(진행 중 로그인 왕복만 깨진다)은 `.env`를 바꾸고 `docker compose up -d --force-recreate web`. `CRON_SECRET`은 web과 scheduler가 **같은 값**이어야 하므로 `--force-recreate web scheduler` 둘 다(scheduler만 다르면 야간 pull이 401).
 - **DB 비밀번호**: `MIGRATE_DB_PASSWORD`·`RUNTIME_DB_PASSWORD`는 첫 기동 뒤 `.env`만 바꿔서는 안 바뀐다(initdb·bootstrap은 있는 롤의 비밀번호를 건드리지 않는다). `docker compose exec postgres psql -U postgres -d malmoi` 안에서 `\password malmoi_app`(또는 `malmoi_migrate`) — psql이 클라이언트에서 해시해 보내므로 평문이 서버 로그에 남지 않는다 — 한 뒤 `.env`를 바꾸고 `--force-recreate web`(migrate 롤이면 다음 `run --rm migrate`부터 적용).
 
@@ -639,7 +641,7 @@ cp .env "$B/env" && cp -r certs nginx "$B/" && chmod -R go-rwx "$B"
 - 앞단에 LB·CDN을 더 두면 nginx의 `$binary_remote_addr`가 그 장비의 주소라 **모든 사용자가 rate limit 카운터 하나를 나눠** `/api/images/`·`/oauth/authorize`가 429로 막힌다 — `real_ip_header`·`set_real_ip_from`을 그 장비에 맞게 설정한다.
 - `/api/images/*`가 404면 업로드 볼륨 권한(`EACCES` 로그)부터 본다.
 
-**야간 pull.** `docker compose exec scheduler /usr/local/bin/nightly-pull`로 즉시 1회 불러 본다. scheduler 로그의 `curl: (22) … 401`은 `CRON_SECRET`이 web과 scheduler에서 다른 것이다(둘 다 재생성). 결과는 `docker compose logs web`의 `summarizeNightly` 줄이 정본이다 — curl은 HTTP 오류만 실패로 남기고 재시도·따라잡기는 없다.
+**야간 pull.** `docker compose exec scheduler /usr/local/bin/nightly-pull`로 즉시 1회 불러 본다. scheduler 로그의 `curl: (22) … 401`은 `CRON_SECRET`이 web과 scheduler에서 다른 것이다(둘 다 재생성). 결과는 `docker compose logs web`의 `[pull] targets= published= …` 요약 줄(`summarizeNightly`)이 정본이다 — curl은 HTTP 오류만 실패로 남기고 재시도·따라잡기는 없다.
 
 **GitHub.** 새 계정에서 설치가 안 되면 GitHub App이 **Public**인지 먼저 본다. `not-installed`는 App 설치의 Repository access 목록을 본다(위 "GitHub App 콘솔 설정").
 
