@@ -732,7 +732,7 @@ PR 생성은 `published`가 아니라 `review requested`에 가깝고, 반영은
 코멘트로 이유를 남겨 닫으며, 미리보기("Publishing closes pull request #N")·결과·Logs가 같은 사실을 말한다.
 **base 파일 부재는 여전히 `writer-warnings`다**(설정 오류) — 미리보기가 먼저 경로·브랜치를 말하며 막는다(Try again 없음).
 TS에서 후행 spread·동적 computed가 가린 키는 쓰거나 전달 확인하지 않는다. 뒤의 명시적 리터럴은 자기 키를 다시 확정하지만, 파일 안의 다른 불확실한 키 때문에 preview 전체가 막힐 수 있다(ARCHITECTURE §1.4).
-`no-changes`도 유효한 전달 확인이면 편집을 해제하지만 표시용 Last sent는 바꾸지 않는다. 자동 적재는 사전 편집·PR 판정 뒤 Last sent와 전달 확인 revision을 잠금 안에서 다시 비교해, 바뀌면 전체 보류한다(`publish-raced`). Publish 실행권·소스 context가 바뀐 늦은 완료는 확정 전체를 롤백하고 편집을 유지한다 — 결과는 실패·전달 여부 미확인이다(ARCHITECTURE §5.8).
+`no-changes`도 유효한 전달 확인이면 편집을 해제하지만 표시용 Last sent는 바꾸지 않는다. 자동 적재는 사전 편집·PR 판정 뒤 Last sent와 전달 확인 revision을 잠금 안에서 다시 비교해, 바뀌면 전체 보류한다(`publish-raced`). Publish는 플랫폼과 무관하게 240초 작업 예산을 갖는다. 리포 변경 시도 뒤 실패하면 결과 미확인으로 남고 시작 후 300초 정각까지 Publish·수동/야간 Sync를 막는다. 번역 저장은 허용하지만 Revert는 그 창 뒤의 새 전달 확인까지 막는다. 이미 GitHub가 받은 요청의 반영을 취소한다는 보장은 없다. Publish 실행권·소스 context가 바뀐 늦은 완료는 확정 전체를 롤백하고 편집을 유지한다 — 결과는 실패·전달 여부 미확인이다(ARCHITECTURE §5.8).
 야간 cron은 미전달 편집이 있는 프로젝트를 Publish하고, 열린 PR이 있어도 새 편집이 있으면 오늘처럼 갱신한다.
 대상 선정 뒤 보관된 프로젝트는 실행 시작 잠금 안에서 거부한다. 늦은 브랜치 없음 응답도 그 뒤 바뀐 설정·성공 적재의 현재 건강성을 덮지 않고 관측 사건만 남긴다.
 ⚠️ **편집이 0인 프로젝트도 이제 GitHub에 닿는다** (2026-09-30, nightly-sync — §4.1) — base 브랜치 ref 하나를 읽어 적재할 새 커밋이
