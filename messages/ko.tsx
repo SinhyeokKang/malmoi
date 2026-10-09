@@ -870,7 +870,6 @@ export const ko = {
       confirmAction: (provider: string): string => `${provider}에서 계속`,
       confirmDetail: (provider: string): string => `로그아웃 전에 ${provider} 화면에서 본인 확인을 진행합니다.`,
       willConfirm: "로그인 서비스로 이동해 확인한 뒤 이 화면으로 돌아옵니다.",
-      button: "확인하고 모든 기기에서 로그아웃",
       complete: "모든 기기에서 로그아웃되었습니다. 계속하려면 다시 로그인하세요.",
       failed: "모든 기기에서 로그아웃하지 못했습니다. 다시 시도하세요.",
       cancelled: "확인이 취소되었습니다. 로그인 상태는 그대로입니다. 필요하면 다시 시도하세요.",

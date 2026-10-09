@@ -861,7 +861,6 @@ export const es = {
       confirmAction: (provider: string): string => `Continuar a ${provider}`,
       confirmDetail: (provider: string): string => `${provider} te pedirá que lo confirmes antes de que cambie nada.`,
       willConfirm: "Te llevaremos a tu proveedor para que lo confirmes y después te traeremos de vuelta aquí.",
-      button: "Confirmar y cerrar sesión en todas partes",
       complete: "Se cerró tu sesión en todas partes. Vuelve a iniciar sesión para continuar.",
       failed: "No se pudo cerrar tu sesión en todas partes. Vuelve a intentarlo.",
       cancelled: "Se canceló la confirmación. Sigues con la sesión iniciada. Vuelve a intentarlo cuando quieras.",

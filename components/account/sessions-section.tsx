@@ -95,14 +95,14 @@ export function SessionsSection({ outcome, signOut, confirmProvider }: {
                   {/* 실패 Alert는 구역에 선다 — Dialog가 닫힌 뒤에도 사유가 보인다(절차 (a), DESIGN §6.4). */}
                   <DialogClose asChild>
                     <Button variant="danger" onClick={() => startTransition(submit)}>
-                      {confirmProvider === null ? m.account.sessions.button : m.account.sessions.confirmAction(confirmProvider)}
+                      {m.account.sessions.confirmAction(confirmProvider)}
                     </Button>
                   </DialogClose>
                 </>
               }
             >
-              {/* 검은 줄 — *지금 참인 값*이다. 확인 상대를 모르면 그리지 않는다(없으면 안 그린다). */}
-              {confirmProvider !== null && m.account.sessions.confirmDetail(confirmProvider)}
+              {/* 검은 줄 — *지금 참인 값*이다. 확인 상대가 없으면 위 갈래가 Dialog를 세우지 않으므로 여기선 언제나 있다. */}
+              {m.account.sessions.confirmDetail(confirmProvider)}
             </DialogContent>
           </Dialog>} />
       </CardRows>

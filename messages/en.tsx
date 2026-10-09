@@ -2048,7 +2048,6 @@ export const en = {
        * **아직 안 한 말**이다.
        */
       willConfirm: "We'll send you to your provider to confirm, then bring you back here.",
-      button: "Confirm and sign out everywhere",
       complete: "You have been signed out everywhere. Sign in again to continue.",
       failed: "We couldn't sign you out everywhere. Try again.",
       cancelled: "Confirmation was cancelled. You're still signed in. Try again when you're ready.",
