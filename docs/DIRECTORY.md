@@ -1052,7 +1052,7 @@ Dockerfile · .dockerignore
                         pnpm은 corepack이 `packageManager`와 같은 버전으로 고정하고 `COREPACK_HOME`을 공용 경로에 둔다(non-root 실행이 런타임에 재다운로드하지 않게).
                         코드·node_modules는 root 소유, `node`는 `.next/cache`·`/data/uploads`만 쓴다. 빌드 플랫폼 = 실행 플랫폼(`linux/amd64`).
                         Node 메이저·pnpm 버전·`.npmrc` COPY·비밀 ENV 부재는 `lib/deployment/__tests__/self-hosted-gates.test.ts`가 센다
-deploy/                 **self-hosted 설치 배포물** (self-hosting). 이 디렉터리를 운영자가 복사해 쓴다 — 절차는 가이드 guide/<언어>/self-hosting/(/docs/self-hosting), 상류 유지자 몫과 실습 기록은 OPERATIONS "셀프 호스팅".
+deploy/                 **self-hosted 설치 배포물** (self-hosting). 이 디렉터리를 운영자가 복사해 쓴다 — 절차는 가이드 guide/<언어>/self-hosting/(/docs/self-hosting), 상류 유지자 몫과 실습 기록은 docs/SELF-HOSTING.md.
                         compose.yaml — postgres → migrate → web → proxy·scheduler. ⚠️ `depends_on`은 `service_healthy`·`service_completed_successfully`로 묶는다
                         ("실행 중"은 준비가 아니다). 망 둘: `edge`와 `db`(internal — postgres·migrate는 인터넷을 못 본다). postgres·web은 포트를 열지 않는다
                         (POSTMORTEM 2026-09-09 DB 직접 공개) — 80/443은 proxy만. 서비스마다 필요한 비밀만 준다(superuser 비밀번호는 postgres만 ·
