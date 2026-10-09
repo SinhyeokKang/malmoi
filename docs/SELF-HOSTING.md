@@ -59,6 +59,7 @@
 |---|---|---|
 | hosted 도메인 리터럴·`MALMOI_ORIGIN`·`VERCEL_ENV` 직접 읽기(허용 목록 밖, `app/.well-known` 포함) | `pnpm test` (SH-15 ①) | `lib/deployment/__tests__/self-hosted-gates.test.ts` |
 | env 이름 ↔ preflight 표 ↔ `.env.example` ↔ compose(해석 못 하는 인자도 red) | `pnpm test` (SH-15 ②) | 같은 파일 |
+| 로그인 공급자 — `auth.ts`의 provider마다 `LOGIN_PROVIDER_ENV`에 등재되고 그 이름이 preflight `optional`(쌍 규칙은 preflight가 든다) · 로그인 넷이 `deploy/compose.yaml`에서 `${X:-}` 꼴(2026-10-09, optional-login-providers) | `pnpm test` (SH-15 ②-c) | 같은 파일 |
 | Dockerfile Node 메이저·pnpm·`.npmrc`·psql≥15 배포판·비밀 ENV·non-root | `pnpm test` (SH-15 ③) | 같은 파일 |
 | compose 의존 순서·healthcheck 형태·업로드 볼륨 단일 마운트·nginx 불변식(Host·HSTS·rate limit·마스킹 로그·resolver) | `pnpm test` | 같은 파일 |
 | 스케줄러 식 ≠ `vercel.json` | `pnpm test` | `lib/deployment/__tests__/schedule.test.ts` |
@@ -106,6 +107,7 @@ SH-10 등 [수동] 항목의 실행 증거를 남기는 자리다(**릴리스 �
 | 2026-10-09 | 업데이트 — `pull --ignore-buildable`(scheduler 건너뜀; 로컬 태그 앱 이미지는 레지스트리에 없어 거부) · `run --rm migrate`(No pending, bootstrap 멱등) · 새 태그로 `up -d --force-recreate --no-deps web proxy scheduler` 2초 안 200, `EACCES`·`preflight:` 0 | `sha256:cfb37a8f…4e52b84`(로컬 빌드 `linux/amd64`, 레지스트리 digest 아님) | 17.6 | 42 그대로 | — | 성공(레지스트리 pull은 미실행) |
 | 2026-10-09 | 백업 → `down -v` → 빈 볼륨 복원(이 절 절차 그대로, 운영 스택 없는 머신) — pg_restore 오류 0 · 행 수 동일(User 2·초대 2·Account 1) · bootstrap이 런타임 롤 생성·PUBLIC USAGE f · 업로드 이미지 200 · PII·토큰 복호화(회전된 키 포함) · `verify` 0 | `sha256:cfb37a8f…4e52b84`(로컬 빌드 `linux/amd64`, 레지스트리 digest 아님) | 17.6 | 42 = 42 | 정지~백업 17초 · 복원 1~6단계 약 30초 | 성공 |
 | 2026-10-09 | 계정 삭제 절차 — HMAC 색인 스니펫이 대상 `User`·미수락 초대를 찾음 · 트랜잭션: OWNER 판정 0행 → 멤버 1·보낸 초대 1·받은 초대 1·User 1 삭제, Account cascade | `sha256:cfb37a8f…4e52b84`(로컬 빌드 `linux/amd64`, 레지스트리 digest 아님) | 17.6 | 42 | — | 성공 |
+| — | 로그인 공급자 단독 구성(2026-10-09, optional-login-providers) — GitHub 단독·Google 단독 기동과 각자의 실제 OAuth 왕복 · 반쪽 쌍(`incomplete-pair`)·0개(`no-login-provider`) preflight 로그 · 단독 설치의 `/signin`·`/invite`·`/oauth/authorize` 버튼 하나 · 꺼진 공급자 `/api/auth/signin/<p>` 직접 호출이 로그인을 만들지 않음 | — | — | — | — | 미실행(다음 실습 회차) |
 | — | 로그인(GitHub·Google)·프로젝트 생성·생성 워크플로 `api-url`·초대 메일·MCP 연결·`/projects` 스트리밍·GHCR 발행 | — | — | — | — | 미실행(외부 OAuth·App·메일 없음) |
 | 2026-10-09 | 감사 후 운영 절차 수정 — 독립 subshell 안 정지·백업·성공 표시, 복원 전 방화벽 제한·백업 경로 선택·세션 폐기, 권한 검토 뒤 공개 재개 | — | — | — | — | Docker 복원·방화벽 실습 미실행. 백업 셸은 외부 명령 대역으로 78건 통과(실제 Docker 검증 아님) |
 
