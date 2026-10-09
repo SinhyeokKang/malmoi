@@ -60,7 +60,7 @@
 | hosted 도메인 리터럴·`MALMOI_ORIGIN`·`VERCEL_ENV` 직접 읽기(허용 목록 밖, `app/.well-known` 포함) | `pnpm test` (SH-15 ①) | `lib/deployment/__tests__/self-hosted-gates.test.ts` |
 | env 이름 ↔ preflight 표 ↔ `.env.example` ↔ compose(해석 못 하는 인자도 red) | `pnpm test` (SH-15 ②) | 같은 파일 |
 | 로그인 공급자 — `auth.ts`의 provider마다 `LOGIN_PROVIDER_ENV`에 등재되고 그 이름이 preflight `optional`(쌍 규칙은 preflight가 든다) · 로그인 넷이 `deploy/compose.yaml`에서 `${X:-}` 꼴(2026-10-09, optional-login-providers) | `pnpm test` (SH-15 ②-c) | 같은 파일 |
-| Dockerfile Node 메이저·pnpm·`.npmrc`·psql≥15 배포판·비밀 ENV·non-root | `pnpm test` (SH-15 ③) | 같은 파일 |
+| Dockerfile Node 메이저·pnpm·`.npmrc`·psql≥15 배포판·비밀 ENV·non-root·GHCR 리포 연결 라벨 | `pnpm test` (SH-15 ③) | 같은 파일 |
 | compose 의존 순서·healthcheck 형태·업로드 볼륨 단일 마운트·nginx 불변식(Host·HSTS·rate limit·마스킹 로그·resolver) | `pnpm test` | 같은 파일 |
 | 스케줄러 식 ≠ `vercel.json` | `pnpm test` | `lib/deployment/__tests__/schedule.test.ts` |
 | 백업 명령이 실패 뒤 계속 실행하거나 성공을 출력함(세 언어, sh·bash) | `pnpm test` — 외부 명령을 실패시키는 셸 회귀 | `lib/guide/__tests__/backup-shell.test.ts` |
