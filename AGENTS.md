@@ -70,6 +70,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 - **더 단순한 방법이 있으면 제안**: 200줄을 50줄로 줄일 수 있으면 줄여라. 요청하지 않은 유연성·설정 가능성·추상화 추가 금지. **확장성을 위한 선반영은 그 자체가 결함이다.** UI는 기존 프리미티브를 먼저 조립한다. 실재하는 손 사본을 같은 배치에서 새 프리미티브로 이관하는 것은 중복 제거이며, 소비자 없는 API·설정·확장성 선반영은 여전히 금지한다.
 - **외과적 변경**: 요청과 직접 관련 없는 인접 코드 개선·리팩터 금지. 기존 스타일 따르기. 기존 dead code는 언급만 하고 삭제하지 않는다 — 내 변경이 만든 고아만 제거.
 - **검증 가능한 목표로 전환**: "버그 고쳐" → "재현 테스트 작성 후 통과시켜". 멀티스텝 작업은 단계별 검증 체크를 포함한 플랜을 먼저 제시.
+- **셀프 호스팅을 깨지 않는다**: 마이그레이션·새 패키지·새 환경변수·Vercel/Supabase 전용 기능·새 cron·토큰이 경로에 실리는 URL·설치 절차를 건드리면 [docs/SELF-HOSTING.md](./docs/SELF-HOSTING.md) §3 체크리스트를 지난다. 특히 **마이그레이션은 버전을 건너뛴 업그레이드에서도 안전해야 한다**(중간 버전의 앱 코드는 돌지 않는다).
 - **테스트 우선**: 신규 인터페이스(함수·헬퍼·어댑터) 추가 시 테스트를 먼저 작성하고 구현한다. 기존 로직 변경 시에도 관련 순수 함수의 단위 테스트를 작성/갱신하고 `pnpm test` 통과를 확인한 뒤 작업을 마친다. 테스트 없이 코드만 변경하지 않는다.
 
 ## 스택
@@ -281,7 +282,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 
 ## 문서 지도
 
-**정기 갱신 대상이 여섯이고, 그 아래 갱신 규칙이 다른 넷이 더 있다** — `POSTMORTEM.md`(append-only, `/postmortem` 전담), `README.md`(방문자용 서비스 소개, en), `guide/AUTHORING.md`·`guide/SHOOTING.md`(`/guide`·`/guide-shots`가 작업하며 같이 고친다). 갱신은 문서별 별도 커밋(`docs(PRODUCT): ...` 꼴).
+**정기 갱신 대상이 일곱이고, 그 아래 갱신 규칙이 다른 넷이 더 있다** — `POSTMORTEM.md`(append-only, `/postmortem` 전담), `README.md`(방문자용 서비스 소개, en), `guide/AUTHORING.md`·`guide/SHOOTING.md`(`/guide`·`/guide-shots`가 작업하며 같이 고친다). 갱신은 문서별 별도 커밋(`docs(PRODUCT): ...` 꼴).
 
 | 문서 | 무엇 | 언제 갱신하나 |
 |---|---|---|
@@ -290,6 +291,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 | [docs/DIRECTORY.md](./docs/DIRECTORY.md) | 어디에 무엇이 있고 **왜 그렇게 생겼나** | 파일·디렉터리를 새로 만들거나 옮겼을 때 |
 | [docs/DESIGN.md](./docs/DESIGN.md) | UI 시각 규칙 (라이트·다크 — 토큰의 진실은 `app/globals.css`) | UI를 만들거나 고칠 때 필독. raw 색은 0이다 — 새 색은 §6.2의 의미 토큰 + 두 테마 값 |
 | [docs/OPERATIONS.md](./docs/OPERATIONS.md) | 키 회전·복구·전면 재발급 — **나중에 다시 실행할 절차만** | 그 절차가 바뀌었을 때 |
+| [docs/SELF-HOSTING.md](./docs/SELF-HOSTING.md) | **셀프 호스팅 개발·릴리스 정본** — 유지보수 계약 · 기능 개발 체크리스트 · 게이트 지도 · 보안 계약 · 상류 유지자 할 일 · 실습 기록. 운영자 절차는 가이드 `guide/<언어>/self-hosting/` | 마이그레이션·새 패키지·새 env·Vercel/Supabase 전용 기능·새 cron·토큰 경로 URL·설치 절차를 건드릴 때 그 체크리스트를 보고, 계약·게이트가 바뀌면 고친다 |
 | [docs/ACTIONS.md](./docs/ACTIONS.md) | **대상 리포**에 붙이는 워크플로 (외부 계약) | `inputs`나 red 조건을 바꿨을 때 |
 | [docs/POSTMORTEM.md](./docs/POSTMORTEM.md) | 회고 누적 (append-only, `/postmortem` 전담) | — |
 | [README.md](./README.md) | **방문자용 서비스 소개**(en 단일) — 기능·포맷·한도·비범위·설계 요지·개인정보 요약. 개발 절차는 이 파일(CLAUDE.md)로 보낸다. 이미지는 `docs/assets/readme/` + `public/guide/` 세 장 | 사용자에게 보이는 기능·포맷·한도·역할·전송처가 바뀌면 같이 — 사실의 정본은 PRODUCT·가이드·`/privacy`이고 README가 틀린 쪽이다 |
