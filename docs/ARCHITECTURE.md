@@ -3466,7 +3466,7 @@ MCP는 무상태이고 에이전트는 미리보기와 실행 사이에 무엇�
 
 #### 6.45.5 도구 목록과 쓰기 범위 — 정본 (`lib/mcp/catalog.ts`)
 
-**30개 — 읽기 15 · 쓰기 15** (2026-10-05 sources-add-remove가 `preview_source_removal`·`remove_source`를 더했다). 이름·순서·annotations·요구 조건의 코드 정본은 `toolCatalog()`(잎 데이터 모듈 — 값으로 읽는 것은 서버 쪽
+**31개 — 읽기 16 · 쓰기 15** (2026-10-05 sources-add-remove가 `preview_source_removal`·`remove_source`를, 2026-10-10 mcp-docs가 `read_docs`를 더했다). 이름·순서·annotations·요구 조건의 코드 정본은 `toolCatalog()`(잎 데이터 모듈 — 값으로 읽는 것은 서버 쪽
 `lib/mcp/server.ts`·`lib/mcp/tools/access.ts`이고 `/mcp` 화면은 읽지 않는다. `lib/auth/lock.ts`는 import하지 않는다 — 쓰기 grant = 역할 permission이라는
 사실은 `lock-grant.test.ts`가 카탈로그로 고정한다. 잎인 이유: 구현 → 카탈로그 방향이 뒤집히면 순환이 생기고,
 `server-only`도 없어 순수 테스트가 바로 import한다 — `catalog.test.ts`)이고 이 표가 그 판정의 근거다. 도구 구현은 조건을 자기 파일에 다시 적지 않는다.
@@ -3492,6 +3492,7 @@ MCP는 무상태이고 에이전트는 미리보기와 실행 사이에 무엇�
 | `list_events` | OWNER / EDITOR | 없음 | Logs. **보관 중 읽기 예외는 이것만** 넘긴다. 행은 `kind`·`subtype`·`result`·`payload`를 가공 없이 싣는다 — 2026-09-30(nightly-sync)부터 subtype `import.nightly`·`nightly.skip`, 결과 `upToDate`, IMPORT payload의 `source: "nightly"`·`deferReason`(넷)·`changedValues`(부재 `null`)가 그대로 나간다. `query`는 Logs 주소와 같은 해석이라 `actor=ci`·`actor=nightly`(옛 `automation`)도 받는다. **`from`·`to`의 날짜 경계는 UTC다**(`loadEvents(…, { timeZone: "UTC" })` — 세션이 없어 보는 사람의 시간대가 없다, §6.356) |
 | `get_workflow` | OWNER | 없음 | 생성 YAML. push 토큰 원문 없음(`${{ secrets.PUSH_TOKEN }}`만) |
 | `list_members` | OWNER / EDITOR | 없음 | 남의 이메일 마스킹 유지 |
+| `read_docs` | 없음(공개 원고) | 없음 | 사용자 가이드 `guide/en`만(영어 고정 표면) — 인자 없음 = 목차(SUMMARY 순서, `sections`는 id 있는 H2만) · `{ page }` = 전문(값은 목차의 `page` = URL의 `/docs/` 뒤 경로, Overview는 `""`) · `{ query }` = ⌘K Docs 그룹과 같은 순위(`searchGroups`)로 절 상위 5개. 내부 문서 링크는 요청 origin의 절대 URL(`absoluteGuideLinks` — `/llms-full.txt`와 같은 변환, origin을 모르면 앱 경로). ⚠️ 절 단위는 검색 색인(`docsSearchEntries`)과 같아야 한다 — 결과를 `(page, anchor)`로 잇는다(`docs.test.ts`가 실물 원고로 동치를 잰다). `page`는 SUMMARY 목록에서 `find`로만 찾고 파일 경로로 닿지 않는다. 없는 page는 `not-found` + **가이드 전용 문장**(공용 `not-found`는 프로젝트 문장이다), 토큰 0개 query·`page`+`query`는 `invalid-input` |
 
 **`detect_formats`의 두 입력**: 신규는 `{ owner, repo, ref? }`, 기존은 `{ slug }`다. **섞은 입력은 거부하고, 기존 경로가 거부됐다고
 신규 경로로 넘어가지 않는다.** 기존 경로는 인가된 프로젝트에 **저장된 리포와 base branch**로만 탐지한다 — 호출자가 리포·ref를
@@ -3578,6 +3579,7 @@ MCP는 무상태이고 에이전트는 미리보기와 실행 사이에 무엇�
 | `app/oauth/authorize/__tests__/actions.test.ts` | 동의 Action이 세션을 다시 읽고(무세션 → 같은 요청의 로그인, 소비 없음) 콜백 redirect는 `issued`·`denied`에서만 · **try 밖**이다(안이면 redirect 예외가 `unavailable`로 삼켜진다 — 뮤테이션으로 red 확인) |
 | `lib/session-revocation/__tests__/normal-login.test.tsx` | `/oauth/authorize`의 `ProviderButton`이 일반 로그인 진입점 넷째 — `clearAuthRoundtripCookies()`가 `signIn()`보다 먼저, `redirectTo`는 `?request=` 정규형 |
 | `lib/mcp/__tests__/pure-boundary.test.ts` | 순수 모듈(`PURE` 목록)에 `server-only`가 없다 — 테스트가 바로 import한다 |
+| `lib/guide/__tests__/tracing.test.ts` | `outputFileTracingIncludes["/api/mcp"]` 글롭이 en 서빙 원고 전부와 `SUMMARY.md`를 덮는다 — `read_docs`가 `fs`로 읽어 트레이서가 못 따라가고, 빠지면 Vercel에서만 깨진다(§8.1) |
 | `app/api/__tests__/mcp-route.test.ts` · `app/oauth/__tests__/token-route.test.ts` · `revoke-route.test.ts` · `app/oauth/authorize/__tests__/page.test.tsx` | route·페이지 껍데기 — 단계 순서·거부 본문·상태 코드 |
 
 #### 6.45.8 ⚠️ preview는 Vercel SSO 뒤다
@@ -4075,8 +4077,9 @@ default ACL을 지우지 않고 닫는 층이라, 적용·확인이 끝나면 �
 - ⚠️ **스트리밍 metadata를 전 UA에서 끈다**(`next.config.ts`의 `htmlLimitedBots: /.*/`). `/`·`/docs/**`가 세션을 읽어 동적이라 Next는
   metadata를 스트리밍하고, HTML-limited 목록 밖의 UA(GPTBot·ClaudeBot·PerplexityBot)는 `<title>`·canonical을 `<body>` 끝에서 받는다.
   정적 `metadata` export도 동적 페이지에서는 스트리밍되므로 페이지별로는 못 막는다.
-- ⚠️ **sitemap·`llms*.txt`는 빌드 prerender가 전제다** — `guide/`를 읽는데 `outputFileTracingIncludes`는 `/docs/[[...slug]]` 함수에만
-  싣는다. `force-static`을 빼거나 동적 API를 쓰면 Vercel에서만 500이다(로컬 `next start`는 리포 파일을 그대로 읽어 못 잡는다).
+- ⚠️ **sitemap·`llms*.txt`는 빌드 prerender가 전제다** — `guide/`를 읽는데 `outputFileTracingIncludes`는 `/docs/[[...slug]]`·`/api/mcp` 함수에만
+  싣는다(`/api/mcp`는 MCP `read_docs`가 요청마다 읽어서 — 영어 고정이라 `guide/en`만. 키가 포함 매칭이라 `/.well-known/oauth-protected-resource/api/mcp`
+  함수에도 원고 약 125KB가 실리지만 해는 없다. 판정은 `.next/server/app/api/mcp/route.js.nft.json`). `force-static`을 빼거나 동적 API를 쓰면 Vercel에서만 500이다(로컬 `next start`는 리포 파일을 그대로 읽어 못 잡는다).
   셋은 **결정적**이다 — 같은 `guide/` 상태에서 같은 바이트(불변식 4의 정신: 크롤러가 “바뀜”을 판단하는 재료다), 정렬은 SUMMARY 하나.
   `llms.txt`는 현재 도입 사실과 Optional 링크(전문·Changelog·Privacy·GitHub)를 함께 싣는다. `llms-full.txt`는 mdast 위치와 `resolveDocLink`로 실제 inline/reference 문서 링크의 **목적지 구간만** `SITE_ORIGIN` 절대 URL로 치환한다. 라벨·제목·코드·이미지·외부 링크와 목적지 밖 바이트는 보존한다. 참조 라벨의 escape와 현재 문서를 가리키는 빈 목적지도 회귀 테스트 대상이다.
 - **공개 정적 자산 캐시(2026-10-08)** — `next.config.ts`는 `/fonts/**`와 `/guide/**`에만 `public, max-age=3600, stale-while-revalidate=86400`을 준다. 전역 보안 헤더는 유지하고 동적 HTML에는 이 정책을 붙이지 않는다. 파일명에 해시가 없으므로 `immutable`은 금지한다. 교체한 파일은 freshness 1시간과 stale 허용 24시간 때문에 최대 약 25시간 이전 응답이 남을 수 있으므로 즉시 교체가 필요하면 새 URL을 사용한다. 실제 Vercel 응답 병합은 배포 후 확인한다.
