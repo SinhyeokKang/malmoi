@@ -4,7 +4,7 @@ Claude Code, Codex, and claude.ai can connect by signing in to Malmoi in your br
 
 ## Connect your agent {#browser}
 
-1. Add the server address to your agent. The snippets below have no token in them.
+1. Add the server address to your agent. To copy it, choose **Copy server URL** on the **Connected apps** card of the **MCP connector** page, then use it in place of `SERVER_URL` in the snippets below. They have no token in them.
 2. Start the sign-in from your agent (see the next line under each snippet). Your browser opens **Connect an app to Malmoi**.
 3. If you aren't signed in to Malmoi, choose **Continue with GitHub** or **Continue with Google**. You come back to the same screen. If the account shown isn't yours, choose **Not you?** to switch.
 4. Check the app's name and the address under it. The app chose the name itself, so the address is what tells you which app is asking.
@@ -24,7 +24,7 @@ Add this to `.mcp.json` at the root of your project:
   "mcpServers": {
     "malmoi": {
       "type": "http",
-      "url": "https://mal-moi.com/api/mcp"
+      "url": "SERVER_URL"
     }
   }
 }
@@ -40,7 +40,7 @@ Add this to your Codex configuration file:
 
 ```toml title="~/.codex/config.toml"
 [mcp_servers.malmoi]
-url = "https://mal-moi.com/api/mcp"
+url = "SERVER_URL"
 ```
 
 Then run `codex mcp login` followed by the server name from the snippet. Your browser opens to sign in to Malmoi.
@@ -52,7 +52,7 @@ If the entry already has a `bearer_token_env_var` line, remove it first. While i
 claude.ai connects from its own settings, so there is no file to edit.
 
 1. In claude.ai, open **Customize** → **Connectors**, choose **Add**, then **Add custom connector**.
-2. Paste `https://mal-moi.com/api/mcp` and give it a name, such as Malmoi.
+2. Paste the server address you copied and give it a name, such as Malmoi.
 3. Choose **Connect**. A window opens to sign in to Malmoi and authorize, as in the steps above.
 
 On a Team or Enterprise plan, only the owner of your claude.ai organization can add a custom connector; ask them to add Malmoi first, then choose **Connect** yourself. A Free plan allows one custom connector.

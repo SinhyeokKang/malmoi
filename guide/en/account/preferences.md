@@ -40,7 +40,7 @@ Malmoi doesn't read your browser's language setting, so your first visit is alwa
 
 The interface language doesn't touch your projects. The language columns in Translations, the base language of each source, and the files Malmoi publishes stay the same. The **Language** card says so too: **Your projects' languages don't change.**
 
-This guide follows the interface language and is available in all three languages. Its screenshots show the English interface. The **Privacy Policy** is available in English and Korean; with Spanish selected, it appears in English.
+This guide follows the interface language and is available in all three languages. Its screenshots show the English interface. The **Privacy Policy** is written by whoever runs the site. On mal-moi.com it is available in English and Korean, and with Spanish selected it appears in English.
 
 ## Choose a time zone {#time-zone}
 

@@ -13,7 +13,7 @@ Project **Settings** shows the repository connection as a badge, and each badge 
 - **Wrong repository** — the address now holds a different repository. There is no button: check it on GitHub, and if the repository really was replaced, create a new project for it.
 - **Couldn't check** — Malmoi can't check the connection right now. Reopen the page before changing anything.
 
-If the repository is not listed, in Malmoi choose **Add repositories**, then in GitHub open **Repository access** for the Malmoi GitHub App. If the app was removed, choose **Install the app**.
+If the repository is not listed, in Malmoi choose **Add repositories**, then in GitHub open **Repository access** for the GitHub App. If the app was removed, choose **Install the app**.
 
 ## Resolve workflow failures {#workflow-failures}
 

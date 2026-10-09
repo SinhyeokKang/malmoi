@@ -13,7 +13,7 @@ Si tu autorización de GitHub caducó, abre **Cuenta** y elige **Volver a autori
 - **Repositorio incorrecto** — la dirección ahora apunta a un repositorio distinto. No hay ningún botón: compruébalo en GitHub y, si el repositorio realmente se sustituyó, crea un proyecto nuevo para él.
 - **No se pudo comprobar** — Malmoi no puede comprobar la conexión en este momento. Vuelve a abrir la página antes de cambiar nada.
 
-Si el repositorio no aparece, en Malmoi elige **Añadir repositorios** y luego, en GitHub, abre **Repository access** de la GitHub App de Malmoi. Si se quitó la app, elige **Instalar la app**.
+Si el repositorio no aparece, en Malmoi elige **Añadir repositorios** y luego, en GitHub, abre **Repository access** de la GitHub App. Si se quitó la app, elige **Instalar la app**.
 
 ## Resuelve fallos del workflow {#workflow-failures}
 

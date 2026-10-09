@@ -64,8 +64,8 @@ Sí, en **Preferencias**. Estos cambios solo afectan a cómo ves Malmoi, no a lo
 
 ## ¿Qué guarda Malmoi sobre mí? {#privacy}
 
-Tu nombre, tu dirección de correo y tu foto de perfil de GitHub o Google, tus membresías de proyecto y quién cambió por última vez cada traducción. Los nombres, las direcciones de correo y los tokens de conexión se guardan cifrados, y Malmoi no vende tus datos ni los usa para publicidad. La [Política de privacidad](https://mal-moi.com/privacy) lo detalla todo.
+Tu nombre, tu dirección de correo y tu foto de perfil de GitHub o Google, tus membresías de proyecto y quién cambió por última vez cada traducción. Los nombres, las direcciones de correo y los tokens de conexión se guardan cifrados, y Malmoi no vende tus datos ni los usa para publicidad. La **Política de privacidad** del sitio que usas lo detalla todo; tiene un enlace en el pie de página.
 
 ## ¿Cómo elimino mi cuenta? {#delete-account}
 
-No hay un botón para eliminarla. Escribe a la dirección que aparece en la [Política de privacidad](https://mal-moi.com/privacy); las solicitudes se responden en un plazo de 30 días. Las traducciones se quedan en el proyecto, pero dejan de estar vinculadas a ti.
+No hay un botón para eliminarla. Escribe a la dirección que aparece en la **Política de privacidad** del sitio que usas, enlazada en el pie de página. En mal-moi.com las solicitudes se responden en un plazo de 30 días; en otro sitio, la política del operador fija el plazo. Las traducciones se quedan en el proyecto, pero dejan de estar vinculadas a ti.

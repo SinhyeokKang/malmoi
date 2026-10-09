@@ -40,7 +40,7 @@ Malmoi no lee la configuración de idioma de tu navegador, así que tu primera v
 
 El idioma de la interfaz no afecta a tus proyectos. Las columnas de idioma de Traducciones, el idioma base de cada fuente y los archivos que Malmoi publica siguen igual. La tarjeta **Idioma** también lo dice: **Los idiomas de tus proyectos no cambian.**
 
-Esta guía sigue el idioma de la interfaz y está disponible en los tres idiomas. Sus capturas muestran la interfaz en inglés. La **Política de privacidad** está disponible en inglés y coreano; con español seleccionado, aparece en inglés.
+Esta guía sigue el idioma de la interfaz y está disponible en los tres idiomas. Sus capturas muestran la interfaz en inglés. La **Política de privacidad** la redacta quien opera el sitio. En mal-moi.com está disponible en inglés y coreano, y con español seleccionado aparece en inglés.
 
 ## Elige una zona horaria {#time-zone}
 

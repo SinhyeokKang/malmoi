@@ -184,7 +184,7 @@ describe(`실물 가이드 본문 게이트 — ${uiLocale}`, () => {
     expect(faq).toContain("MIT");
     expect(faq).toContain("ICU");
     expect(faq).not.toMatch(/Crowdin|Tolgee/i);
-    expect(faq.match(/https:\/\/mal-moi\.com\/privacy/g)).toHaveLength(2);
+    expect(faq).not.toContain("mal-moi.com/privacy");
     expect(headings(tree("faq.md")).map(({ id }) => id)).toContain("not-supported");
 
     const formatsLead = leadParagraph(tree("reference/formats.md")) ?? "";
@@ -236,6 +236,10 @@ describe(`실물 가이드 본문 게이트 — ${uiLocale}`, () => {
       proseTexts(tree(file)).flatMap((text) => banned.filter(([word]) => text.includes(word)).map(([word, use]) => `${file}: ${word} → ${use}`)),
     );
     expect(hits).toEqual([]);
+  });
+
+  it("원고에 호스팅 서비스의 MCP 주소가 박혀 있지 않다 — 주소는 Copy server URL이 준다", () => {
+    expect(read("ai-agents/README.md") + read("ai-agents/browser.md") + read("ai-agents/token.md")).not.toContain("mal-moi.com/api/mcp");
   });
 
   it("AI 에이전트 연결 조각이 토큰 원문 대신 MALMOI_TOKEN을 참조한다", () => {

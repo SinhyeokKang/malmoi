@@ -151,6 +151,7 @@ const CONCEPT_BANNED: readonly Ban[] = [
   ["Authorization expired", /^authorization expired[.!]?$/i],
   ["cancelled an invitation", /\bcancell?ed (?:an |the )?invitation\b|\binvitation was cancell?ed\b/i],
   ["Malmoi app", /\bMalmoi app\b/i],
+  ["Malmoi GitHub App", /\bMalmoi GitHub App\b/],
   ["account settings", /\baccount settings\b/i],
   ["Image upload", /\bimage upload\b/i],
   // 이미지(프로필 사진·프로젝트 썸네일)를 걷는 동작은 Remove다
@@ -488,8 +489,7 @@ describe("사실을 단언하는 문장 (B4 r1)", () => {
  * **App 호칭·동의문은 두 배포에서 참이다** (self-hosting design §7). self-hosted에서 GitHub App의 소유자는 그 설치의 운영자라
  * "Malmoi GitHub App"이라는 고유명은 거짓이고, 동의문의 방침도 Malmoi(hosted)의 것이 아니다.
  *
- * ⚠️ **사전만 센다** — 가이드 원고의 같은 호칭은 다른 배치가 고친다. 원고까지 0이 되면 이 낱말을 `banned-terms.ts`·위 en 규칙으로
- * 올려 원고와 함께 막는다(DESIGN §10.1 App 호칭 행).
+ * App 고유명 금지는 사전·원고 모두를 훑는 `banned-terms.ts`(ko·es)와 위 en `TERMS`가 든다(DESIGN §10.1 App 호칭 행) — 여기엔 동의문만 남는다.
  */
 describe("App 호칭 · 동의문 (self-hosting)", () => {
   const all = (dictionary: unknown) => {
@@ -497,9 +497,6 @@ describe("App 호칭 · 동의문 (self-hosting)", () => {
     walk(dictionary, "", out);
     return out;
   };
-  it.each([["en", en], ["ko", ko], ["es", es]] as const)("%s 사전에 Malmoi 소유의 App 고유명이 없다", (_, dictionary) => {
-    expect(all(dictionary).filter(({ text }) => /Malmoi GitHub App|GitHub App de Malmoi/.test(text)).map(({ path }) => path)).toEqual([]);
-  });
   it.each([["en", en], ["ko", ko], ["es", es]] as const)("%s 동의문이 방침의 소유자를 Malmoi로 단언하지 않는다", (_, dictionary) => {
     const { before, link, after } = dictionary.signIn.consent;
     expect(`${before}${link}${after}`).not.toContain("Malmoi");

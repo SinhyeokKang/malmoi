@@ -4,7 +4,7 @@ Claude Code, Codex y claude.ai pueden conectarse iniciando sesión en Malmoi en 
 
 ## Conecta tu agente {#browser}
 
-1. Añade la dirección del servidor a tu agente. Los fragmentos de abajo no llevan ningún token.
+1. Añade la dirección del servidor a tu agente. Para copiarla, elige **Copiar URL del servidor** en la tarjeta **Apps conectadas** de la página **Conector MCP** y úsala en lugar de `SERVER_URL` en los fragmentos de abajo. No llevan ningún token.
 2. Inicia el inicio de sesión desde tu agente (consulta la línea siguiente bajo cada fragmento). Tu navegador abre **Conectar una app a Malmoi**.
 3. Si no has iniciado sesión en Malmoi, elige **Continuar con GitHub** o **Continuar con Google**. Vuelves a la misma pantalla. Si la cuenta que aparece no es la tuya, elige **¿No eres tú?** para cambiar.
 4. Comprueba el nombre de la aplicación y la dirección que aparece debajo. La aplicación eligió el nombre por sí misma, así que la dirección es lo que te indica qué aplicación lo pide.
@@ -24,7 +24,7 @@ Añade esto a `.mcp.json` en la raíz de tu proyecto:
   "mcpServers": {
     "malmoi": {
       "type": "http",
-      "url": "https://mal-moi.com/api/mcp"
+      "url": "SERVER_URL"
     }
   }
 }
@@ -40,7 +40,7 @@ Añade esto al archivo de configuración de Codex:
 
 ```toml title="~/.codex/config.toml"
 [mcp_servers.malmoi]
-url = "https://mal-moi.com/api/mcp"
+url = "SERVER_URL"
 ```
 
 Luego ejecuta `codex mcp login` seguido del nombre del servidor del fragmento. Tu navegador se abre para iniciar sesión en Malmoi.
@@ -52,7 +52,7 @@ Si la entrada ya tiene una línea `bearer_token_env_var`, quítala primero. Mien
 claude.ai se conecta desde sus propios ajustes, así que no hay ningún archivo que editar.
 
 1. En claude.ai, abre **Customize** → **Connectors**, elige **Add** y luego **Add custom connector**.
-2. Pega `https://mal-moi.com/api/mcp` y ponle un nombre, como Malmoi.
+2. Pega la dirección del servidor que copiaste y ponle un nombre, como Malmoi.
 3. Elige **Connect**. Se abre una ventana para iniciar sesión en Malmoi y autorizar, como en los pasos anteriores.
 
 En un plan Team o Enterprise, solo el propietario de tu organización de claude.ai puede añadir un conector personalizado; pídele que añada Malmoi primero y luego elige **Connect** tú mismo. Un plan Free permite un conector personalizado.
