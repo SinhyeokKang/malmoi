@@ -2,6 +2,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { ts } from "ts-morph";
 import { describe, expect, it } from "vitest";
 import { parse as parseYaml } from "yaml";
 
@@ -35,7 +36,8 @@ function stripComments(source: string): string {
 function sourceFiles(dir: string): string[] {
   const out: string[] = [];
   for (const name of readdirSync(dir)) {
-    if (name.startsWith(".") || SKIP_DIR.has(name)) continue;
+    // 점 디렉터리를 건너뛰지 않는다 — `app/.well-known/**`가 OAuth issuer·resource를 광고하는 생산 엔드포인트다(Astra 교차 리뷰 🟡2).
+    if (SKIP_DIR.has(name)) continue;
     const full = join(dir, name);
     if (statSync(full).isDirectory()) out.push(...sourceFiles(full));
     else if (/\.(tsx?|mjs)$/.test(name)) out.push(full);
@@ -43,9 +45,12 @@ function sourceFiles(dir: string): string[] {
   return out;
 }
 
-function scanned(): { path: string; source: string }[] {
-  return [...ROOTS.flatMap((root) => sourceFiles(join(ROOT, root))), ...ROOT_FILES.map((f) => join(ROOT, f))]
-    .map((file) => ({ path: relative(ROOT, file), source: stripComments(readFileSync(file, "utf8")) }));
+/** `source`는 주석을 벗긴 문자열(① 토큰 세기), `raw`는 원문(② AST 뽑기 — 정규식 벗기기가 문자열 안의 `/*`를 깨지 않게)이다. */
+function scanned(): { path: string; source: string; raw: string }[] {
+  return [...ROOTS.flatMap((root) => sourceFiles(join(ROOT, root))), ...ROOT_FILES.map((f) => join(ROOT, f))].map((file) => {
+    const raw = readFileSync(file, "utf8");
+    return { path: relative(ROOT, file), source: stripComments(raw), raw };
+  });
 }
 
 // ── ① 리터럴·직접 읽기 허용 목록 ─────────────────────────────────────────
@@ -98,6 +103,13 @@ describe("SH-15 ① — hosted 리터럴·배포 모드 env의 직접 읽기는 
     expect(scanned().some(({ path }) => path === "lib/deployment/mode.ts")).toBe(true);
   });
 
+  // 점으로 시작하는 디렉터리를 건너뛰었을 때 OAuth issuer·resource를 광고하는 생산 엔드포인트가 통째로 빠졌다(Astra 교차 리뷰 🟡2).
+  it("`app/.well-known/**`도 건다 — 외부에 origin을 광고하는 엔드포인트다", () => {
+    const paths = scanned().map(({ path }) => path);
+    expect(paths).toContain("app/.well-known/oauth-authorization-server/route.ts");
+    expect(paths).toContain("app/.well-known/oauth-protected-resource/api/mcp/route.ts");
+  });
+
   it("벗기기가 주석 안의 리터럴을 세지 않고, 문자열 안의 URL은 남긴다", () => {
     expect(tokenCounts([{ path: "x.ts", source: stripComments("// mal-moi.com\n/* VERCEL_ENV */ const a = 1;") }], "hosted-domain")).toEqual({});
     expect(tokenCounts([{ path: "x.ts", source: stripComments('const a = "https://mal-moi.com";') }], "hosted-domain")).toEqual({ "x.ts": 1 });
@@ -120,38 +132,69 @@ describe("SH-15 ① — hosted 리터럴·배포 모드 env의 직접 읽기는 
 /** 이름을 조립하는 자리 — `lib/credentials/storage.ts`의 `${kind}_…`가 PII·TOKEN 둘로 펼쳐진다. 모르는 조립은 red다. */
 const TEMPLATE_EXPANSIONS: Record<string, readonly string[]> = { "${kind}": ["PII", "TOKEN"] };
 
-function callArguments(source: string): string[] {
-  const out: string[] = [];
-  for (const match of source.matchAll(/\b(?:requireEnv|optionalEnv)\(/g)) {
-    let depth = 1;
-    let i = match.index + match[0].length;
-    const start = i;
-    for (; i < source.length && depth > 0; i++) {
-      if (source[i] === "(") depth++;
-      else if (source[i] === ")") depth--;
-    }
-    out.push(source.slice(start, i - 1));
+/**
+ * 해석할 수 없는 읽기의 허용 목록 — 파일별로 정확히 같아야 한다. 늘면 이름을 리터럴로 넘기고, 줄면 행을 고친다.
+ * `storage.ts`는 실패를 `CredentialError`로 바꾸는 같은 파일의 래퍼(`requireEnv(name)` → `readEnv(name)`)이고, 그 래퍼의 호출은 이름이
+ * `requireEnv`라 리터럴로 읽힌다.
+ */
+const UNRESOLVED_ALLOWED: Record<string, string[]> = { "lib/credentials/storage.ts": ["name"] };
+
+const ENV_READERS: ReadonlySet<string> = new Set(["requireEnv", "optionalEnv"]);
+const ENV_NAME = /^[A-Z][A-Z0-9_]*$/;
+
+/** 이름 인자를 펼친다 — 리터럴·삼항·괄호·`TEMPLATE_EXPANSIONS`의 조립만 읽고, 그 밖은 원문 그대로 `unresolved`다. */
+function resolveEnvArgument(node: ts.Expression, file: ts.SourceFile): { names: string[]; unresolved: string[] } {
+  if (ts.isParenthesizedExpression(node)) return resolveEnvArgument(node.expression, file);
+  if (ts.isConditionalExpression(node)) {
+    const [a, b] = [resolveEnvArgument(node.whenTrue, file), resolveEnvArgument(node.whenFalse, file)];
+    return { names: [...a.names, ...b.names], unresolved: [...a.unresolved, ...b.unresolved] };
   }
-  return out;
+  let candidates: string[] | undefined;
+  if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) candidates = [node.text];
+  else if (ts.isTemplateExpression(node)) {
+    candidates = [node.head.text];
+    for (const span of node.templateSpans) {
+      const hole = `\${${span.expression.getText(file)}}`;
+      if (!Object.hasOwn(TEMPLATE_EXPANSIONS, hole)) { candidates = undefined; break; }
+      candidates = candidates.flatMap((prefix) => TEMPLATE_EXPANSIONS[hole]!.map((value) => prefix + value + span.literal.text));
+    }
+  }
+  if (candidates === undefined || !candidates.every((name) => ENV_NAME.test(name))) return { names: [], unresolved: [node.getText(file)] };
+  return { names: candidates, unresolved: [] };
 }
 
-/** 호출 인자에서 env 이름을 뽑는다. 펼칠 수 없는 템플릿은 `unexpanded`로 돌려준다. */
-function envNamesIn(source: string): { names: string[]; unexpanded: string[] } {
+/**
+ * `requireEnv`·`optionalEnv` 호출의 env 이름을 AST로 뽑는다(별칭 import 포함). **해석하지 못한 인자와 값으로 넘긴 함수는 `unresolved`다** —
+ * 정규식 뽑기는 작은따옴표·식별자 인자를 조용히 흘렸다(Astra 교차 리뷰 🟡2, POSTMORTEM 2026-09-08 "검사 밖의 대상은 계속 green").
+ */
+function envNamesIn(source: string, fileName = "x.tsx"): { names: string[]; unresolved: string[] } {
+  const file = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, fileName.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+  const readers = new Set(ENV_READERS);
+  file.forEachChild(function collect(node) {
+    if (ts.isImportSpecifier(node) && ENV_READERS.has((node.propertyName ?? node.name).text)) readers.add(node.name.text);
+    node.forEachChild(collect);
+  });
+
   const names = new Set<string>();
-  const unexpanded: string[] = [];
-  for (const args of callArguments(source)) {
-    for (const m of args.matchAll(/"([A-Z][A-Z0-9_]*)"/g)) names.add(m[1]!);
-    for (const m of args.matchAll(/`([^`]*)`/g)) {
-      const template = m[1]!;
-      const holes = template.match(/\$\{[^}]*\}/g) ?? [];
-      const unknown = holes.filter((hole) => !Object.hasOwn(TEMPLATE_EXPANSIONS, hole));
-      if (unknown.length > 0) { unexpanded.push(template); continue; }
-      let expanded = [template];
-      for (const hole of new Set(holes)) expanded = expanded.flatMap((t) => TEMPLATE_EXPANSIONS[hole]!.map((v) => t.replaceAll(hole, v)));
-      for (const name of expanded) if (/^[A-Z][A-Z0-9_]*$/.test(name)) names.add(name); else unexpanded.push(template);
+  const unresolved: string[] = [];
+  file.forEachChild(function visit(node) {
+    if (ts.isIdentifier(node) && readers.has(node.text)) {
+      const parent = node.parent;
+      const callee = ts.isCallExpression(parent) && parent.expression === node;
+      const declared = ts.isImportSpecifier(parent) || ts.isExportSpecifier(parent) || (ts.isFunctionDeclaration(parent) && parent.name === node);
+      if (callee) {
+        const [arg] = parent.arguments;
+        if (arg === undefined) unresolved.push("(no argument)");
+        else {
+          const result = resolveEnvArgument(arg, file);
+          for (const name of result.names) names.add(name);
+          unresolved.push(...result.unresolved);
+        }
+      } else if (!declared) unresolved.push(node.text);
     }
-  }
-  return { names: [...names], unexpanded };
+    node.forEachChild(visit);
+  });
+  return { names: [...names], unresolved };
 }
 
 function exampleKeys(source: string): string[] {
@@ -170,20 +213,47 @@ function envGateProblems(input: { read: readonly string[]; table: Readonly<Recor
 
 describe("SH-15 ② — env 이름 ↔ preflight 표 ↔ .env.example", () => {
   const read = () => {
-    const results = scanned().map(({ source }) => envNamesIn(source));
-    return { names: [...new Set(results.flatMap((r) => r.names))].sort(), unexpanded: results.flatMap((r) => r.unexpanded) };
+    const names = new Set<string>();
+    const unresolved: Record<string, string[]> = {};
+    for (const { path, raw } of scanned()) {
+      const result = envNamesIn(raw, path);
+      for (const name of result.names) names.add(name);
+      if (result.unresolved.length > 0) unresolved[path] = result.unresolved;
+    }
+    return { names: [...names].sort(), unresolved };
   };
   const example = () => exampleKeys(readFileSync(join(ROOT, ".env.example"), "utf8"));
 
   it("뽑기가 리터럴·삼항·조립 이름을 다 건진다", () => {
     expect(envNamesIn('requireEnv("A_B"); optionalEnv(target === "prod" ? "C_PROD" : "C", env); requireEnv(`${kind}_KEYS`);').names.sort())
       .toEqual(["A_B", "C", "C_PROD", "PII_KEYS", "TOKEN_KEYS"]);
-    expect(envNamesIn("requireEnv(`${other}_KEYS`)").unexpanded).toEqual(["${other}_KEYS"]);
+    expect(envNamesIn("requireEnv(`${other}_KEYS`)").unresolved).toEqual(["`${other}_KEYS`"]);
+  });
+
+  // 정규식 뽑기는 아래 모양을 `{ names: [], unexpanded: [] }`로 흘려 새 의존성이 green으로 나갔다(Astra 교차 리뷰 🟡2).
+  it("작은따옴표·템플릿 리터럴·별칭 import도 이름으로 읽는다", () => {
+    expect(envNamesIn("requireEnv('NEW_SECRET')").names).toEqual(["NEW_SECRET"]);
+    expect(envNamesIn("optionalEnv(`PLAIN_TEMPLATE`)").names).toEqual(["PLAIN_TEMPLATE"]);
+    expect(envNamesIn('import { requireEnv as readEnv } from "@/lib/env";\nreadEnv("ALIASED");').names).toEqual(["ALIASED"]);
+    expect(envNamesIn('import { optionalEnv as o } from "../lib/env";\no(("WRAPPED"));').names).toEqual(["WRAPPED"]);
+  });
+
+  it("해석할 수 없는 인자·값으로 넘긴 함수는 명시적으로 실패한다", () => {
+    expect(envNamesIn('const name = "NEW_SECRET"; requireEnv(name)')).toEqual({ names: [], unresolved: ["name"] });
+    expect(envNamesIn('requireEnv(prefix + "_KEY")').unresolved).toEqual(['prefix + "_KEY"']);
+    expect(envNamesIn("requireEnv()").unresolved).toEqual(["(no argument)"]);
+    expect(envNamesIn('requireEnv("lower_case")').unresolved).toEqual(['"lower_case"']);
+    expect(envNamesIn('["A"].map(optionalEnv)').unresolved).toEqual(["optionalEnv"]);
+    expect(envNamesIn('import { requireEnv as readEnv } from "@/lib/env";\nconst f = readEnv;').unresolved).toEqual(["readEnv"]);
+  });
+
+  it("주석·선언은 읽기가 아니다", () => {
+    expect(envNamesIn('// requireEnv("IN_COMMENT")\nexport function requireEnv(name: string) { return name; }')).toEqual({ names: [], unresolved: [] });
   });
 
   it("스캐너가 실제 읽기를 건졌다 — 조용히 0건이 되지 않는다", () => {
-    const { names, unexpanded } = read();
-    expect(unexpanded).toEqual([]);
+    const { names, unresolved } = read();
+    expect(unresolved).toEqual(UNRESOLVED_ALLOWED);
     for (const name of ["DATABASE_URL", "PII_ENCRYPTION_KEYS", "TOKEN_ENCRYPTION_KEYS", "DIRECT_URL_PROD", "RESEND_API_KEY"]) expect(names).toContain(name);
     expect(example().length).toBeGreaterThan(20);
   });
