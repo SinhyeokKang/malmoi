@@ -17,9 +17,20 @@ const CRAWL_FILES: ReadonlySet<string> = new Set(["/sitemap.xml", "/llms.txt", "
 
 const hidden = (mode: DeploymentMode) => mode.kind !== "hosted";
 
+/**
+ * ⚠️ **raw와 decode한 경로를 둘 다 본다** (Astra 교차 리뷰 🟡3, 선례 `isProtectedPath`) — `pathname`은 decode되지 않았지만 Next는 한 번
+ * decode해 정적 파일을 찾으므로 `/%73itemap.xml`·`/llms%2etxt`도 크롤 파일이다. **decode가 실패하면 404다** — 무엇으로 풀릴지 모르는
+ * 경로를 hosted 산출물일 수도 있는 채로 내보내지 않는다(`isProtectedPath`와 방향이 다르다: 그쪽은 보호 경로를 넓히지 않는 것이 안전하다).
+ */
 export function pageResponse(mode: DeploymentMode, pathname: string): { kind: "not-found" } | { kind: "pass"; noindex: boolean } {
   if (!hidden(mode)) return { kind: "pass", noindex: false };
-  return CRAWL_FILES.has(pathname) ? { kind: "not-found" } : { kind: "pass", noindex: true };
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(pathname);
+  } catch {
+    return { kind: "not-found" };
+  }
+  return CRAWL_FILES.has(pathname) || CRAWL_FILES.has(decoded) ? { kind: "not-found" } : { kind: "pass", noindex: true };
 }
 
 /** ⚠️ 서버 레이아웃에서만 부른다 — 클라이언트에서는 env가 비어 늘 hosted로 읽힌다. */

@@ -133,9 +133,26 @@ describe("preflight — MALMOI_PRIVACY_URL", () => {
     expect(reasons({ ...VALID, MALMOI_PRIVACY_URL: url }).MALMOI_PRIVACY_URL).toBe("privacy-cycle");
   });
 
+  // Next는 경로를 한 번 decode해 라우트를 찾는다 — `/%70rivacy`도 `/privacy` 페이지다(Astra 교차 리뷰 🟡3).
+  it.each([
+    "https://malmoi.example.com/%70rivacy",
+    "https://malmoi.example.com/%70%72%69%76%61%63%79",
+    "https://malmoi.example.com/privacy%2F",
+    "https://malmoi.example.com/%70rivacy/?x=1",
+  ])("퍼센트 인코딩한 자기 /privacy도 순환이다 — %s", (url) => {
+    expect(reasons({ ...VALID, MALMOI_PRIVACY_URL: url }).MALMOI_PRIVACY_URL).toBe("privacy-cycle");
+  });
+
+  it("자기 origin인데 경로를 decode할 수 없으면 순환이 아님을 보일 수 없어 거부한다", () => {
+    expect(reasons({ ...VALID, MALMOI_PRIVACY_URL: "https://malmoi.example.com/%E0%A4%A" }).MALMOI_PRIVACY_URL).toBe("privacy-cycle");
+    expect(reasons({ ...VALID, MALMOI_PRIVACY_URL: "https://example.com/%E0%A4%A" })).toEqual({});
+  });
+
   it("같은 호스트의 다른 경로나 다른 origin의 /privacy는 순환이 아니다", () => {
     expect(reasons({ ...VALID, MALMOI_PRIVACY_URL: "https://example.com/privacy" })).toEqual({});
     expect(reasons({ ...VALID, MALMOI_PRIVACY_URL: "https://malmoi.example.com:8443/privacy" })).toEqual({});
+    expect(reasons({ ...VALID, MALMOI_PRIVACY_URL: "https://malmoi.example.com/%2570rivacy" })).toEqual({});
+    expect(reasons({ ...VALID, MALMOI_PRIVACY_URL: "https://example.com/%70rivacy" })).toEqual({});
   });
 });
 

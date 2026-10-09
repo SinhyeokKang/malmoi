@@ -26,6 +26,26 @@ describe("pageResponse", () => {
     for (const path of CRAWL_FILES) expect(pageResponse(mode, path), path).toEqual({ kind: "not-found" });
   });
 
+  // Next는 경로를 한 번 decode해 정적 파일을 찾는다 — `/%73itemap.xml`도 sitemap이다(Astra 교차 리뷰 🟡3, 선례 `isProtectedPath`).
+  const ENCODED_CRAWL_FILES = ["/%73itemap.xml", "/llms%2etxt", "/llms-full%2Etxt", "/%6C%6C%6D%73.txt"];
+  const MALFORMED = ["/%E0%A4%A", "/sitemap.xml%", "/%zz"];
+
+  it.each([SELF, INVALID])("self-hosted·무효는 퍼센트 인코딩한 크롤 파일도 404로 낸다 (%o)", (mode) => {
+    for (const path of ENCODED_CRAWL_FILES) expect(pageResponse(mode, path), path).toEqual({ kind: "not-found" });
+  });
+
+  it.each([SELF, INVALID])("self-hosted·무효는 decode할 수 없는 경로를 404로 낸다 — 무엇으로 풀릴지 모르면 숨긴다 (%o)", (mode) => {
+    for (const path of MALFORMED) expect(pageResponse(mode, path), path).toEqual({ kind: "not-found" });
+  });
+
+  it.each([SELF, INVALID])("self-hosted·무효는 인코딩한 일반 페이지에 noindex만 붙인다 (%o)", (mode) => {
+    for (const path of ["/%70rivacy", "/docs%2Fx", "/%2573itemap.xml"]) expect(pageResponse(mode, path), path).toEqual({ kind: "pass", noindex: true });
+  });
+
+  it.each([HOSTED, HOSTED_LOCAL])("hosted는 인코딩·잘못된 인코딩도 바꾸지 않는다 (%o)", (mode) => {
+    for (const path of [...ENCODED_CRAWL_FILES, ...MALFORMED]) expect(pageResponse(mode, path), path).toEqual({ kind: "pass", noindex: false });
+  });
+
   it.each([SELF, INVALID])("self-hosted·무효는 그 밖의 페이지에 noindex를 붙인다 (%o)", (mode) => {
     for (const path of PAGES) expect(pageResponse(mode, path), path).toEqual({ kind: "pass", noindex: true });
   });

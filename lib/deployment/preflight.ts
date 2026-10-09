@@ -91,7 +91,11 @@ function withoutTrailingSlash(value: string): string {
   return value.endsWith("/") ? value.slice(0, -1) : value;
 }
 
-/** 운영자 정책 URL이 이 설치의 `/privacy`면 그 페이지가 자기에게 redirect해 끝나지 않는다. 끝 슬래시·query·대문자 host 변형도 같다. */
+/**
+ * 운영자 정책 URL이 이 설치의 `/privacy`면 그 페이지가 자기에게 redirect해 끝나지 않는다. 끝 슬래시·query·대문자 host 변형도 같다.
+ * ⚠️ **경로는 raw와 decode한 값을 둘 다 본다** — Next가 `/%70rivacy`를 `/privacy`로 찾는다(Astra 교차 리뷰 🟡3). 자기 origin인데 decode가
+ * 실패하면 순환이 아님을 보일 수 없어 거부한다.
+ */
 function privacyProblem(raw: string, selfOrigin: string | undefined): PreflightReason | null {
   if (/\s/.test(raw)) return "malformed";
   let url: URL;
@@ -102,8 +106,14 @@ function privacyProblem(raw: string, selfOrigin: string | undefined): PreflightR
   }
   if (url.protocol !== "https:") return "not-https";
   if (url.username !== "" || url.password !== "") return "userinfo";
-  if (selfOrigin !== undefined && url.origin === selfOrigin && url.pathname.replace(/\/+$/, "") === "/privacy") return "privacy-cycle";
-  return null;
+  if (selfOrigin === undefined || url.origin !== selfOrigin) return null;
+  const paths = [url.pathname];
+  try {
+    paths.push(decodeURIComponent(url.pathname));
+  } catch {
+    return "privacy-cycle";
+  }
+  return paths.some((path) => path.replace(/\/+$/, "") === "/privacy") ? "privacy-cycle" : null;
 }
 
 export function preflight(env: Record<string, string | undefined>, probeUploadDir: UploadDirProbe): PreflightResult {
