@@ -4050,6 +4050,7 @@ default ACL을 지우지 않고 닫는 층이라, 적용·확인이 끝나면 �
 - **절대 기준은 `SITE_ORIGIN`(`https://mal-moi.com`) 하나다** — canonical·sitemap·llms·JSON-LD가 전부 이것을 쓰고 **환경별로 바뀌지
   않는다.** 비프로덕션은 robots가 통째로 막으니 canonical이 프로덕션을 가리키는 것이 맞다. `lib/invitation-email/config.ts`의 환경별
   origin(“지금 이 배포”)과 합치지 않는다.
+  **예외는 링크 미리보기 셋이다**(2026-10-09, self-hosting) — `og:url`·`og:image`·`twitter:image`는 루트 레이아웃 `generateMetadata`의 `metadataBase`(`lib/seo/site.ts`의 `metadataOrigin(deploymentMode())`)로 풀린다: hosted는 `SITE_ORIGIN` 그대로, self-hosted는 설치 origin, 무효 모드는 `SITE_ORIGIN`. canonical·JSON-LD는 그대로 `SITE_ORIGIN`이다(self-hosted는 noindex라 무해). 그래서 `pageMetadata`의 `openGraph.url`은 상대 경로다 — 절대 URL이면 `metadataBase`가 못 바꾼다.
 - ⚠️ **Next metadata 병합이 얕다** — 자식이 `openGraph`·`alternates`를 주면 부모 것이 통째로 갈린다. 그래서 둘이 따라온다:
   **루트에 canonical·`og:url`을 두지 않는다**(자기 `alternates`가 없는 앱·`/signin`·`/invite`·404 전부에 홈 canonical이 번진다 —
   noindex와 모순, 404의 soft-404 신호). **OG 이미지는 파일 규약(`app/opengraph-image.png`)이 아니라 `OG_IMAGE` 상수**이고 루트와
