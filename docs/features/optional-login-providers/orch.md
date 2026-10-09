@@ -45,3 +45,6 @@
   - R-D(`ctx_de27f977ceec`, Opus medium): 🔴0 🟡4 — README.md:197 · ko 가이드 인용 · (고아 — A가 이미 처리) · oauth-consent SHA. 리포트 `.scratch/review-olp-D.md`.
   - D fix1(`ctx_2410269317de`): 위 🟡 1·2·4 + troubleshooting "that email" 뉘앙스.
   - D fix1 인계: `de85e790`(README) · `477413e6`(ko 인용 + that email) · `26a89de9`(oauth-consent SHA). 통합 ④. tasks T1~T9a 체크.
+  - push: dev `94bf9336..968b7294`, CI green (run 37965555629).
+  - Q(`ctx_278839a135ae`, Opus medium): T10 7/7 통과, 결함 0. GitHub off = 셸 env 공백. 전제 불일치(사용자가 github·github-app·google 셋 보유) → 지휘자 조건부 승인(ego Google 이메일 일치 확인 후 UI Disconnect → 측정 → Connect 왕복 원복). 꺼진 공급자 직접 GET/callback → `/signin?error=Configuration`, 세션 없음. dev DB: Account google 행 재생성(원복), 테스트 초대 1건 생성·회수, Resend 실메일 1통.
+  - 정리: 워커 전부 해제, 워크트리 olp-A·olp-D 제거. T11은 SELF-HOSTING §7 미실행 행으로 이관. 기능 디렉터리 삭제.
