@@ -93,12 +93,13 @@ GitHub.com 리포 연동과 GitHub·Google OAuth 로그인은 유지한다. 운�
 |---|---|---|
 | 착수 조건 | 수요 트리거 없이 저자 판단 | 확정(2026-10-09 review) |
 | 메일 범위 | Resend 유지. SMTP는 비목표. preflight는 누락·형식만 | 확정(2026-10-08 · 2026-10-09 review) |
-| 배포 지원 폭 | 단일 서버 Compose, linux/amd64, 이미지 한 벌, Postgres 17 | 확정. 레지스트리 공개 권한은 착수 전 확정 |
-| 이미지 발행 | 매 앱 태그, `/merge` 단계 | 확정(2026-10-09 review). 레지스트리는 위 행 |
+| 배포 지원 폭 | 단일 서버 Compose, linux/amd64, 이미지 한 벌, Postgres 17 | 확정 |
+| 이미지 발행 | 매 앱 태그, `/merge` 단계. 레지스트리는 GHCR 공개(`ghcr.io/sinhyeokkang/malmoi`) | 확정(2026-10-09) |
+| proxy 예제 | nginx — rate limit(`limit_req`)·HSTS 덮어쓰기가 내장 지시어. TLS 인증서는 운영자가 붙인다 | 확정(2026-10-09) |
 | migrate 롤 | DB를 소유한 비-superuser 롤. 런타임 롤은 bootstrap이 만드는 별도 롤 | 확정(2026-10-09 review) |
 | App 호칭 | 두 배포 공통 "the GitHub App" → "the app" | 확정(2026-10-09 review) |
 | 개인정보 URL | `MALMOI_PRIVACY_URL` 하나를 모든 화면 언어에 쓴다. redirect는 `/privacy` page에서 | 확정(2026-10-09 review) |
-| 생성기 action 태그 | 생성기는 아직 v2를 낸다(`lib/onboarding/workflow.ts:27`, [ACTIONS](../../ACTIONS.md) v3 절). v3로 올리면 hosted 출력도 바뀐다 | 착수 전 확정 — 추천: 0배치에서 생성기를 v3로 올리는 별도 커밋(hosted 바이트 단언을 그 커밋에서 갱신) |
+| 생성기 action 태그 | v3 — v1.2.6(`d49a7c8b`)에서 전환 | 확정(2026-10-09, 배포됨) |
 | 배포 검증 값 | 최소 CPU/RAM·디스크 여유·복구 실측 시간 | 컨테이너 실습에서 기록. 임의 성능·가용성 보장 없음 |
 
 후속 구현은 이 문서만으로 시작하지 않는다. 위 표의 "착수 전 확정" 항목을 닫은 뒤 [태스크](tasks.md)를 진행한다.
