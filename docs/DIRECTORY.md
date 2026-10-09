@@ -86,8 +86,8 @@ app/
                         readSession으로 거부를 값으로 돌려받고 checkRepoAccess를 지난다
     preferences/        Preferences(`/preferences`, 2026-10-04 ui-locales). 사용자 축 — requireUser만 지난다(account/·mcp/와 같은 형 · layout.tsx가
                         ContentPanel을 든다 · loading.tsx). page.tsx는 Language · Time zone · Theme 카드 셋(components/preferences/)이고 now ISO를 Time zone 카드에
-                        내린다(옵션 정렬·미리보기 — 하이드레이션). Language의 Action은 app/ui-locale/에 있고(공개 푸터와 공유) Time zone의 Action은
-                        actions.ts(setTimeZone — 로그인 전용이라 여기 산다, user-timezone 2026-10-05 · setColorScheme — 같은 이유, 쿠키도 쓴다, color-scheme 2026-10-05). ⚠️ 보호 경로라 isProtectedPath와 lib/seo/crawl의 robots disallow 두 곳에 각각 등재된다(따로 하드코딩된 목록)
+                        내린다(옵션 정렬·미리보기 — 하이드레이션). Language·Theme의 Action은 app/ui-locale/·app/color-scheme/에 있고(공개 푸터와 공유) Time zone의 Action만
+                        actions.ts(setTimeZone — 로그인 전용이라 여기 산다, user-timezone 2026-10-05). ⚠️ 보호 경로라 isProtectedPath와 lib/seo/crawl의 robots disallow 두 곳에 각각 등재된다(따로 하드코딩된 목록)
     account/            사용자 축 화면(프로필·로그인 수단·세션). requireUser만 지난다 · layout.tsx · loading.tsx 스켈레톤 ·
                         actions.ts(프로필 이름·사진 둘 · 전체 세션 회수 · 로그인 수단 연결/해제 — 여섯 다
                         requireUser만 지난다. 인가할 프로젝트가 없는 축이다)
@@ -144,6 +144,8 @@ app/
   ui-locale/actions.ts  setUiLocale 하나(ui-locales, 2026-10-04 — ARCHITECTURE §6.355). 공개 푸터(비로그인 포함)와 /preferences가 같이 부르는
                         **공개 Action**이라 보호 경로 밖·라우트 없는 디렉터리에 산다(app/search/actions.ts가 선례). ⚠️ 맨 locale이 아니다 — 프로젝트
                         로케일과 다른 축. 계정 대상은 세션이 정하고, 순서 계정 → 쿠키 → revalidateAfterCommit, 실패면 아무것도 안 쓴다. 코드를 돌려준다
+  color-scheme/actions.ts setColorScheme 하나(color-scheme 2026-10-05 · 2026-10-10 공개로 옮겼다 — ARCHITECTURE §6.357). ui-locale과 같은 자리·같은 형:
+                        공개 푸터 테마 스위처(비로그인 포함)와 Theme 카드가 같이 부른다. 비로그인은 쿠키만, 세션 unavailable이면 아무것도 안 쓰고 failed
   invite/actions.ts     acceptInvitation 하나. ⚠️ **인가 예외** — 지날 프로젝트 인가가 없고 토큰이 대신한다.
                         entry-points의 면제가 파일이 아니라 **export 단위**(EXEMPT_ACTIONS)다 — 파일 단위면
                         여기 붙는 둘째 export가 조용히 무인가로 열린다
@@ -382,7 +384,10 @@ components/
                         가리키면 마운트 때 그 헤딩이 포커스를 받는다. bare는 스크롤러를 안 만든다(/docs는 페이지가 든다). ⚠️ 헤더는 세션을 읽지
                         않는다 — 우측 primary는 페이지가 publicAccount로 정해 넘기고, 로그아웃은 lib/auth/sign-out을 참조로 넘긴다. route group 레이아웃으로 묶지 않는다(이동 때 스크롤러 재마운트)
                         footer는 셸 밖 골격(signin/auth-layout — /signin·초대·계정 병합)도 패널 아래에 그린다 — 푸터 렌더러가 하나다.
-                        footer는 서버 컴포넌트로 남고 마지막 항목인 언어 스위처(components/i18n/locale-switcher)만 클라이언트다
+                        footer는 서버 컴포넌트로 남고 오른쪽 묶음의 언어·테마 스위처(components/i18n/locale-switcher · components/color-scheme/theme-switcher)만 클라이언트다
+  color-scheme/         화면 테마의 클라이언트 조각(2026-10-10). apply(applyColorScheme — Action보다 먼저 <html data-theme>을 쓰고 ok가 아니면 되돌린다 ·
+                        글리프 셋 COLOR_SCHEME_GLYPHS. Theme 카드와 스위처가 공유) · theme-switcher(공개 푸터 — 언어 스위처와 같은 프리미티브·같은 busy 형.
+                        현재 값을 prop으로 받지 않고 라벨은 CSS가 data-theme로 고르며, 메뉴 체크는 열 때 그 속성을 읽는다)
   i18n/                 화면 언어(ui-locales, 2026-10-04 — ARCHITECTURE §6.355). messages-provider("use client" — useMessages·useUiLocale·useDateStyle(시간대는 context 필드 하나 — provider 없음 = UTC) ·
                         ⚠️ ko·es 사전의 유일한 클라이언트 import 자리 = next/dynamic 운반체 CARRIERS 한 줄씩. 루트 레이아웃이 서버에서 import하는
                         client 모듈은 한 청크 그룹에 실려 언어별 provider 셋으로는 en도 ko를 받았다 · 언어별 껍데기·key={uiLocale} 금지 — 재마운트) ·
@@ -391,8 +396,8 @@ components/
                         RoleSelect 가드 · 닫힌 트리거 typeahead 차단(Enter·Space·↑↓·Tab만) · 실패는 Card notice의 Alert danger inset · after 슬롯이
                         낙관 값을 받는다. 2026-10-05에 language-card의 손 조립을 뽑았다 — 소비자가 전부 Preferences 카드라 components/ui가 아니다) ·
                         language-card(setUiLocale) · time-zone-card(setTimeZone — 옵션 timeZoneOptions(now) · 열린 목록 글자 이동은 도시 이름 ·
-                        미리보기 `Now: …`가 유일한 피드백) · theme-card(setColorScheme — 글리프 Monitor·Sun·Moon은 옵션 label 안 · Action보다 먼저
-                        <html data-theme>을 쓰고 ok가 아니면 되돌린다)
+                        미리보기 `Now: …`가 유일한 피드백) · theme-card(setColorScheme — 글리프 Monitor·Sun·Moon은 옵션 label 안 · 적용은 color-scheme/apply의 applyColorScheme —
+                        Action보다 먼저 <html data-theme>을 쓰고 ok가 아니면 되돌린다)
   privacy/              `/privacy` 읽기 그릇 — privacy-doc(서버 — 1120 · 본문 720 + 목차 200, 본문은 사전 그대로)
   docs/                 `/docs/*` 조각 — guide-markdown(서버 — react-markdown에 로더 트리 사본을 꽂고 요소를 매핑한다.
                         ⚠️ urlTransform을 덮지 않는다 · rehype-raw 없음 — raw HTML은 글자로 나가므로 원고에서 게이트가 막는다) · doc-frame(그릇 · 이전/다음 · 장 개요 행 · 개요 두 갈래) ·
@@ -813,7 +818,8 @@ lib/
                         token(생성·해시·Bearer 파싱·planApiTokenUse·shouldTouch) · grant(planToolAccess — 범위 → 멤버십 → 역할 →
                         보관 → 토큰) · issue-plan · batch(100키 상한·중복) · confirm(샘플 확인값 소비) · locked-token(잠금 뒤 재판정) ·
                         result(toToolResult — 화면과 같은 문장) · http(checkOrigin) · view(/mcp 카드) · brand(연결 로고 — client_id 호스트 정확
-                        일치만, 이름으로 고르지 않는다) · catalog(도구 30 — 이름·순서·annotations·요구 조건의 코드 정본).
+                        일치만, 이름으로 고르지 않는다) · catalog(도구 31 — 이름·순서·annotations·요구 조건의 코드 정본) ·
+                        docs(read_docs 판정 — sectionSlices · planDocsRead. 절 단위가 검색 색인 docsSearchEntries와 같아야 결과에 원고 조각을 붙인다).
                         server-only: server(요청마다 McpServer — listChanged: false · 설명은 messages/en.tsx mcp.tools, 없으면 서지 않는다) · token-store(resolveBearer — 개인 토큰 분기는 resolveApiToken) · tools/.
                         ⚠️ catalog·brand는 잎이다(import 0). brand는 /mcp 클라이언트(connected-apps-card · brand-logo)가 값으로 읽는다(client-graph).
                         catalog의 소비자는 서버 쪽(server · tools/access)이다 — 그래도 잎으로 두는 이유는 도구 구현 → catalog 방향이
@@ -821,7 +827,8 @@ lib/
                         순수 모듈에 server-only가 없는 것은 lib/mcp/__tests__/pure-boundary가 센다
   mcp/tools/            도구 구현(전부 server-only). access(입구 판정 — GitHub·코어보다 먼저, 조건은 catalog에서) · define(appUrl — needs-browser 링크를 허용 호스트 origin의 절대 URL로) ·
                         execute(⚠️ 던지면 SDK가 예외 문구를 결과에 싣는다 — 여기서 잡아 unavailable로 접는다) · 도메인별
-                        account·project·keys·repos·sync·publish·translations·settings·sources·members·onboarding · index(TOOLS).
+                        account·project·keys·repos·sync·publish·translations·settings·sources·members·onboarding · docs(read_docs — guide/en을 fs로 읽는다,
+                        그래서 next.config.ts가 /api/mcp에 원고를 싣는다) · index(TOOLS).
                         ⚠️ Action을 import하지 않는다 — 같은 코어의 형제 껍데기다(세션이 없다)
   oauth/                MCP OAuth의 **순수 판정만**(mcp-oauth — 껍데기는 oauth-server/). authorize(쿼리 파싱 — Object.hasOwn) · authorize-view(화면 판정 순서 ·
                         returnHost) ·

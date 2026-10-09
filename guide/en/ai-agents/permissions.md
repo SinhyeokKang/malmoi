@@ -26,6 +26,7 @@ Changes to your role or membership apply from the agent's next request. Archived
 | Task | Tools |
 | --- | --- |
 | Find out who and what | `whoami`, `list_projects`, `get_project`, `list_members`, `list_events` |
+| Read the guide | `read_docs` |
 | Set up a project | `list_repositories`, `list_branches`, `detect_formats`, `create_project`, `add_sources`, `get_workflow`, `rotate_push_token` |
 | Remove a source | `preview_source_removal`, `remove_source` |
 | Translate | `list_keys`, `get_key`, `set_translations` |

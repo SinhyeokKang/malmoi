@@ -364,7 +364,8 @@ GitHub·Google 어느 쪽으로 들어와도 같은 사람을 가리키고, 프�
   에이전트 = 그 사용자라 토큰도 하나다(push 토큰이 프로젝트당 하나인 것과 같다). ③ **유효 권한 = 역할 ∩ 토큰, 좁히기만 한다** —
   토큰은 허용 동작(기존 `Permission` 셋 + 토큰 전용 `project:create`)과 프로젝트 범위를 고르고, 역할보다 넓을 수 없다.
   에이전트가 한 일은 그 사용자의 사건으로 Logs에 선다(경유 표시 없음). ④ **도구 목록과 각 도구의 쓰기 범위의 정본은
-  ARCHITECTURE §6.45**다.
+  ARCHITECTURE §6.45**다. ⑤ **에이전트가 같은 연결로 사용자 가이드를 읽는다**(2026-10-10, mcp-docs — `read_docs`): 목차·페이지 전문·절 검색이고
+  원고는 영어(`guide/en`)만, 역할·권한·범위 조건이 없다(공개 원고). 링크는 그 설치의 origin을 가리킨다 — 셀프 호스팅 설치에서도 설치 버전의 원고를 읽는 길이다.
 - **화면 언어 — `en`·`ko`·`es`** (2026-10-05, ui-locales — §10의 "UI를 ko로 여는 시점"을 닫았다). 주 대상은 초대 링크로 들어오는
   **번역 편집자**다 — 영어 화면에서 Sync·Publish·Sources를 읽어야 했다. **기본은 여전히 영어**이고 개발자 요구와 충돌하지 않는다.
   ① **판정 순서는 계정(`User.uiLocale`) > 기기 쿠키(`malmoi-ui-locale`) > `en`**이다. **`Accept-Language`는 보지 않는다 — 처음 온 사용자는
@@ -411,6 +412,7 @@ GitHub·Google 어느 쪽으로 들어와도 같은 사람을 가리키고, 프�
   **대상 리포의 CI는 상류 리포의 action 태그를 실행한다**(공급망 의존 — ACTIONS). `/changelog`는 상류 Release를 보여 "Latest"가 설치본 버전이 아닐 수 있다.
   **하지 않는 것**: Kubernetes·다중 인스턴스·고가용성·무중단/자동 업데이트 · 폐쇄망·GitHub Enterprise·GitLab · 로컬 비밀번호·SAML·이메일 로그인 · Resend 외 메일 transport ·
   호스팅 서비스와 설치본 사이 계정·프로젝트 이전 · 관리 콘솔·설치 마법사·화이트라벨 · self-hosted용 sitemap·llms 산출물 · 앱 안 rate limit(proxy 예제가 든다).
+  ⚠️ llms가 빠진 이유는 hosted origin을 가리키는 산출물이라서다 — MCP `read_docs`(위 "MCP 커넥터" ⑤)는 설치 origin으로 링크를 만들므로 이 항목과 겹치지 않는다.
 
 ### 4.2 만들지 않는 것
 

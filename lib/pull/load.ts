@@ -1,9 +1,9 @@
-import { PUBLISH_BUDGET_MS, type PublishExecution } from "@/lib/sync/execution";
 import { randomUUID } from "node:crypto";
 
 import { fail } from "@/lib/failure";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { countPending, pendingWhere } from "@/lib/protection/where";
+import { PUBLISH_BUDGET_MS, type PublishExecution } from "@/lib/sync/execution";
 import { planPublishBaselines, restoreValueOf } from "@/lib/translations/baseline";
 import { deliveryContextFingerprint } from "@/lib/translations/context";
 import type { DeliveryContext, PendingEdit, PullState } from "./run";
@@ -190,7 +190,7 @@ export async function invalidateDeliveryConfirmations(
   await db.deliveryConfirmation.updateMany({ where: { projectId, invalidatedAt: null }, data: { invalidatedAt: new Date() } });
 }
 
-/** Publish invalidation owns its Project lock; settings keep using the transaction-local helper above. */
+/** Publish의 무효화는 자기 트랜잭션에서 `Project`를 잠근다 — 설정 변경은 위의 트랜잭션 안 헬퍼를 그대로 쓴다. */
 export async function invalidatePublishDelivery(
   prisma: PrismaClient,
   projectId: string,

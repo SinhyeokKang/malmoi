@@ -31,7 +31,7 @@ const DESTRUCTIVE = { readOnlyHint: false, destructiveHint: true } as const;
 const req = (rolePermission: RolePermission | null, tokenGrant: Grant | null): ToolRequirement => ({ rolePermission, tokenGrant });
 
 const CATALOG: readonly ToolSpec[] = [
-  // 읽기 15 — grant 없는 토큰은 내 프로젝트 안의 데이터를 읽는다. GitHub 계정 열거·파일 다운로드만 grant를 요구한다.
+  // 읽기 16 — grant 없는 토큰은 내 프로젝트 안의 데이터를 읽는다. GitHub 계정 열거·파일 다운로드만 grant를 요구한다.
   { name: "whoami", annotations: READ, access: req(null, null) },
   { name: "list_projects", annotations: READ, access: req(null, null) },
   { name: "get_project", annotations: READ, access: req("translation:write", null) },
@@ -48,6 +48,8 @@ const CATALOG: readonly ToolSpec[] = [
   { name: "list_events", annotations: READ, access: req("translation:write", null) },
   { name: "get_workflow", annotations: READ, access: req("project:settings", null) },
   { name: "list_members", annotations: READ, access: req("translation:write", null) },
+  // 공개 가이드 원고 — 프로젝트 입력이 없어 역할·grant 둘 다 없다(`whoami`와 같다).
+  { name: "read_docs", annotations: READ, access: req(null, null) },
   // 쓰기 15 — 역할과 grant 둘 다 요구한다. `project:create`만 프로젝트 역할이 없다.
   { name: "create_project", annotations: WRITE, access: req(null, "project:create") },
   { name: "add_sources", annotations: WRITE, access: req("project:settings", "project:settings") },

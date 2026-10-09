@@ -13,7 +13,7 @@ import { TextTrigger } from "@/components/ui/text-trigger";
 import { UI_LOCALE_FLAGS, UI_LOCALE_NAMES, UI_LOCALES, type UiLocale } from "@/lib/i18n/locales";
 
 /**
- * **공개 푸터의 언어 스위처** (ui-locales design §5.1) — `PublicFooter`의 오른쪽 끝 항목이라 공개 셸과 `AuthLayout` 둘에 선다.
+ * **공개 푸터의 언어 스위처** (ui-locales design §5.1) — `PublicFooter`의 오른쪽 묶음 첫 항목이라(오른쪽은 `ThemeSwitcher`) 공개 셸과 `AuthLayout` 둘에 선다.
  *
  * ⚠️ **새 프리미티브가 아니라 `DropdownMenuItem selected` 셋이다** — 항목이 셋이라 검색 입력이 필요 없다. 트리거는 `TextTrigger`(푸터 링크와 같은 400).
  * ⚠️ **글리프는 `Globe`다** — 처음 온 사용자는 항상 영어라 영어를 못 읽는 사람이 찾는 단서가 글자가 아니라 아이콘이다. `Languages`는 Translations의 글리프다.
@@ -54,7 +54,7 @@ export function LocaleSwitcher() {
           <ChevronsUpDown className="size-3.5" aria-hidden />
         </TextTrigger>
       </DropdownMenuTrigger>
-      {/* 푸터가 화면 바닥이라 위로 연다. 오른쪽 끝 항목이라 끝 정렬이다(`DropdownMenuContent` 주석). */}
+      {/* 푸터가 화면 바닥이라 위로 연다. 오른쪽 묶음 항목이라 끝 정렬이다(`DropdownMenuContent` 주석). */}
       <DropdownMenuContent side="top" align="end">
         {UI_LOCALES.map((code) => (
           <DropdownMenuItem key={code} selected={code === uiLocale} onSelect={() => choose(code)}>

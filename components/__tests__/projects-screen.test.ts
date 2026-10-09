@@ -389,7 +389,8 @@ describe("목록 스켈레톤 — 실물과 같은 골격", () => {
 
   it.each([
     ["본문 카드 사이 16", "gap-4"],
-    ["카드 헤더 hairline", "border-foreground/[0.06]"],
+    // #205 — 실물 `Card` 머리와 같은 불투명 선이다(첫 행 위 알파 선이 아니다).
+    ["카드 헤더 아래 선", "border-divider flex min-h-12 items-center gap-2 border-b"],
     ["이름 칸 420", "w-[420px]"],
     ["행 글리프 radius 4", "rounded-[4px]"],
     ["행 gap 16", "gap-4"],

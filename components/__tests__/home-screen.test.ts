@@ -203,10 +203,11 @@ describe("로딩 골격이 실물의 치수를 든다 (2026-09-16 실측)", () =
   */
   it("행 높이는 블록이 아니라 줄 상자가 든다", () => {
     const source = skeleton();
-    // 할 일 행은 두 줄(문장 15 · 표면·로케일 13) · 로그 행은 한 줄 · 메타 행은 `text-sm`의 20이다.
+    // 할 일 행은 두 줄(문장 15 · 표면·로케일 13) · 로그 행도 두 줄(문장 15 · 배지 20, #205) · 메타 행은 `text-sm`의 20이다.
     expect(source).not.toMatch(/h-\[(?:42|22|21|17)px\]/);
     expect(source).toContain('<Skeleton size="md" className="w-[72%]" />');
-    expect(source).toContain('{divided && <Skeleton size="xs" lineHeight="normal" className="w-[62%]" />}');
+    expect(source).toContain('{sub === "copy" ? <Skeleton size="xs" lineHeight="normal" className="w-[62%]" />');
+    expect(source).toContain('<div className="flex h-5 items-center text-xs"><Skeleton className="h-[0.8em] w-[40%] rounded-md" /></div>');
     expect(source).toMatch(/flex h-5 items-center/);
     // 두 줄 사이 간격도 실물 행과 같다(r1) — px 컨테이너가 사라져 gap 차이(4 vs 2)가 그대로 행 높이 2px가 됐다.
     const gap = (text: string) => text.match(/<span className="flex min-w-0 flex-1 flex-col[^"]*\b(gap-[\w.-]+)/)?.[1];
@@ -218,8 +219,8 @@ describe("로딩 골격이 실물의 치수를 든다 (2026-09-16 실측)", () =
 
   it("할 일 카드에는 바닥 링크가 없고 로그 카드에는 있다", () => {
     const source = skeleton();
-    expect(source).toMatch(/<Card rows=\{3\} footer=\{false\} \/>/);
-    expect(source).toMatch(/<Card rows=\{5\} footer divided=\{false\} \/>/);
+    expect(source).toMatch(/<Card rows=\{3\} footer=\{false\} sub="copy" \/>/);
+    expect(source).toMatch(/<Card rows=\{5\} footer sub="badge" \/>/);
   });
 });
 

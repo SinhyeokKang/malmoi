@@ -75,7 +75,7 @@ async function mount(unread = 0) {
   await act(async () => {});
   return view;
 }
-async function openMenu() { await act(async () => { await userEvent.setup().click(trigger()); }); }
+async function openMenu(user = userEvent.setup()) { await act(async () => { await user.click(trigger()); }); }
 async function escape() { await act(async () => { await userEvent.setup().keyboard("{Escape}"); }); }
 async function settle(d: Deferred<OpenAttentionInboxResult>, value: OpenAttentionInboxResult) { await act(async () => { d.resolve(value); }); }
 
@@ -193,22 +193,29 @@ const liveRegion = () => menu()!.querySelector<HTMLElement>("[data-live-status]"
 it("첫 조회 전엔 골격 + aria-busy + sr 상태 문장이고 메뉴 항목이 0이다", async () => {
   await mount(0);
   nextOpen();
-  await openMenu();
-  const busy = menu()!.querySelector('[aria-busy="true"]');
-  expect(busy).not.toBeNull();
-  expect(menu()!.querySelectorAll("[data-skeleton-line]").length).toBeGreaterThan(0);
-  expect(items()).toHaveLength(0);
-  // ⚠️ 상태 문장은 aria-busy 서브트리 밖의 polite region이다 — busy 안의 변화는 AT가 busy가 풀릴 때까지 미뤄도 된다(R-B 🟡2).
-  const region = liveRegion()!;
-  expect(region.getAttribute("role")).toBe("status");
-  expect(region.getAttribute("aria-live")).toBe("polite");
-  expect(region.classList.contains("sr-only")).toBe(true);
-  expect(busy!.contains(region)).toBe(false);
-  expect(region.closest("[aria-busy]")).toBeNull();
-  // region이 먼저 서고 문장은 뒤에 들어온다 — 내용과 함께 나타나는 region은 낭독이 보장되지 않는다(CommandStatus 머리 주석).
-  expect(region.textContent).toBe("");
-  await announced();
-  expect(region.textContent).toBe(en.inbox.loading);
+  // ⚠️ region의 지연(`LiveStatus`)을 가짜 타이머로 민다 — 실제 시간이면 전체 스위트 부하에서 여는 사이에 100ms가 지나
+  // "빈 채로 먼저" 단언이 순서 경주가 된다(#209). 바꾸는 것은 setTimeout뿐이고 user-event의 0ms 대기는 advanceTimers가 민다.
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  try {
+    await openMenu(userEvent.setup({ advanceTimers: vi.advanceTimersByTime }));
+    const busy = menu()!.querySelector('[aria-busy="true"]');
+    expect(busy).not.toBeNull();
+    expect(menu()!.querySelectorAll("[data-skeleton-line]").length).toBeGreaterThan(0);
+    expect(items()).toHaveLength(0);
+    // ⚠️ 상태 문장은 aria-busy 서브트리 밖의 polite region이다 — busy 안의 변화는 AT가 busy가 풀릴 때까지 미뤄도 된다(R-B 🟡2).
+    const region = liveRegion()!;
+    expect(region.getAttribute("role")).toBe("status");
+    expect(region.getAttribute("aria-live")).toBe("polite");
+    expect(region.classList.contains("sr-only")).toBe(true);
+    expect(busy!.contains(region)).toBe(false);
+    expect(region.closest("[aria-busy]")).toBeNull();
+    // region이 먼저 서고 문장은 뒤에 들어온다 — 내용과 함께 나타나는 region은 낭독이 보장되지 않는다(CommandStatus 머리 주석).
+    expect(region.textContent).toBe("");
+    await act(async () => { vi.advanceTimersByTime(150); });
+    expect(region.textContent).toBe(en.inbox.loading);
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 it("골격 행은 실물 행과 같은 줄 높이다 — 보조줄 줄 래퍼가 leading-normal을 든다", async () => {

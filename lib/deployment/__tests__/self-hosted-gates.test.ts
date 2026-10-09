@@ -18,7 +18,7 @@ import { NIGHTLY_PULL } from "../schedule";
  * ① hosted 도메인 리터럴·`MALMOI_ORIGIN`·`VERCEL_ENV`가 허용 목록 밖의 비테스트 소스에 0
  * ② `requireEnv`·`optionalEnv`가 읽는 env 이름 전부가 preflight 표(`SELF_HOSTED_ENV`)에 분류되고 `.env.example`·compose 예제와 맞는다.
  *   `process.env` 직접 읽기와 Auth.js의 암묵 읽기도 센다
- * ③ Dockerfile의 Node 메이저 == `.nvmrc`, pnpm == `packageManager`, `.npmrc`가 설치 전에 이미지에 복사된다
+ * ③ Dockerfile의 Node 메이저 == `.nvmrc`, pnpm == `packageManager`, `.npmrc`가 설치 전에 이미지에 복사된다, GHCR 리포 연결 라벨이 있다
  *
  * ⚠️ **허용 목록은 파일별 개수다** — 파일 단위로만 열면 허용된 파일 안에 둘째 리터럴이 들어와도 못 본다. 개수가 줄어도 red다:
  * 읽기를 `lib/deployment/mode.ts`로 옮겼으면 그 커밋에서 행을 지운다(낡은 허용이 다음 추가를 덮지 않게).
@@ -413,6 +413,8 @@ function dockerfileProblems(input: { dockerfile: string; nvmrc: string; packageM
   const userNodeAt = lines.findIndex((l) => /^USER\s+node\b/i.test(l));
   const buildAt = lines.findIndex((l) => /pnpm build/.test(l));
   if (/--chown=node/.test(input.dockerfile) || userNodeAt < 0 || userNodeAt < buildAt) problems.push("node owns app code");
+  // GHCR은 이 라벨로 패키지를 리포에 잇는다 — 없으면 패키지를 새로 만들 때마다 리포 연결을 손으로 다시 해야 한다.
+  if (!lines.some((l) => /^LABEL\s+org\.opencontainers\.image\.source="?https:\/\/github\.com\/SinhyeokKang\/malmoi"?$/i.test(l))) problems.push("no repository source label");
 
   const ignored = new Set(input.dockerignore.split("\n").map((l) => l.trim()).filter((l) => l !== "" && !l.startsWith("#")));
   // `**/__tests__`: 이미지에 테스트·픽스처를 싣지 않는다(B7 실습 ⚪) — 빌드는 테스트를 import하지 않는다.
@@ -446,6 +448,8 @@ describe("SH-15 ③ — Dockerfile ↔ .nvmrc·packageManager·.npmrc", () => {
       .toContain("node owns app code");
     expect(dockerfileProblems({ ...base, dockerignore: base.dockerignore.replace("**/.env*", "") })).toContain(".dockerignore lacks **/.env*");
     expect(dockerfileProblems({ ...base, dockerignore: base.dockerignore.replace("**/__tests__", "") })).toContain(".dockerignore lacks **/__tests__");
+    expect(dockerfileProblems({ ...base, dockerfile: base.dockerfile.replace(/^LABEL org\.opencontainers\.image\.source=.*$/m, "") }))
+      .toContain("no repository source label");
   });
 });
 

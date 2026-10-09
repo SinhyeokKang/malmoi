@@ -25,8 +25,11 @@ const nextConfig: NextConfig = {
    * 빠지면 Vercel 함수에서 SUMMARY를 못 읽어 `/docs/*` 전부가 500이다. 로컬 `next start`는 리포 파일을 그대로 읽어
    * 못 잡는다 — 판정은 빌드 산출 `.next/server/app/docs/[[...slug]]/page.js.nft.json`이다.
    * 레이아웃(내비)·`not-found`도 SUMMARY를 읽지만 같은 라우트의 함수 안이다.
+   * `/api/mcp`는 MCP `read_docs`가 요청마다 읽는 동적 route라 따로 싣는다 — 지금은 nft가 cwd 기준 읽기를 따라 `guide/` 전체를
+   * 싣지만 휴리스틱이라 보장이 아니다. 이 글롭은 en 원고를 고정하는 보험이고 MCP가 영어 고정이라 **글롭은 en만**이다(판정은
+   * `.next/server/app/api/mcp/route.js.nft.json`). 키 매칭이 포함 매칭이라 `.well-known/…/api/mcp` 함수에도 실리지만 해는 없다.
    */
-  outputFileTracingIncludes: { "/docs/[[...slug]]": ["./guide/**/*.md"] },
+  outputFileTracingIncludes: { "/docs/[[...slug]]": ["./guide/**/*.md"], "/api/mcp": ["./guide/en/**/*.md"] },
 
   /**
    * ⚠️ **스트리밍 metadata를 전 UA에서 끈다** (seo-geo spec D8). `/`·`/docs/**`가 세션을 읽어 동적이라 Next는 metadata를

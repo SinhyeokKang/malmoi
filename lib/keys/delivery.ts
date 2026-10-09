@@ -1,5 +1,5 @@
-import { uncertainPublishWhere } from "@/lib/sync/execution";
 import type { Prisma } from "@/generated/prisma/client";
+import { uncertainPublishWhere } from "@/lib/sync/execution";
 import { confirmationValid, deliveryContextFingerprint } from "@/lib/translations/context";
 
 /**

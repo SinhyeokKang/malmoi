@@ -25,8 +25,9 @@ const SITES: { path: string; head: string; count: number }[] = [
   { path: "app/(edit)/projects/[slug]/settings/loading.tsx", head: '"border-divider flex min-h-12 items-center gap-2 border-b {pad}"', count: 1 },
   { path: "app/(edit)/projects/[slug]/sources/loading.tsx", head: '"border-divider flex min-h-12 items-center gap-2 border-b {pad}"', count: 1 },
   { path: "app/(edit)/account/loading.tsx", head: '"border-divider flex min-h-12 items-center gap-2 border-b {pad}"', count: 1 },
-  { path: "app/(edit)/projects/(list)/loading.tsx", head: '"flex min-h-12 items-center gap-2 {pad}"', count: 1 },
-  { path: "app/(edit)/projects/[slug]/members/loading.tsx", head: '"flex min-h-12 items-center gap-2 {pad}"', count: 1 },
+  // #205 — 목록·Members 골격도 머리 아래 선을 머리가 든다(실물 `Card`와 같은 자리).
+  { path: "app/(edit)/projects/(list)/loading.tsx", head: '"border-divider flex min-h-12 items-center gap-2 border-b {pad}"', count: 1 },
+  { path: "app/(edit)/projects/[slug]/members/loading.tsx", head: '"border-divider flex min-h-12 items-center gap-2 border-b {pad}"', count: 1 },
   // 할 일·로그 카드 골격 하나(`Card`) — 메타 열 골격은 탭 머리를 그린다(project-card-tabs).
   // #204 — 머리 아래 선을 머리가 든다(실물 `Card`와 같은 자리).
   { path: "app/(edit)/projects/[slug]/(home)/loading.tsx", head: '<div className="border-divider flex min-h-12 items-center border-b {pad}">', count: 1 },

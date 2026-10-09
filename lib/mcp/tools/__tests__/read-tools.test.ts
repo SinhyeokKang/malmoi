@@ -6,7 +6,7 @@ import { routes } from "@/lib/routes";
 import { en } from "@/messages/en";
 
 import type { TokenGrant, TokenScope } from "../../grant";
-import type { ToolOutcome } from "../../result";
+import { toToolResult, type ToolOutcome } from "../../result";
 import type { ApiTokenSubject } from "../../token-store";
 
 /**
@@ -347,5 +347,55 @@ describe("preview_source_removal", () => {
   it("마지막 소스는 거부이고 화면과 같은 문장이다", async () => {
     h.previewSurfaceRemoval.mockResolvedValue({ ok: false, error: "last-source" });
     expect(await call("preview_source_removal", subject("owner"), SURFACE)).toEqual({ status: "refused", code: "last-source", message: en.sources.removal.reasons["last-source"] });
+  });
+});
+
+/**
+ * **read_docs** (mcp-docs T4) — 공개 가이드 원고라 역할·grant·범위를 보지 않는다(완료 조건 2). 실물 `guide/en`을 읽는다 — 갈래별
+ * 판정 세부는 `lib/mcp/__tests__/docs.test.ts`가 들고, 여기는 껍데기가 원고를 실어 세 갈래를 낸다는 것과 MCP 결과 모양만 본다.
+ */
+describe("read_docs", () => {
+  const empty = subject("owner", [], { kind: "projects", projectIds: [] });
+
+  it("grant 0개 · 빈 범위 토큰으로 목차를 읽는다 — 멤버십 없는 사용자도", async () => {
+    for (const who of [empty, subject("stranger", [], { kind: "projects", projectIds: [] })]) {
+      const outcome = await call("read_docs", who, {});
+      expect(status(outcome)).toBe("ok");
+    }
+  });
+
+  it("세 갈래가 structuredContent와 summary를 낸다 — origin을 링크에 붙인다", async () => {
+    origin = "https://i18n.example.org";
+    const toc = toToolResult(await call("read_docs", empty, {}));
+    const pages = toc.structuredContent.pages as { page: string; title: string; url: string }[];
+    expect(toc.isError).toBe(false);
+    expect(pages[0]).toMatchObject({ page: "", url: "https://i18n.example.org/docs" });
+    expect(toc.content[0].text).toBe(en.mcp.summary.guidePages(pages.length));
+
+    const page = toToolResult(await call("read_docs", empty, { page: "translate/publish" }));
+    expect(page.structuredContent).toMatchObject({ page: "translate/publish", url: "https://i18n.example.org/docs/translate/publish" });
+    expect(page.structuredContent.markdown).toEqual(expect.stringContaining("https://i18n.example.org/docs/"));
+    expect(page.content[0].text).toBe(en.mcp.summary.guidePage(String(page.structuredContent.title)));
+
+    const search = toToolResult(await call("read_docs", empty, { query: "publish" }));
+    const results = search.structuredContent.results as { url: string; markdown: string }[];
+    expect(results.length).toBeGreaterThan(0);
+    expect(results.length).toBeLessThanOrEqual(5);
+    for (const r of results) expect(r.url.startsWith("https://i18n.example.org/docs")).toBe(true);
+    expect(search.content[0].text).toBe(en.mcp.summary.guideMatches(results.length));
+  });
+
+  it("없는 page는 가이드 전용 not-found 문장이다 — 프로젝트 문장이 아니다", async () => {
+    const result = toToolResult(await call("read_docs", empty, { page: "__proto__" }));
+    expect(result).toEqual({
+      isError: true,
+      content: [{ type: "text", text: en.mcp.errors["docs-page-not-found"] }],
+      structuredContent: { status: "not-found", message: en.mcp.errors["docs-page-not-found"] },
+    });
+    expect(result.content[0].text).not.toBe(en.errors.access["not-found"]);
+  });
+
+  it("page와 query를 함께 주면 invalid-input이다", async () => {
+    expect(status(await call("read_docs", empty, { page: "", query: "publish" }))).toBe("invalid-input");
   });
 });

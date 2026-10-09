@@ -438,10 +438,8 @@ describe("T1 동치 철자와 값 보존 예외", () => {
 
   it("불투명 divider와 다른 알파 선은 기존 위치·수만 보존한다", () => {
     expect(byFile(/\b(?:border(?:-[tblrxy])?|ring)-foreground\/\[0\.06\]/g)).toEqual({
-      "app/(edit)/projects/(list)/loading.tsx": 1,
       "app/(edit)/projects/[slug]/logs/loading.tsx": 1,
       "app/(edit)/projects/[slug]/logs/page.tsx": 1,
-      "app/(edit)/projects/[slug]/members/loading.tsx": 2,
       "components/landing/mockup/publish.tsx": 1,
       "components/publish-button.tsx": 1,
       "components/ui/row-card.tsx": 1,

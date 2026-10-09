@@ -1,4 +1,3 @@
-import type { PublishExecution } from "@/lib/sync/execution";
 // ⚠️ **`server-only`를 일부러 붙이지 않았다.** 붙이면 `scripts/smoke-github.ts`(react-server 조건 없는 tsx)가 이 모듈을
 // **열 수조차 없어** 스모크가 프로덕션 코드 경로가 아닌 사본을 검증하게 된다 — `lib/env.ts`가 같은 이유의 선례다
 // (ARCHITECTURE §5.5.4). 클라이언트 유입은 `components/__tests__/client-graph.test.ts`의 허용 목록이 막는다 — 이 파일은
@@ -14,6 +13,7 @@ import { logFailure } from "@/lib/github-connect/log";
 import { createProbeMemo, probeMemoKey, PROBE_MEMO_MAX, PROBE_MEMO_TTL_MS } from "@/lib/github-connect/probe-memo";
 import type { GitClient, GitTreeBlob, GitTreeEntry } from "@/lib/pull/client";
 import type { CommitPayload, TreePayload } from "@/lib/pull/payload";
+import type { PublishExecution } from "@/lib/sync/execution";
 
 /**
  * GitHub App installation 토큰으로 Git Data API를 부르는 얇은 껍데기.
@@ -84,6 +84,8 @@ async function pinnedOctokit(app: App, installationId: string, repositoryId: str
     fail("installation token unavailable");
   }
   execution?.check();
+  // Publish 실행이면 요청을 수명(`execution.fetch`)에 묶고 재시도·스로틀 대기를 끈다 — 결과가 애매한 5xx 뒤 PR 생성 POST를
+  // 자동으로 다시 보내면 PR이 둘 생기고, 스로틀 대기는 예산을 소리 없이 깎는다.
   return { octokit: new Octokit({ auth: auth.token, ...(execution === undefined ? {} : { request: { fetch: execution.fetch() }, retry: { enabled: false }, throttle: { enabled: false } }) }), pinned };
 }
 

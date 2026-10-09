@@ -70,9 +70,9 @@ export default async function ProjectHomeLoading() {
           </div>
 
           {/* ⚠️ **할 일 카드에는 바닥 링크가 없다** — 골격이 그것을 그리면 데이터 도착 시 약 45px 줄어든다. */}
-          <Card rows={3} footer={false} />
-          {/* ⚠️ **로그 행에는 구분선이 없다 — 레일이다.** 선을 그리면 도착 시 다섯 줄이 사라진다. */}
-          <Card rows={5} footer divided={false} />
+          <Card rows={3} footer={false} sub="copy" />
+          {/* ⚠️ **로그 행도 `ListRow`다** (#205) — 실물은 `EventRow`라 할 일 행과 같은 칸·같은 선이다. 옛 레일(선 없는 점 줄)이면 도착 때 첫 행이 14 오르고 행마다 27 늘었다. */}
+          <Card rows={5} footer sub="badge" />
         </div>
 
         {/*
@@ -104,11 +104,11 @@ export default async function ProjectHomeLoading() {
 /**
  * 할 일·로그 카드의 공통 골격.
  *
- * ⚠️ **두 카드가 같은 형이 아니다** (2026-09-15 리뷰 🟡3). 할 일에는 바닥 링크가 없고(`AttentionCard`),
- * 로그 행에는 구분선이 없다(레일이다). 골격이 실물에 없는 것을 그리면 **도착하는 순간 그만큼 튀고**,
- * 그 튐을 없애는 것이 이 파일의 존재 이유다.
+ * ⚠️ **두 카드가 같은 형이 아니다** (2026-09-15 리뷰 🟡3). 할 일에는 바닥 링크가 없고(`AttentionCard`), 보조줄이
+ * 다르다 — 할 일은 표면·로케일 문장(13 · `leading-normal` 19.5), 로그는 언제나 종류 배지(20 — `eventMeta`의 첫 조각)다.
+ * 골격이 실물에 없는 것을 그리면 **도착하는 순간 그만큼 튀고**, 그 튐을 없애는 것이 이 파일의 존재 이유다.
  */
-function Card({ rows, footer, divided = true }: { rows: number; footer: boolean; divided?: boolean }) {
+function Card({ rows, footer, sub }: { rows: number; footer: boolean; sub: "copy" | "badge" }) {
   return (
     <section className="border-border overflow-hidden rounded-lg border">
       {/*
@@ -118,26 +118,27 @@ function Card({ rows, footer, divided = true }: { rows: number; footer: boolean;
       <div className="border-divider flex min-h-12 items-center border-b px-4 py-3">
         <Skeleton size="md" className="w-40" />
       </div>
-      <ul className={divided ? undefined : "px-4 pt-3.5"}>
+      <ul>
         {Array.from({ length: rows }, (_, i) => (
           <li
             key={i}
             // 선은 실물과 같은 `Card` 규칙이다(4-Y4) — 첫 행은 머리 선 아래라 자기 선이 없고, 행↔행은 `--border`.
-            className={divided ? cn("flex items-center gap-3 px-4 py-row-y", i > 0 && "border-border border-t") : "flex items-center gap-3 pb-4"}
+            className={cn("flex items-center gap-3 px-4 py-row-y", i > 0 && "border-border border-t")}
           >
             {/* 두 카드 다 행 칸이 `IconTile sm`(28 · radius 4)이다 — Logs 카드의 옛 10 점은 실물(사건 칸 28)과 달라 도착 때 튀었다. */}
             <Skeleton className="size-7 shrink-0 rounded" />
             {/*
               ⚠️ **자리의 높이는 블록이 아니라 줄 상자가 든다** (2026-09-16 실측 · 4-W8) — 블록을 두껍게
-              키우면 행 높이는 맞아도 회색 덩어리가 글자보다 굵어진다. 할 일 행은 실물이 **두 줄**
-              (문장 15 + 표면·로케일 13), 로그 행은 한 줄이다. 전에는 둘 다 14 블록으로 서서
-              도착하는 순간 할 일이 행마다 ~15, 로그가 ~8.5 늘어났다.
+              키우면 행 높이는 맞아도 회색 덩어리가 글자보다 굵어진다. 두 카드 다 실물이 **두 줄**이다
+              (문장 15 + 할 일은 표면·로케일 13, 로그는 배지 20).
             */}
             <span className="flex min-w-0 flex-1 flex-col justify-center gap-copy-gap">
               {/* 할 일 행은 문장(15)이 먼저고 표면·로케일(13)이 아래다 — 실물과 같은 순서(Q9). */}
               <Skeleton size="md" className="w-[72%]" />
               {/* 보조줄 행간은 실물 `ListRow` 문장 칸과 같은 `leading-normal`이다(inbox-page T3 — 공유 행 조각으로 옮기며 19.5가 됐다). */}
-              {divided && <Skeleton size="xs" lineHeight="normal" className="w-[62%]" />}
+              {sub === "copy" ? <Skeleton size="xs" lineHeight="normal" className="w-[62%]" />
+                // 배지 줄은 Logs 골격과 같은 자리다 — 높이 20(`text-2xs` 16 + `py-0.5` 4)을 줄 상자가 들고 막대는 em 블록이다.
+                : <div className="flex h-5 items-center text-xs"><Skeleton className="h-[0.8em] w-[40%] rounded-md" /></div>}
             </span>
             <Skeleton size="xs" className="w-12" />
           </li>

@@ -12,6 +12,9 @@
 # Node 메이저 == `.nvmrc`, pnpm == `packageManager`, `.npmrc` 복사를 `lib/deployment/__tests__/self-hosted-gates.test.ts`가 센다.
 FROM node:24-bookworm-slim
 
+# GHCR이 이 라벨로 패키지를 리포에 잇는다(리포의 Packages 탭) — 패키지를 새로 만들어도 연결이 따라온다.
+LABEL org.opencontainers.image.source=https://github.com/SinhyeokKang/malmoi
+
 # psql 15+(bookworm = 15)가 `deploy/bootstrap.sql`의 `\getenv`에 필요하다. pg_isready는 readiness(DB ping)가 쓴다.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends postgresql-client ca-certificates \

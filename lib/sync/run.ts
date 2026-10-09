@@ -1,4 +1,3 @@
-import { createPublishExecution, planPublishBarrier, planPublishFailure, uncertainPublishWhere } from "./execution";
 import { randomUUID } from "node:crypto";
 
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -11,6 +10,7 @@ import { forgetOpenPr } from "@/lib/projects/open-pr-memo";
 import type { PullOutcome } from "@/lib/pull/message";
 import { triggerPull } from "@/lib/pull/trigger";
 
+import { createPublishExecution, planPublishBarrier, planPublishFailure, uncertainPublishWhere } from "./execution";
 import {
   STALE_AFTER_SECONDS,
   classifySyncError,
@@ -136,7 +136,12 @@ async function startRun(
     // 엔진 내부 직렬화에 기대는 모양이 된다 — 이 리포에 트랜잭션 안 `Promise.all` 선례가 없다.
     check();
     const uncertain = await tx.syncRun.findFirst({ where: uncertainPublishWhere(projectId, new Date()), orderBy: { startedAt: "desc" }, select: { startedAt: true, status: true, errorCode: true } });
-    if (uncertain !== null && planPublishBarrier(uncertain, new Date()) === "uncertain") return { status: "rejected", outcome: { status: "failed", error: "publish-unsettled", delivery: "not-started", retryable: true, retryAfterSeconds: Math.max(1, Math.ceil((uncertain.startedAt.getTime() + STALE_AFTER_SECONDS * 1000 + 1 - Date.now()) / 1000)) } };
+    if (uncertain !== null && planPublishBarrier(uncertain, new Date()) === "uncertain") {
+      // 창은 시작 + 300초 정각까지 닫혀 있다 — 그 1ms 뒤가 첫 재시도 가능 시각이다.
+      const reopensAt = uncertain.startedAt.getTime() + STALE_AFTER_SECONDS * 1000 + 1;
+      const retryAfterSeconds = Math.max(1, Math.ceil((reopensAt - Date.now()) / 1000));
+      return { status: "rejected", outcome: { status: "failed", error: "publish-unsettled", delivery: "not-started", retryable: true, retryAfterSeconds } };
+    }
     const running = await tx.syncRun.findFirst({
       where: { projectId, status: "RUNNING" },
       orderBy: { startedAt: "desc" },
