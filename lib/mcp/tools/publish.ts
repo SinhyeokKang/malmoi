@@ -98,6 +98,7 @@ async function publishOutcome(
   if (outcome.status === "skipped" && outcome.reason === "reconfirm") return { status: "refused", code: "reconfirm", message: en.logs.reasons.reconfirm };
   if (outcome.status === "failed") {
     const delivery = outcome.delivery;
+    if (outcome.error === "publish-unsettled") return { status: "refused", code: outcome.error, message: en.translations.publish.unsettledBody, detail: { delivery, retryAfterSeconds: outcome.retryAfterSeconds } };
     if (outcome.error === "already-running") return { status: "refused", code: outcome.error, message: en.translations.publish.alreadyRunningBody, detail: { delivery } };
     if (outcome.error === "too-soon") {
       return { status: "refused", code: outcome.error, message: en.translations.publish.tooSoonBody,

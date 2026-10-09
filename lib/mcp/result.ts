@@ -97,7 +97,7 @@ export function toToolResult(outcome: ToolOutcome, credential?: Credential["kind
     }
     // `detail`은 호출부가 고른 값(행 오류 인덱스·재시도 시각 등)이다 — 예외·원문을 싣지 않는다.
     // ⚠️ 재시도 표시는 코드가 정한다 — 호출부가 화면 문장(`message`)을 골라 넘겨도 `sync-running`은 기다리면 풀리는 거부다.
-    const retryable = outcome.code === "sync-running" ? { retryable: true } : {};
+    const retryable = (outcome.code === "sync-running" || outcome.code === "publish-unsettled") ? { retryable: true } : {};
     return { isError: true, content: text(message), structuredContent: { ...outcome.detail, status: outcome.code, message, ...retryable } };
   }
   if (outcome.status === "needs-browser") {

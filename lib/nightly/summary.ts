@@ -28,7 +28,7 @@ void planned;
 const MAIN = ["targets", "published", "imported", "skipped", "deferred", "failed", "notReady", "unprocessed", "deadline"] as const;
 
 /** `runSync`가 행 없이 돌려보내는 실행권 거부 — 사건이 없는 갈래라 실패가 아니라 코드별 거부다(spec 8). */
-const PUBLISH_REFUSALS: readonly string[] = ["already-running", "too-soon"];
+const PUBLISH_REFUSALS: readonly string[] = ["already-running", "too-soon", "publish-unsettled"];
 
 /**
  * 야간 요약 한 줄 (`[pull] targets= published= imported= skipped= deferred= failed= notReady= unprocessed= deadline= …`).

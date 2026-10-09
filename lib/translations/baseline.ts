@@ -55,7 +55,7 @@ export function planPublishBaselines(
 }
 
 /**
- * 교체·실패 실행의 외부 쓰기 종료 — **플랫폼 `maxDuration` 강제 종료가 근거다**(사용자 결정 2026-09-23).
+ * 교체·실패 실행 뒤 전달 확인 — 새 전송은 240초 로컬 수명이 막고 재시도는 300초 창 뒤에 열린다.
  * 그 실행의 `startedAt + staleAfterSeconds` 이후에 **시작한** 성공 확인이 있어야 열린다. 시간 경과만으로는 열지 않는다.
  */
 export function revertSettled(input: { unsettledRunStartedAt: Date | null; confirmationRunStartedAt: Date; staleAfterSeconds: number }): boolean {

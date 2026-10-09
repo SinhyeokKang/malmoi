@@ -241,6 +241,7 @@ export const en = {
       "not-connected": "Your GitHub account isn't connected to Malmoi — connect it in Account to sync",
       /** 리포 id가 고정되지 않은 프로젝트(ux-drift-unify D1) — Home 배너 제목과 같은 Disconnected 문장이다. */
       unpinned: "This repository is disconnected",
+      "publish-unsettled": "A previous publish has an unconfirmed result. Wait until five minutes after it started, then try again.",
       "already-running": "A sync is already running",
       /**
        * ⚠️ 제목 자리라 마침표가 없다(DESIGN §10). 아무것도 지워지지 않았다는 것이 요지다.
@@ -1600,6 +1601,7 @@ export const en = {
     /** 보관 프로젝트의 사유에서 빼는 절 — 야간 발송이 보관 프로젝트를 건너뛰어 그 문장이 거짓이 된다(`planArchivedReason`). */
     nightlyRetry: NIGHTLY_RETRY,
     reasons: {
+      "execution-uncertain": "A previous publish has an unconfirmed result. Wait until five minutes after it started, then try again.",
       "base-unreadable": "We couldn't read your repository. Ask your developers to check the app's access.",
       "not-installed": "The app wasn't connected to the repository. Ask your developers to reconnect it.",
       "glob-matched-nothing": "The translation files weren't where we expected. Ask your developers.",
@@ -3016,6 +3018,8 @@ export const en = {
       unknownDelivery: "We couldn't confirm whether your changes were sent.",
 
       /** `1j` — 행조차 생기지 않는 거부 둘. 폭 512이고 danger가 아니다. */
+      unsettled: "Publish result unconfirmed",
+      unsettledBody: "A previous publish has an unconfirmed result. Wait until five minutes after it started, then try again.",
       alreadyRunning: "Someone is publishing right now",
       alreadyRunningBody:
         "Another run started a moment ago. Wait for it to finish \u2014 your changes will be included if it hasn't read them yet, and sent next time if it has.",

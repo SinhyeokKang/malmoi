@@ -95,6 +95,7 @@ export const es = {
       "not-ready": "Este proyecto aún no ha terminado su primera sincronización",
       "not-connected": "Tu cuenta de GitHub no está conectada a Malmoi — conéctala en Cuenta para sincronizar",
       unpinned: "Este repositorio está desconectado",
+      "publish-unsettled": "No se pudo confirmar el resultado del envío anterior. Espera cinco minutos desde su inicio y vuelve a intentarlo.",
       "already-running": "Ya hay una sincronización en curso",
       "reconfirm": "No se pudo confirmar que lo que revisaste sigue vigente — no se descartó nada. Abre Sincronizar de nuevo para revisar y confirmar",
       "no-surfaces": "No hay nada que sincronizar — este proyecto no tiene fuentes activas",
@@ -703,6 +704,7 @@ export const es = {
     },
     nightlyRetry: NIGHTLY_RETRY,
     reasons: {
+      "execution-uncertain": "No se pudo confirmar el resultado del envío anterior. Espera cinco minutos desde su inicio y vuelve a intentarlo.",
       "base-unreadable": "No pudimos leer tu repositorio. Pide a tus desarrolladores que revisen el acceso de la app.",
       "not-installed": "La app no estaba conectada al repositorio. Pide a tus desarrolladores que la vuelvan a conectar.",
       "glob-matched-nothing": "Los archivos de traducción no estaban donde esperábamos. Consulta a tus desarrolladores.",
@@ -1541,6 +1543,8 @@ export const es = {
       },
       unknownDelivery: "No pudimos confirmar si tus cambios se enviaron.",
 
+      unsettled: "Resultado del envío sin confirmar",
+      unsettledBody: "No se pudo confirmar el resultado del envío anterior. Espera cinco minutos desde su inicio y vuelve a intentarlo.",
       alreadyRunning: "Alguien está publicando ahora mismo",
       alreadyRunningBody:
         "Otra ejecución empezó hace un momento. Espera a que termine — tus cambios se incluirán si todavía no los leyó, y se enviarán la próxima vez si ya los leyó.",

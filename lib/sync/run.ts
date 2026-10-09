@@ -1,3 +1,4 @@
+import { createPublishExecution, planPublishBarrier, planPublishFailure, uncertainPublishWhere } from "./execution";
 import { randomUUID } from "node:crypto";
 
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -43,8 +44,9 @@ export async function runSync(
 ): Promise<PullOutcome> {
   const { projectId, slug, trigger, requestedBy } = input;
 
-  const started = await startRun(prisma, projectId, trigger, requestedBy, input.credential);
-  if (started.status !== "ok") return started.outcome;
+  const execution = createPublishExecution();
+  const started = await startRun(prisma, projectId, trigger, requestedBy, input.credential, execution.check);
+  if (started.status !== "ok") { execution.close(); return started.outcome; }
   const runId = started.runId;
 
   /*
@@ -54,20 +56,25 @@ export async function runSync(
   let result: Parameters<typeof planSyncFinish>[0];
   let outcome: PullOutcome;
   try {
-    const pulled = await triggerPull(prisma, slug, runId, input.expectedFingerprint);
+    execution.bindStartedAt(started.startedAt);
+    const pulled = await execution.run(() => triggerPull(prisma, slug, runId, input.expectedFingerprint, execution));
     result = pulled;
     outcome = pulled;
   } catch (error) {
     result = { thrown: error };
-    outcome = failureOutcome(slug, error);
+    outcome = execution.mutationDispatched
+      ? { status: "failed", error: "Publish result could not be confirmed.", code: "execution-uncertain", delivery: "unknown", retryable: true }
+      : failureOutcome(slug, error);
   } finally {
     forgetOpenPr(slug);
+    execution.close();
   }
 
   const finish = planSyncFinish(result);
+  if ("thrown" in result && finish.errorCode !== null) finish.errorCode = planPublishFailure(finish.errorCode, execution.mutationDispatched);
   try {
-    await prisma.syncRun.update({
-      where: { id: runId },
+    const finished = await prisma.syncRun.updateMany({
+      where: { id: runId, status: "RUNNING" },
       data: {
         status: finish.status,
         errorCode: finish.errorCode,
@@ -79,6 +86,7 @@ export async function runSync(
         finishedAt: new Date(),
       },
     });
+    if (finished.count !== 1) return failureOutcome(slug, new Error("Publish execution was superseded"));
   } catch (error) {
     // 리포 쓰기 이후의 DB 실패일 수 있으므로 미전송을 단정하지 않는다.
     return failureOutcome(slug, error);
@@ -86,7 +94,7 @@ export async function runSync(
   return outcome;
 }
 
-type Started = { status: "ok"; runId: string } | { status: "rejected"; outcome: PullOutcome };
+type Started = { status: "ok"; runId: string; startedAt: Date } | { status: "rejected"; outcome: PullOutcome };
 
 /**
  * 게이트 판정 · stale 닫기 · 행 생성을 **한 트랜잭션**에서 한다 (ARCHITECTURE §5.6.1).
@@ -107,6 +115,7 @@ async function startRun(
   requestedBy: string | null,
   /** MCP 토큰 주체의 Publish — 실행권 획득이 권한 확정 시점이다(mcp-connector design §1.25). */
   credential: Credential | undefined,
+  check: () => void,
 ): Promise<Started> {
   return prisma.$transaction(async (tx) => {
     // 수동 실행은 사람이 연다 — 진입점 인가 뒤 잠금을 기다리는 동안 제거·보관됐으면 행을 만들지 않는다(감사 #10).
@@ -125,6 +134,9 @@ async function startRun(
 
     // ⚠️ **순차로 보낸다.** 대화형 트랜잭션은 커넥션 하나라 `Promise.all`이 왕복을 줄이지 못하고,
     // 엔진 내부 직렬화에 기대는 모양이 된다 — 이 리포에 트랜잭션 안 `Promise.all` 선례가 없다.
+    check();
+    const uncertain = await tx.syncRun.findFirst({ where: uncertainPublishWhere(projectId, new Date()), orderBy: { startedAt: "desc" }, select: { startedAt: true, status: true, errorCode: true } });
+    if (uncertain !== null && planPublishBarrier(uncertain, new Date()) === "uncertain") return { status: "rejected", outcome: { status: "failed", error: "publish-unsettled", delivery: "not-started", retryable: true, retryAfterSeconds: Math.max(1, Math.ceil((uncertain.startedAt.getTime() + STALE_AFTER_SECONDS * 1000 + 1 - Date.now()) / 1000)) } };
     const running = await tx.syncRun.findFirst({
       where: { projectId, status: "RUNNING" },
       orderBy: { startedAt: "desc" },
@@ -176,9 +188,11 @@ async function startRun(
       });
     }
 
+    check();
     const row = await tx.syncRun.create({
       data: {
         projectId,
+        startedAt: now,
         status: "RUNNING",
         trigger: trigger === "cron" ? "CRON" : "MANUAL",
         requestedBy,
@@ -209,7 +223,8 @@ async function startRun(
       runToken: runTokenFor({ kind: "publish", syncRunId: row.id }),
       payload: { kind: "PUBLISH", surfaceSlugs: surfaces.map((surface) => surface.slug), refusal: null },
     });
-    return { status: "ok", runId: row.id };
+    check();
+    return { status: "ok", runId: row.id, startedAt: now };
   });
 }
 

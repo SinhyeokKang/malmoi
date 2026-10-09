@@ -98,6 +98,7 @@ export const ko = {
       "not-ready": "이 프로젝트는 아직 첫 동기화를 마치지 않았습니다",
       "not-connected": "GitHub 계정이 Malmoi에 연결되어 있지 않습니다 — 동기화하려면 계정에서 연결하세요",
       unpinned: "이 리포지토리는 연결이 끊어졌습니다",
+      "publish-unsettled": "이전 전송 결과를 확인하지 못했습니다. 시작 시각부터 5분이 지난 뒤 다시 시도하세요.",
       "already-running": "이미 동기화가 진행 중입니다",
       "reconfirm": "검토 이후 내용이 바뀌었는지 확인하지 못했습니다. 변경 사항은 그대로입니다. 동기화를 다시 눌러 확인하세요",
       "no-surfaces": "동기화할 활성 소스가 없습니다",
@@ -710,6 +711,7 @@ export const ko = {
     },
     nightlyRetry: NIGHTLY_RETRY,
     reasons: {
+      "execution-uncertain": "이전 전송 결과를 확인하지 못했습니다. 시작 시각부터 5분이 지난 뒤 다시 시도하세요.",
       "base-unreadable": "리포지토리를 읽지 못했습니다. 개발자에게 앱의 접근 권한을 확인해 달라고 요청하세요.",
       "not-installed": "앱이 리포지토리에 연결되어 있지 않았습니다. 개발자에게 다시 연결해 달라고 요청하세요.",
       "glob-matched-nothing": "번역 파일이 예상한 위치에 없었습니다. 개발자에게 문의하세요.",
@@ -1547,6 +1549,8 @@ export const ko = {
       },
       unknownDelivery: "변경 사항이 전송되었는지 확인하지 못했습니다.",
 
+      unsettled: "전송 결과 확인 불가",
+      unsettledBody: "이전 전송 결과를 확인하지 못했습니다. 시작 시각부터 5분이 지난 뒤 다시 시도하세요.",
       alreadyRunning: "다른 사람이 지금 게시하고 있습니다",
       alreadyRunningBody:
         "방금 다른 게시가 시작되었습니다. 끝날 때까지 기다리세요. 내 변경 사항은 그 게시에 포함되거나 다음 게시 때 보내집니다.",

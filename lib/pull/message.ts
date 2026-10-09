@@ -16,7 +16,7 @@ export type PullOutcome =
  */
 export function pullRevalidates(outcome: PullOutcome): boolean {
   if (outcome.status !== "failed") return true;
-  return outcome.code !== undefined || outcome.error === "already-running" || outcome.error === "too-soon" || outcome.error === "unconfirmed";
+  return outcome.code !== undefined || outcome.error === "publish-unsettled" || outcome.error === "already-running" || outcome.error === "too-soon" || outcome.error === "unconfirmed";
 }
 
 /**

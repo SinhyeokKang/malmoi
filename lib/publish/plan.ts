@@ -1,6 +1,6 @@
 import type { PullOutcome } from "@/lib/pull/message";
 import type { Messages } from "@/lib/i18n";
-export type PublishView = "created" | "updated" | "partial" | "no-changes" | "config-error" | "transient-error" | "already-running" | "too-soon";
+export type PublishView = "created" | "updated" | "partial" | "no-changes" | "config-error" | "transient-error" | "already-running" | "too-soon" | "publish-unsettled";
 export function planPublishView(outcome: PullOutcome): PublishView {
   switch (outcome.status) {
     case "committed": return outcome.pr;
@@ -9,7 +9,7 @@ export function planPublishView(outcome: PullOutcome): PublishView {
     // no-changes라도 보류가 있으면 같은 틀이다 — Logs가 SKIPPED + withheld > 0을 Not sent로 읽는다(#83). "이미 리포에 있었다"가 거짓이 된다.
     case "skipped": return outcome.reason === "writer-warnings" || outcome.reason === "withheld" || (outcome.reason === "no-changes" && outcome.withheld !== undefined) ? "partial" : "no-changes";
     case "failed":
-      if (outcome.error === "already-running" || outcome.error === "too-soon") return outcome.error;
+      if (outcome.error === "publish-unsettled" || outcome.error === "already-running" || outcome.error === "too-soon") return outcome.error;
       return outcome.retryable ? "transient-error" : "config-error";
     default: { const exhaustive: never = outcome; return exhaustive; }
   }

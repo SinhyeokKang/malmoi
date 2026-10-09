@@ -624,13 +624,13 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
           panel = PANEL.transientError; inner = false;
           const failed = outcome.status === "failed" ? outcome : null;
           // 응답을 잃은 실행은 GitHub가 아니라 Malmoi 응답이 끊긴 것이다 (malmoi#135) — "GitHub didn't answer"·"failed partway"가 거짓이 된다.
-          const lost = failed?.error === UNCONFIRMED_PULL.error;
-          title = lost ? p.lostResponse : p.transientError; description = lost ? p.lostResponseDescription : p.transientErrorDescription;
+          const lost = failed?.error === UNCONFIRMED_PULL.error || failed?.code === "execution-uncertain";
+          title = failed?.code === "execution-uncertain" ? p.unsettled : lost ? p.lostResponse : p.transientError; description = failed?.code === "execution-uncertain" ? p.unsettledBody : lost ? p.lostResponseDescription : p.transientErrorDescription;
           footer = failed?.delivery === "unknown" ? p.unknownDelivery : p.notStarted;
           quiet = true;
           actions = <Button variant="primary" size="lg" onClick={() => void publish.preview()}>{p.retry}</Button>;
           body = <Stack>
-            <Alert variant={lost ? "warning" : "danger"} live={lost ? "status" : "alert"}>{p.transientErrorBody()}</Alert>
+            <Alert variant={lost ? "warning" : "danger"} live={lost ? "status" : "alert"}>{failed?.code === "execution-uncertain" ? p.unsettledBody : p.transientErrorBody()}</Alert>
             {/* ⚠️ 응답 유실에는 `Reference`를 만들어 붙이지 않는다 — 코드가 없으면 줄이 통째로 빠진다. */}
             {failed?.code !== undefined && <div className="border-border flex shrink-0 items-center gap-3 rounded-lg border px-4 py-3 text-xs">
               <span className="text-muted-foreground">{p.reference}</span>
@@ -640,6 +640,12 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
           </Stack>;
           break;
         }
+        case "publish-unsettled":
+          alert = true;
+          title = p.unsettled; description = p.unsettledBody;
+          actions = <Button data-initial-focus variant="primary" onClick={publish.close}>{p.close}</Button>;
+          body = null;
+          break;
         case "already-running":
           alert = true;
           title = p.alreadyRunning; description = p.alreadyRunningBody;

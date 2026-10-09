@@ -1,9 +1,10 @@
+import type { PublishExecution } from "@/lib/sync/execution";
 // `server-only`를 붙이지 않는다 — `__tests__/trigger.test.ts`가 GitHub·DB만 바꿔 끼우고 이 조립을
 // 직접 지난다. 클라이언트 유입은 `lib/db.ts`·`lib/keys/query.ts`의 `server-only`가 막는다.
 import { fail } from "@/lib/failure";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { createGitClient } from "@/lib/github";
-import { invalidateDeliveryConfirmations, loadPullState, saveLastPulledAt, withheldRevertable } from "./load";
+import { invalidatePublishDelivery, loadPullState, saveLastPulledAt, withheldRevertable } from "./load";
 import { runPull, type PullResult } from "./run";
 import { syncBranchFor } from "./sync-branch";
 
@@ -25,21 +26,23 @@ export { REF_SAFE_SLUG, isRefSafeSlug } from "./ref-slug";
 
 /**
  * @param runId 이 실행의 `SyncRun.id`. 있으면 성공 확정이 그 실행권으로 전달 확인을 쓴다(translation-rework — ARCHITECTURE §5.8).
- *   `null`이면 확인을 쓰지 않는다 — 실행권 없이는 교체된 늦은 성공을 가를 수 없다. **인자를 생략할 수 없게 둔 것이 요지다.**
+ *   실행권과 로컬 수명은 필수다 — 실행권 없는 직접 쓰기는 허용하지 않는다.
  * @param expectedFingerprint MCP `publish`만 넘긴다 — `runPull`이 그대로 대조한다(mcp-connector design §3.1). cron·웹은 생략한다.
  */
-export async function triggerPull(prisma: PrismaClient, slug: string, runId: string | null, expectedFingerprint?: string): Promise<PullResult> {
+export async function triggerPull(prisma: PrismaClient, slug: string, runId: string, expectedFingerprint: string | undefined, execution: PublishExecution): Promise<PullResult> {
+  if (!runId) throw new Error("Publish execution authority is required");
+  execution.check();
   const result = await runPull({
     loadState: () => loadPullState(prisma, slug),
     createClient: async (project) => {
       // `runPull`이 이미 null을 걸렀다 — 여기 오면 값이 있다.
       if (project.installationId === null) fail("installationId is missing", "not-installed");
       if (!project.repositoryId) fail("repository identity is not pinned; reconnect the project", "not-installed");
-      return createGitClient(project.repoOwner, project.repoName, project.installationId, project.repositoryId);
+      return createGitClient(project.repoOwner, project.repoName, project.installationId, project.repositoryId, execution);
     },
     saveLastPulledAt: (projectId, at, published, delivered, contexts, withheld) =>
-      saveLastPulledAt(prisma, projectId, at, published, delivered, runId === null ? undefined : { runId, contexts, withheld }),
-    invalidateDelivery: (projectId) => invalidateDeliveryConfirmations(prisma, projectId),
+      saveLastPulledAt(prisma, projectId, at, published, delivered, { runId, contexts, withheld, execution }),
+    invalidateDelivery: (projectId) => invalidatePublishDelivery(prisma, projectId, { runId, execution }),
     withheldRevertable: (projectId, withheld) => withheldRevertable(prisma, projectId, withheld),
     syncBranch: syncBranchFor(slug),
   }, expectedFingerprint);

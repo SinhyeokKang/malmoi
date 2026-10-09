@@ -1,3 +1,4 @@
+import { uncertainPublishWhere } from "@/lib/sync/execution";
 import type { Prisma } from "@/generated/prisma/client";
 import { confirmationValid, deliveryContextFingerprint } from "@/lib/translations/context";
 
@@ -30,5 +31,6 @@ export async function readDeliveryState(tx: Prisma.TransactionClient, projectId:
 
 /** 이 프로젝트의 Publish가 진행 중인가 — 그 실행이 지금 값을 보냈는지 아직 모른다. */
 export async function publishInFlight(tx: Prisma.TransactionClient, projectId: string): Promise<boolean> {
-  return (await tx.syncRun.count({ where: { projectId, status: "RUNNING" } })) > 0;
+  return (await tx.syncRun.count({ where: { projectId, status: "RUNNING" } })) > 0 ||
+    (await tx.syncRun.count({ where: uncertainPublishWhere(projectId, new Date()) })) > 0;
 }

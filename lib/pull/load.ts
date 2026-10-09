@@ -1,3 +1,4 @@
+import { PUBLISH_BUDGET_MS, type PublishExecution } from "@/lib/sync/execution";
 import { randomUUID } from "node:crypto";
 
 import { fail } from "@/lib/failure";
@@ -189,6 +190,22 @@ export async function invalidateDeliveryConfirmations(
   await db.deliveryConfirmation.updateMany({ where: { projectId, invalidatedAt: null }, data: { invalidatedAt: new Date() } });
 }
 
+/** Publish invalidation owns its Project lock; settings keep using the transaction-local helper above. */
+export async function invalidatePublishDelivery(
+  prisma: PrismaClient,
+  projectId: string,
+  authority: { runId: string; execution: PublishExecution },
+): Promise<void> {
+  await prisma.$transaction(async tx => {
+    await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
+    const run = await tx.syncRun.findFirst({ where: { id: authority.runId, projectId, status: "RUNNING" }, select: { startedAt: true } });
+    authority.execution.check();
+    if (run === null || Date.now() - run.startedAt.getTime() >= PUBLISH_BUDGET_MS) fail(UNCONFIRMED_DELIVERY);
+    await invalidateDeliveryConfirmations(tx, projectId);
+    authority.execution.check();
+  });
+}
+
 const UNCONFIRMED_DELIVERY = "Delivery could not be confirmed; unsent edits were kept. Publish again.";
 
 /**
@@ -212,7 +229,7 @@ export async function saveLastPulledAt(
    * 실행권과 캡처 context. 토큰 해제에는 필수다 — 없으면 확인 revision을 남길 수 없어 편집을 유지하고 실패한다.
    * `withheld`는 이번 PR에 못 실은 캡처 편집이다 — 토큰은 그대로 두고 기준 행의 revision만 새 확인으로 다시 찍는다.
    */
-  delivery?: { runId: string; contexts: readonly DeliveryContext[]; withheld?: readonly PendingEdit[] },
+  delivery?: { runId: string; contexts: readonly DeliveryContext[]; withheld?: readonly PendingEdit[]; execution?: PublishExecution },
 ): Promise<void> {
   if (delivery === undefined && delivered.length > 0) fail(UNCONFIRMED_DELIVERY);
   const project = {
@@ -223,7 +240,10 @@ export async function saveLastPulledAt(
     },
   };
   if (delivery !== undefined) {
-    await prisma.$transaction(tx => confirmDelivery(tx, projectId, project, delivered, delivery));
+    await prisma.$transaction(async tx => {
+      await confirmDelivery(tx, projectId, project, delivered, delivery);
+      delivery.execution?.check();
+    });
     return;
   }
   if (delivered.length === 0 && published === undefined) {
@@ -280,7 +300,7 @@ async function confirmDelivery(
   projectId: string,
   project: { where: { id: string }; data: Prisma.ProjectUpdateInput },
   delivered: readonly PendingEdit[],
-  delivery: { runId: string; contexts: readonly DeliveryContext[]; withheld?: readonly PendingEdit[] },
+  delivery: { runId: string; contexts: readonly DeliveryContext[]; withheld?: readonly PendingEdit[]; execution?: PublishExecution },
 ): Promise<void> {
   const surfaceIds = [...new Set(delivery.contexts.map(c => c.surfaceId))].sort();
   await lockPublication(tx, projectId, project.data);
@@ -289,7 +309,9 @@ async function confirmDelivery(
     await tx.$executeRaw`SELECT "id" FROM "TranslationSurface" WHERE "projectId" = ${projectId} AND "id" = ANY(${surfaceIds}::text[]) ORDER BY "id" FOR UPDATE`;
   }
 
-  const run = await tx.syncRun.findFirst({ where: { id: delivery.runId, projectId }, select: { status: true } });
+  const run = await tx.syncRun.findFirst({ where: { id: delivery.runId, projectId }, select: { status: true, startedAt: true } });
+  delivery.execution?.check();
+  if (delivery.execution !== undefined && run !== null && Date.now() - run.startedAt.getTime() >= PUBLISH_BUDGET_MS) fail(UNCONFIRMED_DELIVERY);
   if (run?.status !== "RUNNING") fail(UNCONFIRMED_DELIVERY);
 
   // 순차로 읽는다 — 대화형 트랜잭션은 커넥션 하나라 `Promise.all`이 왕복을 줄이지 못한다(POSTMORTEM 2026-09-16).
@@ -308,6 +330,7 @@ async function confirmDelivery(
   });
   // 캡처 context가 빠진 로컬 셀은 revision 없이 해제하지 않는다. 타 프로젝트 id는 조회/CAS 양쪽에서 제외된다.
   if (current.some(row => !surfaceIds.includes(row.surfaceId))) fail(UNCONFIRMED_DELIVERY);
+  delivery.execution?.check();
   await tx.project.update(project);
   if (delivered.length > 0) await acknowledgeDelivered(tx, projectId, delivered);
 
