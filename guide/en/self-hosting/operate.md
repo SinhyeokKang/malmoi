@@ -4,6 +4,8 @@ Update one release at a time, keep backups of the database, uploads, and keys to
 
 ## Update to a new release {#update}
 
+Before starting the new version or rolling back, keep web and the scheduler stopped until more than five minutes have passed since the last publish started. Do not run old and new web processes together: older versions do not recognize the recovery wait for an unconfirmed publish. Each publish has a four-minute work budget; after an attempted repository change fails, new publish and sync attempts are blocked until five minutes after its start. You can keep editing. Revert needs a new confirmed publish after that wait. This timeout cannot roll back requests already received by GitHub.
+
 Update one release at a time, in order, and only to the latest release; updates that skip releases haven't been verified yet. The migrations must finish before web is recreated, so an old app never reads a newer database. Outside traffic and the scheduler stay off until the new version passes your checks: if you have to go back to the backup, nothing anyone saved in between is lost.
 
 1. Stop the app and take a backup with the [backup](#backup) commands, and go on only if it printed `backup ok`. Don't run `docker compose up -d` afterwards.

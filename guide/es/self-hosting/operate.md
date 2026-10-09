@@ -4,6 +4,8 @@ Actualiza una versión cada vez, guarda juntas las copias de la base de datos, l
 
 ## Actualiza a una versión nueva {#update}
 
+Antes de iniciar la nueva versión o volver a la anterior, mantén web y el programador detenidos hasta que hayan pasado más de cinco minutos desde el inicio del último envío. No ejecutes procesos web antiguos y nuevos juntos: las versiones anteriores no reconocen la espera de recuperación de un envío sin confirmar. Cada envío tiene un límite de trabajo de cuatro minutos; si falla tras intentar modificar el repositorio, el envío y la sincronización esperan hasta cinco minutos desde su inicio. Puedes seguir editando. Revertir requiere un nuevo envío confirmado después de esa espera. Este límite no revierte solicitudes que GitHub ya haya recibido.
+
 Actualiza una versión cada vez, en orden y solo a la última versión; las actualizaciones que saltan versiones aún no se han verificado. Las migraciones deben terminar antes de recrear web, para que una app antigua nunca lea una base de datos más nueva. El tráfico externo y el programador siguen apagados hasta que la versión nueva supere tus comprobaciones: si tienes que volver a la copia, no se pierde nada de lo que alguien guardó entretanto.
 
 1. Detén la app y haz una copia con los comandos de [copia de seguridad](#backup), y sigue solo si imprimió `backup ok`. No ejecutes `docker compose up -d` después.
