@@ -5,7 +5,7 @@ import { flattenNav, type NavNode } from "@/lib/guide/summary";
 import { GITHUB_REPO_URL } from "@/lib/links";
 import { en } from "@/messages/en";
 
-import { llmsFull, llmsIndex } from "../llms";
+import { absoluteGuideLinks, llmsFull, llmsIndex } from "../llms";
 
 /**
  * **llms.txt 둘** (seo-geo T4). 형식은 fixture로 정확한 문자열을 고정하고, 실물 원고로는 파생값만 단언한다 — 원고가 바뀌어도
@@ -182,5 +182,47 @@ describe("llmsFull", () => {
     expect(once.match(/^Source: https:\/\/mal-moi\.com\/docs/gm)).toHaveLength(flat.length);
     expect(llmsFull(flat, sources)).toBe(once);
     expect(once.endsWith("\n") && !once.endsWith("\n\n")).toBe(true);
+  });
+});
+
+/**
+ * **origin 인자** (mcp-docs T1) — MCP `read_docs`가 설치 origin으로 같은 변환을 쓴다. 바뀌는 것은 내부 문서 destination의 앞부분뿐이고
+ * 외부 링크·코드·이미지 바이트는 그대로다. `llmsFull`은 `SITE_ORIGIN`을 넘긴다(위 fixture 정확 문자열이 그 바이트를 고정한다).
+ */
+describe("absoluteGuideLinks", () => {
+  const source = [
+    "See [setup](setup/README.md) and [FAQ](faq.md#pricing).",
+    "Keep [external](https://example.com/a) and ![shot](/guide/x.webp).",
+    "Reference [formats][fmt].",
+    "",
+    "[fmt]: reference/formats.md#formats",
+    "",
+    "```md",
+    "[fenced](setup/README.md)",
+    "```",
+    "",
+  ].join("\n");
+  const expected = (prefix: string) => [
+    `See [setup](${prefix}/docs/setup) and [FAQ](${prefix}/docs/faq#pricing).`,
+    "Keep [external](https://example.com/a) and ![shot](/guide/x.webp).",
+    "Reference [formats][fmt].",
+    "",
+    `[fmt]: ${prefix}/docs/reference/formats#formats`,
+    "",
+    "```md",
+    "[fenced](setup/README.md)",
+    "```",
+    "",
+  ].join("\n");
+
+  it.each([
+    ["SITE_ORIGIN", "https://mal-moi.com"],
+    ["셀프 호스팅 origin", "https://i18n.example.org"],
+  ])("%s를 주면 내부 링크·참조 정의만 그 origin의 절대 URL이 된다", (_, origin) => {
+    expect(absoluteGuideLinks(source, "README.md", origin)).toBe(expected(origin));
+  });
+
+  it("origin이 null이면 앱 경로 그대로다", () => {
+    expect(absoluteGuideLinks(source, "README.md", null)).toBe(expected(""));
   });
 });

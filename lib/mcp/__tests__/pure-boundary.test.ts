@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
 
 const ROOT = join(__dirname, "..", "..", "..");
 const PURE = ["lib/mcp/token.ts", "lib/mcp/grant.ts", "lib/mcp/issue-plan.ts", "lib/mcp/batch.ts", "lib/mcp/result.ts", "lib/mcp/catalog.ts",
-  "lib/mcp/http.ts", "lib/mcp/confirm.ts", "lib/publish/fingerprint.ts"];
+  "lib/mcp/http.ts", "lib/mcp/confirm.ts", "lib/mcp/docs.ts", "lib/publish/fingerprint.ts"];
 
 describe("mcp 순수 모듈 경계", () => {
   it.each(PURE)("%s에 server-only가 없다", path => {
