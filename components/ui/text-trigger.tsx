@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { glyphSlot } from "./button";
 
 /**
- * **누르는 글자** — 공개 푸터의 언어 스위처 트리거(ui-locales design §5.1, 2026-10-04 사용자). 소비자는 지금 `LocaleSwitcher` 하나다.
+ * **누르는 글자** — 공개 푸터의 스위처 트리거(ui-locales design §5.1, 2026-10-04 사용자). 소비자는 `LocaleSwitcher`·`ThemeSwitcher` 둘이다.
  *
  * ⚠️ **`Button`이 아니다** — `Button`은 라벨 500을 강제해(`label-weight.test.ts`) 이웃 푸터 링크(13/400 muted)와 무게가 갈린다. 날 `<button>`은
  * `ui/` 밖에서 막히므로(`focus-ring.test.ts`) 프리미티브로 둔다. hover·focus는 푸터 `LINK`(`components/public-shell/footer.tsx`)와 같은 값이다.

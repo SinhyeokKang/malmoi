@@ -91,7 +91,8 @@ it("메뉴 항목이 System · Light · Dark 셋이고 각각 글리프가 있�
   await render(<ThemeSwitcher />);
   await open();
   expect(items().map((node) => node.textContent)).toEqual(["System", "Light", "Dark"]);
-  expect(items().map((node) => node.querySelectorAll("svg[aria-hidden]").length)).toEqual([1, 1, 1]);
+  // 앞 글리프가 첫 자식이다(선택 항목의 끝 체크는 `DropdownMenuItem`이 단다).
+  expect(items().map((node) => node.firstElementChild?.tagName.toLowerCase())).toEqual(["svg", "svg", "svg"]);
   expect(items().map((node) => node.getAttribute("aria-checked"))).toEqual(["false", "true", "false"]);
 });
 
