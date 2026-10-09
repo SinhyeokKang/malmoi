@@ -173,7 +173,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 | Blob 저장소 스모크 | `pnpm smoke:blob` (실 API라 `pnpm test` 밖이다. **고아 후보를 삭제 없이 목록으로만** 낸다) |
 | 릴리스 버전 판정 | `pnpm release:plan` — **`/merge` 3단계 전용, 읽기 전용** |
 | Codex 미러 동기화 | `pnpm sync:agents` (검사만: `pnpm sync:agents:check`) |
-| 자격증명 전환·회전 | `pnpm credentials:dev` / `credentials:prod` / `credentials:self-hosted` — 기본 **check-only**. self-hosted는 `DIRECT_URL`(마이그레이션 롤)만 읽는다. 절차는 OPERATIONS.md |
+| 자격증명 전환·회전 | `pnpm credentials:dev` / `credentials:prod` / `credentials:self-hosted` — 기본 **check-only**. self-hosted는 `DIRECT_URL`(마이그레이션 롤)만 읽는다. 절차는 OPERATIONS.md(hosted) · 가이드 `guide/en/self-hosting/operate.md#rotate-keys`(self-hosted) |
 | 자격증명 cutover 마무리 | `pnpm credentials:finalize:dev` / `credentials:finalize:prod` / `credentials:finalize:self-hosted` — 기본 **verify-only**이고 `--apply`를 줘야 `prisma migrate deploy`까지 간다. ⚠️ **`db:deploy` 말고 prod 마이그레이션 상태를 움직일 수 있는 명령이 이것 하나 더 있다**(`finalize:self-hosted`는 설치 DB를 움직인다 — `PRISMA_TARGET=self-hosted`를 스스로 명시한다) — 실패하면 트래픽을 막은 채로 둔다 |
 | **로컬 게이트** | `pnpm gate [--base <ref>]` — `db:generate` → typecheck → test → (diff가 트리거 경로면) 격리 postgres 스위트 → build → `sync:agents:check`, **첫 실패의 exit code로 끝난다**(정본 `scripts/gate-plan.ts`). ⚠️ **출력을 `| grep`·`| head`로 거르지 않는다** — 파이프가 종료 코드를 삼켜 red가 dev에 나간 적이 있다(2026-09-30). `/push`·`/ship`·`/orchestrate`·워커 브리프가 이 한 명령을 부른다 |
 | 격리 PostgreSQL 검증 | `pnpm test:credentials:postgres` — ⚠️ **`pnpm test`에 없다.** 테스트 위치 밖의 계정 연결·로그인 수단 연결·세션 폐기 구현도 트리거다. 경로의 정본은 `scripts/gate-plan.ts`이고 `pnpm gate`가 붙인다 |
