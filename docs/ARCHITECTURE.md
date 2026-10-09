@@ -1931,10 +1931,11 @@ $transaction(tx):
   "리포에 두 번 쓰기"이지 재시도 억제가 아니므로, 아무것도 못 쓴 `FAILED`가 다음 시도를 30초 막으면
   사람이 고친 뒤에도 기다리게 된다. 그 술어는 껍데기(`lib/sync/run.ts`)가 `status ∈ {SUCCEEDED, SKIPPED}` ∧
   `errorCode ≠ "reconfirm"`(첫 쓰기 전에 끝난 실행 — §5.6.3, `errorCode`가 nullable이라 `null` 갈래를 함께 적는다)으로 들고, 판정 함수는 `null`만 받는다 — **시작 간격이 아니라 "쓴 뒤 쉬는 간격"이다.**
-- ⚠️ **`STALE_AFTER_SECONDS`(300)는 `maxDuration`(60)보다 넉넉해야 한다.** 같거나 작으면 **정상 실행이
-  스스로를 stale로 보고** 두 번째 실행을 허용한다. 그 전제가 수동 경로에서 서려면 번역 페이지가
-  `export const maxDuration = 60`을 들어야 한다 — Server Action은 **자기를 부른 페이지 세그먼트**의
-  값을 쓰고, 없으면 프로젝트 기본값(300)이라 두 수가 같아진다.
+- **Publish는 플랫폼과 무관하게 240초 로컬 예산을 가진다** (`lib/sync/execution.ts`). 진입부터 단조 시계로 세고, 실행권 시작 시각의 절대 기한도 함께 검사한다. 잠금·토큰 대기 뒤 예산을 다시 시작하지 않는다. 종료한 실행은 되살아나지 않는다.
+  실제 Octokit transport 직전에 검사하며 자동 재시도·throttle은 Publish 클라이언트에서 끈다. 요청 취소 신호와 응답 body 소비도 같은 수명에 묶는다. PR 닫기·force ref 이동도 예외가 없다. hosted의 `maxDuration=60`은 추가 플랫폼 종료 장치다.
+- **리포 변경을 시도한 뒤 실패하면 FAILED / `execution-uncertain`**이다. 시작+300초 정각까지 다음 Publish·수동/야간 Sync를 `publish-unsettled`로 거부한다. 최신 성공으로 앞선 미확정 실행을 가리지 않고 전체 이력에서 활성 흔적의 존재를 묻는다. 요청 전 실패는 기존처럼 즉시 재시도한다.
+  번역 저장은 계속 허용하지만 새 전달 기준은 만들지 않는다. Revert는 `unsettled`이며, 300초 창 뒤 시작한 유효한 전달 확인이 있어야 풀린다. 실패를 진행 중으로 표시하지 않는다. 종료 기록은 자기 RUNNING에 대한 CAS이고, 이미 교체됐다면 성공으로 덮거나 성공 응답을 내지 않는다.
+- **보장 한계**: 만료 뒤 새 요청 전송과 늦은 DB 변경을 막는다. GitHub가 이미 받은 요청의 반영 시각은 증명하지 못하며 AbortSignal은 원격 롤백이 아니다. 60초 여유를 GitHub 완료 SLA로 해석하지 않는다.
 - **`SKIPPED`를 `SUCCEEDED`로 접지 않는다** — `lastPublishedAt`이 skipped에서 안 움직이므로
   ("마지막으로 **보낸**" 것이지 시도한 것이 아니다) 그 구별이 행에도 남아야 `logs`가 "어제 밤엔 보낼
   게 없었다"와 "어제 밤에 보냈다"를 가른다. `warnings`는 **둘 다** 센다 (§0 불변식 9).
@@ -2238,13 +2239,8 @@ Logs 행위자·상세 Trigger·보조줄·Home 메타 열이 이것 하나를 �
   시각·토큰·기준을 쓰기 **전에** 실행권(`SyncRun`이 아직 RUNNING)과 캡처한 모든 소스의 활성 상태·context 지문을 검증한다. 하나라도 무효이거나 로컬 전달 셀에 해당 context가 없으면 확정 tx 전체를 거부한다 — `lastPulledAt`·Last sent·토큰 CAS·기준·확인을 모두 유지한다. 토큰을 해제하는 호출에는 실행권과 context가 필수이고, 빈 토큰의 timestamp-only 호환 호출은 별도다.
   ⚠️ **늦은 성공도 CAS만 진행하던 옛 계약은 폐기했다** (2026-10-07, A-fix1). 확인 revision 없이 편집을 비우면 사전 판정을 마친 옛 CI가 덮을 수 있다. 무효 완료는 `runSync`의 `failed`·`delivery: unknown`이며 성공 전달 수를 내지 않는다. 유효한 완료에서 캡처 뒤 재편집된 토큰을 유지하는 CAS 동작은 그대로다.
   **`triggerPull`의 `runId`가 필수 인자인 이유**가 이것이다 — 실행권 없이는 교체된 늦은 성공을 가를 수 없다.
-- **교체·실패 실행의 외부 쓰기 종료 근거는 플랫폼 `maxDuration` 강제 종료다**(사용자 결정 2026-09-23). sync 브랜치를 `updateRefForce`로 옮기므로
-  후속 실행의 성공은 증거가 아니다. 그 실행의 `startedAt + STALE_AFTER_SECONDS` 이후에 **시작해** 성공한 전달 확인이 있어야 Revert가 열린다.
-  ⚠️ **`maxDuration`을 `STALE_AFTER_SECONDS`(300) 넘게 올리면 이 근거가 깨진다.**
-  ⚠️ **Revert의 막힘도 같은 경계(`isRunActive`)다** (2026-09-27, 감사 #9) — 강제 종료가 남긴 RUNNING·import 토큰이
-  Revert를 영구히 막지 않는다. 2026-10-01(sync-lock)부터 import lease 갈래는 `busy`가 아니라 `sync-running`이고 판정 입구가 `planWriteLock`이다
-  (§5.6.1) — `busy`는 Publish RUNNING 갈래만 남는다. 대신 확인보다 먼저 시작해 **만료된 RUNNING은 FAILED와 같이** 위 종료 판정에 든다 — busy에서 빠진 흔적이
-  확인되지 않은 기준을 유효하게 만들지 않는다. 저장의 기준 기록(`publishInFlight`)은 아직 경계 없는 RUNNING 수를 본다(범위 밖으로 남겼다).
+- **교체·실패 실행의 새 외부 쓰기는 로컬 수명으로 막는다**(§5.6.2). 무효화·성공 확정은 Project 잠금 뒤 실행권과 기한을 다시 검사하며, 트랜잭션 반환 전 로컬 종료 검사로 대기 중 만료된 쓰기를 롤백한다. `triggerPull`의 실행권·수명 인자는 필수다.
+  Revert는 활성 RUNNING에는 `busy`, 결과 미확인 FAILED에는 `unsettled`를 낸다. 실패가 기존 확인보다 뒤에 시작했어도 다음 유효한 확인 전에는 열리지 않는다. 저장 기준 조회는 기존 모든 RUNNING 차단에 활성 결과 미확인 실패를 더한다. 이미 수신한 GitHub 요청의 종료를 증명한다는 뜻은 아니다.
 - **기준값은 "전달 확인된 DB 상태"이지 파일에 있던 문자열의 백업이 아니다.** 기준은 캡처한 DB 값에서 export 폴백으로 유도하고
   리포를 읽지 않는다 — 원본 파일에서 읽는 것은 여전히 구조·표현뿐이다(불변식 2). 그래서 수술적 writer가 비-base 빈값 자리에 원본 값을
   남긴 경우 파일에는 옛 문자열이 있어도 기준은 `""`다. ⚠️ **`no-changes`(리포가 이미 같은 값)도 전달 확인이다** — 기준이 서는 것은
@@ -3972,7 +3968,7 @@ default ACL을 지우지 않고 닫는 층이라, 적용·확인이 끝나면 �
     본문을 3.4초 붙들고 있을 수 있다 — `performance`의 **`responseEnd`와 `transferSize`를 함께** 본다
     (POSTMORTEM 2026-09-09: 그 오독이 원인을 "순차 DB 왕복"으로 진단하게 만들었다).
 - **Cron은 Hobby 플랜에서 하루 1회.** 야간 pull 1회가 요구사항이라 지금은 맞다.
-  - **이 절은 호스팅 서비스의 Vercel 전제다.** self-hosted는 스케줄러 컨테이너가 같은 `GET /api/pull`을 같은 시각에 `CRON_SECRET` Bearer로 부른다(`deploy/scheduler/` — 헤더는 명령줄이 아니라 umask 077 파일로 넘겨 `ps`에 비밀이 안 보인다) — 시각의 집은 `lib/deployment/schedule.ts`의 `NIGHTLY_PULL`이고 `vercel.json`과의 일치를 테스트가 센다. `maxDuration`은 `next start`가 강제하지 않으므로 시간 상한은 `PULL_TIME_BUDGET_MS` 예산뿐이다.
+  - **이 절은 호스팅 서비스의 Vercel 전제다.** self-hosted는 스케줄러 컨테이너가 같은 `GET /api/pull`을 같은 시각에 `CRON_SECRET` Bearer로 부른다(`deploy/scheduler/` — 헤더는 명령줄이 아니라 umask 077 파일로 넘겨 `ps`에 비밀이 안 보인다) — 시각의 집은 `lib/deployment/schedule.ts`의 `NIGHTLY_PULL`이고 `vercel.json`과의 일치를 테스트가 센다. `maxDuration`은 `next start`가 강제하지 않으므로 야간 방문 예산은 `PULL_TIME_BUDGET_MS`, 개별 Publish의 로컬 수명은 §5.6.2의 240초다.
   - ⚠️ **한 실행이 도는 프로젝트에 상한이 있다** (2026-09-09, sec-audit 발견 26 — `PULL_BATCH_LIMIT` 50).
     전에는 준비된 전 프로젝트를 직렬로 돌았고, `maxDuration = 60`을 넘으면 **slug 정렬 뒤쪽이 통째로
     안 돌았다.** 응답이 항상 200이라 cron 실행은 성공으로 표시되고 요약에도 그 사실이 없어 **관측값이
