@@ -3955,9 +3955,9 @@ default ACL을 지우지 않고 닫는 층이라, 적용·확인이 끝나면 �
 - **운영 명령은 `self-hosted` target을 가진다** — `pnpm credentials:self-hosted`·`pnpm credentials:finalize:self-hosted`(`CREDENTIAL_TARGET=self-hosted`). URL은 `DIRECT_URL`만 읽고, query는 `sslmode` 하나만 허용하며, TLS 생략/`disable`은 호스트가 정확히 `postgres`(Compose 내부 서비스)일 때만이고 그 밖은 `verify-full`이다. hosted Supabase ref를 담은 host/user는 거절한다. finalize는 `PRISMA_TARGET=self-hosted`를 명시해 hosted dev로 흘러가지 않게 한다.
 - **같은 위치에 둔다**: 요청당 DB 왕복이 여럿이라 DB를 앱과 멀리 두면 화면 시간이 홉당 지연에 묶인다(POSTMORTEM 2026-09-09).
 
-### self-hosted 업로드 볼륨 — 볼륨에 쓸 수 있는 주체는 신뢰 경계 안이다 (2026-10-09, self-hosting)
+### self-hosted 업로드 볼륨 — 쓰기 주체는 web 하나여야 한다 (2026-10-09, self-hosting)
 
-`lib/upload/file-store.ts`의 symlink 거절(볼륨 루트 lstat, 디렉터리를 한 단계씩 만들며 lstat, `realpath` 뒤 볼륨 안 확인)은 **요청 시점에 이미 있는 링크에만 성립한다.** 검사와 `readFile`·`rename`·`unlink` 사이에 부모 디렉터리를 symlink로 바꾸면 검사를 통과한 경로 문자열이 볼륨 밖을 가리킨다(Astra 교차 리뷰 🟡1 — 실제 파일시스템에서 재현됐다). **이 동시 교체는 방어하지 않는다**: 웹 요청은 키 문법(`isStoredImageKey`)과 위 검사를 지나므로 링크를 만들 수 없고, 볼륨의 디렉터리·링크를 바꿀 수 있는 주체(호스트 셸·같은 볼륨을 마운트한 다른 컨테이너)는 이미 앱과 같은 권한으로 볼륨 밖을 읽을 수 있다. 그래서 그 주체를 막는 핸들 기반 접근(`openat`·`O_NOFOLLOW` 사슬)은 넣지 않았다. **운영 계약은 "업로드 볼륨은 web 컨테이너만 쓴다"이다** — 볼륨을 다른 서비스와 공유하거나 신뢰하지 않는 주체에게 쓰기를 열면 이 경계가 성립하지 않는다.
+`lib/upload/file-store.ts`의 symlink 거절(볼륨 루트 lstat, 디렉터리를 한 단계씩 만들며 lstat, `realpath` 뒤 볼륨 안 확인)은 **요청 시점에 이미 있는 링크에만 성립한다.** 검사와 `readFile`·`rename`·`unlink` 사이에 부모 디렉터리를 symlink로 바꾸면 검사를 통과한 경로 문자열이 볼륨 밖을 가리킨다(Astra 교차 리뷰 🟡1 — 실제 파일시스템에서 재현됐다). 웹 요청은 키 문법(`isStoredImageKey`)과 위 검사를 지나므로 링크를 만들 수 없다 — 경쟁을 걸 수 있는 것은 볼륨에 직접 쓰는 다른 주체뿐이다. **이 동시 교체는 코드로 방어하지 않고(핸들 기반 `openat`·`O_NOFOLLOW` 사슬 없음) 운영 계약으로 막는다: 업로드 볼륨의 쓰기 주체는 web 하나여야 한다.** ⚠️ **다른 주체(컨테이너·호스트 프로세스)에 쓰기를 주면 그 주체가 경쟁으로 web의 파일시스템(`/proc/self/environ`의 환경변수 포함)을 `/api/images/<key>`로 읽어 낼 수 있다** — 볼륨만 마운트한 사이드카는 원래 web 내부를 못 읽으므로 이것은 권한 상승이다(같은 권한이라고 볼 수 있는 것은 호스트 root·docker 그룹뿐이다). 그래서 `deploy/compose.yaml`에서 `uploads`를 마운트하는 서비스는 web 하나이고 `volumes_from`도 없다 — `lib/deployment/__tests__/self-hosted-gates.test.ts`가 센다.
 
 ## 8. Vercel
 
