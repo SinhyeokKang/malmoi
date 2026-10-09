@@ -74,8 +74,9 @@ const IDENT_EXCEPTIONS = new Set(['"User-Agent": "malmoi"', '"malmoi": {']);
 /**
  * 대문자로 남는 자리 — **환경변수 이름**이다(셸 관례가 대문자다). 사용자가 셸에 두는 이름이라 화면 문장에도 그대로 선다
  * (`Set it as MALMOI_TOKEN in your shell`). 암호 문맥의 식별자(`malmoi/pii`)를 대문자로 올리지 않는다는 규칙과 축이 다르다.
+ * self-hosted 설정 셋(`MALMOI_ORIGIN`·`MALMOI_UPLOAD_DIR`·`MALMOI_PRIVACY_URL`)도 운영자가 env에 두는 이름이다.
  */
-const UPPER_EXCEPTIONS = new Set(["MALMOI_TOKEN"]);
+const UPPER_EXCEPTIONS = new Set(["MALMOI_TOKEN", "MALMOI_ORIGIN", "MALMOI_UPLOAD_DIR", "MALMOI_PRIVACY_URL"]);
 
 /** 한 파일의 위반 목록 — 규칙 자체를 아래 메타 테스트가 고정한다. */
 function brandViolations(source: string): string[] {
@@ -151,8 +152,10 @@ describe("제품 이름 표기 — 화면은 Malmoi, 식별자는 malmoi", () =>
     expect(brandViolations('"MALMOI" "MalMoi"')).toHaveLength(2);
   });
 
-  it("환경변수 이름 MALMOI_TOKEN만 예외다", () => {
+  it("등록한 환경변수 이름만 예외다", () => {
     expect(brandViolations('"Set it as MALMOI_TOKEN in your shell"')).toEqual([]);
+    expect(brandViolations('process.env.MALMOI_ORIGIN "MALMOI_UPLOAD_DIR" `MALMOI_PRIVACY_URL`')).toEqual([]);
+    expect(brandViolations('"MALMOI_ORIGINS" "MALMOI_UPLOAD"')).toHaveLength(2);
     // 이름이 조금만 달라도 예외가 아니다 — 대문자 변형은 여전히 위반이다.
     expect(brandViolations('"MALMOI_TOKENS"')).toHaveLength(1);
     expect(brandViolations('"MALMOI rocks"')).toHaveLength(1);
