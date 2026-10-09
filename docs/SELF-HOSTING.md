@@ -114,3 +114,11 @@ SH-10 등 [수동] 항목의 실행 증거를 남기는 자리다(**릴리스 �
 - 복원 6단계 `up -d web proxy`는 `depends_on` 때문에 migrate를 한 번 더 돈다(멱등이라 무해).
 - 백업 manifest는 `chmod -R go-rwx` 뒤에 만들어지면 644로 남는다 — manifest까지 쓴 뒤 권한을 건다.
 - nginx 기본 access log가 `/invite/<토큰>`과 `?code=…&state=…`를 원문으로 남긴다(web 로그는 0건) — proxy 로그 보존·공유는 토큰을 다루듯 한다.
+
+### Publish 실행 수명 (2026-10-09)
+
+개별 Publish는 플랫폼과 무관한 240초 작업 예산을 갖는다(ARCHITECTURE §5.6.2). 리포 변경 요청 뒤 실패하면 시작 후 300초 정각까지 후속 Publish·Sync를 차단한다. 새 전송과 늦은 DB 변경을 막지만 GitHub가 이미 받은 요청은 원격 롤백하지 않는다. 새 env·패키지·스키마·cron은 없다(§3 대조).
+
+업그레이드·롤백은 기존 web·scheduler를 정지하고, 마지막 실행 시작부터 300초 창이 지난 뒤 대상 버전을 시작한다. 구버전은 결과 미확인 FAILED 차단을 모르므로 새·구 프로세스를 함께 운영하지 않는다. 롤백에서도 같은 정지·대기 순서를 따른다.
+
+검증: 격리 PostgreSQL에서 Project 잠금 대기 중 종료된 무효화·성공 확정의 롤백, 실패 후 Import·Revert·저장 기준을 확인했다. 같은 Next 16.3.3의 별도 최소 검증 앱을 `next build --webpack` → `next start`(Node 24, 127.0.0.1 전용)로 실행해 실제 수명 모듈을 관측했다. 호출은 240,002ms에 종료됐고 301,001ms에 재개한 콜백은 차단됐으며 가짜 transport 전송은 0건이었다. 이 실측은 전체 Malmoi 로그인·실제 GitHub·Docker 업그레이드 실습을 대신하지 않는다. GitHub가 이미 수신한 요청의 종료는 검증 범위가 아니다.
