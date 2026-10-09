@@ -7,7 +7,7 @@
 # 컨테이너가 "실행 중"이라는 사실은 준비를 뜻하지 않으므로 service_healthy·service_completed_successfully로 묶는다.
 #
 # 업그레이드: MALMOI_IMAGE를 새 태그(가능하면 @sha256 digest)로 바꾸고
-#   docker compose pull && docker compose run --rm migrate && docker compose up -d --force-recreate web proxy scheduler
+#   docker compose pull --ignore-buildable && docker compose run --rm migrate && docker compose up -d --force-recreate web proxy scheduler
 # ⚠️ migrate의 과거 성공을 재사용하지 않는다 — 새 릴리스의 마이그레이션을 새로 돌린 뒤 web을 같은 이미지로 재생성한다
 #    (POSTMORTEM 2026-09-14 — 낡은 Prisma 클라이언트가 새 스키마를 조회했다).
 #
@@ -32,7 +32,9 @@ services:
     # ⚠️ ports를 열지 않는다 — DB는 내부망(db)에만 있다(POSTMORTEM 2026-09-09 DB 직접 공개).
     networks: [db]
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "malmoi", "-q"]
+      # ⚠️ TCP(-h 127.0.0.1)로 묻는다 — 소켓으로 물으면 빈 볼륨 초기화 동안의 임시 서버(listen_addresses='')를 healthy로 보고
+      #    migrate가 TCP로 붙다가 거부된다(restart: "no"라 첫 설치가 확률적으로 실패한다).
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "postgres", "-d", "malmoi", "-q"]
       interval: 5s
       timeout: 5s
       retries: 30
@@ -105,10 +107,14 @@ services:
       - uploads:/data/uploads
     # ⚠️ ports를 열지 않는다 — 앱 포트는 proxy만 본다. 바깥 Host를 위조해 직접 붙는 길을 닫는다.
     networks: [edge, db]
-    # readiness = DB ping만 (design §5). 마이그레이션은 migrate 성공이, 설정·업로드 경로는 preflight가 이미 보장한다.
-    # 공개 route를 새로 만들지 않는다.
+    # readiness = DB ping + 자기 포트 리슨 (design §5). 마이그레이션은 migrate 성공이, 설정·업로드 경로는 preflight가 이미 보장한다.
+    # 공개 route를 새로 만들지 않는다 — 리슨 확인은 로컬 TCP 연결뿐이다.
     healthcheck:
-      test: ["CMD", "pg_isready", "-h", "postgres", "-p", "5432", "-d", "malmoi", "-q"]
+      test:
+        - CMD-SHELL
+        - >-
+          pg_isready -h postgres -p 5432 -d malmoi -q &&
+          node -e "require('net').connect(3000,'127.0.0.1').on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))"
       interval: 10s
       timeout: 5s
       retries: 12

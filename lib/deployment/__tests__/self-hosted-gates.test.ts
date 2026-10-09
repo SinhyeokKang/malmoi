@@ -297,6 +297,8 @@ function dockerfileProblems(input: { dockerfile: string; nvmrc: string; packageM
   const froms = lines.filter((l) => /^FROM\s/i.test(l));
   const nodeMajors = froms.map((l) => /^FROM\s+(?:--platform=\S+\s+)?node:(\d+)/i.exec(l)?.[1]);
   if (froms.length === 0 || nodeMajors.some((m) => m === undefined)) problems.push("base is not node:<major>");
+  // `postgresql-client`의 메이저는 배포판이 정한다 — bootstrap의 `\getenv`가 psql 15+를 요구한다(bullseye는 13).
+  if (froms.some((l) => !/^FROM\s+(?:--platform=\S+\s+)?node:\d+[\w.-]*-(bookworm|trixie)\b/i.test(l))) problems.push("base distro lacks psql 15+");
   else if (nodeMajors.some((m) => m !== input.nvmrc.trim())) problems.push("node major != .nvmrc");
 
   const pnpm = /^pnpm@(\S+)$/.exec(input.packageManager)?.[1];
@@ -311,7 +313,13 @@ function dockerfileProblems(input: { dockerfile: string; nvmrc: string; packageM
   const users = lines.filter((l) => /^USER\s/i.test(l));
   if (users.length === 0 || /^USER\s+(root|0)(\s|:|$)/i.test(users.at(-1)!)) problems.push("runs as root");
   if (!/postgresql-client/.test(input.dockerfile)) problems.push("no psql");
-  if (/^(ARG|ENV)\s+\S*(SECRET|TOKEN|PASSWORD|_KEY)/im.test(input.dockerfile)) problems.push("secret-looking build arg/env");
+  // 줄 이음을 먼저 펴서 둘째 줄·둘째 토큰(`ENV A=1 RESEND_API_KEY=x`)도 본다.
+  const joined = input.dockerfile.replace(/\\\r?\n/g, " ");
+  if (/^(ARG|ENV)\s+.*?\b\w*(SECRET|TOKEN|PASSWORD|_KEY)\w*\s*=?/im.test(joined)) problems.push("secret-looking build arg/env");
+  // 런타임 사용자는 쓰기 대상만 소유한다 — 코드·node_modules·.next를 고쳐 쓸 수 없게 install·build는 root로 한다.
+  const userNodeAt = lines.findIndex((l) => /^USER\s+node\b/i.test(l));
+  const buildAt = lines.findIndex((l) => /pnpm build/.test(l));
+  if (/--chown=node/.test(input.dockerfile) || userNodeAt < 0 || userNodeAt < buildAt) problems.push("node owns app code");
 
   const ignored = new Set(input.dockerignore.split("\n").map((l) => l.trim()).filter((l) => l !== "" && !l.startsWith("#")));
   for (const entry of ["**/.env*", ".git", ".scratch", "node_modules", ".next", "**/*.pem"]) if (!ignored.has(entry)) problems.push(`.dockerignore lacks ${entry}`);
@@ -338,6 +346,10 @@ describe("SH-15 ③ — Dockerfile ↔ .nvmrc·packageManager·.npmrc", () => {
       .toContain(".npmrc not copied before install");
     expect(dockerfileProblems({ ...base, dockerfile: `${base.dockerfile}\nUSER root\n` })).toContain("runs as root");
     expect(dockerfileProblems({ ...base, dockerfile: `${base.dockerfile}\nARG RESEND_API_KEY\n` })).toContain("secret-looking build arg/env");
+    expect(dockerfileProblems({ ...base, dockerfile: `${base.dockerfile}\nENV A=1 \\\n    CRON_SECRET=x\n` })).toContain("secret-looking build arg/env");
+    expect(dockerfileProblems({ ...base, dockerfile: base.dockerfile.replace("bookworm", "bullseye") })).toContain("base distro lacks psql 15+");
+    expect(dockerfileProblems({ ...base, dockerfile: base.dockerfile.replace(/^USER node$/m, "").replace(/^WORKDIR \/app$/m, "WORKDIR /app\nUSER node") }))
+      .toContain("node owns app code");
     expect(dockerfileProblems({ ...base, dockerignore: base.dockerignore.replace("**/.env*", "") })).toContain(".dockerignore lacks **/.env*");
   });
 });
@@ -402,6 +414,13 @@ function orderProblems(compose: string): string[] {
   if (cond("scheduler", "web") !== "service_healthy") problems.push("scheduler before web healthy");
   if (cond("proxy", "web") !== "service_healthy") problems.push("proxy before web healthy");
   if (s.postgres?.healthcheck === undefined || s.web?.healthcheck === undefined) problems.push("missing healthcheck");
+  const probe = (name: string) => JSON.stringify((s[name]?.healthcheck as { test?: unknown } | undefined)?.test ?? "");
+  // 소켓으로 물으면 initdb 동안의 임시 서버(listen_addresses='')를 healthy로 본다 — migrate의 TCP 접속이 거부된다.
+  if (!/"-h","127\.0\.0\.1"/.test(probe("postgres"))) problems.push("postgres healthcheck not over TCP");
+  // web readiness = DB ping + 자기 포트 리슨. 공개 route를 부르지 않는다(design §5).
+  const web = probe("web");
+  if (!/pg_isready/.test(web) || !/connect\(3000,\s*'127\.0\.0\.1'\)/.test(web)) problems.push("web healthcheck lacks db ping or listen check");
+  if (/https?:\/\/|curl|wget|fetch\(/.test(web)) problems.push("web healthcheck calls a route");
   for (const name of ["postgres", "migrate", "web", "scheduler"]) if (s[name]?.ports !== undefined) problems.push(`${name} publishes ports`);
   if (s.migrate?.image === undefined || s.migrate.image !== s.web?.image) problems.push("migrate and web use different images");
   if (!/^postgres:17[.\d-]/.test(s.postgres?.image ?? "")) problems.push("postgres not pinned to 17");
@@ -430,6 +449,8 @@ describe("SH-15 ② — compose 예제 ↔ preflight 표, 기동 순서", () => 
     expect(composeProblems({ compose: base.replace(/^(\s+)RESEND_API_KEY:(.*)$/m, "$1RESEND_API_KEY:$2\n$1INVITATION_EMAIL_ORIGIN: x"), example: example() }))
       .toContain("web has hosted-only INVITATION_EMAIL_ORIGIN");
     expect(orderProblems(base.replace("condition: service_completed_successfully", "condition: service_started"))).toContain("web before migrate succeeded");
+    expect(orderProblems(base.replace('"-h", "127.0.0.1", ', ""))).toContain("postgres healthcheck not over TCP");
+    expect(orderProblems(base.replace("connect(3000,'127.0.0.1')", "connect(1,'x')"))).toContain("web healthcheck lacks db ping or listen check");
   });
 });
 
@@ -477,6 +498,20 @@ describe("nginx 예제 — Host 전달·HSTS 덮어쓰기·rate limit", () => {
     for (const location of [/location \^~ \/api\/images\/ \{[^}]*limit_req zone=malmoi_public/, /location = \/oauth\/authorize \{[^}]*limit_req zone=malmoi_public/]) {
       expect(body).toMatch(location);
     }
+  });
+
+  it("web을 요청마다 다시 해석한다 — web만 재생성돼도 옛 IP로 502가 나지 않게", () => {
+    const body = live(conf());
+    expect(body).toMatch(/resolver 127\.0\.0\.11 valid=10s ipv6=off;/);
+    expect(body).not.toMatch(/upstream\s/);
+    const passes = [...body.matchAll(/proxy_pass\s+([^;]+);/g)].map((m) => m[1]!.trim());
+    expect(passes.length).toBeGreaterThanOrEqual(3);
+    for (const target of passes) expect(target).toBe("$malmoi_web");
+  });
+
+  it("스트리밍 렌더를 버퍼에 묶지 않고, 전달 Host를 덮어쓴다", () => {
+    expect(live(snippet())).toMatch(/proxy_buffering off;/);
+    expect(live(snippet())).toMatch(/proxy_set_header X-Forwarded-Host \$host;/);
   });
 
   it("모든 location이 공통 조각을 문다 — add_header는 상속되지 않는다", () => {

@@ -25,20 +25,23 @@ ENV COREPACK_HOME=/opt/corepack \
 RUN mkdir -p /opt/corepack \
  && corepack enable \
  && corepack prepare pnpm@10.33.0 --activate \
- && chmod -R a+rX /opt/corepack \
- && mkdir -p /app /data/uploads \
- && chown node:node /app /data/uploads
+ && chmod -R a+rX /opt/corepack
 
 WORKDIR /app
-USER node
 
+# install·build는 root로 한다 — 런타임 사용자(node)가 자기 코드·node_modules·.next를 고쳐 쓸 수 없게.
 # `.npmrc`(enable-pre-post-scripts=true)가 빠지면 `prebuild`의 폰트 복사가 조용히 건너뛰어진다.
-COPY --chown=node:node package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 RUN pnpm install --frozen-lockfile
 
-COPY --chown=node:node . .
-# 빌드 캐시는 버린다 — 런타임은 `.next/cache`를 새로 만든다(이미지 최적화 캐시).
-RUN pnpm build && rm -rf .next/cache
+COPY . .
+# 빌드 캐시는 버리고, 런타임 쓰기 대상(이미지 최적화 캐시·업로드 볼륨)만 node에게 준다.
+RUN pnpm build \
+ && rm -rf .next/cache \
+ && mkdir -p .next/cache /data/uploads \
+ && chown node:node .next/cache /data/uploads
+
+USER node
 
 ENV NODE_ENV=production \
     PORT=3000
