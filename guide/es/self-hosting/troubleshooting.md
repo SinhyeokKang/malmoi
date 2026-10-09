@@ -10,7 +10,8 @@ El contenedor web arranca con `pnpm preflight && next start`. Cuando la comproba
 | --- | --- | --- |
 | `missing` | Falta un nombre obligatorio o está vacío | `deploy/.env`, o la lista `environment` de Compose para los nombres que rellena Compose |
 | `invalid-format` | Formato incorrecto: `RESEND_API_KEY` debe empezar por `re_`, `INVITATION_EMAIL_FROM` debe ser `Nombre <dirección>` o una dirección, `GITHUB_APP_SLUG` es `[a-z0-9-]`, `AUTH_TRUST_HOST` debe ser `true` | Ese valor |
-| `malformed` · `not-https` · `userinfo` · `path` · `query` · `fragment` · `ipv6` · `idn` | Un problema de forma en `MALMOI_ORIGIN` o `MALMOI_PRIVACY_URL`: espacios o barras invertidas, `http://`, `user:pw@`, una ruta, `?`, `#`, un literal IPv6, un dominio no ASCII | Usa `https://<domain>` |
+| `malformed` · `not-https` · `userinfo` | Un problema de forma en `MALMOI_ORIGIN` o `MALMOI_PRIVACY_URL`: espacios, barras invertidas o una URL ilegible, `http://`, `user:pw@` | Una URL `https://` sin datos de usuario |
+| `path` · `query` · `fragment` · `ipv6` · `idn` | Solo `MALMOI_ORIGIN` (una ruta o query en la URL de privacidad está bien): una ruta, `?`, `#`, un literal IPv6, un dominio no ASCII | `MALMOI_ORIGIN=https://<domain>` |
 | `auth-url-mismatch` | `AUTH_URL` no coincide con `MALMOI_ORIGIN` (se ignora una barra final) | No sobrescribas el valor que fija Compose |
 | `privacy-cycle` | `MALMOI_PRIVACY_URL` es el `/privacy` de esta instalación, que redirige a sí mismo | Apúntalo a tu política en otro sitio |
 | `relative-path` | `MALMOI_UPLOAD_DIR` no es una ruta absoluta | Compose usa `/data/uploads` |
@@ -135,7 +136,7 @@ No hay una pantalla de autoservicio para eliminar cuentas, así que este es un p
    Usa el valor de la línea `user` en `SELECT id FROM "User" WHERE "emailLookup" = '<hmac>';`. Ese `id` es el `:uid` de abajo. Si no hay ninguna fila, no existe una cuenta con esa dirección (si estás cambiando la clave de búsqueda, ejecuta antes el reindex y vuelve a intentarlo).
 3. Las líneas `invitation:<projectId>` son los índices de las invitaciones pendientes enviadas a esta persona, una por proyecto, porque cada proyecto indexa las direcciones de invitación de forma distinta.
 4. Elimina la foto de perfil subida: `docker compose exec web rm -rf /data/uploads/avatars/<uid>` (si no hay directorio, no hay foto).
-5. Elimina en una sola transacción. Conéctate con `docker compose exec postgres psql -U postgres -d malmoi -v ON_ERROR_STOP=1 -v uid=<uid>`, ejecuta las sentencias y revisa cada recuento de filas antes de `COMMIT` (usa `ROLLBACK` si algo no cuadra):
+5. Elimina en una sola transacción. Conéctate con `docker compose exec postgres psql -U postgres -d malmoi -v ON_ERROR_STOP=1 -v uid=<uid>`, ejecuta las sentencias (en lugar de `<invitation indexes from step 3>`, pon los índices del paso 3 entre comillas simples y separados por comas) y revisa cada recuento de filas antes de `COMMIT` (usa `ROLLBACK` si algo no cuadra):
 
    ```sql
    BEGIN;

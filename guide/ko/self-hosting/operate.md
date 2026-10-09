@@ -6,31 +6,35 @@
 
 업데이트는 순서대로 한 번에 한 릴리스씩, 최신 릴리스로만 합니다. 릴리스를 건너뛰는 업데이트는 아직 검증하지 않았습니다. 마이그레이션은 web을 다시 만들기 전에 끝나야 낡은 앱이 새 데이터베이스를 읽는 일이 없습니다. 새 버전이 확인을 통과할 때까지 외부 트래픽과 스케줄러는 꺼 둡니다. 그래야 백업으로 되돌아가더라도 그사이 누가 저장한 내용을 잃지 않습니다.
 
-1. 앱을 멈추고 [백업](#backup) 명령으로 백업을 만듭니다. 끝난 뒤 `docker compose up -d`를 실행하지 않습니다.
+1. 앱을 멈추고 [백업](#backup) 명령으로 백업을 만들고, `backup ok`가 찍혔을 때만 다음으로 넘어갑니다. 끝난 뒤 `docker compose up -d`를 실행하지 않습니다.
 2. 새 태그의 `deploy/`를 지금 것과 비교해(`.env`는 그대로 둡니다) Compose·nginx·스케줄러의 변경을 반영하고, `.env`의 `MALMOI_IMAGE`를 새 태그와 digest로 바꿉니다. `deploy/scheduler/`가 바뀌었다면 `docker compose build scheduler`를 실행합니다.
 3. `docker compose pull --ignore-buildable`을 실행합니다. 스케줄러 이미지는 로컬에서 빌드해 레지스트리에 없으므로 `--ignore-buildable` 없이는 명령이 실패합니다.
 4. `docker compose run --rm migrate`를 실행합니다. 새 마이그레이션을 적용하고 bootstrap을 다시 돌리며, 여러 번 돌려도 안전합니다. 예전 `up`에서 돈 migrate를 믿지 마세요.
 5. 클라우드 제공업체의 방화벽에서 80·443 포트를 내 IP 주소로만 제한합니다. Docker가 공개한 포트는 서버 자체의 방화벽을 우회하므로 서버 방화벽만으로는 부족합니다.
 6. `docker compose up -d --force-recreate --no-deps web proxy`를 실행합니다. `--no-deps`가 migrate를 다시 돌리지 않게 하고, 스케줄러는 멈춘 채로 둡니다.
 7. 내 브라우저로 새 버전을 확인합니다. `docker compose ps`에서 web이 healthy이고, 로그인이 되고, 번역 화면이 열리고, 업로드한 사진이 보이고, `docker compose logs web --since 5m`에 `EACCES`나 `preflight:` 줄이 없어야 합니다. 아직 게시하지 마세요.
-8. 모두 정상이면 `docker compose up -d --no-deps scheduler`를 실행하고 80·443 포트를 다시 모두에게 엽니다. 포트를 제한한 동안 시작된 워크플로 실행은 서버에 닿지 못했으므로 Run workflow로 다시 실행합니다.
-9. 문제가 있으면 포트를 계속 제한해 둡니다. 이전 버전이 새 데이터베이스와 함께 동작한다고 확인된 경우에만 이전 `MALMOI_IMAGE`로 되돌려 4단계와 6단계를 다시 합니다. 그렇지 않으면 1단계의 백업을 데이터베이스·이미지·키 모두 함께 복원합니다([복원](#restore)). 되돌리는 마이그레이션은 없습니다.
+8. 모두 정상이면 `docker compose up -d --no-deps scheduler`를 실행하고 80·443 포트를 다시 모두에게 엽니다. 1단계 이후 시작된 워크플로 실행은 서버에 닿지 못했으므로 Run workflow로 다시 실행합니다.
+9. 문제가 있으면 포트를 계속 제한해 둡니다. 이전 버전이 새 데이터베이스와 함께 동작한다고 확인된 경우에만 이전 `MALMOI_IMAGE`와 2단계 전의 `deploy/` 파일로 되돌려 4단계와 6단계를 다시 합니다. 그렇지 않으면 1단계의 백업을 데이터베이스·이미지·키 모두 함께 복원합니다([복원](#restore)). 되돌리는 마이그레이션은 없습니다.
 
 ## 백업 {#backup}
 
-백업은 앱을 멈춘 상태에서 함께 뜬 셋입니다. 데이터베이스 덤프, 업로드 볼륨, `.env`(키)입니다. 하나라도 시점이 다르면 복원본이 맞지 않습니다. 데이터베이스 행이 업로드 파일을 가리키고, 암호화된 값은 그 시점의 키로만 열립니다. 백업은 리포지토리 체크아웃 밖에 두고 서버 밖에도 사본을 둡니다. 권한은 파일 600, 디렉터리 700입니다.
+백업은 앱을 멈춘 상태에서 함께 뜬 셋입니다. 데이터베이스 덤프, 업로드 볼륨, `.env`(키)입니다. 하나라도 시점이 다르면 복원본이 맞지 않습니다. 데이터베이스 행이 업로드 파일을 가리키고, 암호화된 값은 그 시점의 키로만 열립니다. 백업은 리포지토리 체크아웃 밖에 두고 서버 밖에도 사본을 둡니다. 권한은 파일 600, 디렉터리 700입니다. 명령은 `deploy/` 디렉터리에서 root로 실행합니다. 업로드 압축 파일은 컨테이너가 root로 쓰고, `/var/backups`도 root가 필요합니다. 괄호 안은 처음 실패한 명령에서 멈추므로, 마지막에 `backup ok`가 찍혔을 때만 백업을 믿습니다.
 
 ```sh
-STAMP=$(date -u +%Y%m%dT%H%M%SZ); B=/var/backups/malmoi/$STAMP; mkdir -p "$B" && chmod 700 "$B"
+STAMP=$(date -u +%Y%m%dT%H%M%SZ); B=/var/backups/malmoi/$STAMP
 docker compose stop scheduler proxy web            # 새 트래픽과 쓰기를 멈춘다. postgres만 남는다
-docker compose exec -T postgres pg_dump -U postgres -d malmoi -Fc > "$B/db.dump"
-docker run --rm -v malmoi_uploads:/data:ro -v "$B":/backup alpine tar czf /backup/uploads.tar.gz -C /data .
-cp .env "$B/env" && cp -r certs nginx "$B/"
-{ echo "taken_at=$STAMP"; grep '^MALMOI_IMAGE=' .env
-  docker compose exec -T postgres psql -U postgres -d malmoi -Atc 'select count(*), max(migration_name) from _prisma_migrations'
-} > "$B/manifest.txt"
-(cd "$B" && sha256sum db.dump uploads.tar.gz env >> manifest.txt)
-chmod -R go-rwx "$B"                                # 마지막에 — manifest까지 권한이 걸린다
+( set -eu
+  mkdir -p "$B" && chmod 700 "$B"
+  docker compose exec -T postgres pg_dump -U postgres -d malmoi -Fc > "$B/db.dump"
+  docker compose exec -T postgres pg_restore -l < "$B/db.dump" > /dev/null   # 덤프를 다시 읽을 수 있는지
+  docker run --rm -v malmoi_uploads:/data:ro -v "$B":/backup alpine:3.22 tar czf /backup/uploads.tar.gz -C /data .
+  cp .env "$B/env" && cp -r certs nginx "$B/"
+  { echo "taken_at=$STAMP"; grep '^MALMOI_IMAGE=' .env
+    docker compose exec -T postgres psql -U postgres -d malmoi -Atc 'select count(*), max(migration_name) from _prisma_migrations'
+  } > "$B/manifest.txt"
+  (cd "$B" && sha256sum db.dump uploads.tar.gz env >> manifest.txt)
+  chmod -R go-rwx "$B"                              # 마지막에 — manifest까지 권한이 걸린다
+) && echo "backup ok: $B"
 ```
 
 - manifest에는 비밀이 없습니다. 시각, 이미지, 마이그레이션 상태, 체크섬만 담깁니다.
@@ -44,12 +48,12 @@ chmod -R go-rwx "$B"                                # 마지막에 — manifest�
 
 새 서버에서, 또는 `docker compose down -v` 뒤에 백업을 되살립니다. 키는 백업 시점의 것이어야 합니다. 다른 키로는 암호화된 값이 열리지 않습니다.
 
-복원 연습과 격리 검증은 운영 중인 서버가 아닌 다른 서버에서 합니다. `deploy/compose.yaml`이 Compose 프로젝트 이름을 고정하므로, 같은 서버에서는 디렉터리를 복사해도 운영 중인 `malmoi_pgdata`·`malmoi_uploads` 볼륨을 그대로 씁니다. 2·4단계가 운영 데이터 위에서 돌고 `down -v`는 그 데이터를 지웁니다. 꼭 같은 서버에서 해야 한다면 모든 Compose 명령에 `-p <another name>`을 붙이고, 4단계의 볼륨 이름을 `<that name>_uploads`로 바꾸고, 프록시 포트를 다르게 줍니다. 하나라도 빠지면 운영 설치본을 건드립니다.
+복원 연습과 격리 검증은 운영 중인 서버가 아닌 다른 서버에서 합니다. `deploy/compose.yaml`이 Compose 프로젝트 이름을 고정하므로, 같은 서버에서는 디렉터리를 복사해도 운영 중인 `malmoi_pgdata`·`malmoi_uploads` 볼륨을 그대로 씁니다. 2·4단계가 운영 데이터 위에서 돌고 `down -v`는 그 데이터를 지웁니다. 꼭 같은 서버에서 해야 한다면 모든 Compose 명령에 `-p <another name>`(`<another name>`은 운영과 다른 프로젝트 이름)을 붙이고, 4단계의 볼륨 이름을 `<that name>_uploads`(그 이름 + `_uploads`)로 바꾸고, 프록시 포트를 다르게 줍니다. 하나라도 빠지면 운영 설치본을 건드립니다.
 
 1. 같은 태그의 `deploy/`를 받아 백업의 `env`를 `deploy/.env`로 복사하고 `certs/`와 `nginx/`를 되돌립니다. `MALMOI_IMAGE`는 백업 시점의 digest나, 호환을 확인한 더 새 태그로 둡니다.
 2. `docker compose up -d postgres`를 실행합니다. 빈 볼륨이면 `.env`의 `MIGRATE_DB_PASSWORD`로 데이터베이스와 마이그레이션 롤을 만듭니다.
 3. 소유자·권한 없이 마이그레이션 롤로 덤프를 올립니다(소유자는 마이그레이션 롤이 되고, 권한은 5단계가 다시 겁니다): `docker compose exec -T postgres pg_restore -U malmoi_migrate -d malmoi --no-owner --no-acl < "$B/db.dump"`. 끝의 `errors ignored on restore: N`을 읽습니다. `public` 스키마의 `already exists` 메시지만 정상이고, 그 밖의 오류가 있으면 일부만 복원된 데이터 위에서 마이그레이션하지 말고 멈춥니다.
-4. 업로드를 되살립니다: `docker volume create malmoi_uploads && docker run --rm -v malmoi_uploads:/data -v "$B":/backup alpine sh -c 'tar xzf /backup/uploads.tar.gz -C /data && chown -R 1000:1000 /data'`(앱 사용자 `node`는 uid 1000). 이후 모든 Compose 명령이 볼륨이 `already exists but was not created by Docker Compose`라고 경고합니다. 동작에는 문제가 없고 `down -v`는 이 볼륨도 지웁니다.
+4. 업로드를 되살립니다: `docker volume create malmoi_uploads && docker run --rm -v malmoi_uploads:/data -v "$B":/backup alpine:3.22 sh -c 'tar xzf /backup/uploads.tar.gz -C /data && chown -R 1000:1000 /data'`(앱 사용자 `node`는 uid 1000). 이후 모든 Compose 명령이 볼륨이 `already exists but was not created by Docker Compose`라고 경고합니다. 동작에는 문제가 없고 `down -v`는 이 볼륨도 지웁니다.
 5. `docker compose run --rm migrate`를 실행합니다. 복원한 마이그레이션 이력이 최신이면 적용할 것이 없고, bootstrap이 런타임 롤을 만들어 권한을 건 뒤 다른 모든 롤의 스키마 접근을 다시 거둡니다. 복원 뒤에는 반드시 실행하세요. 건너뛰면 복원한 데이터베이스가 모든 롤에 열린 채로 남습니다.
 6. `docker compose up -d web proxy`를 실행하고 스케줄러는 꺼 둡니다. web이 migrate에 의존하므로 Compose가 web보다 먼저 migrate를 한 번 더 돌리는데, 문제없습니다. 로그인, 프로젝트 번역 조회, 업로드한 사진을 확인하고 `docker compose logs web`에 복호화 오류(`credential-…`)가 없는지 봅니다.
 7. 과거가 되살아나므로 점검합니다. 백업 뒤에 폐기한 개인 토큰, 연결한 앱, 세션이 다시 동작하고 철회한 초대도 돌아옵니다. `docker compose exec -T postgres psql -U postgres -d malmoi -c 'DELETE FROM "Session"'`로 모두 로그아웃시키고, 사용자에게 MCP 페이지의 토큰과 연결한 앱을 확인해 달라고 알립니다. 백업 뒤의 편집과 게시는 사라지므로 대상 리포지토리의 PR과 대조합니다.

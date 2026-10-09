@@ -18,7 +18,7 @@ La configuración admitida es Docker Compose en un único servidor Linux: una in
 | Actualizaciones | Cada versión se aplica sola | Actualizas una versión cada vez a partir de las imágenes publicadas |
 | Dónde están los datos | Supabase (base de datos, Tokio) y Vercel (alojamiento, imágenes) | La base de datos y el volumen de subidas de tu servidor |
 | Inicio de sesión y correo | Inicio de sesión con GitHub y Google, correos de invitación por Resend | Lo mismo, con apps OAuth, una GitHub App y un dominio de Resend que registras tú |
-| Límites | Hasta 3 proyectos activos por persona | Lo mismo, salvo para las personas incluidas en `OPERATOR_EMAILS` |
+| Límites | Hasta 3 proyectos activos en propiedad por persona | Lo mismo, salvo para las personas incluidas en `OPERATOR_EMAILS` |
 | Soporte | GitHub Issues | Solo la última versión, en GitHub Issues, en la medida de lo posible |
 | Coste | Gratis | Software gratuito; pagas tu servidor, tu dominio y tu plan de Resend |
 | Política de privacidad | La de Malmoi | La tuya — `/privacy` redirige a ella |

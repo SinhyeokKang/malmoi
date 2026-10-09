@@ -10,7 +10,8 @@ web 컨테이너는 `pnpm preflight && next start`로 시작합니다. 검사가
 | --- | --- | --- |
 | `missing` | 필수 이름이 없거나 비어 있습니다 | `deploy/.env`. Compose가 채우는 이름이면 Compose의 `environment` 목록 |
 | `invalid-format` | 모양이 틀렸습니다. `RESEND_API_KEY`는 `re_`로 시작, `INVITATION_EMAIL_FROM`은 `이름 <주소>`나 주소, `GITHUB_APP_SLUG`는 `[a-z0-9-]`, `AUTH_TRUST_HOST`는 `true`만 | 해당 값 |
-| `malformed` · `not-https` · `userinfo` · `path` · `query` · `fragment` · `ipv6` · `idn` | `MALMOI_ORIGIN`이나 `MALMOI_PRIVACY_URL`의 모양 문제입니다. 공백·역슬래시, `http://`, `user:pw@`, 경로, `?`, `#`, IPv6 리터럴, 비ASCII 도메인 | `https://<domain>` 꼴로 |
+| `malformed` · `not-https` · `userinfo` | `MALMOI_ORIGIN`이나 `MALMOI_PRIVACY_URL`의 모양 문제입니다. 공백·역슬래시나 읽을 수 없는 URL, `http://`, `user:pw@` | 사용자 정보 없는 `https://` URL로 |
+| `path` · `query` · `fragment` · `ipv6` · `idn` | `MALMOI_ORIGIN`에만 해당합니다(방침 URL의 경로·query는 괜찮습니다). 경로, `?`, `#`, IPv6 리터럴, 비ASCII 도메인 | `MALMOI_ORIGIN=https://<domain>` 꼴로 |
 | `auth-url-mismatch` | `AUTH_URL`이 `MALMOI_ORIGIN`과 다릅니다(끝 슬래시는 무시) | Compose가 정한 값을 덮어쓰지 않습니다 |
 | `privacy-cycle` | `MALMOI_PRIVACY_URL`이 이 설치본의 `/privacy`라 자기 자신으로 이동합니다 | 다른 사이트에 둔 내 방침으로 |
 | `relative-path` | `MALMOI_UPLOAD_DIR`이 절대 경로가 아닙니다 | Compose는 `/data/uploads`를 씁니다 |
@@ -135,7 +136,7 @@ web 컨테이너는 `pnpm preflight && next start`로 시작합니다. 검사가
    `user` 줄의 값으로 `SELECT id FROM "User" WHERE "emailLookup" = '<hmac>';`를 실행합니다. 이 `id`가 아래의 `:uid`입니다. 행이 없으면 이 주소의 계정이 없습니다(조회 키를 바꾸는 중이라면 reindex를 먼저 하고 다시 시도하세요).
 3. `invitation:<projectId>` 줄들은 이 사람에게 온 미수락 초대의 색인입니다. 프로젝트마다 초대 주소의 색인이 달라서 줄이 프로젝트마다 하나씩입니다.
 4. 업로드한 프로필 사진을 지웁니다: `docker compose exec web rm -rf /data/uploads/avatars/<uid>`(디렉터리가 없으면 사진이 없는 것입니다).
-5. 한 트랜잭션으로 지웁니다. `docker compose exec postgres psql -U postgres -d malmoi -v ON_ERROR_STOP=1 -v uid=<uid>`로 접속해 실행하고, 각 줄의 행 수를 확인한 뒤에만 `COMMIT`합니다(이상하면 `ROLLBACK`):
+5. 한 트랜잭션으로 지웁니다. `docker compose exec postgres psql -U postgres -d malmoi -v ON_ERROR_STOP=1 -v uid=<uid>`로 접속해 실행하고(`<invitation indexes from step 3>` 자리에는 3단계의 색인을 작은따옴표로 감싸 쉼표로 이어 넣습니다), 각 줄의 행 수를 확인한 뒤에만 `COMMIT`합니다(이상하면 `ROLLBACK`):
 
    ```sql
    BEGIN;

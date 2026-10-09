@@ -18,7 +18,7 @@ Linux 서버 한 대에서 Docker Compose로 Malmoi를 직접 운영할 수 있�
 | 업데이트 | 릴리스마다 자동으로 반영됩니다 | 공개된 이미지로 한 번에 한 릴리스씩 직접 업데이트합니다 |
 | 데이터 위치 | Supabase(데이터베이스, 도쿄)와 Vercel(호스팅, 사진) | 내 서버의 데이터베이스와 업로드 볼륨 |
 | 로그인과 메일 | GitHub·Google 로그인, Resend로 보내는 초대 메일 | 같습니다. 단 OAuth 앱, GitHub App, Resend 도메인을 직접 등록합니다 |
-| 한도 | 한 사람당 활성 프로젝트 3개 | 같습니다. `OPERATOR_EMAILS`에 등록한 사람은 예외입니다 |
+| 한도 | 한 사람이 소유한 활성 프로젝트 3개 | 같습니다. `OPERATOR_EMAILS`에 등록한 사람은 예외입니다 |
 | 지원 | GitHub Issues | 최신 릴리스만, GitHub Issues에서 가능한 범위로 |
 | 비용 | 무료 | 소프트웨어는 무료이고 서버·도메인·Resend 요금은 직접 부담합니다 |
 | 개인정보 처리방침 | Malmoi의 방침 | 내 방침 — `/privacy`가 그쪽으로 이동합니다 |

@@ -6,31 +6,35 @@ Actualiza una versión cada vez, guarda juntas las copias de la base de datos, l
 
 Actualiza una versión cada vez, en orden y solo a la última versión; las actualizaciones que saltan versiones aún no se han verificado. Las migraciones deben terminar antes de recrear web, para que una app antigua nunca lea una base de datos más nueva. El tráfico externo y el programador siguen apagados hasta que la versión nueva supere tus comprobaciones: si tienes que volver a la copia, no se pierde nada de lo que alguien guardó entretanto.
 
-1. Detén la app y haz una copia con los comandos de [copia de seguridad](#backup). No ejecutes `docker compose up -d` después.
+1. Detén la app y haz una copia con los comandos de [copia de seguridad](#backup), y sigue solo si imprimió `backup ok`. No ejecutes `docker compose up -d` después.
 2. Compara el `deploy/` de la etiqueta nueva con el tuyo (deja `.env` como está), traslada los cambios de Compose, nginx y el programador, y cambia `MALMOI_IMAGE` en `.env` a la etiqueta y el digest nuevos. Si cambió `deploy/scheduler/`, ejecuta `docker compose build scheduler`.
 3. Ejecuta `docker compose pull --ignore-buildable`. La imagen del programador se construye en local y no está en el registro, así que el comando falla sin `--ignore-buildable`.
 4. Ejecuta `docker compose run --rm migrate`. Aplica las migraciones nuevas y vuelve a ejecutar el bootstrap, que se puede repetir sin riesgo. No cuentes con una ejecución de migrate de un `up` anterior.
 5. Limita los puertos 80 y 443 a tu propia dirección IP en el firewall de tu proveedor de nube. Un firewall en el propio servidor no basta, porque los puertos publicados por Docker lo saltan.
 6. Ejecuta `docker compose up -d --force-recreate --no-deps web proxy`. `--no-deps` evita que migrate se ejecute otra vez, y el programador sigue detenido.
 7. Comprueba la versión nueva desde tu navegador: `docker compose ps` muestra web healthy, puedes iniciar sesión, se abre una pantalla de traducción, se ven las imágenes subidas y `docker compose logs web --since 5m` no tiene líneas `EACCES` ni `preflight:`. No publiques desde ella todavía.
-8. Si todo funciona, ejecuta `docker compose up -d --no-deps scheduler` y vuelve a abrir los puertos 80 y 443 a todo el mundo. Las ejecuciones de workflow que empezaron mientras los puertos estaban limitados no llegaron al servidor; vuelve a lanzarlas con Run workflow.
-9. Si algo va mal, mantén los puertos limitados. Vuelve al `MALMOI_IMAGE` anterior y repite los pasos 4 y 6 solo si se sabe que la versión anterior funciona con la base de datos nueva. Si no, restaura la copia del paso 1 — base de datos, imagen y claves juntas ([restaurar](#restore)). No hay migraciones hacia atrás.
+8. Si todo funciona, ejecuta `docker compose up -d --no-deps scheduler` y vuelve a abrir los puertos 80 y 443 a todo el mundo. Las ejecuciones de workflow desde el paso 1 no llegaron al servidor; vuelve a lanzarlas con Run workflow.
+9. Si algo va mal, mantén los puertos limitados. Vuelve al `MALMOI_IMAGE` anterior y a los archivos de `deploy/` de antes del paso 2, y repite los pasos 4 y 6, solo si se sabe que la versión anterior funciona con la base de datos nueva. Si no, restaura la copia del paso 1 — base de datos, imagen y claves juntas ([restaurar](#restore)). No hay migraciones hacia atrás.
 
 ## Haz una copia de seguridad {#backup}
 
-Una copia son tres cosas tomadas con la app detenida: el volcado de la base de datos, el volumen de subidas y `.env` (las claves). Si alguna es de otro momento, la restauración no cuadra: las filas de la base de datos apuntan a archivos subidos y los valores cifrados solo se abren con las claves de ese momento. Guarda las copias fuera del checkout del repositorio y llévalas también fuera del servidor. Los permisos son 600 para archivos y 700 para directorios.
+Una copia son tres cosas tomadas con la app detenida: el volcado de la base de datos, el volumen de subidas y `.env` (las claves). Si alguna es de otro momento, la restauración no cuadra: las filas de la base de datos apuntan a archivos subidos y los valores cifrados solo se abren con las claves de ese momento. Guarda las copias fuera del checkout del repositorio y llévalas también fuera del servidor. Los permisos son 600 para archivos y 700 para directorios. Ejecuta los comandos como root desde el directorio `deploy/`: un contenedor escribe el archivo de subidas como root, y `/var/backups` requiere root. La parte entre paréntesis se detiene en el primer comando que falle; confía en la copia solo si termina con `backup ok`.
 
 ```sh
-STAMP=$(date -u +%Y%m%dT%H%M%SZ); B=/var/backups/malmoi/$STAMP; mkdir -p "$B" && chmod 700 "$B"
+STAMP=$(date -u +%Y%m%dT%H%M%SZ); B=/var/backups/malmoi/$STAMP
 docker compose stop scheduler proxy web            # detiene el tráfico nuevo y las escrituras; solo queda postgres
-docker compose exec -T postgres pg_dump -U postgres -d malmoi -Fc > "$B/db.dump"
-docker run --rm -v malmoi_uploads:/data:ro -v "$B":/backup alpine tar czf /backup/uploads.tar.gz -C /data .
-cp .env "$B/env" && cp -r certs nginx "$B/"
-{ echo "taken_at=$STAMP"; grep '^MALMOI_IMAGE=' .env
-  docker compose exec -T postgres psql -U postgres -d malmoi -Atc 'select count(*), max(migration_name) from _prisma_migrations'
-} > "$B/manifest.txt"
-(cd "$B" && sha256sum db.dump uploads.tar.gz env >> manifest.txt)
-chmod -R go-rwx "$B"                                # al final, para que cubra también el manifiesto
+( set -eu
+  mkdir -p "$B" && chmod 700 "$B"
+  docker compose exec -T postgres pg_dump -U postgres -d malmoi -Fc > "$B/db.dump"
+  docker compose exec -T postgres pg_restore -l < "$B/db.dump" > /dev/null   # el volcado se puede volver a leer
+  docker run --rm -v malmoi_uploads:/data:ro -v "$B":/backup alpine:3.22 tar czf /backup/uploads.tar.gz -C /data .
+  cp .env "$B/env" && cp -r certs nginx "$B/"
+  { echo "taken_at=$STAMP"; grep '^MALMOI_IMAGE=' .env
+    docker compose exec -T postgres psql -U postgres -d malmoi -Atc 'select count(*), max(migration_name) from _prisma_migrations'
+  } > "$B/manifest.txt"
+  (cd "$B" && sha256sum db.dump uploads.tar.gz env >> manifest.txt)
+  chmod -R go-rwx "$B"                              # al final, para que cubra también el manifiesto
+) && echo "backup ok: $B"
 ```
 
 - El manifiesto no tiene secretos: la hora, la imagen, el estado de las migraciones y las sumas de comprobación.
@@ -44,12 +48,12 @@ chmod -R go-rwx "$B"                                # al final, para que cubra t
 
 Esto recupera una copia en un servidor nuevo o después de `docker compose down -v`. Las claves deben ser las de la copia; otras claves no abren los valores cifrados.
 
-Los ensayos de restauración y las comprobaciones aisladas van en un servidor distinto del que está en producción. `deploy/compose.yaml` fija el nombre del proyecto de Compose, así que en el mismo servidor un directorio copiado sigue usando los volúmenes en producción `malmoi_pgdata` y `malmoi_uploads`: los pasos 2 y 4 se ejecutarían sobre tus datos reales, y `down -v` los borraría. Si tienes que usar el mismo servidor, añade `-p <another name>` a cada comando de Compose, cambia el nombre del volumen del paso 4 a `<that name>_uploads` y da otros puertos al proxy — si falta cualquiera de estas cosas, afectas a la instalación en producción.
+Los ensayos de restauración y las comprobaciones aisladas van en un servidor distinto del que está en producción. `deploy/compose.yaml` fija el nombre del proyecto de Compose, así que en el mismo servidor un directorio copiado sigue usando los volúmenes en producción `malmoi_pgdata` y `malmoi_uploads`: los pasos 2 y 4 se ejecutarían sobre tus datos reales, y `down -v` los borraría. Si tienes que usar el mismo servidor, añade `-p <another name>` (otro nombre de proyecto distinto del de producción) a cada comando de Compose, cambia el nombre del volumen del paso 4 a `<that name>_uploads` (ese nombre seguido de `_uploads`) y da otros puertos al proxy — si falta cualquiera de estas cosas, afectas a la instalación en producción.
 
 1. Descarga el `deploy/` de la misma etiqueta, copia el `env` de la copia a `deploy/.env` y recupera `certs/` y `nginx/`. Deja `MALMOI_IMAGE` en el digest de la copia o en una etiqueta más nueva cuya compatibilidad hayas confirmado.
 2. Ejecuta `docker compose up -d postgres`. Con un volumen vacío, crea la base de datos y el rol de migración con el `MIGRATE_DB_PASSWORD` de `.env`.
 3. Carga el volcado como rol de migración, sin propietarios ni permisos (el rol de migración pasa a ser el propietario y el paso 5 vuelve a conceder los permisos): `docker compose exec -T postgres pg_restore -U malmoi_migrate -d malmoi --no-owner --no-acl < "$B/db.dump"`. Lee el `errors ignored on restore: N` final. Solo se esperan mensajes `already exists` del esquema `public`; ante cualquier otro, detente en lugar de migrar una restauración parcial.
-4. Restaura las subidas: `docker volume create malmoi_uploads && docker run --rm -v malmoi_uploads:/data -v "$B":/backup alpine sh -c 'tar xzf /backup/uploads.tar.gz -C /data && chown -R 1000:1000 /data'` (el usuario de la app `node` es el uid 1000). A partir de aquí, cada comando de Compose avisa de que el volumen `already exists but was not created by Docker Compose`. Es inofensivo, y `down -v` también elimina el volumen.
+4. Restaura las subidas: `docker volume create malmoi_uploads && docker run --rm -v malmoi_uploads:/data -v "$B":/backup alpine:3.22 sh -c 'tar xzf /backup/uploads.tar.gz -C /data && chown -R 1000:1000 /data'` (el usuario de la app `node` es el uid 1000). A partir de aquí, cada comando de Compose avisa de que el volumen `already exists but was not created by Docker Compose`. Es inofensivo, y `down -v` también elimina el volumen.
 5. Ejecuta `docker compose run --rm migrate`. Si el historial de migraciones restaurado está al día, no se migra nada, y el bootstrap crea el rol de ejecución, le concede sus permisos y vuelve a quitar el acceso al esquema a todos los demás. Hazlo siempre después de restaurar: si te lo saltas, la base de datos restaurada queda abierta a todos los roles.
 6. Ejecuta `docker compose up -d web proxy` y deja el programador apagado. Compose ejecuta migrate una vez más antes de web porque web depende de él; es inofensivo. Comprueba que puedes iniciar sesión, ver las traducciones de un proyecto y ver las imágenes subidas, y que `docker compose logs web` no tiene errores de descifrado (`credential-…`).
 7. El pasado vuelve, así que revísalo. Los tokens personales, las apps conectadas y las sesiones revocados después de la copia vuelven a funcionar, y las invitaciones revocadas regresan. Cierra la sesión de todos con `docker compose exec -T postgres psql -U postgres -d malmoi -c 'DELETE FROM "Session"'` y pide a las personas que revisen sus tokens y apps conectadas en la página de MCP. Las ediciones y publicaciones posteriores a la copia se pierden; compáralas con los pull requests de los repositorios de destino.

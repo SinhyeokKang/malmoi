@@ -10,7 +10,8 @@ The web container starts with `pnpm preflight && next start`. When the check fai
 | --- | --- | --- |
 | `missing` | A required name is missing or empty | `deploy/.env`, or the `environment` list in Compose for names Compose fills |
 | `invalid-format` | Wrong shape: `RESEND_API_KEY` must start with `re_`, `INVITATION_EMAIL_FROM` must be `Name <address>` or an address, `GITHUB_APP_SLUG` is `[a-z0-9-]`, `AUTH_TRUST_HOST` must be `true` | That value |
-| `malformed` · `not-https` · `userinfo` · `path` · `query` · `fragment` · `ipv6` · `idn` | A shape problem in `MALMOI_ORIGIN` or `MALMOI_PRIVACY_URL`: spaces or backslashes, `http://`, `user:pw@`, a path, `?`, `#`, an IPv6 literal, a non-ASCII domain | Use `https://<domain>` |
+| `malformed` · `not-https` · `userinfo` | A shape problem in `MALMOI_ORIGIN` or `MALMOI_PRIVACY_URL`: spaces or backslashes or an unparsable URL, `http://`, `user:pw@` | An `https://` URL without user info |
+| `path` · `query` · `fragment` · `ipv6` · `idn` | `MALMOI_ORIGIN` only (a path or query in the privacy URL is fine): a path, `?`, `#`, an IPv6 literal, a non-ASCII domain | `MALMOI_ORIGIN=https://<domain>` |
 | `auth-url-mismatch` | `AUTH_URL` differs from `MALMOI_ORIGIN` (a trailing slash is ignored) | Don't override the value Compose sets |
 | `privacy-cycle` | `MALMOI_PRIVACY_URL` is this installation's `/privacy`, which redirects to itself | Point it at your policy on another site |
 | `relative-path` | `MALMOI_UPLOAD_DIR` isn't an absolute path | Compose uses `/data/uploads` |
@@ -135,7 +136,7 @@ There's no self-service screen for deletion, so this is a manual procedure for a
    Use the `user` line's value in `SELECT id FROM "User" WHERE "emailLookup" = '<hmac>';`. That `id` is `:uid` below. No row means there's no account for this address (if you're in the middle of a lookup key change, run the reindex first and try again).
 3. The `invitation:<projectId>` lines are the indexes of pending invitations sent to this person, one per project, because each project indexes invitation addresses differently.
 4. Remove an uploaded profile picture: `docker compose exec web rm -rf /data/uploads/avatars/<uid>` (no directory means there's none).
-5. Delete in one transaction. Connect with `docker compose exec postgres psql -U postgres -d malmoi -v ON_ERROR_STOP=1 -v uid=<uid>`, run the statements, and check every row count before `COMMIT` (use `ROLLBACK` if anything looks wrong):
+5. Delete in one transaction. Connect with `docker compose exec postgres psql -U postgres -d malmoi -v ON_ERROR_STOP=1 -v uid=<uid>`, run the statements (replace `<invitation indexes from step 3>` with the step 3 indexes, each in single quotes, separated by commas), and check every row count before `COMMIT` (use `ROLLBACK` if anything looks wrong):
 
    ```sql
    BEGIN;
