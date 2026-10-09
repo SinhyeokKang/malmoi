@@ -66,7 +66,7 @@
 | i18n-none | api |
 
 **사람을 가리키는 값은 이 표에 적지 않는다** — 표 자체가 공개 리포에 커밋된다. 촬영자가 원본을 로컬에서만 들고 치환한다: OWNER 표시 이름·GitHub 로그인 → `Alex Kim`·`@alex-kim`, EDITOR 표시 이름 → `Jordan Lee`, 이메일(가려진 `ab***@…` 꼴 포함) → `@example.com` 주소, 사람 사진 → 치환 이름의 이니셜 원(`Avatar` 폴백 모양). 뷰포트 전체 규격이라 셸 좌상단·우상단 아바타가 늘 컷에 들어간다 — 크롭으로 뺄 수 없다.
-- 앱 origin `localhost:3000`은 `mal-moi.com`으로 바꾼다 — `/mcp`의 Server URL과 조각이 origin을 그대로 보인다(가이드 본문이 프로덕션 주소를 쓴다).
+- 앱 origin `localhost:3000`은 `mal-moi.com`으로 바꾼다 — `/mcp`의 Server URL과 조각이 origin을 그대로 보인다(가이드 본문이 프로덕션 주소를 쓴다). ⚠️ **컷은 호스팅 서비스 화면이다**(2026-10-09, self-hosting) — self-hosted 설치의 화면·워크플로엔 `api-url:` 줄이 항상 있고 주소가 설치 origin이지만, 컷은 그 줄을 지운 호스팅 출력으로 둔다. 그 차이는 컷이 아니라 본문(`setup/workflow.md#update-workflow`)이 말한다. 원고 본문은 `mal-moi.com` 주소를 코드 조각에 박지 않는다(MCP 주소는 `SERVER_URL` 자리 + **Copy server URL**).
 - 리포 경로의 소유자 조각(오너 계정명 + `/`)은 `acme/`로 바꾼다 — `Acme web`의 리포가 `acme/web`이 된다. ⚠️ 그 경로는 화면에서 **소유자 · `/` · 리포명 세 텍스트 노드로 갈려** 있어 경로 단위 치환이 안 걸린다 — 다음 노드가 `/` + 리포명인 소유자 노드를 먼저 `acme`로 바꾼다. 온보딩 대화상자(①·②) 안은 예외로 `alex-kim/`이다(행 머리의 계정명이 로그인이다).
 
 - ⚠️ **오너 GitHub 계정명은 원본으로 올릴 수 없다** — `SinhyeokKang/malmoi/...`는 action 경로라 `setup/allowed-actions.md`에 정당하게 있고, 게이트가 부분 문자열로 red를 낸다. 화면에서 그 계정이 사람으로 보이는 자리(셸 좌측 상단·계정 메뉴)는 크롭으로 뺀다. action 경로 속 계정명은 공개 식별자라 그대로 둔다.
