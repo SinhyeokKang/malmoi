@@ -99,6 +99,6 @@ describe("소비자가 참조하는 ref — 불변 태그다 (sec-audit 3)", () 
   it("`docs/ACTIONS.md`가 `@main`을 안내하지 않는다", () => {
     const doc = readFileSync(join("docs", "ACTIONS.md"), "utf8");
     expect(doc).not.toMatch(/malmoi-i18n-push@main/);
-    expect(doc).toMatch(/malmoi-i18n-push@malmoi-i18n-push-v2/);
+    expect(doc).toMatch(/malmoi-i18n-push@malmoi-i18n-push-v3/);
   });
 });

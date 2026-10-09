@@ -3,12 +3,14 @@
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useLayoutEffect, useRef } from "react";
 
 import { ProjectThumbnail } from "@/components/ui/project-thumbnail";
 import { ProjectSwitcher } from "@/components/shell/project-switcher";
 import { Badge } from "@/components/ui/badge";
 import { CountBadge } from "@/components/ui/count-badge";
 import { Button } from "@/components/ui/button";
+import { landFocus } from "@/components/ui/focus";
 import { useMessages } from "@/components/i18n/messages-provider";
 import type { Messages } from "@/lib/i18n";
 import { useInboxUnread } from "@/lib/inbox/unread-store";
@@ -63,11 +65,53 @@ export function Sidebar({ memberships, userName }: { memberships: NavProject[]; 
   const m = useMessages();
   const pathname = usePathname();
   const project = activeProject(pathname, memberships);
-  const zones = navZones(m, project, { userName, projectCount: memberships.length });
+  const zones = navZones(m, project, { userName, projectCount: memberships.length, projects: memberships });
   const { collapsed, toggle } = useSidebarCollapse();
+  const asideRef = useRef<HTMLElement>(null);
+  const scope = zones[1]?.key;
+  const lastScope = useRef(scope);
+  /** 문서에서 마지막으로 누르거나 포커스한 컨트롤의 사이드바 구역(밖이면 `null`) — 착지 판정 한 번에 소비된다. */
+  const pressedZone = useRef<string | null>(null);
+  useEffect(() => {
+    const note = (event: Event) => {
+      pressedZone.current = event.target instanceof Element ? event.target.closest<HTMLElement>("nav[data-sidebar-zone]")?.dataset.sidebarZone ?? null : null;
+    };
+    document.addEventListener("pointerdown", note, true);
+    document.addEventListener("focusin", note, true);
+    return () => {
+      document.removeEventListener("pointerdown", note, true);
+      document.removeEventListener("focusin", note, true);
+    };
+  }, []);
+  /**
+   * ⚠️ **누른 컨트롤이 사라졌을 때만 포커스를 새 구역에 앉힌다** (2026-10-09 sidebar-projects · orch D10 — DESIGN "누른 컨트롤이 사라질 때만").
+   * 목록 구역의 프로젝트 행을 누르면 구역이 `projects` → `project`로 바뀌어 `<nav key>`가 다시 마운트되고 누른 링크가 사라진다 — 브라우저는
+   * 포커스를 `body`로 떨어뜨린다(POSTMORTEM 2026-09-24 부류). 그때만 새 구역의 현재 항목(`aria-current` — 프로젝트 Home · `/projects/new`의
+   * `New project`)으로 옮긴다. "첫 링크" 폴백은 두지 않는다 — 폴백이 필요한 실제 경로가 없고, 있으면 엉뚱한 행으로 튄다.
+   * ⚠️ **본문·사용자 구역·헤더·뒤로가기에서 시작한 전이는 옮기지 않는다** — `focusLost()`만 보면 Safari·macOS Firefox 마우스 클릭(포커스를 주지
+   * 않는다)이나 본문 링크 언마운트에서도 참이라 사이드바가 남의 포커스를 가져갔다(리뷰 🔴1). 그래서 "누른 것"을 **document**의 `pointerdown`·`focusin`
+   * capture로 기록한다(`pointerdown`인 이유는 `dialog.tsx`의 기록과 같다 — 그 브라우저들에선 focus가 안 온다). ⚠️ **aside가 아니라 document다**
+   * (리뷰 A2 🟡1) — aside에서만 들으면 목록 행을 누르고 이동 없이 끝난 기록(새 탭 열기·키보드로 들렀다 나감)을 사이드바 밖의 다음 상호작용이
+   * 덮지 못해, 본문 링크로 시작한 이동을 사이드바가 가져갔다. 밖의 상호작용은 기록을 `null`로 덮는다.
+   * ⚠️ **헤더에서 연 New project 모달을 닫는 커밋도 구역이 바뀐다**(`router.back()` = 슬롯이 비는 커밋 = pathname 복귀). 여기서 착지하면
+   * Dialog의 포커스 기록에 Home이 최신으로 들어가 Radix 복귀가 연 자리 대신 Home으로 갔다 — 누른 것이 사이드바 밖이라 비켜서야 복귀가 헤더로 간다.
+   * layout 단계인 것은 누른 링크가 착지와 **같은 커밋에서** 사라지기 때문이다(`useLandAfterCommit`과 같은 근거 — 칠해진 프레임에 `body`가 남지 않게).
+   */
+  useLayoutEffect(() => {
+    const previous = lastScope.current;
+    if (previous === scope) return;
+    lastScope.current = scope;
+    const pressed = pressedZone.current;
+    pressedZone.current = null;
+    if (pressed === null || pressed !== previous) return;
+    landFocus(asideRef.current?.querySelector<HTMLElement>(`nav[data-sidebar-zone="${scope}"] [aria-current="page"]`));
+    // 착지가 낸 focus(`focusin`)는 "누른 것"이 아니다 — 남기면 아무것도 누르지 않은 다음 전이(뒤로가기 등)가 사이드바에서 누른 것으로 읽힌다.
+    pressedZone.current = null;
+  }, [scope]);
 
   return (
     <aside
+      ref={asideRef}
       // 자기 안에서 스크롤한다 — 항목이 늘어도 문서를 밀지 않는다 (malmoi#13).
       //
       // ⚠️ **폭이 여기 없다.** 옛 `w-60 shrink-0` 자리는 `components/shell/shell-panels.tsx`의
@@ -80,6 +124,10 @@ export function Sidebar({ memberships, userName }: { memberships: NavProject[]; 
       {/*
         **구역 둘** (PRODUCT §7.7). ⚠️ **라벨이 이름 그대로다** — 사용자 축은 사용자 이름, 프로젝트 축은
         프로젝트 이름(8-3, 시안). 6b-4의 `Your work` 라벨을 대체했다.
+        ⚠️ **둘째 자리가 두 형이다** (2026-10-09 사용자, sidebar-projects) — 지금 프로젝트가 있으면 그 프로젝트 구역(머리·스위처·항목),
+        없으면 **머리 없는 내 프로젝트 목록 구역**(`aria-label` `Your projects` — 아바타 메뉴와 같은 앞 5 + 끝 행 `New project`)이다.
+        머리 없음이 "지금 프로젝트 아님"의 표시다. `New project`는 9-30에 사용자 축에서 빠진 뒤 이 구역의 끝 행으로 LNB에 돌아왔다.
+        구역이 바뀌면 다시 마운트되므로, 누른 것이 옛 둘째 구역 안이었으면 위 effect가 포커스를 새 구역의 현재 항목에 앉힌다.
         ⚠️ **2026-09-27에 8-3의 두 결정이 뒤집혔다** (사용자): 사용자 축에 `New project`가 돌아왔고(`navWorkItems` — 2026-09-30에
         헤더 버튼으로 다시 빠졌다), 프로젝트 머리에 **전환 메뉴**(`ProjectSwitcher`)가 섰다 — 8-3은 스위처를 지워 "옮기는 길을 목록 하나로" 모았었다.
         ⚠️ **사용자 구역엔 머리 줄이 없다** (2026-09-30 사용자) — 아바타·이름은 헤더 사용자 메뉴가 이미 든다. `aria-label`(사용자 이름)은
@@ -88,6 +136,7 @@ export function Sidebar({ memberships, userName }: { memberships: NavProject[]; 
       {zones.map((zone, index) => (
         <nav
           key={zone.key}
+          data-sidebar-zone={zone.key}
           // ⚠️ **구역 라벨이 `<p>`라 접근성 트리에서 이름이 아니다** — 그러면 landmark 둘이 구별되지
           // 않아 "구역을 이름으로 말한다"가 스크린리더 사용자에게만 성립하지 않는다.
           aria-label={zone.label}
@@ -219,8 +268,12 @@ function Item({ item, active, collapsed = false }: { item: NavItem; active: bool
       )}
     >
       <PendingMark />
+      {/*
+        프로젝트 밖 목록 구역의 프로젝트 행은 아이콘 자리에 그 프로젝트의 얼굴(16)이 선다(sidebar-projects) — 구역 머리 썸네일과 같은
+        규격이라 라벨 시작점이 다른 항목과 한 세로선이다. 이름 글자가 옆에 있어 타일은 장식이다.
+      */}
       <span className="flex size-4 shrink-0 items-center justify-center">
-        <Icon className="size-4" aria-hidden />
+        {item.thumbnail ? <ProjectThumbnail name={item.label} src={item.thumbnail.src} size="xs" /> : <Icon className="size-4" aria-hidden />}
       </span>
       {/*
         ⚠️ **선택에 굵기를 주지 않는다** (2026-09-20 사용자 — 옛 판정 "선택의 굵기가 라벨에만 붙는다"의

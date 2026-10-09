@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 
-import { Box, CircleHelp, CircleUser, Compass, Files, History, House, Inbox, Languages, Settings, SlidersHorizontal, Users } from "lucide-react";
+import { Box, CircleHelp, CircleUser, Compass, Files, History, House, Inbox, Languages, Plus, Settings, SlidersHorizontal, Users } from "lucide-react";
 
 import { McpIcon } from "@/components/signin/brand-icons";
 
@@ -9,6 +9,7 @@ import type { Messages } from "@/lib/i18n";
 import { appVersion } from "@/lib/app-version";
 import { routes } from "@/lib/routes";
 import type { MembershipRow } from "@/lib/keys/query";
+import { menuProjects } from "@/lib/shell/switcher";
 
 /**
  * 셸 사이드바의 순수 판정. **클라이언트 컴포넌트가 읽으므로 무게가 붙는 것을 여기서 막는다** —
@@ -19,8 +20,10 @@ import type { MembershipRow } from "@/lib/keys/query";
  * 구역 라벨이 **이름 그대로**이며(`Your work` → 사용자 이름), 프로젝트 축 순서에서 **Locales가
  * Translations보다 앞**이고, 하단에 **Help**가 붙었다.
  * ⚠️ **그 뒤 사용자 결정이 시안을 넘었다** (2026-09-27): 사용자 축은 `Projects · New project · Account` 셋이었고(2026-09-28에
- * `Account` 앞에 `MCP connector`가 들었고, 2026-09-30에 `New project`가 앱 셸 헤더로 옮겨 `Projects · MCP connector · Account`다)
- * (`navWorkItems` — 헤더 사용자 메뉴의 첫 묶음도 이 목록이다 · 2026-10-09에 `Projects` 바로 뒤에 `Inbox`가 들었다), 하단은 `Changelog · Docs`다(2026-09-28 — GitHub Releases 외부 링크였던 첫 항목이 앱 안 `/changelog`가 됐다).
+ * `Account` 앞에 `MCP connector`가, 2026-09-30에 `New project`가 앱 셸 헤더로 빠지고, 2026-10-04에 `Account` 앞에 `Preferences`가,
+ * 2026-10-09에 `Projects` 바로 뒤에 `Inbox`가 들어 지금은 `Projects · Inbox · MCP connector · Preferences · Account`다)
+ * (`navWorkItems` — 헤더 사용자 메뉴의 첫 묶음도 이 목록이다), 하단은 `Changelog · Docs`다(2026-09-28 — GitHub Releases 외부 링크였던 첫 항목이 앱 안 `/changelog`가 됐다).
+ * ⚠️ **`New project`가 2026-10-09에 LNB로 돌아왔다** (사용자, sidebar-projects) — 사용자 축이 아니라 프로젝트 밖 **목록 구역의 끝 행**이다(`navZones`).
  */
 
 /**
@@ -140,12 +143,18 @@ export type NavItem = {
    * 거절 근거가 "매 페이지 왕복"이었고, 셸이 이미 부르는 조회에 얹으면 그 근거가 서지 않는다.
    */
   badge?: number | string;
+  /**
+   * 있으면 아이콘 자리에 `ProjectThumbnail`(16)이 선다 — 프로젝트 밖 목록 구역의 프로젝트 행(sidebar-projects). 이름은 `label`이 댄다.
+   * `src`가 없으면 이름 색 폴백 타일이다(목록 화면·스위처와 같은 색).
+   */
+  thumbnail?: { src: string | null };
 };
 
 /**
  * 사이드바의 구역. **라벨이 이름 그대로다** — 사용자 축은 사용자 이름, 프로젝트 축은 프로젝트 이름.
+ * 프로젝트 밖 목록 구역(`projects`)은 `Your projects`다 — 바로 위 사용자 구역의 `Projects` 링크와 랜드마크 이름이 겹치지 않게(sidebar-projects).
  */
-export type NavZone = { key: "work" | "project"; label: string; items: NavItem[] };
+export type NavZone = { key: "work" | "project" | "projects"; label: string; items: NavItem[] };
 
 /**
  * 사용자 축 항목 — **사이드바 사용자 구역과 헤더 사용자 메뉴의 첫 묶음이 이 목록 하나를 읽는다** (2026-09-27 사용자). 두 벌이면
@@ -201,8 +210,14 @@ export function navWorkItems(m: Messages, projectCount?: number): NavItem[] {
  * ⚠️ **순서가 정보구조다** — 사용자 축이 먼저다. 프로젝트는 "내 일 안의 하나"이고, 뒤집으면
  * 프로젝트가 없는 사용자에게 빈 자리가 위에 남는다.
  *
- * ⚠️ **`New project`가 사용자 축에 없다** (2026-09-30 사용자 — 2026-09-27의 "Projects 바로 아래"를 되돌렸다). 자리는
- * 앱 셸 헤더의 아바타 왼쪽 버튼이다(`components/shell/header.tsx`) — 사이드바와 헤더 메뉴가 이 목록을 함께 읽으므로 둘에서 같이 빠진다.
+ * ⚠️ **둘째 자리가 두 형이다** (2026-10-09 사용자, sidebar-projects) — 지금 프로젝트가 있으면 그 프로젝트의 구역, 없으면
+ * 프로젝트 축의 입구인 **내 프로젝트 목록 구역**(`projects`)이다. 프로젝트 구역은 늘 머리(썸네일·이름·스위처)가 있고 목록 구역은
+ * 머리가 없다 — **머리 없음이 "지금 프로젝트 아님"의 표시다.** 목록은 헤더 사용자 메뉴와 같은 `menuProjects`(보관 제외 · 앞 5)라
+ * 두 자리의 순서가 갈리지 않는다. 컨텍스트의 `projects`는 선택이다 — 생략하면 빈 목록(목록 구역은 `New project` 한 행)이다.
+ *
+ * ⚠️ **`New project`가 사용자 축에 없다** (2026-09-30 사용자 — 2026-09-27의 "Projects 바로 아래"를 되돌렸다). 사이드바와 헤더 메뉴가
+ * 이 목록을 함께 읽으므로 둘에서 같이 빠진다. 앱 셸 헤더의 아바타 왼쪽 버튼(`components/shell/header.tsx`)이 있고,
+ * **프로젝트 밖 목록 구역의 끝 행에도 있다**(2026-10-09 — 헤더 버튼·`/projects` 본문과 겹치는 것은 사용자가 수용했다).
  *
  * ⚠️ **프로젝트 구역은 `projectSections`를 그대로 든다.** 여기서 역할을 다시 보면 권한표가 두 벌이
  * 되고 그중 하나가 낡는다 — 판정은 `canPerform` 한 곳이다.
@@ -210,14 +225,16 @@ export function navWorkItems(m: Messages, projectCount?: number): NavItem[] {
 export function navZones(
   m: Messages,
   project: NavProject | null,
-  context: { userName: string; projectCount: number },
+  context: { userName: string; projectCount: number; projects?: readonly NavProject[] },
 ): NavZone[] {
   const work: NavZone = {
     key: "work",
     label: context.userName,
     items: navWorkItems(m, context.projectCount),
   };
-  if (project === null) return [work];
+  if (project === null) {
+    return [work, { key: "projects", label: m.common.nav.yourProjects, items: [...menuProjects(context.projects ?? []).map(projectRow), newProjectItem(m)] }];
+  }
 
   return [
     work,
@@ -234,6 +251,23 @@ export function navZones(
       })),
     },
   ];
+}
+
+/**
+ * 목록 구역의 프로젝트 행 — 누르면 그 프로젝트 Home이다(PRODUCT IA 결정 1). ⚠️ **`icon`은 읽히지 않는 값이다** — `thumbnail`이 있으면
+ * 사이드바가 썸네일을 그린다. 타입상 필수라 넣고, 어긋날 일이 없게 썸네일의 폴백 글리프·`Projects` 항목과 같은 `Box`다.
+ * ⚠️ `exact: true`는 형식이다 — 이 구역은 지금 프로젝트가 없을 때만 서므로 프로젝트 행이 활성일 수 없다.
+ */
+function projectRow(project: NavProject): NavItem {
+  return { key: `project:${project.slug}`, label: project.name, icon: Box, href: routes.project(project.slug), exact: true, thumbnail: { src: project.image ?? null } };
+}
+
+/**
+ * 목록 구역의 끝 행. 글리프는 헤더 버튼·검색 Pages 색인과 같은 `Plus`다(같은 목적지 = 같은 글리프 — DESIGN §6.5).
+ * 정확히 일치라 `/projects/new`에서 이 행만 선택되고 `Projects`는 아니다.
+ */
+function newProjectItem(m: Messages): NavItem {
+  return { key: "new-project", label: m.common.nav.newProject, icon: Plus, href: routes.newProject(), exact: true };
 }
 
 /**

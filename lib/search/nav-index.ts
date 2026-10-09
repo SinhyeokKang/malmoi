@@ -9,7 +9,7 @@ type NavIcon = NavItem["icon"];
 /**
  * 셸 내비에서 검색 색인을 만든다. 멤버십이 없으면(비로그인·`unauthorized`·`unavailable`) Projects·Pages가 비어 Docs만 찾는다
  * (search-ux-unify C1·C4·D7). 하단 항목은 `changelog`만 싣는다 — `/docs` 행은 Docs 그룹의 `Go to docs` 하나다(D8).
- * 각 Pages 항목은 같은 nav 항목의 아이콘을, 프로젝트 구역 항목은 그 프로젝트의 보관 여부를 싣는다. `New project`는 nav 항목이 없어 헤더 버튼과 같은 `Plus`다.
+ * 각 Pages 항목은 같은 nav 항목의 아이콘을, 프로젝트 구역 항목은 그 프로젝트의 보관 여부를 싣는다. `New project`는 헤더 버튼·LNB 목록 구역 끝 행과 같은 `Plus`다(같은 목적지 = 같은 글리프).
  */
 export function navSearchEntries(m: Messages, memberships: readonly NavProject[] | null, { userName }: { activeSlug: string | null; userName: string }): Omit<SearchIndex<NavIcon>, "docs"> {
   if (memberships === null) return { authenticated: false, projects: [], pages: [] };

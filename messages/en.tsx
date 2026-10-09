@@ -399,8 +399,18 @@ export const en = {
        */
       projectSettings: "Settings",
       signOut: "Sign out",
-      /** 사이드바 사용자 구역의 `Projects` 바로 아래 항목 (2026-09-27 사용자 — 8-3의 "사이드바에는 없다"를 뒤집었다). 목록 화면의 버튼·빈 상태도 쓴다. */
+      /**
+       * 같은 행동의 이름 하나 — LNB 프로젝트 목록 구역의 끝 행(2026-10-09 sidebar-projects — 9-30에 사용자 축에서 빠졌다가 돌아왔다) ·
+       * 앱 셸 헤더 버튼 · 스위처 맨 아래 행 · 목록 화면의 버튼·빈 상태 · 검색 Pages 색인이 함께 읽는다.
+       */
       newProject: "New project",
+      /**
+       * 프로젝트 밖 LNB 목록 구역의 `aria-label` (2026-10-09 sidebar-projects) — **보이는 글자가 아니다**(구역에 머리 줄이 없다).
+       * 바로 위 사용자 구역의 `Projects` 링크와 랜드마크 이름이 같으면 스크린리더 랜드마크 목록에서 둘이 구별되지 않는다.
+       * ⚠️ 위 `home` 주석의 "도착한 화면이 `Your projects`라고 말하면…"은 **보이는 제목**의 규칙이라 이것과 충돌하지 않는다 —
+       * 이 이름은 어느 화면의 제목도 아니고 링크 이름도 아니다.
+       */
+      yourProjects: "Your projects",
       userMenu: "Account menu",
       /** LNB 맨 아래 접기 토글 (2026-09-28 사용자 — 8-3이 지운 접기가 돌아왔다). 접힌 레일에선 `title`로도 보인다. */
       collapseSidebar: "Collapse sidebar",

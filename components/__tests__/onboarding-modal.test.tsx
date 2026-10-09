@@ -322,3 +322,43 @@ it("className overrides the same Content root while body scrolling and focus sta
   expect(body.classList.contains("overflow-y-auto")).toBe(true);
   expect(document.activeElement).toBe(body);
 });
+
+/**
+ * **트리거 없이 연 LargeModal도 연 자리로 돌아온다** (malmoi#207). 헤더 `New project` 링크가 여는 인터셉트 모달(`(.)new`)은 `DialogTrigger`가 없고
+ * `open`이 늘 참이며, 닫기(×·Esc)는 `router.back()`이라 **`@modal` 슬롯이 비면서 모달 전체가 언마운트**된다. Radix 모달 Content는 닫힘 자동 포커스를
+ * 늘 `preventDefault`하고 `triggerRef`로 보내므로, 트리거가 없으면 포커스가 `body`에 남았다(실물 Chromium 재현). `DialogContent`·`CommandDialog`는
+ * `dialog.tsx`의 최근 기록으로 그 빈자리를 메우는데 LargeModal만 빠져 있었다.
+ * ⚠️ 슬롯의 `Suspense`가 폴백 모달을 실제 모달로 **바꿔 끼운다**(다른 인스턴스) — 그 사이 `activeElement`가 `body`라 FocusScope의 "열 때 포커스"도 믿을 수 없다.
+ */
+describe("LargeModal — 트리거 없이 연 모달의 복귀 (#207)", () => {
+  it("헤더 링크로 연 모달이 슬롯째 사라지면 포커스가 그 링크로 돌아온다 — Suspense 폴백 교체를 지나도", async () => {
+    let link: HTMLAnchorElement | null = null;
+    const tree = (modal: "fallback" | "loaded" | null) => <>
+      <a href="/projects/new" ref={(node) => { link = node; }}>New project</a>
+      {modal !== null && <LargeModal key={modal} open title="New project" onClose={noop} actions={null}><p>body</p></LargeModal>}
+    </>;
+    const { rerender } = await render(tree(null));
+    link!.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+    link!.focus();
+    await rerender(tree("fallback"));
+    await rerender(tree("loaded"));
+    expect(dialog().contains(document.activeElement)).toBe(true);
+    // `router.back()` — `open`은 참인 채 슬롯이 비며 언마운트된다. Radix 복귀는 FocusScope 언마운트의 타이머 뒤다.
+    await rerender(tree(null));
+    await vi.waitFor(() => expect(document.activeElement).toBe(link));
+  });
+
+  it("returnFocusRef를 준 소비자는 그대로 그 ref로 돌아온다", async () => {
+    const target = { current: null as HTMLButtonElement | null };
+    const tree = (open: boolean) => <>
+      <Button ref={(node) => { target.current = node; }}>Return here</Button>
+      <Button>Opened from</Button>
+      {open && <LargeModal open title="Edit" onClose={noop} actions={null} returnFocusRef={target}><p>body</p></LargeModal>}
+    </>;
+    const { rerender } = await render(tree(false));
+    buttonNamed("Opened from")!.focus();
+    await rerender(tree(true));
+    await rerender(tree(false));
+    await vi.waitFor(() => expect(document.activeElement).toBe(target.current));
+  });
+});

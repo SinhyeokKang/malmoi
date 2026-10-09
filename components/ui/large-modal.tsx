@@ -4,6 +4,7 @@ import { Dialog as Primitive } from "radix-ui";
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 
 import { CloseButton } from "@/components/ui/close-button";
+import { closeAutoFocus } from "@/components/ui/dialog";
 import { useMessages } from "@/components/i18n/messages-provider";
 import type { Step } from "@/lib/onboarding/next-enabled";
 import { cn } from "@/lib/utils";
@@ -131,7 +132,12 @@ export function LargeModal({
               ? (event) => { event.preventDefault(); (initialFocusRef.current ?? (event.currentTarget as HTMLElement)).focus(); }
               : transitionKey === undefined ? undefined : (event) => { event.preventDefault(); (event.currentTarget as HTMLElement).focus(); }
           }
-          onCloseAutoFocus={returnFocusRef === undefined ? undefined : (event) => {
+          /**
+           * ⚠️ **`returnFocusRef`가 없으면 `Dialog`와 같은 최근 기록 복귀다** (malmoi#207). Radix 모달 Content는 닫힘 자동 포커스를 늘 막고 `triggerRef`로
+           * 보내는데 이 껍데기엔 트리거가 없다 — 헤더 링크가 여는 New project 모달(`open` 늘 참, 닫기 = `router.back()`으로 슬롯째 언마운트)은 닫으면
+           * `body`에 남았다. FocusScope의 "열 때 포커스"도 못 믿는다 — 슬롯의 `Suspense`가 폴백 모달을 실제 모달로 바꿔 끼우는 사이 `body`다.
+           */
+          onCloseAutoFocus={returnFocusRef === undefined ? (event) => closeAutoFocus(event) : (event) => {
             event.preventDefault();
             const target = returnFocusRef.current;
             if (target?.isConnected && !target.matches(":disabled")) target.focus();

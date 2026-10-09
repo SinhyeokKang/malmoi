@@ -209,7 +209,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 | `dev` | 상시 작업 브랜치. **push = Vercel preview 배포** (dev DB를 본다) | `/push` |
 | `main` | 프로덕션. **머지 = Vercel 프로덕션 배포** (`https://mal-moi.com`) | `/merge` (dev→main squash PR) → `v<x.y.z>` 태그 + GitHub Release |
 
-- **GitHub default branch는 `main`이다** (2026-09-26 — 공개 리포라 방문자·기여자가 보는 브랜치가 프로덕션이어야 하고, `dev`는 `/sync`가 force push해 그 위에 뜬 fork·PR이 깨진다). ⚠️ **대상 리포의 composite action 참조는 `@malmoi-i18n-push-v2`(불변 태그 — v1은 워크플로를 다시 복사하지 않은 기존 소비자용으로 옮기지 않는다)이고 `@main`이 아니다** — 그 스텝에 `secrets.PUSH_TOKEN`이 들어가므로 `main`에 닿는 커밋 하나가 대상 리포 러너에서 즉시 돈다. 그 태그를 옮기는 것이 action 릴리스다(앱 릴리스와 별개 — 아래 "릴리스 & 버전").
+- **GitHub default branch는 `main`이다** (2026-09-26 — 공개 리포라 방문자·기여자가 보는 브랜치가 프로덕션이어야 하고, `dev`는 `/sync`가 force push해 그 위에 뜬 fork·PR이 깨진다). ⚠️ **대상 리포의 composite action 참조는 `@malmoi-i18n-push-v3`(불변 태그 — v1·v2는 워크플로를 다시 복사하지 않은 기존 소비자용으로 옮기지 않는다)이고 `@main`이 아니다** — 그 스텝에 `secrets.PUSH_TOKEN`이 들어가므로 `main`에 닿는 커밋 하나가 대상 리포 러너에서 즉시 돈다. 그 태그를 옮기는 것이 action 릴리스다(앱 릴리스와 별개 — 아래 "릴리스 & 버전").
 - **`main`에 직접 커밋·푸시하지 않는다.**
 - **preview는 dev DB를 본다.** dev 브랜치 고정 URL은 **`https://dev.mal-moi.com`**이다. ⚠️ **로그인은 이 URL에서만 된다** — 배포별 URL(`malmoi-<hash>-…`)은 매 푸시마다 바뀌어 OAuth에 등록할 수 없고, Auth.js가 요청 헤더로 origin을 만들어 그 URL이 `redirect_uri`로 나가 공급자가 거부한다. **GitHub과 Google이 동시에 거부하면 자격증명이 아니라 URL 문제다.** ⚠️ **새 호스트를 늘리면 `lib/github-connect/origin.ts`의 `ALLOWED_HOSTS`도 함께 늘린다** — 빠뜨리면 그 호스트에서 병합 확인이 `/signin?error=Unavailable`로, callback이 실패 착지로 떨어진다(경위는 POSTMORTEM). ⚠️ **preview는 Vercel SSO 뒤에 있다** — `curl`로 찌르면 `vercel.com/sso-api`로 가는 302가 온다(앱이 깨진 것으로 오진하기 쉽다).
 - **되돌리는 유일한 방법은 다음 배포다.** revert 커밋을 dev에 얹어 같은 경로로 보낸다.

@@ -137,7 +137,7 @@ const CLIENT_LIB_FILES = [
   "lib/keys/flag.ts",
   // 랜딩 스테이지가 스크롤 위치마다 값으로 읽는 수학 — import 0인 잎이다(아래 잎 검사).
   "lib/landing/stage.ts",
-  // LNB 프로젝트 스위처의 목록 필터 — import 0인 잎이다.
+  // LNB 프로젝트 스위처·사용자 메뉴·LNB 목록 구역의 목록 판정 — `lib/search/match.ts`(import 0) 하나만 무는 잎이다.
   "lib/shell/switcher.ts",
   "lib/login-link/message.ts",
   "lib/login-link/policy.ts",
@@ -567,11 +567,12 @@ describe("클라이언트 그래프", () => {
     expect([...graph.packages].filter(name => !allowed(name))).toEqual([]);
   });
 
+  // `lib/shell/nav.ts`가 프로젝트 밖 목록 구역(sidebar-projects)에 `menuProjects`를 읽어 switcher·match 두 잎이 붙었다 — switcher는 match 하나를 물고 match는 import 0이다.
   it("검색 nav-index는 기존 클라이언트 내비와 사전만 문다", () => {
     const graph = walk([join(ROOT, "lib/search/nav-index.ts")]);
     expect([...graph.files].map(file => file.slice(ROOT.length)).sort()).toEqual([
       "components/signin/brand-icons.tsx", "lib/app-version.ts", "lib/auth/permission.ts",
-      "lib/routes.ts", "lib/search/nav-index.ts", "lib/shell/nav.ts",
+      "lib/routes.ts", "lib/search/match.ts", "lib/search/nav-index.ts", "lib/shell/nav.ts", "lib/shell/switcher.ts",
     ]);
     expect([...graph.packages].filter(name => !allowed(name))).toEqual([]);
   });
@@ -581,7 +582,7 @@ describe("클라이언트 그래프", () => {
     expect([...graph.files].map(file => file.slice(ROOT.length)).sort()).toEqual([
       "components/signin/brand-icons.tsx", "lib/app-version.ts", "lib/auth/permission.ts", "lib/routes.ts",
       "lib/search/highlight.ts", "lib/search/key-href.ts", "lib/search/match.ts", "lib/search/rows.ts", "lib/shell/nav.ts",
-      "lib/translations/query.ts",
+      "lib/shell/switcher.ts", "lib/translations/query.ts",
     ]);
     expect([...graph.packages].filter(name => !allowed(name))).toEqual([]);
   });

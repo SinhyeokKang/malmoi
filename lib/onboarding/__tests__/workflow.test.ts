@@ -105,7 +105,7 @@ describe("renderProjectWorkflowYaml — 표면 하나", () => {
     expect(yml).toContain("${{ secrets.PUSH_TOKEN }}");
     // ⚠️ **불변 태그다** (2026-09-09, sec-audit 발견 3) — `@main`이면 말모이 main의 커밋 하나가
     // `secrets.PUSH_TOKEN`을 든 대상 리포 러너에서 즉시 돈다.
-    expect(yml).toContain("SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v2");
+    expect(yml).toContain("SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v3");
   });
 
   /**
@@ -202,7 +202,7 @@ describe("renderProjectWorkflowYaml — 표면마다 step 하나", () => {
 
   it("표면 둘이면 push step이 둘이고 checkout은 하나다", () => {
     const yml = render([one, two]);
-    expect(yml.split("malmoi-i18n-push@malmoi-i18n-push-v2").length - 1).toBe(2);
+    expect(yml.split("malmoi-i18n-push@malmoi-i18n-push-v3").length - 1).toBe(2);
     expect(yml.split("actions/checkout@").length - 1).toBe(1);
   });
 

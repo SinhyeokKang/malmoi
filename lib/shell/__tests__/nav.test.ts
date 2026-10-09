@@ -1,12 +1,13 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { CircleHelp, Compass, Inbox, SlidersHorizontal } from "lucide-react";
+import { Box, CircleHelp, Compass, Inbox, Plus, SlidersHorizontal } from "lucide-react";
 
 import { McpIcon } from "@/components/signin/brand-icons";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { Role } from "@/lib/auth/permission";
+import { routes } from "@/lib/routes";
 import { en } from "@/messages/en";
 import { activeProject, navFooterItems, navZones, projectSections, type NavProject } from "../nav";
 
@@ -213,8 +214,12 @@ describe("navZones — 사용자 축과 프로젝트 축 (PRODUCT §7.7 · 8-3 �
     expect(navZones(en, project("OWNER"), ctx).map((z) => z.key)).toEqual(["work", "project"]);
   });
 
-  it("컨텍스트가 없으면 사용자 축 하나다 — 목록·생성·계정 화면에서 프로젝트 항목을 지어내지 않는다", () => {
-    expect(navZones(en, null, ctx).map((z) => z.key)).toEqual(["work"]);
+  /**
+   * ⚠️ **2026-10-09에 뒤집혔다** (사용자, sidebar-projects) — 옛 판정은 "컨텍스트가 없으면 사용자 축 하나"였다. 이제 둘째 자리에
+   * 프로젝트 축의 입구(내 프로젝트 목록 구역)가 선다. 프로젝트 이름·역할을 지어내지 않는 것은 그대로다 — 목록은 멤버십에서 온다.
+   */
+  it("컨텍스트가 없으면 사용자 축 다음에 프로젝트 목록 구역이 선다 — 프로젝트 구역을 지어내지 않는다", () => {
+    expect(navZones(en, null, ctx).map((z) => z.key)).toEqual(["work", "projects"]);
   });
 
   /**
@@ -322,6 +327,69 @@ describe("navZones — 사용자 축과 프로젝트 축 (PRODUCT §7.7 · 8-3 �
         // 화면이 문자열을 조립하지 않는다 — slug를 아는 것은 이 함수다 (`lib/routes.ts`).
         expect(item.href, item.key).toMatch(/^\//);
       }
+    }
+  });
+});
+
+/**
+ * **프로젝트 밖 사이드바의 둘째 구역 = 내 프로젝트 목록** (2026-10-09 사용자, sidebar-projects). 지금 프로젝트가 없는 자리에서
+ * 둘째 자리는 프로젝트 축의 입구다 — 아바타 메뉴와 **같은 목록**(`menuProjects` — 보관 제외 · 스위처 빈 질의 순서 · 앞 5)에
+ * 끝 행 `New project`. ⚠️ `New project`는 여전히 사용자 축에 없다(9-30 결정 중 유효한 부분) — 이 구역의 끝 행이다.
+ */
+describe("navZones — 프로젝트 밖 목록 구역 (sidebar-projects)", () => {
+  const p = (slug: string, extra: Partial<NavProject> = {}): NavProject => ({ slug, name: slug.toUpperCase(), role: "EDITOR", archived: false, ...extra });
+  const zone = (projects?: readonly NavProject[]) =>
+    navZones(en, null, { userName: "Shin", projectCount: projects?.length ?? 0, ...(projects === undefined ? {} : { projects }) })[1];
+  const keys = (projects?: readonly NavProject[]) => zone(projects)?.items.map((i) => i.key);
+
+  it("구역 key는 projects이고 aria-label은 Your projects다 — 위 Projects 링크와 랜드마크 이름이 겹치지 않는다", () => {
+    expect(zone([p("acme")])?.key).toBe("projects");
+    expect(zone([p("acme")])?.label).toBe(en.common.nav.yourProjects);
+    expect(en.common.nav.yourProjects).toBe("Your projects");
+    expect(en.common.nav.yourProjects).not.toBe(en.common.nav.projects);
+  });
+
+  it("6개면 menuProjects 순서의 앞 5 + New project다 — 보관은 빠진다", () => {
+    const rows = [p("f"), p("b"), p("x", { archived: true }), p("a"), p("e"), p("c"), p("d")];
+    // 멤버십은 slug 순으로 오지만 판정은 받은 순서를 그대로 쓴다(스위처 빈 질의 = 보관 아닌 것의 원래 순서).
+    expect(keys(rows)).toEqual(["project:f", "project:b", "project:a", "project:e", "project:c", "new-project"]);
+  });
+
+  it("프로젝트 행 — 이름 · Home href(routes.project) · 정확히 일치 · 썸네일 src = image ?? null · 배지 없음", () => {
+    const items = zone([p("acme", { name: "Acme", image: "https://blob.example/a.webp" }), p("beta", { name: "Beta" })])?.items ?? [];
+    expect(items[0]).toMatchObject({ key: "project:acme", label: "Acme", href: routes.project("acme"), exact: true, thumbnail: { src: "https://blob.example/a.webp" } });
+    expect(items[1]).toMatchObject({ key: "project:beta", label: "Beta", href: routes.project("beta"), exact: true, thumbnail: { src: null } });
+    // 썸네일이 서면 읽히지 않는 값이지만, 어긋나지 않게 목록 행·폴백 글리프와 같은 `Box`다.
+    expect(items[0]?.icon).toBe(Box);
+    expect(items.every((i) => i.badge === undefined)).toBe(true);
+  });
+
+  it("마지막 행은 New project다 — Plus · routes.newProject() · 정확히 일치 · 썸네일 없음", () => {
+    const last = zone([p("acme")])?.items.at(-1);
+    expect(last).toMatchObject({ key: "new-project", label: en.common.nav.newProject, href: routes.newProject(), exact: true });
+    expect(last?.icon).toBe(Plus);
+    expect(last?.thumbnail).toBeUndefined();
+  });
+
+  it("보관 안 된 프로젝트가 0이면 New project 한 행이다 — 소속 없음 · 보관만 · projects 생략", () => {
+    expect(keys([])).toEqual(["new-project"]);
+    expect(keys([p("old", { archived: true })])).toEqual(["new-project"]);
+    expect(keys(undefined)).toEqual(["new-project"]);
+  });
+
+  it("사용자 축은 그대로다 — New project가 사용자 구역에 들지 않는다", () => {
+    const work = navZones(en, null, { userName: "Shin", projectCount: 1, projects: [p("acme")] })[0];
+    expect(work?.items.map((i) => i.key)).toEqual(["projects", "inbox", "mcp", "preferences", "account"]);
+  });
+
+  /** 완료 조건 6 — 프로젝트 라우트는 지금과 같다. `projects`를 넘겨도 목록 구역이 서지 않는다. */
+  it("지금 프로젝트가 있으면 projects를 넘겨도 결과가 같다 — 보관 프로젝트도 프로젝트 구역이다", () => {
+    const rows = [p("acme", { role: "OWNER" }), p("beta")];
+    for (const current of [rows[0]!, p("gone", { archived: true, role: "OWNER" })]) {
+      const without = navZones(en, current, { userName: "Shin", projectCount: 2 });
+      const withList = navZones(en, current, { userName: "Shin", projectCount: 2, projects: rows });
+      expect(withList.map((z) => z.key)).toEqual(["work", "project"]);
+      expect(withList).toEqual(without);
     }
   });
 });

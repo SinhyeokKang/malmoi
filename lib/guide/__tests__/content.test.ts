@@ -96,6 +96,8 @@ const ARIA_ONLY: ReadonlySet<string> = new Set([
   "inbox.label",
   "inbox.unread",
   "inbox.loading",
+  // LNB 프로젝트 밖 목록 구역의 랜드마크 이름(sidebar-projects) — 구역에 머리 줄이 없어 화면에 글자가 없다.
+  "common.nav.yourProjects",
 ]);
 
 function headingsBefore(treeValue: ReturnType<typeof parseMd>, node: { position?: { start: { line: number } } }): string | null {
