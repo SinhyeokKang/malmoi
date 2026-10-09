@@ -483,8 +483,6 @@ Hobby 플랜이라 `--duration`·system bypass를 못 쓴다. ⚠️ **`/oauth/t
 
 **공식 지원은 Linux 단일 서버의 Docker Compose다**(앱 한 인스턴스 + 일반 Postgres 17 + 업로드 볼륨 + 야간 스케줄러, HTTPS reverse proxy 뒤 도메인 루트, 검증 플랫폼 `linux/amd64`). 지원 대상은 **최신 앱 태그 하나**이고 창구는 GitHub Issues의 best-effort다. 범위·비범위의 정본은 PRODUCT §4.1·§4.2, DB 롤 계약은 ARCHITECTURE §7 "self-hosted DB"다 — 이 절은 **다시 실행할 절차만** 든다. 명령은 전부 리포의 `deploy/` 디렉터리에서 돈다(`cd deploy`). 이미지는 매 앱 태그 `v<x.y.z>`마다 GHCR(`ghcr.io/sinhyeokkang/malmoi`)에 발행되고 태그는 action 태그(`malmoi-i18n-push-vN`)와 독립이다.
 
-⚠️ **백업·복원 명령(아래 "백업"·"빈 볼륨 복원")과 계정 삭제 SQL은 이 절을 쓴 시점에 컨테이너에서 실행되지 않았다**(Docker 없이 작성) — "셀프 호스팅 실습 기록"에 해당 행의 결과가 생기면 이 경고를 지운다. 미실행을 통과로 읽지 않는다.
-
 ### 외부 앱 등록 — 설치 전에 운영자가 만든다
 
 호스팅 서비스(mal-moi.com)의 OAuth App·GitHub App·Resend 도메인·키를 **복사하지 않는다** — 전부 운영자 자신의 것이다. `<ORIGIN>`은 `MALMOI_ORIGIN` 값이다.
@@ -748,4 +746,23 @@ SH-10 등 [수동] 항목의 실행 증거를 남기는 자리다(**릴리스 �
 
 | 날짜 | 항목 | 이미지 digest | Postgres | migration 상태 | 걸린 시간 | 결과 |
 |---|---|---|---|---|---|---|
-| — | — | — | — | — | — | — |
+| 2026-10-09 | 이미지 빌드 — env 없이(`env -i PATH HOME docker build --platform linux/amd64`) · 비밀 검사(`docker history` grep 0줄, 컨테이너 FS에서 로컬 `.env.local` 비밀 값 24개 대조 0건) · 도구(psql·pg_isready 15.19, pnpm 10.33.0, node v24.21.0, uid 1000, `/app` 쓰기 거부, `.next/cache`·`/data/uploads` 쓰기, 오프라인 pnpm) | `sha256:cfb37a8f…4e52b84`(로컬 빌드 `linux/amd64`, 레지스트리 digest 아님) | — | — | 빌드 2분 34초(Colima vz+Rosetta) | 성공 |
+| 2026-10-09 | 첫 설치 `docker compose up -d`(`config -q` 통과 · `nginx -t` ok) — postgres healthy → migrate Exited 0 → web healthy → proxy·scheduler · 런타임 롤 `malmoi_app` super/createrole/createdb/bypassrls 전부 f · PUBLIC USAGE f · `docker compose port` postgres·web 빈 값, 호스트 5432·3000 닫힘 | `sha256:cfb37a8f…4e52b84`(로컬 빌드 `linux/amd64`, 레지스트리 digest 아님) | 17.6 | 42개 적용(마지막 `20261005090000_add_user_attention_seen_at`) | 43초 | 성공 |
+| 2026-10-09 | 빈 볼륨 첫 설치 반복 `down -v && up -d` ×5(+2회 첫 요청 측정) | `sha256:cfb37a8f…4e52b84`(로컬 빌드 `linux/amd64`, 레지스트리 digest 아님) | 17.6 | 매번 42개 적용 | 회당 15~17초 | 성공 — migrate 5/5 exit 0, 첫 요청은 리슨 전 연결 실패 1회 뒤 200(502 없음) |
+| 2026-10-09 | 실패 경로 — `MIGRATE_DB_PASSWORD` 틀림(P1000, web·proxy·scheduler Created에서 멈춤) · `RESEND_API_KEY` 빈 값(`preflight: RESEND_API_KEY missing`만, 25초에 재시작 8회, proxy·scheduler 미기동) · `http://` origin + 잘못된 키(`not-https`·`invalid-format`) | `sha256:cfb37a8f…4e52b84`(로컬 빌드 `linux/amd64`, 레지스트리 digest 아님) | 17.6 | — | — | 성공(값 미출력) |
+| 2026-10-09 | proxy — HSTS 정확히 1개 `max-age=63072000`(200·301 대상·404·429·502·정적 자산) · 80→443 301(query 유지) · 429(`/api/images/` 800회 중 556, 병렬 뒤 `/oauth/authorize`도 429 — zone 공유) · web만 재생성 뒤 proxy 무재생성 5초 안 200 · 위조 `Host`·`X-Forwarded-Host`·`X-Forwarded-Proto` 무시(well-known·Auth.js redirect_uri 설정 origin 유지, 직접 web에 위조 Host면 404) · Server Action Origin 일치 200 / 불일치 거부 | `sha256:cfb37a8f…4e52b84`(로컬 빌드 `linux/amd64`, 레지스트리 digest 아님) | 17.6 | — | — | 성공 |
+| 2026-10-09 | 공개 응답 — robots `Disallow: /` · 페이지 `X-Robots-Tag: noindex` · `/sitemap.xml`·`/llms.txt`·`/llms-full.txt` 404 · `/privacy` 307 → `MALMOI_PRIVACY_URL` · Analytics 스크립트 0 · `/signin` 동의 링크 새 탭 | `sha256:cfb37a8f…4e52b84`(로컬 빌드 `linux/amd64`, 레지스트리 digest 아님) | 17.6 | — | — | 성공(canonical·og·JSON-LD는 설계대로 hosted origin) |
+| 2026-10-09 | 두 origin(`a.malmoi.localhost`·`b.malmoi.localhost`, 같은 이미지 ID) — issuer·token endpoint·protected-resource·Auth.js callback·signin redirect·80→443이 각자 origin, 교차 Host 404 | `sha256:cfb37a8f…4e52b84`(로컬 빌드 `linux/amd64`, 레지스트리 digest 아님) | 17.6 | — | — | 성공 |
+| 2026-10-09 | 업로드 볼륨(스크립트 — 화면 왕복은 OAuth 없어 미실행) — `putImage`→`/api/images/…` 200(uid 1000 소유)·경로 탈출 키 거부·`deleteImage` 뒤 404 · web+postgres 재생성 뒤 유지 · sharp 정규화 800×600 PNG → 192×144 WebP | `sha256:cfb37a8f…4e52b84`(로컬 빌드 `linux/amd64`, 레지스트리 digest 아님) | 17.6 | — | — | 성공(UI 업로드 미실행) |
+| 2026-10-09 | 스케줄러 — 즉시 호출 → web `[pull] targets=…` 줄 · 틀린 `CRON_SECRET` → `curl: (22) … 401` · 매분 crontab으로 자동 1회 · 두 컨테이너 동시 호출 둘 다 200 · `ps`에 비밀 없음 | `sha256:cfb37a8f…4e52b84`(로컬 빌드 `linux/amd64`, 레지스트리 digest 아님) | 17.6 | — | — | 성공(대상 프로젝트 0개 — 프로젝트별 동시 결과는 미실행) |
+| 2026-10-09 | 키 운영 — `docker compose run --rm --no-deps -e DIRECT_URL web pnpm credentials:self-hosted`가 db 망에서 접속 · `verify` · 토큰 키 회전(check-only `oldTokenKey:1` → `--apply` → `verify` 0) · `credentials:finalize:self-hosted`(`--apply` 포함) `pending:false` | `sha256:cfb37a8f…4e52b84`(로컬 빌드 `linux/amd64`, 레지스트리 digest 아님) | 17.6 | 42 | 차단~복귀 28초 | 성공(`--apply`의 `migrate deploy` 실행은 pending이 없어 미관측) |
+| 2026-10-09 | 업데이트 — `pull --ignore-buildable`(scheduler 건너뜀; 로컬 태그 앱 이미지는 레지스트리에 없어 거부) · `run --rm migrate`(No pending, bootstrap 멱등) · 새 태그로 `up -d --force-recreate --no-deps web proxy scheduler` 2초 안 200, `EACCES`·`preflight:` 0 | `sha256:cfb37a8f…4e52b84`(로컬 빌드 `linux/amd64`, 레지스트리 digest 아님) | 17.6 | 42 그대로 | — | 성공(레지스트리 pull은 미실행) |
+| 2026-10-09 | 백업 → `down -v` → 빈 볼륨 복원(이 절 절차 그대로, 운영 스택 없는 머신) — pg_restore 오류 0 · 행 수 동일(User 2·초대 2·Account 1) · bootstrap이 런타임 롤 생성·PUBLIC USAGE f · 업로드 이미지 200 · PII·토큰 복호화(회전된 키 포함) · `verify` 0 | `sha256:cfb37a8f…4e52b84`(로컬 빌드 `linux/amd64`, 레지스트리 digest 아님) | 17.6 | 42 = 42 | 정지~백업 17초 · 복원 1~6단계 약 30초 | 성공 |
+| 2026-10-09 | 계정 삭제 절차 — HMAC 색인 스니펫이 대상 `User`·미수락 초대를 찾음 · 트랜잭션: OWNER 판정 0행 → 멤버 1·보낸 초대 1·받은 초대 1·User 1 삭제, Account cascade | `sha256:cfb37a8f…4e52b84`(로컬 빌드 `linux/amd64`, 레지스트리 digest 아님) | 17.6 | 42 | — | 성공 |
+| — | 로그인(GitHub·Google)·프로젝트 생성·생성 워크플로 `api-url`·초대 메일·MCP 연결·`/projects` 스트리밍·GHCR 발행 | — | — | — | — | 미실행(외부 OAuth·App·메일 없음) |
+
+실습에서 본 것(절차·동작 차이, 2026-10-09):
+- 빈 볼륨 복원 4단계의 `docker volume create malmoi_uploads` 뒤로 모든 compose 명령이 `volume "malmoi_uploads" already exists but was not created by Docker Compose` 경고를 낸다(동작 무관, `down -v`는 그 볼륨도 지운다).
+- 복원 6단계 `up -d web proxy`는 `depends_on` 때문에 migrate를 한 번 더 돈다(멱등이라 무해).
+- 백업 manifest는 `chmod -R go-rwx` 뒤에 만들어지면 644로 남는다 — manifest까지 쓴 뒤 권한을 건다.
+- nginx 기본 access log가 `/invite/<토큰>`과 `?code=…&state=…`를 원문으로 남긴다(web 로그는 0건) — proxy 로그 보존·공유는 토큰을 다루듯 한다.
