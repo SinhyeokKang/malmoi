@@ -9,6 +9,8 @@ web 컨테이너는 `pnpm preflight && next start`로 시작합니다. 검사가
 | 사유 | 뜻 | 고칠 곳 |
 | --- | --- | --- |
 | `missing` | 필수 이름이 없거나 비어 있습니다 | `deploy/.env`. Compose가 채우는 이름이면 Compose의 `environment` 목록 |
+| `incomplete-pair` | 로그인 공급자의 두 값 중 하나만 있습니다. 줄에 빠진 쪽 이름(예: `AUTH_GOOGLE_SECRET`)이 찍힙니다 | 빠진 값을 채우거나, 그 공급자를 끄려면 두 값을 모두 비웁니다 |
+| `no-login-provider` | 켜진 로그인 공급자가 없습니다. 두 줄이 `AUTH_GITHUB_ID`와 `AUTH_GOOGLE_ID`를 가리킵니다 | 완전한 쌍을 하나 이상 채웁니다([설정](install.md#settings)) |
 | `invalid-format` | 모양이 틀렸습니다. `RESEND_API_KEY`는 `re_`로 시작, `INVITATION_EMAIL_FROM`은 `이름 <주소>`나 주소, `GITHUB_APP_SLUG`는 `[a-z0-9-]`, `AUTH_TRUST_HOST`는 `true`만 | 해당 값 |
 | `malformed` · `not-https` · `userinfo` | `MALMOI_ORIGIN`이나 `MALMOI_PRIVACY_URL`의 모양 문제입니다. 공백·역슬래시나 읽을 수 없는 URL, `http://`, `user:pw@` | 사용자 정보 없는 `https://` URL로 |
 | `path` · `query` · `fragment` · `ipv6` · `idn` | `MALMOI_ORIGIN`에만 해당합니다(방침 URL의 경로·query는 괜찮습니다). 경로, `?`, `#`, IPv6 리터럴, 비ASCII 도메인 | `MALMOI_ORIGIN=https://<domain>` 꼴로 |
@@ -48,6 +50,10 @@ web 컨테이너는 `pnpm preflight && next start`로 시작합니다. 검사가
 ## 야간 동기화 {#nightly}
 
 `docker compose exec scheduler /usr/local/bin/nightly-pull`로 지금 한 번 실행해 봅니다. 스케줄러 로그의 `curl: (22) … 401`은 web과 스케줄러의 `CRON_SECRET`이 다르다는 뜻입니다(둘 다 다시 만듭니다). 결과는 `docker compose logs web`의 `[pull] targets= published= …` 요약 줄입니다. 스케줄러는 HTTP 오류만 실패로 남기고, 다시 시도하거나 나중에 따라잡지 않습니다.
+
+## 로그인하지 못하는 사람이 있을 때 {#sign-in}
+
+로그인 화면의 “이 설치에서는 그 로그인 수단을 쓸 수 없습니다. 관리자에게 문의하세요.”는 그 사람이 꺼 둔 공급자로 가입했고 다른 로그인 수단을 연결하지 않았다는 뜻입니다. Malmoi는 그 사람에게 계정을 하나 더 만들어 주지 않습니다. 그 공급자를 다시 켜서 그 사람이 로그인해 남겨 둘 공급자를 연결하게 한 뒤, 다시 끄세요([로그인 공급자 끄기](operate.md#sign-in-providers)).
 
 ## GitHub {#github}
 
@@ -106,8 +112,8 @@ web 컨테이너는 `pnpm preflight && next start`로 시작합니다. 검사가
 
 | 전송처 | 보내는 것 | 이유 |
 | --- | --- | --- |
-| GitHub | 로그인 때 받는 프로필과 확인된 이메일. 내 GitHub App을 통한 리포지토리 읽기와 브랜치·커밋·PR 쓰기(커밋은 사람이 아니라 앱 명의). 연결한 사람의 GitHub App 사용자 토큰은 읽기에만 씁니다 | 로그인 · 리포지토리 연결과 게시 |
-| Google | Google로 로그인한 사람의 프로필과 확인된 이메일 | 로그인 |
+| GitHub | GitHub 로그인을 켰을 때 로그인하며 받는 프로필과 확인된 이메일. 내 GitHub App을 통한 리포지토리 읽기와 브랜치·커밋·PR 쓰기(커밋은 사람이 아니라 앱 명의). 연결한 사람의 GitHub App 사용자 토큰은 읽기에만 씁니다 | 로그인 · 리포지토리 연결과 게시 |
+| Google | Google 로그인을 켰을 때 Google로 로그인한 사람의 프로필과 확인된 이메일 | 로그인 |
 | Resend | 초대받는 주소와 메시지(초대 링크, 프로젝트 이름, 프로젝트 사진 주소, 역할 — 보낸 사람은 쓰지 않습니다). 열람·클릭 추적은 끕니다 | 초대 메일. Resend는 발송 기록을 플랜 기간 동안(Free는 30일) 보관하므로 내 플랜을 확인해 방침에 적습니다 |
 
 - GitHub·Google 프로필 사진은 브라우저가 그 서비스에서 직접 받습니다.

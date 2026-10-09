@@ -97,6 +97,16 @@ Other secrets and checks:
 - `APP_SIGNING_SECRET` and `AUTH_SECRET`: change `.env` and run `docker compose up -d --force-recreate web`. No traffic block is needed; only sign-ins and GitHub connections in progress at that moment start over. `CRON_SECRET` must match in web and the scheduler, so recreate both (`--force-recreate web scheduler`); if only one changes, the nightly sync gets 401.
 - Database passwords: once the volume exists, changing `MIGRATE_DB_PASSWORD` or `RUNTIME_DB_PASSWORD` in `.env` alone does nothing. Open `docker compose exec postgres psql -U postgres -d malmoi -X`, run `\password malmoi_app` (or `malmoi_migrate` — psql hashes the password before sending it, so it doesn't reach the server log), then update `.env` and run `docker compose up -d --force-recreate web`. The migration role's new password applies from the next `docker compose run --rm migrate`.
 
+## Turn a sign-in provider off {#sign-in-providers}
+
+Keep at least one provider on. Turning one off hides its button and its row under **Sign-in methods**; it doesn't delete anything, and turning it back on brings the linked methods back.
+
+1. Ask everyone who signs in with that provider to connect one that stays on: **Account** → **Sign-in methods** → **Connect**. The other provider has to verify the same email address.
+2. Empty both values of the provider in `deploy/.env` (for example `AUTH_GITHUB_ID=` and `AUTH_GITHUB_SECRET=`).
+3. Run `docker compose up -d --force-recreate web` and check that the sign-in screen shows only the providers that are on.
+
+Sessions that are already open stay signed in, and those people can still connect a remaining provider from **Account**. Someone who had only the provider you turned off sees “Your sign-in method isn't available here. Ask your administrator.” when signing in. To let them in, fill in the pair again, recreate web, have them connect another provider, and turn it off again.
+
 ## What happens next {#next}
 
 After an update or a restore, check the web log for `preflight:` lines and decryption errors ([troubleshooting](troubleshooting.md#startup-checks)), and compare the stored fields with your privacy policy ([privacy materials](troubleshooting.md#privacy)).

@@ -97,6 +97,16 @@ Otros secretos y comprobaciones:
 - `APP_SIGNING_SECRET` y `AUTH_SECRET`: cambia `.env` y ejecuta `docker compose up -d --force-recreate web`. No hace falta bloquear el tráfico; solo los inicios de sesión y las conexiones de GitHub en curso en ese momento empiezan de nuevo. `CRON_SECRET` debe coincidir en web y en el programador, así que recrea ambos (`--force-recreate web scheduler`); si solo cambia uno, la sincronización nocturna recibe 401.
 - Contraseñas de la base de datos: una vez creado el volumen, cambiar `MIGRATE_DB_PASSWORD` o `RUNTIME_DB_PASSWORD` solo en `.env` no hace nada. Abre `docker compose exec postgres psql -U postgres -d malmoi -X`, ejecuta `\password malmoi_app` (o `malmoi_migrate` — psql cifra la contraseña antes de enviarla, así que no llega al registro del servidor), luego actualiza `.env` y ejecuta `docker compose up -d --force-recreate web`. La contraseña nueva del rol de migración se aplica desde el siguiente `docker compose run --rm migrate`.
 
+## Desactiva un proveedor de inicio de sesión {#sign-in-providers}
+
+Deja al menos un proveedor activo. Desactivar uno oculta su botón y su fila en **Métodos de inicio de sesión**; no borra nada, y al volver a activarlo regresan los métodos conectados.
+
+1. Pide a todos los que inician sesión con ese proveedor que conecten uno que siga activo: **Cuenta** → **Métodos de inicio de sesión** → **Conectar**. El otro proveedor tiene que verificar la misma dirección de correo.
+2. Vacía los dos valores del proveedor en `deploy/.env` (por ejemplo `AUTH_GITHUB_ID=` y `AUTH_GITHUB_SECRET=`).
+3. Ejecuta `docker compose up -d --force-recreate web` y comprueba que la pantalla de inicio de sesión muestra solo los proveedores activos.
+
+Las sesiones ya abiertas siguen iniciadas, y esas personas aún pueden conectar un proveedor restante desde **Cuenta**. Quien solo tenía el proveedor que desactivaste ve “Tu método de inicio de sesión no está disponible aquí. Pide ayuda a tu administrador.” al iniciar sesión. Para dejarle entrar, rellena otra vez el par, recrea web, pídele que conecte otro proveedor y vuelve a desactivarlo.
+
 ## Qué pasa después {#next}
 
 Después de una actualización o una restauración, busca líneas `preflight:` y errores de descifrado en el registro de web ([solución de problemas](troubleshooting.md#startup-checks)), y compara los campos guardados con tu política de privacidad ([materiales de privacidad](troubleshooting.md#privacy)).

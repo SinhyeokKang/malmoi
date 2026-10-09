@@ -17,14 +17,14 @@ La configuración admitida es Docker Compose en un único servidor Linux: una in
 | Infraestructura | Se ejecuta por ti | Un servidor Linux con Docker Compose, PostgreSQL 17, un volumen de subidas, un programador y un proxy HTTPS que tú gestionas |
 | Actualizaciones | Cada versión se aplica sola | Actualizas una versión cada vez a partir de las imágenes publicadas |
 | Dónde están los datos | Supabase (base de datos, Tokio) y Vercel (alojamiento, imágenes) | La base de datos y el volumen de subidas de tu servidor |
-| Inicio de sesión y correo | Inicio de sesión con GitHub y Google, correos de invitación por Resend | Lo mismo, con apps OAuth, una GitHub App y un dominio de Resend que registras tú |
+| Inicio de sesión y correo | Inicio de sesión con GitHub y Google, correos de invitación por Resend | Inicio de sesión con GitHub, con Google o con los dos, mediante apps OAuth que registras tú; una GitHub App y un dominio de Resend que registras tú |
 | Límites | Hasta 3 proyectos activos en propiedad por persona | Lo mismo, salvo para las personas incluidas en `OPERATOR_EMAILS` |
 | Soporte | GitHub Issues | Solo la última versión, en GitHub Issues, en la medida de lo posible |
 | Coste | Gratis | Software gratuito; pagas tu servidor, tu dominio y tu plan de Resend |
 | Política de privacidad | La de Malmoi | La tuya — `/privacy` redirige a ella |
 | Buscadores y analítica | Las páginas públicas se indexan, con recuento de visitas sin cookies | Todas las páginas llevan `noindex` y no se cuentan visitas |
 
-- El registro está abierto en ambos. Cualquiera con una dirección de correo verificada por GitHub o Google puede iniciar sesión y crear proyectos sin invitación; nada en la app bloquea el registro, y el acceso a un proyecto sigue viniendo solo de su lista de miembros.
+- El registro está abierto en ambos. Cualquiera con una dirección de correo verificada por un proveedor de inicio de sesión que activaste (GitHub o Google) puede iniciar sesión y crear proyectos sin invitación; nada en la app bloquea el registro, y el acceso a un proyecto sigue viniendo solo de su lista de miembros.
 - El archivo de workflow que genera tu instalación siempre incluye una línea `api-url` con tu dirección. No la quites nunca: sin ella, el workflow envía el token de push del proyecto a mal-moi.com.
 - La sincronización nocturna se ejecuta a las 18:00 UTC en ambos; en tu servidor la ejecuta el contenedor del programador.
 - La insignia Latest de `/changelog` muestra la versión más reciente del repositorio original, que puede ser más nueva que la tuya. Tu versión es la etiqueta de `MALMOI_IMAGE`.

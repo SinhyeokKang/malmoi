@@ -9,6 +9,8 @@ El contenedor web arranca con `pnpm preflight && next start`. Cuando la comproba
 | Motivo | Significado | Dónde corregirlo |
 | --- | --- | --- |
 | `missing` | Falta un nombre obligatorio o está vacío | `deploy/.env`, o la lista `environment` de Compose para los nombres que rellena Compose |
+| `incomplete-pair` | Un proveedor de inicio de sesión tiene solo uno de sus dos valores; la línea nombra el que falta (como `AUTH_GOOGLE_SECRET`) | Rellena el valor que falta, o vacía los dos para desactivar ese proveedor |
+| `no-login-provider` | No hay ningún proveedor de inicio de sesión activo; dos líneas nombran `AUTH_GITHUB_ID` y `AUTH_GOOGLE_ID` | Rellena al menos un par completo ([configuración](install.md#settings)) |
 | `invalid-format` | Formato incorrecto: `RESEND_API_KEY` debe empezar por `re_`, `INVITATION_EMAIL_FROM` debe ser `Nombre <dirección>` o una dirección, `GITHUB_APP_SLUG` es `[a-z0-9-]`, `AUTH_TRUST_HOST` debe ser `true` | Ese valor |
 | `malformed` · `not-https` · `userinfo` | Un problema de forma en `MALMOI_ORIGIN` o `MALMOI_PRIVACY_URL`: espacios, barras invertidas o una URL ilegible, `http://`, `user:pw@` | Una URL `https://` sin datos de usuario |
 | `path` · `query` · `fragment` · `ipv6` · `idn` | Solo `MALMOI_ORIGIN` (una ruta o query en la URL de privacidad está bien): una ruta, `?`, `#`, un literal IPv6, un dominio no ASCII | `MALMOI_ORIGIN=https://<domain>` |
@@ -48,6 +50,10 @@ Un error de conexión de Prisma antes de eso suele significar que `MIGRATE_DB_PA
 ## Sincronización nocturna {#nightly}
 
 Ejecútala una vez ahora con `docker compose exec scheduler /usr/local/bin/nightly-pull`. `curl: (22) … 401` en el registro del programador significa que `CRON_SECRET` no coincide entre web y el programador (recrea ambos). El resultado es la línea de resumen `[pull] targets= published= …` en `docker compose logs web`. El programador solo registra los errores HTTP como fallos y no lo intenta de nuevo ni se pone al día más tarde.
+
+## Alguien no puede iniciar sesión {#sign-in}
+
+“Tu método de inicio de sesión no está disponible aquí. Pide ayuda a tu administrador.” en la pantalla de inicio de sesión significa que esa persona se registró con un proveedor que desactivaste y no tiene otro método de inicio de sesión conectado. Malmoi no le crea una segunda cuenta. Vuelve a activar ese proveedor, deja que inicie sesión y conecte un proveedor que siga activo, y luego desactívalo otra vez ([desactiva un proveedor de inicio de sesión](operate.md#sign-in-providers)).
 
 ## GitHub {#github}
 
@@ -106,8 +112,8 @@ La instalación envía datos a tres servicios. Supabase y Vercel (alojamiento, a
 
 | Destinatario | Qué se envía | Por qué |
 | --- | --- | --- |
-| GitHub | El perfil y el correo verificado recibidos al iniciar sesión. Lecturas de repositorios y escrituras de ramas, commits y pull requests mediante tu GitHub App (los commits los hace la app, no una persona). El token de usuario de la GitHub App de una persona conectada solo se usa para leer | Inicio de sesión · conectar repositorios y Publicar |
-| Google | El perfil y el correo verificado de quienes inician sesión con Google | Inicio de sesión |
+| GitHub | El perfil y el correo verificado recibidos al iniciar sesión, cuando el inicio de sesión con GitHub está activo. Lecturas de repositorios y escrituras de ramas, commits y pull requests mediante tu GitHub App (los commits los hace la app, no una persona). El token de usuario de la GitHub App de una persona conectada solo se usa para leer | Inicio de sesión · conectar repositorios y Publicar |
+| Google | El perfil y el correo verificado de quienes inician sesión con Google, cuando el inicio de sesión con Google está activo | Inicio de sesión |
 | Resend | La dirección invitada y el mensaje (enlace de invitación, nombre del proyecto, dirección de la imagen del proyecto, rol — no quién lo envió). El seguimiento de aperturas y clics está desactivado | Correos de invitación. Resend guarda los registros de envío durante el periodo de tu plan (30 días en Free); revisa tu plan e inclúyelo en tu política |
 
 - El navegador carga las fotos de perfil de GitHub y Google directamente desde esos servicios.

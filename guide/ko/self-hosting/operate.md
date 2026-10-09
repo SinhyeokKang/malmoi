@@ -97,6 +97,16 @@
 - `APP_SIGNING_SECRET`과 `AUTH_SECRET`: `.env`를 바꾸고 `docker compose up -d --force-recreate web`을 실행합니다. 트래픽을 막을 필요는 없고, 그 순간 진행 중이던 로그인과 GitHub 연결만 처음부터 다시 합니다. `CRON_SECRET`은 web과 스케줄러가 같아야 하므로 둘 다 다시 만듭니다(`--force-recreate web scheduler`). 한쪽만 바뀌면 야간 동기화가 401을 받습니다.
 - 데이터베이스 비밀번호: 볼륨이 생긴 뒤에는 `.env`의 `MIGRATE_DB_PASSWORD`나 `RUNTIME_DB_PASSWORD`만 바꿔서는 아무것도 바뀌지 않습니다. `docker compose exec postgres psql -U postgres -d malmoi -X`를 열고 `\password malmoi_app`(또는 `malmoi_migrate` — psql이 비밀번호를 해시해 보내므로 서버 로그에 남지 않습니다)을 실행한 뒤 `.env`를 바꾸고 `docker compose up -d --force-recreate web`을 실행합니다. 마이그레이션 롤의 새 비밀번호는 다음 `docker compose run --rm migrate`부터 적용됩니다.
 
+## 로그인 공급자 끄기 {#sign-in-providers}
+
+공급자는 하나 이상 켜 두세요. 공급자를 끄면 그 버튼과 **로그인 수단**의 해당 행이 사라질 뿐 아무것도 지우지 않고, 다시 켜면 연결해 둔 수단이 그대로 돌아옵니다.
+
+1. 그 공급자로 로그인하는 사람 모두에게 남겨 둘 공급자를 연결해 달라고 하세요. **계정** → **로그인 수단** → **연결**입니다. 다른 공급자도 같은 이메일 주소를 확인해야 합니다.
+2. `deploy/.env`에서 그 공급자의 두 값을 모두 비웁니다(예: `AUTH_GITHUB_ID=`와 `AUTH_GITHUB_SECRET=`).
+3. `docker compose up -d --force-recreate web`을 실행하고 로그인 화면에 켜진 공급자만 나오는지 확인합니다.
+
+이미 열린 세션은 로그인 상태를 유지하고, 그 사람들은 **계정**에서 남은 공급자를 연결할 수 있습니다. 끈 공급자만 갖고 있던 사람은 로그인할 때 “이 설치에서는 그 로그인 수단을 쓸 수 없습니다. 관리자에게 문의하세요.”를 봅니다. 그 사람을 들이려면 두 값을 다시 채우고 web을 다시 만든 뒤, 그 사람이 다른 공급자를 연결하면 다시 끄세요.
+
 ## 다음 단계 {#next}
 
 업데이트나 복원 뒤에는 web 로그에서 `preflight:` 줄과 복호화 오류를 확인하고([문제 해결](troubleshooting.md#startup-checks)), 저장 항목을 내 개인정보 처리방침과 대조합니다([개인정보 재료](troubleshooting.md#privacy)).

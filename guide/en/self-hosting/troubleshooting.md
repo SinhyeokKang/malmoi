@@ -9,6 +9,8 @@ The web container starts with `pnpm preflight && next start`. When the check fai
 | Reason | Meaning | Fix |
 | --- | --- | --- |
 | `missing` | A required name is missing or empty | `deploy/.env`, or the `environment` list in Compose for names Compose fills |
+| `incomplete-pair` | A sign-in provider has only one of its two values; the line names the missing one (such as `AUTH_GOOGLE_SECRET`) | Fill in the missing value, or empty both values to turn that provider off |
+| `no-login-provider` | No sign-in provider is on; two lines name `AUTH_GITHUB_ID` and `AUTH_GOOGLE_ID` | Fill in at least one complete pair ([settings](install.md#settings)) |
 | `invalid-format` | Wrong shape: `RESEND_API_KEY` must start with `re_`, `INVITATION_EMAIL_FROM` must be `Name <address>` or an address, `GITHUB_APP_SLUG` is `[a-z0-9-]`, `AUTH_TRUST_HOST` must be `true` | That value |
 | `malformed` · `not-https` · `userinfo` | A shape problem in `MALMOI_ORIGIN` or `MALMOI_PRIVACY_URL`: spaces or backslashes or an unparsable URL, `http://`, `user:pw@` | An `https://` URL without user info |
 | `path` · `query` · `fragment` · `ipv6` · `idn` | `MALMOI_ORIGIN` only (a path or query in the privacy URL is fine): a path, `?`, `#`, an IPv6 literal, a non-ASCII domain | `MALMOI_ORIGIN=https://<domain>` |
@@ -48,6 +50,10 @@ A Prisma connection error before that usually means `MIGRATE_DB_PASSWORD` differ
 ## Nightly sync {#nightly}
 
 Run it once now with `docker compose exec scheduler /usr/local/bin/nightly-pull`. `curl: (22) … 401` in the scheduler log means `CRON_SECRET` differs between web and the scheduler (recreate both). The result is the `[pull] targets= published= …` summary line in `docker compose logs web`. The scheduler records only HTTP errors as failures and doesn't try again or catch up later.
+
+## Someone can't sign in {#sign-in}
+
+“Your sign-in method isn't available here. Ask your administrator.” on the sign-in screen means the person signed up with a provider you've turned off and has no other sign-in method connected. Malmoi doesn't create a second account for them. Turn that provider back on, let them sign in and connect a provider that stays on, then turn it off again ([turn a sign-in provider off](operate.md#sign-in-providers)).
 
 ## GitHub {#github}
 
@@ -106,8 +112,8 @@ The installation sends data to three services. mal-moi.com's Supabase and Vercel
 
 | Recipient | What goes there | Why |
 | --- | --- | --- |
-| GitHub | The profile and verified email received at sign-in. Repository reads and branch, commit, and pull request writes through your GitHub App (commits are made by the app, not by a person). A connected person's GitHub App user token is used only to read | Sign-in · connecting repositories and Publish |
-| Google | The profile and verified email, for people who sign in with Google | Sign-in |
+| GitHub | The profile and verified email received at sign-in, when GitHub sign-in is on. Repository reads and branch, commit, and pull request writes through your GitHub App (commits are made by the app, not by a person). A connected person's GitHub App user token is used only to read | Sign-in · connecting repositories and Publish |
+| Google | The profile and verified email, for people who sign in with Google, when Google sign-in is on | Sign-in |
 | Resend | The invited address and the message (invitation link, project name, project picture address, role — not who sent it). Open and click tracking are off | Invitation emails. Resend keeps sending records for your plan's period (30 days on Free); check your plan and put it in your policy |
 
 - GitHub and Google profile pictures are loaded by the browser straight from those services.

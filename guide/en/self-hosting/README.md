@@ -17,14 +17,14 @@ The supported setup is Docker Compose on a single Linux server: one app instance
 | Infrastructure | Run for you | One Linux server with Docker Compose, PostgreSQL 17, an upload volume, a scheduler, and an HTTPS proxy that you run |
 | Updates | Every release goes live on its own | You update one release at a time from the published images |
 | Where data lives | Supabase (database, Tokyo) and Vercel (hosting, pictures) | Your server's database and upload volume |
-| Sign-in and email | GitHub and Google sign-in, invitation emails through Resend | The same, through OAuth apps, a GitHub App, and a Resend domain that you register |
+| Sign-in and email | GitHub and Google sign-in, invitation emails through Resend | GitHub sign-in, Google sign-in, or both, through OAuth apps that you register; a GitHub App and a Resend domain that you register |
 | Limits | Up to 3 active owned projects per person | The same, except for people listed in `OPERATOR_EMAILS` |
 | Support | GitHub Issues | The latest release only, through GitHub Issues, best effort |
 | Cost | Free | Free software; you pay for your server, domain, and Resend plan |
 | Privacy policy | Malmoi's | Yours — `/privacy` redirects to it |
 | Search engines and analytics | Public pages are indexed, with cookieless page-view counts | Every page is marked `noindex`, with no page-view counting |
 
-- Sign-up is open on both. Anyone with an email address verified by GitHub or Google can sign in and create projects without an invitation; nothing in the app blocks sign-up, and access to a project still comes only from its members list.
+- Sign-up is open on both. Anyone with an email address verified by a sign-in provider you turned on (GitHub or Google) can sign in and create projects without an invitation; nothing in the app blocks sign-up, and access to a project still comes only from its members list.
 - The workflow file your installation generates always includes an `api-url` line with your address. Never remove it: without it, the workflow sends the project's push token to mal-moi.com.
 - The nightly sync runs at 18:00 UTC on both; on your server, the scheduler container runs it.
 - The Latest badge on `/changelog` shows the newest upstream release, which may be newer than yours. Your version is the tag in `MALMOI_IMAGE`.
