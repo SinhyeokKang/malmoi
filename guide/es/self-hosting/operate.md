@@ -35,6 +35,7 @@ chmod -R go-rwx "$B"                                # al final, para que cubra t
 
 - El manifiesto no tiene secretos: la hora, la imagen, el estado de las migraciones y las sumas de comprobación.
 - En una copia rutinaria, vuelve a arrancarlo todo con `docker compose up -d`. Si la copia es el primer paso de una [actualización](#update), deja la app detenida.
+- Solo el contenedor web escribe en el volumen de subidas. No lo montes en otro servicio ni dejes que otro proceso del servidor escriba en él: un segundo escritor podría hacer que web sirva archivos de fuera del volumen. La copia lo lee en solo lectura y la restauración escribe en él mientras web está detenido.
 - Guarda las claves con el volcado. Sin la clave PII no se pueden recuperar correos ni nombres; sin la clave de tokens, tampoco las conexiones de GitHub. Después de rotar claves, conserva también las antiguas, porque las copias anteriores las necesitan.
 - Si activaste `log_statement` (`ddl` o `all`) o `pg_stat_statements` con `track_utility`, el registro del servidor o las estadísticas guardan las sentencias `CREATE ROLE … PASSWORD`. La imagen estándar de postgres tiene ambas cosas desactivadas; si las activaste, desactívalas mientras se ejecuta el bootstrap.
 - Una copia solo cuenta cuando una restauración a partir de ella ha funcionado. Prueba la restauración de abajo una vez en otro servidor, con el programador apagado. Allí limita todo lo que escriba en un repositorio real (Publicar, la sincronización nocturna) a un repositorio de prueba.

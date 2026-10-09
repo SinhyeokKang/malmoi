@@ -35,6 +35,7 @@ chmod -R go-rwx "$B"                                # last, so the manifest is c
 
 - The manifest holds no secrets: the time, the image, the migration state, and the checksums.
 - For a routine backup, start everything again with `docker compose up -d`. When the backup is the first step of an [update](#update), leave the app stopped.
+- Only the web container writes to the upload volume. Don't mount it into another service or let another process on the server write to it: a second writer could make web serve files from outside the volume. The backup reads it read-only, and the restore writes to it while web is stopped.
 - Keep the keys with the dump. Without the PII key, emails and names can't be recovered; without the token key, GitHub connections can't. After a key rotation, keep the old keys too, because older backups need them.
 - If you turned on `log_statement` (`ddl` or `all`) or `pg_stat_statements` with `track_utility`, the server log or statistics keep the `CREATE ROLE … PASSWORD` statements. The stock postgres image has both off; if you enabled them, turn them off while the bootstrap runs.
 - A backup counts only once a restore from it has worked. Try the restore below once on another server, with the scheduler left off. Limit anything that writes to a real repository (Publish, the nightly sync) to a test repository there.

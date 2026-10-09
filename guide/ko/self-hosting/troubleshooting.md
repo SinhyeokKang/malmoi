@@ -39,7 +39,7 @@ web 컨테이너는 `pnpm preflight && next start`로 시작합니다. 검사가
 
 ## 프록시 뒤에서 {#proxy}
 
-- 로그인 뒤 `redirect_uri` 불일치, 나중에 다시 시도하라는 오류, 제출되지 않는 양식은 원래 호스트가 앱까지 오지 않았다는 뜻입니다. nginx 예제는 `Host $host`를 넘깁니다. `MALMOI_ORIGIN`에 기본값이 아닌 포트(예: `:8443`)가 있으면 `$host`가 포트를 떼므로, `deploy/nginx/proxy-common.conf`의 `Host`와 `X-Forwarded-Host`를 `$http_host`로 바꾸고 80 → 443 리디렉션(`return 301 https://$host…`)도 포트를 유지하게 고칩니다. 다른 프록시를 쓰더라도 앱이 받는 `Host`는 `MALMOI_ORIGIN`의 호스트(443이 아니면 포트 포함)와 정확히 같아야 합니다.
+- 로그인 뒤 `redirect_uri` 불일치, 나중에 다시 시도하라는 오류, 제출되지 않는 양식은 원래 호스트가 앱까지 오지 않았다는 뜻입니다. nginx 예제는 `Host $host`를 넘깁니다. `MALMOI_ORIGIN`에 기본값이 아닌 포트(예: `:8443`)가 있으면 `$host`가 포트를 떼므로, `deploy/nginx/proxy-common.conf`의 `Host`와 `X-Forwarded-Host`를 `$http_host`로 바꾸고 80 → 443 리디렉션(`return 301 https://$host…`)도 포트를 유지하게 고칩니다. 다른 프록시를 쓰더라도 앱이 받는 `Host`는 `MALMOI_ORIGIN`의 호스트(443이 아니면 포트 포함)와 정확히 같아야 합니다. 로그인 오류는 `docker compose logs web`에 Auth.js의 오류 종류와 함께 `[auth] <type>`으로 남습니다.
 - 큰 업데이트가 대상 리포지토리의 워크플로에서는 504인데 서버는 적재를 끝냈다면, 앱이 계속 처리하는 동안 nginx의 `proxy_read_timeout`(기본 60초)이 연결을 끊은 것입니다. 프로젝트의 로그에서 활동을 확인하고 워크플로를 다시 실행합니다. 요청 본문은 5 MB까지입니다(`client_max_body_size`).
 - nginx 앞에 로드 밸런서나 CDN을 두면 `$binary_remote_addr`가 그 장비의 주소라 누구나 rate limit 카운터 하나를 나눠 쓰고, `/api/images/`와 `/oauth/authorize`가 429를 돌려줍니다. 그 장비에 맞게 `real_ip_header`와 `set_real_ip_from`을 설정합니다.
 - `/api/images/*`가 404면 업로드 볼륨 권한(web 로그의 `EACCES`)부터 봅니다.
@@ -79,7 +79,8 @@ web 컨테이너는 `pnpm preflight && next start`로 시작합니다. 검사가
 - 필드가 모두 개인정보 아님인 모델: `Project`, `TranslationSurface`, `Locale`, `StringKey`, `KeyRef`, `DeliveryConfirmation`, `TranslationBaseline`, `OAuthAuthorizationRequest`. 리포지토리 좌표, 키, 번역 상태를 담고 생성자 열이 없습니다.
 - 번역 값은 프로젝트의 산출물이고 사람을 설명하지 않습니다. 작성자 정보는 위 `Translation`과 `ProjectEvent` 행에만 있습니다.
 - 업로드한 프로필 사진은 192px 이내 WebP로 다시 인코딩하고(원본과 메타데이터는 버립니다) 업로드 볼륨의 `avatars/<userId>/`에 둡니다. GitHub·Google 사진은 URL만 저장하고 브라우저가 그쪽에서 직접 받습니다.
-- 페이지뷰 집계는 없습니다. 앱이 외부로 보내는 호출은 아래 전송처뿐입니다. 프록시나 로드 밸런서가 남기는 접근 로그(IP 주소 등)는 운영자가 따로 밝힙니다.
+- 페이지뷰 집계는 없습니다. 앱이 외부로 보내는 호출은 아래 전송처뿐입니다.
+- nginx 예제의 접근 로그는 접속 주소, 시각, 메서드, 경로, 상태, 크기, 처리 시간, 브라우저를 남깁니다. 초대 링크와 로그인 링크 경로의 토큰은 가리고(`/invite/<redacted>`, `/signin/link/<redacted>`) query 문자열과 referrer는 남기지 않습니다. 다만 앱에 닿지 못한 요청은 nginx 오류 로그에 요청 줄 전체와 referrer가 남으므로, 프록시 로그는 토큰처럼 다룹니다. 프록시와 로드 밸런서의 로그는 내 방침에 따로 밝힙니다.
 
 ### 쿠키 {#cookies}
 

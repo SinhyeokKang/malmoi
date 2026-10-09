@@ -39,7 +39,7 @@ A Prisma connection error before that usually means `MIGRATE_DB_PASSWORD` differ
 
 ## Behind the proxy {#proxy}
 
-- A `redirect_uri` mismatch after sign-in, an error asking you to try again later, or forms that don't submit mean the original host didn't reach the app. The nginx example forwards `Host $host`. If `MALMOI_ORIGIN` has a non-default port (such as `:8443`), `$host` drops the port: change `Host` and `X-Forwarded-Host` in `deploy/nginx/proxy-common.conf` to `$http_host`, and make the 80 → 443 redirect (`return 301 https://$host…`) keep the port. With any other proxy, the `Host` the app receives must match the host of `MALMOI_ORIGIN`, plus its port if it isn't 443.
+- A `redirect_uri` mismatch after sign-in, an error asking you to try again later, or forms that don't submit mean the original host didn't reach the app. The nginx example forwards `Host $host`. If `MALMOI_ORIGIN` has a non-default port (such as `:8443`), `$host` drops the port: change `Host` and `X-Forwarded-Host` in `deploy/nginx/proxy-common.conf` to `$http_host`, and make the 80 → 443 redirect (`return 301 https://$host…`) keep the port. With any other proxy, the `Host` the app receives must match the host of `MALMOI_ORIGIN`, plus its port if it isn't 443. Sign-in errors show in `docker compose logs web` as `[auth] <type>`, with the error type from Auth.js.
 - A large update shows 504 in the target repository's workflow while the server finished loading it: nginx's `proxy_read_timeout` (60 seconds by default) closed the connection while the app kept working. Check the project's activity in Logs and rerun the workflow. Request bodies are limited to 5 MB (`client_max_body_size`).
 - With a load balancer or CDN in front of nginx, `$binary_remote_addr` is that device's address, so everyone shares one rate limit counter and `/api/images/` and `/oauth/authorize` answer 429. Set `real_ip_header` and `set_real_ip_from` for that device.
 - If `/api/images/*` answers 404, check the upload volume permissions (`EACCES` in the web log) first.
@@ -79,7 +79,8 @@ Column meanings: collected — values to disclose as collected; retention — va
 - Models with only not-personal fields: `Project`, `TranslationSurface`, `Locale`, `StringKey`, `KeyRef`, `DeliveryConfirmation`, `TranslationBaseline`, `OAuthAuthorizationRequest`. They hold repository coordinates, keys, and translation state, with no creator columns.
 - Translation values belong to the project and don't describe anyone; authorship is only in the `Translation` and `ProjectEvent` rows above.
 - An uploaded profile picture is re-encoded as WebP within 192 px (the original and its metadata are discarded) and stored under `avatars/<userId>/` in the upload volume. GitHub and Google pictures are stored as URLs, and the browser loads them from there.
-- There's no page-view counting. The app's outside calls are only the recipients below. Access logs at your proxy or load balancer (IP addresses and more) are yours to describe.
+- There's no page-view counting. The app's outside calls are only the recipients below.
+- The nginx example's access log records the client address, time, method, path, status, size, duration, and browser. It masks the token in invitation and sign-in link paths (`/invite/<redacted>`, `/signin/link/<redacted>`) and leaves out query strings and referrers. nginx's error log still records the full request line and referrer when the app can't be reached, so keep proxy logs as private as tokens. Describe your proxy and load balancer logs in your policy.
 
 ### Cookies {#cookies}
 
