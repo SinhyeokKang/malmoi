@@ -392,7 +392,8 @@ function dockerfileProblems(input: { dockerfile: string; nvmrc: string; packageM
   if (/--chown=node/.test(input.dockerfile) || userNodeAt < 0 || userNodeAt < buildAt) problems.push("node owns app code");
 
   const ignored = new Set(input.dockerignore.split("\n").map((l) => l.trim()).filter((l) => l !== "" && !l.startsWith("#")));
-  for (const entry of ["**/.env*", ".git", ".scratch", "node_modules", ".next", "**/*.pem"]) if (!ignored.has(entry)) problems.push(`.dockerignore lacks ${entry}`);
+  // `**/__tests__`: 이미지에 테스트·픽스처를 싣지 않는다(B7 실습 ⚪) — 빌드는 테스트를 import하지 않는다.
+  for (const entry of ["**/.env*", ".git", ".scratch", "node_modules", ".next", "**/*.pem", "**/__tests__"]) if (!ignored.has(entry)) problems.push(`.dockerignore lacks ${entry}`);
   return problems;
 }
 
@@ -421,6 +422,7 @@ describe("SH-15 ③ — Dockerfile ↔ .nvmrc·packageManager·.npmrc", () => {
     expect(dockerfileProblems({ ...base, dockerfile: base.dockerfile.replace(/^USER node$/m, "").replace(/^WORKDIR \/app$/m, "WORKDIR /app\nUSER node") }))
       .toContain("node owns app code");
     expect(dockerfileProblems({ ...base, dockerignore: base.dockerignore.replace("**/.env*", "") })).toContain(".dockerignore lacks **/.env*");
+    expect(dockerfileProblems({ ...base, dockerignore: base.dockerignore.replace("**/__tests__", "") })).toContain(".dockerignore lacks **/__tests__");
   });
 });
 
@@ -585,10 +587,48 @@ describe("scheduler — crontab 식·경로가 NIGHTLY_PULL과 같다", () => {
 
 // ── proxy 예제 (design §2·§5) ───────────────────────────────────────────────────────────────────
 
+/**
+ * proxy access log가 비밀을 남기지 않는가 (B7 실습 🟡 — 기본 형식이 `$request`로 `/invite/<token>`·OAuth `code`·`state`를 남겼다).
+ * 형식은 query·referer 없이 `$uri`를 가린 변수만 쓰고, 모든 server가 그 형식을 명시한다 — 명시하지 않은 server는 이미지 기본
+ * (`nginx.conf`의 `main`)을 상속하고, 같은 레벨에 둘을 두면 둘 다 기록된다.
+ */
+function nginxLogProblems(conf: string): string[] {
+  const problems: string[] = [];
+  const format = /log_format\s+malmoi_redacted\s+([^;]+);/.exec(conf)?.[1];
+  if (format === undefined) problems.push("no malmoi_redacted log_format");
+  else {
+    for (const leak of [/\$request\b/, /\$request_uri\b/, /\$request_body\b/, /\$args\b/, /\$query_string\b/, /\$arg_/, /\$http_referer\b/, /\$uri\b/]) {
+      if (leak.test(format)) problems.push(`format leaks ${leak.source}`);
+    }
+    if (!format.includes("$malmoi_log_uri")) problems.push("format lacks $malmoi_log_uri");
+  }
+  const map = /map\s+\$uri\s+\$malmoi_log_uri\s*\{([^}]*)\}/.exec(conf)?.[1] ?? "";
+  for (const prefix of ["/invite/", "/signin/link/"]) if (!map.includes(`~^${prefix}`)) problems.push(`map does not mask ${prefix}`);
+  if (!/default\s+\$uri;/.test(map)) problems.push("map lacks default $uri");
+  const servers = [...conf.matchAll(/^server\s*\{/gm)].length;
+  const redacted = [...conf.matchAll(/^\s*access_log\s+\S+\s+malmoi_redacted;/gm)].length;
+  const all = [...conf.matchAll(/^\s*access_log\b/gm)].length;
+  if (servers === 0 || redacted !== servers || all !== redacted) problems.push("every server must log with malmoi_redacted only");
+  if (/\b(combined|main)\s*;/.test(conf)) problems.push("uses a default log format");
+  return problems;
+}
+
 describe("nginx 예제 — Host 전달·HSTS 덮어쓰기·rate limit", () => {
   const conf = () => readFileSync(join(ROOT, "deploy/nginx/malmoi.conf"), "utf8");
   const snippet = () => readFileSync(join(ROOT, "deploy/nginx/proxy-common.conf"), "utf8");
   const live = (source: string) => source.split("\n").filter((l) => !l.trim().startsWith("#")).join("\n");
+
+  it("access log가 query·referer·토큰 경로를 남기지 않는다 — 기본 형식을 쓰지 않는다", () => {
+    expect(nginxLogProblems(live(conf()))).toEqual([]);
+  });
+
+  it("어긋나면 red다", () => {
+    const base = live(conf());
+    expect(nginxLogProblems(base.replace(/access_log\s+\S+\s+malmoi_redacted;/, ""))).toContain("every server must log with malmoi_redacted only");
+    expect(nginxLogProblems(base.replace("$malmoi_log_uri $server_protocol", "$request_uri $server_protocol"))).toContain("format leaks \\$request_uri\\b");
+    expect(nginxLogProblems(base.replace("~^/invite/", "~^/invited/"))).toContain("map does not mask /invite/");
+    expect(nginxLogProblems(`${base}\naccess_log /var/log/nginx/access.log combined;`)).toContain("uses a default log format");
+  });
 
   it("원래 Host·스킴을 넘긴다 — 기본값 $proxy_host면 requestOrigin이 전부 null이다", () => {
     expect(live(snippet())).toMatch(/proxy_set_header Host \$host;/);

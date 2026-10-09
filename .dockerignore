@@ -21,6 +21,8 @@ coverage
 .DS_Store
 .claude/worktrees
 .claude/settings.local.json
+# 테스트·픽스처 — 빌드는 import하지 않는다(실행 이미지의 노출면·크기만 늘린다)
+**/__tests__
 
 # 백업 — DB dump·업로드 사본을 리포 근처에 두었어도 들어가지 않게
 backup
