@@ -6,6 +6,11 @@ for (const [prefix, byte] of [["TOKEN", 71], ["PII", 72]] as const) {
 }
 process.env.EMAIL_LOOKUP_KEY = Buffer.alloc(32, 73).toString("base64");
 process.env.EMAIL_LOOKUP_KEY_ID = "test";
+/**
+ * 테스트 기본 = hosted(로그인 공급자 두 쌍). 화면·판정이 켜진 집합을 env에서 읽으므로(`enabledLoginProviders`) 없으면 버튼·수단 행이
+ * 0개가 된다. 단독 케이스는 `vi.stubEnv("AUTH_GITHUB_ID", "")`로 끄고 `vi.unstubAllEnvs()`로 되돌린다.
+ */
+for (const name of ["AUTH_GITHUB_ID", "AUTH_GITHUB_SECRET", "AUTH_GOOGLE_ID", "AUTH_GOOGLE_SECRET"]) process.env[name] = `test-${name}`;
 
 /**
  * Radix Select가 jsdom에 없는 셋을 부른다 (2026-09-13, `ui/select.tsx` 리워크). 없으면 트리거를

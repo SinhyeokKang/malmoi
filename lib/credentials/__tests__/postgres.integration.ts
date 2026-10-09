@@ -25,7 +25,7 @@ import { beginRevocation, finishRevocation } from "@/lib/session-revocation/stor
 import { authorizeRevocation, withRevocation, withRevocationStart, revocationAuthCookies } from "@/lib/session-revocation/http";
 import { authorizeLoginLink, linkAuthCookies, withLinkStart, withLoginLink } from "@/lib/login-link/http";
 import { beginLink, finishLink, loadLinkOffer } from "@/lib/login-link/store";
-import { isLoginProvider } from "@/lib/login-link/policy";
+import { isLoginProvider, type LoginProvider } from "@/lib/login-link/policy";
 
 // A fresh Unix-socket-only cluster; never reads DATABASE_URL/DIRECT_URL or a shared DB.
 const directory = mkdtempSync(join(tmpdir(), "malmoi-credentials-"));
@@ -247,7 +247,7 @@ function fakeAuth(provider: "github" | "google", identity: string, revocation = 
         if (!link || !account || typeof user.email !== "string" || user.email === "") return true;
         const refresh = await refreshVerifiedEmail(prisma, account.provider, account.providerAccountId, user.email);
         if (refresh !== "unlinked" || !isLoginProvider(account.provider)) return true;
-        const offer = await loadLinkOffer(prisma, { provider: account.provider, providerAccountId: account.providerAccountId, verifiedEmail: user.email });
+        const offer = await loadLinkOffer(prisma, { provider: account.provider, providerAccountId: account.providerAccountId, verifiedEmail: user.email, enabled: ["github", "google"] });
         if (offer.kind !== "offer") return true;
         const token = await beginLink(prisma, { userId: offer.userId, provider: account.provider, providerAccountId: account.providerAccountId, dest: { kind: "projects" } });
         return token === null ? "/signin?error=Unavailable" : `/signin/link/${token}`;
@@ -453,7 +453,7 @@ async function revocationFixture(provider: "github" | "google" = "github", secon
   if (second) await prisma.account.create({ data: { userId: user.id, type: "oauth", provider: provider === "github" ? "google" : "github", providerAccountId: "second" } });
   for (const raw of ["current", "second-device"]) await adapter.createSession!({ userId: user.id, sessionToken: raw, expires: new Date(Date.now() + 600000) });
   await adapter.createSession!({ userId: other.id, sessionToken: "other-device", expires: new Date(Date.now() + 600000) });
-  const input = { userId: user.id, provider, providerAccountId: "same", sessionToken: "current", state: "state", nonce: randomBytes(32).toString("base64url") };
+  const input = { userId: user.id, provider, providerAccountId: "same", sessionToken: "current", state: "state", nonce: randomBytes(32).toString("base64url"), enabled: ["github", "google"] as LoginProvider[] };
   return { user, other, input, adapter };
 }
 /**
@@ -467,6 +467,22 @@ it("revocation still works for an account with two sign-in methods", async () =>
   expect(await finishRevocation(prisma, input)).toBe("revoked");
   expect(await prisma.session.findMany()).toEqual([expect.objectContaining({ userId: other.id })]);
   // 회수는 세션만 지운다 — 로그인 수단은 그대로다.
+  expect(await prisma.account.count()).toBe(2);
+});
+
+/**
+ * 공급자를 끈 설치 (optional-login-providers spec §4.7) — 확인 상대는 **켜진** 연결 수단 중에서만 고른다. 꺼진 GitHub 행은 DB에
+ * 남아 있지만 확인 상대가 되지 못하고, 켜진 Google로 회수가 끝난다.
+ */
+it("revocation confirms against the enabled method only when a provider is disabled", async () => {
+  const { input, other } = await revocationFixture("github", true);
+  expect(await beginRevocation(prisma, { ...input, enabled: ["google"] })).toBe("invalid");
+  expect(await prisma.verificationToken.count()).toBe(0);
+  const google = { ...input, provider: "google" as const, providerAccountId: "second", enabled: ["google"] as LoginProvider[] };
+  expect(await beginRevocation(prisma, google)).toBe("ready");
+  expect(await finishRevocation(prisma, google)).toBe("revoked");
+  expect(await prisma.session.findMany()).toEqual([expect.objectContaining({ userId: other.id })]);
+  // 꺼진 공급자의 행은 지우지 않는다 — 다시 켜면 돌아온다.
   expect(await prisma.account.count()).toBe(2);
 });
 

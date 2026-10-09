@@ -1,3 +1,4 @@
+import { present } from "@/lib/auth/login-providers";
 import { FROM as INVITATION_FROM } from "@/lib/invitation-email/config";
 
 import { resolveDeploymentMode, type OriginRejection } from "./mode";
@@ -82,10 +83,6 @@ export type UploadDirProbe = (path: string) => "ok" | "missing" | "not-directory
 const RESEND_KEY = /^re_\S+$/;
 /** GitHub App slug — 설치 링크(`apps/<slug>/installations/new`)의 경로 조각이다. */
 const APP_SLUG = /^[a-z0-9][a-z0-9-]*$/;
-
-function present(value: string | undefined): string | undefined {
-  return value === undefined || value.trim() === "" ? undefined : value;
-}
 
 function withoutTrailingSlash(value: string): string {
   return value.endsWith("/") ? value.slice(0, -1) : value;

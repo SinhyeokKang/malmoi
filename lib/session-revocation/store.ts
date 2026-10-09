@@ -2,13 +2,18 @@ import "server-only";
 import type { PrismaClient, Prisma } from "@/generated/prisma/client";
 import { hashSessionToken } from "@/lib/credentials/crypto";
 import { logCaught } from "@/lib/failure";
-import { pickLoginAccount } from "@/lib/login-link/policy";
+import { pickLoginAccount, type LoginProvider } from "@/lib/login-link/policy";
 import { challengeIdentifier, challengePrefix, checkChallenge, nonceHash, parseChallengeIdentifier, stateHash, type Outcome } from "./policy";
 import { validNonce } from "@/lib/auth/roundtrip";
 import { lockUser } from "@/lib/auth/lock";
 
 type Proof = { nonce: string; sessionToken: string; state: string; provider: string; providerAccountId: string };
-export async function beginRevocation(prisma: PrismaClient, input: Proof & { userId: string }): Promise<"ready" | "invalid" | "unavailable"> {
+/**
+ * ⚠️ **`enabled`는 Action이 확인 상대를 고를 때 쓴 것과 같은 값이어야 한다** (optional-login-providers design §2.4) — 아래 대조
+ * (`chosen.provider !== provider`)가 "서버가 고른 상대"를 다시 고르는 것이라, 둘이 다른 켜진 집합을 보면 대조가 성립하지 않는다.
+ * ⚠️ 우주 하드코딩(`["github", "google"]`)은 그대로 둔다 — 같은 사본이 여러 곳에 있어 한 곳만 바꾸면 사본 간 정합만 깨진다.
+ */
+export async function beginRevocation(prisma: PrismaClient, input: Proof & { userId: string; enabled: readonly LoginProvider[] }): Promise<"ready" | "invalid" | "unavailable"> {
   if (!validNonce(input.nonce) || !input.state || !input.sessionToken || (input.provider !== "github" && input.provider !== "google")) return "invalid";
   const provider = input.provider;
   try {
@@ -24,7 +29,7 @@ export async function beginRevocation(prisma: PrismaClient, input: Proof & { use
        * 만든다. 대신 서버가 **결정적으로** 하나를 고른다(`github` 우선) — 클라이언트가 고르게
        * 하면 공격자가 확인 상대를 고른다.
        */
-      const chosen = pickLoginAccount(accounts);
+      const chosen = pickLoginAccount(accounts, input.enabled);
       if (!session || chosen === null || chosen.provider !== provider || chosen.providerAccountId !== input.providerAccountId) return "invalid";
       await tx.verificationToken.deleteMany({ where: { identifier: { startsWith: challengePrefix(input.userId) } } });
       await tx.verificationToken.create({ data: { identifier: challengeIdentifier({ userId: input.userId, provider, providerAccountId: input.providerAccountId, sessionDigest, stateDigest: stateHash(input.state) }), token: nonceHash(input.nonce), expires: new Date(now.getTime() + 300000) } });

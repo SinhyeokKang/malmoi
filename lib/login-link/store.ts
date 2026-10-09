@@ -47,7 +47,7 @@ export function challengeTokenHash(raw: string): string {
  */
 export async function loadLinkOffer(
   prisma: PrismaClient,
-  input: { provider: string; providerAccountId: string; verifiedEmail: string | null },
+  input: { provider: string; providerAccountId: string; verifiedEmail: string | null; enabled: readonly LoginProvider[] },
 ): Promise<LinkOffer> {
   if (input.verifiedEmail === null || input.verifiedEmail === "") {
     return planLinkOffer({ ...input, existingUser: null });

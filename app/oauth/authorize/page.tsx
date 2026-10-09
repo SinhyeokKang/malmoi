@@ -26,7 +26,8 @@ import type { UiLocale } from "@/lib/i18n/locales";
 import { getDateStyle, getMessages } from "@/lib/i18n/server";
 import { en } from "@/messages/en";
 import { providerLabel } from "@/lib/login-link/message";
-import { LOGIN_PROVIDERS, type LoginProvider } from "@/lib/login-link/policy";
+import { enabledLoginProviders } from "@/lib/auth/login-providers";
+import { LOGIN_PROVIDERS, signInButtons, type LoginProvider } from "@/lib/login-link/policy";
 import { planConnectedApps } from "@/lib/mcp/view";
 import { parseAuthorizeRequest } from "@/lib/oauth/authorize";
 import { planAuthorizeView, returnHost, type AuthorizeRequestState, type AuthorizeView } from "@/lib/oauth/authorize-view";
@@ -122,9 +123,13 @@ export default async function OAuthAuthorizePage({ searchParams }: { searchParam
           )}
           <AppCard m={m} name={app.name} ident={app.ident} />
           <div className="flex w-full flex-col gap-2">
-            {/* `Not you?` 뒤(`1s`)에는 첫 공급자 버튼에 포커스 — 계정을 바꾸러 온 사람의 다음 행동이다. */}
-            <ProviderButton m={m} provider="github" requestId={requestId} autoFocus={view.kind === "sign-in" && view.notice === "switch"} />
-            <ProviderButton m={m} provider="google" requestId={requestId} autoFocus={false} />
+            {/*
+              `Not you?` 뒤(`1s`)에는 첫 공급자 버튼에 포커스 — 계정을 바꾸러 온 사람의 다음 행동이다. 버튼은 켜진 것만, 첫째가 primary이고
+              (`signInButtons`) 조건은 그대로 대상만 index 0이다 — 화면 상태를 공용 판정에 넣지 않는다.
+            */}
+            {signInButtons(enabledLoginProviders()).map(({ provider, variant }, index) => (
+              <ProviderButton key={provider} m={m} provider={provider} variant={variant} requestId={requestId} autoFocus={index === 0 && view.kind === "sign-in" && view.notice === "switch"} />
+            ))}
             <p className="text-muted-foreground text-center text-xs leading-relaxed">
               {m.signIn.consent.before}
               {/* self-hosted에서는 운영자 방침으로 나가므로 새 탭이다 — 이 동의 요청을 떠나지 않는다(`consentLinkProps`). */}
@@ -264,7 +269,7 @@ function Ended({ m, view, retryHref }: { m: Messages; view: Extract<AuthorizeVie
  * `clearAuthRoundtripCookies()`가 `signIn()`보다 먼저 불리는 것을 고정한다(POSTMORTEM 2026-09-10). 이 화면이 일반 로그인 진입점 넷째다.
  * ⚠️ **`redirectTo`는 `?request=` 정규형이다** — 요청 ID 하나가 목적지이고(`destFromCallbackUrl`이 그것만 갈래로 남긴다), `e`는 싣지 않는다.
  */
-function ProviderButton({ m, provider, requestId, autoFocus }: { m: Messages; provider: LoginProvider; requestId: string; autoFocus: boolean }) {
+function ProviderButton({ m, provider, variant, requestId, autoFocus }: { m: Messages; provider: LoginProvider; variant: "primary" | "default"; requestId: string; autoFocus: boolean }) {
   return (
     <form
       className="w-full"
@@ -276,7 +281,7 @@ function ProviderButton({ m, provider, requestId, autoFocus }: { m: Messages; pr
     >
       <ProviderSubmit
         label={provider === "github" ? m.signIn.github : m.signIn.google}
-        variant={provider === "github" ? "primary" : "default"}
+        variant={variant}
         icon={provider === "github" ? <GithubIcon aria-hidden className="size-4" /> : <GoogleIcon aria-hidden className="size-4" />}
         autoFocus={autoFocus}
       />

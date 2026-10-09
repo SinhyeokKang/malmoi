@@ -867,6 +867,7 @@ export const es = {
       cancelled: "Se canceló la confirmación. Sigues con la sesión iniciada. Vuelve a intentarlo cuando quieras.",
       expired: "Esta confirmación caducó. Empieza de nuevo para cerrar sesión en todas partes.",
       wrongAccount: "Elige la misma cuenta con la que inicias sesión en Malmoi y vuelve a intentarlo.",
+      needsMethod: "Primero conecta un método de inicio de sesión.",
     },
     signOut: {
       title: "Cerrar sesión",
@@ -1993,6 +1994,7 @@ export const es = {
       AccessDenied: "No puedes iniciar sesión con esta cuenta. Puede que su correo no esté verificado.",
       Unavailable: "Algo salió mal. Vuelve a abrir esto en un momento.",
       LinkExpired: "Esa confirmación ya no es válida. Vuelve a iniciar sesión para continuar.",
+      MethodUnavailable: "Tu método de inicio de sesión no está disponible aquí. Pídele ayuda a quien administre Malmoi.",
       fallback: "No se pudo iniciar sesión. Vuelve a intentarlo en un momento.",
     },
 

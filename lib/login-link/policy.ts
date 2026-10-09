@@ -21,7 +21,13 @@ const PURPOSE = "malmoi/login-link";
 
 export type LoginProvider = "github" | "google";
 
-/** ⚠️ **`github-app`은 로그인 수단이 아니다** — 리포 쓰기 연결이고 그 행은 이 판정을 지나지 않는다. */
+/**
+ * ⚠️ **`github-app`은 로그인 수단이 아니다** — 리포 쓰기 연결이고 그 행은 이 판정을 지나지 않는다.
+ *
+ * ⚠️ **우주(universe)다 — 이 설치에서 켜진 집합이 아니다** (optional-login-providers design §2.3). DB 조회·challenge 파싱은 꺼진
+ * 공급자의 행도 읽어야 아래 판정이 "숨김"을 정할 수 있다. 켜진 집합은 `lib/auth/login-providers.ts`가 서버에서 구해 **인자로**
+ * 내려보낸다 — 이 파일은 클라이언트 그래프라 그 모듈(`lib/env` → `node:crypto`)을 import하지 않는다(`client-graph.test.ts`).
+ */
 export const LOGIN_PROVIDERS: readonly LoginProvider[] = ["github", "google"];
 
 export function isLoginProvider(value: string): value is LoginProvider {
@@ -123,29 +129,51 @@ export function checkChallenge(
 }
 
 /**
- * 확인 상대를 **결정적으로** 고른다 — `github` 우선, 없으면 `google` (design ③).
+ * 확인 상대를 **결정적으로** 고른다 — **켜진** 연결 수단 중 `github` 우선, 없으면 `google` (design ③ · optional-login-providers
+ * spec §4.7). 꺼진 공급자로는 확인 왕복이 성립하지 않는다(Auth.js `providers`에 없다). 없으면 `null`.
  *
  * 두 수단 모두 소유 증명이라 확인 상대로 동등하고, 필요한 것은 결정성 하나다. 클라이언트가
  * 고르게 하면 공격자가 확인 상대를 고르게 된다.
  *
  * ⚠️ **"가장 먼저 등록한 수단"으로 하지 않는다** — `Account`에 `createdAt`이 없고, 추가하면 기존
  * 행이 전부 null이라 폴백 규칙이 또 필요하다.
+ *
+ * ⚠️ **`enabled`에 기본값이 없다** — 기본값이 `LOGIN_PROVIDERS`면 새 호출부가 꺼진 공급자를 조용히 통과시킨다. 빠뜨리면 typecheck가
+ * 잡는다(`DateStyle`과 같은 관용구). 아래 셋도 같다.
  */
-export function pickLoginAccount<T extends { provider: string }>(accounts: readonly T[]): T | null {
+export function pickLoginAccount<T extends { provider: string }>(accounts: readonly T[], enabled: readonly LoginProvider[]): T | null {
   for (const provider of LOGIN_PROVIDERS) {
+    if (!enabled.includes(provider)) continue;
     const found = accounts.find((a) => a.provider === provider);
     if (found !== undefined) return found;
   }
   return null;
 }
 
-/** `/account`의 수단 카드 — **행이 언제나 둘이고 순서가 고정**이다. 미연결 행의 추가는 account-connect가 담당한다. */
+/**
+ * `/account`의 수단 카드 — **행 = 켜진 공급자, 순서는 `LOGIN_PROVIDERS`**. 미연결 행의 추가는 account-connect가 담당한다.
+ * 꺼진 공급자로 연결된 행은 **숨길 뿐 지우지 않는다** — 다시 켜면 그대로 돌아온다(spec §4.4 · Q3).
+ */
 export function loginMethodRows(
   accounts: readonly { provider: string }[],
+  enabled: readonly LoginProvider[],
 ): { provider: LoginProvider; connected: boolean }[] {
-  return LOGIN_PROVIDERS.map((provider) => ({
+  return LOGIN_PROVIDERS.filter((provider) => enabled.includes(provider)).map((provider) => ({
     provider,
     connected: accounts.some((a) => a.provider === provider),
+  }));
+}
+
+/**
+ * 로그인 버튼 셋(`/signin`·`/invite`·`/oauth/authorize`)의 공용 판정 — 켜진 것만, **첫째가 primary**(DESIGN §2 "primary는 화면당
+ * 하나" · POSTMORTEM 2026-09-15: primary를 호출부가 고르지 않는다). Google 단독이면 Google이 primary다.
+ *
+ * ⚠️ **`autoFocus`를 싣지 않는다** — 화면 상태(`/oauth/authorize`의 `switch`)라 공용 판정에 넣지 않고, 그 화면이 index 0에 붙인다.
+ */
+export function signInButtons(enabled: readonly LoginProvider[]): { provider: LoginProvider; variant: "primary" | "default" }[] {
+  return LOGIN_PROVIDERS.filter((provider) => enabled.includes(provider)).map((provider, index) => ({
+    provider,
+    variant: index === 0 ? "primary" : "default",
   }));
 }
 
@@ -159,9 +187,14 @@ export function methodCounts(rows: readonly { connected: boolean }[]): { connect
   return { connected: rows.filter((row) => row.connected).length, total: rows.length };
 }
 
-/** 마지막 로그인 수단은 해제할 수 없다. */
-export function canUnlink(methods: readonly string[], provider: string): boolean {
-  const login = methods.filter(isLoginProvider);
+/**
+ * 마지막 **켜진** 로그인 수단은 해제할 수 없다 (optional-login-providers spec §4.5).
+ *
+ * ⚠️ **연결 행 수로 세지 않는다** — 꺼진 GitHub 행이 남은 사용자가 유일하게 켜진 Google을 해제하면 **그 계정은 다시 로그인할 수
+ * 없다.** 꺼진 공급자 자신도 해제 대상이 아니다(화면에 행이 없다 — Action은 그 요청을 `unavailable`로 가른다).
+ */
+export function canUnlink(methods: readonly string[], provider: string, enabled: readonly LoginProvider[]): boolean {
+  const login = methods.filter(isLoginProvider).filter((method) => enabled.includes(method));
   return isLoginProvider(provider) && login.includes(provider) && login.length > 1;
 }
 

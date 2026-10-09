@@ -22,6 +22,7 @@ import { loadInstalledRepoCount } from "@/lib/github-connect/installed-repos";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
 import { getMessages } from "@/lib/i18n/server";
 import { linkErrorMessage, providerLabel } from "@/lib/login-link/message";
+import { enabledLoginProviders } from "@/lib/auth/login-providers";
 import { isLoginProvider, loginMethodRows, LOGIN_PROVIDERS, pickLoginAccount } from "@/lib/login-link/policy";
 import { firstQueryValues, type Raw } from "@/lib/search-params";
 
@@ -113,7 +114,12 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
    * 전체 로그아웃의 확인 상대는 **서버가 결정적으로 고른다** — 클라이언트가 고르게 하면 공격자가
    * 확인 상대를 고른다. 화면은 같은 판정을 다시 돌려 **이름만** 쓴다(확정 라벨이 결과를 말해야 한다).
    */
-  const confirming = pickLoginAccount(methods);
+  /**
+   * 켜진 집합은 이 요청에서 한 번 읽어 수단 카드와 확인 상대에 같이 쓴다 (optional-login-providers spec §4.4·§4.10). 꺼진 공급자로
+   * 연결된 행은 숨긴다 — 지우지 않는다. 켜진 연결 수단이 없으면 확인 상대가 `null`이고 [Sign out everywhere]가 사유와 함께 막힌다.
+   */
+  const enabled = enabledLoginProviders();
+  const confirming = pickLoginAccount(methods, enabled);
   const confirmProvider = confirming !== null && isLoginProvider(confirming.provider) ? providerLabel(m, confirming.provider) : null;
 
   // Server Action을 클라이언트 컴포넌트에 **참조로** 넘긴다 — 셸의 로그아웃과 같은 형이다.
@@ -198,7 +204,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
           ⚠️ **같은 화면에 "GitHub"이 세 군데 나온다** — 로그인 수단 · 리포 쓰기 권한 · 전체
           로그아웃의 확인 상대다. 구역 제목이 그 축을 말하는 것이 이 재편의 요지다.
         */}
-        <LoginMethods outcome={connectOutcome(connect)} rows={loginMethodRows(methods)} unlinkFailure={unlinkFailure} />
+        <LoginMethods outcome={connectOutcome(connect)} rows={loginMethodRows(methods, enabled)} unlinkFailure={unlinkFailure} />
 
         <GithubSection
           account={account}

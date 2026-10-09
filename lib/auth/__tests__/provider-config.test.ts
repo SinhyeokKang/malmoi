@@ -61,6 +61,23 @@ describe("auth.ts — DB 세션과 provider 둘", () => {
     expect(AUTH_TS).toContain("Google");
   });
 
+  /**
+   * 켜진 공급자만 Auth.js에 들어간다 (optional-login-providers spec §4.3) — 꺼진 공급자는 `/api/auth/signin/<p>`·callback이
+   * 성립하지 않아야 한다. 거르기 자체는 `withEnabled` 행동 테스트(`login-providers.test.ts`)가 지고, 여기는 **호출형**만 센다.
+   *
+   * ⚠️ **주석을 벗기고 센다** (POSTMORTEM 2026-09-18 — 방어선이 호출이 아니라 이름을 셌다). import 줄·주석 인용만으로는 green이
+   * 되지 않게 `withEnabled(` 호출과 그 인자 모양을 본다.
+   */
+  it("providers가 켜진 집합으로 거른 목록이다 — withEnabled 호출", () => {
+    const code = AUTH_TS.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/gm, "$1");
+    expect(code).toMatch(/providers:\s*withEnabled\(\s*\[\s*github\s*,\s*google\s*\]\s*,\s*enabled\s*\)/);
+    expect(code).toMatch(/const enabled = enabledLoginProviders\(\)/);
+    expect(code).not.toMatch(/providers:\s*\[/);
+    // 병합 안내도 같은 켜진 집합을 받는다 — 요청 하나에서 한 번 읽는다.
+    expect(code).toMatch(/loadLinkOffer\(getPrisma\(\), \{[^}]*enabled[^}]*\}\)/);
+    expect(code).toContain('routes.signIn({ error: "MethodUnavailable" })');
+  });
+
   it("검증된 이메일 판정을 지난다", () => {
     expect(AUTH_TS).toContain("verifiedEmailFrom");
   });
@@ -88,7 +105,7 @@ describe("auth.ts — 회수와 병합이 서로를 먹지 않는다", () => {
   });
 
   it("`authorizeRevocation`이 signIn 콜백의 첫 줄이고 병합 판정이 그 뒤다", () => {
-    const callback = /async signIn\(\{[\s\S]*?\n    \}/.exec(AUTH_TS)?.[0] ?? "";
+    const callback = /async signIn\(\{[\s\S]*?\n      \}/.exec(AUTH_TS)?.[0] ?? "";
     expect(callback).toContain("authorizeRevocation(");
     expect(callback).toContain("authorizeLoginLink(");
     expect(callback.indexOf("authorizeRevocation(")).toBeLessThan(callback.indexOf("authorizeConnect("));

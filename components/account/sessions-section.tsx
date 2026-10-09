@@ -3,7 +3,7 @@ import { IconTile } from "@/components/ui/icon-tile";
 
 import { LogOut, MonitorSmartphone } from "lucide-react";
 import { unstable_rethrow } from "next/navigation";
-import { startTransition, useActionState } from "react";
+import { startTransition, useActionState, useId } from "react";
 import { useFormStatus } from "react-dom";
 
 import { startSessionRevocation } from "@/app/(edit)/account/actions";
@@ -28,10 +28,14 @@ export function SessionsSection({ outcome, signOut, confirmProvider }: {
   /** 주소창 값이다 — union이 아니라 `string | undefined`로 받고 판정 함수가 거른다. */
   outcome: string | undefined;
   signOut: () => void;
-  /** 확인 상대는 서버가 결정적으로 고른다(`pickLoginAccount`) — 화면은 그 이름만 쓴다. */
+  /**
+   * 확인 상대는 서버가 결정적으로 고른다(`pickLoginAccount`) — 화면은 그 이름만 쓴다. ⚠️ **`null`이면 켜진 연결 수단이 없다**(운영자가
+   * 그 공급자를 껐다) — 누르면 영원히 `unavailable`인 재시도 루프라 트리거를 사유와 함께 막는다(optional-login-providers spec §4.10).
+   */
   confirmProvider: string | null;
 }) {
   const m = useMessages();
+  const reasonId = useId();
   /**
    * ⚠️ **성공하면 여기서 돌아오지 않는다** — Action이 provider로 `redirect`한다. 그래서 **다음 줄에 도달했다는 것 자체가
    * 실패**다. Dialog는 확정과 함께 이미 닫혀 있어(절차 (a)) 사유가 구역 Alert에 그대로 보인다.
@@ -61,7 +65,14 @@ export function SessionsSection({ outcome, signOut, confirmProvider }: {
         className="border-border border-t first:border-t-0"
         icon={<IconTile>{<MonitorSmartphone className="text-muted-foreground size-4" aria-hidden />}</IconTile>}
         title={<span className="flex min-w-0 items-center gap-2 text-base"><span className="truncate font-medium">{m.account.sessions.title}</span></span>}
-        description={m.account.sessions.willConfirm} actions={<Dialog>
+        description={m.account.sessions.willConfirm} actions={confirmProvider === null ? (
+          <>
+            {/* ⚠️ **사유 없는 `disabled`를 만들지 않는다** (POSTMORTEM 2026-09-06) — 다음 행동은 같은 화면 수단 카드의 [Connect]다. */}
+            <span id={reasonId} className="text-muted-foreground text-xs">{m.account.sessions.needsMethod}</span>
+            {/* ⚠️ `disabled`가 아니라 `aria-disabled`다 (audit #37 · `login-methods.tsx`의 마지막 수단과 같은 형) — 포커스를 받아야 사유가 읽힌다. */}
+            <Button variant="danger" aria-describedby={reasonId} aria-disabled onClick={event => event.preventDefault()}>{m.account.sessions.title}</Button>
+          </>
+        ) : <Dialog>
             <DialogTrigger asChild>
               {/*
                 ⚠️ **넷 중 이것만 행에서도 붉다** — 되돌리려면 모든 기기에서 다시 로그인해야 하고,

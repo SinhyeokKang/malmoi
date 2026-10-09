@@ -11,7 +11,13 @@ import { checkChallenge, isLoginProvider, pickLoginAccount, type Challenge, type
 export type LinkOffer =
   | { kind: "sign-in" }
   | { kind: "reject" }
-  | { kind: "offer"; userId: string; have: LoginProvider };
+  | { kind: "offer"; userId: string; have: LoginProvider }
+  /**
+   * 같은 주소의 기존 사용자가 있는데 그 연결 수단이 **전부 이 설치에서 꺼져 있다** (optional-login-providers spec §4.11). 확인
+   * 상대가 없어 안내를 열 수 없고, `OAuthAccountNotLinked`의 문구는 화면에 없는 버튼을 가리킨다 — 호출부가 전용 코드로 거부한다.
+   * ⚠️ **구제가 아니다** — 이메일 일치로 붙이지 않는다(ARCHITECTURE §6.2.1). 복구는 운영자가 그 공급자를 다시 켜는 것이다.
+   */
+  | { kind: "method-unavailable" };
 
 /**
  * ⚠️ **`existingUser`는 새 조회가 아니다** (ARCHITECTURE "계정 병합"). 호출부가 이미 "이 Account가 새 것인가"를
@@ -23,6 +29,8 @@ export function planLinkOffer(input: {
   providerAccountId: string;
   verifiedEmail: string | null;
   existingUser: { id: string; methods: readonly string[] } | null;
+  /** 이 설치의 켜진 집합 — 호출부가 요청 하나에서 한 번 읽어 넘긴다. 기본값이 없다(`pickLoginAccount`와 같은 이유). */
+  enabled: readonly LoginProvider[];
 }): LinkOffer {
   // provider 설정이 검증에 실패하면 빈 문자열로 온다 — 이메일이 **같을 때만** 병합하므로
   // 여기서 거부하지 않으면 병합의 전제가 사라진다 (불변식 1).
@@ -36,8 +44,8 @@ export function planLinkOffer(input: {
    * 소유를 두 번 증명하는 형이 깨진다 — 현재 거부(`OAuthAccountNotLinked`)를 그대로 둔다.
    */
   if (methods.length === 0 || methods.includes(input.provider)) return { kind: "sign-in" };
-  const have = pickLoginAccount(methods.map((provider) => ({ provider })));
-  if (have === null) return { kind: "sign-in" };
+  const have = pickLoginAccount(methods.map((provider) => ({ provider })), input.enabled);
+  if (have === null) return { kind: "method-unavailable" };
   return { kind: "offer", userId: user.id, have: have.provider as LoginProvider };
 }
 

@@ -1,5 +1,5 @@
 import { Children, isValidElement, type ReactElement, type ReactNode } from "react";
-import { expect, it, vi } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 const s = vi.hoisted(() => ({ set: vi.fn(), signIn: vi.fn() }));
 vi.mock("@/auth", () => ({ signIn: s.signIn }));
 vi.mock("@/lib/auth/read-session", () => ({ readSession: async () => ({ status: "none" }) }));
@@ -84,4 +84,49 @@ it("link confirmation carries the challenge token in its own cookie", async () =
   const form = Reflect.apply(button.type as Function, null, [button.props]) as ReactElement<{ action: () => Promise<void> }>;
   await form.props.action();
   expect(s.set).toHaveBeenCalledWith("malmoi-login-link", "chal", expect.objectContaining({ httpOnly: true, path: "/" }));
+});
+
+/**
+ * 켜진 공급자만 그린다 (optional-login-providers spec §4.2) — 버튼 소비자 셋(`/signin`·`/invite`·`/oauth/authorize`)이 같은 판정
+ * (`signInButtons`)을 쓴다. 테스트 기본(setup)은 hosted 두 쌍이고, 단독은 env를 비워 만든다.
+ */
+const BUTTON_ENTRIES = ["root", "invite", "oauth"] as const;
+const shape = (buttons: ReactElement[]) => buttons.map((b) => {
+  const props = b.props as { provider: string; variant: string };
+  return [props.provider, props.variant];
+});
+afterEach(() => vi.unstubAllEnvs());
+
+it.each(BUTTON_ENTRIES)("%s draws both providers on hosted — GitHub primary", async (entry) => {
+  expect(shape(providers(await render(entry)))).toEqual([["github", "primary"], ["google", "default"]]);
+});
+
+it.each(BUTTON_ENTRIES)("%s draws only the enabled provider — Google alone is primary", async (entry) => {
+  vi.stubEnv("AUTH_GITHUB_SECRET", "");
+  const buttons = providers(await render(entry));
+  expect(shape(buttons)).toEqual([["google", "primary"]]);
+  s.signIn.mockClear();
+  const form = Reflect.apply(buttons[0]!.type as Function, null, [buttons[0]!.props]) as ReactElement<{ action: () => Promise<void> }>;
+  await form.props.action();
+  expect(s.signIn).toHaveBeenCalledWith("google", expect.anything());
+});
+
+it.each(BUTTON_ENTRIES)("%s draws only GitHub when Google is off", async (entry) => {
+  vi.stubEnv("AUTH_GOOGLE_ID", "");
+  expect(shape(providers(await render(entry)))).toEqual([["github", "primary"]]);
+});
+
+/** `/signin?error=MethodUnavailable` — `auth.ts`가 보내는 사유를 이 화면이 실제로 읽는다(보내놓고 안 읽으면 무음이다, POSTMORTEM 2026-09-06). */
+it("signin shows the MethodUnavailable message, not OAuthAccountNotLinked", async () => {
+  const page = await SignIn({ searchParams: Promise.resolve({ error: "MethodUnavailable" }) });
+  const toast = (function find(node: ReactNode): ReactElement<{ error?: string }> | undefined {
+    let hit: ReactElement<{ error?: string }> | undefined;
+    Children.forEach(node, (child) => {
+      if (hit !== undefined || !isValidElement<{ children?: ReactNode; error?: string }>(child)) return;
+      if (typeof child.type === "function" && child.type.name === "AuthToast") hit = child;
+      else hit = find(child.props.children);
+    });
+    return hit;
+  })(page);
+  expect(toast?.props.error).toBe("Your sign-in method isn't available here. Ask your administrator.");
 });

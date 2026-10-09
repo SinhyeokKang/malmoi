@@ -23,6 +23,7 @@ import { withLinkStart } from "@/lib/login-link/http";
 import { linkErrorMessage, providerLabel } from "@/lib/login-link/message";
 import { linkCookie, outcomeUrl, type LinkDest, type LoginProvider } from "@/lib/login-link/policy";
 import { loadChallengeView } from "@/lib/login-link/view";
+import { enabledLoginProviders } from "@/lib/auth/login-providers";
 import { routes } from "@/lib/routes";
 import { firstQueryValues, type Raw } from "@/lib/search-params";
 import { formatMonth } from "@/lib/date-format";
@@ -55,7 +56,8 @@ export default async function LinkAccountPage({
 
   let view;
   try {
-    view = await loadChallengeView(getPrisma(), challenge, new Date());
+    // 확인 상대는 켜진 연결 수단 중에서만 — 꺼진 공급자로는 [Confirm]이 왕복을 시작할 수 없다(optional-login-providers spec §4.7).
+    view = await loadChallengeView(getPrisma(), challenge, new Date(), enabledLoginProviders());
   } catch (error) {
     logCaught("login-link", "page", error);
     // 장애와 만료를 가른다 — 같은 화면으로 접으면 다시 시도해도 소용없는 사람에게 재시도를 준다.

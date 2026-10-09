@@ -16,7 +16,9 @@ import {
   outcomeUrl,
   parseChallengeIdentifier,
   pickLoginAccount,
+  signInButtons,
   type Challenge,
+  type LoginProvider,
 } from "../policy";
 
 /**
@@ -76,33 +78,89 @@ it("수명 판정: 만료가 provider 불일치보다 앞이고, 붙일 provider
   expect(CHALLENGE_TTL_MINUTES).toBe(10);
 });
 
+/** hosted = 두 공급자 다 켜짐. 켜진 집합은 서버가 구해 인자로 내려온다(policy는 env를 모른다 — 클라이언트 그래프다). */
+const BOTH: readonly LoginProvider[] = ["github", "google"];
+
 it("확인 상대는 결정적으로 고른다 — github 우선", () => {
   const github = { provider: "github", providerAccountId: "gh" };
   const google = { provider: "google", providerAccountId: "g" };
-  expect(pickLoginAccount([github])).toEqual(github);
-  expect(pickLoginAccount([google])).toEqual(google);
-  expect(pickLoginAccount([google, github])).toEqual(github);
-  expect(pickLoginAccount([github, google])).toEqual(github);
-  expect(pickLoginAccount([])).toBeNull();
+  expect(pickLoginAccount([github], BOTH)).toEqual(github);
+  expect(pickLoginAccount([google], BOTH)).toEqual(google);
+  expect(pickLoginAccount([google, github], BOTH)).toEqual(github);
+  expect(pickLoginAccount([github, google], BOTH)).toEqual(github);
+  expect(pickLoginAccount([], BOTH)).toBeNull();
   // `github-app`은 로그인 수단이 아니다 — 리포 쓰기 연결이다.
-  expect(pickLoginAccount([{ provider: "github-app", providerAccountId: "app" }])).toBeNull();
+  expect(pickLoginAccount([{ provider: "github-app", providerAccountId: "app" }], BOTH)).toBeNull();
+});
+
+/**
+ * 확인 상대는 **켜진** 연결 수단 중에서만 고른다 (optional-login-providers spec §4.7) — 꺼진 공급자로는 확인 왕복이 성립하지
+ * 않는다(Auth.js `providers`에 없다).
+ */
+it("확인 상대는 켜진 연결 수단 중에서만 고른다", () => {
+  const github = { provider: "github", providerAccountId: "gh" };
+  const google = { provider: "google", providerAccountId: "g" };
+  expect(pickLoginAccount([github, google], ["google"])).toEqual(google);
+  expect(pickLoginAccount([github], ["google"])).toBeNull();
+  expect(pickLoginAccount([github, google], [])).toBeNull();
+  // 결정성은 `LOGIN_PROVIDERS` 순서다 — 입력 배열의 순서도, 켜진 집합의 순서도 아니다.
+  expect(pickLoginAccount([google, github], ["google", "github"])).toEqual(github);
 });
 
 it("수단 목록은 둘을 고정 순서로 내고, 마지막 하나는 해제할 수 없다", () => {
-  expect(loginMethodRows([{ provider: "google" }])).toEqual([
+  expect(loginMethodRows([{ provider: "google" }], BOTH)).toEqual([
     { provider: "github", connected: false },
     { provider: "google", connected: true },
   ]);
-  expect(loginMethodRows([{ provider: "google" }, { provider: "github" }, { provider: "github-app" }])).toEqual([
+  expect(loginMethodRows([{ provider: "google" }, { provider: "github" }, { provider: "github-app" }], BOTH)).toEqual([
     { provider: "github", connected: true },
     { provider: "google", connected: true },
   ]);
-  expect(canUnlink(["github"], "github")).toBe(false);
-  expect(canUnlink(["github", "google"], "github")).toBe(true);
-  expect(canUnlink(["github", "google"], "google")).toBe(true);
+  expect(canUnlink(["github"], "github", BOTH)).toBe(false);
+  expect(canUnlink(["github", "google"], "github", BOTH)).toBe(true);
+  expect(canUnlink(["github", "google"], "google", BOTH)).toBe(true);
   // 붙어 있지 않은 수단은 해제 대상이 아니다.
-  expect(canUnlink(["github", "google"], "github-app")).toBe(false);
-  expect(canUnlink([], "github")).toBe(false);
+  expect(canUnlink(["github", "google"], "github-app", BOTH)).toBe(false);
+  expect(canUnlink([], "github", BOTH)).toBe(false);
+});
+
+/** 행 = 켜진 공급자 (spec §4.4). 꺼진 공급자로 연결된 행은 **지우지 않고 숨긴다** — 다시 켜면 그대로 돌아온다. */
+it("수단 목록은 켜진 공급자 행만 낸다", () => {
+  expect(loginMethodRows([{ provider: "github" }], ["google"])).toEqual([{ provider: "google", connected: false }]);
+  expect(loginMethodRows([{ provider: "github" }, { provider: "google" }], ["google"])).toEqual([{ provider: "google", connected: true }]);
+  expect(methodCounts(loginMethodRows([{ provider: "github" }, { provider: "google" }], ["google"]))).toEqual({ connected: 1, total: 1 });
+  expect(loginMethodRows([{ provider: "google" }], ["github"])).toEqual([{ provider: "github", connected: false }]);
+});
+
+/**
+ * ⚠️ **이 기능의 보안 요지다** (spec §2) — 연결 행 수로 세면 꺼진 GitHub 행이 남은 사용자가 유일하게 켜진 Google을 해제해
+ * **다시 로그인할 수 없게 된다.** 해제 뒤 켜진 연결 수단이 하나 이상 남을 때만 해제한다.
+ */
+it("해제는 켜진 연결 수단이 하나 이상 남을 때만이다", () => {
+  expect(canUnlink(["github", "google"], "google", ["google"])).toBe(false);
+  // 꺼진 공급자는 해제 대상이 아니다.
+  expect(canUnlink(["google", "github"], "github", ["google"])).toBe(false);
+  expect(canUnlink(["github", "google"], "github", [])).toBe(false);
+  expect(canUnlink(["github", "google"], "google", [])).toBe(false);
+});
+
+/**
+ * 로그인 버튼 (spec §4.2) — 켜진 것만, **첫째가 primary**. `autoFocus`는 화면 상태라 여기 없다 — `/oauth/authorize`가
+ * 자기 조건으로 index 0에 붙인다.
+ */
+it("로그인 버튼은 켜진 공급자만, 첫째가 primary다", () => {
+  expect(signInButtons(BOTH)).toEqual([
+    { provider: "github", variant: "primary" },
+    { provider: "google", variant: "default" },
+  ]);
+  expect(signInButtons(["google"])).toEqual([{ provider: "google", variant: "primary" }]);
+  expect(signInButtons(["github"])).toEqual([{ provider: "github", variant: "primary" }]);
+  expect(signInButtons([])).toEqual([]);
+  // 순서는 `LOGIN_PROVIDERS`다 — primary가 입력 순서에 따라 바뀌지 않는다.
+  expect(signInButtons(["google", "github"])).toEqual([
+    { provider: "github", variant: "primary" },
+    { provider: "google", variant: "default" },
+  ]);
 });
 
 /**
@@ -112,16 +170,16 @@ it("수단 목록은 둘을 고정 순서로 내고, 마지막 하나는 해제�
  * "하나 더 붙일 수 있다"가 읽힌다(캔버스 §열린 결정 2 → 채택).
  */
 it("수단 카드 배지는 연결된 수와 전체 수를 센다", () => {
-  expect(methodCounts(loginMethodRows([]))).toEqual({ connected: 0, total: 2 });
-  expect(methodCounts(loginMethodRows([{ provider: "google" }]))).toEqual({ connected: 1, total: 2 });
-  expect(methodCounts(loginMethodRows([{ provider: "google" }, { provider: "github" }]))).toEqual({
+  expect(methodCounts(loginMethodRows([], BOTH))).toEqual({ connected: 0, total: 2 });
+  expect(methodCounts(loginMethodRows([{ provider: "google" }], BOTH))).toEqual({ connected: 1, total: 2 });
+  expect(methodCounts(loginMethodRows([{ provider: "google" }, { provider: "github" }], BOTH))).toEqual({
     connected: 2,
     total: 2,
   });
   // ⚠️ `github-app`은 로그인 수단이 아니다 — 그 행이 분모에 들어가면 배지가 `2 of 3`이 된다.
   // `loginMethodRows`가 이미 걸러내지만, 배지가 그 행을 직접 세는 구현으로 바뀌면 여기가 red다.
   expect(
-    methodCounts(loginMethodRows([{ provider: "google" }, { provider: "github" }, { provider: "github-app" }])),
+    methodCounts(loginMethodRows([{ provider: "google" }, { provider: "github" }, { provider: "github-app" }], BOTH)),
   ).toEqual({ connected: 2, total: 2 });
 });
 

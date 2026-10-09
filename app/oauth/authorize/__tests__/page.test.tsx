@@ -135,6 +135,25 @@ describe("?request= — 세션", () => {
     expect(page).not.toContain("You were signed out.");
   });
 
+  /**
+   * `Not you?` 뒤(`1s`)에는 **첫 공급자 버튼**에 포커스 (optional-login-providers spec §4.2) — 조건은 그대로이고 대상만 켜진 것 중
+   * 첫째다. Google 단독이면 Google이 첫째이자 primary다.
+   */
+  it("계정 전환 뒤엔 켜진 첫 공급자 버튼 하나에 autoFocus가 붙는다", async () => {
+    const autofocused = (page: string) => [...page.matchAll(/<button[^>]*autofocus[^>]*>([\s\S]*?)<\/button>/g)].map((m) => m[1]!.replace(/<[^>]+>/g, ""));
+    expect(autofocused(await html({ request: "req_1", e: "switch" }))).toEqual(["Continue with GitHub"]);
+    expect(autofocused(await html({ request: "req_1" }))).toEqual([]);
+    expect(autofocused(await html({ request: "req_1", e: "signed-out" }))).toEqual([]);
+    vi.stubEnv("AUTH_GITHUB_ID", "");
+    try {
+      const google = await html({ request: "req_1", e: "switch" });
+      expect(google).not.toContain("Continue with GitHub");
+      expect(autofocused(google)).toEqual(["Continue with Google"]);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("동의 중 세션이 끝났으면 경고가 먼저 낭독된다 (`1k`)", async () => {
     const page = await html({ request: "req_1", e: "signed-out" });
     expect(page).toMatch(/role="alert"[^>]*>.*You were signed out\./);

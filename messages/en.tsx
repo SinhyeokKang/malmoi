@@ -2054,6 +2054,11 @@ export const en = {
       cancelled: "Confirmation was cancelled. You're still signed in. Try again when you're ready.",
       expired: "This confirmation expired. Start again to sign out everywhere.",
       wrongAccount: "Choose the same account you use to sign in to Malmoi, then try again.",
+      /**
+       * [Sign out everywhere]의 비활성 사유 — 켜진 연결 수단이 하나도 없는 세션(운영자가 그 공급자를 껐다). 누르면 영원히
+       * 실패하는 재시도 루프라 막고, 다음 행동은 같은 화면 수단 카드의 [Connect]다(optional-login-providers spec §4.10).
+       */
+      needsMethod: "Connect a sign-in method first.",
     },
     signOut: {
       title: "Sign out",
@@ -3915,6 +3920,12 @@ export const en = {
       Unavailable: "Something went wrong. Try opening this again in a moment.",
       // 우리 코드다 — 만료된 병합 challenge를 그 화면으로 되돌리지 않고 여기로 보낸다 (완료 조건 5).
       LinkExpired: "That confirmation is no longer valid. Sign in again to continue.",
+      /**
+       * 우리 코드다 — 기존 사용자의 연결 수단이 전부 이 설치에서 꺼져 있다(optional-login-providers spec §4.11). ⚠️
+       * `OAuthAccountNotLinked`를 쓰지 않는다 — "가입할 때 쓴 것을 써라"가 화면에 없는 버튼을 가리킨다. 복구는 운영자가 그 공급자를
+       * 다시 켜는 것이라 할 일이 관리자에게 있다. 가이드(self-hosting troubleshooting)가 이 문장을 인용한다.
+       */
+      MethodUnavailable: "Your sign-in method isn't available here. Ask your administrator.",
       fallback: "Sign-in failed. Try again in a moment.",
     },
 

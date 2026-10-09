@@ -25,6 +25,8 @@ import { logCaught } from "@/lib/failure";
 import type { Messages } from "@/lib/i18n";
 import { getMessages } from "@/lib/i18n/server";
 import { en } from "@/messages/en";
+import { enabledLoginProviders } from "@/lib/auth/login-providers";
+import { signInButtons, type LoginProvider } from "@/lib/login-link/policy";
 import { routes } from "@/lib/routes";
 import { firstQueryValues, type Raw } from "@/lib/search-params";
 
@@ -131,8 +133,10 @@ export default async function InvitePage({
     case "sign-in":
       cta = (
         <div className="flex w-full flex-col gap-2">
-          <ProviderButton m={m} provider="github" token={token} />
-          <ProviderButton m={m} provider="google" token={token} />
+          {/* 켜진 공급자만, 첫째가 primary — `/signin`과 같은 판정이다(`signInButtons`). */}
+          {signInButtons(enabledLoginProviders()).map(({ provider, variant }) => (
+            <ProviderButton key={provider} m={m} provider={provider} variant={variant} token={token} />
+          ))}
           {/* 로그인 약관과 같이 행동을 먼저 읽도록 캡션은 버튼 아래에 둔다. */}
           <p className="text-muted-foreground text-center text-xs leading-relaxed">
             {m.invite.signInHint(email ?? "")}
@@ -213,14 +217,14 @@ function Card({ m, children }: { m: Messages; children: ReactNode }) {
  * 같은 자리에서 같은 일을 하는 버튼이 화면마다 다르게 생기면, 번역자에게 **첫 얼굴인 이 화면**이
  * 로그인 화면과 다른 제품처럼 보인다 (`AuthLayout`을 둘이 공유하는 이유와 같은 근거).
  *
- * ⚠️ **GitHub이 `primary`인 것도 그쪽을 따른다.** 옛 기능 문서는 *"어느 쪽으로 가입했는지 화면이
+ * ⚠️ **첫 버튼이 `primary`인 것도 그쪽을 따른다**(hosted는 GitHub — `signInButtons`). 옛 기능 문서는 *"어느 쪽으로 가입했는지 화면이
  * 모르므로 primary가 없다"*로 둘 다 `default`를 적었는데, **그 논거는 `/signin`에도 똑같이 성립해
  * 두 화면을 가르지 못한다.** 그리고 로그인이 유일한 할 일인 화면에 primary가 0이면 DESIGN §2의
  * "primary는 화면당 하나"가 그 화면에서 성립하지 않는다.
  *
  * ⚠️ **함수 이름을 바꾸지 않는다** — `normal-login.test.tsx`가 이것을 이름으로 찾는다.
  */
-function ProviderButton({ m, provider, token }: { m: Messages; provider: "github" | "google"; token: string }) {
+function ProviderButton({ m, provider, variant, token }: { m: Messages; provider: LoginProvider; variant: "primary" | "default"; token: string }) {
   return (
     <form
       className="w-full"
@@ -232,7 +236,7 @@ function ProviderButton({ m, provider, token }: { m: Messages; provider: "github
     >
       <ProviderSubmit
         label={provider === "github" ? m.signIn.github : m.signIn.google}
-        variant={provider === "github" ? "primary" : "default"}
+        variant={variant}
         icon={provider === "github" ? <GithubIcon aria-hidden className="size-4" /> : <GoogleIcon aria-hidden className="size-4" />}
       />
     </form>

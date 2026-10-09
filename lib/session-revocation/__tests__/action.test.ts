@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const s = vi.hoisted(() => ({ requireUser: vi.fn(), signIn: vi.fn(), begin: vi.fn(), accounts: vi.fn(), set: vi.fn(), get: vi.fn(), headers: vi.fn(), transaction: vi.fn() }));
 vi.mock("@/auth", () => ({ signIn: s.signIn }));
 vi.mock("@/lib/auth/session", () => ({ requireUser: s.requireUser }));
@@ -70,4 +70,51 @@ it("로그인 수단 해제 장애는 분류 한 줄, 성공·마지막 수단 �
   s.transaction.mockRejectedValue(new Error("secret row"));
   await expect(unlinkLoginMethod("google")).rejects.toThrow("REDIRECT:/account?link=unavailable");
   expect(lines()).toEqual([expect.stringMatching(/^\[account\] \w{8} unlink: Error$/)]);
+});
+
+/**
+ * 공급자를 끈 설치 (optional-login-providers spec §4.5·§4.7) — 판정은 **켜진** 연결 수단으로 한다. 꺼진 GitHub 행이 남아 있어도
+ * 유일하게 켜진 Google은 마지막 수단이고, 꺼진 GitHub 해제는 `last-method`가 아니라 `unavailable`이다(마지막 수단이 사실이 아니다).
+ */
+describe("disabled provider", () => {
+  const deleteMany = vi.fn().mockResolvedValue({ count: 1 });
+  const tx = { $executeRaw: vi.fn(), account: { findMany: vi.fn(), deleteMany } };
+  beforeEach(() => {
+    vi.stubEnv("AUTH_GITHUB_ID", "");
+    tx.account.findMany.mockResolvedValue([{ provider: "github" }, { provider: "google" }]);
+    s.transaction.mockImplementation(async (fn: (t: typeof tx) => unknown) => fn(tx));
+    deleteMany.mockClear();
+  });
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("the only enabled method cannot be unlinked even with a disabled row left", async () => {
+    await expect(unlinkLoginMethod("google")).rejects.toThrow("REDIRECT:/account?link=last-method");
+    expect(deleteMany).not.toHaveBeenCalled();
+  });
+
+  it("a disabled method's unlink is unavailable and deletes nothing", async () => {
+    await expect(unlinkLoginMethod("github")).rejects.toThrow("REDIRECT:/account?link=unavailable");
+    expect(deleteMany).not.toHaveBeenCalled();
+  });
+
+  it("an enabled method is unlinkable while another enabled one remains", async () => {
+    vi.unstubAllEnvs();
+    await expect(unlinkLoginMethod("google")).rejects.toThrow("REDIRECT:/account?link=disconnected");
+    expect(deleteMany).toHaveBeenCalledWith({ where: { userId: "u", provider: "google" } });
+  });
+
+  it("revocation with no enabled connected method is unavailable before OAuth", async () => {
+    s.accounts.mockResolvedValue([{ provider: "github", providerAccountId: "gh" }]);
+    expect(await startSessionRevocation()).toEqual({ error: "unavailable" });
+    expect(s.signIn).not.toHaveBeenCalled();
+    expect(s.begin).not.toHaveBeenCalled();
+  });
+
+  it("revocation confirms against the enabled method and hands the same set to the store", async () => {
+    s.accounts.mockResolvedValue([{ provider: "github", providerAccountId: "gh" }, { provider: "google", providerAccountId: "g" }]);
+    s.signIn.mockResolvedValue("https://accounts.google.com/o/oauth2/v2/auth?state=fresh");
+    await expect(startSessionRevocation()).rejects.toThrow("REDIRECT:https://accounts.google.com");
+    expect(s.signIn).toHaveBeenCalledWith("google", expect.anything(), expect.anything());
+    expect(s.begin).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ provider: "google", providerAccountId: "g", enabled: ["google"] }));
+  });
 });

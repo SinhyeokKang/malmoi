@@ -49,10 +49,15 @@ export type ChallengeView = {
   dest: LinkDest;
 };
 
+/**
+ * ⚠️ **확인 상대는 켜진 연결 수단 중에서만이다** (optional-login-providers spec §4.7) — 꺼진 공급자로는 [Confirm]이 왕복을 시작할
+ * 수 없으므로 화면을 그리지 않는다(`null` → 호출부가 `/signin`). 켜진 집합은 페이지가 읽어 넘긴다.
+ */
 export async function loadChallengeView(
   prisma: PrismaClient,
   challengeToken: string,
   now: Date,
+  enabled: readonly LoginProvider[],
 ): Promise<ChallengeView | null> {
   const row = await prisma.verificationToken.findFirst({
     where: { token: challengeTokenHash(challengeToken), identifier: { startsWith: challengePrefix() } },
@@ -64,7 +69,7 @@ export async function loadChallengeView(
     where: { userId: challenge.userId, provider: { in: [...LOGIN_PROVIDERS] } },
     select: { provider: true },
   });
-  const have = pickLoginAccount(accounts);
+  const have = pickLoginAccount(accounts, enabled);
   if (have === null) return null;
   // ⚠️ **만료를 이 화면으로 말하지 않는다** — `null`을 내고 호출부가 `/signin`으로 되돌린다.
   if (checkChallenge(challenge, { confirming: have.provider, expires: row.expires, now }) !== "ok") return null;
