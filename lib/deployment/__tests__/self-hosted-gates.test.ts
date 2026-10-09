@@ -65,19 +65,19 @@ const ALLOWED: Record<Token, Record<string, number>> = {
     "messages/ko-privacy.tsx": 1,
   },
   MALMOI_ORIGIN: {
-    "lib/deployment/mode.ts": 1,
+    "lib/deployment/mode.ts": 4,
     // 주입된 env 맵을 판정한다 — 표의 이름과 사유 보고 자리다.
-    "lib/deployment/preflight.ts": 4,
+    "lib/deployment/preflight.ts": 2,
   },
   VERCEL_ENV: {
-    "lib/deployment/mode.ts": 1,
-    "lib/deployment/preflight.ts": 2,
+    "lib/deployment/mode.ts": 4,
+    "lib/deployment/preflight.ts": 1,
     // hosted CSP 환경 판정 — Edge라 `lib/env.ts`를 못 쓴다.
     "middleware.ts": 1,
     // hosted robots — 비면 이미 `Disallow: /`다.
     "app/robots.ts": 1,
     // hosted 초대 메일 origin 대조 — self-hosted 판정으로의 교체는 메일 config가 든다.
-    "lib/invitation-email/send.ts": 1,
+    "lib/invitation-email/send.ts": 2,
     "lib/invitation-email/config.ts": 1,
   },
 };

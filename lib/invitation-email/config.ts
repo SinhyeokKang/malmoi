@@ -1,3 +1,5 @@
+import { HOSTED_PREVIEW_ORIGIN, HOSTED_PRODUCTION_ORIGIN } from "@/lib/deployment/mode";
+
 /**
  * 초대 메일 설정 판정 (design §5). **던지지 않는다** — 설정이 없거나 틀리면 발급·발송만 막고
  * 부팅·로그인·멤버 화면은 그대로 산다. 그래서 `requireEnv`가 아니라 값 맵을 받는다.
@@ -16,11 +18,12 @@ const LOCAL_HOST = /^(localhost|127\.0\.0\.1)$/;
 // `이름 <주소>` 또는 `주소`. 공백·꺾쇠가 섞인 주소는 공급자가 거부하기 전에 여기서 막고,
 // 이름의 개행은 헤더 줄을 가를 수 있는 모양이라 받지 않는다.
 const ADDRESS = "[^\\s@<>]+@[^\\s@<>]+";
-const FROM = new RegExp(`^(?:[^<>\\r\\n]*<${ADDRESS}>|${ADDRESS})$`);
+/** self-hosted preflight도 같은 모양을 요구한다(`lib/deployment/preflight.ts`) — 두 벌이면 한쪽이 낡는다. */
+export const FROM = new RegExp(`^(?:[^<>\\r\\n]*<${ADDRESS}>|${ADDRESS})$`);
 
 function expectedOrigin(vercelEnv: string | undefined): string | null {
-  if (vercelEnv === "production") return "https://mal-moi.com";
-  if (vercelEnv === "preview") return "https://dev.mal-moi.com";
+  if (vercelEnv === "production") return HOSTED_PRODUCTION_ORIGIN;
+  if (vercelEnv === "preview") return HOSTED_PREVIEW_ORIGIN;
   return null;
 }
 

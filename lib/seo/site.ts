@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { HOSTED_PRODUCTION_ORIGIN } from "@/lib/deployment/mode";
 import { en } from "@/messages/en";
 
 /**
@@ -8,7 +9,7 @@ import { en } from "@/messages/en";
  * ⚠️ **환경별로 바꾸지 않는다** — 비프로덕션은 robots가 통째로 막으니 canonical이 프로덕션을 가리키는 것이 맞다.
  * `lib/invitation-email/config.ts`의 환경별 origin과 합치지 않는다(그쪽은 "지금 이 배포"다).
  */
-export const SITE_ORIGIN = "https://mal-moi.com";
+export const SITE_ORIGIN = HOSTED_PRODUCTION_ORIGIN;
 
 /**
  * docs 제목 접미 — `Every night · Malmoi`만으로는 무슨 페이지인지 모른다(seo-geo spec D9). 라벨은 헤더·사이드바와 같은

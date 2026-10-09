@@ -1,4 +1,5 @@
 import type { Role } from "@/lib/auth/permission";
+import { HOSTED_PRODUCTION_ORIGIN } from "@/lib/deployment/mode";
 import { en } from "@/messages/en";
 import { routes } from "@/lib/routes";
 import { hueOf, type Hue } from "@/lib/hue";
@@ -18,14 +19,14 @@ export const INVITATION_EMAIL_SUBJECT = "You're invited to a project on Malmoi";
  * ⚠️ **프로덕션 고정 URL이다** — dev·로컬 메일도 이 주소를 쓴다. preview 호스트는 Vercel SSO 뒤라 메일
  * 클라이언트가 이미지를 못 받는다. 파일이 프로덕션에 배포되기 전에는 alt 텍스트가 워드마크 자리를 채운다.
  */
-export const INVITATION_EMAIL_LOGO_URL = "https://mal-moi.com/email/logo@2x.png";
+export const INVITATION_EMAIL_LOGO_URL = `${HOSTED_PRODUCTION_ORIGIN}/email/logo@2x.png`;
 /** 폴백 타일의 흰 Box 글리프. 로고와 같은 이유로 프로덕션 고정이다 — 경로를 옮기면 이미 보낸 메일이 깨진다. */
-const BOX_URL = "https://mal-moi.com/email/box@2x.png";
+const BOX_URL = `${HOSTED_PRODUCTION_ORIGIN}/email/box@2x.png`;
 /**
  * ⚠️ **Blob 호스트를 수신 측에 주지 않는다**(ARCHITECTURE §6.7) — 사내 웹필터가 `*.vercel-storage.com`을 막아
  * 이미지를 직접 받는 메일 클라이언트도 같이 막힌다. 로고와 같이 프로덕션 고정이라 dev 스토어 키는 404(빈 칸)다.
  */
-const IMAGE_PROXY_ORIGIN = "https://mal-moi.com";
+const IMAGE_PROXY_ORIGIN = HOSTED_PRODUCTION_ORIGIN;
 
 /**
  * 색조 → 폴백 셀 hex. 판정은 화면과 같은 `hueOf`이고 값만 hex다 — 메일 클라이언트는 oklch를 못 읽는다.

@@ -1,3 +1,5 @@
+import { deploymentMode, HOSTED_PREVIEW_ORIGIN, HOSTED_PRODUCTION_ORIGIN } from "@/lib/deployment/mode";
+
 /**
  * 요청 origin 판정 (malmoi#7). **`redirect_uri`와 state 쿠키의 `secure`가 같은 판정에서 나온다.**
  *
@@ -36,15 +38,23 @@ const HOST = /^[a-z0-9.-]+(:\d+)?$/i;
  * 리네임에 조용히 죽으므로, 그 URL을 쓰는 곳이 없어지면 여기서도 뺀다.
  */
 const ALLOWED_HOSTS: readonly string[] = [
-  "mal-moi.com",
-  "dev.mal-moi.com",
+  new URL(HOSTED_PRODUCTION_ORIGIN).host,
+  new URL(HOSTED_PREVIEW_ORIGIN).host,
   "malmoi-git-dev-ox501501-1046s-projects.vercel.app",
 ];
 /** 로컬 개발 — 포트는 고정하지 않는다(3000이 잡혀 있으면 Next가 다음 포트로 뜬다). */
 const LOCAL_HOST = /^(localhost|127\.0\.0\.1)(:\d+)?$/;
 
-/** `lib/mcp/http.ts`의 `Origin` 대조도 이 목록을 쓴다 — 호스트를 늘리면 두 판정이 함께 넓어진다(목록이 두 벌이면 한쪽이 낡는다). */
+/**
+ * `lib/mcp/http.ts`의 `Origin` 대조도 이 목록을 쓴다 — 호스트를 늘리면 두 판정이 함께 넓어진다(목록이 두 벌이면 한쪽이 낡는다).
+ *
+ * ⚠️ **self-hosted는 설정 호스트 하나뿐이다** (self-hosting design §2) — hosted 목록도 `LOCAL_HOST`도 꺼진다. 켜 두면 그 설치의 MCP
+ * Origin 대조가 `mal-moi.com`·localhost 페이지를 받는다. 판정이 무효면 아무 호스트도 받지 않는다.
+ */
 export function isAllowedHost(host: string): boolean {
+  const mode = deploymentMode();
+  if (mode.kind === "invalid") return false;
+  if (mode.kind === "self-hosted") return host.toLowerCase() === mode.host;
   return ALLOWED_HOSTS.includes(host.toLowerCase()) || LOCAL_HOST.test(host);
 }
 
@@ -56,6 +66,10 @@ export function requestOrigin(input: {
   if (host === "" || !HOST.test(host)) return null;
   // 모양이 맞아도 우리 호스트가 아니면 origin을 만들지 않는다 — 이 값이 `redirect_uri`가 된다.
   if (!isAllowedHost(host)) return null;
+  // ⚠️ self-hosted는 `x-forwarded-proto`를 보지 않고 설정 origin을 그대로 낸다 — 설정이 HTTPS만 받으므로 proxy가 proto를 안 넘겨도
+  // `redirect_uri`·쿠키 `secure`가 http로 떨어지지 않는다. 호출부는 모드를 모른다.
+  const mode = deploymentMode();
+  if (mode.kind === "self-hosted") return { origin: mode.origin, secure: true };
 
   // 프록시가 둘 이상이면 `https,http`처럼 목록으로 온다 — 뒤를 보면 판정이 뒤집힌다.
   const proto = (input.forwardedProto ?? "").split(",")[0]?.trim().toLowerCase() ?? "";
