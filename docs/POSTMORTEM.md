@@ -2870,3 +2870,12 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - **수정**: 수락 트랜잭션 시작에서 Project를 `FOR NO KEY UPDATE`로 잠가 두 역할을 멤버 조회·User 잠금 전에 직렬화한다. 기존 Project→User 순서를 유지하고, 별도 멤버 INSERT의 Project FK `KEY SHARE`는 허용해 기존 P2002 처리를 보존한다.
 - **그물**: 기존 `Promise.all` 테스트는 실행 순서에 따라 통과했다. 새 회귀는 OWNER가 User를 쥔 뒤 초대 소비에서 기다리게 하고 EDITOR의 잠금 대기를 관측한 뒤 풀어, 기존 코드에서 같은 `unavailable`을 재현했다. 멤버·소비된 초대·가입 사건이 각각 하나인지도 검사한다.
 - **재발 방지**: 역할별 선행 잠금이 다르면 unique 제약뿐 아니라 FK 잠금까지 함께 그린다. 동시성 회귀는 고정 sleep 대신 `pg_stat_activity`로 필요한 대기를 관측하고 진행한다.
+
+### 2026-10-09 — self-hosted Publish의 stale 교체가 옛 실행을 멈추지 않았다
+
+- **영역**: `lib/sync/` · `lib/pull/` · GitHub transport · Import/Revert/저장 기준.
+- **증상**: 300초가 지난 RUNNING을 교체해도 `next start`는 옛 함수를 종료하지 않는다. 늦은 GitHub 쓰기가 새 실행의 PR을 덮을 수 있었고, 무조건적인 종료 UPDATE는 stale 실패를 늦은 성공으로 덮었다. 실제 사용자 데이터 사고는 관측하지 않았다.
+- **근본 원인**: DB 실행권의 만료를 프로세스 종료와 같다고 보았다. Vercel의 `maxDuration` 전제가 self-hosted에 없었다. 타임아웃 뒤 FAILED를 쓰는 것만으로도 부족하다 — 기존 게이트는 FAILED를 조회하지 않아 다음 실행이 즉시 시작한다.
+- **수정**: 진입부터 240초 단조 예산과 실행 시작 시각 기한을 함께 검사한다. 실제 transport·body 소비·늦은 DB 확정을 같은 수명에 묶고, 변경 시도 뒤 실패는 결과 미확인으로 300초 창까지 재실행을 막는다. 종료는 자기 RUNNING만 CAS한다. Publish 무효화는 Project 잠금 뒤 실행권을 다시 읽는다.
+- **그물**: stale 종료 덮어쓰기 red, 실제 Octokit의 PR 닫기·force ref·오류 재전송·늦은 토큰, 격리 PG 잠금 대기·Import·Revert·저장 테스트를 추가했다. 최소 Next 검증 앱의 실제 301초 지연 콜백도 신규 전송 0건이었다(SELF-HOSTING 실측 범위 참조).
+- **재발 방지**: 플랫폼 강제 종료와 앱 실행권을 분리한다. 실패 행을 새로 만들면 RUNNING 소비자뿐 아니라 FAILED 재시도·전달 기준 소비자도 함께 점검한다. 이미 원격이 받은 요청을 abort가 취소한다고 주장하지 않는다.
