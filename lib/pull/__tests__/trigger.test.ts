@@ -1,6 +1,3 @@
-import { createPublishExecution } from "@/lib/sync/execution";
-let execution = createPublishExecution();
-beforeEach(() => { execution = createPublishExecution(); });
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -27,6 +24,10 @@ vi.mock("../load", () => ({
 import { createFakeGitClient } from "./fake-client";
 import { triggerPull } from "../trigger";
 import { publishFingerprint } from "@/lib/publish/fingerprint";
+import { createPublishExecution } from "@/lib/sync/execution";
+
+let execution = createPublishExecution();
+beforeEach(() => { execution = createPublishExecution(); });
 
 describe("triggerPull — 조립", () => {
   it("편집이 없으면 1층에서 끝나고 GitHub 클라이언트를 만들지 않는다", async () => {

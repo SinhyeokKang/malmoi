@@ -1,10 +1,10 @@
-import { uncertainPublishWhere } from "@/lib/sync/execution";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { lockCredential } from "@/lib/auth/lock";
 import type { Credential } from "@/lib/auth/subject";
 import { recordEvent } from "@/lib/events/record";
 import { sameFingerprint } from "@/lib/protection/fingerprint";
 import { pendingWhere } from "@/lib/protection/where";
+import { uncertainPublishWhere } from "@/lib/sync/execution";
 import { planWriteLock, STALE_AFTER_SECONDS } from "@/lib/sync/plan";
 import { planKeyRevert, revertSettled, type RevertPlan } from "@/lib/translations/baseline";
 import { revertFingerprint } from "@/lib/translations/context";
