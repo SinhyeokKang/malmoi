@@ -37,11 +37,25 @@ let runtime: Pool;
 const inherited = { ...process.env };
 delete inherited.RUNTIME_DB_PASSWORD;
 
-function bootstrap(env: Record<string, string> = { RUNTIME_DB_PASSWORD: "fixture-runtime" }): void {
+type Run = { env?: Record<string, string>; vars?: Record<string, string>; user?: string };
+const PASSWORD = { RUNTIME_DB_PASSWORD: "fixture-runtime" };
+
+function bootstrap({ env = PASSWORD, vars = { runtime_role: RUNTIME, migrate_role: MIGRATE }, user = MIGRATE }: Run = {}): void {
   execFileSync(join(binaries, "psql"), [
-    "-X", "-q", "-h", directory, "-p", String(PORT), "-U", MIGRATE, "-d", DATABASE,
-    "-v", `runtime_role=${RUNTIME}`, "-v", `migrate_role=${MIGRATE}`, "-f", "deploy/bootstrap.sql",
+    "-X", "-q", "-h", directory, "-p", String(PORT), "-U", user, "-d", DATABASE,
+    ...Object.entries(vars).flatMap(([name, value]) => ["-v", `${name}=${value}`]), "-f", "deploy/bootstrap.sql",
   ], { stdio: "pipe", env: { ...inherited, ...env } });
+}
+
+/** 실패 사유 코드(`bootstrap: <code>`)를 돌려준다 — 문법 오류로 멈춘 것과 판정으로 멈춘 것을 가른다. */
+function refusal(run: Run): string | undefined {
+  try { bootstrap(run); return undefined; } catch (error) {
+    return /bootstrap: ([a-z-]+)/.exec(String((error as { stderr?: Buffer }).stderr ?? ""))?.[1] ?? "unclassified";
+  }
+}
+
+async function roleExists(name: string): Promise<boolean> {
+  return (await admin.query("SELECT 1 FROM pg_roles WHERE rolname = $1", [name])).rowCount === 1;
 }
 
 async function code(query: Promise<unknown>): Promise<string | undefined> {
@@ -76,15 +90,40 @@ afterAll(async () => {
 });
 
 it("비밀번호가 없거나 비었으면 실패하고 롤을 만들지 않는다", async () => {
-  expect(() => bootstrap({})).toThrow();
-  expect(() => bootstrap({ RUNTIME_DB_PASSWORD: "" })).toThrow();
-  const { rows } = await admin.query("SELECT 1 FROM pg_roles WHERE rolname = $1", [RUNTIME]);
-  expect(rows).toEqual([]);
+  expect(refusal({ env: {} })).toBe("password-missing");
+  expect(refusal({ env: { RUNTIME_DB_PASSWORD: "" } })).toBe("password-empty");
+  expect(await roleExists(RUNTIME)).toBe(false);
+});
+
+it("롤 이름 변수가 없으면 실패하고 롤을 만들지 않는다", async () => {
+  expect(refusal({ vars: { migrate_role: MIGRATE } })).toBe("runtime-role-missing");
+  expect(refusal({ vars: { runtime_role: RUNTIME } })).toBe("migrate-role-missing");
+  expect(await roleExists(RUNTIME)).toBe(false);
+});
+
+it("런타임 롤을 마이그레이션 롤로 주면 거절한다", () => {
+  expect(refusal({ vars: { runtime_role: MIGRATE, migrate_role: MIGRATE } })).toBe("runtime-role-is-migrate-role");
+});
+
+it.each(["SUPERUSER", "CREATEROLE", "CREATEDB", "BYPASSRLS"])("이미 있는 런타임 롤이 %s면 거절하고 권한을 주지 않는다", async (attribute) => {
+  const role = `held_${attribute.toLowerCase()}`;
+  await admin.query(`CREATE ROLE ${role} LOGIN ${attribute}`);
+  expect(refusal({ vars: { runtime_role: role, migrate_role: MIGRATE } })).toBe("runtime-role-privileged");
+  const { rows } = await admin.query<{ ok: boolean }>("SELECT has_schema_privilege($1, 'public', 'USAGE') AS ok", [role]);
+  expect(rows).toEqual([{ ok: attribute === "SUPERUSER" }]);
+});
+
+it("현재 롤이 롤을 만들 수 없으면 CREATE ROLE 전에 거절한다 — 비밀번호가 서버 로그에 남지 않는다", async () => {
+  await admin.query("CREATE ROLE weak_owner LOGIN");
+  const secret = "weak-owner-secret-7f3a";
+  expect(refusal({ user: "weak_owner", env: { RUNTIME_DB_PASSWORD: secret } })).toBe("cannot-create-role");
+  expect(await roleExists(RUNTIME)).toBe(false);
+  expect(readFileSync(join(directory, "postgres.log"), "utf8")).not.toContain(secret);
 });
 
 it("① 두 번 실행해도 성공한다 — 런타임 롤은 비밀번호를 가진 최소권한 LOGIN 롤이다", async () => {
-  bootstrap();
-  bootstrap();
+  expect(refusal({})).toBeUndefined();
+  expect(refusal({})).toBeUndefined();
   const { rows } = await admin.query<{ rolcanlogin: boolean; rolsuper: boolean; rolcreaterole: boolean; rolcreatedb: boolean; rolbypassrls: boolean; password: boolean }>(
     "SELECT rolcanlogin, rolsuper, rolcreaterole, rolcreatedb, rolbypassrls, rolpassword IS NOT NULL AS password FROM pg_authid WHERE rolname = $1", [RUNTIME],
   );

@@ -103,11 +103,13 @@ describe("finalizeDeploy", () => {
   it("dev runs migrate deploy with PRISMA_TARGET=dev", () => {
     expect(finalizeDeploy("dev", env)).toEqual({ args: ["exec", "prisma", "migrate", "deploy"], env: { ...env, PRISMA_TARGET: "dev" } });
   });
-  it("self-hosted runs migrate deploy against DIRECT_URL and never sets PRISMA_TARGET", () => {
+  it("self-hosted runs migrate deploy against DIRECT_URL with an explicit non-prod PRISMA_TARGET", () => {
+    // 지우기만 하면 prisma.config.ts의 dotenv가 `.env.local`에서 되살린다 — 명시값은 dotenv가 덮지 못한다.
     const plan = finalizeDeploy("self-hosted", env);
     expect(plan.args).toEqual(["exec", "prisma", "migrate", "deploy"]);
-    expect(Object.hasOwn(plan.env, "PRISMA_TARGET")).toBe(false);
-    expect(plan.env).toEqual({ PATH: "/bin", DIRECT_URL: "u" });
+    expect(plan.env).toEqual({ ...env, PRISMA_TARGET: "self-hosted" });
+    expect(plan.env.PRISMA_TARGET).not.toBe("prod");
+    expect(plan.env.PRISMA_TARGET).not.toBe("dev");
   });
 });
 it("verification reports old-key ciphertext counts before key retirement", async () => {
@@ -119,4 +121,11 @@ it("verification reports old-key ciphertext counts before key retirement", async
   vi.stubEnv("PII_ENCRYPTION_ACTIVE_KEY_ID", "next");
   try { expect(await convertCredentials(db, { mode: "verify" })).toMatchObject({ oldPiiKey: 2, oldTokenKey: 0 }); }
   finally { vi.unstubAllEnvs(); }
+});
+it("package.json exposes self-hosted entry points shaped like the hosted ones", () => {
+  const { scripts } = JSON.parse(readFileSync("package.json", "utf8")) as { scripts: Record<string, string> };
+  for (const [name, script] of [["credentials", "credentials.ts"], ["credentials:finalize", "finalize-credentials.ts"]] as const) {
+    expect(scripts[`${name}:self-hosted`]).toBe(scripts[`${name}:dev`]!.replace("CREDENTIAL_TARGET=dev", "CREDENTIAL_TARGET=self-hosted"));
+    expect(scripts[`${name}:self-hosted`]).toContain(`scripts/${script}`);
+  }
 });
