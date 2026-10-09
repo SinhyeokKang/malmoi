@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { PrismaClient } from "../generated/prisma/client";
-import { credentialCommand, credentialTarget } from "../lib/credentials/command";
+import { credentialCommand, credentialTarget, finalizeDeploy } from "../lib/credentials/command";
 import { convertCredentials } from "../lib/credentials/conversion";
 import { CredentialError } from "../lib/credentials/crypto";
 import { FINALIZE_MIGRATION, finalizationPending } from "../lib/credentials/finalize";
@@ -23,9 +23,8 @@ try {
   const pending = finalizationPending(files, history, FINALIZE_MIGRATION);
   if (options.apply && pending) {
     // Keep Prisma's history/checksums authoritative. Never mark a migration applied ourselves.
-    execFileSync("pnpm", target === "prod" ? ["db:deploy"] : ["exec", "prisma", "migrate", "deploy"], {
-      stdio: "pipe", env: { ...process.env, PRISMA_TARGET: target === "prod" ? "prod" : "dev" },
-    });
+    const deploy = finalizeDeploy(target, process.env);
+    execFileSync("pnpm", deploy.args, { stdio: "pipe", env: deploy.env });
     await convertCredentials(prisma, { mode: "verify" });
   }
   console.log(JSON.stringify({ target, pending, applied: Boolean(options.apply && pending) }));

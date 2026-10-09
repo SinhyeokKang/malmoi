@@ -1,7 +1,7 @@
-import { expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { convertCredentials } from "../conversion";
-import { credentialCommand } from "../command";
+import { credentialCommand, credentialTarget, finalizeDeploy } from "../command";
 import { CredentialError } from "../crypto";
 it("defaults to read-only and rejects apply without both cutover attestations", async () => {
   const updateMany = vi.fn();
@@ -39,6 +39,76 @@ it("dev target cannot be overridden by pg query parameters", async () => {
   for (const query of ["user=postgres.xgsyyapzkpbdtkrprlmn", "port=6543", "password=override", "host=elsewhere", "options=unsafe", "sslmode=disable"]) {
     expect(() => credentialTarget({ CREDENTIAL_TARGET: "dev", DIRECT_URL: `${url}?${query}` })).toThrow();
   }
+});
+it("dev direct host passes, and sslmode=verify-full alone is the only accepted query", async () => {
+  const { credentialTarget } = await import("../command");
+  const direct = "postgresql://postgres:fixture@db.bfugwmjubgmmroevrave.supabase.co:5432/postgres";
+  expect(credentialTarget({ CREDENTIAL_TARGET: "dev", DIRECT_URL: direct })).toEqual({ target: "dev", url: direct });
+  expect(credentialTarget({ CREDENTIAL_TARGET: "dev", DIRECT_URL: `${direct}?sslmode=verify-full` }).target).toBe("dev");
+  // hosted allowlist는 그대로다 — prod ref를 dev 변수에, 다른 호스트를 hosted target에 넣으면 거절한다.
+  for (const url of [
+    "postgresql://postgres:fixture@db.xgsyyapzkpbdtkrprlmn.supabase.co:5432/postgres",
+    "postgresql://postgres:fixture@db.example.com:5432/postgres?sslmode=verify-full",
+  ]) expect(() => credentialTarget({ CREDENTIAL_TARGET: "dev", DIRECT_URL: url })).toThrow(CredentialError);
+});
+describe("self-hosted target", () => {
+  const target = (url: string | undefined, extra: Record<string, string> = {}) => credentialTarget({ CREDENTIAL_TARGET: "self-hosted", DIRECT_URL: url, ...extra });
+  it("reads DIRECT_URL — never DIRECT_URL_PROD", () => {
+    const url = "postgresql://malmoi:fixture@postgres:5432/malmoi";
+    expect(target(url)).toEqual({ target: "self-hosted", url });
+    expect(() => target(undefined, { DIRECT_URL_PROD: url })).toThrow(CredentialError);
+  });
+  it("the compose service host `postgres` may omit TLS or disable it", () => {
+    for (const query of ["", "?sslmode=disable", "?sslmode=verify-full"]) {
+      expect(target(`postgresql://malmoi:fixture@postgres:5432/malmoi${query}`).target).toBe("self-hosted");
+    }
+  });
+  it("any other host requires sslmode=verify-full, and verify-full alone passes", () => {
+    const url = "postgres://malmoi:fixture@db.internal.example:6000/malmoi";
+    expect(target(`${url}?sslmode=verify-full`).target).toBe("self-hosted");
+    for (const query of ["", "?sslmode=disable", "?sslmode=require", "?sslmode=verify-ca"]) {
+      expect(() => target(`${url}${query}`)).toThrow(CredentialError);
+    }
+    // 호스트 이름이 `postgres`로 시작하기만 하는 것은 Compose 내부 서비스가 아니다.
+    expect(() => target("postgresql://malmoi:fixture@postgres.example.com:5432/malmoi")).toThrow(CredentialError);
+  });
+  it("pg query parameters cannot override host, user, port or TLS", () => {
+    for (const base of ["postgresql://malmoi:fixture@postgres:5432/malmoi", "postgresql://malmoi:fixture@db.internal.example:5432/malmoi?sslmode=verify-full"]) {
+      const join = base.includes("?") ? "&" : "?";
+      for (const query of ["user=postgres", "port=6543", "password=override", "host=elsewhere", "options=unsafe", "sslmode=disable&sslmode=verify-full", "dbname=postgres"]) {
+        expect(() => target(`${base}${join}${query}`), query).toThrow(CredentialError);
+      }
+    }
+  });
+  it("rejects non-postgres schemes, missing user or database, and hosted Supabase projects", () => {
+    for (const url of [
+      "mysql://malmoi:fixture@postgres:5432/malmoi",
+      "postgresql://postgres:5432/malmoi",
+      "postgresql://malmoi:fixture@postgres:5432/",
+      "postgresql://malmoi:fixture@postgres:5432/a/b",
+      "postgresql://postgres:fixture@db.xgsyyapzkpbdtkrprlmn.supabase.co:5432/postgres?sslmode=verify-full",
+      "postgresql://postgres.bfugwmjubgmmroevrave:fixture@aws-0-ap-northeast-1.pooler.supabase.com:5432/postgres?sslmode=verify-full",
+      "not a url",
+    ]) expect(() => target(url), url).toThrow(CredentialError);
+  });
+  it("rejection never echoes the URL", () => {
+    try { target("postgresql://malmoi:secret@db.internal.example/malmoi"); } catch (error) { expect(String(error)).not.toContain("secret"); }
+  });
+});
+describe("finalizeDeploy", () => {
+  const env = { PATH: "/bin", PRISMA_TARGET: "prod", DIRECT_URL: "u" };
+  it("prod goes through db:deploy with PRISMA_TARGET=prod", () => {
+    expect(finalizeDeploy("prod", env)).toEqual({ args: ["db:deploy"], env: { ...env, PRISMA_TARGET: "prod" } });
+  });
+  it("dev runs migrate deploy with PRISMA_TARGET=dev", () => {
+    expect(finalizeDeploy("dev", env)).toEqual({ args: ["exec", "prisma", "migrate", "deploy"], env: { ...env, PRISMA_TARGET: "dev" } });
+  });
+  it("self-hosted runs migrate deploy against DIRECT_URL and never sets PRISMA_TARGET", () => {
+    const plan = finalizeDeploy("self-hosted", env);
+    expect(plan.args).toEqual(["exec", "prisma", "migrate", "deploy"]);
+    expect(Object.hasOwn(plan.env, "PRISMA_TARGET")).toBe(false);
+    expect(plan.env).toEqual({ PATH: "/bin", DIRECT_URL: "u" });
+  });
 });
 it("verification reports old-key ciphertext counts before key retirement", async () => {
   const { encodeUserFields } = await import("../records");

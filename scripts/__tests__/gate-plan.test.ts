@@ -68,6 +68,21 @@ describe("planGate", () => {
     expect(planGate([path])).toContain("test:credentials:postgres");
   });
 
+  /**
+   * ⚠️ **셀프 호스팅 bootstrap과 origin 판정의 단독 변경** (self-hosting B3 · POSTMORTEM 2026-10-07). `deploy/bootstrap.sql`은
+   * `lib/__tests__/self-hosted-bootstrap.integration.ts`가, 세 파일은 MCP·OAuth 통합 테스트가 단언한다 — 테스트 파일 없이 생산 경로만
+   * 바꾼 diff도 projects 스위트를 부른다.
+   */
+  it.each([
+    "deploy/bootstrap.sql",
+    "prisma/migrations/20261005090000_add_user_attention_seen_at/migration.sql",
+    "lib/onboarding/workflow.ts",
+    "lib/oauth/endpoint.ts",
+    "lib/github-connect/origin.ts",
+  ])("생산 경로 %s 단독 변경도 projects 스위트를 실행한다", path => {
+    expect(planGate([path])).toEqual(["db:generate", "typecheck", "test", "test:projects:postgres", "build", "sync:agents:check"]);
+  });
+
   it("둘 다 건드리면 둘 다 — projects가 먼저다", () => {
     expect(planGate(["lib/credentials/rotate.ts", "lib/import/run.ts"])).toEqual([
       "db:generate",
