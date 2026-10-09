@@ -62,3 +62,11 @@ it("실패 분류는 mutation 시도 여부로만 결과 미확인으로 바뀐�
   expect(planPublishFailure("db-unavailable", true)).toBe("execution-uncertain");
   expect(planPublishFailure("github-error", true)).toBe("execution-uncertain");
 });
+it("타이머가 밀려도 작업 반환 시점의 절대 기한을 다시 검사한다", async () => {
+  vi.useFakeTimers();
+  const execution = createPublishExecution();
+  await expect(execution.run(async () => {
+    vi.setSystemTime(Date.now() + 240000);
+    return "late";
+  })).rejects.toThrow();
+});
