@@ -53,7 +53,7 @@ Ejecútala una vez ahora con `docker compose exec scheduler /usr/local/bin/night
 
 ## Alguien no puede iniciar sesión {#sign-in}
 
-“Tu método de inicio de sesión no está disponible aquí. Pide ayuda a tu administrador.” en la pantalla de inicio de sesión significa que esa persona se registró con un proveedor que desactivaste y no tiene otro método de inicio de sesión conectado. Malmoi no le crea una segunda cuenta. Vuelve a activar ese proveedor, deja que inicie sesión y conecte un proveedor que siga activo, y luego desactívalo otra vez ([desactiva un proveedor de inicio de sesión](operate.md#sign-in-providers)).
+“Tu método de inicio de sesión no está disponible aquí. Pídele ayuda a quien administre Malmoi.” en la pantalla de inicio de sesión significa que esa persona se registró con un proveedor que desactivaste y no tiene otro método de inicio de sesión conectado. Malmoi no le crea una segunda cuenta. Vuelve a activar ese proveedor, deja que inicie sesión y conecte un proveedor que siga activo, y luego desactívalo otra vez ([desactiva un proveedor de inicio de sesión](operate.md#sign-in-providers)).
 
 ## GitHub {#github}
 
