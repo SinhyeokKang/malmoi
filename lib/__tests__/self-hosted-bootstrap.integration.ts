@@ -156,3 +156,13 @@ it("③ bootstrap 뒤 새 마이그레이션이 만든 테이블·sequence에도
   await runtime.query(`DELETE FROM "LaterTable"`);
   expect(await code(runtime.query(`DROP TABLE "LaterTable"`))).toBe("42501");
 });
+
+it("④ PUBLIC에 USAGE가 되살아난 DB(`pg_restore --no-acl` 뒤)도 bootstrap이 다시 회수하고 런타임 롤의 명시 USAGE는 남긴다", async () => {
+  const publicUsage = async () =>
+    (await migrate.query<{ n: number }>(`SELECT count(*)::int AS n FROM pg_namespace, aclexplode(nspacl) a WHERE nspname = 'public' AND a.grantee = 0 AND a.privilege_type = 'USAGE'`)).rows[0]?.n;
+  await migrate.query("GRANT USAGE ON SCHEMA public TO PUBLIC");
+  expect(await publicUsage()).toBe(1);
+  expect(refusal({})).toBeUndefined();
+  expect(await publicUsage()).toBe(0);
+  expect((await migrate.query<{ ok: boolean }>("SELECT has_schema_privilege($1, 'public', 'USAGE') AS ok", [RUNTIME])).rows).toEqual([{ ok: true }]);
+});

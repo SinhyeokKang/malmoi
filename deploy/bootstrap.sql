@@ -57,6 +57,10 @@ BEGIN;
 SELECT format('CREATE ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT', :'runtime_role', :'runtime_password')
 WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'runtime_role') \gexec
 
+-- 1-b. PUBLIC의 USAGE를 매번 다시 거둔다 — 마이그레이션 20260926175555의 REVOKE는 `_prisma_migrations`에 "적용됨"으로 남아 다시 걸리지 않는데,
+--      `pg_restore --no-acl`(복원)이나 손으로 만든 DB는 PG 기본값(PUBLIC USAGE)으로 돌아간다. 런타임 롤의 명시 USAGE는 아래 2에서 준다.
+REVOKE USAGE ON SCHEMA public FROM PUBLIC;
+
 -- 2. 기존 객체. ALTER DEFAULT PRIVILEGES는 이후 만들어지는 객체에만 걸리므로 따로 준다.
 GRANT USAGE ON SCHEMA public TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO :"runtime_role";
