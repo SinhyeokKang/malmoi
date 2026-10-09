@@ -194,7 +194,7 @@ Use mal-moi.com, or run the same app on your own server.
 | Infrastructure | Run for you | One Linux server with Docker Compose: the app, PostgreSQL 17, an upload volume, a nightly scheduler, behind your HTTPS proxy |
 | Updates | Every release goes live on its own | You update one release at a time; every app release `v<x.y.z>` publishes `ghcr.io/sinhyeokkang/malmoi:v<x.y.z>` |
 | Where data lives | Supabase (Tokyo) and Vercel | Your server's database and upload volume |
-| Sign-in and email | GitHub and Google sign-in; invitations through Resend | The same, with OAuth apps, a GitHub App, and a Resend domain you register (Resend is required) |
+| Sign-in and email | GitHub and Google sign-in; invitations through Resend | GitHub sign-in, Google sign-in, or both, through OAuth apps you register; a GitHub App and a Resend domain you register (Resend is required) |
 | Limits | 3 active owned projects per person | The same, except for operators you list in `OPERATOR_EMAILS` |
 | Support | GitHub Issues | The latest release only, through GitHub Issues, best effort |
 | Cost | Free | Free software; you pay for the server, domain, and Resend |
