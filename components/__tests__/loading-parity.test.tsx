@@ -6,6 +6,8 @@ import { beforeEach, expect, it, vi } from "vitest";
 import HomeLoading from "@/app/(edit)/projects/[slug]/(home)/loading";
 import InboxLoading from "@/app/(edit)/inbox/loading";
 import LogsLoading from "@/app/(edit)/projects/[slug]/logs/loading";
+import MembersLoading from "@/app/(edit)/projects/[slug]/members/loading";
+import ProjectsLoading from "@/app/(edit)/projects/(list)/loading";
 import { EventRow } from "@/components/logs/event-row";
 import { LogFilters } from "@/components/logs/log-filters";
 import { PanelHeader } from "@/components/shell/content-panel";
@@ -257,4 +259,50 @@ it.each([
     // 행↔행은 `--border`다 — 실물 `Card` 규칙(4-Y4).
     for (const row of rows.slice(1).filter(row => row.classList.contains("border-t"))) expect(row.classList).toContain("border-border");
   }
+});
+
+/**
+ * #205 — #204와 같은 선 규칙이 `Card` + `CardList` 실물을 흉내 내는 다른 골격에도 선다. 목록·Members 골격은 머리에 선이 없고 첫 행 위에
+ * 알파 선(`border-foreground/[0.06]`)을 그어 첫 행이 1px 높았다 — 실물은 머리 `border-b`(`--divider`, `min-h-12` 안에 흡수) + 행↔행 선뿐이다.
+ */
+it.each([
+  ["Projects", () => ProjectsLoading(), 1],
+  ["Members", () => MembersLoading(), 2],
+] as const)("%s 골격 카드는 머리에 선을 긋고 첫 행·빈 상태에는 위 선이 없다", async (_label, loading, cards) => {
+  const { container } = await render(loading());
+  const heads = [...container.querySelectorAll<HTMLElement>(".min-h-12")];
+  expect(heads).toHaveLength(cards);
+  for (const head of heads) {
+    for (const token of ["border-divider", "border-b"]) expect(head.classList, token).toContain(token);
+    const body = head.nextElementSibling as HTMLElement;
+    const first = body.tagName === "UL" ? body.firstElementChild as HTMLElement : body;
+    expect(first.classList.contains("border-t"), first.className).toBe(false);
+    for (const row of [...first.parentElement!.children].filter(node => node !== head && node !== first)) {
+      expect(row.classList, row.className).toContain("border-border");
+    }
+  }
+});
+
+/**
+ * #205 — Home 로그 카드의 실물 행은 `EventRow`(= `ListRow`)라 **할 일 행과 같은 칸**이다: 목록 여백이 없고 행↔행 선이 서며, 문장(15) 아래
+ * 보조줄이 언제나 배지 높이 20이다(`eventMeta`의 첫 조각이 종류 배지 — 행 71.5). 골격은 `px-4 pt-3.5` 목록에 44짜리 점 줄로 서서 첫 행이
+ * 14 낮고 행마다 27 짧았다.
+ */
+it("Home 골격의 로그 카드 행은 실물 EventRow 칸이다 — 목록 여백 없이 행↔행 선, 보조줄은 배지 높이 20", async () => {
+  expect(source("lib/events/view.ts")).toContain('const parts: EventMetaPart[] = [{ kind: "badge", text: eventKindWord(m, row) }];');
+  expect(source("components/ui/badge.tsx")).toContain("py-0.5 text-2xs");
+  const { container } = await render(HomeLoading());
+  const logs = [...container.querySelectorAll<HTMLElement>("section")][1]!;
+  const list = logs.querySelector<HTMLElement>(":scope > ul")!;
+  expect(list.className).toBe("");
+  const rows = [...list.querySelectorAll<HTMLElement>(":scope > li")];
+  expect(rows.length).toBeGreaterThan(1);
+  rows.forEach((row, i) => {
+    expect(row.className).toContain("flex items-center gap-3 px-4 py-row-y");
+    expect(row.classList.contains("border-t"), `row ${i}`).toBe(i > 0);
+    const stack = row.querySelector<HTMLElement>(":scope > span")!;
+    expect(stack.className).toMatch(/flex-col.*gap-copy-gap/);
+    expect(stack.children).toHaveLength(2);
+    expect(stack.children[1]!.classList.contains("h-5"), stack.children[1]!.className).toBe(true);
+  });
 });
