@@ -2853,3 +2853,11 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - **근본 원인**: 프레임워크 내부 원인은 미확정이다. 페이지 유효성 판정을 i18n 조회 앞으로 옮겨도 재현됐고, 유사 이슈 Next #97000은 다른 구성의 불완전한 재현으로 종료되어 원인 증명이 아니다. 검증의 빈틈은 컴포넌트 DOM·상태 코드만으로 실제 초기 응답을 추정한 데 있다.
 - **그물**: `next build`·`next start` 뒤 쿠키 없는 요청의 status, noindex, title, script를 제외한 body text를 분리한 probe가 잡았다. 컴포넌트 단위 테스트는 Next 응답 직렬화 경로를 실행하지 않아 놓쳤다.
 - **재발 방지**: `rg -n 'notFound\(' app/docs app/not-found.tsx`로 실제 진입점을 확인했다(문서 페이지 한 곳). 프레임워크 변경 시 built-server에서 없는 docs slug와 루트 404를 함께 확인한다. `docs/features/seo-geo-audit-20261008/orch.md` D11에 따라 middleware/CSP 확장·soft 200·임의 버전 변경으로 덮지 않는다.
+
+### 2026-10-09 — 백업 subshell의 set -e가 실패를 성공으로 숨겼다
+
+- **영역**: `guide/{en,ko,es}/self-hosting/operate.md` · `deploy/compose.yaml`
+- **증상**: 가이드 백업 블록에서 정지·덤프·아카이브·파일 복사 등이 실패해도 뒤 명령과 `backup ok`가 실행되었다. 복원 절차도 과거 자격증명·멤버십을 검토하기 전에 proxy를 공개했고, Compose 머리의 별도 업데이트 명령은 정지·백업을 빠뜨렸다. 실제 운영 데이터 사고는 관측하지 않았다.
+- **근본 원인**: `( set -eu; ... ) && echo ...`의 왼쪽 subshell은 종료 상태를 조건으로 검사하는 문맥이므로 안에서 켠 errexit까지 무효가 된다. 정지 명령도 그 바깥에 있었다. 복원에서는 데이터 복구와 접근 권한 복구를 같은 성공으로 취급했고, 업데이트 절차를 두 곳에 복제해 순서가 갈렸다.
+- **그물**: 가이드 구조·번역 검사와 과거 성공 경로 실습은 명령 실패를 주입하지 않았다. 실제 세 언어 코드 블록을 sh·bash로 실행하는 `lib/guide/__tests__/backup-shell.test.ts`가 66건 red를 냈고, 정지부터 성공 표시까지 독립 subshell에 넣은 뒤 78건 모두 통과했다. 외부 명령은 대역이라 실제 Docker 복원·방화벽은 미검증이다. 정적 리뷰로 복원 전 IP 제한·web 시작 전 세션 폐기·검토 완료 후 공개 순서를 확인했다. 후속 리뷰가 subshell 밖 `$B` 소실과 새 서버의 설정 준비 전 Compose 호출도 찾아, 복원할 경로 입력과 설정 준비 뒤 정지를 명시했다.
+- **재발 방지**: `rg -n '\) &&|set -eu' guide deploy --glob '*.md' --glob '*.sh'`로 실행 확인했다. 셸 가드가 있는 곳은 가이드 세 언어와 deploy 스크립트 셋이며, 남은 `) &&` 형태는 없었다. 백업 블록을 조건문으로 감싸지 않도록 명시하고, Compose의 업데이트 안내는 정본 가이드 링크만 남긴다. 복원 실습에서는 검토 전 외부 클라이언트의 접근 차단도 확인한다.
