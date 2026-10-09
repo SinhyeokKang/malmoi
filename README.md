@@ -185,6 +185,26 @@ organization doesn't break the pipeline.
 
 More in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (Korean).
 
+## Self-hosting
+
+Use mal-moi.com, or run the same app on your own server.
+
+| | mal-moi.com | Self-hosted |
+| --- | --- | --- |
+| Infrastructure | Run for you | One Linux server with Docker Compose: the app, PostgreSQL 17, an upload volume, a nightly scheduler, behind your HTTPS proxy |
+| Updates | Every release goes live on its own | You update one release at a time; every app release `v<x.y.z>` publishes `ghcr.io/sinhyeokkang/malmoi:v<x.y.z>` |
+| Where data lives | Supabase (Tokyo) and Vercel | Your server's database and upload volume |
+| Sign-in and email | GitHub and Google sign-in; invitations through Resend | The same, with OAuth apps, a GitHub App, and a Resend domain you register (Resend is required) |
+| Limits | 3 active projects per person | The same, except for operators you list in `OPERATOR_EMAILS` |
+| Support | GitHub Issues | The latest release only, through GitHub Issues, best effort |
+| Cost | Free | Free software; you pay for the server, domain, and Resend |
+| Analytics and SEO | Cookieless page-view counts; public pages indexed | No page-view counting; every page `noindex` |
+
+Kubernetes, multiple instances, air-gapped networks, GitHub Enterprise, and
+GitLab aren't supported. Installing, updating, backups, key rotation, and
+troubleshooting are in the
+[self-hosting guide](https://mal-moi.com/docs/self-hosting).
+
 ## Privacy
 
 On mal-moi.com, Malmoi sends data to five services and no one else: GitHub, Google (if you sign
