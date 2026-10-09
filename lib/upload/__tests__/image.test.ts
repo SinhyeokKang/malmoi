@@ -44,6 +44,20 @@ describe("이미지 키와 삭제 소유권", () => {
   it("우리 호스트의 avatars 키만 삭제 대상으로 반환한다", () => {
     expect(planImageDelete("https://store.public.blob.vercel-storage.com/avatars/u1/n1.png")).toBe("avatars/u1/n1.png");
   });
+  it("self-hosted 상대 경로 `/api/images/<key>`도 같은 키다 — 두 형태가 한 객체를 가리킨다(self-hosting design §3)", () => {
+    expect(planImageDelete("/api/images/avatars/u1/n1.webp")).toBe("avatars/u1/n1.webp");
+    expect(planImageDelete("/api/images/avatars/u1/n1.webp")).toBe(planImageDelete("https://store.public.blob.vercel-storage.com/avatars/u1/n1.webp"));
+  });
+  it.each(["/api/images/projects/p1/n1.webp", "/api/images/email/projects/p1/n1.webp", "/api/images/avatars/u1/../n1.webp", "/api/images/avatars/u1%2fn1.webp", "/api/images/avatars/u1/n1.webp?x=1", "/api/images/avatars/u1/n1.webp#f", "api/images/avatars/u1/n1.webp", "//api/images/avatars/u1/n1.webp", "/api/images//avatars/u1/n1.webp", "/API/images/avatars/u1/n1.webp", "/api/images/avatars/u1/n1.svg", "/x/api/images/avatars/u1/n1.webp"])("상대 경로라도 모양 밖 %s는 지우지 않는다", (path) => {
+    expect(planImageDelete(path)).toBeNull();
+  });
+  it("imageSrc는 상대 경로를 그대로 낸다 — 바꾸지 않는다", () => {
+    expect(imageSrc("/api/images/avatars/u1/n1.webp")).toBe("/api/images/avatars/u1/n1.webp");
+  });
+  it("isStoredImageKey는 상대 경로를 키로 받지 않는다 — 삭제 계획과 분리된 술어다", () => {
+    expect(isStoredImageKey("/api/images/avatars/u1/n1.webp")).toBe(false);
+    expect(isStoredImageKey("api/images/avatars/u1/n1.webp")).toBe(false);
+  });
   it.each([null, "bad-url", "https://avatars.githubusercontent.com/u/1", "https://lh3.googleusercontent.com/a/1", "https://store.public.blob.vercel-storage.com.evil.test/avatars/u/n.png", "https://store.public.blob.vercel-storage.com/other/u/n.png", "http://store.public.blob.vercel-storage.com/avatars/u/n.png", "https://store.public.blob.vercel-storage.com/avatars/"])("외부 또는 잘못된 URL %s는 지우지 않는다", (url) => {
     expect(planImageDelete(url)).toBeNull();
   });

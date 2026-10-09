@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { checkOrigin } from "../http";
 
@@ -20,6 +20,26 @@ describe("checkOrigin", () => {
   });
 
   it.each(["https://evil.example", "https://mal-moi.com.evil.example", "https://evilmal-moi.com", "null", "not a url", "", "file:///etc/passwd"])("다른 host·형식 오류 %j → 거부", origin => {
+    expect(checkOrigin(headers(origin))).toBe(false);
+  });
+});
+
+/** self-hosted에서는 설정 origin만 받는다 — hosted·로컬 Origin도 다른 Origin이다(self-hosting design §2). */
+describe("checkOrigin — self-hosted", () => {
+  beforeEach(() => {
+    vi.stubEnv("VERCEL_ENV", "");
+    vi.stubEnv("MALMOI_ORIGIN", "https://malmoi.example.com");
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("Origin이 없으면 통과 · 설정 origin이면 통과", () => {
+    expect(checkOrigin(headers())).toBe(true);
+    expect(checkOrigin(headers("https://malmoi.example.com"))).toBe(true);
+  });
+
+  it.each(["https://mal-moi.com", "https://dev.mal-moi.com", "http://localhost:3000", "http://127.0.0.1:3917", "https://evil.example", "https://malmoi.example.com.evil.example", "https://sub.malmoi.example.com", "https://malmoi.example.com:8443", "http://malmoi.example.com", "null"])("다른 Origin %s → 거부", origin => {
     expect(checkOrigin(headers(origin))).toBe(false);
   });
 });

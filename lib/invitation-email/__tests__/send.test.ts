@@ -189,3 +189,47 @@ describe("readInvitationEmailConfigFromEnv — process.env를 lib/env로 읽는�
     expect(readInvitationEmailConfigFromEnv()).toEqual({ status: "unavailable", reason: "missing" });
   });
 });
+
+/**
+ * **설정이 막힌 사유를 서버 로그에 남긴다** (self-hosting design §2). 화면은 "Try again later"류 하나라 운영자가 원인을 찾을 곳이
+ * 로그뿐이다. ⚠️ 사유 코드만 — 키·발신자·origin 값을 싣지 않는다.
+ */
+describe("readInvitationEmailConfigFromEnv — unavailable 사유 로그", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it.each([
+    ["missing", { RESEND_API_KEY: "", INVITATION_EMAIL_FROM: "Malmoi <invite@malmoi.example.com>" }],
+    ["invalid-from", { RESEND_API_KEY: "re_secret_key", INVITATION_EMAIL_FROM: "bad from <x>" }],
+  ] as const)("self-hosted %s 사유를 한 줄로 남기고 값은 싣지 않는다", (reason, env) => {
+    vi.stubEnv("VERCEL_ENV", "");
+    vi.stubEnv("MALMOI_ORIGIN", "https://malmoi.example.com");
+    vi.stubEnv("INVITATION_EMAIL_ORIGIN", "");
+    for (const [name, value] of Object.entries(env)) vi.stubEnv(name, value);
+    expect(readInvitationEmailConfigFromEnv()).toEqual({ status: "unavailable", reason });
+    expect(logs).toEqual([`[invite-email] config unavailable reason=${reason}`]);
+    const joined = logs.join("\n");
+    for (const secret of ["re_secret_key", "malmoi.example.com", "bad from"]) expect(joined).not.toContain(secret);
+  });
+
+  it("self-hosted ready는 설정 origin을 싣고 로그가 없다", () => {
+    vi.stubEnv("VERCEL_ENV", "");
+    vi.stubEnv("MALMOI_ORIGIN", "https://malmoi.example.com");
+    vi.stubEnv("INVITATION_EMAIL_ORIGIN", "");
+    vi.stubEnv("RESEND_API_KEY", "re_k");
+    vi.stubEnv("INVITATION_EMAIL_FROM", "invite@malmoi.example.com");
+    expect(readInvitationEmailConfigFromEnv()).toEqual({ status: "ready", apiKey: "re_k", from: "invite@malmoi.example.com", origin: "https://malmoi.example.com" });
+    expect(logs).toEqual([]);
+  });
+
+  it("무효 모드(VERCEL_ENV와 공존)는 invalid-origin을 남긴다", () => {
+    vi.stubEnv("VERCEL_ENV", "production");
+    vi.stubEnv("MALMOI_ORIGIN", "https://malmoi.example.com");
+    vi.stubEnv("RESEND_API_KEY", "re_k");
+    vi.stubEnv("INVITATION_EMAIL_FROM", "invite@malmoi.example.com");
+    vi.stubEnv("INVITATION_EMAIL_ORIGIN", "https://mal-moi.com");
+    expect(readInvitationEmailConfigFromEnv()).toEqual({ status: "unavailable", reason: "invalid-origin" });
+    expect(logs).toEqual(["[invite-email] config unavailable reason=invalid-origin"]);
+  });
+});

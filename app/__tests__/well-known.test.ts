@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
  * **발견 문서 둘** (mcp-oauth design §1 · spec 조건 2) — `/.well-known/oauth-protected-resource/api/mcp`(RFC 9728)와
@@ -54,5 +54,55 @@ describe("/.well-known/oauth-authorization-server", () => {
 
   it("허용 밖 호스트 → 404", async () => {
     expect((await get(as.GET, "evil.example")).status).toBe(404);
+  });
+});
+
+/**
+ * **self-hosted — 발견 문서는 설정 origin만 광고한다** (self-hosting design §2). 문서의 issuer·resource가 곧 MCP 클라이언트가 토큰을
+ * 보낼 곳이라, 위조 `Host`·`X-Forwarded-*`가 그것을 바꾸면 토큰이 공격자 호스트로 간다. hosted·로컬 호스트도 받지 않는다.
+ */
+describe("self-hosted — 위조 헤더", () => {
+  const ORIGIN = "https://malmoi.example.com";
+  const HOST = "malmoi.example.com";
+  beforeEach(() => {
+    vi.stubEnv("VERCEL_ENV", "");
+    vi.stubEnv("MALMOI_ORIGIN", ORIGIN);
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  const request = (handler: (request: Request) => Promise<Response> | Response, headers: Record<string, string>) =>
+    handler(new Request(`http://${headers.host ?? HOST}/x`, { headers }));
+
+  it("설정 호스트면 x-forwarded-proto·x-forwarded-host와 무관하게 설정 origin이다", async () => {
+    for (const forged of [{}, { "x-forwarded-proto": "http" }, { "x-forwarded-host": "evil.example" }, { "x-forwarded-host": "evil.example", "x-forwarded-proto": "http" }]) {
+      const headers = { host: HOST, ...forged };
+      expect(await (await request(prm.GET, headers)).json(), JSON.stringify(forged)).toEqual({ resource: `${ORIGIN}/api/mcp`, authorization_servers: [ORIGIN] });
+      expect(await (await request(as.GET, headers)).json(), JSON.stringify(forged)).toMatchObject({
+        issuer: ORIGIN,
+        authorization_endpoint: `${ORIGIN}/oauth/authorize`,
+        token_endpoint: `${ORIGIN}/oauth/token`,
+        revocation_endpoint: `${ORIGIN}/oauth/revoke`,
+      });
+    }
+  });
+
+  it.each([
+    { host: "evil.example" },
+    { host: "evil.example", "x-forwarded-host": HOST, "x-forwarded-proto": "https" },
+    { host: "mal-moi.com", "x-forwarded-proto": "https" },
+    { host: "dev.mal-moi.com" },
+    { host: "localhost:3000" },
+    { host: "malmoi.example.com.evil.example" },
+    { host: "malmoi.example.com:8443" },
+  ])("위조·hosted·로컬 Host %j → 두 문서 다 404", async (headers) => {
+    expect((await request(prm.GET, headers)).status).toBe(404);
+    expect((await request(as.GET, headers)).status).toBe(404);
+  });
+
+  it("어느 응답에도 mal-moi.com이 없다", async () => {
+    const bodies = await Promise.all([prm.GET, as.GET].map(async (handler) => (await request(handler, { host: HOST, "x-forwarded-proto": "http" })).text()));
+    for (const body of bodies) expect(body).not.toContain("mal-moi.com");
   });
 });
