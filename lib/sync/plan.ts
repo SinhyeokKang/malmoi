@@ -63,8 +63,8 @@ export function planWriteLock(input: { now: Date; repositoryImportToken: string 
 // 위 둘이 여기 있는 이유는 소비자가 sync 경로 안에서 여럿(게이트·껍데기)이어서다.
 
 /**
- * `SyncRun.errorCode`에 남는 값. **생산자 없는 코드는 두지 않는다** — 여기 여덟은 전부
- * `lib/pull`의 특정 throw 자리이거나 껍데기가 만드는 것(`stale`)이거나 `runPull`의 반환(`reconfirm` — SKIPPED 행)이다.
+ * `SyncRun.errorCode`에 남는 값. **생산자 없는 코드는 두지 않는다** — 여기 코드는 전부
+ * `lib/pull`의 특정 throw 자리이거나 껍데기가 만드는 것(`stale`·`execution-uncertain`)이거나 `runPull`의 반환(`reconfirm` — SKIPPED 행)이다.
  * `lib/pull/__tests__/error-codes.test.ts`가 생산자 목록과 이 union을 양방향으로 고정한다.
  *
  * ⚠️ **없앤 것과 이유** (ARCHITECTURE §5.6.3): `adapter-write-failed`(어댑터 오류는 `warnings`로 접혀 실패가
