@@ -59,17 +59,13 @@ export function credentialTarget(env: Record<string, string | undefined> = proce
 }
 /**
  * finalize가 부르는 마이그레이션 명령. target마다 명시 분기다 — "prod가 아니면 dev"로 두면 self-hosted가 `PRISMA_TARGET=dev`를 달고
- * 나간다. self-hosted는 `PRISMA_TARGET`을 지워 `prisma.config.ts`가 `DIRECT_URL`(credentialTarget이 검증한 그 URL)을 읽게 한다 —
- * 상속된 `prod`가 남으면 `DIRECT_URL_PROD`로 간다.
+ * 나간다. self-hosted는 `prod`가 아닌 명시값을 세워 `prisma.config.ts`가 `DIRECT_URL`(credentialTarget이 검증한 그 URL)을 읽게 한다 —
+ * 지우기만 하면 그 파일의 dotenv가 `.env.local`의 값을 되살릴 수 있다(dotenv는 이미 있는 변수를 덮지 않는다).
  */
 export function finalizeDeploy<Env extends Record<string, string | undefined>>(target: CredentialTarget, env: Env): { args: string[]; env: Env } {
   switch (target) {
     case "prod": return { args: ["db:deploy"], env: { ...env, PRISMA_TARGET: "prod" } };
     case "dev": return { args: ["exec", "prisma", "migrate", "deploy"], env: { ...env, PRISMA_TARGET: "dev" } };
-    case "self-hosted": {
-      const rest = { ...env };
-      delete rest.PRISMA_TARGET;
-      return { args: ["exec", "prisma", "migrate", "deploy"], env: rest };
-    }
+    case "self-hosted": return { args: ["exec", "prisma", "migrate", "deploy"], env: { ...env, PRISMA_TARGET: "self-hosted" } };
   }
 }

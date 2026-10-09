@@ -109,7 +109,8 @@ it.each(["SUPERUSER", "CREATEROLE", "CREATEDB", "BYPASSRLS"])("이미 있는 런
   const role = `held_${attribute.toLowerCase()}`;
   await admin.query(`CREATE ROLE ${role} LOGIN ${attribute}`);
   expect(refusal({ vars: { runtime_role: role, migrate_role: MIGRATE } })).toBe("runtime-role-privileged");
-  const { rows } = await admin.query<{ ok: boolean }>("SELECT has_schema_privilege($1, 'public', 'USAGE') AS ok", [role]);
+  // 권한은 DB마다다 — `admin`은 `postgres` DB에 붙어 있으므로 설치 DB 연결로 잰다.
+  const { rows } = await migrate.query<{ ok: boolean }>("SELECT has_schema_privilege($1, 'public', 'USAGE') AS ok", [role]);
   expect(rows).toEqual([{ ok: attribute === "SUPERUSER" }]);
 });
 
