@@ -30,3 +30,13 @@ it("an active project still starts its nightly Publish", async () => {
   expect(h.syncRuns).toHaveLength(1);
   expect(state.triggerPull).toHaveBeenCalledOnce();
 });
+
+it("늦은 실행 종료는 이미 stale로 닫힌 실행을 성공으로 덮지 않는다", async () => {
+  const h = createHarness({ projects: [{ id: "p1", slug: "acme" }] });
+  state.triggerPull.mockImplementationOnce(async () => {
+    Object.assign(h.syncRuns[0]!, { status: "FAILED", errorCode: "stale" });
+    return { status: "skipped", reason: "no-edits" };
+  });
+  await runSync(h.prisma, { projectId: "p1", slug: "acme", trigger: "cron", requestedBy: null, credential: undefined });
+  expect(h.syncRuns[0]).toMatchObject({ status: "FAILED", errorCode: "stale" });
+});
