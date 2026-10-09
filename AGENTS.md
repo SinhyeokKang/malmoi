@@ -243,6 +243,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 - **레벨은 `/merge` 3단계가 매번 묻는다** — `pnpm release:plan`의 커밋 타입 판정(`!:`·`BREAKING CHANGE` → major, `feat` → minor, 그 밖 patch)이 추천 선택지다. `skip`은 없다(머지 = 배포). 첫 릴리스는 **1.0.0 고정**(질문 없음).
 - **`version`은 `/merge` 4단계만 바꾼다.** 그 bump 커밋(`chore(release): v<x.y.z>`)이 **`/push`를 거치지 않는 유일한 dev 커밋**이다 — 볼 코드가 없고 PR CI가 그 SHA를 막는다.
 - **태그는 `gh release create --target <squash SHA>`가 서버에서 Release와 함께 만든다** — 로컬 `git tag`·draft·`--generate-notes`를 쓰지 않는다. 노트는 둘이다: PR body = 개발자용 변경 목록, Release = 사용자 체감 변화만.
+- **매 앱 태그마다 `/merge` 9-b단계가 셀프 호스팅 이미지를 GHCR(`ghcr.io/sinhyeokkang/malmoi:v<x.y.z>`)에 발행한다** (2026-10-09, self-hosting) — squash SHA의 `git archive`로 `linux/amd64`를 빌드해 digest를 리포트에 남긴다. 발행 머신에 Docker와 `ghcr.io` 로그인이 필요하고, 실패해도 머지·Release는 끝난 것이라 9단계처럼 손으로 재실행한다. 이미지 태그는 action 태그와 독립이다.
 - ⚠️ **앱 태그 `v<x.y.z>`와 action 태그 `malmoi-i18n-push-vN`은 별개 축이다** — 앱 버전이 올라도 action 태그는 안 움직인다. `git describe --tags`는 action 태그를 주므로 직전 릴리스를 찾는 데 쓰지 않는다.
 
 ### 게이트가 어디에 서 있나
