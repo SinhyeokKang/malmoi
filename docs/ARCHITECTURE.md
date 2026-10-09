@@ -3948,7 +3948,7 @@ default ACL을 지우지 않고 닫는 층이라, 적용·확인이 끝나면 �
 - **런타임 롤** — `deploy/bootstrap.sql`이 만든다(`NOSUPERUSER NOCREATEDB NOCREATEROLE`, CRUD만). `DATABASE_URL`이 이 롤이다.
 - **왜 bootstrap이 필요한가**: 마이그레이션 `20260926175555`의 `REVOKE USAGE ON SCHEMA public FROM PUBLIC` 때문에 런타임 롤은 명시 권한 없이는 쿼리 자체가 실패한다. 그 마이그레이션의 Supabase 롤 SQL은 `IF EXISTS (pg_roles)` 가드 안이라 일반 Postgres에서도 통과한다.
 - **bootstrap은 `prisma/migrations/` 밖(`deploy/`)이다** — 안에 두면 `/merge`의 `db:deploy`가 hosted prod에 적용한다. 설치 DB의 롤·권한 설정이지 제품 스키마가 아니다.
-- **매 업그레이드마다 `migrate deploy` 다음에 다시 돈다 — 전부 멱등이다.** 기존 객체엔 `GRANT … ON ALL TABLES/SEQUENCES`, 이후 객체엔 `ALTER DEFAULT PRIVILEGES FOR ROLE <마이그레이션 롤>`이 건다(후자는 이후에 만들어지는 객체에만 걸리므로 둘 다 필요하다). 런타임 롤은 `_prisma_migrations`를 읽지도 쓰지도 못한다.
+- **매 업그레이드마다 `migrate deploy` 다음에 다시 돈다 — 전부 멱등이다.** 기존 객체엔 `GRANT … ON ALL TABLES/SEQUENCES`, 이후 객체엔 `ALTER DEFAULT PRIVILEGES FOR ROLE <마이그레이션 롤>`이 건다(후자는 이후에 만들어지는 객체에만 걸리므로 둘 다 필요하다). 런타임 롤은 `_prisma_migrations`를 읽지도 쓰지도 못한다. 매번 `REVOKE USAGE ON SCHEMA public FROM PUBLIC`도 다시 건다 — 마이그레이션의 REVOKE는 이력에 "적용됨"으로 남아 다시 걸리지 않는데 `pg_restore --no-acl` 복원 DB는 PG 기본값(PUBLIC USAGE)으로 돌아간다.
 - **실패는 고정 사유 코드로 거절한다**(`bootstrap: <code>` — `runtime-role-is-migrate-role`·`runtime-role-privileged`·`cannot-create-role` 등). 이미 있는 롤이 superuser·CREATEROLE·CREATEDB·BYPASSRLS면 거절한다 — GRANT가 no-op으로 "성공"하고 앱이 DDL 자격증명으로 도는 길을 막는다.
 - **롤이 이미 있으면 비밀번호도 바꾸지 않는다** — 교체는 `ALTER ROLE`로 따로 한다. 비밀번호는 환경변수(`RUNTIME_DB_PASSWORD`)로 받는다(`psql -v`는 `ps`에 보인다). psql 15+(`\getenv`)가 필요하다.
 - ⚠️ **`log_statement=ddl/all`이나 `pg_stat_statements`(`track_utility`)가 켜져 있으면 성공한 `CREATE ROLE`의 비밀번호도 서버 쪽에 남는다** — bootstrap 동안 끄고 운영 문서가 그 절차를 든다.
