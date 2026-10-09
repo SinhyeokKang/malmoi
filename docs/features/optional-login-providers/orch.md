@@ -37,3 +37,6 @@
   - A Q(T6 부작용): Q7로 Sessions Dialog 폴백 라벨 `m.account.sessions.button`이 도달 불가. 지휘자 판단 — 커밋 A는 키·분기 유지(가이드 게이트 green), D가 `guide/*/account/profile.md` #sessions·DESIGN Sessions 행에서 문구 제거(`cc6b401e`·`7cc0b6c5`), D가 dev에 든 뒤 A 후속 라운드에서 키(en·ko·es)·죽은 분기 삭제(내 변경이 만든 고아).
   - A 인계: `076dd30c`(커밋 A) · `b6a85c29`(커밋 B). 두 경계 `gate: ok`, 격리 PG 붙음(credentials 67 · projects 636). 뮤테이션 2건 red 확인. ko 사전 2키는 `/merge` 전 사용자 검수 대상.
   - D: T8·T9 커밋 7개, `WAITING FOR A`.
+  - R-A(`ctx_9250f6d53840`, Opus high): 🔴0 🟡2 🟢6, 추가 뮤테이션 11건 전부 red. 🟡1 통합 하네스 signIn 미러에 `method-unavailable` 없음 · 🟡2 런타임 (b) ①③은 같은 하네스로 시나리오화 가능. 리포트 `.scratch/review-olp-A.md`.
+  - 통합 ①: A 커밋 → dev `6905a31b`·`70614999`(push 전) · `pnpm gate` ok(projects·credentials PG 붙음). D에 "A is in dev" + ARCHITECTURE에 `unlinkLoginMethod` 우주 밖 → `unavailable` 한 줄 추가 지시.
+  - A fix1(`ctx_1b7ab7563a42`): 🟡1·🟡2 시나리오 · ko `MethodUnavailable` "쓰던 로그인 수단…"(🟢2) · `WAITING FOR D` 뒤 `m.account.sessions.button`·죽은 분기 제거.
