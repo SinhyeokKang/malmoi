@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { HOSTED_PRODUCTION_ORIGIN } from "@/lib/deployment/mode";
+import { HOSTED_PRODUCTION_ORIGIN, type DeploymentMode } from "@/lib/deployment/mode";
 import { en } from "@/messages/en";
 
 /**
@@ -10,6 +10,15 @@ import { en } from "@/messages/en";
  * `lib/invitation-email/config.ts`의 환경별 origin과 합치지 않는다(그쪽은 "지금 이 배포"다).
  */
 export const SITE_ORIGIN = HOSTED_PRODUCTION_ORIGIN;
+
+/**
+ * 루트 `metadataBase` — 링크 미리보기의 상대 URL(`og:url`·`og:image`·`twitter:image`)이 이것으로 풀린다. hosted는 `SITE_ORIGIN` 그대로다.
+ * self-hosted는 설치 origin이다 — 메신저 미리보기는 noindex와 무관하게 hosted 이미지·URL을 냈다(B7 실습). canonical·JSON-LD는 이것을
+ * 쓰지 않는다(noindex 아래라 무해, self-hosting design §7). 무효 모드는 만들 origin이 없어 `SITE_ORIGIN`이다.
+ */
+export function metadataOrigin(mode: DeploymentMode): string {
+  return mode.kind === "self-hosted" ? mode.origin : SITE_ORIGIN;
+}
 
 /**
  * docs 제목 접미 — `Every night · Malmoi`만으로는 무슨 페이지인지 모른다(seo-geo spec D9). 라벨은 헤더·사이드바와 같은
@@ -35,7 +44,8 @@ export function pageMetadata({ title, description, path }: { title: string; desc
     title,
     description,
     alternates: { canonical: url },
-    openGraph: { title, description, url, siteName: en.common.appName, locale: "en_US", type: "website", images: [OG_IMAGE] },
+    // `og:url`은 상대 경로다 — `metadataBase`(`metadataOrigin`)가 풀어서 hosted는 canonical과 같은 URL, self-hosted는 설치 URL이 된다.
+    openGraph: { title, description, url: path, siteName: en.common.appName, locale: "en_US", type: "website", images: [OG_IMAGE] },
     twitter: { card: "summary_large_image", title, description, images: [{ url: OG_IMAGE.url, alt: OG_IMAGE.alt }] },
   };
 }

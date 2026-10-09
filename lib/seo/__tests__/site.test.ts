@@ -6,7 +6,9 @@ import sharp from "sharp";
 
 import { en } from "@/messages/en";
 
-import { OG_IMAGE, pageMetadata, SITE_ORIGIN } from "../site";
+import type { DeploymentMode } from "@/lib/deployment/mode";
+
+import { metadataOrigin, OG_IMAGE, pageMetadata, SITE_ORIGIN } from "../site";
 
 /**
  * **공개 페이지의 머리** (seo-geo T2). ⚠️ Next metadata 병합이 **얕다** — 자식이 `openGraph`를 주면 부모 것이 통째로 갈리므로
@@ -27,7 +29,8 @@ describe("pageMetadata", () => {
     expect(meta.openGraph).toEqual({
       title: "Create a project",
       description: "Connect a repository.",
-      url,
+      // 상대 경로다 — 루트 `metadataBase`(`metadataOrigin`)가 절대로 만든다. hosted는 canonical과 같은 URL로 풀린다.
+      url: "/docs/setup/create-project",
       siteName: en.common.appName,
       locale: "en_US",
       type: "website",
@@ -52,6 +55,22 @@ describe("pageMetadata", () => {
 
   it("공개 페이지에 noindex가 없다", () => {
     expect(meta.robots).toBeUndefined();
+  });
+});
+
+// self-hosted의 링크 미리보기(`og:url`·`og:image`·`twitter:image`)가 hosted를 가리켰다(B7 실습 ⚪3). canonical·JSON-LD는 noindex 아래라 그대로다.
+describe("metadataOrigin", () => {
+  it("hosted는 SITE_ORIGIN 그대로다 — preview·로컬도", () => {
+    for (const vercelEnv of ["production", "preview", undefined]) expect(metadataOrigin({ kind: "hosted", vercelEnv })).toBe(SITE_ORIGIN);
+  });
+
+  it("self-hosted는 설치 origin이다", () => {
+    const mode: DeploymentMode = { kind: "self-hosted", origin: "https://malmoi.example.com:8443", host: "malmoi.example.com:8443" };
+    expect(metadataOrigin(mode)).toBe("https://malmoi.example.com:8443");
+  });
+
+  it("무효 모드는 만들 origin이 없어 SITE_ORIGIN이다 — 페이지는 noindex다", () => {
+    expect(metadataOrigin({ kind: "invalid", reason: "vercel-env-present" })).toBe(SITE_ORIGIN);
   });
 });
 

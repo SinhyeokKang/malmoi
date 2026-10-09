@@ -35,7 +35,9 @@ const NOINDEX = { index: false, follow: false };
 
 describe("루트 레이아웃", () => {
   it("metadataBase · 제목 템플릿 · 기본 OG — canonical·og:url은 없다", async () => {
-    const { metadata } = await import("@/app/layout");
+    vi.stubEnv("MALMOI_ORIGIN", "");
+    const metadata = await (await import("@/app/layout")).generateMetadata();
+    vi.unstubAllEnvs();
     expect(String(metadata.metadataBase)).toBe("https://mal-moi.com/");
     expect(metadata.title).toEqual({ default: "Malmoi", template: "%s · Malmoi" });
     expect(metadata.description).toBe(en.landing.hero.body);
@@ -44,6 +46,18 @@ describe("루트 레이아웃", () => {
     expect((metadata.openGraph as { url?: unknown }).url).toBeUndefined();
     expect(metadata.twitter).toEqual({ card: "summary_large_image", images: [{ url: OG_IMAGE.url, alt: OG_IMAGE.alt }] });
     expect(metadata.robots).toBeUndefined();
+  });
+
+  it("self-hosted의 metadataBase는 설치 origin이다 — 나머지 머리는 같다", async () => {
+    const { generateMetadata } = await import("@/app/layout");
+    vi.stubEnv("MALMOI_ORIGIN", "");
+    const hosted = await generateMetadata();
+    vi.stubEnv("MALMOI_ORIGIN", "https://malmoi.example.com");
+    vi.stubEnv("VERCEL_ENV", "");
+    const self = await generateMetadata();
+    vi.unstubAllEnvs();
+    expect(String(self.metadataBase)).toBe("https://malmoi.example.com/");
+    expect({ ...self, metadataBase: null }).toEqual({ ...hosted, metadataBase: null });
   });
 });
 
