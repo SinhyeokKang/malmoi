@@ -25,7 +25,7 @@
 | **B3** DB·운영 | §3 + credential target 파서 | `deploy/bootstrap.sql`(신설) · `lib/__tests__/self-hosted-bootstrap.integration.ts` · `scripts/gate-plan.ts`·그 테스트 · `lib/credentials/command.ts` · `scripts/finalize-credentials.ts` · `scripts/credentials.ts` · 각 테스트 | — | Opus 5.5 medium | ✅ dev |
 | **B2** 서버 경계 | §2 | `lib/upload/**` · `app/api/images/**` · `lib/invitation-email/**`(B1의 상수 자리 제외) · `lib/oauth/**`·`app/.well-known/**`·`lib/mcp/http.ts`(테스트·필요 시 판정 연결) · `app/__tests__/well-known.test.ts` · preflight 기동 진입(`scripts/preflight.ts` 신설) · `prisma/schema.prisma:22` 주석 | B1 | Opus 5.5 high — 파일 저장소 보안 경계 | ✅ dev |
 | **B5** 공개 화면 | §5 + 공개 응답 정책 순수 함수 | `middleware.ts` · `app/layout.tsx` · `components/analytics.tsx` · `app/privacy/page.tsx` · `app/signin/page.tsx` · `app/oauth/authorize/page.tsx` · `messages/{en,ko,es}.tsx` · `docs/DESIGN.md` §10.1 행 · `lib/i18n/__tests__/helpers/banned-terms.ts` · `lib/i18n/__tests__/terminology.test.ts` · `components/__tests__/new-project.test.tsx` · `lib/seo/crawl.ts`(필요 시) | B1 | Opus 5.5 medium | ✅ dev |
-| **B4** 배포물 | §4 + SH-15 ③·② compose 부분 | `Dockerfile` · `.dockerignore` · `deploy/**`(bootstrap 제외) · `lib/deployment/__tests__/`의 SH-15 ②③ 확장 | B2·B3 · **Docker 설치** | Opus 5.5 medium | 대기 |
+| **B4** 배포물 | §4 + SH-15 ③·② compose 부분 | `Dockerfile` · `.dockerignore` · `deploy/**`(bootstrap 제외) · `lib/deployment/__tests__/`의 SH-15 ②③ 확장 | B2·B3 · **Docker 설치** | Opus 5.5 medium | ✅ dev |
 | **B6** 문서 | §6 | `.env.example` 산문 · `docs/OPERATIONS.md` · `docs/ACTIONS.md` · `docs/PRODUCT.md` · `docs/ARCHITECTURE.md` · `CLAUDE.md`(+미러) · `README.md` · `docs/DIRECTORY.md` · `.claude/commands/merge.md` · `guide/{en,ko,es}/**` · `guide/SHOOTING.md` | B4·B5 | Sonnet 5.5 medium — 사실 대조 중심, 가이드 세 언어 | 대기 |
 | **B7** 릴리스 검증 | §7(왕복 제외) | 코드 수정 없음 — QA 워커, main 체크아웃 | 전부 · Docker | Opus 5.5 medium | 대기 |
 
@@ -49,3 +49,13 @@
 - **B2** — `7c9ae991`·`6aa977eb`·`14047966`·`3e83f442`·`26caa6cc` → dev `311cc422`. 리뷰 1회(Opus high, 🔴0 🟡2 — fix1). 지휘자 판단: B1 소유 preflight probe에 `not-directory` 추가 허가, MCP `checkOrigin` self-hosted 정확 일치 수용, B1이 빠뜨린 삭제 계획 확장 완료. flaky 추가: `search-performance.integration` 시간 예산(305ms>300ms) 1회.
 - **B5** — `6dc233d6`·`36391223`·`6e333912`·`8a09750a`·`22645070` → dev `2517f8fc`(CI success). 통합 게이트 1회 red(#209 flaky — attention-inbox·user-menu), 재실행 green.
 - **웨이브 3 재편** (지휘자 판단): Docker 미설치라 B4는 작성·[자동] 게이트까지 진행하고 [수동]은 B7로 넘긴다. B6를 **B6a**(compose 무관 — 가이드·금지 승격·ACTIONS·정본 SH-14 일부, 지금 B4와 병렬)와 **B6b**(OPERATIONS 설치·복구, `.env.example` 산문, `merge.md` 이미지 발행, DIRECTORY `deploy/`, 운영자 개인정보 재료 — B4 뒤)로 나눈다. 소유 파일 교집합 0.
+- **B4** — `f87e073b`·`a83d621f` → dev `74ba9f5c`(CI는 사용자가 실수로 만든 PR #210 push로 취소 → 다음 run `3eea14a8` success). 리뷰 Opus high(🔴1 pg healthcheck 소켓, 🟡6) → fix1.
+- **B6a** — 11 커밋 → dev `3eea14a8`(CI success). 리뷰 🟡4 → fix1·fix2(B4 이름 대조).
+- **B6b** — 7 커밋. 리뷰 🔴1(복원 실습이 같은 호스트 운영 볼륨을 친다) 🟡4 → fix1(bootstrap.sql이 매번 PUBLIC USAGE 회수 포함).
+- **Docker** — 사용자 요청으로 지휘자가 Colima(vz+Rosetta)·docker CLI·compose·buildx·Rosetta 2를 설치(2026-10-09).
+- **Astra 교차 리뷰**(Codex gpt-6-astra, effort high — 사용자 예외 허가) — 🔴0 🟡5. 🟡1 TOCTOU는 코드 방어 없이 계약으로(B8 리뷰가 "같은 권한" 근거를 반박 → "업로드 볼륨 쓰기 주체는 web 하나" + compose 게이트), 🟡2 SH-15 수집 사각지대·🟡3 인코딩 경로 → B8, 🟡4·5 문서 → B6c.
+- **B7 QA**(Colima linux/amd64) — `fdae6176` 실습 기록. SH-02·08·09·10·12 통과, 01·06 부분, **03·04·05·07 OAuth·App·메일·MCP 왕복 미완(사용자 결정)**. 결함 🟡2(nginx 접근 로그 토큰 평문, `[auth] k`) ⚪4 → B8 fix2 / B6c.
+- **B8** — Astra·B7 결함 코드 수정 10 커밋, 리뷰 2회. 수용: nginx **에러 로그**의 요청 줄(끌 수 없음, docker 권한 필요), scheduler Config.Env의 CRON_SECRET.
+- **B6c** — README Hosted vs Self-hosted 비교 → 가이드 `self-hosting/` 4페이지 × en·ko·es(사용자 결정 "README → 우리 가이드"), OPERATIONS는 상류 유지자 몫만. 리뷰 🟡2 → fix1.
+- **미실측 명령**(다음 Docker 실습): 업데이트 smoke(외부 쓰기·scheduler 차단), 백업 블록(`set -eu`·`pg_restore -l`), `PROJECT_IDS` export(빈 값 포함), 9단계 `deploy/` 롤백 — scratchpad `handoff-B6c.md`.
+- 게이트 flaky #209 3회(재실행 green), `search-performance` 시간 예산 1회.
