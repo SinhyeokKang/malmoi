@@ -20,8 +20,8 @@
 
 | 배치 | 범위(tasks 절) | 소유 파일(이 밖은 건드리지 않는다) | 선행 | 모델·effort | 상태 |
 |---|---|---|---|---|---|
-| **B1** 정책 | §0 middleware env 실측 · §1(credential 파서·공개 응답 정책 제외) | `lib/deployment/**`(신설) · `lib/github-connect/origin.ts` · `lib/onboarding/workflow.ts` · `lib/seo/site.ts` · `lib/invitation-email/config.ts`(origin 상수만) · `lib/invitation-email/message.ts`(origin 상수만) · `app/(edit)/mcp/page.tsx`(fallback) · `.env.example`(신규 변수) · `lib/i18n/__tests__/brand-spelling.test.ts` · 각 테스트 | — | Opus 5.5 high — origin·토큰 유출 경로라 판단이 무겁다 | 대기 |
-| **B3** DB·운영 | §3 + credential target 파서 | `deploy/bootstrap.sql`(신설) · `lib/__tests__/self-hosted-bootstrap.integration.ts` · `scripts/gate-plan.ts`·그 테스트 · `lib/credentials/command.ts` · `scripts/finalize-credentials.ts` · `scripts/credentials.ts` · 각 테스트 | — | Opus 5.5 medium | 대기 |
+| **B1** 정책 | §0 middleware env 실측 · §1(credential 파서·공개 응답 정책 제외) | `lib/deployment/**`(신설) · `lib/github-connect/origin.ts` · `lib/onboarding/workflow.ts` · `lib/seo/site.ts` · `lib/invitation-email/config.ts`(origin 상수만) · `lib/invitation-email/message.ts`(origin 상수만) · `app/(edit)/mcp/page.tsx`(fallback) · `.env.example`(신규 변수) · `lib/i18n/__tests__/brand-spelling.test.ts` · 각 테스트 | — | Opus 5.5 high — origin·토큰 유출 경로라 판단이 무겁다 | ✅ dev |
+| **B3** DB·운영 | §3 + credential target 파서 | `deploy/bootstrap.sql`(신설) · `lib/__tests__/self-hosted-bootstrap.integration.ts` · `scripts/gate-plan.ts`·그 테스트 · `lib/credentials/command.ts` · `scripts/finalize-credentials.ts` · `scripts/credentials.ts` · 각 테스트 | — | Opus 5.5 medium | ✅ dev |
 | **B2** 서버 경계 | §2 | `lib/upload/**` · `app/api/images/**` · `lib/invitation-email/**`(B1의 상수 자리 제외) · `lib/oauth/**`·`app/.well-known/**`·`lib/mcp/http.ts`(테스트·필요 시 판정 연결) · `app/__tests__/well-known.test.ts` · preflight 기동 진입(`scripts/preflight.ts` 신설) · `prisma/schema.prisma:22` 주석 | B1 | Opus 5.5 high — 파일 저장소 보안 경계 | 대기 |
 | **B5** 공개 화면 | §5 + 공개 응답 정책 순수 함수 | `middleware.ts` · `app/layout.tsx` · `components/analytics.tsx` · `app/privacy/page.tsx` · `app/signin/page.tsx` · `app/oauth/authorize/page.tsx` · `messages/{en,ko,es}.tsx` · `docs/DESIGN.md` §10.1 행 · `lib/i18n/__tests__/helpers/banned-terms.ts` · `lib/i18n/__tests__/terminology.test.ts` · `components/__tests__/new-project.test.tsx` · `lib/seo/crawl.ts`(필요 시) | B1 | Opus 5.5 medium | 대기 |
 | **B4** 배포물 | §4 + SH-15 ③·② compose 부분 | `Dockerfile` · `.dockerignore` · `deploy/**`(bootstrap 제외) · `lib/deployment/__tests__/`의 SH-15 ②③ 확장 | B2·B3 · **Docker 설치** | Opus 5.5 medium | 대기 |
@@ -40,3 +40,7 @@
 ## 진행 기록
 
 (배치별 커밋·push 해시·리뷰 라운드·미완을 여기에 적는다.)
+
+- **B3** — `a49b7b87`·`804ba656`·`7929d971` → dev `b9b70596`(CI success). 리뷰 1회(🔴0 🟡4 — 전부 fix1). 지휘자 판단: package.json에 `credentials:self-hosted`·`credentials:finalize:self-hosted` 추가 허가, 런타임 롤 속성 단언, 회전 전용 사례 생략 수용(target 무관), `_prisma_migrations` REVOKE 승인. 넘길 것: B4 psql 15+·롤 계약(인계 사본 scratchpad `handoff-B3.md`), B6 `log_statement`·`pg_stat_statements`가 성공한 CREATE ROLE 비밀번호도 담는다는 주의.
+- **B1** — `f0fc44ef`·`cbedb83e`·`27db2fc1`·`bb17092d` → dev. 0단계 실측: middleware가 env를 런타임에 읽는다(같은 빌드 `x-probe` a/b). 리뷰 1회(🔴0 🟡4). 지휘자 판단: `add.ts` 재배치 허가, 넷째 env 분류 `command` 수용(spec 문언은 B6), `AUTH_GOOGLE_*` required 유지(`auth.ts`가 무조건 등록). 넘길 것: 🟡4 암묵 env 읽기 게이트 → B4, SH-15 ① `ALLOWED` 행 수정 → B2(메일 행만). ⚠️ **tasks §1 삭제 계획 확장을 B1이 하지 않았다**(인계에 미완 표기 없음, 리뷰도 놓침) → B2로 이관.
+- 게이트 flaky: `components/__tests__/attention-inbox.test.tsx` "첫 조회 전엔 골격…"이 전체 스위트 부하에서 1회 red(단독 3/3 green). B3 통합 때 재시도로 통과 — 별도 이슈 후보.
