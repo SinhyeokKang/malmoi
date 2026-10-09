@@ -18,8 +18,8 @@
 
 | 배치 | 항목 | 소유 파일 | 선행 | 모델·effort | 차단 | 게이트 | 상태 |
 |---|---|---|---|---|---|---|---|
-| A | T1 T2 T4 T5 T6 (커밋 A) · T3 T7 (커밋 B) | `lib/auth/login-providers.ts`(새) · `lib/login-link/**` · `lib/session-revocation/**` · `lib/account-connect/**`(테스트) · `lib/credentials/__tests__/postgres.integration.ts` · `lib/deployment/**` · `scripts/__tests__/preflight-entry.test.ts` · `auth.ts` · `app/signin/**` · `app/invite/[token]/page.tsx` · `app/oauth/authorize/**` · `app/(edit)/account/**` · `components/account/**` · `components/__tests__/{provider-progress,login-methods}*` · `messages/{en,ko,es}.tsx` · `vitest.setup.ts` · `deploy/compose.yaml` · `.env.example` · `deploy/.env.example` | — | Opus 5.5 high — 계정 잠김·인증 경계 판정 | 예 | `pnpm gate --base dev`(격리 PG 붙는지 확인) | 대기 |
-| D | T8 정본 · T9 가이드 · T9a(A 뒤) | `docs/PRODUCT.md` · `docs/ARCHITECTURE.md` · `docs/DESIGN.md` · `docs/SELF-HOSTING.md` · `guide/{en,ko,es}/self-hosting/{install,troubleshooting,README,operate}.md` · `guide/SHOOTING.md` | T9a·최종 대조는 A가 dev에 든 뒤 | Opus 5.5 medium — 문서·번역, 코드 대조 | 예(같은 push) | `pnpm gate --base dev` · `pnpm guide:check` | 대기 |
+| A | T1 T2 T4 T5 T6 (커밋 A) · T3 T7 (커밋 B) | `lib/auth/login-providers.ts`(새) · `lib/login-link/**` · `lib/session-revocation/**` · `lib/account-connect/**`(테스트) · `lib/credentials/__tests__/postgres.integration.ts` · `lib/deployment/**` · `scripts/__tests__/preflight-entry.test.ts` · `auth.ts` · `app/signin/**` · `app/invite/[token]/page.tsx` · `app/oauth/authorize/**` · `app/(edit)/account/**` · `components/account/**` · `components/__tests__/{provider-progress,login-methods}*` · `messages/{en,ko,es}.tsx` · `vitest.setup.ts` · `deploy/compose.yaml` · `.env.example` · `deploy/.env.example` | — | Opus 5.5 high — 계정 잠김·인증 경계 판정 | 예 | `pnpm gate --base dev`(격리 PG 붙는지 확인) | 구현 중 |
+| D | T8 정본 · T9 가이드 · T9a(A 뒤) | `docs/PRODUCT.md` · `docs/ARCHITECTURE.md` · `docs/DESIGN.md` · `docs/SELF-HOSTING.md` · `guide/{en,ko,es}/self-hosting/{install,troubleshooting,README,operate}.md` · `guide/SHOOTING.md` | T9a·최종 대조는 A가 dev에 든 뒤 | Opus 5.5 medium — 문서·번역, 코드 대조 | 예(같은 push) | `pnpm gate --base dev` · `pnpm guide:check` | 작성 중 |
 | R-A · R-D | 독립 리뷰(리포트 전용) | — | 각 배치 인계 | Opus 5.5 high / medium | — | — | 대기 |
 | Q | T10 런타임 | 없음(main 체크아웃, QA 전용) | A·D가 dev에 든 뒤 | Opus 5.5 medium | 아니오(미실행이면 리포트에 남김) | `/runtime-test` 리포트 | 대기 |
 
@@ -31,4 +31,6 @@
 
 ## 진행 기록
 
-(라운드·통합 커밋·검증 결과를 여기에 덧붙인다)
+- 2026-10-09 Run `run_ddfe2dd82c90`
+  - A: dispatch `ctx_52e42a95189c` · terminal `term_4893209e…` · worktree `~/orca/workspaces/malmoi/olp-A` · Opus 5.5 high (effective 확인)
+  - D: dispatch `ctx_8f3d8704e9e6` · terminal `term_2a230090…` · worktree `~/orca/workspaces/malmoi/olp-D` · Opus 5.5 medium (effective 확인)
