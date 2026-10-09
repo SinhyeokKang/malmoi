@@ -60,7 +60,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v2
+      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v3
         with:
           push-token: ${{ secrets.PUSH_TOKEN }}
           project: order-check
@@ -71,7 +71,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}   # for the open-PR warning (read only)
 ```
 
-⚠️ **참조는 `@malmoi-i18n-push-v2`이고 `@main`이 아니다** (2026-09-09, sec-audit 발견 3 · v2는 2026-09-27 — 아래 "v1과 v2"). 이 스텝에는
+⚠️ **참조는 `@malmoi-i18n-push-v3`이고 `@main`이 아니다** (2026-09-09, sec-audit 발견 3 · v2는 2026-09-27 — 아래 "v1과 v2" · 생성기의 v3 전환은 2026-10-09 — 아래 "v3"). 이 스텝에는
 `secrets.PUSH_TOKEN`과 `GITHUB_TOKEN`이 들어가므로, 참조가 움직이면 **말모이 `main`의 커밋 하나가
 대상 리포의 러너에서 즉시 실행된다** — 소비자 측 리뷰도 롤백 창도 없다. `main`에는 이제 브랜치
 프로텍션(required check `verify`, 2026-09-18)이 있지만 그것이 보는 것은 **테스트 green**이지 action이
@@ -81,9 +81,9 @@ jobs:
 "action 변경이 dev에 있는 동안 대상 리포가 옛 버전을 쓴다"는 참이지만 축이 다르다. 묻는 것은
 **가변성**이고, `main`에 닿는 커밋은 그 순간 전 소비자에게 나간다.
 
-**태그를 옮기는 것은 릴리스다.** action을 고쳤으면 `main`에 머지한 뒤 현재 태그(`malmoi-i18n-push-v2`)를 그 커밋으로
+**태그를 옮기는 것은 릴리스다.** action을 고쳤으면 `main`에 머지한 뒤 현재 태그(`malmoi-i18n-push-v3`)를 그 커밋으로
 옮긴다 — 소비자는 아무것도 안 고친다. 호환이 깨지는 변경이면 `-v3`를 새로 끊고 이 문서의 예시를
-바꾼다(옛 태그는 그대로 두어 기존 소비자가 안 깨진다 — v1이 그렇게 남았다).
+바꾼다(옛 태그는 그대로 두어 기존 소비자가 안 깨진다 — v1·v2가 그렇게 남았다).
 
 ### v1과 v2 (2026-09-27)
 
@@ -115,7 +115,7 @@ v2는 그 수정(`scripts/local-env.ts`) 뒤의 커밋이다 — `scripts/__test
 
 ### v3 (nightly-sync — 2026-10-07 발행)
 
-**`malmoi-i18n-push-v3`는 `bc8b204f`(v1.2.3, 2026-10-07)에 발행됐다.** 현재 온보딩·설정의 워크플로 생성기와 이 문서의 복사 예시는 여전히 **v2**를 안내한다(`lib/onboarding/workflow.ts`). 따라서 재복사만으로 v3가 되지 않으며, v3를 쓰려면 `uses:`의 action 태그를 명시적으로 바꾼다. 이미 발행한 태그와 현재 코드의 동작은 구분한다. v2와 다른 것은 **셋**이다 — 보류 사유별 CLI 경고(서버가 열린 PR 보류 §3 표의 `open-pr`·`pr-check-failed`를 더했고, 그 응답엔 `pendingCount`가 없다), 열린 PR 안내 스텝의 문구(아래 "열린 PR이 있으면…" 절), 그리고 **관리하지 않는 값(`unmanaged`)이 red가 아니다**(§3 표 — v2는 그 값에서 exit 1이다).
+**`malmoi-i18n-push-v3`는 `bc8b204f`(v1.2.3, 2026-10-07)에 발행됐다.** **2026-10-09부터 온보딩·설정의 워크플로 생성기와 이 문서의 복사 예시가 v3를 안내한다**(`lib/onboarding/workflow.ts` — self-hosting 착수 전 확정). 워크플로를 다시 복사한 리포만 v3이고, v1·v2 리포는 아무것도 안 바뀐다(태그를 옮기지 않았다). 발행된 태그의 동작과 현재 코드의 동작은 구분한다 — 태그 뒤 `main`의 CLI 변경은 다음 태그 전까지 소비자에게 나가지 않는다. v2와 다른 것은 **셋**이다 — 보류 사유별 CLI 경고(서버가 열린 PR 보류 §3 표의 `open-pr`·`pr-check-failed`를 더했고, 그 응답엔 `pendingCount`가 없다), 열린 PR 안내 스텝의 문구(아래 "열린 PR이 있으면…" 절), 그리고 **관리하지 않는 값(`unmanaged`)이 red가 아니다**(§3 표 — v2는 그 값에서 exit 1이다).
 
 ⚠️ **v2 소비자는 서버 게이트가 나간 뒤 거짓 경고를 본다** — v2 태그의 `action.yml`은 열린 PR이 있으면 여전히 "이 push가 그 PR의 편집을 덮는다 (MVP 3.1의 손실 창)"를 찍는데, 서버가 적재를 보류하므로 그 문장은 더는 참이 아니다. 편집은 덮이지 않는다. **v3로 옮길 때까지** 이 경고는 무시해도 된다고 안내한다.
 
@@ -137,7 +137,7 @@ action 호환을 약속하지 않는다. 앱 버전이 올라도 action 태그�
 `permissions: contents: read`도 같은 파일이 센다).
 
 ⚠️ **그 테스트가 이 문서도 읽는다** — 이 문서가 action을 `main`으로 참조하도록 안내하지 않는지, 그리고
-`@malmoi-i18n-push-v2` 문자열이 실제로 있는지 검사한다(그 정규식이 문장의 산문에도 걸리므로 여기서
+`@malmoi-i18n-push-v3` 문자열이 실제로 있는지 검사한다(그 정규식이 문장의 산문에도 걸리므로 여기서
 가변 참조를 예시로 쓰지 않는다). 위 스니펫의 태그를 고칠 때 그 두 조건이 함께 움직인다.
 
 ⚠️ **그 스캐너는 `.github/`만 본다 — 위 스니펫의 `actions/checkout` 줄은 그 방어선 밖이다.**
@@ -168,11 +168,11 @@ Sources의 Add sources 결과에서 실제 등록 slug·path-template을 담은 
 (`renderProjectWorkflowYaml`) — slug·path-template을 손으로 조립하지 않는다. 틀린 `surface:`는
 그 표면에 저장된 포맷과 맞지 않아 409 `format mismatch`다(없는 slug면 `surface mismatch`) — 한 프로젝트의
 표면은 `pathTemplate`이 겹치지 않고 `checkFormat`이 그것까지 비교한다.
-`malmoi-i18n-push-v1`(8511d37)·`-v2` 둘 다 surfaceSlug를 생산한다. 삭제된 옛 `l10n-push-v1`은 생산하지 않았다.
+`malmoi-i18n-push-v1`(8511d37)·`-v2`·`-v3` 모두 surfaceSlug를 생산한다. 삭제된 옛 `l10n-push-v1`은 생산하지 않았다.
 
 <!-- additional-surface-step -->
 ```yaml
-      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v2
+      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v3
         with:
           push-token: ${{ secrets.PUSH_TOKEN }}
           project: order-check
@@ -217,7 +217,7 @@ Sources의 Add sources 결과에서 실제 등록 slug·path-template을 담은 
 
 ## 3. 무엇이 red를 만드는가
 
-⚠️ **아래 표의 CLI 기본 기준은 `@malmoi-i18n-push-v2`다.** 서버 판정은 배포된 서버를 따르며, v3 또는 현재 코드에만 있는 CLI 판정은 해당 행에 따로 표시한다. 워크플로를 다시 복사하지 않은 리포가 쓰는 `@malmoi-i18n-push-v1`(8511d37, 2026-09-14)과 다른 판정은 §2 "v1과 v2" 표에 있다 — action이 그 태그의 스크립트를 clone해 돌리므로 v1 리포에서는 그 표의 v1 열대로 동작한다.
+⚠️ **아래 표의 CLI 기본 기준은 `@malmoi-i18n-push-v2`다** — 새 워크플로는 v3지만(§2 "v3"), v2와 달라지는 행은 해당 행에 v3 판정으로 따로 표시한다. 서버 판정은 배포된 서버를 따른다. 워크플로를 다시 복사하지 않은 리포가 쓰는 `@malmoi-i18n-push-v1`(8511d37, 2026-09-14)과 다른 판정은 §2 "v1과 v2" 표에 있다 — action이 그 태그의 스크립트를 clone해 돌리므로 v1 리포에서는 그 표의 v1 열대로 동작한다.
 
 **적재 실패만 red다.** 스캔 실패는 경고이고 exit 0이다 — 키의 진실은 로케일 파일이고 스캔은 `refs` 전담이라, 남의 리포 CI를 우리 스캐너 규칙으로 실패시키지 않는다 (ARCHITECTURE §4).
 
