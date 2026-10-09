@@ -9,8 +9,9 @@ import { defineTool } from "./define";
 
 /**
  * 가이드 읽기 — 공개 원고라 역할·grant가 없다(`toolCatalog` `req(null, null)`). MCP는 영어 고정 표면이라 `guide/en`만 읽는다.
- * ⚠️ `/api/mcp` 함수에 원고가 실리는 것은 `next.config.ts`의 `outputFileTracingIncludes`뿐이다 — `load.ts`가 `fs`로 읽어 트레이서가
- * 못 따라간다(ARCHITECTURE §8.1). `page`는 파일 경로로 쓰지 않는다 — `planDocsRead`가 SUMMARY 목록에서 찾는다.
+ * ⚠️ 원고는 `load.ts`가 `fs`로 읽는다 — 지금은 nft가 그 `process.cwd()` 기준 읽기를 따라 `guide/` 전체를 함수에 싣지만 휴리스틱이라
+ * 보장이 아니다. `next.config.ts`의 `outputFileTracingIncludes["/api/mcp"]`(en만)가 en 원고를 고정하는 보험이다(ARCHITECTURE §8.1).
+ * `page`는 파일 경로로 쓰지 않는다 — `planDocsRead`가 SUMMARY 목록에서 찾는다.
  */
 export const readDocs = defineTool({
   name: "read_docs",

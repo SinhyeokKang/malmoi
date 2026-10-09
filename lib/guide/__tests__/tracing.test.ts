@@ -30,8 +30,8 @@ describe("outputFileTracingIncludes — /docs", () => {
 });
 
 /**
- * **`/api/mcp` 함수에 en 원고가 실린다** (mcp-docs T5) — MCP `read_docs`가 요청마다 `guide/en`을 `fs`로 읽는다. MCP는 영어 고정이라
- * en 트리만 싣는다(번들을 불리지 않는다).
+ * **`/api/mcp` 함수에 en 원고가 실린다** (mcp-docs T5) — MCP `read_docs`가 요청마다 `guide/en`을 `fs`로 읽는다. nft가 지금은 그 읽기를
+ * 따라 `guide/` 전체를 싣지만 휴리스틱이라, include 글롭(MCP는 영어 고정이라 en만)이 en 원고를 보장한다.
  */
 describe("outputFileTracingIncludes — /api/mcp", () => {
   it("글롭이 en 서빙 원고 전부와 SUMMARY를 덮는다", () => {
