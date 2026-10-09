@@ -600,13 +600,20 @@ lib/
                         roundtrip-cookies(server-only. 새 왕복이 시작될 때 병합·회수·연결의 **버려진 쿠키를
                         전부 선점 해제**한다 — 목적이 셋이라 남은 쿠키가 다음 왕복의 갈래를 바꾼다)
                         ⚠️ 판정은 순수 함수, 조회·세션은 얇은 껍데기라는 규칙이 이 디렉터리의 형이다
+  deployment/           **배포 모드와 self-hosted 기동 판정** (self-hosting). mode(`MALMOI_ORIGIN`·`VERCEL_ENV` → hosted · self-hosted · invalid.
+                        ⚠️ **import 없는 잎**이다: middleware(Edge)가 부르므로 `lib/env.ts`를 못 물고 `process.env`를 직접 읽는다. 이 env 둘을 읽는 비테스트
+                        코드와 hosted 도메인 리터럴의 집이 여기 하나다 — 다음 기능이 리터럴을 하나 더 박으면 self-hosted-gates가 red) ·
+                        preflight(순수 판정 — env 맵과 디렉터리 probe를 주입받는다. `SELF_HOSTED_ENV`가 `lib/env.ts`가 읽는 이름을
+                        required · optional · hosted-only · command로 분류하고 `.env.example`과 키가 일치해야 한다. ⚠️ 결과에 값을 싣지 않는다 — 이름과 사유 코드뿐) ·
+                        schedule(`NIGHTLY_PULL` — 야간 pull의 경로·시각. `vercel.json`과의 일치를 테스트가 센다)
   upload/               프로필·프로젝트 이미지. image(형식·크기·키·삭제 allowlist 판정 +
                         planImagePick — 클라이언트 선검사 + imageSrc — 저장 URL → /api/images/<key> +
                         isStoredImageKey·storedImageContentType — 프록시가 받는 키의 술어).
                         ⚠️ imageSrc는 env를 읽지 않는다: 클라이언트가 닿는 잎이라 읽으면 조용한 no-op이고,
                         호스트는 라우트가 서버에서 붙인다. ⚠️ isStoredImageKey는 planImageDelete의 일반화가
                         아니다 — 그쪽 호스트 검사는 접미 일치라 남의 스토어를 통과시킨다(방향이 반대)
-                        · normalize(server-only. sharp로 EXIF 방향
+                        · file-store(self-hosted 업로드 볼륨 — put·read·delete 셋. 볼륨 루트를 인자로 받아 env를 안 읽는다. ⚠️ 모든 동작이 isStoredImageKey를 먼저 지나고 루트·마지막 성분의 symlink를 탈출로 본다) ·
+                        normalize(server-only. sharp로 EXIF 방향
                         적용 → 192px 이내 축소 → WebP 재인코딩) · email-thumbnail(server-only. 저장본 → 96×96 PNG, 초대 메일 전용 —
                         메일 클라이언트가 WebP 알파를 버린다, #140) · store(server-only Vercel Blob I/O +
                         readImage — 프록시의 상류 호출. ⚠️ fetch에 헤더를 하나도 안 넘긴다) ·
@@ -1035,7 +1042,10 @@ prisma/__tests__/       schema-contract · push-token-column · declared-base-lo
 prisma/maintenance/     backfill-surfaces.sql. ⚠️ 마이그레이션이 아니라 **손으로 한 번만 도는 SQL**이다 —
                         옛 writer를 멈춘 배포 1 창에서만 유효하고, 표면 편집이 시작된 뒤에는 돌리면 안 된다.
                         credential-cutover와 같은 함정(Prisma가 이 디렉터리를 안 봐서 상태 조회에 안 잡힌다)
-scripts/                adapter-survey · sync-agents · copy-fonts · scan · ingest · push-local ·
+deploy/                 **self-hosted 설치 DB·배포물** (self-hosting). bootstrap.sql — 런타임 롤 생성·권한(멱등, 매 업그레이드마다 `migrate deploy` 뒤에 돈다).
+                        ⚠️ `prisma/migrations/` 밖이다 — 안에 두면 `/merge`의 `db:deploy`가 hosted prod에 적용한다. 설치 DB의 롤·권한 설정이지 제품 스키마가 아니다.
+                        검증은 `lib/__tests__/self-hosted-bootstrap.integration.ts`(격리 postgres 스위트 — `scripts/gate-plan.ts` 트리거)
+scripts/                adapter-survey · sync-agents · copy-fonts · scan · ingest · push-local · preflight(pnpm preflight — self-hosted 기동 전 판정의 진입. 사유 코드만 찍고 실패면 exit 1) ·
                         guide-check(pnpm guide:check — SHOOTING #shots 표 vs 작업 트리 git hash-object. 읽기 전용, exit 0 · 인자 오류만 2) ·
                         smoke-github · smoke-blob(⚠️ pnpm smoke:blob에 NODE_OPTIONS=--conditions=react-server가
                         붙는다 — PII 복호 모듈이 server-only라 그 조건 없이는 import에서 죽는다) ·
