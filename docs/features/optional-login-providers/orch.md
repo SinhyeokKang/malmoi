@@ -40,3 +40,7 @@
   - R-A(`ctx_9250f6d53840`, Opus high): 🔴0 🟡2 🟢6, 추가 뮤테이션 11건 전부 red. 🟡1 통합 하네스 signIn 미러에 `method-unavailable` 없음 · 🟡2 런타임 (b) ①③은 같은 하네스로 시나리오화 가능. 리포트 `.scratch/review-olp-A.md`.
   - 통합 ①: A 커밋 → dev `6905a31b`·`70614999`(push 전) · `pnpm gate` ok(projects·credentials PG 붙음). D에 "A is in dev" + ARCHITECTURE에 `unlinkLoginMethod` 우주 밖 → `unavailable` 한 줄 추가 지시.
   - A fix1(`ctx_1b7ab7563a42`): 🟡1·🟡2 시나리오 · ko `MethodUnavailable` "쓰던 로그인 수단…"(🟢2) · `WAITING FOR D` 뒤 `m.account.sessions.button`·죽은 분기 제거.
+  - D 인계: T8·T9·T9a 커밋 11개, `gate: ok`. 통합 ② → dev `…11ad3f87`.
+  - A fix1 인계: `cedabc6d`(하네스 미러 + 시나리오 2) · `745e76e9`(ko 문구) · `cc47e0d7`(고아 키·분기 제거). 격리 PG 69 passed, 하네스 뮤테이션 2건 red. 지휘자가 diff 확인 후 통합 ③. 런타임 (b) 잔여: ②(실 Google 왕복) · ④(단일 공급자 시각) · ⑤(이전 동작 — 재현 불가).
+  - R-D(`ctx_de27f977ceec`, Opus medium): 🔴0 🟡4 — README.md:197 · ko 가이드 인용 · (고아 — A가 이미 처리) · oauth-consent SHA. 리포트 `.scratch/review-olp-D.md`.
+  - D fix1(`ctx_2410269317de`): 위 🟡 1·2·4 + troubleshooting "that email" 뉘앙스.
