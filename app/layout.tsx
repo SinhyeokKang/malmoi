@@ -9,7 +9,9 @@ import { MessagesProvider } from "@/components/i18n/messages-provider";
 import { NavigationDim } from "@/components/shell/navigation-dim";
 import { en } from "@/messages/en";
 import { getColorScheme } from "@/lib/color-scheme/server";
+import { deploymentMode } from "@/lib/deployment/mode";
 import { getDateStyle, getUiLocale } from "@/lib/i18n/server";
+import { analyticsEnabled } from "@/lib/seo/public-response";
 import { OG_IMAGE, SITE_ORIGIN } from "@/lib/seo/site";
 
 import "./globals.css";
@@ -119,7 +121,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           />
           {/* 앱 전체의 화면 이동에 걸린다 — 공개 셸·로그인·편집 셸이 레이아웃을 따로 들어 여기가 유일한 공통 자리다. */}
           <NavigationDim />
-          <SiteAnalytics />
+          {/*
+            ⚠️ **배포 모드 판정은 여기(서버)다** — `SiteAnalytics`는 클라이언트 컴포넌트라 env가 비어 거기서 판정하면 늘 hosted다
+            (self-hosting design §7). 위 `connection()`이 이 판정을 요청 시점으로 미룬다.
+          */}
+          {analyticsEnabled(deploymentMode()) && <SiteAnalytics />}
         </MessagesProvider>
       </body>
     </html>

@@ -34,7 +34,9 @@ import { clientIdLabel } from "@/lib/oauth/client-metadata";
 import { oauthEndpoint } from "@/lib/oauth/endpoint";
 import { readAuthorizationRequest, storeAuthorizationRequest } from "@/lib/oauth-server/authorize";
 import { fetchClientMetadata } from "@/lib/oauth-server/client-metadata-fetch";
+import { deploymentMode } from "@/lib/deployment/mode";
 import { routes } from "@/lib/routes";
+import { consentLinkProps } from "@/lib/seo/public-response";
 import { formatDay } from "@/lib/date-format";
 
 /**
@@ -125,7 +127,8 @@ export default async function OAuthAuthorizePage({ searchParams }: { searchParam
             <ProviderButton m={m} provider="google" requestId={requestId} autoFocus={false} />
             <p className="text-muted-foreground text-center text-xs leading-relaxed">
               {m.signIn.consent.before}
-              <InlineLink href={routes.privacy()} >
+              {/* self-hosted에서는 운영자 방침으로 나가므로 새 탭이다 — 이 동의 요청을 떠나지 않는다(`consentLinkProps`). */}
+              <InlineLink href={routes.privacy()} {...consentLinkProps(deploymentMode())}>
                 {m.signIn.consent.link}
               </InlineLink>
               {m.signIn.consent.after}

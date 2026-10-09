@@ -16,7 +16,9 @@ import { signInErrorMessage } from "@/lib/auth/message";
 import { readSession } from "@/lib/auth/read-session";
 import { getMessages } from "@/lib/i18n/server";
 import { en } from "@/messages/en";
+import { deploymentMode } from "@/lib/deployment/mode";
 import { routes } from "@/lib/routes";
+import { consentLinkProps } from "@/lib/seo/public-response";
 import { destFromCallbackUrl } from "@/lib/login-link/policy";
 import { firstQueryValues, type Raw } from "@/lib/search-params";
 
@@ -80,10 +82,8 @@ export default async function SignIn({
           )}
           <p className="text-muted-foreground text-center text-xs leading-relaxed">
             {m.signIn.consent.before}
-            <InlineLink
-              href={routes.privacy()}
-
-            >
+            {/* self-hosted에서는 운영자 방침으로 나가므로 새 탭이다 — 로그인 흐름을 떠나지 않는다(`consentLinkProps`). */}
+            <InlineLink href={routes.privacy()} {...consentLinkProps(deploymentMode())}>
               {m.signIn.consent.link}
             </InlineLink>
             {m.signIn.consent.after}
