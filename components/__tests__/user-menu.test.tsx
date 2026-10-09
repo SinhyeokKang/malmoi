@@ -337,27 +337,37 @@ describe("UserMenu — 공개 셸 지연 조회 (멤버십을 안 받는다)", (
   });
 
   it("응답 전엔 골격 한 줄과 그 앞 구분선, 빈 채로 선 polite region이 있고 문장은 뒤에 들어온다 — 성공하면 목록이다", async () => {
-    const response = deferred();
-    action.memberships.mockReturnValue(response.promise);
-    const { user } = await mount();
-    await act(async () => user.click(trigger()));
-    expect(skeletons()).toHaveLength(1);
-    expect(separators()).toBe(4);
-    const live = region()!;
-    expect(live.getAttribute("role")).toBe("status");
-    expect(live.getAttribute("aria-live")).toBe("polite");
-    expect(live.closest("[aria-busy]")).toBeNull();
-    expect(live.textContent).toBe("");
-    await vi.waitFor(() => expect(region()!.textContent).toBe(en.projects.loading));
-    // 다른 그룹은 응답 전에도 그대로다.
-    expect(item(menuNode()!, en.common.nav.signOut)).toBeDefined();
-    const busy = (skeletons()[0] as HTMLElement).closest("[aria-busy='true']");
-    expect(busy).not.toBeNull();
-    await response.resolve(ok("alpha", "bravo", "charlie", "delta", "echo", "foxtrot"));
-    expect(skeletons()).toHaveLength(0);
-    expect(projectRows(menuNode()!)).toHaveLength(5);
-    expect(region()).toBe(live);
-    await vi.waitFor(() => expect(live.textContent).toBe(""));
+    // ⚠️ region의 지연(`LiveStatus`)을 가짜 타이머로 민다 — 실제 시간이면 전체 스위트 부하에서 여는 사이에 100ms가 지나
+    // "빈 채로 먼저" 단언이 순서 경주가 된다(#209). 바꾸는 것은 setTimeout뿐이고 user-event의 0ms 대기는 advanceTimers가 민다.
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      const response = deferred();
+      action.memberships.mockReturnValue(response.promise);
+      await mount();
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      await act(async () => user.click(trigger()));
+      expect(skeletons()).toHaveLength(1);
+      expect(separators()).toBe(4);
+      const live = region()!;
+      expect(live.getAttribute("role")).toBe("status");
+      expect(live.getAttribute("aria-live")).toBe("polite");
+      expect(live.closest("[aria-busy]")).toBeNull();
+      expect(live.textContent).toBe("");
+      await act(async () => { vi.advanceTimersByTime(150); });
+      expect(region()!.textContent).toBe(en.projects.loading);
+      // 다른 그룹은 응답 전에도 그대로다.
+      expect(item(menuNode()!, en.common.nav.signOut)).toBeDefined();
+      const busy = (skeletons()[0] as HTMLElement).closest("[aria-busy='true']");
+      expect(busy).not.toBeNull();
+      await response.resolve(ok("alpha", "bravo", "charlie", "delta", "echo", "foxtrot"));
+      expect(skeletons()).toHaveLength(0);
+      expect(projectRows(menuNode()!)).toHaveLength(5);
+      expect(region()).toBe(live);
+      await act(async () => { vi.advanceTimersByTime(150); });
+      expect(live.textContent).toBe("");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it.each(["unauthorized", "unavailable"] as const)("%s면 그룹·구분선이 사라지고 다른 항목은 그대로다", async (error) => {
