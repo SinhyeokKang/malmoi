@@ -64,7 +64,7 @@ Yes, in **Preferences**. These change only how Malmoi looks to you, not the lang
 
 ## What does Malmoi store about me? {#privacy}
 
-Your name, email address, and profile picture from GitHub or Google, your project memberships, and who last changed each translation. Names, email addresses, and connection tokens are stored encrypted, and Malmoi does not sell your data or use it for advertising. The **Privacy Policy** of the site you use lists everything; it is linked in the page footer.
+Your name, email address, and profile picture from GitHub or Google, your project memberships, and who last changed each translation. Names, email addresses, and connection tokens are stored encrypted, and on mal-moi.com, Malmoi does not sell your data or use it for advertising. The **Privacy Policy** of the site you use lists everything; it is linked in the page footer.
 
 ## How do I delete my account? {#delete-account}
 

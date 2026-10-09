@@ -185,6 +185,7 @@ describe(`실물 가이드 본문 게이트 — ${uiLocale}`, () => {
     expect(faq).toContain("ICU");
     expect(faq).not.toMatch(/Crowdin|Tolgee/i);
     expect(faq).not.toContain("mal-moi.com/privacy");
+    expect(faq.match(/\*\*(Privacy Policy|개인정보 처리방침|Política de privacidad)\*\*/g)).toHaveLength(2);
     expect(headings(tree("faq.md")).map(({ id }) => id)).toContain("not-supported");
 
     const formatsLead = leadParagraph(tree("reference/formats.md")) ?? "";

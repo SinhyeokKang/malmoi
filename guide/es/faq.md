@@ -64,7 +64,7 @@ Sí, en **Preferencias**. Estos cambios solo afectan a cómo ves Malmoi, no a lo
 
 ## ¿Qué guarda Malmoi sobre mí? {#privacy}
 
-Tu nombre, tu dirección de correo y tu foto de perfil de GitHub o Google, tus membresías de proyecto y quién cambió por última vez cada traducción. Los nombres, las direcciones de correo y los tokens de conexión se guardan cifrados, y Malmoi no vende tus datos ni los usa para publicidad. La **Política de privacidad** del sitio que usas lo detalla todo; tiene un enlace en el pie de página.
+Tu nombre, tu dirección de correo y tu foto de perfil de GitHub o Google, tus membresías de proyecto y quién cambió por última vez cada traducción. Los nombres, las direcciones de correo y los tokens de conexión se guardan cifrados, y en mal-moi.com Malmoi no vende tus datos ni los usa para publicidad. La **Política de privacidad** del sitio que usas lo detalla todo; tiene un enlace en el pie de página.
 
 ## ¿Cómo elimino mi cuenta? {#delete-account}
 

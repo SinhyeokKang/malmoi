@@ -492,11 +492,6 @@ describe("사실을 단언하는 문장 (B4 r1)", () => {
  * App 고유명 금지는 사전·원고 모두를 훑는 `banned-terms.ts`(ko·es)와 위 en `TERMS`가 든다(DESIGN §10.1 App 호칭 행) — 여기엔 동의문만 남는다.
  */
 describe("App 호칭 · 동의문 (self-hosting)", () => {
-  const all = (dictionary: unknown) => {
-    const out: Found[] = [];
-    walk(dictionary, "", out);
-    return out;
-  };
   it.each([["en", en], ["ko", ko], ["es", es]] as const)("%s 동의문이 방침의 소유자를 Malmoi로 단언하지 않는다", (_, dictionary) => {
     const { before, link, after } = dictionary.signIn.consent;
     expect(`${before}${link}${after}`).not.toContain("Malmoi");
