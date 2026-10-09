@@ -406,7 +406,7 @@ GitHub·Google 어느 쪽으로 들어와도 같은 사람을 가리키고, 프�
   배포 모드는 `MALMOI_ORIGIN`의 존재로 판정한다 — 있으면 self-hosted이고 `VERCEL_ENV`와 함께 있으면 무효(fail-closed)다.
   호스팅 서비스에서 달라지는 것: 업로드는 Vercel Blob 대신 볼륨 · 야간 동기화는 Vercel Cron 대신 스케줄러 컨테이너 · DB는 Supabase 대신 일반 Postgres(런타임 롤은 비-superuser) ·
   `/privacy`는 운영자 정책 URL로 redirect · 페이지는 noindex · Analytics 없음 · 생성 워크플로는 **항상 `api-url`을 든다**(없으면 push 토큰이 호스팅 서비스로 간다 — ACTIONS).
-  **그대로인 것**: 로그인(GitHub·Google — 운영자가 자기 OAuth App·GitHub App을 등록)·인가(`ProjectMember`)·번역 보존 규칙·push/편집/pull 계약. 가입은 호스팅 서비스와 같이
+  **그대로인 것**: 로그인(운영자가 켠 공급자로 — GitHub OAuth App·Google OAuth 중 **완전한 쌍(ID·SECRET) 최소 하나**, 반쪽은 기동 거부. 화면은 켠 공급자의 버튼만 그린다 — 2026-10-09, optional-login-providers. 리포 연결용 GitHub App 등록은 어느 쪽이든 필수)·인가(`ProjectMember`)·번역 보존 규칙·push/편집/pull 계약. 가입은 호스팅 서비스와 같이
   열려 있어 검증 이메일을 가진 누구나 `User` 행을 얻고 비운영자는 프로젝트 상한 3이다(운영자는 `OPERATOR_EMAILS`).
   **대상 리포의 CI는 상류 리포의 action 태그를 실행한다**(공급망 의존 — ACTIONS). `/changelog`는 상류 Release를 보여 "Latest"가 설치본 버전이 아닐 수 있다.
   **하지 않는 것**: Kubernetes·다중 인스턴스·고가용성·무중단/자동 업데이트 · 폐쇄망·GitHub Enterprise·GitLab · 로컬 비밀번호·SAML·이메일 로그인 · Resend 외 메일 transport ·
