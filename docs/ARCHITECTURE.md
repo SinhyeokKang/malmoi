@@ -1880,6 +1880,7 @@ CI push가 unorphan → 재집계 1 → 롤백 → `deferred`를 매번 반복�
 $transaction(tx):
   tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = … FOR UPDATE`
   cron이면 잠금 뒤 Project 존재·archivedAt 재검 → 거부면 RUNNING·사건·GitHub 호출 없음
+  uncertain   = 회복 경계 안의 FAILED/execution-uncertain 행 → publish-unsettled 거부(행 없음)
   running     = 최신 RUNNING 행
   lastSettled = 최신 SUCCEEDED|SKIPPED 행        ← FAILED·SKIPPED/reconfirm은 안 집는다
   planSyncStart(...)  → 거부면 값으로 반환(행 없음)
@@ -1969,20 +1970,20 @@ $transaction(tx):
 화면이 그 구별을 하려면 컬럼이 먼저다.
 
 - ⚠️ **`delivery`는 `retryable`과 다른 축이다** — "다시 해도 되나"와 "나갔나"는 별개다. 실행 **전**
-  명시적 거부(게이트 둘 · 입력·인가·준비 거부 다섯, 합쳐 일곱)만 `not-started`이고, **실행 중 실패와 클라이언트
+  명시적 거부(실행 게이트 · 입력·인가·준비 거부)만 `not-started`이고, **실행 중 실패와 클라이언트
   Action 응답 유실은 전부 `unknown`**이다. 보수적인 쪽으로 고정한 근거는 `saveLastPulledAt`이
   **PR을 연 뒤**에 돌기 때문이다 — 거기서 죽으면 리포에는 이미 반영돼 있다. **그래서 화면이
   "아무것도 안 나갔다"를 말할 수 있는 자리는 `not-started` 하나뿐이다**(PRODUCT §4.1).
-- ⚠️ **실행 전 거부 일곱은 `SYNC_ERROR_CODES`를 지나지 않는다** — `code`가 없고
-  **`SyncRun` 행 자체가 안 생긴다.** ⚠️ **`retryable`은 있다** — 일곱 전부 그 필드를 명시하고, 값이 `true`인 것은
-  `unavailable` 하나다(입력·세션 거부는 `app/(edit)/actions.ts` · 인가·`not-ready`는 `lib/sync/publish.ts`의 `publishProject` · 게이트 둘은 `lib/sync/run.ts`). 없는 것과 `false`인 것은
+- ⚠️ **실행 전 거부는 `SYNC_ERROR_CODES`를 지나지 않는다** — `code`가 없고
+  **`SyncRun` 행 자체가 안 생긴다.** ⚠️ **`retryable`은 있다** — 모두 그 필드를 명시하고, 값이 `true`인 것은
+  `unavailable`과 `publish-unsettled`다(입력·세션 거부는 `app/(edit)/actions.ts` · 인가·`not-ready`는 `lib/sync/publish.ts`의 `publishProject` · 실행 게이트는 `lib/sync/run.ts`). 없는 것과 `false`인 것은
   다르다: 화면이 "다시 해 보라"를 낼지 말지는 그 값으로 갈린다. 그래서 그 갈래의 화면은 `Reference`도, "Logs에도 있다"도
   함께 뺀다: 없는 곳을 가리키게 된다. 가르는 기준은 하나로 유지한다("사람이 다시 해서 통하나") —
-  `unavailable`만 재시도 쪽이고 나머지 여섯(`invalid input`·`unauthorized`·인가 거부·`not-ready`·`already-running`·`too-soon`)은 설정·상태 쪽이다.
+  `unavailable`은 장애 후, `publish-unsettled`는 `retryAfterSeconds` 뒤 재시도 쪽이고 나머지(`invalid input`·`unauthorized`·인가 거부·`not-ready`·`already-running`·`too-soon`)은 설정·상태 쪽이다.
 
 - **그 표가 담은 사실은 진짜다** — `base-unreadable`·`not-installed`·`glob-matched-nothing` 셋은
   **사람이 고치기 전까지 cron이 매일 밤 같은 실패를 반복한다**(리포 상태·설치·경로 설정이라 시간이
-  해결하지 않는다). 나머지(`db-unavailable`·`github-error`·`stale`·`unknown`·`reconfirm`)는 다음 실행에서 저절로 풀린다 — `reconfirm`은 새 미리보기를 받아 다시 부르면 된다.
+  해결하지 않는다). 나머지(`execution-uncertain`·`db-unavailable`·`github-error`·`stale`·`unknown`·`reconfirm`)는 다음 실행에서 복구를 시도한다 — `execution-uncertain`은 회복 경계 뒤에만 재시도한다 — `reconfirm`은 새 미리보기를 받아 다시 부르면 된다.
 - **표시하기로 하면 컬럼이 먼저다.** 지금 화면이 그 구별을 흉내 내려면 `errorCode`로 다시 분기해야 하고,
   그 순간 판정이 두 벌이 된다 — `lib/sync/plan.ts`가 그 축의 주인이다.
 
