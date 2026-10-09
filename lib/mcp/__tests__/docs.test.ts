@@ -83,6 +83,10 @@ describe("sectionSlices", () => {
       const fromSlices = flat.flatMap(({ file, slug }) => sectionSlices(loadSource("en", file)).map(({ anchor }) => `${slug.join("/")}#${anchor ?? ""}`));
       const fromIndex = docsSearchEntries(nav, (file) => parseMd(loadSource("en", file))).map(({ page, anchor }) => `${page}#${anchor ?? ""}`);
       expect(fromSlices).toEqual(fromIndex);
+      // 실제 조인은 링크 치환이 끝난 원고를 자른다 — 치환이 `{#id}`·헤딩 구조를 건드리지 않는다는 전제를 함께 고정한다.
+      const fromLinked = flat.flatMap(({ file, slug }) =>
+        sectionSlices(absoluteGuideLinks(loadSource("en", file), file, ORIGIN)).map(({ anchor }) => `${slug.join("/")}#${anchor ?? ""}`));
+      expect(fromLinked).toEqual(fromIndex);
     });
 
     it("참조식 링크·정의가 0건이다 — 절 조각에서 정의가 해석되지 않는다는 전제", () => {
