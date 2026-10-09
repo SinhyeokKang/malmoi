@@ -81,10 +81,11 @@ services:
       AUTH_URL: "${MALMOI_ORIGIN}"
       AUTH_TRUST_HOST: "true"
       AUTH_SECRET: "${AUTH_SECRET:?set AUTH_SECRET}"
-      AUTH_GITHUB_ID: "${AUTH_GITHUB_ID}"
-      AUTH_GITHUB_SECRET: "${AUTH_GITHUB_SECRET}"
-      AUTH_GOOGLE_ID: "${AUTH_GOOGLE_ID}"
-      AUTH_GOOGLE_SECRET: "${AUTH_GOOGLE_SECRET}"
+      # 로그인 공급자 — 완전한 쌍 하나 이상이면 된다(쓰지 않는 쪽은 비워 둔다). 빈 기본값이라 미설정 경고가 없고, 판정은 preflight가 한다.
+      AUTH_GITHUB_ID: "${AUTH_GITHUB_ID:-}"
+      AUTH_GITHUB_SECRET: "${AUTH_GITHUB_SECRET:-}"
+      AUTH_GOOGLE_ID: "${AUTH_GOOGLE_ID:-}"
+      AUTH_GOOGLE_SECRET: "${AUTH_GOOGLE_SECRET:-}"
       APP_SIGNING_SECRET: "${APP_SIGNING_SECRET}"
       # 런타임 롤(bootstrap이 만든다) — DML만 가진다.
       DATABASE_URL: "postgresql://malmoi_app:${RUNTIME_DB_PASSWORD}@postgres:5432/malmoi"

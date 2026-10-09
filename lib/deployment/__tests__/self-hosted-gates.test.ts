@@ -6,6 +6,8 @@ import { ts } from "ts-morph";
 import { describe, expect, it } from "vitest";
 import { parse as parseYaml } from "yaml";
 
+import { LOGIN_PROVIDER_ENV } from "@/lib/auth/login-providers";
+
 import { SELF_HOSTED_ENV } from "../preflight";
 import { NIGHTLY_PULL } from "../schedule";
 
@@ -350,12 +352,33 @@ describe("SH-15 ② — Auth.js provider 자격증명이 preflight 표에 있다
     expect(providerEnvNames("microsoft-entra-id")).toEqual(["AUTH_MICROSOFT_ENTRA_ID_ID", "AUTH_MICROSOFT_ENTRA_ID_SECRET"]);
   });
 
-  it("auth.ts의 provider마다 ID·SECRET이 required다", () => {
+  /**
+   * 로그인 공급자는 **하나 이상의 완전한 쌍**이다 (optional-login-providers spec §4.1) — 넷은 단독으로 `optional`이고 쌍 제약은
+   * preflight의 쌍 규칙이 든다. 그 규칙이 보는 표(`LOGIN_PROVIDER_ENV`)에 provider가 빠지면 반쪽이 조용히 기동하므로 등재를 센다.
+   */
+  it("auth.ts의 provider마다 LOGIN_PROVIDER_ENV에 등재되고 그 이름이 optional이다", () => {
     const providers = authProviders(readFileSync(join(ROOT, "auth.ts"), "utf8"));
     expect(providers.length).toBeGreaterThan(0);
     const table: Record<string, string> = SELF_HOSTED_ENV;
-    for (const name of providers.flatMap(providerEnvNames)) expect(table[name], name).toBe("required");
+    const registered: Record<string, { id: string; secret: string }> = LOGIN_PROVIDER_ENV;
+    for (const id of providers) {
+      expect(Object.hasOwn(registered, id), id).toBe(true);
+      expect([registered[id]!.id, registered[id]!.secret], id).toEqual(providerEnvNames(id));
+      for (const name of providerEnvNames(id)) expect(table[name], name).toBe("optional");
+    }
     for (const name of ["AUTH_SECRET", "AUTH_URL", "AUTH_TRUST_HOST"]) expect(table[name], name).toBe("required");
+  });
+
+  /**
+   * ⚠️ **compose가 넷을 `${X:-}`로 넘긴다** — `${X}`는 미설정이면 경고를 찍고(쓰지 않는 공급자를 비워 둔 운영자에게 매 기동 소음이다),
+   * `${X:?}`는 기동을 막는다(쌍 하나면 되는 규칙과 모순). 값이 없으면 빈 문자열 = absent이고 판정은 preflight가 한다.
+   * `composeProblems`는 보간 문법의 종류를 보지 않으므로 여기서 따로 센다.
+   */
+  it("compose web이 로그인 공급자 넷을 빈 기본값(${X:-})으로 넘긴다", () => {
+    const web = composeServices(readFileSync(join(ROOT, "deploy/compose.yaml"), "utf8")).web?.environment ?? {};
+    for (const names of Object.values(LOGIN_PROVIDER_ENV)) {
+      for (const name of [names.id, names.secret]) expect(web[name], name).toBe(`\${${name}:-}`);
+    }
   });
 });
 

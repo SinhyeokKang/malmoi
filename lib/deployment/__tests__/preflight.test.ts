@@ -190,3 +190,60 @@ describe("preflight — 출력에 비밀 값이 없다", () => {
     if (!result.ok) for (const problem of result.problems) expect(Object.keys(problem).sort()).toEqual(["name", "reason"]);
   });
 });
+
+/**
+ * 로그인 공급자 쌍 규칙 (optional-login-providers spec §4.1 · design §2.2) — 넷은 단독으로는 `optional`이고, **완전한 쌍이 하나 이상 +
+ * 반쪽 0**일 때만 통과한다. 반쪽은 빠진 쪽 이름으로 `incomplete-pair`(Q2: 조용히 끄지 않는다 — 거의 언제나 오타·누락이다), 쌍이 0이면
+ * 두 ID 이름으로 `no-login-provider`. 반쪽과 0이 함께면 `incomplete-pair`만 낸다 — 고칠 자리 하나를 가리킨다.
+ */
+describe("preflight — 로그인 공급자 쌍", () => {
+  type State = "enabled" | "absent" | "partial";
+  /** 반쪽은 ID만 있는 꼴(빠진 쪽 = SECRET)로 만든다 — 반대 꼴은 아래 별도 사례가 본다. */
+  function pair(prefix: "GITHUB" | "GOOGLE", state: State): Record<string, string | undefined> {
+    const id = `AUTH_${prefix}_ID`, secret = `AUTH_${prefix}_SECRET`;
+    if (state === "enabled") return { [id]: VALID[id], [secret]: VALID[secret] };
+    if (state === "absent") return { [id]: undefined, [secret]: undefined };
+    return { [id]: VALID[id], [secret]: "" };
+  }
+  function problems(g: State, o: State) {
+    const result = preflight({ ...VALID, ...pair("GITHUB", g), ...pair("GOOGLE", o) }, okDir);
+    return result.ok ? [] : result.problems;
+  }
+  const NONE = [
+    { name: "AUTH_GITHUB_ID", reason: "no-login-provider" },
+    { name: "AUTH_GOOGLE_ID", reason: "no-login-provider" },
+  ];
+  const GH_HALF = { name: "AUTH_GITHUB_SECRET", reason: "incomplete-pair" };
+  const GO_HALF = { name: "AUTH_GOOGLE_SECRET", reason: "incomplete-pair" };
+
+  it.each([
+    ["enabled", "enabled", []],
+    ["enabled", "absent", []],
+    ["enabled", "partial", [GO_HALF]],
+    ["absent", "enabled", []],
+    ["absent", "absent", NONE],
+    ["absent", "partial", [GO_HALF]],
+    ["partial", "enabled", [GH_HALF]],
+    ["partial", "absent", [GH_HALF]],
+    ["partial", "partial", [GH_HALF, GO_HALF]],
+  ] as [State, State, { name: string; reason: string }[]][])("GitHub %s × Google %s", (g, o, want) => {
+    expect(problems(g, o)).toEqual(want);
+  });
+
+  it("넷 다 단독으로는 optional이다 — missing을 내지 않는다", () => {
+    for (const name of ["AUTH_GITHUB_ID", "AUTH_GITHUB_SECRET", "AUTH_GOOGLE_ID", "AUTH_GOOGLE_SECRET"]) {
+      expect(SELF_HOSTED_ENV[name as keyof typeof SELF_HOSTED_ENV], name).toBe("optional");
+    }
+  });
+
+  it("반쪽은 빠진 쪽 이름이다 — SECRET만 있으면 ID, 공백만 있는 값은 빈 값", () => {
+    expect(problems("enabled", "absent")).toEqual([]);
+    const result = preflight({ ...VALID, AUTH_GOOGLE_ID: undefined, AUTH_GOOGLE_SECRET: undefined, AUTH_GITHUB_ID: "  " }, okDir);
+    expect(result).toEqual({ ok: false, problems: [{ name: "AUTH_GITHUB_ID", reason: "incomplete-pair" }] });
+  });
+
+  it("결과에 값이 실리지 않는다", () => {
+    const result = preflight({ ...VALID, AUTH_GOOGLE_SECRET: "", AUTH_GITHUB_SECRET: "" }, okDir);
+    expect(JSON.stringify(result)).not.toMatch(/SENTINEL/);
+  });
+});

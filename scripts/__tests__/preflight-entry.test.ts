@@ -82,6 +82,18 @@ describe("pnpm preflight", () => {
     }
   }, 60_000);
 
+  /** 공급자 하나만 등록한 설치 (optional-login-providers spec §4.1) — 완전한 쌍 하나면 뜨고, 반쪽·0개는 이름과 사유만 찍고 막는다. */
+  it("로그인 공급자는 완전한 쌍 하나면 기동하고, 반쪽·0개는 막는다", () => {
+    expect(run({ ...VALID, AUTH_GOOGLE_ID: "", AUTH_GOOGLE_SECRET: "" }).status).toBe(0);
+    const half = run({ ...VALID, AUTH_GOOGLE_ID: "", AUTH_GOOGLE_SECRET: "", AUTH_GITHUB_SECRET: "" });
+    expect(half.status).toBe(1);
+    expect(half.stderr.trim().split("\n")).toEqual(["preflight: AUTH_GITHUB_SECRET incomplete-pair"]);
+    const none = run({ ...VALID, AUTH_GITHUB_ID: "", AUTH_GITHUB_SECRET: "", AUTH_GOOGLE_ID: "", AUTH_GOOGLE_SECRET: "" });
+    expect(none.status).toBe(1);
+    expect(none.stderr.trim().split("\n")).toEqual(["preflight: AUTH_GITHUB_ID no-login-provider", "preflight: AUTH_GOOGLE_ID no-login-provider"]);
+    expect(`${half.stdout}${half.stderr}${none.stdout}${none.stderr}`).not.toMatch(/SENTINEL/);
+  }, 120_000);
+
   it("MALMOI_ORIGIN이 없으면(hosted 설정) 기동을 막는다", () => {
     const { status, stderr } = run({ ...VALID, MALMOI_ORIGIN: "" });
     expect(status).toBe(1);

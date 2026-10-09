@@ -1,4 +1,5 @@
-import { present } from "@/lib/auth/login-providers";
+import { LOGIN_PROVIDER_ENV, loginProviderStates, present } from "@/lib/auth/login-providers";
+import { LOGIN_PROVIDERS } from "@/lib/login-link/policy";
 import { FROM as INVITATION_FROM } from "@/lib/invitation-email/config";
 
 import { resolveDeploymentMode, type OriginRejection } from "./mode";
@@ -17,7 +18,9 @@ import { resolveDeploymentMode, type OriginRejection } from "./mode";
  * self-hosted에서 각 env 이름이 무엇인가. `requireEnv`·`optionalEnv`가 읽는 이름과 `.env.example`의 키가 전부 여기 분류된다(SH-15 ②).
  *
  * - `required` — preflight가 요구한다(web 컨테이너)
- * - `optional` — 없어도 기동한다
+ * - `optional` — 없어도 기동한다. ⚠️ 로그인 공급자 넷(`AUTH_GITHUB_*`·`AUTH_GOOGLE_*`)은 단독으로 optional이고 **쌍 제약은 `preflight()`의
+ *   쌍 규칙이 든다** — 완전한 쌍 하나 이상 + 반쪽 0(optional-login-providers design §2.2). 새 분류를 만들지 않은 이유: compose·`.env.example`
+ *   대조 필터(`required || optional`)가 그대로 맞는다
  * - `hosted-only` — self-hosted는 읽지 않는다. `INVITATION_EMAIL_ORIGIN`만 있으면 거부한다(`MALMOI_ORIGIN`에서 파생 — 정본 둘 방지)
  * - `command` — web이 아니라 운영 명령·로컬 CLI가 읽는다. ⚠️ `DIRECT_URL`(DDL 자격증명)을 web에 요구하지 않는다 — 앱에는 DDL 권한을 주지 않는다
  */
@@ -28,10 +31,10 @@ export const SELF_HOSTED_ENV = {
   AUTH_URL: "required",
   AUTH_TRUST_HOST: "required",
   AUTH_SECRET: "required",
-  AUTH_GITHUB_ID: "required",
-  AUTH_GITHUB_SECRET: "required",
-  AUTH_GOOGLE_ID: "required",
-  AUTH_GOOGLE_SECRET: "required",
+  AUTH_GITHUB_ID: "optional",
+  AUTH_GITHUB_SECRET: "optional",
+  AUTH_GOOGLE_ID: "optional",
+  AUTH_GOOGLE_SECRET: "optional",
   APP_SIGNING_SECRET: "required",
   DATABASE_URL: "required",
   GITHUB_APP_ID: "required",
@@ -70,6 +73,10 @@ export type PreflightReason =
   | "not-found"
   | "not-directory"
   | "not-writable"
+  /** 로그인 공급자 쌍의 한쪽만 있다 — 빠진 쪽 이름으로 낸다. */
+  | "incomplete-pair"
+  /** 완전한 로그인 공급자 쌍이 하나도 없다 — 두 ID 이름으로 낸다. */
+  | "no-login-provider"
   | OriginRejection;
 
 export type PreflightProblem = { name: string; reason: PreflightReason };
@@ -119,6 +126,20 @@ export function preflight(env: Record<string, string | undefined>, probeUploadDi
 
   for (const [name, kind] of Object.entries(SELF_HOSTED_ENV)) {
     if (kind === "required" && present(env[name]) === undefined) report(name, "missing");
+  }
+
+  /**
+   * 로그인 공급자 쌍 규칙 (optional-login-providers spec §4.1). ⚠️ **반쪽을 조용히 끄지 않는다**(Q2) — 거의 언제나 오타·누락이라
+   * 운영자가 "버튼이 왜 없지"부터 찾게 된다. 반쪽과 0개가 함께면 반쪽만 낸다: 고칠 자리 하나를 가리킨다.
+   */
+  const states = loginProviderStates(env);
+  const partial = LOGIN_PROVIDERS.filter((provider) => states[provider] === "partial");
+  for (const provider of partial) {
+    const names = LOGIN_PROVIDER_ENV[provider];
+    report(present(env[names.id]) === undefined ? names.id : names.secret, "incomplete-pair");
+  }
+  if (partial.length === 0 && !LOGIN_PROVIDERS.some((provider) => states[provider] === "enabled")) {
+    for (const provider of LOGIN_PROVIDERS) report(LOGIN_PROVIDER_ENV[provider].id, "no-login-provider");
   }
 
   const mode = resolveDeploymentMode(env);
