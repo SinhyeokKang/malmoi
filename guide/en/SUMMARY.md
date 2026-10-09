@@ -31,3 +31,7 @@
   - [Supported file formats](reference/formats.md)
   - [Limits](reference/limits.md)
   - [Troubleshooting](reference/troubleshooting.md)
+- [Self-hosting](self-hosting/README.md)
+  - [Install](self-hosting/install.md)
+  - [Update, back up, and restore](self-hosting/operate.md)
+  - [Troubleshooting and privacy](self-hosting/troubleshooting.md)

@@ -31,3 +31,7 @@
   - [지원 파일 형식](reference/formats.md)
   - [한도](reference/limits.md)
   - [문제 해결](reference/troubleshooting.md)
+- [셀프 호스팅](self-hosting/README.md)
+  - [설치](self-hosting/install.md)
+  - [업데이트·백업·복원](self-hosting/operate.md)
+  - [문제 해결과 개인정보](self-hosting/troubleshooting.md)

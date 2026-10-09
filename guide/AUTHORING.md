@@ -62,6 +62,10 @@
 | `reference/formats.md` | Supported file formats | 개발자 |
 | `reference/limits.md` | Limits | 공통 |
 | `reference/troubleshooting.md` | Troubleshooting | 개발자 |
+| `self-hosting/README.md` | Self-hosting | 운영자(셀프 호스팅 설치를 운영하는 개발자) |
+| `self-hosting/install.md` | Install | 운영자 |
+| `self-hosting/operate.md` | Update, back up, and restore | 운영자 |
+| `self-hosting/troubleshooting.md` | Troubleshooting and privacy | 운영자 |
 
 ## 라벨과 화면 문구 {#labels}
 
@@ -183,6 +187,7 @@
 | `reference/formats.md` | 지원 포맷 다섯·경로·보존 특성 | `lib/adapters/index.ts`, `lib/adapters/`, `lib/onboarding/detect.ts`, `docs/ARCHITECTURE.md` §1 |
 | `reference/limits.md` | 프로젝트·멤버·slug·초대 상한, 파일·적재 예산 | `lib/onboarding/create-plan.ts` (`PROJECT_LIMIT`), `lib/projects/owner-limit.ts` (`lockOwnerSlots` — 복원·OWNER 승격·OWNER 초대 수락의 상한), `messages/en.tsx` (`errors.access["owner-limit-reached"]`·`errors.invite["limit-reached"]` — 거부 문구의 결), `lib/auth/invitation.ts` (`MEMBER_LIMIT`), `lib/onboarding/slug.ts` (`PROJECT_SLUG_MAX`), `lib/invitation-email/limits.ts` (`INVITATION_HOURLY_LIMIT`), `lib/onboarding/budget.ts`, `lib/push/plan.ts` |
 | `reference/troubleshooting.md` | 설치 누락·stale commit 409·payload 400·사용자 복구 경로 | `app/api/push/route.ts`, `lib/push/guard.ts`, `lib/push/plan.ts`, `docs/ACTIONS.md` §3, `lib/github-connect/message.ts`, `lib/onboarding/message.ts`, `messages/en.tsx` |
+| `self-hosting/README.md`, `self-hosting/install.md`, `self-hosting/operate.md`, `self-hosting/troubleshooting.md` | 지원 범위·hosted 비교·외부 앱 등록·설정 표·Compose 설치·업데이트·백업/복원·키 회전·preflight 사유 코드·운영자 개인정보 재료. **명령은 실습으로 확인한 꼴을 지킨다**(OPERATIONS "셀프 호스팅 실습 기록") — 고치면 그 표에 미실행으로 남는다. 개인정보 재료 표는 `collected.ts`와 필드 단위 일대일이고 화면이 없어 스크린샷이 없다 | `deploy/**`(compose·`.env.example`·nginx·bootstrap·scheduler), `Dockerfile`, `lib/deployment/`(`preflight.ts`의 `SELF_HOSTED_ENV`·사유 코드), `scripts/preflight.ts`, `lib/credentials/`, `lib/privacy/collected.ts`, `lib/invitation-email/`, `docs/PRODUCT.md` §4.1 "셀프 호스팅", `docs/ARCHITECTURE.md` §7 "self-hosted DB", `docs/OPERATIONS.md` "셀프 호스팅 실습 기록" |
 | 모든 페이지 | 정확한 UI 라벨·화면 용어 | 그 원고 언어의 사전(`messages/en.tsx`·`ko.tsx`·`es.tsx`), `lib/guide/dictionary.ts`, 실제 컴포넌트의 역할별 분기, `docs/DESIGN.md` §10·§10.0·§10.1 |
 
 ## 사전 본문 이관과 동결 {#dictionary-freeze}

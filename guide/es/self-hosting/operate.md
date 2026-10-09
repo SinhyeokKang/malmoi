@@ -1,0 +1,88 @@
+# Actualizar, hacer copias y restaurar
+
+Actualiza una versión cada vez, guarda juntas las copias de la base de datos, las subidas y las claves, y rota claves sin perder datos.
+
+## Actualiza a una versión nueva {#update}
+
+Actualiza una versión cada vez, en orden y solo a la última versión; las actualizaciones que saltan versiones aún no se han verificado. Las migraciones deben terminar antes de recrear web, para que una app antigua nunca lea una base de datos más nueva. El tráfico externo y el programador siguen apagados hasta que la versión nueva supere tus comprobaciones: si tienes que volver a la copia, no se pierde nada de lo que alguien guardó entretanto.
+
+1. Detén la app y haz una copia con los comandos de [copia de seguridad](#backup). No ejecutes `docker compose up -d` después.
+2. Compara el `deploy/` de la etiqueta nueva con el tuyo (deja `.env` como está), traslada los cambios de Compose, nginx y el programador, y cambia `MALMOI_IMAGE` en `.env` a la etiqueta y el digest nuevos. Si cambió `deploy/scheduler/`, ejecuta `docker compose build scheduler`.
+3. Ejecuta `docker compose pull --ignore-buildable`. La imagen del programador se construye en local y no está en el registro, así que el comando falla sin `--ignore-buildable`.
+4. Ejecuta `docker compose run --rm migrate`. Aplica las migraciones nuevas y vuelve a ejecutar el bootstrap, que se puede repetir sin riesgo. No cuentes con una ejecución de migrate de un `up` anterior.
+5. Limita los puertos 80 y 443 a tu propia dirección IP en el firewall de tu proveedor de nube. Un firewall en el propio servidor no basta, porque los puertos publicados por Docker lo saltan.
+6. Ejecuta `docker compose up -d --force-recreate --no-deps web proxy`. `--no-deps` evita que migrate se ejecute otra vez, y el programador sigue detenido.
+7. Comprueba la versión nueva desde tu navegador: `docker compose ps` muestra web healthy, puedes iniciar sesión, se abre una pantalla de traducción, se ven las imágenes subidas y `docker compose logs web --since 5m` no tiene líneas `EACCES` ni `preflight:`. No publiques desde ella todavía.
+8. Si todo funciona, ejecuta `docker compose up -d --no-deps scheduler` y vuelve a abrir los puertos 80 y 443 a todo el mundo. Las ejecuciones de workflow que empezaron mientras los puertos estaban limitados no llegaron al servidor; vuelve a lanzarlas con Run workflow.
+9. Si algo va mal, mantén los puertos limitados. Vuelve al `MALMOI_IMAGE` anterior y repite los pasos 4 y 6 solo si se sabe que la versión anterior funciona con la base de datos nueva. Si no, restaura la copia del paso 1 — base de datos, imagen y claves juntas ([restaurar](#restore)). No hay migraciones hacia atrás.
+
+## Haz una copia de seguridad {#backup}
+
+Una copia son tres cosas tomadas con la app detenida: el volcado de la base de datos, el volumen de subidas y `.env` (las claves). Si alguna es de otro momento, la restauración no cuadra: las filas de la base de datos apuntan a archivos subidos y los valores cifrados solo se abren con las claves de ese momento. Guarda las copias fuera del checkout del repositorio y llévalas también fuera del servidor. Los permisos son 600 para archivos y 700 para directorios.
+
+```sh
+STAMP=$(date -u +%Y%m%dT%H%M%SZ); B=/var/backups/malmoi/$STAMP; mkdir -p "$B" && chmod 700 "$B"
+docker compose stop scheduler proxy web            # detiene el tráfico nuevo y las escrituras; solo queda postgres
+docker compose exec -T postgres pg_dump -U postgres -d malmoi -Fc > "$B/db.dump"
+docker run --rm -v malmoi_uploads:/data:ro -v "$B":/backup alpine tar czf /backup/uploads.tar.gz -C /data .
+cp .env "$B/env" && cp -r certs nginx "$B/"
+{ echo "taken_at=$STAMP"; grep '^MALMOI_IMAGE=' .env
+  docker compose exec -T postgres psql -U postgres -d malmoi -Atc 'select count(*), max(migration_name) from _prisma_migrations'
+} > "$B/manifest.txt"
+(cd "$B" && sha256sum db.dump uploads.tar.gz env >> manifest.txt)
+chmod -R go-rwx "$B"                                # al final, para que cubra también el manifiesto
+```
+
+- El manifiesto no tiene secretos: la hora, la imagen, el estado de las migraciones y las sumas de comprobación.
+- En una copia rutinaria, vuelve a arrancarlo todo con `docker compose up -d`. Si la copia es el primer paso de una [actualización](#update), deja la app detenida.
+- Guarda las claves con el volcado. Sin la clave PII no se pueden recuperar correos ni nombres; sin la clave de tokens, tampoco las conexiones de GitHub. Después de rotar claves, conserva también las antiguas, porque las copias anteriores las necesitan.
+- Si activaste `log_statement` (`ddl` o `all`) o `pg_stat_statements` con `track_utility`, el registro del servidor o las estadísticas guardan las sentencias `CREATE ROLE … PASSWORD`. La imagen estándar de postgres tiene ambas cosas desactivadas; si las activaste, desactívalas mientras se ejecuta el bootstrap.
+- Una copia solo cuenta cuando una restauración a partir de ella ha funcionado. Prueba la restauración de abajo una vez en otro servidor, con el programador apagado. Allí limita todo lo que escriba en un repositorio real (Publicar, la sincronización nocturna) a un repositorio de prueba.
+
+## Restaura en volúmenes vacíos {#restore}
+
+Esto recupera una copia en un servidor nuevo o después de `docker compose down -v`. Las claves deben ser las de la copia; otras claves no abren los valores cifrados.
+
+Los ensayos de restauración y las comprobaciones aisladas van en un servidor distinto del que está en producción. `deploy/compose.yaml` fija el nombre del proyecto de Compose, así que en el mismo servidor un directorio copiado sigue usando los volúmenes en producción `malmoi_pgdata` y `malmoi_uploads`: los pasos 2 y 4 se ejecutarían sobre tus datos reales, y `down -v` los borraría. Si tienes que usar el mismo servidor, añade `-p <another name>` a cada comando de Compose, cambia el nombre del volumen del paso 4 a `<that name>_uploads` y da otros puertos al proxy — si falta cualquiera de estas cosas, afectas a la instalación en producción.
+
+1. Descarga el `deploy/` de la misma etiqueta, copia el `env` de la copia a `deploy/.env` y recupera `certs/` y `nginx/`. Deja `MALMOI_IMAGE` en el digest de la copia o en una etiqueta más nueva cuya compatibilidad hayas confirmado.
+2. Ejecuta `docker compose up -d postgres`. Con un volumen vacío, crea la base de datos y el rol de migración con el `MIGRATE_DB_PASSWORD` de `.env`.
+3. Carga el volcado como rol de migración, sin propietarios ni permisos (el rol de migración pasa a ser el propietario y el paso 5 vuelve a conceder los permisos): `docker compose exec -T postgres pg_restore -U malmoi_migrate -d malmoi --no-owner --no-acl < "$B/db.dump"`. Lee el `errors ignored on restore: N` final. Solo se esperan mensajes `already exists` del esquema `public`; ante cualquier otro, detente en lugar de migrar una restauración parcial.
+4. Restaura las subidas: `docker volume create malmoi_uploads && docker run --rm -v malmoi_uploads:/data -v "$B":/backup alpine sh -c 'tar xzf /backup/uploads.tar.gz -C /data && chown -R 1000:1000 /data'` (el usuario de la app `node` es el uid 1000). A partir de aquí, cada comando de Compose avisa de que el volumen `already exists but was not created by Docker Compose`. Es inofensivo, y `down -v` también elimina el volumen.
+5. Ejecuta `docker compose run --rm migrate`. Si el historial de migraciones restaurado está al día, no se migra nada, y el bootstrap crea el rol de ejecución, le concede sus permisos y vuelve a quitar el acceso al esquema a todos los demás. Hazlo siempre después de restaurar: si te lo saltas, la base de datos restaurada queda abierta a todos los roles.
+6. Ejecuta `docker compose up -d web proxy` y deja el programador apagado. Compose ejecuta migrate una vez más antes de web porque web depende de él; es inofensivo. Comprueba que puedes iniciar sesión, ver las traducciones de un proyecto y ver las imágenes subidas, y que `docker compose logs web` no tiene errores de descifrado (`credential-…`).
+7. El pasado vuelve, así que revísalo. Los tokens personales, las apps conectadas y las sesiones revocados después de la copia vuelven a funcionar, y las invitaciones revocadas regresan. Cierra la sesión de todos con `docker compose exec -T postgres psql -U postgres -d malmoi -c 'DELETE FROM "Session"'` y pide a las personas que revisen sus tokens y apps conectadas en la página de MCP. Las ediciones y publicaciones posteriores a la copia se pierden; compáralas con los pull requests de los repositorios de destino.
+8. Arranca el programador solo después de esas comprobaciones. Si esta instalación pasa a ser la de producción, ejecuta `docker compose up -d` para levantar también el programador.
+
+## Rota las claves {#rotate-keys}
+
+Las herramientas de claves se ejecutan dentro de la imagen de la app y se conectan como rol de migración mediante `DIRECT_URL`. Ningún servicio de Compose recibe a la vez las credenciales de administración de la base de datos y las seis claves, así que pasas `DIRECT_URL` desde tu shell. No escribas nunca una contraseña en una línea de comandos, donde la guardan el historial del shell y `ps`: mantenla en una variable del shell y pasa `-e DIRECT_URL` sin valor.
+
+1. Haz una [copia de seguridad](#backup). Empareja la base de datos con las claves antiguas.
+2. En `deploy/.env`, añade la clave nueva al llavero junto a la antigua y cambia `*_ACTIVE_KEY_ID` al nombre de la clave nueva. Para la clave de búsqueda, sustituye `EMAIL_LOOKUP_KEY` y `EMAIL_LOOKUP_KEY_ID`; la antigua no hace falta. Todos los valores nuevos deben ser distintos.
+3. Bloquea el tráfico y detén las escrituras: `docker compose stop proxy scheduler web`. Sin el proxy no entra nada de fuera (navegadores, workflows de los repositorios de destino, agentes de programación, retornos de inicio de sesión), y sin el programador no hay sincronización nocturna. Solo queda postgres.
+4. Pon `DIRECT_URL` en tu shell sin que quede en el historial: `read -rs P && export DIRECT_URL="postgresql://malmoi_migrate:${P}@postgres:5432/malmoi" && unset P`, escribiendo `MIGRATE_DB_PASSWORD` cuando lo pida. Omitir TLS solo está bien mientras el host sea exactamente `postgres`; para una base de datos en otro host, añade `?sslmode=verify-full`. Se rechazan otros parámetros de query.
+5. Comprueba, aplica y verifica. `--no-deps` evita que migrate se ejecute:
+
+   ```sh
+   RUN='docker compose run --rm --no-deps -e DIRECT_URL web pnpm credentials:self-hosted'
+   $RUN --mode=rotate-token                                              # solo comprobar
+   $RUN --mode=rotate-token --apply --traffic-blocked --writers-drained
+   $RUN --mode=rotate-pii   --apply --traffic-blocked --writers-drained
+   $RUN --mode=reindex      --apply --traffic-blocked --writers-drained  # solo si cambiaste la clave de búsqueda
+   $RUN --mode=verify
+   ```
+
+   Cada uno imprime una línea de JSON. `oldTokenKey` y `oldPiiKey` de `verify` deben ser 0 antes de arrancar la app con las claves nuevas. Un fallo imprime solo `credential-conversion-failed: keep traffic blocked`, sin valores; la línea de stderr justo anterior, `[credentials] … credential-env: missing environment variable <name>`, indica el motivo (un ID de clave activa vacío o que no está en su llavero). No vuelvas a arrancar la app con solo una parte de los datos convertida.
+6. Ejecuta `unset DIRECT_URL` y después `docker compose up -d --force-recreate --no-deps web proxy scheduler` para que web lea el `.env` nuevo, y comprueba el inicio de sesión y las invitaciones.
+7. Conserva las claves antiguas en el llavero. Las copias anteriores las necesitan.
+
+Otros secretos y comprobaciones:
+
+- `pnpm credentials:finalize:self-hosted` (la misma forma `RUN`, `--mode=backfill` por defecto) solo lee: confirma que se aplicó la migración de almacenamiento de credenciales e imprime `{"target":"self-hosted","pending":false,"applied":false}`. Una instalación nueva o una actualización normal siempre muestra `pending:false`, porque el servicio migrate aplica todas las migraciones. Su `--apply` ejecuta las migraciones directamente y no forma parte del procedimiento normal; las actualizaciones usan `docker compose run --rm migrate`.
+- `APP_SIGNING_SECRET` y `AUTH_SECRET`: cambia `.env` y ejecuta `docker compose up -d --force-recreate web`. No hace falta bloquear el tráfico; solo los inicios de sesión y las conexiones de GitHub en curso en ese momento empiezan de nuevo. `CRON_SECRET` debe coincidir en web y en el programador, así que recrea ambos (`--force-recreate web scheduler`); si solo cambia uno, la sincronización nocturna recibe 401.
+- Contraseñas de la base de datos: una vez creado el volumen, cambiar `MIGRATE_DB_PASSWORD` o `RUNTIME_DB_PASSWORD` solo en `.env` no hace nada. Abre `docker compose exec postgres psql -U postgres -d malmoi -X`, ejecuta `\password malmoi_app` (o `malmoi_migrate` — psql cifra la contraseña antes de enviarla, así que no llega al registro del servidor), luego actualiza `.env` y ejecuta `docker compose up -d --force-recreate web`. La contraseña nueva del rol de migración se aplica desde el siguiente `docker compose run --rm migrate`.
+
+## Qué pasa después {#next}
+
+Después de una actualización o una restauración, busca líneas `preflight:` y errores de descifrado en el registro de web ([solución de problemas](troubleshooting.md#startup-checks)), y compara los campos guardados con tu política de privacidad ([materiales de privacidad](troubleshooting.md#privacy)).
