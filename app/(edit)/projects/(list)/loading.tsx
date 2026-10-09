@@ -59,15 +59,18 @@ export default async function ProjectsLoading() {
       {/* 본문 — 그룹 헤더 하나 + 카드 안의 행 둘. */}
       <PanelBody className="flex flex-col gap-4" aria-hidden>
         <section className="border-border bg-background shrink-0 overflow-hidden rounded-lg border">
-          {/* 카드 헤더 — 실물과 같은 `px-4 py-3`이라야 첫 행의 y가 안 튄다. */}
-          <div className="flex min-h-12 items-center gap-2 px-4 py-3">
+          {/*
+            카드 헤더 — 실물과 같은 `px-4 py-3`이라야 첫 행의 y가 안 튄다. ⚠️ **머리 아래 선은 머리가 든다** (#205) — 실물 `Card`가
+            `border-b`의 1px을 `min-h-12` 안에 흡수하고 첫 행은 자기 선이 없다. 첫 행 위에 그으면 그 행이 1px 높다.
+          */}
+          <div className="border-divider flex min-h-12 items-center gap-2 border-b px-4 py-3">
             <Skeleton size="md" className="w-32" />
           </div>
           <ul>
             {[0, 1].map((i) => (
               <li
                 key={i}
-                className={`flex items-center gap-4 py-row-y pr-3.5 pl-3 ${i === 0 ? "border-foreground/[0.06] border-t" : "border-border border-t"}`}
+                className={`flex items-center gap-4 py-row-y pr-3.5 pl-3 ${i > 0 ? "border-border border-t" : ""}`}
               >
                 <Skeleton className="size-7 rounded-[4px]" />
                 <div className="flex w-[420px] shrink-0 flex-col gap-0.5">

@@ -8,7 +8,7 @@ import { getMessages } from "@/lib/i18n/server";
  * ⚠️ **`ContentPanel`을 들지 않는다** — `[slug]/layout.tsx`가 든다. 여기서 또 감싸면 로딩 동안 패널이 둘이 된다.
  *
  * ⚠️ **치수는 실물 그대로다** — 머리(`min-h-9` 제목 행) · `Card` 헤더(`px-4 py-3`, 설명이 같은 줄 오른쪽) · 멤버 행
- * (`py-row-y pr-3.5 pl-3` · 아바타 32 · 이름 열 300 · 메타 150 · 역할 셀렉트 132 + [Remove]) · 첫 행만 약한 선.
+ * (`py-row-y pr-3.5 pl-3` · 아바타 32 · 이름 열 300 · 메타 150 · 역할 셀렉트 132 + [Remove]) · 머리 아래 선은 머리가 들고 행↔행만 선(#205).
  *
  * ⚠️ **개수는 가장 흔한 모양이다** — 멤버 둘(이름·이메일 두 줄), 대기 초대 0(빈 상태). 실제 수를 맞히려 들면 틀렸을 때
  * 두 번 튄다. 마지막 오너의 사유 띠(OWNER 시점에서 오너 하나인 행)는 그리지 않는다 — 시점마다 갈려 가장 흔한 수가 없다.
@@ -31,7 +31,7 @@ export default async function MembersLoading() {
       <PanelBody className="space-y-4" aria-hidden>
         <Card>
           {[0, 1].map((i) => (
-            <div key={i} data-skeleton-member className={i === 0 ? "border-foreground/[0.06] border-t" : "border-border border-t"}>
+            <div key={i} data-skeleton-member className={i > 0 ? "border-border border-t" : undefined}>
               <div className="flex items-center gap-4 py-row-y pr-3.5 pl-3">
                 <Skeleton className="size-8 shrink-0 rounded-full" />
                 <div className="flex w-[300px] min-w-0 shrink-0 flex-col gap-0.5">
@@ -55,7 +55,7 @@ export default async function MembersLoading() {
             `EmptyRowCard inset`과 같은 치수 — `p-8` · 칩 40 · gap 10 · 제목 한 줄 + 설명 **두 줄**. 설명(`max-w-[46ch]` 14px)이
             실물 문구 길이에서 두 줄로 접힌다 — 한 줄로 그리면 도착 때 한 줄만큼 늘어난다.
           */}
-          <div data-skeleton-empty className="border-foreground/[0.06] flex flex-col items-center gap-2.5 border-t p-8">
+          <div data-skeleton-empty className="flex flex-col items-center gap-2.5 p-8">
             <Skeleton className="size-10 rounded-sm" />
             <div className="flex w-full flex-col items-center gap-1.5">
               <Skeleton size="md" className="w-48" />
@@ -73,11 +73,14 @@ export default async function MembersLoading() {
   );
 }
 
-/** `Card`의 껍데기와 헤더(제목 · 개수 배지 · 오른쪽 끝 설명). ⚠️ **`<section>`이 아니다** — 이름 없는 골격이다. */
+/**
+ * `Card`의 껍데기와 헤더(제목 · 개수 배지 · 오른쪽 끝 설명). ⚠️ **`<section>`이 아니다** — 이름 없는 골격이다.
+ * ⚠️ **머리 아래 선은 머리가 든다** (#205) — 실물 `Card`가 `border-b`의 1px을 `min-h-12` 안에 흡수하고 첫 행·빈 상태는 자기 선이 없다.
+ */
 function Card({ children }: { children: React.ReactNode }) {
   return (
     <div className="border-border bg-background shrink-0 overflow-hidden rounded-lg border">
-      <div className="flex min-h-12 items-center gap-2 px-4 py-3">
+      <div className="border-divider flex min-h-12 items-center gap-2 border-b px-4 py-3">
         <Skeleton size="md" className="w-28" />
         <Skeleton className="h-5 w-5 rounded-full" />
         <div className="ml-auto w-72">
