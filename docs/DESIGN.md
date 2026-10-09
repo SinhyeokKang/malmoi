@@ -2372,7 +2372,7 @@ Supabase를 골랐던 이유(2026-09-05)는 "개발자 도구이면서 비개발
 | 미번역 | **Untranslated** | Missing only | **미번역** | 누락만 | **Sin traducir** | Solo faltantes |
 | 연결 확인 실패 · 만료 | **Couldn't check** · **Expired** | Couldn't load, Authorization expired | **확인하지 못함** · **만료됨** | 불러오지 못함, 인증 만료 | **No se pudo comprobar** · **Caducado** | No se pudo cargar, autorización caducada |
 | 초대 철회 | **Revoke** / revoked | cancelled an invitation | **철회** / 철회됨 | 초대 취소 | **Revocar** / revocada | cancelar la invitación |
-| App 호칭 | 처음 **Malmoi GitHub App**, 이어서 **the app** | Malmoi app | 처음 **Malmoi GitHub App**, 이어서 **앱** | Malmoi 앱 | primero **Malmoi GitHub App**, luego **la app** | app de Malmoi |
+| App 호칭 | 처음 **the GitHub App**, 이어서 **the app** — 두 배포 공통(self-hosted에서 App의 소유자는 운영자다) | Malmoi app · Malmoi GitHub App | 처음 **GitHub App**, 이어서 **앱** | Malmoi 앱 · Malmoi GitHub App | primero **la GitHub App**, luego **la app** | app de Malmoi · Malmoi GitHub App · GitHub App de Malmoi |
 | 계정 화면 | **Account** | account settings | **계정** | 계정 설정 | **Cuenta** | configuración de la cuenta |
 | 화면 테마 (2026-10-05, color-scheme) | **Theme** — 옵션 **System** · **Light** · **Dark**(식별자 `colorScheme`은 코드에만) | Color scheme, Dark mode | **테마** — **시스템** · **라이트** · **다크** | 색 구성표, 다크 모드 | **Tema** — **Sistema** · **Claro** · **Oscuro** | esquema de colores, modo oscuro |
 | 프로젝트 push 토큰 (2026-10-04, ui-locales R4) | **Push token** | — | **푸시 토큰** | push 토큰 | **Token de push** | — |
