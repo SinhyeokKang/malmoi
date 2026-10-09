@@ -20,21 +20,26 @@
 
 백업은 앱을 멈춘 상태에서 함께 뜬 셋입니다. 데이터베이스 덤프, 업로드 볼륨, `.env`(키)입니다. 하나라도 시점이 다르면 복원본이 맞지 않습니다. 데이터베이스 행이 업로드 파일을 가리키고, 암호화된 값은 그 시점의 키로만 열립니다. 백업은 리포지토리 체크아웃 밖에 두고 서버 밖에도 사본을 둡니다. 권한은 파일 600, 디렉터리 700입니다. 명령은 `deploy/` 디렉터리에서 root로 실행합니다. 업로드 압축 파일은 컨테이너가 root로 쓰고, `/var/backups`도 root가 필요합니다. 괄호 안은 처음 실패한 명령에서 멈추므로, 마지막에 `backup ok`가 찍혔을 때만 백업을 믿습니다.
 
+이 블록은 독립적으로 실행하세요. `if`·`&&`·`||`로 감싸면 실패 시 중단이 무효가 될 수 있습니다.
+
 ```sh
-STAMP=$(date -u +%Y%m%dT%H%M%SZ); B=/var/backups/malmoi/$STAMP
-docker compose stop scheduler proxy web            # 새 트래픽과 쓰기를 멈춘다. postgres만 남는다
 ( set -eu
-  mkdir -p "$B" && chmod 700 "$B"
+  STAMP=$(date -u +%Y%m%dT%H%M%SZ); B=/var/backups/malmoi/$STAMP
+  docker compose stop scheduler proxy web            # 새 트래픽과 쓰기를 멈춘다. postgres만 남는다
+  mkdir -p "$B"
+  chmod 700 "$B"
   docker compose exec -T postgres pg_dump -U postgres -d malmoi -Fc > "$B/db.dump"
   docker compose exec -T postgres pg_restore -l < "$B/db.dump" > /dev/null   # 덤프를 다시 읽을 수 있는지
   docker run --rm -v malmoi_uploads:/data:ro -v "$B":/backup alpine:3.22 tar czf /backup/uploads.tar.gz -C /data .
-  cp .env "$B/env" && cp -r certs nginx "$B/"
+  cp .env "$B/env"
+  cp -r certs nginx "$B/"
   { echo "taken_at=$STAMP"; grep '^MALMOI_IMAGE=' .env
     docker compose exec -T postgres psql -U postgres -d malmoi -Atc 'select count(*), max(migration_name) from _prisma_migrations'
   } > "$B/manifest.txt"
   (cd "$B" && sha256sum db.dump uploads.tar.gz env >> manifest.txt)
   chmod -R go-rwx "$B"                              # 마지막에 — manifest까지 권한이 걸린다
-) && echo "backup ok: $B"
+  echo "backup ok: $B"
+)
 ```
 
 - manifest에는 비밀이 없습니다. 시각, 이미지, 마이그레이션 상태, 체크섬만 담깁니다.
@@ -50,14 +55,16 @@ docker compose stop scheduler proxy web            # 새 트래픽과 쓰기를 
 
 복원 연습과 격리 검증은 운영 중인 서버가 아닌 다른 서버에서 합니다. `deploy/compose.yaml`이 Compose 프로젝트 이름을 고정하므로, 같은 서버에서는 디렉터리를 복사해도 운영 중인 `malmoi_pgdata`·`malmoi_uploads` 볼륨을 그대로 씁니다. 2·4단계가 운영 데이터 위에서 돌고 `down -v`는 그 데이터를 지웁니다. 꼭 같은 서버에서 해야 한다면 모든 Compose 명령에 `-p <another name>`(`<another name>`은 운영과 다른 프로젝트 이름)을 붙이고, 4단계의 볼륨 이름을 `<that name>_uploads`(그 이름 + `_uploads`)로 바꾸고, 프록시 포트를 다르게 줍니다. 하나라도 빠지면 운영 설치본을 건드립니다.
 
-1. 같은 태그의 `deploy/`를 받아 백업의 `env`를 `deploy/.env`로 복사하고 `certs/`와 `nginx/`를 되돌립니다. `MALMOI_IMAGE`는 백업 시점의 digest나, 호환을 확인한 더 새 태그로 둡니다.
+1단계 전에 클라우드 제공자의 방화벽에서 80·443 포트를 본인 IP 주소로 제한하세요. Docker가 공개한 포트는 서버 자체 방화벽을 우회하므로 그 방화벽만으로는 부족합니다. 로그인 확인 중에도, 8단계까지 이 제한을 유지하세요. 검토 전에 되살아난 자격증명으로 외부에서 접근할 수 없어야 합니다.
+
+1. 같은 태그의 `deploy/`를 받아 백업의 `env`를 `deploy/.env`로 복사하고 `certs/`와 `nginx/`를 되돌립니다. `MALMOI_IMAGE`는 백업 시점의 digest나, 호환을 확인한 더 새 태그로 둡니다. `deploy/`에서 `read -r B`를 실행하고 복원할 백업 디렉터리의 절대 경로를 입력하세요. `docker compose stop scheduler proxy web`가 성공했을 때만 진행하세요.
 2. `docker compose up -d postgres`를 실행합니다. 빈 볼륨이면 `.env`의 `MIGRATE_DB_PASSWORD`로 데이터베이스와 마이그레이션 롤을 만듭니다.
 3. 소유자·권한 없이 마이그레이션 롤로 덤프를 올립니다(소유자는 마이그레이션 롤이 되고, 권한은 5단계가 다시 겁니다): `docker compose exec -T postgres pg_restore -U malmoi_migrate -d malmoi --no-owner --no-acl < "$B/db.dump"`. 끝의 `errors ignored on restore: N`을 읽습니다. `public` 스키마의 `already exists` 메시지만 정상이고, 그 밖의 오류가 있으면 일부만 복원된 데이터 위에서 마이그레이션하지 말고 멈춥니다.
 4. 업로드를 되살립니다: `docker volume create malmoi_uploads && docker run --rm -v malmoi_uploads:/data -v "$B":/backup alpine:3.22 sh -c 'tar xzf /backup/uploads.tar.gz -C /data && chown -R 1000:1000 /data'`(앱 사용자 `node`는 uid 1000). 이후 모든 Compose 명령이 볼륨이 `already exists but was not created by Docker Compose`라고 경고합니다. 동작에는 문제가 없고 `down -v`는 이 볼륨도 지웁니다.
 5. `docker compose run --rm migrate`를 실행합니다. 복원한 마이그레이션 이력이 최신이면 적용할 것이 없고, bootstrap이 런타임 롤을 만들어 권한을 건 뒤 다른 모든 롤의 스키마 접근을 다시 거둡니다. 복원 뒤에는 반드시 실행하세요. 건너뛰면 복원한 데이터베이스가 모든 롤에 열린 채로 남습니다.
-6. `docker compose up -d web proxy`를 실행하고 스케줄러는 꺼 둡니다. web이 migrate에 의존하므로 Compose가 web보다 먼저 migrate를 한 번 더 돌리는데, 문제없습니다. 로그인, 프로젝트 번역 조회, 업로드한 사진을 확인하고 `docker compose logs web`에 복호화 오류(`credential-…`)가 없는지 봅니다.
-7. 과거가 되살아나므로 점검합니다. 백업 뒤에 폐기한 개인 토큰, 연결한 앱, 세션이 다시 동작하고 철회한 초대도 돌아옵니다. `docker compose exec -T postgres psql -U postgres -d malmoi -c 'DELETE FROM "Session"'`로 모두 로그아웃시키고, 사용자에게 MCP 페이지의 토큰과 연결한 앱을 확인해 달라고 알립니다. 백업 뒤의 편집과 게시는 사라지므로 대상 리포지토리의 PR과 대조합니다.
-8. 이 점검이 끝난 뒤에만 스케줄러를 띄웁니다. 이 설치본이 이제 운영 설치본이라면 `docker compose up -d`로 스케줄러까지 올립니다.
+6. web을 시작하기 전에 `docker compose exec -T postgres psql -X -v ON_ERROR_STOP=1 -U postgres -d malmoi -c 'DELETE FROM "Session"'`로 모두 로그아웃시키고, 성공했을 때만 진행하세요. `docker compose up -d --no-deps web proxy`를 실행하고 스케줄러는 꺼 둡니다. 허용한 IP 주소에서 로그인, 프로젝트 번역 조회, 업로드한 사진을 확인하고 `docker compose logs web`에 복호화 오류(`credential-…`)가 없는지 봅니다.
+7. 접근 제한을 유지한 채 백업에서 되살아난 권한을 점검하세요. 개인 토큰, 연결한 앱, 프로젝트 푸시 토큰, 제거한 멤버, 철회한 초대가 다시 유효해질 수 있습니다. 신뢰하는 검토자의 IP 주소만 클라우드 방화벽에서 허용하세요. 사용자는 MCP 페이지에서 되살아난 자격증명을 폐기하고, 프로젝트 소유자는 불필요한 멤버와 초대를 제거하고 해당 푸시 토큰을 회전합니다. 백업 이후의 기록과 대조하고, 검토를 마칠 수 없다면 외부 접근을 계속 막아 두세요. 백업 뒤의 편집과 게시는 사라지므로 대상 리포지토리의 PR과 대조합니다.
+8. 이 점검을 마쳤고 이 설치본을 운영에 쓸 때만 `docker compose up -d --no-deps scheduler`로 스케줄러를 시작하고 80·443 포트를 다시 모두에게 여세요. 테스트 서버라면 스케줄러를 끄고 접근 제한을 유지하세요.
 
 ## 키 회전 {#rotate-keys}
 

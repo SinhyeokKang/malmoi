@@ -36,7 +36,7 @@ function runBackup(locale: string, shell: string, failAt = "") {
     const trace = join(dir, "trace");
     const result = spawnSync(shell, ["-c", stubs + snippet.replace("/var/backups/malmoi/", '"$BACKUP_ROOT"/')], {
       cwd: dir, encoding: "utf8", timeout: 5_000,
-      env: { PATH: process.env.PATH, BACKUP_ROOT: dir, TRACE: trace, FAIL_AT: failAt },
+      env: { NODE_ENV: "test", PATH: process.env.PATH, BACKUP_ROOT: dir, TRACE: trace, FAIL_AT: failAt },
     });
     return { ...result, steps: readFileSync(trace, "utf8").trim().split("\n") };
   } finally {

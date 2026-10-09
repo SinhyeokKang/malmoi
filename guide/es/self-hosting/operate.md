@@ -20,21 +20,26 @@ Actualiza una versión cada vez, en orden y solo a la última versión; las actu
 
 Una copia son tres cosas tomadas con la app detenida: el volcado de la base de datos, el volumen de subidas y `.env` (las claves). Si alguna es de otro momento, la restauración no cuadra: las filas de la base de datos apuntan a archivos subidos y los valores cifrados solo se abren con las claves de ese momento. Guarda las copias fuera del checkout del repositorio y llévalas también fuera del servidor. Los permisos son 600 para archivos y 700 para directorios. Ejecuta los comandos como root desde el directorio `deploy/`: un contenedor escribe el archivo de subidas como root, y `/var/backups` requiere root. La parte entre paréntesis se detiene en el primer comando que falle; confía en la copia solo si termina con `backup ok`.
 
+Ejecuta este bloque por separado: no lo envuelvas en `if`, `&&` ni `||`, porque pueden desactivar la parada ante errores.
+
 ```sh
-STAMP=$(date -u +%Y%m%dT%H%M%SZ); B=/var/backups/malmoi/$STAMP
-docker compose stop scheduler proxy web            # detiene el tráfico nuevo y las escrituras; solo queda postgres
 ( set -eu
-  mkdir -p "$B" && chmod 700 "$B"
+  STAMP=$(date -u +%Y%m%dT%H%M%SZ); B=/var/backups/malmoi/$STAMP
+  docker compose stop scheduler proxy web            # detiene el tráfico nuevo y las escrituras; solo queda postgres
+  mkdir -p "$B"
+  chmod 700 "$B"
   docker compose exec -T postgres pg_dump -U postgres -d malmoi -Fc > "$B/db.dump"
   docker compose exec -T postgres pg_restore -l < "$B/db.dump" > /dev/null   # el volcado se puede volver a leer
   docker run --rm -v malmoi_uploads:/data:ro -v "$B":/backup alpine:3.22 tar czf /backup/uploads.tar.gz -C /data .
-  cp .env "$B/env" && cp -r certs nginx "$B/"
+  cp .env "$B/env"
+  cp -r certs nginx "$B/"
   { echo "taken_at=$STAMP"; grep '^MALMOI_IMAGE=' .env
     docker compose exec -T postgres psql -U postgres -d malmoi -Atc 'select count(*), max(migration_name) from _prisma_migrations'
   } > "$B/manifest.txt"
   (cd "$B" && sha256sum db.dump uploads.tar.gz env >> manifest.txt)
   chmod -R go-rwx "$B"                              # al final, para que cubra también el manifiesto
-) && echo "backup ok: $B"
+  echo "backup ok: $B"
+)
 ```
 
 - El manifiesto no tiene secretos: la hora, la imagen, el estado de las migraciones y las sumas de comprobación.
@@ -50,14 +55,16 @@ Esto recupera una copia en un servidor nuevo o después de `docker compose down 
 
 Los ensayos de restauración y las comprobaciones aisladas van en un servidor distinto del que está en producción. `deploy/compose.yaml` fija el nombre del proyecto de Compose, así que en el mismo servidor un directorio copiado sigue usando los volúmenes en producción `malmoi_pgdata` y `malmoi_uploads`: los pasos 2 y 4 se ejecutarían sobre tus datos reales, y `down -v` los borraría. Si tienes que usar el mismo servidor, añade `-p <another name>` (otro nombre de proyecto distinto del de producción) a cada comando de Compose, cambia el nombre del volumen del paso 4 a `<that name>_uploads` (ese nombre seguido de `_uploads`) y da otros puertos al proxy — si falta cualquiera de estas cosas, afectas a la instalación en producción.
 
-1. Descarga el `deploy/` de la misma etiqueta, copia el `env` de la copia a `deploy/.env` y recupera `certs/` y `nginx/`. Deja `MALMOI_IMAGE` en el digest de la copia o en una etiqueta más nueva cuya compatibilidad hayas confirmado.
+Antes del paso 1, limita los puertos 80 y 443 a tu dirección IP en el cortafuegos de tu proveedor. El cortafuegos del propio servidor no basta porque los puertos publicados por Docker lo eluden. Mantén la restricción hasta el paso 8, incluso al comprobar el inicio de sesión: las credenciales restauradas no deben permitir acceso público antes de la revisión.
+
+1. Descarga el `deploy/` de la misma etiqueta, copia el `env` de la copia a `deploy/.env` y recupera `certs/` y `nginx/`. Deja `MALMOI_IMAGE` en el digest de la copia o en una etiqueta más nueva cuya compatibilidad hayas confirmado. Desde `deploy/`, ejecuta `read -r B` e introduce la ruta absoluta del directorio de la copia que quieres restaurar. Ejecuta `docker compose stop scheduler proxy web` y continúa solo si funciona.
 2. Ejecuta `docker compose up -d postgres`. Con un volumen vacío, crea la base de datos y el rol de migración con el `MIGRATE_DB_PASSWORD` de `.env`.
 3. Carga el volcado como rol de migración, sin propietarios ni permisos (el rol de migración pasa a ser el propietario y el paso 5 vuelve a conceder los permisos): `docker compose exec -T postgres pg_restore -U malmoi_migrate -d malmoi --no-owner --no-acl < "$B/db.dump"`. Lee el `errors ignored on restore: N` final. Solo se esperan mensajes `already exists` del esquema `public`; ante cualquier otro, detente en lugar de migrar una restauración parcial.
 4. Restaura las subidas: `docker volume create malmoi_uploads && docker run --rm -v malmoi_uploads:/data -v "$B":/backup alpine:3.22 sh -c 'tar xzf /backup/uploads.tar.gz -C /data && chown -R 1000:1000 /data'` (el usuario de la app `node` es el uid 1000). A partir de aquí, cada comando de Compose avisa de que el volumen `already exists but was not created by Docker Compose`. Es inofensivo, y `down -v` también elimina el volumen.
 5. Ejecuta `docker compose run --rm migrate`. Si el historial de migraciones restaurado está al día, no se migra nada, y el bootstrap crea el rol de ejecución, le concede sus permisos y vuelve a quitar el acceso al esquema a todos los demás. Hazlo siempre después de restaurar: si te lo saltas, la base de datos restaurada queda abierta a todos los roles.
-6. Ejecuta `docker compose up -d web proxy` y deja el programador apagado. Compose ejecuta migrate una vez más antes de web porque web depende de él; es inofensivo. Comprueba que puedes iniciar sesión, ver las traducciones de un proyecto y ver las imágenes subidas, y que `docker compose logs web` no tiene errores de descifrado (`credential-…`).
-7. El pasado vuelve, así que revísalo. Los tokens personales, las apps conectadas y las sesiones revocados después de la copia vuelven a funcionar, y las invitaciones revocadas regresan. Cierra la sesión de todos con `docker compose exec -T postgres psql -U postgres -d malmoi -c 'DELETE FROM "Session"'` y pide a las personas que revisen sus tokens y apps conectadas en la página de MCP. Las ediciones y publicaciones posteriores a la copia se pierden; compáralas con los pull requests de los repositorios de destino.
-8. Arranca el programador solo después de esas comprobaciones. Si esta instalación pasa a ser la de producción, ejecuta `docker compose up -d` para levantar también el programador.
+6. Antes de arrancar web, cierra la sesión de todos con `docker compose exec -T postgres psql -X -v ON_ERROR_STOP=1 -U postgres -d malmoi -c 'DELETE FROM "Session"'`. Continúa solo si funciona. Ejecuta `docker compose up -d --no-deps web proxy` y deja el programador apagado. Desde una dirección IP permitida, comprueba que puedes iniciar sesión, ver las traducciones de un proyecto y ver las imágenes subidas, y que `docker compose logs web` no tiene errores de descifrado (`credential-…`).
+7. Mantén el acceso restringido mientras revisas lo que ha recuperado la copia. Los tokens personales, las apps conectadas, los tokens de push de los proyectos, los miembros eliminados y las invitaciones revocadas pueden volver a funcionar. Permite solo las direcciones IP de revisores de confianza en el cortafuegos de tu proveedor mientras los usuarios revocan las credenciales restauradas en la página de MCP y los propietarios eliminan miembros no deseados, cancelan invitaciones y rotan los tokens de push afectados. Contrasta todo con tus registros posteriores a la copia; si no puedes terminar la revisión, mantén cerrado el acceso público. Las ediciones y publicaciones posteriores a la copia se pierden; compáralas con los pull requests de los repositorios de destino.
+8. Solo después de esas comprobaciones, si esta instalación pasa a ser la de producción, ejecuta `docker compose up -d --no-deps scheduler` y vuelve a abrir los puertos 80 y 443 a todo el mundo. En un servidor de prueba, deja el programador apagado y el acceso restringido.
 
 ## Rota las claves {#rotate-keys}
 

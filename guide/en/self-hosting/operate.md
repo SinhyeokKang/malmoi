@@ -20,21 +20,26 @@ Update one release at a time, in order, and only to the latest release; updates 
 
 A backup is three things taken while the app is stopped: the database dump, the upload volume, and `.env` (the keys). If any one is from a different moment, the restore doesn't line up — database rows point at uploaded files, and the encrypted values open only with the keys from that time. Keep backups outside the repository checkout and copy them off the server. Permissions are 600 for files and 700 for directories. Run the commands as root from the `deploy/` directory: the upload archive is written by a container as root, and `/var/backups` needs root. The part in parentheses stops at the first command that fails; trust the backup only when it ends with `backup ok`.
 
+Run this block on its own: do not wrap it in `if`, `&&`, or `||`, which can disable its stop-on-error behavior.
+
 ```sh
-STAMP=$(date -u +%Y%m%dT%H%M%SZ); B=/var/backups/malmoi/$STAMP
-docker compose stop scheduler proxy web            # stops new traffic and writes; only postgres keeps running
 ( set -eu
-  mkdir -p "$B" && chmod 700 "$B"
+  STAMP=$(date -u +%Y%m%dT%H%M%SZ); B=/var/backups/malmoi/$STAMP
+  docker compose stop scheduler proxy web            # stops new traffic and writes; only postgres keeps running
+  mkdir -p "$B"
+  chmod 700 "$B"
   docker compose exec -T postgres pg_dump -U postgres -d malmoi -Fc > "$B/db.dump"
   docker compose exec -T postgres pg_restore -l < "$B/db.dump" > /dev/null   # the dump can be read back
   docker run --rm -v malmoi_uploads:/data:ro -v "$B":/backup alpine:3.22 tar czf /backup/uploads.tar.gz -C /data .
-  cp .env "$B/env" && cp -r certs nginx "$B/"
+  cp .env "$B/env"
+  cp -r certs nginx "$B/"
   { echo "taken_at=$STAMP"; grep '^MALMOI_IMAGE=' .env
     docker compose exec -T postgres psql -U postgres -d malmoi -Atc 'select count(*), max(migration_name) from _prisma_migrations'
   } > "$B/manifest.txt"
   (cd "$B" && sha256sum db.dump uploads.tar.gz env >> manifest.txt)
   chmod -R go-rwx "$B"                              # last, so the manifest is covered too
-) && echo "backup ok: $B"
+  echo "backup ok: $B"
+)
 ```
 
 - The manifest holds no secrets: the time, the image, the migration state, and the checksums.
@@ -50,14 +55,16 @@ This brings a backup back on a new server, or after `docker compose down -v`. Th
 
 Restore drills and isolated checks belong on a different server from your live one. `deploy/compose.yaml` fixes the Compose project name, so on the same server a copied directory still uses the live `malmoi_pgdata` and `malmoi_uploads` volumes: steps 2 and 4 would run on your live data, and `down -v` would delete it. If you have to use the same server, add `-p <another name>` to every Compose command, change the volume name in step 4 to `<that name>_uploads`, and give the proxy different ports — missing any one of these hits the live installation.
 
-1. Get the same tag's `deploy/`, copy the backup's `env` to `deploy/.env`, and bring back `certs/` and `nginx/`. Keep `MALMOI_IMAGE` at the backup's digest, or a newer tag you've confirmed compatible.
+Before step 1, limit ports 80 and 443 to your own IP address in your cloud provider's firewall. A firewall on the server itself is not enough because Docker's published ports bypass it. Keep this restriction until step 8, including while checking sign-in; restored credentials must not be publicly usable before the review.
+
+1. Get the same tag's `deploy/`, copy the backup's `env` to `deploy/.env`, and bring back `certs/` and `nginx/`. Keep `MALMOI_IMAGE` at the backup's digest, or a newer tag you've confirmed compatible. From `deploy/`, run `read -r B` and enter the absolute path of the backup directory you want to restore. Run `docker compose stop scheduler proxy web` and continue only if it succeeds.
 2. Run `docker compose up -d postgres`. On an empty volume this creates the database and the migration role with `MIGRATE_DB_PASSWORD` from `.env`.
 3. Load the dump as the migration role, without owners or permissions (the migration role becomes the owner, and step 5 grants permissions again): `docker compose exec -T postgres pg_restore -U malmoi_migrate -d malmoi --no-owner --no-acl < "$B/db.dump"`. Read the closing `errors ignored on restore: N`. Only `already exists` messages for the `public` schema are expected; stop on anything else rather than migrating a partial restore.
 4. Restore the uploads: `docker volume create malmoi_uploads && docker run --rm -v malmoi_uploads:/data -v "$B":/backup alpine:3.22 sh -c 'tar xzf /backup/uploads.tar.gz -C /data && chown -R 1000:1000 /data'` (the app user `node` is uid 1000). From now on every Compose command warns that the volume `already exists but was not created by Docker Compose`. It's harmless, and `down -v` still removes the volume.
 5. Run `docker compose run --rm migrate`. If the restored migration history is current, nothing is migrated, and the bootstrap creates the runtime role, grants its permissions, and takes schema access away from everyone else again. Always run this after a restore — skipping it leaves the restored database open to every role.
-6. Run `docker compose up -d web proxy` and leave the scheduler off. Compose runs migrate once more before web because web depends on it; that's harmless. Check that you can sign in, see a project's translations, and see uploaded pictures, and that `docker compose logs web` has no decryption errors (`credential-…`).
-7. The past comes back, so check it. Personal tokens, connected apps, and sessions revoked after the backup work again, and canceled invitations return. Sign everyone out with `docker compose exec -T postgres psql -U postgres -d malmoi -c 'DELETE FROM "Session"'` and ask people to review their tokens and connected apps on the MCP page. Edits and Publish runs after the backup are lost; compare with the pull requests in the target repositories.
-8. Start the scheduler only after those checks. If this installation is now your live one, run `docker compose up -d` to bring the scheduler up too.
+6. Before starting web, sign everyone out with `docker compose exec -T postgres psql -X -v ON_ERROR_STOP=1 -U postgres -d malmoi -c 'DELETE FROM "Session"'`. Continue only if it succeeds. Run `docker compose up -d --no-deps web proxy` and leave the scheduler off. From an allowed IP address, check that you can sign in, see a project's translations, and see uploaded pictures, and that `docker compose logs web` has no decryption errors (`credential-…`).
+7. Keep access restricted while you check what the backup brought back. Personal tokens, connected apps, project push tokens, removed members, and canceled invitations can work again. Let only trusted reviewers' IP addresses through the cloud firewall while users revoke restored credentials on the MCP page and project owners remove unwanted members, cancel invitations, and rotate affected push tokens. Reconcile these with your records from after the backup; if you cannot finish the review, keep public access closed. Edits and Publish runs after the backup are lost; compare with the pull requests in the target repositories.
+8. Only after those checks, if this installation is now your live one, run `docker compose up -d --no-deps scheduler` and open ports 80 and 443 to everyone again. On a test server, keep the scheduler off and access restricted.
 
 ## Rotate keys {#rotate-keys}
 

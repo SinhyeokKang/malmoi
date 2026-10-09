@@ -6,8 +6,8 @@
 # 순서: postgres healthy → migrate(마이그레이션 + bootstrap) 성공 → web healthy → proxy·scheduler.
 # 컨테이너가 "실행 중"이라는 사실은 준비를 뜻하지 않으므로 service_healthy·service_completed_successfully로 묶는다.
 #
-# 업그레이드: MALMOI_IMAGE를 새 태그(가능하면 @sha256 digest)로 바꾸고
-#   docker compose pull --ignore-buildable && docker compose run --rm migrate && docker compose up -d --force-recreate web proxy scheduler
+# 업그레이드: guide/en/self-hosting/operate.md#update의 정지·백업·검증·재개 순서를 따른다.
+#   공개 가이드: https://mal-moi.com/docs/self-hosting/operate#update
 # ⚠️ migrate의 과거 성공을 재사용하지 않는다 — 새 릴리스의 마이그레이션을 새로 돌린 뒤 web을 같은 이미지로 재생성한다
 #    (POSTMORTEM 2026-09-14 — 낡은 Prisma 클라이언트가 새 스키마를 조회했다).
 #
