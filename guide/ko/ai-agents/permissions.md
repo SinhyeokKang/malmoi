@@ -26,6 +26,7 @@
 | 작업 | 도구 |
 | --- | --- |
 | 누구인지, 무엇이 있는지 확인 | `whoami`, `list_projects`, `get_project`, `list_members`, `list_events` |
+| 가이드 읽기 | `read_docs` |
 | 프로젝트 설정 | `list_repositories`, `list_branches`, `detect_formats`, `create_project`, `add_sources`, `get_workflow`, `rotate_push_token` |
 | 소스 제거 | `preview_source_removal`, `remove_source` |
 | 번역 | `list_keys`, `get_key`, `set_translations` |

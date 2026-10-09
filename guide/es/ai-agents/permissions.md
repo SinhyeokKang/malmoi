@@ -26,6 +26,7 @@ Los cambios en tu rol o tu pertenencia se aplican desde la siguiente solicitud d
 | Tarea | Herramientas |
 | --- | --- |
 | Averiguar quién y qué | `whoami`, `list_projects`, `get_project`, `list_members`, `list_events` |
+| Leer la guía | `read_docs` |
 | Configurar un proyecto | `list_repositories`, `list_branches`, `detect_formats`, `create_project`, `add_sources`, `get_workflow`, `rotate_push_token` |
 | Quitar una fuente | `preview_source_removal`, `remove_source` |
 | Traducir | `list_keys`, `get_key`, `set_translations` |
