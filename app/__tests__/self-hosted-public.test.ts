@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { NextRequest } from "next/server";
 
-import middleware from "../../middleware";
+import middleware, { config } from "../../middleware";
 
 /**
  * **self-hosted 공개 응답의 배선** (self-hosting design §7, SH-12/13). 판정은 `lib/seo/__tests__/public-response.test.ts`가 들고, 여기는
@@ -49,6 +49,23 @@ describe("middleware", () => {
     const response = run(path);
     expect(response.headers.get("x-robots-tag")).toBe("noindex");
     expect(response.headers.get("content-security-policy")).toContain("nonce-");
+  });
+});
+
+/**
+ * ⚠️ **위 배선 테스트는 `middleware()`를 직접 부르므로 matcher를 지나지 않는다.** 누가 정적 자산처럼 크롤 파일을 matcher 제외에
+ * 더하면 self-hosted에서 hosted sitemap·llms가 다시 200으로 나가고 위 테스트는 green이다. `entry-points.test.ts`와 같은 읽기
+ * (`source`를 `^…$` 정규식으로)로 세 경로가 걸리는지 센다.
+ */
+describe("matcher", () => {
+  const matchers = (config.matcher as readonly string[]).map((source) => new RegExp(`^${source}$`));
+
+  it.each(["/sitemap.xml", "/llms.txt", "/llms-full.txt"])("%s가 middleware를 지난다", (path) => {
+    expect(matchers.some((re) => re.test(path))).toBe(true);
+  });
+
+  it("읽기가 실제로 가른다 — 제외 경로는 걸리지 않는다", () => {
+    expect(matchers.some((re) => re.test("/icon.svg"))).toBe(false);
   });
 });
 
