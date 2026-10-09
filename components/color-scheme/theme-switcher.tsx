@@ -4,6 +4,7 @@ import { ChevronsUpDown } from "lucide-react";
 import { useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
+import type { SetColorSchemeResult } from "@/app/color-scheme/actions";
 import { applyColorScheme, COLOR_SCHEME_GLYPHS } from "@/components/color-scheme/apply";
 import { useMessages } from "@/components/i18n/messages-provider";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -13,6 +14,8 @@ import { COLOR_SCHEMES, parseColorScheme, type ColorScheme } from "@/lib/color-s
 
 /**
  * 각 테마의 라벨·글리프가 **자기 `data-theme`에서만** 보이게 하는 클래스. Tailwind가 리터럴로 찾아야 해서 값마다 통째로 적는다.
+ * ⚠️ Tailwind v4는 못 만든 클래스를 경고 없이 버린다(POSTMORTEM 2026-09-23) — 이 변형이 빠지면 라벨 셋이 다 `hidden`이라 트리거가 셰브론만 남는다.
+ * 생성된 선택자는 `[data-theme=dark] .\[\[data-theme\=dark\]_\&\]\:inline`(명시도 0,2,0)이라 `.hidden`을 이긴다(2026-10-10 빌드 CSS로 확인).
  * ⚠️ 보이지 않는 둘은 `display: none`이라 접근 이름에서도 빠진다 — 이름은 sr-only 접두 + 보이는 하나다.
  */
 const SHOWN: Readonly<Record<ColorScheme, string>> = {
@@ -46,7 +49,7 @@ export function ThemeSwitcher() {
     if (next === currentScheme() || pending) return;
     startTransition(async () => {
       // ⚠️ 던져도 그 자리에서 말한다 — transition 안의 예외(배포 skew·오프라인·5xx)가 error boundary로 올라가면 페이지 전체가 오류 화면이 된다.
-      let result: Awaited<ReturnType<typeof applyColorScheme>> | null;
+      let result: SetColorSchemeResult | null;
       try { result = await applyColorScheme(next); } catch { result = null; }
       if (result !== "ok") toast.error(t.failed);
     });
