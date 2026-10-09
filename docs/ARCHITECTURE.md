@@ -3579,7 +3579,7 @@ MCP는 무상태이고 에이전트는 미리보기와 실행 사이에 무엇�
 | `app/oauth/authorize/__tests__/actions.test.ts` | 동의 Action이 세션을 다시 읽고(무세션 → 같은 요청의 로그인, 소비 없음) 콜백 redirect는 `issued`·`denied`에서만 · **try 밖**이다(안이면 redirect 예외가 `unavailable`로 삼켜진다 — 뮤테이션으로 red 확인) |
 | `lib/session-revocation/__tests__/normal-login.test.tsx` | `/oauth/authorize`의 `ProviderButton`이 일반 로그인 진입점 넷째 — `clearAuthRoundtripCookies()`가 `signIn()`보다 먼저, `redirectTo`는 `?request=` 정규형 |
 | `lib/mcp/__tests__/pure-boundary.test.ts` | 순수 모듈(`PURE` 목록)에 `server-only`가 없다 — 테스트가 바로 import한다 |
-| `lib/guide/__tests__/tracing.test.ts` | `outputFileTracingIncludes["/api/mcp"]` 글롭이 en 서빙 원고 전부와 `SUMMARY.md`를 덮는다 — `read_docs`가 `fs`로 읽어 트레이서가 못 따라가고, 빠지면 Vercel에서만 깨진다(§8.1) |
+| `lib/guide/__tests__/tracing.test.ts` | `outputFileTracingIncludes["/api/mcp"]` 글롭이 en 서빙 원고 전부와 `SUMMARY.md`를 덮는다 — `read_docs`가 `fs`로 읽는다. 지금은 nft가 그 `process.cwd()` 기준 읽기를 따라 `guide/` 전체를 싣지만 휴리스틱이라 보장이 아니고, 빠지면 Vercel에서만 깨지므로 include가 en 원고를 고정하는 보험이다(§8.1) |
 | `app/api/__tests__/mcp-route.test.ts` · `app/oauth/__tests__/token-route.test.ts` · `revoke-route.test.ts` · `app/oauth/authorize/__tests__/page.test.tsx` | route·페이지 껍데기 — 단계 순서·거부 본문·상태 코드 |
 
 #### 6.45.8 ⚠️ preview는 Vercel SSO 뒤다
@@ -4078,7 +4078,8 @@ default ACL을 지우지 않고 닫는 층이라, 적용·확인이 끝나면 �
   metadata를 스트리밍하고, HTML-limited 목록 밖의 UA(GPTBot·ClaudeBot·PerplexityBot)는 `<title>`·canonical을 `<body>` 끝에서 받는다.
   정적 `metadata` export도 동적 페이지에서는 스트리밍되므로 페이지별로는 못 막는다.
 - ⚠️ **sitemap·`llms*.txt`는 빌드 prerender가 전제다** — `guide/`를 읽는데 `outputFileTracingIncludes`는 `/docs/[[...slug]]`·`/api/mcp` 함수에만
-  싣는다(`/api/mcp`는 MCP `read_docs`가 요청마다 읽어서 — 영어 고정이라 `guide/en`만. 키가 포함 매칭이라 `/.well-known/oauth-protected-resource/api/mcp`
+  싣는다(`/api/mcp`는 MCP `read_docs`가 요청마다 읽어서 — 영어 고정이라 **include 글롭은 `guide/en`만**이다. 함수에는 지금 nft가 cwd 기준 읽기를
+  따라 `guide/` 전체를 이미 싣지만 휴리스틱이라 보장이 아니고, include가 en 원고를 고정하는 보험이다. 키가 포함 매칭이라 `/.well-known/oauth-protected-resource/api/mcp`
   함수에도 원고 약 125KB가 실리지만 해는 없다. 판정은 `.next/server/app/api/mcp/route.js.nft.json`). `force-static`을 빼거나 동적 API를 쓰면 Vercel에서만 500이다(로컬 `next start`는 리포 파일을 그대로 읽어 못 잡는다).
   셋은 **결정적**이다 — 같은 `guide/` 상태에서 같은 바이트(불변식 4의 정신: 크롤러가 “바뀜”을 판단하는 재료다), 정렬은 SUMMARY 하나.
   `llms.txt`는 현재 도입 사실과 Optional 링크(전문·Changelog·Privacy·GitHub)를 함께 싣는다. `llms-full.txt`는 mdast 위치와 `resolveDocLink`로 실제 inline/reference 문서 링크의 **목적지 구간만** `SITE_ORIGIN` 절대 URL로 치환한다. 라벨·제목·코드·이미지·외부 링크와 목적지 밖 바이트는 보존한다. 참조 라벨의 escape와 현재 문서를 가리키는 빈 목적지도 회귀 테스트 대상이다.
