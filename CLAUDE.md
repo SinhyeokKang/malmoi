@@ -61,15 +61,15 @@
 | 영역 | 선택 |
 |---|---|
 | 앱 | Next.js App Router (React 19, TypeScript) |
-| 배포 | Vercel — **dev push = preview / main 머지 = 프로덕션**(`https://mal-moi.com`) |
-| DB | Supabase Postgres **둘** — prod(`malmoi`, ref `xgsyyapzkpbdtkrprlmn`) / dev(`malmoi-dev`, ref `bfugwmjubgmmroevrave`) |
+| 배포 | Vercel — **dev push = preview / main 머지 = 프로덕션**(`https://mal-moi.com`). **이 표의 Vercel·Supabase 단언은 호스팅 서비스의 것이다** — 같은 이미지가 `MALMOI_ORIGIN`을 주면 self-hosted(Docker Compose)로 돈다. 모드 판정은 `lib/deployment/mode.ts` 하나이고 `VERCEL_ENV`와 함께 있으면 무효(fail-closed)다(PRODUCT §4.1 "셀프 호스팅" · ARCHITECTURE §7) |
+| DB | Supabase Postgres **둘** — prod(`malmoi`, ref `xgsyyapzkpbdtkrprlmn`) / dev(`malmoi-dev`, ref `bfugwmjubgmmroevrave`). **self-hosted는 일반 Postgres 17 하나** — 마이그레이션 롤(DB 소유 비-superuser)과 `deploy/bootstrap.sql`이 만드는 런타임 롤을 가른다 |
 | ORM | Prisma 7 — **접속 URL이 스키마에 없다**(아래 절) |
 | 로그인 | Auth.js v5 **DB 세션** — GitHub + Google. 로그인은 **검증된 이메일만** 요구하고 그것이 아무것도 열지 않는다 — 인가는 `ProjectMember`다. **같은 주소에 두 번째 로그인 수단을 붙이는 challenge 왕복은 `lib/login-link/`**(세션이 없는 채로 도는 흐름이라 진정성은 Auth.js의 state 쿠키가 든다), **세션 폐기는 `lib/session-revocation/`**(challenge에 세션·state 지문을 담는다) — 형은 같고 증명이 다르니 섞지 않는다. ⚠️ **Google 동의 화면은 External + 게시(In production)다** — Internal로 바꾸면 조직 밖 계정을 `403 org_internal`로 막아 초대 경로가 통째로 죽는다(게시 절차는 OPERATIONS) |
 | 리포 쓰기 | GitHub App **installation 토큰** — `octokit`의 `App` |
 | 계정 연결 | 같은 App의 **user-to-server 토큰** — `@octokit/oauth-app`(`octokit`이 재수출하는 `OAuthApp`으로는 안 된다) |
-| 파일 저장 | Vercel Blob — **공개 읽기 + 키에 난수**. 소비자는 프로필 사진·프로젝트 썸네일 둘이다(ARCHITECTURE §6.7·§6.75) |
+| 파일 저장 | Vercel Blob — **공개 읽기 + 키에 난수**(self-hosted는 `MALMOI_UPLOAD_DIR` 볼륨 — `lib/upload/file-store.ts`가 같은 세 동작을 든다). 소비자는 프로필 사진·프로젝트 썸네일 둘이다(ARCHITECTURE §6.7·§6.75) |
 | 초대 메일 | Resend REST API — **SDK 없이 `fetch`**. 환경변수 셋이 전부 `optionalEnv`다. 누락·발신자/origin 오류는 발급 전 `email-unavailable`, 잘못된 API 키는 발급 후 `email-rejected`이며 부팅·로그인·멤버 조회는 유지된다 |
-| 방문 집계 | Vercel Web Analytics — **공개 페이지 페이지뷰 하나**(쿠키·커스텀 이벤트 없음). ⚠️ **`lib/seo/analytics.ts`의 추적 경로 허용 목록이 유일한 거름망이다** — 앱 URL엔 초대 토큰·slug·검색어가 실린다 |
+| 방문 집계 | Vercel Web Analytics(self-hosted는 서버 레이아웃이 렌더하지 않는다) — **공개 페이지 페이지뷰 하나**(쿠키·커스텀 이벤트 없음). ⚠️ **`lib/seo/analytics.ts`의 추적 경로 허용 목록이 유일한 거름망이다** — 앱 URL엔 초대 토큰·slug·검색어가 실린다 |
 | 이미지 정규화 | `sharp` — 업로드 원본을 저장하지 않는다(192px 이내 WebP 재인코딩) |
 | 스타일 | Tailwind CSS 4 — **`tailwind.config.js`가 없다.** 토큰 등록은 `app/globals.css`의 `@theme`, 값(라이트·다크)은 같은 파일 `:root`의 `light-dark()` |
 | UI | **`components/ui/`를 이 리포가 소유한다** — 프리미티브 모듈 52개(`components/ui/*.tsx` 파일 기준; `.ts` 헬퍼 제외) + `radix-ui`(단일 통합 패키지)에서 DropdownMenu·Dialog·Slot·RadioGroup·Checkbox·Select·Popover·Tabs 여덟. **라이트·다크 — 토큰이 든다, `dark:` 금지**(테마는 `<html data-theme>` + `globals.css`의 `light-dark()`). 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) |
@@ -132,7 +132,7 @@
 | `/api/push/failure` | Route Handler | GitHub Actions — 같은 프로젝트 토큰. **적재는 안 한다**(키·번역은 물론 `lastCommitSha`도 안 움직인다 — 전진시키면 다음 정상 push가 `stale-commit` 409를 받는다). 로케일 파일을 못 읽어 `/api/push`가 아예 안 불린 경우를 앱에 남기는 자리다 |
 | `/api/mcp` | Route Handler | CLI·코딩 에이전트 — Bearer가 **그 사용자의 개인 토큰**(`ApiToken`, `mlm_`) 또는 **OAuth access**(`OAuthConnection`, `mlo_`)이고 입구는 `resolveBearer` 하나다. **쿠키를 읽지 않는다**(CSRF 방어의 전부). 도구는 Action과 **같은 코어의 형제 껍데기**이고 Action을 부르지 않는다(ARCHITECTURE §6.45) |
 | `/oauth/token` · `/oauth/revoke` | Route Handler | MCP 클라이언트 — Malmoi가 OAuth AS다(code+PKCE·refresh 교환, 폐기). public client라 클라이언트 인증이 없고 **쿠키를 읽지 않는다**. 발견 문서는 `app/.well-known/` 아래 둘이다(ARCHITECTURE §6.45.9) |
-| `/api/pull` | Route Handler | Vercel Cron만 (`CRON_SECRET`) |
+| `/api/pull` | Route Handler | Vercel Cron만 (`CRON_SECRET`) — self-hosted는 설치의 스케줄러 컨테이너가 같은 GET을 같은 시각에 부른다 |
 | `/api/github/callback` | Route Handler | GitHub 리다이렉트 복귀. **나가는 쪽은 Server Action**이 쿠키를 심고 `redirect`한다 — 돌아오는 쪽은 전체 페이지 내비게이션이라 Action이 받을 수 없다. ⚠️ `middleware.ts` matcher에 넣지 않는다(302되면 `code`가 사라진다). **설치·인가·리포 선택 변경이 전부 여기로 온다**(ARCHITECTURE §6.4) |
 
 **내부 쓰기에 Route Handler를 새로 만들지 않는다** — 클라이언트 fetch 배선과 중복 스키마가 생기고 `revalidate`를 손으로 배선해야 한다. 역으로 **외부가 부르는 진입점을 Server Action으로 만들지 않는다** — Actions는 안정된 공개 계약이 아니다.
@@ -166,14 +166,15 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 | 로케일 적재 | `pnpm ingest <디렉터리> [--json] [--base <locale>] [--adapter <name>]` |
 | 사용처 스캔 | `pnpm scan <디렉터리> [--json] [--wrapper <module>#<export>[()]]...` (**스캔 결과가 어떻든 exit 0** — 인자 오류만 2) |
 | 가이드 스크린샷 stale | `pnpm guide:check [--json]` — 읽기 전용, **결과가 어떻든 exit 0**(인자 오류만 2). ⚠️ **`pnpm test`의 게이트가 아니다** — 찍을 수 있는 런타임이 로컬뿐이다. `/guide`·`/guide-shots`·`/push` 4단계가 이 출력을 인용한다(판정을 복제하지 않는다) |
+| self-hosted 기동 전 판정 | `pnpm preflight` — 필수 설정(`MALMOI_ORIGIN` 등)의 누락·형식을 이름과 사유 코드로만 찍고 실패면 exit 1. 값은 찍지 않는다. 읽기 전용 |
 | 로컬 push | `pnpm push:local <디렉터리> --project <slug> [--surface <slug>] [--path-template <template>] [--url ...] [--wrapper ...] [--adapter ...] [--base <locale>]` |
 | 어댑터 범용성 측정 | `pnpm adapter-survey <리포목록.txt> [--verdicts <파일>] [--json] [--out <파일>] [--limit N] [--jobs N]` (읽기 전용, **측정 결과는 어떤 값이어도 exit 0** — 인자 오류만 2) |
 | GitHub App 스모크 | `pnpm smoke:github <project-slug>` (**읽기만** — 실 API라 `pnpm test` 밖이다) |
 | Blob 저장소 스모크 | `pnpm smoke:blob` (실 API라 `pnpm test` 밖이다. **고아 후보를 삭제 없이 목록으로만** 낸다) |
 | 릴리스 버전 판정 | `pnpm release:plan` — **`/merge` 3단계 전용, 읽기 전용** |
 | Codex 미러 동기화 | `pnpm sync:agents` (검사만: `pnpm sync:agents:check`) |
-| 자격증명 전환·회전 | `pnpm credentials:dev` / `credentials:prod` — 기본 **check-only**. 절차는 OPERATIONS.md |
-| 자격증명 cutover 마무리 | `pnpm credentials:finalize:dev` / `credentials:finalize:prod` — 기본 **verify-only**이고 `--apply`를 줘야 `prisma migrate deploy`까지 간다. ⚠️ **`db:deploy` 말고 prod 마이그레이션 상태를 움직일 수 있는 명령이 이것 하나 더 있다** — 실패하면 트래픽을 막은 채로 둔다 |
+| 자격증명 전환·회전 | `pnpm credentials:dev` / `credentials:prod` / `credentials:self-hosted` — 기본 **check-only**. self-hosted는 `DIRECT_URL`(마이그레이션 롤)만 읽는다. 절차는 OPERATIONS.md |
+| 자격증명 cutover 마무리 | `pnpm credentials:finalize:dev` / `credentials:finalize:prod` / `credentials:finalize:self-hosted` — 기본 **verify-only**이고 `--apply`를 줘야 `prisma migrate deploy`까지 간다. ⚠️ **`db:deploy` 말고 prod 마이그레이션 상태를 움직일 수 있는 명령이 이것 하나 더 있다**(`finalize:self-hosted`는 설치 DB를 움직인다 — `PRISMA_TARGET=self-hosted`를 스스로 명시한다) — 실패하면 트래픽을 막은 채로 둔다 |
 | **로컬 게이트** | `pnpm gate [--base <ref>]` — `db:generate` → typecheck → test → (diff가 트리거 경로면) 격리 postgres 스위트 → build → `sync:agents:check`, **첫 실패의 exit code로 끝난다**(정본 `scripts/gate-plan.ts`). ⚠️ **출력을 `| grep`·`| head`로 거르지 않는다** — 파이프가 종료 코드를 삼켜 red가 dev에 나간 적이 있다(2026-09-30). `/push`·`/ship`·`/orchestrate`·워커 브리프가 이 한 명령을 부른다 |
 | 격리 PostgreSQL 검증 | `pnpm test:credentials:postgres` — ⚠️ **`pnpm test`에 없다.** 테스트 위치 밖의 계정 연결·로그인 수단 연결·세션 폐기 구현도 트리거다. 경로의 정본은 `scripts/gate-plan.ts`이고 `pnpm gate`가 붙인다 |
 | 목록 집계 검증 | `pnpm test:projects:postgres` — 같은 이유로 `pnpm test` 밖이다. 미전달 술어의 공유 조각(`pendingWhere`)과 손 사본들이 "같은 행을 세나"를 재는 유일한 자리다(ARCHITECTURE). **어느 경로를 건드렸을 때 도는지의 정본은 `scripts/gate-plan.ts`의 트리거이고 `pnpm gate`가 스스로 붙인다** — 손으로 판정하지 않는다 |
@@ -297,6 +298,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 - **⚠️ "원본 내용이 필요한가"는 `writeStrategy`로 판단한다, `layout`이 아니다.**
 - **⚠️ 모든 DB 쿼리는 `projectId`로 좁힌다.** 인덱스가 전부 `projectId` 선두 복합이라 안 좁히면 풀스캔이고, 더 중요하게는 **테넌트 간 데이터가 새는 경로가 된다.**
   - ⚠️ **Supabase 데이터 API(`anon`·`authenticated`)도 방어선이다** — 기본 default ACL이 새 테이블 전 권한을 그 롤들에 준다(2026-09-09까지 anon key로 `Account.access_token`을 읽을 수 있었다). 방어는 `public` 스키마 **USAGE 회수**이고(ARCHITECTURE §7), 테이블 GRANT 0건은 탐지 신호일 뿐이다. 그래서 **새 마이그레이션 뒤에는 dev·prod 둘 다 `has_schema_privilege`가 `false`인지 확인한다**(`/db` 5단계 · OPERATIONS).
+  - ⚠️ **위 두 항목은 호스팅 서비스(Supabase)의 것이다.** self-hosted엔 데이터 API가 없고, 앱 밖의 경로는 Postgres 포트와 런타임 롤이다 — **DB 포트를 publish하지 않고 앱은 `deploy/bootstrap.sql`이 만든 비-superuser 런타임 롤로만 붙는다**(`DIRECT_URL`은 web에 주지 않는다 — ARCHITECTURE §7 "self-hosted DB").
   - ⚠️ **런타임 롤이 `postgres`이고 `rolbypassrls=true`다** — 지금 RLS를 켜도 앱 연결에는 안 걸린다. **최소권한 롤로 옮기는 것은 RLS를 실제로 켜는 시점에 한다**(`DATABASE_URL` 교체가 넷을 동시에 건드리고, GRANT가 이미 0이라 인터넷 노출은 닫혀 있다).
 
 ## 게이트웨이 (알아두면 유용)
