@@ -15,7 +15,7 @@ import { TOKEN_GRANTS, type TokenGrant } from "../grant";
  */
 
 const READ = ["whoami", "list_projects", "get_project", "list_repositories", "list_branches", "detect_formats", "list_keys", "get_key",
-  "preview_publish", "preview_sync", "preview_revert", "preview_source_removal", "list_events", "get_workflow", "list_members"];
+  "preview_publish", "preview_sync", "preview_revert", "preview_source_removal", "list_events", "get_workflow", "list_members", "read_docs"];
 const WRITE = ["create_project", "add_sources", "set_translations", "publish", "sync_repository", "revert_to_last_sent", "update_project",
   "set_base_locale", "remove_source", "rotate_push_token", "invite_members", "revoke_invitation", "change_member", "archive_project", "unarchive_project"];
 
@@ -45,6 +45,7 @@ const EXPECTED: readonly ToolSpec[] = [
   { name: "list_events", annotations: read, access: { rolePermission: "translation:write", tokenGrant: null } },
   { name: "get_workflow", annotations: read, access: { rolePermission: "project:settings", tokenGrant: null } },
   { name: "list_members", annotations: read, access: { rolePermission: "translation:write", tokenGrant: null } },
+  { name: "read_docs", annotations: read, access: { rolePermission: null, tokenGrant: null } },
   { name: "create_project", annotations: write, access: { rolePermission: null, tokenGrant: "project:create" } },
   { name: "add_sources", annotations: write, access: { rolePermission: "project:settings", tokenGrant: "project:settings" } },
   { name: "set_translations", annotations: write, access: { rolePermission: "translation:write", tokenGrant: "translation:write" } },
@@ -63,7 +64,7 @@ const EXPECTED: readonly ToolSpec[] = [
 ];
 
 describe("toolCatalog", () => {
-  it("이름과 순서 — 읽기 15 다음 쓰기 15", () => {
+  it("이름과 순서 — 읽기 16 다음 쓰기 15", () => {
     expect(toolCatalog().map(t => t.name)).toEqual([...READ, ...WRITE]);
   });
 

@@ -3734,6 +3734,7 @@ export const en = {
       list_events: "List a project's activity log, newest first. Takes the same filters as the Logs screen and a cursor.",
       get_workflow: "Get the GitHub Actions workflow file for the project's repository. It reads the push token from the PUSH_TOKEN secret.",
       list_members: "List a project's members with masked email labels. Owners also see pending invitations.",
+      read_docs: "Read Malmoi's user guide (the Docs at /docs). Call it first when a refusal, a concept, or how to do something in Malmoi is unclear — permissions, Publish, the translation screen. With no arguments it returns the contents. Pass page with a value from the contents (the same as the path after /docs/ in a guide URL) for the whole page, or query to search sections. Pass page or query, not both.",
       create_project: "Create a project from a repository using the candidates and confirmations from detect_formats, and run the first sync. Returns a push token once. Set it with gh secret set PUSH_TOKEN --repo OWNER/REPO, passing the token on standard input — don't use --body (--body - stores a literal \"-\").",
       add_sources: "Add translation sources to a project using the candidates and confirmations from detect_formats({ slug }), and run their first sync.",
       set_translations: "Save translations for up to 100 keys in one call. A rejected key is skipped and the rest are saved; while a sync is running, the whole call is refused with the time to try again.",

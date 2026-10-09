@@ -2,6 +2,7 @@ import "server-only";
 
 import { listProjects, whoami } from "./account";
 import type { ToolDefinition } from "./define";
+import { readDocs } from "./docs";
 import { getKey, listKeys, previewRevertTool } from "./keys";
 import { changeMember, inviteMembersTool, revokeInvitation } from "./members";
 import { addSourcesTool, createProject } from "./onboarding";
@@ -19,7 +20,7 @@ import { revertToLastSent, setTranslations } from "./translations";
  */
 export const TOOLS: readonly ToolDefinition[] = [
   whoami, listProjects, getProject, listRepositoriesTool, listBranches, detectFormatsTool,
-  listKeys, getKey, previewPublish, previewSync, previewRevertTool, previewSourceRemovalTool, listEvents, getWorkflow, listMembers,
+  listKeys, getKey, previewPublish, previewSync, previewRevertTool, previewSourceRemovalTool, listEvents, getWorkflow, listMembers, readDocs,
   createProject, addSourcesTool, setTranslations, publish, syncRepository, revertToLastSent, updateProject, setBaseLocale, removeSourceTool,
   rotatePushToken, inviteMembersTool, revokeInvitation, changeMember, archiveProject, unarchiveProject,
 ];

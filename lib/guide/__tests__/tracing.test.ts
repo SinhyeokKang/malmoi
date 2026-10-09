@@ -28,3 +28,19 @@ describe("outputFileTracingIncludes — /docs", () => {
     expect(needed.filter((path) => !traced.has(path))).toEqual([]);
   });
 });
+
+/**
+ * **`/api/mcp` 함수에 en 원고가 실린다** (mcp-docs T5) — MCP `read_docs`가 요청마다 `guide/en`을 `fs`로 읽는다. MCP는 영어 고정이라
+ * en 트리만 싣는다(번들을 불리지 않는다).
+ */
+describe("outputFileTracingIncludes — /api/mcp", () => {
+  it("글롭이 en 서빙 원고 전부와 SUMMARY를 덮는다", () => {
+    const globs = nextConfig.outputFileTracingIncludes?.["/api/mcp"] ?? [];
+    expect(globs.length).toBeGreaterThan(0);
+    const traced = new Set(globs.flatMap((glob) => globSync(glob, { cwd: ROOT })).map((path) => path.replace(/^\.\//, "")));
+    const dir = join(ROOT, "guide", "en");
+    const needed = servedGuideFiles(dir).map((file) => relative(ROOT, join(dir, file)));
+    expect(needed).toContain("guide/en/SUMMARY.md");
+    expect(needed.filter((path) => !traced.has(path))).toEqual([]);
+  });
+});
