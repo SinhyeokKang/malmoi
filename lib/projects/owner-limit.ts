@@ -17,7 +17,7 @@ import { isOperatorUser } from "@/lib/operator/user";
  *   OWNER인 프로젝트의 복원과 순환이 생긴다(review-R1 🟡1). 그래서 승격은 행위자를 여기 함께 넘긴다(셈에 넣으면 이미 OWNER인
  *   행위자 때문에 거부가 잘못 난다).
  *   ⚠️ **잠금 순서**: 호출부가 `lockProjectAccess`(Project)를 먼저 잡고, 그 뒤 여기가 (행위자 포함) User를 **id 순**으로 잡는다.
- *   이 뒤에 각 경로가 잡는 잠금(사건의 Project·actor FK, 멤버 행)은 이미 쥔 행이다. 생성은 User만, 수락은 수락자만 잡고 그
+ *   이 뒤에 각 경로가 잡는 잠금(사건의 Project·actor FK, 멤버 행)은 이미 쥔 행이다. 생성은 User만, 수락은 Project → 수락자를 잡고 그
  *   수락자는 아직 그 프로젝트의 멤버가 아니라 복원·승격이 기다릴 수 없다 — 그래서 생성·복원·승격·수락 사이에 Project↔User·
  *   User↔User 순환이 없다.
  * - 상한에 닿은 사람만 운영자를 조회한다 — 그렇지 않은 사람의 비용은 셈 하나다.

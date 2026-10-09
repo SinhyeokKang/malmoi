@@ -70,17 +70,22 @@ export async function acceptInvitation(input: { token: string }): Promise<Accept
     if (project === null) return { ok: false, error: "not-found" };
     /**
      * ⚠️ **보관 = 멈춤** (audit #79, B2 #26) — 보관된 프로젝트에는 멤버가 새로 들지 않는다. 초대는 **소비하지 않는다**:
-     * 복원 뒤 만료 전이면 같은 링크가 산다. 보관과의 경합은 잠그지 않는다 — 진 쪽의 결과가 "보관 직전에 든 멤버"이고
+     * 복원 뒤 만료 전이면 같은 링크가 산다. 보관 상태는 아래 수락 잠금 뒤 재조회하지 않는다 — 조회 후 보관되면 멤버가 들 수 있고
      * 그 멤버도 보관 중에는 접근이 막힌다(`planProjectAccess`의 `archived` 갈래).
      */
     if (project.archivedAt !== null) return { ok: false, error: "archived" };
 
     const accepted = await prisma.$transaction(async (tx): Promise<"ok" | "lost" | "already-member" | "limit-reached"> => {
+      // 같은 프로젝트의 수락을 User 잠금·멤버 INSERT보다 먼저 직렬화한다. OWNER만 User를 잠그면
+      // EDITOR의 unique 삽입 → User FK 대기와 OWNER의 User 잠금 → unique 대기가 순환한다.
+      // NO KEY UPDATE는 기존 멤버 INSERT의 Project FK(KEY SHARE)를 막지 않는다.
+      // 초대 토큰이 인가하므로, 기존 멤버를 요구하는 lockProjectAccess를 쓰지 않는다.
+      await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${invitation.projectId} FOR NO KEY UPDATE`;
       // ⚠️ **이미 멤버인지 먼저 본다.** `createInvitations`이 그 조합을 막지만 **막혀 있다는 것이 코드가
       // 아니라 추론에 있으면** 다음 변경에서 열린다 — 그때 `projectMember.create`가 unique 위반으로
       // 던지고, 초대 링크를 연 외부인에게는 digest만 남는다.
-      // ⚠️ **트랜잭션 안에 있어도 경합은 못 막는다**(read committed는 상대의 미확정 행을 안 보인다) — 같은
-      // 사용자의 동시 수락은 아래 create의 P2002로 끝나고, 그것을 같은 사유로 접는다(sec-audit-3 #8).
+      // ⚠️ Project 잠금을 쓰지 않는 별도 멤버 삽입과는 경합할 수 있다(read committed는 상대의 미확정 행을
+      // 안 본다). 그 경우 아래 create의 P2002를 같은 사유로 접는다(sec-audit-3 #8).
       const already = await tx.projectMember.findUnique({
         where: { projectId_userId: { projectId: invitation.projectId, userId } },
         select: { userId: true },
