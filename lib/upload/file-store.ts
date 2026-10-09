@@ -24,7 +24,7 @@ async function volumeRoot(root: string): Promise<string> {
 }
 
 export function inside(path: string, base: string): boolean {
-  // 볼륨 루트가 `/`면 `base + sep`가 `//`라 어떤 경로도 안에 들지 않는다 — 쓰기는 되고 읽기만 언제나 404가 된다.
+  // 끝 구분자를 확인한다 — 볼륨 루트가 `/`일 때 `base + sep`(`//`)로 비교하면 쓰기는 되고 읽기만 언제나 404가 된다.
   return path.startsWith(base.endsWith(sep) ? base : base + sep);
 }
 
@@ -109,13 +109,13 @@ export async function deleteFileImage(root: string, key: string): Promise<void> 
 }
 
 /**
- * preflight가 넘겨받는 디렉터리 probe(`lib/deployment/preflight.ts`의 `UploadDirProbe`). **저장 경계와 같은 규칙이다** — 진짜 디렉터리가
- * 아니면(없음·파일·symlink) `missing`이다. probe의 결과 셋에 "symlink"가 없어서다 — 기동 뒤 모든 쓰기가 거절될 디렉터리로 띄우지 않는다.
+ * preflight가 넘겨받는 디렉터리 probe(`lib/deployment/preflight.ts`의 `UploadDirProbe`). **저장 경계와 같은 규칙이다** — 경로가 있어도
+ * 진짜 디렉터리가 아니면(파일·symlink) `not-directory`다. 기동 뒤 모든 쓰기가 거절될 디렉터리로 띄우지 않는다.
  */
-export function probeUploadDir(path: string): "ok" | "missing" | "not-writable" {
+export function probeUploadDir(path: string): "ok" | "missing" | "not-directory" | "not-writable" {
   try {
     const entry = lstatSync(resolve(path));
-    if (entry.isSymbolicLink() || !entry.isDirectory()) return "missing";
+    if (entry.isSymbolicLink() || !entry.isDirectory()) return "not-directory";
   } catch {
     return "missing";
   }

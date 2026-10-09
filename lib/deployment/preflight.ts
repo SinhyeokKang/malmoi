@@ -67,6 +67,7 @@ export type PreflightReason =
   | "privacy-cycle"
   | "relative-path"
   | "not-found"
+  | "not-directory"
   | "not-writable"
   | OriginRejection;
 
@@ -74,7 +75,8 @@ export type PreflightProblem = { name: string; reason: PreflightReason };
 export type PreflightResult = { ok: true } | { ok: false; problems: PreflightProblem[] };
 
 /** 업로드 디렉터리 확인 — 진입 스크립트가 실제 파일 시스템으로 구현한다. 절대 경로에만 불린다. */
-export type UploadDirProbe = (path: string) => "ok" | "missing" | "not-writable";
+/** `not-directory`는 경로가 있지만 진짜 디렉터리가 아님(파일·symlink)이다 — `missing`으로 접으면 운영자가 오타·마운트를 의심한다. */
+export type UploadDirProbe = (path: string) => "ok" | "missing" | "not-directory" | "not-writable";
 
 /** Resend API 키 모양 — 유효성은 공급자만 안다. */
 const RESEND_KEY = /^re_\S+$/;
@@ -136,6 +138,7 @@ export function preflight(env: Record<string, string | undefined>, probeUploadDi
     else {
       const status = probeUploadDir(uploadDir);
       if (status === "missing") report("MALMOI_UPLOAD_DIR", "not-found");
+      else if (status === "not-directory") report("MALMOI_UPLOAD_DIR", "not-directory");
       else if (status === "not-writable") report("MALMOI_UPLOAD_DIR", "not-writable");
     }
   }
