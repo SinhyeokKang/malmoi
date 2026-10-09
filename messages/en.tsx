@@ -3714,6 +3714,8 @@ export const en = {
       "invalid-input": "The arguments don't match this tool's input. Check them and try again.",
       "too-many": (limit: number): string => `Save up to ${limit.toLocaleString("en-US")} keys per call. Split the rest into another call.`,
       "duplicate-key": "The same key appears more than once. Send each key once per call.",
+      // `read_docs`의 없는 page — 공용 `not-found`는 프로젝트 문장이라 쓰지 않는다. 다음 행동(목차 부르기)을 함께 말한다.
+      "docs-page-not-found": "No guide page with that name. Call read_docs with no arguments to list pages.",
     },
     /** 도구 설명(`tools/list`의 `description`) — 에이전트가 도구를 고르는 근거다. 핸들이 필요한 도구는 무엇을 먼저 부르는지 말한다. */
     tools: {
@@ -3796,6 +3798,12 @@ export const en = {
         ? "The source can be removed. It has no unsent edits."
         : `The source can be removed. Re-adding it later replaces ${unsent.toLocaleString("en-US")} ${unsent === 1 ? "unsent edit" : "unsent edits"} with the repository's values. Remove it with this approval.`,
       sourceRemoved: (slug: string): string => `Removed ${slug}. Remove its step from the repository's workflow file, or the next run fails.`,
+      guidePages: (n: number): string => `${n.toLocaleString("en-US")} guide ${n === 1 ? "page" : "pages"}.`,
+      guidePage: (title: string): string => `Guide page ${title}.`,
+      guideMatches: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "guide section matches" : "guide sections match"}.`,
+      // 0건은 거부가 아니다 — 다음 행동(목차)을 붙인다. ⚠️ `No … match “q”` 꼴이 아니다: 그 꼴은 화면 0건 **제목** 형(C23, 마침표 없음)이고
+      // 이것은 다른 summary처럼 건수로 시작하는 문장이다.
+      guideNoMatches: (q: string): string => `0 guide sections match “${q}”. Call read_docs with no arguments to see the contents.`,
       syncPreview: (unsent: number): string => unsent === 0
         ? "Sync will load the repository's values. No unsent edits will be discarded."
         : `Sync will load the repository's values and discard ${unsent.toLocaleString("en-US")} ${unsent === 1 ? "unsent edit" : "unsent edits"}.`,

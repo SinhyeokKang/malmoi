@@ -102,8 +102,11 @@ function destinationSpan(source: string, node: Link | Definition): { start: numb
   return cursor > start ? { start, end: cursor } : null;
 }
 
-/** mdast의 링크 판정과 위치를 써서 내부 문서 destination만 치환한다. stringify하지 않아 나머지 바이트는 그대로다. */
-function absoluteGuideLinks(source: string, fromFile: string): string {
+/**
+ * mdast의 링크 판정과 위치를 써서 내부 문서 destination만 치환한다. stringify하지 않아 나머지 바이트는 그대로다.
+ * `origin`은 `/llms-full.txt`가 `SITE_ORIGIN`, MCP `read_docs`가 요청 origin이다 — 모르면(`null`) 앱 경로 그대로 둔다.
+ */
+export function absoluteGuideLinks(source: string, fromFile: string, origin: string | null): string {
   const tree = parseMd(source);
   const linkReferences = new Set<string>();
   const replacements: Replacement[] = [];
@@ -117,7 +120,7 @@ function absoluteGuideLinks(source: string, fromFile: string): string {
     if (resolved.kind !== "doc") return;
     const span = destinationSpan(source, node);
     if (!span) throw new Error(`llms link position unavailable: ${fromFile}:${node.position?.start.line ?? "?"}`);
-    replacements.push({ ...span, value: `${SITE_ORIGIN}${resolved.href}` });
+    replacements.push({ ...span, value: `${origin ?? ""}${resolved.href}` });
   });
 
   return replacements
@@ -130,6 +133,6 @@ function absoluteGuideLinks(source: string, fromFile: string): string {
  * 나머지 원문(코드·이미지·제목·공백)은 보존한다. 구분은 `---`.
  */
 export function llmsFull(flat: readonly FlatNavItem[], sources: ReadonlyMap<string, string>): string {
-  const pages = flat.map(({ title, slug, file }) => `# ${title}\nSource: ${url(slug)}\n\n${absoluteGuideLinks(sources.get(file) ?? "", file).trimEnd()}`);
+  const pages = flat.map(({ title, slug, file }) => `# ${title}\nSource: ${url(slug)}\n\n${absoluteGuideLinks(sources.get(file) ?? "", file, SITE_ORIGIN).trimEnd()}`);
   return `${pages.join("\n\n---\n\n")}\n`;
 }
