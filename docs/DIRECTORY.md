@@ -1042,9 +1042,33 @@ prisma/__tests__/       schema-contract · push-token-column · declared-base-lo
 prisma/maintenance/     backfill-surfaces.sql. ⚠️ 마이그레이션이 아니라 **손으로 한 번만 도는 SQL**이다 —
                         옛 writer를 멈춘 배포 1 창에서만 유효하고, 표면 편집이 시작된 뒤에는 돌리면 안 된다.
                         credential-cutover와 같은 함정(Prisma가 이 디렉터리를 안 봐서 상태 조회에 안 잡힌다)
-deploy/                 **self-hosted 설치 DB·배포물** (self-hosting). bootstrap.sql — 런타임 롤 생성·권한(멱등, 매 업그레이드마다 `migrate deploy` 뒤에 돈다).
+Dockerfile · .dockerignore
+                        **self-hosted 이미지 한 벌** (self-hosting). web(`next start`)·migrate(`prisma migrate deploy` + bootstrap)·키 운영(`pnpm credentials:self-hosted`)이
+                        같은 이미지·같은 digest에서 돈다 — 마이그레이션과 앱 코드가 어긋난 채 뜨는 길(POSTMORTEM 2026-09-14)을 닫으려는 것이다.
+                        ⚠️ `output: standalone`을 쓰지 않는다 — 마이그레이션·키 운영에 prisma CLI·tsx·전체 node_modules가 어차피 필요하고, standalone은
+                        가이드 원고·sharp·Prisma client의 tracing 누락이라는 새 사고 표면을 만든다. ⚠️ 비밀을 빌드에 넣지 않는다 — env 없이 `pnpm build`가
+                        끝나야 하고(POSTMORTEM 2026-08-31) 운영 값은 전부 런타임 env다. `.dockerignore`가 `.env*`·키 파일·`.git`·`.scratch`·백업류·`deploy/certs`를
+                        context에서 뺀다. ⚠️ `postgresql-client`를 이미지에 넣는다(bookworm = psql 15 — bootstrap의 `\getenv`와 readiness의 `pg_isready`).
+                        pnpm은 corepack이 `packageManager`와 같은 버전으로 고정하고 `COREPACK_HOME`을 공용 경로에 둔다(non-root 실행이 런타임에 재다운로드하지 않게).
+                        코드·node_modules는 root 소유, `node`는 `.next/cache`·`/data/uploads`만 쓴다. 빌드 플랫폼 = 실행 플랫폼(`linux/amd64`).
+                        Node 메이저·pnpm 버전·`.npmrc` COPY·비밀 ENV 부재는 `lib/deployment/__tests__/self-hosted-gates.test.ts`가 센다
+deploy/                 **self-hosted 설치 배포물** (self-hosting). 이 디렉터리를 운영자가 복사해 쓴다 — 절차는 OPERATIONS "셀프 호스팅".
+                        compose.yaml — postgres → migrate → web → proxy·scheduler. ⚠️ `depends_on`은 `service_healthy`·`service_completed_successfully`로 묶는다
+                        ("실행 중"은 준비가 아니다). 망 둘: `edge`와 `db`(internal — postgres·migrate는 인터넷을 못 본다). postgres·web은 포트를 열지 않는다
+                        (POSTMORTEM 2026-09-09 DB 직접 공개) — 80/443은 proxy만. 서비스마다 필요한 비밀만 준다(superuser 비밀번호는 postgres만 ·
+                        DDL 자격증명(`DIRECT_URL`)은 web에 없다 · scheduler는 `CRON_SECRET`만). web의 `environment` 키 집합은 preflight 표와 같아야 한다(테스트가 센다)
+                        .env.example — compose가 보간하는 이름과 **정확히 같은** 키(테스트가 센다). 리포 루트 `.env.example`(hosted·로컬 개발)과 별개다
+                        bootstrap.sql — 런타임 롤 생성·권한(멱등, 매 업그레이드마다 `migrate deploy` 뒤에 돈다).
                         ⚠️ `prisma/migrations/` 밖이다 — 안에 두면 `/merge`의 `db:deploy`가 hosted prod에 적용한다. 설치 DB의 롤·권한 설정이지 제품 스키마가 아니다.
                         검증은 `lib/__tests__/self-hosted-bootstrap.integration.ts`(격리 postgres 스위트 — `scripts/gate-plan.ts` 트리거)
+                        postgres/10-migrate-role.sh — initdb 전용(빈 볼륨에서 한 번). superuser가 쓰이는 유일한 자리이고 마이그레이션 롤(DB 소유 비-superuser + CREATEROLE)을 만든다.
+                        ⚠️ 볼륨이 있으면 돌지 않는다 — 비밀번호 변경은 ALTER ROLE
+                        nginx/ — malmoi.conf(server·location·rate limit) + proxy-common.conf(헤더 조각). ⚠️ 이 rate limit이 hosted Vercel WAF 규칙의 대체다(앱 코드엔 제한이 없다).
+                        Host를 그대로 넘기고(`$host`) HSTS를 조각에 둔다 — nginx의 `add_header`는 location에 하나라도 있으면 바깥 것을 상속하지 않아서다.
+                        web은 변수 `proxy_pass` + `resolver 127.0.0.11`로 요청마다 다시 해석한다(`upstream`은 기동 때 IP를 고정해 web 재생성 뒤 영구 502)
+                        certs/ — TLS 인증서 자리(README만 커밋 — `fullchain.pem`·`privkey.pem`은 운영자가 붙이고 `.gitignore`·`.dockerignore`가 막는다)
+                        scheduler/ — busybox crond + curl 이미지(`malmoi-scheduler:local`, 로컬 빌드). crontab 시각은 `lib/deployment/schedule.ts`의 `NIGHTLY_PULL`과 같다(테스트가 센다).
+                        ⚠️ `CRON_SECRET`을 명령줄이 아니라 umask 077 헤더 파일(`curl -H @file`)로 넘긴다 — `ps`에 비밀이 안 보인다
 scripts/                adapter-survey · sync-agents · copy-fonts · scan · ingest · push-local · preflight(pnpm preflight — self-hosted 기동 전 판정의 진입. 사유 코드만 찍고 실패면 exit 1) ·
                         guide-check(pnpm guide:check — SHOOTING #shots 표 vs 작업 트리 git hash-object. 읽기 전용, exit 0 · 인자 오류만 2) ·
                         smoke-github · smoke-blob(⚠️ pnpm smoke:blob에 NODE_OPTIONS=--conditions=react-server가
