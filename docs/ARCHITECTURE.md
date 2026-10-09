@@ -1487,7 +1487,7 @@ namespace `"unresolved"`와 지역 이름 `unsupported`도 정상 사용자 문�
   ⚠️ **목록에서 id를 빼면 그 값을 저장한 사람의 화면이 조용히 UTC로 바뀐다** — 빼기 전 건수 확인은 OPERATIONS.
 - **`User.colorScheme String?`** (2026-10-05, `20261004213608_add_user_color_scheme` — color-scheme). 화면 테마(`system`·`light`·`dark`)이고 `null`이면
   쿠키 → system으로 넘어간다(§6.357). `uiLocale`과 같은 이유로 **enum이 아니고**(읽을 때 `parseColorScheme`이 모르는 값을 다음 층으로 넘긴다) **봉투를
-  지나지 않으며** 세션 공개 허용 목록에 들어가 `readSession()`이 추가 쿼리 0으로 싣는다. 쓰는 자리는 `setColorScheme`(`app/(edit)/preferences/actions.ts`) 하나다.
+  지나지 않으며** 세션 공개 허용 목록에 들어가 `readSession()`이 추가 쿼리 0으로 싣는다. 쓰는 자리는 `setColorScheme`(`app/color-scheme/actions.ts`) 하나다.
 
 - ⚠️ **앞의 네 테이블의 모양은 우리가 정한 것이 아니다.** `@auth/prisma-adapter`가 부르는 델리게이트와
   `where` 키가 그것을 정한다 — 현재 `credentialAdapter.getUserByEmail`은 `emailLookup @unique`를 요구하고, `account`의
@@ -3019,12 +3019,14 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
   추가 쿼리도 없다.
 - ⚠️ **클라이언트 훅·provider가 없다** — §6.355가 "소비자마다 묻는다"를 택한 것은 페이지가 문구를 직접 읽어야 해서였고, 테마는 CSS가 `<html>` 속성 하나로
   읽으므로 컴포넌트가 물을 일이 없다. 예외 둘도 DOM에서 읽는다: 로그인 Canvas 점(`dot-field.tsx` — 계산된 `color`를 읽고 System이면 `prefers-color-scheme`
-  변화에 다시 읽는다) · Theme 카드(Action보다 먼저 `document.documentElement.dataset.theme`을 쓰고 `ok`가 아니면 되돌린다 — 한 줄 DOM 쓰기다).
+  변화에 다시 읽는다) · Theme 카드와 공개 푸터 테마 스위처(같은 `applyColorScheme` — Action보다 먼저 `document.documentElement.dataset.theme`을 쓰고 `ok`가
+  아니면 되돌린다, 한 줄 DOM 쓰기다). 스위처는 현재 값도 prop이 아니라 그 속성에서 얻는다 — 라벨은 CSS 변형(`[[data-theme=x]_&]`)이 고르고 메뉴 체크는
+  열 때 읽는다(2026-10-10). 그래서 푸터를 그리는 셸 둘이 테마를 실어 나르지 않는다.
 - **인라인 스크립트 없는 첫 페인트** — 서버가 쿠키·계정으로 정한 `data-theme`을 첫 HTML에 싣는다. 테마 깜빡임 방지 관용구(`<script>`로 `localStorage`
   읽기)를 쓰지 않으므로 CSP nonce에 새 스크립트가 없고(§8) 깜빡임도 없다. 그 대가로 **기기 층이 localStorage가 아니라 http-only 쿠키**다 — 클라이언트는
   쿠키를 읽지 않는다(`<html>` 속성만 본다).
-- **DB 쓰기는 `setColorScheme` 하나이고 쿠키 쓰기는 둘이다**(`app/(edit)/preferences/actions.ts` — 보호 경로 아래, 인가 등재는 `app/__tests__/entry-points.test.ts`의 USER 축):
-  `parseColorScheme` 불통과면 `invalid` → `readSession()`이 `ok`가 아니면 무기록 `failed`(redirect하지 않는다) → 세션 `userId`로 계정 갱신(실패면 무기록
+- **DB 쓰기는 `setColorScheme` 하나이고 쿠키 쓰기는 둘이다**(`app/color-scheme/actions.ts` — **공개 Action**: 공개 푸터 스위처가 비로그인으로도 부른다(2026-10-10). 보호 경로 밖이고 인가 등재는 `app/__tests__/entry-points.test.ts`의 `EXEMPT_ACTIONS` — `setUiLocale`과 같은 자리):
+  `parseColorScheme` 불통과면 `invalid` → `readSession()`이 `unavailable`이면 무기록 `failed`(redirect하지 않는다) → 비로그인이면 계정을 건너뛰고 쿠키만 → 세션 `userId`로 계정 갱신(실패면 무기록
   `failed` — 쿠키만 쓰면 다음 렌더에서 계정의 옛 값이 이긴다) → 쿠키를 **무조건** 쓴다(`httpOnly` · `sameSite: "lax"` · `secure`는 `x-forwarded-proto`
   첫 항목이 `https`일 때 — `setUiLocale`과 같은 판정 · 1년. 로그인 중에도 쓰는 것은 로그아웃 뒤 공개 페이지가 같은 테마를 보게 하려는 것이다) →
   `revalidateAfterCommit("color-scheme")`(커밋 뒤라 던져도 `ok`). `ProjectEvent`를 남기지 않는다. 쿠키 속성의 출처는
