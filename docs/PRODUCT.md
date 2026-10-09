@@ -402,6 +402,7 @@ GitHub·Google 어느 쪽으로 들어와도 같은 사람을 가리키고, 프�
 - **셀프 호스팅** (2026-10-09, self-hosting) — 개발자가 자기 서버에서 말모이를 설치·업데이트·복구하는 공식 경로 하나. **공식 지원은 Linux 단일 서버의
   Docker Compose**(앱 한 인스턴스 + 일반 Postgres 17 + 업로드 볼륨 + 야간 스케줄러, HTTPS reverse proxy 뒤 도메인 루트, 최초 검증 linux/amd64)이고
   이미지는 매 앱 태그 `v<x.y.z>`마다 GHCR(`ghcr.io/sinhyeokkang/malmoi`)에 발행한다. 지원 대상은 최신 앱 태그 하나, 창구는 GitHub Issues의 best-effort다.
+  운영자 절차(설치·업데이트·백업/복원·키 회전·진단·개인정보 재료)는 공개 가이드 `/docs/self-hosting` 장이 정본이다(README는 hosted 비교표만 두고 그리로 보낸다).
   배포 모드는 `MALMOI_ORIGIN`의 존재로 판정한다 — 있으면 self-hosted이고 `VERCEL_ENV`와 함께 있으면 무효(fail-closed)다.
   호스팅 서비스에서 달라지는 것: 업로드는 Vercel Blob 대신 볼륨 · 야간 동기화는 Vercel Cron 대신 스케줄러 컨테이너 · DB는 Supabase 대신 일반 Postgres(런타임 롤은 비-superuser) ·
   `/privacy`는 운영자 정책 URL로 redirect · 페이지는 noindex · Analytics 없음 · 생성 워크플로는 **항상 `api-url`을 든다**(없으면 push 토큰이 호스팅 서비스로 간다 — ACTIONS).
