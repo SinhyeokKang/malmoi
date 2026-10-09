@@ -25,6 +25,17 @@ export function isSessionReadError(error: unknown): boolean {
   return (error as { type?: unknown }).type === "SessionTokenError";
 }
 
+/**
+ * `auth.ts`의 `logger.error`가 찍는 고정 분류. ⚠️ **`error.name`이 아니라 Auth.js의 `type`이다** — 프로덕션 빌드가 클래스명을 줄여
+ * `name`이 `k`로 찍혔다(B7 실습). `type`은 Auth.js가 정적 문자열로 둔다. 식별자 모양이 아니면 쓰지 않는다 — 남의 오류 객체의 `type`에
+ * 문장이 실려 로그로 새지 않게.
+ */
+export function authErrorLabel(error: unknown): string {
+  if (!(error instanceof Error)) return typeof error;
+  const type = (error as { type?: unknown }).type;
+  return typeof type === "string" && /^[A-Za-z][A-Za-z0-9]*$/.test(type) ? type : error.name;
+}
+
 /** `auth.ts`의 `logger.error`가 부른다. 스코프 밖(다른 경로의 로그)에서는 아무 일도 하지 않는다. */
 export function noteAuthError(error: unknown): void {
   const store = storage.getStore();

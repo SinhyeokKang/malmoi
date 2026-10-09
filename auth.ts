@@ -15,7 +15,7 @@ import { destFromCallbackUrl, isLoginProvider } from "@/lib/login-link/policy";
 import { beginLink, loadLinkOffer } from "@/lib/login-link/store";
 import { cookies } from "next/headers";
 import { recordDeviceCookiesAtSignIn, withDeviceCookieSync } from "@/lib/device-cookies/sign-in";
-import { noteAuthError } from "@/lib/auth/outage";
+import { authErrorLabel, noteAuthError } from "@/lib/auth/outage";
 import { githubApi, githubUserinfo } from "@/lib/auth/profile";
 import { publicSession } from "@/lib/auth/public-session";
 import { getPrisma } from "@/lib/db";
@@ -125,8 +125,7 @@ const authConfig = NextAuth(async () => ({
       //
       // ⚠️ **`noteAuthError`는 좁히지 않는다** — 그 판정은 `error.type`을 보므로 **출력만** 줄인다
       // (POSTMORTEM 2026-09-06: 이 통로가 장애를 밖으로 알리는 유일한 자리다).
-      const type = error instanceof Error ? error.name : typeof error;
-      console.error("[auth]", type);
+      console.error("[auth]", authErrorLabel(error));
       noteAuthError(error);
     },
   },
