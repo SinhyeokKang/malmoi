@@ -14,7 +14,7 @@ import { find, key, render } from "./helpers/dom";
  * ⚠️ 진행 중은 Root `disabled`가 아니라 `RoleSelect` 가드다 — jsdom엔 포커스 fixup이 없어 아래 observer가 흉내 낸다(Language 카드 테스트와 같다).
  */
 const mocks = vi.hoisted(() => ({ setColorScheme: vi.fn() }));
-vi.mock("@/app/(edit)/preferences/actions", () => ({ setColorScheme: mocks.setColorScheme }));
+vi.mock("@/app/color-scheme/actions", () => ({ setColorScheme: mocks.setColorScheme }));
 
 let fixup: MutationObserver;
 beforeEach(() => {

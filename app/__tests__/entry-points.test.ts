@@ -156,8 +156,6 @@ const USER_SCOPED_ACTIONS = new Set([
   "mcp/actions.ts#disconnectOAuthConnection",
   // `User.timeZone`은 사람에게 붙는다 — 프로젝트가 없어도 고를 수 있다. 코드를 돌려주는 Action이라 거부가 `failed` 하나다(user-timezone D1)
   "preferences/actions.ts#setTimeZone",
-  // `User.colorScheme`도 사람에게 붙는다 — `setTimeZone`과 같은 형(세션이 `ok`가 아니면 `failed`, color-scheme design §3.6)
-  "preferences/actions.ts#setColorScheme",
 ]);
 
 /**
@@ -328,6 +326,11 @@ const EXEMPT_ACTIONS = new Set([
    * 대상은 `readSession`의 userId가 정한다(입력에 userId가 없다). 비로그인이면 기기 쿠키만 쓴다.
    */
   "ui-locale/actions.ts#setUiLocale",
+  /**
+   * 화면 테마 바꾸기 (color-scheme design §3.6) — `setUiLocale`과 같은 형이다. 공개 푸터가 비로그인으로도 부르고, 계정 대상은 `readSession`의
+   * userId가 정한다. 비로그인이면 기기 쿠키만 쓴다.
+   */
+  "color-scheme/actions.ts#setColorScheme",
 ]);
 
 /**

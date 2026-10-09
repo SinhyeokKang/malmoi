@@ -15,6 +15,7 @@ import { find, key, render } from "./helpers/dom";
  */
 const mocks = vi.hoisted(() => ({ setUiLocale: vi.fn(), error: vi.fn() }));
 vi.mock("@/app/ui-locale/actions", () => ({ setUiLocale: mocks.setUiLocale }));
+vi.mock("@/app/color-scheme/actions", () => ({ setColorScheme: vi.fn() }));
 vi.mock("sonner", () => ({ toast: { error: mocks.error } }));
 
 let fixup: MutationObserver;
@@ -138,12 +139,15 @@ it("메뉴가 위로 열리고 끝 정렬이다 — 푸터가 화면 바닥이�
   expect(content.getAttribute("data-align")).toBe("end");
 });
 
-it("푸터 오른쪽 끝에 홀로 선다 — 저작권 · 링크 묶음은 왼쪽 끝", async () => {
+it("푸터 오른쪽 끝 묶음에 언어 · 테마 스위처 순으로 선다 — 저작권 · 링크 묶음은 왼쪽 끝", async () => {
   const { container } = await render(<PublicFooter m={en} />);
   const footer = find(container, "footer");
   expect(footer.className.split(/\s+/)).toContain("justify-between");
   expect(footer.children).toHaveLength(2);
   expect(footer.firstElementChild?.textContent).toBe("© 2026 MalmoiGitHubPrivacy Policy");
-  expect(footer.lastElementChild).toBe(trigger());
-  expect(footer.textContent).toBe("© 2026 MalmoiGitHubPrivacy PolicyLanguage: English");
+  const right = [...(footer.lastElementChild?.children ?? [])];
+  expect(right.map((node) => node.querySelector(".sr-only")?.textContent)).toEqual(["Language: ", "Theme: "]);
+  expect(right.every((node) => node.matches("button[aria-haspopup]"))).toBe(true);
+  // 왼쪽 묶음의 항목 간격(gap-5)과 같다.
+  expect(footer.lastElementChild?.className.split(/\s+/)).toEqual(expect.arrayContaining(["flex", "items-center", "gap-5"]));
 });
