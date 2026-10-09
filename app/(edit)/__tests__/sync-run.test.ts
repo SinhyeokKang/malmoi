@@ -62,7 +62,7 @@ describe("runSync — 한 번의 실행이 행 하나를 열고 닫는다", () =
     expect(outcome).toEqual(COMMITTED);
     expect(h.spies.createSyncRun).toHaveBeenCalledTimes(1);
     expect(hoisted.triggerPull).toHaveBeenCalledTimes(1);
-    expect(h.spies.updateSyncRun).toHaveBeenCalledTimes(1);
+    expect(h.spies.updateManySyncRuns).toHaveBeenCalledTimes(1);
     expect(h.syncRuns).toHaveLength(1);
     expect(h.syncRuns[0]).toMatchObject({
       projectId: "p1",
@@ -332,7 +332,7 @@ it("PR 작성 뒤 실행 기록 실패도 전송 여부 미확인이다", async 
   const h = harness();
   let wrote = false;
   hoisted.triggerPull.mockImplementation(async () => { wrote = true; return COMMITTED; });
-  vi.spyOn(h.prisma.syncRun, "update").mockRejectedValueOnce(Object.assign(new Error("private DB detail"), { name: "PrismaClientKnownRequestError" }));
+  vi.spyOn(h.prisma.syncRun, "updateMany").mockRejectedValueOnce(Object.assign(new Error("private DB detail"), { name: "PrismaClientKnownRequestError" }));
   const outcome = await runSync(h.prisma, { projectId: "p1", slug: "acme", trigger: "manual", requestedBy: "u1", credential: undefined });
   expect(wrote).toBe(true);
   expect(outcome).toMatchObject({ status: "failed", code: "db-unavailable", retryable: true, delivery: "unknown" });

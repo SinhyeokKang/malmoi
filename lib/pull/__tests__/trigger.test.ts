@@ -1,4 +1,7 @@
-import { describe, expect, it, vi } from "vitest";
+import { createPublishExecution } from "@/lib/sync/execution";
+let execution = createPublishExecution();
+beforeEach(() => { execution = createPublishExecution(); });
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
  * `triggerPull`은 두 진입점(cron 라우트·Server Action)이 공유하는 **유일한 조립층**인데 어느
@@ -17,7 +20,7 @@ vi.mock("@/lib/github", () => ({ createGitClient: hoisted.createGitClient }));
 vi.mock("../load", () => ({
   loadPullState: hoisted.loadPullState,
   saveLastPulledAt: hoisted.saveLastPulledAt,
-  invalidateDeliveryConfirmations: hoisted.invalidateDeliveryConfirmations,
+  invalidatePublishDelivery: hoisted.invalidateDeliveryConfirmations,
   withheldRevertable: hoisted.withheldRevertable,
 }));
 
@@ -47,7 +50,7 @@ describe("triggerPull — 조립", () => {
       keys: [],
       maxUpdatedAt: new Date("2026-09-03T00:00:00Z"), unpublished: 0,
     });
-    const result = await triggerPull({} as never, "slug", null);
+    const result = await triggerPull({} as never, "slug", "fixture", undefined, execution);
     expect(result).toEqual({ status: "skipped", reason: "no-edits" });
     expect(hoisted.createGitClient).not.toHaveBeenCalled();
     expect(hoisted.loadPullState).toHaveBeenCalledWith({}, "slug");
@@ -73,7 +76,7 @@ describe("triggerPull — 조립", () => {
       keys: [],
       maxUpdatedAt: new Date("2026-09-03T00:00:00Z"), unpublished: 1,
     });
-    await expect(triggerPull({} as never, "slug", null)).rejects.toThrow(/installationId/);
+    await expect(triggerPull({} as never, "slug", "fixture", undefined, execution)).rejects.toThrow(/installationId/);
     expect(hoisted.createGitClient).not.toHaveBeenCalled();
   });
 
@@ -111,7 +114,7 @@ describe("triggerPull — 조립", () => {
       maxUpdatedAt: new Date("2026-09-04T00:00:00Z"), unpublished: 1, pendingEdits: [],
     });
     const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const result = await triggerPull({} as never, "fmt", null);
+    const result = await triggerPull({} as never, "fmt", "fixture", undefined, execution);
     expect(result.status === "skipped" && result.reason === "writer-warnings" ? result.warnings.length : 0).toBeGreaterThan(0);
     expect(spy).toHaveBeenCalled();
     expect(spy.mock.calls[0]?.[0]).toContain("config/locales/en.yml");
@@ -134,7 +137,7 @@ describe("triggerPull — 조립", () => {
       pendingEdits: [{ id: "t", token: "t", cell: { surfaceId: "s1", keyId: "k", localeCode: "fr", restoreValue: "" } }],
     });
     const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    expect(await triggerPull({} as never, "fmt", null)).toMatchObject({ status: "skipped", reason: "withheld" });
+    expect(await triggerPull({} as never, "fmt", "fixture", undefined, execution)).toMatchObject({ status: "skipped", reason: "withheld" });
     expect(spy.mock.calls.map(c => String(c[0]))).toEqual(["[pull:fmt] withheld edits: 1 missing file, 0 missing key"]);
     // #129 — 보류가 있으면 Revert 가능 여부를 DB에 묻는다(결과의 OWNER 안내가 그것으로 갈린다).
     expect(hoisted.withheldRevertable).toHaveBeenCalledTimes(1);
@@ -162,19 +165,20 @@ describe("triggerPull — 전달 기준 배선", () => {
     hoisted.createGitClient.mockReturnValue(createFakeGitClient({ refSha: { "heads/dev": "basehead" }, tree: { basehead: [] } }).client);
     hoisted.invalidateDeliveryConfirmations.mockResolvedValue(undefined);
     hoisted.saveLastPulledAt.mockResolvedValue(undefined);
-    const result = await triggerPull(prisma, "demo", "run-1");
+    const result = await triggerPull(prisma, "demo", "run-1", undefined, execution);
     expect(result.status).toBe("committed");
-    expect(hoisted.invalidateDeliveryConfirmations).toHaveBeenCalledWith(prisma, "p1");
+    expect(hoisted.invalidateDeliveryConfirmations).toHaveBeenCalledWith(prisma, "p1", { runId: "run-1", execution });
     const call = hoisted.saveLastPulledAt.mock.calls.at(-1);
-    expect(call?.[5]).toEqual({ runId: "run-1", contexts: [{ surfaceId: "s1", fingerprint: "ctx" }], withheld: [] });
+    expect(call?.[5]).toEqual({ runId: "run-1", contexts: [{ surfaceId: "s1", fingerprint: "ctx" }], withheld: [], execution });
   });
 
-  it("실행 id가 없으면 확인을 싣지 않는다 (위 대조)", async () => {
+  it("실행 id가 없으면 쓰기 전에 거부한다", async () => {
     hoisted.loadPullState.mockResolvedValue(committingState());
     hoisted.createGitClient.mockReturnValue(createFakeGitClient({ refSha: { "heads/dev": "basehead" }, tree: { basehead: [] } }).client);
     hoisted.saveLastPulledAt.mockResolvedValue(undefined);
-    await triggerPull({} as never, "demo", null);
-    expect(hoisted.saveLastPulledAt.mock.calls.at(-1)?.[5]).toBeUndefined();
+    hoisted.saveLastPulledAt.mockClear();
+    await expect(triggerPull({} as never, "demo", null as never, undefined, execution)).rejects.toThrow("authority");
+    expect(hoisted.saveLastPulledAt).not.toHaveBeenCalled();
   });
 });
 
@@ -194,7 +198,7 @@ describe("triggerPull — expectedFingerprint 배선", () => {
     hoisted.createGitClient.mockReturnValue(fake.client);
     hoisted.invalidateDeliveryConfirmations.mockClear();
     hoisted.saveLastPulledAt.mockClear();
-    expect(await triggerPull({} as never, "demo", "run-1", "stale-fingerprint")).toEqual({ status: "skipped", reason: "reconfirm" });
+    expect(await triggerPull({} as never, "demo", "run-1", "stale-fingerprint", execution)).toEqual({ status: "skipped", reason: "reconfirm" });
     expect(fake.calls.map(c => c.method)).toEqual(["getRefSha"]);
     expect(hoisted.invalidateDeliveryConfirmations).not.toHaveBeenCalled();
     expect(hoisted.saveLastPulledAt).not.toHaveBeenCalled();
@@ -205,7 +209,7 @@ describe("triggerPull — expectedFingerprint 배선", () => {
     hoisted.createGitClient.mockReturnValue(createFakeGitClient({ refSha: { "heads/dev": "basehead" }, tree: { basehead: [] } }).client);
     hoisted.saveLastPulledAt.mockResolvedValue(undefined);
     hoisted.invalidateDeliveryConfirmations.mockResolvedValue(undefined);
-    const result = await triggerPull({} as never, "demo", "run-1", publishFingerprint(state() as never, "basehead"));
+    const result = await triggerPull({} as never, "demo", "run-1", publishFingerprint(state() as never, "basehead"), execution);
     expect(result.status).toBe("committed");
   });
 });

@@ -56,3 +56,9 @@ it("종료 뒤에는 transport가 다시 불려도 전송하지 않는다", asyn
   await expect(execution.fetch(fetcher)("https://api.github.com/repos/a/b", { method: "GET" })).rejects.toThrow();
   expect(fetcher).not.toHaveBeenCalled();
 });
+it("실패 분류는 mutation 시도 여부로만 결과 미확인으로 바뀐다", async () => {
+  const { planPublishFailure } = await import("../execution");
+  expect(planPublishFailure("db-unavailable", false)).toBe("db-unavailable");
+  expect(planPublishFailure("db-unavailable", true)).toBe("execution-uncertain");
+  expect(planPublishFailure("github-error", true)).toBe("execution-uncertain");
+});

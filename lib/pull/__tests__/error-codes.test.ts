@@ -65,7 +65,7 @@ const UNCODED: readonly string[] = [
  * - `reconfirm` — `runPull`이 지문 불일치를 **반환**하고(`reason: "reconfirm"`) `planSyncFinish`가 SKIPPED 행에 싣는다(mcp-connector T6.5).
  *   리포에 아무것도 안 썼으므로 던지지 않는다 — 던지면 `delivery: "unknown"`이 되고 FAILED 행이 Revert settled 판정을 흔든다.
  */
-const UNTHROWN: readonly string[] = ["github-error", "db-unavailable", "stale", "unknown", "reconfirm"];
+const UNTHROWN: readonly string[] = ["execution-uncertain", "github-error", "db-unavailable", "stale", "unknown", "reconfirm"];
 
 type Site = { file: string; args: string; hasCode: boolean };
 
