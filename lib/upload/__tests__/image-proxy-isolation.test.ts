@@ -20,6 +20,7 @@ const ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 
 const ROUTE = readFileSync(join(ROOT, "app/api/images/[...key]/route.ts"), "utf8");
 const STORE = readFileSync(join(ROOT, "lib/upload/store.ts"), "utf8");
+const FILE_STORE = readFileSync(join(ROOT, "lib/upload/file-store.ts"), "utf8");
 
 /** 주석은 벗긴다 — 경계를 설명하는 문장이 `headers`·`cookie`를 인용한다. */
 function codeOnly(source: string): string {
@@ -85,5 +86,27 @@ describe("프록시는 요청을 상류로 흘리지 않는다", () => {
   /** 호스트 문자열은 `isBlobPublicHost`를 지나야 한다 — CSP와 같은 하나의 모양 판정이다. */
   it("호스트를 검증 없이 쓰지 않는다", () => {
     expect(body).toContain("isBlobPublicHost");
+  });
+});
+
+/**
+ * **self-hosted 볼륨 갈래도 같은 경계다** (self-hosting design §3). `readImage`는 첫 줄에서 `readVolumeImage`로 가는데 그 함수는
+ * `readImage` 본문 밖이라 위 검사가 못 본다 — 그래서 저장 경계 파일 전체를 따로 센다.
+ */
+describe("볼륨 갈래는 네트워크·요청 값에 닿지 않는다", () => {
+  it("file-store.ts는 fetch를 부르지 않는다 — 볼륨 읽기가 원격 폴백이 되지 않는다", () => {
+    expect(codeOnly(FILE_STORE)).not.toContain("fetch(");
+  });
+
+  it("store.ts 전체와 file-store.ts가 fetch에 headers를 넘기지 않고 요청 헤더·쿠키를 읽지 않는다", () => {
+    for (const source of [STORE, FILE_STORE]) {
+      expect(FETCH_HEADERS.test(codeOnly(source))).toBe(false);
+      expect(REQUEST_DERIVED.test(codeOnly(source))).toBe(false);
+    }
+  });
+
+  it("store.ts의 fetch는 readImage 안의 하나뿐이다", () => {
+    expect(codeOnly(STORE).split("fetch(").length - 1).toBe(1);
+    expect(readImageBody(STORE)).toContain("fetch(");
   });
 });

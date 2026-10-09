@@ -23,8 +23,9 @@ async function volumeRoot(root: string): Promise<string> {
   return realpath(path);
 }
 
-function inside(path: string, base: string): boolean {
-  return path.startsWith(base + sep);
+export function inside(path: string, base: string): boolean {
+  // 볼륨 루트가 `/`면 `base + sep`가 `//`라 어떤 경로도 안에 들지 않는다 — 쓰기는 되고 읽기만 언제나 404가 된다.
+  return path.startsWith(base.endsWith(sep) ? base : base + sep);
 }
 
 function assertKey(key: string): void {

@@ -29,6 +29,16 @@ export async function putImage(key: string, bytes: Uint8Array, ext: StoredImageT
   return blob.url;
 }
 
+/** 볼륨 읽기 — `readImage`의 Blob 갈래와 같이 실패는 전부 `null`이다. 업로드 디렉터리가 비면 요청의 어떤 바이트도 디스크에 닿지 않는다. */
+async function readVolumeImage(mode: DeploymentMode, key: string): Promise<ArrayBuffer | null> {
+  const root = mode.kind === "self-hosted" ? optionalEnv("MALMOI_UPLOAD_DIR") : undefined;
+  if (root === undefined) {
+    console.error("Image proxy failed.", { stage: mode.kind === "invalid" ? "mode" : "upload-dir" });
+    return null;
+  }
+  return readFileImage(root, key);
+}
+
 /** 상류가 안 돌아오면 함수 하나가 그만큼 묶인다 — Blob은 같은 리전의 정적 객체라 5초면 넉넉하다. */
 const READ_TIMEOUT_MS = 5000;
 
@@ -45,17 +55,8 @@ const READ_TIMEOUT_MS = 5000;
  * ⚠️ **`redirect: "error"`다** — 상류 302를 따라가면 임의 호스트로 가는 **두 번째 길**이 열린다.
  * ⚠️ **URL은 검증 뒤 문자열 이어 붙이기다** — `new URL(key, base)`는 `..`를 해석한다.
  * ⚠️ **키는 호출자가 `isStoredImageKey`로 이미 걸렀다** — 그 술어를 지나지 않은 값을 넘기지 않는다.
+ * self-hosted·무효 모드는 첫 줄에서 볼륨 갈래(`readVolumeImage`)로 가고 상류를 부르지 않는다.
  */
-/** 볼륨 읽기 — `readImage`의 Blob 갈래와 같이 실패는 전부 `null`이다. 업로드 디렉터리가 비면 요청의 어떤 바이트도 디스크에 닿지 않는다. */
-async function readVolumeImage(mode: DeploymentMode, key: string): Promise<ArrayBuffer | null> {
-  const root = mode.kind === "self-hosted" ? optionalEnv("MALMOI_UPLOAD_DIR") : undefined;
-  if (root === undefined) {
-    console.error("Image proxy failed.", { stage: mode.kind === "invalid" ? "mode" : "upload-dir" });
-    return null;
-  }
-  return readFileImage(root, key);
-}
-
 export async function readImage(key: string): Promise<ArrayBuffer | null> {
   const mode = deploymentMode();
   if (mode.kind !== "hosted") return readVolumeImage(mode, key);

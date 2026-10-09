@@ -135,7 +135,7 @@ describe("symlink 탈출", () => {
 });
 
 describe("원자적 쓰기", () => {
-  it("같은 키를 동시에 바꿔도 임시 파일 이름이 부딪히지 않고, 끝나면 한쪽 바이트만 남는다", async () => {
+  it("같은 키를 동시에 바꿔도 임시 파일 이름이 부딪히지 않고(결정적 임시 이름이면 `wx`가 던진다), 남는 것은 임시 파일 없는 한 벌이다", async () => {
     const writes = Array.from({ length: 8 }, (_, i) => putFileImage(root, "avatars/u1/n1.webp", new Uint8Array(4096).fill(i)));
     await Promise.all(writes);
     const final = new Uint8Array((await readFileImage(root, "avatars/u1/n1.webp"))!);
@@ -145,7 +145,7 @@ describe("원자적 쓰기", () => {
     expect(entries(root)).toEqual(["avatars/", "avatars/u1/", "avatars/u1/n1.webp"]);
   });
 
-  it("교체는 기존 파일을 rename으로 덮는다 — 읽는 쪽은 옛 바이트 아니면 새 바이트다", async () => {
+  it("교체는 같은 키의 기존 파일을 덮는다", async () => {
     await putFileImage(root, "avatars/u1/n1.webp", bytes(1, 1));
     await putFileImage(root, "avatars/u1/n1.webp", bytes(2));
     expect(view(await readFileImage(root, "avatars/u1/n1.webp"))).toEqual([2]);
@@ -191,13 +191,25 @@ it("디렉터리를 키 자리에 두면 읽지 않는다 — 일반 파일만 �
   expect(await readFileImage(root, "avatars/u1/n1.webp")).toBeNull();
 });
 
-it("실패 로그에 경로·키를 싣지 않는다", async () => {
+it("실패 로그에 경로·키를 싣지 않는다 — 볼륨·탈출 갈래가 실제로 로그를 낸다", async () => {
   const error = vi.mocked(console.error);
-  await readFileImage(root, "avatars/u1/missing.webp");
+  writeFileSync(join(outside, "secret.webp"), "secret");
+  mkdirSync(join(root, "avatars", "u1"), { recursive: true });
+  symlinkSync(join(outside, "secret.webp"), join(root, "avatars", "u1", "escape.webp"));
+  await readFileImage(root, "avatars/u1/escape.webp");
   await readFileImage(join(base, "missing"), "avatars/u1/n1.webp");
+  expect(error.mock.calls.map(([, detail]) => detail)).toEqual([{ stage: "escape" }, { stage: "volume" }]);
   const logged = JSON.stringify(error.mock.calls);
   expect(logged).not.toContain(base);
-  expect(logged).not.toContain("missing.webp");
+  expect(logged).not.toContain("escape.webp");
+});
+
+it("볼륨 루트 경계 — 루트가 `/`여도 포함 판정이 맞다", async () => {
+  const { inside } = await import("../file-store");
+  expect(inside("/avatars/u1/n1.webp", "/")).toBe(true);
+  expect(inside("/data/uploads/a", "/data/uploads")).toBe(true);
+  expect(inside("/data/uploads-evil/a", "/data/uploads")).toBe(false);
+  expect(inside("/data/uploads", "/data/uploads")).toBe(false);
 });
 
 /** preflight가 넘겨받는 probe — 저장 경계와 같은 규칙(진짜 디렉터리, symlink 아님)으로 기동 전에 거른다. */
