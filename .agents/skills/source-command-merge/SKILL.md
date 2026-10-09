@@ -191,7 +191,7 @@ git ls-remote --tags origin v<next>                # squash SHA여야 한다
 
 ### 9-b. 셀프 호스팅 이미지 발행 (2026-10-09, self-hosting)
 
-매 앱 태그마다 GHCR 공개 레지스트리에 이미지를 발행한다 — 셀프 호스팅 설치가 고정하는 단위가 이 이미지다(OPERATIONS "셀프 호스팅"). **태그 = 앱 태그 `v<next>` 그대로**(`ghcr.io/sinhyeokkang/malmoi:v<next>`)이고 **action 태그(`malmoi-i18n-push-vN`)와 독립이다** — 앱 버전이 올라도 action 태그는 안 움직이고, 이미지 태그는 action 계약이 아니다. `latest` 태그는 만들지 않는다(설치는 태그나 digest로 고정한다).
+매 앱 태그마다 GHCR 공개 레지스트리에 이미지를 발행한다 — 셀프 호스팅 설치가 고정하는 단위가 이 이미지다(docs/SELF-HOSTING.md). **태그 = 앱 태그 `v<next>` 그대로**(`ghcr.io/sinhyeokkang/malmoi:v<next>`)이고 **action 태그(`malmoi-i18n-push-vN`)와 독립이다** — 앱 버전이 올라도 action 태그는 안 움직이고, 이미지 태그는 action 계약이 아니다. `latest` 태그는 만들지 않는다(설치는 태그나 digest로 고정한다).
 
 **전제(이 머신에 있어야 한다)**: Docker(buildx)와 `ghcr.io` 로그인 — `write:packages` 권한의 토큰으로 `docker login ghcr.io -u <user> --password-stdin`(토큰을 인자로 주지 않는다 — 셸 이력·`ps`에 남는다). 발행 머신이 arm64(Apple Silicon)면 `linux/amd64` 빌드가 **에뮬레이션**으로 돈다 — 이 머신은 Colima `vz` + Rosetta(`colima start --vm-type vz --vz-rosetta`)를 쓴다. 에뮬레이션이 없으면 `exec format error`로 실패하고, 있어도 `pnpm install`·`next build`가 느리다. 전제가 없으면 이 단계는 실패로 처리한다(아래).
 
