@@ -76,7 +76,8 @@ describe("self-hosted — 위조 헤더", () => {
     handler(new Request(`http://${headers.host ?? HOST}/x`, { headers }));
 
   it("설정 호스트면 x-forwarded-proto·x-forwarded-host와 무관하게 설정 origin이다", async () => {
-    for (const forged of [{}, { "x-forwarded-proto": "http" }, { "x-forwarded-host": "evil.example" }, { "x-forwarded-host": "evil.example", "x-forwarded-proto": "http" }]) {
+    const forgeries: Record<string, string>[] = [{}, { "x-forwarded-proto": "http" }, { "x-forwarded-host": "evil.example" }, { "x-forwarded-host": "evil.example", "x-forwarded-proto": "http" }];
+    for (const forged of forgeries) {
       const headers = { host: HOST, ...forged };
       expect(await (await request(prm.GET, headers)).json(), JSON.stringify(forged)).toEqual({ resource: `${ORIGIN}/api/mcp`, authorization_servers: [ORIGIN] });
       expect(await (await request(as.GET, headers)).json(), JSON.stringify(forged)).toMatchObject({
@@ -88,7 +89,7 @@ describe("self-hosted — 위조 헤더", () => {
     }
   });
 
-  it.each([
+  it.each<Record<string, string>>([
     { host: "evil.example" },
     { host: "evil.example", "x-forwarded-host": HOST, "x-forwarded-proto": "https" },
     { host: "mal-moi.com", "x-forwarded-proto": "https" },

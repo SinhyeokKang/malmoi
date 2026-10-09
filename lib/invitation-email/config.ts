@@ -1,4 +1,4 @@
-import { HOSTED_PREVIEW_ORIGIN, HOSTED_PRODUCTION_ORIGIN } from "@/lib/deployment/mode";
+import { HOSTED_PREVIEW_ORIGIN, HOSTED_PRODUCTION_ORIGIN, resolveDeploymentMode, type DeploymentMode } from "@/lib/deployment/mode";
 
 /**
  * 초대 메일 설정 판정 (design §5). **던지지 않는다** — 설정이 없거나 틀리면 발급·발송만 막고
@@ -6,6 +6,9 @@ import { HOSTED_PREVIEW_ORIGIN, HOSTED_PRODUCTION_ORIGIN } from "@/lib/deploymen
  *
  * ⚠️ 메일 링크의 origin은 **요청 Host가 아니라 이 설정**에서 온다. 그리고 그 값을 배포 환경과 대조한다 —
  * preview가 프로덕션 링크를 보내면 dev DB에 만든 초대가 prod에서 `not-found`가 된다.
+ *
+ * ⚠️ **self-hosted는 origin을 배포 모드의 설정 origin에서 파생한다**(self-hosting design §2·§7) — `INVITATION_EMAIL_ORIGIN`을 읽지 않는다
+ * (있으면 preflight가 거부한다 — 정본 둘 방지). 무효 모드는 `invalid-origin`이다 — hosted 값으로 떨어지지 않는다.
  */
 
 export type InvitationEmailConfig =
@@ -27,9 +30,16 @@ function expectedOrigin(vercelEnv: string | undefined): string | null {
   return null;
 }
 
-export function readInvitationEmailConfig(env: EnvSource): InvitationEmailConfig {
+/** `mode`를 생략하면 같은 env 맵에서 판정한다 — 런타임 진입(`send.ts`)은 `deploymentMode()`를 넘긴다. */
+export function readInvitationEmailConfig(env: EnvSource, mode: DeploymentMode = resolveDeploymentMode(env)): InvitationEmailConfig {
   const apiKey = env.RESEND_API_KEY;
   const from = env.INVITATION_EMAIL_FROM;
+  if (mode.kind !== "hosted") {
+    if (!apiKey || !from) return { status: "unavailable", reason: "missing" };
+    if (!FROM.test(from)) return { status: "unavailable", reason: "invalid-from" };
+    return mode.kind === "self-hosted" ? { status: "ready", apiKey, from, origin: mode.origin } : { status: "unavailable", reason: "invalid-origin" };
+  }
+
   const origin = env.INVITATION_EMAIL_ORIGIN;
   if (!apiKey || !from || !origin) return { status: "unavailable", reason: "missing" };
 
@@ -46,7 +56,7 @@ export function readInvitationEmailConfig(env: EnvSource): InvitationEmailConfig
     return { status: "unavailable", reason: "invalid-origin" };
   }
 
-  const expected = expectedOrigin(env.VERCEL_ENV);
+  const expected = expectedOrigin(mode.vercelEnv);
   const matches = expected === null ? LOCAL_HOST.test(url.hostname) : origin === expected;
   if (!matches) return { status: "unavailable", reason: "origin-mismatch" };
 

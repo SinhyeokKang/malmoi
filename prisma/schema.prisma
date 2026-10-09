@@ -19,7 +19,7 @@ model Project {
   id   String @id @default(cuid())
   slug String @unique
   name String
-  // 사용자 PII가 아닌 프로젝트 표시용 공개 Blob URL이다.
+  // 사용자 PII가 아닌 프로젝트 표시용 이미지 참조다 — hosted는 공개 Blob URL, self-hosted는 `/api/images/<key>` 상대 경로.
   image String?
 
   /// 대상 리포. 초기엔 환경변수였다가 여기로 내려왔다 — 고객마다 리포가 다르다.

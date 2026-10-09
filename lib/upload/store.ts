@@ -1,11 +1,26 @@
 // 스모크 스크립트가 react-server 조건으로 이 프로덕션 경로를 그대로 밟는다.
 import "server-only";
 import { del, list, put, type ListBlobResultBlob } from "@vercel/blob";
+import { deploymentMode, type DeploymentMode } from "@/lib/deployment/mode";
 import { optionalEnv, requireEnv } from "@/lib/env";
 import { isBlobPublicHost } from "@/lib/security-headers";
+import { deleteFileImage, putFileImage, readFileImage } from "./file-store";
 import type { StoredImageType } from "./image";
 
+/**
+ * **저장 경계** (self-hosting design §3). 소비자는 이 셋(put·read·delete)만 부르고, 배포 모드가 저장소를 고른다 — hosted는 Vercel Blob,
+ * self-hosted는 `MALMOI_UPLOAD_DIR` 파일 볼륨(`./file-store.ts`). `listImages`는 `scripts/smoke-blob.ts` 전용이라 hosted에만 있다.
+ *
+ * ⚠️ **무효 모드는 어느 저장소에도 닿지 않는다** — `MALMOI_ORIGIN`과 `VERCEL_ENV`가 함께면 Blob으로도 볼륨으로도 떨어지지 않는다.
+ */
+function volumeMode(mode: DeploymentMode): boolean {
+  if (mode.kind === "invalid") throw new Error("Deployment mode is invalid");
+  return mode.kind === "self-hosted";
+}
+
 export async function putImage(key: string, bytes: Uint8Array, ext: StoredImageType): Promise<string> {
+  // 확장자는 키에 이미 있고 볼륨 읽기는 키에서 MIME을 정한다(`storedImageContentType`).
+  if (volumeMode(deploymentMode())) return putFileImage(requireEnv("MALMOI_UPLOAD_DIR"), key, bytes);
   const blob = await put(key, Buffer.from(bytes), {
     access: "public", addRandomSuffix: false,
     contentType: `image/${ext}`,
@@ -31,7 +46,19 @@ const READ_TIMEOUT_MS = 5000;
  * ⚠️ **URL은 검증 뒤 문자열 이어 붙이기다** — `new URL(key, base)`는 `..`를 해석한다.
  * ⚠️ **키는 호출자가 `isStoredImageKey`로 이미 걸렀다** — 그 술어를 지나지 않은 값을 넘기지 않는다.
  */
+/** 볼륨 읽기 — `readImage`의 Blob 갈래와 같이 실패는 전부 `null`이다. 업로드 디렉터리가 비면 요청의 어떤 바이트도 디스크에 닿지 않는다. */
+async function readVolumeImage(mode: DeploymentMode, key: string): Promise<ArrayBuffer | null> {
+  const root = mode.kind === "self-hosted" ? optionalEnv("MALMOI_UPLOAD_DIR") : undefined;
+  if (root === undefined) {
+    console.error("Image proxy failed.", { stage: mode.kind === "invalid" ? "mode" : "upload-dir" });
+    return null;
+  }
+  return readFileImage(root, key);
+}
+
 export async function readImage(key: string): Promise<ArrayBuffer | null> {
+  const mode = deploymentMode();
+  if (mode.kind !== "hosted") return readVolumeImage(mode, key);
   const host = optionalEnv("BLOB_PUBLIC_HOST");
   // 없거나 모양이 틀리면 **요청의 어떤 바이트도 나가지 않는다** — CSP의 같은 값과 같은 fail-closed다.
   if (host === undefined || !isBlobPublicHost(host)) {
@@ -65,6 +92,7 @@ export async function readImage(key: string): Promise<ArrayBuffer | null> {
 }
 
 export async function deleteImage(key: string): Promise<void> {
+  if (volumeMode(deploymentMode())) return deleteFileImage(requireEnv("MALMOI_UPLOAD_DIR"), key);
   await del(key, { token: requireEnv("BLOB_READ_WRITE_TOKEN") });
 }
 

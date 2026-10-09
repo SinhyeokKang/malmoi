@@ -44,9 +44,9 @@ const VALID: Record<string, string> = {
   INVITATION_EMAIL_FROM: "Acme <invite@mail.example.com>",
 };
 
-/** 부모 env를 물려주지 않는다 — 셸 값이 판정에 섞이면 사례가 공허하다. PATH·HOME은 pnpm·tsx를 찾는 데만 쓴다. */
+/** 부모 env를 물려주지 않는다 — 셸 값이 판정에 섞이면 사례가 공허하다. PATH·HOME은 pnpm·tsx를 찾는 데만 쓰고, NODE_ENV는 컨테이너 값이다. */
 function run(env: Record<string, string>) {
-  const result = spawnSync("pnpm", ["--silent", "preflight"], { env: { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "", ...env }, encoding: "utf8", timeout: 60_000 });
+  const result = spawnSync("pnpm", ["--silent", "preflight"], { env: { NODE_ENV: "production", PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "", ...env }, encoding: "utf8", timeout: 60_000 });
   return { status: result.status, stdout: result.stdout, stderr: result.stderr };
 }
 
