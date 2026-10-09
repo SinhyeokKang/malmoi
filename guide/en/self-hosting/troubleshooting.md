@@ -53,7 +53,7 @@ Run it once now with `docker compose exec scheduler /usr/local/bin/nightly-pull`
 
 ## Someone can't sign in {#sign-in}
 
-“Your sign-in method isn't available here. Ask your administrator.” on the sign-in screen means the person signed up with a provider you've turned off and has no other sign-in method connected. Malmoi doesn't create a second account for them. Turn that provider back on, let them sign in and connect a provider that stays on, then turn it off again ([turn a sign-in provider off](operate.md#sign-in-providers)).
+“Your sign-in method isn't available here. Ask your administrator.” on the sign-in screen means the person signed up with a provider you've turned off and has no other sign-in method connected. Malmoi doesn't create a second account for them with that email. Turn that provider back on, let them sign in and connect a provider that stays on, then turn it off again ([turn a sign-in provider off](operate.md#sign-in-providers)).
 
 ## GitHub {#github}
 
