@@ -33,7 +33,8 @@ const isFirstBlock = (source: string, alert: RegExp) => {
   const bodyOpen = source.search(/<PanelBody\b/);
   const at = source.search(alert);
   const between = source.slice(source.indexOf(">", bodyOpen) + 1, at);
-  return between.replace(/\{[^{}<]*$/, "").trim() === "";
+  // Home은 본문 그릇과 격자가 두 겹이다(responsive-app AT3 — 선언과 질의를 가르는 격자 래퍼 `HOME_GRID`). 그 래퍼 하나만 블록으로 치지 않는다.
+  return between.replace(/\{[^{}<]*$/, "").trim().replace(/^<div className=\{HOME_GRID\}>$/, "") === "";
 };
 
 describe("페이지 수준 Alert가 PanelBody 안 첫 블록이다", () => {

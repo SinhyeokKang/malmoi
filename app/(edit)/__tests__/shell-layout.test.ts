@@ -170,20 +170,30 @@ describe("셸 골격 — 바깥 padding 8 · 패널 간 gap 8 (8-2)", () => {
     const code = sidebar.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/gm, "$1");
     expect(code).not.toMatch(/\bw-60\b/);
     // `shrink-0`은 안쪽 아이콘·배지가 여전히 쓰므로 **`aside`의 className만** 본다.
-    const aside = /<aside\b[\s\S]*?className="([^"]*)"/.exec(code)?.[1] ?? "";
+    // 고정 LNB(`aside`)와 서랍 형(`div`, responsive-app)이 한 루트다 — 고정 갈래의 클래스를 본다.
+    expect(code).toMatch(/const Root = drawer \? "div" : "aside";/);
+    const aside = /className=\{drawer \? "[^"]*" : "([^"]*)"\}/.exec(code)?.[1] ?? "";
     expect(aside).not.toMatch(/\bshrink-0\b/);
     expect(aside).toMatch(/\bh-full\b/);
     expect(shellPanels).toMatch(/min: 200, default: 240, max: 320/);
   });
 
   /**
-   * ⚠️ **모바일 분기를 새로 만들지 않고, 남아 있던 것은 이 배송에서 걷는다** (규약 3).
-   * 1280 고정에서 `xl:`(1280) 분기는 **항상 참**이라 죽은 코드이고, 오버레이·햄버거는 도달 불가다.
+   * **LNB의 뷰포트 분기는 `lg` 하나이고 서랍 그릇은 `DrawerContent`뿐이다** (responsive-app design §2 — 옛 규약 3 "반응형 분기 0"을 교체).
+   * `sm`·`md`·`xl` 같은 둘째 경계가 생기면 CSS와 JS(`WIDE_QUERY`)가 갈리고, 손으로 만든 오버레이(`fixed inset-y-0`·`mobileOpen`)는 포커스 계약
+   * (열면 현재 항목 · 닫으면 메뉴 버튼 · 넓어지면 고정 LNB)을 다시 짜게 된다. 사이드바 자신은 폭을 묻지 않는다 — 숨김은 셸, 서랍은 헤더가 든다.
+   * ⚠️ 셸 루트의 하한(`min-w-shell-min`) 단언은 B1b(하한 해제)가 교체한다.
    */
-  it("사이드바에 반응형 분기가 0개다 — 1280 고정이라 죽은 코드다", () => {
-    expect(sidebar).not.toMatch(/\b(?:sm|md|lg|xl|2xl):/);
-    expect(sidebar).not.toContain("mobileOpen");
-    expect(sidebar).not.toMatch(/\bfixed inset-y-0\b/);
+  it("LNB의 뷰포트 분기는 `lg` 하나이고, 서랍은 `DrawerContent`다", () => {
+    const drawer = read("components/shell/nav-drawer.tsx");
+    for (const [path, text] of [["sidebar", sidebar], ["shell-panels", shellPanels], ["nav-drawer", drawer], ["header", read("components/shell/header.tsx")]] as const) {
+      expect(text, path).not.toMatch(/(?:^|[\s"'`])(?:max-)?(?:sm|md|xl|2xl):/);
+      expect(text, path).not.toContain("mobileOpen");
+      expect(text, path).not.toMatch(/\bfixed inset-y-0\b/);
+    }
+    expect(sidebar).not.toMatch(/(?:^|[\s"'`])(?:max-)?lg:/);
+    expect(shellPanels).toMatch(/max-lg:hidden/);
+    expect(drawer).toMatch(/<DrawerContent\b/);
   });
 
   it("콘텐츠 패널이 흰 패널이다 — 배경·radius·border·그림자 넷이 함께 있어야 뜬다", () => {

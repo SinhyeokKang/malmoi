@@ -9,6 +9,7 @@ import { routes } from "@/lib/routes";
 
 import { AttentionInbox } from "./attention-inbox";
 import { HeaderBar } from "./header-bar";
+import { AppNavDrawer, AppWideOnly } from "./nav-drawer";
 import { NewProjectIcon } from "./new-project-icon";
 import { UserMenu } from "./user-menu";
 
@@ -23,6 +24,10 @@ import { UserMenu } from "./user-menu";
  *
  * ⚠️ **패널이 아니다.** 헤더는 캔버스 위에 그냥 얹힌다(배경·border·그림자 0) — 시안에서 흰 패널은
  * 콘텐츠 패널 하나뿐(2026-09-16에 오른쪽 패널을 지웠다 — DESIGN §6.55)이고, 헤더에 배경을 주면 그 대비가 무너진다 (규약 3.5).
+ *
+ * ⚠️ **`lg` 미만은 [로고][메뉴] · [검색 아이콘][Inbox][계정]이다**(responsive-app 시안 AT1a — 공개 PT1a와 같은 배치표). `New project`·세로선은 LNB
+ * 서랍(`AppNavDrawer`) 바닥으로 가고, 검색·Inbox·계정은 **같은 인스턴스가 헤더에 남는다**(한 벌 — 검색 ⌘K 리스너·Inbox 배지 Action이 인스턴스마다
+ * 붙는다). 판정은 CSS뿐이고 경계는 `lg` 하나다(768도 같은 형).
  *
  * ⚠️ **breadcrumb이 여기 없다.** 레이아웃은 페이지 props를 못 받으므로 페이지 콘텐츠의 첫 줄이
  * 든다. 8-3이 그것을 `[slug]` 레이아웃으로 옮길 자리다.
@@ -45,8 +50,11 @@ export function Header({
   return (
     <HeaderBar
       className="mb-1.5"
-      center={<SearchTrigger account={{ name, email, image }} memberships={memberships} />}
+      compact
+      center={<SearchTrigger account={{ name, email, image }} memberships={memberships} compact />}
       start={
+        // `lg` 미만은 [로고][메뉴] gap 12다 — 로고는 두 폭 모두 같은 자리다.
+        <div className="flex items-center gap-3">
         <Link
           href={routes.projects()}
           aria-label={m.common.nav.appHome}
@@ -55,15 +63,20 @@ export function Header({
           {/* 로고는 토큰으로 칠하는 인라인 SVG다 — 다크에서 면·마크가 저절로 뒤집힌다(`MalmoiMark`). */}
           <MalmoiMark size={32} />
         </Link>
+        <AppNavDrawer memberships={memberships} userName={name} />
+        </div>
       }
       end={
         <div className="flex items-center gap-3">
-          <Link href={routes.newProject()} className={PUBLIC_HEADER_LINK}>
-            <NewProjectIcon />
-            {m.common.nav.newProject}
-          </Link>
-          {/* 장식이다 — 공개 셸 헤더와 같은 선(`border-border-subtle`이 캔버스 위에서 보이는 가장 연한 선이다). */}
-          <span aria-hidden className="bg-border-subtle h-5 w-px" />
+          {/* `New project` · 세로선은 `lg` 미만에서 서랍 바닥으로 간다(AT1a). */}
+          <AppWideOnly className="flex items-center gap-3 max-lg:hidden">
+            <Link href={routes.newProject()} className={PUBLIC_HEADER_LINK}>
+              <NewProjectIcon />
+              {m.common.nav.newProject}
+            </Link>
+            {/* 장식이다 — 공개 셸 헤더와 같은 선(`border-border-subtle`이 캔버스 위에서 보이는 가장 연한 선이다). */}
+            <span aria-hidden className="bg-border-subtle h-5 w-px" />
+          </AppWideOnly>
           {/* Inbox는 세로선 오른쪽·아바타 왼쪽이다(attention-inbox) — 같은 32 아이콘 버튼끼리 사용자 축으로 묶인다. */}
           <AttentionInbox />
           <UserMenu name={name} email={email} image={image} signOut={signOut} memberships={memberships} />

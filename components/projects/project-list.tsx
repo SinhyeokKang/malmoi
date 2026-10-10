@@ -125,10 +125,13 @@ export function ProjectList({
             ⚠️ **프로젝트가 하나도 없으면 검색·[New project]를 그리지 않는다** (캔버스 `1b`).
             좁힐 것이 없는 검색창은 죽은 컨트롤이고, 만들기 버튼은 그때 빈 상태 카드 안에 하나만 선다.
           */}
-          {/* ⚠️ **검색과 버튼이 한 묶음이다** — 제목 뒤 형제가 버튼 묶음이라 둘째 줄로 함께 내려간다. */}
+          {/* ⚠️ **검색과 버튼이 한 묶음이다** — 제목 뒤 형제가 버튼 묶음이라 둘째 줄로 함께 내려간다. 좁으면 검색 칸만 준다(`ProjectSearch`). */}
           {body.kind !== "empty" && (
-            <div className="flex items-center gap-3">
-              <ProjectSearch q={query} onSearch={search} />
+            <div className="flex min-w-0 items-center gap-3">
+              {/* 256 칸이 줄어들 수 있다(`min-w-0 shrink`) — 둘째 줄이 그릇보다 넓을 때만 준다. 한 줄일 때(묶음 `shrink-0`)는 그대로 256이다. */}
+              <div className="w-64 min-w-0 shrink">
+                <ProjectSearch q={query} onSearch={search} />
+              </div>
               <NewProjectButton q={q} />
             </div>
           )}
@@ -231,89 +234,86 @@ function ProjectRow({ row, q }: { row: ProjectListRow; q?: string }) {
          * 퍼지는데 부모 카드가 `overflow-hidden`이라 그 3px이 통째로 잘려 **키보드 사용자에게
          * 포커스가 아예 안 보였다.** 그 `overflow-hidden`은 `rounded-lg`가 첫·끝 행의 모서리를
          * 자르는 수단이라 뗄 수 없으므로, 링을 안쪽으로 그린다.
+         *
+         * ⚠️ **한 행 = 두 줄이다 — 모든 폭에서** (responsive-app 시안 AT2 · 피드백 F5 · 2026-10-11 지휘자 판정). 첫 줄은 썸네일 · 이름/리포 · 배지,
+         * 둘째 줄은 언어 미터다. 옛 판은 이름 420 고정 + 카드 폭 1120/940/760에서 미터를 뒤에서부터 숨겼다 — F5가 그 숨김을 뒤집었고, 숨기지 않으면
+         * 1280에서도 한 줄에 안 든다. 순서는 DOM 그대로다(CSS `order`·두 벌 렌더 없음 — DESIGN §7, malmoi#82).
          */
-        className="gap-4 pr-3.5 pl-3"
+        className="flex-col items-stretch gap-2.5 pr-3.5 pl-3"
       >
-        <ProjectThumbnail name={row.name} src={row.image} />
+        <span className="flex min-w-0 items-center gap-4">
+          <ProjectThumbnail name={row.name} src={row.image} />
 
-        {/*
-          ⚠️ **420 고정 + `shrink-0`이다.** 이름 칸이 늘어나면 Meter의 x가 행마다 달라지고,
-          그러면 훑는 눈이 열로 읽지 못한다. 흔들리는 것은 **빈 공간뿐**이어야 한다.
-        */}
-        <span className="flex w-[420px] min-w-0 shrink-0 flex-col gap-0.5">
           {/*
-            ⚠️ **보관은 이름까지 회색이다** (캔버스 `1c`의 `muted: true`) — 숨기지 않는 대신 훑는
-            눈에서만 멀어진다. 배지 하나로는 그 행이 여전히 같은 무게로 읽힌다.
-
-            ⚠️ **그 회색이 `#a3a3a3`이다** (2026-09-20 사용자 — *"거의 비활성 상태에 가깝게"*).
-            `#737373`은 이 리포에서 **꺼진 컨트롤의 글자색**이라 "비활성처럼"의 하한이 아니라 그 값
-            자체였다. 아래 메타와 **한 색**이라야 이 행이 통째로 물러난 것으로 읽힌다. 배지는 내려가지 않는다 —
-            그 행이 "왜 꺼졌나"를 말하는 유일한 사실이라 `soft-neutral` 그대로다(search-ux-unify D6).
-            ⚠️ **대비가 2.3:1이라 DESIGN §6.2의 `gray-dim` 규칙(*"본문에 쓰지 않는다"*)에서 벗어난
-            자리다** — 등재된 이탈이고 근거는 §6.63에 있다.
-
-            ⚠️ **일치 구간은 이름에서만 칠한다** — `searchProjects`의 대상이 이름 하나라, 리포 줄까지
-            칠하면 화면이 실제보다 넓게 찾은 것처럼 말한다. 칠하는 함수는 검색 Dialog와 같다(search-ux-unify C6).
+            ⚠️ **이름 칸이 유동이다**(`min-w-0 flex-1` — 옛 420 고정). 미터가 둘째 줄로 내려가 "미터의 x가 행마다 같아야 한다"는 420의 근거가
+            사라졌다. 긴 이름은 말줄임되고 오른쪽 배지는 줄지 않는다(`shrink-0`) — 상태 원인이 첫 줄에 남는다(AT2 노트).
           */}
-          <span className={cn("truncate text-base font-medium", status === "archived" && "text-gray-dim")}>
-            <Highlight segments={highlightSegments(row.name, searchTokens(q ?? ""))} />
-          </span>
-          {/*
-            메타 한 줄 — **owner/repo 하나**다(2026-09-30 사용자 — 역할·멤버 수를 걷었다). ⚠️ **`https://github.com/`를 뗀다**(시안):
-            행 폭의 3분의 1을 모든 행이 같은 문자열로 쓰는 것이 그 접두다.
+          <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+            {/*
+              ⚠️ **보관은 이름까지 회색이다** (캔버스 `1c`의 `muted: true`) — 숨기지 않는 대신 훑는
+              눈에서만 멀어진다. 배지 하나로는 그 행이 여전히 같은 무게로 읽힌다.
 
-            ⚠️ **리포가 링크가 아니다** — 행 전체가 이미 `<a>`라 중첩할 수 없다.
+              ⚠️ **그 회색이 `#a3a3a3`이다** (2026-09-20 사용자 — *"거의 비활성 상태에 가깝게"*).
+              `#737373`은 이 리포에서 **꺼진 컨트롤의 글자색**이라 "비활성처럼"의 하한이 아니라 그 값
+              자체였다. 아래 메타와 **한 색**이라야 이 행이 통째로 물러난 것으로 읽힌다. 배지는 내려가지 않는다 —
+              그 행이 "왜 꺼졌나"를 말하는 유일한 사실이라 `soft-neutral` 그대로다(search-ux-unify D6).
+              ⚠️ **대비가 2.3:1이라 DESIGN §6.2의 `gray-dim` 규칙(*"본문에 쓰지 않는다"*)에서 벗어난
+              자리다** — 등재된 이탈이고 근거는 §6.63에 있다.
 
-            ⚠️ **리포 앞에 GitHub 로고 14가 선다** (2026-09-25 사용자 — Vercel 목록처럼). 글리프는 리포 전체가 쓰는 `GithubIcon` 하나이고
-            Sources 머리와 같은 크기다. 색은 상속이라 보관 행이면 함께 물러난다. 말줄임은 안쪽 글자 span이 든다 —
-            바깥이 `flex`라 `truncate`를 거기 두면 마크까지 잘리는 대신 줄임표가 안 선다.
-          */}
-          {/* 보조줄은 13이다 — 행 보조줄 한 벌(4-Y9 · `PanelRow`·`EventMeta`와 같다). */}
-          <span className={cn("flex min-w-0 items-center gap-1.5 text-xs", status === "archived" ? "text-gray-dim" : "text-muted-foreground")}>
-            <GithubIcon className="size-3.5 shrink-0" />
-            <span className="truncate">
-              {`${row.repoOwner}/${row.repoName}`}
+              ⚠️ **일치 구간은 이름에서만 칠한다** — `searchProjects`의 대상이 이름 하나라, 리포 줄까지
+              칠하면 화면이 실제보다 넓게 찾은 것처럼 말한다. 칠하는 함수는 검색 Dialog와 같다(search-ux-unify C6).
+            */}
+            <span className={cn("truncate text-base font-medium", status === "archived" && "text-gray-dim")}>
+              <Highlight segments={highlightSegments(row.name, searchTokens(q ?? ""))} />
             </span>
+            {/*
+              메타 한 줄 — **owner/repo 하나**다(2026-09-30 사용자 — 역할·멤버 수를 걷었다). ⚠️ **`https://github.com/`를 뗀다**(시안):
+              행 폭의 3분의 1을 모든 행이 같은 문자열로 쓰는 것이 그 접두다.
+
+              ⚠️ **리포가 링크가 아니다** — 행 전체가 이미 `<a>`라 중첩할 수 없다.
+
+              ⚠️ **리포 앞에 GitHub 로고 14가 선다** (2026-09-25 사용자 — Vercel 목록처럼). 글리프는 리포 전체가 쓰는 `GithubIcon` 하나이고
+              Sources 머리와 같은 크기다. 색은 상속이라 보관 행이면 함께 물러난다. 말줄임은 안쪽 글자 span이 든다 —
+              바깥이 `flex`라 `truncate`를 거기 두면 마크까지 잘리는 대신 줄임표가 안 선다.
+            */}
+            {/* 보조줄은 13이다 — 행 보조줄 한 벌(4-Y9 · `PanelRow`·`EventMeta`와 같다). */}
+            <span className={cn("flex min-w-0 items-center gap-1.5 text-xs", status === "archived" ? "text-gray-dim" : "text-muted-foreground")}>
+              <GithubIcon className="size-3.5 shrink-0" />
+              <span className="truncate">
+                {`${row.repoOwner}/${row.repoName}`}
+              </span>
+            </span>
+          </span>
+
+          {/* 배지 묶음은 줄지 않는다 — 이름이 먼저 말줄임된다. */}
+          <span className="flex shrink-0 items-center gap-3">
+            {/*
+              칩은 상태 키만 넘긴다 — variant·낱말은 `STATE`가 든다(`CHIP_STATE` · DESIGN §2.4). 온보딩 중인 둘의 `#525252` 덮개는 걷었다(1-Y8 —
+              Sources의 같은 배지와 글자색이 갈렸다). ⚠️ **보관도 덮개가 없다**(search-ux-unify D6) — 옛 `#a3a3a3`은 배지 면 위 2.3:1이었고,
+              보관 모양이 `STATE` 표가 아니라 호출부에 살았다. 물러나는 것은 이름·메타 둘이다.
+              칩 여백은 `Badge` 기본 `px-1.5` 한 형이다 — 덧칠하면 스위처·검색의 같은 칩과 폭이 갈린다(search-ux-polish O8).
+            */}
+            <StatusBadge state={CHIP_STATE[chipState]} />
+            <ChevronRight aria-hidden className="text-muted-foreground size-4" />
           </span>
         </span>
 
         {slot.kind === "meters" ? (
           /*
-            ⚠️ **앞에서부터 자른다.** 정렬이 base 먼저라(§3.1) `nth-child`로 뒤를 숨기면
-            "하나만 남으면 base"가 공짜로 성립한다 — 서버는 정렬된 셋만 주고 고르는 일을 하지 않는다.
-
-            1120 / 940 / 760은 **컨테이너(카드) 폭**이고 DESIGN §6.63의 치수표에 등재한다.
+            ⚠️ **숨기지 않는다 — 가로로 흐르며 감긴다**(가로 12 · 세로 6). 정렬이 base 먼저라(§3.1) 감길 때도 base가 맨 앞이다. 서버는 정렬된 셋만 준다.
+            ⚠️ **왼쪽 44 들여**(썸네일 28 + 간격 16) — 미터의 시작선이 이름과 같다. 행 아래 띠(56)와도 같은 세로선이다.
           */
-          <span className="@max-[760px]:hidden @max-[940px]:[&>*:nth-child(n+2)]:hidden @max-[1120px]:[&>*:nth-child(n+3)]:hidden flex shrink-0 gap-4">
+          <span className="flex flex-wrap gap-x-3 gap-y-1.5 pl-11">
             {slot.locales.map((locale) => (
               <LocaleMeter key={`${locale.surfaceSlug}:${locale.code}`} locale={locale} />
             ))}
           </span>
         ) : (
-          /*
-            ⚠️ **`shrink-0`으로 되돌리지 않는다** (DESIGN §6.63). 기준 폭은 332(=100*3 + 16*2)이지만
-            좁은 화면에서는 남은 폭까지 줄어들어야 우측 배지·화살표·포커스 링이 카드 안에 남는다.
-            문구를 JS로 자르거나 DOM에서 빼지 않는다 — 줄이는 것은 CSS다.
-          */
-          <span className="text-muted-foreground w-[332px] min-w-0 shrink truncate text-sm">
+          /* 미터 대신 서는 문장도 둘째 줄이다 — 자르지 않는다(줄이 늘어날 뿐이다). */
+          <span className="text-muted-foreground pl-11 text-sm">
             {m.projects.meter.note[slot.note]}
           </span>
         )}
-
-        {/*
-          ⚠️ **`ml-auto`가 우측 묶음에만 붙는다.** 이름 칸 420 고정 + Meter 좌측 정렬 + 여기 `ml-auto`가
-          "흔들리는 것은 빈 공간뿐"을 만드는 장치다 — 셋 중 하나만 빠져도 칩의 x가 행마다 달라진다.
-        */}
-        <span className="ml-auto flex shrink-0 items-center gap-3">
-          {/*
-            칩은 상태 키만 넘긴다 — variant·낱말은 `STATE`가 든다(`CHIP_STATE` · DESIGN §2.4). 온보딩 중인 둘의 `#525252` 덮개는 걷었다(1-Y8 —
-            Sources의 같은 배지와 글자색이 갈렸다). ⚠️ **보관도 덮개가 없다**(search-ux-unify D6) — 옛 `#a3a3a3`은 배지 면 위 2.3:1이었고,
-            보관 모양이 `STATE` 표가 아니라 호출부에 살았다. 물러나는 것은 이름·메타 둘이다.
-            칩 여백은 `Badge` 기본 `px-1.5` 한 형이다 — 덧칠하면 스위처·검색의 같은 칩과 폭이 갈린다(search-ux-polish O8).
-          */}
-          <StatusBadge state={CHIP_STATE[chipState]} />
-          <ChevronRight aria-hidden className="text-muted-foreground size-4" />
-        </span>
       </ListRow>
 
       {banner !== null && <ProjectBanner row={row} banner={banner} />}

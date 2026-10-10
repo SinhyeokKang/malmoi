@@ -45,10 +45,16 @@ export function ProjectSwitcher({
   projects,
   current,
   trigger,
+  size = "head",
 }: {
   projects: readonly SwitcherProject[];
   current: string | null;
   trigger?: ReactElement;
+  /**
+   * 기본 트리거의 급 — `head`는 LNB 머리 줄(32) 안의 24, `drawer`는 서랍 머리 줄(40) 안의 32다(responsive-app 시안 AT1b-switch — 트리거만 키우고
+   * 메뉴는 같은 `w-64`가 아래로 연다. 터치 44는 `icon-md`의 `::after`).
+   */
+  size?: "head" | "drawer";
 }) {
   const m = useMessages();
   const [q, setQ] = useState("");
@@ -103,7 +109,7 @@ export function ProjectSwitcher({
       <DropdownMenuTrigger asChild>
         {trigger ?? (
           // ⚠️ 머리 줄은 32다 — 24 버튼을 `-my-0.5`로 그 안에 넣는다(안 그러면 머리만 36이 된다).
-          <Button size="icon-xs" variant="ghost" aria-label={m.common.nav.projectSwitcher.label} className="-my-0.5 ml-auto shrink-0 rounded-sm">
+          <Button size={size === "drawer" ? "icon-md" : "icon-xs"} variant="ghost" aria-label={m.common.nav.projectSwitcher.label} className={size === "drawer" ? "ml-auto shrink-0 rounded-sm" : "-my-0.5 ml-auto shrink-0 rounded-sm"}>
             <ChevronsUpDown className="size-4" aria-hidden />
           </Button>
         )}

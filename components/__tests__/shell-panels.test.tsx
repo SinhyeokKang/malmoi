@@ -57,7 +57,8 @@ describe("ShellPanels — LNB 구분선", () => {
    */
   it("재기 전에는 LNB가 240px로 못박힌다 — %가 아니다", async () => {
     const { container } = await mount();
-    const panel = find<HTMLElement>(container, '[data-test="sidebar"]').parentElement;
+    // 사이드바와 패널 사이에 고정 LNB 래퍼(`data-app-sidebar` — 좁아지며 숨을 때의 포커스 이관)가 한 겹 있다.
+    const panel = find<HTMLElement>(container, '[data-test="sidebar"]').closest("[data-app-sidebar]")?.parentElement;
     expect(panel).not.toBeNull();
     expect(panel?.style.flexBasis).toBe("240px");
     expect(panel?.style.flexGrow).toBe("0");

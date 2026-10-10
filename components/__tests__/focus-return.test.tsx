@@ -264,3 +264,29 @@ describe("공개 셸 서랍 — 닫으면 메뉴 버튼으로", () => {
     }
   });
 });
+
+/**
+ * **앱 LNB 서랍** (responsive-app design §2 · 시안 AT1b) — 공개 서랍과 같은 계약이다: 열면 현재 항목, Esc·닫기는 메뉴 버튼으로 돌아온다.
+ * 넓어지는·좁아지는 방향과 링크로 닫힘은 `app-nav-drawer.test.tsx`가 잰다.
+ */
+describe("앱 LNB 서랍 — 닫으면 메뉴 버튼으로", () => {
+  it("Esc와 닫기 버튼 둘 다 메뉴 버튼으로 돌아온다", async () => {
+    vi.stubGlobal("matchMedia", (media: string) => ({ media, matches: false, addEventListener() {}, removeEventListener() {} }));
+    vi.doMock("next/navigation", () => ({ usePathname: () => "/projects/demo", useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }) }));
+    try {
+      const { AppNavDrawer } = await import("@/components/shell/nav-drawer");
+      await render(<AppNavDrawer memberships={[{ slug: "demo", name: "Demo", role: "OWNER", archived: false, image: null }]} userName="Kim" />);
+      const menu = byLabel(en.landing.shell.openNav);
+      await act(async () => { await userEvent.setup().click(menu); });
+      expect(document.activeElement?.getAttribute("aria-current")).toBe("page");
+      await act(async () => { await userEvent.setup().keyboard("{Escape}"); });
+      expect(document.activeElement).toBe(menu);
+      await act(async () => { await userEvent.setup().click(menu); });
+      await act(async () => { await userEvent.setup().click(document.querySelector(`[role="dialog"] button[aria-label="${en.common.close}"]`)!); });
+      expect(document.activeElement).toBe(menu);
+    } finally {
+      vi.doUnmock("next/navigation");
+      vi.unstubAllGlobals();
+    }
+  });
+});

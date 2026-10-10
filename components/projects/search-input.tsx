@@ -20,11 +20,16 @@ import { routes } from "@/lib/routes";
 export function ProjectSearch({ q, onSearch }: { q: string; onSearch: (query: string) => void }) {
   const m = useMessages();
   return (
+    /*
+      ⚠️ **입력은 칸을 채운다 — 256은 호출부의 칸이 든다**(responsive-app, `project-list.tsx`) — 패널 머리 640 미만이면 검색·[New project]가 둘째 줄로
+      내려가는데(`PANEL_HEAD_ROW`), 폭이 입력에 박혀 있으면 머리 그릇 430 아래에서 그 줄이 패널 밖으로 넘친다.
+    */
     <SearchInput
       value={q}
       onSearch={onSearch}
       label={m.projects.search.label}
       placeholder={m.projects.search.placeholder}
+      width="full"
     />
   );
 }

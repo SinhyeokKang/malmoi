@@ -265,14 +265,12 @@ describe("목록 본문 — 캔버스 값 그대로", () => {
   const BODY = LIST_AND_CARD;
 
   it.each([
-    ["이름 칸 420", "w-[420px]"],
     ["행 요소 gap 16", "gap-4"],
     // 4-W3(ux-drift-unify) — 행 세로 padding은 `py-row-y` 한 벌이다(PanelRow·EventRow·Sources·Settings와 같다).
     ["행 padding 13/14/12", "py-row-y"],
     ["행 hover 2%", "hover:bg-foreground/[0.02]"],
     ["헤더↔첫 행 hairline #f0f0f0", "border-foreground/[0.06]"],
     ["띠 좌측 들여쓰기 56", "pl-14"],
-    ["Meter 대체 문장 332", "w-[332px]"],
     ["카드 radius 12", "rounded-lg"],
     ["카드 헤더 padding 16", "p-4"],
     ["카드 헤더 15/500", "text-base font-medium"],
@@ -391,7 +389,6 @@ describe("목록 스켈레톤 — 실물과 같은 골격", () => {
     ["본문 카드 사이 16", "gap-4"],
     // #205 — 실물 `Card` 머리와 같은 불투명 선이다(첫 행 위 알파 선이 아니다).
     ["카드 헤더 아래 선", "border-divider flex min-h-12 items-center gap-2 border-b"],
-    ["이름 칸 420", "w-[420px]"],
     ["행 글리프 radius 4", "rounded-[4px]"],
     ["행 gap 16", "gap-4"],
   ])("%s가 실물과 같다", (_label, literal) => {
@@ -435,38 +432,60 @@ describe("목록 스켈레톤 — 실물과 같은 골격", () => {
 });
 
 /**
- * **폭 축소는 컨테이너 쿼리다** (DESIGN §6.63).
+ * **한 행 = 두 줄 — 미터를 숨기지 않는다** (responsive-app 시안 AT2 · 피드백 F5 · 2026-10-11 지휘자 판정 (B)). 첫 줄은 썸네일 · 이름/리포(유동 · 말줄임) ·
+ * 상태 배지 + chevron(`shrink-0`), 둘째 줄은 언어 미터다(가로로 흐르며 감김 — 가로 12 · 세로 6, 왼쪽 44 들여 이름과 시작선을 맞춘다).
  *
- * ⚠️ **뷰포트 브레이크포인트로는 영영 안 밟힌다.** 셸이 `min-w-shell-min`을 들어 가로 스크롤이 먼저
- * 생기고, 패널 폭은 같은 뷰포트에서도 **LNB 리사이즈(200~320)**로 두 값이 된다 — 실제로 변하는 것은
- * 카드 폭이다. (2026-09-16까지 근거가 '오른쪽 패널 유무'였고 그 패널을 지웠다 — DESIGN §6.55.)
+ * ⚠️ **모든 폭에서 같은 배치다** — 옛 판은 카드 폭 1120/940/760에서 미터를 뒤에서부터 숨겼는데(F5가 그 숨김을 뒤집었다), 숨기지 않으면 1280에서도
+ * 이름 420 + 미터 셋 + 배지가 한 줄에 안 든다. 폭별 배치를 둘로 두면 배지가 한 줄에서는 미터 뒤, 두 줄에서는 앞이라 CSS `order`나 격자 배치가 필요하다.
+ * ⚠️ **DOM 순서가 보이는 순서다**(DESIGN §7, malmoi#82) — 썸네일 · 이름 · 배지 · 미터. 골격도 같은 두 줄이다(A-09).
  */
-describe("Meter 폭 축소 — 컨테이너 기준", () => {
+describe("Projects 행 — 두 줄 · 미터 감김", () => {
   const BODY = LIST_AND_CARD;
+  const ROW = /function ProjectRow\b[\s\S]*?\n}\n/.exec(code("components/projects/project-list.tsx"))?.[0] ?? "";
 
-  it("카드가 컨테이너다", () => {
-    expect(BODY).toMatch(/<ul[^>]*className="[^"]*@container/);
+  it("미터를 숨기는 질의·nth-child가 없다", () => {
+    expect(ROW.length).toBeGreaterThan(0);
+    expect(BODY).not.toMatch(/@max-\[\d+px\]:/);
+    expect(BODY).not.toMatch(/nth-child\([^)]*\)\]:hidden/);
   });
 
-  it.each([
-    ["1120 미만에서 셋째를 숨긴다", "@max-[1120px]:[&>*:nth-child(n+3)]:hidden"],
-    ["940 미만에서 둘째를 숨긴다", "@max-[940px]:[&>*:nth-child(n+2)]:hidden"],
-    ["760 미만에서 묶음을 숨긴다", "@max-[760px]:hidden"],
-  ])("%s", (_label, literal) => {
-    expect(BODY).toContain(literal);
+  it("이름 칸이 고정 420이 아니라 유동이다 — 배지는 줄지 않는다", () => {
+    expect(BODY).not.toContain("w-[420px]");
+    expect(ROW).toContain('<span className="flex min-w-0 flex-1 flex-col gap-0.5">');
+    expect(ROW).toContain('<span className="flex shrink-0 items-center gap-3">');
   });
 
-  /** ⚠️ **뷰포트 variant를 쓰지 않는다** — `lg:`·`xl:`이 섞이면 그 축이 영영 안 밟힌다. */
+  it("행이 두 줄 열이고 줄 사이 10이다", () => {
+    expect(ROW).toMatch(/className="flex-col items-stretch gap-2\.5 pr-3\.5 pl-3"/);
+    expect(ROW).toContain('<span className="flex min-w-0 items-center gap-4">');
+  });
+
+  it("둘째 줄 미터가 가로로 흐르며 감기고 이름 시작선(44)에 들여 선다", () => {
+    expect(ROW).toContain('<span className="flex flex-wrap gap-x-3 gap-y-1.5 pl-11">');
+  });
+
+  it("미터 대체 문장도 둘째 줄이고 자르지 않는다", () => {
+    expect(ROW).toContain('<span className="text-muted-foreground pl-11 text-sm">');
+    expect(BODY).not.toContain("w-[332px]");
+  });
+
+  it("DOM 순서 — 썸네일 · 이름 · 배지 · 미터", () => {
+    const at = ["<ProjectThumbnail", "<Highlight", "<StatusBadge", "<LocaleMeter"].map((tag) => ROW.indexOf(tag));
+    expect(at.every((i) => i > -1)).toBe(true);
+    expect([...at].sort((a, b) => a - b)).toEqual(at);
+    expect(ROW).not.toMatch(/\border-(?:first|last|\d)/);
+  });
+
+  /** ⚠️ **뷰포트 variant를 쓰지 않는다** — 행의 배치는 폭과 무관한 한 벌이다. */
   it("뷰포트 브레이크포인트를 쓰지 않는다", () => {
     expect(BODY).not.toMatch(/\b(sm|md|lg|xl|2xl):/);
   });
 
-  /**
-   * ⚠️ **대체 문장은 `shrink-0`으로 되돌리지 않는다** (DESIGN §6.63). Meter 개수만 줄여 놓고 문장을
-   * 고정 폭으로 두면 좁은 화면에서 그 문장이 우측 배지를 밀어낸다.
-   */
-  it("Meter 대체 문장이 줄어들 수 있다", () => {
-    expect(BODY).toContain('className="text-muted-foreground w-[332px] min-w-0 shrink truncate text-sm"');
+  it("골격도 두 줄이다 — 유동 이름 칸 · 둘째 줄 미터", () => {
+    const skeleton = code("app/(edit)/projects/(list)/loading.tsx");
+    expect(skeleton).not.toContain("w-[420px]");
+    expect(skeleton).toContain('className="flex min-w-0 flex-1 flex-col gap-0.5"');
+    expect(skeleton).toContain('className="flex flex-wrap gap-x-3 gap-y-1.5 pl-11"');
   });
 });
 

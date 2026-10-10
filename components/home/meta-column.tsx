@@ -130,7 +130,10 @@ function projectFact(m: Messages, uiLocale: UiLocale, row: ProjectTabRow, slug: 
       */
       return (
         <Row key={row.kind} label={label}>
-          {row.linked ? <InlineLink href={row.href} target="_blank" rel="noreferrer">{`${row.owner}/${row.name}`}</InlineLink> : `${row.owner}/${row.name}`}
+          {/* 메타가 전폭이 되는 좁은 Home(AT3)에서 긴 owner/name은 아무 데서나 감긴다 — 잘리면 어느 리포인지 끝이 안 보인다. */}
+          <span className="wrap-anywhere">
+            {row.linked ? <InlineLink href={row.href} target="_blank" rel="noreferrer">{`${row.owner}/${row.name}`}</InlineLink> : `${row.owner}/${row.name}`}
+          </span>
         </Row>
       );
     case "connection":

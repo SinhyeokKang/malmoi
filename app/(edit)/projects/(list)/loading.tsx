@@ -71,17 +71,29 @@ export default async function ProjectsLoading() {
           </div>
           <ul>
             {[0, 1].map((i) => (
+              /* 실물 행과 같은 두 줄이다(responsive-app AT2) — 둘째 줄(미터)이 없으면 도착할 때 행마다 그 높이만큼 튄다. */
               <li
                 key={i}
-                className={`flex items-center gap-4 py-row-y pr-3.5 pl-3 ${i > 0 ? "border-border border-t" : ""}`}
+                className={`flex flex-col gap-2.5 py-row-y pr-3.5 pl-3 ${i > 0 ? "border-border border-t" : ""}`}
               >
-                <Skeleton className="size-7 rounded-[4px]" />
-                <div className="flex w-[420px] shrink-0 flex-col gap-0.5">
-                  <Skeleton size="md" className="w-48" />
-                  {/* 메타 줄은 13이다(4-Y9) — 실물 행과 같은 높이라야 도착 때 안 튄다. */}
-                  <Skeleton size="xs" className="w-72" />
+                <div className="flex min-w-0 items-center gap-4">
+                  <Skeleton className="size-7 rounded-[4px]" />
+                  <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <Skeleton size="md" className="w-48 max-w-full" />
+                    {/* 메타 줄은 13이다(4-Y9) — 실물 행과 같은 높이라야 도착 때 안 튄다. */}
+                    <Skeleton size="xs" className="w-72 max-w-full" />
+                  </div>
+                  <Skeleton className="h-5 w-16 shrink-0 rounded-full" />
                 </div>
-                <Skeleton className="ml-auto h-5 w-16 rounded-full" />
+                {/* 미터 둘 — 실물 `LocaleMeter`(폭 100 · 국기·코드 배지 20 + 간격 6 + 바 4)와 같은 칸이다. 배지·바는 둘 다 알약이다. */}
+                <div className="flex flex-wrap gap-x-3 gap-y-1.5 pl-11">
+                  {[0, 1].map((j) => (
+                    <div key={j} className="flex w-25 flex-col gap-1.5">
+                      <Skeleton className="h-5 w-12 rounded-full" />
+                      <Skeleton className="h-1 w-full rounded-full" />
+                    </div>
+                  ))}
+                </div>
               </li>
             ))}
           </ul>

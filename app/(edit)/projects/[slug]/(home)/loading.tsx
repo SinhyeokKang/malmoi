@@ -1,3 +1,4 @@
+import { HOME_GRID } from "@/components/home/grid";
 import { PANEL_HEAD_ROW, PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { SEGMENT, SELECTED, TRACK, UNSELECTED } from "@/components/ui/segment";
 import { SegmentBody } from "@/components/ui/segmented-control";
@@ -51,54 +52,57 @@ export default async function ProjectHomeLoading() {
         </div>
       </PanelHeader>
 
-      <PanelBody className="grid grid-cols-[minmax(0,1fr)_320px] items-start gap-5" aria-hidden>
-        <div className="flex min-w-0 flex-col gap-5">
-          {/* ⚠️ **실물과 같은 컨테이너·클래스다** (`count-cards.tsx`) — 고정 4열이면 컨테이너 672 미만(뷰포트 ~1310 아래)에서 실물은 2×2라 도착 때 아래가 ~120px 튄다(#165). 선언과 질문은 다른 요소다. */}
-          <div className="@container/cards">
-          <ul className="grid grid-cols-2 gap-2 @[672px]/cards:grid-cols-4">
-            {[0, 1, 2, 3].map((i) => (
-              <li key={i}><div className="border-border flex flex-col gap-3 rounded-lg border p-3.5">
-                <span className="flex items-center gap-2">
-                  <div className="min-w-0 flex-1"><Skeleton size="sm" className="w-[62%]" /></div>
-                  <Skeleton className="ml-auto size-4 rounded-full" />
-                </span>
-                <span className="flex flex-col gap-1.5">
-                  {/* 수치는 24/600이다 — `Skeleton`의 급 밖이라 같은 줄 상자(보이지 않는 글자 + em 블록)를 여기서 세운다. */}
-                  <div className="flex items-center text-2xl font-semibold">{"\u200b"}<Skeleton className="h-[0.8em] w-14 rounded-md" /></div>
-                  <Skeleton size="xs" className="w-[72%]" />
-                </span>
-              </div></li>
-            ))}
-          </ul>
-          </div>
-
-          {/* ⚠️ **할 일 카드에는 바닥 링크가 없다** — 골격이 그것을 그리면 데이터 도착 시 약 45px 줄어든다. */}
-          <Card rows={3} footer={false} sub="copy" />
-          {/* ⚠️ **로그 행도 `ListRow`다** (#205) — 실물은 `EventRow`라 할 일 행과 같은 칸·같은 선이다. 옛 레일(선 없는 점 줄)이면 도착 때 첫 행이 14 오르고 행마다 27 늘었다. */}
-          <Card rows={5} footer sub="badge" />
-        </div>
-
-        {/*
-          ⚠️ **메타 열은 탭 머리가 실물이다** (project-card-tabs `2e`) — 착지는 언제나 `Project` 탭이라 머리 라벨·선택 칸을 미리 안다.
-          본문은 Project 탭 8행(묶음 4·3·1 — Repository·Connection·Branch·CI / Sources·Keys·Members / Created)이고 보관의 `Archived`까지
-          맞히려 들지 않는다 — 틀리면 두 번 튄다.
-          ⚠️ **바닥 `Settings ›` 자리를 역할과 무관하게 늘 그린다** — 라우트 골격은 params·세션을 못 받아 역할을 모른다(2026-10-04 지휘자 판정 —
-          주 독자 OWNER 기준). EDITOR는 도착 때 45px 줄어든다(DESIGN §6.64 이탈 표).
-        */}
-        <aside className="border-border overflow-hidden rounded-lg border">
-          {/* 실물 머리(`meta-tabs.tsx`의 `data-meta-head`)와 같은 클래스·같은 세그먼트 상수 — 골격만 다른 높이로 서지 않는다. */}
-          <div data-skeleton-meta-head className="border-divider border-b p-3">
-            <div className={cn(TRACK, "flex")}>
-              {[m.home.meta.tabs.project, m.home.meta.tabs.sync, m.home.meta.tabs.publish].map((label, i) => (
-                <span key={label} className={cn(SEGMENT, "flex-1", i === 0 ? SELECTED : UNSELECTED)}><SegmentBody label={label} /></span>
+      {/* 실물과 같은 그릇·격자다(`HOME_GRID`) — 그릇 960 미만이면 한 열이고 메타 골격이 맨 아래다(A-09). */}
+      <PanelBody className="@container/home" aria-hidden>
+        <div className={HOME_GRID}>
+          <div className="flex min-w-0 flex-col gap-5">
+            {/* ⚠️ **실물과 같은 컨테이너·클래스다** (`count-cards.tsx`) — 고정 4열이면 컨테이너 672 미만(뷰포트 ~1310 아래)에서 실물은 2×2라 도착 때 아래가 ~120px 튄다(#165). 선언과 질문은 다른 요소다. */}
+            <div className="@container/cards">
+            <ul className="grid grid-cols-2 gap-2 @[672px]/cards:grid-cols-4">
+              {[0, 1, 2, 3].map((i) => (
+                <li key={i}><div className="border-border flex flex-col gap-3 rounded-lg border p-3.5">
+                  <span className="flex items-center gap-2">
+                    <div className="min-w-0 flex-1"><Skeleton size="sm" className="w-[62%]" /></div>
+                    <Skeleton className="ml-auto size-4 rounded-full" />
+                  </span>
+                  <span className="flex flex-col gap-1.5">
+                    {/* 수치는 24/600이다 — `Skeleton`의 급 밖이라 같은 줄 상자(보이지 않는 글자 + em 블록)를 여기서 세운다. */}
+                    <div className="flex items-center text-2xl font-semibold">{"\u200b"}<Skeleton className="h-[0.8em] w-14 rounded-md" /></div>
+                    <Skeleton size="xs" className="w-[72%]" />
+                  </span>
+                </div></li>
               ))}
+            </ul>
             </div>
+
+            {/* ⚠️ **할 일 카드에는 바닥 링크가 없다** — 골격이 그것을 그리면 데이터 도착 시 약 45px 줄어든다. */}
+            <Card rows={3} footer={false} sub="copy" />
+            {/* ⚠️ **로그 행도 `ListRow`다** (#205) — 실물은 `EventRow`라 할 일 행과 같은 칸·같은 선이다. 옛 레일(선 없는 점 줄)이면 도착 때 첫 행이 14 오르고 행마다 27 늘었다. */}
+            <Card rows={5} footer sub="badge" />
           </div>
-          <MetaGroup rows={META_ROWS.slice(0, 4)} divided={false} />
-          <MetaGroup rows={META_ROWS.slice(4, 7)} />
-          <MetaGroup rows={META_ROWS.slice(7)} />
-          <FooterLink />
-        </aside>
+
+          {/*
+            ⚠️ **메타 열은 탭 머리가 실물이다** (project-card-tabs `2e`) — 착지는 언제나 `Project` 탭이라 머리 라벨·선택 칸을 미리 안다.
+            본문은 Project 탭 8행(묶음 4·3·1 — Repository·Connection·Branch·CI / Sources·Keys·Members / Created)이고 보관의 `Archived`까지
+            맞히려 들지 않는다 — 틀리면 두 번 튄다.
+            ⚠️ **바닥 `Settings ›` 자리를 역할과 무관하게 늘 그린다** — 라우트 골격은 params·세션을 못 받아 역할을 모른다(2026-10-04 지휘자 판정 —
+            주 독자 OWNER 기준). EDITOR는 도착 때 45px 줄어든다(DESIGN §6.64 이탈 표).
+          */}
+          <aside className="border-border overflow-hidden rounded-lg border">
+            {/* 실물 머리(`meta-tabs.tsx`의 `data-meta-head`)와 같은 클래스·같은 세그먼트 상수 — 골격만 다른 높이로 서지 않는다. */}
+            <div data-skeleton-meta-head className="border-divider border-b p-3">
+              <div className={cn(TRACK, "flex")}>
+                {[m.home.meta.tabs.project, m.home.meta.tabs.sync, m.home.meta.tabs.publish].map((label, i) => (
+                  <span key={label} className={cn(SEGMENT, "flex-1", i === 0 ? SELECTED : UNSELECTED)}><SegmentBody label={label} /></span>
+                ))}
+              </div>
+            </div>
+            <MetaGroup rows={META_ROWS.slice(0, 4)} divided={false} />
+            <MetaGroup rows={META_ROWS.slice(4, 7)} />
+            <MetaGroup rows={META_ROWS.slice(7)} />
+            <FooterLink />
+          </aside>
+        </div>
       </PanelBody>
     </>
   );

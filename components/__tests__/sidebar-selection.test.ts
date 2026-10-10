@@ -20,7 +20,8 @@ const source = readFileSync(SIDEBAR, "utf8")
 describe("사이드바 선택 표현", () => {
   it("항목에 굵기를 주지 않는다 — 구역 라벨의 500만 남는다", () => {
     expect(source.match(/font-medium/g)).toHaveLength(1);
-    expect(source).toContain('<p data-zone-head className={cn(ROW, "text-foreground font-medium")}>');
+    // 서랍 형(responsive-app AT1b)도 같은 머리 한 줄이다 — 행 급만 갈린다.
+    expect(source).toContain('<p data-zone-head className={cn(drawer ? DRAWER_HEAD : ROW, "text-foreground font-medium")}>');
   });
 
   /** 캔버스 위 행의 급이다 — hover 3% · 선택 7%(DESIGN §5). 철자는 `visual-system.test.ts`가 전역으로 센다(5-Y8). */

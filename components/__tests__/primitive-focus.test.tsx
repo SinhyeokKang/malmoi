@@ -352,3 +352,21 @@ it("측면 서랍을 닫기로 닫으면 연 버튼으로, 소비자가 막으�
   expect(consumer).toHaveBeenCalledTimes(1);
   expect(document.activeElement).not.toBe(menus.at(-1));
 });
+
+/**
+ * **측면 서랍 소비자 전수** — 공개 셸 내비(responsive-public PT1b)와 앱 LNB(responsive-app AT1b) 둘이다. 둘 다 첫 포커스를 그릇에 맡기고(현재 항목 →
+ * 몸통 첫 항목) 닫힘 복귀를 메뉴 버튼으로 명시한다(#213). 새 서랍이 생기면 이 목록이 red다 — 그 서랍의 닫힘·넓어짐 DOM 테스트를 함께 둔다.
+ */
+it("DrawerContent 소비자가 둘이고 둘 다 닫힘 복귀를 메뉴 버튼으로 명시한다", () => {
+  const ROOT = process.cwd();
+  const walk = (dir: string): string[] => readdirSync(dir).flatMap((name) => {
+    const path = join(dir, name);
+    if (statSync(path).isDirectory()) return name === "__tests__" ? [] : walk(path);
+    return name.endsWith(".tsx") ? [path] : [];
+  });
+  const consumers = ["app", "components"].flatMap((d) => walk(join(ROOT, d)))
+    .map((path) => ({ path: relative(ROOT, path), text: readFileSync(path, "utf8") }))
+    .filter(({ path, text }) => path !== "components/ui/dialog.tsx" && /<DrawerContent\b/.test(text));
+  expect(consumers.map(({ path }) => path).sort()).toEqual(["components/public-shell/nav-drawer.tsx", "components/shell/nav-drawer.tsx"]);
+  for (const { path, text } of consumers) expect(text, path).toMatch(/\(target \?\? menu\.current\)\?\.focus\(\)/);
+});
