@@ -19,6 +19,9 @@
 | O7 | 앱 셸 하한 해제(A6 코드 몫 — `min-w-shell-min` 제거·`shell-layout.test.ts` 등 교체)는 B2~B4가 dev에 들어간 뒤 B1 워커가 후속 라운드(B1b)로 한다 | 지휘자 판단 — tasks A6 "A2~A5 완료 후 최종 해제", 셸 파일 소유자가 B1 |
 | O8 | 좁은 폭 실측은 B1b 뒤 DS·QA에 모은다(tasks 과도기 실측 규칙). 워커는 자동 검증 + 1024·1280 실측까지 | tasks "과도기 실측"(2026-10-07 사용자) |
 | O9 | `/design-sync` 배치를 둔다 — 신규 표면(서랍 AT1 · 번역 단일 판 AT6 · Files 순차 판 AT7 · 사유 줄 AT8a)은 프레임별 computed style + AX 트리, 나머지는 패턴 적용 대조 | tasks A6 · 메모리 "시안이 준비된 변경은 design-sync" |
+| O10 | 사유 줄은 연결 끊김만이 아니라 꺼진 Sync·Publish의 **모든** 사유(Nothing to send · ownerOnly · 일시 잠금)에 선다 | 지휘자 판단 — spec A-05 문자 + F7 확정이 범위를 정함(B2 질문). 넓은 폭 상시 +22는 DS·QA 시각 확인 |
+| O11 | Logs 행은 DOM 불변 — 좁으면 시각이 맨 윗줄, 문장은 그 아래(브리프 '문장 첫 줄'과 순서만 다름) | 지휘자 판단 — 1280 불변·`order` 0 우선(B3 질문) |
+| O12 | Files 후보 경로는 말줄임 + title 유지(시안 AT7), 전문은 샘플 툴바 경로 줄바꿈으로. `client-graph.test.ts` 한 줄 추가는 B2·B4 각자 별도 커밋 | 지휘자 판단 — 시안 5차 확정 우선(B4 질문) |
 
 ## 배치
 
