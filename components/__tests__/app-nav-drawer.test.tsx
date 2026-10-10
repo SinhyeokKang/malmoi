@@ -106,6 +106,7 @@ afterEach(() => {
   fixup.disconnect();
   document.removeEventListener("click", blockNavigation, true);
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
   setUnread(0);
 });
 
@@ -283,6 +284,40 @@ describe("서랍 — 지금 LNB 그대로 (AT1b · AT1d)", () => {
     const search = document.querySelector<HTMLInputElement>(`[role="menu"] input[aria-label="${en.common.nav.projectSwitcher.search.label}"]`)!;
     expect(search).not.toBeNull();
     expect(document.activeElement).toBe(search);
+  });
+
+  /**
+   * **#223** — 서랍 안 전환 메뉴(256)가 행 오른쪽 트리거에 `align=start`로 붙어 서랍 오른쪽 경계를 40 넘었다(375 실측 x111–367, 서랍 오른쪽 327).
+   * 시안 AT1b-375-switch: 서랍 안에서 아래로, **행 왼쪽 시작선**(x21)에 선다. 서랍 형에서만 메뉴를 머리 줄 왼쪽으로 민다(`alignOffset`).
+   * ⚠️ jsdom의 floating-ui는 열린 뒤 바뀐 `alignOffset`을 위치(`transform`)에 반영하지 않는다(실제 브라우저는 반영 — 375 프로브 실측 메뉴 x22·
+   * 머리 줄 21·서랍 오른쪽 327 안). 그래서 여기는 **정렬 기준이 무엇이냐**(머리 줄 왼쪽 − 트리거 왼쪽)를 순수 함수로 잰다.
+   */
+  it("서랍에서 연 전환 메뉴는 머리 줄 왼쪽 시작선을 기준으로 선다 (#223)", async () => {
+    const { rowStartOffset } = await import("@/components/shell/project-switcher");
+    await mount();
+    await open();
+    const head = drawer()!.querySelector<HTMLElement>("[data-zone-head]")!;
+    const trigger = head.querySelector<HTMLButtonElement>(`button[aria-label="${en.common.nav.projectSwitcher.label}"]`)!;
+    const box = (left: number, width: number) => ({ left, width, top: 0, height: 40, x: left, y: 0, right: left + width, bottom: 40, toJSON: () => ({}) }) as DOMRect;
+    vi.spyOn(head, "getBoundingClientRect").mockReturnValue(box(21, 298));
+    vi.spyOn(trigger, "getBoundingClientRect").mockReturnValue(box(283, 32));
+    expect(rowStartOffset(trigger)).toBe(21 - 283);
+    // 머리 줄 밖의 트리거(접힌 레일 등)는 트리거에 붙는다.
+    expect(rowStartOffset(document.createElement("button"))).toBe(0);
+    expect(rowStartOffset(null)).toBe(0);
+  });
+
+  it("고정 LNB의 전환 메뉴는 지금처럼 트리거 왼쪽에 붙는다 — `lg` 이상 불변", async () => {
+    stubMedia(true);
+    await mount();
+    const head = fixedAside().querySelector<HTMLElement>("[data-zone-head]")!;
+    const trigger = head.querySelector<HTMLButtonElement>(`button[aria-label="${en.common.nav.projectSwitcher.label}"]`)!;
+    const box = (left: number, width: number, top = 100, height = 32) => ({ left, width, top, height, x: left, y: top, right: left + width, bottom: top + height, toJSON: () => ({}) }) as DOMRect;
+    vi.spyOn(head, "getBoundingClientRect").mockReturnValue(box(12, 216));
+    vi.spyOn(trigger, "getBoundingClientRect").mockReturnValue(box(204, 24, 104, 24));
+    await click(trigger);
+    await settle();
+    expect(document.querySelector<HTMLElement>("[data-radix-popper-content-wrapper]")!.style.transform).toMatch(/^translate\(204px, /);
   });
 
   it("고정 LNB에서 열어도 포커스가 검색 입력이다 — `lg` 이상 동작 불변", async () => {

@@ -62,6 +62,13 @@ export function ProjectSwitcher({
   const content = useRef<HTMLDivElement>(null);
   /** 열린 뒤 아직 입력에 착지하지 못했나 — 서랍 안에서 메뉴 컨테이너가 받은 첫 포커스를 입력으로 넘길 때 한 번 쓴다(#222). 닫으면 지운다. */
   const opening = useRef(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  /**
+   * 서랍 형의 메뉴 정렬 보정 — 머리 줄 왼쪽에서 트리거 왼쪽까지(음수). 열 때마다 잰다(#223).
+   * ⚠️ 트리거가 40 행의 오른쪽 끝이라 `align=start`를 그대로 두면 256 메뉴가 319 서랍 오른쪽 경계를 넘어 배경 위로 나온다(375 실측 +40).
+   * 시안 AT1b-375-switch는 서랍 안에서 아래로, 행 왼쪽 시작선에 선다. 고정 LNB(`head`)는 지금처럼 트리거에 붙는다.
+   */
+  const [alignOffset, setAlignOffset] = useState(0);
   const shown = switcherProjects(projects, q);
   const firstItem = () => content.current?.querySelector<HTMLElement>(ITEM) ?? null;
   /*
@@ -107,11 +114,15 @@ export function ProjectSwitcher({
   }
 
   return (
-    <DropdownMenu onOpenChange={(open) => { opening.current = open; if (!open) setQ(""); }}>
+    <DropdownMenu onOpenChange={(open) => {
+      opening.current = open;
+      if (open && size === "drawer") setAlignOffset(rowStartOffset(triggerRef.current));
+      if (!open) setQ("");
+    }}>
       <DropdownMenuTrigger asChild>
         {trigger ?? (
           // ⚠️ 머리 줄은 32다 — 24 버튼을 `-my-0.5`로 그 안에 넣는다(안 그러면 머리만 36이 된다).
-          <Button size={size === "drawer" ? "icon-md" : "icon-xs"} variant="ghost" aria-label={m.common.nav.projectSwitcher.label} className={size === "drawer" ? "ml-auto shrink-0 rounded-sm" : "-my-0.5 ml-auto shrink-0 rounded-sm"}>
+          <Button ref={triggerRef} size={size === "drawer" ? "icon-md" : "icon-xs"} variant="ghost" aria-label={m.common.nav.projectSwitcher.label} className={size === "drawer" ? "ml-auto shrink-0 rounded-sm" : "-my-0.5 ml-auto shrink-0 rounded-sm"}>
             <ChevronsUpDown className="size-4" aria-hidden />
           </Button>
         )}
@@ -120,6 +131,7 @@ export function ProjectSwitcher({
         ref={content}
         side={trigger ? "right" : "bottom"}
         align="start"
+        alignOffset={size === "drawer" ? alignOffset : undefined}
         className="w-64"
         onKeyDown={onContentKeyDown}
         /*
@@ -171,4 +183,11 @@ export function ProjectSwitcher({
       </DropdownMenuContent>
     </DropdownMenu>
   );
+}
+
+/** 트리거가 앉은 구역 머리 줄의 왼쪽까지 거리(음수) — 메뉴를 그 시작선에 세운다(서랍 형, #223). 머리 줄 밖이면 0(트리거에 붙는다). */
+export function rowStartOffset(trigger: HTMLElement | null): number {
+  const row = trigger?.closest<HTMLElement>("[data-zone-head]");
+  if (trigger == null || row == null) return 0;
+  return row.getBoundingClientRect().left - trigger.getBoundingClientRect().left;
 }
