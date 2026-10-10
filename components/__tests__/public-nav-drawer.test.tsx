@@ -368,6 +368,50 @@ describe("좁아지며 숨는 링크의 포커스 (design §2)", () => {
   });
 });
 
+/**
+ * **#214 — 브라우저에서는 1025→1023에서 body로 빠졌다.** Chromium은 MQL `change`보다 먼저 스타일을 다시 계산해 숨은 링크에서 `blur`(relatedTarget 없음)를
+ * 쏠 수 있고, 그때 리스너를 떼면 `change`가 와도 넘길 사람이 없다. 그리고 푸터 스위처 메뉴를 연 채 좁히면 숨은 트리거에 붙은 메뉴가 남았다.
+ * jsdom은 스타일 재계산이 없으므로 묶음을 `display: none`으로 만든 뒤 `blur()`로 그 순서를 만든다.
+ */
+describe("#214 — 숨김이 `change`보다 먼저 와도, 메뉴가 열려 있어도", () => {
+  beforeEach(() => { stubMedia(true); });
+
+  it("숨겨져서 잃은 포커스는 `change`를 기다리지 않고 메뉴 버튼으로 간다", async () => {
+    await shell({ current: "docs" });
+    const docs = headerNav().querySelector<HTMLAnchorElement>("a")!;
+    await act(async () => { docs.focus(); });
+    const wrapper = headerNav().parentElement!;
+    wrapper.style.display = "none";
+    await act(async () => { docs.blur(); });
+    expect(document.activeElement).toBe(menuButton());
+    await media.set(false);
+    expect(document.activeElement).toBe(menuButton());
+    expect(media.listeners.size).toBe(0);
+  });
+
+  it("빈 곳을 눌러 잃은 포커스(숨지 않음)는 건드리지 않고 리스너를 뗀다", async () => {
+    await shell({ current: "docs" });
+    const docs = headerNav().querySelector<HTMLAnchorElement>("a")!;
+    await act(async () => { docs.focus(); });
+    await act(async () => { docs.blur(); });
+    expect(document.activeElement).not.toBe(menuButton());
+    expect(media.listeners.size).toBe(0);
+  });
+
+  it("푸터 스위처 메뉴가 열린 채 좁아지면 메뉴를 닫고 메뉴 버튼으로 간다", async () => {
+    await shell();
+    const language = [...document.querySelectorAll<HTMLButtonElement>("footer button")].find((button) => button.textContent?.startsWith(`${en.uiLocale.label}: `))!;
+    await click(language);
+    expect(document.querySelector('[role="menu"]')).not.toBeNull();
+    expect(media.listeners.size).toBe(1);
+    await media.set(false);
+    for (let tries = 0; document.activeElement !== menuButton() && tries < 10; tries++) await settle();
+    expect(document.querySelector('[role="menu"]')).toBeNull();
+    expect(document.activeElement).toBe(menuButton());
+    expect(media.listeners.size).toBe(0);
+  });
+});
+
 describe("푸터 — 공개 셸은 왼쪽 묶음만, Auth는 두 줄 감김 (PT1a · PT3a)", () => {
   it("공개 셸 푸터는 `lg` 미만에서 스위처 묶음을 숨긴다(서랍 바닥에 있다)", async () => {
     await shell();

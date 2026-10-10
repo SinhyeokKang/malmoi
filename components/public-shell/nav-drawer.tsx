@@ -130,29 +130,66 @@ function wideTarget(menu: HTMLElement | null, active: Element | null): HTMLEleme
 
 /**
  * **`lg` 이상에서만 보이는 묶음**(헤더 내비 · GitHub · 공개 푸터 스위처) — 좁아지며 숨을 때 그 안에 포커스가 있었으면 메뉴 버튼으로 옮긴다
- * (design §2 — `body`로 빠지면 Tab이 문서 첫머리에서 다시 시작한다). 리스너는 **포커스가 안에 있는 동안만** 단다.
+ * (design §2 — `body`로 빠지면 Tab이 문서 첫머리에서 다시 시작한다). 리스너는 **포커스가 안에 있는(또는 안의 트리거가 연 메뉴에 있는) 동안만** 단다.
  * 숨김은 CSS(`max-lg:hidden`)가 하고, 이 묶음은 그 순간의 포커스만 든다.
+ *
+ * ⚠️ **두 순서를 다 받는다**(#214) — 브라우저는 MQL `change`보다 먼저 스타일을 다시 계산해 숨은 링크에서 `blur`(relatedTarget 없음)를 쏠 수 있다.
+ * 그때 묶음이 이미 `display: none`이면 숨겨져서 잃은 것이라 그 자리에서 넘긴다. 숨지 않았는데 relatedTarget이 없으면(빈 곳 클릭) 셸 스크롤러의 몫이다.
+ * ⚠️ **안의 트리거가 연 포털 메뉴(푸터 스위처)도 묶음 안이다** — 메뉴가 열린 채 좁아지면 숨은 트리거에 붙어 남는다. Esc로 닫고, Radix가 (숨은)
+ * 트리거로 돌려주는 복귀가 지난 뒤에 메뉴 버튼으로 옮긴다.
  */
 export function WideOnly({ className, children }: { className: string; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   const stop = useRef<(() => void) | null>(null);
+  // 안의 트리거가 연 포털 메뉴 — 포커스가 거기 있는 동안도 묶음 안으로 친다.
+  const portal = useRef<HTMLElement | null>(null);
   useEffect(() => () => stop.current?.(), []);
 
-  function watch() {
+  function handOff() {
+    stop.current?.();
+    document.querySelector<HTMLElement>(MENU)?.focus();
+  }
+
+  // ⚠️ React는 포털의 focus 이벤트도 컴포넌트 트리로 올려 보낸다 — 메뉴 항목의 focus가 여기로 온다. DOM으로 안이면 묶음 자체, 밖이면 그 메뉴다.
+  function watch(event: FocusEvent) {
+    const target = event.target;
+    portal.current = ref.current?.contains(target) ? null : target.closest<HTMLElement>('[role="menu"]');
     if (stop.current !== null) return;
     const query = window.matchMedia?.(WIDE_QUERY);
     if (query == null) return;
     const onChange = (event: { matches: boolean }) => {
-      if (event.matches || !ref.current?.contains(document.activeElement)) return;
-      document.querySelector<HTMLElement>(MENU)?.focus();
+      if (event.matches) return;
+      const menu = portal.current;
+      if (menu?.isConnected) {
+        stop.current?.();
+        menu.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+        // Radix는 메뉴가 떨어진 뒤 `setTimeout(0)`에 트리거로 돌려준다 — 떨어진 것을 본 다음 틱에 넘겨 그 복귀 뒤에 선다.
+        let tries = 0;
+        const after = () => {
+          if (menu.isConnected && ++tries < 20) { window.setTimeout(after, 0); return; }
+          window.setTimeout(() => document.querySelector<HTMLElement>(MENU)?.focus(), 0);
+        };
+        window.setTimeout(after, 0);
+        return;
+      }
+      if (ref.current?.contains(document.activeElement)) handOff();
     };
     query.addEventListener("change", onChange);
-    stop.current = () => { query.removeEventListener("change", onChange); stop.current = null; };
+    stop.current = () => { query.removeEventListener("change", onChange); stop.current = null; portal.current = null; };
+  }
+
+  function onBlur(event: FocusEvent) {
+    const next = event.relatedTarget;
+    if (next instanceof Node && (ref.current?.contains(next) || portal.current?.contains(next))) return;
+    const menu = next instanceof Element ? next.closest<HTMLElement>('[role="menu"]') : null;
+    const opener = menu?.getAttribute("aria-labelledby");
+    if (menu != null && opener != null && ref.current?.contains(document.getElementById(opener))) { portal.current = menu; return; }
+    if (next === null && ref.current !== null && getComputedStyle(ref.current).display === "none") { handOff(); return; }
+    stop.current?.();
   }
 
   return (
-    <div ref={ref} className={className} onFocus={watch}
-      onBlur={(event: FocusEvent) => { if (!(event.relatedTarget instanceof Node && ref.current?.contains(event.relatedTarget))) stop.current?.(); }}>
+    <div ref={ref} className={className} onFocus={watch} onBlur={onBlur}>
       {children}
     </div>
   );
