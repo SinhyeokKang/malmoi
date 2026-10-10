@@ -273,6 +273,63 @@ describe("서랍 — 닫힘과 포커스 (design §2)", () => {
   });
 });
 
+/**
+ * **#213 — 브라우저에서는 Esc·닫기·배경 뒤 스크롤러로 갔다**(jsdom green · 브라우저 red, POSTMORTEM 2026-09-20 유형). Chromium은 포커스된 노드를 떼면
+ * `focusout`(relatedTarget 없음)을 바로 쏘고, 셸 스크롤러가 그것을 받아 `body`의 포커스를 되찾는다 — 그 focusin이 Dialog의 "최근 기록" 맨 끝이 되어
+ * Radix 복귀(`setTimeout` 뒤)가 스크롤러로 갔다. jsdom은 떼어도 `focusout`을 안 쏘므로 여기서 그 순서를 흉내 낸다(`removeChild` 감시).
+ */
+describe("#213 — 브라우저 순서에서도 닫힘은 메뉴 버튼으로", () => {
+  let restore: () => void = () => {};
+  beforeEach(() => {
+    const original = Node.prototype.removeChild;
+    Node.prototype.removeChild = function <T extends Node>(this: Node, child: T): T {
+      const active = document.activeElement;
+      const had = active !== null && active !== document.body && child.contains(active);
+      const removed = original.call(this, child) as T;
+      if (had) document.dispatchEvent(new FocusEvent("focusout", { bubbles: true, relatedTarget: null }));
+      return removed;
+    };
+    restore = () => { Node.prototype.removeChild = original; };
+  });
+  afterEach(() => restore());
+
+  it("Esc", async () => {
+    await shell({ current: "docs" });
+    await click(menuButton());
+    await act(async () => { await userEvent.setup().keyboard("{Escape}"); });
+    await settle();
+    expect(drawer()).toBeNull();
+    expect(document.activeElement).toBe(menuButton());
+  });
+
+  it("닫기 버튼", async () => {
+    await shell({ current: "docs" });
+    await click(menuButton());
+    await click(drawer()!.querySelector(`button[aria-label="${en.common.close}"]`)!);
+    await settle();
+    expect(document.activeElement).toBe(menuButton());
+  });
+
+  it("배경", async () => {
+    await shell({ current: "docs" });
+    await click(menuButton());
+    const overlay = document.querySelector<HTMLElement>(".bg-scrim\\/40")!;
+    await act(async () => { overlay.dispatchEvent(new Event("pointerdown", { bubbles: true })); });
+    await settle();
+    expect(drawer()).toBeNull();
+    expect(document.activeElement).toBe(menuButton());
+  });
+
+  it("링크로 닫히면 여전히 메뉴 버튼으로 가지 않는다", async () => {
+    await shell({ current: "docs" });
+    await click(menuButton());
+    await click(drawerLinks()[1]!);
+    await settle();
+    expect(drawer()).toBeNull();
+    expect(document.activeElement).not.toBe(menuButton());
+  });
+});
+
 describe("좁아지며 숨는 링크의 포커스 (design §2)", () => {
   beforeEach(() => { stubMedia(true); });
 

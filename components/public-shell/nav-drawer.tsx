@@ -45,7 +45,7 @@ export function NavDrawer({ current }: { current?: HeaderCurrent }) {
   const m = useMessages();
   const [open, setOpen] = useState(false);
   const menu = useRef<HTMLButtonElement>(null);
-  // 닫힘 뒤 포커스를 정할 자리 — `"link"`면 도착한 페이지, 요소면 넓어진 헤더의 그 자리, `null`이면 기본 복귀(메뉴 버튼).
+  // 닫힘 뒤 포커스를 정할 자리 — `"link"`면 도착한 페이지, 요소면 넓어진 헤더의 그 자리, `null`이면 메뉴 버튼.
   const landing = useRef<"link" | HTMLElement | null>(null);
 
   useEffect(() => {
@@ -84,9 +84,11 @@ export function NavDrawer({ current }: { current?: HeaderCurrent }) {
           onCloseAutoFocus={(event) => {
             const target = landing.current;
             landing.current = null;
-            if (target === null) return;
             event.preventDefault();
-            if (target !== "link") target.focus();
+            if (target === "link") return;
+            // ⚠️ **기본 복귀를 메뉴 버튼으로 명시한다**(#213) — 트리거 없이 연 Dialog라 복귀가 "최근 포커스 기록"이었고, 브라우저는 서랍을 떼는 순간
+            // `focusout`을 쏴 셸 스크롤러가 포커스를 되찾아(`scroller.tsx`) 그 기록의 맨 끝이 스크롤러였다. jsdom은 그 `focusout`을 안 쏴 green이었다.
+            (target ?? menu.current)?.focus();
           }}
         >
           <nav aria-label={m.landing.shell.nav} className="flex flex-col gap-0.5">
