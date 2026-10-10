@@ -1,6 +1,7 @@
 import { Link as InlineLink } from "@/components/ui/link";
 
 
+import { PAGE_TITLE } from "@/components/docs/classes";
 import { DocEyebrow, DocFrame } from "@/components/docs/doc-frame";
 
 import { RequestedPath } from "@/components/docs/requested-path";
@@ -19,7 +20,7 @@ export default async function DocsNotFound() {
     <PublicScroller>
       <DocFrame m={m} toc={[]}>
         <DocEyebrow>{t.eyebrow}</DocEyebrow>
-        <h1 className="m-0 text-4xl leading-[1.3] font-semibold">{t.title}</h1>
+        <h1 className={PAGE_TITLE}>{t.title}</h1>
         <p className="text-prose mt-5 leading-[1.75] text-pretty">
           {t.body(
             <RequestedPath />,

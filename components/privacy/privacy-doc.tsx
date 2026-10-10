@@ -1,4 +1,4 @@
-import { LIST, PROSE, SECTION_HEADING } from "@/components/docs/classes";
+import { LIST, PAGE_TITLE, PROSE, READING_ARTICLE, READING_GRID, READING_TOC_SLOT, SECTION_HEADING } from "@/components/docs/classes";
 import { DOC_TABLE, DocTable } from "@/components/public-doc-table";
 import { Toc } from "@/components/public-doc-toc";
 import type { Messages, PrivacyBody } from "@/lib/i18n";
@@ -30,61 +30,64 @@ export function PrivacyDoc({ m, uiLocale, doc, lang }: { m: Messages; uiLocale: 
   const tocItems = sections.map(({ id, heading }) => ({ id, heading: Object.hasOwn(labels, id) ? (labels[id] ?? heading) : heading }));
 
   return (
-    <div lang={lang} className="mx-auto grid max-w-[1120px] grid-cols-[minmax(0,720px)_200px] justify-between gap-16 px-10 pt-16 pb-30">
-      <article className="min-w-0">
-        <h1 className="m-0 text-4xl leading-[1.3] font-semibold">{title}</h1>
-        {/*
-          메타 줄이라 보조 색이 맞다 — 본문의 muted 금지는 여기 안 걸린다(§6.61). 라벨 없이 날짜만 두면 무슨 날짜인지 모른다.
-          사전의 `"YYYY-MM-DD"`는 `dateTime`에 그대로 넣고(날짜만 든 `datetime`은 올바른 HTML이다) 보이는 쪽만
-          앱의 날짜 형(`formatDay`)이다 — 사전 값을 바꾸면 `policy-gate`가 개정 이력을 요구한다.
-        */}
-        <p lang={uiLocale} className="text-muted-foreground mt-3 text-sm leading-body">
-          {m.publicDocs.effectiveDate} <time dateTime={effectiveDate}>{formatDay(new Date(effectiveDate), { uiLocale, timeZone: "UTC" })}</time>
-        </p>
-        <p className={cn(PROSE, "mt-6")}>{intro}</p>
-        <hr className="border-border mt-10" />
-        {sections.map((section, index) => (
-          // 이름 없는 `<section>`을 두지 않는다 (POSTMORTEM 2026-09-15) — 이름은 `<h2 id>`가 댄다.
-          // `[&_a]:`가 사전이 맨몸으로 내놓는 `<a>`에 색과 링을 건다 (§6.3 — 셸 밖 링크는 파랑, 밑줄 없음 · §7).
-          <section
-            key={section.id}
-            aria-labelledby={section.id}
-            className={cn(
-              // 절 간격은 공개 문서 공통 급(위 32)이다 — `<h2>`가 아니라 `<section>`이 든다(h2는 `m-0`).
-              "mt-8",
-              "[&_a]:text-link [&_a]:focus-visible:ring-ring [&_a]:focus-visible:ring-2 [&_a]:focus-visible:outline-none",
-            )}
-          >
-            {/*
-              `scroll-mt-12` — 하드 해시 착지도 목차 클릭과 같은 48 아래에 선다.
-              `tabIndex={-1}` — 목차가 누른 절로 포커스를 옮긴다(`toc.tsx`). 조작 대상이 아니라 링을 그리지 않는다.
-            */}
-            <h2 id={section.id} tabIndex={-1} className={cn(SECTION_HEADING, "mt-0 scroll-mt-12 focus:outline-none")}>
-              {section.heading}
-            </h2>
-            {section.blocks.map((block, blockIndex) =>
-              "p" in block ? (
-                <p key={blockIndex} className={PROSE}>
-                  {block.p}
-                </p>
-              ) : "ul" in block ? (
-                <ul key={blockIndex} className={`${LIST} list-disc`}>
-                  {block.ul.map((item, itemIndex) => (
-                    <li key={itemIndex}>{section.id === "changes" ? <RevisionLine item={item} uiLocale={uiLocale} /> : item}</li>
-                  ))}
-                </ul>
-              ) : (
-                <DocTable
-                  key={blockIndex}
-                  table={block.table}
-                  className={cn(DOC_TABLE, block.table.head.length === 3 && TABLE_3COL)}
-                />
-              ),
-            )}
-          </section>
-        ))}
-      </article>
-      <Toc label={toc} items={tocItems} />
+    <div lang={lang} className="@container/reading">
+      <div className={cn(READING_GRID, "max-w-[1120px]")}>
+        {/* 좁은 폭에서는 본문 앞 disclosure다(responsive-public PT2b) — 그래서 DOM에서 목차가 먼저고 넓으면 grid가 오른쪽 열로 보낸다. */}
+        <Toc label={toc} items={tocItems} className={READING_TOC_SLOT} />
+        <article className={READING_ARTICLE}>
+          <h1 className={PAGE_TITLE}>{title}</h1>
+          {/*
+            메타 줄이라 보조 색이 맞다 — 본문의 muted 금지는 여기 안 걸린다(§6.61). 라벨 없이 날짜만 두면 무슨 날짜인지 모른다.
+            사전의 `"YYYY-MM-DD"`는 `dateTime`에 그대로 넣고(날짜만 든 `datetime`은 올바른 HTML이다) 보이는 쪽만
+            앱의 날짜 형(`formatDay`)이다 — 사전 값을 바꾸면 `policy-gate`가 개정 이력을 요구한다.
+          */}
+          <p lang={uiLocale} className="text-muted-foreground mt-3 text-sm leading-body">
+            {m.publicDocs.effectiveDate} <time dateTime={effectiveDate}>{formatDay(new Date(effectiveDate), { uiLocale, timeZone: "UTC" })}</time>
+          </p>
+          <p className={cn(PROSE, "mt-6")}>{intro}</p>
+          <hr className="border-border mt-10" />
+          {sections.map((section, index) => (
+            // 이름 없는 `<section>`을 두지 않는다 (POSTMORTEM 2026-09-15) — 이름은 `<h2 id>`가 댄다.
+            // `[&_a]:`가 사전이 맨몸으로 내놓는 `<a>`에 색과 링을 건다 (§6.3 — 셸 밖 링크는 파랑, 밑줄 없음 · §7).
+            <section
+              key={section.id}
+              aria-labelledby={section.id}
+              className={cn(
+                // 절 간격은 공개 문서 공통 급(위 32)이다 — `<h2>`가 아니라 `<section>`이 든다(h2는 `m-0`).
+                "mt-8",
+                "[&_a]:text-link [&_a]:focus-visible:ring-ring [&_a]:focus-visible:ring-2 [&_a]:focus-visible:outline-none",
+              )}
+            >
+              {/*
+                `scroll-mt-12` — 하드 해시 착지도 목차 클릭과 같은 48 아래에 선다.
+                `tabIndex={-1}` — 목차가 누른 절로 포커스를 옮긴다(`toc.tsx`). 조작 대상이 아니라 링을 그리지 않는다.
+              */}
+              <h2 id={section.id} tabIndex={-1} className={cn(SECTION_HEADING, "mt-0 scroll-mt-12 focus:outline-none")}>
+                {section.heading}
+              </h2>
+              {section.blocks.map((block, blockIndex) =>
+                "p" in block ? (
+                  <p key={blockIndex} className={PROSE}>
+                    {block.p}
+                  </p>
+                ) : "ul" in block ? (
+                  <ul key={blockIndex} className={`${LIST} list-disc`}>
+                    {block.ul.map((item, itemIndex) => (
+                      <li key={itemIndex}>{section.id === "changes" ? <RevisionLine item={item} uiLocale={uiLocale} /> : item}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <DocTable
+                    key={blockIndex}
+                    table={block.table}
+                    className={cn(DOC_TABLE, block.table.head.length === 3 && TABLE_3COL)}
+                  />
+                ),
+              )}
+            </section>
+          ))}
+        </article>
+      </div>
     </div>
   );
 }

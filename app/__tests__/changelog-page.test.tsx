@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setUnread } from "@/lib/inbox/unread-store";
 
 import { render } from "@/components/__tests__/helpers/dom";
+import { PAGE_TITLE } from "@/components/docs/classes";
 import type { AttentionBadgeResult, OpenAttentionInboxResult } from "@/app/inbox/actions";
 import type { SessionRead } from "@/lib/auth/read-session";
 import type { LoadedReleases } from "@/lib/changelog/load";
@@ -204,3 +205,15 @@ describe("`/changelog` — 목록", () => {
 
 // 안 읽음 수는 모듈 store라 파일 안 테스트 사이로 샌다(inbox-page D2) — 헤더·사이드바를 그리는 파일은 매번 되돌린다.
 afterEach(() => { setUnread(0); });
+
+/** responsive-public P3 — `/docs`·`/privacy`와 같은 읽기 패턴이다. 목차가 없어 한 열 그대로이고, 본문은 줄이지 않는다. */
+describe("`/changelog` — 좁은 폭", () => {
+  it("좌우 40은 그릇 바깥 640 이상만(미만 20) · 위 64는 `lg` 미만 40 · h1 30 · 긴 URL 줄바꿈 — 선언과 질의는 부모/자식이다", async () => {
+    const container = await page({ ok: true, releases: TWO, truncated: false });
+    const h1 = main(container).querySelector("h1")!;
+    expect(h1.className).toBe(PAGE_TITLE);
+    const frame = h1.parentElement!;
+    expect([...frame.classList]).toEqual(expect.arrayContaining(["mx-auto", "max-w-[800px]", "px-5", "@[640px]/reading:px-10", "pt-16", "max-lg:pt-10", "pb-30", "wrap-anywhere"]));
+    expect(frame.parentElement?.className).toBe("@container/reading");
+  });
+});
