@@ -108,6 +108,9 @@
 - `SyncLockBanner`는 "Sync가 도는 동안 저장이 막힌다"를 말한다 — 저장하는 자리인 상세 판에서 빠지면 안 된다.
 - **요청**: 노트에 셋의 자리를 적는다. 추천: SyncLockBanner는 두 판 모두(상세에서는 저장 줄 위), BasePendingBanner·EditLossBanner는 목록 판에만.
 
-## 사용자 결정 대기
+## 사용자 확정 (2026-10-11)
 
-- **F7** — 꺼진 Sync·Publish의 사유 줄을 모든 폭에 두고, EditLossBanner가 이유를 덧붙이는 동작(malmoi#160)을 뺀다. 확정되면 AT8 라벨의 "대기"를 뗀다.
+- **F7 · R1 · R2 모두 추천안으로 확정.** spec A-05 · design §3 · tasks A4 · 브리프 동작 주석에 반영했다.
+  - F7: 사유 줄은 모든 폭, `EditLossBanner`의 이유 덧붙임 제거. AT8 라벨의 "사용자 확정 대기"를 뗀다.
+  - R1: 버튼을 든 `PanelHeader`는 전부 640 미만 두 줄 — **AT2a-375 Projects 머리를 두 줄로 고친다.**
+  - R2: `SyncLockBanner` 두 판(상세는 저장 줄 위) · `BasePendingBanner`·`EditLossBanner` 목록 판 — AT6 노트에 적는다.

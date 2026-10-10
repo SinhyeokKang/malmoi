@@ -66,7 +66,11 @@ single에서 상세를 여는 같은 키 재열기·다른 키 선택·다른 �
 
 목록 버튼과 history 관계는 위 표대로 확정됐다. 판 전환은 history entry를 추가하지 않으며, 같은 키 다시 열기와 dirty 보존을 구현 전 회귀 테스트로 고정한다. 기존 `useLeaveGuard`는 Navigation API index가 없는 브라우저의 popstate를 차단하지 못한다는 제한을 명시하고 있다. 반응형 완료가 이를 해결했다고 주장하지 않는다. 해당 브라우저의 이탈·복구 실물 결과를 기록하고 손실이 확인되면 앱 입력 완료 판정을 보류해 별도 결함으로 분리한다.
 
-**터치**: 히트 영역은 공개 단계가 끝냈다 — `Button`의 `sm`·`icon-xs/sm/md/lg`에 `pointer: coarse` `::after` 44(`TOUCH_TARGET`, D17). **공개 단계가 앱으로 넘긴 둘**: ① 리사이저(LNB `shell-panels.tsx` · 번역 패널 핸들) `touch-action: none` — 코드에 아직 없다(A2·A4), ② 꺼진 컨트롤 사유의 보이는 줄 프리미티브 — 공개에는 실소비자가 OAuth 동의 슬롯 하나뿐이라 만들지 않았고 **첫 소비자는 번역 화면의 꺼진 Publish·Sync**다(A4가 `components/ui/`에 만들고 DESIGN §7에 등재). 1024 이상 태블릿의 40 레일은 라벨이 `title`뿐이라 터치에서 안 보인다 — 대표 프레임 AT1 수령 때 처리를 정하고 그 전에는 동작을 바꾸지 않는다.
+**터치**: 히트 영역은 공개 단계가 끝냈다 — `Button`의 `sm`·`icon-xs/sm/md/lg`에 `pointer: coarse` `::after` 44(`TOUCH_TARGET`, D17). **공개 단계가 앱으로 넘긴 둘**: ① 리사이저(LNB `shell-panels.tsx` · 번역 패널 핸들) `touch-action: none` — 코드에 아직 없다(A2·A4), ② 꺼진 컨트롤 사유의 보이는 줄 프리미티브 — 공개에는 실소비자가 OAuth 동의 슬롯 하나뿐이라 만들지 않았고 **첫 소비자는 번역 화면의 꺼진 Publish·Sync**다(A4가 `components/ui/`에 만들고 DESIGN §7에 등재). **모든 폭에 선다**(2026-10-11 사용자, 시안 피드백 F7 — `lg` 이상도 지금의 `title` + sr-only 대신 같은 줄, 넓은 폭 헤더 +22는 받는다). 같은 문장이 두 번 서지 않게 `EditLossBanner`의 `blockedReason` 덧붙임(malmoi#160)을 뺀다 — 배너는 보류 문장만 남고 막다른 `Send with Publish`는 지금처럼 서지 않는다. 1024 이상 태블릿의 40 레일은 라벨이 `title`뿐이라 터치에서 안 보인다 — 대표 프레임 AT1 수령 때 처리를 정하고 그 전에는 동작을 바꾸지 않는다.
+
+**패널 머리 두 줄**(2026-10-11 사용자, 시안 피드백 F1·R1): 버튼을 든 `PanelHeader`는 **전부** 자기 컨테이너 640(`@min-form`과 같은 경계) 미만에서 제목 첫 줄 · 버튼 묶음 둘째 줄 오른쪽이다 — Home · Translations · Projects · Members · Sources · Logs 등. 버튼을 아이콘으로 줄이거나 숨기지 않는다. "넘칠 때만 감김"(flex-wrap)을 쓰지 않는 이유: 언어마다 줄 수가 달라져 로딩 골격이 실물과 같은 줄 수를 낼 수 없다(A-09). 골격도 같은 규칙이다.
+
+**번역 화면 배너의 판 배치**(2026-10-11 사용자, 시안 피드백 F3·R2): 단일 판에서 `SyncLockBanner`는 두 판 모두(상세에서는 저장 줄 위 — 저장이 막히는 이유라 저장하는 자리에서 빠지면 안 된다), `BasePendingBanner`·`EditLossBanner`는 목록 판에만 둔다. 상세 판에서 그 높이를 쓰면 키보드가 열렸을 때 입력 칸 자리가 0이 된다(AT6d). 미전달 수는 헤더 Publish 배지가 계속 든다.
 
 ## 4. 온보딩·관리
 

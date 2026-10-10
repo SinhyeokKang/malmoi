@@ -49,11 +49,12 @@ A0 → A1 → A2 → A3/A4/A5 → A6 → A8. **A7(랜딩 목업)은 2026-10-11 [
 
 - [ ] **A4 — 번역 탐색·편집·위험 동작** (A2c)
   - A1의 번역 순수 테스트와 아래 DOM 테스트를 먼저 작성해 red를 확인한다. single/split 반환 타입·compact-pane 구현과 Workspace/ResizeHandle 등 전체 소비자·기존 테스트 이관을 같은 커밋에 담는다. Workspace body `@container` + `data-pane` CSS 판 표시(측정 전 데스크톱 fallback 유지), 트리 Popover 재사용, 목록↔상세 전환, 목록 scrollTop 저장·복원, 직접 key/Inbox 착지, 모듈 변수 1회성 트리 이동 의도, 상세 sticky Save footer를 구현한다. resize로 draft reducer/상세 입력 DOM을 복제·교체하지 않는다.
-  - 기존 navigation/leave guard/복구 사본·필터·selectedInResult·source 이동·잠금 및 Save/Publish/Sync/Revert 결과를 그대로 잇는다. 꺼진 Sync·Publish의 사유를 좁은 폭에서 보이는 줄로 세운다 — 이 배치가 **첫 실소비자라 `components/ui/`에 사유 줄 프리미티브를 만든다**(공개는 소비자가 OAuth 동의 슬롯 하나뿐이라 넘겼다). 번역 패널 리사이즈 핸들 `touch-action: none`. 상세 sticky Save의 키보드 위 보장은 Android만이다(D20 — iOS 비대응을 테스트 주석·인계에 적는다).
+  - 기존 navigation/leave guard/복구 사본·필터·selectedInResult·source 이동·잠금 및 Save/Publish/Sync/Revert 결과를 그대로 잇는다. 꺼진 Sync·Publish의 사유를 **모든 폭에서** 보이는 줄로 세우고 `EditLossBanner`의 `blockedReason` 덧붙임을 뺀다(design §3, F7) — 이 배치가 **첫 실소비자라 `components/ui/`에 사유 줄 프리미티브를 만든다**(공개는 소비자가 OAuth 동의 슬롯 하나뿐이라 넘겼다). 번역 패널 리사이즈 핸들 `touch-action: none`. 상세 sticky Save의 키보드 위 보장은 Android만이다(D20 — iOS 비대응을 테스트 주석·인계에 적는다).
   - 먼저 DOM red: dirty→목록→같은 키→입력 보존, 다른 키 취소/폐기, dirty resize, IME composition 중 resize, 저장중/실패/권한상실·세션 만료 중 저장, filter로 선택키 제외, 빈/orphaned/다수 로케일, 소스 선택·history 확인, sessionStorage 복구.
   - 폭 왕복 회귀: 목록으로→split 확장→상세 textarea 포커스/IME 조합 시작→single 축소. 동일 textarea DOM·activeElement·선택 범위·draft 유지, URL/history 변경0을 DOM 테스트로 단언한다(`data-pane` 전환은 stub 폭으로).
   - 상세 착지 DOM red: single에서 같은 키 재열기·다른 키 선택·다른 소스의 키 선택·직접 key URL·검색/Inbox 진입 시 가시 상세 제목(새 `tabIndex={-1}`)에 포커스. 스켈레톤→성공/빈/오류 전환에서 제목 DOM·포커스 유지, 응답 전 사용자가 옮긴 포커스는 빼앗지 않음. 검색/Inbox 닫힘의 트리거 복귀가 착지를 덮지 않음. 새 포커스 테스트는 fixup observer + 깨뜨린 red + 그물 등재.
   - 트리 이동 DOM red: 같은 소스/다른 소스에서 트리 선택→`@first` 응답·URL 정규화 후 list 유지와 첫 키 선택 표시, 재마운트 후 동일 동작, 0건의 빈 목록 제목 착지. dirty 이동 취소는 현재 판·포커스 유지. 이후 검색/Inbox로 키를 열면 detail이 되고 늦은 이전 응답이 목록으로 되돌리지 않음.
+  - 패널 머리 640 두 줄(모든 액션 `PanelHeader` + 골격)과 배너 판 배치(SyncLock 두 판 · BasePending·EditLoss 목록 판)를 design §3대로 한다. 교체: `components/__tests__/translation-workspace-connection.test.tsx`의 배너 `blockedReason` 덧붙임 단언(malmoi#160) → "사유 줄 하나, 배너는 보류 문장만".
   - 회귀 테스트 전수: `translation-workspace.test.tsx`(대시 없는 파일 — `selectedInResult` 회귀 포함)와 `translation-workspace-*.test.tsx`의 navigation/focus/keyboard/remount/restore/transition/lock/sync/publish/render, textarea 폭·pointercancel/lost capture.
   - 실측(1024·1280, 좁은 폭은 A6): 1024에서 LNB320일 때 771/772/773 카드 폭의 판 전환, 데스크톱 첫 렌더에 단일 판이 한 프레임도 보이지 않음.
   - 커밋: `feat(responsive-app): add compact translation workspace` (하위 커밋으로 나누더라도 반환 타입 변경과 전체 소비자 이관은 분리하지 않는다).
