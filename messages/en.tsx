@@ -4056,5 +4056,9 @@ export const en = {
   responsive: {
     /** 번역 단일 판(카드 772 미만) 상세 머리 ‹ Keys의 접근 이름(responsive-app design §3) — 보이는 글자는 목록 제목 `translations.workspace.list.keys`다. */
     backToKeys: "Back to keys",
+    /** Files 단계 순차 판(본문 608 미만 — responsive-app design §4 · 시안 AT7): 후보 목록 아래 샘플 판으로 가는 버튼. step을 진행시키지 않는다. */
+    viewSample: "View sample",
+    /** 샘플 판 위 후보 목록으로 돌아가는 버튼. */
+    backToCandidates: "Candidates",
   },
 } as const;

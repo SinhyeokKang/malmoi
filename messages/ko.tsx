@@ -2086,5 +2086,7 @@ export const ko = {
   },
   responsive: {
     backToKeys: "키 목록으로 돌아가기",
+    viewSample: "샘플 보기",
+    backToCandidates: "후보",
   },
 } satisfies Messages;
