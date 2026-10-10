@@ -401,3 +401,20 @@ describe("단일 판 경계 — CSS 리터럴과 SINGLE_BELOW가 같다", () => 
     }
   });
 });
+
+/**
+ * 번역 화면 머리 두 줄 (B1a · orch O4 · 시안 AT6a) — 손으로 든 머리라 `PanelHeader`처럼 **여백 없는 전폭 루트**가 `@container/panel-head`를 리터럴로
+ * 선언하고 제목 행이 `PANEL_HEAD_ROW`다(640 미만 제목 첫 줄 · Sync·Publish 둘째 줄 오른쪽). 골격도 같은 조각이다.
+ */
+describe("번역 화면 머리 — PANEL_HEAD_ROW", () => {
+  const files = ["components/translations/workspace/workspace.tsx", "app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/translations/loading.tsx"];
+  it.each(files)("%s — 루트가 @container/panel-head를 선언하고 제목 행이 PANEL_HEAD_ROW다", (file) => {
+    const source = read(file);
+    expect(source).toMatch(/return \(\s*<div[^>]*className="@container\/panel-head flex h-full min-h-0 flex-col">/);
+    expect(source.match(/className=\{PANEL_HEAD_ROW\}/g)).toHaveLength(1);
+    expect(source).toContain('import { PANEL_HEAD_ROW } from "@/components/shell/content-panel";');
+    // 버튼 묶음은 뒤 형제이고 `ml-auto`로 밀지 않는다 — 두 줄일 때 정렬은 행 규칙(`self-end`)이 든다.
+    const row = source.slice(source.indexOf("className={PANEL_HEAD_ROW}"));
+    expect(row.slice(0, row.indexOf("</div>"))).not.toMatch(/className="ml-auto flex items-center gap-2"/);
+  });
+});

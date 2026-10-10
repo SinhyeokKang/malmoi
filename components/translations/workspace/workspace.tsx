@@ -9,6 +9,7 @@ import { previewTranslationRevert, revertTranslationKey, saveTranslationKey } fr
 import { useCommitWait } from "@/components/commit-wait";
 import { PublishButton, PublishModal, publishReason, usePublish } from "@/components/publish-button";
 import { SearchInput } from "@/components/ui/search-input";
+import { PANEL_HEAD_ROW } from "@/components/shell/content-panel";
 import { SyncButton } from "@/components/home/sync-button";
 import { SyncLockBanner, SyncLockDialog } from "@/components/translations/sync-lock";
 import { BasePendingBanner } from "@/components/translations/base-pending-banner";
@@ -884,15 +885,20 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   const skeletonDetail = navigating && view.keyId !== keyId;
   const absentDetail = props.detail !== null && "absent" in props.detail ? props.detail : null;
   return (
-    <div data-pane={pane} className="flex h-full min-h-0 flex-col">
+    /*
+      ⚠️ **루트가 `@container/panel-head`를 선언한다** (B1a · orch O4) — 이 머리는 손으로 들었으므로 `PanelHeader`처럼 **여백 없는 전폭 바깥**이 선언하고
+      제목 행(`PANEL_HEAD_ROW`)이 640으로 묻는다. 머리 블록(`px-4`)은 배너용 `wshead`를 선언한다 — 한 요소의 `container-name`은 하나라 둘을 겹치지 않는다.
+    */
+    <div data-pane={pane} className="@container/panel-head flex h-full min-h-0 flex-col">
       <div className="@container/wshead border-border flex shrink-0 flex-col gap-3 border-b px-4 py-3">
         <div className="flex flex-col gap-1.5">
-        <div className="flex items-center gap-3">
+        {/* 640 미만이면 제목 첫 줄 · Sync·Publish 둘째 줄 오른쪽(`PANEL_HEAD_ROW` — 시안 AT6a · F1). 버튼을 줄이거나 숨기지 않는다. */}
+        <div className={PANEL_HEAD_ROW}>
           <span className="inline-flex items-center gap-2">
             <h1 ref={titleRef} tabIndex={-1} className="text-lg font-medium">{m.common.nav.translations}</h1>
             <CountBadge count={tree.projectKeyCount} label={m.translations.keys(tree.projectKeyCount)} />
           </span>
-          <span className="ml-auto flex items-center gap-2">
+          <span className="flex items-center gap-2">
             {role === "OWNER" ? (
               <span onClickCapture={event => { if (dirty.length > 0 && syncAvailable) { event.preventDefault(); event.stopPropagation(); openSync(); } }}>
                 {/* 끊김이 먼저다 — 그 원인은 Publish가 끝나도 풀리지 않는다(Home 머리와 같은 순서). */}

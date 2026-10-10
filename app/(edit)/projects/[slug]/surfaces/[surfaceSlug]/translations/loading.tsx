@@ -1,3 +1,4 @@
+import { PANEL_HEAD_ROW } from "@/components/shell/content-panel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getMessages } from "@/lib/i18n/server";
 import { PANEL } from "@/lib/translations/layout";
@@ -20,15 +21,16 @@ import { PANEL } from "@/lib/translations/layout";
 export default async function TranslationsLoading() {
   const m = await getMessages();
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    // 실물과 같은 머리 규칙이다 — 전폭 루트가 `@container/panel-head`를 선언하고 제목 행이 `PANEL_HEAD_ROW`로 640을 묻는다(`workspace.tsx`).
+    <div className="@container/panel-head flex h-full min-h-0 flex-col">
       <span className="sr-only" role="status">{m.translations.loading}</span>
       <div className="border-border flex shrink-0 flex-col gap-3 border-b px-4 py-3" aria-hidden>
-        <div className="flex items-center gap-3">
+        <div data-skeleton-header className={PANEL_HEAD_ROW}>
           <div className="inline-flex items-center gap-2">
             <Skeleton size="lg" className="w-28" />
             <Skeleton className="size-5 rounded-full" />
           </div>
-          <div className="ml-auto flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <Skeleton className="h-9 w-20 rounded-md" />
             <Skeleton className="h-9 w-28 rounded-md" />
           </div>
