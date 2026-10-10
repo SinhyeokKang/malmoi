@@ -83,6 +83,8 @@ export function ShellPanels({ sidebar, children, initialCollapsed = false }: { s
   const m = useMessages();
   const [available, setAvailable] = useState<number | null>(null);
   const [group, setGroup] = useState<HTMLElement | null>(null);
+  /** 뷰포트가 `lg` 이상인가 — `matchMedia`가 없는 환경(jsdom)은 넓다고 읽는다(지금 동작). 아래 effect가 첫 커밋에 맞춘다. */
+  const wideRef = useRef(true);
 
   /**
    * ⚠️ **콜백 ref다.** `PanelGroup`의 ref는 DOM 노드가 아니라 imperative 핸들이라 그룹 자신을 잴 수
@@ -93,6 +95,12 @@ export function ShellPanels({ sidebar, children, initialCollapsed = false }: { s
   useEffect(() => {
     if (group === null) return;
     const observer = new ResizeObserver(([entry]) => {
+      /*
+        ⚠️ **좁은 동안 잰 폭은 버린다** (#225). 그 폭이 `available`로 들어가면 제약(`minSize` 200 = 375의 57%)이 숨은 패널의 몫을 끌어올리고,
+        넓어지는 순간 CSS가 그 몫을 먼저 그린다(1024에서 570 → 429 실측). 버리면 첫 마운트가 좁았을 때 재기 전 고정(240px)이 그대로 남는다.
+        넓어질 때의 폭은 아래 `change`가 그 자리에서 잰다.
+      */
+      if (!wideRef.current) return;
       const width = entry?.contentRect.width ?? group.getBoundingClientRect().width;
       setAvailable(width - SHELL_HANDLE_PX);
     });
@@ -115,9 +123,9 @@ export function ShellPanels({ sidebar, children, initialCollapsed = false }: { s
   const [collapsed, setCollapsed] = useState(initialCollapsed);
   const collapsedRef = useRef(initialCollapsed);
   const [animating, setAnimating] = useState(false);
-  /** 뷰포트가 `lg` 이상인가 — `matchMedia`가 없는 환경(jsdom)은 넓다고 읽는다(지금 동작). */
-  const wideRef = useRef(true);
   const availableRef = useRef<number | null>(null);
+  const groupElRef = useRef<HTMLElement | null>(null);
+  groupElRef.current = group;
   availableRef.current = available;
 
   const restoreLayout = useCallback(() => {
@@ -131,10 +139,20 @@ export function ShellPanels({ sidebar, children, initialCollapsed = false }: { s
     const query = window.matchMedia?.(WIDE_QUERY);
     if (query == null) return;
     wideRef.current = query.matches;
-    // 넓어지는 순간에 맞춘다 — `ResizeObserver`가 먼저 왔으면 그때는 좁아서 건너뛰었다(순서는 브라우저마다 다르다).
+    /*
+      넓어지는 순간에 맞춘다 — 좁은 동안의 `ResizeObserver`는 버렸다. ⚠️ **폭을 그 자리에서 잰다** (#225) — 마지막으로 기억한 `available`은
+      좁아지기 전(또는 첫 마운트가 좁았으면 없음)의 값이라, 그것으로 240을 % 환산하면 지금 폭과 어긋난다. RO는 탭이 가려져 있으면 한참 늦고,
+      그동안 틀린 폭이 화면에 남는다. `getBoundingClientRect`는 이 순간 새 뷰포트로 레이아웃을 맞춰 준다(jsdom은 0 — 그때는 RO를 기다린다).
+    */
     const onChange = (event: { matches: boolean }) => {
       wideRef.current = event.matches;
-      if (event.matches) restoreLayout();
+      if (!event.matches) return;
+      const width = groupElRef.current?.getBoundingClientRect().width ?? 0;
+      if (width > 0) {
+        availableRef.current = width - SHELL_HANDLE_PX;
+        setAvailable(width - SHELL_HANDLE_PX);
+      }
+      restoreLayout();
     };
     query.addEventListener("change", onChange);
     return () => query.removeEventListener("change", onChange);
