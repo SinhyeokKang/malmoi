@@ -40,6 +40,7 @@ app/
                         (빠지면 provider 기본값이 en이라 조용히 영어다)
                         ⚠️ <html data-theme>은 getColorScheme(lib/color-scheme/server — 계정 > 쿠키 > system)이고 같은 값을 <Toaster theme>에 넘긴다.
                         인라인 스크립트가 없다(color-scheme 2026-10-05, ARCHITECTURE §6.357) — lib/color-scheme/__tests__/theme-surfaces가 고정한다
+                        ⚠️ viewport의 interactiveWidget: "resizes-content"가 소프트 키보드에 레이아웃 뷰포트(dvh)를 줄이게 한다(Android만 — ARCHITECTURE §6.358)
                         ⚠️ metadata에 canonical·og:url이 없다 — 얕은 병합으로 앱·/signin·/invite·404 전부에 홈 canonical이 번진다
   robots.ts · sitemap.ts  크롤러용 파일 둘(lib/seo/crawl). robots는 force-dynamic(요청 시점 VERCEL_ENV), sitemap은 빌드 prerender.
                         ⚠️ sitemap이 guide/를 읽는데 트레이싱은 /docs 함수에만 싣는다 — 동적으로 바꾸면 Vercel에서만 500
@@ -58,6 +59,7 @@ app/
                         `$transaction` 콜백 안의 호출만, 주석 제외)
                         · exempt-route-guards(EXEMPT route → 필수 가드 호출 맵 — /api/mcp는 resolveBearer — 개인 토큰·OAuth access 공통 입구)
                         · root-boundaries · seo-metadata · crawl-files · landing-page · docs-page · privacy-page · changelog-page
+                        · docs-responsive(좁은 `/docs` — 캡슐 라벨·접근 이름·장 내비 시트 포커스·`lg` 넘김 정리, 2026-10-10 responsive-public)
                         · well-known(OAuth 발견 문서)
                         · api/__tests__/ github-callback · push-failure · push-open-pr · pull-nightly · route-diagnostics ·
                         surface-boundary · mcp-route · images-route · images-email-route
@@ -260,11 +262,13 @@ components/
                         글자는 m.common.keys에서 온다 — `<Kbd>` 리터럴 0은 hand-copies.test가 센다
   ui/highlight.tsx     Highlight — highlightSegments의 text/match 조각을 mark로 그린다. /projects와 검색의 손 mark를 모았다
   ui/field-button.tsx  FieldButton — 검색 캡슐 320×44/rounded-full(헤더 줄 h-11을 채운다 — 2026-10-04 D8) · icon/placeholder/shortcut 슬롯 · 접근 이름 필수 · aria-expanded.
+                        compact(공개 셸 헤더만)는 같은 인스턴스가 `lg` 미만에서 32 아이콘이 된다 — 두 벌이면 ⌘K 리스너가 둘이다
                         FIELD_BUTTON_CLASS를 export한다 — 랜딩 목업의 비상호작용 캡슐(<span>)이 같은 값을 읽고 h-10만 덮는다(손 사본 대신, buttonClass 선례)
   ui/text-trigger.tsx  TextTrigger — 누르는 글자(ui-locales). 공개 푸터 언어 스위처의 트리거 — Button이 아닌 이유는 라벨 500 강제(이웃 푸터 링크 400).
                         busy는 aria-disabled + aria-busy(진짜 disabled면 메뉴가 닫힐 때 포커스가 body로 빠진다) · 앞 글리프를 스피너로 교체(glyphSlot)
   ui/input-clear-button.tsx  InputClearButton — Input의 지우기 X(클라이언트). input.tsx는 fieldClass를 서버가 읽어 "use client"를 달 수 없어서 떼었다
-  ui/dialog.tsx       기존 440 Dialog + 형제 CommandDialog. 검색만 LargeModal 패널·높이·dim을 공유하며 top16으로 옮긴다.
+  ui/dialog.tsx       기존 440 Dialog + 형제 CommandDialog · DrawerContent(측면 서랍 — 2026-10-10, 공개 내비가 첫 소비자).
+                        검색만 LargeModal 패널·높이·dim을 공유하며 top16으로 옮긴다(`lg` 미만은 그 상수가 시트로 만들고 입력 줄이 Cancel을 든다 — useCommandDialogCancel).
                         진입·복귀는 DialogContent와 같은 모듈 함수(훅 아님) openAutoFocus·closeAutoFocus(event, consumer?) 한 벌이고(소비자 먼저),
                         조합 중 Esc는 use-ime-guard가 막는다(onEscapeKeyDown prop 없음). 해시 착지의 복귀 억제(onCloseAutoFocus)만 소비자가 잇는다
   ui/use-ime-guard.ts IME 조합 상태 추적(compositionstart/end)의 유일한 자리 — 오버레이 다섯(DialogContent · CommandDialog · LargeModal ·
@@ -277,6 +281,8 @@ components/
                         행은 ListRow + 28 타일(icon 필수, 활성 = selected 7%), 상태 줄은 CommandStatus lines 묶음 하나다
   ui/checkbox.tsx       Radix Checkbox. ②의 Include 접근 이름을 받고 Preview 버튼과 형제로 선다
   ui/large-modal.tsx    LargeModal/LargeModalProps — 공용 1024 껍데기. 온보딩·Publish·초대·Sources 추가/상세·Workflow·MCP 토큰 모달이 쓴다.
+                        ⚠️ `lg` 미만 전체 화면 시트 규칙이 그릇 상수(LARGE_MODAL_OVERLAY·LARGE_MODAL_PANEL)의 max-lg: 토큰 한 곳이다 — 소비자는 다시 지정하지 않는다.
+                        flush(본문 여백·바닥 없는 목록 그릇)는 `lg` 미만에서만 여는 Inbox 시트·Docs 장 내비 시트가 쓴다
                         ⚠️ ui/dialog.tsx(440)의 Overlay·padding·바닥 배치를 바꾸지 않고 Radix Dialog.*를 직접 조립한다.
                         actions: ReactNode는 필수이고 step/notice 문장과 바닥 래퍼는 껍데기가 소유한다.
                         단계/비동기 전이의 live 영역 하나, 닫기 잠금, initial/return/fallback 포커스 ref를 유지한다.
@@ -378,13 +384,16 @@ components/
   analytics.tsx         Vercel Web Analytics 래퍼("use client") — 루트 레이아웃이 서버 컴포넌트라 beforeSend(함수)를 못 넘겨서 선다.
                         ⚠️ 개발 서버에서는 null(dev 디버그 스크립트를 CSP가 막는다 — CSP를 넓히지 않는다)
   public-shell/         공개 셸(`/` · `/privacy` · `/docs/*` · `/changelog`) — PublicShell({ cta, current, bare }) · header · footer · scroller. 헤더 44 · 패널 ·
-                        푸터 40, 루트 h-svh min-w-[1280px] overflow-hidden. ⚠️ "use client"는 scroller 하나이고 lib/를 물지
-                        않는다 — 문서가 스크롤되지 않으므로 스크롤러가 마운트 때 포커스를 받아야 Space/PageDown이 먹는다.
+                        푸터 40, 루트 h-svh overflow-hidden(최소 폭 없음 — 2026-10-10 responsive-public). ⚠️ "use client"는 scroller · nav-drawer 둘이다
+                        (scroller는 lib/를 물지 않고, nav-drawer는 lib/ 중 shell/breakpoint · links · routes · utils만 문다) — 문서가 스크롤되지 않으므로 스크롤러가 마운트 때 포커스를 받아야 Space/PageDown이 먹는다.
                         data-public-scroller가 랜딩 스테이지·공개 문서 목차의 스크롤 대상 표식이다. 해시가 tabindex 든 헤딩을
                         가리키면 마운트 때 그 헤딩이 포커스를 받는다. bare는 스크롤러를 안 만든다(/docs는 페이지가 든다). ⚠️ 헤더는 세션을 읽지
                         않는다 — 우측 primary는 페이지가 publicAccount로 정해 넘기고, 로그아웃은 lib/auth/sign-out을 참조로 넘긴다. route group 레이아웃으로 묶지 않는다(이동 때 스크롤러 재마운트)
                         footer는 셸 밖 골격(signin/auth-layout — /signin·초대·계정 병합)도 패널 아래에 그린다 — 푸터 렌더러가 하나다.
                         footer는 서버 컴포넌트로 남고 오른쪽 묶음의 언어·테마 스위처(components/i18n/locale-switcher · components/color-scheme/theme-switcher)만 클라이언트다
+                        (drawer = 공개 셸 형 — `lg` 미만 스위처는 서랍 바닥으로, 기본 = Auth 형 — `lg` 미만 두 줄 감김).
+                        nav-drawer(클라이언트 — `lg` 미만 헤더의 메뉴 버튼 + 측면 서랍 NavDrawer(ui/dialog의 DrawerContent) · 좁아지며 숨는 넓은 링크의
+                        포커스를 메뉴 버튼으로 넘기는 WideOnly. 검색·Inbox·계정은 서랍에 넣지 않는다 — 헤더에 한 벌, ARCHITECTURE §6.358)
   color-scheme/         화면 테마의 클라이언트 조각(2026-10-10). apply(applyColorScheme — Action보다 먼저 <html data-theme>을 쓰고 ok가 아니면 되돌린다 ·
                         글리프 셋 COLOR_SCHEME_GLYPHS. Theme 카드와 스위처가 공유) · theme-switcher(공개 푸터 — 언어 스위처와 같은 프리미티브·같은 busy 형.
                         현재 값을 prop으로 받지 않고 라벨은 CSS가 data-theme로 고르며, 메뉴 체크는 열 때 그 속성을 읽는다)
@@ -398,13 +407,16 @@ components/
                         language-card(setUiLocale) · time-zone-card(setTimeZone — 옵션 timeZoneOptions(now) · 열린 목록 글자 이동은 도시 이름 ·
                         미리보기 `Now: …`가 유일한 피드백) · theme-card(setColorScheme — 글리프 Monitor·Sun·Moon은 옵션 label 안 · 적용은 color-scheme/apply의 applyColorScheme —
                         Action보다 먼저 <html data-theme>을 쓰고 ok가 아니면 되돌린다)
-  privacy/              `/privacy` 읽기 그릇 — privacy-doc(서버 — 1120 · 본문 720 + 목차 200, 본문은 사전 그대로)
+  privacy/              `/privacy` 읽기 그릇 — privacy-doc(서버 — 1120 · 본문 720 + 목차 200(그릇 960 미만 한 열), 본문은 사전 그대로)
   docs/                 `/docs/*` 조각 — guide-markdown(서버 — react-markdown에 로더 트리 사본을 꽂고 요소를 매핑한다.
                         ⚠️ urlTransform을 덮지 않는다 · rehype-raw 없음 — raw HTML은 글자로 나가므로 원고에서 게이트가 막는다) · doc-frame(그릇 · 이전/다음 · 장 개요 행 · 개요 두 갈래) ·
-                        nav-link(클라이언트 — usePathname 정확 일치) ·
+                        nav-link(클라이언트 — usePathname 정확 일치) · nav-tree(서버 — SUMMARY 트리 DocsNavTree, 고정 내비와 장 내비 시트가 같은 트리를 쓴다) ·
+                        nav-sheet(클라이언트 — `lg` 미만 하단 캡슐 + 장 내비 전체 화면 시트 DocsNavSheet(LargeModal flush) · `lg` 이상 고정 내비 그릇 DocsFixedNav —
+                        좁아지며 숨을 때 안의 포커스를 캡슐로 넘긴다) ·
                         legacy-hash(클라이언트 — 옛 /docs#id → router.replace, 표는 서버가 넘긴다) · requested-path(404 주소) ·
                         classes.ts(서버·클라이언트가 같이 쓰는 클래스 — "use client" 모듈에 두면 값이 아니라 참조가 온다. 공개 문서 셋(/docs·/privacy·/changelog)의
-                        글자 급·간격 한 벌: SECTION_HEADING · SUB_HEADING · MINOR_HEADING · PROSE · LIST)
+                        글자 급·간격 한 벌: PAGE_TITLE · SECTION_HEADING · SUB_HEADING · MINOR_HEADING · PROSE · LIST + 읽기 그릇 판정 READING_GRID ·
+                        READING_ARTICLE · READING_TOC_SLOT — 선언 @container/reading은 호출부 리터럴, 질의는 이 상수라 부모/자식이 갈린다)
   changelog/            `/changelog` 조각 — release-entry(서버 — 항목 하나: 버전 h1 = 그 판의 GitHub Release 링크 · formatDay, UTC 고정) ·
                         release-markdown(서버 — GitHub 원문 렌더러. ⚠️ GuideMarkdown을 재사용하지 않는다 — 원고 전용 전제를 든다.
                         rehype-raw 없음 · urlTransform 기본값 · 이미지는 링크로. 원고와 같은 급은 docs/classes.ts 상수로만 공유한다)
@@ -570,6 +582,8 @@ components/
                         흡수하는지, 재기 전 px 폴백, Panel의 인라인 overflow 되돌리기) ·
                         hand-copies(공용 표/파일 walker — 실제 소비자 사본·퇴역 API와 유효한 TSX/별칭/주석 카나리아) ·
                         api-contract(현재 API와 등재된 이행 부채) · parallel-p3-loading-status(loading.tsx glob 전수: sr-loading 단일 상태와 장식 Skeleton)
+                        · large-modal-sheet(`lg` 미만 시트 토큰 · `lg` 이상 바이트 불변 · flush) · touch-target(coarse 44 히트 영역의 크기 범위) ·
+                        public-nav-drawer(서랍 열림·포커스 다섯 계약·`lg` 넘김) · invite-project-card(초대 카드의 긴 이름 줄바꿈) — 2026-10-10 responsive-public
                         ⚠️ loading 전수 계약은 기존 sibling-loading의 경계/치수 검사와 역할이 다르다
 ```
 
@@ -882,6 +896,8 @@ lib/
   shell/nav.ts         역할별 구역·항목과 activeProject·toNavProjects(레이아웃/검색 Action의 일곱 필드 투영).
                         __tests__/nav-projects.test.ts가 보관·기본 소스·집계와 서버 전용 필드 미노출을 센다
   shell/panel-size.ts   px 치수 → 리사이즈 패널의 % 제약. ⚠️ 분모가 그룹 폭이 아니라 "핸들을 뺀 폭"이다
+  shell/breakpoint.ts   셸 경계 WIDE_QUERY("(min-width: 64rem)") 하나 — 잎(import 0, client-graph 등재). 열린 서랍·시트의 정리와 Inbox 그릇 선택만
+                        matchMedia로 묻는다(렌더 상태 금지 — ARCHITECTURE §6.358). __tests__/breakpoint.test.ts가 Tailwind `lg`와 문자열 대조 + px·innerWidth 판정 0을 센다
   shell/sidebar-cookie.ts LNB 접힘 여부 기기 쿠키(malmoi-sidebar-collapsed) — 잎. 서버 레이아웃이 읽고 셸 패널이 document.cookie로 쓴다. ⚠️ 이 리포에서 유일하게 http-only가 아닌 쿠키다
                         — 라이브러리가 패널에 flex-basis:0 + flex-grow를 걸고 핸들은 별도 flex 항목이다
                         ⚠️ 못 잰 폭은 0이 아니라 null이다 — 0이면 셋이 전부 100%가 된다
