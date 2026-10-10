@@ -30,7 +30,7 @@ export type FilesLayout =
       /** 두 판이 나눠 갖는 폭 = bodyWidth − 핸들. */
       available: number;
       /** 지금 지킬 후보 폭(px) — 고른 폭을 clamp한 값. */
-      candidatesPx: number;
+      candidatesWidth: number;
       /** 후보 `Panel`의 %. 상한은 샘플 400을 남긴다. */
       constraints: { minSize: number; defaultSize: number; maxSize: number };
       /** `setLayout`에 넘길 두 몫(%) — `defaultSize`는 마운트에만 읽혀 폭이 바뀌면 이것으로 되돌린다. */
@@ -61,5 +61,5 @@ export function filesLayout(bodyWidth: number, chosen: number = FILES_CANDIDATES
   const layout = panelLayout(available, px);
   // available ≥ 600이라 둘 다 null일 수 없다 — 타입만 좁힌다.
   if (constraints === null || layout === null) return null;
-  return { mode: "split", available, candidatesPx: px, constraints, layout };
+  return { mode: "split", available, candidatesWidth: px, constraints, layout };
 }

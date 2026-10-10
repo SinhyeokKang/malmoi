@@ -140,6 +140,7 @@ export function FilesStep({
   /** 사용자가 핸들로 고른 후보 폭(px) — 지키는 것은 %가 아니라 이 값이다(`ShellPanels`와 같은 규칙). 드래그만 바꾼다. */
   const chosen = useRef(FILES_CANDIDATES_PX.default);
   const dragging = useRef(false);
+  // 렌더 중 ref를 읽는다 — 드래그는 라이브러리가 폭을 이미 옮겼으므로 재렌더가 필요 없고, 다음 폭 변화(재렌더)에서 이 값을 지킨다.
   const layout = (bodyWidth === null ? null : filesLayout(bodyWidth, chosen.current)) ?? UNMEASURED;
   const sequential = layout.mode === "sequential";
   const groupRef = useRef<ImperativePanelGroupHandle>(null);
@@ -233,7 +234,7 @@ export function FilesStep({
               checked={locked || selection.checked.has(index)} disabled={pending || locked}
               onCheckedChange={() => { if (!pending && !locked) selection.onToggle(index); }}
               aside={<Button variant="ghost" type="button" aria-label={m.newProject.files.previewCandidate(c.pathTemplate)}
-                disabled={pending} onClick={() => { onPick(index); if (sequential) setPane("sample"); }}>{content}</Button>}
+                disabled={pending} onClick={() => { onPick(index); if (sequential) showPane("sample"); }}>{content}</Button>}
               expand={locked && <span className="sr-only">{m.settings.sources.locked}</span>}
             /> : <SelectRow input="radio" disabled={pending} value={String(index)} checked={active}
               first={index === 0} previousChecked={prevActive} label={content} />}

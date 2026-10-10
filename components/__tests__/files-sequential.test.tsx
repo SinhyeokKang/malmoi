@@ -215,6 +215,20 @@ describe("Add sources — 행 안 미리보기 버튼이 샘플 판을 연다", 
     expect(fns.onPick).toHaveBeenCalledWith(1);
     expect(shown(pane("sample"))).toBe(true);
     expect(shown(pane("candidates"))).toBe(false);
+    // 누른 행 버튼은 가려졌다 — 포커스가 `body`로 빠지지 않고 Candidates로 선다.
+    expect(document.activeElement).toBe([...container.querySelectorAll<HTMLButtonElement>("button")].find((b) => b.textContent?.trim() === en.responsive.backToCandidates));
+  });
+
+  it("체크박스 갈래도 판을 오가면 고른 행·체크가 그대로다", async () => {
+    const selection = { checked: new Set<number>([1]), locked: new Set<number>(), conflicts: [], onToggle: vi.fn() };
+    const { container, button, fns } = await draw({ ...base, picked: 1 }, selection);
+    await resize(400);
+    await click(button(en.responsive.viewSample)!);
+    await click(button(en.responsive.backToCandidates)!);
+    const boxes = [...container.querySelectorAll<HTMLElement>('[role="checkbox"]')];
+    expect(boxes.map((b) => b.getAttribute("aria-checked"))).toEqual(["false", "true"]);
+    expect(selection.onToggle).not.toHaveBeenCalled();
+    for (const fn of Object.values(fns)) expect(fn).not.toHaveBeenCalled();
   });
 
   it("두 판에서는 미리보기 버튼이 판을 바꾸지 않는다", async () => {

@@ -332,3 +332,37 @@ describe("번역 단일 판 — 숨는 판에서 body로 빠지지 않는다", (
     }
   });
 });
+
+/**
+ * **Files 순차 판 — 누른 판 버튼이 가려져도 `body`로 빠지지 않는다** (responsive-app A5). `View sample` · 행 안 미리보기 버튼은 누르면
+ * 자기 판이 `display: none`이 된다 — 반대편 판 버튼(`Candidates`)으로 착지한다. 판 판정은 잰 폭이라 `ResizeObserver`를 부르는 stub을 쓴다.
+ */
+describe("Files 순차 판 — 판 버튼 착지", () => {
+  it("View sample과 행 미리보기 버튼 둘 다 Candidates로 착지하고, Candidates는 View sample로 돌아온다", async () => {
+    const callbacks: ResizeObserverCallback[] = [];
+    vi.stubGlobal("ResizeObserver", class { constructor(cb: ResizeObserverCallback) { callbacks.push(cb); } observe() {} unobserve() {} disconnect() {} });
+    try {
+      const { FilesStep } = await import("@/components/onboarding/steps/files");
+      const candidate = (path: string) => ({ outputPaths: [path], adapter: "json-catalog" as const, pathTemplate: path, locales: ["en"], baseLocale: "en", keys: { status: "counted" as const, count: 1 }, samples: [] });
+      const state = {
+        detecting: false, detectError: undefined, candidates: [candidate("a/{locale}.json"), candidate("b/{locale}.json")], picked: 0, locale: "en",
+        preview: { status: "loading" as const }, manual: { adapter: "json-catalog" as const, pathTemplate: "", baseLocale: "" }, manualMatched: false,
+        adapters: [], repoLabel: "o/r", branch: "main", banner: null,
+      };
+      const noop = vi.fn();
+      const selection = { checked: new Set<number>(), locked: new Set<number>(), conflicts: [], onToggle: noop };
+      await render(<FilesStep state={state} selection={selection} onPick={noop} onLocale={noop} onManual={noop} onRetry={noop} />);
+      const body = document.querySelector("[data-files-body]")!;
+      await act(async () => { for (const cb of callbacks) cb([{ target: body, contentRect: { width: 400 } } as unknown as ResizeObserverEntry], {} as ResizeObserver); });
+      const click = async (node: HTMLElement) => { await act(async () => { await userEvent.setup().click(node); }); };
+      await click(byText(en.responsive.viewSample));
+      expect(document.activeElement).toBe(byText(en.responsive.backToCandidates));
+      await click(byText(en.responsive.backToCandidates));
+      expect(document.activeElement).toBe(byText(en.responsive.viewSample));
+      await click(byLabel(en.newProject.files.previewCandidate("b/{locale}.json")));
+      expect(document.activeElement).toBe(byText(en.responsive.backToCandidates));
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});

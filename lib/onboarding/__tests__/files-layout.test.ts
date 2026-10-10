@@ -34,7 +34,7 @@ describe("files-layout — 순차 판/두 판 경계 (responsive-app A1·A5)", (
 
   it("bodyWidth 608은 두 판 — available 600, 후보 200 · 샘플 400", () => {
     const layout = filesLayout(608);
-    expect(layout).toMatchObject({ mode: "split", available: 600, candidatesPx: 200 });
+    expect(layout).toMatchObject({ mode: "split", available: 600, candidatesWidth: 200 });
     const sizes = px(layout);
     expect(sizes.candidates).toBeCloseTo(200, 6);
     expect(sizes.sample).toBeCloseTo(400, 6);
@@ -42,7 +42,7 @@ describe("files-layout — 순차 판/두 판 경계 (responsive-app A1·A5)", (
 
   it("bodyWidth 609는 두 판 — available 601, 후보 201 · 샘플 400", () => {
     const layout = filesLayout(609);
-    expect(layout).toMatchObject({ mode: "split", available: 601, candidatesPx: 201 });
+    expect(layout).toMatchObject({ mode: "split", available: 601, candidatesWidth: 201 });
     const sizes = px(layout);
     expect(sizes.candidates).toBeCloseTo(201, 6);
     expect(sizes.sample).toBeCloseTo(400, 6);
@@ -52,7 +52,7 @@ describe("files-layout — 순차 판/두 판 경계 (responsive-app A1·A5)", (
     const layout = filesLayout(960);
     if (layout?.mode !== "split") throw new Error("split expected");
     expect(layout.available).toBe(952);
-    expect(layout.candidatesPx).toBe(240);
+    expect(layout.candidatesWidth).toBe(240);
     expect((layout.constraints.minSize * 952) / 100).toBeCloseTo(200, 6);
     expect((layout.constraints.defaultSize * 952) / 100).toBeCloseTo(240, 6);
     expect((layout.constraints.maxSize * 952) / 100).toBeCloseTo(320, 6);
@@ -70,8 +70,8 @@ describe("files-layout — 순차 판/두 판 경계 (responsive-app A1·A5)", (
     expect(candidatesPx(500, 952)).toBe(320);
     expect(candidatesPx(320, 700)).toBe(300);
     expect(candidatesPx(320, 600)).toBe(200);
-    expect(filesLayout(1000, 300)).toMatchObject({ mode: "split", candidatesPx: 300 });
-    expect(filesLayout(708, 320)).toMatchObject({ mode: "split", candidatesPx: 300 });
+    expect(filesLayout(1000, 300)).toMatchObject({ mode: "split", candidatesWidth: 300 });
+    expect(filesLayout(708, 320)).toMatchObject({ mode: "split", candidatesWidth: 300 });
   });
 
   it("못 잰 폭은 null이다 — 0·음수·NaN·Infinity", () => {
@@ -81,6 +81,6 @@ describe("files-layout — 순차 판/두 판 경계 (responsive-app A1·A5)", (
   });
 
   it("고른 폭이 비정상이면 기본 240으로 돌아간다", () => {
-    expect(filesLayout(960, Number.NaN)).toMatchObject({ candidatesPx: 240 });
+    expect(filesLayout(960, Number.NaN)).toMatchObject({ candidatesWidth: 240 });
   });
 });
