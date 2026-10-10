@@ -79,3 +79,35 @@
 | F4 AT4 삭제(또는 현 코드 구조로 재작성) | AT4 |
 | F5 미터 감김 | AT2a-375 · AT2a-768 |
 | F6 · F7 노트 정정 | AT3 · AT8 |
+
+---
+
+# 2차 재검토 (2026-10-11)
+
+**결론**: 1차의 🔴 F1~F4와 🟡 F5·F6·F8은 노트와 렌더 모두에 반영됐다. 남은 것은 새 규칙의 적용 범위 둘(R1·R2)과 F7의 사용자 확정이다. R1·R2는 노트만 고치면 되고 프레임을 다시 그릴 필요는 없다(R1에서 Projects를 두 줄로 정하면 AT2a-375 한 장만).
+
+| 1차 | 2차 확인 |
+|---|---|
+| F1 | 패널 머리 640 미만 두 줄(제목 / 버튼 오른쪽)로 AT1a·AT6·AT8a·AT10b 재작성. es 실제 사전(`Sincronizar` · `Publicar 24` · `Sin enviar`) 반영, 저장 줄은 `Guardar`가 둘째 줄로 감김 — 렌더 일치 |
+| F2 | AT6d에서 ko 칸(링 · Not saved)이 저장 줄 바로 위 — 렌더 일치 |
+| F3 | 미전달 배너를 목록 판에만 둔다(상세 판은 키보드 여유 때문에 뺌) — AT6a·AT8a 렌더 일치. 문구는 `messages/en.tsx`의 `banner.paused`와 같다 |
+| F4 | AT4 삭제 |
+| F5 | 미터 가로 감김 — 375 둘씩 세 줄, 768 한 줄. 렌더 일치 |
+| F6 | `@max-[850px]`는 이미 컨테이너 쿼리 — 실측 확인만으로 정정 |
+| F7 | 추천안(모든 폭 사유 줄 + 배너 이유 덧붙임 제거)을 적용하고 **"사용자 확정 대기"** 표시 — 아래 결정 필요 |
+| F8 | 새 키 셋(`backToKeys` · `viewSample` · `backToCandidates`) 확정 대기로 정리 |
+
+## 🟡 R1. 패널 머리 두 줄 규칙의 범위가 프레임과 어긋난다
+
+- AT6 노트는 "PanelHeader 컨테이너 640 미만이면 두 줄 — Home · Translations · Members · Logs 머리가 같은 규칙"이라고 한다. 그런데 Projects 목록도 같은 `PanelHeader`를 쓰고(`app/(edit)/projects/(list)/loading.tsx` 등) 버튼(`New project`)을 드는데, AT2a-375는 한 줄이다. Sources(`Add sources`) · Settings · Account · MCP · Inbox 머리도 같은 프리미티브다.
+- **추천**: 버튼을 든 `PanelHeader`는 전부 640 미만에서 두 줄로 한다 — Projects도 포함해 AT2a-375를 고친다. 규칙이 하나여야 로딩 골격이 실물과 같은 줄 수를 낼 수 있다(spec A-09). "넘칠 때만 감김"(flex-wrap)은 언어마다 줄 수가 달라 골격이 따라갈 수 없다.
+
+## 🟡 R2. 배너를 상세 판에서 빼는 범위가 EditLossBanner 하나뿐이다
+
+- 번역 화면의 배너 묶음은 셋이다 — `SyncLockBanner` · `BasePendingBanner` · `EditLossBanner`(`components/translations/workspace/workspace.tsx:800-804`, 같은 컨테이너). 노트는 EditLossBanner만 "목록 판에만"으로 정했다.
+- `SyncLockBanner`는 "Sync가 도는 동안 저장이 막힌다"를 말한다 — 저장하는 자리인 상세 판에서 빠지면 안 된다.
+- **요청**: 노트에 셋의 자리를 적는다. 추천: SyncLockBanner는 두 판 모두(상세에서는 저장 줄 위), BasePendingBanner·EditLossBanner는 목록 판에만.
+
+## 사용자 결정 대기
+
+- **F7** — 꺼진 Sync·Publish의 사유 줄을 모든 폭에 두고, EditLossBanner가 이유를 덧붙이는 동작(malmoi#160)을 뺀다. 확정되면 AT8 라벨의 "대기"를 뗀다.
