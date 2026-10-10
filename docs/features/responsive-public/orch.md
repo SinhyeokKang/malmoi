@@ -29,6 +29,8 @@
 | D18 | `viewport-fit=cover`를 넣지 않는다 — safe-area 토큰은 그때까지 0 | 지휘자 판단 — 넣으면 셸 전체 safe-area가 필요해 범위 밖(R1 리뷰 추천) |
 | D19 | R1 해제 뒤 `components/ui/large-modal.tsx`는 R2 소유 — 빈 footer 생략·본문 여백 끄기(Inbox·Docs 시트용), 기존 소비자 렌더 불변 조건 | 지휘자 판단 — R2 질문, 시안 PT5a·PT2c는 footer 없음·전폭 행 |
 | D20 | 루트 viewport에 `interactiveWidget: "resizes-content"` — Android에서 키보드가 `dvh`를 줄여 D4의 sticky CTA 계약이 실제로 선다. iOS 비대응(비범위) | 지휘자 판단 — R4 리뷰: `dvh`만으로는 키보드를 따르지 않는다. D4 의도의 수단, 되돌리기 한 줄 |
+| D21 | `components/ui/dropdown-menu.tsx`를 R2 소유에 추가 — DropdownMenuRow 행 형을 export 상수로 꺼내 Inbox 시트 행과 공유(손 사본 0) | 지휘자 판단 — R2 질문, 시안 PT5a 행 40 |
+| D22 | Inbox 시트 첫 포커스 = 머리 닫기(Radix 기본), 시안 PT5a "첫 행 활성"과 다름 | 지휘자 판단 — 목록이 비동기라 열 때 행이 없고, 도착 뒤 포커스 이동은 POSTMORTEM 2026-09-24 "effect로 초기 포커스 경쟁" 재발(R2 리뷰 추천) |
 | D12 | 워커는 Claude Code 패밀리만(Opus 5.5·Sonnet 5.5, effort ≤ high). Codex 교차 없음 | 지휘자 판단 — 사용자 허가 없음 |
 
 ## 배치
@@ -68,7 +70,7 @@ Run `run_93218ca1a5cb`.
 | 배치 | Dispatch | 터미널 | 워크트리 | 상태 |
 |---|---|---|---|---|
 | R1 | `ctx_cb5b32691dab` → fix1 `ctx_cb71fcb77470` | (해제) | (삭제) | dev `4de3962a`·`702581d5` push · 리뷰 🔴0 🟡6 → fix1(D17·머리 상단 정렬) 반영. DS 넘김: Cancel 표기·375 footer 감김·X/Cancel 겹침 폭·1023/1024 computed |
-| R2 | `ctx_b69add738ab2` | `term_f50c10be` | `~/orca/workspaces/malmoi/rp-r2` | 진행 |
-| R4 | `ctx_58b60d803427` → fix1 | `term_916299d2` | `~/orca/workspaces/malmoi/rp-r4` | 727c1919 · 리뷰 🔴1 🟡5 → fix1 진행(EntityCard 줄바꿈·D20) |
+| R2 | `ctx_b69add738ab2` | `term_f50c10be`(유지 — DS 수정 담당 후보) | `~/orca/workspaces/malmoi/rp-r2` | 495bfd3d·86182d18 · 리뷰 🔴0 🟡7(DS 실측: WideOnly 좁아짐 포커스·푸터 스위처 열린 채 좁아짐·서랍 스위처 align·같은 페이지 링크 포커스·Inbox 트리거 ARIA·배경 닫힘 테스트 공백·수치) |
+| R4 | `ctx_58b60d803427` → fix1 `ctx_dbdc9a38d48f` | (해제) | (삭제) | dev `62c06d3f`·`ed268174` push · 리뷰 🔴1 🟡5 → fix1 반영(EntityCard·초대 카드 줄바꿈, scroll-pb, D20). 꺼진 사유 줄 프리미티브는 소비자 0 → responsive-app |
 | R5 | `ctx_5f51f6863e1c` → fix1 `ctx_0579ddf53787` | (해제) | (삭제) | dev `ba028854`·`cee04ef3` push · 리뷰 🔴0 🟡3 → fix1 반영, 재리뷰 생략(지휘자 판단 — 🟡만) |
 | QA0 | `ctx_e2cd578cfcea` | `term_79c0d5b1` | main 체크아웃 | 완료 — spec 문제 절에 실측 반영, 해제 |
