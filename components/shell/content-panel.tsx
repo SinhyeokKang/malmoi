@@ -112,9 +112,12 @@ export function PanelHeader({
  * `@container/panel-head`를 **리터럴로** 적고 이 조각을 안쪽 행에 쓴다(`container-query.test.ts`가 리터럴 className에서 선언을 센다).
  *
  * ⚠️ **제목 칸이 `min-w-0`이다** — 한 줄일 때 긴 제목이 버튼을 밀지 않고 말줄임된다. 줄 높이 36은 두 줄일 때 제목 줄의 몫이다.
+ *
+ * ⚠️ **버튼 묶음은 그릇 폭을 넘지 않는다**(`max-w-full` — #226). 두 줄일 때 묶음은 `self-end`라 자기 min-content 폭으로 서는데, 안에 고정 칸
+ * (Projects 검색 256)이 있으면 그 폭이 그릇보다 넓어져 왼쪽 패널 밖으로 나갔다. 상한을 두면 안의 줄어드는 칸(`min-w-0 shrink`)이 실제로 준다.
  */
 export const PANEL_HEAD_ROW =
-  "flex flex-col gap-2 [&>:first-child]:flex [&>:first-child]:min-h-9 [&>:first-child]:min-w-0 [&>:first-child]:items-center [&>*+*]:shrink-0 [&>*+*]:self-end @min-form/panel-head:flex-row @min-form/panel-head:items-center @min-form/panel-head:justify-between @min-form/panel-head:[&>*+*]:self-auto";
+  "flex flex-col gap-2 [&>:first-child]:flex [&>:first-child]:min-h-9 [&>:first-child]:min-w-0 [&>:first-child]:items-center [&>*+*]:max-w-full [&>*+*]:shrink-0 [&>*+*]:self-end @min-form/panel-head:flex-row @min-form/panel-head:items-center @min-form/panel-head:justify-between @min-form/panel-head:[&>*+*]:self-auto";
 
 /**
  * 패널 안에서 **스크롤하는** 본문.

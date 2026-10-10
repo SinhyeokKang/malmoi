@@ -350,6 +350,14 @@ describe("PanelHeader — 640 미만 두 줄", () => {
     }
   });
 
+  /**
+   * **#226** — 두 줄일 때 버튼 묶음은 `self-end`라 자기 min-content 폭(Projects: 검색 256 + 12 + New project 130)으로 서서, 그릇(375에서 325)보다
+   * 넓으면 왼쪽 패널 밖으로 나갔다(x −48 실측). 묶음이 그릇 폭을 넘지 않아야 안의 줄어드는 칸(검색 `min-w-0 shrink`)이 실제로 준다.
+   */
+  it("두 줄일 때 버튼 묶음이 그릇 폭을 넘지 않는다", () => {
+    expect(ROW).toContain("[&>*+*]:max-w-full");
+  });
+
   it("넘칠 때 감김·CSS order로 줄을 정하지 않는다", () => {
     expect(PANEL_HEAD_ROW).not.toMatch(/flex-wrap|\border-/);
     // 버튼 없는 갈래(Projects 0건)는 제목이 마지막 자식이다 — `:last-child`로 물으면 제목이 오른쪽으로 밀린다.
