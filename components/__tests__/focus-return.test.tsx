@@ -30,8 +30,7 @@ vi.mock("@/app/(edit)/projects/actions", () => ({
   changeMember: mocks.changeMember, revokeInvitation: mocks.revokeInvitation, resendInvitation: mocks.resendInvitation,
   disconnectGithub: mocks.disconnectGithub, startGithubConnectForUser: mocks.startGithubConnectForUser,
 }));
-// 번역 단일 판 그물(아래) — 작업 화면이 무는 Action·라우터. 이 파일의 다른 화면은 이것들을 부르지 않는다.
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }), useSearchParams: () => new URLSearchParams(window.location.search) }));
+// 번역 단일 판 그물(아래) — 작업 화면이 무는 Action. 라우터는 그 describe가 `doMock`으로 든다(앱 LNB 서랍 그물의 `doUnmock`이 파일 단위 mock을 걷는다).
 vi.mock("@/app/(edit)/actions", () => ({ saveTranslationKey: vi.fn(), previewTranslationRevert: vi.fn(), revertTranslationKey: vi.fn(), triggerPullAction: vi.fn() }));
 vi.mock("@/app/(edit)/publish-actions", () => ({ loadPublishPreview: vi.fn() }));
 vi.mock("@/app/(edit)/account/actions", () => ({
@@ -314,6 +313,7 @@ describe("번역 단일 판 — 숨는 판에서 body로 빠지지 않는다", (
       if (document.activeElement instanceof HTMLElement && hidden?.contains(document.activeElement)) document.activeElement.blur();
     });
     hide.observe(document.body, { attributes: true, attributeFilter: ["data-pane"], subtree: true });
+    vi.doMock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }), useSearchParams: () => new URLSearchParams(window.location.search) }));
     try {
       const { TranslationWorkspace } = await import("@/components/translations/workspace/workspace");
       const { props } = await import("./helpers/workspace-props");
@@ -326,6 +326,7 @@ describe("번역 단일 판 — 숨는 판에서 body로 빠지지 않는다", (
       await act(async () => { await userEvent.setup().click(row()); });
       expect(document.activeElement).toBe(document.querySelector("[data-detail-title]"));
     } finally {
+      vi.doUnmock("next/navigation");
       hide.disconnect();
       vi.unstubAllGlobals();
     }
