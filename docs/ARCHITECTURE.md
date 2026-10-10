@@ -3050,10 +3050,10 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 SSR 조회를 클라이언트로 옮기지 않으며, 스키마·env·쿠키·Route Handler 추가가 0이다.
 
 - **경계는 뷰포트 `lg`(64rem) 하나다** (2026-10-07 사용자). 서랍·시트는 body 포털이라 셸 컨테이너 밖에 있어, 셸을 컨테이너 쿼리로 판정하면 판정이 둘로 갈린다.
-  **배치는 CSS(`lg:`·`max-lg:`)가 정하고**, JS가 폭을 묻는 자리는 둘뿐이다 — ① **열린 서랍·시트를 넓어질 때 닫고 포커스를 옮기는 것**,
-  ② **Inbox를 열 때 그릇을 고르는 것**. 둘 다 `lib/shell/breakpoint.ts`의 `WIDE_QUERY`(`"(min-width: 64rem)"`)를 `matchMedia`로 묻는다.
+  **배치는 CSS(`lg:`·`max-lg:`)가 정하고**, JS가 폭을 묻는 자리는 셋뿐이다 — ① **열린 서랍·시트를 넓어질 때 닫고 포커스를 옮기는 것**,
+  ② **Inbox를 열 때 그릇을 고르는 것**, ③ **좁아지며 숨는 넓은 묶음(`WideOnly`·`DocsFixedNav`)의 포커스를 트리거로 넘기는 것**(`useNarrowHandoff` — `components/public-shell/nav-drawer.tsx`). 셋 다 `lib/shell/breakpoint.ts`의 `WIDE_QUERY`(`"(min-width: 64rem)"`)를 `matchMedia`로 묻는다.
   - ⚠️ **폭을 렌더 상태로 두지 않는다** — `useSyncExternalStore`·`useState(matchMedia…)`로 그리면 서버(폭 모름)와 첫 클라이언트 렌더가 갈려 하이드레이션 불일치가 난다.
-    ①의 리스너는 **열린 동안만** 달고(`change` → 닫기), ②는 **열기 핸들러에서 한 번** 읽는다. 하이드레이션 전 인라인 스크립트는 CSP(`'nonce' 'strict-dynamic'`)가 막고 UA 분기도 하지 않는다.
+    ①의 리스너는 **열린 동안만** 달고(`change` → 닫기), ②는 **열기 핸들러에서 한 번** 읽고, ③의 리스너는 **묶음에 포커스·포인터가 들어온 뒤 실제로 떠나기 전까지만** 단다(서랍·시트가 닫혀 있어도 돈다). 하이드레이션 전 인라인 스크립트는 CSP(`'nonce' 'strict-dynamic'`)가 막고 UA 분기도 하지 않는다.
   - ⚠️ **rem이다** — `1024px`·`innerWidth`로 판정하면 사용자 글꼴 크기에 따라 Tailwind `lg`와 어긋난다. `lib/shell/__tests__/breakpoint.test.ts`가
     `WIDE_QUERY`를 `node_modules/tailwindcss/theme.css`의 `--breakpoint-lg`와 대조하고, `globals.css`가 그 값을 덮지 않는지, 소스에 `innerWidth`·`(min-width: 64rem|1024px)` 리터럴이 따로 없는지 센다.
   - ⚠️ jsdom에는 `matchMedia`가 없다 — 없는 환경은 "폭이 바뀌지 않는다"로 읽는다(서랍·`WideOnly`는 리스너 생략, Inbox는 `?? true` → 넓음 = 메뉴, 지금 형). 실 브라우저는 모두 있어 jsdom 전용 갈래다.
@@ -3064,7 +3064,7 @@ SSR 조회를 클라이언트로 옮기지 않으며, 스키마·env·쿠키·Ro
   **열기 = 읽음 기록(`openAttentionInboxAction`)은 그 핸들러에서 그릇 선택 전에 한 번**이라 두 그릇이 같은 계약이다(§6.365). 열린 채 `lg`를 넘나들면 닫기만 하고 다시 부르지 않는다.
   닫힘 정리(배지 0 · 캐시 목록 `readAll`)는 `clearOnClose` 가드로 멱등이다 — Radix가 `onOpenChange(false)`를 겹쳐 불러도 한 번이다.
   ⚠️ 트리거의 `aria-haspopup`은 Radix의 `menu` 그대로다 — 렌더가 폭을 모르므로 바꾸지 않는다(알려진 한계, DESIGN §6.545). `aria-expanded`는 트리거가 두 그릇의 열림을 함께 말한다.
-- **큰 모달 규칙은 그릇 상수 한 곳이다** — `LARGE_MODAL_OVERLAY`·`LARGE_MODAL_PANEL`(`components/ui/large-modal.tsx`)의 `max-lg:` 토큰이 `LargeModal` 소비자 전부와 `CommandDialog`를
+- **큰 모달 규칙은 그릇 상수 한 곳이다** — `LARGE_MODAL_OVERLAY`·`LARGE_MODAL_PANEL`(`components/ui/large-modal.tsx`)의 `max-lg:` 토큰이 `LargeModal` 소비자 전부와 `CommandDialog`, 그리고 패널 상수만 쓰는 이력 상세(`components/logs/event-dialog.tsx` — 머리는 자기 것이라 시트 머리 56 형 밖이다)를
   `lg` 미만 시트로 만든다. 앱 모달도 코드 변경 없이 받는다(앱 셸은 아직 1280 하한이지만 포털은 뷰포트를 따른다). `lg` 이상 문자열은 바이트 불변이고(`large-modal-sheet.test.tsx`),
   ⚠️ 랜딩 목업(`components/landing/mockup/publish.tsx`)은 상수를 import하지 않고 값을 복사한다 — 데스크톱 캔버스의 축소 복제라 시트가 되면 안 된다(`landing-mockup.test.tsx`).
 - **소프트 키보드** — 셸 밖 골격과 LargeModal 시트의 한정 높이는 `dvh`이고 바닥 행동은 스크롤 영역 밖(또는 sticky)이다. ⚠️ **`dvh`만으로는 키보드를 따르지 않는다** —
@@ -3074,7 +3074,11 @@ SSR 조회를 클라이언트로 옮기지 않으며, 스키마·env·쿠키·Ro
 - **safe-area** — 시트 패널은 `env(safe-area-inset-top|bottom)` 패딩을 들지만 루트에 `viewport-fit=cover`가 없어 **지금은 0**이다(D18). 켜면 공개 셸 헤더·푸터·Docs 캡슐·앱 셸까지 safe-area를 받아야 한다.
 - **resize로 다시 마운트하지 않는다** — 본문 스크롤러·검색·Inbox는 폭 전환으로 재마운트되지 않고(폭에 따른 조건부 렌더 0), 폼 값·pending·에러가 초기화되지 않는다. 공개 스크롤러의 페이지별 재마운트(`key`)는 그대로다.
 - **포커스는 `body`로 빠지지 않는다**(POSTMORTEM 2026-09-24) — 넓어지며 트리거(메뉴 버튼·Docs 캡슐)가 숨으면 고정 내비의 대응 링크로, 좁아지며 넓은 링크(`WideOnly`·`DocsFixedNav`)가 숨으면
-  그 안에 포커스가 있었거나 그 안에서 연 메뉴가 열려 있었을 때 트리거로 옮긴다. 링크로 닫힌 서랍·시트는 복귀를 막는다(도착한 페이지가 이긴다). 새 서랍은 `focus-return`·`primitive-focus` 그물에 있다.
+  그 안에 포커스가 있었거나 그 안에서 연 메뉴가 열려 있었을 때 트리거로 옮긴다(③).
+  ⚠️ **세 순서를 다 받는다**(#214 · 7477173e): **Chrome은 숨는 노드의 포커스를 `blur` 없이 `body`로 옮긴다**(focus fixup) — `change`가 올 때는 이미 `body`라
+  `contains(activeElement)`로는 못 잡는다. 그래서 **리스너가 살아 있다는 것 자체가 "안에 있었다"의 기억**이고 `change` 때 `body`(또는 아직 안)면 넘긴다.
+  스타일 재계산이 먼저 와 relatedTarget 없는 `blur`가 오면 묶음이 이미 `display: none`일 때 그 자리에서 넘기고(숨지 않았으면 빈 곳 클릭이라 리스너를 뗀다),
+  `change`가 먼저면 포커스가 아직 안이라 넘긴다. 묶음 안 트리거가 연 포털 메뉴는 `change` 때 DOM에서 찾고(포인터로 연 메뉴를 위해 `pointerdown`도 리스너를 세운다) Esc 복귀 뒤에 넘긴다. 링크로 닫힌 서랍·시트는 복귀를 막는다(도착한 페이지가 이긴다). 새 서랍은 `focus-return`·`primitive-focus` 그물에 있다.
 
 ### 6.36 목록 필터의 순수 판정 (`lib/projects/list.ts`, 2026-09-10 8-3)
 
