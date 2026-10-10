@@ -227,7 +227,8 @@ function AppRow({ app, now, onDisconnect }: { app: ConnectedAppData; now: Date; 
     [m.mcpConnector.token.facts.expires, <time dateTime={app.expiresAt}>{expired ? formatDay(expires, style) : relativeTime(expires, now, style.uiLocale)}</time>],
   ];
   return (
-    <div data-app-row={app.id} className="flex items-center gap-4 px-4 py-row-y">
+    // 640 미만은 로고 열 + 본문 열 grid다 — Disconnect가 본문 열 아래 오른쪽으로 내려간다(responsive-app A5 · 시안 AT2). 컨테이너는 `CardList`.
+    <div data-app-row={app.id} className="flex items-center gap-4 px-4 py-row-y @max-form:grid @max-form:grid-cols-[auto_minmax(0,1fr)] @max-form:gap-y-3">
       {/* 왼쪽 로고 칸은 40(`lg`)이다(2026-09-30 사용자). 만료 행도 로고는 그대로다 — 흐리게 하면 원본 색이 바뀐다. */}
       <IconTile size="lg" data-app-logo className={cn("self-start", brandPlate(app.brand))}>
         {app.brand === null ? <McpIcon /> : <BrandLogo brand={app.brand} className="size-5" />}
@@ -244,7 +245,7 @@ function AppRow({ app, now, onDisconnect }: { app: ConnectedAppData; now: Date; 
           ))}
         </dl>
       </div>
-      <Button data-app-disconnect={app.id} variant="danger" className="shrink-0" aria-label={m.mcpConnector.apps.disconnectLabel(app.name, app.ident)} onClick={onDisconnect}>
+      <Button data-app-disconnect={app.id} variant="danger" className="shrink-0 @max-form:col-start-2 @max-form:justify-self-end" aria-label={m.mcpConnector.apps.disconnectLabel(app.name, app.ident)} onClick={onDisconnect}>
         {m.mcpConnector.apps.disconnect}
       </Button>
     </div>
