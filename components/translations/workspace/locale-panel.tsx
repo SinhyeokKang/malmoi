@@ -39,11 +39,15 @@ export type DetailView = {
 export function DetailCrumb({ surfaceSlug, namespace }: { surfaceSlug: string; namespace?: string }) {
   return <>
     <FileJson2 className="size-4 shrink-0" aria-hidden />
-    <span className={cn(namespace === undefined ? "text-foreground min-w-0 truncate font-medium" : "shrink-0")}>{surfaceSlug}</span>
+    {/*
+      ⚠️ **좁으면 폴더가 먼저 줄고 3ch는 남긴다 — 그다음에 소스 이름이 준다** (#228 · 시안 `web › ch…`). flex는 줄어드는 몫을 `shrink × 기본 폭`으로 나누므로
+      폴더에 무게(`shrink-[100]`)를 실어 먼저 줄이고, 폴더가 3ch 바닥에 닿으면 남은 부족분이 소스로 간다. 소스를 `shrink-0`으로 묶었더니 es(머리가 더 좁다)에서
+      소스만으로 칸이 차 폴더·구분자가 칸 밖으로 밀려 잘렸고(clip), en에서도 3ch 바닥이 남은 폭보다 커서 말줄임표 없이 잘렸다(재실측).
+    */}
+    <span className={namespace === undefined ? "text-foreground min-w-0 truncate font-medium" : "min-w-0 truncate"}>{surfaceSlug}</span>
     {namespace !== undefined && <>
       <ChevronRight className="size-3.5 shrink-0 text-gray-dim" aria-hidden />
-      {/* 좁으면 폴더가 먼저 줄고 몇 글자는 남는다(#228 — 시안 `web › ch…`). 소스 이름은 줄지 않는다. */}
-      <span className="text-foreground min-w-[3ch] truncate font-medium">{namespace}</span>
+      <span className="text-foreground min-w-[3ch] shrink-[100] truncate font-medium">{namespace}</span>
     </>}
   </>;
 }

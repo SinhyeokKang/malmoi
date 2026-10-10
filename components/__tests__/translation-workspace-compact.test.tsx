@@ -500,11 +500,15 @@ describe("DS — 상세 머리 경로(#228) · 상세 판 검색 줄(#229)", () 
     expect(back().classList.contains("-ml-2")).toBe(false);
     const title = detailTitle();
     for (const token of ["min-w-0", "flex-1", "overflow-hidden"]) expect(title.classList.contains(token)).toBe(true);
+    // 폴더가 먼저 줄고(가중 `shrink-[100]`) 3ch 바닥에 닿으면 소스 이름이 이어서 준다 — 소스를 `shrink-0`으로 묶으면 es에서 소스만으로 칸이 차
+    // 폴더가 칸 밖(clip)으로 밀려 사라졌다(#228 재실측). 둘 다 `min-w-0`·`truncate`라 말줄임표로 끝난다. 아이콘·구분자는 줄지 않는다.
     const [source, folder] = [...title.querySelectorAll<HTMLElement>(":scope > span")];
     expect(source!.textContent).toBe("web");
-    expect(source!.classList.contains("shrink-0")).toBe(true);
+    for (const token of ["truncate", "min-w-0"]) expect(source!.classList.contains(token)).toBe(true);
+    expect(source!.classList.contains("shrink-0")).toBe(false);
     expect(folder!.textContent).toBe("common");
-    for (const token of ["truncate", "min-w-[3ch]"]) expect(folder!.classList.contains(token)).toBe(true);
+    for (const token of ["truncate", "min-w-[3ch]", "shrink-[100]"]) expect(folder!.classList.contains(token)).toBe(true);
+    for (const glyph of title.querySelectorAll("svg")) expect(glyph.classList.contains("shrink-0")).toBe(true);
     const filter = title.nextElementSibling as HTMLElement;
     for (const token of ["ml-auto", "shrink-0"]) expect(filter.classList.contains(token)).toBe(true);
   });
