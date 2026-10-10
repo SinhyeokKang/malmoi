@@ -32,6 +32,7 @@
 | D21 | `components/ui/dropdown-menu.tsx`를 R2 소유에 추가 — DropdownMenuRow 행 형을 export 상수로 꺼내 Inbox 시트 행과 공유(손 사본 0) | 지휘자 판단 — R2 질문, 시안 PT5a 행 40 |
 | D22 | Inbox 시트 첫 포커스 = 머리 닫기(Radix 기본), 시안 PT5a "첫 행 활성"과 다름 | 지휘자 판단 — 목록이 비동기라 열 때 행이 없고, 도착 뒤 포커스 이동은 POSTMORTEM 2026-09-24 "effect로 초기 포커스 경쟁" 재발(R2 리뷰 추천) |
 | D23 | Changelog 버전 제목(30)도 `lg` 미만 24로 한 단계 | 지휘자 판단 — D3·D15와 같은 "표시급 한 단계", 좁은 폭 페이지 제목 30과 위계 유지(R3 리뷰 제기) |
+| D24 | OAuth 동의 sticky CTA·scroll padding은 `lg` 미만에서만 — `lg` 이상은 R 배치 이전과 같다 | 지휘자 판단 — spec "1280은 지금 그대로", QA #221(1280 회귀) |
 | D12 | 워커는 Claude Code 패밀리만(Opus 5.5·Sonnet 5.5, effort ≤ high). Codex 교차 없음 | 지휘자 판단 — 사용자 허가 없음 |
 
 ## 배치
@@ -63,6 +64,8 @@
 - 런타임: spec 측정 판정·샘플링 규칙, 앱 1280 이상·미만의 포털 오버레이 회귀(D5로 앱 모달이 `lg` 미만 시트가 된다).
 
 ## 진행 기록
+
+**QA(2026-10-11, dev `7477173e`, 기준 비교 `3a1afe68`)**: 라이트/en 4폭 88건 · 다크/ko/es 양끝 48건 · P-01·P-05 72조합 · 오류/빈 상태 · System 테마 · 200% · 앱 모달 10종 375/1023/1280 · Tab/IME/터치 — 통과, 결함 둘: #220 소스 상세 시트 footer 375 넘침 · #221 동의 sticky가 1280에도(회귀) → R2. 가이드: accept-invitation·inbox-open은 1280 픽셀 0 차이 → SHA만 갱신, oauth-consent는 #221 뒤 재촬영. 미측정: error.tsx/global-error, 유효 signin-link challenge, 비멤버 초대 Accept, 빈 Inbox, 꺼진 Select 터치, Safari.
 
 **DS 1차(2026-10-10, dev `8748385e`)**: 불일치 7 → BugShot #213~#219. 라우팅: R2 = #213 서랍 닫힘 복귀 · #214 WideOnly 좁아짐 · #215 시트 머리 57 · #217 Inbox 트리거 ARIA · #218 계정 버튼 열림 표시(PT5b, 시안에 새로 추가된 프레임) · #219 Auth 푸터 줄 높이 / R3 = #216 랜딩 캡션 한 줄 21(R5 해제 — R3가 인수, `lg` 이상 목업 위치 회귀). 미측정: Safari, 실제 소프트 키보드, es 초대 수락 상태. ⚠️ BugShot picker·스크린샷이 ego 태스크 스페이스에서 안 된다(chrome.tabs가 대상 탭을 active로 못 봄) — 이슈에 캡처 없음, bugshot-2 이슈 미제출(사용자 판단 대기).
 
