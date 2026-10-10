@@ -1,10 +1,34 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
-import { BEZEL, CANVAS_H, CANVAS_W, TOOLBAR_H, frame as frameAt, pinnedSpan, trackHeight, typedPrefix, type Frame } from "@/lib/landing/stage";
+import { BEZEL, CANVAS_H, CANVAS_W, CHROME_GAP, TOOLBAR_H, fitScale, frame as frameAt, pinnedSpan, trackHeight, typedPrefix, type Frame } from "@/lib/landing/stage";
 
 type Five<T> = readonly [T, T, T, T, T];
+
+/** 캡션 크기는 시안 1c의 `clamp(15, 9 + 0.4375vw, 20)` — 스케일 토큰 사이 값이라 인라인으로 준다(자간은 text-base가 든다). */
+const CAPTION_SIZE = "clamp(15px, calc(9px + 0.4375vw), 20px)";
+
+/** 툴바·베젤을 컨테이너 안에 두어 바깥 윤곽까지 16:10을 유지한다. 고정 재생의 프레임과 정적 흐름의 장이 같은 껍데기를 쓴다. */
+function Bezel({ children }: { children: ReactNode }) {
+  return (
+    <>
+      <div className="absolute inset-0 rounded-3xl border border-border bg-background shadow-medium" />
+      <div data-landing-toolbar="" className="absolute inset-x-0 top-0 flex items-center gap-2 px-5" style={{ height: TOOLBAR_H }}>
+        <span className="size-3 translate-y-0.5 rounded-full border border-border" />
+        <span className="size-3 translate-y-0.5 rounded-full border border-border" />
+        <span className="size-3 translate-y-0.5 rounded-full border border-border" />
+      </div>
+      <div
+        data-landing-screen=""
+        className="absolute overflow-hidden rounded-xl border border-border-subtle bg-background"
+        style={{ top: TOOLBAR_H, right: BEZEL, bottom: BEZEL, left: BEZEL }}
+      >
+        {children}
+      </div>
+    </>
+  );
+}
 
 /**
  * 랜딩의 스크롤 구동 목업 (DESIGN §6.615).
@@ -21,6 +45,10 @@ type Five<T> = readonly [T, T, T, T, T];
  *
  * ⚠️ **SSR·JS 없음에서는 접혀 있고 프레임이 보이지 않는다** — 배율이 없으면 1440 폭 컨테이너가 패널을 넘치므로 프레임·크롬이
  * `invisible`이다. 트랙은 `data-ready`가 선 뒤에만 고정 구간 길이를 갖는다(그 전엔 패널 1개 높이 — 빈 세로 구간이 남지 않는다).
+ *
+ * ⚠️ **캡션 높이는 잰 값이다** (design §4) — 다섯 문장이 같은 grid 칸에 겹쳐 칸 높이가 가장 긴 문장이고, 좁으면 감긴다(고정 28이 아니다).
+ * `chromeRef`의 높이를 틱이 재 간격 16을 더해 `frame()`에 넘긴다. 세로가 목업 최소 표시조차 못 담으면(`pinnable` false) 고정 재생을
+ * 접고 같은 5씬을 정적 흐름으로 보인다 — 모드가 바뀔 때만 setState하고 프레임마다는 여전히 0이다.
  *
  * 씬(`scenes`)은 서버 컴포넌트가 그린 정적 DOM이다. 목업이 스크롤에 반응하는 자리는 둘뿐이다 —
  * `[data-landing-typed]`의 텍스트(타이핑 접두)와 프레임의 `data-badge`(`group-data-[badge=1]/frame:`로 읽는다).
@@ -44,7 +72,10 @@ export function Stage({
   const trackRef = useRef<HTMLElement | null>(null);
   const frameRef = useRef<HTMLDivElement | null>(null);
   const chromeRef = useRef<HTMLDivElement | null>(null);
-  const captionRef = useRef<HTMLParagraphElement | null>(null);
+  const blockRef = useRef<HTMLDivElement | null>(null);
+  const captionRefs = useRef<(HTMLParagraphElement | null)[]>([]);
+  /** 높이 부족 — 고정 재생 대신 정적 흐름. 틱이 모드가 바뀔 때만 쓴다. */
+  const [isStatic, setIsStatic] = useState(false);
   const layerRefs = useRef<(HTMLDivElement | null)[]>([]);
   const segmentRefs = useRef<(HTMLSpanElement | null)[]>([]);
 
@@ -53,8 +84,8 @@ export function Stage({
     const track = trackRef.current;
     const frameNode = frameRef.current;
     const chrome = chromeRef.current;
-    const caption = captionRef.current;
-    if (!root || !track || !frameNode || !chrome || !caption) return;
+    const block = blockRef.current;
+    if (!root || !track || !frameNode || !chrome || !block) return;
     // 셸의 스크롤러가 스테이지의 뷰포트다(`components/public-shell/scroller.tsx`). 없으면 접힌 채로 둔다.
     const scroller = root.closest<HTMLElement>("[data-public-scroller]");
     if (scroller === null) return;
@@ -65,11 +96,12 @@ export function Stage({
     let reduced = motion.matches;
     let pending = 0;
     let ready = false;
+    let staticNow = false;
     /** 직전 프레임의 H·stageTop — 리사이즈 때 재생 위치를 보존하는 데 쓴다. */
     let lastH = 0;
     let lastStageTop = 0;
     /** 같은 값을 다시 쓰지 않는다 — 루트 CSS 변수는 서브트리 전체의 스타일을 무효화한다. */
-    let written = { stageH: "", transform: "", caption: -1, typed: "" };
+    let written = { stageH: "", transform: "", caption: -1, typed: "", chromeW: -1, staticScale: -1 };
 
     /** 트랙 윗변의 스크롤러 좌표. offsetTop은 offsetParent에 매여 셸 구조가 바뀌면 조용히 틀린다. */
     const stageTopOf = () => track.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop;
@@ -100,16 +132,39 @@ export function Stage({
         const segment = segmentRefs.current[k];
         if (segment) segment.style.transform = `scaleX(${fill})`;
       });
-      if (f.caption.index !== written.caption) {
-        caption.textContent = captions[f.caption.index] ?? "";
-        written = { ...written, caption: f.caption.index };
-      }
-      caption.style.opacity = String(f.caption.opacity);
+      // 다섯 문장이 한 칸에 겹쳐 있다 — 활성만 보이고 문장 교체(t = 0.5)는 번호가 바뀔 때 한 번이다.
+      captionRefs.current.forEach((node, k) => {
+        if (!node) return;
+        const active = k === f.caption.index;
+        node.style.opacity = active ? String(f.caption.opacity) : "0";
+        node.dataset.active = active ? "1" : "0";
+      });
       const text = typedPrefix(typed, f.typed);
       if (text !== written.typed) {
         for (const node of typedNodes) node.textContent = text;
         written = { ...written, typed: text };
       }
+    };
+
+    const enterStatic = (scale: number) => {
+      if (!staticNow) {
+        staticNow = true;
+        ready = false;
+        track.removeAttribute("data-ready");
+        track.setAttribute("data-static", "");
+        setIsStatic(true);
+      }
+      if (scale !== written.staticScale) {
+        root.style.setProperty("--landing-static-scale", String(scale));
+        written = { ...written, staticScale: scale };
+      }
+    };
+
+    const leaveStatic = () => {
+      if (!staticNow) return;
+      staticNow = false;
+      track.removeAttribute("data-static");
+      setIsStatic(false);
     };
 
     /**
@@ -123,6 +178,21 @@ export function Stage({
       pending = 0;
       const W = scroller.clientWidth;
       const H = scroller.clientHeight;
+      // ⚠️ 최대 폭을 **재기 전에** 쓴다 — 감긴 높이는 이 폭 기준이다. 폭은 chromeHeight와 무관하다(순환 없음).
+      const chromeW = fitScale({ W, H, chromeHeight: 0 }).chromeW;
+      if (chromeW !== written.chromeW) {
+        block.style.maxWidth = `${chromeW}px`;
+        written = { ...written, chromeW };
+      }
+      const chromeHeight = CHROME_GAP + chrome.getBoundingClientRect().height;
+      const fit = fitScale({ W, H, chromeHeight });
+      if (!fit.pinnable) {
+        // 정적 흐름은 폭이 정한 배율이다 — 세로로 줄이지 않는다(장마다 자기 높이를 갖는다).
+        enterStatic(fit.chromeW / CANVAS_W);
+        lastH = 0;
+        return;
+      }
+      leaveStatic();
       if (ready && lastH > 0 && H !== lastH) {
         const u = (scroller.scrollTop - lastStageTop) / lastH;
         setStageH(H);
@@ -130,7 +200,7 @@ export function Stage({
       }
       setStageH(H);
       const stageTop = stageTopOf();
-      paint(frameAt({ scrollTop: scroller.scrollTop, stageTop, W, H, reducedMotion: reduced }));
+      paint(frameAt({ scrollTop: scroller.scrollTop, stageTop, W, H, chromeHeight, reducedMotion: reduced }));
       lastH = H;
       lastStageTop = stageTop;
       if (!ready) {
@@ -153,6 +223,8 @@ export function Stage({
     motion.addEventListener("change", onMotion);
     const observer = new ResizeObserver(schedule);
     observer.observe(scroller);
+    // 폰트·언어·폭으로 캡션 줄 수가 바뀌면 같은 관측이 받는다.
+    observer.observe(chrome);
     // 웹폰트가 들어오면 히어로 높이(= stageTop)가 바뀐다 — 스크롤 없이도 한 번 다시 그린다.
     void document.fonts?.ready.then(schedule);
     schedule();
@@ -167,20 +239,28 @@ export function Stage({
     };
   }, [captions, typed]);
 
+  // 정적 흐름의 장 — 씬 ②는 다 쳐진 채다(고정 재생의 끝 상태). 씬 ① 이전엔 비어 있다.
+  useEffect(() => {
+    if (!isStatic) return;
+    rootRef.current?.querySelectorAll<HTMLElement>("[data-landing-static] figure").forEach((figure, k) => {
+      for (const node of figure.querySelectorAll<HTMLElement>("[data-landing-typed]")) node.textContent = k >= 1 ? typed : "";
+    });
+  }, [isStatic, typed]);
+
   return (
     <div ref={rootRef} data-landing-root="">
       <section
         ref={trackRef}
         aria-label={label}
-        className="group/track relative mt-30 h-[var(--landing-stage-h,calc(100svh-98px))] data-[ready]:h-[var(--landing-track-h)]"
+        className="group/track relative mt-16 h-[var(--landing-stage-h,calc(100svh-98px))] data-[ready]:h-[var(--landing-track-h)] data-[static]:h-auto lg:mt-30"
       >
         <ol className="sr-only">
           {captions.map((text) => (
             <li key={text}>{text}</li>
           ))}
         </ol>
-        {/* `98px` = 공개 셸의 윗 여백 6 · 헤더 44 + 6 · 푸터 40 · 패널 테두리 2(`public-shell.tsx` — 2026-10-04 D8 뒤에도 합은 같다) — 셸 치수가 바뀌면 트랙과 함께 고친다. JS 전 폴백일 뿐이고 준비 뒤엔 `--landing-stage-h`가 잰 값이다. */}
-        <div className="pointer-events-none sticky top-0 h-[var(--landing-stage-h,calc(100svh-98px))]">
+        {/* `98px` = 공개 셸의 윗 여백 6 · 헤더 44 + 6 · 푸터 40 · 패널 테두리 2(`public-shell.tsx` — 2026-10-04 D8 뒤에도 합은 같다) — 셸 치수가 바뀌면 트랙과 함께 고친다. JS 전 폴백일 뿐이고 준비 뒤엔 `--landing-stage-h`가 잰 값이다. 정적 흐름에서는 흐름 밖(`absolute`)에서 `invisible`로 남아 캡션 높이를 계속 잰다. */}
+        <div className="pointer-events-none sticky top-0 h-[var(--landing-stage-h,calc(100svh-98px))] group-data-[static]/track:absolute group-data-[static]/track:inset-x-0">
           <div
             ref={frameRef}
             data-landing-frame=""
@@ -189,18 +269,7 @@ export function Stage({
             className="group/frame invisible absolute top-0 left-0 origin-top-left group-data-[ready]/track:visible"
             style={{ width: CANVAS_W, height: CANVAS_H }}
           >
-            {/* 툴바·베젤을 컨테이너 안에 두어 바깥 윤곽까지 16:10을 유지한다. */}
-            <div className="absolute inset-0 rounded-3xl border border-border bg-background shadow-medium" />
-            <div data-landing-toolbar="" className="absolute inset-x-0 top-0 flex items-center gap-2 px-5" style={{ height: TOOLBAR_H }}>
-              <span className="size-3 translate-y-0.5 rounded-full border border-border" />
-              <span className="size-3 translate-y-0.5 rounded-full border border-border" />
-              <span className="size-3 translate-y-0.5 rounded-full border border-border" />
-            </div>
-            <div
-              data-landing-screen=""
-              className="absolute overflow-hidden rounded-xl border border-border-subtle bg-background"
-              style={{ top: TOOLBAR_H, right: BEZEL, bottom: BEZEL, left: BEZEL }}
-            >
+            <Bezel>
               {scenes.map((scene, k) => (
                 <div
                   key={k}
@@ -213,36 +282,80 @@ export function Stage({
                   {scene}
                 </div>
               ))}
-            </div>
+            </Bezel>
           </div>
-          <div ref={chromeRef} aria-hidden="true" className="invisible absolute inset-x-0 top-0 flex h-7 items-center justify-center gap-4 group-data-[ready]/track:visible">
-            <div className="flex gap-1.5">
-              {captions.map((text, k) => (
-                <span key={text} className="block h-[3px] w-6 overflow-hidden rounded-full bg-foreground/10">
-                  <span
+          {/* 측정 전엔 정상 흐름(`relative`)이라 겹칠 일이 없고, 준비 뒤에 계산한 윗변(`chromeY`)으로 겹쳐 선다. */}
+          <div
+            ref={chromeRef}
+            data-landing-chrome=""
+            aria-hidden="true"
+            className="invisible relative inset-x-0 top-0 group-data-[ready]/track:visible group-data-[ready]/track:absolute"
+          >
+            {/* 진행 다섯 칸과 캡션을 한 flex-wrap에 — 한 줄이 안 되면 감긴다. 최대 폭은 틱이 프레임 폭으로 쓴다. */}
+            <div ref={blockRef} data-landing-chrome-block="" className="mx-auto flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+              <div className="flex gap-1.5">
+                {captions.map((text, k) => (
+                  <span key={text} className="block h-[3px] w-6 overflow-hidden rounded-full bg-foreground/10">
+                    <span
+                      ref={(node) => {
+                        segmentRefs.current[k] = node;
+                      }}
+                      data-landing-segment={k}
+                      className="block h-[3px] origin-left bg-foreground"
+                      // ⚠️ 초깃값도 인라인 transform이다 — `scale-x-0` 유틸은 v4에서 개별 `scale` 속성이라 틱이 쓰는 transform과 곱해져
+                      // 채움이 늘 0이었다(#111).
+                      style={{ transform: "scaleX(0)" }}
+                    />
+                  </span>
+                ))}
+              </div>
+              {/* 다섯 문장이 같은 칸에 겹친다 — 칸 높이가 가장 긴 문장이라 씬마다 예산이 출렁이지 않는다. */}
+              <div className="grid text-center">
+                {captions.map((text, k) => (
+                  <p
+                    key={text}
                     ref={(node) => {
-                      segmentRefs.current[k] = node;
+                      captionRefs.current[k] = node;
                     }}
-                    data-landing-segment={k}
-                    className="block h-[3px] origin-left bg-foreground"
-                    // ⚠️ 초깃값도 인라인 transform이다 — `scale-x-0` 유틸은 v4에서 개별 `scale` 속성이라 틱이 쓰는 transform과 곱해져
-                    // 채움이 늘 0이었다(#111).
-                    style={{ transform: "scaleX(0)" }}
-                  />
-                </span>
-              ))}
+                    data-landing-caption={k}
+                    data-active={k === 0 ? "1" : "0"}
+                    className="col-start-1 row-start-1 m-0 text-base leading-[1.4] text-balance"
+                    style={{ fontSize: CAPTION_SIZE, opacity: k === 0 ? 1 : 0 }}
+                  >
+                    {text}
+                  </p>
+                ))}
+              </div>
             </div>
-            {/* 캡션 크기는 시안 1c의 `clamp(15, 9 + 0.4375vw, 20)` — 스케일 토큰 사이 값이라 인라인으로 준다(자간은 text-base가 든다). */}
-            <p
-              ref={captionRef}
-              data-landing-caption=""
-              className="m-0 text-base leading-[1.4] whitespace-nowrap"
-              style={{ fontSize: "clamp(15px, calc(9px + 0.4375vw), 20px)" }}
-            >
-              {captions[0]}
-            </p>
           </div>
         </div>
+        {isStatic && (
+          // 높이 부족 — 같은 5씬을 위에서 아래로 한 장씩. 배율은 폭이 정한 CSS 변수 하나이고 캡션이 장 아래에 선다.
+          <div data-landing-static="" className="flex flex-col items-center gap-12 px-8">
+            {scenes.map((scene, k) => (
+              <figure key={k} aria-hidden="true" className="m-0 flex flex-col items-center gap-4">
+                <div
+                  className="relative"
+                  style={{ width: `calc(${CANVAS_W}px * var(--landing-static-scale, 0))`, height: `calc(${CANVAS_H}px * var(--landing-static-scale, 0))` }}
+                >
+                  <div
+                    inert
+                    data-badge={k >= 2 ? "1" : "0"}
+                    className="group/frame absolute top-0 left-0 origin-top-left"
+                    style={{ width: CANVAS_W, height: CANVAS_H, transform: "scale(var(--landing-static-scale, 0))" }}
+                  >
+                    <Bezel>
+                      <div className="absolute inset-0">{scene}</div>
+                    </Bezel>
+                  </div>
+                </div>
+                <figcaption className="m-0 text-center text-balance" style={{ fontSize: CAPTION_SIZE, lineHeight: 1.4, maxWidth: `calc(${CANVAS_W}px * var(--landing-static-scale, 0))` }}>
+                  {captions[k]}
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+        )}
       </section>
       {closing}
     </div>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { BEZEL, CANVAS_H, CANVAS_W, PLAY, fitScale, frame, pinnedSpan, sceneAt, trackHeight, typedPrefix } from "@/lib/landing/stage";
+import { BEZEL, CANVAS_H, CANVAS_W, CHROME_GAP, MIN_PINNED_SCALE, PLAY, fitScale, frame, pinnedSpan, sceneAt, trackHeight, typedPrefix } from "@/lib/landing/stage";
 
 /**
  * 랜딩 스테이지의 수학 (DESIGN §6.615).
@@ -8,6 +8,11 @@ import { BEZEL, CANVAS_H, CANVAS_W, PLAY, fitScale, frame, pinnedSpan, sceneAt, 
  * **스크롤 위치 하나가 씬을 몬다** — 같은 위치면 언제나 같은 프레임이어야 역방향 스크럽이 성립한다.
  * **배율·위치는 스크롤과 무관하다**(2026-09-27 사용자 — 스크롤 구동 확대를 걷었다). 크기만이 그것을 정한다.
  */
+
+/** 캡션 한 줄 — 간격 16 + 줄 28. 한 줄에 드는 폭(≥ 약 770)의 chromeHeight다. */
+const ONE_LINE = CHROME_GAP + 28;
+/** 375 폭 시안(PT6a) — 진행 3 + 8 + 캡션 21 × 2 줄에 간격 16. */
+const TWO_LINES = CHROME_GAP + 3 + 8 + 21 * 2;
 
 /** 스크롤러 W×H(= 뷰포트 − 공개 셸 가로 18 · 세로 98). */
 const VIEWPORTS = [
@@ -26,43 +31,123 @@ describe("캔버스", () => {
 
 describe("fitScale — 크기만이 배율을 정한다", () => {
   it.each(VIEWPORTS)("$name → $scale", ({ W, H, scale }) => {
-    expect(fitScale({ W, H }).scale).toBeCloseTo(scale, 4);
+    expect(fitScale({ W, H, chromeHeight: ONE_LINE }).scale).toBeCloseTo(scale, 4);
   });
 
   it("배율은 1을 넘지 않는다 — 캔버스 안은 실제 앱 px다", () => {
-    expect(fitScale({ W: 4000, H: 3000 }).scale).toBe(1);
+    expect(fitScale({ W: 4000, H: 3000, chromeHeight: ONE_LINE }).scale).toBe(1);
   });
 
   it("좌우 여백은 clamp(24, 4%·W, 64)다", () => {
-    expect(fitScale({ W: 500, H: 2000 }).side).toBe(24);
-    expect(fitScale({ W: 1422, H: 802 }).side).toBeCloseTo(56.88, 5);
-    expect(fitScale({ W: 1902, H: 982 }).side).toBe(64);
+    expect(fitScale({ W: 500, H: 2000, chromeHeight: ONE_LINE }).side).toBe(24);
+    expect(fitScale({ W: 1422, H: 802, chromeHeight: ONE_LINE }).side).toBeCloseTo(56.88, 5);
+    expect(fitScale({ W: 1902, H: 982, chromeHeight: ONE_LINE }).side).toBe(64);
   });
 
   /** 세로가 모자라면 폭이 아니라 세로가 배율을 정한다 — 고정 재생 동안 목업이 뷰포트를 넘으면 아래가 잘린다. */
-  it("폭이 넉넉해도 베젤 + 캔버스 + 캡션 줄이 세로에 들어간다", () => {
-    for (const { W, H } of [...VIEWPORTS, { W: 2542, H: 600 }]) {
-      const f = fitScale({ W, H });
-      const top = f.y;
-      const bottom = f.chromeY + 28;
-      expect(top).toBeGreaterThanOrEqual(0);
-      expect(bottom).toBeLessThanOrEqual(H + 1e-9);
+  it.each([ONE_LINE, TWO_LINES, CHROME_GAP + 120])("폭이 넉넉해도 베젤 + 캔버스 + 캡션 블록(chromeHeight %d)이 세로에 들어간다", (chromeHeight) => {
+    for (const { W, H } of [...VIEWPORTS, { W: 2542, H: 600 }, { W: 357, H: 569 }]) {
+      const f = fitScale({ W, H, chromeHeight });
+      expect(f.y).toBeGreaterThanOrEqual(0);
+      expect(f.chromeY + (chromeHeight - CHROME_GAP)).toBeLessThanOrEqual(H + 1e-9);
       expect(f.x).toBeGreaterThanOrEqual(f.side - 1e-9);
     }
   });
 
-  it("가로 가운데 · 베젤과 캡션 줄을 합친 블록이 세로 가운데다", () => {
-    const { scale, x, y, chromeY } = fitScale({ W: 1902, H: 982 });
+  it("가로 가운데 · 베젤과 캡션 블록을 합친 덩어리가 세로 가운데다", () => {
+    const { scale, x, y, chromeY } = fitScale({ W: 1902, H: 982, chromeHeight: TWO_LINES });
     expect(x).toBeCloseTo((1902 - CANVAS_W * scale) / 2, 10);
-    const top = y;
-    const bottom = chromeY + 28;
-    expect(top).toBeCloseTo(982 - bottom, 10);
-    // 캡션 줄은 베젤 아래 16이다.
-    expect(chromeY).toBeCloseTo(y + CANVAS_H * scale + 16, 10);
+    // 위 여백 = 아래 여백: y = (H − 900s − chromeHeight) / 2.
+    expect(y).toBeCloseTo((982 - CANVAS_H * scale - TWO_LINES) / 2, 10);
+    expect(982 - (chromeY + TWO_LINES - CHROME_GAP)).toBeCloseTo(y, 10);
+    // 캡션 블록은 베젤 아래 간격 16에서 시작한다 — 간격은 chromeHeight에 이미 들어 있다.
+    expect(chromeY).toBeCloseTo(y + CANVAS_H * scale + CHROME_GAP, 10);
+  });
+
+  /** 캡션이 여러 줄이면 세로 예산이 줄어 배율이 작아진다 — 높이가 입력이라는 것의 직접 증거다. */
+  it("세로가 배율을 정하는 구간에서 chromeHeight가 커지면 배율이 정확히 그만큼 줄어든다", () => {
+    const W = 2542;
+    const H = 600;
+    const one = fitScale({ W, H, chromeHeight: ONE_LINE });
+    const two = fitScale({ W, H, chromeHeight: TWO_LINES });
+    expect(two.scale).toBeLessThan(one.scale);
+    expect(one.scale).toBeCloseTo((H - 2 * 16 - ONE_LINE) / CANVAS_H, 10);
+    expect(two.scale).toBeCloseTo((H - 2 * 16 - TWO_LINES) / CANVAS_H, 10);
+  });
+
+  it("폭이 배율을 정하는 구간에서는 chromeHeight가 배율을 바꾸지 않는다", () => {
+    const a = fitScale({ W: 357, H: 2000, chromeHeight: ONE_LINE });
+    const b = fitScale({ W: 357, H: 2000, chromeHeight: TWO_LINES });
+    expect(a.scale).toBe(b.scale);
+    expect(a.scale).toBeCloseTo((357 - 48) / CANVAS_W, 10);
   });
 
   it("패널이 여백보다 작으면 배율은 0이다 — 음수 배율이 거울상을 그리지 않는다", () => {
-    expect(fitScale({ W: 40, H: 40 }).scale).toBe(0);
+    expect(fitScale({ W: 40, H: 40, chromeHeight: ONE_LINE }).scale).toBe(0);
+  });
+
+  it("높이가 캡션 블록도 못 담으면 배율은 0이다", () => {
+    expect(fitScale({ W: 1422, H: 60, chromeHeight: TWO_LINES }).scale).toBe(0);
+  });
+
+  /** 0이거나 비정상인 치수는 NaN·Infinity·음수를 DOM에 쓰지 않는다 — transform 문자열이 통째로 무효가 된다. */
+  it.each([
+    { name: "W 0", W: 0, H: 800, chromeHeight: ONE_LINE },
+    { name: "H 0", W: 1200, H: 0, chromeHeight: ONE_LINE },
+    { name: "chromeHeight 0", W: 1200, H: 800, chromeHeight: 0 },
+    { name: "W NaN", W: Number.NaN, H: 800, chromeHeight: ONE_LINE },
+    { name: "H NaN", W: 1200, H: Number.NaN, chromeHeight: ONE_LINE },
+    { name: "chromeHeight NaN", W: 1200, H: 800, chromeHeight: Number.NaN },
+    { name: "chromeHeight Infinity", W: 1200, H: 800, chromeHeight: Number.POSITIVE_INFINITY },
+    { name: "chromeHeight 음수", W: 1200, H: 800, chromeHeight: -50 },
+    { name: "W 음수", W: -300, H: 800, chromeHeight: ONE_LINE },
+    { name: "W Infinity", W: Number.POSITIVE_INFINITY, H: 800, chromeHeight: ONE_LINE },
+  ])("$name → 모든 값이 유한하고 배율은 0..1이다", (input) => {
+    const f = fitScale(input);
+    for (const value of [f.scale, f.x, f.y, f.chromeY, f.side, f.chromeW]) expect(Number.isFinite(value)).toBe(true);
+    expect(f.scale).toBeGreaterThanOrEqual(0);
+    expect(f.scale).toBeLessThanOrEqual(1);
+  });
+
+  it("같은 입력은 늘 같은 값이다", () => {
+    const input = { W: 357, H: 569, chromeHeight: TWO_LINES };
+    expect(fitScale(input)).toEqual(fitScale({ ...input }));
+  });
+
+  describe("캡션 폭 — 프레임 폭(= 폭만으로 정한 배율의 1440)이 상한이다", () => {
+    it("폭이 정한다 — 높이로 배율이 줄어도 캡션 상한은 같다", () => {
+      const tall = fitScale({ W: 357, H: 2000, chromeHeight: TWO_LINES });
+      const short = fitScale({ W: 357, H: 300, chromeHeight: TWO_LINES });
+      expect(tall.chromeW).toBeCloseTo(357 - 48, 10);
+      expect(short.chromeW).toBe(tall.chromeW);
+    });
+
+    it("1440을 넘지 않는다", () => {
+      expect(fitScale({ W: 4000, H: 3000, chromeHeight: ONE_LINE }).chromeW).toBe(CANVAS_W);
+    });
+  });
+
+  /** 높이 부족 — 고정 재생 대신 같은 5씬을 정적으로 보인다. 판정은 세로가 정한 배율만 본다(좁은 폭은 정적이어도 같은 배율이다). */
+  describe("pinnable — 고정 재생이 가능한가", () => {
+    it.each(VIEWPORTS)("$name은 고정 재생이다", ({ W, H }) => {
+      expect(fitScale({ W, H, chromeHeight: ONE_LINE }).pinnable).toBe(true);
+    });
+
+    it("375×812(캡션 두 줄)도 고정 재생이다 — 좁은 폭만으로는 정적이 되지 않는다", () => {
+      expect(fitScale({ W: 357, H: 714, chromeHeight: TWO_LINES }).pinnable).toBe(true);
+    });
+
+    it("세로가 정한 배율이 하한 아래면 정적이다 — 높이가 같아도 chromeHeight가 커지면 넘어간다", () => {
+      const W = 2542;
+      const H = 32 + ONE_LINE + CANVAS_H * MIN_PINNED_SCALE + 32;
+      expect(fitScale({ W, H, chromeHeight: ONE_LINE }).pinnable).toBe(true);
+      expect(fitScale({ W, H, chromeHeight: CHROME_GAP + 100 }).pinnable).toBe(false);
+    });
+
+    it("0·비정상 치수는 정적이다 — 그릴 것이 없다", () => {
+      expect(fitScale({ W: 1200, H: 0, chromeHeight: ONE_LINE }).pinnable).toBe(false);
+      expect(fitScale({ W: 1200, H: Number.NaN, chromeHeight: ONE_LINE }).pinnable).toBe(false);
+    });
   });
 });
 
@@ -149,16 +234,55 @@ describe("frame — 한 스크롤 위치에 한 프레임", () => {
   const W = 1422;
   const H = 802;
   const stageTop = 420;
-  const fit = fitScale({ W, H });
-  const at = (scrollTop: number, reducedMotion = false) => frame({ scrollTop, stageTop, W, H, reducedMotion });
+  const chromeHeight = TWO_LINES;
+  const fit = fitScale({ W, H, chromeHeight });
+  const at = (scrollTop: number, reducedMotion = false, height = chromeHeight) =>
+    frame({ scrollTop, stageTop, W, H, chromeHeight: height, reducedMotion });
   const pinned = (q: number) => stageTop + q * H;
 
   /** 스크롤 구동 확대가 없다 — 올라오는 중에도, 고정 중에도, 끝에서도 같은 배율·같은 위치다. */
   it("배율·위치가 스크롤 위치와 무관하다", () => {
     for (const top of [0, stageTop / 2, stageTop, pinned(2.5), pinned(99)]) {
       const f = at(top);
-      expect([f.scale, f.x, f.y, f.chromeY]).toEqual([fit.scale, fit.x, fit.y, fit.chromeY]);
+      expect([f.scale, f.x, f.y, f.chromeY, f.chromeW]).toEqual([fit.scale, fit.x, fit.y, fit.chromeY, fit.chromeW]);
     }
+  });
+
+  /** 캡션 높이는 배치만 바꾼다 — 씬·진행·캡션 번호는 스크롤 위치의 함수로 남는다. */
+  it("chromeHeight는 배치만 바꾸고 씬·캡션·진행은 바꾸지 않는다", () => {
+    for (const top of [0, pinned(0.85), pinned(1.3), pinned(2.4), pinned(99)]) {
+      const { scale, x, y, chromeY, chromeW, ...rest } = at(top, false, ONE_LINE);
+      const { scale: s2, x: x2, y: y2, chromeY: c2, chromeW: w2, ...rest2 } = at(top, false, CHROME_GAP + 140);
+      expect(rest).toEqual(rest2);
+      expect(chromeW).toBe(w2);
+      expect([scale, x, y, chromeY]).not.toEqual([s2, x2, y2, c2]);
+    }
+  });
+
+  it("frame의 배치는 fitScale과 같다 — 식이 두 벌이 아니다", () => {
+    const f = at(pinned(1.3), false, ONE_LINE);
+    expect({ scale: f.scale, x: f.x, y: f.y, chromeY: f.chromeY, chromeW: f.chromeW, pinnable: f.pinnable }).toEqual({
+      scale: fitScale({ W, H, chromeHeight: ONE_LINE }).scale,
+      x: fitScale({ W, H, chromeHeight: ONE_LINE }).x,
+      y: fitScale({ W, H, chromeHeight: ONE_LINE }).y,
+      chromeY: fitScale({ W, H, chromeHeight: ONE_LINE }).chromeY,
+      chromeW: fitScale({ W, H, chromeHeight: ONE_LINE }).chromeW,
+      pinnable: fitScale({ W, H, chromeHeight: ONE_LINE }).pinnable,
+    });
+  });
+
+  it("비정상 치수에서도 프레임 값이 유한하다", () => {
+    const f = frame({ scrollTop: 0, stageTop: 0, W: 0, H: 0, chromeHeight: Number.NaN, reducedMotion: false });
+    for (const value of [f.scale, f.x, f.y, f.chromeY, f.chromeW]) expect(Number.isFinite(value)).toBe(true);
+    expect(f.layers).toEqual([1, 0, 0, 0, 0]);
+  });
+
+  /** 역방향 스크럽 — 올렸다 내리면 모든 프레임 값이 같다(이전 프레임·방향을 입력으로 받지 않는다). */
+  it("정방향과 역방향이 같은 위치에서 같은 프레임이다", () => {
+    const qs = [0, 0.3, 0.7, 0.85, 1.3, 2.4, 3.9, 4.99, 6];
+    const forward = qs.map((q) => at(pinned(q)));
+    const backward = [...qs].reverse().map((q) => at(pinned(q))).reverse();
+    expect(backward).toEqual(forward);
   });
 
   it("모션 감소도 같은 배율·위치다 — 움직이는 것이 원래 없다", () => {

@@ -21,9 +21,16 @@ export const CANVAS_H = 900;
 export const BEZEL = 8;
 /** 컨테이너 상단 macOS 스타일 툴바. */
 export const TOOLBAR_H = 44;
-/** 베젤 아래 캡션 줄(간격 16 + 줄 28). 세로 예산에서 먼저 빠져야 캡션이 뷰포트 밖으로 안 나간다. */
-const CHROME_GAP = 16;
-const CHROME_H = CHROME_GAP + 28;
+/**
+ * 베젤과 캡션 블록 사이 간격. ⚠️ **`chromeHeight`가 이 간격을 이미 품는다** — 호출부는 잰 블록 높이에 이 값을 더해 넘긴다.
+ * 캡션 높이는 고정 상수가 아니다(좁으면 감겨 여러 줄이고 언어마다 다르다) — 그래서 `fitScale`·`frame`이 **필수 입력**으로 받는다.
+ */
+export const CHROME_GAP = 16;
+/**
+ * 세로가 정한 배율의 하한 — 아래면 고정 재생 대신 같은 5씬을 정적 흐름으로 보인다(`Fit.pinnable`).
+ * 375 폭의 폭 배율(0.215)보다 살짝 낮게 잡아, 폰 가로(667×375 → 0.223)는 고정으로 남고 훨씬 낮은 창만 정적이 된다.
+ */
+export const MIN_PINNED_SCALE = 0.2;
 /** 씬마다 정지 0.6 / 전환 0.4. */
 const HOLD = 0.6;
 const SCENES = 5;
@@ -37,6 +44,8 @@ const SCENES = 5;
 export const PLAY = { lead: 0, perScene: 1 } as const;
 
 const clamp = (lo: number, v: number, hi: number): number => Math.min(hi, Math.max(lo, v));
+/** 0·NaN·±Infinity·음수는 0이다 — 치수가 비정상이어도 NaN이 transform 문자열에 실리지 않는다. */
+const dim = (v: number): number => (Number.isFinite(v) && v > 0 ? v : 0);
 const ease = (t: number): number => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
 
 export type Fit = {
@@ -44,23 +53,41 @@ export type Fit = {
   /** 컨테이너 왼쪽 위의 스크롤러 좌표 */
   x: number;
   y: number;
-  /** 캡션 줄 윗변 */
+  /** 캡션 블록 윗변 */
   chromeY: number;
   /** 좌우 여백 */
   side: number;
+  /** 캡션 블록의 최대 폭 — 프레임 폭(폭만으로 정한 배율의 1440). 세로 배율로 줄이지 않는다(캡션 높이와 순환하지 않게). */
+  chromeW: number;
+  /** 세로가 정한 배율이 `MIN_PINNED_SCALE` 이상인가 — 아니면 고정 재생 대신 정적 흐름이다. */
+  pinnable: boolean;
 };
 
 /**
- * `W·H`는 스크롤러의 clientWidth/Height다. 배율은 **폭이 정하고 1을 넘지 않는다** — 1440 창에서 ≈0.9(공개 셸·여백만큼 작다).
+ * `W·H`는 스크롤러의 clientWidth/Height, `chromeHeight`는 **잰** 캡션 블록 높이(베젤과의 간격 16 포함)다.
+ * 배율은 **폭이 정하고 1을 넘지 않는다** — 1440 창에서 ≈0.9(공개 셸·여백만큼 작다).
  * 세로가 모자라면 세로가 정한다: 고정 재생 동안 스테이지가 뷰포트를 가지므로 넘치면 목업 아래가 잘린다.
  */
-export function fitScale({ W, H }: { W: number; H: number }): Fit {
-  const side = clamp(24, 0.04 * W, 64);
-  const v = clamp(16, 0.02 * H, 32);
-  // 패널이 여백보다 작으면 음수 배율이 거울상을 그린다 — 0으로 묶는다.
-  const scale = Math.max(0, Math.min((W - 2 * side) / CANVAS_W, (H - 2 * v - CHROME_H) / CANVAS_H, 1));
-  const y = (H - CANVAS_H * scale - CHROME_H) / 2;
-  return { scale, x: (W - CANVAS_W * scale) / 2, y, chromeY: y + CANVAS_H * scale + CHROME_GAP, side };
+export function fitScale({ W, H, chromeHeight }: { W: number; H: number; chromeHeight: number }): Fit {
+  const w = dim(W);
+  const h = dim(H);
+  const chrome = dim(chromeHeight);
+  const side = clamp(24, 0.04 * w, 64);
+  const v = clamp(16, 0.02 * h, 32);
+  const byWidth = Math.max(0, (w - 2 * side) / CANVAS_W);
+  // 패널이 여백·캡션보다 작으면 음수 배율이 거울상을 그린다 — 0으로 묶는다.
+  const byHeight = Math.max(0, (h - 2 * v - chrome) / CANVAS_H);
+  const scale = Math.min(byWidth, byHeight, 1);
+  const y = (h - CANVAS_H * scale - chrome) / 2;
+  return {
+    scale,
+    x: (w - CANVAS_W * scale) / 2,
+    y,
+    chromeY: y + CANVAS_H * scale + CHROME_GAP,
+    side,
+    chromeW: Math.min(byWidth, 1) * CANVAS_W,
+    pinnable: byHeight >= MIN_PINNED_SCALE,
+  };
 }
 
 /** 고정 구간 길이(H 단위). 씬 ⑤의 정지는 이 구간 끝까지다 — 고정이 풀릴 때 재생이 끝나 있다. */
@@ -112,6 +139,8 @@ export type Frame = {
   x: number;
   y: number;
   chromeY: number;
+  chromeW: number;
+  pinnable: boolean;
   scene: { i: number; t: number; h: number };
   /** 레이어 opacity 0..1 */
   layers: Five;
@@ -128,10 +157,12 @@ export function frame(input: {
   stageTop: number;
   W: number;
   H: number;
+  /** 잰 캡션 블록 높이(간격 16 포함) — `fitScale`을 보라. */
+  chromeHeight: number;
   reducedMotion: boolean;
 }): Frame {
-  const { scrollTop, stageTop, W, H, reducedMotion: reduced } = input;
-  const { scale, x, y, chromeY } = fitScale({ W, H });
+  const { scrollTop, stageTop, W, H, chromeHeight, reducedMotion: reduced } = input;
+  const { scale, x, y, chromeY, chromeW, pinnable } = fitScale({ W, H, chromeHeight });
 
   const { i, t: rawT, h } = sceneAt(scrollTop, stageTop, H);
   // 모션 감소는 전환 한가운데(f = 0.8)에서 끊어 바꾼다 — 스크롤 길이는 그대로다.
@@ -144,6 +175,8 @@ export function frame(input: {
     x,
     y,
     chromeY,
+    chromeW,
+    pinnable,
     scene: { i, t, h },
     layers: five((k) => (k === i ? 1 - te : k === i + 1 ? te : 0)),
     segments: five((k) => (k <= i ? 1 : k === i + 1 ? te : 0)),

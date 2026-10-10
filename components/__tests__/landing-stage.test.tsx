@@ -1,10 +1,13 @@
 // @vitest-environment jsdom
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { act, Profiler } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Stage } from "@/components/landing/stage";
-import { frame, trackHeight, typedPrefix } from "@/lib/landing/stage";
+import { CHROME_GAP, frame, trackHeight, typedPrefix } from "@/lib/landing/stage";
 
 import { find, render } from "./helpers/dom";
 
@@ -20,6 +23,8 @@ const W = 1422;
 const H = 802;
 const STAGE_TOP = 420;
 const CAPTIONS = ["One.", "Two.", "Three.", "Four.", "Five."] as const;
+/** 스텁이 돌려주는 캡션 블록 높이 — jsdom은 0이라 숫자를 심어야 `chromeHeight` 전달이 보인다. 간격 16은 스테이지가 더한다. */
+const CHROME = 53;
 const TYPED = "Enregistrer";
 
 let queue: FrameRequestCallback[] = [];
@@ -69,12 +74,13 @@ async function flush() {
 }
 
 /** 스크롤러의 크기·위치를 jsdom에 심는다 — 트랙 윗변은 `STAGE_TOP − scrollTop`에 있다. */
-function geometry(scroller: HTMLElement, size: { w: number; h: number }) {
+function geometry(scroller: HTMLElement, size: { w: number; h: number; chrome: number }) {
   Object.defineProperty(scroller, "clientWidth", { configurable: true, get: () => size.w });
   Object.defineProperty(scroller, "clientHeight", { configurable: true, get: () => size.h });
   const track = find<HTMLElement>(scroller, "section");
   track.getBoundingClientRect = () => ({ top: STAGE_TOP - scroller.scrollTop }) as DOMRect;
   scroller.getBoundingClientRect = () => ({ top: 0 }) as DOMRect;
+  find<HTMLElement>(scroller, "[data-landing-chrome]").getBoundingClientRect = () => ({ top: 0, height: size.chrome }) as DOMRect;
 }
 
 const scene = () => <div><span data-landing-typed="" /></div>;
@@ -95,7 +101,7 @@ async function mount(onRender?: () => void) {
   const ui = stageUi();
   const { container } = await render(onRender ? <Profiler id="stage" onRender={onRender}>{ui}</Profiler> : ui);
   const scroller = find<HTMLElement>(container, "[data-testid=scroller]");
-  const size = { w: W, h: H };
+  const size = { w: W, h: H, chrome: CHROME };
   geometry(scroller, size);
   return { container, scroller, size };
 }
@@ -115,13 +121,14 @@ function snapshot(container: HTMLElement) {
     badge: frameNode.dataset.badge,
     layers: [...container.querySelectorAll<HTMLElement>("[data-landing-layer]")].map((node) => node.style.opacity),
     segments: [...container.querySelectorAll<HTMLElement>("[data-landing-segment]")].map((node) => node.style.transform),
-    caption: find<HTMLElement>(container, "[data-landing-caption]").textContent,
+    caption: find<HTMLElement>(container, "[data-landing-caption][data-active='1']").textContent,
+    captionOpacity: find<HTMLElement>(container, "[data-landing-caption][data-active='1']").style.opacity,
     typed: [...container.querySelectorAll("[data-landing-typed]")].map((node) => node.textContent),
   };
 }
 
-const at = (scrollTop: number, reducedMotion = false, size = { W, H }) =>
-  frame({ scrollTop, stageTop: STAGE_TOP, W: size.W, H: size.H, reducedMotion });
+const at = (scrollTop: number, reducedMotion = false, size = { W, H }, chrome = CHROME) =>
+  frame({ scrollTop, stageTop: STAGE_TOP, W: size.W, H: size.H, chromeHeight: CHROME_GAP + chrome, reducedMotion });
 
 describe("Stage — 스크롤 위치가 화면을 정한다", () => {
   it("첫 rAF가 배율을 쓰고 `data-ready`를 세운다 — 그 전엔 트랙이 접혀 있고 씬 ①도 안 보인다", async () => {
@@ -281,7 +288,7 @@ describe("Stage — 크기 변화", () => {
     const root = createRoot(container);
     await act(async () => root.render(stageUi()));
     const scroller = find<HTMLElement>(container, "[data-testid=scroller]");
-    geometry(scroller, { w: W, h: H });
+    geometry(scroller, { w: W, h: H, chrome: CHROME });
     await flush();
     const remove = vi.spyOn(scroller, "removeEventListener");
     scroller.scrollTop = 50;
@@ -297,6 +304,148 @@ describe("Stage — 크기 변화", () => {
     expect(media.listeners.size).toBe(0);
     expect(observers.length).toBeGreaterThan(0);
     expect(observers.every((entry) => entry.disconnected)).toBe(true);
+  });
+});
+
+
+/**
+ * **캡션 높이는 잰 값이 `fitScale`에 들어간다** (design §4). jsdom은 레이아웃이 없어 높이가 0이므로 여기서는 스텁이 넘긴 값이
+ * 그대로 `frame()`의 `chromeHeight`(간격 16 포함)로 전달됐는지만 본다 — 줄바꿈·겹침 0은 실물(b)이 잰다.
+ */
+describe("Stage — 캡션 높이 측정", () => {
+  const transformOf = (container: HTMLElement) => find<HTMLElement>(container, "[data-landing-frame]").style.transform;
+  const expected = (f: ReturnType<typeof at>) => `translate3d(${f.x}px, ${f.y}px, 0px) scale(${f.scale})`;
+
+  it("잰 높이에 간격 16을 더해 넘긴다 — 캡션 블록 윗변도 같은 값에서 나온다", async () => {
+    const { container } = await mount();
+    await flush();
+    const f = at(0);
+    expect(transformOf(container)).toBe(expected(f));
+    expect(find<HTMLElement>(container, "[data-landing-chrome]").style.transform).toBe(`translate3d(0px, ${f.chromeY}px, 0px)`);
+  });
+
+  it("다른 높이를 재면 배치가 달라진다 — 고정 28이 아니라 입력이다", async () => {
+    // 세로가 배율을 정하는 크기에서 본다 — 폭이 정하면 높이가 배율을 안 바꾼다.
+    const { container, size } = await mount();
+    size.h = 420;
+    await flush();
+    const one = transformOf(container);
+    size.chrome = 3 + 8 + 21 * 4;
+    await act(async () => { for (const { callback } of observers) callback([], {} as ResizeObserver); });
+    await flush();
+    const four = transformOf(container);
+    expect(four).not.toBe(one);
+    expect(four).toBe(expected(at(0, false, { W, H: 420 }, size.chrome)));
+  });
+
+  it("스크롤러와 캡션 블록 둘을 관찰한다 — 폰트·언어·폭으로 줄 수가 바뀌어도 같은 관측이 받는다", async () => {
+    const observed: Element[] = [];
+    vi.stubGlobal("ResizeObserver", class {
+      constructor(_: ResizeObserverCallback) {}
+      observe(node: Element) { observed.push(node); }
+      unobserve() {}
+      disconnect() {}
+    });
+    const { container } = await mount();
+    expect(observed).toContain(find(container, "[data-testid=scroller]"));
+    expect(observed).toContain(find(container, "[data-landing-chrome]"));
+  });
+
+  it("캡션 블록의 최대 폭은 프레임 폭이다 — 측정 전에 쓰여 첫 틱이 감긴 높이를 잰다", async () => {
+    const { container } = await mount();
+    await flush();
+    expect(find<HTMLElement>(container, "[data-landing-chrome-block]").style.maxWidth).toBe(`${at(0).chromeW}px`);
+  });
+});
+
+describe("Stage — 캡션은 같은 칸에 겹친다", () => {
+  it("다섯 문장이 한 grid 칸에 겹치고 활성만 보인다 — 칸 높이는 가장 긴 문장이 정한다", async () => {
+    const { container, scroller } = await mount();
+    await flush();
+    const items = [...container.querySelectorAll<HTMLElement>("[data-landing-caption]")];
+    expect(items.map((node) => node.textContent)).toEqual([...CAPTIONS]);
+    const cell = items[0]?.parentElement;
+    expect(cell?.className.split(" ")).toContain("grid");
+    for (const node of items) {
+      expect(node.parentElement).toBe(cell);
+      expect(node.className.split(" ")).toEqual(expect.arrayContaining(["col-start-1", "row-start-1"]));
+      expect(node.className).not.toContain("whitespace-nowrap");
+    }
+    const active = () => items.filter((node) => node.dataset.active === "1").map((node) => node.textContent);
+    expect(active()).toEqual(["One."]);
+    expect(items.map((node) => node.style.opacity)).toEqual(["1", "0", "0", "0", "0"]);
+
+    await scrollTo(scroller, STAGE_TOP + 1.3 * H);
+    expect(active()).toEqual(["Two."]);
+    expect(items.map((node) => node.style.opacity)).toEqual(["0", "1", "0", "0", "0"]);
+  });
+
+  it("진행 다섯 칸과 캡션이 한 flex-wrap 안에 있다 — 가로 16 · 세로 8", async () => {
+    const { container } = await mount();
+    const block = find<HTMLElement>(container, "[data-landing-chrome-block]");
+    expect(block.className.split(" ")).toEqual(expect.arrayContaining(["flex", "flex-wrap", "justify-center", "gap-x-4", "gap-y-2"]));
+    expect(block.querySelectorAll("[data-landing-segment]")).toHaveLength(5);
+    expect(block.querySelector("[data-landing-caption]")).not.toBeNull();
+  });
+
+  it("측정 전엔 정상 흐름이고(`relative`) 준비 뒤에 겹쳐 선다(`absolute`)", async () => {
+    const { container } = await mount();
+    const chrome = find<HTMLElement>(container, "[data-landing-chrome]");
+    expect(chrome.className.split(" ")).toContain("relative");
+    expect(chrome.className).toContain("group-data-[ready]/track:absolute");
+  });
+});
+
+/**
+ * **세로가 목업 최소 표시조차 못 담으면 고정 재생을 접고 같은 5씬을 정적으로 보인다** (design §4). 판정은 `frame().pinnable`이다.
+ */
+describe("Stage — 높이 부족 정적 흐름", () => {
+  const trackOf = (container: HTMLElement) => find<HTMLElement>(container, "section[aria-label='How Malmoi works']");
+
+  it("높이가 충분하면 정적 흐름이 없다", async () => {
+    const { container } = await mount();
+    await flush();
+    expect(container.querySelector("[data-landing-static]")).toBeNull();
+    expect(trackOf(container).hasAttribute("data-static")).toBe(false);
+  });
+
+  it("높이 부족이면 5씬·5캡션이 정적으로 서고 고정 재생은 접힌다 — 돌아오면 되돌아온다", async () => {
+    const { container, scroller, size } = await mount();
+    size.chrome = 600; // (802 − 32 − 616) / 900 < 0.2
+    await flush();
+    expect(at(0, false, { W, H }, 600).pinnable).toBe(false);
+    const track = trackOf(container);
+    expect(track.hasAttribute("data-static")).toBe(true);
+    expect(track.hasAttribute("data-ready")).toBe(false);
+    const figures = [...container.querySelectorAll<HTMLElement>("[data-landing-static] figure")];
+    expect(figures).toHaveLength(5);
+    expect(figures.map((node) => node.querySelector("figcaption")?.textContent)).toEqual([...CAPTIONS]);
+    expect(figures.every((node) => node.getAttribute("aria-hidden") === "true" && node.querySelector("[inert]") !== null)).toBe(true);
+    // 정적 배율은 폭이 정한다 — CSS 변수 하나로 다섯 장이 같이 줄어든다.
+    const root = find<HTMLElement>(container, "[data-landing-root]");
+    expect(Number(root.style.getPropertyValue("--landing-static-scale"))).toBeCloseTo(at(0).chromeW / 1440, 10);
+    // 씬 ②의 타이핑은 다 쳐진 채, 씬 ③의 배지는 오른 채다.
+    expect(figures[0]?.querySelector("[data-landing-typed]")?.textContent).toBe("");
+    expect(figures[1]?.querySelector("[data-landing-typed]")?.textContent).toBe(TYPED);
+    expect(figures.map((node) => node.querySelector<HTMLElement>("[data-badge]")?.dataset.badge)).toEqual(["0", "0", "1", "1", "1"]);
+
+    size.chrome = CHROME;
+    await act(async () => { for (const { callback } of observers) callback([], {} as ResizeObserver); });
+    await flush();
+    expect(container.querySelector("[data-landing-static]")).toBeNull();
+    expect(track.hasAttribute("data-ready")).toBe(true);
+    expect(track.hasAttribute("data-static")).toBe(false);
+    await scrollTo(scroller, STAGE_TOP + 1.3 * H);
+    expect(snapshot(container).scene).toBe("1");
+  });
+
+  it("정적이어도 낭독용 `<ol>`과 마무리 CTA는 그대로다", async () => {
+    const { container, size } = await mount();
+    size.chrome = 600;
+    await flush();
+    expect(find(container, "ol").className).toContain("sr-only");
+    expect([...container.querySelectorAll("ol li")].map((node) => node.textContent)).toEqual([...CAPTIONS]);
+    expect(trackOf(container).nextElementSibling?.getAttribute("aria-labelledby")).toBe("cta");
   });
 });
 
@@ -342,7 +491,7 @@ describe("Stage — 접근성", () => {
     const items = [...container.querySelectorAll("ol li")].map((node) => node.textContent);
     expect(items).toEqual([...CAPTIONS]);
     expect(find(container, "ol").className).toContain("sr-only");
-    expect(find(container, "[data-landing-caption]").closest("[aria-hidden='true']")).not.toBeNull();
+    for (const node of container.querySelectorAll("[data-landing-caption]")) expect(node.closest("[aria-hidden='true']")).not.toBeNull();
     const frameNode = find(container, "[data-landing-frame]");
     expect(frameNode.getAttribute("aria-hidden")).toBe("true");
     expect(frameNode.hasAttribute("inert")).toBe(true);
@@ -368,7 +517,7 @@ describe("Stage — 접근성", () => {
     const { container } = await mount();
     const track = find<HTMLElement>(container, "section[aria-label='How Malmoi works']");
     const frameNode = find<HTMLElement>(container, "[data-landing-frame]");
-    const chrome = find<HTMLElement>(container, "[data-landing-caption]").parentElement;
+    const chrome = find<HTMLElement>(container, "[data-landing-chrome]");
     expect(track.className).toContain("group/track");
     for (const node of [frameNode, chrome]) {
       expect(node?.className).toMatch(/(^|\s)invisible(\s|$)/);
@@ -404,5 +553,43 @@ describe("Stage — 접근성", () => {
     expect(track.nextElementSibling).toBe(cta);
     expect(container.innerHTML).not.toContain("landing-y-pin");
     expect(find<HTMLElement>(container, "[data-landing-root]").style.getPropertyValue("--landing-y-pin")).toBe("");
+  });
+});
+
+/**
+ * **히어로는 `lg` 미만에서 표시급이 한 단계 내려간다** (D3 · design §3 — 2026-10-10 사용자). 서버 컴포넌트라 DOM으로 못 세우고
+ * 소스로 센다: h1 48/1.1 → 30/1.2 · 본문 18 → 16(`text-prose`) · 위 여백·목업 앞 간격 120 → 64. 굵기·자간·좌우 32와 `lg` 이상은 그대로다.
+ */
+describe("히어로 — lg 미만 표시급 하향", () => {
+  const page = readFileSync(join(process.cwd(), "app/page.tsx"), "utf8");
+  const stage = readFileSync(join(process.cwd(), "components/landing/stage.tsx"), "utf8");
+  /** 앵커가 든 여는 태그 — 속성이 앵커 앞뒤 어디에 있어도 잡도록 태그 시작에서 한 덩어리를 자른다. */
+  const classOf = (source: string, anchor: string) => {
+    const at = source.indexOf(anchor);
+    expect(at).toBeGreaterThan(-1);
+    const start = source.lastIndexOf("<", at);
+    return source.slice(start, start + 420);
+  };
+
+  it("h1 — 30/1.2에서 `lg`부터 48/1.1, 굵기 600", () => {
+    const h1 = classOf(page, 'id="landing-hero"');
+    for (const cls of ["text-3xl", "leading-[1.2]", "lg:text-5xl", "lg:leading-[1.1]", "font-semibold"]) expect(h1).toContain(cls);
+    expect(h1).not.toMatch(/(^|[\s"])text-5xl/);
+  });
+
+  it("본문 — 16에서 `lg`부터 18", () => {
+    const body = classOf(page, "{hero.body}");
+    expect(body).toContain("text-prose");
+    expect(body).toContain("lg:text-lg");
+    expect(body).not.toMatch(/(^|[\s"])text-lg/);
+  });
+
+  it("히어로 위 여백과 목업 앞 간격 — 64에서 `lg`부터 120, 좌우 32는 그대로", () => {
+    const section = classOf(page, 'aria-labelledby="landing-hero"');
+    for (const cls of ["pt-16", "lg:pt-30", "px-8"]) expect(section).toContain(cls);
+    expect(section).not.toMatch(/(^|[\s"])pt-30/);
+    const track = classOf(stage, "aria-label={label}");
+    for (const cls of ["mt-16", "lg:mt-30"]) expect(track).toContain(cls);
+    expect(track).not.toMatch(/(^|[\s"])mt-30/);
   });
 });

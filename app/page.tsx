@@ -57,7 +57,7 @@ export default async function Root() {
   return (
     <PublicShell m={m} account={null}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdHtml(LANDING_LD) }} />
-      <section aria-labelledby="landing-hero" className="flex flex-col items-center px-8 pt-30 text-center">
+      <section aria-labelledby="landing-hero" className="flex flex-col items-center px-8 pt-16 text-center lg:pt-30">
         {/*
           최신 릴리스 알약(2026-09-30 사용자) — 버전은 빌드가 박은 `APP_VERSION`이다. ⚠️ GitHub Releases를 부르지 않는다 — 랜딩 첫 진입이
           외부 API(콜드 캐시 최대 3초)에 묶이지 않게. 머지마다 릴리스라 배포 버전이 곧 최신 릴리스다.
@@ -70,13 +70,13 @@ export default async function Root() {
           {hero.latest(appVersion())}
           <ArrowRight className="size-4 shrink-0" aria-hidden />
         </NextLink>
-        {/* h1·CTA h2는 48/600 — DESIGN §4가 예고한 weight 600의 첫 소비자다(§6.615). */}
-        <h1 id="landing-hero" className="m-0 text-5xl leading-[1.1] font-semibold">
+        {/* h1·CTA h2는 48/600 — DESIGN §4가 예고한 weight 600의 첫 소비자다(§6.615). 히어로는 `lg` 미만에서 30/1.2 · 본문 16 · 위 여백 64로 한 단계 내려간다(2026-10-10 D3). */}
+        <h1 id="landing-hero" className="m-0 text-3xl leading-[1.2] font-semibold lg:text-5xl lg:leading-[1.1]">
           {hero.title[0]}
           <br />
           {hero.title[1]}
         </h1>
-        <p className="mt-5 max-w-[44em] text-lg leading-body text-balance">{hero.body}</p>
+        <p className="mt-5 max-w-[44em] text-prose leading-body text-balance lg:text-lg">{hero.body}</p>
         <p data-landing-fact className="text-muted-foreground mt-3 text-sm">{hero.fact}</p>
         <div data-landing-cta className="mt-5 flex gap-2">
           {/* 선행 아이콘은 `Button`의 svg 슬롯(16 · gap 8)에 맡긴다 — 크기를 여기서 주지 않는다(DESIGN §6.615). */}
