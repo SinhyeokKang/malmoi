@@ -180,8 +180,9 @@ export function LargeModal({
             시트(`lg` 미만)의 머리는 56 · 좌 16 · 우 12 · 아래 divider · 제목 18 · 닫기 32다(design §2 전체 화면 시트). 설명이 있으면 그만큼 자란다.
             ⚠️ **머리를 세로 가운데로 정렬하지 않는다** — 설명이 감기면 닫기가 제목+설명 묶음의 가운데로 내려간다. 정렬은 넓은 폭과 같은
             `items-start`이고, 제목 묶음이 최소 32(닫기 높이)에서 세로 가운데라 제목 단독일 때는 56 안에서 둘 다 가운데다.
+            ⚠️ **56은 divider를 품은 값이다**(#215 — 검색 시트와 같다) — 위 12 + 32 + 아래 11 + 선 1. 아래도 12면 57이 `min-h-14`를 이긴다.
           */}
-          <header className="flex items-start justify-between gap-2 px-8 pt-8 pb-5 max-lg:min-h-14 max-lg:border-b max-lg:border-divider max-lg:py-3 max-lg:pr-3 max-lg:pl-4">
+          <header className="flex items-start justify-between gap-2 px-8 pt-8 pb-5 max-lg:min-h-14 max-lg:border-b max-lg:border-divider max-lg:pt-3 max-lg:pb-2.75 max-lg:pr-3 max-lg:pl-4">
             <div className="flex min-w-0 flex-col gap-1.5 max-lg:min-h-8 max-lg:justify-center">
               <Primitive.Title className="text-xl font-medium max-lg:text-lg">{title}</Primitive.Title>
               {description !== undefined && (

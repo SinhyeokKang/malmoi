@@ -76,7 +76,7 @@ describe("그릇 상수", () => {
         return { path, base: dirname(path), content: readFileSync(path, "utf8") };
       },
     });
-    for (const token of [...SHEET_PANEL, ...SHEET_OVERLAY]) {
+    for (const token of [...SHEET_PANEL, ...SHEET_OVERLAY, "max-lg:pb-2.75"]) {
       const css = compiler.build([token]);
       const utilities = css.split("@layer utilities {")[1] ?? "";
       expect(utilities, token).toContain("@media (width < 64rem)");
@@ -105,7 +105,9 @@ describe("LargeModal — 소비자 코드 변경 없이 규칙을 받는다", ()
     expect(wide(header.className)).toBe("flex items-start justify-between gap-2 px-8 pt-8 pb-5");
     // ⚠️ 세로 가운데 정렬을 머리에 걸지 않는다 — 설명이 감겨 머리가 자라면 닫기가 제목+설명 묶음의 가운데로 내려간다. 머리는 `items-start`
     // (넓은 폭과 같은 기본)이고, 제목 묶음이 최소 32(닫기 높이)에서 세로 가운데라 제목 단독일 때 56 안에서 둘 다 가운데다.
-    expect(narrow(header.className)).toEqual(["max-lg:min-h-14", "max-lg:border-b", "max-lg:border-divider", "max-lg:py-3", "max-lg:pr-3", "max-lg:pl-4"]);
+    // ⚠️ **머리는 divider 포함 56이다**(#215 — 검색 시트와 같은 높이). border-box라 `min-h-14`가 선을 품지만 위 12 + 내용 32 + 아래 12 + 선 1 = 57이
+    // `min-h`를 이겼다. 아래를 11로 둬 12 + 32 + 11 + 1 = 56이다.
+    expect(narrow(header.className)).toEqual(["max-lg:min-h-14", "max-lg:border-b", "max-lg:border-divider", "max-lg:pt-3", "max-lg:pb-2.75", "max-lg:pr-3", "max-lg:pl-4"]);
     expect(header.classList.contains("items-start")).toBe(true);
     const heading = find<HTMLElement>(header, "h2").parentElement!;
     expect(wide(heading.className)).toBe("flex min-w-0 flex-col gap-1.5");
