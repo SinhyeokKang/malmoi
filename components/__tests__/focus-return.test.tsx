@@ -287,6 +287,11 @@ describe("앱 LNB 서랍 — 닫으면 메뉴 버튼으로", () => {
       await act(async () => { await userEvent.setup().click(menu); });
       await act(async () => { await userEvent.setup().click(document.querySelector(`[role="dialog"] button[aria-label="${en.common.close}"]`)!); });
       expect(document.activeElement).toBe(menu);
+      // #222 — 서랍 안 프로젝트 전환 메뉴도 열면 검색 입력이다(서랍 FocusScope가 포커스를 되가져가 role=menu에 서던 결함).
+      await act(async () => { await userEvent.setup().click(menu); });
+      await act(async () => { await userEvent.setup().click(document.querySelector(`[role="dialog"] [data-zone-head] button[aria-label="${en.common.nav.projectSwitcher.label}"]`)!); });
+      await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+      expect(document.activeElement).toBe(document.querySelector(`[role="menu"] input[aria-label="${en.common.nav.projectSwitcher.search.label}"]`));
     } finally {
       vi.doUnmock("next/navigation");
       vi.unstubAllGlobals();

@@ -269,6 +269,31 @@ describe("서랍 — 지금 LNB 그대로 (AT1b · AT1d)", () => {
     expect(search.memberships).not.toHaveBeenCalled();
   });
 
+  /**
+   * **#222** — 서랍(Dialog `FocusScope`) 안에서 전환 메뉴를 열면 포커스가 검색 입력이어야 한다(고정 LNB와 같다 — 시안 AT1b-375-switch).
+   * 옛 `autoFocus`는 메뉴의 `FocusScope`가 서기 **전** 커밋에서 입력에 포커스를 줬고, 아직 갇혀 있던 서랍의 `FocusScope`가 그 focusin을 밖으로
+   * 읽어 포커스를 되가져갔다 — 그 뒤 메뉴가 자기 컨테이너(role=menu)에 포커스를 세웠다.
+   */
+  it("서랍에서 전환 메뉴를 열면 포커스가 검색 입력이다 (#222)", async () => {
+    await mount();
+    await open();
+    const trigger = drawer()!.querySelector<HTMLButtonElement>(`[data-zone-head] button[aria-label="${en.common.nav.projectSwitcher.label}"]`)!;
+    await click(trigger);
+    await settle();
+    const search = document.querySelector<HTMLInputElement>(`[role="menu"] input[aria-label="${en.common.nav.projectSwitcher.search.label}"]`)!;
+    expect(search).not.toBeNull();
+    expect(document.activeElement).toBe(search);
+  });
+
+  it("고정 LNB에서 열어도 포커스가 검색 입력이다 — `lg` 이상 동작 불변", async () => {
+    stubMedia(true);
+    await mount();
+    const trigger = fixedAside().querySelector<HTMLButtonElement>(`[data-zone-head] button[aria-label="${en.common.nav.projectSwitcher.label}"]`)!;
+    await click(trigger);
+    await settle();
+    expect(document.activeElement).toBe(document.querySelector(`[role="menu"] input[aria-label="${en.common.nav.projectSwitcher.search.label}"]`));
+  });
+
   it("프로젝트 전환 — 머리 chevron이 32로 서고 아래로 열며, 고르면 메뉴·서랍이 함께 닫힌다", async () => {
     await mount();
     await open();
