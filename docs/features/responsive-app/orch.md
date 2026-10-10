@@ -28,7 +28,7 @@
 
 | 배치 | tasks | 소유 파일(이 배치만 편집) | 선행 | 모델·effort | 상태 |
 |---|---|---|---|---|---|
-| **QA0** 기준선 | A0 남은 몫 | 없음(리포트 `.scratch/ra-qa0-baseline.md`) — main 체크아웃. 앱 1280 기준선 재실측(공개 단계 이후 회귀), 375 한 컷 관측(spec 문제 절용) | — | Sonnet 5.5 medium — 측정만 | 대기 |
+| **QA0** 기준선 | A0 남은 몫 | 없음(리포트 `.scratch/ra-qa0-baseline.md`) — main 체크아웃. 앱 1280 기준선 재실측(공개 단계 이후 회귀), 375 한 컷 관측(spec 문제 절용) | — | Sonnet 5.5 medium — 측정만 | 완료 |
 | **B1** 셸·Projects·Home | A2 (+B1a 머리 규칙, +B1b 하한 해제) | `app/(edit)/layout.tsx` · `components/shell/*`(단 `attention-inbox`·`user-menu`·`header-bar`는 공개 단계 소유 형 — 바꿀 때 질문) · `components/public-shell/nav-drawer.tsx`(`useNarrowHandoff` 이관만) · `components/docs/nav-sheet.tsx`(import 경로만) · `lib/shell/*` · `components/projects/*` · `components/home/*`(`actions`·`sync-button` 제외 — O5) · `app/(edit)/projects/(list)/{page,loading}.tsx` · `app/(edit)/projects/[slug]/(home)/*` · `app/(edit)/inbox/*` · 관련 테스트(`shell-layout` · `projects-screen` · `public-shell` 등) | — | Opus 5.5 high — 셸 재마운트·포커스 이관·선호폭 보존 | 대기 |
 | **B2** 번역·위험 동작 | A4 | `lib/translations/*`(새 `compact-pane.ts` 포함) · `components/translations/**` · `components/publish-button.tsx` · `components/home/{actions,sync-button}.tsx` · 새 사유 줄 프리미티브(`components/ui/` 새 파일) · `app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/**` · `app/(edit)/projects/[slug]/translations/**` · `messages/*`(`backToKeys`만) · 관련 테스트(`translation-workspace*` · `translations-screen` · `a11y-reasons` · `layout.test` 등) | 머리 h1은 B1a 뒤 | Opus 5.5 high — draft·판 전환·포커스 착지 계약 | 대기 |
 | **B3** Logs·Sources·Account·Preferences | A3 + Sources 관리(O3) | `components/logs/*` · `components/sources/*` · `app/(edit)/projects/[slug]/{logs,sources}/**` · `app/(edit)/projects/[slug]/surfaces/new/**`(Add sources 직접 URL) · `app/(edit)/account/**` · `app/(edit)/preferences/**` · 관련 테스트(`logs-screen` · `sibling-loading` · sources·account·preferences 테스트) | 머리 소비는 B1a 뒤 | Sonnet 5.5 high — 컨테이너 적층 치환 위주 | 대기 |
@@ -60,7 +60,7 @@ Run `run_ea6cb60e2632`. 파동 1 착수 2026-10-11.
 
 | 배치 | Dispatch | 워크트리 | 상태 |
 |---|---|---|---|
-| QA0 | `ctx_93db6a24a97f` | main 체크아웃 | 진행 |
+| QA0 | `ctx_93db6a24a97f` | main 체크아웃 | 완료 — 1280 결함 0, 375 관측을 spec 문제 절에 반영. QA 이월: Home·Logs dev 청크 CSP 차단(간헐) 재확인 |
 | B1 | `ctx_8e85ecb5897f` | `ra-b1` | 진행 |
 | B2 | `ctx_7623878d5078` | `ra-b2` | 진행 |
 | B3 | `ctx_f2f02378f9aa` | `ra-b3` | 진행 |
