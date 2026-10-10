@@ -363,3 +363,20 @@ it("포커스 없이 배너 [Try again]으로 연 Sync를 Cancel로 닫으면 �
   expect(document.querySelector('[role="dialog"]')).toBeNull();
   await vi.waitFor(() => expect(document.activeElement).toBe(button("Try again")));
 });
+
+/**
+ * **꺼진 사유는 버튼 아래 보이는 줄이다** (responsive-app F7 — 모든 폭). 보관·끊김은 Sync·Publish가 같은 원인이라 서버가 한 문장을 넘기고 줄도 하나다.
+ * 원인이 다르면(미전달 0의 Publish) 버튼 순서대로 한 줄씩이다.
+ */
+it("멈춘 Home의 Sync·Publish는 같은 사유 줄 하나를 가리키고, 미전달 0이면 Publish 줄이 따로 선다", async () => {
+  const reason = "This repository is disconnected. Reconnect it in Settings.";
+  const lines = () => [...document.querySelectorAll("[data-disabled-reasons] > *")].map(node => node.textContent);
+  const view = await render(<HomeActions slug="acme" writeLock={null}><HomeHeaderActions {...props} paused pausedReason={reason} /></HomeActions>);
+  expect(lines()).toEqual([reason]);
+  expect(button("Sync").getAttribute("aria-describedby")).toBe(button("Publish").getAttribute("aria-describedby"));
+  expect(button("Sync").hasAttribute("title")).toBe(false);
+  await view.rerender(<HomeActions slug="acme" writeLock={null}><HomeHeaderActions {...props} unsent={0} paused pausedReason={reason} /></HomeActions>);
+  expect(lines()).toEqual([reason, en.translations.publish.nothing]);
+  await view.rerender(<HomeActions slug="acme" writeLock={null}><HomeHeaderActions {...props} /></HomeActions>);
+  expect(lines()).toEqual([]);
+});
