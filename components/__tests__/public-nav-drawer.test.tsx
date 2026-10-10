@@ -421,6 +421,8 @@ describe("푸터 — 공개 셸은 왼쪽 묶음만, Auth는 두 줄 감김 (PT1
     expect(groups[0]?.closest(".max-lg\\:hidden")).toBeNull();
     expect(groups[1]?.classList.contains("max-lg:hidden")).toBe(true);
     expect(footer.classList.contains("max-lg:flex-wrap")).toBe(false);
+    // 한 줄 형은 그대로다 — 줄 높이를 바꾸지 않는다.
+    expect(footer.outerHTML).not.toMatch(/max-lg:leading-|max-lg:min-h-5/);
   });
 
   it("기본(Auth) 푸터는 숨기지 않고 `lg` 미만에서 두 줄로 감긴다", () => {
@@ -428,7 +430,9 @@ describe("푸터 — 공개 셸은 왼쪽 묶음만, Auth는 두 줄 감김 (PT1
     root.innerHTML = renderToStaticMarkup(h(AuthLayout, { m: en, children: null }));
     const footer = root.querySelector("footer")!;
     expect(footer.outerHTML).not.toContain("max-lg:hidden");
-    expect([...footer.classList]).toEqual(expect.arrayContaining(["h-10", "max-lg:h-auto", "max-lg:flex-wrap", "max-lg:gap-y-1", "max-lg:py-2.5"]));
+    // 두 줄 형의 줄 높이는 20이다(#219 · 시안 PT3: 10 + 20 + 4 + 20 + 10 = 64) — `text-xs`의 기본 행간(≈17.3)이면 58.7이었다.
+    expect([...footer.classList]).toEqual(expect.arrayContaining(["h-10", "max-lg:h-auto", "max-lg:flex-wrap", "max-lg:gap-y-1", "max-lg:py-2.5", "max-lg:leading-5"]));
+    expect([...footer.children].map((group) => group.classList.contains("max-lg:min-h-5"))).toEqual([true, true]);
     expect(renderToStaticMarkup(h(PublicFooter, { m: en }))).not.toContain("max-lg:hidden");
   });
 });

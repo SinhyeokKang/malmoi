@@ -24,11 +24,14 @@ const LINK = "hover:text-foreground focus-visible:ring-ring focus-visible:ring-2
  */
 export function PublicFooter({ m, drawer = false }: { m: Messages; drawer?: boolean }) {
   const switchers = <><LocaleSwitcher /><ThemeSwitcher /></>;
+  // 두 줄 형은 줄마다 20이다(#219 · 시안 PT3 — 10 + 20 + 4 + 20 + 10 = 64). 행간은 링크 줄에, 줄 최소 높이는 스위처 줄에 든다 — `TextTrigger`가
+  // 자기 `text-xs` 행간(≈17.3)을 들어 푸터의 행간을 물려받지 않는다.
+  const group = drawer ? "flex items-center gap-5 whitespace-nowrap" : "flex items-center gap-5 whitespace-nowrap max-lg:min-h-5";
   return (
     <footer className={drawer
       ? "text-muted-foreground flex h-10 shrink-0 items-center justify-between gap-5 px-1 text-xs"
-      : "text-muted-foreground flex h-10 shrink-0 items-center justify-between gap-5 px-1 text-xs max-lg:h-auto max-lg:flex-wrap max-lg:gap-y-1 max-lg:py-2.5"}>
-      <div className="flex items-center gap-5 whitespace-nowrap">
+      : "text-muted-foreground flex h-10 shrink-0 items-center justify-between gap-5 px-1 text-xs max-lg:h-auto max-lg:flex-wrap max-lg:gap-y-1 max-lg:py-2.5 max-lg:leading-5"}>
+      <div className={group}>
         <span>{m.signIn.footer.copyright}</span>
         {footerLinks(m).map(({ href, label, external }) =>
           external ? (
@@ -44,7 +47,7 @@ export function PublicFooter({ m, drawer = false }: { m: Messages; drawer?: bool
       </div>
       {drawer
         ? <WideOnly className="flex items-center gap-5 max-lg:hidden">{switchers}</WideOnly>
-        : <div className="flex items-center gap-5 whitespace-nowrap">{switchers}</div>}
+        : <div className={group}>{switchers}</div>}
     </footer>
   );
 }
