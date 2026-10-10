@@ -24,6 +24,7 @@
 | O12 | Files 후보 경로는 말줄임 + title 유지(시안 AT7), 전문은 샘플 툴바 경로 줄바꿈으로. `client-graph.test.ts` 한 줄 추가는 B2·B4 각자 별도 커밋 | 지휘자 판단 — 시안 5차 확정 우선(B4 질문) |
 | O13 | 공유 프리미티브 둘: `components/ui/list-row.tsx`의 좁은 폭 적층 옵트인 prop(행 동작 아래 줄 오른쪽, `@max-form`)은 B3(첫 소비자 Account 행, 별도 커밋) — B4의 members·mcp 행은 그 커밋이 dev에 들어간 뒤 같은 prop을 쓴다. `components/ui/dialog.tsx`의 일반 확인 DialogContent를 AT8b 형(375 좌우 16 · 본문만 스크롤 · footer flex-wrap)으로 바꾸는 것은 B2(별도 커밋, DrawerContent·CommandDialog 불변) | 지휘자 판단 — B3 질문, 손 사본 0·첫 소비자 배치 |
 | O14 | B1이 `components/ui/dialog.tsx`의 `DrawerContent`에 선택 `footer` prop(세로 행 고정 바닥)을 더한다 — 함수 안만, 별도 커밋, 공개 소비자 렌더 불변. 같은 파일의 확인 DialogContent는 B2(O13). 뒤에 통합되는 쪽이 rebase | 지휘자 판단 — B1 질문, AT1b 바닥 고정 행 |
+| O15 | Projects 행은 **모든 폭에서 두 줄**(1줄 썸네일·이름/리포·배지, 2줄 미터 가로 감김) — 데스크톱 1280도 미터를 숨기지 않으려면 한 줄에 다 들어가지 않는다. 데스크톱 행 높이 +26, Projects 가이드 컷 stale(D 배치) | 지휘자 판단 — F5(미터 숨김 0)의 귀결, 폭별 배치 하나(B1 질문). 되돌리기는 컨테이너 질의 한 줄 |
 
 ## 배치
 
