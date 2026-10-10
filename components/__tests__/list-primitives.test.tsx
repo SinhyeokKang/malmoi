@@ -31,6 +31,31 @@ it("ListRow hoverFill={false}는 hover 면을 붙이지 않고, 기본값은 그
   expect(find(container, "#selected").classList.contains("bg-foreground/[0.07]")).toBe(true);
 });
 
+/**
+ * responsive-app — `stackActions`는 행 동작(`actions`)을 컨테이너 640(`@max-form`) 미만에서 둘째 줄 오른쪽으로 내린다(시안 AT2).
+ * 뷰포트가 아니라 **조상 컨테이너** 기준이고(`Card`·`CardList`가 선언한다), DOM 순서는 그대로다 — CSS `order`가 없다(DESIGN §7).
+ * jsdom은 컨테이너 질의를 못 재므로 클래스 계약을 센다. 꺼진 기본값은 지금 렌더와 바이트가 같다(1280 불변).
+ */
+it("ListRow stackActions는 actions를 @max-form에서 둘째 줄 오른쪽으로 감고, 꺼진 기본값은 그대로다", async () => {
+  const { container } = await render(<>
+    <ListRow as="div" id="plain" title="T" actions={<button>A</button>} />
+    <ListRow as="div" id="stack" stackActions title="T" actions={<button>A</button>} />
+  </>);
+  const plain = find(container, "#plain");
+  const stack = find(container, "#stack");
+  const actionsOf = (row: Element) => row.querySelector<HTMLElement>(":scope > div")!;
+  // 꺼진 기본값 — `@max-form` 토큰이 하나도 없고 actions 무리 클래스가 지금 그대로다.
+  expect([...plain.classList].filter(token => token.startsWith("@max-form:"))).toEqual([]);
+  expect([...actionsOf(plain).classList]).toEqual(["flex", "shrink-0", "items-center", "gap-2"]);
+  // 켠 갈래 — 행은 감기고 actions는 한 줄 전폭 오른쪽 정렬이다.
+  expect([...stack.classList]).toEqual(expect.arrayContaining(["@max-form:flex-wrap", "@max-form:gap-y-2"]));
+  expect([...actionsOf(stack).classList]).toEqual(expect.arrayContaining(["flex", "shrink-0", "items-center", "gap-2", "@max-form:basis-full", "@max-form:justify-end"]));
+  // DOM 순서 — 본문 뒤에 actions다. 시각 순서만 바꾸는 `order-*`는 어느 쪽에도 없다.
+  expect(stack.firstElementChild?.matches("[data-row-copy]")).toBe(true);
+  expect(stack.lastElementChild).toBe(actionsOf(stack));
+  for (const element of [stack, actionsOf(stack)]) expect([...element.classList].some(token => /(^|:)order-/.test(token))).toBe(false);
+});
+
 it("ListGroup은 role=group + 머리 id로 이름을 받고, 그룹 사이 선은 두 번째부터다", async () => {
   const { container } = await render(<div>
     <ListGroup heading="One"><span>a</span></ListGroup>
