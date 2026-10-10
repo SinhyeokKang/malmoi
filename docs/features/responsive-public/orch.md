@@ -25,6 +25,8 @@
 | D13 | 시안이 정본으로 준비된 변경이라 `/design-sync` 배치를 둔다(대조 기준 = 시안 + 브리프 "시안 수령 판정" 정정) | 2026-10-10 사용자("design-sync 배치 까먹지 말거라") |
 | D15 | 마무리 CTA h2(48)도 표시급이라 히어로와 같이 `lg` 미만 30/1.2 | 지휘자 판단 — D3 "표시급 한 단계" 원칙의 같은 급(R5 리뷰 제기) |
 | D16 | `MIN_PINNED_SCALE` 0.2 수용(목업 고정 재생 하한) | 지휘자 판단 — 375 배율 0.215와 같은 급, 상수 하나 |
+| D17 | 터치 히트 영역 44를 `sm`과 아이콘 크기 전부(`icon-xs`·`icon-sm`·`icon-md`·`icon-lg`)로 넓힌다. 텍스트 `md`·`lg`는 제외 | 지휘자 판단 — 2026-10-07 사용자 판정("44까지")의 목적, 시트의 지우기 X(24)·닫기(32)가 빠지면 규칙이 무력(R1 리뷰). 되돌리기는 상수 한 줄 |
+| D18 | `viewport-fit=cover`를 넣지 않는다 — safe-area 토큰은 그때까지 0 | 지휘자 판단 — 넣으면 셸 전체 safe-area가 필요해 범위 밖(R1 리뷰 추천) |
 | D12 | 워커는 Claude Code 패밀리만(Opus 5.5·Sonnet 5.5, effort ≤ high). Codex 교차 없음 | 지휘자 판단 — 사용자 허가 없음 |
 
 ## 배치
@@ -63,6 +65,6 @@ Run `run_93218ca1a5cb`.
 
 | 배치 | Dispatch | 터미널 | 워크트리 | 상태 |
 |---|---|---|---|---|
-| R1 | `ctx_cb5b32691dab` | `term_e47f505a` | `~/orca/workspaces/malmoi/rp-r1` | e754757d · gate ok → 리뷰 진행 |
-| R5 | `ctx_5f51f6863e1c` → fix1 `ctx_0579ddf53787` | `term_6bcca669` | `~/orca/workspaces/malmoi/rp-r5` | 04889cc5 · 리뷰 🔴0 🟡3 → fix1 진행 |
+| R1 | `ctx_cb5b32691dab` → fix1 | `term_e47f505a` | `~/orca/workspaces/malmoi/rp-r1` | e754757d · 리뷰 🔴0 🟡6 → fix1 진행 |
+| R5 | `ctx_5f51f6863e1c` → fix1 `ctx_0579ddf53787` | (해제) | (삭제) | dev `ba028854`·`cee04ef3` push · 리뷰 🔴0 🟡3 → fix1 반영, 재리뷰 생략(지휘자 판단 — 🟡만) |
 | QA0 | `ctx_e2cd578cfcea` | `term_79c0d5b1` | main 체크아웃 | 완료 — spec 문제 절에 실측 반영, 해제 |
