@@ -28,6 +28,7 @@
 | O16 | B3 리뷰 결정: D1 소스 상세 정보 격자 640 미만 한 열(시안 AT3) · D2 Logs 골격은 결과 있는 행 유지 + 주석 · D3 기존 `@max-form:order-last`(source-detail 언어 행)는 걷지 않는다 — 이 기능이 만든 것이 아니고 걷으면 1280 배치가 바뀐다 | 지휘자 판단 — 시안 노트·외과적 변경 원칙 |
 | O17 | `components/account/*`·`components/preferences/*`는 B3 소유(사후 등재). B4의 members·mcp 행은 손으로 든 grid라 `ListRow stackActions`를 쓰지 않는다(O13 앞부분 실현 안 됨 — 결함 아님) | 지휘자 판단 — B3 리뷰 |
 | O18 | 잘린 이메일·초대자(Members)는 카드 640 이상이어도 **터치 포인터면** 줄바꿈으로 전문에 닿는다(`pointer: coarse` 변형 — 마우스 1280 배치 불변) | 지휘자 판단 — spec A-06 "터치에서도"가 정함(B4 리뷰 사용자 결정 후보) |
+| O19 | B2 리뷰 결정: A 로딩 골격에 사유 줄 자리를 잡지 않는다(도착 시 +22 이동 수용 — 데이터를 모르는 골격이 더 자주 틀린다) · B Home 배너와 사유 줄의 같은 원인 문장 중복은 둔다(번역 화면과 같은 문장, 새 키 0) · C 진입 착지 = 상세 경로 칸(키 이름은 응답 전에 없어 같은 노드 유지 불가) · [Try again]은 사유 줄 범위로 넓힌다(retry 버튼이 머리 사유 줄 id를 가리킴, 중복 0). A·B는 DS 시각 확인 | 지휘자 판단 — 리뷰 추천, POSTMORTEM 2026-09-24 초기 포커스, spec A-05 |
 
 ## 배치
 
@@ -67,6 +68,6 @@ Run `run_ea6cb60e2632`. 파동 1 착수 2026-10-11.
 |---|---|---|---|
 | QA0 | `ctx_93db6a24a97f` | main 체크아웃 | 완료 — 1280 결함 0, 375 관측을 spec 문제 절에 반영. QA 이월: Home·Logs dev 청크 CSP 차단(간헐) 재확인 |
 | B1 | `ctx_8e85ecb5897f` → fix1 `ctx_eaec767043e5` | `ra-b1` | B1a `9e26c56a` · 본 구현+fix1 dev `d232ca21`..`7f4a8bf6` push · 리뷰 🔴0 🟡4 → fix1 반영, 재리뷰 생략(🟡만). 다음: B1b(하한 해제) — B2·B4 dev 뒤 |
-| B2 | `ctx_7623878d5078` | `ra-b2` | 구현 19985dee..5c46f15c(7커밋, gate ok) → 리뷰 `ctx_990ce03ab38b` |
+| B2 | `ctx_7623878d5078` | `ra-b2` | 구현 19985dee..5c46f15c(7커밋, gate ok) → 리뷰 `ctx_990ce03ab38b` 🔴0 🟡4 → fix1 `ctx_10efdf4adb89` 진행 |
 | B3 | `ctx_f2f02378f9aa` → fix1 `ctx_2043fc02dc5f` | `ra-b3` | dev `3cfaa913`..`e926daee` push · 리뷰 🔴0 🟡7 → fix1 반영(Y7 남김), 재리뷰 생략(지휘자 판단 — 🟡만) |
 | B4 | `ctx_221863986e06` | `ra-b4` | 커밋 f9b3e010..631fc92c(7) · 사전 키만 남음(B2 dev 뒤) → 커밋분 리뷰 `ctx_bb97e239da8e` 🔴0 🟡5 → fix1 진행(같은 Dispatch, 사전 키는 B2 dev 뒤) |
