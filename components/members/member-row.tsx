@@ -65,7 +65,11 @@ export function MemberRow({
   return (
     <>
       {/* ⚠️ **왼쪽 padding만 12다** (`13 14 13 12` — 세로 13은 행 한 벌, 4-W3) — 글리프가 서는 쪽이라 한 단계 좁다. */}
-      <div className="flex items-center gap-4 py-row-y pr-3.5 pl-3">
+      {/*
+        ⚠️ **640 미만은 두 줄 grid다** (responsive-app A5 · 시안 AT2) — 글리프 · 이름이 첫 줄, 메타 · 동작이 이름 아래 둘째 줄(동작은
+        오른쪽)이다. 컨테이너는 `CardList`가 선언한다(선언·질의 분리, POSTMORTEM 2026-09-15). 적층은 DOM 순서 그대로라 `order`가 없다.
+      */}
+      <div className="flex items-center gap-4 py-row-y pr-3.5 pl-3 @max-form:grid @max-form:grid-cols-[auto_minmax(0,1fr)_auto] @max-form:gap-x-4 @max-form:gap-y-2">
         <span data-avatar className="flex shrink-0">
           {/*
             ⚠️ **씨앗이 없으면 빈 문자열을 넘긴다 — 갈래를 늘리지 않는다** (캔버스 `1a` 넷째 행).
@@ -81,11 +85,12 @@ export function MemberRow({
           ⚠️ **이름 칸이 300 고정이다** (캔버스). 늘어나게 두면 오른쪽 메타의 x가 행마다 달라져
           "오너가 몇인지"를 세로로 훑을 수 없다 — `/projects`의 이름 칸 420과 같은 장치다.
         */}
-        <span className="flex w-[300px] min-w-0 shrink-0 flex-col gap-0.5">
+        <span data-name className="flex w-[300px] min-w-0 shrink-0 flex-col gap-0.5 @max-form:col-span-2 @max-form:w-auto">
           <span
             data-primary
             className={cn(
-              "truncate text-base",
+              // 좁은 폭에서는 감긴다 — 잘린 주소의 전문이 `title`(터치에서 안 보인다)에만 있지 않게(spec A-06).
+              "truncate text-base @max-form:whitespace-normal @max-form:wrap-anywhere",
               identity.unnamed ? "text-muted-foreground" : "font-medium",
             )}
           >
@@ -95,15 +100,21 @@ export function MemberRow({
           </span>
           {/* ⚠️ **2행이 없으면 그 자리를 그리지 않는다** — 빈 줄은 행 높이만 늘리고 읽을 것을 안 늘린다. */}
           {identity.secondary !== null && (
-            <span data-secondary className="text-muted-foreground truncate text-sm">
+            <span data-secondary className="text-muted-foreground truncate text-sm @max-form:whitespace-normal @max-form:wrap-anywhere">
               {identity.secondary}
             </span>
           )}
         </span>
 
-        {meta}
-        {/* ⚠️ **오른쪽 군의 갭이 8이다** (시안) — 행 요소 사이 16과 다른 급이라 한 군으로 읽힌다. */}
-        <span className="ml-auto flex shrink-0 items-center gap-2">{controls?.(bandId)}</span>
+        {/*
+          메타 + 동작 묶음 — 넓은 폭에서는 `contents`라 두 자식이 그대로 행의 flex 항목이다(기존 한 줄 배치). 좁은 폭에서만 이름 열에서 시작하는
+          둘째 줄이 되고, 넘치면 동작이 그 아래 줄 오른쪽으로 감긴다 — 숨기지 않는다.
+        */}
+        <span data-row-aside className="contents @max-form:col-span-2 @max-form:col-start-2 @max-form:flex @max-form:min-w-0 @max-form:flex-wrap @max-form:items-center @max-form:gap-x-4 @max-form:gap-y-2">
+          {meta}
+          {/* ⚠️ **오른쪽 군의 갭이 8이다** (시안) — 행 요소 사이 16과 다른 급이라 한 군으로 읽힌다. */}
+          <span className="ml-auto flex shrink-0 items-center gap-2 @max-form:flex-wrap @max-form:justify-end">{controls?.(bandId)}</span>
+        </span>
       </div>
 
       {/* ⚠️ **톤을 받지 않는다** — 이 카드의 띠는 전부 `muted`다 (2026-09-20 사용자: *"alert 계열 말고

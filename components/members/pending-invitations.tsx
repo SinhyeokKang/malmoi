@@ -208,12 +208,12 @@ export function PendingInvitations({
                       /* ⚠️ **가로 두 칸이다** (캔버스) — 만료는 150 고정, 초대한 사람은 남는 폭이다.
                          세로로 쌓으면 행 높이가 멤버 카드와 달라져 두 카드가 다른 표처럼 읽힌다. */
                       <>
-                        <span className="text-muted-foreground w-[150px] shrink-0 text-xs">
+                        <span className="text-muted-foreground w-[150px] shrink-0 @max-form:w-auto text-xs">
                           {m.members.pending.expires(relativeTime(invitation.expiresAt, now, uiLocale))}
                         </span>
                         {/* ⚠️ 잘리는 유일한 가변 칸이라 전문을 `title`로 든다 (malmoi#90) — 1280에서 112px라 12자 이름부터 잘리고,
                             초대한 사람을 말하는 자리가 이 칸뿐이다. 보이는 문장이 곧 접근 이름이라 스크린리더는 원래 전문을 읽는다. */}
-                        <span className="text-muted-foreground min-w-0 truncate text-xs" title={m.members.pending.invitedBy(invitation.invitedByName ?? m.members.pending.unknownInviter)}>
+                        <span className="text-muted-foreground min-w-0 truncate text-xs @max-form:whitespace-normal @max-form:wrap-anywhere" title={m.members.pending.invitedBy(invitation.invitedByName ?? m.members.pending.unknownInviter)}>
                           {m.members.pending.invitedBy(invitation.invitedByName ?? m.members.pending.unknownInviter)}
                         </span>
                       </>
