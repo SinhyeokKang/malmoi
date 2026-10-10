@@ -90,3 +90,27 @@ describe("소비자 — 고정 열이 좁은 폭에서 풀린다", () => {
     expect(pending).toMatch(/min-w-0 truncate text-xs @max-form:whitespace-normal @max-form:wrap-anywhere pointer-coarse:whitespace-normal pointer-coarse:wrap-anywhere/);
   });
 });
+
+/**
+ * **640~760 구간 — 한 줄 배치가 카드를 넘지 않는다** (malmoi#233). 넓은 한 줄은 이름 300 `shrink-0`이라 약 761을 요구해 1024 + LNB 240(카드 ≈724)에서
+ * 역할 Select·Remove가 카드 밖으로 잘렸다. 이름 칸이 300을 상한으로 **줄어든다**(`shrink` + `min-w-0`, 말줄임) — 1280은 300 그대로다.
+ * 메타·동작은 줄지 않는다(가입일·만료 150, 동작 묶음). 골격도 같다(A-09). jsdom은 폭을 못 재 클래스 계약이다.
+ */
+describe("640 이상 한 줄 — 이름 칸만 줄어든다", () => {
+  const tokens = (node: Element) => node.className.split(/\s+/);
+
+  it("이름 칸은 300 상한으로 줄고, 동작 묶음은 줄지 않는다", async () => {
+    const container = await row();
+    const name = tokens(find(container, "[data-name]"));
+    for (const cls of ["w-[300px]", "min-w-0", "shrink"]) expect(name, cls).toContain(cls);
+    expect(name).not.toContain("shrink-0");
+    const actions = find(container, "[data-row-aside] > span:last-child");
+    expect(tokens(actions)).toContain("shrink-0");
+  });
+
+  it("멤버 골격의 이름 칸도 같은 규칙이다", () => {
+    const loading = read("app/(edit)/projects/[slug]/members/loading.tsx");
+    expect(loading).toMatch(/flex w-\[300px\] min-w-0 shrink flex-col gap-0\.5/);
+    expect(loading).not.toMatch(/w-\[300px\] min-w-0 shrink-0/);
+  });
+});

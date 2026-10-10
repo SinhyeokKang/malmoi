@@ -82,10 +82,11 @@ export function MemberRow({
         </span>
 
         {/*
-          ⚠️ **이름 칸이 300 고정이다** (캔버스). 늘어나게 두면 오른쪽 메타의 x가 행마다 달라져
+          ⚠️ **이름 칸이 300이고 줄어들기만 한다** (캔버스 · malmoi#233). 300 `shrink-0`이면 한 줄이 약 761을 요구해 카드 640~760(1024 + LNB
+          240이 이 구간)에서 역할 Select·Remove가 카드 밖으로 잘렸다 — 넓을 때는 300 그대로라 오른쪽 메타의 x가 맞고, 좁아지면 이름이 먼저 말줄임된다. 늘어나게 두면 오른쪽 메타의 x가 행마다 달라져
           "오너가 몇인지"를 세로로 훑을 수 없다 — `/projects`의 이름 칸 420과 같은 장치다.
         */}
-        <span data-name className="flex w-[300px] min-w-0 shrink-0 flex-col gap-0.5 @max-form:col-span-2 @max-form:w-auto">
+        <span data-name className="flex w-[300px] min-w-0 shrink flex-col gap-0.5 @max-form:col-span-2 @max-form:w-auto">
           <span
             data-primary
             className={cn(

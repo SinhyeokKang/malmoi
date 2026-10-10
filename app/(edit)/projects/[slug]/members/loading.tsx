@@ -35,7 +35,7 @@ export default async function MembersLoading() {
               {/* 좁은 폭 적층은 `MemberRow`와 같은 클래스다 — 도착 때 줄 수가 튀지 않는다(responsive-app A5). 컨테이너는 아래 `Card`. */}
               <div className="flex items-center gap-4 py-row-y pr-3.5 pl-3 @max-form:grid @max-form:grid-cols-[auto_minmax(0,1fr)_auto] @max-form:gap-x-4 @max-form:gap-y-2">
                 <Skeleton className="size-8 shrink-0 rounded-full" />
-                <div className="flex w-[300px] min-w-0 shrink-0 flex-col gap-0.5 @max-form:col-span-2 @max-form:w-auto">
+                <div className="flex w-[300px] min-w-0 shrink flex-col gap-0.5 @max-form:col-span-2 @max-form:w-auto">
                   <Skeleton size="md" className="w-[45%]" />
                   <Skeleton size="sm" className="w-[62%]" />
                 </div>
