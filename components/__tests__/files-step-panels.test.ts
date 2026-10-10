@@ -9,12 +9,10 @@ import { panelConstraints } from "@/lib/shell/panel-size";
 /**
  * **모달 ②의 좌 후보 목록 ↔ 우 미리보기 구분선.**
  *
- * ⚠️ **여기는 px→% 환산 훅이 필요 없다** — 그룹 폭이 **고정**이다: 모달 `max-w-[1024px]`(2026-09-18, 옛 800) −
- * `px-8`(64) = 960, 핸들 8을 빼면 952. 셸(`components/shell/shell-panels.tsx`)만 뷰포트를 따라
- * 변해서 재야 한다.
+ * ⚠️ **그룹 폭을 잰다** (responsive-app A5) — 옛 판은 모달 1024 − `px-8` − 핸들 = 952를 고정 분모로 박았지만 `lg` 미만 시트에서는
+ * 본문이 뷰포트를 따른다. 608 미만이면 순차 판이다(DOM 계약은 `files-sequential.test.tsx`).
  *
- * ⚠️ **소스로 센다** — 이 화면을 DOM으로 세우는 테스트가 없고(`onboarding-modal.test.tsx`는 껍데기만
- * 든다), `FilesStep`은 prop이 열 개가 넘는다. `manual-format-hint.test.ts`와 같은 계열이다.
+ * ⚠️ **소스로 센다** — 클래스·치수 배선은 jsdom이 못 잰다(폭이 0). 판 동작은 DOM 테스트가, 수치는 순수 테스트가 든다.
  */
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const files = readFileSync(join(ROOT, "components/onboarding/steps/files.tsx"), "utf8");
@@ -36,25 +34,25 @@ describe("② 파일 선택 — 패널 구분선", () => {
    * 소비자는 이 화면 하나뿐이지만, 그 `gap`은 두 자식을 놓는 다음 화면의 계약이라 지우지 않는다).
    */
   it("핸들이 8px이고, 껍데기의 `gap-4`는 그대로 둔다", () => {
-    expect(files).toMatch(/<ResizableHandle[^>]*className="w-2"/s);
+    // 순차 판에서는 `hidden`이 덧붙는다 — 폭 8은 `FILES_HANDLE_PX`와 같이 움직인다(files-layout 순수 테스트).
+    expect(files).toMatch(/<ResizableHandle[^>]*className=\{cn\("w-2"/s);
     expect(modal).toMatch(/bodyDirection === "row"/);
     expect(modal).toMatch(/\bgap-4\b/);
   });
 
   /**
-   * 좌측 치수는 셸 LNB와 같은 200 / 240 / 320이고, 952 위에서 %로 굳는다.
-   * ⚠️ **분모가 모달 폭·핸들과 함께 움직인다** — 1024 − 64 − 8이다. 핸들을 8로 내리고 여기를 16으로 두면
-   * 240이 242로 서고, 그 3px은 화면에서 안 보이므로 이 숫자가 유일한 방어선이다.
+   * 좌측 치수는 셸 LNB와 같은 200 / 240 / 320이다. ⚠️ **분모가 고정 952가 아니다** (responsive-app A5) — `lg` 미만 LargeModal이
+   * 뷰포트 폭 시트라 375에서 본문이 343이다. 그래서 body content box를 재서 `filesLayout`(`lib/onboarding/files-layout.ts`)에 넘기고,
+   * 경계·clamp 수치는 그 순수 테스트(`lib/onboarding/__tests__/files-layout.test.ts`)가 든다. 여기서는 소비자가 그 판정만 쓰는지 센다.
    */
-  it("좌측이 200 / 240 / 320을 952 기준 %로 든다", () => {
-    const expected = panelConstraints(952, { min: 200, default: 240, max: 320 });
-    expect(expected).not.toBeNull();
-    expect((expected?.defaultSize ?? 0) * 952 / 100).toBeCloseTo(240, 6);
-    expect(files).toMatch(/panelConstraints\(\s*FILES_PANEL_WIDTH\s*,/);
-    expect(files).toMatch(/const FILES_PANEL_WIDTH = 960 - 8/);
-    // 분모의 출처 — 모달 폭이 바뀌면 여기와 함께 움직여야 한다.
-    expect(modal).toMatch(/max-w-\[1024px\]/);
-    expect(files).toMatch(/min: 200, default: 240, max: 320/);
+  it("좌측 치수가 잰 폭의 `filesLayout`에서 온다 — 고정 분모·셸 하한 의존이 없다", () => {
+    expect(files).toMatch(/from "@\/lib\/onboarding\/files-layout"/);
+    expect(files).toMatch(/filesLayout\(bodyWidth, chosen\.current\)/);
+    expect(files).toMatch(/new ResizeObserver\(/);
+    expect(files).not.toMatch(/FILES_PANEL_WIDTH/);
+    expect(files).not.toMatch(/960 - 8/);
+    expect(files).not.toMatch(/min-w-shell-min/);
+    expect(files).not.toMatch(/panelConstraints\(/);
   });
 
   /** 옛 고정 폭이 남아 있으면 `Panel`이 계산한 폭을 덮는다. */
