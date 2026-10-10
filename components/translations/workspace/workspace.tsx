@@ -170,6 +170,13 @@ const SINGLE_LIST_HIDDEN = "@max-[772px]/ws:in-data-[pane=detail]:hidden";
 const SINGLE_DETAIL_HIDDEN = "@max-[772px]/ws:in-data-[pane=list]:hidden";
 /** 단일 판의 상세에서만 숨는 배너(기준 언어 대기 · 미전달 보류) — 키보드가 열리면 입력 칸 자리가 0이 된다(AT6d). Sync 잠금은 두 판 모두 선다(R2). */
 const DETAIL_PANE_HIDDEN = "@max-[772px]/wshead:in-data-[pane=detail]:hidden";
+/**
+ * **낮은 높이(520 미만)의 단일 판 상세는 카드 전체가 스크롤한다** (#236 · orch O21) — 200% 확대(640×400)·폰 가로(812×375)에서 고정 블록(경로 머리·키 블록·저장 줄)이
+ * 세로를 다 써 언어 목록 칸이 0이 됐다(입력에 닿을 길이 없었다). 그때만 경로 머리·키 블록·언어 목록이 함께 흐르고 저장 줄만 바닥에 `sticky`로 남는다
+ * (`locale-panel.tsx` · 아래 `Footer`). 스크롤 여백 64는 저장 줄 높이다 — 포커스로 끌려온 칸이 저장 줄 밑에 숨지 않는다. 보통 높이·분할 판은 그대로다.
+ * ⚠️ 500은 보통 배치로도 칸이 남는다(375×500 실측 81) — 경계는 그 아래 20을 더 둔 값이다.
+ */
+const LOW_DETAIL_SCROLL = "@max-[772px]/ws:[@media(max-height:519px)]:overflow-y-auto @max-[772px]/ws:[@media(max-height:519px)]:scroll-pb-16";
 
 const storageKey = (userId: string, slug: string) => `malmoi.translation-draft.${userId}.${slug}`;
 const widthKey = (userId: string, slug: string) => `malmoi.translation-panels.${userId}.${slug}`;
@@ -1011,7 +1018,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
             }}
             // 조합 상태를 추적하지 않는다(그 자리는 `use-ime-guard.ts`) — 조합 시작은 "상세를 쓰고 있다"는 신호일 뿐이다.
             onCompositionStart={activateDetail}
-            className={cn("border-border bg-background flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg border", SINGLE_DETAIL_HIDDEN)}>
+            className={cn("border-border bg-background flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg border", SINGLE_DETAIL_HIDDEN, LOW_DETAIL_SCROLL)}>
             {/*
               ⚠️ **상세 머리는 이 화면이 든다 — 골격·상세·부재 안내가 바뀌어도 같은 노드다** (design §3). 단일 판의 진입 착지가 이 제목(`tabIndex={-1}`)이라,
               응답이 와서 몸통이 바뀌어도 포커스가 끊기지 않는다. 키를 안 고른 split만 숨는다. ‹ Keys는 단일 판에서만 선다.
@@ -1126,7 +1133,8 @@ function Footer({ alertId, dirty, status, saving, resultRef, saveRef, hasPending
     : status?.kind === "reverted" ? w.revert.reverted
     : "";
   return (
-    <div className="border-border shrink-0 border-t">
+    // 낮은 높이의 단일 판에서는 이 줄만 바닥에 붙고 나머지가 그 위로 흐른다(#236 — 위 `LOW_DETAIL_SCROLL`).
+    <div data-save-row="" className="border-border shrink-0 border-t @max-[772px]/ws:[@media(max-height:519px)]:sticky @max-[772px]/ws:[@media(max-height:519px)]:bottom-0 @max-[772px]/ws:[@media(max-height:519px)]:bg-background">
       {status !== null && ALERTS[status.kind] !== undefined && (
         <div id={alertId} className="px-4 pt-3">{ALERTS[status.kind]?.({ m, onCheck, slug, storageBlocked, status })}</div>
       )}

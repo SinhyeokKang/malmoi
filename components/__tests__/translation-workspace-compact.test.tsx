@@ -522,3 +522,32 @@ describe("DS — 상세 머리 경로(#228) · 상세 판 검색 줄(#229)", () 
     expect(document.querySelector("[data-toolbar]")).toBe(toolbar);
   });
 });
+
+/**
+ * **낮은 높이의 단일 판 상세** (#236 · orch O21) — 200% 확대(640×400)·폰 가로(812×375)에서 고정 블록이 세로를 다 써 언어 목록 칸이 0이 됐다(편집 불가).
+ * 높이 520 미만 · 카드 772 미만일 때만 상세 카드 전체가 스크롤 칸이 되고(경로 머리·키 블록·언어 목록이 함께 흐른다) 저장 줄만 바닥에 `sticky`로 남는다.
+ * 같은 DOM이고(재마운트 0) 보통 높이·분할 판은 그대로다 — 새 값은 전부 그 두 조건의 변형 아래다. jsdom은 높이 질의를 못 재므로 클래스 계약을 센다.
+ */
+describe("낮은 높이 — 저장 줄만 고정, 나머지는 함께 스크롤 (#236)", () => {
+  const LOW = "@max-[772px]/ws:[@media(max-height:519px)]:";
+  it("상세 카드가 스크롤 칸이 되고 저장 줄 높이만큼 스크롤 여백을 둔다", async () => {
+    await start("/projects/acme/surfaces/web/translations?ns=common&key=k1", 500);
+    const card = detailCard();
+    expect(card.classList.contains("overflow-hidden")).toBe(true);
+    for (const token of ["overflow-y-auto", "scroll-pb-16"]) expect(card.classList.contains(`${LOW}${token}`)).toBe(true);
+  });
+
+  it("언어 목록과 그 위 블록은 줄지 않고 흐르며, 저장 줄은 바닥에 붙는다 — 같은 textarea 노드", async () => {
+    await start("/projects/acme/surfaces/web/translations?ns=common&key=k1", 500);
+    const input = textarea("zh");
+    const scroller = input.closest<HTMLElement>(".overflow-y-auto")!;
+    for (const token of ["flex-none", "overflow-visible"]) expect(scroller.classList.contains(`${LOW}${token}`)).toBe(true);
+    const body = scroller.parentElement!;
+    for (const token of ["flex-none", "overflow-visible"]) expect(body.classList.contains(`${LOW}${token}`)).toBe(true);
+    expect(body.parentElement!.classList.contains(`${LOW}flex-none`)).toBe(true);
+    const footer = document.querySelector<HTMLElement>("[data-footer-result]")!.closest<HTMLElement>("[data-save-row]")!;
+    for (const token of ["sticky", "bottom-0", "bg-background"]) expect(footer.classList.contains(`${LOW}${token}`)).toBe(true);
+    expect(footer.classList.contains("sticky")).toBe(false);
+    expect(textarea("zh")).toBe(input);
+  });
+});
