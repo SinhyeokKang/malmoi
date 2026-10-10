@@ -27,6 +27,7 @@
 | O15 | Projects 행은 **모든 폭에서 두 줄**(1줄 썸네일·이름/리포·배지, 2줄 미터 가로 감김) — 데스크톱 1280도 미터를 숨기지 않으려면 한 줄에 다 들어가지 않는다. 데스크톱 행 높이 +26, Projects 가이드 컷 stale(D 배치) | 지휘자 판단 — F5(미터 숨김 0)의 귀결, 폭별 배치 하나(B1 질문). 되돌리기는 컨테이너 질의 한 줄 |
 | O16 | B3 리뷰 결정: D1 소스 상세 정보 격자 640 미만 한 열(시안 AT3) · D2 Logs 골격은 결과 있는 행 유지 + 주석 · D3 기존 `@max-form:order-last`(source-detail 언어 행)는 걷지 않는다 — 이 기능이 만든 것이 아니고 걷으면 1280 배치가 바뀐다 | 지휘자 판단 — 시안 노트·외과적 변경 원칙 |
 | O17 | `components/account/*`·`components/preferences/*`는 B3 소유(사후 등재). B4의 members·mcp 행은 손으로 든 grid라 `ListRow stackActions`를 쓰지 않는다(O13 앞부분 실현 안 됨 — 결함 아님) | 지휘자 판단 — B3 리뷰 |
+| O18 | 잘린 이메일·초대자(Members)는 카드 640 이상이어도 **터치 포인터면** 줄바꿈으로 전문에 닿는다(`pointer: coarse` 변형 — 마우스 1280 배치 불변) | 지휘자 판단 — spec A-06 "터치에서도"가 정함(B4 리뷰 사용자 결정 후보) |
 
 ## 배치
 
@@ -68,4 +69,4 @@ Run `run_ea6cb60e2632`. 파동 1 착수 2026-10-11.
 | B1 | `ctx_8e85ecb5897f` → fix1 `ctx_eaec767043e5` | `ra-b1` | B1a `9e26c56a` · 본 구현+fix1 dev `d232ca21`..`7f4a8bf6` push · 리뷰 🔴0 🟡4 → fix1 반영, 재리뷰 생략(🟡만). 다음: B1b(하한 해제) — B2·B4 dev 뒤 |
 | B2 | `ctx_7623878d5078` | `ra-b2` | 구현 19985dee..5c46f15c(7커밋, gate ok) → 리뷰 `ctx_990ce03ab38b` |
 | B3 | `ctx_f2f02378f9aa` → fix1 `ctx_2043fc02dc5f` | `ra-b3` | dev `3cfaa913`..`e926daee` push · 리뷰 🔴0 🟡7 → fix1 반영(Y7 남김), 재리뷰 생략(지휘자 판단 — 🟡만) |
-| B4 | `ctx_221863986e06` | `ra-b4` | 커밋 f9b3e010..631fc92c(7) · 사전 키만 남음(B2 dev 뒤) → 커밋분 리뷰 `ctx_bb97e239da8e` |
+| B4 | `ctx_221863986e06` | `ra-b4` | 커밋 f9b3e010..631fc92c(7) · 사전 키만 남음(B2 dev 뒤) → 커밋분 리뷰 `ctx_bb97e239da8e` 🔴0 🟡5 → fix1 진행(같은 Dispatch, 사전 키는 B2 dev 뒤) |
