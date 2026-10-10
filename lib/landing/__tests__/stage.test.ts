@@ -29,6 +29,33 @@ describe("캔버스", () => {
   });
 });
 
+/**
+ * #216 — `lg` 이상 회귀 고정. R5 이전 `fitScale`은 캡션 줄을 상수 28(`h-7`)로 두었다(`CHROME_H = 16 + 28`). 블록이 한 줄이면 잰 높이가 다시 28이므로
+ * 같은 크기에서 목업 위치가 그때와 바이트로 같아야 한다. 아래 `legacy`는 R5 이전 식 그대로다.
+ */
+describe("fitScale — 한 줄 캡션은 R5 이전 위치 그대로 (#216)", () => {
+  const legacy = (W: number, H: number) => {
+    const clampTo = (lo: number, v: number, hi: number) => Math.min(Math.max(v, lo), hi);
+    const CHROME_H = 16 + 28;
+    const side = clampTo(24, 0.04 * W, 64);
+    const v = clampTo(16, 0.02 * H, 32);
+    const scale = Math.max(0, Math.min((W - 2 * side) / CANVAS_W, (H - 2 * v - CHROME_H) / CANVAS_H, 1));
+    const y = (H - CANVAS_H * scale - CHROME_H) / 2;
+    return { scale, x: (W - CANVAS_W * scale) / 2, y, chromeY: y + CANVAS_H * scale + 16 };
+  };
+
+  it.each([
+    ["1280×800", 1262, 702],
+    ["1440×900", 1422, 802],
+    ["1024×768", 1006, 670],
+    ["768×1024", 750, 926],
+  ])("%s — 배율 · x · y · chromeY가 같다", (_, W, H) => {
+    const fit = fitScale({ W, H, chromeHeight: ONE_LINE });
+    const old = legacy(W, H);
+    expect({ scale: fit.scale, x: fit.x, y: fit.y, chromeY: fit.chromeY }).toEqual(old);
+  });
+});
+
 describe("fitScale — 크기만이 배율을 정한다", () => {
   it.each(VIEWPORTS)("$name → $scale", ({ W, H, scale }) => {
     expect(fitScale({ W, H, chromeHeight: ONE_LINE }).scale).toBeCloseTo(scale, 4);

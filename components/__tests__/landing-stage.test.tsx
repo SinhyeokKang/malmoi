@@ -410,6 +410,16 @@ describe("Stage — 캡션은 같은 칸에 겹친다", () => {
     expect(block.querySelector("[data-landing-caption]")).not.toBeNull();
   });
 
+  /**
+   * #216 — 한 줄이면 블록이 캡션 줄(15/1.4 = 21)만큼만 서서 R5 이전 `h-7`(28)보다 낮았고, `lg` 이상 목업 y가 3.5 내려갔다. 블록 최소 28 · 세로 가운데로
+   * 한 줄 높이를 지킨다. 두 줄 이상(3 + 8 + 21 × n ≥ 53)은 최소를 넘어 자연 높이 그대로다(375 계약 69 = 16 + 53).
+   */
+  it("블록은 최소 28이고 세로 가운데다 — 한 줄일 때 R5 이전 `h-7`과 같은 높이 (#216)", async () => {
+    const { container } = await mount();
+    const block = find<HTMLElement>(container, "[data-landing-chrome-block]");
+    expect(block.className.split(" ")).toEqual(expect.arrayContaining(["min-h-7", "items-center"]));
+  });
+
   it("측정 전엔 정상 흐름이고(`relative`) 준비 뒤에 겹쳐 선다(`absolute`)", async () => {
     const { container } = await mount();
     const chrome = find<HTMLElement>(container, "[data-landing-chrome]");

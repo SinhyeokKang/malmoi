@@ -297,8 +297,11 @@ export function Stage({
             aria-hidden="true"
             className="invisible relative inset-x-0 top-0 group-data-[ready]/track:visible group-data-[ready]/track:absolute"
           >
-            {/* 진행 다섯 칸과 캡션을 한 flex-wrap에 — 한 줄이 안 되면 감긴다. 최대 폭은 틱이 프레임 폭으로 쓴다. */}
-            <div ref={blockRef} data-landing-chrome-block="" className="mx-auto flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+            {/*
+              진행 다섯 칸과 캡션을 한 flex-wrap에 — 한 줄이 안 되면 감긴다. 최대 폭은 틱이 프레임 폭으로 쓴다.
+              ⚠️ **최소 28(`min-h-7`)이다**(#216) — 한 줄이면 캡션 줄 21만 서서 R5 이전 `h-7`보다 낮았고 `lg` 이상 목업이 3.5 내려갔다. 감긴 블록(≥ 53)은 자연 높이다.
+            */}
+            <div ref={blockRef} data-landing-chrome-block="" className="mx-auto flex min-h-7 flex-wrap items-center justify-center gap-x-4 gap-y-2">
               <div className="flex gap-1.5">
                 {captions.map((text, k) => (
                   <span key={text} className="block h-[3px] w-6 overflow-hidden rounded-full bg-foreground/10">
