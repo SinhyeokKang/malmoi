@@ -29,7 +29,7 @@
 
 | 배치 | tasks | 소유 파일(이 배치만 편집) | 선행 | 모델·effort | 상태 |
 |---|---|---|---|---|---|
-| **QA0** 기준선 | P0 375 실측 | 없음(리포트 `.scratch/qa0-baseline.md`) | — | Sonnet 5.5 medium — 측정만 | 대기 |
+| **QA0** 기준선 | P0 375 실측 | 없음(리포트 `.scratch/qa0-baseline.md`) | — | Sonnet 5.5 medium — 측정만 | 완료 |
 | **R1** 큰 모달 시트·검색 시트 | P2 일부 | `components/ui/{dialog,large-modal,command,button}.tsx`(dialog는 `CommandDialog` 부분만)·`components/landing/mockup/publish.tsx`·관련 테스트(`logs-screen`·`spelling-equivalence`·`onboarding-modal`·`command`·`command-dialog`·`modal-initial-focus`·`parallel-p2-modal`·`overlay-ime-guard`·`landing-mockup`·`visual-system`·`focus-return`·`primitive-focus`) | — | Opus 5.5 high — 앱 모달 8종이 받는 공유 그릇·포커스 계약 | 대기 |
 | **R5** 랜딩 캡션·히어로 | P5 | `lib/landing/stage.ts`·`components/landing/stage.tsx`·`app/page.tsx`·`lib/landing/__tests__/`·`landing-stage.test.tsx` | — | Sonnet 5.5 high — 순수 함수 TDD가 명확 | 대기 |
 | **R2** 공개 셸·헤더·서랍·Inbox | P2 나머지 | `components/public-shell/*`·`components/shell/{header-bar,attention-inbox,user-menu}.tsx`·`components/search/search-trigger.tsx`·`components/ui/dialog.tsx`(측면 서랍 변형)·`components/ui/field-button.tsx`·새 잎 모듈(`lg` 쿼리 상수)·`messages/{en,ko,es}.tsx`(서랍 키만)·`public-shell.test.tsx` 등 | R1 dev 통합 | Opus 5.5 high — 한 벌 원칙·읽음 1회·포커스 이전 | 대기 |
@@ -56,3 +56,11 @@
 ## 진행 기록
 
 (배치별 push 해시·라운드·미완을 여기에 갱신한다.)
+
+Run `run_93218ca1a5cb`.
+
+| 배치 | Dispatch | 터미널 | 워크트리 | 상태 |
+|---|---|---|---|---|
+| R1 | `ctx_cb5b32691dab` | `term_e47f505a` | `~/orca/workspaces/malmoi/rp-r1` | 진행 |
+| R5 | `ctx_5f51f6863e1c` | `term_6bcca669` | `~/orca/workspaces/malmoi/rp-r5` | 진행 |
+| QA0 | `ctx_e2cd578cfcea` | `term_79c0d5b1` | main 체크아웃 | 완료 — spec 문제 절에 실측 반영, 해제 |
