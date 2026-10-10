@@ -132,13 +132,19 @@ export function Stage({
         const segment = segmentRefs.current[k];
         if (segment) segment.style.transform = `scaleX(${fill})`;
       });
-      // 다섯 문장이 한 칸에 겹쳐 있다 — 활성만 보이고 문장 교체(t = 0.5)는 번호가 바뀔 때 한 번이다.
-      captionRefs.current.forEach((node, k) => {
-        if (!node) return;
-        const active = k === f.caption.index;
-        node.style.opacity = active ? String(f.caption.opacity) : "0";
-        node.dataset.active = active ? "1" : "0";
-      });
+      // 다섯 문장이 한 칸에 겹쳐 있다 — 활성 번호가 바뀔 때만 `data-active`와 비활성의 opacity 0을 쓴다(같은 값의 속성 쓰기도 스타일을 무효화한다).
+      // 활성 캡션의 opacity만 전환 중 매 틱 움직인다.
+      if (f.caption.index !== written.caption) {
+        captionRefs.current.forEach((node, k) => {
+          if (!node) return;
+          const active = k === f.caption.index;
+          node.dataset.active = active ? "1" : "0";
+          if (!active) node.style.opacity = "0";
+        });
+        written = { ...written, caption: f.caption.index };
+      }
+      const activeCaption = captionRefs.current[f.caption.index];
+      if (activeCaption) activeCaption.style.opacity = String(f.caption.opacity);
       const text = typedPrefix(typed, f.typed);
       if (text !== written.typed) {
         for (const node of typedNodes) node.textContent = text;
@@ -330,8 +336,8 @@ export function Stage({
           </div>
         </div>
         {isStatic && (
-          // 높이 부족 — 같은 5씬을 위에서 아래로 한 장씩. 배율은 폭이 정한 CSS 변수 하나이고 캡션이 장 아래에 선다.
-          <div data-landing-static="" className="flex flex-col items-center gap-12 px-8">
+          // 높이 부족 — 같은 5씬을 위에서 아래로 한 장씩. 배율은 폭이 정한 CSS 변수 하나(좌우 여백 side를 이미 품는다)이고 캡션이 장 아래에 선다.
+          <div data-landing-static="" className="flex flex-col items-center gap-12">
             {scenes.map((scene, k) => (
               <figure key={k} aria-hidden="true" className="m-0 flex flex-col items-center gap-4">
                 <div

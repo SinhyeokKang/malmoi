@@ -380,6 +380,28 @@ describe("Stage — 캡션은 같은 칸에 겹친다", () => {
     expect(items.map((node) => node.style.opacity)).toEqual(["0", "1", "0", "0", "0"]);
   });
 
+  /** 번호가 그대로인 틱은 비활성 캡션에 쓰지 않는다 — `dataset` 쓰기는 같은 값이어도 속성 변경이라 스타일 무효화를 부른다. */
+  it("같은 캡션 번호의 틱은 비활성 캡션 DOM에 쓰지 않고, 번호가 바뀌면 한 번 쓴다", async () => {
+    const { container, scroller } = await mount();
+    await flush();
+    const items = [...container.querySelectorAll<HTMLElement>("[data-landing-caption]")];
+    const inactive = items.slice(1);
+    // 콜백이 기록을 비우므로 센다 — `takeRecords`만으로는 microtask 전달 뒤라 0이 된다.
+    let records = 0;
+    const observer = new MutationObserver((list) => { records += list.length; });
+    for (const node of inactive) observer.observe(node, { attributes: true });
+    for (const q of [0.1, 0.3, 0.5, 0.2]) await scrollTo(scroller, STAGE_TOP + q * H);
+    expect(records).toBe(0);
+    // 활성 캡션의 opacity는 매 틱이다 — 전환 구간에서 줄어든다.
+    await scrollTo(scroller, STAGE_TOP + 0.75 * H);
+    expect(Number(items[0]?.style.opacity)).toBeLessThan(1);
+
+    await scrollTo(scroller, STAGE_TOP + 1.3 * H);
+    expect(records).toBeGreaterThan(0);
+    expect(items.map((node) => node.dataset.active)).toEqual(["0", "1", "0", "0", "0"]);
+    observer.disconnect();
+  });
+
   it("진행 다섯 칸과 캡션이 한 flex-wrap 안에 있다 — 가로 16 · 세로 8", async () => {
     const { container } = await mount();
     const block = find<HTMLElement>(container, "[data-landing-chrome-block]");
@@ -437,6 +459,13 @@ describe("Stage — 높이 부족 정적 흐름", () => {
     expect(track.hasAttribute("data-static")).toBe(false);
     await scrollTo(scroller, STAGE_TOP + 1.3 * H);
     expect(snapshot(container).scene).toBe("1");
+  });
+
+  it("정적 흐름은 좌우 패딩이 없다 — 장 폭이 이미 side 여백을 품는다", async () => {
+    const { container, size } = await mount();
+    size.chrome = 600;
+    await flush();
+    expect(find(container, "[data-landing-static]").className).not.toMatch(/(^|\s)px-/);
   });
 
   it("정적이어도 낭독용 `<ol>`과 마무리 CTA는 그대로다", async () => {
@@ -591,5 +620,12 @@ describe("히어로 — lg 미만 표시급 하향", () => {
     const track = classOf(stage, "aria-label={label}");
     for (const cls of ["mt-16", "lg:mt-30"]) expect(track).toContain(cls);
     expect(track).not.toMatch(/(^|[\s"])mt-30/);
+  });
+
+  /** D15 — 마무리 CTA h2도 표시급이라 히어로 h1과 같이 한 단계 내려간다. */
+  it("마무리 CTA h2 — 30/1.2에서 `lg`부터 48/1.1, 굵기 600", () => {
+    const h2 = classOf(page, 'id="landing-closing"');
+    for (const cls of ["text-3xl", "leading-[1.2]", "lg:text-5xl", "lg:leading-[1.1]", "font-semibold"]) expect(h2).toContain(cls);
+    expect(h2).not.toMatch(/(^|[\s"])text-5xl/);
   });
 });

@@ -96,7 +96,7 @@ export default async function Root() {
         closing={
           // 위아래 여백은 섹션 자신의 padding-block 240이다(2026-09-27 사용자 — 120의 두 배). 이웃의 margin으로 만들지 않는다.
           <section aria-labelledby="landing-closing" className="flex flex-col items-center px-8 py-60 text-center">
-            <h2 id="landing-closing" className="m-0 text-5xl leading-[1.1] font-semibold">{closing.title}</h2>
+            <h2 id="landing-closing" className="m-0 text-3xl leading-[1.2] font-semibold lg:text-5xl lg:leading-[1.1]">{closing.title}</h2>
             <p className="mt-5 max-w-[40em] text-lg leading-body text-balance">{closing.body}</p>
             <nav aria-label={closing.links.label} data-landing-doc-links className="text-muted-foreground mt-3 text-sm">
               {closing.links.label}: <Link href={routes.docs("reference/formats")}>{closing.links.formats}</Link>
