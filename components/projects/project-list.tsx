@@ -23,7 +23,7 @@ import { ProjectSearch, useProjectQuery } from "@/components/projects/search-inp
 import { ProjectThumbnail } from "@/components/ui/project-thumbnail";
 import { GithubIcon } from "@/components/signin/brand-icons";
 import { NewProjectButton } from "@/components/projects/new-project-button";
-import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
+import { PANEL_HEAD_ROW, PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { Alert } from "@/components/ui/alert";
 import { CountBadge } from "@/components/ui/count-badge";
 import { BannerLine } from "@/components/ui/row-card";
@@ -110,7 +110,8 @@ export function ProjectList({
           ⚠️ **제목 행의 `min-h-9`는 `PanelHeader`가 첫 자식에 든다** (DESIGN §5.1 · 2026-10-01). 버튼이 없는 갈래(`1b` — 프로젝트
           0건)에서 줄 높이가 28로 떨어지면 머리 높이가 라우트마다 4px 튄다 — 이 행이 첫 자식이어야 하는 이유다.
         */}
-        <div className="flex items-center gap-3">
+        {/* 640 미만이면 제목·배지 첫 줄 · 검색·[New project] 둘째 줄 오른쪽(`PANEL_HEAD_ROW` — 시안 AT2a). */}
+        <div className={PANEL_HEAD_ROW}>
           <div className="flex items-center gap-2">
             <h1 className="text-lg font-medium">{m.common.nav.projects}</h1>
             {/*
@@ -124,14 +125,12 @@ export function ProjectList({
             ⚠️ **프로젝트가 하나도 없으면 검색·[New project]를 그리지 않는다** (캔버스 `1b`).
             좁힐 것이 없는 검색창은 죽은 컨트롤이고, 만들기 버튼은 그때 빈 상태 카드 안에 하나만 선다.
           */}
+          {/* ⚠️ **검색과 버튼이 한 묶음이다** — 제목 뒤 형제가 버튼 묶음이라 둘째 줄로 함께 내려간다. */}
           {body.kind !== "empty" && (
-            <>
-              {/* ⚠️ **`ml-auto`가 검색에 붙는다** — 제목과 컨트롤 사이의 빈 공간이 흔들리는 자리다. */}
-              <div className="ml-auto">
-                <ProjectSearch q={query} onSearch={search} />
-              </div>
+            <div className="flex items-center gap-3">
+              <ProjectSearch q={query} onSearch={search} />
               <NewProjectButton q={q} />
-            </>
+            </div>
           )}
         </div>
       </PanelHeader>

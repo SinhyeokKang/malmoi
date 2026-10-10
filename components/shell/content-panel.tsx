@@ -80,6 +80,9 @@ const CONTENT_MAX = "mx-auto w-full max-w-7xl";
  * 떨어지면 머리가 라우트마다 4px 튄다 — 전엔 소비자 넷이 손으로 적고 나머지는 툴바 버튼의 36에 기댔다. **첫 자식이 제목 행이다**
  * (소비자 전부가 그렇게 쓴다). 제목 행을 prop으로 올리지 않은 이유: 소비자마다 행의
  * 내용(툴바·필터·액션 묶음)이 달라 슬롯 하나로 못 접는다.
+ *
+ * ⚠️ **바깥이 `@container/panel-head`를 선언한다** — 버튼을 든 제목 행(`PANEL_HEAD_ROW`)이 이 폭을 묻는다. 선언과 질의가 같은 요소면
+ * 질의가 영영 참이 되지 않는다(POSTMORTEM 2026-09-15). 선을 든 전폭 요소라 폭 상한(`CONTENT_MAX`)과 무관하게 패널 폭을 잰다.
  */
 export function PanelHeader({
   description,
@@ -88,7 +91,7 @@ export function PanelHeader({
   ...props
 }: ComponentPropsWithoutRef<"div"> & { description?: ReactNode }) {
   return (
-    <div className="border-border shrink-0 border-b" {...props}>
+    <div className="@container/panel-head border-border shrink-0 border-b" {...props}>
       <div className={cn(CONTENT_MAX, "flex flex-col gap-3 px-4 py-3 [&>:first-child]:min-h-9", className)}>
         {children}
         {description !== undefined && <p className="text-muted-foreground text-xs">{description}</p>}
@@ -96,6 +99,22 @@ export function PanelHeader({
     </div>
   );
 }
+
+/**
+ * **버튼을 든 제목 행** — 머리 컨테이너 640(`@min-form`과 같은 경계) 미만이면 제목 첫 줄 · 버튼 묶음 둘째 줄 오른쪽, 이상이면 한 줄
+ * (responsive-app · 2026-10-11 사용자, 시안 피드백 F1·R1). 첫 자식이 제목, 그 뒤 형제가 버튼 묶음이다.
+ * ⚠️ **`:last-child`로 묻지 않는다** — 버튼이 없는 갈래(Projects 0건)에서는 제목이 마지막 자식이라 오른쪽으로 밀린다.
+ *
+ * ⚠️ **"넘칠 때만 감김"(`flex-wrap`)이 아니다** — 언어마다 줄 수가 갈리면 로딩 골격이 실물과 같은 줄 수를 못 낸다(spec A-09). 그래서
+ * 골격도 이 조각을 쓴다. 버튼을 아이콘으로 줄이거나 숨기지 않는다 — 머리만 36 + 8 늘어난다.
+ *
+ * ⚠️ **질의만 든다 — 선언은 `PanelHeader` 바깥이다.** 머리를 손으로 드는 화면(번역 작업 화면 등)은 자기 바깥 요소에
+ * `@container/panel-head`를 **리터럴로** 적고 이 조각을 안쪽 행에 쓴다(`container-query.test.ts`가 리터럴 className에서 선언을 센다).
+ *
+ * ⚠️ **제목 칸이 `min-w-0`이다** — 한 줄일 때 긴 제목이 버튼을 밀지 않고 말줄임된다. 줄 높이 36은 두 줄일 때 제목 줄의 몫이다.
+ */
+export const PANEL_HEAD_ROW =
+  "flex flex-col gap-2 [&>:first-child]:flex [&>:first-child]:min-h-9 [&>:first-child]:min-w-0 [&>:first-child]:items-center [&>*+*]:shrink-0 [&>*+*]:self-end @min-form/panel-head:flex-row @min-form/panel-head:items-center @min-form/panel-head:justify-between @min-form/panel-head:[&>*+*]:self-auto";
 
 /**
  * 패널 안에서 **스크롤하는** 본문.

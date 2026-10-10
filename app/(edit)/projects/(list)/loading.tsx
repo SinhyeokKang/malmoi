@@ -1,4 +1,4 @@
-import { ContentPanel, PanelBody, PanelHeader } from "@/components/shell/content-panel";
+import { PANEL_HEAD_ROW, ContentPanel, PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getMessages } from "@/lib/i18n/server";
 
@@ -44,15 +44,18 @@ export default async function ProjectsLoading() {
       {/* 머리 — 여백·선·폭 등급은 `PanelHeader`가 든다. */}
       <PanelHeader aria-hidden>
         {/*
-          제목 줄: 제목 ── ml-auto ─→ 검색 + [New project]. ⚠️ **카운트 원을 그리지 않는다**(4-W13) — 실물 `CountBadge`는 0이면 서지 않아
+          제목 줄: 제목 ── 검색 + [New project](640 미만이면 둘째 줄 오른쪽). ⚠️ **카운트 원을 그리지 않는다**(4-W13) — 실물 `CountBadge`는 0이면 서지 않아
           골격이 그 자리를 예고하면 0건에서 튄다.
         */}
-        <div className="flex items-center gap-3">
+        <div className={PANEL_HEAD_ROW}>
           <div className="flex items-center gap-2">
             <Skeleton size="lg" className="w-40" />
           </div>
-          <Skeleton className="ml-auto h-9 w-64" />
-          <Skeleton className="h-9 w-32" />
+          {/* 실물처럼 검색·버튼이 한 묶음이다 — 640 미만에서 함께 둘째 줄로 내려간다(A-09). */}
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-9 w-64" />
+            <Skeleton className="h-9 w-32" />
+          </div>
         </div>
       </PanelHeader>
 

@@ -69,7 +69,8 @@ describe("셸 레이아웃 — 뷰포트 고정", () => {
    */
   it("`PanelHeader`가 눌리지 않고 아래 선을 든다", () => {
     expect(contentPanel).toMatch(/export function PanelHeader\b/);
-    expect(contentPanel).toMatch(/className="border-border shrink-0 border-b"/);
+    // 같은 요소가 머리 컨테이너도 선언한다(responsive-app B1a — 제목 행이 640 경계를 묻는다, `panel-header.test.tsx`).
+    expect(contentPanel).toMatch(/className="@container\/panel-head border-border shrink-0 border-b"/);
   });
 
   /**

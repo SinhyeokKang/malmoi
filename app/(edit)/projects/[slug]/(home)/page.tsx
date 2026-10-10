@@ -11,7 +11,7 @@ import { EventDialog } from "@/components/logs/event-dialog";
 import { LogsCard } from "@/components/home/logs-card";
 import { MetaColumn } from "@/components/home/meta-column";
 import { ProjectNotReady } from "@/components/project-not-ready";
-import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
+import { PANEL_HEAD_ROW, PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { pendingInvitationWhere } from "@/lib/auth/pending-invitation";
 import { canPerform } from "@/lib/auth/permission";
 import { requireProjectAccess } from "@/lib/auth/session";
@@ -284,7 +284,8 @@ export default async function ProjectHomePage({
     */
     <HomeActions key={slug} slug={slug} writeLock={writeLock}>
       <PanelHeader>
-        <div className="flex flex-wrap items-center justify-between gap-2">
+        {/* 640 미만이면 제목 첫 줄 · Sync·Publish 둘째 줄 오른쪽(`PANEL_HEAD_ROW` — 시안 AT1a). 프로젝트 이름이 버튼에 밀려 잘리지 않는다. */}
+        <div className={PANEL_HEAD_ROW}>
           {/* breadcrumb이 없다 — 이 화면이 프로젝트 루트다. 위로 가는 길은 사이드바가 든다 */}
           <HomeTitle image={project.image} archived={state === "archived"}>{project.name}</HomeTitle>
           <HomeHeaderActions

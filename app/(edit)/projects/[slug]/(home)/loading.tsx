@@ -1,4 +1,4 @@
-import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
+import { PANEL_HEAD_ROW, PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { SEGMENT, SELECTED, TRACK, UNSELECTED } from "@/components/ui/segment";
 import { SegmentBody } from "@/components/ui/segmented-control";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -38,10 +38,13 @@ export default async function ProjectHomeLoading() {
       <span className="sr-only" role="status">{m.home.loading}</span>
       {/* ⚠️ `aria-hidden`이 머리와 본문 **둘 다**에 있다 — 하나만 빠져도 스크린리더가 회색 블록을 읽는다. */}
       <PanelHeader aria-hidden>
-        <div className="flex items-center gap-2.5">
-          <Skeleton className="size-7 rounded" />
-          <Skeleton size="lg" className="w-48" />
-          <span className="ml-auto flex items-center gap-2">
+        {/* 실물과 같은 조각이다 — 640 미만에서 실물만 두 줄이면 도착할 때 머리가 44 튄다(A-09). */}
+        <div className={PANEL_HEAD_ROW}>
+          <span className="flex items-center gap-2.5">
+            <Skeleton className="size-7 rounded" />
+            <Skeleton size="lg" className="w-48" />
+          </span>
+          <span className="flex items-center gap-2">
             <Skeleton className="h-9 w-24 rounded-md" />
             <Skeleton className="h-9 w-28 rounded-md" />
           </span>
