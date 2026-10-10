@@ -162,7 +162,7 @@ export default async function OAuthAuthorizePage({ searchParams }: { searchParam
     <AuthLayout m={m} scroll>
       {/* 동의 단계만 `<main>` 안이 스크롤한다 — 폼이 뷰포트보다 길다(핸드오프 §7.1: padding 48/32/32 · 480 컬럼). */}
       <div className="min-h-0 w-full flex-1 overflow-y-auto px-8 pt-12 pb-8">
-        <div className="mx-auto flex w-[480px] flex-col items-center gap-4">
+        <div className="mx-auto flex w-full max-w-120 flex-col items-center gap-4">
           <MalmoiMark size={48} />
           <AuthHeading title={m.oauthAuthorize.title} description={m.oauthAuthorize.consentDescription} />
           <ConsentPanel

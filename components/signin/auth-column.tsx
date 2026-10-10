@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * 셸 밖 화면 **넷**이 공유하는 320 폼 컬럼 (2026-09-12 셋 + 2026-09-29) — `/signin` · `/invite/[token]` ·
+ * 셸 밖 화면 **넷**이 공유하는 320 상한 폼 컬럼(좁은 폭에선 `w-full` — 375에서 main `px-8`을 빼고 295) (2026-09-12 셋 + 2026-09-29) — `/signin` · `/invite/[token]` ·
  * `/signin/link/[challenge]` · `/oauth/authorize`(로그인 전·종료 화면 — 동의 단계만 480, 그 페이지가 직접 든다).
  *
  * ⚠️ **셋이 각자 들고 있던 치수를 여기로 모은다.** 같은 골격을 손으로 세 번 적으면 그중 하나가
@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
  * 묶음인지 화면이 말하지 않는다.
  */
 export function AuthColumn({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("flex w-[320px] flex-col items-center gap-4", className)}>{children}</div>;
+  return <div className={cn("flex w-full max-w-80 flex-col items-center gap-4", className)}>{children}</div>;
 }
 
 /**
@@ -33,7 +33,7 @@ export function AuthHeading({ title, description }: { title: ReactNode; descript
     <div className="flex w-full flex-col items-center gap-2">
       <h1 className="text-center text-2xl font-semibold">{title}</h1>
       {description !== undefined && (
-        <p className="text-muted-foreground text-center text-sm">{description}</p>
+        <p className="text-muted-foreground text-center text-sm break-words">{description}</p>
       )}
     </div>
   );

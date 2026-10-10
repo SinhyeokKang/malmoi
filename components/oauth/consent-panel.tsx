@@ -171,7 +171,11 @@ export function ConsentPanel({
         <p className="text-muted-foreground text-xs leading-prose">{m.oauthAuthorize.consentNote}</p>
       </fieldset>
 
-      <div className="flex w-full flex-col gap-3 pt-2">
+      {/*
+        CTA 묶음은 스크롤 영역(페이지의 `<main>` 안) 바닥에 sticky다 — 소프트 키보드·긴 폼에서도 닿는다(responsive-public D4). 면을 칠해 뒤로 지나가는 폼이 비치지 않는다.
+        ⚠️ **사유(상태 슬롯)는 `lg` 미만에서 버튼 아래의 보이는 `text-xs` 줄이다**(D10 — `title`에 기대지 않는다) — 버튼이 폭을 채우고 줄이 그 밑에 선다.
+      */}
+      <div className="bg-background sticky bottom-0 flex w-full flex-col gap-3 pt-2 pb-2">
         {failure !== null && (
           <div id={errorId}>
             <Alert variant="danger">{failure === "deny" ? m.oauthAuthorize.denyFailed : m.oauthAuthorize.failed}</Alert>
@@ -182,16 +186,16 @@ export function ConsentPanel({
             {m.oauthAuthorize.unconfirmed}
           </Alert>
         )}
-        <div className="flex items-center gap-3">
-          <p id={footId} data-consent-status className="text-muted-foreground min-w-0 flex-1 text-xs leading-body">
+        <div className="flex flex-col-reverse gap-2 lg:flex-row lg:items-center lg:gap-3">
+          <p id={footId} data-consent-status className="text-muted-foreground min-w-0 flex-1 text-xs leading-body break-words">
             {footnote}
           </p>
           {unconfirmed ? (
-            <Button ref={checkRef} variant="primary" size="lg" loading={acting === "check"} onClick={check}>
+            <Button ref={checkRef} variant="primary" size="lg" className="w-full lg:w-auto" loading={acting === "check"} onClick={check}>
               {m.oauthAuthorize.checkRequest}
             </Button>
           ) : (
-            <div className="flex shrink-0 gap-2">
+            <div className="flex w-full shrink-0 gap-2 lg:w-auto [&>button]:flex-1 lg:[&>button]:flex-none">
               <Button
                 ref={denyRef}
                 size="lg"

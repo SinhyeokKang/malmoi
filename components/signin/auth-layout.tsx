@@ -19,8 +19,8 @@ import { DotField } from "./dot-field";
  * 환영 KV로 남는 어긋남이 생겼다(KV에 문구가 구워져 분기별로 못 바꾼다). **기본값이 단일이다** — 새 셸 밖
  * 화면은 넘기지 않으면 단일로 선다. 패널·캔버스·푸터 좌표는 두 형이 같고 그리드만 다르다.
  *
- * ⚠️ **`min-w-shell-min`가 없으면 규약 3의 "1280 미만에서 가로 스크롤"이 실제로 일어나지 않는다** —
- * grid가 그냥 압축되고 우측 키비주얼만 잘린다. 규약이 허용한 것은 스크롤이지 잘림이 아니다.
+ * ⚠️ **하한이 없다** (2026-10-10 responsive-public — 옛 `min-w-shell-min` 1280 하한을 풀었다). 장식 2열은 `lg` 이상만이고
+ * 미만은 폼 한 판이다 — 가로 스크롤이 아니라 장식을 접는다. 장식이 숨은 동안 `DotField`는 루프를 돌리지 않는다.
  *
  * ⚠️ **푸터는 공개 셸의 `PublicFooter`이고 패널 줄 아래 전폭 한 줄이다** (2026-09-26 사용자 — 옛 형은 좌측 패널 안
  * `absolute bottom-6`의 14px 줄이었다). 좌표는 헤더가 없어 공개 셸(위 6 + 헤더 44 + 6)과 다르다: 바깥 `px-2 pt-2`(패널 y 8) · 패널 줄 · 푸터 40이 바닥 띠다.
@@ -38,7 +38,7 @@ export function AuthLayout({ m, children, decoration = false, scroll = false }: 
   return (
     <>
       {/*
-        ⚠️ **`body`까지 칠해야 스크롤 바운스에서 흰색이 안 보인다.** 이 래퍼는 `min-h-svh`라
+        ⚠️ **`body`까지 칠해야 스크롤 바운스에서 흰색이 안 보인다.** 이 래퍼는 `min-h-dvh`라
         뷰포트를 채우지만 그 **바깥**(오버스크롤 영역)은 `body`의 색이고 그것이 흰색이다.
 
         ⚠️ **셸 밖 화면에서만이다** — 전역 CSS로 주면 셸 안 화면의 배경까지 회색이 된다. 그래서
@@ -48,11 +48,13 @@ export function AuthLayout({ m, children, decoration = false, scroll = false }: 
       <style>{`body{background-color:var(--canvas)}`}</style>
 
       {/*
-        ⚠️ **`h-svh`가 아니라 `min-h-svh`다** — 공개 셸과 달리 스크롤러가 없어서, 좌측 내용이 뷰포트보다 길면 문서가
+        ⚠️ **`h-dvh`가 아니라 `min-h-dvh`다** — 공개 셸과 달리 스크롤러가 없어서, 좌측 내용이 뷰포트보다 길면 문서가
         스크롤되어야 한다(자르지 않는다). 패널 줄이 `flex-1`로 남은 높이를 채운다.
+        ⚠️ **`svh`가 아니라 `dvh`다** (D4) — `svh`는 소프트 키보드가 열려도 줄지 않아 바닥 CTA가 키보드 밑에 갇힌다. `scroll`(동의 단계)은
+        `h-dvh`로 가시 높이에 고정하고 `<main>` 안이 스크롤하며 CTA 묶음은 그 안 sticky bottom이다.
       */}
-      <div className={cn("bg-canvas flex min-w-shell-min flex-col px-2 pt-2", scroll ? "h-svh" : "min-h-svh")}>
-        <div className={cn("grid flex-1 gap-2", decoration && "grid-cols-2", scroll && "min-h-0")}>
+      <div className={cn("bg-canvas flex flex-col px-2 pt-2", scroll ? "h-dvh" : "min-h-dvh")}>
+        <div className={cn("grid flex-1 gap-2", decoration && "lg:grid-cols-2", scroll && "min-h-0")}>
           {/*
             ⚠️ `<main>`은 **좌측**이다 — 우측은 장식이고 랜드마크가 아니다.
             ⚠️ **`bg-background`(라이트 #fff)다** — 바깥이 연한 회색이라 그 대비가 탭의 경계를 만든다. 옛 `bg-white`와 같은 값이다(color-scheme Phase 1).
@@ -77,12 +79,14 @@ export function AuthLayout({ m, children, decoration = false, scroll = false }: 
  * (`px-16 py-20`, 좌우는 2026-09-14에 80에서 줄였다). 키비주얼은 `max-w-[768px]`이고 컨테이너에
  * 맞춰 줄어들어, 1280px에서 우측 컬럼 628 − 128 = 500px이라 **넘치지 않는다.**
  *
+ * ⚠️ **`lg` 미만에선 `hidden`이다** — CSS 숨김이라 `DotField`는 캔버스 폭 0을 effect 안에서 읽고 루프를 멈춘다(렌더 시점 폭 판정 금지).
+ *
  * ⚠️ **이 패널엔 border가 없다** (시안) — 그라데이션 자체가 면을 만들어 선이 필요 없다. 좌측
  * 폼 패널만 `border-border-subtle`을 든다.
  */
 function Decoration({ m }: { m: Messages }) {
   return (
-    <div className="from-auth-hero-from to-auth-hero-to relative flex flex-col items-center justify-between overflow-hidden rounded-xl bg-gradient-to-b px-16 py-20">
+    <div className="hidden lg:flex from-auth-hero-from to-auth-hero-to relative flex-col items-center justify-between overflow-hidden rounded-xl bg-gradient-to-b px-16 py-20">
       <DotField className="absolute inset-0 size-full" />
 
       <p className="relative text-3xl font-semibold">{m.signIn.hero.top}</p>

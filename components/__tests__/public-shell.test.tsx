@@ -342,7 +342,8 @@ describe("푸터 — `/signin`·초대·계정 병합도 공개 셸 푸터 하�
 
   it("바깥 `px-2 pt-2`(헤더가 없어 위 8 — 공개 셸의 6+44+6과 다르다), 푸터가 바닥 40을 든다", () => {
     const outer = signin().querySelector("footer")?.parentElement;
-    expect(outer?.className.split(/\s+/)).toEqual(expect.arrayContaining(["flex", "flex-col", "min-h-svh", "min-w-shell-min", "px-2", "pt-2"]));
+    expect(outer?.className.split(/\s+/)).toEqual(expect.arrayContaining(["flex", "flex-col", "min-h-dvh", "px-2", "pt-2"]));
+    expect(outer?.className.split(/\s+/)).not.toContain("min-w-shell-min");
     expect(outer?.className.split(/\s+/)).not.toContain("p-2");
     expect(outer?.lastElementChild?.tagName).toBe("FOOTER");
   });

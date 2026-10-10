@@ -74,4 +74,23 @@ describe("DotField", () => {
     await rerender(null);
     expect(listeners.size).toBe(0);
   });
+
+  /**
+   * ⚠️ **`display:none`인 동안 rAF 루프를 돌리지 않는다** — `lg` 미만에서 장식이 CSS로 숨으면 캔버스 폭이 0이다.
+   * 렌더 시점의 폭 판정이 아니라 effect 안의 실측이다(design §2). 다시 보이면(폭 > 0) 루프가 시작된다.
+   */
+  it("캔버스가 숨어 폭이 0이면 애니메이션 루프를 시작하지 않고, 보이면 시작한다", async () => {
+    setup();
+    vi.stubGlobal("matchMedia", (query: string) => ({ matches: false, media: query, addEventListener: () => undefined, removeEventListener: () => undefined }) as unknown as MediaQueryList);
+    let width = 0;
+    vi.spyOn(HTMLCanvasElement.prototype, "getBoundingClientRect").mockImplementation(() => ({ width, height: width, top: 0, left: 0, right: width, bottom: width, x: 0, y: 0, toJSON: () => ({}) }));
+    let notify: () => void = () => undefined;
+    vi.stubGlobal("ResizeObserver", class { constructor(cb: () => void) { notify = cb; } observe() {} unobserve() {} disconnect() {} });
+    const raf = vi.spyOn(window, "requestAnimationFrame").mockImplementation(() => 1);
+    await render(<DotField />);
+    expect(raf).not.toHaveBeenCalled();
+    width = 400;
+    await act(async () => notify());
+    expect(raf).toHaveBeenCalled();
+  });
 });
