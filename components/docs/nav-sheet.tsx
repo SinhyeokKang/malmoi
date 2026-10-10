@@ -2,10 +2,11 @@
 
 import { ChevronsUpDown, List } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState, type FocusEvent, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { LargeModal } from "@/components/ui/large-modal";
+import { useNarrowHandoff } from "@/components/public-shell/nav-drawer";
 import { WIDE_QUERY } from "@/lib/shell/breakpoint";
 
 /**
@@ -99,31 +100,15 @@ export function DocsNavSheet({ pages, label, title, closeLabel, children }: {
 /**
  * **고정 내비(264, `lg` 이상)의 그릇** — 좁아지며 숨을 때 그 안에 포커스가 있었으면 장 내비의 트리거인 캡슐로 옮긴다(design §2 ·
  * POSTMORTEM 2026-09-24 — `display:none`이 되면 포커스가 `body`로 빠지고 Tab이 문서 첫머리에서 다시 시작한다).
- * 헤더 묶음의 `WideOnly`(`components/public-shell/nav-drawer.tsx`)와 같은 장치다 — 대상만 메뉴 버튼이 아니라 캡슐이다.
- * 리스너는 **포커스가 안에 있는 동안만** 단다. 숨김은 CSS(`max-lg:hidden`)가 한다.
+ * 장치는 헤더 묶음의 `WideOnly`와 같은 `useNarrowHandoff`다 — 대상만 메뉴 버튼이 아니라 캡슐이다(Chrome이 blur 없이 `body`로 옮기는 #214 경로 포함).
+ * 숨김은 CSS(`max-lg:hidden`)가 한다.
  */
 export function DocsFixedNav({ label, children }: { label: string; children: ReactNode }) {
   const ref = useRef<HTMLElement>(null);
-  const stop = useRef<(() => void) | null>(null);
-  useEffect(() => () => stop.current?.(), []);
-
-  function watch() {
-    if (stop.current !== null) return;
-    // ⚠️ jsdom에는 `matchMedia`가 없다 — 없는 환경은 폭이 바뀌지 않는 것으로 읽는다.
-    const query = window.matchMedia?.(WIDE_QUERY);
-    if (query == null) return;
-    const onChange = (event: { matches: boolean }) => {
-      if (event.matches || !ref.current?.contains(document.activeElement)) return;
-      document.querySelector<HTMLElement>("[data-docs-capsule]")?.focus();
-    };
-    query.addEventListener("change", onChange);
-    stop.current = () => { query.removeEventListener("change", onChange); stop.current = null; };
-  }
-
+  const handoff = useNarrowHandoff(ref, "[data-docs-capsule]");
   return (
     // `data-docs-nav`는 넓어질 때 시트가 포커스를 넘길 표식이다(위 `DocsNavSheet`).
-    <nav ref={ref} aria-label={label} data-docs-nav="" onFocus={watch}
-      onBlur={(event: FocusEvent) => { if (!(event.relatedTarget instanceof Node && ref.current?.contains(event.relatedTarget))) stop.current?.(); }}
+    <nav ref={ref} aria-label={label} data-docs-nav="" {...handoff}
       className="border-border w-[264px] shrink-0 overflow-y-auto border-r p-4 max-lg:hidden">
       {children}
     </nav>

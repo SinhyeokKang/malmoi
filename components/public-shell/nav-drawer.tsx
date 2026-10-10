@@ -2,7 +2,7 @@
 
 import { ArrowUpRight, CircleHelp, Compass, Menu } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef, useState, type FocusEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FocusEvent, type ReactNode, type RefObject } from "react";
 
 import { ThemeSwitcher } from "@/components/color-scheme/theme-switcher";
 import { LocaleSwitcher } from "@/components/i18n/locale-switcher";
@@ -130,67 +130,87 @@ function wideTarget(menu: HTMLElement | null, active: Element | null): HTMLEleme
 
 /**
  * **`lg` 이상에서만 보이는 묶음**(헤더 내비 · GitHub · 공개 푸터 스위처) — 좁아지며 숨을 때 그 안에 포커스가 있었으면 메뉴 버튼으로 옮긴다
- * (design §2 — `body`로 빠지면 Tab이 문서 첫머리에서 다시 시작한다). 리스너는 **포커스가 안에 있는(또는 안의 트리거가 연 메뉴에 있는) 동안만** 단다.
- * 숨김은 CSS(`max-lg:hidden`)가 하고, 이 묶음은 그 순간의 포커스만 든다.
- *
- * ⚠️ **두 순서를 다 받는다**(#214) — 브라우저는 MQL `change`보다 먼저 스타일을 다시 계산해 숨은 링크에서 `blur`(relatedTarget 없음)를 쏠 수 있다.
- * 그때 묶음이 이미 `display: none`이면 숨겨져서 잃은 것이라 그 자리에서 넘긴다. 숨지 않았는데 relatedTarget이 없으면(빈 곳 클릭) 셸 스크롤러의 몫이다.
- * ⚠️ **안의 트리거가 연 포털 메뉴(푸터 스위처)도 묶음 안이다** — 메뉴가 열린 채 좁아지면 숨은 트리거에 붙어 남는다. Esc로 닫고, Radix가 (숨은)
- * 트리거로 돌려주는 복귀가 지난 뒤에 메뉴 버튼으로 옮긴다.
+ * (design §2 — `body`로 빠지면 Tab이 문서 첫머리에서 다시 시작한다). 숨김은 CSS(`max-lg:hidden`)가 하고, 이 묶음은 그 순간의 포커스만 든다.
  */
 export function WideOnly({ className, children }: { className: string; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
+  const handoff = useNarrowHandoff(ref, MENU);
+  return <div ref={ref} className={className} {...handoff}>{children}</div>;
+}
+
+/**
+ * **좁아지며 숨는 묶음의 포커스 이관** — `WideOnly`(→ 메뉴 버튼)와 `/docs` 고정 내비(→ 캡슐, `components/docs/nav-sheet.tsx`)가 같이 쓴다.
+ * 리스너는 **포커스가 묶음 안에 들어온 뒤 실제로 떠나기 전까지만** 단다(포커스·포인터로 서고, 다른 요소로 옮겨 가는 blur에서 떨어진다).
+ *
+ * ⚠️ **세 순서를 다 받는다**(#214):
+ * - **Chrome — 사건이 없다**(재실측 2026-10-10): 숨은 노드의 포커스를 focus fixup이 `blur` 없이 `body`로 옮기고, MQL `change`가 올 때는 이미 `body`다.
+ *   리스너가 살아 있다는 것 자체가 "안에 있었다"의 기억이다 — `change` 때 `activeElement`가 `body`(또는 아직 안)면 넘긴다.
+ * - **blur 먼저**: 스타일 재계산이 `change`보다 먼저 와 relatedTarget 없는 `blur`가 오면, 묶음이 이미 `display: none`일 때 그 자리에서 넘긴다.
+ *   숨지 않았는데 relatedTarget이 없으면(빈 곳 클릭) 셸 스크롤러의 몫이라 리스너를 뗀다.
+ * - **`change` 먼저**: 포커스가 아직 안이면 넘긴다.
+ * ⚠️ **안의 트리거가 연 포털 메뉴(푸터 스위처)도 묶음 안이다** — 메뉴가 열린 채 좁아지면 숨은 트리거에 붙어 남는다. 메뉴는 `change` 때 DOM에서 찾고
+ * (`aria-labelledby`가 묶음 안의 트리거), Esc로 닫은 뒤 Radix가 (숨은) 트리거로 돌려주는 복귀가 지난 다음에 넘긴다. 포인터로 연 메뉴는 트리거에
+ * 포커스가 서지 않으므로 `pointerdown`도 리스너를 세운다.
+ */
+export function useNarrowHandoff(ref: RefObject<HTMLElement | null>, target: string) {
   const stop = useRef<(() => void) | null>(null);
-  // 안의 트리거가 연 포털 메뉴 — 포커스가 거기 있는 동안도 묶음 안으로 친다.
-  const portal = useRef<HTMLElement | null>(null);
   useEffect(() => () => stop.current?.(), []);
+  const focusTarget = () => document.querySelector<HTMLElement>(target)?.focus();
 
   function handOff() {
     stop.current?.();
-    document.querySelector<HTMLElement>(MENU)?.focus();
+    focusTarget();
   }
 
-  // ⚠️ React는 포털의 focus 이벤트도 컴포넌트 트리로 올려 보낸다 — 메뉴 항목의 focus가 여기로 온다. DOM으로 안이면 묶음 자체, 밖이면 그 메뉴다.
-  function watch(event: FocusEvent) {
-    const target = event.target;
-    portal.current = ref.current?.contains(target) ? null : target.closest<HTMLElement>('[role="menu"]');
+  function watch() {
     if (stop.current !== null) return;
+    // ⚠️ jsdom에는 `matchMedia`가 없다 — 없는 환경은 폭이 바뀌지 않는 것으로 읽는다.
     const query = window.matchMedia?.(WIDE_QUERY);
     if (query == null) return;
     const onChange = (event: { matches: boolean }) => {
-      if (event.matches) return;
-      const menu = portal.current;
-      if (menu?.isConnected) {
+      const wrapper = ref.current;
+      if (event.matches || wrapper === null) return;
+      const menu = openMenuFrom(wrapper);
+      if (menu !== null) {
         stop.current?.();
         menu.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
         // Radix는 메뉴가 떨어진 뒤 `setTimeout(0)`에 트리거로 돌려준다 — 떨어진 것을 본 다음 틱에 넘겨 그 복귀 뒤에 선다.
         let tries = 0;
         const after = () => {
           if (menu.isConnected && ++tries < 20) { window.setTimeout(after, 0); return; }
-          window.setTimeout(() => document.querySelector<HTMLElement>(MENU)?.focus(), 0);
+          window.setTimeout(focusTarget, 0);
         };
         window.setTimeout(after, 0);
         return;
       }
-      if (ref.current?.contains(document.activeElement)) handOff();
+      const active = document.activeElement;
+      if (active === null || active === document.body || wrapper.contains(active)) handOff();
     };
     query.addEventListener("change", onChange);
-    stop.current = () => { query.removeEventListener("change", onChange); stop.current = null; portal.current = null; };
+    stop.current = () => { query.removeEventListener("change", onChange); stop.current = null; };
   }
 
   function onBlur(event: FocusEvent) {
+    const wrapper = ref.current;
+    if (wrapper === null) return;
     const next = event.relatedTarget;
-    if (next instanceof Node && (ref.current?.contains(next) || portal.current?.contains(next))) return;
-    const menu = next instanceof Element ? next.closest<HTMLElement>('[role="menu"]') : null;
-    const opener = menu?.getAttribute("aria-labelledby");
-    if (menu != null && opener != null && ref.current?.contains(document.getElementById(opener))) { portal.current = menu; return; }
-    if (next === null && ref.current !== null && getComputedStyle(ref.current).display === "none") { handOff(); return; }
+    if (next instanceof Node && (wrapper.contains(next) || menuFrom(next, wrapper) !== null)) return;
+    if (next === null && getComputedStyle(wrapper).display === "none") { handOff(); return; }
     stop.current?.();
   }
 
-  return (
-    <div ref={ref} className={className} onFocus={watch} onBlur={onBlur}>
-      {children}
-    </div>
-  );
+  return { onFocus: watch, onPointerDown: watch, onBlur };
+}
+
+/** 노드가 든 메뉴가 묶음 안의 트리거가 연 것이면 그 메뉴. */
+function menuFrom(node: Node, wrapper: HTMLElement): HTMLElement | null {
+  const menu = node instanceof Element ? node.closest<HTMLElement>('[role="menu"]') : null;
+  const opener = menu?.getAttribute("aria-labelledby");
+  return menu != null && opener != null && wrapper.contains(document.getElementById(opener)) ? menu : null;
+}
+
+/** 묶음 안의 트리거가 연, 지금 열린 메뉴. */
+function openMenuFrom(wrapper: HTMLElement): HTMLElement | null {
+  for (const menu of document.querySelectorAll<HTMLElement>('[role="menu"]')) if (menuFrom(menu, wrapper) !== null) return menu;
+  return null;
 }

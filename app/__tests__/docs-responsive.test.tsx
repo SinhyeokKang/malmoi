@@ -309,6 +309,22 @@ describe("고정 내비 → 좁아짐", () => {
     expect(listeners.size).toBe(0);
   });
 
+  /** #214 재실측 — Chrome은 blur 없이 fixup으로 `body`로 옮긴다. `change` 때 이미 `body`여도 안에 있었으면 캡슐로 넘긴다. */
+  it("blur 없이 body로 간 뒤의 `change`도 캡슐로 옮긴다", async () => {
+    wide = true;
+    await page(["setup", "workflow"]);
+    await act(async () => { fixedLinks()[2]!.focus(); });
+    wide = false;
+    Object.defineProperty(document, "activeElement", { configurable: true, get: () => document.body });
+    try {
+      await act(async () => { for (const listener of [...listeners]) listener({ matches: false }); });
+    } finally {
+      Reflect.deleteProperty(document, "activeElement");
+    }
+    expect(document.activeElement).toBe(capsule());
+    expect(listeners.size).toBe(0);
+  });
+
   it("포커스가 밖에 있으면 건드리지 않고 리스너도 없다", async () => {
     wide = true;
     await page(["setup", "workflow"]);

@@ -412,6 +412,67 @@ describe("#214 — 숨김이 `change`보다 먼저 와도, 메뉴가 열려 있�
   });
 });
 
+/**
+ * **#214 재실측 — Chrome은 `focusout`/`blur`를 하나도 쏘지 않는다.** 숨겨진 노드의 포커스를 focus fixup이 조용히 `body`로 옮기고, MQL `change`가 올 때는
+ * 이미 `activeElement === body`다. 래퍼 안이었다는 사실을 기억해야 넘길 수 있다. jsdom에는 fixup이 없으므로 `activeElement`를 `body`로 덮어 그 순간을 만든다.
+ */
+async function narrowAfterSilentFixup() {
+  Object.defineProperty(document, "activeElement", { configurable: true, get: () => document.body });
+  try {
+    await media.set(false);
+  } finally {
+    Reflect.deleteProperty(document, "activeElement");
+  }
+}
+
+describe("#214 — blur 없이 body로 간 뒤의 `change`", () => {
+  beforeEach(() => { stubMedia(true); });
+
+  it("헤더 내비", async () => {
+    await shell({ current: "docs" });
+    await act(async () => { headerNav().querySelector<HTMLAnchorElement>("a")!.focus(); });
+    await narrowAfterSilentFixup();
+    expect(document.activeElement).toBe(menuButton());
+    expect(media.listeners.size).toBe(0);
+  });
+
+  it("헤더 GitHub", async () => {
+    await shell();
+    await act(async () => { document.querySelector<HTMLElement>(`header a[href="${GITHUB_REPO_URL}"]`)!.focus(); });
+    await narrowAfterSilentFixup();
+    expect(document.activeElement).toBe(menuButton());
+  });
+
+  it("푸터 스위처", async () => {
+    await shell();
+    const theme = [...document.querySelectorAll<HTMLButtonElement>("footer button")].find((button) => button.textContent?.startsWith(`${en.preferences.theme.title}: `))!;
+    await act(async () => { theme.focus(); });
+    await narrowAfterSilentFixup();
+    expect(document.activeElement).toBe(menuButton());
+  });
+
+  it("포커스가 이미 다른 곳으로 옮겨 갔으면(실제 blur) 넘기지 않는다", async () => {
+    await shell();
+    const cta = document.querySelector<HTMLAnchorElement>(`header a[href="${routes.signIn()}"]`)!;
+    await act(async () => { headerNav().querySelector<HTMLAnchorElement>("a")!.focus(); });
+    await act(async () => { cta.focus(); });
+    await media.set(false);
+    expect(document.activeElement).toBe(cta);
+  });
+
+  /** 포인터로 연 메뉴는 트리거에 포커스가 서지 않는다(Radix가 pointerdown 기본 동작을 막는다) — 그 경로에서도 좁아지면 닫힌다. */
+  it("포인터로 연 푸터 메뉴(트리거 포커스 없음)도 좁아지면 닫고 메뉴 버튼으로 간다", async () => {
+    await shell();
+    const language = [...document.querySelectorAll<HTMLButtonElement>("footer button")].find((button) => button.textContent?.startsWith(`${en.uiLocale.label}: `))!;
+    await act(async () => { await userEvent.setup().pointer({ keys: "[MouseLeft]", target: language }); });
+    expect(document.querySelector('[role="menu"]')).not.toBeNull();
+    await narrowAfterSilentFixup();
+    for (let tries = 0; document.activeElement !== menuButton() && tries < 10; tries++) await settle();
+    expect(document.querySelector('[role="menu"]')).toBeNull();
+    expect(document.activeElement).toBe(menuButton());
+  });
+});
+
 describe("푸터 — 공개 셸은 왼쪽 묶음만, Auth는 두 줄 감김 (PT1a · PT3a)", () => {
   it("공개 셸 푸터는 `lg` 미만에서 스위처 묶음을 숨긴다(서랍 바닥에 있다)", async () => {
     await shell();
