@@ -426,3 +426,20 @@ describe("폐기", () => {
     expect(card().querySelector("[data-card-notice]")?.className).toContain("border-divider border-b");
   });
 });
+
+/**
+ * **사실 표 — 값이 감기고 좁은 카드에서 한 열** (responsive-app A5 리뷰 Y4). `1fr`은 내용 최소 폭 아래로 안 줄어 긴 값이 카드를 밀었다 —
+ * `minmax(0,1fr)` + 값 `wrap-anywhere`. 카드(`Card`의 `@container`) 640 미만이면 라벨 위 · 값 아래 한 열이고 사실 사이를 띄운다.
+ * 640 이상(1280)은 120 + 값 두 열 그대로다. jsdom은 컨테이너 쿼리를 못 잰다 — 클래스 계약이다.
+ */
+describe("사실 표 — 좁은 폭", () => {
+  it("값 열이 0까지 줄고 감기며, 640 미만이면 한 열이다", async () => {
+    await mount(ACTIVE);
+    const facts = find<HTMLElement>(card(), "[data-token-facts]");
+    const tokens = facts.className.split(/\s+/);
+    for (const cls of ["grid", "grid-cols-[120px_minmax(0,1fr)]", "[&_dd]:min-w-0", "[&_dd]:wrap-anywhere", "@max-form:grid-cols-1", "@max-form:gap-y-1", "@max-form:[&>div+div>dt]:mt-2"]) {
+      expect(tokens, cls).toContain(cls);
+    }
+    expect(tokens).not.toContain("grid-cols-[120px_1fr]");
+  });
+});

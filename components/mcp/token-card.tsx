@@ -235,7 +235,8 @@ function TokenFacts({ token, now }: { token: Exclude<TokenCardData, { state: "no
   ];
   return (
     // Alert 다음 행은 행↔행 선(`#e5e5e5`), 머리 바로 아래면 머리 선(`#f0f0f0`)이다(핸드오프 `4b`).
-    <dl data-token-facts className="grid grid-cols-[120px_1fr] items-baseline gap-x-3 gap-y-2.5 px-4 py-3.5">
+    // 값 열은 0까지 줄고 감긴다 — `1fr`은 내용 최소 폭 아래로 안 줄어 긴 값이 카드를 밀었다. 카드 640 미만은 라벨 위 · 값 아래 한 열이다(responsive-app A5).
+    <dl data-token-facts className="grid grid-cols-[120px_minmax(0,1fr)] items-baseline gap-x-3 gap-y-2.5 px-4 py-3.5 [&_dd]:min-w-0 [&_dd]:wrap-anywhere @max-form:grid-cols-1 @max-form:gap-y-1 @max-form:[&>div+div>dt]:mt-2">
       {facts.map(([label, content]) => (
         <Fact key={label} width={120} label={label} dimmed={expired}>{content}</Fact>
       ))}
