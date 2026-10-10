@@ -4,13 +4,14 @@ import { join } from "node:path";
 import { act, StrictMode, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AttentionBadgeResult, OpenAttentionInboxResult } from "@/app/inbox/actions";
 import { AttentionInbox } from "@/components/shell/attention-inbox";
 import { attentionHref } from "@/lib/home/attention-view";
 import type { InboxPlan } from "@/lib/inbox/plan";
 import { getUnread, notifySeen, setUnread } from "@/lib/inbox/unread-store";
+import { WIDE_QUERY } from "@/lib/shell/breakpoint";
 import { en } from "@/messages/en";
 import { ko } from "@/messages/ko";
 
@@ -359,6 +360,15 @@ it("Inbox 소스는 행 형 클래스를 직접 쓰지 않는다 — 행·그룹
   for (const primitive of ["<ListGroup", "<DropdownMenuRow", "<CommandStatus"]) expect(source, primitive).toContain(primitive);
 });
 
+/** 행 형을 상수(`DROPDOWN_MENU_ROW`)로 꺼냈다 — 메뉴 행의 클래스 문자열은 그 전과 같은 순서·같은 토큰이다(시트 행이 같은 값을 쓴다). */
+it("메뉴 행의 클래스가 상수로 꺼내기 전과 같다", async () => {
+  await mount(0);
+  const d = nextOpen();
+  await openMenu();
+  await settle(d, ok());
+  expect(items()[0]!.className).toContain("cursor-pointer py-2.5 text-sm outline-none focus-visible:ring-0 data-[highlighted]:bg-foreground/[0.07] data-[disabled]:pointer-events-none data-[disabled]:opacity-50 relative");
+});
+
 /** 사용자 보고(2026-10-05) — 첫 프로젝트 묶음 위에 선이 섰다. 늘 마운트된 상태 줄 둘이 앞에 있어 `:first-child`가 아니었다. */
 it("첫 프로젝트 묶음 위에는 선이 없고 둘째부터 선다 — 선은 '그룹 뒤의 그룹'에만 붙는다", async () => {
   await mount(0);
@@ -640,4 +650,131 @@ it("해제된 헤더는 읽음 신호를 받지 않는다", async () => {
   await signal();
   // 받을 헤더가 없으면 수는 그대로다 — 0으로 만들 시점은 헤더가 정한다.
   expect(getUnread()).toBe(5);
+});
+
+/**
+ * **`lg` 미만은 전체 화면 시트다** (responsive-public PT5a · D2 · D14). 그릇은 열기 핸들러가 `matchMedia`로 한 번 고르고 렌더 상태를 두지 않는다 —
+ * 트리거는 `DropdownMenuTrigger` 하나이고 좁으면 메뉴 열림을 막고 시트(`LargeModal`)를 연다. 목록 본문은 두 그릇이 같은 조각이다.
+ * jsdom은 폭을 못 재므로 `matchMedia` 스텁의 값과 `change`로 폭을 만든다.
+ */
+describe("좁은 폭 — 전체 화면 시트", () => {
+  type Listener = (event: { matches: boolean }) => void;
+  let wide = false;
+  const listeners = new Set<Listener>();
+  const resize = async (next: boolean) => { wide = next; await act(async () => { for (const listener of [...listeners]) listener({ matches: next }); }); };
+  beforeEach(() => {
+    wide = false;
+    listeners.clear();
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      media: query,
+      get matches() { return query === WIDE_QUERY ? wide : false; },
+      addEventListener: (type: string, listener: Listener) => { if (query === WIDE_QUERY && type === "change") listeners.add(listener); },
+      removeEventListener: (type: string, listener: Listener) => { if (type === "change") listeners.delete(listener); },
+    }));
+  });
+  afterEach(() => { vi.unstubAllGlobals(); });
+  const sheet = () => document.querySelector<HTMLElement>('[role="dialog"]');
+
+  it("좁으면 메뉴 대신 시트가 열리고 열기 Action은 한 번이다 — 머리는 보이는 제목 Inbox + 수", async () => {
+    await mount(3);
+    const d = nextOpen();
+    await openMenu();
+    expect(menu()).toBeNull();
+    expect(sheet()).not.toBeNull();
+    expect(mocks.open).toHaveBeenCalledTimes(1);
+    const title = sheet()!.querySelector("h2")!;
+    expect(title.classList.contains("sr-only")).toBe(false);
+    expect(title.textContent).toBe(`${en.inbox.label}3`);
+    expect(title.querySelector("[aria-hidden='true']")?.textContent).toBe("3");
+    await settle(d, ok());
+    // 같은 행 조각 — 목적지·안 읽음 점이 메뉴와 같고, 시트 안에서는 메뉴 항목이 아니라 링크다.
+    const rows = [...sheet()!.querySelectorAll<HTMLAnchorElement>("a[href]")];
+    const all = PLAN.groups.flatMap(group => group.items.map(item => attentionHref(group.project.slug, item)));
+    expect(rows.map(row => row.getAttribute("href"))).toEqual(all);
+    expect(sheet()!.querySelectorAll('[role="menuitem"]')).toHaveLength(0);
+    expect(sheet()!.querySelectorAll("[data-unread-dot]")).toHaveLength(3);
+    expect(mocks.open).toHaveBeenCalledTimes(1);
+  });
+
+  it("시트는 본문 여백·바닥이 없는 형이다 — 행이 전폭 여백을 스스로 든다", async () => {
+    await mount(0);
+    const d = nextOpen();
+    await openMenu();
+    await settle(d, ok());
+    expect(sheet()!.querySelector("footer")).toBeNull();
+    expect(sheet()!.querySelector("[data-onboarding-body]")?.classList.contains("max-lg:px-4")).toBe(false);
+  });
+
+  it("넓으면 지금처럼 메뉴다", async () => {
+    wide = true;
+    await mount(0);
+    const d = nextOpen();
+    await openMenu();
+    expect(menu()).not.toBeNull();
+    expect(sheet()).toBeNull();
+    await settle(d, ok());
+  });
+
+  it("닫기로 닫으면 트리거로 돌아가고 marked면 그때 배지가 빠진다", async () => {
+    await mount(3);
+    const d = nextOpen();
+    await openMenu();
+    await settle(d, ok());
+    expect(badgeNode()?.textContent).toBe("3");
+    await act(async () => { await userEvent.setup().click(sheet()!.querySelector<HTMLButtonElement>(`button[aria-label="${en.common.close}"]`)!); });
+    expect(sheet()).toBeNull();
+    expect(badgeNode()).toBeNull();
+    expect(document.activeElement).toBe(trigger());
+  });
+
+  it("열린 채 `lg`를 넘으면 닫는다 — 시트도 메뉴도, 리스너는 열린 동안만이다", async () => {
+    await mount(0);
+    expect(listeners.size).toBe(0);
+    const first = nextOpen();
+    await openMenu();
+    expect(listeners.size).toBe(1);
+    await resize(true);
+    expect(sheet()).toBeNull();
+    expect(menu()).toBeNull();
+    expect(listeners.size).toBe(0);
+    await settle(first, ok());
+    const second = nextOpen();
+    await openMenu();
+    expect(menu()).not.toBeNull();
+    await resize(false);
+    expect(menu()).toBeNull();
+    expect(sheet()).toBeNull();
+    expect(mocks.open).toHaveBeenCalledTimes(2);
+    await settle(second, ok());
+  });
+
+  it("시트의 실패 줄 다음 Retry가 다시 묻는다", async () => {
+    await mount(0);
+    const d = nextOpen();
+    await openMenu();
+    await settle(d, { status: "failed" });
+    expect(sheet()!.textContent).toContain(en.inbox.failed);
+    const again = nextOpen();
+    const retry = [...sheet()!.querySelectorAll<HTMLButtonElement>("button")].find(button => button.textContent === en.common.retry)!;
+    await act(async () => { await userEvent.setup().click(retry); });
+    expect(mocks.open).toHaveBeenCalledTimes(2);
+    await settle(again, ok());
+  });
+
+  it("시트 안의 행을 누르면 시트가 닫히고 트리거로 돌아가지 않는다 — 도착한 페이지가 포커스를 가진다", async () => {
+    await mount(0);
+    const d = nextOpen();
+    await openMenu();
+    await settle(d, ok());
+    const row = sheet()!.querySelector<HTMLAnchorElement>("a[href]")!;
+    const block = (event: MouseEvent) => event.preventDefault();
+    document.addEventListener("click", block, true);
+    try {
+      await act(async () => { await userEvent.setup().click(row); });
+    } finally {
+      document.removeEventListener("click", block, true);
+    }
+    expect(sheet()).toBeNull();
+    expect(document.activeElement).not.toBe(trigger());
+  });
 });

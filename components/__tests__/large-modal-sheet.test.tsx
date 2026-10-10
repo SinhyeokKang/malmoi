@@ -129,6 +129,27 @@ describe("LargeModal — 소비자 코드 변경 없이 규칙을 받는다", ()
   });
 });
 
+/**
+ * **`flush` — 본문 여백·바닥이 없는 목록 그릇** (2026-10-10 지휘자 승인 — Inbox 시트 · R3 Docs 장 내비 시트). 행이 전폭 여백을 스스로 든다.
+ * ⚠️ 암묵 조건(`actions` 없음)으로 바닥을 지우지 않는다 — Publish의 버튼 없는 갈래가 빈 바닥을 지금 그린다. 명시 prop 하나다.
+ */
+describe("LargeModal `flush`", () => {
+  it("바닥이 없고 본문은 여백 없이 스크롤만 한다 — 머리는 그대로다", async () => {
+    await render(<LargeModal open flush title="Inbox" onClose={() => {}} actions={null}><p>Body</p></LargeModal>);
+    const panel = find<HTMLElement>(document.body, '[role="dialog"]');
+    expect(panel.querySelector("footer")).toBeNull();
+    const body = find<HTMLElement>(panel, "[data-onboarding-body]");
+    expect(body.className).toBe("flex min-h-0 flex-1 flex-col overflow-y-auto focus:outline-none");
+    expect(panel.lastElementChild).toBe(body);
+    expect(find<HTMLElement>(panel, "header").className).toContain("max-lg:min-h-14");
+  });
+
+  it("없으면 `actions={null}`이어도 바닥을 그린다 — 기존 소비자의 렌더가 그대로다", async () => {
+    await render(<LargeModal open title="Publish" onClose={() => {}} actions={null}><p>Body</p></LargeModal>);
+    expect(find<HTMLElement>(document.body, '[role="dialog"]').querySelector("footer")).not.toBeNull();
+  });
+});
+
 describe("CommandDialog — 같은 시트 · 머리 = 입력 · Cancel은 `lg` 미만에서만", () => {
   function Search({ onOpenChange }: { onOpenChange?: (open: boolean) => void }) {
     const [open, setOpen] = useState(false);

@@ -54,6 +54,11 @@ export type LargeModalProps = {
   bodyScroll?: "auto" | "hidden";
   /** 로딩→완료 같은 비동기 전이를 `sr-only` live 영역에 흘려보낸다 (DESIGN §6.7). */
   announce?: string;
+  /**
+   * **본문 여백·바닥이 없는 목록 그릇** (2026-10-10 — 소비자는 `lg` 미만에서만 여는 Inbox 시트 · Docs 장 내비 시트). 행이 전폭 여백을 스스로 든다.
+   * ⚠️ 암묵 조건(`actions` 없음)으로 바닥을 지우지 않는다 — Publish의 버튼 없는 갈래가 빈 바닥을 지금 그린다.
+   */
+  flush?: boolean;
   onClose: () => void;
   children: ReactNode;
   actions: ReactNode;
@@ -67,6 +72,7 @@ export function LargeModal({
   bodyDirection = "column",
   bodyScroll = "auto",
   announce,
+  flush = false,
   onClose,
   children, notice, actions, closeLabel, closeDisabled = false, className, transitionKey, quiet = false, fallbackFocusRef, returnFocusRef, initialFocusRef,
 }: LargeModalProps) {
@@ -208,7 +214,7 @@ export function LargeModal({
             ref={bodyRef}
             data-onboarding-body
             tabIndex={-1}
-            className={cn(
+            className={flush ? "flex min-h-0 flex-1 flex-col overflow-y-auto focus:outline-none" : cn(
               // 시트에서는 안쪽 16 — 375에서 본문 343이라 초대 행(이메일 + 역할 168)이 든다. 위 16은 머리 divider에서 띄운다.
               "flex min-h-0 flex-1 gap-4 px-8 pt-0.5 pb-6 focus:outline-none max-lg:px-4 max-lg:pt-4",
               bodyDirection === "row" ? "flex-row" : "flex-col",
@@ -218,14 +224,14 @@ export function LargeModal({
             {children}
           </div>
 
-          <footer className="border-divider flex items-center justify-between gap-2 border-t px-8 py-6 max-lg:px-4">
+          {!flush && <footer className="border-divider flex items-center justify-between gap-2 border-t px-8 py-6 max-lg:px-4">
             <span className="text-muted-foreground text-xs leading-body">{notice ?? (step === undefined ? null : m.newProject.modal.step(step))}</span>
             {/*
               ⚠️ **소비자의 `actions`도 같은 무리에 싼다** (malmoi#87) — fragment를 넘기면 버튼들이 바닥의 직계 자식이 되어
               `justify-between`이 [Cancel]을 가운데로 띄웠다. `null`(Publish의 버튼 없는 갈래)이면 빈 무리를 세우지 않는다.
             */}
             {actions === null || actions === false ? null : <div className="flex items-center gap-2">{actions}</div>}
-          </footer>
+          </footer>}
         </Primitive.Content>
       </Primitive.Portal>
     </Primitive.Root>

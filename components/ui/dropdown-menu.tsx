@@ -159,6 +159,12 @@ export function DropdownMenuCheckboxItem({
  * ⚠️ **늘 `asChild`이고 안은 `ListRow` 하나다** — menuitem 역할이 행 요소(`href`면 `<a>`, 아니면 `<button>`) 자체에 선다. 형제를 붙이면
  * Slot이 던진다(POSTMORTEM 2026-09-09 — `slottable-item.test.ts`가 이 형을 고정한다).
  */
+/**
+ * 결과 목록 행의 형 — `DropdownMenuRow`와 **메뉴 밖에서 같은 행을 그리는 자리**(Inbox `lg` 미만 시트의 링크 행 — responsive-public PT5a)가 같이 쓴다.
+ * 메뉴 밖에서는 `data-[highlighted]`가 서지 않으므로 그 행은 `ListRow`의 hover·포커스 링을 그대로 쓴다(손 사본 금지 — 값은 여기 하나다).
+ */
+export const DROPDOWN_MENU_ROW = "cursor-pointer py-2.5 text-sm";
+
 export function DropdownMenuRow({
   href,
   icon,
@@ -180,7 +186,7 @@ export function DropdownMenuRow({
   const target = href === undefined ? { as: "button" as const } : { href };
   return (
     <Primitive.Item asChild {...props}>
-      <ListRow {...target} hoverFill={false} icon={icon} title={title} description={description} aside={aside} className={cn("cursor-pointer py-2.5 text-sm outline-none focus-visible:ring-0 data-[highlighted]:bg-foreground/[0.07] data-[disabled]:pointer-events-none data-[disabled]:opacity-50", className)}>{children}</ListRow>
+      <ListRow {...target} hoverFill={false} icon={icon} title={title} description={description} aside={aside} className={cn(DROPDOWN_MENU_ROW, "outline-none focus-visible:ring-0 data-[highlighted]:bg-foreground/[0.07] data-[disabled]:pointer-events-none data-[disabled]:opacity-50", className)}>{children}</ListRow>
     </Primitive.Item>
   );
 }
