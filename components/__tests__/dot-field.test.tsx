@@ -92,5 +92,13 @@ describe("DotField", () => {
     width = 400;
     await act(async () => notify());
     expect(raf).toHaveBeenCalled();
+    // 보이다 → 숨음(1024 → 1023) — 정지 줄이 없으면 숨은 동안 루프가 계속 돈다.
+    const cancel = vi.spyOn(window, "cancelAnimationFrame");
+    raf.mockClear();
+    cancel.mockClear();
+    width = 0;
+    await act(async () => notify());
+    expect(cancel).toHaveBeenCalled();
+    expect(raf).not.toHaveBeenCalled();
   });
 });

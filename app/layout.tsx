@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { connection } from "next/server";
 import type { CSSProperties } from "react";
@@ -40,6 +40,9 @@ const METADATA: Metadata = {
   openGraph: { siteName: en.common.appName, locale: "en_US", type: "website", images: [OG_IMAGE] },
   twitter: { card: "summary_large_image", images: [{ url: OG_IMAGE.url, alt: OG_IMAGE.alt }] },
 };
+
+/** 키보드가 열리면 레이아웃 뷰포트(`dvh`)가 줄어 Auth·LargeModal 시트의 sticky footer가 선다(D20 — Chrome·Firefox Android, iOS는 무시). */
+export const viewport: Viewport = { interactiveWidget: "resizes-content" };
 
 export async function generateMetadata(): Promise<Metadata> {
   return { metadataBase: new URL(metadataOrigin(deploymentMode())), ...METADATA };

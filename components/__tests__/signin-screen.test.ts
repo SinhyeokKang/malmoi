@@ -148,7 +148,10 @@ describe("로그인 화면 — 레이아웃 계약", () => {
     expect(read(SHELL)).not.toMatch(/(?<!lg:)\bgrid-cols-2\b/);
   });
 
-  /** 소프트 키보드가 열려도 가시 높이를 따라가려면 `svh`가 아니라 `dvh`다(D4). */
+  /**
+   * `dvh`는 브라우저 툴바(주소창) 변화를 따른다. 소프트 키보드는 `interactive-widget=resizes-content`가 있는 Android(Chrome·Firefox)에서만
+   * 줄이고 iOS는 대응하지 않는다(비범위) — 루트 viewport가 그 값을 든다(D20, 아래 테스트).
+   */
   it("높이가 `dvh`다 — `svh`가 아니다", () => {
     const shell = read(SHELL);
     expect(shell).toMatch(/\bmin-h-dvh\b/);
@@ -301,5 +304,16 @@ describe("KeyVisual — 앞 카드 세 장 (2026-10-06 사용자)", () => {
       expect(image).toContain("opacity-90");
       expect(image).not.toContain("backdrop-blur");
     }
+  });
+});
+
+describe("루트 viewport — 키보드가 dvh를 줄인다 (D20)", () => {
+  it("`interactiveWidget: \"resizes-content\"`를 낸다", () => {
+    const layout = read(ROOT_LAYOUT);
+    expect(layout).toMatch(/export const viewport: Viewport = \{[^}]*interactiveWidget: "resizes-content"/);
+  });
+
+  it("동의 스크롤러가 sticky CTA 높이만큼 `scroll-pb`를 든다 — Tab 포커스를 바가 덮지 않는다", () => {
+    expect(read("app/oauth/authorize/page.tsx")).toMatch(/overflow-y-auto scroll-pb-\d+/);
   });
 });

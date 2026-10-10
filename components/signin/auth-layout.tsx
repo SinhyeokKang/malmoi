@@ -50,8 +50,9 @@ export function AuthLayout({ m, children, decoration = false, scroll = false }: 
       {/*
         ⚠️ **`h-dvh`가 아니라 `min-h-dvh`다** — 공개 셸과 달리 스크롤러가 없어서, 좌측 내용이 뷰포트보다 길면 문서가
         스크롤되어야 한다(자르지 않는다). 패널 줄이 `flex-1`로 남은 높이를 채운다.
-        ⚠️ **`svh`가 아니라 `dvh`다** (D4) — `svh`는 소프트 키보드가 열려도 줄지 않아 바닥 CTA가 키보드 밑에 갇힌다. `scroll`(동의 단계)은
-        `h-dvh`로 가시 높이에 고정하고 `<main>` 안이 스크롤하며 CTA 묶음은 그 안 sticky bottom이다.
+        ⚠️ **`svh`가 아니라 `dvh`다** (D4) — `dvh`는 브라우저 툴바(주소창) 변화를 따르고, 소프트 키보드는 루트 viewport의
+        `interactive-widget=resizes-content`(D20)가 있는 Android(Chrome·Firefox)에서만 줄인다 — iOS는 대응하지 않는다(비범위).
+        `scroll`(동의 단계)은 `h-dvh`로 가시 높이에 고정하고 `<main>` 안이 스크롤하며 CTA 묶음은 그 안 sticky bottom이다.
       */}
       <div className={cn("bg-canvas flex flex-col px-2 pt-2", scroll ? "h-dvh" : "min-h-dvh")}>
         <div className={cn("grid flex-1 gap-2", decoration && "lg:grid-cols-2", scroll && "min-h-0")}>

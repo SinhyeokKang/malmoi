@@ -33,6 +33,15 @@ it("긴 값이 카드를 넓히지 않는다 — 320 컬럼 안이다", () => {
   expect(SOURCE).toContain("truncate");
 });
 
+/** 1행(이름·이메일)은 식별자라 말줄임이 아니라 줄바꿈이다 — 375의 동의 화면에서 잘리면 전문에 닿을 길이 없다(AppCard 이름 줄과 같은 형). 2행 description은 truncate. */
+it("1행은 `wrap-anywhere`이고 2행만 truncate다", async () => {
+  const { container } = await render(<EntityCard name="averyveryverylongaddress@example.com" description="Signed in with GitHub" />);
+  const [first, second] = container.querySelectorAll<HTMLElement>("div.min-w-0 > span");
+  expect(first?.className.split(" ")).toContain("wrap-anywhere");
+  expect(first?.className.split(" ")).not.toContain("truncate");
+  expect(second?.className.split(" ")).toContain("truncate");
+});
+
 /**
  * ⚠️ **박스 radius 12는 `rounded-lg`다** — 이 리포에서 `--radius-xl`은 16이라, `rounded-xl`을 쓰면
  * 같은 화면의 `Card`·`Alert`·`Dialog`(전부 12) 사이에서 **작은 카드 하나만 더 둥글어진다**.
