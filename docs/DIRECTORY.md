@@ -896,8 +896,8 @@ lib/
   shell/nav.ts         역할별 구역·항목과 activeProject·toNavProjects(레이아웃/검색 Action의 일곱 필드 투영).
                         __tests__/nav-projects.test.ts가 보관·기본 소스·집계와 서버 전용 필드 미노출을 센다
   shell/panel-size.ts   px 치수 → 리사이즈 패널의 % 제약. ⚠️ 분모가 그룹 폭이 아니라 "핸들을 뺀 폭"이다
-  shell/breakpoint.ts   셸 경계 WIDE_QUERY("(min-width: 64rem)") 하나 — 잎(import 0, client-graph 등재). 열린 서랍·시트의 정리와 Inbox 그릇 선택만
-                        matchMedia로 묻는다(렌더 상태 금지 — ARCHITECTURE §6.358). __tests__/breakpoint.test.ts가 Tailwind `lg`와 문자열 대조 + px·innerWidth 판정 0을 센다
+  shell/breakpoint.ts   셸 경계 WIDE_QUERY("(min-width: 64rem)") 하나 — 잎(import 0, client-graph 등재). 열린 서랍·시트의 정리 · 좁아지며 숨는 넓은 묶음의
+                        포커스 이관(useNarrowHandoff) · Inbox 그릇 선택만 matchMedia로 묻는다(렌더 상태 금지 — ARCHITECTURE §6.358). __tests__/breakpoint.test.ts가 Tailwind `lg`와 문자열 대조 + px·innerWidth 판정 0을 센다
   shell/sidebar-cookie.ts LNB 접힘 여부 기기 쿠키(malmoi-sidebar-collapsed) — 잎. 서버 레이아웃이 읽고 셸 패널이 document.cookie로 쓴다. ⚠️ 이 리포에서 유일하게 http-only가 아닌 쿠키다
                         — 라이브러리가 패널에 flex-basis:0 + flex-grow를 걸고 핸들은 별도 flex 항목이다
                         ⚠️ 못 잰 폭은 0이 아니라 null이다 — 0이면 셋이 전부 100%가 된다
