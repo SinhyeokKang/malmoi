@@ -170,6 +170,8 @@ describe("WizardModal — 높이가 뷰포트에 물린다 (DESIGN §6.7)", () =
     expect(panel.className).toContain("max-w-[1024px]");
     expect(panel.className).toContain("max-h-[min(800px,");
     expect(panel.className).toContain("min-h-[min(80svh,800px,");
+    // `lg` 미만은 전체 화면 시트라 두 한정을 푼다(responsive-public design §1) — 그 토큰만 `max-lg:`다.
+    expect(panel.className.split(" ")).toEqual(expect.arrayContaining(["max-lg:max-w-none", "max-lg:h-dvh", "max-lg:min-h-0", "max-lg:max-h-none"]));
   });
 
   it("`vh`가 아니라 `svh`다 — 리포 관용구가 `svh`이고 셸이 `h-svh`다", async () => {
@@ -178,6 +180,8 @@ describe("WizardModal — 높이가 뷰포트에 물린다 (DESIGN §6.7)", () =
     const panel = find<HTMLElement>(document.body, "[data-onboarding-panel]");
     expect(panel.className).toContain("svh");
     expect(panel.className).not.toMatch(/\d+vh|-vh\b|\(100vh/);
+    // `dvh`는 시트(`lg` 미만) 높이 하나뿐이다 — 소프트 키보드가 열리면 가시 높이를 따라 줄어야 footer가 키보드 밑에 갇히지 않는다(design §3).
+    expect(panel.className.split(" ").filter((token) => token.includes("dvh"))).toEqual(["max-lg:h-dvh"]);
   });
 });
 
@@ -314,6 +318,8 @@ it("className overrides the same Content root while body scrolling and focus sta
   expect(panel.classList.contains("h-[min(640px,calc(100svh-var(--spacing-modal-gutter)))]")).toBe(true);
   expect(panel.classList.contains("rounded-xl")).toBe(true);
   expect(panel.classList.contains("max-w-[1024px]")).toBe(true);
+  // 소비자의 높이 덮어쓰기가 `lg` 미만 시트 높이를 지우지 않는다 — 수식어가 달라 `cn()`이 둘 다 남긴다(design §1).
+  for (const token of ["max-lg:h-dvh", "max-lg:min-h-0", "max-lg:max-h-none"]) expect(panel.classList.contains(token), token).toBe(true);
   expect(body.classList.contains("overflow-hidden")).toBe(true);
   expect(body.classList.contains("min-h-0")).toBe(true);
   expect(body.classList.contains("h-[min(640px,calc(100svh-var(--spacing-modal-gutter)))]")).toBe(false);

@@ -203,6 +203,13 @@ describe("모달 패널 윤곽", () => {
     expect(panel("components/ui/large-modal.tsx", "LARGE_MODAL_PANEL")).toEqual(expect.arrayContaining(["border", "border-border"]));
     expect(read("components/ui/dialog.tsx")).toMatch(/"bg-background border-border [^"]*"[\s\S]{0,80}"shadow-medium rounded-lg border"/);
   });
+
+  /** 시트는 떠 있지 않다 — inset 0이라 가장자리가 화면 가장자리다(responsive-public design §2). 윤곽을 떼는 것은 `lg` 미만뿐이다. */
+  it("LargeModal 패널은 `lg` 미만 시트에서만 선·radius·그림자를 뗀다", () => {
+    const tokens = panel("components/ui/large-modal.tsx", "LARGE_MODAL_PANEL");
+    expect(tokens).toEqual(expect.arrayContaining(["rounded-xl", "shadow-medium", "max-lg:border-0", "max-lg:rounded-none", "max-lg:shadow-none"]));
+    expect(tokens.filter((token) => /^(?:[\w-]+:)*(?:border-0|rounded-none|shadow-none)$/.test(token)).every((token) => token.startsWith("max-lg:"))).toBe(true);
+  });
 });
 
 describe("글자 크기·자간·radius는 스케일이 든다 (audit #45·#46·#47)", () => {

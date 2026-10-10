@@ -1,7 +1,7 @@
 "use client";
 
 import { Dialog as Primitive } from "radix-ui";
-import type { ComponentProps, ReactNode } from "react";
+import { createContext, useContext, type ComponentProps, type ReactNode } from "react";
 
 import { useMessages } from "@/components/i18n/messages-provider";
 import { cn } from "@/lib/utils";
@@ -100,7 +100,20 @@ export function closeAutoFocus(event: Event, consumer?: AutoFocusHandler) {
 export const DialogTrigger = Primitive.Trigger;
 export const DialogClose = Primitive.Close;
 
-/** 검색 패널은 대형 모달의 치수를 공유하고 위에서 열린다. 기존 확인 Dialog의 구조는 그대로다. */
+/**
+ * 시트(`lg` 미만)의 입력 줄이 드는 Cancel의 닫기 — 전체 화면에는 누를 scrim이 없어 그것이 유일한 보이는 닫기다(responsive-public PT4a).
+ * ⚠️ **Radix `Dialog.Close`를 `CommandInput`에 두지 않는다** — Dialog 밖에서 그리는 `CommandInput`(단위 테스트)이 컨텍스트 없음으로 던진다.
+ * 이 값이 없으면(다이얼로그 밖) Cancel을 그리지 않는다.
+ */
+const CommandDialogCancel = createContext<(() => void) | null>(null);
+export function useCommandDialogCancel() {
+  return useContext(CommandDialogCancel);
+}
+
+/**
+ * 검색 패널은 대형 모달의 치수를 공유하고 위에서 열린다. 기존 확인 Dialog의 구조는 그대로다.
+ * `lg` 미만은 그릇 상수가 든 전체 화면 시트다(`LARGE_MODAL_PANEL` — `top-4 translate-y-0`은 `max-lg:inset-0 max-lg:translate-none`이 이긴다).
+ */
 export function CommandDialog({ open, onOpenChange, title, children, onCloseAutoFocus }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -125,7 +138,7 @@ export function CommandDialog({ open, onOpenChange, title, children, onCloseAuto
         onCloseAutoFocus={event => closeAutoFocus(event, onCloseAutoFocus)}
       >
         <Primitive.Title className="sr-only">{title}</Primitive.Title>
-        {children}
+        <CommandDialogCancel value={() => onOpenChange(false)}>{children}</CommandDialogCancel>
       </Primitive.Content>
     </Primitive.Portal>
   </Primitive.Root>;

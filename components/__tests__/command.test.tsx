@@ -135,7 +135,7 @@ it("긴 제목·맥락·설명은 각각 한 줄로 자른다", async () => {
   expect(description?.classList.contains("block")).toBe(true);
 });
 
-/** C18·C19 — 입력 줄 `h-12 pl-3 pr-4`, 지우기 X, 맨 끝 Esc 칩(좁은 폭에선 숨김). */
+/** C18·C19 — 입력 줄 `h-12 pl-3 pr-4`, 지우기 X, 맨 끝 Esc 칩(`lg` 미만에선 숨김 — 시트 경계와 하나다, responsive-public PT4a). */
 it("입력 줄은 h-12 pl-3 pr-4이고 지우기 X와 끝의 Esc 칩을 든다", async () => {
   const onValueChange = vi.fn();
   const { container } = await render(<Command ids={[]} query="abc">
@@ -147,7 +147,8 @@ it("입력 줄은 h-12 pl-3 pr-4이고 지우기 X와 끝의 Esc 칩을 든다",
   expect([...row.classList]).toEqual(expect.arrayContaining(["flex", "h-12", "items-center", "gap-2", "pl-3", "pr-4", "border-divider"]));
   const esc = find(row, "kbd");
   expect(esc.textContent).toBe(en.common.keys.esc);
-  expect([...esc.parentElement!.classList]).toEqual(expect.arrayContaining(["hidden", "sm:inline-flex"]));
+  expect([...esc.parentElement!.classList]).toEqual(expect.arrayContaining(["hidden", "lg:inline-flex"]));
+  expect(esc.parentElement!.classList.contains("sm:inline-flex")).toBe(false);
   expect(row.lastElementChild).toBe(esc.parentElement);
   const clear = find<HTMLButtonElement>(row, `button[aria-label="${en.common.clearSearch}"]`);
   expect(clear.type).toBe("button");

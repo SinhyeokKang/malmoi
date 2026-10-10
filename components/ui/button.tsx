@@ -51,6 +51,15 @@ import { cn } from "@/lib/utils";
  * 태우므로, 그것이 없으면 **회색으로 죽은 버튼이 hover에서 검게 살아난다.** 메타 테스트는 짝의
  * 존재만 보고 여분을 금지하지 않는다 — 이 비대칭이 그 이유다.
  */
+/**
+ * **터치 히트 영역** (responsive-public design §2 · 2026-10-07 사용자) — 보이는 크기는 그대로 두고 `pointer: coarse`일 때 `::after`가
+ * 누르는 영역만 44까지 넓힌다. 대상은 44에 가장 못 미치는 `sm`(28)·`icon-md`(32) 둘이다.
+ * ⚠️ **`relative`는 수식어 없이 둔다** — `pointer-coarse:relative`로 두면 호출부의 `absolute`를 `cn()`이 못 걷고 터치 기기에서만
+ * 덮어써 절대 배치 버튼이 흐름으로 돌아온다. 수식어가 없으면 twMerge가 호출부 위치 클래스를 이기게 한다(그것도 `::after`의 기준 상자다).
+ * 이웃한 둘의 넓힌 영역이 겹치면 뒤 형제가 이긴다 — 보이는 버튼 위에서는 늘 그 버튼이다.
+ */
+const TOUCH_TARGET = "relative pointer-coarse:after:absolute pointer-coarse:after:top-1/2 pointer-coarse:after:left-1/2 pointer-coarse:after:size-full pointer-coarse:after:min-h-11 pointer-coarse:after:min-w-11 pointer-coarse:after:-translate-1/2";
+
 export const buttonClass = cva(
   cn(
     "inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 text-sm font-medium whitespace-nowrap",
@@ -118,7 +127,7 @@ export const buttonClass = cva(
          * 움직인다)는 그대로이되 **시안의 기본값이 드러난 지금이 그 시점**이다. 문자 버튼 세 크기는 유지하고, 실재하는 정방형 크기는 `icon-*`가 든다.
          */
         md: "h-9 rounded-md px-3",
-        sm: "h-7 rounded-sm px-2 text-xs",
+        sm: cn("h-7 rounded-sm px-2 text-xs", TOUCH_TARGET),
         /**
          * **셸 밖 카드 전용이다** (8-1b — 로그인·초대 수락 둘뿐이다). 시안은 38px인데
          * `h-10`(40px)을 쓴다 — 2px 때문에 임의 치수를 만들지 않는다 (README 규약 6).
@@ -139,7 +148,7 @@ export const buttonClass = cva(
         lg: "h-10 rounded-lg px-4",
         "icon-xs": "size-6 rounded-sm px-0",
         "icon-sm": "size-7 rounded-sm px-0 text-xs",
-        "icon-md": "size-8 rounded-md px-0",
+        "icon-md": cn("size-8 rounded-md px-0", TOUCH_TARGET),
         "icon-lg": "size-9 rounded-md px-0",
       },
     },

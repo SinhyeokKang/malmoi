@@ -14,9 +14,17 @@ import { useImeGuard } from "./use-ime-guard";
  * 폭·radius·dim만 공유한다. 이력 상세의 본문·머리·높이 계약은 소비자에 남는다.
  * ⚠️ **패널이 `border`를 든다**(Dialog와 같다 — color-scheme design §3.8). 다크에서 scrim이 덮은 바탕과 패널 면이 약 1.07:1이고
  * `shadow-medium`은 안 보여, 선이 없으면 모달 가장자리가 사라진다. 라이트에서는 scrim 위 `#e5e5e5`라 사실상 그대로다.
+ *
+ * ⚠️ **`lg` 미만은 전체 화면 시트다** (responsive-public design §1 큰 모달 규칙 · 2026-10-10 사용자) — inset 0 · radius·선·그림자·scrim 없음 ·
+ * `100dvh` · 위아래 safe-area. 규칙은 이 상수 한 곳이고 소비자(앱 모달 여덟 + `CommandDialog`)는 다시 지정하지 않는다.
+ * ⚠️ **시트 토큰은 전부 `max-lg:`다** — `lg` 이상은 앞 토큰이 바이트로 그대로 남고(`large-modal-sheet.test.tsx`), 소비자의 높이
+ * 덮어쓰기(`h-[…] min-h-0` 등)는 수식어가 달라 `cn()`이 시트 토큰을 지우지 않으며, 변형 유틸이 기본 유틸보다 뒤에 나와 CSS에서도 이긴다.
+ * 높이 토큰이 `LARGE_MODAL_HEIGHT`가 아니라 여기 있는 이유: 이력 상세(`event-dialog.tsx`)가 패널만 쓰고 자기 `max-h`를 단다.
+ * ⚠️ **`--spacing-modal-gutter`(96)를 재정의하지 않는다** — `lg` 이상에서는 1024×768에서도 928×672로 담긴다.
+ * ⚠️ 랜딩 목업(`components/landing/mockup/publish.tsx`)은 이 상수를 import하지 않고 값을 복사한다 — 데스크톱 캔버스의 축소 복제라 시트가 되면 안 된다.
  */
-export const LARGE_MODAL_OVERLAY = "bg-scrim/32 fixed inset-0 z-50 backdrop-blur-[6px]";
-export const LARGE_MODAL_PANEL = "bg-background border-border border fixed top-1/2 left-1/2 z-50 flex w-[calc(100%-var(--spacing-modal-gutter))] max-w-[1024px] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl shadow-medium";
+export const LARGE_MODAL_OVERLAY = "bg-scrim/32 fixed inset-0 z-50 backdrop-blur-[6px] max-lg:bg-transparent max-lg:backdrop-blur-none";
+export const LARGE_MODAL_PANEL = "bg-background border-border border fixed top-1/2 left-1/2 z-50 flex w-[calc(100%-var(--spacing-modal-gutter))] max-w-[1024px] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl shadow-medium max-lg:inset-0 max-lg:w-full max-lg:max-w-none max-lg:translate-none max-lg:rounded-none max-lg:border-0 max-lg:shadow-none max-lg:h-dvh max-lg:min-h-0 max-lg:max-h-none max-lg:pt-[env(safe-area-inset-top)] max-lg:pb-[env(safe-area-inset-bottom)]";
 /** CommandDialog도 같은 높이를 쓴다 — 위치를 바꿔도 하한·상한은 한 벌이다. */
 export const LARGE_MODAL_HEIGHT = "min-h-[min(80svh,800px,calc(100svh-var(--spacing-modal-gutter)))] max-h-[min(800px,calc(100svh-var(--spacing-modal-gutter)))]";
 
@@ -162,9 +170,10 @@ export function LargeModal({
             {live}
           </div>
 
-          <header className="flex items-start justify-between gap-2 px-8 pt-8 pb-5">
+          {/* 시트(`lg` 미만)의 머리는 56 · 좌 16 · 우 12 · 아래 divider · 제목 18 · 닫기 32다(design §2 전체 화면 시트). 설명이 있으면 그만큼 자란다. */}
+          <header className="flex items-start justify-between gap-2 px-8 pt-8 pb-5 max-lg:min-h-14 max-lg:items-center max-lg:border-b max-lg:border-divider max-lg:py-3 max-lg:pr-3 max-lg:pl-4">
             <div className="flex min-w-0 flex-col gap-1.5">
-              <Primitive.Title className="text-xl font-medium">{title}</Primitive.Title>
+              <Primitive.Title className="text-xl font-medium max-lg:text-lg">{title}</Primitive.Title>
               {description !== undefined && (
                 <Primitive.Description className="text-muted-foreground text-sm text-pretty">
                   {description}
@@ -176,7 +185,7 @@ export function LargeModal({
               POSTMORTEM 2026-09-09의 지뢰다. 여기서는 Close 자신이 버튼이다.
             */}
             <div className="flex shrink-0 items-center gap-2">
-            <CloseButton type="button" label={closeLabel ?? m.newProject.modal.close} disabled={closeDisabled} onClick={onClose} />
+            <CloseButton type="button" label={closeLabel ?? m.newProject.modal.close} disabled={closeDisabled} onClick={onClose} className="max-lg:size-8" />
             </div>
           </header>
 
@@ -196,7 +205,8 @@ export function LargeModal({
             data-onboarding-body
             tabIndex={-1}
             className={cn(
-              "flex min-h-0 flex-1 gap-4 px-8 pt-0.5 pb-6 focus:outline-none",
+              // 시트에서는 안쪽 16 — 375에서 본문 343이라 초대 행(이메일 + 역할 168)이 든다. 위 16은 머리 divider에서 띄운다.
+              "flex min-h-0 flex-1 gap-4 px-8 pt-0.5 pb-6 focus:outline-none max-lg:px-4 max-lg:pt-4",
               bodyDirection === "row" ? "flex-row" : "flex-col",
               bodyScroll === "hidden" ? "overflow-hidden" : "overflow-y-auto",
             )}
@@ -204,7 +214,7 @@ export function LargeModal({
             {children}
           </div>
 
-          <footer className="border-divider flex items-center justify-between gap-2 border-t px-8 py-6">
+          <footer className="border-divider flex items-center justify-between gap-2 border-t px-8 py-6 max-lg:px-4">
             <span className="text-muted-foreground text-xs leading-body">{notice ?? (step === undefined ? null : m.newProject.modal.step(step))}</span>
             {/*
               ⚠️ **소비자의 `actions`도 같은 무리에 싼다** (malmoi#87) — fragment를 넘기면 버튼들이 바닥의 직계 자식이 되어

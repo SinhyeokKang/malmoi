@@ -649,6 +649,9 @@ describe("목업 — 씬 안쪽이 실물과 같다 (fix2)", () => {
     const expected = LARGE_MODAL_PANEL.split(" ").filter((c) => ["bg-background", "border-border", "border", "flex", "flex-col", "overflow-hidden", "rounded-xl", "shadow-medium"].includes(c));
     expect(expected).toHaveLength(8);
     for (const token of expected) expect(shell.className.split(" "), token).toContain(token);
+    // ⚠️ 목업은 데스크톱 캔버스의 축소 복제다 — 실물 그릇의 `lg` 미만 시트 토큰을 따라오면 뷰포트가 좁을 때 목업이 시트로 바뀐다(design §1).
+    expect(LARGE_MODAL_PANEL).toContain("max-lg:");
+    expect(shell.className.split(" ").filter((token) => token.startsWith("max-lg:"))).toEqual([]);
   });
 
   it("④ diff 칸은 실물처럼 위 선(`border-divider border-t`)이고 행 아래 선이 없다 · 부호는 `aria-hidden` · 국기는 `shrink-0`", async () => {
