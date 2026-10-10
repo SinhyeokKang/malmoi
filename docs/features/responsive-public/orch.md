@@ -65,6 +65,10 @@
 
 ## 진행 기록
 
+**종료(2026-10-11)**: 구현 R1~R5 · 정본 R6 · DS(이슈 #213~#219 전부 닫힘) · QA(#220·#221 닫힘) 완료. dev 마지막 코드 `a8a3f833`, 가이드 `0083dcc4`·`f44de41d`. 워커·워크트리 0. 남은 것: 아래 "미완"과 최종 리포트.
+
+**미완(공개 단계 밖으로 넘김)**: Safari 실측 · 실제 소프트 키보드(iOS는 비대응 D20) · error.tsx/global-error · 유효 signin-link challenge · 비멤버 초대 Accept · 빈 Inbox · 꺼진 Select 터치 — QA 미측정. responsive-app 후보: 앱 셸 1280 하한 문장 해제, 꺼진 사유 줄 프리미티브, 리사이저 `touch-action`, 이력 상세 시트 머리 56 정렬. 새 사전 키 `landing.shell.openNav` ko("메뉴 열기")는 `/merge` 전 사용자 일괄 검수 대상. BugShot 캡처가 ego 태스크 스페이스에서 안 된다(bugshot-2 이슈 미제출 — 사용자 판단 대기). `guide:check` stale 중 이번 런 이전 원인 8컷(workflow·publish·언어 메뉴·환경설정)은 별도 `/guide-shots`.
+
 **QA(2026-10-11, dev `7477173e`, 기준 비교 `3a1afe68`)**: 라이트/en 4폭 88건 · 다크/ko/es 양끝 48건 · P-01·P-05 72조합 · 오류/빈 상태 · System 테마 · 200% · 앱 모달 10종 375/1023/1280 · Tab/IME/터치 — 통과, 결함 둘: #220 소스 상세 시트 footer 375 넘침 · #221 동의 sticky가 1280에도(회귀) → R2. 가이드: accept-invitation·inbox-open은 1280 픽셀 0 차이 → SHA만 갱신, oauth-consent는 #221 뒤 재촬영. 미측정: error.tsx/global-error, 유효 signin-link challenge, 비멤버 초대 Accept, 빈 Inbox, 꺼진 Select 터치, Safari.
 
 **DS 1차(2026-10-10, dev `8748385e`)**: 불일치 7 → BugShot #213~#219. 라우팅: R2 = #213 서랍 닫힘 복귀 · #214 WideOnly 좁아짐 · #215 시트 머리 57 · #217 Inbox 트리거 ARIA · #218 계정 버튼 열림 표시(PT5b, 시안에 새로 추가된 프레임) · #219 Auth 푸터 줄 높이 / R3 = #216 랜딩 캡션 한 줄 21(R5 해제 — R3가 인수, `lg` 이상 목업 위치 회귀). 미측정: Safari, 실제 소프트 키보드, es 초대 수락 상태. ⚠️ BugShot picker·스크린샷이 ego 태스크 스페이스에서 안 된다(chrome.tabs가 대상 탭을 active로 못 봄) — 이슈에 캡처 없음, bugshot-2 이슈 미제출(사용자 판단 대기).
