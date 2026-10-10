@@ -54,7 +54,7 @@ A0 → A1 → A2 → A3/A4/A5 → A6 → A8. **A7(랜딩 목업)은 2026-10-11 [
   - 폭 왕복 회귀: 목록으로→split 확장→상세 textarea 포커스/IME 조합 시작→single 축소. 동일 textarea DOM·activeElement·선택 범위·draft 유지, URL/history 변경0을 DOM 테스트로 단언한다(`data-pane` 전환은 stub 폭으로).
   - 상세 착지 DOM red: single에서 같은 키 재열기·다른 키 선택·다른 소스의 키 선택·직접 key URL·검색/Inbox 진입 시 가시 상세 제목(새 `tabIndex={-1}`)에 포커스. 스켈레톤→성공/빈/오류 전환에서 제목 DOM·포커스 유지, 응답 전 사용자가 옮긴 포커스는 빼앗지 않음. 검색/Inbox 닫힘의 트리거 복귀가 착지를 덮지 않음. 새 포커스 테스트는 fixup observer + 깨뜨린 red + 그물 등재.
   - 트리 이동 DOM red: 같은 소스/다른 소스에서 트리 선택→`@first` 응답·URL 정규화 후 list 유지와 첫 키 선택 표시, 재마운트 후 동일 동작, 0건의 빈 목록 제목 착지. dirty 이동 취소는 현재 판·포커스 유지. 이후 검색/Inbox로 키를 열면 detail이 되고 늦은 이전 응답이 목록으로 되돌리지 않음.
-  - 패널 머리 640 두 줄(모든 액션 `PanelHeader` + 골격)과 배너 판 배치(SyncLock 두 판 · BasePending·EditLoss 목록 판)를 design §3대로 한다. 교체: `components/__tests__/translation-workspace-connection.test.tsx`의 배너 `blockedReason` 덧붙임 단언(malmoi#160) → "사유 줄 하나, 배너는 보류 문장만".
+  - 패널 머리 640 두 줄(모든 액션 `PanelHeader` + 골격)과 배너 판 배치(셋 다 DOM 자리 고정 · 단일 판 상세에서 BasePending·EditLoss만 `data-pane` CSS로 숨김 · SyncLock 두 판)를 design §3대로 한다 — DOM 테스트로 상세 판 배너 재마운트 0을 단언한다. 교체: `components/__tests__/translation-workspace-connection.test.tsx`의 배너 `blockedReason` 덧붙임 단언(malmoi#160) → "사유 줄 하나, 배너는 보류 문장만".
   - 회귀 테스트 전수: `translation-workspace.test.tsx`(대시 없는 파일 — `selectedInResult` 회귀 포함)와 `translation-workspace-*.test.tsx`의 navigation/focus/keyboard/remount/restore/transition/lock/sync/publish/render, textarea 폭·pointercancel/lost capture.
   - 실측(1024·1280, 좁은 폭은 A6): 1024에서 LNB320일 때 771/772/773 카드 폭의 판 전환, 데스크톱 첫 렌더에 단일 판이 한 프레임도 보이지 않음.
   - 커밋: `feat(responsive-app): add compact translation workspace` (하위 커밋으로 나누더라도 반환 타입 변경과 전체 소비자 이관은 분리하지 않는다).
