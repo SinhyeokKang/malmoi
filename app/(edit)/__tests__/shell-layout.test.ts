@@ -129,11 +129,16 @@ describe("셸 골격 — 바깥 padding 8 · 패널 간 gap 8 (8-2)", () => {
   });
 
   /**
-   * ⚠️ **최소 대응 너비가 1280이고 그 아래는 가로 스크롤이 정상이다** (규약 3 · DESIGN §5).
-   * 루트에 `min-w-`가 없으면 스크롤이 아니라 **콘텐츠가 압축돼 잘린다** — 둘은 다르다.
+   * **셸 루트에 폭 하한이 없다** (responsive-app A6 · 2026-10-07 사용자 "할거면 풀스펙" — 옛 규약 3 "최소 1280 · 그 아래는 가로 스크롤"을 뒤집었다).
+   * 375부터 셸이 실제로 좁아지고 배치가 바뀐다 — LNB는 `lg` 미만 서랍(`nav-drawer.tsx`), 화면은 각자 컨테이너 질의로 적층한다.
+   * ⚠️ 하한이 돌아오면 좁은 폭 배치가 전부 1280 가로 스크롤 안에 갇혀 **한 번도 안 밟힌다** — 화면은 멀쩡해 보인다. 토큰도 같이 걷어 되살릴 자리를 없앴다.
    */
-  it("루트가 1280을 하한으로 든다 — 없으면 잘림이지 스크롤이 아니다", () => {
-    expect(layout).toMatch(/min-w-shell-min/);
+  it("루트에 폭 하한이 없다 — 하한 토큰도 없다", () => {
+    // className만 본다 — 그 자리 주석이 옛 클래스 이름을 적어 왜 없는지를 말한다.
+    const classes = [...layout.matchAll(/className="([^"]*)"/g)].map((match) => match[1] ?? "").join(" ");
+    expect(classes).toMatch(/\bh-svh\b/);
+    expect(classes).not.toMatch(/\bmin-w-(?!0\b)\S+/);
+    expect(read("app/globals.css")).not.toMatch(/--spacing-shell-min/);
   });
 
   /** 접힘 여부 쿠키를 서버에서 읽어 넘긴다 — 클라이언트가 읽으면 첫 페인트가 펼침이고 하이드레이션 뒤에 접힌다(2026-10-07). */
@@ -182,7 +187,7 @@ describe("셸 골격 — 바깥 padding 8 · 패널 간 gap 8 (8-2)", () => {
    * **LNB의 뷰포트 분기는 `lg` 하나이고 서랍 그릇은 `DrawerContent`뿐이다** (responsive-app design §2 — 옛 규약 3 "반응형 분기 0"을 교체).
    * `sm`·`md`·`xl` 같은 둘째 경계가 생기면 CSS와 JS(`WIDE_QUERY`)가 갈리고, 손으로 만든 오버레이(`fixed inset-y-0`·`mobileOpen`)는 포커스 계약
    * (열면 현재 항목 · 닫으면 메뉴 버튼 · 넓어지면 고정 LNB)을 다시 짜게 된다. 사이드바 자신은 폭을 묻지 않는다 — 숨김은 셸, 서랍은 헤더가 든다.
-   * ⚠️ 셸 루트의 하한(`min-w-shell-min`) 단언은 B1b(하한 해제)가 교체한다.
+   * 셸 루트에 하한이 없다는 단언은 위 "루트에 폭 하한이 없다"가 든다(responsive-app B1b).
    */
   it("LNB의 뷰포트 분기는 `lg` 하나이고, 서랍은 `DrawerContent`다", () => {
     const drawer = read("components/shell/nav-drawer.tsx");

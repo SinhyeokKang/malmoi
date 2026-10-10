@@ -386,12 +386,12 @@ describe("공개 셸 — 소스 계약", () => {
 
   /**
    * ⚠️ **공개 셸에는 최소 폭이 없다** (responsive-public — 2026-10-07 사용자 "할거면 풀스펙", 옛 DESIGN §5 1280 하한을 뒤집었다). 375부터
-   * `lg` 서랍으로 재배치한다. 전역 `--spacing-shell-min`(1280)은 앱 셸 하한이라 값이 그대로다 — 공개 셸만 쓰기를 걷었다.
+   * `lg` 서랍으로 재배치한다. 앱 셸도 responsive-app(A6)에서 하한을 풀어 전역 `--spacing-shell-min` 토큰째 걷었다.
    */
   it("루트가 뷰포트 높이를 채우고 문서는 스크롤되지 않는다 — 최소 폭 하한이 없다", () => {
     expect(all).toMatch(/className="[^"]*\bh-svh\b[^"]*"/);
     expect(all).not.toContain("min-w-shell-min");
-    expect(readFileSync(join(process.cwd(), "app/globals.css"), "utf8")).toMatch(/--spacing-shell-min:\s*1280px;/);
+    expect(readFileSync(join(process.cwd(), "app/globals.css"), "utf8")).not.toMatch(/--spacing-shell-min/);
     expect(all).toMatch(/className="[^"]*\bh-svh\b[^"]*\boverflow-hidden\b|className="[^"]*\boverflow-hidden\b[^"]*\bh-svh\b/);
   });
 

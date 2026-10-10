@@ -14,7 +14,7 @@ const twMerge = extendTailwindMerge({
     // CSS 토큰 등록만으로는 병합기가 임의값과 같은 그룹으로 알지 못한다(T2).
     theme: {
       leading: ["body", "prose", "translation"],
-      spacing: ["row-y", "copy-gap", "modal-gutter", "shell-min"],
+      spacing: ["row-y", "copy-gap", "modal-gutter"],
     },
     classGroups: { "font-size": ["text-mono", "text-prose"] },
   },

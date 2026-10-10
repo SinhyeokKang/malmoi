@@ -27,7 +27,7 @@ import { SidebarCollapseContext } from "./sidebar-collapse";
  * 틀렸다). Home 카운트 카드의 `@container/cards`는 **콘텐츠 패널이 아니라 본문 grid의 왼쪽 열**에
  * 산다(`[slug]/(home)/page.tsx`의 `grid-cols-[minmax(0,1fr)_320px] gap-5`). 컨테이너는 패널 폭에서
  * **374**(border 2 + `p-4` 32 + 메타 열 320 + gap 20)를 뺀 값이다 — 1280 실측 패널 1016 / 카드 642.
- * **최소 대응 폭 1280에서는 여전히 2열**이고 4열은 뷰포트 ~1310 위에서 시작한다(1502 실측 865 → 4열).
+ * **데스크톱 대표 폭 1280에서는 여전히 2열**이고 4열은 뷰포트 ~1310 위에서 시작한다(1502 실측 865 → 4열).
  * POSTMORTEM 2026-09-15가 적은 실패 모양이 정확히 이것이다 — **재는 지점이 임계값 아래**였다.
  */
 export const SHELL_SIDEBAR_PX: PanelPx = { min: 200, default: 240, max: 320 };
@@ -46,7 +46,7 @@ export const SHELL_HANDLE_PX = 8;
 
 /**
  * ⚠️ **재기 전에 쓰는 % 폴백.** 라이브러리는 `defaultSize` 없이 서버 렌더하면 **layout shift를
- * 경고**하고 패널을 균등 분할한다. 최소 대응 너비(1280 − `p-2` 16 − 핸들 8)를 기준으로 두면
+ * 경고**하고 패널을 균등 분할한다. 데스크톱 대표 폭(1280 − `p-2` 16 − 핸들 8 — 셸 하한은 없다, responsive-app A6)을 기준으로 두면
  * 그 경고도, 균등 분할도 없다.
  */
 const FALLBACK_AVAILABLE = 1280 - 16 - SHELL_HANDLE_PX;

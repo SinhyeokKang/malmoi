@@ -732,6 +732,6 @@ describe("T2 raw 소비자 전수 제거", () => {
   });
 
   it("새 토큰·범위 밖 값·T1 비동치 예외는 잡지 않는다 (음성 카나리아)", () => {
-    expect("text-link text-gray-light text-gray-dim text-gray-strong leading-body leading-prose leading-translation py-row-y gap-copy-gap space-y-copy-gap h-[calc(100svh-var(--spacing-modal-gutter))] @max-form:flex-wrap @min-form:grid min-w-shell-min py-[11px] max-w-[1016px] max-w-[850px] border-foreground/[0.06] ring-foreground/[0.06] rounded-[4px] bg-foreground/7".match(T2_RAW)).toBeNull();
+    expect("text-link text-gray-light text-gray-dim text-gray-strong leading-body leading-prose leading-translation py-row-y gap-copy-gap space-y-copy-gap h-[calc(100svh-var(--spacing-modal-gutter))] @max-form:flex-wrap @min-form:grid py-[11px] max-w-[1016px] max-w-[850px] border-foreground/[0.06] ring-foreground/[0.06] rounded-[4px] bg-foreground/7".match(T2_RAW)).toBeNull();
   });
 });
