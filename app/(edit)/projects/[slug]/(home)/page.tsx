@@ -29,6 +29,7 @@ import { loadHomeRuns } from "@/lib/home/runs";
 import { lastSyncTime } from "@/lib/home/sync-time";
 import { connectionProblem, planActionAvailability, planHomeState, repositoryConnectionState } from "@/lib/home/state";
 import { loadWriteLock } from "@/lib/home/write-lock";
+import { connectionReason } from "@/lib/translations/connection-reason";
 import {
   loadActors, loadProjectListAggregates, loadReviewAttention,
 } from "@/lib/keys/query";
@@ -297,6 +298,8 @@ export default async function ProjectHomePage({
             role={role}
             unsent={counts.toSend}
             paused={paused}
+            /* 꺼진 사유 줄 하나(responsive-app F7) — Sync·Publish가 같은 원인이라 같은 문장이다. 보관이 먼저, 끊김은 번역 화면과 같은 문장이다. */
+            pausedReason={archived ? `${m.home.banner.archived.title}.` : connectionReason(m, health.status, role) ?? undefined}
           />
         </div>
       </PanelHeader>
