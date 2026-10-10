@@ -120,11 +120,13 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
     {detail && <div className="@container space-y-4">
       {state.status === "ready" && state.refreshFailed && <Alert variant="warning" actions={<Button disabled={busy} onClick={onReload}>{m.sources.retry}</Button>}>{m.sources.latestFailed}</Alert>}
       {detail.connection && detail.repository && <section data-source-connection aria-label={m.sources.files} className="border-border bg-muted/40 overflow-hidden rounded-lg border">
+        {/* ⚠️ **그릇 640(`@max-form`) 미만은 한 열이다**(responsive-app D1 · 시안 AT3 — 375 시트 본문 343에서 Format | Repository 두 셀이 각 ~170이라 좁다). 850 경계의 두 열은 그대로이고
+            더 좁은 쪽이 이긴다 — 한 열에서 경로 칸의 `col-span-2`가 남으면 암묵 둘째 열이 서므로 `col-span-1`로 되돌리고, 세 칸 사이는 위 선만 남게 Repository의 왼쪽 선을 뗀다. DOM 순서 불변. */}
         {/* ⚠️ 경로 셀이 형제 둘과 같은 14다 — 13이었던 것은 옛 `text-mono`(13/18)가 강제한 값이고, mono를 걷으면서 핸드오프의 14로 돌아왔다 (DESIGN §4.1·§6.66) */}
-        <dl className="grid grid-cols-[minmax(0,1fr)_180px_280px] text-sm @max-[850px]:grid-cols-2">
-          <Fact layout="stacked" className="min-w-0 px-4 py-3.5 @max-[850px]:col-span-2" label={m.sources.path}><span className="wrap-anywhere">{detail.connection.pathTemplate === null ? m.sources.notConfigured : slashBreaks(detail.connection.pathTemplate)}</span></Fact>
+        <dl className="grid grid-cols-[minmax(0,1fr)_180px_280px] text-sm @max-[850px]:grid-cols-2 @max-form:grid-cols-1">
+          <Fact layout="stacked" className="min-w-0 px-4 py-3.5 @max-[850px]:col-span-2 @max-form:col-span-1" label={m.sources.path}><span className="wrap-anywhere">{detail.connection.pathTemplate === null ? m.sources.notConfigured : slashBreaks(detail.connection.pathTemplate)}</span></Fact>
           <Fact layout="stacked" className="border-border border-l px-4 py-3.5 @max-[850px]:border-t @max-[850px]:border-l-0" label={m.sources.format}>{detail.connection.format ?? (detail.connection.adapterName === null ? m.sources.notConfigured : m.sources.unknownFormat)}</Fact>
-          <Fact layout="stacked" className="border-border min-w-0 border-l px-4 py-3.5 @max-[850px]:border-t" label={m.sources.repository}><span className="wrap-anywhere">{detail.repository.repoOwner}/<wbr />{detail.repository.repoName} · {detail.repository.baseBranch}</span></Fact>
+          <Fact layout="stacked" className="border-border min-w-0 border-l px-4 py-3.5 @max-[850px]:border-t @max-form:border-l-0" label={m.sources.repository}><span className="wrap-anywhere">{detail.repository.repoOwner}/<wbr />{detail.repository.repoName} · {detail.repository.baseBranch}</span></Fact>
         </dl>
       </section>}
       {/* ⚠️ **상태 줄은 시안 `1d`의 행 형이다** — 28 칩 + 제목/보조 두 줄 + 오른쪽 행동. 상태 줄은 `Alert` 상자가 아니다(결과 notice만 Alert다):

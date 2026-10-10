@@ -197,8 +197,9 @@ export default async function LogsPage({
       {filter.event !== null && (
         <EventDialog closeHref={closeHref} returnFocusId={`event-${filter.event}`}>
           {openEvent === null ? (
-            /* ⚠️ **상세 대상 없음은 조회 실패와 다르다** — 없는 참조·다른 프로젝트의 참조가 여기다. */
-            <div className="flex flex-col gap-1 p-6 max-lg:pr-14">
+            /* ⚠️ **상세 대상 없음은 조회 실패와 다르다** — 없는 참조·다른 프로젝트의 참조가 여기다.
+               시트(`lg` 미만)에서는 머리 56 형 정렬이다 — 좌 16 · 제목 줄(18/28) 가운데가 닫기(위 12 + 32) 가운데 28에 오는 위 14 · 닫기 자리를 비우는 우 56. */
+            <div className="flex flex-col gap-1 p-6 max-lg:pt-3.5 max-lg:pr-14 max-lg:pl-4">
               <h2 className="text-lg font-medium">{m.logs.detail.missing.title}</h2>
               <p className="text-muted-foreground text-sm">{m.logs.detail.missing.description}</p>
             </div>

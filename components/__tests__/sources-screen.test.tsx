@@ -431,3 +431,27 @@ it("목록 행은 좁은 그릇에서 상태를 이름 아래 줄로 내린다 �
   }
   expect(content.classList.contains("@container")).toBe(false);
 });
+
+/**
+ * fix1 Y1 — 소스 상세 정보 격자는 그릇 640(`@max-form`) 미만에서 **한 열**이다(시안 AT3 노트 — 375 시트 본문 343). 850 경계의 두 열은 그대로다.
+ * jsdom은 컨테이너 질의를 못 재므로 클래스 계약을 센다. 한 열에서 경로 칸의 `col-span-2`가 남으면 암묵 둘째 열이 생기므로 `col-span-1`로 되돌린다.
+ */
+it("소스 상세 정보 격자: 640 미만 한 열 — 850 두 열 토큰은 그대로, 셀 선은 위 선만, DOM 순서 불변", async () => {
+  mocks.load.mockResolvedValue({ ok: true, detail: { ...detail, connection: { pathTemplate: "locales/{locale}.json", format: "JSON", adapterName: "json-catalog" }, repository: { repoOwner: "o", repoName: "r", baseBranch: "main" } } });
+  await render(<SourcesScreen slug="p" role="OWNER" data={{ ...data, repository: { repoOwner: "o", repoName: "r", baseBranch: "main" } }} adapters={[]} now={new Date()} />);
+  await open();
+  const grid = document.querySelector<HTMLElement>("[data-source-connection] dl")!;
+  const tokens = (element: Element | null | undefined) => [...(element?.classList ?? [])];
+  expect(tokens(grid)).toEqual(expect.arrayContaining(["@max-[850px]:grid-cols-2", "@max-form:grid-cols-1"]));
+  const [path, format, repository] = [...grid.children];
+  expect(grid.children).toHaveLength(3);
+  expect(tokens(path)).toEqual(expect.arrayContaining(["@max-[850px]:col-span-2", "@max-form:col-span-1"]));
+  expect(tokens(format)).toEqual(expect.arrayContaining(["@max-[850px]:border-t", "@max-[850px]:border-l-0"]));
+  expect(tokens(repository)).toEqual(expect.arrayContaining(["@max-[850px]:border-t", "@max-form:border-l-0"]));
+  expect(path?.textContent).toContain("locales");
+  expect(format?.textContent).toContain("JSON");
+  expect(repository?.textContent).toContain("o/");
+  // 선언은 상세 본문 래퍼가 한다(`dl`보다 위, 다른 요소) — 질의 요소 자신이 선언하지 않는다.
+  expect(tokens(grid.closest("div.\\@container"))).toContain("@container");
+  expect(tokens(grid)).not.toContain("@container");
+});

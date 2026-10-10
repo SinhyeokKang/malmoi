@@ -10,6 +10,7 @@ import { LogFilters } from "@/components/logs/log-filters";
 import { parseLogFilter } from "@/lib/events/filter";
 import { PANEL_HEAD_ROW } from "@/components/shell/content-panel";
 import SourcesLoading from "../../app/(edit)/projects/[slug]/sources/loading";
+import { SOURCE_STATUS_STACK } from "@/components/sources/row-layout";
 import { LOG_ROW_CHEVRON_STACK, LOG_ROW_RESULT_STACK, LOG_ROW_STACK, LOG_ROW_TIME_STACK } from "@/components/logs/row-layout";
 import type { EventRow as Row } from "@/lib/events/query";
 import { en } from "@/messages/en";
@@ -53,6 +54,8 @@ it("Logs 행: DOM 순서는 그대로(시각 → 글리프 → 문장 → 결과
   const { container } = await render(<EventRow row={row()} href="/logs?event=evt_test" now={now} archived={false} style={style} m={en} />);
   const link = container.querySelector("a")!;
   has(link, LOG_ROW_STACK);
+  // 컨테이너 선언은 날짜 카드가 한다 — 질의하는 행 자신이 선언하면 질의가 영영 참이 되지 않는다(POSTMORTEM 2026-09-15).
+  expect(tokens(link)).not.toContain("@container");
   const kids = [...link.children];
   expect(kids.map(kid => kid.tagName.toLowerCase())).toEqual(["time", "span", "span", "span", "span"]);
   const [time, glyph, copy, result, chevron] = kids;
@@ -65,6 +68,15 @@ it("Logs 행: DOM 순서는 그대로(시각 → 글리프 → 문장 → 결과
   has(time, "w-28 shrink-0 text-sm whitespace-nowrap tabular-nums");
   has(result, "flex w-[172px] shrink-0 flex-wrap items-center justify-end gap-1.5");
   for (const kid of [link, ...kids]) expect(tokens(kid).some(token => /(^|:)order-/.test(token))).toBe(false);
+});
+
+it("결과 배지가 없는 행(번역 편집)은 결과 칸이 비어 `empty:hidden`이 셋째 줄을 세우지 않는다", async () => {
+  const edit = row({ kind: "TRANSLATION", subtype: "translation.edit", result: null, finishedAt: null,
+    payload: { kind: "TRANSLATION", surfaceSlug: "web", key: "a.b", locale: "ko", before: "x", after: "y" } as Row["payload"] });
+  const { container } = await render(<EventRow row={edit} href="/logs?event=evt_test" now={now} archived={false} style={style} m={en} />);
+  const result = container.querySelector("a")!.children[3]!;
+  expect(result.childNodes.length).toBe(0);
+  has(result, "@max-form:empty:hidden");
 });
 
 it("Home 최근 로그(showTime=false)는 이 배치의 적층 클래스를 받지 않는다 — 그 화면은 B1 소유다", async () => {
@@ -166,4 +178,23 @@ it("Sources 머리와 골격은 PANEL_HEAD_ROW다 — 제목이 먼저, Add sour
   const row = container.querySelector("[data-skeleton-header]")!;
   expect(ROW.every(token => tokens(row).includes(token))).toBe(true);
   expect(row.children).toHaveLength(2);
+});
+
+/**
+ * fix1 Y4 — 이력 상세 missing 상태도 시트 머리 정렬이다: 좌 16(`max-lg:pl-4`) · 닫기(위 12 · 32 → 가운데 28)와 제목 줄(18/28) 가운데를 맞추는 위 14(`max-lg:pt-3.5`) ·
+ * 닫기 자리(우 12 + 32 + 간격)를 비우는 `max-lg:pr-14`. `lg` 이상 `p-6`은 그대로다.
+ */
+it("이력 상세 missing 상태: 시트 머리 정렬 클래스를 든다 — lg 이상 p-6 불변", () => {
+  const page = read("app/(edit)/projects/[slug]/logs/page.tsx");
+  const missing = /<div className="(flex flex-col gap-1 p-6[^"]*)">\s*<h2 className="text-lg font-medium">\{m\.logs\.detail\.missing\.title\}/.exec(page)?.[1];
+  expect(missing).toBeDefined();
+  expect(split(missing!)).toEqual(expect.arrayContaining(["p-6", "max-lg:pl-4", "max-lg:pt-3.5", "max-lg:pr-14"]));
+});
+
+/** fix1 Y6 — Sources 행 상태 줄의 `pl-10`은 칩 28 + 간격 12(`gap-3`)다 — 셋이 한 곳에서 움직이도록 묶는다. */
+it("Sources 상태 줄 들여쓰기 pl-10 = 칩 28 + 간격 12 — 칩·간격 값이 바뀌면 같이 움직인다", () => {
+  expect(SOURCE_STATUS_STACK).toContain("@max-form:pl-10");
+  const screen = read("components/sources/sources-screen.tsx");
+  expect(screen).toMatch(/<span data-source-content className=\{cn\("flex min-w-0 flex-1 items-center gap-3 px-4 py-row-y"/);
+  expect(read("components/ui/icon-tile.tsx")).toMatch(/sm:\s*"[^"]*\bsize-7\b/);
 });
