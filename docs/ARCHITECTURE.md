@@ -2874,6 +2874,7 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
   `date-format`·`zones`만 문다. Preferences Time zone 카드가 값으로 읽는다). 셋 다 `client-graph.test.ts`의 `CLIENT_LIB_FILES`에 있다.
 - ⚠️ **화면 테마가 잎 하나를 더했다** (2026-10-05, color-scheme — §6.357): **`lib/color-scheme/scheme.ts`**(`COLOR_SCHEMES`·`parseColorScheme`·`resolveColorScheme`·
   쿠키 이름 `COLOR_SCHEME_COOKIE` — **import 0**. Preferences Theme 카드가 값으로 읽는다). `CLIENT_LIB_FILES`에 있고 같은 파일이 잎 성질을 직접 건다.
+- ⚠️ **좁은 화면이 잎 둘을 명부에 더했다** (2026-10-10, responsive-public — §6.358): **`lib/shell/breakpoint.ts`**(`WIDE_QUERY` 하나 — **import 0**, 공개 셸 서랍·Docs 장 내비 시트·헤더 Inbox가 열린 동안 읽는다. 같은 파일의 잎 검사가 import 0을 건다) · **`lib/links.ts`**(서랍의 GitHub 행이 헤더와 같은 저장소 URL을 읽는다 — `routes`와 사전 타입만 문다). 둘 다 `CLIENT_LIB_FILES`에 있다.
 - ⚠️ **그 명부가 실제로 낡아 있었다** (2026-09-18 전수 대조). 손으로 잇는 목록이라 `/doc-check` 사이에 조용히 갈린다 — **정본은 `components/__tests__/client-graph.test.ts`가 실제로 걷는 그래프이고**, 세는 법은 "`\"use client\"` 파일이 무는 `@/lib/*`를 전부 모아 각 모듈의 import 수를 본다" 하나다. 그때 **미등재 잎이 열셋** 나왔다:
   - **클라이언트가 값으로 읽는 것 열하나** (T16에서 `lib/keys/edit-command.ts`가 빠졌다) — `lib/publish/warnings.ts`·`lib/publish/words.ts`(`components/publish-button.tsx`) · `lib/search-params.ts`(쿼리 정규화 — ⚠️ `Object.create(null)`을 쓰는 자리라 §6.36의 프로토타입 규칙이 여기도 산다) · `lib/account/plan.ts` · `lib/import/confirm.ts` · `lib/onboarding/branch.ts`·`key-gap.ts`·`language-name.ts`·`locale-picker.ts` · `lib/shell/panel-size.ts` · `lib/upload/image.ts`. **열하나 전부 import가 0이다.**
   - **서버만 소비하는 것 하나** — `lib/protection/plan.ts`(소비자는 `lib/pull/run.ts`·`lib/push/apply.ts`·`lib/import/run.ts` 셋, 클라이언트 소비자 0). 그래도 `client-graph.test.ts`가 **파일 목록을 `toEqual`로** 고정한다: 같은 디렉터리의 `./fingerprint`를 한 줄만 물어도 `node:crypto`가 번들로 오고, 음성 대조로 `fingerprint.ts` 쪽은 실제로 걸리는지까지 센다. `lib/i18n`·`lib/keys/flag.ts`와 같은 형이다.
@@ -3042,6 +3043,39 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 - **방침**: `User.colorScheme`은 `lib/privacy/collected.ts`에 `collected`로 있고, 쿠키 `malmoi-color-scheme`은 `/privacy`의 쿠키 표·보존 목록·목적에 en·ko 두 본으로
   든다(§6.035 동형 게이트 — 쿠키 표의 행은 이름이 아니라 용도 `Theme`이다).
 
+### 6.358 좁은 화면 — 셸 경계 `lg` 하나 · 폭은 렌더 상태가 아니다 (2026-10-10, responsive-public)
+
+제품 판정은 PRODUCT §4.1 "좁은 화면"(375부터 모든 기능, 폭에 따른 기능 분기 0), 시각 규칙은 DESIGN §5·§6.4 "전체 화면 시트"·§6.615 "좁은 폭 헤더"다.
+여기는 **그 판정을 깨뜨리기 쉬운 구현 계약**만 둔다. 서버·데이터·인가는 바뀌지 않았다 — 좁은 조건부 렌더가 인가를 대신하지 않고(§6.1),
+SSR 조회를 클라이언트로 옮기지 않으며, 스키마·env·쿠키·Route Handler 추가가 0이다.
+
+- **경계는 뷰포트 `lg`(64rem) 하나다** (2026-10-07 사용자). 서랍·시트는 body 포털이라 셸 컨테이너 밖에 있어, 셸을 컨테이너 쿼리로 판정하면 판정이 둘로 갈린다.
+  **배치는 CSS(`lg:`·`max-lg:`)가 정하고**, JS가 폭을 묻는 자리는 둘뿐이다 — ① **열린 서랍·시트를 넓어질 때 닫고 포커스를 옮기는 것**,
+  ② **Inbox를 열 때 그릇을 고르는 것**. 둘 다 `lib/shell/breakpoint.ts`의 `WIDE_QUERY`(`"(min-width: 64rem)"`)를 `matchMedia`로 묻는다.
+  - ⚠️ **폭을 렌더 상태로 두지 않는다** — `useSyncExternalStore`·`useState(matchMedia…)`로 그리면 서버(폭 모름)와 첫 클라이언트 렌더가 갈려 하이드레이션 불일치가 난다.
+    ①의 리스너는 **열린 동안만** 달고(`change` → 닫기), ②는 **열기 핸들러에서 한 번** 읽는다. 하이드레이션 전 인라인 스크립트는 CSP(`'nonce' 'strict-dynamic'`)가 막고 UA 분기도 하지 않는다.
+  - ⚠️ **rem이다** — `1024px`·`innerWidth`로 판정하면 사용자 글꼴 크기에 따라 Tailwind `lg`와 어긋난다. `lib/shell/__tests__/breakpoint.test.ts`가
+    `WIDE_QUERY`를 `node_modules/tailwindcss/theme.css`의 `--breakpoint-lg`와 대조하고, `globals.css`가 그 값을 덮지 않는지, 소스에 `innerWidth`·`(min-width: 64rem|1024px)` 리터럴이 따로 없는지 센다.
+  - ⚠️ jsdom에는 `matchMedia`가 없다 — 없는 환경은 "폭이 바뀌지 않는다"로 읽는다(서랍·`WideOnly`는 리스너 생략, Inbox는 `?? true` → 넓음 = 메뉴, 지금 형). 실 브라우저는 모두 있어 jsdom 전용 갈래다.
+- **검색·Inbox·계정은 헤더에 한 벌이다** — 좁은 폭에서도 **같은 인스턴스**가 남고 CSS가 모양만 바꾼다(검색은 `FieldButton compact`로 아이콘). 서랍에 다시 그리지 않는다:
+  `SearchTrigger`는 인스턴스마다 document keydown(⌘K) 리스너를 등록하고, `AttentionInbox`는 마운트 effect에서 배지 Action을 부른다(§6.365 — `public-shell.test.tsx`가 1회 고정).
+  두 벌을 그려 하나를 숨기면 단축키가 두 번 열고 배지 조회가 두 번 나간다. 같은 이유로 **문서 목차(`public-doc-toc.tsx`)도 DOM 하나**이고 컨테이너 쿼리로 형만 바꾼다(인스턴스마다 scroll 리스너·ResizeObserver).
+- **Inbox 그릇 선택** — `lg` 이상 `DropdownMenu`, 미만 전체 화면 시트(`LargeModal flush`). 트리거는 `DropdownMenuTrigger` 하나이고 좁으면 메뉴 열림을 막고 시트를 연다.
+  **열기 = 읽음 기록(`openAttentionInboxAction`)은 그 핸들러에서 그릇 선택 전에 한 번**이라 두 그릇이 같은 계약이다(§6.365). 열린 채 `lg`를 넘나들면 닫기만 하고 다시 부르지 않는다.
+  닫힘 정리(배지 0 · 캐시 목록 `readAll`)는 `clearOnClose` 가드로 멱등이다 — Radix가 `onOpenChange(false)`를 겹쳐 불러도 한 번이다.
+  ⚠️ 트리거의 `aria-haspopup`은 Radix의 `menu` 그대로다 — 렌더가 폭을 모르므로 바꾸지 않는다(알려진 한계, DESIGN §6.545). `aria-expanded`는 트리거가 두 그릇의 열림을 함께 말한다.
+- **큰 모달 규칙은 그릇 상수 한 곳이다** — `LARGE_MODAL_OVERLAY`·`LARGE_MODAL_PANEL`(`components/ui/large-modal.tsx`)의 `max-lg:` 토큰이 `LargeModal` 소비자 전부와 `CommandDialog`를
+  `lg` 미만 시트로 만든다. 앱 모달도 코드 변경 없이 받는다(앱 셸은 아직 1280 하한이지만 포털은 뷰포트를 따른다). `lg` 이상 문자열은 바이트 불변이고(`large-modal-sheet.test.tsx`),
+  ⚠️ 랜딩 목업(`components/landing/mockup/publish.tsx`)은 상수를 import하지 않고 값을 복사한다 — 데스크톱 캔버스의 축소 복제라 시트가 되면 안 된다(`landing-mockup.test.tsx`).
+- **소프트 키보드** — 셸 밖 골격과 LargeModal 시트의 한정 높이는 `dvh`이고 바닥 행동은 스크롤 영역 밖(또는 sticky)이다. ⚠️ **`dvh`만으로는 키보드를 따르지 않는다** —
+  `dvh`가 따르는 것은 브라우저 툴바이고, 키보드가 레이아웃 뷰포트를 줄이게 하는 것은 루트 `viewport`의 **`interactiveWidget: "resizes-content"`**(`app/layout.tsx`, D20)다.
+  Chrome·Firefox Android가 따르고 **iOS Safari는 무시한다**(키보드가 레이아웃 뷰포트를 줄이지 않는다 — 비범위). 되돌리기는 그 한 줄이다.
+  공개 Auth 표면에는 텍스트 입력이 0건이라 이 계약을 실제로 밟는 첫 소비자는 LargeModal 폼(앱)이다.
+- **safe-area** — 시트 패널은 `env(safe-area-inset-top|bottom)` 패딩을 들지만 루트에 `viewport-fit=cover`가 없어 **지금은 0**이다(D18). 켜면 공개 셸 헤더·푸터·Docs 캡슐·앱 셸까지 safe-area를 받아야 한다.
+- **resize로 다시 마운트하지 않는다** — 본문 스크롤러·검색·Inbox는 폭 전환으로 재마운트되지 않고(폭에 따른 조건부 렌더 0), 폼 값·pending·에러가 초기화되지 않는다. 공개 스크롤러의 페이지별 재마운트(`key`)는 그대로다.
+- **포커스는 `body`로 빠지지 않는다**(POSTMORTEM 2026-09-24) — 넓어지며 트리거(메뉴 버튼·Docs 캡슐)가 숨으면 고정 내비의 대응 링크로, 좁아지며 넓은 링크(`WideOnly`·`DocsFixedNav`)가 숨으면
+  그 안에 포커스가 있었거나 그 안에서 연 메뉴가 열려 있었을 때 트리거로 옮긴다. 링크로 닫힌 서랍·시트는 복귀를 막는다(도착한 페이지가 이긴다). 새 서랍은 `focus-return`·`primitive-focus` 그물에 있다.
+
 ### 6.36 목록 필터의 순수 판정 (`lib/projects/list.ts`, 2026-09-10 8-3)
 
 - ⚠️ **좁히는 축은 검색(`?q=`) 하나다.** 상태 필터 탭 여섯과 그것이 쓰던 `parseProjectFilter`·`filterProjects`는
@@ -3127,6 +3161,7 @@ relation load strategy에 따른다. 멤버십이 없으면 나머지는 0회다
   StrictMode 첫 effect의 응답 폐기)와 **읽음 신호 세대**(`seenThrough` — 신호 전에 띄운 목록 요청은 `marked`·성공·실패와 무관하게 폐기)로 거른다.
   신호 뒤 도착한 배지 응답도 버린다(`/inbox` 직접 로드에서 배지 Action과 읽음 Action이 동시에 출발한다). 신호 뒤 새로 시작한 목록 조회는 실제 안 읽음을 그대로 보인다.
 - **다른 탭은 범위 밖이다** — 다음 마운트까지 옛 배지다(실시간 갱신이 없는 것과 같은 판정).
+- **`lg` 미만은 같은 트리거가 시트를 연다** (2026-10-10, responsive-public) — 그릇은 열기 핸들러의 `matchMedia` 한 번이고 읽음 기록은 그릇과 무관하게 그 핸들러 한 번이다(§6.358). 헤더 인스턴스는 폭과 무관하게 하나다.
 
 ### 6.37 검색의 공개·사용자 경계 (`app/search/actions.ts` · `lib/search/`, global-search)
 
@@ -3173,6 +3208,7 @@ relation load strategy에 따른다. 멤버십이 없으면 나머지는 0회다
 - **검사는 코어까지 내려간다.** `entry-points.test.ts`의 `MEMBER_JOIN_CORES`는 `searchKeys` 호출과 Action의 세션 거부를 함께
   요구하고, 코어 본문의 `ProjectMember`·userId 바인딩도 검사한다. 멤버십 Action은 `USER_SCOPED_ACTIONS`다.
   `lib/keys/__tests__/search.integration.ts`가 다른 사용자의 비노출·권한 회수·제외 조건·순위·왕복 상한을 실제 DB에서 잰다.
+- **검색 트리거는 헤더에 한 벌이다** (2026-10-10, responsive-public) — `lg` 미만 공개 셸에서도 같은 `SearchTrigger` 인스턴스가 CSS로 아이콘이 되고(⌘K document 리스너가 인스턴스마다 붙는다), Dialog는 그릇 상수가 `lg` 미만 시트로 바꾼다. 멤버십·색인 조회 경로는 폭과 무관하다(§6.358).
 
 ### 6.4 GitHub 연결의 왕복 — state와 착지 지점 (SaaS 4단계, `lib/github-connect/`)
 
