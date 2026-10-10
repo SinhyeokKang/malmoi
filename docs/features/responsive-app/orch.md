@@ -23,7 +23,7 @@
 | O11 | Logs 행은 DOM 불변 — 좁으면 시각이 맨 윗줄, 문장은 그 아래(브리프 '문장 첫 줄'과 순서만 다름) | 지휘자 판단 — 1280 불변·`order` 0 우선(B3 질문) |
 | O12 | Files 후보 경로는 말줄임 + title 유지(시안 AT7), 전문은 샘플 툴바 경로 줄바꿈으로. `client-graph.test.ts` 한 줄 추가는 B2·B4 각자 별도 커밋 | 지휘자 판단 — 시안 5차 확정 우선(B4 질문) |
 | O13 | 공유 프리미티브 둘: `components/ui/list-row.tsx`의 좁은 폭 적층 옵트인 prop(행 동작 아래 줄 오른쪽, `@max-form`)은 B3(첫 소비자 Account 행, 별도 커밋) — B4의 members·mcp 행은 그 커밋이 dev에 들어간 뒤 같은 prop을 쓴다. `components/ui/dialog.tsx`의 일반 확인 DialogContent를 AT8b 형(375 좌우 16 · 본문만 스크롤 · footer flex-wrap)으로 바꾸는 것은 B2(별도 커밋, DrawerContent·CommandDialog 불변) | 지휘자 판단 — B3 질문, 손 사본 0·첫 소비자 배치 |
-| O14 | B1이 `components/ui/dialog.tsx`의 `DrawerContent`에 선택 `footer` prop(세로 행 고정 바닥)을 더한다 — 함수 안만, 별도 커밋, 공개 소비자 렌더 불변. 같은 파일의 확인 DialogContent는 B2(O13). 뒤에 통합되는 쪽이 rebase | 지휘자 판단 — B1 질문, AT1b 바닥 고정 행 |
+| O14 | B1이 `components/ui/dialog.tsx`의 `DrawerContent`에 선택 `pinned` prop(처음 `footer`로 적었으나 `api-contract.test.ts`가 금지하는 슬롯 이름이라 바꿈)(세로 행 고정 바닥)을 더한다 — 함수 안만, 별도 커밋, 공개 소비자 렌더 불변. 같은 파일의 확인 DialogContent는 B2(O13). 뒤에 통합되는 쪽이 rebase | 지휘자 판단 — B1 질문, AT1b 바닥 고정 행 |
 | O15 | Projects 행은 **모든 폭에서 두 줄**(1줄 썸네일·이름/리포·배지, 2줄 미터 가로 감김) — 데스크톱 1280도 미터를 숨기지 않으려면 한 줄에 다 들어가지 않는다. 데스크톱 행 높이 +26, Projects 가이드 컷 stale(D 배치) | 지휘자 판단 — F5(미터 숨김 0)의 귀결, 폭별 배치 하나(B1 질문). 되돌리기는 컨테이너 질의 한 줄 |
 | O16 | B3 리뷰 결정: D1 소스 상세 정보 격자 640 미만 한 열(시안 AT3) · D2 Logs 골격은 결과 있는 행 유지 + 주석 · D3 기존 `@max-form:order-last`(source-detail 언어 행)는 걷지 않는다 — 이 기능이 만든 것이 아니고 걷으면 1280 배치가 바뀐다 | 지휘자 판단 — 시안 노트·외과적 변경 원칙 |
 | O17 | `components/account/*`·`components/preferences/*`는 B3 소유(사후 등재). B4의 members·mcp 행은 손으로 든 grid라 `ListRow stackActions`를 쓰지 않는다(O13 앞부분 실현 안 됨 — 결함 아님) | 지휘자 판단 — B3 리뷰 |
@@ -65,7 +65,7 @@ Run `run_ea6cb60e2632`. 파동 1 착수 2026-10-11.
 | 배치 | Dispatch | 워크트리 | 상태 |
 |---|---|---|---|
 | QA0 | `ctx_93db6a24a97f` | main 체크아웃 | 완료 — 1280 결함 0, 375 관측을 spec 문제 절에 반영. QA 이월: Home·Logs dev 청크 CSP 차단(간헐) 재확인 |
-| B1 | `ctx_8e85ecb5897f` | `ra-b1` | B1a dev `9e26c56a`(CI success) · 본 작업 진행 |
+| B1 | `ctx_8e85ecb5897f` | `ra-b1` | B1a dev `9e26c56a`(CI success) · 본 구현 073b6bba·a9f75b34·eef68a75(gate ok) → 리뷰 `ctx_ab571e49100d` |
 | B2 | `ctx_7623878d5078` | `ra-b2` | 진행 |
 | B3 | `ctx_f2f02378f9aa` → fix1 `ctx_2043fc02dc5f` | `ra-b3` | 구현 edd9aef1·b309037d·87114992 · 리뷰 🔴0 🟡7 → fix1 진행 |
 | B4 | `ctx_221863986e06` | `ra-b4` | 진행 |
