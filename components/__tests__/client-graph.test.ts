@@ -146,6 +146,7 @@ const CLIENT_LIB_FILES = [
   "lib/onboarding/base-pending.ts",
   "lib/onboarding/branch.ts",
   "lib/onboarding/create-plan.ts",
+  "lib/onboarding/files-layout.ts",
   "lib/onboarding/key-gap.ts",
   "lib/onboarding/language-name.ts",
   "lib/onboarding/locale-picker.ts",
