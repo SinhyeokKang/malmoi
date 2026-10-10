@@ -160,9 +160,13 @@ export function AttentionInbox() {
           같은 3%이고 열린 동안도 같다. 안 읽음이 있을 때만 정사각을 푼다(32 → 52 · `9+` 58). 배지는 Button **안**의 자식이다(형제 금지 —
           POSTMORTEM 2026-09-09). 접근 이름은 하나 — 배지는 `aria-hidden`이고 이름이 실제 수를 읽는다.
         */}
-        <Button ref={trigger} size="icon-md" variant="ghost"
+        {/*
+          ⚠️ **열림은 그릇과 무관하게 트리거가 말한다**(#217) — Radix는 메뉴 열림만 알아 시트가 열린 동안 `aria-expanded=false`였다. 자식 prop이 Slot에서
+          이긴다. 열림 면도 같은 상태(`aria-expanded`)에 건다. `aria-haspopup`은 Radix의 `menu` 그대로다 — 그릇은 여는 순간의 폭이 정하고 렌더는 폭을 모른다.
+        */}
+        <Button ref={trigger} size="icon-md" variant="ghost" aria-expanded={menuOpen || sheetOpen}
           aria-label={unread === 0 ? m.inbox.label : m.inbox.labelUnread(unread)}
-          className={cn("text-foreground hover:bg-foreground/[0.03] data-[state=open]:bg-foreground/[0.03]", badge !== null && "w-auto gap-1 px-1.5")}>
+          className={cn("text-foreground hover:bg-foreground/[0.03] aria-expanded:bg-foreground/[0.03]", badge !== null && "w-auto gap-1 px-1.5")}>
           <Inbox className="size-4" aria-hidden />
           {badge !== null && <span data-inbox-badge aria-hidden className="flex"><Badge variant="soft-neutral">{badge}</Badge></span>}
         </Button>

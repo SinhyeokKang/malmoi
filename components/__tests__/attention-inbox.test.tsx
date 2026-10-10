@@ -89,7 +89,7 @@ it("마운트는 배지 조회 한 번이고 open Action을 부르지 않는다 
   expect(trigger().classList.contains("w-auto")).toBe(false);
   expect(badgeNode()).toBeNull();
   // 글리프는 늘 foreground이고 hover·열림 면은 New project 링크와 같은 3%다(ghost 기본을 덮는다).
-  for (const token of ["text-foreground", "hover:bg-foreground/[0.03]", "data-[state=open]:bg-foreground/[0.03]"]) expect(trigger().classList, token).toContain(token);
+  for (const token of ["text-foreground", "hover:bg-foreground/[0.03]", "aria-expanded:bg-foreground/[0.03]"]) expect(trigger().classList, token).toContain(token);
   expect(trigger().classList).not.toContain("text-muted-foreground");
 });
 
@@ -703,6 +703,24 @@ describe("좁은 폭 — 전체 화면 시트", () => {
     await settle(d, ok());
     expect(sheet()!.querySelector("footer")).toBeNull();
     expect(sheet()!.querySelector("[data-onboarding-body]")?.classList.contains("max-lg:px-4")).toBe(false);
+  });
+
+  /**
+   * #217 — 시트가 열린 동안 트리거가 `aria-expanded=false`였다(Radix는 메뉴 열림만 안다). 열림은 그릇과 무관하게 트리거가 말한다.
+   * ⚠️ `aria-haspopup`은 `menu` 그대로다 — 그릇은 여는 순간의 폭이 정하고 렌더는 폭을 모른다(렌더 판정은 하이드레이션 불일치를 낸다).
+   */
+  it("시트가 열린 동안 트리거는 `aria-expanded=true`이고 열림 면을 든다", async () => {
+    await mount(0);
+    const d = nextOpen();
+    expect(trigger().getAttribute("aria-expanded")).toBe("false");
+    await openMenu();
+    expect(sheet()).not.toBeNull();
+    expect(trigger().getAttribute("aria-expanded")).toBe("true");
+    expect(trigger().getAttribute("aria-haspopup")).toBe("menu");
+    expect(trigger().classList).toContain("aria-expanded:bg-foreground/[0.03]");
+    await settle(d, ok());
+    await act(async () => { await userEvent.setup().click(sheet()!.querySelector<HTMLButtonElement>(`button[aria-label="${en.common.close}"]`)!); });
+    expect(trigger().getAttribute("aria-expanded")).toBe("false");
   });
 
   it("넓으면 지금처럼 메뉴다", async () => {

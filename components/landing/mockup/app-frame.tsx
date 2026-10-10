@@ -85,7 +85,7 @@ export function AppFrame({ m, children, overlay }: { m: Messages; children: Reac
               ⚠️ **배지가 없다** — 실물 배지는 페이지를 열 때와 메뉴를 열 때만 다시 읽어 한 이야기(번역 → Publish) 동안 바뀌지 않고, 숫자가 서면
               씬의 주인공(Publish 배지)과 다투는 둘째 배지가 된다.
             */}
-            <span data-landing-inbox="" className={cn(buttonClass({ variant: "ghost", size: "icon-md" }), "text-foreground hover:bg-foreground/[0.03] data-[state=open]:bg-foreground/[0.03]")}>
+            <span data-landing-inbox="" className={cn(buttonClass({ variant: "ghost", size: "icon-md" }), "text-foreground hover:bg-foreground/[0.03] aria-expanded:bg-foreground/[0.03]")}>
               <Inbox className="size-4" aria-hidden />
             </span>
             <span className="flex size-8 items-center justify-center rounded-full">
