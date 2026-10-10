@@ -101,7 +101,7 @@ export function RepositoryForm({ slug, owner, repo, baseBranch, disabled = false
         <label htmlFor={fixed || choice === undefined ? undefined : "base-branch"} className="text-foreground flex shrink-0 items-center gap-1.5 text-sm font-medium whitespace-nowrap @max-form:basis-full" id="base-branch-label"><GitBranch className="size-3.5 shrink-0" aria-hidden />{m.settings.repository.fields.branch}</label>
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
           {fixed ? <p id="base-branch" className="text-sm">{branch}</p>
-            : choice === undefined ? <div aria-busy="true"><Skeleton className="h-9 w-60 rounded-md" /></div>
+            : choice === undefined ? <div aria-busy="true"><Skeleton className="h-9 w-60 max-w-full rounded-md" /></div>
             : choice.mode === "select" ? (
               <Select name="baseBranch" value={branch} disabled={pending} onValueChange={value => { setBranch(value); setResult("idle"); }}>
                 <div className="flex w-60 max-w-full @max-form:min-w-0 @max-form:flex-1">
