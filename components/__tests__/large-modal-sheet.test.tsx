@@ -103,7 +103,13 @@ describe("LargeModal — 소비자 코드 변경 없이 규칙을 받는다", ()
     const panel = find<HTMLElement>(document.body, '[role="dialog"]');
     const header = find<HTMLElement>(panel, "header");
     expect(wide(header.className)).toBe("flex items-start justify-between gap-2 px-8 pt-8 pb-5");
-    expect(narrow(header.className)).toEqual(["max-lg:min-h-14", "max-lg:items-center", "max-lg:border-b", "max-lg:border-divider", "max-lg:py-3", "max-lg:pr-3", "max-lg:pl-4"]);
+    // ⚠️ 세로 가운데 정렬을 머리에 걸지 않는다 — 설명이 감겨 머리가 자라면 닫기가 제목+설명 묶음의 가운데로 내려간다. 머리는 `items-start`
+    // (넓은 폭과 같은 기본)이고, 제목 묶음이 최소 32(닫기 높이)에서 세로 가운데라 제목 단독일 때 56 안에서 둘 다 가운데다.
+    expect(narrow(header.className)).toEqual(["max-lg:min-h-14", "max-lg:border-b", "max-lg:border-divider", "max-lg:py-3", "max-lg:pr-3", "max-lg:pl-4"]);
+    expect(header.classList.contains("items-start")).toBe(true);
+    const heading = find<HTMLElement>(header, "h2").parentElement!;
+    expect(wide(heading.className)).toBe("flex min-w-0 flex-col gap-1.5");
+    expect(narrow(heading.className)).toEqual(["max-lg:min-h-8", "max-lg:justify-center"]);
     const title = find<HTMLElement>(header, "h2");
     expect(wide(title.className)).toBe("text-xl font-medium");
     expect(narrow(title.className)).toEqual(["max-lg:text-lg"]);

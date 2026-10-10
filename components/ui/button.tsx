@@ -53,7 +53,9 @@ import { cn } from "@/lib/utils";
  */
 /**
  * **터치 히트 영역** (responsive-public design §2 · 2026-10-07 사용자) — 보이는 크기는 그대로 두고 `pointer: coarse`일 때 `::after`가
- * 누르는 영역만 44까지 넓힌다. 대상은 44에 가장 못 미치는 `sm`(28)·`icon-md`(32) 둘이다.
+ * 누르는 영역만 44까지 넓힌다. 대상은 44 미만 크기 전부 — `sm` 28 · `icon-xs` 24 · `icon-sm` 28 · `icon-md` 32 · `icon-lg` 36이다(D17 — design §2는
+ * `sm`·`icon-md` 둘만 적었는데 그러면 시트의 지우기 X와 닫기가 빠진다). 글자 버튼 `md` 36 · `lg` 40은 뺀다 — 폭이 넓어 가로 부족분이 없고
+ * 세로 부족분이 작으며, 세로로 쌓인 버튼끼리 넓힌 영역이 겹친다.
  * ⚠️ **`relative`는 수식어 없이 둔다** — `pointer-coarse:relative`로 두면 호출부의 `absolute`를 `cn()`이 못 걷고 터치 기기에서만
  * 덮어써 절대 배치 버튼이 흐름으로 돌아온다. 수식어가 없으면 twMerge가 호출부 위치 클래스를 이기게 한다(그것도 `::after`의 기준 상자다).
  * 이웃한 둘의 넓힌 영역이 겹치면 뒤 형제가 이긴다 — 보이는 버튼 위에서는 늘 그 버튼이다.
@@ -146,10 +148,10 @@ export const buttonClass = cva(
          * 크기와 정확히 같다 — 새 `size`를 만들면 "어느 걸 쓰나"가 매 화면 판단이 된다.
          */
         lg: "h-10 rounded-lg px-4",
-        "icon-xs": "size-6 rounded-sm px-0",
-        "icon-sm": "size-7 rounded-sm px-0 text-xs",
+        "icon-xs": cn("size-6 rounded-sm px-0", TOUCH_TARGET),
+        "icon-sm": cn("size-7 rounded-sm px-0 text-xs", TOUCH_TARGET),
         "icon-md": cn("size-8 rounded-md px-0", TOUCH_TARGET),
-        "icon-lg": "size-9 rounded-md px-0",
+        "icon-lg": cn("size-9 rounded-md px-0", TOUCH_TARGET),
       },
     },
     defaultVariants: { variant: "default", size: "md" },

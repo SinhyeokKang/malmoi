@@ -28,8 +28,9 @@ function Shell({ title, description, children, meta, action, tall }: { title: st
           <span className="text-xl font-medium">{title}</span>
           <span className="text-muted-foreground text-sm text-pretty">{description}</span>
         </div>
-        {/* `CloseButton`과 같은 클래스다(태그만 `<span>` — 프레임 안에 인터랙티브 태그를 두지 않는다). `landing-mockup.test.tsx`가 실물을 렌더해 견준다. */}
-        <span className={cn(buttonClass({ variant: "ghost" }), "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none", "hover:bg-foreground/[0.03] size-9 shrink-0 rounded-full px-0")}>
+        {/* `CloseButton`과 같은 클래스다(태그만 `<span>` — 프레임 안에 인터랙티브 태그를 두지 않는다). `landing-mockup.test.tsx`가 실물을 렌더해 견준다.
+            크기도 실물과 같은 `icon-lg`라 터치 히트 영역 토큰까지 따라온다 — 목업은 누르는 자리가 아니지만 클래스 한 벌을 유지한다(시트 토큰은 없다 — 시트는 LargeModal 머리 몫). */}
+        <span className={cn(buttonClass({ variant: "ghost", size: "icon-lg" }), "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none", "hover:bg-foreground/[0.03] shrink-0 rounded-full")}>
           <X className="size-5" aria-hidden />
         </span>
       </div>
