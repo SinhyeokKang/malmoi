@@ -208,6 +208,7 @@ export const es = {
       docs: "Documentación",
       github: "GitHub",
       getStarted: "Empezar",
+      openNav: "Abrir menú",
     },
     hero: {
       title: ["Reúne tus textos,", "traduce y publica en equipo"] as const,

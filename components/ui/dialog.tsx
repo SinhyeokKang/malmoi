@@ -1,7 +1,7 @@
 "use client";
 
 import { Dialog as Primitive } from "radix-ui";
-import { createContext, useContext, type ComponentProps, type ReactNode } from "react";
+import { createContext, useContext, useRef, type ComponentProps, type ReactNode } from "react";
 
 import { useMessages } from "@/components/i18n/messages-provider";
 import { cn } from "@/lib/utils";
@@ -254,6 +254,64 @@ export function DialogContent({
         )}
         {/* ⚠️ 푸터 위 간격이 16이다 — `pt-2`(8)로 붙어 있었다. */}
         {actions !== undefined && <footer className="flex justify-end gap-2 p-4">{actions}</footer>}
+      </Primitive.Content>
+    </Primitive.Portal>
+  );
+}
+
+/**
+ * **측면 서랍** (responsive-public design §2 · PT1b — 공개 셸 내비가 첫 소비자, 앱 LNB가 다음이다). `DialogContent`의 형제다 — 동작(닫는 길 넷 ·
+ * 연 자리 복귀 · IME Esc)은 같고 위치·치수만 다르다. 호출부가 `DialogContent`의 위치·높이를 덮지 않게 그릇을 여기 둔다(DESIGN §8).
+ *
+ * 왼쪽·위·아래 8 · 폭 `min(320, 100vw − 56)`(오른쪽에 남는 56의 scrim이 닫기 자리다) · 셸 패널과 같은 형의 떠 있는 면(radius 16 · `border-subtle` ·
+ * `shadow-medium`) · scrim은 `Dialog`와 같은 40%. 머리 56 = 호출부의 시작 슬롯(로고) + 닫기 32이고 **보이는 제목이 없다**(`title`은 sr-only).
+ * 몸통만 스크롤하고 바닥(`actions`)은 고정이다.
+ *
+ * ⚠️ **열면 몸통의 현재 항목(`aria-current`)에, 없으면 몸통의 첫 항목에 포커스가 선다** — Radix 기본(첫 tabbable)이면 머리의 로고에 선다.
+ * 소비자는 표식을 달지 않는다 — 현재 항목이 곧 표식이다. 닫힘 복귀는 `closeAutoFocus`이고, 링크로 닫히면 소비자가 막는다(도착한 페이지가 이긴다).
+ */
+export function DrawerContent({ title, start, actions, children, onCloseAutoFocus }: {
+  /** 보이지 않는 이름 — 서랍 안 `nav`의 이름과 같게 둔다. */
+  title: ReactNode;
+  /** 머리 왼쪽(로고 홈 링크). */
+  start: ReactNode;
+  /** 바닥 고정 줄(공개 내비 — 언어·테마 스위처). 몸통만 스크롤한다. */
+  actions?: ReactNode;
+  children: ReactNode;
+  onCloseAutoFocus?: AutoFocusHandler;
+}) {
+  const m = useMessages();
+  const ime = useImeGuard();
+  const body = useRef<HTMLDivElement>(null);
+  return (
+    <Primitive.Portal>
+      <Primitive.Overlay className="bg-scrim/40 fixed inset-0 z-50" />
+      <Primitive.Content
+        aria-describedby={undefined}
+        className="bg-background border-border-subtle shadow-medium fixed top-2 bottom-2 left-2 z-50 flex w-[min(320px,calc(100vw-56px))] flex-col overflow-hidden rounded-xl border"
+        onCompositionStart={ime.onCompositionStart}
+        onCompositionEnd={ime.onCompositionEnd}
+        onEscapeKeyDown={(event) => { if (ime.blocks(event)) event.preventDefault(); }}
+        onOpenAutoFocus={(event) => {
+          const scope = body.current;
+          const target = scope?.querySelector<HTMLElement>('[aria-current]:not([aria-current="false"])')
+            ?? scope?.querySelector<HTMLElement>('a[href], button:not(:disabled), [tabindex]:not([tabindex="-1"])');
+          if (target == null) return;
+          event.preventDefault();
+          target.focus();
+        }}
+        onCloseAutoFocus={(event) => closeAutoFocus(event, onCloseAutoFocus)}
+      >
+        <Primitive.Title className="sr-only">{title}</Primitive.Title>
+        <header className="flex h-14 shrink-0 items-center justify-between px-3">
+          {start}
+          <DialogClose asChild>
+            {/* 32 — 머리의 로고와 같은 높이다(시트 머리의 닫기와 같은 급). */}
+            <CloseButton label={m.common.close} className="size-8" />
+          </DialogClose>
+        </header>
+        <div ref={body} className="min-h-0 flex-1 overflow-y-auto px-3 pt-1 pb-3 [scrollbar-width:thin]">{children}</div>
+        {actions !== undefined && <footer className="border-divider flex h-12 shrink-0 items-center gap-5 border-t px-4">{actions}</footer>}
       </Primitive.Content>
     </Primitive.Portal>
   );

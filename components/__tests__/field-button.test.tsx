@@ -61,3 +61,29 @@ it("마우스·Enter·Space가 같은 버튼 동작을 부른다", async () => {
   expect(onClick).toHaveBeenCalledTimes(3);
   expect(document.activeElement).toBe(button);
 });
+
+/**
+ * **`lg` 미만 아이콘 형** (responsive-public PT1a) — 같은 인스턴스가 CSS로 32 아이콘이 된다(두 벌을 그리면 ⌘K 리스너가 둘이다).
+ * 좁은 형은 헤더 Inbox 트리거와 같은 ghost icon-md 꼴이고 접근 이름·단축키·팝업 속성은 그대로다. jsdom은 폭을 못 재므로 클래스로 든다.
+ */
+it("`compact`면 `lg` 미만에서만 32 아이콘이 되고 이름·단축키는 그대로다", async () => {
+  const { container } = await render(<FieldButton {...props} compact shortcut={<Kbd>{en.common.keys.search.mac}</Kbd>} aria-keyshortcuts="Meta+K" />);
+  const button = find<HTMLButtonElement>(container, "button");
+  const classes = [...button.classList];
+  // 넓은 폭 클래스는 그대로다 — 좁은 형 토큰은 전부 `max-lg:`다.
+  for (const token of ["rounded-full", "h-11", "w-80", "border", "shadow-low"]) expect(classes, token).toContain(token);
+  for (const token of ["max-lg:size-8", "max-lg:rounded-md", "max-lg:border-0", "max-lg:bg-transparent", "max-lg:shadow-none", "max-lg:px-0", "max-lg:justify-center"]) expect(classes, token).toContain(token);
+  expect(button.children[0]?.classList.contains("max-lg:text-foreground")).toBe(true);
+  expect(button.children[1]?.classList.contains("max-lg:hidden")).toBe(true);
+  expect(button.children[2]?.classList.contains("max-lg:hidden")).toBe(true);
+  expect(button.getAttribute("aria-label")).toBe("Search");
+  expect(button.getAttribute("aria-keyshortcuts")).toBe("Meta+K");
+  // 터치에서는 32 위로 44 히트 영역을 넓힌다(Button과 같은 상수).
+  expect(classes).toContain("pointer-coarse:after:min-h-11");
+});
+
+it("`compact`가 없으면 반응 토큰이 하나도 없다 — 앱 셸 헤더·랜딩 목업은 그대로다", async () => {
+  const { container } = await render(<FieldButton {...props} />);
+  const button = find<HTMLButtonElement>(container, "button");
+  expect(button.outerHTML).not.toMatch(/max-lg:|pointer-coarse:/);
+});

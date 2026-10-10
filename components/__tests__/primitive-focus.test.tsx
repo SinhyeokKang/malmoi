@@ -7,7 +7,7 @@ import { expect, it, vi } from "vitest";
 
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogClose, DialogContent, DrawerContent } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { en } from "@/messages/en";
 
@@ -302,4 +302,53 @@ it("closeDisabled 동안 오버레이의 mousedown 기본 동작을 막아 포�
   expect(mousedown(overlay()).defaultPrevented).toBe(false);
   await act(async () => { overlay().dispatchEvent(new Event("pointerdown", { bubbles: true })); });
   expect(document.querySelector('[role="dialog"]')).toBeNull();
+});
+
+/**
+ * **측면 서랍(`DrawerContent`)도 같은 포커스 계약이다** (responsive-public design §2). 열면 몸통의 현재 항목(`aria-current`), 없으면 몸통 첫 항목 —
+ * 머리의 로고·닫기가 아니다. 닫으면(Esc·닫기·배경) 연 버튼으로 돌아온다. 소비자가 막으면(링크로 닫힘) 비켜선다.
+ */
+function DrawerHost({ current, onCloseAutoFocus }: { current?: number; onCloseAutoFocus?: (event: Event) => void }) {
+  const [open, setOpen] = useState(false);
+  return <>
+    <Button onClick={() => setOpen(true)}>Menu</Button>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DrawerContent title="Main" start={<a href="/">Home</a>} actions={<Button>Theme</Button>} onCloseAutoFocus={onCloseAutoFocus}>
+        <nav aria-label="Main">
+          {["One", "Two", "Three"].map((label, index) => <a key={label} href={`/${label}`} aria-current={index === current ? "page" : undefined}>{label}</a>)}
+        </nav>
+      </DrawerContent>
+    </Dialog>
+  </>;
+}
+const link = (label: string) => [...document.querySelectorAll<HTMLAnchorElement>('[role="dialog"] nav a')].find(a => a.textContent === label)!;
+
+it("측면 서랍은 열면 현재 항목에, 없으면 몸통 첫 항목에 포커스가 선다", async () => {
+  await render(<DrawerHost current={1} />);
+  await click(byText("Menu"));
+  expect(document.activeElement).toBe(link("Two"));
+  await act(async () => { await userEvent.setup().keyboard("{Escape}"); });
+  expect(document.activeElement).toBe(byText("Menu"));
+});
+
+it("측면 서랍에 현재 항목이 없으면 머리가 아니라 몸통 첫 항목이다", async () => {
+  await render(<DrawerHost />);
+  await click(byText("Menu"));
+  expect(document.activeElement).toBe(link("One"));
+});
+
+it("측면 서랍을 닫기로 닫으면 연 버튼으로, 소비자가 막으면 비켜선다", async () => {
+  await render(<DrawerHost />);
+  await click(byText("Menu"));
+  await click(document.querySelector(`[role="dialog"] button[aria-label="${en.common.close}"]`)!);
+  expect(document.querySelector('[role="dialog"]')).toBeNull();
+  expect(document.activeElement).toBe(byText("Menu"));
+
+  const consumer = vi.fn((event: Event) => event.preventDefault());
+  await render(<DrawerHost onCloseAutoFocus={consumer} />);
+  const menus = [...document.querySelectorAll<HTMLButtonElement>("button")].filter(b => b.textContent === "Menu");
+  await click(menus.at(-1)!);
+  await act(async () => { await userEvent.setup().keyboard("{Escape}"); });
+  expect(consumer).toHaveBeenCalledTimes(1);
+  expect(document.activeElement).not.toBe(menus.at(-1));
 });

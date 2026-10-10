@@ -545,6 +545,8 @@ export const en = {
       docs: "Docs",
       github: "GitHub",
       getStarted: "Get started",
+      /** `lg` 미만 헤더의 서랍 메뉴 버튼 이름(responsive-public D8) — 닫기는 `common.close`다. 서랍의 이름은 `nav`(Main)다. */
+      openNav: "Open navigation",
     },
     /** 히어로 — 버튼 둘은 헤더와 같은 말이라 `shell.docs`·`shell.getStarted`를 쓴다(같은 구역). */
     hero: {

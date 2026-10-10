@@ -211,6 +211,7 @@ export const ko = {
       docs: "문서",
       github: "GitHub",
       getStarted: "시작하기",
+      openNav: "메뉴 열기",
     },
     hero: {
       title: ["흩어진 말을 모아,", "함께 번역하고 전달하세요"] as const,

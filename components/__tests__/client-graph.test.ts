@@ -137,6 +137,8 @@ const CLIENT_LIB_FILES = [
   "lib/keys/flag.ts",
   // 랜딩 스테이지가 스크롤 위치마다 값으로 읽는 수학 — import 0인 잎이다(아래 잎 검사).
   "lib/landing/stage.ts",
+  // 공개 셸 서랍의 GitHub 행이 헤더와 같은 저장소 URL을 읽는다 — `routes`와 사전 타입만 무는 잎이다.
+  "lib/links.ts",
   // LNB 프로젝트 스위처·사용자 메뉴·LNB 목록 구역의 목록 판정 — `lib/search/match.ts`(import 0) 하나만 무는 잎이다.
   "lib/shell/switcher.ts",
   "lib/login-link/message.ts",
@@ -196,6 +198,8 @@ const CLIENT_LIB_FILES = [
   "lib/settings/message.ts",
   // 루트의 화면 이동 dim이 클릭마다 읽는 판정 — import 0인 잎이다.
   "lib/shell/navigation-dim.ts",
+  // 공개 셸 서랍·헤더 Inbox가 열린 동안 읽는 `lg` 경계 쿼리 하나(responsive-public design §2) — import 0인 잎이다(아래 잎 검사).
+  "lib/shell/breakpoint.ts",
   "lib/shell/nav.ts",
   "lib/shell/panel-size.ts",
   // LNB 접힘 기기 쿠키 — 서버 레이아웃과 셸 패널이 같이 읽는 잎(import 0)이다.
@@ -466,6 +470,12 @@ describe("클라이언트 그래프", () => {
     const scheme = walk([join(ROOT, "lib/color-scheme/scheme.ts")]);
     expect([...scheme.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/color-scheme/scheme.ts"]);
     expect([...scheme.packages]).toEqual([]);
+  });
+
+  it("`lib/shell/breakpoint.ts`는 잎이다 — 아무것도 물지 않는다", () => {
+    const query = walk([join(ROOT, "lib/shell/breakpoint.ts")]);
+    expect([...query.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/shell/breakpoint.ts"]);
+    expect([...query.packages]).toEqual([]);
   });
 
   it("`lib/time-zone/zones.ts`는 잎이다 — 아무것도 물지 않는다", () => {

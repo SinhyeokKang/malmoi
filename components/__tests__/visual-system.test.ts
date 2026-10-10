@@ -615,7 +615,10 @@ describe("화면 간 불변식 — grep 규칙 (T28)", () => {
   });
 
   describe("radius 16(`rounded-xl`)은 패널과 1024 모달뿐이다 — 셸 안 카드는 12 (DESIGN §5 · 4-Y2)", () => {
-    /** 패널(셸 `main`·공개 셸·로그인 두 판)과 1024 모달 둘, 그리고 그것을 정적으로 복제한 랜딩 목업 둘과 바깥24/베젤8에 맞춘 화면16. */
+    /**
+     * 패널(셸 `main`·공개 셸·로그인 두 판)과 1024 모달 둘, 그리고 그것을 정적으로 복제한 랜딩 목업 둘과 바깥24/베젤8에 맞춘 화면16.
+     * 측면 서랍(`dialog.tsx`의 `DrawerContent` — responsive-public PT1b)은 셸 패널과 같은 형의 떠 있는 패널이라 16이다.
+     */
     const PANEL_16 = [
       "components/landing/mockup/app-frame.tsx",
       "components/landing/mockup/publish.tsx",
@@ -623,6 +626,7 @@ describe("화면 간 불변식 — grep 규칙 (T28)", () => {
       "components/public-shell/public-shell.tsx",
       "components/shell/content-panel.tsx",
       "components/signin/auth-layout.tsx",
+      "components/ui/dialog.tsx",
       "components/ui/large-modal.tsx",
     ];
     const files = (entries: { path: string; source: string }[]) => entries.filter(({ source }) => /(?<![\w-])rounded-xl(?![\w-])/.test(source)).map(({ path }) => path).sort();

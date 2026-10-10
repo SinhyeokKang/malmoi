@@ -239,3 +239,27 @@ it("actual GitHub unavailable omits actions box; connected retains contents ref 
   expect(document.activeElement?.textContent).toBe(en.settings.account.connect);
   expect(row().lastElementChild?.firstElementChild?.className).toBe("contents");
 });
+
+/**
+ * **공개 셸 측면 서랍** (responsive-public design §2) — 메뉴 버튼은 진행 상태가 없지만 서랍 안 스위처가 진행 중 `busy`라 닫힘이 `body`로
+ * 빠질 갈래가 없다. 그물에 등재해 두는 것은 "Esc·닫기 → 메뉴 버튼"이다(넓어지는·좁아지는 방향은 `public-nav-drawer.test.tsx`).
+ */
+describe("공개 셸 서랍 — 닫으면 메뉴 버튼으로", () => {
+  it("Esc와 닫기 버튼 둘 다 메뉴 버튼으로 돌아온다", async () => {
+    vi.stubGlobal("matchMedia", (media: string) => ({ media, matches: false, addEventListener() {}, removeEventListener() {} }));
+    try {
+      const { NavDrawer } = await import("@/components/public-shell/nav-drawer");
+      await render(<NavDrawer current="docs" />);
+      const menu = byLabel(en.landing.shell.openNav);
+      await act(async () => { await userEvent.setup().click(menu); });
+      expect(document.activeElement?.getAttribute("aria-current")).toBe("page");
+      await act(async () => { await userEvent.setup().keyboard("{Escape}"); });
+      expect(document.activeElement).toBe(menu);
+      await act(async () => { await userEvent.setup().click(menu); });
+      await act(async () => { await userEvent.setup().click(document.querySelector(`[role="dialog"] button[aria-label="${en.common.close}"]`)!); });
+      expect(document.activeElement).toBe(menu);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});

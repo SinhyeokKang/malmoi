@@ -151,7 +151,8 @@ describe("공개 셸 — 헤더", () => {
     expect(start.querySelectorAll("nav")).toHaveLength(1);
     expect(start.querySelector(`a[aria-label="${en.landing.shell.logo}"]`)).not.toBeNull();
     expect(start.firstElementChild?.className.split(/\s+/)).toEqual(expect.arrayContaining(["flex", "items-center", "gap-5"]));
-    expect(bar?.children[1]?.className).toBe("justify-self-center");
+    // `lg` 미만에는 가운데 칸이 오른쪽 묶음 앞으로 붙는다(`max-lg:ml-auto` — responsive-public PT1a). `lg` 이상 클래스는 그대로다.
+    expect(bar?.children[1]?.className).toBe("justify-self-center max-lg:ml-auto");
     expect(bar!.children[1]!.querySelector('button[aria-label="Search"]')).not.toBeNull();
     expect(bar?.children[2]?.className).toBe("justify-self-end");
   });
@@ -255,19 +256,23 @@ describe("공개 셸 — 헤더", () => {
    * primary와 GitHub 사이에 연한 세로 구분선 하나 — 장식이라 접근성 트리에 안 선다. 로그인이면 앱 셸 헤더처럼
    * 세로선 오른쪽·아바타 왼쪽에 Inbox가 선다(2026-10-05 사용자 — attention-inbox 범위 변경).
    */
+  /** GitHub · 구분선은 `lg` 미만에서 서랍으로 가므로 한 묶음(`max-lg:hidden`)으로 싸였다(responsive-public PT1a) — 순서는 그대로다. */
   it("우측은 GitHub · 구분선 · primary 순서다 — 로그인이면 primary 앞에 Inbox", async () => {
     for (const account of [GUEST, SIGNED_IN]) {
       const { container } = await render(h(PublicShell, { m: en, account, children: h("p", null, "body") }));
       const right = container.querySelector("header > .justify-self-end > div");
       const kids = [...(right?.children ?? [])];
-      expect(kids).toHaveLength(account === null ? 3 : 4);
-      expect(kids[1]?.getAttribute("aria-hidden")).toBe("true");
-      expect(kids[1]?.className).toContain("bg-border-subtle");
-      expect(kids[0]?.getAttribute("href")).toBe(GITHUB_REPO_URL);
+      expect(kids).toHaveLength(account === null ? 2 : 3);
+      const wideOnly = [...(kids[0]?.children ?? [])];
+      expect(kids[0]?.classList.contains("max-lg:hidden")).toBe(true);
+      expect(wideOnly).toHaveLength(2);
+      expect(wideOnly[0]?.getAttribute("href")).toBe(GITHUB_REPO_URL);
+      expect(wideOnly[1]?.getAttribute("aria-hidden")).toBe("true");
+      expect(wideOnly[1]?.className).toContain("bg-border-subtle");
       if (account !== null) {
-        expect(kids[2]?.getAttribute("aria-haspopup")).toBe("menu");
-        expect(kids[2]?.getAttribute("aria-label")).toBe(en.inbox.label);
-        expect(kids[3]?.getAttribute("aria-label")).toBe(en.common.nav.userMenu);
+        expect(kids[1]?.getAttribute("aria-haspopup")).toBe("menu");
+        expect(kids[1]?.getAttribute("aria-label")).toBe(en.inbox.label);
+        expect(kids[2]?.getAttribute("aria-label")).toBe(en.common.nav.userMenu);
       }
     }
   });
@@ -379,9 +384,14 @@ describe("공개 셸 — 소스 계약", () => {
     expect(all.length).toBeGreaterThan(200);
   });
 
-  it("루트가 뷰포트 높이를 채우고 문서는 스크롤되지 않는다", () => {
+  /**
+   * ⚠️ **공개 셸에는 최소 폭이 없다** (responsive-public — 2026-10-07 사용자 "할거면 풀스펙", 옛 DESIGN §5 1280 하한을 뒤집었다). 375부터
+   * `lg` 서랍으로 재배치한다. 전역 `--spacing-shell-min`(1280)은 앱 셸 하한이라 값이 그대로다 — 공개 셸만 쓰기를 걷었다.
+   */
+  it("루트가 뷰포트 높이를 채우고 문서는 스크롤되지 않는다 — 최소 폭 하한이 없다", () => {
     expect(all).toMatch(/className="[^"]*\bh-svh\b[^"]*"/);
-    expect(all).toContain("min-w-shell-min");
+    expect(all).not.toContain("min-w-shell-min");
+    expect(readFileSync(join(process.cwd(), "app/globals.css"), "utf8")).toMatch(/--spacing-shell-min:\s*1280px;/);
     expect(all).toMatch(/className="[^"]*\bh-svh\b[^"]*\boverflow-hidden\b|className="[^"]*\boverflow-hidden\b[^"]*\bh-svh\b/);
   });
 
@@ -391,12 +401,12 @@ describe("공개 셸 — 소스 계약", () => {
   });
 
   /**
-   * ⚠️ **클라이언트 잎은 스크롤러 하나이고 `lib/`를 읽지 않는다** — 읽으면 `client-graph.test.ts`의
-   * `CLIENT_LIB_FILES`가 늘어야 한다(그 파일은 이 배치 밖이다).
+   * ⚠️ **클라이언트 잎은 스크롤러와 서랍 둘이다**(responsive-public — 서랍이 열림·`lg` 경계를 든다). 스크롤러는 여전히 `lib/`를 읽지 않고,
+   * 서랍이 읽는 `lib/`는 전부 `client-graph.test.ts`의 `CLIENT_LIB_FILES`에 등재돼 있다(그 정확 대조가 고정한다).
    */
-  it("`\"use client\"`는 스크롤러 하나이고 그 파일은 `lib/`를 import하지 않는다", () => {
+  it("`\"use client\"`는 스크롤러·서랍 둘이고 스크롤러는 `lib/`를 import하지 않는다", () => {
     const clients = files.filter((name) => /^["']use client["']/.test(read(name)));
-    expect(clients).toEqual(["scroller.tsx"]);
+    expect(clients).toEqual(["nav-drawer.tsx", "scroller.tsx"]);
     expect(read("scroller.tsx")).not.toMatch(/from\s+["']@\/lib\//);
   });
 });

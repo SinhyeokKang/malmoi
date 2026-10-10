@@ -60,7 +60,7 @@ import { cn } from "@/lib/utils";
  * 덮어써 절대 배치 버튼이 흐름으로 돌아온다. 수식어가 없으면 twMerge가 호출부 위치 클래스를 이기게 한다(그것도 `::after`의 기준 상자다).
  * 이웃한 둘의 넓힌 영역이 겹치면 뒤 형제가 이긴다 — 보이는 버튼 위에서는 늘 그 버튼이다.
  */
-const TOUCH_TARGET = "relative pointer-coarse:after:absolute pointer-coarse:after:top-1/2 pointer-coarse:after:left-1/2 pointer-coarse:after:size-full pointer-coarse:after:min-h-11 pointer-coarse:after:min-w-11 pointer-coarse:after:-translate-1/2";
+export const TOUCH_TARGET = "relative pointer-coarse:after:absolute pointer-coarse:after:top-1/2 pointer-coarse:after:left-1/2 pointer-coarse:after:size-full pointer-coarse:after:min-h-11 pointer-coarse:after:min-w-11 pointer-coarse:after:-translate-1/2";
 
 export const buttonClass = cva(
   cn(
