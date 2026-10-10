@@ -487,3 +487,34 @@ describe("전환 표 — 필터 · 저장 · 위험 동작 (single 500)", () => 
     expect(document.activeElement).toBe(byText(w.revert.button));
   });
 });
+
+/**
+ * DS 대조(#228 · #229) — 단일 판 상세 머리의 경로와 키보드 열림 때의 고정 블록.
+ */
+describe("DS — 상세 머리 경로(#228) · 상세 판 검색 줄(#229)", () => {
+  it("상세 머리: 왼쪽 8 · ‹ Keys 4/8 · 경로는 폴더가 먼저 말줄임 · 언어 필터는 줄지 않는다 — 넓으면 옛 여백 그대로", async () => {
+    await start("/projects/acme/surfaces/web/translations?ns=common&key=k1", 500);
+    const head = document.querySelector<HTMLElement>("[data-detail-head]")!;
+    for (const token of ["px-4", "gap-2", "@max-[772px]/ws:pl-2", "@max-[772px]/ws:gap-1.5"]) expect(head.classList.contains(token)).toBe(true);
+    for (const token of ["pl-1", "pr-2", "gap-1"]) expect(back().classList.contains(token)).toBe(true);
+    expect(back().classList.contains("-ml-2")).toBe(false);
+    const title = detailTitle();
+    for (const token of ["min-w-0", "flex-1", "overflow-hidden"]) expect(title.classList.contains(token)).toBe(true);
+    const [source, folder] = [...title.querySelectorAll<HTMLElement>(":scope > span")];
+    expect(source!.textContent).toBe("web");
+    expect(source!.classList.contains("shrink-0")).toBe(true);
+    expect(folder!.textContent).toBe("common");
+    for (const token of ["truncate", "min-w-[3ch]"]) expect(folder!.classList.contains(token)).toBe(true);
+    const filter = title.nextElementSibling as HTMLElement;
+    for (const token of ["ml-auto", "shrink-0"]) expect(filter.classList.contains(token)).toBe(true);
+  });
+
+  it("검색 줄은 단일 판의 상세에서 숨는다 — 같은 노드이고 목록 판에서는 그대로다", async () => {
+    await start("/projects/acme/surfaces/web/translations?ns=common&key=k1", 500);
+    const toolbar = document.querySelector<HTMLElement>("[data-toolbar]")!;
+    expect(toolbar.classList.contains("@max-[772px]/wshead:in-data-[pane=detail]:hidden")).toBe(true);
+    await act(async () => { await userEvent.setup().click(back()); });
+    expect(pane()).toBe("list");
+    expect(document.querySelector("[data-toolbar]")).toBe(toolbar);
+  });
+});

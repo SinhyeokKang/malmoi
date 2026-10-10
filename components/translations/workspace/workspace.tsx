@@ -932,7 +932,11 @@ export function TranslationWorkspace(props: WorkspaceProps) {
           ⚠️ **툴바는 검색 하나뿐이고 왼쪽에 선다** (2026-10-02 사용자 — 패널마다 자기를 좁히는 필터를 든다: 트리 = 범위 · 키 목록 = Status · 번역값 = 언어).
           검색은 어느 패널의 것도 아니라 전 소스를 본다. label과 placeholder를 가른다(DESIGN §10) — 좁힌 검색 중에도 접근 이름이 참이어야 한다.
         */}
-        <div ref={toolbarRef} data-toolbar="" className="flex flex-wrap items-center gap-2">
+        {/*
+          ⚠️ **단일 판의 상세에서는 검색 줄이 숨는다** (#229 · orch O20) — 검색은 목록을 거르는 컨트롤이고, 키보드가 열린 375×500에서 이 줄(36 + 간격 12)이
+          입력 칸 자리를 33까지 깎았다. 배너와 같은 장치라(같은 노드 · CSS만) 목록 판으로 돌아가면 입력값 그대로 선다.
+        */}
+        <div ref={toolbarRef} data-toolbar="" className={cn("flex flex-wrap items-center gap-2", DETAIL_PANE_HIDDEN)}>
           <SearchInput width={320} value={query.q} label={w.filters.search} placeholder={w.filters.searchPlaceholder} onSearch={search} />
         </div>
         {/*
@@ -1012,12 +1016,16 @@ export function TranslationWorkspace(props: WorkspaceProps) {
               ⚠️ **상세 머리는 이 화면이 든다 — 골격·상세·부재 안내가 바뀌어도 같은 노드다** (design §3). 단일 판의 진입 착지가 이 제목(`tabIndex={-1}`)이라,
               응답이 와서 몸통이 바뀌어도 포커스가 끊기지 않는다. 키를 안 고른 split만 숨는다. ‹ Keys는 단일 판에서만 선다.
             */}
-            <div data-detail-head="" className={cn("flex h-12 shrink-0 items-center gap-2 px-4", !skeletonDetail && detail === null && absentDetail === null && "hidden")}>
-              <Button ref={backRef} variant="ghost" size="sm" aria-label={m.responsive.backToKeys} className="-ml-2 shrink-0 @min-[772px]/ws:hidden" onClick={showList}>
+            {/*
+              ⚠️ **단일 판 머리는 시안 AT6c 치수다** (#228) — 왼쪽 8 · ‹ Keys `0 8 0 4`·gap 4 · 머리 gap 6. 경로 칸(h2)이 남는 폭을 받고 넘치면 **폴더가 먼저 말줄임**된다
+              (소스 이름 고정 · 폴더 최소 3ch). 언어 필터는 줄지 않는다 — 줄면 경로가 그 밑으로 겹쳐 그려졌다(es). 넓은 폭은 옛 여백 그대로다.
+            */}
+            <div data-detail-head="" className={cn("flex h-12 shrink-0 items-center gap-2 px-4", "@max-[772px]/ws:gap-1.5 @max-[772px]/ws:pl-2", !skeletonDetail && detail === null && absentDetail === null && "hidden")}>
+              <Button ref={backRef} variant="ghost" size="sm" aria-label={m.responsive.backToKeys} className="shrink-0 gap-1 pr-2 pl-1 @min-[772px]/ws:hidden" onClick={showList}>
                 <ChevronLeft aria-hidden />
                 {w.list.keys}
               </Button>
-              <h2 ref={detailTitleRef} tabIndex={-1} data-detail-title="" className="text-muted-foreground flex min-w-0 flex-1 items-center gap-1.5 text-sm">
+              <h2 ref={detailTitleRef} tabIndex={-1} data-detail-title="" className="text-muted-foreground flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden text-sm">
                 {skeletonDetail ? <><Skeleton className="size-4 shrink-0 rounded" /><Skeleton size="sm" className="w-32" /></>
                   : detail !== null ? <DetailCrumb surfaceSlug={detail.key.surfaceSlug} namespace={detail.key.namespace} />
                   : absentDetail !== null ? <DetailCrumb surfaceSlug={absentDetail.surfaceSlug} />
@@ -1025,7 +1033,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
               </h2>
               {skeletonDetail ? <Skeleton className="ml-auto h-7 w-28 rounded-md" />
                 : detail !== null && (
-                  <span className="ml-auto">
+                  <span className="ml-auto shrink-0">
                     <LanguageMenu detail={detail} language={language} locked={navigating} onLanguage={next => {
                       setLanguage(next);
                       window.history.replaceState(null, "", withQuery(nextQuery(query, { language: next })));

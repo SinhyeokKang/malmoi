@@ -42,7 +42,8 @@ export function DetailCrumb({ surfaceSlug, namespace }: { surfaceSlug: string; n
     <span className={cn(namespace === undefined ? "text-foreground min-w-0 truncate font-medium" : "shrink-0")}>{surfaceSlug}</span>
     {namespace !== undefined && <>
       <ChevronRight className="size-3.5 shrink-0 text-gray-dim" aria-hidden />
-      <span className="text-foreground min-w-0 truncate font-medium">{namespace}</span>
+      {/* 좁으면 폴더가 먼저 줄고 몇 글자는 남는다(#228 — 시안 `web › ch…`). 소스 이름은 줄지 않는다. */}
+      <span className="text-foreground min-w-[3ch] truncate font-medium">{namespace}</span>
     </>}
   </>;
 }
