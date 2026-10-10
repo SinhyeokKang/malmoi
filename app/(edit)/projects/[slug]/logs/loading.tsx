@@ -1,6 +1,6 @@
 import { RefreshCw, Search } from "lucide-react";
 
-import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
+import { PANEL_HEAD_ROW, PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { Button } from "@/components/ui/button";
 import { FieldTrigger } from "@/components/ui/field-trigger";
 import { Input } from "@/components/ui/input";
@@ -25,12 +25,13 @@ export default async function LogsLoading() {
     <>
       <span className="sr-only" role="status">{m.logs.loading.list}</span>
       <PanelHeader aria-hidden>
-        <div className="flex items-center gap-2">
+        {/* 실물 제목 행과 같은 조각이다 — 머리 컨테이너 640 미만에서 실물만 두 줄이면 도착할 때 머리가 44 튄다(A-09). */}
+        <div data-skeleton-header className={PANEL_HEAD_ROW}>
           <div className="relative flex">
             <h1 className="flex items-center text-lg font-medium invisible">{m.common.nav.logs}</h1>
             <Skeleton size="lg" className="absolute left-0 top-1/2 w-16 -translate-y-1/2" />
           </div>
-          <div className="ml-auto flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <div className="relative flex">
               <Button disabled tabIndex={-1} className="gap-1.5 invisible">
                 <RefreshCw className="size-4 shrink-0" aria-hidden />

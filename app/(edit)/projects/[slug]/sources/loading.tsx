@@ -1,4 +1,4 @@
-import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
+import { PANEL_HEAD_ROW, PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { SOURCE_CONTENT_STACK, SOURCE_STATUS_STACK } from "@/components/sources/row-layout";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -29,10 +29,11 @@ export default async function SourcesLoading() {
     <div className="flex min-h-0 flex-1 flex-col">
       <span className="sr-only" role="status">{m.sources.screenLoading}</span>
       <PanelHeader aria-hidden>
-        <div data-skeleton-header className="flex items-center gap-3">
+        {/* 실물과 같은 조각이다 — 640 미만에서 실물만 두 줄이면 도착할 때 머리가 44 튄다(A-09). */}
+        <div data-skeleton-header className={PANEL_HEAD_ROW}>
           {/* 제목 폭이 실물 `Sources`(68)와 같게. */}
-          <Skeleton size="lg" className="w-[68px]" />
-          <Skeleton className="ml-auto h-9 w-32 rounded-md" />
+          <div><Skeleton size="lg" className="w-[68px]" /></div>
+          <Skeleton className="h-9 w-32 rounded-md" />
         </div>
       </PanelHeader>
 

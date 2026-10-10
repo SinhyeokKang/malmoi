@@ -6,6 +6,10 @@ import { Dialog } from "radix-ui";
 
 import { EventDetail } from "@/components/logs/event-detail";
 import { EventRow } from "@/components/logs/event-row";
+import { LogFilters } from "@/components/logs/log-filters";
+import { parseLogFilter } from "@/lib/events/filter";
+import { PANEL_HEAD_ROW } from "@/components/shell/content-panel";
+import SourcesLoading from "../../app/(edit)/projects/[slug]/sources/loading";
 import { LOG_ROW_CHEVRON_STACK, LOG_ROW_RESULT_STACK, LOG_ROW_STACK, LOG_ROW_TIME_STACK } from "@/components/logs/row-layout";
 import type { EventRow as Row } from "@/lib/events/query";
 import { en } from "@/messages/en";
@@ -118,4 +122,48 @@ it("이력 상세 본문·바닥: 시트에서 안쪽 16이고 바닥은 감긴�
 it("사용자 지정 기간 칸: Dialog 본문이 320 미만이면 한 열이다 — 선언(바깥 래퍼)과 질의(격자)가 다른 요소다", () => {
   const filters = read("components/logs/log-filters.tsx");
   expect(filters).toMatch(/<div className="@container">\s*<div className="grid grid-cols-2 gap-3 @max-\[20rem\]:grid-cols-1">/);
+});
+
+/**
+ * **머리 두 줄 (B1a · orch O4)** — 손으로 든 머리 둘(Logs `LogFilters`의 제목 행 · Sources 머리)이 `PANEL_HEAD_ROW`를 쓰고 골격도 같은 조각이다.
+ * 640 미만(머리 컨테이너 `@container/panel-head` — `PanelHeader`가 선언)이면 제목 첫 줄 · 버튼 묶음 둘째 줄 오른쪽이다. 선언은 `PanelHeader`가 하므로 여기서 다시 적지 않는다.
+ */
+const ROW = split(PANEL_HEAD_ROW);
+
+it("Logs 머리: 제목 행이 PANEL_HEAD_ROW이고 첫 자식이 제목(+보관 배지), 뒤 형제가 Refresh 묶음이다", async () => {
+  const props = { slug: "alpha", sources: [], actors: [], now: "2026-10-04T23:10:00.000Z" };
+  const live = (await render(<LogFilters {...props} refreshable filter={parseLogFilter({})} />)).container;
+  const row = live.querySelector("h1")!.closest(`.${"flex-col"}`)!;
+  expect(ROW.every(token => tokens(row).includes(token))).toBe(true);
+  const [title, actions] = [...row.children];
+  expect(title?.querySelector("h1")).not.toBeNull();
+  expect(actions?.querySelector("button")?.textContent).toBe(en.logs.refresh);
+  expect(tokens(actions)).not.toContain("ml-auto");
+  expect(row.children).toHaveLength(2);
+  // 보관 프로젝트는 Refresh가 없다 — 제목(+배지)만 남고 버튼 묶음 자리가 비어 제목이 오른쪽으로 밀리지 않는다.
+  const archived = (await render(<LogFilters {...props} refreshable={false} filter={parseLogFilter({})} />)).container;
+  const archivedRow = archived.querySelector("h1")!.closest(`.${"flex-col"}`)!;
+  expect(archivedRow.children).toHaveLength(1);
+  expect(archivedRow.firstElementChild?.textContent).toContain(en.common.nav.logs);
+});
+
+it("Logs 골격 머리도 같은 조각이다 — 줄 수가 실물과 같다", async () => {
+  const { container } = await render(<LogsLoading />);
+  const row = container.querySelector("[data-skeleton-header]")!;
+  expect(ROW.every(token => tokens(row).includes(token))).toBe(true);
+  expect(row.children).toHaveLength(2);
+  expect(tokens(row.lastElementChild)).not.toContain("ml-auto");
+});
+
+it("Sources 머리와 골격은 PANEL_HEAD_ROW다 — 제목이 먼저, Add sources가 뒤 형제이고 ml-auto가 없다", async () => {
+  for (const path of ["components/sources/sources-screen.tsx", "app/(edit)/projects/[slug]/sources/loading.tsx"]) {
+    const source = read(path);
+    const head = /<PanelHeader\b[^>]*>([\s\S]*?)<\/PanelHeader>/.exec(source)?.[1] ?? "";
+    expect(head, path).toMatch(/^\s*(?:\{\/\*[\s\S]*?\*\/\}\s*)*<div[^>]*className=\{PANEL_HEAD_ROW\}>/);
+    expect(head, path).not.toMatch(/flex-wrap|ml-auto/);
+  }
+  const { container } = await render(<SourcesLoading />);
+  const row = container.querySelector("[data-skeleton-header]")!;
+  expect(ROW.every(token => tokens(row).includes(token))).toBe(true);
+  expect(row.children).toHaveLength(2);
 });

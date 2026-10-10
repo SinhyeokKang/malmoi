@@ -4,6 +4,7 @@ import { RefreshCw, RotateCcw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useId, useRef, useState, useTransition, type ReactNode, type RefObject } from "react";
 
+import { PANEL_HEAD_ROW } from "@/components/shell/content-panel";
 import { SearchInput } from "@/components/ui/search-input";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
@@ -121,17 +122,21 @@ export function LogFilters({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-2">
-        {/* ⚠️ `tabIndex={-1}` — 딥링크(`?event=`)로 연 상세의 폴백 복귀 대상이다(`event-dialog.tsx`). 없으면 `focus()`가
-            조용히 무시되어 Esc로 닫은 포커스가 `body`로 빠졌다 (audit #33). */}
-        <h1 tabIndex={-1} className="flex min-h-9 items-center text-lg font-medium">{m.common.nav.logs}</h1>
-        {!refreshable && <StatusBadge state="archived" />}
-        <div className="ml-auto flex items-center gap-2">
-          {refreshable && (
-            /*
+      {/* 제목 행은 `PANEL_HEAD_ROW`다(responsive-app B1a) — 머리 컨테이너 640 미만이면 제목 첫 줄 · Refresh 둘째 줄 오른쪽이다. 첫 자식이 제목(+보관 배지), 뒤 형제가 버튼 묶음이다.
+          ⚠️ **보관이면 버튼 묶음이 없다** — 제목이 마지막 자식이어도 `PANEL_HEAD_ROW`는 `:last-child`로 묻지 않아 제목이 오른쪽으로 밀리지 않는다. */}
+      <div className={PANEL_HEAD_ROW}>
+        <span className="flex items-center gap-2">
+          {/* ⚠️ `tabIndex={-1}` — 딥링크(`?event=`)로 연 상세의 폴백 복귀 대상이다(`event-dialog.tsx`). 없으면 `focus()`가
+              조용히 무시되어 Esc로 닫은 포커스가 `body`로 빠졌다 (audit #33). */}
+          <h1 tabIndex={-1} className="flex min-h-9 items-center text-lg font-medium">{m.common.nav.logs}</h1>
+          {!refreshable && <StatusBadge state="archived" />}
+        </span>
+        {refreshable && (
+          <div className="flex items-center gap-2">
+            {/*
               ⚠️ **자동 갱신이 없다** — `Running…`이 조회 시점 스냅샷이라는 사실을 이 버튼 하나가 든다.
               폴링·스트리밍은 넣지 않는다(리포에 폴링 0건).
-            */
+            */}
             <Button
               type="button"
               variant="default"
@@ -143,8 +148,8 @@ export function LogFilters({
               <RefreshCw className="size-4 shrink-0" aria-hidden />
               {m.logs.refresh}
             </Button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       <div data-log-filter-row className="flex flex-wrap items-center gap-2">

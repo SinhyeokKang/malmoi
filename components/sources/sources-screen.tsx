@@ -7,7 +7,7 @@ import { ChevronRight, FileCode2, FileJson2, Folder, Plus } from "lucide-react";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { loadSourceDetail } from "@/app/(edit)/projects/[slug]/sources/actions";
 import { runFirstIngest } from "@/app/(edit)/projects/actions";
-import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
+import { PANEL_HEAD_ROW, PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { GithubIcon } from "@/components/signin/brand-icons";
 import { Card } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
@@ -82,10 +82,10 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
   const closeAdd = () => { setAdding(false); if (initialOpen) router.replace(routes.sources(slug), { scroll: false }); };
   const close = () => { if (busy) return; ++request.current; selection.current = null; setSelected(null); };
   return <div data-sources-screen className="flex min-h-0 flex-1 flex-col">
-    <PanelHeader><div className="flex items-center gap-3">
-      {/* 총계는 카드 머리 한 곳이다(4-Y6) — 바로 아래 카드가 같은 제목·같은 배지를 든다. */}
+    <PanelHeader><div className={PANEL_HEAD_ROW}>
+      {/* 총계는 카드 머리 한 곳이다(4-Y6) — 바로 아래 카드가 같은 제목·같은 배지를 든다. 머리 컨테이너 640 미만이면 제목 첫 줄 · [Add sources] 둘째 줄 오른쪽이다(`PANEL_HEAD_ROW` — B1a). */}
       <h1 ref={heading} id="sources-heading" tabIndex={-1} className="text-lg font-medium">{m.sources.title}</h1>
-      {canEdit && <Button ref={trigger} variant="primary" className="ml-auto" onClick={() => setAdding(true)}><Plus className="size-4" aria-hidden />{m.sources.add}</Button>}
+      {canEdit && <Button ref={trigger} variant="primary" onClick={() => setAdding(true)}><Plus className="size-4" aria-hidden />{m.sources.add}</Button>}
     </div></PanelHeader>
     <PanelBody className="space-y-4">
       <Card title={m.sources.title} count={data.sources.length} countLabel={m.sources.count(data.sources.length)}
