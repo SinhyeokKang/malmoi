@@ -7,8 +7,9 @@ import { describe, expect, it } from "vitest";
 import { WIDE_QUERY } from "@/lib/shell/breakpoint";
 
 /**
- * **셸 경계는 뷰포트 `lg`(64rem) 하나다** (responsive-public design §2). CSS(`lg:`·`max-lg:`)가 배치를 정하고, JS는 열린 서랍·Inbox 시트를
- * 정리할 때만 같은 경계를 `matchMedia`로 묻는다. 둘이 갈리면 1024 근처에서 CSS는 좁은데 JS는 넓다고 읽어 서랍이 남거나 Inbox가 틀린 그릇으로 열린다.
+ * **셸 경계는 뷰포트 `lg`(64rem) 하나다** (responsive-public design §2). CSS(`lg:`·`max-lg:`)가 배치를 정하고, JS는 세 자리 — 열린 서랍·Inbox 시트 정리 ·
+ * 좁아지며 숨는 넓은 묶음의 포커스 이관(`useNarrowHandoff`) · Inbox 그릇 선택 — 에서만 같은 경계를 `matchMedia`로 묻는다. CSS와 JS가 갈리면 1024 근처에서
+ * CSS는 좁은데 JS는 넓다고 읽어 서랍이 남거나 포커스가 숨은 링크에 남거나 Inbox가 틀린 그릇으로 열린다.
  */
 const ROOT = process.cwd();
 const tailwindTheme = () => readFileSync(join(dirname(createRequire(join(ROOT, "package.json")).resolve("tailwindcss/package.json")), "theme.css"), "utf8");
