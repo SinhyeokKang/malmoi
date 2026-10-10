@@ -240,3 +240,29 @@ describe("Add sources — 행 안 미리보기 버튼이 샘플 판을 연다", 
     expect(shown(pane("candidates"))).toBe(true);
   });
 });
+
+/**
+ * **판 버튼 형** (malmoi#230 · #231 · 시안 AT7). View sample은 후보 목록 아래 본문 전폭 · 가운데 정렬이고, ‹ Candidates는 번역 상세 ‹ Keys와
+ * 같은 "돌아가기" 형(ghost sm + ChevronLeft)이다 — 손 사본 클래스가 아니라 같은 variant/size 조합이다.
+ */
+describe("판 버튼 형", () => {
+  it("View sample은 전폭 기본 버튼이다(오른쪽 정렬 래퍼 없음)", async () => {
+    const { button } = await draw();
+    await resize(400);
+    const view = button(en.responsive.viewSample)!;
+    expect(view.className.split(/\s+/)).toContain("w-full");
+    expect(view.parentElement?.className ?? "").not.toMatch(/justify-end/);
+  });
+
+  it("Candidates는 번역 ‹ Keys와 같은 ghost sm 조합이다", async () => {
+    const { button } = await draw();
+    await resize(400);
+    await click(button(en.responsive.viewSample)!);
+    const back = button(en.responsive.backToCandidates)!;
+    for (const cls of ["h-7", "px-2", "text-xs"]) expect(back.className.split(/\s+/), cls).toContain(cls);
+    expect(back.className).not.toMatch(/\bh-9\b/);
+    const source = (await import("node:fs")).readFileSync("components/onboarding/steps/files.tsx", "utf8");
+    expect(source).toMatch(/<Button ref=\{backRef\} variant="ghost" size="sm"/);
+    expect((await import("node:fs")).readFileSync("components/translations/workspace/workspace.tsx", "utf8")).toMatch(/<Button ref=\{backRef\} variant="ghost" size="sm"/);
+  });
+});

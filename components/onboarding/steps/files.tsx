@@ -317,13 +317,12 @@ export function FilesStep({
           </>
         )}
         {/* 순차 판의 다음 판 — 후보 목록 아래. Next가 아니다: 샘플을 안 봐도 넘어갈 수 있고(검증은 그대로) step도 그대로다. */}
+        {/* 본문 전폭 · 가운데 정렬(시안 AT7a · malmoi#230) — 목록 아래 다음 판으로 가는 유일한 길이라 열 전체를 쓴다. */}
         {sequential && !detecting && (
-          <div className="flex justify-end">
-            <Button ref={viewSampleRef} variant="default" type="button" onClick={() => showPane("sample")}>
-              {m.responsive.viewSample}
-              <ArrowRight aria-hidden />
-            </Button>
-          </div>
+          <Button ref={viewSampleRef} variant="default" type="button" className="w-full" onClick={() => showPane("sample")}>
+            {m.responsive.viewSample}
+            <ArrowRight aria-hidden />
+          </Button>
         )}
         </div>
       </ResizablePanel>
@@ -340,7 +339,8 @@ export function FilesStep({
       <ResizablePanel data-files-pane="sample" className={cn("min-w-0 flex-col gap-3", sequential && pane !== "sample" ? "hidden" : "flex")}>
         {sequential && (
           <div>
-            <Button ref={backRef} variant="ghost" type="button" onClick={() => showPane("candidates")}>
+            {/* 번역 상세 ‹ Keys와 같은 "돌아가기" 형 — ghost sm + ChevronLeft(시안 AT7b · malmoi#231). */}
+            <Button ref={backRef} variant="ghost" size="sm" type="button" onClick={() => showPane("candidates")}>
               <ChevronLeft aria-hidden />
               {m.responsive.backToCandidates}
             </Button>
