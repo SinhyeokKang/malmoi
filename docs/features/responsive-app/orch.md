@@ -63,7 +63,7 @@ Run `run_ea6cb60e2632`. 파동 1 착수 2026-10-11.
 | 배치 | Dispatch | 워크트리 | 상태 |
 |---|---|---|---|
 | QA0 | `ctx_93db6a24a97f` | main 체크아웃 | 완료 — 1280 결함 0, 375 관측을 spec 문제 절에 반영. QA 이월: Home·Logs dev 청크 CSP 차단(간헐) 재확인 |
-| B1 | `ctx_8e85ecb5897f` | `ra-b1` | 진행 |
+| B1 | `ctx_8e85ecb5897f` | `ra-b1` | B1a dev `9e26c56a`(CI success) · 본 작업 진행 |
 | B2 | `ctx_7623878d5078` | `ra-b2` | 진행 |
-| B3 | `ctx_f2f02378f9aa` | `ra-b3` | 진행 |
+| B3 | `ctx_f2f02378f9aa` | `ra-b3` | 구현 완료(edd9aef1·b309037d·87114992, gate ok) → 리뷰 `ctx_a733ea9edd0f` |
 | B4 | `ctx_221863986e06` | `ra-b4` | 진행 |
