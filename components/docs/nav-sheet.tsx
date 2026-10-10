@@ -2,7 +2,7 @@
 
 import { ChevronsUpDown, List } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FocusEvent, type MouseEvent, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { LargeModal } from "@/components/ui/large-modal";
@@ -69,21 +69,63 @@ export function DocsNavSheet({ pages, label, title, closeLabel, children }: {
   return (
     <>
       <div className="pointer-events-none absolute inset-x-0 bottom-4 z-10 flex justify-center px-6 lg:hidden">
-        <Button ref={capsule} type="button" aria-label={label} aria-haspopup="dialog" aria-expanded={open} className={CAPSULE}
+        {/*
+          ⚠️ **접근 이름은 aria-label이 아니라 내용이다**(WCAG 2.5.3) — aria-label `Docs`가 보이는 제목을 덮으면 음성 제어로 그 제목을 못 부르고
+          스크린리더가 지금 페이지를 못 듣는다. 이름 = sr 접두 `Docs: ` + 보이는 제목. `data-docs-capsule`은 좁아지는 고정 내비가 포커스를 넘길 표식이다.
+        */}
+        <Button ref={capsule} type="button" data-docs-capsule="" aria-haspopup="dialog" aria-expanded={open} className={CAPSULE}
           onClick={() => { returnTo.current = capsule.current; setOpen(true); }}>
           <List aria-hidden className="size-4 shrink-0" />
+          <span className="sr-only">{label}: </span>
           <span className="min-w-0 truncate">{current}</span>
           <ChevronsUpDown aria-hidden className="text-muted-foreground size-3.5 shrink-0" />
         </Button>
       </div>
       <LargeModal open={open} flush title={label} closeLabel={closeLabel} actions={null} onClose={() => setOpen(false)}
         returnFocusRef={returnTo} initialFocusRef={currentRow}>
-        {/* 행 최소 40 — 전체 화면이라 서랍 행과 같은 높이다. 위 ref 콜백은 커밋 때 돌아 Radix의 열림 포커스보다 먼저 현재 행을 잡는다. */}
+        {/*
+          행 최소 40 — 전체 화면이라 서랍 행과 같은 높이다. 위 ref 콜백은 커밋 때 돌아 Radix의 열림 포커스보다 먼저 현재 행을 잡는다.
+          현재 행이 없으면(404) 첫 항목이다(design §2) — 비우면 패널이 포커스를 받는다.
+        */}
         <nav aria-label={label} onClick={onNavigate} className="p-3 [&_a]:min-h-10 [&_a]:py-2"
-          ref={(node) => { currentRow.current = node?.querySelector<HTMLElement>('[aria-current="page"]') ?? null; }}>
+          ref={(node) => { currentRow.current = node?.querySelector<HTMLElement>('[aria-current="page"]') ?? node?.querySelector<HTMLElement>("a") ?? null; }}>
           {children}
         </nav>
       </LargeModal>
     </>
+  );
+}
+
+/**
+ * **고정 내비(264, `lg` 이상)의 그릇** — 좁아지며 숨을 때 그 안에 포커스가 있었으면 장 내비의 트리거인 캡슐로 옮긴다(design §2 ·
+ * POSTMORTEM 2026-09-24 — `display:none`이 되면 포커스가 `body`로 빠지고 Tab이 문서 첫머리에서 다시 시작한다).
+ * 헤더 묶음의 `WideOnly`(`components/public-shell/nav-drawer.tsx`)와 같은 장치다 — 대상만 메뉴 버튼이 아니라 캡슐이다.
+ * 리스너는 **포커스가 안에 있는 동안만** 단다. 숨김은 CSS(`max-lg:hidden`)가 한다.
+ */
+export function DocsFixedNav({ label, children }: { label: string; children: ReactNode }) {
+  const ref = useRef<HTMLElement>(null);
+  const stop = useRef<(() => void) | null>(null);
+  useEffect(() => () => stop.current?.(), []);
+
+  function watch() {
+    if (stop.current !== null) return;
+    // ⚠️ jsdom에는 `matchMedia`가 없다 — 없는 환경은 폭이 바뀌지 않는 것으로 읽는다.
+    const query = window.matchMedia?.(WIDE_QUERY);
+    if (query == null) return;
+    const onChange = (event: { matches: boolean }) => {
+      if (event.matches || !ref.current?.contains(document.activeElement)) return;
+      document.querySelector<HTMLElement>("[data-docs-capsule]")?.focus();
+    };
+    query.addEventListener("change", onChange);
+    stop.current = () => { query.removeEventListener("change", onChange); stop.current = null; };
+  }
+
+  return (
+    // `data-docs-nav`는 넓어질 때 시트가 포커스를 넘길 표식이다(위 `DocsNavSheet`).
+    <nav ref={ref} aria-label={label} data-docs-nav="" onFocus={watch}
+      onBlur={(event: FocusEvent) => { if (!(event.relatedTarget instanceof Node && ref.current?.contains(event.relatedTarget))) stop.current?.(); }}
+      className="border-border w-[264px] shrink-0 overflow-y-auto border-r p-4 max-lg:hidden">
+      {children}
+    </nav>
   );
 }

@@ -85,7 +85,10 @@ async function notFoundPage() {
   return render(await Layout({ children: NotFound() }));
 }
 
-const capsule = () => document.querySelector<HTMLButtonElement>(`main button[aria-label="${en.publicDocs.docs.nav}"]`)!;
+/** 캡슐 = `main` 안의 dialog 트리거 버튼. 접근 이름은 aria-label이 아니라 내용(sr 접두 `Docs: ` + 보이는 제목)이다(WCAG 2.5.3). */
+const capsule = () => document.querySelector<HTMLButtonElement>('main button[aria-haspopup="dialog"]')!;
+/** 보이는 라벨 — sr 접두를 뺀 제목. */
+const visible = () => capsule().querySelector(":scope > span:not(.sr-only)")?.textContent;
 const sheet = () => document.querySelector<HTMLElement>('[role="dialog"]');
 const sheetLinks = () => [...(sheet()?.querySelectorAll<HTMLAnchorElement>(`nav[aria-label="${en.publicDocs.docs.nav}"] a`) ?? [])];
 const click = async (node: Element) => { await act(async () => { await userEvent.setup().click(node); }); };
@@ -105,17 +108,21 @@ describe("Docs 내비 — 넓은 폭은 고정 264, 좁은 폭은 하단 캡슐 
     const button = capsule();
     expect(button.getAttribute("aria-haspopup")).toBe("dialog");
     expect(button.getAttribute("aria-expanded")).toBe("false");
-    expect(button.textContent).toBe("Add the workflow");
+    expect(button.hasAttribute("aria-label")).toBe(false);
+    // 접근 이름이 보이는 라벨을 담는다 — 음성 제어 "Add the workflow 누르기"가 먹고 스크린리더가 지금 페이지를 듣는다.
+    expect(button.textContent).toBe(`${en.publicDocs.docs.nav}: Add the workflow`);
+    expect(button.querySelector(".sr-only")?.textContent).toBe(`${en.publicDocs.docs.nav}: `);
+    expect(visible()).toBe("Add the workflow");
   });
 
   it("개요의 캡슐 라벨은 개요의 SUMMARY 제목이다", async () => {
     await page([]);
-    expect(capsule().textContent).toBe("Malmoi");
+    expect(visible()).toBe("Malmoi");
   });
 
   it("404는 현재 페이지가 없어 라벨이 Docs 제목이다 (D7)", async () => {
     await notFoundPage();
-    expect(capsule().textContent).toBe(en.publicDocs.docs.title);
+    expect(visible()).toBe(en.publicDocs.docs.title);
   });
 
   it("캡슐 형 — 44 · radius full · 연한 윤곽 · 바탕 면 · shadow-medium · 푸터 위 16 가운데", async () => {
@@ -152,6 +159,13 @@ describe("Docs 내비 시트 — 캡슐이 여는 전체 화면 (PT2c · D14)", 
     expect(document.activeElement).toBe(current);
   });
 
+  it("404(현재 행 없음)에서 열면 첫 항목에 포커스가 선다", async () => {
+    await notFoundPage();
+    await click(capsule());
+    expect(sheetLinks()[0]).toBeDefined();
+    expect(document.activeElement).toBe(sheetLinks()[0]);
+  });
+
   it("Esc로 닫으면 캡슐로 돌아온다", async () => {
     await page(["setup", "workflow"]);
     await click(capsule());
@@ -184,11 +198,13 @@ describe("Docs 내비 시트 — 캡슐이 여는 전체 화면 (PT2c · D14)", 
     expect(listeners.size).toBe(0);
     await click(capsule());
     expect(listeners.size).toBe(1);
+    const [sheetListener] = [...listeners];
     wide = true;
     await act(async () => { for (const listener of [...listeners]) listener({ matches: true }); });
     await settle();
     expect(sheet()).toBeNull();
-    expect(listeners.size).toBe(0);
+    // 시트의 리스너는 걷혔다 — 남은 하나는 포커스를 받은 고정 내비의 것이다(포커스가 안에 있는 동안만).
+    expect(listeners.has(sheetListener!)).toBe(false);
     // 캡슐은 그때 `lg:hidden`이다 — 고정 내비의 현재 행이 받는다.
     expect(document.activeElement).toBe(document.querySelector(`[data-docs-nav] a[aria-current="page"]`));
   });
@@ -274,5 +290,31 @@ describe("DocFrame — 컨테이너 판정 · 표시급 · 긴 표/URL (PT2a · 
     const after = first.container.querySelector("[data-public-scroller]");
     expect(after).not.toBeNull();
     expect(after).not.toBe(before);
+  });
+});
+
+/** design §2 — 좁아지며 고정 내비가 숨을 때 그 안에 포커스가 있었으면 장 내비의 트리거(캡슐)로 옮긴다(POSTMORTEM 2026-09-24). */
+describe("고정 내비 → 좁아짐", () => {
+  const fixedLinks = () => [...document.querySelectorAll<HTMLAnchorElement>("[data-docs-nav] a")];
+
+  it("포커스가 고정 내비 안에 있으면 캡슐로 옮긴다 — 리스너는 포커스가 안에 있는 동안만이다", async () => {
+    wide = true;
+    await page(["setup", "workflow"]);
+    expect(listeners.size).toBe(0);
+    await act(async () => { fixedLinks()[2]!.focus(); });
+    expect(listeners.size).toBe(1);
+    wide = false;
+    await act(async () => { for (const listener of [...listeners]) listener({ matches: false }); });
+    expect(document.activeElement).toBe(capsule());
+    expect(listeners.size).toBe(0);
+  });
+
+  it("포커스가 밖에 있으면 건드리지 않고 리스너도 없다", async () => {
+    wide = true;
+    await page(["setup", "workflow"]);
+    await act(async () => { fixedLinks()[0]!.focus(); });
+    const outside = document.querySelector<HTMLElement>("[data-public-scroller]")!;
+    await act(async () => { outside.focus(); });
+    expect(listeners.size).toBe(0);
   });
 });

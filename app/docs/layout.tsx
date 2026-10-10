@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
-import { DocsNavSheet } from "@/components/docs/nav-sheet";
+import { DocsFixedNav, DocsNavSheet } from "@/components/docs/nav-sheet";
 import { DocsNavTree } from "@/components/docs/nav-tree";
 import { PublicShell } from "@/components/public-shell/public-shell";
 import { publicAccount } from "@/lib/auth/landing";
@@ -33,10 +33,10 @@ export default async function DocsLayout({ children }: { children: ReactNode }) 
 
   return (
     <PublicShell m={m} account={publicAccount(session)} current="docs" bare>
-      {/* 고정 내비는 `lg` 이상만이다 — 좁으면 본문 위 캡슐이 같은 트리를 전체 화면 시트로 연다(responsive-public PT2c). `data-docs-nav`는 넓어질 때 시트가 포커스를 넘길 표식이다. */}
-      <nav aria-label={m.publicDocs.docs.nav} data-docs-nav="" className="border-border w-[264px] shrink-0 overflow-y-auto border-r p-4 max-lg:hidden">
+      {/* 고정 내비는 `lg` 이상만이다 — 좁으면 본문 위 캡슐이 같은 트리를 전체 화면 시트로 연다(responsive-public PT2c). */}
+      <DocsFixedNav label={m.publicDocs.docs.nav}>
         <DocsNavTree nav={nav} />
-      </nav>
+      </DocsFixedNav>
       {children}
       <DocsNavSheet pages={flattenNav(nav).map((item) => ({ href: docHref(item.slug), title: item.title }))} label={m.publicDocs.docs.nav} title={m.publicDocs.docs.title} closeLabel={m.common.close}>
         <DocsNavTree nav={nav} />

@@ -217,3 +217,22 @@ describe("`/changelog` — 좁은 폭", () => {
     expect(frame.parentElement?.className).toBe("@container/reading");
   });
 });
+
+describe("`/changelog` — 좁은 폭의 본문 코드·표 (P-04)", () => {
+  it("펜스 코드와 표는 자기 그릇 안에서만 가로 스크롤한다 — 루트를 밀지 않는다", async () => {
+    const body = "## Notes\n\n```\nghcr.io/sinhyeokkang/malmoi:v1.2.3 --a-very-long-flag-that-does-not-wrap\n```\n\n| A | B |\n| - | - |\n| one | two |\n";
+    const container = await page({ ok: true, releases: [{ tag: "v1.2.3", publishedAt: "2026-10-01T00:00:00Z", body }], truncated: false });
+    const pre = main(container).querySelector("pre")!;
+    expect(pre.classList.contains("overflow-x-auto")).toBe(true);
+    const table = main(container).querySelector("table")!;
+    expect(table.parentElement?.classList.contains("overflow-x-auto")).toBe(true);
+    expect(table.classList.contains("wrap-normal")).toBe(true);
+  });
+
+  /** D23 — 버전 제목 30도 표시급이라 `lg` 미만 24로 한 단계 내린다(좁은 폭 페이지 제목 30과 위계 유지). */
+  it("버전 제목은 `lg` 미만 24다", async () => {
+    const container = await page({ ok: true, releases: TWO, truncated: false });
+    const version = main(container).querySelector("section h1")!;
+    expect(version.className.split(/\s+/)).toEqual(expect.arrayContaining(["text-3xl", "max-lg:text-2xl"]));
+  });
+});
