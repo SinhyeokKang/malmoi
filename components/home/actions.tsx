@@ -5,12 +5,13 @@ import { createContext, useContext, useEffect, useId, useRef, useState, type Rea
 
 import { useCommitWait } from "@/components/commit-wait";
 import { SyncButton } from "@/components/home/sync-button";
-import { PublishButton, PublishModal, usePublish, type PublishController } from "@/components/publish-button";
+import { PublishButton, PublishModal, publishReason, usePublish, type PublishController } from "@/components/publish-button";
 import { ProjectThumbnail } from "@/components/ui/project-thumbnail";
 import { ReconnectButton } from "@/components/reconnect-button";
 import { ArchiveCard } from "@/components/settings/archive-card";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { DisabledReasons, useDisabledReasons } from "@/components/ui/disabled-reasons";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { landFocus } from "@/components/ui/focus";
 import { useMessages, useUiLocale } from "@/components/i18n/messages-provider";
@@ -130,7 +131,7 @@ export function HomeTitle({ archived, children, image }: { archived: boolean; ch
  *
  * ⚠️ **`[Publish]`는 EDITOR도 누른다** — PRODUCT §3이 허용하고 `translation:write`에 들어 있다.
  */
-export function HomeHeaderActions({ slug, surfaceSlug, name, branch, role, unsent, paused }: {
+export function HomeHeaderActions({ slug, surfaceSlug, name, branch, role, unsent, paused, pausedReason }: {
   slug: string;
   /** 기본 표면 — `[Sync]` Dialog의 `Publish first`가 가리킨다 (audit-ux #4b). */
   surfaceSlug?: string;
@@ -143,10 +144,26 @@ export function HomeHeaderActions({ slug, surfaceSlug, name, branch, role, unsen
    * 부재는 역할 갈래의 규칙이다.
    */
   paused: boolean;
+  /**
+   * 멈춘 원인 문장 — 서버가 고른다(보관 · 끊김, 번역 화면과 같은 `connectionReason`). **Sync·Publish가 같은 원인이라 같은 문장이고 사유 줄은 하나다**
+   * (responsive-app F7). 없으면 버튼마다 옛 일반 문장(`…currently unavailable`)이다.
+   */
+  pausedReason?: string;
 }) {
   const m = useMessages();
   const { syncOpen, setSyncOpen, syncPending, setSyncPending, publishPending, publish, onSyncResult, leased, titleRef } = useHomeActions();
+  /*
+    **꺼진 사유는 버튼 아래 보이는 줄이다** (responsive-app F7 — 모든 폭, `title`·sr-only를 쓰지 않는다). 버튼 순서대로 — 미연결·보관 → Publish 진행 → lease.
+    EDITOR에게 [Sync]는 부재라 사유도 없다. 자기 진행 중의 [Sync]는 꺼진 것이 아니라 Dialog 트리거다.
+  */
+  const syncReason = role !== "OWNER" || syncPending ? null
+    : paused ? pausedReason ?? m.repositorySync.paused
+    : publishPending ? m.repositorySync.waitPublish
+    : leased ? m.repositorySync.running
+    : null;
+  const reasons = useDisabledReasons([syncReason, publishReason(m, { count: unsent, publish, disabled: paused || syncPending, pausedReason: paused ? pausedReason : undefined })]);
   return (
+    <div className="flex flex-col items-end gap-1.5">
     <div className="flex items-center gap-2">
       <SyncButton
         slug={slug}
@@ -161,8 +178,7 @@ export function HomeHeaderActions({ slug, surfaceSlug, name, branch, role, unsen
           넣으면 도는 [Sync] 트리거가 native `disabled`로 떨어져 포커스 복귀 대상이 사라진다.
         */
         paused={paused || publishPending || leased}
-        /* 미연결·보관이 먼저다 — 그 원인은 배너가 말하고, Publish가 끝나도 풀리지 않는다 (audit-ux #10). 다음이 Publish 진행, 그다음 lease다(번역 화면과 같은 순서). */
-        pausedReason={paused ? undefined : publishPending ? m.repositorySync.waitPublish : leased ? m.repositorySync.running : undefined}
+        reasonId={reasons.ids[0]}
         open={syncOpen}
         onOpenChange={setSyncOpen}
         onPendingChange={setSyncPending}
@@ -170,7 +186,9 @@ export function HomeHeaderActions({ slug, surfaceSlug, name, branch, role, unsen
         fallbackFocusRef={titleRef}
       />
       {/* ⚠️ 보낼 것이 없으면 비활성이다 — 누르면 "보낼 것이 없다"만 말하는 버튼이 된다. */}
-      <PublishButton count={unsent} disabled={paused || syncPending} publish={publish} />
+      <PublishButton count={unsent} disabled={paused || syncPending} publish={publish} reasonId={reasons.ids[1]} />
+    </div>
+    <DisabledReasons reasons={reasons.reasons} />
     </div>
   );
 }

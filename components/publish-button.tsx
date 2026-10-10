@@ -120,21 +120,32 @@ export function usePublish(slug: string, server?: unknown) {
 }
 export type PublishController = ReturnType<typeof usePublish>;
 
-/** @param id 번역 화면의 보류 배너가 포커스를 옮기는 대상 — 둘째 트리거를 만들지 않으려는 것이다 (sync-edit-protection T13). */
-export function PublishButton({ id, count, publish, disabled = false, pausedReason }: { id?: string; count: number; publish: PublishController; disabled?: boolean; pausedReason?: string }) {
+/**
+ * 꺼진 [Publish]의 사유 — 꺼져 있지 않으면 `null`. 호스트가 사유 줄(`DisabledReasons`)에 [Sync]의 사유와 함께 버튼 순서대로 넘긴다
+ * (responsive-app F7 — 모든 폭). 판정은 버튼과 같은 `planPublishButton`이다.
+ */
+export function publishReason(m: Messages, { count, publish, disabled = false, pausedReason }: { count: number; publish: PublishController; disabled?: boolean; pausedReason?: string }): string | null {
+  const plan = planPublishButton(m, { count, paused: disabled, otherPending: false, publishPending: publish.pending, pausedReason });
+  return plan.disabled && plan.hint ? plan.hint : null;
+}
+
+/**
+ * @param id 번역 화면의 보류 배너가 포커스를 옮기는 대상 — 둘째 트리거를 만들지 않으려는 것이다 (sync-edit-protection T13).
+ * @param reasonId 꺼졌을 때 가리킬 사유 줄 — **문장은 호스트가 `publishReason`으로 세운다** (`title`·sr-only를 쓰지 않는다, F7).
+ */
+export function PublishButton({ id, count, publish, disabled = false, reasonId }: { id?: string; count: number; publish: PublishController; disabled?: boolean; reasonId?: string }) {
   const m = useMessages();
   const p = m.translations.publish;
-  const plan = planPublishButton(m, { count, paused: disabled, otherPending: false, publishPending: publish.pending, pausedReason });
-  const reasonId = useId();
-  // ⚠️ **꺼진 Publish는 `aria-disabled`다** — 진짜 `disabled`면 사유가 hover `title`에만 남아 키보드·스크린리더로
-  // 닿지 않는다 (DESIGN §6.65). 포커스를 받으므로 모달을 닫으면 이 버튼으로 돌아온다.
+  const plan = planPublishButton(m, { count, paused: disabled, otherPending: false, publishPending: publish.pending });
+  // ⚠️ **꺼진 Publish는 `aria-disabled`다** — 진짜 `disabled`면 사유에 키보드·스크린리더로 닿지 않는다 (DESIGN §6.65).
+  // 포커스를 받으므로 모달을 닫으면 이 버튼으로 돌아온다. 사유는 버튼 아래 보이는 줄이다(호스트 — F7).
   /*
     ⚠️ **라벨은 도는 동안에도 `Publish`다** (audit-ux D1) — 스피너가 아이콘을 교체하고, 라벨이 접근 이름이라 진행 신호는 `aria-busy`가 든다.
     ⚠️ **`loading`·`busy`를 쓰지 않는다** — 도는 동안에도 눌러서 진행 모달을 다시 연다(`launch`). 둘 다 클릭을 막는다.
   */
   return <div className="flex items-center gap-2">
-    <span title={plan.hint || undefined}>
-      <Button id={id} variant="primary" aria-disabled={plan.disabled ? "true" : undefined} aria-describedby={plan.disabled && plan.hint ? reasonId : undefined}
+    <span>
+      <Button id={id} variant="primary" aria-disabled={plan.disabled ? "true" : undefined} aria-describedby={plan.disabled ? reasonId : undefined}
         aria-busy={publish.pending || undefined}
         onClick={event => { if (plan.disabled) return; publish.triggerRef.current = event.currentTarget; publish.launch(); }}>
         {publish.pending ? <LoaderCircle className="animate-spin" aria-hidden /> : <Send aria-hidden />}
@@ -142,7 +153,6 @@ export function PublishButton({ id, count, publish, disabled = false, pausedReas
         {/* 어두운 면 위라 면·글자를 그 면에 맞춰 덮는다 — 개수 규칙(0이면 없음 · sr 문장)은 `CountBadge`가 든다. */}
         {plan.badge !== null && <CountBadge count={plan.badge} label={p.unsentCount(plan.badge)} className="bg-background/20 text-current" />}
       </Button>
-      {plan.disabled && plan.hint && <span id={reasonId} className="sr-only">{plan.hint}</span>}
     </span>
     {!publish.pending && publish.result && <Button onClick={event => { publish.triggerRef.current = event.currentTarget; publish.showResult(); }}>{m.translations.publish.viewResult}</Button>}
   </div>;
