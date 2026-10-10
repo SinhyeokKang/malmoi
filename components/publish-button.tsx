@@ -284,8 +284,12 @@ function PreviewTable({ preview }: { preview: PublishPreview }) {
   const m = useMessages();
   const p = m.translations.publish;
   return <TableShell>
-    <div className="min-h-0 flex-1 overflow-y-auto">
-      <table className="w-full table-fixed border-separate border-spacing-0">
+    {/*
+      ⚠️ **좁으면 표가 가로로 스크롤한다** (#232) — `table-fixed`에 Key 220 · 언어 84를 고정한 채 모달이 341로 줄면 Value가 37로 눌려 값이 글자 단위로 세로 감겼다.
+      최소 폭 520(Key 220 + 언어 84 + Value 216)을 주고 이 칸이 두 방향으로 스크롤한다. 넓은 모달은 그 폭보다 넓어 그대로다. 머리 `sticky`는 그대로 붙는다.
+    */}
+    <div className="min-h-0 flex-1 overflow-auto">
+      <table className="w-full min-w-[520px] table-fixed border-separate border-spacing-0">
         <TableHead />
         {preview.groups.map(group => <tbody key={`${group.surface}:${group.path}`}>
           <tr>

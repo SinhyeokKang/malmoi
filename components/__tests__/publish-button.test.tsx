@@ -248,6 +248,23 @@ it("키 병합은 rowSpan이 들고 diff 두 줄은 낭독될 이름을 든다",
   expect(labels).toContain("In the repository");
   expect(labels).toContain("Your edit");
 });
+
+/**
+ * **375에서 Value 열이 눌리지 않는다** (#232 — responsive-app DS). `table-fixed` 341에 Key 220 · 언어 84를 고정하면 Value가 37로 눌려 값이 글자 단위로
+ * 세로 감겼다. 표에 최소 폭을 주고 감싼 칸이 가로로 스크롤한다(spec — 표는 가로 스크롤 허용). 넓은 모달(최소 폭보다 넓다)에서는 그대로다.
+ */
+it("미리보기 표는 최소 폭을 들고 감싼 칸이 가로로 스크롤한다 — 열 폭은 그대로다", async () => {
+  mocks.preview.mockResolvedValue(ok({ total: 1, keys: 1, truncated: 0, openPr: null, withoutFile: 0, withoutKey: 0, changedFiles: ["fr.json"], sendable: { total: 1, keys: 1 }, groups: [{ surface: "web", path: "fr.json", changes: 1, keys: 1, rows: [
+    { keyId: "k", key: "shipping.delivered", localeCode: "fr", before: null, after: "Livré (QA)", author: "Jiwon", updatedAt: "", surface: "web", path: "fr.json", keySpan: 1 },
+  ] }] }));
+  await render(<Host count={1} />);
+  await click("Publish1");
+  const table = document.querySelector<HTMLTableElement>("table")!;
+  for (const token of ["w-full", "table-fixed", "min-w-[520px]"]) expect(table.classList.contains(token)).toBe(true);
+  const scroller = table.parentElement!;
+  expect(scroller.classList.contains("overflow-auto")).toBe(true);
+  expect([...document.querySelectorAll("th[scope=col]")].map(th => [...th.classList].find(token => /^w-\[/.test(token)))).toEqual(["w-[220px]", "w-[84px]", undefined]);
+});
 /**
  * ⚠️ **복구 버튼이 역할을 탄다** (2026-09-16 사용자 판정). 설정 화면은 `project:settings`라 EDITOR가
  * 누르면 거절당한다 — **무반응·거절당하는 버튼은 비활성보다 한 단계 아래다**. 캔버스 자신도 `1h`에
