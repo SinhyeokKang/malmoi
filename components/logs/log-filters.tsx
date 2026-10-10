@@ -327,7 +327,10 @@ function CustomRangeDialog({ open, onOpenChange, filter, returnFocusRef, onApply
           </Button>
         </>}
       >
-        <div className="grid grid-cols-2 gap-3">
+        {/* 날짜 칸 둘은 Dialog 본문이 320 미만이면 한 열이다(responsive-app — 375에서 확인 Dialog가 343이 되면 본문 311, 칸당 약 150이라 네이티브 날짜 입력이 빡빡하다).
+            기준은 뷰포트가 아니라 본문 그릇이다 — 선언(바깥 래퍼)과 질의(격자)는 다른 요소다(POSTMORTEM 2026-09-15). DOM 순서(From → To)는 그대로다. */}
+        <div className="@container">
+        <div className="grid grid-cols-2 gap-3 @max-[20rem]:grid-cols-1">
           <FormGroup label={m.logs.range.from} htmlFor={fromId}>
             {(describe) => (
               <>
@@ -341,6 +344,7 @@ function CustomRangeDialog({ open, onOpenChange, filter, returnFocusRef, onApply
               <Input aria-describedby={describe()} width="full" id={toId} type="date" value={to} onChange={event => setTo(event.target.value)}  />
             )}
           </FormGroup>
+        </div>
         </div>
       </DialogContent>
     </Dialog>

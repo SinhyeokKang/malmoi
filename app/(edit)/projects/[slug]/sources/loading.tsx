@@ -1,5 +1,7 @@
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
+import { SOURCE_CONTENT_STACK, SOURCE_STATUS_STACK } from "@/components/sources/row-layout";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 import { getMessages } from "@/lib/i18n/server";
 
 /**
@@ -14,8 +16,9 @@ import { getMessages } from "@/lib/i18n/server";
  * ⚠️ **개수 원은 카드 머리 하나만 그린다**(4-W13) — 실물 `CountBadge`는 0이면 서지 않지만, 골격은 아래 "행은 하나다"와 같은
  * 가정(소스 하나)을 그리고 그때 실물 배지는 선다. 머리의 원은 실물에 총계가 없어 지웠다.
  *
- * ⚠️ **좁은 폭 분기가 없다, 실물과 같이** (2026-10-06) — 실물이 패널 1016 이하에서 상태를 셋째 줄로 내리던 분기를 걷었다.
+ * ⚠️ **패널 폭 분기가 없다, 실물과 같이** (2026-10-06) — 실물이 패널 1016 이하에서 상태를 셋째 줄로 내리던 분기를 걷었다.
  *   골격이 옛 분기를 남기면 1280(패널 1014)에서 도착 순간 행이 한 줄만큼 줄어든다(malmoi#101의 역방향) — `sibling-loading.test.tsx`가 센다.
+ *   responsive-app이 더한 적층은 패널이 아니라 **카드 그릇 640**(`@max-form`)이고 실물과 같은 상수(`components/sources/row-layout.ts`)를 쓴다 — 카드는 `@container`를 여기서도 선언한다.
  *
  * ⚠️ **행은 하나다** — 프로젝트의 가장 흔한 모양이 소스 하나다. [Add source]는 OWNER에게만 서지만 골격은 그린다:
  * 버튼 없는 머리와 높이가 같아(제목 행이 `min-h`가 아니라 버튼 36이 정한다 — 없으면 28) 8px 차이를 받아들인다.
@@ -34,7 +37,7 @@ export default async function SourcesLoading() {
       </PanelHeader>
 
       <PanelBody className="space-y-4" aria-hidden>
-        <div className="border-border bg-background overflow-hidden rounded-lg border">
+        <div className="@container border-border bg-background overflow-hidden rounded-lg border">
           <div className="border-divider flex min-h-12 items-center gap-2 border-b px-4 py-3">
             <Skeleton size="md" className="w-16" />
             <Skeleton className="size-5 rounded-full" />
@@ -43,14 +46,14 @@ export default async function SourcesLoading() {
             </div>
           </div>
           <div data-skeleton-source className="flex items-center gap-3 pr-4">
-            <div className="flex min-w-0 flex-1 items-center gap-3 px-4 py-row-y">
+            <div className={cn("flex min-w-0 flex-1 items-center gap-3 px-4 py-row-y", SOURCE_CONTENT_STACK)}>
               <Skeleton className="size-7 shrink-0 rounded" />
               <div className="flex min-w-0 flex-1 flex-col gap-copy-gap">
                 <Skeleton size="md" className="w-[42%]" />
                 <Skeleton size="xs" className="w-[28%]" />
               </div>
               {/* 상태 — 행 높이는 왼쪽 두 줄이 정하므로 줄 자리가 아니라 블록 하나다. */}
-              <Skeleton className="h-3 w-24 shrink-0 rounded-md" />
+              <div data-skeleton-status className={cn("shrink-0", SOURCE_STATUS_STACK)}><Skeleton className="h-3 w-24 rounded-md" /></div>
             </div>
             <Skeleton className="size-4 shrink-0 rounded" />
           </div>

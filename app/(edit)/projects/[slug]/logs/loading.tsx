@@ -4,7 +4,9 @@ import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { Button } from "@/components/ui/button";
 import { FieldTrigger } from "@/components/ui/field-trigger";
 import { Input } from "@/components/ui/input";
+import { LOG_ROW_CHEVRON_STACK, LOG_ROW_RESULT_STACK, LOG_ROW_STACK, LOG_ROW_TIME_STACK } from "@/components/logs/row-layout";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 import { getMessages } from "@/lib/i18n/server";
 
 /**
@@ -54,24 +56,24 @@ export default async function LogsLoading() {
         </div>
       </PanelHeader>
       <PanelBody className="space-y-4" aria-hidden>
-        <div className="border-border overflow-hidden rounded-lg border">
+        <div className="@container border-border overflow-hidden rounded-lg border">
           <div className="flex min-h-12 items-center px-4 py-3">
             <Skeleton size="md" className="w-24" />
           </div>
           {/* 행 높이는 실물과 같다 — 다르면 데이터가 도착하는 순간 레이아웃이 튄다. 첫 행 선·chevron 칸도 실물 그대로다(4-Y3 · 4-W9). */}
           {[0, 1, 2].map((index) => (
-            <div key={index} data-skeleton-event className={`${index === 0 ? "border-foreground/[0.06]" : "border-border"} flex items-center gap-3 border-t px-4 py-row-y`}>
-              <div className="w-28 shrink-0"><Skeleton size="sm" className="w-10" /></div>
+            <div key={index} data-skeleton-event className={cn(index === 0 ? "border-foreground/[0.06]" : "border-border", "flex items-center gap-3 border-t px-4 py-row-y", LOG_ROW_STACK)}>
+              <div className={cn("w-28 shrink-0", LOG_ROW_TIME_STACK)}><Skeleton size="sm" className="w-10" /></div>
               <Skeleton className="size-7 shrink-0 rounded" />
               {/* 실물은 문장(15) + 보조 줄(배지 20) 두 줄이다 — 한 줄만 그리면 행이 55로 서고 실물은 72다(#165). */}
               <div data-skeleton-stack className="flex min-w-0 flex-1 flex-col gap-copy-gap">
                 <Skeleton size="md" className="w-[72%]" />
                 <div className="flex h-5 items-center text-xs"><Skeleton className="h-[0.8em] w-[40%] rounded-md" /></div>
               </div>
-              <div className="flex w-[172px] shrink-0 flex-wrap items-center justify-end gap-1.5">
+              <div className={cn("flex w-[172px] shrink-0 flex-wrap items-center justify-end gap-1.5", LOG_ROW_RESULT_STACK)}>
                 <Skeleton size="xs" className="w-24" />
               </div>
-              <Skeleton className="size-4 shrink-0 rounded" />
+              <Skeleton className={cn("size-4 shrink-0 rounded", LOG_ROW_CHEVRON_STACK)} />
             </div>
           ))}
         </div>

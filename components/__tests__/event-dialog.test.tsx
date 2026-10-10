@@ -163,3 +163,14 @@ it("행을 누르면 상세가 뜨기 전까지 행의 chevron이 스피너로 �
   // 교체한 아이콘이 같은 16 정방이어야 행이 안 흔들린다 (DESIGN §6 `Button loading`).
   expect(spinner.getAttribute("class")).toContain("size-4");
 });
+
+it("닫기는 시트(`lg` 미만)에서 머리 56 형 자리다 — 32 · 위 12 · 우 12이고 `lg` 이상 36 · 24는 그대로다", async () => {
+  await visit("event=evt_a");
+  await render(dialog());
+  const close = find<HTMLButtonElement>(document, `button[aria-label="${en.logs.detail.actions.close}"]`);
+  const tokens = [...close.classList];
+  expect(tokens).toEqual(expect.arrayContaining(["absolute", "top-6", "right-6", "max-lg:top-3", "max-lg:right-3", "max-lg:size-8"]));
+  // 절대 위치라 DOM 끝에 남는다 — 시트 머리로 옮겨 그리지 않았다(같은 컴포넌트 두 번 렌더 금지, DESIGN §7).
+  expect(close.closest('[role="dialog"]')?.lastElementChild?.contains(close)).toBe(true);
+  expect(document.querySelectorAll(`button[aria-label="${en.logs.detail.actions.close}"]`)).toHaveLength(1);
+});

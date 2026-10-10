@@ -1,0 +1,121 @@
+// @vitest-environment jsdom
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { expect, it, vi } from "vitest";
+import { Dialog } from "radix-ui";
+
+import { EventDetail } from "@/components/logs/event-detail";
+import { EventRow } from "@/components/logs/event-row";
+import { LOG_ROW_CHEVRON_STACK, LOG_ROW_RESULT_STACK, LOG_ROW_STACK, LOG_ROW_TIME_STACK } from "@/components/logs/row-layout";
+import type { EventRow as Row } from "@/lib/events/query";
+import { en } from "@/messages/en";
+import LogsLoading from "../../app/(edit)/projects/[slug]/logs/loading";
+import { render } from "./helpers/dom";
+
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }) }));
+vi.mock("@/lib/i18n/server", async () => ({ getUiLocale: async () => "en", getMessages: async () => (await import("@/messages/en")).en }));
+
+/**
+ * **responsive-app B3 — Logs 행·이력 상세 시트 머리.** jsdom은 컨테이너 질의를 못 재므로 클래스 계약을 센다.
+ * 적층 기준은 뷰포트(`max-lg:`)가 아니라 **조상 컨테이너**(`@max-form`)이고, 시트 머리 형(`max-lg:`)만 예외다(DESIGN §6.4 전체 화면 시트).
+ */
+const ROOT = join(import.meta.dirname, "..", "..");
+const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
+const tokens = (element: Element | null | undefined) => [...(element?.classList ?? [])];
+const split = (classes: string) => classes.split(/\s+/).filter(Boolean);
+const has = (element: Element | null | undefined, classes: string) => expect(tokens(element)).toEqual(expect.arrayContaining(split(classes)));
+
+const now = new Date("2026-09-20T12:00:00Z");
+const style = { uiLocale: "en", timeZone: "UTC" } as const;
+const row = (over: Partial<Row> = {}): Row => ({
+  id: "e1", ref: "evt_test", kind: "IMPORT", subtype: "import.run", occurredAt: now, finishedAt: now,
+  result: "imported", actor: { kind: "USER", removed: false, name: "Kim", emailLabel: null },
+  surfaceIds: ["s1"], surfaceScope: "sources", run: null,
+  payload: { kind: "IMPORT", source: "manual", surfaceSlugs: ["web"], keys: 4, pendingEdits: 0,
+    surfaces: [{ surfaceSlug: "web", status: "imported", count: 4, reason: null }], errorCode: null, refusal: null, deferReason: null, changedValues: null },
+  ...over,
+});
+
+it("행 적층 상수는 전부 컨테이너 기준이다 — 뷰포트 분기·CSS order가 없다", () => {
+  for (const constant of [LOG_ROW_STACK, LOG_ROW_TIME_STACK, LOG_ROW_RESULT_STACK, LOG_ROW_CHEVRON_STACK]) {
+    for (const token of split(constant)) {
+      expect(token.startsWith("@max-form:")).toBe(true);
+      expect(token).not.toMatch(/(^|:)order-/);
+    }
+  }
+});
+
+it("Logs 행: DOM 순서는 그대로(시각 → 글리프 → 문장 → 결과 → chevron)이고 좁은 그릇 적층 클래스가 붙는다", async () => {
+  const { container } = await render(<EventRow row={row()} href="/logs?event=evt_test" now={now} archived={false} style={style} m={en} />);
+  const link = container.querySelector("a")!;
+  has(link, LOG_ROW_STACK);
+  const kids = [...link.children];
+  expect(kids.map(kid => kid.tagName.toLowerCase())).toEqual(["time", "span", "span", "span", "span"]);
+  const [time, glyph, copy, result, chevron] = kids;
+  has(time, LOG_ROW_TIME_STACK);
+  expect(glyph?.hasAttribute("aria-hidden")).toBe(true);
+  expect(copy?.querySelector("[data-event-meta]")).not.toBeNull();
+  has(result, LOG_ROW_RESULT_STACK);
+  has(chevron, LOG_ROW_CHEVRON_STACK);
+  // 넓은 폭 클래스는 바이트 그대로다 — 시각 열 112 · 결과 열 172.
+  has(time, "w-28 shrink-0 text-sm whitespace-nowrap tabular-nums");
+  has(result, "flex w-[172px] shrink-0 flex-wrap items-center justify-end gap-1.5");
+  for (const kid of [link, ...kids]) expect(tokens(kid).some(token => /(^|:)order-/.test(token))).toBe(false);
+});
+
+it("Home 최근 로그(showTime=false)는 이 배치의 적층 클래스를 받지 않는다 — 그 화면은 B1 소유다", async () => {
+  const { container } = await render(<EventRow row={row()} href="/logs?event=evt_test" now={now} archived={false} showTime={false} style={style} m={en} />);
+  expect(container.innerHTML).not.toContain("@max-form:");
+});
+
+it("Logs 골격 행은 실물과 같은 적층 상수를 쓴다 — 적층 조건이 같다", async () => {
+  const { container } = await render(<LogsLoading />);
+  const rows = [...container.querySelectorAll("[data-skeleton-event]")];
+  expect(rows).toHaveLength(3);
+  for (const skeletonRow of rows) {
+    has(skeletonRow, LOG_ROW_STACK);
+    const [time, , , result, chevron] = [...skeletonRow.children];
+    has(time, LOG_ROW_TIME_STACK);
+    has(result, LOG_ROW_RESULT_STACK);
+    has(chevron, LOG_ROW_CHEVRON_STACK);
+  }
+  // 컨테이너 선언은 카드가 든다 — 행(질의)과 다른 요소다(POSTMORTEM 2026-09-15).
+  has(rows[0]?.parentElement, "@container");
+  expect(tokens(rows[0]).includes("@container")).toBe(false);
+});
+
+it("Logs 실물 날짜 카드도 컨테이너를 선언한다 — 행과 다른 요소", () => {
+  const page = read("app/(edit)/projects/[slug]/logs/page.tsx");
+  expect(page).toMatch(/className="@container border-border overflow-hidden rounded-lg border bg-background"/);
+});
+
+/**
+ * 이력 상세 시트 머리 (design §2 — 공개 R6 넘김). `lg` 미만은 LargeModal 시트 머리 56 형: 좌 16 · 우 12 · 제목 18/500 · 닫기 32 · divider.
+ * `lg` 이상 클래스는 바이트 그대로다(`logs-events.test.tsx`의 `px-6`·`pl-[76px]` 계약이 같이 선다).
+ */
+const detail = (value: Row) => render(
+  <Dialog.Root open><Dialog.Content aria-describedby={undefined}>
+    <EventDetail row={value} slug="alpha" now={now} archived={false} canOpenSettings={false} repoUrl={null} style={style} m={en} />
+  </Dialog.Content></Dialog.Root>,
+);
+
+it("이력 상세 머리: 시트(`max-lg:`)에서 좌 16 · 우 12 · 위 12 · 아래 divider · 최소 56이고 lg 이상은 그대로다", async () => {
+  const { container } = await detail(row());
+  const header = container.querySelector("[data-event-detail-header]");
+  has(header, "px-6 pt-6 pb-4 gap-3");
+  has(header, "max-lg:min-h-14 max-lg:border-b max-lg:border-divider max-lg:pt-3 max-lg:pr-3 max-lg:pb-3 max-lg:pl-4");
+  // 제목 열은 닫기 32(우 12) 자리를 비운다 — 넓은 폭의 36(`pr-9`)은 그대로.
+  const titleColumn = header?.lastElementChild;
+  has(titleColumn, "pr-9 max-lg:pr-11");
+});
+
+it("이력 상세 본문·바닥: 시트에서 안쪽 16이고 바닥은 감긴다 — 본문은 칩 열 76 들여쓰기를 시트에서 푼다", async () => {
+  const { container } = await detail(row());
+  has(container.querySelector("[data-event-detail-body]"), "pr-6 pl-[76px] max-lg:px-4 max-lg:pt-4");
+  has(container.querySelector("[data-event-detail-footer]"), "px-6 py-4 max-lg:px-4 max-lg:flex-wrap");
+});
+
+it("사용자 지정 기간 칸: Dialog 본문이 320 미만이면 한 열이다 — 선언(바깥 래퍼)과 질의(격자)가 다른 요소다", () => {
+  const filters = read("components/logs/log-filters.tsx");
+  expect(filters).toMatch(/<div className="@container">\s*<div className="grid grid-cols-2 gap-3 @max-\[20rem\]:grid-cols-1">/);
+});

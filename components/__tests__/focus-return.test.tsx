@@ -230,7 +230,8 @@ it("actual GitHub unavailable omits actions box; connected retains contents ref 
   expect(row().querySelector("button, a")).toBeNull();
   await view.rerender(<GithubSection account={{status: "ok", login: "octo"}} installedRepoCount={2} settingsUrl="https://github.com/settings/installations" />);
   expect(row().children).toHaveLength(3);
-  expect(row().lastElementChild?.className).toBe("flex shrink-0 items-center gap-2");
+  // `stackActions`(responsive-app)가 좁은 카드에서 둘째 줄 오른쪽으로 내리는 클래스를 더한다 — 상자·`contents` 래퍼 구조는 그대로다.
+  expect(row().lastElementChild?.className).toBe("flex shrink-0 items-center gap-2 @max-form:basis-full @max-form:justify-end");
   const controls = row().lastElementChild?.firstElementChild;
   expect(controls?.className).toBe("contents");
   expect(controls?.querySelector("a")?.getAttribute("href")).toBe("https://github.com/settings/installations");

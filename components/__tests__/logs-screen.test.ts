@@ -232,7 +232,9 @@ describe("logs 상세 — 껍데기 시각 값", () => {
    */
   it("`border-t`를 쓰는 넷 중 셋이 `border-divider`다 — 나머지 하나가 카드 안 행 선이다", () => {
     expect(body.match(/border-t\b/g)).toHaveLength(4);
-    expect(body.match(/border-divider/g)).toHaveLength(3);
+    // 시트(`lg` 미만) 머리의 아래 선(`max-lg:border-b max-lg:border-divider` — responsive-app)이 하나 더다. 그것도 `--divider`다.
+    expect(body.match(/border-divider/g)).toHaveLength(4);
+    expect(body.match(/max-lg:border-divider/g)).toHaveLength(1);
   });
 
   /**

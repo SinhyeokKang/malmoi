@@ -128,8 +128,8 @@ export default async function LogsPage({
         ) : (
           groups.map((group) => (
             // ⚠️ 카드가 본문의 직계 자식이어야 한다 — `space-y-4`의 margin은 `display: contents` 래퍼에 안 걸린다.
-            // 셸 안 카드라 radius 12다(4-Y2 — 16은 패널 하나뿐이다, DESIGN §5).
-            <div key={group.dayKey} className="border-border overflow-hidden rounded-lg border bg-background">
+            // 셸 안 카드라 radius 12다(4-Y2 — 16은 패널 하나뿐이다, DESIGN §5). `@container`는 행의 좁은 그릇 적층 기준이다(`components/logs/row-layout.ts`).
+            <div key={group.dayKey} className="@container border-border overflow-hidden rounded-lg border bg-background">
               {/*
                 ⚠️ **경계선이 경계가 드러나는 행 바로 위에 한 번** 선다 (spec §7.1) — 페이지 경계에
                 걸리면 아래 페이지가 들고, 커서가 이미 과거면 그리지 않는다.
@@ -198,7 +198,7 @@ export default async function LogsPage({
         <EventDialog closeHref={closeHref} returnFocusId={`event-${filter.event}`}>
           {openEvent === null ? (
             /* ⚠️ **상세 대상 없음은 조회 실패와 다르다** — 없는 참조·다른 프로젝트의 참조가 여기다. */
-            <div className="flex flex-col gap-1 p-6">
+            <div className="flex flex-col gap-1 p-6 max-lg:pr-14">
               <h2 className="text-lg font-medium">{m.logs.detail.missing.title}</h2>
               <p className="text-muted-foreground text-sm">{m.logs.detail.missing.description}</p>
             </div>

@@ -6,6 +6,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import { render } from "@/components/__tests__/helpers/dom";
 
+import { SOURCE_CONTENT_STACK, SOURCE_STATUS_STACK } from "@/components/sources/row-layout";
+
 import AccountLoading from "../account/loading";
 import LogsLoading from "../projects/[slug]/logs/loading";
 import MembersLoading from "../projects/[slug]/members/loading";
@@ -95,15 +97,40 @@ describe("줄 수 — 실물의 가장 흔한 모양", () => {
 });
 
 /**
- * **골격과 실물 둘 다 패널 폭 분기가 없다** (2026-10-06 사용자 — 옛 판은 malmoi#101로 `@max-[1016px]/panel:*` 변형을 짝지어 셌다).
- * 한쪽에만 분기가 되살아나면 1280(패널 1014)에서 도착 순간 행 높이가 튄다. jsdom은 컨테이너 질의를 계산하지 못하므로 **철자를 센다**.
+ * **골격과 실물 둘 다 패널 폭 분기가 없고, 좁은 그릇 적층은 같은 상수다** (2026-10-06 사용자 — 옛 판은 malmoi#101로 `@max-[1016px]/panel:*` 변형을 짝지어 셌다.
+ * responsive-app이 이 단언을 바꿨다: "질의 0건"이 아니라 "**패널** 질의 0건 + 카드 그릇 640(`@max-form`) 적층이 실물·골격에서 같은 상수").
+ * 한쪽에만 분기가 되살아나면 도착 순간 행 높이가 튄다. jsdom은 컨테이너 질의를 계산하지 못하므로 **철자를 센다**.
  */
 describe("패널 폭 질의 — 실물과 같은 변형", () => {
-  const panelQueries = (path: string) => readFileSync(join(__dirname, "../../..", path), "utf8").match(/@(?:max|min)-\[[^\]]+\]\/panel|@container\/panel/g) ?? [];
+  const source = (path: string) => readFileSync(join(__dirname, "../../..", path), "utf8");
+  const panelQueries = (path: string) => source(path).match(/@(?:max|min)-\[[^\]]+\]\/panel|@container\/panel/g) ?? [];
 
   it("Sources 실물과 골격 어느 쪽도 `/panel` 질의를 들지 않는다", () => {
     expect(panelQueries("components/sources/sources-screen.tsx")).toEqual([]);
     expect(panelQueries("app/(edit)/projects/[slug]/sources/loading.tsx")).toEqual([]);
+    expect(panelQueries("components/sources/row-layout.ts")).toEqual([]);
+  });
+
+  it("Sources 적층은 실물과 골격이 같은 상수를 들고 카드가 컨테이너를 선언한다", async () => {
+    for (const path of ["components/sources/sources-screen.tsx", "app/(edit)/projects/[slug]/sources/loading.tsx"]) {
+      expect(source(path)).toContain("SOURCE_CONTENT_STACK");
+      expect(source(path)).toContain("SOURCE_STATUS_STACK");
+    }
+    const { container } = await render(<SourcesLoading />);
+    const row = container.querySelector("[data-skeleton-source]")!;
+    const content = row.firstElementChild!;
+    for (const token of SOURCE_CONTENT_STACK.split(" ")) expect(content.classList.contains(token)).toBe(true);
+    const status = container.querySelector("[data-skeleton-status]")!;
+    for (const token of SOURCE_STATUS_STACK.split(" ")) expect(status.classList.contains(token)).toBe(true);
+    // 상태가 둘째 줄이어도 줄 구조는 DOM 순서 그대로다 — 칩 · 이름 칸 · 상태.
+    expect([...content.children]).toHaveLength(3);
+    expect(row.parentElement?.classList.contains("@container")).toBe(true);
+  });
+
+  it("Logs 적층도 실물과 골격이 같은 상수다", () => {
+    for (const path of ["components/logs/event-row.tsx", "app/(edit)/projects/[slug]/logs/loading.tsx"]) {
+      for (const name of ["LOG_ROW_STACK", "LOG_ROW_TIME_STACK", "LOG_ROW_RESULT_STACK", "LOG_ROW_CHEVRON_STACK"]) expect(source(path)).toContain(name);
+    }
   });
 
   /*

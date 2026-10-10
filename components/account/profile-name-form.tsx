@@ -67,13 +67,16 @@ export function ProfileNameForm({ name, inputId }: { name: string; inputId: stri
 
   return (
     <form action={submit} className="space-y-2">
-      <div className="flex items-center gap-2">
-        <Input width={320}
-          id={inputId}
-          name="name"
-          value={value}
-          onChange={(event) => setValue(event.target.value)}
-        />
+      <div className="flex min-w-0 items-center gap-2">
+        {/* 320은 상한이다 — 카드 640 미만이면 남는 폭을 채우고 [Save]가 같은 줄 오른쪽에 선다(`general-card.tsx`의 이름 칸과 같은 형). */}
+        <div className="flex w-[320px] max-w-full @max-form:min-w-0 @max-form:flex-1">
+          <Input width="full"
+            id={inputId}
+            name="name"
+            value={value}
+            onChange={(event) => setValue(event.target.value)}
+          />
+        </div>
         <Button ref={saveRef} type="submit" variant="default" loading={pending}>
           {m.account.profile.save}
         </Button>

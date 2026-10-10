@@ -3,6 +3,7 @@ import { act } from "react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
 import { SourcesScreen } from "@/components/sources/sources-screen";
+import { SOURCE_CONTENT_STACK, SOURCE_STATUS_STACK } from "@/components/sources/row-layout";
 import { en } from "@/messages/en";
 import type { SourceDetail, SourcesData } from "@/lib/sources/query";
 import { render } from "./helpers/dom";
@@ -408,4 +409,25 @@ it("Sources chevron shares the button and keeps 28px separation at every panel w
   await act(async () => { await userEvent.setup().click(chevron); });
   expect(mocks.load).toHaveBeenCalledExactlyOnceWith({ slug: "p", surfaceSlug: source.slug });
   expect(row.getAttribute("aria-expanded")).toBe("true");
+});
+
+/**
+ * responsive-app B3 — 목록 행의 좁은 그릇 적층. jsdom은 컨테이너 질의를 못 재므로 클래스 계약을 센다(기준은 `Card`의 `@container` 640 — 뷰포트 아님).
+ * 선언(`Card` section)과 질의(행)는 다른 요소이고 DOM 순서 `[칩][이름·경로][상태]`는 그대로다(CSS `order` 없음).
+ */
+it("목록 행은 좁은 그릇에서 상태를 이름 아래 줄로 내린다 — DOM 순서 그대로, 컨테이너는 카드가 선언한다", async () => {
+  await render(<SourcesScreen slug="p" role="EDITOR" data={data} adapters={[]} now={new Date()} />);
+  const content = document.querySelector<HTMLElement>("[data-source-content]")!;
+  const has = (element: Element | null, classes: string) => expect([...(element?.classList ?? [])]).toEqual(expect.arrayContaining(classes.split(" ")));
+  has(content, SOURCE_CONTENT_STACK);
+  has(content, "flex min-w-0 flex-1 items-center gap-3 px-4 py-row-y");
+  const status = content.querySelector("[data-source-status]");
+  has(status, SOURCE_STATUS_STACK);
+  expect([...content.children].map(kid => kid.hasAttribute("data-source-glyph") ? "glyph" : kid.hasAttribute("data-source-status") ? "status" : "copy")).toEqual(["glyph", "copy", "status"]);
+  has(content.closest("section"), "@container");
+  for (const token of [...SOURCE_CONTENT_STACK.split(" "), ...SOURCE_STATUS_STACK.split(" ")]) {
+    expect(token.startsWith("@max-form:")).toBe(true);
+    expect(token).not.toMatch(/(^|:)order-/);
+  }
+  expect(content.classList.contains("@container")).toBe(false);
 });

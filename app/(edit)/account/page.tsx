@@ -190,12 +190,15 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
               ⚠️ **글자가 기본색이다** — muted 면 위의 muted 글자는 14px에서 4.35:1로 하한을 깬다.
               ⚠️ **자기 주소라 마스킹하지 않는다** — 남의 주소를 보이는 자리만 `maskEmail`을 지난다.
             */}
-            <Input width={320}
-              id="account-email"
-              value={profile?.email ?? m.account.profile.none}
-              readOnly
-              tabIndex={-1}
-            />
+            {/* ⚠️ **320은 상한이다** — 카드(`@container`)가 640 미만이면 남는 폭을 채우고 안폭을 넘지 않는다(`general-card.tsx`의 주소 칸과 같은 형). */}
+            <div className="flex w-[320px] max-w-full @max-form:min-w-0 @max-form:flex-1">
+              <Input width="full"
+                id="account-email"
+                value={profile?.email ?? m.account.profile.none}
+                readOnly
+                tabIndex={-1}
+              />
+            </div>
           </div>
           </PanelFacts>
         </Card>

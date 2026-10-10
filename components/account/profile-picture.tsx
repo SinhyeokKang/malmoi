@@ -38,7 +38,8 @@ export function ProfilePicture({ hasPicture }: { hasPicture: boolean }) {
 
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="flex items-center gap-2">
+      {/* 버튼 둘이 좁은 카드(375 — 아바타 56 옆 약 219)에서 넘치면 감긴다 — 넓은 폭은 한 줄 그대로다. */}
+      <div className="flex flex-wrap items-center gap-2">
         <FileInput
           accept="image/png,image/jpeg"
           loading={pending && running === "upload"}

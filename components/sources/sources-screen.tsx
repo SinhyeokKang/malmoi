@@ -26,6 +26,8 @@ import { summarizeAddResults, type SurfaceAdded } from "@/lib/surfaces/plan-add"
 import { AddSourcesModal } from "./add-sources-modal";
 import { SourceDetailModal, type DetailState } from "./source-detail-modal";
 import { SourceStatus } from "./source-status";
+import { SOURCE_CONTENT_STACK, SOURCE_STATUS_STACK } from "./row-layout";
+import { cn } from "@/lib/utils";
 import { IconTile } from "@/components/ui/icon-tile";
 import { useCommitWait } from "@/components/commit-wait";
 
@@ -113,19 +115,19 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
           // 칸만 상태 톤을 든다 — 행 전체를 칠하면 눈이 먼저 닿는 것이 파일 이름이 아니게 된다. 톤은 배지와 같은 판정이다(🔴 A1).
           const { tone } = planSurfaceImportStatus(source);
           return <li key={source.id} className="border-border border-t first:border-t-0">
-            {/* 좁은 폭 분기를 두지 않는다(2026-10-06 사용자) — 행 버튼이 빠져 상태 배지만 남았고, 좁아지면 경로만 `wrap-anywhere`로 줄바꿈한다. */}
+            {/* 뷰포트 분기는 없다(2026-10-06 사용자). 그릇(`Card`) 640 미만에서만 상태가 문장 아래 줄로 내려간다(responsive-app — `row-layout.ts`) — 경로는 그대로 `wrap-anywhere`다. */}
               <ListRow as="button" ringInset type="button" data-source-row id={`source-row-${source.id}`} aria-expanded={selected === source.slug} disabled={selected === source.slug} className="p-0 pr-4 text-sm transition-colors disabled:cursor-not-allowed disabled:bg-foreground/[0.07] min-w-0 whitespace-normal" onClick={event => {
                 returnFocus.current = event.currentTarget; selection.current = source.slug; setSelected(source.slug); void load(source.slug, false);
               }}>
                 {/* Content retains its old padding; the chevron keeps the outer gap and top offset inside this button. */}
-                <span data-source-content className="flex min-w-0 flex-1 items-center gap-3 px-4 py-row-y">
+                <span data-source-content className={cn("flex min-w-0 flex-1 items-center gap-3 px-4 py-row-y", SOURCE_CONTENT_STACK)}>
                   <IconTile data-source-glyph tone={tone}><Glyph className="size-4" aria-hidden /></IconTile>
                   <span className="flex min-w-0 flex-1 flex-col gap-copy-gap"><span className="text-foreground text-base"><span className="font-medium">{source.slug}</span> — {source.connection && <>{source.connection.format ?? (source.connection.adapterName === null ? m.sources.notConfigured : m.sources.unknownFormat)} · </>}{m.surfaces.sourceCounts(source.keys, source.locales)}</span>
                     {/* ⚠️ 경로가 sans다 — mono는 `<pre>` 코드 블록 전용이다 (DESIGN §4.1, 2026-09-23). `text-xs`가 13px라 옛 `text-mono`와 크기는 같다. */}
                     {/* 경로 앞 `Folder` 14 — `/projects` 행 메타의 리포 앞 GitHub 로고와 같은 패턴이다(2026-09-30 사용자). 색은 글자를 상속한다. */}
                     {source.connection && <span className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-xs"><Folder className="size-3.5 shrink-0" aria-hidden /><span className="min-w-0 wrap-anywhere">{source.connection.pathTemplate ?? m.sources.notConfigured}</span></span>}
                   </span>
-                  <SourceStatus source={source} now={now} />
+                  <SourceStatus source={source} now={now} className={SOURCE_STATUS_STACK} />
                 </span>
                 {/* [Open translations]는 행에서 걷었다(2026-09-30 사용자) — 번역 화면으로 가는 길은 상세 모달의 같은 버튼이다. */}
                 <ChevronRight className="text-muted-foreground size-4 shrink-0" aria-hidden />
