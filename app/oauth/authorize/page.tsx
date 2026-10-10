@@ -160,8 +160,11 @@ export default async function OAuthAuthorizePage({ searchParams }: { searchParam
 
   return (
     <AuthLayout m={m} scroll>
-      {/* `scroll-pb-24` — 바닥 sticky CTA 묶음(사유 줄 + 버튼)이 Tab 포커스를 덮지 않게 한다(WCAG 2.4.11). 동의 단계만 `<main>` 안이 스크롤한다 — 폼이 뷰포트보다 길다(핸드오프 §7.1: padding 48/32/32 · 480 컬럼). */}
-      <div className="min-h-0 w-full flex-1 overflow-y-auto scroll-pb-24 px-8 pt-12 pb-8">
+      {/*
+        `scroll-pb-24` — 바닥 sticky CTA 묶음(사유 줄 + 버튼)이 Tab 포커스를 덮지 않게 한다(WCAG 2.4.11). ⚠️ **sticky와 같이 `lg` 미만뿐이다**(#221 · D24 —
+        `lg` 이상은 R 배치 이전 클래스 그대로). 동의 단계만 `<main>` 안이 스크롤한다 — 폼이 뷰포트보다 길다(핸드오프 §7.1: padding 48/32/32 · 480 컬럼).
+      */}
+      <div className="min-h-0 w-full flex-1 overflow-y-auto px-8 pt-12 pb-8 max-lg:scroll-pb-24">
         <div className="mx-auto flex w-full max-w-120 flex-col items-center gap-4">
           <MalmoiMark size={48} />
           <AuthHeading title={m.oauthAuthorize.title} description={m.oauthAuthorize.consentDescription} />

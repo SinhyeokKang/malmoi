@@ -172,10 +172,11 @@ export function ConsentPanel({
       </fieldset>
 
       {/*
-        CTA 묶음은 스크롤 영역(페이지의 `<main>` 안) 바닥에 sticky다 — 소프트 키보드·긴 폼에서도 닿는다(responsive-public D4). 면을 칠해 뒤로 지나가는 폼이 비치지 않는다.
+        CTA 묶음은 `lg` 미만에서 스크롤 영역(페이지의 `<main>` 안) 바닥에 sticky다 — 소프트 키보드·긴 폼에서도 닿는다(responsive-public D4). 면을 칠해 뒤로 지나가는 폼이 비치지 않는다.
+        ⚠️ **`lg` 이상은 sticky가 아니다**(#221 · D24) — 1280에서 바가 목록 위에 떠 다음 권한 행이 비쳤다. 그 폭의 클래스는 R 배치 이전과 바이트로 같다.
         ⚠️ **사유(상태 슬롯)는 `lg` 미만에서 버튼 아래의 보이는 `text-xs` 줄이다**(D10 — `title`에 기대지 않는다) — 버튼이 폭을 채우고 줄이 그 밑에 선다.
       */}
-      <div className="bg-background sticky bottom-0 flex w-full flex-col gap-3 pt-2 pb-2">
+      <div className="flex w-full flex-col gap-3 pt-2 max-lg:bg-background max-lg:sticky max-lg:bottom-0 max-lg:pb-2">
         {failure !== null && (
           <div id={errorId}>
             <Alert variant="danger">{failure === "deny" ? m.oauthAuthorize.denyFailed : m.oauthAuthorize.failed}</Alert>

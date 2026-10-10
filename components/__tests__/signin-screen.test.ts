@@ -313,7 +313,11 @@ describe("루트 viewport — 키보드가 dvh를 줄인다 (D20)", () => {
     expect(layout).toMatch(/export const viewport: Viewport = \{[^}]*interactiveWidget: "resizes-content"/);
   });
 
-  it("동의 스크롤러가 sticky CTA 높이만큼 `scroll-pb`를 든다 — Tab 포커스를 바가 덮지 않는다", () => {
-    expect(read("app/oauth/authorize/page.tsx")).toMatch(/overflow-y-auto scroll-pb-\d+/);
+  /** sticky CTA가 `lg` 미만뿐이라 `scroll-pb`도 `lg` 미만뿐이다(#221 · D24) — `lg` 이상 스크롤러 클래스는 R 배치 이전(`3a1afe68`)과 바이트로 같다. */
+  it("동의 스크롤러가 `lg` 미만에서만 sticky CTA 높이만큼 `scroll-pb`를 든다 — Tab 포커스를 바가 덮지 않는다", () => {
+    const scroller = /<div className="([^"]*overflow-y-auto[^"]*)"/.exec(read("app/oauth/authorize/page.tsx"))?.[1] ?? "";
+    const tokens = scroller.split(" ").filter(Boolean);
+    expect(tokens.some((token) => /^max-lg:scroll-pb-\d+$/.test(token))).toBe(true);
+    expect(tokens.filter((token) => !token.startsWith("max-lg:")).join(" ")).toBe("min-h-0 w-full flex-1 overflow-y-auto px-8 pt-12 pb-8");
   });
 });

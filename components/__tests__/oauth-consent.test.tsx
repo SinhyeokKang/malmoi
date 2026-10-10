@@ -284,10 +284,16 @@ it("actual Not you form remains the sole trailing gap-1 slot and is natively loc
  * 사유(상태 슬롯)는 `lg` 미만에서 버튼 **아래** 보이는 `text-xs` 줄이고 `lg` 이상은 지금 형(버튼 왼쪽)이다.
  */
 describe("좁은 폭 배치", () => {
-  it("CTA 묶음이 sticky bottom이다", async () => {
+  /**
+   * ⚠️ **sticky는 `lg` 미만에서만이다**(#221 · D24) — 1280에서도 바가 목록 위에 떠 다음 권한 행이 비쳤다(spec "1280은 지금 그대로" 위반).
+   * `lg` 이상 클래스는 R 배치 이전(dev `3a1afe68`)과 바이트로 같다 — `max-lg:` 토큰을 걷으면 옛 문자열이다.
+   */
+  it("CTA 묶음은 `lg` 미만에서만 sticky bottom이고 `lg` 이상은 옛 클래스 그대로다", async () => {
     await mount();
     const bar = find<HTMLElement>(document.body, "[data-consent-status]").parentElement!.parentElement!;
-    expect(bar.className.split(" ")).toEqual(expect.arrayContaining(["sticky", "bottom-0"]));
+    const tokens = bar.className.split(" ").filter(Boolean);
+    expect(tokens).toEqual(expect.arrayContaining(["max-lg:sticky", "max-lg:bottom-0", "max-lg:bg-background", "max-lg:pb-2"]));
+    expect(tokens.filter((token) => !token.startsWith("max-lg:")).join(" ")).toBe("flex w-full flex-col gap-3 pt-2");
   });
 
   it("`lg` 미만에서 사유 줄이 버튼 아래로 쌓이고 버튼이 폭을 채운다 — `lg` 이상은 한 줄", async () => {
