@@ -71,4 +71,5 @@ Run `run_ea6cb60e2632`. 파동 1 착수 2026-10-11.
 | B2 | `ctx_7623878d5078` → fix1 `ctx_10efdf4adb89` | `ra-b2` | dev `cf1385a4`..`def752f0` push · 리뷰 🔴0 🟡4 → fix1 반영(+[Try again] O19), 재리뷰 생략(🟡만) |
 | B3 | `ctx_f2f02378f9aa` → fix1 `ctx_2043fc02dc5f` | `ra-b3` | dev `3cfaa913`..`e926daee` push · 리뷰 🔴0 🟡7 → fix1 반영(Y7 남김), 재리뷰 생략(지휘자 판단 — 🟡만) |
 | B4 | `ctx_221863986e06` | `ra-b4` | dev `0e7bafd4`..`ddf4a9b1` push(11커밋, 키 마지막) · 리뷰 🔴0 🟡5 → fix1 반영, 재리뷰 생략(🟡만), 키 커밋은 지휘자 diff 확인 |
-| B1b | `ctx_9197b39ecb78`(B1 터미널 재사용) | `ra-b1` | 진행 — B2·B4 dev 통합 직후 새 Task로 보냄 |
+| B1b | `ctx_9197b39ecb78`(B1 터미널 재사용) | `ra-b1` | dev `566861ea` push(셸 하한·`--spacing-shell-min` 제거, 지휘자 diff 확인) |
+| DS | `ctx_bbb8143848a2` | main 체크아웃 | 진행 — 이 동안 cherry-pick·build 금지 |
