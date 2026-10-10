@@ -59,6 +59,8 @@ single에서 상세를 여는 같은 키 재열기·다른 키 선택·다른 �
 | Publish/Sync/Revert | 기존 확인/진행 흐름 | unsaved/lock 판정 우회 없음 |
 | 브라우저 뒤로/앞으로 | 기존 history 이동 | useLeaveGuard와 복구 사본 유지; 새 가짜 history entry 없음 |
 
+**큰 모달은 공개 규칙을 그대로 받는다**(2026-10-10 사용자): 앱의 LargeModal 소비자(Publish·로그 상세·Add sources·소스 상세·CI·초대·MCP 토큰·New project)는 `lg` 미만에서 전체 화면 시트다(공개 design §1 큰 모달 규칙). 규칙은 `large-modal.tsx` 그릇 상수 한 곳에 있고 P2가 넣는다 — 앱 배치는 모달별로 그릇·여백·footer를 다시 지정하지 않고, 시트 안 본문 배치(반복 행 적층·두 판→순차 판·긴 식별자 줄바꿈)와 소비자별 실측만 맡는다.
+
 **소프트 키보드**: 단일 판 상세의 Save·Revert 줄은 상세 스크롤 영역 밖 sticky footer로 둔다 — 입력이 키보드에 가려도 Save가 키보드 바로 위에 선다. 모달은 공개 design §3의 `dvh`·sticky footer를 따른다.
 
 목록 버튼과 history 관계는 위 표대로 확정됐다. 판 전환은 history entry를 추가하지 않으며, 같은 키 다시 열기와 dirty 보존을 구현 전 회귀 테스트로 고정한다. 기존 `useLeaveGuard`는 Navigation API index가 없는 브라우저의 popstate를 차단하지 못한다는 제한을 명시하고 있다. 반응형 완료가 이를 해결했다고 주장하지 않는다. 해당 브라우저의 이탈·복구 실물 결과를 기록하고 손실이 확인되면 앱 입력 완료 판정을 보류해 별도 결함으로 분리한다.
@@ -67,7 +69,7 @@ single에서 상세를 여는 같은 키 재열기·다른 키 선택·다른 �
 
 ## 4. 온보딩·관리
 
-`components/onboarding/steps/files.tsx`의 FILES_PANEL_WIDTH952는 모달1024 고정 가정이다. 공개 단계(P2)가 LargeModal 폭을 바꾸면 A5 전까지 이 분모가 실제 모달 폭과 어긋나므로 P2 실측이 앱 1280 미만에서 이 단계를 본다. 새 제안 `lib/onboarding/files-layout.ts`의 순수 판정은 핸들을 빼기 전 측정한 body content box 너비 `bodyWidth`를 입력받는다. 후보 하한200·핸들8·샘플 최소400을 합한608을 기준으로(샘플 최소400은 지금 코드에 없는 **새 값**이다 — 주석 `files.tsx:57`에만 있고 오른쪽 Panel(`:278`)에 `minSize`가 없다) `bodyWidth < 608`이면 후보/샘플 순차 판, 이상이면 두 판이다. 두 판의 비율을 계산할 때만 `available = bodyWidth - 8`을 산출하여 기존 `panelConstraints`에 전달한다. 후보 기본폭240과 사용자 선택폭은 기존 상한320 및 샘플400을 남기는 범위로 clamp한다. 따라서 bodyWidth608에서는 available600·후보200·샘플400이 된다.608은 초기 설계값이며(현재 주석의 "320 상한이면 우측 400 이상"은 952 분모로 계산하면 우측 632라 수치 근거가 되지 않는다) 시안 수령 때 실제 sample 툴바까지 검사해 확정한다. 경계 테스트와 실측의607/608/609는 모두 핸들을 포함한 body content box 너비다.
+`components/onboarding/steps/files.tsx`의 FILES_PANEL_WIDTH952는 모달1024 고정 가정이다. 공개 단계(P2)의 큰 모달 규칙으로 `lg` 미만 모달 폭이 뷰포트 폭(시트)이 되면 A5 전까지 이 분모가 실제 모달 폭과 어긋나므로 P2 실측이 앱 1280 미만에서 이 단계를 본다. 새 제안 `lib/onboarding/files-layout.ts`의 순수 판정은 핸들을 빼기 전 측정한 body content box 너비 `bodyWidth`를 입력받는다. 후보 하한200·핸들8·샘플 최소400을 합한608을 기준으로(샘플 최소400은 지금 코드에 없는 **새 값**이다 — 주석 `files.tsx:57`에만 있고 오른쪽 Panel(`:278`)에 `minSize`가 없다) `bodyWidth < 608`이면 후보/샘플 순차 판, 이상이면 두 판이다. 두 판의 비율을 계산할 때만 `available = bodyWidth - 8`을 산출하여 기존 `panelConstraints`에 전달한다. 후보 기본폭240과 사용자 선택폭은 기존 상한320 및 샘플400을 남기는 범위로 clamp한다. 따라서 bodyWidth608에서는 available600·후보200·샘플400이 된다.608은 초기 설계값이며(현재 주석의 "320 상한이면 우측 400 이상"은 952 분모로 계산하면 우측 632라 수치 근거가 되지 않는다) 시안 수령 때 실제 sample 툴바까지 검사해 확정한다. 경계 테스트와 실측의607/608/609는 모두 핸들을 포함한 body content box 너비다.
 
 후보/샘플 전환은 wizard step을 진행시키지 않는다. 후보 선택·adapter·기준언어·manual 입력·샘플 로딩/실패/만료는 기존 부모 상태에 남는다. 샘플 보기/후보 복귀를 별도 버튼으로 두고 Next는 기존 검증만 따른다. 단순 resize로 탐지·샘플 fetch를 다시 실행하지 않는다. 다수 후보·빈 후보·읽기 실패·sample-expired를 유지한다.
 
