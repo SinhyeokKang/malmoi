@@ -225,13 +225,18 @@ export function LargeModal({
             {children}
           </div>
 
-          {!flush && <footer className="border-divider flex items-center justify-between gap-2 border-t px-8 py-6 max-lg:px-4">
-            <span className="text-muted-foreground text-xs leading-body">{notice ?? (step === undefined ? null : m.newProject.modal.step(step))}</span>
+          {/*
+            ⚠️ **`lg` 미만은 감긴다**(#220 — 375 소스 상세 바닥이 394로 넘쳤다). 문구 칸은 `basis-0 grow`라 줄 나눔이 최소 내용 폭으로 판정된다 —
+            글 문구는 지금처럼 버튼 옆에서 줄바꿈하고, 버튼을 든 문구(Remove source)만 위 줄로 오른다. 감기면 동작 묶음은 `ml-auto`로 오른쪽에 남는다.
+            소비자는 고치지 않는다. `lg` 이상 클래스는 그대로다.
+          */}
+          {!flush && <footer className="border-divider flex items-center justify-between gap-2 border-t px-8 py-6 max-lg:px-4 max-lg:flex-wrap max-lg:gap-y-3">
+            <span className="text-muted-foreground text-xs leading-body max-lg:basis-0 max-lg:grow">{notice ?? (step === undefined ? null : m.newProject.modal.step(step))}</span>
             {/*
               ⚠️ **소비자의 `actions`도 같은 무리에 싼다** (malmoi#87) — fragment를 넘기면 버튼들이 바닥의 직계 자식이 되어
               `justify-between`이 [Cancel]을 가운데로 띄웠다. `null`(Publish의 버튼 없는 갈래)이면 빈 무리를 세우지 않는다.
             */}
-            {actions === null || actions === false ? null : <div className="flex items-center gap-2">{actions}</div>}
+            {actions === null || actions === false ? null : <div className="flex items-center gap-2 max-lg:ml-auto">{actions}</div>}
           </footer>}
         </Primitive.Content>
       </Primitive.Portal>

@@ -304,9 +304,11 @@ it.each([undefined, null, false, <></>, <span>Hint</span>])("notice preserves nu
   await render(shell({ notice }));
   const footer = find<HTMLElement>(dialog(), "footer");
   expect(footer.children).toHaveLength(2);
-  expect(footer.firstElementChild?.className).toBe("text-muted-foreground text-xs leading-body");
+  // `lg` 미만 감김 토큰(#220 — `max-lg:`)은 걷고 견준다 — `lg` 이상 클래스는 그대로다(감김 계약은 `large-modal-sheet.test.tsx`).
+  const wide = (node: Element | null) => node?.className.split(" ").filter((token) => !token.startsWith("max-lg:")).join(" ");
+  expect(wide(footer.firstElementChild)).toBe("text-muted-foreground text-xs leading-body");
   expect(footer.firstElementChild?.textContent).toBe(notice == null ? "Step 1 of 4" : typeof notice === "boolean" ? "" : notice.props.children ?? "");
-  expect(footer.lastElementChild?.className).toBe("flex items-center gap-2");
+  expect(wide(footer.lastElementChild)).toBe("flex items-center gap-2");
 });
 
 it("className overrides the same Content root while body scrolling and focus stay independent", async () => {
