@@ -213,7 +213,7 @@ export function PendingInvitations({
                         </span>
                         {/* ⚠️ 잘리는 유일한 가변 칸이라 전문을 `title`로 든다 (malmoi#90) — 1280에서 112px라 12자 이름부터 잘리고,
                             초대한 사람을 말하는 자리가 이 칸뿐이다. 보이는 문장이 곧 접근 이름이라 스크린리더는 원래 전문을 읽는다. */}
-                        <span className="text-muted-foreground min-w-0 truncate text-xs @max-form:whitespace-normal @max-form:wrap-anywhere" title={m.members.pending.invitedBy(invitation.invitedByName ?? m.members.pending.unknownInviter)}>
+                        <span className="text-muted-foreground min-w-0 truncate text-xs @max-form:whitespace-normal @max-form:wrap-anywhere pointer-coarse:whitespace-normal pointer-coarse:wrap-anywhere" title={m.members.pending.invitedBy(invitation.invitedByName ?? m.members.pending.unknownInviter)}>
                           {m.members.pending.invitedBy(invitation.invitedByName ?? m.members.pending.unknownInviter)}
                         </span>
                       </>

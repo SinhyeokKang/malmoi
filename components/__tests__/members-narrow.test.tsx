@@ -71,6 +71,9 @@ describe("MemberRow — 640 미만 두 줄", () => {
       const node = find<HTMLElement>(container, selector);
       expect(node.className).toMatch(/@max-form:whitespace-normal\b/);
       expect(node.className).toMatch(/@max-form:wrap-anywhere/);
+      // 카드 640 이상이어도 터치 포인터면 감긴다(orch O18 · spec A-06 "터치에서도") — 마우스 배치는 그대로 말줄임 + `title`이다.
+      expect(node.className).toMatch(/\bpointer-coarse:whitespace-normal\b/);
+      expect(node.className).toMatch(/\bpointer-coarse:wrap-anywhere\b/);
     }
   });
 });
@@ -84,6 +87,6 @@ describe("소비자 — 고정 열이 좁은 폭에서 풀린다", () => {
 
   it("초대한 사람 칸은 `title`만으로 전문을 주지 않는다 — 좁은 폭에서 감긴다", () => {
     const pending = read("components/members/pending-invitations.tsx");
-    expect(pending).toMatch(/min-w-0 truncate text-xs @max-form:whitespace-normal @max-form:wrap-anywhere/);
+    expect(pending).toMatch(/min-w-0 truncate text-xs @max-form:whitespace-normal @max-form:wrap-anywhere pointer-coarse:whitespace-normal pointer-coarse:wrap-anywhere/);
   });
 });

@@ -89,8 +89,8 @@ export function MemberRow({
           <span
             data-primary
             className={cn(
-              // 좁은 폭에서는 감긴다 — 잘린 주소의 전문이 `title`(터치에서 안 보인다)에만 있지 않게(spec A-06).
-              "truncate text-base @max-form:whitespace-normal @max-form:wrap-anywhere",
+              // 좁은 폭·터치 포인터에서는 감긴다 — 잘린 주소의 전문이 `title`(터치에서 안 보인다)에만 있지 않게(spec A-06 · orch O18). 마우스 넓은 폭은 말줄임 그대로다.
+              "truncate text-base @max-form:whitespace-normal @max-form:wrap-anywhere pointer-coarse:whitespace-normal pointer-coarse:wrap-anywhere",
               identity.unnamed ? "text-muted-foreground" : "font-medium",
             )}
           >
@@ -100,7 +100,7 @@ export function MemberRow({
           </span>
           {/* ⚠️ **2행이 없으면 그 자리를 그리지 않는다** — 빈 줄은 행 높이만 늘리고 읽을 것을 안 늘린다. */}
           {identity.secondary !== null && (
-            <span data-secondary className="text-muted-foreground truncate text-sm @max-form:whitespace-normal @max-form:wrap-anywhere">
+            <span data-secondary className="text-muted-foreground truncate text-sm @max-form:whitespace-normal @max-form:wrap-anywhere pointer-coarse:whitespace-normal pointer-coarse:wrap-anywhere">
               {identity.secondary}
             </span>
           )}
