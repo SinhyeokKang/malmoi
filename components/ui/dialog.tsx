@@ -188,6 +188,11 @@ export function DialogContent({
            */
           "bg-background border-border fixed top-1/2 left-1/2 z-50 w-full max-w-110 -translate-x-1/2 -translate-y-1/2",
           "shadow-medium rounded-lg border",
+          /*
+            ⚠️ **`lg` 미만은 좌우 16을 남기고 본문만 스크롤한다** (responsive-app O13 · 시안 AT8b) — `w-full`이면 375에서 테두리가 화면 끝에 붙었고, 긴 경고·
+            before → after 목록이 화면 높이를 넘으면 footer(확정 버튼)가 밖으로 나갔다. **새 값은 전부 `max-lg:` 아래다** — `lg` 이상은 바이트 불변이다.
+          */
+          "max-lg:flex max-lg:max-h-[calc(100dvh-2rem)] max-lg:w-[calc(100%-2rem)] max-lg:flex-col",
           className,
         )}
         {...props}
@@ -216,7 +221,7 @@ export function DialogContent({
         onOpenAutoFocus={(event) => openAutoFocus(event, onOpenAutoFocus)}
         onCloseAutoFocus={(event) => closeAutoFocus(event, onCloseAutoFocus)}
       >
-        <header className="flex items-start justify-between gap-2 p-4 pb-2">
+        <header className="flex items-start justify-between gap-2 p-4 pb-2 max-lg:shrink-0">
           <Primitive.Title className="text-base font-medium">{title}</Primitive.Title>
           <DialogClose asChild>
             {/* 닫기는 `CloseButton` 한 형이다(2026-10-01 — 옛 36 정방). 음수 마진은 캔버스의 `-6px -8px 0 0`이다. */}
@@ -229,6 +234,10 @@ export function DialogContent({
           `leading-relaxed` 1.625). DESIGN §4.2가 "스케일에 대응값이 없을 때만" 임의값을 허용하고
           여기가 그 경우다. 기본값(`text-xs`의 1.333 = 17.33px)이면 두 줄짜리 질문이 붙어 읽힌다.
         */}
+        {/*
+          ⚠️ **스크롤 칸은 설명과 본문을 함께 든다** (O13) — Revert처럼 설명이 곧 긴 목록인 소비자가 있다. `lg` 이상은 스타일 없는 블록이라 배치가 그대로다.
+        */}
+        <div data-dialog-scroll="" className="max-lg:min-h-0 max-lg:overflow-y-auto">
         {description !== undefined && (
           <Primitive.Description className="text-muted-foreground px-4 text-xs leading-body">
             {description}
@@ -252,8 +261,12 @@ export function DialogContent({
             {children}
           </div>
         )}
-        {/* ⚠️ 푸터 위 간격이 16이다 — `pt-2`(8)로 붙어 있었다. */}
-        {actions !== undefined && <footer className="flex justify-end gap-2 p-4">{actions}</footer>}
+        </div>
+        {/*
+          ⚠️ 푸터 위 간격이 16이다 — `pt-2`(8)로 붙어 있었다.
+          ⚠️ **`lg` 미만은 감긴다** (O13) — 긴 언어의 확정 라벨이 넘치면 다음 줄로 가되 오른쪽 정렬·순서·첫 포커스(Cancel)는 그대로다. 전폭 세로 쌓기로 바꾸지 않는다.
+        */}
+        {actions !== undefined && <footer className="flex justify-end gap-2 p-4 max-lg:shrink-0 max-lg:flex-wrap">{actions}</footer>}
       </Primitive.Content>
     </Primitive.Portal>
   );

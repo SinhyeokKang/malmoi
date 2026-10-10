@@ -21,9 +21,14 @@ it.each([undefined, null, false, <></>, <button data-initial-focus>Cancel</butto
   expect(body.className).toBe(actions === undefined ? "space-y-2 p-4 text-sm" : "space-y-2 p-4 pb-0 text-xs leading-body");
   expect(footer === null).toBe(actions === undefined);
   if (footer) {
-    expect(footer.className).toBe("flex justify-end gap-2 p-4");
-    expect(body.nextElementSibling).toBe(footer);
-    expect(footer.previousElementSibling).toBe(body);
+    // `lg` 미만만 감기고 줄지 않는다(responsive-app O13) — `lg` 이상의 값은 그대로다.
+    expect(footer.className).toBe("flex justify-end gap-2 p-4 max-lg:shrink-0 max-lg:flex-wrap");
+    // 본문은 설명과 함께 스크롤 칸 안이고(O13), 그 칸 바로 다음이 footer다.
+    const scroller = body.parentElement!;
+    expect(scroller.dataset.dialogScroll).toBe("");
+    expect(body.nextElementSibling).toBeNull();
+    expect(scroller.nextElementSibling).toBe(footer);
+    expect(footer.previousElementSibling).toBe(scroller);
   }
   expect(dialog.querySelector('[id][class*="leading-body"]')?.textContent).toBe("Description");
   if (footer?.querySelector("button")) expect(document.activeElement).toBe(footer.querySelector("button"));
