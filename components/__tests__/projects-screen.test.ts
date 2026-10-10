@@ -481,6 +481,17 @@ describe("Projects 행 — 두 줄 · 미터 감김", () => {
     expect(BODY).not.toMatch(/\b(sm|md|lg|xl|2xl):/);
   });
 
+  /** 머리 둘째 줄의 검색 칸 — 골격이 256 고정이면 머리 그릇 430 아래에서 실물만 줄어 도착할 때 폭·줄 수가 갈린다(A-09). */
+  it("골격 머리 검색 칸이 실물과 같은 줄어드는 256 칸이다", () => {
+    const real = code("components/projects/project-list.tsx");
+    const skeleton = code("app/(edit)/projects/(list)/loading.tsx");
+    for (const source of [real, skeleton]) {
+      expect(source).toContain('<div className="flex min-w-0 items-center gap-3">');
+      expect(source).toContain('<div className="w-64 min-w-0 shrink">');
+    }
+    expect(skeleton).not.toContain('<Skeleton className="h-9 w-64" />');
+  });
+
   it("골격도 두 줄이다 — 유동 이름 칸 · 둘째 줄 미터", () => {
     const skeleton = code("app/(edit)/projects/(list)/loading.tsx");
     expect(skeleton).not.toContain("w-[420px]");

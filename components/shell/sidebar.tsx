@@ -252,7 +252,7 @@ export function Sidebar({ memberships, userName, drawer = false }: {
 }
 
 /**
- * **LNB 서랍의 바닥 고정 줄** (responsive-app 시안 AT1b · AT1d) — 몸통만 스크롤하고 이 줄은 남는다(`DrawerContent`의 `footer`). 헤더에서 빠진
+ * **LNB 서랍의 바닥 고정 줄** (responsive-app 시안 AT1b · AT1d) — 몸통만 스크롤하고 이 줄은 남는다(`DrawerContent`의 `pinned`). 헤더에서 빠진
  * `New project`가 첫 행이고, 프로젝트 밖에서는 목록 구역이 이미 그것으로 끝나 넣지 않는다(`navDrawerFooterItems`). 공개 서랍 바닥의 언어·테마는 없다 —
  * 앱은 Preferences가 든다.
  */

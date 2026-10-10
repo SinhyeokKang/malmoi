@@ -52,9 +52,12 @@ export default async function ProjectsLoading() {
             <Skeleton size="lg" className="w-40" />
           </div>
           {/* 실물처럼 검색·버튼이 한 묶음이다 — 640 미만에서 함께 둘째 줄로 내려간다(A-09). */}
-          <div className="flex items-center gap-3">
-            <Skeleton className="h-9 w-64" />
-            <Skeleton className="h-9 w-32" />
+          {/* 검색 칸도 실물처럼 줄어드는 256이다(`project-list.tsx`) — 머리 그릇 430 아래에서 골격만 256 고정이면 둘째 줄이 넘치고 도착할 때 폭이 튄다. */}
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="w-64 min-w-0 shrink">
+              <Skeleton className="h-9 w-full" />
+            </div>
+            <Skeleton className="h-9 w-32 shrink-0" />
           </div>
         </div>
       </PanelHeader>

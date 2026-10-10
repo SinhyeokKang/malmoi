@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, forwardRef, useImperativeHandle, useState, type ReactNode } from "react";
+import { act, forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -16,15 +16,36 @@ import { render } from "./helpers/dom";
  *
  * ⚠️ **라이브러리를 대역으로 바꾼다** — jsdom에서는 `react-resizable-panels`가 패널을 등록하지 못해 `setLayout`이 던지고 `onResize`가 한 번도 안 돈다.
  * 이 파일이 재는 것은 셸이 **언제 무엇을 부르나**이고, 실제 드래그·배치는 브라우저 실측이 잰다.
+ * ⚠️ **대역도 실제 라이브러리의 콜백 순서 셋을 낸다**(B1 리뷰 🟡4) — ① 마운트 때 `onResize(defaultSize)` ② 우리 `setLayout` 뒤 `onResize(layout[0])`
+ * ③ 제약(`minSize`)이 바뀌어 지금 몫이 그 아래면 재검증 `onResize`(중간점 아래는 접힘, 위는 최소 — 좁은 폭의 자동 보정). 셋 다 사용자의 의사가 아니라서
+ * 쿠키·선호폭을 바꾸면 안 된다 — 손으로 부르는 `onResize`만 재면 그 되돌아오는 길이 테스트 밖이다.
  */
-const lib = vi.hoisted(() => ({ setLayout: vi.fn(), onResize: null as ((size: number) => void) | null }));
+type PanelProps = { children: ReactNode; className?: string; onResize?: (size: number) => void; defaultSize?: number; minSize?: number; collapsedSize?: number; collapsible?: boolean };
+const lib = vi.hoisted(() => ({ setLayout: vi.fn(), onResize: null as ((size: number) => void) | null, size: 0 }));
 vi.mock("@/components/ui/resizable", () => ({
   ResizablePanelGroup: forwardRef<{ setLayout: (layout: number[]) => void }, { children: ReactNode }>(function Group({ children }, ref) {
     useImperativeHandle(ref, () => ({ setLayout: lib.setLayout }));
     return <div data-group>{children}</div>;
   }),
-  ResizablePanel: ({ children, className, onResize }: { children: ReactNode; className?: string; onResize?: (size: number) => void }) => {
+  ResizablePanel: function Panel({ children, className, onResize, defaultSize, minSize, collapsedSize, collapsible }: PanelProps) {
     if (onResize) lib.onResize = onResize;
+    const tracked = onResize !== undefined;
+    useLayoutEffect(() => {
+      if (!tracked) return;
+      lib.size = defaultSize ?? 0;
+      lib.onResize?.(lib.size);
+      // 마운트 한 번 — 실제 라이브러리도 등록 때 한 번 낸다.
+    }, []);
+    const lastMin = useRef(minSize);
+    useEffect(() => {
+      if (!tracked || lastMin.current === minSize) return;
+      lastMin.current = minSize;
+      if (minSize === undefined || lib.size >= minSize) return;
+      // 실제 규칙(`resizePanel` — 2.1.9): 접을 수 있으면 접힘·최소의 중간점 아래만 접고, 그 위는 최소로 올린다.
+      const collapsed = collapsedSize ?? 0;
+      lib.size = collapsible && lib.size < (collapsed + minSize) / 2 ? collapsed : minSize;
+      lib.onResize?.(lib.size);
+    }, [tracked, minSize, collapsedSize, collapsible]);
     return <div className={className}>{children}</div>;
   },
   ResizableHandle: ({ className }: { className?: string }) => <div role="separator" className={className} />,
@@ -42,8 +63,11 @@ let observe: ((width: number) => Promise<void>) | null = null;
 beforeEach(() => {
   wide = true;
   listeners.clear();
-  lib.setLayout.mockClear();
+  lib.setLayout.mockReset();
+  // ② 우리 `setLayout`도 실제처럼 `onResize`로 되돌아온다.
+  lib.setLayout.mockImplementation((layout: number[]) => { lib.size = layout[0] ?? 0; lib.onResize?.(lib.size); });
   lib.onResize = null;
+  lib.size = 0;
   document.cookie = "malmoi-sidebar-collapsed=; Path=/; Max-Age=0";
   vi.stubGlobal("matchMedia", (query: string) => ({
     media: query,
@@ -102,6 +126,10 @@ describe("셸 패널 — 좁은 모드", () => {
     await group(700);
     await group(600);
     expect(lib.setLayout).not.toHaveBeenCalled();
+    // ③ 좁아진 폭에서 최소가 올라 대역이 재검증 `onResize`를 냈다(몫이 최소로 올라감) — 그래도 접힘·쿠키는 그대로다.
+    expect(lib.size).toBe(panelPercent(600, 200));
+    expect(document.querySelector("aside")?.dataset.collapsed).toBe("false");
+    expect(document.cookie).not.toContain("malmoi-sidebar-collapsed");
     await group(1200);
     expect(lib.setLayout).not.toHaveBeenCalled();
     await setWide(true);
@@ -126,6 +154,43 @@ describe("셸 패널 — 좁은 모드", () => {
     expect(document.cookie).not.toContain("malmoi-sidebar-collapsed");
     await setWide(true);
     expect(lib.setLayout).toHaveBeenLastCalledWith([24, 76]);
+  });
+
+  it("넓힘이 부른 `setLayout`이 `onResize`로 돌아와도 선호폭·쿠키가 그대로다 — 좁혔다 넓히기를 두 번 해도 같은 240", async () => {
+    await mount();
+    await group(1000);
+    expect(lib.setLayout).toHaveBeenLastCalledWith([24, 76]);
+    for (let round = 0; round < 2; round += 1) {
+      await setWide(false);
+      await group(700);
+      await setWide(true);
+      expect(lib.setLayout).toHaveBeenLastCalledWith([panelPercent(700, 240), 100 - panelPercent(700, 240)]);
+      await group(1000);
+      expect(lib.setLayout).toHaveBeenLastCalledWith([24, 76]);
+    }
+    expect(document.querySelector("aside")?.dataset.collapsed).toBe("false");
+    expect(document.cookie).not.toContain("malmoi-sidebar-collapsed");
+  });
+
+  it("아주 좁아져 재검증이 접힘으로 스냅해도 사용자의 접힘이 아니다 — 넓어지면 펼친 240", async () => {
+    wide = false;
+    await mount();
+    await group(700);
+    await group(150);
+    expect(lib.size).toBe(panelPercent(150, SHELL_SIDEBAR_COLLAPSED_PX));
+    expect(document.querySelector("aside")?.dataset.collapsed).toBe("false");
+    expect(document.cookie).not.toContain("malmoi-sidebar-collapsed");
+    await setWide(true);
+    await group(1000);
+    expect(lib.setLayout).toHaveBeenLastCalledWith([24, 76]);
+  });
+
+  it("마운트 때의 `onResize`는 쿠키를 쓰지 않는다 — 접어 둔 셸도 펼친 셸도", async () => {
+    await mount(true);
+    expect(lib.onResize).not.toBeNull();
+    expect(document.cookie).not.toContain("malmoi-sidebar-collapsed");
+    await mount(false);
+    expect(document.cookie).not.toContain("malmoi-sidebar-collapsed");
   });
 
   it("접어 둔 사용자는 넓어지면 접힌 40으로 돌아온다", async () => {

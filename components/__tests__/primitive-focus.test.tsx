@@ -370,3 +370,27 @@ it("DrawerContent 소비자가 둘이고 둘 다 닫힘 복귀를 메뉴 버튼�
   expect(consumers.map(({ path }) => path).sort()).toEqual(["components/public-shell/nav-drawer.tsx", "components/shell/nav-drawer.tsx"]);
   for (const { path, text } of consumers) expect(text, path).toMatch(/\(target \?\? menu\.current\)\?\.focus\(\)/);
 });
+
+/**
+ * **좁아지며 숨는 묶음의 포커스 이관(`useNarrowHandoff`) 소비자 전수** — 공개 헤더 `WideOnly`·`/docs` 고정 내비(responsive-public)와 앱 헤더
+ * `AppWideOnly`·앱 고정 LNB(responsive-app). 각자 "숨을 때 포커스가 대상(메뉴 버튼·캡슐)으로 간다"는 DOM 테스트를 갖는다 —
+ * `public-nav-drawer.test.tsx` · `docs-responsive.test.tsx` · `app-nav-drawer.test.tsx`. 새 소비자가 생기면 이 목록이 red다.
+ */
+it("useNarrowHandoff 소비자가 넷이다", () => {
+  const ROOT = process.cwd();
+  const walk = (dir: string): string[] => readdirSync(dir).flatMap((name) => {
+    const path = join(dir, name);
+    if (statSync(path).isDirectory()) return name === "__tests__" ? [] : walk(path);
+    return /\.tsx?$/.test(name) ? [path] : [];
+  });
+  const consumers = ["app", "components"].flatMap((d) => walk(join(ROOT, d)))
+    .map((path) => ({ path: relative(ROOT, path), text: readFileSync(path, "utf8") }))
+    .filter(({ path, text }) => path !== "components/shell/narrow-handoff.ts" && /\buseNarrowHandoff\(/.test(text))
+    .map(({ path, text }) => `${path} ×${text.match(/\buseNarrowHandoff\(/g)?.length ?? 0}`);
+  expect(consumers.sort()).toEqual([
+    "components/docs/nav-sheet.tsx ×1",
+    "components/public-shell/nav-drawer.tsx ×1",
+    "components/shell/nav-drawer.tsx ×1",
+    "components/shell/shell-panels.tsx ×1",
+  ]);
+});
