@@ -373,3 +373,30 @@ describe("번역 화면 — 연결 판정", () => {
     expect(workspace).toContain("paused={!syncAvailable || publish.pending}");
   });
 });
+
+/**
+ * 단일 판의 경계 (responsive-app design §3) — 판 표시는 CSS 리터럴(`@max-[772px]/ws`)이고 JS 판정은 `SINGLE_BELOW`다. Tailwind는 소스에 적힌 리터럴만
+ * 만들어 상수로 조립할 수 없으므로, 두 값이 갈리면 JS가 고른 폭·포커스와 CSS가 보인 판이 어긋난다(포커스가 숨은 판으로 간다).
+ */
+describe("단일 판 경계 — CSS 리터럴과 SINGLE_BELOW가 같다", () => {
+  const files = ["components/translations/workspace/workspace.tsx", "app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/translations/loading.tsx"];
+  it("작업 화면·골격의 컨테이너 경계는 전부 772이고 SINGLE_BELOW와 같다", async () => {
+    const { SINGLE_BELOW } = await import("@/lib/translations/layout");
+    for (const file of files) {
+      const widths = [...read(file).matchAll(/@(?:max|min)-\[(\d+)px\]\/ws(?:head)?:/g)].map(match => Number(match[1]));
+      expect(widths.length).toBeGreaterThan(0);
+      expect(new Set(widths)).toEqual(new Set([SINGLE_BELOW]));
+    }
+  });
+  it("컨테이너를 선언하는 요소는 같은 이름으로 묻지 않는다 (POSTMORTEM 2026-09-15 자기 참조)", () => {
+    for (const file of files) {
+      for (const match of read(file).matchAll(/className=(?:"([^"]*)"|\{cn\("([^"]*)")/g)) {
+        const classes = (match[1] ?? match[2] ?? "").split(/\s+/);
+        for (const name of ["ws", "wshead"]) {
+          if (!classes.includes(`@container/${name}`)) continue;
+          expect(classes.filter(token => token.includes(`/${name}:`))).toEqual([]);
+        }
+      }
+    }
+  });
+});

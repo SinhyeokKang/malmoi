@@ -23,11 +23,14 @@ import { basePending } from "@/lib/onboarding/base-pending";
 export function BasePendingBanner({
   baseLocale,
   declaredBaseLocale,
+  className,
 }: {
   baseLocale: string | null;
   declaredBaseLocale: string | null;
+  /** 번역 화면 단일 판의 상세에서 숨기는 CSS(responsive-app design §3 · R2) — 자리는 그대로다. */
+  className?: string;
 }) {
   const m = useMessages();
   if (!basePending({ baseLocale, declaredBaseLocale }) || declaredBaseLocale === null) return null;
-  return <Alert variant="warning">{m.translations.banner.basePending(declaredBaseLocale)}</Alert>;
+  return <Alert variant="warning" className={className}>{m.translations.banner.basePending(declaredBaseLocale)}</Alert>;
 }

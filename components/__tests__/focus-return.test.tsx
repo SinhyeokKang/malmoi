@@ -30,6 +30,10 @@ vi.mock("@/app/(edit)/projects/actions", () => ({
   changeMember: mocks.changeMember, revokeInvitation: mocks.revokeInvitation, resendInvitation: mocks.resendInvitation,
   disconnectGithub: mocks.disconnectGithub, startGithubConnectForUser: mocks.startGithubConnectForUser,
 }));
+// 번역 단일 판 그물(아래) — 작업 화면이 무는 Action·라우터. 이 파일의 다른 화면은 이것들을 부르지 않는다.
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }), useSearchParams: () => new URLSearchParams(window.location.search) }));
+vi.mock("@/app/(edit)/actions", () => ({ saveTranslationKey: vi.fn(), previewTranslationRevert: vi.fn(), revertTranslationKey: vi.fn(), triggerPullAction: vi.fn() }));
+vi.mock("@/app/(edit)/publish-actions", () => ({ loadPublishPreview: vi.fn() }));
 vi.mock("@/app/(edit)/account/actions", () => ({
   unlinkLoginMethod: mocks.unlinkLoginMethod, startLoginMethodConnect: mocks.startLoginMethodConnect, updateProfileName: mocks.updateProfileName,
   startSessionRevocation: mocks.startSessionRevocation,
@@ -286,6 +290,43 @@ describe("앱 LNB 서랍 — 닫으면 메뉴 버튼으로", () => {
       expect(document.activeElement).toBe(menu);
     } finally {
       vi.doUnmock("next/navigation");
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
+/**
+ * **번역 단일 판** (responsive-app design §3) — 판 전환으로 누른 자리가 `display:none`이 된다. 브라우저는 그 포커스를 `body`로 옮기므로(Chrome은 blur 없이)
+ * 착지가 판마다 정해져 있다: 상세로 가면 상세 제목, ‹ Keys로 돌아오면 선택 행. 판 전환·폭 왕복·트리 이동의 전수는 `translation-workspace-compact.test.tsx`다.
+ */
+describe("번역 단일 판 — 숨는 판에서 body로 빠지지 않는다", () => {
+  it("행 → 상세 제목, ‹ Keys → 선택 행", async () => {
+    vi.stubGlobal("ResizeObserver", class {
+      constructor(private readonly callback: ResizeObserverCallback) {}
+      observe() { this.callback([{ contentRect: { width: 500 } } as ResizeObserverEntry], this as unknown as ResizeObserver); }
+      disconnect() {}
+      unobserve() {}
+    });
+    // single 폭의 focus fixup — 숨는 판 안의 포커스를 버린다.
+    const hide = new MutationObserver(() => {
+      const root = document.querySelector<HTMLElement>("[data-pane]");
+      const hidden = root?.dataset.pane === "detail" ? document.querySelector("[data-pane-card]") : document.querySelector("[data-panel=detail]");
+      if (document.activeElement instanceof HTMLElement && hidden?.contains(document.activeElement)) document.activeElement.blur();
+    });
+    hide.observe(document.body, { attributes: true, attributeFilter: ["data-pane"], subtree: true });
+    try {
+      const { TranslationWorkspace } = await import("@/components/translations/workspace/workspace");
+      const { props } = await import("./helpers/workspace-props");
+      const base = props();
+      window.history.replaceState(null, "", "/projects/acme/surfaces/web/translations?ns=*&key=k1");
+      await render(<TranslationWorkspace {...base} />);
+      const row = () => document.querySelector<HTMLElement>('[data-key-row="k1"]')!;
+      await act(async () => { await userEvent.setup().click(byLabel(en.responsive.backToKeys)); });
+      expect(document.activeElement).toBe(row());
+      await act(async () => { await userEvent.setup().click(row()); });
+      expect(document.activeElement).toBe(document.querySelector("[data-detail-title]"));
+    } finally {
+      hide.disconnect();
       vi.unstubAllGlobals();
     }
   });

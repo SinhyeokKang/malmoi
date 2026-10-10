@@ -1,7 +1,7 @@
 "use client";
 import { Link as InlineLink } from "@/components/ui/link";
 import { Popover } from "@/components/ui/popover";
-import { ArrowDownToLine, Languages, RotateCcw } from "lucide-react";
+import { ArrowDownToLine, ChevronLeft, Languages, RotateCcw } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useOptimistic, useReducer, useRef, useState, useTransition, type ReactNode } from "react";
 
@@ -18,6 +18,7 @@ import { CountBadge } from "@/components/ui/count-badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
 import { EmptyState, NoMatch } from "@/components/ui/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useLandAfter, useLandAfterCommit } from "@/components/ui/focus";
 import { useArrived } from "@/components/use-arrived";
 import type { ConnectionHealth } from "@/lib/github-connect/health";
@@ -29,7 +30,8 @@ import { useMessages } from "@/components/i18n/messages-provider";
 import type { Messages } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
 import { dirtyLocales, initKeyDraft, planDraftRecovery, reduceKeyDraft, type KeyDraftAction, type KeyDraftState } from "@/lib/translations/draft";
-import { planTranslationPanelLayout, stepPanelWidth, PANEL } from "@/lib/translations/layout";
+import { clearTreeIntent, initialPane, issueTreeIntent, peekTreeIntent, reducePane, takeTreeIntent } from "@/lib/translations/compact-pane";
+import { planTranslationPanelLayout, stepPanelWidth, PANEL, type SplitLayout } from "@/lib/translations/layout";
 import { planEditorNavigation, type EditorIntent } from "@/lib/translations/navigation";
 import {
   ALL_NAMESPACES, allSourcesQuery, applyEmptyAction, DEFAULT_TRANSLATION_QUERY, emptyActions, FIRST_KEY, isAllSources, listGenerationKey, nextQuery,
@@ -42,7 +44,7 @@ import { cn } from "@/lib/utils";
 
 import { FilterMenu } from "./filter-menu";
 import { KeyList } from "./key-list";
-import { LocalePanel, LocalePanelSkeleton, type DetailView } from "./locale-panel";
+import { DetailCrumb, LanguageMenu, LocalePanel, LocalePanelSkeleton, type DetailView } from "./locale-panel";
 import { TreePanel } from "./tree-panel";
 import { useLeaveGuard } from "./use-leave-guard";
 
@@ -156,6 +158,17 @@ const STATUS_LABEL = {
   new: (m: Messages) => m.translations.workspace.filters.state.new,
 } as const satisfies Record<Status, (m: Messages) => string>;
 
+/**
+ * **단일 판의 표시 — CSS 리터럴** (responsive-app design §3). 772는 `SINGLE_BELOW`(`lib/translations/layout.ts`)와 같은 값이다 — Tailwind는 소스에 적힌
+ * 리터럴만 만들어 상수로 조립할 수 없고, `translations-screen.test.ts`가 둘을 대조한다. 판은 루트의 `data-pane`이 든다.
+ * ⚠️ **컨테이너가 둘이다** — 판은 본문(`ws`)의 자손이고 배너는 머리 블록(`wshead`)의 자손이라 한 조상을 공유하지 않는다. 두 블록은 루트의 전폭 형제이고
+ * 좌우 여백이 같아(`p-4` · `px-4`) content box가 같다. 선언 요소와 질의 요소는 늘 다르다(POSTMORTEM 2026-09-15 자기 참조).
+ */
+const SINGLE_LIST_HIDDEN = "@max-[772px]/ws:in-data-[pane=detail]:hidden";
+const SINGLE_DETAIL_HIDDEN = "@max-[772px]/ws:in-data-[pane=list]:hidden";
+/** 단일 판의 상세에서만 숨는 배너(기준 언어 대기 · 미전달 보류) — 키보드가 열리면 입력 칸 자리가 0이 된다(AT6d). Sync 잠금은 두 판 모두 선다(R2). */
+const DETAIL_PANE_HIDDEN = "@max-[772px]/wshead:in-data-[pane=detail]:hidden";
+
 const storageKey = (userId: string, slug: string) => `malmoi.translation-draft.${userId}.${slug}`;
 const widthKey = (userId: string, slug: string) => `malmoi.translation-panels.${userId}.${slug}`;
 
@@ -190,6 +203,23 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   const detail = props.detail !== null && !("absent" in props.detail) ? props.detail : null;
   const keyId = detail?.key.id;
   const detailSurface = detail?.key.surfaceSlug ?? routeSurfaceSlug;
+
+  // ── 단일 판 (responsive-app design §3) ─────────────────────────────────────
+  /*
+    판(`list`·`detail`)은 이 화면이 들고 **표시는 CSS다** — 루트 `data-pane` + 본문·머리 블록의 `@container`(772). 측정 전에도 같은 DOM이라 데스크톱 첫 렌더가
+    단일 판으로 튀지 않는다(5,000행 `loadEventEnd` 1.33초 — 한 프레임이 아니다, §1.95). JS는 split의 폭과 포커스만 고른다.
+    ⚠️ **판 전환은 URL·history를 건드리지 않는다** — 뒤로가기는 기존 이동(`useLeaveGuard`)이다.
+    ⚠️ 트리 이동 의도·재마운트 표식은 마운트 렌더에서 **읽기만** 한다 — 비우는 것은 effect다(StrictMode 두 번째 렌더).
+  */
+  const treeArrival = useRef<boolean | undefined>(undefined);
+  if (treeArrival.current === undefined) treeArrival.current = params.get("key") === FIRST_KEY && peekTreeIntent(routeSurfaceSlug, Date.now());
+  // 검색을 지워 다른 소스로 옮긴 재마운트는 검색 입력이 착지다(조건 14) — 상세로 끌고 가지 않는다.
+  const searchArrival = arrivedInApp && arrival.current?.target.kind === "search";
+  const [pane, dispatchPane] = useReducer(reducePane, undefined, () => initialPane({ key: props.query.key, treeArrival: treeArrival.current === true || searchArrival }));
+  /** 진입 착지 — 판이 보이고 폭이 single로 재어진 뒤 **한 번**이다. split으로 재어지면 버린다(split의 착지 규칙 그대로). */
+  const paneLanding = useRef<"detail" | "list" | null | undefined>(undefined);
+  if (paneLanding.current === undefined) paneLanding.current = treeArrival.current ? "list" : props.query.key !== undefined && !searchArrival ? "detail" : null;
+  useLayoutEffect(() => { clearTreeIntent(); }, []);
 
   // ── draft ────────────────────────────────────────────────────────────────
   const [draft, dispatch] = useReducer(draftReducer, undefined, () => initKeyDraft(keyId ?? "", valuesOf(detail)));
@@ -407,8 +437,12 @@ export function TranslationWorkspace(props: WorkspaceProps) {
     // 전 소스 범위면 위치를 그 키의 소스·네임스페이스로 맞춘다(조건 7) — 다른 소스면 경로가 바뀌어 재마운트된다(착지는 그 행).
     const { query: next, surfaceSlug } = selectQuery(view.query, row);
     const surface = surfaceSlug ?? view.surface;
+    // 같은 키 재열기는 이동이 아니라 판 전환이다 — `planEditorNavigation`의 `stay`가 판까지 막지 않는다(draft 그대로, URL 불변).
+    if (row.keyId === keyId) { openDetail(); return; }
     attempt({ kind: "select-key", target: row.keyId }, () => {
       listSelectedKey.current = row.keyId;
+      ownSelection.current = row.keyId;
+      openDetail();
       if (surface !== routeSurfaceSlug) landing = landingFor(surface, { kind: "row", keyId: row.keyId });
       navigate(withQuery(next, surface), "replace", { query: next, keyId: row.keyId, surface });
     });
@@ -425,6 +459,9 @@ export function TranslationWorkspace(props: WorkspaceProps) {
     const next = treeQuery(view.query, ns);
     attempt({ kind: "tree", target: `${surface}/${ns}` }, () => {
       scrollPending.current = true;
+      // 첫 키(`@first`)가 와도 목록에 남는다 — 이탈 확인을 지난 이동만 의도를 쓴다(취소는 안 쓴다).
+      issueTreeIntent(surface, Date.now());
+      dispatchPane({ type: "show-list" });
       if (surface !== routeSurfaceSlug) landing = landingFor(surface, { kind: "tree", ns });
       navigate(withQuery(next, surface), "push", { query: next, keyId: undefined, surface });
     });
@@ -649,6 +686,8 @@ export function TranslationWorkspace(props: WorkspaceProps) {
     return () => observer.disconnect();
   }, [userId, slug]);
   const layout = planTranslationPanelLayout({ area, preferredLeft });
+  const split: SplitLayout | null = layout?.mode === "split" ? layout : null;
+  const mode = layout?.mode ?? null;
   function rememberLeft(value: number) {
     setPreferredLeft(value);
     try { window.localStorage.setItem(widthKey(userId, slug), String(value)); } catch { /* 메모리 폴백 */ }
@@ -656,7 +695,90 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   const [treeOverlay, setTreeOverlay] = useState(false);
   const treeOverlayId = useId();
   const treeAnchor = useRef<HTMLButtonElement>(null);
-  const treeCollapsed = layout !== null && layout.tree === null;
+  const treeCollapsed = layout !== null && (layout.mode === "single" || layout.tree === null);
+
+  // ── 단일 판 — 전환 · 착지 · 스크롤 (design §3) ─────────────────────────────
+  const detailRef = useRef<HTMLDivElement>(null);
+  const listCardRef = useRef<HTMLDivElement>(null);
+  const detailTitleRef = useRef<HTMLHeadingElement>(null);
+  const backRef = useRef<HTMLButtonElement>(null);
+  const listScrollRef = useRef<HTMLDivElement>(null);
+  /** 이 화면이 고른 키 — 그 응답 도착은 외부 진입이 아니다(착지는 누른 순간 이미 했다 — 응답이 다시 빼앗지 않는다). */
+  const ownSelection = useRef<string | null>(null);
+  function openDetail() {
+    dispatchPane({ type: "open-key" });
+    paneLanding.current = "detail";
+  }
+  /** 상세 입력의 포커스·IME 조합 시작 — split에서도 저장된 판이 상세가 된다(좁혀도 입력 중인 칸을 숨기지 않는다). */
+  const activateDetail = () => dispatchPane({ type: "detail-input" });
+  function showList() {
+    dispatchPane({ type: "show-list" });
+    paneLanding.current = "list";
+  }
+  /** 목록 판의 착지 — 선택 행, 없으면 목록 제목(트리 서랍 닫힘 · ‹ Keys · 상세가 숨을 때). */
+  function focusListSelection() {
+    const selected = [...(listScrollRef.current?.querySelectorAll<HTMLElement>("[data-key-row]") ?? [])].find(el => el.dataset.keyRow === view.keyId);
+    (selected ?? listTitleRef.current)?.focus();
+  }
+  /*
+    서버가 그린 선택 키가 바뀌었다 — 트리 이동의 도착(`@first` + 이 화면의 의도)은 목록에 남고, 그 밖(검색·Inbox·뒤로가기)은 상세다. 키 값 변경만으로
+    상세가 되지 않는다. ⚠️ 의도는 맞든 안 맞든 비운다 — 다른 이동이 대신했으면 늦은 트리 응답이 다시 목록으로 되돌리지 못한다.
+  */
+  const seenSelection = useRef(props.query.key);
+  useLayoutEffect(() => {
+    const key = props.query.key;
+    if (seenSelection.current === key) return;
+    seenSelection.current = key;
+    const tree = takeTreeIntent(routeSurfaceSlug, Date.now()) && params.get("key") === FIRST_KEY;
+    dispatchPane({ type: "selection", key, cause: tree ? "tree" : "other" });
+    if (tree) paneLanding.current = "list";
+    else if (key !== undefined && ownSelection.current !== key) paneLanding.current = "detail";
+    ownSelection.current = null;
+  }, [props.query.key]); // eslint-disable-line react-hooks/exhaustive-deps
+  /*
+    ⚠️ **`display:none`이 된 스크롤 칸은 scrollTop을 잃는다** — 위치는 스크롤마다 ref에 적고(숨기 직전 값이 남는다), 목록이 다시 보이는 커밋에 되돌린다.
+    아래 착지보다 먼저 돈다 — 선택 행 포커스가 되돌린 자리에서 일어나야 한다.
+  */
+  const listScrollTop = useRef(0);
+  const listShown = !(mode === "single" && pane === "detail");
+  const listWasShown = useRef(listShown);
+  useLayoutEffect(() => {
+    if (listShown && !listWasShown.current && listScrollRef.current !== null) listScrollRef.current.scrollTop = listScrollTop.current;
+    listWasShown.current = listShown;
+  });
+  /*
+    **폭이 single이 되는 커밋** — 입력 중인 상세는 저장된 판보다 앞선다(조합·커서를 끊지 않는다). 그 밖엔 판 그대로이고, 숨는 판에 있던 포커스만 대응 자리로
+    옮긴다(목록 → ‹ Keys · 상세 → 선택 행). ⚠️ Chrome은 숨는 노드의 포커스를 blur 없이 `body`로 옮긴다(ARCHITECTURE §6.358) — 마지막 포커스 판으로 판정한다.
+  */
+  const lastFocusPane = useRef<"list" | "detail" | null>(null);
+  const seenMode = useRef(mode);
+  useLayoutEffect(() => {
+    const was = seenMode.current;
+    seenMode.current = mode;
+    if (mode !== "single" || was === "single") return;
+    const active = document.activeElement;
+    const detailActive = active instanceof HTMLTextAreaElement && detailRef.current?.contains(active) === true;
+    const next = reducePane(pane, { type: "resize", detailActive });
+    if (next !== pane) dispatchPane({ type: "resize", detailActive });
+    const hidden = next === "detail" ? listCardRef.current : detailRef.current;
+    const lost = active === null || active === document.body ? lastFocusPane.current === (next === "detail" ? "list" : "detail") : hidden?.contains(active) === true;
+    if (!lost) return;
+    if (next === "detail") backRef.current?.focus();
+    else focusListSelection();
+  }, [mode]); // eslint-disable-line react-hooks/exhaustive-deps
+  /**
+   * 진입 착지 — 폭이 재어지기 전엔 기다리고, single이 아니면 버린다. 판이 아직 안 바뀐 커밋(같은 effect 단계의 dispatch)이면 다음 커밋을 기다린다.
+   * 착지를 세우는 자리는 늘 그 판으로 가는 전환과 함께라, 기다린 착지가 엉뚱한 판에서 실행되지 않는다.
+   */
+  useLayoutEffect(() => {
+    const want = paneLanding.current;
+    if (want === null || want === undefined || mode === null) return;
+    if (mode === "single" && want !== pane) return;
+    paneLanding.current = null;
+    if (mode !== "single") return;
+    if (want === "detail") detailTitleRef.current?.focus();
+    else focusListSelection();
+  });
 
   // ── 머리 ──────────────────────────────────────────────────────────────────
   const noKeys = tree.projectKeyCount === 0;
@@ -747,9 +869,11 @@ export function TranslationWorkspace(props: WorkspaceProps) {
     if (!node.isConnected && (active === null || active === document.body || active === node)) treeToggle()?.focus();
   }, [treeCollapsed]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const skeletonDetail = navigating && view.keyId !== keyId;
+  const absentDetail = props.detail !== null && "absent" in props.detail ? props.detail : null;
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="border-border flex shrink-0 flex-col gap-3 border-b px-4 py-3">
+    <div data-pane={pane} className="flex h-full min-h-0 flex-col">
+      <div className="@container/wshead border-border flex shrink-0 flex-col gap-3 border-b px-4 py-3">
         <div className="flex items-center gap-3">
           <span className="inline-flex items-center gap-2">
             <h1 ref={titleRef} tabIndex={-1} className="text-lg font-medium">{m.common.nav.translations}</h1>
@@ -797,26 +921,39 @@ export function TranslationWorkspace(props: WorkspaceProps) {
           ⚠️ **두 배너는 조건부 분기 밖의 형제다** (DESIGN §6.1 · POSTMORTEM 2026-09-07) — 분기 안에 두면 `router.refresh()`가 방금 만든
           상태를 언마운트한다. 대기 배너가 먼저다: "왜 지금 보내야 하는가"가 "보내라"보다 앞이다. Sync 결과는 Sync Dialog가 든다(sync-lock S5).
         */}
-        <div className="space-y-3 empty:hidden">
+        {/*
+          ⚠️ **배너 셋은 이 자리에서 움직이지 않는다** (responsive-app design §3 · 2026-10-11 사용자 R2) — 단일 판의 상세에서는 기준 언어 대기·미전달 보류만
+          CSS로 숨는다(재마운트 0 · JS 판정 0 · SSR 자리 튐 0). Sync 잠금은 저장이 막히는 이유라 두 판 모두 선다. 잠금이 없으면 묶음째 숨겨 빈 묶음의 간격이 남지 않는다.
+          ⚠️ 간격은 `gap`이다(`space-y`가 아니다) — `display:none`이 된 형제는 gap을 받지 않는다.
+        */}
+        <div data-workspace-banners="" className={cn("flex flex-col gap-3 empty:hidden", props.writeLock === null && DETAIL_PANE_HIDDEN)}>
           <SyncLockBanner reopensBy={props.writeLock?.reopensBy ?? null} />
-          <BasePendingBanner baseLocale={props.baseLocale} declaredBaseLocale={props.declaredBaseLocale} />
-          <EditLossBanner count={props.unpublished} publishButtonId={publishButtonId} blockedReason={connectionBlock} />
+          <BasePendingBanner baseLocale={props.baseLocale} declaredBaseLocale={props.declaredBaseLocale} className={DETAIL_PANE_HIDDEN} />
+          <EditLossBanner count={props.unpublished} publishButtonId={publishButtonId} blockedReason={connectionBlock} className={DETAIL_PANE_HIDDEN} />
         </div>
       </div>
 
-      <div ref={bodyRef} className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden p-4">
-        <div className="flex h-full min-h-0" style={layout?.scrollWidth ? { minWidth: layout.scrollWidth } : undefined}>
-          <div className="border-border bg-background relative flex min-h-0 shrink-0 overflow-hidden rounded-lg border" style={layout ? { width: layout.left } : { width: PANEL.tree + PANEL.list }}>
+      <div ref={bodyRef} data-workspace-body="" className="@container/ws min-h-0 flex-1 overflow-x-auto overflow-y-hidden p-4">
+        <div className="flex h-full min-h-0">
+          {/*
+            ⚠️ **폭은 변수로 넘긴다, 인라인 `width`가 아니다** — 인라인 값은 단일 판의 `w-full`을 이긴다. 측정 전(`null`)은 데스크톱 첫 렌더 폭이고,
+            좁으면 CSS가 바로잡는다 — 미측정 상태에서 단일 판을 JS로 강제하지 않는다.
+          */}
+          <div ref={listCardRef} data-pane-card="" onFocus={() => { lastFocusPane.current = "list"; }}
+            className={cn("border-border bg-background relative flex min-h-0 w-(--list-card) shrink-0 overflow-hidden rounded-lg border @max-[772px]/ws:w-full", SINGLE_LIST_HIDDEN)}
+            style={{ "--list-card": `${split?.left ?? PANEL.tree + PANEL.list}px` } as React.CSSProperties}>
             {/* 트리 = 목록 범위다(translation-tree-range). 전 소스 검색이면 범위는 `All sources`이고 위치가 따로 표시된다. */}
             {!treeCollapsed && (
               <TreePanel tree={tree} nodes={treeNodes} surfaceSlug={view.surface} ns={shown.ns} rangeAll={rangeAll} allSources={allSourcesNode}
-                onSelect={selectTree} onSelectAll={selectAllSources} className="border-border shrink-0 border-r" width={layout?.tree ?? PANEL.tree} />
+                onSelect={selectTree} onSelectAll={selectAllSources} className="border-border shrink-0 border-r @max-[772px]/ws:hidden" width={split?.tree ?? PANEL.tree} />
             )}
             <KeyList
               list={rows}
               // 제목은 `Keys`로 고정이다 — Status는 머리의 메뉴 라벨이 말한다(2026-10-02).
               title={w.list.keys}
               titleRef={listTitleRef}
+              scrollRef={listScrollRef}
+              onScroll={top => { listScrollTop.current = top; }}
               count={list.matchedKeyCount}
               savedExtra={savedOutCount(rows)}
               selectedKeyId={view.keyId}
@@ -843,17 +980,50 @@ export function TranslationWorkspace(props: WorkspaceProps) {
               </Popover>
             )}
           </div>
-          <ResizeHandle layout={layout} onChange={rememberLeft} />
-          <div data-panel="detail" aria-busy={navigating || undefined} className="border-border bg-background flex min-h-0 min-w-0 flex-1 overflow-hidden rounded-lg border">
+          <ResizeHandle layout={split} onChange={rememberLeft} />
+          <div ref={detailRef} data-panel="detail" aria-busy={navigating || undefined}
+            onFocus={event => {
+              lastFocusPane.current = "detail";
+              // split에서도 상세 입력을 쓰면 저장된 판이 상세다 — 좁혀도 입력 중인 칸을 숨기지 않는다.
+              if (event.target instanceof HTMLTextAreaElement) activateDetail();
+            }}
+            // 조합 상태를 추적하지 않는다(그 자리는 `use-ime-guard.ts`) — 조합 시작은 "상세를 쓰고 있다"는 신호일 뿐이다.
+            onCompositionStart={activateDetail}
+            className={cn("border-border bg-background flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg border", SINGLE_DETAIL_HIDDEN)}>
+            {/*
+              ⚠️ **상세 머리는 이 화면이 든다 — 골격·상세·부재 안내가 바뀌어도 같은 노드다** (design §3). 단일 판의 진입 착지가 이 제목(`tabIndex={-1}`)이라,
+              응답이 와서 몸통이 바뀌어도 포커스가 끊기지 않는다. 키를 안 고른 split만 숨는다. ‹ Keys는 단일 판에서만 선다.
+            */}
+            <div data-detail-head="" className={cn("flex h-12 shrink-0 items-center gap-2 px-4", !skeletonDetail && detail === null && absentDetail === null && "hidden")}>
+              <Button ref={backRef} variant="ghost" size="sm" aria-label={m.responsive.backToKeys} className="-ml-2 shrink-0 @min-[772px]/ws:hidden" onClick={showList}>
+                <ChevronLeft aria-hidden />
+                {w.list.keys}
+              </Button>
+              <h2 ref={detailTitleRef} tabIndex={-1} data-detail-title="" className="text-muted-foreground flex min-w-0 flex-1 items-center gap-1.5 text-sm">
+                {skeletonDetail ? <><Skeleton className="size-4 shrink-0 rounded" /><Skeleton size="sm" className="w-32" /></>
+                  : detail !== null ? <DetailCrumb surfaceSlug={detail.key.surfaceSlug} namespace={detail.key.namespace} />
+                  : absentDetail !== null ? <DetailCrumb surfaceSlug={absentDetail.surfaceSlug} />
+                  : null}
+              </h2>
+              {skeletonDetail ? <Skeleton className="ml-auto h-7 w-28 rounded-md" />
+                : detail !== null && (
+                  <span className="ml-auto">
+                    <LanguageMenu detail={detail} language={language} locked={navigating} onLanguage={next => {
+                      setLanguage(next);
+                      window.history.replaceState(null, "", withQuery(nextQuery(query, { language: next })));
+                    }} />
+                  </span>
+                )}
+            </div>
             {/*
               ⚠️ **다른 키로 가는 동안 상세는 골격이다** (2026-09-28 사용자) — 선택 행은 낙관적으로 먼저 옮겨가는데 상세는 응답까지 옛 키의
               값이라, 새 행 옆에 옛 값이 서서 어느 키를 보는지 헷갈렸다. 필터·검색은 선택을 안 옮기므로 옛 상세가 그대로 선다.
               draft는 이 화면(reducer)이 들어 패널이 내려가도 잃지 않는다 — 확인창 판정은 이동 전에 이미 끝났다.
             */}
-            {navigating && view.keyId !== keyId ? (
-              <LocalePanelSkeleton />
+            {skeletonDetail ? (
+              <LocalePanelSkeleton head={false} />
             ) : detail === null ? (
-              <div className="flex flex-1 items-center justify-center">
+              <div className={cn("flex flex-1 items-center justify-center", absentDetail !== null && "border-divider border-t")}>
                 {props.detail !== null && "absent" in props.detail
                   ? <EmptyState icon={Languages} title={w.detail.keyGone(props.detail.surfaceSlug)} />
                   : <EmptyState icon={Languages} title={w.detail.selectKey} description={w.detail.selectKeyBody} />}
@@ -863,11 +1033,6 @@ export function TranslationWorkspace(props: WorkspaceProps) {
                 detail={{ ...detail, locales: detail.locales.map(l => ({ ...l, pending: isPending(l) })) }}
                 draft={draft}
                 language={language}
-                languageLocked={navigating}
-                onLanguage={next => {
-                  setLanguage(next);
-                  window.history.replaceState(null, "", withQuery(nextQuery(query, { language: next })));
-                }}
                 onEdit={(code, value) => edit({ type: "edit", locale: code, value })}
                 onReset={code => edit({ type: "reset", locale: code })}
                 onSave={() => void save()}
@@ -939,7 +1104,11 @@ function Footer({ alertId, dirty, status, saving, resultRef, saveRef, hasPending
       {status !== null && ALERTS[status.kind] !== undefined && (
         <div id={alertId} className="px-4 pt-3">{ALERTS[status.kind]?.({ m, onCheck, slug, storageBlocked, status })}</div>
       )}
-      <div className="flex items-center gap-3 px-4 py-3">
+      {/*
+        ⚠️ **저장 줄은 상세 스크롤 밖 바닥이고 감긴다** (responsive-app design §3 · AT10b) — 버튼을 줄이거나 말줄임하지 않는다. es의 `Revertir a lo último enviado` +
+        `Guardar`가 375 카드에 안 들면 Guardar가 둘째 줄 오른쪽 끝으로 내려간다. 키보드 위에 서는 것은 Android뿐이다(D20 — iOS Safari 비대응).
+      */}
+      <div className="flex flex-wrap items-center gap-3 px-4 py-3">
         {/* ⚠️ 사유는 결과 줄(`aria-live`) 밖의 형제다 — 안에 두면 사유가 바뀔 때마다 결과처럼 다시 낭독된다.
             세로로 묶는 래퍼가 결과 아래에 쌓이는 자리를 지킨다. */}
         <span className="flex min-w-0 flex-col">
@@ -950,7 +1119,7 @@ function Footer({ alertId, dirty, status, saving, resultRef, saveRef, hasPending
           {hasPending && revertBlocked !== null && <span id={reasonId} className="text-muted-foreground min-w-0 text-xs">{REVERT_REASONS[revertBlocked](m)}</span>}
           {saveLocked && <span id={saveReasonId} className="text-muted-foreground min-w-0 text-xs">{m.repositorySync.waitPublish}</span>}
         </span>
-        <span className="ml-auto inline-flex items-center gap-2">
+        <span className="ml-auto flex flex-wrap items-center justify-end gap-2">
           {hasPending && (
             // ⚠️ **`loading`을 쓰지 않는다** — 그쪽은 진짜 `disabled`를 걸어 방금 누른 버튼이 포커스를 잃고
             // busy 사유(describedby)에 닿을 길이 사라진다 (DESIGN §6.65). `busy`가 포커스를 지키며 스피너를 든다.
@@ -1044,7 +1213,7 @@ function WorkspaceDialog({ dialog, keyName, projectName, onClose, onPreview, onR
  * 두 카드 사이 16px이 손잡이다 — 새 선이나 점을 그리지 않는다(README §7). hover·drag에만 4px 바가 뜨는 형은 `resizable.tsx`와 같다.
  * ⚠️ `react-resizable-panels`를 쓰지 않는다 — 이 계약은 **px**이고(목록 → 트리 → 접힘 순서), 그 라이브러리는 % 전용이다.
  */
-function ResizeHandle({ layout, onChange }: { layout: ReturnType<typeof planTranslationPanelLayout>; onChange: (value: number) => void }) {
+function ResizeHandle({ layout, onChange }: { layout: SplitLayout | null; onChange: (value: number) => void }) {
   const m = useMessages();
   const [drag, setDrag] = useState<{ start: number; origin: number } | null>(null);
   const [value, setValue] = useState<number | null>(null);
@@ -1086,7 +1255,8 @@ function ResizeHandle({ layout, onChange }: { layout: ReturnType<typeof planTran
       onPointerCancel={endDrag}
       onLostPointerCapture={endDrag}
       className={cn(
-        "group relative w-4 shrink-0 focus-visible:outline-none",
+        // ⚠️ 터치 드래그가 스크롤로 먹히지 않게 `touch-none`이다(공개 단계가 넘긴 몫 — design §3). 단일 판에는 핸들이 없다.
+        "group relative w-4 shrink-0 touch-none focus-visible:outline-none @max-[772px]/ws:hidden",
         !fixed && "cursor-col-resize",
         "after:absolute after:inset-y-0 after:left-1/2 after:w-1 after:-translate-x-1/2 after:bg-gradient-to-b after:from-transparent after:via-ring after:to-transparent",
         "after:opacity-0 hover:after:opacity-100 focus-visible:after:opacity-100 data-[state=drag]:after:opacity-100",

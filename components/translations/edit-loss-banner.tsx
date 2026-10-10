@@ -20,7 +20,11 @@ import { useMessages } from "@/components/i18n/messages-provider";
  * ⚠️ **Publish가 연결 때문에 꺼졌으면(`blockedReason`) 그 액션을 세우지 않는다** (malmoi#160) — 꺼진 버튼으로 포커스만 옮기는 막다른 길이었다.
  * 대신 같은 사유를 문장에 잇는다 — 이 화면엔 Home의 연결 배너가 없어 보이는 원인 문장이 여기뿐이다. 새 배너는 만들지 않는다.
  */
-export function EditLossBanner({ count, publishButtonId, blockedReason = null }: { count: number; publishButtonId: string; blockedReason?: string | null }) {
+export function EditLossBanner({ count, publishButtonId, blockedReason = null, className }: {
+  count: number; publishButtonId: string; blockedReason?: string | null;
+  /** 번역 화면 단일 판의 상세에서 숨기는 CSS(responsive-app design §3 · R2) — 자리는 그대로다. */
+  className?: string;
+}) {
   const m = useMessages();
   if (count === 0) return null;
   return (
@@ -30,6 +34,7 @@ export function EditLossBanner({ count, publishButtonId, blockedReason = null }:
         같은 보류가 Home 보조 줄·메타·Logs에서는 warning Held다.
       */
       variant="neutral"
+      className={className}
       actions={blockedReason === null && (
         <Button onClick={() => document.getElementById(publishButtonId)?.focus()}>
           {m.translations.banner.sendWithPublish}

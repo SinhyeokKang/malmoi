@@ -213,6 +213,8 @@ const CLIENT_LIB_FILES = [
   "lib/sources/base-language.ts",
   "lib/surfaces/plan.ts",
   "lib/hue.ts",
+  // 번역 단일 판의 판 전환·트리 이동 의도(responsive-app design §3) — import 0인 잎이다.
+  "lib/translations/compact-pane.ts",
   // 번역 화면의 연결 사유(malmoi#160) — `lib/home/state.ts`·`lib/i18n`만 읽는 순수 문장 조립이다.
   "lib/translations/connection-reason.ts",
   // translation-rework 작업 화면의 잎 여섯 — 전부 import가 서로와 `lib/routes.ts`뿐이다(`lib/translations/context.ts`는 서버 전용이라 없다).
@@ -476,6 +478,12 @@ describe("클라이언트 그래프", () => {
     const query = walk([join(ROOT, "lib/shell/breakpoint.ts")]);
     expect([...query.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/shell/breakpoint.ts"]);
     expect([...query.packages]).toEqual([]);
+  });
+
+  it("`lib/translations/compact-pane.ts`는 잎이다 — DOM·서버·I/O를 물지 않는다", () => {
+    const pane = walk([join(ROOT, "lib/translations/compact-pane.ts")]);
+    expect([...pane.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/translations/compact-pane.ts"]);
+    expect([...pane.packages]).toEqual([]);
   });
 
   it("`lib/time-zone/zones.ts`는 잎이다 — 아무것도 물지 않는다", () => {

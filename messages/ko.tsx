@@ -2084,4 +2084,7 @@ export const ko = {
     "download-failed": "파일을 내려받지 못했습니다.",
     fallback: "이 파일을 읽지 못했습니다.",
   },
+  responsive: {
+    backToKeys: "키 목록으로 돌아가기",
+  },
 } satisfies Messages;

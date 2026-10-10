@@ -2073,4 +2073,7 @@ export const es = {
     "download-failed": "No se pudo descargar el archivo.",
     fallback: "No pudimos leer este archivo.",
   },
+  responsive: {
+    backToKeys: "Volver a las claves",
+  },
 } satisfies Messages;

@@ -54,7 +54,8 @@ describe("PanelHeader — 여백·선·폭을 프리미티브가 든다", () => 
     "components/landing/mockup/translations.tsx",
   ])("%s의 머리가 같은 여백이다", (path) => {
     const source = readFileSync(join(ROOT, path), "utf8");
-    const heads = [...source.matchAll(/className="border-border flex shrink-0 flex-col gap-3 border-b ([^"]*)"/g)].map((match) => match[1]);
+    // 번역 화면 머리는 배너의 단일 판 숨김을 묻는 컨테이너도 선언한다(`@container/wshead` — responsive-app design §3). 여백 판정 밖이라 뗀다.
+    const heads = [...source.matchAll(/className="(?:@container\/\w+ )?border-border flex shrink-0 flex-col gap-3 border-b ([^"]*)"/g)].map((match) => match[1]);
     expect(heads).toEqual(["px-4 py-3"]);
   });
 

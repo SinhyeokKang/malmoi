@@ -11,6 +11,9 @@ import { PANEL } from "@/lib/translations/layout";
  * ⚠️ **세 패널이 첫 렌더의 폭 그대로다** — 왼쪽 카드 `PANEL.tree + PANEL.list`(트리 260 + 목록 392) · 핸들 16 · 오른쪽
  * 나머지. 실물도 `ResizeObserver`가 재기 전 첫 렌더는 이 값이라, 저장된 폭이 없는 사람에게는 도착 때 안 움직인다.
  *
+ * ⚠️ **카드 content box 772 미만은 실물과 같은 한 판이다** (responsive-app design §3) — 같은 `@container/ws` 리터럴로 트리·핸들·상세를 숨기고 목록 카드가
+ * 전폭이다(키를 안 고른 진입은 목록 판). 목록 머리에 접힌 트리 버튼 자리가 선다.
+ *
  * ⚠️ **상세는 키를 안 고른 모양이다** — 사이드바·Sources에서 오는 가장 흔한 진입이 `?key=` 없이다. 트리는 표면 하나 +
  * 이름공간 넷(All + 셋), 키 목록은 화면을 채우는 수라 넘치는 줄은 잘린다(목록이 자기 안에서 스크롤한다).
  */
@@ -38,13 +41,13 @@ export default async function TranslationsLoading() {
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-hidden p-4" aria-hidden>
+      <div className="@container/ws min-h-0 flex-1 overflow-hidden p-4" aria-hidden>
         <div className="flex h-full min-h-0">
           <div
-            className="border-border bg-background flex min-h-0 shrink-0 overflow-hidden rounded-lg border"
-            style={{ width: PANEL.tree + PANEL.list }}
+            className="border-border bg-background flex min-h-0 w-(--list-card) shrink-0 overflow-hidden rounded-lg border @max-[772px]/ws:w-full"
+            style={{ "--list-card": `${PANEL.tree + PANEL.list}px` } as React.CSSProperties}
           >
-            <div data-skeleton-tree className="border-border flex min-h-0 shrink-0 flex-col border-r" style={{ width: PANEL.tree }}>
+            <div data-skeleton-tree className="border-border flex min-h-0 shrink-0 flex-col border-r @max-[772px]/ws:hidden" style={{ width: PANEL.tree }}>
               <PanelHead title="w-16" />
               <div className="border-divider flex min-h-0 flex-1 flex-col gap-0.5 overflow-hidden border-t p-2">
                 <div className="flex items-center gap-2 px-2 py-[7px]">
@@ -61,7 +64,7 @@ export default async function TranslationsLoading() {
               </div>
             </div>
             <div data-skeleton-keys className="flex min-h-0 min-w-0 flex-1 flex-col">
-              <PanelHead title="w-12" aside />
+              <PanelHead title="w-12" aside tree />
               <div className="min-h-0 flex-1 overflow-hidden">
                 {Array.from({ length: 10 }, (_, i) => (
                   <div
@@ -80,8 +83,8 @@ export default async function TranslationsLoading() {
             </div>
           </div>
           {/* 리사이즈 핸들 자리 — 투명 16이고 선이 없다. */}
-          <div className="w-4 shrink-0" />
-          <div data-skeleton-detail className="border-border bg-background flex min-h-0 min-w-0 flex-1 overflow-hidden rounded-lg border">
+          <div className="w-4 shrink-0 @max-[772px]/ws:hidden" />
+          <div data-skeleton-detail className="border-border bg-background flex min-h-0 min-w-0 flex-1 overflow-hidden rounded-lg border @max-[772px]/ws:hidden">
             {/* `EmptyState` 치수 — `py-12` · 칩 `IconTile lg` 40(`mb-3`) · 제목 18(`mb-1`) · 설명 14. */}
             <div className="flex flex-1 items-center justify-center">
               <div className="flex w-full flex-col items-center py-12">
@@ -102,9 +105,11 @@ export default async function TranslationsLoading() {
 }
 
 /** 트리·목록의 48 머리(`h-12` — 세 머리의 아래 선이 한 줄이다) — 제목 + 개수 배지(+ 목록은 오른쪽 끝 정렬 안내). 아래 선은 본문 쪽이 든다. */
-function PanelHead({ title, aside = false }: { title: string; aside?: boolean }) {
+function PanelHead({ title, aside = false, tree = false }: { title: string; aside?: boolean; tree?: boolean }) {
   return (
     <div className="flex h-12 shrink-0 items-center gap-2 px-4">
+      {/* 한 판의 목록 머리는 접힌 트리 버튼(`icon-sm` 28)으로 시작한다 — 두 판에선 트리 칸이 따로 선다. */}
+      {tree && <Skeleton className="hidden size-7 shrink-0 rounded-sm @max-[772px]/ws:block" />}
       <Skeleton size="md" className={title} />
       <Skeleton className="size-5 rounded-full" />
       {aside && <Skeleton className="ml-auto h-3 w-24 rounded-md" />}

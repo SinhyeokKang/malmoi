@@ -188,7 +188,7 @@ it("번역 상세 복사 링크 골격은 실물 sm 버튼과 같은 28px 크기
   const { container: real } = await render(<LocalePanel
     detail={{ key: { id: "k1", key: "title", namespace: "common", sourceText: "Title", description: null, surfaceSlug: "web" }, refs: [], locales: [] }}
     draft={{ keyId: "k1", order: [], saved: {}, draft: {} }}
-    language={undefined} onLanguage={() => {}} onEdit={() => {}} onReset={() => {}} onSave={() => {}}
+    language={undefined} onEdit={() => {}} onReset={() => {}} onSave={() => {}}
     copyHref="/translations?key=k1" readOnly={false} footer={null}
   />);
   const { container: skeleton } = await render(<LocalePanelSkeleton />);

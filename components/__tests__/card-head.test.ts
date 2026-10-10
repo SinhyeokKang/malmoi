@@ -45,7 +45,9 @@ const SITES: { path: string; head: string; count: number }[] = [
 const FIXED: { path: string; count: number }[] = [
   { path: "components/translations/workspace/tree-panel.tsx", count: 1 },
   { path: "components/translations/workspace/key-list.tsx", count: 1 },
-  { path: "components/translations/workspace/locale-panel.tsx", count: 2 },
+  // 로케일 상세의 머리는 작업 화면이 든다(진입 착지의 제목이 골격·상세에서 같은 노드 — responsive-app design §3). locale-panel은 단독 골격의 머리 하나다.
+  { path: "components/translations/workspace/locale-panel.tsx", count: 1 },
+  { path: "components/translations/workspace/workspace.tsx", count: 1 },
   { path: "app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/translations/loading.tsx", count: 1 },
   { path: "components/landing/mockup/translations.tsx", count: 3 },
 ];

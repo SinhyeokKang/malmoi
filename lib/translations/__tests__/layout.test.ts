@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { PANEL, planTranslationPanelLayout, stepPanelWidth } from "../layout";
+import { PANEL, planTranslationPanelLayout, SINGLE_BELOW, stepPanelWidth } from "../layout";
 
 /**
  * 세 패널 폭 계약 (translation-rework T14 — README §7 폭 계약 · spec §3.1 · design §6).
  *
  * `로케일 = max(420, 카드영역 − 16 − (트리 + 목록))`. 모자라면 **목록(392→336) → 트리(260→208) → 트리 접힘** 순으로 준다.
- * 접힌 뒤에도 772 미만이면 **본문만 가로 스크롤**이다. 사용자가 끈 선호 폭은 clamp 결과로 덮지 않는다 — 넓히면 돌아온다.
+ * 카드 content box가 772 미만이면 **한 판씩**이다(responsive-app design §3) — 옛 갈래(336/420 고정 + 가로 스크롤)는 375에서 편집·저장에 닿지 못했다.
+ * 사용자가 끈 선호 폭은 clamp 결과로 덮지 않는다 — 넓히면 돌아온다.
  */
 describe("planTranslationPanelLayout — README §7 표", () => {
   it.each([
@@ -14,18 +15,39 @@ describe("planTranslationPanelLayout — README §7 표", () => {
     ["1280 · LNB 240", 982, { tree: 210, list: 336, locale: 420 }],
     ["1280 · LNB 320", 902, { tree: null, list: 466, locale: 420 }],
   ])("%s → 카드 영역 %d", (_label, area, expected) => {
-    expect(planTranslationPanelLayout({ area, preferredLeft: null })).toMatchObject({ ...expected, scrollWidth: null });
+    expect(planTranslationPanelLayout({ area, preferredLeft: null })).toMatchObject({ mode: "split", ...expected });
   });
 
-  it("772 미만이면 트리를 접고 336/420 그대로 가로 스크롤이다", () => {
-    expect(planTranslationPanelLayout({ area: 700, preferredLeft: null })).toEqual({
-      left: 336, tree: null, list: 336, locale: 420, scrollWidth: 772, bounds: { min: 336, max: 336 },
-    });
-  });
-
-  it("측정 전(폭 없음)은 null이다 — 0을 넣으면 한 패널이 화면을 먹은 채 한 프레임 그려진다", () => {
+  it("측정 전(폭 없음)·비정상 폭은 null이다 — 0을 넣으면 한 패널이 화면을 먹은 채 한 프레임 그려진다", () => {
     expect(planTranslationPanelLayout({ area: null, preferredLeft: null })).toBeNull();
     expect(planTranslationPanelLayout({ area: 0, preferredLeft: null })).toBeNull();
+    expect(planTranslationPanelLayout({ area: -1, preferredLeft: null })).toBeNull();
+    expect(planTranslationPanelLayout({ area: Number.NaN, preferredLeft: null })).toBeNull();
+    expect(planTranslationPanelLayout({ area: Number.POSITIVE_INFINITY, preferredLeft: null })).toBeNull();
+  });
+
+  it("경계는 PANEL에서 나온다 — 목록 하한 + 간격 + 로케일 하한 = 772", () => {
+    expect(SINGLE_BELOW).toBe(PANEL.listMin + PANEL.gap + PANEL.localeMin);
+    expect(SINGLE_BELOW).toBe(772);
+  });
+
+  it("772 미만은 한 판이다 — 폭은 카드 영역 그대로, 가로 스크롤이 없다 (771 · 375 · 1)", () => {
+    expect(planTranslationPanelLayout({ area: 771, preferredLeft: null })).toEqual({ mode: "single", width: 771 });
+    expect(planTranslationPanelLayout({ area: 375, preferredLeft: 800 })).toEqual({ mode: "single", width: 375 });
+    expect(planTranslationPanelLayout({ area: 1, preferredLeft: null })).toEqual({ mode: "single", width: 1 });
+  });
+
+  it("772 이상은 두 판이다 — 772에서 트리를 접고 목록 336 · 로케일 420, 773은 목록이 1을 받는다", () => {
+    expect(planTranslationPanelLayout({ area: 772, preferredLeft: null })).toEqual({
+      mode: "split", left: 336, tree: null, list: 336, locale: 420, bounds: { min: 336, max: 336 },
+    });
+    expect(planTranslationPanelLayout({ area: 773, preferredLeft: null })).toMatchObject({ mode: "split", left: 337, tree: null, list: 337, locale: 420 });
+  });
+
+  it("선호 폭은 한 판을 지나도 그대로다 — 좁혔다 넓히면 돌아온다(저장값을 덮지 않는다)", () => {
+    expect(planTranslationPanelLayout({ area: 1500, preferredLeft: 800 })).toMatchObject({ left: 800 });
+    expect(planTranslationPanelLayout({ area: 500, preferredLeft: 800 })).toEqual({ mode: "single", width: 500 });
+    expect(planTranslationPanelLayout({ area: 1500, preferredLeft: 800 })).toMatchObject({ left: 800 });
   });
 
   it("상수는 시안 값이다", () => {
@@ -53,8 +75,9 @@ describe("planTranslationPanelLayout — 사용자가 끈 폭", () => {
   });
 
   it("핸들의 범위를 함께 준다 — 키보드와 aria-valuemin/max가 같은 값을 본다", () => {
-    expect(planTranslationPanelLayout({ area: 1142, preferredLeft: null })?.bounds).toEqual({ min: 544, max: 706 });
-    expect(planTranslationPanelLayout({ area: 902, preferredLeft: null })?.bounds).toEqual({ min: 466, max: 466 });
+    const bounds = (area: number) => { const layout = planTranslationPanelLayout({ area, preferredLeft: null }); return layout?.mode === "split" ? layout.bounds : null; };
+    expect(bounds(1142)).toEqual({ min: 544, max: 706 });
+    expect(bounds(902)).toEqual({ min: 466, max: 466 });
   });
 });
 

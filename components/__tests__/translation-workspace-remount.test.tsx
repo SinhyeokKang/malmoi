@@ -102,7 +102,10 @@ const toggle = () => {
 };
 const searching = (): WorkspaceProps => serve("/projects/acme/surfaces/web/translations?ns=common&q=k&key=k1");
 
-/** jsdom의 폭 — `observe`가 즉시 부르면 마운트 폭, `later`로 마운트 뒤에 바꾼다. */
+/**
+ * jsdom의 폭 — `observe`가 즉시 부르면 마운트 폭, `later`로 마운트 뒤에 바꾼다. 트리가 접힌 **두 판**은 902다(772 미만은 한 판 —
+ * responsive-app design §3, 그 착지는 `translation-workspace-compact.test.tsx`가 잰다).
+ */
 function stubWidth(width: number | null) {
   const callbacks: ResizeObserverCallback[] = [];
   vi.stubGlobal("ResizeObserver", class {
@@ -164,7 +167,7 @@ it("검색 딥링크(다른 소스의 키)에서 검색을 지우면 그 키의 
 });
 
 it("트리가 접힌 레이아웃에서 오버레이로 다른 소스를 고르면 재마운트 뒤 트리 열기 버튼에 착지한다", async () => {
-  stubWidth(700);
+  stubWidth(902);
   const user = userEvent.setup();
   window.history.replaceState(null, "", "/projects/acme/surfaces/web/translations");
   await render(<Harness initial={serve("/projects/acme/surfaces/web/translations")} />);
@@ -186,7 +189,7 @@ it("마운트 뒤 폭 측정이 트리를 접으면 착지한 노드 대신 트�
   await user.click(treeNode("app", "home")!);
   await settle();
   expect(document.activeElement).toBe(treeNode("app", "home"));
-  await width.later(700);
+  await width.later(902);
   expect(treeNode("app", "home")).toBeUndefined();
   expect(document.activeElement).toBe(toggle());
 
@@ -198,7 +201,7 @@ it("마운트 뒤 폭 측정이 트리를 접으면 착지한 노드 대신 트�
   await settle();
   expect(document.activeElement).toBe(treeNode("web", "*"));
   searchBox().focus();
-  await width.later(700);
+  await width.later(902);
   expect(document.activeElement).toBe(searchBox());
 });
 

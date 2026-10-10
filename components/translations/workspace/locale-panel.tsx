@@ -32,16 +32,60 @@ export type DetailView = {
   locales: { code: string; isBase: boolean; value: string | null; needsReview: boolean; pending: boolean; actorLabel: string | null }[];
 };
 
-export function LocalePanel({ detail, draft, language, languageLocked = false, onLanguage, onEdit, onReset, onSave, copyHref, readOnly, footer, invalid }: {
+/**
+ * 상세 머리의 경로(소스 › 네임스페이스) — 머리 줄 자체는 Workspace가 든다(responsive-app design §3): 골격 · 상세 · 부재 안내가 바뀌어도 머리의 제목이
+ * **같은 노드**여야 단일 판의 진입 착지가 응답 도착에 끊기지 않는다.
+ */
+export function DetailCrumb({ surfaceSlug, namespace }: { surfaceSlug: string; namespace?: string }) {
+  return <>
+    <FileJson2 className="size-4 shrink-0" aria-hidden />
+    <span className={cn(namespace === undefined ? "text-foreground min-w-0 truncate font-medium" : "shrink-0")}>{surfaceSlug}</span>
+    {namespace !== undefined && <>
+      <ChevronRight className="size-3.5 shrink-0 text-gray-dim" aria-hidden />
+      <span className="text-foreground min-w-0 truncate font-medium">{namespace}</span>
+    </>}
+  </>;
+}
+
+/** 상세 머리 오른쪽 끝의 언어 메뉴 — 보이는 행만 거른다(Save·Revert 대상은 전 언어다). */
+export function LanguageMenu({ detail, language, locked = false, onLanguage }: {
   detail: DetailView;
-  draft: KeyDraftState;
   language: string | undefined;
   /**
    * 이동을 기다리는 동안 언어 메뉴를 잠근다 (U3 리뷰 r1) — 언어는 `history.replaceState`로 바뀌고 Next 16.3에서 그것이 대기 중인 이동을
    * 버린다. 입력의 읽기 전용 잠금(`readOnly`)은 이 메뉴를 덮지 않는다.
    */
-  languageLocked?: boolean;
+  locked?: boolean;
   onLanguage: (value: string | undefined) => void;
+}) {
+  const m = useMessages();
+  const w = m.translations.workspace.detail;
+  const languageLabel = language === undefined ? w.allLanguages : language === MISSING_LANGUAGES ? w.missingOnly : language;
+  return (
+    <FilterMenu
+      axis={w.languagesGroup}
+      label={languageLabel}
+      on={language !== undefined}
+      size="sm"
+      // 머리 오른쪽 끝이다 — 끝 정렬이어야 메뉴가 화면 밖으로 나가지 않는다(2026-10-02).
+      align="end"
+      disabled={locked}
+      value={language ?? ""}
+      options={[
+        { value: "", label: w.allLanguages },
+        { value: MISSING_LANGUAGES, label: w.missingOnly },
+        ...detail.locales.filter(l => !l.isBase).map(l => ({ value: l.code, label: l.code, group: w.languagesGroup })),
+      ]}
+      onSelect={value => onLanguage(value === "" ? undefined : value)}
+    />
+  );
+}
+
+/** 상세 머리를 뺀 몸통 — 키 블록 · 입력 목록 · 저장 푸터. */
+export function LocalePanel({ detail, draft, language, onEdit, onReset, onSave, copyHref, readOnly, footer, invalid }: {
+  detail: DetailView;
+  draft: KeyDraftState;
+  language: string | undefined;
   onEdit: (code: string, value: string) => void;
   onReset: (code: string) => void;
   onSave: () => void;
@@ -63,36 +107,9 @@ export function LocalePanel({ detail, draft, language, languageLocked = false, o
     if (language === MISSING_LANGUAGES) return l.value === null || l.value === "";
     return l.code === language;
   });
-  const languageLabel = language === undefined ? w.allLanguages : language === MISSING_LANGUAGES ? w.missingOnly : language;
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <div className="flex h-12 shrink-0 items-center gap-2 px-4">
-        <span className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-sm">
-          <FileJson2 className="size-4 shrink-0" aria-hidden />
-          {detail.key.surfaceSlug}
-          <ChevronRight className="size-3.5 shrink-0 text-gray-dim" aria-hidden />
-          <span className="text-foreground min-w-0 truncate font-medium">{detail.key.namespace}</span>
-        </span>
-        <span className="ml-auto">
-          <FilterMenu
-            axis={w.languagesGroup}
-            label={languageLabel}
-            on={language !== undefined}
-            size="sm"
-            // 머리 오른쪽 끝이다 — 끝 정렬이어야 메뉴가 화면 밖으로 나가지 않는다(2026-10-02).
-            align="end"
-            disabled={languageLocked}
-            value={language ?? ""}
-            options={[
-              { value: "", label: w.allLanguages },
-              { value: MISSING_LANGUAGES, label: w.missingOnly },
-              ...detail.locales.filter(l => !l.isBase).map(l => ({ value: l.code, label: l.code, group: w.languagesGroup })),
-            ]}
-            onSelect={value => onLanguage(value === "" ? undefined : value)}
-          />
-        </span>
-      </div>
       <div className="border-divider flex min-h-0 flex-1 flex-col overflow-hidden border-t">
         <div className="border-divider flex shrink-0 flex-col gap-1 border-b px-4 py-3.5">
           <div className="flex items-center gap-2.5">
@@ -145,14 +162,17 @@ export function LocalePanel({ detail, draft, language, languageLocked = false, o
  * 다른 키의 상세를 기다리는 동안의 골격 — 머리 · 키 블록 · 언어 셋 · 푸터가 실물 치수다(DESIGN §6.64 로딩 행 — 도착 때 안 움직인다).
  * 언어 수는 모르므로 가장 흔한 셋이다.
  */
-export function LocalePanelSkeleton() {
+export function LocalePanelSkeleton({ head = true }: {
+  /** 작업 화면 안에서는 `false`다 — 머리 줄은 Workspace가 들고(진입 착지의 제목이 같은 노드여야 한다), 그 안에 `DetailHeadSkeleton`이 선다. */
+  head?: boolean;
+}) {
   return (
     <div data-skeleton-detail className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <div className="flex h-12 shrink-0 items-center gap-2 px-4">
-        <Skeleton className="size-4 shrink-0 rounded" />
-        <Skeleton size="sm" className="w-32" />
-        <Skeleton className="ml-auto h-7 w-28 rounded-md" />
-      </div>
+      {head && (
+        <div className="flex h-12 shrink-0 items-center gap-2 px-4">
+          <DetailHeadSkeleton />
+        </div>
+      )}
       <div className="border-divider flex min-h-0 flex-1 flex-col overflow-hidden border-t">
         <div className="border-divider flex shrink-0 flex-col gap-1 border-b px-4 py-3.5">
           <div className="flex h-7 items-center gap-2.5">
@@ -178,6 +198,15 @@ export function LocalePanelSkeleton() {
       </div>
     </div>
   );
+}
+
+/** 상세 머리의 골격 조각 — 경로와 언어 메뉴 자리. */
+export function DetailHeadSkeleton() {
+  return <>
+    <Skeleton className="size-4 shrink-0 rounded" />
+    <Skeleton size="sm" className="w-32" />
+    <Skeleton className="ml-auto h-7 w-28 rounded-md" />
+  </>;
 }
 
 function lastSegment(path: string): string {
