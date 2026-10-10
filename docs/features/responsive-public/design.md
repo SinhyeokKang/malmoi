@@ -14,7 +14,7 @@
 | P3 공개 읽기 | `app/docs/`·`components/docs/`·`components/public-doc-toc.tsx`·`components/public-doc-table.tsx`·`app/privacy/page.tsx`·`components/privacy/privacy-doc.tsx`·`app/changelog/page.tsx` | 본문·원고·SEO·검색 색인 내용 불변 |
 | P4 Auth | `components/signin/`·`app/signin/`·`app/invite/`·`app/oauth/authorize/` | 레이아웃과 상태 표현만; 토큰·인가·OAuth 계약 불변 |
 | P5 랜딩 1차 | `app/page.tsx`·`components/landing/stage.tsx`·`lib/landing/stage.ts` | 1440×900·5씬 유지, 캡션 높이 반영 |
-| A2e 후속 | `components/landing/mockup/`와 위 stage 둘 | 앱 설계 확정 후 같은 파일을 순차 수정. 공개 단계에서 선구현하지 않음 |
+| responsive-mockup 후속 | `components/landing/mockup/`와 위 stage 둘 | 앱 완성 후 같은 파일을 순차 수정(2026-10-11 responsive-app A2e에서 분리). 공개 단계에서 선구현하지 않음 |
 
 `app/globals.css`의 `--spacing-shell-min`(1280) 전역 값을 375로 바꾸지 않는다. 공개/Auth 셸에서만 `min-w-shell-min` 사용을 제거한다.
 
@@ -107,6 +107,6 @@ SSR의 데이터 조회를 클라이언트로 옮기지 않는다. 별도 데스
 
 앱을 함께375로 풀거나 모든 화면을 비율 축소하는 방법은 앱 편집 기능·가독성을 만족하지 못한다. 전역768 분기 추가 대신 `lg` 셸 및 내부 컨테이너 질의를 쓴다. 상호작용을 갖는 Drawer 라이브러리를 추가하지 않고 기존 Dialog를 조립한다.
 
-공개 단계 검증 완료본(P7 인계)을 A2의 선행 기준으로 삼는다. 앱 단계는 공유 오버레이/검색/Inbox/측면 서랍을 재구현하지 않고 소비한다. A2e는 P5 완료본 위에서 캔버스와 frame 입력을 확장하며 동시 수정하지 않는다.
+공개 단계 검증 완료본(P7 인계)을 A2의 선행 기준으로 삼는다. 앱 단계는 공유 오버레이/검색/Inbox/측면 서랍을 재구현하지 않고 소비한다. responsive-mockup은 P5 완료본 위에서 캔버스와 frame 입력을 확장하며 동시 수정하지 않는다.
 
 정본 갱신은 P6의 독립 태스크다(문서별 커밋). 이번 문서 작업에서는 정본을 수정하지 않는다.

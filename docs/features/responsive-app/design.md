@@ -12,7 +12,6 @@
 | A2b | `components/logs/`, `components/sources/sources-screen.tsx` 및 상세, `app/(edit)/account/`, `app/(edit)/preferences/` | Sources 읽기 배치 소유; 관리 동작은 A2d |
 | A2c | `lib/translations/layout.ts`, `components/translations/workspace/` | 기존 draft/navigation/guard·잠금 유지 |
 | A2d | `components/onboarding/`, `components/members/`, Sources 관리, `app/(edit)/projects/[slug]/settings/`, `app/(edit)/mcp/` | 실제 카드 컴포넌트 소비자까지 추적; 직접/intercept 공통 흐름 |
-| A2e | `components/landing/mockup/app-frame.tsx`, `translations.tsx`, `publish.tsx`, `components/landing/stage.tsx`, `lib/landing/stage.ts` | P5 뒤·A2a~d 배치 확정 뒤 순차 수정 |
 
 ## 2. 셸과 콘텐츠
 
@@ -77,13 +76,9 @@ single에서 상세를 여는 같은 키 재열기·다른 키 선택·다른 �
 
 New project·Add sources의 직접 URL과 intercept 경로는 기존 닫기 목적지/목록 조회 차이를 보존한다. `files.tsx`의 가로 스크롤 표는 POSTMORTEM 2026-09-19 「스크롤 래퍼 접근 이름」 결함이 남은 자리라 `<table>` 자체 이름을 함께 준다. Members/Settings/MCP/Sources 위험 동작은 동일 확인 UI를 재배치하고 pending 닫기 제한·권한·지문·재확인 문구를 줄이지 않는다. 세션 만료·권한 제거 중에도 결과가 사라지지 않아야 한다.
 
-## 5. A2e 랜딩 후속
+## 5. 랜딩 목업 — 분리됨
 
-**P5 완료본에서 시작한다** — `fitScale({W,H,chromeHeight})`·`frame`의 `chromeHeight`는 이미 필수이고(`CHROME_GAP` 16 포함), `MIN_PINNED_SCALE` 0.2 아래는 `pinnable=false`로 같은 5씬 정적 흐름이며, 한 줄 캡션 블록은 28(`min-h-7`, #216)이다. 이 계약을 유지하면서 1440×900 상수(`CANVAS_W`·`CANVAS_H`)를 고정 전제로 쓰던 fitScale/frame/목업 레이아웃을 바꾼다. 새로 더할 순수 함수 입력은 논리 canvasWidth/canvasHeight다(scroller W/H·chromeHeight·scroll position은 이미 있다). ⚠️ **목업은 뷰포트 `max-lg:` 토큰을 하나도 들지 않는다** — 그릇 상수를 import하지 않고 값을 복사하며 `landing-mockup.test.tsx`가 0건을 고정한다(R2가 #218 열림 링 토큰을 `app-frame.tsx`에 동기화했다). 아래 컨테이너 변형만 쓴다. 서버/실제 사용자 데이터를 목업으로 가져오지 않고 현재 샘플 데이터를 유지한다.
-
-5씬 각각의 정지 구간에서 데스크톱→태블릿→모바일 순차 상태를 배치하고 다음 씬으로 전환한다. 각 상태는 동일 스크롤 위치에서 동일하게 결정된다. reduced-motion은 중간 변형 없이 상태를 교체하고 모든 씬 내용을 유지한다. 정확한 구간 비율·태블릿/모바일 종횡비는 A18 시안과 가용 높이 실측 산출물로 고정하며 그 전에는 임의 애니메이션 값을 구현하지 않는다.
-
-목업 루트의 **레이아웃 너비**가 셸 1024·내부 카드772·기타 컨테이너 기준의 입력이다. 실제 셸은 뷰포트 `lg`로 판정하지만(2026-10-07 사용자), 목업은 이미 정적 복제본이라(`app-frame.tsx` 머리 주석 — 순수 판정만 재사용, 마크업은 복제) **목업 루트에 `@container`를 선언하고 셸 내비 규칙의 컨테이너 변형을 목업 마크업에만 둔다.** 경계 값은 같은 상수에서 가져온다. 앱의 순수 레이아웃 판정(`planTranslationPanelLayout` 등)과 컨테이너 기준 규칙(772·960 등)은 그대로 재사용한다. transform scale은 마지막 화면 맞춤일 뿐, 바깥 페이지 viewport나 기기명으로 내부 UI를 선택하지 않는다. 실앱을 iframe/서버 연결로 넣지 않는다.
+2026-10-11 사용자 결정으로 옛 A2e(랜딩 목업의 기기별 반응형)는 [responsive-mockup](../responsive-mockup/design.md)이 갖는다. 이 기능은 `components/landing/`을 건드리지 않는다. 절 번호는 다른 문서·시안이 §6을 인용해 그대로 둔다.
 
 ## 6. 불변식·과거 함정·정본
 
@@ -91,7 +86,7 @@ New project·Add sources의 직접 URL과 intercept 경로는 기존 닫기 목�
 
 POSTMORTEM 근거:
 - 2026-09-15 Settings→Projects 패널 폭 분할: 동일 grid 셀/isolate 보존, 실제 라우트 전환 중 관측.
-- 2026-09-15 컨테이너 자기 참조: 부모 선언 및 경계 양쪽 실측, CSS 테스트만으로 통과 금지. 새 선언 조상은 Workspace body·Home 콘텐츠·목업 루트 셋이고, `container-query.test.ts`가 리터럴 className만 훑으므로 `cn()`·변수로 만든 선언이 잡히는지 확인한다.
+- 2026-09-15 컨테이너 자기 참조: 부모 선언 및 경계 양쪽 실측, CSS 테스트만으로 통과 금지. 새 선언 조상은 Workspace body·Home 콘텐츠 둘이고(목업 루트는 responsive-mockup), `container-query.test.ts`가 리터럴 className만 훑으므로 `cn()`·변수로 만든 선언이 잡히는지 확인한다.
 - 2026-09-08 조상 provider: 서랍 안 LNB처럼 좁은 폭에서만 렌더되는 경로를 서랍이 열린 상태로 직접 렌더하는 DOM 테스트를 둔다.
 - 2026-09-20 포커스 복귀가 브라우저에서만 깨짐: 단일 판의 Save 뒤 착지·서랍 닫힘 복귀 테스트는 focus fixup observer를 달고 일부러 깨뜨린 red를 확인한다. 새 서랍·단일 판을 `focus-return`·`primitive-focus` 그물에 등재한다.
 - 2026-09-23 「번역 작업 화면이 테스트 5,249개 green인 채 시안·접근성과 셋 어긋났다」: textarea 폭 제한, pointercancel/lost capture 뒤 선호폭 갱신0을 검사.
