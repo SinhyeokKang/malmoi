@@ -270,13 +270,18 @@ export function DialogContent({
  * ⚠️ **열면 몸통의 현재 항목(`aria-current`)에, 없으면 몸통의 첫 항목에 포커스가 선다** — Radix 기본(첫 tabbable)이면 머리의 로고에 선다.
  * 소비자는 표식을 달지 않는다 — 현재 항목이 곧 표식이다. 닫힘 복귀는 `closeAutoFocus`이고, 링크로 닫히면 소비자가 막는다(도착한 페이지가 이긴다).
  */
-export function DrawerContent({ title, start, actions, children, onCloseAutoFocus }: {
+export function DrawerContent({ title, start, actions, pinned, children, onCloseAutoFocus }: {
   /** 보이지 않는 이름 — 서랍 안 `nav`의 이름과 같게 둔다. */
   title: ReactNode;
   /** 머리 왼쪽(로고 홈 링크). */
   start: ReactNode;
   /** 바닥 고정 줄(공개 내비 — 언어·테마 스위처). 몸통만 스크롤한다. */
   actions?: ReactNode;
+  /**
+   * 바닥 고정 **세로 행 줄**(앱 LNB 서랍 — New project · Changelog · Docs, responsive-app AT1b). `actions`의 가로 한 줄(48)과 형이 달라 슬롯이 따로다 —
+   * 공개 서랍의 바닥은 그대로다. 위 선·여백(위아래 8 · 좌우 12 = 몸통과 같은 시작선)은 여기가 든다.
+   */
+  pinned?: ReactNode;
   children: ReactNode;
   onCloseAutoFocus?: AutoFocusHandler;
 }) {
@@ -312,6 +317,7 @@ export function DrawerContent({ title, start, actions, children, onCloseAutoFocu
         </header>
         <div ref={body} className="min-h-0 flex-1 overflow-y-auto px-3 pt-1 pb-3 [scrollbar-width:thin]">{children}</div>
         {actions !== undefined && <footer className="border-divider flex h-12 shrink-0 items-center gap-5 border-t px-4">{actions}</footer>}
+        {pinned !== undefined && <footer data-drawer-pinned className="border-divider flex shrink-0 flex-col gap-0.5 border-t px-3 py-2">{pinned}</footer>}
       </Primitive.Content>
     </Primitive.Portal>
   );
