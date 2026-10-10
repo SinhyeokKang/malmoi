@@ -380,3 +380,21 @@ it("멈춘 Home의 Sync·Publish는 같은 사유 줄 하나를 가리키고, �
   await view.rerender(<HomeActions slug="acme" writeLock={null}><HomeHeaderActions {...props} /></HomeActions>);
   expect(lines()).toEqual([]);
 });
+
+/**
+ * **배너의 [Try again]은 머리 사유 줄을 같이 가리킨다** (responsive-app O19 — F7을 넓힌다). 같은 Action(Sync)을 여는 두 자리가 같은 잠금 문장으로 멈추므로
+ * 배너 안에 줄을 따로 세우지 않고 `aria-describedby`가 머리의 같은 줄을 가리킨다 — 같은 문장이 화면에 한 번이다. `title`·sr-only는 쓰지 않는다.
+ */
+it("lease로 멈춘 [Try again]은 머리 Sync와 같은 사유 줄을 가리키고 title·sr-only가 없다", async () => {
+  const lease = { startedAt: new Date(), reopensBy: new Date(Date.now() + 60_000) };
+  await render(<HomeActions slug="acme" writeLock={lease}><Host /></HomeActions>);
+  const retry = button(en.home.banner.syncFailed.action);
+  expect(retry.getAttribute("aria-disabled")).toBe("true");
+  expect(retry.hasAttribute("title")).toBe(false);
+  expect(retry.getAttribute("aria-describedby")).toBe(button("Sync").getAttribute("aria-describedby"));
+  const line = document.getElementById(retry.getAttribute("aria-describedby")!);
+  expect(line?.closest("[data-disabled-reasons]")).not.toBeNull();
+  expect(line?.textContent).toBe(en.repositorySync.running);
+  expect([...document.querySelectorAll("*")].filter(node => node.children.length === 0 && node.textContent === en.repositorySync.running)).toHaveLength(1);
+  expect(document.querySelector(".sr-only")?.textContent ?? "").not.toBe(en.repositorySync.running);
+});

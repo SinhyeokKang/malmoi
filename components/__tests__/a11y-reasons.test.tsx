@@ -62,8 +62,10 @@ describe("꺼진 컨트롤의 사유 (#37)", () => {
   it("Home 실패 배너의 [Try again]도 같은 형이다", () => {
     const source = read("components/home/actions.tsx");
     expect(source).not.toMatch(/<Button disabled=\{publishPending\}/);
-    // 잠금 사유가 둘이다(Publish 진행 · 착지 lease — sync-lock R5). 하나의 `retryBlock`이 aria-disabled·title·describedby를 함께 든다.
+    // 잠금 사유가 둘이다(Publish 진행 · 착지 lease — sync-lock R5). 하나의 `retryBlock`이 aria-disabled·describedby를 함께 든다.
+    // 사유는 머리 사유 줄의 같은 줄이다(responsive-app O19) — 배너 안 `title`·sr-only가 없다(`home-actions.test.tsx`가 DOM으로 잰다).
     expect(source).toMatch(/aria-disabled=\{retryBlock !== null/);
+    expect(source).toContain("aria-describedby={retryBlock !== null ? disabledReasonId(reasonScope, retryBlock) : undefined}");
     expect(source).toContain("m.repositorySync.waitPublish");
     expect(source).toContain("m.repositorySync.running");
   });
@@ -101,7 +103,7 @@ describe("꺼진 컨트롤의 사유 (#37)", () => {
     expect(source).not.toMatch(/nextDisabled=/);
   });
 
-  it("보이는 사람에게도 사유가 보인다 — 워크플로 행·수동 확인·머리의 Sync·Publish는 글자로, 배너의 Try again은 title로", async () => {
+  it("보이는 사람에게도 사유가 보인다 — 워크플로 행·수동 확인·머리의 Sync·Publish·배너의 Try again은 글자로", async () => {
     await render(<CiCard slug="acme" archived={false} stale={[]}>{false}</CiCard>);
     const reason = [...document.querySelectorAll("p, span")].find(node => node.textContent === en.settings.ci.noSources);
     expect(reason?.classList.contains("sr-only")).toBe(false);
@@ -117,8 +119,9 @@ describe("꺼진 컨트롤의 사유 (#37)", () => {
       expect(read(host)).toContain("m.repositorySync.waitPublish");
     }
     expect(read("components/home/actions.tsx")).toContain("pausedReason ?? m.repositorySync.paused");
-    // 결과의 [Try again]은 Sync Dialog 안이라 Publish가 같이 돌 수 없다 — 잠금 사유를 들지 않는다(sync-lock S5).
-    expect(read("components/home/actions.tsx")).toMatch(/title=\{retryBlock \?\? undefined\}/);
+    // 결과의 [Try again]은 Sync Dialog 안이라 Publish가 같이 돌 수 없다 — 잠금 사유를 들지 않는다(sync-lock S5). 배너의 [Try again]은 머리 줄을 가리킨다(O19).
+    expect(read("components/home/actions.tsx")).not.toMatch(/title=\{retryBlock/);
+    expect(read("components/home/actions.tsx")).not.toMatch(/className="sr-only">\{retryBlock\}/);
   });
 });
 

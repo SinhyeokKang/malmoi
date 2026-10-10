@@ -14,9 +14,9 @@ import { render } from "./helpers/dom";
  * ⚠️ 상세 판 키보드(AT6d)는 새 코드가 없다 — 브라우저의 포커스 스크롤이 한다. Save가 키보드 위에 서는 것은 **Android만**이다(D20 `interactive-widget`).
  * iOS Safari는 비대응이다(`visualViewport` 처리는 비목표 — spec 비목표).
  */
-const mocks = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn(), save: vi.fn() }));
+const mocks = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn(), save: vi.fn(), revertPreview: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push, replace: mocks.replace, refresh: mocks.refresh }), useSearchParams: () => new URLSearchParams(window.location.search) }));
-vi.mock("@/app/(edit)/actions", () => ({ saveTranslationKey: mocks.save, previewTranslationRevert: vi.fn(), revertTranslationKey: vi.fn(), triggerPullAction: vi.fn() }));
+vi.mock("@/app/(edit)/actions", () => ({ saveTranslationKey: mocks.save, previewTranslationRevert: mocks.revertPreview, revertTranslationKey: vi.fn(), triggerPullAction: vi.fn() }));
 vi.mock("@/app/(edit)/publish-actions", () => ({ loadPublishPreview: vi.fn() }));
 vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: vi.fn(), checkOpenPullRequest: vi.fn(), prepareRepositorySync: vi.fn() }));
 
@@ -49,7 +49,8 @@ function serve(href: string): WorkspaceProps {
   const route = url.pathname.split("/")[4]!;
   const ns = url.searchParams.get("ns") ?? "*";
   const rawKey = url.searchParams.get("key") ?? undefined;
-  const rows = ROWS.filter(r => r.surfaceSlug === route && (ns === "*" || r.namespace === ns));
+  // Status `Incomplete`이면 k1이 결과에서 빠진다 — 선택 키가 결과 밖이 되는 필터 갈래(`selectedInResult`).
+  const rows = ROWS.filter(r => r.surfaceSlug === route && (ns === "*" || r.namespace === ns) && !(url.searchParams.get("completion") === "incomplete" && r.keyId === "k1"));
   const key = rawKey === "@first" ? rows[0]?.keyId : rawKey;
   const at = ROWS.find(r => r.keyId === key);
   const base = props({ tree: TREE });
@@ -57,7 +58,7 @@ function serve(href: string): WorkspaceProps {
     ...base,
     routeSurfaceSlug: route,
     query: { ...base.query, ns, scope: ns === "*" ? "source" : "namespace", key, keySurface: at?.surfaceSlug },
-    list: { ...base.list, rows, matchedKeyCount: rows.length, incompleteKeyCount: rows.length },
+    list: { ...base.list, rows, matchedKeyCount: rows.length, incompleteKeyCount: rows.length, selectedInResult: key === undefined || rows.some(r => r.keyId === key) },
     detail: at === undefined ? null : detailOf(at.keyId, at.surfaceSlug, at.namespace),
   };
 }
@@ -375,5 +376,114 @@ describe("배너 — 자리는 그대로, 상세 판에서 둘만 CSS로 숨는�
     await act(async () => { await userEvent.setup().click(row("k1")); });
     expect(alerts()).toEqual(before);
     for (const banner of before) expect(banner.isConnected).toBe(true);
+  });
+});
+
+/**
+ * 전환 표의 나머지 세 행 (design §3 — 리뷰 B2 Y1): 필터 변경 · Save 실패/완료 · Publish/Sync/Revert. 판(`data-pane`)과 포커스를 함께 잰다.
+ * ⚠️ 진짜 `disabled`의 focus fixup도 흉내 낸다(POSTMORTEM 2026-09-20) — 저장 중 꺼진 [Save]에 남은 포커스로 통과하지 않게.
+ */
+describe("전환 표 — 필터 · 저장 · 위험 동작 (single 500)", () => {
+  let disabledFixup: MutationObserver | undefined;
+  beforeEach(() => {
+    disabledFixup = new MutationObserver(() => {
+      const active = document.activeElement;
+      if (!(active instanceof HTMLElement) || !active.matches(":disabled")) return;
+      active.removeAttribute("disabled");
+      active.blur();
+      active.setAttribute("disabled", "");
+    });
+    disabledFixup.observe(document.body, { attributes: true, attributeFilter: ["disabled"], subtree: true });
+  });
+  afterEach(() => { disabledFixup?.disconnect(); });
+  const statusTrigger = () => document.querySelector<HTMLButtonElement>(`button[aria-label^="${w.filters.state.axis}:"]`)!;
+  const menuItem = (label: string) => [...document.querySelectorAll<HTMLElement>('[role^="menuitem"]')].find(node => node.textContent?.trim() === label)!;
+  const byText = (label: string) => [...document.querySelectorAll<HTMLButtonElement>("button")].find(node => node.textContent?.trim() === label)!;
+  const publishButton = () => [...document.querySelectorAll<HTMLButtonElement>("button")].find(node => node.textContent?.startsWith("Publish"))!;
+
+  it("필터 변경을 미저장 확인에서 거부하면 목록 판 · 포커스가 목록 안에 그대로다", async () => {
+    await start("/projects/acme/surfaces/web/translations?ns=common&key=k1", 500);
+    const user = userEvent.setup();
+    await user.type(textarea("zh"), "draft");
+    await act(async () => { await user.click(back()); });
+    await act(async () => { await user.click(statusTrigger()); });
+    await act(async () => { await user.click(menuItem(w.filters.state.incomplete)); });
+    expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+    await act(async () => { await user.click(byText(w.discard.keep)); });
+    expect(pane()).toBe("list");
+    expect(mocks.push).not.toHaveBeenCalled();
+    expect(listCard().contains(document.activeElement)).toBe(true);
+    expect(textarea("zh").value).toBe("draft");
+  });
+
+  it("필터가 선택 키를 결과에서 빼면 목록 판이고 포커스가 목록 안에 남는다", async () => {
+    await start("/projects/acme/surfaces/web/translations?ns=common&key=k1", 500);
+    const user = userEvent.setup();
+    await act(async () => { await user.click(back()); });
+    await act(async () => { await user.click(statusTrigger()); });
+    await act(async () => { await user.click(menuItem(w.filters.state.incomplete)); });
+    await settle();
+    expect(new URL(window.location.href).searchParams.get("key")).toBeNull();
+    expect(pane()).toBe("list");
+    expect(listCard().contains(document.activeElement)).toBe(true);
+  });
+
+  it("Save가 성공하면 상세 판에 남고 결과 줄에 착지한다", async () => {
+    await start("/projects/acme/surfaces/web/translations?ns=common&key=k1", 500);
+    const user = userEvent.setup();
+    mocks.save.mockResolvedValue({ ok: true, cells: [{ localeCode: "zh", value: "draft" }] });
+    await user.type(textarea("zh"), "draft");
+    await act(async () => { await user.click(byText(w.footer.save)); });
+    await settle();
+    expect(pane()).toBe("detail");
+    expect(document.activeElement).toBe(document.querySelector("[data-footer-result]"));
+    expect(detailCard().contains(document.activeElement)).toBe(true);
+  });
+
+  it("Save가 실패하면 상세 판에 남고 다시 켜진 Save에 착지한다 — 입력은 그대로다", async () => {
+    await start("/projects/acme/surfaces/web/translations?ns=common&key=k1", 500);
+    const user = userEvent.setup();
+    mocks.save.mockResolvedValue({ ok: false, error: "failed" });
+    await user.type(textarea("zh"), "draft");
+    await act(async () => { await user.click(byText(w.footer.save)); });
+    await settle();
+    expect(pane()).toBe("detail");
+    expect(document.activeElement).toBe(byText(w.footer.save));
+    expect(textarea("zh").value).toBe("draft");
+  });
+
+  it("상세 판에서 Publish는 미저장 확인을 거치고, 취소하면 상세 판 · Publish 버튼으로 돌아온다", async () => {
+    await start("/projects/acme/surfaces/web/translations?ns=common&key=k1", 500);
+    const user = userEvent.setup();
+    await user.type(textarea("zh"), "draft");
+    await act(async () => { await user.click(publishButton()); });
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain(w.publish.title);
+    await act(async () => { await user.click(byText(w.publish.keep)); });
+    expect(pane()).toBe("detail");
+    expect(document.activeElement).toBe(publishButton());
+  });
+
+  it("상세 판에서 Sync는 미저장 확인을 거치고, 취소하면 상세 판 · Sync 버튼으로 돌아온다", async () => {
+    await start("/projects/acme/surfaces/web/translations?ns=common&key=k1", 500);
+    const user = userEvent.setup();
+    await user.type(textarea("zh"), "draft");
+    await act(async () => { await user.click(byText(en.repositorySync.action)); });
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain(w.discard.title);
+    await act(async () => { await user.click(byText(w.discard.keep)); });
+    expect(pane()).toBe("detail");
+    expect(document.activeElement).toBe(byText(en.repositorySync.action));
+    expect(textarea("zh").value).toBe("draft");
+  });
+
+  it("상세 판에서 Revert는 확인 Dialog를 열고, 취소하면 상세 판 · Revert 버튼으로 돌아온다", async () => {
+    await start("/projects/acme/surfaces/web/translations?ns=common&key=k1", 500);
+    const user = userEvent.setup();
+    mocks.revertPreview.mockResolvedValue({ status: "ready", locales: [{ code: "ko", before: "비어 있음", after: "" }], confirmation: "c1" });
+    await act(async () => { await user.click(byText(w.revert.button)); });
+    await settle();
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain(w.revert.title);
+    await act(async () => { await user.click(byText(en.common.cancel)); });
+    expect(pane()).toBe("detail");
+    expect(document.activeElement).toBe(byText(w.revert.button));
   });
 });

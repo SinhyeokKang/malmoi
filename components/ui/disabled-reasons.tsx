@@ -2,8 +2,6 @@
 
 import { useId } from "react";
 
-import { cn } from "@/lib/utils";
-
 /**
  * **꺼진 컨트롤의 보이는 사유 줄** (responsive-app design §3 · 시안 AT8a · 2026-10-11 사용자 F7 — 모든 폭, DESIGN §7 등재는 D 배치).
  *
@@ -14,25 +12,37 @@ import { cn } from "@/lib/utils";
  */
 export type DisabledReason = { id: string; text: string };
 
-/** 버튼 순서대로 사유(켜진 버튼은 `null`)를 받아 버튼별 describedby id와 쌓을 줄을 낸다. 같은 문장은 같은 id다. */
-export function useDisabledReasons(texts: readonly (string | null | undefined)[]): { ids: (string | undefined)[]; reasons: DisabledReason[] } {
-  const base = useId();
+/**
+ * 줄의 id — **범위 + 문장**으로 정해진다(순서가 아니다). 같은 Action을 여는 다른 자리(Home 실패 배너의 [Try again])가 줄을 따로 세우지 않고 머리의
+ * 같은 줄을 가리킬 수 있다(O19). 그 자리가 멈춘 문장이 머리에 없으면 id가 아무것도 가리키지 않을 뿐 다른 문장을 가리키지는 않는다.
+ */
+export function disabledReasonId(scope: string, text: string): string {
+  let hash = 5381;
+  for (let index = 0; index < text.length; index++) hash = ((hash << 5) + hash + text.charCodeAt(index)) | 0;
+  return `${scope}-reason-${(hash >>> 0).toString(36)}`;
+}
+
+/**
+ * 버튼 순서대로 사유(켜진 버튼은 `null`)를 받아 버튼별 describedby id와 쌓을 줄을 낸다. 같은 문장은 같은 id다.
+ * @param scope 줄 id의 범위 — 다른 컴포넌트가 같은 줄을 가리켜야 할 때 호출부가 나눠 든다(`HomeActions`). 없으면 이 훅의 `useId`다.
+ */
+export function useDisabledReasons(texts: readonly (string | null | undefined)[], scope?: string): { ids: (string | undefined)[]; reasons: DisabledReason[] } {
+  const own = useId();
+  const base = scope ?? own;
   const reasons: DisabledReason[] = [];
   const ids = texts.map(text => {
     if (text === null || text === undefined || text === "") return undefined;
-    const same = reasons.find(reason => reason.text === text);
-    if (same !== undefined) return same.id;
-    const id = `${base}-reason-${reasons.length}`;
-    reasons.push({ id, text });
+    const id = disabledReasonId(base, text);
+    if (!reasons.some(reason => reason.id === id)) reasons.push({ id, text });
     return id;
   });
   return { ids, reasons };
 }
 
-export function DisabledReasons({ reasons, className }: { reasons: readonly DisabledReason[]; className?: string }) {
+export function DisabledReasons({ reasons }: { reasons: readonly DisabledReason[] }) {
   if (reasons.length === 0) return null;
   return (
-    <div data-disabled-reasons="" className={cn("flex max-w-full flex-col items-end gap-0.5", className)}>
+    <div data-disabled-reasons="" className="flex max-w-full flex-col items-end gap-0.5">
       {reasons.map(reason => (
         <p key={reason.id} id={reason.id} className="text-muted-foreground m-0 max-w-full text-right text-xs text-pretty">{reason.text}</p>
       ))}
