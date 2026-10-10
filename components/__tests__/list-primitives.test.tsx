@@ -49,7 +49,7 @@ it("ListRow stackActions는 actions를 @max-form에서 둘째 줄 오른쪽으�
   expect([...actionsOf(plain).classList]).toEqual(["flex", "shrink-0", "items-center", "gap-2"]);
   // 켠 갈래 — 행은 감기고 actions는 한 줄 전폭 오른쪽 정렬이다.
   expect([...stack.classList]).toEqual(expect.arrayContaining(["@max-form:flex-wrap", "@max-form:gap-y-2"]));
-  expect([...actionsOf(stack).classList]).toEqual(expect.arrayContaining(["flex", "shrink-0", "items-center", "gap-2", "@max-form:basis-full", "@max-form:justify-end"]));
+  expect([...actionsOf(stack).classList]).toEqual(expect.arrayContaining(["flex", "shrink-0", "items-center", "gap-2", "@max-form:basis-full", "@max-form:justify-end", "@max-form:flex-wrap"]));
   // DOM 순서 — 본문 뒤에 actions다. 시각 순서만 바꾸는 `order-*`는 어느 쪽에도 없다.
   expect(stack.firstElementChild?.matches("[data-row-copy]")).toBe(true);
   expect(stack.lastElementChild).toBe(actionsOf(stack));

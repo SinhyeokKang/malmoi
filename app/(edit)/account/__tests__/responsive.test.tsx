@@ -47,7 +47,8 @@ const tokens = (element: Element | null | undefined) => [...(element?.classList 
 const has = (element: Element | null | undefined, classes: string) => expect(tokens(element)).toEqual(expect.arrayContaining(classes.split(" ")));
 const FIELD = "w-[320px] max-w-full @max-form:min-w-0 @max-form:flex-1";
 const ROW = "@max-form:flex-wrap @max-form:gap-y-2";
-const ACTIONS = "flex shrink-0 items-center gap-2 @max-form:basis-full @max-form:justify-end";
+// #235 — 둘째 줄 전폭으로 내려간 묶음도 감긴다(es 'Configuración de la instalación' + 'Desconectar'가 카드 311을 넘어 오른쪽이 잘렸다). 오른쪽 정렬은 유지.
+const ACTIONS = "flex shrink-0 items-center gap-2 @max-form:basis-full @max-form:justify-end @max-form:flex-wrap";
 
 it("이름·이메일 필드는 320이되 카드 안폭을 넘지 않고 좁으면 남는 폭을 채운다", async () => {
   const container = await screen();

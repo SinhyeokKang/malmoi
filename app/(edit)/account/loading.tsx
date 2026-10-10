@@ -93,7 +93,7 @@ export default async function AccountLoading() {
                   */}
                   {hint && <Skeleton size="xs" className="w-56" />}
                 </div>
-                <div className="flex shrink-0 items-center gap-2 @max-form:basis-full @max-form:justify-end"><Skeleton className="h-9 w-24 rounded-md" /></div>
+                <div className="flex shrink-0 items-center gap-2 @max-form:basis-full @max-form:flex-wrap @max-form:justify-end"><Skeleton className="h-9 w-24 rounded-md" /></div>
               </div>
             ))}
           </SkeletonCard>

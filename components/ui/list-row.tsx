@@ -24,6 +24,7 @@ type Slots = {
    * **조상 컨테이너 640**(`@max-form` — `Card`·`CardList`가 선언한다)이고 DOM 순서는 그대로다 — CSS `order`가 아니라 `flex-wrap` + 전폭 basis다.
    * 꺼진 기본값은 지금 렌더와 바이트가 같다(1280 불변). ⚠️ **줄 수가 폭만으로 정해진다**("넘칠 때만 감김"이 아니다) — 언어마다 줄 수가 갈리면
    * 로딩 골격이 실물과 같은 줄 수를 못 낸다(spec A-09).
+   * 둘째 줄로 내려간 동작 묶음도 `@max-form:flex-wrap`이다(오른쪽 정렬 유지) — 동작이 둘이고 긴 언어(es)면 카드 폭을 넘어 오른쪽이 잘렸다(#235).
    */
   stackActions?: boolean;
 };
@@ -46,7 +47,7 @@ export function ListRow({ icon, title, description, actions, aside, chevron, sel
     selected ? "bg-foreground/[0.07]" : interactive && !blocked && hoverFill && (variant === "canvas" ? "hover:bg-foreground/[0.03]" : "hover:bg-foreground/[0.02]"),
     className,
   );
-  const content = <>{icon}{title === undefined && description === undefined ? children : <span data-row-copy className="flex min-w-0 flex-1 flex-col gap-copy-gap"><span>{title ?? children}</span>{description !== undefined && <span className="text-muted-foreground text-xs leading-normal">{description}</span>}</span>}{aside}{actions !== undefined && <div className={cn("flex shrink-0 items-center gap-2", stackActions && "@max-form:basis-full @max-form:justify-end")}>{actions}</div>}{chevron && <ListRowChevron />}</>;
+  const content = <>{icon}{title === undefined && description === undefined ? children : <span data-row-copy className="flex min-w-0 flex-1 flex-col gap-copy-gap"><span>{title ?? children}</span>{description !== undefined && <span className="text-muted-foreground text-xs leading-normal">{description}</span>}</span>}{aside}{actions !== undefined && <div className={cn("flex shrink-0 items-center gap-2", stackActions && "@max-form:basis-full @max-form:flex-wrap @max-form:justify-end")}>{actions}</div>}{chevron && <ListRowChevron />}</>;
   if (props.href !== undefined) {
     const { as: _as, ...link } = props as ComponentPropsWithRef<typeof Link> & { as?: never };
     return <Link {...link} onClick={blocked ? event => event.preventDefault() : link.onClick} aria-current={link["aria-current"] ?? (selected ? "true" : undefined)} className={classes}>{content}</Link>;
