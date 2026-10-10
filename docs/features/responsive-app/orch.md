@@ -22,6 +22,7 @@
 | O10 | 사유 줄은 연결 끊김만이 아니라 꺼진 Sync·Publish의 **모든** 사유(Nothing to send · ownerOnly · 일시 잠금)에 선다 | 지휘자 판단 — spec A-05 문자 + F7 확정이 범위를 정함(B2 질문). 넓은 폭 상시 +22는 DS·QA 시각 확인 |
 | O11 | Logs 행은 DOM 불변 — 좁으면 시각이 맨 윗줄, 문장은 그 아래(브리프 '문장 첫 줄'과 순서만 다름) | 지휘자 판단 — 1280 불변·`order` 0 우선(B3 질문) |
 | O12 | Files 후보 경로는 말줄임 + title 유지(시안 AT7), 전문은 샘플 툴바 경로 줄바꿈으로. `client-graph.test.ts` 한 줄 추가는 B2·B4 각자 별도 커밋 | 지휘자 판단 — 시안 5차 확정 우선(B4 질문) |
+| O13 | 공유 프리미티브 둘: `components/ui/list-row.tsx`의 좁은 폭 적층 옵트인 prop(행 동작 아래 줄 오른쪽, `@max-form`)은 B3(첫 소비자 Account 행, 별도 커밋) — B4의 members·mcp 행은 그 커밋이 dev에 들어간 뒤 같은 prop을 쓴다. `components/ui/dialog.tsx`의 일반 확인 DialogContent를 AT8b 형(375 좌우 16 · 본문만 스크롤 · footer flex-wrap)으로 바꾸는 것은 B2(별도 커밋, DrawerContent·CommandDialog 불변) | 지휘자 판단 — B3 질문, 손 사본 0·첫 소비자 배치 |
 
 ## 배치
 
