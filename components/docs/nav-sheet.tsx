@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "re
 
 import { Button } from "@/components/ui/button";
 import { LargeModal } from "@/components/ui/large-modal";
-import { useNarrowHandoff } from "@/components/public-shell/nav-drawer";
+import { useNarrowHandoff } from "@/components/shell/narrow-handoff";
 import { WIDE_QUERY } from "@/lib/shell/breakpoint";
 
 /**
