@@ -113,11 +113,13 @@ export function PanelHeader({
  *
  * ⚠️ **제목 칸이 `min-w-0`이다** — 한 줄일 때 긴 제목이 버튼을 밀지 않고 말줄임된다. 줄 높이 36은 두 줄일 때 제목 줄의 몫이다.
  *
+ * ⚠️ **한 줄일 때 위 맞춤이다**(`items-start` — #227). 제목 칸은 36(`min-h-9` · `items-center`)이고 버튼 줄도 36이라 가운데가 맞는다. 묶음 아래에
+ * 사유 줄(O10 — `DisabledReasons`)이 붙는 화면(Home)에서 `items-center`면 제목이 "버튼 + 사유 줄"의 가운데로 내려가 버튼보다 12 아래에 섰다.
  * ⚠️ **버튼 묶음은 그릇 폭을 넘지 않는다**(`max-w-full` — #226). 두 줄일 때 묶음은 `self-end`라 자기 min-content 폭으로 서는데, 안에 고정 칸
  * (Projects 검색 256)이 있으면 그 폭이 그릇보다 넓어져 왼쪽 패널 밖으로 나갔다. 상한을 두면 안의 줄어드는 칸(`min-w-0 shrink`)이 실제로 준다.
  */
 export const PANEL_HEAD_ROW =
-  "flex flex-col gap-2 [&>:first-child]:flex [&>:first-child]:min-h-9 [&>:first-child]:min-w-0 [&>:first-child]:items-center [&>*+*]:max-w-full [&>*+*]:shrink-0 [&>*+*]:self-end @min-form/panel-head:flex-row @min-form/panel-head:items-center @min-form/panel-head:justify-between @min-form/panel-head:[&>*+*]:self-auto";
+  "flex flex-col gap-2 [&>:first-child]:flex [&>:first-child]:min-h-9 [&>:first-child]:min-w-0 [&>:first-child]:items-center [&>*+*]:max-w-full [&>*+*]:shrink-0 [&>*+*]:self-end @min-form/panel-head:flex-row @min-form/panel-head:items-start @min-form/panel-head:justify-between @min-form/panel-head:[&>*+*]:self-auto";
 
 /**
  * 패널 안에서 **스크롤하는** 본문.
