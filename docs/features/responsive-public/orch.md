@@ -19,7 +19,8 @@
 | D7 | Docs 캡슐 라벨 = 현재 페이지 제목, 현재 페이지가 없으면(404) `m.publicDocs.docs.title` | 지휘자 판단 — 시안 PT2a 형을 그대로 확장, 새 문구 0 |
 | D8 | 새 사전 키는 R2만 넣는다(서랍 열기/닫기 이름). TOC "On this page"는 기존 `toc` 키 재사용 | 지휘자 판단 — `messages/*` 겹침 제거, 기존 키 존재 확인 |
 | D9 | P1(계약·테스트 사례 정리)은 독립 배치가 아니다 — 각 배치가 자기 몫을 먼저 red로 쓴다 | 지휘자 판단 — tasks P1 "독립 구현 커밋 없음" |
-| D10 | 꺼진 컨트롤 사유 줄·`lg` 쿼리 상수·터치 히트 영역은 R1이 `components/ui`·잎 모듈에 만들고 R2·R4가 소비 | 지휘자 판단 — design §2, 프리미티브 먼저 |
+| D10 | 프리미티브는 첫 소비자와 같은 배치가 만든다 — 시트 형은 R1(LargeModal·CommandDialog), 측면 서랍 변형·FieldButton 아이콘 형·`lg` 쿼리 잎 모듈은 R2(공개 내비·검색 트리거·Inbox), 꺼진 사유 줄은 R4(Auth). 터치 히트 영역은 R1(Button 전역) | 지휘자 판단 — CLAUDE.md "소비자 없는 API 금지" |
+| D14 | Inbox·Docs 장 내비 시트는 R1이 시트로 만든 `LargeModal`을 소비한다 — 새 시트 프리미티브 금지(`lg` 미만에서만 열리고 넘으면 닫히므로 `lg` 이상 형이 쓰이지 않는다) | 지휘자 판단 — 시안 공통 형 = LargeModal `lg` 미만 형 |
 | D11 | 가이드 스크린샷은 `pnpm guide:check` 결과대로만(en 1280×800은 `lg` 이상이라 셸 변경이 없으면 재촬영 0) | 지휘자 판단 — spec D6·tasks P6 |
 | D13 | 시안이 정본으로 준비된 변경이라 `/design-sync` 배치를 둔다(대조 기준 = 시안 + 브리프 "시안 수령 판정" 정정) | 2026-10-10 사용자("design-sync 배치 까먹지 말거라") |
 | D12 | 워커는 Claude Code 패밀리만(Opus 5.5·Sonnet 5.5, effort ≤ high). Codex 교차 없음 | 지휘자 판단 — 사용자 허가 없음 |
@@ -29,10 +30,10 @@
 | 배치 | tasks | 소유 파일(이 배치만 편집) | 선행 | 모델·effort | 상태 |
 |---|---|---|---|---|---|
 | **QA0** 기준선 | P0 375 실측 | 없음(리포트 `.scratch/qa0-baseline.md`) | — | Sonnet 5.5 medium — 측정만 | 대기 |
-| **R1** 공유 오버레이 프리미티브 | P2 일부 | `components/ui/{dialog,large-modal,command,field-button,button}.tsx`·새 잎 모듈(`lg` 쿼리 상수)·`components/landing/mockup/publish.tsx`·꺼진 사유 줄 프리미티브·관련 테스트(`logs-screen`·`spelling-equivalence`·`onboarding-modal`·`command`·`command-dialog`·`modal-initial-focus`·`parallel-p2-modal`·`overlay-ime-guard`·`landing-mockup`·`visual-system`·`focus-return`·`primitive-focus`) | — | Opus 5.5 high — 앱 모달 8종이 받는 공유 그릇·포커스 계약 | 대기 |
+| **R1** 큰 모달 시트·검색 시트 | P2 일부 | `components/ui/{dialog,large-modal,command,button}.tsx`(dialog는 `CommandDialog` 부분만)·`components/landing/mockup/publish.tsx`·관련 테스트(`logs-screen`·`spelling-equivalence`·`onboarding-modal`·`command`·`command-dialog`·`modal-initial-focus`·`parallel-p2-modal`·`overlay-ime-guard`·`landing-mockup`·`visual-system`·`focus-return`·`primitive-focus`) | — | Opus 5.5 high — 앱 모달 8종이 받는 공유 그릇·포커스 계약 | 대기 |
 | **R5** 랜딩 캡션·히어로 | P5 | `lib/landing/stage.ts`·`components/landing/stage.tsx`·`app/page.tsx`·`lib/landing/__tests__/`·`landing-stage.test.tsx` | — | Sonnet 5.5 high — 순수 함수 TDD가 명확 | 대기 |
-| **R2** 공개 셸·헤더·서랍·Inbox | P2 나머지 | `components/public-shell/*`·`components/shell/{header-bar,attention-inbox,user-menu}.tsx`·`components/search/search-trigger.tsx`·`messages/{en,ko,es}.tsx`(서랍 키만)·`public-shell.test.tsx` 등 | R1 dev 통합 | Opus 5.5 high — 한 벌 원칙·읽음 1회·포커스 이전 | 대기 |
-| **R4** Auth·초대·OAuth·오류 | P4 | `components/signin/*`(푸터 제외)·`app/signin/`·`app/invite/`·`app/oauth/authorize/`·`app/not-found.tsx`·`app/error.tsx`·`signin-screen.test.ts` | R1 dev 통합 | Sonnet 5.5 medium — 레이아웃 치환 위주 | 대기 |
+| **R2** 공개 셸·헤더·서랍·Inbox | P2 나머지 | `components/public-shell/*`·`components/shell/{header-bar,attention-inbox,user-menu}.tsx`·`components/search/search-trigger.tsx`·`components/ui/dialog.tsx`(측면 서랍 변형)·`components/ui/field-button.tsx`·새 잎 모듈(`lg` 쿼리 상수)·`messages/{en,ko,es}.tsx`(서랍 키만)·`public-shell.test.tsx` 등 | R1 dev 통합 | Opus 5.5 high — 한 벌 원칙·읽음 1회·포커스 이전 | 대기 |
+| **R4** Auth·초대·OAuth·오류 | P4 | `components/signin/*`(푸터 제외)·꺼진 사유 줄 프리미티브(`components/ui/`)·`app/signin/`·`app/invite/`·`app/oauth/authorize/`·`app/not-found.tsx`·`app/error.tsx`·`signin-screen.test.ts` | R1 dev 통합 | Sonnet 5.5 medium — 레이아웃 치환 위주 | 대기 |
 | **R3** Docs·Privacy·Changelog | P3 | `app/docs/*`·`components/docs/*`·`components/public-doc-toc.tsx`·`components/public-doc-table.tsx`·`components/privacy/privacy-doc.tsx`·`app/privacy/`·`app/changelog/`·`privacy-doc.test.tsx` | R1·R2 dev 통합 | Opus 5.5 medium — 컨테이너 쿼리·재마운트 착지 | 대기 |
 | **DS** 시안 대조(`/design-sync`) | P6 대조 | 없음 — main 체크아웃에서 `/design-sync --audit`로 PT1a~PT8 프레임별 computed style + AX 트리 대조, 불일치마다 BugShot 이슈. 수정은 그 화면을 소유한 배치 워커가 하고 DS가 재실측·닫기 | R1~R5 dev 통합 | Opus 5.5 medium — 시안 수치 대조 | 대기 |
 | **R6** 정본 문서 | P6a·P6b·P6c | `docs/{PRODUCT,DESIGN,ARCHITECTURE,DIRECTORY}.md` | R1~R5 dev 통합 | Opus 5.5 medium — 정본 판정 문장 | 대기 |
