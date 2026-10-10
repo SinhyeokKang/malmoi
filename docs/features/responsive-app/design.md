@@ -16,7 +16,9 @@
 
 ## 2. 셸과 콘텐츠
 
-뷰포트 `lg`(64rem) 미만은 내비 서랍, 이상은 기존 LNB 리사이즈/접힘(판정 기준은 공개 design §2 — 2026-10-07 사용자). 서랍은 P2의 `dialog.tsx` 측면 변형을 소비하고 같은 열림/닫힘/경로 이동/좁아지는 방향 포함 resize 포커스 계약을 쓴다. main 콘텐츠는 모드에 따라 다른 React 부모로 옮기지 않아 workspace·폼이 재마운트되지 않게 한다. 동적 sidebar 부착과 콘텐츠 host를 분리하고 서버 children prop 전달 경계를 유지한다.
+뷰포트 `lg`(64rem) 미만은 내비 서랍, 이상은 기존 LNB 리사이즈/접힘(판정 기준은 공개 design §2 — 2026-10-07 사용자). 서랍은 공개 단계가 만든 **`DrawerContent`**(`components/ui/dialog.tsx` — 왼쪽·위·아래 8 · 폭 `min(320, 100vw − 56)` · 머리 56 · 바닥 `actions` 슬롯 · 열면 `aria-current` 항목/첫 항목, DESIGN `DrawerContent` 행)를 소비하고 같은 열림/닫힘/경로 이동 포커스 계약을 쓴다. **좁아지며 숨는 고정 LNB의 포커스 이관은 공용 훅 `useNarrowHandoff`를 쓴다** — Chrome은 숨는 노드의 포커스를 blur 없이 `body`로 옮기므로(#214, ARCHITECTURE §6.358) 새로 짜지 않는다. 훅은 지금 `components/public-shell/nav-drawer.tsx`에 있고 소비자가 둘(`WideOnly`·`DocsFixedNav`)이라, 앱 LNB를 셋째 소비자로 붙이는 A2에서 `components/shell/`로 옮긴다(중복 제거). 판정 쿼리는 `lib/shell/breakpoint.ts`의 `WIDE_QUERY` 하나다. main 콘텐츠는 모드에 따라 다른 React 부모로 옮기지 않아 workspace·폼이 재마운트되지 않게 한다. 동적 sidebar 부착과 콘텐츠 host를 분리하고 서버 children prop 전달 경계를 유지한다.
+
+**앱 헤더 좁은 형**: 공개 단계가 `HeaderBar`·`FieldButton`(검색 트리거)에 `compact`를 넣었지만 앱 헤더(`components/shell/header.tsx`)는 아직 넘기지 않는다 — A2가 넘기고, 공개 배치표(공개 design §2)대로 헤더에 로고·서랍 트리거·검색 아이콘·Inbox·계정만 남기며 `New project`는 서랍으로 보낸다. 검색·Inbox·계정 메뉴는 이미 같은 컴포넌트 한 벌이라 앱에서 다시 만들지 않는다 — Inbox `lg` 미만 시트(D2)·첫 포커스 닫기(D22)·트리거 `aria-haspopup=menu` 알려진 한계(#217), 계정 메뉴 열림 링(#218)이 앱 헤더에도 그대로 선다.
 
 현재 ShellPanels는 `sidebarPx` ref와 collapsed 상태로 사용자가 고른 값을 유지한다. 자동 좁음 전환으로 이 값을 저장하지 않는다. 접힘 여부는 기기 쿠키 `malmoi-sidebar-collapsed`에 남는데(2026-10-07, `lib/shell/sidebar-cookie.ts`) **쓰는 것은 사용자의 토글·드래그 스냅뿐**이다 — 좁은 모드의 서랍 전환·`onResize`는 그 쿠키를 쓰지 않는다. **두 Panel과 핸들은 항상 마운트하고 좁을 때 CSS로 숨긴다** — 사이드바 Panel을 조건부 렌더하면 콘텐츠 Panel의 형제 위치가 바뀌어 children이 재마운트된다. `onResize`는 `dragging`과 무관하게 `collapsedRef`·`setCollapsed`를 갱신하고(`shell-panels.tsx:140-147`) 폭 변화 effect(`:100-104`)는 매번 `setLayout`을 부르므로, **좁은 모드에서는 둘 다 건너뛴다.** 서랍 안 Sidebar는 `SidebarCollapseContext`를 `{collapsed:false}`로 덮고 접기 토글을 숨긴다 — 그대로 상속하면 데스크톱에서 40 레일로 접어 둔 사용자의 서랍 라벨이 inert로 숨고(`sidebar.tsx:107,128`) 토글이 숨은 데스크톱 패널을 조작한다. `panel-size.ts`의 px→% 계산은 넓은 모드의 측정 너비만 받는다. 좁은 모드에서 발생한 onResize가 선호폭/수동접힘을 덮지 못하게 하고, 복귀 시 이전 px를 그 시점 가용 너비에 clamp한다. 저장 범위를 새 localStorage나 폭 쿠키로 확대하지 않는다. 기존 번역 패널 선호폭 저장도 자동 clamp와 구분한다.
 
@@ -59,17 +61,17 @@ single에서 상세를 여는 같은 키 재열기·다른 키 선택·다른 �
 | Publish/Sync/Revert | 기존 확인/진행 흐름 | unsaved/lock 판정 우회 없음 |
 | 브라우저 뒤로/앞으로 | 기존 history 이동 | useLeaveGuard와 복구 사본 유지; 새 가짜 history entry 없음 |
 
-**큰 모달은 공개 규칙을 그대로 받는다**(2026-10-10 사용자): 앱의 LargeModal 소비자(Publish·로그 상세·Add sources·소스 상세·CI·초대·MCP 토큰·New project)는 `lg` 미만에서 전체 화면 시트다(공개 design §1 큰 모달 규칙). 규칙은 `large-modal.tsx` 그릇 상수 한 곳에 있고 P2가 넣는다 — 앱 배치는 모달별로 그릇·여백·footer를 다시 지정하지 않고, 시트 안 본문 배치(반복 행 적층·두 판→순차 판·긴 식별자 줄바꿈)와 소비자별 실측만 맡는다.
+**큰 모달은 공개 규칙을 그대로 받는다**(2026-10-10 사용자): 앱의 LargeModal 소비자(Publish·로그 상세·Add sources·소스 상세·CI·초대·MCP 토큰·New project)는 `lg` 미만에서 전체 화면 시트다(공개 design §1 큰 모달 규칙). 규칙은 `large-modal.tsx` 그릇 상수 한 곳에 있고 P2가 넣는다 — 앱 배치는 모달별로 그릇·여백·footer를 다시 지정하지 않고, 시트 안 본문 배치(반복 행 적층·두 판→순차 판·긴 식별자 줄바꿈)와 소비자별 실측만 맡는다. **구현 상태(2026-10-10)**: 시트 형·`flush`·머리 56(#215)·footer `lg` 미만 감김(#220)이 들어가 있고, 공개 QA가 앱 모달 10종의 375·1023·1280 footer 도달을 확인했다. 남은 앱 몫은 이력 상세(`logs/event-dialog.tsx` — 패널 상수만 쓰고 머리가 자기 것 `CloseButton` 36 `absolute top-6 right-6`이라 시트 머리 56 형 밖)의 머리 정렬(A3)과 Files 단계 순차 판(A5)이다.
 
-**소프트 키보드**: 단일 판 상세의 Save·Revert 줄은 상세 스크롤 영역 밖 sticky footer로 둔다 — 입력이 키보드에 가려도 Save가 키보드 바로 위에 선다. 모달은 공개 design §3의 `dvh`·sticky footer를 따른다.
+**소프트 키보드**: 단일 판 상세의 Save·Revert 줄은 상세 스크롤 영역 밖 sticky footer로 둔다. ⚠️ **`dvh`는 키보드를 따르지 않는다** — 공개 단계가 루트 viewport에 `interactiveWidget: "resizes-content"`(D20)를 넣어 **Android(Chrome·Firefox)에서만** 키보드가 레이아웃 뷰포트를 줄이고 Save가 키보드 위에 선다. **iOS Safari는 이 설정을 무시해 비대응**이다(`visualViewport` 처리는 비목표). 모달은 LargeModal 시트(`h-dvh` · footer 몸통 밖)가 같은 조건으로 든다.
 
 목록 버튼과 history 관계는 위 표대로 확정됐다. 판 전환은 history entry를 추가하지 않으며, 같은 키 다시 열기와 dirty 보존을 구현 전 회귀 테스트로 고정한다. 기존 `useLeaveGuard`는 Navigation API index가 없는 브라우저의 popstate를 차단하지 못한다는 제한을 명시하고 있다. 반응형 완료가 이를 해결했다고 주장하지 않는다. 해당 브라우저의 이탈·복구 실물 결과를 기록하고 손실이 확인되면 앱 입력 완료 판정을 보류해 별도 결함으로 분리한다.
 
-**터치**: 히트 영역·리사이저 `touch-action`·꺼진 컨트롤 사유의 보이는 줄은 공개 design §2를 따른다. 1024 이상 태블릿의 40 레일은 라벨이 `title`뿐이라 터치에서 안 보인다 — 대표 프레임 AT1 수령 때 처리를 정하고 그 전에는 동작을 바꾸지 않는다.
+**터치**: 히트 영역은 공개 단계가 끝냈다 — `Button`의 `sm`·`icon-xs/sm/md/lg`에 `pointer: coarse` `::after` 44(`TOUCH_TARGET`, D17). **공개 단계가 앱으로 넘긴 둘**: ① 리사이저(LNB `shell-panels.tsx` · 번역 패널 핸들) `touch-action: none` — 코드에 아직 없다(A2·A4), ② 꺼진 컨트롤 사유의 보이는 줄 프리미티브 — 공개에는 실소비자가 OAuth 동의 슬롯 하나뿐이라 만들지 않았고 **첫 소비자는 번역 화면의 꺼진 Publish·Sync**다(A4가 `components/ui/`에 만들고 DESIGN §7에 등재). 1024 이상 태블릿의 40 레일은 라벨이 `title`뿐이라 터치에서 안 보인다 — 대표 프레임 AT1 수령 때 처리를 정하고 그 전에는 동작을 바꾸지 않는다.
 
 ## 4. 온보딩·관리
 
-`components/onboarding/steps/files.tsx`의 FILES_PANEL_WIDTH952는 모달1024 고정 가정이다. 공개 단계(P2)의 큰 모달 규칙으로 `lg` 미만 모달 폭이 뷰포트 폭(시트)이 되면 A5 전까지 이 분모가 실제 모달 폭과 어긋나므로 P2 실측이 앱 1280 미만에서 이 단계를 본다. 새 제안 `lib/onboarding/files-layout.ts`의 순수 판정은 핸들을 빼기 전 측정한 body content box 너비 `bodyWidth`를 입력받는다. 후보 하한200·핸들8·샘플 최소400을 합한608을 기준으로(샘플 최소400은 지금 코드에 없는 **새 값**이다 — 주석 `files.tsx:57`에만 있고 오른쪽 Panel(`:278`)에 `minSize`가 없다) `bodyWidth < 608`이면 후보/샘플 순차 판, 이상이면 두 판이다. 두 판의 비율을 계산할 때만 `available = bodyWidth - 8`을 산출하여 기존 `panelConstraints`에 전달한다. 후보 기본폭240과 사용자 선택폭은 기존 상한320 및 샘플400을 남기는 범위로 clamp한다. 따라서 bodyWidth608에서는 available600·후보200·샘플400이 된다.608은 초기 설계값이며(현재 주석의 "320 상한이면 우측 400 이상"은 952 분모로 계산하면 우측 632라 수치 근거가 되지 않는다) 시안 수령 때 실제 sample 툴바까지 검사해 확정한다. 경계 테스트와 실측의607/608/609는 모두 핸들을 포함한 body content box 너비다.
+`components/onboarding/steps/files.tsx`의 FILES_PANEL_WIDTH952는 모달1024 고정 가정이다. 공개 단계(P2)의 큰 모달 규칙으로 `lg` 미만 모달은 뷰포트 폭 시트다(375에서 본문 content box 343 = 375 − 16×2). 그래서 지금 `lg` 미만 New project·Add sources Files 단계의 952 분모는 실제 폭과 어긋나 있고(공개 QA는 footer 도달만 확인했다) A5가 고친다. 새 제안 `lib/onboarding/files-layout.ts`의 순수 판정은 핸들을 빼기 전 측정한 body content box 너비 `bodyWidth`를 입력받는다. 후보 하한200·핸들8·샘플 최소400을 합한608을 기준으로(샘플 최소400은 지금 코드에 없는 **새 값**이다 — 주석 `files.tsx:57`에만 있고 오른쪽 Panel(`:278`)에 `minSize`가 없다) `bodyWidth < 608`이면 후보/샘플 순차 판, 이상이면 두 판이다. 두 판의 비율을 계산할 때만 `available = bodyWidth - 8`을 산출하여 기존 `panelConstraints`에 전달한다. 후보 기본폭240과 사용자 선택폭은 기존 상한320 및 샘플400을 남기는 범위로 clamp한다. 따라서 bodyWidth608에서는 available600·후보200·샘플400이 된다.608은 초기 설계값이며(현재 주석의 "320 상한이면 우측 400 이상"은 952 분모로 계산하면 우측 632라 수치 근거가 되지 않는다) 시안 수령 때 실제 sample 툴바까지 검사해 확정한다. 경계 테스트와 실측의607/608/609는 모두 핸들을 포함한 body content box 너비다.
 
 후보/샘플 전환은 wizard step을 진행시키지 않는다. 후보 선택·adapter·기준언어·manual 입력·샘플 로딩/실패/만료는 기존 부모 상태에 남는다. 샘플 보기/후보 복귀를 별도 버튼으로 두고 Next는 기존 검증만 따른다. 단순 resize로 탐지·샘플 fetch를 다시 실행하지 않는다. 다수 후보·빈 후보·읽기 실패·sample-expired를 유지한다.
 
@@ -77,7 +79,7 @@ New project·Add sources의 직접 URL과 intercept 경로는 기존 닫기 목�
 
 ## 5. A2e 랜딩 후속
 
-P5의 캡션 높이 계약을 유지하면서1440×900 상수를 고정 전제로 쓰던 fitScale/frame/목업 레이아웃을 함께 바꾼다. 새로운 순수 함수 입력은 논리 canvasWidth/canvasHeight, scroller W/H, chromeHeight, scroll position이다. 서버/실제 사용자 데이터를 목업으로 가져오지 않고 현재 샘플 데이터를 유지한다.
+**P5 완료본에서 시작한다** — `fitScale({W,H,chromeHeight})`·`frame`의 `chromeHeight`는 이미 필수이고(`CHROME_GAP` 16 포함), `MIN_PINNED_SCALE` 0.2 아래는 `pinnable=false`로 같은 5씬 정적 흐름이며, 한 줄 캡션 블록은 28(`min-h-7`, #216)이다. 이 계약을 유지하면서 1440×900 상수(`CANVAS_W`·`CANVAS_H`)를 고정 전제로 쓰던 fitScale/frame/목업 레이아웃을 바꾼다. 새로 더할 순수 함수 입력은 논리 canvasWidth/canvasHeight다(scroller W/H·chromeHeight·scroll position은 이미 있다). ⚠️ **목업은 뷰포트 `max-lg:` 토큰을 하나도 들지 않는다** — 그릇 상수를 import하지 않고 값을 복사하며 `landing-mockup.test.tsx`가 0건을 고정한다(R2가 #218 열림 링 토큰을 `app-frame.tsx`에 동기화했다). 아래 컨테이너 변형만 쓴다. 서버/실제 사용자 데이터를 목업으로 가져오지 않고 현재 샘플 데이터를 유지한다.
 
 5씬 각각의 정지 구간에서 데스크톱→태블릿→모바일 순차 상태를 배치하고 다음 씬으로 전환한다. 각 상태는 동일 스크롤 위치에서 동일하게 결정된다. reduced-motion은 중간 변형 없이 상태를 교체하고 모든 씬 내용을 유지한다. 정확한 구간 비율·태블릿/모바일 종횡비는 A18 시안과 가용 높이 실측 산출물로 고정하며 그 전에는 임의 애니메이션 값을 구현하지 않는다.
 
