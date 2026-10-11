@@ -2497,6 +2497,8 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
   - ⚠️ **Settings의 보관↔복원이 여전히 `body`였다** ([malmoi#82](https://github.com/SinhyeokKang/malmoi/issues/82) — 머지 전 최종 QA). 페이지가 같은 카드를 **두 자리**에 그려 전환이 재마운트였고, `useLandAfter`가 옛 인스턴스와 함께 사라졌다. 카드를 **제자리에서** 다시 그린 jsdom 테스트는 그 재마운트를 원리적으로 못 본다 — 재현은 실제 페이지 조립을 두 상태로 그린 `settings-archive-focus.test.tsx`다. **규칙: 성공 뒤 착지를 컴포넌트 안에서 기다리면 "호출부가 그 컴포넌트를 같은 자리에 두는가"를 호출부 조립으로 잰다.**
 - **재발 방지**: 형을 프리미티브로 올렸다 — Dialog 트리거는 `Button busy`, 폼 저장은 `useLandAfter`, 닫기는 `neighbourFocus`, 트리거 없는 Dialog는 `DialogContent`가 든다(DESIGN §7). 새 확정 버튼을 만들면 **"성공·실패 뒤 이 버튼이 켜져 있나, 붙어 있나"**를 묻는다. `rg -n 'DialogTrigger asChild' -A3 components | rg 'loading='`가 0이어야 한다(2026-09-24: 0). 포커스 복귀를 단언하는 jsdom 테스트는 fixup observer를 단다. ⚠️ **남은 수동 형** — `SyncButton`과 번역 Revert는 `busy` 이전의 손 형이고 동작은 같다(외과적 변경 원칙으로 옮기지 않았다).
 
+- **🔁 2026-10-12 — responsive 1.3.2 감사**: 앱 고정 LNB 래퍼의 handoff가 형제 리사이즈 핸들을 포함하지 않아 숨을 때 포커스가 빠졌다. 목차도 읽기 그릇 960 경계에서 목록·disclosure가 서로 숨는데 인스턴스를 유지한다는 사실만 검사했다. 핸들에 같은 훅을 연결하되 `react-resizable-panels`의 focus/blur 콜백은 이벤트 인자가 없어 capture 이벤트를 쓴다. 목차는 기존 ResizeObserver와 실제 CSS visibility를 쓰고 focusin/out 소유 기록으로 blur 없는 fixup과 blur 선행을 모두 받는다. 그물: `app-nav-drawer.test.tsx`의 실제 핸들→메뉴 및 외부 포커스 대조, `public-doc-toc-responsive.test.tsx`의 읽기 경계 왕복·명시적 이탈·열림 선호. 재발 방지 전수: `rg -n 'useNarrowHandoff|new ResizeObserver' components/shell components/public-shell components/docs components/public-doc-toc.tsx` — 기존 훅 소비자 넷에 핸들 하나를 더하며 목차는 viewport가 아닌 실제 읽기 그릇을 관찰한다. 브라우저 검증은 별도이며 jsdom 통과를 실측으로 기록하지 않는다.
+
 ### 2026-09-24 — 비리터럴 값 하나로 904키가 다 들어간 소스가 "Last sync failed"가 됐다
 
 - **영역**: `lib/onboarding/ingest.ts` `prepareFirstSnapshot` · `lib/import/surface.ts` · `lib/adapters/types.ts`
@@ -2879,3 +2881,11 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - **수정**: 진입부터 240초 단조 예산과 실행 시작 시각 기한을 함께 검사한다. 실제 transport·body 소비·늦은 DB 확정을 같은 수명에 묶고, 변경 시도 뒤 실패는 결과 미확인으로 300초 창까지 재실행을 막는다. 종료는 자기 RUNNING만 CAS한다. Publish 무효화는 Project 잠금 뒤 실행권을 다시 읽는다.
 - **그물**: stale 종료 덮어쓰기 red, 실제 Octokit의 PR 닫기·force ref·오류 재전송·늦은 토큰, 격리 PG 잠금 대기·Import·Revert·저장 테스트를 추가했다. 최소 Next 검증 앱의 실제 301초 지연 콜백도 신규 전송 0건이었다(SELF-HOSTING 실측 범위 참조).
 - **재발 방지**: 플랫폼 강제 종료와 앱 실행권을 분리한다. 실패 행을 새로 만들면 RUNNING 소비자뿐 아니라 FAILED 재시도·전달 기준 소비자도 함께 점검한다. 이미 원격이 받은 요청을 abort가 취소한다고 주장하지 않는다.
+
+### 2026-10-12 — 고정 크기 스크롤러가 목차 disclosure의 본문 밀림을 알리지 않았다
+
+- **영역**: `components/public-doc-toc.tsx` · Docs/Privacy 공유 목차.
+- **증상**: 본문 앞의 접힌 목차를 열고 수동 스크롤하면 실제 절 위치와 현재 절 표시가 어긋날 수 있었다.
+- **근본 원인**: 절 좌표를 캐시하면서 스크롤러 ResizeObserver와 fonts.ready만 다시 잼의 근거로 삼았다. 스크롤러 자체 크기는 그대로여도 앞선 목차 높이가 바뀌면 본문 좌표가 바뀐다.
+- **그물**: 정적 감사와 `public-doc-toc-responsive.test.tsx`의 Docs/Privacy 공통 재현이 잡았다. 기존 고정 TOPS/본문 뒤 목차 픽스처는 놓쳤다. 새 픽스처의 높이 판정도 처음엔 다른 버튼을 골랐으므로 nav 자신의 disclosure로 고친 뒤 원래 구현에서 RED를 다시 확인했다. 펼침·접힘·클릭 landing·pin 해제·관찰자 cleanup을 함께 검증한다.
+- **재발 방지**: `rg -n 'new ResizeObserver|measure|tops' components/public-doc-toc.tsx`로 좌표 캐시와 갱신 원인을 대조했다. 공유 목차 소비자는 같은 컴포넌트라 수정 한 곳이 Docs/Privacy에 함께 적용된다. 스크롤 컨테이너의 크기 불변을 자식 좌표 불변으로 가정하지 않는다. 같은 관찰자로 목차와 이름 있는 읽기 그릇도 관찰한다.
