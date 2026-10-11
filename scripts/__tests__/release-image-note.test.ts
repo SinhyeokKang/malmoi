@@ -113,7 +113,6 @@ describe("withImageLine", () => {
   it.each([
     ["공백만 있는 빈 줄", `- b\n  \n${FULL}\n`],
     ["끝의 공백 줄", `- b\n\n${FULL}\n\n   \n`],
-    ["strong 안 끝 공백", "- b\n\n**Full changelog: ** https://x/compare/a...b\n"],
   ])("원문에서 걷히던 Full changelog는 결과에서도 걷힌다 — %s", (_name, body) => {
     const strip = (text: string) => {
       const tree = unified().use(remarkParse).use(remarkGfm).parse(text);
