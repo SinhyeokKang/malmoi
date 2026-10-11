@@ -27,6 +27,10 @@ Coordinator owns briefs, reviews, integration, documentation and remote writes. 
 
 Source intersections A∩B, A∩C, B∩C: none. Shared docs are coordinator-owned. Dictionaries, package/lockfiles and UI primitives are excluded unless explicitly reassigned. Review fixes reuse owner with a new Dispatch; no waiting inside worker tasks.
 
+## Validation scheduling change
+
+- A/B/C parallel full suites produced API contract scanner 5-second timeouts under shared machine load. Test limits/config remain unchanged. Workers finish current runs and report failures honestly; C fixes its own test typing error with focused verification. Full branch gates will run sequentially after worker settlement, before integration. This is scheduling only, not a gate waiver.
+
 ## Acceptance and regressions
 
 - No remount/draft loss, no extra server calls, no URL/history changes for local panes.
