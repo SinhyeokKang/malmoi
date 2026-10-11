@@ -13,6 +13,7 @@
 | D4 | 런타임 게이트는 단일 QA 워커: 레이아웃 실측(M-03 + scrub + reduced-motion + 다크 + 프레임 시간) **+ `/design-sync` MK1 프레임 대조** | 지휘자 판단 — 정본 시안이 있는 변경(메모리: design-sync-when-canon-prepared) · QA 단일 워커(orchestrate §5) |
 | D5 | 가이드 컷·README 영향 없음 | 지휘자 판단 — SHOOTING 매핑에 랜딩 컷 없음, README에 랜딩 목업 서술 없음 |
 | D6 | 스키마·환경변수·사전 키 추가 없음(새 문구 0) | spec 범위 게이트 |
+| D8 | 1070 경계(LNB가 선 채 한 판 → 1024에서 다시 두 판)를 그대로 둔다 | 지휘자 판단 — 실물 앱이 같고 브리프 원칙이 "내부 배치는 실물을 옮긴다"(K1 리뷰 U1) |
 | D7 | 루트 = 캔버스 − 베젤 8×2 − 화면 border 1×2. T·M 캔버스 786·393(루트 768·375 정확), D 캔버스 1440(루트 1422) | 지휘자 판단 — spec이 768·375를 QA 실측 폭이라 고정했고, D는 1422·1424가 같은 갈래라 씬 좌표를 안 움직인다 |
 
 ## 배치
@@ -40,3 +41,4 @@
 - K1 `worker_done` — `d5ef2a3c`(§3.5 정정) · `9b873bb6`(컨테이너 변형), gate ok. 소유 밖 테스트 2(`header-44`·`large-modal-sheet` 제목) 수정 — 목업 계약 단언이라 수용 예정(리뷰 판정). 발견: 베젤 화면 `border` 1px 때문에 루트가 캔버스 − 18(1422·766·373). **지휘자 판단 D7**: T·M은 spec의 QA 실측 폭(768·375)을 정확히 지키도록 K2가 캔버스를 786·393으로, D는 1440 유지(루트 1422 — 같은 갈래). K2 fix1 끝난 뒤 fix2로 보낸다. 독립 리뷰 `ctx_f10142ba5113` 착수.
 - K2 fix1 `eeb08884` gate ok — live 집합을 f 구간으로(지휘자 diff 확인). fix2(D7 캔버스 786·393) `ctx_898e221e40af` 전송.
 - K2 fix2 `729bab8f` gate ok — 캔버스 [1440, 786, 393], `SCREEN_BORDER` 상수 + DOM 대조. K2 dev 통합 착수(K1과 파일 겹침 없음).
+- K2 dev 통합 `9eafafc7..389110e4` · `pnpm gate` ok — push는 K1 통합 뒤 한 번에(K2만 나가면 preview에서 고정 배치 목업이 좁은 그릇에 깨져 보인다). K1 리뷰: 🔴0 · 🟡5(container-query 정규식 · 경계 산수 순수 테스트 · 패널 폭 기준 · 뷰포트 정규식 · 고아 flex) · U1→D8. K1 fix1 `ctx_73b287d5b327`(+ 낡은 주석 4곳 · container-query.test.ts 배정 · rebase dev). 리뷰어 해제.
