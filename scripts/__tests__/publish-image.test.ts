@@ -90,6 +90,8 @@ printf 'git %s\\n' "$*" >> "$TRACE"
 case "$1" in
   rev-parse)
     [ "$FAIL_AT" = rev-parse ] && { echo "fatal: Needed a single revision" >&2; exit 128; }
+    # 같은 이름의 브랜치만 있는 리포 — 이름 그대로는 풀리고 refs/tags/로는 안 풀린다.
+    case "$FAIL_AT:$3" in branch-only:refs/tags/*) echo "fatal: Needed a single revision" >&2; exit 128 ;; esac
     echo "${SHA}" ;;
   cat-file)
     [ "$FAIL_AT" = cat-file ] && { echo "fatal: path 'Dockerfile' does not exist in '${SHA}'" >&2; exit 128; }
@@ -105,6 +107,7 @@ const DOCKER_STUB = `#!/usr/bin/env bash
 case "$1 $2" in
   "buildx imagetools")
     printf 'docker %s\\n' "$*" >> "$TRACE"
+    if [ -e "$STUB_STATE/built" ] && [ "$FAIL_AT" = post-push-inspect ]; then echo "ERROR: failed to do request: Head \"https://ghcr.io/v2/sinhyeokkang/malmoi/manifests/v1.3.3\": net/http: TLS handshake timeout" >&2; exit 1; fi
     if [ -e "$STUB_STATE/built" ] || [ "$INSPECT_MODE" = exists ]; then cat "$STUB_STATE/inspect.json"; exit 0; fi
     case "$INSPECT_MODE" in
       not-found) printf 'ERROR: %s: not found\\n' "$4" >&2; exit 1 ;;
@@ -125,7 +128,7 @@ case "$1 $2" in
       [ "$1" = --metadata-file ] && meta="$2"
       shift
     done
-    cp "$STUB_STATE/metadata.json" "$meta"
+    [ -e "$STUB_STATE/metadata.json" ] && cp "$STUB_STATE/metadata.json" "$meta"
     : > "$STUB_STATE/built" ;;
   *) printf 'docker %s\\n' "$*" >> "$TRACE"; exit 99 ;;
 esac
@@ -133,7 +136,7 @@ esac
 
 type Run = { status: number | null; stdout: string; stderr: string; calls: string[]; output: string | null; summary: string | null };
 
-function run(args: string[], opts: { inspect?: string; failAt?: string; inspectJson?: string; metadata?: string; githubEnv?: boolean } = {}): Run {
+function run(args: string[], opts: { inspect?: string; failAt?: string; inspectJson?: string; metadata?: string | null; githubEnv?: boolean } = {}): Run {
   const dir = mkdtempSync(join(tmpdir(), "publish-image-"));
   try {
     const bin = join(dir, "bin");
@@ -144,7 +147,8 @@ function run(args: string[], opts: { inspect?: string; failAt?: string; inspectJ
     chmodSync(join(bin, "git"), 0o755);
     chmodSync(join(bin, "docker"), 0o755);
     writeFileSync(join(state, "inspect.json"), opts.inspectJson ?? INSPECT_STDOUT);
-    writeFileSync(join(state, "metadata.json"), opts.metadata ?? METADATA_SAME);
+    // null = buildx가 metadata 파일을 쓰지 않은 경우
+    if (opts.metadata !== null) writeFileSync(join(state, "metadata.json"), opts.metadata ?? METADATA_SAME);
     const trace = join(dir, "trace");
     writeFileSync(trace, "");
     const output = join(dir, "github-output");
@@ -162,7 +166,8 @@ function run(args: string[], opts: { inspect?: string; failAt?: string; inspectJ
       env.GITHUB_OUTPUT = output;
       env.GITHUB_STEP_SUMMARY = summary;
     }
-    const result = spawnSync("bash", ["scripts/publish-image.sh", ...args], { encoding: "utf8", timeout: 5_000, env });
+    // `/bin/bash`를 명시한다 — PATH의 첫 bash(Homebrew·리눅스 bash 5)로 돌면 macOS 비상 경로의 3.2 계약을 아무것도 재지 않는다.
+    const result = spawnSync("/bin/bash", ["scripts/publish-image.sh", ...args], { encoding: "utf8", timeout: 5_000, env });
     // metadata 파일 경로는 매번 다른 임시 경로라 자리표시자로 바꿔 센다.
     const calls = readFileSync(trace, "utf8").split("\n").filter(Boolean).map((line) => line.replace(/--metadata-file \S+/, "--metadata-file <tmp>"));
     return {
@@ -178,7 +183,7 @@ function run(args: string[], opts: { inspect?: string; failAt?: string; inspectJ
   }
 }
 
-const REV_PARSE = "git rev-parse --verify v1.3.3^{commit}";
+const REV_PARSE = "git rev-parse --verify refs/tags/v1.3.3^{commit}";
 const CAT_FILE = `git cat-file -e ${SHA}:Dockerfile`;
 const INSPECT = `docker buildx imagetools inspect ${REF} --format {{json .Manifest}}`;
 const ARCHIVE = `git archive ${SHA}`;
@@ -207,6 +212,13 @@ describe("인자 검증 — 밖이면 exit 2, 대역 호출 0", () => {
 describe("빌드 전 실패 — exit 1, build 0", () => {
   it("태그가 없으면 rev-parse에서 멈춘다", () => {
     const r = run(["v1.3.3"], { failAt: "rev-parse" });
+    expect(r.status, r.stderr).toBe(1);
+    expect(r.calls).toEqual([REV_PARSE]);
+    expect(r.stdout).toBe("");
+  });
+
+  it("같은 이름의 브랜치만 있으면 태그로 읽지 않는다 — refs/tags/로 좁힌다", () => {
+    const r = run(["v1.3.3"], { failAt: "branch-only" });
     expect(r.status, r.stderr).toBe(1);
     expect(r.calls).toEqual([REV_PARSE]);
     expect(r.stdout).toBe("");
@@ -246,6 +258,16 @@ describe("존재 조회 3분기", () => {
     expect(r.calls).not.toContain(BUILD);
   });
 
+  it("최상위 digest 줄이 둘이면 실패다 — 하나를 골라 쓰지 않는다", () => {
+    const twoTop = INSPECT_STDOUT.replace(`  "size": 856,\n`, `  "size": 856,\n  "digest": "${CHILD_DIGESTS[0]}",\n`);
+    expect(twoTop).not.toBe(INSPECT_STDOUT);
+    const r = run(["v1.3.3"], { inspect: "exists", inspectJson: twoTop });
+    expect(r.status, r.stderr).toBe(1);
+    expect(r.stdout).toBe("");
+    expect(r.calls).toEqual([REV_PARSE, CAT_FILE, INSPECT]);
+    expect(r.output ?? "").not.toContain("digest=");
+  });
+
   it(`실측 문구 'ERROR: <ref>: not found' 한 줄이면 build 1회 + published`, () => {
     const r = run(["v1.3.3"], { inspect: "not-found" });
     expect(r.status, r.stderr).toBe(0);
@@ -279,6 +301,26 @@ describe("빌드 경로 실패", () => {
     expect(r.stdout).toBe("");
     // 대역 build는 빈 stdin에도 성공한다 — 파이프 왼쪽 실패를 pipefail이 잡는지가 요점이다.
     expect(r.calls).toEqual([REV_PARSE, CAT_FILE, INSPECT, ARCHIVE, BUILD]);
+    expect(r.output ?? "").not.toContain("digest=");
+  });
+
+  it("push 뒤 조회 실패 → exit 1, 성공 줄 없음", () => {
+    const r = run(["v1.3.3"], { failAt: "post-push-inspect" });
+    expect(r.status, r.stderr).toBe(1);
+    expect(r.stdout).toBe("");
+    expect(r.calls).toEqual([REV_PARSE, CAT_FILE, INSPECT, ARCHIVE, BUILD, INSPECT]);
+    expect(r.stderr).toContain("TLS handshake timeout");
+    expect(r.output ?? "").not.toContain("digest=");
+  });
+
+  it.each([
+    ["metadata 파일 없음", null],
+    ["containerimage.digest 키 없음", METADATA_SAME.replace(/,\n {2}"containerimage\.digest": "[^"]+"/, "")],
+  ])("%s → exit 1, 성공 줄 없음", (_, metadata) => {
+    if (metadata !== null) expect(metadata).not.toContain("containerimage.digest");
+    const r = run(["v1.3.3"], { metadata });
+    expect(r.status, r.stderr).toBe(1);
+    expect(r.stdout).toBe("");
     expect(r.output ?? "").not.toContain("digest=");
   });
 

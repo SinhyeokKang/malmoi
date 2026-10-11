@@ -123,6 +123,10 @@ describe("주입·동시성·셸", () => {
     expect(wf.defaults?.run?.shell).toBe("bash");
   });
 
+  it("스텝별 shell: 재지정이 0개다 — 붙으면 그 스텝의 pipefail 보장이 빠진다", () => {
+    expect(steps.filter((s) => "shell" in s).map((s) => s.name ?? s.run)).toEqual([]);
+  });
+
   it("latest 태그·cache-from·cache-to·--build-arg·--secret이 0개다", () => {
     // `runs-on: ubuntu-latest`는 러너 라벨이라 뺀다 — 막는 것은 이미지의 `latest` 태그다.
     expect(body.replaceAll("ubuntu-latest", "")).not.toMatch(/latest|cache-from|cache-to|--build-arg|--secret/);
