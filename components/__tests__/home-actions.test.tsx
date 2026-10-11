@@ -364,37 +364,47 @@ it("포커스 없이 배너 [Try again]으로 연 Sync를 Cancel로 닫으면 �
   await vi.waitFor(() => expect(document.activeElement).toBe(button("Try again")));
 });
 
+/** 꺼진 버튼의 사유 — 자기 sr-only 문장이고 `title`(버튼이나 감싼 `<span>`)이 같은 문장이다(F7 이전 형 — disabled-reasons-revert R-02). */
+function reasonOf(node: Element) {
+  const target = document.getElementById(node.getAttribute("aria-describedby") ?? "");
+  expect(target?.classList.contains("sr-only")).toBe(true);
+  expect(node.closest("[title]")?.getAttribute("title")).toBe(target?.textContent);
+  return target?.textContent;
+}
+/** sr-only 밖에서 그 문장을 든 잎 요소 — 보이는 사유 줄이 있으면 1 이상이다. */
+const visible = (text: string) => [...document.querySelectorAll("*")].filter(node => node.children.length === 0 && node.textContent === text && node.closest(".sr-only") === null);
+
 /**
- * **꺼진 사유는 버튼 아래 보이는 줄이다** (responsive-app F7 — 모든 폭). 보관·끊김은 Sync·Publish가 같은 원인이라 서버가 한 문장을 넘기고 줄도 하나다.
- * 원인이 다르면(미전달 0의 Publish) 버튼 순서대로 한 줄씩이다.
+ * **머리에 보이는 사유 줄이 없다** (disabled-reasons-revert R-01 — 2026-10-11 사용자가 responsive-app F7·O10을 뒤집었다). 꺼진 [Sync]·[Publish]는
+ * 각자 `title` + 자기 sr-only로 사유를 든다 — 문장은 같은 판정이다(보관·끊김은 서버가 고른 `pausedReason`, 미전달 0은 `nothing`).
  */
-it("멈춘 Home의 Sync·Publish는 같은 사유 줄 하나를 가리키고, 미전달 0이면 Publish 줄이 따로 선다", async () => {
+it("멈춘 Home의 Sync·Publish는 보이는 사유 줄 없이 각자 title + 자기 sr-only를 든다", async () => {
   const reason = "This repository is disconnected. Reconnect it in Settings.";
-  const lines = () => [...document.querySelectorAll("[data-disabled-reasons] > *")].map(node => node.textContent);
   const view = await render(<HomeActions slug="acme" writeLock={null}><HomeHeaderActions {...props} paused pausedReason={reason} /></HomeActions>);
-  expect(lines()).toEqual([reason]);
-  expect(button("Sync").getAttribute("aria-describedby")).toBe(button("Publish").getAttribute("aria-describedby"));
-  expect(button("Sync").hasAttribute("title")).toBe(false);
-  await view.rerender(<HomeActions slug="acme" writeLock={null}><HomeHeaderActions {...props} unsent={0} paused pausedReason={reason} /></HomeActions>);
-  expect(lines()).toEqual([reason, en.translations.publish.nothing]);
+  expect(document.querySelector("[data-disabled-reasons]")).toBeNull();
+  expect(reasonOf(button("Sync"))).toBe(reason);
+  expect(reasonOf(button("Publish"))).toBe(reason);
+  expect(visible(reason)).toHaveLength(0);
+  await view.rerender(<HomeActions slug="acme" writeLock={null}><HomeHeaderActions {...props} unsent={0} /></HomeActions>);
+  expect(reasonOf(button("Publish"))).toBe(en.translations.publish.nothing);
+  expect(visible(en.translations.publish.nothing)).toHaveLength(0);
   await view.rerender(<HomeActions slug="acme" writeLock={null}><HomeHeaderActions {...props} /></HomeActions>);
-  expect(lines()).toEqual([]);
+  expect(button("Publish").hasAttribute("aria-describedby")).toBe(false);
+  expect(document.querySelector("[title]")).toBeNull();
 });
 
 /**
- * **배너의 [Try again]은 머리 사유 줄을 같이 가리킨다** (responsive-app O19 — F7을 넓힌다). 같은 Action(Sync)을 여는 두 자리가 같은 잠금 문장으로 멈추므로
- * 배너 안에 줄을 따로 세우지 않고 `aria-describedby`가 머리의 같은 줄을 가리킨다 — 같은 문장이 화면에 한 번이다. `title`·sr-only는 쓰지 않는다.
+ * **배너의 [Try again]은 머리 [Sync]와 같은 형이다** (disabled-reasons-revert R-03) — 머리 사유 줄을 가리키던 O19 연결을 걷었다. 자기 sr-only를 가리키고
+ * `title`이 같은 문장이다. 머리 [Sync]도 같은 문장의 자기 sr-only를 들지만 보이는 문장은 0이다.
  */
-it("lease로 멈춘 [Try again]은 머리 Sync와 같은 사유 줄을 가리키고 title·sr-only가 없다", async () => {
+it("lease로 멈춘 [Try again]은 title + 자기 sr-only를 들고 보이는 사유 줄이 없다", async () => {
   const lease = { startedAt: new Date(), reopensBy: new Date(Date.now() + 60_000) };
   await render(<HomeActions slug="acme" writeLock={lease}><Host /></HomeActions>);
   const retry = button(en.home.banner.syncFailed.action);
   expect(retry.getAttribute("aria-disabled")).toBe("true");
-  expect(retry.hasAttribute("title")).toBe(false);
-  expect(retry.getAttribute("aria-describedby")).toBe(button("Sync").getAttribute("aria-describedby"));
-  const line = document.getElementById(retry.getAttribute("aria-describedby")!);
-  expect(line?.closest("[data-disabled-reasons]")).not.toBeNull();
-  expect(line?.textContent).toBe(en.repositorySync.running);
-  expect([...document.querySelectorAll("*")].filter(node => node.children.length === 0 && node.textContent === en.repositorySync.running)).toHaveLength(1);
-  expect(document.querySelector(".sr-only")?.textContent ?? "").not.toBe(en.repositorySync.running);
+  expect(reasonOf(retry)).toBe(en.repositorySync.running);
+  expect(reasonOf(button("Sync"))).toBe(en.repositorySync.running);
+  expect(retry.getAttribute("aria-describedby")).not.toBe(button("Sync").getAttribute("aria-describedby"));
+  expect(document.querySelector("[data-disabled-reasons]")).toBeNull();
+  expect(visible(en.repositorySync.running)).toHaveLength(0);
 });

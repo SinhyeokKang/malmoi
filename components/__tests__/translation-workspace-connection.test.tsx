@@ -31,13 +31,19 @@ const buttons = (container: HTMLElement) => {
   };
 };
 const off = (button: HTMLButtonElement | undefined) => button?.getAttribute("aria-disabled") === "true";
-/** 꺼진 버튼이 가리키는 사유 — 보이는 사유 줄이다(responsive-app F7 — `title`·sr-only가 아니다). */
+/**
+ * 꺼진 버튼이 가리키는 사유 — **F7 이전 형**이다(disabled-reasons-revert R-02): 마우스는 `title`, describedby는 자기 sr-only 문장이고 머리에 보이는 사유 줄은 없다.
+ * `title`은 [Sync]면 버튼, [Publish]면 감싼 `<span>`이 든다 — 둘 다 같은 문장이다.
+ */
 const reasonOf = (button: HTMLButtonElement | undefined) => {
   const node = document.getElementById(button?.getAttribute("aria-describedby") ?? "");
-  expect(node?.closest("[data-disabled-reasons]")).not.toBeNull();
-  expect(node?.classList.contains("sr-only")).toBe(false);
+  expect(node?.classList.contains("sr-only")).toBe(true);
+  expect(button?.closest("[title]")?.getAttribute("title")).toBe(node?.textContent);
   return node?.textContent;
 };
+/** sr-only 밖에서 그 문장을 든 잎 요소 — 보이는 사유 줄이 있으면 1 이상이다. */
+const visible = (container: HTMLElement, text: string) =>
+  [...container.querySelectorAll("p, span, div")].filter((el) => el.children.length === 0 && el.textContent?.includes(text) && el.closest(".sr-only") === null);
 /** GitHub 판정이 정상으로 도착한 모양 — `planConnectionHealth`의 `ok` 갈래다. */
 const OK: ConnectionHealth = { status: "ok" };
 
@@ -47,9 +53,9 @@ describe("첫 렌더 — DB 판정", () => {
     const { sync, publish } = buttons(container);
     expect(off(sync)).toBe(true);
     expect(off(publish)).toBe(true);
-    // 꺼진 이유는 끊김이다 — Publish 대기 문구도, 원인 없는 "currently unavailable"도 아니다(malmoi#160). 버튼 아래 보이는 줄이다(F7).
+    // 꺼진 이유는 끊김이다 — Publish 대기 문구도, 원인 없는 "currently unavailable"도 아니다(malmoi#160). `title` + 자기 sr-only다(R-02).
     expect(reasonOf(sync)).toBe(connectionReason(en, status, "OWNER"));
-    expect(sync?.hasAttribute("title")).toBe(false);
+    expect(container.querySelector("[data-disabled-reasons]")).toBeNull();
   });
 
   /**
@@ -61,24 +67,43 @@ describe("첫 렌더 — DB 판정", () => {
     const reason = connectionReason(en, "unpinned", role)!;
     const { publish, sync } = buttons(container);
     expect(reasonOf(publish)).toBe(reason);
-    // 원인이 같으면 줄 하나다 — 두 버튼이 같은 줄을 가리킨다(OWNER). EDITOR의 Sync는 권한 사유라 다른 줄이다.
-    if (role === "OWNER") expect(sync?.getAttribute("aria-describedby")).toBe(publish?.getAttribute("aria-describedby"));
-    else expect(reasonOf(sync)).toBe(en.translations.workspace.sync.ownerOnly);
-    expect(container.querySelectorAll("[data-disabled-reasons] > *")).toHaveLength(role === "OWNER" ? 1 : 2);
+    // 버튼마다 자기 sr-only를 가리킨다 — 공유하는 보이는 줄이 없다(R-01). EDITOR의 Sync는 권한 사유다.
+    expect(reasonOf(sync)).toBe(role === "OWNER" ? reason : en.translations.workspace.sync.ownerOnly);
+    expect(sync?.getAttribute("aria-describedby")).not.toBe(publish?.getAttribute("aria-describedby"));
+    expect(container.querySelector("[data-disabled-reasons]")).toBeNull();
+    expect(visible(container, en.translations.workspace.sync.ownerOnly)).toHaveLength(0);
   });
 
   /**
    * **보류 배너가 꺼진 Publish를 가리키지 않는다** (malmoi#160) — [Send with Publish ↑]는 포커스만 옮기는데 그 버튼이 꺼져 있었다. Publish가
-   * 연결 때문에 꺼진 동안은 그 액션을 세우지 않는다. ⚠️ **사유를 배너에 잇지 않는다** (responsive-app F7 — 2026-10-11 사용자) — 꺼진 Publish 아래
-   * 사유 줄이 모든 폭에 같은 문장을 세운다. 이유가 보이는 자리는 그 줄 하나이고 배너는 보류 문장만이다.
+   * 연결 때문에 꺼진 동안은 그 액션을 세우지 않고 같은 사유를 배너 문장에 잇는다 — 머리에 보이는 사유 줄이 없어(disabled-reasons-revert R-04)
+   * 이 화면에서 보이는 원인 문장은 여기 하나다.
    */
-  it("unpinned면 사유 줄 하나, 배너는 보류 문장만이다 — Send with Publish도 없다", async () => {
+  it("unpinned면 보류 배너에 Send with Publish가 없고 끊김 사유를 잇는다", async () => {
     const { container } = await render(<TranslationWorkspace {...props({ unpublished: 2, connection: { status: "unpinned" } })} />);
     const reason = connectionReason(en, "unpinned", "OWNER")!;
     const banner = container.querySelector<HTMLElement>('[data-workspace-banners] [data-alert]')!;
-    expect(banner.textContent).toBe(en.translations.banner.paused(2));
-    expect([...container.querySelectorAll("p, span, div")].filter((el) => el.children.length === 0 && el.textContent?.includes(reason))).toHaveLength(1);
+    expect(banner.textContent).toBe(`${en.translations.banner.paused(2)} ${reason}`);
+    expect(visible(container, reason)).toHaveLength(1);
     expect([...container.querySelectorAll("button")].some((b) => b.textContent?.includes(en.translations.banner.sendWithPublish))).toBe(false);
+  });
+
+  /**
+   * **머리에 보이는 사유 줄이 어떤 상태에서도 서지 않는다** (disabled-reasons-revert R-01 — 2026-10-11 사용자가 responsive-app F7·O10을 뒤집었다).
+   * 미전달 0이 평상 상태인데 `Nothing to send`가 머리 아래 늘 섰다. 꺼진 버튼은 각자 `title` + 자기 sr-only로 사유를 든다(R-02).
+   */
+  it.each([
+    ["미전달 0", props({ unpublished: 0 })],
+    ["EDITOR", props({ role: "EDITOR" })],
+    ["끊김 · 미전달 0", props({ unpublished: 0, connection: { status: "unpinned" } })],
+    ["착지 lease", props({ writeLock: { startedAt: new Date(), reopensBy: new Date(Date.now() + 60_000) } })],
+  ] as const)("%s — 머리에 보이는 사유 줄이 없고 꺼진 버튼은 title + 자기 sr-only다", async (_, given) => {
+    const { container } = await render(<TranslationWorkspace {...given} />);
+    expect(container.querySelector("[data-disabled-reasons]")).toBeNull();
+    const head = container.querySelector("h1")!.closest<HTMLElement>("[class*='@container/wshead']")!;
+    const disabled = Object.values(buttons(container)).filter(off);
+    expect(disabled.length).toBeGreaterThan(0);
+    for (const button of disabled) expect(visible(head, reasonOf(button)!)).toHaveLength(0);
   });
 
   it("연결되면 보류 배너가 Send with Publish를 든다", async () => {
