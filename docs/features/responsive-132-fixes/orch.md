@@ -50,3 +50,9 @@ Source intersections A∩B, A∩C, B∩C: none. Shared docs are coordinator-owne
 - D/#7: PRODUCT correction committed `59603c0c`; validation included in final gate.
 - Remote dev fetched before implementation: baseline unchanged, no concurrent remote commits.
 
+
+## Review round 1
+
+- Frozen A `9e4c3336`, B `787ea5ae`, C `a003c9d4`; independent reviewer Dispatch `ctx_fb9b57822eef`, Task `task_c2f88418ce01`, verified gpt-6-astra / medium. Report `.scratch/review-responsive-132.md`.
+- Reviewer found pending same-key external navigation misclassified by A ownSelection. Route to A fix1 with behavioral RED, preserving original late-response case.
+- Original implementation workers settled and released. Their failed outcomes record full-suite timeouts; B additionally had a missing Revert button failure requiring sequential recheck. No validation failure was waived.
