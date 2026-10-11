@@ -740,7 +740,8 @@ export function TranslationWorkspace(props: WorkspaceProps) {
     if (seenSelection.current === key) return;
     seenSelection.current = key;
     const tree = takeTreeIntent(routeSurfaceSlug, Date.now()) && params.get("key") === FIRST_KEY;
-    dispatchPane({ type: "selection", key, cause: tree ? "tree" : "other" });
+    // 로컬 선택은 누른 순간 판을 열었다 — 늦은 응답은 그 뒤의 ‹ Keys·재열기 의도를 덮지 않는다.
+    if (tree || ownSelection.current !== key) dispatchPane({ type: "selection", key, cause: tree ? "tree" : "other" });
     if (tree) paneLanding.current = "list";
     else if (key !== undefined && ownSelection.current !== key) paneLanding.current = "detail";
     ownSelection.current = null;
