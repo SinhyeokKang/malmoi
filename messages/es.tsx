@@ -2075,7 +2075,7 @@ export const es = {
   },
   responsive: {
     backToKeys: "Volver a las claves",
-    viewSample: "Ver muestra",
+    viewSample: "Ver vista previa",
     backToCandidates: "Candidatos",
   },
 } satisfies Messages;
