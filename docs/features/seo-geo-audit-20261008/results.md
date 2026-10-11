@@ -90,3 +90,26 @@ QA는 DB·환경변수·코드를 변경하지 않았다. owned 서버 종료, Q
 5. 16번 www와 18번 docs 404는 responsive와 원인이 독립적이다. 후속 재검토 목록에는 남기되, responsive로 해결된 것으로 처리하지 않는다. www는 별도 프로덕션 승인·DNS 접근, 404는 초기 HTTP HTML 재현을 기준으로 대응한다.
 
 검색 성과·AI 인용·CrUX는 실제 배포와 관측 자료가 확보된 뒤 평가한다. 이번 연기는 미해결 항목의 완료 처리나 프로덕션 변경 승인이 아니다.
+
+## 2차 결과 — responsive 이후 재대응 (2026-10-11)
+
+지휘자 Claude Code, Run `run_b8b239ddd82d`, 결정 D12~D18([orch.md](./orch.md) "2차"). 측정 런타임: 배치·DOM은 ego-browser, 성능은 chrome-headless-shell 148(CDP, localhost, 각 3회 중앙값) — 실기기·CrUX를 대체하지 않는다.
+
+### 미완·미검증 (먼저)
+
+- **18 본문 SSR — 미해결(구조적)**: 제목은 고쳤다(`004cf4a0` — 첫 응답 `<title>This page doesn't exist · Malmoi Docs</title>`). 본문은 Next 16.3.3이 페이지가 던진 `notFound()`를 SSR에서 잡지 못해 오류 복구 셸(`__next_error__` 빈 body)로 내보내는 동작이고, 클라이언트 경계 없는 최소 라우트에서도 재현됐다. Suspense 안에서 던지면 상태가 200이 되고 `dynamicParams = false`도 같은 셸이라 남은 길은 D11 금지 셋뿐이다. 정본: ARCHITECTURE §8.1 · DESIGN §6.61 404 행.
+- **16 www — Gabia CNAME 대기**: Vercel 프로젝트에 `www.mal-moi.com`(redirect `mal-moi.com` · 308)을 추가했다. CNAME `f668c7afdc569147.vercel-dns-017.com.` 입력 후 `curl -I https://www.mal-moi.com/docs/faq?ref=a` 확인이 남았다.
+- 실기기 Safari/iOS·safe-area·스크린리더·비트맵 시각 판독, Search Console·CrUX·AI 인용은 미검증.
+
+### 항목별
+
+| 감사 번호 | 2차 결과 | 근거 |
+| --- | --- | --- |
+| 6 모바일 | **해소 확인** | 288조합(360·390·768·1280·1440·1890 × en/ko/es × light/dark × 8경로) 실패 0 — `innerWidth = 뷰포트`·`visualViewport.scale = 1`, 문서 가로 넘침 0, 본문 16px, 헤더 서랍·Docs 장 내비 시트·On this page·키보드 포커스·푸터 스위처 동작. 1차 production 390의 innerWidth 1280 축소가 사라졌다 |
+| 회귀(2·3·4·9·19·20·21) | 통과 | 메타·noindex·JSON-LD 현지화 breadcrumb·내부 링크 117쌍/앵커 549·llms 목적지 38+46 전부 200·자산 캐시 헤더 1차와 같다. llms-full 130,001B(self-hosting 원고 추가), 홈 HTML 592,191B |
+| 8 홈 목업 | **개선 배치 열지 않음(D18)** | 4× CPU에서 홈 TBT 65ms·long task 2(로드), 목업 스크롤 중 long task 0 — 병목이 입증되지 않았다(report 8 완료 기준 미충족). 남는 것은 GEO 측면의 텍스트 잡음뿐 |
+| 15 docs 이미지 | **개선 배치 열지 않음(D18)** | `/docs` LCP = eager/High `project-home.webp` 약 110~160ms. 2560px 원본이 데스크톱 720·모바일 DPR3 996으로 표시돼 2.6~3.6배 오버샘플링이지만 LCP가 이미 짧고, `srcset` 변형은 이미지 생성 파이프라인(새 스크립트·자산 두 벌)을 요구한다 |
+| 18 docs 404 | 제목 해결 · 본문 미해결 | 위 |
+| 16 www | Vercel 완료 · DNS 대기 | 위 |
+
+가이드 재촬영 없음(`pnpm guide:check` stale 0, D17). 스키마·환경변수·의존성 변경 없음.

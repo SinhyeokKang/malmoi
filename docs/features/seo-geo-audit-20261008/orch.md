@@ -138,6 +138,7 @@
 | D14 | 6번 선행(D1)은 responsive 작업으로 충족 — 공개 셸 하한이 걷혔다(DESIGN §5 "하한이 없다", 2026-10-10). 6번은 구현이 아니라 **재검증** | 지휘자 판단 — results 후속 순서 1·2 |
 | D15 | 8·15 측정 런타임은 헤드리스 Chromium(rAF·LCP), 배치·시각은 ego | 지휘자 판단 — responsive-mockup D9 선례(ego 창 occlusion으로 rAF 1fps) |
 | D16 | 8·15 개선 배치(S3)는 S1 숫자를 본 뒤 연다 — 미리 정하지 않는다 | 지휘자 판단 — report 8·15 완료 기준이 "측정 뒤" |
+| D18 | S3(8·15 개선)를 열지 않는다 | 지휘자 판단 — S1: 홈 4× TBT 65ms·스크롤 long task 0(병목 미입증), `/docs` LCP 110~160ms. `srcset`은 이미지 변형 파이프라인을 새로 요구한다 — 확장성 선반영 금지 |
 | D17 | 가이드 재촬영 없음 — `pnpm guide:check` stale 0(2026-10-11) | 지휘자 판단 — results 후속 순서 4 |
 
 ### 배치 (2차)
@@ -146,11 +147,14 @@
 | --- | --- | --- | --- | --- | --- |
 | **S1** QA·측정 | 6 재검증(360·390·768 + 1280·1440·1890 · en/ko/es · light/dark · 홈·docs 루트·FAQ·formats·limits·privacy·changelog·없는 slug) · 4·회귀(메타·canonical/noindex·JSON-LD·내부 링크·llms·자산 캐시) · 8·15 기준선(같은 빌드·뷰포트·CPU·네트워크·캐시 조건 — `pnpm build && pnpm start`) | main 체크아웃, 코드 수정 없음 · 결함 BugShot | Opus 5.5 medium | 없음 | 준비 |
 | **S2** docs 404 | 18 — 재현 테스트 먼저(SSR HTML에 not-found 본문·`<title>` 단언), 클라이언트로 빠지는 지점 특정, 시간 상한 안에서 수정 | `app/docs/**`(layout · not-found · `[[...slug]]/page.tsx`) · 관련 테스트 | Opus 5.5 high — Next SSR·not-found 경계 | 없음 | 준비 |
-| **S3** 성능 개선 | 8·15 — S1 숫자로 범위 결정(D16) | 미정 | 미정 | S1 | 보류 |
+| **S3** 성능 개선 | 8·15 — S1 숫자로 범위 결정(D16) | — | — | S1 | 열지 않음(D18) |
 | **E** www | 16 — Vercel `www.mal-moi.com` 추가 + apex 308 → CNAME 값 사용자 전달 → 검증 `curl -I https://www.mal-moi.com/docs/faq?ref=a` | 지휘자(운영) + 사용자(Gabia) | — | 없음 | 준비 |
 
 겹침: S1(읽기 전용) ∩ S2 = ∅. 단 **S1이 main 체크아웃에서 서버를 띄운 동안 S2 통합(cherry-pick·build) 금지** — S2는 S1 인계 뒤 통합하고, S2 통합 후 18번만 짧게 재측정한다.
 
 ### 진행 기록 (2차)
 
-- 2026-10-11 2차 계획 작성. 착수 대기.
+- 2026-10-11 2차 계획 작성(`2941bfdb`). Run `run_b8b239ddd82d`. S2 `ctx_18a8cc7363d3`(seo2-s2, Opus high) · S1 `ctx_67e69a5dae4a`(main 체크아웃, Opus medium) 착수·working.
+- E: Vercel 프로젝트에 `www.mal-moi.com` 추가(redirect `mal-moi.com` · 308 · verified true). Vercel 권장 CNAME rank 1 `f668c7afdc569147.vercel-dns-017.com.` — `dev.mal-moi.com`이 이미 쓰는 값과 같다. Gabia 입력은 사용자 대기(조회 시 www 레코드 없음·충돌 없음).
+- S2 `worker_done` — `bcab1fb2`(docs `not-found.tsx` metadata) gate ok: 첫 응답 `<title>`이 `This page doesn't exist · Malmoi Docs`. **본문 SSR 미해결** — 클라이언트 경계 없는 최소 라우트에서도 재현: 페이지가 던진 `notFound()`가 SSR에서 잡히지 않아 Next 16.3.3 오류 복구 셸(`__next_error__` 빈 body)로 나간다. Suspense 안에서 던지면 상태 200, `dynamicParams=false`도 같은 셸 → 남은 길은 D11 금지. 지휘자 diff 확인. S1 인계 뒤 통합. S2 터미널 해제(인계 사본 `.scratch/seo2/handoff-S2.md`).
+- S1 `worker_done` — 결함 0(288조합 모바일 · 회귀 · 성능 기준선 · 18 재현). S1 해제·터미널 종료. S2 `bcab1fb2` dev cherry-pick, 정본(ARCHITECTURE §8.1 · DESIGN §6.61 404 행) · results.md 2차 절.
