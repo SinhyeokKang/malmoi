@@ -1,6 +1,6 @@
 # disabled-reasons-revert — 꺼진 Sync·Publish의 보이는 사유 줄 제거
 
-상태: 스펙(2026-10-11). [설계](design.md) · [태스크](tasks.md). 브리프 없음(새 표면 없이 줄 하나를 걷는 변경 — 시안 불필요).
+상태: 스펙(2026-10-11). **선행: mockup-viewport-container가 dev에 먼저 들어간다**(사용자 — "목업 먼저할거라, 목업과 실제 앱 정합성 맞추는 건 여기서 해야됨"). 이 기능이 목업 ↔ 실물 정합성까지 책임진다. [설계](design.md) · [태스크](tasks.md). 브리프 없음(새 표면 없이 줄 하나를 걷는 변경 — 시안 불필요).
 
 ## 사용자 결정 (2026-10-11)
 
@@ -31,7 +31,7 @@
 | R-02 | 꺼진 버튼은 `aria-disabled` 그대로 포커스를 받고, 사유는 **F7 이전 형**으로 남는다 — 마우스 `title` + 버튼 `aria-describedby` → 자기 sr-only 문장. 문장은 지금과 같은 판정(`planPublishButton`·호스트의 Sync 사유)에서 온다 |
 | R-03 | Home 동기화 실패 배너 [Try again]이 막혔을 때도 같은 형(`title` + 자기 sr-only)이다 — 머리 줄을 가리키던 O19 연결을 걷는다 |
 | R-04 | 번역 화면의 보류 배너(`EditLossBanner`)는 Publish가 연결 때문에 꺼졌을 때 **그 원인 문장을 다시 잇는다**(malmoi#160 원형) — 이 화면엔 Home 연결 배너가 없어, 줄이 사라지면 보이는 원인 문장이 여기뿐이다. 막다른 [Send with Publish]는 계속 세우지 않는다 |
-| R-05 | 랜딩 목업의 사유 줄 사본이 없어진다 — responsive-mockup K1이 R-01의 실물 줄을 복제한 것이라 실물과 함께 걷는다(responsive 이전 목업엔 없었다). 목업 그릇 선택(mockup-viewport-container)과 파일이 겹치지 않는다(`mockup/translations.tsx` vs `stage.ts`) |
+| R-05 | **랜딩 목업이 되돌린 실물과 같다** — 사유 줄 사본이 없어지고, 머리 행 묶음 구조·꺼진 [Publish] 모양이 되돌린 번역 화면과 같은 클래스다. 목업↔실물 대조 테스트(`landing-mockup.test.tsx`)가 되돌린 실물 기준으로 다시 선다. responsive-mockup K1이 실물 줄을 복제한 것이라 실물과 함께 걷는다(responsive 이전 목업엔 없었다) |
 | R-06 | `DisabledReasons` 프리미티브가 소비자 0이 되어 삭제된다 — 프리미티브 수·DESIGN §6.4·DIRECTORY·CLAUDE.md 표가 함께 움직인다 |
 | R-07 | 정본(DESIGN §7 "꺼진 컨트롤의 사유" · §5.15 · §6.5 Home 행 · §6.615 목업)이 새 규칙을 말한다. 바뀐 화면의 가이드 컷은 `pnpm guide:check` 결과대로 재촬영된다 |
 

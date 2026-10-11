@@ -23,6 +23,14 @@ F7(`69844b74`)·O19(`def752f0`)가 바꾼 것을 되돌리되, 그 뒤에 들어
 
 ⚠️ **두 번 읽히지 않게** — F7의 "`title`·sr-only로 겹치지 않는다"는 줄이 있을 때의 규칙이다. 되돌린 형에서는 sr-only가 유일한 describedby 대상이다.
 
+## 2.5 목업 ↔ 실물 정합성 (이 기능의 책임 — 사용자 2026-10-11)
+
+mockup-viewport-container(그릇을 뷰포트가 고른다 — `stage.ts`·`stage.tsx`)가 **먼저** dev에 들어간다. 이 기능은 그 위에서 `git rebase dev` 후 목업 마크업을 되돌린 실물에 맞춘다. 대상:
+- `components/landing/mockup/translations.tsx` — 사유 줄 사본(`[data-landing-reasons]`, 실물 `DisabledReasons` 클래스 사본)과 그 `group-data-[badge=1]/frame:hidden` 변형 삭제. **머리 행 묶음**(`PANEL_HEAD_ROW` + 사유 줄을 감싸던 `flex flex-col gap-1.5`)은 되돌린 `workspace.tsx`의 머리 구조를 그대로 따른다 — 실물에서 묶음이 사라지면 목업도 걷고, 남으면 남긴다(손으로 정하지 않는다).
+- 꺼진 [Publish] 사본 — 실물은 `<span title>` 래퍼 + sr-only가 되지만 목업은 서버 컴포넌트·`aria-hidden` 프레임이라 `title`·sr-only를 복제하지 않는다. 버튼 자체의 클래스(`buttonClass` primary + `aria-disabled` 모양)만 실물과 같다.
+- `components/__tests__/landing-mockup.test.tsx` — `DisabledReasons` import·"꺼진 Publish 아래 실물 `DisabledReasons`와 같은 사유 줄"(:731) 삭제 → "사유 줄 0" 단언으로 교체. "제목 행이 실물과 같은 `PANEL_HEAD_ROW`이고 사유 줄과 함께 `flex flex-col gap-1.5`에 묶인다"(:722)는 되돌린 실물 구조 기준으로 다시 쓴다. 목업 DOM 뷰포트 토큰 0·인터랙티브 0 단언은 유지.
+- mockup-viewport-container가 같은 테스트 파일의 다른 단언(그릇 폭)을 바꿀 수 있으니 rebase 뒤 충돌을 그 기준으로 푼다.
+
 ## 3. 순수 함수 / 테스트 진입점
 
 새 순수 함수 없음(삭제·이동 변경). 판정 `planPublishButton`(`lib/publish/plan.ts`)은 무변경이고 기존 테스트가 든다. 테스트로 고정할 계약:
