@@ -237,8 +237,6 @@ components/
                         card/canvas hover와 selected·명시 aria-current, 원래 inset 포커스 자리를 보존한다.
                         배너를 함께 드는 li와 목록 의미론은 소비자가 소유한다. ListRowChevron은 busy 표시를 받아 서버 행의 훅을 늘리지 않는다
                         `stackActions`(옵트인)는 그릇 640 미만에서 동작 묶음을 아래 줄 오른쪽으로 내린다(2026-10-11 responsive-app — Account 행이 소비자)
-  ui/disabled-reasons.tsx  DisabledReasons + useDisabledReasons + disabledReasonId — 꺼진 Sync·Publish 아래 보이는 사유 줄(2026-10-11 responsive-app,
-                        DESIGN §7). 같은 문장은 한 줄, id는 범위 + 문장. 문구를 만들지 않는다 — 호출부(번역 화면·Home 머리)가 쓰던 사유를 넘긴다
   ui/list-group.tsx     ListGroup — 결과 목록의 묶음(role=group + 머리 aria-labelledby · 두 번째부터 위 선). 전역 검색 CommandGroup과 헤더 Inbox가
                         같이 쓴다(attention-inbox T8a). icon(16 썸네일)이 있을 때만 머리가 한 줄 정렬이다
   ui/facts.tsx          export는 Fact다. 소비자가 dl·grid·값 의미를 소유하고 라벨/값 배치(row/stacked/inline, width96/120)를 공유한다.
@@ -598,7 +596,7 @@ components/
                         · large-modal-sheet(`lg` 미만 시트 토큰 · `lg` 이상 바이트 불변 · flush) · touch-target(coarse 44 히트 영역의 크기 범위) ·
                         public-nav-drawer(서랍 열림·포커스 다섯 계약·`lg` 넘김) · invite-project-card(초대 카드의 긴 이름 줄바꿈) — 2026-10-10 responsive-public
                         · app-nav-drawer(앱 LNB 서랍 직접 렌더·바닥·넓어짐/좁아짐 포커스 이관·누름 구역) · shell-panels-narrow(라이브러리 대역 — 좁은 동안 setLayout/onResize 건너뜀·쿠키 불변·복원 px) ·
-                        drawer-pinned · dialog-narrow · disabled-reasons · translation-workspace-compact(단일 판 — draft·포커스 착지·배너 재마운트 0·낮은 높이) ·
+                        drawer-pinned · dialog-narrow · translation-workspace-compact(단일 판 — draft·포커스 착지·배너 재마운트 0·낮은 높이) ·
                         files-sequential · home-stack · members-narrow · repo-branch-narrow · responsive-activity · settings-narrow · admin-panel-head — 2026-10-11 responsive-app
                         (⚠️ jsdom은 폭·컨테이너 쿼리를 못 잰다 — 클래스 계약·data-pane·포커스 대상만 단언하고 픽셀은 런타임 실측 몫이다)
                         ⚠️ loading 전수 계약은 기존 sibling-loading의 경계/치수 검사와 역할이 다르다
