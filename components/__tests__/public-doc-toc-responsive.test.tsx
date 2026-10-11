@@ -37,7 +37,7 @@ beforeEach(() => {
   vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
     const scroller = this.closest<HTMLElement>("[data-public-scroller]");
     const index = ITEMS.findIndex(({ id }) => this.id === id);
-    const expanded = scroller?.querySelector("button")?.getAttribute("aria-expanded") === "true";
+    const expanded = scroller?.querySelector("nav button")?.getAttribute("aria-expanded") === "true";
     const shift = width < 960 && expanded ? 240 : 0;
     return { top: index < 0 ? 0 : 200 + index * 600 + shift - (scroller?.scrollTop ?? 0), width, height: 600 } as DOMRect;
   });
