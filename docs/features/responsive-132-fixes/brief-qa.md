@@ -19,3 +19,5 @@ Findings must be reported immediately through BugShot under source-command-orche
 Use only one task space and no shared-profile parallel browser work. At completion stop your own dev server, finish task space, and leave `.scratch/qa-responsive-132.md` with exact HEAD, scenario matrix, actual metrics/focus outcomes, issue links, unverified items, and fixture restoration evidence. Send current Dispatch worker_done with explicit outcome; end turn.
 
 8. Added batch M: landing mockup at 375/390/639 has no browser toolbar or left dots and all four screen insets are 8 logical px (scale-aware DOM measurements). At 640/768/1023 and 1024/1280/1440/1890 existing toolbar/dots and 44px top remain. Check all five scenes, pinned and static fallback/reduced motion, light/dark, boundary roundtrip retaining scene/progress, caption/progress unchanged. Mock app header remains.
+
+Runtime: start server with PATH=/Users/sinhyeok/Library/pnpm/nodejs/24.15.0/bin:$PATH and verify node --version (repo requires Node 24; default shell is 26). Do not change project configuration.

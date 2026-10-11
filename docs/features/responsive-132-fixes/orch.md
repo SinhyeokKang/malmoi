@@ -74,3 +74,8 @@ Source intersections A∩B, A∩C, B∩C: none. Shared docs are coordinator-owne
 - M Task `task_e4bbe6f71fb2`, Dispatch `ctx_02b5363c8efc`, branch `SinhyeokKang/responsive-132-mobile`: launch ready/input_accepted, projection working, gpt-6-astra inherited medium.
 
 - A fix1 `6c7e8985`: independent followup review `ctx_f3262b6a4c6b` zero findings, reviewer released. New sequential full gate exit 0, build/mirror passed. Integrated original two commits and fix1 two commits; preserved logs/handoffs in root `.scratch/responsive-132-A/`. No pending A issues/tasks.
+
+## Runtime version correction
+
+- M handoff exposed default shell Node v26.4.0 versus repository `.nvmrc` 24. Earlier worker and coordinator branch gates used the default shell; their results remain valid observations but are not Node 24 validation. Installed Node 24 is `/Users/sinhyeok/Library/pnpm/nodejs/24.15.0/bin/node`. The integrated gate and QA server will prepend that directory to PATH; exact version will be recorded. No package/env/project configuration change.
+- M completed commits `02dc62fb` + `d8745731`, focused 242 passed. Worker released. Independent review Task `task_0195bab856cc`, Dispatch `ctx_22f554dba343`; inherited Astra medium.
