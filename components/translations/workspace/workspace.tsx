@@ -171,12 +171,14 @@ const SINGLE_DETAIL_HIDDEN = "@max-[772px]/ws:in-data-[pane=list]:hidden";
 /** 단일 판의 상세에서만 숨는 배너(기준 언어 대기 · 미전달 보류) — 키보드가 열리면 입력 칸 자리가 0이 된다(AT6d). Sync 잠금은 두 판 모두 선다(R2). */
 const DETAIL_PANE_HIDDEN = "@max-[772px]/wshead:in-data-[pane=detail]:hidden";
 /**
- * **낮은 높이(520 미만)의 단일 판 상세는 카드 전체가 스크롤한다** (#236 · orch O21) — 200% 확대(640×400)·폰 가로(812×375)에서 고정 블록(경로 머리·키 블록·저장 줄)이
+ * **낮은 높이(520 미만)의 상세는 카드 전체가 스크롤한다 — 폭과 무관하다** (#236 · orch O21 확장) — 200% 확대(640×400)·폰 가로(812×375 · 932×430)·낮은 창(1280×400)에서
+ * 고정 블록(경로 머리·키 블록·저장 줄)이
  * 세로를 다 써 언어 목록 칸이 0이 됐다(입력에 닿을 길이 없었다). 그때만 경로 머리·키 블록·언어 목록이 함께 흐르고 저장 줄만 바닥에 `sticky`로 남는다
- * (`locale-panel.tsx` · 아래 `Footer`). 스크롤 여백 64는 저장 줄 높이다 — 포커스로 끌려온 칸이 저장 줄 밑에 숨지 않는다. 보통 높이·분할 판은 그대로다.
+ * (`locale-panel.tsx` · 아래 `Footer`). 스크롤 여백 64는 저장 줄 높이다 — 포커스로 끌려온 칸이 저장 줄 밑에 숨지 않는다. 분할 판도 같은 형이고(상세 카드만 —
+ * 목록 카드·트리는 그대로), 보통 높이는 그대로다.
  * ⚠️ 500은 보통 배치로도 칸이 남는다(375×500 실측 81) — 경계는 그 아래 20을 더 둔 값이다.
  */
-const LOW_DETAIL_SCROLL = "@max-[772px]/ws:[@media(max-height:519px)]:overflow-y-auto @max-[772px]/ws:[@media(max-height:519px)]:scroll-pb-16";
+const LOW_DETAIL_SCROLL = "[@media(max-height:519px)]:overflow-y-auto [@media(max-height:519px)]:scroll-pb-16";
 
 const storageKey = (userId: string, slug: string) => `malmoi.translation-draft.${userId}.${slug}`;
 const widthKey = (userId: string, slug: string) => `malmoi.translation-panels.${userId}.${slug}`;
@@ -1133,8 +1135,8 @@ function Footer({ alertId, dirty, status, saving, resultRef, saveRef, hasPending
     : status?.kind === "reverted" ? w.revert.reverted
     : "";
   return (
-    // 낮은 높이의 단일 판에서는 이 줄만 바닥에 붙고 나머지가 그 위로 흐른다(#236 — 위 `LOW_DETAIL_SCROLL`).
-    <div data-save-row="" className="border-border shrink-0 border-t @max-[772px]/ws:[@media(max-height:519px)]:sticky @max-[772px]/ws:[@media(max-height:519px)]:bottom-0 @max-[772px]/ws:[@media(max-height:519px)]:bg-background">
+    // 낮은 높이에서는(폭과 무관) 이 줄만 바닥에 붙고 나머지가 그 위로 흐른다(#236 — 위 `LOW_DETAIL_SCROLL`).
+    <div data-save-row="" className="border-border shrink-0 border-t [@media(max-height:519px)]:sticky [@media(max-height:519px)]:bottom-0 [@media(max-height:519px)]:bg-background">
       {status !== null && ALERTS[status.kind] !== undefined && (
         <div id={alertId} className="px-4 pt-3">{ALERTS[status.kind]?.({ m, onCheck, slug, storageBlocked, status })}</div>
       )}

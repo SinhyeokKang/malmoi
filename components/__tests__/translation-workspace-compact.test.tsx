@@ -525,11 +525,12 @@ describe("DS — 상세 머리 경로(#228) · 상세 판 검색 줄(#229)", () 
 
 /**
  * **낮은 높이의 단일 판 상세** (#236 · orch O21) — 200% 확대(640×400)·폰 가로(812×375)에서 고정 블록이 세로를 다 써 언어 목록 칸이 0이 됐다(편집 불가).
- * 높이 520 미만 · 카드 772 미만일 때만 상세 카드 전체가 스크롤 칸이 되고(경로 머리·키 블록·언어 목록이 함께 흐른다) 저장 줄만 바닥에 `sticky`로 남는다.
+ * 높이 520 미만이면(폭과 무관 — 분할 판 포함, O21 확장) 상세 카드 전체가 스크롤 칸이 되고(경로 머리·키 블록·언어 목록이 함께 흐른다) 저장 줄만 바닥에 `sticky`로 남는다.
  * 같은 DOM이고(재마운트 0) 보통 높이·분할 판은 그대로다 — 새 값은 전부 그 두 조건의 변형 아래다. jsdom은 높이 질의를 못 재므로 클래스 계약을 센다.
  */
 describe("낮은 높이 — 저장 줄만 고정, 나머지는 함께 스크롤 (#236)", () => {
-  const LOW = "@max-[772px]/ws:[@media(max-height:519px)]:";
+  // 폭과 무관하다(orch O21 확장) — 카드가 772 이상인 낮은 화면(932×430 폰 가로 · 1280×400)도 분할 판의 언어 목록이 0이 됐다.
+  const LOW = "[@media(max-height:519px)]:";
   it("상세 카드가 스크롤 칸이 되고 저장 줄 높이만큼 스크롤 여백을 둔다", async () => {
     await start("/projects/acme/surfaces/web/translations?ns=common&key=k1", 500);
     const card = detailCard();
@@ -549,5 +550,12 @@ describe("낮은 높이 — 저장 줄만 고정, 나머지는 함께 스크롤 
     for (const token of ["sticky", "bottom-0", "bg-background"]) expect(footer.classList.contains(`${LOW}${token}`)).toBe(true);
     expect(footer.classList.contains("sticky")).toBe(false);
     expect(textarea("zh")).toBe(input);
+  });
+
+  it("분할 판에도 같은 형이고 목록 카드·트리에는 높이 변형이 없다 — 컨테이너 폭 조건이 붙지 않는다", async () => {
+    await start("/projects/acme/surfaces/web/translations?ns=common&key=k1", 1000);
+    expect(detailCard().classList.contains(`${LOW}overflow-y-auto`)).toBe(true);
+    expect(document.querySelector("[data-workspace-body]")!.innerHTML).not.toContain("/ws:[@media(max-height");
+    expect(listCard().outerHTML).not.toContain("max-height:519px");
   });
 });

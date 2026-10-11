@@ -115,11 +115,11 @@ export function LocalePanel({ detail, draft, language, onEdit, onReset, onSave, 
 
   return (
     /*
-      ⚠️ **낮은 높이(520 미만)의 단일 판에서는 줄지 않고 흐른다** (#236) — 그때는 카드가 스크롤 칸이고(`workspace.tsx` `LOW_DETAIL_SCROLL`) 이 세 겹이 내용 높이를
+      ⚠️ **낮은 높이(520 미만)에서는 줄지 않고 흐른다 — 폭과 무관하다** (#236 · O21 확장) — 그때는 카드가 스크롤 칸이고(`workspace.tsx` `LOW_DETAIL_SCROLL`) 이 세 겹이 내용 높이를
       그대로 쓴다. 보통 높이는 키 블록·저장 줄이 고정이고 언어 목록만 스크롤한다.
     */
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col @max-[772px]/ws:[@media(max-height:519px)]:flex-none">
-      <div className="border-divider flex min-h-0 flex-1 flex-col overflow-hidden border-t @max-[772px]/ws:[@media(max-height:519px)]:flex-none @max-[772px]/ws:[@media(max-height:519px)]:overflow-visible">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col [@media(max-height:519px)]:flex-none">
+      <div className="border-divider flex min-h-0 flex-1 flex-col overflow-hidden border-t [@media(max-height:519px)]:flex-none [@media(max-height:519px)]:overflow-visible">
         <div className="border-divider flex shrink-0 flex-col gap-1 border-b px-4 py-3.5">
           <div className="flex items-center gap-2.5">
             <span className="min-w-0 flex-1 text-base font-medium wrap-anywhere">{detail.key.key}</span>
@@ -140,7 +140,7 @@ export function LocalePanel({ detail, draft, language, onEdit, onReset, onSave, 
             )}
           </span>
         </div>
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto @max-[772px]/ws:[@media(max-height:519px)]:flex-none @max-[772px]/ws:[@media(max-height:519px)]:overflow-visible">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto [@media(max-height:519px)]:flex-none [@media(max-height:519px)]:overflow-visible">
           {visible.map((locale, index) => (
             <LocaleRow
               key={locale.code}
