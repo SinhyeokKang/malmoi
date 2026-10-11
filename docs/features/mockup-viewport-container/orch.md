@@ -36,3 +36,5 @@
 
 - 2026-10-11 orch 작성.
 - A `task_909f49a990c3`/`ctx_8146c05177d1`(worktree mvc-a, Opus 5.5 high) 착수 — Run `run_f379e5759e36`, 브리프 `.scratch/brief-mvc-A.md`.
+- A `worker_done` — `9d86e4fe`(test red) · `97d518bc`(feat) · `b898f3dc`(docs DESIGN) · `cd6dff42`(docs PRODUCT), gate ok(13476). 계획과 다른 점 7(캡션 상한 = 폭 배율 그릇 폭 · stageTop 1px 문턱 · `Frame.canvasH` 추가 등). 런타임 목록에 **스크롤 앵커링 이중 보정 위험(V-03)**. A 터미널 retain(수정 라운드용). 독립 리뷰 R(Opus medium, 리포트 전용) 착수.
+- R 리뷰: 🔴1 R1(보존 `u`를 현재 scrollTop으로 재 브라우저 스크롤 앵커링과 이중 보정 — 경계 안 폭 리사이즈에서 이번 변경이 들인 회귀) · 🟡 Y1(캡션 상한 = 폭만의 그릇 폭 — **지휘자 판단: 수용**, tasks T1 문구 정정·T6 시각 확인 추가) · Y2(ARCHITECTURE §6.358 "넷" 잔재 → A fix1 문서) · Y3(앵커링 항목은 jsdom으로). R 해제. A fix1 `task_3430e53ae06c`/`ctx_c32f36a917af` 착수(직전 칠한 scrollTop 기준 u + 앵커링 흉내 시나리오 + ARCHITECTURE·DIRECTORY 문서) — red 확인.
