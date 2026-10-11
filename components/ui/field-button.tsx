@@ -27,7 +27,7 @@ export function FieldButton({ icon, placeholder, shortcut, compact = false, onCl
   icon: ReactNode;
   placeholder: ReactNode;
   shortcut?: ReactNode;
-  /** `lg` 미만에서 32 아이콘이 된다 — 공개 셸 헤더만 준다(앱 셸은 1280 하한이라 뷰포트가 좁아도 캡슐이다). */
+  /** `lg` 미만에서 32 아이콘이 된다 — 두 셸 헤더(공개·앱)가 준다. 랜딩 목업은 이 컴포넌트가 아니라 `FIELD_BUTTON_CLASS`만 읽어 늘 캡슐이다. */
   compact?: boolean;
   onClick: MouseEventHandler<HTMLButtonElement>;
   "aria-label": string;

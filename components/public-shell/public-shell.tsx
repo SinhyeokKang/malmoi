@@ -20,7 +20,7 @@ import { PublicScroller } from "./scroller";
  * 자르므로 안쪽 스크롤러의 스크롤바 트랙이 radius 밖으로 나가지 않는다. 랜드마크는 `<main>` 하나다.
  *
  * ⚠️ **최소 폭이 없다** (responsive-public — 2026-10-07 사용자, 옛 셸 최소 폭 1280을 걷었다). 375부터 `lg` 경계 하나로 헤더가 서랍형이 된다.
- * 전역 `--spacing-shell-min`은 앱 셸 하한이라 값이 그대로다.
+ * 앱 셸도 같은 날 결정으로 하한을 걷어(responsive-app) 전역 `--spacing-shell-min` 토큰은 없다.
  */
 export function PublicShell({
   m,
