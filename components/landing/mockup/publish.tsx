@@ -96,8 +96,12 @@ export function PreviewModal({ m }: { m: Messages }) {
     >
       <Alert variant="neutral" className="shrink-0" title={p.prNone.title(fixture.repo)}>{p.prNone.body(rows.length)}</Alert>
       <div className="border-border flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border">
-        {/* 실물 표의 하한 520(`min-w-[520px]` — 좁은 시트에서는 가로 스크롤)이다. 목업은 스크롤 0의 그림이라 오른쪽이 잘린다. */}
-        <div data-landing-diff-table="" className="flex min-w-[520px] flex-col">
+        {/*
+          실물 표는 `w-full min-w-[520px]`이고 좁은 시트에서 가로 스크롤한다. ⚠️ 목업은 스크롤할 수 없어 그대로면 Value 열(diff)이 잘린다(#240 — M 루트 375).
+          **방문자가 오른쪽 끝까지 스크롤한 상태**를 그린다 — `self-end`(세로 flex의 교차축 끝)라 시트가 520보다 넓으면 `w-full`이 채워 그대로이고,
+          좁으면 넘친 만큼 왼쪽(Key 열)이 가려진다. 실물에 없는 배치(세로 쌓기)를 만들지 않는다.
+        */}
+        <div data-landing-diff-table="" className="flex w-full min-w-[520px] flex-col self-end">
         <div className="bg-primary-foreground border-border text-muted-foreground flex border-b text-xs">
           <span className="border-divider w-[220px] shrink-0 border-r px-3.5 py-[9px]">{p.key}</span>
           <span className="border-divider w-[84px] shrink-0 border-r px-3 py-[9px]">{p.locale}</span>
