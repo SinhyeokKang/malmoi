@@ -124,3 +124,33 @@
 - 최종 실행 문서 커밋 `203768eb`도 pnpm gate 및 [해당 dev CI](https://github.com/SinhyeokKang/malmoi/actions/runs/37716552182)를 통과했고 preview 배포 성공을 확인했다.
 - 사용자가 감사 문서를 `docs/features/`에 남기고 responsive 작업 이후 재대응하는 방향을 정했다. 기존 D1의 답변 대기는 이 후속 순서로 대체한다. responsive 구현의 상세 범위나 프로덕션 작업 승인을 뜻하지 않는다.
 - 이 폴더는 후속 추적을 위해 보존한다. 재개 순서·검증 기준은 [results.md의 후속 순서](./results.md#후속-순서--responsive-이후-재대응)를 따른다. 16·18번은 responsive와 독립된 미해결 항목으로 유지한다.
+
+## 2차 — responsive 이후 재대응 (2026-10-11)
+
+시작 dev `fb4920b5`(responsive-app · responsive-public · responsive-mockup 전부 dev, CI green). 지휘자 **Claude Code** → 워커 패밀리 **Claude Code / Sonnet·Opus**(1차 Codex 런과 다른 런타임 — 1차 기록은 위에 그대로 둔다). 재개 기준은 [results.md 후속 순서](./results.md#후속-순서--responsive-이후-재대응) 1~5.
+
+### 결정 기록 (2차)
+
+| ID | 결정 | 근거 |
+| --- | --- | --- |
+| D12 | 16 www를 이번 런에 포함 — Vercel 도메인 추가·308은 지휘자가 CLI로, Gabia CNAME은 사용자가 넣는다 | 사용자(2026-10-11). Vercel이 제시한 CNAME 값을 확인한 뒤에만 사용자에게 전달한다(`operations-www.md` 2~3) |
+| D13 | 18 docs 404를 시간 상한을 두고 재시도 — middleware 우회·Next 버전 변경 제외(D11 유지). 못 고치면 증거와 미해결 | 사용자(2026-10-11) |
+| D14 | 6번 선행(D1)은 responsive 작업으로 충족 — 공개 셸 하한이 걷혔다(DESIGN §5 "하한이 없다", 2026-10-10). 6번은 구현이 아니라 **재검증** | 지휘자 판단 — results 후속 순서 1·2 |
+| D15 | 8·15 측정 런타임은 헤드리스 Chromium(rAF·LCP), 배치·시각은 ego | 지휘자 판단 — responsive-mockup D9 선례(ego 창 occlusion으로 rAF 1fps) |
+| D16 | 8·15 개선 배치(S3)는 S1 숫자를 본 뒤 연다 — 미리 정하지 않는다 | 지휘자 판단 — report 8·15 완료 기준이 "측정 뒤" |
+| D17 | 가이드 재촬영 없음 — `pnpm guide:check` stale 0(2026-10-11) | 지휘자 판단 — results 후속 순서 4 |
+
+### 배치 (2차)
+
+| 배치 | 항목 | 소유 | 모델·effort | 선행 | 상태 |
+| --- | --- | --- | --- | --- | --- |
+| **S1** QA·측정 | 6 재검증(360·390·768 + 1280·1440·1890 · en/ko/es · light/dark · 홈·docs 루트·FAQ·formats·limits·privacy·changelog·없는 slug) · 4·회귀(메타·canonical/noindex·JSON-LD·내부 링크·llms·자산 캐시) · 8·15 기준선(같은 빌드·뷰포트·CPU·네트워크·캐시 조건 — `pnpm build && pnpm start`) | main 체크아웃, 코드 수정 없음 · 결함 BugShot | Opus 5.5 medium | 없음 | 준비 |
+| **S2** docs 404 | 18 — 재현 테스트 먼저(SSR HTML에 not-found 본문·`<title>` 단언), 클라이언트로 빠지는 지점 특정, 시간 상한 안에서 수정 | `app/docs/**`(layout · not-found · `[[...slug]]/page.tsx`) · 관련 테스트 | Opus 5.5 high — Next SSR·not-found 경계 | 없음 | 준비 |
+| **S3** 성능 개선 | 8·15 — S1 숫자로 범위 결정(D16) | 미정 | 미정 | S1 | 보류 |
+| **E** www | 16 — Vercel `www.mal-moi.com` 추가 + apex 308 → CNAME 값 사용자 전달 → 검증 `curl -I https://www.mal-moi.com/docs/faq?ref=a` | 지휘자(운영) + 사용자(Gabia) | — | 없음 | 준비 |
+
+겹침: S1(읽기 전용) ∩ S2 = ∅. 단 **S1이 main 체크아웃에서 서버를 띄운 동안 S2 통합(cherry-pick·build) 금지** — S2는 S1 인계 뒤 통합하고, S2 통합 후 18번만 짧게 재측정한다.
+
+### 진행 기록 (2차)
+
+- 2026-10-11 2차 계획 작성. 착수 대기.
