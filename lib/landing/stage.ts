@@ -187,6 +187,12 @@ export type Frame = {
   scene: { i: number; t: number; h: number };
   /** 레이어 opacity 0..1 */
   layers: Five;
+  /**
+   * 배치에 남는 레이어 — 나머지는 레이아웃에서 뺀다(`content-visibility: hidden`). **씬 번호가 아니라 구간이 고른다**: M 정지 전(f < .56)은
+   * 현재 하나, M 정지·교차(.56 ≤ f < .87)는 현재·다음 둘, 복귀(f ≥ .87)는 다음 하나, 마지막 씬은 ⑤ 하나.
+   * ⚠️ 폭이 움직이는 세 구간은 보이는 레이어 하나만 리플로하고, 다음 레이어는 가장 싼 배치인 M 폭(391)에서 풀린다 — 교차까지 .18의 여유가 있다.
+   */
+  live: [boolean, boolean, boolean, boolean, boolean];
   segments: Five;
   caption: { index: number; opacity: number };
   /** 씬 ② 타이핑 진행도 0..1 — `typedPrefix`에 넘긴다 */
@@ -209,7 +215,7 @@ export function frame(input: {
   // 캡션 자리·폭 상한·pinnable은 상태와 무관하다(`fitScale`) — 어느 상태의 값을 읽어도 같다.
   const { chromeY, chromeW, pinnable } = fits[0] as Fit;
 
-  const { i, t: rawT, h, device } = sceneAt(scrollTop, stageTop, H);
+  const { i, f, t: rawT, h, device } = sceneAt(scrollTop, stageTop, H);
   // 모션 감소는 전환 한가운데에서 끊어 바꾼다 — 씬 교차도 그릇 폭도 중간 프레임이 0이고, 스크롤 길이는 그대로다.
   const snap = (v: number) => (reduced ? (v >= 0.5 ? 1 : 0) : v);
   const t = snap(rawT);
@@ -221,6 +227,9 @@ export function frame(input: {
   const canvasW = lerp(STATE_CANVAS_W[device.from], STATE_CANVAS_W[device.to], ue);
   const scale = lerp(a.scale, b.scale, ue);
   const five = (at: (k: number) => number): Five => [at(0), at(1), at(2), at(3), at(4)];
+  // 마지막 씬은 다음이 없다 — `i + 1` = 5는 어느 레이어와도 같지 않아 ⑤ 하나만 남는다.
+  const withCurrent = i === SCENES - 1 || f < CROSS[1];
+  const withNext = f >= TO_M[1];
 
   return {
     canvasW,
@@ -233,6 +242,7 @@ export function frame(input: {
     pinnable,
     scene: { i, t, h },
     layers: five((k) => (k === i ? 1 - te : k === i + 1 ? te : 0)),
+    live: [0, 1, 2, 3, 4].map((k) => (k === i && withCurrent) || (k === i + 1 && withNext)) as Frame["live"],
     segments: five((k) => (k <= i ? 1 : k === i + 1 ? te : 0)),
     // 캡션은 t = 0.5에서 문장을 바꾼다 — |1 − 2t|라 두 문장이 한순간도 겹쳐 보이지 않는다.
     caption: { index: t < 0.5 ? i : i + 1, opacity: reduced ? 1 : Math.abs(1 - 2 * t) },

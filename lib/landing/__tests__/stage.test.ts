@@ -570,6 +570,63 @@ describe("frame — 한 스크롤 위치에 한 프레임", () => {
     });
   });
 
+  /**
+   * **배치에 남는 레이어(`live`)는 씬 번호가 아니라 구간이 고른다**(K2 리뷰 🟡1) — 폭이 움직이는 세 구간(D→T · T→M · M→D)은 보이는 레이어
+   * 하나만 리플로하고, 두 레이어가 함께 놓이는 구간(M 정지 + 교차)은 폭이 움직이지 않는다. 다음 레이어는 M 정지 시작(391 폭 — 가장 싼 배치)에 풀린다.
+   */
+  describe("live — 배치에 남는 레이어", () => {
+    const set = (live: readonly boolean[]) => live.flatMap((on, k) => (on ? [k] : []));
+
+    it.each([
+      [0, 0, [0]],
+      [1, 0.1, [1]],
+      [1, 0.23, [1]],
+      [1, 0.37, [1]],
+      [1, 0.51, [1]],
+      [1, 0.56 + 1e-6, [1, 2]],
+      [1, 0.65, [1, 2]],
+      [1, 0.805, [1, 2]],
+      [1, 0.87 + 1e-6, [2]],
+      [1, 0.935, [2]],
+      [3, 0.9, [4]],
+      [4, 0.3, [4]],
+      [4, 0.7, [4]],
+      [4, 0.99, [4]],
+    ] as const)("씬 %d · f %d → %j", (i, f, want) => {
+      expect(set(at(pos(i, f)).live)).toEqual(want);
+    });
+
+    it("고정 전·끝 너머·비정상 치수", () => {
+      expect(set(at(0).live)).toEqual([0]);
+      expect(set(at(pos(99, 0)).live)).toEqual([4]);
+      expect(set(frame({ scrollTop: Number.NaN, stageTop: 0, W: 0, H: 0, chromeHeight: 0, reducedMotion: false }).live)).toEqual([0]);
+    });
+
+    it("폭이 움직이는 동안엔 레이어 하나만 배치에 남는다 — 둘이 남는 구간은 폭이 멈춰 있다", () => {
+      for (const reduced of [false, true]) {
+        const atQ = (q: number) => at(stageTop + q * PLAY.perScene * NARROW.H, reduced, TWO_LINES, NARROW);
+        const e = 1e-5;
+        for (let q = 0.001; q <= 5; q += 0.002) {
+          // 이 위치에서 폭이 움직이는가 — 바로 앞뒤의 폭이 다르면 움직이는 중이다.
+          if (atQ(q - e).canvasW !== atQ(q + e).canvasW) expect(set(atQ(q).live)).toHaveLength(1);
+        }
+      }
+    });
+
+    /** 결정성·역스크럽·점프 — live는 위치만의 함수라 어느 경로로 와도 보이는 레이어가 배치에 있다(빈 화면 경로 0). */
+    it("보이는 레이어(opacity > 0)는 언제나 배치에 있다 — 모션 감소 포함", () => {
+      for (const reduced of [false, true]) {
+        for (let q = 0; q <= 5.2; q += 0.001) {
+          const got = at(stageTop + q * PLAY.perScene * H, reduced);
+          got.layers.forEach((opacity, k) => {
+            if (opacity > 0) expect(got.live[k]).toBe(true);
+          });
+          expect(got.layers.some((opacity, k) => opacity > 0 && got.live[k])).toBe(true);
+        }
+      }
+    });
+  });
+
   describe("prefers-reduced-motion", () => {
     /** 모든 전환을 한가운데에서 끊는다 — D .23 · T .51 · M(이번 씬) .805 · M(다음 씬) .935 · D. */
     it("중간 폭이 한 프레임도 없다 — 그릇 폭과 배치는 언제나 세 상태 중 하나의 fitScale이다", () => {

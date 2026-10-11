@@ -206,21 +206,34 @@ describe("Stage — 스크롤 위치가 화면을 정한다", () => {
    * ⚠️ **폭 보간은 레이아웃을 일으킨다**(design §2) — 다섯 씬 레이어가 동시에 마운트돼 있으므로 현재·다음 두 레이어만 배치에 남기고
    * 나머지는 `content-visibility: hidden`으로 뺀다. jsdom은 레이아웃이 없어 속성·클래스 계약으로 잰다.
    */
-  it("현재·다음 레이어만 배치에 남고 나머지는 `data-idle`이다", async () => {
+  it("배치에 남는 레이어만 `data-idle`이 없다 — 집합은 `frame().live`다(정방향 · 역방향 · 점프)", async () => {
     const { container, scroller } = await mount();
     const layers = [...container.querySelectorAll<HTMLElement>("[data-landing-layer]")];
     const idle = () => layers.map((node) => node.hasAttribute("data-idle"));
     for (const node of layers) expect(node.className.split(" ")).toContain("data-[idle]:[content-visibility:hidden]");
-    // SSR — 씬 ①이 현재, ②가 다음이다.
-    expect(idle()).toEqual([false, false, true, true, true]);
+    // SSR — 씬 ①의 D 정지라 레이어 ①만 배치에 남는다. 첫 틱이 같은 집합이라 토글이 없다.
+    expect(idle()).toEqual([false, true, true, true, true]);
     await flush();
-    expect(idle()).toEqual([false, false, true, true, true]);
-    await scrollTo(scroller, sceneTop(2, 0.3));
-    expect(idle()).toEqual([true, true, false, false, true]);
-    await scrollTo(scroller, sceneTop(4, 0.5));
-    expect(idle()).toEqual([true, true, true, true, false]);
-    await scrollTo(scroller, sceneTop(1, 0.9));
-    expect(idle()).toEqual([true, false, false, true, true]);
+    expect(idle()).toEqual([false, true, true, true, true]);
+    const T = true;
+    const F = false;
+    const steps = [
+      [0, 0.3, [F, T, T, T, T]],
+      [0, 0.6, [F, F, T, T, T]],
+      [0, 0.9, [T, F, T, T, T]],
+      [1, 0.2, [T, F, T, T, T]],
+      [2, 0.3, [T, T, F, T, T]],
+      [1, 0.9, [T, T, F, T, T]], // 역방향 — 씬 ② 복귀 구간
+      [1, 0.7, [T, F, F, T, T]], // 역방향 — 교차 구간
+      [4, 0.5, [T, T, T, T, F]], // 점프
+      [0, 0.1, [F, T, T, T, T]], // 점프로 되돌아온다
+    ] as const;
+    for (const [i, f, want] of steps) {
+      const top = sceneTop(i, f);
+      await scrollTo(scroller, top);
+      expect(idle()).toEqual(want);
+      expect(idle()).toEqual(at(top).live.map((on) => !on));
+    }
   });
 
   /** 같은 값의 속성 쓰기도 스타일을 무효화한다 — 정지 구간의 틱은 프레임 폭·레이어 속성을 다시 쓰지 않는다. */
@@ -326,6 +339,7 @@ describe("Stage — 크기 변화", () => {
     await flush();
     const top = STAGE_TOP + 2.3 * H;
     await scrollTo(scroller, top);
+    const widthBefore = find<HTMLElement>(container, "[data-landing-frame]").style.width;
 
     size.w = 2542;
     size.h = 1342;
@@ -335,6 +349,9 @@ describe("Stage — 크기 변화", () => {
     const kept = STAGE_TOP + 2.3 * 1342;
     expect(scroller.scrollTop).toBeCloseTo(kept, 6);
     const f = at(kept, false, { W: 2542, H: 1342 });
+    // 같은 그릇 상태다 — 그릇 폭은 위치(H 단위)만의 함수라 리사이즈 전후 보간 진행이 같다.
+    expect(find<HTMLElement>(container, "[data-landing-frame]").style.width).toBe(widthBefore);
+    expect(widthBefore).toBe(`${f.canvasW}px`);
     expect(f.scale).toBe(1);
     expect(find<HTMLElement>(container, "[data-landing-frame]").style.transform).toBe(
       `translate3d(${f.x}px, ${f.y}px, 0px) scale(${f.scale})`,

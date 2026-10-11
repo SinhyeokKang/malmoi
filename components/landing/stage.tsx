@@ -43,8 +43,9 @@ function Bezel({ children }: { children: ReactNode }) {
  * (44px 툴바 + 안쪽 베젤 + 얇은 회색 외곽선 + `shadow-medium`) — 세 그릇이 같은 틀이고 폭만 바뀐다.
  *
  * ⚠️ **폭 보간은 스크롤 프레임마다 레이아웃을 일으킨다**(design §2) — transform만 쓰던 때와 달리 리플로가 난다. 다섯 씬 레이어가 동시에
- * 마운트돼 있으므로 **현재·다음 두 레이어만 배치에 남기고** 나머지는 `data-idle`(`content-visibility: hidden`)로 뺀다. 다음 레이어를 남기는
- * 것은 교차가 M 폭에서 시작될 때 그 레이어가 이미 놓여 있게 하려는 것이다. 정지 구간에서는 폭을 다시 쓰지 않는다.
+ * 마운트돼 있으므로 **`frame().live`가 고른 레이어만 배치에 남기고**(폭이 움직이는 동안은 보이는 하나, M 정지·교차 동안은 현재·다음 둘)
+ * 나머지는 `data-idle`(`content-visibility: hidden`)로 뺀다. 다음 레이어는 M 정지 시작에 풀려 교차가 시작될 때 이미 놓여 있다.
+ * 정지 구간에서는 폭을 다시 쓰지 않는다.
  *
  * ⚠️ **프레임마다 setState하지 않는다** — 씬 DOM이 수천 노드라 재조정이 스크롤을 먹는다. 스크롤 → rAF에서
  * `frame()`(순수) → ref로 transform·opacity·`data-*`·텍스트 노드를 직접 쓴다. 이 컴포넌트는 한 번 렌더된다.
@@ -107,7 +108,7 @@ export function Stage({
     let lastH = 0;
     let lastStageTop = 0;
     /** 같은 값을 다시 쓰지 않는다 — 루트 CSS 변수는 서브트리 전체의 스타일을 무효화한다. */
-    let written = { stageH: "", width: "", transform: "", chromeTransform: "", scene: 0, caption: -1, typed: "", chromeW: -1, staticScale: -1 };
+    let written = { stageH: "", width: "", transform: "", chromeTransform: "", live: "", caption: -1, typed: "", chromeW: -1, staticScale: -1 };
 
     /** 트랙 윗변의 스크롤러 좌표. offsetTop은 offsetParent에 매여 셸 구조가 바뀌면 조용히 틀린다. */
     const stageTopOf = () => track.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop;
@@ -137,10 +138,11 @@ export function Stage({
         chrome.style.transform = chromeTransform;
         written = { ...written, chromeTransform };
       }
-      // 현재·다음 두 레이어만 배치에 남긴다 — 씬 번호가 바뀔 때만 쓴다.
-      if (f.scene.i !== written.scene) {
-        layerRefs.current.forEach((layer, k) => layer?.toggleAttribute("data-idle", k !== f.scene.i && k !== f.scene.i + 1));
-        written = { ...written, scene: f.scene.i };
+      // 배치에 남는 레이어 집합이 바뀔 때만 쓴다.
+      const live = f.live.map(Number).join("");
+      if (live !== written.live) {
+        layerRefs.current.forEach((layer, k) => layer?.toggleAttribute("data-idle", !f.live[k]));
+        written = { ...written, live };
       }
       frameNode.dataset.scene = String(f.scene.i);
       frameNode.dataset.badge = String(f.badge);
@@ -303,8 +305,8 @@ export function Stage({
                     layerRefs.current[k] = node;
                   }}
                   data-landing-layer={k}
-                  // SSR은 씬 ①이 현재·②가 다음이다 — 틱이 씬 번호를 따라 옮긴다.
-                  data-idle={k >= 2 ? "" : undefined}
+                  // SSR은 씬 ①의 D 정지라 레이어 ①만 배치에 남는다(`frame().live`와 같다) — 틱이 구간을 따라 옮긴다.
+                  data-idle={k >= 1 ? "" : undefined}
                   className="absolute inset-0 opacity-0 data-[idle]:[content-visibility:hidden]"
                 >
                   {scene}
