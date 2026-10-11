@@ -502,13 +502,19 @@ describe("DS — 상세 머리 경로(#228) · 상세 판 검색 줄(#229)", () 
     for (const token of ["min-w-0", "flex-1", "overflow-hidden"]) expect(title.classList.contains(token)).toBe(true);
     // 폴더가 먼저 줄고(가중 `shrink-[100]`) 3ch 바닥에 닿으면 소스 이름이 이어서 준다 — 소스를 `shrink-0`으로 묶으면 es에서 소스만으로 칸이 차
     // 폴더가 칸 밖(clip)으로 밀려 사라졌다(#228 재실측). 둘 다 `min-w-0`·`truncate`라 말줄임표로 끝난다. 아이콘·구분자는 줄지 않는다.
+    // 소스·폴더 하한은 둘 다 2ch(한 글자 + …)다 — 폴더가 먼저 줄고 소스가 나중이다. es 375의 경로 칸은 64px라 옛 폴더 3ch + 아이콘이 들어가지 않았다(#228 QA2).
     const [source, folder] = [...title.querySelectorAll<HTMLElement>(":scope > span")];
     expect(source!.textContent).toBe("web");
-    for (const token of ["truncate", "min-w-0"]) expect(source!.classList.contains(token)).toBe(true);
+    for (const token of ["truncate", "min-w-[2ch]"]) expect(source!.classList.contains(token)).toBe(true);
     expect(source!.classList.contains("shrink-0")).toBe(false);
     expect(folder!.textContent).toBe("common");
-    for (const token of ["truncate", "min-w-[3ch]", "shrink-[100]"]) expect(folder!.classList.contains(token)).toBe(true);
+    for (const token of ["truncate", "min-w-[2ch]", "shrink-[100]"]) expect(folder!.classList.contains(token)).toBe(true);
     for (const glyph of title.querySelectorAll("svg")) expect(glyph.classList.contains("shrink-0")).toBe(true);
+    // 장식 파일 아이콘은 경로 칸이 좁을 때만(84px 미만) 숨는다 — h2가 그 폭을 재는 컨테이너다(선언 = h2, 질의 = 아이콘). en·넓은 폭은 아이콘이 그대로다.
+    expect(title.classList.contains("@container/crumb")).toBe(true);
+    const icon = title.querySelector("svg")!;
+    expect(icon.getAttribute("aria-hidden")).toBe("true");
+    expect(icon.classList.contains("@max-[84px]/crumb:hidden")).toBe(true);
     const filter = title.nextElementSibling as HTMLElement;
     for (const token of ["ml-auto", "shrink-0"]) expect(filter.classList.contains(token)).toBe(true);
   });

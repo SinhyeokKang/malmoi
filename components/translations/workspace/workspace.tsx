@@ -1034,7 +1034,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
                 <ChevronLeft aria-hidden />
                 {w.list.keys}
               </Button>
-              <h2 ref={detailTitleRef} tabIndex={-1} data-detail-title="" className="text-muted-foreground flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden text-sm">
+              <h2 ref={detailTitleRef} tabIndex={-1} data-detail-title="" className="@container/crumb text-muted-foreground flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden text-sm">
                 {skeletonDetail ? <><Skeleton className="size-4 shrink-0 rounded" /><Skeleton size="sm" className="w-32" /></>
                   : detail !== null ? <DetailCrumb surfaceSlug={detail.key.surfaceSlug} namespace={detail.key.namespace} />
                   : absentDetail !== null ? <DetailCrumb surfaceSlug={absentDetail.surfaceSlug} />
