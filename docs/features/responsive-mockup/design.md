@@ -1,6 +1,6 @@
 # responsive-mockup — 기술 설계
 
-[스펙](spec.md) · [태스크](tasks.md) · 2026-10-11 responsive-app design §5(옛 A2e)에서 옮겼다.
+[스펙](spec.md) · [태스크](tasks.md) · 2026-10-11 responsive-app의 옛 A2e에서 옮겼다(그 기능 디렉터리는 닫혔다 — 결론은 DESIGN §5·§6.5·§6.1a).
 
 ## 1. 소유 파일
 

@@ -3,7 +3,7 @@
 상태: 전부 미착수. **선행: responsive-app A6 완료**(앱 좁은 폭 실측으로 배치·경계값 확정).
 [스펙](spec.md) · [설계](design.md) · [브리프](design-brief.md).
 
-M0 → M1 → M2. 검증 표기는 responsive-app tasks와 같다(`자동` = Vitest / `실측` = ego-browser).
+M0 → M1 → M2. 검증 표기: `자동` = Vitest(jsdom은 폭·컨테이너 쿼리를 못 잰다 — 클래스 계약만) / `실측` = ego-browser(터치 에뮬레이션 포함).
 
 - [ ] **M0 — MK1 시안 수령**
   - responsive-app이 dev에 들어간 상태의 실측 배치를 기준으로 [브리프](design-brief.md)의 MK1을 받는다. 대표 씬의 데스크톱 16:10 → 태블릿 → 모바일 순차 상태, 가용 높이에 맞는 두 종횡비·정지/전환 비율을 확정해 design §2에 기록한다.

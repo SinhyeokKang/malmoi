@@ -1,7 +1,7 @@
 # responsive-mockup — 랜딩 목업의 기기별 반응형
 
 상태: 구현 전 설계. 2026-10-11 responsive-app에서 분리(옛 A-11 · A2e · A7 · A18). 시안 미수령.
-[기술 설계](design.md) · [태스크](tasks.md) · [브리프](design-brief.md) · [선행 기능](../responsive-app/spec.md) · [공개 단계](../responsive-public/spec.md).
+[기술 설계](design.md) · [태스크](tasks.md) · [브리프](design-brief.md) · 선행 기능의 정본: [PRODUCT §4.1 "좁은 화면"](../../PRODUCT.md) · [DESIGN §5](../../DESIGN.md)(경계값 — 셸 `lg`, 카드 772·640·960·608) · [ARCHITECTURE §6.358·§6.3591](../../ARCHITECTURE.md). responsive-app·responsive-public 기능 디렉터리는 2026-10-11에 닫혔다(`git log`).
 
 ## 왜 따로 떼었나
 
