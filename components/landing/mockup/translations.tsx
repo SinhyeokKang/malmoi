@@ -1,4 +1,4 @@
-import { ArrowDownToLine, ArrowUp, ChevronDown, ChevronRight, FileJson2, Folder, Layers, Link2, Search, Send } from "lucide-react";
+import { ArrowDownToLine, ArrowUp, ChevronDown, ChevronLeft, ChevronRight, FileJson2, Folder, Layers, Link2, PanelLeftOpen, Search, Send } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { LocaleBadge } from "@/components/translations/locale-badge";
@@ -10,13 +10,15 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import type { Messages } from "@/lib/i18n";
 import type { UiLocale } from "@/lib/i18n/locales";
 import { formatNumber } from "@/lib/number-format";
+import { PANEL, SINGLE_BELOW } from "@/lib/translations/layout";
 import { PANEL_HEAD_ROW } from "@/components/shell/content-panel";
 import { cn } from "@/lib/utils";
 
 /**
  * 목업의 번역 화면 — 실제 `components/translations/workspace/`의 **정적 복제**다: 머리(제목 · Sync · Publish / 검색) ·
  * 본문 `p-4` 안의 카드 둘 — 왼쪽 **소스 트리 260 + 키 목록 392**(`TreePanel` · `KeyList`), 핸들 16, 오른쪽 로케일 상세(`LocalePanel`).
- * 1440 창의 폭 계약(`lib/translations/layout.ts` — 카드 영역 1142에서 트리가 접히지 않는다)이 그 배치를 정한다.
+ * 배치는 실물과 같은 컨테이너(`panel-head` 640 · `wshead`/`ws` 772 · `crumb` 84)가 고른다 — 목업 루트 폭(1424 · 768 · 375)이 그대로 입력이다
+ * (responsive-mockup design §3). 실물이 JS로 재는 폭 계약(`lib/translations/layout.ts` — 980 미만 트리 접힘)만 카드 영역 식으로 옮겼다(`LIST_CARD_WIDTH`).
  *
  * `phase`가 씬 ①②③을 가른다: `missing`(fr 빈 칸) · `typing`(스테이지가 `[data-landing-typed]`에 접두를 쓴다) · `saving`(씬 ③ —
  * 프레임의 `data-badge`가 서는 순간 저장되고 Publish 배지가 는다) · `saved`(④의 배경) · `published`(⑤ 전달 완료).
@@ -28,17 +30,37 @@ export type Phase = "missing" | "typing" | "saving" | "saved" | "published";
 /** 보고 있는 소스 — 트리에서 펼쳐진 항목이고 키 목록의 수가 그 소스의 키 수다(`This source`). */
 const currentSource = (fixture: Messages["landing"]["mockup"]) => fixture.sources.find(source => source.slug === fixture.source);
 
-/** 씬 ③의 전·후 — 프레임의 `data-badge`가 1이 되는 순간 바뀐다(`group/frame`은 `components/landing/stage.tsx`). */
-function Swap({ phase, before, after, display = "inline-flex" }: { phase: Phase; before: ReactNode; after: ReactNode; display?: "inline-flex" | "flex" }) {
+/**
+ * 씬 ③의 전·후 — 프레임의 `data-badge`가 1이 되는 순간 바뀐다(`group/frame`은 `components/landing/stage.tsx`).
+ * `contents`는 감싼 칸이 상자를 만들지 않는다 — 부모 flex의 gap을 빈 칸이 먹지 않고, 자식의 숨김(좁은 폭의 배너)이 그대로 통한다.
+ */
+const SHOWN_AFTER = { "inline-flex": "group-data-[badge=1]/frame:inline-flex", flex: "group-data-[badge=1]/frame:flex", contents: "group-data-[badge=1]/frame:contents" } as const;
+function Swap({ phase, before, after, display = "inline-flex" }: { phase: Phase; before: ReactNode; after: ReactNode; display?: keyof typeof SHOWN_AFTER }) {
   if (phase === "saved" || phase === "published") return <>{after}</>;
   if (phase !== "saving") return <>{before}</>;
   return (
     <>
       <span data-landing-badge="before" className={cn(display, "group-data-[badge=1]/frame:hidden")}>{before}</span>
-      <span data-landing-badge="after" className={cn("hidden", display === "flex" ? "group-data-[badge=1]/frame:flex" : "group-data-[badge=1]/frame:inline-flex")}>{after}</span>
+      <span data-landing-badge="after" className={cn("hidden", SHOWN_AFTER[display])}>{after}</span>
     </>
   );
 }
+
+/**
+ * 실물 `workspace.tsx`의 단일 판 숨김 셋 — 그 모듈은 `"use client"`라 import하지 않고 리터럴을 옮겼다(`landing-mockup.test.tsx`가 소스와 대조).
+ * 경계 772는 `SINGLE_BELOW`다. 목업의 판은 상세(`data-pane="detail"`)라 좁으면 목록 카드·툴바·보류 배너가 숨는다.
+ */
+const SINGLE_LIST_HIDDEN = "@max-[772px]/ws:in-data-[pane=detail]:hidden";
+const SINGLE_DETAIL_HIDDEN = "@max-[772px]/ws:in-data-[pane=list]:hidden";
+const DETAIL_PANE_HIDDEN = "@max-[772px]/wshead:in-data-[pane=detail]:hidden";
+
+/**
+ * **폭 계약을 카드 영역 식으로** (`lib/translations/layout.ts`) — 실물은 `ResizeObserver` + `planTranslationPanelLayout`으로 고르지만 목업엔 측정이 없다.
+ * 카드 영역 = `@container/ws`의 content box(`100cqw`). 두 판(772 이상)에서 목록 카드 = `min(트리+목록, 영역 − 간격 − 로케일 하한)`,
+ * 트리 = `min(트리, 영역 − 772)`(980 미만은 접힌다 — `TREE_COLLAPSE_BELOW`). 선호 폭(드래그)은 목업에 없다. `landing-mockup.test.tsx`가 모든 폭에서 실물 판정과 견준다.
+ */
+export const LIST_CARD_WIDTH = `min(${PANEL.tree + PANEL.list}px, calc(100cqw - ${PANEL.gap + PANEL.localeMin}px))`;
+export const TREE_WIDTH = `min(${PANEL.tree}px, calc(100cqw - ${SINGLE_BELOW}px))`;
 
 /**
  * ⚠️ **상태·개수 표시는 실물 프리미티브를 그대로 쓴다** (ux-drift-unify 🔴 G · Q3 · Q13) — Unsent는 `StatusBadge unsent`, 개수는 `CountBadge`다.
@@ -114,7 +136,8 @@ export function TranslationsView({ m, phase, uiLocale }: { m: Messages; phase: P
         */}
         {phase !== "saved" && <Reasons text={m.translations.publish.nothing} hideOnBadge={phase === "saving"} />}
         </div>
-        <div data-landing-toolbar-row="" className="flex flex-wrap items-center gap-2">
+        {/* 단일 판의 상세에서는 검색 줄이 숨는다(#229) — 실물과 같은 CSS 한 줄이다. */}
+        <div data-landing-toolbar-row="" className={cn("flex flex-wrap items-center gap-2", DETAIL_PANE_HIDDEN)}>
           {/*
             툴바는 검색 하나뿐이고 왼쪽에 선다 — Status는 키 목록 머리가 든다(2026-10-02). `SearchInput width={320}` → `Input icon`의 형:
             글리프 칸은 세로 가운데 `left-2.5`, 필드는 `pl-8`. 값이 없어 자리표시 글자가 보이고 그 색은 preflight의 `currentcolor 50%`다.
@@ -127,9 +150,9 @@ export function TranslationsView({ m, phase, uiLocale }: { m: Messages; phase: P
           </span>
         </div>
         {phase !== "published" && (
-          <Swap phase={phase} display="flex" before={null} after={
-            <div data-landing-hold="" className="flex flex-col gap-3 empty:hidden">
-              <Alert variant="neutral" actions={<span className={buttonClass({ variant: "default" })}>{m.translations.banner.sendWithPublish}<ArrowUp className="size-3.5" aria-hidden /></span>}>
+          <Swap phase={phase} display="contents" before={null} after={
+            <div data-landing-hold="" className={cn("flex flex-col gap-3 empty:hidden", DETAIL_PANE_HIDDEN)}>
+              <Alert variant="neutral" className={DETAIL_PANE_HIDDEN} actions={<span className={buttonClass({ variant: "default" })}>{m.translations.banner.sendWithPublish}<ArrowUp className="size-3.5" aria-hidden /></span>}>
                 {m.translations.banner.paused(fixture.unsentAfter)}
               </Alert>
             </div>
@@ -138,14 +161,16 @@ export function TranslationsView({ m, phase, uiLocale }: { m: Messages; phase: P
       </div>
       <div className="@container/ws min-h-0 flex-1 overflow-hidden p-4">
         <div className="flex h-full min-h-0">
-          <div className="border-border bg-background relative flex min-h-0 w-[652px] shrink-0 overflow-hidden rounded-lg border">
+          {/* 실물처럼 폭은 변수로 넘긴다(인라인 `width`는 단일 판의 `w-full`을 이긴다). */}
+          <div data-landing-list-card="" className={cn("border-border bg-background relative flex min-h-0 w-(--list-card) shrink-0 overflow-hidden rounded-lg border @max-[772px]/ws:w-full", SINGLE_LIST_HIDDEN)}
+            style={{ "--list-card": LIST_CARD_WIDTH } as React.CSSProperties}>
             <SourceTree m={m} uiLocale={uiLocale} />
             <KeyList m={m} phase={phase} />
           </div>
           {/* 두 카드 사이 16px이 리사이즈 손잡이다 — 선을 그리지 않는다. */}
-          <div className="w-4 shrink-0" />
+          <div data-landing-handle="" className="w-4 shrink-0 @max-[772px]/ws:hidden" />
           {/* 실물처럼 상세 머리는 카드(Workspace)가 들고 `LocalePanel` 몸통이 그 형제다. */}
-          <div className="border-border bg-background flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg border">
+          <div data-landing-detail-card="" className={cn("border-border bg-background flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg border", SINGLE_DETAIL_HIDDEN)}>
             <DetailHead m={m} />
             <LocaleDetail m={m} phase={phase} />
           </div>
@@ -164,7 +189,8 @@ function SourceTree({ m, uiLocale }: { m: Messages; uiLocale: UiLocale }) {
   const current = currentSource(fixture);
   const t = m.translations.workspace.tree;
   return (
-    <div data-landing-tree="" className="border-border flex min-h-0 w-[260px] shrink-0 flex-col border-r">
+    /* 실물 `TreePanel`(`className` · `width`)과 같다 — 한 판에서 숨고, 카드 영역 980 미만이면 접힌다(실물은 JS가 그리지 않는다). */
+    <div data-landing-tree="" className="flex min-h-0 w-(--tree) flex-col border-border shrink-0 border-r @max-[772px]/ws:hidden @max-[980px]/ws:hidden" style={{ "--tree": TREE_WIDTH } as React.CSSProperties}>
       <div className="flex h-12 shrink-0 items-center gap-2 px-4">
         <span className="text-base font-medium">{t.title}</span>
         <CountBadge count={fixture.sources.length} label={m.sources.count(fixture.sources.length)} />
@@ -218,8 +244,15 @@ function KeyList({ m, phase }: { m: Messages; phase: Phase }) {
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div data-landing-list-head="" className="flex h-12 shrink-0 items-center gap-2 px-4">
+        {/* 트리가 접힌 폭(카드 영역 980 미만)에만 서는 트리 버튼과 범위 라벨 — 실물 `key-list.tsx`의 `treeButton`(범위가 All namespaces면 소스 이름). */}
+        <span data-landing-tree-button="" className={cn(buttonClass({ size: "icon-sm" }), "hidden @max-[980px]/ws:inline-flex")}>
+          <PanelLeftOpen className="size-3.5 text-gray-strong" aria-hidden />
+        </span>
         <span className="text-base font-medium">{list.keys}</span>
         <CountBadge count={current?.keyCount ?? 0} label={m.translations.keys(current?.keyCount ?? 0)} />
+        <span data-landing-range="" className="min-w-0 truncate hidden @max-[980px]/ws:block">
+          <span className="text-muted-foreground text-xs">{fixture.source}</span>
+        </span>
         {/* 실물 `key-list.tsx`처럼 `+n saved` 칸이 비어도 남아 필터를 오른쪽 끝으로 민다(번역값 패널의 언어 메뉴와 같은 자리). 정렬 문구는 없다(2026-10-02). */}
         <span data-landing-saved-extra="" className="text-muted-foreground ml-auto shrink-0 text-xs" />
         <FilterTrigger label={w.filters.state.any} />
@@ -256,7 +289,12 @@ function KeyList({ m, phase }: { m: Messages; phase: Phase }) {
 function DetailHead({ m }: { m: Messages }) {
   const fixture = m.landing.mockup;
   return (
-    <div data-landing-detail-head="" className="flex h-12 shrink-0 items-center gap-2 px-4 @max-[772px]/ws:gap-1.5 @max-[772px]/ws:pl-2">
+    <div data-landing-detail-head="" className={cn("flex h-12 shrink-0 items-center gap-2 px-4", "@max-[772px]/ws:gap-1.5 @max-[772px]/ws:pl-2")}>
+      {/* ‹ Keys — 단일 판에서만 선다(실물 `Button ghost sm`). 목업은 목록 → 상세 전환을 그리지 않는다(design §2). */}
+      <span data-landing-back="" className={cn(buttonClass({ variant: "ghost", size: "sm" }), "shrink-0 gap-1 pr-2 pl-1 @min-[772px]/ws:hidden")}>
+        <ChevronLeft aria-hidden />
+        {m.translations.workspace.list.keys}
+      </span>
       <span data-landing-crumb="" className="@container/crumb text-muted-foreground flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden text-sm">
         <FileJson2 className="size-4 shrink-0 @max-[84px]/crumb:hidden" aria-hidden />
         <span className="min-w-[2ch] truncate">{fixture.source}</span>

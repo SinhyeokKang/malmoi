@@ -233,7 +233,7 @@ describe("CommandDialog — 같은 시트 · 머리 = 입력 · Cancel은 `lg` �
   });
 });
 
-describe("랜딩 목업은 시트가 되지 않는다 (design §1 ⚠️)", () => {
+describe("랜딩 목업은 뷰포트로 시트가 되지 않는다 — 목업 루트 컨테이너가 고른다 (responsive-mockup design §3)", () => {
   it("목업 Publish 껍데기는 그릇 상수를 import하지 않고 `lg` 미만 토큰이 없다", () => {
     const source = readFileSync(join(process.cwd(), "components/landing/mockup/publish.tsx"), "utf8");
     expect(source).not.toMatch(/from "@\/components\/ui\/large-modal"/);
