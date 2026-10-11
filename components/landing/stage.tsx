@@ -111,9 +111,10 @@ export function Stage({
     let pending = 0;
     let ready = false;
     let staticNow = false;
-    /** 직전 프레임의 H·stageTop — 리사이즈 때 재생 위치를 보존하는 데 쓴다. */
+    /** 직전 프레임의 H·stageTop·scrollTop — 리사이즈 때 재생 위치를 보존하는 데 쓴다. */
     let lastH = 0;
     let lastStageTop = 0;
+    let lastScrollTop = 0;
     /** 같은 값을 다시 쓰지 않는다 — 루트 CSS 변수는 서브트리 전체의 스타일을 무효화한다. */
     let written = { stageH: "", width: "", height: "", transform: "", chromeTransform: "", caption: -1, typed: "", chromeW: -1, staticScale: -1, staticCanvas: "" };
 
@@ -213,6 +214,8 @@ export function Stage({
      * 창을 키우면 씬 ②로 되감긴다. 고정 구간 안이면 직전 위치(H 단위)를 새 H로 되돌려 놓는다.
      * ⚠️ **`H`가 그대로여도 `stageTop`이 움직이면 같은 일이 난다** — `lg` 경계를 넘으면 트랙 여백(`mt-16 lg:mt-30`)과 히어로 h1(48 → 30)이
      * 바뀌어 q가 ΔstageTop/H만큼 튄다. 둘 중 하나라도 바뀌면 직전 `u`로 되돌린다.
+     * ⚠️ **u는 직전에 칠한 scrollTop으로 잰다** — 스크롤 앵커링(Chrome·Firefox)이 틱 전에 scrollTop을 Δ만큼 먼저 옮겨 두므로, 현재 값으로 재면
+     * 그 Δ를 한 번 더 더해 q가 반대로 튄다(리뷰 R1). 직전 값이면 앵커링이 있든 없든 같은 위치로 돌아간다.
      *
      * ⚠️ **보존은 관찰자 콜백이 아니라 여기서 한다** — 콜백은 레이아웃 뒤, rAF는 레이아웃 전에 돌아서 드래그 리사이즈에서는
      * 틱이 새 H를 먼저 읽는다. 콜백에서 하면 틱이 `lastH`를 덮은 뒤라 "바뀐 것 없음"으로 건너뛰었다(702 → 902가 q 2.3을 1.8로).
@@ -239,7 +242,7 @@ export function Stage({
       leaveStatic();
       // ⚠️ stageTop은 1px 문턱으로 본다 — 소수 스크롤 위치에서 rect·scrollTop 합이 틱마다 끝자리가 흔들려, 같음 비교면 스크롤 틱마다 scrollTop을 다시 쓴다.
       if (ready && lastH > 0 && (H !== lastH || Math.abs(stageTopOf() - lastStageTop) >= 1)) {
-        const u = (scroller.scrollTop - lastStageTop) / lastH;
+        const u = (lastScrollTop - lastStageTop) / lastH;
         setStageH(H);
         if (u > 0 && u <= pinnedSpan()) scroller.scrollTop = stageTopOf() + u * H;
       }
@@ -248,6 +251,7 @@ export function Stage({
       paint(frameAt({ scrollTop: scroller.scrollTop, stageTop, W, H, chromeHeight, reducedMotion: reduced, device }));
       lastH = H;
       lastStageTop = stageTop;
+      lastScrollTop = scroller.scrollTop;
       if (!ready) {
         track.setAttribute("data-ready", "");
         ready = true;
