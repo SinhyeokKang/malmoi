@@ -56,3 +56,6 @@ Source intersections A∩B, A∩C, B∩C: none. Shared docs are coordinator-owne
 - Frozen A `9e4c3336`, B `787ea5ae`, C `a003c9d4`; independent reviewer Dispatch `ctx_fb9b57822eef`, Task `task_c2f88418ce01`, verified gpt-6-astra / medium. Report `.scratch/review-responsive-132.md`.
 - Reviewer found pending same-key external navigation misclassified by A ownSelection. Route to A fix1 with behavioral RED, preserving original late-response case.
 - Original implementation workers settled and released. Their failed outcomes record full-suite timeouts; B additionally had a missing Revert button failure requiring sequential recheck. No validation failure was waived.
+
+- A fix1 Dispatch `ctx_2f6d23d79d31`, Task `task_903cd67a4432`, verified gpt-6-astra. Coordinator approved extending A ownership to `components/translations/workspace/use-leave-guard.ts` and directly relevant tests: the existing approved-navigation boundary must distinguish external intent from delayed local response. Dirty cancellation and modifier/history behavior remain guarded. B/C source intersections remain empty.
+- Frozen A original gate `9e4c3336`: sequential `pnpm gate --base dev` exit 0, `gate: ok`; fix1 will need fresh validation. B sequential gate now running.
