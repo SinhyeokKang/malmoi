@@ -15,7 +15,7 @@ import { render } from "./helpers/dom";
  * iOS Safari는 비대응이다(`visualViewport` 처리는 비목표 — spec 비목표).
  */
 const mocks = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn(), save: vi.fn(), revertPreview: vi.fn() }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push, replace: mocks.replace, refresh: mocks.refresh }), useSearchParams: () => new URLSearchParams(window.location.search) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push, replace: mocks.replace, refresh: mocks.refresh }), usePathname: () => window.location.pathname, useSearchParams: () => new URLSearchParams(window.location.search) }));
 vi.mock("@/app/(edit)/actions", () => ({ saveTranslationKey: mocks.save, previewTranslationRevert: mocks.revertPreview, revertTranslationKey: vi.fn(), triggerPullAction: vi.fn() }));
 vi.mock("@/app/(edit)/publish-actions", () => ({ loadPublishPreview: vi.fn() }));
 vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: vi.fn(), checkOpenPullRequest: vi.fn(), prepareRepositorySync: vi.fn() }));
@@ -25,6 +25,9 @@ import type { TranslationListRow } from "@/lib/keys/translation-list";
 import { en } from "@/messages/en";
 
 import { props } from "./helpers/workspace-props";
+import { SearchTrigger } from "@/components/search/search-trigger";
+import { ListRow } from "@/components/ui/list-row";
+vi.mock("@/app/search/actions", () => ({ searchKeysAction: vi.fn().mockResolvedValue({ ok: true, hits: [{ id: "k2", key: "common.k2", namespace: "common", sourceText: "k2", surfaceSlug: "web", slug: "acme", name: "Acme", inKey: true, localeCode: null, value: null }] }), loadSearchMembershipsAction: vi.fn() }));
 
 const w = en.translations.workspace;
 const rowOf = (keyId: string, surfaceSlug: string, namespace: string): TranslationListRow => ({
@@ -220,6 +223,50 @@ describe("목록 ↔ 상세 (single)", () => {
     await external("/projects/acme/surfaces/web/translations?ns=common&key=k2");
     expect(pane()).toBe("detail");
     expect(document.activeElement).toBe(detailTitle());
+  });
+
+  it.each(["search pointer", "search Enter", "Inbox link", "history"])("대기 중 동일 키의 새 외부 이동은 상세를 연다: %s", async source => {
+    const href = "/projects/acme/surfaces/web/translations?ns=common&key=k2";
+    const navigation = { currentEntry: { index: 1 } };
+    vi.stubGlobal("navigation", navigation);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ docs: [] }) }));
+    await start("/projects/acme/surfaces/web/translations?ns=common&key=k1", 500);
+    const user = userEvent.setup();
+    await act(async () => { await user.click(back()); });
+    hold = true;
+    await act(async () => { await user.click(row("k2")); });
+    await act(async () => { await user.click(back()); });
+    expect(pane()).toBe("list");
+    // Next의 링크/popstate 처리만 대체한다. 실제 검색·Inbox 링크의 capture 경로는 그대로 지난다.
+    const commit = (event: Event) => {
+      event.preventDefault();
+      held = null;
+      setExternal!(href);
+    };
+    if (source === "history") {
+      window.addEventListener("popstate", commit, { once: true });
+      navigation.currentEntry.index = 0;
+      await act(async () => { window.dispatchEvent(new PopStateEvent("popstate")); });
+    } else {
+      if (source.startsWith("search")) {
+        await render(<SearchTrigger account={{ name: "Tester", email: null, image: null }} memberships={[{ slug: "acme", name: "Acme", role: "OWNER", archived: false }]} />);
+        await act(async () => { await user.click(document.querySelector('button[aria-label="Search"]')!); });
+        await act(async () => { await user.type(document.querySelector('[role="combobox"]')!, "k2"); });
+        await act(async () => { await new Promise(resolve => setTimeout(resolve, 300)); });
+        expect(document.querySelector('[role="option"] a[href*="key=k2"]')).not.toBeNull();
+      } else {
+        await render(<ListRow href={href} title="Inbox key" />);
+      }
+      document.addEventListener("click", commit, { once: true });
+      await act(async () => {
+        if (source === "search Enter") await user.keyboard("{Enter}");
+        else await user.click(document.querySelector(source.startsWith("search") ? '[role="option"] a[href*="key=k2"]' : 'a[href*="key=k2"]')!);
+      });
+      expect(document.querySelector('[role="combobox"]')).toBeNull();
+    }
+    expect(pane()).toBe("detail");
+    expect(document.activeElement).toBe(detailTitle());
+    expect(mocks.replace).toHaveBeenCalledTimes(1);
   });
 
   it("목록 복귀 뒤 응답 전에 같은 키를 다시 열면 최신 상세 의도를 유지한다", async () => {
