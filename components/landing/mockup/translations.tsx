@@ -73,15 +73,6 @@ function PublishCount({ m, n }: { m: Messages; n: number }) {
   return <CountBadge count={n} label={m.translations.publish.unsentCount(n)} className="bg-background/20 text-current" />;
 }
 
-/** 꺼진 컨트롤의 사유 줄 — 실물 `DisabledReasons`(`"use client"`라 import하지 않는다)와 같은 클래스다. `landing-mockup.test.tsx`가 실물을 렌더해 견준다. */
-function Reasons({ text, hideOnBadge }: { text: string; hideOnBadge: boolean }) {
-  return (
-    <div data-landing-reasons="" className={cn("flex max-w-full flex-col items-end gap-0.5", hideOnBadge && "group-data-[badge=1]/frame:hidden")}>
-      <p className="text-muted-foreground m-0 max-w-full text-right text-xs text-pretty">{text}</p>
-    </div>
-  );
-}
-
 /**
  * `filter-menu.tsx`의 꺼진 트리거 — 실물 `FieldTrigger size="sm" active={false}`(28)의 정적 형이다. 카드 머리 둘(키 목록 Status · 로케일 상세 언어)이 쓴다.
  * 상호작용 상태(hover·disabled·focus·open)와 자식 선택자는 정적 사본에 없다 — `landing-mockup.test.tsx`가 나머지 토큰을 실물과 견준다.
@@ -105,8 +96,10 @@ export function TranslationsView({ m, phase, uiLocale }: { m: Messages; phase: P
     */
     <div data-landing-workspace="" data-pane="detail" className="@container/panel-head flex h-full min-h-0 flex-col">
       <div className="@container/wshead border-border flex shrink-0 flex-col gap-3 border-b px-4 py-3">
-        {/* 제목 행 + 사유 줄 — 실물처럼 사유 줄이 버튼 묶음 아래 오른쪽에 선다(`DisabledReasons`). */}
-        <div className="flex flex-col gap-1.5">
+        {/*
+          제목 행 — 실물처럼 머리 블록의 첫 자식이다. 미전달 0의 꺼진 Publish는 실물이 `title` + sr-only로 사유를 들고 보이는 줄이 없다
+          (disabled-reasons-revert) — 목업은 인터랙티브 0 · `aria-hidden` 프레임이라 읽을 주체가 없어 그 둘도 복제하지 않는다.
+        */}
         <div data-landing-head-row="" className={PANEL_HEAD_ROW}>
           <span className="inline-flex items-center gap-2">
             <span className="text-lg font-medium">{m.common.nav.translations}</span>
@@ -129,12 +122,6 @@ export function TranslationsView({ m, phase, uiLocale }: { m: Messages; phase: P
               {phase === "published" && <span className={buttonClass({ variant: "default" })}>{m.translations.publish.viewResult}</span>}
             </span>
           </span>
-        </div>
-        {/*
-          미전달 0이면 실물 Publish가 꺼지고 `nothing` 사유가 보이는 줄로 선다(`planPublishButton` · F7) — ③은 저장 순간 사라진다.
-          ⚠️ `Swap`으로 싸지 않는다 — 감싼 칸이 가로 flex라 줄이 오른쪽으로 못 가고, 배지 뒤 빈 칸이 묶음의 gap을 하나 더 먹는다.
-        */}
-        {phase !== "saved" && <Reasons text={m.translations.publish.nothing} hideOnBadge={phase === "saving"} />}
         </div>
         {/* 단일 판의 상세에서는 검색 줄이 숨는다(#229) — 실물과 같은 CSS 한 줄이다. */}
         <div data-landing-toolbar-row="" className={cn("flex flex-wrap items-center gap-2", DETAIL_PANE_HIDDEN)}>

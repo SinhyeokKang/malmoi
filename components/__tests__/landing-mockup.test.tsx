@@ -700,7 +700,7 @@ describe("목업 — 씬 안쪽이 실물과 같다 (fix2)", () => {
 
 /**
  * **1440 목업이 지금 실물과 같다** (responsive-mockup design §3.5) — responsive-app이 앱 화면을 바꾸는 동안 목업 파일은 그대로였다.
- * 머리 행(`PANEL_HEAD_ROW` · 꺼진 Publish의 사유 줄)과 상세 머리(Workspace가 드는 경로 칸)를 실물 소스·컴포넌트와 견준다.
+ * 머리 행(`PANEL_HEAD_ROW` · 사유 줄 없음)과 상세 머리(Workspace가 드는 경로 칸)를 실물 소스·컴포넌트와 견준다.
  */
 describe("목업 — 1440이 지금 실물과 같다 (§3.5)", () => {
   const workspace = readFileSync(join(process.cwd(), "components/translations/workspace/workspace.tsx"), "utf8");
@@ -719,12 +719,32 @@ describe("목업 — 1440이 지금 실물과 같다 (§3.5)", () => {
     expect(head.className).toBe(literal(/(@container\/wshead [^"]+)"/));
   });
 
-  it("제목 행이 실물과 같은 `PANEL_HEAD_ROW`이고 사유 줄과 함께 `flex flex-col gap-1.5`에 묶인다", async () => {
+  /**
+   * 실물 머리 블록(`wshead`)의 첫 자식이 제목 행이다 — 제목 행과 사유 줄을 묶던 `flex flex-col gap-1.5`는 disabled-reasons-revert가 사유 줄과 함께 걷었다.
+   * 목업도 같은 깊이에 같은 클래스로 선다.
+   */
+  it("제목 행이 실물과 같은 `PANEL_HEAD_ROW`이고 머리 블록(`wshead`)의 첫 자식이다", async () => {
+    // 실물: `wshead` 머리 블록을 연 뒤 주석만 지나 곧바로 제목 행이다(사이에 감싸는 div가 없다).
+    expect(workspace).toMatch(/@container\/wshead [^"]+">\s*(?:\{\/\*[\s\S]*?\*\/\}\s*)*<div className=\{PANEL_HEAD_ROW\}>/);
     const scene = layer(await mount(), 0);
     const row = find<HTMLElement>(scene, "[data-landing-head-row]");
     expect(row.className).toBe(PANEL_HEAD_ROW);
-    expect(row.parentElement?.className).toBe("flex flex-col gap-1.5");
+    expect(row.parentElement?.className).toBe(literal(/(@container\/wshead [^"]+)"/));
+    expect(row.parentElement?.firstElementChild).toBe(row);
     expect(row.children).toHaveLength(2);
+  });
+
+  /**
+   * **목업 머리에 사유 줄이 없다** (disabled-reasons-revert R-05) — 실물은 꺼진 Publish의 사유를 `title` + sr-only로 들고 보이는 줄을 세우지 않는다.
+   * responsive-mockup K1이 복제했던 줄을 실물과 함께 걷었다. 목업은 `aria-hidden` 프레임이라 `title`·sr-only 사본도 없다.
+   */
+  it("어느 씬에도 사유 줄 사본이 없고 꺼진 Publish 문장(`nothing`)이 보이지 않는다", async () => {
+    const container = await mount();
+    for (let k = 0; k < 5; k += 1) {
+      const scene = layer(container, k);
+      expect(scene.querySelector("[data-landing-reasons]"), `scene ${k}`).toBeNull();
+      expect(scene.textContent, `scene ${k}`).not.toContain(p.nothing);
+    }
   });
 
   /** 상세 머리는 Workspace가 들고(골격·상세가 바뀌어도 같은 노드) 경로 칸이 `@container/crumb`다 — 실물 `DetailCrumb`를 렌더해 견준다. */
