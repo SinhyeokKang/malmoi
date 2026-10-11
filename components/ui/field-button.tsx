@@ -15,7 +15,8 @@ export const FIELD_BUTTON_CLASS = "bg-background border-border-subtle shadow-low
  * **`lg` 미만 아이콘 형** (responsive-public PT1a) — 같은 인스턴스가 CSS로 32 아이콘이 된다. 두 벌을 그려 하나를 숨기면 인스턴스마다
  * 호출부의 document 리스너(검색 ⌘K)가 붙는다. 좁은 꼴은 헤더 Inbox 트리거와 같은 ghost `icon-md`(32 · radius 10 · 글리프 16 foreground ·
  * hover 3%)이고 터치에서는 `Button`과 같은 44 히트 영역이다. 접근 이름·`aria-keyshortcuts`는 그대로다(보이는 글자가 없어도 이름이 든다).
- * ⚠️ **토큰이 전부 `max-lg:`다** — `lg` 이상은 `FIELD_BUTTON_CLASS` 그대로이고, 목업은 이 형을 받지 않는다.
+ * ⚠️ **토큰이 전부 `max-lg:`다** — `lg` 이상은 `FIELD_BUTTON_CLASS` 그대로다. 랜딩 목업은 이 상수가 아니라 같은 토큰을 목업 루트 컨테이너 변형
+ * (`@max-[64rem]/mockup:`)으로 옮긴 사본(`app-frame.tsx`의 `SEARCH_COMPACT`)을 든다 — 뷰포트 토큰이라 그대로 쓸 수 없다.
  */
 const COMPACT = cn(
   "max-lg:size-8 max-lg:justify-center max-lg:rounded-md max-lg:border-0 max-lg:bg-transparent max-lg:shadow-none max-lg:px-0",
@@ -27,7 +28,7 @@ export function FieldButton({ icon, placeholder, shortcut, compact = false, onCl
   icon: ReactNode;
   placeholder: ReactNode;
   shortcut?: ReactNode;
-  /** `lg` 미만에서 32 아이콘이 된다 — 두 셸 헤더(공개·앱)가 준다. 랜딩 목업은 이 컴포넌트가 아니라 `FIELD_BUTTON_CLASS`만 읽어 늘 캡슐이다. */
+  /** `lg` 미만에서 32 아이콘이 된다 — 두 셸 헤더(공개·앱)가 준다. 랜딩 목업은 이 컴포넌트가 아니라 클래스를 읽고, 목업 루트 1024 미만에서 같은 32 아이콘이 된다(`SEARCH_COMPACT`). */
   compact?: boolean;
   onClick: MouseEventHandler<HTMLButtonElement>;
   "aria-label": string;
