@@ -7,7 +7,7 @@ import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useOptimistic,
 
 import { previewTranslationRevert, revertTranslationKey, saveTranslationKey } from "@/app/(edit)/actions";
 import { useCommitWait } from "@/components/commit-wait";
-import { PublishButton, PublishModal, publishReason, usePublish } from "@/components/publish-button";
+import { PublishButton, PublishModal, usePublish } from "@/components/publish-button";
 import { SearchInput } from "@/components/ui/search-input";
 import { PANEL_HEAD_ROW } from "@/components/shell/content-panel";
 import { SyncButton } from "@/components/home/sync-button";
@@ -18,7 +18,6 @@ import { Alert } from "@/components/ui/alert";
 import { CountBadge } from "@/components/ui/count-badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
-import { DisabledReasons, useDisabledReasons } from "@/components/ui/disabled-reasons";
 import { EmptyState, NoMatch } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLandAfter, useLandAfterCommit } from "@/components/ui/focus";
@@ -627,6 +626,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
 
   // ── Publish · Sync ────────────────────────────────────────────────────────
   const publish = usePublish(slug, server);
+  const syncReasonId = useId();
   const publishButtonId = useId();
   const footerAlertId = useId();
   const [syncOpen, openSyncDialog] = useState(false);
@@ -664,7 +664,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   // 식별 키는 프로젝트 · 경로 소스다 — 옮겨도 이 화면이 마운트된 채 남으면 옛 소스의 판정이 새 조회까지 버튼을 붙잡았다(U7 r2).
   const arrived = useArrived(props.connection.later, `${slug}/${routeSurfaceSlug}`)?.status ?? null;
   const availability = planActionAvailability({ archived: false, connection: arrived ?? props.connection.status });
-  // 꺼진 원인 문장 (malmoi#160) — 이 화면엔 Home의 연결 배너가 없어서 Publish·Sync의 사유 줄이 원인·해법을 직접 말한다(보류 배너는 덧붙이지 않는다 — F7).
+  // 꺼진 원인 문장 (malmoi#160) — 이 화면엔 Home의 연결 배너가 없어서 Publish·Sync 사유와 보류 배너가 원인·해법을 직접 말한다.
   const connectionBlock = availability.publish ? null : connectionReason(m, arrived ?? props.connection.status, role);
   /**
    * [Sync]를 열 수 있나 — 연결과 착지 lease 둘이다. ⚠️ **미저장 가로채기와 `openSync`가 이 한 값을 본다** (U 리뷰 🔴) — 가로채기가 연결만 보던 때
@@ -673,18 +673,6 @@ export function TranslationWorkspace(props: WorkspaceProps) {
   const syncAvailable = availability.sync && props.writeLock === null;
   /** 미저장 확인을 지나 Sync Dialog를 연다 — 여는 자리가 둘이면 한쪽이 guard를 빠뜨린다. */
   const openSync = () => { if (syncAvailable && !publish.pending && !syncPending) attempt({ kind: "sync" }, () => setSyncOpen(true)); };
-  /*
-    **꺼진 Sync·Publish의 사유는 버튼 아래 보이는 줄이다** (responsive-app F7 — 모든 폭, `title`·sr-only를 쓰지 않는다). 버튼 순서대로 넘기고, 원인이 같으면
-    (끊김 — 둘 다 `connectionBlock`) 한 줄이다. Sync는 끊김 → Publish 진행 → 다른 실행의 lease 순이다 — 앞의 둘은 lease가 끝나도 풀리지 않는다.
-    EDITOR의 [Sync]는 꺼진 채 늘 서고(번역 화면만 — Home은 부재) 사유는 권한이다. 자기 진행 중의 [Sync]는 꺼진 것이 아니라 Dialog 트리거다.
-  */
-  const syncPaused = !syncAvailable || publish.pending;
-  const syncReason = role !== "OWNER" ? w.sync.ownerOnly
-    : !syncPaused || syncRunning ? null
-    : !availability.sync ? connectionBlock ?? m.repositorySync.paused
-    : publish.pending ? m.repositorySync.waitPublish
-    : m.repositorySync.running;
-  const actionReasons = useDisabledReasons([syncReason, publishReason(m, { count: props.unpublished, publish, disabled: syncPending || !availability.publish, pausedReason: connectionBlock ?? undefined })]);
 
   const isPending = (locale: { code: string; pending: boolean }) => (locale.pending || savedLocales.has(locale.code)) && !revertedLocales.has(locale.code);
   const pendingLocales = detail?.locales.filter(isPending).map(l => l.code) ?? [];
@@ -900,7 +888,6 @@ export function TranslationWorkspace(props: WorkspaceProps) {
     */
     <div data-pane={pane} className="@container/panel-head flex h-full min-h-0 flex-col">
       <div className="@container/wshead border-border flex shrink-0 flex-col gap-3 border-b px-4 py-3">
-        <div className="flex flex-col gap-1.5">
         {/* 640 미만이면 제목 첫 줄 · Sync·Publish 둘째 줄 오른쪽(`PANEL_HEAD_ROW` — 시안 AT6a · F1). 버튼을 줄이거나 숨기지 않는다. */}
         <div className={PANEL_HEAD_ROW}>
           <span className="inline-flex items-center gap-2">
@@ -912,16 +899,19 @@ export function TranslationWorkspace(props: WorkspaceProps) {
               <span onClickCapture={event => { if (dirty.length > 0 && syncAvailable) { event.preventDefault(); event.stopPropagation(); openSync(); } }}>
                 {/* 끊김이 먼저다 — 그 원인은 Publish가 끝나도 풀리지 않는다(Home 머리와 같은 순서). */}
                 <SyncButton slug={slug} surfaceSlug={routeSurfaceSlug} name={props.sync.name} branch={props.sync.branch} role={role} unsent={props.unpublished}
-                  paused={syncPaused} reasonId={actionReasons.ids[0]}
+                  paused={!syncAvailable || publish.pending}
+                  /* 끊김 → Publish 진행 → 다른 실행의 lease 순이다 — 앞의 둘은 lease가 끝나도 풀리지 않는다. */
+                  pausedReason={!availability.sync ? connectionBlock ?? m.repositorySync.paused : publish.pending ? m.repositorySync.waitPublish : m.repositorySync.running}
                   open={syncOpen} onOpenChange={setSyncOpen} onPendingChange={setSyncPending}
                   onResult={onSyncResult} fallbackFocusRef={titleRef} />
               </span>
             ) : (
               <>
-                <Button aria-disabled="true" aria-describedby={actionReasons.ids[0]} onClick={event => event.preventDefault()}>
+                <Button aria-disabled="true" title={w.sync.ownerOnly} aria-describedby={syncReasonId} onClick={event => event.preventDefault()}>
                   <ArrowDownToLine className="text-gray-strong" aria-hidden />
                   {m.repositorySync.action}
                 </Button>
+                <span id={syncReasonId} className="sr-only">{w.sync.ownerOnly}</span>
               </>
             )}
             {/* ⚠️ **Publish 버튼 하나만 가로챈다** — 같은 컨테이너의 `View result`는 결과를 보는 클릭이지 보내는 클릭이 아니다. */}
@@ -930,12 +920,10 @@ export function TranslationWorkspace(props: WorkspaceProps) {
               const onPublish = event.target instanceof Element && event.target.closest(`[id="${publishButtonId}"]:not([aria-disabled="true"])`) !== null;
               if (onPublish && dirty.length > 0 && !publish.pending) { event.preventDefault(); event.stopPropagation(); setDialog({ kind: "publish", locales: dirty }); }
             }}>
-              <PublishButton id={publishButtonId} count={props.unpublished} publish={publish} disabled={syncPending || !availability.publish} reasonId={actionReasons.ids[1]} />
+              <PublishButton id={publishButtonId} count={props.unpublished} publish={publish} disabled={syncPending || !availability.publish} pausedReason={connectionBlock ?? undefined} />
             </span>
 
           </span>
-        </div>
-        <DisabledReasons reasons={actionReasons.reasons} />
         </div>
         {/*
           ⚠️ **툴바는 검색 하나뿐이고 왼쪽에 선다** (2026-10-02 사용자 — 패널마다 자기를 좁히는 필터를 든다: 트리 = 범위 · 키 목록 = Status · 번역값 = 언어).
@@ -960,7 +948,7 @@ export function TranslationWorkspace(props: WorkspaceProps) {
         <div data-workspace-banners="" className={cn("flex flex-col gap-3 empty:hidden", props.writeLock === null && DETAIL_PANE_HIDDEN)}>
           <SyncLockBanner reopensBy={props.writeLock?.reopensBy ?? null} />
           <BasePendingBanner baseLocale={props.baseLocale} declaredBaseLocale={props.declaredBaseLocale} className={DETAIL_PANE_HIDDEN} />
-          <EditLossBanner count={props.unpublished} publishButtonId={publishButtonId} publishBlocked={connectionBlock !== null} className={DETAIL_PANE_HIDDEN} />
+          <EditLossBanner count={props.unpublished} publishButtonId={publishButtonId} blockedReason={connectionBlock} className={DETAIL_PANE_HIDDEN} />
         </div>
       </div>
 

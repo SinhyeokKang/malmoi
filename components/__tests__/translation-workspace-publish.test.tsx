@@ -22,7 +22,6 @@ vi.mock("@/components/publish-button", () => ({
     </div>
   ),
   PublishModal: () => null,
-  publishReason: () => null,
 }));
 
 import { TranslationWorkspace } from "@/components/translations/workspace/workspace";

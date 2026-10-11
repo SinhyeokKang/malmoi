@@ -17,12 +17,11 @@ import { useMessages } from "@/components/i18n/messages-provider";
  * 닫기가 스스로를 무효화한다(DESIGN §6.67과 같은 형). 숨길 지역 상태가 없으니 SSR 플래시 방지용 마운트 대기도 없다.
  * ⚠️ **액션은 둘째 Publish 트리거가 아니다** — Publish 모달의 트리거는 헤더 버튼 하나이고 `returnFocusRef`·`publishPending`
  * 잠금이 그 자리에 묶여 있다. 여기서는 그 버튼으로 포커스만 옮긴다.
- * ⚠️ **Publish가 연결 때문에 꺼졌으면(`publishBlocked`) 그 액션을 세우지 않는다** (malmoi#160) — 꺼진 버튼으로 포커스만 옮기는 막다른 길이었다.
- * ⚠️ **사유를 문장에 잇지 않는다** (responsive-app F7 — 2026-10-11 사용자) — 꺼진 [Publish] 아래 사유 줄이 같은 문장을 모든 폭에 세우므로, 이어 붙이면
- * 한 화면에 두 번이다. 이유가 보이는 자리는 사유 줄 하나이고 이 배너는 보류 문장만 말한다.
+ * ⚠️ **Publish가 연결 때문에 꺼졌으면(`blockedReason`) 그 액션을 세우지 않는다** (malmoi#160) — 꺼진 버튼으로 포커스만 옮기는 막다른 길이었다.
+ * 대신 같은 사유를 문장에 잇는다 — 이 화면엔 Home의 연결 배너가 없어 보이는 원인 문장이 여기뿐이다. 새 배너는 만들지 않는다.
  */
-export function EditLossBanner({ count, publishButtonId, publishBlocked = false, className }: {
-  count: number; publishButtonId: string; publishBlocked?: boolean;
+export function EditLossBanner({ count, publishButtonId, blockedReason = null, className }: {
+  count: number; publishButtonId: string; blockedReason?: string | null;
   /** 번역 화면 단일 판의 상세에서 숨기는 CSS(responsive-app design §3 · R2) — 자리는 그대로다. */
   className?: string;
 }) {
@@ -36,14 +35,14 @@ export function EditLossBanner({ count, publishButtonId, publishBlocked = false,
       */
       variant="neutral"
       className={className}
-      actions={!publishBlocked && (
+      actions={blockedReason === null && (
         <Button onClick={() => document.getElementById(publishButtonId)?.focus()}>
           {m.translations.banner.sendWithPublish}
           <ArrowUp className="size-3.5" aria-hidden />
         </Button>
       )}
     >
-      {m.translations.banner.paused(count)}
+      {m.translations.banner.paused(count)}{blockedReason !== null && <> {blockedReason}</>}
     </Alert>
   );
 }

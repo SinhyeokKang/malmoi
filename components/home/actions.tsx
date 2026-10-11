@@ -5,13 +5,12 @@ import { createContext, useContext, useEffect, useId, useRef, useState, type Rea
 
 import { useCommitWait } from "@/components/commit-wait";
 import { SyncButton } from "@/components/home/sync-button";
-import { PublishButton, PublishModal, publishReason, usePublish, type PublishController } from "@/components/publish-button";
+import { PublishButton, PublishModal, usePublish, type PublishController } from "@/components/publish-button";
 import { ProjectThumbnail } from "@/components/ui/project-thumbnail";
 import { ReconnectButton } from "@/components/reconnect-button";
 import { ArchiveCard } from "@/components/settings/archive-card";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { DisabledReasons, disabledReasonId, useDisabledReasons } from "@/components/ui/disabled-reasons";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { landFocus } from "@/components/ui/focus";
 import { useMessages, useUiLocale } from "@/components/i18n/messages-provider";
@@ -52,11 +51,6 @@ type HomeActionsValue = {
    */
   leased: boolean;
   titleRef: RefObject<HTMLHeadingElement | null>;
-  /**
-   * 머리 사유 줄의 id 범위 (responsive-app O19) — 배너의 [Try again]은 머리 [Sync]와 같은 잠금 문장으로 멈추므로 줄을 따로 세우지 않고 머리의 같은 줄을
-   * 가리킨다(같은 문장이 화면에 한 번). 줄 id는 범위 + 문장이다(`disabledReasonId`).
-   */
-  reasonScope: string;
 };
 
 const Ctx = createContext<HomeActionsValue | null>(null);
@@ -95,9 +89,8 @@ export function HomeActions({ children, slug, writeLock }: { children: ReactNode
   // 트리를 싣고 오는 결과만 기다린다 — `try` 안의 거부(`reconfirm`…)도 온다, 그 앞의 거부는 안 온다 (`importRevalidates`).
   const onSyncResult = (next: RepositoryImportOutcome) => { if (importRevalidates(next)) syncCommit.wait(); };
   const titleRef = useRef<HTMLHeadingElement | null>(null);
-  const reasonScope = useId();
   return (
-    <Ctx.Provider value={{ syncOpen, setSyncOpen, syncPending, setSyncPending, publishPending, publish, onSyncResult, leased, titleRef, reasonScope }}>
+    <Ctx.Provider value={{ syncOpen, setSyncOpen, syncPending, setSyncPending, publishPending, publish, onSyncResult, leased, titleRef }}>
       {children}
     </Ctx.Provider>
   );
@@ -151,25 +144,14 @@ export function HomeHeaderActions({ slug, surfaceSlug, name, branch, role, unsen
    */
   paused: boolean;
   /**
-   * 멈춘 원인 문장 — 서버가 고른다(보관 · 끊김, 번역 화면과 같은 `connectionReason`). **Sync·Publish가 같은 원인이라 같은 문장이고 사유 줄은 하나다**
-   * (responsive-app F7). 없으면 버튼마다 옛 일반 문장(`…currently unavailable`)이다.
+   * 멈춘 원인 문장 — 서버가 고른다(보관 · 끊김, 번역 화면과 같은 `connectionReason`). Sync·Publish가 같은 원인이라 같은 문장을 각자 `title` + sr-only로 든다.
+   * 없으면 버튼마다 옛 일반 문장(`…currently unavailable`)이다.
    */
   pausedReason?: string;
 }) {
   const m = useMessages();
-  const { syncOpen, setSyncOpen, syncPending, setSyncPending, publishPending, publish, onSyncResult, leased, titleRef, reasonScope } = useHomeActions();
-  /*
-    **꺼진 사유는 버튼 아래 보이는 줄이다** (responsive-app F7 — 모든 폭, `title`·sr-only를 쓰지 않는다). 버튼 순서대로 — 미연결·보관 → Publish 진행 → lease.
-    EDITOR에게 [Sync]는 부재라 사유도 없다. 자기 진행 중의 [Sync]는 꺼진 것이 아니라 Dialog 트리거다.
-  */
-  const syncReason = role !== "OWNER" || syncPending ? null
-    : paused ? pausedReason ?? m.repositorySync.paused
-    : publishPending ? m.repositorySync.waitPublish
-    : leased ? m.repositorySync.running
-    : null;
-  const reasons = useDisabledReasons([syncReason, publishReason(m, { count: unsent, publish, disabled: paused || syncPending, pausedReason: paused ? pausedReason : undefined })], reasonScope);
+  const { syncOpen, setSyncOpen, syncPending, setSyncPending, publishPending, publish, onSyncResult, leased, titleRef } = useHomeActions();
   return (
-    <div className="flex flex-col items-end gap-1.5">
     <div className="flex items-center gap-2">
       <SyncButton
         slug={slug}
@@ -184,7 +166,8 @@ export function HomeHeaderActions({ slug, surfaceSlug, name, branch, role, unsen
           넣으면 도는 [Sync] 트리거가 native `disabled`로 떨어져 포커스 복귀 대상이 사라진다.
         */
         paused={paused || publishPending || leased}
-        reasonId={reasons.ids[0]}
+        /* 미연결·보관이 먼저다 — Publish가 끝나도 풀리지 않는다 (audit-ux #10). 다음이 Publish 진행, 그다음 lease다(번역 화면과 같은 순서). */
+        pausedReason={paused ? pausedReason : publishPending ? m.repositorySync.waitPublish : leased ? m.repositorySync.running : undefined}
         open={syncOpen}
         onOpenChange={setSyncOpen}
         onPendingChange={setSyncPending}
@@ -192,9 +175,7 @@ export function HomeHeaderActions({ slug, surfaceSlug, name, branch, role, unsen
         fallbackFocusRef={titleRef}
       />
       {/* ⚠️ 보낼 것이 없으면 비활성이다 — 누르면 "보낼 것이 없다"만 말하는 버튼이 된다. */}
-      <PublishButton count={unsent} disabled={paused || syncPending} publish={publish} reasonId={reasons.ids[1]} />
-    </div>
-    <DisabledReasons reasons={reasons.reasons} />
+      <PublishButton count={unsent} disabled={paused || syncPending} publish={publish} pausedReason={paused ? pausedReason : undefined} />
     </div>
   );
 }
@@ -228,12 +209,13 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
 }) {
   const uiLocale = useUiLocale();
   const m = useMessages();
-  const { publish, titleRef, setSyncOpen, publishPending, leased, reasonScope } = useHomeActions();
+  const { publish, titleRef, setSyncOpen, publishPending, leased } = useHomeActions();
   // 배너의 [Try again]은 머리 [Sync]와 같은 잠금·같은 사유다 — Publish 진행이 먼저, 그다음 착지 lease(R5).
   const retryBlock = publishPending ? m.repositorySync.waitPublish : leased ? m.repositorySync.running : null;
   const owner = role === "OWNER";
   /** 복원 거부 — 배너 `actions` 안이 아니라 **배너의 형제**로 선다 (audit #7 r1: 경고 속 경고가 됐다). */
   const [restoreError, setRestoreError] = useState<string | null>(null);
+  const retryReasonId = useId();
   /*
     ⚠️ **복원이 성공하면 이 배너가 통째로 사라진다** (audit #32 — B5 리뷰) — 누른 [Restore project]와 `ArchiveCard`의 착지가
     함께 언마운트되어 포커스가 `body`로 빠졌다. 남는 제목이 받는다(`SyncButton`의 폴백과 같은 자리).
@@ -269,10 +251,10 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
           /* ⚠️ **머리의 `[Sync]`와 같은 잠금을 받는다** — 같은 Action을 여는 세 자리가 다르게 움직이면
              "같은 라벨·같은 Action"이 화면에서 깨진다. 무반응인 버튼은 비활성보다 한 단계 아래다. */
           /* ⚠️ `disabled`가 아니라 `aria-disabled` + 사유다 (audit #37) — 결과 Alert의 [Try again]과 같은 형이다. */
-          /* ⚠️ **사유는 머리 사유 줄이 든다** (responsive-app O19) — 잠금 문장이 머리 [Sync]와 같아서 줄을 따로 세우지 않고 같은 줄을 가리킨다. `title`·sr-only를 쓰지 않는다. */
           actions={owner ? <>
             {/* 결과 Alert의 [Try again]과 같은 글리프다(3-⚪15) — 같은 Dialog를 여는 두 자리가 다른 모양이었다. Sync의 글리프다(5-W2 — `RotateCcw`는 Clear filters 전용). */}
-            <Button aria-disabled={retryBlock !== null || undefined} aria-describedby={retryBlock !== null ? disabledReasonId(reasonScope, retryBlock) : undefined} onClick={() => { if (retryBlock === null) setSyncOpen(true); }}><ArrowDownToLine className="size-3.5" aria-hidden />{m.home.banner.syncFailed.action}</Button>
+            <Button aria-disabled={retryBlock !== null || undefined} aria-describedby={retryBlock !== null ? retryReasonId : undefined} title={retryBlock ?? undefined} onClick={() => { if (retryBlock === null) setSyncOpen(true); }}><ArrowDownToLine className="size-3.5" aria-hidden />{m.home.banner.syncFailed.action}</Button>
+            {retryBlock !== null && <span id={retryReasonId} className="sr-only">{retryBlock}</span>}
           </> : undefined}
         >
           {/*

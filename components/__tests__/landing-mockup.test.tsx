@@ -22,7 +22,6 @@ import { Input } from "@/components/ui/input";
 import { LARGE_MODAL_PANEL } from "@/components/ui/large-modal";
 import { ListRow } from "@/components/ui/list-row";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { DisabledReasons } from "@/components/ui/disabled-reasons";
 import { PANEL_HEAD_ROW } from "@/components/shell/content-panel";
 import { DetailCrumb } from "@/components/translations/workspace/locale-panel";
 import { LIST_CARD_WIDTH, TREE_WIDTH } from "@/components/landing/mockup/translations";
@@ -726,21 +725,6 @@ describe("목업 — 1440이 지금 실물과 같다 (§3.5)", () => {
     expect(row.className).toBe(PANEL_HEAD_ROW);
     expect(row.parentElement?.className).toBe("flex flex-col gap-1.5");
     expect(row.children).toHaveLength(2);
-  });
-
-  /** 실물은 미전달 0이면 Publish를 끄고 `nothing` 사유를 버튼 아래 보이는 줄로 세운다(`planPublishButton` · F7). ③은 저장 순간 사유가 사라진다. */
-  it("꺼진 Publish 아래 실물 `DisabledReasons`와 같은 사유 줄이 선다 — ①②⑤에 있고 ④에 없다, ③은 배지 전에만", async () => {
-    const real = (await render(<DisabledReasons reasons={[{ id: "r", text: p.nothing }]} />)).container.firstElementChild!;
-    const container = await mount();
-    const reasonOf = (k: number) => layer(container, k).querySelector<HTMLElement>("[data-landing-reasons]");
-    for (const k of [0, 1, 4]) {
-      const reasons = reasonOf(k)!;
-      expect(reasons.className, `scene ${k}`).toBe(real.className);
-      expect(reasons.textContent).toBe(p.nothing);
-      expect(reasons.firstElementChild?.className).toBe(real.firstElementChild?.className);
-    }
-    expect(reasonOf(3)).toBeNull();
-    expect(reasonOf(2)?.className).toBe(`${real.className} group-data-[badge=1]/frame:hidden`);
   });
 
   /** 상세 머리는 Workspace가 들고(골격·상세가 바뀌어도 같은 노드) 경로 칸이 `@container/crumb`다 — 실물 `DetailCrumb`를 렌더해 견준다. */
