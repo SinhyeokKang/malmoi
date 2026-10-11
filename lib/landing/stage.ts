@@ -19,12 +19,15 @@
 export const CANVAS_W = 1440;
 export const CANVAS_H = 900;
 /**
- * 그릇 상태 D·T·M의 캔버스 폭 — **목업 루트(베젤 안 화면) 1424 · 768 · 375에 베젤 8×2를 더한 값**이다(spec 고정, MK1). 높이는 셋 다 900.
- * 768·375는 responsive-app QA가 실측한 폭이고 앱 경계(640 · 772 · 1024) 바로 옆을 피한다.
+ * 그릇 상태 D·T·M의 캔버스 폭. **목업 루트(베젤 안 화면의 내용 상자) = 캔버스 − 18**(베젤 8×2 + 화면 border 1×2)이라 루트가 1422 · 768 · 375다
+ * (2026-10-11 D7). T·M 768·375는 spec 고정 — responsive-app QA가 실측한 폭이고 앱 경계(640 · 772 · 1024) 바로 옆을 피한다.
+ * D는 캔버스 1440을 지킨다(루트 1422는 1424와 같은 갈래라 씬 좌표가 그대로다). 높이는 셋 다 900.
  */
-export const STATE_CANVAS_W = [CANVAS_W, 784, 391] as const;
+export const STATE_CANVAS_W = [CANVAS_W, 786, 393] as const;
 /** 컨테이너 안쪽의 좌우·아래 베젤 두께. */
 export const BEZEL = 8;
+/** 베젤 안 화면의 테두리 두께 — 스테이지 화면의 `border` 클래스(1px)를 숫자로 옮긴 것이다. 목업 루트 폭이 이만큼 더 좁다. */
+export const SCREEN_BORDER = 1;
 /** 컨테이너 상단 macOS 스타일 툴바. */
 export const TOOLBAR_H = 44;
 /**
@@ -190,7 +193,7 @@ export type Frame = {
   /**
    * 배치에 남는 레이어 — 나머지는 레이아웃에서 뺀다(`content-visibility: hidden`). **씬 번호가 아니라 구간이 고른다**: M 정지 전(f < .56)은
    * 현재 하나, M 정지·교차(.56 ≤ f < .87)는 현재·다음 둘, 복귀(f ≥ .87)는 다음 하나, 마지막 씬은 ⑤ 하나.
-   * ⚠️ 폭이 움직이는 세 구간은 보이는 레이어 하나만 리플로하고, 다음 레이어는 가장 싼 배치인 M 폭(391)에서 풀린다 — 교차까지 .18의 여유가 있다.
+   * ⚠️ 폭이 움직이는 세 구간은 보이는 레이어 하나만 리플로하고, 다음 레이어는 가장 싼 배치인 M 폭(393)에서 풀린다 — 교차까지 .18의 여유가 있다.
    */
   live: [boolean, boolean, boolean, boolean, boolean];
   segments: Five;

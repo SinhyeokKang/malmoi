@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { BEZEL, CANVAS_H, CANVAS_W, CHROME_GAP, MIN_PINNED_SCALE, PLAY, STATE_CANVAS_W, fitScale, frame, pinnedSpan, sceneAt, trackHeight, typedPrefix } from "@/lib/landing/stage";
+import { BEZEL, CANVAS_H, SCREEN_BORDER, CANVAS_W, CHROME_GAP, MIN_PINNED_SCALE, PLAY, STATE_CANVAS_W, fitScale, frame, pinnedSpan, sceneAt, trackHeight, typedPrefix } from "@/lib/landing/stage";
 
 /**
  * 랜딩 스테이지의 수학 (DESIGN §6.615).
@@ -29,11 +29,15 @@ describe("캔버스", () => {
     expect([CANVAS_W, CANVAS_H, BEZEL]).toEqual([1440, 900, 8]);
   });
 
-  /** spec 고정 — 목업 루트(베젤 안 화면) 1424 · 768 · 375에 베젤 8×2. 높이는 셋 다 900이다(MK1). */
-  it("상태 캔버스 폭은 D 1440 · T 784 · M 391이고 루트는 1424 · 768 · 375다", () => {
-    expect(STATE_CANVAS_W).toEqual([1440, 784, 391]);
+  /**
+   * spec 고정 — 목업 루트(베젤 안 화면의 내용 상자) T 768 · M 375. **루트 = 캔버스 − 18**(베젤 8×2 + 화면 border 1×2 — 2026-10-11 D7).
+   * D는 캔버스 1440을 지켜 루트 1422다(1424와 같은 갈래, 씬 좌표 불변). 높이는 셋 다 900이다(MK1).
+   */
+  it("상태 캔버스 폭은 D 1440 · T 786 · M 393이고 루트는 1422 · 768 · 375다", () => {
+    expect(STATE_CANVAS_W).toEqual([1440, 786, 393]);
     expect(STATE_CANVAS_W[0]).toBe(CANVAS_W);
-    expect(STATE_CANVAS_W.map((w) => w - 2 * BEZEL)).toEqual([1424, 768, 375]);
+    expect([BEZEL, SCREEN_BORDER]).toEqual([8, 1]);
+    expect(STATE_CANVAS_W.map((w) => w - 2 * BEZEL - 2 * SCREEN_BORDER)).toEqual([1422, 768, 375]);
   });
 });
 
@@ -211,13 +215,13 @@ describe("fitScale — 상태 폭", () => {
     expect(fitScale({ W: 1006, H: 670, chromeHeight: ONE_LINE })).toEqual(fitScale({ W: 1006, H: 670, chromeHeight: ONE_LINE, canvasW: CANVAS_W }));
   });
 
-  /** MK1a-375 — 357×714 · 캡션 두 줄에서 D 0.215(폭) · T 0.394(폭) · M 0.681(세로). */
+  /** MK1a-375 — 357×714 · 캡션 두 줄에서 D 0.215(폭) · T 0.393(폭 — 시안 0.394는 캔버스 784 기준, D7로 786) · M 0.681(세로). */
   it("375 페이지 — D·T는 폭이, M은 세로가 정한다", () => {
     const [d, t, m] = fits(357, 714, TWO_LINES);
     expect(d?.scale).toBeCloseTo(309 / 1440, 10);
-    expect(t?.scale).toBeCloseTo(309 / 784, 10);
+    expect(t?.scale).toBeCloseTo(309 / 786, 10);
     expect(m?.scale).toBeCloseTo((714 - 2 * 16 - TWO_LINES) / CANVAS_H, 10);
-    expect([d?.scale, t?.scale, m?.scale].map((v) => Number(v?.toFixed(3)))).toEqual([0.215, 0.394, 0.681]);
+    expect([d?.scale, t?.scale, m?.scale].map((v) => Number(v?.toFixed(3)))).toEqual([0.215, 0.393, 0.681]);
   });
 
   /** MK1a — 1280×800은 세로가 셋 다 정해 폭만 줄어든다. */
@@ -225,8 +229,8 @@ describe("fitScale — 상태 폭", () => {
     const [d, t, m] = fits(1262, 702, ONE_LINE);
     expect(t?.scale).toBe(d?.scale);
     expect(m?.scale).toBe(d?.scale);
-    expect(t?.x).toBeCloseTo((1262 - 784 * (d?.scale ?? 0)) / 2, 10);
-    expect(m?.x).toBeCloseTo((1262 - 391 * (d?.scale ?? 0)) / 2, 10);
+    expect(t?.x).toBeCloseTo((1262 - 786 * (d?.scale ?? 0)) / 2, 10);
+    expect(m?.x).toBeCloseTo((1262 - 393 * (d?.scale ?? 0)) / 2, 10);
   });
 
   it.each([
@@ -405,7 +409,7 @@ describe("frame — 한 스크롤 위치에 한 프레임", () => {
   it("정지 구간의 배치는 그 상태의 fitScale과 같다 — 식이 두 벌이 아니다", () => {
     for (const size of [{ W, H }, NARROW]) {
       const [d, t, m] = fitsOf(size);
-      for (const [f, fit, cw] of [[0.1, d, 1440], [0.37, t, 784], [0.65, m, 391]] as const) {
+      for (const [f, fit, cw] of [[0.1, d, 1440], [0.37, t, 786], [0.65, m, 393]] as const) {
         const got = at(pos(2, f, size.H), false, chromeHeight, size);
         expect(placement(got)).toEqual([cw, fit?.scale, fit?.x, fit?.y]);
         expect([got.chromeY, got.chromeW, got.pinnable]).toEqual([fit?.chromeY, fit?.chromeW, fit?.pinnable]);
@@ -433,18 +437,18 @@ describe("frame — 한 스크롤 위치에 한 프레임", () => {
     const [d, t, m] = fitsOf(NARROW);
     if (!d || !t || !m) throw new Error("fits");
     const mid = narrow(1, 0.23);
-    expect(mid.canvasW).toBeCloseTo((1440 + 784) / 2, 9);
+    expect(mid.canvasW).toBeCloseTo((1440 + 786) / 2, 9);
     expect(mid.scale).toBeCloseTo((d.scale + t.scale) / 2, 9);
     expect(mid.x).toBeCloseTo((NARROW.W - mid.canvasW * mid.scale) / 2, 9);
     expect(mid.y).toBeCloseTo(m.y + (CANVAS_H * (m.scale - mid.scale)) / 2, 9);
-    expect(narrow(1, 0.51).canvasW).toBeCloseTo((784 + 391) / 2, 9);
-    expect(narrow(1, 0.935).canvasW).toBeCloseTo((391 + 1440) / 2, 9);
+    expect(narrow(1, 0.51).canvasW).toBeCloseTo((786 + 393) / 2, 9);
+    expect(narrow(1, 0.935).canvasW).toBeCloseTo((393 + 1440) / 2, 9);
     expect(narrow(1, 0.935).scale).toBeCloseTo((m.scale + d.scale) / 2, 9);
   });
 
   it("ease — 전환 1/4 지점은 선형보다 덜 움직였다", () => {
     const quarter = narrow(0, 0.205);
-    expect(quarter.canvasW).toBeCloseTo(1440 - (1440 - 784) * 0.125, 9);
+    expect(quarter.canvasW).toBeCloseTo(1440 - (1440 - 786) * 0.125, 9);
   });
 
   it("D → T → M에서 폭은 줄고 배율은 줄지 않는다 · 구간 경계에서 끊기지 않는다", () => {
@@ -467,8 +471,8 @@ describe("frame — 한 스크롤 위치에 한 프레임", () => {
 
   it("마지막 씬 ⑤는 .56부터 끝까지, 그리고 고정이 풀린 뒤에도 M이다", () => {
     const [, , m] = fitsOf({ W, H });
-    for (const f of [0.6, 0.8, 0.99]) expect(placement(at(pos(4, f)))).toEqual([391, m?.scale, m?.x, m?.y]);
-    expect(at(pos(99, 0)).canvasW).toBe(391);
+    for (const f of [0.6, 0.8, 0.99]) expect(placement(at(pos(4, f)))).toEqual([393, m?.scale, m?.x, m?.y]);
+    expect(at(pos(99, 0)).canvasW).toBe(393);
   });
 
   it("chromeHeight는 배치만 바꾸고 씬·캡션·진행·그릇 폭은 바꾸지 않는다", () => {
@@ -527,7 +531,7 @@ describe("frame — 한 스크롤 위치에 한 프레임", () => {
   it("교차 한가운데(M 폭) — 두 씬이 반씩 · 캡션은 0에서 다음 문장으로 바뀐다", () => {
     const f = at(pos(0, 0.805));
     expect(f.scene.i).toBe(0);
-    expect(f.canvasW).toBe(391);
+    expect(f.canvasW).toBe(393);
     [0.5, 0.5, 0, 0, 0].forEach((v, k) => expect(f.layers[k]).toBeCloseTo(v, 9));
     [1, 0.5, 0, 0, 0].forEach((v, k) => expect(f.segments[k]).toBeCloseTo(v, 9));
     expect(f.caption.opacity).toBeCloseTo(0, 9);
@@ -543,7 +547,7 @@ describe("frame — 한 스크롤 위치에 한 프레임", () => {
     expect(f.layers).toEqual([0, 1, 0, 0, 0]);
     expect(f.caption).toEqual({ index: 1, opacity: 1 });
     expect(f.segments).toEqual([1, 1, 0, 0, 0]);
-    expect(f.canvasW).toBeGreaterThan(391);
+    expect(f.canvasW).toBeGreaterThan(393);
     expect(f.canvasW).toBeLessThan(1440);
   });
 
@@ -572,7 +576,7 @@ describe("frame — 한 스크롤 위치에 한 프레임", () => {
 
   /**
    * **배치에 남는 레이어(`live`)는 씬 번호가 아니라 구간이 고른다**(K2 리뷰 🟡1) — 폭이 움직이는 세 구간(D→T · T→M · M→D)은 보이는 레이어
-   * 하나만 리플로하고, 두 레이어가 함께 놓이는 구간(M 정지 + 교차)은 폭이 움직이지 않는다. 다음 레이어는 M 정지 시작(391 폭 — 가장 싼 배치)에 풀린다.
+   * 하나만 리플로하고, 두 레이어가 함께 놓이는 구간(M 정지 + 교차)은 폭이 움직이지 않는다. 다음 레이어는 M 정지 시작(393 폭 — 가장 싼 배치)에 풀린다.
    */
   describe("live — 배치에 남는 레이어", () => {
     const set = (live: readonly boolean[]) => live.flatMap((on, k) => (on ? [k] : []));
@@ -642,10 +646,10 @@ describe("frame — 한 스크롤 위치에 한 프레임", () => {
 
     it("폭은 전환 한가운데에서 끊어 바뀐다", () => {
       expect(narrow(1, 0.22, true).canvasW).toBe(1440);
-      expect(narrow(1, 0.24, true).canvasW).toBe(784);
-      expect(narrow(1, 0.5, true).canvasW).toBe(784);
-      expect(narrow(1, 0.52, true).canvasW).toBe(391);
-      expect(narrow(1, 0.93, true).canvasW).toBe(391);
+      expect(narrow(1, 0.24, true).canvasW).toBe(786);
+      expect(narrow(1, 0.5, true).canvasW).toBe(786);
+      expect(narrow(1, 0.52, true).canvasW).toBe(393);
+      expect(narrow(1, 0.93, true).canvasW).toBe(393);
       expect(narrow(1, 0.94, true).canvasW).toBe(1440);
     });
 

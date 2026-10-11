@@ -7,7 +7,7 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Stage } from "@/components/landing/stage";
-import { CHROME_GAP, PLAY, STATE_CANVAS_W, frame, trackHeight, typedPrefix } from "@/lib/landing/stage";
+import { BEZEL, CHROME_GAP, PLAY, SCREEN_BORDER, STATE_CANVAS_W, frame, trackHeight, typedPrefix } from "@/lib/landing/stage";
 
 import { find, render } from "./helpers/dom";
 
@@ -170,7 +170,7 @@ describe("Stage — 스크롤 위치가 화면을 정한다", () => {
   });
 
   /** 씬마다 D → T → M 그릇(MK1). 폭은 프레임 캔버스 폭이고 베젤 안 화면(목업 루트)은 거기서 8×2를 뺀 레이아웃 폭이다. */
-  it("프레임 폭·transform이 `frame()`의 그릇 폭·배율이다 — 정지는 1440 · 784 · 391, 전환은 보간 값", async () => {
+  it("프레임 폭·transform이 `frame()`의 그릇 폭·배율이다 — 정지는 1440 · 786 · 393, 전환은 보간 값", async () => {
     const { container, scroller } = await mount();
     await flush();
     const frameNode = find<HTMLElement>(container, "[data-landing-frame]");
@@ -329,7 +329,7 @@ describe("Stage — 모션 감소", () => {
       await scrollTo(scroller, sceneTop(1, f));
       seen.add(width());
     }
-    expect([...seen].sort()).toEqual(["1440px", "391px", "784px"]);
+    expect([...seen].sort()).toEqual(["1440px", "393px", "786px"]);
   });
 });
 
@@ -613,6 +613,22 @@ describe("Stage — 베젤", () => {
     expect(screen.className.split(" ")).toContain("rounded-xl");
     expect(screen.style.left).toBe("8px");
     expect(screen.style.bottom).toBe("8px");
+  });
+
+  /**
+   * ⚠️ **목업 루트 = 캔버스 − 베젤 8×2 − 화면 border 1×2**(2026-10-11 D7) — `SCREEN_BORDER`는 이 화면의 `border` 클래스(1px)를 숫자로 옮긴 것이다.
+   * 두께가 바뀌면 T·M 루트가 spec 고정 768 · 375에서 어긋나므로 클래스와 상수를 함께 묶는다.
+   */
+  it("화면 테두리는 `border`(1px) 하나이고 상수 `SCREEN_BORDER`와 같다 — 루트 T 768 · M 375", async () => {
+    const { container } = await mount();
+    const screen = find<HTMLElement>(container, "[data-landing-screen]");
+    const classes = screen.className.split(" ");
+    expect(classes).toContain("border");
+    expect(classes.filter((cls) => /^border(-[xytrbl])?(-\d+|-\[)/.test(cls))).toEqual([]);
+    expect(SCREEN_BORDER).toBe(1);
+    expect(screen.style.left).toBe(`${BEZEL}px`);
+    expect(screen.style.right).toBe(`${BEZEL}px`);
+    expect(STATE_CANVAS_W.slice(1).map((w) => w - 2 * BEZEL - 2 * SCREEN_BORDER)).toEqual([768, 375]);
   });
 
   /** 확대 트윈을 걷으며 베젤이 사라지지 않게 한다(2026-09-27 사용자 — 베젤은 대기 모양 그대로 상시다). */
