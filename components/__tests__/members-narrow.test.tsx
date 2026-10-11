@@ -38,19 +38,19 @@ describe("MemberRow — 640 미만 두 줄", () => {
   it("행이 좁은 폭에서 grid가 되고 이름은 유동 폭으로 첫 줄 전체를 쓴다", async () => {
     const container = await row();
     const line = find<HTMLElement>(container, "li > div");
-    expect(line.className).toMatch(/@max-form:grid\b/);
+    expect(line.className).toMatch(/@max-4xl:grid\b/);
     const name = find<HTMLElement>(container, "[data-name]");
     expect(name.className).toMatch(/\bw-\[300px\]/);
-    expect(name.className).toMatch(/@max-form:w-auto\b/);
-    expect(name.className).toMatch(/@max-form:col-span-2\b/);
+    expect(name.className).toMatch(/@max-4xl:w-auto\b/);
+    expect(name.className).toMatch(/@max-4xl:col-span-2\b/);
   });
 
   it("메타·동작은 한 묶음으로 이름 아래 줄에 서고 넓은 폭에서는 `contents`라 기존 한 줄 배치 그대로다", async () => {
     const container = await row();
     const aside = find<HTMLElement>(container, "[data-row-aside]");
     expect(aside.className).toMatch(/(^|\s)contents\b/);
-    expect(aside.className).toMatch(/@max-form:col-start-2\b/);
-    expect(aside.className).toMatch(/@max-form:flex\b/);
+    expect(aside.className).toMatch(/@max-4xl:col-start-2\b/);
+    expect(aside.className).toMatch(/@max-4xl:flex\b/);
     expect(aside.querySelector("[data-meta]")).not.toBeNull();
     expect(aside.querySelector("button")?.textContent).toBe("Remove");
   });
@@ -69,8 +69,8 @@ describe("MemberRow — 640 미만 두 줄", () => {
     const container = await row();
     for (const selector of ["[data-primary]", "[data-secondary]"]) {
       const node = find<HTMLElement>(container, selector);
-      expect(node.className).toMatch(/@max-form:whitespace-normal\b/);
-      expect(node.className).toMatch(/@max-form:wrap-anywhere/);
+      expect(node.className).toMatch(/@max-4xl:whitespace-normal\b/);
+      expect(node.className).toMatch(/@max-4xl:wrap-anywhere/);
       // 카드 640 이상이어도 터치 포인터면 감긴다(orch O18 · spec A-06 "터치에서도") — 마우스 배치는 그대로 말줄임 + `title`이다.
       expect(node.className).toMatch(/\bpointer-coarse:whitespace-normal\b/);
       expect(node.className).toMatch(/\bpointer-coarse:wrap-anywhere\b/);
@@ -81,13 +81,13 @@ describe("MemberRow — 640 미만 두 줄", () => {
 describe("소비자 — 고정 열이 좁은 폭에서 풀린다", () => {
   it("가입일·만료 150은 좁은 폭에서 내용 폭이다", () => {
     for (const file of ["components/members/member-list.tsx", "components/members/pending-invitations.tsx"]) {
-      expect(read(file)).toMatch(/w-\[150px\] shrink-0 @max-form:w-auto/);
+      expect(read(file)).toMatch(/w-\[150px\] shrink-0 @max-4xl:w-auto/);
     }
   });
 
   it("초대한 사람 칸은 `title`만으로 전문을 주지 않는다 — 좁은 폭에서 감긴다", () => {
     const pending = read("components/members/pending-invitations.tsx");
-    expect(pending).toMatch(/min-w-0 truncate text-xs @max-form:whitespace-normal @max-form:wrap-anywhere pointer-coarse:whitespace-normal pointer-coarse:wrap-anywhere/);
+    expect(pending).toMatch(/min-w-0 truncate text-xs @max-4xl:whitespace-normal @max-4xl:wrap-anywhere pointer-coarse:whitespace-normal pointer-coarse:wrap-anywhere/);
   });
 });
 
@@ -126,13 +126,31 @@ describe("640 미만 — 동작 묶음 감김", () => {
   it("동작 묶음이 좁은 폭에서 줄어들 수 있고 감긴다", async () => {
     const container = await row();
     const actions = tokens(find(container, "[data-row-aside] > span:last-child"));
-    for (const cls of ["shrink-0", "@max-form:shrink", "@max-form:min-w-0", "@max-form:max-w-full", "@max-form:flex-wrap", "@max-form:justify-end"]) {
+    for (const cls of ["shrink-0", "@max-4xl:shrink", "@max-4xl:min-w-0", "@max-4xl:max-w-full", "@max-4xl:flex-wrap", "@max-4xl:justify-end"]) {
       expect(actions, cls).toContain(cls);
     }
   });
 
   it("멤버 골격의 동작 묶음도 같은 규칙이다", () => {
     const loading = read("app/(edit)/projects/[slug]/members/loading.tsx");
-    expect(loading).toMatch(/ml-auto flex shrink-0 items-center gap-2 @max-form:shrink @max-form:min-w-0 @max-form:max-w-full @max-form:flex-wrap @max-form:justify-end/);
+    expect(loading).toMatch(/ml-auto flex shrink-0 items-center gap-2 @max-4xl:shrink @max-4xl:min-w-0 @max-4xl:max-w-full @max-4xl:flex-wrap @max-4xl:justify-end/);
+  });
+});
+
+/**
+ * **적층 경계는 카드 896(`@max-4xl`)이다** (malmoi#238). 640 경계에서는 대기 초대 한 줄(패딩 26 + 칩 32 + 간격 64 + 이메일 ≈178 + 만료 150 +
+ * 초대자 + 칩 132·Resend·Revoke ≈313 ≈ 863)이 모자라 이메일이 's***@day1c…'로 잘렸다 — 날짜·칩은 폭을 지키고 식별자만 내줬다.
+ * 그보다 좁은 카드(1024 + LNB 240 ≈ 724 · 768 ≈ 716)는 두 줄 형이라 이메일이 감기며 전문이 보인다. 1280(≈982)은 한 줄 그대로다.
+ * 멤버 카드도 같은 경계라 두 카드의 행이 같은 폭에서 같은 형이다. 카드 머리(`Card`)는 `@max-form` 그대로다.
+ */
+describe("적층 경계 — 카드 896", () => {
+  it("행 껍데기·소비자·골격에 옛 640 경계가 남지 않는다", () => {
+    expect(read("components/members/member-row.tsx")).not.toMatch(/@max-form:/);
+    expect(read("components/members/member-list.tsx")).not.toMatch(/@max-form:/);
+    expect(read("components/members/pending-invitations.tsx")).not.toMatch(/@max-form:/);
+    const loading = read("app/(edit)/projects/[slug]/members/loading.tsx");
+    // 카드 머리 설명 골격 하나만 `Card`의 640 규칙이다.
+    expect(loading.match(/@max-form:/g)).toHaveLength(2);
+    expect(loading).toMatch(/ml-auto w-72 max-w-full @max-form:ml-0 @max-form:w-full/);
   });
 });
