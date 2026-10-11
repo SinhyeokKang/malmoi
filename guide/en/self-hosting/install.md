@@ -42,7 +42,7 @@ Compose also reads `MALMOI_IMAGE`, `POSTGRES_PASSWORD`, `MIGRATE_DB_PASSWORD`, a
 
 ## Install {#install}
 
-1. Pick the latest app release `v<x.y.z>`, get the same tag of the repository, and use its `deploy/` directory: `git clone --depth 1 --branch v<x.y.z> https://github.com/SinhyeokKang/malmoi.git`. Look up the image digest with `docker buildx imagetools inspect ghcr.io/sinhyeokkang/malmoi:v<x.y.z>` and pin it: `MALMOI_IMAGE=ghcr.io/sinhyeokkang/malmoi:v<x.y.z>@sha256:<digest>`.
+1. Pick the latest app release `v<x.y.z>`, get the same tag of the repository, and use its `deploy/` directory: `git clone --depth 1 --branch v<x.y.z> https://github.com/SinhyeokKang/malmoi.git`. Copy the `Self-hosting image` line from that release's notes (`https://github.com/SinhyeokKang/malmoi/releases/tag/v<x.y.z>`) and use it as the pin: `MALMOI_IMAGE=ghcr.io/sinhyeokkang/malmoi:v<x.y.z>@sha256:<digest>`. Releases from v1.3.0 on carry that line. If you can't find it, look up the digest with `docker buildx imagetools inspect ghcr.io/sinhyeokkang/malmoi:v<x.y.z>`.
 2. Run `cd deploy && cp .env.example .env && chmod 600 .env` and fill in the values ([settings](#settings)). The file holds every key and password, so don't keep plain copies in a repository, a chat, or an unencrypted backup. Wrap any value containing `$` in single quotes.
 3. Put the certificate in `deploy/certs/` (`chmod 600 privkey.pem`) and set `server_name` in `nginx/malmoi.conf`. Open only ports 80 and 443; don't publish the PostgreSQL or app ports.
 4. Run `docker compose config -q` to catch syntax errors and missing required values, then `docker compose up -d`.
