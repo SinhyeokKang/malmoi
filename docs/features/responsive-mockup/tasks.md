@@ -1,6 +1,6 @@
 # responsive-mockup — 구현 태스크
 
-상태: M0 완료(2026-10-11) · M1 이후 미착수. **선행 충족** — responsive-app A6 완료(2026-10-11, dev `ba8401ce`).
+상태: M0·M1 완료(2026-10-11, dev `62cf587e`) · M2 진행(DESIGN 반영 완료, `/design-sync`·런타임 QA 남음). **선행 충족** — responsive-app A6 완료(2026-10-11, dev `ba8401ce`).
 [스펙](spec.md) · [설계](design.md) · [브리프](design-brief.md).
 
 M0 → M1 → M2. 검증 표기: `자동` = Vitest(jsdom은 폭·컨테이너 쿼리를 못 잰다 — 클래스 계약만) / `실측` = ego-browser(터치 에뮬레이션 포함).
@@ -9,7 +9,7 @@ M0 → M1 → M2. 검증 표기: `자동` = Vitest(jsdom은 폭·컨테이너 �
   - responsive-app이 dev에 들어간 상태의 실측 배치를 기준으로 [브리프](design-brief.md)의 MK1을 받는다. 대표 씬의 데스크톱 16:10 → 태블릿 → 모바일 순차 상태, 가용 높이에 맞는 두 종횡비·정지/전환 비율을 확정해 design §2에 기록한다.
   - 검증: 프레임 누락 0, 확정 치수를 spec/design/brief에 동일 기록. 시안 없음은 구현 차단으로 남긴다.
 
-- [ ] **M1 — stage 논리 캔버스 + 목업 컨테이너 배치**
+- [x] **M1 — stage 논리 캔버스 + 목업 컨테이너 배치**
   - **먼저 1440 목업 ↔ 실물 대조**(design §3.5): 셸·번역·Publish 씬을 지금 dev 화면과 computed style로 맞추고, 어긋난 곳을 고친 뒤 목업 클래스 문자열을 앱 쪽 값과 대조하는 테스트를 더한다(design §3 "경계 값을 어떻게 공유하나").
   - 먼저 순수 테스트(`lib/landing/__tests__/stage.test.ts`): 명시 canvasWidth/Height와 chromeHeight로 fitScale/frame 계산, 같은 위치 결정성·역스크럽·reduced-motion·작은 H. 이후 stage 측정과 목업 배치를 함께 변경한다. P5 계약(`chromeHeight` 필수 · `MIN_PINNED_SCALE`·`pinnable` 정적 흐름 · 한 줄 캡션 28)을 유지한다.
   - 목업 루트에 `@container` 선언(자기 참조 금지 — 선언 요소와 질의 요소 분리). 컨테이너 변형은 **셸 내비와 큰 모달 시트 형** 둘이고 목업 마크업에만 둔다. 루트 폭은 spec 고정값 1424 · 768 · 375(캔버스 1440 · 784 · 391). `lib/` 순수 상수·판정은 import, 클래스 문자열은 복사 + 대조 테스트.
