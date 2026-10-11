@@ -19,7 +19,7 @@ Malmoi puts the files into one change request (a *pull request* on GitHub). You 
 
 Choose **Open pull request** or Replace pull request #N. If your changes already match the files and no pull request is open, the button is **Publish**. When a pull request is open and the files match, the action is Close pull request #N.
 
-If Publish is turned off, there may be no unsent edits, or publishing may be temporarily unavailable. Wait for an ongoing sync to finish; ask a project owner if it stays unavailable.
+If Publish is turned off, the reason is shown in a line under the button: there may be no unsent edits, or publishing may be temporarily unavailable. Wait for an ongoing sync to finish; ask a project owner if it stays unavailable.
 
 If the action fails, your saved values are kept. Try again later or tell a project owner.
 

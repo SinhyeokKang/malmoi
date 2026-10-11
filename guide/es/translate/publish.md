@@ -19,7 +19,7 @@ Malmoi reúne los archivos en una única solicitud de cambios (un *pull request*
 
 Elige **Abrir pull request** o Reemplazar pull request #N. Si tus cambios ya coinciden con los archivos y no hay ningún pull request abierto, el botón es **Publicar**. Cuando hay un pull request abierto y los archivos coinciden, la acción es Cerrar pull request #N.
 
-Si Publicar está desactivado, puede que no haya ediciones sin enviar o que publicar no esté disponible temporalmente. Espera a que termine una sincronización en curso; pregunta a un propietario del proyecto si sigue sin estar disponible.
+Si Publicar está desactivado, el motivo aparece en una línea debajo del botón: puede que no haya ediciones sin enviar o que publicar no esté disponible temporalmente. Espera a que termine una sincronización en curso; pregunta a un propietario del proyecto si sigue sin estar disponible.
 
 Si la acción falla, tus valores guardados se conservan. Inténtalo de nuevo más tarde o avisa a un propietario del proyecto.
 
