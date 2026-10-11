@@ -196,6 +196,45 @@ describe("목록 ↔ 상세 (single)", () => {
     expect(document.activeElement).toBe(searchBox());
   });
 
+  it("키 선택 응답 전에 목록으로 돌아오면 응답은 판·목록 포커스를 되돌리지 않는다", async () => {
+    await start("/projects/acme/surfaces/web/translations?ns=common&key=k1", 500);
+    const user = userEvent.setup();
+    await act(async () => { await user.click(back()); });
+    hold = true;
+    await act(async () => { await user.click(row("k2")); });
+    expect(pane()).toBe("detail");
+    await act(async () => { await user.click(back()); });
+    expect(pane()).toBe("list");
+    const focus = document.activeElement;
+    expect(listCard().contains(focus)).toBe(true);
+    await flush();
+    expect(pane()).toBe("list");
+    expect(document.activeElement).toBe(focus);
+    expect(mocks.replace).toHaveBeenCalledTimes(1);
+    expect(mocks.push).not.toHaveBeenCalled();
+
+    // 응답 표식은 한 번만 소비한다 — 외부 키 변경은 계속 상세를 연다.
+    await external("/projects/acme/surfaces/web/translations?ns=common&key=k1");
+    expect(pane()).toBe("detail");
+    await act(async () => { await user.click(back()); });
+    await external("/projects/acme/surfaces/web/translations?ns=common&key=k2");
+    expect(pane()).toBe("detail");
+    expect(document.activeElement).toBe(detailTitle());
+  });
+
+  it("목록 복귀 뒤 응답 전에 같은 키를 다시 열면 최신 상세 의도를 유지한다", async () => {
+    await start("/projects/acme/surfaces/web/translations?ns=common", 500);
+    const user = userEvent.setup();
+    hold = true;
+    await act(async () => { await user.click(row("k2")); });
+    await act(async () => { await user.click(back()); });
+    await act(async () => { await user.click(row("k2")); });
+    expect(pane()).toBe("detail");
+    await flush();
+    expect(pane()).toBe("detail");
+    expect(document.activeElement).toBe(detailTitle());
+  });
+
   it("‹ Keys는 URL·history·draft를 그대로 두고 목록 판의 선택 행에 착지한다 — 같은 키를 다시 열면 입력이 그대로다", async () => {
     await start("/projects/acme/surfaces/web/translations?ns=common&key=k1", 500);
     const user = userEvent.setup();
