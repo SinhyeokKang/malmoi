@@ -94,7 +94,9 @@ describe("목업 창", () => {
     expect(toolbar.style.height).toBe("44px");
     expect(toolbar.children).toHaveLength(3);
     const screen = find<HTMLElement>(frame, "[data-landing-screen]");
-    expect(screen.style.top).toBe("44px");
+    // 모바일은 8px, D·T는 sm에서 기존 44px를 복원한다(컴파일 검증은 landing-stage).
+    expect(screen.style.top).toBe("");
+    expect(screen.className.split(" ")).toEqual(expect.arrayContaining(["top-[8px]", "sm:top-[44px]"]));
     expect(screen.querySelectorAll("[data-landing-layer]")).toHaveLength(5);
     expect(screen.contains(toolbar)).toBe(false);
   });
@@ -806,13 +808,20 @@ describe("목업 — 루트 컨테이너가 배치를 고른다", () => {
     expect([...seen]).toEqual(expect.arrayContaining(["mockup", "ws", "wshead", "panel-head", "crumb"]));
   });
 
-  it("목업 DOM 어디에도 뷰포트 반응형 토큰이 없다 — 바깥 페이지 폭으로 안을 고르지 않는다", async () => {
+  it("뷰포트 반응형은 바깥 베젤 두 토큰뿐 — 씬 안은 루트 컨테이너로 고른다", async () => {
     const container = await mount();
     // 앞에 다른 변형이 붙은 형(`hover:max-lg:…`)도 잡는다(리뷰 Y4).
     const viewport = /(?:^|:)(?:max-)?(?:sm|md|lg|xl|2xl):/;
     expect(viewport.test("hover:max-lg:hidden") && viewport.test("lg:hidden") && !viewport.test("@max-[64rem]/mockup:hidden")).toBe(true);
-    const offenders = [...find(container, "[data-landing-frame]").querySelectorAll("*")]
-      .flatMap((node) => (node.getAttribute("class") ?? "").split(" ").filter((c) => viewport.test(c)));
+    const tokens = (node: Element) => (node.getAttribute("class") ?? "").split(" ").filter((c) => viewport.test(c));
+    const frame = find(container, "[data-landing-frame]");
+    // 모바일 chrome 제거는 바깥 Bezel만의 예외다 — 씬 안의 뷰포트 토큰은 여전히 0이어야 한다.
+    const toolbar = find(frame, "[data-landing-toolbar]");
+    const screen = find(frame, "[data-landing-screen]");
+    expect(tokens(toolbar)).toEqual(["sm:flex"]);
+    expect(tokens(screen)).toEqual(["sm:top-[44px]"]);
+    const offenders = [...frame.querySelectorAll("*")]
+      .filter(node => node !== toolbar && node !== screen).flatMap(tokens);
     expect(offenders).toEqual([]);
   });
 

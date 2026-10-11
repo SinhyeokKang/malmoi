@@ -11,7 +11,7 @@ import { parseLogFilter } from "@/lib/events/filter";
 import { PANEL_HEAD_ROW } from "@/components/shell/content-panel";
 import SourcesLoading from "../../app/(edit)/projects/[slug]/sources/loading";
 import { SOURCE_STATUS_STACK } from "@/components/sources/row-layout";
-import { LOG_ROW_CHEVRON_STACK, LOG_ROW_RESULT_STACK, LOG_ROW_STACK, LOG_ROW_TIME_STACK } from "@/components/logs/row-layout";
+import { HOME_LOG_CHEVRON_STACK, HOME_LOG_RESULT_STACK, HOME_LOG_ROW_STACK, LOG_ROW_CHEVRON_STACK, LOG_ROW_RESULT_STACK, LOG_ROW_STACK, LOG_ROW_TIME_STACK } from "@/components/logs/row-layout";
 import type { EventRow as Row } from "@/lib/events/query";
 import { en } from "@/messages/en";
 import LogsLoading from "../../app/(edit)/projects/[slug]/logs/loading";
@@ -79,9 +79,14 @@ it("결과 배지가 없는 행(번역 편집)은 결과 칸이 비어 `empty:hi
   has(result, "@max-form:empty:hidden");
 });
 
-it("Home 최근 로그(showTime=false)는 이 배치의 적층 클래스를 받지 않는다 — 그 화면은 B1 소유다", async () => {
+// 옛 B3 범위 가드는 Home을 제외했다 — responsive-132 #2가 그 제외를 끝낸다.
+it("Home 최근 로그는 시각 없는 첫 줄과 결과 아래 줄을 가진다", async () => {
   const { container } = await render(<EventRow row={row()} href="/logs?event=evt_test" now={now} archived={false} showTime={false} style={style} m={en} />);
-  expect(container.innerHTML).not.toContain("@max-form:");
+  const link = container.querySelector("a")!;
+  has(link, HOME_LOG_ROW_STACK);
+  has(link.children[2], HOME_LOG_RESULT_STACK);
+  has(link.lastElementChild, HOME_LOG_CHEVRON_STACK);
+  expect(link.querySelector("time")).toBeNull();
 });
 
 it("Logs 골격 행은 실물과 같은 적층 상수를 쓴다 — 적층 조건이 같다", async () => {

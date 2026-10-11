@@ -435,7 +435,10 @@ export function TranslationWorkspace(props: WorkspaceProps) {
     else if (plan.action === "confirm") setDialog({ kind: "publish", locales: plan.locales });
   }
   const withQuery = (next: TranslationQuery, surface = view.surface) => translationsHref(slug, surface, next);
-  useLeaveGuard(dirty.length > 0, proceed => setDialog({ kind: "discard", locales: dirty, proceed: discardThen(proceed) }));
+  useLeaveGuard(dirty.length > 0, proceed => setDialog({ kind: "discard", locales: dirty, proceed: discardThen(proceed) }), () => {
+    // 키가 같아도 승인된 검색·Inbox·history 이동은 새 의도다. 취소한 이동은 표식을 유지한다.
+    ownSelection.current = null;
+  });
 
   /*
     ⚠️ **다음 주소는 낙관값(`view`) 위에 쌓는다** (U3 리뷰 r1) — 트리거가 누른 값으로 먼저 서서 사용자는 응답 전에 다음 축을 고른다.
@@ -740,7 +743,8 @@ export function TranslationWorkspace(props: WorkspaceProps) {
     if (seenSelection.current === key) return;
     seenSelection.current = key;
     const tree = takeTreeIntent(routeSurfaceSlug, Date.now()) && params.get("key") === FIRST_KEY;
-    dispatchPane({ type: "selection", key, cause: tree ? "tree" : "other" });
+    // 로컬 선택은 누른 순간 판을 열었다 — 늦은 응답은 그 뒤의 ‹ Keys·재열기 의도를 덮지 않는다.
+    if (tree || ownSelection.current !== key) dispatchPane({ type: "selection", key, cause: tree ? "tree" : "other" });
     if (tree) paneLanding.current = "list";
     else if (key !== undefined && ownSelection.current !== key) paneLanding.current = "detail";
     ownSelection.current = null;

@@ -1,7 +1,7 @@
 import { ListRow } from "@/components/ui/list-row";
 
 import { EventMetaLine } from "@/components/logs/event-meta";
-import { LOG_ROW_CHEVRON_STACK, LOG_ROW_RESULT_STACK, LOG_ROW_STACK, LOG_ROW_TIME_STACK } from "@/components/logs/row-layout";
+import { HOME_LOG_CHEVRON_STACK, HOME_LOG_RESULT_STACK, HOME_LOG_ROW_STACK, LOG_ROW_CHEVRON_STACK, LOG_ROW_RESULT_STACK, LOG_ROW_STACK, LOG_ROW_TIME_STACK } from "@/components/logs/row-layout";
 import { cn } from "@/lib/utils";
 import { EventGlyph } from "@/components/logs/glyph";
 import { RowChevron } from "@/components/logs/row-chevron";
@@ -56,9 +56,9 @@ export function EventRow({
   return (
     <ListRow
       href={href}
-      /* 좁은 그릇 적층은 시각 열이 있는 Logs 행만이다 — Home 최근 로그(`showTime={false}`)는 B1이 소유해 이 배치가 건드리지 않는다. */
-      className={showTime ? LOG_ROW_STACK : undefined}
-      aside={<span className={cn("text-muted-foreground flex shrink-0", showTime && LOG_ROW_CHEVRON_STACK)}>
+      /* 날짜 카드와 Home 카드 모두 자기 그릇 폭으로 적층한다 — Home에는 시각 윗줄이 없다. */
+      className={showTime ? LOG_ROW_STACK : HOME_LOG_ROW_STACK}
+      aside={<span className={cn("text-muted-foreground flex shrink-0", showTime ? LOG_ROW_CHEVRON_STACK : HOME_LOG_CHEVRON_STACK)}>
         <RowChevron />
       </span>}
     >
@@ -88,7 +88,7 @@ export function EventRow({
           {view.warningsLabel !== null && <Badge variant="soft-amber">{view.warningsLabel}</Badge>}
         </span>
       ) : (
-        <span className="flex shrink-0 items-center gap-2">
+        <span className={cn("flex shrink-0 items-center gap-2", HOME_LOG_RESULT_STACK)}>
           {view.state !== null && <StatusBadge state={view.state} />}
           {view.warningsLabel !== null && <Badge variant="soft-amber">{view.warningsLabel}</Badge>}
           <span className="text-muted-foreground text-xs">{relativeTime(row.occurredAt, now, style.uiLocale)}</span>

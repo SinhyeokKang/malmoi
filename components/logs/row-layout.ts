@@ -18,3 +18,9 @@ export const LOG_ROW_TIME_STACK = "@max-form:col-span-3 @max-form:w-auto";
 export const LOG_ROW_RESULT_STACK = "@max-form:col-span-2 @max-form:col-start-2 @max-form:w-auto @max-form:justify-start @max-form:empty:hidden";
 /** chevron — 둘째 줄 오른쪽 칸. */
 export const LOG_ROW_CHEVRON_STACK = "@max-form:col-start-3 @max-form:row-start-2 @max-form:self-center";
+
+/** Home은 시각 윗줄이 없다 — 카드 640 미만에서 결과·경고·상대시각을 문장 아래로 내려 전문을 보존한다. 실물과 Home 골격이 공유한다. */
+export const HOME_LOG_ROW_STACK = LOG_ROW_STACK;
+export const HOME_LOG_RESULT_STACK = "@max-form:col-span-2 @max-form:col-start-2 @max-form:min-w-0 @max-form:flex-wrap @max-form:wrap-anywhere";
+/** Home의 장식 chevron은 문장과 같은 첫 줄이다. */
+export const HOME_LOG_CHEVRON_STACK = "@max-form:col-start-3 @max-form:row-start-1 @max-form:self-center";

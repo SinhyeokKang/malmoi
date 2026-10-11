@@ -859,7 +859,8 @@ autovacuum off · statement_timeout=5000, 통계 없음/ANALYZE 뒤 × 네 질�
   `stopImmediatePropagation()` + `history.go(-delta)`로 되돌리고, 확인하면 `history.go(delta)`. delta는 Navigation API의
   `currentEntry.index` 차이다.
 - **Navigation API `navigate`의 `preventDefault`는 기각했다** — 사용자 활성화 없이 반복하면 `cancelable=false`가 되어 draft를 잃었다.
-- **새로고침·닫기**: native `beforeunload`.
+- **승인된 외부 이동 통지** (2026-10-12): 링크·popstate 리스너는 clean 상태에서도 이동을 관찰해 Workspace의 로컬 선택 표식을 무효화한다(§6.3591). dirty 링크는 확인 후, dirty history는 복원 이벤트가 아닌 승인된 재이동에서만 통지한다. 취소·수정키·새 탭·download·외부 origin·같은 주소 hash는 링크 통지를 하지 않는다.
+- **새로고침·닫기**: dirty일 때만 native `beforeunload`.
 - ⚠️ **Next가 Navigation API로 옮기면 뒤로/앞으로 guard가 조용히 무력화된다**(`app-router.js`의 TODO) — 테스트도 화면도 red를 안
   낸다. Next를 올렸으면 실브라우저로 뒤로가기를 눌러 본다. Navigation API가 없는 브라우저는 delta를 몰라 막지 않는다 — draft가
   사라질 수 있는 유일한 갈래다.
@@ -3052,7 +3053,7 @@ SSR 조회를 클라이언트로 옮기지 않으며, 스키마·env·쿠키·Ro
 
 - **경계는 뷰포트 `lg`(64rem) 하나다** (2026-10-07 사용자). 서랍·시트는 body 포털이라 셸 컨테이너 밖에 있어, 셸을 컨테이너 쿼리로 판정하면 판정이 둘로 갈린다.
   **배치는 CSS(`lg:`·`max-lg:`)가 정하고**, JS가 뷰포트 폭을 묻는 자리는 다섯뿐이다 — ① **열린 서랍·시트를 넓어질 때 닫고 포커스를 옮기는 것**(공개 서랍 · Docs 장 내비 시트 · 앱 LNB 서랍 `components/shell/nav-drawer.tsx`),
-  ② **Inbox를 열 때 그릇을 고르는 것**, ③ **좁아지며 숨는 넓은 묶음의 포커스를 트리거로 넘기는 것**(`useNarrowHandoff` — `components/shell/narrow-handoff.ts`, 소비자 넷: 공개 `WideOnly` · `DocsFixedNav` · 앱 고정 LNB `data-app-sidebar` · 앱 헤더 `AppWideOnly`. 셋째 소비자가 붙으며 2026-10-11에 공개 셸 파일에서 셸 디렉터리로 옮겼다),
+  ② **Inbox를 열 때 그릇을 고르는 것**, ③ **좁아지며 숨는 넓은 묶음의 포커스를 트리거로 넘기는 것**(`useNarrowHandoff` — `components/shell/narrow-handoff.ts`, 소비자 다섯: 공개 `WideOnly` · `DocsFixedNav` · 앱 고정 LNB `data-app-sidebar` · 앱 헤더 `AppWideOnly` · 앱 LNB 리사이즈 핸들. 핸들은 고정 LNB의 형제라 별도로 연결하고, 라이브러리의 인자 없는 focus/blur 콜백 대신 capture 이벤트를 쓴다. 셋째 소비자가 붙으며 2026-10-11에 공개 셸 파일에서 셸 디렉터리로 옮겼다),
   ④ **앱 셸 패널 그룹이 좁은 동안 `setLayout`·`onResize`를 건너뛰고 넓어지는 `change`에서 선호폭을 되살리는 것**(`components/shell/shell-panels.tsx` — 아래 "앱 셸 패널"),
   ⑤ **랜딩 스테이지가 목업 그릇(D·T·M)을 고르는 것**(`components/landing/stage.tsx` — 2026-10-11 mockup-viewport-container, DESIGN §6.615 "뷰포트 그릇"). 다섯 다 `lib/shell/breakpoint.ts`의 `WIDE_QUERY`(`"(min-width: 64rem)"`)를 `matchMedia`로 묻는다.
   ⚠️ **⑤만 `SM_QUERY`(`"(min-width: 40rem)"`)를 더 묻는다** — 공개 랜딩 목업의 바깥 그릇 크기에만 쓰는 예외이고(PRODUCT §4.1 · DESIGN §5) 셸 배치의 경계는 여전히 `lg` 하나다.
@@ -3066,6 +3067,7 @@ SSR 조회를 클라이언트로 옮기지 않으며, 스키마·env·쿠키·Ro
 - **검색·Inbox·계정은 헤더에 한 벌이다** — 좁은 폭에서도 **같은 인스턴스**가 남고 CSS가 모양만 바꾼다(검색은 `FieldButton compact`로 아이콘). 서랍에 다시 그리지 않는다:
   `SearchTrigger`는 인스턴스마다 document keydown(⌘K) 리스너를 등록하고, `AttentionInbox`는 마운트 effect에서 배지 Action을 부른다(§6.365 — `public-shell.test.tsx`가 1회 고정).
   두 벌을 그려 하나를 숨기면 단축키가 두 번 열고 배지 조회가 두 번 나간다. 같은 이유로 **문서 목차(`public-doc-toc.tsx`)도 DOM 하나**이고 컨테이너 쿼리로 형만 바꾼다(인스턴스마다 scroll 리스너·ResizeObserver).
+  목차의 같은 관찰자가 스크롤러·목차·이름 있는 읽기 그릇을 관찰한다. disclosure 높이가 바뀌면 고정 크기 스크롤러만 봐서는 알 수 없는 절 좌표를 다시 잰다. 읽기 그릇 경계에서 숨는 포커스는 CSS의 실제 `display`로 판정해 목록→disclosure, disclosure→현재 링크(없으면 첫 링크)로 넘긴다. 포커스 소유 기록은 blur 없는 `body` fixup을 받되 명시적 이탈에는 지운다. 뷰포트 MQL이나 폭 렌더 상태를 더하지 않는다.
 - **Inbox 그릇 선택** — `lg` 이상 `DropdownMenu`, 미만 전체 화면 시트(`LargeModal flush`). 트리거는 `DropdownMenuTrigger` 하나이고 좁으면 메뉴 열림을 막고 시트를 연다.
   **열기 = 읽음 기록(`openAttentionInboxAction`)은 그 핸들러에서 그릇 선택 전에 한 번**이라 두 그릇이 같은 계약이다(§6.365). 열린 채 `lg`를 넘나들면 닫기만 하고 다시 부르지 않는다.
   닫힘 정리(배지 0 · 캐시 목록 `readAll`)는 `clearOnClose` 가드로 멱등이다 — Radix가 `onOpenChange(false)`를 겹쳐 불러도 한 번이다.
@@ -3101,6 +3103,7 @@ SSR 조회를 클라이언트로 옮기지 않으며, 스키마·env·쿠키·Ro
 - **번역 단일 판의 판은 Workspace 한 벌이 든다** — 선택 키·draft(`draftReducer`)·이동 판정(`planEditorNavigation`)·sessionStorage 복구 사본(§6.04)·저장 결과·필터는 지금처럼 Workspace가 소유하고,
   판(`list`·`detail`)은 그 옆의 작은 상태다. 판 전환 판정은 잎 **`lib/translations/compact-pane.ts`**(`reducePane`·`initialPane` — DOM·서버·draft·폭을 모른다)이고 껍데기가 구분한 이벤트만 받는다:
   `show-list`(‹ Keys) · `open-key`(같은 키 재열기 · 승인된 다른 키) · `selection{cause: tree|other}`(서버가 그린 선택 키 변화) · `detail-input`(split에서도 — 입력 포커스·편집·IME 조합 시작) · `resize{detailActive}`.
+  로컬 키 선택의 응답(`ownSelection`)은 이미 선택 시 정한 판을 다시 고르지 않는다. 응답 전 ‹ Keys로 돌아갔거나 같은 키를 다시 연 최신 의도가 이긴다. 표식은 한 번만 소비하고 트리 의도가 있으면 그 의도가 우선한다. `useLeaveGuard`의 승인된 검색·Inbox·history 이동은 표식을 무효화해 같은 키로 들어와도 기존 `selection` 판정을 지난다(키 id 일치는 응답 출처의 증거가 아니다).
   ⚠️ **판은 split에서도 저장된다** — 폭을 되돌리면 그 판이 선다. 입력 중인 상세는 resize로 숨거나 포커스를 잃지 않는다.
   ⚠️ **판 전환은 URL·history를 건드리지 않는다**(reducer에 그 입력이 없다) — 브라우저 뒤로/앞으로는 기존 이동과 `useLeaveGuard` 그대로이고, `useLeaveGuard`가 Navigation API 없는 브라우저의 popstate를 못 막는 제한도 그대로다.
   ⚠️ **같은 상세를 두 번 마운트하지 않는다** — 판 표시는 CSS(`@container/ws` + `data-pane`)라 폭 왕복에 textarea DOM·커서·조합이 산다. 숨는 목록의 scrollTop은 숨기기 직전 Workspace ref에 저장하고 다시 보일 때 되살린다(`display:none`이 scrollTop을 잃는다).

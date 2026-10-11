@@ -18,17 +18,18 @@ import { isPlainPrimaryClick } from "@/lib/keyboard";
  */
 type NavigationApi = { currentEntry?: { index: number } | null };
 
-export function useLeaveGuard(active: boolean, onBlocked: (proceed: () => void) => void): void {
+export function useLeaveGuard(active: boolean, onBlocked: (proceed: () => void) => void, onApproved: () => void): void {
   const router = useRouter();
   const navigate = useRef(router.push);
   navigate.current = router.push;
   const blocked = useRef(onBlocked);
   blocked.current = onBlocked;
+  const approved = useRef(onApproved);
+  approved.current = onApproved;
 
   useEffect(() => {
-    if (!active) return undefined;
     const beforeUnload = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
-    window.addEventListener("beforeunload", beforeUnload);
+    if (active) window.addEventListener("beforeunload", beforeUnload);
     // 셸의 Next Link도 React의 클릭 처리보다 먼저 막는다. 새 탭·다운로드·같은 문서의 hash는 이탈이 아니다.
     const click = (event: MouseEvent) => {
       if (event.defaultPrevented || !isPlainPrimaryClick(event)) return;
@@ -36,9 +37,11 @@ export function useLeaveGuard(active: boolean, onBlocked: (proceed: () => void) 
       if (link === null || link.hasAttribute("download") || (link.target !== "" && link.target !== "_self")) return;
       const url = new URL(link.href, window.location.href);
       if (url.origin !== window.location.origin || (url.pathname === window.location.pathname && url.search === window.location.search)) return;
+      // clean 이동도 알려야 대기 중 같은 키의 로컬 응답과 새 외부 의도를 구분한다.
+      if (!active) { approved.current(); return; }
       event.preventDefault();
       event.stopImmediatePropagation();
-      blocked.current(() => navigate.current(url.pathname + url.search + url.hash));
+      blocked.current(() => { approved.current(); navigate.current(url.pathname + url.search + url.hash); });
     };
     document.addEventListener("click", click, true);
 
@@ -48,10 +51,11 @@ export function useLeaveGuard(active: boolean, onBlocked: (proceed: () => void) 
     let restoring = false;
     let released = false;
     const pop = (event: PopStateEvent) => {
-      if (released) return;
+      if (released) { approved.current(); return; }
       const now = indexNow();
       if (restoring) { restoring = false; event.stopImmediatePropagation(); return; }
-      if (now === null || settled === null || now === settled) return;
+      if (!active || now === null || settled === null) { approved.current(); settled = now; return; }
+      if (now === settled) return;
       const delta = now - settled;
       event.stopImmediatePropagation();
       restoring = true;
