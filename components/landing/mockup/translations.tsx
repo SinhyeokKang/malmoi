@@ -34,7 +34,7 @@ const currentSource = (fixture: Messages["landing"]["mockup"]) => fixture.source
  * 씬 ③의 전·후 — 프레임의 `data-badge`가 1이 되는 순간 바뀐다(`group/frame`은 `components/landing/stage.tsx`).
  * `contents`는 감싼 칸이 상자를 만들지 않는다 — 부모 flex의 gap을 빈 칸이 먹지 않고, 자식의 숨김(좁은 폭의 배너)이 그대로 통한다.
  */
-const SHOWN_AFTER = { "inline-flex": "group-data-[badge=1]/frame:inline-flex", flex: "group-data-[badge=1]/frame:flex", contents: "group-data-[badge=1]/frame:contents" } as const;
+const SHOWN_AFTER = { "inline-flex": "group-data-[badge=1]/frame:inline-flex", contents: "group-data-[badge=1]/frame:contents" } as const;
 function Swap({ phase, before, after, display = "inline-flex" }: { phase: Phase; before: ReactNode; after: ReactNode; display?: keyof typeof SHOWN_AFTER }) {
   if (phase === "saved" || phase === "published") return <>{after}</>;
   if (phase !== "saving") return <>{before}</>;

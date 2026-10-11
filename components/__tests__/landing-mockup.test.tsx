@@ -766,25 +766,102 @@ describe("목업 — 루트 컨테이너가 배치를 고른다", () => {
   const workspace = live("components/translations/workspace/workspace.tsx");
   const constant = (name: string) => grab(workspace, new RegExp(`const ${name} = "([^"]+)"`));
 
-  it("목업 루트가 `@container/mockup`을 선언하고, 그 이름을 묻는 요소는 전부 그 안쪽이다 — 선언과 질의가 같은 요소가 아니다", async () => {
+  it("목업 루트가 `@container/mockup`을 선언하고 패딩이 없다 — 셸(`relative`)이 그 첫 자식이다", async () => {
     const container = await mount();
     for (let k = 0; k < 5; k += 1) {
       const root = layer(container, k).firstElementChild as HTMLElement;
       expect(root.className.split(" "), `scene ${k}`).toContain("@container/mockup");
-      expect(root.className).not.toContain("/mockup:");
+      // 패딩을 품으면 content box가 줄어 경계(1024)가 밀린다.
+      expect(root.className.split(" ").filter((c) => /^p[xytrbl]?-/.test(c))).toEqual([]);
       expect(root.firstElementChild?.hasAttribute("data-landing-shell")).toBe(true);
-      const askers = [...layer(container, k).querySelectorAll<HTMLElement>("*")].filter((node) => (node.getAttribute("class") ?? "").includes("/mockup:"));
-      expect(askers.length).toBeGreaterThan(0);
-      for (const node of askers) expect(root.contains(node) && root !== node).toBe(true);
     }
+  });
+
+  /**
+   * **선언과 질의가 같은 요소가 아니고, 묻는 이름은 조상이 선언한다** — 모든 컨테이너 이름에 대해 DOM에서 잰다(리뷰 Y1). 소스 스캐너
+   * (`container-query.test.ts`)는 모듈 상수(`PANEL_HEAD_ROW` · `DETAIL_PANE_HIDDEN` · `SEARCH_COMPACT`)에 담긴 클래스를 원리적으로 못 보지만 DOM은 본다.
+   */
+  it("목업 DOM의 모든 컨테이너 질의가 자기 자신이 아니라 조상의 선언을 묻는다", async () => {
+    const container = await mount();
+    const declared = (el: Element) => (el.getAttribute("class") ?? "").split(" ").flatMap((c) => { const hit = /^@container(?:\/([\w-]+))?$/.exec(c); return hit ? [hit[1] ?? ""] : []; });
+    const queried = (el: Element) => (el.getAttribute("class") ?? "").split(" ").flatMap((c) => { const hit = /(?:^|:)@(?:(?:min|max)-)?(?:\[[^\]]+\]|[\w-]+)(?:\/([\w-]+))?:/.exec(c); return hit ? [hit[1] ?? ""] : []; });
+    const offenders: string[] = [];
+    const seen = new Set<string>();
+    for (const el of find(container, "[data-landing-frame]").querySelectorAll("*")) {
+      for (const name of queried(el)) {
+        seen.add(name);
+        // 이름 없는 질의(`@max-form:`)는 가장 가까운 컨테이너를 묻는다 — 그 요소 자신이 컨테이너면 안 된다.
+        if (declared(el).length > 0 && (name === "" || declared(el).includes(name))) offenders.push(`self ${name}: ${el.getAttribute("class")}`);
+        let up = el.parentElement;
+        while (up !== null && !(name === "" ? declared(up).length > 0 : declared(up).includes(name))) up = up.parentElement;
+        if (up === null) offenders.push(`no ancestor ${name}: ${el.getAttribute("class")}`);
+      }
+    }
+    expect(offenders).toEqual([]);
+    expect([...seen]).toEqual(expect.arrayContaining(["mockup", "ws", "wshead", "panel-head", "crumb"]));
   });
 
   it("목업 DOM 어디에도 뷰포트 반응형 토큰이 없다 — 바깥 페이지 폭으로 안을 고르지 않는다", async () => {
     const container = await mount();
-    const viewport = /^(?:max-)?(?:sm|md|lg|xl|2xl):/;
+    // 앞에 다른 변형이 붙은 형(`hover:max-lg:…`)도 잡는다(리뷰 Y4).
+    const viewport = /(?:^|:)(?:max-)?(?:sm|md|lg|xl|2xl):/;
+    expect(viewport.test("hover:max-lg:hidden") && viewport.test("lg:hidden") && !viewport.test("@max-[64rem]/mockup:hidden")).toBe(true);
     const offenders = [...find(container, "[data-landing-frame]").querySelectorAll("*")]
       .flatMap((node) => (node.getAttribute("class") ?? "").split(" ").filter((c) => viewport.test(c)));
     expect(offenders).toEqual([]);
+  });
+
+  /**
+   * **루트 폭 → 셸 갈래 → 패널 → 카드 영역 → 실물 판정 → 머리 폭** 체인 (리뷰 Y2). 숫자는 목업 DOM의 클래스(`px-2` · `w-[240px]` · `w-2` · `border` ·
+   * `p-4` · 경계 리터럴)와 `globals.css`의 `--container-form`에서 읽고, 판은 실물 `planTranslationPanelLayout`이 정한다 — 산수와 클래스가 갈라지면 여기서 red다.
+   * 브라우저가 그 산수대로 그리는지는 QA 몫이다.
+   */
+  it("루트 폭 체인이 경계 [1278 · 1070 · 1024 · 822 · 658]과 대표 폭의 배치를 낸다", async () => {
+    const scene = layer(await mount(), 0);
+    const unit = (el: Element, re: RegExp) => {
+      const hit = (el.getAttribute("class") ?? "").split(" ").map((c) => re.exec(c)).find((m) => m !== null);
+      expect(hit, `${re} on ${el.getAttribute("class")}`).toBeDefined();
+      return Number(hit![1]);
+    };
+    const shell = find(scene, "[data-landing-shell]");
+    const lnb = find(scene, "[data-landing-lnb]");
+    const handle = lnb.nextElementSibling!;
+    const panel = handle.nextElementSibling!;
+    const workspace = find(scene, "[data-landing-workspace]");
+    const ws = find(scene, "[data-landing-list-card]").parentElement!.parentElement!;
+    const shellPad = unit(shell, /^px-(\d+)$/) * 4 * 2;
+    const lnbW = unit(lnb, /^w-\[(\d+)px\]$/) + unit(handle, /^w-(\d+)$/) * 4;
+    expect(panel.classList.contains("border")).toBe(true);
+    const wsPad = unit(ws, /^p-(\d+)$/) * 4 * 2;
+    const shellBelow = unit(lnb, /^@max-\[(\d+)rem\]\/mockup:hidden$/) * 16;
+    const singleBelow = unit(find(scene, "[data-landing-list-card]"), /^@max-\[(\d+)px\]\/ws:w-full$/);
+    // 트리는 한 판 숨김(772)과 접힘 숨김을 함께 든다 — 큰 쪽이 접힘 경계다.
+    const treeBelow = Math.max(...(find(scene, "[data-landing-tree]").getAttribute("class") ?? "").split(" ").flatMap((c) => { const hit = /^@max-\[(\d+)px\]\/ws:hidden$/.exec(c); return hit ? [Number(hit[1])] : []; }));
+    const formRow = Number(/--container-form: (\d+)px;/.exec(live("app/globals.css"))?.[1]);
+    expect(workspace.className.split(" ")).toContain("@container/panel-head");
+    expect(PANEL_HEAD_ROW).toContain("@min-form/panel-head:flex-row");
+    expect([shellPad, lnbW, wsPad, shellBelow, singleBelow, treeBelow, formRow]).toEqual([16, 248, 32, 1024, SINGLE_BELOW, 980, 640]);
+
+    const at = (root: number) => {
+      const compact = root < shellBelow;
+      const content = root - shellPad - (compact ? 0 : lnbW) - 2;
+      const area = content - wsPad;
+      const plan = planTranslationPanelLayout({ area, preferredLeft: null })!;
+      // CSS 경계와 실물 판정이 같은 폭에서 갈린다.
+      expect(plan.mode === "single", `single @${root}`).toBe(area < singleBelow);
+      if (plan.mode === "split") expect(plan.tree === null, `tree @${root}`).toBe(area < treeBelow);
+      return { compact, plan, twoRow: content < formRow };
+    };
+    const sig = (root: number) => { const s = at(root); return `${s.compact}|${s.plan.mode}|${s.plan.mode === "split" && s.plan.tree === null}|${s.twoRow}`; };
+    const changes: number[] = [];
+    for (let root = 1600; root > 320; root -= 1) if (sig(root) !== sig(root - 1)) changes.push(root);
+    expect(changes).toEqual([1278, 1070, 1024, 822, 658]);
+
+    const d = at(1422);
+    expect(d).toMatchObject({ compact: false, twoRow: false, plan: { mode: "split", tree: 260, list: 392 } });
+    expect(at(900)).toMatchObject({ compact: true, twoRow: false, plan: { mode: "split", tree: null, left: 414, locale: 420 } });
+    expect(at(768)).toMatchObject({ compact: true, twoRow: false, plan: { mode: "single" } });
+    for (const root of [600, 375]) expect(at(root), `@${root}`).toMatchObject({ compact: true, twoRow: true, plan: { mode: "single" } });
   });
 
   describe("셸 — `lg` 미만은 [로고][메뉴] · [검색][Inbox][계정], LNB 없음 (AT1a)", () => {
@@ -913,6 +990,24 @@ describe("목업 — 루트 컨테이너가 배치를 고른다", () => {
         const expected = realSheet(LARGE_MODAL_PANEL).filter((c) => !viewportOnly.includes(c) && !c.includes("env(")).concat(`${SHEET}h-full`).sort();
         expect(sheetOf(shell.className), `scene ${k}`).toEqual(expected);
       }
+    });
+
+    /** 패널 `100%`의 기준이 루트 폭이다 — 덮개가 셸(`relative`)의 `absolute inset-0`이고 루트는 패딩이 없다(리뷰 Y3). 그래서 1024–1120에서 패널 = 루트 − 96이다. */
+    it("Publish 패널 폭의 기준이 루트 폭이다 — 덮개 `absolute inset-0` · 셸 `relative` · 루트 패딩 0", async () => {
+      const container = await mount();
+      for (const k of [3, 4]) {
+        const overlay = find<HTMLElement>(layer(container, k), "[data-landing-overlay]");
+        const shell = overlay.parentElement!;
+        expect(shell.hasAttribute("data-landing-shell")).toBe(true);
+        expect(shell.className.split(" ")).toContain("relative");
+        expect(overlay.className.split(" ")).toEqual(expect.arrayContaining(["absolute", "inset-0"]));
+        const root = shell.parentElement!;
+        expect(root.className.split(" ")).toEqual(["@container/mockup", "h-full"]);
+        expect(overlay.firstElementChild?.hasAttribute("data-landing-modal")).toBe(true);
+      }
+      const gutter = Number(/--spacing-modal-gutter: (\d+)px;/.exec(live("app/globals.css"))?.[1]);
+      expect(gutter).toBe(96);
+      for (const root of [1024, 1070, 1120, 1422]) expect(Math.min(root - gutter, 1024), `@${root}`).toBe(root >= 1120 ? 1024 : root - 96);
     });
 
     it("머리·제목·본문·바닥이 실물 `LargeModal`의 시트 토큰을 같은 자리에 든다", async () => {
