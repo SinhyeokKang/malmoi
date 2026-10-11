@@ -10,6 +10,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import type { Messages } from "@/lib/i18n";
 import type { UiLocale } from "@/lib/i18n/locales";
 import { formatNumber } from "@/lib/number-format";
+import { PANEL_HEAD_ROW } from "@/components/shell/content-panel";
 import { cn } from "@/lib/utils";
 
 /**
@@ -50,6 +51,15 @@ function PublishCount({ m, n }: { m: Messages; n: number }) {
   return <CountBadge count={n} label={m.translations.publish.unsentCount(n)} className="bg-background/20 text-current" />;
 }
 
+/** 꺼진 컨트롤의 사유 줄 — 실물 `DisabledReasons`(`"use client"`라 import하지 않는다)와 같은 클래스다. `landing-mockup.test.tsx`가 실물을 렌더해 견준다. */
+function Reasons({ text, hideOnBadge }: { text: string; hideOnBadge: boolean }) {
+  return (
+    <div data-landing-reasons="" className={cn("flex max-w-full flex-col items-end gap-0.5", hideOnBadge && "group-data-[badge=1]/frame:hidden")}>
+      <p className="text-muted-foreground m-0 max-w-full text-right text-xs text-pretty">{text}</p>
+    </div>
+  );
+}
+
 /**
  * `filter-menu.tsx`의 꺼진 트리거 — 실물 `FieldTrigger size="sm" active={false}`(28)의 정적 형이다. 카드 머리 둘(키 목록 Status · 로케일 상세 언어)이 쓴다.
  * 상호작용 상태(hover·disabled·focus·open)와 자식 선택자는 정적 사본에 없다 — `landing-mockup.test.tsx`가 나머지 토큰을 실물과 견준다.
@@ -67,20 +77,26 @@ export function TranslationsView({ m, phase, uiLocale }: { m: Messages; phase: P
   const fixture = m.landing.mockup;
   const w = m.translations.workspace;
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="border-border flex shrink-0 flex-col gap-3 border-b px-4 py-3">
-        <div className="flex items-center gap-3">
+    /*
+      실물 `workspace.tsx`와 같은 컨테이너 둘 — 전폭 루트가 `panel-head`(제목 행 640), 머리 블록이 `wshead`(툴바·배너)를 선언한다. 한 요소의
+      `container-name`은 하나라 겹치지 않는다. `data-pane`은 좁은 폭에서 서는 판이다(design §2 — T·M은 상세 판).
+    */
+    <div data-landing-workspace="" data-pane="detail" className="@container/panel-head flex h-full min-h-0 flex-col">
+      <div className="@container/wshead border-border flex shrink-0 flex-col gap-3 border-b px-4 py-3">
+        {/* 제목 행 + 사유 줄 — 실물처럼 사유 줄이 버튼 묶음 아래 오른쪽에 선다(`DisabledReasons`). */}
+        <div className="flex flex-col gap-1.5">
+        <div data-landing-head-row="" className={PANEL_HEAD_ROW}>
           <span className="inline-flex items-center gap-2">
             <span className="text-lg font-medium">{m.common.nav.translations}</span>
             <CountBadge count={fixture.keyCount} label={m.translations.keys(fixture.keyCount)} />
           </span>
-          <span className="ml-auto flex items-center gap-2">
+          <span className="flex items-center gap-2">
             {/* OWNER의 Sync 버튼(`components/home/sync-button.tsx`) — 글리프 14다(16은 EDITOR 갈래). */}
             <span className={buttonClass({ variant: "default" })}>
               <ArrowDownToLine className="size-3.5 text-gray-strong" aria-hidden />
               {m.repositorySync.action}
             </span>
-            {/* `publish-button.tsx`와 같은 묶음 — `flex gap-2` 안에 사유 `title`을 드는 감싼 칸 + 버튼, 결과가 있으면 `View result`. */}
+            {/* `publish-button.tsx`와 같은 묶음 — `flex gap-2` 안에 감싼 칸 + 버튼, 결과가 있으면 `View result`. */}
             <span data-landing-publish-group="" className="flex items-center gap-2">
               <span>
                 <Swap phase={phase === "published" ? "missing" : phase}
@@ -91,6 +107,12 @@ export function TranslationsView({ m, phase, uiLocale }: { m: Messages; phase: P
               {phase === "published" && <span className={buttonClass({ variant: "default" })}>{m.translations.publish.viewResult}</span>}
             </span>
           </span>
+        </div>
+        {/*
+          미전달 0이면 실물 Publish가 꺼지고 `nothing` 사유가 보이는 줄로 선다(`planPublishButton` · F7) — ③은 저장 순간 사라진다.
+          ⚠️ `Swap`으로 싸지 않는다 — 감싼 칸이 가로 flex라 줄이 오른쪽으로 못 가고, 배지 뒤 빈 칸이 묶음의 gap을 하나 더 먹는다.
+        */}
+        {phase !== "saved" && <Reasons text={m.translations.publish.nothing} hideOnBadge={phase === "saving"} />}
         </div>
         <div data-landing-toolbar-row="" className="flex flex-wrap items-center gap-2">
           {/*
@@ -106,7 +128,7 @@ export function TranslationsView({ m, phase, uiLocale }: { m: Messages; phase: P
         </div>
         {phase !== "published" && (
           <Swap phase={phase} display="flex" before={null} after={
-            <div data-landing-hold="" className="w-full space-y-3">
+            <div data-landing-hold="" className="flex flex-col gap-3 empty:hidden">
               <Alert variant="neutral" actions={<span className={buttonClass({ variant: "default" })}>{m.translations.banner.sendWithPublish}<ArrowUp className="size-3.5" aria-hidden /></span>}>
                 {m.translations.banner.paused(fixture.unsentAfter)}
               </Alert>
@@ -114,7 +136,7 @@ export function TranslationsView({ m, phase, uiLocale }: { m: Messages; phase: P
           } />
         )}
       </div>
-      <div className="min-h-0 flex-1 overflow-hidden p-4">
+      <div className="@container/ws min-h-0 flex-1 overflow-hidden p-4">
         <div className="flex h-full min-h-0">
           <div className="border-border bg-background relative flex min-h-0 w-[652px] shrink-0 overflow-hidden rounded-lg border">
             <SourceTree m={m} uiLocale={uiLocale} />
@@ -122,7 +144,9 @@ export function TranslationsView({ m, phase, uiLocale }: { m: Messages; phase: P
           </div>
           {/* 두 카드 사이 16px이 리사이즈 손잡이다 — 선을 그리지 않는다. */}
           <div className="w-4 shrink-0" />
-          <div className="border-border bg-background flex min-h-0 min-w-0 flex-1 overflow-hidden rounded-lg border">
+          {/* 실물처럼 상세 머리는 카드(Workspace)가 들고 `LocalePanel` 몸통이 그 형제다. */}
+          <div className="border-border bg-background flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg border">
+            <DetailHead m={m} />
             <LocaleDetail m={m} phase={phase} />
           </div>
         </div>
@@ -225,7 +249,28 @@ function KeyList({ m, phase }: { m: Messages; phase: Phase }) {
   );
 }
 
-/** `locale-panel.tsx` — 경로 머리 · 고정 블록(키 · N of M · 복사 · 설명) · 로케일 행 · 저장 푸터. */
+/**
+ * 상세 머리 — 실물 `workspace.tsx`의 `data-detail-head` · 경로 칸(`@container/crumb` — 84 미만이면 장식 아이콘이 숨는다) · `DetailCrumb` · 언어 메뉴.
+ * `DetailCrumb`는 `"use client"` 모듈이라 import하지 않고 클래스를 옮겼다 — `landing-mockup.test.tsx`가 실물을 렌더해 견준다.
+ */
+function DetailHead({ m }: { m: Messages }) {
+  const fixture = m.landing.mockup;
+  return (
+    <div data-landing-detail-head="" className="flex h-12 shrink-0 items-center gap-2 px-4 @max-[772px]/ws:gap-1.5 @max-[772px]/ws:pl-2">
+      <span data-landing-crumb="" className="@container/crumb text-muted-foreground flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden text-sm">
+        <FileJson2 className="size-4 shrink-0 @max-[84px]/crumb:hidden" aria-hidden />
+        <span className="min-w-[2ch] truncate">{fixture.source}</span>
+        <ChevronRight className="size-3.5 shrink-0 text-gray-dim" aria-hidden />
+        <span className="text-foreground min-w-[2ch] shrink-[100] truncate font-medium">{fixture.namespace}</span>
+      </span>
+      <span className="ml-auto shrink-0">
+        <FilterTrigger label={m.translations.workspace.detail.allLanguages} />
+      </span>
+    </div>
+  );
+}
+
+/** `locale-panel.tsx` — 고정 블록(키 · N of M · 복사 · 설명) · 로케일 행 · 저장 푸터. */
 function LocaleDetail({ m, phase }: { m: Messages; phase: Phase }) {
   const fixture = m.landing.mockup;
   const d = m.translations.workspace.detail;
@@ -234,17 +279,6 @@ function LocaleDetail({ m, phase }: { m: Messages; phase: Phase }) {
   const total = filled + 1;
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <div className="flex h-12 shrink-0 items-center gap-2 px-4">
-        <span className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-sm">
-          <FileJson2 className="size-4 shrink-0" aria-hidden />
-          {fixture.source}
-          <ChevronRight className="size-3.5 shrink-0 text-gray-dim" aria-hidden />
-          <span className="text-foreground min-w-0 truncate font-medium">{fixture.namespace}</span>
-        </span>
-        <span className="ml-auto">
-          <FilterTrigger label={d.allLanguages} />
-        </span>
-      </div>
       <div className="border-divider flex min-h-0 flex-1 flex-col overflow-hidden border-t">
         <div className="border-divider flex shrink-0 flex-col gap-1 border-b px-4 py-3.5">
           <div className="flex items-center gap-2.5">

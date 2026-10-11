@@ -22,6 +22,9 @@ import { Input } from "@/components/ui/input";
 import { LARGE_MODAL_PANEL } from "@/components/ui/large-modal";
 import { ListRow } from "@/components/ui/list-row";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { DisabledReasons } from "@/components/ui/disabled-reasons";
+import { PANEL_HEAD_ROW } from "@/components/shell/content-panel";
+import { DetailCrumb } from "@/components/translations/workspace/locale-panel";
 
 import { find, render } from "./helpers/dom";
 
@@ -594,10 +597,11 @@ describe("목업 — 씬 안쪽이 실물과 같다 (fix2)", () => {
     expect(field.classList.contains("text-foreground/50")).toBe(true);
   });
 
-  it("툴바는 실물처럼 줄바꿈하고, 보류 안내 그릇은 `space-y-3`이다", async () => {
+  it("툴바는 실물처럼 줄바꿈하고, 보류 안내 그릇은 실물 배너 묶음(`flex flex-col gap-3 empty:hidden`)이다", async () => {
     const scene = layer(await mount(), 2);
     expect(find(scene, "[data-landing-toolbar-row]").className.split(" ")).toEqual(expect.arrayContaining(["flex", "flex-wrap", "items-center", "gap-2"]));
-    expect(find(scene, "[data-landing-hold]").className.split(" ")).toContain("space-y-3");
+    expect(find(scene, "[data-landing-hold]").className.split(" ")).toEqual(expect.arrayContaining(["flex", "flex-col", "gap-3", "empty:hidden"]));
+    expect(find(scene, "[data-landing-hold]").className.split(" ")).not.toContain("space-y-3");
   });
 
   it("Publish 묶음은 실물처럼 `flex gap-2` 안의 감싼 버튼이다", async () => {
@@ -662,6 +666,65 @@ describe("목업 — 씬 안쪽이 실물과 같다 (fix2)", () => {
     for (const row of scene.querySelectorAll<HTMLElement>("[data-landing-diff-row]")) expect(row.className).not.toContain("border-b");
     for (const sign of scene.querySelectorAll<HTMLElement>("[data-landing-diff-sign]")) expect(sign.getAttribute("aria-hidden")).toBe("true");
     for (const flag of scene.querySelectorAll<HTMLElement>("[data-landing-diff-flag]")) expect(flag.classList.contains("shrink-0")).toBe(true);
+  });
+});
+
+/**
+ * **1440 목업이 지금 실물과 같다** (responsive-mockup design §3.5) — responsive-app이 앱 화면을 바꾸는 동안 목업 파일은 그대로였다.
+ * 머리 행(`PANEL_HEAD_ROW` · 꺼진 Publish의 사유 줄)과 상세 머리(Workspace가 드는 경로 칸)를 실물 소스·컴포넌트와 견준다.
+ */
+describe("목업 — 1440이 지금 실물과 같다 (§3.5)", () => {
+  const workspace = readFileSync(join(process.cwd(), "components/translations/workspace/workspace.tsx"), "utf8");
+  const literal = (re: RegExp) => {
+    const hit = re.exec(workspace)?.[1];
+    expect(hit, String(re)).toBeDefined();
+    return hit!;
+  };
+
+  it("머리가 실물 Workspace의 컨테이너 둘(`panel-head` 전폭 루트 · `wshead` 머리 블록)을 같은 자리에 선언한다", async () => {
+    const scene = layer(await mount(), 0);
+    const root = find<HTMLElement>(scene, "[data-landing-workspace]");
+    expect(root.className).toBe(literal(/<div data-pane=\{pane\} className="([^"]+)"/));
+    expect(root.getAttribute("data-pane")).toBe("detail");
+    const head = root.firstElementChild!;
+    expect(head.className).toBe(literal(/(@container\/wshead [^"]+)"/));
+  });
+
+  it("제목 행이 실물과 같은 `PANEL_HEAD_ROW`이고 사유 줄과 함께 `flex flex-col gap-1.5`에 묶인다", async () => {
+    const scene = layer(await mount(), 0);
+    const row = find<HTMLElement>(scene, "[data-landing-head-row]");
+    expect(row.className).toBe(PANEL_HEAD_ROW);
+    expect(row.parentElement?.className).toBe("flex flex-col gap-1.5");
+    expect(row.children).toHaveLength(2);
+  });
+
+  /** 실물은 미전달 0이면 Publish를 끄고 `nothing` 사유를 버튼 아래 보이는 줄로 세운다(`planPublishButton` · F7). ③은 저장 순간 사유가 사라진다. */
+  it("꺼진 Publish 아래 실물 `DisabledReasons`와 같은 사유 줄이 선다 — ①②⑤에 있고 ④에 없다, ③은 배지 전에만", async () => {
+    const real = (await render(<DisabledReasons reasons={[{ id: "r", text: p.nothing }]} />)).container.firstElementChild!;
+    const container = await mount();
+    const reasonOf = (k: number) => layer(container, k).querySelector<HTMLElement>("[data-landing-reasons]");
+    for (const k of [0, 1, 4]) {
+      const reasons = reasonOf(k)!;
+      expect(reasons.className, `scene ${k}`).toBe(real.className);
+      expect(reasons.textContent).toBe(p.nothing);
+      expect(reasons.firstElementChild?.className).toBe(real.firstElementChild?.className);
+    }
+    expect(reasonOf(3)).toBeNull();
+    expect(reasonOf(2)?.className).toBe(`${real.className} group-data-[badge=1]/frame:hidden`);
+  });
+
+  /** 상세 머리는 Workspace가 들고(골격·상세가 바뀌어도 같은 노드) 경로 칸이 `@container/crumb`다 — 실물 `DetailCrumb`를 렌더해 견준다. */
+  it("상세 머리 · 경로 칸이 실물 Workspace·`DetailCrumb`와 같은 클래스다", async () => {
+    const real = (await render(<DetailCrumb surfaceSlug={fixture.source} namespace={fixture.namespace} />)).container;
+    const scene = layer(await mount(), 0);
+    const head = find<HTMLElement>(scene, "[data-landing-detail-head]");
+    expect(head.className).toBe(literal(/data-detail-head="" className=\{cn\(("[^"]+", "[^"]+")/).replace(/^"|"$/g, "").replace('", "', " "));
+    // 머리는 카드의 첫 자식이고 몸통(`border-divider border-t`)이 그 형제다 — 실물 `LocalePanel`이 머리를 들지 않는다.
+    expect(head.parentElement?.firstElementChild).toBe(head);
+    const crumb = find<HTMLElement>(head, "[data-landing-crumb]");
+    expect(crumb.className).toBe(literal(/data-detail-title="" className="([^"]+)"/));
+    expect([...crumb.children].map((child) => child.getAttribute("class"))).toEqual([...real.children].map((child) => child.getAttribute("class")));
+    expect(crumb.textContent).toBe(real.textContent);
   });
 });
 
