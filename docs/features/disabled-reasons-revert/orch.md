@@ -35,3 +35,4 @@
 ## 진행 기록
 
 - 2026-10-11 orch 작성(목업 orch 진행 중 — #240 재실측 대기).
+- 2026-10-11 앞 orch(mockup-viewport-container) 완료 — dev `22d9e427..aaf2faa0` · CI success · #240 닫힘 · 기능 디렉터리 삭제(결론은 DESIGN §6.615·§5 · PRODUCT §4.1 · ARCHITECTURE §6.358). B `ctx_2116379d152a`(worktree drr-b, Opus 5.5 medium) 착수.
