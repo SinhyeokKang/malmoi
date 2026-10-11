@@ -14,20 +14,21 @@ const CANVAS_VAR_H = `var(--landing-canvas-h, ${STATE_CANVAS_H[0]}px)`;
 /** 캡션 크기는 시안 1c의 `clamp(15, 9 + 0.4375vw, 20)` — 스케일 토큰 사이 값이라 인라인으로 준다(자간은 text-base가 든다). */
 const CAPTION_SIZE = "clamp(15px, calc(9px + 0.4375vw), 20px)";
 
-/** 툴바·베젤을 컨테이너 안에 두어 바깥 윤곽까지 16:10을 유지한다. 고정 재생의 프레임과 정적 흐름의 장이 같은 껍데기를 쓴다. */
+/** 고정 재생과 정적 흐름이 같은 껍데기를 쓴다. 모바일은 툴바 없이 네 면 8px이고 D·T는 44px 툴바를 유지한다. */
 function Bezel({ children }: { children: ReactNode }) {
   return (
     <>
       <div className="absolute inset-0 rounded-3xl border border-border bg-background shadow-medium" />
-      <div data-landing-toolbar="" className="absolute inset-x-0 top-0 flex items-center gap-2 px-5" style={{ height: TOOLBAR_H }}>
+      <div data-landing-toolbar="" className="absolute inset-x-0 top-0 hidden items-center gap-2 px-5 sm:flex" style={{ height: TOOLBAR_H }}>
         <span className="size-3 translate-y-0.5 rounded-full border border-border" />
         <span className="size-3 translate-y-0.5 rounded-full border border-border" />
         <span className="size-3 translate-y-0.5 rounded-full border border-border" />
       </div>
       <div
         data-landing-screen=""
-        className="absolute overflow-hidden rounded-xl border border-border-subtle bg-background"
-        style={{ top: TOOLBAR_H, right: BEZEL, bottom: BEZEL, left: BEZEL }}
+        // 논리 캔버스와 나머지 세 면이 px이므로 상단도 rem 배율을 따르지 않는다.
+        className="absolute top-[8px] overflow-hidden rounded-xl border border-border-subtle bg-background sm:top-[44px]"
+        style={{ right: BEZEL, bottom: BEZEL, left: BEZEL }}
       >
         {children}
       </div>
@@ -46,8 +47,8 @@ function Bezel({ children }: { children: ReactNode }) {
  * ≥1024 D 1440×900 · 640~1023 T 786×900 · <640 M 393×776, 목업 루트 1422 · 768 · 375): 틱이 `WIDE_QUERY`·`SM_QUERY`의 `.matches`를 직접 읽는다.
  * change 리스너가 없다 — 뷰포트가 바뀌면 스크롤러도 바뀌어 `ResizeObserver`가 틱을 예약하므로 저장해 둔 오래된 값을 쓸 여지가 없다.
  * ⚠️ **스크롤러 `clientWidth`로 판정하지 않는다** — 셸 거터·스크롤바만큼 늘 좁아 1024~1041에서 CSS `lg`와 어긋난다.
- * 목업 루트(베젤 안 화면)가 그릇 폭을 채우고 안은 `@container`로 앱 규칙을 고른다(목업에 폭 prop을 넘기지 않는다). 툴바와 베젤은 상시다
- * (44px 툴바 + 안쪽 베젤 + 얇은 회색 외곽선 + `shadow-medium`) — 세 그릇이 같은 틀이다. 재생 중 그릇은 바뀌지 않아 스크롤 프레임은
+ * 목업 루트(베젤 안 화면)가 그릇 폭을 채우고 안은 `@container`로 앱 규칙을 고른다(목업에 폭 prop을 넘기지 않는다).
+ * M은 CSS `sm` 미만에서 툴바를 숨기고 상단도 8px로 둔다. D·T의 44px 툴바와 모든 그릇의 외곽선·그림자는 유지한다. 재생 중 그릇은 바뀌지 않아 스크롤 프레임은
  * transform·opacity만 쓴다(레이아웃 0) — 다섯 씬 레이어가 배치된 채로 교차한다.
  *
  * ⚠️ **프레임마다 setState하지 않는다** — 씬 DOM이 수천 노드라 재조정이 스크롤을 먹는다. 스크롤 → rAF에서

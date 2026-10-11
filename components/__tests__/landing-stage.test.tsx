@@ -890,8 +890,7 @@ describe("Stage — 모바일 툴바 제거", () => {
     const css = compiler.build(["top-[8px]", "sm:top-[44px]", "hidden", "sm:flex"]);
     expect(css).toContain("top: 8px;");
     expect(css).toMatch(/\.hidden\s*\{\s*display: none;/);
-    expect(css).toMatch(/@media \(width >= 40rem\)\s*\{\s*top: 44px;/);
-    expect(css).toMatch(/\.sm\\:flex\s*\{\s*@media \(width >= 40rem\)\s*\{\s*display: flex;/);
+    expect(css).toMatch(/@media \(width >= 40rem\)\s*\{\s*\.sm\\:top-\\\[44px\\\]\s*\{\s*top: 44px;\s*\}\s*\.sm\\:flex\s*\{\s*display: flex;\s*\}\s*\}/);
     expect(BEZEL).toBe(8);
     expect(TOOLBAR_H).toBe(44);
     expect(SM_QUERY).toBe("(min-width: 40rem)");
