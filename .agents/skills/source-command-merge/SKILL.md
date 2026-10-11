@@ -125,7 +125,7 @@ git push origin dev
 - <Deploy-order caveats, composite action tag move pending, follow-ups>   ← 없으면 절 생략
 ```
 
-**② GitHub Release — 사용자용 (`.scratch/release-v<next>.md`)**. **사용자가 체감하는 변화만** 남긴다 — `docs`·`test`·`chore`·`refactor`·`build`·하네스(`.claude/`·`.agents/`·CLAUDE.md)는 뺀다. 커밋 메시지를 옮기지 않고 "사용자가 무엇을 하게 됐나"로 다시 쓴다. **`--generate-notes`를 쓰지 않는다** — 커밋 제목 나열이 된다.
+**② GitHub Release — 사용자용 (`.scratch/release-v<next>.md`)**. **사용자가 체감하는 변화만** 남긴다(이미지 줄 하나는 예외 — 9-b가 붙인다) — `docs`·`test`·`chore`·`refactor`·`build`·하네스(`.claude/`·`.agents/`·CLAUDE.md)는 뺀다. 커밋 메시지를 옮기지 않고 "사용자가 무엇을 하게 됐나"로 다시 쓴다. **`--generate-notes`를 쓰지 않는다** — 커밋 제목 나열이 된다.
 
 ```markdown
 ## Highlights
@@ -144,7 +144,8 @@ git push origin dev
 **Full changelog:** <compareBase>v<next>
 ```
 
-- ⚠️ **이 양식이 곧 `/changelog` 화면 문구다** — 앱이 Release 본문을 그대로 읽어 그린다(`lib/changelog/`, 1시간 캐시 — 캐시 키에 앱 버전이 실려 이 머지의 배포가 뜨면 새로 받는다. 그래서 9단계 Release를 머지 직후 바로 만든다). 제목은 한 단계 내려 서고(`##` → `h3`), 끝의 `**Full changelog:**` 줄은 걷히고, **이미지는 `<img>`가 아니라 alt 글자의 링크로 바뀐다** — 스크린샷을 넣으려면 alt를 링크 문장으로 쓴다. raw HTML은 글자로 보이니 쓰지 않는다. 태그가 `v<x.y.z>`가 아니거나 draft·prerelease면 화면에 없다.
+- ⚠️ **이 양식이 곧 `/changelog` 화면 문구다** — 앱이 Release 본문을 그대로 읽어 그린다(`lib/changelog/`, 1시간 캐시 — 캐시 키에 앱 버전이 실려 이 머지의 배포가 뜨면 새로 받는다. 그래서 9단계 Release를 머지 직후 바로 만든다). 제목은 가장 얕은 제목이 h1이 되도록 올라서고(`shiftHeadings` — `##` 양식이면 `##` → `h1`, `###` → `h2`), 끝의 `**Full changelog:**` 줄은 걷히고, **이미지는 `<img>`가 아니라 alt 글자의 링크로 바뀐다** — 스크린샷을 넣으려면 alt를 링크 문장으로 쓴다. raw HTML은 글자로 보이니 쓰지 않는다. 태그가 `v<x.y.z>`가 아니거나 draft·prerelease면 화면에 없다.
+- **이미지 줄은 9-b가 넣으니 손으로 쓰지 않는다** — `**Self-hosting image:**` 라벨 문단을 `**Full changelog:**` 앞에 9-b가 기입한다. 손으로 같은 라벨의 문단을 썼다면 기입 함수가 그 문단을 교체한다. 그래서 Release 원문 = 체감 변화 + 이미지 줄 하나다.
 - 남는 커밋이 0이면 Highlights에 `Maintenance release — no user-facing changes.` 한 줄, Features·Fixes 생략.
 - **1.0.0(seed)만 다르다**: `compareBase`가 null이니 Full changelog 줄을 뺀다. Highlights는 첫 공개 릴리스로, Features는 커밋 나열이 아니라 README의 기능 절을 기준으로 **지금 할 수 있는 것**을 영역별로 요약한다(사실 대조 소스는 PRODUCT·README·가이드). PR body는 1.0.0이어도 ① 양식 그대로다(커밋을 영역별로 접는다).
 
@@ -187,33 +188,45 @@ git ls-remote --tags origin v<next>                # squash SHA여야 한다
 - **태그와 Release가 한 호출에서 같이 생긴다** — 로컬 `git tag` + push를 쓰지 않는다("태그만 있고 Release 없음" 반쪽 상태를 안 만든다).
 - **곧바로 published + `--latest`다. `--draft`를 쓰지 않는다** — 심사 대기가 없고 머지 순간 프로덕션이 그 버전이다.
 - ⚠️ **실패해도 10단계로 간다** — 머지는 끝났다. 리포트에 위 명령을 **SHA를 채운 그대로** 남기고 손으로 재실행한다. `/merge`를 다시 부르지 않는다(부르면 3단계가 `unreleased-on-main`으로 멈추고 같은 요구를 한다).
-- 태그 push는 어떤 워크플로도 돌리지 않는다 — `ci.yml`의 `on.push`는 `branches`만 가진다.
+- 태그 push는 어떤 워크플로도 돌리지 않는다 — `ci.yml`의 `on.push`는 `branches`만 가진다. **Release `published` 이벤트는 `image.yml`을 깨운다**(9-b) — 이 호출이 만드는 Release가 곧 이미지 발행의 방아쇠다.
 
-### 9-b. 셀프 호스팅 이미지 발행 (2026-10-09, self-hosting)
+### 9-b. 셀프 호스팅 이미지 — 발행은 워크플로, 이 단계는 확인·기입 (2026-10-12, image-publish-workflow)
 
-매 앱 태그마다 GHCR 공개 레지스트리에 이미지를 발행한다 — 셀프 호스팅 설치가 고정하는 단위가 이 이미지다(docs/SELF-HOSTING.md). **태그 = 앱 태그 `v<next>` 그대로**(`ghcr.io/sinhyeokkang/malmoi:v<next>`)이고 **action 태그(`malmoi-i18n-push-vN`)와 독립이다** — 앱 버전이 올라도 action 태그는 안 움직이고, 이미지 태그는 action 계약이 아니다. `latest` 태그는 만들지 않는다(설치는 태그나 digest로 고정한다).
+매 앱 태그마다 GHCR 공개 레지스트리에 이미지가 발행된다 — 셀프 호스팅 설치가 고정하는 단위가 이 이미지다(docs/SELF-HOSTING.md). **발행은 `.github/workflows/image.yml`이 한다** — 9단계 `gh release create`(사용자 토큰)가 만든 Release 이벤트(`published`)가 워크플로를 깨우고, 워크플로가 `scripts/publish-image.sh`로 태그 커밋의 `git archive`를 `linux/amd64`로 빌드·push한다. **이 머신에서 빌드하지 않는다** — Docker·Colima·`ghcr.io` 로그인이 정상 경로에서 필요 없다. **태그 = 앱 태그 `v<next>` 그대로**(`ghcr.io/sinhyeokkang/malmoi:v<next>`)이고 **action 태그(`malmoi-i18n-push-vN`)와 독립이다** — 앱 버전이 올라도 action 태그는 안 움직이고, 이미지 태그는 action 계약이 아니다. `latest` 태그는 만들지 않는다(설치는 태그나 digest로 고정한다).
 
-**전제(이 머신에 있어야 한다)**: Docker(buildx)와 `ghcr.io` 로그인. **따로 발급한 PAT가 필요 없다** — gh CLI의 리포 소유자 계정(`SinhyeokKang`) 토큰이 `write:packages` 스코프를 가지므로 그 토큰을 stdin으로 넘긴다(아래 블록 첫 줄, 2026-10-12). `gh auth status`로 스코프를 확인한다 — 같은 머신의 다른 gh 계정은 그 스코프가 없을 수 있어 `-u`로 계정을 고정한다. 토큰을 인자로 주지 않는다(셸 이력·`ps`에 남는다). ⚠️ **docker 설정에 credential helper가 없어 로그인은 토큰을 `~/.docker/config.json`에 평문으로 남긴다** — 블록 끝의 `docker logout`까지가 이 단계다. 로그인 없이 push하면 빌드가 다 끝난 뒤 `failed to fetch anonymous token … 403 Forbidden`으로 떨어진다(2026-10-12 v1.3.3 실측). 발행 머신이 arm64(Apple Silicon)면 `linux/amd64` 빌드가 **에뮬레이션**으로 돈다 — 이 머신은 Colima `vz` + Rosetta(`colima start --vm-type vz --vz-rosetta`)를 쓴다. 에뮬레이션이 없으면 `exec format error`로 실패하고, 있어도 `pnpm install`·`next build`가 느리다. 전제가 없으면 이 단계는 실패로 처리한다(아래).
-
-**순서: 먼저 태그가 이미 있는지 확인하고, 없을 때만 빌드·push한다.**
+이 단계가 하는 일은 다섯이다: run 대기 → 패키지 API로 digest 읽기 → Release 본문에 이미지 줄 기입 → 리포트에 digest → run이 red면 dispatch로 재실행.
 
 ```
-git fetch origin                                                          # squash 커밋이 로컬에 있어야 git archive가 된다
-gh auth token -u SinhyeokKang | docker login ghcr.io -u SinhyeokKang --password-stdin
-docker buildx imagetools inspect ghcr.io/sinhyeokkang/malmoi:v<next>      # 성공하면 이미 있다 → 아래 빌드·push를 하지 않고 그 Digest를 리포트에 적는다. 실패(not found)일 때만 계속
-git archive <squash SHA> | docker buildx build --platform linux/amd64 --push \
-  -t ghcr.io/sinhyeokkang/malmoi:v<next> --metadata-file .scratch/image-v<next>.json -
-docker buildx imagetools inspect ghcr.io/sinhyeokkang/malmoi:v<next>      # Digest가 metadata의 containerimage.digest와 같아야 한다
-docker logout ghcr.io                                                     # 성공·실패와 무관하게 — 평문 토큰을 남기지 않는다
+# run을 찾는다 — Release 직후엔 이벤트 지연으로 비어 있는 게 정상이다. 10초 간격으로 최대 2분 폴링하고, 그래도 0건이면 dispatch한다
+gh run list --workflow image.yml --event release --branch v<next> --json databaseId,status,conclusion   # release run의 headBranch = 태그
+gh run watch <id> --exit-status
+gh api --paginate "/users/SinhyeokKang/packages/container/malmoi/versions" \
+  --jq '.[] | select(.metadata.container.tags | index("v<next>")) | .name'                       # digest — 로컬 Docker 불필요
+gh release view v<next> --json body > .scratch/release-body-v<next>.json
+node scripts/release-image-note.ts ghcr.io/sinhyeokkang/malmoi:v<next> <digest> \
+  < .scratch/release-body-v<next>.json > .scratch/release-v<next>-image.md
+# exit 0 → gh release edit v<next> --notes-file .scratch/release-v<next>-image.md / exit 3 → 이미 같음, edit 안 함 / 그 밖 → 중단
 ```
 
-- **빌드 입력은 8단계의 squash SHA다** — 작업 트리가 아니다. `git archive`가 그 커밋의 추적 파일만 context로 만들고(`.env*`·로컬 상태가 딸려가지 않는다) `.dockerignore`가 나머지를 뺀다. 10단계의 `reset --hard`와 순서가 엇갈려도 안전하다. ⚠️ **squash 커밋은 GitHub이 만든 것이라 fetch 전엔 로컬에 없다** — 그대로 `git archive`하면 `not a tree object`로 죽고 docker는 빈 context로 `no local sources enabled`를 낸다(2026-10-12 실측 — 오류가 원인을 안 가리킨다). 블록 첫 줄의 fetch가 그 이유다.
-- **`--platform linux/amd64`** — sharp·Prisma 엔진이 빌드 플랫폼 바이너리를 받으므로 빌드·실행 플랫폼이 같아야 한다. 비밀을 빌드에 넣지 않는다(`--build-arg`·`--secret` 없음) — `pnpm build`가 env 없이 끝나는 이미지다.
-- **digest를 기록한다** — `.scratch/image-v<next>.json`의 `containerimage.digest`(`sha256:…`)를 리포트에 싣는다. 설치 문서는 태그 대신 `@sha256` digest로 고정하는 것을 권한다.
-- ⚠️ **첫 발행(패키지가 없을 때)은 GHCR이 비공개로 만든다.** GitHub의 패키지 설정에서 한 번 Public으로 바꾼 뒤 로그아웃 상태에서 `docker pull ghcr.io/sinhyeokkang/malmoi:v<next>`가 되는지 본다. 그 뒤 태그는 같은 패키지에 쌓인다.
-- ⚠️ **이미 발행된 태그를 덮지 않는다.** 같은 소스를 다시 빌드해도 digest가 달라질 수 있어 설치가 가리키던 이미지가 조용히 바뀐다 — 그래서 위 블록의 확인이 build·push **앞**에 있다. 손 재실행도 같은 순서다. 잘못 올렸으면 다음 버전으로 고친다(앱 태그와 같은 규칙).
-- ⚠️ **실패해도 10단계로 간다** — 머지와 9단계 Release는 끝났다. 리포트에 위 명령을 **SHA를 채운 그대로** 남기고 손으로 재실행한다. `/merge`를 다시 부르지 않는다(9단계와 같은 처리).
-- ⚠️ **빠진 태그가 없는지 본다** — v1.3.2는 이 단계를 건너뛴 채 머지돼 2026-10-12에 뒤늦게 발행했다. `gh api "/users/SinhyeokKang/packages/container/malmoi/versions" --jq '.[].metadata.container.tags'`의 태그 목록과 `Dockerfile`이 있는 앱 태그(v1.3.0부터)를 대조하고, 빠진 태그는 **그 태그의 커밋**(`git rev-list -n1 v<x.y.z>`)으로 같은 블록을 돌린다. 없는 태그를 채우는 것이라 덮어쓰기 금지에 걸리지 않는다.
+- **run을 폴링한 뒤에도 0건이면** `gh workflow run image.yml -f tag=v<next>`로 dispatch한다.
+- **digest는 패키지 API에서 읽는다**(`--paginate` 필수 — 버전이 한 페이지를 넘는다). run summary의 `published <digest>`/`exists <digest>`와 같아야 한다. 이 digest를 리포트에 싣는다 — 설치 문서는 태그 대신 `@sha256` digest로 고정하는 것을 권한다.
+- **본문 기입은 `release-image-note.ts` 한 곳이다.** 본문 끝의 `**Full changelog:**` 앞에 `**Self-hosting image:** \`ghcr.io/sinhyeokkang/malmoi:v<next>@sha256:<64 hex>\`` 문단을 넣는다(5단계 ②가 이 줄을 손으로 쓰지 않는 이유). 이미 같은 줄이 있으면 exit 3이고 `gh release edit`을 부르지 않는다 — 재실행해도 안전하다. 그 밖의 exit은 중단하고 리포트에 남긴다. `gh release view -q .body`를 쓰지 않는다 — gh가 끝 개행을 하나 더 붙여 비교가 매번 "다름"이 된다(`--json body`를 stdin으로 넘긴다).
+- ⚠️ **run이 red면** 원인을 리포트에 적고 `gh workflow run image.yml -f tag=v<next>`로 다시 돌린다. 9단계와 같은 처리다 — 머지와 Release는 끝났고 `/merge`를 다시 부르지 않는다(부르면 3단계가 `unreleased-on-main`으로 멈춘다).
+  - ⚠️ **`mismatch <metadata digest> <registry digest>`는 다시 돌리지 않는다.** 이미지는 이미 push됐고, 재실행은 `exists`로 green이 되어 불일치를 묻는다. 리포트에 두 digest를 적고 조사한다.
+  - ⚠️ **존재 조회가 "그 밖" 분기(`ERROR: <ref>: not found`가 아닌 stderr)로 red면** 먼저 러너 buildx의 없는 태그 문구가 바뀌었는지 run 로그로 본다. 문구 차이는 재실행으로 고쳐지지 않는다 — 스크립트의 일치 문자열을 고친다. 인증 오류(403)면 GHCR 패키지의 *Manage Actions access*에 이 리포의 Write가 있는지 본다.
+- ⚠️ **이미 발행된 태그를 덮지 않는다.** 같은 소스를 다시 빌드해도 digest가 달라질 수 있어 설치가 가리키던 이미지가 조용히 바뀐다 — 스크립트가 존재 조회를 build·push **앞**에 두고, 워크플로가 태그별 동시성 group으로 직렬화한다. 잘못 올렸으면 다음 버전으로 고친다(앱 태그와 같은 규칙).
+- ⚠️ **빠진 태그가 없는지 본다** — v1.3.2는 이 단계를 건너뛴 채 머지돼 2026-10-12에 뒤늦게 발행했다. `gh api --paginate "/users/SinhyeokKang/packages/container/malmoi/versions" --jq '.[].metadata.container.tags'`의 태그 목록과 `Dockerfile`이 있는 앱 태그(v1.3.0부터)를 대조하고, 빠진 태그는 `gh workflow run image.yml -f tag=v<x.y.z>`로 채운다(dispatch는 main의 스크립트로 그 태그 커밋을 빌드한다). 없는 태그를 채우는 것이라 덮어쓰기 금지에 걸리지 않는다.
+- **비상 경로(Actions 장애일 때만)** — 같은 스크립트를 이 머신에서 돌린다. 전제: Docker(buildx)가 떠 있어야 한다 — 이 머신은 Colima `vz` + Rosetta(`colima start --vm-type vz --vz-rosetta`)를 쓰고, arm64에서 `linux/amd64`는 에뮬레이션이라 느리다(없으면 `exec format error`). 토큰은 gh CLI의 리포 소유자 계정(`SinhyeokKang`, `write:packages` 스코프)을 stdin으로 넘긴다 — 인자로 주지 않는다(셸 이력·`ps`에 남는다). ⚠️ docker 설정에 credential helper가 없어 로그인이 토큰을 `~/.docker/config.json`에 평문으로 남기므로 `docker logout`까지가 절차다. 로그인 없이 push하면 빌드가 끝난 뒤 `403 Forbidden`으로 떨어진다.
+
+  ```
+  gh auth token -u SinhyeokKang | docker login ghcr.io -u SinhyeokKang --password-stdin
+  docker buildx create --use --driver docker-container
+  git fetch origin && scripts/publish-image.sh v<next>                    # squash 커밋이 로컬에 있어야 git archive가 된다
+  docker logout ghcr.io                                                   # 성공·실패와 무관하게
+  ```
+
+  이어서 위 기입 명령을 돌린다. 스크립트 안의 `docker buildx build --platform linux/amd64 --push -t ghcr.io/sinhyeokkang/malmoi:v<next> --metadata-file … -`가 발행 로직의 전부이고 워크플로와 같은 것이다(`--build-arg`·`--secret` 없음 — `pnpm build`가 env 없이 끝나는 이미지).
+
 
 ### 10. dev 동기화 — **`/sync`와 같은 안전 절차를 쓴다**
 
@@ -261,7 +274,7 @@ PR: #<n> (<url>) — 신규/재사용
 PR CI: success   ← 프로덕션 앞의 게이트
 머지: squash <해시> — "v<next>: <summary> (#<n>)"
 릴리스: <release url> (태그 v<next> = <squash SHA>) / ⚠️ 실패 — 재실행: gh release create v<next> --target <SHA> --title v<next> --notes-file .scratch/release-v<next>.md --latest
-이미지: ghcr.io/sinhyeokkang/malmoi:v<next> @<sha256 digest> / ⚠️ 실패(<사유>) — 재실행: 9-b 블록을 그대로(fetch → gh 토큰 login → `docker buildx imagetools inspect ghcr.io/sinhyeokkang/malmoi:v<next>`(있으면 중단), 없을 때만 `git archive <SHA> | docker buildx build --platform linux/amd64 --push -t ghcr.io/sinhyeokkang/malmoi:v<next> --metadata-file .scratch/image-v<next>.json -` → logout)
+이미지: ghcr.io/sinhyeokkang/malmoi:v<next> @<sha256 digest> — run <url> (published/exists), Release 본문 기입 <완료/이미 같음> / ⚠️ 실패(<사유>) — 재실행: `gh workflow run image.yml -f tag=v<next>`(mismatch는 재실행 금지 — 두 digest를 적고 조사)
 composite action: 변경 없음 / 변경 포함 — 소비자는 @malmoi-i18n-push-v1 그대로, **태그 이동 대기 중**
 dev 동기화: fetch→검사→reset→lease push 완료 / ⚠️ 보류(<사유>)
 프로덕션 배포: Vercel이 진행 중 — 결과는 <확인 경로>에서 확인
@@ -276,7 +289,7 @@ dev 동기화: fetch→검사→reset→lease push 완료 / ⚠️ 보류(<사�
 - **`version`을 4단계 밖에서 바꾸지 않는다** — 다음 버전 계산은 `pnpm release:plan` 한 곳이고, 손으로 바꾸면 3단계가 `invalid-version`·`behind-last-tag`·`unexpected-version`으로 멈춘다.
 - **Release `--draft` 금지** — 머지 = 배포다. **`--generate-notes` 금지** — 노트는 5단계가 직접 쓴다.
 - **태그 강제 이동·삭제 금지** — 잘못 만든 릴리스는 다음 버전으로 고친다. 같은 번호를 다시 쓰지 않는다.
-- **이미지 `latest` 태그 금지, 발행된 이미지 태그 덮어쓰기 금지** — 9-b단계. 이미지 태그는 앱 태그와 같은 값이고 action 태그와 독립이다.
+- **이미지 `latest` 태그 금지, 발행된 이미지 태그 덮어쓰기 금지, 정상 경로에서 로컬 빌드 금지** — 9-b단계. 이미지 태그는 앱 태그와 같은 값이고 action 태그와 독립이다.
 - **10단계에서 인자 없는 `--force-with-lease` 금지** — `=dev:<SHA>` 형태만. 이유는 `/sync` 4단계.
 - **`dev` 브랜치 삭제 금지.**
 - **main에 직접 push 금지.** `--admin` 머지 금지 — 프로텍션을 우회하는 경로가 절차에 없다.
