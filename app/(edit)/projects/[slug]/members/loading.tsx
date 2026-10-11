@@ -44,7 +44,7 @@ export default async function MembersLoading() {
                   <div className="w-[150px] shrink-0 @max-form:w-24">
                     <Skeleton className="h-3 w-[72%] rounded-md" />
                   </div>
-                  <div className="ml-auto flex shrink-0 items-center gap-2 @max-form:flex-wrap @max-form:justify-end">
+                  <div className="ml-auto flex shrink-0 items-center gap-2 @max-form:shrink @max-form:min-w-0 @max-form:max-w-full @max-form:flex-wrap @max-form:justify-end">
                     <Skeleton className="h-9 w-[132px] rounded-md" />
                     <Skeleton className="h-9 w-20 rounded-md" />
                   </div>

@@ -114,7 +114,8 @@ export function MemberRow({
         <span data-row-aside className="contents @max-form:col-span-2 @max-form:col-start-2 @max-form:flex @max-form:min-w-0 @max-form:flex-wrap @max-form:items-center @max-form:gap-x-4 @max-form:gap-y-2">
           {meta}
           {/* ⚠️ **오른쪽 군의 갭이 8이다** (시안) — 행 요소 사이 16과 다른 급이라 한 군으로 읽힌다. */}
-          <span className="ml-auto flex shrink-0 items-center gap-2 @max-form:flex-wrap @max-form:justify-end">{controls?.(bandId)}</span>
+          {/* 640 미만에서만 줄어든다(malmoi#237) — `shrink-0`이면 대기 초대의 칩 132 + Resend + Revoke(≈299)가 375 카드에서 감기지 않고 잘렸다. */}
+          <span className="ml-auto flex shrink-0 items-center gap-2 @max-form:shrink @max-form:min-w-0 @max-form:max-w-full @max-form:flex-wrap @max-form:justify-end">{controls?.(bandId)}</span>
         </span>
       </div>
 

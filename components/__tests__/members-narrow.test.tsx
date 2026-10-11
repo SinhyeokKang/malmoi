@@ -114,3 +114,25 @@ describe("640 이상 한 줄 — 이름 칸만 줄어든다", () => {
     expect(loading).not.toMatch(/w-\[300px\] min-w-0 shrink-0/);
   });
 });
+
+/**
+ * **좁은 폭 — 동작 묶음이 그릇을 넘지 않고 감긴다** (malmoi#237). 대기 초대의 동작 묶음(잠긴 역할 칩 132 + Resend + Revoke ≈299)은 `flex-wrap`을
+ * 가졌지만 `shrink-0`이라 375 카드(323)에서 감기지 않고 Revoke가 잘렸다. 640 미만에서만 줄어들 수 있고(`shrink` · `min-w-0` · `max-w-full`)
+ * 그 안에서 오른쪽 정렬로 감긴다 — DOM 순서 그대로, 넓은 폭(`shrink-0`)은 불변. 골격도 같다(A-09).
+ */
+describe("640 미만 — 동작 묶음 감김", () => {
+  const tokens = (node: Element) => node.className.split(/\s+/);
+
+  it("동작 묶음이 좁은 폭에서 줄어들 수 있고 감긴다", async () => {
+    const container = await row();
+    const actions = tokens(find(container, "[data-row-aside] > span:last-child"));
+    for (const cls of ["shrink-0", "@max-form:shrink", "@max-form:min-w-0", "@max-form:max-w-full", "@max-form:flex-wrap", "@max-form:justify-end"]) {
+      expect(actions, cls).toContain(cls);
+    }
+  });
+
+  it("멤버 골격의 동작 묶음도 같은 규칙이다", () => {
+    const loading = read("app/(edit)/projects/[slug]/members/loading.tsx");
+    expect(loading).toMatch(/ml-auto flex shrink-0 items-center gap-2 @max-form:shrink @max-form:min-w-0 @max-form:max-w-full @max-form:flex-wrap @max-form:justify-end/);
+  });
+});
