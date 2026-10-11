@@ -4144,6 +4144,7 @@ default ACL을 지우지 않고 닫는 층이라, 적용·확인이 끝나면 �
   "모르면 프로덕션처럼 좁힌다"와 반대 방향의 fail-closed).
 - ⚠️ **noindex 셋(`/signin`·`/invite/**`·`/signin/link/**`)을 robots.txt로 막지 않는다** — 막으면 크롤러가 페이지의 noindex를 못 보고
   외부 링크만으로 URL이 색인된다(토큰이 검색 결과에 뜬다). `/projects`·`/account`·`/preferences`·`/inbox`는 비로그인에게 302라 본문이 없어 robots 거부가 맞다.
+- ⚠️ **`/docs/*` 404의 첫 응답은 Next 16의 오류 복구 셸이다**(2026-10-11, seo-geo 2차 — 감사 18) — 페이지가 던진 `notFound()`가 SSR에서 잡히지 않아 `<html id="__next_error__">`의 빈 `<body>`로 나가고 not-found 화면은 hydration 뒤에 선다(클라이언트 경계 없는 최소 라우트에서도 재현 — 우리 레이아웃 탓이 아니다). 상태 404·noindex·canonical 없음은 맞다. 그 셸의 `<title>`은 세그먼트 `app/docs/not-found.tsx`의 `metadata`가 정하므로 페이지 `generateMetadata`의 404 제목과 **둘 다 둔다**(앞은 첫 응답, 뒤는 클라이언트 이동 — `seo-metadata.test.ts`). Suspense 안에서 던지면 본문은 SSR되지만 상태가 200이 되고 `dynamicParams = false`도 같은 셸이라, 본문 SSR은 middleware rewrite·수동 HTML 응답·Next 변경 없이는 열리지 않는다 — 셋 다 하지 않는다(CSP·라우팅을 넓히는 대가가 404 본문보다 크다).
 - ⚠️ **스트리밍 metadata를 전 UA에서 끈다**(`next.config.ts`의 `htmlLimitedBots: /.*/`). `/`·`/docs/**`가 세션을 읽어 동적이라 Next는
   metadata를 스트리밍하고, HTML-limited 목록 밖의 UA(GPTBot·ClaudeBot·PerplexityBot)는 `<title>`·canonical을 `<body>` 끝에서 받는다.
   정적 `metadata` export도 동적 페이지에서는 스트리밍되므로 페이지별로는 못 막는다.
