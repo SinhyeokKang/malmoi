@@ -63,7 +63,8 @@ index_digest() {
   printf '%s\n' "$found"
 }
 
-if ! sha=$(git rev-parse --verify "$tag^{commit}"); then
+# refs/tags/로 좁힌다 — 로컬 비상 경로에 같은 이름의 브랜치가 있으면 그 커밋을 빌드하게 된다.
+if ! sha=$(git rev-parse --verify "refs/tags/$tag^{commit}"); then
   echo "publish-image: tag not found locally: $tag (fetch it first)" >&2
   exit 1
 fi
