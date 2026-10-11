@@ -84,3 +84,5 @@ Run `run_ea6cb60e2632`. 파동 1 착수 2026-10-11.
 | QA 수정 통합 | — | — | dev `0bc27378` push: #234 `57da3700` · #236 `f052cd0f`·`40da91e7` · #235 `ed49073b` · #233 `d325bbcf` · #237 `0944c62a`. #228 es 재수정 B2 `ctx_ccfd01718ca1` 진행 |
 | RM | `ctx_efad68fd5863` | main 체크아웃 | 완료 — #226 #227 #233–#237 7건 통과·닫음, 회귀 0, 새 결함 #238(B4, #233 부작용). 미측정: #234의 '1 unsent edit' 행(dev DB에 미전송 없음). #228 es 재수정 `5b130ff7` 통합(첫 게이트가 `translation-workspace-range` 스크롤 테스트로 부하성 실패 → 단독 38/38·재게이트 green) |
 | D | `ctx_21492617b966` | `ra-d` | 1~3 완료 — dev `c2e4b48b` push(9커밋: 키 ko·es 검수 · PRODUCT · DESIGN · ARCHITECTURE · DIRECTORY · CLAUDE.md 프리미티브 53 · SHOOTING · 낡은 주석 셋 · 가이드 본문 en/ko/es). `guide:check` stale 22컷 → 촬영 남음. 4(기능 디렉터리 삭제)는 마지막 |
+| 수정 마감 | — | — | dev `c1820bfc` push: #238 `c1253f95`(O23) · Files 핸들 `touch-none` `c1820bfc`. 모든 워커 브랜치 dev 반영(cherry + 0). 워크트리 B1·B3 삭제 |
+| FIN | `ctx_3e8400f2a483` | main 체크아웃 | 진행 — #228·#238 재실측 + 가이드 stale 촬영 |
