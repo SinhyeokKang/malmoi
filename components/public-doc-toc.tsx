@@ -43,8 +43,33 @@ export function Toc({ label, items, className }: { label: string; items: readonl
   const pinned = useRef<number | null>(null);
 
   useEffect(() => {
-    const scroller = ref.current?.closest<HTMLElement>("[data-public-scroller]");
-    if (!scroller) return;
+    const nav = ref.current;
+    const scroller = nav?.closest<HTMLElement>("[data-public-scroller]");
+    if (!nav || !scroller) return;
+    const button = nav.querySelector<HTMLButtonElement>("button[aria-expanded]");
+    const list = button ? document.getElementById(button.getAttribute("aria-controls") ?? "") : null;
+    let focused: HTMLElement | null = null;
+    // CSS가 읽기 그릇의 960 경계를 판정한다. 폭을 렌더 상태로 복제하면 SSR과 첫 렌더가 갈린다.
+    const handOff = () => {
+      if (!focused || !button || !list) return;
+      const active = document.activeElement;
+      if (active !== document.body && active !== null && !nav.contains(active)) { focused = null; return; }
+      const hiddenButton = focused === button && getComputedStyle(button).display === "none";
+      const hiddenList = list.contains(focused) && getComputedStyle(list).display === "none";
+      if (!hiddenButton && !hiddenList) return;
+      focused = null;
+      const target = hiddenList ? button : list.querySelector<HTMLElement>('[aria-current="location"]') ?? list.querySelector<HTMLElement>("a");
+      target?.focus({ preventScroll: true });
+      return true;
+    };
+    const onFocus = (event: FocusEvent) => { if (event.target instanceof HTMLElement) focused = event.target; };
+    const onBlur = (event: FocusEvent) => {
+      // Chrome의 blur 없는 body fixup은 기록을 남기고, 명시적 이탈은 지운다. 숨김 뒤 blur가 먼저 와도 받는다.
+      if (event.relatedTarget === null && handOff()) return;
+      if (!(event.relatedTarget instanceof Node && nav.contains(event.relatedTarget))) focused = null;
+    };
+    nav.addEventListener("focusin", onFocus);
+    nav.addEventListener("focusout", onBlur);
     let alive = true;
     let frame = 0;
     let tops: number[] = [];
@@ -64,6 +89,7 @@ export function Toc({ label, items, className }: { label: string; items: readonl
     };
     const remeasure = () => {
       if (!alive) return;
+      handOff();
       measure();
       schedule();
     };
@@ -86,13 +112,18 @@ export function Toc({ label, items, className }: { label: string; items: readonl
     scroller.addEventListener(DOCUMENT_HEADING_LANDED, land);
     // 목차 링크의 pointerdown·Enter도 여기를 지나지만 click이 곧바로 다시 고정한다.
     for (const type of RELEASE) scroller.addEventListener(type, release, { passive: true });
-    // 폭이 바뀌면 줄바꿈이, 폰트가 오면 글자 높이가 절 윗변을 옮긴다.
+    // 스크롤러의 고정 크기는 disclosure 높이 변화를 알리지 않는다. 같은 관찰자로 실제 그릇·목차도 본다.
     const observer = new ResizeObserver(remeasure);
     observer.observe(scroller);
+    observer.observe(nav);
+    const reading = nav.closest<HTMLElement>('[class~="@container/reading"]');
+    if (reading) observer.observe(reading);
     void document.fonts?.ready.then(remeasure);
 
     return () => {
       alive = false;
+      nav.removeEventListener("focusin", onFocus);
+      nav.removeEventListener("focusout", onBlur);
       scroller.removeEventListener("scroll", schedule);
       scroller.removeEventListener(DOCUMENT_HEADING_LANDED, land);
       for (const type of RELEASE) scroller.removeEventListener(type, release);

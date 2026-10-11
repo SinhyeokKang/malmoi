@@ -73,7 +73,9 @@ async function mount(kind: "docs" | "privacy" = "docs") {
   const scroller = find<HTMLElement>(container, "[data-public-scroller]");
   Object.defineProperty(scroller, "clientHeight", { value: 600 });
   Object.defineProperty(scroller, "scrollHeight", { value: 2600 });
-  scroller.scrollTo = vi.fn(({ top }: ScrollToOptions) => { scroller.scrollTop = top ?? 0; });
+  scroller.scrollTo = vi.fn((options?: ScrollToOptions | number, y?: number) => {
+    scroller.scrollTop = typeof options === "number" ? y ?? 0 : options?.top ?? 0;
+  });
   await flush();
   return {
     container, scroller, rerender,
@@ -149,10 +151,23 @@ describe("TOC — 고정 스크롤러 안의 실제 변경 순서", () => {
     await act(async () => { toggle.focus(); outside.focus(); });
     await cross(960, reading);
     expect(document.activeElement).toBe(outside);
-    await act(async () => { second.focus(); second.blur(); });
+    await act(async () => { toggle.click(); second.focus(); second.blur(); });
     await cross(959, reading);
     expect(document.activeElement).toBe(document.body);
     await rerender(<div />);
     expect(observers.every(({ disconnected }) => disconnected)).toBe(true);
+  });
+
+  it("숨김 blur가 관찰 알림보다 먼저 와도 왕복 포커스 소유권을 이어 간다", async () => {
+    width = 960;
+    const { reading, toggle, second } = await mount();
+    await act(async () => { second.focus(); });
+    width = 959;
+    await act(async () => { second.dispatchEvent(new FocusEvent("focusout", { bubbles: true, relatedTarget: null })); });
+    expect(document.activeElement).toBe(toggle);
+    const first = find<HTMLAnchorElement>(reading, 'a[href="#first"]');
+    const focus = vi.spyOn(first, "focus");
+    await cross(960, reading, true);
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
   });
 });
