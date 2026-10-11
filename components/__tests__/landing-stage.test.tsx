@@ -7,7 +7,7 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Stage } from "@/components/landing/stage";
-import { CHROME_GAP, frame, trackHeight, typedPrefix } from "@/lib/landing/stage";
+import { CHROME_GAP, PLAY, STATE_CANVAS_W, frame, trackHeight, typedPrefix } from "@/lib/landing/stage";
 
 import { find, render } from "./helpers/dom";
 
@@ -117,6 +117,7 @@ function snapshot(container: HTMLElement) {
   const frameNode = find<HTMLElement>(container, "[data-landing-frame]");
   return {
     transform: frameNode.style.transform,
+    width: frameNode.style.width,
     scene: frameNode.dataset.scene,
     badge: frameNode.dataset.badge,
     layers: [...container.querySelectorAll<HTMLElement>("[data-landing-layer]")].map((node) => node.style.opacity),
@@ -129,6 +130,8 @@ function snapshot(container: HTMLElement) {
 
 const at = (scrollTop: number, reducedMotion = false, size = { W, H }, chrome = CHROME) =>
   frame({ scrollTop, stageTop: STAGE_TOP, W: size.W, H: size.H, chromeHeight: CHROME_GAP + chrome, reducedMotion });
+/** 씬 i의 위치 f(0..1)에 해당하는 scrollTop — 씬 하나가 `PLAY.perScene`·H다. */
+const sceneTop = (i: number, f: number) => STAGE_TOP + (PLAY.lead + (i + f) * PLAY.perScene) * H;
 
 describe("Stage — 스크롤 위치가 화면을 정한다", () => {
   it("첫 rAF가 배율을 쓰고 `data-ready`를 세운다 — 그 전엔 트랙이 접혀 있고 씬 ①도 안 보인다", async () => {
@@ -152,26 +155,97 @@ describe("Stage — 스크롤 위치가 화면을 정한다", () => {
     expect(root.style.getPropertyValue("--landing-track-h")).toBe(`${trackHeight(H)}px`);
   });
 
-  /** 스크롤 구동 확대를 걷었다(2026-09-27 사용자) — 올라오는 중에도 고정 중에도 프레임 transform이 같다. */
-  it("스크롤해도 프레임의 배율·위치가 바뀌지 않는다", async () => {
+  /** 스크롤 구동 확대는 없다(2026-09-27 사용자) — 올라오는 중과 고정 시작(D 정지)은 같은 transform이다. */
+  it("올라오는 중과 D 정지 동안은 프레임의 배율·위치·폭이 바뀌지 않는다", async () => {
     const { container, scroller } = await mount();
     await flush();
-    const transform = () => find<HTMLElement>(container, "[data-landing-frame]").style.transform;
-    const first = transform();
-    for (const top of [100, STAGE_TOP, STAGE_TOP + 2.5 * H, STAGE_TOP + 9 * H]) {
+    const frameNode = find<HTMLElement>(container, "[data-landing-frame]");
+    const first = [frameNode.style.transform, frameNode.style.width];
+    expect(first[1]).toBe("1440px");
+    for (const top of [100, STAGE_TOP, sceneTop(0, 0.1), sceneTop(2, 0.05)]) {
       await scrollTo(scroller, top);
-      expect(transform()).toBe(first);
+      expect([frameNode.style.transform, frameNode.style.width]).toEqual(first);
     }
-    expect(find<HTMLElement>(container, "[data-landing-frame]").style.willChange).toBe("");
+    expect(frameNode.style.willChange).toBe("");
+  });
+
+  /** 씬마다 D → T → M 그릇(MK1). 폭은 프레임 캔버스 폭이고 베젤 안 화면(목업 루트)은 거기서 8×2를 뺀 레이아웃 폭이다. */
+  it("프레임 폭·transform이 `frame()`의 그릇 폭·배율이다 — 정지는 1440 · 784 · 391, 전환은 보간 값", async () => {
+    const { container, scroller } = await mount();
+    await flush();
+    const frameNode = find<HTMLElement>(container, "[data-landing-frame]");
+    for (const [i, f] of [[1, 0.1], [1, 0.23], [1, 0.37], [1, 0.51], [1, 0.65], [1, 0.8], [1, 0.935], [4, 0.9]] as const) {
+      const top = sceneTop(i, f);
+      await scrollTo(scroller, top);
+      const want = at(top);
+      expect(frameNode.style.width).toBe(`${want.canvasW}px`);
+      expect(frameNode.style.height).toBe("900px");
+      expect(frameNode.style.transform).toBe(`translate3d(${want.x}px, ${want.y}px, 0px) scale(${want.scale})`);
+    }
+    const holds: string[] = [];
+    for (const f of [0.1, 0.37, 0.65]) {
+      await scrollTo(scroller, sceneTop(2, f));
+      holds.push(frameNode.style.width);
+    }
+    expect(holds).toEqual(STATE_CANVAS_W.map((w) => `${w}px`));
+  });
+
+  /** 캡션 자리는 세 상태 중 가장 큰 것의 높이라 그릇이 바뀌어도 캡션 블록이 움직이지 않는다. */
+  it("그릇이 바뀌어도 캡션 블록 transform은 그대로다", async () => {
+    const { container, scroller } = await mount();
+    await flush();
+    const chrome = find<HTMLElement>(container, "[data-landing-chrome]");
+    const first = chrome.style.transform;
+    for (const f of [0.23, 0.37, 0.51, 0.65, 0.935]) {
+      await scrollTo(scroller, sceneTop(1, f));
+      expect(chrome.style.transform).toBe(first);
+    }
+  });
+
+  /**
+   * ⚠️ **폭 보간은 레이아웃을 일으킨다**(design §2) — 다섯 씬 레이어가 동시에 마운트돼 있으므로 현재·다음 두 레이어만 배치에 남기고
+   * 나머지는 `content-visibility: hidden`으로 뺀다. jsdom은 레이아웃이 없어 속성·클래스 계약으로 잰다.
+   */
+  it("현재·다음 레이어만 배치에 남고 나머지는 `data-idle`이다", async () => {
+    const { container, scroller } = await mount();
+    const layers = [...container.querySelectorAll<HTMLElement>("[data-landing-layer]")];
+    const idle = () => layers.map((node) => node.hasAttribute("data-idle"));
+    for (const node of layers) expect(node.className.split(" ")).toContain("data-[idle]:[content-visibility:hidden]");
+    // SSR — 씬 ①이 현재, ②가 다음이다.
+    expect(idle()).toEqual([false, false, true, true, true]);
+    await flush();
+    expect(idle()).toEqual([false, false, true, true, true]);
+    await scrollTo(scroller, sceneTop(2, 0.3));
+    expect(idle()).toEqual([true, true, false, false, true]);
+    await scrollTo(scroller, sceneTop(4, 0.5));
+    expect(idle()).toEqual([true, true, true, true, false]);
+    await scrollTo(scroller, sceneTop(1, 0.9));
+    expect(idle()).toEqual([true, false, false, true, true]);
+  });
+
+  /** 같은 값의 속성 쓰기도 스타일을 무효화한다 — 정지 구간의 틱은 프레임 폭·레이어 속성을 다시 쓰지 않는다. */
+  it("같은 씬 · 같은 그릇의 틱은 프레임 style·레이어 속성을 쓰지 않는다", async () => {
+    const { container, scroller } = await mount();
+    await flush();
+    await scrollTo(scroller, sceneTop(1, 0.3));
+    let records = 0;
+    const observer = new MutationObserver((list) => { records += list.length; });
+    observer.observe(find(container, "[data-landing-frame]"), { attributes: true, attributeFilter: ["style"] });
+    for (const node of container.querySelectorAll("[data-landing-layer]")) observer.observe(node, { attributes: true, attributeFilter: ["data-idle"] });
+    for (const f of [0.31, 0.35, 0.4, 0.33]) await scrollTo(scroller, sceneTop(1, f));
+    expect(records).toBe(0);
+    await scrollTo(scroller, sceneTop(1, 0.5));
+    expect(records).toBeGreaterThan(0);
+    observer.disconnect();
   });
 
   it("p₁ → p₂ → p₁로 되돌아오면 씬·배율·캡션·타이핑이 전부 같다", async () => {
     const { container, scroller } = await mount();
     await flush();
-    const p1 = STAGE_TOP + 1.3 * H; // 씬 ② 정지 구간 — 타이핑 중
+    const p1 = sceneTop(1, 0.23); // 씬 ② D → T 전환 — 타이핑 중
     await scrollTo(scroller, p1);
     const first = snapshot(container);
-    await scrollTo(scroller, STAGE_TOP + 3.8 * H);
+    await scrollTo(scroller, sceneTop(3, 0.8));
     expect(snapshot(container)).not.toEqual(first);
     await scrollTo(scroller, p1);
     expect(snapshot(container)).toEqual(first);
@@ -180,8 +254,8 @@ describe("Stage — 스크롤 위치가 화면을 정한다", () => {
   it("DOM에 쓰는 값이 `frame()`과 같다 — 씬 번호 · 배지 · 캡션 · 타이핑 접두", async () => {
     const { container, scroller } = await mount();
     await flush();
-    for (const q of [0.2, 1.3, 2.5, 3.9, 4.7]) {
-      const top = STAGE_TOP + q * H;
+    for (const [i, pos] of [[0, 0.2], [1, 0.3], [2, 0.5], [3, 0.9], [4, 0.7]] as const) {
+      const top = sceneTop(i, pos);
       await scrollTo(scroller, top);
       const f = at(top);
       const view = snapshot(container);
@@ -197,8 +271,8 @@ describe("Stage — 스크롤 위치가 화면을 정한다", () => {
     const { container, scroller } = await mount();
     await flush();
     const lengths: number[] = [];
-    for (const q of [1.05, 1.2, 1.4, 1.2, 1.05]) {
-      await scrollTo(scroller, STAGE_TOP + q * H);
+    for (const f of [0.05, 0.2, 0.4, 0.2, 0.05]) {
+      await scrollTo(scroller, sceneTop(1, f));
       lengths.push(snapshot(container).typed[0]?.length ?? -1);
     }
     expect(lengths[0]).toBeLessThan(lengths[2] ?? 0);
@@ -210,7 +284,7 @@ describe("Stage — 스크롤 위치가 화면을 정한다", () => {
     const { scroller } = await mount(() => { renders += 1; });
     await flush();
     const settled = renders;
-    for (const q of [0.5, 1.5, 2.5, 3.5, 4.5]) await scrollTo(scroller, STAGE_TOP + q * H);
+    for (const [i, f] of [[0, 0.5], [1, 0.23], [2, 0.8], [3, 0.935], [4, 0.5]] as const) await scrollTo(scroller, sceneTop(i, f));
     expect(renders).toBe(settled);
   });
 });
@@ -219,7 +293,7 @@ describe("Stage — 모션 감소", () => {
   it("`change`를 구독해 런타임 토글을 반영한다 — 전환 한가운데의 교차가 단절로 바뀐다", async () => {
     const { container, scroller } = await mount();
     await flush();
-    const top = STAGE_TOP + 0.7 * H;
+    const top = sceneTop(0, 0.78); // 교차 앞 절반
     await scrollTo(scroller, top);
     const layers = () => snapshot(container).layers;
     expect(layers()).toEqual(at(top).layers.map(String));
@@ -230,6 +304,19 @@ describe("Stage — 모션 감소", () => {
     await flush();
     expect(layers()).toEqual(at(top, true).layers.map(String));
     expect(at(top, true).layers).toEqual([1, 0, 0, 0, 0]);
+  });
+
+  it("그릇 폭도 전환 한가운데에서 끊는다 — DOM에 중간 폭이 쓰이지 않는다", async () => {
+    media.matches = true; // 마운트 effect가 읽는다
+    const { container, scroller } = await mount();
+    await flush();
+    const width = () => find<HTMLElement>(container, "[data-landing-frame]").style.width;
+    const seen = new Set<string>();
+    for (let f = 0; f < 1; f += 0.02) {
+      await scrollTo(scroller, sceneTop(1, f));
+      seen.add(width());
+    }
+    expect([...seen].sort()).toEqual(["1440px", "391px", "784px"]);
   });
 });
 
@@ -375,7 +462,7 @@ describe("Stage — 캡션은 같은 칸에 겹친다", () => {
     expect(active()).toEqual(["One."]);
     expect(items.map((node) => node.style.opacity)).toEqual(["1", "0", "0", "0", "0"]);
 
-    await scrollTo(scroller, STAGE_TOP + 1.3 * H);
+    await scrollTo(scroller, sceneTop(1, 0.3));
     expect(active()).toEqual(["Two."]);
     expect(items.map((node) => node.style.opacity)).toEqual(["0", "1", "0", "0", "0"]);
   });
@@ -390,13 +477,13 @@ describe("Stage — 캡션은 같은 칸에 겹친다", () => {
     let records = 0;
     const observer = new MutationObserver((list) => { records += list.length; });
     for (const node of inactive) observer.observe(node, { attributes: true });
-    for (const q of [0.1, 0.3, 0.5, 0.2]) await scrollTo(scroller, STAGE_TOP + q * H);
+    for (const f of [0.1, 0.3, 0.5, 0.2]) await scrollTo(scroller, sceneTop(0, f));
     expect(records).toBe(0);
-    // 활성 캡션의 opacity는 매 틱이다 — 전환 구간에서 줄어든다.
-    await scrollTo(scroller, STAGE_TOP + 0.75 * H);
+    // 활성 캡션의 opacity는 매 틱이다 — 교차 구간에서 줄어든다.
+    await scrollTo(scroller, sceneTop(0, 0.78));
     expect(Number(items[0]?.style.opacity)).toBeLessThan(1);
 
-    await scrollTo(scroller, STAGE_TOP + 1.3 * H);
+    await scrollTo(scroller, sceneTop(1, 0.3));
     expect(records).toBeGreaterThan(0);
     expect(items.map((node) => node.dataset.active)).toEqual(["0", "1", "0", "0", "0"]);
     observer.disconnect();
@@ -460,6 +547,8 @@ describe("Stage — 높이 부족 정적 흐름", () => {
     expect(figures[0]?.querySelector("[data-landing-typed]")?.textContent).toBe("");
     expect(figures[1]?.querySelector("[data-landing-typed]")?.textContent).toBe(TYPED);
     expect(figures.map((node) => node.querySelector<HTMLElement>("[data-badge]")?.dataset.badge)).toEqual(["0", "0", "1", "1", "1"]);
+    // 정적 흐름의 장은 D 그릇이다 — 상태를 도는 것은 고정 재생뿐이다.
+    expect(figures.map((node) => node.querySelector<HTMLElement>("[data-badge]")?.style.width)).toEqual(Array(5).fill("1440px"));
 
     size.chrome = CHROME;
     await act(async () => { for (const { callback } of observers) callback([], {} as ResizeObserver); });
@@ -467,7 +556,7 @@ describe("Stage — 높이 부족 정적 흐름", () => {
     expect(container.querySelector("[data-landing-static]")).toBeNull();
     expect(track.hasAttribute("data-ready")).toBe(true);
     expect(track.hasAttribute("data-static")).toBe(false);
-    await scrollTo(scroller, STAGE_TOP + 1.3 * H);
+    await scrollTo(scroller, sceneTop(1, 0.3));
     expect(snapshot(container).scene).toBe("1");
   });
 

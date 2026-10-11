@@ -37,13 +37,19 @@ function Bezel({ children }: { children: ReactNode }) {
  * 전부이고, 씬은 그 고정 구간 안에서만 움직인다. 위 히어로·아래 CTA는 재생 동안 보이지 않는다 — 그래서 CTA를 음수
  * margin으로 끌어올리지 않는다(옛 `--landing-y-pin`).
  *
- * ⚠️ **배율은 크기만의 함수다** — 스크롤 구동 확대(대기 0.8배 → 맞춤)를 걷었다. 툴바와 베젤은 상시다
- * (44px 툴바 + 안쪽 베젤 + 얇은 회색 외곽선 + `shadow-medium`).
+ * ⚠️ **상태마다의 배율은 크기만의 함수다** — 스크롤 구동 확대(대기 0.8배 → 맞춤)를 걷었다. 스크롤은 씬마다 데스크톱 → 태블릿 →
+ * 모바일 그릇(캔버스 1440 · 784 · 391, 2026-10-11 MK1)을 고르고, 프레임의 **레이아웃 폭**과 배율을 같은 t로 보간한다 — 목업 루트(베젤
+ * 안 화면)가 그 폭을 채우고 안은 `@container`로 앱 규칙을 고른다(목업에 폭 prop을 넘기지 않는다). 툴바와 베젤은 상시다
+ * (44px 툴바 + 안쪽 베젤 + 얇은 회색 외곽선 + `shadow-medium`) — 세 그릇이 같은 틀이고 폭만 바뀐다.
+ *
+ * ⚠️ **폭 보간은 스크롤 프레임마다 레이아웃을 일으킨다**(design §2) — transform만 쓰던 때와 달리 리플로가 난다. 다섯 씬 레이어가 동시에
+ * 마운트돼 있으므로 **현재·다음 두 레이어만 배치에 남기고** 나머지는 `data-idle`(`content-visibility: hidden`)로 뺀다. 다음 레이어를 남기는
+ * 것은 교차가 M 폭에서 시작될 때 그 레이어가 이미 놓여 있게 하려는 것이다. 정지 구간에서는 폭을 다시 쓰지 않는다.
  *
  * ⚠️ **프레임마다 setState하지 않는다** — 씬 DOM이 수천 노드라 재조정이 스크롤을 먹는다. 스크롤 → rAF에서
  * `frame()`(순수) → ref로 transform·opacity·`data-*`·텍스트 노드를 직접 쓴다. 이 컴포넌트는 한 번 렌더된다.
  *
- * ⚠️ **SSR·JS 없음에서는 접혀 있고 프레임이 보이지 않는다** — 배율이 없으면 1440 폭 컨테이너가 패널을 넘치므로 프레임·크롬이
+ * ⚠️ **SSR·JS 없음에서는 접혀 있고 프레임이 보이지 않는다** — 배율이 없으면 1440 폭 컨테이너(D 그릇)가 패널을 넘치므로 프레임·크롬이
  * `invisible`이다. 트랙은 `data-ready`가 선 뒤에만 고정 구간 길이를 갖는다(그 전엔 패널 1개 높이 — 빈 세로 구간이 남지 않는다).
  *
  * ⚠️ **캡션 높이는 잰 값이다** (design §4) — 다섯 문장이 같은 grid 칸에 겹쳐 칸 높이가 가장 긴 문장이고, 좁으면 감긴다(고정 28이 아니다).
@@ -101,7 +107,7 @@ export function Stage({
     let lastH = 0;
     let lastStageTop = 0;
     /** 같은 값을 다시 쓰지 않는다 — 루트 CSS 변수는 서브트리 전체의 스타일을 무효화한다. */
-    let written = { stageH: "", transform: "", caption: -1, typed: "", chromeW: -1, staticScale: -1 };
+    let written = { stageH: "", width: "", transform: "", chromeTransform: "", scene: 0, caption: -1, typed: "", chromeW: -1, staticScale: -1 };
 
     /** 트랙 윗변의 스크롤러 좌표. offsetTop은 offsetParent에 매여 셸 구조가 바뀌면 조용히 틀린다. */
     const stageTopOf = () => track.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop;
@@ -115,12 +121,26 @@ export function Stage({
     };
 
     const paint = (f: Frame) => {
-      // 배율·위치는 크기에서만 바뀐다 — 스크롤 틱마다 같은 문자열을 다시 쓰지 않는다.
+      // 폭·배율은 그릇 전환 구간에서만, 캡션 자리는 크기에서만 바뀐다 — 정지 구간의 틱마다 같은 문자열을 다시 쓰지 않는다.
+      const width = `${f.canvasW}px`;
+      if (width !== written.width) {
+        frameNode.style.width = width;
+        written = { ...written, width };
+      }
       const transform = `translate3d(${f.x}px, ${f.y}px, 0px) scale(${f.scale})`;
       if (transform !== written.transform) {
         frameNode.style.transform = transform;
-        chrome.style.transform = `translate3d(0px, ${f.chromeY}px, 0px)`;
         written = { ...written, transform };
+      }
+      const chromeTransform = `translate3d(0px, ${f.chromeY}px, 0px)`;
+      if (chromeTransform !== written.chromeTransform) {
+        chrome.style.transform = chromeTransform;
+        written = { ...written, chromeTransform };
+      }
+      // 현재·다음 두 레이어만 배치에 남긴다 — 씬 번호가 바뀔 때만 쓴다.
+      if (f.scene.i !== written.scene) {
+        layerRefs.current.forEach((layer, k) => layer?.toggleAttribute("data-idle", k !== f.scene.i && k !== f.scene.i + 1));
+        written = { ...written, scene: f.scene.i };
       }
       frameNode.dataset.scene = String(f.scene.i);
       frameNode.dataset.badge = String(f.badge);
@@ -283,7 +303,9 @@ export function Stage({
                     layerRefs.current[k] = node;
                   }}
                   data-landing-layer={k}
-                  className="absolute inset-0 opacity-0"
+                  // SSR은 씬 ①이 현재·②가 다음이다 — 틱이 씬 번호를 따라 옮긴다.
+                  data-idle={k >= 2 ? "" : undefined}
+                  className="absolute inset-0 opacity-0 data-[idle]:[content-visibility:hidden]"
                 >
                   {scene}
                 </div>
@@ -340,6 +362,7 @@ export function Stage({
         </div>
         {isStatic && (
           // 높이 부족 — 같은 5씬을 위에서 아래로 한 장씩. 배율은 폭이 정한 CSS 변수 하나(좌우 여백 side를 이미 품는다)이고 캡션이 장 아래에 선다.
+          // 장은 D 그릇(1440) 하나다 — 그릇을 도는 것은 스크롤로 재생하는 고정 흐름뿐이다.
           <div data-landing-static="" className="flex flex-col items-center gap-12">
             {scenes.map((scene, k) => (
               <figure key={k} aria-hidden="true" className="m-0 flex flex-col items-center gap-4">
