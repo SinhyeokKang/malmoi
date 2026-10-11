@@ -79,4 +79,7 @@ Run `run_ea6cb60e2632`. 파동 1 착수 2026-10-11.
 | DS 수정 | B1 `ctx_6e9bcfabdc64`·`ctx_dab7433aa2e4`·`ctx_26cca65bfec9` / B2 `ctx_25e8128916d4` / B4 `ctx_e1a425ec3ade`·`ctx_d53d1fd89906` | 각 워크트리 | dev 반영: #222 `6b0dbde7` · #224 #230 #231 `a25c26de`(⚠️ 게이트가 부하성 타임아웃으로 red인데 `;` 체인으로 push됨 — 재게이트 green·CI success로 확인) · #228 #229 #232 `dfe97011` · #223 #225 `9a4c52f0`. #226 #227 B1 수정 완료(`237c6b1f`·`c486254e`, PANEL_HEAD_ROW) · #228 재수정 B2 `eca397a3`(es 375에서 소스 이름이 한 글자까지 줄어듦 — 재실측 확인 항목) — QA가 main 체크아웃을 놓은 뒤 통합 |
 | QA | `ctx_c709eb5ba9ce` | main 체크아웃 | 완료(≈2시간) — DS 재실측 8 닫음(#228만 남음 → `092061ae`에 재수정), 새 이슈 #233(B4) #234(B1) #235(B3) #236(B2). 미측정: Sync/Publish 결과 화면 · Revert Dialog · AT6f · O19-B · 끊김 상태 · 온보딩 ③④ · 토스트 위치 · 5,000키 성능(dev 최대 1,175키). 리포트 `.scratch/ra-qa-report.md` |
 | QA 수정 | B1 `ctx_d67bd5ad1d4d` · B2 `ctx_ce368f50be70` · B3 `ctx_9e78cd52e2a5` · B4 `ctx_26aad8bff557` | 각 워크트리 | 진행 — dev `092061ae`에 #226·#227·#228 통합 |
-| QA2 | `ctx_bea27e0353fe` | main 체크아웃 | 진행 — 1차 미측정 실행 측정(Publish·Sync 결과 · AT6f · Revert · O19-B 보관 · 온보딩 ③④ · 토스트 · 5,000키 preview 성능). 끊김 상태는 콘솔 작업이라 제외. 이 동안 통합 금지 |
+| QA2 | `ctx_bea27e0353fe` | main 체크아웃 | 완료 — Publish(PR i18n-format-check#14 닫음)·Sync 결과·AT6f 배너 셋·Revert 실행·O19-B·온보딩 ③④(`ra-qa2-onboarding` 상주)·토스트(저장·Publish에 토스트 없음)·5,000키 preview 성능(앱 몫 ≈1.0–1.3s < §1.95 2.0s, 나머지는 ego 확장). 새 결함 #237. 미측정: 끊김 상태(콘솔) · 확장 없는 Chrome 성능 확인. 리포트 `.scratch/ra-qa2-report.md` |
+| QA 수정 통합 | — | — | dev `0bc27378` push: #234 `57da3700` · #236 `f052cd0f`·`40da91e7` · #235 `ed49073b` · #233 `d325bbcf` · #237 `0944c62a`. #228 es 재수정 B2 `ctx_ccfd01718ca1` 진행 |
+| RM | `ctx_efad68fd5863` | main 체크아웃 | 진행 — #226 #227 #233–#237 재실측 |
+| D | `ctx_21492617b966` | `ra-d` | 진행 — 사전 검수 · 정본 문서 · 가이드 본문(촬영은 RM 뒤 main 체크아웃) |
