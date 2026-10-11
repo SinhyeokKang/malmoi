@@ -1,7 +1,0 @@
-# Independent review — responsive fixes
-
-Read tasks.md and orch.md. Review final implementation commits named in current dispatch, their `.scratch/handoff-*.md` reports, relevant POSTMORTEM and current DESIGN/ARCHITECTURE. Use source-command-code-review; report only. Do not modify code, build, commit or push. Codex Sol/Astra only; inherited Astra medium is verified by coordinator. Do not use other model families.
-
-Review all seven acceptance items and negative controls, not only added tests. Prioritize actual regression risks: stale key response versus external navigation/tree intent; pending cancellation/draft and IME; CSS actual container selection, 375px Spanish warning logs, wide Home versus Logs and skeleton parity; long unbroken names; hidden focus with no blur; TOC geometry after open, close, font/layout changes and pin release; actual reading 960 boundary and unrelated focus preservation. Check listener lifetime/cleanup, StrictMode, no added global scroll work, no JS viewport render branching and no component remount.
-
-Verify RED/GREEN/gate claims from logs. Runtime list must contain only browser-dependent checks; deterministic scenarios must be covered by tests. Distinguish an intended product tradeoff from a defect. Each finding needs precise file/line, reproducible condition and smallest fix direction. State zero findings explicitly if none. Write `.scratch/review-responsive-132.md`, then current Dispatch worker_done with explicit outcome; end turn.

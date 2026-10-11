@@ -1,9 +1,0 @@
-# Batch A review fix 1
-
-Read brief-A.md, tasks.md, orch.md and the independent review at root .scratch/review-responsive-132.md when present. Work in the existing responsive-132-a worktree, whose two commits are not integrated yet. No rebase/cherry-pick while coordinator tests other frozen branches.
-
-Independent review P2: ownSelection stores only key id. Sequence k1 -> request k2 pending -> Back to keys -> external global search navigates to k2 before that response resolves. Same key matching suppresses the external selection, leaving list. Existing new test tests external input only after marker consumption. Verify real external navigation path and prove or refute with a meaningful regression test. If confirmed, fix minimally with clear intent ownership; preserve late local response -> list, explicit same-key reopening, tree priority, and unrelated focus/drafts/IME. Do not treat all same-key responses as local. Cover actual external navigation signal, including search/Inbox/history as applicable, not an invented test-only flag. Explain any necessary file ownership extension before editing.
-
-Ownership remains workspace and compact tests; coordinator may approve minimal existing navigation intent owner if truly required. No shell/logs/TOC/docs/dictionaries, schema/deps/env/API/auth edits. No push/merge/sync/db:deploy/env copy. Codex Astra medium inherited; no subagents. Reuse original ship bypass workflow, stop before push.
-
-Scheduling override: run meaningful RED and focused GREEN plus typecheck. Do NOT start a full pnpm test or gate: coordinator runs branch gates sequentially. Commit exact paths with Codex trailer. Write .scratch/handoff-A-fix1.md with tests, regression reasoning, commits, unresolved items; clearly mark full gate pending. Send worker_done once and end turn. Do not wait for other workers or future dispatches.
