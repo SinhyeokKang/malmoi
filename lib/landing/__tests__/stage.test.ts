@@ -432,18 +432,50 @@ describe("frame — 한 스크롤 위치에 한 프레임", () => {
     for (const top of [0, stageTop / 2, stageTop]) expect(placement(at(top))).toEqual([1440, d?.scale, d?.x, d?.y]);
   });
 
-  /** 폭 `Wk`와 배율을 같은 t로 보간한다(ease). x·y는 그 둘에서 나온다. */
-  it("전환 한가운데 — 폭과 배율이 같은 ease로 반씩 · x는 가로 가운데 · y는 자리 안 세로 가운데", () => {
-    const [d, t, m] = fitsOf(NARROW);
-    if (!d || !t || !m) throw new Error("fits");
+  /**
+   * 폭 `w(t)`를 ease로 보간하고 **배율은 그 폭의 함수로 다시 맞춘다**(#239) — 끝점 배율을 따로 보간하면 폭에 묶인 D와 세로에 묶인 T·M 사이에서
+   * `w·scale`이 두 끝점보다 부풀어 프레임이 스크롤러를 넘었다(375×812 M→D f .958에서 27px). x·y는 그 폭·배율에서 나온다.
+   */
+  it("전환 한가운데 — 폭은 ease로 반 · 배율은 그 폭의 fitScale · x는 가로 가운데 · y는 자리 안 세로 가운데", () => {
+    const [, , m] = fitsOf(NARROW);
+    if (!m) throw new Error("fits");
     const mid = narrow(1, 0.23);
     expect(mid.canvasW).toBeCloseTo((1440 + 786) / 2, 9);
-    expect(mid.scale).toBeCloseTo((d.scale + t.scale) / 2, 9);
+    const atMid = fitScale({ W: NARROW.W, H: NARROW.H, chromeHeight, canvasW: mid.canvasW });
+    expect([mid.scale, mid.x, mid.y]).toEqual([atMid.scale, atMid.x, atMid.y]);
     expect(mid.x).toBeCloseTo((NARROW.W - mid.canvasW * mid.scale) / 2, 9);
     expect(mid.y).toBeCloseTo(m.y + (CANVAS_H * (m.scale - mid.scale)) / 2, 9);
     expect(narrow(1, 0.51).canvasW).toBeCloseTo((786 + 393) / 2, 9);
     expect(narrow(1, 0.935).canvasW).toBeCloseTo((393 + 1440) / 2, 9);
-    expect(narrow(1, 0.935).scale).toBeCloseTo((m.scale + d.scale) / 2, 9);
+  });
+
+  /** #239 — 모든 씬 · 모든 전환 구간 · 네 공개 뷰포트(+390 · 1440)에서 프레임이 스크롤러 가로 안, 캡션 자리 세로 안이다. */
+  describe("프레임은 전환 중에도 스크롤러와 자리 안에 있다 (#239)", () => {
+    /** 스크롤러 = 뷰포트 − 공개 셸 가로 18 · 세로 98. */
+    const PAGES = [
+      ["375×812", 357, 714],
+      ["390×844", 372, 746],
+      ["768×1024", 750, 926],
+      ["1024×768", 1006, 670],
+      ["1280×800", 1262, 702],
+      ["1440×900", 1422, 802],
+    ] as const;
+    it.each(PAGES)("%s", (_, PW, PH) => {
+      for (const chrome of [ONE_LINE, TWO_LINES]) {
+        const slotTop = fitScale({ W: PW, H: PH, chromeHeight: chrome, canvasW: STATE_CANVAS_W[2] }).y;
+        for (const reduced of [false, true]) {
+          for (let q = 0; q <= 5; q += 0.0005) {
+            const got = frame({ scrollTop: q * PLAY.perScene * PH, stageTop: 0, W: PW, H: PH, chromeHeight: chrome, reducedMotion: reduced });
+            const right = got.x + got.canvasW * got.scale;
+            const bottom = got.y + CANVAS_H * got.scale;
+            expect(got.x).toBeGreaterThanOrEqual(0);
+            expect(right).toBeLessThanOrEqual(PW + 1e-9);
+            expect(got.y).toBeGreaterThanOrEqual(slotTop - 1e-9);
+            expect(bottom).toBeLessThanOrEqual(got.chromeY - CHROME_GAP + 1e-9);
+          }
+        }
+      }
+    });
   });
 
   it("ease — 전환 1/4 지점은 선형보다 덜 움직였다", () => {

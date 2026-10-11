@@ -181,7 +181,7 @@ type Five = [number, number, number, number, number];
 export type Frame = {
   /** 프레임 캔버스 폭 — 그릇 상태 사이를 보간한 값이고, 베젤 안 화면(목업 루트)의 레이아웃 폭은 여기서 베젤 8×2를 뺀 값이다 */
   canvasW: number;
-  /** 프레임 transform — 그릇 상태의 배율을 폭과 같은 t로 보간한 값 */
+  /** 프레임 transform — 보간된 그릇 폭(`canvasW`)으로 맞춘 배율 */
   scale: number;
   x: number;
   y: number;
@@ -215,21 +215,16 @@ export function frame(input: {
   reducedMotion: boolean;
 }): Frame {
   const { scrollTop, stageTop, W, H, chromeHeight, reducedMotion: reduced } = input;
-  const fits = STATE_CANVAS_W.map((canvasW) => fitScale({ W, H, chromeHeight, canvasW }));
-  // 캡션 자리·폭 상한·pinnable은 상태와 무관하다(`fitScale`) — 어느 상태의 값을 읽어도 같다.
-  const { chromeY, chromeW, pinnable } = fits[0] as Fit;
-
   const { i, f, t: rawT, h, device } = sceneAt(scrollTop, stageTop, H);
   // 모션 감소는 전환 한가운데에서 끊어 바꾼다 — 씬 교차도 그릇 폭도 중간 프레임이 0이고, 스크롤 길이는 그대로다.
   const snap = (v: number) => (reduced ? (v >= 0.5 ? 1 : 0) : v);
   const t = snap(rawT);
   const te = ease(t);
-  // ⚠️ 폭과 배율을 **같은 t로** 보간한다(MK1) — 배율을 보간된 폭으로 다시 맞추면 두 값이 따로 놀아 그릇이 출렁인다.
-  const ue = ease(snap(device.u));
-  const a = fits[device.from] as Fit;
-  const b = fits[device.to] as Fit;
-  const canvasW = lerp(STATE_CANVAS_W[device.from], STATE_CANVAS_W[device.to], ue);
-  const scale = lerp(a.scale, b.scale, ue);
+  // 폭은 ease로 보간하고 **배율·위치는 그 폭으로 다시 맞춘다**(#239). ⚠️ 끝점 배율을 같은 t로 따로 보간하지 않는다 — 폭에 묶인 D와
+  // 세로에 묶인 T·M 사이에서 `폭 × 배율`이 두 끝점보다 부풀어 프레임이 스크롤러를 넘었다(375×812 M→D에서 27px). 같은 식이라 끝점에서는
+  // 상태의 배율과 정확히 같고, `폭 × 배율 ≤ W − 2·side`가 모든 폭에서 성립한다. 캡션 자리·폭 상한·pinnable은 폭과 무관하다(`fitScale`).
+  const canvasW = lerp(STATE_CANVAS_W[device.from], STATE_CANVAS_W[device.to], ease(snap(device.u)));
+  const { scale, x, y, chromeY, chromeW, pinnable } = fitScale({ W, H, chromeHeight, canvasW });
   const five = (at: (k: number) => number): Five => [at(0), at(1), at(2), at(3), at(4)];
   // 마지막 씬은 다음이 없다 — `i + 1` = 5는 어느 레이어와도 같지 않아 ⑤ 하나만 남는다.
   const withCurrent = i === SCENES - 1 || f < CROSS[1];
@@ -238,9 +233,8 @@ export function frame(input: {
   return {
     canvasW,
     scale,
-    // x·y는 보간된 폭·배율에서 나온다 — 가로 가운데, 세로는 자리 안 가운데(y는 배율에 선형이라 두 상태의 y를 보간한 값과 같다).
-    x: (dim(W) - canvasW * scale) / 2,
-    y: lerp(a.y, b.y, ue),
+    x,
+    y,
     chromeY,
     chromeW,
     pinnable,
