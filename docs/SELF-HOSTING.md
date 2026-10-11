@@ -28,11 +28,11 @@
 
 | 항목 | 계약 |
 |---|---|
-| 이미지 발행 | **매 앱 태그 `v<x.y.z>`마다** `/merge` 9-b가 `ghcr.io/sinhyeokkang/malmoi:v<x.y.z>`(linux/amd64)를 발행한다. 이미지 태그 = 앱 태그, action 태그와 독립 |
+| 이미지 발행 | **매 앱 태그 `v<x.y.z>`마다** `.github/workflows/image.yml`이 `ghcr.io/sinhyeokkang/malmoi:v<x.y.z>`(linux/amd64)를 발행한다 — `/merge` 9단계의 Release `published` 이벤트가 깨우고(2026-10-12, image-publish-workflow), 로직은 `scripts/publish-image.sh` 하나다. `/merge` 9-b는 run 확인·digest 읽기·Release 본문의 `**Self-hosting image:**` 줄 기입만 한다. 이미지 태그 = 앱 태그, action 태그와 독립 |
 | 지원 대상 | 최신 앱 태그 하나. 창구는 GitHub Issues, best-effort(개발자 1명 — PRODUCT §0) |
 | 업그레이드 | 어느 과거 태그에서든 최신 이미지의 `prisma migrate deploy`가 남은 마이그레이션을 **한 번에 이어서** 적용한다 → §3의 마이그레이션 규칙 |
 | action 호환 | 서버는 발행된 action 태그(v1·v2·v3)의 `/api/push` 요청을 계속 받는다. 설치본은 자기 생성기가 낸 태그를 쓰므로 "구버전 서버 + 신버전 action"은 지원 범위 밖이다 |
-| 상시 게이트 | 컨테이너 CI는 두지 않는다 — hosted 전용 전제가 새로 들어오는 순간을 `pnpm test`가 잡는다(§4) |
+| 상시 게이트 | **머지 전 게이트로서의 컨테이너 CI는 두지 않는다**(push·PR마다 이미지 빌드 없음) — hosted 전용 전제가 새로 들어오는 순간을 `pnpm test`가 잡는다(§4). 이미지 발행 워크플로(`image.yml`)는 게이트가 아니라 **Release 뒤의 발행자**라 이 문장과 충돌하지 않는다 — 이미지 빌드 실패가 머지 뒤에야 드러나는 것은 그대로다 |
 | 운영자 개인정보 재료 | 가이드 `troubleshooting.md#stored-fields`(세 언어)는 `lib/privacy/collected.ts` 등재부와 필드 단위 일대일이다 — 자동 대조가 없으니 같은 커밋에서 손으로 고친다 |
 
 ## 3. 기능 개발 체크리스트
@@ -66,6 +66,9 @@
 | 백업 명령이 실패 뒤 계속 실행하거나 성공을 출력함(세 언어, sh·bash) | `pnpm test` — 외부 명령을 실패시키는 셸 회귀 | `lib/guide/__tests__/backup-shell.test.ts` |
 | 마이그레이션 뒤 런타임 롤 권한·bootstrap 멱등·PUBLIC USAGE | 격리 PG 스위트(`pnpm gate`가 `prisma/migrations/`·`deploy/` 변경에 붙인다) | `lib/__tests__/self-hosted-bootstrap.integration.ts` |
 | 인코딩 경로로 크롤 파일·`/privacy` 우회 | `pnpm test` | `lib/seo/__tests__/public-response.test.ts`·`lib/deployment/__tests__/preflight.test.ts` |
+| 발행 스크립트 — 존재 조회 3분기(not found만 빌드, 그 밖은 fail-closed)·태그 정규식·digest 대조·출력 계약(셸을 docker·git 대역으로 실행) | `pnpm test` | `scripts/__tests__/publish-image.test.ts` |
+| Release 본문의 이미지 줄 조립·멱등·exit 0/2/3 CLI(`/changelog` 변환 교차 확인 포함) | `pnpm test` | `scripts/__tests__/release-image-note.test.ts` |
+| 발행 워크플로 모양 — 최상위 `permissions: {}`·job `publish` 하나(`contents: read` + `packages: write`)·서드파티 action 없음·`run:` 본문에 `${{` 0개·`latest`/캐시/비밀 0 | `pnpm test` | `scripts/__tests__/image-workflow.test.ts` |
 
 **게이트가 못 보는 것**: 실제 이미지 빌드·기동·외부 OAuth 왕복. 이건 §7 실습이 든다.
 
@@ -81,12 +84,12 @@
 
 **운영자 절차의 정본은 공개 가이드다** — `guide/<언어>/self-hosting/`(= `https://mal-moi.com/docs/self-hosting`, en 원문 + ko·es): 지원 범위·hosted 비교·외부 앱 등록·설정 표(preflight 필수 항목)·Compose 설치·업데이트·백업·빈 볼륨 복원·키 회전·장애 진단(preflight 사유 코드)·운영자 개인정보 재료(수집 항목·쿠키·전송처·계정 삭제). **이 문서에 절차 사본을 두지 않는다** — 두 벌이면 한쪽이 틀린다. 범위·비범위의 정본은 PRODUCT §4.1·§4.2, DB 롤 계약은 ARCHITECTURE §7 "self-hosted DB"다. 이 절은 **상류 유지자가 다시 할 일**만 든다.
 
-- **이미지 발행 확인** — 매 앱 태그마다 `/merge` 9-b가 `ghcr.io/sinhyeokkang/malmoi:v<x.y.z>`를 발행한다. 끝나면 `docker buildx imagetools inspect ghcr.io/sinhyeokkang/malmoi:v<x.y.z>`의 digest가 리포트에 남긴 값과 같은지, 패키지 공개 범위가 Public인지(비로그인 `docker pull`이 되는지) 본다. 실패해도 머지·Release는 끝난 것이라 9-b만 손으로 다시 한다. 가이드의 설치 1단계가 이 digest로 고정하므로 **발행이 빠진 태그는 설치할 수 없는 릴리스다**.
+- **이미지 발행 확인** — 발행은 `image.yml`이 하고(`/merge` 9단계 Release가 방아쇠), `/merge` 9-b가 run을 기다려 패키지 API(`gh api --paginate …/versions`)로 digest를 읽고 Release 본문에 `**Self-hosting image:**` 줄을 기입한다. run summary의 `published <digest>`·패키지 digest·리포트 값이 같은지, 패키지 공개 범위가 Public인지(비로그인 `docker pull`이 되는지) 본다. run이 red면 `gh workflow run image.yml -f tag=v<x.y.z>`로 다시 돌린다(`mismatch`는 재실행 금지 — 두 digest를 적고 조사). 실패해도 머지·Release는 끝난 것이다. 가이드의 설치 1단계가 이 digest로 고정하므로 **발행이 빠진 태그는 설치할 수 없는 릴리스다**.
 - **복원 실습은 운영 스택이 없는 다른 호스트에서만** 한다 — compose 프로젝트명이 `malmoi`로 고정이라 같은 호스트에서는 운영 볼륨을 친다(가이드 `operate.md#restore`의 경고). 실습 결과는 아래 "셀프 호스팅 실습 기록" 표에 남긴다.
 - **가이드의 명령을 고치면 그 명령은 실측이 아니다** — 아래 표의 실측은 그 시점 명령 꼴의 것이다. 2026-10-09 B6c가 리뷰 결함을 고치며 바꾼 것(업데이트의 정지 유지 → migrate → 포트를 운영자 IP로 제한한 smoke → scheduler·포트 재개, 백업 manifest 명령, 계정 삭제의 `export PROJECT_IDS`·빈 값 처리, DB 비밀번호 psql의 `-X`)과, 그 뒤 리뷰로 다시 바꾼 백업 블록(subshell `set -eu` · `backup ok` 확인 · `pg_restore -l` 검증 · root 실행 전제)·업데이트 9단계의 `deploy/` 롤백은 **다음 실습에서 다시 밟는다**. 외부 OAuth·GitHub App·초대 메일·MCP 왕복(SH-03·04·05·07)도 아직 한 번도 실측하지 않았다 — 다음 실습에 폐기용 도메인·앱을 준비해 채운다.
 - **수집 항목 표 대조** — 가이드 `troubleshooting.md#stored-fields`(세 언어)는 `lib/privacy/collected.ts`의 등재부와 필드 단위로 일대일이다. 그 등재부가 바뀌는 커밋에서 세 언어 표를 함께 고친다(자동 게이트가 표를 대조하지 않는다).
 - **SH-11(이연)** — 두 번째 지원 릴리스에서 이전 릴리스 → 최신 업데이트를 실측하고 아래 표에 남긴다. 그 전까지 가이드는 "건너뛴 릴리스는 미검증"이라고 말한다.
-- **릴리스 머신 전제**: 9-b는 Docker(이 머신은 Colima vz+Rosetta — 재부팅 뒤 `colima start`)와 `ghcr.io` 로그인이 필요하다. 발행이 빠지면 그 태그는 설치할 수 없는 릴리스다.
+- **릴리스 머신 전제는 비상 경로에만 있다**: 정상 경로는 Docker·`ghcr.io` 로그인이 필요 없다(워크플로가 빌드·push한다). Actions 장애 때만 `/merge` 9-b의 비상 경로 단락대로 같은 `scripts/publish-image.sh`를 이 머신에서 돌리고, 그때는 Docker(이 머신은 Colima vz+Rosetta — 재부팅 뒤 `colima start`)와 `ghcr.io` 로그인이 필요하다. 머지 전 한 번, GHCR 패키지 `malmoi`의 *Manage Actions access*에 이 리포의 Write가 있어야 워크플로가 push할 수 있다. 발행이 빠지면 그 태그는 설치할 수 없는 릴리스다.
 
 ## 7. 셀프 호스팅 실습 기록
 
