@@ -18,3 +18,5 @@ Scope: the seven findings from the 2026-10-12 static audit. No new feature or pr
 ## Added user request — mobile landing chrome
 
 - [ ] M: Only mobile landing mockup removes toolbar and left dots; four equal 8px bezel insets. Desktop/tablet unchanged. Cover pinned/static, boundary roundtrips and all five scenes. Worker brief: brief-M.md.
+
+Implementation checkpoint: all original findings and added M implemented, independently reviewed and branch gates passed. Integrated Node 24 gate, dev CI and single runtime QA remain pending; do not mark overall complete.
