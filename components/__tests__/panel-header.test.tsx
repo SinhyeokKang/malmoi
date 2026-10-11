@@ -345,9 +345,9 @@ describe("PanelHeader — 640 미만 두 줄", () => {
   });
 
   /**
-   * **#227** — 한 줄일 때 제목은 묶음 전체가 아니라 **버튼 줄**(첫 36)과 가운데가 맞는다. 묶음 아래에 사유 줄(O10)이 붙으면 `items-center`는 제목을
-   * "버튼 + 사유 줄"의 가운데로 내려 버튼보다 12 아래에 세웠다(Home 1280·768 실측). 그래서 위에 붙이고, 제목 칸이 `min-h-9`·`items-center`라
-   * 버튼 줄 36 안에서 가운데다. 사유 줄이 없는 화면(묶음 = 36)은 위치가 같다.
+   * **#227** — 한 줄일 때 제목은 묶음 전체가 아니라 **버튼 줄**(첫 36)과 가운데가 맞는다. 묶음이 36보다 높아지는 폭·골격(묶음이 두 줄로 감길 때)에서
+   * `items-center`면 제목이 묶음 가운데로 내려간다. 그래서 위에 붙이고, 제목 칸이 `min-h-9`·`items-center`라 버튼 줄 36 안에서 가운데다 — 묶음 = 36이면
+   * 위치가 같다. (#227 당시 묶음을 높이던 사유 줄(O10)은 disabled-reasons-revert가 걷었다 — 맞춤은 그대로 둔다.)
    */
   it("넓으면 한 줄 — 위 맞춤(제목 36 = 버튼 줄) · 양 끝 · 버튼 묶음 정렬 복귀", () => {
     for (const cls of ["@min-form/panel-head:flex-row", "@min-form/panel-head:items-start", "@min-form/panel-head:justify-between", "@min-form/panel-head:[&>*+*]:self-auto"]) {

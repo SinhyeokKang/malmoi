@@ -298,7 +298,7 @@ export default async function ProjectHomePage({
             role={role}
             unsent={counts.toSend}
             paused={paused}
-            /* 꺼진 사유 줄 하나(responsive-app F7) — Sync·Publish가 같은 원인이라 같은 문장이다. 보관이 먼저, 끊김은 번역 화면과 같은 문장이다. */
+            /* 멈춘 원인 문장 — Sync·Publish가 같은 원인이라 같은 문장을 각자 `title` + 자기 sr-only로 든다. 보관이 먼저, 끊김은 번역 화면과 같은 문장이다. */
             pausedReason={archived ? `${m.home.banner.archived.title}.` : connectionReason(m, health.status, role) ?? undefined}
           />
         </div>
