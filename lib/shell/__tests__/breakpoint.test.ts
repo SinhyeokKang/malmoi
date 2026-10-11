@@ -4,12 +4,12 @@ import { dirname, join, relative } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { WIDE_QUERY } from "@/lib/shell/breakpoint";
+import { SM_QUERY, WIDE_QUERY } from "@/lib/shell/breakpoint";
 
 /**
- * **셸 경계는 뷰포트 `lg`(64rem) 하나다** (responsive-public design §2). CSS(`lg:`·`max-lg:`)가 배치를 정하고, JS는 세 자리 — 열린 서랍·Inbox 시트 정리 ·
- * 좁아지며 숨는 넓은 묶음의 포커스 이관(`useNarrowHandoff`) · Inbox 그릇 선택 — 에서만 같은 경계를 `matchMedia`로 묻는다. CSS와 JS가 갈리면 1024 근처에서
- * CSS는 좁은데 JS는 넓다고 읽어 서랍이 남거나 포커스가 숨은 링크에 남거나 Inbox가 틀린 그릇으로 열린다.
+ * **셸 경계는 뷰포트 `lg`(64rem) 하나다** (responsive-public design §2). CSS(`lg:`·`max-lg:`)가 배치를 정하고, JS는 같은 경계를 `matchMedia`로만 묻는다
+ * (자리 목록은 `lib/shell/breakpoint.ts` 머리 주석). CSS와 JS가 갈리면 1024 근처에서 CSS는 좁은데 JS는 넓다고 읽어 서랍이 남거나 포커스가 숨은 링크에
+ * 남거나 Inbox가 틀린 그릇으로 열린다. **예외 하나 — 공개 랜딩 목업의 그릇 선택만 `sm`(40rem)을 더 본다**(mockup-viewport-container).
  */
 const ROOT = process.cwd();
 const tailwindTheme = () => readFileSync(join(dirname(createRequire(join(ROOT, "package.json")).resolve("tailwindcss/package.json")), "theme.css"), "utf8");
@@ -19,6 +19,13 @@ describe("`lg` 쿼리", () => {
     const lg = /--breakpoint-lg:\s*([^;]+);/.exec(tailwindTheme())?.[1]?.trim();
     expect(lg).toBe("64rem");
     expect(WIDE_QUERY).toBe(`(min-width: ${lg})`);
+  });
+
+  it("`sm` 쿼리도 Tailwind `sm` 경계와 같은 문자열이다 — 랜딩 목업 그릇의 T/M 경계", () => {
+    const sm = /--breakpoint-sm:\s*([^;]+);/.exec(tailwindTheme())?.[1]?.trim();
+    expect(sm).toBe("40rem");
+    expect(SM_QUERY).toBe(`(min-width: ${sm})`);
+    expect(readFileSync(join(ROOT, "app/globals.css"), "utf8")).not.toMatch(/--breakpoint-sm\s*:/);
   });
 
   it("앱이 `lg` 경계를 덮지 않는다 — 덮으면 위 대조가 거짓이 된다", () => {
