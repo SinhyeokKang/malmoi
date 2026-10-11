@@ -9,7 +9,7 @@ Scope: the seven findings from the 2026-10-12 static audit. No new feature or pr
 - [ ] B / #4: Hand focused sidebar resize handle to the app navigation trigger when it becomes hidden. Preserve resize, collapse preferences and focus outside the handle.
 - [ ] C / #5: Recompute document heading positions when inline TOC disclosure changes height. Keep manual-scroll current section and click landing consistent for Docs and Privacy.
 - [ ] C / #6: Preserve TOC focus across the reading-container 960px boundary in both directions. Use actual container width, not viewport lg; do not steal unrelated focus or remount content.
-- [ ] D / #7: Align PRODUCT with DESIGN's final disabled-action reason decision (title + sr-only, visible-line removal).
+- [x] D / #7: Align PRODUCT with DESIGN's final disabled-action reason decision (title + sr-only, visible-line removal).
 - [ ] Independent review; route corrections to owning workers.
 - [ ] Integrated gate, documentation freshness, dev push and exact-head CI.
 - [ ] Single-worker runtime QA, corrections and recheck.

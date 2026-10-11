@@ -18,9 +18,9 @@ Coordinator owns briefs, reviews, integration, documentation and remote writes. 
 
 | Batch | Items | Owned source / tests | Dependencies | Gate | State |
 |---|---|---|---|---|---|
-| A | #1 | translations/workspace/workspace.tsx; compact-pane helper only if needed; translation-workspace compact tests | none | TDD scenario then pnpm gate --base dev | planned |
-| B | #2 #3 #4 | shell/sidebar.tsx, shell/shell-panels.tsx, narrow-handoff only if needed; logs/event-row.tsx and row-layout; home loading; focused tests | none | TDD behavior/CSS contracts then pnpm gate --base dev | planned |
-| C | #5 #6 | public-doc-toc.tsx; TOC tests, pure TOC helper only if necessary | none | TDD geometry/focus scenarios then pnpm gate --base dev | planned |
+| A | #1 | translations/workspace/workspace.tsx; compact-pane helper only if needed; translation-workspace compact tests | none | TDD scenario then pnpm gate --base dev | dispatched |
+| B | #2 #3 #4 | shell/sidebar.tsx, shell/shell-panels.tsx, narrow-handoff only if needed; logs/event-row.tsx and row-layout; home loading; focused tests | none | TDD behavior/CSS contracts then pnpm gate --base dev | dispatched |
+| C | #5 #6 | public-doc-toc.tsx; TOC tests, pure TOC helper only if necessary | none | TDD geometry/focus scenarios then pnpm gate --base dev | dispatched |
 | D | #7 and final freshness | PRODUCT; DESIGN/ARCHITECTURE/DIRECTORY as required; POSTMORTEM after implementation | implementation conclusions | doc-specific commits + integrated gate | planned |
 | R | independent review A/B/C | report only | each implementation | inspect commits, claims and regression gaps | planned |
 | Q | runtime regression | no product-code edits; main checkout only | all integrated and gate complete | ego-browser actual geometry/focus, single worker | planned |
@@ -38,4 +38,11 @@ Source intersections A∩B, A∩C, B∩C: none. Shared docs are coordinator-owne
 
 ## Execution evidence
 
-Pending.
+- Run: `run_fb68836a43f9`.
+- A Task `task_15b451b33a95`, Dispatch `ctx_096747b61a28`, branch `SinhyeokKang/responsive-132-a`.
+- B Task `task_1f81624ba6c9`, Dispatch `ctx_1b700a48a7ed`, branch `SinhyeokKang/responsive-132-b`.
+- C Task `task_2b9d22cf29b0`, Dispatch `ctx_e3764da9f819`, branch `SinhyeokKang/responsive-132-c`.
+- All launch receipts: ready/input_accepted, turnStart observed. Codex default inherited; projections A/C confirm gpt-6-astra, managed CODEX_HOME config confirms gpt-6-astra / medium with no launch override; workers notified.
+- D/#7: PRODUCT correction committed `59603c0c`; validation included in final gate.
+- Remote dev fetched before implementation: baseline unchanged, no concurrent remote commits.
+
