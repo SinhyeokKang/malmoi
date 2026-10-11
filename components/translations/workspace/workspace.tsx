@@ -435,7 +435,10 @@ export function TranslationWorkspace(props: WorkspaceProps) {
     else if (plan.action === "confirm") setDialog({ kind: "publish", locales: plan.locales });
   }
   const withQuery = (next: TranslationQuery, surface = view.surface) => translationsHref(slug, surface, next);
-  useLeaveGuard(dirty.length > 0, proceed => setDialog({ kind: "discard", locales: dirty, proceed: discardThen(proceed) }));
+  useLeaveGuard(dirty.length > 0, proceed => setDialog({ kind: "discard", locales: dirty, proceed: discardThen(proceed) }), () => {
+    // 키가 같아도 승인된 검색·Inbox·history 이동은 새 의도다. 취소한 이동은 표식을 유지한다.
+    ownSelection.current = null;
+  });
 
   /*
     ⚠️ **다음 주소는 낙관값(`view`) 위에 쌓는다** (U3 리뷰 r1) — 트리거가 누른 값으로 먼저 서서 사용자는 응답 전에 다음 축을 고른다.
