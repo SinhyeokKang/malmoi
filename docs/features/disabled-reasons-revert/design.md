@@ -14,7 +14,7 @@ F7(`69844b74`)·O19(`def752f0`)가 바꾼 것을 되돌리되, 그 뒤에 들어
 |---|---|---|
 | `components/publish-button.tsx` | `publishReason()` export · `reasonId` prop · 버튼에 sr-only 없음 | `pausedReason` prop · 내부 `planPublishButton` · `<span title={hint}>` + 버튼 `aria-describedby` → 자기 `useId()` sr-only. `publishReason()`은 소비자 0이 되면 삭제 |
 | `components/home/sync-button.tsx` | `reasonId` prop | `pausedReason` prop · `title={pausedText}` + 자기 sr-only(`pausedReason ?? m.repositorySync.paused`) |
-| `components/translations/workspace/workspace.tsx` | `useDisabledReasons` + `<DisabledReasons>` · 버튼에 `reasonId` | 버튼에 사유 문장을 prop으로(`pausedReason`). 줄 렌더 없음 |
+| `components/translations/workspace/workspace.tsx` | `useDisabledReasons` + `<DisabledReasons>` · 버튼에 `reasonId` | OWNER `SyncButton`·`PublishButton`에 사유 문장을 prop으로(`pausedReason`). **EDITOR용 인라인 [Sync]**(지금 줄을 가리킨다)는 F7 이전처럼 `title={w.sync.ownerOnly}` + 자기 sr-only. 줄 렌더 없음. ⚠️ 같은 파일의 **Revert·Save 푸터 사유 칸은 건드리지 않는다**(responsive 이전부터 있던 보이는 사유) |
 | `components/home/actions.tsx` | `useDisabledReasons` · `<DisabledReasons>` · `reasonScope`(O19) · [Try again] → `disabledReasonId` | 버튼에 사유 prop · `reasonScope` 걷음 · [Try again]은 `title={retryBlock}` + 자기 sr-only(`useId`) |
 | `components/translations/edit-loss-banner.tsx` | `publishBlocked?: boolean` · 사유 안 이음 | `blockedReason?: string \| null` · `paused(count)` 뒤에 ` {blockedReason}` · `blockedReason !== null`이면 [Send with Publish] 없음(malmoi#160) |
 | `components/ui/disabled-reasons.tsx` | 프리미티브 | **삭제**(소비자 0 — CLAUDE.md "내 변경이 만든 고아만 제거") |
@@ -27,6 +27,7 @@ F7(`69844b74`)·O19(`def752f0`)가 바꾼 것을 되돌리되, 그 뒤에 들어
 
 새 순수 함수 없음(삭제·이동 변경). 판정 `planPublishButton`(`lib/publish/plan.ts`)은 무변경이고 기존 테스트가 든다. 테스트로 고정할 계약:
 - **사유 줄 0**: 번역 화면·Home 머리 렌더에서 사유 줄 요소(옛 `data-disabled-reasons` 등 프리미티브 표지)가 없다 — 미전달 0·끊김·보관·EDITOR·진행 중·잠금 각 상태.
+- ⚠️ **responsive 이전 사유의 기존 단언은 유지한다** — `a11y-reasons.test.tsx`의 Add sources `manualReason`이 보이는 글자라는 단언(sr-only 금지) 등은 그대로다. F7이 바꾼 단언(pausedText·plan.hint·retryBlock의 "title·sr-only 없음")만 되돌린다.
 - **describedby 대상이 자기 sr-only**: 꺼진 [Sync]·[Publish]·[Try again]의 `aria-describedby`가 가리키는 요소가 존재하고 `sr-only`이며 문장이 판정과 같다. `title`이 같은 문장이다(`a11y-reasons.test.tsx` — F7 이전 단언을 되살린다).
 - **EditLossBanner**: `blockedReason`이 있으면 문장 뒤에 이어 붙고 [Send with Publish]가 없다, 없으면 액션이 선다(malmoi#160 회귀).
 - **목업**: 사유 줄 사본 0, 기존 "목업 DOM 뷰포트 토큰 0"·인터랙티브 0 유지.
@@ -41,7 +42,7 @@ F7(`69844b74`)·O19(`def752f0`)가 바꾼 것을 되돌리되, 그 뒤에 들어
 
 ## 5. 정본·문서
 
-- DESIGN §7 "꺼진 컨트롤의 사유" — 뒤집는다: 앱 머리의 꺼진 [Sync]·[Publish]·Home [Try again]은 `title` + sr-only(2026-10-11 사용자 번복, F7·O10·O19 폐기). 터치에서 이유가 안 보이는 대가를 받는다. 행 안 글자·OAuth 상태 슬롯 규칙은 유지.
+- DESIGN §7 "꺼진 컨트롤의 사유" — **머리 줄 부분만** 뒤집는다: 번역 화면·Home 머리의 꺼진 [Sync]·[Publish]와 Home [Try again]은 `title` + sr-only(2026-10-11 사용자 번복, F7·O10·O19 폐기, 터치에서 이유가 안 보이는 대가를 받는다). 같은 항목의 나머지 — 행 안 사유 글자(Add sources·워크플로 행), OAuth 동의 상태 슬롯, "사유는 꺼진 동안만 서고 막은 갈래를 말한다"(malmoi#93) — 는 그대로 둔다.
 - DESIGN §6.4 `DisabledReasons` 행 삭제 · §5.15 `PANEL_HEAD_ROW` 행의 "버튼 아래 사유 줄(§7)은 정렬에 끼지 않는다" · §6.5 번역 머리 · Home 행 "미전달 0이면 `Nothing to send`가 늘 선다(O10)"·O19 문장 · §6.615 목업 사유 줄 언급(있으면).
 - DIRECTORY `ui/disabled-reasons.tsx` 줄 삭제. CLAUDE.md 프리미티브 개수(→ `pnpm sync:agents`).
 - 가이드: 원고 문장은 영향 없을 것(확인), 컷은 `pnpm guide:check` stale 결과대로(`translation-editor`·`project-home`·`home-publish`·`home-paused` 후보).
