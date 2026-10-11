@@ -257,17 +257,17 @@ describe("존재 조회 3분기", () => {
   });
 
   it.each([
-    ["403", "forbidden"],
-    ["네트워크", "network"],
-    ["exit 127 (command not found)", "missing-cmd"],
-    ["not found 뒤에 줄이 더 있음", "not-found-plus"],
-    ["다른 ref의 not found", "not-found-other"],
-  ])("%s → fail-closed: exit 1, build 0, stderr 그대로", (_, mode) => {
+    ["403", "forbidden", "403 Forbidden"],
+    ["네트워크", "network", "no such host"],
+    ["exit 127 (command not found)", "missing-cmd", "buildx: command not found"],
+    ["not found 뒤에 줄이 더 있음", "not-found-plus", "ERROR: retry later"],
+    ["다른 ref의 not found", "not-found-other", "malmoi:v9.9.9: not found"],
+  ])("%s → fail-closed: exit 1, build 0, stderr 그대로", (_, mode, passthrough) => {
     const r = run(["v1.3.3"], { inspect: mode });
     expect(r.status, r.stderr).toBe(1);
     expect(r.stdout).toBe("");
     expect(r.calls).toEqual([REV_PARSE, CAT_FILE, INSPECT]);
-    expect(r.stderr).toContain("ERROR");
+    expect(r.stderr).toContain(passthrough);
     expect(r.output ?? "").not.toContain("digest=");
   });
 });
