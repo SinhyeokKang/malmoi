@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { act } from "react";
+import { readFileSync } from "node:fs";
 import { Dialog } from "radix-ui";
 import { describe, expect, it, vi } from "vitest";
 
@@ -8,6 +9,10 @@ import { parseLogFilter } from "@/lib/events/filter";
 import { EventDetail } from "@/components/logs/event-detail";
 import { EventRow } from "@/components/logs/event-row";
 import type { EventRow as Row } from "@/lib/events/query";
+import { ko } from "@/messages/ko";
+import { es } from "@/messages/es";
+import { relativeTime } from "@/lib/relative-time";
+import { eventView } from "@/lib/events/view";
 import { en } from "@/messages/en";
 import { render } from "./helpers/dom";
 
@@ -351,4 +356,37 @@ describe("이벤트 행의 시각", () => {
     expect(time.className).toContain("shrink-0");
     expect(time.className).not.toContain("w-12");
   });
+});
+
+
+/** CSS 계약만 검사한다 — 실제 줄 폭/겹침은 브라우저 QA가 잰다. */
+it.each([["en", en], ["ko", ko], ["es", es]] as const)("Home 로그는 %s의 결과·경고·긴 상대시각을 문장 아래로 감싼다", async (uiLocale, m) => {
+  const value = row({ result: "partial", occurredAt: new Date("2025-01-01T00:00:00Z"), run: { changed: 1, changedValues: 1, warnings: 123, withheld: 0, prUrl: null, errorCode: null } });
+  const state = eventView(m, { kind: value.kind, result: value.result, warnings: 123, errorCode: null });
+  for (const showTime of [false, true]) {
+    const { container } = await render(<EventRow row={value} href="/logs" now={now} archived={false} showTime={showTime} style={{ uiLocale, timeZone: "UTC" }} m={m} />, { uiLocale });
+    const link = container.querySelector("a")!;
+    const result = link.children[showTime ? 3 : 2]!;
+    expect(result.textContent).toContain(m.logs.status.partial);
+    expect(result.textContent).toContain(state.warningsLabel);
+    if (showTime) {
+      expect(result.classList.contains("w-[172px]")).toBe(true);
+      expect(link.lastElementChild?.classList.contains("@max-form:row-start-2")).toBe(true);
+    } else {
+      expect(result.textContent).toContain(relativeTime(value.occurredAt, now, uiLocale));
+      expect(link.classList.contains("@max-form:grid")).toBe(true);
+      expect(result.classList.contains("@max-form:col-start-2")).toBe(true);
+      expect(result.classList.contains("@max-form:flex-wrap")).toBe(true);
+      expect(result.classList.contains("@max-form:min-w-0")).toBe(true);
+      expect(link.lastElementChild?.classList.contains("@max-form:row-start-1")).toBe(true);
+      expect(container.querySelector("time")).toBeNull();
+    }
+  }
+});
+
+
+it("Home 로그 골격은 실물의 카드 경계와 좁은 행 배치를 공유한다", () => {
+  const loading = readFileSync("app/(edit)/projects/[slug]/(home)/loading.tsx", "utf8");
+  for (const token of ["HOME_LOG_ROW_STACK", "HOME_LOG_RESULT_STACK", "HOME_LOG_CHEVRON_STACK"]) expect(loading).toContain(token);
+  expect(loading).toContain("@container");
 });

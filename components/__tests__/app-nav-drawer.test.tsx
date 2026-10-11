@@ -468,3 +468,53 @@ describe("좁아지며 숨는 고정 LNB의 포커스 (useNarrowHandoff)", () =>
     expect(document.activeElement).toBe(counter);
   });
 });
+
+
+describe("리사이즈 핸들의 좁은 폭 포커스 이관", () => {
+  beforeEach(() => { stubMedia(true); });
+  const handle = () => document.querySelector<HTMLElement>('[role="separator"]')!;
+
+  it.each([false, true])("핸들 포커스 → 좁힘은 메뉴로 간다 (Chrome fixup=%s)", async (fixup) => {
+    await mount();
+    await act(async () => { handle().focus(); });
+    expect(document.activeElement).toBe(handle());
+    if (fixup) Object.defineProperty(document, "activeElement", { configurable: true, get: () => document.body });
+    try { await media.set(false); }
+    finally { if (fixup) Reflect.deleteProperty(document, "activeElement"); }
+    expect(document.activeElement).toBe(menuButton());
+    expect(document.cookie).not.toContain("malmoi-sidebar-collapsed");
+    await media.set(true);
+    expect(document.activeElement).toBe(menuButton());
+  });
+
+  it("핸들에서 본문으로 떠난 뒤 좁혀도 본문 포커스를 뺏지 않는다", async () => {
+    await mount();
+    const counter = document.querySelector<HTMLButtonElement>("[data-counter]")!;
+    await act(async () => { handle().focus(); counter.focus(); });
+    await media.set(false);
+    expect(document.activeElement).toBe(counter);
+  });
+
+  it("핸들에서 빈 곳으로 blur한 뒤 좁혀도 메뉴를 선택하지 않는다", async () => {
+    await mount();
+    await act(async () => { handle().focus(); handle().blur(); });
+    await media.set(false);
+    expect(document.activeElement).toBe(document.body);
+  });
+});
+
+it("200자 공백 없는 프로젝트 이름은 서랍에서 감기고 고정 LNB에서는 잘린다", async () => {
+  const name = "W".repeat(200);
+  const projects = [project("beta", { name })];
+  for (const pathname of ["/projects/beta", "/inbox"]) {
+    path.value = pathname;
+    const view = await render(<><Sidebar memberships={projects} userName="Kim" /><Sidebar memberships={projects} userName="Kim" drawer /></>);
+    const labels = [...view.container.querySelectorAll("span")].filter(node => node.textContent === name && node.children.length === 0);
+    expect(labels).toHaveLength(2);
+    expect(labels[0]!.classList.contains("truncate")).toBe(true);
+    expect(labels[1]!.classList.contains("truncate")).toBe(false);
+    expect(labels[1]!.classList.contains("wrap-anywhere")).toBe(true);
+    expect(labels[1]!.textContent).toHaveLength(200);
+    await view.rerender(null);
+  }
+});
