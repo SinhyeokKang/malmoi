@@ -186,23 +186,27 @@ git ls-remote --tags origin v<next>                # squash SHA여야 한다
 
 매 앱 태그마다 GHCR 공개 레지스트리에 이미지를 발행한다 — 셀프 호스팅 설치가 고정하는 단위가 이 이미지다(docs/SELF-HOSTING.md). **태그 = 앱 태그 `v<next>` 그대로**(`ghcr.io/sinhyeokkang/malmoi:v<next>`)이고 **action 태그(`malmoi-i18n-push-vN`)와 독립이다** — 앱 버전이 올라도 action 태그는 안 움직이고, 이미지 태그는 action 계약이 아니다. `latest` 태그는 만들지 않는다(설치는 태그나 digest로 고정한다).
 
-**전제(이 머신에 있어야 한다)**: Docker(buildx)와 `ghcr.io` 로그인 — `write:packages` 권한의 토큰으로 `docker login ghcr.io -u <user> --password-stdin`(토큰을 인자로 주지 않는다 — 셸 이력·`ps`에 남는다). 발행 머신이 arm64(Apple Silicon)면 `linux/amd64` 빌드가 **에뮬레이션**으로 돈다 — 이 머신은 Colima `vz` + Rosetta(`colima start --vm-type vz --vz-rosetta`)를 쓴다. 에뮬레이션이 없으면 `exec format error`로 실패하고, 있어도 `pnpm install`·`next build`가 느리다. 전제가 없으면 이 단계는 실패로 처리한다(아래).
+**전제(이 머신에 있어야 한다)**: Docker(buildx)와 `ghcr.io` 로그인. **따로 발급한 PAT가 필요 없다** — gh CLI의 리포 소유자 계정(`SinhyeokKang`) 토큰이 `write:packages` 스코프를 가지므로 그 토큰을 stdin으로 넘긴다(아래 블록 첫 줄, 2026-10-12). `gh auth status`로 스코프를 확인한다 — 같은 머신의 다른 gh 계정은 그 스코프가 없을 수 있어 `-u`로 계정을 고정한다. 토큰을 인자로 주지 않는다(셸 이력·`ps`에 남는다). ⚠️ **docker 설정에 credential helper가 없어 로그인은 토큰을 `~/.docker/config.json`에 평문으로 남긴다** — 블록 끝의 `docker logout`까지가 이 단계다. 로그인 없이 push하면 빌드가 다 끝난 뒤 `failed to fetch anonymous token … 403 Forbidden`으로 떨어진다(2026-10-12 v1.3.3 실측). 발행 머신이 arm64(Apple Silicon)면 `linux/amd64` 빌드가 **에뮬레이션**으로 돈다 — 이 머신은 Colima `vz` + Rosetta(`colima start --vm-type vz --vz-rosetta`)를 쓴다. 에뮬레이션이 없으면 `exec format error`로 실패하고, 있어도 `pnpm install`·`next build`가 느리다. 전제가 없으면 이 단계는 실패로 처리한다(아래).
 
 **순서: 먼저 태그가 이미 있는지 확인하고, 없을 때만 빌드·push한다.**
 
 ```
+git fetch origin                                                          # squash 커밋이 로컬에 있어야 git archive가 된다
+gh auth token -u SinhyeokKang | docker login ghcr.io -u SinhyeokKang --password-stdin
 docker buildx imagetools inspect ghcr.io/sinhyeokkang/malmoi:v<next>      # 성공하면 이미 있다 → 아래 빌드·push를 하지 않고 그 Digest를 리포트에 적는다. 실패(not found)일 때만 계속
 git archive <squash SHA> | docker buildx build --platform linux/amd64 --push \
   -t ghcr.io/sinhyeokkang/malmoi:v<next> --metadata-file .scratch/image-v<next>.json -
 docker buildx imagetools inspect ghcr.io/sinhyeokkang/malmoi:v<next>      # Digest가 metadata의 containerimage.digest와 같아야 한다
+docker logout ghcr.io                                                     # 성공·실패와 무관하게 — 평문 토큰을 남기지 않는다
 ```
 
-- **빌드 입력은 8단계의 squash SHA다** — 작업 트리가 아니다. `git archive`가 그 커밋의 추적 파일만 context로 만들고(`.env*`·로컬 상태가 딸려가지 않는다) `.dockerignore`가 나머지를 뺀다. 10단계의 `reset --hard`와 순서가 엇갈려도 안전하다.
+- **빌드 입력은 8단계의 squash SHA다** — 작업 트리가 아니다. `git archive`가 그 커밋의 추적 파일만 context로 만들고(`.env*`·로컬 상태가 딸려가지 않는다) `.dockerignore`가 나머지를 뺀다. 10단계의 `reset --hard`와 순서가 엇갈려도 안전하다. ⚠️ **squash 커밋은 GitHub이 만든 것이라 fetch 전엔 로컬에 없다** — 그대로 `git archive`하면 `not a tree object`로 죽고 docker는 빈 context로 `no local sources enabled`를 낸다(2026-10-12 실측 — 오류가 원인을 안 가리킨다). 블록 첫 줄의 fetch가 그 이유다.
 - **`--platform linux/amd64`** — sharp·Prisma 엔진이 빌드 플랫폼 바이너리를 받으므로 빌드·실행 플랫폼이 같아야 한다. 비밀을 빌드에 넣지 않는다(`--build-arg`·`--secret` 없음) — `pnpm build`가 env 없이 끝나는 이미지다.
 - **digest를 기록한다** — `.scratch/image-v<next>.json`의 `containerimage.digest`(`sha256:…`)를 리포트에 싣는다. 설치 문서는 태그 대신 `@sha256` digest로 고정하는 것을 권한다.
 - ⚠️ **첫 발행(패키지가 없을 때)은 GHCR이 비공개로 만든다.** GitHub의 패키지 설정에서 한 번 Public으로 바꾼 뒤 로그아웃 상태에서 `docker pull ghcr.io/sinhyeokkang/malmoi:v<next>`가 되는지 본다. 그 뒤 태그는 같은 패키지에 쌓인다.
 - ⚠️ **이미 발행된 태그를 덮지 않는다.** 같은 소스를 다시 빌드해도 digest가 달라질 수 있어 설치가 가리키던 이미지가 조용히 바뀐다 — 그래서 위 블록의 확인이 build·push **앞**에 있다. 손 재실행도 같은 순서다. 잘못 올렸으면 다음 버전으로 고친다(앱 태그와 같은 규칙).
 - ⚠️ **실패해도 10단계로 간다** — 머지와 9단계 Release는 끝났다. 리포트에 위 명령을 **SHA를 채운 그대로** 남기고 손으로 재실행한다. `/merge`를 다시 부르지 않는다(9단계와 같은 처리).
+- ⚠️ **빠진 태그가 없는지 본다** — v1.3.2는 이 단계를 건너뛴 채 머지돼 2026-10-12에 뒤늦게 발행했다. `gh api "/users/SinhyeokKang/packages/container/malmoi/versions" --jq '.[].metadata.container.tags'`의 태그 목록과 `Dockerfile`이 있는 앱 태그(v1.3.0부터)를 대조하고, 빠진 태그는 **그 태그의 커밋**(`git rev-list -n1 v<x.y.z>`)으로 같은 블록을 돌린다. 없는 태그를 채우는 것이라 덮어쓰기 금지에 걸리지 않는다.
 
 ### 10. dev 동기화 — **`/sync`와 같은 안전 절차를 쓴다**
 
@@ -250,7 +254,7 @@ PR: #<n> (<url>) — 신규/재사용
 PR CI: success   ← 프로덕션 앞의 게이트
 머지: squash <해시> — "v<next>: <summary> (#<n>)"
 릴리스: <release url> (태그 v<next> = <squash SHA>) / ⚠️ 실패 — 재실행: gh release create v<next> --target <SHA> --title v<next> --notes-file .scratch/release-v<next>.md --latest
-이미지: ghcr.io/sinhyeokkang/malmoi:v<next> @<sha256 digest> / ⚠️ 실패(<사유>) — 재실행: 먼저 `docker buildx imagetools inspect ghcr.io/sinhyeokkang/malmoi:v<next>`(있으면 중단), 없을 때만 `git archive <SHA> | docker buildx build --platform linux/amd64 --push -t ghcr.io/sinhyeokkang/malmoi:v<next> --metadata-file .scratch/image-v<next>.json -`
+이미지: ghcr.io/sinhyeokkang/malmoi:v<next> @<sha256 digest> / ⚠️ 실패(<사유>) — 재실행: 9-b 블록을 그대로(fetch → gh 토큰 login → `docker buildx imagetools inspect ghcr.io/sinhyeokkang/malmoi:v<next>`(있으면 중단), 없을 때만 `git archive <SHA> | docker buildx build --platform linux/amd64 --push -t ghcr.io/sinhyeokkang/malmoi:v<next> --metadata-file .scratch/image-v<next>.json -` → logout)
 composite action: 변경 없음 / 변경 포함 — 소비자는 @malmoi-i18n-push-v1 그대로, **태그 이동 대기 중**
 dev 동기화: fetch→검사→reset→lease push 완료 / ⚠️ 보류(<사유>)
 프로덕션 배포: Vercel이 진행 중 — 결과는 <확인 경로>에서 확인
