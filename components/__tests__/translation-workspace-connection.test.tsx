@@ -10,6 +10,17 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: 
 vi.mock("@/app/(edit)/actions", () => ({ saveTranslationKey: vi.fn(), previewTranslationRevert: vi.fn(), revertTranslationKey: vi.fn(), triggerPullAction: vi.fn() }));
 vi.mock("@/app/(edit)/projects/actions", () => ({ runRepositoryImport: vi.fn(), checkOpenPullRequest: vi.fn(), prepareRepositorySync: vi.fn() }));
 vi.mock("@/app/(edit)/publish-actions", () => ({ loadPublishPreview: vi.fn() }));
+// Publish 진행 중 상태를 세우는 스위치 — 꺼져 있으면 실물 `usePublish`다(translation-workspace-lock.test.tsx와 같은 형).
+const publishing = vi.hoisted(() => ({ value: false }));
+vi.mock("@/components/publish-button", async (importActual) => {
+  const actual = await importActual<typeof import("@/components/publish-button")>();
+  return {
+    ...actual,
+    usePublish: (...args: Parameters<typeof actual.usePublish>) => publishing.value
+      ? { ...actual.usePublish(...args), pending: true }
+      : actual.usePublish(...args),
+  };
+});
 
 import { TranslationWorkspace } from "@/components/translations/workspace/workspace";
 import type { ConnectionHealth } from "@/lib/github-connect/health";
@@ -36,6 +47,8 @@ const off = (button: HTMLButtonElement | undefined) => button?.getAttribute("ari
  * `title`은 [Sync]면 버튼, [Publish]면 감싼 `<span>`이 든다 — 둘 다 같은 문장이다.
  */
 const reasonOf = (button: HTMLButtonElement | undefined) => {
+  // 설명 대상은 id 하나다 — 같은 문장을 두 대상이 겹쳐 들면 두 번 읽힌다(호출부가 문장을 `toBe`로 견준다).
+  expect((button?.getAttribute("aria-describedby") ?? "").split(" ")).toHaveLength(1);
   const node = document.getElementById(button?.getAttribute("aria-describedby") ?? "");
   expect(node?.classList.contains("sr-only")).toBe(true);
   expect(button?.closest("[title]")?.getAttribute("title")).toBe(node?.textContent);
@@ -104,6 +117,22 @@ describe("첫 렌더 — DB 판정", () => {
     const disabled = Object.values(buttons(container)).filter(off);
     expect(disabled.length).toBeGreaterThan(0);
     for (const button of disabled) expect(visible(head, reasonOf(button)!)).toHaveLength(0);
+  });
+
+  /** **Publish 진행 중**(R-01) — [Sync]는 `waitPublish`를 `title` + 자기 sr-only로 들고 머리에 보이는 문장이 없다. */
+  it("Publish 진행 중 — [Sync] 사유는 waitPublish이고 머리에 보이는 사유 줄이 없다", async () => {
+    publishing.value = true;
+    try {
+      const { container } = await render(<TranslationWorkspace {...props()} />);
+      const { sync } = buttons(container);
+      expect(off(sync)).toBe(true);
+      expect(reasonOf(sync)).toBe(en.repositorySync.waitPublish);
+      expect(container.querySelector("[data-disabled-reasons]")).toBeNull();
+      const head = container.querySelector("h1")!.closest<HTMLElement>("[class*='@container/wshead']")!;
+      expect(visible(head, en.repositorySync.waitPublish)).toHaveLength(0);
+    } finally {
+      publishing.value = false;
+    }
   });
 
   it("연결되면 보류 배너가 Send with Publish를 든다", async () => {

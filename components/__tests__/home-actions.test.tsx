@@ -366,6 +366,8 @@ it("포커스 없이 배너 [Try again]으로 연 Sync를 Cancel로 닫으면 �
 
 /** 꺼진 버튼의 사유 — 자기 sr-only 문장이고 `title`(버튼이나 감싼 `<span>`)이 같은 문장이다(F7 이전 형 — disabled-reasons-revert R-02). */
 function reasonOf(node: Element) {
+  // 설명 대상은 id 하나다 — 같은 문장을 두 대상이 겹쳐 들면 두 번 읽힌다(그래서 아래 호출부가 문장을 `toBe`로 견준다).
+  expect((node.getAttribute("aria-describedby") ?? "").split(" ")).toHaveLength(1);
   const target = document.getElementById(node.getAttribute("aria-describedby") ?? "");
   expect(target?.classList.contains("sr-only")).toBe(true);
   expect(node.closest("[title]")?.getAttribute("title")).toBe(target?.textContent);
@@ -407,4 +409,20 @@ it("lease로 멈춘 [Try again]은 title + 자기 sr-only를 들고 보이는 �
   expect(retry.getAttribute("aria-describedby")).not.toBe(button("Sync").getAttribute("aria-describedby"));
   expect(document.querySelector("[data-disabled-reasons]")).toBeNull();
   expect(visible(en.repositorySync.running)).toHaveLength(0);
+});
+
+/** **Publish 진행 중**도 같은 형이다 (disabled-reasons-revert R-01) — [Sync]는 `waitPublish`를 `title` + 자기 sr-only로 들고 보이는 문장은 0이다. */
+it("Publish가 도는 동안 멈춘 [Sync]는 waitPublish를 title + 자기 sr-only로 들고 보이는 사유 줄이 없다", async () => {
+  const pull = deferred<{ status: "skipped"; reason: "no-edits" }>();
+  mocks.pull.mockReturnValue(pull.promise);
+  // 모달은 본문(`HomeNotices`)이 든다 — 실제 Home 배치(`Host`)로 Publish를 연다. 배너의 [Try again]도 같은 잠금이라 머리 [Sync]만 본다.
+  await render(<HomeActions slug="acme" writeLock={null}><Host state="default" /></HomeActions>);
+  await click("Publish");
+  await click("Open pull request");
+  await act(async () => { (document.querySelector('button[aria-label="Close"]') as HTMLButtonElement).click(); });
+  expect(button("Publish").getAttribute("aria-busy")).toBe("true");
+  expect(reasonOf(button("Sync"))).toBe(en.repositorySync.waitPublish);
+  expect(document.querySelector("[data-disabled-reasons]")).toBeNull();
+  expect(visible(en.repositorySync.waitPublish)).toHaveLength(0);
+  await act(async () => { pull.resolve({ status: "skipped", reason: "no-edits" }); await pull.promise; });
 });
