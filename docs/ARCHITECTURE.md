@@ -3069,7 +3069,7 @@ SSR 조회를 클라이언트로 옮기지 않으며, 스키마·env·쿠키·Ro
   ⚠️ 트리거의 `aria-haspopup`은 Radix의 `menu` 그대로다 — 렌더가 폭을 모르므로 바꾸지 않는다(알려진 한계, DESIGN §6.545). `aria-expanded`는 트리거가 두 그릇의 열림을 함께 말한다.
 - **큰 모달 규칙은 그릇 상수 한 곳이다** — `LARGE_MODAL_OVERLAY`·`LARGE_MODAL_PANEL`(`components/ui/large-modal.tsx`)의 `max-lg:` 토큰이 `LargeModal` 소비자 전부와 `CommandDialog`, 그리고 패널 상수만 쓰는 이력 상세(`components/logs/event-dialog.tsx` — 머리는 자기 것이고 `max-lg:` 아래에서 같은 머리 56 형을 손으로 맞춘다, DESIGN §6.4)를
   `lg` 미만 시트로 만든다. 앱 모달도 코드 변경 없이 받는다(포털은 뷰포트를 따른다 — 앱 셸 하한이 남아 있던 2026-10-10에도 시트였다). `lg` 이상 문자열은 바이트 불변이고(`large-modal-sheet.test.tsx`),
-  ⚠️ 랜딩 목업(`components/landing/mockup/publish.tsx`)은 상수를 import하지 않고 값을 복사한다 — 데스크톱 캔버스의 축소 복제라 시트가 되면 안 된다(`landing-mockup.test.tsx`).
+  ⚠️ 랜딩 목업(`components/landing/mockup/publish.tsx`)은 상수를 import하지 않고 값을 복사한다 — 뷰포트가 아니라 **목업 루트 폭**으로 시트가 되어야 해서 `max-lg:` 토큰을 `@max-[64rem]/mockup:`으로 옮긴 사본이다(2026-10-11 responsive-mockup, DESIGN §6.615 "목업 루트 컨테이너" · 뷰포트 토큰 0은 `landing-mockup.test.tsx`).
 - **소프트 키보드** — 셸 밖 골격과 LargeModal 시트의 한정 높이는 `dvh`이고 바닥 행동은 스크롤 영역 밖(또는 sticky)이다. ⚠️ **`dvh`만으로는 키보드를 따르지 않는다** —
   `dvh`가 따르는 것은 브라우저 툴바이고, 키보드가 레이아웃 뷰포트를 줄이게 하는 것은 루트 `viewport`의 **`interactiveWidget: "resizes-content"`**(`app/layout.tsx`, D20)다.
   Chrome·Firefox Android가 따르고 **iOS Safari는 무시한다**(키보드가 레이아웃 뷰포트를 줄이지 않는다 — 비범위). 되돌리기는 그 한 줄이다.
