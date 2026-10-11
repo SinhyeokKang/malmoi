@@ -487,6 +487,47 @@ describe("Stage — 뷰포트 그릇 전환", () => {
     expect(frameOf(container).style.width).toBe("1440px");
   });
 
+  /**
+   * **보존은 직전에 칠한 scrollTop 기준이다** (리뷰 R1) — 브라우저 스크롤 앵커링(Chrome·Firefox)은 트랙 위 형제(히어로)의 높이가 Δ 바뀌면
+   * 틱 전에 `scrollTop`을 같은 Δ만큼 먼저 옮긴다. 현재 scrollTop으로 u를 다시 재면 그 Δ를 한 번 더 더해 q가 Δ/H만큼 반대로 튄다.
+   * 셋 다 `(scrollTop − stageTop)/H`가 직전 u와 같아야 한다 — 앵커링이 있든(②) 없든(①③).
+   */
+  describe("재생 위치 보존 — 스크롤 앵커링과 무관하다", () => {
+    const keep = async (move: (size: Size, scroller: HTMLElement) => void) => {
+      const { container, scroller, size } = await mount();
+      await flush();
+      await scrollTo(scroller, sceneTop(2, 0.45));
+      const before = progress(container);
+      const u = (scroller.scrollTop - size.stageTop) / H;
+      move(size, scroller);
+      await resized();
+      expect((scroller.scrollTop - size.stageTop) / size.h).toBeCloseTo(u, 9);
+      expect(progress(container)).toEqual(before);
+      return { container, size };
+    };
+
+    it("① stageTop만 이동(H 고정 · 앵커링 없음 — Safari)", async () => {
+      await keep((size) => { size.stageTop = STAGE_TOP - 74; });
+    });
+
+    it("② 앵커링 흉내 — stageTop이 Δ 움직일 때 scrollTop도 같은 Δ만큼 먼저 옮겨진 뒤 틱", async () => {
+      await keep((size, scroller) => {
+        const delta = -74;
+        size.stageTop = STAGE_TOP + delta;
+        scroller.scrollTop += delta;
+      });
+    });
+
+    it("③ 경계 안 폭 리사이즈(device 그대로 — 1280 → 1100, 히어로가 다시 감겨 stageTop만 이동)", async () => {
+      const { container } = await keep((size, scroller) => {
+        size.w = 1082;
+        size.stageTop = STAGE_TOP + 31;
+        scroller.scrollTop += 31; // 앵커링이 먼저 옮긴다
+      });
+      expect(frameOf(container).style.width).toBe("1440px");
+    });
+  });
+
   it("폭·높이가 함께 바뀌어도(기기 회전 — M ↔ T) 씬·씬 안 진행이 같다", async () => {
     viewport = { lg: false, sm: false };
     const { container, scroller, size } = await mount();
