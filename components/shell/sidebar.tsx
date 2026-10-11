@@ -184,7 +184,7 @@ export function Sidebar({ memberships, userName, drawer = false }: {
           <div className="min-h-0 overflow-hidden">
           <p data-zone-head className={cn(drawer ? DRAWER_HEAD : ROW, "text-foreground font-medium")}>
             <ProjectThumbnail name={zone.label} src={project?.image} size="xs" />
-            <span className={drawer ? "min-w-0 flex-1" : "min-w-0 truncate"}>{zone.label}</span>
+            <span className={drawer ? "min-w-0 flex-1 wrap-anywhere" : "min-w-0 truncate"}>{zone.label}</span>
             {/*
               ⚠️ **전환 메뉴는 프로젝트 머리의 오른쪽 끝이다** (2026-09-27 사용자 — 8-3이 지운 스위처가 메뉴 트리거로 돌아왔다).
               목록은 이미 받은 멤버십이다 — 조회를 더하지 않는다.
@@ -322,7 +322,7 @@ function Item({ item, active, collapsed = false, row = ROW }: { item: NavItem; a
         철회). 선택 상태는 **면(배경 알파) 하나로만** 표현한다 — 굵기가 함께 움직이면 라벨 폭이 바뀌어
         선택을 옮길 때마다 글자가 미세하게 흔들리고, 신호가 둘이라 면의 대비를 조정할 근거도 흐려진다.
       */}
-      <span className={cn(row === ROW ? "min-w-0 truncate" : "min-w-0 flex-1", FADE, collapsed && "opacity-0")}>{item.label}</span>
+      <span className={cn(row === ROW ? "min-w-0 truncate" : "min-w-0 flex-1 wrap-anywhere", FADE, collapsed && "opacity-0")}>{item.label}</span>
       {/*
         ⚠️ **개수는 0이면 서지 않는다** (2026-10-01 ux-drift-unify Q13 — 옛 규칙 "0도 보인다"의 철회). 같은 개수가 카드 머리에서는
         0에 사라지고 여기서만 `0`으로 서서 한 화면 안에서 규칙이 둘이었다. 문자열 배지(버전)는 개수가 아니라 그대로다.

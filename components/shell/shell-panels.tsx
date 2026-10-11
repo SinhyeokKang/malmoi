@@ -85,6 +85,10 @@ export function ShellPanels({ sidebar, children, initialCollapsed = false }: { s
   const [group, setGroup] = useState<HTMLElement | null>(null);
   /** 뷰포트가 `lg` 이상인가 — `matchMedia`가 없는 환경(jsdom)은 넓다고 읽는다(지금 동작). 아래 effect가 첫 커밋에 맞춘다. */
   const wideRef = useRef(true);
+  // 핸들은 FixedSidebar의 형제라 별도로 기억한다 — Chrome은 숨길 때 blur 없이 body로 포커스를 치운다.
+  // 라이브러리의 onFocus/onBlur 콜백은 이벤트를 안 넘기므로 DOM 이벤트가 오는 capture로 연결한다.
+  const handleRef = useRef<HTMLElement | null>(null);
+  const handleHandoff = useNarrowHandoff(handleRef, APP_NAV_MENU);
 
   /**
    * ⚠️ **콜백 ref다.** `PanelGroup`의 ref는 DOM 노드가 아니라 imperative 핸들이라 그룹 자신을 잴 수
@@ -233,6 +237,12 @@ export function ShellPanels({ sidebar, children, initialCollapsed = false }: { s
         {/* `touch-none` — 터치 드래그가 페이지 스크롤로 새지 않는다(responsive-app design §3, 공개 단계가 넘긴 몫). */}
         <ResizableHandle
           aria-label={m.common.resizeSidebar}
+          onFocusCapture={(event) => {
+            // 2.1.9가 DOM 이벤트의 generic을 태그 이름으로 선언했다 — 실물 노드를 확인한다.
+            const node: unknown = event.currentTarget;
+            if (node instanceof HTMLElement) { handleRef.current = node; handleHandoff.onFocus(); }
+          }}
+          onBlurCapture={handleHandoff.onBlur}
           className="w-2 touch-none max-lg:hidden"
           onDragging={(isDragging) => { dragging.current = isDragging; }}
           /**

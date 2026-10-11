@@ -57,7 +57,7 @@ export function useNarrowHandoff(ref: RefObject<HTMLElement | null>, target: str
     stop.current = () => { query.removeEventListener("change", onChange); stop.current = null; };
   }
 
-  function onBlur(event: FocusEvent) {
+  function onBlur(event: Pick<FocusEvent, "relatedTarget">) {
     const wrapper = ref.current;
     if (wrapper === null) return;
     const next = event.relatedTarget;
