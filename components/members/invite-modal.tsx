@@ -289,7 +289,8 @@ export function InviteModal({
     >
       <form id={FORM_ID}
         noValidate
-        className="flex min-h-0 flex-col gap-4"
+        /* ⚠️ **컨테이너 선언은 폼, 질의는 그 자손이다**(POSTMORTEM 2026-09-15) — 640 미만(375 시트 본문 343)이면 한 사람이 두 줄 묶음이다(시안 AT5). */
+        className="@container flex min-h-0 flex-col gap-4"
         onSubmit={(event) => {
           event.preventDefault();
           submit();
@@ -304,7 +305,8 @@ export function InviteModal({
         )}
 
         {/* 열 머리 — 행과 같은 그리드다(오른쪽 44 = 제거 36 + 갭 8). */}
-        <div aria-hidden className="text-muted-foreground flex shrink-0 gap-2 pr-11 text-xs leading-normal">
+        {/* 좁은 폭에서는 숨는다 — 묶음이 두 줄이라 열이 없고, 입력의 접근 이름이 Email · Role 낱말을 든다. */}
+        <div data-invite-columns aria-hidden className="text-muted-foreground flex shrink-0 gap-2 pr-11 text-xs leading-normal @max-form:hidden">
           <span className="min-w-0 flex-1">{m.members.invite.columns.email}</span>
           <span className="w-[168px] shrink-0">{m.members.invite.columns.role}</span>
         </div>
@@ -313,7 +315,8 @@ export function InviteModal({
           ⚠️ **스크롤하는 것은 행 목록뿐이다** (`1i`) — 열 머리·[Add another]·바닥은 고정이다.
           ⚠️ `overflow-y:auto`는 x도 자르므로 padding 4 + 음수 margin으로 포커스 링·테두리 자리를 둔다.
         */}
-        <ul className="-mx-1 -my-0.5 flex min-h-0 shrink flex-col gap-2.5 overflow-y-auto p-1">
+        {/* 좁은 폭의 묶음 사이는 divider다 — 묶음 안 간격(8)과 묶음 사이를 갈라 어느 역할이 어느 주소의 것인지 읽힌다. */}
+        <ul className="-mx-1 -my-0.5 flex min-h-0 shrink flex-col gap-2.5 overflow-y-auto p-1 @max-form:gap-3 @max-form:[&>li+li]:border-t @max-form:[&>li+li]:border-divider @max-form:[&>li+li]:pt-3">
           {rows.map((row, index) => {
             const who = row.email.trim() === "" ? m.members.invite.emptyRecipient(index + 1) : row.email.trim();
             const issue = rowErrors.get(row.id);
@@ -321,8 +324,9 @@ export function InviteModal({
             const reasonId = `invite-reason-${row.id}`;
             return (
               <li key={row.id} data-recipient-row className="flex flex-col gap-1.5">
-                <div className="flex items-center gap-2">
-                  <div className="flex min-w-0 flex-1">
+                {/* 좁은 폭: 이메일이 첫 줄 전폭(`basis-full`), 역할 + 제거가 둘째 줄이다. DOM 순서 그대로 감긴다. */}
+                <div data-recipient-line className="flex items-center gap-2 @max-form:flex-wrap">
+                  <div className="flex min-w-0 flex-1 @max-form:basis-full">
                     <Input width="full"
                       ref={index === 0 ? firstEmailRef : undefined}
                       id={`invite-email-${row.id}`}
@@ -353,9 +357,12 @@ export function InviteModal({
                     {m.members.invite.roleFor(who)}
                   </span>
                   <Select value={row.role} onValueChange={(next) => update(row.id, { role: next as Role })} disabled={pending}>
-                    <SelectTrigger width={168} id={`invite-role-${row.id}`} aria-labelledby={`invite-role-label-${row.id} invite-role-${row.id}`} className="shrink-0">
-                      <SelectValue />
-                    </SelectTrigger>
+                    {/* 폭은 래퍼가 든다(repository-form과 같은 형) — 넓은 폭 168 고정, 좁은 폭은 둘째 줄의 남는 폭이다. */}
+                    <div data-role-field className="flex w-[168px] shrink-0 @max-form:min-w-0 @max-form:flex-1">
+                      <SelectTrigger width="full" id={`invite-role-${row.id}`} aria-labelledby={`invite-role-label-${row.id} invite-role-${row.id}`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                    </div>
                     <SelectContent className="w-[280px]">
                       {(["EDITOR", "OWNER"] as const).map((option) => (
                         <SelectItem key={option} value={option} description={m.members.invite.roleHint[option]}>
@@ -380,7 +387,7 @@ export function InviteModal({
                 {error !== undefined && (
                   /* 오른쪽 44는 열 머리와 같은 그리드다 — 사유가 역할 칸 아래로 번지지 않는다. */
                   /* 알림은 바닥 상태 문장이 한 번 한다 — 행마다 alert면 사유가 줄 수만큼 끼어든다. */
-                  <FieldError id={reasonId} data-row-reason="" role={undefined} className="pr-11">
+                  <FieldError id={reasonId} data-row-reason="" role={undefined} className="pr-11 @max-form:pr-0">
                     <span>{error}</span>
                   </FieldError>
                 )}

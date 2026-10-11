@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
+import { PANEL_HEAD_ROW, PanelBody, PanelHeader } from "@/components/shell/content-panel";
 
 import { find, render } from "./helpers/dom";
 
@@ -54,7 +54,8 @@ describe("PanelHeader — 여백·선·폭을 프리미티브가 든다", () => 
     "components/landing/mockup/translations.tsx",
   ])("%s의 머리가 같은 여백이다", (path) => {
     const source = readFileSync(join(ROOT, path), "utf8");
-    const heads = [...source.matchAll(/className="border-border flex shrink-0 flex-col gap-3 border-b ([^"]*)"/g)].map((match) => match[1]);
+    // 번역 화면 머리는 배너의 단일 판 숨김을 묻는 컨테이너도 선언한다(`@container/wshead` — responsive-app design §3). 여백 판정 밖이라 뗀다.
+    const heads = [...source.matchAll(/className="(?:@container\/\w+ )?border-border flex shrink-0 flex-col gap-3 border-b ([^"]*)"/g)].map((match) => match[1]);
     expect(heads).toEqual(["px-4 py-3"]);
   });
 
@@ -309,5 +310,87 @@ describe("소비자 스물 — 여백을 넘기지 않는다", () => {
    */
   it.each(CONSUMERS)("%s가 안쪽 래퍼로 폭을 다시 정하지 않는다", (path) => {
     expect(readFileSync(join(ROOT, path), "utf8")).not.toContain("mx-auto w-full max-w-4xl");
+  });
+});
+
+/**
+ * **패널 머리 두 줄** (responsive-app B1a · 시안 피드백 F1·R1 · design §3) — 버튼을 든 머리는 **자기 컨테이너 640(`@min-form`과 같은 경계)
+ * 미만**에서 제목 첫 줄 · 버튼 묶음 둘째 줄 오른쪽이다. 이상이면 한 줄 그대로다.
+ *
+ * ⚠️ **"넘칠 때만 감김"(`flex-wrap`)이 아니라 경계 하나다** — 언어마다 줄 수가 갈리면 로딩 골격이 실물과 같은 줄 수를 못 낸다(spec A-09).
+ * ⚠️ **선언과 질의는 다른 요소다**(POSTMORTEM 2026-09-15) — 바깥(선을 든 전폭 요소)이 선언하고, 안쪽 제목 행이 묻는다.
+ * jsdom은 컨테이너 쿼리를 못 잰다 — 여기는 클래스 계약이고 픽셀은 실측(`/design-sync`)이 잰다.
+ */
+describe("PanelHeader — 640 미만 두 줄", () => {
+  const ROW = PANEL_HEAD_ROW.split(/\s+/);
+
+  it("바깥이 이름 붙은 머리 컨테이너를 선언하고, 안쪽은 선언하지 않는다", async () => {
+    const outer = await header({ children: <h1>Projects</h1> });
+    expect(outer.classList.contains("@container/panel-head")).toBe(true);
+    const inner = find<HTMLElement>(outer, ":scope > div");
+    expect([...inner.classList].filter((c) => c.startsWith("@container"))).toEqual([]);
+  });
+
+  it("경계는 `--container-form` 640 하나다", () => {
+    expect(readFileSync(join(ROOT, "app/globals.css"), "utf8")).toMatch(/--container-form:\s*640px;/);
+    const queries = ROW.filter((c) => c.startsWith("@"));
+    expect(queries.length).toBeGreaterThan(0);
+    for (const cls of queries) expect(cls).toMatch(/^@min-form\/panel-head:/);
+  });
+
+  it("좁으면 열 — 제목 줄 36 · 간격 8 · 버튼 묶음 오른쪽", () => {
+    for (const cls of ["flex", "flex-col", "gap-2", "[&>:first-child]:min-h-9", "[&>:first-child]:min-w-0", "[&>*+*]:self-end", "[&>*+*]:shrink-0"]) {
+      expect(ROW, cls).toContain(cls);
+    }
+  });
+
+  /**
+   * **#227** — 한 줄일 때 제목은 묶음 전체가 아니라 **버튼 줄**(첫 36)과 가운데가 맞는다. 묶음이 36보다 높아지는 폭·골격(묶음이 두 줄로 감길 때)에서
+   * `items-center`면 제목이 묶음 가운데로 내려간다. 그래서 위에 붙이고, 제목 칸이 `min-h-9`·`items-center`라 버튼 줄 36 안에서 가운데다 — 묶음 = 36이면
+   * 위치가 같다. (#227 당시 묶음을 높이던 사유 줄(O10)은 disabled-reasons-revert가 걷었다 — 맞춤은 그대로 둔다.)
+   */
+  it("넓으면 한 줄 — 위 맞춤(제목 36 = 버튼 줄) · 양 끝 · 버튼 묶음 정렬 복귀", () => {
+    for (const cls of ["@min-form/panel-head:flex-row", "@min-form/panel-head:items-start", "@min-form/panel-head:justify-between", "@min-form/panel-head:[&>*+*]:self-auto"]) {
+      expect(ROW, cls).toContain(cls);
+    }
+    expect(ROW).not.toContain("@min-form/panel-head:items-center");
+  });
+
+  /**
+   * **#226** — 두 줄일 때 버튼 묶음은 `self-end`라 자기 min-content 폭(Projects: 검색 256 + 12 + New project 130)으로 서서, 그릇(375에서 325)보다
+   * 넓으면 왼쪽 패널 밖으로 나갔다(x −48 실측). 묶음이 그릇 폭을 넘지 않아야 안의 줄어드는 칸(검색 `min-w-0 shrink`)이 실제로 준다.
+   */
+  it("두 줄일 때 버튼 묶음이 그릇 폭을 넘지 않는다", () => {
+    expect(ROW).toContain("[&>*+*]:max-w-full");
+  });
+
+  it("넘칠 때 감김·CSS order로 줄을 정하지 않는다", () => {
+    expect(PANEL_HEAD_ROW).not.toMatch(/flex-wrap|\border-/);
+    // 버튼 없는 갈래(Projects 0건)는 제목이 마지막 자식이다 — `:last-child`로 물으면 제목이 오른쪽으로 밀린다.
+    expect(PANEL_HEAD_ROW).not.toMatch(/:last-child/);
+    // 이 조각은 질의만 든다 — 선언을 같이 들면 자기 자신을 묻게 된다.
+    expect(PANEL_HEAD_ROW).not.toMatch(/@container/);
+  });
+
+  it("DOM 순서 그대로다 — 제목이 버튼 묶음보다 먼저다", async () => {
+    const outer = await header({ children: <div className={PANEL_HEAD_ROW}><h1>Home</h1><div><button type="button">Sync</button></div></div> });
+    const row = find<HTMLElement>(outer, ":scope > div > div");
+    expect([...row.children].map((el) => el.tagName)).toEqual(["H1", "DIV"]);
+  });
+
+  /**
+   * B1 소유 화면의 머리와 그 골격이 같은 조각을 쓴다 — 골격이 손으로 한 줄을 그리면 좁은 폭에서 도착할 때 머리가 44 튄다(A-09).
+   * 다른 배치가 든 화면(Members·Sources·Logs·MCP·번역)은 B1a 통합 뒤 각 배치가 붙인다(orch O4).
+   */
+  it.each([
+    "components/projects/project-list.tsx",
+    "app/(edit)/projects/(list)/loading.tsx",
+    "app/(edit)/projects/[slug]/(home)/page.tsx",
+    "app/(edit)/projects/[slug]/(home)/loading.tsx",
+  ])("%s의 머리 제목 행이 PANEL_HEAD_ROW다", (path) => {
+    const source = readFileSync(join(ROOT, path), "utf8");
+    const head = /<PanelHeader\b[^>]*>([\s\S]*?)<\/PanelHeader>/.exec(source)?.[1] ?? "";
+    expect(head).toMatch(/^\s*(?:\{\/\*[\s\S]*?\*\/\}\s*)*<div className=\{PANEL_HEAD_ROW\}>/);
+    expect(head).not.toMatch(/flex-wrap/);
   });
 });

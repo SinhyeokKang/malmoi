@@ -56,10 +56,10 @@ export default async function EditLayout({ children }: { children: React.ReactNo
      * 하단 항목(Sign out·Collapse sidebar)이 화면 밖으로 나간다 — 24키 화면에서도 그랬다.
      * 스크롤은 사이드바와 콘텐츠 패널이 각자 자기 안에서 든다.
      *
-     * ⚠️ **`min-w-shell-min`가 있어야 좁은 창에서 "가로 스크롤"이 된다** (8단계 규약 3). 없으면
-     * 스크롤이 아니라 flex가 압축돼 **콘텐츠가 잘린다** — 둘은 다르다.
+     * ⚠️ **폭 하한이 없다** (responsive-app A6 — 옛 `min-w-shell-min` 1280과 "좁은 창은 가로 스크롤" 규약을 걷었다). 375부터 셸이 실제로
+     * 좁아지고, LNB는 `lg` 미만 서랍으로·화면은 각자 컨테이너 질의로 적층한다. 하한을 되살리면 좁은 배치가 전부 가로 스크롤 안에 갇힌다.
      */
-    <div className="bg-canvas flex h-svh min-w-shell-min flex-col overflow-hidden px-2 pt-1.5 pb-2">
+    <div className="bg-canvas flex h-svh flex-col overflow-hidden px-2 pt-1.5 pb-2">
       {/* ⚠️ **`image`가 여기를 지난다** — 세션을 읽는 것이 이 파일이라 앞뒤만 고치면 값이 `undefined`로 흐른다. */}
       <Header m={m} name={name} email={session.email} image={session.image} signOut={signOutAction} memberships={navMemberships} />
       {/*

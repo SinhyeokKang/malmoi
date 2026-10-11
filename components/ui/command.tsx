@@ -6,6 +6,8 @@ import { createContext, useCallback, useContext, useEffect, useId, useLayoutEffe
 import { useMessages } from "@/components/i18n/messages-provider";
 import { nextActive, reconcileActive } from "@/lib/search/keys";
 import { cn } from "@/lib/utils";
+import { Button } from "./button";
+import { useCommandDialogCancel } from "./dialog";
 import { Input } from "./input";
 import { Kbd } from "./kbd";
 import { ListGroup } from "./list-group";
@@ -71,14 +73,17 @@ export function Command({ ids, query, children }: { ids: readonly string[]; quer
 /**
  * 입력 줄 — **간격 한 규칙**(search-ux-unify T0 시안): `pl-3`이면 `Input` bare의 글리프(`left-2.5`) 중심이 x30이라 행 타일 중심
  * (16 + 14)과 한 세로선이다. 오른쪽은 `[X] 갭 8 [Esc]` — Esc가 맨 끝에 고정되어 X가 생기고 사라져도 움직이지 않고, `pr-4`라
- * Esc 칩 오른쪽 끝이 행 `Go to ↵` 칩의 오른쪽 끝과 한 선이다. `sm` 미만에선 Esc 칩을 숨긴다(폭 규칙 — 활성과 무관).
+ * Esc 칩 오른쪽 끝이 행 `Go to ↵` 칩의 오른쪽 끝과 한 선이다.
+ * ⚠️ **`lg` 미만은 시트의 머리다**(responsive-public PT4a) — 56 · 오른쪽 8 · `[X] [Cancel]`. Esc 칩은 `lg` 미만에서 숨기고(전엔 `sm` 기준 —
+ * 시트 경계와 하나로 맞췄다) 그 자리에 Cancel이 선다. 둘은 서로 다른 폭에서만 보이므로 `lg` 이상에서 Esc가 맨 끝인 규칙은 그대로다.
  */
 export function CommandInput({ value, onValueChange, label, placeholder }: {
   value: string; onValueChange: (value: string) => void; label: string; placeholder: string;
 }) {
   const m = useMessages();
   const { listId, activeId, optionId } = useCommand();
-  return <div className="border-divider flex h-12 shrink-0 items-center gap-2 border-b pr-4 pl-3">
+  const cancel = useCommandDialogCancel();
+  return <div className="border-divider flex h-12 shrink-0 items-center gap-2 border-b pr-4 pl-3 max-lg:h-14 max-lg:pr-2">
     <div className="min-w-0 flex-1">
       <Input width="full" variant="bare" icon={<Search />} clearable role="combobox" aria-label={label}
         aria-expanded="true" aria-autocomplete="list" aria-controls={listId}
@@ -86,7 +91,8 @@ export function CommandInput({ value, onValueChange, label, placeholder }: {
         data-initial-focus value={value} placeholder={placeholder} autoComplete="off"
         onChange={event => onValueChange(event.target.value)} />
     </div>
-    <span className="hidden shrink-0 sm:inline-flex"><Kbd>{m.common.keys.esc}</Kbd></span>
+    {cancel !== null && <Button type="button" variant="ghost" size="sm" className="lg:hidden" onClick={cancel}>{m.common.cancel}</Button>}
+    <span className="hidden shrink-0 lg:inline-flex"><Kbd>{m.common.keys.esc}</Kbd></span>
   </div>;
 }
 

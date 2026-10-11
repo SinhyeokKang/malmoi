@@ -95,6 +95,7 @@ function MethodRow({ row, removable, onUnconfirmed }: { row: { provider: LoginPr
   useLandAfter(pending, () => controls.current?.querySelector<HTMLElement>("button"));
   return (
     <ListRow
+        stackActions
         as="li"
         className="border-border border-t first:border-t-0"
         icon={<IconTile>{row.provider === "github" ? <GithubIcon className="size-4" /> : <GoogleIcon className="size-4" />}</IconTile>}

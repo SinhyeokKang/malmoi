@@ -9,12 +9,12 @@ import { ProjectThumbnail } from "@/components/ui/project-thumbnail";
 import { ProjectSwitcher } from "@/components/shell/project-switcher";
 import { Badge } from "@/components/ui/badge";
 import { CountBadge } from "@/components/ui/count-badge";
-import { Button } from "@/components/ui/button";
+import { Button, TOUCH_TARGET } from "@/components/ui/button";
 import { landFocus } from "@/components/ui/focus";
 import { useMessages } from "@/components/i18n/messages-provider";
 import type { Messages } from "@/lib/i18n";
 import { useInboxUnread } from "@/lib/inbox/unread-store";
-import { activeProject, navFooterItems, navZones, type NavItem, type NavProject } from "@/lib/shell/nav";
+import { activeProject, navDrawerFooterItems, navFooterItems, navZones, type NavItem, type NavProject } from "@/lib/shell/nav";
 import { cn } from "@/lib/utils";
 
 import { navCountLabel } from "./nav-count";
@@ -26,6 +26,14 @@ import { useSidebarCollapse } from "./sidebar-collapse";
  * 레이아웃을 갈아 끼우면 전이 중간에 아이콘이 튄다.
  */
 const ROW = "flex h-8 items-center gap-2 rounded-sm px-2 text-sm whitespace-nowrap";
+
+/**
+ * **서랍 행 — 32 → 40** (responsive-app 시안 AT1b) — 공개 서랍 행(PT1b)과 같은 높이 · px 10이고 터치에서는 `::after`가 44까지 넓힌다(보이는 크기는 그대로).
+ * ⚠️ **줄바꿈한다**(AT10 — `whitespace-nowrap`·말줄임이 없다) — es의 긴 이름도 잘리지 않고 행이 높아진다. 데스크톱 LNB의 `truncate`와 갈리는 지점이다.
+ */
+const DRAWER_ROW = cn("flex min-h-10 items-center gap-2 rounded-sm px-2.5 py-2 text-sm", TOUCH_TARGET);
+/** 서랍 구역 머리 — 40 · 왼쪽 10 · 오른쪽 4. 오른쪽 끝의 32 전환 트리거가 행 안에 든다(AT1b-switch). */
+const DRAWER_HEAD = "flex min-h-10 items-center gap-2 py-1 pr-1 pl-2.5 text-sm";
 
 /** 접히면 사라지는 것(라벨·배지) — 자리는 남기고 투명해진다. 접근 이름은 DOM에 남은 글자가 그대로 댄다. */
 const FADE = "transition-opacity duration-200";
@@ -53,7 +61,8 @@ const fold = (hidden: boolean) =>
  * 여기는 라벨·구역 머리를 숨기기만 한다. **툴팁은 여전히 없다** — 2026-09-11에 `Tooltip` 프리미티브를 걷었고(**조상 provider를
  * 요구하는 Radix 컴포넌트는 프리미티브가 자기 provider를 든다**는 교훈은 POSTMORTEM 2026-09-08), 접힌 항목의 이름은 `title`이 보인다.
  *
- * ⚠️ **반응형 분기가 0개다** (8단계 규약 3 — 최소 대응 너비 1280).
+ * ⚠️ **반응형 분기는 셸이 든다** (responsive-app design §2) — 뷰포트 `lg` 미만이면 이 사이드바가 숨고(`shell-panels.tsx`) 같은 컴포넌트가
+ * `drawer` 형으로 헤더의 서랍(`components/shell/nav-drawer.tsx`) 안에 선다. 이 파일은 폭을 묻지 않는다.
  *
  * ⚠️ **항목 노출은 편의이고 차단이 아니다** (DESIGN §6.5). EDITOR에게 Project settings를 안 보이는 것은
  * 없는 문을 안 보이게 하는 것뿐이고, URL 직접 진입은 페이지의 `requireProjectAccess`가 막는다.
@@ -61,20 +70,32 @@ const fold = (hidden: boolean) =>
  * ⚠️ **pathname에서 뽑은 slug는 표시용이다** — `activeProject`가 그것을 **내 멤버십 목록 안에서**
  * 찾고 없으면 컨텍스트가 없다. 데이터 접근은 여전히 각 페이지가 판정한 `projectId`로만 한다.
  */
-export function Sidebar({ memberships, userName }: { memberships: NavProject[]; userName: string }) {
+export function Sidebar({ memberships, userName, drawer = false }: {
+  memberships: readonly NavProject[];
+  userName: string;
+  /**
+   * **`lg` 미만 LNB 서랍 안의 형**(responsive-app design §2 · 시안 AT1b) — 구역 둘·항목·배지·순서·글리프가 같고 행만 40이다. 바닥(Changelog · Docs)과
+   * 접기 토글을 그리지 않는다 — 바닥은 서랍의 고정 줄(`SidebarDrawerFooter`)이고, 토글은 숨은 데스크톱 패널을 조작하게 된다.
+   * ⚠️ 접힘 문맥은 호출부(서랍)가 `{collapsed:false}`로 덮는다 — 상속하면 데스크톱에서 접어 둔 사용자의 서랍 머리가 `inert`로 숨는다.
+   */
+  drawer?: boolean;
+}) {
   const m = useMessages();
   const pathname = usePathname();
   const project = activeProject(pathname, memberships);
   const zones = navZones(m, project, { userName, projectCount: memberships.length, projects: memberships });
   const { collapsed, toggle } = useSidebarCollapse();
-  const asideRef = useRef<HTMLElement>(null);
+  const asideRef = useRef<HTMLDivElement>(null);
   const scope = zones[1]?.key;
   const lastScope = useRef(scope);
   /** 문서에서 마지막으로 누르거나 포커스한 컨트롤의 사이드바 구역(밖이면 `null`) — 착지 판정 한 번에 소비된다. */
   const pressedZone = useRef<string | null>(null);
   useEffect(() => {
     const note = (event: Event) => {
-      pressedZone.current = event.target instanceof Element ? event.target.closest<HTMLElement>("nav[data-sidebar-zone]")?.dataset.sidebarZone ?? null : null;
+      // ⚠️ **자기 안의 구역만 센다**(responsive-app) — 서랍 안 LNB와 숨은 고정 LNB가 같은 문서에 둘이다. 서랍에서 누른 목록 행을 숨은 고정 LNB가
+      // "내 구역에서 눌렀다"로 읽으면 이동 뒤 `display:none`인 자기 항목에 착지하려 든다. 서랍은 링크로 닫히고 도착한 화면이 포커스를 가진다.
+      const zone = event.target instanceof Element ? event.target.closest<HTMLElement>("nav[data-sidebar-zone]") : null;
+      pressedZone.current = zone !== null && asideRef.current?.contains(zone) ? zone.dataset.sidebarZone ?? null : null;
     };
     document.addEventListener("pointerdown", note, true);
     document.addEventListener("focusin", note, true);
@@ -109,8 +130,11 @@ export function Sidebar({ memberships, userName }: { memberships: NavProject[]; 
     pressedZone.current = null;
   }, [scope]);
 
+  const row = drawer ? DRAWER_ROW : ROW;
+  const Root = drawer ? "div" : "aside";
+
   return (
-    <aside
+    <Root
       ref={asideRef}
       // 자기 안에서 스크롤한다 — 항목이 늘어도 문서를 밀지 않는다 (malmoi#13).
       //
@@ -119,7 +143,8 @@ export function Sidebar({ memberships, userName }: { memberships: NavProject[]; 
       //
       // ⚠️ **`overflow-x-hidden`이 접힘을 만든다** — 패널이 40으로 좁아지면 라벨·배지가 여기서 잘린다.
       data-collapsed={collapsed ? "" : undefined}
-      className="flex h-full flex-col gap-2 overflow-x-hidden overflow-y-auto p-1"
+      // 서랍에서는 스크롤·여백을 서랍 몸통이 든다(`DrawerContent`).
+      className={drawer ? "flex flex-col gap-2" : "flex h-full flex-col gap-2 overflow-x-hidden overflow-y-auto p-1"}
     >
       {/*
         **구역 둘** (PRODUCT §7.7). ⚠️ **라벨이 이름 그대로다** — 사용자 축은 사용자 이름, 프로젝트 축은
@@ -157,14 +182,14 @@ export function Sidebar({ memberships, userName }: { memberships: NavProject[]; 
           <div inert={collapsed} className={fold(collapsed)}>
           {/* ⚠️ 행을 접는 것은 이 겹이다 — `h-8`을 든 `<p>`에 `overflow-hidden`을 걸면 제 높이 32를 지켜 0fr 행 밖으로 넘친다. */}
           <div className="min-h-0 overflow-hidden">
-          <p data-zone-head className={cn(ROW, "text-foreground font-medium")}>
+          <p data-zone-head className={cn(drawer ? DRAWER_HEAD : ROW, "text-foreground font-medium")}>
             <ProjectThumbnail name={zone.label} src={project?.image} size="xs" />
-            <span className="min-w-0 truncate">{zone.label}</span>
+            <span className={drawer ? "min-w-0 flex-1" : "min-w-0 truncate"}>{zone.label}</span>
             {/*
               ⚠️ **전환 메뉴는 프로젝트 머리의 오른쪽 끝이다** (2026-09-27 사용자 — 8-3이 지운 스위처가 메뉴 트리거로 돌아왔다).
               목록은 이미 받은 멤버십이다 — 조회를 더하지 않는다.
             */}
-            <ProjectSwitcher projects={memberships} current={project?.slug ?? null} />
+            <ProjectSwitcher projects={memberships} current={project?.slug ?? null} size={drawer ? "drawer" : "head"} />
           </p>
           </div>
           </div>
@@ -174,7 +199,7 @@ export function Sidebar({ memberships, userName }: { memberships: NavProject[]; 
             누르면 머리와 같은 전환 메뉴가 열린다. 머리와 반대 방향으로 같은 32를 접고 펴서 전이 중에도 아래 항목이 제자리다.
             보이는 이름이 없어 `title`이 프로젝트 이름을, `aria-label`이 동작을 댄다.
           */}
-          {zone.key === "project" && (
+          {zone.key === "project" && !drawer && (
           <div inert={!collapsed} className={fold(!collapsed)}>
           <div data-zone-rail className="min-h-0 overflow-hidden">
             <ProjectSwitcher
@@ -190,10 +215,12 @@ export function Sidebar({ memberships, userName }: { memberships: NavProject[]; 
           </div>
           )}
           {zone.items.map((item) => (
-            <Item key={item.key} item={item} active={isActive(pathname, item)} collapsed={collapsed} />
+            <Item key={item.key} item={item} active={isActive(pathname, item)} collapsed={collapsed} row={row} />
           ))}
         </nav>
       ))}
+
+      {!drawer && <>
 
       {/*
         하단 전역 — 프로젝트·사용자 축이 아니라 공개 셸 페이지라 구역 밖이다. Changelog(`/changelog`) · Docs(`/docs`) 둘이고 같은 탭에서 연다.
@@ -219,8 +246,23 @@ export function Sidebar({ memberships, userName }: { memberships: NavProject[]; 
           </span>
         </Button>
       </div>
-    </aside>
+      </>}
+    </Root>
   );
+}
+
+/**
+ * **LNB 서랍의 바닥 고정 줄** (responsive-app 시안 AT1b · AT1d) — 몸통만 스크롤하고 이 줄은 남는다(`DrawerContent`의 `pinned`). 헤더에서 빠진
+ * `New project`가 첫 행이고, 프로젝트 밖에서는 목록 구역이 이미 그것으로 끝나 넣지 않는다(`navDrawerFooterItems`). 공개 서랍 바닥의 언어·테마는 없다 —
+ * 앱은 Preferences가 든다.
+ */
+export function SidebarDrawerFooter({ memberships }: { memberships: readonly NavProject[] }) {
+  const m = useMessages();
+  const pathname = usePathname();
+  const inProject = activeProject(pathname, memberships) !== null;
+  return navDrawerFooterItems(m, inProject).map((item) => (
+    <Item key={item.key} item={item} active={isActive(pathname, item)} row={DRAWER_ROW} />
+  ));
 }
 
 /**
@@ -236,7 +278,7 @@ function isActive(pathname: string, item: NavItem): boolean {
 }
 
 /** 항목 하나 — 시안 치수는 `p-6 · gap-8 · radius-8 · 아이콘 16 · 14px`이다. */
-function Item({ item, active, collapsed = false }: { item: NavItem; active: boolean; collapsed?: boolean }) {
+function Item({ item, active, collapsed = false, row = ROW }: { item: NavItem; active: boolean; collapsed?: boolean; row?: string }) {
   const m = useMessages();
   const Icon = item.icon;
   return (
@@ -246,7 +288,7 @@ function Item({ item, active, collapsed = false }: { item: NavItem; active: bool
       // 접힌 레일엔 라벨이 안 보인다 — 툴팁 프리미티브가 없어(위 머리 주석) 브라우저 `title`이 이름을 보인다.
       title={collapsed ? item.label : undefined}
       className={cn(
-        ROW,
+        row,
         "text-foreground",
         "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
         /**
@@ -280,7 +322,7 @@ function Item({ item, active, collapsed = false }: { item: NavItem; active: bool
         철회). 선택 상태는 **면(배경 알파) 하나로만** 표현한다 — 굵기가 함께 움직이면 라벨 폭이 바뀌어
         선택을 옮길 때마다 글자가 미세하게 흔들리고, 신호가 둘이라 면의 대비를 조정할 근거도 흐려진다.
       */}
-      <span className={cn("min-w-0 truncate", FADE, collapsed && "opacity-0")}>{item.label}</span>
+      <span className={cn(row === ROW ? "min-w-0 truncate" : "min-w-0 flex-1", FADE, collapsed && "opacity-0")}>{item.label}</span>
       {/*
         ⚠️ **개수는 0이면 서지 않는다** (2026-10-01 ux-drift-unify Q13 — 옛 규칙 "0도 보인다"의 철회). 같은 개수가 카드 머리에서는
         0에 사라지고 여기서만 `0`으로 서서 한 화면 안에서 규칙이 둘이었다. 문자열 배지(버전)는 개수가 아니라 그대로다.

@@ -45,3 +45,18 @@ it("[C11] 액션은 헤더 Publish 버튼으로 포커스를 옮길 뿐 둘째 D
   expect(document.activeElement?.id).toBe("publish-trigger");
   expect(document.querySelector('[role="dialog"]')).toBeNull();
 });
+
+/**
+ * **Publish가 연결 때문에 꺼졌으면 원인 문장을 잇고 액션을 세우지 않는다** (malmoi#160 원형 — disabled-reasons-revert R-04). 꺼진 버튼으로 포커스만
+ * 옮기는 막다른 길을 만들지 않는다. 머리에 보이는 사유 줄이 없어 이 화면에서 보이는 원인 문장은 여기 하나다.
+ */
+it("blockedReason이 있으면 보류 문장 뒤에 잇고 Send with Publish가 없다 — 없으면 액션이 선다", async () => {
+  const reason = "This repository is disconnected. Reconnect it in Settings.";
+  const view = await render(<><button id="publish-trigger">Publish</button><EditLossBanner count={2} publishButtonId="publish-trigger" blockedReason={reason} /></>);
+  const banner = () => view.container.querySelector<HTMLElement>("[data-alert]")!;
+  expect(banner().textContent).toBe(`Repository updates are held until 2 unsent edits are sent. ${reason}`);
+  expect([...view.container.querySelectorAll("button")].some(b => b.textContent?.includes("Send with Publish"))).toBe(false);
+  await view.rerender(<><button id="publish-trigger">Publish</button><EditLossBanner count={2} publishButtonId="publish-trigger" blockedReason={null} /></>);
+  expect(banner().textContent).not.toContain(reason);
+  expect([...view.container.querySelectorAll("button")].some(b => b.textContent?.includes("Send with Publish"))).toBe(true);
+});

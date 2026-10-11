@@ -72,9 +72,10 @@ export function EventDialog({
           }}
         >
           {children}
-          {/* 닫기는 `CloseButton` 한 형이다(2026-10-01). Close 하나에 자식 하나라 `asChild`가 안전하다(POSTMORTEM 2026-09-09는 형제를 둔 형이다). */}
+          {/* 닫기는 `CloseButton` 한 형이다(2026-10-01). Close 하나에 자식 하나라 `asChild`가 안전하다(POSTMORTEM 2026-09-09는 형제를 둔 형이다).
+              ⚠️ **시트(`lg` 미만)에서는 머리 56 형의 자리다** — 32 · 위 12 · 우 12(`LargeModal` 시트 머리와 같다 — `large-modal.tsx`의 `max-lg:size-8`). 절대 위치는 그대로라 닫기가 DOM 끝(마지막 Tab)에 남는다. */}
           <Primitive.Close asChild>
-            <CloseButton label={m.logs.detail.actions.close} className="absolute top-6 right-6" />
+            <CloseButton label={m.logs.detail.actions.close} className="absolute top-6 right-6 max-lg:top-3 max-lg:right-3 max-lg:size-8" />
           </Primitive.Close>
         </Primitive.Content>
       </Primitive.Portal>

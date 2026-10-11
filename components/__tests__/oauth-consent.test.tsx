@@ -278,3 +278,29 @@ it("actual Not you form remains the sole trailing gap-1 slot and is natively loc
   expect(notYou.disabled).toBe(false);
   expect(view.container.contains(card)).toBe(true);
 });
+
+/**
+ * 좁은 폭의 CTA 배치(responsive-public D4·D10) — 동의 단계는 `<main>` 안이 스크롤하므로 CTA 묶음이 sticky bottom이어야 키보드·긴 폼에서도 닿는다.
+ * 사유(상태 슬롯)는 `lg` 미만에서 버튼 **아래** 보이는 `text-xs` 줄이고 `lg` 이상은 지금 형(버튼 왼쪽)이다.
+ */
+describe("좁은 폭 배치", () => {
+  /**
+   * ⚠️ **sticky는 `lg` 미만에서만이다**(#221 · D24) — 1280에서도 바가 목록 위에 떠 다음 권한 행이 비쳤다(spec "1280은 지금 그대로" 위반).
+   * `lg` 이상 클래스는 R 배치 이전(dev `3a1afe68`)과 바이트로 같다 — `max-lg:` 토큰을 걷으면 옛 문자열이다.
+   */
+  it("CTA 묶음은 `lg` 미만에서만 sticky bottom이고 `lg` 이상은 옛 클래스 그대로다", async () => {
+    await mount();
+    const bar = find<HTMLElement>(document.body, "[data-consent-status]").parentElement!.parentElement!;
+    const tokens = bar.className.split(" ").filter(Boolean);
+    expect(tokens).toEqual(expect.arrayContaining(["max-lg:sticky", "max-lg:bottom-0", "max-lg:bg-background", "max-lg:pb-2"]));
+    expect(tokens.filter((token) => !token.startsWith("max-lg:")).join(" ")).toBe("flex w-full flex-col gap-3 pt-2");
+  });
+
+  it("`lg` 미만에서 사유 줄이 버튼 아래로 쌓이고 버튼이 폭을 채운다 — `lg` 이상은 한 줄", async () => {
+    await mount();
+    const row = find<HTMLElement>(document.body, "[data-consent-status]").parentElement!;
+    expect(row.className.split(" ")).toEqual(expect.arrayContaining(["flex-col-reverse", "lg:flex-row", "lg:items-center"]));
+    expect(button("Authorize")!.parentElement!.className.split(" ")).toEqual(expect.arrayContaining(["w-full", "lg:w-auto"]));
+    expect(find<HTMLElement>(document.body, "[data-consent-status]").className).toContain("text-xs");
+  });
+});

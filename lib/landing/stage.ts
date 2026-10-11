@@ -7,23 +7,46 @@
  * ⚠️ **같은 위치 → 같은 프레임.** 역방향 스크럽이 성립하는 유일한 조건이다 — 이전 프레임이나
  * 스크롤 방향을 입력으로 받는 순간 올렸다 내린 화면이 달라진다.
  *
- * ⚠️ **스크롤 구동 확대가 없다** (2026-09-27 사용자 — 대기 0.8배 → 맞춤 트윈을 걷었다). 배율은 폭·높이의 함수이고
+ * ⚠️ **스크롤 구동 확대가 없다** (2026-09-27 사용자 — 대기 0.8배 → 맞춤 트윈을 걷었다). 배율은 폭·높이와 그릇의 함수이고
  * 스크롤로 움직이는 것은 씬 교차·캡션·진행 칸·타이핑·배지뿐이다.
+ *
+ * ⚠️ **그릇(D·T·M)은 뷰포트가 고른다** (2026-10-11 사용자 정정 — mockup-viewport-container). 재생 중 그릇은 바뀌지 않고 다섯 씬이 그 안에서
+ * 교차한다. 씬마다 D → T → M을 도는 순환(responsive-mockup MK1)은 D5를 잘못 읽은 것이라 걷었다.
  */
 
 /**
- * 목업의 논리 캔버스 — **1440 폭 창에서 본 제품이다**(2026-09-27 사용자). 안은 실제 앱 px라 뷰포트마다 줄바꿈이 달라지지 않는다.
- * 툴바와 베젤을 포함한 바깥 컨테이너가 1440×900(16:10)이다.
+ * 목업의 **데스크톱 그릇(D) 논리 캔버스 폭** — 1440 폭 창에서 본 제품이다(2026-09-27 사용자). 태블릿·모바일 그릇은 폭이 좁은 캔버스이고
+ * (`STATE_CANVAS_W`·`STATE_CANVAS_H`), 안은 실제 앱 px라 뷰포트마다 줄바꿈이 달라지지 않는다 — 안의 배치는 바깥 뷰포트가 아니라 목업 루트 폭이 고른다(responsive-mockup).
  */
 export const CANVAS_W = 1440;
-export const CANVAS_H = 900;
+/**
+ * 그릇 D·T·M의 캔버스 폭. **목업 루트(베젤 안 화면의 내용 상자) = 캔버스 − 18**(베젤 8×2 + 화면 border 1×2)이라 루트가 1422 · 768 · 375다
+ * (2026-10-11 D7). T·M 768·375는 spec 고정 — responsive-app QA가 실측한 폭이고 앱 경계(640 · 772 · 1024) 바로 옆을 피한다.
+ * D는 캔버스 1440을 지킨다(루트 1422는 1424와 같은 갈래라 씬 좌표가 그대로다).
+ */
+export const STATE_CANVAS_W = [CANVAS_W, 786, 393] as const;
+/**
+ * 그릇 D·T·M의 캔버스 높이(툴바·베젤 포함). D 1440×900이 16:10이고 T는 같은 높이다. **M 776**은 검수 뷰포트 375×812·390×844 + 두 줄 캡션에서
+ * **폭이 배율을 정하는** 최대 높이다 — 더 높으면 세로가 배율을 정해 폰에서 목업이 폭보다 작아진다.
+ */
+export const STATE_CANVAS_H = [900, 900, 776] as const;
 /** 컨테이너 안쪽의 좌우·아래 베젤 두께. */
 export const BEZEL = 8;
+/** 베젤 안 화면의 테두리 두께 — 스테이지 화면의 `border` 클래스(1px)를 숫자로 옮긴 것이다. 목업 루트 폭이 이만큼 더 좁다. */
+export const SCREEN_BORDER = 1;
 /** 컨테이너 상단 macOS 스타일 툴바. */
 export const TOOLBAR_H = 44;
-/** 베젤 아래 캡션 줄(간격 16 + 줄 28). 세로 예산에서 먼저 빠져야 캡션이 뷰포트 밖으로 안 나간다. */
-const CHROME_GAP = 16;
-const CHROME_H = CHROME_GAP + 28;
+/**
+ * 베젤과 캡션 블록 사이 간격. ⚠️ **`chromeHeight`가 이 간격을 이미 품는다** — 호출부는 잰 블록 높이에 이 값을 더해 넘긴다.
+ * 캡션 높이는 고정 상수가 아니다(좁으면 감겨 여러 줄이고 언어마다 다르다) — 그래서 `fitScale`·`frame`이 **필수 입력**으로 받는다.
+ */
+export const CHROME_GAP = 16;
+/**
+ * 세로가 정한 배율의 하한 — 아래면 고정 재생 대신 같은 5씬을 정적 흐름으로 보인다(`Fit.pinnable`).
+ * 판정은 그 그릇 높이(`Hk`)로 잰 세로 배율이다. 폰 가로 667×375 · 812×375는 T 그릇이고 세로가 배율을 정해 0.223(프레임 폭 ≈175)이라
+ * 고정으로 남는다 — 0.2는 그 바로 아래다. 더 낮은 창(568×320 — M, 두 줄 캡션에서 0.156)은 고정하면 목업이 읽히지 않아 정적이 된다.
+ */
+export const MIN_PINNED_SCALE = 0.2;
 /** 씬마다 정지 0.6 / 전환 0.4. */
 const HOLD = 0.6;
 const SCENES = 5;
@@ -37,30 +60,65 @@ const SCENES = 5;
 export const PLAY = { lead: 0, perScene: 1 } as const;
 
 const clamp = (lo: number, v: number, hi: number): number => Math.min(hi, Math.max(lo, v));
+/** 0·NaN·±Infinity·음수는 0이다 — 치수가 비정상이어도 NaN이 transform 문자열에 실리지 않는다. */
+const dim = (v: number): number => (Number.isFinite(v) && v > 0 ? v : 0);
 const ease = (t: number): number => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
+
+/** 그릇 — `STATE_CANVAS_W`·`STATE_CANVAS_H`의 번호(0 D · 1 T · 2 M). */
+export type Device = 0 | 1 | 2;
+
+/**
+ * 뷰포트 `lg`(64rem)·`sm`(40rem) 질의 결과가 그릇을 고른다 — ≥1024 D · 640~1023 T · <640 M. 모순 조합(lg ∧ ¬sm)은 lg가 이긴다.
+ * ⚠️ **스크롤러 `clientWidth`로 판정하지 않는다** — 공개 셸 거터·패널 테두리(18)와 스크롤바만큼 늘 뷰포트보다 좁아 1024~1041에서 CSS `lg`와 어긋난다.
+ * 질의는 셸이 `matchMedia`로 묻고(잎이라 쿼리 상수를 import하지 않는다) 불리언으로 넘긴다.
+ */
+export function deviceForViewport(isLg: boolean, isSm: boolean): Device {
+  return isLg ? 0 : isSm ? 1 : 2;
+}
 
 export type Fit = {
   scale: number;
   /** 컨테이너 왼쪽 위의 스크롤러 좌표 */
   x: number;
   y: number;
-  /** 캡션 줄 윗변 */
+  /** 캡션 블록 윗변 — 그 그릇 높이 바로 아래 간격 16 */
   chromeY: number;
   /** 좌우 여백 */
   side: number;
+  /** 캡션 블록의 최대 폭 — 폭만으로 정한 배율의 그릇 폭. 세로 배율로 줄이지 않는다(캡션 높이와 순환하지 않게). */
+  chromeW: number;
+  /** 세로가 정한 배율이 `MIN_PINNED_SCALE` 이상인가 — 아니면 고정 재생 대신 정적 흐름이다. */
+  pinnable: boolean;
 };
 
 /**
- * `W·H`는 스크롤러의 clientWidth/Height다. 배율은 **폭이 정하고 1을 넘지 않는다** — 1440 창에서 ≈0.9(공개 셸·여백만큼 작다).
+ * `W·H`는 스크롤러의 clientWidth/Height, `chromeHeight`는 **잰** 캡션 블록 높이(베젤과의 간격 16 포함)다.
+ * `device`는 뷰포트가 고른 그릇이다 — **기본값이 없다**(빠뜨린 호출이 조용히 D가 되지 않게, `chromeHeight`와 같은 근거).
+ * 배율은 **폭이 정하고 1을 넘지 않는다** — 1440 창의 D에서 ≈0.8(공개 셸·여백만큼 작다).
  * 세로가 모자라면 세로가 정한다: 고정 재생 동안 스테이지가 뷰포트를 가지므로 넘치면 목업 아래가 잘린다.
  */
-export function fitScale({ W, H }: { W: number; H: number }): Fit {
-  const side = clamp(24, 0.04 * W, 64);
-  const v = clamp(16, 0.02 * H, 32);
-  // 패널이 여백보다 작으면 음수 배율이 거울상을 그린다 — 0으로 묶는다.
-  const scale = Math.max(0, Math.min((W - 2 * side) / CANVAS_W, (H - 2 * v - CHROME_H) / CANVAS_H, 1));
-  const y = (H - CANVAS_H * scale - CHROME_H) / 2;
-  return { scale, x: (W - CANVAS_W * scale) / 2, y, chromeY: y + CANVAS_H * scale + CHROME_GAP, side };
+export function fitScale({ W, H, chromeHeight, device }: { W: number; H: number; chromeHeight: number; device: Device }): Fit {
+  const w = dim(W);
+  const h = dim(H);
+  const chrome = dim(chromeHeight);
+  const Wk = STATE_CANVAS_W[device];
+  const Hk = STATE_CANVAS_H[device];
+  const side = clamp(24, 0.04 * w, 64);
+  const v = clamp(16, 0.02 * h, 32);
+  const byWidth = Math.max(0, (w - 2 * side) / Wk);
+  // 패널이 여백·캡션보다 작으면 음수 배율이 거울상을 그린다 — 0으로 묶는다.
+  const byHeight = Math.max(0, (h - 2 * v - chrome) / Hk);
+  const scale = Math.min(byWidth, byHeight, 1);
+  const y = (h - Hk * scale - chrome) / 2;
+  return {
+    scale,
+    x: (w - Wk * scale) / 2,
+    y,
+    chromeY: y + Hk * scale + CHROME_GAP,
+    side,
+    chromeW: Math.min(byWidth, 1) * Wk,
+    pinnable: byHeight >= MIN_PINNED_SCALE,
+  };
 }
 
 /** 고정 구간 길이(H 단위). 씬 ⑤의 정지는 이 구간 끝까지다 — 고정이 풀릴 때 재생이 끝나 있다. */
@@ -107,11 +165,16 @@ export function typedPrefix(text: string, progress: number): string {
 type Five = [number, number, number, number, number];
 
 export type Frame = {
-  /** 프레임 transform — 크기만의 함수다 */
+  /** 프레임 캔버스 폭·높이 — 그릇의 것이고 재생 중 바뀌지 않는다. 베젤 안 화면(목업 루트)의 레이아웃 폭은 여기서 18을 뺀 값이다 */
+  canvasW: number;
+  canvasH: number;
+  /** 프레임 transform — 크기와 그릇만의 함수다 */
   scale: number;
   x: number;
   y: number;
   chromeY: number;
+  chromeW: number;
+  pinnable: boolean;
   scene: { i: number; t: number; h: number };
   /** 레이어 opacity 0..1 */
   layers: Five;
@@ -128,10 +191,15 @@ export function frame(input: {
   stageTop: number;
   W: number;
   H: number;
+  /** 잰 캡션 블록 높이(간격 16 포함) — `fitScale`을 보라. */
+  chromeHeight: number;
   reducedMotion: boolean;
+  /** 뷰포트가 고른 그릇 — `deviceForViewport`. 기본값이 없다. */
+  device: Device;
 }): Frame {
-  const { scrollTop, stageTop, W, H, reducedMotion: reduced } = input;
-  const { scale, x, y, chromeY } = fitScale({ W, H });
+  const { scrollTop, stageTop, W, H, chromeHeight, reducedMotion: reduced, device } = input;
+  // 배치는 `fitScale` 한 번이다 — 식이 두 벌이 아니다.
+  const { scale, x, y, chromeY, chromeW, pinnable } = fitScale({ W, H, chromeHeight, device });
 
   const { i, t: rawT, h } = sceneAt(scrollTop, stageTop, H);
   // 모션 감소는 전환 한가운데(f = 0.8)에서 끊어 바꾼다 — 스크롤 길이는 그대로다.
@@ -140,10 +208,14 @@ export function frame(input: {
   const five = (at: (k: number) => number): Five => [at(0), at(1), at(2), at(3), at(4)];
 
   return {
+    canvasW: STATE_CANVAS_W[device],
+    canvasH: STATE_CANVAS_H[device],
     scale,
     x,
     y,
     chromeY,
+    chromeW,
+    pinnable,
     scene: { i, t, h },
     layers: five((k) => (k === i ? 1 - te : k === i + 1 ? te : 0)),
     segments: five((k) => (k <= i ? 1 : k === i + 1 ? te : 0)),

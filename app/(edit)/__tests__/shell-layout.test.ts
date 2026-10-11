@@ -69,7 +69,8 @@ describe("셸 레이아웃 — 뷰포트 고정", () => {
    */
   it("`PanelHeader`가 눌리지 않고 아래 선을 든다", () => {
     expect(contentPanel).toMatch(/export function PanelHeader\b/);
-    expect(contentPanel).toMatch(/className="border-border shrink-0 border-b"/);
+    // 같은 요소가 머리 컨테이너도 선언한다(responsive-app B1a — 제목 행이 640 경계를 묻는다, `panel-header.test.tsx`).
+    expect(contentPanel).toMatch(/className="@container\/panel-head border-border shrink-0 border-b"/);
   });
 
   /**
@@ -128,11 +129,16 @@ describe("셸 골격 — 바깥 padding 8 · 패널 간 gap 8 (8-2)", () => {
   });
 
   /**
-   * ⚠️ **최소 대응 너비가 1280이고 그 아래는 가로 스크롤이 정상이다** (규약 3 · DESIGN §5).
-   * 루트에 `min-w-`가 없으면 스크롤이 아니라 **콘텐츠가 압축돼 잘린다** — 둘은 다르다.
+   * **셸 루트에 폭 하한이 없다** (responsive-app A6 · 2026-10-07 사용자 "할거면 풀스펙" — 옛 규약 3 "최소 1280 · 그 아래는 가로 스크롤"을 뒤집었다).
+   * 375부터 셸이 실제로 좁아지고 배치가 바뀐다 — LNB는 `lg` 미만 서랍(`nav-drawer.tsx`), 화면은 각자 컨테이너 질의로 적층한다.
+   * ⚠️ 하한이 돌아오면 좁은 폭 배치가 전부 1280 가로 스크롤 안에 갇혀 **한 번도 안 밟힌다** — 화면은 멀쩡해 보인다. 토큰도 같이 걷어 되살릴 자리를 없앴다.
    */
-  it("루트가 1280을 하한으로 든다 — 없으면 잘림이지 스크롤이 아니다", () => {
-    expect(layout).toMatch(/min-w-shell-min/);
+  it("루트에 폭 하한이 없다 — 하한 토큰도 없다", () => {
+    // className만 본다 — 그 자리 주석이 옛 클래스 이름을 적어 왜 없는지를 말한다.
+    const classes = [...layout.matchAll(/className="([^"]*)"/g)].map((match) => match[1] ?? "").join(" ");
+    expect(classes).toMatch(/\bh-svh\b/);
+    expect(classes).not.toMatch(/\bmin-w-(?!0\b)\S+/);
+    expect(read("app/globals.css")).not.toMatch(/--spacing-shell-min/);
   });
 
   /** 접힘 여부 쿠키를 서버에서 읽어 넘긴다 — 클라이언트가 읽으면 첫 페인트가 펼침이고 하이드레이션 뒤에 접힌다(2026-10-07). */
@@ -169,20 +175,30 @@ describe("셸 골격 — 바깥 padding 8 · 패널 간 gap 8 (8-2)", () => {
     const code = sidebar.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/gm, "$1");
     expect(code).not.toMatch(/\bw-60\b/);
     // `shrink-0`은 안쪽 아이콘·배지가 여전히 쓰므로 **`aside`의 className만** 본다.
-    const aside = /<aside\b[\s\S]*?className="([^"]*)"/.exec(code)?.[1] ?? "";
+    // 고정 LNB(`aside`)와 서랍 형(`div`, responsive-app)이 한 루트다 — 고정 갈래의 클래스를 본다.
+    expect(code).toMatch(/const Root = drawer \? "div" : "aside";/);
+    const aside = /className=\{drawer \? "[^"]*" : "([^"]*)"\}/.exec(code)?.[1] ?? "";
     expect(aside).not.toMatch(/\bshrink-0\b/);
     expect(aside).toMatch(/\bh-full\b/);
     expect(shellPanels).toMatch(/min: 200, default: 240, max: 320/);
   });
 
   /**
-   * ⚠️ **모바일 분기를 새로 만들지 않고, 남아 있던 것은 이 배송에서 걷는다** (규약 3).
-   * 1280 고정에서 `xl:`(1280) 분기는 **항상 참**이라 죽은 코드이고, 오버레이·햄버거는 도달 불가다.
+   * **LNB의 뷰포트 분기는 `lg` 하나이고 서랍 그릇은 `DrawerContent`뿐이다** (responsive-app design §2 — 옛 규약 3 "반응형 분기 0"을 교체).
+   * `sm`·`md`·`xl` 같은 둘째 경계가 생기면 CSS와 JS(`WIDE_QUERY`)가 갈리고, 손으로 만든 오버레이(`fixed inset-y-0`·`mobileOpen`)는 포커스 계약
+   * (열면 현재 항목 · 닫으면 메뉴 버튼 · 넓어지면 고정 LNB)을 다시 짜게 된다. 사이드바 자신은 폭을 묻지 않는다 — 숨김은 셸, 서랍은 헤더가 든다.
+   * 셸 루트에 하한이 없다는 단언은 위 "루트에 폭 하한이 없다"가 든다(responsive-app B1b).
    */
-  it("사이드바에 반응형 분기가 0개다 — 1280 고정이라 죽은 코드다", () => {
-    expect(sidebar).not.toMatch(/\b(?:sm|md|lg|xl|2xl):/);
-    expect(sidebar).not.toContain("mobileOpen");
-    expect(sidebar).not.toMatch(/\bfixed inset-y-0\b/);
+  it("LNB의 뷰포트 분기는 `lg` 하나이고, 서랍은 `DrawerContent`다", () => {
+    const drawer = read("components/shell/nav-drawer.tsx");
+    for (const [path, text] of [["sidebar", sidebar], ["shell-panels", shellPanels], ["nav-drawer", drawer], ["header", read("components/shell/header.tsx")]] as const) {
+      expect(text, path).not.toMatch(/(?:^|[\s"'`])(?:max-)?(?:sm|md|xl|2xl):/);
+      expect(text, path).not.toContain("mobileOpen");
+      expect(text, path).not.toMatch(/\bfixed inset-y-0\b/);
+    }
+    expect(sidebar).not.toMatch(/(?:^|[\s"'`])(?:max-)?lg:/);
+    expect(shellPanels).toMatch(/max-lg:hidden/);
+    expect(drawer).toMatch(/<DrawerContent\b/);
   });
 
   it("콘텐츠 패널이 흰 패널이다 — 배경·radius·border·그림자 넷이 함께 있어야 뜬다", () => {

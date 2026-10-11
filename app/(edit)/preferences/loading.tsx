@@ -33,13 +33,14 @@ export default async function PreferencesLoading() {
 /** 카드 하나 — 머리(제목·설명) + 320 필드 + 그 아래 작은 줄 `lines`개. */
 function CardSkeleton({ lines }: { lines: number }) {
   return (
-    <div className="border-border overflow-hidden rounded-lg border">
-      <div className="border-divider flex min-h-12 items-center gap-2 border-b px-4 py-3">
+    <div className="@container border-border overflow-hidden rounded-lg border">
+      {/* 실물 `Card` 머리와 같은 감김이다 — 설명이 640 미만에서 다음 줄 전폭으로 내려간다. */}
+      <div className="border-divider flex min-h-12 flex-wrap items-center gap-2 border-b px-4 py-3">
         <Skeleton size="md" className="w-20" />
-        <div className="ml-auto w-56"><Skeleton size="xs" className="w-full" /></div>
+        <div className="ml-auto w-56 @max-form:ml-0 @max-form:w-full"><Skeleton size="xs" className="w-full" /></div>
       </div>
       <div className="flex flex-col gap-1.5 px-4 py-3">
-        <Skeleton className="h-9 w-80 rounded-md" />
+        <Skeleton className="h-9 w-80 max-w-full rounded-md" />
         {Array.from({ length: lines }, (_, i) => <Skeleton key={i} size="xs" className="w-56" />)}
       </div>
     </div>

@@ -6,6 +6,8 @@ import type { TocItem } from "@/lib/guide/toc";
 import type { Messages } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
+import { READING_ARTICLE, READING_GRID, READING_TOC_SLOT } from "./classes";
+
 const ROW_HOVER = "hover:bg-foreground/[0.03] focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none";
 
 /**
@@ -23,13 +25,17 @@ function Arrow() {
 /**
  * 본문 스크롤러 안의 그릇 — **Privacy 그릇 그대로**(DESIGN §6.61 · 시안 `Docs.dc.html` 1b): 본문 720 + 목차 200 · 사이 64 ·
  * 최대 1064 가운데 · 위 64 아래 120. 목차가 없으면(H2 둘 미만 · 개요 · 장 개요) **열만 비운다** — 본문 폭이 페이지마다 흔들리지 않는다.
+ * 좁은 폭(그릇 바깥 960 미만)은 한 열이고 목차가 본문 앞 disclosure다 — 목차가 없으면 아무것도 서지 않는다(빈 칸 없음).
+ * 판정·여백은 `READING_*`(`./classes`)가 `/privacy`와 한 벌로 든다. 아래 120은 좁은 폭의 Docs 캡슐(44 + 16) 위로 마지막 줄을 올린다.
  */
 export function DocFrame({ m, toc, children }: { m: Messages; toc: readonly TocItem[]; children: ReactNode }) {
   return (
-    <div className="mx-auto grid max-w-[1064px] grid-cols-[minmax(0,720px)_200px] justify-between gap-16 px-10 pt-16 pb-30">
-      {/* 도입 문단(h1 바로 뒤)은 위 20 — 본문 문단의 16과 다르다(시안 1a–1d, #119). 원고 문단은 react-markdown이 그려 그릇이 누른다. */}
-      <article className="min-w-0 [&>h1+p]:mt-5">{children}</article>
-      {toc.length === 0 ? <div /> : <Toc label={m.publicDocs.docs.toc} items={toc.map(({ id, text }) => ({ id, heading: text }))} />}
+    <div className="@container/reading">
+      <div className={cn(READING_GRID, "max-w-[1064px]")}>
+        {toc.length === 0 ? null : <Toc label={m.publicDocs.docs.toc} items={toc.map(({ id, text }) => ({ id, heading: text }))} className={READING_TOC_SLOT} />}
+        {/* 도입 문단(h1 바로 뒤)은 위 20 — 본문 문단의 16과 다르다(시안 1a–1d, #119). 원고 문단은 react-markdown이 그려 그릇이 누른다. */}
+        <article className={cn(READING_ARTICLE, "[&>h1+p]:mt-5")}>{children}</article>
+      </div>
     </div>
   );
 }
@@ -68,10 +74,11 @@ export type DocTrack = { audience: string; chapter: DocLinkRow; pages: readonly 
 /**
  * 개요의 **두 갈래 카드**(시안 1a) — 위는 장 개요로(대상 13 muted · 제목 18/500 · 설명 14 muted), 아래 행 셋(44)은 그 장의 첫 할 일.
  * 셸이 역할을 읽지 않으므로 갈래는 여기서 준다(spec — 사이드바 Docs는 역할과 무관하게 개요로 온다).
+ * 읽기 그릇 640 미만은 한 열이다 — 375에서 두 칸이면 칸마다 약 150이라 행 제목이 서너 줄로 갈린다. 행은 최소 44이고 감기면 자란다.
  */
 export function DocTracks({ tracks }: { tracks: readonly DocTrack[] }) {
   return (
-    <div className="mt-10 grid grid-cols-2 gap-4">
+    <div className="mt-10 grid grid-cols-1 gap-4 @[640px]/reading:grid-cols-2">
       {tracks.map((track) => (
         <div key={track.chapter.href} className="border-border overflow-hidden rounded-lg border">
           <Link href={track.chapter.href} className={cn("block p-4", ROW_HOVER)}>
@@ -85,7 +92,7 @@ export function DocTracks({ tracks }: { tracks: readonly DocTrack[] }) {
           <ul className="divide-border border-divider m-0 list-none divide-y border-t p-0">
             {track.pages.map((page) => (
               <li key={page.href}>
-                <Link href={page.href} className={cn("flex h-11 items-center justify-between gap-3 px-4 text-sm", ROW_HOVER)}>
+                <Link href={page.href} className={cn("flex min-h-11 items-center justify-between gap-3 px-4 py-2.5 text-sm", ROW_HOVER)}>
                   {page.title}
                   <Arrow />
                 </Link>
@@ -98,7 +105,10 @@ export function DocTracks({ tracks }: { tracks: readonly DocTrack[] }) {
   );
 }
 
-/** 이전/다음 — 본문 끝 위 64 · 선 뒤 반반 카드(p16 · 라벨 13 muted · 제목 15/500). SUMMARY 선위 순서, 장 경계를 넘는다. */
+/**
+ * 이전/다음 — 본문 끝 위 64 · 선 뒤 반반 카드(p16 · 라벨 13 muted · 제목 15/500). SUMMARY 선위 순서, 장 경계를 넘는다.
+ * 375에서도 반반이다(PT2a) — 세로로 쌓으면 Next가 접힘선 아래로 밀린다. 제목은 감긴다.
+ */
 export function DocNeighbours({ m, previous, next }: { m: Messages; previous: { href: string; title: string } | null; next: { href: string; title: string } | null }) {
   if (previous === null && next === null) return null;
   const card = (item: { href: string; title: string }, label: string, className: string) => (

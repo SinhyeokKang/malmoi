@@ -545,6 +545,8 @@ export const en = {
       docs: "Docs",
       github: "GitHub",
       getStarted: "Get started",
+      /** `lg` 미만 헤더의 서랍 메뉴 버튼 이름(responsive-public D8) — 닫기는 `common.close`다. 서랍의 이름은 `nav`(Main)다. */
+      openNav: "Open navigation",
     },
     /** 히어로 — 버튼 둘은 헤더와 같은 말이라 `shell.docs`·`shell.getStarted`를 쓴다(같은 구역). */
     hero: {
@@ -4050,5 +4052,13 @@ export const en = {
     "download-failed": "We couldn't download the file.",
     /** ⚠️ 코드가 아니다 — 모르는 코드가 왔을 때의 문장이라 union 밖에 있어야 한다. */
     fallback: "We couldn't read this file.",
+  },
+  responsive: {
+    /** 번역 단일 판(카드 772 미만) 상세 머리 ‹ Keys의 접근 이름(responsive-app design §3) — 보이는 글자는 목록 제목 `translations.workspace.list.keys`다. */
+    backToKeys: "Back to keys",
+    /** Files 단계 순차 판(본문 608 미만 — responsive-app design §4 · 시안 AT7): 후보 목록 아래 샘플 판으로 가는 버튼. step을 진행시키지 않는다. */
+    viewSample: "View sample",
+    /** 샘플 판 위 후보 목록으로 돌아가는 버튼. */
+    backToCandidates: "Candidates",
   },
 } as const;

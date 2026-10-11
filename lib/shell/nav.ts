@@ -306,3 +306,11 @@ export function navFooterItems(m: Messages): NavItem[] {
     { key: "docs", label: m.publicDocs.docs.title, icon: CircleHelp, href: routes.docs(), exact: true },
   ];
 }
+
+/**
+ * **`lg` 미만 LNB 서랍의 바닥** (responsive-app 시안 AT1b · AT1d) — 헤더에서 빠진 `New project`가 첫 행이다(헤더 링크·검색 색인과 같은 `Plus`).
+ * ⚠️ **프로젝트 밖에서는 넣지 않는다** — 둘째 구역(내 프로젝트 목록)이 이미 `New project`로 끝난다. 두 번 서면 같은 목적지가 한 서랍에 둘이다.
+ */
+export function navDrawerFooterItems(m: Messages, inProject: boolean): NavItem[] {
+  return inProject ? [newProjectItem(m), ...navFooterItems(m)] : navFooterItems(m);
+}

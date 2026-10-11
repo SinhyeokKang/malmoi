@@ -49,7 +49,7 @@ export function EntityCard({
     <div className={cn("border-border flex w-full items-center gap-3 rounded-lg border p-3", className)}>
       <Avatar name={avatarName ?? name} src={image} size={32} />
       <div className="flex min-w-0 flex-1 flex-col gap-px">
-        <span className="truncate text-sm">{name}</span>
+        <span className="text-sm wrap-anywhere">{name}</span>
         {description !== undefined && <span className="text-muted-foreground truncate text-xs">{description}</span>}
       </div>
       {/* ⚠️ 브랜드 마크는 무채색 위계의 대상이 아니다 — `--foreground`를 그대로 받는다. */}

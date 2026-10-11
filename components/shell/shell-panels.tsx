@@ -6,9 +6,12 @@ import type { ImperativePanelGroupHandle } from "react-resizable-panels";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { useMessages } from "@/components/i18n/messages-provider";
 import { collapseChange, panelConstraints, panelLayout, panelPercent, type PanelPx } from "@/lib/shell/panel-size";
+import { WIDE_QUERY } from "@/lib/shell/breakpoint";
 import { sidebarCollapsedCookie } from "@/lib/shell/sidebar-cookie";
 import { cn } from "@/lib/utils";
 
+import { APP_NAV_MENU } from "./nav-drawer";
+import { useNarrowHandoff } from "./narrow-handoff";
 import { SidebarCollapseContext } from "./sidebar-collapse";
 
 /**
@@ -24,7 +27,7 @@ import { SidebarCollapseContext } from "./sidebar-collapse";
  * 틀렸다). Home 카운트 카드의 `@container/cards`는 **콘텐츠 패널이 아니라 본문 grid의 왼쪽 열**에
  * 산다(`[slug]/(home)/page.tsx`의 `grid-cols-[minmax(0,1fr)_320px] gap-5`). 컨테이너는 패널 폭에서
  * **374**(border 2 + `p-4` 32 + 메타 열 320 + gap 20)를 뺀 값이다 — 1280 실측 패널 1016 / 카드 642.
- * **최소 대응 폭 1280에서는 여전히 2열**이고 4열은 뷰포트 ~1310 위에서 시작한다(1502 실측 865 → 4열).
+ * **데스크톱 대표 폭 1280에서는 여전히 2열**이고 4열은 뷰포트 ~1310 위에서 시작한다(1502 실측 865 → 4열).
  * POSTMORTEM 2026-09-15가 적은 실패 모양이 정확히 이것이다 — **재는 지점이 임계값 아래**였다.
  */
 export const SHELL_SIDEBAR_PX: PanelPx = { min: 200, default: 240, max: 320 };
@@ -43,7 +46,7 @@ export const SHELL_HANDLE_PX = 8;
 
 /**
  * ⚠️ **재기 전에 쓰는 % 폴백.** 라이브러리는 `defaultSize` 없이 서버 렌더하면 **layout shift를
- * 경고**하고 패널을 균등 분할한다. 최소 대응 너비(1280 − `p-2` 16 − 핸들 8)를 기준으로 두면
+ * 경고**하고 패널을 균등 분할한다. 데스크톱 대표 폭(1280 − `p-2` 16 − 핸들 8 — 셸 하한은 없다, responsive-app A6)을 기준으로 두면
  * 그 경고도, 균등 분할도 없다.
  */
 const FALLBACK_AVAILABLE = 1280 - 16 - SHELL_HANDLE_PX;
@@ -69,11 +72,19 @@ function rememberCollapsed(collapsed: boolean) {
  * 전환 중 두 `ContentPanel`이 공존해도 같은 셀을 써서 폭을 나누지 않는다.
  *
  * **`initialCollapsed`는 서버 레이아웃이 기기 쿠키에서 읽은 접힘 여부다**(`lib/shell/sidebar-cookie.ts`) — 첫 페인트부터 접힌 셸을 그린다.
+ *
+ * **뷰포트 `lg` 미만은 LNB가 숨고 헤더의 서랍(`nav-drawer.tsx`)이 그 자리를 든다**(responsive-app design §2). ⚠️ **두 Panel과 핸들은 언제나 마운트하고
+ * CSS(`max-lg:hidden`)로만 숨긴다** — 사이드바 Panel을 조건부로 그리면 콘텐츠 Panel의 형제 위치가 바뀌어 children(번역 작업 화면·폼)이 재마운트된다.
+ * ⚠️ **좁은 모드에서는 `setLayout`·`onResize`를 건너뛴다** — 숨은 패널에 대고 레이아웃을 맞추거나, 라이브러리가 좁아진 폭에 맞춰 낸 `onResize`를
+ * 사용자의 접힘·선호폭으로 읽으면 쿠키·`sidebarPx`가 자동 전환으로 덮인다. 넓어지면 그때의 폭에 기억한 px(또는 접힘 40)를 다시 맞춘다.
+ * 판정은 렌더 상태가 아니라 ref다 — 서버와 첫 클라이언트 렌더가 같고, 배치는 CSS가 이미 정했다.
  */
 export function ShellPanels({ sidebar, children, initialCollapsed = false }: { sidebar: ReactNode; children: ReactNode; initialCollapsed?: boolean }) {
   const m = useMessages();
   const [available, setAvailable] = useState<number | null>(null);
   const [group, setGroup] = useState<HTMLElement | null>(null);
+  /** 뷰포트가 `lg` 이상인가 — `matchMedia`가 없는 환경(jsdom)은 넓다고 읽는다(지금 동작). 아래 effect가 첫 커밋에 맞춘다. */
+  const wideRef = useRef(true);
 
   /**
    * ⚠️ **콜백 ref다.** `PanelGroup`의 ref는 DOM 노드가 아니라 imperative 핸들이라 그룹 자신을 잴 수
@@ -84,6 +95,12 @@ export function ShellPanels({ sidebar, children, initialCollapsed = false }: { s
   useEffect(() => {
     if (group === null) return;
     const observer = new ResizeObserver(([entry]) => {
+      /*
+        ⚠️ **좁은 동안 잰 폭은 버린다** (#225). 그 폭이 `available`로 들어가면 제약(`minSize` 200 = 375의 57%)이 숨은 패널의 몫을 끌어올리고,
+        넓어지는 순간 CSS가 그 몫을 먼저 그린다(1024에서 570 → 429 실측). 버리면 첫 마운트가 좁았을 때 재기 전 고정(240px)이 그대로 남는다.
+        넓어질 때의 폭은 아래 `change`가 그 자리에서 잰다.
+      */
+      if (!wideRef.current) return;
       const width = entry?.contentRect.width ?? group.getBoundingClientRect().width;
       setAvailable(width - SHELL_HANDLE_PX);
     });
@@ -106,12 +123,44 @@ export function ShellPanels({ sidebar, children, initialCollapsed = false }: { s
   const [collapsed, setCollapsed] = useState(initialCollapsed);
   const collapsedRef = useRef(initialCollapsed);
   const [animating, setAnimating] = useState(false);
+  const availableRef = useRef<number | null>(null);
+  const groupElRef = useRef<HTMLElement | null>(null);
+  groupElRef.current = group;
+  availableRef.current = available;
+
+  const restoreLayout = useCallback(() => {
+    const width = availableRef.current;
+    if (width === null || !wideRef.current) return;
+    const layout = panelLayout(width, collapsedRef.current ? SHELL_SIDEBAR_COLLAPSED_PX : sidebarPx.current);
+    if (layout !== null) groupRef.current?.setLayout(layout);
+  }, []);
 
   useEffect(() => {
-    if (available === null) return;
-    const layout = panelLayout(available, collapsedRef.current ? SHELL_SIDEBAR_COLLAPSED_PX : sidebarPx.current);
-    if (layout !== null) groupRef.current?.setLayout(layout);
-  }, [available]);
+    const query = window.matchMedia?.(WIDE_QUERY);
+    if (query == null) return;
+    wideRef.current = query.matches;
+    /*
+      넓어지는 순간에 맞춘다 — 좁은 동안의 `ResizeObserver`는 버렸다. ⚠️ **폭을 그 자리에서 잰다** (#225) — 마지막으로 기억한 `available`은
+      좁아지기 전(또는 첫 마운트가 좁았으면 없음)의 값이라, 그것으로 240을 % 환산하면 지금 폭과 어긋난다. RO는 탭이 가려져 있으면 한참 늦고,
+      그동안 틀린 폭이 화면에 남는다. `getBoundingClientRect`는 이 순간 새 뷰포트로 레이아웃을 맞춰 준다(jsdom은 0 — 그때는 RO를 기다린다).
+    */
+    const onChange = (event: { matches: boolean }) => {
+      wideRef.current = event.matches;
+      if (!event.matches) return;
+      const width = groupElRef.current?.getBoundingClientRect().width ?? 0;
+      if (width > 0) {
+        availableRef.current = width - SHELL_HANDLE_PX;
+        setAvailable(width - SHELL_HANDLE_PX);
+      }
+      restoreLayout();
+    };
+    query.addEventListener("change", onChange);
+    return () => query.removeEventListener("change", onChange);
+  }, [restoreLayout]);
+
+  useEffect(() => {
+    if (available !== null) restoreLayout();
+  }, [available, restoreLayout]);
 
   /**
    * ⚠️ **`collapse()`·`expand()`가 아니라 `setLayout`이다** — `expand()`는 라이브러리가 기억한 **%**로 돌아가 창 폭이 바뀐 뒤엔
@@ -143,12 +192,14 @@ export function ShellPanels({ sidebar, children, initialCollapsed = false }: { s
           collapsedSize={panelPercent(available ?? FALLBACK_AVAILABLE, SHELL_SIDEBAR_COLLAPSED_PX)}
           // 버튼 토글만 부드럽게 잇는다 — 드래그 중에 전이가 걸리면 핸들이 포인터를 늦게 따라온다.
           // ⚠️ `min-w-0` — 패널이 `overflow: visible`이라 flex 최소 폭이 라벨의 한 줄 폭(`whitespace-nowrap`)이 되어 40까지 못 줄어든다.
-          className={cn("min-w-0", animating && "transition-[flex-grow] ease-out")}
+          className={cn("min-w-0 max-lg:hidden", animating && "transition-[flex-grow] ease-out")}
           /**
            * ⚠️ **드래그일 때만 받는다.** 폭 변화로 우리가 부른 `setLayout`도 여기로 돌아오는데, 그것을
            * 새 의사로 읽으면 px가 그때그때의 반올림을 따라 흘러간다.
            */
           onResize={(size) => {
+            // 좁은 모드의 크기 변화는 숨은 패널의 자동 보정이다 — 사용자의 접힘·폭이 아니다(위 머리 주석).
+            if (!wideRef.current) return;
             const width = available ?? FALLBACK_AVAILABLE;
             const change = collapseChange(collapsedRef.current, size, width, SHELL_SIDEBAR_COLLAPSED_PX);
             // 드래그 스냅으로 바뀐 것도 사용자의 선택이다 — 판정은 여부 변화 하나다(드래그 여부로 거르지 않는다 — `collapseChange`).
@@ -177,11 +228,12 @@ export function ShellPanels({ sidebar, children, initialCollapsed = false }: { s
               : { overflow: "visible", transitionDuration: `${TOGGLE_MS}ms` }
           }
         >
-          {sidebar}
+          <FixedSidebar>{sidebar}</FixedSidebar>
         </ResizablePanel>
+        {/* `touch-none` — 터치 드래그가 페이지 스크롤로 새지 않는다(responsive-app design §3, 공개 단계가 넘긴 몫). */}
         <ResizableHandle
           aria-label={m.common.resizeSidebar}
-          className="w-2"
+          className="w-2 touch-none max-lg:hidden"
           onDragging={(isDragging) => { dragging.current = isDragging; }}
           /**
            * ⚠️ **Enter는 셸이 먼저 받는다** — `react-resizable-panels` 2.1.9의 Enter는 그룹 상태만 바꾸고 패널 `onResize`를 부르지 않아
@@ -205,4 +257,15 @@ export function ShellPanels({ sidebar, children, initialCollapsed = false }: { s
     </div>
     </SidebarCollapseContext.Provider>
   );
+}
+
+/**
+ * 고정 LNB의 래퍼 — **좁아지며 숨을 때 그 안의 포커스를 앱 메뉴 버튼으로 넘긴다**(`useNarrowHandoff` — Chrome은 숨는 노드의 포커스를 blur 없이
+ * `body`로 옮긴다, #214). 넓어지며 서랍이 닫힐 때 포커스를 받을 항목도 여기서 찾는다(`APP_SIDEBAR`).
+ * ⚠️ **숨김 클래스가 이 요소에도 있다** — 훅의 blur 판정이 자기 `display`를 읽는다(조상의 `display:none`은 자식의 computed `display`를 안 바꾼다).
+ */
+function FixedSidebar({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const handoff = useNarrowHandoff(ref, APP_NAV_MENU);
+  return <div ref={ref} data-app-sidebar="" className="h-full max-lg:hidden" {...handoff}>{children}</div>;
 }

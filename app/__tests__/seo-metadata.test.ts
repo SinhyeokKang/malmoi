@@ -109,6 +109,14 @@ describe("공개 페이지 — canonical 있음 · noindex 없음", () => {
     expect(meta.alternates).toBeUndefined();
     expect(meta.openGraph).toBeUndefined();
   });
+
+  // 첫 HTTP 응답의 `<title>`은 페이지 `generateMetadata`가 아니라 not-found 파일의 metadata다 — 페이지가 던진 `notFound()`를
+  // Next가 오류 복구 셸로 다시 그리며 그 세그먼트의 not-found 메타를 읽는다(audit 18). 없으면 레이아웃 default가 서서
+  // `Malmoi Docs · Malmoi`가 된다. 위 페이지 쪽 값은 클라이언트 이동의 제목이라 둘 다 필요하다.
+  it("docs 404 — not-found 파일의 제목이 첫 응답 제목 · canonical 없음", async () => {
+    const { metadata } = await import("@/app/docs/not-found");
+    expect(metadata).toEqual({ title: en.publicDocs.docs.notFound.title });
+  });
 });
 
 describe("색인 거부 셋 — canonical 없음", () => {

@@ -1,7 +1,9 @@
 "use client";
 
+import { ChevronDown } from "lucide-react";
 import { useEffect, useId, useRef, useState, type MouseEvent } from "react";
 
+import { Button } from "@/components/ui/button";
 import { isPlainPrimaryClick } from "@/lib/keyboard";
 import { DOCUMENT_HEADING_LANDED, documentTop as topOf, landDocumentHeading } from "@/lib/public-doc/landing";
 import { currentSection } from "@/lib/public-doc/toc";
@@ -21,11 +23,18 @@ const RELEASE = ["wheel", "touchstart", "keydown", "pointerdown"] as const;
  * ⚠️ **스크롤러는 공개 셸의 것이다**(`[data-public-scroller]` — `/docs`는 페이지가 그 스크롤러를 든다) — 문서는 스크롤되지 않으므로 `window`를 구독하면 아무것도 안 온다.
  * ⚠️ **setState는 값이 바뀔 때만 리렌더한다** — 항목이 열 안팎이라 스테이지처럼 DOM에 직접 쓸 이유가 없다.
  * ⚠️ **`@/lib/**`는 판정 `lib/public-doc/toc.ts`·공유 착지 `lib/public-doc/landing.ts`와 `cn`을 읽는다** — 셋 다 `client-graph.test.ts`의 `CLIENT_LIB_FILES`에 있다.
+ *
+ * ⚠️ **좁은 형도 이 인스턴스다**(responsive-public PT2b · design §3) — 읽기 그릇(`@container/reading`) 960 미만이면 본문 앞 카드 안 disclosure
+ * (머리 44 버튼 · 기본 접힘 · 항목을 눌러도 열린 채), 이상이면 오른쪽 sticky 목록이다. 두 벌을 그려 하나를 숨기면 scroll 리스너와 ResizeObserver가
+ * 인스턴스마다 붙는다. 그래서 형은 컨테이너 쿼리 클래스만 바꾸고, 현재 절 계산은 접혀 있어도 돈다.
+ * 그 질의는 이 컴포넌트 밖의 조상 컨테이너를 묻는다 — 쓰는 그릇이 `@container/reading` 안에 두어야 한다.
  */
-export function Toc({ label, items }: { label: string; items: readonly { id: string; heading: string }[] }) {
+export function Toc({ label, items, className }: { label: string; items: readonly { id: string; heading: string }[]; className?: string }) {
   const titleId = useId();
+  const listId = useId();
   const ref = useRef<HTMLElement>(null);
   const [current, setCurrent] = useState(0);
+  const [open, setOpen] = useState(false);
   /**
    * 누른 절 — 사용자가 스스로 스크롤할 때까지 위치 판정을 이긴다. 뒤쪽 짧은 절은 48 자리까지 못 올라와 스크롤이
    * 끝에서 멈추고, 그러면 끝 규칙이 마지막 절을 켜서 누른 항목이 아닌 것이 강조됐다. `scrollend`가 아니라 입력으로
@@ -104,27 +113,56 @@ export function Toc({ label, items }: { label: string; items: readonly { id: str
   };
 
   return (
-    <nav ref={ref} aria-labelledby={titleId} className="sticky top-12 self-start">
-      <p id={titleId} className="m-0 text-xs font-medium">
+    <nav
+      ref={ref}
+      aria-labelledby={titleId}
+      className={cn(
+        "border-border overflow-hidden rounded-lg border",
+        "@[960px]/reading:sticky @[960px]/reading:top-12 @[960px]/reading:self-start @[960px]/reading:overflow-visible @[960px]/reading:rounded-none @[960px]/reading:border-0",
+        className,
+      )}
+    >
+      {/* 좁은 형의 머리 — 제목과 같은 글자다. 이름은 아래 제목(`titleId`)이 든다(숨겨도 `aria-labelledby`는 읽는다). */}
+      <Button
+        type="button"
+        variant="ghost"
+        aria-expanded={open}
+        aria-controls={listId}
+        onClick={() => setOpen((value) => !value)}
+        className="text-foreground hover:text-foreground h-11 w-full justify-between rounded-none pr-3 pl-4 text-xs focus-visible:ring-inset @[960px]/reading:hidden"
+      >
+        {label}
+        <ChevronDown aria-hidden className={cn("text-muted-foreground size-4 transition-transform", open && "rotate-180")} />
+      </Button>
+      <p id={titleId} className="m-0 hidden text-xs font-medium @[960px]/reading:block">
         {label}
       </p>
-      <ul className="border-border mt-3 border-l">
-        {items.map(({ id, heading }, index) => (
-          <li key={id}>
-            <a
-              href={`#${id}`}
-              onClick={(event) => onClick(event, id)}
-              aria-current={index === current ? "location" : undefined}
-              className={cn(
-                "-ml-px block border-l py-1.5 pr-0 pl-3 text-xs leading-normal focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
-                index === current ? "border-foreground text-foreground" : "text-muted-foreground hover:text-foreground border-transparent",
-              )}
-            >
-              {heading}
-            </a>
-          </li>
-        ))}
-      </ul>
+      {/* 접힘은 좁은 형에서만이다 — 넓은 형은 늘 펼친다. */}
+      <div
+        id={listId}
+        className={cn(
+          "border-divider border-t px-4 pt-3 pb-3.5 @[960px]/reading:block @[960px]/reading:border-0 @[960px]/reading:p-0",
+          open ? "block" : "hidden",
+        )}
+      >
+        <ul className="border-border border-l @[960px]/reading:mt-3">
+          {items.map(({ id, heading }, index) => (
+            <li key={id}>
+              <a
+                href={`#${id}`}
+                onClick={(event) => onClick(event, id)}
+                aria-current={index === current ? "location" : undefined}
+                className={cn(
+                  "-ml-px block border-l py-1.5 pr-0 pl-3 text-xs leading-normal focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
+                  index === current ? "border-foreground text-foreground" : "text-muted-foreground hover:text-foreground border-transparent",
+                )}
+              >
+                {heading}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
     </nav>
   );
 }

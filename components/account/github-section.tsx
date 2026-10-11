@@ -66,6 +66,7 @@ export function GithubSection({
         대상이 아직 없으므로 동작을 가리키는 lucide 글리프(`link-2`, 회색)가 선다.
       */}
       <ListRow
+        stackActions
         as="li"
         className="border-border border-t first:border-t-0"
         icon={<IconTile>{connected ? <GithubIcon className="size-4" /> : <Link2 className="text-muted-foreground size-4" aria-hidden />}</IconTile>}

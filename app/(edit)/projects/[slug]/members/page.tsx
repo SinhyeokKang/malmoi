@@ -4,7 +4,7 @@ import { ProjectArchived } from "@/components/project-archived";
 import { MemberList } from "@/components/members/member-list";
 import { MembersPanelHeader } from "@/components/members/members-panel-header";
 import { PendingInvitations } from "@/components/members/pending-invitations";
-import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
+import { PANEL_HEAD_ROW, PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { loadMembers, loadPendingInvitations } from "@/lib/auth/query";
 import { planSeatNotice } from "@/lib/auth/seat-notice";
 import { requireProjectAccess } from "@/lib/auth/session";
@@ -67,7 +67,7 @@ export default async function MembersPage({ params }: { params: Promise<{ slug: 
           그 모듈이 `node:crypto`를 문다. 값만 내려보내면 클라이언트 번들 경계가 안 움직인다.
           그리고 **화면이 `MEMBER_LIMIT`을 따로 들지 않는다** — 들면 서버 거부와 갈린다.
         */}
-        <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className={PANEL_HEAD_ROW}>
           <h1 className="text-lg font-medium">{m.common.nav.members}</h1>
           <MembersPanelHeader slug={slug} notice={planSeatNotice({ role, memberCount: members.length })} />
         </div>

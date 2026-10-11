@@ -157,12 +157,18 @@ export function DotField({ className }: { className?: string }) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       dots = dotGrid(width, height, GAP);
       draw();
+      /**
+       * ⚠️ **캔버스가 `display:none`이면 폭이 0이라 루프를 멈춘다**(`lg` 미만 장식 숨김, responsive-public). 렌더 시점 폭 판정이 아니라
+       * 여기서 실측한다 — `ResizeObserver`가 다시 보일 때(폭 > 0) 이 함수를 다시 불러 루프를 되살린다.
+       * ⚠️ 커서가 없어도 도는 루프이므로 시작 조건이 여기 하나다.
+       */
+      if (width === 0) {
+        cancelAnimationFrame(frame);
+        running = false;
+      } else if (motionOk) start();
     };
 
     resize();
-
-    /** ⚠️ 커서가 없어도 도는 루프이므로 시작 조건이 여기 하나다. */
-    if (motionOk) start();
 
     const observer = new ResizeObserver(resize);
     observer.observe(canvas);

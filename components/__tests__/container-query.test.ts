@@ -21,8 +21,12 @@ const SKIP_DIR = new Set(["__tests__", "node_modules", "generated", ".next"]);
 
 /** `@container` 또는 `@container/<name>` — 이 요소가 조상 컨테이너가 된다는 선언. */
 const DECLARES = /(?:^|\s)@container(?:\/[\w-]+)?(?=\s|$)/;
-/** `@md:`·`@[672px]/cards:` — 조상 컨테이너의 폭을 묻는 변형. 선언과 달리 `:`로 끝난다. */
-const QUERIES = /(?:^|\s)@(?:\[[^\]]+\]|[\w-]+)(?:\/[\w-]+)?:/;
+/**
+ * `@md:`·`@[672px]/cards:`·`@max-[772px]/ws:`·`@min-[64rem]/mockup:` — 조상 컨테이너의 폭을 묻는 변형. 선언과 달리 `:`로 끝난다.
+ * ⚠️ **`min-`·`max-` 접두를 따로 받는다** — 첫 판의 `[\w-]+`는 `max-`에서 `[`에 막혀 `@max-[…]/name:` 형을 하나도 못 읽었다(responsive-mockup 리뷰 Y1).
+ */
+const QUERY_HEAD = String.raw`@(?:(?:min|max)-)?(?:\[[^\]]+\]|[\w-]+)`;
+const QUERIES = new RegExp(String.raw`(?:^|\s)${QUERY_HEAD}(?:\/[\w-]+)?:`);
 /**
  * ⚠️ **`className={cn(…)}`까지 본다** (라운드 3 ⚪) — 첫 판이 정적 속성만 읽어 리포의 `cn(` **76곳**을
  * 통째로 놓쳤고, `count-cards.tsx` 자신이 그중 셋을 쓴다. 속성값이 `{`로 열리면 **짝을 세어** 끝까지
@@ -75,7 +79,7 @@ const FILES = ["components", "app"].flatMap((root) => sourceFiles(join(ROOT, roo
 
 /** `@[672px]/cards:` → `cards`. 이름 없는 `@md:`는 가장 가까운 컨테이너를 묻는 것이라 대상이 아니다. */
 function queriedNames(value: string): string[] {
-  return [...value.matchAll(/(?:^|\s)@(?:\[[^\]]+\]|[\w-]+)\/([\w-]+):/g)].map((m) => m[1] ?? "");
+  return [...value.matchAll(new RegExp(String.raw`(?:^|\s)${QUERY_HEAD}\/([\w-]+):`, "g"))].map((m) => m[1] ?? "");
 }
 function declaredNames(value: string): string[] {
   return [...value.matchAll(/(?:^|\s)@container\/([\w-]+)(?=\s|$)/g)].map((m) => m[1] ?? "");
@@ -90,6 +94,11 @@ it("스캐너가 실제로 매칭한다 — 파일도 컨테이너 선언도 0�
   // ⚠️ **템플릿 className도 실제로 읽히나** — 백틱 분기가 `$`를 배제하던 판은 이 수가 0이었다.
   expect(SOURCES.filter((s) => s.values.some((v) => v.includes("motion-safe:animate-pulse"))).length).toBeGreaterThan(0);
   expect(SOURCES.filter((s) => s.values.some((v) => DECLARES.test(v))).length).toBeGreaterThan(0);
+  // ⚠️ **`@max-[…]`·`@min-[…]` 형도 읽히나** (리뷰 Y1) — 넓히기 전엔 이 형이 질의로도, 묻는 이름으로도 0이었다.
+  for (const query of ["@max-[64rem]/mockup:hidden", "@min-[772px]/ws:hidden", "@[672px]/cards:grid-cols-4", "@max-form:flex"]) expect(QUERIES.test(query), query).toBe(true);
+  expect(queriedNames("@max-[772px]/ws:w-full @min-[64rem]/mockup:hidden")).toEqual(["ws", "mockup"]);
+  // `wshead`·`panel-head`는 모듈 상수(`DETAIL_PANE_HIDDEN`·`PANEL_HEAD_ROW`)에만 질의가 있어 이 스캐너가 원리적으로 못 본다 — 목업은 DOM 검사가 덮는다(`landing-mockup.test.tsx`).
+  expect(SOURCES.flatMap((s) => s.values.flatMap(queriedNames))).toEqual(expect.arrayContaining(["ws", "mockup", "crumb"]));
 });
 
 it("컨테이너 선언과 그 컨테이너를 묻는 변형이 같은 요소에 있지 않다", () => {

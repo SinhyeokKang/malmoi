@@ -2,7 +2,7 @@
 
 Open the translation screen, find the text you want to translate, edit it in each language, and save before publishing.
 
-Before you start: Join a project and choose **Translations** in the project navigation.
+Before you start: Join a project and choose **Translations** in the project navigation. On a narrow screen, such as a phone, the navigation is hidden: choose the menu button next to the logo to open it, and it closes when you pick a page.
 
 ## Find a key {#find-key}
 
@@ -11,6 +11,8 @@ The key list is on the left. Each row is one piece of text in the app — a *key
 ![The translation screen with a key selected in the list and its text in three languages](/guide/translation-editor.webp "Select a row to edit its text in every language.")
 
 In the key list, the arrow keys move between rows and Enter opens the row; Tab moves past the whole list in one step.
+
+When the screen is too narrow for both, the key list and the translations take turns. Select a row to open its translations, and choose **Keys** at the top left to go back to the list. Going back keeps the key selected, your unsaved text, and your place in the list, and the page address doesn't change; select the same row again to continue where you left off. The search box and the sources button stay with the list.
 
 The **Sources** panel sets which keys the list shows. Select **All namespaces** under a source to list all of its keys, or select a group to list only that group. The filter at the top right of the key list shows its current choice: **All keys**, **Incomplete**, **Needs review**, **Unsent**, or **New from GitHub**. Needs review marks translations whose source text changed; it is not an approval step. Selecting a group keeps the filter, and changing the filter keeps the group. The filter narrows only the key list; it doesn't change the numbers in the **Sources** panel.
 

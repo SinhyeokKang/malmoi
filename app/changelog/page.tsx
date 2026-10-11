@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 import { ENTRY_BLOCK, ReleaseEntry } from "@/components/changelog/release-entry";
-import { PROSE } from "@/components/docs/classes";
+import { PAGE_TITLE, PROSE } from "@/components/docs/classes";
 import { PublicShell } from "@/components/public-shell/public-shell";
 import { publicAccount } from "@/lib/auth/landing";
 import { readSession } from "@/lib/auth/read-session";
@@ -47,6 +47,8 @@ function Sentence({ children }: { children: ReactNode }) {
  *
  * ⚠️ **읽기 그릇은 `mx-auto max-w-[800px]` 한 겹이다** — 목차가 없어 `/docs`·`/privacy`의 720 + 목차 200 격자를 따르면
  * 빈 열이 남아 본문이 왼쪽으로 쏠린다. 위 64는 이웃 `/docs`와 같다.
+ * 좁은 폭은 같은 읽기 패턴이다(responsive-public P3) — 좌우 여백은 그릇 바깥 폭 640으로(`@container/reading`), 위 여백·표시급은 뷰포트 `lg`로 내린다.
+ * 릴리스 본문은 줄이지 않고 긴 URL만 줄바꿈한다.
  */
 export default async function Changelog() {
   const [session, loaded, m, uiLocale] = await Promise.all([readSession(), loadReleases(), getMessages(), getUiLocale()]);
@@ -54,26 +56,28 @@ export default async function Changelog() {
 
   return (
     <PublicShell m={m} account={publicAccount(session)} current="changelog">
-      <div className="mx-auto max-w-[800px] px-10 pt-16 pb-30">
-        <h1 className="m-0 text-4xl leading-[1.3] font-semibold">{m.changelog.title}</h1>
-        <p className={cn(PROSE, "mt-5")}>{m.changelog.intro(releases)}</p>
-        <div className="mt-8">
-          {!loaded.ok ? (
-            <Sentence>{m.changelog.failed(releases)}</Sentence>
-          ) : (
-            <>
-              {loaded.releases.length === 0 ? (
-                <Sentence>{m.changelog.empty(releases)}</Sentence>
-              ) : (
-                loaded.releases.map((release, index) => <ReleaseEntry key={release.tag} m={m} uiLocale={uiLocale} release={release} latest={index === 0} />)
-              )}
-              {/*
-                ⚠️ 빈 목록에도 선다 — 원 배열 100칸을 액션 태그 릴리스가 다 채우면 거른 뒤 0건이어도 그 너머에 앱 릴리스가
-                있을 수 있다(`truncated`는 거르기 전 길이다).
-              */}
-              {loaded.truncated ? <Sentence>{m.changelog.truncated(releases)}</Sentence> : null}
-            </>
-          )}
+      <div className="@container/reading">
+        <div className="mx-auto max-w-[800px] px-5 pt-16 pb-30 wrap-anywhere max-lg:pt-10 @[640px]/reading:px-10">
+          <h1 className={PAGE_TITLE}>{m.changelog.title}</h1>
+          <p className={cn(PROSE, "mt-5")}>{m.changelog.intro(releases)}</p>
+          <div className="mt-8">
+            {!loaded.ok ? (
+              <Sentence>{m.changelog.failed(releases)}</Sentence>
+            ) : (
+              <>
+                {loaded.releases.length === 0 ? (
+                  <Sentence>{m.changelog.empty(releases)}</Sentence>
+                ) : (
+                  loaded.releases.map((release, index) => <ReleaseEntry key={release.tag} m={m} uiLocale={uiLocale} release={release} latest={index === 0} />)
+                )}
+                {/*
+                  ⚠️ 빈 목록에도 선다 — 원 배열 100칸을 액션 태그 릴리스가 다 채우면 거른 뒤 0건이어도 그 너머에 앱 릴리스가
+                  있을 수 있다(`truncated`는 거르기 전 길이다).
+                */}
+                {loaded.truncated ? <Sentence>{m.changelog.truncated(releases)}</Sentence> : null}
+              </>
+            )}
+          </div>
         </div>
       </div>
     </PublicShell>

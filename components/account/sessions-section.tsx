@@ -55,12 +55,14 @@ export function SessionsSection({ outcome, signOut, confirmProvider }: {
     >
       <CardRows>
       <ListRow
+        stackActions
         as="li"
         className="border-border border-t first:border-t-0"
         icon={<IconTile>{<LogOut className="text-muted-foreground size-4" aria-hidden />}</IconTile>}
         title={<span className="flex min-w-0 items-center gap-2 text-base"><span className="truncate font-medium">{m.account.signOut.title}</span></span>}
         description={m.account.signOut.description} actions={<SignOutButton signOut={signOut} />} />
       <ListRow
+        stackActions
         as="li"
         className="border-border border-t first:border-t-0"
         icon={<IconTile>{<MonitorSmartphone className="text-muted-foreground size-4" aria-hidden />}</IconTile>}

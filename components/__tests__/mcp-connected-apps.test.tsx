@@ -300,3 +300,23 @@ describe("머리 — Copy server URL", () => {
     expect(button(card(), "Copied")).not.toBeNull();
   });
 });
+
+/**
+ * **좁은 폭 — 행 동작이 아래 줄 오른쪽** (responsive-app A5 · 시안 AT2 "같은 패턴"). `CardList`가 컨테이너를 선언하고 640 미만에서
+ * 행이 로고 열 + 본문 열 grid가 되며 Disconnect는 본문 열 아래 오른쪽이다 — 숨기지 않는다. 넓은 폭은 기존 한 줄 flex 그대로다.
+ * jsdom은 컨테이너 쿼리를 못 잰다 — 클래스 계약과 DOM 순서를 단언한다(`order` 0).
+ */
+describe("좁은 폭 — 행 적층", () => {
+  it("행이 grid가 되고 Disconnect가 본문 열 아래 오른쪽이다", async () => {
+    await mount(APPS);
+    const row = find<HTMLElement>(card(), '[data-app-row="c1"]');
+    expect(row.className).toMatch(/\bflex\b/);
+    expect(row.className).toMatch(/@max-form:grid\b/);
+    expect(row.className).toMatch(/@max-form:grid-cols-\[auto_minmax\(0,1fr\)\]/);
+    const disconnect = rowButton("c1")!;
+    expect(disconnect.className).toMatch(/@max-form:col-start-2\b/);
+    expect(disconnect.className).toMatch(/@max-form:justify-self-end\b/);
+    expect(row.lastElementChild).toBe(disconnect);
+    expect(row.outerHTML).not.toMatch(/\border-/);
+  });
+});

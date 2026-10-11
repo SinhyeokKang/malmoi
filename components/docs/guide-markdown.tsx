@@ -12,7 +12,7 @@ import { TableBody, TableHead, TableHeader, TableRow, Td } from "@/components/ui
 import { remarkGuide } from "@/lib/guide/remark";
 import type { ShotSize } from "@/lib/guide/shots";
 
-import { INLINE_CODE, LIST, PROSE, SECTION_HEADING, SUB_HEADING } from "./classes";
+import { INLINE_CODE, LIST, PAGE_TITLE, PROSE, SECTION_HEADING, SUB_HEADING } from "./classes";
 import { cn } from "@/lib/utils";
 
 const NO_SIZES: Record<string, ShotSize> = Object.create(null);
@@ -44,7 +44,7 @@ function firstImageOffset(tree: Root): number | null {
 
 function components(sizes: Record<string, ShotSize>, eagerImageOffset: number | null): Components {
   return {
-    h1: ({ node: _node, ...props }) => <h1 {...props} className="m-0 text-4xl leading-[1.3] font-semibold" />,
+    h1: ({ node: _node, ...props }) => <h1 {...props} className={PAGE_TITLE} />,
     // `scroll-mt-12` — 하드 해시 착지도 목차 클릭과 같은 48 아래에 선다. `tabIndex`는 remarkGuide가 싣는다.
     h2: ({ node: _node, ...props }) => <h2 {...props} className={cn(SECTION_HEADING, "scroll-mt-12 focus:outline-none")} />,
     h3: ({ node: _node, ...props }) => <h3 {...props} className={cn(SUB_HEADING, "scroll-mt-12")} />,

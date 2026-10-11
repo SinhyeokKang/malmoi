@@ -164,7 +164,6 @@ describe("T2 토큰은 값과 적용 경계를 보존한다", () => {
     ["min-h-[min(560px,calc(100svh-96px))]", "min-h-[min(560px,calc(100svh-var(--spacing-modal-gutter)))]"],
     ["min-h-[min(620px,calc(100svh-96px))]", "min-h-[min(620px,calc(100svh-var(--spacing-modal-gutter)))]"],
     ["min-h-[min(80svh,800px,calc(100svh-96px))]", "min-h-[min(80svh,800px,calc(100svh-var(--spacing-modal-gutter)))]"],
-    ["min-w-[1280px]", "min-w-shell-min"],
     ["py-[13px]", "py-row-y"],
     ["space-y-[3px]", "space-y-copy-gap"],
     ["text-blue-600", "text-link"],
@@ -227,7 +226,6 @@ describe("T2 토큰은 값과 적용 경계를 보존한다", () => {
       "--spacing-copy-gap": "3px",
       "--spacing-modal-gutter": "96px",
       "--container-form": "640px",
-      "--spacing-shell-min": "1280px",
     })) expect(values.get(name), name).toBe(value);
   });
 });

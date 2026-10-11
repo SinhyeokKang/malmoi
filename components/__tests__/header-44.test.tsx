@@ -58,7 +58,8 @@ describe("헤더 44 — 패널 시작 56 · 요소 중심 28", () => {
   /** 2026-10-05 사용자 — 목업만 40을 지키던 예외를 걷었다. 앱 셸과 같은 산식이고 패널 시작 56은 옛 목업(8 + 40 + 8)과 같다. */
   it("랜딩 목업: 앱 셸과 같다 — 위 6 + 헤더 44 + 헤더 mb 6, gap 없음", async () => {
     const { container } = await render(h(AppFrame, { m: en, children: null }));
-    const frame = container.firstElementChild!;
+    // 바깥 칸은 목업 루트 컨테이너(`@container/mockup`, 여백 없음)이고 셸 여백은 그 안의 셸이 든다(responsive-mockup design §3).
+    const frame = container.querySelector("[data-landing-shell]")!;
     const header = frame.querySelector("header")!;
     expect(px(header, "h")).toBe(44);
     expect(px(frame, "pt") + px(header, "h") + px(header, "mb")).toBe(56);

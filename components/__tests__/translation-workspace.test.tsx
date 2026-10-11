@@ -280,8 +280,9 @@ it("포인터가 취소되면 드래그가 끝난다 — 버튼 없이 지나가
   } finally { vi.unstubAllGlobals(); }
 });
 
+// 트리가 접힌 두 판(902 — 772 미만은 핸들이 없는 한 판이다, responsive-app design §3).
 it("움직일 범위가 없으면 핸들은 Tab이 들르지 않고 꺼졌다고 말한다", async () => {
-  stubArea(700);
+  stubArea(902);
   try {
     await render(<TranslationWorkspace {...props()} />);
     const handle = workspaceHandle();

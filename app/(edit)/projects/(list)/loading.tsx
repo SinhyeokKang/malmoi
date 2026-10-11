@@ -1,4 +1,4 @@
-import { ContentPanel, PanelBody, PanelHeader } from "@/components/shell/content-panel";
+import { PANEL_HEAD_ROW, ContentPanel, PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getMessages } from "@/lib/i18n/server";
 
@@ -44,15 +44,21 @@ export default async function ProjectsLoading() {
       {/* 머리 — 여백·선·폭 등급은 `PanelHeader`가 든다. */}
       <PanelHeader aria-hidden>
         {/*
-          제목 줄: 제목 ── ml-auto ─→ 검색 + [New project]. ⚠️ **카운트 원을 그리지 않는다**(4-W13) — 실물 `CountBadge`는 0이면 서지 않아
+          제목 줄: 제목 ── 검색 + [New project](640 미만이면 둘째 줄 오른쪽). ⚠️ **카운트 원을 그리지 않는다**(4-W13) — 실물 `CountBadge`는 0이면 서지 않아
           골격이 그 자리를 예고하면 0건에서 튄다.
         */}
-        <div className="flex items-center gap-3">
+        <div className={PANEL_HEAD_ROW}>
           <div className="flex items-center gap-2">
             <Skeleton size="lg" className="w-40" />
           </div>
-          <Skeleton className="ml-auto h-9 w-64" />
-          <Skeleton className="h-9 w-32" />
+          {/* 실물처럼 검색·버튼이 한 묶음이다 — 640 미만에서 함께 둘째 줄로 내려간다(A-09). */}
+          {/* 검색 칸도 실물처럼 줄어드는 256이다(`project-list.tsx`) — 머리 그릇 430 아래에서 골격만 256 고정이면 둘째 줄이 넘치고 도착할 때 폭이 튄다. */}
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="w-64 min-w-0 shrink">
+              <Skeleton className="h-9 w-full" />
+            </div>
+            <Skeleton className="h-9 w-32 shrink-0" />
+          </div>
         </div>
       </PanelHeader>
 
@@ -68,17 +74,29 @@ export default async function ProjectsLoading() {
           </div>
           <ul>
             {[0, 1].map((i) => (
+              /* 실물 행과 같은 두 줄이다(responsive-app AT2) — 둘째 줄(미터)이 없으면 도착할 때 행마다 그 높이만큼 튄다. */
               <li
                 key={i}
-                className={`flex items-center gap-4 py-row-y pr-3.5 pl-3 ${i > 0 ? "border-border border-t" : ""}`}
+                className={`flex flex-col gap-2.5 py-row-y pr-3.5 pl-3 ${i > 0 ? "border-border border-t" : ""}`}
               >
-                <Skeleton className="size-7 rounded-[4px]" />
-                <div className="flex w-[420px] shrink-0 flex-col gap-0.5">
-                  <Skeleton size="md" className="w-48" />
-                  {/* 메타 줄은 13이다(4-Y9) — 실물 행과 같은 높이라야 도착 때 안 튄다. */}
-                  <Skeleton size="xs" className="w-72" />
+                <div className="flex min-w-0 items-center gap-4">
+                  <Skeleton className="size-7 rounded-[4px]" />
+                  <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <Skeleton size="md" className="w-48 max-w-full" />
+                    {/* 메타 줄은 13이다(4-Y9) — 실물 행과 같은 높이라야 도착 때 안 튄다. */}
+                    <Skeleton size="xs" className="w-72 max-w-full" />
+                  </div>
+                  <Skeleton className="h-5 w-16 shrink-0 rounded-full" />
                 </div>
-                <Skeleton className="ml-auto h-5 w-16 rounded-full" />
+                {/* 미터 둘 — 실물 `LocaleMeter`(폭 100 · 국기·코드 배지 20 + 간격 6 + 바 4)와 같은 칸이다. 배지·바는 둘 다 알약이다. */}
+                <div className="flex flex-wrap gap-x-3 gap-y-1.5 pl-11">
+                  {[0, 1].map((j) => (
+                    <div key={j} className="flex w-25 flex-col gap-1.5">
+                      <Skeleton className="h-5 w-12 rounded-full" />
+                      <Skeleton className="h-1 w-full rounded-full" />
+                    </div>
+                  ))}
+                </div>
               </li>
             ))}
           </ul>

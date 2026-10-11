@@ -22,6 +22,16 @@ import { Input } from "@/components/ui/input";
 import { LARGE_MODAL_PANEL } from "@/components/ui/large-modal";
 import { ListRow } from "@/components/ui/list-row";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { PANEL_HEAD_ROW } from "@/components/shell/content-panel";
+import { DetailCrumb } from "@/components/translations/workspace/locale-panel";
+import { LIST_CARD_WIDTH, TREE_WIDTH } from "@/components/landing/mockup/translations";
+import { AppNavDrawer } from "@/components/shell/nav-drawer";
+import { HeaderBar } from "@/components/shell/header-bar";
+import { Kbd } from "@/components/ui/kbd";
+import { LARGE_MODAL_OVERLAY } from "@/components/ui/large-modal";
+import { PANEL, SINGLE_BELOW, planTranslationPanelLayout } from "@/lib/translations/layout";
+
+import { cn } from "@/lib/utils";
 
 import { find, render } from "./helpers/dom";
 
@@ -43,8 +53,9 @@ vi.mock("@/app/inbox/actions", () => ({
 }));
 
 // jsdom에 `matchMedia`가 없다 — 스테이지가 effect에서 읽는다. 재생 배선은 `landing-stage.test.tsx`가 본다.
+// 뷰포트 질의(`lg`·`sm`)는 참 — 그릇 기본은 D(1440)다. 모션 감소는 거짓.
 beforeEach(() => {
-  vi.stubGlobal("matchMedia", () => ({ matches: false, addEventListener() {}, removeEventListener() {} }));
+  vi.stubGlobal("matchMedia", (query: string) => ({ matches: query.startsWith("(min-width"), addEventListener() {}, removeEventListener() {} }));
 });
 afterEach(() => { vi.unstubAllGlobals(); });
 
@@ -59,8 +70,22 @@ async function mount() {
 
 const layer = (container: HTMLElement, k: number) => find<HTMLElement>(container, `[data-landing-layer="${k}"]`);
 
+/**
+ * 실물의 뷰포트 `lg` 토큰을 **목업 루트 컨테이너 변형**으로 옮긴 형 (responsive-mockup design §3) — `max-lg:` → `@max-[64rem]/mockup:`,
+ * `lg:` → `@min-[64rem]/mockup:`. 둘 다 같은 64rem 경계의 미만/이상이라 루트 폭이 실물의 뷰포트 자리에 선다.
+ */
+const SHEET = "@max-[64rem]/mockup:";
+const toMockup = (className: string) => className.split(" ").filter(Boolean)
+  .map((c) => c.startsWith("max-lg:") ? `${SHEET}${c.slice("max-lg:".length)}` : c.startsWith("lg:") ? `@min-[64rem]/mockup:${c.slice("lg:".length)}` : c);
+const live = (file: string) => readFileSync(join(process.cwd(), file), "utf8");
+const grab = (source: string, re: RegExp) => {
+  const hit = re.exec(source)?.[1];
+  expect(hit, String(re)).toBeDefined();
+  return hit!;
+};
+
 describe("목업 창", () => {
-  it("16:10 컨테이너 안에서 44px 툴바와 씬 영역이 분리된다", async () => {
+  it("16:10 컨테이너(D 그릇) 안에서 44px 툴바와 씬 영역이 분리된다", async () => {
     const container = await mount();
     const frame = find<HTMLElement>(container, "[data-landing-frame]");
     expect(frame.style.width).toBe("1440px");
@@ -141,16 +166,20 @@ describe("목업 — 제품과 같은 구조다", () => {
   });
 
   /** 앱 셸 헤더와 같다(2026-10-05 attention-inbox) — 우측 `New project · 구분선 · Inbox · 아바타`. */
-  it("헤더 우측이 New project · 구분선 · Inbox · 아바타다", async () => {
+  it("헤더 우측이 [New project · 구분선](넓은 폭 묶음) · Inbox · 아바타다", async () => {
     const scene = layer(await mount(), 0);
     const right = find(scene, "[data-landing-header-right]");
     const kids = [...right.children];
-    expect(kids).toHaveLength(4);
-    expect(kids[0]?.textContent).toBe(en.common.nav.newProject);
-    expect(kids[0]?.querySelector("svg")?.getAttribute("class")).toContain("lucide-plus");
-    expect(kids[1]?.className).toContain("bg-border-subtle");
-    expect(kids[2]?.hasAttribute("data-landing-inbox")).toBe(true);
-    expect(kids[3]?.querySelector("[data-avatar], span")).not.toBeNull();
+    expect(kids).toHaveLength(3);
+    // 실물처럼 `New project`·세로선은 한 묶음이고 `lg` 미만에서 함께 숨는다(서랍 바닥으로 간다 — AT1a).
+    expect(kids[0]?.hasAttribute("data-landing-header-wide")).toBe(true);
+    const wide = [...kids[0]!.children];
+    expect(wide).toHaveLength(2);
+    expect(wide[0]?.textContent).toBe(en.common.nav.newProject);
+    expect(wide[0]?.querySelector("svg")?.getAttribute("class")).toContain("lucide-plus");
+    expect(wide[1]?.className).toContain("bg-border-subtle");
+    expect(kids[1]?.hasAttribute("data-landing-inbox")).toBe(true);
+    expect(kids[2]?.querySelector("[data-avatar], span")).not.toBeNull();
   });
 
   /** 실물 트리거(`attention-inbox.tsx`)를 렌더해 클래스를 견준다 — 포커스 링은 실물 `Button`이 덧대는 것이라 뺀다(목업은 포커스를 받지 않는다). */
@@ -182,8 +211,8 @@ describe("목업 — 제품과 같은 구조다", () => {
    * 앱 셸 헤더의 center 슬롯(`SearchTrigger`)이 목업에서 빠져 있었다(2026-10-03 사용자). ⚠️ **헤더 줄·캡슐 높이도 실물과 같은 44다**
    * (2026-10-05 사용자 — 목업만 40을 지키던 `h-10` 덮기를 걷었다. 셸 위·아래 여백이 6이라 패널 윗변 56은 그대로다).
    */
-  it("헤더 가운데에 실물 `FieldButton`과 같은 검색 캡슐이 있다 — 태그만 `<span>`이고 클래스가 같다", async () => {
-    const real = (await render(<FieldButton icon={<Search />} placeholder={en.search.placeholder} aria-label={en.search.label} onClick={() => {}} />)).container.querySelector("button")!;
+  it("헤더 가운데에 실물 `FieldButton compact`와 같은 검색 캡슐이 있다 — 태그만 `<span>`이고 `lg` 토큰이 목업 루트 변형이다", async () => {
+    const real = (await render(<FieldButton compact icon={<Search />} placeholder={en.search.placeholder} shortcut={<Kbd>{en.common.keys.search.mac}</Kbd>} aria-label={en.search.label} onClick={() => {}} />)).container.querySelector("button")!;
     const container = await mount();
     for (const [index, scene] of [0, 1, 2, 3, 4].map((k) => [k, layer(container, k)] as const)) {
       const header = scene.querySelector("header")!;
@@ -192,9 +221,10 @@ describe("목업 — 제품과 같은 구조다", () => {
       expect(header.classList.contains("h-10"), `scene ${index}`).toBe(false);
       const search = find<HTMLElement>(header, "[data-landing-global-search]");
       expect(search.tagName).toBe("SPAN");
-      expect(search.className).toBe(real.className);
+      expect(search.className.split(" ")).toEqual(toMockup(real.className));
       // placeholder·단축키 자리는 실물과 같은 클래스다. 글리프 칸만 `[&>svg]:size-4` 대신 svg에 `size-4`를 직접 준다(소스 스캐너가 `>`를 텍스트로 읽는다).
-      expect([...search.children].slice(1).map((child) => child.className)).toEqual([...real.children].slice(1).map((child) => child.className));
+      expect([...search.children].slice(1).map((child) => child.className.split(" "))).toEqual([...real.children].slice(1).map((child) => toMockup(child.className)));
+      expect(search.firstElementChild!.className.split(" ")).toEqual(toMockup(real.firstElementChild!.className).filter((c) => !c.startsWith("[&>svg]")));
       expect(search.querySelector("svg")?.getAttribute("class")).toContain("lucide-search");
       expect(search.querySelector("svg")?.getAttribute("class")).toContain("size-4");
       expect(search.textContent).toBe(`${en.search.placeholder}${en.common.keys.search.mac}`);
@@ -221,7 +251,8 @@ describe("목업 — 제품과 같은 구조다", () => {
   it("번역 화면에 소스 트리가 있다 — 보고 있는 소스가 펼쳐지고 `All namespaces`가 선택, 나머지는 접힌다", async () => {
     const scene = layer(await mount(), 0);
     const tree = find<HTMLElement>(scene, "[data-landing-tree]");
-    expect(tree.className).toContain("w-[260px]");
+    expect(tree.className.split(" ")).toContain("w-(--tree)");
+    expect(tree.style.getPropertyValue("--tree")).toBe(TREE_WIDTH);
     expect(tree.textContent).toContain(en.translations.workspace.tree.title);
     const current = fixture.sources.find(source => source.slug === fixture.source);
     const rest = fixture.sources.filter(source => source.slug !== fixture.source);
@@ -563,11 +594,12 @@ describe("목업 — 상태 표시가 실물과 같다", () => {
     expect(tree.querySelector(".sr-only")?.textContent).toBe(en.sources.count(fixture.sources.length));
   });
 
-  it("모달 닫기 X는 실물 `CloseButton`과 같은 클래스다 — 태그만 `<span>`이다", async () => {
-    const real = new Set((await render(<CloseButton label="x" />)).container.querySelector("button")!.className.split(" "));
+  it("모달 닫기 X는 실물 `LargeModal`의 `CloseButton`(시트 `size-8`)과 같은 클래스다 — 태그만 `<span>`이다", async () => {
+    const real = new Set(toMockup((await render(<CloseButton label="x" className="max-lg:size-8" />)).container.querySelector("button")!.className));
     const scene = layer(await mount(), 4);
     const x = scene.querySelector("svg.lucide-x")!.parentElement!;
     expect(new Set(x.className.split(" "))).toEqual(real);
+    expect(x.parentElement?.className).toBe("flex shrink-0 items-center gap-2");
   });
 });
 
@@ -594,10 +626,11 @@ describe("목업 — 씬 안쪽이 실물과 같다 (fix2)", () => {
     expect(field.classList.contains("text-foreground/50")).toBe(true);
   });
 
-  it("툴바는 실물처럼 줄바꿈하고, 보류 안내 그릇은 `space-y-3`이다", async () => {
+  it("툴바는 실물처럼 줄바꿈하고, 보류 안내 그릇은 실물 배너 묶음(`flex flex-col gap-3 empty:hidden`)이다", async () => {
     const scene = layer(await mount(), 2);
     expect(find(scene, "[data-landing-toolbar-row]").className.split(" ")).toEqual(expect.arrayContaining(["flex", "flex-wrap", "items-center", "gap-2"]));
-    expect(find(scene, "[data-landing-hold]").className.split(" ")).toContain("space-y-3");
+    expect(find(scene, "[data-landing-hold]").className.split(" ")).toEqual(expect.arrayContaining(["flex", "flex-col", "gap-3", "empty:hidden"]));
+    expect(find(scene, "[data-landing-hold]").className.split(" ")).not.toContain("space-y-3");
   });
 
   it("Publish 묶음은 실물처럼 `flex gap-2` 안의 감싼 버튼이다", async () => {
@@ -649,6 +682,9 @@ describe("목업 — 씬 안쪽이 실물과 같다 (fix2)", () => {
     const expected = LARGE_MODAL_PANEL.split(" ").filter((c) => ["bg-background", "border-border", "border", "flex", "flex-col", "overflow-hidden", "rounded-xl", "shadow-medium"].includes(c));
     expect(expected).toHaveLength(8);
     for (const token of expected) expect(shell.className.split(" "), token).toContain(token);
+    // ⚠️ 목업은 데스크톱 캔버스의 축소 복제다 — 실물 그릇의 `lg` 미만 시트 토큰을 따라오면 뷰포트가 좁을 때 목업이 시트로 바뀐다(design §1).
+    expect(LARGE_MODAL_PANEL).toContain("max-lg:");
+    expect(shell.className.split(" ").filter((token) => token.startsWith("max-lg:"))).toEqual([]);
   });
 
   it("④ diff 칸은 실물처럼 위 선(`border-divider border-t`)이고 행 아래 선이 없다 · 부호는 `aria-hidden` · 국기는 `shrink-0`", async () => {
@@ -659,6 +695,364 @@ describe("목업 — 씬 안쪽이 실물과 같다 (fix2)", () => {
     for (const row of scene.querySelectorAll<HTMLElement>("[data-landing-diff-row]")) expect(row.className).not.toContain("border-b");
     for (const sign of scene.querySelectorAll<HTMLElement>("[data-landing-diff-sign]")) expect(sign.getAttribute("aria-hidden")).toBe("true");
     for (const flag of scene.querySelectorAll<HTMLElement>("[data-landing-diff-flag]")) expect(flag.classList.contains("shrink-0")).toBe(true);
+  });
+});
+
+/**
+ * **1440 목업이 지금 실물과 같다** (responsive-mockup design §3.5) — responsive-app이 앱 화면을 바꾸는 동안 목업 파일은 그대로였다.
+ * 머리 행(`PANEL_HEAD_ROW` · 사유 줄 없음)과 상세 머리(Workspace가 드는 경로 칸)를 실물 소스·컴포넌트와 견준다.
+ */
+describe("목업 — 1440이 지금 실물과 같다 (§3.5)", () => {
+  const workspace = readFileSync(join(process.cwd(), "components/translations/workspace/workspace.tsx"), "utf8");
+  const literal = (re: RegExp) => {
+    const hit = re.exec(workspace)?.[1];
+    expect(hit, String(re)).toBeDefined();
+    return hit!;
+  };
+
+  it("머리가 실물 Workspace의 컨테이너 둘(`panel-head` 전폭 루트 · `wshead` 머리 블록)을 같은 자리에 선언한다", async () => {
+    const scene = layer(await mount(), 0);
+    const root = find<HTMLElement>(scene, "[data-landing-workspace]");
+    expect(root.className).toBe(literal(/<div data-pane=\{pane\} className="([^"]+)"/));
+    expect(root.getAttribute("data-pane")).toBe("detail");
+    const head = root.firstElementChild!;
+    expect(head.className).toBe(literal(/(@container\/wshead [^"]+)"/));
+  });
+
+  /**
+   * 실물 머리 블록(`wshead`)의 첫 자식이 제목 행이다 — 제목 행과 사유 줄을 묶던 `flex flex-col gap-1.5`는 disabled-reasons-revert가 사유 줄과 함께 걷었다.
+   * 목업도 같은 깊이에 같은 클래스로 선다.
+   */
+  it("제목 행이 실물과 같은 `PANEL_HEAD_ROW`이고 머리 블록(`wshead`)의 첫 자식이다", async () => {
+    // 실물: `wshead` 머리 블록을 연 뒤 주석만 지나 곧바로 제목 행이다(사이에 감싸는 div가 없다).
+    expect(workspace).toMatch(/@container\/wshead [^"]+">\s*(?:\{\/\*[\s\S]*?\*\/\}\s*)*<div className=\{PANEL_HEAD_ROW\}>/);
+    const scene = layer(await mount(), 0);
+    const row = find<HTMLElement>(scene, "[data-landing-head-row]");
+    expect(row.className).toBe(PANEL_HEAD_ROW);
+    expect(row.parentElement?.className).toBe(literal(/(@container\/wshead [^"]+)"/));
+    expect(row.parentElement?.firstElementChild).toBe(row);
+    expect(row.children).toHaveLength(2);
+  });
+
+  /**
+   * **목업 머리에 사유 줄이 없다** (disabled-reasons-revert R-05) — 실물은 꺼진 Publish의 사유를 `title` + sr-only로 들고 보이는 줄을 세우지 않는다.
+   * responsive-mockup K1이 복제했던 줄을 실물과 함께 걷었다. 목업은 `aria-hidden` 프레임이라 `title`·sr-only 사본도 없다.
+   */
+  it("어느 씬에도 사유 줄 사본이 없고 꺼진 Publish 문장(`nothing`)이 보이지 않는다", async () => {
+    const container = await mount();
+    for (let k = 0; k < 5; k += 1) {
+      const scene = layer(container, k);
+      expect(scene.querySelector("[data-landing-reasons]"), `scene ${k}`).toBeNull();
+      expect(scene.textContent, `scene ${k}`).not.toContain(p.nothing);
+    }
+  });
+
+  /** 상세 머리는 Workspace가 들고(골격·상세가 바뀌어도 같은 노드) 경로 칸이 `@container/crumb`다 — 실물 `DetailCrumb`를 렌더해 견준다. */
+  it("상세 머리 · 경로 칸이 실물 Workspace·`DetailCrumb`와 같은 클래스다", async () => {
+    const real = (await render(<DetailCrumb surfaceSlug={fixture.source} namespace={fixture.namespace} />)).container;
+    const scene = layer(await mount(), 0);
+    const head = find<HTMLElement>(scene, "[data-landing-detail-head]");
+    expect(head.className).toBe(literal(/data-detail-head="" className=\{cn\(("[^"]+", "[^"]+")/).replace(/^"|"$/g, "").replace('", "', " "));
+    // 머리는 카드의 첫 자식이고 몸통(`border-divider border-t`)이 그 형제다 — 실물 `LocalePanel`이 머리를 들지 않는다.
+    expect(head.parentElement?.firstElementChild).toBe(head);
+    const crumb = find<HTMLElement>(head, "[data-landing-crumb]");
+    expect(crumb.className).toBe(literal(/data-detail-title="" className="([^"]+)"/));
+    expect([...crumb.children].map((child) => child.getAttribute("class"))).toEqual([...real.children].map((child) => child.getAttribute("class")));
+    expect(crumb.textContent).toBe(real.textContent);
+  });
+});
+
+/**
+ * **목업은 루트 폭으로 앱 규칙을 고른다** (responsive-mockup design §2·§3) — K2 stage가 베젤 화면 폭을 1424 · 768 · 375로 바꾸고, 목업 루트가
+ * `@container/mockup`을 선언한다. 뷰포트로 갈리는 실물 규칙(셸 내비 · 큰 모달 시트)은 같은 토큰의 컨테이너 변형으로 옮기고, 이미 컨테이너 질의인
+ * 규칙(번역 `ws` · `wshead` · `panel-head` · `crumb`)은 같은 이름·같은 클래스를 그대로 쓴다. ⚠️ jsdom은 폭을 못 잰다 — 클래스 계약과 순수 계산으로 잰다.
+ */
+describe("목업 — 루트 컨테이너가 배치를 고른다", () => {
+  const workspace = live("components/translations/workspace/workspace.tsx");
+  const constant = (name: string) => grab(workspace, new RegExp(`const ${name} = "([^"]+)"`));
+
+  it("목업 루트가 `@container/mockup`을 선언하고 패딩이 없다 — 셸(`relative`)이 그 첫 자식이다", async () => {
+    const container = await mount();
+    for (let k = 0; k < 5; k += 1) {
+      const root = layer(container, k).firstElementChild as HTMLElement;
+      expect(root.className.split(" "), `scene ${k}`).toContain("@container/mockup");
+      // 패딩을 품으면 content box가 줄어 경계(1024)가 밀린다.
+      expect(root.className.split(" ").filter((c) => /^p[xytrbl]?-/.test(c))).toEqual([]);
+      expect(root.firstElementChild?.hasAttribute("data-landing-shell")).toBe(true);
+    }
+  });
+
+  /**
+   * **선언과 질의가 같은 요소가 아니고, 묻는 이름은 조상이 선언한다** — 모든 컨테이너 이름에 대해 DOM에서 잰다(리뷰 Y1). 소스 스캐너
+   * (`container-query.test.ts`)는 모듈 상수(`PANEL_HEAD_ROW` · `DETAIL_PANE_HIDDEN` · `SEARCH_COMPACT`)에 담긴 클래스를 원리적으로 못 보지만 DOM은 본다.
+   */
+  it("목업 DOM의 모든 컨테이너 질의가 자기 자신이 아니라 조상의 선언을 묻는다", async () => {
+    const container = await mount();
+    const declared = (el: Element) => (el.getAttribute("class") ?? "").split(" ").flatMap((c) => { const hit = /^@container(?:\/([\w-]+))?$/.exec(c); return hit ? [hit[1] ?? ""] : []; });
+    const queried = (el: Element) => (el.getAttribute("class") ?? "").split(" ").flatMap((c) => { const hit = /(?:^|:)@(?:(?:min|max)-)?(?:\[[^\]]+\]|[\w-]+)(?:\/([\w-]+))?:/.exec(c); return hit ? [hit[1] ?? ""] : []; });
+    const offenders: string[] = [];
+    const seen = new Set<string>();
+    for (const el of find(container, "[data-landing-frame]").querySelectorAll("*")) {
+      for (const name of queried(el)) {
+        seen.add(name);
+        // 이름 없는 질의(`@max-form:`)는 가장 가까운 컨테이너를 묻는다 — 그 요소 자신이 컨테이너면 안 된다.
+        if (declared(el).length > 0 && (name === "" || declared(el).includes(name))) offenders.push(`self ${name}: ${el.getAttribute("class")}`);
+        let up = el.parentElement;
+        while (up !== null && !(name === "" ? declared(up).length > 0 : declared(up).includes(name))) up = up.parentElement;
+        if (up === null) offenders.push(`no ancestor ${name}: ${el.getAttribute("class")}`);
+      }
+    }
+    expect(offenders).toEqual([]);
+    expect([...seen]).toEqual(expect.arrayContaining(["mockup", "ws", "wshead", "panel-head", "crumb"]));
+  });
+
+  it("목업 DOM 어디에도 뷰포트 반응형 토큰이 없다 — 바깥 페이지 폭으로 안을 고르지 않는다", async () => {
+    const container = await mount();
+    // 앞에 다른 변형이 붙은 형(`hover:max-lg:…`)도 잡는다(리뷰 Y4).
+    const viewport = /(?:^|:)(?:max-)?(?:sm|md|lg|xl|2xl):/;
+    expect(viewport.test("hover:max-lg:hidden") && viewport.test("lg:hidden") && !viewport.test("@max-[64rem]/mockup:hidden")).toBe(true);
+    const offenders = [...find(container, "[data-landing-frame]").querySelectorAll("*")]
+      .flatMap((node) => (node.getAttribute("class") ?? "").split(" ").filter((c) => viewport.test(c)));
+    expect(offenders).toEqual([]);
+  });
+
+  /**
+   * **루트 폭 → 셸 갈래 → 패널 → 카드 영역 → 실물 판정 → 머리 폭** 체인 (리뷰 Y2). 숫자는 목업 DOM의 클래스(`px-2` · `w-[240px]` · `w-2` · `border` ·
+   * `p-4` · 경계 리터럴)와 `globals.css`의 `--container-form`에서 읽고, 판은 실물 `planTranslationPanelLayout`이 정한다 — 산수와 클래스가 갈라지면 여기서 red다.
+   * 브라우저가 그 산수대로 그리는지는 QA 몫이다.
+   */
+  it("루트 폭 체인이 경계 [1278 · 1070 · 1024 · 822 · 658]과 대표 폭의 배치를 낸다", async () => {
+    const scene = layer(await mount(), 0);
+    const unit = (el: Element, re: RegExp) => {
+      const hit = (el.getAttribute("class") ?? "").split(" ").map((c) => re.exec(c)).find((m) => m !== null);
+      expect(hit, `${re} on ${el.getAttribute("class")}`).toBeDefined();
+      return Number(hit![1]);
+    };
+    const shell = find(scene, "[data-landing-shell]");
+    const lnb = find(scene, "[data-landing-lnb]");
+    const handle = lnb.nextElementSibling!;
+    const panel = handle.nextElementSibling!;
+    const workspace = find(scene, "[data-landing-workspace]");
+    const ws = find(scene, "[data-landing-list-card]").parentElement!.parentElement!;
+    const shellPad = unit(shell, /^px-(\d+)$/) * 4 * 2;
+    const lnbW = unit(lnb, /^w-\[(\d+)px\]$/) + unit(handle, /^w-(\d+)$/) * 4;
+    expect(panel.classList.contains("border")).toBe(true);
+    const wsPad = unit(ws, /^p-(\d+)$/) * 4 * 2;
+    const shellBelow = unit(lnb, /^@max-\[(\d+)rem\]\/mockup:hidden$/) * 16;
+    const singleBelow = unit(find(scene, "[data-landing-list-card]"), /^@max-\[(\d+)px\]\/ws:w-full$/);
+    // 트리는 한 판 숨김(772)과 접힘 숨김을 함께 든다 — 큰 쪽이 접힘 경계다.
+    const treeBelow = Math.max(...(find(scene, "[data-landing-tree]").getAttribute("class") ?? "").split(" ").flatMap((c) => { const hit = /^@max-\[(\d+)px\]\/ws:hidden$/.exec(c); return hit ? [Number(hit[1])] : []; }));
+    const formRow = Number(/--container-form: (\d+)px;/.exec(live("app/globals.css"))?.[1]);
+    expect(workspace.className.split(" ")).toContain("@container/panel-head");
+    expect(PANEL_HEAD_ROW).toContain("@min-form/panel-head:flex-row");
+    expect([shellPad, lnbW, wsPad, shellBelow, singleBelow, treeBelow, formRow]).toEqual([16, 248, 32, 1024, SINGLE_BELOW, 980, 640]);
+
+    const at = (root: number) => {
+      const compact = root < shellBelow;
+      const content = root - shellPad - (compact ? 0 : lnbW) - 2;
+      const area = content - wsPad;
+      const plan = planTranslationPanelLayout({ area, preferredLeft: null })!;
+      // CSS 경계와 실물 판정이 같은 폭에서 갈린다.
+      expect(plan.mode === "single", `single @${root}`).toBe(area < singleBelow);
+      if (plan.mode === "split") expect(plan.tree === null, `tree @${root}`).toBe(area < treeBelow);
+      return { compact, plan, twoRow: content < formRow };
+    };
+    const sig = (root: number) => { const s = at(root); return `${s.compact}|${s.plan.mode}|${s.plan.mode === "split" && s.plan.tree === null}|${s.twoRow}`; };
+    const changes: number[] = [];
+    for (let root = 1600; root > 320; root -= 1) if (sig(root) !== sig(root - 1)) changes.push(root);
+    expect(changes).toEqual([1278, 1070, 1024, 822, 658]);
+
+    const d = at(1422);
+    expect(d).toMatchObject({ compact: false, twoRow: false, plan: { mode: "split", tree: 260, list: 392 } });
+    expect(at(900)).toMatchObject({ compact: true, twoRow: false, plan: { mode: "split", tree: null, left: 414, locale: 420 } });
+    expect(at(768)).toMatchObject({ compact: true, twoRow: false, plan: { mode: "single" } });
+    for (const root of [600, 375]) expect(at(root), `@${root}`).toMatchObject({ compact: true, twoRow: true, plan: { mode: "single" } });
+  });
+
+  describe("셸 — `lg` 미만은 [로고][메뉴] · [검색][Inbox][계정], LNB 없음 (AT1a)", () => {
+    it("헤더가 실물 `HeaderBar compact`의 변형을 옮겨 든다 — 가운데 슬롯이 오른쪽 묶음 앞으로 붙는다", async () => {
+      const real = (await render(<HeaderBar compact className="mb-1.5" start={<span />} center={<span />} end={<span />} />)).container.querySelector("header")!;
+      const header = layer(await mount(), 0).querySelector("header")!;
+      // 가운데 칸의 `max-lg:ml-auto`는 `HeaderBar` 안쪽 칸이라 바깥에서 자식 변형으로 준다(목업은 `compact`를 받지 않는다 — 그건 뷰포트 토큰이다).
+      expect(real.children[1]?.className.split(" ")).toContain("max-lg:ml-auto");
+      expect(header.className.split(" ").sort()).toEqual([...toMockup(real.className), `${SHEET}[&>:nth-child(2)]:ml-auto`].sort());
+    });
+
+    it("메뉴 버튼이 실물 `AppNavDrawer` 트리거와 같은 형이고 넓은 폭에서 숨는다 — 태그만 `<span>`이다", async () => {
+      const real = (await render(<AppNavDrawer memberships={[]} userName={fixture.user} />)).container.querySelector<HTMLElement>("[data-app-nav-menu]")!;
+      const tokens = (className: string) => new Set(className.split(" ").filter((c) => c !== "" && !c.startsWith("focus-visible:")));
+      const container = await mount();
+      for (let k = 0; k < 5; k += 1) {
+        const menu = find<HTMLElement>(layer(container, k), "[data-landing-nav-menu]");
+        expect(menu.tagName).toBe("SPAN");
+        expect(tokens(menu.className), `scene ${k}`).toEqual(tokens(toMockup(real.className).join(" ")));
+        expect(menu.querySelector("svg")?.getAttribute("class")).toContain("lucide-menu");
+        // 실물처럼 로고 오른쪽 gap 12다.
+        expect(menu.parentElement?.className).toBe("flex items-center gap-3");
+      }
+    });
+
+    it("`New project`·세로선 묶음과 LNB·핸들이 실물의 `max-lg:hidden`을 목업 루트 변형으로 든다", async () => {
+      const header = live("components/shell/header.tsx");
+      const panels = live("components/shell/shell-panels.tsx");
+      const wideReal = grab(header, /<AppWideOnly className="([^"]+)"/);
+      expect(panels).toContain('className="w-2 touch-none max-lg:hidden"');
+      const scene = layer(await mount(), 0);
+      expect(find(scene, "[data-landing-header-wide]").className.split(" ")).toEqual(toMockup(wideReal));
+      expect(find(scene, "[data-landing-lnb]").className.split(" ")).toContain(`${SHEET}hidden`);
+      expect(find(scene, "[data-landing-lnb]").nextElementSibling?.className.split(" ")).toEqual(["w-2", "shrink-0", `${SHEET}hidden`]);
+    });
+
+    it("모달 덮개가 실물 `LARGE_MODAL_OVERLAY`의 면·흐림이고 시트에서는 투명이다", async () => {
+      const overlay = find<HTMLElement>(layer(await mount(), 3), "[data-landing-overlay]");
+      // 위치(`fixed z-50`)만 목업 그릇의 `absolute`로 바뀐다.
+      for (const token of toMockup(LARGE_MODAL_OVERLAY).filter((c) => !["fixed", "z-50"].includes(c))) expect(overlay.className.split(" "), token).toContain(token);
+      expect(overlay.className.split(" ")).toEqual(expect.arrayContaining(["absolute", "inset-0"]));
+    });
+  });
+
+  describe("번역 — 카드 772 한 판(상세) · 980 트리 접힘 · 머리 640 (실물 클래스 복사)", () => {
+    it("한 판 경계 리터럴이 `SINGLE_BELOW`이고, 목록·상세 카드·핸들·툴바·배너가 실물과 같은 숨김 클래스를 든다", async () => {
+      expect(constant("SINGLE_LIST_HIDDEN")).toBe(`@max-[${SINGLE_BELOW}px]/ws:in-data-[pane=detail]:hidden`);
+      const scene = layer(await mount(), 2);
+      const listCard = find<HTMLElement>(scene, "[data-landing-list-card]");
+      for (const token of ["w-(--list-card)", "@max-[772px]/ws:w-full", constant("SINGLE_LIST_HIDDEN")]) expect(listCard.className.split(" "), token).toContain(token);
+      expect(listCard.style.getPropertyValue("--list-card")).toBe(LIST_CARD_WIDTH);
+      expect(find(scene, "[data-landing-detail-card]").className.split(" ")).toContain(constant("SINGLE_DETAIL_HIDDEN"));
+      expect(find(scene, "[data-landing-handle]").className.split(" ")).toEqual(["w-4", "shrink-0", "@max-[772px]/ws:hidden"]);
+      expect(workspace).toContain('"group relative w-4 shrink-0 touch-none focus-visible:outline-none @max-[772px]/ws:hidden"');
+      expect(find(scene, "[data-landing-toolbar-row]").className.split(" ")).toContain(constant("DETAIL_PANE_HIDDEN"));
+      const hold = find(scene, "[data-landing-hold]");
+      expect(hold.className.split(" ")).toContain(constant("DETAIL_PANE_HIDDEN"));
+      expect(hold.firstElementChild?.className.split(" ")).toContain(constant("DETAIL_PANE_HIDDEN"));
+    });
+
+    it("상세 머리에 실물과 같은 ‹ Keys가 있고 두 판에서는 숨는다", async () => {
+      const back = find<HTMLElement>(layer(await mount(), 0), "[data-landing-detail-head] [data-landing-back]");
+      const real = grab(workspace, /aria-label=\{m\.responsive\.backToKeys\} className="([^"]+)"/);
+      expect(back.className).toBe(cn(buttonClass({ variant: "ghost", size: "sm" }), real));
+      expect(back.textContent).toBe(en.translations.workspace.list.keys);
+      expect(back.querySelector("svg")?.getAttribute("class")).toContain("lucide-chevron-left");
+      expect(back.parentElement?.firstElementChild).toBe(back);
+    });
+
+    it("트리는 실물처럼 한 판에서 숨고, 카드 980 미만이면 접혀 목록 머리에 트리 버튼과 범위 라벨이 선다", async () => {
+      expect(PANEL.treeMin + PANEL.listMin + PANEL.gap + PANEL.localeMin).toBe(980);
+      expect(planTranslationPanelLayout({ area: 979, preferredLeft: null })).toMatchObject({ mode: "split", tree: null });
+      expect(planTranslationPanelLayout({ area: 980, preferredLeft: null })).toMatchObject({ mode: "split", tree: PANEL.treeMin });
+      const scene = layer(await mount(), 0);
+      const tree = find<HTMLElement>(scene, "[data-landing-tree]");
+      expect(tree.className.split(" ")).toEqual(expect.arrayContaining(["border-border", "shrink-0", "border-r", "@max-[772px]/ws:hidden", "@max-[980px]/ws:hidden"]));
+      const head = find<HTMLElement>(scene, "[data-landing-list-head]");
+      const button = find<HTMLElement>(head, "[data-landing-tree-button]");
+      expect(head.firstElementChild).toBe(button);
+      expect(button.className).toBe(cn(buttonClass({ size: "icon-sm" }), "hidden @max-[980px]/ws:inline-flex"));
+      expect(button.querySelector("svg")?.getAttribute("class")).toEqual(expect.stringContaining("lucide-panel-left-open"));
+      expect(button.querySelector("svg")?.getAttribute("class")).toEqual(expect.stringContaining("size-3.5 text-gray-strong"));
+      const range = find<HTMLElement>(head, "[data-landing-range]");
+      expect(range.className.split(" ")).toEqual(["min-w-0", "truncate", "hidden", "@max-[980px]/ws:block"]);
+      // 범위가 `All namespaces`면 실물 라벨은 소스 이름이다(`rangeLabel`).
+      expect(range.textContent).toBe(fixture.source);
+      expect(range.firstElementChild?.className).toBe("text-muted-foreground text-xs");
+    });
+
+    /**
+     * 실물은 폭을 JS(`planTranslationPanelLayout`)로 고르지만 목업엔 측정이 없다 — 같은 값을 카드 영역(`@container/ws`의 content box = `100cqw`) 식으로 쓴다.
+     * 772 이상 모든 폭에서 목록 카드·트리 폭이 실물 판정과 같다.
+     */
+    it("목록 카드·트리 폭 식이 실물 폭 계약과 모든 두 판 폭에서 같다", () => {
+      const parse = (css: string) => {
+        const hit = /^min\((\d+)px, calc\(100cqw - (\d+)px\)\)$/.exec(css);
+        expect(hit, css).not.toBeNull();
+        return [Number(hit![1]), Number(hit![2])] as const;
+      };
+      const [cardMax, cardOff] = parse(LIST_CARD_WIDTH);
+      const [treeMax, treeOff] = parse(TREE_WIDTH);
+      for (let area = SINGLE_BELOW; area <= 1600; area += 1) {
+        const plan = planTranslationPanelLayout({ area, preferredLeft: null });
+        if (plan?.mode !== "split") throw new Error(`split expected at ${area}`);
+        expect(Math.min(cardMax, area - cardOff), `card @${area}`).toBe(plan.left);
+        if (plan.tree !== null) expect(Math.min(treeMax, area - treeOff), `tree @${area}`).toBe(plan.tree);
+      }
+    });
+  });
+
+  describe("Publish ④⑤ — `lg` 미만은 실물 `LargeModal`의 전체 화면 시트다 (MK1c)", () => {
+    const modal = live("components/ui/large-modal.tsx");
+    const sheetOf = (className: string) => className.split(" ").filter((c) => c.startsWith(SHEET)).sort();
+    const realSheet = (literal: string) => sheetOf(toMockup(literal).join(" "));
+
+    it("패널이 실물 폭(`min(100% − 96, 1024)`)이고 시트 토큰을 목업 루트 변형으로 든다 — 화면 고정·safe-area만 그릇 몫이다", async () => {
+      const container = await mount();
+      for (const k of [3, 4]) {
+        const shell = find<HTMLElement>(layer(container, k), "[data-landing-modal]");
+        for (const token of ["w-[calc(100%-var(--spacing-modal-gutter))]", "max-w-[1024px]"]) {
+          expect(LARGE_MODAL_PANEL.split(" ")).toContain(token);
+          expect(shell.className.split(" "), token).toContain(token);
+        }
+        // `h-dvh`는 뷰포트 높이라 목업 그릇을 채우는 `h-full`이 대신한다. 위치(`inset-0`·`translate-none`)와 safe-area는 목업이 중앙 flex로 든다.
+        const viewportOnly = ["inset-0", "translate-none", "h-dvh"].map((c) => `${SHEET}${c}`);
+        const expected = realSheet(LARGE_MODAL_PANEL).filter((c) => !viewportOnly.includes(c) && !c.includes("env(")).concat(`${SHEET}h-full`).sort();
+        expect(sheetOf(shell.className), `scene ${k}`).toEqual(expected);
+      }
+    });
+
+    /** 패널 `100%`의 기준이 루트 폭이다 — 덮개가 셸(`relative`)의 `absolute inset-0`이고 루트는 패딩이 없다(리뷰 Y3). 그래서 1024–1120에서 패널 = 루트 − 96이다. */
+    it("Publish 패널 폭의 기준이 루트 폭이다 — 덮개 `absolute inset-0` · 셸 `relative` · 루트 패딩 0", async () => {
+      const container = await mount();
+      for (const k of [3, 4]) {
+        const overlay = find<HTMLElement>(layer(container, k), "[data-landing-overlay]");
+        const shell = overlay.parentElement!;
+        expect(shell.hasAttribute("data-landing-shell")).toBe(true);
+        expect(shell.className.split(" ")).toContain("relative");
+        expect(overlay.className.split(" ")).toEqual(expect.arrayContaining(["absolute", "inset-0"]));
+        const root = shell.parentElement!;
+        expect(root.className.split(" ")).toEqual(["@container/mockup", "h-full"]);
+        expect(overlay.firstElementChild?.hasAttribute("data-landing-modal")).toBe(true);
+      }
+      const gutter = Number(/--spacing-modal-gutter: (\d+)px;/.exec(live("app/globals.css"))?.[1]);
+      expect(gutter).toBe(96);
+      for (const root of [1024, 1070, 1120, 1422]) expect(Math.min(root - gutter, 1024), `@${root}`).toBe(root >= 1120 ? 1024 : root - 96);
+    });
+
+    it("머리·제목·본문·바닥이 실물 `LargeModal`의 시트 토큰을 같은 자리에 든다", async () => {
+      const scene = layer(await mount(), 3);
+      const pairs: [string, RegExp][] = [
+        ["[data-landing-modal-head]", /<header className="([^"]+)"/],
+        ["[data-landing-modal-title-group]", /<div className="(flex min-w-0 flex-col gap-1\.5[^"]*)"/],
+        ["[data-landing-modal-title]", /<Primitive\.Title className="([^"]+)"/],
+        ["[data-landing-modal-body]", /"(flex min-h-0 flex-1 gap-4 px-8[^"]*)"/],
+        ["[data-landing-modal-foot]", /<footer className="([^"]+)"/],
+        ["[data-landing-modal-meta]", /<span className="(text-muted-foreground text-xs leading-body[^"]*)"/],
+        ["[data-landing-modal-actions]", /<div className="(flex items-center gap-2 max-lg:ml-auto)"/],
+      ];
+      for (const [selector, re] of pairs) {
+        const node = find<HTMLElement>(scene, selector);
+        const real = grab(modal, re);
+        expect(realSheet(real).length, selector).toBeGreaterThan(0);
+        expect(sheetOf(node.className), selector).toEqual(realSheet(real));
+        // 넓은 폭 토큰도 실물 그대로다(본문은 스크롤 축·방향 토큰이 소비자 몫이라 부분 집합으로 본다).
+        for (const token of real.split(" ").filter((c) => c !== "" && !c.startsWith("max-lg:") && !c.startsWith("focus:"))) expect(node.className.split(" "), `${selector} ${token}`).toContain(token);
+      }
+    });
+
+    /**
+     * #240 — 실물 표는 `w-full min-w-[520px]`이고 좁은 시트에서 가로 스크롤한다. 목업은 스크롤할 수 없어(포인터 0) 그대로 두면 Value 열(diff)이
+     * 오른쪽에서 잘렸다(M 루트 375 — 시트 본문 341에 `+ P`만). 목업은 **방문자가 표를 오른쪽 끝까지 스크롤한 상태**를 정적으로 그린다:
+     * 같은 `w-full min-w-[520px]`에 `self-end`(세로 flex의 교차축 끝) — 시트가 520보다 넓으면 `w-full`이 채워 위치가 같고, 좁으면 넘친 만큼이
+     * 왼쪽(Key 열)으로 가려진다. 실물에 없는 배치(세로 쌓기 등)를 만들지 않는다.
+     */
+    it("④ diff 표는 실물처럼 `w-full min-w-[520px]`이고, 좁은 시트에서는 오른쪽 끝까지 스크롤한 형이다 (#240)", async () => {
+      const real = grab(live("components/publish-button.tsx"), /<table className="([^"]*min-w-\[520px\][^"]*)"/).split(" ");
+      expect(real).toEqual(expect.arrayContaining(["w-full", "min-w-[520px]"]));
+      const table = find<HTMLElement>(layer(await mount(), 3), "[data-landing-diff-table]");
+      const classes = table.className.split(" ");
+      expect(classes).toEqual(expect.arrayContaining(["w-full", "min-w-[520px]", "self-end"]));
+      // `self-end`는 세로 flex 안에서 교차축(가로) 끝 정렬이다 — 부모가 세로 flex이고 넘침을 자른다.
+      const frame = table.parentElement?.className.split(" ") ?? [];
+      expect(frame).toEqual(expect.arrayContaining(["flex", "flex-col", "overflow-hidden"]));
+      expect(table.querySelectorAll("[data-landing-diff-row]")).toHaveLength(fixture.diff.length);
+    });
   });
 });
 

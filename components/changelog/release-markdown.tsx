@@ -34,6 +34,17 @@ const components: Components = {
   strong: ({ node: _node, children }) => <strong className="font-medium">{children}</strong>,
   code: ({ node: _node, children }) => <code className={INLINE_CODE}>{children}</code>,
   hr: () => <hr className="border-border my-10" />,
+  /*
+    ⚠️ **긴 코드·표는 자기 그릇 안에서만 가로로 민다**(responsive-public P-04) — `pre`는 `white-space: pre`라 본문 `wrap-anywhere`가 안 먹고,
+    그릇이 없으면 375에서 루트를 민다. 표는 본문 줄바꿈을 되돌린다(`wrap-normal`). 원문에 표 이름이 없어 `<table aria-label>`을 줄 수 없으므로
+    래퍼를 이름 없는 region·Tab 대상으로 만들지 않는다(POSTMORTEM 2026-09-19 — 이름 없는 랜드마크).
+  */
+  pre: ({ node: _node, children }) => <pre className="mt-4 overflow-x-auto">{children}</pre>,
+  table: ({ node: _node, children }) => (
+    <div className="mt-4 overflow-x-auto">
+      <table className="wrap-normal">{children}</table>
+    </div>
+  ),
   // 원고와 달리 hProperties를 싣는 플러그인이 없다 — 외부 판정을 여기서 한다.
   a: ({ node: _node, href = "", children }) =>
     isExternal(href) ? (

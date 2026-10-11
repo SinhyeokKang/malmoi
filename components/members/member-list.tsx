@@ -185,7 +185,7 @@ export function MemberList({
                   meta={
                     /* ⚠️ **150 고정 + 라벨을 든다** (캔버스). 열 머리를 지웠으므로 `2 days ago`가 무엇의
                        시각인지 말하는 자리가 이 문장뿐이고, 폭이 흔들리면 오른쪽 군의 x가 행마다 달라진다. */
-                    <span className="text-muted-foreground w-[150px] shrink-0 text-xs">
+                    <span className="text-muted-foreground w-[150px] shrink-0 @max-4xl:w-auto text-xs">
                       {m.members.joined(relativeTime(member.joinedAt, now, uiLocale))}
                     </span>
                   }

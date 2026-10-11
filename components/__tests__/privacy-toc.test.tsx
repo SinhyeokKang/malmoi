@@ -233,3 +233,43 @@ describe("Toc — 정리", () => {
     expect(cancelled.length).toBeGreaterThan(0);
   });
 });
+
+/**
+ * **좁은 형 — 본문 앞 카드 안 disclosure** (responsive-public PT2b · design §3). 같은 인스턴스가 읽기 그릇 960 미만에서 이 형이다 — 무엇이 어느 폭에
+ * 보이는지는 `@[960px]/reading:` 클래스로 들고(jsdom은 컨테이너 쿼리를 못 잰다), 여기서는 열림 상태와 인스턴스 수만 본다.
+ */
+describe("Toc — 좁은 형 disclosure", () => {
+  const toggle = (container: HTMLElement) => find<HTMLButtonElement>(container, "nav button[aria-expanded]");
+  const list = (container: HTMLElement) => document.getElementById(toggle(container).getAttribute("aria-controls") ?? "")!;
+
+  it("머리 버튼이 제목과 같은 글자이고 기본 접힘이다 — 넓은 형에서는 버튼이 숨고 목록이 늘 선다", async () => {
+    const { container } = await mount();
+    expect(toggle(container).textContent).toBe("On this page");
+    expect(toggle(container).getAttribute("aria-expanded")).toBe("false");
+    expect(toggle(container).classList.contains("@[960px]/reading:hidden")).toBe(true);
+    expect(list(container).classList.contains("hidden")).toBe(true);
+    expect(list(container).classList.contains("@[960px]/reading:block")).toBe(true);
+    expect(list(container).querySelectorAll("a")).toHaveLength(ITEMS.length);
+  });
+
+  it("누르면 펼치고, 항목을 눌러도 열린 채다", async () => {
+    const { container, scroller } = await mount();
+    // 항목 클릭은 기존 착지(`landDocumentHeading`)로 간다 — jsdom 스크롤러엔 `scrollTo`가 없다.
+    scroller.scrollTo = vi.fn() as unknown as HTMLElement["scrollTo"];
+    await act(async () => { toggle(container).click(); });
+    expect(toggle(container).getAttribute("aria-expanded")).toBe("true");
+    expect(list(container).classList.contains("block")).toBe(true);
+    await act(async () => { find<HTMLAnchorElement>(container, 'nav a[href="#purposes"]').click(); });
+    expect(toggle(container).getAttribute("aria-expanded")).toBe("true");
+    await act(async () => { toggle(container).click(); });
+    expect(toggle(container).getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("접혀 있어도 현재 절을 계산한다 — scroll 리스너·ResizeObserver는 인스턴스 하나에 하나다", async () => {
+    const { container, scroller } = await mount();
+    expect(observers).toHaveLength(1);
+    expect(container.querySelectorAll("nav")).toHaveLength(1);
+    await scrollTo(scroller, MAX);
+    expect(currentIds(container)).toEqual(["#cookies"]);
+  });
+});

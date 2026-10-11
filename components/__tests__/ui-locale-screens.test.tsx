@@ -37,7 +37,9 @@ describe("ko 화면 렌더", () => {
     expect(footer.textContent).toContain(ko.signIn.footer.privacy);
     expect(footer.textContent).not.toContain(en.signIn.footer.privacy);
     expect(container.querySelector("header")?.textContent).toContain(ko.landing.shell.getStarted);
-    expect(container.querySelector('button[aria-haspopup="dialog"]')?.getAttribute("aria-label")).toBe(ko.search.label);
+    expect(container.querySelector(`header button[aria-label="${ko.search.label}"]`)?.getAttribute("aria-haspopup")).toBe("dialog");
+    // `lg` 미만 서랍 메뉴 버튼(responsive-public D8)도 ko다.
+    expect(container.querySelector(`header button[aria-label="${ko.landing.shell.openNav}"]`)).not.toBeNull();
   });
 
   it("방침 — 머리 시행일과 개정 이력 날짜가 같은 ko 형이다", async () => {

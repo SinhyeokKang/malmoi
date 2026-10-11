@@ -485,9 +485,54 @@ it("email keeps a shrinking flex wrapper, role168 stays nonshrinking, and input 
   const field = email(0);
   const wrapper = field.parentElement!;
   for (const token of ["flex", "min-w-0", "flex-1"]) expect(wrapper.classList.contains(token)).toBe(true);
-  expect(wrapper.parentElement).toBe(role(0).parentElement);
+  expect(wrapper.parentElement).toBe(role(0).closest("[data-role-field]")!.parentElement);
   expect(field.classList.contains("w-full")).toBe(true);
   expect(field.classList.contains("flex-1")).toBe(false);
-  for (const token of ["w-[168px]", "shrink-0"]) expect(role(0).classList.contains(token)).toBe(true);
+  for (const token of ["w-[168px]", "shrink-0"]) expect(role(0).closest("[data-role-field]")!.classList.contains(token)).toBe(true);
   expect(document.activeElement).toBe(field);
+});
+
+/**
+ * **좁은 폭 — 한 사람 = 두 줄 묶음** (responsive-app A5 · 시안 AT5·AT10c). 폼이 `@container`를 선언하고 640 미만에서 이메일이 첫 줄
+ * 전폭, 역할 Select + 제거 36이 둘째 줄이다. 묶음 사이는 divider, 열 머리는 숨는다(입력의 접근 이름이 그 낱말을 든다).
+ * ⚠️ jsdom은 컨테이너 쿼리를 못 잰다 — 클래스 계약을 단언한다. 이메일은 한 줄 Input(Enter = 행 추가)이라 Textarea가 아니다.
+ */
+describe("좁은 폭 — 두 줄 묶음", () => {
+  beforeEach(() => { onClose = vi.fn(); });
+
+  it("폼이 컨테이너를 선언하고 열 머리는 좁은 폭에서 숨는다", async () => {
+    await open();
+    const form = find<HTMLFormElement>(panel(), "form");
+    expect(form.className).toMatch(/(^|\s)@container\b/);
+    const header = find<HTMLElement>(form, "[data-invite-columns]");
+    expect(header.className).toMatch(/@max-form:hidden\b/);
+  });
+
+  it("열 머리를 숨겨도 입력의 접근 이름이 Email · Role 낱말을 든다", async () => {
+    await open();
+    expect(email(0).getAttribute("aria-label")).toBe(en.members.invite.columns.email);
+    expect(nameOf(role(0))).toContain(en.members.invite.columns.role);
+  });
+
+  it("이메일 칸이 첫 줄 전폭이고 역할 Select가 둘째 줄을 채운다", async () => {
+    await open();
+    const line = email(0).closest("[data-recipient-line]") as HTMLElement;
+    expect(line.className).toMatch(/@max-form:flex-wrap\b/);
+    expect((email(0).parentElement as HTMLElement).className).toMatch(/@max-form:basis-full\b/);
+    expect(role(0).closest<HTMLElement>("[data-role-field]")!.className).toMatch(/@max-form:flex-1\b/);
+    expect(email(0).tagName).toBe("INPUT");
+  });
+
+  it("묶음 사이에 divider가 서고 거부 줄은 오른쪽 44를 비우지 않고 감긴다", async () => {
+    await open();
+    const list = rows()[0]!.parentElement as HTMLElement;
+    expect(list.className).toMatch(/@max-form:\[&>li\+li\]:border-t\b/);
+    mocks.createInvitations.mockResolvedValue({ ok: false, error: "invalid-rows", rowErrors: [{ index: 0, code: "already-member" }] });
+    await fill(["a@acme.com"]);
+    await click(submit());
+    await settle();
+    const line = rows()[0]!.querySelector<HTMLElement>("[data-row-reason]");
+    expect(line?.className).toMatch(/@max-form:pr-0\b/);
+    expect(email(0).getAttribute("aria-invalid")).toBe("true");
+  });
 });

@@ -106,7 +106,8 @@ export function UserMenu({
           ⚠️ **버튼이 아바타와 같은 32px여야 한다** (8-2 실측). `size="sm"`은 `h-7`(28)이라 32 아바타가
           위아래로 2px씩 삐져나왔고, 시안의 헤더는 딱 32 정사각이다.
         */}
-        <Button size="icon-md" variant="ghost" aria-label={m.common.nav.userMenu} className="rounded-full"
+        {/* 열린 동안 3px 링(`foreground` 3% — 시안 PT5b, #218). Inbox 트리거의 열림 면과 같은 판단이고 원형 아바타라 면 대신 링이다. */}
+        <Button size="icon-md" variant="ghost" aria-label={m.common.nav.userMenu} className="rounded-full aria-expanded:ring-3 aria-expanded:ring-foreground/[0.03]"
           onPointerEnter={prefetch}
           onFocus={() => { if (focusReturning.current) focusReturning.current = false; else prefetch(); }}>
           <Avatar name={name} src={image} size={32} />

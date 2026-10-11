@@ -14,6 +14,8 @@ import type { Messages } from "@/lib/i18n";
 import { GITHUB_REPO_URL } from "@/lib/links";
 import { routes } from "@/lib/routes";
 
+import { NavDrawer, WideOnly, type HeaderCurrent } from "./nav-drawer";
+
 /** 시안 1a: 14/500(2026-09-30 사용자 — 400에서 올렸다) · 6/10 · radius 8 · hover `foreground/[0.03]`. */
 const NAV_LINK =
   "rounded-sm px-2.5 py-1.5 text-sm font-medium hover:bg-foreground/[0.03] focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none";
@@ -26,7 +28,7 @@ const NAV_LINK =
 export const PUBLIC_HEADER_LINK =
   "text-foreground flex items-center gap-2 rounded-sm p-1.5 text-sm font-medium hover:bg-foreground/[0.03] focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none";
 
-export type HeaderCurrent = "docs" | "changelog";
+export type { HeaderCurrent };
 
 /**
  * 공개 셸 헤더 — 로고 · `Main` 내비(`Docs · Changelog`) · 가운데 검색 · 우측 GitHub | (로그인이면 Inbox) primary (시안 1a · 1e).
@@ -39,6 +41,8 @@ export type HeaderCurrent = "docs" | "changelog";
  *
  * ⚠️ **primary는 페이지가 정한다**(`publicAccount`) — 비로그인(장애 포함)은 `Get started`, 로그인이면 **앱 셸과 같은 아바타 메뉴**다
  * (옛 `Open Malmoi` 버튼 대체). 헤더는 세션을 직접 읽지 않는다. 랜딩은 `ok`에서 안 그려져 늘 `Get started`다.
+ * ⚠️ **`lg` 미만은 [로고][메뉴] … [검색 아이콘][Inbox][계정]이다**(responsive-public PT1a·PT1c) — Docs·Changelog·GitHub·언어·테마는 서랍(`NavDrawer`)으로
+ * 가고, 검색·Inbox·계정은 **같은 인스턴스가 헤더에 남는다**(한 벌 — 검색 ⌘K 리스너·Inbox 배지 Action이 인스턴스마다 붙는다). 판정은 CSS뿐이다.
  * ⚠️ **로그인이면 세로선 오른쪽·아바타 왼쪽에 헤더 Inbox가 선다**(2026-10-05 사용자 — 앱 셸 헤더와 같은 `AttentionInbox` 하나). 판정은 페이지가 넘긴
  * `account`뿐이고, 목록·배지는 Inbox가 자기 Action(`app/inbox/actions.ts`)으로 읽는다 — 비로그인이면 서지 않아 Action도 부르지 않는다.
  */
@@ -46,9 +50,11 @@ export function PublicHeader({ m, account, current }: { m: Messages; account: Pu
   return (
     <HeaderBar
       className="mb-1.5"
-      center={<SearchTrigger account={account} />}
+      compact
+      center={<SearchTrigger account={account} compact />}
       start={
-        <div className="flex items-center gap-5">
+        // `lg` 미만은 [로고][메뉴] gap 12이고 내비는 서랍으로 간다(PT1a) — 로고는 두 폭 모두 같은 자리다.
+        <div className="flex items-center gap-5 max-lg:gap-3">
           <Link
             href={routes.home()}
             aria-label={m.landing.shell.logo}
@@ -56,25 +62,31 @@ export function PublicHeader({ m, account, current }: { m: Messages; account: Pu
           >
             <MalmoiMark size={32} />
           </Link>
-          <nav aria-label={m.landing.shell.nav} className="flex items-center gap-0.5">
-            <Link href={routes.docs()} aria-current={current === "docs" ? "page" : undefined} className={NAV_LINK}>
-              {m.landing.shell.docs}
-            </Link>
-            <Link href={routes.changelog()} aria-current={current === "changelog" ? "page" : undefined} className={NAV_LINK}>
-              {m.changelog.title}
-            </Link>
-          </nav>
+          <NavDrawer current={current} />
+          <WideOnly className="max-lg:hidden">
+            <nav aria-label={m.landing.shell.nav} className="flex items-center gap-0.5">
+              <Link href={routes.docs()} aria-current={current === "docs" ? "page" : undefined} className={NAV_LINK}>
+                {m.landing.shell.docs}
+              </Link>
+              <Link href={routes.changelog()} aria-current={current === "changelog" ? "page" : undefined} className={NAV_LINK}>
+                {m.changelog.title}
+              </Link>
+            </nav>
+          </WideOnly>
         </div>
       }
       end={
         <div className="flex items-center gap-3">
-          {/* 외부 링크 — 새 탭 + `noreferrer`(공개 셸의 외부 링크 규칙). */}
-          <a href={GITHUB_REPO_URL} target="_blank" rel="noreferrer" className={PUBLIC_HEADER_LINK}>
-            <GithubIcon className="size-4 shrink-0" />
-            {m.landing.shell.github}
-          </a>
-          {/* 장식이다 — 캔버스(#f5f6f7) 위에서 보이는 가장 연한 선이 `border-border-subtle`이다(`divider`는 캔버스보다 옅어 안 보인다). */}
-          <span aria-hidden className="bg-border-subtle h-5 w-px" />
+          {/* GitHub · 세로선은 `lg` 미만에서 서랍으로 간다(PT1a). */}
+          <WideOnly className="flex items-center gap-3 max-lg:hidden">
+            {/* 외부 링크 — 새 탭 + `noreferrer`(공개 셸의 외부 링크 규칙). */}
+            <a href={GITHUB_REPO_URL} target="_blank" rel="noreferrer" className={PUBLIC_HEADER_LINK}>
+              <GithubIcon className="size-4 shrink-0" />
+              {m.landing.shell.github}
+            </a>
+            {/* 장식이다 — 캔버스(#f5f6f7) 위에서 보이는 가장 연한 선이 `border-border-subtle`이다(`divider`는 캔버스보다 옅어 안 보인다). */}
+            <span aria-hidden className="bg-border-subtle h-5 w-px" />
+          </WideOnly>
           {account !== null && <AttentionInbox />}
           {account === null ? (
             <ButtonLink href={routes.signIn()} variant="primary" size="md">

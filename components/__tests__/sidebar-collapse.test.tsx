@@ -109,7 +109,7 @@ describe("셸 패널 — 접기", () => {
   /** 패널이 `overflow: visible`이라 `min-w-0`이 없으면 flex 최소 폭이 라벨 한 줄 폭이 되어 40까지 못 줄어든다(실측 167). */
   it("LNB 패널이 `min-w-0`을 든다", async () => {
     const { container } = await render(<ShellPanels sidebar={<aside data-test="sidebar" />}>{<main />}</ShellPanels>);
-    expect(container.querySelector('[data-test="sidebar"]')?.parentElement?.className).toContain("min-w-0");
+    expect(container.querySelector('[data-test="sidebar"]')?.closest("[data-app-sidebar]")?.parentElement?.className).toContain("min-w-0");
   });
 });
 
@@ -138,14 +138,14 @@ describe("셸 패널 — 접힘 쿠키", () => {
     const { container } = await render(<ShellPanels initialCollapsed sidebar={<Probe />}>{<main />}</ShellPanels>);
     const aside = container.querySelector<HTMLElement>('[data-test="sidebar"]');
     expect(aside?.dataset.collapsed).toBe("true");
-    expect(aside?.parentElement?.style.flexBasis).toBe(`${SHELL_SIDEBAR_COLLAPSED_PX}px`);
+    expect(aside?.closest("[data-app-sidebar]")?.parentElement?.style.flexBasis).toBe(`${SHELL_SIDEBAR_COLLAPSED_PX}px`);
   });
 
   it("쿠키가 없던 셸은 펼침이고 240px다", async () => {
     const { container } = await render(<ShellPanels initialCollapsed={false} sidebar={<Probe />}>{<main />}</ShellPanels>);
     const aside = container.querySelector<HTMLElement>('[data-test="sidebar"]');
     expect(aside?.dataset.collapsed).toBe("false");
-    expect(aside?.parentElement?.style.flexBasis).toBe("240px");
+    expect(aside?.closest("[data-app-sidebar]")?.parentElement?.style.flexBasis).toBe("240px");
   });
 
   it("마운트만으로는 쿠키를 쓰지 않는다", async () => {

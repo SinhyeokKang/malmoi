@@ -42,7 +42,7 @@ export function InviteProjectCard({
       */}
       <ProjectThumbnail src={image} name={name} size="md" />
       <div className="flex min-w-0 flex-1 flex-col gap-px">
-        <span className="truncate text-sm">{name}</span>
+        <span className="text-sm wrap-anywhere">{name}</span>
         <span className="text-muted-foreground truncate text-xs">{role}</span>
       </div>
       {/* ⚠️ 복수다 — 프로젝트의 로케일이 여럿이고, 매핑이 없는 코드는 `LocaleFlag`가 `null`을 낸다. */}

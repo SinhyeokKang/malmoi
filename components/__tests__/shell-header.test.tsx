@@ -80,7 +80,8 @@ describe("앱 셸 헤더", () => {
     expect(bar?.classList.contains("grid-cols-[1fr_auto_1fr]")).toBe(true);
     expect(bar?.children).toHaveLength(3);
     expect(bar?.children[0]?.className).toBe("justify-self-start");
-    expect(bar?.children[1]?.className).toBe("justify-self-center");
+    // compact(responsive-app AT1a) — `lg` 미만이면 가운데 슬롯이 오른쪽 묶음 앞으로 붙는다.
+    expect(bar?.children[1]?.className).toBe("justify-self-center max-lg:ml-auto");
     expect(bar!.children[1]!.querySelector('button[aria-label="Search"]')).not.toBeNull();
     expect(bar?.children[2]?.className).toBe("justify-self-end");
   });
@@ -88,14 +89,18 @@ describe("앱 셸 헤더", () => {
   it("우측은 New project · 구분선 · Inbox · 사용자 메뉴 순서다", async () => {
     const { container } = await header();
     const right = container.querySelector("header > .justify-self-end > div");
-    const kids = [...(right?.children ?? [])];
-    expect(kids).toHaveLength(4);
+    // `New project` · 세로선은 `lg` 이상에만 서는 묶음 하나다(responsive-app AT1a — 좁으면 LNB 서랍 바닥으로 간다).
+    const [wide, inboxButton, menu] = [...(right?.children ?? [])];
+    expect(right?.children).toHaveLength(3);
+    expect(wide?.classList.contains("max-lg:hidden")).toBe(true);
+    const kids = [...(wide?.children ?? [])];
+    expect(kids).toHaveLength(2);
     expect(kids[0]?.getAttribute("href")).toBe(routes.newProject());
     expect(kids[1]?.getAttribute("aria-hidden")).toBe("true");
     expect(kids[1]?.className).toContain("bg-border-subtle");
-    expect(kids[2]?.getAttribute("aria-label")).toBe(en.inbox.label);
-    expect(kids[2]?.getAttribute("aria-haspopup")).toBe("menu");
-    expect(kids[3]?.getAttribute("aria-label")).toBe(en.common.nav.userMenu);
+    expect(inboxButton?.getAttribute("aria-label")).toBe(en.inbox.label);
+    expect(inboxButton?.getAttribute("aria-haspopup")).toBe("menu");
+    expect(menu?.getAttribute("aria-label")).toBe(en.common.nav.userMenu);
   });
 
   it("New project는 Plus 아이콘 + 글자이고 공개 셸 GitHub 링크와 같은 모양이다 — 같은 탭", async () => {

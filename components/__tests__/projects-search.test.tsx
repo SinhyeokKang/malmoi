@@ -145,9 +145,16 @@ it("[New project]가 지금 걸러진 검색어를 싣는다 — 모달 뒤 목�
   expect(button?.getAttribute("href")).toBe("/projects/new?q=chrome");
 });
 
-it("the actual ProjectSearch caller retains its256px input and no outer width", async () => {
+/**
+ * responsive-app — 패널 머리 640 미만이면 검색·[New project]가 둘째 줄로 내려간다(`PANEL_HEAD_ROW`). 256이 입력에 박혀 있으면 머리 그릇 430 아래에서
+ * 그 줄이 넘치므로 256은 **줄어들 수 있는 바깥 칸**이 들고 입력은 칸을 채운다. 한 줄일 때(묶음 `shrink-0`)는 지금처럼 256이다.
+ */
+it("the actual ProjectSearch caller sits in a shrinkable 256px slot and the input fills it", async () => {
   const { container } = await render(<ProjectList all={ALL} />);
   const field = search(container);
-  expect(field.classList.contains("w-64")).toBe(true);
-  expect(field.parentElement?.classList.contains("w-64")).toBe(false);
+  expect(field.classList.contains("w-full")).toBe(true);
+  expect(field.classList.contains("w-64")).toBe(false);
+  const slot = field.closest(".w-64");
+  expect(slot?.classList.contains("min-w-0")).toBe(true);
+  expect(slot?.classList.contains("shrink")).toBe(true);
 });

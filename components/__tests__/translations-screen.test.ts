@@ -373,3 +373,47 @@ describe("번역 화면 — 연결 판정", () => {
     expect(workspace).toContain("paused={!syncAvailable || publish.pending}");
   });
 });
+
+/**
+ * 단일 판의 경계 (responsive-app design §3) — 판 표시는 CSS 리터럴(`@max-[772px]/ws`)이고 JS 판정은 `SINGLE_BELOW`다. Tailwind는 소스에 적힌 리터럴만
+ * 만들어 상수로 조립할 수 없으므로, 두 값이 갈리면 JS가 고른 폭·포커스와 CSS가 보인 판이 어긋난다(포커스가 숨은 판으로 간다).
+ */
+describe("단일 판 경계 — CSS 리터럴과 SINGLE_BELOW가 같다", () => {
+  const files = ["components/translations/workspace/workspace.tsx", "app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/translations/loading.tsx"];
+  it("작업 화면·골격의 컨테이너 경계는 전부 772이고 SINGLE_BELOW와 같다", async () => {
+    const { SINGLE_BELOW } = await import("@/lib/translations/layout");
+    for (const file of files) {
+      const widths = [...read(file).matchAll(/@(?:max|min)-\[(\d+)px\]\/ws(?:head)?:/g)].map(match => Number(match[1]));
+      expect(widths.length).toBeGreaterThan(0);
+      expect(new Set(widths)).toEqual(new Set([SINGLE_BELOW]));
+    }
+  });
+  it("컨테이너를 선언하는 요소는 같은 이름으로 묻지 않는다 (POSTMORTEM 2026-09-15 자기 참조)", () => {
+    for (const file of files) {
+      for (const match of read(file).matchAll(/className=(?:"([^"]*)"|\{cn\("([^"]*)")/g)) {
+        const classes = (match[1] ?? match[2] ?? "").split(/\s+/);
+        for (const name of ["ws", "wshead"]) {
+          if (!classes.includes(`@container/${name}`)) continue;
+          expect(classes.filter(token => token.includes(`/${name}:`))).toEqual([]);
+        }
+      }
+    }
+  });
+});
+
+/**
+ * 번역 화면 머리 두 줄 (B1a · orch O4 · 시안 AT6a) — 손으로 든 머리라 `PanelHeader`처럼 **여백 없는 전폭 루트**가 `@container/panel-head`를 리터럴로
+ * 선언하고 제목 행이 `PANEL_HEAD_ROW`다(640 미만 제목 첫 줄 · Sync·Publish 둘째 줄 오른쪽). 골격도 같은 조각이다.
+ */
+describe("번역 화면 머리 — PANEL_HEAD_ROW", () => {
+  const files = ["components/translations/workspace/workspace.tsx", "app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/translations/loading.tsx"];
+  it.each(files)("%s — 루트가 @container/panel-head를 선언하고 제목 행이 PANEL_HEAD_ROW다", (file) => {
+    const source = read(file);
+    expect(source).toMatch(/return \(\s*<div[^>]*className="@container\/panel-head flex h-full min-h-0 flex-col">/);
+    expect(source.match(/className=\{PANEL_HEAD_ROW\}/g)).toHaveLength(1);
+    expect(source).toContain('import { PANEL_HEAD_ROW } from "@/components/shell/content-panel";');
+    // 버튼 묶음은 뒤 형제이고 `ml-auto`로 밀지 않는다 — 두 줄일 때 정렬은 행 규칙(`self-end`)이 든다.
+    const row = source.slice(source.indexOf("className={PANEL_HEAD_ROW}"));
+    expect(row.slice(0, row.indexOf("</div>"))).not.toMatch(/className="ml-auto flex items-center gap-2"/);
+  });
+});

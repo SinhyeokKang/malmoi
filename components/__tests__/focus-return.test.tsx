@@ -30,6 +30,9 @@ vi.mock("@/app/(edit)/projects/actions", () => ({
   changeMember: mocks.changeMember, revokeInvitation: mocks.revokeInvitation, resendInvitation: mocks.resendInvitation,
   disconnectGithub: mocks.disconnectGithub, startGithubConnectForUser: mocks.startGithubConnectForUser,
 }));
+// 번역 단일 판 그물(아래) — 작업 화면이 무는 Action. 라우터는 그 describe가 `doMock`으로 든다(앱 LNB 서랍 그물의 `doUnmock`이 파일 단위 mock을 걷는다).
+vi.mock("@/app/(edit)/actions", () => ({ saveTranslationKey: vi.fn(), previewTranslationRevert: vi.fn(), revertTranslationKey: vi.fn(), triggerPullAction: vi.fn() }));
+vi.mock("@/app/(edit)/publish-actions", () => ({ loadPublishPreview: vi.fn() }));
 vi.mock("@/app/(edit)/account/actions", () => ({
   unlinkLoginMethod: mocks.unlinkLoginMethod, startLoginMethodConnect: mocks.startLoginMethodConnect, updateProfileName: mocks.updateProfileName,
   startSessionRevocation: mocks.startSessionRevocation,
@@ -230,7 +233,8 @@ it("actual GitHub unavailable omits actions box; connected retains contents ref 
   expect(row().querySelector("button, a")).toBeNull();
   await view.rerender(<GithubSection account={{status: "ok", login: "octo"}} installedRepoCount={2} settingsUrl="https://github.com/settings/installations" />);
   expect(row().children).toHaveLength(3);
-  expect(row().lastElementChild?.className).toBe("flex shrink-0 items-center gap-2");
+  // `stackActions`(responsive-app)가 좁은 카드에서 둘째 줄 오른쪽으로 내리는 클래스를 더한다 — 상자·`contents` 래퍼 구조는 그대로다.
+  expect(row().lastElementChild?.className).toBe("flex shrink-0 items-center gap-2 @max-form:basis-full @max-form:flex-wrap @max-form:justify-end");
   const controls = row().lastElementChild?.firstElementChild;
   expect(controls?.className).toBe("contents");
   expect(controls?.querySelector("a")?.getAttribute("href")).toBe("https://github.com/settings/installations");
@@ -238,4 +242,132 @@ it("actual GitHub unavailable omits actions box; connected retains contents ref 
   await view.rerender(<GithubSection account={{status: "ok", login: null}} installedRepoCount={null} settingsUrl={null} />);
   expect(document.activeElement?.textContent).toBe(en.settings.account.connect);
   expect(row().lastElementChild?.firstElementChild?.className).toBe("contents");
+});
+
+/**
+ * **공개 셸 측면 서랍** (responsive-public design §2) — 메뉴 버튼은 진행 상태가 없지만 서랍 안 스위처가 진행 중 `busy`라 닫힘이 `body`로
+ * 빠질 갈래가 없다. 그물에 등재해 두는 것은 "Esc·닫기 → 메뉴 버튼"이다(넓어지는·좁아지는 방향은 `public-nav-drawer.test.tsx`).
+ */
+describe("공개 셸 서랍 — 닫으면 메뉴 버튼으로", () => {
+  it("Esc와 닫기 버튼 둘 다 메뉴 버튼으로 돌아온다", async () => {
+    vi.stubGlobal("matchMedia", (media: string) => ({ media, matches: false, addEventListener() {}, removeEventListener() {} }));
+    try {
+      const { NavDrawer } = await import("@/components/public-shell/nav-drawer");
+      await render(<NavDrawer current="docs" />);
+      const menu = byLabel(en.landing.shell.openNav);
+      await act(async () => { await userEvent.setup().click(menu); });
+      expect(document.activeElement?.getAttribute("aria-current")).toBe("page");
+      await act(async () => { await userEvent.setup().keyboard("{Escape}"); });
+      expect(document.activeElement).toBe(menu);
+      await act(async () => { await userEvent.setup().click(menu); });
+      await act(async () => { await userEvent.setup().click(document.querySelector(`[role="dialog"] button[aria-label="${en.common.close}"]`)!); });
+      expect(document.activeElement).toBe(menu);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
+/**
+ * **앱 LNB 서랍** (responsive-app design §2 · 시안 AT1b) — 공개 서랍과 같은 계약이다: 열면 현재 항목, Esc·닫기는 메뉴 버튼으로 돌아온다.
+ * 넓어지는·좁아지는 방향과 링크로 닫힘은 `app-nav-drawer.test.tsx`가 잰다.
+ */
+describe("앱 LNB 서랍 — 닫으면 메뉴 버튼으로", () => {
+  it("Esc와 닫기 버튼 둘 다 메뉴 버튼으로 돌아온다", async () => {
+    vi.stubGlobal("matchMedia", (media: string) => ({ media, matches: false, addEventListener() {}, removeEventListener() {} }));
+    vi.doMock("next/navigation", () => ({ usePathname: () => "/projects/demo", useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }) }));
+    try {
+      const { AppNavDrawer } = await import("@/components/shell/nav-drawer");
+      await render(<AppNavDrawer memberships={[{ slug: "demo", name: "Demo", role: "OWNER", archived: false, image: null }]} userName="Kim" />);
+      const menu = byLabel(en.landing.shell.openNav);
+      await act(async () => { await userEvent.setup().click(menu); });
+      expect(document.activeElement?.getAttribute("aria-current")).toBe("page");
+      await act(async () => { await userEvent.setup().keyboard("{Escape}"); });
+      expect(document.activeElement).toBe(menu);
+      await act(async () => { await userEvent.setup().click(menu); });
+      await act(async () => { await userEvent.setup().click(document.querySelector(`[role="dialog"] button[aria-label="${en.common.close}"]`)!); });
+      expect(document.activeElement).toBe(menu);
+      // #222 — 서랍 안 프로젝트 전환 메뉴도 열면 검색 입력이다(서랍 FocusScope가 포커스를 되가져가 role=menu에 서던 결함).
+      await act(async () => { await userEvent.setup().click(menu); });
+      await act(async () => { await userEvent.setup().click(document.querySelector(`[role="dialog"] [data-zone-head] button[aria-label="${en.common.nav.projectSwitcher.label}"]`)!); });
+      await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+      expect(document.activeElement).toBe(document.querySelector(`[role="menu"] input[aria-label="${en.common.nav.projectSwitcher.search.label}"]`));
+    } finally {
+      vi.doUnmock("next/navigation");
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
+/**
+ * **번역 단일 판** (responsive-app design §3) — 판 전환으로 누른 자리가 `display:none`이 된다. 브라우저는 그 포커스를 `body`로 옮기므로(Chrome은 blur 없이)
+ * 착지가 판마다 정해져 있다: 상세로 가면 상세 제목, ‹ Keys로 돌아오면 선택 행. 판 전환·폭 왕복·트리 이동의 전수는 `translation-workspace-compact.test.tsx`다.
+ */
+describe("번역 단일 판 — 숨는 판에서 body로 빠지지 않는다", () => {
+  it("행 → 상세 제목, ‹ Keys → 선택 행", async () => {
+    vi.stubGlobal("ResizeObserver", class {
+      constructor(private readonly callback: ResizeObserverCallback) {}
+      observe() { this.callback([{ contentRect: { width: 500 } } as ResizeObserverEntry], this as unknown as ResizeObserver); }
+      disconnect() {}
+      unobserve() {}
+    });
+    // single 폭의 focus fixup — 숨는 판 안의 포커스를 버린다.
+    const hide = new MutationObserver(() => {
+      const root = document.querySelector<HTMLElement>("[data-pane]");
+      const hidden = root?.dataset.pane === "detail" ? document.querySelector("[data-pane-card]") : document.querySelector("[data-panel=detail]");
+      if (document.activeElement instanceof HTMLElement && hidden?.contains(document.activeElement)) document.activeElement.blur();
+    });
+    hide.observe(document.body, { attributes: true, attributeFilter: ["data-pane"], subtree: true });
+    vi.doMock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }), useSearchParams: () => new URLSearchParams(window.location.search) }));
+    try {
+      const { TranslationWorkspace } = await import("@/components/translations/workspace/workspace");
+      const { props } = await import("./helpers/workspace-props");
+      const base = props();
+      window.history.replaceState(null, "", "/projects/acme/surfaces/web/translations?ns=*&key=k1");
+      await render(<TranslationWorkspace {...base} />);
+      const row = () => document.querySelector<HTMLElement>('[data-key-row="k1"]')!;
+      await act(async () => { await userEvent.setup().click(byLabel(en.responsive.backToKeys)); });
+      expect(document.activeElement).toBe(row());
+      await act(async () => { await userEvent.setup().click(row()); });
+      expect(document.activeElement).toBe(document.querySelector("[data-detail-title]"));
+    } finally {
+      vi.doUnmock("next/navigation");
+      hide.disconnect();
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
+/**
+ * **Files 순차 판 — 누른 판 버튼이 가려져도 `body`로 빠지지 않는다** (responsive-app A5). `View sample` · 행 안 미리보기 버튼은 누르면
+ * 자기 판이 `display: none`이 된다 — 반대편 판 버튼(`Candidates`)으로 착지한다. 판 판정은 잰 폭이라 `ResizeObserver`를 부르는 stub을 쓴다.
+ */
+describe("Files 순차 판 — 판 버튼 착지", () => {
+  it("View sample과 행 미리보기 버튼 둘 다 Candidates로 착지하고, Candidates는 View sample로 돌아온다", async () => {
+    const callbacks: ResizeObserverCallback[] = [];
+    vi.stubGlobal("ResizeObserver", class { constructor(cb: ResizeObserverCallback) { callbacks.push(cb); } observe() {} unobserve() {} disconnect() {} });
+    try {
+      const { FilesStep } = await import("@/components/onboarding/steps/files");
+      const candidate = (path: string) => ({ outputPaths: [path], adapter: "json-catalog" as const, pathTemplate: path, locales: ["en"], baseLocale: "en", keys: { status: "counted" as const, count: 1 }, samples: [] });
+      const state = {
+        detecting: false, detectError: undefined, candidates: [candidate("a/{locale}.json"), candidate("b/{locale}.json")], picked: 0, locale: "en",
+        preview: { status: "loading" as const }, manual: { adapter: "json-catalog" as const, pathTemplate: "", baseLocale: "" }, manualMatched: false,
+        adapters: [], repoLabel: "o/r", branch: "main", banner: null,
+      };
+      const noop = vi.fn();
+      const selection = { checked: new Set<number>(), locked: new Set<number>(), conflicts: [], onToggle: noop };
+      await render(<FilesStep state={state} selection={selection} onPick={noop} onLocale={noop} onManual={noop} onRetry={noop} />);
+      const body = document.querySelector("[data-files-body]")!;
+      await act(async () => { for (const cb of callbacks) cb([{ target: body, contentRect: { width: 400 } } as unknown as ResizeObserverEntry], {} as ResizeObserver); });
+      const click = async (node: HTMLElement) => { await act(async () => { await userEvent.setup().click(node); }); };
+      await click(byText(en.responsive.viewSample));
+      expect(document.activeElement).toBe(byText(en.responsive.backToCandidates));
+      await click(byText(en.responsive.backToCandidates));
+      expect(document.activeElement).toBe(byText(en.responsive.viewSample));
+      await click(byLabel(en.newProject.files.previewCandidate("b/{locale}.json")));
+      expect(document.activeElement).toBe(byText(en.responsive.backToCandidates));
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 });

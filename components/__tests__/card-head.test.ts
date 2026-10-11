@@ -24,10 +24,12 @@ const SITES: { path: string; head: string; count: number }[] = [
   // 로딩 골격 — PanelCard형 셋 · RowCard형 둘 · Home · Logs
   { path: "app/(edit)/projects/[slug]/settings/loading.tsx", head: '"border-divider flex min-h-12 items-center gap-2 border-b {pad}"', count: 1 },
   { path: "app/(edit)/projects/[slug]/sources/loading.tsx", head: '"border-divider flex min-h-12 items-center gap-2 border-b {pad}"', count: 1 },
-  { path: "app/(edit)/account/loading.tsx", head: '"border-divider flex min-h-12 items-center gap-2 border-b {pad}"', count: 1 },
+  // responsive-app — 실물 `Card` 머리처럼 설명이 좁은 카드(`@max-form`)에서 다음 줄로 내려가므로 골격 머리도 `flex-wrap`이다.
+  { path: "app/(edit)/account/loading.tsx", head: '"border-divider flex min-h-12 flex-wrap items-center gap-2 border-b {pad}"', count: 1 },
   // #205 — 목록·Members 골격도 머리 아래 선을 머리가 든다(실물 `Card`와 같은 자리).
   { path: "app/(edit)/projects/(list)/loading.tsx", head: '"border-divider flex min-h-12 items-center gap-2 border-b {pad}"', count: 1 },
-  { path: "app/(edit)/projects/[slug]/members/loading.tsx", head: '"border-divider flex min-h-12 items-center gap-2 border-b {pad}"', count: 1 },
+  // 실물 `Card` 머리처럼 감긴다 — 좁은 폭에서 설명 골격이 둘째 줄 전폭이다(responsive-app A5).
+  { path: "app/(edit)/projects/[slug]/members/loading.tsx", head: '"border-divider flex min-h-12 flex-wrap items-center gap-2 border-b {pad}"', count: 1 },
   // 할 일·로그 카드 골격 하나(`Card`) — 메타 열 골격은 탭 머리를 그린다(project-card-tabs).
   // #204 — 머리 아래 선을 머리가 든다(실물 `Card`와 같은 자리).
   { path: "app/(edit)/projects/[slug]/(home)/loading.tsx", head: '<div className="border-divider flex min-h-12 items-center border-b {pad}">', count: 1 },
@@ -44,7 +46,9 @@ const SITES: { path: string; head: string; count: number }[] = [
 const FIXED: { path: string; count: number }[] = [
   { path: "components/translations/workspace/tree-panel.tsx", count: 1 },
   { path: "components/translations/workspace/key-list.tsx", count: 1 },
-  { path: "components/translations/workspace/locale-panel.tsx", count: 2 },
+  // 로케일 상세의 머리는 작업 화면이 든다(진입 착지의 제목이 골격·상세에서 같은 노드 — responsive-app design §3). locale-panel은 단독 골격의 머리 하나다.
+  { path: "components/translations/workspace/locale-panel.tsx", count: 1 },
+  { path: "components/translations/workspace/workspace.tsx", count: 1 },
   { path: "app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/translations/loading.tsx", count: 1 },
   { path: "components/landing/mockup/translations.tsx", count: 3 },
 ];

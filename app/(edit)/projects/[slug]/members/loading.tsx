@@ -1,4 +1,4 @@
-import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
+import { PANEL_HEAD_ROW, PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getMessages } from "@/lib/i18n/server";
 
@@ -19,7 +19,7 @@ export default async function MembersLoading() {
     <>
       <span className="sr-only" role="status">{m.members.loading}</span>
       <PanelHeader aria-hidden>
-        <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className={PANEL_HEAD_ROW}>
           <Skeleton size="lg" className="w-24" />
           <div className="flex items-center gap-3">
             <Skeleton size="xs" className="w-24" />
@@ -32,19 +32,22 @@ export default async function MembersLoading() {
         <Card>
           {[0, 1].map((i) => (
             <div key={i} data-skeleton-member className={i > 0 ? "border-border border-t" : undefined}>
-              <div className="flex items-center gap-4 py-row-y pr-3.5 pl-3">
+              {/* 좁은 폭 적층은 `MemberRow`와 같은 클래스다 — 도착 때 줄 수가 튀지 않는다(responsive-app A5). 컨테이너는 아래 `Card`. */}
+              <div className="flex items-center gap-4 py-row-y pr-3.5 pl-3 @max-4xl:grid @max-4xl:grid-cols-[auto_minmax(0,1fr)_auto] @max-4xl:gap-x-4 @max-4xl:gap-y-2">
                 <Skeleton className="size-8 shrink-0 rounded-full" />
-                <div className="flex w-[300px] min-w-0 shrink-0 flex-col gap-0.5">
+                <div className="flex w-[300px] min-w-0 shrink flex-col gap-0.5 @max-4xl:col-span-2 @max-4xl:w-auto">
                   <Skeleton size="md" className="w-[45%]" />
                   <Skeleton size="sm" className="w-[62%]" />
                 </div>
                 {/* 메타 150 — 행 높이는 이름 열이 정하므로 줄 자리가 아니라 블록 하나다. */}
-                <div className="w-[150px] shrink-0">
-                  <Skeleton className="h-3 w-[72%] rounded-md" />
-                </div>
-                <div className="ml-auto flex shrink-0 items-center gap-2">
-                  <Skeleton className="h-9 w-[132px] rounded-md" />
-                  <Skeleton className="h-9 w-20 rounded-md" />
+                <div className="contents @max-4xl:col-span-2 @max-4xl:col-start-2 @max-4xl:flex @max-4xl:min-w-0 @max-4xl:flex-wrap @max-4xl:items-center @max-4xl:gap-x-4 @max-4xl:gap-y-2">
+                  <div className="w-[150px] shrink-0 @max-4xl:w-24">
+                    <Skeleton className="h-3 w-[72%] rounded-md" />
+                  </div>
+                  <div className="ml-auto flex shrink-0 items-center gap-2 @max-4xl:shrink @max-4xl:min-w-0 @max-4xl:max-w-full @max-4xl:flex-wrap @max-4xl:justify-end">
+                    <Skeleton className="h-9 w-[132px] rounded-md" />
+                    <Skeleton className="h-9 w-20 rounded-md" />
+                  </div>
                 </div>
               </div>
             </div>
@@ -59,7 +62,7 @@ export default async function MembersLoading() {
             <Skeleton className="size-10 rounded-sm" />
             <div className="flex w-full flex-col items-center gap-1.5">
               <Skeleton size="md" className="w-48" />
-              {["w-80", "w-56"].map((width) => (
+              {["w-80 max-w-full", "w-56 max-w-full"].map((width) => (
                 <div key={width} className="flex w-full justify-center text-sm leading-relaxed">
                   {"\u200b"}
                   <Skeleton className={`h-[0.8em] ${width} self-center rounded-md`} />
@@ -79,11 +82,11 @@ export default async function MembersLoading() {
  */
 function Card({ children }: { children: React.ReactNode }) {
   return (
-    <div className="border-border bg-background shrink-0 overflow-hidden rounded-lg border">
-      <div className="border-divider flex min-h-12 items-center gap-2 border-b px-4 py-3">
+    <div className="@container border-border bg-background shrink-0 overflow-hidden rounded-lg border">
+      <div className="border-divider flex min-h-12 flex-wrap items-center gap-2 border-b px-4 py-3">
         <Skeleton size="md" className="w-28" />
         <Skeleton className="h-5 w-5 rounded-full" />
-        <div className="ml-auto w-72">
+        <div className="ml-auto w-72 max-w-full @max-form:ml-0 @max-form:w-full">
           <Skeleton size="xs" className="ml-auto w-full" />
         </div>
       </div>

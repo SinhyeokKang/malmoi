@@ -220,7 +220,8 @@ export function RepoStep({
           onKeyUpCapture={() => { scanning.current = false; }}
           onPointerDownCapture={() => { scanning.current = false; }}
         >
-        <ul className="border-border overflow-hidden rounded-md border">
+        {/* 컨테이너 선언 — 펼친 Branch 행이 목록 폭을 묻는다(malmoi#224, 선언·질의 분리 POSTMORTEM 2026-09-15). */}
+        <ul className="@container border-border overflow-hidden rounded-md border">
           {shown.map((repo, index) => {
             const active = choice === repo.fullName;
             /*
@@ -312,7 +313,7 @@ function BranchRow({ state, onChange }: { state: RepoStepState; onChange: (value
     return (
       <BranchShell>
         <BranchLabel />
-        <Skeleton className="h-9 w-[220px] shrink-0 rounded-md" />
+        <Skeleton className="h-9 w-[220px] max-w-full shrink-0 rounded-md @max-form:flex-1" />
       </BranchShell>
     );
   }
@@ -326,7 +327,8 @@ function BranchRow({ state, onChange }: { state: RepoStepState; onChange: (value
         : m.newProject.repo.branchHelp;
 
   return (
-    /* 라벨·컨트롤·설명이 **한 줄**이다 — 세로로 쌓으면 행 하나가 세 줄이 되어 목록의 리듬이 깨진다. */
+    /* 라벨·컨트롤·설명이 **한 줄**이다 — 세로로 쌓으면 행 하나가 세 줄이 되어 목록의 리듬이 깨진다.
+       ⚠️ 목록 640 미만에서만 세 줄이다(malmoi#224) — 375에서 220 고정이 카드 밖으로 나가고 설명이 폭 0으로 사라졌다. DOM 순서 그대로 감긴다. */
     <BranchShell>
       <BranchLabel htmlFor={branch.mode === "fixed" ? undefined : "repo-branch"} />
       <>
@@ -334,9 +336,12 @@ function BranchRow({ state, onChange }: { state: RepoStepState; onChange: (value
           <Select value={state.branchValue} onValueChange={onChange}>
             {/* ⚠️ **자기 id를 `aria-labelledby`에 함께 넣는다** — 트리거는 `<button>`이라 접근 값이
                 없어서, 라벨만 이으면 스크린리더가 "Branch"까지만 말하고 고른 브랜치를 말하지 않는다. */}
-            <SelectTrigger width={220} id="repo-branch" aria-labelledby="repo-branch-label repo-branch" className="shrink-0">
-              <SelectValue />
-            </SelectTrigger>
+            {/* 폭은 래퍼가 든다(repository-form과 같은 형) — 넓으면 220, 좁으면 둘째 줄 전폭. */}
+            <div className="flex w-[220px] max-w-full shrink-0 @max-form:min-w-0 @max-form:flex-1">
+              <SelectTrigger width="full" id="repo-branch" aria-labelledby="repo-branch-label repo-branch">
+                <SelectValue />
+              </SelectTrigger>
+            </div>
             <SelectContent>
               {branch.names.map((name) => (
                 <SelectItem key={name} value={name}>
@@ -346,11 +351,13 @@ function BranchRow({ state, onChange }: { state: RepoStepState; onChange: (value
             </SelectContent>
           </Select>
         ) : branch.mode === "input" ? (
-          <Input width={220}
-            id="repo-branch"
-            value={state.branchValue}
-            onChange={(e) => onChange(e.target.value)}
-          />
+          <div className="flex w-[220px] max-w-full shrink-0 @max-form:min-w-0 @max-form:flex-1">
+            <Input width="full"
+              id="repo-branch"
+              value={state.branchValue}
+              onChange={(e) => onChange(e.target.value)}
+            />
+          </div>
         ) : (
           /* ⚠️ **mono가 아니다** — 브랜치는 읽는 값이다 (핸드오프 1a의 `Select` 값이 sans다). */
           <p className="text-sm">{state.branchValue}</p>
@@ -360,7 +367,7 @@ function BranchRow({ state, onChange }: { state: RepoStepState; onChange: (value
           AA 미달이다 (핸드오프 · DESIGN §2.2). 같은 이유로 `FormGroup`을 쓰지 않는다 — 그 프리미티브의
           help는 흰 면 전용 색이고, 고치면 다른 화면의 모든 폼이 함께 움직인다.
         */}
-        <p className="text-foreground/60 min-w-0 flex-1 text-xs leading-body">{help}</p>
+        <p className="text-foreground/60 min-w-0 flex-1 text-xs leading-body @max-form:basis-full">{help}</p>
       </>
     </BranchShell>
   );
@@ -373,7 +380,7 @@ function BranchRow({ state, onChange }: { state: RepoStepState; onChange: (value
  * 정확히 같은 세로선**에서 시작한다. 칩 치수를 바꾸면 이 값도 같이 움직여야 한다.
  */
 function BranchShell({ children }: { children: React.ReactNode }) {
-  return <div className="border-border flex items-center gap-3 border-t p-3 pl-20">{children}</div>;
+  return <div className="border-border flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t p-3 pl-20">{children}</div>;
 }
 
 /**
@@ -383,7 +390,7 @@ function BranchShell({ children }: { children: React.ReactNode }) {
 function BranchLabel({ htmlFor }: { htmlFor?: string }) {
   const m = useMessages();
   return (
-    <label id="repo-branch-label" htmlFor={htmlFor} className="flex shrink-0 items-center gap-1.5 text-sm font-medium">
+    <label id="repo-branch-label" htmlFor={htmlFor} className="flex shrink-0 items-center gap-1.5 text-sm font-medium @max-form:basis-full">
       <GitBranch className="size-3.5" aria-hidden />
       {m.newProject.repo.branch}
     </label>

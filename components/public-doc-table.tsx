@@ -15,6 +15,9 @@ import { Table, TableBody, TableHead, TableHeader, TableRow, Td } from "@/compon
  * `className`은 래퍼에 붙는다 — 그릇마다 여백·테두리가 다르다.
  */
 /**
+ * ⚠️ **좁은 폭은 표가 640 아래로 줄지 않고 래퍼 안에서만 가로 스크롤한다**(responsive-public PT2a) — 열 셋이 한 줄 8–10단어를 지키는 폭이다.
+ * 오른쪽 열이 잘려 보이는 것이 스크롤 단서이고 루트 폭은 늘지 않는다. 본문의 `wrap-anywhere`(긴 URL)는 표 안에서 되돌린다 — 최소 폭이 받는다.
+ *
  * 표 급 — `/privacy`와 `/docs`(원고 표)가 같은 급을 쓴다(시안 Prototype `isPrivacy` · `Docs.dc.html` 1b — "Privacy 표 그대로"). 셀 14/1.6 · 머리 10/16 ·
  * 13/500/1.6 muted(행 ≈ 41) · radius 12(`rounded-lg` — `rounded-xl`은 16이다).
  *
@@ -22,7 +25,7 @@ import { Table, TableBody, TableHead, TableHeader, TableRow, Td } from "@/compon
  * 시안이 이 표만 0.015em을 든다. `:is(th,td)` 하나로 건다 — `--tw-tracking`은 상속되지 않아 표에 걸면 칸의 크기 유틸이 0.02em으로 되돌린다.
  */
 export const DOC_TABLE =
-  "border-border mt-6 min-w-0 overflow-auto rounded-lg border [&_td]:leading-body [&_th]:text-muted-foreground [&_th]:text-xs [&_th]:px-4 [&_th]:py-2.5 [&_th]:leading-body [&_:is(th,td)]:tracking-[0.015em]";
+  "border-border mt-6 min-w-0 overflow-x-auto rounded-lg border [&_table]:min-w-160 [&_table]:wrap-normal [&_td]:leading-body [&_th]:text-muted-foreground [&_th]:text-xs [&_th]:px-4 [&_th]:py-2.5 [&_th]:leading-body [&_:is(th,td)]:tracking-[0.015em]";
 /** 열 머리 칸 — `DocTable`과 원고 표(`components/docs/guide-markdown.tsx`)가 같은 칸을 쓴다. */
 export const DOC_TABLE_HEAD = "bg-primary-foreground h-auto px-4 py-2 whitespace-normal";
 /** 행 — 읽는 화면이라 hover 강조를 주지 않는다(조작 어포던스다, §6.61). 머리 행의 선은 `TableHeader`의 `[&_tr]:border-b`가 되살린다. */

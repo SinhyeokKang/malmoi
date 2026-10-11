@@ -563,3 +563,14 @@ describe("ProjectMenuItem", () => {
     expect(onPointerMove).toHaveBeenCalled();
   });
 });
+
+/**
+ * #218 · 시안 PT5b — 메뉴가 열린 동안 계정 버튼에 3px 링(`foreground` 3%)이 선다. Inbox 트리거의 열림 면과 같은 판단(열림 = `aria-expanded`)이다.
+ * jsdom은 box-shadow를 계산하지 않으므로 클래스와 열림 속성으로 든다. 실제 값(`0 0 0 3px`)은 Tailwind `ring-3`이 낸다.
+ */
+it("열린 동안 계정 버튼이 3px foreground 3% 링을 든다", async () => {
+  await open();
+  const trigger = document.querySelector<HTMLButtonElement>(`button[aria-label="${en.common.nav.userMenu}"]`)!;
+  for (const token of ["aria-expanded:ring-3", "aria-expanded:ring-foreground/[0.03]", "rounded-full"]) expect(trigger.classList, token).toContain(token);
+  expect(trigger.getAttribute("aria-expanded")).toBe("true");
+});

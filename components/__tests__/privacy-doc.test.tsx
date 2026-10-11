@@ -61,7 +61,9 @@ describe("PrivacyDoc — 구조", () => {
       expect(region.getAttribute("tabindex")).toBe("0");
       expect(region.getAttribute("aria-label")).toBeTruthy();
       expect(region.querySelector("table")?.getAttribute("aria-label")).toBe(region.getAttribute("aria-label"));
-      expect(region.className).toContain("overflow-auto");
+      // 좁은 폭에서도 표는 640 아래로 줄지 않고 이 래퍼 안에서만 가로로 민다(responsive-public PT2a).
+      expect(region.className).toContain("overflow-x-auto");
+      expect(region.className).toContain("[&_table]:min-w-160");
     }
   });
 
@@ -114,12 +116,26 @@ describe("PrivacyDoc — 구조", () => {
 });
 
 describe("PrivacyDoc — 그릇 (시안 1e)", () => {
-  it("컨테이너 1120 · 본문 720 + 목차 200 · 간격 64 · 위 64(`/docs`·`/changelog`와 같다) · 아래 120", async () => {
+  /**
+   * responsive-public P3 — 두 열 고정을 컨테이너 판정으로 바꿨다: 읽기 그릇 바깥 960 이상만 본문 720 + 목차 200(사이 64), 미만은 한 열이고
+   * 목차가 본문 앞이다. 좌우 40은 640 이상, 미만 20. 위 64는 뷰포트 `lg` 미만 40. 선언(부모)과 질의(자식)는 다른 요소다(POSTMORTEM 2026-09-15).
+   */
+  it("컨테이너 1120 · 960 이상 본문 720 + 목차 200 · 간격 64 · 위 64(`lg` 미만 40) · 아래 120 · 좌우 40(640 미만 20)", async () => {
     const { container } = await doc();
-    const grid = container.firstElementChild;
+    const outer = container.firstElementChild;
+    expect(outer?.className).toBe("@container/reading");
+    const grid = outer?.firstElementChild;
     expect(grid?.className.split(/\s+/)).toEqual(
-      expect.arrayContaining(["mx-auto", "max-w-[1120px]", "px-10", "pt-16", "pb-30", "grid", "grid-cols-[minmax(0,720px)_200px]", "justify-between", "gap-16"]),
+      expect.arrayContaining([
+        "mx-auto", "max-w-[1120px]", "grid", "grid-cols-1", "@[960px]/reading:grid-cols-[minmax(0,720px)_200px]", "@[960px]/reading:justify-between",
+        "gap-x-16", "px-5", "@[640px]/reading:px-10", "pt-16", "max-lg:pt-10", "pb-30",
+      ]),
     );
+    // 목차가 DOM에서 먼저다 — 좁은 폭에서 보이는 순서(본문 앞)와 Tab 순서가 같고, 넓으면 grid가 오른쪽 열로 보낸다.
+    expect(grid?.firstElementChild?.tagName).toBe("NAV");
+    expect(grid?.firstElementChild?.className).toContain("@[960px]/reading:col-start-2");
+    expect(grid?.lastElementChild?.tagName).toBe("ARTICLE");
+    expect(grid?.lastElementChild?.className).toContain("@[960px]/reading:col-start-1");
   });
 
   /** 공개 문서 공통 급(`components/docs/classes.ts`) — `/docs`·`/changelog`와 한 벌이다(2026-09-28 사용자). */
@@ -170,10 +186,11 @@ describe("PrivacyDoc — 급 (DESIGN §6.616)", () => {
     }
   });
 
-  it("목차 — sticky 48 · 제목 13/500 · 항목 13/1.5 · 6/0/6/12", async () => {
+  /** sticky는 넓은 두 열에서만이다 — 좁은 폭은 본문 앞 disclosure 카드라 흐름에 선다(responsive-public PT2b). */
+  it("목차 — 넓으면 sticky 48 · 제목 13/500 · 항목 13/1.5 · 6/0/6/12", async () => {
     const { container } = await doc();
     const nav = find(container, "nav");
-    expect(classes(nav)).toEqual(expect.arrayContaining(["sticky", "top-12", "self-start"]));
+    expect(classes(nav)).toEqual(expect.arrayContaining(["@[960px]/reading:sticky", "@[960px]/reading:top-12", "@[960px]/reading:self-start"]));
     expect(classes(document.getElementById(nav.getAttribute("aria-labelledby") ?? ""))).toEqual(expect.arrayContaining(["text-xs", "font-medium"]));
     const links = [...nav.querySelectorAll("a")];
     expect(links.length).toBe(privacy.sections.length);

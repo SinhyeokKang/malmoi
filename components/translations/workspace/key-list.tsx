@@ -22,11 +22,17 @@ import { cn } from "@/lib/utils";
  *    눌러야 했다. 정지점은 방금 포커스한 행 → 선택 행 → 첫 행 순이고, ↑/↓·Home/End가 포커스를 옮기며 Enter·Space(버튼 기본 동작)가 선택한다.
  *    포커스한 행이 목록에서 사라지면 정지점(없으면 목록 제목)으로 옮긴다 — `body`로 빠지지 않게(POSTMORTEM 2026-09-24).
  */
-export function KeyList({ list, title, titleRef, count, savedExtra, selectedKeyId, showSource, onSelect, busy = false, treeButton, filter, empty }: {
+export function KeyList({ list, title, titleRef, scrollRef, onScroll, count, savedExtra, selectedKeyId, showSource, onSelect, busy = false, treeButton, filter, empty }: {
   list: ListGeneration<TranslationListRow>;
   title: string;
   /** 빈 상태 버튼의 이동이 끝나면 포커스가 여기로 착지한다 — 빈 상태가 사라지며 `body`로 빠지지 않게. */
   titleRef?: Ref<HTMLHeadingElement>;
+  /**
+   * 행이 흐르는 스크롤 칸 — 단일 판에서 목록이 `display:none`이 되면 scrollTop을 잃어서(responsive-app design §3) Workspace가 위치를 들고 다시 보일 때 되돌린다.
+   * ⚠️ 위치는 `onScroll`이 ref에만 적는다 — 상태로 올리면 스크롤마다 수천 행 목록이 다시 렌더된다.
+   */
+  scrollRef?: Ref<HTMLDivElement>;
+  onScroll?: (top: number) => void;
   count: number;
   savedExtra: number;
   selectedKeyId: string | undefined;
@@ -106,7 +112,7 @@ export function KeyList({ list, title, titleRef, count, savedExtra, selectedKeyI
         </span>
         {filter}
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div ref={scrollRef} data-list-scroll="" onScroll={event => onScroll?.(event.currentTarget.scrollTop)} className="min-h-0 flex-1 overflow-y-auto">
         {/* <ul>이어야 스크린리더가 "n개 중 m번째"를 읽는다 — 옛 표는 행 수를 알려 줬다. */}
         {list.rows.length === 0 ? empty : <ul ref={listRef} aria-labelledby={headingId} onKeyDown={onKeyDown} onFocus={onFocus} onBlur={onBlur}>{list.rows.map(({ row, savedOut }, index) => (
           <KeyRow key={row.keyId} row={row} savedOut={savedOut} first={index === 0} selected={row.keyId === selectedKeyId} tabStop={row.keyId === tabStop} showSource={showSource} onSelect={onSelect} />

@@ -208,6 +208,7 @@ export const es = {
       docs: "Documentación",
       github: "GitHub",
       getStarted: "Empezar",
+      openNav: "Abrir menú",
     },
     hero: {
       title: ["Reúne tus textos,", "traduce y publica en equipo"] as const,
@@ -2071,5 +2072,10 @@ export const es = {
     "original-file-missing": "El archivo original no está en el repositorio, así que este idioma se omitió y no se envió.",
     "download-failed": "No se pudo descargar el archivo.",
     fallback: "No pudimos leer este archivo.",
+  },
+  responsive: {
+    backToKeys: "Volver a las claves",
+    viewSample: "Ver vista previa",
+    backToCandidates: "Candidatos",
   },
 } satisfies Messages;

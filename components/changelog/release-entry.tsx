@@ -18,6 +18,7 @@ export const ENTRY_BLOCK = "border-border border-t py-12";
 
 /**
  * `/changelog`의 항목 하나 (시안 `Changelog.dc.html` 1a–1b) — 버전 `h1` 30/600 → 4 → 날짜 14 muted → 24 → 본문.
+ * 뷰포트 `lg` 미만 버전 제목은 24다(responsive-public D23 — 표시급 한 단계, 좁은 폭 페이지 제목 30과 위계를 지킨다).
  * ⚠️ **버전이 `h1`이다** (2026-09-28 사용자 — 태그째 한 단계 올렸다). 페이지 제목 `Changelog`와 본문 `##`도 `h1`이라 한 문서에 `h1`이 여럿이다.
  * 틀(위 선 + 위아래 48)은 `ENTRY_BLOCK`이다.
  *
@@ -32,7 +33,7 @@ export function ReleaseEntry({ m, uiLocale, release, latest = false }: { m: Mess
     <section aria-labelledby={tag} className={ENTRY_BLOCK}>
       {latest && <Badge variant="soft-green" className="mb-2">{m.changelog.latest}</Badge>}
       {/* `scroll-mt-12` — 해시 착지가 헤더 아래 48에 선다. `tabIndex={-1}` — 착지 포커스 대상이라 링을 그리지 않는다. */}
-      <h1 id={tag} tabIndex={-1} className="m-0 scroll-mt-12 text-3xl leading-[1.3] font-semibold focus:outline-none">
+      <h1 id={tag} tabIndex={-1} className="m-0 scroll-mt-12 text-3xl leading-[1.3] font-semibold focus:outline-none max-lg:text-2xl">
         {/*
           버전 글자가 곧 외부 링크다(2026-09-28 사용자 — 글리프 없음, §6.3). 행선지는 그 판의 GitHub Release이고, 옛 자기 앵커
           (`#v1.0.4`)와 본문 아래 `View on GitHub` 버튼을 함께 대체한다. 해시 착지는 `h1`의 `id`가 그대로 받는다.

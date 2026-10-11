@@ -49,7 +49,8 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
    */
   paused?: boolean;
   /**
-   * 멈춘 사유 — 호스트가 원인을 안다 (audit-ux #10). Publish 진행이면 `waitPublish`다: 옆 [Publish]의 라벨이 더는 진행을 말하지 않는다(D1).
+   * 멈춘 사유 — 호스트가 원인을 안다 (audit-ux #10): 끊김·보관 → Publish 진행(`waitPublish` — 옆 [Publish]의 라벨이 더는 진행을 말하지 않는다, D1) → lease 순이다.
+   * 없으면 일반 문장(`paused`)이다.
    */
   pausedReason?: string;
   /** 결과가 왔다 — 호스트가 재검증 트리까지 교차 잠금을 잇는다(malmoi#103). Dialog가 70초 출구로 닫힌 뒤에 와도 부른다. */
@@ -215,9 +216,9 @@ export function SyncButton({ slug, surfaceSlug, name, branch, role, unsent, paus
   */
   /*
     ⚠️ **`disabled`가 아니라 `aria-disabled` + 사유다** (audit #37 — DESIGN §6.65). 진짜 `disabled`는 포커스를 못 받아
-    왜 멈췄는지 닿을 길이 없었다. 미연결·보관은 가르지 않는다 — 같은 화면의 배너가 원인을 말한다. Publish 진행만 호스트가
-    `pausedReason`으로 가른다 — [Publish] 라벨이 더는 진행을 말하지 않는다 (audit-ux #10 · D1). ⚠️ **보이는 사람에게는 `title`이다** — 머리에 문장을 세울 자리가 없고, 옆의 [Publish]가 같은 형이다
-    (§6.646: `title`은 마우스용, sr-only는 describedby용).
+    왜 멈췄는지 닿을 길이 없었다. 원인은 호스트가 `pausedReason`으로 고른다 — [Publish] 라벨이 더는 진행을 말하지 않는다 (audit-ux #10 · D1).
+    ⚠️ **보이는 사람에게는 `title`이다** — 옆의 [Publish]가 같은 형이다(§6.646: `title`은 마우스용, sr-only는 describedby용). 버튼 아래 보이는 줄(responsive-app F7)은
+    2026-10-11 사용자가 되돌렸다 — 미전달 0의 평상 상태에도 머리에 문장이 늘 섰다. 터치에서 이유가 안 보이는 대가를 받는다(disabled-reasons-revert).
   */
   if (paused && !pending && outcome === null) {
     return <>

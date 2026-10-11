@@ -363,3 +363,66 @@ it("포커스 없이 배너 [Try again]으로 연 Sync를 Cancel로 닫으면 �
   expect(document.querySelector('[role="dialog"]')).toBeNull();
   await vi.waitFor(() => expect(document.activeElement).toBe(button("Try again")));
 });
+
+/** 꺼진 버튼의 사유 — 자기 sr-only 문장이고 `title`(버튼이나 감싼 `<span>`)이 같은 문장이다(F7 이전 형 — disabled-reasons-revert R-02). */
+function reasonOf(node: Element) {
+  // 설명 대상은 id 하나다 — 같은 문장을 두 대상이 겹쳐 들면 두 번 읽힌다(그래서 아래 호출부가 문장을 `toBe`로 견준다).
+  expect((node.getAttribute("aria-describedby") ?? "").split(" ")).toHaveLength(1);
+  const target = document.getElementById(node.getAttribute("aria-describedby") ?? "");
+  expect(target?.classList.contains("sr-only")).toBe(true);
+  expect(node.closest("[title]")?.getAttribute("title")).toBe(target?.textContent);
+  return target?.textContent;
+}
+/** sr-only 밖에서 그 문장을 든 잎 요소 — 보이는 사유 줄이 있으면 1 이상이다. */
+const visible = (text: string) => [...document.querySelectorAll("*")].filter(node => node.children.length === 0 && node.textContent === text && node.closest(".sr-only") === null);
+
+/**
+ * **머리에 보이는 사유 줄이 없다** (disabled-reasons-revert R-01 — 2026-10-11 사용자가 responsive-app F7·O10을 뒤집었다). 꺼진 [Sync]·[Publish]는
+ * 각자 `title` + 자기 sr-only로 사유를 든다 — 문장은 같은 판정이다(보관·끊김은 서버가 고른 `pausedReason`, 미전달 0은 `nothing`).
+ */
+it("멈춘 Home의 Sync·Publish는 보이는 사유 줄 없이 각자 title + 자기 sr-only를 든다", async () => {
+  const reason = "This repository is disconnected. Reconnect it in Settings.";
+  const view = await render(<HomeActions slug="acme" writeLock={null}><HomeHeaderActions {...props} paused pausedReason={reason} /></HomeActions>);
+  expect(document.querySelector("[data-disabled-reasons]")).toBeNull();
+  expect(reasonOf(button("Sync"))).toBe(reason);
+  expect(reasonOf(button("Publish"))).toBe(reason);
+  expect(visible(reason)).toHaveLength(0);
+  await view.rerender(<HomeActions slug="acme" writeLock={null}><HomeHeaderActions {...props} unsent={0} /></HomeActions>);
+  expect(reasonOf(button("Publish"))).toBe(en.translations.publish.nothing);
+  expect(visible(en.translations.publish.nothing)).toHaveLength(0);
+  await view.rerender(<HomeActions slug="acme" writeLock={null}><HomeHeaderActions {...props} /></HomeActions>);
+  expect(button("Publish").hasAttribute("aria-describedby")).toBe(false);
+  expect(document.querySelector("[title]")).toBeNull();
+});
+
+/**
+ * **배너의 [Try again]은 머리 [Sync]와 같은 형이다** (disabled-reasons-revert R-03) — 머리 사유 줄을 가리키던 O19 연결을 걷었다. 자기 sr-only를 가리키고
+ * `title`이 같은 문장이다. 머리 [Sync]도 같은 문장의 자기 sr-only를 들지만 보이는 문장은 0이다.
+ */
+it("lease로 멈춘 [Try again]은 title + 자기 sr-only를 들고 보이는 사유 줄이 없다", async () => {
+  const lease = { startedAt: new Date(), reopensBy: new Date(Date.now() + 60_000) };
+  await render(<HomeActions slug="acme" writeLock={lease}><Host /></HomeActions>);
+  const retry = button(en.home.banner.syncFailed.action);
+  expect(retry.getAttribute("aria-disabled")).toBe("true");
+  expect(reasonOf(retry)).toBe(en.repositorySync.running);
+  expect(reasonOf(button("Sync"))).toBe(en.repositorySync.running);
+  expect(retry.getAttribute("aria-describedby")).not.toBe(button("Sync").getAttribute("aria-describedby"));
+  expect(document.querySelector("[data-disabled-reasons]")).toBeNull();
+  expect(visible(en.repositorySync.running)).toHaveLength(0);
+});
+
+/** **Publish 진행 중**도 같은 형이다 (disabled-reasons-revert R-01) — [Sync]는 `waitPublish`를 `title` + 자기 sr-only로 들고 보이는 문장은 0이다. */
+it("Publish가 도는 동안 멈춘 [Sync]는 waitPublish를 title + 자기 sr-only로 들고 보이는 사유 줄이 없다", async () => {
+  const pull = deferred<{ status: "skipped"; reason: "no-edits" }>();
+  mocks.pull.mockReturnValue(pull.promise);
+  // 모달은 본문(`HomeNotices`)이 든다 — 실제 Home 배치(`Host`)로 Publish를 연다. 배너의 [Try again]도 같은 잠금이라 머리 [Sync]만 본다.
+  await render(<HomeActions slug="acme" writeLock={null}><Host state="default" /></HomeActions>);
+  await click("Publish");
+  await click("Open pull request");
+  await act(async () => { (document.querySelector('button[aria-label="Close"]') as HTMLButtonElement).click(); });
+  expect(button("Publish").getAttribute("aria-busy")).toBe("true");
+  expect(reasonOf(button("Sync"))).toBe(en.repositorySync.waitPublish);
+  expect(document.querySelector("[data-disabled-reasons]")).toBeNull();
+  expect(visible(en.repositorySync.waitPublish)).toHaveLength(0);
+  await act(async () => { pull.resolve({ status: "skipped", reason: "no-edits" }); await pull.promise; });
+});

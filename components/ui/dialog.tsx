@@ -1,7 +1,7 @@
 "use client";
 
 import { Dialog as Primitive } from "radix-ui";
-import type { ComponentProps, ReactNode } from "react";
+import { createContext, useContext, useRef, type ComponentProps, type ReactNode } from "react";
 
 import { useMessages } from "@/components/i18n/messages-provider";
 import { cn } from "@/lib/utils";
@@ -100,7 +100,20 @@ export function closeAutoFocus(event: Event, consumer?: AutoFocusHandler) {
 export const DialogTrigger = Primitive.Trigger;
 export const DialogClose = Primitive.Close;
 
-/** 검색 패널은 대형 모달의 치수를 공유하고 위에서 열린다. 기존 확인 Dialog의 구조는 그대로다. */
+/**
+ * 시트(`lg` 미만)의 입력 줄이 드는 Cancel의 닫기 — 전체 화면에는 누를 scrim이 없어 그것이 유일한 보이는 닫기다(responsive-public PT4a).
+ * ⚠️ **Radix `Dialog.Close`를 `CommandInput`에 두지 않는다** — Dialog 밖에서 그리는 `CommandInput`(단위 테스트)이 컨텍스트 없음으로 던진다.
+ * 이 값이 없으면(다이얼로그 밖) Cancel을 그리지 않는다.
+ */
+const CommandDialogCancel = createContext<(() => void) | null>(null);
+export function useCommandDialogCancel() {
+  return useContext(CommandDialogCancel);
+}
+
+/**
+ * 검색 패널은 대형 모달의 치수를 공유하고 위에서 열린다. 기존 확인 Dialog의 구조는 그대로다.
+ * `lg` 미만은 그릇 상수가 든 전체 화면 시트다(`LARGE_MODAL_PANEL` — `top-4 translate-y-0`은 `max-lg:inset-0 max-lg:translate-none`이 이긴다).
+ */
 export function CommandDialog({ open, onOpenChange, title, children, onCloseAutoFocus }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -125,7 +138,7 @@ export function CommandDialog({ open, onOpenChange, title, children, onCloseAuto
         onCloseAutoFocus={event => closeAutoFocus(event, onCloseAutoFocus)}
       >
         <Primitive.Title className="sr-only">{title}</Primitive.Title>
-        {children}
+        <CommandDialogCancel value={() => onOpenChange(false)}>{children}</CommandDialogCancel>
       </Primitive.Content>
     </Primitive.Portal>
   </Primitive.Root>;
@@ -175,6 +188,11 @@ export function DialogContent({
            */
           "bg-background border-border fixed top-1/2 left-1/2 z-50 w-full max-w-110 -translate-x-1/2 -translate-y-1/2",
           "shadow-medium rounded-lg border",
+          /*
+            ⚠️ **`lg` 미만은 좌우 16을 남기고 본문만 스크롤한다** (responsive-app O13 · 시안 AT8b) — `w-full`이면 375에서 테두리가 화면 끝에 붙었고, 긴 경고·
+            before → after 목록이 화면 높이를 넘으면 footer(확정 버튼)가 밖으로 나갔다. **새 값은 전부 `max-lg:` 아래다** — `lg` 이상은 바이트 불변이다.
+          */
+          "max-lg:flex max-lg:max-h-[calc(100dvh-2rem)] max-lg:w-[calc(100%-2rem)] max-lg:flex-col",
           className,
         )}
         {...props}
@@ -203,7 +221,7 @@ export function DialogContent({
         onOpenAutoFocus={(event) => openAutoFocus(event, onOpenAutoFocus)}
         onCloseAutoFocus={(event) => closeAutoFocus(event, onCloseAutoFocus)}
       >
-        <header className="flex items-start justify-between gap-2 p-4 pb-2">
+        <header className="flex items-start justify-between gap-2 p-4 pb-2 max-lg:shrink-0">
           <Primitive.Title className="text-base font-medium">{title}</Primitive.Title>
           <DialogClose asChild>
             {/* 닫기는 `CloseButton` 한 형이다(2026-10-01 — 옛 36 정방). 음수 마진은 캔버스의 `-6px -8px 0 0`이다. */}
@@ -216,6 +234,10 @@ export function DialogContent({
           `leading-relaxed` 1.625). DESIGN §4.2가 "스케일에 대응값이 없을 때만" 임의값을 허용하고
           여기가 그 경우다. 기본값(`text-xs`의 1.333 = 17.33px)이면 두 줄짜리 질문이 붙어 읽힌다.
         */}
+        {/*
+          ⚠️ **스크롤 칸은 설명과 본문을 함께 든다** (O13) — Revert처럼 설명이 곧 긴 목록인 소비자가 있다. `lg` 이상은 스타일 없는 블록이라 배치가 그대로다.
+        */}
+        <div data-dialog-scroll="" className="max-lg:min-h-0 max-lg:overflow-y-auto">
         {description !== undefined && (
           <Primitive.Description className="text-muted-foreground px-4 text-xs leading-body">
             {description}
@@ -239,8 +261,76 @@ export function DialogContent({
             {children}
           </div>
         )}
-        {/* ⚠️ 푸터 위 간격이 16이다 — `pt-2`(8)로 붙어 있었다. */}
-        {actions !== undefined && <footer className="flex justify-end gap-2 p-4">{actions}</footer>}
+        </div>
+        {/*
+          ⚠️ 푸터 위 간격이 16이다 — `pt-2`(8)로 붙어 있었다.
+          ⚠️ **`lg` 미만은 감긴다** (O13) — 긴 언어의 확정 라벨이 넘치면 다음 줄로 가되 오른쪽 정렬·순서·첫 포커스(Cancel)는 그대로다. 전폭 세로 쌓기로 바꾸지 않는다.
+        */}
+        {actions !== undefined && <footer className="flex justify-end gap-2 p-4 max-lg:shrink-0 max-lg:flex-wrap">{actions}</footer>}
+      </Primitive.Content>
+    </Primitive.Portal>
+  );
+}
+
+/**
+ * **측면 서랍** (responsive-public design §2 · PT1b — 공개 셸 내비가 첫 소비자, 앱 LNB가 다음이다). `DialogContent`의 형제다 — 동작(닫는 길 넷 ·
+ * 연 자리 복귀 · IME Esc)은 같고 위치·치수만 다르다. 호출부가 `DialogContent`의 위치·높이를 덮지 않게 그릇을 여기 둔다(DESIGN §8).
+ *
+ * 왼쪽·위·아래 8 · 폭 `min(320, 100vw − 56)`(오른쪽에 남는 56의 scrim이 닫기 자리다) · 셸 패널과 같은 형의 떠 있는 면(radius 16 · `border-subtle` ·
+ * `shadow-medium`) · scrim은 `Dialog`와 같은 40%. 머리 56 = 호출부의 시작 슬롯(로고) + 닫기 32이고 **보이는 제목이 없다**(`title`은 sr-only).
+ * 몸통만 스크롤하고 바닥(`actions`)은 고정이다.
+ *
+ * ⚠️ **열면 몸통의 현재 항목(`aria-current`)에, 없으면 몸통의 첫 항목에 포커스가 선다** — Radix 기본(첫 tabbable)이면 머리의 로고에 선다.
+ * 소비자는 표식을 달지 않는다 — 현재 항목이 곧 표식이다. 닫힘 복귀는 `closeAutoFocus`이고, 링크로 닫히면 소비자가 막는다(도착한 페이지가 이긴다).
+ */
+export function DrawerContent({ title, start, actions, pinned, children, onCloseAutoFocus }: {
+  /** 보이지 않는 이름 — 서랍 안 `nav`의 이름과 같게 둔다. */
+  title: ReactNode;
+  /** 머리 왼쪽(로고 홈 링크). */
+  start: ReactNode;
+  /** 바닥 고정 줄(공개 내비 — 언어·테마 스위처). 몸통만 스크롤한다. */
+  actions?: ReactNode;
+  /**
+   * 바닥 고정 **세로 행 줄**(앱 LNB 서랍 — New project · Changelog · Docs, responsive-app AT1b). `actions`의 가로 한 줄(48)과 형이 달라 슬롯이 따로다 —
+   * 공개 서랍의 바닥은 그대로다. 위 선·여백(위아래 8 · 좌우 12 = 몸통과 같은 시작선)은 여기가 든다.
+   */
+  pinned?: ReactNode;
+  children: ReactNode;
+  onCloseAutoFocus?: AutoFocusHandler;
+}) {
+  const m = useMessages();
+  const ime = useImeGuard();
+  const body = useRef<HTMLDivElement>(null);
+  return (
+    <Primitive.Portal>
+      <Primitive.Overlay className="bg-scrim/40 fixed inset-0 z-50" />
+      <Primitive.Content
+        aria-describedby={undefined}
+        className="bg-background border-border-subtle shadow-medium fixed top-2 bottom-2 left-2 z-50 flex w-[min(320px,calc(100vw-56px))] flex-col overflow-hidden rounded-xl border"
+        onCompositionStart={ime.onCompositionStart}
+        onCompositionEnd={ime.onCompositionEnd}
+        onEscapeKeyDown={(event) => { if (ime.blocks(event)) event.preventDefault(); }}
+        onOpenAutoFocus={(event) => {
+          const scope = body.current;
+          const target = scope?.querySelector<HTMLElement>('[aria-current]:not([aria-current="false"])')
+            ?? scope?.querySelector<HTMLElement>('a[href], button:not(:disabled), [tabindex]:not([tabindex="-1"])');
+          if (target == null) return;
+          event.preventDefault();
+          target.focus();
+        }}
+        onCloseAutoFocus={(event) => closeAutoFocus(event, onCloseAutoFocus)}
+      >
+        <Primitive.Title className="sr-only">{title}</Primitive.Title>
+        <header className="flex h-14 shrink-0 items-center justify-between px-3">
+          {start}
+          <DialogClose asChild>
+            {/* 32 — 머리의 로고와 같은 높이다(시트 머리의 닫기와 같은 급). */}
+            <CloseButton label={m.common.close} className="size-8" />
+          </DialogClose>
+        </header>
+        <div ref={body} className="min-h-0 flex-1 overflow-y-auto px-3 pt-1 pb-3 [scrollbar-width:thin]">{children}</div>
+        {actions !== undefined && <footer className="border-divider flex h-12 shrink-0 items-center gap-5 border-t px-4">{actions}</footer>}
+        {pinned !== undefined && <footer data-drawer-pinned className="border-divider flex shrink-0 flex-col gap-0.5 border-t px-3 py-2">{pinned}</footer>}
       </Primitive.Content>
     </Primitive.Portal>
   );

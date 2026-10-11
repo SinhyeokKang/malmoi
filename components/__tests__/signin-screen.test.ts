@@ -132,16 +132,56 @@ describe("로그인 화면 — 레이아웃 계약", () => {
     expect(shell).toContain("<PublicFooter m={m} />");
   });
 
-  it("최소 너비 1280px를 든다 — 그 아래에서 스크롤이 나야 한다", () => {
-    expect(src).toMatch(/min-w-shell-min/);
+  /** 하한이 없어 375에서도 폼 한 판이 선다 — 가로 스크롤이 아니라 장식을 접는다(responsive-public). */
+  it("최소 너비 하한이 없다", () => {
+    expect(src).not.toMatch(/min-w-shell-min/);
   });
 
   /**
-   * ⚠️ **`lg:` 분기는 죽은 코드다** — 1280px 고정이므로 그 분기점이 영영 안 걸린다.
-   * 남겨 두면 다음 사람이 "반응형이 있다"고 읽는다.
+   * ⚠️ **`lg:` 분기는 장식 둘뿐이다** — 2열 그리드와 장식 패널 표시. 폼 쪽에 `lg:`가 번지면 좁은 폼과 넓은 폼이
+   * 두 벌이 된다. 장식이 `lg` 미만에서 숨는다는 것이 이 화면의 유일한 반응형 계약이다(design §3).
    */
-  it("`lg:` 분기가 없다 — 모바일 대응을 생략했다", () => {
-    expect(src).not.toMatch(/\blg:/);
+  it("`lg:` 분기는 장식의 2열·표시 둘뿐이다", () => {
+    const used = [...new Set(src.match(/\blg:[\w-]+/g) ?? [])].sort();
+    expect(used).toEqual(["lg:flex", "lg:grid-cols-2"]);
+    expect(src).toMatch(/hidden lg:flex/);
+    expect(read(SHELL)).not.toMatch(/(?<!lg:)\bgrid-cols-2\b/);
+  });
+
+  /**
+   * `dvh`는 브라우저 툴바(주소창) 변화를 따른다. 소프트 키보드는 `interactive-widget=resizes-content`가 있는 Android(Chrome·Firefox)에서만
+   * 줄이고 iOS는 대응하지 않는다(비범위) — 루트 viewport가 그 값을 든다(D20, 아래 테스트).
+   */
+  it("높이가 `dvh`다 — `svh`가 아니다", () => {
+    const shell = read(SHELL);
+    expect(shell).toMatch(/\bmin-h-dvh\b/);
+    expect(shell).toMatch(/\bh-dvh\b/);
+    expect(shell).not.toMatch(/svh/);
+  });
+
+  it("폼 컬럼이 고정 폭이 아니라 유동 상한이다 — 320 · 동의 480", () => {
+    expect(read("components/signin/auth-column.tsx")).toMatch(/w-full max-w-80/);
+    expect(read("components/signin/auth-column.tsx")).not.toMatch(/w-\[320px\]/);
+    expect(read("app/oauth/authorize/page.tsx")).toMatch(/w-full max-w-120/);
+    expect(read("app/oauth/authorize/page.tsx")).not.toMatch(/w-\[480px\]/);
+  });
+
+  /** 마스킹 이메일(`sentTo`)처럼 공백 없는 긴 낱말이 295 컬럼을 밀어내지 않는다. */
+  it("설명 줄이 긴 낱말에서 줄바꿈된다", () => {
+    expect(read("components/signin/auth-column.tsx")).toMatch(/text-center text-sm break-words/);
+  });
+
+  it("루트 not-found·error 골격도 같은 유동 상한 · dvh다", () => {
+    const fallback = read("components/root-fallback.tsx");
+    expect(fallback).toMatch(/w-full max-w-80/);
+    expect(fallback).not.toMatch(/w-\[320px\]|svh/);
+    expect(fallback).toMatch(/min-h-dvh/);
+  });
+
+  it("장식은 좁은 폭에서 숨고 넓은 폭에서만 2열이다", () => {
+    const html = renderToStaticMarkup(createElement(AuthLayout, { m: en, decoration: true, children: null }));
+    expect(html).toMatch(/class="[^"]*\blg:grid-cols-2\b/);
+    expect(html).toMatch(/class="hidden lg:flex [^"]*from-auth-hero-from/);
   });
 
   /**
@@ -264,5 +304,20 @@ describe("KeyVisual — 앞 카드 세 장 (2026-10-06 사용자)", () => {
       expect(image).toContain("opacity-90");
       expect(image).not.toContain("backdrop-blur");
     }
+  });
+});
+
+describe("루트 viewport — 키보드가 dvh를 줄인다 (D20)", () => {
+  it("`interactiveWidget: \"resizes-content\"`를 낸다", () => {
+    const layout = read(ROOT_LAYOUT);
+    expect(layout).toMatch(/export const viewport: Viewport = \{[^}]*interactiveWidget: "resizes-content"/);
+  });
+
+  /** sticky CTA가 `lg` 미만뿐이라 `scroll-pb`도 `lg` 미만뿐이다(#221 · D24) — `lg` 이상 스크롤러 클래스는 R 배치 이전(`3a1afe68`)과 바이트로 같다. */
+  it("동의 스크롤러가 `lg` 미만에서만 sticky CTA 높이만큼 `scroll-pb`를 든다 — Tab 포커스를 바가 덮지 않는다", () => {
+    const scroller = /<div className="([^"]*overflow-y-auto[^"]*)"/.exec(read("app/oauth/authorize/page.tsx"))?.[1] ?? "";
+    const tokens = scroller.split(" ").filter(Boolean);
+    expect(tokens.some((token) => /^max-lg:scroll-pb-\d+$/.test(token))).toBe(true);
+    expect(tokens.filter((token) => !token.startsWith("max-lg:")).join(" ")).toBe("min-h-0 w-full flex-1 overflow-y-auto px-8 pt-12 pb-8");
   });
 });

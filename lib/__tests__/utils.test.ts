@@ -41,7 +41,6 @@ describe("cn — T2 토큰이 기존 철자의 충돌 제거를 보존한다", (
     ["gap-[3px]", "gap-copy-gap", "gap-0"],
     ["gap-[3px]", "gap-copy-gap", "gap-x-0"],
     ["space-y-[3px]", "space-y-copy-gap", "space-y-0"],
-    ["min-w-[1280px]", "min-w-shell-min", "min-w-0"],
     ["h-[calc(100svh-96px)]", "h-[calc(100svh-var(--spacing-modal-gutter))]", "h-0"],
     ["w-[calc(100%-96px)]", "w-[calc(100%-var(--spacing-modal-gutter))]", "w-0"],
     ["text-blue-600", "text-link", "text-red-700"],

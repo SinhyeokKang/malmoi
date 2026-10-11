@@ -48,13 +48,18 @@ export function BannerLine({
       id={id}
       data-tone={tone}
       className={cn(
-        "border-foreground/[0.06] bg-foreground/[0.02] flex items-center gap-2 border-t py-2 pr-3.5 text-xs",
+        "border-foreground/[0.06] bg-foreground/[0.02] flex items-center gap-2 border-t py-2 pr-3.5 text-xs [&>:not(span)]:shrink-0",
         indent === "avatar" ? "pl-15" : "pl-14",
         tone === "danger" ? "text-destructive" : tone === "warning" ? "text-warning-soft-foreground" : "text-muted-foreground",
       )}
     >
       {icon}
-      <span className="min-w-0 truncate">{children}</span>
+      {/*
+        ⚠️ **좁은 그릇(가장 가까운 컨테이너 640 미만)에서는 말줄임하지 않고 감긴다** (#234). 375에서 `1 unsent edit — pu…`처럼 잘렸고 `title`도
+        hover도 없어 터치에서 전문에 닿을 길이 없었다 — 마지막 오너의 Remove는 이 띠를 사유로 가리킨다(spec A-05·A-06). 640 이상은 한 줄 말줄임
+        그대로다(1280에서 문장이 한 줄에 든다). 컨테이너는 소비자의 `CardList`가 선언한다. 글리프·액션은 줄지 않는다(루트의 `shrink-0`).
+      */}
+      <span className="min-w-0 truncate @max-form:whitespace-normal @max-form:text-clip @max-form:wrap-break-word">{children}</span>
       {action}
     </div>
   );

@@ -1,6 +1,8 @@
 import { ListRow } from "@/components/ui/list-row";
 
 import { EventMetaLine } from "@/components/logs/event-meta";
+import { LOG_ROW_CHEVRON_STACK, LOG_ROW_RESULT_STACK, LOG_ROW_STACK, LOG_ROW_TIME_STACK } from "@/components/logs/row-layout";
+import { cn } from "@/lib/utils";
 import { EventGlyph } from "@/components/logs/glyph";
 import { RowChevron } from "@/components/logs/row-chevron";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -54,7 +56,9 @@ export function EventRow({
   return (
     <ListRow
       href={href}
-      aside={<span className="text-muted-foreground flex shrink-0">
+      /* 좁은 그릇 적층은 시각 열이 있는 Logs 행만이다 — Home 최근 로그(`showTime={false}`)는 B1이 소유해 이 배치가 건드리지 않는다. */
+      className={showTime ? LOG_ROW_STACK : undefined}
+      aside={<span className={cn("text-muted-foreground flex shrink-0", showTime && LOG_ROW_CHEVRON_STACK)}>
         <RowChevron />
       </span>}
     >
@@ -67,7 +71,7 @@ export function EventRow({
         <time
           dateTime={row.occurredAt.toISOString()}
           aria-label={formatMinute(row.occurredAt, style)}
-          className="text-muted-foreground w-28 shrink-0 text-sm whitespace-nowrap tabular-nums"
+          className={cn("text-muted-foreground w-28 shrink-0 text-sm whitespace-nowrap tabular-nums", LOG_ROW_TIME_STACK)}
         >
           {formatClock(row.occurredAt, style)}
         </time>
@@ -79,7 +83,7 @@ export function EventRow({
       </span>
       {/* 결과 배지는 보조줄 밖, 행 오른쪽이다 — Logs는 172 칸의 오른쪽 끝(chevron 옆), Home 최근 로그는 시각 앞(2026-09-30 사용자). */}
       {showTime ? (
-        <span className="flex w-[172px] shrink-0 flex-wrap items-center justify-end gap-1.5">
+        <span className={cn("flex w-[172px] shrink-0 flex-wrap items-center justify-end gap-1.5", LOG_ROW_RESULT_STACK)}>
           {view.state !== null && <StatusBadge state={view.state} />}
           {view.warningsLabel !== null && <Badge variant="soft-amber">{view.warningsLabel}</Badge>}
         </span>

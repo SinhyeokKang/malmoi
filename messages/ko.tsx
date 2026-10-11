@@ -211,6 +211,7 @@ export const ko = {
       docs: "문서",
       github: "GitHub",
       getStarted: "시작하기",
+      openNav: "메뉴 열기",
     },
     hero: {
       title: ["흩어진 말을 모아,", "함께 번역하고 전달하세요"] as const,
@@ -2082,5 +2083,10 @@ export const ko = {
     "original-file-missing": "리포지토리에 기존 파일이 없어 이 언어는 전송에서 제외했습니다.",
     "download-failed": "파일을 내려받지 못했습니다.",
     fallback: "이 파일을 읽지 못했습니다.",
+  },
+  responsive: {
+    backToKeys: "키 목록으로 돌아가기",
+    viewSample: "미리보기",
+    backToCandidates: "후보 목록",
   },
 } satisfies Messages;

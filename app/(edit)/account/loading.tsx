@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { PanelBody, PanelHeader } from "@/components/shell/content-panel";
+import { PanelFacts } from "@/components/ui/panel-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getMessages } from "@/lib/i18n/server";
 
@@ -47,7 +48,8 @@ export default async function AccountLoading() {
       <PanelBody className="space-y-4" aria-hidden>
         {/* Profile 카드 — 아바타 + 버튼 둘 + 캡션, 그리고 라벨/필드 두 행. */}
         <SkeletonCard>
-          <div className="grid grid-cols-[96px_1fr] items-center gap-x-3 gap-y-[14px] px-4 py-3.5">
+          {/* 실물과 같은 `PanelFacts`다 — 카드(`@container`) 640 미만이면 라벨이 필드 위로 쌓인다. 손 사본을 두면 좁은 카드에서 줄 수가 갈린다. */}
+          <PanelFacts>
             {/* 아바타 행도 라벨 열을 든다 — 실물이 그렇다. 안 그리면 아바타가 108px 왼쪽에서 출발한다. */}
             <Skeleton size="xs" className="w-12" />
             <div className="flex items-center gap-4">
@@ -62,24 +64,25 @@ export default async function AccountLoading() {
             </div>
 
             <Skeleton size="xs" className="w-12" />
-            <div className="flex items-center gap-2">
-              <Skeleton className="h-9 w-80 rounded-md" />
+            <div className="flex min-w-0 items-center gap-2">
+              <div className="flex w-[320px] max-w-full @max-form:min-w-0 @max-form:flex-1"><Skeleton className="h-9 w-full rounded-md" /></div>
               <Skeleton className="h-9 w-16 rounded-md" />
             </div>
 
             <Skeleton size="xs" className="w-12" />
             <div className="flex items-center gap-3">
-              <Skeleton className="h-9 w-80 rounded-md" />
+              <div className="flex w-[320px] max-w-full @max-form:min-w-0 @max-form:flex-1"><Skeleton className="h-9 w-full rounded-md" /></div>
               <Skeleton size="xs" className="w-56" />
             </div>
-          </div>
+          </PanelFacts>
         </SkeletonCard>
 
         {/* 수단(행 둘) · GitHub App(행 하나). Sessions는 위 주석대로 없다. */}
         {[{ rows: 2, hint: false }, { rows: 1, hint: true }].map(({ rows, hint }, card) => (
           <SkeletonCard key={card}>
             {Array.from({ length: rows }, (_, row) => (
-              <div key={row} className={`flex items-center gap-3 px-4 py-row-y ${row === 0 ? "" : "border-border border-t"}`}>
+              /* 실물 `ListRow stackActions`와 같은 감김이다 — 카드 640 미만이면 동작이 둘째 줄 오른쪽이다. */
+              <div key={row} data-skeleton-row className={`flex items-center gap-3 px-4 py-row-y @max-form:flex-wrap @max-form:gap-y-2 ${row === 0 ? "" : "border-border border-t"}`}>
                 <Skeleton className="size-7 rounded" />
                 <div className="flex flex-1 flex-col gap-copy-gap">
                   <Skeleton size="md" className="w-40" />
@@ -90,7 +93,7 @@ export default async function AccountLoading() {
                   */}
                   {hint && <Skeleton size="xs" className="w-56" />}
                 </div>
-                <Skeleton className="h-9 w-24 rounded-md" />
+                <div className="flex shrink-0 items-center gap-2 @max-form:basis-full @max-form:flex-wrap @max-form:justify-end"><Skeleton className="h-9 w-24 rounded-md" /></div>
               </div>
             ))}
           </SkeletonCard>
@@ -106,10 +109,11 @@ export default async function AccountLoading() {
  */
 function SkeletonCard({ children }: { children: ReactNode }) {
   return (
-    <div className="border-border overflow-hidden rounded-lg border">
-      <div className="border-divider flex min-h-12 items-center gap-2 border-b px-4 py-3">
+    <div className="@container border-border overflow-hidden rounded-lg border">
+      {/* 실물 `Card` 머리와 같은 감김이다 — 설명이 640 미만에서 다음 줄 전폭으로 내려간다. */}
+      <div className="border-divider flex min-h-12 flex-wrap items-center gap-2 border-b px-4 py-3">
         <Skeleton size="md" className="w-28" />
-        <div className="ml-auto w-48"><Skeleton size="xs" className="w-full" /></div>
+        <div className="ml-auto w-48 @max-form:ml-0 @max-form:w-full"><Skeleton size="xs" className="w-full" /></div>
       </div>
       {children}
     </div>

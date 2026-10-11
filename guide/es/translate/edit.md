@@ -2,7 +2,7 @@
 
 Abre la pantalla de traducción, encuentra el texto que quieres traducir, edítalo en cada idioma y guarda antes de publicar.
 
-Antes de empezar: únete a un proyecto y elige **Traducciones** en la navegación del proyecto.
+Antes de empezar: únete a un proyecto y elige **Traducciones** en la navegación del proyecto. En una pantalla estrecha, como un teléfono, la navegación está oculta: elige el botón de menú junto al logotipo para abrirla; se cierra cuando eliges una página.
 
 ## Encuentra una clave {#find-key}
 
@@ -11,6 +11,8 @@ La lista de claves está a la izquierda. Cada fila es un texto de la aplicación
 ![La pantalla de traducción con una clave seleccionada en la lista y su texto en tres idiomas](/guide/translation-editor.webp "Selecciona una fila para editar su texto en todos los idiomas.")
 
 En la lista de claves, las flechas del teclado se mueven entre filas y Intro abre la fila; Tab salta toda la lista de una vez.
+
+Cuando la pantalla es demasiado estrecha para ambos, la lista de claves y las traducciones se turnan. Selecciona una fila para abrir sus traducciones y elige **Claves** arriba a la izquierda para volver a la lista. Al volver se mantienen la clave seleccionada, el texto sin guardar y tu posición en la lista, y la dirección de la página no cambia; selecciona la misma fila otra vez para seguir donde lo dejaste. El cuadro de búsqueda y el botón de fuentes están con la lista.
 
 El panel **Fuentes** define qué claves muestra la lista. Selecciona **Todos los espacios de nombres** bajo una fuente para listar todas sus claves, o selecciona un grupo para listar solo ese grupo. El filtro de la parte superior derecha de la lista de claves muestra la opción actual: **Todas las claves**, **Incompletas**, **Por revisar**, **Sin enviar** o **Nuevas desde GitHub**. Por revisar marca las traducciones cuyo texto de origen cambió; no es un paso de aprobación. Al seleccionar un grupo se conserva el filtro, y al cambiar el filtro se conserva el grupo. El filtro solo acota la lista de claves; no cambia los números del panel **Fuentes**.
 

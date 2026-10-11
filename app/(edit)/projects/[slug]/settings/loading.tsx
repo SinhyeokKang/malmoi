@@ -52,9 +52,9 @@ export default async function SettingsLoading() {
         <Card title="w-24" subtitle>
           <Row action />
           <div className="border-border bg-muted border-t pl-10">
-            <div className="flex items-center gap-x-3 px-4 py-3.5">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-[6px] px-4 py-3.5">
               <Skeleton size="sm" className="w-24" />
-              <Skeleton className="h-9 w-60 shrink-0 rounded-md" />
+              <Skeleton className="h-9 w-60 max-w-full rounded-md" />
               <Skeleton className="h-9 w-16 shrink-0 rounded-md" />
               <Skeleton size="xs" className="w-[60%]" />
             </div>
@@ -118,7 +118,7 @@ function Fact({ divided = false, children }: { divided?: boolean; children: Reac
 function Field({ button = false }: { button?: boolean }) {
   return (
     <div className="flex min-w-0 items-center gap-2">
-      <Skeleton className="h-9 w-[320px] shrink-0 rounded-md" />
+      <Skeleton className="h-9 w-[320px] max-w-full min-w-0 rounded-md @max-form:flex-1" />
       {button && <Skeleton className="h-9 w-16 shrink-0 rounded-md" />}
       <div className="min-w-0 flex-1">
         <Skeleton size="xs" className="w-[80%]" />

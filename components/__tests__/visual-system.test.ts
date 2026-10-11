@@ -203,6 +203,13 @@ describe("모달 패널 윤곽", () => {
     expect(panel("components/ui/large-modal.tsx", "LARGE_MODAL_PANEL")).toEqual(expect.arrayContaining(["border", "border-border"]));
     expect(read("components/ui/dialog.tsx")).toMatch(/"bg-background border-border [^"]*"[\s\S]{0,80}"shadow-medium rounded-lg border"/);
   });
+
+  /** 시트는 떠 있지 않다 — inset 0이라 가장자리가 화면 가장자리다(responsive-public design §2). 윤곽을 떼는 것은 `lg` 미만뿐이다. */
+  it("LargeModal 패널은 `lg` 미만 시트에서만 선·radius·그림자를 뗀다", () => {
+    const tokens = panel("components/ui/large-modal.tsx", "LARGE_MODAL_PANEL");
+    expect(tokens).toEqual(expect.arrayContaining(["rounded-xl", "shadow-medium", "max-lg:border-0", "max-lg:rounded-none", "max-lg:shadow-none"]));
+    expect(tokens.filter((token) => /^(?:[\w-]+:)*(?:border-0|rounded-none|shadow-none)$/.test(token)).every((token) => token.startsWith("max-lg:"))).toBe(true);
+  });
 });
 
 describe("글자 크기·자간·radius는 스케일이 든다 (audit #45·#46·#47)", () => {
@@ -608,7 +615,10 @@ describe("화면 간 불변식 — grep 규칙 (T28)", () => {
   });
 
   describe("radius 16(`rounded-xl`)은 패널과 1024 모달뿐이다 — 셸 안 카드는 12 (DESIGN §5 · 4-Y2)", () => {
-    /** 패널(셸 `main`·공개 셸·로그인 두 판)과 1024 모달 둘, 그리고 그것을 정적으로 복제한 랜딩 목업 둘과 바깥24/베젤8에 맞춘 화면16. */
+    /**
+     * 패널(셸 `main`·공개 셸·로그인 두 판)과 1024 모달 둘, 그리고 그것을 정적으로 복제한 랜딩 목업 둘과 바깥24/베젤8에 맞춘 화면16.
+     * 측면 서랍(`dialog.tsx`의 `DrawerContent` — responsive-public PT1b)은 셸 패널과 같은 형의 떠 있는 패널이라 16이다.
+     */
     const PANEL_16 = [
       "components/landing/mockup/app-frame.tsx",
       "components/landing/mockup/publish.tsx",
@@ -616,6 +626,7 @@ describe("화면 간 불변식 — grep 규칙 (T28)", () => {
       "components/public-shell/public-shell.tsx",
       "components/shell/content-panel.tsx",
       "components/signin/auth-layout.tsx",
+      "components/ui/dialog.tsx",
       "components/ui/large-modal.tsx",
     ];
     const files = (entries: { path: string; source: string }[]) => entries.filter(({ source }) => /(?<![\w-])rounded-xl(?![\w-])/.test(source)).map(({ path }) => path).sort();
@@ -721,6 +732,6 @@ describe("T2 raw 소비자 전수 제거", () => {
   });
 
   it("새 토큰·범위 밖 값·T1 비동치 예외는 잡지 않는다 (음성 카나리아)", () => {
-    expect("text-link text-gray-light text-gray-dim text-gray-strong leading-body leading-prose leading-translation py-row-y gap-copy-gap space-y-copy-gap h-[calc(100svh-var(--spacing-modal-gutter))] @max-form:flex-wrap @min-form:grid min-w-shell-min py-[11px] max-w-[1016px] max-w-[850px] border-foreground/[0.06] ring-foreground/[0.06] rounded-[4px] bg-foreground/7".match(T2_RAW)).toBeNull();
+    expect("text-link text-gray-light text-gray-dim text-gray-strong leading-body leading-prose leading-translation py-row-y gap-copy-gap space-y-copy-gap h-[calc(100svh-var(--spacing-modal-gutter))] @max-form:flex-wrap @min-form:grid py-[11px] max-w-[1016px] max-w-[850px] border-foreground/[0.06] ring-foreground/[0.06] rounded-[4px] bg-foreground/7".match(T2_RAW)).toBeNull();
   });
 });

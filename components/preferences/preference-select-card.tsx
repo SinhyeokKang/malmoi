@@ -87,10 +87,12 @@ export function PreferenceSelectCard<T extends string>({
       notice={failed ? <Alert inset variant="danger">{failedText}</Alert> : undefined}
     >
       <div className="flex flex-col gap-1.5 px-4 py-3">
+        {/* 320은 상한이다 — 카드 안폭이 그보다 좁으면(375에서 311) 래퍼가 `max-w-full`로 줄고 트리거가 그 폭을 채운다(프리미티브는 반응형 min/max를 받지 않는다 — `api-contract.test.ts`). */}
+        <div className="flex w-[320px] max-w-full">
         <Select value={shown} onValueChange={choose}>
           <SelectTrigger
             ref={trigger}
-            width={320}
+            width="full"
             aria-labelledby={titleId}
             aria-describedby={helpId}
             aria-disabled={pending || undefined}
@@ -110,6 +112,7 @@ export function PreferenceSelectCard<T extends string>({
             ))}
           </SelectContent>
         </Select>
+        </div>
         <p id={helpId} className="text-muted-foreground text-xs">{help}</p>
         {after?.(shown)}
       </div>

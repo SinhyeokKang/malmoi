@@ -1,7 +1,8 @@
 "use client";
 
-import { FileCode2, FileJson2, FileSearch2 } from "lucide-react";
-import { useState } from "react";
+import { ArrowRight, ChevronLeft, FileCode2, FileJson2, FileSearch2 } from "lucide-react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import type { ImperativePanelGroupHandle } from "react-resizable-panels";
 
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -20,9 +21,10 @@ import { SlowNotice } from "@/components/slow-notice";
 import type { Adapter, AdapterName } from "@/lib/adapters/types";
 import { useMessages } from "@/components/i18n/messages-provider";
 import type { Messages } from "@/lib/i18n";
-import { panelConstraints } from "@/lib/shell/panel-size";
 import type { CandidateSummary, LocaleSample, SampleRow } from "@/lib/onboarding/detect";
 import { onboardErrorMessage } from "@/lib/onboarding/message";
+import { FILES_CANDIDATES_PX, candidatesPx, filesLayout, type FilesLayout } from "@/lib/onboarding/files-layout";
+import { panelLayout } from "@/lib/shell/panel-size";
 import { LOCALE_SEGMENT_MAX, collapseLocalePicker } from "@/lib/onboarding/locale-picker";
 import type { AdapterChoice } from "@/lib/onboarding/types";
 import { cn } from "@/lib/utils";
@@ -43,21 +45,11 @@ import { IconTile } from "@/components/ui/icon-tile";
 export type ManualEntry = { adapter: AdapterName; pathTemplate: string; baseLocale: string };
 
 /**
- * ② 좌측 패널이 나눠 가질 폭 — **여기는 뷰포트를 따라 변하지 않는다.** 모달이 `max-w-[1024px]`(2026-09-18, 옛 800)이고
- * 본문이 `px-8`(64)이라 952 = 960 − 핸들 8이고, 셸이 `min-w-shell-min`이라 1280 뷰포트에서도 1024가
- * 그대로 산다(1280 − 96 = 1184). 그래서 `ShellPanels`와 달리 재는 훅이 없다. ⚠️ **모달 폭을 바꾸면 여기도 같이 바꾼다.**
- *
- * ⚠️ **핸들 폭과 같이 움직인다** — 여기가 핸들보다 크면 좌측이 계산한 240보다 넓게 선다(`w-4`
- * 시절의 16이 남아 있어 실측 242였다).
+ * **재기 전의 판** — 데스크톱 모달 본문(1024 − `px-8` 64)으로 그린다. 주 사용자인 데스크톱이 첫 렌더에 순차 판으로 튀지 않게 하는
+ * 자리값일 뿐이고, 첫 레이아웃 effect가 잰 폭으로 바로 바꾼다(`lg` 미만 시트 본문은 그때 순차 판이 된다 — 같은 프레임이다).
+ * ⚠️ 판정의 분모가 아니다 — 판정은 잰 body content box가 든다(`lib/onboarding/files-layout.ts`).
  */
-const FILES_PANEL_WIDTH = 960 - 8;
-
-/**
- * 좌측 치수는 셸 LNB와 **같은 200 / 240 / 320**이다. 하한 200은 후보 행의 40px 글리프와 2줄 경로가
- * 유지되는 자리, 상한 320은 우측이 400 아래로 안 내려가는 자리다 — 표가 `table-fixed` + key `w-1/3`
- * 이라 400에서 key 133 / value 267이고, 거기가 값이 읽히는 경계다.
- */
-const FILES_LEFT = panelConstraints(FILES_PANEL_WIDTH, { min: 200, default: 240, max: 320 }) ?? undefined;
+const UNMEASURED = filesLayout(1024 - 64) as Extract<FilesLayout, { mode: "split" }>;
 
 /** 언어별 미리보기 — 표시 상태 셋을 값으로 가른다. */
 export type PreviewState =
@@ -128,6 +120,59 @@ export function FilesStep({
   const m = useMessages();
   const { candidates, picked, detecting, detectError } = state;
 
+  /**
+   * ⚠️ **body content box를 잰다** (responsive-app A5). `lg` 미만 LargeModal은 뷰포트 폭 시트라 375에서 본문이 343이다 — 고정
+   * 분모로는 그 폭을 모른다. 첫 값은 레이아웃 effect가 그리기 전에 재고, 그 뒤 변화는 `ResizeObserver`가 든다.
+   */
+  const [body, setBody] = useState<HTMLDivElement | null>(null);
+  const [bodyWidth, setBodyWidth] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    if (body === null) return;
+    const first = body.getBoundingClientRect().width;
+    if (first > 0) setBodyWidth(first);
+    const observer = new ResizeObserver(([entry]) => {
+      const width = entry?.contentRect.width;
+      if (width !== undefined && width > 0) setBodyWidth(width);
+    });
+    observer.observe(body);
+    return () => observer.disconnect();
+  }, [body]);
+  /** 사용자가 핸들로 고른 후보 폭(px) — 지키는 것은 %가 아니라 이 값이다(`ShellPanels`와 같은 규칙). 드래그만 바꾼다. */
+  const chosen = useRef(FILES_CANDIDATES_PX.default);
+  const dragging = useRef(false);
+  // 렌더 중 ref를 읽는다 — 드래그는 라이브러리가 폭을 이미 옮겼으므로 재렌더가 필요 없고, 다음 폭 변화(재렌더)에서 이 값을 지킨다.
+  const layout = (bodyWidth === null ? null : filesLayout(bodyWidth, chosen.current)) ?? UNMEASURED;
+  const sequential = layout.mode === "sequential";
+  const groupRef = useRef<ImperativePanelGroupHandle>(null);
+  const splitAvailable = layout.mode === "split" ? layout.available : null;
+  /** ⚠️ `defaultSize`는 마운트에만 읽힌다 — 폭이 바뀌면(순차 → 두 판 포함) 고른 px로 명령형으로 되돌린다. */
+  useEffect(() => {
+    if (splitAvailable === null) return;
+    const next = panelLayout(splitAvailable, candidatesPx(chosen.current, splitAvailable));
+    const group = groupRef.current;
+    // 패널 둘이 등록된 뒤에만 — 등록 전 `setLayout`은 던진다(jsdom은 패널을 등록하지 않는다).
+    if (next !== null && group !== null && group.getLayout().length === 2) group.setLayout(next);
+  }, [splitAvailable]);
+
+  /**
+   * 순차 판에서 보이는 판. ⚠️ **부모 상태가 아니다** — 판 전환은 step을 진행시키지 않고 고른 후보·언어·수동 입력·샘플 상태를
+   * 건드리지 않는다(design §4). 두 판에서는 쓰이지 않고, 다시 좁아지면 마지막 판으로 돌아온다.
+   */
+  const [pane, setPane] = useState<"candidates" | "sample">("candidates");
+  /** 판 버튼을 누른 뒤에만 반대편 버튼으로 포커스를 옮긴다 — 누른 버튼이 가려져 `body`로 빠지기 때문이다. resize는 옮기지 않는다. */
+  const moveFocus = useRef(false);
+  const viewSampleRef = useRef<HTMLButtonElement>(null);
+  const backRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!moveFocus.current) return;
+    moveFocus.current = false;
+    (pane === "sample" ? backRef : viewSampleRef).current?.focus();
+  }, [pane]);
+  const showPane = (next: "candidates" | "sample") => {
+    moveFocus.current = true;
+    setPane(next);
+  };
+
   // 예외 F — 탐지 실패. ①의 선택(리포·브랜치)은 지키고 "아무것도 만들어지지 않았다"를 말한다.
   if (detectError !== undefined) {
     return (
@@ -189,7 +234,7 @@ export function FilesStep({
               checked={locked || selection.checked.has(index)} disabled={pending || locked}
               onCheckedChange={() => { if (!pending && !locked) selection.onToggle(index); }}
               aside={<Button variant="ghost" type="button" aria-label={m.newProject.files.previewCandidate(c.pathTemplate)}
-                disabled={pending} onClick={() => onPick(index)}>{content}</Button>}
+                disabled={pending} onClick={() => { onPick(index); if (sequential) showPane("sample"); }}>{content}</Button>}
               expand={locked && <span className="sr-only">{m.settings.sources.locked}</span>}
             /> : <SelectRow input="radio" disabled={pending} value={String(index)} checked={active}
               first={index === 0} previousChecked={prevActive} label={content} />}
@@ -207,7 +252,8 @@ export function FilesStep({
       "두 자식을 놓는 다음 화면"의 계약이라 지울 것이 아니다. (2026-09-14에 이 자리가
       "래퍼를 세우지 않는다"였고, 간격을 핸들이 들게 되면서 그 전제가 뒤집혔다.)
     */
-    <ResizablePanelGroup direction="horizontal" className="min-w-0 flex-1">
+    <div ref={setBody} data-files-body data-files-mode={layout.mode} className="flex min-w-0 flex-1">
+    <ResizablePanelGroup ref={groupRef} direction="horizontal" className="min-w-0 flex-1">
       {/* 좌 240(200~320) — 후보 목록 또는 수동 지정 폼. */}
       {/*
         ⚠️ **좌측에 `overflow-y-auto`를 두지 않는다** (2026-09-13 사용자 관측). CSS는 한 축이 `auto`면
@@ -225,7 +271,13 @@ export function FilesStep({
         min-content(≈379)가 `flex-grow`를 이긴다 — `data-panel-size`는 33.3→44.4로 바뀌는데 폭은
         379에 붙박이고, 쉬는 폭도 240이 아니라 379다. 우측도 같은 이유로 함께 푼다.
       */}
-      <ResizablePanel {...FILES_LEFT} style={{ overflow: "visible" }} className="flex min-w-0 flex-col">
+      {/*
+        ⚠️ **순차 판도 같은 트리다** (responsive-app A5) — 가린 판을 다시 그리지 않아야 수동 지정 폼의 열림·입력과 포커스가 resize에
+        살아남는다. 가린 판은 `display: none`이라 탭 순서·접근성 트리에서도 빠진다. 순차 판의 패널은 % 제약을 받지 않는다(한 판이 전폭이다).
+      */}
+      <ResizablePanel {...(layout.mode === "split" ? layout.constraints : {})} data-files-pane="candidates" style={{ overflow: "visible" }}
+        onResize={(size) => { if (dragging.current && layout.mode === "split") chosen.current = (size / 100) * layout.available; }}
+        className={cn("min-w-0 flex-col", sequential && pane !== "candidates" ? "hidden" : "flex")}>
         {/*
           ⚠️ **넘치는 몫은 이 래퍼가 스크롤한다** (malmoi#88) — 1280×720에서 수동 지정 폼이 열리면 후보 목록이 24px로 눌렸다.
           패널이 아니라 안쪽이 스크롤하는 이유는 위 주석(가로 `auto` → 포커스 링 잘림)이다: `p-1`이 링 자리를 두고
@@ -264,10 +316,20 @@ export function FilesStep({
             <ManualToggle pending={pending} state={state} onManual={onManual} />
           </>
         )}
+        {/* 순차 판의 다음 판 — 후보 목록 아래. Next가 아니다: 샘플을 안 봐도 넘어갈 수 있고(검증은 그대로) step도 그대로다. */}
+        {/* 본문 전폭 · 가운데 정렬(시안 AT7a · malmoi#230) — 목록 아래 다음 판으로 가는 유일한 길이라 열 전체를 쓴다. */}
+        {sequential && !detecting && (
+          <Button ref={viewSampleRef} variant="default" type="button" className="w-full" onClick={() => showPane("sample")}>
+            {m.responsive.viewSample}
+            <ArrowRight aria-hidden />
+          </Button>
+        )}
         </div>
       </ResizablePanel>
 
-      <ResizableHandle aria-label={m.newProject.files.resize} className="w-2" />
+      {/* `touch-none` — 터치 드래그가 스크롤로 새지 않는다(셸·번역 핸들과 같다, design §3). 순차 판에서는 숨는다. */}
+      <ResizableHandle aria-label={m.newProject.files.resize} className={cn("w-2 touch-none", sequential && "hidden")}
+        onDragging={(active) => { dragging.current = active; }} />
 
       {/*
         우 — 키·값 표. 껍데기는 `Preview`가 든다.
@@ -275,7 +337,16 @@ export function FilesStep({
         ⚠️ **후보 0개에도 껍데기를 버리지 않는다** (핸드오프 3a). 경로를 쳐서 매칭되는 순간 빈 박스가
         통째로 툴바+헤더+행으로 갈리면 화면이 튄다 — 로딩에 헤더를 세워 두는 것과 **같은 규칙**이다.
       */}
-      <ResizablePanel className="flex min-w-0">
+      <ResizablePanel data-files-pane="sample" className={cn("min-w-0 flex-col gap-3", sequential && pane !== "sample" ? "hidden" : "flex")}>
+        {sequential && (
+          <div>
+            {/* 번역 상세 ‹ Keys와 같은 "돌아가기" 형 — ghost sm + ChevronLeft(시안 AT7b · malmoi#231). */}
+            <Button ref={backRef} variant="ghost" size="sm" type="button" onClick={() => showPane("candidates")}>
+              <ChevronLeft aria-hidden />
+              {m.responsive.backToCandidates}
+            </Button>
+          </div>
+        )}
         <Preview
           pending={pending}
           state={state}
@@ -286,6 +357,7 @@ export function FilesStep({
         />
       </ResizablePanel>
     </ResizablePanelGroup>
+    </div>
   );
 }
 
@@ -364,7 +436,8 @@ function Preview({
             options={locales.map((code) => ({ value: code, label: code, icon: <LocaleFlag code={code} /> }))}
           /></fieldset>
         )}
-        <span className="text-muted-foreground min-w-0 flex-1 truncate text-right text-xs">{candidate?.pathTemplate}</span>
+        {/* 경로는 감긴다 — 후보 행은 말줄임 + `title`이라 터치에서 전문이 닿는 자리가 여기다(responsive-app A5 · 시안 AT7). */}
+        <span className="text-muted-foreground min-w-0 flex-1 text-right text-xs break-all">{candidate?.pathTemplate}</span>
       </div>
       )}
 

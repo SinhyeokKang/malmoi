@@ -57,9 +57,14 @@ export function EventDetail({
 
   return (
     <>
-      <div data-event-detail-header className="flex shrink-0 items-start gap-3 px-6 pt-6 pb-4">
+      {/*
+        ⚠️ **`lg` 미만은 전체 화면 시트 머리 56 형이다** (responsive-app · DESIGN §6.4 "전체 화면 시트" — 공개 R6이 넘긴 자리): 좌 16 · 우 12 · 위 12 ·
+        아래 divider · 닫기 32(`event-dialog.tsx`의 `max-lg:size-8`, 우 12·위 12). 칩·배지·문장·시각이 든 블록이라 56은 **하한**이고 내용이 정한다
+        (`LargeModal` 머리가 설명이 있으면 자라는 것과 같다). 제목은 이미 18/500이다. `lg` 이상 클래스는 바이트 그대로다.
+      */}
+      <div data-event-detail-header className="flex shrink-0 items-start gap-3 px-6 pt-6 pb-4 max-lg:min-h-14 max-lg:border-b max-lg:border-divider max-lg:pt-3 max-lg:pr-3 max-lg:pb-3 max-lg:pl-4">
         <EventGlyph icon={glyph.icon} tone={glyph.tone} size="lg" />
-        <span className="flex min-w-0 flex-1 flex-col gap-1 pr-9">
+        <span className="flex min-w-0 flex-1 flex-col gap-1 pr-9 max-lg:pr-11">
           {/* `[종류][결과]` 배지다(4-Y21) — 종류 낱말은 행 보조줄의 첫 배지와 같다(`eventKindWord`). 옛 muted 글자 `Sync run`은 같은 종류의 두 번째 낱말이었다. */}
           <span data-event-detail-kind className="flex flex-wrap items-center gap-2">
             <Badge variant="soft-neutral">{eventKindWord(m, row)}</Badge>
@@ -86,8 +91,9 @@ export function EventDetail({
       </div>
 
       {/* ⚠️ **본문은 칩이 아니라 제목 열에서 시작한다** — 좌측 24 + 칩 40 + 간격 12 = 76. 칩 크기나
-          헤더 간격을 바꾸면 이 값도 같이 움직인다 (`logs-events.test.tsx`가 셋을 함께 본다). */}
-      <div data-event-detail-body className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-6 pb-5 pl-[76px]">
+          헤더 간격을 바꾸면 이 값도 같이 움직인다 (`logs-events.test.tsx`가 셋을 함께 본다).
+          ⚠️ **시트(`lg` 미만)는 76 들여쓰기를 풀고 안쪽 16이다** — 375에서 본문이 343이라 76을 두면 표가 약 275로 줄어 라벨·값이 감긴다. */}
+      <div data-event-detail-body className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-6 pb-5 pl-[76px] max-lg:px-4 max-lg:pt-4">
         <div className="border-border overflow-hidden rounded-lg border">
           <Table scrollable={false}>
             <TableBody>
@@ -155,7 +161,7 @@ export function EventDetail({
         ⚠️ **`data-*`로 잡는다** — 우상단 X와 접근 이름이 같아(둘 다 "Close") role 질의가 둘을 함께 집는다.
       */}
       {/* 순서는 `[Close](보조) [목적지](primary)`다(2026-09-30 사용자 — Sources 상세 모달과 같은 판). 목적지가 없으면 [Close] 하나가 오른쪽에 선다. */}
-      <div data-event-detail-footer className="border-divider flex shrink-0 items-center justify-end gap-2 border-t px-6 py-4">
+      <div data-event-detail-footer className="border-divider flex shrink-0 items-center justify-end gap-2 border-t px-6 py-4 max-lg:px-4 max-lg:flex-wrap">
         {/* 1024 표면의 바닥은 `lg`다(3-Y6 — Sources 상세 모달과 같은 판). */}
         <DialogClose asChild>
           <Button size="lg">{m.logs.detail.actions.close}</Button>

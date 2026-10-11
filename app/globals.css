@@ -87,7 +87,6 @@
   --spacing-copy-gap: 3px;
   --spacing-modal-gutter: 96px;
   --container-form: 640px;
-  --spacing-shell-min: 1280px;
 
   /**
    * ⚠️ **여기 등록하지 않으면 클래스가 생성되지 않는다.** `:root`에 변수만 만들면

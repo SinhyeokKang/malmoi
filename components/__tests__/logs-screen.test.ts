@@ -183,9 +183,14 @@ describe("logs 상세 — 껍데기 시각 값", () => {
    * `modal.tsx`와 같은 관용구를 쓰므로 dim 여백 48도 함께 따라온다 — 옛 `max-w-[calc(100vw-48px)]`는
    * 좌우 24만 비워 시안의 절반이었다.
    */
-  it("폭이 1024 껍데기 관용구다 — 좁은 화면 여백도 96이다", () => {
+  /**
+   * ⚠️ **`lg` 미만은 여백 96이 아니라 전체 화면 시트다** (responsive-public design §1 큰 모달 규칙 · 2026-10-10 사용자). gutter 토큰은
+   * 재정의하지 않고 그릇 상수의 `max-lg:` 토큰이 이긴다 — 이력 상세는 패널만 쓰고 자기 `max-h`를 다니 `max-lg:max-h-none`이 그것을 푼다.
+   */
+  it("폭이 1024 껍데기 관용구다 — `lg` 이상 여백 96 · 미만은 전체 화면 시트다", () => {
     expect(shell).toContain("max-w-[1024px]");
     expect(shell).toContain("w-[calc(100%-var(--spacing-modal-gutter))]");
+    for (const token of ["max-lg:inset-0", "max-lg:w-full", "max-lg:max-w-none", "max-lg:h-dvh", "max-lg:max-h-none"]) expect(shell).toContain(token);
     expect(dialog).not.toContain("w-[640px]");
     expect(dialog).not.toContain("calc(100vw-48px)");
   });
@@ -227,7 +232,9 @@ describe("logs 상세 — 껍데기 시각 값", () => {
    */
   it("`border-t`를 쓰는 넷 중 셋이 `border-divider`다 — 나머지 하나가 카드 안 행 선이다", () => {
     expect(body.match(/border-t\b/g)).toHaveLength(4);
-    expect(body.match(/border-divider/g)).toHaveLength(3);
+    // 시트(`lg` 미만) 머리의 아래 선(`max-lg:border-b max-lg:border-divider` — responsive-app)이 하나 더다. 그것도 `--divider`다.
+    expect(body.match(/border-divider/g)).toHaveLength(4);
+    expect(body.match(/max-lg:border-divider/g)).toHaveLength(1);
   });
 
   /**
