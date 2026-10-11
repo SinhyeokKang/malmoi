@@ -54,8 +54,9 @@ vi.mock("@/app/inbox/actions", () => ({
 }));
 
 // jsdom에 `matchMedia`가 없다 — 스테이지가 effect에서 읽는다. 재생 배선은 `landing-stage.test.tsx`가 본다.
+// 뷰포트 질의(`lg`·`sm`)는 참 — 그릇 기본은 D(1440)다. 모션 감소는 거짓.
 beforeEach(() => {
-  vi.stubGlobal("matchMedia", () => ({ matches: false, addEventListener() {}, removeEventListener() {} }));
+  vi.stubGlobal("matchMedia", (query: string) => ({ matches: query.startsWith("(min-width"), addEventListener() {}, removeEventListener() {} }));
 });
 afterEach(() => { vi.unstubAllGlobals(); });
 
@@ -85,7 +86,7 @@ const grab = (source: string, re: RegExp) => {
 };
 
 describe("목업 창", () => {
-  it("16:10 컨테이너 안에서 44px 툴바와 씬 영역이 분리된다", async () => {
+  it("16:10 컨테이너(D 그릇) 안에서 44px 툴바와 씬 영역이 분리된다", async () => {
     const container = await mount();
     const frame = find<HTMLElement>(container, "[data-landing-frame]");
     expect(frame.style.width).toBe("1440px");

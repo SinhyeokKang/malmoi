@@ -7,7 +7,8 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Stage } from "@/components/landing/stage";
-import { BEZEL, CHROME_GAP, PLAY, SCREEN_BORDER, STATE_CANVAS_W, frame, trackHeight, typedPrefix } from "@/lib/landing/stage";
+import { BEZEL, CHROME_GAP, PLAY, SCREEN_BORDER, STATE_CANVAS_H, STATE_CANVAS_W, frame, trackHeight, typedPrefix, type Device } from "@/lib/landing/stage";
+import { SM_QUERY, WIDE_QUERY } from "@/lib/shell/breakpoint";
 
 import { find, render } from "./helpers/dom";
 
@@ -32,12 +33,18 @@ let lastId = 0;
 let cancelled: number[] = [];
 let observers: { callback: ResizeObserverCallback; disconnected: boolean }[] = [];
 let media: { matches: boolean; listeners: Set<() => void> };
+/** 뷰포트 질의 결과 — **기본은 `lg` 이상(D)**이고 그릇 케이스가 바꾼다. 스테이지는 이 둘에 리스너를 달지 않는다. */
+let viewport: { lg: boolean; sm: boolean };
+/** 질의별로 단 리스너 — 그릇 질의에 리스너가 없다는 것을 센다. */
+let subscribed: string[] = [];
 
 beforeEach(() => {
   queue = [];
   cancelled = [];
   observers = [];
   media = { matches: false, listeners: new Set() };
+  viewport = { lg: true, sm: true };
+  subscribed = [];
   vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
     queue.push(callback);
     lastId += 1;
@@ -55,9 +62,13 @@ beforeEach(() => {
     disconnect() { this.entry.disconnected = true; }
   });
   vi.stubGlobal("matchMedia", (query: string) => ({
-    get matches() { return query.includes("reduce") && media.matches; },
+    get matches() {
+      if (query === WIDE_QUERY) return viewport.lg;
+      if (query === SM_QUERY) return viewport.sm;
+      return query.includes("reduce") && media.matches;
+    },
     media: query,
-    addEventListener: (_: string, listener: () => void) => media.listeners.add(listener),
+    addEventListener: (_: string, listener: () => void) => { subscribed.push(query); media.listeners.add(listener); },
     removeEventListener: (_: string, listener: () => void) => media.listeners.delete(listener),
   }));
 });
@@ -73,12 +84,14 @@ async function flush() {
   });
 }
 
-/** 스크롤러의 크기·위치를 jsdom에 심는다 — 트랙 윗변은 `STAGE_TOP − scrollTop`에 있다. */
-function geometry(scroller: HTMLElement, size: { w: number; h: number; chrome: number }) {
+type Size = { w: number; h: number; chrome: number; stageTop: number };
+
+/** 스크롤러의 크기·위치를 jsdom에 심는다 — 트랙 윗변은 `size.stageTop − scrollTop`에 있다(경계를 넘는 리사이즈가 옮긴다). */
+function geometry(scroller: HTMLElement, size: Size) {
   Object.defineProperty(scroller, "clientWidth", { configurable: true, get: () => size.w });
   Object.defineProperty(scroller, "clientHeight", { configurable: true, get: () => size.h });
   const track = find<HTMLElement>(scroller, "section");
-  track.getBoundingClientRect = () => ({ top: STAGE_TOP - scroller.scrollTop }) as DOMRect;
+  track.getBoundingClientRect = () => ({ top: size.stageTop - scroller.scrollTop }) as DOMRect;
   scroller.getBoundingClientRect = () => ({ top: 0 }) as DOMRect;
   find<HTMLElement>(scroller, "[data-landing-chrome]").getBoundingClientRect = () => ({ top: 0, height: size.chrome }) as DOMRect;
 }
@@ -101,7 +114,7 @@ async function mount(onRender?: () => void) {
   const ui = stageUi();
   const { container } = await render(onRender ? <Profiler id="stage" onRender={onRender}>{ui}</Profiler> : ui);
   const scroller = find<HTMLElement>(container, "[data-testid=scroller]");
-  const size = { w: W, h: H, chrome: CHROME };
+  const size: Size = { w: W, h: H, chrome: CHROME, stageTop: STAGE_TOP };
   geometry(scroller, size);
   return { container, scroller, size };
 }
@@ -128,8 +141,20 @@ function snapshot(container: HTMLElement) {
   };
 }
 
-const at = (scrollTop: number, reducedMotion = false, size = { W, H }, chrome = CHROME) =>
-  frame({ scrollTop, stageTop: STAGE_TOP, W: size.W, H: size.H, chromeHeight: CHROME_GAP + chrome, reducedMotion });
+const at = (scrollTop: number, reducedMotion = false, size = { W, H }, chrome = CHROME, device: Device = 0) =>
+  frame({ scrollTop, stageTop: STAGE_TOP, W: size.W, H: size.H, chromeHeight: CHROME_GAP + chrome, reducedMotion, device });
+/** 관찰자 콜백 — 스크롤러 크기 변화(뷰포트 리사이즈)를 흉내 낸다. */
+async function resized() {
+  await act(async () => { for (const { callback } of observers) callback([], {} as ResizeObserver); });
+  await flush();
+}
+const frameOf = (container: HTMLElement) => find<HTMLElement>(container, "[data-landing-frame]");
+/** 그릇 세 상태 — 뷰포트 질의 결과와 기대 크기. */
+const DEVICE_CASES = [
+  { name: "≥1024 D", lg: true, sm: true, device: 0 },
+  { name: "640~1023 T", lg: false, sm: true, device: 1 },
+  { name: "<640 M", lg: false, sm: false, device: 2 },
+] as const;
 /** 씬 i의 위치 f(0..1)에 해당하는 scrollTop — 씬 하나가 `PLAY.perScene`·H다. */
 const sceneTop = (i: number, f: number) => STAGE_TOP + (PLAY.lead + (i + f) * PLAY.perScene) * H;
 
@@ -155,43 +180,79 @@ describe("Stage — 스크롤 위치가 화면을 정한다", () => {
     expect(root.style.getPropertyValue("--landing-track-h")).toBe(`${trackHeight(H)}px`);
   });
 
-  /** 스크롤 구동 확대는 없다(2026-09-27 사용자) — 올라오는 중과 고정 시작(D 정지)은 같은 transform이다. */
-  it("올라오는 중과 D 정지 동안은 프레임의 배율·위치·폭이 바뀌지 않는다", async () => {
+  /** 스크롤 구동 확대는 없다(2026-09-27 사용자) — 올라오는 중부터 끝까지 같은 transform이다. */
+  it("재생 내내 프레임의 배율·위치·폭·높이가 바뀌지 않는다", async () => {
     const { container, scroller } = await mount();
     await flush();
-    const frameNode = find<HTMLElement>(container, "[data-landing-frame]");
-    const first = [frameNode.style.transform, frameNode.style.width];
-    expect(first[1]).toBe("1440px");
-    for (const top of [100, STAGE_TOP, sceneTop(0, 0.1), sceneTop(2, 0.05)]) {
+    const frameNode = frameOf(container);
+    const first = [frameNode.style.transform, frameNode.style.width, frameNode.style.height];
+    expect(first.slice(1)).toEqual(["1440px", "900px"]);
+    for (const top of [100, STAGE_TOP, sceneTop(0, 0.1), sceneTop(0, 0.8), sceneTop(2, 0.05), sceneTop(3, 0.9), sceneTop(9, 0)]) {
       await scrollTo(scroller, top);
-      expect([frameNode.style.transform, frameNode.style.width]).toEqual(first);
+      expect([frameNode.style.transform, frameNode.style.width, frameNode.style.height]).toEqual(first);
     }
     expect(frameNode.style.willChange).toBe("");
   });
 
-  /** 씬마다 D → T → M 그릇(MK1). 폭은 프레임 캔버스 폭이고 베젤 안 화면(목업 루트)은 거기서 8×2를 뺀 레이아웃 폭이다. */
-  it("프레임 폭·transform이 `frame()`의 그릇 폭·배율이다 — 정지는 1440 · 786 · 393, 전환은 보간 값", async () => {
+  /** 뷰포트가 그릇을 고른다(V-01). 폭은 프레임 캔버스 폭이고 베젤 안 화면(목업 루트)은 거기서 18을 뺀 레이아웃 폭이다. */
+  it.each(DEVICE_CASES)("$name — 프레임 폭·높이·transform이 그 그릇의 `frame()`이다", async ({ lg, sm, device }) => {
+    viewport = { lg, sm };
     const { container, scroller } = await mount();
     await flush();
-    const frameNode = find<HTMLElement>(container, "[data-landing-frame]");
-    for (const [i, f] of [[1, 0.1], [1, 0.23], [1, 0.37], [1, 0.51], [1, 0.65], [1, 0.8], [1, 0.935], [4, 0.9]] as const) {
+    const frameNode = frameOf(container);
+    expect([frameNode.style.width, frameNode.style.height]).toEqual([`${STATE_CANVAS_W[device]}px`, `${STATE_CANVAS_H[device]}px`]);
+    for (const [i, f] of [[0, 0], [1, 0.3], [1, 0.8], [4, 0.9]] as const) {
       const top = sceneTop(i, f);
       await scrollTo(scroller, top);
-      const want = at(top);
+      const want = at(top, false, { W, H }, CHROME, device);
       expect(frameNode.style.width).toBe(`${want.canvasW}px`);
-      expect(frameNode.style.height).toBe("900px");
+      expect(frameNode.style.height).toBe(`${want.canvasH}px`);
       expect(frameNode.style.transform).toBe(`translate3d(${want.x}px, ${want.y}px, 0px) scale(${want.scale})`);
+      expect(find<HTMLElement>(container, "[data-landing-chrome-block]").style.maxWidth).toBe(`${want.chromeW}px`);
     }
-    const holds: string[] = [];
-    for (const f of [0.1, 0.37, 0.65]) {
-      await scrollTo(scroller, sceneTop(2, f));
-      holds.push(frameNode.style.width);
-    }
-    expect(holds).toEqual(STATE_CANVAS_W.map((w) => `${w}px`));
   });
 
-  /** 캡션 자리는 세 상태 중 가장 큰 것의 높이라 그릇이 바뀌어도 캡션 블록이 움직이지 않는다. */
-  it("그릇이 바뀌어도 캡션 블록 transform은 그대로다", async () => {
+  /** ⚠️ 스크롤러 폭으로 판정하지 않는다 — 1030 뷰포트(스크롤바 보임)의 스크롤러는 1009쯤이어도 뷰포트 `lg`가 참이면 D다. */
+  it("스크롤러 clientWidth 1009 + `lg` 참 → D", async () => {
+    const { container, size } = await mount();
+    size.w = 1009;
+    await flush();
+    expect(frameOf(container).style.width).toBe("1440px");
+    expect(frameOf(container).style.transform).toBe((() => {
+      const f = at(0, false, { W: 1009, H }, CHROME, 0);
+      return `translate3d(${f.x}px, ${f.y}px, 0px) scale(${f.scale})`;
+    })());
+  });
+
+  /** 측정 전 프레임은 `invisible`이다 — 그 사이에 그릇 크기가 서야 모바일 방문자에게 D가 비치지 않는다. */
+  it("첫 틱이 `data-ready`보다 먼저 그릇 폭·높이를 쓴다", async () => {
+    viewport = { lg: false, sm: false };
+    const { container } = await mount();
+    const track = find<HTMLElement>(container, "section[aria-label='How Malmoi works']");
+    const order: string[] = [];
+    const observer = new MutationObserver((list) => {
+      for (const record of list) {
+        if (record.target === frameOf(container) && record.attributeName === "style" && frameOf(container).style.width === "393px") order.push("width");
+        if (record.target === track && record.attributeName === "data-ready") order.push("ready");
+      }
+    });
+    observer.observe(container, { attributes: true, subtree: true, attributeOldValue: true });
+    await flush();
+    observer.disconnect();
+    expect(order.indexOf("width")).toBeGreaterThanOrEqual(0);
+    expect(order.indexOf("width")).toBeLessThan(order.indexOf("ready"));
+    expect([frameOf(container).style.width, frameOf(container).style.height]).toEqual(["393px", "776px"]);
+  });
+
+  /** 그릇 질의는 리스너 없이 틱이 `.matches`를 읽는다 — 크기 변화는 `ResizeObserver`가 받는다. */
+  it("그릇 질의(`lg`·`sm`)에는 change 리스너를 달지 않는다 — 모션 감소 하나뿐이다", async () => {
+    await mount();
+    await flush();
+    expect(subscribed).toEqual(["(prefers-reduced-motion: reduce)"]);
+  });
+
+  /** 같은 그릇 안에서 캡션 자리는 재생 내내 불변이다(V-05d). */
+  it("재생 내내 캡션 블록 transform은 그대로다", async () => {
     const { container, scroller } = await mount();
     await flush();
     const chrome = find<HTMLElement>(container, "[data-landing-chrome]");
@@ -202,60 +263,37 @@ describe("Stage — 스크롤 위치가 화면을 정한다", () => {
     }
   });
 
-  /**
-   * ⚠️ **폭 보간은 레이아웃을 일으킨다**(design §2) — 다섯 씬 레이어가 동시에 마운트돼 있으므로 현재·다음 두 레이어만 배치에 남기고
-   * 나머지는 `content-visibility: hidden`으로 뺀다. jsdom은 레이아웃이 없어 속성·클래스 계약으로 잰다.
-   */
-  it("배치에 남는 레이어만 `data-idle`이 없다 — 집합은 `frame().live`다(정방향 · 역방향 · 점프)", async () => {
+  /** 재생 중 그릇이 바뀌지 않으므로 레이어를 배치에서 빼지 않는다 — 다섯 레이어가 놓인 채 transform·opacity만 쓴다. */
+  it("레이어에 `data-idle`·`content-visibility`가 없다", async () => {
     const { container, scroller } = await mount();
-    const layers = [...container.querySelectorAll<HTMLElement>("[data-landing-layer]")];
-    const idle = () => layers.map((node) => node.hasAttribute("data-idle"));
-    for (const node of layers) expect(node.className.split(" ")).toContain("data-[idle]:[content-visibility:hidden]");
-    // SSR — 씬 ①의 D 정지라 레이어 ①만 배치에 남는다. 첫 틱이 같은 집합이라 토글이 없다.
-    expect(idle()).toEqual([false, true, true, true, true]);
     await flush();
-    expect(idle()).toEqual([false, true, true, true, true]);
-    const T = true;
-    const F = false;
-    const steps = [
-      [0, 0.3, [F, T, T, T, T]],
-      [0, 0.6, [F, F, T, T, T]],
-      [0, 0.9, [T, F, T, T, T]],
-      [1, 0.2, [T, F, T, T, T]],
-      [2, 0.3, [T, T, F, T, T]],
-      [1, 0.9, [T, T, F, T, T]], // 역방향 — 씬 ② 복귀 구간
-      [1, 0.7, [T, F, F, T, T]], // 역방향 — 교차 구간
-      [4, 0.5, [T, T, T, T, F]], // 점프
-      [0, 0.1, [F, T, T, T, T]], // 점프로 되돌아온다
-    ] as const;
-    for (const [i, f, want] of steps) {
-      const top = sceneTop(i, f);
+    const layers = [...container.querySelectorAll<HTMLElement>("[data-landing-layer]")];
+    for (const top of [0, sceneTop(0, 0.8), sceneTop(2, 0.3), sceneTop(4, 0.5)]) {
       await scrollTo(scroller, top);
-      expect(idle()).toEqual(want);
-      expect(idle()).toEqual(at(top).live.map((on) => !on));
+      for (const node of layers) {
+        expect(node.hasAttribute("data-idle")).toBe(false);
+        expect(node.className).not.toContain("content-visibility");
+      }
     }
   });
 
-  /** 같은 값의 속성 쓰기도 스타일을 무효화한다 — 정지 구간의 틱은 프레임 폭·레이어 속성을 다시 쓰지 않는다. */
-  it("같은 씬 · 같은 그릇의 틱은 프레임 style·레이어 속성을 쓰지 않는다", async () => {
+  /** 같은 값의 속성 쓰기도 스타일을 무효화한다 — 스크롤 틱은 프레임 style을 다시 쓰지 않는다(그릇·배율이 크기의 함수). */
+  it("스크롤 틱은 프레임 style을 쓰지 않는다 — 씬이 바뀌어도", async () => {
     const { container, scroller } = await mount();
     await flush();
     await scrollTo(scroller, sceneTop(1, 0.3));
     let records = 0;
     const observer = new MutationObserver((list) => { records += list.length; });
-    observer.observe(find(container, "[data-landing-frame]"), { attributes: true, attributeFilter: ["style"] });
-    for (const node of container.querySelectorAll("[data-landing-layer]")) observer.observe(node, { attributes: true, attributeFilter: ["data-idle"] });
-    for (const f of [0.31, 0.35, 0.4, 0.33]) await scrollTo(scroller, sceneTop(1, f));
+    observer.observe(frameOf(container), { attributes: true, attributeFilter: ["style"] });
+    for (const top of [sceneTop(1, 0.31), sceneTop(1, 0.5), sceneTop(1, 0.8), sceneTop(2, 0.3), sceneTop(0, 0.1)]) await scrollTo(scroller, top);
     expect(records).toBe(0);
-    await scrollTo(scroller, sceneTop(1, 0.5));
-    expect(records).toBeGreaterThan(0);
     observer.disconnect();
   });
 
   it("p₁ → p₂ → p₁로 되돌아오면 씬·배율·캡션·타이핑이 전부 같다", async () => {
     const { container, scroller } = await mount();
     await flush();
-    const p1 = sceneTop(1, 0.23); // 씬 ② D → T 전환 — 타이핑 중
+    const p1 = sceneTop(1, 0.3); // 씬 ② 정지 — 타이핑 중
     await scrollTo(scroller, p1);
     const first = snapshot(container);
     await scrollTo(scroller, sceneTop(3, 0.8));
@@ -297,7 +335,7 @@ describe("Stage — 스크롤 위치가 화면을 정한다", () => {
     const { scroller } = await mount(() => { renders += 1; });
     await flush();
     const settled = renders;
-    for (const [i, f] of [[0, 0.5], [1, 0.23], [2, 0.8], [3, 0.935], [4, 0.5]] as const) await scrollTo(scroller, sceneTop(i, f));
+    for (const [i, f] of [[0, 0.5], [1, 0.23], [2, 0.8], [3, 0.9], [4, 0.5]] as const) await scrollTo(scroller, sceneTop(i, f));
     expect(renders).toBe(settled);
   });
 });
@@ -319,17 +357,17 @@ describe("Stage — 모션 감소", () => {
     expect(at(top, true).layers).toEqual([1, 0, 0, 0, 0]);
   });
 
-  it("그릇 폭도 전환 한가운데에서 끊는다 — DOM에 중간 폭이 쓰이지 않는다", async () => {
+  it("모션 감소에서도 그릇은 뷰포트의 것 하나다 — 재생 중 폭이 바뀌지 않는다", async () => {
     media.matches = true; // 마운트 effect가 읽는다
+    viewport = { lg: false, sm: true };
     const { container, scroller } = await mount();
     await flush();
-    const width = () => find<HTMLElement>(container, "[data-landing-frame]").style.width;
     const seen = new Set<string>();
-    for (let f = 0; f < 1; f += 0.02) {
-      await scrollTo(scroller, sceneTop(1, f));
-      seen.add(width());
+    for (let f = 0; f < 5; f += 0.1) {
+      await scrollTo(scroller, STAGE_TOP + f * PLAY.perScene * H);
+      seen.add(frameOf(container).style.width);
     }
-    expect([...seen].sort()).toEqual(["1440px", "393px", "786px"]);
+    expect([...seen]).toEqual(["786px"]);
   });
 });
 
@@ -343,13 +381,12 @@ describe("Stage — 크기 변화", () => {
 
     size.w = 2542;
     size.h = 1342;
-    await act(async () => { for (const { callback } of observers) callback([], {} as ResizeObserver); });
-    await flush();
+    await resized();
 
     const kept = STAGE_TOP + 2.3 * 1342;
     expect(scroller.scrollTop).toBeCloseTo(kept, 6);
     const f = at(kept, false, { W: 2542, H: 1342 });
-    // 같은 그릇 상태다 — 그릇 폭은 위치(H 단위)만의 함수라 리사이즈 전후 보간 진행이 같다.
+    // device가 그대로면 그릇도 그대로다 — H만 바뀐 리사이즈.
     expect(find<HTMLElement>(container, "[data-landing-frame]").style.width).toBe(widthBefore);
     expect(widthBefore).toBe(`${f.canvasW}px`);
     expect(f.scale).toBe(1);
@@ -392,7 +429,7 @@ describe("Stage — 크기 변화", () => {
     const root = createRoot(container);
     await act(async () => root.render(stageUi()));
     const scroller = find<HTMLElement>(container, "[data-testid=scroller]");
-    geometry(scroller, { w: W, h: H, chrome: CHROME });
+    geometry(scroller, { w: W, h: H, chrome: CHROME, stageTop: STAGE_TOP });
     await flush();
     const remove = vi.spyOn(scroller, "removeEventListener");
     scroller.scrollTop = 50;
@@ -411,6 +448,136 @@ describe("Stage — 크기 변화", () => {
   });
 });
 
+
+/**
+ * **뷰포트 경계를 넘는 리사이즈** (V-03) — 그릇은 즉시 바뀌고(애니메이션 없음), 재생 위치(씬 번호 `i`·씬 안 진행 `f`)는 그대로다.
+ * 경계를 넘으면 H가 그대로여도 트랙 여백(`mt-16 lg:mt-30`)·히어로 h1이 바뀌어 `stageTop`이 움직인다 — 그 경우도 보존한다.
+ */
+describe("Stage — 뷰포트 그릇 전환", () => {
+  /** 화면에서 재생 위치를 말하는 값만 — 그릇·배율과 무관한 것. */
+  const progress = (container: HTMLElement) => {
+    const { scene, layers, segments, caption, captionOpacity, typed, badge } = snapshot(container);
+    return { scene, layers, segments, caption, captionOpacity, typed, badge };
+  };
+
+  it("H 고정 · `stageTop`만 이동 · `lg` 경계 넘김(1024 → 1023) — 씬·씬 안 진행이 같고 그릇은 T로", async () => {
+    const { container, scroller, size } = await mount();
+    await flush();
+    const top = sceneTop(1, 0.75); // 씬 ② 전환 중
+    await scrollTo(scroller, top);
+    const before = progress(container);
+    const u = (scroller.scrollTop - STAGE_TOP) / H;
+
+    viewport = { lg: false, sm: true };
+    size.w = 1005;
+    size.stageTop = STAGE_TOP - 74; // 트랙 위 여백 120 → 64 + 히어로 h1 48 → 30 (값 자체는 임의 — 움직였다는 것이 요점)
+    await resized();
+
+    expect((scroller.scrollTop - size.stageTop) / H).toBeCloseTo(u, 9);
+    expect(progress(container)).toEqual(before);
+    expect([frameOf(container).style.width, frameOf(container).style.height]).toEqual(["786px", "900px"]);
+
+    // 되돌아가도(1023 → 1024) 같다.
+    viewport = { lg: true, sm: true };
+    size.w = W;
+    size.stageTop = STAGE_TOP;
+    await resized();
+    expect((scroller.scrollTop - STAGE_TOP) / H).toBeCloseTo(u, 9);
+    expect(progress(container)).toEqual(before);
+    expect(frameOf(container).style.width).toBe("1440px");
+  });
+
+  it("폭·높이가 함께 바뀌어도(기기 회전 — M ↔ T) 씬·씬 안 진행이 같다", async () => {
+    viewport = { lg: false, sm: false };
+    const { container, scroller, size } = await mount();
+    size.w = 357;
+    size.h = 714;
+    await flush();
+    await scrollTo(scroller, STAGE_TOP + 2.45 * 714);
+    const before = progress(container);
+    expect(frameOf(container).style.width).toBe("393px");
+
+    viewport = { lg: false, sm: true };
+    size.w = 794;
+    size.h = 330;
+    size.stageTop = STAGE_TOP + 12;
+    await resized();
+    expect((scroller.scrollTop - size.stageTop) / 330).toBeCloseTo(2.45, 9);
+    expect(progress(container)).toEqual(before);
+    expect(frameOf(container).style.width).toBe("786px");
+  });
+
+  /** 경계를 넘는 순간 한 틱에 바뀐다 — 보간·애니메이션이 없다. */
+  it("고정 구간 한가운데 device 변경 → 다음 틱에 폭·높이·배율이 그 그릇의 것이다", async () => {
+    const { container, scroller } = await mount();
+    await flush();
+    await scrollTo(scroller, sceneTop(2, 0.5));
+    viewport = { lg: false, sm: false };
+    await resized();
+    const want = at(scroller.scrollTop, false, { W, H }, CHROME, 2);
+    expect([frameOf(container).style.width, frameOf(container).style.height]).toEqual(["393px", "776px"]);
+    expect(frameOf(container).style.transform).toBe(`translate3d(${want.x}px, ${want.y}px, 0px) scale(${want.scale})`);
+    expect(find<HTMLElement>(container, "[data-landing-chrome]").style.transform).toBe(`translate3d(0px, ${want.chromeY}px, 0px)`);
+  });
+
+  it("H만 바뀌고 device가 그대로면 그릇도 그대로다", async () => {
+    viewport = { lg: false, sm: true };
+    const { container, scroller, size } = await mount();
+    await flush();
+    await scrollTo(scroller, sceneTop(3, 0.2));
+    size.h = 702;
+    await resized();
+    expect(frameOf(container).style.width).toBe("786px");
+    expect((scroller.scrollTop - STAGE_TOP) / 702).toBeCloseTo(3.2, 9);
+  });
+
+  it("모션 감소 토글과 device 변경이 한 틱에 같이 와도 둘 다 반영된다", async () => {
+    const { container, scroller } = await mount();
+    await flush();
+    const top = sceneTop(0, 0.78);
+    await scrollTo(scroller, top);
+    media.matches = true;
+    viewport = { lg: false, sm: false };
+    await act(async () => {
+      for (const listener of media.listeners) listener();
+      for (const { callback } of observers) callback([], {} as ResizeObserver);
+    });
+    await flush();
+    const want = at(top, true, { W, H }, CHROME, 2);
+    expect(snapshot(container).layers).toEqual(want.layers.map(String));
+    expect(want.layers).toEqual([1, 0, 0, 0, 0]);
+    expect(frameOf(container).style.width).toBe("393px");
+  });
+
+  it("정적 ↔ 고정 왕복 중 device가 바뀌면 정적 장 크기 변수도 바뀐다", async () => {
+    const { container, size } = await mount();
+    const root = find<HTMLElement>(container, "[data-landing-root]");
+    size.chrome = 600;
+    await flush();
+    expect(root.style.getPropertyValue("--landing-canvas-w")).toBe("1440px");
+
+    viewport = { lg: false, sm: false };
+    size.w = 357;
+    await resized();
+    expect(container.querySelector("[data-landing-static]")).not.toBeNull();
+    expect(root.style.getPropertyValue("--landing-canvas-w")).toBe("393px");
+    expect(root.style.getPropertyValue("--landing-canvas-h")).toBe("776px");
+    // 정적 배율 = 캡션 최대 폭 / 그릇 폭(폭만으로 정한 배율).
+    expect(Number(root.style.getPropertyValue("--landing-static-scale"))).toBeCloseTo(at(0, false, { W: 357, H }, 600, 2).chromeW / 393, 10);
+
+    size.chrome = CHROME;
+    await resized();
+    expect(container.querySelector("[data-landing-static]")).toBeNull();
+    expect(frameOf(container).style.width).toBe("393px");
+
+    viewport = { lg: false, sm: true };
+    size.w = 750;
+    size.chrome = 600;
+    await resized();
+    expect(root.style.getPropertyValue("--landing-canvas-w")).toBe("786px");
+    expect(root.style.getPropertyValue("--landing-canvas-h")).toBe("900px");
+  });
+});
 
 /**
  * **캡션 높이는 잰 값이 `fitScale`에 들어간다** (design §4). jsdom은 레이아웃이 없어 높이가 0이므로 여기서는 스텁이 넘긴 값이
@@ -455,10 +622,13 @@ describe("Stage — 캡션 높이 측정", () => {
     expect(observed).toContain(find(container, "[data-landing-chrome]"));
   });
 
-  it("캡션 블록의 최대 폭은 프레임 폭이다 — 측정 전에 쓰여 첫 틱이 감긴 높이를 잰다", async () => {
+  it.each(DEVICE_CASES)("$name — 캡션 블록의 최대 폭은 그 그릇의 폭만 배율 폭이다 — 측정 전에 쓰여 첫 틱이 감긴 높이를 잰다", async ({ lg, sm, device }) => {
+    viewport = { lg, sm };
     const { container } = await mount();
     await flush();
-    expect(find<HTMLElement>(container, "[data-landing-chrome-block]").style.maxWidth).toBe(`${at(0).chromeW}px`);
+    const want = at(0, false, { W, H }, CHROME, device).chromeW;
+    expect(want).toBeLessThanOrEqual(STATE_CANVAS_W[device]);
+    expect(find<HTMLElement>(container, "[data-landing-chrome-block]").style.maxWidth).toBe(`${want}px`);
   });
 });
 
@@ -564,12 +734,13 @@ describe("Stage — 높이 부족 정적 흐름", () => {
     expect(figures[0]?.querySelector("[data-landing-typed]")?.textContent).toBe("");
     expect(figures[1]?.querySelector("[data-landing-typed]")?.textContent).toBe(TYPED);
     expect(figures.map((node) => node.querySelector<HTMLElement>("[data-badge]")?.dataset.badge)).toEqual(["0", "0", "1", "1", "1"]);
-    // 정적 흐름의 장은 D 그릇이다 — 상태를 도는 것은 고정 재생뿐이다.
-    expect(figures.map((node) => node.querySelector<HTMLElement>("[data-badge]")?.style.width)).toEqual(Array(5).fill("1440px"));
+    // 정적 흐름의 장도 뷰포트의 그릇이다 — 크기는 루트 변수(기본 D).
+    expect(root.style.getPropertyValue("--landing-canvas-w")).toBe("1440px");
+    expect(root.style.getPropertyValue("--landing-canvas-h")).toBe("900px");
+    expect(figures.map((node) => node.querySelector<HTMLElement>("[data-badge]")?.style.width)).toEqual(Array(5).fill("var(--landing-canvas-w, 1440px)"));
 
     size.chrome = CHROME;
-    await act(async () => { for (const { callback } of observers) callback([], {} as ResizeObserver); });
-    await flush();
+    await resized();
     expect(container.querySelector("[data-landing-static]")).toBeNull();
     expect(track.hasAttribute("data-ready")).toBe(true);
     expect(track.hasAttribute("data-static")).toBe(false);

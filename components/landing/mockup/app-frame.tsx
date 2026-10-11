@@ -47,7 +47,7 @@ export function AppFrame({ m, children, overlay }: { m: Messages; children: Reac
   return (
     /*
       ⚠️ **목업 루트가 `@container/mockup`을 선언하고 셸 안쪽이 묻는다** (responsive-mockup design §3) — 실물 셸은 뷰포트 `lg`로 갈리지만 목업의
-      뷰포트 자리는 이 루트 폭(K2 stage가 1424 · 768 · 375로 바꾼다)이다. 실물의 뷰포트 `lg` 미만·이상 토큰을 `@max-[64rem]/mockup:`·`@min-[64rem]/mockup:`으로
+      뷰포트 자리는 이 루트 폭(스테이지가 뷰포트로 고른 그릇 — 1422 · 768 · 375)이다. 실물의 뷰포트 `lg` 미만·이상 토큰을 `@max-[64rem]/mockup:`·`@min-[64rem]/mockup:`으로
       옮긴다(같은 64rem의 미만/이상). 선언은 여백 없는 바깥 칸이다 — 셸의 `px-2`를 품으면 content box가 16 좁아 경계가 1040에 선다. 선언과 질의를
       한 요소에 두지 않는다(POSTMORTEM 2026-09-15 — 자기 자신은 쿼리 컨테이너가 될 수 없다).
     */

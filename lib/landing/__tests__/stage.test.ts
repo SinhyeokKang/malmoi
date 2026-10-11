@@ -417,11 +417,12 @@ describe("frame — 한 스크롤 위치에 한 프레임", () => {
   it("씬 안 폭·높이 불변 — 세 그릇 × 고정 구간 전부", () => {
     for (const device of DEVICES) {
       for (const reduced of [false, true]) {
+        const sizes = new Set<string>();
         for (let q = 0; q <= 5; q += 0.0005) {
           const got = at(pinned(q, NARROW.H), reduced, TWO_LINES, device, NARROW);
-          expect(got.canvasW).toBe(STATE_CANVAS_W[device]);
-          expect(got.canvasH).toBe(STATE_CANVAS_H[device]);
+          sizes.add(`${got.canvasW}×${got.canvasH}`);
         }
+        expect([...sizes]).toEqual([`${STATE_CANVAS_W[device]}×${STATE_CANVAS_H[device]}`]);
       }
     }
   });
@@ -551,17 +552,17 @@ describe("frame — 한 스크롤 위치에 한 프레임", () => {
         for (const chrome of [ONE_LINE, TWO_LINES]) {
           const top = fitScale({ W: PW, H: PH, chromeHeight: chrome, device }).y;
           for (const reduced of [false, true]) {
+            // 위반만 모은다 — 위치마다 expect를 부르면 수십만 번이라 스위트가 느려진다.
+            const outside: number[] = [];
             for (let q = 0; q <= 5; q += 0.0005) {
               const got = frame({ scrollTop: q * PLAY.perScene * PH, stageTop: 0, W: PW, H: PH, chromeHeight: chrome, reducedMotion: reduced, device });
               const right = got.x + got.canvasW * got.scale;
               const bottom = got.y + got.canvasH * got.scale;
-              expect(got.x).toBeGreaterThanOrEqual(0);
-              expect(right).toBeLessThanOrEqual(PW + 1e-9);
-              expect(got.y).toBeGreaterThanOrEqual(top - 1e-9);
-              expect(got.y).toBeGreaterThanOrEqual(0);
-              expect(bottom).toBeLessThanOrEqual(got.chromeY - CHROME_GAP + 1e-9);
-              expect(got.chromeY + chrome - CHROME_GAP).toBeLessThanOrEqual(PH + 1e-9);
+              const inside = got.x >= 0 && right <= PW + 1e-9 && got.y >= top - 1e-9 && got.y >= 0
+                && bottom <= got.chromeY - CHROME_GAP + 1e-9 && got.chromeY + chrome - CHROME_GAP <= PH + 1e-9;
+              if (!inside) outside.push(q);
             }
+            expect(outside, `device ${device} · chrome ${chrome} · reduced ${reduced}`).toEqual([]);
           }
         }
       }

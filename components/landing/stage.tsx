@@ -2,9 +2,14 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
-import { BEZEL, CANVAS_H, CANVAS_W, CHROME_GAP, TOOLBAR_H, fitScale, frame as frameAt, pinnedSpan, trackHeight, typedPrefix, type Frame } from "@/lib/landing/stage";
+import { BEZEL, CHROME_GAP, STATE_CANVAS_H, STATE_CANVAS_W, TOOLBAR_H, deviceForViewport, fitScale, frame as frameAt, pinnedSpan, trackHeight, typedPrefix, type Device, type Frame } from "@/lib/landing/stage";
+import { SM_QUERY, WIDE_QUERY } from "@/lib/shell/breakpoint";
 
 type Five<T> = readonly [T, T, T, T, T];
+
+/** 정적 흐름 장의 그릇 크기 — 틱이 루트에 쓴다. 폴백은 SSR 기본(D)이다. */
+const CANVAS_VAR_W = `var(--landing-canvas-w, ${STATE_CANVAS_W[0]}px)`;
+const CANVAS_VAR_H = `var(--landing-canvas-h, ${STATE_CANVAS_H[0]}px)`;
 
 /** 캡션 크기는 시안 1c의 `clamp(15, 9 + 0.4375vw, 20)` — 스케일 토큰 사이 값이라 인라인으로 준다(자간은 text-base가 든다). */
 const CAPTION_SIZE = "clamp(15px, calc(9px + 0.4375vw), 20px)";
@@ -37,21 +42,20 @@ function Bezel({ children }: { children: ReactNode }) {
  * 전부이고, 씬은 그 고정 구간 안에서만 움직인다. 위 히어로·아래 CTA는 재생 동안 보이지 않는다 — 그래서 CTA를 음수
  * margin으로 끌어올리지 않는다(옛 `--landing-y-pin`).
  *
- * ⚠️ **상태마다의 배율은 크기만의 함수다** — 스크롤 구동 확대(대기 0.8배 → 맞춤)를 걷었다. 스크롤은 씬마다 데스크톱 → 태블릿 →
- * 모바일 그릇(캔버스 1440 · 786 · 393 — 목업 루트 1422 · 768 · 375, 2026-10-11 MK1 · D7)을 고르고, 프레임의 **레이아웃 폭**을 ease로 보간하고 배율은 그 폭으로 다시 맞춘다(#239 — 배율을 따로 보간하면 프레임이 스크롤러를 넘는다) — 목업 루트(베젤
- * 안 화면)가 그 폭을 채우고 안은 `@container`로 앱 규칙을 고른다(목업에 폭 prop을 넘기지 않는다). 툴바와 베젤은 상시다
- * (44px 툴바 + 안쪽 베젤 + 얇은 회색 외곽선 + `shadow-medium`) — 세 그릇이 같은 틀이고 폭만 바뀐다.
- *
- * ⚠️ **폭 보간은 스크롤 프레임마다 레이아웃을 일으킨다**(design §2) — transform만 쓰던 때와 달리 리플로가 난다. 다섯 씬 레이어가 동시에
- * 마운트돼 있으므로 **`frame().live`가 고른 레이어만 배치에 남기고**(폭이 움직이는 동안은 보이는 하나, M 정지·교차 동안은 현재·다음 둘)
- * 나머지는 `data-idle`(`content-visibility: hidden`)로 뺀다. 다음 레이어는 M 정지 시작에 풀려 교차가 시작될 때 이미 놓여 있다.
- * 정지 구간에서는 폭을 다시 쓰지 않는다.
+ * ⚠️ **배율은 크기와 그릇만의 함수다** — 스크롤 구동 확대(대기 0.8배 → 맞춤)를 걷었다. **그릇은 뷰포트가 고른다**(2026-10-11 사용자 정정 —
+ * ≥1024 D 1440×900 · 640~1023 T 786×900 · <640 M 393×776, 목업 루트 1422 · 768 · 375): 틱이 `WIDE_QUERY`·`SM_QUERY`의 `.matches`를 직접 읽는다.
+ * change 리스너가 없다 — 뷰포트가 바뀌면 스크롤러도 바뀌어 `ResizeObserver`가 틱을 예약하므로 저장해 둔 오래된 값을 쓸 여지가 없다.
+ * ⚠️ **스크롤러 `clientWidth`로 판정하지 않는다** — 셸 거터·스크롤바만큼 늘 좁아 1024~1041에서 CSS `lg`와 어긋난다.
+ * 목업 루트(베젤 안 화면)가 그릇 폭을 채우고 안은 `@container`로 앱 규칙을 고른다(목업에 폭 prop을 넘기지 않는다). 툴바와 베젤은 상시다
+ * (44px 툴바 + 안쪽 베젤 + 얇은 회색 외곽선 + `shadow-medium`) — 세 그릇이 같은 틀이다. 재생 중 그릇은 바뀌지 않아 스크롤 프레임은
+ * transform·opacity만 쓴다(레이아웃 0) — 다섯 씬 레이어가 배치된 채로 교차한다.
  *
  * ⚠️ **프레임마다 setState하지 않는다** — 씬 DOM이 수천 노드라 재조정이 스크롤을 먹는다. 스크롤 → rAF에서
  * `frame()`(순수) → ref로 transform·opacity·`data-*`·텍스트 노드를 직접 쓴다. 이 컴포넌트는 한 번 렌더된다.
  *
- * ⚠️ **SSR·JS 없음에서는 접혀 있고 프레임이 보이지 않는다** — 배율이 없으면 1440 폭 컨테이너(D 그릇)가 패널을 넘치므로 프레임·크롬이
- * `invisible`이다. 트랙은 `data-ready`가 선 뒤에만 고정 구간 길이를 갖는다(그 전엔 패널 1개 높이 — 빈 세로 구간이 남지 않는다).
+ * ⚠️ **SSR·JS 없음에서는 접혀 있고 프레임이 보이지 않는다** — 배율이 없으면 1440 폭 컨테이너(SSR 기본 D 그릇)가 패널을 넘치므로 프레임·크롬이
+ * `invisible`이다. 트랙은 `data-ready`가 선 뒤에만 고정 구간 길이를 갖는다(그 전엔 패널 1개 높이 — 빈 세로 구간이 남지 않는다). 첫 틱이
+ * 그릇 폭·높이를 `data-ready`보다 먼저 쓰므로 모바일 방문자에게 D가 비치지 않는다.
  *
  * ⚠️ **캡션 높이는 잰 값이다** (design §4) — 다섯 문장이 같은 grid 칸에 겹쳐 칸 높이가 가장 긴 문장이고, 좁으면 감긴다(고정 28이 아니다).
  * `chromeRef`의 높이를 틱이 재 간격 16을 더해 `frame()`에 넘긴다. 세로가 목업 최소 표시조차 못 담으면(`pinnable` false) 고정 재생을
@@ -100,6 +104,9 @@ export function Stage({
 
     // matchMedia는 effect 안에서만 읽는다(SSR에 없다).
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    // 그릇 질의 — 리스너 없이 틱이 `.matches`를 읽는다(위 머리 주석).
+    const wide = window.matchMedia(WIDE_QUERY);
+    const sm = window.matchMedia(SM_QUERY);
     let reduced = motion.matches;
     let pending = 0;
     let ready = false;
@@ -108,7 +115,7 @@ export function Stage({
     let lastH = 0;
     let lastStageTop = 0;
     /** 같은 값을 다시 쓰지 않는다 — 루트 CSS 변수는 서브트리 전체의 스타일을 무효화한다. */
-    let written = { stageH: "", width: "", transform: "", chromeTransform: "", live: "", caption: -1, typed: "", chromeW: -1, staticScale: -1 };
+    let written = { stageH: "", width: "", height: "", transform: "", chromeTransform: "", caption: -1, typed: "", chromeW: -1, staticScale: -1, staticCanvas: "" };
 
     /** 트랙 윗변의 스크롤러 좌표. offsetTop은 offsetParent에 매여 셸 구조가 바뀌면 조용히 틀린다. */
     const stageTopOf = () => track.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop;
@@ -122,11 +129,16 @@ export function Stage({
     };
 
     const paint = (f: Frame) => {
-      // 폭·배율은 그릇 전환 구간에서만, 캡션 자리는 크기에서만 바뀐다 — 정지 구간의 틱마다 같은 문자열을 다시 쓰지 않는다.
+      // 그릇 폭·높이와 배율·캡션 자리는 크기·뷰포트에서만 바뀐다 — 스크롤 틱마다 같은 문자열을 다시 쓰지 않는다.
       const width = `${f.canvasW}px`;
       if (width !== written.width) {
         frameNode.style.width = width;
         written = { ...written, width };
+      }
+      const height = `${f.canvasH}px`;
+      if (height !== written.height) {
+        frameNode.style.height = height;
+        written = { ...written, height };
       }
       const transform = `translate3d(${f.x}px, ${f.y}px, 0px) scale(${f.scale})`;
       if (transform !== written.transform) {
@@ -137,12 +149,6 @@ export function Stage({
       if (chromeTransform !== written.chromeTransform) {
         chrome.style.transform = chromeTransform;
         written = { ...written, chromeTransform };
-      }
-      // 배치에 남는 레이어 집합이 바뀔 때만 쓴다.
-      const live = f.live.map(Number).join("");
-      if (live !== written.live) {
-        layerRefs.current.forEach((layer, k) => layer?.toggleAttribute("data-idle", !f.live[k]));
-        written = { ...written, live };
       }
       frameNode.dataset.scene = String(f.scene.i);
       frameNode.dataset.badge = String(f.badge);
@@ -174,7 +180,7 @@ export function Stage({
       }
     };
 
-    const enterStatic = (scale: number) => {
+    const enterStatic = (scale: number, device: Device) => {
       if (!staticNow) {
         staticNow = true;
         ready = false;
@@ -185,6 +191,13 @@ export function Stage({
       if (scale !== written.staticScale) {
         root.style.setProperty("--landing-static-scale", String(scale));
         written = { ...written, staticScale: scale };
+      }
+      // 정적 장도 같은 그릇이다 — 크기를 CSS 변수로 쓴다(setState 0 · 씬 DOM 재렌더 없음).
+      const staticCanvas = `${STATE_CANVAS_W[device]}x${STATE_CANVAS_H[device]}`;
+      if (staticCanvas !== written.staticCanvas) {
+        root.style.setProperty("--landing-canvas-w", `${STATE_CANVAS_W[device]}px`);
+        root.style.setProperty("--landing-canvas-h", `${STATE_CANVAS_H[device]}px`);
+        written = { ...written, staticCanvas };
       }
     };
 
@@ -198,6 +211,8 @@ export function Stage({
     /**
      * ⚠️ **트랙 높이가 H에 비례하므로** 리사이즈 뒤 scrollTop을 그대로 두면 재생 위치가 튄다 — 씬 ③을 보던 사람이
      * 창을 키우면 씬 ②로 되감긴다. 고정 구간 안이면 직전 위치(H 단위)를 새 H로 되돌려 놓는다.
+     * ⚠️ **`H`가 그대로여도 `stageTop`이 움직이면 같은 일이 난다** — `lg` 경계를 넘으면 트랙 여백(`mt-16 lg:mt-30`)과 히어로 h1(48 → 30)이
+     * 바뀌어 q가 ΔstageTop/H만큼 튄다. 둘 중 하나라도 바뀌면 직전 `u`로 되돌린다.
      *
      * ⚠️ **보존은 관찰자 콜백이 아니라 여기서 한다** — 콜백은 레이아웃 뒤, rAF는 레이아웃 전에 돌아서 드래그 리사이즈에서는
      * 틱이 새 H를 먼저 읽는다. 콜백에서 하면 틱이 `lastH`를 덮은 뒤라 "바뀐 것 없음"으로 건너뛰었다(702 → 902가 q 2.3을 1.8로).
@@ -206,29 +221,31 @@ export function Stage({
       pending = 0;
       const W = scroller.clientWidth;
       const H = scroller.clientHeight;
+      const device = deviceForViewport(wide.matches, sm.matches);
       // ⚠️ 최대 폭을 **재기 전에** 쓴다 — 감긴 높이는 이 폭 기준이다. 폭은 chromeHeight와 무관하다(순환 없음).
-      const chromeW = fitScale({ W, H, chromeHeight: 0 }).chromeW;
+      const chromeW = fitScale({ W, H, chromeHeight: 0, device }).chromeW;
       if (chromeW !== written.chromeW) {
         block.style.maxWidth = `${chromeW}px`;
         written = { ...written, chromeW };
       }
       const chromeHeight = CHROME_GAP + chrome.getBoundingClientRect().height;
-      const fit = fitScale({ W, H, chromeHeight });
+      const fit = fitScale({ W, H, chromeHeight, device });
       if (!fit.pinnable) {
         // 정적 흐름은 폭이 정한 배율이다 — 세로로 줄이지 않는다(장마다 자기 높이를 갖는다).
-        enterStatic(fit.chromeW / CANVAS_W);
+        enterStatic(fit.chromeW / STATE_CANVAS_W[device], device);
         lastH = 0;
         return;
       }
       leaveStatic();
-      if (ready && lastH > 0 && H !== lastH) {
+      // ⚠️ stageTop은 1px 문턱으로 본다 — 소수 스크롤 위치에서 rect·scrollTop 합이 틱마다 끝자리가 흔들려, 같음 비교면 스크롤 틱마다 scrollTop을 다시 쓴다.
+      if (ready && lastH > 0 && (H !== lastH || Math.abs(stageTopOf() - lastStageTop) >= 1)) {
         const u = (scroller.scrollTop - lastStageTop) / lastH;
         setStageH(H);
         if (u > 0 && u <= pinnedSpan()) scroller.scrollTop = stageTopOf() + u * H;
       }
       setStageH(H);
       const stageTop = stageTopOf();
-      paint(frameAt({ scrollTop: scroller.scrollTop, stageTop, W, H, chromeHeight, reducedMotion: reduced }));
+      paint(frameAt({ scrollTop: scroller.scrollTop, stageTop, W, H, chromeHeight, reducedMotion: reduced, device }));
       lastH = H;
       lastStageTop = stageTop;
       if (!ready) {
@@ -295,7 +312,8 @@ export function Stage({
             aria-hidden="true"
             inert
             className="group/frame invisible absolute top-0 left-0 origin-top-left group-data-[ready]/track:visible"
-            style={{ width: CANVAS_W, height: CANVAS_H }}
+            // SSR·측정 전 기본은 D다 — 틱이 뷰포트의 그릇으로 바꾼다(그 전엔 `invisible`).
+            style={{ width: STATE_CANVAS_W[0], height: STATE_CANVAS_H[0] }}
           >
             <Bezel>
               {scenes.map((scene, k) => (
@@ -305,9 +323,7 @@ export function Stage({
                     layerRefs.current[k] = node;
                   }}
                   data-landing-layer={k}
-                  // SSR은 씬 ①의 D 정지라 레이어 ①만 배치에 남는다(`frame().live`와 같다) — 틱이 구간을 따라 옮긴다.
-                  data-idle={k >= 1 ? "" : undefined}
-                  className="absolute inset-0 opacity-0 data-[idle]:[content-visibility:hidden]"
+                  className="absolute inset-0 opacity-0"
                 >
                   {scene}
                 </div>
@@ -364,26 +380,26 @@ export function Stage({
         </div>
         {isStatic && (
           // 높이 부족 — 같은 5씬을 위에서 아래로 한 장씩. 배율은 폭이 정한 CSS 변수 하나(좌우 여백 side를 이미 품는다)이고 캡션이 장 아래에 선다.
-          // 장은 D 그릇(1440) 하나다 — 그릇을 도는 것은 스크롤로 재생하는 고정 흐름뿐이다.
+          // 장은 고정 재생과 같은 그릇이다 — 크기는 틱이 쓴 `--landing-canvas-w`·`-h`(T 정적 장은 길어진다 — 대가로 수용, DESIGN §6.615).
           <div data-landing-static="" className="flex flex-col items-center gap-12">
             {scenes.map((scene, k) => (
               <figure key={k} aria-hidden="true" className="m-0 flex flex-col items-center gap-4">
                 <div
                   className="relative"
-                  style={{ width: `calc(${CANVAS_W}px * var(--landing-static-scale, 0))`, height: `calc(${CANVAS_H}px * var(--landing-static-scale, 0))` }}
+                  style={{ width: `calc(${CANVAS_VAR_W} * var(--landing-static-scale, 0))`, height: `calc(${CANVAS_VAR_H} * var(--landing-static-scale, 0))` }}
                 >
                   <div
                     inert
                     data-badge={k >= 2 ? "1" : "0"}
                     className="group/frame absolute top-0 left-0 origin-top-left"
-                    style={{ width: CANVAS_W, height: CANVAS_H, transform: "scale(var(--landing-static-scale, 0))" }}
+                    style={{ width: CANVAS_VAR_W, height: CANVAS_VAR_H, transform: "scale(var(--landing-static-scale, 0))" }}
                   >
                     <Bezel>
                       <div className="absolute inset-0">{scene}</div>
                     </Bezel>
                   </div>
                 </div>
-                <figcaption className="m-0 text-center text-balance" style={{ fontSize: CAPTION_SIZE, lineHeight: 1.4, maxWidth: `calc(${CANVAS_W}px * var(--landing-static-scale, 0))` }}>
+                <figcaption className="m-0 text-center text-balance" style={{ fontSize: CAPTION_SIZE, lineHeight: 1.4, maxWidth: `calc(${CANVAS_VAR_W} * var(--landing-static-scale, 0))` }}>
                   {captions[k]}
                 </figcaption>
               </figure>
