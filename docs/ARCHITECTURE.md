@@ -3051,9 +3051,12 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 SSR 조회를 클라이언트로 옮기지 않으며, 스키마·env·쿠키·Route Handler 추가가 0이다.
 
 - **경계는 뷰포트 `lg`(64rem) 하나다** (2026-10-07 사용자). 서랍·시트는 body 포털이라 셸 컨테이너 밖에 있어, 셸을 컨테이너 쿼리로 판정하면 판정이 둘로 갈린다.
-  **배치는 CSS(`lg:`·`max-lg:`)가 정하고**, JS가 뷰포트 폭을 묻는 자리는 넷뿐이다 — ① **열린 서랍·시트를 넓어질 때 닫고 포커스를 옮기는 것**(공개 서랍 · Docs 장 내비 시트 · 앱 LNB 서랍 `components/shell/nav-drawer.tsx`),
+  **배치는 CSS(`lg:`·`max-lg:`)가 정하고**, JS가 뷰포트 폭을 묻는 자리는 다섯뿐이다 — ① **열린 서랍·시트를 넓어질 때 닫고 포커스를 옮기는 것**(공개 서랍 · Docs 장 내비 시트 · 앱 LNB 서랍 `components/shell/nav-drawer.tsx`),
   ② **Inbox를 열 때 그릇을 고르는 것**, ③ **좁아지며 숨는 넓은 묶음의 포커스를 트리거로 넘기는 것**(`useNarrowHandoff` — `components/shell/narrow-handoff.ts`, 소비자 넷: 공개 `WideOnly` · `DocsFixedNav` · 앱 고정 LNB `data-app-sidebar` · 앱 헤더 `AppWideOnly`. 셋째 소비자가 붙으며 2026-10-11에 공개 셸 파일에서 셸 디렉터리로 옮겼다),
-  ④ **앱 셸 패널 그룹이 좁은 동안 `setLayout`·`onResize`를 건너뛰고 넓어지는 `change`에서 선호폭을 되살리는 것**(`components/shell/shell-panels.tsx` — 아래 "앱 셸 패널"). 넷 다 `lib/shell/breakpoint.ts`의 `WIDE_QUERY`(`"(min-width: 64rem)"`)를 `matchMedia`로 묻는다.
+  ④ **앱 셸 패널 그룹이 좁은 동안 `setLayout`·`onResize`를 건너뛰고 넓어지는 `change`에서 선호폭을 되살리는 것**(`components/shell/shell-panels.tsx` — 아래 "앱 셸 패널"),
+  ⑤ **랜딩 스테이지가 목업 그릇(D·T·M)을 고르는 것**(`components/landing/stage.tsx` — 2026-10-11 mockup-viewport-container, DESIGN §6.615 "뷰포트 그릇"). 다섯 다 `lib/shell/breakpoint.ts`의 `WIDE_QUERY`(`"(min-width: 64rem)"`)를 `matchMedia`로 묻는다.
+  ⚠️ **⑤만 `SM_QUERY`(`"(min-width: 40rem)"`)를 더 묻는다** — 공개 랜딩 목업의 바깥 그릇 크기에만 쓰는 예외이고(PRODUCT §4.1 · DESIGN §5) 셸 배치의 경계는 여전히 `lg` 하나다.
+  ⑤는 **렌더 상태도 리스너도 없다** — 스크롤·리사이즈 틱이 두 `MediaQueryList`의 `.matches`를 직접 읽는다(뷰포트가 바뀌면 스크롤러도 바뀌어 `ResizeObserver`가 틱을 부르므로 저장해 둔 값이 낡을 틈이 없다). 스크롤러 `clientWidth`로 판정하지 않는다(셸 거터·스크롤바만큼 좁아 1024~1041에서 CSS `lg`와 어긋난다).
   **화면 안 배치는 컨테이너 폭이다**(DESIGN §5) — 그릇 폭을 JS가 재는 자리는 번역 분할 판 폭(`planTranslationPanelLayout` — 기존)과 Files 단계 판 판정(`filesLayout` — §6.3591) 둘이고 둘 다 `ResizeObserver`, 재기 전에는 데스크톱 형이다.
   - ⚠️ **폭을 렌더 상태로 두지 않는다** — `useSyncExternalStore`·`useState(matchMedia…)`로 그리면 서버(폭 모름)와 첫 클라이언트 렌더가 갈려 하이드레이션 불일치가 난다.
     ①의 리스너는 **열린 동안만** 달고(`change` → 닫기), ②는 **열기 핸들러에서 한 번** 읽고, ③의 리스너는 **묶음에 포커스·포인터가 들어온 뒤 실제로 떠나기 전까지만** 단다(서랍·시트가 닫혀 있어도 돈다). ④는 렌더 상태가 아니라 ref다(좁은지를 state로 두면 첫 렌더가 갈린다). 하이드레이션 전 인라인 스크립트는 CSP(`'nonce' 'strict-dynamic'`)가 막고 UA 분기도 하지 않는다.
