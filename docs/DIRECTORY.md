@@ -438,7 +438,7 @@ components/
                         급은 DOC_TABLE 한 상수). /docs는 칸을 react-markdown이 그리므로 틀(DocTableFrame)만 쓴다
   landing/              랜딩(`/`) 화면. 셸은 components/public-shell/다.
                         stage.tsx(클라이언트 — 스크롤 → rAF → lib/landing/stage의 frame() → ref로 transform·opacity·data-*·
-                        텍스트를 직접 쓴다. ⚠️ 프레임마다 setState하지 않는다) · mockup/(서버 컴포넌트 — 1440×810 씬 다섯의
+                        텍스트를 직접 쓴다. ⚠️ 프레임마다 setState하지 않는다. 그릇 D 1440×900 · T 786×900 · M 393×776을 뷰포트가 고른다) · mockup/(서버 컴포넌트 — 씬 다섯의
                         정적 DOM. app-frame(앱 셸 복제 — LNB는 navZones·navFooterItems에서) · translations(번역 화면 복제 — 소스 트리 포함, phase로 ①②③) · publish(④ 미리보기 · ⑤ 결과).
                         ⚠️ 인터랙티브 태그 0 — 버튼 모양은 buttonClass를 span에. 앱 라벨은 실제 사전 키, 가상 데이터는 m.landing.mockup)
   members/              멤버 화면 조각 여섯 (2026-09-19 리워크). members-panel-header(좌석 라벨 +
@@ -915,8 +915,8 @@ lib/
   shell/nav.ts         역할별 구역·항목과 activeProject·toNavProjects(레이아웃/검색 Action의 일곱 필드 투영).
                         __tests__/nav-projects.test.ts가 보관·기본 소스·집계와 서버 전용 필드 미노출을 센다
   shell/panel-size.ts   px 치수 → 리사이즈 패널의 % 제약. ⚠️ 분모가 그룹 폭이 아니라 "핸들을 뺀 폭"이다
-  shell/breakpoint.ts   셸 경계 WIDE_QUERY("(min-width: 64rem)") 하나 — 잎(import 0, client-graph 등재). 열린 서랍·시트의 정리 · 좁아지며 숨는 넓은 묶음의
-                        포커스 이관(useNarrowHandoff) · Inbox 그릇 선택만 matchMedia로 묻는다(렌더 상태 금지 — ARCHITECTURE §6.358). __tests__/breakpoint.test.ts가 Tailwind `lg`와 문자열 대조 + px·innerWidth 판정 0을 센다
+  shell/breakpoint.ts   셸 경계 WIDE_QUERY("(min-width: 64rem)") + 랜딩 목업 그릇 전용 SM_QUERY("(min-width: 40rem)") — 잎(import 0, client-graph 등재). 열린 서랍·시트의 정리 · 좁아지며 숨는 넓은 묶음의
+                        포커스 이관(useNarrowHandoff) · Inbox 그릇 선택 · 앱 셸 패널의 좁은 동안 보정 건너뜀 · 랜딩 스테이지 그릇 선택 다섯 자리만 matchMedia로 묻는다(렌더 상태 금지 — ARCHITECTURE §6.358). __tests__/breakpoint.test.ts가 Tailwind `lg`·`sm`과 문자열 대조 + px·innerWidth 판정 0을 센다
   shell/sidebar-cookie.ts LNB 접힘 여부 기기 쿠키(malmoi-sidebar-collapsed) — 잎. 서버 레이아웃이 읽고 셸 패널이 document.cookie로 쓴다. ⚠️ 이 리포에서 유일하게 http-only가 아닌 쿠키다
                         — 라이브러리가 패널에 flex-basis:0 + flex-grow를 걸고 핸들은 별도 flex 항목이다
                         ⚠️ 못 잰 폭은 0이 아니라 null이다 — 0이면 셋이 전부 100%가 된다
@@ -974,7 +974,7 @@ lib/
                         (Node는 "(Azərbaycan)"). ⚠️ 하위태그를 떼지 않는다 — zh-Hans/zh-Hant가
                         한 이름이 되면 되돌릴 수 없는 결정을 잘못 내린다
   onboarding/types.ts   RepoOption·AdapterChoice. 타입만 산다 — 같은 번들 이유
-  landing/              랜딩(`/`) 스테이지의 수학 — stage(fitScale · PLAY · pinnedSpan · trackHeight · sceneAt · typedPrefix · frame).
+  landing/              랜딩(`/`) 스테이지의 수학 — stage(deviceForViewport · fitScale · PLAY · pinnedSpan · trackHeight · sceneAt · typedPrefix · frame).
                         ⚠️ 잎(import 0) — 스테이지 클라이언트가 값으로 읽는다. 같은 스크롤 위치 → 같은 프레임이
                         역방향 스크럽의 조건이라 이전 프레임을 입력으로 받지 않는다. `/`에 무엇을 그릴지는
                         여기가 아니라 lib/auth/landing.ts(rootView)다 — 이름이 겹치지만 축이 다르다. 공개 셸 헤더의
