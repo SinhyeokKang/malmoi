@@ -98,7 +98,6 @@ QA는 DB·환경변수·코드를 변경하지 않았다. owned 서버 종료, Q
 ### 미완·미검증 (먼저)
 
 - **18 본문 SSR — 미해결(구조적)**: 제목은 고쳤다(`004cf4a0` — 첫 응답 `<title>This page doesn't exist · Malmoi Docs</title>`). 본문은 Next 16.3.3이 페이지가 던진 `notFound()`를 SSR에서 잡지 못해 오류 복구 셸(`__next_error__` 빈 body)로 내보내는 동작이고, 클라이언트 경계 없는 최소 라우트에서도 재현됐다. Suspense 안에서 던지면 상태가 200이 되고 `dynamicParams = false`도 같은 셸이라 남은 길은 D11 금지 셋뿐이다. 정본: ARCHITECTURE §8.1 · DESIGN §6.61 404 행.
-- **16 www — Gabia CNAME 대기**: Vercel 프로젝트에 `www.mal-moi.com`(redirect `mal-moi.com` · 308)을 추가했다. CNAME `f668c7afdc569147.vercel-dns-017.com.` 입력 후 `curl -I https://www.mal-moi.com/docs/faq?ref=a` 확인이 남았다.
 - 실기기 Safari/iOS·safe-area·스크린리더·비트맵 시각 판독, Search Console·CrUX·AI 인용은 미검증.
 
 ### 항목별
@@ -110,6 +109,6 @@ QA는 DB·환경변수·코드를 변경하지 않았다. owned 서버 종료, Q
 | 8 홈 목업 | **개선 배치 열지 않음(D18)** | 4× CPU에서 홈 TBT 65ms·long task 2(로드), 목업 스크롤 중 long task 0 — 병목이 입증되지 않았다(report 8 완료 기준 미충족). 남는 것은 GEO 측면의 텍스트 잡음뿐 |
 | 15 docs 이미지 | **개선 배치 열지 않음(D18)** | `/docs` LCP = eager/High `project-home.webp` 약 110~160ms. 2560px 원본이 데스크톱 720·모바일 DPR3 996으로 표시돼 2.6~3.6배 오버샘플링이지만 LCP가 이미 짧고, `srcset` 변형은 이미지 생성 파이프라인(새 스크립트·자산 두 벌)을 요구한다 |
 | 18 docs 404 | 제목 해결 · 본문 미해결 | 위 |
-| 16 www | Vercel 완료 · DNS 대기 | 위 |
+| 16 www | **완료** | Vercel 도메인(redirect 308) + Gabia CNAME + `vercel certs issue` — `https://www.mal-moi.com/docs/faq?ref=a` → 308 `https://mal-moi.com/docs/faq?ref=a`(2026-10-11). 정본 ARCHITECTURE §8.1 |
 
 가이드 재촬영 없음(`pnpm guide:check` stale 0, D17). 스키마·환경변수·의존성 변경 없음.
