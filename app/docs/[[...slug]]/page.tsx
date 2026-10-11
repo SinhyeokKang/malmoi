@@ -29,6 +29,7 @@ import { DOCS_TITLE, pageMetadata, SITE_ORIGIN } from "@/lib/seo/site";
 export async function generateMetadata({ params }: { params: Promise<{ slug?: string[] }> }): Promise<Metadata> {
   const { slug = [] } = await params;
   const page = loadPageBySlug("en", slug);
+  // 클라이언트 이동의 제목이다 — 첫 HTTP 응답은 오류 복구 셸이라 `app/docs/not-found.tsx`의 metadata가 선다(audit 18).
   if (page === null) return { title: en.publicDocs.docs.notFound.title };
   const description = leadParagraph(page.tree) ?? en.landing.hero.body;
   if (slug.length === 0) return { ...pageMetadata({ title: DOCS_TITLE, description, path: docHref(slug) }), title: { absolute: DOCS_TITLE } };
