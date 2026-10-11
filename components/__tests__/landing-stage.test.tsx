@@ -1,13 +1,15 @@
 // @vitest-environment jsdom
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { createRequire } from "node:module";
+import { dirname, join } from "node:path";
+import { compile } from "tailwindcss";
 
 import { act, Profiler } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Stage } from "@/components/landing/stage";
-import { BEZEL, CHROME_GAP, PLAY, SCREEN_BORDER, STATE_CANVAS_H, STATE_CANVAS_W, frame, trackHeight, typedPrefix, type Device } from "@/lib/landing/stage";
+import { BEZEL, CHROME_GAP, PLAY, SCREEN_BORDER, STATE_CANVAS_H, STATE_CANVAS_W, TOOLBAR_H, frame, trackHeight, typedPrefix, type Device } from "@/lib/landing/stage";
 import { SM_QUERY, WIDE_QUERY } from "@/lib/shell/breakpoint";
 
 import { find, render } from "./helpers/dom";
@@ -855,6 +857,89 @@ describe("Stage — 베젤", () => {
       expect(node.style.opacity).toBe("");
       expect(node.className).not.toContain("opacity-0");
     }
+  });
+});
+
+/** CSS 실행은 jsdom 밖이므로 실제 컴파일 결과와 같은 Bezel의 DOM 배선을 함께 고정한다. */
+describe("Stage — 모바일 툴바 제거", () => {
+  function bezelContract(parent: HTMLElement) {
+    const screen = find<HTMLElement>(parent, "[data-landing-screen]");
+    expect(screen.style.top).toBe(""); // 인라인 top이 반응형 클래스를 덮지 않는다.
+    expect([...screen.classList]).toEqual(expect.arrayContaining(["top-[8px]", "sm:top-[44px]"]));
+    expect([screen.style.right, screen.style.bottom, screen.style.left]).toEqual(["8px", "8px", "8px"]);
+    const toolbar = find<HTMLElement>(parent, "[data-landing-toolbar]");
+    expect([...toolbar.classList]).toEqual(expect.arrayContaining(["hidden", "sm:flex"]));
+    expect(toolbar.classList.contains("flex")).toBe(false);
+    expect(toolbar.style.height).toBe(`${TOOLBAR_H}px`);
+    expect(toolbar.children).toHaveLength(3);
+    expect(screen.contains(toolbar)).toBe(false);
+  }
+
+  it("sm CSS는 640부터 툴바·44px 상단을 복원하고 그 아래는 8px다", async () => {
+    const { container } = await mount();
+    bezelContract(frameOf(container));
+    const require = createRequire(join(process.cwd(), "package.json"));
+    const globals = join(process.cwd(), "app/globals.css");
+    const compiler = await compile(readFileSync(globals, "utf8"), {
+      base: dirname(globals),
+      loadStylesheet: async (id, base) => {
+        const path = require.resolve(id === "tailwindcss" ? "tailwindcss/index.css" : id, { paths: [base] });
+        return { path, base: dirname(path), content: readFileSync(path, "utf8") };
+      },
+    });
+    const css = compiler.build(["top-[8px]", "sm:top-[44px]", "hidden", "sm:flex"]);
+    expect(css).toContain("top: 8px;");
+    expect(css).toMatch(/\.hidden\s*\{\s*display: none;/);
+    expect(css).toMatch(/@media \(width >= 40rem\)\s*\{\s*top: 44px;/);
+    expect(css).toMatch(/\.sm\\:flex\s*\{\s*@media \(width >= 40rem\)\s*\{\s*display: flex;/);
+    expect(BEZEL).toBe(8);
+    expect(TOOLBAR_H).toBe(44);
+    expect(SM_QUERY).toBe("(min-width: 40rem)");
+  });
+
+  it.each([false, true])("모션 감소 %s — 다섯 씬에서 639↔640·1023↔1024 왕복이 DOM·진행을 보존한다", async reduced => {
+    media.matches = reduced;
+    let renders = 0;
+    const { container, scroller, size } = await mount(() => { renders += 1; });
+    await flush();
+    const node = frameOf(container);
+    const layers = [...node.querySelectorAll("[data-landing-layer]")];
+    const settled = renders;
+    for (let scene = 0; scene < 5; scene += 1) {
+      await scrollTo(scroller, sceneTop(scene, 0.35));
+      const { transform: _transform, width: _width, ...before } = snapshot(container);
+      for (const width of [639, 640, 639, 640, 1023, 1024, 1023, 1024]) {
+        viewport = { lg: width >= 1024, sm: width >= 640 };
+        size.w = width - 18;
+        await resized();
+        const { transform: _nextTransform, width: _nextWidth, ...after } = snapshot(container);
+        expect(after).toEqual(before);
+        const device = width < 640 ? 2 : width < 1024 ? 1 : 0;
+        expect([node.style.width, node.style.height]).toEqual([`${STATE_CANVAS_W[device]}px`, `${STATE_CANVAS_H[device]}px`]);
+        expect(frameOf(container)).toBe(node);
+        expect([...node.querySelectorAll("[data-landing-layer]")]).toEqual(layers);
+        bezelContract(node);
+      }
+    }
+    expect(renders).toBe(settled);
+    expect(container.querySelectorAll("[data-landing-segment]")).toHaveLength(5);
+  });
+
+  it.each(DEVICE_CASES)("$name — 정적 다섯 장과 고정 재생에 같은 반응형 베젤이 선다", async ({ lg, sm, device }) => {
+    viewport = { lg, sm };
+    const { container, size } = await mount();
+    size.chrome = 700;
+    await flush();
+    const figures = [...container.querySelectorAll<HTMLElement>("[data-landing-static] figure")];
+    expect(figures).toHaveLength(5);
+    figures.forEach(bezelContract);
+    const root = find<HTMLElement>(container, "[data-landing-root]");
+    expect(root.style.getPropertyValue("--landing-canvas-w")).toBe(`${STATE_CANVAS_W[device]}px`);
+    expect(root.style.getPropertyValue("--landing-canvas-h")).toBe(`${STATE_CANVAS_H[device]}px`);
+    size.chrome = CHROME;
+    await resized();
+    expect(container.querySelector("[data-landing-static]")).toBeNull();
+    bezelContract(frameOf(container));
   });
 });
 

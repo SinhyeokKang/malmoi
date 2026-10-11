@@ -94,7 +94,9 @@ describe("목업 창", () => {
     expect(toolbar.style.height).toBe("44px");
     expect(toolbar.children).toHaveLength(3);
     const screen = find<HTMLElement>(frame, "[data-landing-screen]");
-    expect(screen.style.top).toBe("44px");
+    // 모바일은 8px, D·T는 sm에서 기존 44px를 복원한다(컴파일 검증은 landing-stage).
+    expect(screen.style.top).toBe("");
+    expect(screen.className.split(" ")).toEqual(expect.arrayContaining(["top-[8px]", "sm:top-[44px]"]));
     expect(screen.querySelectorAll("[data-landing-layer]")).toHaveLength(5);
     expect(screen.contains(toolbar)).toBe(false);
   });
