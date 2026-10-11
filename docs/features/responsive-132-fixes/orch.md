@@ -69,3 +69,6 @@ Source intersections A∩B, A∩C, B∩C: none. Shared docs are coordinator-owne
 - User explicitly requested one additional worker for mobile landing mockup chrome (toolbar and left dots removed; equal bezel thickness; desktop/tablet unchanged).
 - Coordinator interpretation: existing M (<640), outer 393x776 canvas retained, top inset 8 like other sides, more inner screen height. No new product mechanism.
 - Ownership M: `components/landing/stage.tsx`, related landing tests, `lib/landing/stage.ts` only if needed. A/B/C intersections empty; shared docs coordinator. Isolated child from current dev, inherited verified Codex Astra medium. Focused TDD first; full gate serialized. Add M scenarios to the single final QA.
+
+- C sequential gate exit 0: 820 passed / 1 skipped files, 13,488 passed / 2 skipped tests, build/mirror passed. Integrated all three commits; evidence copied to root `.scratch/responsive-132-C/`. C has no pending tasks/issues.
+- M Task `task_e4bbe6f71fb2`, Dispatch `ctx_02b5363c8efc`, branch `SinhyeokKang/responsive-132-mobile`: launch ready/input_accepted, projection working, gpt-6-astra inherited medium.
