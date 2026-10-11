@@ -35,7 +35,9 @@ describe("② 파일 선택 — 패널 구분선", () => {
    */
   it("핸들이 8px이고, 껍데기의 `gap-4`는 그대로 둔다", () => {
     // 순차 판에서는 `hidden`이 덧붙는다 — 폭 8은 `FILES_HANDLE_PX`와 같이 움직인다(files-layout 순수 테스트).
-    expect(files).toMatch(/<ResizableHandle[^>]*className=\{cn\("w-2"/s);
+    expect(files).toMatch(/<ResizableHandle[^>]*className=\{cn\("w-2[ "]/s);
+    // 터치 드래그가 스크롤로 새지 않는다 — 셸 LNB·번역 패널 핸들과 같은 `touch-none`(responsive-app design §3 · DESIGN §6.56).
+    expect(files).toMatch(/<ResizableHandle[^>]*className=\{cn\("w-2 touch-none", sequential && "hidden"\)/s);
     expect(modal).toMatch(/bodyDirection === "row"/);
     expect(modal).toMatch(/\bgap-4\b/);
   });

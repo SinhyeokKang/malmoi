@@ -327,7 +327,8 @@ export function FilesStep({
         </div>
       </ResizablePanel>
 
-      <ResizableHandle aria-label={m.newProject.files.resize} className={cn("w-2", sequential && "hidden")}
+      {/* `touch-none` — 터치 드래그가 스크롤로 새지 않는다(셸·번역 핸들과 같다, design §3). 순차 판에서는 숨는다. */}
+      <ResizableHandle aria-label={m.newProject.files.resize} className={cn("w-2 touch-none", sequential && "hidden")}
         onDragging={(active) => { dragging.current = active; }} />
 
       {/*
