@@ -27,6 +27,8 @@ const raw = readFileSync(PATH, "utf8");
 const wf = parse(raw) as Workflow;
 const job = wf.jobs.publish;
 const steps = job?.steps ?? [];
+// 주석은 설정이 아니다 — 문자열 단언은 주석 줄을 벗긴 본문에 건다.
+const body = raw.split("\n").filter((l) => !l.trimStart().startsWith("#")).join("\n");
 const runs = steps.flatMap((s) => (s.run === undefined ? [] : [s.run]));
 
 describe("전제 — 스위트가 실제로 스텝을 본다 (POSTMORTEM 2026-09-10)", () => {
@@ -54,7 +56,7 @@ describe("권한", () => {
   });
 
   it("contents: write가 파일 어디에도 없다", () => {
-    expect(raw).not.toMatch(/contents:\s*write/);
+    expect(body).not.toMatch(/contents:\s*write/);
   });
 });
 
@@ -123,7 +125,6 @@ describe("주입·동시성·셸", () => {
 
   it("latest 태그·cache-from·cache-to·--build-arg·--secret이 0개다", () => {
     // `runs-on: ubuntu-latest`는 러너 라벨이라 뺀다 — 막는 것은 이미지의 `latest` 태그다.
-    const body = raw.split("\n").filter((l) => !l.trimStart().startsWith("#")).join("\n").replaceAll("ubuntu-latest", "");
-    expect(body).not.toMatch(/latest|cache-from|cache-to|--build-arg|--secret/);
+    expect(body.replaceAll("ubuntu-latest", "")).not.toMatch(/latest|cache-from|cache-to|--build-arg|--secret/);
   });
 });
