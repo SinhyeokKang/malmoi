@@ -859,7 +859,8 @@ autovacuum off · statement_timeout=5000, 통계 없음/ANALYZE 뒤 × 네 질�
   `stopImmediatePropagation()` + `history.go(-delta)`로 되돌리고, 확인하면 `history.go(delta)`. delta는 Navigation API의
   `currentEntry.index` 차이다.
 - **Navigation API `navigate`의 `preventDefault`는 기각했다** — 사용자 활성화 없이 반복하면 `cancelable=false`가 되어 draft를 잃었다.
-- **새로고침·닫기**: native `beforeunload`.
+- **승인된 외부 이동 통지** (2026-10-12): 링크·popstate 리스너는 clean 상태에서도 이동을 관찰해 Workspace의 로컬 선택 표식을 무효화한다(§6.3591). dirty 링크는 확인 후, dirty history는 복원 이벤트가 아닌 승인된 재이동에서만 통지한다. 취소·수정키·새 탭·download·외부 origin·같은 주소 hash는 링크 통지를 하지 않는다.
+- **새로고침·닫기**: dirty일 때만 native `beforeunload`.
 - ⚠️ **Next가 Navigation API로 옮기면 뒤로/앞으로 guard가 조용히 무력화된다**(`app-router.js`의 TODO) — 테스트도 화면도 red를 안
   낸다. Next를 올렸으면 실브라우저로 뒤로가기를 눌러 본다. Navigation API가 없는 브라우저는 delta를 몰라 막지 않는다 — draft가
   사라질 수 있는 유일한 갈래다.
@@ -3102,7 +3103,7 @@ SSR 조회를 클라이언트로 옮기지 않으며, 스키마·env·쿠키·Ro
 - **번역 단일 판의 판은 Workspace 한 벌이 든다** — 선택 키·draft(`draftReducer`)·이동 판정(`planEditorNavigation`)·sessionStorage 복구 사본(§6.04)·저장 결과·필터는 지금처럼 Workspace가 소유하고,
   판(`list`·`detail`)은 그 옆의 작은 상태다. 판 전환 판정은 잎 **`lib/translations/compact-pane.ts`**(`reducePane`·`initialPane` — DOM·서버·draft·폭을 모른다)이고 껍데기가 구분한 이벤트만 받는다:
   `show-list`(‹ Keys) · `open-key`(같은 키 재열기 · 승인된 다른 키) · `selection{cause: tree|other}`(서버가 그린 선택 키 변화) · `detail-input`(split에서도 — 입력 포커스·편집·IME 조합 시작) · `resize{detailActive}`.
-  로컬 키 선택의 응답(`ownSelection`)은 이미 선택 시 정한 판을 다시 고르지 않는다. 응답 전 ‹ Keys로 돌아갔거나 같은 키를 다시 연 최신 의도가 이긴다. 표식은 한 번만 소비하고 트리 의도가 있으면 그 의도가 우선하며, 검색·Inbox·history 같은 외부 선택은 기존 `selection` 판정을 지난다.
+  로컬 키 선택의 응답(`ownSelection`)은 이미 선택 시 정한 판을 다시 고르지 않는다. 응답 전 ‹ Keys로 돌아갔거나 같은 키를 다시 연 최신 의도가 이긴다. 표식은 한 번만 소비하고 트리 의도가 있으면 그 의도가 우선한다. `useLeaveGuard`의 승인된 검색·Inbox·history 이동은 표식을 무효화해 같은 키로 들어와도 기존 `selection` 판정을 지난다(키 id 일치는 응답 출처의 증거가 아니다).
   ⚠️ **판은 split에서도 저장된다** — 폭을 되돌리면 그 판이 선다. 입력 중인 상세는 resize로 숨거나 포커스를 잃지 않는다.
   ⚠️ **판 전환은 URL·history를 건드리지 않는다**(reducer에 그 입력이 없다) — 브라우저 뒤로/앞으로는 기존 이동과 `useLeaveGuard` 그대로이고, `useLeaveGuard`가 Navigation API 없는 브라우저의 popstate를 못 막는 제한도 그대로다.
   ⚠️ **같은 상세를 두 번 마운트하지 않는다** — 판 표시는 CSS(`@container/ws` + `data-pane`)라 폭 왕복에 textarea DOM·커서·조합이 산다. 숨는 목록의 scrollTop은 숨기기 직전 Workspace ref에 저장하고 다시 보일 때 되살린다(`display:none`이 scrollTop을 잃는다).
