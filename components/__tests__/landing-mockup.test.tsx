@@ -1032,10 +1032,21 @@ describe("목업 — 루트 컨테이너가 배치를 고른다", () => {
       }
     });
 
-    it("④ diff 표는 실물처럼 520 하한이라 좁은 시트에서는 오른쪽이 잘린다(실물은 가로 스크롤)", async () => {
-      expect(live("components/publish-button.tsx")).toContain("min-w-[520px]");
+    /**
+     * #240 — 실물 표는 `w-full min-w-[520px]`이고 좁은 시트에서 가로 스크롤한다. 목업은 스크롤할 수 없어(포인터 0) 그대로 두면 Value 열(diff)이
+     * 오른쪽에서 잘렸다(M 루트 375 — 시트 본문 341에 `+ P`만). 목업은 **방문자가 표를 오른쪽 끝까지 스크롤한 상태**를 정적으로 그린다:
+     * 같은 `w-full min-w-[520px]`에 `self-end`(세로 flex의 교차축 끝) — 시트가 520보다 넓으면 `w-full`이 채워 위치가 같고, 좁으면 넘친 만큼이
+     * 왼쪽(Key 열)으로 가려진다. 실물에 없는 배치(세로 쌓기 등)를 만들지 않는다.
+     */
+    it("④ diff 표는 실물처럼 `w-full min-w-[520px]`이고, 좁은 시트에서는 오른쪽 끝까지 스크롤한 형이다 (#240)", async () => {
+      const real = grab(live("components/publish-button.tsx"), /<table className="([^"]*min-w-\[520px\][^"]*)"/).split(" ");
+      expect(real).toEqual(expect.arrayContaining(["w-full", "min-w-[520px]"]));
       const table = find<HTMLElement>(layer(await mount(), 3), "[data-landing-diff-table]");
-      expect(table.className.split(" ")).toContain("min-w-[520px]");
+      const classes = table.className.split(" ");
+      expect(classes).toEqual(expect.arrayContaining(["w-full", "min-w-[520px]", "self-end"]));
+      // `self-end`는 세로 flex 안에서 교차축(가로) 끝 정렬이다 — 부모가 세로 flex이고 넘침을 자른다.
+      const frame = table.parentElement?.className.split(" ") ?? [];
+      expect(frame).toEqual(expect.arrayContaining(["flex", "flex-col", "overflow-hidden"]));
       expect(table.querySelectorAll("[data-landing-diff-row]")).toHaveLength(fixture.diff.length);
     });
   });
