@@ -1,6 +1,6 @@
 # responsive-mockup — 구현 태스크
 
-상태: 전부 미착수. **선행: responsive-app A6 완료**(앱 좁은 폭 실측으로 배치·경계값 확정).
+상태: 전부 미착수. **선행 충족** — responsive-app A6 완료(2026-10-11, dev `ba8401ce`).
 [스펙](spec.md) · [설계](design.md) · [브리프](design-brief.md).
 
 M0 → M1 → M2. 검증 표기: `자동` = Vitest(jsdom은 폭·컨테이너 쿼리를 못 잰다 — 클래스 계약만) / `실측` = ego-browser(터치 에뮬레이션 포함).
@@ -10,10 +10,11 @@ M0 → M1 → M2. 검증 표기: `자동` = Vitest(jsdom은 폭·컨테이너 �
   - 검증: 프레임 누락 0, 확정 치수를 spec/design/brief에 동일 기록. 시안 없음은 구현 차단으로 남긴다.
 
 - [ ] **M1 — stage 논리 캔버스 + 목업 컨테이너 배치**
+  - **먼저 1440 목업 ↔ 실물 대조**(design §3.5): 셸·번역·Publish 씬을 지금 dev 화면과 computed style로 맞추고, 어긋난 곳을 고친 뒤 목업 클래스 문자열을 앱 쪽 값과 대조하는 테스트를 더한다(design §3 "경계 값을 어떻게 공유하나").
   - 먼저 순수 테스트(`lib/landing/__tests__/stage.test.ts`): 명시 canvasWidth/Height와 chromeHeight로 fitScale/frame 계산, 같은 위치 결정성·역스크럽·reduced-motion·작은 H. 이후 stage 측정과 목업 배치를 함께 변경한다. P5 계약(`chromeHeight` 필수 · `MIN_PINNED_SCALE`·`pinnable` 정적 흐름 · 한 줄 캡션 28)을 유지한다.
-  - 목업 루트에 `@container` 선언(자기 참조 금지 — 선언 요소와 질의 요소 분리), 셸 내비 규칙의 컨테이너 변형은 목업 마크업에만 두고 경계 상수는 공유한다. 앱의 순수 레이아웃 판정을 소비한다.
+  - 목업 루트에 `@container` 선언(자기 참조 금지 — 선언 요소와 질의 요소 분리). 컨테이너 변형은 **셸 내비와 큰 모달 시트 형** 둘이고 목업 마크업에만 둔다. 논리 폭은 spec 고정값 1440 · 768 · 375. `lib/` 순수 상수·판정은 import, 클래스 문자열은 복사 + 대조 테스트.
   - 교체: `components/__tests__/landing-mockup.test.tsx`의 1440px 고정 단언. "목업 껍데기에 `max-lg:` 토큰 0" 단언은 유지한다.
-  - 검증: M-01~03·랜딩 회귀, 바깥 1280 고정에서 목업만 세 너비로 바꾸어 내비·목록·상세 실측(1023/1024 목업 루트 computed); 4뷰포트에서 5씬/캡션/진행/CTA 누락·겹침 0. stage 단위/DOM 테스트 green.
+  - 검증: M-01~03·랜딩 회귀, 바깥 1280 고정에서 목업만 1440 · 768 · 375로 바꾸어 내비·목록·상세·Publish 시트 실측(목업 루트 computed); 4뷰포트에서 5씬/캡션/진행/CTA 누락·겹침 0. stage 단위/DOM 테스트 green.
   - 커밋: `feat(responsive-mockup): mirror responsive layouts in landing scenes`.
 
 - [ ] **M2 — 정본·마무리**
