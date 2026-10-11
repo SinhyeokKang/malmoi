@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 import remarkGfm from "remark-gfm";
@@ -18,6 +19,7 @@ const REF = "ghcr.io/sinhyeokkang/malmoi:v1.3.3";
 const DIGEST = `sha256:${"a".repeat(64)}`;
 const IMAGE = { ref: REF, digest: DIGEST };
 const LINE = `**Self-hosting image:** \`${REF}@${DIGEST}\``;
+const SCRIPT = fileURLToPath(new URL("../release-image-note.ts", import.meta.url));
 const FULL = "**Full changelog:** https://github.com/o/r/compare/v1.3.2...v1.3.3";
 
 describe("withImageLine", () => {
@@ -78,6 +80,52 @@ describe("withImageLine", () => {
     expect(() => withImageLine("x", bad)).toThrow();
   });
 
+  it("붙은 줄(개행 한 번)의 Full changelog를 먹지 않는다", () => {
+    const old = "**Self-hosting image:** `old`";
+    expect(withImageLine(`- a\n\n${old}\n${FULL}\n`, IMAGE)).toBe(`- a\n\n${LINE}\n${FULL}\n`);
+  });
+
+  it("여러 줄 라벨 문단은 연속 줄까지 교체한다", () => {
+    const old = "**Self-hosting image:** `old`\ncontinued";
+    expect(withImageLine(`- a\n\n${old}\n\n${FULL}\n`, IMAGE)).toBe(`- a\n\n${LINE}\n\n${FULL}\n`);
+  });
+
+  it("라벨 바로 뒤 코드 펜스는 건드리지 않는다", () => {
+    const old = "**Self-hosting image:** `old`";
+    expect(withImageLine(`${old}\n\`\`\`\ncode\n\`\`\`\n`, IMAGE)).toBe(`${LINE}\n\`\`\`\ncode\n\`\`\`\n`);
+  });
+
+  it("펜스 안의 라벨 줄은 라벨 문단이 아니다", () => {
+    const body = "```\n\n**Self-hosting image:** x\n```\n";
+    expect(withImageLine(body, IMAGE)).toBe(`${body}\n${LINE}\n`);
+  });
+
+  it("펜스 안의 Full changelog는 꼬리가 아니다", () => {
+    const body = "```\n\n**Full changelog:** x\n```\n";
+    expect(withImageLine(body, IMAGE)).toBe(`${body}\n${LINE}\n`);
+  });
+
+  it("라벨 문단이 둘 이상이면 던진다", () => {
+    const body = `**Self-hosting image:** \`a\`\n\n**Self-hosting image:** \`b\`\n`;
+    expect(() => withImageLine(body, IMAGE)).toThrow();
+  });
+
+  it.each([
+    ["공백만 있는 빈 줄", `- b\n  \n${FULL}\n`],
+    ["끝의 공백 줄", `- b\n\n${FULL}\n\n   \n`],
+    ["strong 안 끝 공백", "- b\n\n**Full changelog: ** https://x/compare/a...b\n"],
+  ])("원문에서 걷히던 Full changelog는 결과에서도 걷힌다 — %s", (_name, body) => {
+    const strip = (text: string) => {
+      const tree = unified().use(remarkParse).use(remarkGfm).parse(text);
+      dropFullChangelog(tree);
+      return JSON.stringify(tree.children.map((n) => n.type));
+    };
+    const before = strip(body);
+    expect(before).toBe('["list"]');
+    const after = strip(withImageLine(body, IMAGE));
+    expect(after).toBe('["list","paragraph"]');
+  });
+
   it("changelog 변환을 지나면 Full changelog는 걷히고 이미지 줄은 문단으로 남는다", () => {
     const tree = unified().use(remarkParse).use(remarkGfm).parse(withImageLine(`## Fixes\n\n- a\n\n${FULL}\n`, IMAGE));
     shiftHeadings(tree);
@@ -92,7 +140,7 @@ describe("withImageLine", () => {
 
 describe("CLI", () => {
   const run = (args: string[], input: string) =>
-    spawnSync(process.execPath, ["scripts/release-image-note.ts", ...args], { input, encoding: "utf8", timeout: 10_000 });
+    spawnSync(process.execPath, [SCRIPT, ...args], { input, encoding: "utf8", timeout: 10_000 });
   const gh = (body: string | null) => JSON.stringify({ body });
 
   it("바뀌면 exit 0이고 stdout이 새 본문이다", () => {
@@ -134,5 +182,10 @@ describe("CLI", () => {
     const r = run([REF, DIGEST], JSON.stringify({ body: `## Fixes\r\n\r\n- a\r\n\r\n${FULL}\r\n`, tagName: "v1.3.3" }));
     expect(r.status).toBe(0);
     expect(r.stdout).toBe(`## Fixes\n\n- a\n\n${LINE}\n\n${FULL}\n`);
+  });
+  it("라벨 문단이 둘이면 exit 2이고 stdout이 비어 있다", () => {
+    const r = run([REF, DIGEST], gh(`**Self-hosting image:** a\n\n**Self-hosting image:** b\n`));
+    expect(r.status).toBe(2);
+    expect(r.stdout).toBe("");
   });
 });
