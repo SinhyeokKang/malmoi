@@ -63,3 +63,9 @@ Source intersections A∩B, A∩C, B∩C: none. Shared docs are coordinator-owne
 - Independent review round 1: P2 A only; B/C/PRODUCT zero additional findings. Report archived in root `.scratch/review-responsive-132.md`. Reviewer released.
 - B `787ea5ae` sequential gate exit 0: 819 passed / 1 skipped files, 13,491 passed / 2 skipped tests, build and mirror passed. The earlier Revert failure did not recur. Integrated as `cc4d1fce` + `c7a3f3fc`. Evidence copied to root `.scratch/responsive-132-B/`; B has no pending issues/tasks and can be collected after clean/cherry checks.
 - A/C original transcript archives copied to root `.scratch/transcript-{A,C}-initial.json`; Orca labels these bounded/clipped, so do not claim complete independent RED log verification.
+
+## Added batch M
+
+- User explicitly requested one additional worker for mobile landing mockup chrome (toolbar and left dots removed; equal bezel thickness; desktop/tablet unchanged).
+- Coordinator interpretation: existing M (<640), outer 393x776 canvas retained, top inset 8 like other sides, more inner screen height. No new product mechanism.
+- Ownership M: `components/landing/stage.tsx`, related landing tests, `lib/landing/stage.ts` only if needed. A/B/C intersections empty; shared docs coordinator. Isolated child from current dev, inherited verified Codex Astra medium. Focused TDD first; full gate serialized. Add M scenarios to the single final QA.

@@ -14,3 +14,7 @@ Scope: the seven findings from the 2026-10-12 static audit. No new feature or pr
 - [ ] Integrated gate, documentation freshness, dev push and exact-head CI.
 - [ ] Single-worker runtime QA, corrections and recheck.
 - [ ] Postmortem, final documentation, cleanup and delivery.
+
+## Added user request — mobile landing chrome
+
+- [ ] M: Only mobile landing mockup removes toolbar and left dots; four equal 8px bezel insets. Desktop/tablet unchanged. Cover pinned/static, boundary roundtrips and all five scenes. Worker brief: brief-M.md.
