@@ -44,3 +44,4 @@
 - Q `worker_done` — 항목 1·2·3·5·8·9 수치 PASS(8 폭 그릇 크기 · 프레임 ⊂ 스크롤러 · 경계/재감김 리사이즈 위치 보존·이중 보정 0 · 배율 표 9/9 · reduced f .8 단절 · 다크 동일 기하), 4는 #240 외 PASS, 6·7 기록. 못 잰 것: 1030 스크롤바(macOS 오버레이 — 대신 clientWidth 1012로 V-01 축 밟음) · 1280→1100 히어로 재감김(어느 언어에서도 안 일어남 — T·M 안 재감김으로 대신 잼). 참고: 812×375 T는 프레임 175px 폭(세로 배율 .223 — 수용한 대가). 낡은 주석 `lib/landing/stage.ts` `MIN_PINNED_SCALE` 근거(D 폭 배율) → #240 뒤 A에게. Q 해제 · `.next/dev` 정리.
 - A #240 `e093d8e5`(red) · `31cc7564`(표 `w-full min-w-[520px] self-end` — 오른쪽 끝까지 스크롤한 상태, Key 열 일부 가림), gate ok — 지휘자 diff 확인. 이어서 `MIN_PINNED_SCALE` 주석 정정 Task.
 - A `191eb5c5` 주석 정정, gate ok. 세 커밋 dev 통합.
+- dev 통합 `a48ba4f3..aaf2faa0`(#240 · 주석) · `pnpm gate` ok · push(origin/dev `dbfd6b8a..aaf2faa0`) · CI run 38144387536. Q2 `ctx_10f9c4c7e81e` #240 재실측 — M 375×812·639×900에서 값 칸 전부 표 안(Geist 두 줄 감김), T·D 행 전체 · **#240 닫힘**. Q2·A 해제 · A 워크트리·브랜치 삭제(미커밋 0 · cherry `+` 0 확인).
