@@ -36,3 +36,6 @@
 
 - 2026-10-11 orch 작성(목업 orch 진행 중 — #240 재실측 대기).
 - 2026-10-11 앞 orch(mockup-viewport-container) 완료 — dev `22d9e427..aaf2faa0` · CI success · #240 닫힘 · 기능 디렉터리 삭제(결론은 DESIGN §6.615·§5 · PRODUCT §4.1 · ARCHITECTURE §6.358). B `ctx_2116379d152a`(worktree drr-b, Opus 5.5 medium) 착수.
+- B `worker_done` — 커밋 7(4393f242 test · db22532d refactor · 91eeb037 목업 · b9d3918c DESIGN · 360b2cde DIRECTORY · 2846fa98 ARCHITECTURE · 8786d4af CLAUDE 52), gate ok. 미완: 가이드 원고 세 언어 stale(publish.md · revert.md — '사유 줄' 문장) → 수정 라운드에 `/guide`. guide:check stale 6컷. B retain · 독립 리뷰 R2 착수.
+- R2 리뷰: 🔴0 · 🟡4(page.tsx F7 주석 · panel-header 테스트 주석 · R-01 Publish 진행 중 jsdom 누락 · describedby 한 번 toBe). 가이드 stale 확정 = publish.md:22 · sync/revert.md:26 × en/ko/es(edit.md 아님). R2 해제. B fix1 `ctx_0c945b3487af`(🟡4 + `/guide` 6줄) 착수.
+- B fix1 `2e1a9c46`(주석 Y1·Y2) · `4fc15a07`(Y3 Publish 진행 중 — 처음부터 green, mutation으로 검증 · Y4 describedby 한 개) · `6461e848`(가이드 6줄 en/ko/es), gate ok. dev 통합.
