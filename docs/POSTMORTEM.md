@@ -2889,3 +2889,11 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - **근본 원인**: 절 좌표를 캐시하면서 스크롤러 ResizeObserver와 fonts.ready만 다시 잼의 근거로 삼았다. 스크롤러 자체 크기는 그대로여도 앞선 목차 높이가 바뀌면 본문 좌표가 바뀐다.
 - **그물**: 정적 감사와 `public-doc-toc-responsive.test.tsx`의 Docs/Privacy 공통 재현이 잡았다. 기존 고정 TOPS/본문 뒤 목차 픽스처는 놓쳤다. 새 픽스처의 높이 판정도 처음엔 다른 버튼을 골랐으므로 nav 자신의 disclosure로 고친 뒤 원래 구현에서 RED를 다시 확인했다. 펼침·접힘·클릭 landing·pin 해제·관찰자 cleanup을 함께 검증한다.
 - **재발 방지**: `rg -n 'new ResizeObserver|measure|tops' components/public-doc-toc.tsx`로 좌표 캐시와 갱신 원인을 대조했다. 공유 목차 소비자는 같은 컴포넌트라 수정 한 곳이 Docs/Privacy에 함께 적용된다. 스크롤 컨테이너의 크기 불변을 자식 좌표 불변으로 가정하지 않는다. 같은 관찰자로 목차와 이름 있는 읽기 그릇도 관찰한다.
+
+### 2026-10-12 — 늦은 키 응답의 포커스는 막았지만 판 전환은 남았고, 키 일치만으로 막으면 외부 이동도 사라졌다
+
+- **영역**: `components/translations/workspace/workspace.tsx` · `use-leave-guard.ts`.
+- **증상**: 좁은 화면에서 B 선택 응답 전 목록으로 돌아가도 응답이 상세를 다시 열었다. 첫 수정은 목록을 보존했지만 같은 B로 전역 검색이 먼저 도착하면 외부 상세 진입도 무시했다.
+- **근본 원인**: 기존 ownSelection은 늦은 응답의 포커스 착지만 막고 selection dispatch는 무조건 실행했다. dispatch까지 막은 첫 수정은 키 id가 같다는 사실을 요청 출처로 취급했다. 새 외부 의도가 이전 로컬 이동을 대체하는 경계가 빠졌다.
+- **그물**: 감사의 결합 시퀀스 테스트가 최초 문제를, 독립 리뷰와 실제 SearchTrigger 클릭/Enter·Inbox 링크 프리미티브·history 대역의 RED 9건이 후속 회귀를 잡았다. 응답을 먼저 flush하고 외부 이동을 검사하던 테스트는 대기 중 대체를 놓쳤다. 승인된 외부 이동은 기존 useLeaveGuard에서 표식을 무효화하고 취소는 유지한다. focused GREEN 58건; full gate와 실제 Next 순서는 별도로 검증한다.
+- **재발 방지**: `rg -n 'ownSelection|useLeaveGuard' components/translations/workspace`로 표식 발급·소비·무효화를 함께 검사했다. 소비자는 Workspace 한 곳이며 별도 이벤트 버스나 URL 상태를 추가하지 않았다. 응답 지연 테스트는 최신 로컬 의도와 같은 대상을 향하는 새 외부 의도를 각각 대조한다.
