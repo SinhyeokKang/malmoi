@@ -236,6 +236,9 @@ components/
   ui/list-row.tsx       ListRow/ListRowChevron. 링크·button·비상호작용 li/div의 실제 태그와 슬롯(title/description/icon/aside/actions)을 공유한다.
                         card/canvas hover와 selected·명시 aria-current, 원래 inset 포커스 자리를 보존한다.
                         배너를 함께 드는 li와 목록 의미론은 소비자가 소유한다. ListRowChevron은 busy 표시를 받아 서버 행의 훅을 늘리지 않는다
+                        `stackActions`(옵트인)는 그릇 640 미만에서 동작 묶음을 아래 줄 오른쪽으로 내린다(2026-10-11 responsive-app — Account 행이 소비자)
+  ui/disabled-reasons.tsx  DisabledReasons + useDisabledReasons + disabledReasonId — 꺼진 Sync·Publish 아래 보이는 사유 줄(2026-10-11 responsive-app,
+                        DESIGN §7). 같은 문장은 한 줄, id는 범위 + 문장. 문구를 만들지 않는다 — 호출부(번역 화면·Home 머리)가 쓰던 사유를 넘긴다
   ui/list-group.tsx     ListGroup — 결과 목록의 묶음(role=group + 머리 aria-labelledby · 두 번째부터 위 선). 전역 검색 CommandGroup과 헤더 Inbox가
                         같이 쓴다(attention-inbox T8a). icon(16 썸네일)이 있을 때만 머리가 한 줄 정렬이다
   ui/facts.tsx          export는 Fact다. 소비자가 dl·grid·값 의미를 소유하고 라벨/값 배치(row/stacked/inline, width96/120)를 공유한다.
@@ -267,7 +270,8 @@ components/
   ui/text-trigger.tsx  TextTrigger — 누르는 글자(ui-locales). 공개 푸터 언어 스위처의 트리거 — Button이 아닌 이유는 라벨 500 강제(이웃 푸터 링크 400).
                         busy는 aria-disabled + aria-busy(진짜 disabled면 메뉴가 닫힐 때 포커스가 body로 빠진다) · 앞 글리프를 스피너로 교체(glyphSlot)
   ui/input-clear-button.tsx  InputClearButton — Input의 지우기 X(클라이언트). input.tsx는 fieldClass를 서버가 읽어 "use client"를 달 수 없어서 떼었다
-  ui/dialog.tsx       기존 440 Dialog + 형제 CommandDialog · DrawerContent(측면 서랍 — 2026-10-10, 공개 내비가 첫 소비자).
+  ui/dialog.tsx       기존 440 Dialog + 형제 CommandDialog · DrawerContent(측면 서랍 — 2026-10-10, 공개 내비가 첫 소비자 · 앱 LNB 서랍이 둘째, 세로 고정 바닥 `pinned`).
+                        확인 Dialog는 `lg` 미만에서 좌우 16 · 본문만 스크롤 · footer 감김이다(2026-10-11 responsive-app — `max-lg:` 토큰뿐이라 `lg` 이상 바이트 불변).
                         검색만 LargeModal 패널·높이·dim을 공유하며 top16으로 옮긴다(`lg` 미만은 그 상수가 시트로 만들고 입력 줄이 Cancel을 든다 — useCommandDialogCancel).
                         진입·복귀는 DialogContent와 같은 모듈 함수(훅 아님) openAutoFocus·closeAutoFocus(event, consumer?) 한 벌이고(소비자 먼저),
                         조합 중 Esc는 use-ime-guard가 막는다(onEscapeKeyDown prop 없음). 해시 착지의 복귀 억제(onCloseAutoFocus)만 소비자가 잇는다
@@ -322,8 +326,8 @@ components/
                         __tests__/global-search · search-privacy는 부분 실패/레이스/이탈·dim/목차 소비자와 저장·추적0을 센다
   shell/                앱 셸. ⚠️ 루트가 h-svh overflow-hidden이고 min-h-svh가 아니다 — min-이면
                         aside가 문서 높이만큼 늘어 Sign out이 화면 밖으로 나간다(malmoi#13)
-                        ⚠️ min-w-[1280px]과 CONTENT_MAX(max-w-7xl)가 같은 숫자다 — 최소폭에서 상한까지
-                        한 칸이라 그 사이에 중간 리플로가 필요 없다. 한쪽만 움직이면 패널이 떠거나 잘린다
+                        ⚠️ 폭 하한이 없다(2026-10-11 responsive-app — 옛 min-w-shell-min 1280 제거). CONTENT_MAX(max-w-7xl)는 상한만 든다
+                        content-panel.tsx의 PANEL_HEAD_ROW가 버튼을 든 패널 머리의 640 두 줄 규칙 한 조각이다(실물·골격 공유)
                         ⚠️ 스크롤이 패널이 아니라 PanelBody에 있다 — 제목·툴바가 함께 올라가면
                         "지금 보고 있는 것"을 말할 것이 사라진다
                         ⚠️ 본문 랜드마크를 ContentPanel이 든다 — 화면은 자기 <main>을 안 든다
@@ -353,11 +357,18 @@ components/
                         ⚠️ 행의 gap-2가 핸들 폭(w-2)으로 옮겨 갔다 — gap 안에 핸들을 끼우면 8+8+8이다
                         ⚠️ LNB 접기(40 레일)도 여기다 — collapsible 패널이라 버튼과 드래그가 같은 판정이다.
                         sidebar-collapse.ts가 그 상태를 사이드바에 넘기는 컨텍스트다(사이드바는 숨기기만 한다)
+                        ⚠️ 두 Panel·핸들은 늘 마운트하고 `lg` 미만에서 CSS로 숨긴다 — 좁은 동안 setLayout·onResize를 건너뛰고 넓어질 때 선호폭을 되살린다(ARCHITECTURE §6.358)
+                        nav-drawer.tsx  앱 LNB 서랍(2026-10-11 responsive-app — `lg` 미만 헤더 메뉴 버튼 + DrawerContent 안의 Sidebar drawer 형) · AppWideOnly(헤더
+                        New project·세로선을 `lg` 미만에서 숨기고 포커스를 메뉴 버튼으로 넘긴다). 공개 셸 nav-drawer와 형이 같고 구역·바닥이 다르다
+                        narrow-handoff.ts  useNarrowHandoff — 좁아지며 숨는 넓은 묶음의 포커스 이관 훅. 소비자 넷(공개 WideOnly · DocsFixedNav · 앱 고정 LNB ·
+                        AppWideOnly) — 셋째 소비자가 붙으며 public-shell/nav-drawer에서 옮겼다(#214 Chrome 순서, ARCHITECTURE §6.358)
   translations/workspace/  **번역 작업 화면** (2026-09-23, translation-rework C4 — DESIGN §6.1a). workspace(draft·이동·폭의
                         **한 소유자** — 저장·Revert·Publish 확인이 전부 여기서 갈린다) · tree-panel · key-list · locale-panel ·
                         filter-menu · use-leave-guard(뒤로가기는 capture 단계 popstate에서 되돌리고 새로고침·닫기는
                         beforeunload다). ⚠️ 카드 사이 핸들은 react-resizable-panels가 아니다 — px 하한 셋(420·336·208)을
                         % 환산 없이 지키려고 lib/translations/layout.ts가 폭을 계획한다
+                        ⚠️ 카드 772 미만은 단일 판이다(2026-10-11 responsive-app) — 판 표시는 CSS(`@container/ws` + data-pane)이고 판 전환은
+                        lib/translations/compact-pane.ts, 상세 머리(진입 착지 h2)는 workspace가 든다(ARCHITECTURE §6.3591)
   translations/         작업 화면 밖에 남은 조각 넷 — sync-lock(⚠️ Sync가 도는 동안의 쓰기 잠금을 보이는 두 자리 — 착지 배너와
                         저장·Revert 거부 Dialog. **판정하지 않는다** — lease 판정 planWriteLock은 lib/sync/plan.ts에 있고 잎이 아니라
                         서버가 시각만 넘긴다) · edit-loss-banner · base-pending-banner(⚠️ 둘은 sync-edit-protection의
@@ -393,7 +404,7 @@ components/
                         footer는 서버 컴포넌트로 남고 오른쪽 묶음의 언어·테마 스위처(components/i18n/locale-switcher · components/color-scheme/theme-switcher)만 클라이언트다
                         (drawer = 공개 셸 형 — `lg` 미만 스위처는 서랍 바닥으로, 기본 = Auth 형 — `lg` 미만 두 줄 감김).
                         nav-drawer(클라이언트 — `lg` 미만 헤더의 메뉴 버튼 + 측면 서랍 NavDrawer(ui/dialog의 DrawerContent) · 좁아지며 숨는 넓은 링크의
-                        포커스를 메뉴 버튼으로 넘기는 WideOnly. 검색·Inbox·계정은 서랍에 넣지 않는다 — 헤더에 한 벌, ARCHITECTURE §6.358)
+                        포커스를 메뉴 버튼으로 넘기는 WideOnly — 그 훅 useNarrowHandoff는 2026-10-11에 components/shell/narrow-handoff.ts로 옮겼다. 검색·Inbox·계정은 서랍에 넣지 않는다 — 헤더에 한 벌, ARCHITECTURE §6.358)
   color-scheme/         화면 테마의 클라이언트 조각(2026-10-10). apply(applyColorScheme — Action보다 먼저 <html data-theme>을 쓰고 ok가 아니면 되돌린다 ·
                         글리프 셋 COLOR_SCHEME_GLYPHS. Theme 카드와 스위처가 공유) · theme-switcher(공개 푸터 — 언어 스위처와 같은 프리미티브·같은 busy 형.
                         현재 값을 prop으로 받지 않고 라벨은 CSS가 data-theme로 고르며, 메뉴 체크는 열 때 그 속성을 읽는다)
@@ -457,7 +468,9 @@ components/
                         ⚠️ **Home의 Recent logs가 `event-row`를 그대로 쓴다** — 같은 사건이 두 화면에서
                         같은 모양이어야 한다. PR 링크 파랑 한 자리는 `event-meta`에 있다(home-vocabulary가 센다)
                         ⚠️ **상세 본문은 서버가 그린다** — 클라이언트는 열림·닫힘·포커스만 든다
+                        row-layout.ts — 행 적층 클래스 상수(실물·골격 공유, 날짜 카드 640 미만 시각/문장/결과 세 줄 — DOM·`order` 불변, 2026-10-11 responsive-app)
   home/                 Home 화면의 블록 넷 + 클라이언트 호스트. count-cards · attention-card ·
+                        grid.ts(HOME_GRID — 그릇 960 미만 한 열, 실물·골격 공유, 2026-10-11 responsive-app) ·
                         logs-card · meta-column은 **순수 서버 컴포넌트**다(`+n more`가 <details>라
                         클라이언트 상태가 0이다) · actions.tsx는 "use client"
                         ⚠️ **actions.tsx가 컨텍스트 Provider다** — [Sync]는 머리에 있고 실패 배너는
@@ -482,7 +495,7 @@ components/
                         생성 흐름의 상태를 소유하고 LargeModal + WizardFooter로 단계 본문·바닥을 조립한다.
                         이전 onboarding/modal.tsx 재수출과 ui/modal.tsx 경로는 제거했다
   sources/              sources-screen · source-detail-modal · source-status · base-language-form · add-sources-modal ·
-                        remove-source-dialog · sources-archived 일곱.
+                        remove-source-dialog · sources-archived 일곱 + row-layout.ts(행 적층 클래스 상수 — 카드 640 미만 상태가 이름 아래, 실물·골격 공유).
                         remove-source-dialog는 상세 모달 바닥 왼쪽 [Remove source]의 확인 창이다(Sync 확인 창 형 — 지문은
                         여는 순간 받는다). 성공·응답 유실은 목록 소유자(sources-screen)가 상세를 닫고 배너로 받는다.
                         목록 소유자가 선택·쓰기 결과를 유지. 로딩/거부/장애를 구별하고 쓰기는 기존 Action 경계를 따른다.
@@ -584,6 +597,10 @@ components/
                         api-contract(현재 API와 등재된 이행 부채) · parallel-p3-loading-status(loading.tsx glob 전수: sr-loading 단일 상태와 장식 Skeleton)
                         · large-modal-sheet(`lg` 미만 시트 토큰 · `lg` 이상 바이트 불변 · flush) · touch-target(coarse 44 히트 영역의 크기 범위) ·
                         public-nav-drawer(서랍 열림·포커스 다섯 계약·`lg` 넘김) · invite-project-card(초대 카드의 긴 이름 줄바꿈) — 2026-10-10 responsive-public
+                        · app-nav-drawer(앱 LNB 서랍 직접 렌더·바닥·넓어짐/좁아짐 포커스 이관·누름 구역) · shell-panels-narrow(라이브러리 대역 — 좁은 동안 setLayout/onResize 건너뜀·쿠키 불변·복원 px) ·
+                        drawer-pinned · dialog-narrow · disabled-reasons · translation-workspace-compact(단일 판 — draft·포커스 착지·배너 재마운트 0·낮은 높이) ·
+                        files-sequential · home-stack · members-narrow · repo-branch-narrow · responsive-activity · settings-narrow · admin-panel-head — 2026-10-11 responsive-app
+                        (⚠️ jsdom은 폭·컨테이너 쿼리를 못 잰다 — 클래스 계약·data-pane·포커스 대상만 단언하고 픽셀은 런타임 실측 몫이다)
                         ⚠️ loading 전수 계약은 기존 sibling-loading의 경계/치수 검사와 역할이 다르다
 ```
 
@@ -713,7 +730,8 @@ lib/
                         draft(saved/draft/inFlight 세 층 reducer + 세션 복구 사본) · saved-rows · navigation ·
                         tree-narrow(목록 범위 — 전 소스 행을 트리 위치·전 소스 검색으로 자르고(`inRange`) 노드별 일치 수를 센다(`tallyRows`·`countTree` —
                         숨기지 않고 숫자만 바꾼다). 트리 이동의 첫 키 `firstRowAt`도 여기다. translation-tree-range) ·
-                        baseline(미전달 셀 delta 기준 — ARCHITECTURE §5.8) · layout(세 패널 폭 계약 — 로케일 ≥420을 마지막까지 지킨다) · context(전달 확인의 context 지문 — ⚠️ **이것만 잎이 아니다**:
+                        baseline(미전달 셀 delta 기준 — ARCHITECTURE §5.8) · layout(세 패널 폭 계약 — 로케일 ≥420을 마지막까지 지키고 772 미만은 single) ·
+                        compact-pane(단일 판의 판 전환 reducer + 트리 이동 의도 모듈 변수 — import 0, 2026-10-11 responsive-app, ARCHITECTURE §6.3591) · context(전달 확인의 context 지문 — ⚠️ **이것만 잎이 아니다**:
                         `node:crypto`를 물어 서버 전용이고 `lib/pull/load.ts`·Save가 쓴다) · connection-reason(연결 때문에 꺼진 Publish·Sync의
                         사유 문장 — 갈래는 lib/home/state의 connectionProblem을 그대로 쓰고 역할별 해법을 잇는다, malmoi#160).
                         나머지는 잎이다 — import는 서로와 잎인 `lib/routes.ts`뿐이다. ⚠️ connection-reason은 그 예외다(lib/home/state ·
@@ -820,6 +838,7 @@ lib/
                         입력 없음)·planUiLocaleWrite · no-korean-ui 허용(endonym 한국어)) · server(server-only — getUiLocale(React cache)·getMessages·getDateStyle(React cache — 세션의 timeZone, 밖은 UTC) ·
                         ko·es 사전의 서버 import 자리) · adapter-errors(어댑터 오류·pull 경고 코드 → 문장, 사전을 인자로 받는다 · withWarningLines는 외부 계약용)
   onboarding/ survey/ scan/ projects/ shell/ settings/ signin/ cli/
+                        (onboarding/files-layout — Files 단계 두 판·순차 판 판정, 입력은 잰 본문 폭이고 608 미만이 순차 판. 2026-10-11 responsive-app)
                         (cli/push-response — `/api/push` 응답을 CI 로그·exit로 옮긴다. deferred면 exit 0 + ::warning 한 줄 ·
                         cli/push-url — `push-local --url` 판정. 토큰 원문을 싣는 요청이라 http는 루프백 셋만, 위반은 exit 2)
                         각 기능의 순수 판정층
