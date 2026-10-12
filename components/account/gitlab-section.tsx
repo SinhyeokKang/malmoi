@@ -17,7 +17,7 @@ import { IconTile } from "@/components/ui/icon-tile";
 import { ListRow } from "@/components/ui/list-row";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { formatDay } from "@/lib/date-format";
-import type { StateKey } from "@/lib/status/canon";
+import { STATE, type StateKey } from "@/lib/status/canon";
 import { tokenExpiryState } from "@/lib/status/token-expiry";
 
 /** 서버가 넘기는 값 — 만료일은 ISO 문자열이다(직렬화 경계). `projectCount`는 이 연결을 참조하는 프로젝트 수다. */
@@ -40,16 +40,26 @@ export function GitLabSection({ connection }: { connection: GitLabConnectionSumm
   const [pending, startTransition] = useTransition();
   const connected = connection !== null;
 
-  // 해제가 성공하면 누른 버튼이 사라진다 — 남는 입력으로 포커스를 옮긴다(`GithubSection`과 같은 전이 처리, audit #32).
+  /*
+    전이마다 포커스를 남는 컨트롤로 옮긴다(`GithubSection`과 같은 처리, audit #32) — 해제 뒤엔 누른 버튼이 사라져 PAT 입력으로, 연결 뒤엔 입력하던 폼이
+    사라져 연결 행의 [Replace token]으로 간다(시안 G8b → G8 · #257). 둘 다 안 하면 포커스가 `body`로 빠진다.
+  */
   const body = useRef<HTMLDivElement>(null);
   const wasConnected = useRef(connected);
   useEffect(() => {
     if (wasConnected.current && !connected) landFocus(body.current?.querySelector<HTMLElement>("input, button"));
+    if (!wasConnected.current && connected) landFocus(body.current?.querySelector<HTMLElement>("[data-gitlab-replace]"));
     wasConnected.current = connected;
   }, [connected]);
 
   const expiresAt = connection?.expiresAt == null ? null : new Date(connection.expiresAt);
-  const expiry = tokenExpiryState(expiresAt, new Date());
+  const now = new Date();
+  const expiry = tokenExpiryState(expiresAt, now);
+  // 임박·만료는 칩이 호박이고 [Replace token]이 할 일이 된다(primary — 시안 G8). 임박은 머리 띠가 남은 일수를 말한다(#255).
+  const attention = connected && expiry !== "valid";
+  const soonNotice = connected && expiry === "expiresSoon" && expiresAt !== null
+    ? m.account.gitlab.expiresSoonNotice(Math.max(1, Math.ceil((expiresAt.getTime() - now.getTime()) / 86_400_000)), formatDay(expiresAt, style))
+    : null;
   const state: StateKey = !connected ? "notConnected" : expiry === "expired" ? "expired" : expiry === "expiresSoon" ? "expiresSoon" : "connected";
   const description = !connected
     ? m.account.gitlab.hintNotConnected
@@ -69,20 +79,20 @@ export function GitLabSection({ connection }: { connection: GitLabConnectionSumm
   }
 
   return (
-    <Card title={m.account.gitlab.title} notice={failure !== null ? <Alert inset variant="danger">{failure}</Alert> : undefined}>
+    <Card title={m.account.gitlab.title} notice={failure !== null ? <Alert inset variant="danger">{failure}</Alert> : soonNotice !== null ? <Alert inset variant="warning">{soonNotice}</Alert> : undefined}>
       <div ref={body}>
         <CardRows>
           <ListRow
             stackActions
             as="li"
             className="border-border border-t first:border-t-0"
-            icon={<IconTile>{connected ? <GitlabIcon className="size-4" /> : <Link2 className="text-muted-foreground size-4" aria-hidden />}</IconTile>}
+            icon={<IconTile tone={attention ? STATE[state].tone : undefined}>{connected ? <GitlabIcon className="size-4" /> : <Link2 className="text-muted-foreground size-4" aria-hidden />}</IconTile>}
             title={<span className="flex min-w-0 items-center gap-2 text-base"><span className="truncate font-medium">{connected ? `@${connection.username}` : m.account.gitlab.rowName}</span><StatusBadge state={state} className="shrink-0" /></span>}
             description={description}
             actions={connected ? <>
               <Dialog open={replacing} onOpenChange={setReplacing}>
                 <DialogTrigger asChild>
-                  <Button>{m.account.gitlab.replace}</Button>
+                  <Button data-gitlab-replace="" variant={attention ? "primary" : undefined}>{m.account.gitlab.replace}</Button>
                 </DialogTrigger>
                 <DialogContent title={m.account.gitlab.replaceTitle} description={m.account.gitlab.replaceHint(connection.username)}>
                   <GitLabTokenForm autoFocus submitLabel={m.account.gitlab.replace} onConnected={() => { setReplacing(false); router.refresh(); }} />
@@ -97,7 +107,7 @@ export function GitLabSection({ connection }: { connection: GitLabConnectionSumm
                   description={m.account.gitlab.confirmHint}
                   actions={<>
                     <DialogClose asChild><Button data-initial-focus variant="default">{m.common.cancel}</Button></DialogClose>
-                    <DialogClose asChild><Button variant="danger" onClick={disconnect}>{m.settings.account.disconnectConfirm}</Button></DialogClose>
+                    <DialogClose asChild><Button variant="danger" onClick={disconnect}>{m.account.gitlab.disconnectConfirm}</Button></DialogClose>
                   </>}
                 />
               </Dialog>
@@ -105,7 +115,8 @@ export function GitLabSection({ connection }: { connection: GitLabConnectionSumm
           />
         </CardRows>
         {!connected && (
-          <div className="border-divider border-t px-4 py-4">
+          // 행 이름선(56 = 여백 16 + 칩 28 + 간격 12)에서 시작하고 구분선이 없다 — 폼이 그 행의 일부다(시안 G8b · #256).
+          <div className="pr-4 pb-4 pl-14">
             <GitLabTokenForm submitLabel={m.account.gitlab.form.connect} onConnected={() => router.refresh()} />
           </div>
         )}

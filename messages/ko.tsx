@@ -940,6 +940,9 @@ export const ko = {
       confirmDisconnect: "Malmoi에서 GitLab 연결을 해제할까요?",
       confirmHint: "저장된 토큰이 삭제됩니다. 이 연결을 쓰는 프로젝트는 프로젝트 소유자가 다시 연결할 때까지 동기화와 게시가 멈춥니다.",
       disconnectFailed: "GitLab 연결을 해제하지 못했습니다. 다시 시도하세요.",
+      disconnectConfirm: "GitLab 연결 해제",
+      expiresSoonNotice: (days: number, date: string): string =>
+        `내 GitLab 토큰이 ${days.toLocaleString("ko-KR")}일 뒤(${date})에 만료됩니다. 이 토큰을 쓰는 프로젝트가 계속 동작하도록 그 전에 교체하세요.`,
       form: {
         label: "개인 액세스 토큰",
         help: "api 스코프가 있는 레거시 개인 액세스 토큰을 쓰세요. 연결할 프로젝트에는 Maintainer 이상의 역할이 필요합니다.",

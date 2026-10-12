@@ -932,6 +932,9 @@ export const es = {
       confirmDisconnect: "¿Desconectar GitLab de Malmoi?",
       confirmHint: "Malmoi elimina el token guardado. Los proyectos que usan esta conexión dejan de sincronizarse y publicarse hasta que un propietario del proyecto los vuelva a conectar.",
       disconnectFailed: "No se pudo desconectar GitLab. Vuelve a intentarlo.",
+      disconnectConfirm: "Desconectar GitLab",
+      expiresSoonNotice: (days: number, date: string): string =>
+        `Tu token de GitLab caduca en ${days.toLocaleString("es")} ${days === 1 ? "día" : "días"}, el ${date}. Reemplázalo antes para que los proyectos que lo usan sigan funcionando.`,
       form: {
         label: "Token de acceso personal",
         help: "Usa un token de acceso personal clásico con el alcance api. Los proyectos que conectes necesitan el rol Maintainer o superior.",

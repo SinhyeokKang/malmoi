@@ -2114,6 +2114,11 @@ export const en = {
       confirmDisconnect: "Disconnect GitLab from Malmoi?",
       confirmHint: "Malmoi deletes the saved token. Projects that use this connection stop syncing and publishing until a project owner reconnects them.",
       disconnectFailed: "GitLab wasn't disconnected. Try again.",
+      /** 해제 확인 버튼 — GitHub App의 `Disconnect app`을 쓰지 않는다(이 카드는 앱이 아니라 토큰이다). */
+      disconnectConfirm: "Disconnect GitLab",
+      /** 만료 임박 띠(시안 G8) — 남은 일수와 날짜, 그리고 무엇이 멈추는가. */
+      expiresSoonNotice: (days: number, date: string): string =>
+        `Your GitLab token expires in ${days.toLocaleString("en-US")} ${days === 1 ? "day" : "days"}, on ${date}. Replace it before then to keep the projects that use it running.`,
       /** PAT 입력 shell — ①의 GitLab 탭·이 카드·설정 재연결이 같은 형을 쓴다(design-brief "GitLab 탭 상태"). 스코프는 `api` 하나다(D13). */
       form: {
         label: "Personal access token",
