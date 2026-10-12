@@ -12,6 +12,10 @@ import { httpStatus } from "@/lib/failure";
  * ⚠️ **자체 재시도·자체 fetch가 없다** — 주입된 `fetch` 한 번이다. Publish는 실행 수명의 `execution.fetch()`를 넘긴다(240초 예산·비GET은
  * 쓰기로 셈 — POSTMORTEM 2026-10-09). 재시도가 끼면 애매한 5xx 뒤 MR POST가 두 번 나간다.
  *
+ * ⚠️ **리다이렉트를 따라가지 않는다**(`redirect: "error"` — audit A1). fetch 기본값 `follow`는 3xx를 따라가며 `PRIVATE-TOKEN`을 그대로 싣는다(undici는
+ * cross-origin에서 `Authorization`만 지운다) — 다른 origin이면 PAT가 그 호스트로, 같은 origin이면 다른 project id로 간다. 숫자 id 주소에 3xx가 올
+ * 정상 경로는 없으므로 fetch가 던지는 `TypeError`(상태 없음)를 그대로 올린다 — `classifyGitLabFailure`가 `unavailable`로 읽는다.
+ *
  * ⚠️ **응답을 통째로 로그·저장하지 않는다** — `GET /projects/:id`에 러너 등록 토큰(`runners_token`)이 실린다. 호출부는 필요한 필드만 뽑는다.
  * 오류 메시지에도 본문을 싣지 않는다(경로와 상태 코드뿐이다). 토큰은 헤더에만 있다.
  */
@@ -20,6 +24,7 @@ import { httpStatus } from "@/lib/failure";
 export const GITLAB_ORIGIN = "https://gitlab.com";
 export const GITLAB_API = `${GITLAB_ORIGIN}/api/v4`;
 export const GITLAB_GRAPHQL = `${GITLAB_ORIGIN}/api/graphql`;
+const API_PATH = new URL(GITLAB_API).pathname;
 
 /**
  * 원격이 실패 상태로 답했다. `status`는 `httpStatus()`(`lib/failure.ts`)가 읽는 이름이다 — 저장 오류 코드 분류(`lib/sync/plan.ts`)가
@@ -131,10 +136,13 @@ export function createGitLabTransport(token: string, options: { fetch?: typeof f
   async function call(method: "GET" | GitLabWriteMethod, path: string, query: Readonly<Record<string, string>> = {}, body?: unknown): Promise<GitLabResponse> {
     assertIdAddressed(path, query);
     const url = new URL(`${GITLAB_API}${path}`);
+    // `assertIdAddressed`는 정규화 전 문자열을 본다 — `new URL`이 `..`·`%2e%2e`를 접으면 `/projects/1/repository/../../2/…`가 프로젝트 2가 된다(audit A8).
+    // 정규화가 경로를 바꿨으면 거부한다(동적 조각은 `encodeURIComponent`를 지나므로 정상 경로는 바뀌지 않는다).
+    if (url.pathname !== `${API_PATH}${path}`) throw new Error("GitLab paths must not contain dot segments");
     for (const [name, value] of Object.entries(query)) url.searchParams.set(name, value);
     const headers: Record<string, string> = { "PRIVATE-TOKEN": token, Accept: "application/json" };
     if (body !== undefined) headers["Content-Type"] = "application/json";
-    const response = await send(url, { method, headers, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+    const response = await send(url, { method, headers, redirect: "error", ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
     if (!response.ok) {
       // 본문은 403의 스코프 판정에만 읽는다 — 메시지에 싣지 않는다.
       const insufficientScope = response.status === 403 && (await response.text().catch(() => "")).includes("insufficient_scope");
@@ -151,6 +159,7 @@ export function createGitLabTransport(token: string, options: { fetch?: typeof f
       const response = await send(new URL(GITLAB_GRAPHQL), {
         method: "POST",
         headers: { "PRIVATE-TOKEN": token, Accept: "application/json", "Content-Type": "application/json" },
+        redirect: "error",
         body: JSON.stringify({ query, variables }),
       });
       if (!response.ok) throw new GitLabHttpError("/graphql", response.status, false, "POST");
