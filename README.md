@@ -50,7 +50,7 @@ GitLab.com repositories work the same way. You connect GitLab with a personal
 access token (`api` scope), Publish opens one merge request, and Malmoi
 generates a `.gitlab-ci.yml` job instead of a GitHub Actions workflow.
 
-[Create your first project →](https://mal-moi.com/docs/setup/create-project)
+[Create your first project →](https://mal-moi.com/docs/create)
 
 ## Features
 
