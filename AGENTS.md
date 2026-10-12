@@ -212,7 +212,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 
 ### CI (GitHub Actions)
 
-`ci.yml` 하나뿐이고 job은 `verify`(`db:generate` + typecheck + test + Codex 미러 드리프트) 단일이다. ⚠️ **`permissions: contents: read`가 job에 박혀 있고 `uses:` 셋이 40자 SHA로 핀돼 있다** — 이 job은 `pnpm test`로 임의 프로젝트 코드를 돈다. 트리거는 **push `[main, dev]` + pull_request `[main]` + 수동**이다.
+워크플로는 **둘**이다 — 게이트 `ci.yml`(job은 `verify`(`db:generate` + typecheck + test + Codex 미러 드리프트) 단일)과 **발행자** `image.yml`(Release `published`·수동 → 셀프 호스팅 이미지를 GHCR에 push, job `publish` 하나 — 권한 `contents: read` + `packages: write`, 서드파티 action 없이 `actions/checkout` 하나, 아래 릴리스 절). 아래 표와 보호 서술은 게이트 `ci.yml`의 것이다. ⚠️ **`ci.yml`은 `permissions: contents: read`가 job에 박혀 있고 `uses:` 셋이 40자 SHA로 핀돼 있다** — 이 job은 `pnpm test`로 임의 프로젝트 코드를 돈다. 트리거는 **push `[main, dev]` + pull_request `[main]` + 수동**이다.
 
 | 트리거 | 무엇을 막나 |
 |---|---|
@@ -220,7 +220,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 | pull_request `[main]` | **프로덕션 머지 게이트.** `/merge`가 이 결론을 본다 |
 | push `[main]` | 머지 뒤 확인 |
 
-**`main`에 브랜치 프로텍션이 있다**: required check `verify` 하나, **`enforce_admins` 켬** — 오너도 main을 직접 칠 수 없고 PR 머지만 통과한다. **태그 push는 어떤 job도 안 돌린다**(`on.push`가 `branches`만 가진다). **CI에서 `next build`를 돌리지 않는다** — 로컬 게이트가 이미 돌고 Vercel이 배포에서 다시 돈다.
+**`main`에 브랜치 프로텍션이 있다**: required check `verify` 하나, **`enforce_admins` 켬** — 오너도 main을 직접 칠 수 없고 PR 머지만 통과한다. **태그 push는 어떤 job도 안 돌린다**(`on.push`가 `branches`만 가진다) — **Release `published` 이벤트만 `image.yml`을 깨운다.** **게이트 CI(`verify`)에서 `next build`를 돌리지 않는다** — 로컬 게이트가 이미 돌고 Vercel이 배포에서 다시 돈다. 발행 워크플로는 게이트가 아니라 이미지 빌드의 일부로 `prisma generate && next build`를 돈다.
 
 ## 브랜치 정책 & 배포
 
@@ -243,8 +243,8 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 
 - **레벨은 `/merge` 3단계가 매번 묻는다** — `pnpm release:plan`의 커밋 타입 판정(`!:`·`BREAKING CHANGE` → major, `feat` → minor, 그 밖 patch)이 추천 선택지다. `skip`은 없다(머지 = 배포). 첫 릴리스는 **1.0.0 고정**(질문 없음).
 - **`version`은 `/merge` 4단계만 바꾼다.** 그 bump 커밋(`chore(release): v<x.y.z>`)이 **`/push`를 거치지 않는 유일한 dev 커밋**이다 — 볼 코드가 없고 PR CI가 그 SHA를 막는다.
-- **태그는 `gh release create --target <squash SHA>`가 서버에서 Release와 함께 만든다** — 로컬 `git tag`·draft·`--generate-notes`를 쓰지 않는다. 노트는 둘이다: PR body = 개발자용 변경 목록, Release = 사용자 체감 변화만.
-- **매 앱 태그마다 `/merge` 9-b단계가 셀프 호스팅 이미지를 GHCR(`ghcr.io/sinhyeokkang/malmoi:v<x.y.z>`)에 발행한다** (2026-10-09, self-hosting) — squash SHA의 `git archive`로 `linux/amd64`를 빌드해 digest를 리포트에 남긴다. 발행 머신에 Docker와 `ghcr.io` 로그인이 필요하고, 실패해도 머지·Release는 끝난 것이라 9단계처럼 손으로 재실행한다. 이미지 태그는 action 태그와 독립이다.
+- **태그는 `gh release create --target <squash SHA>`가 서버에서 Release와 함께 만든다** — 로컬 `git tag`·draft·`--generate-notes`를 쓰지 않는다. 노트는 둘이다: PR body = 개발자용 변경 목록, Release = 사용자 체감 변화 + `/merge` 9-b가 붙이는 이미지 줄 하나(`**Self-hosting image:**` — 손으로 쓰지 않는다).
+- **매 앱 태그마다 셀프 호스팅 이미지를 GHCR(`ghcr.io/sinhyeokkang/malmoi:v<x.y.z>`)에 발행한다** (2026-10-09, self-hosting → 2026-10-12, image-publish-workflow) — **발행은 `.github/workflows/image.yml`이 한다**: `/merge` 9단계의 `gh release create`가 만든 Release 이벤트가 깨우고, `scripts/publish-image.sh`가 태그 커밋의 `git archive`를 `linux/amd64`로 빌드·push한다(이미 있는 태그는 덮지 않고 `exists`로 끝난다). **9-b는 확인·기입만 한다** — run 대기 → 패키지 API digest → `scripts/release-image-note.ts`로 Release 본문에 `**Self-hosting image:**` 줄 기입 → 리포트. run이 red면 `workflow_dispatch`(`gh workflow run image.yml -f tag=v<x.y.z>`)로 다시 돌린다(`mismatch`는 재실행 금지). 발행 머신 전제(Docker·Colima·`ghcr.io` 로그인)는 Actions 장애 때의 비상 경로로만 남는다. 이미지 태그는 action 태그와 독립이다.
 - ⚠️ **앱 태그 `v<x.y.z>`와 action 태그 `malmoi-i18n-push-vN`은 별개 축이다** — 앱 버전이 올라도 action 태그는 안 움직인다. `git describe --tags`는 action 태그를 주므로 직전 릴리스를 찾는 데 쓰지 않는다.
 
 ### 게이트가 어디에 서 있나

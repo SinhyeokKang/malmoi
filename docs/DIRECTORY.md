@@ -1123,6 +1123,10 @@ scripts/                adapter-survey · sync-agents · copy-fonts · scan · i
                         release(순수 버전 판정 — planRelease·recommendLevel·latestReleaseTag. ⚠️ lib/가 아닌 이유는 앱 런타임이 안 쓰는 하네스 로직이라서다) ·
                         release-plan(pnpm release:plan — /merge 3단계 전용. 원격 태그(ls-remote)·origin/dev·origin/main을 읽는다. 읽기 전용,
                         exit 0 판정 / 1 error / 2 인자가 주어짐) ·
+                        publish-image.sh(이미지 발행 로직의 집 — 존재 조회 3분기·덮어쓰기 금지·digest 대조. image.yml이 부르고 Actions 장애 때 사람이 로컬에서 같은 스크립트를 돈다.
+                        ⚠️ bash 3.2 호환 · 실행 비트 100755 — __tests__/publish-image가 docker·git 대역으로 실행한다) ·
+                        release-image-note(Release 본문에 `**Self-hosting image:**` 줄을 기입하는 순수 함수 + CLI — /merge 9-b가 node로 바로 돈다.
+                        ⚠️ import 없음·지울 수 있는 타입만 — __tests__/release-image-note가 CLI를 실제 실행한다) ·
                         gate-plan(순수 게이트 판정 — planGate(단계 순서 · 격리 postgres 트리거의 **정본**) · isTeardownOnlyFailure) ·
                         gate(pnpm gate — /push·/ship·/orchestrate의 **유일한 로컬 게이트**. 첫 실패의 exit code로 끝난다, 2 = 인자 오류.
                         ⚠️ 2026-09-30 손으로 조립한 `| grep | head` 게이트가 종료 코드를 삼켜 red를 dev에 냈다 — 그래서 한 명령이다)
@@ -1137,8 +1141,13 @@ types/next-auth.d.ts    session.user.id를 싣는 모듈 확장. ⚠️ `login`(
                         ⚠️ 참조는 불변 태그 @malmoi-i18n-push-v3다(v1·v2는 기존 소비자용으로 고정) — 태그를 옮기는 것이 릴리스다.
                         셋업 계약은 scripts/__tests__/action-setup이 센다(store 캐시 없음 · setup-node 자동 캐시 끔)
 .github/workflows/ci.yml
-                        이 리포의 유일한 CI — job verify 하나(트리거·게이트 의미는 CLAUDE.md CI 절이 정본).
+                        이 리포의 **게이트 CI** — job verify 하나(트리거·게이트 의미는 CLAUDE.md CI 절이 정본). 발행 워크플로 image.yml과 별개다.
                         ⚠️ permissions: contents: read가 job에 박혀 있다 — pnpm test로 임의 프로젝트 코드를 돈다. uses:는 40자 SHA 핀(workflow-pins)
+.github/workflows/image.yml
+                        **셀프 호스팅 이미지 발행자**(게이트 아님) — Release `published`·workflow_dispatch(tag)가 깨우고 job publish 하나가
+                        scripts/publish-image.sh로 ghcr.io/sinhyeokkang/malmoi:v<x.y.z>(linux/amd64)를 발행한다(2026-10-12, image-publish-workflow).
+                        ⚠️ 최상위 permissions: {} · job은 contents: read + packages: write뿐 · 서드파티 action 없이 actions/checkout 하나(40자 SHA 핀) ·
+                        체크아웃은 워크플로 자신의 커밋이고 태그는 git archive 입력으로만 쓴다. 모양은 scripts/__tests__/image-workflow가 센다
 prisma.config.ts        마이그레이션 접속(DIRECT_URL / PRISMA_TARGET=prod면 DIRECT_URL_PROD). 런타임 접속은 lib/db.ts다.
                         ⚠️ env("DIRECT_URL")을 쓰지 않고 datasource를 조건부로 넣는다 — 로드 시점에 던져 .env.local 없는 pnpm build가 죽는다.
                         ⚠️ .env.local을 명시적으로 읽는다 — dotenv 기본값 .env면 URL이 undefined라 P1001로 오진한다

@@ -1,0 +1,70 @@
+name: Image
+
+# 셀프 호스팅 이미지 발행자 — `ci.yml`(머지 전 게이트)과 달리 **Release 뒤에** 돈다.
+#
+# 트리거가 tag push가 아니라 Release인 이유: `/merge`는 로컬 `git tag`를 쓰지 않고 `gh release create`가 서버에서
+# 태그와 Release를 함께 만든다. 그 이벤트는 사용자 토큰으로 생겨 워크플로를 깨운다(`GITHUB_TOKEN`이 만든 이벤트는
+# 깨우지 않는다). action 태그(`malmoi-i18n-push-vN`)는 Release를 만들지 않고, 스크립트의 정규식이 한 번 더 거른다.
+# dispatch는 빠진 태그를 채우는 수단이다 — 워크플로가 기본 브랜치에 있어야 보인다.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        required: true
+        type: string
+
+# job이 늘어도 기본 권한이 붙지 않는다.
+permissions: {}
+
+# 같은 태그의 release run과 dispatch run이 겹치면 둘 다 존재 조회를 통과해 둘 다 push할 수 있다(= 덮어쓰기).
+# 태그별로 직렬화해 뒤의 run이 `exists`로 끝나게 한다. 발행 중인 run은 죽이지 않는다.
+concurrency:
+  group: image-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+# 러너 기본값에 기대지 않고 `-eo pipefail`을 보장한다(POSTMORTEM 2026-09-30).
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  # 이 리포 CI의 유일한 쓰기 권한 job이다 — `packages: write` 하나, `contents: write`는 없다. 노출 면을 줄이는 근거:
+  #   - 이벤트를 띄울 수 있는 사람이 Release 생성자·dispatch 실행자(리포 write 권한자)뿐이다. PR·fork 코드는 여기서 돌지 않는다
+  #   - 서드파티 action이 없다 — 쓰기 토큰이 닿는 공급망을 `actions/checkout` 하나로 줄인다(`docker/*-action` 미사용)
+  #   - 토큰 스코프는 이 리포에 연결된 패키지 쓰기다. 리포 내용은 쓸 수 없다
+  #   - 태그 커밋의 `pnpm install`·`pnpm build`는 BuildKit 컨테이너의 RUN 안에서 돈다. 러너 env·docker 자격증명·소켓이
+  #     거기 닿지 않는다(`--secret` 없음, `git archive`라 `.git`도 context 밖)
+  # 체크아웃은 **워크플로 자신의 커밋**이다(release면 태그 커밋, dispatch면 main). 발행 로직은 그 커밋의 스크립트이고
+  # 태그는 fetch해 `git archive` 입력으로만 쓴다 — 태그를 체크아웃하면 스크립트가 없던 v1.3.x에서 죽는다.
+  # ⚠️ 수용한 위험: `docker-container` 드라이버가 받는 `moby/buildkit` 이미지가 고정되지 않았다.
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    # 표현식은 여기서만 받는다 — `run:` 본문에 `${{ }}`를 넣으면 태그 입력이 셸에 주입된다.
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      # 공개 리포라 자격증명 없이 받는다.
+      - name: Fetch the release tag
+        run: git fetch --no-tags --depth=1 origin "+refs/tags/$TAG:refs/tags/$TAG"
+
+      # 기존 패키지를 PAT로 만들어서, 패키지 설정의 Manage Actions access에 이 리포가 Write로 있어야 이 토큰이 push할 수 있다.
+      - name: Log in to ghcr.io
+        run: printf '%s' "$GITHUB_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # 기본 드라이버에 맡기면 러너 이미지가 바뀔 때 GHCR의 이미지 형태(index + provenance)가 조용히 갈린다.
+      - name: Create the buildx builder
+        run: docker buildx create --use --driver docker-container
+
+      - name: Publish
+        run: scripts/publish-image.sh "$TAG"
