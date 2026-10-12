@@ -2,28 +2,7 @@
 
 Crea un proyecto conectando un repositorio y eligiendo los archivos de traducción que Malmoi debe gestionar.
 
-Antes de empezar: inicia sesión con un correo verificado, ve a **Proyectos** y elige **Nuevo proyecto**. Puedes ser propietario de hasta tres proyectos activos. Para un repositorio de GitLab.com, necesitas el rol Maintainer o superior en ese proyecto de GitLab.
-
-## Conecta GitHub {#connect-github}
-
-1. Si GitHub no está conectado, elige **Instalar la GitHub App**, o **Conectar tu cuenta** si tu organización ya la instaló. Si el botón de instalación no está disponible, elige **Autorizar la GitHub App** y sigue las instrucciones para pedir acceso de instalación a un administrador. Si ya aparecen repositorios, continúa abajo.
-2. Si el repositorio no aparece, elige **Añadir repositorios** para abrir la instalación de la app en GitHub. En **Repository access**, elige **Only select repositories**, añade el repositorio y guarda.
-3. Si Malmoi muestra **Esperando aprobación**, pide a un propietario de la organización que la apruebe y luego elige **Intentar de nuevo**.
-4. Selecciona el repositorio, elige la **Rama** que contiene tus archivos de traducción y elige **Siguiente**. Es la rama base que Malmoi lee y contra la que abre los pull requests de traducciones.
-
-![El paso 1 de 4 de Nuevo proyecto con un repositorio seleccionado en la lista y dev como rama](/guide/create-repository.webp "Selecciona el repositorio y su rama y luego elige Siguiente.")
-
-## Conecta GitLab {#connect-gitlab}
-
-Malmoi se conecta a GitLab.com con un token de acceso personal de tu propia cuenta de GitLab. GitLab Self-Managed y GitLab Dedicated no son compatibles.
-
-1. Elige la pestaña **GitLab** en la parte superior del primer paso. Una instalación autoalojada sin la GitHub App muestra solo GitLab, sin pestañas.
-2. Si GitLab aún no está conectado, elige **Crear un token en GitLab**. La página de tokens de acceso personal de GitLab se abre en una pestaña nueva con el nombre `Malmoi` y el alcance `api` ya rellenados. Crea allí el token y cópialo. Malmoi necesita este tipo de token clásico; un token detallado (fine-grained) se rechaza.
-3. Pega el token en **Token de acceso personal** y elige **Conectar**. Mientras Malmoi lo comprueba con GitLab, el paso lo indica; si rechaza el token, el motivo aparece debajo del texto de ayuda. Malmoi no vuelve a mostrar el token. Si tu token guardado caducó o ya no se puede usar, el paso muestra **Volver a conectar GitLab**: pega un token nuevo de la misma forma.
-4. Malmoi lista los proyectos de GitLab en los que tienes el rol Maintainer o superior. Si no hay ninguno, muestra **No hay proyectos de GitLab para añadir**: consigue ese rol en GitLab y luego elige **Intentar de nuevo**.
-5. Selecciona el repositorio, elige la **Rama** que contiene tus archivos de traducción y elige **Siguiente**. Las traducciones vuelven como una merge request contra esta rama.
-
-Debajo del cuadro de búsqueda, Malmoi muestra qué cuenta de GitLab está conectada y cuándo caduca su token. Para usar un token nuevo de la misma cuenta, elige **Reemplazar token**. También puedes gestionar el token en [Cuenta](../account/profile.md#gitlab-token). El proyecto publica con el token de quien lo conectó, así que los commits y las merge requests en GitLab quedan a nombre de esa cuenta de GitLab.
+Antes de empezar: inicia sesión con un correo verificado, ve a **Proyectos** y elige **Nuevo proyecto**. Puedes ser propietario de hasta tres proyectos activos. El primer paso conecta tu repositorio: sigue [Conecta GitHub](connect-github.md) o [Conecta GitLab](connect-gitlab.md) y luego continúa abajo.
 
 ## Elige los archivos {#choose-files}
 
@@ -55,7 +34,7 @@ El proyecto queda listo al instante. El último paso dice **Malmoi está listo**
 
 Quien lo crea pasa a ser **Propietario**.
 
-En un proyecto de GitLab, el último paso muestra jobs de CI para `.gitlab-ci.yml` en lugar de un workflow de GitHub, y el token de push va en una variable de CI/CD; consulta [Añade los jobs de GitLab CI](workflow.md#gitlab-ci). Si el paso dice que el archivo de CI de GitLab aún no está disponible en esta versión de Malmoi, guarda igualmente el token de push. Mientras tanto, la ejecución nocturna y **Sincronizar** cargan los cambios del repositorio.
+En un proyecto de GitLab, el último paso muestra jobs de CI en lugar de un workflow; consulta [Añade los jobs de GitLab CI](gitlab-ci.md).
 
 ## Qué pasa después {#next}
 

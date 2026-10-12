@@ -35,7 +35,7 @@ Si la ejecución nocturna no puede leer la rama del repositorio, o GitHub o GitL
 
 ## Sincronización nocturna o workflow {#workflow}
 
-El workflow es opcional. Sin él, la ejecución nocturna recoge los cambios del repositorio una vez al día. Con [el workflow](../setup/workflow.md), el workflow de GitHub Actions de tu repositorio, o sus jobs de GitLab CI, entregan los cambios en cada commit a esa rama y también recogen referencias de código. En **Registros**, las ejecuciones del workflow se marcan como **CI**; CI es el workflow de tu repositorio.
+El workflow es opcional. Sin él, la ejecución nocturna recoge los cambios del repositorio una vez al día. Con [el workflow](../setup/workflow.md), el workflow de GitHub Actions de tu repositorio, o sus [jobs de GitLab CI](../setup/gitlab-ci.md), entregan los cambios en cada commit a esa rama y también recogen referencias de código. En **Registros**, las ejecuciones del workflow se marcan como **CI**; CI es el workflow de tu repositorio.
 
 ## Qué pasa después {#next}
 

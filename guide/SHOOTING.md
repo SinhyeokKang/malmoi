@@ -84,7 +84,7 @@
 | `/guide/actions-policy.webp` | `setup/allowed-actions.md#allowed-actions` | OWNER(GitHub) | 리포 Settings → Actions → General의 Actions permissions, 넷 패턴 입력 |
 | `/guide/translation-editor.webp` | `translate/edit.md#find-key` | EDITOR | Translations — Keys 목록 + 선택한 키의 언어별 칸 |
 | `/guide/publish-preview.webp` | `translate/publish.md#preview` | EDITOR | Publish 미리보기(저장한 편집 1건, 새 PR) |
-| `/guide/create-repository.webp` | `setup/create-project.md#connect-github` | OWNER | ①단계 — `i18n`으로 거른 저장소 목록, 선택 + Branch |
+| `/guide/create-repository.webp` | `setup/connect-github.md#connect-github` | OWNER | ①단계 — `i18n`으로 거른 저장소 목록, 선택 + Branch |
 | `/guide/create-files.webp` | `setup/create-project.md#choose-files` | OWNER | ②단계 — 감지된 세트 둘 선택 + 미리보기 |
 | `/guide/create-name.webp` | `setup/create-project.md#confirm-project` | OWNER | ③단계 — Name·Address + Base language(Create project 누르지 않음) |
 | `/guide/create-ready.webp` | `setup/create-project.md#finish-setup` | OWNER | ④단계 `Malmoi is ready` — 토큰 칩(가짜 값) + 워크플로 블록 + Open project |

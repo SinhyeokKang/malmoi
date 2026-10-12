@@ -18,7 +18,7 @@ The push token appears once in the agent's conversation, which your agent also s
 gh secret set PUSH_TOKEN --repo OWNER/REPO
 ```
 
-Replace `OWNER/REPO` with the repository. Don't add `--body`; `--body -` would store a single dash. The name must stay `PUSH_TOKEN`, because the workflow reads that secret. See [Add the workflow](../setup/workflow.md#push-token) for the rest of the setup. For a GitLab project, the result includes `.gitlab-ci.yml` jobs instead; store the push token as the protected and masked `PUSH_TOKEN` CI/CD variable, as in [Add the GitLab CI jobs](../setup/workflow.md#gitlab-ci).
+Replace `OWNER/REPO` with the repository. Don't add `--body`; `--body -` would store a single dash. The name must stay `PUSH_TOKEN`, because the workflow reads that secret. See [Add the workflow](../setup/workflow.md#push-token) for the rest of the setup. For a GitLab project, the result includes `.gitlab-ci.yml` jobs instead; store the push token as the protected and masked `PUSH_TOKEN` CI/CD variable, as in [Add the GitLab CI jobs](../setup/gitlab-ci.md#ci-variable).
 
 ### Fill the empty fr translations and publish {#fill-and-publish}
 

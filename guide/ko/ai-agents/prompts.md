@@ -18,7 +18,7 @@ GitHub 연결이나 GitHub App, GitLab 토큰이 없으면 에이전트가 **계
 gh secret set PUSH_TOKEN --repo OWNER/REPO
 ```
 
-`OWNER/REPO`를 리포지토리로 바꿉니다. `--body`는 붙이지 마세요. `--body -`는 대시 하나를 저장합니다. 워크플로가 그 시크릿을 읽으므로 이름은 `PUSH_TOKEN`이어야 합니다. 나머지 설정은 [워크플로 추가](../setup/workflow.md#push-token)를 참고하세요. GitLab 프로젝트라면 결과에 `.gitlab-ci.yml` 작업이 대신 들어 있으니, 푸시 토큰은 [GitLab CI 작업 추가](../setup/workflow.md#gitlab-ci)처럼 보호·마스킹한 CI/CD 변수 `PUSH_TOKEN`에 저장합니다.
+`OWNER/REPO`를 리포지토리로 바꿉니다. `--body`는 붙이지 마세요. `--body -`는 대시 하나를 저장합니다. 워크플로가 그 시크릿을 읽으므로 이름은 `PUSH_TOKEN`이어야 합니다. 나머지 설정은 [워크플로 추가](../setup/workflow.md#push-token)를 참고하세요. GitLab 프로젝트라면 결과에 `.gitlab-ci.yml` 작업이 대신 들어 있으니, 푸시 토큰은 [GitLab CI 작업 추가](../setup/gitlab-ci.md#ci-variable)처럼 보호·마스킹한 CI/CD 변수 `PUSH_TOKEN`에 저장합니다.
 
 ### 비어 있는 fr 번역을 채우고 게시해 줘 {#fill-and-publish}
 

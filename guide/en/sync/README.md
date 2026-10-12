@@ -8,4 +8,4 @@ The repository decides which pieces of app text — keys — exist. Malmoi holds
 
 **Publish** puts Malmoi's values into a change request (a *pull request* on GitHub, or a *merge request* on GitLab) for the development team to review and merge.
 
-Read [When code changes](push.md) for the incoming direction and [Merging the pull request](merging.md) for the return path.
+Read [When code changes](push.md) for the incoming direction and [Merging the pull request](merging.md) or [Merging the merge request](merging-gitlab.md) for the return path.

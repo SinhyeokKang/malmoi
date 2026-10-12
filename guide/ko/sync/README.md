@@ -8,4 +8,4 @@
 
 **게시**는 Malmoi의 값을 PR(GitHub의 *pull request*)이나 MR(GitLab의 *merge request*)에 담아 개발팀이 검토하고 머지할 수 있게 합니다.
 
-리포지토리에서 들어오는 흐름은 [코드가 바뀌면](push.md)을, 리포지토리로 돌아가는 흐름은 [PR 머지](merging.md)를 참고하세요.
+리포지토리에서 들어오는 흐름은 [코드가 바뀌면](push.md)을, 리포지토리로 돌아가는 흐름은 [PR 머지](merging.md)나 [MR 머지](merging-gitlab.md)를 참고하세요.

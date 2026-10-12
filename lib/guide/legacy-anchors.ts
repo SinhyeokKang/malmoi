@@ -10,7 +10,7 @@ export const LEGACY_ANCHORS = {
 } as const;
 
 /**
- * **섹션으로 나뉜 페이지의 옛 절 id** — 키는 그 섹션 개요의 slug다 (malmoi#152). `ai-agents.md` 한 페이지를 `ai-agents/`로
+ * **섹션·페이지로 나뉜 페이지의 옛 절 id** — 키는 옛 절이 있던 페이지(지금은 그 장 개요이거나 남은 페이지)의 slug다 (malmoi#152). `ai-agents.md` 한 페이지를 `ai-agents/`로
  * 나눈 뒤 옛 `/docs/ai-agents#<id>`가 개요 맨 위에 멈췄다. `#next`는 옛 원고의 마지막 절이라 마지막 페이지(prompts)의 것으로 간다.
  */
 export const SECTION_LEGACY_ANCHORS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
@@ -41,6 +41,17 @@ export const SECTION_LEGACY_ANCHORS: Readonly<Record<string, Readonly<Record<str
     "github-connection": "/docs/account/profile#github-connection",
     sessions: "/docs/account/profile#sessions",
     next: "/docs/account/profile#next",
+  },
+  // 리포 호스트별 절이 자기 페이지로 갈렸다(2026-10-13, `host-split.test.ts`) — 옛 페이지는 남고 옮긴 절 id만 새 페이지로 간다.
+  "setup/create-project": {
+    "connect-github": "/docs/setup/connect-github#connect-github",
+    "connect-gitlab": "/docs/setup/connect-gitlab#connect-gitlab",
+  },
+  "setup/workflow": {
+    "gitlab-ci": "/docs/setup/gitlab-ci#gitlab-ci",
+  },
+  "sync/merging": {
+    "merging-gitlab": "/docs/sync/merging-gitlab#merging-gitlab",
   },
 };
 

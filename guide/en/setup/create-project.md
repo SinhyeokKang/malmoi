@@ -2,28 +2,7 @@
 
 Create a project by connecting a repository and choosing the translation files Malmoi should manage.
 
-Before you start: Sign in with a verified email, go to **Projects**, and choose **New project**. You can own up to three active projects. For a GitLab.com repository, you need the Maintainer role or higher in that GitLab project.
-
-## Connect GitHub {#connect-github}
-
-1. If GitHub is not connected, choose **Install GitHub App**, or **Connect your account** if your organization already installed it. If the installation button is unavailable, choose **Authorize GitHub App** and follow any instruction to ask an administrator for installation access. If repositories are already listed, continue below.
-2. If the repository is not listed, choose **Add repositories** to open the app's installation on GitHub. Under **Repository access**, choose **Only select repositories**, add the repository, and save.
-3. If Malmoi shows **Waiting for approval**, ask an organization owner to approve it, then choose **Try again**.
-4. Select the repository, choose the **Branch** that contains your translation files, and choose **Next**. This is the base branch that Malmoi reads and opens translation pull requests against.
-
-![Step 1 of 4 of New project with a repository selected in the list and dev chosen as its branch](/guide/create-repository.webp "Select the repository and its branch, then choose Next.")
-
-## Connect GitLab {#connect-gitlab}
-
-Malmoi connects to GitLab.com with a personal access token from your own GitLab account. GitLab Self-Managed and GitLab Dedicated are not supported.
-
-1. Choose the **GitLab** tab at the top of the first step. A self-hosted installation without the GitHub App shows GitLab only, with no tabs.
-2. If GitLab isn't connected yet, choose **Create a token in GitLab**. GitLab's personal access token page opens in a new tab with the name `Malmoi` and the `api` scope filled in. Create the token there and copy it. Malmoi needs this legacy kind of token; a fine-grained token is rejected.
-3. Paste the token into **Personal access token** and choose **Connect**. While Malmoi checks it with GitLab, the step says so; a refused token shows the reason below the help text. Malmoi doesn't show the token again. If your saved token expired or can't be used anymore, the step shows **Reconnect GitLab**: paste a new token the same way.
-4. Malmoi lists the GitLab projects where you have the Maintainer role or higher. If there are none, it shows **No GitLab projects to add**: get that role in GitLab, then choose **Try again**.
-5. Select the repository, choose the **Branch** that contains your translation files, and choose **Next**. Translations come back as a merge request against this branch.
-
-Below the search box, Malmoi shows which GitLab account is connected and when its token expires. To use a new token for the same account, choose **Replace token**. You can also manage the token in [Account](../account/profile.md#gitlab-token). The project publishes with the token of the person who connected it, so commits and merge requests on GitLab are attributed to that GitLab account.
+Before you start: Sign in with a verified email, go to **Projects**, and choose **New project**. You can own up to three active projects. The first step connects your repository: follow [Connect GitHub](connect-github.md) or [Connect GitLab](connect-gitlab.md), then continue below.
 
 ## Choose files {#choose-files}
 
@@ -55,7 +34,7 @@ The project is ready immediately. The last step says **Malmoi is ready**, and yo
 
 The creator becomes **Owner**.
 
-For a GitLab project, the last step shows CI jobs for `.gitlab-ci.yml` instead of a GitHub workflow, and the push token goes into a CI/CD variable; see [Add the GitLab CI jobs](workflow.md#gitlab-ci). If the step says the GitLab CI file isn't available in this version of Malmoi yet, keep the push token anyway. Until then, the nightly run and **Sync** load repository changes.
+For a GitLab project, the last step shows CI jobs instead of a workflow; see [Add the GitLab CI jobs](gitlab-ci.md).
 
 ## What happens next {#next}
 

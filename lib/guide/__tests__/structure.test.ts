@@ -111,6 +111,26 @@ describe("실물 가이드 구조", () => {
     }
   });
 
+  /**
+   * **옛 절 id 표 전부가 실재하는 절로 가고, 옛 페이지에는 그 id가 남지 않는다** (2026-10-13, 호스트별 페이지 분리).
+   * 옛 페이지에 같은 id가 다시 생기면 그 절로 가던 링크가 다른 페이지로 튕긴다 — 표가 원고보다 오래 사는 것을 막는다.
+   */
+  it("SECTION_LEGACY_ANCHORS의 모든 대상이 실재 절이고 옛 페이지에는 그 id가 없다", () => {
+    const files = nav().map(({ file }) => file);
+    for (const [page, table] of Object.entries(SECTION_LEGACY_ANCHORS)) {
+      const source = slugToFile(page.split("/"), files);
+      expect(source, page).not.toBeNull();
+      const kept = headings(read(source!)).map(({ id }) => id);
+      for (const [id, target] of Object.entries(table)) {
+        expect(kept, `${page}#${id}`).not.toContain(id);
+        const [path, anchor] = target.slice("/docs/".length).split("#");
+        const file = slugToFile(path!.split("/"), files);
+        expect(file, target).not.toBeNull();
+        expect(headings(read(file!)).map(({ id: heading }) => heading), `${page}#${id} → ${target}`).toContain(anchor);
+      }
+    }
+  });
+
   it("옛 /docs/language가 account/preferences로 가고 옛 절 id 일곱을 그 페이지가 지킨다", () => {
     expect(LEGACY_PAGES).toEqual({ language: "/docs/account/preferences" });
     const files = nav().map(({ file }) => file);
