@@ -497,6 +497,8 @@ components/
   onboarding/new-project.tsx
                         생성 흐름의 상태를 소유하고 LargeModal + WizardFooter로 단계 본문·바닥을 조립한다.
                         이전 onboarding/modal.tsx 재수출과 ui/modal.tsx 경로는 제거했다
+  onboarding/repo-input.ts
+                        repoInputOf — ① 리포 행 → Action 입력(GitHub { owner, repo } · GitLab 숫자 id 하나). 모달의 다섯 호출이 이 함수 하나로 입력을 만든다
   sources/              sources-screen · source-detail-modal · source-status · base-language-form · add-sources-modal ·
                         remove-source-dialog · sources-archived 일곱 + row-layout.ts(행 적층 클래스 상수 — 카드 640 미만 상태가 이름 아래, 실물·골격 공유).
                         remove-source-dialog는 상세 모달 바닥 왼쪽 [Remove source]의 확인 창이다(Sync 확인 창 형 — 지문은
@@ -906,7 +908,10 @@ lib/
                         ⚠️ lib/auth/에 두지 않는 이유가 축이다 — 운영자는 인가가 아니라 계정 축 쿼터 판정이고, 상한 소비는
                         onboarding-run/·projects/owner-limit에 남는다. user를 import하는 소스는 그 셋뿐이다(소스 스캔 테스트가 센다)
   onboarding-run/       **두 GitHub 자격증명이 만나는 조립**(2026-09-28 T4-c — ARCHITECTURE §3.1). Server Action과 MCP 도구가
-                        같이 부른다: access(checkRepoAccess) · repos · branches · detect · add · create · import · rotate-token.
+                        같이 부른다: access(checkRepoAccess) · repos · branches · detect · add · create · import · rotate-token ·
+                        gitlab-repos(① GitLab 목록 — 호출자 PAT로 Maintainer 이상 프로젝트를 읽는 표시용) · gitlab-reconnect(GitLab 재연결 코어 —
+                        호출자 PAT로 쓰기 권한을 보고 참조를 자기 연결로 바꾼다) · locator(새 리포 입력 → 대상, GitLab은 숫자 id만).
+                        GitLab은 호출자 PAT(권한 조회 GET)와 프로젝트가 참조하는 연결(I/O)을 가른다.
                         ⚠️ lib/onboarding/에 두지 않는 이유가 이 디렉터리의 존재 이유다 — 그 루트는 "두 자격증명 import 없음"이라
                         credential-separation이 red다. 여기는 Server Action과 같은 규칙 집합(MEETING_ROOTS)이다.
                         access는 요청 리포를 못 찾은 설치별 실패에서 401→reauthorize를 우선한다. 요청 리포를 찾으면 부분 성공은 유지한다.
@@ -989,7 +994,9 @@ lib/
                         GitLab CI 생성기(onboarding/workflow.ts의 짝, 2026-10-12 D5) — 대상 리포의 `.gitlab-ci.yml` job과 원본 릴리스 축
                         GITLAB_CI_RELEASE(태그 malmoi-i18n-push-gitlab-vN + 40자 SHA). ⚠️ sha가 null(발행 전)이면 job이 "unreleased"를 박아 대조에서
                         실패하고(fail-closed) 화면은 템플릿 대신 "아직 없다"를 말한다. 이미지는 Node 24 태그 + 인덱스 digest 고정.
-                        ⚠️ 앱이 쓰는 ciFileOf·gitlabCiReleased는 지금 lib/mcp/tools/ci-file.ts(server-only)에 있다 — 앱이 MCP 모듈을 문다(이관 후보)
+  onboarding/ci-file.ts ciFileOf·gitlabCiReleased·경로 상수 둘(GITHUB_WORKFLOW_PATH·GITLAB_CI_PATH) — 리포 호스트별 CI 파일(server-only).
+                        화면(설정 CI 모달·온보딩 ⑤)과 MCP 도구(get_workflow·create_project)가 둘 다 여기를 import한다 — MCP 층에 있던 옛 집은 걷었다.
+                        ⚠️ GitLab은 릴리스 SHA가 40자 hex일 때만 파일을 낸다(null이면 호출부가 not-ready·workflow-unavailable을 고른다)
   onboarding/branch.ts  ⚠️ planBranchChoice — 목록/자유 입력/읽기 전용 셋을 가른다. 조회 실패를
                         "브랜치가 없다"로 읽지 않는 것이 요지다(POSTMORTEM 2026-09-03)
   onboarding/select-surfaces.ts
