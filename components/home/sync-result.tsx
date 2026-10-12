@@ -6,6 +6,8 @@ import { Alert } from "@/components/ui/alert";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
+import { isGitLabConnectError } from "@/lib/gitlab-connect/errors";
+import { gitlabConnectErrorMessage } from "@/lib/gitlab-connect/message";
 import { useMessages } from "@/components/i18n/messages-provider";
 import { adapterErrorMessage } from "@/lib/i18n/adapter-errors";
 import { planImportRefusal } from "@/lib/import/refusal";
@@ -22,6 +24,8 @@ import type { Messages } from "@/lib/i18n";
 function reasonMessage(m: Messages, reason: RepositoryImportError | SurfaceImportReason): string {
   if (Object.hasOwn(m.repositorySync.errors, reason)) return m.repositorySync.errors[reason as keyof typeof m.repositorySync.errors];
   if (isAccessError(reason)) return accessErrorMessage(m, reason);
+  // GitLab 프로젝트의 거부(참조 비움·보관·토큰 못 씀) — GitHub 연결 문장("Authorize GitHub App")으로 떨어지지 않게 먼저 본다.
+  if (isGitLabConnectError(reason)) return gitlabConnectErrorMessage(m, reason);
   if (isOnboardError(reason)) return onboardErrorMessage(m, reason);
   if (isConnectError(reason)) return connectErrorMessage(m, reason);
   if (isImportFailureCode(reason)) return importFailureMessage(m, reason);

@@ -1,4 +1,5 @@
 import "server-only";
+import { withRepoHost } from "@/lib/i18n/host";
 import { z } from "zod";
 
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -105,7 +106,7 @@ async function publishOutcome(
     if (outcome.error === "publish-unsettled") return { status: "refused", code: outcome.error, message: en.translations.publish.unsettledBody, detail: { delivery, retryAfterSeconds: outcome.retryAfterSeconds } };
     if (outcome.error === "already-running") return { status: "refused", code: outcome.error, message: en.translations.publish.alreadyRunningBody, detail: { delivery } };
     if (outcome.error === "too-soon") {
-      return { status: "refused", code: outcome.error, message: en.translations.publish.tooSoonBody,
+      return { status: "refused", code: outcome.error, message: withRepoHost(en, repoHost).translations.publish.tooSoonBody,
         detail: { delivery, ...(outcome.retryAfterSeconds === undefined ? {} : { retryAfterSeconds: outcome.retryAfterSeconds }) } };
     }
     if (outcome.code !== undefined) {

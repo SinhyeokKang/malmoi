@@ -130,6 +130,7 @@ export const FUNCTION_ARGS: { readonly [P in FunctionPaths<Messages>]: Parameter
   "logs.sentence.settings.name": ["X"],
   "logs.sentence.settings.baseBranch": ["X"],
   "logs.sentence.settings.repository": ["X"],
+  "logs.sentence.settings.repositoryDisconnected": ["X"],
   "logs.sentence.settings.pushToken": ["X"],
   "logs.sentence.settings.image": ["X"],
   "logs.sentence.settings.imageRemoved": ["X"],

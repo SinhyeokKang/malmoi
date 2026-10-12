@@ -598,7 +598,7 @@ export const en = {
     closing: {
       title: "Start from the files you already have",
       /** 지원 포맷을 문장으로 선다(seo-geo T12a) — 목록은 `guide/reference/formats.md`와 같다. 분량을 늘리지 않는다. */
-      body: "Connect a GitHub repository with JSON, YAML, JS/TS or Chrome extension translation files, invite your team, and let AI agents work in the same projects over MCP.",
+      body: "Connect a GitHub or GitLab.com repository with JSON, YAML, JS/TS or Chrome extension translation files, invite your team, and let AI agents work in the same projects over MCP.",
       links: { label: "Learn more", formats: "Supported formats", aiAgents: "AI agents", faq: "FAQ" },
     },
     /**
@@ -1539,6 +1539,8 @@ export const en = {
         name: (who: ReactNode): ReactNode => <>{who} renamed the project</>,
         baseBranch: (who: ReactNode): ReactNode => <>{who} changed the base branch</>,
         repository: (who: ReactNode): ReactNode => <>{who} reconnected the repository</>,
+        /** GitLab 연결 참조가 빈 사건(D20) — 연결자가 계정의 GitLab 연결을 해제했거나 프로젝트에서 제거됐다. 이후 재연결 전까지 Disconnected다. */
+        repositoryDisconnected: (who: ReactNode): ReactNode => <>{who} removed the GitLab connection this project used</>,
         pushToken: (who: ReactNode): ReactNode => <>{who} rotated the push token</>,
         image: (who: ReactNode): ReactNode => <>{who} changed the project image</>,
         imageRemoved: (who: ReactNode): ReactNode => <>{who} removed the project image</>,
@@ -1803,7 +1805,7 @@ export const en = {
        * 시작 버튼 옆에 있어야 한다.
        */
       description:
-        "Connect a repository and Malmoi will find the translation files for you — it only writes back by opening a pull request. Invited to someone else's project? Open the link in your invitation email.",
+        "Connect a repository and Malmoi will find the translation files for you — it only writes back by opening a pull request (a merge request on GitLab). Invited to someone else's project? Open the link in your invitation email.",
     },
     /**
      * 큐 넷의 제목.
@@ -2236,11 +2238,11 @@ export const en = {
     },
     /** 허용 동작 넷 — 순서는 `TOKEN_GRANTS`다. 라벨은 카드 사실 블록에서 ` · `로 잇는다. */
     grants: {
-      "translation:write": { label: "Translate & publish", hint: "Save translations and open publish PRs." },
+      "translation:write": { label: "Translate & publish", hint: "Save translations and publish them to the repository." },
       // Sync·Revert가 미전달 편집을 버린다 — 그래서 힌트에 `sync`가 있다(핸드오프 결정 16).
       "project:settings": { label: "Project settings", hint: "Sources, sync, base branch, push token, archive." },
       "member:manage": { label: "Members", hint: "Invite, change roles, remove." },
-      "project:create": { label: "Create projects", hint: "List your GitHub repositories and set up new projects." },
+      "project:create": { label: "Create projects", hint: "List your GitHub and GitLab repositories and set up new projects." },
     },
     /** 연결된 앱(mcp-oauth 핸드오프 §7.3 · §7.5) — OAuth 연결 목록. 개인 토큰 카드와 어휘(`token.facts`)를 공유한다. */
     apps: {

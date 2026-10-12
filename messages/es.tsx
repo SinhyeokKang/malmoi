@@ -233,7 +233,7 @@ export const es = {
     },
     closing: {
       title: "Empieza con los archivos que ya tienes",
-      body: "Conecta un repositorio de GitHub con archivos de traducción JSON, YAML, JS/TS o de extensiones de Chrome, invita a tu equipo y permite que agentes de IA trabajen en los mismos proyectos mediante MCP.",
+      body: "Conecta un repositorio de GitHub o GitLab.com con archivos de traducción JSON, YAML, JS/TS o de extensiones de Chrome, invita a tu equipo y permite que agentes de IA trabajen en los mismos proyectos mediante MCP.",
       links: { label: "Más información", formats: "Formatos compatibles", aiAgents: "Agentes de IA", faq: "Preguntas frecuentes" },
     },
     mockup: {
@@ -654,6 +654,7 @@ export const es = {
         name: (who: ReactNode): ReactNode => <>{who} cambió el nombre del proyecto</>,
         baseBranch: (who: ReactNode): ReactNode => <>{who} cambió la rama base</>,
         repository: (who: ReactNode): ReactNode => <>{who} volvió a conectar el repositorio</>,
+        repositoryDisconnected: (who: ReactNode): ReactNode => <>{who} quitó la conexión de GitLab que usaba este proyecto</>,
         pushToken: (who: ReactNode): ReactNode => <>{who} renovó el token de push</>,
         image: (who: ReactNode): ReactNode => <>{who} cambió la imagen del proyecto</>,
         imageRemoved: (who: ReactNode): ReactNode => <>{who} quitó la imagen del proyecto</>,
@@ -812,7 +813,7 @@ export const es = {
     empty: {
       title: "Todavía no hay proyectos",
       description:
-        "Conecta un repositorio y Malmoi encontrará los archivos de traducción por ti; solo escribe en él abriendo una pull request. ¿Te invitaron al proyecto de otra persona? Abre el enlace de tu correo de invitación.",
+        "Conecta un repositorio y Malmoi encontrará los archivos de traducción por ti; solo escribe en él abriendo una pull request (una merge request en GitLab). ¿Te invitaron al proyecto de otra persona? Abre el enlace de tu correo de invitación.",
     },
     summary: {
       newFromGithub: "Nuevo desde GitHub",
@@ -994,10 +995,10 @@ export const es = {
       },
     },
     grants: {
-      "translation:write": { label: "Traducir y publicar", hint: "Guardar traducciones y abrir pull requests de publicación." },
+      "translation:write": { label: "Traducir y publicar", hint: "Guardar traducciones y publicarlas en el repositorio." },
       "project:settings": { label: "Configuración del proyecto", hint: "Fuentes, sincronización, rama base, token de push, archivado." },
       "member:manage": { label: "Miembros", hint: "Invitar, cambiar roles, quitar." },
-      "project:create": { label: "Crear proyectos", hint: "Ver tus repositorios de GitHub y configurar proyectos nuevos." },
+      "project:create": { label: "Crear proyectos", hint: "Ver tus repositorios de GitHub y GitLab y configurar proyectos nuevos." },
     },
     apps: {
       title: "Apps conectadas",

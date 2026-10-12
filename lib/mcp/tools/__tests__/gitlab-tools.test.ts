@@ -259,6 +259,14 @@ describe("GitLab 프로젝트 대상 도구 — 호스트 어휘", () => {
     expect(outcome.status === "ok" && outcome.summary).not.toMatch(NO_GITHUB);
   });
 
+  /** R-D2 🟡 — 화면 키를 재사용하는 거부 문장도 그 프로젝트의 호스트 문장이다(`withRepoHost`). GitHub 프로젝트는 그대로다. */
+  it("publish too-soon 거부 문장은 GitLab 프로젝트에서 merge request를 말한다", async () => {
+    h.core.mockResolvedValueOnce({ outcome: { status: "failed", error: "too-soon", retryable: true, retryAfterSeconds: 5 }, attempted: false });
+    const outcome = await call("publish", subject("owner"), { slug: "glab", fingerprint: "f" });
+    expect(outcome).toMatchObject({ status: "refused", code: "too-soon", message: en.translations.publish.onGitLab.tooSoonBody });
+    expect(JSON.stringify(outcome)).not.toMatch(NO_GITHUB);
+  });
+
   it("preview_source_removal은 mergeRequest로 싣는다 — GitHub 프로젝트는 pullRequest 그대로", async () => {
     h.core.mockResolvedValue({ ok: true, pendingCount: 0, approval: null, openPr: "none" });
     const gitlab = await call("preview_source_removal", subject("owner"), { slug: "glab", surfaceSlug: "default" });

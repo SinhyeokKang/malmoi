@@ -237,7 +237,7 @@ export const ko = {
     },
     closing: {
       title: "이미 있는 번역 파일에서 시작하세요",
-      body: "JSON, YAML, JS/TS, Chrome 확장 프로그램 번역 파일을 지원합니다. GitHub 리포지토리를 연결하고 팀원이나 AI 에이전트와 함께 작업하세요. AI 에이전트는 MCP로 연결됩니다.",
+      body: "JSON, YAML, JS/TS, Chrome 확장 프로그램 번역 파일을 지원합니다. GitHub 또는 GitLab.com 리포지토리를 연결하고 팀원이나 AI 에이전트와 함께 작업하세요. AI 에이전트는 MCP로 연결됩니다.",
       links: { label: "자세히 알아보기", formats: "지원 파일 형식", aiAgents: "AI 에이전트", faq: "자주 묻는 질문" },
     },
     // 목업 데이터는 가상 프로젝트의 리포 내용(원문 en·de·fr 값)이라 화면 언어와 함께 바꾸지 않는다.
@@ -661,6 +661,7 @@ export const ko = {
         name: (who: ReactNode): ReactNode => <>{who} — 프로젝트 이름을 바꿨습니다</>,
         baseBranch: (who: ReactNode): ReactNode => <>{who} — 기준 브랜치를 바꿨습니다</>,
         repository: (who: ReactNode): ReactNode => <>{who} — 리포지토리를 다시 연결했습니다</>,
+        repositoryDisconnected: (who: ReactNode): ReactNode => <>{who} — 이 프로젝트가 쓰던 GitLab 연결을 해제했습니다</>,
         pushToken: (who: ReactNode): ReactNode => <>{who} — 푸시 토큰을 교체했습니다</>,
         image: (who: ReactNode): ReactNode => <>{who} — 프로젝트 썸네일을 바꿨습니다</>,
         imageRemoved: (who: ReactNode): ReactNode => <>{who} — 프로젝트 썸네일을 제거했습니다</>,
@@ -819,7 +820,7 @@ export const ko = {
     empty: {
       title: "아직 프로젝트가 없습니다",
       description:
-        "리포지토리를 연결하면 번역 파일을 찾습니다. 변경 사항은 PR로만 리포지토리에 보냅니다. 프로젝트에 초대받았다면 초대 메일의 링크를 여세요.",
+        "리포지토리를 연결하면 번역 파일을 찾습니다. 변경 사항은 PR(GitLab은 MR)로만 리포지토리에 보냅니다. 프로젝트에 초대받았다면 초대 메일의 링크를 여세요.",
     },
     summary: {
       newFromGithub: "GitHub의 새 키",
@@ -1003,10 +1004,10 @@ export const ko = {
       },
     },
     grants: {
-      "translation:write": { label: "번역·게시", hint: "번역을 저장하고 게시 PR을 엽니다." },
+      "translation:write": { label: "번역·게시", hint: "번역을 저장하고 리포지토리에 게시합니다." },
       "project:settings": { label: "프로젝트 설정", hint: "소스, 동기화, 기준 브랜치, 푸시 토큰, 보관." },
       "member:manage": { label: "멤버", hint: "초대, 역할 변경, 제거." },
-      "project:create": { label: "프로젝트 만들기", hint: "GitHub 리포지토리 목록을 보고 새 프로젝트를 설정합니다." },
+      "project:create": { label: "프로젝트 만들기", hint: "GitHub·GitLab 리포지토리 목록을 보고 새 프로젝트를 설정합니다." },
     },
     apps: {
       title: "연결된 앱",
