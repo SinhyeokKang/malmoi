@@ -115,3 +115,4 @@
 - 2026-10-12: C fix1(커밋 2, red 23+1 → gate ok: 13973 · projects 683, 뮤테이션 둘 red) → C 전체 dev 통합 `6f627448..1406f5f9`. 보류(인계): ⚪5 fake-fetch 질의 슬래시 비대칭 · ⚪3 토큰 교체 뒤 메모 stale. D2(Opus)·F(Astra) 착수.
 - 2026-10-12: C 통합 dev `pnpm gate` = `FAILED at test:projects:postgres` — `lib/keys/__tests__/search-performance.integration.ts` 중앙값 404·472ms > 300ms(병렬 워커 3 + 리뷰어 부하 중). **push 전 무부하 게이트에서 재측정 필수** — 그때도 넘으면 B/C의 검색 쿼리 변경 회귀로 보고 소유 배치에 돌려보낸다. F(Astra) 인계(커밋 2, gate ok, 실물 스모크 통과) → R-F(sonnet).
 - 2026-10-12: R-F 🔴0·🟡2(순수 테스트 밖 `resolveId`·MR 루프, 실물 roundtrip에서 `transport.send` PUT 머지 경로 확인 — QA 몫) → F dev 통합. F 워크트리 정리.
+- 2026-10-12: D2 인계(커밋 3, gate ok: 14020 · projects 689, GitLab 거절 코드가 재시도 가능 `unavailable`로 접히던 잠복 버그 수정) → dev 통합. E-ui(opus high) 착수, R-D2(opus medium) 병렬 — D2 수정 라운드는 `lib/mcp`·`mcp` 절만이라 E-ui와 안 겹친다.
