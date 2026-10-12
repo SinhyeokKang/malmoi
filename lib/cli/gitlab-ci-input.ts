@@ -46,6 +46,8 @@ export function planGitlabCiPush(env: Env): GitlabCiPlan {
     "--url", value(env, "MALMOI_I18N_API_URL") ?? DEFAULT_API_URL,
     "--project", projectSlug,
     "--surface", value(env, "MALMOI_I18N_SURFACE") ?? "default",
+    // 보류 경고가 merge request를 말한다(#259) — 호스트를 아는 쪽은 이 러너다. 서버 계약을 늘리지 않는다.
+    "--repo-host", "gitlab",
   ];
   const optional: readonly [string, string][] = [
     ["--path-template", "MALMOI_I18N_PATH_TEMPLATE"],
