@@ -18,8 +18,8 @@ import { RadioGroup } from "@/components/ui/radio";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SelectRow } from "@/components/ui/select-row";
-import { useDateStyle, useMessages, useUiLocale } from "@/components/i18n/messages-provider";
-import { formatDay } from "@/lib/date-format";
+import { useMessages, useUiLocale } from "@/components/i18n/messages-provider";
+import { formatDateOnly } from "@/lib/date-format";
 import { forHost } from "@/lib/i18n/host";
 import type { BranchChoice } from "@/lib/onboarding/branch";
 import type { RepoOption } from "@/lib/onboarding/types";
@@ -303,17 +303,15 @@ export function RepoStep({
 /**
  * GitLab 탭의 연결 계정 줄 (시안 G2e · #248) — **검색 아래 캡션 슬롯**(GitHub `Don't see a repository?` 자리와 같은 형 — muted 12, 문장 + 인라인 링크):
  * 누구의 토큰으로 목록을 읽었고 언제 만료되는지, 그리고 [Replace token]. 교체는 `/account`와 같은 PAT 입력이다(같은 GitLab 계정만 — D19).
- * ⚠️ 만료일은 `formatDay`(오프셋 라벨 없음 — design-brief 확정 5)이고 UTC 날짜다(결정 R1).
+ * ⚠️ 만료일은 `formatDateOnly`(오프셋 라벨 없음 — design-brief 확정 5 · 시각 없는 날짜라 UTC 날짜 — 결정 R1).
  */
 function GitLabAccount({ account, onConnected }: { account: GitLabAccountLine; onConnected?: (connection: Connected) => void }) {
   const m = useMessages();
-  // ⚠️ 이 함수의 날짜는 PAT 만료일뿐이고, GitLab이 날짜로만 주는 값이다(그날 00:00 UTC로 저장) — 시각이 아니라 날짜라서 UTC로 고정한다.
-  // 보는 사람 시간대로 옮기면 서쪽에선 GitLab 토큰 화면보다 하루 이르다(audit U5 · 결정 R1).
-  const style = { ...useDateStyle(), timeZone: "UTC" } as const;
+  const uiLocale = useUiLocale();
   const [open, setOpen] = useState(false);
   return (
     <p className="text-muted-foreground shrink-0 text-xs leading-body">
-      {m.newProject.gitlab.account(account.username, account.expiresAt === null ? null : formatDay(new Date(account.expiresAt), style))}{" "}
+      {m.newProject.gitlab.account(account.username, account.expiresAt === null ? null : formatDateOnly(new Date(account.expiresAt), uiLocale))}{" "}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
           <Button variant="link" size="sm" className="h-auto px-0 align-baseline text-xs">{m.account.gitlab.replace}</Button>
@@ -333,9 +331,7 @@ function GitLabAccount({ account, onConnected }: { account: GitLabAccountLine; o
  */
 function GitLabBlocked({ error, account, onConnected, onRetry }: { error: string; account: GitLabAccountLine | null; onConnected?: (connection: Connected) => void; onRetry?: () => void }) {
   const m = useMessages();
-  // ⚠️ 이 함수의 날짜는 PAT 만료일뿐이고, GitLab이 날짜로만 주는 값이다(그날 00:00 UTC로 저장) — 시각이 아니라 날짜라서 UTC로 고정한다.
-  // 보는 사람 시간대로 옮기면 서쪽에선 GitLab 토큰 화면보다 하루 이르다(audit U5 · 결정 R1).
-  const style = { ...useDateStyle(), timeZone: "UTC" } as const;
+  const uiLocale = useUiLocale();
   if (error === "limit-reached") {
     return (
       <BlockShell icon={Archive} title={m.newProject.empty.limit.title} description={m.newProject.empty.limit.description(PROJECT_LIMIT)}
@@ -349,7 +345,7 @@ function GitLabBlocked({ error, account, onConnected, onRetry }: { error: string
     */
     const expiredAt = error === "gitlab-reconnect" && account?.expiresAt != null && new Date(account.expiresAt).getTime() <= Date.now() ? new Date(account.expiresAt) : null;
     const copy = error === "gitlab-not-connected" ? m.newProject.gitlab.connect : m.newProject.gitlab.reconnect;
-    const description = expiredAt !== null ? m.newProject.gitlab.reconnect.expiredOn(formatDay(expiredAt, style)) : copy.description;
+    const description = expiredAt !== null ? m.newProject.gitlab.reconnect.expiredOn(formatDateOnly(expiredAt, uiLocale)) : copy.description;
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4">
         <EmptyState icon={KeyRound} title={copy.title} description={description} />

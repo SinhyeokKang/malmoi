@@ -107,6 +107,16 @@ export function formatDay(at: Date, style: DateStyle): string {
   return dayText(y, mo, d, style.uiLocale);
 }
 
+/**
+ * **시각 없는 날짜 값**의 형 — GitLab PAT 만료일처럼 원격이 날짜로만 주고 그날 00:00 UTC로 저장한 값이다(audit U5 · 결정 R1).
+ * ⚠️ **보는 사람 시간대로 옮기지 않고 UTC 날짜 그대로 말한다** — 순간이 아니라 달력 날짜라, `formatDay`에 고른 시간대를 주면 서쪽에선
+ * 원격 화면(GitLab 토큰 목록)보다 하루 이르게 찍혀 두 화면을 대조할 수 없다. 오프셋 라벨도 없다(시각이 없다).
+ * 순간(실행·사건 시각)에는 쓰지 않는다 — 그쪽은 `formatDay`·`formatMinute`가 보는 사람 시간대로 말한다.
+ */
+export function formatDateOnly(at: Date, uiLocale: UiLocale): string {
+  return formatDay(at, { uiLocale, timeZone: "UTC" });
+}
+
 export function formatMinute(at: Date, style: DateStyle): string {
   const { y, mo, d, h, mi } = zonedParts(at, style.timeZone);
   return `${dayText(y, mo, d, style.uiLocale)} ${pad2(h)}:${pad2(mi)} ${offsetLabel(utcOffsetMinutes(at, style.timeZone))}`;

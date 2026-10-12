@@ -5,7 +5,7 @@ import { Link2, Unplug } from "lucide-react";
 import { GithubIcon, GitlabIcon } from "@/components/signin/brand-icons";
 import { GitLabTokenForm } from "@/components/gitlab/token-form";
 import { useRouter } from "next/navigation";
-import { formatDay } from "@/lib/date-format";
+import { formatDateOnly } from "@/lib/date-format";
 import { repoWebUrl } from "@/lib/projects/repo-web";
 import { tokenExpiryState } from "@/lib/status/token-expiry";
 import { ReconnectButton } from "@/components/reconnect-button";
@@ -17,7 +17,7 @@ import type { AccountView } from "@/lib/github-connect/account-view";
 import type { ConnectionHealth } from "@/lib/github-connect/health";
 import { connectionProblem, repositoryConnectionState } from "@/lib/home/state";
 import { installationSettingsUrl } from "@/lib/github-connect/installation-url";
-import { useDateStyle, useMessages } from "@/components/i18n/messages-provider";
+import { useMessages, useUiLocale } from "@/components/i18n/messages-provider";
 import { RepositoryForm } from "./repository-form";
 import { IconTile } from "@/components/ui/icon-tile";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -76,9 +76,7 @@ export function RepositoryCard({ slug, owner, repo, branch, archived, unpinned =
  */
 function GitLabNotice({ health: pending, failure, gitlab }: { health: Promise<ConnectionHealth>; failure: string | null; gitlab: GitLabCardContext }) {
   const m = useMessages();
-  // ⚠️ 이 함수의 날짜는 PAT 만료일뿐이고, GitLab이 날짜로만 주는 값이다(그날 00:00 UTC로 저장) — 시각이 아니라 날짜라서 UTC로 고정한다.
-  // 보는 사람 시간대로 옮기면 서쪽에선 GitLab 토큰 화면보다 하루 이르다(audit U5 · 결정 R1).
-  const style = { ...useDateStyle(), timeZone: "UTC" } as const;
+  const uiLocale = useUiLocale();
   const health = use(pending);
   const { token } = gitlab;
   const expiresAt = token?.expiresAt == null ? null : new Date(token.expiresAt);
@@ -89,7 +87,7 @@ function GitLabNotice({ health: pending, failure, gitlab }: { health: Promise<Co
     토큰 만료가 원인이면 날짜를 말한다(시안 G6b1·G6c1 · #251·#252) — 임박(연결 정상)도 warning 띠다. 주인이 보면 `Your …`, 다른 OWNER는 주인 이름이다.
     그 밖의 못 씀(철회·접근 상실·보관)은 일반 문장이다.
   */
-  const date = expiresAt === null ? "" : formatDay(expiresAt, style);
+  const date = expiresAt === null ? "" : formatDateOnly(expiresAt, uiLocale);
   const days = expiresAt === null ? 0 : Math.max(1, Math.ceil((expiresAt.getTime() - now.getTime()) / 86_400_000));
   const reason = health.status === "repo-moved" ? m.settings.repository.health.moved(health.fullName)
     : health.status === "connection-removed" ? g.removed
@@ -113,9 +111,7 @@ function GitLabConnectionRow({ health: pending, slug, owner, repo, archived, git
   health: Promise<ConnectionHealth>; slug: string; owner: string; repo: string; archived: boolean; gitlab: GitLabCardContext; onFailure: (message: string | null) => void;
 }) {
   const m = useMessages();
-  // ⚠️ 이 함수의 날짜는 PAT 만료일뿐이고, GitLab이 날짜로만 주는 값이다(그날 00:00 UTC로 저장) — 시각이 아니라 날짜라서 UTC로 고정한다.
-  // 보는 사람 시간대로 옮기면 서쪽에선 GitLab 토큰 화면보다 하루 이르다(audit U5 · 결정 R1).
-  const style = { ...useDateStyle(), timeZone: "UTC" } as const;
+  const uiLocale = useUiLocale();
   const router = useRouter();
   const health = use(pending);
   const problem = connectionProblem(health.status);
@@ -131,7 +127,7 @@ function GitLabConnectionRow({ health: pending, slug, owner, repo, archived, git
   const state = base === "connected" && expiry === "expiresSoon" ? "expiresSoon" : base;
   const recover = problem !== null || expiry !== "valid";
   const moved = health.status === "repo-moved" ? health.fullName : null;
-  const expiryDate = expiresAt === null ? null : formatDay(expiresAt, style);
+  const expiryDate = expiresAt === null ? null : formatDateOnly(expiresAt, uiLocale);
   const detail = health.status === "unknown" ? m.settings.repository.health.unknown
     : moved !== null ? m.settings.repository.movedHint
     : problem !== null ? m.settings.repository.paused
