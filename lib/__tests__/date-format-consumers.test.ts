@@ -118,6 +118,10 @@ const FIXED_UTC = [
   "components/i18n/messages-provider.tsx",
   // MCP는 세션·쿠키를 읽지 않아 보는 사람의 시간대가 없다(④).
   "lib/mcp/tools/project.ts",
+  // GitLab PAT 만료일 — 시각이 아니라 GitLab이 주는 날짜 값이라 날짜만 UTC로 찍는다(audit U5 · 결정 R1). 그 밖의 시각은 보는 사람 시간대다.
+  "components/account/gitlab-section.tsx",
+  "components/settings/repository-card.tsx",
+  "components/onboarding/steps/repo.tsx",
 ];
 
 it("timeZone: \"UTC\" 리터럴이 나오는 app/**·components/**·lib/** 파일이 고정 표면 목록과 정확히 같다", () => {

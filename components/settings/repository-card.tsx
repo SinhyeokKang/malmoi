@@ -76,7 +76,9 @@ export function RepositoryCard({ slug, owner, repo, branch, archived, unpinned =
  */
 function GitLabNotice({ health: pending, failure, gitlab }: { health: Promise<ConnectionHealth>; failure: string | null; gitlab: GitLabCardContext }) {
   const m = useMessages();
-  const style = useDateStyle();
+  // ⚠️ 이 함수의 날짜는 PAT 만료일뿐이고, GitLab이 날짜로만 주는 값이다(그날 00:00 UTC로 저장) — 시각이 아니라 날짜라서 UTC로 고정한다.
+  // 보는 사람 시간대로 옮기면 서쪽에선 GitLab 토큰 화면보다 하루 이르다(audit U5 · 결정 R1).
+  const style = { ...useDateStyle(), timeZone: "UTC" } as const;
   const health = use(pending);
   const { token } = gitlab;
   const expiresAt = token?.expiresAt == null ? null : new Date(token.expiresAt);
@@ -111,7 +113,9 @@ function GitLabConnectionRow({ health: pending, slug, owner, repo, archived, git
   health: Promise<ConnectionHealth>; slug: string; owner: string; repo: string; archived: boolean; gitlab: GitLabCardContext; onFailure: (message: string | null) => void;
 }) {
   const m = useMessages();
-  const style = useDateStyle();
+  // ⚠️ 이 함수의 날짜는 PAT 만료일뿐이고, GitLab이 날짜로만 주는 값이다(그날 00:00 UTC로 저장) — 시각이 아니라 날짜라서 UTC로 고정한다.
+  // 보는 사람 시간대로 옮기면 서쪽에선 GitLab 토큰 화면보다 하루 이르다(audit U5 · 결정 R1).
+  const style = { ...useDateStyle(), timeZone: "UTC" } as const;
   const router = useRouter();
   const health = use(pending);
   const problem = connectionProblem(health.status);
