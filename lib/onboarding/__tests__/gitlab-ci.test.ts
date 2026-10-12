@@ -151,7 +151,20 @@ describe("표면 변수", () => {
       MALMOI_I18N_PATH_TEMPLATE: "i18n/{locale}.json",
       MALMOI_I18N_ADAPTER: "json-catalog",
       MALMOI_I18N_BASE: "en",
+      MALMOI_I18N_WRAPPER: "",
     });
+  });
+
+  /**
+   * action v3의 `wrapper` 입력과 같은 자리 (R-Eui fix2) — 표면 job마다 빈 값으로 서서, 훅으로 번역을 읽는 리포가 줄바꿈으로 나눈 스펙을 채운다.
+   * 빈 값은 아무 플래그도 만들지 않는다(`lib/cli/gitlab-ci-input.ts`가 줄마다 다듬어 빈 줄을 버린다 — action v3와 같다).
+   */
+  it("표면 job마다 MALMOI_I18N_WRAPPER가 빈 값으로 선다 — action v3 `wrapper` 입력의 짝", () => {
+    const yaml = renderProjectGitlabCiYaml({ slug: "order-check", baseBranch: "main", surfaces: [
+      { surfaceSlug: "web", pathTemplate: "web/{locale}.json" }, { surfaceSlug: "app", pathTemplate: "app/{locale}.json" },
+    ] });
+    for (const name of ["malmoi-i18n-order-check-web", "malmoi-i18n-order-check-app"]) expect(jobs(yaml)[name]?.variables?.MALMOI_I18N_WRAPPER, name).toBe("");
+    expect(jobs(yaml)[".malmoi-i18n-order-check"]?.variables).not.toHaveProperty("MALMOI_I18N_WRAPPER");
   });
 
   it("api-url은 주어질 때만 기반 job에 든다", () => {
