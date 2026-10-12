@@ -1888,7 +1888,7 @@ CI push가 unorphan → 재집계 1 → 롤백 → `deferred`를 매번 반복�
     늘지 않는다 — 같은 컬럼에 선언을 쓰는 안을 기각한 근거다.
 - **셋이 다 null이면 통과시킨다** — "포맷은 push가 채운다"가 원래 계약이고 온보딩 밖에서 만들어진 행은
   첫 push가 심는다. 좁아지는 것은 한 번 채워진 뒤부터다.
-- ⚠️ **정당한 이전(리포가 로케일 파일을 옮겼다)도 409가 된다.** 가드는 GitHub을 부르지 않으므로(라우트의 유일한 GitHub 호출은
+- ⚠️ **정당한 이전(리포가 로케일 파일을 옮겼다)도 409가 된다.** 가드는 리포 호스트를 부르지 않으므로(라우트의 유일한 리포 호스트 호출은
   가드 **뒤**의 열린 PR 게이트다 — §5.5.2) 오배송과 구별할 수 없다. 조용히 덮는 것보다 시끄럽게 멈추는 쪽을 고른다 — 손실이 되돌릴 수 없는
   방향이다. ⚠️ **그 409를 푸는 재설정 UI는 아직 없다** (2026-09-10 정정): 7단계가 `needs_configuration`을
   **후속으로 미뤘고** 구현은 0건이다 — 복구는 손으로 포맷 컬럼을 고치는 것뿐이다.
@@ -3056,8 +3056,9 @@ green이 된다. 자식 이름이 `gitlab`이 아닌 것은 GitLab 전용 절(`e
   `now` 기준 오프셋 오름차순).
 - **UTC로 고정되는 표면** — 보는 사람의 시간대가 없거나 모두에게 같아야 하는 자리는 `timeZone: "UTC"`를 **명시**한다: 공개 셸(`/changelog`의 `Dates are in UTC.`가
   로그인 여부와 무관하게 참이어야 한다 · `/privacy` 시행일·개정 이력) · `/signin/link/:challenge`(세션 없는 흐름) · MCP(세션·쿠키를 읽지 않는다 — `list_events`의
-  날짜 구간은 UTC) · provider 밖 기본값. **예외 하나 — PAT 만료일은 날짜 전용 값이라 시간대가 없다**(2026-10-13, gitlab-repositories R1): GitLab은 날짜만 주고 저장은 그날 00:00 UTC라
-  보는 사람의 시간대로 찍으면 서쪽 시간대에서 GitLab 화면보다 하루 이르다 — UTC 날짜로 찍는다(같은 테스트의 `FIXED_UTC` 등재 대상). **이 리터럴이 나오는 `app/**`·`components/**`·`lib/**` 파일 집합은 같은 테스트의 `FIXED_UTC`와 정확히 같아야 한다** —
+  날짜 구간은 UTC) · provider 밖 기본값. **날짜 전용 값(GitLab PAT 만료일)은 시간대 없이 UTC 날짜로 찍는다**(2026-10-13, gitlab-repositories R1): GitLab은 날짜만 주고 저장은 그날 00:00 UTC라
+  보는 사람의 시간대로 찍으면 서쪽 시간대에서 GitLab 화면보다 하루 이르다 — 생산자는 `lib/date-format.ts`의 `formatDateOnly`다.
+  **이 리터럴이 나오는 `app/**`·`components/**`·`lib/**` 파일 집합은 같은 테스트의 `FIXED_UTC`와 정확히 같아야 한다** —
   사용자 시간대 호출부를 `"UTC"`로 되돌리면 red다. 새 고정 표면은 이유와 함께 그 목록에 등재한다. 공개 셸 경로가 `getDateStyle`·`useDateStyle`을 import하지 않는 것도
   같은 파일이 센다(이름이 바뀌면 공허하게 green이 되지 않게 센티넬이 export를 확인한다).
 - **Logs의 날짜 경계는 보는 사람의 시간대다.** 날짜 카드(`groupByDay` — 키 `dayKeyAt(occurredAt, tz)`, 머리는 키를 순간으로 바꾸지 않는 `formatDayKey`) ·
@@ -3485,9 +3486,14 @@ PAT는 URL에 실리지 않는다(셀프 호스팅 nginx 마스킹에 새 경로
   주인이 Developer 미만) — probe 화면(Home·설정·번역·MCP)에서만 안다. 목록은 저장 만료일 지남만 미리 `needs_reconnect`로 접고 나머지는 원격을 부르지
   않는다(GitHub `app-uninstalled`가 목록에서 DB만 보는 것과 같은 선례). `connection-unusable`이면 Sync·Publish 둘 다 꺼진다.
   5xx·429·네트워크는 `unknown`(`Couldn't check`) — 끊김으로 접지 않는다.
-  ⚠️ **`Disconnected` 동안 CI 적재(`/api/push`)는 `pr-check-failed`로 보류된다 — 재연결이 푼다.** GitLab은 참조가 비어도 열린 MR 게이트가 서고(`openPrGateApplies`),
-  조회할 토큰이 없어 `loadOpenPrUrl`이 "모름"(`undefined`)을 돌리기 때문이다(fail-closed). 새 push를 거듭해도 같고 야간도 참조가 빈 프로젝트는 순회에서 빠지므로
-  (`repoConnectionPinned`) **재연결 전에는 스스로 풀리지 않는다** — GitHub `unpinned`(게이트 미적용 → strict 적재)와 비대칭이라 GitHub 경험으로 추론하면 틀린다.
+  ⚠️ **GitLab 프로젝트는 연결을 못 읽는 동안 CI 적재(`/api/push`)가 `pr-check-failed`로 보류된다 — 화면 `Disconnected`와 같은 집합이 아니다.** 게이트는 GitLab에서
+  **언제나 서고**(`openPrGateApplies` — 참조가 비어도), 열린 MR을 읽는 클라이언트(`createGitClient` → 읽기 `requireWrite: false`)를 못 만들면 `loadOpenPrUrl`이 "모름"(`undefined`)을 돌린다(fail-closed).
+  보류되는 갈래는 둘이다: ① 참조가 비었다(`connection-removed` — 물을 토큰이 없다) · ② 참조 연결의 토큰이 열리지 않는다(저장 만료일 지남 · 401 · 403 · 404 · 보관 · SHA-256 —
+  `openProject`가 `needsReconnect`를 던진다). ⚠️ **주인 강등(Developer 미만)은 보류되지 않는다** — 화면 건강성(`loadGitLabHealth`)만 주인의 push 권한을 보고 `Disconnected`로 접으며,
+  게이트의 읽기 클라이언트는 그 권한을 보지 않아 MR 목록을 읽고 strict 적재가 돈다(미전달 편집은 1층 보류가 지킨다). **복구는 보류 조건을 없앨 뿐 적재하지 않는다** —
+  ①은 다른 OWNER의 재연결(`reconnectGitLabRepository`)이고, ②는 토큰 주인의 [Replace token](같은 연결 행의 토큰을 바꾼다 — 참조는 그대로) 또는 재연결이다. 적재는 그 뒤의 다음 push·야간이 한다.
+  새 push를 거듭해도 복구 전에는 같고, 참조가 빈 프로젝트는 야간 순회에서도 빠진다(`repoConnectionPinned`) — GitHub `unpinned`(리포 id 미고정 → 게이트 미적용 → strict 적재)와
+  비대칭이라 GitHub 경험으로 추론하면 틀린다.
 - **참조가 비면 같은 tx에서 사건을 남긴다** (D20, `settings.repositoryDisconnected` — `lib/gitlab-connect/removal.ts`): 계정 연결 해제(`disconnectGitLab`)·
   주인의 멤버 제거(`member.removed`와 같은 tx)가 그 프로젝트마다 한 행을 쓴다 — 프로젝트가 `Disconnected`가 되는 것은 상태 변경이다(§5.7). 연결 id·사용자 id·
   토큰은 싣지 않는다. 계정 삭제(`User` Cascade → FK `SetNull`)는 사건을 남기지 않는다 — FK가 그 경로의 그물이다.
