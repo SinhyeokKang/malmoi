@@ -319,7 +319,8 @@ export async function connectGitLab(raw: { token: string }): Promise<ConnectGitL
 export type DisconnectGitLabResult = { ok: true } | { ok: false; error: "unavailable" | "unauthorized" };
 
 /**
- * 해제 — 행을 지우면 FK `SetNull`이 참조하던 프로젝트를 같은 문장에서 끊는다(`Disconnected` — 남은 OWNER가 재연결한다).
+ * 해제 — 참조하던 프로젝트마다 같은 tx에서 참조를 명시적으로 비우고 사건을 남긴 뒤 행을 지운다(`Disconnected` — 남은 OWNER가 재연결한다).
+ * FK `SetNull`은 계정 삭제용 그물일 뿐이다 — 여기서는 지우기 전에 참조가 이미 비었다(`disconnectGitLabAccount`).
  * 이미 없으면 성공이다(원하는 상태가 이미 이뤄져 있다 — `disconnectGithub`와 같다).
  */
 export async function disconnectGitLab(): Promise<DisconnectGitLabResult> {

@@ -174,7 +174,7 @@ describe("PAT 입력·교체·해제", () => {
     expect(await prisma.gitLabConnection.count()).toBe(0);
   });
 
-  it("⚠️ 해제하면 행이 0이고 참조하던 프로젝트가 같은 문장에서 끊긴다 — 목록이 needs_reconnect를 말한다(setup이 아니다)", async () => {
+  it("⚠️ 해제하면 행이 0이고 참조하던 프로젝트의 참조를 같은 tx에서 명시적으로 비운다(사건은 D20 절) — 목록이 needs_reconnect를 말한다(setup이 아니다)", async () => {
     await connect("owner-a", TOKEN_A, 101, "alice");
     const { id } = await prisma.gitLabConnection.findUniqueOrThrow({ where: { userId: "owner-a" } });
     await seedGitLabProject("p1", id, [{ userId: "owner-a", role: "OWNER" }]);
