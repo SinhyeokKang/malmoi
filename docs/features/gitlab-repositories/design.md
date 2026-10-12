@@ -44,7 +44,7 @@ GitHub 연결(App 설치 + 사용자 연결 → installation 토큰)은 **바꾸
 1. ① 모달의 GitLab 탭에서 개발자가 **레거시 PAT**(스코프 `api` 하나, D13)를 붙여 넣는다. Server Action이 받는다 — 외부 진입점이 아니라 내부 쓰기다(OAuth callback·Route Handler가 생기지 않는다).
 2. 서버가 그 PAT로 `GET /personal_access_tokens/self`를 읽어 **검증**한다(아래 실측). 갈래: 401 → `invalid`(무효·만료·철회가 같은 본문이라 가르지 않는다) · `granular: true` 또는 `granular_scopes` 있음 → `fine-grained`(거부 — spec §5) · `scopes`에 `api` 없음 → `scope-missing`(빠진 스코프 이름 `api`) · `active: false`/`revoked: true` → `invalid` · 네트워크·5xx·429 → `unavailable`(일시 장애를 "무효"로 접지 않는다). 통과하면 `GET /user`로 사용자명을 읽는다.
 3. 통과하면 PAT를 **계정 단위로 봉해 보관**한다(`/account`의 GitLab 연결 — 다음 ①에서 다시 붙여 넣지 않게 하는 목록용). 함께 저장하는 메타는 GitLab 사용자 id·사용자명·`expires_at`·`scopes` 넷이다 — `/self` 응답의 `last_used_ips`(IP 목록)는 **저장하지 않는다**. 원문은 응답·로그·이벤트에 싣지 않는다.
-4. ①의 리포 목록은 `GET /projects?membership=true&min_access_level=40&archived=false`(Maintainer 이상, 페이지 끝까지)다 — `permissions.group_access`가 상속을 반영하는지 문서가 없어 필터 쪽을 쓴다. Free 플랜 리포도 같다. 선택한 리포는 `GET /projects/:id`로 `repository_object_format == "sha1"`·`archived == false`를 확인한다(SHA-256·보관은 `accessError`).
+4. ①의 리포 목록은 `GET /projects?membership=true&min_access_level=40&archived=false`(Maintainer 이상, 페이지 끝까지)다 — `permissions.group_access`가 상속을 반영하는지 문서가 없어 필터 쪽을 쓴다. Free 플랜 리포도 같다. 선택한 리포는 `GET /projects/<id>`로 `repository_object_format == "sha1"`·`archived == false`를 확인하고(SHA-256·보관은 `accessError`), 생성·재연결 직전 호출자 권한은 `GET /projects/<id>/members/all/<user id>`의 `access_level ≥ 40`으로 다시 본다(§3 `checkRepoAccess`). 이후 모든 호출은 숫자 id로만 주소한다.
 5. 프로젝트 생성(또는 재연결) 시 프로젝트는 **연결자의 계정 GitLab 연결을 참조**한다(2026-10-12 사용자 결정 — 사본을 두지 않는다). 이후 Sync·Publish·야간은 **그 프로젝트가 참조하는 연결**의 PAT로 쓴다(호출자의 연결이 아니다). 쓰기 작성자는 토큰 주인이다(spec §3). PAT는 어차피 개인 명의라 사본이 주는 독립성이 없고, 계정에서 [Replace token] 한 번이면 그 연결을 참조하는 프로젝트가 전부 복구된다(시안 G8).
 6. 만료 임박(14일, D11)·만료·철회·스코프 부족·주인의 권한 상실은 연결 상태로 보이고(아래 톤 표·사례 표), 복구는 둘이다: 토큰 주인이 계정에서 **토큰 교체**(참조하는 프로젝트 전부 복구) · 다른 OWNER가 프로젝트 설정에서 **재연결**(자기 계정 연결로 참조를 바꿈 — 명의가 바뀐다는 문장을 먼저 보인다, 시안 G6c).
 7. **연결자가 떠나면 끊긴다**(2026-10-12 결정): 참조 주인이 그 프로젝트의 `ProjectMember`에서 빠지거나 계정을 지우거나 GitLab 연결을 해제하면 참조가 비고 프로젝트는 `Disconnected`다. 남은 OWNER가 재연결한다. 떠난 사람의 토큰으로 계속 쓰지 않는다.
@@ -61,7 +61,7 @@ GitHub 연결(App 설치 + 사용자 연결 → installation 토큰)은 **바꾸
 | 스코프 부족 | 403 `{"error":"insufficient_scope",…}` | **문서 근거**(sudo 예시 + 소스 `api_guard.rb`) — 연결 뒤엔 `/self`의 `scopes`로 먼저 막는다 |
 | 프로젝트 접근 상실·없는 프로젝트 | 404 `{"message":"404 Project Not Found"}`(무인증 private 조회로 실측) | 실측. ⚠️ GitLab도 권한 없음을 404로 숨긴다 — "없음"으로 단정하지 않는다(GitHub과 같은 함정) |
 | 토큰 생성 페이지 프리필 | `https://gitlab.com/-/user_settings/personal_access_tokens?name=<이름>&scopes=api` → `/legacy/new`로 리다이렉트되며 이름·스코프가 채워진다. 만료일 파라미터는 없다 | 지휘자 실측(2026-10-12) + [문서](https://docs.gitlab.com/user/profile/personal_access_tokens/#prefill-personal-access-token-name-and-scopes)(`name`·`description`·`scopes` 쉼표 구분) |
-| 만료 기본·상한 | 생성 화면 기본 30일, 상한 365일(GitLab.com 관리자 설정 — 지휘자 관측 2027-10-12). 만료 알림 메일 7일 전(17.6+ 60·30·7일) | 지휘자 관측 + [문서](https://docs.gitlab.com/user/profile/personal_access_tokens/#access-token-expiration) |
+| 만료 기본·상한 | 생성 화면 기본 30일, 상한 365일(GitLab.com 관리자 설정 — 지휘자 관측 2026-10-12). 만료 알림 메일 7일 전(17.6+ 60·30·7일) | 지휘자 관측 + [문서](https://docs.gitlab.com/user/profile/personal_access_tokens/#access-token-expiration) |
 | 리포 메타 | `GET /projects/:id` → `id`·`path_with_namespace`·`default_branch`·`archived`·`repository_object_format`(`sha1`)·`permissions.project_access.access_level`(50)·`merge_method`·`squash_option`·`merge_commit_template`·`squash_commit_template` | 실측. ⚠️ 응답에 `runners_token`(러너 등록 토큰)이 실린다 — **응답을 통째로 로그·저장하지 않는다**(W0가 실측 중 터미널에 한 번 노출해 즉시 재발급했다) |
 | 레이트 리밋 | 인증 2000/분(`ratelimit-limit`·`ratelimit-remaining`·`ratelimit-reset` 헤더), 무인증 500/분. 429는 `Retry-After` | 실측 헤더 + 문서 |
 
@@ -164,13 +164,13 @@ GitLab 쓰기는 [Commits API](https://docs.gitlab.com/api/commits/#create-a-com
 | 보호 브랜치(push 허용·force 금지)에 `force: true` | 400 `You are not allowed to force push code to a protected branch on this project.` — 우회하지 않는다. 사용자에게 `malmoi-i18n/sync-*`를 보호하지 말라고 안내 |
 | 없는 source 브랜치로 MR | 400 `{"source_branch":["does not exist"]}` |
 | 트리 | `GET /repository/tree?recursive=true&per_page=100` → 항목 `id`·`name`·`type`·`path`·`mode`, **`size` 없음**, 잘림 플래그 없음. 오프셋 페이지는 `x-total`·`x-total-pages`, keyset(`pagination=keyset`)은 `Link rel="next"`만 — **keyset으로 `next`가 없을 때까지** 읽는다(오프셋 `x-total`은 큰 리포에서 빠진다 — 문서) |
-| 크기 | REST: `HEAD /repository/files/:path?ref=` → `X-Gitlab-Size`·`X-Gitlab-Blob-Id`(파일당 1회) · `GET /repository/blobs/:sha` → `size`(파일당 1회). **GraphQL `project.repository.blobs(ref, paths)` → `size`·`rawSize`·`oid`·`lfsOid` 한 번에** — 복잡도 한도 250, 실측 2N+18(50·100경로 통과, 120경로 256으로 거부). 없는 경로는 결과에서 빠진다 |
+| 크기 | REST: `HEAD /repository/files/:path?ref=` → `X-Gitlab-Size`·`X-Gitlab-Blob-Id`(파일당 1회) · `GET /repository/blobs/:sha` → `size`(파일당 1회). **GraphQL `repository.blobs(ref, paths)` → `size`(문자열)·`rawSize`·`oid`·`lfsOid` 한 번에** — 복잡도 한도 250, 실측 2N+18(50·100경로 통과, 120경로 256으로 거부). 없는 경로는 결과에서 빠진다. 실측은 `project(fullPath:)`로 했다 — 구현은 숫자 id 주소 `projects(ids: ["gid://gitlab/Project/<id>"])`(§3 "공통 경계")이고 `id` 필드 하나만 늘어 100경로 218로 한도 안이다 |
 | compare | `GET /repository/compare?from=<sha>&to=<branch>&straight=true` → `commits[]`·`diffs[]`(`old_path`·`new_path`·`renamed_file`·`new_file`·`deleted_file`)·`compare_timeout` |
 | 레이트 리밋 | 인증 2000/분 — Publish 한 번은 아래 서명 기준 읽기 ~5 + 쓰기 2~3회 |
 
 **판정**:
 
-- **트리 크기 입력**(D12): reader가 REST tree(keyset)로 전체 목록·blob id를 읽고, 예산 대상 경로(`checkDownloadBudget`의 `paths` — 최대 200)만 GraphQL `blobs`로 크기를 100경로씩 묻는다(최대 2회). 같은 응답의 `lfsOid`가 있으면 LFS 포인터로 거부한다(§3 원격 파일 판정). 크기 조회 실패는 `unavailable`이지 예산 초과가 아니다.
+- **트리 크기 입력**(D12): reader가 REST tree(keyset)로 전체 목록·blob id를 읽고, 예산 대상 경로(`checkDownloadBudget`의 `paths` — 최대 200)만 GraphQL `blobs`로 크기를 100경로씩 묻는다(최대 2회, `projects(ids:)` 숫자 id 주소 · 응답 `project.id` 대조). 같은 응답의 `lfsOid`가 있으면 LFS 포인터로 거부한다(§3 원격 파일 판정). 크기 조회 실패는 `unavailable`이지 예산 초과가 아니다.
 - **no-changes**(D9): `staleHead !== null && staleHead !== baseHead`이면 무효화 → 열린 MR(자기 프로젝트 것만)에 이유 코멘트 + 닫기 → sync 브랜치 삭제. 이후 `staleHead === null`이라 두 번째 실행은 읽기만 한다. `allow_empty` 빈 커밋은 head ≠ base라 수렴하지 않아 쓰지 않는다.
 - **fork MR**: 프로젝트 MR 목록은 그 프로젝트를 target으로 하는 fork MR도 돌려준다. `source_project_id == target_project_id == 저장된 repositoryId`인 열린 MR만 재사용·닫기·자동 적재 보호 대상으로 고른다. fork 생성은 폐기용 리포에 잔여물을 남겨 실측하지 않았다 — **문서 근거**([MR 목록](https://docs.gitlab.com/api/merge_requests/#list-project-merge-requests)의 `source_project_id`).
 
@@ -275,15 +275,34 @@ export type RepoTarget =
   | { host: "github"; owner: string; name: string; installationId: string; repositoryId: string }
   | { host: "gitlab"; owner: string; name: string; repositoryId: string; connectionId: string };
 //   owner = GitLab namespace 전체(group/subgroup), name = path. repositoryId = GitLab project id(문자열).
-export function repoTargetOf(project: ProjectRepoColumns): RepoTarget | null; // 연결 증거가 없으면 null(= setup/not-installed)
+/** 연결 증거가 없으면 이유를 가른다 — GitHub `unpinned`(설치 id 있음 + 리포 id 없음)와 `not-connected`를 한 null로 접지 않는다(sec-audit-2 #34의 [Reconnect] 안내가 이 갈래에 선다). */
+export type RepoTargetResult = { status: "ok"; target: RepoTarget } | { status: "not-connected" } | { status: "unpinned" };
+export function repoTargetOf(project: ProjectRepoColumns): RepoTargetResult;
+//   GitHub: installationId null → not-connected · repositoryId null → unpinned (지금 storedConnection과 같은 판정 — 그 함수를 이리로 옮긴다)
+//   GitLab: 연결 참조 null → not-connected · repositoryId는 생성 때 항상 있다(unpinned 없음)
+
+/** 잠금 안 재검증용 — 호스트·리포 id·연결 증거(installationId / connectionId)까지 같아야 같다. 재연결을 감지한다. 소비자: nightly/run.ts:150 · import/run.ts:93 · surfaces/create.ts:58 */
+export function sameRepoTarget(a: RepoTarget, b: RepoTarget): boolean;
+/** 호출자 접근 결과 대 프로젝트 대조용 — 호스트 + 리포 id만. GitLab에서 호출자 연결 ≠ 프로젝트 참조 연결이 정상이라(D13) 연결은 보지 않는다. 소비자: onboarding-run/import.ts:61 · add.ts:63 · detect.ts:67 */
+export function sameRepository(a: { host: RepoHost; repositoryId: string }, b: { host: RepoHost; repositoryId: string }): boolean;
+//   ⚠️ 기계적으로 installationId → connectionId로 바꾸면 연결자가 아닌 OWNER의 수동 Sync·소스 추가가 전부 repo-replaced가 된다.
+//   ⚠️ **호출자 접근 확인 뒤의 I/O는 항상 repoTargetOf(project)(프로젝트 참조 연결)로 연다** — 호출자 연결로 열지 않는다(import.ts:65가 지금 프로젝트 쪽 id로 여는 형을 지킨다).
 
 // lib/repo-host/index.ts — 호스트별 구현을 고르는 유일한 자리. 소비자는 lib/github.ts를 직접 import하지 않는다(GitHub 전용 파일 제외 — consumers.md §1).
 export function createGitClient(target: RepoTarget, execution?: PublishExecution): Promise<GitClient>;
 export function openRepoReader(target: RepoTarget): Promise<RepoReader>;
 export function listBranches(target: RepoTarget): Promise<BranchList>;
-export function loadConnectionHealth(target: RepoTarget | null, options?: { memo?: boolean }): Promise<ConnectionHealth>;
-// GitLab createGitClient·openRepoReader는 생성 때 GET /projects/:id 1회로 id 일치·archived=false·repository_object_format=sha1을 재대조한다
-// (불변식 11 — PAT에는 첫 층이 없어 이것이 필수 층이다). GitHub은 기존 pinnedOctokit이 그 자리다.
+export function loadConnectionHealth(result: RepoTargetResult, options?: { memo?: boolean }): Promise<ConnectionHealth>;
+//   ok가 아니면 호출 0으로 not-connected·unpinned를 돌려준다(지금 storedConnection 갈래). storedConnection을 직접 부르는 페이지 둘
+//   (설정 page.tsx:56 · 번역 page.tsx:143)도 repoTargetOf 결과로 옮긴다 — consumers.md §1.1 간접 소비자.
+
+// ⚠️ **GitLab REST·GraphQL은 숫자 id로만 주소한다** — REST `/projects/<repositoryId>/…`, GraphQL `projects(ids: ["gid://gitlab/Project/<repositoryId>"])`.
+//   인코딩한 `namespace%2Fpath`·GraphQL `project(fullPath:)` 주소는 금지한다. 이것이 PAT에서 실제로 서는 첫 층이다 — 이름이 재사용·이전돼도 남의 프로젝트를 읽거나 쓰지 않는다.
+//   계약 테스트: 가짜 transport가 받은 URL·GraphQL 본문에 `%2F`나 `fullPath`가 있으면 red(POSTMORTEM 2026-09-27 — 주소 형태만 보고 대상이 옳은지 안 본 형).
+// GitLab createGitClient·openRepoReader는 생성 때 GET /projects/<id> 1회로 archived=false·repository_object_format=sha1을 확인하고
+//   path_with_namespace가 저장된 owner/name과 다르면 표시층 `repo-replaced`의 재료로 넘긴다(id로 부르는 한 id 대조는 동어반복이다).
+//   이 GET은 1층(미전달 0 → 원격 호출 0) **뒤**에 둔다 — run.ts의 not-installed 판정을 repoTargetOf로 바꿀 때 클라이언트 생성 순서를 지킨다.
+// GitHub은 기존 pinnedOctokit(토큰을 리포 id 하나로 좁힌다)이 첫 층이다.
 
 // lib/pull/client.ts — 바뀌는 것만
 export type GitClient = {
@@ -305,24 +324,38 @@ export type GitClient = {
   updatePrBase(number: number, base: string): Promise<void>;     // 유지 — GitLab PUT target_branch
   closePr(number: number, comment: string): Promise<void>;       // 유지 — GitLab: POST notes → PUT state_event=close
   compareToBase(baseSha: string, branch: string): Promise<{ ahead: boolean; files: ChangedFile[] }>; // 유지 — GitLab compare straight=true
+  //   GitLab ahead 판정·compare_timeout은 C의 계약 항목: ahead = commits.length > 0 || diffs.length > 0, compare_timeout: true는 "변경 없음"이 아니라 조회 실패(throw).
   isPullRequestOpen(number: number): Promise<boolean>;           // 유지 — GitLab GET merge_requests/:iid state
 };
 // 삭제: createTree · createCommit · createRef · updateRefForce (소비자는 run.ts 둘뿐이고 publishSnapshot·resetSyncBranch로 옮긴다)
 // lib/pull/payload.ts의 buildTreePayload·buildCommitPayload는 GitHub 구현 안으로 들어간다. GitLab actions 조립은 순수 함수(위 "GitLab commit 요청 조립").
+// 파일 mode: GitHub은 바뀐 파일을 전부 100644로 쓴다(payload.ts). GitLab 조립은 `execute_filemode`를 넣지 않는다(update 실측 100644) — 같은 동작이다.
+// 무효화 순서는 호출부(run.ts)가 든다 — 계약 테스트 한 줄: 가짜 클라이언트 호출 기록에서 첫 비읽기 메서드가 invalidateDelivery 뒤에 온다.
 
 // RepoReader — 하나 추가
 export type RepoReader = {
   snapshot(baseBranch: string): Promise<RepoSnapshot>;           // 유지 — GitLab files[].size는 비어 있다
   blob(sha: string): Promise<string | undefined>;                // 유지
-  /** 예산 대상 경로의 크기. GitHub = 직전 snapshot 값(호출 0), GitLab = GraphQL blobs 100경로씩. LFS 포인터면 그 경로를 거부 사유로 준다. */
-  sizes(headSha: string, paths: readonly string[]): Promise<{ status: "ok"; sizes: Map<string, number> } | { status: "lfs"; path: string } | { status: "unavailable" }>;
+  /** 예산 대상 경로의 크기. GitHub = 인자 snapshot의 size(호출 0 — reader가 상태를 들지 않는다), GitLab = GraphQL blobs 100경로씩. LFS 포인터면 그 경로를 거부 사유로 준다. */
+  sizes(snapshot: Extract<RepoSnapshot, { status: "ok" }>, paths: readonly string[]): Promise<{ status: "ok"; sizes: Map<string, number> } | { status: "lfs"; path: string } | { status: "unavailable" }>;
+  //   GitLab: projects(ids:[gid]) { repository { blobs(ref: headSha, paths) { path size lfsOid } } } — 응답 project.id가 gid와 다르면 unavailable.
+  //   `size`는 **문자열**로 온다("89") — 숫자로 바꾸고 안전 정수가 아니면 unavailable(checkDownloadBudget이 Number.isSafeInteger를 본다).
+  //   ⚠️ GraphQL은 POST다 — **Publish 실행(`execution.fetch()`) 안에서 부르지 않는다.** 부르면 쓰기로 세어져 그 뒤 실패가 execution-uncertain이 된다. 지금 소비자는 import뿐이다.
 };
 // 소비자: lib/import/read.ts가 checkDownloadBudget 앞에서 부른다(지금 snapshot.files의 size를 쓰는 자리).
 
 // 호출자 리포 권한 — lib/onboarding-run/access.ts
 export function checkRepoAccess(prisma: PrismaClient, userId: string, target: RepoLocator, options: { requirePush: boolean }): Promise<RepoAccess>;
-//   RepoLocator = { host: "github"; owner; name } | { host: "gitlab"; repositoryId }. GitLab은 **호출자 자신의** 계정 연결 PAT로 GET /projects/:id의
-//   access_level을 읽는다(쓰기 = 40 이상, 읽기 = 접근 가능). requirePush는 기본값 없는 필수(2026-09-27).
+//   RepoLocator = { host: "github"; owner; name } | { host: "gitlab"; repositoryId }. requirePush는 기본값 없는 필수(2026-09-27).
+//   GitLab은 **호출자 자신의** 계정 연결 PAT로 `GET /projects/<id>/members/all/<호출자 GitLab user id>`의 access_level을 읽는다 —
+//   상속·공유 그룹 권한을 포함한 유효 권한이다(`GET /projects/:id`의 permissions는 그룹 상속이 project_access: null로 와서 틀린다).
+//   쓰기 = 40(Maintainer) 이상 · 읽기 = 20(Reporter) 이상(Guest는 private 코드를 못 읽는다) · 404 = 멤버 아님(거부). ①의 목록 필터 min_access_level=40과 기준이 같다.
+export type RepoAccess =
+  | { status: "ok"; host: "github"; repositoryId: string; repoOwner: string; repoName: string; defaultBranch: string; installationId: string; connect: RepoConnect }
+  | { status: "ok"; host: "gitlab"; repositoryId: string; repoOwner: string; repoName: string; defaultBranch: string }
+  | { status: "error"; error: OnboardFailure };
+//   GitHub 전용 필드(installationId·connect)는 host 갈래 안에만 둔다. GitLab 실패 코드(호출자에게 GitLab 연결 없음·만료·fine-grained·unavailable)의
+//   OnboardFailure 추가는 A가 아니라 B의 계약이다(A는 GitHub 갈래만 채운다).
 ```
 
 경계 밖으로 두는 것: GitLab PAT 연결 검증(`/self`·`/user`)·①의 리포 목록·연결 저장은 GitLab 전용 Server Action과 순수 함수다(GitHub의 `lib/github-connect/`와 대칭인 새 디렉터리, B2). GitHub 설치·인가 흐름은 그대로다.
@@ -348,7 +381,7 @@ export function checkRepoAccess(prisma: PrismaClient, userId: string, target: Re
 
 이 분리를 상시로 세는 `lib/github-connect/__tests__/credential-separation.test.ts`는 Octokit 형태(`App` import, `rest.*.create`, `paginate("POST`)만 정규식으로 세고, `app/`을 스캔하지 않으며, 완전성 검사도 "`@/lib/github`를 import하는 lib 파일"만 대상으로 한다. GitLab은 Octokit이 아니라 `fetch`로 쓰므로 등록만으로는 지나간다. GitLab 쪽에서 이 테스트가 지킬 경계는 다르다 — **Sync·Publish·야간 쓰기는 "그 프로젝트가 참조하는 연결"의 PAT만 쓰고, 호출자(요청한 사람)의 연결을 쓰지 않는다.** 호출자 연결로 쓰면 다른 사람의 프로젝트에 내 명의로 쓰게 된다. 완전성 검사의 기준(GitLab 클라이언트 모듈 import)과 fetch 기반 쓰기 패턴(비GET `fetch`)을 정의하고, 쓰기 경로가 호출자 세션에서 연결을 고르면 red로 만든다(tasks §2).
 
-불변식 11의 세 층의 GitLab 대응: ① 토큰을 리포 하나로 좁히는 층은 **PAT에 없다**(사용자가 접근하는 모든 프로젝트에 쓸 수 있다) — 그래서 ② **쓰기 직전 project id 재대조**와 ③ 화면의 `repo-replaced`가 필수 층이 된다. ②를 빼면 이름 재사용으로 남의 리포에 쓴다.
+불변식 11의 세 층의 GitLab 대응: ① 토큰을 리포 하나로 좁히는 층은 **PAT에 없다**(사용자가 접근하는 모든 프로젝트에 쓸 수 있다) — 그래서 ② **모든 REST·GraphQL을 저장된 숫자 project id로만 주소하는 규칙**(이름·`fullPath` 주소 금지 — §3 "공통 경계")이 그 자리를 대신하고, 클라이언트 생성 때 `GET /projects/<id>`가 보관·object format을 확인하고 `path_with_namespace` 변경을 ③ 화면의 `repo-replaced` 재료로 넘긴다. ②를 깨면(이름으로 주소하면) 이름 재사용으로 남의 리포를 읽거나 쓴다. 불변식 11 정본 문장("쓰기 직전 project id 재대조가 필수 층" — D3·D13)은 이 규칙과 그 GET을 함께 가리킨다.
 
 **PAT 수명**: GitLab 16.0부터 PAT는 만료일이 필수(기본 최대 1년, 인스턴스 설정에 따름)다. 만료일을 저장해 만료 임박을 미리 보인다(톤 표). 자동 회전은 비목표(spec §5).
 
