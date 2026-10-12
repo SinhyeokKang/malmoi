@@ -78,6 +78,10 @@ describe("projectStatus — GitLab 저장 만료일 (D24)", () => {
   ] as const)("%s", (_name, expiresAt, status) => {
     expect(projectStatus({ ...GITLAB, gitlabTokenExpiresAt: expiresAt }, NOW)).toBe(status);
   });
+  it("⚠️ 만료일 필드를 빠뜨린 입력은 typecheck가 막는다 — 새 생산자가 잊으면 만료된 프로젝트가 조용히 `active`다(audit E11)", () => {
+    // @ts-expect-error -- `gitlabTokenExpiresAt`은 필수 `Date | null`이다. GitHub·연결 없음도 `null`을 명시한다.
+    expect(projectStatus(GITLAB, NOW)).toBe("active");
+  });
   it("GitHub 프로젝트는 GitLab 만료일을 보지 않는다", () => {
     expect(projectStatus({ ...GITLAB, repoHost: "github", installationId: "inst", gitlabConnectionId: null, gitlabTokenExpiresAt: new Date("2000-01-01T00:00:00Z") }, NOW)).toBe("active");
   });
