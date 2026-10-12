@@ -135,9 +135,10 @@ describe("openMergeRequestsUrl — 조회 주소", () => {
   const env = { CI_API_V4_URL: "https://gitlab.com/api/v4", CI_PROJECT_ID: "42" };
 
   it("자기 프로젝트의 열린 MR을 sync 브랜치로 거른다 — 브랜치 이름의 `/`는 인코딩한다", () => {
-    expect(openMergeRequestsUrl(env, "order-check")).toBe(
-      "https://gitlab.com/api/v4/projects/42/merge_requests?state=opened&source_branch=malmoi-i18n%2Fsync-order-check",
-    );
+    expect(openMergeRequestsUrl(env, "order-check")).toEqual({
+      url: "https://gitlab.com/api/v4/projects/42/merge_requests?state=opened&source_branch=malmoi-i18n%2Fsync-order-check",
+      syncBranch: "malmoi-i18n/sync-order-check",
+    });
   });
 
   it("주소를 만들 수 없으면 null이다 — 예약 변수가 없거나 slug가 브랜치 이름이 될 수 없다", () => {

@@ -14,7 +14,11 @@ import { SKIP_MARKER } from "@/lib/pull/payload";
 const DIR = join(".gitlab", "malmoi-i18n-push");
 const sh = readFileSync(join(DIR, "push.sh"), "utf8");
 const run = readFileSync(join(DIR, "run.ts"), "utf8");
-const code = (src: string) => src.split("\n").filter((l) => !/^\s*(#|\/\/|\*|\/\*\*)/.test(l)).join("\n");
+/** 주석 줄을 뺀다 — 셸은 `#`만(`*"…"*)` 패턴이 `*`로 시작한다), TS는 `//`·블록 주석. */
+const code = (src: string) => src.split("\n").filter((l) => !/^\s*#/.test(l)).join("\n");
+const tsCode = (src: string) => src.split("\n").filter((l) => !/^\s*(\/\/|\*|\/\*\*)/.test(l)).join("\n");
+const valueImports = (src: string) =>
+  [...tsCode(src).matchAll(/^\s*import\s+(?!type\s)[^'";]*?from\s+["']([^"']+)["']/gm)].map((m) => m[1]);
 
 describe("push.sh", () => {
   it("bash이고 실행 비트가 있고 실패에서 멈춘다", () => {
@@ -47,20 +51,20 @@ describe("push.sh", () => {
 
 describe("run.ts", () => {
   it("값 import가 node 내장과 CI 입력 변환뿐이다 — Prisma·server-only 그래프에 닿지 않는다(push-local-graph와 같은 이유)", () => {
-    const specs = [...code(run).matchAll(/^\s*import\s+(?!type\s)[^'";]*?from\s+["']([^"']+)["']/gm)].map((m) => m[1]);
+    const specs = valueImports(run);
     expect(specs.length).toBeGreaterThan(0);
     for (const s of specs) expect(s === "../../lib/cli/gitlab-ci-input" || s?.startsWith("node:")).toBe(true);
-    const input = readFileSync(join("lib", "cli", "gitlab-ci-input.ts"), "utf8");
-    expect(input).not.toMatch(/server-only|@prisma\/|generated\/|@\/lib\/db/);
+    // 순수 모듈의 import도 잎 둘뿐이다 — 늘면 여기서 그래프를 다시 본다.
+    expect(valueImports(readFileSync(join("lib", "cli", "gitlab-ci-input.ts"), "utf8")).sort()).toEqual(["@/lib/pull/payload", "@/lib/pull/sync-branch"]);
   });
 
   it("생산자는 push:local이다 — 페이로드를 여기서 조립하지 않는다", () => {
-    expect(code(run)).toContain('"push:local"');
-    expect(code(run)).not.toMatch(/\/api\/push/);
+    expect(tsCode(run)).toContain('"push:local"');
+    expect(tsCode(run)).not.toMatch(/\/api\/push/);
   });
 
   it("열린 MR 조회는 JOB-TOKEN으로 GET만 하고 5초에 끊는다(안내 전용 — 실패가 red가 아니다)", () => {
-    const body = code(run);
+    const body = tsCode(run);
     expect(body).toContain('"JOB-TOKEN"');
     expect(body).not.toMatch(/method:\s*"(POST|PUT|DELETE|PATCH)"/);
     expect(body).toContain("AbortSignal.timeout(5000)");
