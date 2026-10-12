@@ -94,7 +94,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | 방문 집계 | Vercel Web Analytics(self-hosted는 서버 레이아웃이 렌더하지 않는다) — **공개 페이지 페이지뷰 하나**(쿠키·커스텀 이벤트 없음). ⚠️ **`lib/seo/analytics.ts`의 추적 경로 허용 목록이 유일한 거름망이다** — 앱 URL엔 초대 토큰·slug·검색어가 실린다 |
 | 이미지 정규화 | `sharp` — 업로드 원본을 저장하지 않는다(192px 이내 WebP 재인코딩) |
 | 스타일 | Tailwind CSS 4 — **`tailwind.config.js`가 없다.** 토큰 등록은 `app/globals.css`의 `@theme`, 값(라이트·다크)은 같은 파일 `:root`의 `light-dark()` |
-| UI | **`components/ui/`를 이 리포가 소유한다** — 프리미티브 모듈 52개(`components/ui/*.tsx` 파일 기준; `.ts` 헬퍼 제외) + `radix-ui`(단일 통합 패키지)에서 DropdownMenu·Dialog·Slot·RadioGroup·Checkbox·Select·Popover·Tabs 여덟. **라이트·다크 — 토큰이 든다, `dark:` 금지**(테마는 `<html data-theme>` + `globals.css`의 `light-dark()`). 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) |
+| UI | **`components/ui/`를 이 리포가 소유한다** — 프리미티브 모듈 53개(`components/ui/*.tsx` 파일 기준; `.ts` 헬퍼 제외) + `radix-ui`(단일 통합 패키지)에서 DropdownMenu·Dialog·Slot·RadioGroup·Checkbox·Select·Popover·Tabs 여덟. **라이트·다크 — 토큰이 든다, `dark:` 금지**(테마는 `<html data-theme>` + `globals.css`의 `light-dark()`). 시각 규칙은 [docs/DESIGN.md](./docs/DESIGN.md) |
 | 토스트 | `sonner` — **루트 레이아웃이 렌더하는 유일한 서드파티 UI 컴포넌트다**(그 옆 `SiteAnalytics`는 화면이 없다). ⚠️ **테마를 우리가 넘긴다** — `theme`에 `<html data-theme>`과 같은 값을 주고 sonner 변수를 `style`로 토큰에 묶는다(sonner는 테마를 스스로 감지하고 `classNames`만으로는 다크에서 sonner CSS에 진다 — `app/layout.tsx` 머리 주석 · DESIGN §6.25) |
 | 패널 리사이즈 | `react-resizable-panels` — `resizable.tsx` 하나가 쓴다. ⚠️ **jsdom에서는 화면의 모든 클릭을 삼킨다** — `vitest.setup.ts`가 막는다 |
 | 아이콘·폰트 | `lucide-react` / **Geist Sans 우선 → Pretendard Variable 동적 서브셋 폴백, 둘 다 자사 호스트** |
@@ -140,7 +140,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | 테마 바꾸기(`setColorScheme`) | **Server Action** (`app/color-scheme/actions.ts`) — **공개** | 공개 푸터 스위처(비로그인 포함)와 `/preferences` Theme 카드 — 그래서 보호 경로 밖에 산다(`setUiLocale`과 같은 형). 입력은 `system`·`light`·`dark` 하나(`parseColorScheme` 불통과면 `invalid`)이고 **계정에 쓰는 대상은 세션이 정한다**. 비로그인은 쿠키만 쓴다. 세션을 못 읽었거나(`unavailable`) 계정 쓰기가 실패하면 아무것도 쓰지 않고 `failed`다. 순서 고정 계정 → 쿠키(`malmoi-color-scheme`, http-only — 로그아웃 뒤 공개 페이지도 같은 테마) → `revalidateAfterCommit`(루트 레이아웃이 `<html data-theme>`을 싣는다). 두 호출부가 같은 `applyColorScheme`으로 Action보다 먼저 `data-theme`을 바꾸고 `ok`가 아니면 되돌린다. 코드(`ok`·`invalid`·`failed`)를 돌려준다 |
 | 초대 수락 | **Server Action** (`app/invite/actions.ts`) | 초대 링크 — **인가 예외**, 토큰이 대신한다 |
 | 계정 — 프로필·로그인 수단 연결·해제·세션 폐기 | **Server Action** (`app/(edit)/account/actions.ts`) | `/account` — `requireUser`만 |
-| GitLab PAT 연결·교체·해제(`connectGitLab`·`disconnectGitLab`) | **Server Action** (`app/(edit)/account/actions.ts`) | ①의 GitLab 탭 · `/account` GitLab PAT 카드 — `requireUser`만, `userId`로 좁힌다. PAT는 본문으로만 오고 **원문을 돌려주지 않는다**(사용자명·만료일·스코프뿐). 교체는 같은 GitLab 사용자만(`account-mismatch`). 해제는 FK `SetNull`로 참조 프로젝트를 끊고 그 프로젝트마다 같은 tx에서 사건을 남긴다. **callback·Route Handler가 없다** |
+| GitLab PAT 연결·교체·해제(`connectGitLab`·`disconnectGitLab`) | **Server Action** (`app/(edit)/account/actions.ts`) | ①의 GitLab 탭 · `/account` GitLab PAT 카드 — 같은 파일의 다른 Action과 달리 `requireUser`가 아니라 **`readSession()` 뒤 거부를 값으로**(`unavailable`·`unauthorized`) 돌려준다(redirect하면 모달·카드의 입력이 사라진다). `userId`로 좁힌다. PAT는 본문으로만 오고 **원문을 돌려주지 않는다**(사용자명·만료일·스코프뿐). 교체는 같은 GitLab 사용자만(`account-mismatch`). 해제는 FK `SetNull`로 참조 프로젝트를 끊고 그 프로젝트마다 같은 tx에서 사건을 남긴다. **callback·Route Handler가 없다** |
 | GitLab 리포 목록(`listConnectableGitLabRepos`) · 재연결(`reconnectGitLabRepository`) | **Server Action** (`app/(edit)/projects/actions.ts` · `app/(edit)/projects/[slug]/settings/actions.ts`) | ① 목록은 호출자 자신의 PAT로 Maintainer 이상 프로젝트를 읽는다(표시용 — 생성이 다시 본다). 재연결은 `project:settings` → 호출자 PAT의 Maintainer 확인 → 잠금 뒤 조건부 쓰기 + 사건이고, **이후 GitLab 쓰기의 명의가 누른 사람으로 바뀐다** |
 | MCP 개인 토큰 발급·폐기, OAuth 연결 끊기 | **Server Action** (`app/(edit)/mcp/actions.ts`) | `/mcp` — `requireUser`만, `userId`로 좁힌다. 발급 = 기존 행 삭제 + 삽입 한 tx라 Create·Rotate가 같은 Action이다. ⚠️ **MCP 도구에 개인 토큰 발급·폐기가 없다** — 개인 토큰이 개인 토큰을 만들지 않는다(프로젝트 push 토큰 회전 `rotate_push_token`은 별개) |
 | OAuth 동의 — Authorize·Deny | **Server Action** (`app/oauth/authorize/actions.ts`) | `/oauth/authorize` — 세션을 Action 안에서 다시 읽는다(화면을 그린 뒤 끝났을 수 있다). 판정·소비는 `lib/oauth-server/` |
@@ -196,6 +196,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 | 로컬 push | `pnpm push:local <디렉터리> --project <slug> [--surface <slug>] [--path-template <template>] [--url ...] [--wrapper ...] [--adapter ...] [--base <locale>]` |
 | 어댑터 범용성 측정 | `pnpm adapter-survey <리포목록.txt> [--verdicts <파일>] [--json] [--out <파일>] [--limit N] [--jobs N]` (읽기 전용, **측정 결과는 어떤 값이어도 exit 0** — 인자 오류만 2) |
 | GitHub App 스모크 | `pnpm smoke:github <project-slug>` (**읽기만** — 실 API라 `pnpm test` 밖이다) |
+| GitLab 스모크 | `pnpm smoke:gitlab` (**읽기만**·DB 없음 — 실 API라 `pnpm test` 밖이다. 입력 `GITLAB_TEST_TOKEN`·`GITLAB_TEST_PROJECT`는 개발자 테스트 입력이라 `.env.example`·preflight에 없다. 응답 본문·토큰을 찍지 않는다) |
 | Blob 저장소 스모크 | `pnpm smoke:blob` (실 API라 `pnpm test` 밖이다. **고아 후보를 삭제 없이 목록으로만** 낸다) |
 | 릴리스 버전 판정 | `pnpm release:plan` — **`/merge` 3단계 전용, 읽기 전용** |
 | Codex 미러 동기화 | `pnpm sync:agents` (검사만: `pnpm sync:agents:check`) |
