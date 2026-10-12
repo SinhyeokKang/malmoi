@@ -29,7 +29,7 @@ export const PR_TITLE = `malmoi-i18n: sync translations ${SKIP_MARKER}`;
 
 /**
  * 마커를 붙인 제목의 최대 길이 — 두 호스트의 작은 쪽이다. GitHub PR은 256(넘기면 `PATCH /pulls`가 422), GitLab MR은
- * `TITLE_LENGTH_MAX = 255`(audit B2 — 넘기면 `PUT merge_requests`가 400이고, 커밋 뒤라 `execution-uncertain`이 Publish마다 되풀이된다).
+ * `TITLE_LENGTH_MAX = 255`(감사 추정 — 실측 전, audit B2 — 넘기면 `PUT merge_requests`가 400이고, 커밋 뒤라 `execution-uncertain`이 Publish마다 되풀이된다).
  * GitHub에서 한 자 일찍 폴백해도 잃는 것은 사람이 고친 제목 하나다.
  */
 const PR_TITLE_MAX = 255;
