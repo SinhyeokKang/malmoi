@@ -142,3 +142,5 @@ DOM 글자·구조로 검토했다(화면 캡처 불가 — 간격·색 판정�
 그 밖: G2d(일시 장애)의 버튼 라벨 Connect → Try again은 유지해도 된다. 스코프 셋은 tasks §0 실물 확인 뒤 도움말 한 줄만 고친다.
 
 **v4 확인 (2026-10-12)**: 위 3·5·7이 반영됐다(G5b2 삭제 · 날짜 오프셋 제거 · G8b 카드 안 PAT 입력). 남은 것 — G6b·G6c 재연결이 보는 사람을 가르지 않는다. 계정 토큰 참조 모델에서는 토큰 주인이면 [Replace token](참조하는 프로젝트 전부), 다른 OWNER이고 연결이 있으면 [Use my GitLab connection](명의 변경), 연결이 없으면 지금의 붙여 넣기 형이다. 다른 OWNER가 이 카드에 붙여 넣으면 그 사람의 계정 연결이 교체돼 그 사람의 다른 프로젝트까지 바뀐다.
+
+**v5 확인 (2026-10-12)**: G6b·G6c가 보는 사람 셋(토큰 주인 [Replace token] · 다른 OWNER 연결 있음 [Use my GitLab connection] · 연결 없음 붙여 넣기)으로 나뉘었다 — 모델과 맞다. 남은 보완: [Use my GitLab connection]이 거부될 때(그 사람 토큰의 권한·스코프 부족·만료) 버튼 아래 danger Alert 프레임, G6b1의 "reconnects"는 아직 연결 상태라 "updates"로. ⚠️ v5 파일이 256 KiB를 넘어 DesignSync가 잘라 준다 — G10b·G11a·G11b는 읽지 못했다.
