@@ -19,7 +19,7 @@ Malmoi reúne los archivos en una única solicitud de cambios (un *pull request*
 
 Elige **Abrir pull request** o Reemplazar pull request #N. Si tus cambios ya coinciden con los archivos y no hay ningún pull request abierto, el botón es **Publicar**. Cuando hay un pull request abierto y los archivos coinciden, la acción es Cerrar pull request #N.
 
-En un proyecto de GitLab, los mismos botones nombran una merge request, numerada como `!128`: **Abrir merge request**, Reemplazar merge request !N y Cerrar merge request !N.
+En un proyecto de GitLab, los mismos botones nombran una merge request, numerada como `!128`: **Abrir merge request**, Reemplazar la merge request !N y Cerrar la merge request !N.
 
 Si Publicar está desactivado, puede que no haya ediciones sin enviar o que publicar no esté disponible temporalmente. Espera a que termine una sincronización en curso; pregunta a un propietario del proyecto si sigue sin estar disponible.
 

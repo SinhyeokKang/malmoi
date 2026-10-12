@@ -17,13 +17,13 @@ Before you start: Sign in with a verified email, go to **Projects**, and choose 
 
 Malmoi connects to GitLab.com with a personal access token from your own GitLab account. GitLab Self-Managed and GitLab Dedicated are not supported.
 
-1. Choose the **GitLab** tab at the top of the first step.
+1. Choose the **GitLab** tab at the top of the first step. A self-hosted installation without the GitHub App shows GitLab only, with no tabs.
 2. If GitLab isn't connected yet, choose **Create a token in GitLab**. GitLab's personal access token page opens in a new tab with the name `Malmoi` and the `api` scope filled in. Create the token there and copy it. Malmoi needs this legacy kind of token; a fine-grained token is rejected.
-3. Paste the token into **Personal access token** and choose **Connect**. Malmoi checks it with GitLab and doesn't show it again.
+3. Paste the token into **Personal access token** and choose **Connect**. While Malmoi checks it with GitLab, the step says so; a refused token shows the reason below the help text. Malmoi doesn't show the token again. If your saved token expired or can't be used anymore, the step shows **Reconnect GitLab**: paste a new token the same way.
 4. Malmoi lists the GitLab projects where you have the Maintainer role or higher. If there are none, it shows **No GitLab projects to add**: get that role in GitLab, then choose **Try again**.
 5. Select the repository, choose the **Branch** that contains your translation files, and choose **Next**. Translations come back as a merge request against this branch.
 
-Above the list, Malmoi shows which GitLab account is connected and when its token expires. To use a new token for the same account, choose **Replace token**. You can also manage the token in [Account](../account/profile.md#gitlab-token). The project publishes with the token of the person who connected it, so commits and merge requests on GitLab are attributed to that GitLab account.
+Below the search box, Malmoi shows which GitLab account is connected and when its token expires. To use a new token for the same account, choose **Replace token**. You can also manage the token in [Account](../account/profile.md#gitlab-token). The project publishes with the token of the person who connected it, so commits and merge requests on GitLab are attributed to that GitLab account.
 
 ## Choose files {#choose-files}
 

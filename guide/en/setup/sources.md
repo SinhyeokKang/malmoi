@@ -14,7 +14,7 @@ Open **Sources** from the project navigation. Each row shows the source's status
 
 1. Choose **Add sources**, then choose detected files or enter a supported path. Choose **Next**; it stays off until you select at least one new file.
 2. Under **Choose base languages**, choose the **Base language** for each new source, then choose **Add selected sources**. Choose **Back** to change your selection; your choices are kept. A file can fail while the other files are added, so check each result. If nothing is added, you stay on this step with your selection intact.
-3. Follow the result's **Settings** link and copy the new source steps from the generated workflow into your repository's workflow file (on GitLab, copy the whole CI file into `.gitlab-ci.yml`). Adding sources does not edit that file automatically.
+3. Follow the result's **Settings** link and copy the new source steps from the generated workflow into your repository's workflow file (on GitLab, copy the whole CI file and replace Malmoi's jobs in `.gitlab-ci.yml` with it). Adding sources does not edit that file automatically.
 
 ![The Choose base languages step of Add sources, with one source's path and its languages as radio options, step 2 of 2, and Back and Add selected sources buttons](/guide/add-sources.webp "Choose the base language for each new source, then add the selected sources.")
 

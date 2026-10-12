@@ -17,9 +17,9 @@ Si el repositorio no aparece, en Malmoi elige **Añadir repositorios** y luego, 
 
 ## Restablece el acceso a GitLab {#gitlab-access}
 
-En **Configuración** de un proyecto de GitLab, la tarjeta del repositorio muestra qué token usan las sincronizaciones y publicaciones, y cuándo caduca. El token muestra **Caduca pronto** en los 14 días anteriores a su fecha de caducidad y **Caducado** después.
+En **Configuración** de un proyecto de GitLab, la tarjeta del repositorio muestra qué token usan las sincronizaciones y publicaciones, y cuándo caduca. En los 14 días anteriores a la caducidad, un aviso en la parte superior de la tarjeta indica cuántos días quedan y la tarjeta muestra **Caduca pronto**; después de esa fecha, el aviso indica que el token caducó y la tarjeta muestra **Desconectado**.
 
-- Si el token es tuyo, elige **Reemplazar token** y pega un token nuevo de la misma cuenta de GitLab.
+- Si el token es tuyo, la tarjeta muestra un campo de token: pega un token nuevo de la misma cuenta de GitLab en **Token de acceso personal** y elige **Reemplazar token**. Se actualizan todos los proyectos que usan tu conexión.
 - Si el token es de otra persona, elige **Usar mi conexión de GitLab**. A partir de entonces, las sincronizaciones y publicaciones quedan a nombre de tu cuenta de GitLab. Si aún no has conectado GitLab, pega primero tu token en la tarjeta.
 
 La conexión muestra **Desconectado**, y las sincronizaciones y publicaciones se detienen hasta que un propietario del proyecto la vuelva a conectar como se indica arriba, cuando:
