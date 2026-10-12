@@ -56,7 +56,7 @@ describe("preflight — 전부 있을 때만 통과한다", () => {
 
   it("필수 값은 하나씩 빠지면 그 이름이 missing이다 — 빈 문자열·공백도", () => {
     const required = Object.entries(SELF_HOSTED_ENV).filter(([, kind]) => kind === "required").map(([name]) => name);
-    expect(required.length).toBeGreaterThan(20);
+    expect(required.length).toBeGreaterThan(15);
     for (const name of required) {
       for (const blank of [undefined, "", "  "]) {
         const env = { ...VALID, [name]: blank };
@@ -245,5 +245,28 @@ describe("preflight — 로그인 공급자 쌍", () => {
   it("결과에 값이 실리지 않는다", () => {
     const result = preflight({ ...VALID, AUTH_GOOGLE_SECRET: "", AUTH_GITHUB_SECRET: "" }, okDir);
     expect(JSON.stringify(result)).not.toMatch(/SENTINEL/);
+  });
+});
+
+
+describe("GitHub App 그룹 — GitLab 전용 설치", () => {
+  const names = ["GITHUB_APP_ID", "GITHUB_APP_PRIVATE_KEY", "GITHUB_APP_CLIENT_ID", "GITHUB_APP_CLIENT_SECRET", "GITHUB_APP_SLUG"];
+  it("다섯은 선택값이고 모든 부분 구성은 빠진 이름으로 거부한다", () => {
+    for (const name of names) expect(SELF_HOSTED_ENV[name as keyof typeof SELF_HOSTED_ENV]).toBe("optional");
+    for (let mask = 0; mask < 32; mask++) {
+      const env = { ...VALID };
+      const missing = names.filter((name, i) => {
+        if (mask & (1 << i)) return false;
+        delete env[name];
+        return true;
+      });
+      expect(reasons(env), `mask=${mask}`).toEqual(mask === 0 || mask === 31 ? {} : Object.fromEntries(missing.map(name => [name, "incomplete-group"])));
+    }
+  });
+  it("다섯 공백도 미설정이며 로그인 공급자는 여전히 필요하다", () => {
+    const env = { ...VALID, ...Object.fromEntries(names.map(name => [name, "  "])) };
+    expect(preflight(env, okDir)).toEqual({ ok: true });
+    for (const name of ["AUTH_GITHUB_ID", "AUTH_GITHUB_SECRET", "AUTH_GOOGLE_ID", "AUTH_GOOGLE_SECRET"]) delete env[name];
+    expect(reasons(env)).toEqual({ AUTH_GITHUB_ID: "no-login-provider", AUTH_GOOGLE_ID: "no-login-provider" });
   });
 });

@@ -297,3 +297,14 @@ describe("Inbox 열람 시각 행 — 헤더 목록과 페이지 둘 다", () =>
     expect(String(cells![1])).toContain(page);
   });
 });
+
+
+it("GitLab 수집·전송·보존과 시행일을 두 방침에 명시한다", () => {
+  for (const body of [privacy, koPrivacy]) {
+    for (const id of ["collected", "purposes", "retention", "third-parties"]) {
+      expect(docText(body.sections.filter(s => s.id === id)), id).toContain("GitLab");
+    }
+    expect(docText(body.sections)).toContain("gitlab.com");
+    expect(body.effectiveDate).toBe("2026-10-12");
+  }
+});

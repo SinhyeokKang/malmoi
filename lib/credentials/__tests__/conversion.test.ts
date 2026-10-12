@@ -6,7 +6,7 @@ import { credentialCommand, credentialTarget, finalizeDeploy } from "../command"
 import { CredentialError } from "../crypto";
 it("defaults to read-only and rejects apply without both cutover attestations", async () => {
   const updateMany = vi.fn();
-  const db = { user: { findMany: vi.fn().mockResolvedValue([{ id: "u1", email: "a@x.com", name: null, image: null, emailLookup: null }]), updateMany }, account: { findMany: vi.fn().mockResolvedValue([]) }, projectInvitation: { findMany: vi.fn().mockResolvedValue([]) }, session: { findMany: vi.fn().mockResolvedValue([]) } } as unknown as PrismaClient;
+  const db = { user: { findMany: vi.fn().mockResolvedValue([{ id: "u1", email: "a@x.com", name: null, image: null, emailLookup: null }]), updateMany }, account: { findMany: vi.fn().mockResolvedValue([]) }, projectInvitation: { findMany: vi.fn().mockResolvedValue([]) }, gitLabConnection: { findMany: vi.fn().mockResolvedValue([]) }, session: { findMany: vi.fn().mockResolvedValue([]) } } as unknown as PrismaClient;
   expect(await convertCredentials(db, { mode: "backfill" })).toMatchObject({ users: 1, changes: 1, applied: 0 });
   expect(updateMany).not.toHaveBeenCalled();
   await expect(convertCredentials(db, { mode: "backfill", apply: true })).rejects.toThrow();
@@ -14,7 +14,7 @@ it("defaults to read-only and rejects apply without both cutover attestations", 
 });
 it("rejects duplicate App accounts before any conversion", async () => {
   const a = { userId: "u1", provider: "github-app", providerAccountId: "1", access_token: null, refresh_token: null };
-  const db = { user: { findMany: vi.fn().mockResolvedValue([]) }, account: { findMany: vi.fn().mockResolvedValue([a, { ...a, providerAccountId: "2" }]) }, projectInvitation: { findMany: vi.fn().mockResolvedValue([]) }, session: { findMany: vi.fn().mockResolvedValue([]) } } as unknown as PrismaClient;
+  const db = { user: { findMany: vi.fn().mockResolvedValue([]) }, account: { findMany: vi.fn().mockResolvedValue([a, { ...a, providerAccountId: "2" }]) }, projectInvitation: { findMany: vi.fn().mockResolvedValue([]) }, gitLabConnection: { findMany: vi.fn().mockResolvedValue([]) }, session: { findMany: vi.fn().mockResolvedValue([]) } } as unknown as PrismaClient;
   await expect(convertCredentials(db, { mode: "backfill" })).rejects.toThrow();
 });
 it("commands reject unknown flags, implicit writes and URL arguments", () => {
@@ -116,7 +116,7 @@ describe("finalizeDeploy", () => {
 it("verification reports old-key ciphertext counts before key retirement", async () => {
   const { encodeUserFields } = await import("../records");
   const row = { id: "u1", ...encodeUserFields("u1", { email: "a@x.com", name: "Alice" }) };
-  const db = { user: { findMany: vi.fn().mockResolvedValue([row]) }, account: { findMany: vi.fn().mockResolvedValue([]) }, projectInvitation: { findMany: vi.fn().mockResolvedValue([]) }, session: { findMany: vi.fn().mockResolvedValue([]) } } as unknown as PrismaClient;
+  const db = { user: { findMany: vi.fn().mockResolvedValue([row]) }, account: { findMany: vi.fn().mockResolvedValue([]) }, projectInvitation: { findMany: vi.fn().mockResolvedValue([]) }, gitLabConnection: { findMany: vi.fn().mockResolvedValue([]) }, session: { findMany: vi.fn().mockResolvedValue([]) } } as unknown as PrismaClient;
   const ring = JSON.parse(process.env.PII_ENCRYPTION_KEYS!);
   vi.stubEnv("PII_ENCRYPTION_KEYS", JSON.stringify({ ...ring, next: Buffer.alloc(32, 79).toString("base64") }));
   vi.stubEnv("PII_ENCRYPTION_ACTIVE_KEY_ID", "next");
@@ -129,4 +129,49 @@ it("package.json exposes self-hosted entry points shaped like the hosted ones", 
     expect(scripts[`${name}:self-hosted`]).toBe(scripts[`${name}:dev`]!.replace("CREDENTIAL_TARGET=dev", "CREDENTIAL_TARGET=self-hosted"));
     expect(scripts[`${name}:self-hosted`]).toContain(`scripts/${script}`);
   }
+});
+
+
+describe("GitLab PAT 변환", () => {
+  async function fixture() {
+    const { sealGitLabToken } = await import("../storage");
+    const row = { id: "gl1", userId: "u1", token: sealGitLabToken("fixture-pat", { userId: "u1" }) };
+    const updateMany = vi.fn().mockImplementation(async ({ where, data }) => {
+      expect(where).toEqual({ id: row.id, userId: row.userId, token: row.token });
+      row.token = data.token;
+      return { count: 1 };
+    });
+    const db = { user: { findMany: async () => [] }, account: { findMany: async () => [] }, projectInvitation: { findMany: async () => [] }, session: { findMany: async () => [] }, gitLabConnection: { findMany: async () => [row], updateMany } } as unknown as PrismaClient;
+    const ring = JSON.parse(process.env.TOKEN_ENCRYPTION_KEYS!);
+    vi.stubEnv("TOKEN_ENCRYPTION_KEYS", JSON.stringify({ ...ring, next: Buffer.alloc(32, 79).toString("base64") }));
+    vi.stubEnv("TOKEN_ENCRYPTION_ACTIVE_KEY_ID", "next");
+    return { row, db, updateMany };
+  }
+  it("verify는 옛 PAT 키를 세고, 회전은 CAS로 바꾸며 재실행은 무변경이다", async () => {
+    const { row, db, updateMany } = await fixture();
+    try {
+      expect(await convertCredentials(db, { mode: "verify" })).toMatchObject({ oldTokenKey: 1, changes: 0 });
+      expect(await convertCredentials(db, { mode: "rotate-token" })).toMatchObject({ oldTokenKey: 1, changes: 1, applied: 0 });
+      expect(updateMany).not.toHaveBeenCalled();
+      expect(await convertCredentials(db, { mode: "rotate-token", apply: true, trafficBlocked: true, writersDrained: true })).toMatchObject({ oldTokenKey: 0, changes: 1, applied: 1 });
+      const { openGitLabToken } = await import("../storage");
+      expect(openGitLabToken(row.token, { userId: "u1" })).toBe("fixture-pat");
+      expect(await convertCredentials(db, { mode: "rotate-token" })).toMatchObject({ oldTokenKey: 0, changes: 0 });
+    } finally { vi.unstubAllEnvs(); }
+  });
+  it.each(["verify", "rotate-token", "rotate-pii", "backfill", "reindex"] as const)("%s도 다른 사용자의 PAT 봉투를 거부한다", async mode => {
+    const { row, db, updateMany } = await fixture();
+    try {
+      row.userId = "other";
+      await expect(convertCredentials(db, { mode })).rejects.toThrow(CredentialError);
+      expect(updateMany).not.toHaveBeenCalled();
+    } finally { vi.unstubAllEnvs(); }
+  });
+  it("PAT CAS 실패는 성공으로 보고하지 않는다", async () => {
+    const { db, updateMany } = await fixture();
+    updateMany.mockResolvedValue({ count: 0 });
+    try {
+      await expect(convertCredentials(db, { mode: "rotate-token", apply: true, trafficBlocked: true, writersDrained: true })).rejects.toThrow(CredentialError);
+    } finally { vi.unstubAllEnvs(); }
+  });
 });
