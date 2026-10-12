@@ -426,3 +426,27 @@ it("Publish가 도는 동안 멈춘 [Sync]는 waitPublish를 title + 자기 sr-o
   expect(visible(en.repositorySync.waitPublish)).toHaveLength(0);
   await act(async () => { pull.resolve({ status: "skipped", reason: "no-edits" }); await pull.promise; });
 });
+
+/**
+ * **GitLab 재연결은 쓰기 명의를 바꾼다** (감사 U2 · 결정 R4) — 그 문장(시안 G6c)과 보는 사람별 갈래(내 연결 사용 · 토큰 교체 · PAT 입력)는
+ * 설정 Repository 카드에만 있다. Home 배너는 그 카드로 가는 링크이고 그 자리에서 재연결하지 않는다. GitHub 배너는 그대로 그 자리의 버튼이다.
+ */
+function ConnectionBanner({ host, problem }: { host?: string; problem: "disconnected" | "not-connected" }) {
+  return <HomeNotices {...props} repo={{ ...props.repo, host }} state="not_connected" problem={problem} failedSurface={null} reason={null} lastSyncAt={null} now={new Date("2026-09-15T12:00:00Z")} />;
+}
+
+it.each([
+  ["disconnected", en.home.banner.disconnected.action],
+  ["not-connected", en.home.banner.notConnected.action],
+] as const)("GitLab %s 배너의 OWNER 동작은 설정 Repository 카드로 가는 링크다 — 버튼이 아니다", async (problem, label) => {
+  await render(<HomeActions slug="acme" writeLock={null}><ConnectionBanner host="gitlab" problem={problem} /></HomeActions>);
+  const link = [...document.querySelectorAll("a")].find(a => (a.textContent ?? "").includes(label));
+  expect(link?.getAttribute("href")).toBe("/projects/acme/settings");
+  expect([...document.querySelectorAll("button")].some(b => (b.textContent ?? "").includes(label))).toBe(false);
+});
+
+it("GitHub disconnected 배너는 그 자리의 재연결 버튼 그대로다", async () => {
+  await render(<HomeActions slug="acme" writeLock={null}><ConnectionBanner problem="disconnected" /></HomeActions>);
+  expect(button(en.home.banner.disconnected.action)).toBeTruthy();
+  expect([...document.querySelectorAll("a")].some(a => (a.textContent ?? "").includes(en.home.banner.disconnected.action))).toBe(false);
+});
