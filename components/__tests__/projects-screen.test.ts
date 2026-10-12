@@ -551,8 +551,8 @@ describe("캔버스 대조로 잡은 자리", () => {
    */
   it("검색 일치를 이름 칸에서만 칠한다", () => {
     expect(BODY).toContain('<Highlight segments={highlightSegments(row.name, searchTokens(q ?? ""))} />');
-    // 메타 줄은 원문 그대로다.
-    expect(BODY).toMatch(/\$\{row\.repoOwner\}\/\$\{row\.repoName\}/);
+    // 메타 줄은 원문 그대로다 — namespace와 이름이 두 칸이라도 칠하지 않는다(긴 하위 그룹은 namespace가 먼저 줄어든다).
+    expect(BODY).toMatch(/\{`\$\{row\.repoOwner\}\/`\}<\/span>\s*<span className="min-w-0 truncate">\{row\.repoName\}/);
   });
 
   /**

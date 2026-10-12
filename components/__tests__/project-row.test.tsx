@@ -196,15 +196,18 @@ it.each(["list", "home", "invite"])("%s의 이미지 로드 실패는 이름 색
  * **메타 줄의 리포 앞에 GitHub 마크가 선다** (2026-09-25 사용자 — Vercel 목록처럼). 마크는 이 리포의 유일한 GitHub 글리프
  * `GithubIcon`(Sources 머리와 같은 14)이고, 글자와 같은 색을 상속한다(보관 행이면 함께 물러난다).
  */
-it("메타 줄이 리포 앞에 GitHub 마크를 든다", async () => {
+it("메타 줄이 리포 앞에 GitHub 마크를 든다 — 호스트 이름은 접근 이름에 글자로 든다", async () => {
   const container = await draw({});
-  const meta = [...container.querySelectorAll("span")].find((s) => s.textContent === "o/r" && s.querySelector("svg") !== null);
+  // 보이는 글자 — `sr-only` 호스트 이름을 뺀 값이다(그 이름은 글리프만으로 호스트를 가르지 않으려고 둔다).
+  const visible = (el: Element) => [...el.childNodes].filter((n) => !(n instanceof Element && n.classList.contains("sr-only"))).map((n) => n.textContent).join("");
+  const meta = [...container.querySelectorAll("span")].find((s) => s.querySelector("svg") !== null && visible(s) === "o/r");
   const mark = meta?.querySelector("svg");
   expect(mark).not.toBeNull();
   expect(mark?.getAttribute("aria-hidden")).toBe("true");
   expect(mark?.getAttribute("class")).toContain("size-3.5");
   // 메타는 리포 하나다(2026-09-30 사용자 — 역할·멤버 수를 걷었다).
-  expect(meta?.textContent).toBe("o/r");
+  expect(visible(meta!)).toBe("o/r");
+  expect(meta!.querySelector(".sr-only")?.textContent).toBe("GitHub: ");
 });
 
 /**
@@ -235,4 +238,33 @@ it.each([
   expect(band.classList.contains(color)).toBe(true);
   expect(band.classList.contains("pl-14")).toBe(true);
   expect(band.querySelector("a")?.getAttribute("href")).toBe(tone === "muted" ? "/projects/acme/surfaces/default/translations?ns=*&state=unsent" : tone === "warning" ? "/projects/acme/settings" : "/projects/acme/sources");
+});
+
+/**
+ * **호스트가 섞인 목록** (gitlab-repositories 시안 G4a) — GitLab 행은 글리프·접근 이름·띠 문장·링크가 GitLab이고, 같은 목록의 GitHub 행은 그대로다.
+ * 새 열·배지를 늘리지 않는다(행 높이 불변) — 호스트는 보조줄의 글리프 + 접근 이름이 든다.
+ */
+const GITLAB: Partial<ProjectListRow> = {
+  slug: "gl", name: "GL", repoHost: "gitlab", installationId: null, gitlabConnectionId: "conn", repoOwner: "group/sub", repoName: "web",
+  lastPrUrl: "https://gitlab.com/group/sub/web/-/merge_requests/7",
+};
+
+it("GitLab 행 — 접근 이름이 GitLab이고 열린 MR 띠가 `!7`·Open on GitLab이다, GitHub 낱말 0건", async () => {
+  const container = await draw({ ...GITLAB, openPr: { number: 7, url: "https://gitlab.com/group/sub/web/-/merge_requests/7" } });
+  expect([...container.querySelectorAll(".sr-only")].map((s) => s.textContent)).toContain("GitLab: ");
+  expect(container.textContent).toContain(en.projects.onGitLab.banner.prOpen(7));
+  const view = links(container).find((a) => a.text === en.projects.onGitLab.banner.action.viewPr);
+  expect(view?.href).toBe("https://gitlab.com/group/sub/web/-/merge_requests/7");
+  const row = container.querySelector('a[href="/projects/gl"]')?.parentElement ?? container;
+  expect(row.textContent).not.toMatch(/github|pull request/i);
+});
+
+it("GitLab 행의 저장소 앞섬 띠는 gitlab.com `/-/compare`로 연다", async () => {
+  const container = await draw({ ...GITLAB, repoAheadFiles: 2, repoAheadFrom: "abc", baseBranch: "main" });
+  expect(links(container).some((a) => a.href === "https://gitlab.com/group/sub/web/-/compare/abc...main")).toBe(true);
+});
+
+it("GitLab 토큰의 저장 만료일이 지난 행은 Disconnected 띠다 (D24 — 원격 호출 0)", async () => {
+  const container = await draw({ ...GITLAB, gitlabTokenExpiresAt: new Date("2000-01-01T00:00:00Z") });
+  expect(container.textContent).toContain(en.settings.repository.disconnected);
 });

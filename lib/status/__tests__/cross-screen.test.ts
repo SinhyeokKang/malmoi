@@ -79,6 +79,8 @@ type Fixture = {
   probe: ProbeResult;
   /** GitLab 연결 건강성의 원격 결과(`loadGitLabHealth` — 참조가 있을 때만 부른다). 없으면 정상(`ok`)이다. */
   gitlabHealth?: ConnectionHealth;
+  /** 참조하는 GitLab 연결의 저장 만료일(D24) — 목록·Inbox가 DB만으로 끊김을 안다. */
+  gitlabTokenExpiresAt?: Date | null;
 };
 
 const PR = { number: 7, url: "https://github.com/acme/web/pull/7" };
@@ -132,6 +134,7 @@ function observe(f: Fixture, J: Judgments): Observed {
     project: {
       id: "p1", slug: "acme", name: "Acme", image: null, repoHost: f.repoHost, gitlabConnectionId: f.gitlabConnectionId, installationId: f.installationId, archivedAt: f.archivedAt, repoOwner: "acme", repoName: "web",
       repositoryId: f.repositoryId, baseBranch: "main", lastPrUrl: f.openPr === null ? null : PR.url, _count: { members: 1 }, surfaces: f.surfaces,
+      gitlabConnection: f.gitlabConnectionId === null ? null : { expiresAt: f.gitlabTokenExpiresAt ?? null },
     },
   };
   const [row] = assembleProjectListRows([member], { ...EMPTY, unsent: new Map([["p1", f.pending]]) }, new Map([["p1", { openPr: f.openPr, repoAheadFiles: 0 }]]));
@@ -293,6 +296,16 @@ const MATRIX: Row[] = [
     input: "GitLab 토큰 못 씀(probe)",
     fixture: fixture({ repoHost: "gitlab", installationId: null, gitlabConnectionId: "conn-a", gitlabHealth: { status: "connection-unusable" } }),
     list: { chip: "active", banner: null },
+    home: { banner: "disconnected" },
+    settings: "disconnected",
+    sources: ["synced"],
+    refusal: { error: "none" },
+  },
+  {
+    // ⚠️ GitLab 토큰의 저장 만료일이 지났다(D24) — 목록도 DB만으로 Disconnected다(원격 호출 0). Home·설정은 경계가 `connection-unusable`로 안다.
+    input: "GitLab 토큰 만료(저장 만료일)",
+    fixture: fixture({ repoHost: "gitlab", installationId: null, gitlabConnectionId: "conn-a", gitlabTokenExpiresAt: new Date("2000-01-01T00:00:00Z"), gitlabHealth: { status: "connection-unusable" } }),
+    list: { chip: "disconnected", banner: "disconnected" },
     home: { banner: "disconnected" },
     settings: "disconnected",
     sources: ["synced"],

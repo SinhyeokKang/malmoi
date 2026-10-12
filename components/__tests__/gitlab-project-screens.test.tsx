@@ -141,3 +141,17 @@ describe("설정 › CI — GitLab (G7)", () => {
     expect(container.textContent).not.toMatch(GITHUB_WORDS);
   });
 });
+
+describe("RepoHostScope — 클라이언트 조각의 사전", () => {
+  it("GitLab 범위 아래 useMessages()가 merge request 문장이고, GitHub 범위는 그대로다", async () => {
+    const { useMessages } = await import("@/components/i18n/messages-provider");
+    function Probe() {
+      const m = useMessages();
+      return <p>{m.translations.publish.openPr} · {m.home.meta.pr(128)}</p>;
+    }
+    const gitlab = await render(<RepoHostScope host="gitlab"><Probe /></RepoHostScope>);
+    expect(gitlab.container.textContent).toBe("Open merge request · !128");
+    const github = await render(<RepoHostScope host="github"><Probe /></RepoHostScope>);
+    expect(github.container.textContent).toBe("Open pull request · #128");
+  });
+});

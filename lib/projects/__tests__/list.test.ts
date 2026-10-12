@@ -68,6 +68,21 @@ describe("searchProjects", () => {
   });
 });
 
+describe("projectStatus — GitLab 저장 만료일 (D24)", () => {
+  const NOW = new Date("2026-10-12T00:00:00Z");
+  const GITLAB = { archivedAt: null, repoHost: "gitlab", installationId: null, gitlabConnectionId: "conn-a", surfaces: [{ archivedAt: null, lastCommitSha: "sha" }], repositoryId: "42" };
+  it.each([
+    ["만료일 없음", null, "active"],
+    ["만료 임박(5일) — 연결은 정상이다", new Date("2026-10-17T00:00:00Z"), "active"],
+    ["만료일 지남 — 원격 호출 없이 끊김", new Date("2026-10-11T00:00:00Z"), "needs_reconnect"],
+  ] as const)("%s", (_name, expiresAt, status) => {
+    expect(projectStatus({ ...GITLAB, gitlabTokenExpiresAt: expiresAt }, NOW)).toBe(status);
+  });
+  it("GitHub 프로젝트는 GitLab 만료일을 보지 않는다", () => {
+    expect(projectStatus({ ...GITLAB, repoHost: "github", installationId: "inst", gitlabConnectionId: null, gitlabTokenExpiresAt: new Date("2000-01-01T00:00:00Z") }, NOW)).toBe("active");
+  });
+});
+
 describe("projectStatus", () => {
   const READY = { archivedAt: null, repoHost: "github", gitlabConnectionId: null, installationId: "1", surfaces: [{ archivedAt: null, lastCommitSha: "a".repeat(40) }], repositoryId: "42" };
 
