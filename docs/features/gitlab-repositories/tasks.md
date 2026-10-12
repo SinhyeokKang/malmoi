@@ -1,6 +1,6 @@
 # GitLab repositories — 재개 후 태스크
 
-상태: **전부 미착수·구현 보류**. 문서 기록·검수는 아래 실행을 승인하지 않는다. 각 묶음은 향후 구현 커밋 경계이며 현재 구현 코드를 커밋하지 않는다. 갱신 2026-10-12(3차 검수 + 인증 결정 — GitHub 현행 유지, GitLab PAT).
+상태: **재개됨**(2026-10-12 `/orchestrate gitlab-repositories` — §0 완료, §1부터 진행). 배치·소유권은 [orch.md](orch.md). 갱신 2026-10-12(W0 — §0 결정·실측·전수 표).
 
 검증 줄 표기: **[자동]** 명령 결과로 판정 · **[수동]** 스킬·절차로 사람이 판정(이 리포엔 e2e 프레임워크가 없다). 실물 증거(원격 SHA·MR 번호·CI 실행 링크·스크린샷)는 해당 배치의 `/merge` PR body에 남기고, 결론은 정본(ARCHITECTURE 등)으로 올린다 — 이 디렉터리는 기능이 끝나면 지워진다.
 
@@ -10,16 +10,16 @@
 
 ## 0. 재개 결정·설계 확정 — 문서 경계
 
-- [ ] 사용자가 spec §6의 미결 행을 닫는다 — 구현 시점·도입 팀·검증 리포, 포지셔닝·정본 문구(PRODUCT §1·§2·§3·§4.1·README·불변식 6·11), PR/MR 호칭, MR 번호 표기·es 호칭, 지원 배포형, GitLab 전용 셀프 호스팅 설치의 GitHub App, PAT 봉투 키·회전, 연결자가 프로젝트를 떠날 때, CI 배포 형태, 활성화 방식, no-changes 종료 상태, 트리 크기 입력.
-  - 검증: [수동] spec §6의 모든 행에 사용자 결정과 근거가 적혀 "미결"이 0행이다.
-- [ ] PAT 실물 확인 — 최소 스코프(`api` 없이 commit·MR이 되는지), 토큰 메타 API로 만료일·스코프·주인을 읽을 수 있는지, 토큰 생성 페이지 URL 프리필(이름·스코프)이 되는지, 만료·철회·스코프 부족·권한 상실 각각의 응답 코드.
-  - 검증: [수동] design §2 "GitLab 연결"과 §5에 실측 결과(엔드포인트·응답 코드·스코프 목록)가 적혀 "확인 필요" 표기가 0이다. 철회·퇴사·만료 사례별 동작 표가 있다.
-- [ ] GitLab 실제 테스트 리포에서 API의 base 재생성·MR 재사용·no-changes 정리·권한 부족·응답 유실·**트리 항목의 size 제공 여부와 크기 조회 비용**을 검증하고 공통 인터페이스를 확정한다.
-  - 검증: [수동] 시나리오별로 원격 commit의 parent SHA = 캡처한 base SHA, 변경 외 파일 blob id 불변, 열린 MR 개수 = 1(no-changes 뒤 0), 두 번째 no-changes 실행의 외부 쓰기 호출 0회, 실패 주입 뒤 sync 브랜치·MR 상태, 크기 예산(`lib/onboarding/budget.ts`) 입력을 얻는 방식과 호출 수가 기록된다. 지원 못 하는 계약이 있으면 spec을 다시 확정하기 전까지 다음 단계로 가지 않는다.
-- [ ] `installationId`·`repositoryId` 소비자 전수 표를 만든다(2026-10-12 기준 `app`·`lib`·`components` 비테스트 55 + `scripts` 1). 메모 키(`open-pr-memo`·`probe-memo`)에 리포 호스트를 넣을지, 저장 오류 코드(`github-error`·`not-installed`) 정책, `GITHUB_WAIT_MS` 이름 일반화를 판정한다. design §2 UI 표면 표를 design에 적힌 기준 명령으로 키 단위로 다시 만든다.
-  - 검증: [수동] `rg -l -e installationId -e repositoryId app lib components scripts -g '!**/__tests__/**'`의 파일 수와 표의 행 수가 같고, 행마다 "경계 이관/GitHub 전용 유지/무관" 중 하나가 적혀 있다. UI 표에 design §2의 "빠뜨리면 안 되는 자리"가 전부 있다.
-- [ ] **시안 확보** — [design-brief.md](design-brief.md)의 열린 갈래를 spec §6 결정으로 닫고 시안을 받는다(Claude Code는 DesignSync, Codex는 로컬 핸드오프). 시안 링크는 받는 즉시 이 문서에 URL 그대로 적는다. 시안: [GitLab Repositories](https://claude.ai/design/p/b99d54cd-3034-44f1-8446-0a864da9d767?file=GitLab+Repositories.dc.html) (2026-10-12 수령).
-  - 검증: [수동] 브리프에 "열린 갈래" 0행, 시안 링크·대상 프레임 목록이 feature 문서에 있고, E의 UI 구현 태스크가 이 태스크 뒤에 놓여 있다.
+- [x] 사용자가 spec §6의 미결 행을 닫는다 — 구현 시점·도입 팀·검증 리포, 포지셔닝·정본 문구(PRODUCT §1·§2·§3·§4.1·README·불변식 6·11), PR/MR 호칭, MR 번호 표기·es 호칭, 지원 배포형, GitLab 전용 셀프 호스팅 설치의 GitHub App, PAT 봉투 키·회전, 연결자가 프로젝트를 떠날 때, CI 배포 형태, 활성화 방식, no-changes 종료 상태, 트리 크기 입력.
+  - 검증: [수동] spec §6의 모든 행에 사용자 결정과 근거가 적혀 "미결"이 0행이다. → 완료(orch.md D1~D13, spec §6).
+- [x] PAT 실물 확인 — 최소 스코프(`api` 없이 commit·MR이 되는지), 토큰 메타 API로 만료일·스코프·주인을 읽을 수 있는지, 토큰 생성 페이지 URL 프리필(이름·스코프)이 되는지, 만료·철회·스코프 부족·권한 상실 각각의 응답 코드.
+  - 검증: [수동] design §2 "GitLab 연결"과 §5에 실측 결과(엔드포인트·응답 코드·스코프 목록)가 적혀 "확인 필요" 표기가 0이다. 철회·퇴사·만료 사례별 동작 표가 있다. → 완료. 최소 스코프 `api`(실측 + 문서 근거 — `api` 없는 토큰은 만들 수 없어 문서로 판정), 만료·철회·스코프 부족·권한 상실 응답은 **문서 근거** 표기.
+- [x] GitLab 실제 테스트 리포에서 API의 base 재생성·MR 재사용·no-changes 정리·권한 부족·응답 유실·**트리 항목의 size 제공 여부와 크기 조회 비용**을 검증하고 공통 인터페이스를 확정한다.
+  - 검증: [수동] 시나리오별로 원격 commit의 parent SHA = 캡처한 base SHA, 변경 외 파일 blob id 불변, 열린 MR 개수 = 1(no-changes 뒤 0), 두 번째 no-changes 실행의 외부 쓰기 호출 0회, 실패 주입 뒤 sync 브랜치·MR 상태, 크기 예산(`lib/onboarding/budget.ts`) 입력을 얻는 방식과 호출 수가 기록된다. 지원 못 하는 계약이 있으면 spec을 다시 확정하기 전까지 다음 단계로 가지 않는다. → 완료(design §2 Publish 실측 표 · §3 "공통 경계"). 지원 못 하는 계약 없음. 응답 유실·실패 주입은 실물로 재지 못해 계약 테스트(§3)와 `/roundtrip`(§6)으로 남긴다. fork MR은 문서 근거.
+- [x] `installationId`·`repositoryId` 소비자 전수 표를 만든다(재개 실측 56 = `app` 7 · `lib` 48 · `scripts` 1). 메모 키(`open-pr-memo`·`probe-memo`)에 리포 호스트를 넣을지, 저장 오류 코드(`github-error`·`not-installed`) 정책, `GITHUB_WAIT_MS` 이름 일반화를 판정한다. design §2 UI 표면 표를 design에 적힌 기준 명령으로 키 단위로 다시 만든다.
+  - 검증: [수동] `rg -l -e installationId -e repositoryId app lib components scripts -g '!**/__tests__/**'`의 파일 수와 표의 행 수가 같고, 행마다 "경계 이관/GitHub 전용 유지/무관" 중 하나가 적혀 있다. UI 표에 design §2의 "빠뜨리면 안 되는 자리"가 전부 있다. → 완료([consumers.md](consumers.md) — 56행, UI 136키, 판정은 design §3 "0단계 판정"). D6 전제 경로 전수는 consumers.md §2(예외 `/api/push` → D6a).
+- [x] **시안 확보** — [design-brief.md](design-brief.md)의 열린 갈래를 spec §6 결정으로 닫고 시안을 받는다(Claude Code는 DesignSync, Codex는 로컬 핸드오프). 시안 링크는 받는 즉시 이 문서에 URL 그대로 적는다. 시안: [GitLab Repositories](https://claude.ai/design/p/b99d54cd-3034-44f1-8446-0a864da9d767?file=GitLab+Repositories.dc.html) (2026-10-12 수령).
+  - 검증: [수동] 브리프에 "열린 갈래" 0행, 시안 링크·대상 프레임 목록이 feature 문서에 있고, E의 UI 구현 태스크가 이 태스크 뒤에 놓여 있다. → 완료(design-brief "열린 갈래 — 0" · G7 본문 요건).
 
 ## 1. 공통 판정·계약 — 커밋 A
 
@@ -51,7 +51,7 @@
   - 검증: [자동] 쓰기 경로가 호출자 연결을 고르는 픽스처, 연결 경로에 비GET `fetch`를 넣은 픽스처에서 각각 red, 원복 시 green.
 - [ ] 새 Route Handler가 없음을 확인한다(design §5 "새 진입점 없음"). 구현 중 생기면 인가 스캐너 `app/__tests__/entry-points.test.ts`의 `guard(` 집계에 등록한다(POSTMORTEM 2026-09-18).
   - 검증: [자동] `app/api/` 아래 새 파일 0, 생겼다면 `guard(` 호출을 지운 뮤테이션에서 red.
-- [ ] PAT 입력·검증·보관·교체·해제 Server Action과 프로젝트의 연결 참조(생성·재연결)를 만든다(design §2 "GitLab 연결" — 저장은 계정 하나, 프로젝트는 참조). 검증 사유를 가르는 순수 함수(무효·만료·스코프 부족·네트워크)를 먼저 테스트한다.
+- [ ] PAT 입력·검증·보관·교체·해제 Server Action과 프로젝트의 연결 참조(생성·재연결)를 만든다(design §2 "GitLab 연결" — 저장은 계정 하나, 프로젝트는 참조). 검증 사유를 가르는 순수 함수(무효(401 — 만료·철회 포함)·스코프 부족(`api` 없음)·fine-grained 거부(`granular`)·네트워크/5xx/429 → `unavailable`, design §2 "GitLab 연결" 2단계)를 먼저 테스트한다. `/self`의 `last_used_ips`는 저장하지 않는다.
   - 검증: [자동] 사유별 분류 테스트(네트워크 오류를 "무효"로 접지 않음), 원문 PAT가 응답·로그·`ProjectEvent`·MCP 응답에 0건(spec 완료 조건 11), 해제 뒤 봉투 행 0 + 참조하던 프로젝트가 `Disconnected`, 계정 토큰 교체 뒤 참조하는 프로젝트 전부가 새 토큰으로 쓰기, 참조 주인이 멤버에서 빠지면 같은 tx에서 참조가 빔, 다른 OWNER의 재연결이 참조를 자기 연결로 바꿈.
 
 ## 3. GitLab I/O·Sync·Publish — 커밋 C
@@ -62,7 +62,7 @@
   - 검증: [자동] 예산 만료 뒤 새 전송 0건 · 애매한 5xx 뒤 MR POST 1회 · 늦은 성공이 stale FAILED를 덮지 않음 · 쓰기 뒤 실패는 `execution-uncertain`(POSTMORTEM 2026-10-09).
 - [ ] 렌더 중 원격 조회(GitLab 원격 상태·probe·열린 MR 게이트)가 공유 마감 `lib/github-wait.ts`를 쓰게 한다. 손 사본을 만들지 않는다.
   - 검증: [자동] 테스트가 `lib/__tests__/fast-github-wait.ts`를 쓰고 `pnpm test`에 EnvironmentTeardownError 0(POSTMORTEM 2026-10-02).
-- [ ] 완전한 tree/blob 스냅샷·크기 예산·페이지네이션·불변 id 검증을 구현한다.
+- [ ] 완전한 tree/blob 스냅샷(REST tree keyset 끝까지)·크기 예산(GraphQL `blobs` 100경로씩 — `RepoReader.sizes`, design §3)·페이지네이션·불변 id 검증을 구현한다.
   - 검증: [자동] 중간 페이지 실패·잘린 목록·크기 초과·크기 미제공·이름 재사용을 성공/빈 목록으로 처리하지 않는다. SHA-256 리포·LFS 포인터 파일은 거부, 경로 인코딩(공백·유니코드·`%`·하위 그룹)은 왕복 동일, 429는 일시 장애로 판정. GitHub `getTree` truncated에서 던지는 동작도 같은 계약 테스트에 한 줄.
 - [ ] 다섯 파일 포맷 × 두 리포 호스트의 render 바이트 동일을 단언한다. 빈 키·orphan·로케일 누락·빈 `{}` 중첩 JSON·chrome `placeholders: null` 사례를 GitLab에도 한 줄씩 둔다.
   - 검증: [자동] 어댑터 계약 테스트 green, 같은 DB·원본에서 두 호스트 출력의 blob hash가 같다(spec 완료 조건 2).
@@ -71,13 +71,13 @@
 - [ ] 변경 없음 경로의 쓰기 호출 0회를 단언한다.
   - 검증: [자동] 1층(DB 미전달 0 → 원격 호출 0)·2층(blob hash 전부 동일 → commit API 호출 0)을 가짜 클라이언트 호출 기록으로 단언.
 - [ ] 첫 적재·소스 관리·수동 Sync·야간·자동 적재 보호를 기존 코어에 연결한다. 새 `lib/` 경로를 gate-plan 트리거에 등록한다. 저장 오류 코드 정책(§0 판정)을 적용한다.
-  - 검증: [자동] `pnpm gate` green(관련 격리 PG 스위트 포함). 열린 MR/조회 실패 보류, Publish/no-changes 경합, 미전달 토큰 보존, 기본 브랜치 개명 시 `base-branch-missing`과 늦게 도착한 판정 무시 포함. 새 코드면 `lib/pull/__tests__/error-codes.test.ts` 양방향 등재 green.
+  - 검증: [자동] `pnpm gate` green(관련 격리 PG 스위트 포함). 열린 MR/조회 실패 보류, Publish/no-changes 경합, 미전달 토큰 보존, 기본 브랜치 개명 시 `base-branch-missing`과 늦게 도착한 판정 무시 포함. 저장 오류 코드는 재사용(design §3 "0단계 판정") — `error-codes.test.ts` 등재 변화 없음, Logs 문장만 호스트 분기.
 - [ ] 연결 상태 시나리오를 `*.integration.ts`로 쓴다 — 권한별 연결·PAT 만료·만료 임박·철회·스코프 부족·주인의 권한 상실·일시 장애·재시도·보관 403. 쓰기 직전 project id 재대조(PAT에는 리포 한정 층이 없다)도 시나리오로 둔다.
   - 검증: [자동] 진입점 → 가짜 클라이언트 → 격리 PG → **뷰 모델 출력**(Home `metaTabs`·Inbox `attentionItems`·Logs `eventSentence`·설정 연결 상태)으로 단언. DB 행에서 멈춘 단언이 없다.
 
 ## 4. CI·MCP — 커밋 D
 
-- [ ] spec §6에서 고른 배포 형태로 GitLab CI 경로를 만든다. 불변 태그/SHA 고정·별도 릴리스 축·protected+masked `PUSH_TOKEN`·base 조건·루프 마커 가드(템플릿 안 + 생성 워크플로 조건, 두 겹)·열린 MR 경고·`/api/push/failure` 보고(`lastCommitSha` 미전진)를 연결한다. 동작 기준선은 action v3, 셀프 호스팅이면 `api-url`을 항상 든다. `docs/ACTIONS.md`에 GitLab 절을 쓴다.
+- [ ] GitLab CI 경로를 **불변 태그 clone + SHA 대조**(D5)로 만든다 — 원본 `.gitlab/malmoi-i18n-push/push.sh`, 생성기 `lib/onboarding/gitlab-ci.ts`, 태그 축 `malmoi-i18n-push-gitlab-vN`(design §2 "적재와 Sync"). 40자 SHA 대조·protected+masked `PUSH_TOKEN`·base 조건·루프 마커 가드(`rules` + `push.sh`, 두 겹)·열린 MR 경고(서버 `deferred` 사유)·`/api/push/failure` 보고(`lastCommitSha` 미전진)를 연결한다. 동작 기준선은 action v3, 셀프 호스팅이면 `MALMOI_I18N_API_URL`을 항상 든다. `docs/ACTIONS.md`에 GitLab 절을 쓴다. 태그를 처음 만드는 것은 action 릴리스와 같은 절차다(앱 릴리스와 별개).
   - 검증: [자동] 페이로드 생산자·CI 입력 변환 테스트 green. GitLab 템플릿을 `lib/pull/__tests__/skip-marker.test.ts`의 마커 소비자 넷째로 등록하고 GitLab merge commit·squash 기본·squash 사용자 템플릿·fast-forward 메시지 모양 사례 green(POSTMORTEM 2026-09-17 grep 기대값 갱신). GitLab 템플릿 YAML 계약 테스트(`scripts/__tests__/action-setup.test.ts` 선례) green. 셀프 호스팅 생성 템플릿에 `api-url`이 있다. [수동] 폐기용 GitLab 리포의 실제 CI에서 정상 적재·보류(200 `deferred`)·실패 보고·오래된 커밋 409·재실행, 그리고 각 머지 방식에서 Publish MR 머지 뒤 push가 스킵되는지 확인.
 - [ ] MCP 저장소 목록·프로젝트 생성·연결 및 Sync/Publish를 동일 코어에 배선한다. 기존 필드명(`lastPublishPullRequest`·`newFromGitHub`)의 호환 정책을 적용하고 `get_workflow`(`lib/mcp/tools/onboarding.ts`의 경로 하드코드)가 리포 호스트에 맞는 경로를 낸다.
   - 검증: [자동] 리포 호스트 지정/기존 클라이언트 호환·사용자/프로젝트 인가·credential 비노출·실패 응답 테스트, GitLab 프로젝트 대상 도구 응답에 `GitHub`·`pull request`·`github.com` 0건.
@@ -98,8 +98,8 @@
   - 검증: [자동] 사전·가이드·`no-korean-ui`·`brand-spelling`·`dictionary-consistency` 테스트 green. [수동] 지원 플랜·인증 만료·지원 배포형 설명과 구현 대조, PRODUCT §4.1·README에 GitLab 미지원 문구 0.
 - [ ] 초대 이메일 `lib/invitation-email/template.ts`의 "sends it back to GitHub"를 리포 호스트별 문장으로 분기한다.
   - 검증: [자동] `lib/invitation-email/__tests__/message.test.ts`에 GitHub·GitLab 프로젝트 초대 사례를 더해 각각 다른 리포 호스트 이름이 0건.
-- [ ] 셀프 호스팅 유지보수 계약(design §5)을 맞춘다 — preflight 분류표에 GitLab env(반쪽 설정 기동 거부), `GITHUB_APP_*` 필수 여부(spec §6 결정), `deploy/.env.example`, `credentials:self-hosted`의 `rotate-token`·`verify`·`oldTokenKey` 집계에 새 자격증명 열(`lib/credentials/conversion.ts`), 토큰 경로 nginx 마스킹, `guide/{en,ko,es}/self-hosting/{install,operate}.md`의 env·키 회전·백업, 운영자 개인정보 재료.
-  - 검증: [자동] preflight 테스트(반쪽 설정 red·GitLab 전용 설치 판정), credentials 변환 테스트에 새 열, `pnpm test:credentials:postgres` green. [수동] SELF-HOSTING §3 기능 개발 체크리스트 1~8 통과 기록.
+- [ ] 셀프 호스팅 유지보수 계약(design §5)을 맞춘다 — GitLab env는 없다(D6). `GITHUB_APP_*` 다섯을 `optional` + **all-or-none 그룹 규칙**(D4, 반쪽 기동 거부 — 로그인 공급자 쌍 규칙과 같은 자리)과 App 없는 설치의 화면 갈래(D4a), `deploy/.env.example`, `credentials:self-hosted`의 `rotate-token`·`verify`·`oldTokenKey` 집계에 새 자격증명 열(`lib/credentials/conversion.ts`), 토큰 경로 nginx 마스킹, `guide/{en,ko,es}/self-hosting/{install,operate}.md`의 env("required either way" 수정)·키 회전·백업·**롤백 전 GitLab CI 중지/`PUSH_TOKEN` 회전 한 줄**(D6a), 운영자 개인정보 재료.
+  - 검증: [자동] preflight 테스트(App 다섯 중 일부만 → red · 다섯 다 없음 → green(GitLab 전용) · 다섯 다 → green), credentials 변환 테스트에 새 열, `pnpm test:credentials:postgres` green. [수동] SELF-HOSTING §3 기능 개발 체크리스트 1~8 통과 기록.
 - [ ] 인증 결정에 따른 GitLab 전송처·자격증명·수집 정보를 `/privacy` 영문·국문 본문과 수집 목록에 반영하고 필요한 개정 이력·시행일을 갱신한다.
   - 검증: [자동] `lib/privacy/__tests__/`의 수집 목록·방침 게이트 테스트 green. [수동] 새 전송처·수집 목적·보존 설명과 구현 대조. GitLab 활성화 전에 반영한다.
 
@@ -113,7 +113,7 @@
   - 검증: [수동] 로컬 compose 설치본에서 preflight 통과, GitLab 왕복 성립, 결과를 SELF-HOSTING §7에 날짜·digest와 함께 기록(GitLab은 PAT라 로컬에서 된다. 로그인용 외부 OAuth가 없어 못 하면 "미실행"으로 적는다).
 - [ ] 전체 게이트를 돌리고 두 리포 호스트의 외부 실패를 주입한다.
   - 검증: [자동] `pnpm gate` green, 가짜 클라이언트로 실패 주입 계약 테스트 green. [수동] 실물 리포에서 권한 철회·토큰 만료 주입. spec 완료 조건 1–10마다 자동/수동 증거를 PR body에 연결한다.
-- [ ] 배포: dev DB는 `/push` 전에 `/db`로 넓힌다. 프로덕션은 별도 사용자 `/merge` 요청으로만 진행하고, `/merge` 1단계에서 `db:deploy`·`db:status:prod`로 prod를 넓힌 뒤 prod `has_schema_privilege` 네 칸 false(새 자격증명 테이블이면 GRANT 0건)를 확인한다. prod를 겨눈 리셋은 금지다. 그 뒤 spec §6에서 고른 방식으로 GitLab 생성을 활성화한다(셀프 호스팅 설치본 포함).
-  - 검증: [수동] `db:status:prod`가 최신, 권한 검사 결과 기록, 구버전이 GitLab 프로젝트를 처리하는 창이 없고 기존 GitHub 프로젝트의 Sync·Publish가 정상. 활성화 방식이 env 스위치면 `.env.example`·`deploy/.env.example`·preflight 분류·OPERATIONS·롤백 절차가 같은 배치에 있다.
+- [ ] 배포: dev DB는 `/push` 전에 `/db`로 넓힌다. 프로덕션은 별도 사용자 `/merge` 요청으로만 진행하고, `/merge` 1단계에서 `db:deploy`·`db:status:prod`로 prod를 넓힌 뒤 prod `has_schema_privilege` 네 칸 false(새 자격증명 테이블이면 GRANT 0건)를 확인한다. prod를 겨눈 리셋은 금지다. 활성화는 스위치가 없다(D6) — `/merge`가 곧 prod 활성화이고 셀프 호스팅은 그 태그로 업그레이드가 활성화다.
+  - 검증: [수동] `db:status:prod`가 최신, 권한 검사 결과 기록, 구버전이 GitLab 프로젝트를 처리하는 창이 없고 기존 GitHub 프로젝트의 Sync·Publish가 정상. 롤백 절차(design §4 — 구버전 `/api/push`의 열린 MR 게이트 부재, D6a)가 OPERATIONS·셀프 호스팅 운영 가이드에 있다.
 
-다음 단계는 **구현 시점과 spec §6의 결정 재확인**이다. 지금 `/tdd interface`로 진행하지 않는다.
+다음 단계는 §1(커밋 A)·§5 첫 항목(E0)·§4 첫 항목(D1)의 병렬 파동이다(orch.md "파일 겹침·실행 순서").
