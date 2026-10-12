@@ -26,6 +26,8 @@ export type FakeRepoOptions = {
   branches: Record<string, string>;
   /** 커밋 → 파일(경로 → 내용). 트리 항목 id는 내용의 blob SHA다. 디렉터리 항목은 경로에서 만든다. */
   commits: Record<string, Record<string, string>>;
+  /** 커밋 → 부모 커밋(시드 커밋 사이의 이력). compare의 `commits`가 이 사슬을 따른다 — 이 가짜가 만든 커밋은 스스로 잇는다. */
+  parents?: Record<string, string>;
   mergeRequests?: FakeMergeRequest[];
   /** 호출자 권한 — GitLab 사용자 id → 유효 access level(`members/all`). 없는 사용자는 404(멤버 아님). */
   members?: Record<string, number>;
@@ -40,7 +42,7 @@ export function createFakeGitLabRepo(options: FakeRepoOptions) {
   const base = `/projects/${id}`;
   const branches = new Map(Object.entries(options.branches));
   const commits = new Map(Object.entries(options.commits).map(([sha, files]) => [sha, new Map(Object.entries(files))]));
-  const parents = new Map<string, string>();
+  const parents = new Map<string, string>(Object.entries(options.parents ?? {}));
   const blobs = new Map<string, string>();
   for (const files of commits.values()) for (const content of files.values()) blobs.set(blobSha(content), content);
   const mergeRequests: FakeMergeRequest[] = options.mergeRequests?.map((mr) => ({ ...mr })) ?? [];
@@ -148,8 +150,19 @@ export function createFakeGitLabRepo(options: FakeRepoOptions) {
         branches.set(branch, sha);
         return respond({ id: sha, parent_ids: [start_sha] }, 201);
       }
-      case "GET /repository/compare":
-        return respond({ commits: [], diffs: [], compare_timeout: false });
+      case "GET /repository/compare": {
+        // `from`(커밋)과 `to`(브랜치 또는 커밋) 사이를 실제로 계산한다 — 고정 "변경 없음"이면 "base가 앞섰다" 갈래를 어느 테스트도 못 만든다(audit E5).
+        // `straight=true`(호출부가 늘 준다)라 diff는 두 트리의 직접 비교다. 모르는 ref는 실물처럼 404다.
+        const from = q.get("from") ?? "";
+        const to = branches.get(q.get("to") ?? "") ?? q.get("to") ?? "";
+        const [before, after] = [commits.get(from), commits.get(to)];
+        if (before === undefined || after === undefined) return respond({ message: "404 Ref Not Found" }, 404);
+        const ahead: { id: string }[] = [];
+        for (let at: string | undefined = to; at !== undefined && at !== from; at = parents.get(at)) ahead.push({ id: at });
+        const paths = [...new Set([...before.keys(), ...after.keys()])].filter((path) => before.get(path) !== after.get(path)).sort();
+        const diffs = paths.map((path) => ({ old_path: path, new_path: path, new_file: !before.has(path), deleted_file: !after.has(path), renamed_file: false }));
+        return respond({ commits: from === to ? [] : ahead.reverse(), diffs, compare_timeout: false });
+      }
       case "GET /merge_requests": {
         const rows = mergeRequests.filter((mr) => (q.get("state") === null || mr.state === q.get("state")) && (q.get("source_branch") === null || mr.source_branch === q.get("source_branch")));
         return respond(rows, 200, { "x-next-page": "" });

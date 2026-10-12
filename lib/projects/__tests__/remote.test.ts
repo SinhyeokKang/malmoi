@@ -1,6 +1,9 @@
 import { expect, it, vi } from "vitest";
 
+import { createGitLabClient } from "@/lib/gitlab/client";
+import { createFakeGitLabRepo } from "@/lib/gitlab/__tests__/fake-repo";
 import type { GitClient } from "@/lib/pull/client";
+import { repoTargetOf } from "@/lib/repo-host/target";
 import { loadRemoteSignals, type RemoteTarget } from "../remote";
 
 /**
@@ -377,4 +380,65 @@ it("클라이언트 실패·신호 거부·마감을 각각 한 줄씩 남기고
   } finally {
     spy.mockRestore();
   }
+});
+
+/**
+ * **GitLab 행 끝-끝** (audit E5). 위 fake들은 GitHub 모양 `GitClient`를 손으로 만든다 — GitLab 행의 대상 조립(`repoTargetOf` → 연결 참조)·MR iid 파싱·
+ * compare 판정이 이어지는지는 아무도 안 쟀다. 실제 GitLab 클라이언트 + 상태를 가진 가짜 리포(compare가 두 커밋 사이 diff를 계산한다)로 잰다.
+ */
+const GL_REPO = "87515176";
+const INGESTED = "1".repeat(40);
+const HEAD = "2".repeat(40);
+const gitlabTarget = (over: Partial<RemoteTarget> = {}): RemoteTarget => target({
+  repoHost: "gitlab", installationId: null, gitlabConnectionId: "conn-a", repositoryId: GL_REPO, repoOwner: "g/sub", repoName: "app", baseBranch: "main",
+  lastPrUrl: "https://gitlab.com/g/sub/app/-/merge_requests/7",
+  surfaces: [{ lastCommitSha: INGESTED, adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", storedLocales: ["en", "ko"] }],
+  ...over,
+});
+function gitlabRepo(head: Record<string, string>, mrState: "opened" | "closed" = "opened") {
+  return createFakeGitLabRepo({
+    repositoryId: GL_REPO,
+    branches: { main: HEAD },
+    commits: { [INGESTED]: { "i18n/en.json": "{}\n", "i18n/ko.json": "{}\n" }, [HEAD]: head },
+    parents: { [HEAD]: INGESTED },
+    mergeRequests: [{ iid: 7, title: "chore(i18n): sync translations", source_branch: "malmoi-i18n/sync", target_branch: "main", state: mrState, source_project_id: Number(GL_REPO), target_project_id: Number(GL_REPO), web_url: "https://gitlab.com/g/sub/app/-/merge_requests/7" }],
+  });
+}
+/** 기본 클라이언트와 같은 대상 조립(`repoTargetOf`) → 실제 GitLab 클라이언트. 어느 연결로 열었는지 기록한다. */
+function gitlabClients(repo: ReturnType<typeof createFakeGitLabRepo>) {
+  const opened: string[] = [];
+  const createClient = vi.fn(async (row: RemoteTarget) => {
+    const connection = repoTargetOf(row);
+    if (connection.status !== "ok" || connection.target.host !== "gitlab") throw new Error(`not a GitLab target: ${connection.status}`);
+    opened.push(connection.target.connectionId);
+    return createGitLabClient(connection.target, { token: "glpat-connector", gitlabUserId: "101", expiresAt: null }, { fetch: repo.fetch });
+  });
+  return { createClient, opened };
+}
+
+it("GitLab 행 — 열린 MR(iid)과 base가 앞선 로케일 파일 수가 실제 클라이언트를 지나 신호가 된다 · 프로젝트 참조 연결로 연다", async () => {
+  const repo = gitlabRepo({ "i18n/en.json": "{}\n", "i18n/ko.json": "{\"hi\":\"안녕\"}\n", "i18n/ja.json": "{}\n", "README.md": "x\n" });
+  const { createClient, opened } = gitlabClients(repo);
+  const got = await loadRemoteSignals([gitlabTarget()], { createClient });
+  // ko 변경 + ja 추가가 로케일 파일이다 — README는 세지 않는다.
+  expect(got.get("p1")).toEqual({ openPr: { number: 7, url: "https://gitlab.com/g/sub/app/-/merge_requests/7" }, repoAheadFiles: 2, repoAheadFrom: INGESTED });
+  expect(opened).toEqual(["conn-a"]);
+  const compare = repo.calls.find((call) => call.url.pathname.endsWith("/repository/compare"));
+  expect(Object.fromEntries(compare!.url.searchParams)).toEqual({ from: INGESTED, to: "main", straight: "true" });
+});
+
+it("GitLab 행 — 로케일 밖만 바뀌었거나 base가 그대로면 0이고, 닫힌 MR은 띠가 아니다", async () => {
+  const outside = gitlabRepo({ "i18n/en.json": "{}\n", "i18n/ko.json": "{}\n", "README.md": "x\n" }, "closed");
+  expect((await loadRemoteSignals([gitlabTarget()], gitlabClients(outside))).get("p1")).toEqual({ openPr: null, repoAheadFiles: 0 });
+  const same = gitlabRepo({ "i18n/en.json": "{}\n", "i18n/ko.json": "{}\n" });
+  const unchanged = await loadRemoteSignals([gitlabTarget({ surfaces: [{ lastCommitSha: HEAD, adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", storedLocales: ["en", "ko"] }] })], gitlabClients(same));
+  expect(unchanged.get("p1")).toEqual({ openPr: { number: 7, url: "https://gitlab.com/g/sub/app/-/merge_requests/7" }, repoAheadFiles: 0 });
+});
+
+it("GitLab 행 — 참조가 빈(connection-removed) 프로젝트는 클라이언트를 만들지 않고 신호가 없다", async () => {
+  const repo = gitlabRepo({ "i18n/en.json": "{}\n", "i18n/ko.json": "{\"a\":\"b\"}\n" });
+  const { createClient } = gitlabClients(repo);
+  expect((await loadRemoteSignals([gitlabTarget({ gitlabConnectionId: null })], { createClient })).get("p1")).toEqual({ openPr: null, repoAheadFiles: 0 });
+  expect(createClient).not.toHaveBeenCalled();
+  expect(repo.calls).toEqual([]);
 });
