@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { en } from "@/messages/en";
 import { NewProject } from "@/components/onboarding/new-project";
 import type { RepoOption } from "@/lib/onboarding/types";
+import type { TimeZone } from "@/lib/time-zone/zones";
 
 import userEvent from "@testing-library/user-event";
 
@@ -37,10 +38,10 @@ beforeEach(() => {
   mocks.listConnectableGitLabRepos.mockResolvedValue({ ok: true, repos: GITLAB, truncated: false });
 });
 
-async function mount({ githubEnabled = true, gitlab = { username: "ox", expiresAt: null } as { username: string; expiresAt: string | null } | null } = {}) {
+async function mount({ githubEnabled = true, gitlab = { username: "ox", expiresAt: null } as { username: string; expiresAt: string | null } | null, timeZone = undefined as TimeZone | undefined } = {}) {
   await render(<NewProject repos={repos} listError={undefined} installUrl={null} now="2026-10-12T00:00:00Z"
     initialError={undefined} backQuery={{}} closeMode="list" githubEnabled={githubEnabled} gitlab={gitlab}
-    adapters={[{ adapter: "json-catalog", layout: "per-locale", label: "JSON", example: "i18n/{locale}.json" }]} />);
+    adapters={[{ adapter: "json-catalog", layout: "per-locale", label: "JSON", example: "i18n/{locale}.json" }]} />, timeZone === undefined ? {} : { timeZone });
 }
 const tab = (name: string) => [...document.querySelectorAll<HTMLElement>('[role="tab"]')].find((t) => t.textContent?.trim() === name)!;
 const panel = () => find<HTMLElement>(document.body, '[role="tabpanel"]:not([hidden])');
@@ -161,6 +162,22 @@ describe("시안 대조 (G2a·G2e·G2f)", () => {
     expect(en.newProject.gitlab.reconnect.title).toBe("Reconnect GitLab");
     expect(panel().textContent).toContain(en.newProject.gitlab.reconnect.expiredOn("Oct 9, 2026"));
     expect(panel().querySelector("svg")?.getAttribute("class")).toContain("lucide-key-round");
+  });
+
+  // audit U5 · 결정 R1 — PAT 만료일은 날짜 전용 값이라 보는 사람 시간대로 옮기지 않는다(서쪽에선 GitLab 화면보다 하루 이르다).
+  it.each(["America/Los_Angeles", "Pacific/Honolulu"] as const)("%s에서도 계정 줄·만료 문장의 날짜가 GitLab과 같다 (U5)", async (timeZone) => {
+    await mount({ gitlab: { username: "ox", expiresAt: "2026-11-11T00:00:00.000Z" }, timeZone });
+    await act(async () => { await user.click(tab("GitLab")); });
+    await flush();
+    expect(panel().textContent).toContain(en.newProject.gitlab.account("ox", "Nov 11, 2026"));
+  });
+
+  it.each(["America/Los_Angeles", "Pacific/Honolulu"] as const)("%s에서도 만료 블록의 날짜가 GitLab과 같다 (U5)", async (timeZone) => {
+    mocks.listConnectableGitLabRepos.mockResolvedValue({ ok: false, error: "gitlab-reconnect" });
+    await mount({ gitlab: { username: "ox", expiresAt: "2026-10-09T00:00:00.000Z" }, timeZone });
+    await act(async () => { await user.click(tab("GitLab")); });
+    await flush();
+    expect(panel().textContent).toContain(en.newProject.gitlab.reconnect.expiredOn("Oct 9, 2026"));
   });
 
   it("만료일 전인데 못 쓰는 토큰(철회)은 같은 블록에 설명만 다르다", async () => {

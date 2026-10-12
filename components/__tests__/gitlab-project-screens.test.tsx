@@ -7,6 +7,7 @@ import { RepoHostScope } from "@/components/i18n/messages-provider";
 import { withRepoHost } from "@/lib/i18n/host";
 import type { ConnectionHealth } from "@/lib/github-connect/health";
 import { metaTabs, type MetaTabsInput } from "@/lib/home/meta";
+import type { TimeZone } from "@/lib/time-zone/zones";
 import { en } from "@/messages/en";
 
 import { find, render } from "./helpers/dom";
@@ -22,12 +23,13 @@ vi.mock("@/app/(edit)/projects/[slug]/settings/actions", () => ({
   connectRepository: mocks.connectRepository, reconnectGitLabRepository: mocks.reconnectGitLabRepository, updateRepositorySettings: mocks.updateRepositorySettings,
 }));
 vi.mock("@/app/(edit)/projects/actions", () => ({ listProjectBranches: mocks.listProjectBranches, rotatePushToken: mocks.rotatePushToken }));
-vi.mock("@/app/(edit)/account/actions", () => ({ connectGitLab: mocks.connectGitLab }));
+vi.mock("@/app/(edit)/account/actions", () => ({ connectGitLab: mocks.connectGitLab, disconnectGitLab: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => mocks.router, useSearchParams: () => new URLSearchParams() }));
 
 const { MetaColumn } = await import("@/components/home/meta-column");
 const { RepositoryCard } = await import("@/components/settings/repository-card");
 const { CiCard } = await import("@/components/settings/ci-card");
+const { GitLabSection } = await import("@/components/account/gitlab-section");
 
 /**
  * **GitLab 프로젝트 스코프 화면** (gitlab-repositories tasks §5 [자동]) — 그 프로젝트의 화면에 `GitHub`·`pull request`·`github.com`이 0건이고
@@ -79,11 +81,12 @@ describe("Home 메타 — GitLab 프로젝트 (시안 G5)", () => {
 });
 
 describe("설정 › Repository — GitLab 카드 (시안 G6)", () => {
-  async function card(health: ConnectionHealth, gitlab: Parameters<typeof RepositoryCard>[0]["gitlab"]) {
+  async function card(health: ConnectionHealth, gitlab: Parameters<typeof RepositoryCard>[0]["gitlab"], timeZone?: TimeZone) {
     const { container } = await render(
       <RepoHostScope host="gitlab">
         <RepositoryCard slug="acme" owner="group/sub" repo="very-long-project-name" branch="main" archived={false} health={Promise.resolve(health)} gitlab={gitlab} />
       </RepoHostScope>,
+      timeZone === undefined ? {} : { timeZone },
     );
     await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
     return container;
@@ -137,6 +140,18 @@ describe("설정 › Repository — GitLab 카드 (시안 G6)", () => {
     expect(c.querySelector("[data-field-error]")).toBeNull();
   });
 
+  /**
+   * audit U5 · 결정 R1 — PAT 만료일은 GitLab이 날짜로만 주는 값이라(그날 00:00 UTC로 저장) 보는 사람 시간대로 옮기면 서쪽에선 하루 이르다.
+   * GitLab 토큰 화면과 같은 날짜여야 대조가 된다.
+   */
+  it.each(["America/Los_Angeles", "Pacific/Honolulu"] as const)("%s에서도 만료일은 GitLab과 같은 날짜다 — 연결 줄·만료 Alert (U5)", async (timeZone) => {
+    const ok = await card({ status: "ok" } as ConnectionHealth, { token: { username: "ox", expiresAt: "2027-03-04T00:00:00.000Z", viewerIsOwner: true, projectCount: 1 }, viewer: { username: "ox" } }, timeZone);
+    expect(ok.textContent).toContain(en.settings.repository.gitlab.connectedWithYours("Mar 4, 2027"));
+    mocks.listProjectBranches.mockResolvedValue({ ok: false, error: "gitlab-reconnect" });
+    const expired = await card({ status: "connection-unusable" } as ConnectionHealth, { token: { username: "ox", expiresAt: "2026-10-09T00:00:00.000Z", viewerIsOwner: true, projectCount: 1 }, viewer: { username: "ox" } }, timeZone);
+    expect(expired.querySelector("[data-card-notice]")?.textContent).toContain(en.settings.repository.gitlab.expiredYours("Oct 9, 2026"));
+  });
+
   it("참조가 비면 Disconnected + 사유이고, 다른 OWNER는 명의 문장 뒤 [Use my GitLab connection]이 GitLab 재연결을 부른다 (G6c · D21)", async () => {
     mocks.reconnectGitLabRepository.mockResolvedValue({ ok: true });
     const c = await card({ status: "connection-removed" } as ConnectionHealth, { token: null, viewer: { username: "me" } });
@@ -179,6 +194,15 @@ describe("설정 › Repository — GitLab 카드 (시안 G6)", () => {
     const c = await card({ status: "unknown" } as ConnectionHealth, { token: { username: "ox", expiresAt: null, viewerIsOwner: false, projectCount: 1 }, viewer: { username: "me" } });
     expect(c.textContent).toContain(en.settings.repository.unknown);
     expect(c.textContent).not.toContain(en.settings.repository.gitlab.useMine);
+  });
+});
+
+describe("/account › GitLab PAT 카드 — 만료일은 날짜 그대로 (audit U5 · 결정 R1)", () => {
+  it.each(["America/Los_Angeles", "Pacific/Honolulu"] as const)("%s에서도 `Expires`·`Expired` 날짜가 GitLab 화면과 같다", async (timeZone) => {
+    const valid = await render(<GitLabSection connection={{ username: "ox", expiresAt: "2099-03-04T00:00:00.000Z", projectCount: 1 }} />, { timeZone });
+    expect(valid.container.textContent).toContain(en.account.gitlab.expires("Mar 4, 2099"));
+    const expired = await render(<GitLabSection connection={{ username: "ox", expiresAt: "2026-10-09T00:00:00.000Z", projectCount: 1 }} />, { timeZone });
+    expect(expired.container.textContent).toContain(en.account.gitlab.expiredOn("Oct 9, 2026"));
   });
 });
 
