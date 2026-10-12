@@ -750,7 +750,7 @@ export const es = {
     onGitLab: {
       deferReasons: {
         "open-pr": "Todavía hay una merge request de Malmoi abierta. No se sincronizó nada: la sincronización se reanuda cuando se fusione o se cierre.",
-        "pr-check-failed": "No se pudo comprobar en GitLab si hay una merge request de Malmoi abierta, así que no se sincronizó nada. La próxima ejecución lo vuelve a comprobar.",
+        "pr-check-failed": "No se pudo comprobar en GitLab si hay una merge request de Malmoi abierta, así que no se sincronizó nada. Si la conexión de GitLab de este proyecto se quitó o no se puede usar, un propietario del proyecto puede volver a conectarla en Configuración. Si no, la próxima ejecución lo vuelve a comprobar.",
         "too-large": "El cambio del repositorio es demasiado grande para una sincronización desde el servidor. No se sincronizó nada. Reduce el tamaño de los archivos o entrégalo con los jobs de GitLab CI del repositorio.",
       },
       meta: { noPullRequest: "sin merge request" },
@@ -762,7 +762,7 @@ export const es = {
         import: {
           held: {
             "open-pr": (who: ReactNode): ReactNode => <>{who} retuvo la sincronización: todavía hay una merge request de Malmoi abierta</>,
-            "pr-check-failed": (who: ReactNode): ReactNode => <>{who} retuvo la sincronización: GitLab no respondió sobre las merge requests</>,
+            "pr-check-failed": (who: ReactNode): ReactNode => <>{who} retuvo la sincronización: no se pudo comprobar si hay una merge request abierta</>,
           },
         },
       },

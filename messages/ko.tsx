@@ -757,7 +757,7 @@ export const ko = {
     onGitLab: {
       deferReasons: {
         "open-pr": "Malmoi MR이 아직 열려 있습니다. 아무것도 동기화하지 않았습니다 — MR이 머지되거나 닫히면 동기화가 다시 시작됩니다.",
-        "pr-check-failed": "GitLab에서 열린 Malmoi MR을 확인하지 못해 아무것도 동기화하지 않았습니다. 다음 실행에서 다시 확인합니다.",
+        "pr-check-failed": "GitLab에서 열린 Malmoi MR을 확인하지 못해 아무것도 동기화하지 않았습니다. 이 프로젝트의 GitLab 연결이 해제되었거나 쓸 수 없다면 프로젝트 소유자가 설정에서 다시 연결할 수 있습니다. 그렇지 않다면 다음 실행에서 다시 확인합니다.",
         "too-large": "리포지토리 변경이 서버 동기화 한도를 초과했습니다. 아무것도 동기화하지 않았습니다. 파일 크기를 줄이거나 리포지토리의 GitLab CI job으로 전달하세요.",
       },
       meta: { noPullRequest: "MR 없음" },
@@ -769,7 +769,7 @@ export const ko = {
         import: {
           held: {
             "open-pr": (who: ReactNode): ReactNode => <>{who} — 동기화를 보류했습니다. Malmoi MR이 아직 열려 있습니다</>,
-            "pr-check-failed": (who: ReactNode): ReactNode => <>{who} — 동기화를 보류했습니다. GitLab이 MR 확인에 응답하지 않았습니다</>,
+            "pr-check-failed": (who: ReactNode): ReactNode => <>{who} — 동기화를 보류했습니다. 열린 MR을 확인하지 못했습니다</>,
           },
         },
       },

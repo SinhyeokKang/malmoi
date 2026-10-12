@@ -23,7 +23,9 @@ const WARNINGS = {
   },
   gitlab: {
     openPr: "a Malmoi merge request is still open — repository changes were not imported, so the translations in it aren't overwritten. Review the merge request and merge or close it; a new push from the current head or the nightly sync imports the latest repository state.",
-    prCheckFailed: "couldn't check whether the Malmoi merge request is still open — repository changes were not imported. Once the check is available, a new push from the current head or the nightly sync imports the latest repository state.",
+    // ⚠️ 연결이 끊긴 프로젝트(참조 비움·저장 만료·철회)도 이 사유다 — 재연결 전까지 같은 보류이고 야간 대상에서도 빠진다(감사 B1 · 결정 R3).
+    // 사유 값을 늘리지 않고(응답 계약·허용 목록 불변) 문장이 재연결을 말한다.
+    prCheckFailed: "couldn't check whether the Malmoi merge request is still open — repository changes were not imported. If the project's GitLab connection in Malmoi was removed or can't be used, a project owner reconnects it in the project's Settings. Once the check is available, a new push from the current head or the nightly sync imports the latest repository state.",
     publishRaced: "Publish finished after the import checks — repository changes were not imported. After any Malmoi merge request is merged or closed, a new push from the current head or the nightly sync imports the latest repository state.",
     afterAny: "After any Malmoi merge request is merged or closed, a new push from the current head or the nightly sync imports the latest repository state.",
   },

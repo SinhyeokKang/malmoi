@@ -1677,7 +1677,11 @@ export const en = {
     onGitLab: {
       deferReasons: {
         "open-pr": "A Malmoi merge request is still open. Nothing was synced — syncing resumes once it's merged or closed.",
-        "pr-check-failed": "We couldn't check GitLab for an open Malmoi merge request, so nothing was synced. The next run checks again.",
+        /**
+         * ⚠️ 연결이 끊긴 프로젝트(참조 비움·저장 만료·철회)도 이 사유다 — 재연결 전까지 같은 보류가 반복되고 야간 대상에서도 빠진다. "다음 실행"만
+         * 말하면 기다리면 풀린다로 읽힌다(감사 B1 · 결정 R3 — 사유 값은 그대로).
+         */
+        "pr-check-failed": "We couldn't check GitLab for an open Malmoi merge request, so nothing was synced. If this project's GitLab connection was removed or can't be used, a project owner can reconnect it in Settings. Otherwise, the next run checks again.",
         "too-large": "The repository change is too large for a server-side sync. Nothing was synced. Reduce the files' size, or deliver it with the repository's GitLab CI jobs.",
       },
       meta: { noPullRequest: "no merge request" },
@@ -1689,7 +1693,8 @@ export const en = {
         import: {
           held: {
             "open-pr": (who: ReactNode): ReactNode => <>{who} held the sync — a Malmoi merge request is still open</>,
-            "pr-check-failed": (who: ReactNode): ReactNode => <>{who} held the sync — GitLab didn&rsquo;t answer about merge requests</>,
+            // 끊긴 연결이면 GitLab을 부르지 않았다 — "didn't answer"로 단언하지 않는다(감사 B1).
+            "pr-check-failed": (who: ReactNode): ReactNode => <>{who} held the sync — couldn&rsquo;t check for an open merge request</>,
           },
         },
       },
