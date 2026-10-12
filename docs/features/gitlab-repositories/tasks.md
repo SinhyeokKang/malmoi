@@ -18,7 +18,7 @@
   - 검증: [수동] 시나리오별로 원격 commit의 parent SHA = 캡처한 base SHA, 변경 외 파일 blob id 불변, 열린 MR 개수 = 1(no-changes 뒤 0), 두 번째 no-changes 실행의 외부 쓰기 호출 0회, 실패 주입 뒤 sync 브랜치·MR 상태, 크기 예산(`lib/onboarding/budget.ts`) 입력을 얻는 방식과 호출 수가 기록된다. 지원 못 하는 계약이 있으면 spec을 다시 확정하기 전까지 다음 단계로 가지 않는다.
 - [ ] `installationId`·`repositoryId` 소비자 전수 표를 만든다(2026-10-12 기준 `app`·`lib`·`components` 비테스트 55 + `scripts` 1). 메모 키(`open-pr-memo`·`probe-memo`)에 리포 호스트를 넣을지, 저장 오류 코드(`github-error`·`not-installed`) 정책, `GITHUB_WAIT_MS` 이름 일반화를 판정한다. design §2 UI 표면 표를 design에 적힌 기준 명령으로 키 단위로 다시 만든다.
   - 검증: [수동] `rg -l -e installationId -e repositoryId app lib components scripts -g '!**/__tests__/**'`의 파일 수와 표의 행 수가 같고, 행마다 "경계 이관/GitHub 전용 유지/무관" 중 하나가 적혀 있다. UI 표에 design §2의 "빠뜨리면 안 되는 자리"가 전부 있다.
-- [ ] **시안 확보** — [design-brief.md](design-brief.md)의 열린 갈래를 spec §6 결정으로 닫고 시안을 받는다(Claude Code는 DesignSync, Codex는 로컬 핸드오프). 시안 링크는 받는 즉시 이 문서에 URL 그대로 적는다.
+- [ ] **시안 확보** — [design-brief.md](design-brief.md)의 열린 갈래를 spec §6 결정으로 닫고 시안을 받는다(Claude Code는 DesignSync, Codex는 로컬 핸드오프). 시안 링크는 받는 즉시 이 문서에 URL 그대로 적는다. 시안: [GitLab Repositories](https://claude.ai/design/p/b99d54cd-3034-44f1-8446-0a864da9d767?file=GitLab+Repositories.dc.html) (2026-10-12 수령).
   - 검증: [수동] 브리프에 "열린 갈래" 0행, 시안 링크·대상 프레임 목록이 feature 문서에 있고, E의 UI 구현 태스크가 이 태스크 뒤에 놓여 있다.
 
 ## 1. 공통 판정·계약 — 커밋 A

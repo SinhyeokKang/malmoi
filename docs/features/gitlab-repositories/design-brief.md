@@ -6,6 +6,8 @@
 
 새 프로젝트 모달 ① 맨 위에 **GitHub / GitLab 탭**을 두고, GitLab 탭은 **개인 액세스 토큰(PAT)을 붙여 넣는** 연결 흐름으로 그린다. GitHub 탭은 지금 ① 그대로다. 두 리포 호스트가 섞인 뒤 **프로젝트 목록·프로젝트 Home·프로젝트 설정·Sources·`/account`에서 어느 플랫폼의 프로젝트인지가 어떻게 보일지**도 이 시안에서 정한다.
 
+**시안**: [GitLab Repositories](https://claude.ai/design/p/b99d54cd-3034-44f1-8446-0a864da9d767?file=GitLab+Repositories.dc.html) (2026-10-12 수령 — 검토 전)
+
 ## 확정 기준
 
 - **GitHub 화면은 바꾸지 않는다** — GitHub 탭 내용, GitHub App 설치·연결 흐름, GitHub 프로젝트의 기존 화면은 현행 그대로다. 이 시안은 GitLab 변형과 **두 플랫폼이 섞일 때 구분을 주는 요소**만 그린다.
