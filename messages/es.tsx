@@ -1854,7 +1854,7 @@ export const es = {
       removal: {
         openPr: "Si la merge request abierta cambia sus archivos, esos cambios quedarán fuera en la próxima publicación.",
         prUnknown: "No se pudo comprobar si hay una merge request abierta. Si alguna cambia sus archivos, esos cambios quedarán fuera en la próxima publicación.",
-        workflowLine: "Quita su job de tu .gitlab-ci.yml; si no, el próximo pipeline fallará y detendrá las fuentes que vienen después.",
+        workflowLine: "Quita su job de tu .gitlab-ci.yml; si no, ese job fallará en el próximo pipeline. Las demás fuentes se siguen sincronizando.",
         workflowStep: (link: ReactNode): ReactNode => <>Quita su job del archivo de CI en {link}.</>,
       },
       firstImport: "La primera sincronización todavía no terminó. Añadir una fuente no conecta su job de CI.",

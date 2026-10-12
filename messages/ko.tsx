@@ -1857,7 +1857,7 @@ export const ko = {
       removal: {
         openPr: "열린 MR이 이 소스의 파일을 바꿨다면 그 변경은 다음 게시에서 빠집니다.",
         prUnknown: "열린 MR을 확인하지 못했습니다. MR이 이 소스의 파일을 바꿨다면 그 변경은 다음 게시에서 빠집니다.",
-        workflowLine: ".gitlab-ci.yml에서 이 소스의 작업을 지우세요. 그대로 두면 다음 파이프라인이 실패하고 그 뒤 소스도 멈춥니다.",
+        workflowLine: ".gitlab-ci.yml에서 이 소스의 작업을 지우세요. 그대로 두면 다음 파이프라인에서 이 작업이 실패합니다. 다른 소스는 계속 동기화됩니다.",
         workflowStep: (link: ReactNode): ReactNode => <>{link}에서 CI 파일의 이 소스 작업을 지우세요.</>,
       },
       firstImport: "첫 동기화가 아직 끝나지 않았습니다. 소스를 추가해도 CI 작업이 자동으로 연결되지는 않습니다.",

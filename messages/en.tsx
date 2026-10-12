@@ -3440,7 +3440,8 @@ export const en = {
       removal: {
         openPr: "If the open merge request changes its files, those changes drop out at the next publish.",
         prUnknown: "We couldn't check for an open merge request. If one changes its files, those changes drop out at the next publish.",
-        workflowLine: "Remove its job from your .gitlab-ci.yml — otherwise the next pipeline fails and stops the sources after it.",
+        // 소스마다 job이 따로 있고 같은 stage라 병렬이다 — 그 job만 실패한다. "뒤 소스가 멈춘다"는 GitHub 순차 step의 성질이다(감사 G-2).
+        workflowLine: "Remove its job from your .gitlab-ci.yml — otherwise that job fails in the next pipeline. The other sources still sync.",
         workflowStep: (link: ReactNode): ReactNode => <>Remove its job from the CI file in {link}.</>,
       },
       firstImport: "The first sync hasn't finished yet. Adding a source doesn't connect its CI job.",
@@ -4175,7 +4176,7 @@ export const en = {
         sourcesAdded: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "source" : "sources"} added. Get the updated .gitlab-ci.yml with get_workflow and replace the Malmoi jobs with it.`,
         sourcesAddedWithoutCi: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "source" : "sources"} added. The GitLab CI file isn't available yet, so sync from Malmoi to load repository changes.`,
         // 소스마다 job이 따로 있어 병렬이다 — 남긴 job만 실패하고 다른 소스는 계속 들어온다(GitHub의 "뒤 step이 멈춘다"와 다르다).
-        sourceRemoved: (slug: string): string => `Removed ${slug}. If .gitlab-ci.yml has a job for it, remove that job, or it fails in the next pipeline. The other sources still update.`,
+        sourceRemoved: (slug: string): string => `Removed ${slug}. If .gitlab-ci.yml has a job for it, remove that job, or it fails in the next pipeline. The other sources still sync.`,
       },
       syncPreview: (unsent: number): string => unsent === 0
         ? "Sync will load the repository's values. No unsent edits will be discarded."
