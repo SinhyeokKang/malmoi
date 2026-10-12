@@ -27,9 +27,9 @@ const NOT_ON_GITLAB_SCREENS: Readonly<Record<string, string>> = {
   "settings.account.disconnectLabel": "GitHub App disconnect on /account only",
   // GitHub 사용자 토큰이 없는 Sync 거부 — GitLab 프로젝트의 Sync는 `gitlab-*` 코드로 거부된다(R-D2 확인).
   "repositorySync.errors.not-connected": "GitHub user-token refusal only",
-  // 다른 리포(`repo-replaced`)는 GitHub 건강성만 낸다 — GitLab은 숫자 id라 같은 id·다른 경로가 `repo-moved`다(`planGitLabHealth`). 소비자 없는 덮기를 두지 않는다.
+  // Home 배너의 다른 리포는 건강성 `repo-replaced`에서만 선다 — GitLab 건강성은 숫자 id라 같은 id·다른 경로가 `repo-moved`다(`planGitLabHealth`).
+  // ⚠️ `settings.repository.health.repo-replaced`는 면제가 아니다 — 소스 추가 모달이 추가 거부 코드로 읽고 GitLab도 그 코드를 낸다(아래 회귀).
   "home.banner.wrongRepository.body": "repo-replaced is GitHub-only health",
-  "settings.repository.health.repo-replaced": "repo-replaced is GitHub-only health",
   // 호스트가 섞인 목록의 빈 상태 — 프로젝트가 아직 없어 호스트 문맥이 없다(D3 †: 두 호스트 병기).
   "projects.empty.description": "no project yet — names both hosts",
 };
@@ -78,4 +78,15 @@ it("제외 목록의 키가 en 사전에 실재한다 — 이름이 바뀌면 �
     const value = path.split(".").reduce<unknown>((cur, key) => (cur as Record<string, unknown>)?.[key], en);
     expect(value, path).toBeDefined();
   }
+});
+
+/**
+ * **소스 추가 거부 `repo-replaced`** (리뷰 C 🟡1) — `components/sources/add-sources-modal.tsx`가 건강성이 아니라 추가 거부 코드로
+ * `settings.repository.health["repo-replaced"]`를 읽는다. GitLab도 그 코드를 낸다(참조 비움 `lib/onboarding-run/add.ts` · 잠금 뒤 연결 교체
+ * `lib/surfaces/create.ts`) — 덮기를 지우면 GitLab 프로젝트 화면에 GitHub 문장이 선다.
+ */
+it.each([["en", en], ["ko", ko], ["es", es]] as const)("%s — GitLab 프로젝트의 소스 추가 repo-replaced 거부 문장에 GitHub이 없다", (_lang, m) => {
+  const text = withRepoHost(m, "gitlab").settings.repository.health["repo-replaced"];
+  expect(text).not.toMatch(/github/i);
+  expect(text).toMatch(/gitlab/i);
 });
