@@ -4174,6 +4174,8 @@ export const en = {
           `Created ${slug} with ${keys.toLocaleString("en-US")} ${keys === 1 ? "key" : "keys"}. Keep the push token for the PUSH_TOKEN CI/CD variable — the GitLab CI file isn't available yet, so sync from Malmoi for now.`,
         sourcesAdded: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "source" : "sources"} added. Get the updated .gitlab-ci.yml with get_workflow and replace the Malmoi jobs with it.`,
         sourcesAddedWithoutCi: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "source" : "sources"} added. The GitLab CI file isn't available yet, so sync from Malmoi to load repository changes.`,
+        // 소스마다 job이 따로 있어 병렬이다 — 남긴 job만 실패하고 다른 소스는 계속 들어온다(GitHub의 "뒤 step이 멈춘다"와 다르다).
+        sourceRemoved: (slug: string): string => `Removed ${slug}. If .gitlab-ci.yml has a job for it, remove that job, or it fails in the next pipeline. The other sources still update.`,
       },
       syncPreview: (unsent: number): string => unsent === 0
         ? "Sync will load the repository's values. No unsent edits will be discarded."

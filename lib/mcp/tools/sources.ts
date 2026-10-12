@@ -50,6 +50,8 @@ export const removeSourceTool = defineTool({
       revalidatePath(`/projects/${input.slug}`, "layout");
       revalidatePath("/projects");
     });
-    return ok({ removed: input.surfaceSlug }, en.mcp.summary.sourceRemoved(input.surfaceSlug));
+    // 요약은 리포 호스트의 어휘다(D26) — GitLab은 워크플로 step이 아니라 `.gitlab-ci.yml`의 job이다.
+    const summary = gate.repoHost === "gitlab" ? en.mcp.summary.gitlab.sourceRemoved : en.mcp.summary.sourceRemoved;
+    return ok({ removed: input.surfaceSlug }, summary(input.surfaceSlug));
   },
 });
