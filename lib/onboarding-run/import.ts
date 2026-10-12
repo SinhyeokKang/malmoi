@@ -5,7 +5,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { getProjectAccess } from "@/lib/auth/query";
 import type { Subject } from "@/lib/auth/subject";
 import { recordImportRefusal } from "@/lib/events/record";
-import { openRepoReader } from "@/lib/repo-host";
+import { loadConnectionHealth, openRepoReader } from "@/lib/repo-host";
 import { repoLocatorOf, repoTargetOf, sameAccessedRepository } from "@/lib/repo-host/target";
 import { logFailure } from "@/lib/github-connect/log";
 import type { RepositoryImportError, RepositoryImportOutcome } from "@/lib/import/result";
@@ -62,6 +62,10 @@ async function runAuthorized(prisma: PrismaClient, subject: Subject, projectId: 
     const connected = await checkRepoAccess(prisma, userId, repoLocatorOf(project), { requirePush: false });
     if (connected.status !== "ok") return await refuse(connected.error);
     if (!sameAccessedRepository(connected, connection.target)) return await refuse("repo-replaced");
+    // ⚠️ **GitLab 리더는 프로젝트 쪽 연결(토큰 주인의 PAT)로 연다** (감사 E4 · 결정 R6) — 위 호출자 확인은 호출자 PAT라 토큰 주인의 만료·철회·보관을
+    // 못 본다. 실행권을 얻은 뒤 리더 열기에서 드러나면 모든 소스가 실패 상태(`ingest-failed`)로 남는다 — 그 전에 Home과 같은 판정(D25 — Sync 비활성)으로
+    // 거부한다. 일시 장애(`unknown`)는 끊김으로 접지 않는다. GitHub은 호출자 확인이 설치를 이미 본다.
+    if (connection.target.host === "gitlab" && (await loadConnectionHealth(connection)).status === "connection-unusable") return await refuse("gitlab-project-disconnected");
     // 호출자 접근을 확인한 뒤에도 리더는 **프로젝트 쪽 연결**로 연다. 잠금 안 재검증이 이 대상과 저장된 열을 다시 대조한다.
     return await runRepositoryImportFromReader(prisma, { projectId, userId, approval, credential: subject.credential,
       repository: { repoHost: project.repoHost, repositoryId: project.repositoryId, installationId: project.installationId, gitlabConnectionId: project.gitlabConnectionId,

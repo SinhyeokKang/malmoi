@@ -34,7 +34,8 @@ const GITLAB_ACCESS_ERRORS = {
   "gitlab-reconnect": "Your GitLab token can't be used anymore. Replace it on the Account page.",
   "gitlab-repo-archived": "This GitLab project is archived. Unarchive it in GitLab, then try again.",
   "gitlab-repo-unsupported": "This GitLab project uses SHA-256 object format, which Malmoi doesn't support.",
-  "gitlab-project-disconnected": "This project's GitLab connection was removed. A project owner can reconnect it in the project's settings.",
+  // 참조가 비었거나(연결자가 떠남·해제) 토큰 주인의 PAT를 못 쓴다(만료·철회·보관 — 수동 Sync의 사전 판정, 감사 E4). 둘 다 설정의 재연결이 고친다.
+  "gitlab-project-disconnected": "This project's GitLab connection was removed or can't be used. A project owner can reconnect it in the project's settings.",
 } as const;
 /** GitLab CI 원본의 릴리스 SHA가 아직 없다(`GITLAB_CI_RELEASE`) — 설정·온보딩 화면과 MCP `get_workflow` 거부가 같은 문장이다(문구 두 벌 금지). */
 const GITLAB_CI_UNAVAILABLE = "The GitLab CI file isn't available in this version of Malmoi yet. For now, sync from Malmoi to load repository changes.";

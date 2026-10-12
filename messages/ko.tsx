@@ -2301,7 +2301,7 @@ export const ko = {
       "gitlab-reconnect": "GitLab 토큰을 더 이상 쓸 수 없습니다. 계정에서 토큰을 교체하세요.",
       "gitlab-repo-archived": "보관된 GitLab 프로젝트입니다. GitLab에서 보관을 해제한 뒤 다시 시도하세요.",
       "gitlab-repo-unsupported": "이 GitLab 프로젝트는 SHA-256 오브젝트 형식을 써서 Malmoi가 지원하지 않습니다.",
-      "gitlab-project-disconnected": "이 프로젝트의 GitLab 연결이 해제되었습니다. 프로젝트 소유자가 프로젝트 설정에서 다시 연결할 수 있습니다.",
+      "gitlab-project-disconnected": "이 프로젝트의 GitLab 연결이 해제되었거나 쓸 수 없습니다. 프로젝트 소유자가 프로젝트 설정에서 다시 연결할 수 있습니다.",
       unavailable: "GitLab이 응답하지 않았습니다. 잠시 후 다시 시도하세요.",
       fallback: "GitLab 연결에 실패했습니다. 다시 시도하세요.",
     },

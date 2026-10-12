@@ -2293,7 +2293,7 @@ export const es = {
       "gitlab-reconnect": "Tu token de GitLab ya no se puede usar. Reemplázalo en Cuenta.",
       "gitlab-repo-archived": "Este proyecto de GitLab está archivado. Desarchívalo en GitLab y vuelve a intentarlo.",
       "gitlab-repo-unsupported": "Este proyecto de GitLab usa el formato de objetos SHA-256, que Malmoi no admite.",
-      "gitlab-project-disconnected": "Se quitó la conexión de GitLab de este proyecto. Un propietario del proyecto puede volver a conectarla en la configuración del proyecto.",
+      "gitlab-project-disconnected": "La conexión de GitLab de este proyecto se quitó o no se puede usar. Un propietario del proyecto puede volver a conectarla en la configuración del proyecto.",
       unavailable: "GitLab no respondió. Vuelve a intentarlo en un momento.",
       fallback: "Falló la conexión con GitLab. Vuelve a intentarlo.",
     },

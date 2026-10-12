@@ -27,7 +27,10 @@ export type GitLabAccessError =
   | "gitlab-repo-archived"
   /** SHA-256 object format 리포 — blob id가 `git hash-object`(SHA-1)와 다르다(spec §5). */
   | "gitlab-repo-unsupported"
-  /** 프로젝트의 GitLab 연결 참조가 비었다(연결자가 떠남·해제) — OWNER가 설정에서 재연결한다. GitHub `repo-not-installed`의 짝. */
+  /**
+   * 프로젝트의 GitLab 연결 참조가 비었다(연결자가 떠남·해제) — OWNER가 설정에서 재연결한다. GitHub `repo-not-installed`의 짝. 수동 Sync는 참조가 있어도
+   * 토큰 주인의 PAT를 못 쓰면(만료·철회·보관) 이 코드로 거부한다(감사 E4).
+   */
   | "gitlab-project-disconnected";
 
 export type GitLabConnectError = GitLabTokenError | GitLabAccessError;
