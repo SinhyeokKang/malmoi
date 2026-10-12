@@ -38,9 +38,10 @@ export function reasonMessage(m: Messages, reason: RepositoryImportError | Surfa
  */
 /**
  * 실행 전 거부 — 세션·입력(Action 껍데기) · 인가(`isAccessError`) · `acquire`의 판정(`planSyncStart` · 식별 · 폐기 지문). 여기 없는 거부는 단계를
- * 모른다(`unavailable`은 세션 저장소와 저장소 접근 둘에서, `ingest-failed`는 lease 뒤 바깥 catch에서 나온다).
+ * 모른다(`unavailable`은 세션 저장소와 저장소 접근 둘에서, `ingest-failed`는 lease 뒤 바깥 catch에서 나온다). `gitlab-project-disconnected`는
+ * 참조 비움과 토큰 주인 쪽 리더 열기 실패(`onboarding-run/import.ts`) 둘 다 실행권 전이다.
  */
-const PRE_RUN: ReadonlySet<string> = new Set(["reconfirm", "already-running", "unauthorized", "invalid input", "not-ready", "no-surfaces", "unpinned", "repo-replaced"]);
+const PRE_RUN: ReadonlySet<string> = new Set(["reconfirm", "already-running", "unauthorized", "invalid input", "not-ready", "no-surfaces", "unpinned", "repo-replaced", "gitlab-project-disconnected"]);
 export function syncResultTitle(m: Messages, outcome: RepositoryImportOutcome): string {
   const t = m.repositorySync.resultTitle;
   if (!outcome.ok) {
