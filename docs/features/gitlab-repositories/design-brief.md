@@ -104,8 +104,8 @@ GitHub의 `waiting`(조직 소유자 승인 대기)은 GitLab에 대응이 없�
 | G1 | ① 탭 | a GitHub 탭 선택(현행 내용 + 위 탭) / b GitLab 탭 선택 / c 375 |
 | G2 | GitLab 탭 연결 | a 연결 전(PAT 입력) / b 검증 중 / c 스코프 부족 오류 / d 일시 장애 / e 연결됨 → 리포 목록(연결 계정 줄 포함) / f 토큰 만료(reconnect shell) |
 | G3 | GitLab 리포 목록 | a 여러 개 + 긴 하위 그룹 / b 375 |
-| G4 | 프로젝트 목록(플랫폼 맥락) | a GitHub·GitLab 섞인 목록 / b 375 / c 글리프 색 두 후보(갈래 D) |
-| G5 | 프로젝트 Home(플랫폼 맥락) | a GitLab 프로젝트 메타 / b MR 번호 두 후보(갈래 C) / c 375 |
+| G4 | 프로젝트 목록(플랫폼 맥락) | a GitHub·GitLab 섞인 목록 / b 375 / ~~c 글리프 색 두 후보~~ → 단색으로 닫힘(D10) |
+| G5 | 프로젝트 Home(플랫폼 맥락) | a GitLab 프로젝트 메타 / b MR 번호 `!128`(G5b1 — 두 후보 중 `#` 쪽 G5b2는 삭제됨) / c 375 |
 | G6 | 설정 › Repository 카드 | a 연결됨(연결자·만료일) / b 만료 임박 / c 만료·철회 / d 조회 실패 / e 375 긴 주소 |
 | G7 | 설정 › CI 카드 · 온보딩 ⑤ | a 설정 CI 모달 GitLab / b 온보딩 ⑤ GitLab / c 셀프 호스팅(`api-url` 포함) |
 | G8 | `/account` | GitHub·GitLab 연결 항목 나란히(GitLab 만료 임박 포함) |

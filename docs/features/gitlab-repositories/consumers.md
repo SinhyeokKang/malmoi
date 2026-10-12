@@ -14,8 +14,8 @@
 |---|---|---|---|---|
 | 1 | `app/(edit)/layout.tsx` | 주석(RSC 페이로드 사고 기록) | 무관 | — |
 | 2 | `app/(edit)/projects/[slug]/(home)/page.tsx` | select · `installationId` 있을 때만 연결 조회 | 경계 이관 | 연결 건강성을 호스트별로 부른다(GitLab = 연결 참조 + PAT probe) |
-| 3 | `app/(edit)/projects/[slug]/settings/actions.ts` | `connectRepository`(GitHub probe → installationId·repositoryId 재기록) | GitHub 전용 유지 | GitLab 재연결은 B2의 새 Action(연결 참조 교체). `updateRepositorySettings`는 이 열을 안 읽는다 |
-| 4 | `app/(edit)/projects/[slug]/settings/page.tsx` | Repository 카드 select | 경계 이관 | 호스트·연결 참조·만료일 select 추가 |
+| 3 | `app/(edit)/projects/[slug]/settings/actions.ts` | `connectRepository`(GitHub probe → installationId·repositoryId 재기록) | GitHub 전용 유지 | GitLab 재연결은 B2의 새 Action(연결 참조 교체). `updateRepositorySettings`는 이 열을 안 읽는다. ⚠️ **B: `host !== "github"`이면 probe 전에 거부하고 UPDATE `where`에 `host: "github"`를 둔다** — slug만 받는 Action이라 화면에서 숨겨도 직접 호출된다. 가드가 없으면 GitLab 행이 GitHub 행(또는 `installationId`가 박힌 혼종)이 되는 길이 숫자 id 우연 일치라는 확률 방어 하나뿐이다 |
+| 4 | `app/(edit)/projects/[slug]/settings/page.tsx` | Repository 카드 select · `storedConnection` 직접 호출(`:56`, `unpinned` 판정) | 경계 이관 | 호스트·연결 참조·만료일 select 추가 · `:56`은 `repoTargetOf(project).status === "unpinned"`로 |
 | 5 | `app/(edit)/projects/actions.ts` | ① 온보딩(owner/repo → `checkRepoAccess`) · `runFirstIngest`(readiness + `openRepoReader`) | 경계 이관 | ① GitHub 갈래는 그대로, GitLab ①은 PAT Action 짝. `runFirstIngest`는 경계 reader |
 | 6 | `app/api/pull/route.ts` | 야간 대상 select | 경계 이관 | 대상 선정이 연결 증거로 |
 | 7 | `app/api/push/route.ts` | 열린 PR 게이트 입력 select | 경계 이관 | GitLab도 열린 MR 게이트를 받는다(D6a — 구버전엔 이 게이트가 없다) |
@@ -29,7 +29,7 @@
 | 15 | `lib/home/state.ts` | 주석 | 무관 | — |
 | 16 | `lib/import/apply-plan.ts` | repository identity 타입 | 경계 이관 | identity에 호스트·연결 증거 |
 | 17 | `lib/import/approval.ts` | 승인 지문용 identity select | 경계 이관 | 같다 |
-| 18 | `lib/import/run.ts` | identity 비교(`unpinned`/`repo-replaced`) · readiness | 경계 이관 | 비교에 호스트 포함 |
+| 18 | `lib/import/run.ts` | identity 비교(`unpinned`/`repo-replaced`) · readiness | 경계 이관 | 잠금 안 재검증 → `sameRepoTarget`(연결 포함) |
 | 19 | `lib/inbox/load.ts` | readiness·열린 PR select | 경계 이관 | — |
 | 20 | `lib/keys/delivery.ts` | `deliveryContextFingerprint` 입력 | 경계 이관 | ⚠️ GitHub 행 바이트 불변(design §2 지문 표) |
 | 21 | `lib/keys/query.ts` | 목록·멤버십 select·통과 | 경계 이관 | select에 호스트·연결 참조 |
@@ -37,13 +37,13 @@
 | 23 | `lib/mcp/confirm.ts` | 샘플 확인값 context `installationId: string` 필수 | 경계 이관 | context를 연결 증거로 일반화 |
 | 24 | `lib/mcp/tools/account.ts` | readiness select | 경계 이관 | — |
 | 25 | `lib/mcp/tools/project.ts` | readiness select · `get_project` | 경계 이관 | 필드 호환 정책은 D2 배치 |
-| 26 | `lib/nightly/run.ts` | reader·client 생성 | 경계 이관 | — |
+| 26 | `lib/nightly/run.ts` | reader·client 생성 · 잠금 안 재검증(`:150`) | 경계 이관 | `:150` → `sameRepoTarget`(재연결 감지) |
 | 27 | `lib/onboarding-run/access.ts` | `checkRepoAccess`(호출자 리포 권한, `requirePush`) | 경계 이관 | GitLab = 그 호출자의 PAT access level(spec §4-1) |
-| 28 | `lib/onboarding-run/add.ts` | identity 대조 · reader | 경계 이관 | — |
+| 28 | `lib/onboarding-run/add.ts` | identity 대조 · reader | 경계 이관 | 호출자 접근 대조 → `sameRepository`(host+id만). reader는 `repoTargetOf(project)`로 연다 |
 | 29 | `lib/onboarding-run/branches.ts` | ① 브랜치·연결된 프로젝트 브랜치 | 경계 이관 | 읽기 권한 OWNER 허용 유지(#123) |
 | 30 | `lib/onboarding-run/create.ts` | 생성 시 installationId·repositoryId 저장 | 경계 이관 | GitLab = 호스트·연결 참조 저장 |
-| 31 | `lib/onboarding-run/detect.ts` | identity 대조 · reader | 경계 이관 | — |
-| 32 | `lib/onboarding-run/import.ts` | identity 대조 · reader | 경계 이관 | — |
+| 31 | `lib/onboarding-run/detect.ts` | identity 대조 · reader | 경계 이관 | `sameRepository` · reader는 `repoTargetOf(project)` |
+| 32 | `lib/onboarding-run/import.ts` | identity 대조 · reader | 경계 이관 | `:61` → `sameRepository` · `:65`의 "프로젝트 쪽 id로 연다"는 `repoTargetOf(project)`로 그대로 |
 | 33 | `lib/onboarding-run/rotate-token.ts` | 쓰기 권한 확인 전 null 판정 | 경계 이관 | 쓰기 권한 요구 경로 |
 | 34 | `lib/onboarding/confirm.ts` | 주석 | 무관 | — |
 | 35 | `lib/onboarding/create-plan.ts` | GitHub probe → 생성 계획 | GitHub 전용 유지 | GitLab 생성 계획은 짝 |
@@ -64,12 +64,24 @@
 | 50 | `lib/pull/trigger.ts` | client 생성 · `not-installed` | 경계 이관 | 코드 정책(§3) |
 | 51 | `lib/sources/actions.ts` | `installed` → readiness | 경계 이관 | `installed`를 `connected`로 |
 | 52 | `lib/sources/query.ts` | `installed` 플래그 | 경계 이관 | 같다 |
-| 53 | `lib/surfaces/create.ts` | identity 대조 | 경계 이관 | — |
+| 53 | `lib/surfaces/create.ts` | identity 대조(잠금 안) | 경계 이관 | `sameRepoTarget` |
 | 54 | `lib/surfaces/remove.ts` | 열린 PR 조회 | 경계 이관 | — |
 | 55 | `lib/translations/context.ts` | `deliveryContextFingerprint` | 경계 이관 | ⚠️ GitHub 바이트 불변 |
 | 56 | `scripts/smoke-github.ts` | 실 API 스모크 | GitHub 전용 유지 | `smoke:gitlab` 짝(F 배치) |
 
 집계: **경계 이관 43 · GitHub 전용 유지 9 · 무관 4 = 56**.
+
+### 1.1 간접 소비자 — 필드명을 쓰지 않고 연결 판정을 부르는 파일
+
+위 명령은 필드명이 문자 그대로 나오는 파일만 센다. 보조 명령 `rg -l -e storedConnection -e planConnectionHealth -e loadConnectionHealth app lib components scripts -g '!**/__tests__/**'` → 11파일 중 위 표에 **없는** 셋:
+
+| 파일 | 쓰임 | 판정 | 이관 메모 |
+|---|---|---|---|
+| `app/(edit)/projects/[slug]/surfaces/[surfaceSlug]/translations/page.tsx` | `storedConnection(project)`(`:143`) + `loadConnectionHealth(project, { memo })`(`:146`) | 경계 이관 | `repoTargetOf(project)` 결과로 첫 렌더 판정, `loadConnectionHealth(result, { memo })`. select에 호스트·연결 참조(`lib/keys/query.ts` #21) |
+| `components/translations/workspace/workspace.tsx` | 주석(`:84`) | 무관 | — |
+| `components/settings/repository-form.tsx` | 주석(`:28`) | 무관 | — |
+
+나머지 여덟(`home/page.tsx`·`settings/page.tsx`·`settings/actions.ts`·`lib/github.ts`·`lib/home/state.ts`·`lib/keys/query.ts`·`lib/github-connect/health.ts`·`lib/mcp/tools/project.ts`)은 위 표에 있다. `settings/page.tsx:56`의 `storedConnection` 직접 호출은 #4 비고. 합계 **경계 이관 44 · GitHub 전용 유지 9 · 무관 6 = 59**.
 
 ## 2. D6 전제 — 롤백된 구버전이 GitLab 행을 만날 때
 
@@ -84,12 +96,12 @@
 | 열린 PR 표시·게이트(`lib/projects/open-pr.ts`) | `installationId === null → null` | 표시 안전 |
 | 원격 신호(`lib/projects/remote.ts`) | 가드가 `NONE` | 안전 |
 | 소스 추가·탐지·적재·브랜치·토큰 회전(`lib/onboarding-run/*`) | `repo-not-installed`·`unpinned`·`repo-replaced`(installationId 불일치) | 안전 |
-| 재연결(`settings/actions.ts` `connectRepository`) | GitHub에 `<namespace>/<path>` probe(GET) → 저장된 GitLab id ≠ GitHub id → `repo-forbidden` | 안전(GitHub 읽기 1회, 쓰기 0). 숫자 id가 우연히 같고 같은 이름의 GitHub 리포가 설치돼 있으면 GitHub 프로젝트로 바뀐다 — 확률상 무시, 구버전 한정 |
+| 재연결(`settings/actions.ts` `connectRepository`) | GitHub에 `<namespace>/<path>` probe(GET) → 저장된 GitLab id ≠ GitHub id → `repo-forbidden`. 하위 그룹(`a/b/c`)이면 probe가 `error` → `unavailable` | 안전(GitHub 읽기 1회, 쓰기 0). 숫자 id가 우연히 같고 같은 이름의 GitHub 리포가 설치돼 있으면 GitHub 프로젝트로 바뀐다 — 확률상 무시, 구버전 한정. 신버전은 호스트 가드(#3)로 닫는다 |
 | MCP(`lib/mcp/tools/*`) | readiness `setup` · `not-ready` | 안전 |
 | Home·목록·Inbox | `setup` 표시 | 안전 |
-| **`/api/push`**(`app/api/push/route.ts`) | `openPrGateApplies` false → **열린 MR 게이트 없이 strict 적재**(미전달 편집·`publish-raced` 게이트는 유지) | ⚠️ **약화** — 지휘자 결정 D6a(수용 + 롤백 절차 문서화) |
+| **`/api/push`**(`app/api/push/route.ts`) | `openPrGateApplies` false → **열린 MR 게이트 없이 strict 적재**(미전달 편집·`publish-raced` 게이트는 유지) | ⚠️ **약화 — 열린 Malmoi MR이 있어도 base push가 리포 값으로 DB 번역을 덮는 쓰기**다(MR에 담긴 전달 끝난 번역이 DB에서 사라지고, 롤포워드 뒤 Publish가 그 MR을 덮인 값으로 다시 만든다). 지휘자 결정 D6a(수용 + 롤백 절차 문서화) |
 
-결론: GitHub 쓰기 0, 크래시 0. 예외 하나(`/api/push`의 열린 MR 게이트 부재)는 D6a로 수용했고 롤백 절차가 막는다(design §4).
+결론: GitHub 쓰기 0, 크래시 0. 예외 하나(`/api/push`의 열린 MR 게이트 부재 — 열린 MR이 있어도 리포 값이 DB 번역을 덮는다)는 D6a로 수용했고 롤백 절차(롤백 전에 GitLab CI 중지 또는 `PUSH_TOKEN` 회전)가 막는다(design §4).
 
 ## 3. UI 표면 — 키 단위 (design §2 기준 명령)
 

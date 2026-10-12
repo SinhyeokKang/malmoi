@@ -31,7 +31,7 @@
 | `lib/github.ts`·`lib/github-connect/` | 기존 GitHub 동작 | GitHub 전용 구현으로 유지 |
 | `prisma/schema.prisma` | Project/Surface/Key/Translation/Member/Event | 리포 호스트·주소·쓰기 자격증명 |
 
-이 표는 핵심만 담는다. 테스트 밖에서 `installationId|repositoryId`를 참조하는 파일 **56개**(`app` 7 · `lib` 48 · `scripts` 1)의 전수 표는 [consumers.md](consumers.md) §1이다 — 경계 이관 43 · GitHub 전용 유지 9 · 무관 4.
+이 표는 핵심만 담는다. 테스트 밖에서 `installationId|repositoryId`를 참조하는 파일 **56개**(`app` 7 · `lib` 48 · `scripts` 1)의 전수 표는 [consumers.md](consumers.md) §1이다 — 경계 이관 43 · GitHub 전용 유지 9 · 무관 4. 필드명 없이 연결 판정을 부르는 간접 소비자 3(번역 페이지 이관 1 + 주석 2)은 §1.1.
 
 공통 번역 코어 하나와 실제 소비자가 있는 리포 호스트 구현 둘을 둔다. 파일 포맷 어댑터와 리포 호스트 구현은 별개 축이다. GitLab 구현을 하는 배치에서 GitHub 소비자도 같은 경계로 옮기며, 미리 추상화만 추가하지 않는다.
 
