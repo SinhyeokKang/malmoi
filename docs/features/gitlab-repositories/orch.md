@@ -102,3 +102,4 @@
 - 2026-10-12: A fix1(커밋 1, 옛 "쓰기 0" 단언이 공허했음을 뮤테이션으로 확인) → dev 통합 `7168ef82..4aa8bb0b`. dev(W0·E0·D1·A) `pnpm gate` = **`gate: ok`**(test 13703 · projects 636 · build). B 착수(opus high).
 - 2026-10-12: B 인계(커밋 3 — B1 마이그레이션 `20261012120000_add_gitlab_connection`, gate ok: test 13784 · projects 649 · credentials 69) → R-B(opus high). D20은 B 수정 라운드에 싣는다.
 - 2026-10-12: R-B 🔴0·🟡5·⚪8 → B dev 통합 `37b75c59..6a000266`(마이그레이션 포함, dev DB 미적용 — push 직전 일괄). E-sh(Codex Astra) 착수. B fix1 = 🟡1(D20 + 해제를 잠금·tx 안으로)·🟡2·🟡3·🟡4·🟡5·⚪2·⚪3. C는 B fix1 통합 뒤.
+- 2026-10-12: B fix1(커밋 2, gate ok: test 13794 · projects 654, 뮤테이션 M1·잠금 제거 red 확인) → dev 통합. 새 사건 `settings.repositoryDisconnected`(문장은 E-ui). 계정 삭제 사건 없음(D20 범위 밖, FK 그물). C 착수.
