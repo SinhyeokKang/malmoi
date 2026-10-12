@@ -646,8 +646,8 @@ lib/
                         required · optional · hosted-only · command로 분류하고 `.env.example`과 키가 일치해야 한다. ⚠️ 결과에 값을 싣지 않는다 — 이름과 사유 코드뿐) ·
                         schedule(`NIGHTLY_PULL` — 야간 pull의 경로·시각. `vercel.json`과의 일치를 테스트가 센다) ·
                         github-app(planGitHubAppConfig·githubAppConfigured — 2026-10-12 D4a. ①·`/account`·설정이 githubAppConfigured 하나로 GitHub 카드·조회를
-                        0으로 만든다 — App 없는 셀프 호스팅은 GitLab 전용 설치다. 반쪽 판정(기동 거부, 다섯 all-or-none)은 preflight가 든다. ⚠️ 화면 판정은 D28에 따라
-                        자격증명 넷으로 옮겨 SLUG는 설치 링크만 가른다 — 2026-10-13 현재 코드는 아직 SLUG까지 다섯을 요구한다(E-ui fix2))
+                        0으로 만든다 — App 없는 셀프 호스팅은 GitLab 전용 설치다. 반쪽 판정(기동 거부, 다섯 all-or-none)은 preflight가 든다. ⚠️ 화면 판정(githubAppConfigured)은
+                        자격증명 넷이다(D28) — SLUG는 설치 링크만 가른다. 다섯 all-or-none(planGitHubAppConfig)은 preflight 전용이다)
   upload/               프로필·프로젝트 이미지. image(형식·크기·키·삭제 allowlist 판정 +
                         planImagePick — 클라이언트 선검사 + imageSrc — 저장 URL → /api/images/<key> +
                         isStoredImageKey·storedImageContentType — 프록시가 받는 키의 술어).
