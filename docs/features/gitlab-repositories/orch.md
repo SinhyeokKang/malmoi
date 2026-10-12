@@ -26,19 +26,21 @@
 | D4 | 셀프 호스팅 `GITHUB_APP_*` 다섯 = **all-or-none 그룹 선택**(반쪽은 기동 거부). 없으면 GitHub 연결 경로가 서지 않는다 | 사용자 2026-10-12 |
 | D4a | D4에서 App이 없는 설치: ①은 탭 줄 없이 GitLab 단독, `/account`·설정의 GitHub 연결 카드·설치 링크는 서지 않는다(쓸 수 없는 컨트롤을 그리지 않는다). hosted는 항상 둘 다 | 지휘자 판단 — `GITHUB_APP_SLUG` 부재 시 "조용히 사라진다"는 기존 선례(CLAUDE.md) |
 | D5 | GitLab CI 배포 = **불변 태그 clone + SHA 대조**. 생성 `.gitlab-ci.yml`이 malmoi(GitHub) 리포를 새 태그 축 `malmoi-i18n-push-gitlab-vN`으로 shallow clone하고 템플릿에 박힌 commit SHA와 대조한 뒤 action v3와 같은 pnpm 생산자를 돌린다. 앱 태그·GitHub action 태그와 별개 축 | 사용자 2026-10-12 |
-| D6 | 활성화 = **스위치 없음**. prod는 `/merge`, 셀프 호스팅은 그 태그 업그레이드가 곧 활성화. 새 env 없음 | 사용자 2026-10-12. ⚠️ 전제 "롤백된 구버전은 GitLab 프로젝트를 `setup`으로 보고 쓰지 않는다"를 W0가 코드로 확인한다(`installationId === null` 경로 전수) |
+| D6 | 활성화 = **스위치 없음**. prod는 `/merge`, 셀프 호스팅은 그 태그 업그레이드가 곧 활성화. 새 env 없음 | 사용자 2026-10-12. 전제 확인(W0, [consumers.md](./consumers.md) §2): 구버전은 GitLab 행을 `setup`/`not-installed`/`repo-forbidden`/`failed`로 읽고 GitHub 쓰기 0·크래시 0. **예외** — 구버전 `/api/push`는 `openPrGateApplies` false라 열린 MR 게이트 없이 strict 적재(미전달·`publish-raced` 게이트는 유지) → D6a |
+| D6a | D6 예외 수용 — 롤백 절차에 "GitLab 릴리스 이전으로 되돌리기 전에 GitLab 프로젝트의 CI 파이프라인을 멈추거나 `PUSH_TOKEN`을 회전한다"를 둔다(design §4). 셀프 호스팅 운영 가이드의 같은 줄은 E-sh. 선행 패치 없음 | 지휘자 2026-10-12(W0 `ask`) |
 | D7 | PR/MR 호칭 = GitLab 프로젝트에선 **merge request**(en·ko·es 모두 영어 고유명사 — es가 이미 "pull request"를 영어로 쓴다, 시안 G11b `las merge requests`). GitHub은 그대로 | 지휘자 판단 — DESIGN §10.1의 pull request 허용 근거("제공자 고유명사이고 링크가 실제로 그리 간다")가 그대로 답한다 |
 | D8 | PAT 봉투 키 = **토큰 키**(`TOKEN_ENCRYPTION_KEYS`) — GitHub 연결 토큰과 같은 부류. `lib/credentials/conversion.ts` 회전·검증에 새 열 등록 | 지휘자 판단 — OPERATIONS 키 표의 용도 구분 |
 | D9 | no-changes 종료 = **MR 닫기 → sync 브랜치 삭제**를 GitHub "base로 되돌리기"와 동등으로 인정(두 번째 실행 외부 쓰기 0회) | 지휘자 판단 — design §2: GitLab엔 ref 강제 이동 API·빈 커밋이 없어 다른 수렴 경로가 없다 |
 | D10 | GitLab 글리프 = **단색 `currentColor`** | 지휘자 판단 — 옆에 서는 GitHub 글리프와 같은 형이고 DESIGN §6.2 raw 색 예외를 늘리지 않는다 |
 | D11 | 만료 임박 경계 = **14일**(`STATE.expiresSoon`, warning) | 지휘자 판단 — 시안 v6 제안, 반대 근거 없음 |
 | D12 | 트리 크기 입력·저장 오류 코드 정책·메모 키·`GITHUB_WAIT_MS` 이름 = W0 실측·판정 결과를 따른다 | tasks §0이 그 판정을 0단계 산출물로 정함 |
+| D13 | GitLab PAT = **레거시 PAT만, 스코프 `api` 하나**(도움말·프리필 `scopes=api`). fine-grained PAT는 spec §5 비목표(19.2 GA·Free·`granular_scopes`·프리필 없음·최상위 그룹 Owner가 레거시 차단 가능 → 그 조직은 연결 불가, 수요 관측 시 재검토). 검증은 fine-grained 토큰을 분명한 사유로 거부한다(`/personal_access_tokens/self`). 불변식 11 문장은 그대로 | 사용자 2026-10-12(W0 `ask`) — 계정 단위 연결을 여러 프로젝트가 참조하는 모델과 프로젝트 한정 토큰이 맞지 않음, 검증 경로 하나 |
 
 ## 배치·파일 소유권
 
 | 배치 | tasks | 소유 파일(요지) | 선행 | 모델 / effort | 상태 |
 | --- | --- | --- | --- | --- | --- |
-| W0 재개 확정 | §0 | `docs/features/gitlab-repositories/{spec,design,design-brief,tasks}.md` · `.scratch/gitlab-measure/`(원문) | 없음 | opus / high — 실물 API 판정·전수 표·경계 확정 | 대기 |
+| W0 재개 확정 | §0 | `docs/features/gitlab-repositories/{spec,design,design-brief,tasks,consumers}.md` · `.scratch/gitlab-measure/`(원문) | 없음 | opus / high — 실물 API 판정·전수 표·경계 확정 | 인계 |
 | A 공통 경계 | §1 | 리포 호스트 경계 모듈(신규) · `lib/github.ts` 소비자 이관 · 가짜 클라이언트(`createFakeGitClient`·`vi.mock("@/lib/github")` 소비자) · `scripts/gate-plan.ts` · `vitest.*.config.ts` | W0 | opus / high — 소비자 55파일 이관, 지문 바이트 불변 | 대기 |
 | E0 용어 정본 | §5 첫·넷째 항목 | `docs/DESIGN.md`(§10.1·§2.4·§6·§6.2·§6.8) · `lib/i18n/__tests__/helpers/banned-terms.ts` · `lib/i18n/__tests__/terminology.test.ts` · `components/signin/brand-icons.tsx` · `components/__tests__/gitlab-glyph.test.ts` | W0 | opus / medium — ko 조사 규칙·금지어 회귀 | 대기 |
 | D1 CI 템플릿 | §4 첫 항목 + §1 "CI 입력" 순수 함수 | GitLab 템플릿 생성기(`lib/onboarding/` 짝) · 템플릿 원본(W0가 위치 확정) · `lib/pull/__tests__/skip-marker.test.ts` · `docs/ACTIONS.md` GitLab 절 | W0 | opus / medium — 루프 가드 두 겹·불변 참조·`api-url` | 대기 |
