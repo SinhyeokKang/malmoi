@@ -7,7 +7,7 @@ import type { AccessError } from "@/lib/auth/message";
 import { getProjectAccess } from "@/lib/auth/query";
 import type { Subject } from "@/lib/auth/subject";
 import { openRepoReader } from "@/lib/repo-host";
-import { repoLocatorOf, repoTargetOf, sameAccessedRepository } from "@/lib/repo-host/target";
+import { connectionEvidence, projectReadTarget, repoLocatorOf, repoTargetOf, sameAccessedRepository } from "@/lib/repo-host/target";
 import { requireEnv } from "@/lib/env";
 import { logFailure } from "@/lib/github-connect/log";
 import type { ConnectError } from "@/lib/github-connect/message";
@@ -21,13 +21,14 @@ import { addSurfacesFromSnapshot, SurfaceCreationError, type AddSurfaceErrorCode
 
 import { planSampleConfirmations } from "@/lib/mcp/confirm";
 
+import type { GitLabConnectError } from "@/lib/gitlab-connect/errors";
 import { checkRepoAccess } from "./access";
 
 export const AddSurfacesInput = z.object({ slug: z.string().min(1).max(40), picks: z.array(z.object({ adapter: z.string(), pathTemplate: z.string().min(1).max(500), baseLocale: z.string().min(1) })).min(1).max(200) });
 
 export type AddSurfacesResult =
   | { ok: true; results: import("@/lib/surfaces/plan-add").SurfaceAdded[]; yaml: string }
-  | { ok: false; error: OnboardError | AccessError | AddSurfaceErrorCode | "invalid input" | ConnectError; conflicts?: { path: string; surfaceSlugs: string[] }[]; index?: number };
+  | { ok: false; error: OnboardError | AccessError | AddSurfaceErrorCode | "invalid input" | ConnectError | GitLabConnectError; conflicts?: { path: string; surfaceSlugs: string[] }[]; index?: number };
 
 /**
  * **소스 추가의 공유 코어** (mcp-connector T4-c) — 편집 UI와 MCP `add_sources`. 리포 확인(쓰기 권한 포함)·다운로드·포맷 재검증을
@@ -63,15 +64,16 @@ export async function addSources(
     if (repo.status !== "ok") return { ok: false, error: repo.error };
     const connection = repoTargetOf(project);
     if (connection.status !== "ok" || !sameAccessedRepository(repo, connection.target)) return { ok: false, error: "repo-replaced" };
-    // 같은 설치·리포임을 위에서 대조했다 — GitHub은 지금처럼 확인한 접근의 주소로 연다(리네임 뒤의 정규 이름).
-    const reader = await openRepoReader({ host: "github", owner: repo.repoOwner, name: repo.repoName, installationId: repo.installationId, repositoryId: repo.repositoryId });
+    // 같은 리포임을 위에서 대조했다 — GitHub은 지금처럼 확인한 접근의 주소로(리네임 뒤의 정규 이름), GitLab은 프로젝트가 참조하는 연결로 연다.
+    const target = projectReadTarget(repo, connection.target);
+    const reader = await openRepoReader(target);
     const snapshot = await reader.snapshot(project.baseBranch);
     if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
     if (options.confirmations !== undefined && secret !== null) {
       // 같은 스냅샷의 head로 대조한다 — 아래 다운로드는 이 트리의 blob sha로만 읽는다.
       const verdict = planSampleConfirmations({
         candidates: input.picks.map((pick, index) => ({ ...pick, confirmation: options.confirmations?.[index] })),
-        context: { userId, repositoryId: repo.repositoryId, installationId: repo.installationId, ref: project.baseBranch, headSha: snapshot.headSha },
+        context: { userId, repositoryId: target.repositoryId, connection: connectionEvidence(target), ref: project.baseBranch, headSha: snapshot.headSha },
         secret,
         now: new Date(),
       });
@@ -90,7 +92,8 @@ export async function addSources(
       const confirmed = planConfirmedFormat(pick, relevant);
       if (confirmed.status !== "ok") return { ok: false, error: relevant.length < targets.length ? "unavailable" : "manual-no-match" };
       inputs.push({ projectId: access.projectId, userId,
-        repository: { repositoryId: repo.repositoryId, installationId: repo.installationId, repoOwner: project.repoOwner, repoName: project.repoName, baseBranch: project.baseBranch },
+        repository: { repoHost: project.repoHost, repositoryId: project.repositoryId, installationId: project.installationId, gitlabConnectionId: project.gitlabConnectionId,
+          repoOwner: project.repoOwner, repoName: project.repoName, baseBranch: project.baseBranch },
         format: confirmed.format, baseLocale: confirmed.baseLocale, paths, targets, blobs: new Map(relevant.map(file => [file.path, file.content])), headSha: snapshot.headSha, headCommittedAt: snapshot.headCommittedAt });
     }
     results = await addSurfacesFromSnapshot(prisma, { projectSlug: input.slug, inputs, credential: subject.credential });

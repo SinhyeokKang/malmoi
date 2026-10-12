@@ -32,7 +32,7 @@ import { finishRun, recordRun } from "@/lib/events/record";
 import { optionalEnv, requireEnv } from "@/lib/env";
 import { probeRepo } from "@/lib/github";
 import { openRepoReader } from "@/lib/repo-host";
-import { repoTargetOf } from "@/lib/repo-host/target";
+import { connectionEvidence, hasRepoConnection, REPO_COLUMNS, repoTargetOf, targetOfAccess } from "@/lib/repo-host/target";
 import { APP_ACCOUNT_PROVIDER } from "@/lib/github-connect/account-link";
 import { installWithStateUrl } from "@/lib/github-connect/installation-url";
 import { logFailure } from "@/lib/github-connect/log";
@@ -58,11 +58,13 @@ import { prepareSync } from "@/lib/import/prepare";
 import { checkRepoAccess, type OnboardFailure } from "@/lib/onboarding-run/access";
 import { addSources, AddSurfacesInput, type AddSurfacesResult } from "@/lib/onboarding-run/add";
 import { listLinkedBranches, listNewRepoBranches, type BranchesResult, type ProjectBranchesResult } from "@/lib/onboarding-run/branches";
-import { candidateOutputPaths, DetectInput, detectFormats, RepoInput, type DetectResult } from "@/lib/onboarding-run/detect";
+import { candidateOutputPaths, DetectInput, detectFormats, GitLabDetectInput, RepoInput, type DetectResult } from "@/lib/onboarding-run/detect";
+import { GitLabRepoInput, newRepoLocator, type NewRepoInput } from "@/lib/onboarding-run/locator";
+import { listGitLabRepositories, type GitLabRepo, type GitLabReposResult } from "@/lib/onboarding-run/gitlab-repos";
 import { importRepository, RepositoryImportInput } from "@/lib/onboarding-run/import";
 import { listRepositories, type ConnectableRepo, type ConnectableReposResult } from "@/lib/onboarding-run/repos";
 import { rotateToken, type RotateTokenResult } from "@/lib/onboarding-run/rotate-token";
-import { createProjectFromRepo, CreateProjectInput, type CreatedSurface, type CreateProjectResult } from "@/lib/onboarding-run/create";
+import { CreateGitLabProjectInput, createProjectFromRepo, CreateProjectInput, type CreatedSurface, type CreateProjectResult } from "@/lib/onboarding-run/create";
 import { loadOpenPrUrl } from "@/lib/projects/open-pr";
 import { runArchive, runUnarchive, type ArchiveResult } from "@/lib/projects/archive";
 import type { RepositoryImportError, RepositoryImportOutcome } from "@/lib/import/result";
@@ -246,6 +248,14 @@ const SampleInput = z.object({
   confirmation: z.string().max(65_536).optional(),
 });
 const ManualFormatInput = SampleInput.omit({ locale: true, confirmation: true }).extend({ baseLocale: z.string().min(1) });
+/**
+ * GitLab ①의 짝 입력 — 리포가 `{ host: "gitlab", repositoryId }`다(이름으로 받지 않는다, `lib/onboarding-run/locator.ts`). 판별자 `host`가 없으면 GitHub이다 —
+ * GitHub 탭의 입력 모양은 그대로 통한다.
+ */
+const GitLabSampleInput = SampleInput.omit({ owner: true, repo: true }).extend(GitLabRepoInput.shape);
+const GitLabManualFormatInput = ManualFormatInput.omit({ owner: true, repo: true }).extend(GitLabRepoInput.shape);
+const AnySampleInput = z.union([GitLabSampleInput, SampleInput]);
+const AnyManualFormatInput = z.union([GitLabManualFormatInput, ManualFormatInput]);
 
 
 export type StartUserConnectResult = { ok: false; error: OnboardFailure };
@@ -403,6 +413,19 @@ export async function listConnectableRepos(): Promise<ConnectableReposResult> {
   return listRepositories(getPrisma(), { userId });
 }
 
+export type { GitLabRepo, GitLabReposResult };
+
+/**
+ * ①의 GitLab 리포 목록 — 호출자 자신의 계정 GitLab 연결 PAT로 Maintainer 이상인 프로젝트를 읽는다. 본체는 `listGitLabRepositories`다
+ * (상한 안내 → 연결 → 목록). **표시용이다** — 생성이 제출 시점에 권한을 다시 본다. 연결이 없으면 `gitlab-not-connected`이고 화면은 PAT 입력을 보인다.
+ */
+export async function listConnectableGitLabRepos(): Promise<GitLabReposResult | { ok: false; error: "unauthorized" }> {
+  const session = await readSession();
+  if (session.status === "unavailable") return { ok: false, error: "unavailable" };
+  if (session.status === "none") return { ok: false, error: "unauthorized" };
+  return listGitLabRepositories(getPrisma(), { userId: session.userId });
+}
+
 export type { DetectResult };
 
 /**
@@ -412,13 +435,11 @@ export type { DetectResult };
  * ⚠️ **1패스 결과를 사용자에게 보이지 않는다.** probe 없는 1순위는 검색 인덱스 같은 무관한 JSON
  * 묶음일 수 있다(bugshot-web 실측) — 중간값이지 화면에 쓰는 값이 아니다.
  */
-export async function detectRepoFormats(raw: {
-  owner: string;
-  repo: string;
+export async function detectRepoFormats(raw: NewRepoInput & {
   /** ①에서 고른 브랜치. 미지정이면 그 리포의 default branch다. */
   ref?: string;
 }): Promise<DetectResult> {
-  const parsed = DetectInput.safeParse(raw);
+  const parsed = z.union([GitLabDetectInput, DetectInput]).safeParse(raw);
   if (!parsed.success) return { ok: false, error: "invalid input" };
   // 모달 입력을 보존한다 — 세션 거부는 redirect가 아니라 값이다 (예외 J).
   const session = await readSession();
@@ -441,8 +462,8 @@ export type { BranchesResult, ProjectBranchesResult };
  *
  * `defaultBranch`는 같은 호출이 이미 들고 있다 — **GitHub을 한 번 더 부르지 않는다.**
  */
-export async function listRepoBranches(raw: { owner: string; repo: string }): Promise<BranchesResult> {
-  const parsed = RepoInput.safeParse(raw);
+export async function listRepoBranches(raw: NewRepoInput): Promise<BranchesResult> {
+  const parsed = z.union([GitLabRepoInput, RepoInput]).safeParse(raw);
   if (!parsed.success) return { ok: false, error: "invalid input" };
 
   // 모달 입력을 보존한다 — 세션 거부는 redirect가 아니라 값이다 (예외 J).
@@ -478,11 +499,11 @@ export type SampleResult =
  * 재검증은 탐지·수동 확정에서 끝내고 확인값에 서명한다. 그 단계에는 내용이 필요하다.
  * 여기서는 확인값과 현재 인가·head를 대조한 뒤에만 blob을 읽는다 — templatePaths는 방어가 아니다.
  */
-export async function loadCandidateSample(raw: {
-  owner: string; repo: string; ref: string; adapter: string; pathTemplate: string; locale: string;
+export async function loadCandidateSample(raw: NewRepoInput & {
+  ref: string; adapter: string; pathTemplate: string; locale: string;
   confirmation?: string;
 }): Promise<SampleResult> {
-  const parsed = SampleInput.safeParse(raw);
+  const parsed = AnySampleInput.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "invalid input" };
   const input = parsed.data;
   if (!isValidBranchName(input.ref) || !isPathSafeLocale(input.locale) || !isLocaleShaped(input.locale)) return { ok: false, error: "invalid input" };
@@ -490,14 +511,15 @@ export async function loadCandidateSample(raw: {
   if (session.status === "unavailable") return { ok: false, error: "unavailable" };
   if (session.status === "none") return { ok: false, error: "unauthorized" };
   const { userId } = session;
-  const access = await checkRepoAccess(getPrisma(), userId, { host: "github", owner: input.owner, name: input.repo }, { requirePush: true });
+  const access = await checkRepoAccess(getPrisma(), userId, newRepoLocator(input), { requirePush: true });
   if (access.status !== "ok") return { ok: false, error: access.error };
-  const reader = await openRepoReader({ host: "github", owner: access.repoOwner, name: access.repoName, installationId: access.installationId, repositoryId: access.repositoryId });
+  const target = targetOfAccess(access);
+  const reader = await openRepoReader(target);
   const snapshot = await reader.snapshot(input.ref);
   if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
 
   const verified = verifySampleConfirmation(input.confirmation ?? "", {
-    userId, repositoryId: access.repositoryId, installationId: access.installationId,
+    userId, repositoryId: target.repositoryId, connection: connectionEvidence(target),
     ref: input.ref, headSha: snapshot.headSha,
   }, requireEnv("APP_SIGNING_SECRET"), new Date());
   // 확인값을 못 믿으면 입력이 아니라 확인값이 낡은 것이다 — 만료·키 회전·낡은 스냅샷 전부 재탐지로 풀린다.
@@ -537,10 +559,10 @@ export async function loadCandidateSample(raw: {
 }
 
 /** 수동 입력은 처음부터 신뢰하지 않는다 — 내용 재탐지가 성공해야 확인값을 발급한다. */
-export async function confirmManualFormat(raw: {
-  owner: string; repo: string; ref: string; adapter: string; pathTemplate: string; baseLocale: string;
+export async function confirmManualFormat(raw: NewRepoInput & {
+  ref: string; adapter: string; pathTemplate: string; baseLocale: string;
 }): Promise<{ ok: true; candidate: CandidateSummary } | { ok: false; error: OnboardFailure }> {
-  const parsed = ManualFormatInput.safeParse(raw);
+  const parsed = AnyManualFormatInput.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "invalid input" };
   const input = parsed.data;
   if (!isValidBranchName(input.ref) || !isPathSafeLocale(input.baseLocale) || !isLocaleShaped(input.baseLocale) || !isAdapterName(input.adapter)) {
@@ -550,9 +572,10 @@ export async function confirmManualFormat(raw: {
   if (session.status === "unavailable") return { ok: false, error: "unavailable" };
   if (session.status === "none") return { ok: false, error: "unauthorized" };
   const { userId } = session;
-  const access = await checkRepoAccess(getPrisma(), userId, { host: "github", owner: input.owner, name: input.repo }, { requirePush: true });
+  const access = await checkRepoAccess(getPrisma(), userId, newRepoLocator(input), { requirePush: true });
   if (access.status !== "ok") return { ok: false, error: access.error };
-  const reader = await openRepoReader({ host: "github", owner: access.repoOwner, name: access.repoName, installationId: access.installationId, repositoryId: access.repositoryId });
+  const target = targetOfAccess(access);
+  const reader = await openRepoReader(target);
   const snapshot = await reader.snapshot(input.ref);
   if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
   const paths = snapshot.files.map((file) => file.path);
@@ -579,7 +602,7 @@ export async function confirmManualFormat(raw: {
     }
     return { ok: true, candidate: { ...summary, outputPaths: candidateOutputPaths(confirmed.format, paths), baseLocale: confirmed.baseLocale,
       confirmation: signSampleConfirmation({
-        userId, repositoryId: access.repositoryId, installationId: access.installationId,
+        userId, repositoryId: target.repositoryId, connection: connectionEvidence(target),
         ref: input.ref, headSha: snapshot.headSha, format: confirmed.format,
       }, requireEnv("APP_SIGNING_SECRET"), new Date()),
     } };
@@ -593,16 +616,14 @@ export async function confirmManualFormat(raw: {
 export type { CreatedSurface, CreateProjectResult };
 
 /** 모든 표면의 읽기·파싱을 끝낸 뒤 생성과 첫 적재를 같은 트랜잭션에 저장한다 — 본체는 공유 코어 `createProjectFromRepo`다(MCP `create_project`와 같다). */
-export async function createProject(raw: {
-  owner: string;
-  repo: string;
+export async function createProject(raw: NewRepoInput & {
   manual?: boolean;
   surfaces: { adapter: string; pathTemplate: string; baseLocale: string }[];
   slug: string;
   name: string;
   baseBranch: string;
 }): Promise<CreateProjectResult> {
-  const parsed = CreateProjectInput.safeParse(raw);
+  const parsed = z.union([CreateGitLabProjectInput, CreateProjectInput]).safeParse(raw);
   if (!parsed.success) return { ok: false, error: "invalid input" };
   const input = parsed.data;
 
@@ -654,11 +675,8 @@ export async function runFirstIngest(raw: { slug: string; surfaceSlug?: string }
   const project = await prisma.project.findUnique({
     where: { id: projectId },
     select: {
-      repoOwner: true,
-      repoName: true,
+      ...REPO_COLUMNS,
       baseBranch: true,
-      installationId: true,
-      repositoryId: true,
       archivedAt: true,
       defaultSurface: true,
     },
@@ -676,12 +694,10 @@ export async function runFirstIngest(raw: { slug: string; surfaceSlug?: string }
 
   const surface = surfaceSlug === undefined ? project.defaultSurface : await prisma.translationSurface.findFirst({ where: { projectId, slug: surfaceSlug } });
   if (!surface || surface.archivedAt !== null) return { ok: false, error: "not-found" };
-  if (planSurfaceReadiness({ installationId: project.installationId, surface }) !== "awaiting_first_sync") return { ok: false, error: "not-awaiting" };
-  const { installationId } = project;
+  if (planSurfaceReadiness({ connected: hasRepoConnection(project), surface }) !== "awaiting_first_sync") return { ok: false, error: "not-awaiting" };
   const { adapterName, pathTemplate, baseLocale } = surface;
-  // `awaiting_first_sync`는 `installationId`가 있다는 뜻이지만 컴파일러는 그것을 모른다.
-  // 포맷 셋이 비어 있는 것은 온보딩 밖에서 만들어진 행이라 여기서 적재할 근거가 없다.
-  if (installationId === null || adapterName === null || pathTemplate === null || baseLocale === null) {
+  // 포맷 셋이 비어 있는 것은 온보딩 밖에서 만들어진 행이라 여기서 적재할 근거가 없다. 연결 증거는 위 readiness가 이미 봤다.
+  if (adapterName === null || pathTemplate === null || baseLocale === null) {
     logFailure("onboard-ingest", new Error(`project has no stored format: ${slug}`));
     return { ok: false, error: "ingest-failed" };
   }

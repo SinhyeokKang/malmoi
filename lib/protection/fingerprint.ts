@@ -17,7 +17,7 @@ export type DiscardFingerprintInput = {
    * ⚠️ **승인이 덮을 리포·브랜치다** (audit #3) — 표면 설정만 넣으면 `main` 기준으로 받은 승인이 기준 브랜치를 `release`로 바꾼 뒤에도
    * 통과해, OWNER가 본 적 없는 브랜치 값으로 편집을 덮는다. 연결·설정 변경은 revision을 올리지 않으므로 값 자체를 싣는다.
    */
-  repository: { repositoryId: string | null; installationId: string | null; repoOwner: string; repoName: string; baseBranch: string };
+  repository: { repoHost: string; repositoryId: string | null; installationId: string | null; gitlabConnectionId: string | null; repoOwner: string; repoName: string; baseBranch: string };
   surfaces: readonly { id: string; importRevision: number; adapterName: string | null; pathTemplate: string | null; baseLocale: string | null }[];
   pending: readonly { id: string; token: string }[];
 };
@@ -28,7 +28,8 @@ export function discardFingerprint(input: DiscardFingerprintInput): string {
   const canonical = JSON.stringify([
     input.userId,
     input.projectId,
-    [input.repository.repositoryId, input.repository.installationId, input.repository.repoOwner, input.repository.repoName, input.repository.baseBranch],
+    // 호스트·GitLab 연결 참조까지 — 같은 숫자 id의 다른 호스트, 다른 OWNER의 GitLab 재연결 뒤 옛 승인이 통하지 않는다(gitlab-repositories). 저장하지 않는 지문이라 바이트가 바뀌어도 된다.
+    [input.repository.repoHost, input.repository.repositoryId, input.repository.installationId, input.repository.gitlabConnectionId, input.repository.repoOwner, input.repository.repoName, input.repository.baseBranch],
     [...input.surfaces].sort(byId).map(s => [s.id, s.importRevision, s.adapterName, s.pathTemplate, s.baseLocale]),
     [...input.pending].sort(byId).map(p => [p.id, p.token]),
   ]);

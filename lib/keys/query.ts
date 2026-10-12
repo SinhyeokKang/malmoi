@@ -49,7 +49,7 @@ export type ProjectContext = {
    * readiness 판정의 재료 둘 (`planProjectReadiness`). **번역 화면이 따로 조회하지 않는다** —
    * 같은 행을 두 번 읽던 것을 한 번으로 합쳤다 (T7).
    */
-  installationId: string | null;
+  repoHost: string; installationId: string | null; gitlabConnectionId: string | null;
   /** 번역 화면의 첫 렌더 연결 판정(`storedConnection` — `unpinned`) 재료다(ux-drift-unify T20). 같은 행이라 왕복이 늘지 않는다. */
   repositoryId: string | null;
   lastCommitSha: string | null;
@@ -83,7 +83,7 @@ export async function loadProject(prisma: PrismaClient, projectId: string, surfa
     where: { id: projectId },
     select: {
       id: true, slug: true, name: true, repoOwner: true, repoName: true, baseBranch: true,
-      installationId: true, repositoryId: true,
+      repoHost: true, installationId: true, gitlabConnectionId: true, repositoryId: true,
       lastPulledAt: true, lastPublishedAt: true, lastPrUrl: true,
       repositoryImportToken: true, repositoryImportStartedAt: true,
       surfaces: { where: { archivedAt: null }, orderBy: { slug: "asc" }, include: {
@@ -143,7 +143,7 @@ export type MembershipRow = {
   slug: string;
   name: string;
   role: Role;
-  installationId: string | null;
+  repoHost: string; installationId: string | null; gitlabConnectionId: string | null;
   surfaces: { archivedAt: Date | null; lastCommitSha: string | null }[];
   /**
    * 보관 시각 (7단계). **목록에서 숨기는 대신 배지로 남긴다** — 숨기면 OWNER가 되돌릴 링크에
@@ -181,7 +181,7 @@ export async function loadMemberships(prisma: PrismaClient, userId: string): Pro
       role: true,
       project: {
         select: {
-          slug: true, name: true, image: true, installationId: true, archivedAt: true,
+          slug: true, name: true, image: true, repoHost: true, installationId: true, gitlabConnectionId: true, archivedAt: true,
           surfaces: { select: { archivedAt: true, lastCommitSha: true, _count: { select: { keys: { where: { orphaned: false } } } } } },
           _count: { select: { members: true } },
           // 관계 select라 같은 쿼리의 JOIN이다 — 셸이 매 페이지 부르므로 왕복을 늘리지 않는다.
@@ -196,7 +196,7 @@ export async function loadMemberships(prisma: PrismaClient, userId: string): Pro
     slug: r.project.slug,
     name: r.project.name,
     role: r.role,
-    installationId: r.project.installationId,
+    repoHost: r.project.repoHost, installationId: r.project.installationId, gitlabConnectionId: r.project.gitlabConnectionId,
     surfaces: r.project.surfaces.map(({ archivedAt, lastCommitSha }) => ({ archivedAt, lastCommitSha })),
     archivedAt: r.project.archivedAt,
     image: r.project.image,
@@ -285,7 +285,7 @@ export async function loadProjectList(
           slug: true,
           name: true,
           image: true,
-          installationId: true,
+          repoHost: true, installationId: true, gitlabConnectionId: true,
           /**
            * 원격 경로 판정(`RemoteTarget.surfaces`)의 입력. ⚠️ **로케일은 orphaned도 포함한 전체 저장 로케일이다** — 탐지
            * 정규식이 거르는 코드(`es-419`·`zh-Hant-TW`)의 파일을 그 코드로 만든 정확한 경로로 지킨다. 서브쿼리라 왕복이 +0이다.
@@ -320,7 +320,7 @@ export async function loadProjectList(
         projectId: r.project.id,
         repoOwner: r.project.repoOwner,
         repoName: r.project.repoName,
-        installationId: r.project.installationId,
+        repoHost: r.project.repoHost, installationId: r.project.installationId, gitlabConnectionId: r.project.gitlabConnectionId,
         repositoryId: r.project.repositoryId,
         baseBranch: r.project.baseBranch,
         surfaces: r.project.surfaces.map(s => ({ lastCommitSha: s.lastCommitSha, adapterName: s.adapterName,
@@ -337,7 +337,7 @@ export async function loadProjectList(
 export type ProjectListMemberRow = {
   role: Role;
   project: {
-    id: string; slug: string; name: string; image: string | null; installationId: string | null;
+    id: string; slug: string; name: string; image: string | null; repoHost: string; installationId: string | null; gitlabConnectionId: string | null;
     archivedAt: Date | null; repoOwner: string; repoName: string; repositoryId: string | null; baseBranch: string; lastPrUrl: string | null;
     surfaces: readonly { archivedAt: Date | null; lastCommitSha: string | null; lastImportError: string | null; lastImportStartedAt: Date | null }[];
     _count: { members: number };
@@ -366,7 +366,7 @@ export function assembleProjectListRows(
     name: r.project.name,
     image: r.project.image,
     role: r.role,
-    installationId: r.project.installationId,
+    repoHost: r.project.repoHost, installationId: r.project.installationId, gitlabConnectionId: r.project.gitlabConnectionId,
     surfaces: r.project.surfaces.map(s => ({
       archivedAt: s.archivedAt,
       lastCommitSha: s.lastCommitSha,

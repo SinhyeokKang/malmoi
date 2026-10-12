@@ -7,7 +7,7 @@ import { importOutcomeFields } from "@/lib/projects/import-status";
 import { recordEvent } from "@/lib/events/record";
 import { AppError, fail, logCaught } from "@/lib/failure";
 import { createGitClient, openRepoReader } from "@/lib/repo-host";
-import { repoTargetOf, sameRepoTarget } from "@/lib/repo-host/target";
+import { hasRepoConnection, repoTargetOf, sameRepoTarget } from "@/lib/repo-host/target";
 import { GITHUB_WAIT_MS, withinGithubWait } from "@/lib/github-wait";
 import { closeExpiredImportRuns, runAutomationImport } from "@/lib/import/run";
 import { openPrGateApplies } from "@/lib/protection/plan";
@@ -38,7 +38,7 @@ export type NightlyTarget = {
   repoOwner: string;
   repoName: string;
   baseBranch: string;
-  installationId: string | null;
+  repoHost: string; installationId: string | null; gitlabConnectionId: string | null;
   repositoryId: string | null;
   /** 방문 **전** 값 — 마감으로 멈춘 방문이 방문 기록을 되돌릴 때 쓴다. */
   lastNightlyAt: Date | null;
@@ -112,9 +112,9 @@ export async function runNightly(prisma: PrismaClient, target: NightlyTarget, el
       // ⚠️ **지금 그대로다** — 스킵·보류·경고도 `publish.run` 행의 결과로 선다. GitHub 호출도 `runSync`가 정한다.
       return { action: "publish", ...(await runSync(prisma, { projectId: target.id, slug: target.slug, trigger: "cron", requestedBy: null, credential: undefined })) };
     case "import": {
-      const { installationId, repositoryId } = target;
-      if (installationId === null) throw new AppError(`nightly import without installation: ${target.slug}`);
-      const repository = { repositoryId, installationId, repoOwner: target.repoOwner, repoName: target.repoName, baseBranch: target.baseBranch };
+      if (!hasRepoConnection(target)) throw new AppError(`nightly import without installation: ${target.slug}`);
+      const repository = { repoHost: target.repoHost, repositoryId: target.repositoryId, installationId: target.installationId, gitlabConnectionId: target.gitlabConnectionId,
+        repoOwner: target.repoOwner, repoName: target.repoName, baseBranch: target.baseBranch };
       // 리더는 열 때 연결을 판정한다 — 리포 id가 없으면 지금처럼 리더 열기가 거부한다(적재 코어가 그 실패를 결과로 남긴다).
       const result = await runAutomationImport(prisma, { projectId: target.id, repository, expectedLastPublishedAt: snapshot.lastPublishedAt, expectedDeliveryRevision },
         async () => {

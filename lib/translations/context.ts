@@ -9,6 +9,11 @@ import { createHash } from "node:crypto";
  * ⚠️ `./baseline`과 분리한 이유는 `node:crypto`다 — 그쪽은 클라이언트가 읽는 잎이다.
  */
 export type DeliveryContextInput = {
+  /**
+   * 리포 호스트(gitlab-repositories). ⚠️ **GitHub 행의 입력·출력은 바이트 단위로 그대로다** — 이 지문은 `DeliveryConfirmation`에 **저장된다**.
+   * 일괄로 바꾸면 배포 순간 기존 확인이 전부 무효가 된다. GitHub이 아닐 때만 호스트를 튜플 앞에 섞는다(같은 숫자 id의 다른 호스트).
+   */
+  repoHost: string;
   repositoryId: string | null;
   baseBranch: string;
   surface: {
@@ -34,10 +39,11 @@ function canonical(value: unknown): unknown {
 export function deliveryContextFingerprint(input: DeliveryContextInput): string {
   const s = input.surface;
   // 배열 튜플로 직렬화한다 — 구분자 이어붙이기는 경계가 움직인 두 입력을 같은 문자열로 만든다(`discardFingerprint`와 같은 형).
-  const tuple = JSON.stringify([
+  const fields = [
     input.repositoryId, input.baseBranch,
     s.id, s.importRevision, s.adapterName, s.pathTemplate, s.nested, canonical(s.nestedByPath ?? null), s.baseLocale,
-  ]);
+  ];
+  const tuple = JSON.stringify(input.repoHost === "github" ? fields : [input.repoHost, ...fields]);
   return createHash("sha256").update(tuple).digest("hex");
 }
 

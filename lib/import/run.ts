@@ -3,7 +3,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import type { Prisma, PrismaClient, Project, TranslationSurface } from "@/generated/prisma/client";
 import type { RepoReader } from "@/lib/repo-host/reader";
-import { repoTargetOf, sameRepoTarget } from "@/lib/repo-host/target";
+import { repoTargetOf, sameRepoTarget, type ProjectRepoColumns } from "@/lib/repo-host/target";
 import { isAdapterName } from "@/lib/adapters";
 import { lockCredential } from "@/lib/auth/lock";
 import type { Credential } from "@/lib/auth/subject";
@@ -27,7 +27,7 @@ import { snapshotError } from "./read";
 import { prepareSurfaceImport, type PreparedSurfaceImport } from "./surface";
 import type { RepositoryImportError, RepositoryImportOutcome, SurfaceImportResult } from "./result";
 
-type Repository = Pick<Project, "repositoryId" | "installationId" | "repoOwner" | "repoName" | "baseBranch">;
+type Repository = Pick<Project, keyof ProjectRepoColumns | "baseBranch">;
 /**
  * @param approval Dialog가 열릴 때 서버가 발급한 폐기 승인 지문(`readDiscardApproval`). 없으면 `null` — 미전달 편집이 있으면 reconfirm이다.
  */
@@ -55,7 +55,7 @@ class PendingEditsDuringImport extends Error {
 }
 
 function settings(project: Repository, surface: TranslationSurface): ImportSettings {
-  return { repositoryId: project.repositoryId, installationId: project.installationId,
+  return { repoHost: project.repoHost, repositoryId: project.repositoryId, installationId: project.installationId, gitlabConnectionId: project.gitlabConnectionId,
     repoOwner: project.repoOwner, repoName: project.repoName, baseBranch: project.baseBranch,
     adapterName: surface.adapterName, pathTemplate: surface.pathTemplate, baseLocale: surface.baseLocale,
     nested: surface.nested, nestedByPath: surface.nestedByPath };
@@ -102,7 +102,7 @@ async function acquire(prisma: PrismaClient, input: CoreInput): Promise<Acquired
     const uncertain = await tx.syncRun.findFirst({ where: uncertainPublishWhere(project.id, new Date()), select: { id: true } });
     if (uncertain !== null) return { ok: false, error: "publish-unsettled" };
     const runningSync = await tx.syncRun.findFirst({ where: { projectId: project.id, status: "RUNNING" }, orderBy: { startedAt: "desc" }, select: { startedAt: true } });
-    const plan = planRepositoryImport({ ...project, now: startedAt, readiness: planProjectReadiness({ installationId: project.installationId, surfaces }), identity, surfaces, runningSync });
+    const plan = planRepositoryImport({ ...project, now: startedAt, readiness: planProjectReadiness({ ...project, surfaces }), identity, surfaces, runningSync });
     if (!plan.ok) {
       if (actor.kind === "USER") await recordImportRefusal(tx, { projectId: project.id, userId: actor.userId, error: plan.error });
       return plan;

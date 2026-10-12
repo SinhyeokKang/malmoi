@@ -16,7 +16,7 @@ export async function loadAttentionInbox(prisma: PrismaClient, userId: string): 
       user: { select: { attentionSeenAt: true } },
       project: { select: {
         id: true, slug: true, name: true, image: true, createdAt: true,
-        installationId: true, repositoryId: true, archivedAt: true,
+        repoHost: true, installationId: true, gitlabConnectionId: true, repositoryId: true, archivedAt: true,
         surfaces: { where: { archivedAt: null }, orderBy: { slug: "asc" }, select: {
           id: true, slug: true, archivedAt: true, lastCommitSha: true,
           lastImportError: true, lastImportStartedAt: true, lastImportFailedAt: true,

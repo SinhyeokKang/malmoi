@@ -4,9 +4,11 @@ import type { AccessError } from "@/lib/auth/message";
 import { getProjectAccess } from "@/lib/auth/query";
 import type { Subject } from "@/lib/auth/subject";
 import { listBranches } from "@/lib/repo-host";
-import { repoLocatorOf, repoTargetOf, sameRepository } from "@/lib/repo-host/target";
+import { projectReadTarget, REPO_COLUMNS, repoLocatorOf, repoTargetOf, sameRepository, targetOfAccess } from "@/lib/repo-host/target";
 
+import { projectDisconnected } from "@/lib/gitlab-connect/errors";
 import { checkRepoAccess, type OnboardFailure } from "./access";
+import { newRepoLocator, type NewRepoInput } from "./locator";
 
 /**
  * **브랜치 목록의 공유 코어** (mcp-connector T4-c) — 편집 UI와 MCP `list_branches`. 신규(①)와 기존 프로젝트(설정)의 인가가 다르다.
@@ -24,13 +26,13 @@ export type BranchesResult =
  *
  * `defaultBranch`는 같은 호출이 이미 들고 있다 — **GitHub을 한 번 더 부르지 않는다.**
  */
-export async function listNewRepoBranches(prisma: PrismaClient, subject: Subject, input: { owner: string; repo: string }): Promise<BranchesResult> {
+export async function listNewRepoBranches(prisma: PrismaClient, subject: Subject, input: NewRepoInput): Promise<BranchesResult> {
   const { userId } = subject;
-  const access = await checkRepoAccess(prisma, userId, { host: "github", owner: input.owner, name: input.repo }, { requirePush: true });
+  const access = await checkRepoAccess(prisma, userId, newRepoLocator(input), { requirePush: true });
   if (access.status !== "ok") return { ok: false, error: access.error };
 
-  // 아직 프로젝트가 없다 — 방금 확인한 설치·리포 id가 곧 이 리포의 연결이다.
-  const list = await listBranches({ host: "github", owner: access.repoOwner, name: access.repoName, installationId: access.installationId, repositoryId: access.repositoryId });
+  // 아직 프로젝트가 없다 — 방금 확인한 접근(GitHub 설치·리포 id / 호출자의 GitLab 연결)이 곧 이 리포의 연결이다.
+  const list = await listBranches(targetOfAccess(access));
   // 조회 실패는 ①을 막지 않는다 — 화면이 default branch 하나로 접고 그 사실을 말한다 (예외 D).
   if (list.status !== "ok") return { ok: false, error: "unavailable", defaultBranch: access.defaultBranch };
 
@@ -54,18 +56,18 @@ export async function listLinkedBranches(prisma: PrismaClient, subject: Subject,
   if (access.status !== "ok") return { ok: false, error: access.status };
   const project = await prisma.project.findUnique({
     where: { id: access.projectId },
-    select: { repoOwner: true, repoName: true, installationId: true, repositoryId: true },
+    select: REPO_COLUMNS,
   });
   if (project === null) return { ok: false, error: "not-found" };
   const connection = repoTargetOf(project);
-  if (connection.status !== "ok") return { ok: false, error: "repo-not-installed" };
+  if (connection.status !== "ok") return { ok: false, error: projectDisconnected(project.repoHost) };
   const repo = await checkRepoAccess(prisma, userId, repoLocatorOf(project), { requirePush: false });
   if (repo.status !== "ok") return { ok: false, error: repo.error };
   if (!sameRepository(repo, connection.target)) return { ok: false, error: "repo-forbidden" };
 
   // ⚠️ GitHub은 방금 확인한 설치로 연다(지금 동작 그대로 — D16과 같은 "GitHub 동작 불변"). 리포 id는 위에서 프로젝트와 대조했다.
   // 연결이 사람 단위인 호스트는 프로젝트 쪽 연결(`connection.target`)로 연다 — 호출자 연결로 열지 않는다.
-  const list = await listBranches({ host: "github", owner: repo.repoOwner, name: repo.repoName, installationId: repo.installationId, repositoryId: repo.repositoryId });
+  const list = await listBranches(projectReadTarget(repo, connection.target));
   if (list.status !== "ok") return { ok: false, error: "unavailable", defaultBranch: repo.defaultBranch };
   return { ok: true, names: list.names, defaultBranch: repo.defaultBranch, truncated: list.truncated };
 }

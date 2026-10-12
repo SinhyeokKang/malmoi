@@ -7,7 +7,7 @@ import { adapterFor, isAdapterName } from "@/lib/adapters";
 import { lockCredential } from "@/lib/auth/lock";
 import type { Credential } from "@/lib/auth/subject";
 import { templatePaths } from "@/lib/onboarding/confirm";
-import { repoTargetOf, sameRepoTarget } from "@/lib/repo-host/target";
+import { repoTargetOf, sameRepoTarget, type ProjectRepoColumns } from "@/lib/repo-host/target";
 import { prepareFirstSnapshot, type FirstSnapshotInput } from "@/lib/onboarding/ingest";
 import { runTokenFor } from "@/lib/events/payload";
 import { recordEvent, recordRun } from "@/lib/events/record";
@@ -28,7 +28,8 @@ export class SurfaceCreationError extends Error {
 
 export type AddSurfaceSnapshot = Omit<FirstSnapshotInput, "surfaceId" | "surfaceSlug" | "startedAt" | "token" | "projectSlug"> & {
   userId: string;
-  repository: { repositoryId: string; installationId: string; repoOwner: string; repoName: string; baseBranch: string };
+  /** 읽을 때의 연결 열 — 잠금 뒤 `sameRepoTarget`으로 재대조한다(호스트·GitLab 연결 참조까지). */
+  repository: ProjectRepoColumns & { baseBranch: string };
 };
 
 /** GitHub I/O는 호출부가 끝낸다. 잠금 후 재조회한 경계와 첫 적재만 원자적으로 확정한다. */

@@ -57,7 +57,7 @@ export async function GET(request: Request): Promise<NextResponse> {
       select: {
         id: true,
         slug: true,
-        installationId: true,
+        repoHost: true, installationId: true, gitlabConnectionId: true,
         repositoryId: true,
         // 야간 판정의 입력 — head 조회·PR 조회·적재의 리포 신원을 **이 행에서** 넘긴다(방문 중에 다시 읽지 않는다).
         repoOwner: true,

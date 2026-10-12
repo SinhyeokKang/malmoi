@@ -1,5 +1,6 @@
 // ⚠️ **`server-only`를 일부러 붙이지 않았다** — `lib/github.ts`와 같은 이유다(tsx 스크립트가 프로덕션 경로를 그대로 지난다).
 // 클라이언트 유입은 `components/__tests__/client-graph.test.ts`가 막는다 — 이 파일은 `octokit`을 무는 구현을 import한다.
+import { AppError } from "@/lib/failure";
 import * as github from "@/lib/github";
 import type { ConnectionHealth } from "@/lib/github-connect/health";
 import type { GitClient } from "@/lib/pull/client";
@@ -20,8 +21,10 @@ export function createGitClient(target: RepoTarget, execution?: PublishExecution
   switch (target.host) {
     case "github":
       return github.createGitClient(target.owner, target.name, target.installationId, target.repositoryId, execution);
+    case "gitlab":
+      return gitlabPending();
     default:
-      return unreachable(target.host);
+      return unreachable(target);
   }
 }
 
@@ -29,8 +32,10 @@ export function openRepoReader(target: RepoTarget): Promise<RepoReader> {
   switch (target.host) {
     case "github":
       return github.openRepoReader(target.owner, target.name, target.installationId, target.repositoryId);
+    case "gitlab":
+      return gitlabPending();
     default:
-      return unreachable(target.host);
+      return unreachable(target);
   }
 }
 
@@ -38,9 +43,19 @@ export function listBranches(target: RepoTarget): Promise<BranchList> {
   switch (target.host) {
     case "github":
       return github.listBranches(target.owner, target.name, target.installationId, target.repositoryId);
+    case "gitlab":
+      return gitlabPending();
     default:
-      return unreachable(target.host);
+      return unreachable(target);
   }
+}
+
+/**
+ * ⚠️ **GitLab I/O는 커밋 C가 채운다**(`lib/gitlab/` client·reader·Publish — 같은 `/push` 배치). 그 전에는 원격을 부르지 않고 던진다 —
+ * 연결·식별·권한(커밋 B)만으로 GitLab 행이 GitHub 구현으로 새지 않게 갈래를 먼저 세운다.
+ */
+function gitlabPending(): Promise<never> {
+  return Promise.reject(new AppError("GitLab repository I/O is not available yet."));
 }
 
 /**
@@ -61,7 +76,9 @@ export async function loadConnectionHealth(result: RepoTargetResult, options: { 
         { repoOwner: target.owner, repoName: target.name, installationId: target.installationId, repositoryId: target.repositoryId },
         options,
       );
+    case "gitlab":
+      return gitlabPending();
     default:
-      return unreachable(target.host);
+      return unreachable(target);
   }
 }

@@ -65,7 +65,7 @@ export async function previewSurfaceRemoval(prisma: PrismaClient, subject: Subje
   const approval = pending.length === 0 ? null : removalFingerprint({ userId: subject.userId, projectId, surfaceId, pending });
   const project = await prisma.project.findUniqueOrThrow({
     where: { id: projectId },
-    select: { repoOwner: true, repoName: true, installationId: true, repositoryId: true, archivedAt: true },
+    select: { repoOwner: true, repoName: true, repoHost: true, installationId: true, gitlabConnectionId: true, repositoryId: true, archivedAt: true },
   });
   const pr = await loadOpenPrUrl(input.slug, project);
   return { ok: true, pendingCount: pending.length, approval, openPr: pr === undefined ? "unknown" : pr === null ? "none" : "open" };

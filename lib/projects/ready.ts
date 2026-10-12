@@ -13,7 +13,7 @@ import { planProjectReadiness } from "@/lib/onboarding/readiness";
 export async function isProjectReady(prisma: PrismaClient, projectId: string): Promise<boolean> {
   const project = await prisma.project.findUnique({
     where: { id: projectId },
-    select: { installationId: true, surfaces: { select: { archivedAt: true, lastCommitSha: true } } },
+    select: { repoHost: true, installationId: true, repositoryId: true, surfaces: { select: { archivedAt: true, lastCommitSha: true } } },
   });
   // 인가는 지났는데 행이 없다 — 그 사이에 지워진 경우다. 준비된 것으로 읽지 않는다.
   if (project === null) return false;

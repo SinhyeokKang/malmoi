@@ -21,6 +21,14 @@ export function ownedActiveProjects(userId: string) {
   return { userId, role: "OWNER" as const, project: { archivedAt: null } };
 }
 
+/**
+ * ①의 상한 안내 — GitHub·GitLab 목록이 **같은 판정**을 쓴다(gitlab-repositories). 운영자는 면제되고, 상한에 닿았을 때만 운영자를 조회한다.
+ * 조회가 던지면 그대로 던진다 — 호출부가 `unavailable`로 접는다. 판정의 정본은 생성의 잠금 안 재집계이고 이것은 안내다.
+ */
+export async function projectLimitReached(prisma: PrismaClient, userId: string): Promise<boolean> {
+  return (await prisma.projectMember.count({ where: ownedActiveProjects(userId) })) >= PROJECT_LIMIT && !(await isOperatorUser(prisma, userId));
+}
+
 /** ①의 리포 행. `pushedAt`은 "이 리포가 아직 살아 있는가"를 말한다 — 목록이 길수록 그 신호가 는다. */
 export type ConnectableRepo = { owner: string; repo: string; fullName: string; pushedAt: string | null };
 /**
@@ -56,12 +64,7 @@ export async function listRepositories(prisma: PrismaClient, subject: Subject): 
    * 운영자는 면제된다 — 생성 코어와 같은 판정이고, 상한에 닿았을 때만 조회한다. 그 조회가 던지면 같은 `unavailable`이다.
    */
   try {
-    if (
-      (await prisma.projectMember.count({ where: ownedActiveProjects(userId) })) >= PROJECT_LIMIT &&
-      !(await isOperatorUser(prisma, userId))
-    ) {
-      return { ok: false, error: "limit-reached" };
-    }
+    if (await projectLimitReached(prisma, userId)) return { ok: false, error: "limit-reached" };
   } catch (error) {
     logFailure("onboard-repos", error);
     return { ok: false, error: "unavailable" };

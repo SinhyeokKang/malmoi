@@ -9,10 +9,14 @@ import type { ConnectOutcome } from "@/lib/account-connect/plan";
 import { clearAuthRoundtripCookies } from "@/lib/auth/roundtrip-cookies";
 
 import { randomBytes } from "node:crypto";
+import { z } from "zod";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { signIn } from "@/auth";
 import { requireUser } from "@/lib/auth/session";
+import { readSession } from "@/lib/auth/read-session";
+import { connectGitLabAccount, disconnectGitLabAccount, type ConnectGitLabResult } from "@/lib/gitlab-connect/connection";
+
 import { getPrisma } from "@/lib/db";
 import { describeFailure, logCaught } from "@/lib/failure";
 import { requestOrigin } from "@/lib/github-connect/origin";
@@ -284,4 +288,47 @@ export async function startLoginMethodConnect(provider: string): Promise<void> {
     }
   }
   redirect(destination);
+}
+
+// ── 계정 GitLab 연결 (gitlab-repositories) ───────────────────────────────────
+
+/**
+ * **계정 GitLab 연결 — PAT 입력·교체·해제** (gitlab-repositories design §2 "GitLab 연결" · tasks §2 B2). 내부 쓰기라 Server Action이다 —
+ * PAT 방식은 OAuth callback·Route Handler가 없다(design §5 "새 진입점 없음"). ①의 GitLab 탭과 `/account`의 GitLab 카드가 같은 Action을 쓴다.
+ *
+ * ⚠️ **세션 거부는 redirect가 아니라 값이다** — 모달·카드의 입력을 보존한다(예외 J, `detectRepoFormats`와 같다). 사용자 축이라 `userId`로만 좁힌다.
+ * ⚠️ **원문 PAT를 돌려주지 않는다** — 결과는 사용자명·만료일·스코프·교체 시각뿐이다. 실패 코드에도 토큰·응답 본문을 싣지 않는다.
+ */
+
+const GitLabTokenInput = z.object({ token: z.string().max(1024) });
+
+export type ConnectGitLabActionResult = ConnectGitLabResult | { ok: false; error: "unauthorized" };
+
+export async function connectGitLab(raw: { token: string }): Promise<ConnectGitLabActionResult> {
+  const parsed = GitLabTokenInput.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "invalid input" };
+  const session = await readSession();
+  if (session.status === "unavailable") return { ok: false, error: "unavailable" };
+  if (session.status === "none") return { ok: false, error: "unauthorized" };
+  const result = await connectGitLabAccount(getPrisma(), session.userId, parsed.data.token);
+  // `/account`·①·설정의 연결자 줄이 같은 행을 읽는다 — 교체는 참조하는 프로젝트 전부의 상태를 바꾼다.
+  if (result.ok) revalidateAfterCommit("gitlab-connect");
+  return result;
+}
+
+export type DisconnectGitLabResult = { ok: true } | { ok: false; error: "unavailable" | "unauthorized" };
+
+/**
+ * 해제 — 행을 지우면 FK `SetNull`이 참조하던 프로젝트를 같은 문장에서 끊는다(`Disconnected` — 남은 OWNER가 재연결한다).
+ * 이미 없으면 성공이다(원하는 상태가 이미 이뤄져 있다 — `disconnectGithub`와 같다).
+ */
+export async function disconnectGitLab(): Promise<DisconnectGitLabResult> {
+  const session = await readSession();
+  if (session.status === "unavailable") return { ok: false, error: "unavailable" };
+  if (session.status === "none") return { ok: false, error: "unauthorized" };
+  const result = await disconnectGitLabAccount(getPrisma(), session.userId);
+  if (!result.ok) return result;
+  // 끊긴 프로젝트가 어느 slug인지 여기서 모른다 — 해제는 드문 조작이라 루트 레이아웃을 무효화한다(`disconnectGithub`와 같은 판단).
+  revalidateAfterCommit("gitlab-disconnect");
+  return { ok: true };
 }

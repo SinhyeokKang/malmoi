@@ -37,17 +37,27 @@ export type ProjectCreate =
  *   2026-09-07 리뷰 🟡7). 여기만 믿으면 두 탭의 동시 생성이 슬롯을 하나 더 만든다.
  * @param limit 그 사용자의 상한 — `projectLimitFor`의 값이다(운영자면 `Infinity`, 아니면 `PROJECT_LIMIT`).
  */
+/**
+ * 연결 거부 **뒤**의 두 판정 — 제한 → 충돌. 호스트 중립이다: GitHub은 `planProjectCreate`가 연결 계획 뒤에 부르고, GitLab은 호출자 권한
+ * (`checkRepoAccess`)이 이미 ok인 뒤에 부른다(gitlab-repositories). 순서가 한 곳이라 두 호스트의 거부 순서가 갈리지 않는다.
+ */
+export function planCreateSlot(input: { ownerCount: number; slugTaken: boolean; limit: number }): "ok" | "limit-reached" | "slug-taken" {
+  if (input.ownerCount >= input.limit) return "limit-reached";
+  if (input.slugTaken) return "slug-taken";
+  return "ok";
+}
+
 export function planProjectCreate(input: {
   repoConnect: RepoConnect;
   ownerCount: number;
   slugTaken: boolean;
   limit: number;
 }): ProjectCreate {
-  const { repoConnect, ownerCount, slugTaken, limit } = input;
+  const { repoConnect } = input;
 
   if (repoConnect.status !== "ok") return { status: repoConnect.status };
-  if (ownerCount >= limit) return { status: "limit-reached" };
-  if (slugTaken) return { status: "slug-taken" };
+  const slot = planCreateSlot(input);
+  if (slot !== "ok") return { status: slot };
 
   // installationId·이름은 **probe가 준 값**이다 — 클라이언트 입력이 아니다 (ARCHITECTURE §6.00 ③).
   const { installationId, repoOwner, repoName } = repoConnect;

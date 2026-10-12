@@ -17,7 +17,8 @@ export function publishFingerprint(state: PullState, baseHead: string): string {
   const { project } = state;
   const canonical = JSON.stringify([
     project.id,
-    [project.repositoryId ?? null, project.installationId, project.repoOwner, project.repoName, project.baseBranch],
+    // 호스트·GitLab 연결 참조까지 — 저장하지 않는 지문이라 바이트가 바뀌어도 된다(gitlab-repositories). 다른 OWNER의 재연결 뒤 옛 미리보기가 통하지 않는다.
+    [project.repoHost, project.repositoryId ?? null, project.installationId, project.gitlabConnectionId, project.repoOwner, project.repoName, project.baseBranch],
     baseHead,
     [...state.surfaces].sort(byId).map(s => [
       s.id, s.slug, s.adapterName, s.pathTemplate, s.nested, canonicalJson(s.nestedByPath), s.baseLocale,

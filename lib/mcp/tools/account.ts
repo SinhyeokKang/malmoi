@@ -55,7 +55,7 @@ export const listProjects = defineTool({
         role: true,
         project: {
           select: {
-            id: true, slug: true, name: true, repoOwner: true, repoName: true, baseBranch: true, archivedAt: true, installationId: true,
+            id: true, slug: true, name: true, repoOwner: true, repoName: true, baseBranch: true, archivedAt: true, repoHost: true, installationId: true, gitlabConnectionId: true, repositoryId: true,
             surfaces: { select: { archivedAt: true, lastCommitSha: true } },
           },
         },

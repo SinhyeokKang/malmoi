@@ -56,15 +56,16 @@ async function runAuthorized(prisma: PrismaClient, subject: Subject, projectId: 
     if (planProjectReadiness(project) !== "ready") return await refuse("not-ready");
     // ⚠️ **`not-connected`가 아니다** (ux-drift-unify r1) — 그 코드는 아래 `checkRepoAccess`가 "계정이 연결되지 않았다"로 낸다. 설치 없음은 readiness가 먼저 걸렀다.
     const connection = repoTargetOf(project);
-    if (connection.status !== "ok") return { ok: false, error: "unpinned" };
+    // GitLab의 연결 없음은 연결자가 떠난 것이다 — 설정에서 재연결한다(GitHub `unpinned`의 짝).
+    if (connection.status !== "ok") return { ok: false, error: project.repoHost === "gitlab" ? "gitlab-project-disconnected" : "unpinned" };
     // 재적재는 리포를 읽기만 한다 — 쓰기 권한 없이 초대된 OWNER도 여기선 통과한다 (sec-audit-3 1a 범위 밖).
     const connected = await checkRepoAccess(prisma, userId, repoLocatorOf(project), { requirePush: false });
     if (connected.status !== "ok") return await refuse(connected.error);
     if (!sameAccessedRepository(connected, connection.target)) return await refuse("repo-replaced");
-    const { installationId, repositoryId } = connection.target;
-    // 호출자 접근을 확인한 뒤에도 리더는 **프로젝트 쪽 연결**로 연다.
+    // 호출자 접근을 확인한 뒤에도 리더는 **프로젝트 쪽 연결**로 연다. 잠금 안 재검증이 이 대상과 저장된 열을 다시 대조한다.
     return await runRepositoryImportFromReader(prisma, { projectId, userId, approval, credential: subject.credential,
-      repository: { repositoryId, installationId, repoOwner: project.repoOwner, repoName: project.repoName, baseBranch: project.baseBranch },
+      repository: { repoHost: project.repoHost, repositoryId: project.repositoryId, installationId: project.installationId, gitlabConnectionId: project.gitlabConnectionId,
+        repoOwner: project.repoOwner, repoName: project.repoName, baseBranch: project.baseBranch },
     }, () => openRepoReader(connection.target));
   } catch (error) {
     logFailure("repository-import-action", error);

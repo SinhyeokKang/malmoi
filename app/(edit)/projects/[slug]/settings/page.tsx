@@ -37,7 +37,7 @@ export default async function SettingsPage({ params, searchParams }: { params: P
   const notice = isConnectError(e) ? connectErrorMessage(m, e) : null;
   const prisma = getPrisma();
   const project = await prisma.project.findUnique({ where: { id: projectId }, select: {
-    name: true, image: true, repoOwner: true, repoName: true, installationId: true, repositoryId: true,
+    name: true, image: true, repoOwner: true, repoName: true, repoHost: true, installationId: true, gitlabConnectionId: true, repositoryId: true,
     surfaces: { where: { archivedAt: null }, orderBy: { slug: "asc" } }, baseBranch: true, archivedAt: true,
   } });
   if (project === null) redirect(routes.projects({ e: "not-found" }));

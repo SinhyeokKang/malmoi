@@ -176,7 +176,7 @@ export async function loadConnectionHealth(project: {
   const stored = storedConnection(project);
   if (stored !== null) return stored;
   const probe = () => probeRepo(project.repoOwner, project.repoName);
-  return planConnectionHealth({ project, probe: await (options.memo ? homeProbeMemo(probeMemoKey(project), probe) : probe()) });
+  return planConnectionHealth({ project, probe: await (options.memo ? homeProbeMemo(probeMemoKey({ ...project, repoHost: "github", gitlabConnectionId: null }), probe) : probe()) });
 }
 
 const homeProbeMemo = createProbeMemo({ ttlMs: PROBE_MEMO_TTL_MS, max: PROBE_MEMO_MAX });

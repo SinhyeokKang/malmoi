@@ -7,8 +7,9 @@ import type { Subject } from "@/lib/auth/subject";
 import { recordEvent } from "@/lib/events/record";
 import { generatePushToken, hashPushToken } from "@/lib/push/token";
 
+import { projectDisconnected } from "@/lib/gitlab-connect/errors";
 import { checkRepoAccess, type OnboardFailure } from "./access";
-import { repoLocatorOf, repoTargetOf, sameRepository } from "@/lib/repo-host/target";
+import { REPO_COLUMNS, repoLocatorOf, repoTargetOf, sameRepository } from "@/lib/repo-host/target";
 
 export type RotateTokenResult =
   | { ok: true; pushToken: string }
@@ -36,12 +37,12 @@ export async function rotateToken(prisma: PrismaClient, subject: Subject, input:
    */
   const project = await prisma.project.findUnique({
     where: { id: access.projectId },
-    select: { repoOwner: true, repoName: true, installationId: true, repositoryId: true },
+    select: REPO_COLUMNS,
   });
   if (project === null) return { ok: false, error: "not-found" };
   // 확인할 리포가 없다 — 쓰기 권한을 증명할 수단이 없으므로 발급하지 않는다.
   const connection = repoTargetOf(project);
-  if (connection.status === "not-connected") return { ok: false, error: "repo-not-installed" };
+  if (connection.status === "not-connected") return { ok: false, error: projectDisconnected(project.repoHost) };
   // ⚠️ **설치는 있고 리포 id만 없으면 `unpinned`다** (malmoi#159) — 같은 카드가 Disconnected·Reconnect를 말하는데
   // "App을 설치하라"로 거부하면 원인이 둘이 된다. 고정은 [Reconnect]가 한다.
   if (connection.status === "unpinned") return { ok: false, error: "unpinned" };

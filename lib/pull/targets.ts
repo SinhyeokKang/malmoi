@@ -1,5 +1,6 @@
 import { compareKeys } from "@/lib/adapters/shared";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
+import { repoConnectionPinned } from "@/lib/repo-host/target";
 
 import type { NightlyVisit } from "@/lib/nightly/summary";
 
@@ -33,7 +34,7 @@ import type { NightlyVisit } from "@/lib/nightly/summary";
 export function selectPullTargets(
   projects: readonly {
     slug: string;
-    installationId: string | null;
+    repoHost: string; installationId: string | null; gitlabConnectionId: string | null;
     /**
      * ⚠️ **sec-audit-2 발견 34 전에 만들어진 행은 전부 null이다.** 그런 행은 `createClient`가
      * 확실히 던지므로 순회에 남기면 **재연결 전까지 매일 밤 실패 `SyncRun`이 쌓인다** — 설정
@@ -47,7 +48,7 @@ export function selectPullTargets(
   limit: number,
 ): { targets: string[]; unprocessed: number } {
   const ready = projects
-    .filter((p) => planProjectReadiness(p) === "ready" && p.repositoryId !== null && p.archivedAt === null)
+    .filter((p) => planProjectReadiness(p) === "ready" && repoConnectionPinned(p) && p.archivedAt === null)
     .slice()
     .sort((a, b) => {
       // 한 번도 방문 안 한 프로젝트를 `-Infinity`로 둔다 — "가장 오래 안 돌았다"가 그 뜻이다.

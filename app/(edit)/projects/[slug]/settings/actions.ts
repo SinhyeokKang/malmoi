@@ -30,6 +30,7 @@ import { STATE_TTL_MINUTES, signState, stateCookieName } from "@/lib/github-conn
 import { ensureUserToken } from "@/lib/github-connect/token-store";
 import { authorizeUrl, listInstallationRepos, listUserInstallations } from "@/lib/github-connect/user";
 import { probeRepo } from "@/lib/github";
+import { reconnectGitLabProject, type GitLabReconnectResult } from "@/lib/onboarding-run/gitlab-reconnect";
 import type { RepositorySettingsError } from "@/lib/settings/message";
 import { BaseBranchInput, changeBaseBranch, ProjectNameInput, renameProject } from "@/lib/settings/update";
 
@@ -146,14 +147,20 @@ export async function connectRepository(raw: { slug: string }): Promise<ConnectR
   if (access.archived) return redrawIfArchived(slug, "archived", { ok: false, error: "archived" });
   const { projectId } = access;
 
-  const token = await ensureUserToken(prisma, userId, new Date());
-  if (token.status !== "ok") return { ok: false, error: token.status };
-
   const project = await prisma.project.findUnique({
     where: { id: projectId },
-    select: { repoOwner: true, repoName: true, repositoryId: true },
+    select: { repoHost: true, repoOwner: true, repoName: true, repositoryId: true },
   });
   if (project === null) return { ok: false, error: "not-found" };
+  /**
+   * ⚠️ **GitHub 전용 Action이다 — GitLab 행은 probe 전에 거부한다** (gitlab-repositories consumers.md #3). slug만 받는 Action이라 화면에서 숨겨도
+   * 직접 호출된다. 가드가 없으면 GitLab `<namespace>/<path>`로 GitHub을 probe하고, 숫자 id가 우연히 같은 GitHub 리포가 설치돼 있으면 GitLab 행이
+   * GitHub 행(설치 id가 박힌 혼종)이 된다. GitLab 재연결은 `reconnectGitLabRepository`가 든다. 아래 UPDATE `where`에도 호스트가 든다.
+   */
+  if (project.repoHost !== "github") return { ok: false, error: "invalid input" };
+
+  const token = await ensureUserToken(prisma, userId, new Date());
+  if (token.status !== "ok") return { ok: false, error: token.status };
 
   // ⚠️ **try 밖이다.** `probeRepo`는 GitHub 실패를 값으로 주고, 던지는 것은 환경변수 누락(설정 오류)뿐이다 —
   // 그것을 아래 catch가 `unavailable`로 접으면 "잠시 뒤 다시"가 영원히 뜬다 (code-review 2026-09-07 🟡1).
@@ -201,7 +208,7 @@ export async function connectRepository(raw: { slug: string }): Promise<ConnectR
       const locked = await lockProjectAccess(tx, { projectId, userId, permission: "project:settings", credential: undefined });
       if (locked.status !== "ok") return locked;
       await tx.project.update({
-        where: { id: projectId, repositoryId: project.repositoryId ?? null, repoOwner: project.repoOwner, repoName: project.repoName },
+        where: { id: projectId, repoHost: "github", repositoryId: project.repositoryId ?? null, repoOwner: project.repoOwner, repoName: project.repoName },
         data: {
           installationId: plan.installationId,
           repositoryId: probe.repositoryId,
@@ -244,6 +251,29 @@ export async function connectRepository(raw: { slug: string }): Promise<ConnectR
   return { ok: true };
 }
 
+
+export type ReconnectGitLabResult = GitLabReconnectResult | { ok: false; error: "unauthorized" | "unavailable" | "invalid input" };
+
+/**
+ * **GitLab 프로젝트 재연결** (gitlab-repositories design §2 6단계) — 프로젝트의 연결 참조를 호출자 자신의 계정 GitLab 연결로 바꾼다. 본체는 공유 코어
+ * `reconnectGitLabProject`다(인가 `project:settings` → 호출자 PAT의 Maintainer 확인 → 잠금 뒤 조건부 쓰기 + 사건). 클라이언트는 slug 하나만 보낸다.
+ * ⚠️ **명의가 바뀐다** — 이후 Sync·Publish·야간의 GitLab 쓰기 작성자가 호출자다. 화면이 그 문장을 버튼 앞에 보인다(E-ui, 시안 G6c).
+ */
+export async function reconnectGitLabRepository(raw: { slug: string }): Promise<ReconnectGitLabResult> {
+  const parsed = Input.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "invalid input" };
+  const { slug } = parsed.data;
+  const session = await readSession();
+  if (session.status === "unavailable") return { ok: false, error: "unavailable" };
+  if (session.status === "none") return { ok: false, error: "unauthorized" };
+  const result = await reconnectGitLabProject(getPrisma(), { userId: session.userId, credential: undefined }, { slug });
+  if (!result.ok) return redrawIfArchived(slug, result.error, result);
+  // `connectRepository`와 같은 세 화면 — 설정·Home(연결 건강성)·목록(Disconnected 칩).
+  settleRevalidate("gitlab-reconnect", () => revalidatePath(`/projects/${slug}/settings`));
+  settleRevalidate("gitlab-reconnect", () => revalidatePath(`/projects/${slug}`, "layout"));
+  settleRevalidate("gitlab-reconnect", () => revalidatePath("/projects"));
+  return { ok: true };
+}
 
 // ── 기준 브랜치 (6b-3. 기준 로케일은 6b-5가 `locales/actions.ts`로 옮겼다) ────────
 

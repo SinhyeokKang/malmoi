@@ -30,7 +30,7 @@ export type RemoteTarget = {
   projectId: string;
   repoOwner: string;
   repoName: string;
-  installationId: string | null;
+  repoHost: string; installationId: string | null; gitlabConnectionId: string | null;
   /** ⚠️ **리포의 정체성은 이름이 아니라 id다** (불변식 11). null이면 호출 자체를 건너뛴다. */
   repositoryId: string | null;
   baseBranch: string;

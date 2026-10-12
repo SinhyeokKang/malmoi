@@ -1,4 +1,5 @@
 import type { ProbeResult } from "./health";
+import type { ProjectRepoColumns } from "@/lib/repo-host/target";
 
 /**
  * **Home의 연결 확인을 짧게 기억한다** (malmoi#107 ①). Home은 `probeRepo`(GitHub 2홉)의 결과로 카드·할 일·배너·머리의
@@ -18,9 +19,11 @@ export const PROBE_MEMO_MAX = 500;
 /**
  * ⚠️ **저장된 `installationId`·`repositoryId`가 키에 든다** — 없으면 Reconnect로 저장값이 바뀐 직후 옛 probe를 새 저장값과
  * 견줘 `installation-changed`를 거짓으로 보인다. JSON 배열이라 `/`가 든 이름끼리 겹치지 않는다.
+ * ⚠️ **리포 호스트와 GitLab 연결 참조도 든다**(gitlab-repositories 0단계 판정) — 같은 숫자 id·이름이 두 호스트에 있을 수 있고, GitLab 재연결은
+ * 설치 id가 아니라 연결 참조를 바꾼다.
  */
-export function probeMemoKey(project: { repoOwner: string; repoName: string; installationId: string | null; repositoryId: string | null }): string {
-  return JSON.stringify([project.repoOwner, project.repoName, project.installationId, project.repositoryId]);
+export function probeMemoKey(project: ProjectRepoColumns): string {
+  return JSON.stringify([project.repoHost, project.repoOwner, project.repoName, project.installationId, project.gitlabConnectionId, project.repositoryId]);
 }
 
 export function createProbeMemo({ ttlMs, max }: { ttlMs: number; max: number }) {

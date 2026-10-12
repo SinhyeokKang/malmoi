@@ -101,7 +101,7 @@ export default async function ProjectHomePage({
     select: {
       name: true,
       image: true,
-      installationId: true,
+      repoHost: true, installationId: true, gitlabConnectionId: true,
       repositoryId: true,
       repoOwner: true,
       repoName: true,

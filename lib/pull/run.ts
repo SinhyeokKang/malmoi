@@ -33,8 +33,10 @@ export type PullProject = {
   repoOwner: string;
   repoName: string;
   baseBranch: string;
+  repoHost: string;
   installationId: string | null;
   repositoryId: string | null;
+  gitlabConnectionId: string | null;
   lastPulledAt: Date | null;
 };
 

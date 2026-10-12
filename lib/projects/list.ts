@@ -1,4 +1,5 @@
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
+import { repoConnectionPinned } from "@/lib/repo-host/target";
 import { importFailureTone } from "@/lib/projects/import-failure";
 import type { ImportFailureCode } from "@/lib/projects/import-status";
 import { matchesAllTokens, searchTokens } from "@/lib/search/match";
@@ -31,7 +32,7 @@ export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
 /** `projectStatus`가 보는 네 컬럼. 그룹·띠 판정도 같은 것을 받는다 — 판정이 한 곳이라야 한다. */
 export type ProjectStatusInput = {
   archivedAt: Date | null;
-  installationId: string | null;
+  repoHost: string; installationId: string | null; gitlabConnectionId: string | null;
   surfaces: readonly { archivedAt: Date | null; lastCommitSha: string | null }[];
   repositoryId: string | null;
 };
@@ -81,7 +82,8 @@ export function projectStatus(row: ProjectStatusInput): ProjectStatus {
    * ⚠️ **`ready`일 때만 본다.** 첫 적재조차 안 끝난 프로젝트에서 "다시 연결하라"는 답할 질문이
    * 아니다 — 이 컬럼이 막는 것은 **되돌려보내기**이고, ready가 아니면 되돌려보낼 것이 없다.
    */
-  return row.repositoryId === null ? "needs_reconnect" : "active";
+  // GitLab은 연결 참조가 빈 행도 여기다(연결자가 떠났다 — gitlab-repositories). GitHub은 지금처럼 리포 id 하나다.
+  return repoConnectionPinned(row) ? "active" : "needs_reconnect";
 }
 
 /**

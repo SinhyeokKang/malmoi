@@ -33,7 +33,7 @@ export const getProject = defineTool({
     const project = await prisma.project.findUnique({
       where: { id: access.projectId },
       select: {
-        slug: true, name: true, repoOwner: true, repoName: true, baseBranch: true, installationId: true, repositoryId: true,
+        slug: true, name: true, repoOwner: true, repoName: true, baseBranch: true, repoHost: true, installationId: true, gitlabConnectionId: true, repositoryId: true,
         archivedAt: true, lastPublishedAt: true, lastPrUrl: true,
         surfaces: {
           where: { archivedAt: null }, orderBy: { slug: "asc" },
