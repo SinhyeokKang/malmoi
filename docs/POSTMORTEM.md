@@ -2913,3 +2913,18 @@ grep: `grep -rn 'from "@/lib/keys/view"' $(grep -rl 'use client' components app 
 - **근본 원인**: 네트워크 진단 이벤트를 상태·메서드만 고르지 않고 통째로 출력했다. 인코딩된 개발 응답을 비밀이 없는 관측 메타데이터로 취급한 것이 잘못이었다.
 - **그물**: 워커가 관측한 필드 종류를 보고해 확인했다. 원문을 재조회하지 않고 dev DB와 정본 해시 경로로 대상 세션 한 건을 특정해 폐기했다(전 1 · 삭제 1 · 후 0). 해당 로컬 쿠키·자격증명 임시 백업을 제거했고 사용자는 dev 재로그인이 필요하다. 별도 로딩 검증에 만든 임시 세션도 사용 후 한 건 삭제·잔여 0을 확인했다. 기존 도구 기록이 지워졌다고 주장하지 않는다.
 - **재발 방지**: 네트워크 관측 출력은 메서드·상태·필요한 비밀 없는 경로의 허용 목록만 만든다. Cookie/Authorization·응답 본문·base64 payload·RSC debug를 통째로 출력하지 않는다. `rg -l 'page\.events|Network\.getResponseBody' .scratch/qa-responsive-132 --glob '*.js'`로 진단 소비 파일 목록만 확인했고 원문 값은 재출력하지 않았다. 세션 토큰은 로컬 프로세스/비공개 파일 안에서만 사용하고 생성/삭제 개수만 증거로 남긴다.
+
+### 2026-10-13 — 비-"use client" 프리미티브에 넣은 이벤트 핸들러가 서버 페이지 `/account`를 통째로 떨어뜨렸다
+
+- **영역**: `components/ui/input.tsx`(`9947caad` — read-only 입력의 포인터 포커스 링) · 서버 컴포넌트 `app/(edit)/account/page.tsx`(readOnly `Input`) · 같은 경로의 `logs/loading.tsx` 골격. **origin/dev·preview까지 나갔다**(프로덕션 v1.3.4엔 없음).
+- **증상**: `/account` 렌더가 `Event handlers cannot be passed to Client Component props`로 error boundary에 떨어졌다. gitlab-repositories 오케스트레이션의 `/design-sync` 워커가 G8 실측 중에 발견했다(#253).
+- **근본 원인**: `input.tsx`는 서버 소비자가 `fieldClass`를 값으로 읽기 때문에 `"use client"`가 없는 **서버-안전 프리미티브**였는데, 그 사실이 파일에 드러나 있지 않아 `onPointerDown`·`onBlur`를 그 자리에 바로 넣었다. 서버 컴포넌트가 그 프리미티브를 렌더하면 함수 prop이 RSC 직렬화 경계를 넘는다. CLAUDE.md의 "`pnpm build`가 RSC 경계를 잡는다"는 **정적으로 프리렌더되는 트리**에만 참이다 — 세션을 읽는 동적 페이지(`/account`)는 빌드 중 한 번도 렌더되지 않는다.
+- **그물**:
+  - 잡은 것: `/design-sync` 실측(실제 브라우저로 그 페이지를 열었다).
+  - 놓친 것: `typecheck`(RSC 경계를 모른다) · `test`(`input-readonly-focus.test.tsx`는 jsdom의 클라이언트 React로 그려 green) · `build`(동적 페이지를 프리렌더하지 않는다) · `client-graph.test.ts`(클라이언트 그래프의 무게만 보고 **반대 방향** — 서버 그래프 안의 클라이언트 전용 코드 — 은 안 본다) · `/push` 게이트 전부.
+  - 수정: `94e82b96`(red) `components/__tests__/server-render-graph.test.ts` — `app/**` 서버 파일에서 `"use client"`/`"use server"` 경계까지 import 그래프를 따라가며 인라인 핸들러·훅을 금지 · `ab39af6c` 네이티브 `<input>`과 핸들러를 `"use client"` 잎 `components/ui/input-element.tsx`로 분리.
+  - ⚠️ **새 그물의 한계**(R-X1): const 이름으로 넘긴 핸들러 · 삼항(`busy ? e => … : onClick`) · spread · ref 콜백은 통과한다.
+- **재발 방지**:
+  - 서버 렌더 그래프 상시 검사: `server-render-graph.test.ts`. 프리미티브에 핸들러·훅을 더할 때 그 파일에 `"use client"`가 없으면 **서버 소비자가 있는지부터** 본다(`rg -l "components/ui/<name>" app -g '!**/__tests__/**'` 중 `"use client"` 없는 파일).
+  - grep: `for f in $(rg -l 'on[A-Z][A-Za-z]*=\{' components/ui); do head -3 "$f" | grep -q '"use client"' || echo "$f"; done` — 결과 중 서버 렌더 그래프에 있는 파일이 의심 대상이다.
+  - 2026-10-13 실행 결과 `"use client"` 없이 인라인 핸들러를 만드는 프리미티브 넷: `button.tsx:205`·`:253`·`:257`(`busy` 삼항) · `list-row.tsx:53`·`:57`(`blocked` 삼항) · `segmented-control.tsx:64`·`:70` · `field-button.tsx:45`(prop 전달만). 셋은 **새 그물의 삼항 사각**에 정확히 걸린다 — 서버 컴포넌트가 `busy`/`blocked`를 참으로 넘기는 경로가 생기면 같은 사고다(후속: 테스트가 삼항·const 핸들러를 보게 넓히거나, 이 셋의 핸들러를 클라이언트 잎으로 옮긴다).
