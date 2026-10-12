@@ -4,13 +4,13 @@
 
 ## 운영 방식 {#workflow}
 
-- 이 문서의 원고 경로(`README.md`·`create/workflow.md` …)는 언어 트리 기준이다 — `guide/<언어>/` 아래 같은 경로가 세 벌 있다.
+- 이 문서의 원고 경로(`README.md`·`github/workflow.md` …)는 언어 트리 기준이다 — `guide/<언어>/` 아래 같은 경로가 세 벌 있다.
 - `guide/<언어>/SUMMARY.md`가 페이지·순서·계층의 정본이다. 페이지를 추가하거나 옮기면 세 언어의 SUMMARY와 내부 링크를 함께 고친다.
 - `README.md`는 개요이고 `<chapter>/README.md`는 장 개요다. 각 페이지는 H1 하나와 바로 다음 독립 도입 문단(1–2문장)으로 시작한다. 도입에는 굵은 글씨나 링크를 넣지 않으며 카드 설명으로도 쓴다. 작업 페이지에는 필요한 사전 조건, 사용자가 고르는 것과 화면에 보이는 것을 함께 쓰는 번호 단계, `What happens next` 절을 둔다. 설명·참조 페이지에는 번호 단계가 없어도 된다.
 - 개요의 두 갈래 카드와 나머지 장 목록, 장 개요의 하위 목록은 SUMMARY와 각 페이지의 도입 문단에서 생성한다. 원고에 카드·목록을 중복 작성하지 않는다. 개요는 H1과 도입, 그리고 대표 화면 스크린샷 한 장만 둔다(카드보다 위에 선다). 장 개요는 H1과 도입에 필요한 본문만 둔다.
-- 두 갈래의 선택은 `lib/guide/overview.ts`가 소유한다(렌더링 단계에서 추가). 제목은 SUMMARY, 설명은 도입 문단에서 가져온다.
+- 두 갈래의 선택은 `lib/guide/overview.ts`가 소유한다(렌더링 단계에서 추가). 개발자는 GitHub·GitLab 장 중 하나를 고르고 번역자는 참여·편집·게시 순서로 들어간다. `create/README.md`는 호스트 선택 진입 페이지이고, 호스트 장은 최상위에 둔다. 연결·CI·머지·연결 관리·문제 해결은 해당 호스트 장에 모으고 번역·동기화 원리·프로젝트 설정은 공통으로 둔다. 제목은 SUMMARY, 설명은 도입 문단에서 가져온다.
 - `AUTHORING.md`와 `SHOOTING.md`는 SUMMARY에 올리지 않고 공개 페이지로 제공하지 않는다. SUMMARY 자신도 페이지가 아니라 내비 데이터다.
-- 실제 화면은 스크린샷으로 기록하며 촬영 규약은 `SHOOTING.md`가 소유한다. 화면을 안내하는 작업 페이지는 적어도 한 장을 둔다 — 화면이 없는 참조 페이지(`faq.md`·`reference/formats.md`·`reference/limits.md` 등)와 리포 호스트 쪽 동작만 설명하는 페이지(`sync/merging.md`·`sync/merging-gitlab.md`·`sync/nightly.md`)는 예외다. 이미지는 절의 단계 목록 뒤(또는 그 화면을 여는 단계 앞)에 둔다.
+- 실제 화면은 스크린샷으로 기록하며 촬영 규약은 `SHOOTING.md`가 소유한다. 화면을 안내하는 작업 페이지는 적어도 한 장을 둔다 — 화면이 없는 참조 페이지(`faq.md`·`reference/formats.md`·`reference/limits.md` 등)와 리포 호스트 쪽 동작만 설명하는 페이지(`github/merging.md`·`gitlab/merging.md`·`sync/nightly.md`)는 예외다. 이미지는 절의 단계 목록 뒤(또는 그 화면을 여는 단계 앞)에 둔다.
 
 ## 언어 {#languages}
 
@@ -34,11 +34,19 @@
 | `README.md` | Malmoi | 공통 |
 | `faq.md` | FAQ | 공통 |
 | `create/README.md` | Create a project | 개발자 |
-| `create/github.md` | Create a project with GitHub | 개발자 |
-| `create/workflow.md` | Add the workflow | 개발자 |
-| `create/allowed-actions.md` | Allow the actions | 개발자 |
-| `create/gitlab.md` | Create a project with GitLab | 개발자 |
-| `create/gitlab-ci.md` | Add the GitLab CI jobs | 개발자 |
+| `github/README.md` | GitHub | 개발자 |
+| `github/create.md` | Create a project with GitHub | 개발자 |
+| `github/workflow.md` | Add the workflow | 개발자 |
+| `github/allowed-actions.md` | Allow the actions | 개발자 |
+| `github/merging.md` | Merging the pull request | 개발자 |
+| `github/connection.md` | Manage the GitHub connection | 개발자 |
+| `github/troubleshooting.md` | Troubleshoot GitHub | 개발자 |
+| `gitlab/README.md` | GitLab | 개발자 |
+| `gitlab/create.md` | Create a project with GitLab | 개발자 |
+| `gitlab/ci.md` | Add the GitLab CI jobs | 개발자 |
+| `gitlab/merging.md` | Merging the merge request | 개발자 |
+| `gitlab/connection.md` | Manage the GitLab token and connection | 개발자 |
+| `gitlab/troubleshooting.md` | Troubleshoot GitLab | 개발자 |
 | `setup/README.md` | Set up a project | 개발자 |
 | `setup/members.md` | Invite translators | 개발자 |
 | `setup/sources.md` | Add sources | 개발자 |
@@ -49,8 +57,6 @@
 | `translate/publish.md` | Publish your changes | 편집자 |
 | `sync/README.md` | How syncing works | 공통 |
 | `sync/push.md` | When code changes | 개발자 |
-| `sync/merging.md` | Merging the pull request | 개발자 |
-| `sync/merging-gitlab.md` | Merging the merge request | 개발자 |
 | `sync/nightly.md` | Every night | 공통 |
 | `sync/revert.md` | Undo and resync | 개발자 |
 | `sync/logs.md` | Check activity in Logs | 공통 |
@@ -65,8 +71,6 @@
 | `reference/README.md` | Reference | 공통 |
 | `reference/formats.md` | Supported file formats | 개발자 |
 | `reference/limits.md` | Limits | 공통 |
-| `reference/troubleshooting-github.md` | Troubleshoot GitHub | 개발자 |
-| `reference/troubleshooting-gitlab.md` | Troubleshoot GitLab | 개발자 |
 | `self-hosting/README.md` | Self-hosting | 운영자(셀프 호스팅 설치를 운영하는 개발자) |
 | `self-hosting/install.md` | Install | 운영자 |
 | `self-hosting/operate.md` | Update, back up, and restore | 운영자 |
@@ -143,9 +147,9 @@
 
 - 모든 H2 끝에 ` {#id}`를 붙인다. 예시는 `## Add the workflow {#workflow}`다. H3의 앵커는 선택이다.
 - id는 `[a-z0-9-]+`이고 페이지 안에서 중복되지 않는다. 제목을 바꿔도 공개된 id는 유지한다. 앵커 문법 자체를 설명할 때는 반드시 인라인 코드 안에 둔다.
-- 페이지 링크는 `../create/workflow.md#workflow`처럼 상대 `.md` 경로로 쓴다. `/docs/...` 절대경로를 원고에 넣지 않는다. 같은 페이지의 앵커 링크는 `#workflow`처럼 쓸 수 있다.
+- 페이지 링크는 `../github/workflow.md#workflow`처럼 상대 `.md` 경로로 쓴다. `/docs/...` 절대경로를 원고에 넣지 않는다. 같은 페이지의 앵커 링크는 `#workflow`처럼 쓸 수 있다.
 - **한 페이지를 섹션으로 나누면 옛 절 id 전부를 `SECTION_LEGACY_ANCHORS`(같은 파일)에 그 장 slug로 등재한다** — 공유된 `/docs/<장>#<id>`가 개요 맨 위에 멈춘다(malmoi#152, `ai-agents`). 절 일부만 새 페이지로 옮기면 옮긴 id만 남은 페이지의 slug로 등재하고, 남은 페이지에 그 id를 다시 쓰지 않는다(`structure.test.ts`).
-- **리포 호스트마다 절차가 갈리는 흐름(만들기·CI·머지·문제 해결)은 페이지가 갈린다**(2026-10-13) — GitHub 전용(`create/github`·`create/workflow`·`create/allowed-actions`·`sync/merging`·`reference/troubleshooting-github`)과 GitLab 전용(`create/gitlab`·`create/gitlab-ci`·`sync/merging-gitlab`·`reference/troubleshooting-gitlab`) 페이지의 본문에는 다른 호스트 이름을 쓰지 않는다 — 링크 문구·대상과 코드 스팬만 예외다(`host-split.test.ts`). 만들기는 첫 단계부터 끝까지 호스트마다 한 페이지이고 브랜치 뒤 단계(파일·세부·마무리)는 두 페이지에 중복된다(사용자 승인) — 고칠 때 두 페이지를 같이 고친다. 낱말만 다른 페이지(Publish·push·nightly)는 한 페이지에 둔다.
+- **리포 호스트마다 절차가 갈리는 흐름(만들기·CI·머지·연결 관리·문제 해결)은 페이지가 갈린다**(2026-10-13) — GitHub 전용(`github/create`·`github/workflow`·`github/allowed-actions`·`github/merging`·`github/troubleshooting`·`github/connection`)과 GitLab 전용(`gitlab/create`·`gitlab/ci`·`gitlab/merging`·`gitlab/troubleshooting`·`gitlab/connection`) 페이지의 본문에는 다른 호스트 이름을 쓰지 않는다 — 링크 문구·대상과 코드 스팬만 예외다(`host-split.test.ts`). 만들기는 첫 단계부터 끝까지 호스트마다 한 페이지이고 브랜치 뒤 단계(파일·세부·마무리)는 두 페이지에 중복된다(사용자 승인) — 고칠 때 두 페이지를 같이 고친다. 낱말만 다른 페이지(Publish·push·nightly)는 한 페이지에 둔다.
 - **페이지째 옮기면 옛 slug를 `LEGACY_PAGES`에 등재한다** — 서버 리다이렉트라 해시가 따라오므로, 대상 페이지에 없는 옛 절 id는 대상 slug의 `SECTION_LEGACY_ANCHORS`가 받는다(`structure.test.ts`가 옛 id 전부를 대조한다).
 - 옛 해시 일곱은 `lib/guide/legacy-anchors.ts`가 정본이다. 개요에 본문을 중복하지 않도록 `how-it-works`는 `sync/README.md`의 같은 id로 옮긴다. 나머지 절도 매핑된 페이지에 같은 id를 보존한다.
 
@@ -177,13 +181,13 @@
 
 | 페이지 | 확인할 사실 | 대조 소스 |
 | --- | --- | --- |
-| `README.md`, `create/README.md`, `setup/README.md`, `translate/README.md`, `account/README.md`, `reference/README.md` | 독자별 진입·장 구성·도입 설명 | `guide/SUMMARY.md`, 각 하위 페이지 도입, `docs/PRODUCT.md` §3·§7.7 |
-| `create/github.md` | GitHub 연결·설치·리포 선택(생성 ①), 생성 ②–④·첫 적재. 설치 화면 라벨은 외부 라벨 표 | `components/onboarding/`, `lib/onboarding/`, `lib/github-connect/`, `app/(edit)/projects/actions.ts`, `docs/PRODUCT.md` §7.1–§7.5 |
-| `create/gitlab.md` | GitLab 토큰 발급·연결·교체·리포 선택(생성 ①), 생성 ②–④(④의 CI 갈래)·첫 적재 | `components/onboarding/`(`new-project.tsx`의 호스트 탭), `components/account/`, `components/gitlab/token-form.tsx`(`GITLAB_TOKEN_URL` — 프리필 링크), `lib/onboarding/`, `app/(edit)/projects/actions.ts`, `messages/en.tsx`의 `newProject`·`account.gitlab` |
+| `README.md`, `create/README.md`, `github/README.md`, `gitlab/README.md`, `setup/README.md`, `translate/README.md`, `account/README.md`, `reference/README.md` | 독자별 진입·장 구성·도입 설명 | `guide/<언어>/SUMMARY.md`, 각 하위 페이지 도입, `docs/PRODUCT.md` §3·§7.7 |
+| `github/create.md` | GitHub 연결·설치·리포 선택(생성 ①), 생성 ②–④·첫 적재. 설치 화면 라벨은 외부 라벨 표 | `components/onboarding/`, `lib/onboarding/`, `lib/github-connect/`, `app/(edit)/projects/actions.ts`, `docs/PRODUCT.md` §7.1–§7.5 |
+| `gitlab/create.md` | GitLab 토큰 발급·연결·교체·리포 선택(생성 ①), 생성 ②–④(④의 CI 갈래)·첫 적재 | `components/onboarding/`(`new-project.tsx`의 호스트 탭), `components/account/`, `components/gitlab/token-form.tsx`(`GITLAB_TOKEN_URL` — 프리필 링크), `lib/onboarding/`, `app/(edit)/projects/actions.ts`, `messages/en.tsx`의 `newProject`·`account.gitlab` |
 | `setup/sources.md` | 소스 추가, 상태·기준 언어 선언, OWNER 제한 | `app/(edit)/projects/[slug]/sources/page.tsx`, 같은 디렉터리 `actions.ts`, `components/sources/`, `lib/sources/`, `lib/surfaces/`, `docs/PRODUCT.md` §7.1 |
-| `create/workflow.md` | 생성 YAML, 파일 경로, `PUSH_TOKEN`, 첫 실행 | `lib/onboarding/workflow.ts`, `components/settings/ci-card.tsx`, `.github/actions/malmoi-i18n-push/action.yml`, `docs/ACTIONS.md` |
-| `create/gitlab-ci.md` | 생성 job, `.gitlab-ci.yml`, CI/CD 변수 `PUSH_TOKEN`, 보호 브랜치, `MALMOI_I18N_WRAPPER`, 미릴리스 CI 파일 | `lib/onboarding/gitlab-ci.ts`, `lib/onboarding/ci-file.ts`, `lib/cli/gitlab-ci-input.ts`, `components/settings/ci-card.tsx`, `messages/en.tsx`의 `settings.workflow`(`gitlabVariable`·`gitlabUnavailable`) |
-| `create/allowed-actions.md` | 실행 action 넷과 제한된 GitHub Actions 설정 | `lib/guide/__tests__/helpers/allowed-actions.ts`, `lib/onboarding/workflow.ts`, `.github/actions/malmoi-i18n-push/action.yml`, `docs/ACTIONS.md`; 외부 화면의 현재 라벨은 별도 확인 |
+| `github/workflow.md` | 생성 YAML, 파일 경로, `PUSH_TOKEN`, 첫 실행 | `lib/onboarding/workflow.ts`, `components/settings/ci-card.tsx`, `.github/actions/malmoi-i18n-push/action.yml`, `docs/ACTIONS.md` |
+| `gitlab/ci.md` | 생성 job, `.gitlab-ci.yml`, CI/CD 변수 `PUSH_TOKEN`, 보호 브랜치, `MALMOI_I18N_WRAPPER`, 미릴리스 CI 파일 | `lib/onboarding/gitlab-ci.ts`, `lib/onboarding/ci-file.ts`, `lib/cli/gitlab-ci-input.ts`, `components/settings/ci-card.tsx`, `messages/en.tsx`의 `settings.workflow`(`gitlabVariable`·`gitlabUnavailable`) |
+| `github/allowed-actions.md` | 실행 action 넷과 제한된 GitHub Actions 설정 | `lib/guide/__tests__/helpers/allowed-actions.ts`, `lib/onboarding/workflow.ts`, `.github/actions/malmoi-i18n-push/action.yml`, `docs/ACTIONS.md`; 외부 화면의 현재 라벨은 별도 확인 |
 | `setup/members.md` | 역할, 초대 메일·재발급·멤버 관리 | `lib/auth/permission.ts`, `lib/auth/invitation.ts`, `lib/invitation-email/`, `app/(edit)/projects/actions.ts`, `components/members/`, `docs/PRODUCT.md` §3·§4.1 |
 | `setup/archive.md` | 보관·복원, 열린 PR 유지, 이력 읽기 | `components/settings/archive-card.tsx`, `app/(edit)/projects/actions.ts`, `lib/auth/permission.ts`, `docs/PRODUCT.md` §7.9 |
 | `translate/join.md` | 초대 주소·로그인·수락·거부 | `app/invite/`, `lib/auth/invitation.ts`, `lib/login-link/`, `docs/PRODUCT.md` §3 |
@@ -191,12 +195,14 @@
 | `translate/publish.md` | EDITOR의 미리보기·실행·결과, PR 표시 범위, 열린 PR 동안의 적재 보류 | `components/translations/`, `app/(edit)/publish-actions.ts`, `lib/publish/`, `lib/pull/`, `docs/PRODUCT.md` §3·§7.6 |
 | `sync/README.md` | 코드와 DB의 경계, 병합 없음 | `docs/ARCHITECTURE.md` §0, `lib/push/apply.ts`, `lib/pull/run.ts` |
 | `sync/push.md` | strict 적재, 보류 사유(미전달 편집·열린 PR·PR 조회 실패), 사라진 키 보존 | `app/api/push/route.ts`, `lib/push/apply.ts`, `lib/protection/where.ts`, `lib/protection/plan.ts`(`planOpenPrGate`), `lib/projects/open-pr.ts`, `lib/cli/push-response.ts`, `docs/ARCHITECTURE.md` §5.5.2 |
-| `sync/merging.md` | 고정 PR·브랜치, 머지 방식, `SKIP_MARKER` | `lib/pull/payload.ts`의 `withSkipMarker`, `docs/ARCHITECTURE.md:733`, `lib/pull/run.ts`, `lib/onboarding/workflow.ts`, `.github/actions/malmoi-i18n-push/action.yml`, `docs/ACTIONS.md` |
-| `sync/merging-gitlab.md` | MR 번호·머지 방식·빈 MR 닫기, `SKIP_MARKER`·`%{title}` | `lib/pull/payload.ts`의 `withSkipMarker`, `lib/pull/run.ts`, `lib/onboarding/gitlab-ci.ts` |
+| `github/merging.md` | 고정 PR·브랜치, 머지 방식, `SKIP_MARKER` | `lib/pull/payload.ts`의 `withSkipMarker`, `docs/ARCHITECTURE.md:733`, `lib/pull/run.ts`, `lib/onboarding/workflow.ts`, `.github/actions/malmoi-i18n-push/action.yml`, `docs/ACTIONS.md` |
+| `gitlab/merging.md` | MR 번호·머지 방식·빈 MR 닫기, `SKIP_MARKER`·`%{title}` | `lib/pull/payload.ts`의 `withSkipMarker`, `lib/pull/run.ts`, `lib/onboarding/gitlab-ci.ts` |
 | `sync/nightly.md` | 하루 한 번 프로젝트마다 Publish·서버 적재·스킵 중 하나, 대상·보류 사유(열린 PR·PR 조회 실패·`too-large`·base 읽기 실패), 워크플로와의 관계 | `vercel.json`, `app/api/pull/route.ts`, `lib/pull/`, `lib/nightly/plan.ts`, `lib/import/run.ts`·`lib/import/automation.ts`, `messages/en.tsx`의 `logs.deferReasons`, `docs/PRODUCT.md` §4.1·§7.6, `docs/ARCHITECTURE.md` §3.05 |
 | `sync/revert.md` | OWNER 전용 복원·수동 Sync, 지문 확인·미전달 처리 | `lib/keys/revert.ts`, `lib/protection/`, `lib/sync/`, `app/(edit)/actions.ts`, `docs/ARCHITECTURE.md` §5.8 |
 | `sync/logs.md` | 필터(행위자 `CI`·`Nightly`)·상세(`Values`·`Held because`)·수동 갱신·보관 이력 | `app/(edit)/projects/[slug]/logs/page.tsx`, `components/logs/`, `lib/events/`(`triggerOf`·`trigger-where.ts`), `docs/ARCHITECTURE.md` §5.7 |
-| `account/profile.md` | 프로필·로그인 수단·GitHub 연결·전체 로그아웃 | `app/(edit)/account/`, `components/account/`, `lib/account-connect/`, `lib/login-link/`, `lib/session-revocation/`, `docs/PRODUCT.md` §4.1·§7.7 |
+| `account/profile.md` | 프로필·로그인 수단·연결 관리 안내 링크·전체 로그아웃 | `app/(edit)/account/`, `components/account/`, `lib/account-connect/`, `lib/login-link/`, `lib/session-revocation/`, `docs/PRODUCT.md` §4.1·§7.7 |
+| `github/connection.md` | 계정의 GitHub App 인가 갱신·설치 관리, 로그인과의 구별 | `components/account/github-section.tsx`, `lib/account-connect/`, `lib/github-connect/`, `messages/{en,ko,es}.tsx`의 `account` |
+| `gitlab/connection.md` | 계정의 PAT 연결·만료 배지·같은 계정 토큰 교체·해제 후 프로젝트 재연결 | `components/account/gitlab-section.tsx`, `components/gitlab/token-form.tsx`, `app/(edit)/account/actions.ts`, `app/(edit)/projects/[slug]/settings/actions.ts`, `messages/{en,ko,es}.tsx`의 `account.gitlab` |
 | `account/preferences.md` | 공개 푸터 스위처·Preferences Language 카드·판정 순서(계정 > 기기 쿠키 > English)·실패 문구·가이드와 방침의 제공 언어 · Theme 카드(계정 > 기기 쿠키 > Light, 공개 푸터의 테마 메뉴 `components/color-scheme/theme-switcher.tsx` — v1.3.1) | `components/i18n/locale-switcher.tsx`, `components/public-shell/footer.tsx`, `components/preferences/language-card.tsx`, `components/preferences/time-zone-card.tsx`, `components/preferences/theme-card.tsx`, `lib/color-scheme/scheme.ts`(`resolveColorScheme`), `app/ui-locale/actions.ts`, `app/(edit)/preferences/actions.ts`, `lib/date-format.ts`, `lib/i18n/locales.ts`(`resolveUiLocale`·`planUiLocaleWrite`), `lib/shell/nav.ts`, `app/privacy/page.tsx`, `app/docs/layout.tsx`, `messages/{en,ko,es}.tsx`의 `uiLocale`·`preferences` |
 | `faq.md` | 질문마다 짧은 답 + 자세한 페이지 링크. **답은 정본에서만 쓴다** — 포지셔닝·역할·비범위(기계 번역·승인 단계·과금 없음)는 PRODUCT, "그러면 어떻게 되나"(병합 없음·보류·키 보존·고정 PR)는 ARCHITECTURE §0, 저장 항목·삭제 절차는 `/privacy` 본문. 링크한 페이지와 숫자·낱말이 갈리면 그 페이지가 정본이다. 가격·로드맵을 약속하지 않는다 | `docs/PRODUCT.md` §2·§3·§4.2, `docs/ARCHITECTURE.md` §0, `messages/en.tsx`의 `publicDocs.privacy`(`collected`·`purposes`·`deletion`), 각 답이 링크한 가이드 페이지 |
 | `ai-agents/README.md` | 연결 방식 둘·MCP 주소·사전 조건 | `app/(edit)/mcp/`, `docs/ARCHITECTURE.md` §6.45, `docs/PRODUCT.md` §4.1 |
@@ -206,7 +212,7 @@
 | `ai-agents/prompts.md` | 에이전트 프로젝트 생성·push 토큰 secret 저장·번역 채워 Publish | `lib/mcp/tools/`, `lib/onboarding/workflow.ts`, `docs/ARCHITECTURE.md` §6.45 |
 | `reference/formats.md` | 지원 포맷 다섯·경로·보존 특성 | `lib/adapters/index.ts`, `lib/adapters/`, `lib/onboarding/detect.ts`, `docs/ARCHITECTURE.md` §1 |
 | `reference/limits.md` | 프로젝트·멤버·slug·초대 상한, 파일·적재 예산 | `lib/onboarding/create-plan.ts` (`PROJECT_LIMIT`), `lib/projects/owner-limit.ts` (`lockOwnerSlots` — 복원·OWNER 승격·OWNER 초대 수락의 상한), `messages/en.tsx` (`errors.access["owner-limit-reached"]`·`errors.invite["limit-reached"]` — 거부 문구의 결), `lib/auth/invitation.ts` (`MEMBER_LIMIT`), `lib/onboarding/slug.ts` (`PROJECT_SLUG_MAX`), `lib/invitation-email/limits.ts` (`INVITATION_HOURLY_LIMIT`), `lib/onboarding/budget.ts`, `lib/push/plan.ts` |
-| `reference/troubleshooting-github.md`, `reference/troubleshooting-gitlab.md` | 설치 누락·리포 목록 누락·토큰 거부·만료 임박·stale commit 409·payload 400·사용자 복구 경로 | `app/api/push/route.ts`, `lib/push/guard.ts`, `lib/push/plan.ts`, `docs/ACTIONS.md` §3, `lib/github-connect/message.ts`, `lib/onboarding/message.ts`, `messages/en.tsx` |
+| `github/troubleshooting.md`, `gitlab/troubleshooting.md` | 설치 누락·리포 목록 누락·토큰 거부·만료 임박·stale commit 409·payload 400·사용자 복구 경로 | `app/api/push/route.ts`, `lib/push/guard.ts`, `lib/push/plan.ts`, `docs/ACTIONS.md` §3, `lib/github-connect/message.ts`, `lib/onboarding/message.ts`, `messages/en.tsx` |
 | `self-hosting/README.md`, `self-hosting/install.md`, `self-hosting/operate.md`, `self-hosting/troubleshooting.md` | 지원 범위·hosted 비교·외부 앱 등록·설정 표·Compose 설치·업데이트·백업/복원·키 회전·preflight 사유 코드·운영자 개인정보 재료. **명령은 실습으로 확인한 꼴을 지킨다**(SELF-HOSTING.md "셀프 호스팅 실습 기록") — 고치면 그 표에 미실행으로 남는다. 개인정보 재료 표는 `collected.ts`와 필드 단위 일대일이고 화면이 없어 스크린샷이 없다 | `deploy/**`(compose·`.env.example`·nginx·bootstrap·scheduler), `Dockerfile`, `lib/deployment/`(`preflight.ts`의 `SELF_HOSTED_ENV`·사유 코드), `scripts/preflight.ts`, `lib/credentials/`, `lib/privacy/collected.ts`, `lib/invitation-email/`, `docs/PRODUCT.md` §4.1 "셀프 호스팅", `docs/ARCHITECTURE.md` §7 "self-hosted DB", `docs/SELF-HOSTING.md` "셀프 호스팅 실습 기록" |
 | 모든 페이지 | 정확한 UI 라벨·화면 용어 | 그 원고 언어의 사전(`messages/en.tsx`·`ko.tsx`·`es.tsx`), `lib/guide/dictionary.ts`, 실제 컴포넌트의 역할별 분기, `docs/DESIGN.md` §10·§10.0·§10.1 |
 

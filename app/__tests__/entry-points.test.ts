@@ -944,7 +944,7 @@ describe("보호 라우트가 1차 차단에 걸린다 — matcher는 전 페이
    * ⚠️ **하드코딩이다** — `PROTECTED`는 `(edit)/` 아래에서만 만들어지므로, 여기 등재하지 않으면
    * "보호 경로가 아니다"를 재는 대상이 아예 없다 (POSTMORTEM 2026-09-07).
    */
-  const PUBLIC = ["/", "/signin", "/signin/link/sample", "/invite/sample", "/oauth/authorize", "/privacy", "/changelog", "/docs", "/docs/create/workflow"];
+  const PUBLIC = ["/", "/signin", "/signin/link/sample", "/invite/sample", "/oauth/authorize", "/privacy", "/changelog", "/docs", "/docs/github/workflow"];
 
   /** Next matcher의 `source` — 이 모양(정규식 그룹 하나)은 path-to-regexp와 JS 정규식이 같게 읽는다. */
   const MATCHERS = (middlewareConfig.matcher as readonly string[]).map((source) => new RegExp(`^${source}$`));

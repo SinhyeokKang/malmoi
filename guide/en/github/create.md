@@ -2,7 +2,7 @@
 
 Install the GitHub App on your repository, choose the translation files Malmoi should manage, and create the project.
 
-Before you start: Sign in with a verified email, go to **Projects**, and choose **New project**. You can own up to three active projects. You need write access to the repository. Using another host? Follow [Create a project with GitLab](gitlab.md) instead.
+Before you start: Sign in with a verified email, go to **Projects**, and choose **New project**. You can own up to three active projects. You need write access to the repository. Using another host? Follow [Create a project with GitLab](../gitlab/create.md) instead.
 
 ## Connect GitHub {#connect-github}
 
@@ -57,4 +57,4 @@ The creator becomes **Owner**.
 
 ## What happens next {#next}
 
-The nightly run keeps the project current once a day, with or without the workflow. The workflow updates it on every commit and adds code references after its first run. A failed workflow does not make the project unready. If something goes wrong, see [Troubleshoot GitHub](../reference/troubleshooting-github.md).
+The nightly run keeps the project current once a day, with or without the workflow. The workflow updates it on every commit and adds code references after its first run. A failed workflow does not make the project unready. If something goes wrong, see [Troubleshoot GitHub](troubleshooting.md).

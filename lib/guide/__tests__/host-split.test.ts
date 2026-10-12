@@ -20,8 +20,8 @@ const LOCALES = ["en", "ko", "es"] as const;
 
 // 2026-10-13 사용자: 프로젝트 만들기를 Set up에서 떼어 호스트별 장(`create/`)으로 — 브랜치 이후 단계는 두 페이지에 중복돼도 된다.
 // 같은 날 사용자: 트러블슈팅도 호스트마다 한 페이지 — 오류를 재현한 컷이 호스트마다 다르다.
-const GITHUB_ONLY = ["create/github", "create/workflow", "create/allowed-actions", "sync/merging", "reference/troubleshooting-github"] as const;
-const GITLAB_ONLY = ["create/gitlab", "create/gitlab-ci", "sync/merging-gitlab", "reference/troubleshooting-gitlab"] as const;
+const GITHUB_ONLY = ["github/create", "github/workflow", "github/allowed-actions", "github/merging", "github/troubleshooting", "github/connection"] as const;
+const GITLAB_ONLY = ["gitlab/create", "gitlab/ci", "gitlab/merging", "gitlab/troubleshooting", "gitlab/connection"] as const;
 /** Set up 장에 남는 것 — 만들기가 끝난 프로젝트를 다루는 페이지만. */
 const SETUP_PAGES = ["setup/members", "setup/sources", "setup/archive"] as const;
 
@@ -43,12 +43,12 @@ describe("호스트별 가이드 분리", () => {
     for (const slug of GITLAB_ONLY) expect(prose(page(locale, slug)), `${locale}/${slug}`).not.toMatch(/github/i);
   });
 
-  it.each(LOCALES)("%s SUMMARY는 Create 장과 Set up 장을 가른다", (locale) => {
+  it.each(LOCALES)("%s SUMMARY는 호스트 장과 Set up 장을 가른다", (locale) => {
     const summary = readFileSync(join(ROOT, "guide", locale, "SUMMARY.md"), "utf8");
     const at = (slug: string) => summary.indexOf(`(${slug}.md)`);
     expect(at("create/README"), "create 장 개요").toBeGreaterThan(-1);
     expect(at("setup/README"), "setup 장 개요").toBeGreaterThan(-1);
-    for (const slug of [...GITHUB_ONLY, ...GITLAB_ONLY].filter((s) => s.startsWith("create/"))) {
+    for (const slug of [...GITHUB_ONLY, ...GITLAB_ONLY]) {
       expect(at(slug), slug).toBeGreaterThan(at("create/README"));
       expect(at(slug), slug).toBeLessThan(at("setup/README"));
     }
@@ -61,19 +61,19 @@ describe("호스트별 가이드 분리", () => {
   it("옛 페이지는 새 페이지로 가고, 옛 절 id는 새 절로 간다", () => {
     expect(LEGACY_PAGES).toMatchObject({
       "setup/create-project": "/docs/create",
-      "setup/connect-github": "/docs/create/github",
-      "setup/connect-gitlab": "/docs/create/gitlab",
-      "setup/workflow": "/docs/create/workflow",
-      "setup/allowed-actions": "/docs/create/allowed-actions",
-      "setup/gitlab-ci": "/docs/create/gitlab-ci",
-      "reference/troubleshooting": "/docs/reference/troubleshooting-github",
+      "setup/connect-github": "/docs/github/create",
+      "setup/connect-gitlab": "/docs/gitlab/create",
+      "setup/workflow": "/docs/github/workflow",
+      "setup/allowed-actions": "/docs/github/allowed-actions",
+      "setup/gitlab-ci": "/docs/gitlab/ci",
+      "reference/troubleshooting": "/docs/github/troubleshooting",
     });
     expect(SECTION_LEGACY_ANCHORS["create"]).toMatchObject({
-      "connect-github": "/docs/create/github#connect-github",
-      "connect-gitlab": "/docs/create/gitlab#connect-gitlab",
+      "connect-github": "/docs/github/create#connect-github",
+      "connect-gitlab": "/docs/gitlab/create#connect-gitlab",
     });
-    expect(SECTION_LEGACY_ANCHORS["create/workflow"]).toMatchObject({ "gitlab-ci": "/docs/create/gitlab-ci#gitlab-ci" });
-    expect(SECTION_LEGACY_ANCHORS["sync/merging"]).toMatchObject({ "merging-gitlab": "/docs/sync/merging-gitlab#merging-gitlab" });
-    expect(SECTION_LEGACY_ANCHORS["reference/troubleshooting-github"]).toMatchObject({ "gitlab-access": "/docs/reference/troubleshooting-gitlab#gitlab-access" });
+    expect(SECTION_LEGACY_ANCHORS["github/workflow"]).toMatchObject({ "gitlab-ci": "/docs/gitlab/ci#gitlab-ci" });
+    expect(SECTION_LEGACY_ANCHORS["github/merging"]).toMatchObject({ "merging-gitlab": "/docs/gitlab/merging#merging-gitlab" });
+    expect(SECTION_LEGACY_ANCHORS["github/troubleshooting"]).toMatchObject({ "gitlab-access": "/docs/gitlab/troubleshooting#gitlab-access" });
   });
 });

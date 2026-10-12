@@ -18,7 +18,7 @@ El token de push aparece una sola vez en la conversación del agente, que tu age
 gh secret set PUSH_TOKEN --repo OWNER/REPO
 ```
 
-Sustituye `OWNER/REPO` por el repositorio. No añadas `--body`; `--body -` guardaría un único guion. El nombre debe seguir siendo `PUSH_TOKEN`, porque el workflow lee ese secreto. Consulta [Añade el workflow](../create/workflow.md#push-token) para el resto de la configuración. En un proyecto de GitLab, el resultado incluye en su lugar jobs para `.gitlab-ci.yml`; guarda el token de push como la variable de CI/CD `PUSH_TOKEN` protegida y enmascarada, como en [Añade los jobs de GitLab CI](../create/gitlab-ci.md#ci-variable).
+Sustituye `OWNER/REPO` por el repositorio. No añadas `--body`; `--body -` guardaría un único guion. El nombre debe seguir siendo `PUSH_TOKEN`, porque el workflow lee ese secreto. Consulta [Añade el workflow](../github/workflow.md#push-token) para el resto de la configuración. En un proyecto de GitLab, el resultado incluye en su lugar jobs para `.gitlab-ci.yml`; guarda el token de push como la variable de CI/CD `PUSH_TOKEN` protegida y enmascarada, como en [Añade los jobs de GitLab CI](../gitlab/ci.md#ci-variable).
 
 ### Rellena las traducciones vacías en fr y publica {#fill-and-publish}
 

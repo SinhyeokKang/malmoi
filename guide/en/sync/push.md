@@ -22,7 +22,7 @@ If any translation has an unsent edit, the workflow succeeds and reports `deferr
 
 ## Merge or close the open pull request {#open-pull-request}
 
-Publishing removes the protection for the edits it sent, but those values are not in the repository until the pull request is merged. So while a Malmoi pull request is open, the workflow also succeeds and reports `deferred`, with the reason `open-pr`, and loads nothing. Home's **Sync** tab shows **Held** in its **Hold** row, and the To send card says why. Merge or close the pull request. After that, the [nightly run](nightly.md#repository-changes) or the workflow run for the next commit picks up the changes; merging the pull request itself doesn't start an update (see [Keep the loop marker](merging.md#skip-marker)).
+Publishing removes the protection for the edits it sent, but those values are not in the repository until the pull request is merged. So while a Malmoi pull request is open, the workflow also succeeds and reports `deferred`, with the reason `open-pr`, and loads nothing. Home's **Sync** tab shows **Held** in its **Hold** row, and the To send card says why. Merge or close the pull request. After that, the [nightly run](nightly.md#repository-changes) or the workflow run for the next commit picks up the changes; merging the pull request itself doesn't start an update (see [Keep the loop marker](../github/merging.md#skip-marker)).
 
 If Malmoi couldn't check GitHub for an open pull request, or GitLab for an open merge request, the reason is `pr-check-failed` and the update is held as well, because Malmoi can't rule the pull request out. Home shows **Held** here too. Run the workflow again later.
 

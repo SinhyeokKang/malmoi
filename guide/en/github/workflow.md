@@ -2,7 +2,7 @@
 
 Add the generated GitHub Actions workflow so repository changes reach Malmoi.
 
-Before you start: Have the push token from the **Malmoi is ready** page. Store the secret before committing the workflow file. For CI jobs in `.gitlab-ci.yml`, follow [Add the GitLab CI jobs](gitlab-ci.md) instead.
+Before you start: Have the push token from the **Malmoi is ready** page. Store the secret before committing the workflow file. For CI jobs in `.gitlab-ci.yml`, follow [Add the GitLab CI jobs](../gitlab/ci.md) instead.
 
 ## Store the secret {#push-token}
 

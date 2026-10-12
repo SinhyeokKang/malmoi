@@ -52,4 +52,4 @@ A commit containing `[skip-malmoi-i18n]` is skipped; the jobs don't run for it.
 
 ## What happens next {#next}
 
-Use the reason shown in the job log to choose the matching repair. For repositories on another host, see [Troubleshoot GitHub](troubleshooting-github.md).
+Use the reason shown in the job log to choose the matching repair. For repositories on another host, see [Troubleshoot GitHub](../github/troubleshooting.md).

@@ -2,7 +2,7 @@
 
 Revisa el pull request generado en GitHub y fusiónalo para devolver las traducciones a tu repositorio.
 
-Antes de empezar: necesitas permiso para fusionar pull requests en el repositorio. El pull request contiene los archivos de traducción generados desde Malmoi. Para una merge request, consulta [Fusiona la merge request](merging-gitlab.md).
+Antes de empezar: necesitas permiso para fusionar pull requests en el repositorio. El pull request contiene los archivos de traducción generados desde Malmoi. Para una merge request, consulta [Fusiona la merge request](../gitlab/merging.md).
 
 ## Fusiona el pull request de traducciones {#merging}
 

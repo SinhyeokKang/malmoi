@@ -49,4 +49,4 @@ Actions 로그에서 생성된 워크플로 경로, `PUSH_TOKEN`, 허용된 acti
 
 ## 다음 단계 {#next}
 
-워크플로 실행 로그에 표시된 이유로 알맞은 해결 방법을 고릅니다. 다른 호스트의 리포지토리라면 [GitLab 문제 해결](troubleshooting-gitlab.md)을 참고하세요.
+워크플로 실행 로그에 표시된 이유로 알맞은 해결 방법을 고릅니다. 다른 호스트의 리포지토리라면 [GitLab 문제 해결](../gitlab/troubleshooting.md)을 참고하세요.

@@ -71,10 +71,10 @@
 | ox501501 | alex-kim |
 
 **사람을 가리키는 값은 이 표에 적지 않는다** — 표 자체가 공개 리포에 커밋된다. 촬영자가 원본을 로컬에서만 들고 치환한다: OWNER 표시 이름·GitHub 로그인 → `Alex Kim`·`@alex-kim`, EDITOR 표시 이름 → `Jordan Lee`, 이메일(가려진 `ab***@…` 꼴 포함) → `@example.com` 주소, 사람 사진 → 치환 이름의 이니셜 원(`Avatar` 폴백 모양). 뷰포트 전체 규격이라 셸 좌상단·우상단 아바타가 늘 컷에 들어간다 — 크롭으로 뺄 수 없다.
-- 앱 origin `localhost:3000`은 `mal-moi.com`으로 바꾼다 — `/mcp`의 Server URL과 조각이 origin을 그대로 보인다(가이드 본문이 프로덕션 주소를 쓴다). ⚠️ **컷은 호스팅 서비스 화면이다**(2026-10-09, self-hosting) — self-hosted 설치의 화면·워크플로엔 `api-url:` 줄이 항상 있고 주소가 설치 origin이지만, 컷은 그 줄을 지운 호스팅 출력으로 둔다. 그 차이는 컷이 아니라 본문(`create/workflow.md#update-workflow`)이 말한다. 원고 본문은 `mal-moi.com` 주소를 코드 조각에 박지 않는다(MCP 주소는 `SERVER_URL` 자리 + **Copy server URL**).
+- 앱 origin `localhost:3000`은 `mal-moi.com`으로 바꾼다 — `/mcp`의 Server URL과 조각이 origin을 그대로 보인다(가이드 본문이 프로덕션 주소를 쓴다). ⚠️ **컷은 호스팅 서비스 화면이다**(2026-10-09, self-hosting) — self-hosted 설치의 화면·워크플로엔 `api-url:` 줄이 항상 있고 주소가 설치 origin이지만, 컷은 그 줄을 지운 호스팅 출력으로 둔다. 그 차이는 컷이 아니라 본문(`github/workflow.md#update-workflow`)이 말한다. 원고 본문은 `mal-moi.com` 주소를 코드 조각에 박지 않는다(MCP 주소는 `SERVER_URL` 자리 + **Copy server URL**).
 - 리포 경로의 소유자 조각(오너 계정명 + `/`)은 `acme/`로 바꾼다 — `Acme web`의 리포가 `acme/web`이 된다. ⚠️ 그 경로는 화면에서 **소유자 · `/` · 리포명 세 텍스트 노드로 갈려** 있어 경로 단위 치환이 안 걸린다 — 다음 노드가 `/` + 리포명인 소유자 노드를 먼저 `acme`로 바꾼다. 온보딩 대화상자(①·②) 안은 예외로 `alex-kim/`이다(행 머리의 계정명이 로그인이다).
 
-- ⚠️ **오너 GitHub 계정명은 원본으로 올릴 수 없다** — `SinhyeokKang/malmoi/...`는 action 경로라 `create/allowed-actions.md`에 정당하게 있고, 게이트가 부분 문자열로 red를 낸다. 화면에서 그 계정이 사람으로 보이는 자리(셸 좌측 상단·계정 메뉴)는 크롭으로 뺀다. action 경로 속 계정명은 공개 식별자라 그대로 둔다.
+- ⚠️ **오너 GitHub 계정명은 원본으로 올릴 수 없다** — `SinhyeokKang/malmoi/...`는 action 경로라 `github/allowed-actions.md`에 정당하게 있고, 게이트가 부분 문자열로 red를 낸다. 화면에서 그 계정이 사람으로 보이는 자리(셸 좌측 상단·계정 메뉴)는 크롭으로 뺀다. action 경로 속 계정명은 공개 식별자라 그대로 둔다.
 - 픽셀 안의 문자열은 게이트가 못 본다. 컷마다 눈으로 확인한다.
 - **프로젝트 밖 셸의 프로젝트 목록 구역**(2026-10-09, sidebar-projects)은 OWNER의 실제 프로젝트 이름(앞 5개)을 보인다 — 구역 `<nav aria-label="Your projects">` **안에서만** 먼저 치환한다(일반 치환은 `malmoi`·`bugshot-i18n-test-qa`를 다른 자리까지 바꾼다): 긴 QA 이름 → `Acme admin`, `bugshot-i18n-test-qa` → `extension`(표의 `acme-web`은 `Acme web` 행과 겹친다 — inbox 컷의 선례), `i18n-order-check` → `acme-mobile`, `malmoi` → `Acme docs`. 이미지 썸네일(`bugshot-i18n-test-qa`·`malmoi`)은 기본 타일(`bg-hue-*` + Box 글리프)로 바꿔 끼운다 — `bg-hue-*`는 `amber`·`emerald`·`fuchsia`·`indigo`·`orange`·`rose`·`sky`·`teal`만 있다(없는 색은 흰 타일로 그려진다). EDITOR 세션은 멤버 프로젝트 둘(`Acme web` · `extension`)과 `New project`만 보인다.
 - **GitLab 식별자**(2026-10-13, gitlab-repositories GS): 촬영 GitLab 계정의 사용자명 `ox501501`은 표에 올렸다 — 사람을 가리키는 값이지만 이미 공개 리포(방침 연락처·roundtrip 폐기용 리포 경로)에 있는 핸들이고, 표에 올려야 게이트가 서빙 원고에서 0을 지킨다. 실명·이메일은 위 규칙대로 표에 적지 않는다. GitLab 프로젝트 경로는 **사용자 네임스페이스라 `alex-kim/web`**이다(GitHub의 `acme/web`과 다르다 — 화면의 `Connected as @alex-kim`과 맞춘다). 경로가 소유자·`/`·이름 노드로 갈려도 사용자명 치환 둘이 각각 걸린다. Malmoi 프로젝트 이름·주소도 `malmoi-gitlab-test`라 `web`이 된다. ①의 GitLab 목록에는 그 계정의 다른 프로젝트(`bugshot-2` 그룹의 `bugshot-test`)가 함께 보인다 — `extension` · `acme`.
@@ -86,15 +86,15 @@
 
 | 에셋 | 페이지 · 절 | 계정 | 화면 |
 | --- | --- | --- | --- |
-| `/guide/push-token-secret.webp` | `create/workflow.md#push-token` | OWNER(GitHub) | 리포 Settings → Secrets and variables → Actions → New repository secret 폼, Name에 `PUSH_TOKEN` |
-| `/guide/workflow-file.webp` | `create/workflow.md#workflow` | OWNER | 프로젝트 Settings → CI integration → Workflow file 모달 |
-| `/guide/actions-policy.webp` | `create/allowed-actions.md#allowed-actions` | OWNER(GitHub) | 리포 Settings → Actions → General의 Actions permissions, 넷 패턴 입력 |
+| `/guide/push-token-secret.webp` | `github/workflow.md#push-token` | OWNER(GitHub) | 리포 Settings → Secrets and variables → Actions → New repository secret 폼, Name에 `PUSH_TOKEN` |
+| `/guide/workflow-file.webp` | `github/workflow.md#workflow` | OWNER | 프로젝트 Settings → CI integration → Workflow file 모달 |
+| `/guide/actions-policy.webp` | `github/allowed-actions.md#allowed-actions` | OWNER(GitHub) | 리포 Settings → Actions → General의 Actions permissions, 넷 패턴 입력 |
 | `/guide/translation-editor.webp` | `translate/edit.md#find-key` | EDITOR | Translations — Keys 목록 + 선택한 키의 언어별 칸 |
 | `/guide/publish-preview.webp` | `translate/publish.md#preview` | EDITOR | Publish 미리보기(저장한 편집 1건, 새 PR) |
-| `/guide/create-repository.webp` | `create/github.md#select-repository` | OWNER | ①단계 — `i18n`으로 거른 저장소 목록, 선택 + Branch |
-| `/guide/create-files.webp` | `create/github.md#choose-files` · `create/gitlab.md#choose-files` | OWNER | ②단계 — 감지된 세트 둘 선택 + 미리보기 |
-| `/guide/create-name.webp` | `create/github.md#confirm-project` · `create/gitlab.md#confirm-project` | OWNER | ③단계 — Name·Address + Base language(Create project 누르지 않음) |
-| `/guide/create-ready.webp` | `create/github.md#finish-setup` | OWNER | ④단계 `Malmoi is ready` — 토큰 칩(가짜 값) + 워크플로 블록 + Open project |
+| `/guide/create-repository.webp` | `github/create.md#select-repository` | OWNER | ①단계 — `i18n`으로 거른 저장소 목록, 선택 + Branch |
+| `/guide/create-files.webp` | `github/create.md#choose-files` · `gitlab/create.md#choose-files` | OWNER | ②단계 — 감지된 세트 둘 선택 + 미리보기 |
+| `/guide/create-name.webp` | `github/create.md#confirm-project` · `gitlab/create.md#confirm-project` | OWNER | ③단계 — Name·Address + Base language(Create project 누르지 않음) |
+| `/guide/create-ready.webp` | `github/create.md#finish-setup` | OWNER | ④단계 `Malmoi is ready` — 토큰 칩(가짜 값) + 워크플로 블록 + Open project |
 | `/guide/project-home.webp` | `README.md` | OWNER | 프로젝트 Home — 카운트 카드 넷 + 프로젝트 메타 |
 | `/guide/invite-members.webp` | `setup/members.md#invite` | OWNER | Members → Invite member 모달, 가짜 주소 둘(전송 안 함) |
 | `/guide/members.webp` | `setup/members.md#members` | OWNER | Members 목록(Owner·Editor) + 빈 Pending invitations |
@@ -116,35 +116,35 @@
 | `/guide/preferences-language.webp` | `account/preferences.md#preferences` | OWNER | Preferences — Language 카드 English, 메뉴 닫힘·도움말 보임 |
 | `/guide/mcp-create-token.webp` | `ai-agents/token.md#token` | EDITOR | MCP connector → Create token 모달 ①단계(만들지 않음 — ② 토큰 원문은 찍지 않는다) |
 | `/guide/mcp-connector.webp` | `ai-agents/browser.md#connected-apps` | OWNER | MCP connector — Connected apps(연결 둘, 로고 칸) + 토큰 카드(원문 없음) — Connect 카드는 2026-09-30에 걷었다 |
-| `/guide/gitlab-connect.webp` | `create/gitlab.md#select-repository` | OWNER | ①단계 GitLab 탭 — 연결 계정 줄(만료일 · Replace token) + 프로젝트 목록, `malmoi-gitlab-test` 선택 + Branch `main` |
-| `/guide/gitlab-ci-file.webp` | `create/gitlab-ci.md#ci-unavailable` | OWNER | GitLab 프로젝트 Settings → CI integration → CI file 모달 — 지금은 CI 파일 미릴리스 안내(릴리스 SHA가 채워지면 YAML·변수 안내로 바뀐다 — 그때 재촬영하고 `#gitlab-ci`로 옮길지 `/guide`가 정한다) |
-| `/guide/gitlab-repository-card.webp` | `reference/troubleshooting-gitlab.md#gitlab-access` | OWNER | GitLab 프로젝트 Settings — Repository 카드(연결 행 · `Connected with your token · expires …` · Base branch)를 패널 위쪽으로 스크롤 |
+| `/guide/gitlab-connect.webp` | `gitlab/create.md#select-repository` | OWNER | ①단계 GitLab 탭 — 연결 계정 줄(만료일 · Replace token) + 프로젝트 목록, `malmoi-gitlab-test` 선택 + Branch `main` |
+| `/guide/gitlab-ci-file.webp` | `gitlab/ci.md#ci-unavailable` | OWNER | GitLab 프로젝트 Settings → CI integration → CI file 모달 — 지금은 CI 파일 미릴리스 안내(릴리스 SHA가 채워지면 YAML·변수 안내로 바뀐다 — 그때 재촬영하고 `#gitlab-ci`로 옮길지 `/guide`가 정한다) |
+| `/guide/gitlab-repository-card.webp` | `gitlab/troubleshooting.md#gitlab-access` | OWNER | GitLab 프로젝트 Settings — Repository 카드(연결 행 · `Connected with your token · expires …` · Base branch)를 패널 위쪽으로 스크롤 |
 | `/guide/oauth-consent.webp` | `ai-agents/browser.md#browser` | OWNER | `/oauth/authorize` 동의 화면 — claude.ai CIMD 요청(Authorize 누르지 않음), Translate & publish 하나 체크 |
-| `/guide/create-github-install.webp` | `create/github.md#connect-github` | EDITOR(GitHub 미연결 계정) | ①단계 GitHub 탭 미연결 — Connect your repositories · Install GitHub App · Connect your account |
-| `/guide/github-app-install-target.webp` | `create/github.md#connect-github` | OWNER(GitHub) | github.com `apps/malmoi-sync/installations/select_target` — 설치 대상 고르기(설치된 계정 둘 Configure · 미설치 조직 하나) |
-| `/guide/github-app-install.webp` | `create/github.md#connect-github` | OWNER(GitHub) | github.com 미설치 조직의 Install & Authorize 화면 — Only select repositories + 리포 하나 선택(누르지 않음) |
-| `/guide/gitlab-connect-token.webp` | `create/gitlab.md#connect-gitlab` | EDITOR(GitLab 미연결 계정) | ①단계 GitLab 탭 미연결 — Connect GitLab · 빈 Personal access token · Create a token in GitLab |
-| `/guide/gitlab-pat-form.webp` | `create/gitlab.md#connect-gitlab` | GitLab 촬영 계정 | gitlab.com Generate legacy token — 앱 프리필 링크(이름 Malmoi · 만료일) 위쪽(만들지 않음) |
-| `/guide/gitlab-pat-scopes.webp` | `create/gitlab.md#connect-gitlab` | GitLab 촬영 계정 | 같은 화면을 스크롤 — api 하나 체크 + Generate token(누르지 않음) |
-| `/guide/gitlab-ci-variable.webp` | `create/gitlab-ci.md#ci-variable` | GitLab 촬영 계정 | gitlab.com 프로젝트 Settings › CI/CD › Variables › Add variable 서랍 — Key PUSH_TOKEN · Masked · Protect variable(저장 안 함) |
-| `/guide/gitlab-protected-branch.webp` | `create/gitlab-ci.md#protected-branch` | GitLab 촬영 계정 | gitlab.com 프로젝트 Settings › Repository › Protected branches — main(default) |
+| `/guide/create-github-install.webp` | `github/create.md#connect-github` | EDITOR(GitHub 미연결 계정) | ①단계 GitHub 탭 미연결 — Connect your repositories · Install GitHub App · Connect your account |
+| `/guide/github-app-install-target.webp` | `github/create.md#connect-github` | OWNER(GitHub) | github.com `apps/malmoi-sync/installations/select_target` — 설치 대상 고르기(설치된 계정 둘 Configure · 미설치 조직 하나) |
+| `/guide/github-app-install.webp` | `github/create.md#connect-github` | OWNER(GitHub) | github.com 미설치 조직의 Install & Authorize 화면 — Only select repositories + 리포 하나 선택(누르지 않음) |
+| `/guide/gitlab-connect-token.webp` | `gitlab/create.md#connect-gitlab` | EDITOR(GitLab 미연결 계정) | ①단계 GitLab 탭 미연결 — Connect GitLab · 빈 Personal access token · Create a token in GitLab |
+| `/guide/gitlab-pat-form.webp` | `gitlab/create.md#connect-gitlab` | GitLab 촬영 계정 | gitlab.com Generate legacy token — 앱 프리필 링크(이름 Malmoi · 만료일) 위쪽(만들지 않음) |
+| `/guide/gitlab-pat-scopes.webp` | `gitlab/create.md#connect-gitlab` | GitLab 촬영 계정 | 같은 화면을 스크롤 — api 하나 체크 + Generate token(누르지 않음) |
+| `/guide/gitlab-ci-variable.webp` | `gitlab/ci.md#ci-variable` | GitLab 촬영 계정 | gitlab.com 프로젝트 Settings › CI/CD › Variables › Add variable 서랍 — Key PUSH_TOKEN · Masked · Protect variable(저장 안 함) |
+| `/guide/gitlab-protected-branch.webp` | `gitlab/ci.md#protected-branch` | GitLab 촬영 계정 | gitlab.com 프로젝트 Settings › Repository › Protected branches — main(default) |
 | `/guide/home-sync-tab.webp` | `sync/push.md#repository-changes` | OWNER | `Acme web` Home — 메타 열 Sync 탭(Manual sync · Synced · Changed) |
 | `/guide/logs-list.webp` | `sync/logs.md#logs` | OWNER | `Acme web` Logs — 필터 줄 + 날짜별 사건 목록 |
 | `/guide/source-details.webp` | `setup/sources.md#base-language` | OWNER | Sources → `emails` 상세 모달 — Base language 메뉴 + Save |
 | `/guide/source-remove.webp` | `setup/sources.md#remove-source` | OWNER | 같은 모달 → Remove source 확인창(Cancel로 닫음) |
 | `/guide/archive-restore.webp` | `setup/archive.md#restore` | OWNER | 보관된 상주 프로젝트(`audit-q-261007` → 이름 `Acme legacy`) Settings 맨 위 Restore project 카드(누르지 않음) |
-| `/guide/account-connections.webp` | `account/profile.md#github-connection` | OWNER | Account를 GitHub App 구역까지 스크롤 — GitHub App · GitLab PAT · Sessions |
+| `/guide/account-connections.webp` | `github/connection.md#github-connection` · `gitlab/connection.md#gitlab-token` | OWNER | Account를 GitHub App 구역까지 스크롤 — GitHub App · GitLab PAT · Sessions |
 | `/guide/sign-out-everywhere.webp` | `account/profile.md#sessions` | OWNER | Sign out everywhere 확인창(Cancel로 닫음) |
 | `/guide/preferences-time-zone.webp` | `account/preferences.md#time-zone` | OWNER | Preferences — Time zone 메뉴 펼침(UTC 체크) |
 | `/guide/invite-unavailable.webp` | `translate/join.md#invitation-problems` | OWNER | `/invite/<없는 토큰>` — Invitation unavailable |
 | `/guide/global-search.webp` | `translate/edit.md#global-search` | EDITOR | 헤더 Search 대화상자에 `order` — Keys 다섯 + Docs |
 | `/guide/translation-edit.webp` | `translate/edit.md#save` | EDITOR | Translations — `checkout.submit` fr에 입력한 저장 전 값(Not saved · Save) — 촬영 뒤 Escape로 되돌림 |
 | `/guide/unsaved-changes.webp` | `translate/edit.md#unsaved-changes` | EDITOR | 같은 상태에서 다른 키 선택 → Discard your changes? 확인창(Keep editing) |
-| `/guide/github-repository-card.webp` | `reference/troubleshooting-github.md#github-access` | OWNER | `Acme web` Settings — Repository 카드(Connected) · CI integration |
-| `/guide/repository-not-listed.webp` | `reference/troubleshooting-github.md#repository-not-listed` | OWNER | ①단계 GitHub 탭 검색어 `storefront` — No repositories match · Add repositories |
-| `/guide/rotate-token.webp` | `reference/troubleshooting-github.md#workflow-failures` | OWNER | `Acme web` Settings → Rotate token 확인창(Cancel로 닫음) |
-| `/guide/gitlab-token-expiring.webp` | `reference/troubleshooting-gitlab.md#gitlab-access` | OWNER | GitLab 프로젝트 Settings Repository 카드 — 만료 임박 띠 · Expires soon(개발 DB 만료일을 촬영 동안만 앞당김) |
-| `/guide/gitlab-token-refused.webp` | `reference/troubleshooting-gitlab.md#token-refused` | OWNER | ①단계 GitLab 탭 → Replace token에 가짜 토큰 → GitLab 거부 사유 |
+| `/guide/github-repository-card.webp` | `github/troubleshooting.md#github-access` | OWNER | `Acme web` Settings — Repository 카드(Connected) · CI integration |
+| `/guide/repository-not-listed.webp` | `github/troubleshooting.md#repository-not-listed` | OWNER | ①단계 GitHub 탭 검색어 `storefront` — No repositories match · Add repositories |
+| `/guide/rotate-token.webp` | `github/troubleshooting.md#workflow-failures` | OWNER | `Acme web` Settings → Rotate token 확인창(Cancel로 닫음) |
+| `/guide/gitlab-token-expiring.webp` | `gitlab/troubleshooting.md#gitlab-access` | OWNER | GitLab 프로젝트 Settings Repository 카드 — 만료 임박 띠 · Expires soon(개발 DB 만료일을 촬영 동안만 앞당김) |
+| `/guide/gitlab-token-refused.webp` | `gitlab/troubleshooting.md#token-refused` | OWNER | ①단계 GitLab 탭 → Replace token에 가짜 토큰 → GitLab 거부 사유 |
 
 ## 에셋 매핑 {#shots}
 

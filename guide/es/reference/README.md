@@ -1,5 +1,3 @@
 # Referencia
 
-Consulta los formatos de archivo compatibles, los límites fijos y los pasos para resolver problemas de configuración o sincronización.
-
-Usa Referencia cuando necesites una ruta, un número o un paso de recuperación precisos.
+Consulta los formatos de archivos de traducción compatibles y los límites de los proyectos. Para problemas de conexión o CI, usa la página de solución de problemas de la guía del servicio que aloja tu repositorio.

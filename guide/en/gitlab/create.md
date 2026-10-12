@@ -2,7 +2,7 @@
 
 Connect a GitLab.com repository with a personal access token, choose the translation files Malmoi should manage, and create the project.
 
-Before you start: Sign in with a verified email, go to **Projects**, and choose **New project**. You can own up to three active projects. You need the Maintainer role or higher in the GitLab project. Using another host? Follow [Create a project with GitHub](github.md) instead.
+Before you start: Sign in with a verified email, go to **Projects**, and choose **New project**. You can own up to three active projects. You need the Maintainer role or higher in the GitLab project. Using another host? Follow [Create a project with GitHub](../github/create.md) instead.
 
 ## Connect GitLab {#connect-gitlab}
 
@@ -26,7 +26,7 @@ Malmoi connects to GitLab.com with a personal access token from your own GitLab 
 
 ![Step 1 of 4 of New project on the GitLab tab, with the connected account and token expiry above the list, a project selected, and main chosen as its branch](/guide/gitlab-connect.webp "Select the GitLab project and its branch, then choose Next.")
 
-Below the search box, Malmoi shows which GitLab account is connected and when its token expires. To use a new token for the same account, choose **Replace token**. You can also manage the token in [Account](../account/profile.md#gitlab-token). The project publishes with the token of the person who connected it, so commits and merge requests on GitLab are attributed to that GitLab account.
+Below the search box, Malmoi shows which GitLab account is connected and when its token expires. To use a new token for the same account, choose **Replace token**. You can also manage the token in [Manage the GitLab token and connection](connection.md#gitlab-token). The project publishes with the token of the person who connected it, so commits and merge requests on GitLab are attributed to that GitLab account.
 
 ## Choose files {#choose-files}
 
@@ -51,11 +51,11 @@ The project is ready immediately. The last step says **Malmoi is ready**, and yo
 ## Finish setup {#finish-setup}
 
 1. Copy the push token shown on the ready page. It is shown once; rotate it later in **Settings** if you lose it.
-2. Add the CI jobs and the `PUSH_TOKEN` variable by following [Add the GitLab CI jobs](gitlab-ci.md). If the ready page says the CI file isn't available yet, keep the push token for later.
+2. Add the CI jobs and the `PUSH_TOKEN` variable by following [Add the GitLab CI jobs](ci.md). If the ready page says the CI file isn't available yet, keep the push token for later.
 3. Choose **Open project** to go to the project's Home page.
 
 The creator becomes **Owner**.
 
 ## What happens next {#next}
 
-The nightly run keeps the project current once a day, with or without the CI jobs. The CI jobs update it on every commit and add code references after their first run. A failed job does not make the project unready. If something goes wrong, see [Troubleshoot GitLab](../reference/troubleshooting-gitlab.md).
+The nightly run keeps the project current once a day, with or without the CI jobs. The CI jobs update it on every commit and add code references after their first run. A failed job does not make the project unready. If something goes wrong, see [Troubleshoot GitLab](troubleshooting.md).

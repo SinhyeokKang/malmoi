@@ -49,4 +49,4 @@ Un commit que contiene `[skip-malmoi-i18n]` se omite; lee ese resultado en el re
 
 ## Qué pasa después {#next}
 
-Usa el motivo que muestra el registro de la ejecución del workflow para elegir la reparación correspondiente. Para repositorios en otro servicio, consulta [Soluciona problemas de GitLab](troubleshooting-gitlab.md).
+Usa el motivo que muestra el registro de la ejecución del workflow para elegir la reparación correspondiente. Para repositorios en otro servicio, consulta [Soluciona problemas de GitLab](../gitlab/troubleshooting.md).

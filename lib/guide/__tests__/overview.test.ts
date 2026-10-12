@@ -16,17 +16,18 @@ describe("OVERVIEW_TRACKS — 개요의 두 갈래", () => {
     expect(all.filter((slug) => !slugs.has(slug))).toEqual([]);
   });
 
-  it("장은 최상위이고 첫 할 일 셋은 그 장의 자식이다", () => {
+  it("카드 머리는 최상위이며, 개발자는 호스트를 고르고 번역자는 장의 첫 할 일을 따른다", () => {
     for (const track of OVERVIEW_TRACKS) {
       const chapter = nav.find((node) => node.slug.join("/") === track.chapter);
       expect(chapter, track.chapter).toBeDefined();
-      const children = new Set(chapter!.children.map((child) => child.slug.join("/")));
-      expect(track.pages.filter((page) => !children.has(page))).toEqual([]);
+      const choices = track.audience === "forDevelopers" ? nav : chapter!.children;
+      const available = new Set(choices.map((child) => child.slug.join("/")));
+      expect(track.pages.filter((page) => !available.has(page))).toEqual([]);
     }
   });
 
-  /** 첫 할 일 셋은 순서가 곧 할 일의 순서다 — 개요와 내비가 다른 순서를 말하면 어느 쪽이 먼저인지 모른다. */
-  it("각 갈래의 셋이 SUMMARY 순서다", () => {
+  /** 갈래 행은 SUMMARY 순서를 따른다 — 개요와 내비가 다른 순서를 말하면 어느 쪽이 먼저인지 모른다. */
+  it("각 갈래의 행이 SUMMARY 순서다", () => {
     const order = flattenNav(nav).map((item) => item.slug.join("/"));
     for (const track of OVERVIEW_TRACKS) {
       const positions = track.pages.map((page) => order.indexOf(page));

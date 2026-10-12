@@ -49,4 +49,4 @@ A commit containing `[skip-malmoi-i18n]` is skipped; read that result in the wor
 
 ## What happens next {#next}
 
-Use the reason shown in the workflow run log to choose the matching repair. For repositories on another host, see [Troubleshoot GitLab](troubleshooting-gitlab.md).
+Use the reason shown in the workflow run log to choose the matching repair. For repositories on another host, see [Troubleshoot GitLab](../gitlab/troubleshooting.md).

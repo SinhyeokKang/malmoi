@@ -8,4 +8,4 @@ El repositorio decide qué textos de la aplicación — claves — existen. Malm
 
 **Publicar** reúne los valores de Malmoi en una solicitud de cambios (un *pull request* en GitHub, o una *merge request* en GitLab) para que el equipo de desarrollo la revise y la fusione.
 
-Lee [Cuando cambia el código](push.md) para el sentido de entrada y [Fusiona el pull request](merging.md) o [Fusiona la merge request](merging-gitlab.md) para el camino de vuelta.
+Lee [Cuando cambia el código](push.md) para el sentido de entrada y [Fusiona el pull request](../github/merging.md) o [Fusiona la merge request](../gitlab/merging.md) para el camino de vuelta.

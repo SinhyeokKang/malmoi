@@ -72,7 +72,7 @@ export function DocRows({ rows, arrow, className }: { rows: readonly DocLinkRow[
 export type DocTrack = { audience: string; chapter: DocLinkRow; pages: readonly { href: string; title: string }[] };
 
 /**
- * 개요의 **두 갈래 카드**(시안 1a) — 위는 장 개요로(대상 13 muted · 제목 18/500 · 설명 14 muted), 아래 행 셋(44)은 그 장의 첫 할 일.
+ * 개요의 **두 갈래 카드**(시안 1a) — 위는 장 개요로(대상 13 muted · 제목 18/500 · 설명 14 muted), 아래 행(최소 44)은 개발자의 호스트 선택 둘 또는 번역자의 첫 할 일 셋.
  * 셸이 역할을 읽지 않으므로 갈래는 여기서 준다(spec — 사이드바 Docs는 역할과 무관하게 개요로 온다).
  * 읽기 그릇 640 미만은 한 열이다 — 375에서 두 칸이면 칸마다 약 150이라 행 제목이 서너 줄로 갈린다. 행은 최소 44이고 감기면 자란다.
  */

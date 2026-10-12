@@ -2,7 +2,7 @@
 
 Review the generated pull request in GitHub and merge it to return translations to your repository.
 
-Before you start: You need permission to merge pull requests in the repository. The pull request contains the translation files generated from Malmoi. For a merge request, see [Merging the merge request](merging-gitlab.md).
+Before you start: You need permission to merge pull requests in the repository. The pull request contains the translation files generated from Malmoi. For a merge request, see [Merging the merge request](../gitlab/merging.md).
 
 ## Merge the translation pull request {#merging}
 

@@ -52,4 +52,4 @@ Los jobs no se ejecutan para un commit que contiene `[skip-malmoi-i18n]`.
 
 ## Qué pasa después {#next}
 
-Usa el motivo que muestra el registro del job para elegir la reparación correspondiente. Para repositorios en otro servicio, consulta [Soluciona problemas de GitHub](troubleshooting-github.md).
+Usa el motivo que muestra el registro del job para elegir la reparación correspondiente. Para repositorios en otro servicio, consulta [Soluciona problemas de GitHub](../github/troubleshooting.md).

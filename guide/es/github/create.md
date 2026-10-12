@@ -2,7 +2,7 @@
 
 Instala la GitHub App en tu repositorio, elige los archivos de traducción que Malmoi debe gestionar y crea el proyecto.
 
-Antes de empezar: inicia sesión con un correo verificado, ve a **Proyectos** y elige **Nuevo proyecto**. Puedes ser propietario de hasta tres proyectos activos. Necesitas acceso de escritura al repositorio. ¿Usas otro servicio? Sigue [Crea un proyecto con GitLab](gitlab.md) en su lugar.
+Antes de empezar: inicia sesión con un correo verificado, ve a **Proyectos** y elige **Nuevo proyecto**. Puedes ser propietario de hasta tres proyectos activos. Necesitas acceso de escritura al repositorio. ¿Usas otro servicio? Sigue [Crea un proyecto con GitLab](../gitlab/create.md) en su lugar.
 
 ## Conecta GitHub {#connect-github}
 
@@ -57,4 +57,4 @@ Quien lo crea pasa a ser **Propietario**.
 
 ## Qué pasa después {#next}
 
-La ejecución nocturna mantiene el proyecto al día una vez al día, con o sin el workflow. El workflow lo actualiza en cada commit y añade referencias de código después de su primera ejecución. Un workflow que falla no deja el proyecto sin estar listo. Si algo sale mal, consulta [Soluciona problemas de GitHub](../reference/troubleshooting-github.md).
+La ejecución nocturna mantiene el proyecto al día una vez al día, con o sin el workflow. El workflow lo actualiza en cada commit y añade referencias de código después de su primera ejecución. Un workflow que falla no deja el proyecto sin estar listo. Si algo sale mal, consulta [Soluciona problemas de GitHub](troubleshooting.md).

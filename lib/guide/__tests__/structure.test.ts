@@ -55,11 +55,11 @@ describe("실물 가이드 구조", () => {
   it("옛 해시 일곱의 전체 매핑을 고정한다", () => {
     expect(LEGACY_ANCHORS).toEqual({
       "how-it-works": "/docs/sync#how-it-works",
-      workflow: "/docs/create/workflow#workflow",
-      "allowed-actions": "/docs/create/allowed-actions#allowed-actions",
+      workflow: "/docs/github/workflow#workflow",
+      "allowed-actions": "/docs/github/allowed-actions#allowed-actions",
       formats: "/docs/reference/formats#formats",
       limits: "/docs/reference/limits#limits",
-      merging: "/docs/sync/merging#merging",
+      merging: "/docs/github/merging#merging",
       nightly: "/docs/sync/nightly#nightly",
     });
     const files = nav().map(({ file }) => file);
@@ -98,7 +98,7 @@ describe("실물 가이드 구조", () => {
    * 해시 표가 받고, 옛 `/docs/language`는 페이지가 없어 서버 리다이렉트가 받는다 — 해시는 브라우저가 그대로 넘기므로
    * 새 페이지가 옛 절 id를 전부 지켜야 한다. 목록은 옮기기 전 원고(aa5bc413)의 id 전부다.
    */
-  it("옛 /docs/account 해시 다섯이 account/profile의 실재하는 절로 간다", () => {
+  it("옛 /docs/account 해시 다섯이 실재하는 절로 간다", () => {
     const old = ["profile", "sign-in-methods", "github-connection", "sessions", "next"];
     const table = SECTION_LEGACY_ANCHORS["account"] ?? {};
     expect(Object.keys(table).sort()).toEqual([...old].sort());
@@ -106,8 +106,9 @@ describe("실물 가이드 구조", () => {
     expect(slugToFile(["account"], files)).toBe("account/README.md");
     for (const [id, target] of Object.entries(table)) {
       expect(legacyAnchorTarget(`#${id}`, table)).toBe(target);
-      expect(target, id).toBe(`/docs/account/profile#${id}`);
-      expect(headings(read("account/profile.md")).map(({ id: heading }) => heading), id).toContain(id);
+      expect(target, id).toBe(id === "github-connection" ? "/docs/github/connection#github-connection" : `/docs/account/profile#${id}`);
+      const file = id === "github-connection" ? "github/connection.md" : "account/profile.md";
+      expect(headings(read(file)).map(({ id: heading }) => heading), id).toContain(id);
     }
   });
 
@@ -150,6 +151,16 @@ describe("실물 가이드 구조", () => {
   it("옮긴 페이지는 SUMMARY 밖이고, 대상이 실재하며, 옛 절 id가 대상에서 풀린다", () => {
     const files = nav().map(({ file }) => file);
     const oldIds: Record<string, readonly string[]> = {
+      "create/github": ["connect-github", "select-repository", "choose-files", "confirm-project", "finish-setup", "next"],
+      "create/workflow": ["push-token", "workflow", "update-workflow", "first-run", "next"],
+      "create/allowed-actions": ["allowed-actions", "next"],
+      "create/gitlab": ["connect-gitlab", "select-repository", "choose-files", "confirm-project", "finish-setup", "next"],
+      "create/gitlab-ci": ["ci-variable", "protected-branch", "gitlab-ci", "ci-unavailable", "first-run", "next"],
+      "sync/merging": ["merging", "skip-marker", "next"],
+      "sync/merging-gitlab": ["merging-gitlab", "skip-marker", "next"],
+      "reference/troubleshooting-github": ["github-access", "repository-not-listed", "workflow-failures", "rejected-updates", "next"],
+      "reference/troubleshooting-gitlab": ["gitlab-access", "token-refused", "ci-failures", "rejected-updates", "next"],
+
       "setup/create-project": ["connect-github", "connect-gitlab", "choose-files", "confirm-project", "finish-setup", "next"],
       "setup/connect-github": ["connect-github", "next"],
       "setup/connect-gitlab": ["connect-gitlab", "next"],

@@ -40,7 +40,7 @@ Malmoi는 두 쪽을 병합하지 않습니다. 미전송 변경 사항이 있�
 
 ## GitLab에서도 쓸 수 있나요? {#gitlab}
 
-네, GitLab.com의 리포지토리라면 쓸 수 있습니다. 프로젝트 소유자가 `api` 스코프가 있는 레거시 GitLab 개인 액세스 토큰을 연결하며, 그 GitLab 프로젝트에서 Maintainer 이상의 역할이 필요합니다. 번역은 MR(GitLab의 *merge request*)로 돌아오고, 프로젝트가 쓰는 토큰의 GitLab 계정 이름으로 남습니다. GitLab Self-Managed와 GitLab Dedicated는 지원하지 않습니다. [GitLab 연결](create/gitlab.md#connect-gitlab)을 참고하세요.
+네, GitLab.com의 리포지토리라면 쓸 수 있습니다. 프로젝트 소유자가 `api` 스코프가 있는 레거시 GitLab 개인 액세스 토큰을 연결하며, 그 GitLab 프로젝트에서 Maintainer 이상의 역할이 필요합니다. 번역은 MR(GitLab의 *merge request*)로 돌아오고, 프로젝트가 쓰는 토큰의 GitLab 계정 이름으로 남습니다. GitLab Self-Managed와 GitLab Dedicated는 지원하지 않습니다. [GitLab 연결](gitlab/create.md#connect-gitlab)을 참고하세요.
 
 ## Malmoi에 유료 플랜이 있나요? {#pricing}
 

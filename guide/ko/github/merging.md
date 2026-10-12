@@ -2,7 +2,7 @@
 
 GitHub에서 Malmoi가 만든 PR을 검토하고 머지해 번역을 리포지토리에 반영합니다.
 
-시작하기 전에: 리포지토리에서 PR을 머지할 권한이 있어야 합니다. PR에는 Malmoi가 생성한 번역 파일이 들어 있습니다. MR이라면 [MR 머지](merging-gitlab.md)를 참고하세요.
+시작하기 전에: 리포지토리에서 PR을 머지할 권한이 있어야 합니다. PR에는 Malmoi가 생성한 번역 파일이 들어 있습니다. MR이라면 [MR 머지](../gitlab/merging.md)를 참고하세요.
 
 ## 번역 PR 머지하기 {#merging}
 

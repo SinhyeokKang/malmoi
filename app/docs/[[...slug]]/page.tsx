@@ -85,7 +85,7 @@ export default async function DocsPage({ params }: { params: Promise<{ slug?: st
       chapter: row(pick(track.chapter)),
       pages: track.pages.map((key) => ({ href: docHref(pick(key).slug), title: pick(key).title })),
     }));
-    const inTracks = new Set<string>(OVERVIEW_TRACKS.map((track) => track.chapter));
+    const inTracks = new Set<string>(OVERVIEW_TRACKS.flatMap((track) => [track.chapter, ...track.pages]));
     const rest = nav.filter((chapter) => chapter.slug.length > 0 && !inTracks.has(chapter.slug.join("/"))).map(row);
 
     return (

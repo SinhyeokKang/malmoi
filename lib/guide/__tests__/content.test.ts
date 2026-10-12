@@ -50,7 +50,7 @@ const DICTIONARIES: Partial<Record<UiLocale, unknown>> = Object.fromEntries(
  * 사전 문구 변경을 따라가지 못한 채 번역까지 물려받았다). 사전 밖 인용(외부 화면 문구)만 여기에 이유와 함께 둔다.
  */
 const EXTERNAL_QUOTES: ReadonlySet<string> = new Set([
-  // GitHub Actions가 막힌 action에 남기는 오류 문구 — `create/allowed-actions.md`
+  // GitHub Actions가 막힌 action에 남기는 오류 문구 — `github/allowed-actions.md`
   "not allowed to be used.",
 ]);
 
@@ -168,13 +168,13 @@ describe(`실물 가이드 본문 게이트 — ${uiLocale}`, () => {
     expect(limits).toContain(String(PROJECT_SLUG_MAX));
     const formats = sectionByAnchor(tree("reference/formats.md"), "formats");
     for (const path of ["src/locales/{locale}.json", "config/locales/{locale}.yml", "_locales/{locale}/messages.json", "src/locales/{locale}.ts", "src/i18n/namespaces/*.ts"]) expect(formats).toContain(path);
-    expect(sectionByAnchor(tree("create/workflow.md"), "workflow")).toContain(".github/workflows/malmoi-i18n.yml");
-    expect(sectionByAnchor(tree("create/workflow.md"), "push-token")).toContain("PUSH_TOKEN");
-    expect(sectionByAnchor(tree("sync/merging.md"), "skip-marker")).toContain(SKIP_MARKER);
+    expect(sectionByAnchor(tree("github/workflow.md"), "workflow")).toContain(".github/workflows/malmoi-i18n.yml");
+    expect(sectionByAnchor(tree("github/workflow.md"), "push-token")).toContain("PUSH_TOKEN");
+    expect(sectionByAnchor(tree("github/merging.md"), "skip-marker")).toContain(SKIP_MARKER);
     expect(allowedActions()).toHaveLength(4);
     expect(new Set(allowedActions()).size).toBe(4);
     expect(nav().length).toBeGreaterThan(0);
-    expect(slugToFile(["create", "workflow"], nav().map(({ file }) => file))).toBe("create/workflow.md");
+    expect(slugToFile(["github", "workflow"], nav().map(({ file }) => file))).toBe("github/workflow.md");
   });
 
   it("FAQ and Reference carry the public decision facts, links, formats, and thresholds", () => {

@@ -2,7 +2,7 @@
 
 생성된 GitHub Actions 워크플로를 추가해 리포지토리의 변경 사항을 Malmoi에 반영합니다.
 
-시작하기 전에: **Malmoi 준비 완료** 페이지의 푸시 토큰을 준비합니다. 워크플로 파일을 커밋하기 전에 시크릿부터 저장하세요. `.gitlab-ci.yml`의 CI 작업이라면 이 페이지 대신 [GitLab CI 작업 추가](gitlab-ci.md)를 따릅니다.
+시작하기 전에: **Malmoi 준비 완료** 페이지의 푸시 토큰을 준비합니다. 워크플로 파일을 커밋하기 전에 시크릿부터 저장하세요. `.gitlab-ci.yml`의 CI 작업이라면 이 페이지 대신 [GitLab CI 작업 추가](../gitlab/ci.md)를 따릅니다.
 
 ## 시크릿 저장 {#push-token}
 
