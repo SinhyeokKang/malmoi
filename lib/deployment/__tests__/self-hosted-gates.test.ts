@@ -8,6 +8,7 @@ import { parse as parseYaml } from "yaml";
 
 import { LOGIN_PROVIDER_ENV } from "@/lib/auth/login-providers";
 
+import { GITHUB_APP_ENV } from "../github-app";
 import { SELF_HOSTED_ENV } from "../preflight";
 import { NIGHTLY_PULL } from "../schedule";
 
@@ -381,6 +382,15 @@ describe("SH-15 ② — Auth.js provider 자격증명이 preflight 표에 있다
     for (const names of Object.values(LOGIN_PROVIDER_ENV)) {
       for (const name of [names.id, names.secret]) expect(web[name], name).toBe(`\${${name}:-}`);
     }
+  });
+
+  /**
+   * ⚠️ **`GITHUB_APP_*` 다섯도 같은 형이다** — GitLab 전용 설치(D4a)는 다섯을 모두 비운다. `${X}`면 그 운영자가 `.env`에서 다섯 줄을 지운 뒤 모든
+   * `docker compose` 명령이 "variable is not set" 경고 다섯 줄을 낸다(동작은 같다 — 빈 값 = absent. all-or-none 판정은 preflight가 한다).
+   */
+  it("compose web이 GitHub App 다섯을 빈 기본값(${X:-})으로 넘긴다", () => {
+    const web = composeServices(readFileSync(join(ROOT, "deploy/compose.yaml"), "utf8")).web?.environment ?? {};
+    for (const name of GITHUB_APP_ENV) expect(web[name], name).toBe(`\${${name}:-}`);
   });
 });
 
