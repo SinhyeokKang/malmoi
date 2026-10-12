@@ -12,7 +12,7 @@
 
 ## 기준 브랜치 보호 {#protected-branch}
 
-1. 고른 기준 브랜치가 GitLab에서 보호 브랜치인지 확인합니다. 따로 바꾸지 않았다면 GitLab은 기본 브랜치를 보호합니다. 보호 변수는 보호 브랜치에만 전달되므로, 보호되지 않은 브랜치에서는 `PUSH_TOKEN`이 없어 작업이 실패합니다.
+1. 고른 기준 브랜치가 GitLab에서 보호 브랜치인지 확인합니다. 따로 바꾸지 않았다면 GitLab은 기본 브랜치를 보호합니다. 보호 변수는 보호 브랜치에만 전달되므로, 보호되지 않은 브랜치에서는 `PUSH_TOKEN`이 없어 작업이 실패합니다. Malmoi의 `malmoi-i18n/sync-*` 브랜치는 와일드카드 규칙으로도 보호하지 마세요. 게시가 이 브랜치에 쓰므로, 보호되어 있으면 게시가 실패합니다.
 
 ![GitLab의 Protected branches 설정에 기본 브랜치 main이 보호되어 있고 Maintainers가 머지와 푸시를 할 수 있는 모습](/guide/gitlab-protected-branch.webp "기준 브랜치가 Protected branches에 있는지 확인합니다.")
 

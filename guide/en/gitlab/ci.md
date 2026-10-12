@@ -12,7 +12,7 @@ Before you start: Have the push token from the **Malmoi is ready** page. Store t
 
 ## Protect the base branch {#protected-branch}
 
-1. Make sure the base branch you chose is protected in GitLab; GitLab protects the default branch unless you changed it. A protected variable reaches only protected branches, so on an unprotected branch the jobs fail without `PUSH_TOKEN`.
+1. Make sure the base branch you chose is protected in GitLab; GitLab protects the default branch unless you changed it. A protected variable reaches only protected branches, so on an unprotected branch the jobs fail without `PUSH_TOKEN`. Don't protect Malmoi's `malmoi-i18n/sync-*` branches, including through a wildcard rule: Publish writes to them, and fails while they are protected.
 
 ![GitLab's Protected branches settings with the default branch main protected and Maintainers allowed to merge and push](/guide/gitlab-protected-branch.webp "Check that the base branch is listed under Protected branches.")
 

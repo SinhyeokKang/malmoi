@@ -12,7 +12,7 @@ Antes de empezar: ten a mano el token de push de la página **Malmoi está listo
 
 ## Protege la rama base {#protected-branch}
 
-1. Comprueba que la rama base que elegiste está protegida en GitLab; GitLab protege la rama predeterminada salvo que lo hayas cambiado. Una variable protegida solo llega a ramas protegidas, así que en una rama sin proteger los jobs fallan sin `PUSH_TOKEN`.
+1. Comprueba que la rama base que elegiste está protegida en GitLab; GitLab protege la rama predeterminada salvo que lo hayas cambiado. Una variable protegida solo llega a ramas protegidas, así que en una rama sin proteger los jobs fallan sin `PUSH_TOKEN`. No protejas las ramas `malmoi-i18n/sync-*` de Malmoi, tampoco con una regla comodín: Publicar escribe en ellas y falla mientras estén protegidas.
 
 ![La configuración Protected branches de GitLab con la rama predeterminada main protegida y Maintainers con permiso para fusionar y hacer push](/guide/gitlab-protected-branch.webp "Comprueba que la rama base aparece en Protected branches.")
 
