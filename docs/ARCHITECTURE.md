@@ -97,8 +97,10 @@
     ⚠️ **GitLab PAT에는 첫 층이 없다** (2026-10-12, gitlab-repositories) — PAT는 주인이 접근하는 모든 프로젝트에 쓸 수 있어 리포 하나로 좁혀지지
     않는다. 그래서 그 자리를 **주소 규칙**이 대신하고 이것이 필수 층이다: GitLab REST·GraphQL은 **저장된 숫자 project id로만** 주소한다(REST
     `/projects/<id>/…`, GraphQL `projects(ids: ["gid://gitlab/Project/<id>"])` — 인코딩한 `namespace%2Fpath`·`project(fullPath:)` 금지,
-    `lib/gitlab/transport.ts`가 전송 전에 모양을 보고 던진다). 클라이언트 생성 때 `GET /projects/<id>`가 보관·SHA-1 object format을 확인하고
-    `path_with_namespace` 변경을 셋째 층(`repo-replaced`)의 재료로 넘긴다 — **쓰기 직전 project id 재대조**가 이 GET과 주소 규칙을 함께 가리킨다.
+    `lib/gitlab/transport.ts`가 전송 전에 모양을 보고 던진다 — `%2F`는 `/projects/<id>/repository/` 아래 값과 MR 질의(슬래시 브랜치)에서만 허용, D22④).
+    클라이언트 생성 때 `GET /projects/<id>`가 응답 `id`를 저장된 id와 대조하고(다르면 `unavailable`) 보관·SHA-1 object format을 확인한다 — **쓰기 직전
+    project id 재대조**가 이 GET과 주소 규칙을 함께 가리킨다. `path_with_namespace`만 바뀐 것(같은 id)은 같은 리포라 쓰기를 막지 않고 화면이 `repo-moved`로
+    말한다. 셋째 층의 `repo-replaced`는 잠금 안 재검증(`sameRepoTarget` — 호스트·리포 id·연결 증거)이 다를 때 선다.
     이름으로 주소하는 코드가 생기는 순간 이름 재사용으로 남의 리포를 읽거나 쓴다.
 
 **판정을 어디에 두는가도 불변식에 붙는다** (§5.2의 연장, 2026-09-07): 판정은 순수 함수여야 하고,
@@ -1049,30 +1051,33 @@ GitLab 사본은 없다. 구현을 고르는 자리는 `lib/repo-host/index.ts` 
   호출 하나라 **첫 외부 쓰기도 그 호출 하나**다. `start_sha`가 base라 기존 sync 브랜치와 병합하지 않는다(GitHub `parents: [base]` + force와 동등 —
   2026-10-12 실측). 브랜치 유무와 관계없이 `force: true` 한 형태로 부른다. `execute_filemode`를 넣지 않아 바뀐 파일은 `100644`다(GitHub과 같다).
   ⚠️ **GitLab은 내용이 같은 update도 빈 diff 커밋을 만든다** — 2층(blob hash 전부 같으면 호출 0)이 유일한 방어선이다.
-- **리뷰 요청은 merge request다** — 고정 sync 브랜치의 열린 MR 하나를 재사용한다(`findOpenPr` = `state=opened&source_branch=…`, 오프셋 페이지 끝까지).
+- **리뷰 요청은 merge request다** — 고정 sync 브랜치의 열린 MR 하나를 재사용한다(`findOpenPr` = `state=opened&source_branch=…`, 오프셋 페이지 — 10페이지를 넘으면 던진다).
   **`source_project_id == target_project_id == 저장된 repositoryId`인 MR만** 고른다 — 프로젝트 MR 목록은 그 프로젝트를 target으로 하는 fork MR도
   돌려준다(`selectOwnMergeRequest`). 번호는 `iid`이고 화면은 `!128`이다. 같은 source 브랜치의 MR 재생성은 409이지만 **409를 성공으로 읽지 않는다** —
   응답 유실 뒤엔 결과 미확인 경로가 재조회로 판정한다.
 - **no-changes 수렴 = MR 닫기 → sync 브랜치 삭제** (D9). GitLab엔 ref 강제 이동 API가 없고 `allow_empty` 빈 커밋은 head ≠ base라 수렴하지 않는다.
   순서는 GitHub과 같다 — 무효화 → 열린 MR에 이유 코멘트 + `state_event=close` → `DELETE /repository/branches/:branch`(404는 이미 수렴 — 성공).
   브랜치 삭제가 열린 MR을 자동으로 닫기도 하지만(실측) **먼저 지우면 이유 없는 종료가 남아** 닫기가 앞이다. 그 뒤 `getRefSha`가 `null`이라 두 번째
-  실행은 외부 쓰기 0회(읽기 2회)다.
+  실행은 외부 쓰기 0회다(읽기만 — 실측은 MR 목록·브랜치 2회, 실제 실행은 그 앞에 클라이언트 생성 GET·트리·blob 읽기가 있다).
 - **실행 수명은 GitHub과 같은 계약이다**(§5.6.2) — GitLab transport도 `execution.fetch()` 하나를 지나 240초 예산·전송 직전 검사를 받고, **비GET은
   전부 쓰기로 센다**(commit·MR 생성·MR 닫기·코멘트·브랜치 삭제). **GitLab 클라이언트에는 자체 재시도·자체 fetch가 없다** — 애매한 5xx 뒤 MR POST가
   다시 나가면 중복 MR이다. ⚠️ GraphQL(POST — 크기 조회 `RepoReader.sizes`)은 Publish 실행 안에서 부르지 않는다 — 부르면 쓰기로 세어져 그 뒤 실패가
   `execution-uncertain`이 된다. 소비자는 첫 적재·재적재(`lib/import/read.ts`)뿐이다.
-- **크기 예산 입력**: REST tree는 `size`를 주지 않는다 — 트리는 keyset 페이지로 `next`가 없을 때까지 읽고(중간 실패는 throw, 빈 목록으로 접지 않는다),
+- **크기 예산 입력**: REST tree는 `size`를 주지 않는다 — 트리는 keyset 페이지로 `next`가 없을 때까지 읽고(중간 실패는 throw, 빈 목록으로 접지 않는다 · `TREE_PAGE_LIMIT` 200페이지를
+  넘으면 잘린 것으로 본다 — 온보딩은 `truncated`, Publish는 던진다),
   예산 대상 경로만 GraphQL `repository.blobs`로 100경로씩 크기·`lfsOid`를 묻는다(200파일 상한이면 최대 2회). LFS 포인터는 거부, 크기 조회 실패는
   예산 초과가 아니라 `unavailable`이다.
 - **저장 오류 코드는 새로 만들지 않는다** — `github-error` = 리포 호스트 HTTP 실패, `not-installed` = 그 프로젝트에 쓸 연결 자격증명이 없음(GitHub 설치
-  없음 / GitLab 연결 참조 비어 있음)으로 의미를 일반화했다(`SYNC_ERROR_CODES` 머리 주석). 지우지 않는 `ProjectEvent` 페이로드에 저장되는 문자열이라
+  없음 / GitLab 연결 참조 비어 있음 · 저장 만료일 지남 · 401/403/404 · 보관 · SHA-256 · 쓰기 클라이언트에서 토큰 주인이 Developer 미만 — `lib/gitlab/client.ts`의
+  `needsReconnect`)으로 의미를 일반화했다(`SYNC_ERROR_CODES` 머리 주석). 지우지 않는 `ProjectEvent` 페이로드에 저장되는 문자열이라
   이름을 바꾸면 과거 사건이 못 읽힌다(불변식 3의 확장). Logs 문장만 프로젝트 호스트로 갈린다.
 - **보호 브랜치**: sync 브랜치가 보호 규칙에 걸리면 commit이 403(push 금지)·400(force 금지)이다 — 우회하지 않고 Publish 실패로 끝내며 연결은 정상이다.
   안내는 "`malmoi-i18n/sync-*`를 보호 규칙에서 빼라"다.
 - **열린 MR 게이트**(§5.5.2 `open-pr`)·메모 키(`open-pr-memo`·`probe-memo` — `[host, owner, name, installationId, gitlabConnectionId, repositoryId]`)·
   렌더 중 원격 대기 마감(`GITHUB_WAIT_MS` — 이름은 유지, 리포 호스트 원격 대기 전체의 공유 마감)도 호스트를 가리지 않고 같은 장치다.
 - **전달 문맥 지문**(`deliveryContextFingerprint` — `DeliveryConfirmation`에 **저장된다**)은 GitLab일 때만 리포 호스트를 섞는다. GitHub 행의 입력·출력은
-  바이트 그대로다 — 일괄로 바꾸면 배포 순간 기존 전달 확인이 전부 무효가 된다. 저장되지 않는 지문 셋(폐기·제거 승인·Publish)은 호스트를 입력에 둔다.
+  바이트 그대로다 — 일괄로 바꾸면 배포 순간 기존 전달 확인이 전부 무효가 된다. 저장되지 않는 지문 중 폐기 승인(`discardFingerprint`)·Publish(`publishFingerprint`)는 호스트를
+  입력에 둔다. 소스 제거 승인(`removalFingerprint`)은 리포 입력이 없다(사용자·프로젝트·소스·미전달 토큰만).
 
 ### 3.05 cron은 **전 프로젝트를 순회한다** (`lib/pull/targets.ts`, SaaS 5단계)
 
@@ -3023,7 +3028,7 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
 함수 인자로 호스트를 받지 않는 것은 스캐너(금지어·terminology)가 GitLab 갈래까지 다 걷게 하려는 것이다 — 인자 분기는 같은 인자로 한 번만 불려 거짓
 green이 된다. 자식 이름이 `gitlab`이 아닌 것은 GitLab 전용 절(`errors.gitlab`·`account.gitlab`)과 가르려는 것이다. 프로젝트 화면(Home·설정·Sources·Logs·번역)은
 인가 뒤 `withRepoHost(m, host)`(`lib/i18n/host.ts` — 사전 전체를 깊게 덮는다)를 쓰고 클라이언트 조각은 `RepoHostScope`가 같은 사전을 준다 — **컴포넌트가
-낱말마다 호스트를 고르지 않는다.** 섞인 화면(`/projects` 행)은 행마다 덮는다. 상태 라벨의 호스트 분기는 `stateLabel(m, key, host)` 한 곳이다.
+낱말마다 호스트를 고르지 않는다.** 섞인 화면(`/projects` 행)은 행마다 덮는다(노드 하나는 `forHost`). 상태 라벨의 호스트 분기는 `stateLabel(m, key, host)` 한 곳이다.
 `lib/i18n/__tests__/host.test.ts`가 세 사전의 `onGitLab` 노드를 걸어 형제 경로 존재 · 호스트 어휘 교차 0(GitLab 문장에 GitHub·pull request·PR 0, 역도) ·
 덮어도 같은 문장 0 · 세 사전 노드 집합 동일을 센다.
 
@@ -3453,8 +3458,9 @@ GitHub의 refresh token은 **단일 사용**이다. 그래서 `ensureUserToken`�
 GitHub 연결(§6.4)과 달리 **왕복이 없다** — PAT를 Server Action 본문으로 받으므로 callback·state 서명·`ALLOWED_HOSTS` 갈래·새 Route Handler가 생기지 않는다.
 PAT는 URL에 실리지 않는다(셀프 호스팅 nginx 마스킹에 새 경로가 없다는 전제 — 쿼리로 받는 경로가 생기면 마스킹에 등록한다).
 
-- **검증**(`verify.ts` 순수 판정 · `connection.ts` 껍데기): `GET /personal_access_tokens/self` → 401·`active: false`·`revoked: true` = `invalid`(무효·만료·철회가
-  같은 본문이라 가르지 않는다) · `granular` = `fine-grained`(거부 — 레거시만 받는다, PRODUCT §4.2) · `scopes`에 `api` 없음 = `scope-missing` · 네트워크·5xx·429 =
+- **검증**(`verify.ts` 순수 판정 · `connection.ts` 껍데기): `GET /personal_access_tokens/self` → 401·403·`active: false`·`revoked: true` = `token-invalid`(무효·만료·철회가
+  같은 본문이라 가르지 않는다) · `granular: true` 또는 `granular_scopes`가 비어 있지 않음 = `token-fine-grained`(거부 — 레거시만 받는다, PRODUCT §4.2. 스코프 판정보다
+  먼저다 — fine-grained의 빈 `scopes`를 "스코프 부족"으로 안내하지 않는다) · `scopes`에 `api` 없음 = `token-scope-missing` · 네트워크·5xx·429·모양이 다른 응답 =
   `unavailable`(**일시 장애를 "무효"로 접지 않는다** — 접으면 멀쩡한 토큰을 버리게 한다). 통과하면 `GET /user`. 연결 경로는 **GET만** 부른다.
 - **저장은 계정당 하나**(`GitLabConnection` — `userId @unique`): PAT 봉투(토큰 키, §6.6) + GitLab 사용자 id·사용자명(공개 핸들이라 평문)·`expiresAt`·`scopes`.
   `/self`의 `last_used_ips`는 읽지도 저장하지도 않는다. **원문은 `openGitLabConnection` 밖으로 나가지 않는다** — 응답·로그·사건·MCP에 싣지 않고 화면은
@@ -3462,10 +3468,15 @@ PAT는 URL에 실리지 않는다(셀프 호스팅 nginx 마스킹에 새 경로
 - **교체는 같은 GitLab 사용자의 토큰만 받는다**(`account-mismatch`, D19) — 연결 id를 유지한 채 다른 계정 토큰으로 바꾸면 참조 프로젝트 전부의 쓰기 명의가
   권한 재검사 없이 바뀐다. 다른 계정이면 Disconnect 뒤 Connect다.
 - **프로젝트는 연결을 참조한다**(`Project.gitlabConnectionId`, FK `SetNull`) — 사본을 두지 않는다. 생성·재연결 때 그 사람의 연결을 가리키고, 이후 쓰기는 참조
-  연결로만 연다(불변식 6). 호출자 접근 대조는 `sameRepository`(호스트 + 리포 id)이고 연결은 보지 않는다 — 호출자 연결 ≠ 참조 연결이 정상이다(GitHub 갈래만
-  설치 id까지 본다 — `sameAccessedRepository`).
+  연결로만 연다(불변식 6). 판정 함수가 셋이고 자리가 다르다(`lib/repo-host/target.ts`):
+  `sameRepository`(호스트 + 리포 id만 — 연결이 달라도 같은 리포면 true) · `sameAccessedRepository`(호출자 접근 대 프로젝트 — GitLab은 `sameRepository`만, GitHub 갈래만
+  설치 id까지, D16. 호출자 연결 ≠ 참조 연결이 정상이다) · `sameRepoTarget`(잠금 안 재검증 — GitLab은 `connectionId`까지 같아야 같다. 다른 OWNER의 재연결을 감지한다).
+  I/O 대상도 둘로 갈린다: **새 리포 경로**(아직 프로젝트가 없다)는 `newRepoTarget(access)` — 호출자의 연결로 연다 — 이고 그 호출 자리는 다섯
+  (①의 `confirmManualFormat`·`loadCandidateSample` Action · `listNewRepoBranches` · `createProjectFromRepo` · `detectFormats`)으로 고정이다(D21).
+  **연결된 프로젝트**(소스 추가·재탐지·설정 브랜치 목록)는 `projectReadTarget(access, project)` — GitLab은 프로젝트가 참조하는 연결로 연다. 연결된 경로에서
+  `newRepoTarget`을 부르면 연결자가 아닌 OWNER의 명의로 읽는다.
 - **권한 문턱이 둘이다** (D25): 호출자 권한(`checkRepoAccess`의 GitLab 갈래 — 호출자 PAT로 `members/all/<호출자 GitLab user id>`의 유효 access level)은 쓰기
-  Maintainer(40)↑ · 읽기 Reporter(20)↑ · 404 = 멤버 아님, access level이 없으면 `unavailable`(거부로 읽지 않는다). **토큰 주인의 쓰기 판정은 Developer(30)↑**
+  Maintainer(40)↑ · 읽기 Reporter(20)↑ · 404 = 멤버 아님 · 승인 대기·차단 멤버(`state`·`membership_state`가 active 아님) = `forbidden`, access level이 없으면 `unavailable`(거부로 읽지 않는다). **토큰 주인의 쓰기 판정은 Developer(30)↑**
   (보호되지 않은 sync 브랜치 push·MR 생성의 최소 — `lib/gitlab-connect/access-plan.ts`). ①의 목록은 `min_access_level=40&archived=false`라 기준이 같다.
 - **연결이 끊기는 갈래가 둘이고 화면은 하나다** — 둘 다 `Disconnected`(재연결 필요, GitHub `unpinned`과 같은 톤):
   ① `connection-removed`(`repoTargetOf` — **참조가 비었다**: 주인의 연결 해제·멤버 제거·계정 삭제) — DB만 보고 안다. 목록·Inbox도 이것을 본다(D24).
@@ -3478,10 +3489,15 @@ PAT는 URL에 실리지 않는다(셀프 호스팅 nginx 마스킹에 새 경로
   토큰은 싣지 않는다. 계정 삭제(`User` Cascade → FK `SetNull`)는 사건을 남기지 않는다 — FK가 그 경로의 그물이다.
 - **복구는 둘이다**: 토큰 주인이 `/account`에서 [Replace token](참조 프로젝트 전부 복구) · 다른 OWNER가 설정에서 `reconnectGitLabRepository`(자기 연결로 참조를
   바꾼다 — 인가 `project:settings` → 호출자 PAT의 Maintainer 확인 → 잠금 뒤 조건부 쓰기 + 사건. **명의가 바뀐다는 문장을 버튼 앞에 보인다**).
-- **App 없는 설치**(셀프 호스팅 D4·D4a): `GITHUB_APP_*` 다섯은 all-or-none이고(반쪽은 preflight 거부) 다섯 다 없으면 GitHub 연결 경로가 서지 않는다 —
-  판정은 `githubAppConfigured()` 하나이고 ①·`/account`·설정이 그것으로 GitHub 카드·조회를 0으로 만든다.
-- **상시 검사**: `lib/github-connect/__tests__/credential-separation.test.ts`가 GitLab 경계를 센다 — GitLab 클라이언트 모듈 import가 완전성 기준이고, 비GET
-  (`transport.send`) 쓰기 자리는 `file#function` 허용 목록이며, 쓰기 경로가 호출자 세션에서 연결을 고르면 red다.
+- **App 없는 설치**(셀프 호스팅 D4·D4a·D28): 셀프 호스팅 preflight는 `GITHUB_APP_*` **다섯을 all-or-none**으로 본다(반쪽은 기동 거부, 다섯 다 없으면
+  GitLab 전용 설치). 화면 갈래는 `githubAppConfigured()` 하나이고 **자격증명 넷(`GITHUB_APP_ID`·`PRIVATE_KEY`·`CLIENT_ID`·`CLIENT_SECRET`)이 있으면 GitHub
+  연결 화면이 선다** — `GITHUB_APP_SLUG`는 지금처럼 설치 링크만 가른다(SLUG 하나 빠진 hosted에서 GitHub 카드가 통째로 사라지지 않게). 넷이 없으면 ①·`/account`·설정이
+  GitHub 카드·조회를 0으로 만든다. ⚠️ 2026-10-13 현재 코드(`lib/deployment/github-app.ts`)는 아직 SLUG까지 다섯을 요구한다 — D28 코드 수정은 E-ui fix2다.
+- **상시 검사**: `lib/github-connect/__tests__/credential-separation.test.ts`가 GitLab 경계를 센다 — GitLab 클라이언트 모듈 import가 완전성 기준이다.
+  ① **PAT를 여는 호출 자리**(`openGitLabConnection`)는 `파일#함수` 정확 집합 `PAT_OPEN_SITES` 셋이다 — 호출자 연결 둘(`checkGitLabAccess`·`listGitLabRepositories`,
+  그 사람이 무엇을 볼 수 있나 — 쓰지 않는다)과 프로젝트 참조 연결 하나(`lib/repo-host/index.ts#projectConnection` — `{ connectionId }`). 변수 간접으로 열어도 새
+  자리라 red다. ② `app/`은 PAT를 열지 않는다(Server Action은 코어를 부른다). ③ `lib/gitlab-connect/`와 호출자 연결을 여는 파일에서 **비GET(POST·PUT·PATCH·DELETE·
+  GraphQL)은 0건**이다. ④ `newRepoTarget` 호출 자리는 `NEW_REPO_TARGET_SITES` 다섯과 정확히 같다(위 "프로젝트는 연결을 참조한다").
 
 ### 6.45 MCP 커넥터 — `/api/mcp` (2026-09-28, mcp-connector)
 
@@ -3799,7 +3815,7 @@ OAuth access로 부른 도구의 결과는 같은 grants·범위의 개인 토�
 도구는 웹과 같은 코어를 부르고 GitLab 프로젝트도 같은 도구 집합이다. **필드 호환은 호스트 어휘다**: GitHub 프로젝트 응답은 **바이트 불변**에
 `repositoryHost: "github"`가 더해지고, GitLab 프로젝트는 `newFromGitLab`·`lastPublishMergeRequest`·`mergeRequest` + `repositoryHost: "gitlab"`이다
 (`lib/mcp/tools/project.ts`) — 기존 클라이언트는 GitHub 프로젝트만 알았으니 깨지는 소비자가 없다. 연결 상태 `connection-unusable`·`connection-removed`는
-GitHub `unpinned`·`app-uninstalled`과 같은 MCP 값(재연결 필요 계열)이고, 호출자에게 GitLab 연결이 없거나 만료면 `needs-browser`(`gitlab-not-connected`·
+GitHub `unpinned`과 함께 **`not-connected`로 접힌다**(출력 값 목록을 넓히지 않는다 — `app-uninstalled`는 별개 값으로 남는다, `lib/mcp/tools/project.ts`), 호출자에게 GitLab 연결이 없거나 만료면 `needs-browser`(`gitlab-not-connected`·
 `gitlab-reconnect`)다. `get_workflow`는 GitLab 프로젝트에 `.gitlab-ci.yml`을 내되 **GitLab CI 원본이 발행 전이면(`GITLAB_CI_RELEASE.sha` null)
 `workflow-unavailable`**로 거부한다. MCP에는 PAT 입력·재연결 도구가 없다 — PAT는 브라우저에서만 붙여 넣는다. 거부 문장은 화면과 같은 상수
 (`GITLAB_ACCESS_ERRORS`·`GITLAB_CI_UNAVAILABLE`)를 쓴다.
