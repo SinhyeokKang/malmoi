@@ -90,3 +90,15 @@ it.each([
 ] as const)("만료 임박 낱말이 §10.1 표와 같다", (m, label) => {
   expect(stateLabel(m, "expiresSoon")).toBe(label);
 });
+
+it.each([
+  [en, "Couldn't check for an open merge request"],
+  [ko, "열린 MR을 확인하지 못했습니다"],
+  [es, "No se pudo comprobar si hay una merge request abierta"],
+] as const)("GitLab 프로젝트의 MR 조회 실패는 같은 키·같은 톤이고 낱말만 merge request다 (DESIGN §2.4 · D7)", (m, label) => {
+  expect(stateLabel(m, "prCheckFailed", "gitlab")).toBe(label);
+  // 호스트가 없거나 GitHub이면 지금 그대로다
+  expect(stateLabel(m, "prCheckFailed")).toBe(stateLabel(m, "prCheckFailed", "github"));
+  // 호스트와 무관한 상태는 호스트가 낱말을 바꾸지 않는다
+  expect(stateLabel(m, "prOpen", "gitlab")).toBe(stateLabel(m, "prOpen"));
+});

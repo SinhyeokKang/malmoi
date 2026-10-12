@@ -39,7 +39,7 @@ const base: MetaTabsInput = {
   prState: "pending",
 };
 
-type Tab = Exclude<keyof MetaTabs, "lateHold">;
+type Tab = Exclude<keyof MetaTabs, "lateHold" | "host">;
 const shape = (input: MetaTabsInput, tab: Tab) => metaTabs(input)[tab].map((group) => group.map((row) => row.kind));
 const flat = (input: MetaTabsInput, tab: Tab) => metaTabs(input)[tab].flat();
 const find = (input: MetaTabsInput, tab: Tab, kind: string) => flat(input, tab).find((row) => row.kind === kind);
@@ -47,7 +47,7 @@ const find = (input: MetaTabsInput, tab: Tab, kind: string) => flat(input, tab).
 describe("metaTabs — 보드별 묶음·행 (시안 v3)", () => {
   it("1a 기본 · 소스 둘", () => {
     expect(shape(base, "project")).toEqual([
-      ["repository", "connection", "branch", "ci"],
+      ["platform", "repository", "connection", "branch", "ci"],
       ["sources", "keys", "members"],
       ["created"],
     ]);
@@ -311,5 +311,24 @@ describe("homeLate — 보류 결론 → Hold · PR state", () => {
   /** PR 조회 갈래는 편집 0이라 도달 불가지만 — 편집 보류는 PR을 보지 않았으므로 PR state를 말하지 않는다. */
   it("pending-edits는 PR state를 모른다", () => {
     expect(homeLate("pending-edits")).toEqual({ held: "pending-edits", prState: null });
+  });
+});
+
+/**
+ * 리포 호스트 (gitlab-repositories 시안 G5a·G5b1). **Platform 행은 두 호스트 모두에 선다** — GitLab에만 서면 "행이 없다 = GitHub"이
+ * 숨은 규칙이 된다(design-brief 시안 검토 2). 리포 주소는 그 호스트의 웹 주소이고 하위 그룹을 보존한다.
+ */
+describe("metaTabs — 리포 호스트", () => {
+  it("GitHub 프로젝트도 Platform 행이 첫 행이다 (호스트 없음 = GitHub)", () => {
+    expect(find(base, "project", "platform")).toEqual({ kind: "platform", host: "github" });
+    expect(metaTabs(base).host).toBe("github");
+    expect(find(base, "project", "repository")).toMatchObject({ href: "https://github.com/acme/web" });
+  });
+
+  it("GitLab 프로젝트는 Platform GitLab · gitlab.com 주소(하위 그룹 보존)다", () => {
+    const gitlab: MetaTabsInput = { ...base, repository: { ...base.repository, owner: "group/sub", host: "gitlab" } };
+    expect(find(gitlab, "project", "platform")).toEqual({ kind: "platform", host: "gitlab" });
+    expect(metaTabs(gitlab).host).toBe("gitlab");
+    expect(find(gitlab, "project", "repository")).toMatchObject({ href: "https://gitlab.com/group/sub/web" });
   });
 });
