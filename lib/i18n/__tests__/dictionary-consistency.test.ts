@@ -86,6 +86,8 @@ const SAME_AS_EN: Readonly<Record<Translated, readonly string[]>> = {
     "logs.trigger.ci",
     "account.github.title",
     "account.github.rowName",
+    "account.gitlab.title",
+    "account.gitlab.rowName",
     "link.providers.github",
     "link.providers.google",
     // 입력 예시 — 사용자가 칠 경로·코드·주소다
@@ -128,6 +130,8 @@ const SAME_AS_EN: Readonly<Record<Translated, readonly string[]>> = {
     "account.profile.avatar",
     "account.github.title",
     "account.github.rowName",
+    "account.gitlab.title",
+    "account.gitlab.rowName",
     "locales.base",
     "settings.general.title",
     "link.providers.github",

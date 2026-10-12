@@ -111,6 +111,8 @@ const CLIENT_LIB_FILES = [
   // Settings recovery now owns its card notice; this leaf only assembles public URLs.
   "lib/github-connect/installation-url.ts",
   "lib/github-connect/message.ts",
+  // GitLab 연결 거부 문구 — 사전과 `errors.ts`(코드 union, 잎)만 문다. 연결 코어(`connection.ts`·transport)는 서버 쪽이다.
+  "lib/gitlab-connect/message.ts",
   // `SlowNotice`가 지연 선으로 읽는 상수 하나 — import가 0개인 잎이다 (audit-ux U7 r1). octokit은 `lib/github.ts` 쪽이다.
   "lib/github-wait.ts",
   // `/docs` 개요의 옛 해시 잎이 값으로 읽는다 — import 0인 잎이고, 표는 서버가 prop으로 넘긴다.
@@ -210,6 +212,8 @@ const CLIENT_LIB_FILES = [
   "lib/signin/dot-field.ts",
   // 상태 톤·낱말의 정본(ux-drift-unify §3.6) — `lib/i18n`만 무는 잎이다(아래 잎 검사). Sources 상태 판정이 톤을 여기서 읽는다.
   "lib/status/canon.ts",
+  // GitLab PAT 만료 판정(D11) — import 0 잎. `/account` 카드와 서버 목록이 같은 경계를 쓴다.
+  "lib/status/token-expiry.ts",
   "lib/sources/actions.ts",
   // Add sources의 꺼진 사유 (malmoi#93) — `lib/i18n` 하나만 문다.
   "lib/sources/add-block.ts",

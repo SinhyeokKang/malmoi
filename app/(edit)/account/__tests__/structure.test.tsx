@@ -55,6 +55,8 @@ async function screen(
   mocks.getPrisma.mockReturnValue({
     user: { findUnique: async () => ({ id: "owner", ...encodeUserFields("owner", { email: "a@x.com", name: "Jane", image }) }) },
     account: { findMany: async () => methods },
+    gitLabConnection: { findUnique: async () => null },
+    project: { count: async () => 0 },
   });
   const { container } = await render(await AccountPage({ searchParams: Promise.resolve(params) }));
   return container;
@@ -93,6 +95,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.stubEnv("PII_ENCRYPTION_KEYS", JSON.stringify({ k1: Buffer.alloc(32, 1).toString("base64") }));
   vi.stubEnv("PII_ENCRYPTION_ACTIVE_KEY_ID", "k1");
+  // GitHub App이 구성된 설치(hosted와 같다) — 없으면 GitHub 카드가 서지 않는다(D4a).
+  for (const name of ["GITHUB_APP_ID", "GITHUB_APP_PRIVATE_KEY", "GITHUB_APP_CLIENT_ID", "GITHUB_APP_CLIENT_SECRET", "GITHUB_APP_SLUG"]) vi.stubEnv(name, "x");
 });
 
 /**
@@ -232,7 +236,7 @@ it("연결 행의 상태는 배지이고 대시가 없다 — 연결됨 초록 �
  * Chrome이 그것을 `generic`으로 접어 접근성 트리에서 사라지는데, "region이 있다"만 세면 그 결함이
  * 검사를 그대로 지나간다 (POSTMORTEM 2026-09-14 #1 · 2026-09-15 #2).
  */
-it("본문이 카드 넷이고 heading 순서가 고정이다", async () => {
+it("본문이 카드 다섯이고 heading 순서가 고정이다", async () => {
   const container = await screen();
   expect(container.querySelector("h1")?.textContent).toBe(en.common.nav.account);
 
@@ -241,11 +245,13 @@ it("본문이 카드 넷이고 heading 순서가 고정이다", async () => {
     en.account.profile.title,
     en.link.methods.title,
     en.account.github.title,
+    // 리포 쓰기 수단 둘이 나란히 선다 — GitHub App(설치)과 GitLab PAT(토큰, gitlab-repositories 시안 G8)
+    en.account.gitlab.title,
     en.account.sessionsSection.title,
   ]);
 
   const cards = [...container.querySelectorAll("section")];
-  expect(cards).toHaveLength(4);
+  expect(cards).toHaveLength(5);
   for (const card of cards) {
     const labelledBy = card.getAttribute("aria-labelledby");
     // ⚠️ **참조가 끊긴 것을 먼저 센다** — `?.`로 흘리면 부재가 `undefined`로 접혀 통과한다.
@@ -261,11 +267,11 @@ it("본문이 카드 넷이고 heading 순서가 고정이다", async () => {
  * 아니라 한 덩이의 사실이고, `<li>`로 만들면 스크린리더가 "목록, 항목 3개"로 읽어 편집 가능한
  * 폼을 목록으로 잘못 예고한다.
  */
-it("카드 넷 중 셋만 행 목록을 들고, 항목이 자기 래퍼를 갖지 않는다", async () => {
+it("카드 다섯 중 넷이 행 목록을 들고, 항목이 자기 래퍼를 갖지 않는다", async () => {
   const container = await screen();
   const lists = [...container.querySelectorAll("ul")];
-  expect(lists).toHaveLength(3);
-  expect(lists.map((list) => list.querySelectorAll(":scope > li").length)).toEqual([2, 1, 2]);
+  expect(lists).toHaveLength(4);
+  expect(lists.map((list) => list.querySelectorAll(":scope > li").length)).toEqual([2, 1, 1, 2]);
   // `<li>` 안에 또 다른 목록 래퍼가 생기면 그 순간 갤러리다.
   for (const list of lists) expect(list.querySelectorAll("ul")).toHaveLength(0);
 });
@@ -318,10 +324,11 @@ it("되돌릴 수 없는 것마다 확인이 붙고, 직접 제출하는 것이 
   /**
    * ⚠️ **남은 폼이 되돌릴 수 있는 것뿐이다.** 확인을 지나는 것은 Dialog 안에서 제출하므로 닫힌
    * 화면의 트리에 없다 — 여기 보이는 `<form>`이 하나라도 늘면 확인 없이 제출하는 자리가 생긴 것이다.
-   * **로그아웃은 확인이 없다**(ux-drift-unify Q4 — 셸 메뉴와 같은 동작, 잃는 것이 재로그인 한 번이다). 그래서 폼이 둘이다.
+   * **로그아웃은 확인이 없다**(ux-drift-unify Q4 — 셸 메뉴와 같은 동작, 잃는 것이 재로그인 한 번이다). 미연결 GitLab 카드의 PAT [Connect]도
+   * 되돌릴 수 있다(해제가 있다). 그래서 폼이 셋이다.
    */
   const forms = [...container.querySelectorAll("form")];
-  expect(forms.map((form) => form.querySelector("button")?.textContent)).toEqual([en.account.profile.save, en.common.nav.signOut]);
+  expect(forms.map((form) => form.querySelector("button")?.textContent)).toEqual([en.account.profile.save, en.account.gitlab.form.connect, en.common.nav.signOut]);
 });
 
 it("마지막 수단은 확인이 아니라 비활성이다 — 지날 문이 없다", async () => {

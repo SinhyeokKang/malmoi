@@ -30,6 +30,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.stubEnv("PII_ENCRYPTION_KEYS", JSON.stringify({ k1: Buffer.alloc(32, 1).toString("base64") }));
   vi.stubEnv("PII_ENCRYPTION_ACTIVE_KEY_ID", "k1");
+  // GitHub App이 구성된 설치(hosted와 같다) — 없으면 GitHub 카드가 서지 않는다(D4a).
+  for (const name of ["GITHUB_APP_ID", "GITHUB_APP_PRIVATE_KEY", "GITHUB_APP_CLIENT_ID", "GITHUB_APP_CLIENT_SECRET", "GITHUB_APP_SLUG"]) vi.stubEnv(name, "x");
 });
 
 const screen = async () => {
@@ -40,6 +42,9 @@ const screen = async () => {
     user: { findUnique: async () => ({ id: "owner", ...encodeUserFields("owner", { email: "a-very-long-address-for-the-narrow-card@example.com", name: "Jane", image: null }) }) },
     // 수단이 하나뿐이라 [Disconnect]가 꺼진 사유 문구를 든다 — 375에서 가장 넓은 행 동작이다.
     account: { findMany: async () => [{ provider: "github" }] },
+    // 연결된 GitLab 카드 — 행이 동작([Replace token]·[Disconnect])을 든다. 미연결은 행 아래 PAT 입력이 서고 행에 동작이 없다.
+    gitLabConnection: { findUnique: async () => ({ username: "ox", expiresAt: null, scopes: ["api"], updatedAt: new Date() }) },
+    project: { count: async () => 0 },
   });
   return (await render(await AccountPage({ searchParams: Promise.resolve({}) }))).container;
 };
@@ -63,8 +68,8 @@ it("이름·이메일 필드는 320이되 카드 안폭을 넘지 않고 좁으�
 it("카드 행의 동작은 좁은 카드에서 둘째 줄 오른쪽이다 — 수단 · GitHub · Sessions 모든 행, DOM 순서 그대로", async () => {
   const container = await screen();
   const rows = [...container.querySelectorAll<HTMLElement>("li")].filter(li => li.querySelector("[data-row-copy]") !== null);
-  // 수단 둘 + GitHub 하나 + Sessions 둘.
-  expect(rows).toHaveLength(5);
+  // 수단 둘 + GitHub 하나 + GitLab 하나 + Sessions 둘.
+  expect(rows).toHaveLength(6);
   for (const row of rows) {
     has(row, ROW);
     expect(row.lastElementChild?.matches("div")).toBe(true);

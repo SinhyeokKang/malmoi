@@ -39,6 +39,7 @@ vi.mock("@/app/(edit)/projects/actions", () => ({
 vi.mock("@/app/(edit)/projects/[slug]/settings/actions", () => ({ connectRepository: vi.fn(), updateRepositorySettings: vi.fn() }));
 vi.mock("@/app/(edit)/account/actions", () => ({
   unlinkLoginMethod: mocks.unlinkLoginMethod, startLoginMethodConnect: mocks.startLoginMethodConnect, startSessionRevocation: mocks.startSessionRevocation,
+  connectGitLab: vi.fn(), disconnectGitLab: vi.fn(),
 }));
 vi.mock("@/app/(edit)/mcp/actions", () => ({
   issueApiToken: mocks.issueApiToken, revokeApiToken: mocks.revokeApiToken, disconnectOAuthConnection: mocks.disconnectOAuthConnection,
@@ -48,6 +49,8 @@ vi.mock("@/app/(edit)/publish-actions", () => ({ loadPublishPreview: vi.fn() }))
 vi.mock("@/app/(edit)/projects/[slug]/sources/actions", () => ({ updateBaseLocale: vi.fn(), removeSource: vi.fn(), previewSourceRemoval: async () => ({ ok: true, pendingCount: 0, approval: null, openPr: "none" }) }));
 
 import { GithubSection } from "@/components/account/github-section";
+import { GitLabSection } from "@/components/account/gitlab-section";
+import { GitLabTokenForm } from "@/components/gitlab/token-form";
 import { LoginMethods } from "@/components/account/login-methods";
 import { SessionsSection } from "@/components/account/sessions-section";
 import { MetaColumn } from "@/components/home/meta-column";
@@ -146,6 +149,10 @@ const CONFIRMS: { name: string; file: string[]; ui: () => ReactNode; trigger: ()
   {
     name: "GitHub 계정 Disconnect", file: ["components/github-account.tsx"],
     ui: () => <GithubSection account={{ status: "ok", login: "octo" }} installedRepoCount={1} settingsUrl={null} />, trigger: () => q(`[aria-label="${en.settings.account.disconnectLabel}"]`),
+  },
+  {
+    name: "GitLab 연결 Disconnect", file: ["components/account/gitlab-section.tsx"],
+    ui: () => <GitLabSection connection={{ username: "ox", expiresAt: null, projectCount: 1 }} />, trigger: () => q(`[aria-label="${en.account.gitlab.disconnectLabel}"]`),
   },
   {
     name: "로그인 수단 Disconnect", file: ["components/account/login-methods.tsx"],
@@ -277,6 +284,7 @@ const BLUE: { name: string; file: string; ui: () => ReactNode; open?: () => Prom
     open: async () => { mocks.prepareRepositorySync.mockResolvedValue({ approval: "digest-1", unsent: 3 }); await click(buttonByText("Sync")); },
   },
   { name: "번역 화면 — 코드 참조", file: "components/translations/workspace/locale-panel.tsx", ui: () => <TranslationWorkspace {...workspaceProps()} /> },
+  { name: "GitLab PAT 입력 — 토큰 만들기", file: "components/gitlab/token-form.tsx", ui: () => <GitLabTokenForm submitLabel="Connect" onConnected={() => {}} /> },
 ];
 
 /**

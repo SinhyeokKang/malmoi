@@ -232,6 +232,7 @@ const NOT_A_COUNT: Record<string, string> = {
   "newProject.files.summaryShort": "로케일 수 — 강제 상한 없음",
   "repositorySync.openPr": "PR 번호 — `#1,207`은 그런 PR이 아니다",
   "home.meta.pr": "PR 번호 — 같은 이유다",
+  "home.meta.onGitLab.pr": "MR 번호(`!128`) — 같은 이유다",
   "translations.publish.prOpen.title": "PR 번호",
   "translations.publish.replacePr": "PR 번호",
   "translations.publish.tellReviewer": "PR 번호",

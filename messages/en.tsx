@@ -2029,6 +2029,32 @@ export const en = {
     gitlab: {
       /** 만료 임박(만료일 ≤ 14일, D11) — `STATE.expiresSoon`의 낱말. 새 톤이 아니라 warning 상태 행이다. */
       expiresSoon: "Expires soon",
+      /** 카드 제목 — 시안 그대로(design-brief 확정 6). 붙어 있는 것이 계정이 아니라 토큰이다. */
+      title: "GitLab PAT",
+      /** 미연결 행의 제목 자리 — 글리프는 `aria-hidden`이라 호스트 이름이 글자로 선다. */
+      rowName: "GitLab",
+      hintNotConnected: "Connect a GitLab personal access token to create projects from GitLab repositories.",
+      /** 보조 줄 — 만료일(`formatDay`, 오프셋 라벨 없음)과 이 연결을 참조하는 프로젝트 수. 둘 다 토큰을 바꿀지의 근거다. */
+      expires: (date: string): string => `Expires ${date}.`,
+      expiredOn: (date: string): string => `Expired ${date}. Replace the token to keep the projects that use it running.`,
+      noExpiry: "Doesn't expire.",
+      usedBy: (n: number): string => `Used by ${n.toLocaleString("en-US")} ${n === 1 ? "project" : "projects"}.`,
+      /** 교체는 연결 id를 유지한다 — 참조하는 프로젝트 전부가 다음 쓰기부터 새 토큰을 쓴다(시안 G8). */
+      replace: "Replace token",
+      replaceTitle: "Replace GitLab token",
+      replaceHint: (username: string): string => `Paste a new token for @${username}. Projects that use this connection switch to it right away.`,
+      /** ⚠️ 접근 이름이 축을 든다 — 같은 화면에 GitHub App의 [Disconnect]가 나란히 선다(DESIGN §6.646). */
+      disconnectLabel: "Disconnect GitLab",
+      confirmDisconnect: "Disconnect GitLab from Malmoi?",
+      confirmHint: "Malmoi deletes the saved token. Projects that use this connection stop syncing and publishing until a project owner reconnects them.",
+      disconnectFailed: "GitLab wasn't disconnected. Try again.",
+      /** PAT 입력 shell — ①의 GitLab 탭·이 카드·설정 재연결이 같은 형을 쓴다(design-brief "GitLab 탭 상태"). 스코프는 `api` 하나다(D13). */
+      form: {
+        label: "Personal access token",
+        help: "Use a legacy personal access token with the api scope. Projects you connect need the Maintainer role or higher.",
+        create: "Create a token in GitLab",
+        connect: "Connect",
+      },
     },
     /** 구역 헤더 — 항목 둘(이 기기 / 모든 기기)이 한 리스트에 선다. */
     sessionsSection: {
