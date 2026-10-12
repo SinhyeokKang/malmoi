@@ -10,6 +10,10 @@ On a GitLab project, the workflow is the CI jobs in `.gitlab-ci.yml`, and Malmoi
 
 Run the generated workflow on the base branch. The workflow checks the push token, the commit, and the files. If the commit is older than the last one Malmoi read for that source, or the files do not match its configuration, that step fails without replacing the source's translations. Earlier source steps in the same workflow may already have succeeded.
 
+After an update, Home's **Sync** tab shows the last sync, its result, and how many values it changed. **Sync logs** lists every sync.
+
+![Project Home with the Sync tab open, showing the last sync, when it ran, its result, and how many values it changed](/guide/home-sync-tab.webp "Check the last sync and its result on Home's Sync tab.")
+
 ## Keep unsent edits {#deferred}
 
 If any translation has an unsent edit, the workflow succeeds and reports `deferred`: the repository update is held, and Logs shows it as **Held**. New and removed keys are held too; the repository is not partially loaded. Home's **Sync** tab shows **Held** in its **Hold** row, and the To send card says why. Publish the edits and run the workflow again, or a project owner can resolve them with [Undo and resync](revert.md).

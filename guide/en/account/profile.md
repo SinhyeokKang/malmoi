@@ -23,6 +23,8 @@ Project owners use the **GitHub App** section to authorize repository selection 
 
 If authorization expires, choose **Reauthorize GitHub App**. Projects that are already connected keep syncing while you renew this authorization.
 
+![Account scrolled to the GitHub App and GitLab PAT sections, each with its connected account and buttons, above Sessions](/guide/account-connections.webp "Manage repository access in the GitHub App and GitLab PAT sections.")
+
 ## Manage the GitLab token {#gitlab-token}
 
 Project owners who use GitLab.com repositories connect a GitLab personal access token in the **GitLab PAT** section. Translators can skip this section.
@@ -41,6 +43,8 @@ Projects you connect publish with your token, so their commits and merge request
 2. Use the dialog's confirmation button, Continue to GitHub or Continue to Google. Malmoi chooses one of your connected sign-in methods; follow its sign-in confirmation.
 
 This also signs out the device you are using.
+
+![The Sign out everywhere? dialog with Cancel and Continue to GitHub buttons](/guide/sign-out-everywhere.webp "Continue to your sign-in provider to confirm.")
 
 ## What happens next {#next}
 

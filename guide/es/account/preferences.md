@@ -55,6 +55,8 @@ La zona horaria se guarda en tu cuenta, así que es la misma en todos los dispos
 
 Si el cambio falla, la tarjeta muestra **No pudimos cambiar la zona horaria. Inténtalo de nuevo.** y el menú conserva la zona horaria anterior.
 
+![Preferencias con el menú Zona horaria abierto, UTC marcada arriba y las zonas horarias listadas con su desfase](/guide/preferences-time-zone.webp "Elige una zona horaria; se aplica al instante.")
+
 ## Elige un tema {#theme}
 
 Malmoi sigue de forma predeterminada la configuración de apariencia de tu dispositivo (**Sistema**). Elige **Claro** u **Oscuro** para fijarlo tú.
@@ -64,7 +66,7 @@ Antes de empezar: abre el menú de tu avatar, arriba a la derecha, y elige **Pre
 1. En la tarjeta **Tema**, abre el menú y elige **Sistema**, **Claro** u **Oscuro**. No hay botón de guardar; el cambio se aplica al momento.
 2. Malmoi cambia todas las pantallas al nuevo tema. Con **Sistema**, Malmoi pasa de claro a oscuro cada vez que lo hace tu dispositivo.
 
-Malmoi usa el tema guardado en tu cuenta mientras tienes la sesión iniciada; si no, el último tema elegido en este dispositivo; y si no, **Sistema**, que sigue la configuración clara u oscura de tu dispositivo, así que tu primera visita se ve como tu dispositivo. La elección se guarda en tu cuenta y en este dispositivo, así que, después de cerrar sesión, las páginas públicas de este dispositivo conservan tu tema. Solo puedes cambiar el tema en Preferencias; el pie de página no tiene menú de tema. Las capturas de esta guía siempre muestran el tema claro.
+Malmoi usa el tema guardado en tu cuenta mientras tienes la sesión iniciada; si no, el último tema elegido en este dispositivo; y si no, **Sistema**, que sigue la configuración clara u oscura de tu dispositivo, así que tu primera visita se ve como tu dispositivo. La elección se guarda en tu cuenta y en este dispositivo, así que, después de cerrar sesión, las páginas públicas de este dispositivo conservan tu tema. También puedes cambiarlo con el menú de tema del pie de página de las páginas públicas, como esta documentación y la página de inicio de sesión, incluso antes de iniciar sesión. Las capturas de esta guía siempre muestran el tema claro.
 
 Si el cambio falla, la tarjeta muestra **No pudimos cambiar el tema. Inténtalo de nuevo.** y la pantalla vuelve al tema anterior.
 

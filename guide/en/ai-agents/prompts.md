@@ -6,7 +6,7 @@ Here is what the agent does for a few common requests, and what to check after e
 
 ### Connect this repo to Malmoi {#connect-repo}
 
-The agent lists your repositories, detects the translation files, and creates the project with its first sync, like [Create a project](../setup/create-project.md) in the browser. The result includes the workflow file and a push token. Ask the agent to commit the workflow file on the base branch you chose, after storing the push token.
+The agent lists your repositories, detects the translation files, and creates the project with its first sync, like [Create a project](../create/README.md) in the browser. The result includes the workflow file and a push token. Ask the agent to commit the workflow file on the base branch you chose, after storing the push token.
 
 If your GitHub connection, the GitHub App, or your GitLab token is missing, the agent returns a link to **Account**. Finish there in the browser and ask the agent to try again. If no translation files are found, the link opens project setup in the browser, where you can choose the format yourself.
 
@@ -18,7 +18,7 @@ The push token appears once in the agent's conversation, which your agent also s
 gh secret set PUSH_TOKEN --repo OWNER/REPO
 ```
 
-Replace `OWNER/REPO` with the repository. Don't add `--body`; `--body -` would store a single dash. The name must stay `PUSH_TOKEN`, because the workflow reads that secret. See [Add the workflow](../setup/workflow.md#push-token) for the rest of the setup. For a GitLab project, the result includes `.gitlab-ci.yml` jobs instead; store the push token as the protected and masked `PUSH_TOKEN` CI/CD variable, as in [Add the GitLab CI jobs](../setup/gitlab-ci.md#ci-variable).
+Replace `OWNER/REPO` with the repository. Don't add `--body`; `--body -` would store a single dash. The name must stay `PUSH_TOKEN`, because the workflow reads that secret. See [Add the workflow](../create/workflow.md#push-token) for the rest of the setup. For a GitLab project, the result includes `.gitlab-ci.yml` jobs instead; store the push token as the protected and masked `PUSH_TOKEN` CI/CD variable, as in [Add the GitLab CI jobs](../create/gitlab-ci.md#ci-variable).
 
 ### Fill the empty fr translations and publish {#fill-and-publish}
 

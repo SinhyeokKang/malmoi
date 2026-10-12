@@ -21,6 +21,8 @@ While archived, a workflow run gets a 409 response and the repository workflow t
 
 Choose **Restore project** in the same card to resume project work. Restoring does not remove existing translations or rewrite the activity history.
 
+![Settings of an archived project with the Restore project card at the top and the other settings locked](/guide/archive-restore.webp "Choose Restore project at the top of Settings.")
+
 ## What happens next {#next}
 
 Restoring lets members work again and lets the workflow update the project.

@@ -18,6 +18,8 @@ Invitations to archived projects cannot be accepted. The link stops working once
 
 If you signed in with the wrong address, choose **Sign in with another account** and use the invited address. If the link has expired or was sent to the wrong address, ask a project owner for a new invitation to the correct address.
 
+![The Invitation unavailable page saying the invitation doesn't exist, with a Go to your projects button](/guide/invite-unavailable.webp "Ask a project owner for a new invitation.")
+
 ## What happens next {#next}
 
 Continue with [Edit translations](edit.md).

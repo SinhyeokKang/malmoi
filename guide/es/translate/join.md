@@ -18,6 +18,8 @@ Las invitaciones a proyectos archivados no se pueden aceptar. El enlace deja de 
 
 Si iniciaste sesión con una dirección equivocada, elige **Iniciar sesión con otra cuenta** y usa la dirección invitada. Si el enlace caducó o se envió a una dirección equivocada, pide a un propietario del proyecto una nueva invitación a la dirección correcta.
 
+![La página de invitación no disponible que indica que la invitación no existe, con un botón para ir a tus proyectos](/guide/invite-unavailable.webp "Pide una invitación nueva a un propietario del proyecto.")
+
 ## Qué pasa después {#next}
 
 Continúa con [Edita traducciones](edit.md).

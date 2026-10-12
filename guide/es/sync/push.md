@@ -10,6 +10,10 @@ En un proyecto de GitLab, el workflow son los jobs de CI de `.gitlab-ci.yml`, y 
 
 Ejecuta el workflow generado en la rama base. El workflow comprueba el token de push, el commit y los archivos. Si el commit es anterior al último que Malmoi leyó para esa fuente, o los archivos no coinciden con su configuración, ese paso falla sin reemplazar las traducciones de la fuente. Es posible que los pasos de fuentes anteriores del mismo workflow ya hayan terminado bien.
 
+Tras una actualización, la pestaña **Sincronizar** de Inicio muestra la última sincronización, su resultado y cuántos valores cambió. **Registros de sincronización** lista todas las sincronizaciones.
+
+![El Inicio del proyecto con la pestaña Sincronizar abierta, que muestra la última sincronización, cuándo se ejecutó, su resultado y cuántos valores cambió](/guide/home-sync-tab.webp "Comprueba la última sincronización y su resultado en la pestaña Sincronizar de Inicio.")
+
 ## Conserva las ediciones sin enviar {#deferred}
 
 Si alguna traducción tiene una edición sin enviar, el workflow termina bien e informa `deferred`: la actualización del repositorio se retiene y Registros la muestra como **Retenido**. Las claves nuevas y las eliminadas también se retienen; el repositorio no se carga parcialmente. La pestaña **Sincronizar** de Inicio muestra **Retenido** en su fila **Espera**, y la tarjeta Por enviar explica el motivo. Publica las ediciones y ejecuta el workflow de nuevo, o un propietario del proyecto puede resolverlas con [Deshacer y resincronizar](revert.md).

@@ -26,6 +26,8 @@ Abre **Fuentes** desde la navegación del proyecto. Cada fila muestra el estado 
 
 Quitar una fuente detiene su sincronización. Los archivos de tu repositorio no cambian, y la fuente desaparece de **Fuentes**, de Publicar y de la actualización nocturna. Sus claves, traducciones e historial se conservan.
 
+![La confirmación para quitar la fuente sobre sus detalles, con un aviso para quitar el paso de la fuente del workflow](/guide/source-remove.webp "Lee el aviso y luego elige de nuevo Quitar fuente.")
+
 ## Vuelve a añadir una fuente quitada {#re-add}
 
 Elige **Añadir fuentes** y selecciona la misma ruta con el mismo formato de archivo. La fuente quitada vuelve con sus traducciones. La primera sincronización posterior reemplaza sus ediciones sin enviar con los valores del repositorio allí donde el repositorio tiene uno; las ediciones sin valor en el repositorio siguen sin enviar. Si eliges otro formato de archivo para la ruta, Malmoi añade una fuente nueva; actualiza el workflow como con cualquier fuente nueva.
@@ -37,6 +39,8 @@ Elige **Añadir fuentes** y selecciona la misma ruta con el mismo formato de arc
 3. Ejecuta el workflow. Si hay ediciones sin enviar, la actualización se retiene. Publica o resuelve esas ediciones y ejecuta el workflow de nuevo.
 
 [Sincronizar desde el repositorio](../sync/revert.md#resync) reemplaza los valores, pero conserva el idioma base actual.
+
+![Los detalles de la fuente con su patrón de ruta, el estado de sincronización, el menú Idioma base con un botón Guardar y sus idiomas](/guide/source-details.webp "Elige el idioma base, guarda y luego actualiza el workflow.")
 
 ## Qué pasa después {#next}
 

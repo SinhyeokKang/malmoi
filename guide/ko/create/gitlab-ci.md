@@ -8,9 +8,13 @@
 
 1. GitLab에서 프로젝트의 **Settings** › **CI/CD**로 가서 **Variables**를 펼치고 **Add variable**을 누릅니다. 이름은 `PUSH_TOKEN`, 값은 푸시 토큰으로 넣고 **Protect variable**을 선택하며 **Visibility**는 **Masked**로 둡니다.
 
+![GitLab의 변수 추가 폼에 키로 PUSH_TOKEN이 입력되고 Masked 표시 방식과 Protect variable이 선택된 모습](/guide/gitlab-ci-variable.webp "이름을 PUSH_TOKEN으로 두고 Masked를 유지한 채 Protect variable을 고른 뒤 토큰을 값으로 붙여 넣습니다.")
+
 ## 기준 브랜치 보호 {#protected-branch}
 
 1. 고른 기준 브랜치가 GitLab에서 보호 브랜치인지 확인합니다. 따로 바꾸지 않았다면 GitLab은 기본 브랜치를 보호합니다. 보호 변수는 보호 브랜치에만 전달되므로, 보호되지 않은 브랜치에서는 `PUSH_TOKEN`이 없어 작업이 실패합니다.
+
+![GitLab의 Protected branches 설정에 기본 브랜치 main이 보호되어 있고 Maintainers가 머지와 푸시를 할 수 있는 모습](/guide/gitlab-protected-branch.webp "기준 브랜치가 Protected branches에 있는지 확인합니다.")
 
 ## CI 작업 추가하기 {#gitlab-ci}
 

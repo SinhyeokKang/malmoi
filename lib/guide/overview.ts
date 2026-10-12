@@ -6,6 +6,6 @@
  * `lib/guide/__tests__/overview.test.ts`가 본다. 나머지 목록(`More in the docs`)은 여기 없는 최상위 장 전부다.
  */
 export const OVERVIEW_TRACKS = [
-  { audience: "forDevelopers", chapter: "setup", pages: ["setup/create-project", "setup/workflow", "setup/members"] },
+  { audience: "forDevelopers", chapter: "create", pages: ["create/github", "create/workflow", "create/gitlab"] },
   { audience: "forTranslators", chapter: "translate", pages: ["translate/join", "translate/edit", "translate/publish"] },
 ] as const satisfies readonly { audience: "forDevelopers" | "forTranslators"; chapter: string; pages: readonly [string, string, string] }[];

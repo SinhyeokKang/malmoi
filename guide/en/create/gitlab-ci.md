@@ -8,9 +8,13 @@ Before you start: Have the push token from the **Malmoi is ready** page. Store t
 
 1. In GitLab, open the project's **Settings** › **CI/CD**, expand **Variables**, and select **Add variable**. Name it `PUSH_TOKEN`, paste the push token as its value, select **Protect variable**, and keep **Visibility** at **Masked**.
 
+![GitLab's Add variable form with PUSH_TOKEN as the key, Masked visibility, and Protect variable selected](/guide/gitlab-ci-variable.webp "Name it PUSH_TOKEN, keep Masked, select Protect variable, then paste the token as its value.")
+
 ## Protect the base branch {#protected-branch}
 
 1. Make sure the base branch you chose is protected in GitLab; GitLab protects the default branch unless you changed it. A protected variable reaches only protected branches, so on an unprotected branch the jobs fail without `PUSH_TOKEN`.
+
+![GitLab's Protected branches settings with the default branch main protected and Maintainers allowed to merge and push](/guide/gitlab-protected-branch.webp "Check that the base branch is listed under Protected branches.")
 
 ## Add the CI jobs {#gitlab-ci}
 

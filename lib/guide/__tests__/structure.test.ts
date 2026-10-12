@@ -55,8 +55,8 @@ describe("실물 가이드 구조", () => {
   it("옛 해시 일곱의 전체 매핑을 고정한다", () => {
     expect(LEGACY_ANCHORS).toEqual({
       "how-it-works": "/docs/sync#how-it-works",
-      workflow: "/docs/setup/workflow#workflow",
-      "allowed-actions": "/docs/setup/allowed-actions#allowed-actions",
+      workflow: "/docs/create/workflow#workflow",
+      "allowed-actions": "/docs/create/allowed-actions#allowed-actions",
       formats: "/docs/reference/formats#formats",
       limits: "/docs/reference/limits#limits",
       merging: "/docs/sync/merging#merging",
@@ -132,7 +132,7 @@ describe("실물 가이드 구조", () => {
   });
 
   it("옛 /docs/language가 account/preferences로 가고 옛 절 id 일곱을 그 페이지가 지킨다", () => {
-    expect(LEGACY_PAGES).toEqual({ language: "/docs/account/preferences" });
+    expect(LEGACY_PAGES).toMatchObject({ language: "/docs/account/preferences" });
     const files = nav().map(({ file }) => file);
     expect(slugToFile(["language"], files)).toBeNull();
     const target = legacyPageTarget(["language"], LEGACY_PAGES);
@@ -141,6 +141,34 @@ describe("실물 가이드 구조", () => {
     expect(file).toBe("account/preferences.md");
     const ids = headings(read(file!)).map(({ id }) => id);
     for (const id of ["footer", "preferences", "order", "projects", "time-zone", "theme", "next"]) expect(ids, id).toContain(id);
+  });
+
+  /**
+   * **옮긴 페이지 slug는 SUMMARY에 없고 대상은 실재한다** (2026-10-13 — Create 장 · 트러블슈팅 호스트 분리). 서버 리다이렉트라
+   * 해시가 따라오므로, 옛 페이지의 절 id는 대상 페이지에 있거나 그 대상 slug의 `SECTION_LEGACY_ANCHORS`가 받아야 한다.
+   */
+  it("옮긴 페이지는 SUMMARY 밖이고, 대상이 실재하며, 옛 절 id가 대상에서 풀린다", () => {
+    const files = nav().map(({ file }) => file);
+    const oldIds: Record<string, readonly string[]> = {
+      "setup/create-project": ["connect-github", "connect-gitlab", "choose-files", "confirm-project", "finish-setup", "next"],
+      "setup/connect-github": ["connect-github", "next"],
+      "setup/connect-gitlab": ["connect-gitlab", "next"],
+      "setup/workflow": ["push-token", "workflow", "update-workflow", "first-run", "next", "gitlab-ci"],
+      "setup/allowed-actions": ["allowed-actions", "next"],
+      "setup/gitlab-ci": ["ci-variable", "protected-branch", "gitlab-ci", "ci-unavailable", "first-run", "next"],
+      "reference/troubleshooting": ["github-access", "gitlab-access", "workflow-failures", "rejected-updates", "next"],
+    };
+    for (const [old, ids] of Object.entries(oldIds)) {
+      expect(slugToFile(old.split("/"), files), old).toBeNull();
+      const target = legacyPageTarget(old.split("/"), LEGACY_PAGES);
+      expect(target, old).not.toBeNull();
+      const slug = target!.slice("/docs/".length);
+      const file = slugToFile(slug.split("/"), files);
+      expect(file, target!).not.toBeNull();
+      const kept = headings(read(file!)).map(({ id }) => id);
+      const moved = SECTION_LEGACY_ANCHORS[slug] ?? {};
+      for (const id of ids) expect(kept.includes(id) || Object.hasOwn(moved, id), `${old}#${id} → ${target}`).toBe(true);
+    }
   });
 
   it("작성 규약의 외부 라벨 표가 GitHub 라벨을 고정한다", () => {

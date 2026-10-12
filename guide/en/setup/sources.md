@@ -26,6 +26,8 @@ Open **Sources** from the project navigation. Each row shows the source's status
 
 Removing a source stops syncing it. Files in your repository aren't changed, and the source disappears from **Sources**, Publish, and the nightly update. Its keys, translations, and history are kept.
 
+![The Remove emails from this project? confirmation over the source details, with a warning to remove the source's step from the workflow](/guide/source-remove.webp "Read the warning, then choose Remove source again.")
+
 ## Add a removed source again {#re-add}
 
 Choose **Add sources** and select the same path with the same file format. The removed source comes back with its translations. The first sync after that replaces its unsent edits with the repository's values wherever the repository has one; edits the repository has no value for stay unsent. If you choose a different file format for the path, Malmoi adds a new source instead; update the workflow as for any new source.
@@ -37,6 +39,8 @@ Choose **Add sources** and select the same path with the same file format. The r
 3. Run the workflow. If there are unsent edits, the update is held. Publish or resolve those edits, then run the workflow again.
 
 [Sync from the repository](../sync/revert.md#resync) replaces values but keeps the current base language.
+
+![The source details with its path pattern, sync status, the Base language menu with a Save button, and its languages](/guide/source-details.webp "Choose the base language and Save, then update the workflow.")
 
 ## What happens next {#next}
 

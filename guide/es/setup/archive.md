@@ -21,6 +21,8 @@ Mientras está archivado, una ejecución del workflow recibe una respuesta 409 y
 
 Elige **Restaurar proyecto** en la misma tarjeta para retomar el trabajo del proyecto. Restaurar no elimina las traducciones existentes ni reescribe el historial de actividad.
 
+![La Configuración de un proyecto archivado con la tarjeta Restaurar proyecto arriba y el resto de ajustes bloqueados](/guide/archive-restore.webp "Elige Restaurar proyecto en la parte superior de Configuración.")
+
 ## Qué pasa después {#next}
 
 Al restaurar, los miembros pueden volver a trabajar y el workflow puede actualizar el proyecto.

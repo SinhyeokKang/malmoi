@@ -31,7 +31,7 @@ Un workflow que usa `malmoi-i18n-push-v1` o `malmoi-i18n-push-v2` sigue funciona
 
 Al hacer commit del workflow en la rama base, se inicia. Para ejecutarlo de nuevo, abre **Actions** en GitHub, elige el workflow y elige **Run workflow**. Revisa el registro de la ejecución: `applied` significa que los archivos se cargaron y **Fuentes** está actualizado en Malmoi. Una ejecución en verde también puede informar `deferred` cuando hay ediciones sin enviar — la actualización se retiene y Registros la muestra como **Retenido**; consulta [Cuando cambia el código](../sync/push.md#deferred). Una ejecución fallida muestra su motivo en el registro. En Malmoi, la pestaña **Sincronizar** de Inicio muestra la última sincronización: **Sincronización de CI** como **Última sincronización**, su **Resultado** y cuántas traducciones cambió en **Cambiados**. **Registros de sincronización** lista todas las sincronizaciones.
 
-Para cambiar la rama base más adelante, cambia **Rama base** en **Configuración**, elige **Guardar** y edita el valor `branches:` del workflow. Si cambias el idioma base de una fuente, sigue [Añade fuentes](sources.md#base-language) para actualizar la entrada del workflow.
+Para cambiar la rama base más adelante, cambia **Rama base** en **Configuración**, elige **Guardar** y edita el valor `branches:` del workflow. Si cambias el idioma base de una fuente, sigue [Añade fuentes](../setup/sources.md#base-language) para actualizar la entrada del workflow.
 
 ## Qué pasa después {#next}
 

@@ -8,9 +8,13 @@ Antes de empezar: ten a mano el token de push de la página **Malmoi está listo
 
 1. En GitLab, abre **Settings** › **CI/CD** del proyecto, despliega **Variables** y selecciona **Add variable**. Llámala `PUSH_TOKEN`, pega el token de push como valor, selecciona **Protect variable** y deja **Visibility** en **Masked**.
 
+![El formulario Add variable de GitLab con PUSH_TOKEN como clave, la visibilidad Masked y Protect variable seleccionado](/guide/gitlab-ci-variable.webp "Llámala PUSH_TOKEN, deja Masked, selecciona Protect variable y pega el token como valor.")
+
 ## Protege la rama base {#protected-branch}
 
 1. Comprueba que la rama base que elegiste está protegida en GitLab; GitLab protege la rama predeterminada salvo que lo hayas cambiado. Una variable protegida solo llega a ramas protegidas, así que en una rama sin proteger los jobs fallan sin `PUSH_TOKEN`.
+
+![La configuración Protected branches de GitLab con la rama predeterminada main protegida y Maintainers con permiso para fusionar y hacer push](/guide/gitlab-protected-branch.webp "Comprueba que la rama base aparece en Protected branches.")
 
 ## Añade los jobs de CI {#gitlab-ci}
 

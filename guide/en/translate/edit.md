@@ -34,6 +34,8 @@ If part of the search fails, a line under the search box says which part failed 
 
 With an empty search, you see previews of **Projects**, **Pages**, and **Docs**. **Pages** takes you to screens in Malmoi, such as a project's Translations. **Projects** includes archived projects, while key results do not. Choose **Go to your projects** to see all of your projects, or **Go to docs** to open the docs. **Docs** searches guide titles and text and opens the matching section. Escape closes the search. Malmoi doesn't keep your search text in history or browser storage.
 
+![The search dialog with the word order typed, showing matching keys from two sources and matching Docs sections](/guide/global-search.webp "Select a key to open it in Translations.")
+
 ## See what needs you across projects {#inbox}
 
 Inbox lists what needs your attention in every project you belong to, so you don't have to open each project's **Home**. Open it with the inbox button between the divider and your avatar at the top right, from **Inbox** in the sidebar, or from your avatar menu. The button is also there on the docs, changelog, and privacy pages while you're signed in. When something is new since you last looked, the button shows how many items, and above nine it shows 9+; **Inbox** in the sidebar shows the full number.
@@ -60,9 +62,13 @@ While a sync from the repository is running (a project owner's **Sync** or the n
 
 Some projects do not allow an empty translation. If Malmoi refuses an empty field, enter a value or press Escape in that field to undo the edit, then save any other changes. Nothing is saved while the invalid empty edit remains.
 
+![Translations with a French value typed for a key, marked Not saved, and the Save button at the bottom of the panel](/guide/translation-edit.webp "Type the translation, then choose Save.")
+
 ## Leave unsaved changes {#unsaved-changes}
 
 If you change keys, filters, or pages with an unsaved edit, choose **Keep editing** or **Discard changes**. **Save** is locked while **Publish** is running. Refreshing or closing the page can also ask the browser to confirm.
+
+![The Discard your changes? dialog over Translations with Keep editing and Discard changes buttons](/guide/unsaved-changes.webp "Choose Keep editing to go back and save.")
 
 ## What happens next {#next}
 

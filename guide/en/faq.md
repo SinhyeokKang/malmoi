@@ -40,7 +40,7 @@ No. Without it, the nightly run picks up repository changes once a day. With it,
 
 ## Does Malmoi work with GitLab? {#gitlab}
 
-Yes, with repositories on GitLab.com. A project owner connects a legacy GitLab personal access token with the `api` scope and needs the Maintainer role or higher in the GitLab project. Translations come back as a merge request, attributed to the GitLab account whose token the project uses. GitLab Self-Managed and GitLab Dedicated are not supported. See [Connect GitLab](setup/connect-gitlab.md#connect-gitlab).
+Yes, with repositories on GitLab.com. A project owner connects a legacy GitLab personal access token with the `api` scope and needs the Maintainer role or higher in the GitLab project. Translations come back as a merge request, attributed to the GitLab account whose token the project uses. GitLab Self-Managed and GitLab Dedicated are not supported. See [Connect GitLab](create/gitlab.md#connect-gitlab).
 
 ## Does Malmoi have paid plans? {#pricing}
 

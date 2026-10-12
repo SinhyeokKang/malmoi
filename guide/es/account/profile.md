@@ -23,6 +23,8 @@ Los propietarios de proyectos usan la sección **GitHub App** para autorizar la 
 
 Si la autorización caduca, elige **Volver a autorizar la GitHub App**. Los proyectos que ya están conectados siguen sincronizándose mientras renuevas esta autorización.
 
+![Cuenta desplazada hasta las secciones GitHub App y GitLab PAT, cada una con su cuenta conectada y sus botones, sobre Sesiones](/guide/account-connections.webp "Gestiona el acceso a repositorios en las secciones GitHub App y GitLab PAT.")
+
 ## Gestiona el token de GitLab {#gitlab-token}
 
 Los propietarios de proyectos que usan repositorios de GitLab.com conectan un token de acceso personal de GitLab en la sección **GitLab PAT**. Los traductores pueden omitir esta sección.
@@ -41,6 +43,8 @@ Los proyectos que conectas publican con tu token, así que sus commits y merge r
 2. Usa el botón de confirmación del cuadro de diálogo, Continuar con GitHub o Continuar con Google. Malmoi elige uno de tus métodos de inicio de sesión conectados; sigue su confirmación de inicio de sesión.
 
 Esto también cierra la sesión del dispositivo que estás usando.
+
+![El diálogo para cerrar sesión en todas partes con los botones Cancelar y Continuar en GitHub](/guide/sign-out-everywhere.webp "Continúa en tu proveedor de inicio de sesión para confirmar.")
 
 ## Qué pasa después {#next}
 

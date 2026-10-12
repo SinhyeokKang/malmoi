@@ -34,6 +34,8 @@ Si una parte de la búsqueda falla, una línea bajo el cuadro de búsqueda indic
 
 Con la búsqueda vacía, ves vistas previas de **Proyectos**, **Páginas** y **Documentación**. **Páginas** te lleva a pantallas de Malmoi, como las Traducciones de un proyecto. **Proyectos** incluye los proyectos archivados, mientras que los resultados de claves no. Elige **Ir a tus proyectos** para ver todos tus proyectos, o **Ir a la documentación** para abrirla. **Documentación** busca en los títulos y el texto de la guía y abre la sección que coincide. Escape cierra la búsqueda. Malmoi no guarda el texto de tu búsqueda en el historial ni en el almacenamiento del navegador.
 
+![El diálogo de búsqueda con la palabra order escrita, que muestra claves coincidentes de dos fuentes y secciones coincidentes de la documentación](/guide/global-search.webp "Selecciona una clave para abrirla en Traducciones.")
+
 ## Mira lo que requiere tu atención en todos tus proyectos {#inbox}
 
 La bandeja de entrada reúne lo que requiere tu atención en todos los proyectos a los que perteneces, para que no tengas que abrir el **Inicio** de cada proyecto. Ábrela con el botón de bandeja de entrada, entre la línea divisoria y tu avatar arriba a la derecha, desde **Bandeja de entrada** en la barra lateral o desde el menú de tu avatar. Con la sesión iniciada, el botón también está en las páginas de documentación, novedades y privacidad. Cuando hay algo nuevo desde la última vez que miraste, el botón muestra cuántos elementos hay, y a partir de diez muestra 9+; **Bandeja de entrada** en la barra lateral muestra el número completo.
@@ -60,9 +62,13 @@ Mientras se ejecuta una sincronización desde el repositorio (la **Sincronizar**
 
 Algunos proyectos no permiten una traducción vacía. Si Malmoi rechaza un campo vacío, introduce un valor o pulsa Escape en ese campo para deshacer la edición y luego guarda los demás cambios. No se guarda nada mientras siga la edición vacía no válida.
 
+![Traducciones con un valor en francés escrito para una clave, marcado como No guardado, y el botón Guardar al pie del panel](/guide/translation-edit.webp "Escribe la traducción y elige Guardar.")
+
 ## Salir con cambios sin guardar {#unsaved-changes}
 
 Si cambias de claves, filtros o páginas con una edición sin guardar, elige **Seguir editando** o **Descartar cambios**. **Guardar** está bloqueado mientras **Publicar** se está ejecutando. Actualizar o cerrar la página también puede hacer que el navegador pida confirmación.
+
+![El diálogo para descartar los cambios sobre Traducciones, con los botones Seguir editando y Descartar cambios](/guide/unsaved-changes.webp "Elige Seguir editando para volver y guardar.")
 
 ## Qué pasa después {#next}
 

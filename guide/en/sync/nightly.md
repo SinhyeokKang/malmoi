@@ -35,7 +35,7 @@ If the nightly run can't read the repository's branch, or GitHub or GitLab doesn
 
 ## Nightly sync or the workflow {#workflow}
 
-The workflow is optional. Without it, the nightly run picks up repository changes once a day. With [the workflow](../setup/workflow.md), your repository's GitHub Actions workflow, or its [GitLab CI jobs](../setup/gitlab-ci.md), deliver changes on every commit to that branch, and also collect code references. In **Logs**, workflow runs are marked **CI**; CI is your repository's workflow.
+The workflow is optional. Without it, the nightly run picks up repository changes once a day. With [the workflow](../create/workflow.md), your repository's GitHub Actions workflow, or its [GitLab CI jobs](../create/gitlab-ci.md), deliver changes on every commit to that branch, and also collect code references. In **Logs**, workflow runs are marked **CI**; CI is your repository's workflow.
 
 ## What happens next {#next}
 

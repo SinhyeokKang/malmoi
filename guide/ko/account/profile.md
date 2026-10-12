@@ -23,6 +23,8 @@
 
 승인이 만료되면 **GitHub App 다시 승인**을 선택합니다. 이미 연결된 프로젝트는 승인을 업데이트하는 동안에도 계속 동기화됩니다.
 
+![계정 페이지를 GitHub App과 GitLab PAT 구역까지 내려, 각 구역에 연결된 계정과 버튼이 보이고 그 아래에 세션이 있는 모습](/guide/account-connections.webp "GitHub App과 GitLab PAT 구역에서 리포지토리 접근을 관리합니다.")
+
 ## GitLab 토큰 관리 {#gitlab-token}
 
 GitLab.com 리포지토리를 쓰는 프로젝트 소유자는 **GitLab PAT** 영역에 GitLab 개인 액세스 토큰을 연결합니다. 번역자는 이 영역을 건너뛰어도 됩니다.
@@ -41,6 +43,8 @@ GitLab.com 리포지토리를 쓰는 프로젝트 소유자는 **GitLab PAT** �
 2. 대화상자의 확인 버튼을 누릅니다. GitHub로 계속 또는 Google로 계속 중 하나가 표시됩니다. Malmoi가 연결된 로그인 수단 중 하나를 고르며, 그 서비스의 본인 확인을 거칩니다.
 
 지금 사용 중인 기기에서도 로그아웃됩니다.
+
+![모든 기기에서 로그아웃 확인창에 취소와 GitHub로 계속 버튼이 보이는 모습](/guide/sign-out-everywhere.webp "로그인 공급자로 이동해 확인합니다.")
 
 ## 다음 단계 {#next}
 

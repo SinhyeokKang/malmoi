@@ -19,8 +19,9 @@ const ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 const LOCALES = ["en", "ko", "es"] as const;
 
 // 2026-10-13 사용자: 프로젝트 만들기를 Set up에서 떼어 호스트별 장(`create/`)으로 — 브랜치 이후 단계는 두 페이지에 중복돼도 된다.
-const GITHUB_ONLY = ["create/github", "create/workflow", "create/allowed-actions", "sync/merging"] as const;
-const GITLAB_ONLY = ["create/gitlab", "create/gitlab-ci", "sync/merging-gitlab"] as const;
+// 같은 날 사용자: 트러블슈팅도 호스트마다 한 페이지 — 오류를 재현한 컷이 호스트마다 다르다.
+const GITHUB_ONLY = ["create/github", "create/workflow", "create/allowed-actions", "sync/merging", "reference/troubleshooting-github"] as const;
+const GITLAB_ONLY = ["create/gitlab", "create/gitlab-ci", "sync/merging-gitlab", "reference/troubleshooting-gitlab"] as const;
 /** Set up 장에 남는 것 — 만들기가 끝난 프로젝트를 다루는 페이지만. */
 const SETUP_PAGES = ["setup/members", "setup/sources", "setup/archive"] as const;
 
@@ -52,7 +53,7 @@ describe("호스트별 가이드 분리", () => {
       expect(at(slug), slug).toBeLessThan(at("setup/README"));
     }
     for (const slug of SETUP_PAGES) expect(at(slug), slug).toBeGreaterThan(at("setup/README"));
-    for (const gone of ["setup/create-project", "setup/connect-github", "setup/connect-gitlab", "setup/workflow", "setup/allowed-actions", "setup/gitlab-ci"]) {
+    for (const gone of ["setup/create-project", "setup/connect-github", "setup/connect-gitlab", "setup/workflow", "setup/allowed-actions", "setup/gitlab-ci", "reference/troubleshooting"]) {
       expect(summary, gone).not.toContain(`(${gone}.md)`);
     }
   });
@@ -65,6 +66,7 @@ describe("호스트별 가이드 분리", () => {
       "setup/workflow": "/docs/create/workflow",
       "setup/allowed-actions": "/docs/create/allowed-actions",
       "setup/gitlab-ci": "/docs/create/gitlab-ci",
+      "reference/troubleshooting": "/docs/reference/troubleshooting-github",
     });
     expect(SECTION_LEGACY_ANCHORS["create"]).toMatchObject({
       "connect-github": "/docs/create/github#connect-github",
@@ -72,5 +74,6 @@ describe("호스트별 가이드 분리", () => {
     });
     expect(SECTION_LEGACY_ANCHORS["create/workflow"]).toMatchObject({ "gitlab-ci": "/docs/create/gitlab-ci#gitlab-ci" });
     expect(SECTION_LEGACY_ANCHORS["sync/merging"]).toMatchObject({ "merging-gitlab": "/docs/sync/merging-gitlab#merging-gitlab" });
+    expect(SECTION_LEGACY_ANCHORS["reference/troubleshooting-github"]).toMatchObject({ "gitlab-access": "/docs/reference/troubleshooting-gitlab#gitlab-access" });
   });
 });
