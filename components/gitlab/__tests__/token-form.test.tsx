@@ -65,15 +65,40 @@ it.each([
   ["token-fine-grained", en.errors.gitlab["token-fine-grained"]],
   ["token-invalid", en.errors.gitlab["token-invalid"]],
   ["unavailable", en.errors.gitlab.unavailable],
-] as const)("거부 %s는 입력 아래 오류로 서고 aria-describedby·aria-invalid로 이어진다", async (error, text) => {
+] as const)("거부 %s는 도움말 아래 danger Alert이고 도움말이 남는다 — aria-describedby·aria-invalid로 이어진다 (#246)", async (error, text) => {
   connectGitLab.mockResolvedValue({ ok: false, error });
   const { container, input, button, onConnected } = await form();
   await type(input, "glpat-abc");
   await act(async () => button.click());
   const ids = (input.getAttribute("aria-describedby") ?? "").split(" ");
-  expect(ids.map((id) => container.querySelector(`[id="${id}"]`)?.textContent ?? "").join(" ")).toContain(text);
+  const described = ids.map((id) => container.querySelector(`[id="${id}"]`));
+  const alert = described.find((el) => el?.textContent?.includes(text));
+  expect(alert, "Alert가 입력의 설명이다").toBeDefined();
+  // 인라인 필드 오류(FormGroup error)가 아니라 Alert 프리미티브다 — 도움말을 대신하지 않는다.
+  expect(alert?.closest("[data-field-error]")).toBeNull();
+  expect(container.textContent).toContain(en.account.gitlab.form.help);
   expect(input.getAttribute("aria-invalid")).toBe("true");
   expect(onConnected).not.toHaveBeenCalled();
+});
+
+it("빈 입력에서 [Connect]는 꺼진 형(aria-disabled)이고 도움말이 이유를 말한다 (#244)", async () => {
+  const { container, input, button } = await form();
+  expect(button.getAttribute("aria-disabled")).toBe("true");
+  const reason = (button.getAttribute("aria-describedby") ?? "").split(" ").map((id) => container.querySelector(`[id="${id}"]`)?.textContent ?? "").join(" ");
+  expect(reason).toContain(en.account.gitlab.form.help);
+  await type(input, "glpat-abc");
+  expect(button.getAttribute("aria-disabled")).toBeNull();
+});
+
+it("검증 중엔 상태 줄이 role=status로 선다 (#245)", async () => {
+  let resolve!: (value: unknown) => void;
+  connectGitLab.mockReturnValue(new Promise((r) => { resolve = r; }));
+  const { container, input, button } = await form();
+  await type(input, "glpat-abc");
+  await act(async () => button.click());
+  expect(container.querySelector('[role="status"]')?.textContent).toBe(en.account.gitlab.form.checking);
+  await act(async () => resolve({ ok: false, error: "token-invalid" }));
+  expect(container.querySelector('[role="status"]')).toBeNull();
 });
 
 it("빈 값은 보내지 않는다", async () => {
