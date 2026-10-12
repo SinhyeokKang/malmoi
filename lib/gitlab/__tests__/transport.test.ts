@@ -68,13 +68,14 @@ describe("주소 계약 — 숫자 id로만 부른다", () => {
     await expect(fake.fetch("https://gitlab.com/api/graphql", { method: "POST", body: JSON.stringify({ query: "{ project(fullPath: \"a/b\") { id } }" }) })).rejects.toThrow(/address contract/);
   });
 
-  it("⚠️ 점 세그먼트로 다른 project id에 닿는 경로는 정규화 뒤에 다시 막는다 — fetch 호출 0회(audit A8)", async () => {
+  it("⚠️ 점 세그먼트로 다른 project id에 닿는 경로 등 정규화가 바꾸는 경로는 전송 전에 막는다 — fetch 호출 0회(audit A8)", async () => {
     const fake = createFakeGitLabFetch({});
     const transport = createGitLabTransport("t", { fetch: fake.fetch });
     // `new URL`이 `..`·`%2e%2e`를 정규화해 `/projects/2/…`가 된다 — 전송 전 문자열 가드는 `/projects/1/repository/…`로 본다.
-    for (const path of ["/projects/1/repository/../../2/repository/commits", "/projects/1/repository/%2e%2e/%2E%2E/2/repository/commits", "/projects/1/./repository/tree"]) {
-      await expect(transport.get(path), path).rejects.toThrow(/dot segments/);
-      await expect(transport.send("POST", path, { body: {} }), path).rejects.toThrow(/dot segments/);
+    // 점 세그먼트만이 아니다 — 인코딩 안 된 공백·`#`처럼 정규화가 경로를 바꾸는 호출부 실수도 같은 가드가 막는다.
+    for (const path of ["/projects/1/repository/../../2/repository/commits", "/projects/1/repository/%2e%2e/%2E%2E/2/repository/commits", "/projects/1/./repository/tree", "/projects/1/repository/branches/a b", "/projects/1/repository/branches/a#b"]) {
+      await expect(transport.get(path), path).rejects.toThrow(/normalization changed the path/);
+      await expect(transport.send("POST", path, { body: {} }), path).rejects.toThrow(/normalization changed the path/);
     }
     expect(fake.calls).toEqual([]);
   });
