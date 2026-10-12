@@ -330,3 +330,68 @@ self-hosted 설치가 만든 워크플로는 **`api-url`을 항상 든다** — 
 `/api/pull`은 **말모이의 Vercel Cron**이 부른다 (`vercel.json`, UTC 18:00 = KST 03:00). 대상 리포에 pull용 워크플로를 넣지 않는다 — 리포 쓰기는 말모이의 GitHub App이 하고, 대상 리포의 `GITHUB_TOKEN`은 이 경로에 들어오지 않는다 (ARCHITECTURE §6).
 
 **야간은 리포에서 받기도 한다** (2026-09-30, nightly-sync). 미전달 편집이 없는 프로젝트는 base head가 마지막 적재와 다르고 열린 말모이 PR이 없으면 서버가 리포를 직접 읽어 적재한다(ARCHITECTURE §3.05). 그래서 **이 워크플로는 필수가 아니다** — 붙이지 않으면 리포 변경이 하루 한 번 들어오고, 붙이면 커밋마다 즉시 들어온다. 야간 적재는 서버 적재 예산(파일 200개·파일당 2MB·총 10MB — `lib/onboarding/budget.ts`, 그리고 잘리지 않은 트리)을 지나므로, 그보다 큰 리포는 야간이 매일 `too-large`로 보류하고 이 워크플로가 유일한 자동 경로다.
+
+## 5. GitLab 프로젝트 — `.gitlab-ci.yml` job (gitlab-repositories)
+
+GitLab 리포의 CI 적재는 composite action 대신 **생성 job이 말모이 리포를 불변 태그로 clone하고 박힌 commit SHA와 대조한 뒤** 같은 생산자(`push:local` → `lib/push/payload.ts`)를 돈다(결정 D5). GitLab에는 composite action이 없고, `include: remote`·브랜치 ref로 받으면 말모이 쪽 커밋 하나가 `PUSH_TOKEN`을 든 남의 러너에서 즉시 돈다 — 위 `@main` 금지와 같은 부류다.
+
+| 자리 | 파일 |
+|---|---|
+| 원본(러너에서 도는 것) | `.gitlab/malmoi-i18n-push/push.sh`(루프 가드 둘째 겹 · Node 판 확인 · pnpm 설치 · `pnpm install --frozen-lockfile`) → `run.ts`(입력 변환 · 열린 MR 사전 안내 · `push:local`) |
+| 입력 변환(순수) | `lib/cli/gitlab-ci-input.ts` — job 변수·`CI_*` → `push:local` 인자/스킵. action v3의 `with:` → 플래그 셸의 짝 |
+| 생성기 | `lib/onboarding/gitlab-ci.ts`의 `renderProjectGitlabCiYaml` — `renderProjectWorkflowYaml`의 짝. 같은 `workflowSurfaceOf`·`workflowApiUrl` 결과를 받는다 |
+
+**CI/CD 변수 하나**: `PUSH_TOKEN` — 그 프로젝트의 토큰 원문(GitHub의 secret과 같은 값·같은 규칙). Settings → CI/CD → Variables에서 **Protected + Masked**로 둔다. ⚠️ **Protected 변수는 보호 브랜치·태그의 파이프라인에만 들어간다** — base 브랜치가 보호 브랜치가 아니면 job이 `PUSH_TOKEN이 없다`로 red다(GitLab은 기본 브랜치를 기본으로 보호한다). 토큰은 base64url 43자라 마스킹 조건(한 줄·공백 없음·8자 이상)을 만족한다. job 변수(`variables:`)에 토큰을 적지 않는다 — 리포 파일에 원문이 남는다.
+
+<!-- gitlab-ci -->
+```yaml
+.malmoi-i18n-order-check:
+  image: node:24.20.0-bookworm@sha256:be23f54a88d34e8824c741b19b91064094f92c1c97b194144bfc8b50d67258e2
+  # Runs only for pushes to the base branch, and not for commits Malmoi made — without the marker check, push and Publish call each other.
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $MALMOI_I18N_BASE_BRANCH && $CI_COMMIT_MESSAGE !~ /\[skip-malmoi-i18n\]/'
+  interruptible: true
+  variables:
+    MALMOI_I18N_PUSH_TAG: malmoi-i18n-push-gitlab-v1
+    MALMOI_I18N_PUSH_SHA: "unreleased"   # 릴리스 때 태그 커밋의 40자 SHA로 채운다(아래 "릴리스 축")
+    MALMOI_I18N_BASE_BRANCH: "main"       # 대상 리포의 base 브랜치 — 설정 화면에서 바꾸면 이 줄도 고친다
+    MALMOI_I18N_PROJECT: "order-check"
+  script:
+    - rm -rf .malmoi
+    - git clone --quiet --depth 1 --branch "$MALMOI_I18N_PUSH_TAG" https://github.com/SinhyeokKang/malmoi.git .malmoi
+    # Refuses to run anything the pinned commit didn't contain, even if the tag moves.
+    - '[ "$(git -C .malmoi rev-parse HEAD)" = "$MALMOI_I18N_PUSH_SHA" ] || { echo "Malmoi push script does not match the pinned commit"; exit 1; }'
+    - .malmoi/.gitlab/malmoi-i18n-push/push.sh
+
+malmoi-i18n-order-check-default:
+  extends: .malmoi-i18n-order-check
+  variables:
+    MALMOI_I18N_SURFACE: "default"
+    MALMOI_I18N_PATH_TEMPLATE: "i18n/{locale}.json"
+    MALMOI_I18N_ADAPTER: "json-catalog"
+    MALMOI_I18N_BASE: "en"
+```
+
+⚠️ **위 블록이 정본이다** — `lib/onboarding/__tests__/gitlab-ci.test.ts`가 `<!-- gitlab-ci -->` 뒤 첫 YAML 블록을 주석·빈 줄을 뺀 채 생성기 출력과 줄 단위로 대조한다(§2의 GitHub 블록과 같은 결). 2026-10-12 GitLab CI lint API(`POST /projects/:id/ci/lint`, `dry_run`)로 이 모양이 valid이고 base가 아닌 브랜치에서는 job이 0개임을 확인했다 — 실제 러너 실행은 아직이다.
+
+**모양이 GitHub과 다른 점**
+
+- **표면마다 job 하나**다(숨은 기반 job `.malmoi-i18n-<slug>`를 `extends`). GitHub은 한 job에 step을 잇지만, GitLab에서 표면 값을 셸 인자로 넘기지 않고 `variables`(셸이 해석하지 않는다)로만 넘기려고 job을 나눴다. job 이름에 프로젝트 slug가 드는 것은 한 리포의 두 프로젝트가 같은 이름의 job으로 서로를 덮지 않게 하려는 것이다(GitHub `concurrency.group`의 slug와 같은 이유). 표면이 늘면 Settings가 낸 파일 전체를 다시 붙인다.
+- **base 브랜치는 변수 비교**(`$CI_COMMIT_BRANCH == $MALMOI_I18N_BASE_BRANCH`)다 — 사용자가 고른 이름의 따옴표가 rules 식을 깨지 않게. 변수 값의 `$`는 `$$`로 적는다(GitLab이 변수 값을 다시 전개한다).
+- **`interruptible: true`** — 같은 브랜치의 새 파이프라인이 옛 실행을 끊는다(프로젝트 설정 "Auto-cancel redundant pipelines", 기본 켬). strict라 마지막 상태가 진실이다.
+- **push 파이프라인만** 돈다 — `workflow_dispatch`에 해당하는 수동 실행(`web`)은 rules가 거른다. 다시 돌리려면 그 파이프라인의 job을 Retry한다(소스는 `push` 그대로다).
+- **루프 가드가 두 겹**이다 — rules의 정규식(첫 겹)과 `push.sh`의 `*"[skip-malmoi-i18n]"*`(둘째 겹, 의존성 설치 전). `lib/cli/gitlab-ci-input.ts`가 push·base·마커를 한 번 더 본다(손으로 고친 rules 대비). 리터럴 소비자 집계는 `lib/pull/__tests__/skip-marker.test.ts`가 든다.
+
+**릴리스 축** — 태그 `malmoi-i18n-push-gitlab-vN`은 앱 태그 `v<x.y.z>`·GitHub action 태그 `malmoi-i18n-push-vN`과 별개다. ⚠️ **아직 발행 전이다**(2026-10-12) — 생성기의 상수 `GITLAB_CI_RELEASE`(`lib/onboarding/gitlab-ci.ts`)가 `sha: null`이고, 그동안 생성 job은 `MALMOI_I18N_PUSH_SHA: "unreleased"`를 박아 **대조에서 실패한다**(fail-closed — 박힌 SHA 없이 태그 코드를 돌리는 길을 만들지 않는다). 첫 발행은 action 릴리스와 같은 절차다: `main`에 머지된 커밋에 태그를 만들고 → 그 40자 SHA를 상수와 이 문서 블록에 같은 커밋으로 넣는다. **태그를 옮길 때도 SHA를 함께 바꾼다** — 옮긴 태그와 옛 SHA가 갈리면 그 판의 job이 전부 대조에서 red다(그것이 의도된 방어다). 호환이 깨지는 변경이면 `-v2`를 새로 끊는다.
+
+**이미지** — Node 24 공식 이미지(`bookworm` — clone에 `git`이 필요하다)를 버전 태그 + 인덱스 digest로 고정한다. 러너는 `github.com`(clone)·`registry.npmjs.org`(pnpm·의존성)·말모이 배포(`api-url`)에 나갈 수 있어야 한다. `push.sh`는 `.nvmrc`의 major와 다르면 경고만 한다.
+
+**열린 MR** — 게이트의 정본은 GitHub과 같이 **서버**다: 열린 Malmoi MR이 있으면 `/api/push`가 `deferred`(`open-pr`, 조회 실패면 `pr-check-failed`)로 적재 전체를 보류한다. `run.ts`는 push 전에 안내 한 줄을 찍는다 — `CI_JOB_TOKEN`이 같은 프로젝트의 `GET /projects/:id/merge_requests`를 허용하므로(GitLab 문서 "CI/CD job token" 접근 표, 2026-10-12 확인) 별도 토큰이 필요 없다. source·target 프로젝트가 이 프로젝트인 MR만 센다(동명 fork MR 제외). 조회 실패는 "없음"으로 읽지 않고 경고로 찍으며 red가 아니다.
+
+**결과 판정은 §3 표와 같다** — 같은 `push:local`이라서다. 보류는 200·exit 0이고 경고 줄이 붙는다(⚠️ 그 줄은 GitHub 워크플로 명령 모양 `::warning title=…::`이라 GitLab 로그에는 그 텍스트 그대로 보인다 — 주석이 아니라 job 로그 한 줄이다). `unmanaged` 등 경고는 red가 아니다. 적재 실패는 `/api/push/failure`로 한 번 보고되고(적재 없음, `lastCommitSha`를 전진시키지 않는다 — 전진시키면 다음 push가 `stale-commit` 409) red다. 오래된 파이프라인을 Retry하면 커밋 역행 409로 red다 — 새 push나 야간 동기화가 최신을 받는다.
+
+**머지 방식** — merge commit(기본 템플릿 `Merge branch '…' into '…'` + `%{title}`)·squash(기본 템플릿 `%{title}`)·fast-forward 모두 마커가 남는다(MR 제목과 스냅샷 커밋 메시지 둘 다에 마커가 있다). ⚠️ **merge·squash 커밋 메시지 템플릿은 프로젝트마다 바꿀 수 있다** — `%{title}`도 `%{first_commit}`도 싣지 않는 사용자 템플릿이면 마커가 base 커밋에 남지 않아 가드 두 겹이 못 잡는다(POSTMORTEM 2026-09-17과 같은 부류). 그때 남는 방어선은 서버의 미전달·열린 MR·`publish-raced` 보류다. 템플릿을 바꾸는 팀은 `%{title}`을 남긴다.
+
+**셀프 호스팅** — 설치가 만든 job은 기반 job에 **`MALMOI_I18N_API_URL`을 항상 든다**(`workflowApiUrl` — 빠지면 push 토큰 원문이 호스팅 서비스로 간다). 공급망 의존은 §2 "self-hosted 설치"와 같다 — 생성 job은 상류 GitHub 리포의 불변 태그를 clone한다. 받아들일 수 없는 운영자는 포크해 clone URL·SHA를 그 포크로 바꾼다.
+
+**대상 리포 파일**: `.gitlab-ci.yml`에 위 job을 붙인다(기존 파일이 있으면 덧붙인다 — job은 기본 `test` stage에 들어간다. `stages:`를 직접 정의한 리포는 `test`가 목록에 있어야 하고, 없으면 각 표면 job에 `stage:`를 더한다).
