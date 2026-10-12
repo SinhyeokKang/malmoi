@@ -19,7 +19,7 @@ import { connectErrorMessage, isConnectError } from "@/lib/github-connect/messag
 import { getDateStyle, getMessages } from "@/lib/i18n/server";
 import { requestOrigin } from "@/lib/github-connect/origin";
 import { planWorkflowStale, workflowApiUrl, workflowSurfaceOf } from "@/lib/onboarding/workflow";
-import { ciFileOf } from "@/lib/mcp/tools/ci-file";
+import { ciFileOf } from "@/lib/onboarding/ci-file";
 import { RepoHostScope } from "@/components/i18n/messages-provider";
 import { withRepoHost } from "@/lib/i18n/host";
 import { githubAppConfigured } from "@/lib/deployment/github-app";

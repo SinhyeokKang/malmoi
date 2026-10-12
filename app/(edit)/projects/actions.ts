@@ -1,6 +1,6 @@
 "use server";
 
-import { ciFileOf } from "@/lib/mcp/tools/ci-file";
+import { ciFileOf } from "@/lib/onboarding/ci-file";
 import { parseReviewUrl } from "@/lib/projects/pr-url";
 
 import { fail, logCaught } from "@/lib/failure";

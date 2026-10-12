@@ -13,7 +13,7 @@ import { planProjectReadiness } from "@/lib/onboarding/readiness";
 import { workflowSurfaceOf } from "@/lib/onboarding/workflow";
 
 import { checkProjectTool } from "./access";
-import { ciFileOf } from "./ci-file";
+import { ciFileOf } from "@/lib/onboarding/ci-file";
 import { defineTool, ok } from "./define";
 
 /**

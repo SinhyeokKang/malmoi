@@ -9,7 +9,7 @@ import { settleRevalidate } from "@/lib/revalidate-after-commit";
 
 import type { ToolOutcome } from "../result";
 import { checkCreateTool, checkProjectTool } from "./access";
-import { ciFileOf, gitlabCiReleased, GITHUB_WORKFLOW_PATH } from "./ci-file";
+import { ciFileOf, gitlabCiReleased, GITHUB_WORKFLOW_PATH } from "@/lib/onboarding/ci-file";
 import { coreSubject, defineTool, ok } from "./define";
 import { NewRepoFields, newRepoOf } from "./repos";
 
