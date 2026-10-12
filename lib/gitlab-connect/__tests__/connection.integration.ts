@@ -13,6 +13,7 @@ import { optionalEnv } from "@/lib/env";
 import { createFakeGitLabFetch, type FakeRoute } from "@/lib/gitlab/__tests__/fake-fetch";
 import { runRepositoryImportFromReader } from "@/lib/import/run";
 import { reconnectGitLabProject } from "@/lib/onboarding-run/gitlab-reconnect";
+import { rotateToken } from "@/lib/onboarding-run/rotate-token";
 import { projectStatus } from "@/lib/projects/list";
 import { sizesFromSnapshot, type RepoReader } from "@/lib/repo-host/reader";
 import { REPO_COLUMNS, repoTargetOf } from "@/lib/repo-host/target";
@@ -53,7 +54,16 @@ beforeEach(async () => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
+
+/** 콘솔 넷을 엿본다 — 원문 PAT가 로그에 0건이어야 한다(spec 완료 조건 11). 원래 출력은 막는다. */
+function spyConsole() {
+  return (["error", "warn", "log", "info"] as const).map((level) => vi.spyOn(console, level).mockImplementation(() => {}));
+}
+function logged(spies: ReturnType<typeof spyConsole>): string {
+  return JSON.stringify(spies.flatMap((spy) => spy.mock.calls), (_key, value: unknown) => (value instanceof Error ? `${value.name}: ${value.message}` : value));
+}
 
 afterAll(async () => {
   await prisma?.$disconnect();
@@ -174,7 +184,8 @@ describe("PAT 입력·교체·해제", () => {
     expect(await prisma.gitLabConnection.count()).toBe(0);
     const { row, status } = await listRow("p1");
     expect(status).toBe("needs_reconnect");
-    expect(repoTargetOf(row)).toEqual({ status: "not-connected" });
+    // D21 — 설치 없음(`not-connected`)이 아니라 연결 참조 비움이다(모든 화면에서 Disconnected).
+    expect(repoTargetOf(row)).toEqual({ status: "connection-removed" });
     // 이미 없는 연결의 해제도 성공이다.
     expect(await disconnectGitLabAccount(prisma, "owner-a")).toEqual({ ok: true, disconnected: false });
   });
@@ -258,6 +269,107 @@ describe("연결자가 떠나면 끊긴다 · 다른 OWNER의 재연결", () => 
     await prisma.project.update({ where: { id: "p1" }, data: { archivedAt: new Date() } });
     expect(await reconnectGitLabProject(prisma, { userId: "owner-a" }, { slug: "p1" })).toEqual({ ok: false, error: "archived" });
     expect(fake.calls).toEqual([]);
+  });
+});
+
+describe("연결이 끊기면 사건이 남는다 (D20)", () => {
+  beforeEach(seedUsers);
+
+  const disconnectedEvents = (projectId: string) =>
+    prisma.projectEvent.findMany({ where: { projectId, subtype: "settings.repositoryDisconnected" }, select: { actorUserId: true, payload: true } });
+
+  it("⚠️ 계정 연결 해제는 참조하던 프로젝트마다 같은 tx에서 사건을 남긴다 — 행위자는 해제한 사람, 남의 연결을 쓰는 프로젝트는 그대로", async () => {
+    await connect("owner-a", TOKEN_A, 101, "alice");
+    await connect("owner-b", TOKEN_B, 202, "bob");
+    const a = await prisma.gitLabConnection.findUniqueOrThrow({ where: { userId: "owner-a" } });
+    const b = await prisma.gitLabConnection.findUniqueOrThrow({ where: { userId: "owner-b" } });
+    await seedGitLabProject("p1", a.id, [{ userId: "owner-a", role: "OWNER" }]);
+    await seedGitLabProject("p2", a.id, [{ userId: "owner-a", role: "OWNER" }]);
+    await seedGitLabProject("p3", b.id, [{ userId: "owner-b", role: "OWNER" }]);
+
+    expect(await disconnectGitLabAccount(prisma, "owner-a")).toEqual({ ok: true, disconnected: true });
+    for (const id of ["p1", "p2"]) {
+      expect(await disconnectedEvents(id)).toEqual([{ actorUserId: "owner-a", payload: { kind: "SETTINGS", field: "repository", value: { before: "group/sub/app", after: null } } }]);
+      expect((await listRow(id)).status).toBe("needs_reconnect");
+    }
+    expect(await disconnectedEvents("p3")).toEqual([]);
+    expect((await listRow("p3")).status).toBe("active");
+    // 이미 없는 연결의 해제는 사건을 더하지 않는다.
+    await disconnectGitLabAccount(prisma, "owner-a");
+    expect(await disconnectedEvents("p1")).toHaveLength(1);
+  });
+
+  it("⚠️ 연결자 제거는 `member.removed`와 같은 tx에서 같은 사건을 남긴다 — 행위자는 제거한 사람", async () => {
+    await connect("owner-a", TOKEN_A, 101, "alice");
+    const a = await prisma.gitLabConnection.findUniqueOrThrow({ where: { userId: "owner-a" } });
+    await seedGitLabProject("p1", a.id, [{ userId: "owner-a", role: "OWNER" }, { userId: "owner-b", role: "OWNER" }]);
+    await seedGitLabProject("p2", a.id, [{ userId: "owner-a", role: "OWNER" }, { userId: "owner-b", role: "OWNER" }]);
+
+    expect(await changeMemberRole(prisma, { userId: "owner-b" }, { slug: "p1", targetUserId: "owner-a", nextRole: null })).toEqual({ ok: true });
+    expect(await disconnectedEvents("p1")).toEqual([{ actorUserId: "owner-b", payload: { kind: "SETTINGS", field: "repository", value: { before: "group/sub/app", after: null } } }]);
+    expect(await prisma.projectEvent.count({ where: { projectId: "p1", subtype: "member.removed" } })).toBe(1);
+    expect(await disconnectedEvents("p2")).toEqual([]);
+    // 연결자가 아닌 멤버의 제거는 연결 사건을 남기지 않는다.
+    expect(await changeMemberRole(prisma, { userId: "owner-a" }, { slug: "p2", targetUserId: "owner-b", nextRole: null })).toEqual({ ok: true });
+    expect(await disconnectedEvents("p2")).toEqual([]);
+  });
+});
+
+describe("push 토큰 회전 — GitLab 쓰기 권한 (tasks §2 B2)", () => {
+  beforeEach(seedUsers);
+
+  it("⚠️ Developer OWNER는 repo-read-only, Maintainer OWNER는 통과한다 — 호출자 자신의 PAT로 묻는다", async () => {
+    await connect("owner-a", TOKEN_A, 101, "alice");
+    await connect("owner-b", TOKEN_B, 202, "bob");
+    const a = await prisma.gitLabConnection.findUniqueOrThrow({ where: { userId: "owner-a" } });
+    await seedGitLabProject("p1", a.id, [{ userId: "owner-a", role: "OWNER" }, { userId: "owner-b", role: "OWNER" }]);
+
+    vi.stubGlobal("fetch", createFakeGitLabFetch(accessRoutes(202, 30)).fetch);
+    expect(await rotateToken(prisma, { userId: "owner-b" }, { slug: "p1" })).toEqual({ ok: false, error: "repo-read-only" });
+    expect((await prisma.project.findUniqueOrThrow({ where: { id: "p1" } })).pushTokenHash).toBeNull();
+
+    const fake = createFakeGitLabFetch(accessRoutes(101, 40));
+    vi.stubGlobal("fetch", fake.fetch);
+    const rotated = await rotateToken(prisma, { userId: "owner-a" }, { slug: "p1" });
+    expect(rotated).toMatchObject({ ok: true });
+    expect((await prisma.project.findUniqueOrThrow({ where: { id: "p1" } })).pushTokenHash).not.toBeNull();
+    expect(fake.calls.every((call) => call.headers.get("PRIVATE-TOKEN") === TOKEN_A)).toBe(true);
+  });
+
+  it("참조가 빈 프로젝트는 원격 호출 0으로 gitlab-project-disconnected다(D21)", async () => {
+    await connect("owner-a", TOKEN_A, 101, "alice");
+    const a = await prisma.gitLabConnection.findUniqueOrThrow({ where: { userId: "owner-a" } });
+    await seedGitLabProject("p1", a.id, [{ userId: "owner-a", role: "OWNER" }]);
+    await prisma.project.update({ where: { id: "p1" }, data: { gitlabConnectionId: null } });
+    const fake = createFakeGitLabFetch({});
+    vi.stubGlobal("fetch", fake.fetch);
+    expect(await rotateToken(prisma, { userId: "owner-a" }, { slug: "p1" })).toEqual({ ok: false, error: "gitlab-project-disconnected" });
+    expect(fake.calls).toEqual([]);
+  });
+});
+
+describe("원문 PAT는 로그에 0건이다 (spec 완료 조건 11)", () => {
+  beforeEach(seedUsers);
+
+  it("연결·교체 실패·재연결·회전·해제·원격 실패 전부에서 콘솔에 PAT가 실리지 않는다", async () => {
+    const spies = spyConsole();
+    await connect("owner-a", TOKEN_A, 101, "alice");
+    await connect("owner-b", TOKEN_B, 202, "bob");
+    await connect("owner-a", TOKEN_B, 202, "bob");
+    for (const status of [401, 403, 500]) {
+      await connectGitLabAccount(prisma, "owner-a", TOKEN_A2, { fetch: createFakeGitLabFetch({ "GET /personal_access_tokens/self": { status } }).fetch });
+    }
+    const a = await prisma.gitLabConnection.findUniqueOrThrow({ where: { userId: "owner-a" } });
+    await seedGitLabProject("p1", a.id, [{ userId: "owner-a", role: "OWNER" }, { userId: "owner-b", role: "OWNER" }]);
+    vi.stubGlobal("fetch", createFakeGitLabFetch({ [`GET /projects/${REPO}`]: { status: 502 } }).fetch);
+    await reconnectGitLabProject(prisma, { userId: "owner-b" }, { slug: "p1" });
+    vi.stubGlobal("fetch", createFakeGitLabFetch(accessRoutes(202, 40)).fetch);
+    await reconnectGitLabProject(prisma, { userId: "owner-b" }, { slug: "p1" });
+    await rotateToken(prisma, { userId: "owner-b" }, { slug: "p1" });
+    await disconnectGitLabAccount(prisma, "owner-b");
+    // 콘솔이 실제로 무엇인가 받았다 — 원격 실패는 분류를 로그에 남긴다(검사가 공허하지 않게).
+    expect(spies.some((spy) => spy.mock.calls.length > 0)).toBe(true);
+    expect(logged(spies)).not.toMatch(/glpat-/);
   });
 });
 

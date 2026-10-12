@@ -303,7 +303,10 @@ const GITLAB_IO_SOURCES = sourcesIn(join(ROOT, "lib/gitlab"), "lib/gitlab");
 const CALLER_CONNECTION = /openGitLabConnection\(\s*[^,]+,\s*\{\s*userId\b/;
 /** 호출자 연결을 열어도 되는 자리 — 호출자의 리포 권한(`checkRepoAccess`)과 ①의 리포 목록. 둘 다 그 사람이 무엇을 볼 수 있나를 묻는다(쓰지 않는다). */
 const ALLOWED_CALLER_CONNECTION = new Set(["lib/onboarding-run/access.ts", "lib/onboarding-run/gitlab-repos.ts"]);
-/** 비GET 요청 — `fetch(…, { method: "POST" })`·transport의 쓰기 메서드. GitLab은 Octokit 입구가 없어 메서드 리터럴이 쓰기의 표지다. */
+/**
+ * 비GET 요청 — `fetch(…, { method: "POST" })`·transport의 쓰기 메서드. GitLab은 Octokit 입구가 없어 메서드 리터럴이 쓰기의 표지다.
+ * ⚠️ `\.delete\(`는 Prisma `x.delete(`도 잡는다(거짓 red) — `lib/gitlab-connect/`의 DB 삭제는 `deleteMany`로 쓴다(R-B ⚪6).
+ */
 const GITLAB_WRITE = /method\s*:\s*["'`](POST|PUT|PATCH|DELETE)["'`]|\.(post|put|patch|delete)\(/i;
 /** GitLab 클라이언트 모듈 import — 완전성 검사의 기준. */
 const GITLAB_CLIENT_IMPORT = /from\s+["'](@\/lib\/gitlab\/[^"']+|@\/lib\/gitlab-connect\/connection|(\.\.?\/)+gitlab\/[^"']+|\.\/connection)["']/;
@@ -358,5 +361,48 @@ describe("GitLab 경계 — 쓰기는 프로젝트가 참조하는 연결로만"
     const consumers = sourcesIn(join(ROOT, "lib"), "lib").filter((f) => GITLAB_CLIENT_IMPORT.test(codeOnly(f.source)));
     expect(consumers.length).toBeGreaterThan(2);
     expect(consumers.map((f) => f.rel).filter((rel) => !scanned.has(rel))).toEqual([]);
+  });
+});
+
+/**
+ * **새 리포 경로만 호출자 연결로 연다** (gitlab-repositories D21 · R-B 🟡3). `checkRepoAccess`의 GitLab ok가 든 `connectionId`는 **호출자의** 연결이다 —
+ * 그것을 대상으로 바꾸는 `newRepoTarget`을 연결된 프로젝트 경로(소스 추가·재탐지·설정 브랜치 목록)에서 부르면 연결자가 아닌 OWNER의 명의로 읽는다.
+ * 위 `CALLER_CONNECTION`은 `openGitLabConnection(…, { userId })` 한 문법만 보므로 이 경로를 못 잡는다 — 호출 자리를 `파일#함수`로 고정한다.
+ */
+const NEW_REPO_TARGET_SITES = [
+  "app/(edit)/projects/actions.ts#confirmManualFormat",
+  "app/(edit)/projects/actions.ts#loadCandidateSample",
+  "lib/onboarding-run/branches.ts#listNewRepoBranches",
+  "lib/onboarding-run/create.ts#createProjectFromRepo",
+  "lib/onboarding-run/detect.ts#detectFormats",
+];
+
+/** 소스에서 `callee(` 호출 자리마다 그것을 감싼 최근 `function 이름`을 낸다 — 정의 줄(`function callee(`)은 뺀다. */
+function callSites(rel: string, source: string, callee: string): string[] {
+  const code = codeOnly(source);
+  const sites: string[] = [];
+  for (const match of code.matchAll(new RegExp(`\\b${callee}\\(`, "g"))) {
+    const before = code.slice(0, match.index);
+    if (/function\s+$/.test(before)) continue;
+    const enclosing = [...before.matchAll(/function\s+([A-Za-z0-9_]+)\s*[(<]/g)].at(-1)?.[1] ?? "?";
+    sites.push(`${rel}#${enclosing}`);
+  }
+  return sites;
+}
+
+describe("GitLab 경계 — 호출자 연결로 여는 대상은 새 리포 경로뿐", () => {
+  it("검사식이 함수 단위로 잡는다 — 연결된 프로젝트 경로의 호출이 red다", () => {
+    const fixture = [
+      "export async function addSources() { const target = projectReadTarget(repo, connection.target); }",
+      "export async function listLinkedBranches() { return listBranches(newRepoTarget(repo)); }",
+      "export function newRepoTarget(access) { return access; }",
+    ].join("\n");
+    expect(callSites("lib/onboarding-run/x.ts", fixture, "newRepoTarget")).toEqual(["lib/onboarding-run/x.ts#listLinkedBranches"]);
+  });
+
+  it("`newRepoTarget` 호출 자리가 허용 목록과 정확히 같다 — 소스 추가·재탐지(slug)·설정 브랜치 목록은 `projectReadTarget`이다", () => {
+    const sources = [...sourcesIn(join(ROOT, "lib"), "lib"), ...sourcesIn(join(ROOT, "app"), "app")].filter((f) => f.rel !== "lib/repo-host/target.ts");
+    const sites = sources.flatMap((f) => callSites(f.rel, f.source, "newRepoTarget"));
+    expect([...new Set(sites)].sort()).toEqual([...NEW_REPO_TARGET_SITES].sort());
   });
 });

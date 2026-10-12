@@ -97,6 +97,17 @@ describe("planGate", () => {
     expect(planGate([path])).toEqual(["db:generate", "typecheck", "test", "test:projects:postgres", "build", "sync:agents:check"]);
   });
 
+  /**
+   * **GitLab 연결 시나리오가 지나는 생산 경로 둘** (gitlab-repositories D21 ④ · R-B 🟡4 · POSTMORTEM 2026-10-07) — `lib/gitlab-connect/__tests__/connection.integration.ts`가
+   * 멤버 제거의 연결 참조 비우기(`lib/auth/members.ts`)와 목록 판정(`lib/projects/list.ts#projectStatus`)을 직접 지난다. 그 파일만 고친 diff도 시나리오를 돌린다.
+   */
+  it.each([
+    "lib/auth/members.ts",
+    "lib/projects/list.ts",
+  ])("GitLab 연결 시나리오의 생산 경로 %s 단독 변경도 projects 스위트를 실행한다", path => {
+    expect(planGate([path])).toEqual(["db:generate", "typecheck", "test", "test:projects:postgres", "build", "sync:agents:check"]);
+  });
+
   it("둘 다 건드리면 둘 다 — projects가 먼저다", () => {
     expect(planGate(["lib/credentials/rotate.ts", "lib/import/run.ts"])).toEqual([
       "db:generate",

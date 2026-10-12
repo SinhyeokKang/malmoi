@@ -85,6 +85,14 @@ const RAW_TOKEN_SITES = [
   "lib/onboarding-run/create.ts#createProjectFromRepo",
 ];
 
+/**
+ * **사용자 축 쓰기가 남의 프로젝트 행을 바꾸는 자리** (gitlab-repositories D20) — 프로젝트 인가 대신 그 프로젝트 행을 **raw `FOR UPDATE`로 잠근 뒤** 바꾸고
+ * 사건을 남긴다. 계정 GitLab 연결 해제가 참조 프로젝트마다 참조를 비운다 — 잠금 없이 쓰면 동시 재연결과 겹친다.
+ */
+const PROJECT_ROW_LOCK_SITES = [
+  "lib/gitlab-connect/connection.ts#disconnectGitLabAccount",
+];
+
 function source(path: string): SourceFile {
   return project.getSourceFile(`${ROOT}${path}`) ?? project.addSourceFileAtPath(`${ROOT}${path}`);
 }
@@ -96,6 +104,18 @@ function lockedCalls(file: SourceFile, name: string, callee = "lockProjectAccess
   return fn.getDescendantsOfKind(SyntaxKind.CallExpression).filter(call => {
     if (call.getExpression().getText() !== callee) return false;
     return call.getAncestors().some(a => Node.isCallExpression(a) && a.getExpression().getText().endsWith(".$transaction"));
+  }).length;
+}
+
+/** 함수 안에서 `$transaction(...)` 콜백 안에 있는 `$executeRaw\`… FROM "Project" … FOR UPDATE\`` 수. */
+function projectRowLocks(file: SourceFile, name: string): number {
+  const fn = file.getFunction(name);
+  if (fn === undefined) throw new Error(`${file.getBaseName()}#${name} not found`);
+  return fn.getDescendantsOfKind(SyntaxKind.TaggedTemplateExpression).filter(tagged => {
+    if (!tagged.getTag().getText().endsWith("$executeRaw")) return false;
+    const text = tagged.getTemplate().getText();
+    if (!text.includes('FROM "Project"') || !text.includes("FOR UPDATE")) return false;
+    return tagged.getAncestors().some(a => Node.isCallExpression(a) && a.getExpression().getText().endsWith(".$transaction"));
   }).length;
 }
 
@@ -148,6 +168,22 @@ describe("잠금 안 인가 재확인", () => {
     const [path, name] = site.split("#") as [string, string];
     expect(lockedCalls(source(path), name, "lockCredential")).toBeGreaterThan(0);
     expect(callsWithoutToken(source(path), name, "lockCredential")).toBe(0);
+  });
+
+  it.each(PROJECT_ROW_LOCK_SITES)("%s는 tx 안에서 프로젝트 행을 잠근 뒤 바꾼다", site => {
+    const [path, name] = site.split("#") as [string, string];
+    expect(projectRowLocks(source(path), name)).toBeGreaterThan(0);
+  });
+
+  it("프로젝트 행 잠금 검출기가 tx 밖·다른 테이블 잠금을 세지 않는다", () => {
+    const file = project.createSourceFile(`${ROOT}.scratch/row-lock-fixture.ts`, [
+      'async function inside(prisma: any) { return prisma.$transaction(async (tx: any) => tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${1} FOR UPDATE`); }',
+      'async function outside(tx: any) { return tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${1} FOR UPDATE`; }',
+      'async function other(prisma: any) { return prisma.$transaction(async (tx: any) => tx.$executeRaw`SELECT "id" FROM "User" WHERE "id" = ${1} FOR UPDATE`); }',
+    ].join("\n"), { overwrite: true });
+    expect(projectRowLocks(file, "inside")).toBe(1);
+    expect(projectRowLocks(file, "outside")).toBe(0);
+    expect(projectRowLocks(file, "other")).toBe(0);
   });
 
   it("주체를 받은 lib 함수가 credential을 리터럴 undefined로 버리지 않는다", () => {

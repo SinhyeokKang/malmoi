@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   connectionEvidence, hasRepoConnection, projectReadTarget, repoConnectionPinned, repoLocatorOf, repoTargetOf, sameAccessedRepository, sameRepoTarget, sameRepository,
-  targetOfAccess, type RepoTarget,
+  newRepoTarget, type RepoTarget,
 } from "../target";
 
 /**
@@ -92,8 +92,9 @@ describe("repoTargetOf — GitLab", () => {
     expect(repoTargetOf(gitlabRow)).toEqual({ status: "ok", target: gitlabTarget });
   });
 
-  it("⚠️ 연결 참조가 비면 not-connected다 — 연결자가 떠났거나 해제했다. GitLab에는 unpinned가 없다", () => {
-    expect(repoTargetOf({ ...gitlabRow, gitlabConnectionId: null })).toEqual({ status: "not-connected" });
+  it("⚠️ 연결 참조가 비면 connection-removed다(D21) — 연결자가 떠났거나 해제했다. 설치 없음(not-connected)·unpinned로 접지 않는다", () => {
+    expect(repoTargetOf({ ...gitlabRow, gitlabConnectionId: null })).toEqual({ status: "connection-removed" });
+    // 리포 id 없는 GitLab 행은 손상이다 — 이름으로 부르지 않으므로 연결 없음.
     expect(repoTargetOf({ ...gitlabRow, repositoryId: null })).toEqual({ status: "not-connected" });
   });
 
@@ -172,14 +173,14 @@ describe("GitLab 연결 비교 — 사람 단위 연결", () => {
   });
 
   it("새 리포는 호출자 자신의 연결로, 연결된 프로젝트는 프로젝트가 참조하는 연결로 연다", () => {
-    expect(targetOfAccess(callerAccess)).toEqual({ ...gitlabTarget, connectionId: "conn-b" });
+    expect(newRepoTarget(callerAccess)).toEqual({ ...gitlabTarget, connectionId: "conn-b" });
     expect(projectReadTarget(callerAccess, gitlabTarget)).toEqual(gitlabTarget);
   });
 
   it("GitHub은 확인한 접근의 값으로 연다 — 지금 동작 그대로(D16 ⑤)", () => {
     const githubAccess = { host: "github", repositoryId: "1035512", installationId: "158107153", repoOwner: "acme-renamed", repoName: "site" } as const;
     const opened = { host: "github", owner: "acme-renamed", name: "site", installationId: "158107153", repositoryId: "1035512" };
-    expect(targetOfAccess(githubAccess)).toEqual(opened);
+    expect(newRepoTarget(githubAccess)).toEqual(opened);
     expect(projectReadTarget(githubAccess, target)).toEqual(opened);
   });
 });

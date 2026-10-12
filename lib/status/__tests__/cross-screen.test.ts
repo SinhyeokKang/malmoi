@@ -14,6 +14,8 @@ import { importOutcomeFields, isImportFailureCode, type ImportFailureCode } from
 import { CHIP_STATE, rowBanner, rowChip, worstFailingSurface, type RowBanner } from "@/lib/projects/list";
 import { openPrGateApplies, planHoldNotice, type HoldReason } from "@/lib/protection/plan";
 
+import { repoTargetOf } from "@/lib/repo-host/target";
+
 import { STATE, stateLabel, type StateKey } from "../canon";
 
 /**
@@ -117,14 +119,16 @@ type Observed = {
 const EMPTY: ProjectListAggregates = { locales: [], keyTotals: new Map(), cells: [], newKeys: new Map(), unsent: new Map(), unsentSurfaces: new Map(), unsentAt: new Map(), newKeysBySurface: new Map(), unsentBySurface: new Map() };
 
 function observe(f: Fixture, J: Judgments): Observed {
-  const project = { repoHost: "github", gitlabConnectionId: null, installationId: f.installationId, repositoryId: f.repositoryId, repoOwner: "acme", repoName: "web", surfaces: f.surfaces };
+  const project = { repoHost: f.repoHost, gitlabConnectionId: f.gitlabConnectionId, installationId: f.installationId, repositoryId: f.repositoryId, repoOwner: "acme", repoName: "web", surfaces: f.surfaces };
+  // 경계의 연결 판정 — `loadConnectionHealth`·`lib/import/run.ts`가 이것을 먼저 지난다(GitLab 갈래는 원격 호출 0으로 끝난다).
+  const stored = repoTargetOf(project);
   const archived = f.archivedAt !== null;
 
   // 목록 — 조회의 조립 층을 지난다(🔴 E의 결함은 판정이 아니라 조립에 있었다).
   const member: ProjectListMemberRow = {
     role: "OWNER",
     project: {
-      id: "p1", slug: "acme", name: "Acme", image: null, repoHost: "github", gitlabConnectionId: null, installationId: f.installationId, archivedAt: f.archivedAt, repoOwner: "acme", repoName: "web",
+      id: "p1", slug: "acme", name: "Acme", image: null, repoHost: f.repoHost, gitlabConnectionId: f.gitlabConnectionId, installationId: f.installationId, archivedAt: f.archivedAt, repoOwner: "acme", repoName: "web",
       repositoryId: f.repositoryId, baseBranch: "main", lastPrUrl: f.openPr === null ? null : PR.url, _count: { members: 1 }, surfaces: f.surfaces,
     },
   };
@@ -133,7 +137,9 @@ function observe(f: Fixture, J: Judgments): Observed {
   // 칩은 화면이 `StatusBadge`에 넘기는 그 맵이다(ux-drift-unify T19 — 전엔 여기 사본이었다).
   const list = { chip: CHIP_STATE[J.rowChip(row)], banner: bannerKey(J.rowBanner(row)) };
 
-  const health = J.planConnectionHealth({ project, probe: f.probe });
+  // GitHub은 지금처럼 저장값 + probe(`planConnectionHealth`), GitLab은 `loadConnectionHealth`의 경계 판정(ok가 아니면 그 갈래 그대로).
+  const health = f.repoHost === "github" ? J.planConnectionHealth({ project, probe: f.probe })
+    : stored.status === "ok" ? { status: "ok" as const } : { status: stored.status };
   const problem = J.connectionProblem(health.status);
   const readiness = J.planProjectReadiness(project);
 
@@ -171,7 +177,7 @@ function observe(f: Fixture, J: Judgments): Observed {
   if (archived) refusal = { na: "archived-before-plan" };
   else {
     const plan = J.planRepositoryImport({
-      now: T1, readiness, identity: f.repositoryId === null || f.installationId === null ? "unpinned" : "ok",
+      now: T1, readiness, identity: stored.status !== "ok" ? "unpinned" : "ok",
       repositoryImportToken: null, repositoryImportStartedAt: null, runningSync: null,
       surfaces: f.surfaces.map((s) => ({ id: s.slug, slug: s.slug, archivedAt: null, adapterName: "json-catalog", pathTemplate: "locales/{locale}.json", baseLocale: "en", lastImportStartedAt: null })),
     });
@@ -258,6 +264,26 @@ const MATRIX: Row[] = [
     settings: "notConnected",
     sources: na("sources", "connection"),
     refusal: { readiness: "not-ready" },
+  },
+  {
+    // GitLab 정상 — 설치 id 없이도 연결 참조로 연결됨(카나리아가 GitLab 행을 끊김으로 접지 않게).
+    input: "GitLab 연결됨",
+    fixture: fixture({ repoHost: "gitlab", installationId: null, gitlabConnectionId: "conn-a" }),
+    list: { chip: "active", banner: null },
+    home: { banner: null, hold: null },
+    settings: "connected",
+    sources: ["synced"],
+    refusal: { error: "none" },
+  },
+  {
+    // ⚠️ GitLab 연결자 떠남(D21) — 참조가 비었다. 모든 화면에서 GitHub `unpinned`과 같은 Disconnected다(설치 없음의 Not connected가 아니다).
+    input: "GitLab 연결자 떠남",
+    fixture: fixture({ repoHost: "gitlab", installationId: null, gitlabConnectionId: null }),
+    list: { chip: "disconnected", banner: "disconnected" },
+    home: { banner: "disconnected" },
+    settings: "disconnected",
+    sources: na("sources", "connection"),
+    refusal: { error: "unpinned", word: "disconnected" },
   },
   {
     input: "partial-import",

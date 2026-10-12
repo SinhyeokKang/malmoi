@@ -38,6 +38,12 @@ describe("planPatVerification", () => {
     expect(planPatVerification(ok({ ...SELF, granular: false, scopes: [], granular_scopes: [{ access: "read" }] }))).toEqual({ status: "token-fine-grained" });
   });
 
+  it("⚠️ 레거시 응답의 빈·null `granular_scopes`는 fine-grained가 아니다 — 필드가 실려도 레거시 PAT를 거부하지 않는다(R-B ⚪2)", () => {
+    for (const granular_scopes of [null, [], undefined]) {
+      expect(planPatVerification(ok({ ...SELF, granular: false, granular_scopes })), JSON.stringify(granular_scopes)).toMatchObject({ status: "ok" });
+    }
+  });
+
   it("`api`가 없으면 token-scope-missing이다 — `read_api`·`write_repository`로는 커밋·MR을 못 만든다", () => {
     for (const scopes of [["read_api"], ["read_repository", "write_repository"], []]) {
       expect(planPatVerification(ok({ ...SELF, scopes })), scopes.join()).toEqual({ status: "token-scope-missing" });

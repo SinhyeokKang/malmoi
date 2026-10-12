@@ -27,6 +27,13 @@ describe("planMemberAccess", () => {
     expect(planMemberAccess(member(10), true)).toBe("forbidden");
   });
 
+  it("⚠️ 초대 수락·승인 대기 멤버는 access level이 실려도 거부다(R-B ⚪3) — 쓰기가 늦게 403/404로 드러나지 않게", () => {
+    for (const pending of [{ state: "awaiting" }, { membership_state: "awaiting" }, { state: "active", membership_state: "awaiting" }]) {
+      expect(planMemberAccess({ ok: true, body: { id: 1, access_level: 50, ...pending } }, true), JSON.stringify(pending)).toBe("forbidden");
+    }
+    expect(planMemberAccess({ ok: true, body: { id: 1, access_level: 50, state: "active", membership_state: "active" } }, true)).toBe("ok");
+  });
+
   it("404(멤버 아님)·403은 거부다", () => {
     expect(planMemberAccess(failed(404), false)).toBe("forbidden");
     expect(planMemberAccess(failed(403), true)).toBe("forbidden");
