@@ -42,6 +42,8 @@
 | D17 | GitLab CI 변수 `MALMOI_I18N_*` 11개는 `brand-spelling.test.ts`의 `UPPER_EXCEPTIONS`에 **정확한 이름으로** 등재(접두 규칙 아님, D1이 그 파일을 고친다) | 지휘자 판단(D1 `ask`) — 기존 예외가 정확한 이름 목록이라 오타가 red로 남는다 |
 | D18 | Codex 교차 허가 — **E-sh·F 구현, R-C 교차 리뷰(Opus 리뷰와 별도)** 에만 Astra(`gpt-6-astra`, effort medium 상한). 재시도·수정 라운드도 같은 워커·같은 effort | 사용자 2026-10-12 — 토큰 분산, 계약이 확정된 곁가지 배치 |
 | D19 | `/account` [Replace token]에 다른 GitLab 사용자(user_id)의 PAT → **거부 `account-mismatch`**(Disconnect 후 Connect 안내). GitLab 사용자명은 평문(공개 핸들, `collected.ts` 등재), PAT만 토큰 키 봉투. `Project.gitlabConnectionId`는 Project를 not-personal로 유지(`DeliveryConfirmation.syncRunId` 선례). 열 이름 `Project.repoHost`(기본 `github`) | 지휘자 판단(B `ask`) — 교체가 연결 id를 유지해 참조 프로젝트 전부의 쓰기 명의를 권한 재검사 없이 바꾸는 것을 막는다 |
+| D20 | 계정 GitLab 연결 해제·주인 멤버 제거로 프로젝트 참조가 비면 **그 프로젝트마다 `ProjectEvent`를 같은 tx에서 남긴다**(새 subtype, 행위자 = 해제한 사람 / 멤버 제거면 기존 `member.removed`와 같은 tx) — Logs가 "연결이 끊겼다"를 말한다. 문장은 E-ui | 지휘자 판단(B 인계 결정 요청) — CLAUDE.md "상태 변경은 변경과 같은 트랜잭션에서 사건으로 확정"(ProjectEvent, ARCHITECTURE §5.7). 프로젝트가 `Disconnected`가 되는 것은 프로젝트 상태 변경이다 |
+| D21 | R-B 🟡 판정: ②참조가 빈 GitLab 프로젝트는 **모든 화면에서 `Disconnected`(재연결 필요, GitHub `unpinned`과 같은 톤)** — `RepoTargetResult`에 별도 갈래, `cross-screen.test.ts` MATRIX에 "GitLab 연결자 떠남" 행. ③`targetOfAccess`의 gitlab 갈래를 **`newRepoTarget`** 으로 갈라 새 리포 경로 허용 목록을 credential-separation이 센다(M1 뮤테이션 red). ④gate-plan 트리거 `lib/auth/members.ts`·`lib/projects/list.ts`는 **B fix가 추가**(지휘자 대신 — 코드 수정은 워커). ⚪2(`granular_scopes` 판정)·⚪3(`members/all` 대기 멤버 = forbidden) 채택 | 지휘자 판단 — design §2 사례 표("주인이 떠남 → Disconnected")·design §3("접근 확인 뒤 I/O는 참조 연결로")·POSTMORTEM 2026-10-07 |
 
 ## 배치·파일 소유권
 
@@ -98,3 +100,5 @@
 - 2026-10-12: D1 fix1(커밋 2, gate ok) → dev 통합. E-ui 계약: `GITLAB_CI_RELEASE.sha`가 40자 hex가 아니면 GitLab CI 템플릿을 내지 않는다.
 - 2026-10-12: A 인계(커밋 3, gate ok, 75파일) → R-A(opus high) 🔴1(테스트 두 곳의 쓰기 0 단언이 삭제된 메서드 문자열을 들어 공허)·🟡1·⚪8, GitHub 동작 보존 위반 0 → A fix1. B 브리프에 ⚪2(`targetOfAccess`)·⚪4(credentials 트리거 인계). C 브리프 몫: ⚪3(`sizes` 앞 `MAX_FILES` 판정)·⚪8(publishSnapshot 중간 실패 GitHub 사례). E-doc 몫: ⚪7(ARCHITECTURE §3 `createRef` 서술).
 - 2026-10-12: A fix1(커밋 1, 옛 "쓰기 0" 단언이 공허했음을 뮤테이션으로 확인) → dev 통합 `7168ef82..4aa8bb0b`. dev(W0·E0·D1·A) `pnpm gate` = **`gate: ok`**(test 13703 · projects 636 · build). B 착수(opus high).
+- 2026-10-12: B 인계(커밋 3 — B1 마이그레이션 `20261012120000_add_gitlab_connection`, gate ok: test 13784 · projects 649 · credentials 69) → R-B(opus high). D20은 B 수정 라운드에 싣는다.
+- 2026-10-12: R-B 🔴0·🟡5·⚪8 → B dev 통합 `37b75c59..6a000266`(마이그레이션 포함, dev DB 미적용 — push 직전 일괄). E-sh(Codex Astra) 착수. B fix1 = 🟡1(D20 + 해제를 잠금·tx 안으로)·🟡2·🟡3·🟡4·🟡5·⚪2·⚪3. C는 B fix1 통합 뒤.
