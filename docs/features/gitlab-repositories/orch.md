@@ -44,6 +44,7 @@
 | D19 | `/account` [Replace token]에 다른 GitLab 사용자(user_id)의 PAT → **거부 `account-mismatch`**(Disconnect 후 Connect 안내). GitLab 사용자명은 평문(공개 핸들, `collected.ts` 등재), PAT만 토큰 키 봉투. `Project.gitlabConnectionId`는 Project를 not-personal로 유지(`DeliveryConfirmation.syncRunId` 선례). 열 이름 `Project.repoHost`(기본 `github`) | 지휘자 판단(B `ask`) — 교체가 연결 id를 유지해 참조 프로젝트 전부의 쓰기 명의를 권한 재검사 없이 바꾸는 것을 막는다 |
 | D20 | 계정 GitLab 연결 해제·주인 멤버 제거로 프로젝트 참조가 비면 **그 프로젝트마다 `ProjectEvent`를 같은 tx에서 남긴다**(새 subtype, 행위자 = 해제한 사람 / 멤버 제거면 기존 `member.removed`와 같은 tx) — Logs가 "연결이 끊겼다"를 말한다. 문장은 E-ui | 지휘자 판단(B 인계 결정 요청) — CLAUDE.md "상태 변경은 변경과 같은 트랜잭션에서 사건으로 확정"(ProjectEvent, ARCHITECTURE §5.7). 프로젝트가 `Disconnected`가 되는 것은 프로젝트 상태 변경이다 |
 | D21 | R-B 🟡 판정: ②참조가 빈 GitLab 프로젝트는 **모든 화면에서 `Disconnected`(재연결 필요, GitHub `unpinned`과 같은 톤)** — `RepoTargetResult`에 별도 갈래, `cross-screen.test.ts` MATRIX에 "GitLab 연결자 떠남" 행. ③`targetOfAccess`의 gitlab 갈래를 **`newRepoTarget`** 으로 갈라 새 리포 경로 허용 목록을 credential-separation이 센다(M1 뮤테이션 red). ④gate-plan 트리거 `lib/auth/members.ts`·`lib/projects/list.ts`는 **B fix가 추가**(지휘자 대신 — 코드 수정은 워커). ⚪2(`granular_scopes` 판정)·⚪3(`members/all` 대기 멤버 = forbidden) 채택 | 지휘자 판단 — design §2 사례 표("주인이 떠남 → Disconnected")·design §3("접근 확인 뒤 I/O는 참조 연결로")·POSTMORTEM 2026-10-07 |
+| D22 | C 착수 판정: ①GitLab 연결 건강성에 GitLab 전용 갈래 `connection-unusable`(만료·401·403 scope·접근 상실·archived·sha1 아님) — 화면에선 D21과 같은 `Disconnected`, 저장 만료일 지남은 원격 호출 0, 5xx/429/네트워크는 `unknown` ②`sizes` 비-ok: `lfs` → `resource-limit`, `unavailable`은 AppError 유지 ③`pr-url.ts`·`remote-plan.ts` 호스트 갈래(GitLab `/-/merge_requests/<iid>`)는 C, 컴포넌트 호출부는 E-ui ④주소 계약 = `/projects/` 다음 세그먼트는 숫자, `%2F`는 `/projects/<id>/repository/` 아래 값·MR 질의에서만 허용(슬래시 브랜치) | 지휘자 판단(C `ask`) — design §2 "크기 조회 실패는 unavailable"·D21 톤 통일·불변식 11 첫 층 |
 
 ## 배치·파일 소유권
 
@@ -103,3 +104,4 @@
 - 2026-10-12: B 인계(커밋 3 — B1 마이그레이션 `20261012120000_add_gitlab_connection`, gate ok: test 13784 · projects 649 · credentials 69) → R-B(opus high). D20은 B 수정 라운드에 싣는다.
 - 2026-10-12: R-B 🔴0·🟡5·⚪8 → B dev 통합 `37b75c59..6a000266`(마이그레이션 포함, dev DB 미적용 — push 직전 일괄). E-sh(Codex Astra) 착수. B fix1 = 🟡1(D20 + 해제를 잠금·tx 안으로)·🟡2·🟡3·🟡4·🟡5·⚪2·⚪3. C는 B fix1 통합 뒤.
 - 2026-10-12: B fix1(커밋 2, gate ok: test 13794 · projects 654, 뮤테이션 M1·잠금 제거 red 확인) → dev 통합. 새 사건 `settings.repositoryDisconnected`(문장은 E-ui). 계정 삭제 사건 없음(D20 범위 밖, FK 그물). C 착수.
+- 2026-10-12: E-sh(Astra) 인계(커밋 2, red→green 확인, gate ok) → R-Esh 🔴0·🟡2 → dev 통합. E-sh fix1 = 🟡1(GitLab 전용 설치는 GitLab 이전 버전으로 롤백 시 preflight 거부 — operate.md 세 언어). 🟡2(App 부재 화면 갈래 소비자 0)는 E-ui 브리프·QA.
