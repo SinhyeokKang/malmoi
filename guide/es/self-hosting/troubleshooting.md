@@ -126,7 +126,7 @@ La instalación envía datos a cuatro servicios. Supabase y Vercel (alojamiento,
 
 ### Elimina una cuenta {#delete-account}
 
-No hay una pantalla de autoservicio para eliminar cuentas, así que este es un procedimiento manual para solicitudes de acceso, rectificación y supresión. Las filas de pertenencia y las invitaciones que envió la persona impiden eliminar su fila `User`, así que van primero. Al eliminar después la fila `User` desaparecen sus métodos de inicio de sesión, sesiones, tokens personales y agentes conectados, y se desvincula de los registros de sincronización y de la actividad. Los valores de traducción se quedan; solo se quita el vínculo con su autor.
+No hay una pantalla de autoservicio para eliminar cuentas, así que este es un procedimiento manual para solicitudes de acceso, rectificación y supresión. Las filas de pertenencia y las invitaciones que envió la persona impiden eliminar su fila `User`, así que van primero. Al eliminar después la fila `User` desaparecen sus métodos de inicio de sesión, sesiones, tokens personales, agentes conectados y conexión de GitLab, y se desvincula de los registros de sincronización y de la actividad. Los valores de traducción se quedan; solo se quita el vínculo con su autor. Los proyectos que usaban su conexión de GitLab muestran **Desconectado** hasta que un propietario del proyecto los vuelva a conectar, y ningún evento de Registros lo anota. El token de acceso personal sigue siendo válido en GitLab, así que pide a la persona que lo revoque allí.
 
 1. Haz primero una [copia de seguridad](operate.md#backup): la eliminación no se puede deshacer. Cómo confirmas la identidad de la persona lo decide tu política.
 2. Busca la cuenta. Los correos están cifrados, así que calcula en su lugar el índice de búsqueda (un HMAC). La dirección entra por el entorno, no por la línea de comandos (`EMAIL_LOOKUP_KEY` ya está en el contenedor web), y `PROJECT_IDS` enumera los proyectos cuyas invitaciones busca el paso 3. Sin proyectos queda vacío y solo se imprime la línea `user`:
@@ -158,7 +158,7 @@ No hay una pantalla de autoservicio para eliminar cuentas, así que este es un p
    DELETE FROM "ProjectInvitation" WHERE "acceptedAt" IS NULL AND "emailLookup" IN ('<invitation indexes from step 3>');  -- invitaciones pendientes para esta persona
    DELETE FROM "VerificationToken" WHERE "identifier" LIKE '%"' || :'uid' || '"%';   -- comprobaciones de vinculación y cierre de sesión
    UPDATE "Translation" SET "updatedBy" = NULL WHERE "updatedBy" = :'uid';       -- sin clave foránea, se desvincula a mano
-   DELETE FROM "User" WHERE "id" = :'uid';                                       -- cascada a Account, Session, ApiToken, OAuth*; SyncRun y ProjectEvent pasan a NULL
+   DELETE FROM "User" WHERE "id" = :'uid';                                       -- cascada a Account, Session, ApiToken, OAuth*, GitLabConnection; SyncRun y ProjectEvent pasan a NULL
    COMMIT;
    ```
 

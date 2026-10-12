@@ -126,7 +126,7 @@ web 컨테이너는 `pnpm preflight && next start`로 시작합니다. 검사가
 
 ### 계정 삭제 {#delete-account}
 
-삭제용 셀프서비스 화면이 없으므로 열람·정정·삭제 요청은 아래 수동 절차로 처리합니다. 그 사람의 멤버십 행과 보낸 초대가 `User` 행 삭제를 막으므로 이것부터 지웁니다. 그다음 `User` 행을 지우면 로그인 수단, 세션, 개인 토큰, 연결한 에이전트가 함께 사라지고 동기화 기록과 활동에서도 연결이 끊깁니다. 번역 값은 남고 작성자 연결만 지워집니다.
+삭제용 셀프서비스 화면이 없으므로 열람·정정·삭제 요청은 아래 수동 절차로 처리합니다. 그 사람의 멤버십 행과 보낸 초대가 `User` 행 삭제를 막으므로 이것부터 지웁니다. 그다음 `User` 행을 지우면 로그인 수단, 세션, 개인 토큰, 연결한 에이전트, GitLab 연결이 함께 사라지고 동기화 기록과 활동에서도 연결이 끊깁니다. 번역 값은 남고 작성자 연결만 지워집니다. 그 사람의 GitLab 연결을 쓰던 프로젝트는 프로젝트 소유자가 다시 연결할 때까지 **연결 끊김**으로 표시되고, 로그에는 이 일이 기록되지 않습니다. 개인 액세스 토큰 자체는 GitLab에서 계속 유효하므로, 당사자에게 GitLab에서 철회하도록 안내하세요.
 
 1. 먼저 [백업](operate.md#backup)을 만듭니다. 삭제는 되돌릴 수 없습니다. 본인 확인 방법은 내 방침이 정합니다.
 2. 계정을 찾습니다. 이메일이 암호화되어 있으므로 대신 조회 색인(HMAC)을 계산합니다. 주소는 명령줄이 아니라 환경 변수로 넘기고(`EMAIL_LOOKUP_KEY`는 web 컨테이너에 이미 있습니다), `PROJECT_IDS`는 3단계가 초대를 찾을 프로젝트 목록입니다. 프로젝트가 없으면 비어 있고 `user` 줄만 출력됩니다:
@@ -158,7 +158,7 @@ web 컨테이너는 `pnpm preflight && next start`로 시작합니다. 검사가
    DELETE FROM "ProjectInvitation" WHERE "acceptedAt" IS NULL AND "emailLookup" IN ('<invitation indexes from step 3>');  -- 이 사람에게 온 미수락 초대
    DELETE FROM "VerificationToken" WHERE "identifier" LIKE '%"' || :'uid' || '"%';   -- 로그인 수단 연결·로그아웃 확인 절차
    UPDATE "Translation" SET "updatedBy" = NULL WHERE "updatedBy" = :'uid';       -- 외래 키가 없어 손으로 끊는다
-   DELETE FROM "User" WHERE "id" = :'uid';                                       -- Account·Session·ApiToken·OAuth* cascade, SyncRun·ProjectEvent는 NULL
+   DELETE FROM "User" WHERE "id" = :'uid';                                       -- Account·Session·ApiToken·OAuth*·GitLabConnection cascade, SyncRun·ProjectEvent는 NULL
    COMMIT;
    ```
 

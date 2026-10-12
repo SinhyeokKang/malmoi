@@ -126,7 +126,7 @@ The installation sends data to four services. mal-moi.com's Supabase and Vercel 
 
 ### Delete an account {#delete-account}
 
-There's no self-service screen for deletion, so this is a manual procedure for access, correction, and deletion requests. Membership rows and invitations someone sent block deleting their `User` row, so they go first. Deleting the `User` row then removes their sign-in methods, sessions, personal tokens, and connected agents, and clears them from sync records and activity. Translation values stay; only the link to their author is removed.
+There's no self-service screen for deletion, so this is a manual procedure for access, correction, and deletion requests. Membership rows and invitations someone sent block deleting their `User` row, so they go first. Deleting the `User` row then removes their sign-in methods, sessions, personal tokens, connected agents, and GitLab connection, and clears them from sync records and activity. Translation values stay; only the link to their author is removed. Projects that used their GitLab connection show **Disconnected** until a project owner reconnects them, and no Logs event records it. The personal access token itself stays valid at GitLab, so ask the person to revoke it there.
 
 1. Take a [backup](operate.md#backup) first — deletion can't be undone. How you confirm the person's identity is up to your policy.
 2. Find the account. Emails are encrypted, so compute the lookup index (an HMAC) instead. The address goes in through the environment, not the command line (`EMAIL_LOOKUP_KEY` is already in the web container), and `PROJECT_IDS` lists the projects whose invitations step 3 searches. With no projects it's empty, and only the `user` line prints:
@@ -158,7 +158,7 @@ There's no self-service screen for deletion, so this is a manual procedure for a
    DELETE FROM "ProjectInvitation" WHERE "acceptedAt" IS NULL AND "emailLookup" IN ('<invitation indexes from step 3>');  -- pending invitations to this person
    DELETE FROM "VerificationToken" WHERE "identifier" LIKE '%"' || :'uid' || '"%';   -- sign-in linking and sign-out challenges
    UPDATE "Translation" SET "updatedBy" = NULL WHERE "updatedBy" = :'uid';       -- no foreign key, so clear it by hand
-   DELETE FROM "User" WHERE "id" = :'uid';                                       -- cascades to Account, Session, ApiToken, OAuth*; SyncRun and ProjectEvent are set to NULL
+   DELETE FROM "User" WHERE "id" = :'uid';                                       -- cascades to Account, Session, ApiToken, OAuth*, GitLabConnection; SyncRun and ProjectEvent are set to NULL
    COMMIT;
    ```
 
