@@ -6,7 +6,7 @@
 
 새 프로젝트 모달 ① 맨 위에 **GitHub / GitLab 탭**을 두고, GitLab 탭은 **개인 액세스 토큰(PAT)을 붙여 넣는** 연결 흐름으로 그린다. GitHub 탭은 지금 ① 그대로다. 두 리포 호스트가 섞인 뒤 **프로젝트 목록·프로젝트 Home·프로젝트 설정·Sources·`/account`에서 어느 플랫폼의 프로젝트인지가 어떻게 보일지**도 이 시안에서 정한다.
 
-**시안**: [GitLab Repositories](https://claude.ai/design/p/b99d54cd-3034-44f1-8446-0a864da9d767?file=GitLab+Repositories.dc.html) (2026-10-12 수령 · v3 검토 → v4 반영 확인 — 아래 "시안 검토")
+**시안**: [GitLab Repositories](https://claude.ai/design/p/b99d54cd-3034-44f1-8446-0a864da9d767?file=GitLab+Repositories.dc.html) (2026-10-12 수령 · v3 검토 → v6 반영 확인 — 아래 "시안 검토") · 다크·es: [GitLab Repositories - Dark - ES](https://claude.ai/design/p/b99d54cd-3034-44f1-8446-0a864da9d767?file=GitLab+Repositories+-+Dark+-+ES.dc.html)
 
 ## 확정 기준
 
@@ -144,3 +144,5 @@ DOM 글자·구조로 검토했다(화면 캡처 불가 — 간격·색 판정�
 **v4 확인 (2026-10-12)**: 위 3·5·7이 반영됐다(G5b2 삭제 · 날짜 오프셋 제거 · G8b 카드 안 PAT 입력). 남은 것 — G6b·G6c 재연결이 보는 사람을 가르지 않는다. 계정 토큰 참조 모델에서는 토큰 주인이면 [Replace token](참조하는 프로젝트 전부), 다른 OWNER이고 연결이 있으면 [Use my GitLab connection](명의 변경), 연결이 없으면 지금의 붙여 넣기 형이다. 다른 OWNER가 이 카드에 붙여 넣으면 그 사람의 계정 연결이 교체돼 그 사람의 다른 프로젝트까지 바뀐다.
 
 **v5 확인 (2026-10-12)**: G6b·G6c가 보는 사람 셋(토큰 주인 [Replace token] · 다른 OWNER 연결 있음 [Use my GitLab connection] · 연결 없음 붙여 넣기)으로 나뉘었다 — 모델과 맞다. 남은 보완: [Use my GitLab connection]이 거부될 때(그 사람 토큰의 권한·스코프 부족·만료) 버튼 아래 danger Alert 프레임, G6b1의 "reconnects"는 아직 연결 상태라 "updates"로. ⚠️ v5 파일이 256 KiB를 넘어 DesignSync가 잘라 준다 — G10b·G11a·G11b는 읽지 못했다.
+
+**v6 확인 (2026-10-12)**: 남은 보완이 모두 반영됐다 — G6c2-err(권한 없음 프레임 + 스코프 부족·만료/철회 문장은 캔버스 메모, 링크는 /account), G6b1 "updates"(G6c1은 "reconnects"), 다크(G10)·es(G11)는 별도 파일로 분리돼 두 파일 모두 잘리지 않고 읽힌다(G10b·G11b는 G6b-1 기준). 시안이 **만료 임박 경계를 14일**로 제안했다(`STATE.expiresSoon`, warning) — 구현 때 확정한다. CI YAML(G7)은 여전히 레이아웃 자리다(시안 검토 4).
