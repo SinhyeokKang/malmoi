@@ -5,7 +5,9 @@ import { routes } from "@/lib/routes";
 import { hueOf, type Hue } from "@/lib/hue";
 import { planProjectImageDelete } from "@/lib/upload/image";
 
-import { INVITATION_EMAIL_HTML, INVITATION_EMAIL_TILE_FALLBACK, INVITATION_EMAIL_TILE_IMAGE } from "./template";
+import { parseRepoHost } from "@/lib/repo-host/target";
+
+import { INVITATION_EMAIL_HTML, INVITATION_EMAIL_TAGLINE, INVITATION_EMAIL_TILE_FALLBACK, INVITATION_EMAIL_TILE_IMAGE } from "./template";
 
 /**
  * 개인별 초대 메일 (design §4 · invitation-email-project). **text는 초대 URL 한 줄이고, html은 링크와 프로젝트
@@ -76,7 +78,7 @@ export function buildInvitationEmail(input: {
   origin: string;
   to: string;
   token: string;
-  project: { name: string; image: string | null };
+  project: { name: string; image: string | null; repoHost: string };
   role: Role;
 }): InvitationEmail {
   const url = `${input.origin}${routes.invite(input.token)}`;
@@ -90,6 +92,8 @@ export function buildInvitationEmail(input: {
     PROJECT_NAME: escapeHtml(emailProjectName(input.project.name)),
     ROLE: escapeHtml(en.projects.role[input.role]),
     TILE: key === null ? INVITATION_EMAIL_TILE_FALLBACK : INVITATION_EMAIL_TILE_IMAGE,
+    // 모르는 값은 GitHub 문장이다 — 열 기본값(`'github'`)과 같은 쪽으로 떨어진다. 상수라 이스케이프하지 않는다.
+    TAGLINE: INVITATION_EMAIL_TAGLINE[parseRepoHost(input.project.repoHost) ?? "github"],
     // 메일은 PNG 변환 경로다 (#140 — Gmail이 WebP 알파를 버리고 iOS에서 깨뜨렸다). 앱 화면은 `/api/images/` WebP 그대로다.
     TILE_SRC: escapeHtml(key === null ? boxUrl : `${assets}/api/images/email/${key}`),
     // 색조는 자르기 전 원래 이름으로 고른다 — 잘린 이름으로 고르면 화면 타일과 색이 갈린다.

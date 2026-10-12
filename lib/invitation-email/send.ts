@@ -39,7 +39,7 @@ export function readInvitationEmailConfigFromEnv(): InvitationEmailConfig {
 /** ⚠️ 던지지 않는다 — 발송 실패가 이미 commit한 초대를 생성 실패로 바꾸면 안 된다. */
 export async function sendInvitationEmails(
   config: Extract<InvitationEmailConfig, { status: "ready" }>,
-  project: { name: string; image: string | null },
+  project: { name: string; image: string | null; repoHost: string },
   messages: readonly { to: string; token: string; role: Role }[],
 ): Promise<EmailOutcome> {
   const body = messages.map((m) => buildInvitationEmail({ from: config.from, origin: config.origin, to: m.to, token: m.token, project, role: m.role }));

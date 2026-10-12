@@ -34,8 +34,8 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 export type IssueRecipient = { email: string; role: Role };
 export type IssuedInvitation = { email: string; token: string; role: Role };
-/** 메일 카드에 싣는 값 — **잠금 뒤 읽은 것이다**(발급 사건과 같은 시점). `image`는 PII가 아닌 이미지 참조다(hosted 공개 Blob URL · self-hosted `/api/images/<key>`). */
-export type IssuedProject = { name: string; image: string | null };
+/** 메일 카드에 싣는 값 — **잠금 뒤 읽은 것이다**(발급 사건과 같은 시점). `repoHost`는 소개 문장을 고른다. `image`는 PII가 아닌 이미지 참조다(hosted 공개 Blob URL · self-hosted `/api/images/<key>`). */
+export type IssuedProject = { name: string; image: string | null; repoHost: string };
 type Refusal = Exclude<IssuePlan, { status: "ok" }>;
 
 /** 잠금 뒤 다시 본 인가의 거부 — 발급자가 대기 중 강등·제거됐다. */
@@ -125,7 +125,7 @@ async function writeInvitation(tx: Tx, input: { projectId: string; userId: strin
  * 행의 PK 읽기라 잠금·교착 순서가 바뀌지 않는다. 행이 없을 수 없다(잠금이 방금 찾았다) — 없으면 던져 롤백시킨다.
  */
 async function readIssuedProject(tx: Tx, projectId: string): Promise<IssuedProject> {
-  const project = await tx.project.findUnique({ where: { id: projectId }, select: { name: true, image: true } });
+  const project = await tx.project.findUnique({ where: { id: projectId }, select: { name: true, image: true, repoHost: true } });
   if (project === null) throw new Error("locked project vanished");
   return project;
 }

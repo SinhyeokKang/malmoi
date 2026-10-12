@@ -390,7 +390,7 @@ describe("buildInvitationEmail — 프로젝트 이름", () => {
       }
     }
     expect(name).not.toBe("");
-    const { html } = buildInvitationEmail({ ...base, project: { name, image: null } });
+    const { html } = buildInvitationEmail({ ...base, project: { name, image: null, repoHost: "github" } });
     expect(html).toContain(`bgcolor="${HUE_HEX[hueOf(name)]}"`);
   });
 });
