@@ -88,22 +88,53 @@ describe("설정 › Repository — GitLab 카드 (시안 G6)", () => {
     await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
     return container;
   }
-  const soon = new Date(now.getTime() + 5 * 86_400_000).toISOString();
 
-  it("연결됨은 연결자·만료일 줄과 [Open on GitLab]이고 GitHub 낱말이 없다 (G6a)", async () => {
-    const c = await card({ status: "ok" } as ConnectionHealth, { token: { username: "ox", expiresAt: null, viewerIsOwner: false }, viewer: { username: "me" } });
-    expect(c.textContent).toContain(en.settings.repository.gitlab.connectedVia("ox"));
-    expect(c.textContent).toContain(en.settings.repository.gitlab.tokenLine("ox"));
+  const day = 86_400_000;
+  const future = (days: number) => new Date(Date.now() + days * day).toISOString();
+  const rows = (c: HTMLElement) => c.querySelectorAll("[data-gitlab-row]").length;
+
+  /** #250 — 정상은 **한 행**이다: 보조줄에 토큰 주인·만료일, 버튼은 [Open on GitLab]뿐. 교체 컨트롤은 임박·만료에만 선다. */
+  it("연결됨은 한 행 — 보조줄 `Connected with @user's token · expires …` + [Open on GitLab]뿐이다 (G6a · #250)", async () => {
+    const c = await card({ status: "ok" } as ConnectionHealth, { token: { username: "ox", expiresAt: "2027-03-04T00:00:00.000Z", viewerIsOwner: false, projectCount: 2 }, viewer: { username: "me" } });
+    expect(rows(c)).toBe(1);
+    expect(c.textContent).toContain(en.settings.repository.gitlab.connectedWith("ox", "Mar 4, 2027"));
     const open = [...c.querySelectorAll("a")].find((a) => a.textContent === gl.settings.openRepo)!;
     expect(open.href).toBe("https://gitlab.com/group/sub/very-long-project-name");
+    expect([...c.querySelectorAll("button")].map((b) => b.textContent)).not.toContain(en.account.gitlab.replace);
+    expect(c.querySelector('input[type="password"]')).toBeNull();
     expect(c.textContent).not.toMatch(GITHUB_WORDS);
   });
 
-  it("만료 임박은 토큰 줄에 Expires soon이고, 토큰 주인은 [Replace token]이다 (G6b)", async () => {
-    const c = await card({ status: "ok" } as ConnectionHealth, { token: { username: "ox", expiresAt: soon, viewerIsOwner: true }, viewer: { username: "ox" } });
-    expect(c.textContent).toContain(en.account.gitlab.expiresSoon);
+  it("토큰 주인이 보면 `your token`이다 (G6b1·G6c1 · #250)", async () => {
+    const c = await card({ status: "ok" } as ConnectionHealth, { token: { username: "ox", expiresAt: "2027-03-04T00:00:00.000Z", viewerIsOwner: true, projectCount: 1 }, viewer: { username: "ox" } });
+    expect(c.textContent).toContain(en.settings.repository.gitlab.connectedWithYours("Mar 4, 2027"));
+  });
+
+  /** #251 — 만료 임박(주인): 머리 warning Alert(남은 일수·날짜) · 행 칩 호박 + `Expires soon` 배지 · 인라인 PAT 폼(Replace token + 사용 프로젝트 수). */
+  it("만료 임박(주인)은 warning Alert · 행 Expires soon(호박) · 인라인 교체 폼이다 (G6b1 · #251)", async () => {
+    const c = await card({ status: "ok" } as ConnectionHealth, { token: { username: "ox", expiresAt: future(9), viewerIsOwner: true, projectCount: 3 }, viewer: { username: "ox" } });
+    const notice = c.querySelector("[data-card-notice]");
+    expect(notice?.textContent).toMatch(/^Your GitLab token expires in \d+ days, on /);
+    expect(rows(c)).toBe(1);
+    const row = c.querySelector("[data-gitlab-row]")!;
+    expect(row.textContent).toContain(en.account.gitlab.expiresSoon);
+    expect(row.querySelector("[data-tone]")?.getAttribute("data-tone")).toBe("warning");
+    const input = c.querySelector<HTMLInputElement>('input[type="password"]');
+    expect(input).not.toBeNull();
+    expect(c.textContent).toContain(en.settings.repository.gitlab.usedByUpdates(3));
     expect([...c.querySelectorAll("button")].map((b) => b.textContent)).toContain(en.account.gitlab.replace);
     expect(c.textContent).not.toContain(en.settings.repository.gitlab.useMine);
+  });
+
+  /** #252 — 만료(주인): 머리 Alert가 만료일을 말하고 인라인 교체 폼이 선다. Base branch 행은 Select 그대로다(빨간 계정 안내로 바뀌지 않는다). */
+  it("만료(주인)은 만료일 Alert · Disconnected · 인라인 교체 폼이고 Base branch는 Select 그대로다 (G6c1 · #252)", async () => {
+    mocks.listProjectBranches.mockResolvedValue({ ok: false, error: "gitlab-reconnect" });
+    const c = await card({ status: "connection-unusable" } as ConnectionHealth, { token: { username: "ox", expiresAt: "2026-10-09T00:00:00.000Z", viewerIsOwner: true, projectCount: 1 }, viewer: { username: "ox" } });
+    expect(c.querySelector("[data-card-notice]")?.textContent).toContain(en.settings.repository.gitlab.expiredYours("Oct 9, 2026"));
+    expect(c.textContent).toContain(en.settings.repository.disconnected);
+    expect(c.textContent).toContain(en.settings.repository.gitlab.usedByReconnects(1));
+    expect(c.querySelector("#base-branch")?.getAttribute("role")).toBe("combobox");
+    expect(c.querySelector("[data-field-error]")).toBeNull();
   });
 
   it("참조가 비면 Disconnected + 사유이고, 다른 OWNER는 명의 문장 뒤 [Use my GitLab connection]이 GitLab 재연결을 부른다 (G6c · D21)", async () => {
@@ -119,7 +150,7 @@ describe("설정 › Repository — GitLab 카드 (시안 G6)", () => {
   });
 
   it("토큰을 못 쓰고(D22) 보는 사람이 연결이 없으면 PAT 입력이 선다", async () => {
-    const c = await card({ status: "connection-unusable" } as ConnectionHealth, { token: { username: "ox", expiresAt: null, viewerIsOwner: false }, viewer: null });
+    const c = await card({ status: "connection-unusable" } as ConnectionHealth, { token: { username: "ox", expiresAt: null, viewerIsOwner: false, projectCount: 1 }, viewer: null });
     expect(c.textContent).toContain(en.settings.repository.gitlab.unusable);
     expect(c.querySelector('input[type="password"]')).not.toBeNull();
     expect(c.textContent).not.toMatch(GITHUB_WORDS);
@@ -131,7 +162,7 @@ describe("설정 › Repository — GitLab 카드 (시안 G6)", () => {
    */
   it("주소가 바뀌면 새 주소 Alert와 GitLab [Reconnect]가 서고 링크는 새 주소다 (repo-moved)", async () => {
     mocks.reconnectGitLabRepository.mockResolvedValue({ ok: true });
-    const c = await card({ status: "repo-moved", fullName: "group/renamed-project" } as ConnectionHealth, { token: { username: "ox", expiresAt: null, viewerIsOwner: true }, viewer: { username: "ox" } });
+    const c = await card({ status: "repo-moved", fullName: "group/renamed-project" } as ConnectionHealth, { token: { username: "ox", expiresAt: null, viewerIsOwner: true, projectCount: 1 }, viewer: { username: "ox" } });
     // 새 주소 Alert — GitHub 카드와 같은 사전 문장(`health.moved`)이다.
     expect(c.querySelector("[data-card-notice]")?.textContent).toBe("This repository moved to group/renamed-project");
     expect(c.textContent).toContain(en.settings.repository.movedHint);
@@ -145,7 +176,7 @@ describe("설정 › Repository — GitLab 카드 (시안 G6)", () => {
   });
 
   it("조회 실패는 Couldn't check이고 끊김으로 접지 않는다 — 복구 컨트롤이 없다", async () => {
-    const c = await card({ status: "unknown" } as ConnectionHealth, { token: { username: "ox", expiresAt: null, viewerIsOwner: false }, viewer: { username: "me" } });
+    const c = await card({ status: "unknown" } as ConnectionHealth, { token: { username: "ox", expiresAt: null, viewerIsOwner: false, projectCount: 1 }, viewer: { username: "me" } });
     expect(c.textContent).toContain(en.settings.repository.unknown);
     expect(c.textContent).not.toContain(en.settings.repository.gitlab.useMine);
   });
