@@ -302,13 +302,17 @@ export async function startLoginMethodConnect(provider: string): Promise<void> {
 
 const GitLabTokenInput = z.object({ token: z.string().max(1024) });
 
-export type ConnectGitLabActionResult = ConnectGitLabResult | { ok: false; error: "unauthorized" };
+/**
+ * ⚠️ 세션 저장소 장애는 `session-unavailable`이다 — 코어의 `unavailable`은 GitLab·DB 장애라 폼이 "GitLab didn't answer"로 말한다. 같은 코드로 접으면
+ * GitLab을 부르지도 않았는데 GitLab 탓이 된다(감사 U6).
+ */
+export type ConnectGitLabActionResult = ConnectGitLabResult | { ok: false; error: "unauthorized" | "session-unavailable" };
 
 export async function connectGitLab(raw: { token: string }): Promise<ConnectGitLabActionResult> {
   const parsed = GitLabTokenInput.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "invalid input" };
   const session = await readSession();
-  if (session.status === "unavailable") return { ok: false, error: "unavailable" };
+  if (session.status === "unavailable") return { ok: false, error: "session-unavailable" };
   if (session.status === "none") return { ok: false, error: "unauthorized" };
   const result = await connectGitLabAccount(getPrisma(), session.userId, parsed.data.token);
   // `/account`·①·설정의 연결자 줄이 같은 행을 읽는다 — 교체는 참조하는 프로젝트 전부의 상태를 바꾼다.

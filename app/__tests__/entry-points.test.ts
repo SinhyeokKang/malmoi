@@ -232,6 +232,8 @@ function exportGuarded(body: string, id: string): boolean {
 /**
  * readSession 호출만으로는 부족하다 — 비로그인·장애 두 갈래가 즉시 반환해야 인증이다.
  * 결과 코드만 돌려주는 Action(`setTimeZone`)은 두 갈래를 `!== "ok"` 한 줄로 함께 끊는다 — `ok` 밖이 전부 거부라 빠지는 갈래가 없다.
+ * 장애 갈래의 코드는 `unavailable` 또는 `session-unavailable`이다 — 코어가 `unavailable`을 다른 장애(GitLab·DB)에 쓰는 Action(`connectGitLab`)이
+ * 세션 장애를 가른다(감사 U6).
  */
 function hasUserGuard(body: string): boolean {
   if (body.includes("requireUser(")) return true;
@@ -239,7 +241,7 @@ function hasUserGuard(body: string): boolean {
   if (/if \(session\.status !== "ok"\) return "failed";/.test(body)) return true;
   if (/if \(session\.status !== "ok"\) return \{ status: "failed" \};/.test(body)) return true;
   return /if \(session.status === "none"\) return \{ ok: false, error: "unauthorized" \}/.test(body) &&
-    /if \(session.status === "unavailable"\) return \{ ok: false, error: "unavailable" \}/.test(body);
+    /if \(session.status === "unavailable"\) return \{ ok: false, error: "(?:session-)?unavailable" \}/.test(body);
 }
 
 /**
@@ -263,6 +265,10 @@ it("사용자 Action의 readSession은 두 거부 반환 없이는 인증으로 
   expect(hasUserGuard(read + none)).toBe(false);
   expect(hasUserGuard(read + outage)).toBe(false);
   expect(hasUserGuard(read + none + outage)).toBe(true);
+  const sessionOutage = 'if (session.status === "unavailable") return { ok: false, error: "session-unavailable" };';
+  expect(hasUserGuard(read + none + sessionOutage)).toBe(true);
+  expect(hasUserGuard(read + sessionOutage)).toBe(false);
+  expect(hasUserGuard(read + none + 'if (session.status === "unavailable") return { ok: false, error: "gitlab-unavailable" };')).toBe(false);
   // 코드를 돌려주는 Action은 `ok` 밖을 한 줄로 끊는다 — 한 갈래만 끊는 줄(`=== "none"`)은 인정하지 않는다.
   expect(hasUserGuard(read + 'if (session.status !== "ok") return "failed";')).toBe(true);
   expect(hasUserGuard(read + 'if (session.status === "none") return "failed";')).toBe(false);

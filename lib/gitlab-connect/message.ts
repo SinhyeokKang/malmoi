@@ -23,10 +23,11 @@ export function gitlabConnectErrorMessage(m: Messages, error: string): string {
 /**
  * PAT 폼(`connectGitLab`)의 거부 → 문구 (감사 U6). GitLab을 부르기 전의 거부는 GitLab 문장이 아니다 — 세션이 끝났으면 할 일은 로그인이고
  * ("다시 시도"는 같은 결과다), 입력 모양 거부는 GitLab이 토큰을 본 적이 없다. 나머지는 `gitlabConnectErrorMessage`다.
- * ⚠️ `unavailable`은 세션 장애와 GitLab·DB 장애가 같은 코드라 여기서 가를 수 없다 — GitLab 문장 그대로다.
+ * 세션 저장소 장애는 Action이 `session-unavailable`로 가른다 — 다른 Action의 세션 장애 문장이다. 코어의 `unavailable`(GitLab·DB)은 GitLab 문장이다.
  */
 export function gitlabTokenErrorMessage(m: Messages, error: string): string {
   if (error === "unauthorized") return accessErrorMessage(m, "unauthorized");
+  if (error === "session-unavailable") return accessErrorMessage(m, "unavailable");
   if (error === "invalid input") return m.account.gitlab.form.invalidInput;
   return gitlabConnectErrorMessage(m, error);
 }
