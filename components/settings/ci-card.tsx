@@ -50,8 +50,9 @@ export function CiCard({ slug, host = "github", archived, unpinned = false, stal
       {/*
         훅 안내 — 두 호스트 모두 선다. GitHub은 action 입력 `wrapper`, GitLab은 생성 job의 변수 `MALMOI_I18N_WRAPPER`다(fix2가 표면 job에 빈 값으로 넣었다).
         문장은 `RepoHostScope`가 덮은 사전(`settings.workflow.onGitLab.hookHint` — "input" ↔ "variable")이 고르고, 이름만 호출부가 넘긴다.
+        링크는 호스트의 가이드 페이지다 — GitLab은 그 변수를 설명하는 `setup/gitlab-ci#gitlab-ci`(글자는 덮인 `hookDoc`, 그 페이지 h1).
       */}
-      <p className="text-muted-foreground text-xs leading-body">{m.settings.workflow.hookHint("useTranslations()", host === "gitlab" ? "MALMOI_I18N_WRAPPER" : "wrapper", <InlineLink href={routes.docs("setup/workflow", "workflow")}>{m.settings.workflow.hookDoc}</InlineLink>)}</p>
+      <p className="text-muted-foreground text-xs leading-body">{m.settings.workflow.hookHint("useTranslations()", host === "gitlab" ? "MALMOI_I18N_WRAPPER" : "wrapper", <InlineLink href={host === "gitlab" ? routes.docs("setup/gitlab-ci", "gitlab-ci") : routes.docs("setup/workflow", "workflow")}>{m.settings.workflow.hookDoc}</InlineLink>)}</p>
     </LargeModal>
   </Card>;
 }

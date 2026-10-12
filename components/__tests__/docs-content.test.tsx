@@ -52,3 +52,20 @@ it("hook 안내 링크 글자가 대상 페이지(`setup/workflow`)의 h1과 같
   const h1 = headings(parseMd(readFileSync(join(process.cwd(), "guide/en/setup/workflow.md"), "utf8"))).find((heading) => heading.depth === 1);
   expect(en.settings.workflow.hookDoc).toBe(h1?.text);
 });
+
+/**
+ * GitLab 프로젝트의 hook 안내는 `MALMOI_I18N_WRAPPER` 변수를 말한다 — GitHub 워크플로 페이지로 보내면 그 변수가 없는 페이지에
+ * 떨어진다(2026-10-13, 호스트별 가이드 분리). 그 변수를 설명하는 GitLab CI 절로 가고, 링크 글자는 그 페이지의 h1이다(#121).
+ */
+it("GitLab 프로젝트의 hook 안내가 `setup/gitlab-ci#gitlab-ci`로 이어지고 글자가 그 페이지 h1이다", async () => {
+  const { RepoHostScope } = await import("@/components/i18n/messages-provider");
+  await render(<RepoHostScope host="gitlab"><CiCard slug="acme" host="gitlab" archived={false} stale={[]}><p>yaml</p></CiCard></RepoHostScope>);
+  const trigger = [...document.querySelectorAll("button")].find((b) => b.textContent?.includes(en.settings.onGitLab.ci.workflow))!;
+  trigger.click();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  const link = document.querySelector<HTMLAnchorElement>(`a[href="${routes.docs("setup/gitlab-ci", "gitlab-ci")}"]`);
+  expect(link).not.toBeNull();
+  const h1 = headings(parseMd(readFileSync(join(process.cwd(), "guide/en/setup/gitlab-ci.md"), "utf8"))).find((heading) => heading.depth === 1);
+  expect(link?.textContent).toBe(h1?.text);
+  expect(en.settings.workflow.onGitLab.hookDoc).toBe(h1?.text);
+});

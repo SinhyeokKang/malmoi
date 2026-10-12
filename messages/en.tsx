@@ -3869,6 +3869,8 @@ export const en = {
             Repositories that read translations through a hook ({hook}) also need the {wrapper} variable in their CI jobs — see {doc}.
           </>
         ),
+        /** `hookHint`의 링크 라벨 — `/docs/setup/gitlab-ci#gitlab-ci`로 간다(그 절이 `MALMOI_I18N_WRAPPER`를 설명한다). ⚠️ 대상 페이지의 h1과 같은 글자다. */
+        hookDoc: "Add the GitLab CI jobs",
       },
       /** GitLab CI/CD 변수 등록 단계(design-brief G7) — 보호 변수는 보호 브랜치에만 노출되므로 base 브랜치가 보호돼야 한다. */
       gitlabVariable: "The jobs read the push token from the PUSH_TOKEN CI/CD variable. Add it in Settings › CI/CD › Variables: select Protect variable and set Visibility to Masked — protected variables only reach protected branches, so the base branch must be protected.",
