@@ -217,18 +217,22 @@ rg -l 'GithubIcon|github\.com|GitPullRequest' components app
 
 브랜드 글리프 — `lucide-react`에는 GitHub·GitLab 브랜드 아이콘이 없다. GitLab 글리프는 이 리포의 유일한 브랜드 글리프 위치인 `components/signin/brand-icons.tsx`에 추가한다. `github-glyph.test.ts`는 GitHub path만 세므로 **`gitlab-glyph.test.ts`를 새로 둔다**(`mcp-glyph.test.ts` 선례). tanuki는 **단색 `currentColor`**다(D10 — 옆에 서는 GitHub 글리프와 같은 형이고 DESIGN §6.2 raw 색 예외를 늘리지 않는다). ⚠️ `visual-system.test.ts`는 `brand-icons.tsx`를 파일 단위로 면제하므로 다색이 섞여도 green이다 — `gitlab-glyph.test.ts`가 `fill="currentColor"`와 색 리터럴 0을 센다.
 
-연결 상태와 §2.4 톤 매핑(행은 확정, `STATE` 키 이름은 E0·E-ui 배치가 DESIGN §2.4와 함께 확정한다). 상태는 화면마다 그리지 않고 **`lib/status/canon.ts`의 `STATE` → `StatusBadge` 한 경로**로만 그린다(POSTMORTEM 2026-10-08 — 결과 미확인의 톤과 PR 조회 실패 문구가 화면마다 갈렸다). PR/MR 분기도 `STATE.prOpen`·`prCheckFailed`의 label 한 곳에서 한다.
+연결 상태와 §2.4 톤 매핑(**확정 — E0, 2026-10-12**: D11 만료 임박 14일 · D13 레거시 PAT `api` 하나). 상태는 화면마다 그리지 않고 **`lib/status/canon.ts`의 `STATE` → `StatusBadge` 한 경로**로만 그린다(POSTMORTEM 2026-10-08 — 결과 미확인의 톤과 PR 조회 실패 문구가 화면마다 갈렸다). PR/MR 분기도 `STATE.prOpen`·`prCheckFailed`의 label 한 곳에서 한다(DESIGN §2.4 — GitLab 짝 `Couldn't check for an open merge request`).
 
-| 상태 | §2.4 톤 | `canon.ts` STATE | 연결 건강성(`planConnectionHealth` 8종)과의 대응 |
-|---|---|---|---|
-| 만료 (`Expired`) | 기존 행 재사용 후보 | 재사용 후보 | GitHub 전용 상태(`app-uninstalled`·`installation-changed`·`unpinned`)와 별개 사유 — `Disconnected`로 접는다 |
-| 철회 / 재연결 필요 | 기존 `repositoryConnectionState` 재사용 후보 | 재사용 후보 | `Disconnected` |
-| 일시 장애 (`Couldn't check`) | 기존 행 재사용 | 재사용 | ⚠️ `unknown`은 끊김으로 접지 않는다 |
-| 보관된 GitLab 프로젝트(쓰기 403) | 재연결 필요 | 재사용 후보 | `Disconnected`(재시도 루프 금지) |
-| PAT 만료 임박 | **warning**("손봐야 하지만 깨지진 않음" — 새 톤이 아니라 새 **상태 행**) | 새 키 | 연결은 정상 — 접지 않는다 |
-| PAT 스코프 부족 | 연결 거부(① 입력 아래 danger) / 연결 뒤 발견이면 재연결 필요 | 새 키 | `Disconnected` |
-| PAT 주인이 리포 권한을 잃음 | 재연결 필요 | 재사용 후보 | `Disconnected` |
-| 보호 브랜치 권한 부족(403 push · 400 force — 실측) | 기존 Publish 실패 행(danger) | 재사용 | 대응 없음 — 연결은 정상이다. 안내 문장이 "sync 브랜치를 보호 규칙에서 빼라"를 말한다 |
+**자리가 둘이다** — 프로젝트의 Connection 행(Home 메타 · 설정 연결 행, `repositoryConnectionState` 다섯 값)과 **토큰의 자리**(`/account` GitLab 카드 · 설정 GitLab 카드의 연결자·만료일 줄). 프로젝트 행은 "Sync·Publish가 도나"를, 토큰 자리는 "토큰이 어떤가"를 말한다 — GitHub App 계정 카드의 `Expired`가 프로젝트 Connection 행에 서지 않는 것과 같은 분리다.
+
+| 상태 | §2.4 톤 | 프로젝트 Connection 행 `STATE` | 토큰 자리 `STATE` | 연결 건강성(`planConnectionHealth` 8종)과의 대응 |
+|---|---|---|---|---|
+| 만료 (401 — 만료일 지남) | warning | `disconnected` + [Reconnect](다른 OWNER) | `expired`(기존 — 인가·MCP 토큰·연결 앱의 Expired와 같은 키) + [Replace token](주인) | `Disconnected`로 접는다 — GitHub 전용 사유(`app-uninstalled`·`installation-changed`·`unpinned`)와 별개 사유 |
+| 철회 (401 — 만료일 전) | warning | `disconnected` + [Reconnect] | `disconnected`(검증이 만료와 철회를 가르지 못하면 만료일로 가른다 — 만료일 전 401 = 철회) | `Disconnected` |
+| 일시 장애 (네트워크 · 5xx · 429) | warning | `couldNotCheck`(기존 `Couldn't check`) | `couldNotCheck` | ⚠️ `unknown` — 끊김으로 접지 않는다. 컨트롤 없음 |
+| 보관된 GitLab 프로젝트 (쓰기 403) | warning | `disconnected` + [Reconnect] | 대응 없음 — 토큰은 정상 | `Disconnected`(재시도 루프 금지) |
+| PAT 만료 임박 (만료일 ≤ 14일, D11) | **warning**(새 톤이 아니라 새 **상태 행**) | `connected` — 연결은 정상이라 접지 않는다 | **새 키 `expiresSoon`**(warning · `soft-amber`, 낱말 en **Expires soon** · ko **만료 예정** · es **Caduca pronto** — 사전·§10.1 등재는 E-ui) + 만료일(`formatDay`) | 대응 없음 — 정상 |
+| PAT 스코프 부족 (`api` 없음) · fine-grained PAT | danger — 연결 거부(① 입력 아래 `Alert danger`, `aria-describedby`) | 저장되지 않으므로 상태 없음 | 저장되지 않으므로 상태 없음 | 대응 없음. ⚠️ 레거시 PAT의 스코프는 만든 뒤 바꿀 수 없어 "연결 뒤 발견"은 생기지 않는다 — 생기면(403 insufficient_scope) 철회 행과 같다. 새 키를 두지 않는다 |
+| PAT 주인이 리포 권한을 잃음 (Maintainer 미만 · 멤버 아님) | warning | `disconnected` + [Reconnect] | 대응 없음 — 토큰은 정상(다른 프로젝트는 돈다) | `Disconnected` |
+| 보호 브랜치 권한 부족 (403 push · 400 force — 실측) | danger | 대응 없음 — 연결은 정상(`connected`) | 대응 없음 | 대응 없음. Publish 결과의 실패 갈래(Logs `logsFailed`)이고 안내 문장이 "sync 브랜치를 보호 규칙에서 빼라"를 말한다 |
+
+새 `STATE` 키는 `expiresSoon` 하나다. 나머지는 전부 기존 키(`connected`·`disconnected`·`couldNotCheck`·`expired`·`logsFailed`·`prOpen`·`prCheckFailed`) 재사용이다.
 
 만료일 표시는 `lib/date-format.ts`(사용자 시간대 + 오프셋 라벨, CLAUDE.md 날짜 규칙), 남은 기간은 `lib/relative-time.ts`다.
 
