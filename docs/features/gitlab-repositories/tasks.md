@@ -104,7 +104,7 @@
   - 검증: [자동] gitlab-glyph(`fill="currentColor"`·색 리터럴 0)·`visual-system.test.ts` green.
 - [ ] 시안 대상 신규 UI는 `/design-sync`로 대조한다. 기존 화면의 소규모 수정은 해당 DOM·런타임 검증을 한다.
   - 검증: [수동] 시안 대상은 `/design-sync` 실측 리포트(computed style·접근성 트리 대조)에 불일치 0건. 그 외는 화면별 링크 목적지가 GitLab URL인 것을 `/runtime-test`로 확인.
-- [ ] 문서·사전을 실제 구현에 맞춘다 — 소유자가 둘이라 두 하위 항목으로 나눈다(루트 `.env.example`은 새 env가 없어 대상이 아니다 — D6).
+- [x] 문서·사전을 실제 구현에 맞춘다 — 소유자가 둘이라 두 하위 항목으로 나눈다(루트 `.env.example`은 새 env가 없어 대상이 아니다 — D6).
   - **(E-ui)** en/ko/es 사전의 랜딩·SEO·공개 문서(`landing`·`seo`·`publicDocs` 중 `publicDocs.privacy` 제외 — 그 절은 E-sh) 포지셔닝 문구(D3 — 헤드라인 유지, 기능·포맷 절만), `/translate` 모드 ①. 호스트 문맥이 없는 † 키 8개는 문장 분기가 아니라 "GitHub or GitLab" 꼴 문구 개정이다(consumers.md §3.1).
     - 검증: [자동] 사전·`no-korean-ui`·`brand-spelling`·`dictionary-consistency` 테스트 green.
   - **(E-doc)** 가이드 `guide/{en,ko,es}/`(셀프 호스팅 제외)와 PRODUCT(§1·§2·§3·**§4.1 셀프 호스팅 "하지 않는 것"의 GitLab**)·README("…and GitLab aren't supported")·ARCHITECTURE(불변식 6·11)·DIRECTORY·**OPERATIONS(롤백 절차의 D6a 한 줄 — design §4)**.
