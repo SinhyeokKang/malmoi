@@ -115,8 +115,8 @@ async function seedGitLabProject(id: string, connectionId: string, members: { us
 }
 
 async function listRow(id: string) {
-  const row = await prisma.project.findUniqueOrThrow({ where: { id }, select: { ...REPO_COLUMNS, archivedAt: true, surfaces: { select: { archivedAt: true, lastCommitSha: true } } } });
-  return { row, status: projectStatus(row) };
+  const row = await prisma.project.findUniqueOrThrow({ where: { id }, select: { ...REPO_COLUMNS, archivedAt: true, gitlabConnection: { select: { expiresAt: true } }, surfaces: { select: { archivedAt: true, lastCommitSha: true } } } });
+  return { row, status: projectStatus({ ...row, gitlabTokenExpiresAt: row.gitlabConnection?.expiresAt ?? null }) };
 }
 
 describe("PAT 입력·교체·해제", () => {

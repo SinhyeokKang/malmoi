@@ -18,6 +18,7 @@ import {
   searchProjects,
   summaryQueue,
   type ProjectStatus,
+  type ProjectStatusInput,
 } from "../list";
 
 describe("searchProjects", () => {
@@ -80,7 +81,8 @@ describe("projectStatus — GitLab 저장 만료일 (D24)", () => {
   });
   it("⚠️ 만료일 필드를 빠뜨린 입력은 typecheck가 막는다 — 새 생산자가 잊으면 만료된 프로젝트가 조용히 `active`다(audit E11)", () => {
     // @ts-expect-error -- `gitlabTokenExpiresAt`은 필수 `Date | null`이다. GitHub·연결 없음도 `null`을 명시한다.
-    expect(projectStatus(GITLAB, NOW)).toBe("active");
+    const input: ProjectStatusInput = GITLAB;
+    expect(input).toBe(GITLAB);
   });
   it("GitHub 프로젝트는 GitLab 만료일을 보지 않는다", () => {
     expect(projectStatus({ ...GITLAB, repoHost: "github", installationId: "inst", gitlabConnectionId: null, gitlabTokenExpiresAt: new Date("2000-01-01T00:00:00Z") }, NOW)).toBe("active");
@@ -88,7 +90,7 @@ describe("projectStatus — GitLab 저장 만료일 (D24)", () => {
 });
 
 describe("projectStatus", () => {
-  const READY = { archivedAt: null, repoHost: "github", gitlabConnectionId: null, installationId: "1", surfaces: [{ archivedAt: null, lastCommitSha: "a".repeat(40) }], repositoryId: "42" };
+  const READY = { archivedAt: null, repoHost: "github", gitlabConnectionId: null, gitlabTokenExpiresAt: null, installationId: "1", surfaces: [{ archivedAt: null, lastCommitSha: "a".repeat(40) }], repositoryId: "42" };
 
   it("준비된 프로젝트는 `active`다 — 이 화면에서만 `ready`가 침묵이 아니다", () => {
     expect(projectStatus(READY)).toBe("active");
@@ -102,7 +104,7 @@ describe("projectStatus", () => {
   it("보관이 readiness를 이긴다", () => {
     expect(projectStatus({ ...READY, archivedAt: new Date() })).toBe("archived");
     expect(
-      projectStatus({ archivedAt: new Date(), repoHost: "github", gitlabConnectionId: null, installationId: null, surfaces: [{ archivedAt: null, lastCommitSha: null }], repositoryId: null }),
+      projectStatus({ archivedAt: new Date(), repoHost: "github", gitlabConnectionId: null, gitlabTokenExpiresAt: null, installationId: null, surfaces: [{ archivedAt: null, lastCommitSha: null }], repositoryId: null }),
     ).toBe("archived");
   });
 
@@ -182,7 +184,7 @@ describe("상태 문구", () => {
 /** 표면 하나의 적재 상태 — 행은 **표면 배열을 그대로** 든다(ux-drift-unify §3.2, 평탄화하면 A 동기화 중이 B 실패를 가렸다). */
 const S = { archivedAt: null, lastCommitSha: "s", importError: null, importing: false } as const;
 const FIRST = { ...S, lastCommitSha: null } as const;
-const READY = { repoHost: "github", gitlabConnectionId: null, installationId: "i", surfaces: [S], repositoryId: "r", archivedAt: null } as const;
+const READY = { repoHost: "github", gitlabConnectionId: null, gitlabTokenExpiresAt: null, installationId: "i", surfaces: [S], repositoryId: "r", archivedAt: null } as const;
 const QUIET = { review: 0, unsent: 0, openPr: null, repoAheadFiles: 0 } as const;
 const row = (over: Partial<Parameters<typeof rowBanner>[0]> = {}) => ({ ...READY, ...QUIET, ...over });
 const failed = (importError: "parse-failed" | "partial-import" | "import-failed", importing = false) => ({ surfaces: [{ ...S, importError, importing }] });

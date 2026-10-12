@@ -26,7 +26,7 @@ import type { ProjectListRow } from "@/lib/keys/query";
  * ⚠️ **"0건"만 단언하지 않는다** (POSTMORTEM 2026-09-14) — 같은 탐침이 의도적 불일치를 잡는지 짝으로 잰다.
  */
 const BASE: ProjectListRow = {
-  image: null, slug: "admin-console", name: "admin-console", role: "OWNER", repoHost: "github", gitlabConnectionId: null, installationId: "i",
+  image: null, slug: "admin-console", name: "admin-console", role: "OWNER", repoHost: "github", gitlabConnectionId: null, gitlabTokenExpiresAt: null, installationId: "i",
   surfaces: [{ archivedAt: null, lastCommitSha: "s", importError: null, importing: false }], archivedAt: null, repoOwner: "day1company", repoName: "admin-console",
   repositoryId: "9001", memberCount: 6, baseBranch: "main", lastPrUrl: null, reviewSurfaceSlug: null, unsentSurfaceSlug: null,
   repoAheadFrom: null, meters: [], review: 0, unsent: 0, openPr: null, repoAheadFiles: 0,

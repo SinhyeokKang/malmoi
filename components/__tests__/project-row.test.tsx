@@ -34,7 +34,7 @@ const BASE: ProjectListRow = {
   slug: "acme", reviewSurfaceSlug: "default", unsentSurfaceSlug: "default", repoAheadFrom: "s",
   name: "Acme",
   role: "OWNER",
-  repoHost: "github", gitlabConnectionId: null, installationId: "i",
+  repoHost: "github", gitlabConnectionId: null, gitlabTokenExpiresAt: null, installationId: "i",
   surfaces: [{ archivedAt: null, lastCommitSha: "s", importError: null, importing: false }],
   archivedAt: null,
   repoOwner: "o",

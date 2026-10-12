@@ -38,9 +38,10 @@ export type ProjectStatusInput = {
   repositoryId: string | null;
   /**
    * GitLab 프로젝트가 참조하는 연결의 저장 만료일(D24) — 지났으면 원격 호출 없이 끊김이다(Home·설정의 `connection-unusable`과 같은 결론을 목록·Inbox가
-   * DB만으로 낸다). 원격으로만 아는 철회·접근 상실은 목록이 모른다(GitHub `app-uninstalled`과 같은 선례). 없으면 판정하지 않는다.
+   * DB만으로 낸다). 원격으로만 아는 철회·접근 상실은 목록이 모른다(GitHub `app-uninstalled`과 같은 선례). GitHub·연결 없음은 `null`이다.
+   * ⚠️ **필수다**(audit E11) — 선택 필드였을 땐 새 생산자가 빠뜨리면 만료된 GitLab 프로젝트가 `active`로 보이는데 typecheck가 침묵했다.
    */
-  gitlabTokenExpiresAt?: Date | null;
+  gitlabTokenExpiresAt: Date | null;
 };
 
 /**
@@ -91,7 +92,7 @@ export function projectStatus(row: ProjectStatusInput, now: Date = new Date()): 
   // GitLab은 연결 참조가 빈 행도 여기다(연결자가 떠났다 — gitlab-repositories). GitHub은 지금처럼 리포 id 하나다.
   if (!repoConnectionPinned(row)) return "needs_reconnect";
   // 만료 임박(14일)은 목록 상태가 아니다 — 연결은 정상이라 `Active`이고, 임박은 토큰의 자리(`/account`·설정 카드)가 말한다(design §2 톤 표).
-  if (row.repoHost === "gitlab" && tokenExpiryState(row.gitlabTokenExpiresAt ?? null, now) === "expired") return "needs_reconnect";
+  if (row.repoHost === "gitlab" && tokenExpiryState(row.gitlabTokenExpiresAt, now) === "expired") return "needs_reconnect";
   return "active";
 }
 

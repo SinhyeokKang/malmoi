@@ -227,7 +227,7 @@ export type ProjectListRow = Omit<MembershipRow, "defaultSurfaceSlug" | "sourceC
   /** readiness 두 컬럼 + 표면별 적재 상태 — **평탄화하지 않는다**(`assembleProjectListRows`). */
   surfaces: RowInput["surfaces"];
   /** GitLab 연결의 저장 만료일 — 목록 상태의 사전 판정(D24, `projectStatus`). GitHub·연결 없음은 `null`이다. */
-  gitlabTokenExpiresAt?: Date | null;
+  gitlabTokenExpiresAt: Date | null;
   image: string | null;
   repoOwner: string;
   repoName: string;
