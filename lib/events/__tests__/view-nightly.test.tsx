@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+import { withRepoHost } from "@/lib/i18n/host";
 import { en } from "@/messages/en";
 
 import type { EventPayload } from "../payload";
@@ -122,5 +123,25 @@ describe("eventFailureMessage — nightly.skip base-unreadable", () => {
 
   it("보관 중이면 야간 절이 빠진다", () => {
     expect(eventFailureMessage(en, skip, true)).not.toContain("nightly");
+  });
+});
+
+/**
+ * **GitLab 프로젝트의 `pr-check-failed` 보류** (감사 B1 · 리뷰 C 🟡2) — Logs는 프로젝트 화면이라 `withRepoHost`로 덮인 사전을 받는다. 연결이 끊긴
+ * 프로젝트도 이 사유라 행 문장은 "GitLab이 응답하지 않았다"를 단언하지 않고, 사유 문장은 설정의 재연결을 말한다. CI·야간 둘 다다.
+ */
+describe("GitLab 프로젝트 — pr-check-failed 보류의 행·사유 문장", () => {
+  const gitlab = withRepoHost(en, "gitlab");
+  it.each([
+    ["CI", { subtype: "import.ci", source: "ci" }],
+    ["야간", { subtype: "import.nightly", source: "nightly" }],
+  ] as const)("%s 보류 행은 덮인 문장을 고른다", (_label, { subtype, source }) => {
+    const row = metaRow({ subtype, result: "deferred", payload: payload({ source, deferReason: "pr-check-failed", pendingEdits: 0 }) });
+    const text = renderToStaticMarkup(<>{eventSentence(gitlab, "en", row, { actor: "WHO", key: "" })}</>);
+    expect(text).toBe(renderToStaticMarkup(<>{en.logs.onGitLab.sentence.import.held["pr-check-failed"]("WHO")}</>));
+    expect(text).not.toMatch(/didn.t answer|GitHub|pull request/i);
+    const parts = eventMeta(gitlab, row, false);
+    expect(parts).toContain(en.logs.onGitLab.deferReasons["pr-check-failed"]);
+    expect(en.logs.onGitLab.deferReasons["pr-check-failed"]).toMatch(/reconnect it in Settings/);
   });
 });
