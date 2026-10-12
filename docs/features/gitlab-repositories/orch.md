@@ -178,3 +178,5 @@
 
 ## 진행 기록 (감사 런)
 
+- 2026-10-13: run `run_50735dc2cda8`. S·C·L·D·G 병렬 착수(`01621138`). 도중 다른 세션(Codex docs-host-ia)이 가이드를 GitHub/GitLab 최상위 장으로 재편 → G 범위를 줄였으나 G-1~G-4는 이미 커밋된 뒤였다. 재편 커밋 cherry-pick `9d20913a`(원본 `23a124d0`) → `pnpm gate` ok → **push `4fb546b9..9d20913a`**(감사 문서 둘 포함).
+- 2026-10-13: 인계 — S 10커밋(gate ok 재실행, 1차는 api-contract 부하 타임아웃) · C 17커밋(E4 1차 수정 `de351b8a`를 `cb266b72`+`57174f6b`가 대체, gate는 search-performance 부하만 red) · L 10커밋(gate ok) · D 8커밋(gate는 search-performance 부하만 red) · G 8커밋(gate ok). 미룬 항목: U6 `unavailable` 갈래(`account/actions.ts`, S 소유 → C fix). R-S·R-C·R-L·R-D(opus) 착수, G fix1 = IA 재편 위 rebase(G-1~G-4를 새 경로로).
