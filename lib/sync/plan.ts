@@ -67,6 +67,10 @@ export function planWriteLock(input: { now: Date; repositoryImportToken: string 
  * `lib/pull`의 특정 throw 자리이거나 껍데기가 만드는 것(`stale`·`execution-uncertain`)이거나 `runPull`의 반환(`reconfirm` — SKIPPED 행)이다.
  * `lib/pull/__tests__/error-codes.test.ts`가 생산자 목록과 이 union을 양방향으로 고정한다.
  *
+ * ⚠️ **두 코드는 리포 호스트 중립으로 읽는다** (gitlab-repositories 0단계 판정 — 문자열은 그대로, 새 코드 없음): `github-error` = 리포 호스트의 HTTP 실패
+ * (GitHub·GitLab 모두 — 아래 `httpStatus` 판정이 이미 호스트를 모른다), `not-installed` = 그 프로젝트에 쓸 연결 자격증명이 없음(GitHub 설치 없음 · GitLab 연결
+ * 참조 비움·토큰 만료·접근 상실·보관 — `lib/gitlab/client.ts`). 이 코드는 지우지 않는 `ProjectEvent` 페이로드에도 남아 이름을 바꾸지 않는다 — Logs 문장만
+ * 프로젝트 호스트로 가른다.
  * ⚠️ **없앤 것과 이유** (ARCHITECTURE §5.6.3): `adapter-write-failed`(어댑터 오류는 `warnings`로 접혀 실패가
  * 아니다) · `app-uninstalled`/`base-branch-missing`(같은 한 문장에서 나와 가를 수 없다 →
  * `base-unreadable` 하나) · `repo-unreachable`(status 판독 없이 못 만든다 → `github-error`).

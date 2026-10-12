@@ -2,8 +2,8 @@
 import { httpStatus } from "@/lib/failure";
 
 /**
- * **GitLab REST의 최소 transport** (gitlab-repositories design §3 · tasks §2 B2). 읽기(GET)만 여기 있고, 쓰기·Publish·MR은 커밋 C가
- * 같은 주입점 위에 얹는다.
+ * **GitLab REST·GraphQL transport** (gitlab-repositories design §3 · tasks §2 B2·§3). 읽기(`get`)·쓰기(`send`)·GraphQL(`graphql`)이 같은 주입점
+ * 하나를 지난다 — 판정은 없다(`./plan`).
  *
  * ⚠️ **숫자 id로만 주소한다** — `/projects/<id>/…`. 인코딩한 `namespace%2Fpath` 주소는 이름이 재사용·이전되면 남의 프로젝트를 부른다.
  * PAT에는 토큰을 리포 하나로 좁히는 층이 없어(GitHub `pinnedOctokit`과 다르다) **이 주소 규칙이 첫 층이다**(design §5 · 불변식 11).
@@ -19,6 +19,7 @@ import { httpStatus } from "@/lib/failure";
 /** GitLab.com 한정(spec §5) — 코드 상수이고 환경변수가 아니다(design §5 "새 환경변수는 없다"). */
 export const GITLAB_ORIGIN = "https://gitlab.com";
 export const GITLAB_API = `${GITLAB_ORIGIN}/api/v4`;
+export const GITLAB_GRAPHQL = `${GITLAB_ORIGIN}/api/graphql`;
 
 /**
  * 원격이 실패 상태로 답했다. `status`는 `httpStatus()`(`lib/failure.ts`)가 읽는 이름이다 — 저장 오류 코드 분류(`lib/sync/plan.ts`)가
@@ -28,8 +29,8 @@ export class GitLabHttpError extends Error {
   readonly status: number;
   readonly insufficientScope: boolean;
 
-  constructor(path: string, status: number, insufficientScope: boolean) {
-    super(`GitLab GET ${path} responded ${status}`);
+  constructor(path: string, status: number, insufficientScope: boolean, method = "GET") {
+    super(`GitLab ${method} ${path} responded ${status}`);
     this.name = "GitLabHttpError";
     this.status = status;
     this.insufficientScope = insufficientScope;
@@ -46,6 +47,17 @@ export class GitLabHttpError extends Error {
  * - `not-found` — 404. ⚠️ GitLab도 권한 없음을 404로 숨긴다 — "없다"로 단정하지 않고 **접근 상실**로 읽는다.
  * - `unavailable` — 429·5xx·네트워크·그 밖. 일시 장애다.
  */
+/**
+ * GraphQL이 200으로 `errors`를 실어 답했다(복잡도 초과·권한 등). 상태 코드가 없어 `classifyGitLabFailure`가 `unavailable`로 읽는다 — 크기 조회
+ * 실패는 예산 초과가 아니라 `unavailable`이다(design §2 판정). 본문은 싣지 않는다.
+ */
+export class GitLabGraphqlError extends Error {
+  constructor() {
+    super("GitLab GraphQL responded with errors");
+    this.name = "GitLabGraphqlError";
+  }
+}
+
 export type GitLabFailure = "reauthorize" | "scope-missing" | "forbidden" | "not-found" | "unavailable";
 
 export function classifyGitLabFailure(error: unknown): GitLabFailure {
@@ -70,20 +82,45 @@ export function projectPath(repositoryId: string, rest = ""): string {
 }
 
 /**
- * 주소 규칙 — 전송 직전에 본다. `%2F`(인코딩한 namespace 경로)가 있거나 `/projects/` 뒤가 숫자가 아니면 거부한다.
+ * 주소 규칙 — 전송 직전에 본다(D22). `/projects/` 뒤가 숫자가 아니면 거부한다. `%2F`(인코딩한 슬래시)는 **브랜치·파일 이름**으로만 허용한다 —
+ * `/projects/<id>/repository/` 아래 경로 조각과, 그 아래·MR 목록(`/projects/<id>/merge_requests`)의 질의 값(`source_branch=`·`to=`). 그 밖의
+ * `%2F`·`/`는 프로젝트를 이름(`namespace%2Fpath`)으로 부르려는 모양이다.
  * ⚠️ `projectPath`를 지나지 않은 문자열도 여기서 막힌다(`get("/projects/group%2Fapp")`).
  */
-export function assertIdAddressed(path: string): void {
-  if (/%2f/i.test(path)) throw new Error("GitLab paths must not address a project by its encoded full path");
-  const match = /^\/projects\/([^/?]+)/.exec(path);
-  if (match !== null && !isGitLabProjectId(match[1]!)) throw new Error("GitLab project must be addressed by its numeric id");
+export function assertIdAddressed(path: string, query: Readonly<Record<string, string>> = {}): void {
+  const scoped = /^\/projects\/([^/?]+)(\/.*)?$/.exec(path);
+  if (scoped !== null && !isGitLabProjectId(scoped[1]!)) {
+    if (/%2f/i.test(scoped[1]!)) throw new Error("GitLab paths must not address a project by its encoded full path");
+    throw new Error("GitLab project must be addressed by its numeric id");
+  }
+  const rest = scoped?.[2] ?? "";
+  const unnamed = rest.startsWith("/repository/") ? `/projects/${scoped?.[1]}/repository/` : path;
+  if (/%2f/i.test(unnamed)) throw new Error("GitLab paths must not address a project by its encoded full path");
+  const namesBranches = scoped !== null && /^\/(repository|merge_requests)(\/|$)/.test(rest);
+  if (!namesBranches && Object.values(query).some((value) => value.includes("/") || /%2f/i.test(value))) {
+    throw new Error("GitLab paths must not address a project by its encoded full path");
+  }
 }
 
-export type GitLabResponse = { body: unknown; headers: Headers };
+/** `body`는 본문이 없으면(204 등) `null`이다. */
+export type GitLabResponse = { status: number; body: unknown; headers: Headers };
+
+export type GitLabWriteMethod = "POST" | "PUT" | "DELETE";
 
 export type GitLabTransport = {
   /** 읽기 하나. 2xx가 아니면 `GitLabHttpError`, 네트워크 실패는 fetch의 오류 그대로 던진다(`classifyGitLabFailure` → `unavailable`). */
   get(path: string, query?: Readonly<Record<string, string>>): Promise<GitLabResponse>;
+  /**
+   * 쓰기 하나(commit·MR 생성·MR 갱신·노트·브랜치 삭제). 실패는 `get`과 같다.
+   * ⚠️ **Publish 실행 수명(`execution.fetch()`)을 받은 transport면 이 호출이 쓰기로 세어진다** — 그 뒤 실패는 결과 미확인이다(POSTMORTEM 2026-10-09).
+   */
+  send(method: GitLabWriteMethod, path: string, options?: { query?: Readonly<Record<string, string>>; body?: unknown }): Promise<GitLabResponse>;
+  /**
+   * GraphQL 질의 하나 → `data`. `errors`가 실리면 `GitLabGraphqlError`.
+   * ⚠️ **POST다 — Publish 실행 안에서 부르지 않는다**(쓰기로 세어져 그 뒤 실패가 `execution-uncertain`이 된다 — design §3 `sizes`). 소비자는 적재뿐이다.
+   * ⚠️ 숫자 id 주소만 — `fullPath`가 든 질의는 전송 전에 던진다.
+   */
+  graphql(query: string, variables: Readonly<Record<string, unknown>>): Promise<unknown>;
 };
 
 /**
@@ -91,18 +128,35 @@ export type GitLabTransport = {
  */
 export function createGitLabTransport(token: string, options: { fetch?: typeof fetch } = {}): GitLabTransport {
   const send = options.fetch ?? globalThis.fetch;
+  async function call(method: "GET" | GitLabWriteMethod, path: string, query: Readonly<Record<string, string>> = {}, body?: unknown): Promise<GitLabResponse> {
+    assertIdAddressed(path, query);
+    const url = new URL(`${GITLAB_API}${path}`);
+    for (const [name, value] of Object.entries(query)) url.searchParams.set(name, value);
+    const headers: Record<string, string> = { "PRIVATE-TOKEN": token, Accept: "application/json" };
+    if (body !== undefined) headers["Content-Type"] = "application/json";
+    const response = await send(url, { method, headers, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+    if (!response.ok) {
+      // 본문은 403의 스코프 판정에만 읽는다 — 메시지에 싣지 않는다.
+      const insufficientScope = response.status === 403 && (await response.text().catch(() => "")).includes("insufficient_scope");
+      throw new GitLabHttpError(path, response.status, insufficientScope, method);
+    }
+    const text = await response.text();
+    return { status: response.status, body: text === "" ? null : JSON.parse(text), headers: response.headers };
+  }
   return {
-    async get(path, query) {
-      assertIdAddressed(path);
-      const url = new URL(`${GITLAB_API}${path}`);
-      for (const [name, value] of Object.entries(query ?? {})) url.searchParams.set(name, value);
-      const response = await send(url, { method: "GET", headers: { "PRIVATE-TOKEN": token, Accept: "application/json" } });
-      if (!response.ok) {
-        // 본문은 403의 스코프 판정에만 읽는다 — 메시지에 싣지 않는다.
-        const insufficientScope = response.status === 403 && (await response.text().catch(() => "")).includes("insufficient_scope");
-        throw new GitLabHttpError(path, response.status, insufficientScope);
-      }
-      return { body: await response.json(), headers: response.headers };
+    get: (path, query) => call("GET", path, query),
+    send: (method, path, sendOptions = {}) => call(method, path, sendOptions.query, sendOptions.body),
+    async graphql(query, variables) {
+      if (query.includes("fullPath")) throw new Error("GitLab GraphQL must address projects by numeric id, not fullPath");
+      const response = await send(new URL(GITLAB_GRAPHQL), {
+        method: "POST",
+        headers: { "PRIVATE-TOKEN": token, Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify({ query, variables }),
+      });
+      if (!response.ok) throw new GitLabHttpError("/graphql", response.status, false, "POST");
+      const parsed: unknown = await response.json();
+      if (typeof parsed !== "object" || parsed === null || ("errors" in parsed && parsed.errors !== undefined) || !("data" in parsed)) throw new GitLabGraphqlError();
+      return parsed.data;
     },
   };
 }

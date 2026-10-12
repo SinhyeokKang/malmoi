@@ -26,15 +26,18 @@ export function probeMemoKey(project: ProjectRepoColumns): string {
   return JSON.stringify([project.repoHost, project.repoOwner, project.repoName, project.installationId, project.gitlabConnectionId, project.repositoryId]);
 }
 
-export function createProbeMemo({ ttlMs, max }: { ttlMs: number; max: number }) {
-  const entries = new Map<string, { at: number; value: ProbeResult }>();
-  return async function memo(key: string, load: () => Promise<ProbeResult>, now: number = Date.now()): Promise<ProbeResult> {
+/**
+ * @param transient 기억하지 않는 갈래 — GitHub probe는 `error`, GitLab 연결 건강성은 `unknown`(gitlab-repositories — 같은 메모를 두 호스트가 쓴다).
+ */
+export function createProbeMemo<T extends { status: string } = ProbeResult>({ ttlMs, max, transient = "error" }: { ttlMs: number; max: number; transient?: string }) {
+  const entries = new Map<string, { at: number; value: T }>();
+  return async function memo(key: string, load: () => Promise<T>, now: number = Date.now()): Promise<T> {
     const hit = entries.get(key);
     if (hit !== undefined && now - hit.at < ttlMs) return hit.value;
     const value = await load();
     // 다시 넣어 삽입 순서를 갱신한다 — 버리는 쪽이 "가장 오래 전에 확인한 것"이 된다.
     entries.delete(key);
-    if (value.status !== "error") {
+    if (value.status !== transient) {
       entries.set(key, { at: now, value });
       for (const oldest of entries.keys()) {
         if (entries.size <= max) break;

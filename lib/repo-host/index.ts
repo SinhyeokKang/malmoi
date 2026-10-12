@@ -1,8 +1,14 @@
-// ⚠️ **`server-only`를 일부러 붙이지 않았다** — `lib/github.ts`와 같은 이유다(tsx 스크립트가 프로덕션 경로를 그대로 지난다).
-// 클라이언트 유입은 `components/__tests__/client-graph.test.ts`가 막는다 — 이 파일은 `octokit`을 무는 구현을 import한다.
-import { AppError } from "@/lib/failure";
+// ⚠️ **`server-only`를 직접 붙이지 않았다** — 클라이언트 유입은 `components/__tests__/client-graph.test.ts`가 막는다(이 파일은 `octokit`을 무는 구현을
+// import한다). GitLab 갈래가 DB(`lib/db`)·연결 봉투(`lib/gitlab-connect/connection`)를 물어 tsx 스크립트에서는 열리지 않는다 — 스모크는 호스트 구현
+// (`lib/github.ts`·`lib/gitlab/client.ts`)을 직접 문다.
+import { getPrisma } from "@/lib/db";
+import { AppError, logCaught } from "@/lib/failure";
 import * as github from "@/lib/github";
 import type { ConnectionHealth } from "@/lib/github-connect/health";
+import { createProbeMemo, probeMemoKey, PROBE_MEMO_MAX, PROBE_MEMO_TTL_MS } from "@/lib/github-connect/probe-memo";
+import { GITHUB_WAIT_MS, withinGithubWait } from "@/lib/github-wait";
+import { openGitLabConnection } from "@/lib/gitlab-connect/connection";
+import * as gitlab from "@/lib/gitlab/client";
 import type { GitClient } from "@/lib/pull/client";
 import type { PublishExecution } from "@/lib/sync/execution";
 import type { BranchList, RepoReader } from "./reader";
@@ -22,7 +28,7 @@ export function createGitClient(target: RepoTarget, execution?: PublishExecution
     case "github":
       return github.createGitClient(target.owner, target.name, target.installationId, target.repositoryId, execution);
     case "gitlab":
-      return gitlabPending();
+      return gitlabCredential(target).then((credential) => gitlab.createGitLabClient(target, credential, { fetch: execution?.fetch() }));
     default:
       return unreachable(target);
   }
@@ -33,7 +39,7 @@ export function openRepoReader(target: RepoTarget): Promise<RepoReader> {
     case "github":
       return github.openRepoReader(target.owner, target.name, target.installationId, target.repositoryId);
     case "gitlab":
-      return gitlabPending();
+      return gitlabCredential(target).then((credential) => gitlab.openGitLabReader(target, credential));
     default:
       return unreachable(target);
   }
@@ -44,18 +50,46 @@ export function listBranches(target: RepoTarget): Promise<BranchList> {
     case "github":
       return github.listBranches(target.owner, target.name, target.installationId, target.repositoryId);
     case "gitlab":
-      return gitlabPending();
+      return listGitLabBranches(target);
     default:
       return unreachable(target);
   }
 }
 
+type GitLabTarget = Extract<RepoTarget, { host: "gitlab" }>;
+
 /**
- * ⚠️ **GitLab I/O는 커밋 C가 채운다**(`lib/gitlab/` client·reader·Publish — 같은 `/push` 배치). 그 전에는 원격을 부르지 않고 던진다 —
- * 연결·식별·권한(커밋 B)만으로 GitLab 행이 GitHub 구현으로 새지 않게 갈래를 먼저 세운다.
+ * **프로젝트가 참조하는 연결**의 PAT를 연다(`target.connectionId` — 호출자의 연결이 아니다, design §5 · `credential-separation.test.ts`).
+ * 참조가 가리키는 행이 없으면(해제와의 경합 — FK `SET NULL` 사이) 끊긴 것이다: 재연결이 고친다(`not-installed`). 봉투가 안 열리면 던진다 — 설정 오류다.
  */
-function gitlabPending(): Promise<never> {
-  return Promise.reject(new AppError("GitLab repository I/O is not available yet."));
+async function gitlabCredential(target: GitLabTarget): Promise<gitlab.GitLabCredential> {
+  const connection = await openGitLabConnection(getPrisma(), { connectionId: target.connectionId });
+  if (connection === null) throw new AppError("GitLab connection was removed; reconnect the project", "not-installed");
+  return { token: connection.token, expiresAt: connection.expiresAt };
+}
+
+async function listGitLabBranches(target: GitLabTarget): Promise<BranchList> {
+  const connection = await openGitLabConnection(getPrisma(), { connectionId: target.connectionId });
+  if (connection === null) return { status: "unavailable" };
+  return gitlab.listGitLabBranches(target, { token: connection.token, expiresAt: connection.expiresAt });
+}
+
+/** Home·번역 화면의 GitLab 연결 건강성 메모 — GitHub probe 메모와 같은 TTL·상한, `unknown`은 기억하지 않는다(`probe-memo.ts`). */
+const gitlabHealthMemo = createProbeMemo<ConnectionHealth>({ ttlMs: PROBE_MEMO_TTL_MS, max: PROBE_MEMO_MAX, transient: "unknown" });
+
+async function loadGitLabHealth(target: GitLabTarget, options: { memo?: boolean }): Promise<ConnectionHealth> {
+  const connection = await openGitLabConnection(getPrisma(), { connectionId: target.connectionId });
+  // 참조가 가리키는 행이 사라졌다 — 끊김이다(`repoTargetOf`의 `connection-removed`와 같은 결론).
+  if (connection === null) return { status: "connection-removed" };
+  const credential = { token: connection.token, expiresAt: connection.expiresAt };
+  // ⚠️ **마감이 GitHub probe와 같다**(`GITHUB_WAIT_MS` — 리포 호스트 원격 대기 전체의 공유 마감). 넘기면 `unknown`("확인할 수 없어요")이다.
+  const probe = () => withinGithubWait(gitlab.loadGitLabHealth(target, credential), () => {
+    logCaught("gitlab", "health-deadline", new AppError(`no response within ${GITHUB_WAIT_MS}ms`));
+    return { status: "unknown" as const };
+  });
+  if (!options.memo) return probe();
+  const key = probeMemoKey({ repoHost: "gitlab", repoOwner: target.owner, repoName: target.name, installationId: null, gitlabConnectionId: target.connectionId, repositoryId: target.repositoryId });
+  return gitlabHealthMemo(key, probe);
 }
 
 /**
@@ -77,7 +111,7 @@ export async function loadConnectionHealth(result: RepoTargetResult, options: { 
         options,
       );
     case "gitlab":
-      return gitlabPending();
+      return loadGitLabHealth(target, options);
     default:
       return unreachable(target);
   }

@@ -6,7 +6,7 @@ import { createGitClient } from "@/lib/repo-host";
 import { repoTargetOf } from "@/lib/repo-host/target";
 import { GITHUB_WAIT_MS } from "@/lib/github-wait";
 import type { GitClient } from "@/lib/pull/client";
-import { changedLocaleFileCount, pullNumberFrom } from "./remote-plan";
+import { changedLocaleFileCount, reviewNumberFrom } from "./remote-plan";
 
 /**
  * 목록의 **원격 신호 둘** — 열린 PR과 base 드리프트. 둘 다 목록 행 아래 띠로 선다 (DESIGN §6.63).
@@ -95,7 +95,7 @@ export async function loadRemoteSignals(
  */
 function pullNumberToCheck(target: RemoteTarget): number | null {
   if (target.archived || repoTargetOf(target).status !== "ok") return null;
-  return pullNumberFrom(target.lastPrUrl);
+  return reviewNumberFrom(target.lastPrUrl, target.repoHost);
 }
 
 /** 확인하지 못한 행의 신호 — PR을 물었어야 하면 모름, 물을 수 없던 행은 없음. compare는 모름을 말할 자리가 없어 0이다. */
