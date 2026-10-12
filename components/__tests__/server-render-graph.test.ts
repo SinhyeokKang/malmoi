@@ -24,6 +24,8 @@ import { describe, expect, it } from "vitest";
  * (`busy ? e => … : onClick`) · 같은 파일이 만든 함수를 이름으로 넘김 · spread 객체에 실린 핸들러 · `ref` 콜백.
  * 조건부로만 함수를 만드는 프리미티브(`busy`·`blocked`)는 `GUARDED_SITES`가 판정 결과를 정확히 고정하고, 서버 호출부가
  * 그 조건 prop을 넘기지 않는지를 함께 센다 — 서버 페이지에 `<ButtonLink busy>`가 생기는 순간 red다.
+ * 남은 사각(정규식 판정의 한계): 멤버식 핸들러(`onClick={h.click}`) · 함수를 돌려주는 호출(`onClick={make()}`) ·
+ * 호출 결과 spread(`{...getProps()}`) · 따옴표 속성값 안의 `>`.
  */
 
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
@@ -237,13 +239,26 @@ const GUARDED_SITES: Record<string, { findings: readonly string[]; guard: Caller
 
 /**
  * 가드된 태그에 spread를 넘기는 서버 호출부 중 **무엇을 싣는지 타입이 고정된** 것 — spread 원천의 반환 타입을 함께 센다.
- * 원천이 위험 prop을 싣게 바뀌면 그 검사가 red다.
+ * 원천이 위험 prop을 싣게 바뀌면 그 검사가 red다. 허용은 **그 태그의 spread만**이다 — 같은 파일의 다른 태그 spread는 남는다.
  */
-const TYPED_SPREADS: Record<string, { source: string; returns: RegExp }> = {
-  // `attentionRowSlots`의 `{ href, ...slots }` — 반환 타입이 href·icon·title·description·aside뿐이다.
-  "components/inbox/inbox-list.tsx": { source: "components/inbox/row-slots.tsx", returns: /export function attentionRowSlots\([\s\S]*?\):\s*(\{[^}]*\})/ },
-  "components/home/attention-card.tsx": { source: "components/inbox/row-slots.tsx", returns: /export function attentionRowSlots\([\s\S]*?\):\s*(\{[^}]*\})/ },
+type TypedSpread = { tag: string; source: string; returns: RegExp };
+
+// `attentionRowSlots`의 `{ href, ...slots }` — 반환 타입이 href·icon·title·description·aside뿐이다.
+const ATTENTION_ROW_SLOTS: TypedSpread = {
+  tag: "ListRow",
+  source: "components/inbox/row-slots.tsx",
+  returns: /export function attentionRowSlots\([\s\S]*?\):\s*(\{[^}]*\})/,
 };
+
+const TYPED_SPREADS: Record<string, TypedSpread> = {
+  "components/inbox/inbox-list.tsx": ATTENTION_ROW_SLOTS,
+  "components/home/attention-card.tsx": ATTENTION_ROW_SLOTS,
+};
+
+/** 호출부 판정 하나가 타입 고정 spread 허용에 해당하는가 — 그 태그의 spread만이다. */
+export function typedSpreadAllows(hit: string, typed: Pick<TypedSpread, "tag">): boolean {
+  return hit === `<${typed.tag} {...}>`;
+}
 
 const ENTRIES = sourceFiles(join(ROOT, "app"));
 const GRAPH = serverGraph(ENTRIES);
@@ -274,6 +289,13 @@ describe("서버 렌더 그래프", () => {
     expect(clientOnlyFindings(`<a {...{ onFocus: () => g() }} />`)).toHaveLength(1);
     expect(clientOnlyFindings(`<input ref={(el) => el?.focus()} />`)).toHaveLength(1);
     expect(clientOnlyFindings(`<input ref={ref} />`)).toEqual([]);
+  });
+
+  it("타입 고정 spread 허용은 그 태그의 spread만 거른다 — 같은 파일의 다른 태그 spread는 남는다", () => {
+    const typed = { tag: "ListRow" };
+    expect(typedSpreadAllows("<ListRow {...}>", typed)).toBe(true);
+    expect(typedSpreadAllows("<ButtonLink {...}>", typed)).toBe(false);
+    expect(typedSpreadAllows("<ListRow disabled>", typed)).toBe(false);
   });
 
   it("허용 목록의 위험 prop을 서버 호출부가 넘기면 잡는다 — 넘기지 않거나 `{false}`면 세지 않는다", () => {
@@ -319,7 +341,7 @@ describe("서버 렌더 그래프", () => {
       for (const file of GRAPH.keys()) {
         if (!file.endsWith(".tsx") || relative(ROOT, file) === site) continue;
         const typed = TYPED_SPREADS[relative(ROOT, file)];
-        const found = guardedCallerFindings(readFileSync(file, "utf8"), guard).filter((hit) => typed === undefined || !hit.endsWith(" {...}>"));
+        const found = guardedCallerFindings(readFileSync(file, "utf8"), guard).filter((hit) => typed === undefined || !typedSpreadAllows(hit, typed));
         if (typed !== undefined) {
           const returns = typed.returns.exec(readFileSync(join(ROOT, typed.source), "utf8"))?.[1];
           expect(returns, `${typed.source} 반환 타입`).toBeDefined();
@@ -329,5 +351,15 @@ describe("서버 렌더 그래프", () => {
       }
     }
     expect(callers).toEqual({});
+  });
+
+  it("타입 고정 spread 허용은 실제로 쓰인다 — 낡은 허용이 남지 않는다", () => {
+    for (const [file, typed] of Object.entries(TYPED_SPREADS)) {
+      const guard = Object.values(GUARDED_SITES).find(({ guard: g }) => g.tags.includes(typed.tag))?.guard;
+      expect(guard, `${typed.tag}를 가드하는 자리`).toBeDefined();
+      expect(GRAPH.has(join(ROOT, file)), file).toBe(true);
+      const hits = guard === undefined ? [] : guardedCallerFindings(readFileSync(join(ROOT, file), "utf8"), guard);
+      expect(hits.some((hit) => typedSpreadAllows(hit, typed)), `${file}가 아직 <${typed.tag} {...}>를 넘긴다`).toBe(true);
+    }
   });
 });
