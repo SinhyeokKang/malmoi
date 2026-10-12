@@ -160,6 +160,18 @@ describe("reportPushResponse — 리포 호스트 (#259)", () => {
     expect(line).toMatch(/merge request/);
   });
 
+  /**
+   * 연결이 끊긴(참조 비움·저장 만료·철회) GitLab 프로젝트는 재연결 전까지 같은 이유로 보류된다 — 야간 대상에서도 빠진다(audit B1 · 결정 R3).
+   * 사유 값·응답 계약은 그대로 두고 GitLab 문장이 재연결 절을 든다. CI 로그만 보는 개발자가 "기다리면 풀린다"로 읽지 않게 한다.
+   */
+  it("GitLab pr-check-failed 경고는 연결이 끊긴 경우 프로젝트 설정의 재연결을 말한다", () => {
+    const line = warning(held({ reason: "pr-check-failed" }), "gitlab")!;
+    expect(line).toMatch(/reconnect/i);
+    expect(line).toContain("Settings");
+    expect(line).toContain("current head");
+    expect(line).toContain("nightly sync");
+  });
+
   it("모르는 호스트 값은 GitHub 문장이다", () => {
     expect(warning(held({ reason: "open-pr" }), "bitbucket")).toBe(GOLDEN[0]);
   });
