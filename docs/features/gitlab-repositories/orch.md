@@ -48,6 +48,8 @@
 | D23 | `scripts/finalize-credentials.ts`가 `migrate deploy` 전에 verify로 `GitLabConnection`을 조회해, 2026-09-10 cutover 이전 DB에선 finalize가 실패한다 → **수용·기록만**(고치지 않음) | 지휘자 판단(R-Esh ⚪) — dev·prod·모든 셀프 호스팅 설치(2026-10-09 시작)가 이미 cutover를 지났다. 실제 대상 DB가 없다 |
 | D24 | 목록·Inbox는 DB 판정만(참조 비움 = Disconnected). `connection-unusable`(원격으로만 아는 철회·접근 상실·보관)은 probe 화면(Home·설정·번역)에서만 Disconnected — cross-screen 행 "GitLab 토큰 못 씀"은 목록 active. 저장 만료일의 목록 사전 판정은 E-ui(만료 임박·Expired 톤과 함께) | 지휘자 판단(C `ask`) — GitHub `app-uninstalled`·`installation-changed`도 목록은 DB만 보고 probe 화면만 Disconnected인 선례 |
 | D25 | GitLab 연결 판정 세 갈래: ①토큰 주인 쓰기 판정 문턱 = **Developer(30)**(sync 브랜치 push·MR 생성이 되는 최소) — 연결 생성·재연결의 호출자 문턱 40은 정책이라 그대로 ②보관(archived) 프로젝트 = 읽기(Sync 적재)는 허용, Publish 쓰기 거부, 건강성 `connection-unusable` ③`connection-unusable`일 때 Home은 **Sync 활성 · Publish 비활성**(E-ui) | 지휘자 판단(C fix1 인계) — 읽기 전용 OWNER의 수동 Sync 계약(PRODUCT §3·#123)과 같은 축: 읽을 수 있으면 막지 않는다 |
+| D26 | MCP 필드 호환 = **호스트 어휘**: GitHub 프로젝트 응답은 바이트 불변 + `repositoryHost:'github'`, GitLab 프로젝트는 `newFromGitLab`·`lastPublishMergeRequest`·`mergeRequest` + `repositoryHost:'gitlab'`. `connection-unusable`·`connection-removed`는 GitHub `unpinned`/`app-uninstalled`과 같은 MCP 값(재연결 필요 계열). `GITLAB_CI_RELEASE.sha` 미발행이면 `get_workflow` 거부 `workflow-unavailable`. 연결 없음·만료는 `needs-browser`(`gitlab-not-connected`·`gitlab-reconnect`). MCP에 PAT·재연결 도구 없음 | 지휘자 판단(D2 `ask`) — 기존 클라이언트는 GitHub 프로젝트만 알아 깨지는 소비자 0 · spec 완료 조건 9 |
+| D27 | `scripts/smoke-gitlab.ts`의 `GITLAB_TEST_TOKEN`·`GITLAB_TEST_PROJECT` 직접 읽기는 `self-hosted-gates.test.ts`의 `DIRECT_READS_ALLOWED`에 `{ "*": 1 }` 한 행(env 맵을 순수 파서에 한 번 주입 — `scripts/preflight.ts` 선례) — 개발자 스모크 전용, `.env.example`·preflight·`lib/env.ts`에 넣지 않는다 | 지휘자 판단(F `ask`) — 운영자 설정이 아닌 이름을 운영 표면에 올리지 않는다 |
 
 ## 배치·파일 소유권
 
@@ -111,3 +113,4 @@
 - 2026-10-12: E-sh fix1(커밋 1, gate ok: 13803 · projects 654) → dev 통합. E-sh 워크트리 정리.
 - 2026-10-12: C 인계(커밋 2, +2597줄, gate ok: 13947 · projects 681, 실물 클라이언트 = 가짜 모양 확인) → R-C(Claude opus high) 🔴0·🟡3 · R-C(Astra 교차) 🔴0·🟡2 — 겹침: credential 스캐너. C fix1 = Reporter 강등을 `connection-unusable`로(토큰 주인 `members/all`, Sync 계약 보존) · `transport.send` 쓰기 계수 + 연결 자리 `file#function` 허용 목록 · gate-plan 트리거 9 · 야간 import Inbox 뷰 모델 단언. F 브리프에 R-C 🟡3(원격 blob id == `git hash-object`).
 - 2026-10-12: C fix1(커밋 2, red 23+1 → gate ok: 13973 · projects 683, 뮤테이션 둘 red) → C 전체 dev 통합 `6f627448..1406f5f9`. 보류(인계): ⚪5 fake-fetch 질의 슬래시 비대칭 · ⚪3 토큰 교체 뒤 메모 stale. D2(Opus)·F(Astra) 착수.
+- 2026-10-12: C 통합 dev `pnpm gate` = `FAILED at test:projects:postgres` — `lib/keys/__tests__/search-performance.integration.ts` 중앙값 404·472ms > 300ms(병렬 워커 3 + 리뷰어 부하 중). **push 전 무부하 게이트에서 재측정 필수** — 그때도 넘으면 B/C의 검색 쿼리 변경 회귀로 보고 소유 배치에 돌려보낸다. F(Astra) 인계(커밋 2, gate ok, 실물 스모크 통과) → R-F(sonnet).
