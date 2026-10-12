@@ -41,6 +41,7 @@
 | D16 | 호출자 접근 대조(onboarding-run `import`·`add`·`detect`)는 `sameRepository` + **GitHub 갈래는 `installationId` 동일까지** — 헬퍼 하나(`lib/repo-host/`). App 재설치 뒤에도 지금처럼 `repo-replaced`/`repo-forbidden` | 지휘자 판단(A `ask`) — A의 목표가 GitHub 동작 변화 0 |
 | D17 | GitLab CI 변수 `MALMOI_I18N_*` 11개는 `brand-spelling.test.ts`의 `UPPER_EXCEPTIONS`에 **정확한 이름으로** 등재(접두 규칙 아님, D1이 그 파일을 고친다) | 지휘자 판단(D1 `ask`) — 기존 예외가 정확한 이름 목록이라 오타가 red로 남는다 |
 | D18 | Codex 교차 허가 — **E-sh·F 구현, R-C 교차 리뷰(Opus 리뷰와 별도)** 에만 Astra(`gpt-6-astra`, effort medium 상한). 재시도·수정 라운드도 같은 워커·같은 effort | 사용자 2026-10-12 — 토큰 분산, 계약이 확정된 곁가지 배치 |
+| D19 | `/account` [Replace token]에 다른 GitLab 사용자(user_id)의 PAT → **거부 `account-mismatch`**(Disconnect 후 Connect 안내). GitLab 사용자명은 평문(공개 핸들, `collected.ts` 등재), PAT만 토큰 키 봉투. `Project.gitlabConnectionId`는 Project를 not-personal로 유지(`DeliveryConfirmation.syncRunId` 선례). 열 이름 `Project.repoHost`(기본 `github`) | 지휘자 판단(B `ask`) — 교체가 연결 id를 유지해 참조 프로젝트 전부의 쓰기 명의를 권한 재검사 없이 바꾸는 것을 막는다 |
 
 ## 배치·파일 소유권
 
@@ -96,3 +97,4 @@
 - 2026-10-12: D1 인계(커밋 5, gate ok) → R-D1 🔴0·🟡3 → D1 fix1(tsconfig include `.gitlab/**/*.ts` · push.sh 마커·SHA 줄 실행 테스트). **E-ui 브리프 필수**(R-D1 🟡2): `GITLAB_CI_RELEASE.sha=null`이면 화면이 GitLab CI 템플릿을 내지 않는다. **`/merge` 준비물**: 태그 `malmoi-i18n-push-gitlab-v1` 발행 + `GITLAB_CI_RELEASE.sha` 채움(그 전엔 GitLab CI job이 fail-closed).
 - 2026-10-12: D1 fix1(커밋 2, gate ok) → dev 통합. E-ui 계약: `GITLAB_CI_RELEASE.sha`가 40자 hex가 아니면 GitLab CI 템플릿을 내지 않는다.
 - 2026-10-12: A 인계(커밋 3, gate ok, 75파일) → R-A(opus high) 🔴1(테스트 두 곳의 쓰기 0 단언이 삭제된 메서드 문자열을 들어 공허)·🟡1·⚪8, GitHub 동작 보존 위반 0 → A fix1. B 브리프에 ⚪2(`targetOfAccess`)·⚪4(credentials 트리거 인계). C 브리프 몫: ⚪3(`sizes` 앞 `MAX_FILES` 판정)·⚪8(publishSnapshot 중간 실패 GitHub 사례). E-doc 몫: ⚪7(ARCHITECTURE §3 `createRef` 서술).
+- 2026-10-12: A fix1(커밋 1, 옛 "쓰기 0" 단언이 공허했음을 뮤테이션으로 확인) → dev 통합 `7168ef82..4aa8bb0b`. dev(W0·E0·D1·A) `pnpm gate` = **`gate: ok`**(test 13703 · projects 636 · build). B 착수(opus high).
