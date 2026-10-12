@@ -138,7 +138,7 @@ git push origin dev
 ```
 
 - ⚠️ **이 양식이 곧 `/changelog` 화면 문구다** — 앱이 Release 본문을 그대로 읽어 그린다(`lib/changelog/`, 1시간 캐시 — 캐시 키에 앱 버전이 실려 이 머지의 배포가 뜨면 새로 받는다. 그래서 9단계 Release를 머지 직후 바로 만든다). 제목은 가장 얕은 제목이 h1이 되도록 올라서고(`shiftHeadings` — `##` 양식이면 `##` → `h1`, `###` → `h2`), 끝의 `**Full changelog:**` 줄은 걷히고, **이미지는 `<img>`가 아니라 alt 글자의 링크로 바뀐다** — 스크린샷을 넣으려면 alt를 링크 문장으로 쓴다. raw HTML은 글자로 보이니 쓰지 않는다. 태그가 `v<x.y.z>`가 아니거나 draft·prerelease면 화면에 없다.
-- **이미지 줄은 9-b가 넣으니 손으로 쓰지 않는다** — `**Self-hosting image:**` 라벨 문단을 `**Full changelog:**` 앞에 9-b가 기입한다. 손으로 같은 라벨의 문단을 썼다면 기입 함수가 그 문단을 교체한다. 그래서 Release 원문 = 체감 변화 + 이미지 줄 하나다.
+- **이미지 줄은 9-b가 넣으니 손으로 쓰지 않는다** — `**Self-hosting image:**` 라벨 문단을 `**Full changelog:**` 앞에 9-b가 기입한다. 손으로 같은 라벨의 문단을 하나 썼다면 기입 함수가 그 문단을 교체한다(둘 이상이면 exit 2 — 손으로 하나를 지운 뒤 다시 돈다). 그래서 Release 원문 = 체감 변화 + 이미지 줄 하나다.
 - 남는 커밋이 0이면 Highlights에 `Maintenance release — no user-facing changes.` 한 줄, Features·Fixes 생략.
 - **1.0.0(seed)만 다르다**: `compareBase`가 null이니 Full changelog 줄을 뺀다. Highlights는 첫 공개 릴리스로, Features는 커밋 나열이 아니라 README의 기능 절을 기준으로 **지금 할 수 있는 것**을 영역별로 요약한다(사실 대조 소스는 PRODUCT·README·가이드). PR body는 1.0.0이어도 ① 양식 그대로다(커밋을 영역별로 접는다).
 
@@ -198,23 +198,24 @@ gh api --paginate "/users/SinhyeokKang/packages/container/malmoi/versions" \
 gh release view v<next> --json body > .scratch/release-body-v<next>.json
 node scripts/release-image-note.ts ghcr.io/sinhyeokkang/malmoi:v<next> <digest> \
   < .scratch/release-body-v<next>.json > .scratch/release-v<next>-image.md
-# exit 0 → gh release edit v<next> --notes-file .scratch/release-v<next>-image.md / exit 3 → 이미 같음, edit 안 함 / 그 밖 → 중단
+# exit 0 && test -s .scratch/release-v<next>-image.md → gh release edit v<next> --notes-file .scratch/release-v<next>-image.md (빈 파일로 edit하면 본문이 지워진다) / exit 3 → 이미 같음, edit 안 함 / 그 밖 → 중단
 ```
 
-- **run을 폴링한 뒤에도 0건이면** `gh workflow run image.yml -f tag=v<next>`로 dispatch한다.
+- **run을 폴링한 뒤에도 0건이면** `gh workflow run image.yml -f tag=v<next>`로 dispatch한다. **dispatch run은 위 `--event release` 조회에 안 잡힌다**(`event=workflow_dispatch`, headBranch=`main`) — dispatch 직후 `gh run list --workflow image.yml --event workflow_dispatch --limit 5 --json databaseId,createdAt`에서 **dispatch 시각 이후** 것의 id를 잡고, 같은 `gh run watch <id> --exit-status`로 이어 간다. 아래 red 재실행·빠진 태그 채우기도 같은 명령이다.
 - **digest는 패키지 API에서 읽는다**(`--paginate` 필수 — 버전이 한 페이지를 넘는다). run summary의 `published <digest>`/`exists <digest>`와 같아야 한다. 이 digest를 리포트에 싣는다 — 설치 문서는 태그 대신 `@sha256` digest로 고정하는 것을 권한다.
 - **본문 기입은 `release-image-note.ts` 한 곳이다.** 본문 끝의 `**Full changelog:**` 앞에 `**Self-hosting image:** \`ghcr.io/sinhyeokkang/malmoi:v<next>@sha256:<64 hex>\`` 문단을 넣는다(5단계 ②가 이 줄을 손으로 쓰지 않는 이유). 이미 같은 줄이 있으면 exit 3이고 `gh release edit`을 부르지 않는다 — 재실행해도 안전하다. 그 밖의 exit은 중단하고 리포트에 남긴다. `gh release view -q .body`를 쓰지 않는다 — gh가 끝 개행을 하나 더 붙여 비교가 매번 "다름"이 된다(`--json body`를 stdin으로 넘긴다).
-- ⚠️ **run이 red면** 원인을 리포트에 적고 `gh workflow run image.yml -f tag=v<next>`로 다시 돌린다. 9단계와 같은 처리다 — 머지와 Release는 끝났고 `/merge`를 다시 부르지 않는다(부르면 3단계가 `unreleased-on-main`으로 멈춘다).
+- ⚠️ **run이 red면** 원인을 리포트에 적고 `gh workflow run image.yml -f tag=v<next>`로 다시 돌린다(run id는 위 dispatch 조회로 잡고 `gh run watch`). 9단계와 같은 처리다 — 머지와 Release는 끝났고 `/merge`를 다시 부르지 않는다(부르면 3단계가 `unreleased-on-main`으로 멈춘다).
   - ⚠️ **`mismatch <metadata digest> <registry digest>`는 다시 돌리지 않는다.** 이미지는 이미 push됐고, 재실행은 `exists`로 green이 되어 불일치를 묻는다. 리포트에 두 digest를 적고 조사한다.
   - ⚠️ **존재 조회가 "그 밖" 분기(`ERROR: <ref>: not found`가 아닌 stderr)로 red면** 먼저 러너 buildx의 없는 태그 문구가 바뀌었는지 run 로그로 본다. 문구 차이는 재실행으로 고쳐지지 않는다 — 스크립트의 일치 문자열을 고친다. 인증 오류(403)면 GHCR 패키지의 *Manage Actions access*에 이 리포의 Write가 있는지 본다.
 - ⚠️ **이미 발행된 태그를 덮지 않는다.** 같은 소스를 다시 빌드해도 digest가 달라질 수 있어 설치가 가리키던 이미지가 조용히 바뀐다 — 스크립트가 존재 조회를 build·push **앞**에 두고, 워크플로가 태그별 동시성 group으로 직렬화한다. 잘못 올렸으면 다음 버전으로 고친다(앱 태그와 같은 규칙).
-- ⚠️ **빠진 태그가 없는지 본다** — v1.3.2는 이 단계를 건너뛴 채 머지돼 2026-10-12에 뒤늦게 발행했다. `gh api --paginate "/users/SinhyeokKang/packages/container/malmoi/versions" --jq '.[].metadata.container.tags'`의 태그 목록과 `Dockerfile`이 있는 앱 태그(v1.3.0부터)를 대조하고, 빠진 태그는 `gh workflow run image.yml -f tag=v<x.y.z>`로 채운다(dispatch는 main의 스크립트로 그 태그 커밋을 빌드한다). 없는 태그를 채우는 것이라 덮어쓰기 금지에 걸리지 않는다.
-- **비상 경로(Actions 장애일 때만)** — 같은 스크립트를 이 머신에서 돌린다. 전제: Docker(buildx)가 떠 있어야 한다 — 이 머신은 Colima `vz` + Rosetta(`colima start --vm-type vz --vz-rosetta`)를 쓰고, arm64에서 `linux/amd64`는 에뮬레이션이라 느리다(없으면 `exec format error`). 토큰은 gh CLI의 리포 소유자 계정(`SinhyeokKang`, `write:packages` 스코프)을 stdin으로 넘긴다 — 인자로 주지 않는다(셸 이력·`ps`에 남는다). ⚠️ docker 설정에 credential helper가 없어 로그인이 토큰을 `~/.docker/config.json`에 평문으로 남기므로 `docker logout`까지가 절차다. 로그인 없이 push하면 빌드가 끝난 뒤 `403 Forbidden`으로 떨어진다.
+- ⚠️ **빠진 태그가 없는지 본다** — v1.3.2는 이 단계를 건너뛴 채 머지돼 2026-10-12에 뒤늦게 발행했다. `gh api --paginate "/users/SinhyeokKang/packages/container/malmoi/versions" --jq '.[].metadata.container.tags'`의 태그 목록과 `Dockerfile`이 있는 앱 태그(v1.3.0부터)를 대조하고, 빠진 태그는 `gh workflow run image.yml -f tag=v<x.y.z>`로 채운다(dispatch는 main의 스크립트로 그 태그 커밋을 빌드한다 — run은 위 dispatch 조회로 따라간다). 없는 태그를 채우는 것이라 덮어쓰기 금지에 걸리지 않는다.
+- **비상 경로(Actions 장애일 때만)** — 같은 스크립트를 이 머신에서 돌린다. **먼저 같은 태그의 Actions run(release·dispatch 둘 다 — `gh run list --workflow image.yml --json status,headBranch,event`)이 queued·in_progress가 아님을 확인한다** — 동시성 group은 Actions run끼리만 직렬화하므로 로컬 실행과 겹치면 둘 다 not-found를 보고 둘 다 push한다(= 덮어쓰기). 진행 중이면 끝나기를 기다리거나 `gh run cancel <id>`로 취소한 뒤 돌린다. 전제: Docker(buildx)가 떠 있어야 한다 — 이 머신은 Colima `vz` + Rosetta(`colima start --vm-type vz --vz-rosetta`)를 쓰고, arm64에서 `linux/amd64`는 에뮬레이션이라 느리다(없으면 `exec format error`). 토큰은 gh CLI의 리포 소유자 계정(`SinhyeokKang`, `write:packages` 스코프)을 stdin으로 넘긴다 — 인자로 주지 않는다(셸 이력·`ps`에 남는다). ⚠️ docker 설정에 credential helper가 없어 로그인이 토큰을 `~/.docker/config.json`에 평문으로 남기므로 `docker logout`까지가 절차다. 로그인 없이 push하면 빌드가 끝난 뒤 `403 Forbidden`으로 떨어진다.
 
   ```
   gh auth token -u SinhyeokKang | docker login ghcr.io -u SinhyeokKang --password-stdin
-  docker buildx create --use --driver docker-container
-  git fetch origin && scripts/publish-image.sh v<next>                    # squash 커밋이 로컬에 있어야 git archive가 된다
+  docker buildx create --name malmoi-publish --use --driver docker-container \
+    || docker buildx use malmoi-publish                                   # 이미 있으면 재사용 — 이름 없는 builder를 쌓지 않는다
+  git fetch origin tag v<next> && scripts/publish-image.sh v<next>        # 로컬 태그(refs/tags/v<next>)가 있어야 스크립트가 커밋을 푼다
   docker logout ghcr.io                                                   # 성공·실패와 무관하게
   ```
 
