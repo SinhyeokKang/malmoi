@@ -72,11 +72,16 @@ export function RepositoryCard({ slug, owner, repo, branch, archived, unpinned =
   </Card>;
 }
 
-/** GitLab 끊김 사유 둘(D21·D22) — 참조가 빈 것과 토큰을 못 쓰는 것. 같은 Disconnected 톤(호박)이고 문장이 원인을 가른다. */
+/**
+ * GitLab 카드 머리 아래 Alert — 끊김 사유 둘(D21·D22: 참조가 빈 것 · 토큰을 못 쓰는 것)과 주소 이동(`repo-moved` — 같은 id·다른 경로, GitHub 카드와
+ * 같은 `health.moved` 문장·톤). 끊김은 Disconnected 톤(호박)이고 문장이 원인을 가른다.
+ */
 function GitLabNotice({ health: pending, failure }: { health: Promise<ConnectionHealth>; failure: string | null }) {
   const m = useMessages();
   const health = use(pending);
-  const reason = health.status === "connection-removed" ? m.settings.repository.gitlab.removed : health.status === "connection-unusable" ? m.settings.repository.gitlab.unusable : null;
+  const reason = health.status === "repo-moved" ? m.settings.repository.health.moved(health.fullName)
+    : health.status === "connection-removed" ? m.settings.repository.gitlab.removed
+    : health.status === "connection-unusable" ? m.settings.repository.gitlab.unusable : null;
   if (reason === null && failure === null) return null;
   return <>{reason !== null && <Alert inset variant="warning">{reason}</Alert>}{failure !== null && <Alert inset variant="danger">{failure}</Alert>}</>;
 }
@@ -104,18 +109,25 @@ function GitLabConnectionRow({ health: pending, slug, owner, repo, archived, git
   const expiry = tokenExpiryState(expiresAt, new Date());
   // 끊김이거나 토큰이 곧(또는 이미) 만료면 복구를 보인다 — 연결 정상 + 만료 먼 토큰은 [Open on GitLab]뿐이다.
   const recover = problem !== null || expiry !== "valid";
+  /*
+    ⚠️ **주소 이동은 끊김이 아니지만 복구 컨트롤이 있다** (R-Eui 🟡2 · POSTMORTEM 2026-09-19) — 쓰기는 숫자 id라 계속 되지만 화면의 주소·링크는 옛 이름이다.
+    GitHub 카드와 같은 형: `movedHint` + [Reconnect](GitLab 재연결이 새 `repoOwner/repoName`을 저장한다) + 새 주소로 [Open on GitLab].
+  */
+  const moved = health.status === "repo-moved" ? health.fullName : null;
   const detail = health.status === "unknown" ? m.settings.repository.health.unknown
+    : moved !== null ? m.settings.repository.movedHint
     : problem !== null ? m.settings.repository.paused
     : token !== null ? m.settings.repository.gitlab.connectedVia(token.username) : null;
   return <>
     <div className={ROW}>
       <IconTile tone={STATE[state].tone}>{problem === "disconnected" ? <Unplug className="size-4" aria-hidden /> : <GitlabIcon className="size-4" />}</IconTile>
       <div className="min-w-0 flex-1 space-y-copy-gap"><p className="text-base break-all"><span className="font-medium">{owner}/{repo}</span><StatusBadge state={state} className="ml-2 align-middle" /></p>{detail && <p className="text-muted-foreground text-xs">{detail}</p>}</div>
-      {health.status === "ok" && <ButtonLink variant="default" size="md" external href={repoWebUrl("gitlab", owner, repo)} newTab rel="noreferrer">{m.settings.openRepo}</ButtonLink>}
+      {moved !== null && <fieldset disabled={archived}><ReconnectButton host="gitlab" spinnerSize="sm" onFailure={onFailure} slug={slug} server={health} label={m.settings.repository.reconnect} /></fieldset>}
+      {(health.status === "ok" || moved !== null) && <ButtonLink variant="default" size="md" external href={moved !== null ? repoWebUrl("gitlab", moved.slice(0, moved.lastIndexOf("/")), moved.slice(moved.lastIndexOf("/") + 1)) : repoWebUrl("gitlab", owner, repo)} newTab rel="noreferrer">{m.settings.openRepo}</ButtonLink>}
     </div>
     {token !== null && (
       <div className={ROW}>
-        <IconTile tone={expiry === "valid" ? undefined : "warning"}><GitlabIcon className="size-4" /></IconTile>
+        <IconTile tone={expiry === "valid" ? undefined : STATE[expiry === "expired" ? "expired" : "expiresSoon"].tone}><GitlabIcon className="size-4" /></IconTile>
         <div className="min-w-0 flex-1 space-y-copy-gap">
           <p className="text-base break-all"><span className="font-medium">{m.settings.repository.gitlab.tokenLine(token.username)}</span>
             {expiry !== "valid" && <StatusBadge state={expiry === "expired" ? "expired" : "expiresSoon"} className="ml-2 align-middle" />}</p>

@@ -24,7 +24,7 @@ export function ResultStep({ pushToken, yaml, host = "github" }: { pushToken: st
       {/* ⚠️ **워크플로 블록이 남은 높이를 먹는다** — 그래서 토큰 칩이 늘 화면에 남는다. */}
       <WorkflowBlock m={m} yaml={yaml} host={host} />
 
-      <p className="text-muted-foreground shrink-0 text-xs leading-body">{m.newProject.result.ingest.refsHint}</p>
+      <p className="text-muted-foreground shrink-0 text-xs leading-body">{forHost(m.newProject.result.ingest, host).refsHint}</p>
     </div>
   );
 }

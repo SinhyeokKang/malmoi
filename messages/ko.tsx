@@ -758,6 +758,7 @@ export const ko = {
       deferReasons: {
         "open-pr": "Malmoi MR이 아직 열려 있습니다. 아무것도 동기화하지 않았습니다 — MR이 머지되거나 닫히면 동기화가 다시 시작됩니다.",
         "pr-check-failed": "GitLab에서 열린 Malmoi MR을 확인하지 못해 아무것도 동기화하지 않았습니다. 다음 실행에서 다시 확인합니다.",
+        "too-large": "리포지토리 변경이 서버 동기화 한도를 초과했습니다. 아무것도 동기화하지 않았습니다. 파일 크기를 줄이거나 리포지토리의 GitLab CI job으로 전달하세요.",
       },
       meta: { noPullRequest: "MR 없음" },
       sentence: {
@@ -779,6 +780,7 @@ export const ko = {
       },
       reasons: {
         "github-error": `GitLab이 응답하지 않았습니다. ${NIGHTLY_RETRY}`,
+        "base-unreadable": "리포지토리를 읽지 못했습니다. 개발자에게 GitLab 토큰의 접근 권한을 확인해 달라고 요청하세요.",
         "not-installed": "이 프로젝트의 GitLab 연결이 해제되었거나 쓸 수 없습니다. 프로젝트 소유자가 설정에서 다시 연결할 수 있습니다.",
       },
       refusals: {
@@ -1317,6 +1319,7 @@ export const ko = {
       ingest: {
         retry: "다시 시도",
         refsHint: "코드 사용처는 CI 워크플로가 처음 실행된 뒤 표시됩니다. 번역은 지금 시작할 수 있습니다.",
+        onGitLab: { refsHint: "코드 사용처는 CI job이 처음 실행된 뒤 표시됩니다. 번역은 지금 시작할 수 있습니다." },
         open: "프로젝트 열기",
       },
       failed: "완료하지 못했습니다. 잠시 후 다시 시도하세요.",
@@ -2268,7 +2271,7 @@ export const ko = {
       "token-invalid": "GitLab이 이 토큰을 받지 않았습니다. 만료되었거나 철회되었을 수 있습니다 — 새 토큰을 만들어 붙여 넣으세요.",
       "token-fine-grained": "fine-grained 토큰입니다. Malmoi에는 api 스코프가 있는 레거시 개인 액세스 토큰이 필요합니다 — 새로 만들어 붙여 넣으세요.",
       "token-scope-missing": "이 토큰에는 api 스코프가 없습니다. api 스코프로 새 토큰을 만들어 붙여 넣으세요.",
-      "account-mismatch": "다른 GitLab 계정의 토큰입니다. 먼저 GitLab 연결을 해제한 뒤 그 계정을 연결하세요.",
+      "account-mismatch": "다른 GitLab 계정의 토큰입니다. 먼저 계정에서 GitLab 연결을 해제한 뒤 그 계정을 연결하세요.",
       "gitlab-not-connected": "먼저 계정에서 GitLab 계정을 연결하세요.",
       "gitlab-reconnect": "GitLab 토큰을 더 이상 쓸 수 없습니다. 계정에서 토큰을 교체하세요.",
       "gitlab-repo-archived": "보관된 GitLab 프로젝트입니다. GitLab에서 보관을 해제한 뒤 다시 시도하세요.",

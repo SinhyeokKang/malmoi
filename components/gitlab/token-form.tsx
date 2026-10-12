@@ -62,7 +62,8 @@ export function GitLabTokenForm({ submitLabel, onConnected, autoFocus = false }:
               width="full"
               id={id}
               type="password"
-              autoComplete="off"
+              // `off`는 Chrome이 password 필드에서 무시해 저장 제안이 뜬다 — 붙여 넣는 비밀이라 `new-password`가 관례다.
+              autoComplete="new-password"
               autoFocus={autoFocus}
               spellCheck={false}
               value={token}

@@ -751,6 +751,7 @@ export const es = {
       deferReasons: {
         "open-pr": "Todavía hay una merge request de Malmoi abierta. No se sincronizó nada: la sincronización se reanuda cuando se fusione o se cierre.",
         "pr-check-failed": "No se pudo comprobar en GitLab si hay una merge request de Malmoi abierta, así que no se sincronizó nada. La próxima ejecución lo vuelve a comprobar.",
+        "too-large": "El cambio del repositorio es demasiado grande para una sincronización desde el servidor. No se sincronizó nada. Reduce el tamaño de los archivos o entrégalo con los jobs de GitLab CI del repositorio.",
       },
       meta: { noPullRequest: "sin merge request" },
       sentence: {
@@ -772,6 +773,7 @@ export const es = {
       },
       reasons: {
         "github-error": `GitLab no respondió. ${NIGHTLY_RETRY}`,
+        "base-unreadable": "No pudimos leer tu repositorio. Pide a tus desarrolladores que revisen el acceso del token de GitLab.",
         "not-installed": "La conexión de GitLab de este proyecto se quitó o no se puede usar. Un propietario del proyecto puede volver a conectarla en Configuración.",
       },
       refusals: {
@@ -1308,6 +1310,7 @@ export const es = {
       ingest: {
         retry: "Intentar de nuevo",
         refsHint: "Las referencias en el código llegan después de la primera ejecución de tu flujo de trabajo de CI. Ya puedes empezar a traducir.",
+        onGitLab: { refsHint: "Las referencias en el código llegan después de la primera ejecución de tus jobs de CI. Ya puedes empezar a traducir." },
         open: "Abrir proyecto",
       },
       failed: "No se pudo terminar. Vuelve a intentarlo en un momento.",
@@ -2260,7 +2263,7 @@ export const es = {
       "token-invalid": "GitLab no aceptó este token. Puede que haya caducado o se haya revocado: crea uno nuevo y pégalo aquí.",
       "token-fine-grained": "Este es un token detallado (fine-grained). Malmoi necesita un token de acceso personal clásico con el alcance api: crea uno y pégalo aquí.",
       "token-scope-missing": "Este token no tiene el alcance api. Crea un token nuevo con el alcance api y pégalo aquí.",
-      "account-mismatch": "Este token es de otra cuenta de GitLab. Primero desconecta GitLab y después conecta la otra cuenta.",
+      "account-mismatch": "Este token es de otra cuenta de GitLab. Primero desconecta GitLab en Cuenta y después conecta la otra cuenta.",
       "gitlab-not-connected": "Primero conecta tu cuenta de GitLab en Cuenta.",
       "gitlab-reconnect": "Tu token de GitLab ya no se puede usar. Reemplázalo en Cuenta.",
       "gitlab-repo-archived": "Este proyecto de GitLab está archivado. Desarchívalo en GitLab y vuelve a intentarlo.",

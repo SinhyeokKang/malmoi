@@ -1678,6 +1678,7 @@ export const en = {
       deferReasons: {
         "open-pr": "A Malmoi merge request is still open. Nothing was synced — syncing resumes once it's merged or closed.",
         "pr-check-failed": "We couldn't check GitLab for an open Malmoi merge request, so nothing was synced. The next run checks again.",
+        "too-large": "The repository change is too large for a server-side sync. Nothing was synced. Reduce the files' size, or deliver it with the repository's GitLab CI jobs.",
       },
       meta: { noPullRequest: "no merge request" },
       sentence: {
@@ -1699,6 +1700,7 @@ export const en = {
       },
       reasons: {
         "github-error": `GitLab didn't answer. ${NIGHTLY_RETRY}`,
+        "base-unreadable": "We couldn't read your repository. Ask your developers to check the GitLab token's access to it.",
         "not-installed": "This project's GitLab connection was removed or can't be used. A project owner can reconnect it in Settings.",
       },
       refusals: {
@@ -2683,6 +2685,7 @@ export const en = {
       ingest: {
         retry: "Try again",
         refsHint: "Code references arrive after your CI workflow first runs. You can start translating now.",
+        onGitLab: { refsHint: "Code references arrive after your CI jobs first run. You can start translating now." },
         // 목적지(프로젝트 Home)를 말한다 — 2026-09-29 전엔 번역 화면으로 가는 "Start translating"이었다.
         open: "Open project",
       },
@@ -4296,7 +4299,7 @@ export const en = {
       "token-invalid": "GitLab didn't accept this token. It may have expired or been revoked — create a new one and paste it here.",
       "token-fine-grained": "This is a fine-grained token. Malmoi needs a legacy personal access token with the api scope — create one and paste it here.",
       "token-scope-missing": "This token doesn't have the api scope. Create a new token with the api scope and paste it here.",
-      "account-mismatch": "This token belongs to a different GitLab account. Disconnect GitLab first, then connect the other account.",
+      "account-mismatch": "This token belongs to a different GitLab account. Disconnect GitLab on the Account page first, then connect the other account.",
       ...GITLAB_ACCESS_ERRORS,
       unavailable: "GitLab didn't answer. Try again in a moment.",
       fallback: "The GitLab connection failed. Try again.",
