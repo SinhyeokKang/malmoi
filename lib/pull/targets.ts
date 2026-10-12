@@ -1,6 +1,7 @@
 import { compareKeys } from "@/lib/adapters/shared";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
 import { repoConnectionPinned } from "@/lib/repo-host/target";
+import { tokenExpiryState } from "@/lib/status/token-expiry";
 
 import type { NightlyVisit } from "@/lib/nightly/summary";
 
@@ -41,14 +42,21 @@ export function selectPullTargets(
      * 화면이 `not-connected`로 할 일을 말하는 동안 `/logs`는 실패로 채워진다.
      */
     repositoryId: string | null;
+    /**
+     * GitLab 프로젝트가 참조하는 연결의 저장 만료일 (audit B⚪1 · 결정 R2). ⚠️ **지났으면 위 `repositoryId`와 같은 근거로 뺀다** —
+     * GitLab 클라이언트가 호출 없이 던지는 자리라(`lib/gitlab/client.ts`) 순회에 남기면 토큰 교체·재연결 전까지 매일 밤 실패
+     * `SyncRun`이나 `base-unreadable` 스킵이 쌓인다. 교체·재연결이 만료일을 바꾸면 다음 밤 저절로 돌아온다. 토큰 원문은 싣지 않는다.
+     */
+    gitlabConnection: { expiresAt: Date | null } | null;
     surfaces: readonly { archivedAt: Date | null; lastCommitSha: string | null }[];
     archivedAt: Date | null;
     lastNightlyAt: Date | null;
   }[],
   limit: number,
+  now: Date = new Date(),
 ): { targets: string[]; unprocessed: number } {
   const ready = projects
-    .filter((p) => planProjectReadiness(p) === "ready" && repoConnectionPinned(p) && p.archivedAt === null)
+    .filter((p) => planProjectReadiness(p) === "ready" && repoConnectionPinned(p) && !gitlabTokenExpired(p, now) && p.archivedAt === null)
     .slice()
     .sort((a, b) => {
       // 한 번도 방문 안 한 프로젝트를 `-Infinity`로 둔다 — "가장 오래 안 돌았다"가 그 뜻이다.
@@ -59,6 +67,11 @@ export function selectPullTargets(
     .map((p) => p.slug);
   // ⚠️ **자르기는 정렬 뒤다** — 잘린 뒤쪽이 실행 기록 없이 남으므로 다음 밤에는 앞으로 온다.
   return { targets: ready.slice(0, limit), unprocessed: Math.max(0, ready.length - limit) };
+}
+
+/** 목록 상태(`projectStatus`)와 같은 판정이다 — 목록이 "다시 연결"이라 말하는 프로젝트를 야간이 돌지 않는다. */
+function gitlabTokenExpired(p: { repoHost: string; gitlabConnection: { expiresAt: Date | null } | null }, now: Date): boolean {
+  return p.repoHost === "gitlab" && tokenExpiryState(p.gitlabConnection?.expiresAt ?? null, now) === "expired";
 }
 
 /**

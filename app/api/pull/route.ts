@@ -59,6 +59,8 @@ export async function GET(request: Request): Promise<NextResponse> {
         slug: true,
         repoHost: true, installationId: true, gitlabConnectionId: true,
         repositoryId: true,
+        // 저장 만료일이 지난 GitLab 연결은 대상에서 빠진다(`selectPullTargets`). ⚠️ 토큰은 select하지 않는다 — 방문이 클라이언트를 만들 때 연다.
+        gitlabConnection: { select: { expiresAt: true } },
         // 야간 판정의 입력 — head 조회·PR 조회·적재의 리포 신원을 **이 행에서** 넘긴다(방문 중에 다시 읽지 않는다).
         repoOwner: true,
         repoName: true,

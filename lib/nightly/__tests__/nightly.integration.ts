@@ -211,7 +211,7 @@ it("마감으로 멈춘 프로젝트는 다음 밤 제때 방문한 프로젝트
   // p는 마감으로 멈췄다.
   github({});
   await late();
-  const rows = await prisma.project.findMany({ select: { slug: true, repoHost: true, gitlabConnectionId: true, installationId: true, repositoryId: true, archivedAt: true, lastNightlyAt: true,
+  const rows = await prisma.project.findMany({ select: { slug: true, repoHost: true, gitlabConnectionId: true, gitlabConnection: { select: { expiresAt: true } }, installationId: true, repositoryId: true, archivedAt: true, lastNightlyAt: true,
     surfaces: { select: { archivedAt: true, lastCommitSha: true } } } });
   expect(selectPullTargets(rows, 50).targets).toEqual(["fixture", "other"]);
   expect(await stampOf("q")).not.toEqual(before);
