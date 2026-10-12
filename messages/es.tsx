@@ -941,6 +941,7 @@ export const es = {
         create: "Crear un token en GitLab",
         connect: "Conectar",
         checking: "Comprobando el token con GitLab…",
+        invalidInput: "Eso no es un token de acceso personal de GitLab. Pega el token que creaste en GitLab.",
       },
     },
     sessionsSection: {

@@ -2132,6 +2132,8 @@ export const en = {
         connect: "Connect",
         /** 검증 중 상태 줄(시안 G2b) — 입력 잠김 + 버튼 스피너 옆에서 무엇을 기다리는지 말한다. */
         checking: "Checking the token with GitLab…",
+        /** 입력 모양 거부(`invalid input` — 1024자 초과 등) — GitLab을 부르기 전이라 "GitLab이 받지 않았다"가 아니다(감사 U6). */
+        invalidInput: "That isn't a GitLab personal access token. Paste the token you created in GitLab.",
       },
     },
     /** 구역 헤더 — 항목 둘(이 기기 / 모든 기기)이 한 리스트에 선다. */

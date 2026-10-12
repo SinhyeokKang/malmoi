@@ -949,6 +949,7 @@ export const ko = {
         create: "GitLab에서 토큰 만들기",
         connect: "연결",
         checking: "GitLab에서 토큰을 확인하는 중…",
+        invalidInput: "GitLab 개인 액세스 토큰이 아닙니다. GitLab에서 만든 토큰을 붙여 넣으세요.",
       },
     },
     sessionsSection: {

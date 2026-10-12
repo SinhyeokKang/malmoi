@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { FormGroup } from "@/components/ui/form-group";
 import { Input } from "@/components/ui/input";
 import { Link as InlineLink } from "@/components/ui/link";
-import { gitlabConnectErrorMessage } from "@/lib/gitlab-connect/message";
+import { gitlabTokenErrorMessage } from "@/lib/gitlab-connect/message";
 
 /**
  * GitLab 토큰 만들기 화면 — 레거시 PAT 화면으로 리다이렉트되며 이름·스코프가 채워진다(design §2 실측 · D13 `scopes=api` 하나).
@@ -49,7 +49,7 @@ export function GitLabTokenForm({ submitLabel, onConnected, autoFocus = false, n
       let result: Awaited<ReturnType<typeof connectGitLab>> | null;
       try { result = await connectGitLab({ token: value }); } catch { result = null; }
       if (result === null) { setError(m.errors.gitlab.unavailable); return; }
-      if (!result.ok) { setError(gitlabConnectErrorMessage(m, result.error)); return; }
+      if (!result.ok) { setError(gitlabTokenErrorMessage(m, result.error)); return; }
       setError(null);
       setToken("");
       onConnected(result.connection);
