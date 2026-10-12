@@ -28,7 +28,7 @@ const BROWSER: Partial<Record<string, NeedsBrowserReason>> = {
   "gitlab-not-connected": "gitlab-not-connected", "gitlab-reconnect": "gitlab-reconnect",
 };
 
-export function refusedOrBrowser(ctx: ToolContext, code: string): ToolOutcome {
+function refusedOrBrowser(ctx: ToolContext, code: string): ToolOutcome {
   const reason = Object.hasOwn(BROWSER, code) ? BROWSER[code] : undefined;
   return reason === undefined ? { status: "refused", code } : { status: "needs-browser", reason, url: appUrl(ctx, routes.account()) };
 }

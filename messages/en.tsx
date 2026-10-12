@@ -3726,7 +3726,7 @@ export const en = {
       // `read_docs`의 없는 page — 공용 `not-found`는 프로젝트 문장이라 쓰지 않는다. 다음 행동(목차 부르기)을 함께 말한다.
       "docs-page-not-found": "No guide page with that name. Call read_docs with no arguments to list pages.",
       // GitLab CI 원본의 릴리스 SHA가 아직 없다(`GITLAB_CI_RELEASE`) — 박힌 SHA 없는 파일을 내지 않는다. 그동안의 길(앱에서 Sync)을 함께 말한다.
-      "workflow-unavailable": "The GitLab CI file isn't available in this version of Malmoi yet. Until it is, sync from Malmoi to load repository changes.",
+      "workflow-unavailable": "The GitLab CI file isn't available in this version of Malmoi yet. For now, sync from Malmoi to load repository changes.",
       /**
        * GitLab에만 있는 리포 거부(`GitLabAccessError`) — 화면 사전에 아직 문장이 없어 MCP가 여기서 든다. ⚠️ 화면 문장이 생기면(E-ui) 그쪽으로
        * 옮기고 이 절을 지운다 — 같은 거부에 문구가 두 벌이면 안 된다. 연결 없음·토큰 교체는 needs-browser라 거부 문장이 아니다.
@@ -3736,7 +3736,7 @@ export const en = {
         "gitlab-reconnect": "Your GitLab token can't be used anymore. Replace it on the Account page.",
         "gitlab-repo-archived": "This GitLab project is archived. Unarchive it in GitLab, then try again.",
         "gitlab-repo-unsupported": "This GitLab project uses SHA-256 object format, which Malmoi doesn't support.",
-        "gitlab-project-disconnected": "This project's GitLab connection was removed. An owner can reconnect it in the project's settings.",
+        "gitlab-project-disconnected": "This project's GitLab connection was removed. A project owner can reconnect it in the project's settings.",
       },
     },
     /** 도구 설명(`tools/list`의 `description`) — 에이전트가 도구를 고르는 근거다. 핸들이 필요한 도구는 무엇을 먼저 부르는지 말한다. */
@@ -3843,7 +3843,7 @@ export const en = {
         created: (slug: string, keys: number): string =>
           `Created ${slug} with ${keys.toLocaleString("en-US")} ${keys === 1 ? "key" : "keys"}. Add the push token as the PUSH_TOKEN CI/CD variable (Protected and Masked) first, then commit the jobs to .gitlab-ci.yml.`,
         createdWithoutCi: (slug: string, keys: number): string =>
-          `Created ${slug} with ${keys.toLocaleString("en-US")} ${keys === 1 ? "key" : "keys"}. Keep the push token for the PUSH_TOKEN CI/CD variable — the GitLab CI file isn't available yet, so sync from Malmoi until it is.`,
+          `Created ${slug} with ${keys.toLocaleString("en-US")} ${keys === 1 ? "key" : "keys"}. Keep the push token for the PUSH_TOKEN CI/CD variable — the GitLab CI file isn't available yet, so sync from Malmoi for now.`,
         sourcesAdded: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "source" : "sources"} added. Get the updated .gitlab-ci.yml with get_workflow and replace the Malmoi jobs with it.`,
         sourcesAddedWithoutCi: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "source" : "sources"} added. The GitLab CI file isn't available yet, so sync from Malmoi to load repository changes.`,
       },
