@@ -703,3 +703,17 @@ it("켜진 연결 수단이 있으면 Sign out everywhere는 확인을 지난다
   expect(trigger.getAttribute("aria-disabled")).toBeNull();
   expect(sessions.textContent).not.toContain(en.account.sessions.needsMethod);
 });
+
+/**
+ * **GitHub App 없는 설치** (gitlab-repositories D4a · R-Eui 🟡3) — GitHub App 카드가 서지 않고 GitHub 연결 조회(`loadAccountView`)가 0회다. GitLab PAT
+ * 카드는 그대로 선다(그 설치의 유일한 리포 쓰기 수단이다).
+ */
+it("GitHub App이 없으면 GitHub App 카드와 GitHub 조회가 없고 GitLab PAT 카드가 선다", async () => {
+  for (const name of ["GITHUB_APP_ID", "GITHUB_APP_PRIVATE_KEY", "GITHUB_APP_CLIENT_ID", "GITHUB_APP_CLIENT_SECRET", "GITHUB_APP_SLUG"]) vi.stubEnv(name, "");
+  const container = await screen();
+  const titles = [...container.querySelectorAll("h2")].map((h) => h.textContent);
+  expect(titles).not.toContain(en.account.github.title);
+  expect(titles).toContain(en.account.gitlab.title);
+  expect(mocks.loadAccountView).not.toHaveBeenCalled();
+  expect(mocks.loadInstalledRepoCount).not.toHaveBeenCalled();
+});
