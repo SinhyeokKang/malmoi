@@ -274,7 +274,7 @@ async function finishSurface(prisma: PrismaClient, lease: Lease, surface: Transl
   return finished.surface;
 }
 
-/** callback은 실행 소유권을 원자적으로 얻은 뒤에만 설치 reader를 연다. */
+/** callback은 실행 소유권을 원자적으로 얻은 뒤에만 설치 reader를 연다. GitLab 수동 Sync는 재연결 거부를 가르려고 먼저 연 reader를 넘긴다(`onboarding-run/import.ts`). */
 export async function runRepositoryImportFromReader(prisma: PrismaClient, input: ImportRunInput, openReader: () => Promise<RepoReader>): Promise<RepositoryImportOutcome> {
   const outcome = await runImport(prisma, { projectId: input.projectId, repository: input.repository,
     actor: { kind: "USER", userId: input.userId, approval: input.approval, credential: input.credential } }, openReader, () => {});
