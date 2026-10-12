@@ -15,7 +15,7 @@ const config: Extract<InvitationEmailConfig, { status: "ready" }> = {
   from: "malmoi <invite@notify.mal-moi.com>",
   origin: "https://mal-moi.com",
 };
-const project = { name: "Acme Web", image: null };
+const project = { name: "Acme Web", image: null, repoHost: "github" };
 const messages = [
   { to: "a@x.com", token: "tok_a", role: "EDITOR" as const },
   { to: "b@x.com", token: "tok_b", role: "OWNER" as const },

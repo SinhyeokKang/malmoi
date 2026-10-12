@@ -352,7 +352,7 @@ describe("발급 outcome — 메일 카드의 프로젝트·역할", () => {
         { email: "a@x.com", role: "EDITOR" },
         { email: "b@x.com", role: "OWNER" },
       ], credential: undefined });
-    expect(result).toMatchObject({ status: "issued", project: { name: "Acme Web", image: THUMB } });
+    expect(result).toMatchObject({ status: "issued", project: { name: "Acme Web", image: THUMB, repoHost: "github" } });
     if (result.status !== "issued") return;
     expect(result.invitations.map((i) => i.role)).toEqual(["EDITOR", "OWNER"]);
   });
