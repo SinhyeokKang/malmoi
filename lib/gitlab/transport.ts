@@ -137,8 +137,9 @@ export function createGitLabTransport(token: string, options: { fetch?: typeof f
     assertIdAddressed(path, query);
     const url = new URL(`${GITLAB_API}${path}`);
     // `assertIdAddressed`는 정규화 전 문자열을 본다 — `new URL`이 `..`·`%2e%2e`를 접으면 `/projects/1/repository/../../2/…`가 프로젝트 2가 된다(audit A8).
-    // 정규화가 경로를 바꿨으면 거부한다(동적 조각은 `encodeURIComponent`를 지나므로 정상 경로는 바뀌지 않는다).
-    if (url.pathname !== `${API_PATH}${path}`) throw new Error("GitLab paths must not contain dot segments");
+    // 정규화가 경로를 바꿨으면 거부한다 — 점 세그먼트뿐 아니라 인코딩 안 된 공백·`#`·`?` 같은 호출부 실수도 여기서 막힌다(동적 조각은
+    // `encodeURIComponent`를 지나므로 정상 경로는 바뀌지 않는다).
+    if (url.pathname !== `${API_PATH}${path}`) throw new Error("GitLab path must be pre-normalized: URL normalization changed the path");
     for (const [name, value] of Object.entries(query)) url.searchParams.set(name, value);
     const headers: Record<string, string> = { "PRIVATE-TOKEN": token, Accept: "application/json" };
     if (body !== undefined) headers["Content-Type"] = "application/json";
