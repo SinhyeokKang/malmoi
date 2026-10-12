@@ -56,7 +56,7 @@ describe("preflight — 전부 있을 때만 통과한다", () => {
 
   it("필수 값은 하나씩 빠지면 그 이름이 missing이다 — 빈 문자열·공백도", () => {
     const required = Object.entries(SELF_HOSTED_ENV).filter(([, kind]) => kind === "required").map(([name]) => name);
-    expect(required.length).toBeGreaterThan(15);
+    expect(required).toContain("DATABASE_URL");
     for (const name of required) {
       for (const blank of [undefined, "", "  "]) {
         const env = { ...VALID, [name]: blank };
@@ -261,6 +261,11 @@ describe("GitHub App 그룹 — GitLab 전용 설치", () => {
         return true;
       });
       expect(reasons(env), `mask=${mask}`).toEqual(mask === 0 || mask === 31 ? {} : Object.fromEntries(missing.map(name => [name, "incomplete-group"])));
+    }
+  });
+  it("일부만 공백인 그룹도 빠진 값으로 거부한다", () => {
+    for (const name of names) {
+      expect(reasons({ ...VALID, [name]: "  " })).toEqual({ [name]: "incomplete-group" });
     }
   });
   it("다섯 공백도 미설정이며 로그인 공급자는 여전히 필요하다", () => {

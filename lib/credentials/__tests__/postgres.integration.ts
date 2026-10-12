@@ -987,7 +987,7 @@ it("provider cancellation returns a connect reason", async () => {
 it("GitLab PAT 회전·검증·백업 복원이 계정 AAD와 연결 메타를 보존한다", async () => {
   await legacy();
   await convertCredentials(prisma, { mode: "backfill", ...cutover });
-  const data = { userId: ids.u1, token: sealGitLabToken("fixture-gitlab-pat", { userId: ids.u1 }), gitlabUserId: 42, username: "fixture", expiresAt: new Date("2030-01-01"), scopes: ["api"] };
+  const data = { userId: ids.u1, token: sealGitLabToken("fixture-gitlab-pat", { userId: ids.u1 }), gitlabUserId: "42", username: "fixture", expiresAt: new Date("2030-01-01"), scopes: ["api"] };
   const connection = await prisma.gitLabConnection.create({ data });
   const backup = join(directory, "gitlab-backup.sql");
   execFileSync(join(binaries, "pg_dump"), ["-h", directory, "-p", "55479", "-U", "postgres", "-f", backup, "postgres"], { stdio: "pipe" });

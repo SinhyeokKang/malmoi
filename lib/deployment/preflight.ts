@@ -2,6 +2,7 @@ import { LOGIN_PROVIDER_ENV, loginProviderStates, present } from "@/lib/auth/log
 import { LOGIN_PROVIDERS } from "@/lib/login-link/policy";
 import { FROM as INVITATION_FROM } from "@/lib/invitation-email/config";
 
+import { GITHUB_APP_ENV, planGitHubAppConfig } from "./github-app";
 import { resolveDeploymentMode, type OriginRejection } from "./mode";
 
 /**
@@ -20,7 +21,7 @@ import { resolveDeploymentMode, type OriginRejection } from "./mode";
  * - `required` — preflight가 요구한다(web 컨테이너)
  * - `optional` — 없어도 기동한다. ⚠️ 로그인 공급자 넷(`AUTH_GITHUB_*`·`AUTH_GOOGLE_*`)은 단독으로 optional이고 **쌍 제약은 `preflight()`의
  *   쌍 규칙이 든다** — 완전한 쌍 하나 이상 + 반쪽 0(optional-login-providers design §2.2). 새 분류를 만들지 않은 이유: compose·`.env.example`
- *   대조 필터(`required || optional`)가 그대로 맞는다
+ *   대조 필터(`required || optional`)가 그대로 맞는다. `GITHUB_APP_*` 다섯도 optional + all-or-none 그룹이다
  * - `hosted-only` — self-hosted는 읽지 않는다. `INVITATION_EMAIL_ORIGIN`만 있으면 거부한다(`MALMOI_ORIGIN`에서 파생 — 정본 둘 방지)
  * - `command` — web이 아니라 운영 명령·로컬 CLI가 읽는다. ⚠️ `DIRECT_URL`(DDL 자격증명)을 web에 요구하지 않는다 — 앱에는 DDL 권한을 주지 않는다
  */
@@ -37,11 +38,11 @@ export const SELF_HOSTED_ENV = {
   AUTH_GOOGLE_SECRET: "optional",
   APP_SIGNING_SECRET: "required",
   DATABASE_URL: "required",
-  GITHUB_APP_ID: "required",
-  GITHUB_APP_PRIVATE_KEY: "required",
-  GITHUB_APP_CLIENT_ID: "required",
-  GITHUB_APP_CLIENT_SECRET: "required",
-  GITHUB_APP_SLUG: "required",
+  GITHUB_APP_ID: "optional",
+  GITHUB_APP_PRIVATE_KEY: "optional",
+  GITHUB_APP_CLIENT_ID: "optional",
+  GITHUB_APP_CLIENT_SECRET: "optional",
+  GITHUB_APP_SLUG: "optional",
   CRON_SECRET: "required",
   TOKEN_ENCRYPTION_KEYS: "required",
   TOKEN_ENCRYPTION_ACTIVE_KEY_ID: "required",
@@ -75,6 +76,8 @@ export type PreflightReason =
   | "not-writable"
   /** 로그인 공급자 쌍의 한쪽만 있다 — 빠진 쪽 이름으로 낸다. */
   | "incomplete-pair"
+  /** GitHub App 다섯 중 일부만 있다 — 빠진 이름으로 낸다. */
+  | "incomplete-group"
   /** 완전한 로그인 공급자 쌍이 하나도 없다 — 두 ID 이름으로 낸다. */
   | "no-login-provider"
   | OriginRejection;
@@ -140,6 +143,14 @@ export function preflight(env: Record<string, string | undefined>, probeUploadDi
   }
   if (partial.length === 0 && !LOGIN_PROVIDERS.some((provider) => states[provider] === "enabled")) {
     for (const provider of LOGIN_PROVIDERS) report(LOGIN_PROVIDER_ENV[provider].id, "no-login-provider");
+  }
+
+  // GitLab 전용 설치는 App 없이 뜬다. 일부만 채운 구성은 로그인 쌍처럼 기동 전에 거부한다.
+  const appEnv = Object.fromEntries(GITHUB_APP_ENV.map(name => [name, present(env[name])]));
+  if (planGitHubAppConfig(appEnv) === "partial") {
+    for (const name of GITHUB_APP_ENV) {
+      if (present(env[name]) === undefined) report(name, "incomplete-group");
+    }
   }
 
   const mode = resolveDeploymentMode(env);
