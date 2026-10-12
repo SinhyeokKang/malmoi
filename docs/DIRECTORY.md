@@ -907,7 +907,7 @@ lib/
                         import는 lib/auth/email 하나) · user(isOperatorUser — server-only, User.emailLookup × OPERATOR_EMAILS).
                         ⚠️ lib/auth/에 두지 않는 이유가 축이다 — 운영자는 인가가 아니라 계정 축 쿼터 판정이고, 상한 소비는
                         onboarding-run/·projects/owner-limit에 남는다. user를 import하는 소스는 그 셋뿐이다(소스 스캔 테스트가 센다)
-  onboarding-run/       **두 GitHub 자격증명이 만나는 조립**(2026-09-28 T4-c — ARCHITECTURE §3.1). Server Action과 MCP 도구가
+  onboarding-run/       **리포 자격증명이 만나는 조립**(GitHub 둘 · GitLab 호출자 PAT와 참조 연결)(2026-09-28 T4-c — ARCHITECTURE §3.1). Server Action과 MCP 도구가
                         같이 부른다: access(checkRepoAccess) · repos · branches · detect · add · create · import · rotate-token ·
                         gitlab-repos(① GitLab 목록 — 호출자 PAT로 Maintainer 이상 프로젝트를 읽는 표시용) · gitlab-reconnect(GitLab 재연결 코어 —
                         호출자 PAT로 쓰기 권한을 보고 참조를 자기 연결로 바꾼다) · locator(새 리포 입력 → 대상, GitLab은 숫자 id만).
