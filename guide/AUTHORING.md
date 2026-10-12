@@ -10,7 +10,7 @@
 - 개요의 두 갈래 카드와 나머지 장 목록, 장 개요의 하위 목록은 SUMMARY와 각 페이지의 도입 문단에서 생성한다. 원고에 카드·목록을 중복 작성하지 않는다. 개요는 H1과 도입, 그리고 대표 화면 스크린샷 한 장만 둔다(카드보다 위에 선다). 장 개요는 H1과 도입에 필요한 본문만 둔다.
 - 두 갈래의 선택은 `lib/guide/overview.ts`가 소유한다(렌더링 단계에서 추가). 제목은 SUMMARY, 설명은 도입 문단에서 가져온다.
 - `AUTHORING.md`와 `SHOOTING.md`는 SUMMARY에 올리지 않고 공개 페이지로 제공하지 않는다. SUMMARY 자신도 페이지가 아니라 내비 데이터다.
-- 실제 화면은 스크린샷으로 기록하며 촬영 규약은 `SHOOTING.md`가 소유한다. 화면을 안내하는 작업 페이지는 적어도 한 장을 둔다 — 화면이 없는 참조 페이지(`faq.md`·`reference/formats.md`·`reference/limits.md` 등)와 GitHub 쪽 동작만 설명하는 페이지(`sync/merging.md`·`sync/nightly.md`)는 예외다. 이미지는 절의 단계 목록 뒤(또는 그 화면을 여는 단계 앞)에 둔다.
+- 실제 화면은 스크린샷으로 기록하며 촬영 규약은 `SHOOTING.md`가 소유한다. 화면을 안내하는 작업 페이지는 적어도 한 장을 둔다 — 화면이 없는 참조 페이지(`faq.md`·`reference/formats.md`·`reference/limits.md` 등)와 리포 호스트 쪽 동작만 설명하는 페이지(`sync/merging.md`·`sync/merging-gitlab.md`·`sync/nightly.md`)는 예외다. 이미지는 절의 단계 목록 뒤(또는 그 화면을 여는 단계 앞)에 둔다.
 
 ## 언어 {#languages}
 
@@ -34,9 +34,12 @@
 | `README.md` | Malmoi | 공통 |
 | `faq.md` | FAQ | 공통 |
 | `setup/README.md` | Set up a project | 개발자 |
+| `setup/connect-github.md` | Connect GitHub | 개발자 |
+| `setup/connect-gitlab.md` | Connect GitLab | 개발자 |
 | `setup/create-project.md` | Create a project | 개발자 |
 | `setup/workflow.md` | Add the workflow | 개발자 |
 | `setup/allowed-actions.md` | Allow the actions | 개발자 |
+| `setup/gitlab-ci.md` | Add the GitLab CI jobs | 개발자 |
 | `setup/members.md` | Invite translators | 개발자 |
 | `setup/sources.md` | Add sources | 개발자 |
 | `setup/archive.md` | Archive a project | 개발자 |
@@ -47,6 +50,7 @@
 | `sync/README.md` | How syncing works | 공통 |
 | `sync/push.md` | When code changes | 개발자 |
 | `sync/merging.md` | Merging the pull request | 개발자 |
+| `sync/merging-gitlab.md` | Merging the merge request | 개발자 |
 | `sync/nightly.md` | Every night | 공통 |
 | `sync/revert.md` | Undo and resync | 개발자 |
 | `sync/logs.md` | Check activity in Logs | 공통 |
@@ -136,7 +140,8 @@
 - 모든 H2 끝에 ` {#id}`를 붙인다. 예시는 `## Add the workflow {#workflow}`다. H3의 앵커는 선택이다.
 - id는 `[a-z0-9-]+`이고 페이지 안에서 중복되지 않는다. 제목을 바꿔도 공개된 id는 유지한다. 앵커 문법 자체를 설명할 때는 반드시 인라인 코드 안에 둔다.
 - 페이지 링크는 `../setup/workflow.md#workflow`처럼 상대 `.md` 경로로 쓴다. `/docs/...` 절대경로를 원고에 넣지 않는다. 같은 페이지의 앵커 링크는 `#workflow`처럼 쓸 수 있다.
-- **한 페이지를 섹션으로 나누면 옛 절 id 전부를 `SECTION_LEGACY_ANCHORS`(같은 파일)에 그 장 slug로 등재한다** — 공유된 `/docs/<장>#<id>`가 개요 맨 위에 멈춘다(malmoi#152, `ai-agents`).
+- **한 페이지를 섹션으로 나누면 옛 절 id 전부를 `SECTION_LEGACY_ANCHORS`(같은 파일)에 그 장 slug로 등재한다** — 공유된 `/docs/<장>#<id>`가 개요 맨 위에 멈춘다(malmoi#152, `ai-agents`). 절 일부만 새 페이지로 옮기면 옮긴 id만 남은 페이지의 slug로 등재하고, 남은 페이지에 그 id를 다시 쓰지 않는다(`structure.test.ts`).
+- **리포 호스트마다 절차가 갈리는 흐름(연결·CI·머지)은 페이지가 갈린다**(2026-10-13) — GitHub 전용(`setup/connect-github`·`setup/workflow`·`setup/allowed-actions`·`sync/merging`)과 GitLab 전용(`setup/connect-gitlab`·`setup/gitlab-ci`·`sync/merging-gitlab`) 페이지의 본문에는 다른 호스트 이름을 쓰지 않는다 — 링크 문구·대상과 코드 스팬만 예외다(`host-split.test.ts`). 낱말만 다른 페이지(Publish·push·nightly)는 한 페이지에 둔다.
 - 옛 해시 일곱은 `lib/guide/legacy-anchors.ts`가 정본이다. 개요에 본문을 중복하지 않도록 `how-it-works`는 `sync/README.md`의 같은 id로 옮긴다. 나머지 절도 매핑된 페이지에 같은 id를 보존한다.
 
 ## 표 이름 {#tables}
@@ -168,9 +173,12 @@
 | 페이지 | 확인할 사실 | 대조 소스 |
 | --- | --- | --- |
 | `README.md`, `setup/README.md`, `translate/README.md`, `account/README.md`, `reference/README.md` | 독자별 진입·장 구성·도입 설명 | `guide/SUMMARY.md`, 각 하위 페이지 도입, `docs/PRODUCT.md` §3·§7.7 |
-| `setup/create-project.md` | GitHub 연결·설치, 생성 ①–④, 첫 적재 | `components/onboarding/`, `lib/onboarding/`, `lib/github-connect/`, `app/(edit)/projects/actions.ts`, `docs/PRODUCT.md` §7.1–§7.5 |
+| `setup/connect-github.md` | GitHub 연결·설치·리포 선택(생성 ①) | `components/onboarding/`, `lib/github-connect/`, `docs/PRODUCT.md` §7.1–§7.5 |
+| `setup/connect-gitlab.md` | GitLab 토큰 연결·교체·리포 선택(생성 ①) | `components/onboarding/`(`new-project.tsx`의 호스트 탭), `components/account/`, `messages/en.tsx`의 `newProject`·`account.gitlab` |
+| `setup/create-project.md` | 생성 ②–④, 첫 적재 | `components/onboarding/`, `lib/onboarding/`, `lib/github-connect/`, `app/(edit)/projects/actions.ts`, `docs/PRODUCT.md` §7.1–§7.5 |
 | `setup/sources.md` | 소스 추가, 상태·기준 언어 선언, OWNER 제한 | `app/(edit)/projects/[slug]/sources/page.tsx`, 같은 디렉터리 `actions.ts`, `components/sources/`, `lib/sources/`, `lib/surfaces/`, `docs/PRODUCT.md` §7.1 |
 | `setup/workflow.md` | 생성 YAML, 파일 경로, `PUSH_TOKEN`, 첫 실행 | `lib/onboarding/workflow.ts`, `components/settings/ci-card.tsx`, `.github/actions/malmoi-i18n-push/action.yml`, `docs/ACTIONS.md` |
+| `setup/gitlab-ci.md` | 생성 job, `.gitlab-ci.yml`, CI/CD 변수 `PUSH_TOKEN`, 보호 브랜치, `MALMOI_I18N_WRAPPER`, 미릴리스 CI 파일 | `lib/onboarding/gitlab-ci.ts`, `lib/onboarding/ci-file.ts`, `lib/cli/gitlab-ci-input.ts`, `components/settings/ci-card.tsx`, `messages/en.tsx`의 `settings.workflow`(`gitlabVariable`·`gitlabUnavailable`) |
 | `setup/allowed-actions.md` | 실행 action 넷과 제한된 GitHub Actions 설정 | `lib/guide/__tests__/helpers/allowed-actions.ts`, `lib/onboarding/workflow.ts`, `.github/actions/malmoi-i18n-push/action.yml`, `docs/ACTIONS.md`; 외부 화면의 현재 라벨은 별도 확인 |
 | `setup/members.md` | 역할, 초대 메일·재발급·멤버 관리 | `lib/auth/permission.ts`, `lib/auth/invitation.ts`, `lib/invitation-email/`, `app/(edit)/projects/actions.ts`, `components/members/`, `docs/PRODUCT.md` §3·§4.1 |
 | `setup/archive.md` | 보관·복원, 열린 PR 유지, 이력 읽기 | `components/settings/archive-card.tsx`, `app/(edit)/projects/actions.ts`, `lib/auth/permission.ts`, `docs/PRODUCT.md` §7.9 |
@@ -180,6 +188,7 @@
 | `sync/README.md` | 코드와 DB의 경계, 병합 없음 | `docs/ARCHITECTURE.md` §0, `lib/push/apply.ts`, `lib/pull/run.ts` |
 | `sync/push.md` | strict 적재, 보류 사유(미전달 편집·열린 PR·PR 조회 실패), 사라진 키 보존 | `app/api/push/route.ts`, `lib/push/apply.ts`, `lib/protection/where.ts`, `lib/protection/plan.ts`(`planOpenPrGate`), `lib/projects/open-pr.ts`, `lib/cli/push-response.ts`, `docs/ARCHITECTURE.md` §5.5.2 |
 | `sync/merging.md` | 고정 PR·브랜치, 머지 방식, `SKIP_MARKER` | `lib/pull/payload.ts`의 `withSkipMarker`, `docs/ARCHITECTURE.md:733`, `lib/pull/run.ts`, `lib/onboarding/workflow.ts`, `.github/actions/malmoi-i18n-push/action.yml`, `docs/ACTIONS.md` |
+| `sync/merging-gitlab.md` | MR 번호·머지 방식·빈 MR 닫기, `SKIP_MARKER`·`%{title}` | `lib/pull/payload.ts`의 `withSkipMarker`, `lib/pull/run.ts`, `lib/onboarding/gitlab-ci.ts` |
 | `sync/nightly.md` | 하루 한 번 프로젝트마다 Publish·서버 적재·스킵 중 하나, 대상·보류 사유(열린 PR·PR 조회 실패·`too-large`·base 읽기 실패), 워크플로와의 관계 | `vercel.json`, `app/api/pull/route.ts`, `lib/pull/`, `lib/nightly/plan.ts`, `lib/import/run.ts`·`lib/import/automation.ts`, `messages/en.tsx`의 `logs.deferReasons`, `docs/PRODUCT.md` §4.1·§7.6, `docs/ARCHITECTURE.md` §3.05 |
 | `sync/revert.md` | OWNER 전용 복원·수동 Sync, 지문 확인·미전달 처리 | `lib/keys/revert.ts`, `lib/protection/`, `lib/sync/`, `app/(edit)/actions.ts`, `docs/ARCHITECTURE.md` §5.8 |
 | `sync/logs.md` | 필터(행위자 `CI`·`Nightly`)·상세(`Values`·`Held because`)·수동 갱신·보관 이력 | `app/(edit)/projects/[slug]/logs/page.tsx`, `components/logs/`, `lib/events/`(`triggerOf`·`trigger-where.ts`), `docs/ARCHITECTURE.md` §5.7 |
