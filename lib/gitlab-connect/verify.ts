@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { classifyGitLabFailure } from "@/lib/gitlab/transport";
+import { tokenExpiryState } from "@/lib/status/token-expiry";
 
 import type { GitLabTokenError } from "./errors";
 
@@ -78,7 +79,11 @@ export function isTokenShaped(value: string): boolean {
   return value.length > 0 && value.length <= 256 && /^[\x21-\x7e]+$/.test(value);
 }
 
-/** 저장한 만료일이 지났는가 — 지났으면 호출 없이 재연결을 안내한다(design §2 사례 표 "토큰 만료"). 만료일은 그날 자정 UTC다. */
+/**
+ * 저장한 만료일이 지났는가 — 지났으면 호출 없이 재연결을 안내한다(design §2 사례 표 "토큰 만료"). 만료일은 그날 자정 UTC다.
+ * ⚠️ **경계는 `tokenExpiryState` 하나가 정한다**(audit 리뷰 L ⚪1) — 클라이언트가 던지는 자리(이 함수)와 목록 상태·야간 제외가 같은 술어여야
+ * 야간이 클라이언트가 던질 행을 돌거나 받을 행을 빼지 않는다.
+ */
 export function tokenExpired(expiresAt: Date | null, now: Date): boolean {
-  return expiresAt !== null && expiresAt.getTime() <= now.getTime();
+  return tokenExpiryState(expiresAt, now) === "expired";
 }

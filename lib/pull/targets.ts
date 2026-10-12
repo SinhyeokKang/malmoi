@@ -1,7 +1,7 @@
 import { compareKeys } from "@/lib/adapters/shared";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
 import { repoConnectionPinned } from "@/lib/repo-host/target";
-import { tokenExpiryState } from "@/lib/status/token-expiry";
+import { tokenExpired } from "@/lib/gitlab-connect/verify";
 
 import type { NightlyVisit } from "@/lib/nightly/summary";
 
@@ -69,9 +69,12 @@ export function selectPullTargets(
   return { targets: ready.slice(0, limit), unprocessed: Math.max(0, ready.length - limit) };
 }
 
-/** 목록 상태(`projectStatus`)와 같은 판정이다 — 목록이 "다시 연결"이라 말하는 프로젝트를 야간이 돌지 않는다. */
+/**
+ * GitLab 클라이언트가 호출 없이 던지는 술어(`tokenExpired` — `lib/gitlab/client.ts`) 그대로다. 그 함수가 목록 상태(`projectStatus`)의
+ * `tokenExpiryState`를 지나므로, 목록이 "다시 연결"이라 말하는 프로젝트와 야간이 빼는 프로젝트가 같다.
+ */
 function gitlabTokenExpired(p: { repoHost: string; gitlabConnection: { expiresAt: Date | null } | null }, now: Date): boolean {
-  return p.repoHost === "gitlab" && tokenExpiryState(p.gitlabConnection?.expiresAt ?? null, now) === "expired";
+  return p.repoHost === "gitlab" && tokenExpired(p.gitlabConnection?.expiresAt ?? null, now);
 }
 
 /**
