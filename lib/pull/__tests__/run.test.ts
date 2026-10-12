@@ -3,7 +3,7 @@ import { adapterFor } from "@/lib/adapters";
 import { blobSha } from "@/lib/githash";
 import { SKIP_MARKER } from "../payload";
 import { publishFingerprint } from "@/lib/publish/fingerprint";
-import { runPull, type PullDeps, type PullState } from "../run";
+import { closedPrComment, runPull, type PullDeps, type PullState } from "../run";
 import { createFakeGitClient, isGitMutation, type FakeCall } from "./fake-client";
 import type { RenderKey } from "../render";
 import type { GitClient } from "../client";
@@ -247,6 +247,17 @@ describe("runPull — 2층 blob SHA 스킵", () => {
  * 고치는 방향은 불변식을 **바꾸는 것이 아니라 지키는 것**이다: 브랜치를 base head로 force update하면
  * 그 시점의 DB 상태(= base와 동일)를 그대로 가리킨다. PR은 재사용 규칙대로 열린 채 남고 diff만 0이 된다.
  */
+describe("closedPrComment — 대상 리포 호스트의 낱말 (audit U3)", () => {
+  it("GitHub은 pull request, GitLab은 merge request다 — 같은 화면에 다른 호스트의 낱말을 남기지 않는다", () => {
+    expect(closedPrComment("main", "github")).toContain("this pull request has nothing left to merge");
+    expect(closedPrComment("main", "github")).toContain("opens a new pull request.");
+    const gitlab = closedPrComment("main", "gitlab");
+    expect(gitlab).toContain("this merge request has nothing left to merge");
+    expect(gitlab).toContain("opens a new merge request.");
+    expect(gitlab).not.toContain("pull request");
+  });
+});
+
 describe("runPull — 2층 스킵에서 sync 브랜치를 base로 되돌린다", () => {
   /** 파일이 전부 base와 같은 상태. 이 셋이 2층 스킵 경로의 공통 입력이다. */
   function cleanClient(refSha: Record<string, string>, extra: Partial<Parameters<typeof createFakeGitClient>[0]> = {}) {

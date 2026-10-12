@@ -146,7 +146,7 @@ describe("no-changes 수렴 — 닫기 → sync 브랜치 삭제 (D9)", () => {
     const result = await runPull(deps);
     expect(result).toEqual({ status: "skipped", reason: "no-changes", closedPr: { number: 1, url: "https://gitlab.com/g/sub/app/-/merge_requests/1" } });
     expect(write(repo)).toEqual(["POST /merge_requests/1/notes", "PUT /merge_requests/1", `DELETE /repository/branches/${SYNC}`]);
-    expect(repo.notes).toEqual([{ iid: 1, body: closedPrComment("main") }]);
+    expect(repo.notes).toEqual([{ iid: 1, body: closedPrComment("main", "gitlab") }]);
     expect(repo.mergeRequests.filter((mr) => mr.state === "opened")).toHaveLength(0);
     expect(repo.branches.has(SYNC)).toBe(false);
     expect(firstWriteAfterInvalidate()).toBe(true);
