@@ -91,8 +91,8 @@
 
 ## 6. 실물 확인 — `/merge` 때와 그 뒤 (마지막 항목만 커밋)
 
-- [ ] **머지 전, 사람이 콘솔에서 한 번만**: GitHub → Packages → `malmoi` → Package settings → *Manage Actions access*에서 `SinhyeokKang/malmoi`에 **Write**를 주고, *Inherit access from source repository* 상태를 본다. 기존 패키지를 PAT로 만들어서 `GITHUB_TOKEN`에 쓰기가 없다.
-  - 검증: [수동] 설정 화면에 리포가 Write로 보인다(이 단계는 에이전트가 못 한다).
+- [x] **머지 전, 사람이 콘솔에서 한 번만**: GitHub → Packages → `malmoi` → Package settings → *Manage Actions access*에서 `SinhyeokKang/malmoi`에 **Write**를 주고, *Inherit access from source repository* 상태를 본다. 기존 패키지를 PAT로 만들어서 `GITHUB_TOKEN`에 쓰기가 없다.
+  - 검증: [수동] 설정 화면에 리포가 Write로 보인다(이 단계는 에이전트가 못 한다). — 2026-10-12 사용자 확인: `SinhyeokKang/malmoi` Write 명시 추가 · Inherit access 꺼짐 유지(명시 권한 하나로 범위를 좁힌다).
 - [ ] 이 기능을 싣는 릴리스의 `/merge`에서 새 9-b대로 진행한다.
   - 검증: [수동] 다섯 가지를 본다.
     - release run이 green이다.
