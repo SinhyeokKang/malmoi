@@ -530,14 +530,17 @@ function tokenReadSites(rel: string, source: string): string[] {
   return sites;
 }
 
-/** `host`와 `connectionId`를 함께 든 객체 리터럴의 자리(A6) — 값이 리터럴이든 단축 속성이든 같다. */
+/**
+ * `connectionId`를 `host`와 함께 들거나 **스프레드 위에 덮는** 객체 리터럴의 자리(A6) — 값이 리터럴이든 단축 속성이든 같다. 스프레드 덮기는
+ * `{ ...projectTarget, connectionId: callerConnectionId }`(같은 대상에 연결만 호출자 것으로 — D21 회귀의 가장 쉬운 모양)다.
+ */
 function targetLiteralSites(rel: string, source: string): string[] {
   const sites: string[] = [];
   if (!source.includes("connectionId")) return sites;
   walk(parse(rel, source), (node) => {
     if (!ts.isObjectLiteralExpression(node)) return;
     const keys = new Set(node.properties.map((property) => property.name?.getText()));
-    if (keys.has("host") && keys.has("connectionId")) sites.push(`${rel}#${enclosingName(node)}`);
+    if (keys.has("connectionId") && (keys.has("host") || node.properties.some((property) => ts.isSpreadAssignment(property)))) sites.push(`${rel}#${enclosingName(node)}`);
   });
   return sites;
 }
@@ -619,7 +622,7 @@ describe("GitLab 경계 — 쓰기는 프로젝트가 참조하는 연결로만"
     expect(sitesOf("createGitLabClient")).toEqual(["lib/repo-host/index.ts#createGitClient", "scripts/smoke-gitlab.ts#main"]);
   });
 
-  it("⚠️ `host`+`connectionId` 객체 리터럴은 대상 생산자·호출자 접근 결과에서만 만든다 — 손으로 만든 GitLab 대상은 red다(A6)", () => {
+  it("⚠️ `host`+`connectionId`·스프레드 위 `connectionId` 덮기 객체 리터럴은 대상 생산자·호출자 접근 결과에서만 만든다 — 손으로 만들거나 연결만 바꾼 GitLab 대상은 red다(A6)", () => {
     expect([...new Set(BOUNDARY_SOURCES.flatMap((f) => targetLiteralSites(f.rel, f.source)))].sort()).toEqual([...TARGET_LITERAL_SITES].sort());
   });
 
@@ -712,14 +715,15 @@ describe("GitLab 경계 스캐너 — 감사의 우회 소스를 집는다", () 
     expect(usages("lib/pull/x.ts", "export const build = (token: string) => createGitLabTransport(token);", "createGitLabTransport").sites).toEqual(["lib/pull/x.ts#build"]);
   });
 
-  it("A6 — `host`+`connectionId` 리터럴은 값이 리터럴이든 단축 속성이든 걸린다", () => {
+  it("A6 — `host`+`connectionId` 리터럴은 값이 리터럴이든 단축 속성이든, 스프레드 위의 `connectionId` 덮기도 걸린다", () => {
     const source = [
       'export async function addSources(repo) { const target = { host: "gitlab" as const, owner: repo.repoOwner, name: repo.repoName, repositoryId: repo.repositoryId, connectionId: repo.connectionId }; }',
       "export function shorthand(host, connectionId) { return { host, connectionId, owner: 'o' }; }",
+      "export function swapped(project, callerConnectionId: string) { const t = repoTargetOf(project); return t.status === 'ok' ? { ...t.target, connectionId: callerConnectionId } : null; }",
       "export function oauth(id) { return { connectionId: id, kind: 'oauth' }; }",
       "type T = { host: 'gitlab'; connectionId: string };",
     ].join("\n");
-    expect(targetLiteralSites("lib/onboarding-run/add.ts", source)).toEqual(["lib/onboarding-run/add.ts#addSources", "lib/onboarding-run/add.ts#shorthand"]);
+    expect(targetLiteralSites("lib/onboarding-run/add.ts", source)).toEqual(["lib/onboarding-run/add.ts#addSources", "lib/onboarding-run/add.ts#shorthand", "lib/onboarding-run/add.ts#swapped"]);
   });
 
   it("A7 — `.tsx`를 읽는다 — 서버 컴포넌트의 PAT 열기가 자리로 잡힌다", () => {
