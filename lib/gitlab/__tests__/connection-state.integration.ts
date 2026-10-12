@@ -297,18 +297,23 @@ describe("Publish — 쓰기 직전 project id 재대조 · 쓰기 중 실패 �
     expect((await lastPublish()).reason).toBe(en.logs.reasons["execution-uncertain"]);
   });
 
-  it("PAT 원문이 콘솔·사건·실행 행에 0건이다(spec 완료 조건 11) — 그 PAT가 실제로 원격에 실렸고 실패가 실제로 콘솔·행에 남은 실행에서", async () => {
+  /**
+   * 두 실패 갈래 — 쓰기 중 실패(MR 502 — 결과 미확인)는 실행 행만 남기고 **콘솔에 쓰지 않는다**(그 실행으로는 콘솔 0건이 공허하다 — audit E9).
+   * 쓰기 전 실패(tree 500)는 서버 로그 한 줄을 남긴다. 비공허 확인(PAT가 실제로 원격에 실렸고 실패가 행·콘솔에 남았다)은 갈래마다 남는 쪽에만 건다.
+   */
+  it.each([
+    { label: "MR 502(결과 미확인)", key: "POST /merge_requests", status: 502, path: "/merge_requests", errorCode: "execution-uncertain", logs: false },
+    { label: "tree 500(쓰기 전)", key: "GET /repository/tree", status: 500, path: "/repository/tree", errorCode: "github-error", logs: true },
+  ])("PAT 원문이 콘솔·사건·실행 행에 0건이다(spec 완료 조건 11) — $label: 그 PAT가 실제로 원격에 실렸고 실패가 실제로 남은 실행에서", async ({ key, status, path, errorCode, logs }) => {
     await seed();
     await pending();
-    // ⚠️ 쓰기 중 실패(MR 502 — 결과 미확인)는 콘솔에 쓰지 않는다 — 그 실행으로는 콘솔 0건이 공허하다(audit E9). 쓰기 전 실패는 서버 로그 한 줄을 남긴다.
-    const repo = serve({ failOn: [{ key: "GET /repository/tree", status: 500 }] });
+    const repo = serve({ failOn: [{ key, status }] });
     await publishProject(prisma, { userId: "owner-a" }, { slug: "p1" });
-    // 비공허 확인 — PAT가 실제로 원격에 실렸고, 콘솔·실행 행에 실패가 실제로 남았다.
-    expect(tokensFor(repo, () => true)).toEqual([TOKEN_A]);
-    const calls = (["error", "warn", "log", "info"] as const).flatMap((level) => vi.mocked(console[level]).mock.calls);
-    expect(calls.length).toBeGreaterThan(0);
+    expect(tokensFor(repo, (pathname) => pathname.endsWith(path))).toEqual([TOKEN_A]);
     const runs = await prisma.syncRun.findMany();
-    expect(runs.some((run) => run.errorCode !== null)).toBe(true);
+    expect(runs.map((run) => run.errorCode)).toContain(errorCode);
+    const calls = (["error", "warn", "log", "info"] as const).flatMap((level) => vi.mocked(console[level]).mock.calls);
+    if (logs) expect(calls.length).toBeGreaterThan(0);
     const logged = JSON.stringify(calls, (_k, v: unknown) => (v instanceof Error ? `${v.name}: ${v.message}` : v));
     const stored = JSON.stringify([await prisma.projectEvent.findMany(), runs]);
     for (const text of [logged, stored]) expect(text).not.toMatch(/glpat-/);
