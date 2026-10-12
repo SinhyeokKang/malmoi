@@ -160,9 +160,12 @@ export type PullResult =
 
 /**
  * 닫는 PR에 남기는 코멘트. 영문이다 — 대상 리포에 남는 문자열이다(PR title/body와 같은 규칙). 첫 줄의 HTML 주석이 malmoi가 쓴 것임을 표시한다.
+ * ⚠️ **낱말은 호스트가 고른다**(audit U3) — GitLab MR 화면에 "pull request"가 남으면 DESIGN §10.1 리포 호스트 행과 어긋난다. 모르는 호스트는
+ * 클라이언트를 만들지 못해(`repoTargetOf` → `not-connected`) 여기 오지 않으므로 GitLab이 아니면 GitHub 낱말이다.
  */
-export function closedPrComment(baseBranch: string): string {
-  return `<!-- malmoi-i18n -->\nClosed by Malmoi: the translation DB now matches \`${baseBranch}\`, so this pull request has nothing left to merge.\n\nThe next Publish with changes opens a new pull request.`;
+export function closedPrComment(baseBranch: string, repoHost: string): string {
+  const noun = repoHost === "gitlab" ? "merge request" : "pull request";
+  return `<!-- malmoi-i18n -->\nClosed by Malmoi: the translation DB now matches \`${baseBranch}\`, so this ${noun} has nothing left to merge.\n\nThe next Publish with changes opens a new ${noun}.`;
 }
 
 /** blob 동시 읽기 수. GitHub 2차 rate limit(동시 요청)을 피하면서 106파일을 60초 안에 든다. */
@@ -421,7 +424,7 @@ export async function runPull(deps: PullDeps, expectedFingerprint?: string): Pro
        */
       const open = await client.findOpenPr(deps.syncBranch);
       if (open !== null) {
-        await client.closePr(open.number, closedPrComment(project.baseBranch));
+        await client.closePr(open.number, closedPrComment(project.baseBranch, project.repoHost));
         closedPr = { number: open.number, url: open.url };
       }
       await client.resetSyncBranch(deps.syncBranch, baseHead);
