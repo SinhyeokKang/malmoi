@@ -21,7 +21,9 @@ import { EmptyProjects, NoProjectsMatch } from "@/components/projects/empty-proj
 import { LocaleMeter } from "@/components/locale-meter";
 import { ProjectSearch, useProjectQuery } from "@/components/projects/search-input";
 import { ProjectThumbnail } from "@/components/ui/project-thumbnail";
-import { GithubIcon } from "@/components/signin/brand-icons";
+import { GithubIcon, GitlabIcon } from "@/components/signin/brand-icons";
+import { withRepoHost } from "@/lib/i18n/host";
+import { repoCompareUrl } from "@/lib/projects/repo-web";
 import { NewProjectButton } from "@/components/projects/new-project-button";
 import { PANEL_HEAD_ROW, PanelBody, PanelHeader } from "@/components/shell/content-panel";
 import { Alert } from "@/components/ui/alert";
@@ -278,9 +280,16 @@ function ProjectRow({ row, q }: { row: ProjectListRow; q?: string }) {
             */}
             {/* 보조줄은 13이다 — 행 보조줄 한 벌(4-Y9 · `PanelRow`·`EventMeta`와 같다). */}
             <span className={cn("flex min-w-0 items-center gap-1.5 text-xs", status === "archived" ? "text-gray-dim" : "text-muted-foreground")}>
-              <GithubIcon className="size-3.5 shrink-0" />
-              <span className="truncate">
-                {`${row.repoOwner}/${row.repoName}`}
+              {/*
+                리포 호스트 글리프(시안 G4a — 섞인 목록에서 정보가 된다). 글리프는 장식이라 호스트 이름이 접근 이름에 글자로 든다(글리프만으로 가르지 않는다).
+                ⚠️ 긴 하위 그룹 주소는 **namespace가 먼저 줄어든다** — 리포 이름이 정보라 375에서 `group/sub/…`이 아니라 이름 끝까지 보이게 한다
+                (namespace `shrink-[1000]` · 이름은 namespace가 다 줄어든 뒤에야 말줄임).
+              */}
+              {row.repoHost === "gitlab" ? <GitlabIcon className="size-3.5 shrink-0" /> : <GithubIcon className="size-3.5 shrink-0" />}
+              <span className="sr-only">{m.home.meta.platforms[row.repoHost === "gitlab" ? "gitlab" : "github"]}: </span>
+              <span className="flex min-w-0">
+                <span className="min-w-[2ch] shrink-[1000] truncate">{`${row.repoOwner}/`}</span>
+                <span className="min-w-0 truncate">{row.repoName}</span>
               </span>
             </span>
           </span>
@@ -334,7 +343,8 @@ function ProjectRow({ row, q }: { row: ProjectListRow; q?: string }) {
  * "누가 할 수 있는지"를 말한다. **판정은 여기서 하고 `rowBanner`는 역할을 안 받는다** (DESIGN §6.63).
  */
 function ProjectBanner({ row, banner }: { row: ProjectListRow; banner: NonNullable<RowBanner> }) {
-  const m = useMessages();
+  // 호스트가 섞인 목록이라 행마다 그 리포 호스트의 문장이다(merge request · `!128` — `withRepoHost`, 같은 사전이면 같은 결과 객체).
+  const m = withRepoHost(useMessages(), row.repoHost);
   const canSettle = canPerform(row.role, "project:settings");
 
   return (
@@ -396,7 +406,7 @@ function BannerAction({
   banner: NonNullable<RowBanner>;
   canSettle: boolean;
 }) {
-  const m = useMessages();
+  const m = withRepoHost(useMessages(), row.repoHost);
   const internal = (href: string, label: string) => (
     <Link href={href} className="text-muted-foreground ml-1 inline-flex shrink-0 items-center gap-0.5">
       {label}
@@ -429,7 +439,7 @@ function BannerAction({
     case "repo_ahead":
       // compare 범위는 원격 조회가 이미 계산한 것과 같다 — 화면이 그 범위를 그대로 연다.
       return external(
-        `https://github.com/${row.repoOwner}/${row.repoName}/compare/${row.repoAheadFrom ?? ""}...${row.baseBranch}`,
+        repoCompareUrl(row.repoHost, row.repoOwner, row.repoName, row.repoAheadFrom ?? "", row.baseBranch),
         m.projects.banner.action.reviewChanges,
       );
     case "setup":

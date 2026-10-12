@@ -1,7 +1,7 @@
 "use server";
 
 import { ciFileOf } from "@/lib/mcp/tools/ci-file";
-import { parseGithubPrUrl } from "@/lib/projects/pr-url";
+import { parseReviewUrl } from "@/lib/projects/pr-url";
 
 import { fail, logCaught } from "@/lib/failure";
 import { inviteMembers, InvitationsInput, toMessages, type InvitationsResult } from "@/lib/invitation-email/create";
@@ -906,7 +906,8 @@ export async function checkOpenPullRequest(raw: { slug: string }): Promise<OpenI
     const project = await prisma.project.findUnique({ where: { id: access.projectId } });
     if (project === null) return undefined;
     const rawUrl = await loadOpenPrUrl(parsed.data.slug, project);
-    return parseGithubPrUrl(rawUrl, project);
+    // 리포 호스트로 고른다 — GitLab MR 링크(`/-/merge_requests/<iid>`)를 GitHub 규칙으로 읽으면 조용히 버려진다(C 인계).
+    return parseReviewUrl(rawUrl, project);
   } catch (error) {
     logFailure("repository-import-pr", error);
     return undefined;

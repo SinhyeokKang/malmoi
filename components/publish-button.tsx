@@ -19,7 +19,7 @@ import { useDateStyle, useMessages } from "@/components/i18n/messages-provider";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { onboardErrorMessage, isOnboardError } from "@/lib/onboarding/message";
 import { pullRevalidates, UNCONFIRMED_PULL, type PullOutcome } from "@/lib/pull/message";
-import { parseGithubPrUrl } from "@/lib/projects/pr-url";
+import { parseReviewUrl } from "@/lib/projects/pr-url";
 import { routes } from "@/lib/routes";
 import type { PublishModalState, PublishPreview } from "@/lib/publish/preview";
 import { planPublishButton, planPublishView, planWithheldLines } from "@/lib/publish/plan";
@@ -534,9 +534,9 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
         {`${p.closedPr.line(closed.number, repo.branch)} ${role === "OWNER" ? p.closedPr.owner : p.closedPr.editor}`}{" "}
         <InlineLink href={closed.url} target="_blank" rel="noreferrer">{p.closedPr.view(closed.number)}</InlineLink>
       </p>;
-      // ⚠️ **번호를 새로 파싱하지 않는다** — origin·owner/repo 검증까지 `parseGithubPrUrl`이 든다(DESIGN §6.646).
+      // ⚠️ **번호를 새로 파싱하지 않는다** — origin·owner/repo 검증까지 `parseReviewUrl`이 리포 호스트로 든다(DESIGN §6.646 · GitLab `!n`).
       const number = outcome.status === "committed"
-        ? parseGithubPrUrl(outcome.prUrl, { repoOwner: repo.owner, repoName: repo.name })?.number ?? null
+        ? parseReviewUrl(outcome.prUrl, { repoHost: repo.host ?? "github", repoOwner: repo.owner, repoName: repo.name })?.number ?? null
         : null;
       const files = outcome.status === "committed" ? outcome.changed.length : 0;
       const viewPr = outcome.status === "committed"

@@ -8,7 +8,7 @@ import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { loadSourceDetail } from "@/app/(edit)/projects/[slug]/sources/actions";
 import { runFirstIngest } from "@/app/(edit)/projects/actions";
 import { PANEL_HEAD_ROW, PanelBody, PanelHeader } from "@/components/shell/content-panel";
-import { GithubIcon } from "@/components/signin/brand-icons";
+import { GithubIcon, GitlabIcon } from "@/components/signin/brand-icons";
 import { Card } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -89,7 +89,11 @@ export function SourcesScreen({ slug, role, data, adapters, now, initialOpen = f
     </div></PanelHeader>
     <PanelBody className="space-y-4">
       <Card title={m.sources.title} count={data.sources.length} countLabel={m.sources.count(data.sources.length)}
-        description={data.repository ? <span className="flex items-center gap-1.5"><GithubIcon className="size-3.5 shrink-0" />{data.repository.repoOwner}/{data.repository.repoName} · {data.repository.baseBranch}</span> : undefined}
+        description={data.repository ? <span className="flex items-center gap-1.5">
+          {/* 리포 호스트 글리프(시안 G9) — 장식이라 호스트 이름은 글자로 함께 선다(글리프만으로 가르지 않는다). */}
+          {data.repoHost === "gitlab" ? <GitlabIcon className="size-3.5 shrink-0" /> : <GithubIcon className="size-3.5 shrink-0" />}
+          <span className="sr-only">{m.home.meta.platforms[data.repoHost === "gitlab" ? "gitlab" : "github"]}: </span>
+          <span className="min-w-0 wrap-anywhere">{data.repository.repoOwner}/{data.repository.repoName} · {data.repository.baseBranch}</span></span> : undefined}
         /*
           ⚠️ **추가 결과는 카드의 첫 줄이다** (시안 `1i`) — 토스트도, 카드 밖 Alert도 아니다. 적재가 토스트보다 오래 걸리고, 닫는 것은 사람이다.
           ⚠️ **계산한 톤을 그린다** (🔴 J — 옛 판은 `tone`을 세워 두고 무색 `role="status"` 줄로 그려 실패가 성공과 같은 줄이었다).

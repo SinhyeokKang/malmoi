@@ -29,7 +29,8 @@ function sourceView(m: Messages, source: SourceRecord, role: Role) {
 const projectSelect = { repoOwner: true, repoName: true, baseBranch: true, repoHost: true, installationId: true, repositoryId: true } as const;
 function projectView(project: { repoOwner: string; repoName: string; baseBranch: string; repoHost: string; installationId: string | null; repositoryId: string | null }, role: Role) {
   // `installed`는 readiness의 연결 증거다 — GitHub 설치·GitLab 고정 리포(`hasRepoConnection`). 이름은 화면 계약이라 그대로 둔다.
-  return { installed: hasRepoConnection(project), ...(canPerform(role, "project:settings") ? { repository: { repoOwner: project.repoOwner, repoName: project.repoName, baseBranch: project.baseBranch } } : {}) };
+  // `repoHost`는 화면 문장(`RepoHostScope`)과 머리 글리프를 고른다 — 역할과 무관한 프로젝트 사실이다(주소는 OWNER만).
+  return { installed: hasRepoConnection(project), repoHost: project.repoHost, ...(canPerform(role, "project:settings") ? { repository: { repoOwner: project.repoOwner, repoName: project.repoName, baseBranch: project.baseBranch } } : {}) };
 }
 
 export async function loadSources(prisma: PrismaClient, m: Messages, projectId: string, role: Role) {

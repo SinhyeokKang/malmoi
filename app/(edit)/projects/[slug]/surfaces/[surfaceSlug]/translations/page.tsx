@@ -129,7 +129,7 @@ export default async function TranslationsPage({
           return {
             key: labeled.key,
             locales: labeled.locales.map(({ code, isBase, value, needsReview, pending, actorLabel }) => ({ code, isBase, value, needsReview, pending, actorLabel })),
-            refs: labeled.refs.map(ref => ({ ...ref, href: buildPermalink({ repoOwner: project.repoOwner, repoName: project.repoName, lastCommitSha: labeled.lastCommitSha }, ref) })),
+            refs: labeled.refs.map(ref => ({ ...ref, href: buildPermalink({ repoHost: project.repoHost, repoOwner: project.repoOwner, repoName: project.repoName, lastCommitSha: labeled.lastCommitSha }, ref) })),
           };
         })();
 
@@ -163,7 +163,7 @@ export default async function TranslationsPage({
       unpublished={[...unsentBySurface.values()].reduce((sum, n) => sum + n, 0)}
       publish={{
         /* ⚠️ **`syncBranchFor`를 서버가 부른다** — 그 모듈은 `lib/failure`(node:crypto)를 물어 클라이언트가 물면 안 된다. */
-        repo: { owner: project.repoOwner, name: project.repoName, branch: project.baseBranch, syncBranch: syncBranchFor(slug) },
+        repo: { owner: project.repoOwner, name: project.repoName, branch: project.baseBranch, syncBranch: syncBranchFor(slug), host: project.repoHost },
         lastSentLabel: project.lastPublishedAt === null ? null : relativeTime(project.lastPublishedAt, new Date(), uiLocale),
         lastPrUrl: project.lastPrUrl,
       }}

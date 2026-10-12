@@ -226,6 +226,8 @@ export type ProjectListRow = Omit<MembershipRow, "defaultSurfaceSlug" | "sourceC
   ProjectEvents & {
   /** readiness 두 컬럼 + 표면별 적재 상태 — **평탄화하지 않는다**(`assembleProjectListRows`). */
   surfaces: RowInput["surfaces"];
+  /** GitLab 연결의 저장 만료일 — 목록 상태의 사전 판정(D24, `projectStatus`). GitHub·연결 없음은 `null`이다. */
+  gitlabTokenExpiresAt?: Date | null;
   image: string | null;
   repoOwner: string;
   repoName: string;
@@ -286,6 +288,8 @@ export async function loadProjectList(
           name: true,
           image: true,
           repoHost: true, installationId: true, gitlabConnectionId: true,
+          // GitLab 저장 만료일 — 목록 상태의 사전 판정(D24). 토큰 봉투는 읽지 않는다.
+          gitlabConnection: { select: { expiresAt: true } },
           /**
            * 원격 경로 판정(`RemoteTarget.surfaces`)의 입력. ⚠️ **로케일은 orphaned도 포함한 전체 저장 로케일이다** — 탐지
            * 정규식이 거르는 코드(`es-419`·`zh-Hant-TW`)의 파일을 그 코드로 만든 정확한 경로로 지킨다. 서브쿼리라 왕복이 +0이다.
@@ -341,6 +345,7 @@ export type ProjectListMemberRow = {
     archivedAt: Date | null; repoOwner: string; repoName: string; repositoryId: string | null; baseBranch: string; lastPrUrl: string | null;
     surfaces: readonly { archivedAt: Date | null; lastCommitSha: string | null; lastImportError: string | null; lastImportStartedAt: Date | null }[];
     _count: { members: number };
+    gitlabConnection?: { expiresAt: Date | null } | null;
   };
 };
 
@@ -367,6 +372,7 @@ export function assembleProjectListRows(
     image: r.project.image,
     role: r.role,
     repoHost: r.project.repoHost, installationId: r.project.installationId, gitlabConnectionId: r.project.gitlabConnectionId,
+    gitlabTokenExpiresAt: r.project.gitlabConnection?.expiresAt ?? null,
     surfaces: r.project.surfaces.map(s => ({
       archivedAt: s.archivedAt,
       lastCommitSha: s.lastCommitSha,
