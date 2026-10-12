@@ -83,7 +83,8 @@ export type RepoAccess =
  *
  * 순서: 연결 → 만료(저장 메타, 호출 0) → `GET /projects/<id>`(주소·object format·보관) → `GET /projects/<id>/members/all/<user id>`(유효 권한).
  * ⚠️ **숫자 id로만 부른다** — 이름으로 찾지 않는다. ⚠️ 응답 전문을 로그·저장하지 않는다(`runners_token`).
- * ⚠️ **보관된 프로젝트는 쓰기 경로만 거부한다** — 읽기(수동 Sync·브랜치 목록)는 보관돼도 된다. 쓰기는 403이라 생성·재연결·토큰 회전을 받을 수 없다.
+ * ⚠️ **보관은 여기서 쓰기 검사(`requirePush` — 생성·재연결·토큰 회전)만 거부한다** — 읽기 검사(수동 Sync·브랜치 목록)는 통과시키되 보관이 읽기를
+ * 허용하는 것은 아니다(D25 ② "보관 = 읽기도 거부"). 읽기의 보관 거부는 프로젝트 참조 연결로 여는 리더(`openProject` — `lib/gitlab/client.ts`)가 든다.
  */
 async function checkGitLabAccess(prisma: PrismaClient, userId: string, repositoryId: string, requirePush: boolean): Promise<RepoAccess> {
   if (!isGitLabProjectId(repositoryId)) return { status: "rejected", error: "invalid input" };
