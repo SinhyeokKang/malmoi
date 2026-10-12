@@ -236,17 +236,6 @@ describe("runPull — 2층 blob SHA 스킵", () => {
   });
 });
 
-/**
- * **2층이 변경 0건일 때 sync 브랜치를 base로 되돌린다** (T6 실측 발견 B, 2026-09-09).
- *
- * ⚠️ `planPullChanges`가 비교하는 것은 **base 트리**다. 사용자가 편집을 되돌려 렌더가 base와
- * 같아지면 변경 0건이라 커밋을 만들지 않고, `malmoi-i18n/sync-<slug>`는 **직전 스냅샷 그대로** 남는다 —
- * 그 PR을 머지하면 **되돌린 편집이 리포에 적용된다.** ARCHITECTURE §3이 그 브랜치를 "현재 DB
- * 상태의 스냅샷"이라 부르는데 이 경우 그 불변식이 깨져 있었다. 실측으로 정확히 그 상태를 만났다.
- *
- * 고치는 방향은 불변식을 **바꾸는 것이 아니라 지키는 것**이다: 브랜치를 base head로 force update하면
- * 그 시점의 DB 상태(= base와 동일)를 그대로 가리킨다. PR은 재사용 규칙대로 열린 채 남고 diff만 0이 된다.
- */
 describe("closedPrComment — 대상 리포 호스트의 낱말 (audit U3)", () => {
   it("GitHub은 pull request, GitLab은 merge request다 — 같은 화면에 다른 호스트의 낱말을 남기지 않는다", () => {
     expect(closedPrComment("main", "github")).toContain("this pull request has nothing left to merge");
@@ -258,6 +247,17 @@ describe("closedPrComment — 대상 리포 호스트의 낱말 (audit U3)", () 
   });
 });
 
+/**
+ * **2층이 변경 0건일 때 sync 브랜치를 base로 되돌린다** (T6 실측 발견 B, 2026-09-09).
+ *
+ * ⚠️ `planPullChanges`가 비교하는 것은 **base 트리**다. 사용자가 편집을 되돌려 렌더가 base와
+ * 같아지면 변경 0건이라 커밋을 만들지 않고, `malmoi-i18n/sync-<slug>`는 **직전 스냅샷 그대로** 남는다 —
+ * 그 PR을 머지하면 **되돌린 편집이 리포에 적용된다.** ARCHITECTURE §3이 그 브랜치를 "현재 DB
+ * 상태의 스냅샷"이라 부르는데 이 경우 그 불변식이 깨져 있었다. 실측으로 정확히 그 상태를 만났다.
+ *
+ * 고치는 방향은 불변식을 **바꾸는 것이 아니라 지키는 것**이다: 브랜치를 base head로 force update하면
+ * 그 시점의 DB 상태(= base와 동일)를 그대로 가리킨다. PR은 재사용 규칙대로 열린 채 남고 diff만 0이 된다.
+ */
 describe("runPull — 2층 스킵에서 sync 브랜치를 base로 되돌린다", () => {
   /** 파일이 전부 base와 같은 상태. 이 셋이 2층 스킵 경로의 공통 입력이다. */
   function cleanClient(refSha: Record<string, string>, extra: Partial<Parameters<typeof createFakeGitClient>[0]> = {}) {
