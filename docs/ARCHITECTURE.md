@@ -1766,7 +1766,7 @@ DB에 영구 잔존하고 **pull이 그 파일을 되살린다** — 개발자�
 - 수동 Sync는 OWNER가 Dialog를 열 때 받은 **폐기 승인 지문**(사용자·프로젝트·**리포 연결(`repositoryId`·`installationId`·owner·name)과 기준 브랜치**·활성 표면의 revision과 설정·pending `(id, token)`의 sha256)을 되돌려 줄 때만 편집을 덮는다. ⚠️ **리포·브랜치가 입력인 이유** (audit #3): Action은 실행 시점의 Project로 대상 리포를 만들므로 승인과 실행 사이의 설정 변경은 `repo-replaced`에 안 걸리고, 연결·브랜치 변경은 `importRevision`도 안 올린다 — 빠지면 `main` 기준 승인이 `release`를 덮는다. ⚠️ **Dialog의 건수·라벨·경고는 지문과 같은 응답의 `unsent`다** (audit #2) — 호출부의 화면 건수로 그리면 동료가 방금 만든 편집의 지문을 "지울 것이 없다"는 창으로 승인시킨다(`components/home/sync-button.tsx`). 서버가 Project 잠금 뒤 재계산해 대조하고(POSTMORTEM 2026-09-13), 승인 집합의 토큰만 upsert 가드를 통과한다 — 승인 뒤 저장은 살아남아 결과의 `remainingEdits`로 선다.
 - **대가는 둘이다** (2026-09-30, nightly-sync — 전에는 "정확히 하나"였다):
   1. **적재 지연** — 미전달 편집이 남거나 Malmoi PR이 열린 동안 리포의 새 소스 키·삭제도 앱에 안 들어온다(§0 불변식 1의 유예). 야간 Publish가 PR을 매일 갱신하므로 편집이 이어지는 팀에서는 며칠씩 이어질 수 있다. 손실을 막는 값이 "적재가 늦어짐"이고 병합이 아니다.
-  2. **CI 적재가 GitHub 가용성에 묶인다** — 전에는 `/api/push`가 GitHub을 부르지 않았다. 조회 실패는 보류(`pr-check-failed`)라 설치 장애 동안 리포 → DB가 멈춘다(fail-closed). "PR 없음"으로 읽으면 장애 동안 편집이 덮인다(POSTMORTEM 2026-09-03).
+  2. **CI 적재가 리포 호스트 가용성에 묶인다** — 전에는 `/api/push`가 호스트를 부르지 않았다. 조회 실패는 보류(`pr-check-failed`)라 호스트(GitHub 설치 · GitLab 참조 연결의 PAT) 장애 동안 리포 → DB가 멈춘다(fail-closed). 호출자는 GitHub Actions와 GitLab CI 둘이다. "PR 없음"으로 읽으면 장애 동안 편집이 덮인다(POSTMORTEM 2026-09-03).
 
 **야간 서버 적재는 자동화 갈래다** (2026-09-30, nightly-sync — `runAutomationImport` in `lib/import/run.ts`). 수동 Sync와 같은 코어를 `actor: { kind: "AUTOMATION" }`으로 돈다 — 사용자·지문·자격증명이 없고 폐기 승인 경로가 없으므로 **`approvedTokens`는 언제나 빈 배열**이고 편집을 한 줄도 덮지 않는다. `acquire`는 OWNER·지문 검사 대신 잠금 안에서 `planProtectedImport({ mode: "auto" })`로 다시 세고, 보류면 사건 `deferred`(`pending-edits`)로 닫는다(실행 행 없이). `already-running`·`no-surfaces` 같은 거부는 사건 없이 반환한다 — `recordImportRefusal`의 USER·manual 하드코딩은 수동 경로 전용이다. 사건은 subtype `import.nightly` · actor AUTOMATION · `source: "nightly"`이고 `finishRun`의 `closed` 검사를 지난다(POSTMORTEM 2026-09-14). 수동 Sync의 공개 시그니처와 동작은 그대로다.
 - ⚠️ **표면별 사후 재집계** — 사후 재집계는 원래 `applyProtectedPush`에만 있었다. 자동화는 `finishSurface` 트랜잭션 안에서 적용 뒤 `countPending`을 다시 세고 0이 아니면 던져 **그 표면을 롤백하고 뒤 표면을 시작하지 않는다**(파일을 읽는 동안 저장된 편집). 앞 표면이 커밋됐으면 `partial`, 없으면 `deferred`(`pending-edits`) — 멈춘 표면은 결과 목록에 없으므로 `summarizeRun`이 `halted`로 따로 받는다(안 그러면 나머지가 전부 `imported`라 성공으로 접힌다). 이미 커밋된 표면은 토큰 가드가 편집을 안 덮었으므로 되돌릴 이유가 없다. ⚠️ **이 재집계가 잡는 unorphan된 토큰 셀은 매일 밤 다시 잡힌다** — 적재가 키를 되살리면 1이 되어 그 표면이 롤백되고 다음 밤도 같다. CI `applyProtectedPush`와 같은 모양이고 풀리는 길도 같다(Publish·Revert·폐기 승인 Sync).
@@ -3056,7 +3056,8 @@ green이 된다. 자식 이름이 `gitlab`이 아닌 것은 GitLab 전용 절(`e
   `now` 기준 오프셋 오름차순).
 - **UTC로 고정되는 표면** — 보는 사람의 시간대가 없거나 모두에게 같아야 하는 자리는 `timeZone: "UTC"`를 **명시**한다: 공개 셸(`/changelog`의 `Dates are in UTC.`가
   로그인 여부와 무관하게 참이어야 한다 · `/privacy` 시행일·개정 이력) · `/signin/link/:challenge`(세션 없는 흐름) · MCP(세션·쿠키를 읽지 않는다 — `list_events`의
-  날짜 구간은 UTC) · provider 밖 기본값. **이 리터럴이 나오는 `app/**`·`components/**`·`lib/**` 파일 집합은 같은 테스트의 `FIXED_UTC`와 정확히 같아야 한다** —
+  날짜 구간은 UTC) · provider 밖 기본값. **예외 하나 — PAT 만료일은 날짜 전용 값이라 시간대가 없다**(2026-10-13, gitlab-repositories R1): GitLab은 날짜만 주고 저장은 그날 00:00 UTC라
+  보는 사람의 시간대로 찍으면 서쪽 시간대에서 GitLab 화면보다 하루 이르다 — UTC 날짜로 찍는다(같은 테스트의 `FIXED_UTC` 등재 대상). **이 리터럴이 나오는 `app/**`·`components/**`·`lib/**` 파일 집합은 같은 테스트의 `FIXED_UTC`와 정확히 같아야 한다** —
   사용자 시간대 호출부를 `"UTC"`로 되돌리면 red다. 새 고정 표면은 이유와 함께 그 목록에 등재한다. 공개 셸 경로가 `getDateStyle`·`useDateStyle`을 import하지 않는 것도
   같은 파일이 센다(이름이 바뀌면 공허하게 green이 되지 않게 센티넬이 export를 확인한다).
 - **Logs의 날짜 경계는 보는 사람의 시간대다.** 날짜 카드(`groupByDay` — 키 `dayKeyAt(occurredAt, tz)`, 머리는 키를 순간으로 바꾸지 않는 `formatDayKey`) ·
@@ -3484,6 +3485,9 @@ PAT는 URL에 실리지 않는다(셀프 호스팅 nginx 마스킹에 새 경로
   주인이 Developer 미만) — probe 화면(Home·설정·번역·MCP)에서만 안다. 목록은 저장 만료일 지남만 미리 `needs_reconnect`로 접고 나머지는 원격을 부르지
   않는다(GitHub `app-uninstalled`가 목록에서 DB만 보는 것과 같은 선례). `connection-unusable`이면 Sync·Publish 둘 다 꺼진다.
   5xx·429·네트워크는 `unknown`(`Couldn't check`) — 끊김으로 접지 않는다.
+  ⚠️ **`Disconnected` 동안 CI 적재(`/api/push`)는 `pr-check-failed`로 보류된다 — 재연결이 푼다.** GitLab은 참조가 비어도 열린 MR 게이트가 서고(`openPrGateApplies`),
+  조회할 토큰이 없어 `loadOpenPrUrl`이 "모름"(`undefined`)을 돌리기 때문이다(fail-closed). 새 push를 거듭해도 같고 야간도 참조가 빈 프로젝트는 순회에서 빠지므로
+  (`repoConnectionPinned`) **재연결 전에는 스스로 풀리지 않는다** — GitHub `unpinned`(게이트 미적용 → strict 적재)와 비대칭이라 GitHub 경험으로 추론하면 틀린다.
 - **참조가 비면 같은 tx에서 사건을 남긴다** (D20, `settings.repositoryDisconnected` — `lib/gitlab-connect/removal.ts`): 계정 연결 해제(`disconnectGitLab`)·
   주인의 멤버 제거(`member.removed`와 같은 tx)가 그 프로젝트마다 한 행을 쓴다 — 프로젝트가 `Disconnected`가 되는 것은 상태 변경이다(§5.7). 연결 id·사용자 id·
   토큰은 싣지 않는다. 계정 삭제(`User` Cascade → FK `SetNull`)는 사건을 남기지 않는다 — FK가 그 경로의 그물이다.
