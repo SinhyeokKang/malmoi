@@ -228,6 +228,31 @@ describe("연결 상태 → 설정 배지 · Home 배너 · Home 메타 (design 
   });
 });
 
+/**
+ * **연결자 쪽 실패에서 다른 OWNER의 수동 Sync** (감사 E4 · 결정 R6). 호출자 확인은 호출자 PAT로 통과하지만 리더는 토큰 주인의 PAT로 연다 — 거기서
+ * 재연결이 고치는 실패(저장 만료·철회·보관)가 드러나면 **실행권 전에** 거부한다. 소스 실패 상태·`ingest-failed`·실행 사건이 남지 않는다(Home이 Sync를
+ * 끄는 D25와 같은 결과를 MCP·Action 직접 호출에도).
+ */
+describe("연결자 쪽 실패 + 다른 OWNER의 수동 Sync — 읽기 전에 거부", () => {
+  it.each([
+    ["⚠️ 토큰 주인의 저장 만료일이 지났다", { expiresAt: new Date("2026-01-01T00:00:00Z") }, {}],
+    // 호출자 확인의 프로젝트 조회가 1번째, 리더 열기(주인 PAT)가 2번째다 — 주인 토큰만 철회된 상태다.
+    ["⚠️ 토큰 주인의 PAT가 철회됐다(401)", {}, { failOn: [{ key: "GET ", nth: 2, status: 401 }] }],
+    ["GitLab 프로젝트가 보관됐다", {}, { archived: true }],
+  ] as const)("%s → gitlab-project-disconnected · 소스 실패 상태와 실행 사건이 없다", async (_label, seeded, server) => {
+    await seed(seeded);
+    const repo = serve({ members: { 101: 50, 202: 40 }, ...(server as Partial<FakeRepoOptions>) });
+    const { outcome } = await importRepository(prisma, { userId: "owner-b" }, { slug: "p1", approval: null });
+    expect(outcome).toEqual({ ok: false, error: "gitlab-project-disconnected" });
+    expect(await prisma.translationSurface.findUniqueOrThrow({ where: { id: "p1-s" }, select: { lastImportError: true, lastImportFailedAt: true } }))
+      .toEqual({ lastImportError: null, lastImportFailedAt: null });
+    expect(await prisma.projectEvent.count({ where: { projectId: "p1" } })).toBe(0);
+    // 리포 내용은 읽지 않았다 — 트리·blob 0건.
+    expect(repo.calls.filter((call) => call.url.pathname.includes("/repository/"))).toEqual([]);
+    expect(repo.writes()).toEqual([]);
+  });
+});
+
 describe("Publish — 쓰기 직전 project id 재대조 · 쓰기 중 실패 → Logs", () => {
   /** 미전달 편집 하나 — ko `hello`를 고쳤다. */
   async function pending() {
