@@ -1,4 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { createServer, type IncomingMessage, type Server } from "node:http";
+import type { AddressInfo } from "node:net";
+
+import { afterEach, describe, expect, it } from "vitest";
 
 import { createPublishExecution } from "@/lib/sync/execution";
 
@@ -63,6 +66,17 @@ describe("주소 계약 — 숫자 id로만 부른다", () => {
     const fake = createFakeGitLabFetch({ "GET /projects/1": { status: 200, body: {} } });
     await expect(fake.fetch("https://gitlab.com/api/v4/projects/group%2Fapp")).rejects.toThrow(/address contract/);
     await expect(fake.fetch("https://gitlab.com/api/graphql", { method: "POST", body: JSON.stringify({ query: "{ project(fullPath: \"a/b\") { id } }" }) })).rejects.toThrow(/address contract/);
+  });
+
+  it("⚠️ 점 세그먼트로 다른 project id에 닿는 경로는 정규화 뒤에 다시 막는다 — fetch 호출 0회(audit A8)", async () => {
+    const fake = createFakeGitLabFetch({});
+    const transport = createGitLabTransport("t", { fetch: fake.fetch });
+    // `new URL`이 `..`·`%2e%2e`를 정규화해 `/projects/2/…`가 된다 — 전송 전 문자열 가드는 `/projects/1/repository/…`로 본다.
+    for (const path of ["/projects/1/repository/../../2/repository/commits", "/projects/1/repository/%2e%2e/%2E%2E/2/repository/commits", "/projects/1/./repository/tree"]) {
+      await expect(transport.get(path), path).rejects.toThrow(/dot segments/);
+      await expect(transport.send("POST", path, { body: {} }), path).rejects.toThrow(/dot segments/);
+    }
+    expect(fake.calls).toEqual([]);
   });
 
   it("GitLab.com API 주소로 부르고 토큰은 헤더에만 싣는다 — URL·질의에 토큰이 없다", async () => {
@@ -173,6 +187,68 @@ describe("쓰기·GraphQL — 같은 주입점, 자체 재시도 0", () => {
     expect(execution.mutationDispatched).toBe(false);
     await transport.send("POST", projectPath("1", "repository/commits"), { body: {} });
     expect(execution.mutationDispatched).toBe(true);
+  });
+});
+
+/**
+ * **리다이렉트를 따라가지 않는다** (audit A1). fetch 기본값 `follow`는 3xx를 따라가며 `PRIVATE-TOKEN`을 그대로 싣는다 — undici는 cross-origin에서
+ * `Authorization`만 지운다. 다른 origin이면 PAT가 그 호스트로, 같은 origin이면 다른 project id로 간다(`assertIdAddressed`는 전송 전에 한 번만 본다).
+ * 가짜 fetch는 리다이렉트를 흉내 내지 못하므로 **실제 fetch + 로컬 서버 둘**로 잰다 — 주입 fetch는 gitlab.com 주소를 첫 서버로 옮기기만 하고 `init`을
+ * 그대로 넘긴다.
+ */
+describe("리다이렉트 — 따라가지 않고 일시 장애로 던진다", () => {
+  type Seen = { url: string; token: string | undefined };
+  const servers: Server[] = [];
+  afterEach(async () => {
+    await Promise.all(servers.splice(0).map((server) => new Promise<void>((resolve) => server.close(() => resolve()))));
+  });
+
+  async function listen(handler: (request: IncomingMessage, seen: Seen[]) => { status: number; location?: string }): Promise<{ origin: string; seen: Seen[] }> {
+    const seen: Seen[] = [];
+    const server = createServer((request, response) => {
+      seen.push({ url: request.url ?? "", token: request.headers["private-token"] as string | undefined });
+      request.resume();
+      const { status, location } = handler(request, seen);
+      response.writeHead(status, location === undefined ? { "Content-Type": "application/json" } : { Location: location });
+      response.end(location === undefined ? "{}" : "");
+    });
+    servers.push(server);
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    return { origin: `http://127.0.0.1:${(server.address() as AddressInfo).port}`, seen };
+  }
+
+  /** gitlab.com 주소를 로컬 서버로 옮기는 주입 fetch — `init`(redirect 옵션 포함)은 손대지 않는다. */
+  function routedTo(origin: string): typeof fetch {
+    return ((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = new URL(input instanceof Request ? input.url : String(input));
+      return globalThis.fetch(`${origin}${url.pathname}${url.search}`, init);
+    }) as typeof fetch;
+  }
+
+  it("⚠️ 다른 origin으로 가는 3xx(301·302·307·308)에 PAT가 실려 나가지 않는다 — 두 번째 요청 0, `unavailable`", async () => {
+    const elsewhere = await listen(() => ({ status: 200 }));
+    for (const status of [301, 302, 307, 308]) {
+      const gitlab = await listen(() => ({ status, location: `${elsewhere.origin}/steal` }));
+      const transport = createGitLabTransport("glpat-redirect-secret", { fetch: routedTo(gitlab.origin) });
+      const read = await transport.get(projectPath("1")).catch((error: unknown) => error);
+      const write = await transport.send("POST", projectPath("1", "repository/commits"), { body: { branch: "b" } }).catch((error: unknown) => error);
+      const graph = await transport.graphql("query($ids: [ID!]) { projects(ids: $ids) { nodes { id } } }", { ids: ["gid://gitlab/Project/1"] }).catch((error: unknown) => error);
+      for (const error of [read, write, graph]) {
+        expect(error, String(status)).toBeInstanceOf(Error);
+        expect(classifyGitLabFailure(error), String(status)).toBe("unavailable");
+      }
+      expect(gitlab.seen, String(status)).toHaveLength(3);
+    }
+    expect(elsewhere.seen).toEqual([]);
+  });
+
+  it("⚠️ 같은 origin의 다른 project id로 가는 3xx도 따라가지 않는다 — 주소 규칙(불변식 11 첫 층)이 리다이렉트에도 선다", async () => {
+    const gitlab = await listen((request) => (request.url?.startsWith("/api/v4/projects/1") ? { status: 307, location: "/api/v4/projects/2/repository/commits" } : { status: 200 }));
+    const transport = createGitLabTransport("glpat-redirect-secret", { fetch: routedTo(gitlab.origin) });
+    const error = await transport.send("POST", projectPath("1", "repository/commits"), { body: {} }).catch((caught: unknown) => caught);
+    expect(error).toBeInstanceOf(Error);
+    expect(classifyGitLabFailure(error)).toBe("unavailable");
+    expect(gitlab.seen.map((seen) => seen.url)).toEqual(["/api/v4/projects/1/repository/commits"]);
   });
 });
 
