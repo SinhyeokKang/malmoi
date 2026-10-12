@@ -421,6 +421,12 @@ export const es = {
       unrecorded: "Sin registro",
       notOpen: "No abierta",
       pr: (n: number): string => `#${n}`,
+      onGitLab: {
+        pullRequest: "Merge request",
+        prState: "Estado de la MR",
+        prCheckFailed: "No se pudo comprobar si hay una merge request abierta",
+        pr: (n: number): string => `!${n}`,
+      },
     },
 
     banner: {
@@ -851,6 +857,9 @@ export const es = {
       rowName: "GitHub",
       confirmDisconnect: "¿Desconectar la GitHub App?",
       confirmHint: "No podrás añadir ni volver a conectar repositorios hasta que vuelvas a conectarte. Los proyectos que ya están conectados siguen sincronizándose.",
+    },
+    gitlab: {
+      expiresSoon: "Caduca pronto",
     },
     sessionsSection: {
       title: "Sesiones",
@@ -2013,6 +2022,19 @@ export const es = {
       "repo-read-only": "Esta cuenta solo puede leer ese repositorio. Para conectarlo se necesita acceso de escritura; pídeselo al propietario del repositorio.",
       unavailable: "Algo salió mal. Vuelve a intentarlo en un momento.",
       fallback: "Falló la conexión con GitHub. Vuelve a intentarlo.",
+    },
+    gitlab: {
+      "token-invalid": "GitLab no aceptó este token. Puede que haya caducado o se haya revocado: crea uno nuevo y pégalo aquí.",
+      "token-fine-grained": "Este es un token detallado (fine-grained). Malmoi necesita un token de acceso personal clásico con el alcance api: crea uno y pégalo aquí.",
+      "token-scope-missing": "Este token no tiene el alcance api. Crea un token nuevo con el alcance api y pégalo aquí.",
+      "account-mismatch": "Este token es de otra cuenta de GitLab. Primero desconecta GitLab y después conecta la otra cuenta.",
+      "gitlab-not-connected": "Primero conecta tu cuenta de GitLab en Cuenta.",
+      "gitlab-reconnect": "Tu token de GitLab ya no se puede usar. Reemplázalo en Cuenta.",
+      "gitlab-repo-archived": "Este proyecto de GitLab está archivado. Desarchívalo en GitLab y vuelve a intentarlo.",
+      "gitlab-repo-unsupported": "Este proyecto de GitLab usa el formato de objetos SHA-256, que Malmoi no admite.",
+      "gitlab-project-disconnected": "Se quitó la conexión de GitLab de este proyecto. Un propietario del proyecto puede volver a conectarla en la configuración del proyecto.",
+      unavailable: "GitLab no respondió. Vuelve a intentarlo en un momento.",
+      fallback: "Falló la conexión con GitLab. Vuelve a intentarlo.",
     },
 
     onboarding: {

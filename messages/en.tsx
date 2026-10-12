@@ -25,6 +25,17 @@ import type { ReactNode } from "react";
 const UNAVAILABLE = "Unavailable";
 /** 야간 재시도 절 — 사유 문장 셋이 끝에 달고, 보관 프로젝트에서는 Logs가 이 절을 뺀다(`planArchivedReason`). 사본을 두지 않으려고 한 곳에 둔다(2-W9). */
 const NIGHTLY_RETRY = "The next nightly run tries again.";
+/**
+ * GitLab에만 있는 리포 거부(`GitLabAccessError`) — 화면(`errors.gitlab`)과 MCP 응답(`mcp.errors.gitlab`)이 **같은 문장**을 쓴다(D2 인계 —
+ * 같은 거부에 문구 두 벌 금지). MCP는 영어 고정 표면이라 en 값만 공유한다.
+ */
+const GITLAB_ACCESS_ERRORS = {
+  "gitlab-not-connected": "Connect your GitLab account on the Account page first.",
+  "gitlab-reconnect": "Your GitLab token can't be used anymore. Replace it on the Account page.",
+  "gitlab-repo-archived": "This GitLab project is archived. Unarchive it in GitLab, then try again.",
+  "gitlab-repo-unsupported": "This GitLab project uses SHA-256 object format, which Malmoi doesn't support.",
+  "gitlab-project-disconnected": "This project's GitLab connection was removed. A project owner can reconnect it in the project's settings.",
+} as const;
 
 export const en = {
   search: {
@@ -1171,6 +1182,13 @@ export const en = {
       notOpen: "Not open",
       /** PR 번호는 링크의 이름이다 — 주소를 그대로 읽히지 않는다. */
       pr: (n: number): string => `#${n}`,
+      /** GitLab 프로젝트의 같은 자리 — merge request(D7)이고 번호는 `!128`이다(시안 G5b1). */
+      onGitLab: {
+        pullRequest: "Merge request",
+        prState: "MR state",
+        prCheckFailed: "Couldn't check for an open merge request",
+        pr: (n: number): string => `!${n}`,
+      },
     },
 
     banner: {
@@ -2006,6 +2024,11 @@ export const en = {
        * 프로젝트에서 리포를 고르는 일과 (재)연결**뿐이고, 그래서 문장이 그 둘만 말한다.
        */
       confirmHint: "You won't be able to add or reconnect repositories until you connect again. Projects that are already connected keep syncing.",
+    },
+    /** 계정 GitLab 연결(PAT) 카드 — gitlab-repositories(시안 G8). 토큰의 자리라 상태는 토큰이 어떤가를 말한다(design §2 톤 표 — 프로젝트 Connection 행과 다른 자리). */
+    gitlab: {
+      /** 만료 임박(만료일 ≤ 14일, D11) — `STATE.expiresSoon`의 낱말. 새 톤이 아니라 warning 상태 행이다. */
+      expiresSoon: "Expires soon",
     },
     /** 구역 헤더 — 항목 둘(이 기기 / 모든 기기)이 한 리스트에 선다. */
     sessionsSection: {
@@ -3728,16 +3751,10 @@ export const en = {
       // GitLab CI 원본의 릴리스 SHA가 아직 없다(`GITLAB_CI_RELEASE`) — 박힌 SHA 없는 파일을 내지 않는다. 그동안의 길(앱에서 Sync)을 함께 말한다.
       "workflow-unavailable": "The GitLab CI file isn't available in this version of Malmoi yet. For now, sync from Malmoi to load repository changes.",
       /**
-       * GitLab에만 있는 리포 거부(`GitLabAccessError`) — 화면 사전에 아직 문장이 없어 MCP가 여기서 든다. ⚠️ 화면 문장이 생기면(E-ui) 그쪽으로
-       * 옮기고 이 절을 지운다 — 같은 거부에 문구가 두 벌이면 안 된다. 연결 없음·토큰 교체는 needs-browser라 거부 문장이 아니다.
+       * GitLab에만 있는 리포 거부(`GitLabAccessError`) — 화면 `errors.gitlab`과 같은 상수(`GITLAB_ACCESS_ERRORS`)다(같은 거부에 문구 두 벌 금지).
+       * 연결 없음·토큰 교체는 needs-browser라 거부 문장이 아니다.
        */
-      gitlab: {
-        "gitlab-not-connected": "Connect your GitLab account on the Account page first.",
-        "gitlab-reconnect": "Your GitLab token can't be used anymore. Replace it on the Account page.",
-        "gitlab-repo-archived": "This GitLab project is archived. Unarchive it in GitLab, then try again.",
-        "gitlab-repo-unsupported": "This GitLab project uses SHA-256 object format, which Malmoi doesn't support.",
-        "gitlab-project-disconnected": "This project's GitLab connection was removed. A project owner can reconnect it in the project's settings.",
-      },
+      gitlab: GITLAB_ACCESS_ERRORS,
     },
     /** 도구 설명(`tools/list`의 `description`) — 에이전트가 도구를 고르는 근거다. 핸들이 필요한 도구는 무엇을 먼저 부르는지 말한다. */
     tools: {
@@ -4001,6 +4018,21 @@ export const en = {
       // 원인이 고정된 거부에 "잠시 뒤 다시"를 보이면 사용자가 같은 버튼을 반복해서 누른다.
       unavailable: "Something went wrong. Try again in a moment.",
       fallback: "The GitHub connection failed. Try again.",
+    },
+
+    /**
+     * `gitlabConnectErrorMessage` — `GitLabConnectError` 아홉 + 일시 장애 + 폴백(gitlab-repositories). 토큰 거부 넷은 ①·`/account`의 PAT 입력 아래
+     * danger Alert에 선다. ⚠️ 호스트 중립 거부(`repo-forbidden`·`repo-read-only`)는 여기 없다 — `connect`의 문장을 그대로 쓴다.
+     * ⚠️ 일시 장애는 "무효"로 접지 않는다(design §2 — 같은 토큰을 다시 붙여 넣으면 된다).
+     */
+    gitlab: {
+      "token-invalid": "GitLab didn't accept this token. It may have expired or been revoked — create a new one and paste it here.",
+      "token-fine-grained": "This is a fine-grained token. Malmoi needs a legacy personal access token with the api scope — create one and paste it here.",
+      "token-scope-missing": "This token doesn't have the api scope. Create a new token with the api scope and paste it here.",
+      "account-mismatch": "This token belongs to a different GitLab account. Disconnect GitLab first, then connect the other account.",
+      ...GITLAB_ACCESS_ERRORS,
+      unavailable: "GitLab didn't answer. Try again in a moment.",
+      fallback: "The GitLab connection failed. Try again.",
     },
 
     /**

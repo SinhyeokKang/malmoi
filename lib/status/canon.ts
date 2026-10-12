@@ -25,7 +25,7 @@ export type StateKey =
   | "prOpen" | "prCheckFailed" | "connected" | "notConnected" | "disconnected" | "wrongRepository" | "couldNotCheck"
   | "archived" | "setup" | "active"
   | "logsSynced" | "logsSent" | "logsFailed" | "publishing" | "nothingToSend" | "heldBack" | "superseded" | "notStarted" | "upToDate"
-  | "expired" | "waitingToApply" | "removedFromRepository";
+  | "expired" | "expiresSoon" | "waitingToApply" | "removedFromRepository";
 
 /** 톤과 variant — 언어와 무관하다. 낱말은 `stateLabel`이 그 화면의 사전에서 고른다. */
 export const STATE: Readonly<Record<StateKey, { tone: StateTone; variant: StateVariant }>> = {
@@ -63,6 +63,8 @@ export const STATE: Readonly<Record<StateKey, { tone: StateTone; variant: StateV
   notStarted: { tone: "warning", variant: "soft-amber" },
   upToDate: { tone: "muted", variant: "soft-neutral" },
   expired: { tone: "warning", variant: "soft-amber" },
+  // GitLab PAT 만료 임박(만료일 ≤ 14일, D11) — 토큰의 자리(`/account`·설정 GitLab 카드)에만 선다. 프로젝트 Connection 행은 `connected` 그대로다(design §2 톤 표).
+  expiresSoon: { tone: "warning", variant: "soft-amber" },
   waitingToApply: { tone: "warning", variant: "soft-amber" },
   removedFromRepository: { tone: "danger", variant: "soft-red" },
 };
@@ -97,6 +99,7 @@ export function stateLabel(m: Messages, key: StateKey): string {
     notStarted: m.logs.status.notStarted,
     upToDate: m.logs.status.upToDate,
     expired: m.mcpConnector.token.expired,
+    expiresSoon: m.account.gitlab.expiresSoon,
     waitingToApply: m.sources.waiting,
     removedFromRepository: m.sources.missingRepo,
   };

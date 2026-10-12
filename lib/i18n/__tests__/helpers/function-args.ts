@@ -73,6 +73,7 @@ export const FUNCTION_ARGS: { readonly [P in FunctionPaths<Messages>]: Parameter
   "home.meta.memberCount": [2, 2],
   "home.meta.values": [2],
   "home.meta.pr": [2],
+  "home.meta.onGitLab.pr": [2],
   "home.banner.syncFailed.body": ["X", "X", "X"],
   "home.banner.syncFailed.safe": ["X"],
   "home.banner.partial.body": ["X", "X", "X"],

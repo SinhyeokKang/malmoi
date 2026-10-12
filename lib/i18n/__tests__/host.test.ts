@@ -9,11 +9,11 @@ import { es } from "@/messages/es";
 import { ko } from "@/messages/ko";
 
 /**
- * **리포 호스트별 문장** (gitlab-repositories tasks §5 · DESIGN §10.1). 호스트가 문장을 고르는 사전 노드는 `gitlab` 자식에 **같은 이름의
+ * **리포 호스트별 문장** (gitlab-repositories tasks §5 · DESIGN §10.1). 호스트가 문장을 고르는 사전 노드는 `onGitLab` 자식에 **같은 이름의
  * 키를 문장 통째로** 둔다 — 화면은 `forHost(node, repoHost)`로 그 노드를 읽는다.
  *
  * ⚠️ **호스트 인자 함수로 접지 않는다**(R-E0 🟡) — 사전 스캐너(`terminology`·`banned-terms`·정합성)가 함수를 같은 인자로 한 번만 불러
- * GitLab 갈래 문장을 못 본다. `gitlab` 자식은 평범한 잎이라 스캐너가 다 걷는다.
+ * GitLab 갈래 문장을 못 본다. `onGitLab` 자식은 평범한 잎이라 스캐너가 다 걷는다.
  */
 
 type Leaf = { path: string; text: string };
@@ -35,12 +35,12 @@ function leaves(value: unknown, path: string, out: Leaf[] = []): Leaf[] {
   return out;
 }
 
-/** 사전에서 `gitlab` 자식을 가진 노드 전부 — 경로와 노드. */
+/** 사전에서 `onGitLab` 자식을 가진 노드 전부 — 경로와 노드. */
 function overlays(value: unknown, path = "", out: { path: string; node: Record<string, unknown> }[] = []) {
   if (value === null || typeof value !== "object" || Array.isArray(value) || isValidElement(value)) return out;
   const node = value as Record<string, unknown>;
-  if (Object.hasOwn(node, "gitlab") && typeof node.gitlab === "object" && path !== "") out.push({ path, node });
-  for (const [key, child] of Object.entries(node)) if (key !== "gitlab") overlays(child, path === "" ? key : `${path}.${key}`, out);
+  if (Object.hasOwn(node, "onGitLab") && typeof node.onGitLab === "object") out.push({ path, node });
+  for (const [key, child] of Object.entries(node)) if (key !== "onGitLab") overlays(child, path === "" ? key : `${path}.${key}`, out);
   return out;
 }
 
@@ -53,13 +53,13 @@ const FOREIGN = {
 } as const;
 
 describe("forHost", () => {
-  const node = { a: "A github", b: (n: number) => `#${n}`, keep: "same", gitlab: { a: "A gitlab", b: (n: number) => `!${n}` } };
+  const node = { a: "A github", b: (n: number) => `#${n}`, keep: "same", onGitLab: { a: "A gitlab", b: (n: number) => `!${n}` } };
 
   it("GitHub은 노드 그대로다", () => {
     expect(forHost(node, "github")).toBe(node);
   });
 
-  it("GitLab은 gitlab 자식이 같은 이름의 키를 덮고 나머지는 그대로다", () => {
+  it("GitLab은 onGitLab 자식이 같은 이름의 키를 덮고 나머지는 그대로다", () => {
     const t = forHost(node, "gitlab");
     expect([t.a, t.b(128), t.keep]).toEqual(["A gitlab", "!128", "same"]);
   });
@@ -76,13 +76,13 @@ describe.each(DICTIONARIES)("%s 사전의 호스트 문장", (_lang, m) => {
     expect(found.length).toBeGreaterThan(0);
   });
 
-  it.each(found.map(({ path, node }) => [path, node] as const))("%s — gitlab 키는 형제에 같은 이름이 있다(덮을 대상)", (_path, node) => {
-    for (const key of Object.keys(node.gitlab as object)) expect(Object.hasOwn(node, key), key).toBe(true);
+  it.each(found.map(({ path, node }) => [path, node] as const))("%s — onGitLab 키는 형제에 같은 이름이 있다(덮을 대상)", (_path, node) => {
+    for (const key of Object.keys(node.onGitLab as object)) expect(Object.hasOwn(node, key), key).toBe(true);
   });
 
   it.each(found.map(({ path, node }) => [path, node] as const))("%s — GitLab 문장에 GitHub 낱말이, GitHub 문장에 GitLab 낱말이 없다", (path, node) => {
-    const gitlab = node.gitlab as Record<string, unknown>;
-    const gitlabLeaves = leaves(gitlab, `${path}.gitlab`);
+    const gitlab = node.onGitLab as Record<string, unknown>;
+    const gitlabLeaves = leaves(gitlab, `${path}.onGitLab`);
     const githubLeaves = Object.keys(gitlab).flatMap((key) => leaves(node[key], `${path}.${key}`));
     const hits = [
       ...gitlabLeaves.filter(({ text }) => FOREIGN.gitlab.some((re) => re.test(text))),
@@ -92,7 +92,7 @@ describe.each(DICTIONARIES)("%s 사전의 호스트 문장", (_lang, m) => {
   });
 
   it.each(found.map(({ path, node }) => [path, node] as const))("%s — GitLab 문장은 GitHub 문장과 다르다(덮어도 같으면 분기가 아니다)", (path, node) => {
-    const gitlab = node.gitlab as Record<string, unknown>;
+    const gitlab = node.onGitLab as Record<string, unknown>;
     for (const key of Object.keys(gitlab)) {
       expect(leaves(gitlab[key], key).map(({ text }) => text), `${path}.${key}`).not.toEqual(leaves(node[key], key).map(({ text }) => text));
     }
@@ -100,7 +100,7 @@ describe.each(DICTIONARIES)("%s 사전의 호스트 문장", (_lang, m) => {
 });
 
 describe("세 사전의 호스트 문장 노드가 같다", () => {
-  const paths = (m: Messages) => overlays(m).map(({ path, node }) => `${path}: ${Object.keys(node.gitlab as object).sort().join(",")}`);
+  const paths = (m: Messages) => overlays(m).map(({ path, node }) => `${path}: ${Object.keys(node.onGitLab as object).sort().join(",")}`);
   it.each([["ko", ko], ["es", es]] as const)("%s = en", (_lang, m) => {
     expect(paths(m)).toEqual(paths(en));
   });

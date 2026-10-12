@@ -427,6 +427,12 @@ export const ko = {
       unrecorded: "기록 없음",
       notOpen: "열려 있지 않음",
       pr: (n: number): string => `#${n}`,
+      onGitLab: {
+        pullRequest: "MR",
+        prState: "MR 상태",
+        prCheckFailed: "열린 MR을 확인하지 못했습니다",
+        pr: (n: number): string => `!${n}`,
+      },
     },
 
     banner: {
@@ -859,6 +865,9 @@ export const ko = {
       rowName: "GitHub",
       confirmDisconnect: "Malmoi에서 GitHub App 연결을 해제할까요?",
       confirmHint: "다시 연결할 때까지 리포지토리를 추가하거나 다시 연결할 수 없습니다. 이미 연결된 프로젝트는 계속 동기화됩니다.",
+    },
+    gitlab: {
+      expiresSoon: "만료 예정",
     },
     sessionsSection: {
       title: "세션",
@@ -2023,6 +2032,19 @@ export const ko = {
       "repo-read-only": "이 계정은 그 리포지토리를 읽기만 할 수 있습니다. 연결하려면 쓰기 권한이 필요합니다 — 리포지토리 소유자에게 요청하세요.",
       unavailable: "문제가 생겼습니다. 잠시 후 다시 시도하세요.",
       fallback: "GitHub 연결에 실패했습니다. 다시 시도하세요.",
+    },
+    gitlab: {
+      "token-invalid": "GitLab이 이 토큰을 받지 않았습니다. 만료되었거나 철회되었을 수 있습니다 — 새 토큰을 만들어 붙여 넣으세요.",
+      "token-fine-grained": "fine-grained 토큰입니다. Malmoi에는 api 스코프가 있는 레거시 개인 액세스 토큰이 필요합니다 — 새로 만들어 붙여 넣으세요.",
+      "token-scope-missing": "이 토큰에는 api 스코프가 없습니다. api 스코프로 새 토큰을 만들어 붙여 넣으세요.",
+      "account-mismatch": "다른 GitLab 계정의 토큰입니다. 먼저 GitLab 연결을 해제한 뒤 그 계정을 연결하세요.",
+      "gitlab-not-connected": "먼저 계정에서 GitLab 계정을 연결하세요.",
+      "gitlab-reconnect": "GitLab 토큰을 더 이상 쓸 수 없습니다. 계정에서 토큰을 교체하세요.",
+      "gitlab-repo-archived": "보관된 GitLab 프로젝트입니다. GitLab에서 보관을 해제한 뒤 다시 시도하세요.",
+      "gitlab-repo-unsupported": "이 GitLab 프로젝트는 SHA-256 오브젝트 형식을 써서 Malmoi가 지원하지 않습니다.",
+      "gitlab-project-disconnected": "이 프로젝트의 GitLab 연결이 해제되었습니다. 프로젝트 소유자가 프로젝트 설정에서 다시 연결할 수 있습니다.",
+      unavailable: "GitLab이 응답하지 않았습니다. 잠시 후 다시 시도하세요.",
+      fallback: "GitLab 연결에 실패했습니다. 다시 시도하세요.",
     },
 
     onboarding: {
