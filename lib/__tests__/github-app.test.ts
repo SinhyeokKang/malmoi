@@ -124,7 +124,8 @@ describe("createGitClient.findOpenPr", () => {
   it("`owner:branch` head와 `state: open`으로 묻는다", async () => {
     const client = await createGitClient("o", "r", "7", "9");
     hoisted.request.mockResolvedValueOnce({ data: [] });
-    await expect(client.findOpenPr("o:malmoi-i18n/sync-acme")).resolves.toBeNull();
+    // 호출부는 브랜치 이름만 넘기고 `owner:branch`는 GitHub 구현이 조립한다 — 브랜치명만 보내면 GitHub이 필터를 조용히 무시한다.
+    await expect(client.findOpenPr("malmoi-i18n/sync-acme")).resolves.toBeNull();
     expect(hoisted.request).toHaveBeenLastCalledWith("GET /repos/{owner}/{repo}/pulls", expect.objectContaining({ head: "o:malmoi-i18n/sync-acme", state: "open" }));
   });
 });
@@ -178,4 +179,66 @@ it.each([
   const client = await createGitClient("o", "r", "7", "9");
   hoisted.request.mockResolvedValue({ data: { truncated: false, tree: [entry] } });
   await expect(client.getTree("head")).rejects.toThrow(/incomplete Git tree entry/);
+});
+
+it("getTree throws on a truncated tree — a partial tree turns base files into \"new\" files and every blob comparison is wrong", async () => {
+  const client = await createGitClient("o", "r", "7", "9");
+  hoisted.request.mockResolvedValue({ data: { truncated: true, tree: [] } });
+  await expect(client.getTree("head")).rejects.toThrow(/truncated/);
+});
+
+/**
+ * **`publishSnapshot`의 GitHub 구현** (gitlab-repositories design §3) — Git Data API 네 단계가 경계 안으로 들어왔다. 트리는 `base_tree`가 있어야
+ * 리포의 나머지 파일이 남고, 커밋 parent는 base head 하나이며, 메시지에 루프 마커가 든다. sync 브랜치가 없으면 만들고 있으면 강제로 옮긴다.
+ */
+describe("createGitClient.publishSnapshot", () => {
+  const input = { branch: "malmoi-i18n/sync-acme", baseSha: "basehead", changes: [{ path: "i18n/ko.json", content: "{}\n", inBase: true }], summary: "1 file" };
+  const routes = () => hoisted.request.mock.calls.map(([route]) => route as string);
+
+  async function publish(syncExists: boolean) {
+    const client = await createGitClient("o", "r", "7", "9");
+    hoisted.request.mockReset();
+    hoisted.request.mockImplementation(async (route: string) => {
+      if (route === "POST /repos/{owner}/{repo}/git/trees") return { data: { sha: "tree-sha" } };
+      if (route === "POST /repos/{owner}/{repo}/git/commits") return { data: { sha: "commit-sha" } };
+      if (route === "GET /repos/{owner}/{repo}/git/ref/{ref}") {
+        if (syncExists) return { data: { object: { sha: "old" } } };
+        throw Object.assign(new Error("Not Found"), { status: 404 });
+      }
+      return { data: {} };
+    });
+    return client.publishSnapshot(input);
+  }
+
+  it("sync 브랜치가 없으면 트리 → 커밋 → ref 조회 → ref 생성이고, 커밋 SHA를 돌려준다", async () => {
+    await expect(publish(false)).resolves.toBe("commit-sha");
+    expect(routes()).toEqual([
+      "POST /repos/{owner}/{repo}/git/trees",
+      "POST /repos/{owner}/{repo}/git/commits",
+      "GET /repos/{owner}/{repo}/git/ref/{ref}",
+      "POST /repos/{owner}/{repo}/git/refs",
+    ]);
+    expect(hoisted.request).toHaveBeenCalledWith("POST /repos/{owner}/{repo}/git/trees", expect.objectContaining({
+      base_tree: "basehead", tree: [{ path: "i18n/ko.json", mode: "100644", type: "blob", content: "{}\n" }],
+    }));
+    const commit = hoisted.request.mock.calls.find(([route]) => route === "POST /repos/{owner}/{repo}/git/commits")?.[1] as { parents: string[]; tree: string; message: string };
+    expect(commit.parents).toEqual(["basehead"]);
+    expect(commit.tree).toBe("tree-sha");
+    expect(commit.message).toContain("[skip-malmoi-i18n]");
+    expect(hoisted.request).toHaveBeenCalledWith("POST /repos/{owner}/{repo}/git/refs", expect.objectContaining({ ref: "refs/heads/malmoi-i18n/sync-acme", sha: "commit-sha" }));
+  });
+
+  it("sync 브랜치가 있으면 강제로 옮긴다 — 누적 히스토리가 아니라 스냅샷이다", async () => {
+    await publish(true);
+    expect(routes().at(-1)).toBe("PATCH /repos/{owner}/{repo}/git/refs/{ref}");
+    expect(hoisted.request).toHaveBeenLastCalledWith("PATCH /repos/{owner}/{repo}/git/refs/{ref}", expect.objectContaining({ ref: "heads/malmoi-i18n/sync-acme", sha: "commit-sha", force: true }));
+  });
+
+  it("resetSyncBranch는 sync 브랜치를 base head로 강제로 옮긴다", async () => {
+    const client = await createGitClient("o", "r", "7", "9");
+    hoisted.request.mockReset();
+    hoisted.request.mockResolvedValue({ data: {} });
+    await client.resetSyncBranch("malmoi-i18n/sync-acme", "basehead");
+    expect(hoisted.request.mock.calls).toEqual([["PATCH /repos/{owner}/{repo}/git/refs/{ref}", expect.objectContaining({ ref: "heads/malmoi-i18n/sync-acme", sha: "basehead", force: true })]]);
+  });
 });

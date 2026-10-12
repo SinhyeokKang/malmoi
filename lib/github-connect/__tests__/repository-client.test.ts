@@ -50,3 +50,13 @@ it.each([null, "", "abc", "007"])("고정되지 않은 저장소 ID(%j)로는 �
   expect(await listBranches("owner", "repo", "10", id)).toEqual({ status: "unavailable" });
   expect(mocks.auth).not.toHaveBeenCalled();
 });
+// 다운로드 예산의 크기는 트리 응답에 이미 있다 — 리더의 `sizes`는 GitHub을 다시 부르지 않고, 크기 없는 경로는 지도에서 뺀다(예산이 거부한다).
+it("GitHub 리더의 sizes는 스냅샷의 size를 쓰고 원격 호출 0이다", async () => {
+  const reader = await openRepoReader("owner", "repo", "10", "42");
+  mocks.request.mockClear();
+  const snapshot = { status: "ok" as const, headSha: "h", headCommittedAt: "2026-10-12T00:00:00Z", files: [
+    { path: "en.json", sha: "a", size: 20 }, { path: "ko.json", sha: "b" }, { path: "fr.json", sha: "c", size: 5 },
+  ] };
+  expect(await reader.sizes(snapshot, ["en.json", "ko.json"])).toEqual({ status: "ok", sizes: new Map([["en.json", 20]]) });
+  expect(mocks.request).not.toHaveBeenCalled();
+});

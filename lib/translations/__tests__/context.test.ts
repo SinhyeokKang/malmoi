@@ -14,6 +14,14 @@ const base: DeliveryContextInput = {
 };
 
 describe("deliveryContextFingerprint", () => {
+  /**
+   * ⚠️ **저장된 GitHub 행의 바이트를 고정한다** (gitlab-repositories tasks §1). 이 지문은 `DeliveryConfirmation.contextFingerprint`에 **저장**된다 —
+   * 리포 호스트를 입력에 더하면서 GitHub 행의 바이트가 바뀌면 기존 확인이 전부 조용히 무효가 되어 Revert 기준이 사라진다.
+   */
+  it("기존 GitHub 지문은 바이트 그대로다", () => {
+    expect(deliveryContextFingerprint(base)).toBe("e9b4d80c75530e9f5b56b1aa9b475a914c7653c77f20863cc89ce64bcbe4bba2");
+  });
+
   it("같은 입력은 같은 지문이다", () => {
     expect(deliveryContextFingerprint(base)).toBe(deliveryContextFingerprint({ ...base, surface: { ...base.surface } }));
     expect(deliveryContextFingerprint(base)).toMatch(/^[0-9a-f]{64}$/);

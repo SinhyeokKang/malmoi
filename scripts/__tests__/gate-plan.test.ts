@@ -83,6 +83,20 @@ describe("planGate", () => {
     expect(planGate([path])).toEqual(["db:generate", "typecheck", "test", "test:projects:postgres", "build", "sync:agents:check"]);
   });
 
+  /**
+   * **리포 호스트 경계와 GitLab 구현** (gitlab-repositories tasks §1 · D15). 경계(`lib/repo-host/`)와 GitLab 디렉터리 둘(`lib/gitlab/` I/O ·
+   * `lib/gitlab-connect/` PAT 연결)은 통합 테스트가 직접 지나는 생산 경로다 — 그 파일 하나만 바꾼 diff도 projects 스위트를 부른다.
+   * 디렉터리가 비어 있는 동안 미리 등록한다: 채우는 배치가 게이트를 건드리지 않게 한다.
+   */
+  it.each([
+    "lib/repo-host/target.ts",
+    "lib/repo-host/index.ts",
+    "lib/gitlab/client.ts",
+    "lib/gitlab-connect/verify.ts",
+  ])("리포 호스트 경로 %s 단독 변경도 projects 스위트를 실행한다", path => {
+    expect(planGate([path])).toEqual(["db:generate", "typecheck", "test", "test:projects:postgres", "build", "sync:agents:check"]);
+  });
+
   it("둘 다 건드리면 둘 다 — projects가 먼저다", () => {
     expect(planGate(["lib/credentials/rotate.ts", "lib/import/run.ts"])).toEqual([
       "db:generate",
