@@ -717,3 +717,12 @@ it("GitHub App이 없으면 GitHub App 카드와 GitHub 조회가 없고 GitLab 
   expect(mocks.loadAccountView).not.toHaveBeenCalled();
   expect(mocks.loadInstalledRepoCount).not.toHaveBeenCalled();
 });
+
+/** D28 — 슬러그만 없으면 GitHub App 카드는 서고(연결·해제는 자격증명 넷으로 된다) 설치 설정 링크만 사라진다. */
+it("GitHub App 슬러그만 없으면 GitHub App 카드는 서고 설치 설정 링크가 없다", async () => {
+  vi.stubEnv("GITHUB_APP_SLUG", "");
+  const container = await screen();
+  expect([...container.querySelectorAll("h2")].map((h) => h.textContent)).toContain(en.account.github.title);
+  expect(mocks.loadAccountView).toHaveBeenCalled();
+  expect([...container.querySelectorAll("a")].some((a) => a.textContent === en.account.github.installationSettings)).toBe(false);
+});
