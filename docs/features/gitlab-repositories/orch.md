@@ -132,3 +132,4 @@
 - 2026-10-13: E-ui fix1(6커밋, gate ok — ko 사전에서 GitLab 화면에 PR이 새던 6곳 발견·중립화) → dev 통합. E-ui fix2 착수: #244–#252·#254–#257 + Disconnect 문구 + `MALMOI_I18N_WRAPPER` + D28.
 - 2026-10-13: E-doc fix1(문서 커밋 7, gate ok 14304) → dev 통합. GitLab CI 변수 라벨은 docs.gitlab.com 기준(실물 UI 확인은 QA). D26 문구 정정(MCP 접기 값 = `not-connected`). E-doc fix2 몫(E-ui fix2 뒤): D28 경고 문장 둘 삭제 · DESIGN 프리미티브 목록 `input-element` 행 · R-Edoc 가이드 ⚪.
 - 2026-10-13: E-ui fix2(18커밋 red/green, gate ok 14357 — 타임아웃 없음) → dev 통합. 문서화된 이탈: Alert의 스코프 이름 굵게 없음 · Try again 라벨 미변경 · 다른 OWNER 프레임 미측정. DS 재실측(이슈 닫기)·E-doc fix2 병렬 착수.
+- 2026-10-13: DS 재실측 2 — #244–#257 14건 전부 닫음(남은 차이는 프리미티브·정본 승리 또는 문서화된 이탈). 미측정: 다른 OWNER G6(사용자 하나), 375·다크 재실행. dev DB: GitLab 연결 재생성(만료 2026-11-11), MR !4 닫고 브랜치 삭제. E-doc fix2(문서 커밋 4) → dev 통합. E-ui fix3: GitLab CI 모달에도 hook 힌트(`MALMOI_I18N_WRAPPER`).
