@@ -32,10 +32,10 @@
 
 | 배치 | tasks | 소유 파일 | 선행 | 모델 / effort | 상태 |
 | --- | --- | --- | --- | --- | --- |
-| B1 본문 조립 | 1 | `scripts/release-image-note.ts` · `scripts/__tests__/release-image-note.test.ts` | 없음 | sonnet / medium — 순수 함수 + CLI, 사례가 design §3에 다 있다 | 대기 |
-| B2 발행 | 2·3 | `scripts/publish-image.sh` · `scripts/__tests__/publish-image.test.ts` · `.github/workflows/image.yml` · `scripts/__tests__/image-workflow.test.ts` | 없음 | opus / medium — fail-closed 3분기·bash 3.2·PATH 대역·워크플로 권한 | 대기 |
-| B3 문서·가이드 | 4·5 | `.claude/commands/{merge,doc-check}.md`(+ 훅이 만드는 `.agents/` 미러) · `CLAUDE.md`(+ `AGENTS.md` 미러) · `docs/{SELF-HOSTING,DIRECTORY,PRODUCT}.md` · `guide/{en,ko,es}/self-hosting/{install,operate}.md` | 없음(design이 파일명·계약을 확정) | sonnet / medium — 정해진 문장 수정 | 대기 |
-| R 독립 리뷰 | — | 읽기 전용, `.scratch/review-<batch>.md` | 각 배치 인계 | opus / medium | 대기 |
+| B1 본문 조립 | 1 | `scripts/release-image-note.ts` · `scripts/__tests__/release-image-note.test.ts` | 없음 | sonnet / medium — 순수 함수 + CLI, 사례가 design §3에 다 있다 | 통합 — 리뷰 🔴0·🟡4 → fix1 1라운드 |
+| B2 발행 | 2·3 | `scripts/publish-image.sh` · `scripts/__tests__/publish-image.test.ts` · `.github/workflows/image.yml` · `scripts/__tests__/image-workflow.test.ts` | 없음 | opus / medium — fail-closed 3분기·bash 3.2·PATH 대역·워크플로 권한 | 통합 — 리뷰 🔴0·🟡1(+⚪3·4·6) → fix1 1라운드 |
+| B3 문서·가이드 | 4·5 | `.claude/commands/{merge,doc-check}.md`(+ 훅이 만드는 `.agents/` 미러) · `CLAUDE.md`(+ `AGENTS.md` 미러) · `docs/{SELF-HOSTING,DIRECTORY,PRODUCT}.md` · `guide/{en,ko,es}/self-hosting/{install,operate}.md` | 없음(design이 파일명·계약을 확정) | sonnet / medium — 정해진 문장 수정 | 통합 — 리뷰 🔴0·🟡3(+⚪1~3) → fix1 1라운드 |
+| R 독립 리뷰 | — | 읽기 전용, `.scratch/review-<batch>.md` | 각 배치 인계 | opus / medium | 완료 — R-B1·R-B2·R-B3 |
 
 ## 파일 겹침·실행 순서
 
@@ -55,3 +55,8 @@
 ## 실행 기록
 
 - 2026-10-12: tasks 0 실측(위 절). orch.md 커밋 후 B1·B2·B3 병렬 착수.
+- 2026-10-12: B1(sonnet)·B2(opus)·B3(sonnet) 병렬 구현 → 배치마다 독립 리뷰(opus) → 수정 1라운드씩. 🔴 0건.
+  - 지휘자 판단: B1 🟡4 라벨 중복은 교체 대신 exit 2(fail-closed) · B2 ⚪1·⚪2(입력 검증 순서·digest 출력 id)는 하지 않음 · review-B2 ⚪5(비상 경로 동시 실행)는 B3가 9-b 비상 단락에 반영 · review-B3 ⚪4는 tasks 6 검증 줄로 옮김 · ⚪5(CLAUDE build 문장)는 사실이라 그대로.
+  - 워커 gate: B1 첫 구현은 병렬 부하(load ~200)로 무관 테스트 5초 타임아웃 → fix1에서 `gate: ok`. B2·B3 `gate: ok`.
+  - 미검증(런타임 b, tasks 6 몫): 워크플로 실물 run · 실제 buildx `--metadata-file` 모양 · Node 24.0/24.1의 `import.meta.main` 폴백.
+- 2026-10-12: dev 통합(cherry-pick B1→B2→B3).
