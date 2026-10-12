@@ -92,3 +92,5 @@
 - 2026-10-12: W0 fix1(커밋 3) dev 통합. A 착수.
 - 2026-10-12: E0 인계(커밋 4, gate ok) → R-E0 🔴0·🟡1 → dev 통합. **E-ui 브리프 필수 한 줄**(R-E0 🟡): PR/MR 문구는 호스트 분기 함수가 아니라 `pr…`/`mr…` 접두 **별도 키**로 둔다 — 사전 워커가 함수를 같은 인자로 한 번만 불러 GitLab 갈래를 훑지 않아 금지어 규칙이 거짓 green이 된다. 그 밖 ⚪5는 `.scratch/review-E0.md`(`/projects` 띠·Open on GitLab의 DESIGN 등재는 E-ui).
 - 2026-10-12: E0 통합 뒤 `pnpm gate` = `FAILED at test` — `components/__tests__/api-contract.test.ts` 5건, 병렬 워커 부하 타임아웃(단독 재실행 54/54 green). push 전 무부하 `gate: ok`를 다시 근거로 쓴다.
+- 2026-10-12: D1 인계(커밋 5, gate ok) → R-D1 🔴0·🟡3 → D1 fix1(tsconfig include `.gitlab/**/*.ts` · push.sh 마커·SHA 줄 실행 테스트). **E-ui 브리프 필수**(R-D1 🟡2): `GITLAB_CI_RELEASE.sha=null`이면 화면이 GitLab CI 템플릿을 내지 않는다. **`/merge` 준비물**: 태그 `malmoi-i18n-push-gitlab-v1` 발행 + `GITLAB_CI_RELEASE.sha` 채움(그 전엔 GitLab CI job이 fail-closed).
+- 2026-10-12: D1 fix1(커밋 2, gate ok) → dev 통합. E-ui 계약: `GITLAB_CI_RELEASE.sha`가 40자 hex가 아니면 GitLab CI 템플릿을 내지 않는다.
