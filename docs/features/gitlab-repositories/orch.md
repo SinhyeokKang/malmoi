@@ -46,6 +46,7 @@
 | D21 | R-B 🟡 판정: ②참조가 빈 GitLab 프로젝트는 **모든 화면에서 `Disconnected`(재연결 필요, GitHub `unpinned`과 같은 톤)** — `RepoTargetResult`에 별도 갈래, `cross-screen.test.ts` MATRIX에 "GitLab 연결자 떠남" 행. ③`targetOfAccess`의 gitlab 갈래를 **`newRepoTarget`** 으로 갈라 새 리포 경로 허용 목록을 credential-separation이 센다(M1 뮤테이션 red). ④gate-plan 트리거 `lib/auth/members.ts`·`lib/projects/list.ts`는 **B fix가 추가**(지휘자 대신 — 코드 수정은 워커). ⚪2(`granular_scopes` 판정)·⚪3(`members/all` 대기 멤버 = forbidden) 채택 | 지휘자 판단 — design §2 사례 표("주인이 떠남 → Disconnected")·design §3("접근 확인 뒤 I/O는 참조 연결로")·POSTMORTEM 2026-10-07 |
 | D22 | C 착수 판정: ①GitLab 연결 건강성에 GitLab 전용 갈래 `connection-unusable`(만료·401·403 scope·접근 상실·archived·sha1 아님) — 화면에선 D21과 같은 `Disconnected`, 저장 만료일 지남은 원격 호출 0, 5xx/429/네트워크는 `unknown` ②`sizes` 비-ok: `lfs` → `resource-limit`, `unavailable`은 AppError 유지 ③`pr-url.ts`·`remote-plan.ts` 호스트 갈래(GitLab `/-/merge_requests/<iid>`)는 C, 컴포넌트 호출부는 E-ui ④주소 계약 = `/projects/` 다음 세그먼트는 숫자, `%2F`는 `/projects/<id>/repository/` 아래 값·MR 질의에서만 허용(슬래시 브랜치) | 지휘자 판단(C `ask`) — design §2 "크기 조회 실패는 unavailable"·D21 톤 통일·불변식 11 첫 층 |
 | D23 | `scripts/finalize-credentials.ts`가 `migrate deploy` 전에 verify로 `GitLabConnection`을 조회해, 2026-09-10 cutover 이전 DB에선 finalize가 실패한다 → **수용·기록만**(고치지 않음) | 지휘자 판단(R-Esh ⚪) — dev·prod·모든 셀프 호스팅 설치(2026-10-09 시작)가 이미 cutover를 지났다. 실제 대상 DB가 없다 |
+| D24 | 목록·Inbox는 DB 판정만(참조 비움 = Disconnected). `connection-unusable`(원격으로만 아는 철회·접근 상실·보관)은 probe 화면(Home·설정·번역)에서만 Disconnected — cross-screen 행 "GitLab 토큰 못 씀"은 목록 active. 저장 만료일의 목록 사전 판정은 E-ui(만료 임박·Expired 톤과 함께) | 지휘자 판단(C `ask`) — GitHub `app-uninstalled`·`installation-changed`도 목록은 DB만 보고 probe 화면만 Disconnected인 선례 |
 
 ## 배치·파일 소유권
 
@@ -107,3 +108,4 @@
 - 2026-10-12: B fix1(커밋 2, gate ok: test 13794 · projects 654, 뮤테이션 M1·잠금 제거 red 확인) → dev 통합. 새 사건 `settings.repositoryDisconnected`(문장은 E-ui). 계정 삭제 사건 없음(D20 범위 밖, FK 그물). C 착수.
 - 2026-10-12: E-sh(Astra) 인계(커밋 2, red→green 확인, gate ok) → R-Esh 🔴0·🟡2 → dev 통합. E-sh fix1 = 🟡1(GitLab 전용 설치는 GitLab 이전 버전으로 롤백 시 preflight 거부 — operate.md 세 언어). 🟡2(App 부재 화면 갈래 소비자 0)는 E-ui 브리프·QA.
 - 2026-10-12: E-sh fix1(커밋 1, gate ok: 13803 · projects 654) → dev 통합. E-sh 워크트리 정리.
+- 2026-10-12: C 인계(커밋 2, +2597줄, gate ok: 13947 · projects 681, 실물 클라이언트 = 가짜 모양 확인) → R-C(Claude opus high) 🔴0·🟡3 · R-C(Astra 교차) 🔴0·🟡2 — 겹침: credential 스캐너. C fix1 = Reporter 강등을 `connection-unusable`로(토큰 주인 `members/all`, Sync 계약 보존) · `transport.send` 쓰기 계수 + 연결 자리 `file#function` 허용 목록 · gate-plan 트리거 9 · 야간 import Inbox 뷰 모델 단언. F 브리프에 R-C 🟡3(원격 blob id == `git hash-object`).
