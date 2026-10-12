@@ -5,7 +5,8 @@ const mocks = vi.hoisted(() => ({
   requireUser: vi.fn(), loadProjectList: vi.fn(), listConnectableRepos: vi.fn(),
 }));
 vi.mock("@/lib/auth/session", () => ({ requireUser: mocks.requireUser }));
-vi.mock("@/lib/db", () => ({ getPrisma: () => ({}) }));
+// 모달은 호출자의 계정 GitLab 연결(DB 한 행)을 읽는다 — 원격 호출은 없다.
+vi.mock("@/lib/db", () => ({ getPrisma: () => ({ gitLabConnection: { findUnique: async () => null } }) }));
 vi.mock("@/lib/keys/query", () => ({ loadProjectList: mocks.loadProjectList }));
 vi.mock("@/app/(edit)/projects/actions", () => ({ listConnectableRepos: mocks.listConnectableRepos }));
 
@@ -21,6 +22,8 @@ vi.mock("@/lib/i18n/server", async () => ({ getUiLocale: async () => "en", getMe
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // GitHub App이 구성된 설치(hosted) — 없으면 GitHub 목록을 읽지 않는다(D4a).
+  for (const name of ["GITHUB_APP_ID", "GITHUB_APP_PRIVATE_KEY", "GITHUB_APP_CLIENT_ID", "GITHUB_APP_CLIENT_SECRET", "GITHUB_APP_SLUG"]) vi.stubEnv(name, "x");
   mocks.requireUser.mockResolvedValue({ userId: "u1" });
   mocks.loadProjectList.mockResolvedValue({ rows: [] });
   mocks.listConnectableRepos.mockResolvedValue({ ok: true, repos: [] });
@@ -36,7 +39,7 @@ it("인터셉트는 인가 뒤 모달만 반환하고 배경 목록을 조회하
 
 it("직접 진입은 인가된 사용자의 목록과 목록 복귀 모달을 함께 반환한다", async () => {
   const tree = await DirectPage({ searchParams: Promise.resolve({ q: "format" }) });
-  expect(mocks.loadProjectList).toHaveBeenCalledWith({}, "u1");
+  expect(mocks.loadProjectList).toHaveBeenCalledWith(expect.anything(), "u1");
   // 뒤 목록은 검색어를 prop으로 받지 않는다 — 주소창(`useSearchParams`)에서 읽는다 (audit-ux #17).
   expect(tree.props.children[0].props).toMatchObject({ all: [] });
   expect(tree.props.children[0].props).not.toHaveProperty("q");
