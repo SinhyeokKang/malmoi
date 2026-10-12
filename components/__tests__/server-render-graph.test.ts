@@ -138,6 +138,37 @@ describe("서버 렌더 그래프", () => {
     expect(clientOnlyFindings(`const [a] = useState(0); // useEffect(\n/* useRef( */`)).toEqual(["useState("]);
   });
 
+  // R-X1(2026-10-13)이 실험으로 찾은 사각 넷 — 같은 직렬화 오류를 내지만 첫 판정은 green이었다.
+  it("삼항·논리식 안에서 만든 핸들러도 잡는다", () => {
+    expect(clientOnlyFindings(`<button onClick={busy ? event => event.preventDefault() : onClick} />`)).toHaveLength(1);
+    expect(clientOnlyFindings(`<Link onNavigate={busy ? (e) => e.preventDefault() : onNavigate} />`)).toHaveLength(1);
+    expect(clientOnlyFindings(`<a onClick={blocked && function (e) { e.preventDefault(); }} />`)).toHaveLength(1);
+    expect(clientOnlyFindings(`<a onClick={busy ? onBusy : onClick} />`)).toEqual([]);
+  });
+
+  it("같은 파일에서 만든 함수를 이름으로 넘겨도 잡는다 — 소비자가 넘긴 prop 통과는 세지 않는다", () => {
+    expect(clientOnlyFindings(`const handle = (e) => f(e);\n<a onClick={handle} />`)).toHaveLength(1);
+    expect(clientOnlyFindings(`function handle(e) { f(e); }\n<a onClick={handle} />`)).toHaveLength(1);
+    expect(clientOnlyFindings(`export function Row({ onClick }) { return <a onClick={onClick} />; }`)).toEqual([]);
+  });
+
+  it("spread로 실은 핸들러와 ref 콜백도 잡는다", () => {
+    expect(clientOnlyFindings(`const shared = { onClick: (e) => f(e) };\n<a {...shared} />`)).toHaveLength(1);
+    expect(clientOnlyFindings(`<a {...{ onFocus: () => g() }} />`)).toHaveLength(1);
+    expect(clientOnlyFindings(`<input ref={(el) => el?.focus()} />`)).toHaveLength(1);
+    expect(clientOnlyFindings(`<input ref={ref} />`)).toEqual([]);
+  });
+
+  it("허용 목록의 위험 prop을 서버 호출부가 넘기면 잡는다 — 넘기지 않거나 `{false}`면 세지 않는다", () => {
+    const guard = { tags: ["Button", "ButtonLink"], props: ["busy"] };
+    expect(guardedCallerFindings(`<ButtonLink external busy href="/x">Go</ButtonLink>`, guard)).toHaveLength(1);
+    expect(guardedCallerFindings(`<Button\n  busy={pending}\n  size="lg">Save</Button>`, guard)).toHaveLength(1);
+    expect(guardedCallerFindings(`<Button busy={false}>Save</Button>`, guard)).toEqual([]);
+    expect(guardedCallerFindings(`<Button disabled onClick={x}>Save</Button>`, guard)).toEqual([]);
+    expect(guardedCallerFindings(`<ButtonGroup busy />`, guard)).toEqual([]);
+    expect(guardedCallerFindings(`<Button {...props}>Save</Button>`, guard)).toHaveLength(1);
+  });
+
   it("`/account` 페이지가 그래프에 있고 `components/ui/input.tsx`까지 닿는지 본다 — 스캐너가 조용히 0건이 되지 않는다", () => {
     const rel = new Set([...GRAPH.keys()].map((f) => relative(ROOT, f)));
     expect(rel.has("app/(edit)/account/page.tsx")).toBe(true);
