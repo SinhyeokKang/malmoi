@@ -5,9 +5,12 @@ type EnvSource = Record<string, string | undefined>;
 /**
  * **GitHub App 구성 판정** (gitlab-repositories D4·D4a). 셀프 호스팅은 App 없이 GitLab만 쓰는 설치를 허용한다 — 다섯 변수는 **all-or-none**이다.
  *
- * - `complete` — 다섯 다 있다. GitHub 연결 경로(① GitHub 탭·`/account`·설정의 GitHub 카드·설치 링크)가 선다.
- * - `absent` — 다섯 다 없다. ①은 탭 줄 없이 GitLab 단독이고, GitHub 연결 카드·설치 링크를 그리지 않는다(쓸 수 없는 컨트롤을 그리지 않는다 — D4a).
+ * - `complete` — 다섯 다 있다.
+ * - `absent` — 다섯 다 없다. GitLab 전용 설치다.
  * - `partial` — 일부만 있다. **기동 거부**다(preflight가 이것으로 판정한다 — E-sh). 반쪽 구성으로 뜨면 연결은 되는데 커밋에서 죽는 길이 생긴다.
+ *
+ * ⚠️ **이 판정은 preflight 전용이다** — 소비자는 `partial` 하나뿐이다. 화면 갈래(GitHub 연결 카드·탭·설치 링크를 그릴지)는 이 판정이 아니라
+ * `githubAppConfigured`(아래)가 가른다(D28 — 자격증명 넷만 본다).
  *
  * ⚠️ hosted(Vercel)는 항상 `complete`다 — 이 판정은 모드를 보지 않고 변수만 본다. 빈 문자열은 없는 것이다(`optionalEnv`와 같다).
  * ⚠️ `GITHUB_APP_SLUG`도 그룹에 든다 — hosted에서는 `optionalEnv`라 빠져도 기동하지만(설치 버튼이 사라질 뿐), 셀프 호스팅의 그룹 규칙은
