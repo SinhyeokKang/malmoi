@@ -213,12 +213,14 @@ function namespaceOf(key: string): string {
 }
 
 /** `1d`·`1e`·`1g`가 공유하는 PR 카드. ⚠️ **제목을 그리지 않는다** — `PullResult`에 없다(§10-6). */
-function PrCard({ repo, number, note }: { repo: string; number: number | null; note: string }) {
+export function PrCard({ repo, number, note }: { repo: string; number: number | null; note: string }) {
+  // 번호 표기는 리포 호스트의 것이다(GitHub `#3` · GitLab `!3`) — 사전이 든다(`home.meta.pr`, `RepoHostScope`가 덮는다). 손으로 `#`을 붙이지 않는다(#254).
+  const m = useMessages();
   return <div className="border-border flex shrink-0 items-center gap-3 rounded-lg border px-4 py-3.5">
     {/* 열린 PR은 정보다 — 회색(2026-09-30 상태 통일, /projects 띠와 같은 톤). 성공 초록은 결과(`Sent`)가 든다. */}
     <GitPullRequestArrow className="text-muted-foreground size-4 shrink-0" aria-hidden />
     <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-      <span className="truncate text-sm">{repo}{number !== null && ` #${number}`}</span>
+      <span className="truncate text-sm">{repo}{number !== null && ` ${m.home.meta.pr(number)}`}</span>
       <span className="text-muted-foreground text-xs">{note}</span>
     </span>
     <StatusBadge state="prOpen" />
