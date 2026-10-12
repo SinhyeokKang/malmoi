@@ -4,7 +4,7 @@ import { blobSha } from "@/lib/githash";
 import { SKIP_MARKER } from "../payload";
 import { publishFingerprint } from "@/lib/publish/fingerprint";
 import { runPull, type PullDeps, type PullState } from "../run";
-import { createFakeGitClient, type FakeCall } from "./fake-client";
+import { createFakeGitClient, isGitMutation, type FakeCall } from "./fake-client";
 import type { RenderKey } from "../render";
 import type { GitClient } from "../client";
 
@@ -1014,7 +1014,6 @@ describe("runPull — 로케일 모양이 아닌 저장된 행 (sec-audit-3 1b)"
  * 입력은 기존 경로(committed)를 짝으로 든다 — 짝이 없으면 "늘 reconfirm"도 green이다.
  */
 describe("runPull — expectedFingerprint (mcp-connector T6.5)", () => {
-  const MUTATING = ["publishSnapshot", "resetSyncBranch", "createPr", "updatePrTitle", "updatePrBase", "closePr"];
   const previewState = (): PullState => ({
     project: { ...PROJECT },
     surfaces: [{ ...PROJECT, id: "s1", slug: "default", localeCodes: ["en", "ko"],
@@ -1053,7 +1052,7 @@ describe("runPull — expectedFingerprint (mcp-connector T6.5)", () => {
     const { deps, order, calls } = harness(now);
     expect(await runPull(deps, publishFingerprint(previewState(), "basehead"))).toEqual({ status: "skipped", reason: "reconfirm" });
     expect(calls.map(c => c.method)).toEqual(["getRefSha"]);
-    expect(calls.filter(c => MUTATING.includes(c.method))).toEqual([]);
+    expect(calls.filter(c => isGitMutation(c.method))).toEqual([]);
     expect(order).toEqual([]);
   });
 
@@ -1074,7 +1073,7 @@ describe("runPull — expectedFingerprint (mcp-connector T6.5)", () => {
     now.surfaces[0]!.keys[299]!.cells.ko = { value: "changed" };
     const { deps, calls } = harness(now);
     expect(await runPull(deps, publishFingerprint(many(), "basehead"))).toEqual({ status: "skipped", reason: "reconfirm" });
-    expect(calls.filter(c => MUTATING.includes(c.method))).toEqual([]);
+    expect(calls.filter(c => isGitMutation(c.method))).toEqual([]);
   });
 
   it("보낼 것이 없으면 지문과 무관하게 no-edits다 — 1층의 GitHub 0회가 그대로다", async () => {

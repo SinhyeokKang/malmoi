@@ -11,6 +11,22 @@ import type { GitClient, GitTreeBlob } from "../client";
 
 export type FakeCall = { method: keyof GitClient; args: unknown[] };
 
+/**
+ * 경계(`GitClient`)의 메서드를 읽기와 쓰기로 **빠짐없이** 가른다 — "쓰기 0회"·"첫 쓰기는 무효화 뒤" 단언이 이 목록 하나를 쓴다.
+ * ⚠️ 이름을 문자열로 손에 들면 메서드가 사라지거나 바뀌어도 typecheck가 못 보고 단언이 공허해진다(gitlab-repositories R-A 🔴1 —
+ * 삭제된 `createTree`…`updateRefForce`가 목록에 남아 스냅샷 커밋을 쓰기로 세지 않았다). 아래 `satisfies`가 없는 키를, `Unclassified`가
+ * 어느 쪽에도 없는 새 키를 red로 만든다.
+ */
+export const GIT_READS = ["getRefSha", "getTree", "getBlobText", "findOpenPr", "compareToBase", "isPullRequestOpen"] as const satisfies readonly (keyof GitClient)[];
+export const GIT_MUTATIONS = ["publishSnapshot", "resetSyncBranch", "closePr", "createPr", "updatePrTitle", "updatePrBase"] as const satisfies readonly (keyof GitClient)[];
+type Unclassified = Exclude<keyof GitClient, (typeof GIT_READS)[number] | (typeof GIT_MUTATIONS)[number]>;
+const everyMethodClassified: [Unclassified] extends [never] ? true : Unclassified = true;
+void everyMethodClassified;
+
+export function isGitMutation(method: keyof GitClient): boolean {
+  return (GIT_MUTATIONS as readonly string[]).includes(method);
+}
+
 export type FakeGitOptions = {
   /** ref → 커밋 SHA. 없는 ref는 `null`이 되어 첫 실행 경로를 태운다. */
   refSha?: Record<string, string>;

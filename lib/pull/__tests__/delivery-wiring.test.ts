@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { blobSha } from "@/lib/githash";
 import { publishFingerprint } from "@/lib/publish/fingerprint";
 import { runPull, type DeliveryContext, type PullDeps, type PullState } from "../run";
-import { createFakeGitClient, type FakeCall } from "./fake-client";
+import { createFakeGitClient, isGitMutation, type FakeCall } from "./fake-client";
 import type { GitClient } from "../client";
 
 /**
@@ -53,8 +53,6 @@ const sameAsBase = (sync?: string) => createFakeGitClient({
   blobs: { [blobSha(KO)]: KO, [blobSha(EN)]: EN },
 });
 
-/** 경계(`GitClient`)의 비읽기 메서드 전부. 순서 계약은 "이 중 첫 호출이 무효화 뒤"다 — 쓰기는 호스트가 묶어도 순서는 호출부가 든다. */
-const MUTATIONS = ["publishSnapshot", "resetSyncBranch", "closePr", "createPr", "updatePrTitle", "updatePrBase"];
 
 describe("runPull — 첫 외부 쓰기 전에 전달 확인을 무효화한다", () => {
   it("커밋 경로: 무효화가 publishSnapshot보다 먼저 한 번 일어난다", async () => {
@@ -69,7 +67,7 @@ describe("runPull — 첫 외부 쓰기 전에 전달 확인을 무효화한다"
     };
     const result = await runPull(deps);
     expect(result.status).toBe("committed");
-    const firstWrite = fake.calls.findIndex(c => MUTATIONS.includes(c.method));
+    const firstWrite = fake.calls.findIndex(c => isGitMutation(c.method));
     expect(log).toEqual([`invalidate@${firstWrite}`]);
   });
 
@@ -77,7 +75,7 @@ describe("runPull — 첫 외부 쓰기 전에 전달 확인을 무효화한다"
     const fake = committing();
     const { deps, saved } = harness(fake, { invalidateDelivery: async () => { throw new Error("db down"); } });
     await expect(runPull(deps)).rejects.toThrow(/db down/);
-    expect(fake.calls.map(c => c.method).filter(m => MUTATIONS.includes(m))).toEqual([]);
+    expect(fake.calls.map(c => c.method).filter(isGitMutation)).toEqual([]);
     expect(saved).toEqual([]);
   });
 
@@ -97,7 +95,7 @@ describe("runPull — 첫 외부 쓰기 전에 전달 확인을 무효화한다"
     // 무효화와 force 사이에는 열린 PR 조회(읽기)만 낀다 — 무효화 시점까지 쓰기가 0회여야 한다(B1 r3가 닫기를 그 사이에 넣었다).
     const at = Number(log[0]?.split("@")[1]);
     expect(at).toBeLessThanOrEqual(force);
-    expect(fake.calls.slice(0, at).map(c => c.method).filter(m => MUTATIONS.includes(m))).toEqual([]);
+    expect(fake.calls.slice(0, at).map(c => c.method).filter(isGitMutation)).toEqual([]);
   });
 
   it("no-changes + 열린 PR: 첫 비읽기 메서드(closePr)가 무효화 뒤다", async () => {
@@ -110,7 +108,7 @@ describe("runPull — 첫 외부 쓰기 전에 전달 확인을 무효화한다"
     let at: number | undefined;
     const { deps } = harness(fake, { invalidateDelivery: async () => { at ??= fake.calls.length; } });
     await runPull(deps);
-    const first = fake.calls.findIndex(c => MUTATIONS.includes(c.method));
+    const first = fake.calls.findIndex(c => isGitMutation(c.method));
     expect(fake.calls[first]?.method).toBe("closePr");
     expect(at).toBeLessThanOrEqual(first);
   });
@@ -168,7 +166,7 @@ describe("runPull — reconfirm은 무효화도 확정도 없다 (mcp-connector 
     const { deps, order } = harness(fake);
     expect(await runPull(deps, "not-the-preview")).toEqual({ status: "skipped", reason: "reconfirm" });
     expect(order).toEqual([]);
-    expect(fake.calls.map(c => c.method).filter(m => MUTATIONS.includes(m))).toEqual([]);
+    expect(fake.calls.map(c => c.method).filter(isGitMutation)).toEqual([]);
   });
 
   it("같은 지문이면 무효화 → 확정 순서가 그대로다 (짝)", async () => {

@@ -17,7 +17,7 @@ import { runRepositoryImportFromReader } from "@/lib/import/run";
 import { countPending } from "@/lib/protection/where";
 import { invalidateDeliveryConfirmations, loadPullState, saveLastPulledAt } from "@/lib/pull/load";
 import { runPull } from "@/lib/pull/run";
-import { createFakeGitClient } from "@/lib/pull/__tests__/fake-client";
+import { createFakeGitClient, isGitMutation } from "@/lib/pull/__tests__/fake-client";
 import { applyProtectedPush, applyPush } from "@/lib/push/apply";
 import { hashPushToken } from "@/lib/push/token";
 
@@ -414,14 +414,13 @@ describe("#3 · D3 — 보류 셀이 있는 Publish 뒤에도 OWNER Revert가 �
  * 새 미리보기가 커밋하는 짝을 든다 — 짝이 없으면 "늘 reconfirm"도 green이다.
  */
 describe("Publish 지문 — 미리보기 뒤 바뀐 export 입력은 reconfirm (mcp-connector T6.5)", () => {
-  const MUTATIONS = ["createTree", "createCommit", "createRef", "updateRefForce", "createPr", "updatePrTitle", "updatePrBase", "closePr"];
   let fake: ReturnType<typeof createFakeGitClient>;
   function repo(head = "basehead") {
     fake = createFakeGitClient({ refSha: { "heads/main": head }, tree: { [head]: [] } });
     github.client = fake.client;
     return fake;
   }
-  const writes = () => fake.calls.map(c => c.method).filter(m => MUTATIONS.includes(m));
+  const writes = () => fake.calls.map(c => c.method).filter(isGitMutation);
   const manual = (expectedFingerprint?: string) =>
     runSync(prisma, { projectId: "p", slug: "fixture", trigger: "manual", requestedBy: "owner", credential: undefined, expectedFingerprint });
   const preview = () => readPublishPreview(prisma, "p", "fixture");
@@ -507,8 +506,11 @@ describe("Publish 지문 — 미리보기 뒤 바뀐 export 입력은 reconfirm 
     expect(injected).toBe(true);
     expect((await cellOf("key0", "ko"))?.pendingEditToken).toBeNull();
     expect(await cellOf("key1", "fr")).toMatchObject({ value: "Edited", pendingEditToken: "after-compare-key1-fr" });
-    const tree = fake.calls.find(c => c.method === "publishSnapshot")?.args[0] as { changes: { path: string; content?: string }[] } | undefined;
-    expect(JSON.stringify(tree ?? [])).not.toMatch(/"key1":\s*"Edited"/);
+    // 원문을 직접 본다 — 스냅샷을 `JSON.stringify`하면 내용 안의 따옴표가 `\"`로 바뀌어 이 정규식이 결코 맞지 않았다(R-A ⚪5).
+    const snapshot = fake.calls.find(c => c.method === "publishSnapshot")?.args[0] as { changes: { path: string; content: string }[] } | undefined;
+    const fr = snapshot?.changes.find(change => change.path.includes("fr"));
+    expect(fr?.content).toBeDefined();
+    expect(fr?.content).not.toMatch(/"key1":\s*"Edited"/);
   });
 
   it("already-running · too-soon은 지문과 무관하게 그대로 거부하고 GitHub을 부르지 않는다", async () => {
