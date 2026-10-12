@@ -34,7 +34,7 @@ vi.mock("@/lib/onboarding-run/rotate-token", () => ({ rotateToken: core("rotate"
 vi.mock("@/lib/onboarding-run/import", async (orig) => ({ ...(await orig<object>()), importRepository: core("sync") }));
 vi.mock("@/lib/sync/publish", () => ({ publishProject: core("publish") }));
 vi.mock("@/lib/publish/load-preview", () => ({ loadPreview: core("preview") }));
-vi.mock("@/lib/surfaces/remove", async (orig) => ({ ...(await orig<object>()), previewSurfaceRemoval: core("removalPreview") }));
+vi.mock("@/lib/surfaces/remove", async (orig) => ({ ...(await orig<object>()), previewSurfaceRemoval: core("removalPreview"), removeSurface: core("remove") }));
 vi.mock("@/lib/keys/query", async (orig) => ({ ...(await orig<object>()),
   loadProjectListAggregates: async () => ({ locales: [], keyTotals: new Map(), cells: [], newKeys: new Map([["g1", 3], ["p1", 2]]), unsent: new Map(), unsentSurfaces: new Map() }),
   loadSurfaceCounts: async () => [] }));
@@ -274,6 +274,18 @@ describe("GitLab 프로젝트 대상 도구 — 호스트 어휘", () => {
     expect(gitlab.status === "ok" && "pullRequest" in gitlab.data).toBe(false);
     expect(wire(gitlab)).not.toMatch(NO_GITHUB);
     expect(await call("preview_source_removal", subject("owner"), { slug: "acme", surfaceSlug: "default" })).toMatchObject({ status: "ok", data: { pullRequest: "none" } });
+  });
+
+  /** 소스를 지운 뒤 할 일은 GitLab에선 `.gitlab-ci.yml`의 그 소스 job을 지우는 것이다 — GitHub 워크플로 step이 아니다(감사 U1 · D26). */
+  it("remove_source 요약은 GitLab 프로젝트에서 .gitlab-ci.yml의 job을 말한다 — GitHub 프로젝트는 그대로", async () => {
+    h.core.mockResolvedValue({ ok: true });
+    const gitlab = await call("remove_source", subject("owner"), { slug: "glab", surfaceSlug: "default", approval: null });
+    expect(gitlab).toEqual({ status: "ok", data: { removed: "default" }, summary: en.mcp.summary.gitlab.sourceRemoved("default") });
+    expect(en.mcp.summary.gitlab.sourceRemoved("default")).toContain(".gitlab-ci.yml");
+    expect(wire(gitlab)).not.toMatch(NO_GITHUB);
+    expect(wire(gitlab)).not.toMatch(/workflow|\bstep\b/i);
+    expect(await call("remove_source", subject("owner"), { slug: "acme", surfaceSlug: "default", approval: null }))
+      .toEqual({ status: "ok", data: { removed: "default" }, summary: en.mcp.summary.sourceRemoved("default") });
   });
 
   it("rotate_push_token은 CI/CD 변수로 안내한다", async () => {
