@@ -271,6 +271,10 @@ strict 적재·미전달 보호·렌더·전달 확인은 기존 순수 함수�
 
 ### 공통 경계 (커밋 A가 만든다)
 
+**경로 (D15)**: 경계 = `lib/repo-host/`(`target.ts` 판정 · `reader.ts` 리더 계약 · `index.ts` 호스트 선택) · GitLab I/O(B transport + C client·reader·Publish) = `lib/gitlab/` · GitLab PAT 연결(B2, `lib/github-connect/` 짝) = `lib/gitlab-connect/`. `lib/github.ts`는 제자리에서 GitHub 쪽 구현이다. 셋 다 `scripts/gate-plan.ts`의 `test:projects:postgres` 트리거이고 `vitest.projects.config.ts` include에 있다(커밋 A가 미리 등록 — B·C는 게이트를 건드리지 않는다).
+
+**커밋 A 반영본과 아래 서명의 차이**: ① `publishSnapshot` 입력은 `message`가 아니라 `summary`다 — 메시지(루프 마커)는 구현이 `commitMessage(summary)`(`lib/pull/payload.ts`)로 만든다(마커가 드는 문자열 조립을 한 곳에 둔다). `buildTreePayload`·`buildCommitPayload`는 `skip-marker.test.ts`·`payload.test.ts`가 직접 물어 `payload.ts`에 남고 GitHub `publishSnapshot`만 부른다. ② `checkRepoAccess`의 거부 갈래는 `status: "rejected"` 그대로다(호출부의 판정이 전부 `status !== "ok"`라 이름만 바꾸는 diff를 만들지 않았다). ③ 프로젝트 행 → `RepoLocator`는 `repoLocatorOf(project)`(`target.ts`) 하나다 — B가 호스트 갈래를 거기 더한다. ④ 온보딩 재대조 셋(`import.ts`·`add.ts`·`detect.ts`)은 `sameAccessedRepository(access, repoTargetOf(project).target)`이다(D16): `sameRepository`(호스트 + 리포 id)에 **GitHub 갈래만 설치 id 동일**을 더한다. App 설치는 계정 단위라 호출자가 보는 설치가 곧 프로젝트가 써야 할 설치이고, 재설치 뒤 옛 설치로 읽으러 가면 토큰 발급에서 `ingest-failed`로 죽는다 — 지금처럼 `repo-replaced`·`repo-forbidden`으로 멈춘다(GitHub 동작 불변). GitLab 갈래는 `sameRepository`만 본다. ⑤ 같은 이유로 `add.ts`·`detect.ts`·설정 브랜치 목록(`listLinkedBranches`)의 GitHub 갈래는 지금처럼 **확인한 접근의 값으로** 연다(대조를 지난 뒤라 같은 설치·리포다). 사람 단위 연결인 GitLab 갈래는 프로젝트 쪽 연결로 연다(B·C). ⑥ `RepoTarget`·`RepoLocator`·`RepoAccess`는 GitHub 변형 하나뿐이다 — GitLab 변형과 각 `switch`의 갈래는 소비자가 생기는 B·C가 더한다(`default`의 `unreachable(x.host)`가 빠뜨린 자리를 typecheck로 알린다).
+
 **원칙**: 기존 `GitClient`(`lib/pull/client.ts`)와 `RepoReader`(`lib/github.ts`)를 경계로 삼고 **GitLab이 흉내 낼 수 없는 쓰기 넷만 바꾼다**. 메서드 이름(`findOpenPr` 등)은 내부 이름이라 바꾸지 않는다(이관 diff를 줄인다 — 화면 낱말은 사전이 든다). 모든 메서드는 GitHub(커밋 A)·GitLab(커밋 C) 둘 다 구현하고 소비자가 있다.
 
 ```ts
