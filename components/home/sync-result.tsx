@@ -21,7 +21,7 @@ import type { Messages } from "@/lib/i18n";
  * ⚠️ **화면 전용 문구를 먼저 본다** — `not-ready`·`not-connected`는 온보딩·연결 사전에도 있지만
  * 그쪽 문장이 그 화면의 컨트롤을 가리킨다("use Authorize GitHub App below"). 여기엔 그 아래가 없다.
  */
-function reasonMessage(m: Messages, reason: RepositoryImportError | SurfaceImportReason): string {
+export function reasonMessage(m: Messages, reason: RepositoryImportError | SurfaceImportReason): string {
   if (Object.hasOwn(m.repositorySync.errors, reason)) return m.repositorySync.errors[reason as keyof typeof m.repositorySync.errors];
   if (isAccessError(reason)) return accessErrorMessage(m, reason);
   // GitLab 프로젝트의 거부(참조 비움·보관·토큰 못 씀) — GitHub 연결 문장("Authorize GitHub App")으로 떨어지지 않게 먼저 본다.

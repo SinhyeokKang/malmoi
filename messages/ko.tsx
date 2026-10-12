@@ -76,7 +76,7 @@ export const ko = {
     sendFirst: "먼저 게시",
     sendHint: (n: number, link: ReactNode): ReactNode => <>변경 사항을 보존하려면 {link}하세요. 번역 화면으로 이동합니다.</>,
     nothingUnsent: "모든 변경 사항을 이미 보냈습니다.",
-    seeOpen: "열린 PR 보기",
+    seeOpen: "열린 내용 보기",
     completed: (n: number, branch: string): string => `${branch} 브랜치에서 키 ${n.toLocaleString("ko-KR")}개를 동기화함`,
     syncedKeys: (n: number): string => `키 ${n.toLocaleString("ko-KR")}개를 동기화함`,
     unreadable: (n: number): string => `소스 ${n.toLocaleString("ko-KR")}개를 읽지 못함`,
@@ -1598,11 +1598,11 @@ export const ko = {
       prNone: {
         title: (repo: string): string => `${repo} 리포지토리에 새 PR이 열림`,
         body: (changes: number): string =>
-          `열린 PR이 없어 변경 사항 ${changes.toLocaleString("ko-KR")}건을 새 PR로 보냅니다.`,
+          `지금 열린 것이 없어 변경 사항 ${changes.toLocaleString("ko-KR")}건을 새로 보냅니다.`,
       },
       prUnknown: {
         title: "열린 PR을 확인하지 못했습니다",
-        body: "열린 PR이 있다면 새로 만들지 않고 기존 PR의 내용을 교체합니다.",
+        body: "이미 열려 있다면 새로 만들지 않고 그 내용을 교체합니다.",
       },
       openPr: "PR 열기",
       replacePr: (n: number): string => `PR #${n} 교체`,
@@ -1661,8 +1661,8 @@ export const ko = {
       closedPr: {
         description: (branch: string): string => `변경 사항이 이제 ${branch} 브랜치와 같아 이전 PR을 닫았습니다.`,
         line: (n: number, branch: string): string => `PR #${n}에 ${branch} 브랜치와 다른 내용이 더 이상 없어 닫았습니다.`,
-        owner: "이후 변경 사항을 게시하면 새 PR이 열립니다.",
-        editor: "이후 변경 사항을 게시하면 새 PR이 열립니다. PR을 유지해야 한다면 프로젝트 소유자에게 요청하세요.",
+        owner: "이후 변경 사항을 게시하면 새로 열립니다.",
+        editor: "이후 변경 사항을 게시하면 새로 열립니다. 계속 열려 있어야 했다면 프로젝트 소유자에게 요청하세요.",
         view: (n: number): string => `#${n} 보기`,
       },
       withheldDescription: {
@@ -1692,7 +1692,7 @@ export const ko = {
       transientErrorBody: (): ReactNode => (
         <>
           보통 일시적인 문제이고 다시 시도해도 안전합니다. Malmoi는{" "}
-          <span className="font-medium">같은 브랜치를 교체</span>하므로 다시 시도해도 중복 PR이 생기지
+          <span className="font-medium">같은 브랜치를 교체</span>하므로 다시 시도해도 중복이 생기지
           않습니다.
         </>
       ),
@@ -2051,7 +2051,7 @@ export const ko = {
       connectFailed: "연결을 시작하지 못했습니다. 잠시 후 다시 시도하세요.",
       health: {
         ok: "연결됨",
-        "not-connected": "아직 GitHub App이 연결되지 않았습니다.",
+        "not-connected": "아직 연결된 설치가 없습니다.",
         "app-uninstalled": "앱이 제거 또는 일시 중단되었거나, 이 리포지토리에 대한 앱의 접근 권한이 회수되었습니다.",
         "installation-changed": "앱이 다시 설치되었습니다 — 다시 연결하세요.",
         moved: (fullName: ReactNode): ReactNode => <>이 리포지토리는 {fullName} 리포지토리로 옮겨졌습니다</>,
