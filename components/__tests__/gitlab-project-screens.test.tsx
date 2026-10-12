@@ -174,3 +174,14 @@ describe("RepoHostScope — 클라이언트 조각의 사전", () => {
     expect(github.container.textContent).toBe("Open pull request · #128");
   });
 });
+
+describe("Publish 결과 카드 — 리뷰 번호 (#254)", () => {
+  it("GitLab 범위의 열린 MR 카드는 `!3`이고 GitHub은 `#3`이다", async () => {
+    const { PrCard } = await import("@/components/publish-button");
+    const gitlab = await render(<RepoHostScope host="gitlab"><PrCard repo="group/app" number={3} note="n" /></RepoHostScope>);
+    expect(gitlab.container.textContent).toContain("group/app !3");
+    expect(gitlab.container.textContent).not.toContain("#3");
+    const github = await render(<RepoHostScope host="github"><PrCard repo="o/r" number={3} note="n" /></RepoHostScope>);
+    expect(github.container.textContent).toContain("o/r #3");
+  });
+});
