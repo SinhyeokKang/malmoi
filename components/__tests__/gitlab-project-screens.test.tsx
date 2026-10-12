@@ -216,3 +216,26 @@ describe("Publish 결과 카드 — 리뷰 번호 (#254)", () => {
     expect(github.container.textContent).toContain("o/r #3");
   });
 });
+
+describe("설정 › CI 모달 — 훅 안내 (fix3)", () => {
+  async function openModal(host: "github" | "gitlab") {
+    const { container } = await render(<RepoHostScope host={host}><CiCard slug="acme" host={host} archived={false} stale={[]}><p>yaml</p></CiCard></RepoHostScope>);
+    const row = [...container.querySelectorAll<HTMLButtonElement>("button")].find((b) => b.textContent?.includes(host === "gitlab" ? gl.settings.ci.workflow : en.settings.ci.workflow))!;
+    await act(async () => { await userEvent.setup().click(row); });
+    return document.querySelector<HTMLElement>('[role="dialog"]')!;
+  }
+
+  it("GitLab 프로젝트는 생성 job의 MALMOI_I18N_WRAPPER 변수를 말한다 — action 입력 `wrapper`가 아니다", async () => {
+    const dialog = await openModal("gitlab");
+    expect(dialog.textContent).toContain("MALMOI_I18N_WRAPPER");
+    expect(dialog.textContent).toContain("useTranslations()");
+    expect(dialog.textContent).not.toMatch(/\bwrapper input\b/);
+    expect(dialog.textContent).not.toMatch(GITHUB_WORDS);
+  });
+
+  it("GitHub 프로젝트는 그대로 action 입력 `wrapper`다", async () => {
+    const dialog = await openModal("github");
+    expect(dialog.textContent).toContain("also need the wrapper input");
+    expect(dialog.textContent).not.toContain("MALMOI_I18N_WRAPPER");
+  });
+});
