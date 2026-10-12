@@ -38,6 +38,8 @@
 | D13 | GitLab PAT = **레거시 PAT만, 스코프 `api` 하나**(도움말·프리필 `scopes=api`). fine-grained PAT는 spec §5 비목표(19.2 GA·Free·`granular_scopes`·프리필 없음·최상위 그룹 Owner가 레거시 차단 가능 → 그 조직은 연결 불가, 수요 관측 시 재검토). 검증은 fine-grained 토큰을 분명한 사유로 거부한다(`/personal_access_tokens/self`). 불변식 11 문장은 그대로 | 사용자 2026-10-12(W0 `ask`) — 계정 단위 연결을 여러 프로젝트가 참조하는 모델과 프로젝트 한정 토큰이 맞지 않음, 검증 경로 하나 |
 | D14 | ko의 GitLab 호칭 = **`MR`**(GitHub `PR` 관행과 대칭, 가이드 첫 언급만 `MR(GitLab의 merge request)`). 금지어 `머지 리퀘스트`·`머지 요청`·`병합 요청` | 지휘자 판단(E0 `ask`) — DESIGN §10 ko의 PR 축약 규칙이 대칭으로 답한다 |
 | D15 | 디렉터리 = `lib/repo-host/`(경계) · `lib/gitlab/`(B transport + C client·reader·publish) · `lib/gitlab-connect/`(B2 PAT 연결, `lib/github-connect/` 짝). `lib/github.ts`는 제자리. 트리거: 앞 둘은 `test:projects:postgres`, `gitlab-connect`는 `github-connect`와 같은 스위트 | 지휘자 판단(A `ask`) — 기존 `github-connect` 대칭 |
+| D16 | 호출자 접근 대조(onboarding-run `import`·`add`·`detect`)는 `sameRepository` + **GitHub 갈래는 `installationId` 동일까지** — 헬퍼 하나(`lib/repo-host/`). App 재설치 뒤에도 지금처럼 `repo-replaced`/`repo-forbidden` | 지휘자 판단(A `ask`) — A의 목표가 GitHub 동작 변화 0 |
+| D17 | GitLab CI 변수 `MALMOI_I18N_*` 11개는 `brand-spelling.test.ts`의 `UPPER_EXCEPTIONS`에 **정확한 이름으로** 등재(접두 규칙 아님, D1이 그 파일을 고친다) | 지휘자 판단(D1 `ask`) — 기존 예외가 정확한 이름 목록이라 오타가 red로 남는다 |
 
 ## 배치·파일 소유권
 
@@ -89,3 +91,4 @@
 - 2026-10-12: R-W0 리뷰 🔴5·🟡多 — 서명 둘(`repoTargetOf` 상태 구분·GitLab 숫자 id 주소)은 A 착수 전 W0 fix1로 design에, 배치 경계 다섯은 이 문서 배치 표로 반영(B가 최소 transport·`collected.ts`·D4a 헬퍼·`connectRepository` 가드를 가진다).
 - 2026-10-12: W0 fix1(커밋 3) dev 통합. A 착수.
 - 2026-10-12: E0 인계(커밋 4, gate ok) → R-E0 🔴0·🟡1 → dev 통합. **E-ui 브리프 필수 한 줄**(R-E0 🟡): PR/MR 문구는 호스트 분기 함수가 아니라 `pr…`/`mr…` 접두 **별도 키**로 둔다 — 사전 워커가 함수를 같은 인자로 한 번만 불러 GitLab 갈래를 훑지 않아 금지어 규칙이 거짓 green이 된다. 그 밖 ⚪5는 `.scratch/review-E0.md`(`/projects` 띠·Open on GitLab의 DESIGN 등재는 E-ui).
+- 2026-10-12: E0 통합 뒤 `pnpm gate` = `FAILED at test` — `components/__tests__/api-contract.test.ts` 5건, 병렬 워커 부하 타임아웃(단독 재실행 54/54 green). push 전 무부하 `gate: ok`를 다시 근거로 쓴다.
