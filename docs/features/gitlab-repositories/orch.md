@@ -66,6 +66,7 @@
 | D2 MCP | §4 둘째 항목 | `lib/mcp/tools/*` · MCP 응답 문구(`messages/{en,ko,es}.tsx`의 `mcp` 절 — 새 키면 세 사전) | C · E-sh | opus / medium — 호환 정책·인가 | 대기 |
 | E-ui 화면·사전 | §5 둘·셋·다섯·일곱째 항목 + 여섯째의 (E-ui) 하위 항목 | `lib/status/canon.ts` · `components/onboarding|settings|account|home|projects|logs|shell/*` · `messages/{en,ko,es}.tsx` · `lib/invitation-email/template.ts` | D2 · E0 · E-sh | opus / high — 문장 분기·접근성·375 | 대기 |
 | E-doc 정본·가이드 | §5 여섯째의 (E-doc) 하위 항목 | `docs/{PRODUCT,ARCHITECTURE,DIRECTORY,OPERATIONS}.md` · `README.md` · `guide/{en,ko,es}/`(셀프 호스팅 제외) · OPERATIONS 롤백 줄(D6a) | E-ui | sonnet / medium — 결정(D3)대로 문장 갱신 + `/translate` ① | 대기 |
+| DS 시안 대조 | §5 "시안 대상 신규 UI는 `/design-sync`" | main 체크아웃, 리포트 전용(computed style·접근성 트리) — 대상: ① GitLab 탭·PAT 입력 shell · `/account` GitLab 카드 · 설정 재연결 카드 · Home Platform 행. 불일치는 E-ui 워커가 고친다 | E-ui 통합 | opus / medium | 대기 |
 | QA 런타임 | §5 [수동] · §6 + D1 [수동](실제 GitLab CI) | main 체크아웃, 읽기 전용(`/runtime-test` · `/roundtrip`) | push 후 | opus / medium | 대기 |
 | R 독립 리뷰 | — | 읽기 전용, `.scratch/review-<batch>.md` | 각 배치 인계 | opus / medium(A·B·C는 high) · **R-C는 codex astra 교차 리뷰 추가**(D18) | — |
 
@@ -80,6 +81,7 @@
 | F / D2 | 없음 | **병렬 파동 3**(C 통합 뒤) |
 | D2 → E-ui | `messages/en.tsx`(mcp namespace) | 직렬 |
 | E-ui → E-doc | 가이드가 화면 문구를 인용 | 직렬 |
+| DS / E-doc | 없음(DS는 리포트 전용·main 체크아웃 dev 서버, E-doc은 워크트리 문서) | E-ui 통합 뒤 **병렬**. DS 수정은 E-ui 워커 → 통합 → 무부하 게이트 → push → QA(runtime-test·roundtrip). DS와 QA는 ego 세션을 공유해 겹치지 않는다 |
 | E-sh / E-doc | `guide/*/self-hosting/` — E-sh 소유, E-doc는 손대지 않는다 | 소유권으로 분리 |
 
 `messages/{en,ko,es}.tsx`는 절 단위로 나눈다 — `publicDocs.privacy`·`ko-privacy.tsx`는 E-sh, `mcp` 절은 D2, 나머지는 E-ui. 세 배치는 **E-sh → D2 → E-ui 직렬**이라 동시에 열리지 않는다. 지휘자 몫: §6.4 전체 게이트, QA 뒤 `docs/SELF-HOSTING.md` 실습 기록(§6.3·§5).
