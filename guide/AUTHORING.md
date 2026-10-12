@@ -123,6 +123,13 @@
 | Add custom connector | claude.ai connector settings | 2026-09-29 T1 실측(개인 Free 계정, `claude.ai/customize/connectors` — mcp-oauth design §0.1) |
 | Connect | claude.ai connector settings | 2026-09-29 T1 실측(개인 Free 계정, `claude.ai/customize/connectors` — mcp-oauth design §0.1) |
 | Allow *OWNER*, and select non-*OWNER*, actions and reusable workflows | GitHub Actions policy | [GitHub Actions policy documentation](https://docs.github.com/en/organizations/managing-organization-settings/disabling-or-limiting-github-actions-for-your-organization); 문서 대조 2026-09-26, 실물 대조 2026-09-27(조직 소유 리포 설정 화면 — 문구 일치) |
+| Settings | GitLab project settings | [GitLab CI/CD variables documentation](https://docs.gitlab.com/ci/variables/#for-a-project) — 문서 대조 2026-10-13(실물 화면 미대조) |
+| CI/CD | GitLab project settings › CI/CD › Variables | [GitLab CI/CD variables documentation](https://docs.gitlab.com/ci/variables/#for-a-project) — 문서 대조 2026-10-13(실물 화면 미대조) |
+| Variables | GitLab project settings › CI/CD › Variables | [GitLab CI/CD variables documentation](https://docs.gitlab.com/ci/variables/#for-a-project) — 문서 대조 2026-10-13(실물 화면 미대조) |
+| Add variable | GitLab project settings › CI/CD › Variables | [GitLab CI/CD variables documentation](https://docs.gitlab.com/ci/variables/#for-a-project) — 문서 대조 2026-10-13(실물 화면 미대조) |
+| Protect variable | GitLab project settings › CI/CD › Variables | [GitLab CI/CD variables documentation](https://docs.gitlab.com/ci/variables/#for-a-project) — 문서 대조 2026-10-13(실물 화면 미대조) |
+| Visibility | GitLab project settings › CI/CD › Variables | [GitLab CI/CD variables documentation](https://docs.gitlab.com/ci/variables/#for-a-project) — 문서 대조 2026-10-13(실물 화면 미대조) |
+| Masked | GitLab project settings › CI/CD › Variables | [GitLab CI/CD variables documentation](https://docs.gitlab.com/ci/variables/#for-a-project) — 문서 대조 2026-10-13(실물 화면 미대조) |
 
 ## 앵커와 링크 {#anchors}
 
