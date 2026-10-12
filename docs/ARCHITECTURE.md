@@ -3492,7 +3492,7 @@ PAT는 URL에 실리지 않는다(셀프 호스팅 nginx 마스킹에 새 경로
 - **App 없는 설치**(셀프 호스팅 D4·D4a·D28): 셀프 호스팅 preflight는 `GITHUB_APP_*` **다섯을 all-or-none**으로 본다(반쪽은 기동 거부, 다섯 다 없으면
   GitLab 전용 설치). 화면 갈래는 `githubAppConfigured()` 하나이고 **자격증명 넷(`GITHUB_APP_ID`·`PRIVATE_KEY`·`CLIENT_ID`·`CLIENT_SECRET`)이 있으면 GitHub
   연결 화면이 선다** — `GITHUB_APP_SLUG`는 지금처럼 설치 링크만 가른다(SLUG 하나 빠진 hosted에서 GitHub 카드가 통째로 사라지지 않게). 넷이 없으면 ①·`/account`·설정이
-  GitHub 카드·조회를 0으로 만든다. ⚠️ 2026-10-13 현재 코드(`lib/deployment/github-app.ts`)는 아직 SLUG까지 다섯을 요구한다 — D28 코드 수정은 E-ui fix2다.
+  GitHub 카드·조회를 0으로 만든다. preflight의 그룹 판정(`planGitHubAppConfig`)과 화면 판정(`githubAppConfigured`)은 같은 파일의 다른 함수다(`lib/deployment/github-app.ts`).
 - **상시 검사**: `lib/github-connect/__tests__/credential-separation.test.ts`가 GitLab 경계를 센다 — GitLab 클라이언트 모듈 import가 완전성 기준이다.
   ① **PAT를 여는 호출 자리**(`openGitLabConnection`)는 `파일#함수` 정확 집합 `PAT_OPEN_SITES` 셋이다 — 호출자 연결 둘(`checkGitLabAccess`·`listGitLabRepositories`,
   그 사람이 무엇을 볼 수 있나 — 쓰지 않는다)과 프로젝트 참조 연결 하나(`lib/repo-host/index.ts#projectConnection` — `{ connectionId }`). 변수 간접으로 열어도 새
