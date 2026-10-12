@@ -67,6 +67,8 @@ it.each([
   ["expired", "Expired", "warning", "soft-amber"],
   ["waitingToApply", "Waiting to apply", "warning", "soft-amber"],
   ["removedFromRepository", "Removed from repository", "danger", "soft-red"],
+  // GitLab PAT 만료 임박(14일, D11) — 새 톤이 아니라 warning 상태 행이다(design §2 톤 표)
+  ["expiresSoon", "Expires soon", "warning", "soft-amber"],
 ] as const)("실제 소비자 상태 %s의 기존 낱말·색", (key, label, tone, variant) => {
   expect({ ...STATE[key], label: stateLabel(en, key) }).toEqual({ label, tone, variant });
 });
@@ -80,4 +82,11 @@ it.each([
   expect(stateLabel(m, "prCheckFailed")).toBe(label);
   expect(stateLabel(m, "couldNotCheck")).toBe(m.settings.repository.unknown);
   expect(stateLabel(m, "prCheckFailed")).not.toBe(stateLabel(m, "couldNotCheck"));
+});
+
+it.each([
+  [ko, "만료 예정"],
+  [es, "Caduca pronto"],
+] as const)("만료 임박 낱말이 §10.1 표와 같다", (m, label) => {
+  expect(stateLabel(m, "expiresSoon")).toBe(label);
 });
