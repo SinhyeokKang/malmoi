@@ -31,7 +31,17 @@ export function planGitHubAppConfig(source?: EnvSource): GitHubAppConfig {
   return present === 0 ? "absent" : "partial";
 }
 
-/** 화면 갈래(D4a)의 입구 — `complete`일 때만 GitHub 연결 컨트롤을 그린다. 함수 안에서 읽는다(모듈 최상위 평가 금지 — CLAUDE.md). */
+/**
+ * 화면 갈래(D4a)의 입구 — **자격증명 넷**(ID·개인키·client id·secret)이 다 있으면 GitHub 연결 컨트롤을 그린다(D28). 슬러그는 설치 링크만 가른다 —
+ * hosted에서 슬러그가 빠져도 연결·해제·쓰기는 되므로 카드·탭을 지우지 않고 설치 버튼만 사라진다(CLAUDE.md "조용히 사라진다").
+ * ⚠️ preflight의 다섯 all-or-none 그룹 규칙(`planGitHubAppConfig`)과 다른 판정이다 — 그쪽은 셀프 호스팅 기동 거부다.
+ * 함수 안에서 읽는다(모듈 최상위 평가 금지 — CLAUDE.md).
+ */
 export function githubAppConfigured(source?: EnvSource): boolean {
-  return planGitHubAppConfig(source) === "complete";
+  return [
+    optionalEnv("GITHUB_APP_ID", source),
+    optionalEnv("GITHUB_APP_PRIVATE_KEY", source),
+    optionalEnv("GITHUB_APP_CLIENT_ID", source),
+    optionalEnv("GITHUB_APP_CLIENT_SECRET", source),
+  ].every((value) => value !== undefined);
 }
