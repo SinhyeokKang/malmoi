@@ -290,6 +290,8 @@ const DIRECT_READS_ALLOWED: Record<string, Record<string, number>> = {
   "prisma.config.ts": { PRISMA_TARGET: 1, "[]": 1 },
   "scripts/finalize-credentials.ts": { "*": 1 },
   "scripts/preflight.ts": { "*": 1 },
+  // Developer smoke-only input: the tested pure parser reads only GITLAB_TEST_TOKEN/PROJECT outside the app (D27).
+  "scripts/smoke-gitlab.ts": { "*": 1 },
 };
 
 /** 앱 설정이 아니라 플랫폼·빌드·스크립트가 세우는 이름 — preflight 표에 들지 않는다. */

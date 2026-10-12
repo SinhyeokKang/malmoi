@@ -21,6 +21,7 @@
     "push:local": "tsx scripts/push-local.ts",
     "smoke:blob": "NODE_OPTIONS=--conditions=react-server tsx scripts/smoke-blob.ts",
     "smoke:github": "tsx scripts/smoke-github.ts",
+    "smoke:gitlab": "tsx scripts/smoke-gitlab.ts",
     "adapter-survey": "tsx scripts/adapter-survey.ts",
     "guide:check": "tsx scripts/guide-check.ts",
     "preflight": "tsx scripts/preflight.ts",
