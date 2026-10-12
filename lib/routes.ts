@@ -241,7 +241,7 @@ export const routes = {
   /** 릴리스 노트 — 원문은 GitHub Release이고 이 페이지가 읽어 보여 준다. 사이드바 하단 · 사용자 메뉴 · 공개 헤더·푸터가 가리킨다. */
   changelog: (): string => "/changelog",
   /**
-   * 문서 — `page`는 SUMMARY slug(`"setup/workflow"`), `anchor`는 그 페이지의 H2 `{#id}`.
+   * 문서 — `page`는 SUMMARY slug(`"create/workflow"`), `anchor`는 그 페이지의 H2 `{#id}`.
    * ⚠️ **호출의 인자는 리터럴이어야 한다** — `lib/guide/__tests__/docs-links.test.ts`가 `app`·`components`·`lib`의 호출을
    * 전수로 읽어 대상 페이지·앵커가 원고에 있는지 본다(경로 문자열은 타입이 못 본다 — POSTMORTEM 2026-09-05).
    * SUMMARY에서 온 slug를 잇는 자리는 `lib/guide/href.ts`의 `docHref`다.

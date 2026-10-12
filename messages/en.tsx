@@ -3869,7 +3869,7 @@ export const en = {
             Repositories that read translations through a hook ({hook}) also need the {wrapper} variable in their CI jobs — see {doc}.
           </>
         ),
-        /** `hookHint`의 링크 라벨 — `/docs/setup/gitlab-ci#gitlab-ci`로 간다(그 절이 `MALMOI_I18N_WRAPPER`를 설명한다). ⚠️ 대상 페이지의 h1과 같은 글자다. */
+        /** `hookHint`의 링크 라벨 — `/docs/create/gitlab-ci#gitlab-ci`로 간다(그 절이 `MALMOI_I18N_WRAPPER`를 설명한다). ⚠️ 대상 페이지의 h1과 같은 글자다. */
         hookDoc: "Add the GitLab CI jobs",
       },
       /** GitLab CI/CD 변수 등록 단계(design-brief G7) — 보호 변수는 보호 브랜치에만 노출되므로 base 브랜치가 보호돼야 한다. */
@@ -3883,7 +3883,7 @@ export const en = {
         </>
       ),
       /**
-       * `hookHint`의 링크 라벨 — `/docs/setup/workflow#workflow`로 간다. ⚠️ **대상 페이지의 h1과 같은 글자다**(#121 —
+       * `hookHint`의 링크 라벨 — `/docs/create/workflow#workflow`로 간다. ⚠️ **대상 페이지의 h1과 같은 글자다**(#121 —
        * `docs-content.test.tsx`가 원고와 대조한다). 운영 문서 경로는 제3자에게 의미가 없다.
        */
       hookDoc: "Add the workflow",
