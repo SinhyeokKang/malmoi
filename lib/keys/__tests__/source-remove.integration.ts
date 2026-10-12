@@ -59,7 +59,7 @@ afterAll(async () => {
 });
 
 const PUSH_TOKEN = "isolated-source-remove-fixture";
-const REPOSITORY = { repositoryId: "123", installationId: "456", repoOwner: "o", repoName: "r", baseBranch: "main" };
+const REPOSITORY = { repositoryId: "123", repoHost: "github", gitlabConnectionId: null, installationId: "456", repoOwner: "o", repoName: "r", baseBranch: "main" };
 const OWNER = { userId: "owner" };
 const OLD_COMMIT_AT = new Date("2026-12-01T00:00:00Z");
 const HEAD_AT = "2026-10-01T00:00:00.000Z";

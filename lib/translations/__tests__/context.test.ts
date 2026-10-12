@@ -8,6 +8,7 @@ import { confirmationValid, deliveryContextFingerprint, type DeliveryContextInpu
  * 적재 쪽 무효화는 이 지문이 든다 — 되돌아가 옛 기준이 부활할 수 없다. 되돌릴 수 있는 설정(브랜치·리포)은 명시 무효화가 따로 막는다.
  */
 const base: DeliveryContextInput = {
+  repoHost: "github",
   repositoryId: "100",
   baseBranch: "main",
   surface: { id: "s1", importRevision: 3, adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", nested: false, nestedByPath: null, baseLocale: "en" },
@@ -20,6 +21,12 @@ describe("deliveryContextFingerprint", () => {
    */
   it("기존 GitHub 지문은 바이트 그대로다", () => {
     expect(deliveryContextFingerprint(base)).toBe("e9b4d80c75530e9f5b56b1aa9b475a914c7653c77f20863cc89ce64bcbe4bba2");
+  });
+
+  it("⚠️ 같은 숫자 id라도 GitLab이면 다른 지문이다 — 호스트는 GitHub이 아닐 때만 섞는다", () => {
+    const gitlab = deliveryContextFingerprint({ ...base, repoHost: "gitlab" });
+    expect(gitlab).toMatch(/^[0-9a-f]{64}$/);
+    expect(gitlab).not.toBe(deliveryContextFingerprint(base));
   });
 
   it("같은 입력은 같은 지문이다", () => {

@@ -78,7 +78,7 @@ const OLD = "a".repeat(40);
 const MERGE = "d".repeat(40);
 const oldAt = new Date("2026-09-10T00:00:00Z");
 const mergeAt = "2026-09-29T09:00:00Z";
-const repository = { repositoryId: "123", installationId: "456", repoOwner: "o", repoName: "r", baseBranch: "main" };
+const repository = { repositoryId: "123", repoHost: "github", gitlabConnectionId: null, installationId: "456", repoOwner: "o", repoName: "r", baseBranch: "main" };
 
 async function seed() {
   await prisma.project.create({ data: { id: "p", slug: "fixture", name: "Fixture", ...repository,
@@ -94,7 +94,7 @@ async function seed() {
 /** `/api/pull`이 고른 행과 같은 모양 — 라우트의 `select`를 그대로 읽는다. */
 async function target() {
   const row = await prisma.project.findUniqueOrThrow({ where: { id: "p" }, select: {
-    id: true, slug: true, repoOwner: true, repoName: true, baseBranch: true, installationId: true, repositoryId: true, lastNightlyAt: true,
+    id: true, slug: true, repoOwner: true, repoName: true, baseBranch: true, repoHost: true, gitlabConnectionId: true, installationId: true, repositoryId: true, lastNightlyAt: true,
     surfaces: { select: { id: true, slug: true, archivedAt: true, lastCommitSha: true, adapterName: true, pathTemplate: true, baseLocale: true, lastImportError: true, importRevision: true } },
   } });
   return row;
@@ -205,13 +205,13 @@ it("마감으로 멈춘 프로젝트는 다음 밤 제때 방문한 프로젝트
   github({ refSha: { "heads/main": OLD } });
   // q는 제때 방문했다(upToDate) — 방문 기록이 지금으로 전진한다.
   const q = await prisma.project.findUniqueOrThrow({ where: { id: "q" }, select: {
-    id: true, slug: true, repoOwner: true, repoName: true, baseBranch: true, installationId: true, repositoryId: true, lastNightlyAt: true,
+    id: true, slug: true, repoOwner: true, repoName: true, baseBranch: true, repoHost: true, gitlabConnectionId: true, installationId: true, repositoryId: true, lastNightlyAt: true,
     surfaces: { select: { id: true, slug: true, archivedAt: true, lastCommitSha: true, adapterName: true, pathTemplate: true, baseLocale: true, lastImportError: true, importRevision: true } } } });
   expect(await runNightly(prisma, q, () => 0)).toEqual({ action: "skip", outcome: "upToDate" });
   // p는 마감으로 멈췄다.
   github({});
   await late();
-  const rows = await prisma.project.findMany({ select: { slug: true, installationId: true, repositoryId: true, archivedAt: true, lastNightlyAt: true,
+  const rows = await prisma.project.findMany({ select: { slug: true, repoHost: true, gitlabConnectionId: true, installationId: true, repositoryId: true, archivedAt: true, lastNightlyAt: true,
     surfaces: { select: { archivedAt: true, lastCommitSha: true } } } });
   expect(selectPullTargets(rows, 50).targets).toEqual(["fixture", "other"]);
   expect(await stampOf("q")).not.toEqual(before);

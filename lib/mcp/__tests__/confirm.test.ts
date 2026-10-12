@@ -13,7 +13,7 @@ import { planSampleConfirmations, type ConfirmedCandidate } from "../confirm";
 
 const SECRET = "test-signing-secret";
 const now = new Date("2026-09-28T12:00:00.000Z");
-const context = { userId: "u1", repositoryId: "r1", installationId: "i1", ref: "main", headSha: "abc123" };
+const context = { userId: "u1", repositoryId: "r1", connection: "github:i1", ref: "main", headSha: "abc123" };
 const format = { adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", locales: ["en", "fr"] };
 
 function sign(overrides: Partial<typeof context & { format: typeof format }> = {}, at: Date = now): string {
@@ -78,7 +78,7 @@ describe("planSampleConfirmations — sample-expired (변조·만료·컨텍스�
   it.each([
     ["userId", { userId: "u2" }],
     ["repositoryId", { repositoryId: "r2" }],
-    ["installationId", { installationId: "i2" }],
+    ["connection", { connection: "github:i2" }],
     ["ref", { ref: "release" }],
     ["headSha", { headSha: "def456" }],
   ] as const)("%s 불일치 — 다른 사용자·리포·설치·ref·head의 확인값", (_field, override) => {

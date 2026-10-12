@@ -64,7 +64,9 @@ const failed = (slug: string): SurfaceRow => ({ ...synced(slug), ...importOutcom
 const syncing = (slug: string): SurfaceRow => ({ ...synced(slug), lastImportStartedAt: T1 });
 
 type Fixture = {
+  repoHost: string;
   installationId: string | null;
+  gitlabConnectionId: string | null;
   repositoryId: string | null;
   archivedAt: Date | null;
   surfaces: SurfaceRow[];
@@ -79,7 +81,7 @@ const PR = { number: 7, url: "https://github.com/acme/web/pull/7" };
 const PROBE_OK: ProbeResult = { status: "ok", installationId: "inst-1", repositoryId: "repo-1", fullName: "acme/web", defaultBranch: "main" };
 
 const fixture = (over: Partial<Fixture> = {}): Fixture => ({
-  installationId: "inst-1", repositoryId: "repo-1", archivedAt: null, surfaces: [synced("web")], pending: 0, openPr: null, probe: PROBE_OK, ...over,
+  repoHost: "github", gitlabConnectionId: null, installationId: "inst-1", repositoryId: "repo-1", archivedAt: null, surfaces: [synced("web")], pending: 0, openPr: null, probe: PROBE_OK, ...over,
 });
 
 // ── 화면 쪽 매핑의 사본 (위 머리 주석) ─────────────────────────────────────
@@ -115,14 +117,14 @@ type Observed = {
 const EMPTY: ProjectListAggregates = { locales: [], keyTotals: new Map(), cells: [], newKeys: new Map(), unsent: new Map(), unsentSurfaces: new Map(), unsentAt: new Map(), newKeysBySurface: new Map(), unsentBySurface: new Map() };
 
 function observe(f: Fixture, J: Judgments): Observed {
-  const project = { installationId: f.installationId, repositoryId: f.repositoryId, repoOwner: "acme", repoName: "web", surfaces: f.surfaces };
+  const project = { repoHost: "github", gitlabConnectionId: null, installationId: f.installationId, repositoryId: f.repositoryId, repoOwner: "acme", repoName: "web", surfaces: f.surfaces };
   const archived = f.archivedAt !== null;
 
   // 목록 — 조회의 조립 층을 지난다(🔴 E의 결함은 판정이 아니라 조립에 있었다).
   const member: ProjectListMemberRow = {
     role: "OWNER",
     project: {
-      id: "p1", slug: "acme", name: "Acme", image: null, installationId: f.installationId, archivedAt: f.archivedAt, repoOwner: "acme", repoName: "web",
+      id: "p1", slug: "acme", name: "Acme", image: null, repoHost: "github", gitlabConnectionId: null, installationId: f.installationId, archivedAt: f.archivedAt, repoOwner: "acme", repoName: "web",
       repositoryId: f.repositoryId, baseBranch: "main", lastPrUrl: f.openPr === null ? null : PR.url, _count: { members: 1 }, surfaces: f.surfaces,
     },
   };
@@ -250,7 +252,7 @@ const MATRIX: Row[] = [
   {
     // 설치 없음은 readiness가 `setup`이라 Home·적재 거부가 판정에 닿지 않는다 — 적재 거부 칸의 "Not connected 낱말"은 실제로 `not-ready`다(U2 노트).
     input: "설치 없음",
-    fixture: fixture({ installationId: null, repositoryId: null, surfaces: [{ ...synced("web"), lastCommitSha: null }] }),
+    fixture: fixture({ repoHost: "github", gitlabConnectionId: null, installationId: null, repositoryId: null, surfaces: [{ ...synced("web"), lastCommitSha: null }] }),
     list: { chip: "setup", banner: "setup" },
     home: { readiness: "setup" },
     settings: "notConnected",

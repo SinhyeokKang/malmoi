@@ -42,6 +42,10 @@ export type ProjectSeed = {
   slug: string;
   name?: string;
   installationId?: string | null;
+  /** 리포 호스트(gitlab-repositories). 기본 `"github"`이다(스키마 기본값과 같다). */
+  repoHost?: string;
+  /** GitLab 프로젝트가 참조하는 계정 연결. 기본 null. */
+  gitlabConnectionId?: string | null;
   /** 고정된 리포 id. 기본은 null이다(`FORMAT`) — 열린 PR 게이트(nightly-sync D1)는 null이면 GitHub을 안 부른다. */
   repositoryId?: string | null;
   /**
@@ -155,7 +159,9 @@ const FORMAT = {
   repoOwner: "o",
   repoName: "r",
   baseBranch: "main",
+  repoHost: "github",
   installationId: "1",
+  gitlabConnectionId: null as string | null,
   /**
    * ⚠️ **기본이 null이다** — sec-audit-2 이전에 만들어진 행이 그 상태이고, `connectRepository`가
    * "아직 고정되지 않았다"를 정상 입력으로 받는다. 값이 필요한 테스트는 시드에서 준다.
@@ -452,6 +458,8 @@ export function createHarness(seed: Seed = {}) {
           if (inner["slug"] === true) p["slug"] = project?.slug ?? "";
           if (inner["name"] === true) p["name"] = project?.name ?? project?.slug ?? "";
           if (inner["installationId"] === true) p["installationId"] = project?.installationId ?? null;
+          if (inner["repoHost"] === true) p["repoHost"] = project?.repoHost ?? "github";
+          if (inner["gitlabConnectionId"] === true) p["gitlabConnectionId"] = project?.gitlabConnectionId ?? null;
           if (inner["lastCommitSha"] === true) p["lastCommitSha"] = project?.lastCommitSha ?? null;
           if (inner["archivedAt"] === true) p["archivedAt"] = project?.archivedAt ?? null;
           if (inner["repoOwner"] === true) p["repoOwner"] = project?.repoOwner ?? "";
@@ -1048,9 +1056,12 @@ export function createHarness(seed: Seed = {}) {
     },
     project: {
       findUnique: findProject, findMany: findManyProjects, create: createProject, update: updateProject,
-      async updateMany(args: { where: { id: string; lastImportStartedAt: Date }; data: Record<string, unknown> }) {
-        const row = projects.find((p) => p.id === args.where.id &&
-          p.lastImportStartedAt?.getTime() === args.where.lastImportStartedAt.getTime());
+      async updateMany(args: { where: { id: string; lastImportStartedAt?: Date; gitlabConnection?: unknown }; data: Record<string, unknown> }) {
+        const { lastImportStartedAt } = args.where;
+        // 멤버 제거의 연결자 참조 비우기(`lib/auth/members.ts`, gitlab-repositories) — 하네스는 GitLab 연결 행을 모델링하지 않으므로 참조가 있는 행만 대상이다.
+        const row = lastImportStartedAt === undefined
+          ? projects.find((p) => p.id === args.where.id && args.where.gitlabConnection !== undefined && p.gitlabConnectionId !== null)
+          : projects.find((p) => p.id === args.where.id && p.lastImportStartedAt?.getTime() === lastImportStartedAt.getTime());
         if (row === undefined) return { count: 0 };
         Object.assign(row, args.data);
         return { count: 1 };

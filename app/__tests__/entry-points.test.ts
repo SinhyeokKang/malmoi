@@ -139,8 +139,13 @@ const USER_SCOPED_ACTIONS = new Set([
   "account/actions.ts#deleteProfileImage",
   // The display name is the user's own — a person with no project still owns it.
   "account/actions.ts#updateProfileName",
+  // 계정 GitLab 연결은 사용자 소유다(gitlab-repositories) — 프로젝트가 없는 사용자도 ①에서 PAT를 붙여 넣고 `/account`에서 해제한다. 세션의 userId로만 좁힌다.
+  "account/actions.ts#connectGitLab",
+  "account/actions.ts#disconnectGitLab",
   // 생성 경로 — 아직 프로젝트가 없다 (ARCHITECTURE §6.1)
   "projects/actions.ts#listConnectableRepos",
+  // ①의 GitLab 리포 목록 — 호출자 자신의 연결로만 읽는다(gitlab-repositories).
+  "projects/actions.ts#listConnectableGitLabRepos",
   "projects/actions.ts#detectRepoFormats",
   "projects/actions.ts#listRepoBranches",
   "projects/actions.ts#loadCandidateSample",
@@ -186,6 +191,8 @@ const DELEGATED_CORES = new Map([
   ["addSources", "lib/onboarding-run/add.ts"],
   ["importRepository", "lib/onboarding-run/import.ts"],
   ["rotateToken", "lib/onboarding-run/rotate-token.ts"],
+  // GitLab 재연결 — 코어가 `getProjectAccess`(project:settings) → 잠금 안 재판정을 든다(gitlab-repositories).
+  ["reconnectGitLabProject", "lib/onboarding-run/gitlab-reconnect.ts"],
 ]);
 
 /** 멤버 프로젝트 조인은 프로젝트별 가드와 다른 인가 경계다. */

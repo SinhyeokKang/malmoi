@@ -38,7 +38,7 @@ describe("triggerPull — 조립", () => {
         repoOwner: "o",
         repoName: "r",
         baseBranch: "main",
-        installationId: "1",
+        repoHost: "github", gitlabConnectionId: null, installationId: "1",
         repositoryId: "100",
         adapterName: "json-catalog",
         pathTemplate: "i18n/{locale}.json",
@@ -65,7 +65,7 @@ describe("triggerPull — 조립", () => {
         repoOwner: "o",
         repoName: "r",
         baseBranch: "main",
-        installationId: null,
+        repoHost: "github", gitlabConnectionId: null, installationId: null,
         adapterName: "json-catalog",
         pathTemplate: "i18n/{locale}.json",
         nested: null,
@@ -101,7 +101,7 @@ describe("triggerPull — 조립", () => {
         repoOwner: "o",
         repoName: "r",
         baseBranch: "dev",
-        installationId: "1",
+        repoHost: "github", gitlabConnectionId: null, installationId: "1",
         repositoryId: "100",
         adapterName: "yaml-catalog",
         pathTemplate: "config/locales/{locale}.yml",
@@ -131,7 +131,7 @@ describe("triggerPull — 조립", () => {
     hoisted.createGitClient.mockResolvedValue(client);
     const columns = { adapterName: "yaml-catalog", pathTemplate: "config/locales/{locale}.yml", nested: null, nestedByPath: null, baseLocale: "en" };
     hoisted.loadPullState.mockResolvedValue({
-      project: { id: "p1", slug: "fmt", repoOwner: "o", repoName: "r", baseBranch: "dev", installationId: "1", repositoryId: "100", lastPulledAt: null, ...columns },
+      project: { id: "p1", slug: "fmt", repoOwner: "o", repoName: "r", baseBranch: "dev", repoHost: "github", gitlabConnectionId: null, installationId: "1", repositoryId: "100", lastPulledAt: null, ...columns },
       surfaces: [{ id: "s1", slug: "default", ...columns, localeCodes: ["en", "fr"],
         keys: [{ id: "k", key: "a", sourceText: "one", orphaned: false, cells: { en: { value: "one" }, fr: { value: "un" } } }] }],
       maxUpdatedAt: new Date("2026-09-04T00:00:00Z"), unpublished: 1,
@@ -153,7 +153,7 @@ describe("triggerPull — 조립", () => {
  */
 describe("triggerPull — 전달 기준 배선", () => {
   const committingState = () => ({
-    project: { id: "p1", slug: "demo", repoOwner: "o", repoName: "r", baseBranch: "dev", installationId: "1", repositoryId: "100", lastPulledAt: null },
+    project: { id: "p1", slug: "demo", repoOwner: "o", repoName: "r", baseBranch: "dev", repoHost: "github", gitlabConnectionId: null, installationId: "1", repositoryId: "100", lastPulledAt: null },
     surfaces: [{ id: "s1", slug: "default", adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", nested: false, nestedByPath: null, baseLocale: "en",
       localeCodes: ["en"], keys: [{ key: "a", sourceText: "A", orphaned: false, cells: { en: { value: "A" } } }] }],
     maxUpdatedAt: new Date("2026-09-04T00:00:00Z"), unpublished: 1, pendingEdits: [],
@@ -187,7 +187,7 @@ describe("triggerPull — 전달 기준 배선", () => {
 /** **지문 인자 배선** (mcp-connector T6.5). `triggerPull`이 넷째 인자를 `runPull`에 그대로 넘기고, 불일치면 무효화·확정 없이 끝난다. */
 describe("triggerPull — expectedFingerprint 배선", () => {
   const state = () => ({
-    project: { id: "p1", slug: "demo", repoOwner: "o", repoName: "r", baseBranch: "dev", installationId: "1", repositoryId: "100", lastPulledAt: null },
+    project: { id: "p1", slug: "demo", repoOwner: "o", repoName: "r", baseBranch: "dev", repoHost: "github", gitlabConnectionId: null, installationId: "1", repositoryId: "100", lastPulledAt: null },
     surfaces: [{ id: "s1", slug: "default", adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", nested: false, nestedByPath: null, baseLocale: "en",
       localeCodes: ["en"], keys: [{ key: "a", sourceText: "A", orphaned: false, cells: { en: { value: "A" } } }] }],
     maxUpdatedAt: new Date("2026-09-04T00:00:00Z"), unpublished: 1, pendingEdits: [{ id: "t", token: "tok" }],

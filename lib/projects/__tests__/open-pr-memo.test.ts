@@ -14,7 +14,7 @@ import { createOpenPrMemo, OPEN_PR_MEMO_MAX, OPEN_PR_MEMO_TTL_MS } from "../open
  */
 
 const URL_ = "https://github.com/acme/web/pull/7";
-const project = { repoOwner: "acme", repoName: "web", installationId: "1", repositoryId: "10" };
+const project = { repoOwner: "acme", repoName: "web", repoHost: "github", gitlabConnectionId: null, installationId: "1", repositoryId: "10" };
 
 describe("createOpenPrMemo", () => {
   it("TTL 안에서는 다시 묻지 않는다 — PR 있음·없음 둘 다", async () => {
@@ -55,6 +55,9 @@ describe("createOpenPrMemo", () => {
       ["alpha", { ...project, repositoryId: null }],
       ["alpha", { ...project, repoOwner: "other" }],
       ["alpha", { ...project, repoName: "app" }],
+      // 같은 숫자 id의 다른 호스트 · 다른 OWNER의 GitLab 재연결(gitlab-repositories 0단계 판정)
+      ["alpha", { ...project, repoHost: "gitlab" }],
+      ["alpha", { ...project, gitlabConnectionId: "conn-b" }],
       // 같은 리포의 다른 프로젝트 — sync 브랜치가 slug에서 나오므로 PR이 다르다.
       ["beta", project],
     ] as const) {

@@ -32,6 +32,8 @@ const SITES = [
   // runFirstIngest
   "lib/onboarding/ingest.ts#ingestFirstSnapshot",
   "app/(edit)/projects/[slug]/settings/actions.ts#connectRepository",
+  // reconnectGitLabRepository — GitLab 연결 참조 교체(gitlab-repositories). 계정 GitLab 연결 입력·해제는 사용자 축이라 프로젝트 잠금이 없다.
+  "lib/onboarding-run/gitlab-reconnect.ts#reconnectGitLabProject",
   // updateRepositorySettings · updateProjectName (MCP update_project)
   "lib/settings/update.ts#changeBaseBranch",
   "lib/settings/update.ts#renameProject",
@@ -67,6 +69,8 @@ const TOKEN_SITES = [
   "lib/keys/save-key.ts#applyKeySaveBatch",
   "lib/sync/run.ts#startRun",
   "lib/onboarding-run/rotate-token.ts#rotateToken",
+  // 주체를 받는 코어라 credential을 싣는다 — MCP 도구가 붙으면(D2) 그대로 토큰 재판정을 지난다.
+  "lib/onboarding-run/gitlab-reconnect.ts#reconnectGitLabProject",
 ];
 
 /**

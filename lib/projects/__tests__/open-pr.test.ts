@@ -8,7 +8,7 @@ import { loadOpenPrUrl } from "../open-pr";
  * 조회 실패는 `undefined`(모름)로 접혀 화면에서 Dialog 안내가 빠질 뿐이다 — 원인을 볼 곳이 서버 로그 한 줄뿐이다
  * (launch-readiness L5.2). ⚠️ **GitHub 상태 코드는 남기되 메시지는 안 남긴다**(`classifyFailure` 규칙).
  */
-const project = { repoOwner: "o", repoName: "r", installationId: "1", repositoryId: "2", archivedAt: null };
+const project = { repoOwner: "o", repoName: "r", repoHost: "github", gitlabConnectionId: null, installationId: "1", repositoryId: "2", archivedAt: null };
 let log: { mock: { calls: unknown[][] }; mockRestore: () => void };
 beforeEach(() => { log = vi.spyOn(console, "error").mockImplementation(() => {}); });
 afterEach(() => log.mockRestore());

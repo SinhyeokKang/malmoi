@@ -15,7 +15,9 @@ import { selectPullTargets } from "../targets";
 const project = (
   over: Partial<{
     slug: string;
+    repoHost: string;
     installationId: string | null;
+    gitlabConnectionId: string | null;
     repositoryId: string | null;
     surfaces: { archivedAt: Date | null; lastCommitSha: string | null }[];
     archivedAt: Date | null;
@@ -23,7 +25,7 @@ const project = (
   }> = {},
 ) => ({
   slug: "acme",
-  installationId: "1",
+  repoHost: "github", gitlabConnectionId: null, installationId: "1",
   repositoryId: "1035512",
   surfaces: [{ archivedAt: null, lastCommitSha: "a".repeat(40) }],
   archivedAt: null,
@@ -38,7 +40,7 @@ describe("selectPullTargets — 준비된 프로젝트만", () => {
   });
 
   it("`installationId`가 null이면 뺀다 — `runPull`이 던지는 자리를 미리 막는다", () => {
-    expect(selectPullTargets([project({ installationId: null })], 50).targets).toEqual([]);
+    expect(selectPullTargets([project({ repoHost: "github", gitlabConnectionId: null, installationId: null })], 50).targets).toEqual([]);
   });
 
   it("⚠️ 리포 ID가 고정 안 된 옛 행도 뺀다 — `createClient`가 확실히 던지는 자리다", () => {
@@ -54,7 +56,7 @@ describe("selectPullTargets — 준비된 프로젝트만", () => {
 
   it("`skillflo-web` 모양(설치 없음 + 더미 SHA)은 **의도적으로** 빠진다 (ARCHITECTURE §3.05)", () => {
     const rows = [
-      project({ slug: "skillflo-web", installationId: null, surfaces: [{ archivedAt: null, lastCommitSha: "deadbeef" }] }),
+      project({ slug: "skillflo-web", repoHost: "github", gitlabConnectionId: null, installationId: null, surfaces: [{ archivedAt: null, lastCommitSha: "deadbeef" }] }),
       project({ slug: "order-check" }),
     ];
     expect(selectPullTargets(rows, 50).targets).toEqual(["order-check"]);
@@ -118,7 +120,7 @@ describe("selectPullTargets — 순회 상한 (sec-audit 26)", () => {
   });
 
   it("준비 안 된 프로젝트는 상한을 안 먹는다 — 필터가 자르기보다 앞이다", () => {
-    const rows = [...many(2), project({ slug: "zzz", installationId: null })];
+    const rows = [...many(2), project({ slug: "zzz", repoHost: "github", gitlabConnectionId: null, installationId: null })];
     expect(selectPullTargets(rows, 2)).toEqual({ targets: ["p000", "p001"], unprocessed: 0 });
   });
 });

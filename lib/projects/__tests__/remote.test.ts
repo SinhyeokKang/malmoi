@@ -17,7 +17,7 @@ const target = (over: Partial<RemoteTarget> = {}): RemoteTarget => ({
   projectId: "p1",
   repoOwner: "o",
   repoName: "r",
-  installationId: "1",
+  repoHost: "github", gitlabConnectionId: null, installationId: "1",
   repositoryId: "9001",
   baseBranch: "release",
   lastPrUrl: "https://github.com/o/r/pull/142",
@@ -181,7 +181,7 @@ it("완료 순서가 결과 매핑을 바꾸지 않는다", async () => {
 
 it.each([
   ["보관", { archived: true }],
-  ["설치 ID 없음", { installationId: null }],
+  ["설치 ID 없음", { repoHost: "github", gitlabConnectionId: null, installationId: null }],
   ["리포 id 없음", { repositoryId: null }],
   ["신호 입력 없음", { surfaces: [], lastPrUrl: null }],
 ])("%s이면 요청이 0이다 — 클라이언트도 만들지 않는다", async (_label, over) => {

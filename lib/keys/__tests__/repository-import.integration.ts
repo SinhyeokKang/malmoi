@@ -46,7 +46,7 @@ afterAll(async () => {
 });
 
 
-const repository = { repositoryId: "123", installationId: "456", repoOwner: "o", repoName: "r", baseBranch: "main" };
+const repository = { repositoryId: "123", repoHost: "github", gitlabConnectionId: null, installationId: "456", repoOwner: "o", repoName: "r", baseBranch: "main" };
 const pulled = new Date("2026-09-10T00:00:00Z");
 const commitAt = "2026-09-15T00:00:00Z";
 const pushToken = "isolated-repository-sync-fixture";

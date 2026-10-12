@@ -179,6 +179,8 @@ const CLIENT_LIB_FILES = [
   "lib/pull/ref-slug.ts",
   "lib/mcp/brand.ts",
   "lib/relative-time.ts",
+  // readiness의 연결 증거(`hasRepoConnection`, gitlab-repositories) — import 0인 잎이다. I/O는 형제 `./index`가 들고 여기는 판정뿐이다.
+  "lib/repo-host/target.ts",
   "lib/routes.ts",
   // D5 Command의 순환·활성 보존 판정 — import 0인 잎이다. 다른 검색 모듈은 E의 실제 소비 때 등록한다.
   "lib/search/keys.ts",

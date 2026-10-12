@@ -108,7 +108,7 @@ async function addFixture() {
   await seed({ id: "add", lastPulledAt: PULLED, archived: false });
   await prisma.user.create({ data: { id: "owner", email: "fixture" } });
   await prisma.projectMember.create({ data: { projectId: "add", userId: "owner", role: "OWNER" } });
-  const repository = { repositoryId: "123", installationId: "456", repoOwner: "o", repoName: "r", baseBranch: "main" };
+  const repository = { repositoryId: "123", repoHost: "github", gitlabConnectionId: null, installationId: "456", repoOwner: "o", repoName: "r", baseBranch: "main" };
   await prisma.project.update({ where: { id: "add" }, data: repository });
   return { projectId: "add", userId: "owner", repository,
     format: { adapter: "json-catalog" as const, pathTemplate: "second/{locale}.json", locales: ["en", "ko"] },
@@ -510,7 +510,7 @@ it("인가 집합 밖의 프로젝트는 섞이지 않는다", async () => {
  */
 it("목록 행이 표면 A 동기화 중 + 표면 B 실패를 실패로 말한다", async () => {
   await seed({ id: "p1", lastPulledAt: PULLED, archived: false });
-  await prisma.project.update({ where: { id: "p1" }, data: { installationId: "1", repositoryId: "10" } });
+  await prisma.project.update({ where: { id: "p1" }, data: { repoHost: "github", gitlabConnectionId: null, installationId: "1", repositoryId: "10" } });
   await prisma.translationSurface.update({ where: { id: "surface-p1" }, data: { lastCommitSha: "a".repeat(40), lastImportStartedAt: AFTER } });
   await prisma.translationSurface.create({ data: { id: "surface-p1-b", projectId: "p1", slug: "second", adapterName: "json-catalog",
     pathTemplate: "second/{locale}.json", nested: false, baseLocale: "en", lastCommitSha: "b".repeat(40), lastImportError: "parse-failed", lastImportFailedAt: AFTER } });
@@ -720,7 +720,7 @@ async function creationFixture() {
   const snapshot = vi.fn(async () => ({ status: "ok", headSha: "a".repeat(40), headCommittedAt: AFTER.toISOString(),
     files: paths.map(path => ({ path, sha: path, size: 20 })) }));
   vi.doMock("@/lib/github", () => ({
-    probeRepo: async () => ({ status: "ok", installationId: "77", repositoryId: "123", fullName: "acme/web", defaultBranch: "main" }),
+    probeRepo: async () => ({ status: "ok", repoHost: "github", gitlabConnectionId: null, installationId: "77", repositoryId: "123", fullName: "acme/web", defaultBranch: "main" }),
   }));
   const { sizesFromSnapshot } = await import("@/lib/repo-host/reader");
   vi.doMock("@/lib/repo-host", () => ({

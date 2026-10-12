@@ -1731,9 +1731,9 @@ it("브랜치 목록 실패에도 이미 확인한 기본 브랜치를 보존한
   });
 });
 
-function sampleProof(over: Partial<{ userId: string; repositoryId: string; installationId: string; ref: string; headSha: string }> = {}, issuedAt = new Date()) {
+function sampleProof(over: Partial<{ userId: string; repositoryId: string; connection: string; ref: string; headSha: string }> = {}, issuedAt = new Date()) {
   return signSampleConfirmation({
-    userId: OWNER, repositoryId: PROBE_OK.repositoryId, installationId: PROBE_OK.installationId,
+    userId: OWNER, repositoryId: PROBE_OK.repositoryId, connection: `github:${PROBE_OK.installationId}`,
     ref: "develop", headSha: HEAD_SHA, ...over,
     format: { adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", locales: ["en", "fr", "ko"] },
   }, "test-secret-0123456789abcdef", issuedAt);

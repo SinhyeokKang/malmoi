@@ -72,7 +72,7 @@ afterAll(async () => {
 
 const HEAD = "a".repeat(40);
 const COMMIT_AT = new Date("2026-09-10T00:00:00Z");
-const REPOSITORY = { repositoryId: "123", installationId: "456", repoOwner: "o", repoName: "r", baseBranch: "main" };
+const REPOSITORY = { repositoryId: "123", repoHost: "github", gitlabConnectionId: null, installationId: "456", repoOwner: "o", repoName: "r", baseBranch: "main" };
 
 /**
  * 소스 둘 — `web`(기본, 미전달 편집 하나 · 검토 대기 · 적재 실패)과 `app`. 제거하는 쪽이 Inbox·Home·Publish의 모든 줄을 든다.
@@ -182,7 +182,7 @@ it("야간 방문은 제거된 소스를 대상에 넣지 않는다", async () =
   db.client = fake.client;
   db.reader = { snapshot: vi.fn(), blob: vi.fn() } as unknown as RepoReader;
   const target = await prisma.project.findUniqueOrThrow({ where: { id: "p" }, select: {
-    id: true, slug: true, repoOwner: true, repoName: true, baseBranch: true, installationId: true, repositoryId: true, lastNightlyAt: true,
+    id: true, slug: true, repoOwner: true, repoName: true, baseBranch: true, repoHost: true, gitlabConnectionId: true, installationId: true, repositoryId: true, lastNightlyAt: true,
     surfaces: { select: { id: true, slug: true, archivedAt: true, lastCommitSha: true, adapterName: true, pathTemplate: true, baseLocale: true, lastImportError: true, importRevision: true } },
   } });
   expect(target.surfaces.map(surface => surface.slug).sort()).toEqual(["app", "web"]);

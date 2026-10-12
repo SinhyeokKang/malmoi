@@ -285,3 +285,78 @@ describe("커밋 경로가 사용자 토큰을 모른다", () => {
     expect(APP_CREDENTIAL.test(codeOnly(GITHUB_TS))).toBe(true);
   });
 });
+
+/**
+ * **GitLab 경계** (gitlab-repositories design §5 · tasks §2 B2). GitLab은 Octokit이 아니라 `fetch`로 부르고 연결자 PAT가 쓰기 신원이라, 위 GitHub
+ * 규칙(App 개인키·`rest.*` 쓰기)으로는 지나간다. 여기서 지킬 것은 둘이다:
+ *
+ * 1. **쓰기(Sync·Publish·야간)는 그 프로젝트가 참조하는 연결의 PAT만 쓴다** — 호출자 자신의 연결(`openGitLabConnection(…, { userId })`)을 열면
+ *    다른 사람의 프로젝트에 내 명의로 쓴다. 호출자 연결을 여는 자리는 **호출자 권한·① 목록**뿐이다(`ALLOWED_CALLER_CONNECTION`).
+ * 2. **연결 경로(`lib/gitlab-connect/`)는 GET만 부른다** — PAT 검증·권한 조회뿐이다. 비GET `fetch`는 쓰기다(`lib/sync/execution.ts`와 같은 정의).
+ *
+ * 완전성 기준은 **GitLab 클라이언트 모듈 import**다 — `@/lib/gitlab/…`(transport·C의 client)나 `@/lib/gitlab-connect/connection`(PAT를 여는 유일한
+ * 자리)을 무는 lib 파일은 전부 아래 규칙의 스캔 범위 안이어야 한다.
+ */
+const GITLAB_CONNECT_SOURCES = sourcesIn(join(ROOT, "lib/gitlab-connect"), "lib/gitlab-connect");
+const GITLAB_IO_SOURCES = sourcesIn(join(ROOT, "lib/gitlab"), "lib/gitlab");
+/** 호출자 자신의 계정 연결을 여는 형태. 프로젝트 쪽은 `{ connectionId }`로 연다. */
+const CALLER_CONNECTION = /openGitLabConnection\(\s*[^,]+,\s*\{\s*userId\b/;
+/** 호출자 연결을 열어도 되는 자리 — 호출자의 리포 권한(`checkRepoAccess`)과 ①의 리포 목록. 둘 다 그 사람이 무엇을 볼 수 있나를 묻는다(쓰지 않는다). */
+const ALLOWED_CALLER_CONNECTION = new Set(["lib/onboarding-run/access.ts", "lib/onboarding-run/gitlab-repos.ts"]);
+/** 비GET 요청 — `fetch(…, { method: "POST" })`·transport의 쓰기 메서드. GitLab은 Octokit 입구가 없어 메서드 리터럴이 쓰기의 표지다. */
+const GITLAB_WRITE = /method\s*:\s*["'`](POST|PUT|PATCH|DELETE)["'`]|\.(post|put|patch|delete)\(/i;
+/** GitLab 클라이언트 모듈 import — 완전성 검사의 기준. */
+const GITLAB_CLIENT_IMPORT = /from\s+["'](@\/lib\/gitlab\/[^"']+|@\/lib\/gitlab-connect\/connection|(\.\.?\/)+gitlab\/[^"']+|\.\/connection)["']/;
+
+describe("GitLab 경계 — 쓰기는 프로젝트가 참조하는 연결로만", () => {
+  it("검사식이 실제로 잡는다 — 호출자 연결 선택·비GET fetch·클라이언트 import", () => {
+    // 쓰기 경로가 호출자 세션에서 연결을 고르는 픽스처 — red여야 한다.
+    expect(CALLER_CONNECTION.test("const conn = await openGitLabConnection(prisma, { userId: session.userId });")).toBe(true);
+    expect(CALLER_CONNECTION.test("await openGitLabConnection(tx, {userId})")).toBe(true);
+    expect(CALLER_CONNECTION.test("await openGitLabConnection(prisma, { connectionId: target.connectionId });")).toBe(false);
+    // 연결 경로에 비GET fetch를 넣은 픽스처 — red여야 한다.
+    for (const line of ['await fetch(url, { method: "POST", body })', "await send(url, { method: 'DELETE' })", "await transport.post(path, body)", 'fetch(u, {method:`PUT`})']) {
+      expect(GITLAB_WRITE.test(line), line).toBe(true);
+    }
+    for (const line of ['await send(url, { method: "GET", headers })', "await transport.get(projectPath(id))"]) expect(GITLAB_WRITE.test(line), line).toBe(false);
+    expect(GITLAB_CLIENT_IMPORT.test('import { createGitLabTransport } from "@/lib/gitlab/transport";')).toBe(true);
+    expect(GITLAB_CLIENT_IMPORT.test('import { openGitLabConnection } from "@/lib/gitlab-connect/connection";')).toBe(true);
+    // 순수 판정·오류 갈래는 클라이언트가 아니다.
+    expect(GITLAB_CLIENT_IMPORT.test('import { isGitLabConnectError } from "@/lib/gitlab-connect/errors";')).toBe(false);
+  });
+
+  it("스캔 대상을 실제로 찾았다", () => {
+    expect(GITLAB_CONNECT_SOURCES.length).toBeGreaterThan(2);
+    expect(GITLAB_IO_SOURCES.length).toBeGreaterThan(0);
+  });
+
+  it("호출자 자신의 연결을 여는 자리는 호출자 권한·① 목록뿐이다 — 쓰기 경로(lib/pull·push·projects·publish·import·nightly·repo-host·gitlab)에 없다", () => {
+    const offenders = sourcesIn(join(ROOT, "lib"), "lib").filter((f) => CALLER_CONNECTION.test(codeOnly(f.source)) && !ALLOWED_CALLER_CONNECTION.has(f.rel)).map((f) => f.rel);
+    expect(offenders).toEqual([]);
+    // 허용 목록이 공허하지 않다 — 실제로 호출자 연결을 여는 자리가 있다.
+    expect(sourcesIn(join(ROOT, "lib"), "lib").filter((f) => CALLER_CONNECTION.test(codeOnly(f.source))).map((f) => f.rel).sort()).toEqual([...ALLOWED_CALLER_CONNECTION].sort());
+  });
+
+  it("app/는 PAT를 열지 않는다 — Server Action은 코어를 부르고 토큰을 만지지 않는다", () => {
+    const appSources = sourcesIn(join(ROOT, "app"), "app");
+    expect(appSources.filter((f) => /\bopenGitLabConnection\b|\bopenGitLabToken\b/.test(codeOnly(f.source))).map((f) => f.rel)).toEqual([]);
+  });
+
+  it("lib/gitlab-connect/는 GET만 부른다 — PAT 검증·권한 조회뿐이다", () => {
+    expect(GITLAB_CONNECT_SOURCES.filter((f) => GITLAB_WRITE.test(codeOnly(f.source))).map((f) => f.rel)).toEqual([]);
+  });
+
+  it("GitLab 경로는 GitHub 자격증명을 모른다 — App 개인키·사용자 토큰·커밋 경로 import 없음", () => {
+    const sources = [...GITLAB_CONNECT_SOURCES, ...GITLAB_IO_SOURCES];
+    expect(sources.filter((f) => APP_CREDENTIAL.test(codeOnly(f.source))).map((f) => f.rel)).toEqual([]);
+    expect(sources.filter((f) => USER_TOKEN_IMPORT.test(codeOnly(f.source))).map((f) => f.rel)).toEqual([]);
+    expect(sources.filter((f) => COMMIT_PATH_IMPORT.test(codeOnly(f.source))).map((f) => f.rel)).toEqual([]);
+  });
+
+  it("GitLab 클라이언트 모듈을 무는 lib 파일은 전부 스캔 범위 안이다 — 새 소비자가 규칙 밖에 서지 않는다", () => {
+    const scanned = new Set([...APP_TOKEN_SOURCES, ...MEETING_SOURCES, ...GITLAB_CONNECT_SOURCES, ...GITLAB_IO_SOURCES].map((f) => f.rel));
+    const consumers = sourcesIn(join(ROOT, "lib"), "lib").filter((f) => GITLAB_CLIENT_IMPORT.test(codeOnly(f.source)));
+    expect(consumers.length).toBeGreaterThan(2);
+    expect(consumers.map((f) => f.rel).filter((rel) => !scanned.has(rel))).toEqual([]);
+  });
+});

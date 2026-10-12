@@ -51,7 +51,7 @@ afterAll(async () => {
   rmSync(directory, { recursive: true, force: true });
 });
 
-const repository = { repositoryId: "123", installationId: "456", repoOwner: "o", repoName: "r", baseBranch: "main" };
+const repository = { repositoryId: "123", repoHost: "github", gitlabConnectionId: null, installationId: "456", repoOwner: "o", repoName: "r", baseBranch: "main" };
 const OLD = "a".repeat(40);
 const HEAD = "c".repeat(40);
 const oldAt = new Date("2026-09-10T00:00:00Z");

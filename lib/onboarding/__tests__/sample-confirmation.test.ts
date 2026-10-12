@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { SAMPLE_CONFIRMATION_TTL_MS, signSampleConfirmation, verifySampleConfirmation } from "../sample-confirmation";
 
 const secret = "test-only-signing-secret";
-const context = { userId: "u1", repositoryId: "123", installationId: "77", ref: "main", headSha: "abc" };
+const context = { userId: "u1", repositoryId: "123", connection: "github:77", ref: "main", headSha: "abc" };
 const format = { adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", locales: ["en", "ko"] };
 const issued = new Date("2026-09-27T00:00:00Z");
 const after = (ms: number) => new Date(issued.getTime() + ms);
@@ -17,6 +17,10 @@ describe("샘플 확인값 — 서버가 확인한 포맷만 다시 읽는다", 
     for (const key of Object.keys(context) as (keyof typeof context)[]) {
       expect(verifySampleConfirmation(token, { ...context, [key]: "other" }, secret, issued)).toBeNull();
     }
+  });
+  it("⚠️ 같은 숫자 id라도 다른 호스트의 연결이면 거부한다 — 연결 증거는 호스트 접두를 든다(gitlab-repositories)", () => {
+    const token = signSampleConfirmation({ ...context, format }, secret, issued);
+    expect(verifySampleConfirmation(token, { ...context, connection: "gitlab:77" }, secret, issued)).toBeNull();
   });
   it("변조·다른 키·깨진 입력을 거부한다", () => {
     const token = signSampleConfirmation({ ...context, format }, secret, issued);

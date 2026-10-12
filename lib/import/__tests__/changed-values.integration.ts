@@ -55,7 +55,7 @@ afterAll(async () => {
   rmSync(directory, { recursive: true, force: true });
 });
 
-const repository = { repositoryId: "123", installationId: "456", repoOwner: "o", repoName: "r", baseBranch: "main" };
+const repository = { repositoryId: "123", repoHost: "github", gitlabConnectionId: null, installationId: "456", repoOwner: "o", repoName: "r", baseBranch: "main" };
 const pushToken = "isolated-changed-values-fixture";
 const format = { adapter: "json-catalog" as const, pathTemplate: "i18n/{locale}.json", baseLocale: "en", nested: false };
 let commitClock = Date.parse("2026-09-10T00:00:00Z");

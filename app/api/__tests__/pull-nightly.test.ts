@@ -67,7 +67,7 @@ const { GET } = await import("../pull/route");
 
 function row(slug: string, over: { lastCommitSha?: string } = {}) {
   return {
-    id: `id-${slug}`, slug, repoOwner: "o", repoName: slug, baseBranch: "main", installationId: "77", repositoryId: `r-${slug}`,
+    id: `id-${slug}`, slug, repoOwner: "o", repoName: slug, baseBranch: "main", repoHost: "github", gitlabConnectionId: null, installationId: "77", repositoryId: `r-${slug}`,
     archivedAt: null, lastNightlyAt: null,
     surfaces: [{ id: `s-${slug}`, slug: "default", archivedAt: null, lastCommitSha: over.lastCommitSha ?? OLD, adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en", lastImportError: null, importRevision: 0 }],
   };
@@ -151,7 +151,7 @@ describe("갈래별 호출", () => {
     expect(calls[1]?.args).toEqual(["malmoi-i18n/sync-moved"]);
     expect(state.createGitClient).toHaveBeenCalledTimes(1);
     expect(state.runAutomationImport).toHaveBeenCalledWith(expect.anything(), {
-      projectId: p.id, expectedLastPublishedAt: null, expectedDeliveryRevision: "[]", repository: { repositoryId: "r-moved", installationId: "77", repoOwner: "o", repoName: "moved", baseBranch: "main" },
+      projectId: p.id, expectedLastPublishedAt: null, expectedDeliveryRevision: "[]", repository: { repositoryId: "r-moved", repoHost: "github", gitlabConnectionId: null, installationId: "77", repoOwner: "o", repoName: "moved", baseBranch: "main" },
     }, expect.any(Function));
     // 적재 사건은 적재가 쓴다 — 이 방문이 따로 쓰지 않는다(방문마다 최대 하나).
     expect(state.events).toEqual([]);

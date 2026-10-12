@@ -29,7 +29,7 @@ const BASE: ProjectListRow = {
   slug: "admin-console",
   name: "admin-console",
   role: "OWNER",
-  installationId: "i",
+  repoHost: "github", gitlabConnectionId: null, installationId: "i",
   surfaces: [{ archivedAt: null, lastCommitSha: "s", importError: null, importing: false }],
   archivedAt: null,
   repoOwner: "day1company",

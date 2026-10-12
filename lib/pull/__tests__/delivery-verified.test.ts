@@ -18,7 +18,7 @@ import { createFakeGitClient } from "./fake-client";
 type Surface = PullState["surfaces"][number];
 
 const project = {
-  id: "p", slug: "acme", repoOwner: "o", repoName: "r", baseBranch: "main", installationId: "1", repositoryId: "2", lastPulledAt: null,
+  id: "p", slug: "acme", repoOwner: "o", repoName: "r", baseBranch: "main", repoHost: "github", gitlabConnectionId: null, installationId: "1", repositoryId: "2", lastPulledAt: null,
 };
 
 const edit = (id: string, keyId: string, localeCode: string): PendingEdit => ({

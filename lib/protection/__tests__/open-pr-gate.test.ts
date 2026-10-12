@@ -30,8 +30,20 @@ describe("planOpenPrGate — 열린 PR이 있으면 적재 전체를 보류한�
  * 고정 전 옛 행의 적재가 영구 보류된다.
  */
 describe("openPrGateApplies", () => {
-  it("둘 다 있으면 조회한다", () => expect(openPrGateApplies({ installationId: "1", repositoryId: "2" })).toBe(true));
-  it.each([{ installationId: null, repositoryId: "2" }, { installationId: "1", repositoryId: null }, { installationId: null, repositoryId: null }])(
+  it("GitHub은 `repoTargetOf`의 ok와 같다 · GitLab은 리포 id만 있으면 선다 — 연결자가 떠나도 남은 MR을 지킨다(fail-closed)", async () => {
+    const { repoTargetOf } = await import("@/lib/repo-host/target");
+    for (const installationId of ["1", null])
+      for (const repositoryId of ["2", null])
+        for (const gitlabConnectionId of ["c", null]) {
+          const github = { repoHost: "github", repoOwner: "acme", repoName: "web", installationId, repositoryId, gitlabConnectionId };
+          expect(openPrGateApplies(github), JSON.stringify(github)).toBe(repoTargetOf(github).status === "ok");
+          const gitlab = { ...github, repoHost: "gitlab" };
+          expect(openPrGateApplies(gitlab), JSON.stringify(gitlab)).toBe(repositoryId !== null);
+          expect(openPrGateApplies({ ...github, repoHost: "bitbucket" })).toBe(false);
+        }
+  });
+  it("둘 다 있으면 조회한다", () => expect(openPrGateApplies({ repoHost: "github", gitlabConnectionId: null, installationId: "1", repositoryId: "2" })).toBe(true));
+  it.each([{ repoHost: "github", gitlabConnectionId: null, installationId: null, repositoryId: "2" }, { repoHost: "github", gitlabConnectionId: null, installationId: "1", repositoryId: null }, { repoHost: "github", gitlabConnectionId: null, installationId: null, repositoryId: null }])(
     "%o → 게이트 없음", (row) => expect(openPrGateApplies(row)).toBe(false),
   );
 });

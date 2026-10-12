@@ -94,7 +94,7 @@ describe("loadMemberships", () => {
         slug: "acme",
         name: "Acme",
         role: "OWNER",
-        installationId: "1",
+        repoHost: "github", gitlabConnectionId: null, installationId: "1",
         surfaces: [{ archivedAt: null, lastCommitSha: "a".repeat(40) }],
         archivedAt: null,
         defaultSurfaceSlug: "default",

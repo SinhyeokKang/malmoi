@@ -34,7 +34,7 @@ const BASE: ProjectListRow = {
   slug: "acme", reviewSurfaceSlug: "default", unsentSurfaceSlug: "default", repoAheadFrom: "s",
   name: "Acme",
   role: "OWNER",
-  installationId: "i",
+  repoHost: "github", gitlabConnectionId: null, installationId: "i",
   surfaces: [{ archivedAt: null, lastCommitSha: "s", importError: null, importing: false }],
   archivedAt: null,
   repoOwner: "o",
@@ -94,7 +94,7 @@ it("원격 변경 띠가 실제 base로 compare를 연다", async () => {
  */
 it.each([
   ["needs_reconnect", { repositoryId: null }, en.projects.banner.action.reconnect, en.projects.banner.askOwner.reconnect],
-  ["setup", { installationId: null }, en.projects.banner.action.continueSetup, en.projects.banner.askOwner.setup],
+  ["setup", { repoHost: "github", gitlabConnectionId: null, installationId: null }, en.projects.banner.action.continueSetup, en.projects.banner.askOwner.setup],
 ])("%s: OWNER는 링크, EDITOR는 안내 문구", async (_label, over, action, guidance) => {
   const owner = await draw({ ...over, role: "OWNER" });
   expect(links(owner).some((a) => a.text === action)).toBe(true);

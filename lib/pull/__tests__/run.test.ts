@@ -20,7 +20,7 @@ const PROJECT = {
   repoOwner: "o",
   repoName: "r",
   baseBranch: "dev",
-  installationId: "123",
+  repoHost: "github", gitlabConnectionId: null, installationId: "123",
   repositoryId: "456",
   adapterName: "json-catalog",
   pathTemplate: "i18n/{locale}.json",

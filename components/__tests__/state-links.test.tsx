@@ -86,7 +86,7 @@ it("프로젝트 목록 띠의 검토 대기·보낼 편집 링크는 ns=*를 �
   }
   // 실제 목록을 그려 띠의 앵커를 센다 — 띠가 손으로 주소를 조립하면 여기서 갈린다.
   const row = (over: Partial<ProjectListRow>): ProjectListRow => ({
-    image: null, slug: "acme", reviewSurfaceSlug: "web", unsentSurfaceSlug: "app", repoAheadFrom: null, name: "Acme", role: "OWNER", installationId: "i",
+    image: null, slug: "acme", reviewSurfaceSlug: "web", unsentSurfaceSlug: "app", repoAheadFrom: null, name: "Acme", role: "OWNER", repoHost: "github", gitlabConnectionId: null, installationId: "i",
     surfaces: [{ archivedAt: null, lastCommitSha: "s", importError: null, importing: false }], archivedAt: null, repoOwner: "o", repoName: "r", repositoryId: "9001",
     memberCount: 2, baseBranch: "main", lastPrUrl: null, meters: [], review: 0, unsent: 0, openPr: null, repoAheadFiles: 0, ...over,
   });

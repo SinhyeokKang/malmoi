@@ -14,7 +14,7 @@ import type { GitClient } from "../client";
  * DB 쓰기를 만들고, 쓰기 없는 동등 확인이 기준을 이유 없이 잃는다.
  */
 const PROJECT = {
-  id: "p1", slug: "demo", repoOwner: "o", repoName: "r", baseBranch: "dev", installationId: "123", repositoryId: "456",
+  id: "p1", slug: "demo", repoOwner: "o", repoName: "r", baseBranch: "dev", repoHost: "github", gitlabConnectionId: null, installationId: "123", repositoryId: "456",
   adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", nested: false, nestedByPath: null, baseLocale: "en",
   lastPulledAt: null as Date | null,
 };

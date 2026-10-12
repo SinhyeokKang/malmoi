@@ -59,7 +59,7 @@ const LOCALES = ["en", "ko", "fr"];
 
 async function editedFixture() {
   await prisma.user.create({ data: { id: "owner", email: "fixture" } });
-  await prisma.project.create({ data: { id: "p", slug: "fixture", name: "Fixture", repositoryId: "123", installationId: "456", repoOwner: "o", repoName: "r", baseBranch: "main",
+  await prisma.project.create({ data: { id: "p", slug: "fixture", name: "Fixture", repositoryId: "123", repoHost: "github", gitlabConnectionId: null, installationId: "456", repoOwner: "o", repoName: "r", baseBranch: "main",
     pushTokenHash: hashPushToken("fixture-token"),
     members: { create: { userId: "owner", role: "OWNER" } },
     surfaces: { create: { id: "s", slug: "default", adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en" } },
@@ -84,7 +84,7 @@ const approve = async () => (await readDiscardApproval(prisma, { projectId: "p",
 /** Action과 같이 **실행 시점의** Project로 `repository`를 만든다 — 그래서 설정 변경 뒤에도 `repo-replaced`가 안 선다. */
 async function run(approval: string | null) {
   const project = await prisma.project.findUniqueOrThrow({ where: { id: "p" } });
-  const repository = { repositoryId: project.repositoryId!, installationId: project.installationId!, repoOwner: project.repoOwner, repoName: project.repoName, baseBranch: project.baseBranch };
+  const repository = { repositoryId: project.repositoryId!, repoHost: "github", gitlabConnectionId: null, installationId: project.installationId!, repoOwner: project.repoOwner, repoName: project.repoName, baseBranch: project.baseBranch };
   return runRepositoryImportFromReader(prisma, { projectId: "p", userId: "owner", repository, approval, credential: undefined }, async () => reader());
 }
 const ko = () => prisma.translation.findFirstOrThrow({ where: { projectId: "p", localeCode: "ko" }, select: { value: true, updatedBy: true, pendingEditToken: true } });
@@ -103,7 +103,7 @@ it("[audit #3] main 기준 승인 뒤 기준 브랜치를 release로 바꾸면 r
 it("[audit #3] 승인 뒤 리포 재연결(owner·name·id·설치)도 reconfirm이다", async () => {
   await editedFixture();
   const stale = await approve();
-  await prisma.project.update({ where: { id: "p" }, data: { repoOwner: "o2", repoName: "r2", repositoryId: "999", installationId: "789" } });
+  await prisma.project.update({ where: { id: "p" }, data: { repoOwner: "o2", repoName: "r2", repositoryId: "999", repoHost: "github", gitlabConnectionId: null, installationId: "789" } });
   expect(await run(stale)).toEqual({ ok: false, error: "reconfirm" });
   expect(await ko()).toMatchObject({ value: "Edited", pendingEditToken: "tok-ko" });
 });

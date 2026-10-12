@@ -144,7 +144,7 @@ describe("runSync — 한 번의 실행이 행 하나를 열고 닫는다", () =
  * 지우지 않으면 방금 연 PR을 Home이 TTL 동안 "보류 없음"으로 말한다. ⚠️ **실패·스킵에도 지운다** — PR을 만든 뒤 던졌을 수 있다.
  */
 describe("runSync — 열린 PR 메모", () => {
-  const project = { repoOwner: "o", repoName: "r", installationId: "1", repositoryId: "10" };
+  const project = { repoOwner: "o", repoName: "r", repoHost: "github", gitlabConnectionId: null, installationId: "1", repositoryId: "10" };
 
   it.each([
     ["성공", () => hoisted.triggerPull.mockResolvedValue(COMMITTED)],

@@ -82,7 +82,7 @@ beforeEach(async () => {
     await pool.query(readFileSync(join("prisma/migrations", name, "migration.sql"), "utf8"));
   }
   for (const id of ["owner", "editor"]) await prisma.user.create({ data: { id, email: `fixture-${id}` } });
-  await prisma.project.create({ data: { id: "p", slug: "p", name: "Before", repoOwner: "o", repoName: "r", baseBranch: "main", installationId: "1", repositoryId: "100" } });
+  await prisma.project.create({ data: { id: "p", slug: "p", name: "Before", repoOwner: "o", repoName: "r", baseBranch: "main", repoHost: "github", gitlabConnectionId: null, installationId: "1", repositoryId: "100" } });
   await prisma.projectMember.createMany({ data: [{ projectId: "p", userId: "owner", role: "OWNER" }, { projectId: "p", userId: "editor", role: "EDITOR" }] });
   await prisma.translationSurface.create({ data: { id: "s", projectId: "p", slug: "default", adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", nested: false, baseLocale: "en", lastCommitSha: "c1" } });
   await prisma.locale.createMany({ data: ["en", "ko"].map(code => ({ projectId: "p", surfaceId: "s", code, name: code, isBase: code === "en" })) });
@@ -175,7 +175,7 @@ describe("잠금 대기 중 토큰 변경 — 쓰기가 아무것도 남기지 �
 
 describe("create_project", () => {
   const confirmation = (format: { adapter: string; pathTemplate: string }, head = HEAD, userId = "owner") => signSampleConfirmation(
-    { userId, repositoryId: "123", installationId: "77", ref: "main", headSha: head, format: { ...format, locales: ["en", "ko"] } }, SECRET, new Date());
+    { userId, repositoryId: "123", connection: "github:77", ref: "main", headSha: head, format: { ...format, locales: ["en", "ko"] } }, SECRET, new Date());
   const I18N = { adapter: "json-catalog", pathTemplate: "i18n/{locale}.json" };
   const SECOND = { adapter: "json-catalog", pathTemplate: "second/{locale}.json" };
   const input = (surfaces: { adapter: string; pathTemplate: string; confirmation: string }[]) =>
@@ -243,7 +243,7 @@ describe("create_project", () => {
 
 describe("add_sources", () => {
   const sign = (format: { adapter: string; pathTemplate: string }, head = HEAD) => signSampleConfirmation(
-    { userId: "owner", repositoryId: "123", installationId: "77", ref: "main", headSha: head, format: { ...format, locales: ["en", "ko"] } }, SECRET, new Date());
+    { userId: "owner", repositoryId: "123", connection: "github:77", ref: "main", headSha: head, format: { ...format, locales: ["en", "ko"] } }, SECRET, new Date());
   beforeEach(async () => {
     // 리포 확인이 고정된 신원과 대조한다 — 가짜 GitHub의 리포로 프로젝트를 맞춘다.
     await prisma.project.update({ where: { id: "p" }, data: { repoOwner: "acme", repoName: "web", installationId: "77", repositoryId: "123" } });
@@ -369,7 +369,7 @@ describe("OAuth 연결 주체", () => {
 
   describe("create_project — 고른 범위 편입", () => {
     const confirmation = (format: { adapter: string; pathTemplate: string }, head = HEAD) => signSampleConfirmation(
-      { userId: "owner", repositoryId: "123", installationId: "77", ref: "main", headSha: head, format: { ...format, locales: ["en", "ko"] } }, SECRET, new Date());
+      { userId: "owner", repositoryId: "123", connection: "github:77", ref: "main", headSha: head, format: { ...format, locales: ["en", "ko"] } }, SECRET, new Date());
     const I18N = { adapter: "json-catalog", pathTemplate: "i18n/{locale}.json" };
     const input = (surfaceConfirmation: string) => ({ owner: "acme", repo: "web", slug: "created", name: "Created", baseBranch: "main",
       surfaces: [{ ...I18N, baseLocale: "en", confirmation: surfaceConfirmation }] });

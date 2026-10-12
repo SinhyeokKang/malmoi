@@ -228,7 +228,7 @@ describe("확인 Dialog의 확정이 danger면 트리거도 danger다 (DESIGN §
 });
 
 const BLUE_ROW: ProjectListRow = {
-  image: null, slug: "acme", name: "acme", role: "OWNER", installationId: "i",
+  image: null, slug: "acme", name: "acme", role: "OWNER", repoHost: "github", gitlabConnectionId: null, installationId: "i",
   surfaces: [{ archivedAt: null, lastCommitSha: "s", importError: null, importing: false }],
   archivedAt: null, repoOwner: "o", repoName: "r", repositoryId: "1", memberCount: 1, baseBranch: "main", lastPrUrl: null,
   reviewSurfaceSlug: null, unsentSurfaceSlug: null, repoAheadFrom: null, meters: [], review: 0, unsent: 0, openPr: null, repoAheadFiles: 0,

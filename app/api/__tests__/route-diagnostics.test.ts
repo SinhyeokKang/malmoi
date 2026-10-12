@@ -99,7 +99,7 @@ const project = (over: Record<string, unknown> = {}) => ({
   // 열린 PR 게이트의 select 넷(nightly-sync D1) — 실제 Prisma처럼 값으로 준다.
   repoOwner: "o",
   repoName: "r",
-  installationId: null,
+  repoHost: "github", gitlabConnectionId: null, installationId: null,
   repositoryId: null,
   ...over,
 });
@@ -150,7 +150,7 @@ beforeEach(() => {
 const ready = (slug: string) => ({
   id: `id-${slug}`,
   slug,
-  installationId: "1",
+  repoHost: "github", gitlabConnectionId: null, installationId: "1",
   surfaces: [{ archivedAt: null, lastCommitSha: "a".repeat(40) }],
   archivedAt: null,
   lastNightlyAt: null as Date | null,

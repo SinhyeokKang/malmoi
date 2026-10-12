@@ -20,7 +20,7 @@ vi.mock("@/lib/events/record", () => ({ recordImportRefusal: async () => {} }));
 const { importRepository } = await import("../import");
 
 const project = (over: Record<string, unknown> = {}) => ({
-  id: "p1", archivedAt: null, installationId: "1", repositoryId: "10", repoOwner: "o", repoName: "r", baseBranch: "main",
+  id: "p1", archivedAt: null, repoHost: "github", gitlabConnectionId: null, installationId: "1", repositoryId: "10", repoOwner: "o", repoName: "r", baseBranch: "main",
   surfaces: [{ archivedAt: null, lastCommitSha: "a".repeat(40) }], ...over,
 });
 const prismaWith = (row: unknown) => ({ project: { findUnique: async () => row } }) as unknown as PrismaClient;
@@ -59,7 +59,7 @@ describe("importRepository — 연결 거부 둘", () => {
 describe("importRepository — 열린 PR 메모", () => {
   it("인가를 지난 실행은 거부로 끝나도 그 프로젝트의 항목을 지운다", async () => {
     const { homeOpenPrMemo } = await import("@/lib/projects/open-pr-memo");
-    const identity = { repoOwner: "o", repoName: "r", installationId: "1", repositoryId: "10" };
+    const identity = { repoOwner: "o", repoName: "r", repoHost: "github", gitlabConnectionId: null, installationId: "1", repositoryId: "10" };
     await homeOpenPrMemo.load("acme", identity, async () => "https://github.com/o/r/pull/3");
     await importRepository(prismaWith(project({ repositoryId: null })), subject, { slug: "acme", approval: null });
     const again = vi.fn(async () => null);

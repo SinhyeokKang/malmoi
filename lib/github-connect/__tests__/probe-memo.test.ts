@@ -13,7 +13,7 @@ import { createProbeMemo, probeMemoKey } from "../probe-memo";
  */
 
 const ok: ProbeResult = { status: "ok", installationId: "1", repositoryId: "10", fullName: "acme/web", defaultBranch: "main" };
-const project = { repoOwner: "acme", repoName: "web", installationId: "1", repositoryId: "10" };
+const project = { repoOwner: "acme", repoName: "web", repoHost: "github", gitlabConnectionId: null, installationId: "1", repositoryId: "10" };
 
 describe("createProbeMemo", () => {
   it("TTL 안에서는 다시 묻지 않는다", async () => {
@@ -70,6 +70,9 @@ describe("probeMemoKey", () => {
     expect(probeMemoKey({ ...project, repositoryId: "11" })).not.toBe(key);
     expect(probeMemoKey({ ...project, repositoryId: null })).not.toBe(key);
     expect(probeMemoKey({ ...project, repoName: "app" })).not.toBe(key);
+    // 같은 숫자 id의 다른 호스트 · 다른 OWNER의 GitLab 재연결(gitlab-repositories)
+    expect(probeMemoKey({ ...project, repoHost: "gitlab" })).not.toBe(key);
+    expect(probeMemoKey({ ...project, gitlabConnectionId: "conn-b" })).not.toBe(key);
   });
 
   it("구분자가 섞인 이름끼리 겹치지 않는다", () => {
