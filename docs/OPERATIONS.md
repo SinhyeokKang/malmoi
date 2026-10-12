@@ -473,7 +473,7 @@ Hobby 플랜이라 `--duration`·system bypass를 못 쓴다. ⚠️ **`/oauth/t
 
 되돌리는 길은 다음 배포다(CLAUDE.md). **GitLab 지원 이전 버전으로 되돌리기 전에 GitLab 프로젝트의 CI 파이프라인을 멈추거나, 그 프로젝트들의
 push 토큰을 회전하고 CI 변수 `PUSH_TOKEN`은 갱신하지 않는다.** 구버전은 GitLab 행(`installationId = null`·`repositoryId` 있음)을
-`setup`·`not-installed`·`failed`로 읽어 GitHub에 쓰거나 죽지 않지만, **구버전 `/api/push`에는 그 행의 열린 MR 게이트가 없다** — 미전달·`publish-raced`
+`setup`·`not-installed`·`failed`(재연결 probe는 `repo-forbidden`)로 읽어 GitHub에 쓰거나 죽지 않지만, **구버전 `/api/push`에는 그 행의 열린 MR 게이트가 없다** — 미전달·`publish-raced`
 게이트만 남아, 돌던 파이프라인이 MR이 열린 동안 strict 적재로 번역을 덮을 수 있다. 재전진 뒤 CI를 다시 켜거나 새 토큰을 CI 변수에 넣는다.
 ⚠️ **셀프 호스팅의 GitLab 전용 설치**(`GITHUB_APP_*` 다섯이 비어 있다)는 구버전 preflight가 다섯을 요구해 기동을 거부한다 — 되돌리기 전에 다섯을
 다시 채운다. 운영자 절차의 정본은 가이드 `guide/<언어>/self-hosting/operate.md`다.
@@ -486,7 +486,8 @@ GitLab 프로젝트의 생성 job은 이 리포를 그 태그로 clone하고 **�
 
 1. `.gitlab/malmoi-i18n-push/`(또는 그것이 부르는 `push:local`·`lib/cli/gitlab-ci-input.ts`)의 변경이 **`main`에 머지된 뒤** 그 커밋에 태그를 만든다 —
    첫 발행은 `malmoi-i18n-push-gitlab-v1`.
-2. **같은 변경에서** 그 40자 SHA를 `GITLAB_CI_RELEASE.sha`와 ACTIONS §5의 `<!-- gitlab-ci -->` 블록에 넣는다 — 생성기 출력과 그 블록은
+2. 태그를 만든 **뒤 후속 커밋 하나**에서 그 태그 커밋의 40자 SHA를 `GITLAB_CI_RELEASE.sha`와 ACTIONS §5의 `<!-- gitlab-ci -->` 블록에 **함께** 넣는다
+   (SHA는 태그 커밋 자신에 들어갈 수 없다 — 커밋 SHA가 내용에 달려 있다). 생성기 출력과 그 블록은
    `lib/onboarding/__tests__/gitlab-ci.test.ts`가 줄 단위로 대조한다. 이 커밋이 다음 앱 릴리스(`/merge`)로 나가야 화면이 템플릿을 낸다.
 3. **태그를 옮길 때도 SHA를 함께 바꾼다** — 옮긴 태그와 옛 SHA가 갈리면 그 판으로 생성된 job이 전부 대조에서 red다(의도된 방어). 이미 붙인 job은
    그 SHA의 코드를 계속 돌리므로, 소비자가 새 판을 받으려면 `.gitlab-ci.yml`을 다시 복사한다. 호환이 깨지면 `-v2`를 새로 끊고 옛 태그는 그대로 둔다.
