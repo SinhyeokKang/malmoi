@@ -3927,6 +3927,8 @@ export const en = {
       recovery: "Syncs keep running. Manage your GitLab token in Account to reconnect this repository or add sources.",
       openRepo: "Open on GitLab",
       repository: {
+        // 소스 추가 모달이 추가 거부 코드 `repo-replaced`로 읽는다 — GitLab도 그 코드를 낸다(참조 비움·잠금 뒤 연결 교체). 건강성 전용이 아니다.
+        health: { "repo-replaced": "This address now holds a different repository than the one this project was connected to. Check it on GitLab — if the repository really was replaced, create a new project for it." },
         fields: { branchHelp: "Syncs read this branch, and merge requests open against it." },
       },
       ci: {

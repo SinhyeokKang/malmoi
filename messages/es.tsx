@@ -2145,6 +2145,7 @@ export const es = {
       recovery: "Las sincronizaciones siguen funcionando. Gestiona tu token de GitLab en Cuenta para volver a conectar este repositorio o añadir fuentes.",
       openRepo: "Abrir en GitLab",
       repository: {
+        health: { "repo-replaced": "Esta dirección ahora contiene un repositorio distinto del que se conectó a este proyecto. Compruébalo en GitLab — si el repositorio realmente se reemplazó, crea un proyecto nuevo para él." },
         fields: { branchHelp: "Las sincronizaciones leen esta rama, y las merge requests se abren contra ella." },
       },
       ci: {
