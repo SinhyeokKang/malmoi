@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act } from "react";
-import { beforeEach, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { en } from "@/messages/en";
 import { NewProject } from "@/components/onboarding/new-project";
@@ -68,7 +68,7 @@ it("GitLab 탭은 계정 줄 + 목록이고, 행을 고르면 숫자 id로 브�
   await act(async () => { await user.click(tab("GitLab")); });
   await flush();
   expect(mocks.listConnectableGitLabRepos).toHaveBeenCalledOnce();
-  expect(panel().textContent).toContain(en.newProject.gitlab.account("ox"));
+  expect(panel().textContent).toContain(en.newProject.gitlab.account("ox", null));
   await act(async () => { await user.click(find(panel(), '[role="radio"]')); });
   await flush();
   expect(mocks.listRepoBranches).toHaveBeenLastCalledWith({ host: "gitlab", repositoryId: "42" });

@@ -2476,14 +2476,19 @@ export const en = {
     /** ① GitLab 탭의 상태 shell (design-brief "GitLab 탭 상태") — GitHub `empty.*`과 같은 틀(제목 + 문장 + 액션). PAT 입력은 `account.gitlab.form`이다. */
     gitlab: {
       connect: { title: "Connect GitLab", description: "Paste a personal access token to see the GitLab projects you maintain." },
-      reconnect: { title: "Replace your GitLab token", description: "Your GitLab token can't be used anymore. It may have expired or been revoked — paste a new one." },
+      reconnect: {
+        title: "Reconnect GitLab",
+        description: "Your GitLab token can't be used anymore. It may have been revoked — paste a new one.",
+        /** 저장 만료일이 지났다(시안 G2f) — 날짜를 말한다. 만료일 전인데 못 쓰면 위 문장이다. */
+        expiredOn: (date: string): string => `Your GitLab token expired on ${date}. Paste a new one to see your projects.`,
+      },
       repos: {
         title: "No GitLab projects to add",
         description: "Malmoi lists GitLab projects where you have the Maintainer role or higher. Get that role in GitLab, then try again.",
         action: "Try again",
       },
       /** 목록 위 연결 계정 줄(G2e) — 만료일은 `account.gitlab.expires`, 교체는 `account.gitlab.replace`를 함께 쓴다. */
-      account: (username: string): string => `Connected as @${username}`,
+      account: (username: string, expires: string | null): string => (expires === null ? `Connected as @${username}` : `Connected as @${username} · token expires ${expires}`),
     },
     repo: {
       /** 리포 목록의 그룹 이름 — `RadioGroup`이 접근 이름 없이 서면 "라디오 그룹"으로만 읽힌다. */
@@ -2509,6 +2514,8 @@ export const en = {
       onGitLab: {
         loading: "Looking for GitLab projects you maintain…",
         pushedAt: (rel: string): string => `Active ${rel}`,
+        /** GitLab 낱말 — 목록이 GitLab 프로젝트다(시안 G2e). */
+        search: { label: "Search projects", placeholder: "Search projects…" },
       },
     },
 

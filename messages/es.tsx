@@ -1176,13 +1176,17 @@ export const es = {
     host: { label: "Proveedor del repositorio", github: "GitHub", gitlab: "GitLab" },
     gitlab: {
       connect: { title: "Conectar GitLab", description: "Pega un token de acceso personal para ver los proyectos de GitLab que mantienes." },
-      reconnect: { title: "Reemplaza tu token de GitLab", description: "Tu token de GitLab ya no se puede usar. Puede que haya caducado o se haya revocado: pega uno nuevo." },
+      reconnect: {
+        title: "Volver a conectar GitLab",
+        description: "Tu token de GitLab ya no se puede usar. Puede que se haya revocado: pega uno nuevo.",
+        expiredOn: (date: string): string => `Tu token de GitLab caducó el ${date}. Pega uno nuevo para ver tus proyectos.`,
+      },
       repos: {
         title: "No hay proyectos de GitLab para añadir",
         description: "Malmoi muestra los proyectos de GitLab en los que tienes el rol Maintainer o superior. Consigue ese rol en GitLab y vuelve a intentarlo.",
         action: "Intentar de nuevo",
       },
-      account: (username: string): string => `Conectado como @${username}`,
+      account: (username: string, expires: string | null): string => (expires === null ? `Conectado como @${username}` : `Conectado como @${username} · el token caduca el ${expires}`),
     },
     repo: {
       list: "Repositorios",
@@ -1199,6 +1203,7 @@ export const es = {
       onGitLab: {
         loading: "Buscando proyectos de GitLab en los que eres Maintainer…",
         pushedAt: (rel: string): string => `Actividad ${rel}`,
+        search: { label: "Buscar proyectos", placeholder: "Buscar proyectos…" },
       },
     },
 

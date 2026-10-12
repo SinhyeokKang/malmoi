@@ -1184,13 +1184,17 @@ export const ko = {
     host: { label: "리포지토리 호스트", github: "GitHub", gitlab: "GitLab" },
     gitlab: {
       connect: { title: "GitLab 연결", description: "개인 액세스 토큰을 붙여 넣으면 관리하는 GitLab 프로젝트를 볼 수 있습니다." },
-      reconnect: { title: "GitLab 토큰 교체", description: "GitLab 토큰을 더 이상 쓸 수 없습니다. 만료되었거나 철회되었을 수 있습니다 — 새 토큰을 붙여 넣으세요." },
+      reconnect: {
+        title: "GitLab 다시 연결",
+        description: "GitLab 토큰을 더 이상 쓸 수 없습니다. 철회되었을 수 있습니다 — 새 토큰을 붙여 넣으세요.",
+        expiredOn: (date: string): string => `GitLab 토큰이 ${date}에 만료되었습니다. 새 토큰을 붙여 넣으면 프로젝트를 볼 수 있습니다.`,
+      },
       repos: {
         title: "추가할 GitLab 프로젝트 없음",
         description: "Malmoi는 Maintainer 이상 역할이 있는 GitLab 프로젝트만 보여 줍니다. GitLab에서 그 역할을 받은 뒤 다시 시도하세요.",
         action: "다시 시도",
       },
-      account: (username: string): string => `연결된 계정 @${username}`,
+      account: (username: string, expires: string | null): string => (expires === null ? `연결된 계정 @${username}` : `연결된 계정 @${username} · 토큰 만료 ${expires}`),
     },
     repo: {
       list: "리포지토리",
@@ -1207,6 +1211,7 @@ export const ko = {
       onGitLab: {
         loading: "Maintainer 이상인 GitLab 프로젝트를 찾는 중…",
         pushedAt: (rel: string): string => `${rel} 활동`,
+        search: { label: "프로젝트 검색", placeholder: "프로젝트 검색…" },
       },
     },
 
