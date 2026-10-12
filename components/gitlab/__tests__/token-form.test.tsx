@@ -106,3 +106,20 @@ it("빈 값은 보내지 않는다", async () => {
   await act(async () => button.click());
   expect(connectGitLab).not.toHaveBeenCalled();
 });
+
+/**
+ * **GitLab을 부르기 전의 거부는 GitLab 문장이 아니다** (감사 U6). 세션이 끝난 채 [Connect]를 누르면 할 일은 로그인이고("다시 시도"는 같은 결과다),
+ * 입력 모양 거부는 GitLab이 토큰을 본 적이 없다 — "GitLab connection failed"·"GitLab didn't accept"로 말하지 않는다.
+ */
+it.each([
+  ["unauthorized", en.errors.access.unauthorized],
+  ["invalid input", en.account.gitlab.form.invalidInput],
+] as const)("Action 거부 %s는 GitLab 문장이 아니라 그 원인의 문장이다", async (error, text) => {
+  connectGitLab.mockResolvedValue({ ok: false, error });
+  const { container, input, button } = await form();
+  await type(input, "glpat-abc");
+  await act(async () => button.click());
+  expect(container.textContent).toContain(text);
+  expect(container.textContent).not.toContain(en.errors.gitlab.fallback);
+  expect(input.getAttribute("aria-invalid")).toBe("true");
+});
