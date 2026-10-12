@@ -130,3 +130,45 @@ it("GitLab CI 안내는 .gitlab-ci.yml과 CI/CD 변수 단계이고, 릴리스 �
   const github = await render(<WorkflowBlock m={en} yaml={"on: push\n"} />);
   expect(github.container.textContent).toContain(".github/workflows/malmoi-i18n.yml");
 });
+
+describe("시안 대조 (G2a·G2e·G2f)", () => {
+  it("연결 전 shell의 칩은 key-round다 — 연결하는 것은 플랫폼이 아니라 계정 토큰이다 (#247)", async () => {
+    await mount({ gitlab: null });
+    await act(async () => { await user.click(tab("GitLab")); });
+    const chip = panel().querySelector("svg");
+    expect(chip?.getAttribute("class")).toContain("lucide-key-round");
+  });
+
+  it("연결됨 — 검색 아래 캡션 슬롯에 계정·만료일·[Replace token], 검색은 GitLab 낱말(projects)이다 (#248)", async () => {
+    await mount({ gitlab: { username: "ox", expiresAt: "2026-11-11T00:00:00.000Z" } });
+    await act(async () => { await user.click(tab("GitLab")); });
+    await flush();
+    const search = find<HTMLInputElement>(panel(), "input");
+    expect(search.placeholder).toBe(en.newProject.repo.onGitLab.search.placeholder);
+    const caption = [...panel().querySelectorAll("p")].find((p) => p.textContent?.includes(en.newProject.gitlab.account("ox", "Nov 11, 2026")))!;
+    expect(caption).toBeDefined();
+    // 검색 → 캡션 순서(GitHub `Don't see a repository?` 자리)다
+    expect(search.compareDocumentPosition(caption) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(caption.querySelector("button")?.textContent).toBe(en.account.gitlab.replace);
+  });
+
+  it("저장 만료일이 지난 토큰은 `Reconnect GitLab` + 만료일 문장이다 (#249)", async () => {
+    mocks.listConnectableGitLabRepos.mockResolvedValue({ ok: false, error: "gitlab-reconnect" });
+    await mount({ gitlab: { username: "ox", expiresAt: "2026-10-09T00:00:00.000Z" } });
+    await act(async () => { await user.click(tab("GitLab")); });
+    await flush();
+    expect(panel().textContent).toContain(en.newProject.gitlab.reconnect.title);
+    expect(en.newProject.gitlab.reconnect.title).toBe("Reconnect GitLab");
+    expect(panel().textContent).toContain(en.newProject.gitlab.reconnect.expiredOn("Oct 9, 2026"));
+    expect(panel().querySelector("svg")?.getAttribute("class")).toContain("lucide-key-round");
+  });
+
+  it("만료일 전인데 못 쓰는 토큰(철회)은 같은 블록에 설명만 다르다", async () => {
+    mocks.listConnectableGitLabRepos.mockResolvedValue({ ok: false, error: "gitlab-reconnect" });
+    await mount({ gitlab: { username: "ox", expiresAt: "2099-01-01T00:00:00.000Z" } });
+    await act(async () => { await user.click(tab("GitLab")); });
+    await flush();
+    expect(panel().textContent).toContain(en.newProject.gitlab.reconnect.title);
+    expect(panel().textContent).toContain(en.newProject.gitlab.reconnect.description);
+  });
+});
