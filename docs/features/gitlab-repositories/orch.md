@@ -37,6 +37,7 @@
 | D12 | 트리 크기 입력·저장 오류 코드 정책·메모 키·`GITHUB_WAIT_MS` 이름 = W0 실측·판정 결과를 따른다 | tasks §0이 그 판정을 0단계 산출물로 정함 |
 | D13 | GitLab PAT = **레거시 PAT만, 스코프 `api` 하나**(도움말·프리필 `scopes=api`). fine-grained PAT는 spec §5 비목표(19.2 GA·Free·`granular_scopes`·프리필 없음·최상위 그룹 Owner가 레거시 차단 가능 → 그 조직은 연결 불가, 수요 관측 시 재검토). 검증은 fine-grained 토큰을 분명한 사유로 거부한다(`/personal_access_tokens/self`). 불변식 11 문장은 그대로 | 사용자 2026-10-12(W0 `ask`) — 계정 단위 연결을 여러 프로젝트가 참조하는 모델과 프로젝트 한정 토큰이 맞지 않음, 검증 경로 하나 |
 | D14 | ko의 GitLab 호칭 = **`MR`**(GitHub `PR` 관행과 대칭, 가이드 첫 언급만 `MR(GitLab의 merge request)`). 금지어 `머지 리퀘스트`·`머지 요청`·`병합 요청` | 지휘자 판단(E0 `ask`) — DESIGN §10 ko의 PR 축약 규칙이 대칭으로 답한다 |
+| D15 | 디렉터리 = `lib/repo-host/`(경계) · `lib/gitlab/`(B transport + C client·reader·publish) · `lib/gitlab-connect/`(B2 PAT 연결, `lib/github-connect/` 짝). `lib/github.ts`는 제자리. 트리거: 앞 둘은 `test:projects:postgres`, `gitlab-connect`는 `github-connect`와 같은 스위트 | 지휘자 판단(A `ask`) — 기존 `github-connect` 대칭 |
 
 ## 배치·파일 소유권
 
@@ -87,3 +88,4 @@
 - 2026-10-12: W0 인계(커밋 6, 문서만) → dev 통합 `54543ce0..c92ab4a5`. 결정 D6a(지휘자)·D13(사용자) 추가. R-W0(경계 서명 리뷰)·E0·D1 병렬 착수, A는 R-W0 뒤.
 - 2026-10-12: R-W0 리뷰 🔴5·🟡多 — 서명 둘(`repoTargetOf` 상태 구분·GitLab 숫자 id 주소)은 A 착수 전 W0 fix1로 design에, 배치 경계 다섯은 이 문서 배치 표로 반영(B가 최소 transport·`collected.ts`·D4a 헬퍼·`connectRepository` 가드를 가진다).
 - 2026-10-12: W0 fix1(커밋 3) dev 통합. A 착수.
+- 2026-10-12: E0 인계(커밋 4, gate ok) → R-E0 🔴0·🟡1 → dev 통합. **E-ui 브리프 필수 한 줄**(R-E0 🟡): PR/MR 문구는 호스트 분기 함수가 아니라 `pr…`/`mr…` 접두 **별도 키**로 둔다 — 사전 워커가 함수를 같은 인자로 한 번만 불러 GitLab 갈래를 훑지 않아 금지어 규칙이 거짓 green이 된다. 그 밖 ⚪5는 `.scratch/review-E0.md`(`/projects` 띠·Open on GitLab의 DESIGN 등재는 E-ui).
