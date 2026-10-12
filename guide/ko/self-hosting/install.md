@@ -42,7 +42,7 @@ Compose는 `MALMOI_IMAGE`, `POSTGRES_PASSWORD`, `MIGRATE_DB_PASSWORD`, `RUNTIME_
 
 ## 설치하기 {#install}
 
-1. 최신 앱 릴리스 `v<x.y.z>`를 고르고, 리포지토리의 같은 태그를 받아 그 `deploy/` 디렉터리를 씁니다: `git clone --depth 1 --branch v<x.y.z> https://github.com/SinhyeokKang/malmoi.git`. 그 릴리스 노트(`https://github.com/SinhyeokKang/malmoi/releases/tag/v<x.y.z>`)의 `Self-hosting image` 줄을 그대로 복사해 고정합니다: `MALMOI_IMAGE=ghcr.io/sinhyeokkang/malmoi:v<x.y.z>@sha256:<digest>`. v1.3.0 이후 릴리스에 그 줄이 있습니다. 찾을 수 없으면 `docker buildx imagetools inspect ghcr.io/sinhyeokkang/malmoi:v<x.y.z>`로 이미지 digest를 확인합니다.
+1. 최신 앱 릴리스 `v<x.y.z>`를 고르고, 리포지토리의 같은 태그를 받아 그 `deploy/` 디렉터리를 씁니다: `git clone --depth 1 --branch v<x.y.z> https://github.com/SinhyeokKang/malmoi.git`. 그 릴리스 노트(`https://github.com/SinhyeokKang/malmoi/releases/tag/v<x.y.z>`)의 `Self-hosting image` 줄에서 라벨을 뺀 이미지 참조(`ghcr.io/…@sha256:…`)를 복사해 `MALMOI_IMAGE` 값으로 고정합니다: `MALMOI_IMAGE=ghcr.io/sinhyeokkang/malmoi:v<x.y.z>@sha256:<digest>`. v1.3.0 이후 릴리스에 그 줄이 있습니다. 찾을 수 없으면 `docker buildx imagetools inspect ghcr.io/sinhyeokkang/malmoi:v<x.y.z>`로 이미지 digest를 확인합니다.
 2. `cd deploy && cp .env.example .env && chmod 600 .env`를 실행하고 값을 채웁니다([설정 값](#settings)). 이 파일에는 키와 비밀번호가 전부 들어 있으므로 리포지토리·메신저·암호화하지 않은 백업에 평문 사본을 두지 마세요. `$`가 든 값은 작은따옴표로 감쌉니다.
 3. 인증서를 `deploy/certs/`에 두고(`chmod 600 privkey.pem`) `nginx/malmoi.conf`의 `server_name`을 고칩니다. 80·443 포트만 열고 PostgreSQL과 앱 포트는 공개하지 않습니다.
 4. `docker compose config -q`로 문법 오류와 빠진 필수 값을 확인한 뒤 `docker compose up -d`를 실행합니다.

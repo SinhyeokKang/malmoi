@@ -9,7 +9,7 @@
 업데이트는 순서대로 한 번에 한 릴리스씩, 최신 릴리스로만 합니다. 릴리스를 건너뛰는 업데이트는 아직 검증하지 않았습니다. 마이그레이션은 web을 다시 만들기 전에 끝나야 낡은 앱이 새 데이터베이스를 읽는 일이 없습니다. 새 버전이 확인을 통과할 때까지 외부 트래픽과 스케줄러는 꺼 둡니다. 그래야 백업으로 되돌아가더라도 그사이 누가 저장한 내용을 잃지 않습니다.
 
 1. 앱을 멈추고 [백업](#backup) 명령으로 백업을 만들고, `backup ok`가 찍혔을 때만 다음으로 넘어갑니다. 끝난 뒤 `docker compose up -d`를 실행하지 않습니다.
-2. 새 태그의 `deploy/`를 지금 것과 비교해(`.env`는 그대로 둡니다) Compose·nginx·스케줄러의 변경을 반영하고, `.env`의 `MALMOI_IMAGE`를 새 태그와 digest로 바꿉니다. 값은 릴리스 노트의 `Self-hosting image` 줄에서 복사하고, 찾을 수 없으면 `docker buildx imagetools inspect ghcr.io/sinhyeokkang/malmoi:v<x.y.z>`로 확인합니다. `deploy/scheduler/`가 바뀌었다면 `docker compose build scheduler`를 실행합니다.
+2. 새 태그의 `deploy/`를 지금 것과 비교해(`.env`는 그대로 둡니다) Compose·nginx·스케줄러의 변경을 반영하고, `.env`의 `MALMOI_IMAGE`를 새 태그와 digest로 바꿉니다. 값은 릴리스 노트의 `Self-hosting image` 줄에서 라벨을 뺀 이미지 참조를 복사하고, 찾을 수 없으면 `docker buildx imagetools inspect ghcr.io/sinhyeokkang/malmoi:v<x.y.z>`로 확인합니다. `deploy/scheduler/`가 바뀌었다면 `docker compose build scheduler`를 실행합니다.
 3. `docker compose pull --ignore-buildable`을 실행합니다. 스케줄러 이미지는 로컬에서 빌드해 레지스트리에 없으므로 `--ignore-buildable` 없이는 명령이 실패합니다.
 4. `docker compose run --rm migrate`를 실행합니다. 새 마이그레이션을 적용하고 bootstrap을 다시 돌리며, 여러 번 돌려도 안전합니다. 예전 `up`에서 돈 migrate를 믿지 마세요.
 5. 클라우드 제공업체의 방화벽에서 80·443 포트를 내 IP 주소로만 제한합니다. Docker가 공개한 포트는 서버 자체의 방화벽을 우회하므로 서버 방화벽만으로는 부족합니다.
