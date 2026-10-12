@@ -128,3 +128,4 @@
 - 2026-10-13: R-Edoc 🔴0·🟡13 → E-doc fix1(문서 사실 정정 13 · 외부 라벨 · 프리미티브 수·DIRECTORY). E-ui fix2 몫 추가: D28(`githubAppConfigured`).
 - 2026-10-13: R-X1 통합 유지 — 서버 렌더 그래프 테스트는 원 사고를 잡지만 const 이름 핸들러·삼항·spread·ref 콜백 변형은 통과한다(차단 아님 — `/postmortem`에 그물 한계로 적는다). X1 워크트리 정리.
 - 2026-10-13: DS 재실측 — `/account` 렌더 복구(#253에 댓글, 닫지 않음), G8 불일치 #255(만료 임박 경고 띠·주황 칩·primary [Replace token] 없음)·#256(미연결 PAT 폼 위치)·#257([Connect] 뒤 포커스가 body로) → E-ui fix2. 연결 상태는 일치. 미측정: 375 카드·다크 판정. dev DB: 테스트 PAT 재연결(새 `GitLabConnection` 행), `malmoi-gitlab-test` Connected·만료 2026-11-11. DS 터미널은 E-ui fix2 뒤 재실측용으로 유지.
+- 2026-10-13: E-ui fix1(6커밋, gate ok — ko 사전에서 GitLab 화면에 PR이 새던 6곳 발견·중립화) → dev 통합. E-ui fix2 착수: #244–#252·#254–#257 + Disconnect 문구 + `MALMOI_I18N_WRAPPER` + D28.
