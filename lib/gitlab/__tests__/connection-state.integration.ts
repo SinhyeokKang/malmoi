@@ -297,13 +297,20 @@ describe("Publish — 쓰기 직전 project id 재대조 · 쓰기 중 실패 �
     expect((await lastPublish()).reason).toBe(en.logs.reasons["execution-uncertain"]);
   });
 
-  it("PAT 원문이 콘솔·사건·실행 행에 0건이다(spec 완료 조건 11)", async () => {
+  it("PAT 원문이 콘솔·사건·실행 행에 0건이다(spec 완료 조건 11) — 그 PAT가 실제로 원격에 실렸고 실패가 실제로 콘솔·행에 남은 실행에서", async () => {
     await seed();
     await pending();
-    serve({ failOn: [{ key: "POST /merge_requests", status: 502 }] });
+    // ⚠️ 쓰기 중 실패(MR 502 — 결과 미확인)는 콘솔에 쓰지 않는다 — 그 실행으로는 콘솔 0건이 공허하다(audit E9). 쓰기 전 실패는 서버 로그 한 줄을 남긴다.
+    const repo = serve({ failOn: [{ key: "GET /repository/tree", status: 500 }] });
     await publishProject(prisma, { userId: "owner-a" }, { slug: "p1" });
-    const logged = JSON.stringify((["error", "warn", "log", "info"] as const).flatMap((level) => vi.mocked(console[level]).mock.calls), (_k, v: unknown) => (v instanceof Error ? `${v.name}: ${v.message}` : v));
-    const stored = JSON.stringify([await prisma.projectEvent.findMany(), await prisma.syncRun.findMany()]);
+    // 비공허 확인 — PAT가 실제로 원격에 실렸고, 콘솔·실행 행에 실패가 실제로 남았다.
+    expect(tokensFor(repo, () => true)).toEqual([TOKEN_A]);
+    const calls = (["error", "warn", "log", "info"] as const).flatMap((level) => vi.mocked(console[level]).mock.calls);
+    expect(calls.length).toBeGreaterThan(0);
+    const runs = await prisma.syncRun.findMany();
+    expect(runs.some((run) => run.errorCode !== null)).toBe(true);
+    const logged = JSON.stringify(calls, (_k, v: unknown) => (v instanceof Error ? `${v.name}: ${v.message}` : v));
+    const stored = JSON.stringify([await prisma.projectEvent.findMany(), runs]);
     for (const text of [logged, stored]) expect(text).not.toMatch(/glpat-/);
   });
 });

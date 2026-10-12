@@ -50,10 +50,17 @@ describe("세션 — Action마다 다시 읽는다", () => {
     expect(hoisted.revalidatePath).not.toHaveBeenCalled();
   });
 
-  it("입력 모양이 틀리면 세션·원격을 읽기 전에 invalid input이다 — PAT는 공백·제어문자 없는 문자열이다", async () => {
+  it("입력 스키마(zod)가 틀리면 세션을 읽기 전에 invalid input이다 — 세션이 없어도 unauthorized가 아니다", async () => {
+    hoisted.session = null;
     expect(await connectGitLab({ token: 42 } as never)).toEqual({ ok: false, error: "invalid input" });
-    expect(await connectGitLab({ token: "glpat bad" })).toEqual({ ok: false, error: "invalid input" });
     expect(await reconnectGitLabRepository({ slug: "" })).toEqual({ ok: false, error: "invalid input" });
+    expect(hoisted.fetch).not.toHaveBeenCalled();
+  });
+
+  it("PAT 모양(공백·제어문자)은 세션 뒤 코어가 원격 호출 전에 거부한다 — 세션이 없으면 unauthorized가 먼저다", async () => {
+    expect(await connectGitLab({ token: "glpat bad" })).toEqual({ ok: false, error: "invalid input" });
+    hoisted.session = null;
+    expect(await connectGitLab({ token: "glpat bad" })).toEqual({ ok: false, error: "unauthorized" });
     expect(hoisted.fetch).not.toHaveBeenCalled();
   });
 });
