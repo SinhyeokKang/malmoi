@@ -135,7 +135,8 @@ const rel = (file: string): string => file.slice(ROOT.length).replace(/^\//, "")
 const FIXTURES = {
   "components/ui/field-button.tsx": h(FieldButton, { icon: h("svg"), placeholder: "Search…", "aria-label": "Search", onClick: () => {} }),
   "components/ui/button.tsx": h(Button, null, "Save"),
-  "components/ui/input.tsx": h(Input, { "aria-label": "Search" }),
+  // 네이티브 태그는 클라이언트 잎 `input-element.tsx`에 있고 클래스는 `Input`이 조립한다 — 픽스처는 `Input`을 그린다.
+  "components/ui/input-element.tsx": h(Input, { "aria-label": "Search" }),
   "components/ui/textarea.tsx": h(Textarea, { "aria-label": "Translation" }),
   "components/ui/list-row.tsx": h(ListRow, { as: "button", variant: "canvas", ringInset: true }, "common.save"),
   "components/ui/text-trigger.tsx": h(TextTrigger, null, "English"),

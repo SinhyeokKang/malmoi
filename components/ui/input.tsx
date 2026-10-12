@@ -1,6 +1,7 @@
 import type { InputHTMLAttributes, ReactNode, Ref } from "react";
 
 import { InputClearButton } from "./input-clear-button";
+import { InputElement } from "./input-element";
 
 import { cn } from "@/lib/utils";
 
@@ -42,7 +43,7 @@ export const fieldClass = cn(
 /** `ref`는 React 19의 평범한 prop이라 `...props`로 그대로 내려간다 — `Button`과 같은 형이다. */
 const INPUT_SIZE = { md: "h-9", sm: "h-8 text-xs", xs: "h-7 text-xs" } as const;
 
-export function Input({ className, width, size = "md", variant = "default", icon, clearable, onClear, onPointerDown, onBlur, ...props }: Omit<InputHTMLAttributes<HTMLInputElement>, "width" | "size"> & {
+export function Input({ className, width, size = "md", variant = "default", icon, clearable, onClear, ...props }: Omit<InputHTMLAttributes<HTMLInputElement>, "width" | "size"> & {
   ref?: Ref<HTMLInputElement>;
   width?: FieldWidth;
   size?: keyof typeof INPUT_SIZE;
@@ -53,24 +54,11 @@ export function Input({ className, width, size = "md", variant = "default", icon
   onClear?: () => void;
 }) {
   const hasValue = props.value !== undefined && String(props.value).length > 0;
-  /*
-   * ⚠️ 읽기 전용 필드는 **클릭으로 받은 포커스에 링을 세우지 않는다** (2026-10-12 사용자). Chrome은 readOnly 입력을
-   * 클릭해도 `:focus-visible`을 매치해(ego-browser 실측 — Chrome 152) CSS만으로는 클릭과 Tab을 못 가른다. 그래서
-   * 포인터로 받은 포커스를 `data-pointer-focus`로 표시하고 링은 그 표시가 있을 때만 끈다 — Tab으로 들어오면 표시가
-   * 없어 키보드 링은 그대로다. 표시는 blur에서 걷는다(다음 포커스가 키보드일 수 있다).
-   */
-  const field = <input onPointerDown={(event) => {
-    if (props.readOnly) event.currentTarget.setAttribute("data-pointer-focus", "");
-    onPointerDown?.(event);
-  }} onBlur={(event) => {
-    event.currentTarget.removeAttribute("data-pointer-focus");
-    onBlur?.(event);
-  }} className={cn(
+  // 링과 읽기 전용 필드의 포인터 포커스 링 끄기(`data-pointer-focus`)는 네이티브 태그와 함께 `InputElement`(클라이언트 잎)가 든다 — 이 파일은 서버가 렌더한다.
+  const field = <InputElement ring={variant !== "bare"} className={cn(
     fieldClass, INPUT_SIZE[size], width === undefined ? undefined : fieldWidthClass[width],
     "read-only:bg-muted read-only:text-foreground read-only:cursor-default",
-    variant === "bare"
-      ? "border-0 bg-transparent px-1 shadow-none focus-visible:ring-0 focus-visible:outline-none"
-      : "focus-visible:border-ring focus-visible:ring-ring focus-visible:ring-1 focus-visible:outline-none aria-[invalid=true]:focus-visible:border-destructive aria-[invalid=true]:focus-visible:ring-destructive read-only:data-[pointer-focus]:focus-visible:ring-0 read-only:data-[pointer-focus]:focus-visible:border-input",
+    variant === "bare" && "border-0 bg-transparent px-1 shadow-none focus-visible:ring-0 focus-visible:outline-none",
     icon && "pl-8", clearable && "pr-8", className,
   )} {...props} />;
   if (!icon && !clearable) return field;

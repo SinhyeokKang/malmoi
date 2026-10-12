@@ -89,26 +89,22 @@ const directive = (source: string) => /^["'](use client|use server)["']/.exec(so
 /** 서버 렌더 진입점에서 `"use client"`·`"use server"` 경계 전까지 닿는 파일과, 각 파일을 서버 쪽이 값으로 읽은 이름. */
 function serverGraph(entries: string[]): Map<string, Set<string>> {
   const graph = new Map<string, Set<string>>();
-  const visited = new Set<string>();
-  const queue = [...entries];
-  for (const entry of entries) graph.set(entry, new Set(["*"]));
-  // 큐에 든 파일은 전부 방문되고, 지시문 파일은 방문 때 지운다 — 그래서 남은 키가 곧 서버 렌더 그래프다.
+  const queue: { file: string; names: string[] }[] = entries.map((file) => ({ file, names: ["*"] }));
+  const boundary = new Map<string, boolean>();
+  const isBoundary = (file: string) => {
+    if (!boundary.has(file)) boundary.set(file, directive(readFileSync(file, "utf8")) !== null);
+    return boundary.get(file) === true;
+  };
   while (queue.length > 0) {
-    const file = queue.pop();
-    if (file === undefined || visited.has(file)) continue;
-    visited.add(file);
-    const source = readFileSync(file, "utf8");
-    if (directive(source) !== null) {
-      graph.delete(file);
-      continue;
-    }
-    for (const { specifier, names } of valueImports(source)) {
-      const resolved = resolveModule(file, specifier);
-      if (resolved === null) continue;
-      const used = graph.get(resolved) ?? new Set<string>();
-      for (const name of names) used.add(name);
-      graph.set(resolved, used);
-      queue.push(resolved);
+    const next = queue.pop();
+    if (next === undefined || isBoundary(next.file)) continue;
+    const used = graph.get(next.file);
+    for (const name of next.names) used?.add(name);
+    if (used !== undefined) continue;
+    graph.set(next.file, new Set(next.names));
+    for (const { specifier, names } of valueImports(readFileSync(next.file, "utf8"))) {
+      const resolved = resolveModule(next.file, specifier);
+      if (resolved !== null) queue.push({ file: resolved, names });
     }
   }
   return graph;
