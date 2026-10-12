@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { render } from "@/components/__tests__/helpers/dom";
 import { en } from "@/messages/en";
@@ -63,4 +63,54 @@ it("GitLab 카드에 GitHub·pull request 낱말이 없다", async () => {
 it("호스트는 글리프만이 아니라 텍스트로 드러난다 — 미연결 행 이름이 GitLab이다", async () => {
   const c = await section(null);
   expect(text(c)).toContain(en.account.gitlab.rowName);
+});
+
+describe("시안 대조 (G8·G8b)", () => {
+  it("만료 임박은 머리 warning 띠 · 호박 칩 · primary [Replace token]이다 (#255)", async () => {
+    const c = await section({ username: "ox", expiresAt: new Date(NOW + 9 * day).toISOString(), projectCount: 1 });
+    const notice = c.querySelector("[data-card-notice]");
+    expect(notice?.textContent).toMatch(/^Your GitLab token expires in \d+ days, on /);
+    expect(c.querySelector("li [data-tone]")?.getAttribute("data-tone")).toBe("warning");
+    const replace = [...c.querySelectorAll("button")].find((b) => b.textContent === en.account.gitlab.replace)!;
+    expect(replace.classList.contains("bg-primary")).toBe(true);
+  });
+
+  it("정상은 띠 없음 · 중립 칩 · 기본 [Replace token]이다 (대조)", async () => {
+    const c = await section({ username: "ox", expiresAt: new Date(NOW + 60 * day).toISOString(), projectCount: 1 });
+    expect(c.querySelector("[data-card-notice]")).toBeNull();
+    const replace = [...c.querySelectorAll("button")].find((b) => b.textContent === en.account.gitlab.replace)!;
+    expect(replace.classList.contains("bg-primary")).toBe(false);
+  });
+
+  it("미연결 PAT 폼은 구분선 없이 행 이름선(pl-14)에서 시작한다 (#256)", async () => {
+    const c = await section(null);
+    const block = c.querySelector("form")!.parentElement!;
+    expect(block.className).toContain("pl-14");
+    expect(block.className).not.toContain("border-t");
+  });
+
+  it("[Connect] 뒤 카드가 연결 행이 되면 포커스가 [Replace token]에 착지한다 (#257)", async () => {
+    const { act } = await import("react");
+    const { createRoot } = await import("react-dom/client");
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+    await act(async () => root.render(<GitLabSection connection={null} />));
+    host.querySelector("input")!.focus();
+    await act(async () => root.render(<GitLabSection connection={{ username: "ox", expiresAt: null, projectCount: 0 }} />));
+    expect(document.activeElement?.textContent).toBe(en.account.gitlab.replace);
+    await act(async () => root.unmount());
+    host.remove();
+  });
+
+  it("해제 확인 버튼은 GitLab 문구다 — GitHub App의 'Disconnect app'을 쓰지 않는다", async () => {
+    const userEvent = (await import("@testing-library/user-event")).default;
+    const c = await section({ username: "ox", expiresAt: null, projectCount: 1 });
+    const trigger = c.querySelector<HTMLButtonElement>(`[aria-label="${en.account.gitlab.disconnectLabel}"]`)!;
+    const { act } = await import("react");
+    await act(async () => { await userEvent.setup().click(trigger); });
+    const confirm = [...document.querySelectorAll('[role="dialog"] button')].map((b) => b.textContent);
+    expect(confirm).toContain(en.account.gitlab.disconnectConfirm);
+    expect(confirm).not.toContain(en.settings.account.disconnectConfirm);
+  });
 });
