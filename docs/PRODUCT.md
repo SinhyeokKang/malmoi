@@ -440,7 +440,7 @@ GitHub·Google 어느 쪽으로 들어와도 같은 사람을 가리키고, 프�
   호스팅 서비스에서 달라지는 것: 업로드는 Vercel Blob 대신 볼륨 · 야간 동기화는 Vercel Cron 대신 스케줄러 컨테이너 · DB는 Supabase 대신 일반 Postgres(런타임 롤은 비-superuser) ·
   `/privacy`는 운영자 정책 URL로 redirect · 페이지는 noindex · Analytics 없음 · 생성 워크플로는 **항상 `api-url`을 든다**(없으면 push 토큰이 호스팅 서비스로 간다 — ACTIONS).
   **그대로인 것**: 로그인(운영자가 켠 공급자로 — GitHub OAuth App·Google OAuth 중 **완전한 쌍(ID·SECRET) 최소 하나**, 반쪽은 기동 거부. 화면은 켠 공급자의 버튼만 그린다 — 2026-10-09, optional-login-providers. 리포 연결용 GitHub App 등록은 **선택**이다 — `GITHUB_APP_*` 다섯은 all-or-none이고 반쪽은 기동 거부, 다섯 다 없으면 **GitLab 전용 설치**로
-  기동해 ①은 탭 줄 없이 GitLab 단독, `/account`·설정의 GitHub 연결 카드·설치 링크를 그리지 않는다 — 2026-10-12, gitlab-repositories)·인가(`ProjectMember`)·번역 보존 규칙·push/편집/pull 계약. 가입은 호스팅 서비스와 같이
+  기동해 ①은 탭 줄 없이 GitLab 단독, `/account`·설정의 GitHub 연결 카드·설치 링크를 그리지 않는다. 화면 갈래는 자격증명 넷(ID·PRIVATE_KEY·CLIENT_ID·CLIENT_SECRET)으로 판정하고 `GITHUB_APP_SLUG`는 설치 링크만 가른다 — 2026-10-12, gitlab-repositories D4·D4a·D28)·인가(`ProjectMember`)·번역 보존 규칙·push/편집/pull 계약. 가입은 호스팅 서비스와 같이
   열려 있어 검증 이메일을 가진 누구나 `User` 행을 얻고 비운영자는 프로젝트 상한 3이다(운영자는 `OPERATOR_EMAILS`).
   **대상 리포의 CI는 상류 리포의 action 태그를 실행한다**(공급망 의존 — ACTIONS). `/changelog`는 상류 Release를 보여 "Latest"가 설치본 버전이 아닐 수 있다.
   **하지 않는 것**: Kubernetes·다중 인스턴스·고가용성·무중단/자동 업데이트 · 폐쇄망·GitHub Enterprise·GitLab Self-Managed · 로컬 비밀번호·SAML·이메일 로그인 · Resend 외 메일 transport ·
@@ -843,7 +843,7 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 /projects/:slug/surfaces/new   → 권한 검사 후 /sources?add=sources redirect (OAuth 오류 e 보존)
 /projects/:slug/members        멤버
 /projects/:slug/logs           ✅ 프로젝트 전체 활동 이력 (?event= 상세)  ← logs-rework (ProjectEvent 소비자)
-/projects/:slug/settings       나머지 프로젝트 설정 전부
+/projects/:slug/settings       나머지 프로젝트 설정 전부 — GitLab 프로젝트는 토큰 줄·재연결(Use my GitLab connection)·`.gitlab-ci.yml` (2026-10-12, gitlab-repositories)
 ```
 
 **`/changelog`가 판정 셋을 뒤집었다** (2026-09-28 사용자). ① 사이드바 하단·사용자 메뉴의 `Release notes`(GitHub Releases
