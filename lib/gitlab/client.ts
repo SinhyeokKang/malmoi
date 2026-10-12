@@ -2,7 +2,7 @@
 // 이 파일은 DB를 모른다 — 토큰은 호출부(`lib/repo-host`)가 프로젝트가 참조하는 연결에서 열어 넘긴다.
 import { AppError, logCaught } from "@/lib/failure";
 import type { ConnectionHealth } from "@/lib/github-connect/health";
-import { planProjectMeta } from "@/lib/gitlab-connect/access-plan";
+import { planConnectionPushAccess, planProjectMeta } from "@/lib/gitlab-connect/access-plan";
 import { tokenExpired, type RemoteResult } from "@/lib/gitlab-connect/verify";
 import type { GitClient, GitTreeBlob, GitTreeEntry } from "@/lib/pull/client";
 import { commitMessage } from "@/lib/pull/payload";
@@ -35,9 +35,16 @@ import { classifyGitLabFailure, createGitLabTransport, isGitLabProjectId, nextPa
  */
 
 export type GitLabTarget = Extract<RepoTarget, { host: "gitlab" }>;
-/** 연결에서 연 값 — 원문 토큰과 저장된 만료일. 만료일이 지났으면 원격을 부르지 않는다. */
-export type GitLabCredential = { token: string; expiresAt: Date | null };
-export type GitLabIoOptions = { fetch?: typeof fetch; now?: Date };
+/**
+ * 연결에서 연 값 — 원문 토큰·저장된 만료일·토큰 주인의 GitLab 사용자 id. 만료일이 지났으면 원격을 부르지 않는다.
+ * `gitlabUserId`는 주인이 지금 쓸 수 있나(`members/all/<id>`)를 묻는 데 쓴다 — 주인 자신의 PAT로 자기 권한을 묻는다.
+ */
+export type GitLabCredential = { token: string; expiresAt: Date | null; gitlabUserId: string };
+/**
+ * @param requireWrite **쓰기 클라이언트**(Publish·no-changes 정리) — 생성 때 토큰 주인의 push 권한(Developer 이상)까지 본다. 읽기 용도(열린 MR 게이트·
+ *   원격 신호·미리보기·리더)는 묻지 않는다 — 주인이 Reporter여도 읽기는 되고, 게이트가 그 때문에 `pr-check-failed`로 영구 보류되면 안 된다.
+ */
+export type GitLabIoOptions = { fetch?: typeof fetch; now?: Date; requireWrite?: boolean };
 
 /** 트리 keyset 페이지 상한(100항목 × 200 = 2만 항목). 넘으면 잘린 것으로 본다 — 온보딩은 `truncated`, Publish는 던진다(부분 트리로 비교하지 않는다). */
 export const TREE_PAGE_LIMIT = 200;
@@ -83,6 +90,13 @@ async function openProject(target: GitLabTarget, credential: GitLabCredential, o
   if (meta.status === "unavailable") throw new AppError("unexpected GitLab project response");
   if (meta.status !== "ok") throw needsReconnect(meta.status);
   if (meta.archived) throw needsReconnect("archived");
+  if (options.requireWrite === true) {
+    // ⚠️ 주인이 Reporter로 강등되면 프로젝트 조회는 200이지만 push는 403이다 — 쓰기 뒤에 실패하면 결과 미확인이 된다. 쓰기 전에 멈춘다(R-C Astra 🟡1).
+    const owner = await remote("owner-access", () => transport.get(projectPath(target.repositoryId, `members/all/${encodeURIComponent(credential.gitlabUserId)}`)));
+    const access = planConnectionPushAccess(owner);
+    if (access === "unavailable") throw owner.ok ? new AppError("unexpected GitLab member response") : owner.error;
+    if (access !== "ok") throw needsReconnect(`owner ${access}`);
+  }
   return transport;
 }
 
@@ -318,5 +332,11 @@ export async function loadGitLabHealth(target: GitLabTarget, credential: GitLabC
   if (tokenExpired(credential.expiresAt, options.now ?? new Date())) return { status: "connection-unusable" };
   const transport = createGitLabTransport(credential.token, { fetch: options.fetch });
   const meta = planProjectMeta(await remote("health", () => transport.get(projectPath(target.repositoryId))), target.repositoryId);
-  return planGitLabHealth(target, meta);
+  const health = planGitLabHealth(target, meta);
+  if (health.status !== "ok" && health.status !== "repo-moved") return health;
+  // ⚠️ 프로젝트를 볼 수 있어도 주인이 쓸 수 없으면(Reporter 강등) Publish가 돌지 않는다 — Connection 행은 "Sync·Publish가 도나"를 말한다(design §2 톤 표).
+  const owner = await remote("health-owner", () => transport.get(projectPath(target.repositoryId, `members/all/${encodeURIComponent(credential.gitlabUserId)}`)));
+  const access = planConnectionPushAccess(owner);
+  if (access === "unavailable") return { status: "unknown" };
+  return access === "ok" ? health : { status: "connection-unusable" };
 }

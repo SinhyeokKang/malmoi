@@ -28,7 +28,8 @@ export function createGitClient(target: RepoTarget, execution?: PublishExecution
     case "github":
       return github.createGitClient(target.owner, target.name, target.installationId, target.repositoryId, execution);
     case "gitlab":
-      return gitlabCredential(target).then((credential) => gitlab.createGitLabClient(target, credential, { fetch: execution?.fetch() }));
+      // 실행 수명이 있으면 Publish다 — 쓰기 클라이언트라 토큰 주인의 push 권한까지 본다(`requireWrite`). 게이트·원격 신호·미리보기는 읽기다.
+      return gitlabCredential(target).then((credential) => gitlab.createGitLabClient(target, credential, { fetch: execution?.fetch(), requireWrite: execution !== undefined }));
     default:
       return unreachable(target);
   }
@@ -59,29 +60,35 @@ export function listBranches(target: RepoTarget): Promise<BranchList> {
 type GitLabTarget = Extract<RepoTarget, { host: "gitlab" }>;
 
 /**
- * **프로젝트가 참조하는 연결**의 PAT를 연다(`target.connectionId` — 호출자의 연결이 아니다, design §5 · `credential-separation.test.ts`).
- * 참조가 가리키는 행이 없으면(해제와의 경합 — FK `SET NULL` 사이) 끊긴 것이다: 재연결이 고친다(`not-installed`). 봉투가 안 열리면 던진다 — 설정 오류다.
+ * **프로젝트가 참조하는 연결**의 PAT를 여는 유일한 자리(`target.connectionId` — 호출자의 연결이 아니다, design §5). `credential-separation.test.ts`가
+ * `openGitLabConnection(` 호출 자리를 `파일#함수`로 고정한다 — 이 함수 밖에서 열지 않는다.
+ * 행이 없으면(해제와의 경합 — FK `SET NULL` 사이) `null`이다. 봉투가 안 열리면 던진다 — 설정 오류다.
  */
-async function gitlabCredential(target: GitLabTarget): Promise<gitlab.GitLabCredential> {
+async function projectConnection(target: GitLabTarget): Promise<gitlab.GitLabCredential | null> {
   const connection = await openGitLabConnection(getPrisma(), { connectionId: target.connectionId });
-  if (connection === null) throw new AppError("GitLab connection was removed; reconnect the project", "not-installed");
-  return { token: connection.token, expiresAt: connection.expiresAt };
+  return connection === null ? null : { token: connection.token, expiresAt: connection.expiresAt, gitlabUserId: connection.gitlabUserId };
+}
+
+/** 끊긴 것이다 — 재연결이 고친다(`not-installed`). */
+async function gitlabCredential(target: GitLabTarget): Promise<gitlab.GitLabCredential> {
+  const credential = await projectConnection(target);
+  if (credential === null) throw new AppError("GitLab connection was removed; reconnect the project", "not-installed");
+  return credential;
 }
 
 async function listGitLabBranches(target: GitLabTarget): Promise<BranchList> {
-  const connection = await openGitLabConnection(getPrisma(), { connectionId: target.connectionId });
-  if (connection === null) return { status: "unavailable" };
-  return gitlab.listGitLabBranches(target, { token: connection.token, expiresAt: connection.expiresAt });
+  const credential = await projectConnection(target);
+  if (credential === null) return { status: "unavailable" };
+  return gitlab.listGitLabBranches(target, credential);
 }
 
 /** Home·번역 화면의 GitLab 연결 건강성 메모 — GitHub probe 메모와 같은 TTL·상한, `unknown`은 기억하지 않는다(`probe-memo.ts`). */
 const gitlabHealthMemo = createProbeMemo<ConnectionHealth>({ ttlMs: PROBE_MEMO_TTL_MS, max: PROBE_MEMO_MAX, transient: "unknown" });
 
 async function loadGitLabHealth(target: GitLabTarget, options: { memo?: boolean }): Promise<ConnectionHealth> {
-  const connection = await openGitLabConnection(getPrisma(), { connectionId: target.connectionId });
+  const credential = await projectConnection(target);
   // 참조가 가리키는 행이 사라졌다 — 끊김이다(`repoTargetOf`의 `connection-removed`와 같은 결론).
-  if (connection === null) return { status: "connection-removed" };
-  const credential = { token: connection.token, expiresAt: connection.expiresAt };
+  if (credential === null) return { status: "connection-removed" };
   // ⚠️ **마감이 GitHub probe와 같다**(`GITHUB_WAIT_MS` — 리포 호스트 원격 대기 전체의 공유 마감). 넘기면 `unknown`("확인할 수 없어요")이다.
   const probe = () => withinGithubWait(gitlab.loadGitLabHealth(target, credential), () => {
     logCaught("gitlab", "health-deadline", new AppError(`no response within ${GITHUB_WAIT_MS}ms`));

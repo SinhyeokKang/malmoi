@@ -26,6 +26,23 @@ const ACTIVE = new Set(["active"]);
 export type MemberAccessVerdict = "ok" | "read-only" | "forbidden" | "reconnect" | "unavailable";
 
 export function planMemberAccess(result: RemoteResult, requirePush: boolean): MemberAccessVerdict {
+  return planLevel(result, requirePush ? MAINTAINER : null);
+}
+
+/** sync 브랜치 push·MR 생성 — Developer(30)면 된다(보호되지 않은 브랜치). */
+export const DEVELOPER = 30;
+
+/**
+ * **프로젝트가 참조하는 연결의 토큰 주인**이 지금 그 리포에 쓸 수 있나 (R-C Astra 🟡1). 입력은 그 연결의 PAT로 읽은
+ * `members/all/<토큰 주인 GitLab user id>`(상속 포함 유효 권한)다 — 호출자의 PAT·권한이 아니다.
+ * 기준이 생성·재연결(`planMemberAccess(…, true)` — Maintainer)과 다르다: 주인이 Developer로 강등돼도 보호되지 않은 sync 브랜치 push·MR은 계속 된다
+ * (design §2 사례 표). Reporter 이하는 읽기만 된다 — `read-only`(Publish·no-changes 정리를 막는다, 수동 Sync는 읽기라 막지 않는다).
+ */
+export function planConnectionPushAccess(result: RemoteResult): MemberAccessVerdict {
+  return planLevel(result, DEVELOPER);
+}
+
+function planLevel(result: RemoteResult, writeLevel: number | null): MemberAccessVerdict {
   if (!result.ok) {
     const failure = classifyGitLabFailure(result.error);
     if (failure === "reauthorize" || failure === "scope-missing") return "reconnect";
@@ -40,7 +57,7 @@ export function planMemberAccess(result: RemoteResult, requirePush: boolean): Me
   if ((state !== undefined && !ACTIVE.has(state)) || (membership_state !== undefined && !ACTIVE.has(membership_state))) return "forbidden";
   const level = parsed.data.access_level;
   if (level < REPORTER) return "forbidden";
-  if (requirePush && level < MAINTAINER) return "read-only";
+  if (writeLevel !== null && level < writeLevel) return "read-only";
   return "ok";
 }
 

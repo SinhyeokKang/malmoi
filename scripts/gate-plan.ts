@@ -53,6 +53,17 @@ const POSTGRES_SUITES: readonly { step: GateStep; triggers: readonly string[] }[
       // GitLab 연결 시나리오가 직접 지나는 경로(gitlab-repositories D21) — 멤버 제거의 연결 참조 비우기 · 목록 판정.
       "lib/auth/members.ts",
       "lib/projects/list.ts",
+      // GitLab I/O 시나리오(`lib/gitlab/__tests__/connection-state.integration.ts`)가 직접 지나는 경로(C 인계 · R-C 🟡1) — 열린 MR 게이트 · Publish 코어·
+      // 실행 수명·오류 분류 · 건강성·메모 · 공유 마감 · 적재 예산 · 봉투 함수(credentials 스위트와 함께 깨운다).
+      "lib/projects/open-pr.ts",
+      "lib/sync/publish.ts",
+      "lib/sync/execution.ts",
+      "lib/sync/plan.ts",
+      "lib/github-connect/health.ts",
+      "lib/github-connect/probe-memo.ts",
+      "lib/github-wait.ts",
+      "lib/onboarding/budget.ts",
+      "lib/credentials/storage.ts",
       "lib/operator/",
       "app/(edit)/actions.ts",
       "app/(edit)/projects/actions.ts",
