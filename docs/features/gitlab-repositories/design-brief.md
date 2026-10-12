@@ -43,15 +43,20 @@
 | 프로젝트 Home | Repository 행에 플랫폼을 어떻게 싣나 — 값 앞 글리프 · 라벨 분기("GitLab project") · 별도 행 중 하나 | 지금 "외부 링크에 글리프를 달지 않는다"(DESIGN §6.3) 규칙과 충돌하지 않게 — 글리프가 링크 장식이 아니라 플랫폼 표시라는 구분이 보여야 한다 |
 | 프로젝트 설정 | Repository 카드 제목·연결 행·Reconnect 문구에 플랫폼이 드러나는 방식 · GitLab의 연결자(토큰 주인)·만료일 표시 | GitHub 카드는 현행. GitLab 카드만 연결자·만료일 줄이 는다 |
 | Sources · Logs · Inbox | 플랫폼 표시가 필요한가(필요 없으면 "없음"으로 결정) | Logs·Inbox는 문구만 바뀐다(PR → MR) |
-| 공통 | 글리프 색 — tanuki 다색(Google 4색 선례, DESIGN §6.2·§6.8 예외 등재 필요) vs 단색 `currentColor` | 다색이면 목록·Home에서 GitHub 단색 옆에 섰을 때 무게가 기우는지 본다 |
+| 공통 | 글리프 색 — **단색 `currentColor`로 결정**(D10) | GitHub 단색 옆에서 무게가 같고 DESIGN §6.2 raw 색 예외를 늘리지 않는다 |
 
-## 열린 갈래 (spec §6 — 닫히기 전엔 후보 프레임)
+## 열린 갈래 — 0 (2026-10-12 닫힘)
 
-| 갈래 | 후보 | 그리는 법 |
+| 갈래 | 결정 | 근거 |
 |---|---|---|
-| C MR 번호 | `!123`(GitLab 고유) · `#123`(지금 규칙) | Home 메타 한 프레임에 두 후보 |
-| D 글리프 색 | 다색 · 단색 | 프로젝트 목록 한 프레임에 두 후보 |
-| E 플랫폼 맥락 | 위 표의 화면별 제안 | 화면별 1~2안 |
+| C MR 번호 | GitLab **`!123`**, GitHub `#123` 그대로 | 시안 검토 3(G5b1) |
+| D 글리프 색 | **단색 `currentColor`** | D10 |
+| E 플랫폼 맥락 | 목록 = 행 보조줄 글리프 + 주소(새 열·배지 없음, 접근 이름에 호스트) · Home = **Platform 행 두 호스트 모두**(시안 검토 2) · 설정 = GitLab 카드에 연결자·만료일 줄 · Sources = 머리 글리프 교체 · Logs·Inbox = 문구만(PR → merge request, D7) | 시안 v6 확인 |
+| MR 호칭 | **merge request**(en·ko·es 모두 영어 고유명사 — es `las merge requests`) | D7 |
+| 만료 임박 경계 | **14일**(`STATE.expiresSoon`, warning) | D11 |
+| PAT 스코프 | **`api` 하나**(도움말·프리필 `scopes=api`) — `read_repository`·`write_repository`는 Git-over-HTTP 전용이라 뺀다 | D13 · design §2 실측 |
+| App 없는 셀프 호스팅 설치 | ①에 탭 줄 없이 GitLab 단독 · `/account`·설정의 GitHub 연결 카드·설치 링크 없음 | D4a |
+| CI YAML(G7) | 본문 요건 확정 — 아래 "G7 CI YAML 본문 요건" | D5 |
 
 ## 프리미티브
 
@@ -63,9 +68,9 @@
 
 | 상태 | GitHub shell 대응 | 내용 |
 |---|---|---|
-| 연결 전 | `install` 자리 | 제목·설명 + **PAT 입력 필드** + [Connect] + "GitLab에서 토큰 만들기" 링크(필요 스코프 `api`·`read_repository`·`write_repository`, 역할 Maintainer 이상을 한 줄로). 셀프 호스팅·hosted 같다 |
+| 연결 전 | `install` 자리 | 제목·설명 + **PAT 입력 필드** + [Connect] + "GitLab에서 토큰 만들기" 링크(`https://gitlab.com/-/user_settings/personal_access_tokens?name=Malmoi&scopes=api` — 레거시 토큰 화면으로 열린다. 필요 스코프 `api`, 역할 Maintainer 이상을 한 줄로). 셀프 호스팅·hosted 같다 |
 | 검증 중 | — | [Connect] busy, 입력 잠김 |
-| 검증 실패 | 연결 실패 Alert 자리(입력 아래 danger) | 무효 · 만료 · 스코프 부족(빠진 스코프 이름) · 일시 장애(다시 시도 — "무효"로 접지 않는다) |
+| 검증 실패 | 연결 실패 Alert 자리(입력 아래 danger) | 무효(만료·철회 포함 — GitLab이 같은 401을 준다) · 스코프 부족(빠진 스코프 이름 `api`) · **fine-grained 토큰**(레거시 토큰을 만들라는 문장 + 같은 링크, spec §5) · 일시 장애(다시 시도 — "무효"로 접지 않는다) |
 | 연결됨 → 리포 목록 | 리포 목록 | GitHub와 같은 목록. 위에 연결 계정 한 줄(GitLab 사용자명 · 만료일 · [Replace token]) |
 | 리포 없음 | `repos` | Maintainer 이상인 프로젝트가 없다 — GitLab 쪽 안내 |
 | 토큰 만료·철회 | `reconnect` | 다시 붙여 넣기 |
@@ -111,6 +116,7 @@ GitHub의 `waiting`(조직 소유자 승인 대기)은 GitLab에 대응이 없�
 ## 동작 주석
 
 - 탭은 키보드로 고른다(화살표). 탭을 바꿔도 각 탭의 상태(GitHub 리포 검색어·선택, GitLab 입력 값)는 모달이 닫힐 때까지 남는다.
+- GitHub App이 없는 셀프 호스팅 설치(D4a)는 탭 줄이 없고 GitLab 내용만 선다.
 - 기본 탭은 GitHub다. GitLab 연결만 있는 사용자도 처음엔 GitHub로 연다(기억하지 않는다 — 결정이 필요하면 시안에서 제안).
 - PAT 입력: 라벨·오류를 `aria-describedby`로 잇는다. [Connect] 전엔 서버로 보내지 않는다(입력 중 검증 없음). 붙여 넣은 값은 연결 뒤 다시 보이지 않는다.
 - "GitLab에서 토큰 만들기"는 새 탭으로 연다(사용자는 모달로 돌아와 붙여 넣는다).
@@ -139,10 +145,21 @@ DOM 글자·구조로 검토했다(화면 캡처 불가 — 간격·색 판정�
 6. **`/account` 카드 제목은 시안 그대로 "GitLab PAT"**.
 7. **`/account`에도 [Connect]** — G8b 미연결 카드에 같은 PAT 입력 shell을 둔다(계정 연결이 정본이라).
 
-그 밖: G2d(일시 장애)의 버튼 라벨 Connect → Try again은 유지해도 된다. 스코프 셋은 tasks §0 실물 확인 뒤 도움말 한 줄만 고친다.
+그 밖: G2d(일시 장애)의 버튼 라벨 Connect → Try again은 유지해도 된다. 스코프 셋은 실물 확인 결과 **`api` 하나**다(D13) — 시안의 세 스코프 도움말 한 줄만 고쳐 구현한다.
 
 **v4 확인 (2026-10-12)**: 위 3·5·7이 반영됐다(G5b2 삭제 · 날짜 오프셋 제거 · G8b 카드 안 PAT 입력). 남은 것 — G6b·G6c 재연결이 보는 사람을 가르지 않는다. 계정 토큰 참조 모델에서는 토큰 주인이면 [Replace token](참조하는 프로젝트 전부), 다른 OWNER이고 연결이 있으면 [Use my GitLab connection](명의 변경), 연결이 없으면 지금의 붙여 넣기 형이다. 다른 OWNER가 이 카드에 붙여 넣으면 그 사람의 계정 연결이 교체돼 그 사람의 다른 프로젝트까지 바뀐다.
 
 **v5 확인 (2026-10-12)**: G6b·G6c가 보는 사람 셋(토큰 주인 [Replace token] · 다른 OWNER 연결 있음 [Use my GitLab connection] · 연결 없음 붙여 넣기)으로 나뉘었다 — 모델과 맞다. 남은 보완: [Use my GitLab connection]이 거부될 때(그 사람 토큰의 권한·스코프 부족·만료) 버튼 아래 danger Alert 프레임, G6b1의 "reconnects"는 아직 연결 상태라 "updates"로. ⚠️ v5 파일이 256 KiB를 넘어 DesignSync가 잘라 준다 — G10b·G11a·G11b는 읽지 못했다.
 
 **v6 확인 (2026-10-12)**: 남은 보완이 모두 반영됐다 — G6c2-err(권한 없음 프레임 + 스코프 부족·만료/철회 문장은 캔버스 메모, 링크는 /account), G6b1 "updates"(G6c1은 "reconnects"), 다크(G10)·es(G11)는 별도 파일로 분리돼 두 파일 모두 잘리지 않고 읽힌다(G10b·G11b는 G6b-1 기준). 시안이 **만료 임박 경계를 14일**로 제안했다(`STATE.expiresSoon`, warning) — 구현 때 확정한다. CI YAML(G7)은 여전히 레이아웃 자리다(시안 검토 4).
+
+## G7 CI YAML 본문 요건 (D5 — 2026-10-12)
+
+시안의 YAML(`ghcr.io/sinhyeokkang/malmoi-cli:1`·`malmoi push`)은 레이아웃 자리였고 쓰지 않는다. 실제 본문은 D1 배치가 `lib/onboarding/gitlab-ci.ts`(생성기)와 `docs/ACTIONS.md` GitLab 절(정본 예시)로 만든다. 요건(design §2 "적재와 Sync"):
+
+- 저장 경로 안내는 **`.gitlab-ci.yml`**(대상 리포 루트 — 기존 파일이 있으면 job을 덧붙인다).
+- job은 말모이 리포를 불변 태그 `malmoi-i18n-push-gitlab-vN`으로 shallow clone하고 박힌 40자 SHA와 대조한 뒤 `.gitlab/malmoi-i18n-push/push.sh`를 돈다 — 바뀌는 참조(`include: remote`·브랜치)를 쓰지 않는다.
+- `rules`가 설정된 base 브랜치 push만 받고 커밋 메시지의 `[skip-malmoi-i18n]`을 거른다(루프 가드 첫 겹 — 둘째 겹은 `push.sh`).
+- `PUSH_TOKEN`은 **masked·protected** CI/CD 변수 — 안내 단계: Settings › CI/CD › Variables에 추가, Protect·Mask 체크, base 브랜치가 보호 브랜치여야 노출된다.
+- 셀프 호스팅 설치본이 만든 job은 **항상 `MALMOI_I18N_API_URL`**을 든다(G7c).
+- 화면(G7a·b)은 시안 레이아웃 그대로 `CodeBlock`에 생성 결과를 싣는다.
