@@ -1,6 +1,6 @@
 # GitLab repositories — 재개 후 태스크
 
-상태: **전부 미착수·구현 보류**. 문서 기록·검수는 아래 실행을 승인하지 않는다. 각 묶음은 향후 구현 커밋 경계이며 현재 구현 코드를 커밋하지 않는다. 갱신 2026-10-12(3차 검수).
+상태: **전부 미착수·구현 보류**. 문서 기록·검수는 아래 실행을 승인하지 않는다. 각 묶음은 향후 구현 커밋 경계이며 현재 구현 코드를 커밋하지 않는다. 갱신 2026-10-12(3차 검수 + 인증 결정 — GitHub 현행 유지, GitLab PAT).
 
 검증 줄 표기: **[자동]** 명령 결과로 판정 · **[수동]** 스킬·절차로 사람이 판정(이 리포엔 e2e 프레임워크가 없다). 실물 증거(원격 SHA·MR 번호·CI 실행 링크·스크린샷)는 해당 배치의 `/merge` PR body에 남기고, 결론은 정본(ARCHITECTURE 등)으로 올린다 — 이 디렉터리는 기능이 끝나면 지워진다.
 
@@ -10,10 +10,10 @@
 
 ## 0. 재개 결정·설계 확정 — 문서 경계
 
-- [ ] 사용자가 spec §6의 미결 행을 닫는다 — 구현 시점·도입 팀·검증 리포, 포지셔닝·정본 문구(PRODUCT §1·§2·§3·§4.1·README·불변식 6·11), PR/MR 호칭, MR 번호 표기·es 호칭, 지원 배포형, GitLab 전용 셀프 호스팅 설치의 GitHub App, Free 플랜 지원, 자격증명 봉투 키·회전, CI 배포 형태, 활성화 방식, no-changes 종료 상태, 트리 크기 입력.
+- [ ] 사용자가 spec §6의 미결 행을 닫는다 — 구현 시점·도입 팀·검증 리포, 포지셔닝·정본 문구(PRODUCT §1·§2·§3·§4.1·README·불변식 6·11), PR/MR 호칭, MR 번호 표기·es 호칭, 지원 배포형, GitLab 전용 셀프 호스팅 설치의 GitHub App, PAT 봉투 키·회전, 연결자가 프로젝트를 떠날 때, CI 배포 형태, 활성화 방식, no-changes 종료 상태, 트리 크기 입력.
   - 검증: [수동] spec §6의 모든 행에 사용자 결정과 근거가 적혀 "미결"이 0행이다.
-- [ ] 인증 방식·쓰기 신원·권한 증명·만료/회전·연결 해제의 영향을 확정한다. 개인 OAuth 쓰기를 허용하려면 기존 원칙과의 차이를 먼저 결정한다. 불변식 11 첫 층(토큰을 리포 하나로 좁힘)의 GitLab 대응을 적는다.
-  - 검증: [수동] design §5에 로그인/연결/쓰기 자격증명 표, 신규 env 목록(없으면 "없음"), 철회·퇴사 사례별 동작, 세 층 대응이 적혀 "미확정" 표기가 0이다.
+- [ ] PAT 실물 확인 — 최소 스코프(`api` 없이 commit·MR이 되는지), 토큰 메타 API로 만료일·스코프·주인을 읽을 수 있는지, 토큰 생성 페이지 URL 프리필(이름·스코프)이 되는지, 만료·철회·스코프 부족·권한 상실 각각의 응답 코드.
+  - 검증: [수동] design §2 "GitLab 연결"과 §5에 실측 결과(엔드포인트·응답 코드·스코프 목록)가 적혀 "확인 필요" 표기가 0이다. 철회·퇴사·만료 사례별 동작 표가 있다.
 - [ ] GitLab 실제 테스트 리포에서 API의 base 재생성·MR 재사용·no-changes 정리·권한 부족·응답 유실·**트리 항목의 size 제공 여부와 크기 조회 비용**을 검증하고 공통 인터페이스를 확정한다.
   - 검증: [수동] 시나리오별로 원격 commit의 parent SHA = 캡처한 base SHA, 변경 외 파일 blob id 불변, 열린 MR 개수 = 1(no-changes 뒤 0), 두 번째 no-changes 실행의 외부 쓰기 호출 0회, 실패 주입 뒤 sync 브랜치·MR 상태, 크기 예산(`lib/onboarding/budget.ts`) 입력을 얻는 방식과 호출 수가 기록된다. 지원 못 하는 계약이 있으면 spec을 다시 확정하기 전까지 다음 단계로 가지 않는다.
 - [ ] `installationId`·`repositoryId` 소비자 전수 표를 만든다(2026-10-12 기준 `app`·`lib`·`components` 비테스트 55 + `scripts` 1). 메모 키(`open-pr-memo`·`probe-memo`)에 리포 호스트를 넣을지, 저장 오류 코드(`github-error`·`not-installed`) 정책, `GITHUB_WAIT_MS` 이름 일반화를 판정한다. design §2 UI 표면 표를 design에 적힌 기준 명령으로 키 단위로 다시 만든다.
@@ -47,12 +47,12 @@
   - 검증: [자동] 연결 변경 중 적재/Publish, 제거된 멤버, 보관 프로젝트, 다른 리포 id, 같은 숫자 id의 다른 리포 호스트, **연결 흐름 도중 세션 만료**(Action이 세션을 다시 읽는 경로)에 대한 PG 통합 테스트 통과. 잠금 호출을 지운 뮤테이션에서 locked-access가 red.
 - [ ] 호출자의 리포 권한 검사를 경로별로 보존한다. 수동 Sync와 연결된 프로젝트의 base branch 목록·저장(`updateRepositorySettings`)은 읽기 권한, 생성·재연결·소스 추가·push 토큰 회전은 쓰기 권한을 요구한다. `requirePush`는 기본값 없는 필수 인자로 둔다.
   - 검증: [자동] 두 리포 호스트 모두 읽기 전용 OWNER의 Sync·base branch 목록·저장은 성공하고, 쓰기 권한이 필요한 네 경로는 거부된다. 서버 쓰기 자격증명의 존재만으로 호출자의 권한을 인정하지 않는다. 401 → 재인가 경로가 있고 복구 컨트롤 0개인 화면 상태가 없다(POSTMORTEM 2026-09-19).
-- [ ] `lib/github-connect/__tests__/credential-separation.test.ts`에 GitLab 연결/쓰기 루트를 등록하고, **완전성 검사의 기준(GitLab 클라이언트 모듈 import)과 fetch 기반 쓰기 패턴(비GET `fetch`)**을 정의한다. 진입점별 메타 테스트를 붙인다.
-  - 검증: [자동] 연결 경로에 GitLab 비GET `fetch`를 일부러 넣은 픽스처에서 테스트가 red, 원복 시 green.
-- [ ] 새 Route Handler(연결 callback 등)를 인가 스캐너 `app/__tests__/entry-points.test.ts`의 `guard(` 집계에 등록한다. origin은 `requestOrigin`·`deploymentMode()`를 지나고 state 서명은 갈래만 늘린다(design §5).
-  - 검증: [자동] import만 남기고 `guard(` 호출을 지운 뮤테이션에서 red. hosted·self-hosted 두 모드의 callback origin 판정 테스트 green.
-- [ ] 인증이 refresh 방식이면 토큰 갱신을 요청 안에서 직렬화한다(POSTMORTEM 2026-09-16).
-  - 검증: [자동] 동시 만료 두 호출이 회전 1회, 한 요청 안에서 갱신 1회.
+- [ ] `lib/github-connect/__tests__/credential-separation.test.ts`에 GitLab 경계를 등록한다 — **계정 PAT는 목록·검증·재연결에만, 쓰기(Sync·Publish·야간)는 프로젝트 사본만**. 완전성 검사의 기준(GitLab 클라이언트 모듈 import)과 fetch 기반 쓰기 패턴(비GET `fetch`)을 정의한다.
+  - 검증: [자동] 쓰기 경로가 계정 PAT를 읽는 픽스처, 연결 경로에 비GET `fetch`를 넣은 픽스처에서 각각 red, 원복 시 green.
+- [ ] 새 Route Handler가 없음을 확인한다(design §5 "새 진입점 없음"). 구현 중 생기면 인가 스캐너 `app/__tests__/entry-points.test.ts`의 `guard(` 집계에 등록한다(POSTMORTEM 2026-09-18).
+  - 검증: [자동] `app/api/` 아래 새 파일 0, 생겼다면 `guard(` 호출을 지운 뮤테이션에서 red.
+- [ ] PAT 입력·검증·보관·교체·해제 Server Action을 만든다(계정 단위 GitLab 연결 + 프로젝트 쓰기 사본, design §2 "GitLab 연결"). 검증 사유를 가르는 순수 함수(무효·만료·스코프 부족·네트워크)를 먼저 테스트한다.
+  - 검증: [자동] 사유별 분류 테스트(네트워크 오류를 "무효"로 접지 않음), 원문 PAT가 응답·로그·`ProjectEvent`·MCP 응답에 0건(spec 완료 조건 11), 해제 뒤 봉투 행 0, 계정 PAT 교체가 기존 프로젝트 사본을 바꾸지 않음, 재연결이 사본을 교체함.
 
 ## 3. GitLab I/O·Sync·Publish — 커밋 C
 
@@ -72,7 +72,7 @@
   - 검증: [자동] 1층(DB 미전달 0 → 원격 호출 0)·2층(blob hash 전부 동일 → commit API 호출 0)을 가짜 클라이언트 호출 기록으로 단언.
 - [ ] 첫 적재·소스 관리·수동 Sync·야간·자동 적재 보호를 기존 코어에 연결한다. 새 `lib/` 경로를 gate-plan 트리거에 등록한다. 저장 오류 코드 정책(§0 판정)을 적용한다.
   - 검증: [자동] `pnpm gate` green(관련 격리 PG 스위트 포함). 열린 MR/조회 실패 보류, Publish/no-changes 경합, 미전달 토큰 보존, 기본 브랜치 개명 시 `base-branch-missing`과 늦게 도착한 판정 무시 포함. 새 코드면 `lib/pull/__tests__/error-codes.test.ts` 양방향 등재 green.
-- [ ] 연결 상태 시나리오를 `*.integration.ts`로 쓴다 — 권한별 연결·만료·만료 임박·철회·일시 장애·재시도·보관 403·플랜 미달.
+- [ ] 연결 상태 시나리오를 `*.integration.ts`로 쓴다 — 권한별 연결·PAT 만료·만료 임박·철회·스코프 부족·주인의 권한 상실·일시 장애·재시도·보관 403. 쓰기 직전 project id 재대조(PAT에는 리포 한정 층이 없다)도 시나리오로 둔다.
   - 검증: [자동] 진입점 → 가짜 클라이언트 → 격리 PG → **뷰 모델 출력**(Home `metaTabs`·Inbox `attentionItems`·Logs `eventSentence`·설정 연결 상태)으로 단언. DB 행에서 멈춘 단언이 없다.
 
 ## 4. CI·MCP — 커밋 D
@@ -88,8 +88,8 @@
   - 검증: [자동] banned-terms·terminology 테스트 green(머지 리퀘스트 표기 변형·GitLab 조사 오용·홀로 선 "Couldn't check"가 MR 목적어에도 걸림). [수동] 톤 표에 "미결" 0행.
 - [ ] 상태 라벨 분기를 `lib/status/canon.ts`의 `STATE` 한 곳에서 한다(`prOpen`·`prCheckFailed` 재사용/추가, 만료 임박 새 상태 행 warning). 만료일은 `lib/date-format.ts`, 남은 기간은 `lib/relative-time.ts`.
   - 검증: [자동] 화면 컴포넌트에 MR/PR 상태 문구 직접 분기 0(grep), `date-format-consumers.test.ts` green.
-- [ ] 기존 프리미티브로 호스트 선택·GitLab 연결·설정·상태·PR/MR 표시와 `workflow-block`·`ci-card`의 GitLab CI 안내를 구현한다. 시안(§0)을 따른다. 문구는 **리포 호스트별 문장 분기**이고 호스트 이름 + 조사 보간이 없다.
-  - 검증: [자동] DOM 테스트에서 GitLab 프로젝트 스코프 화면에 `GitHub`·`pull request`·`github.com` 0건(말모이 자체 리포 링크·로그인 공급자 이름 제외), 호스트가 글리프만이 아니라 텍스트/접근 이름으로 드러난다, 나란히 선 Disconnect의 접근 이름이 축을 든다, 비밀값 입력의 라벨·오류가 `aria-describedby`로 이어진다. [수동] `/runtime-test`로 렌더·포커스·라이트/다크·**375 폭에서 긴 하위 그룹 주소**(리포 목록·Home 메타·Sync Dialog·설정 행).
+- [ ] 기존 프리미티브로 ① GitHub / GitLab 탭(`components/ui/tabs.tsx` — GitHub 탭은 현행 그대로)·GitLab 탭의 PAT 입력과 상태 shell·`/account`의 GitLab 연결·설정·상태·PR/MR 표시, 프로젝트 목록·Home·설정의 리포 호스트 맥락, `workflow-block`·`ci-card`의 GitLab CI 안내를 구현한다. 시안(§0)을 따른다. 문구는 **리포 호스트별 문장 분기**이고 호스트 이름 + 조사 보간이 없다.
+  - 검증: [자동] DOM 테스트에서 GitLab 프로젝트 스코프 화면에 `GitHub`·`pull request`·`github.com` 0건(말모이 자체 리포 링크·로그인 공급자 이름 제외), 호스트가 글리프만이 아니라 텍스트/접근 이름으로 드러난다, 나란히 선 Disconnect의 접근 이름이 축을 든다, PAT 입력의 라벨·오류가 `aria-describedby`로 이어진다, 탭 전환이 GitHub 탭의 기존 상태(리포 검색어·선택)를 잃지 않는다. [수동] `/runtime-test`로 렌더·포커스·라이트/다크·**375 폭에서 긴 하위 그룹 주소**(리포 목록·Home 메타·Sync Dialog·설정 행).
 - [ ] GitLab 브랜드 글리프를 `components/signin/brand-icons.tsx`에 추가하고 `components/__tests__/gitlab-glyph.test.ts`를 새로 둔다. 다색이면 DESIGN §6.2·§6.8 예외 문장에 등재한다. `GitPullRequest*` 일반 글리프는 유지한다.
   - 검증: [자동] gitlab-glyph·`visual-system.test.ts` green. [수동] 다색이면 DESIGN 두 절에 등재 문장이 있다(`visual-system`은 `brand-icons.tsx`를 면제하므로 테스트가 못 잡는다).
 - [ ] 시안 대상 신규 UI는 `/design-sync`로 대조한다. 기존 화면의 소규모 수정은 해당 DOM·런타임 검증을 한다.
@@ -107,10 +107,10 @@
 
 - [ ] `/roundtrip`을 GitLab으로 확장한다 — `pnpm smoke:gitlab`(읽기 전용, `pnpm test` 밖), `roundtrip.md`의 GitLab 분기(MR 머지 방식 merge·squash·fast-forward를 **인자로** 받는다 — POSTMORTEM 2026-09-17, `Project.installationId` 전제 제거), 폐기용 GitLab 리포 목록 지정.
   - 검증: [수동] 폐기용 GitLab 리포로 `smoke:gitlab`이 연결·tree 조회를 통과하고, roundtrip이 머지 방식 인자 셋을 받는다.
-- [ ] GitHub와 GitLab 테스트 리포에서 `/roundtrip`(적재 → 편집 → Publish → PR/MR 머지 → 재적재)을 실행한다. 연결 callback 왕복은 로컬이 아니라 preview(`https://dev.mal-moi.com`)에서 본다. 폐기용 리포에 어댑터 엣지 픽스처(빈 `{}` 중첩 JSON·chrome `placeholders: null`)를 둔다.
+- [ ] GitHub와 GitLab 테스트 리포에서 `/roundtrip`(적재 → 편집 → Publish → PR/MR 머지 → 재적재)을 실행한다. GitHub 연결 callback 왕복은 로컬이 아니라 preview(`https://dev.mal-moi.com`)에서 본다. GitLab은 PAT라 callback이 없어 로컬에서도 연결된다. 폐기용 리포에 어댑터 엣지 픽스처(빈 `{}` 중첩 JSON·chrome `placeholders: null`)를 둔다.
   - 검증: [수동] 두 리포 호스트 모두 재적재 뒤 DB 값 = 편집 값, 로컬 `git hash-object` = 원격 blob id, orphan 복원, 열린 PR/MR 개수 1, Last sent/Logs 갱신, 실패 주입 뒤 편집 보존.
 - [ ] 셀프 호스팅 설치본에서 GitLab 프로젝트의 연결 → 적재 → Publish를 확인한다(spec 완료 조건 10).
-  - 검증: [수동] 로컬 compose 설치본에서 preflight 통과, GitLab 왕복 성립, 결과를 SELF-HOSTING §7에 날짜·digest와 함께 기록(외부 OAuth가 없어 못 하면 "미실행"으로 적는다).
+  - 검증: [수동] 로컬 compose 설치본에서 preflight 통과, GitLab 왕복 성립, 결과를 SELF-HOSTING §7에 날짜·digest와 함께 기록(GitLab은 PAT라 로컬에서 된다. 로그인용 외부 OAuth가 없어 못 하면 "미실행"으로 적는다).
 - [ ] 전체 게이트를 돌리고 두 리포 호스트의 외부 실패를 주입한다.
   - 검증: [자동] `pnpm gate` green, 가짜 클라이언트로 실패 주입 계약 테스트 green. [수동] 실물 리포에서 권한 철회·토큰 만료 주입. spec 완료 조건 1–10마다 자동/수동 증거를 PR body에 연결한다.
 - [ ] 배포: dev DB는 `/push` 전에 `/db`로 넓힌다. 프로덕션은 별도 사용자 `/merge` 요청으로만 진행하고, `/merge` 1단계에서 `db:deploy`·`db:status:prod`로 prod를 넓힌 뒤 prod `has_schema_privilege` 네 칸 false(새 자격증명 테이블이면 GRANT 0건)를 확인한다. prod를 겨눈 리셋은 금지다. 그 뒤 spec §6에서 고른 방식으로 GitLab 생성을 활성화한다(셀프 호스팅 설치본 포함).
