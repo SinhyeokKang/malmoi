@@ -15,6 +15,8 @@ import { es } from "@/messages/es";
 import { ko } from "@/messages/ko";
 import { stateLabel } from "@/lib/status/canon";
 
+import { BANNED_TERMS } from "./helpers/banned-terms";
+
 /**
  * **화면 용어 표** (DESIGN §10.1 — audit #29). 사전 전체를 걸어 **보이는 문장**만 센다.
  *
@@ -340,6 +342,30 @@ describe("화면 용어 — DESIGN §10.1의 표를 사전 전체가 따른다 (
     expect(sample("Delete", "settings.general.thumbnailRemove")).not.toEqual([]);
     expect(sample("Remove", "account.picture.delete")).toEqual([]);
     expect(sample("Delete", "x")).toEqual([]);
+    // 열린 PR/MR 조회 실패는 목적어를 붙인다 — 홀로 선 "Couldn't check"는 연결 확인 실패 낱말이다(§2.4, gitlab-repositories D7).
+    // 자리(PR·MR 조회 키)가 금지를 가르고, 목적어는 pull request·merge request 어느 쪽이어도 된다.
+    expect(sample("Couldn't check", "home.meta.mrCheckFailed")).not.toEqual([]);
+    expect(sample("Couldn't check.", "projects.banner.prCheckFailed")).not.toEqual([]);
+    expect(sample("couldn't check", "logs.deferredReason.mr-check-failed")).not.toEqual([]);
+    expect(sample("Couldn't check for an open merge request", "home.meta.mrCheckFailed")).toEqual([]);
+    expect(sample("Couldn't check for an open pull request.", "home.meta.prCheckFailed")).toEqual([]);
+    expect(sample("couldn't check for an open merge request", "logs.deferredReason.mr-check-failed")).toEqual([]);
+    expect(sample("We couldn't check what's still open for your developers.", "home.prUnknown")).toEqual([]);
+    expect(sample("Couldn't check", "settings.connection.unknown")).toEqual([]);
+    // merge request는 GitLab의 고유명사라 표기 하나다 — 문장 중간 대문자·하이픈형을 쓰지 않는다
+    for (const text of ["Open Merge Request !128", "The merge-request is open"]) caught(text);
+    for (const text of ["Merge request !128 is open", "View merge request", "the merge request waits for review"]) expect(sample(text), text).toEqual([]);
+  });
+
+  it("GitLab 조사·merge request 표기 변형을 ko·es 쓰지 않는 말이 잡는다 (banned-terms — gitlab-repositories D7·D14)", () => {
+    const hits = (lang: "ko" | "es", text: string) => BANNED_TERMS[lang].filter(([banned]) => text.includes(banned)).map(([banned]) => banned);
+    // GitLab[깃랩]은 받침(ㅂ)으로 끝나 이·은·을·으로를 쓴다
+    for (const text of ["GitLab가 응답하지 않았습니다", "GitLab는 지원합니다", "GitLab를 연결하세요", "GitLab로 이동"]) expect(hits("ko", text), text).not.toEqual([]);
+    for (const text of ["GitLab이 응답하지 않았습니다", "GitLab은 지원합니다", "GitLab을 연결하세요", "GitLab으로 이동", "MR !128 열림"]) expect(hits("ko", text), text).toEqual([]);
+    // ko는 PR과 대칭으로 MR(첫 언급 가이드만 풀어 쓴다) — 음차·번역어를 쓰지 않는다
+    for (const text of ["머지 리퀘스트를 엽니다", "머지 요청", "병합 요청을 닫습니다"]) expect(hits("ko", text), text).not.toEqual([]);
+    for (const text of ["Abre una solicitud de fusión", "Solicitud de fusión abierta", "la solicitud de combinación"]) expect(hits("es", text), text).not.toEqual([]);
+    expect(hits("es", "No se pudo comprobar si hay una merge request abierta")).toEqual([]);
   });
 
   it("쓰지 않는 말이 서빙되는 원고에 없다", () => {
