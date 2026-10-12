@@ -758,7 +758,7 @@ export const ko = {
       deferReasons: {
         "open-pr": "Malmoi MR이 아직 열려 있습니다. 아무것도 동기화하지 않았습니다 — MR이 머지되거나 닫히면 동기화가 다시 시작됩니다.",
         "pr-check-failed": "GitLab에서 열린 Malmoi MR을 확인하지 못해 아무것도 동기화하지 않았습니다. 이 프로젝트의 GitLab 연결이 해제되었거나 쓸 수 없다면 프로젝트 소유자가 설정에서 다시 연결할 수 있습니다. 그렇지 않다면 다음 실행에서 다시 확인합니다.",
-        "too-large": "리포지토리 변경이 서버 동기화 한도를 초과했습니다. 아무것도 동기화하지 않았습니다. 파일 크기를 줄이거나 리포지토리의 GitLab CI job으로 전달하세요.",
+        "too-large": "리포지토리 변경이 서버 동기화 한도를 초과했습니다. 아무것도 동기화하지 않았습니다. 파일 크기를 줄이거나 리포지토리의 GitLab CI 작업으로 전달하세요.",
       },
       meta: { noPullRequest: "MR 없음" },
       sentence: {
@@ -784,7 +784,7 @@ export const ko = {
         "not-installed": "이 프로젝트의 GitLab 연결이 해제되었거나 쓸 수 없습니다. 프로젝트 소유자가 설정에서 다시 연결할 수 있습니다.",
       },
       refusals: {
-        "surface-removed": "이 소스는 프로젝트에서 제거되었습니다. .gitlab-ci.yml에서 이 소스의 job을 지우세요.",
+        "surface-removed": "이 소스는 프로젝트에서 제거되었습니다. .gitlab-ci.yml에서 이 소스의 작업을 지우세요.",
         "not-installed": "이 프로젝트의 GitLab 연결이 해제되었거나 쓸 수 없습니다.",
       },
     },
@@ -1328,7 +1328,7 @@ export const ko = {
       ingest: {
         retry: "다시 시도",
         refsHint: "코드 사용처는 CI 워크플로가 처음 실행된 뒤 표시됩니다. 번역은 지금 시작할 수 있습니다.",
-        onGitLab: { refsHint: "코드 사용처는 CI job이 처음 실행된 뒤 표시됩니다. 번역은 지금 시작할 수 있습니다." },
+        onGitLab: { refsHint: "코드 사용처는 CI 작업이 처음 실행된 뒤 표시됩니다. 번역은 지금 시작할 수 있습니다." },
         open: "프로젝트 열기",
       },
       failed: "완료하지 못했습니다. 잠시 후 다시 시도하세요.",
@@ -1857,12 +1857,12 @@ export const ko = {
       removal: {
         openPr: "열린 MR이 이 소스의 파일을 바꿨다면 그 변경은 다음 게시에서 빠집니다.",
         prUnknown: "열린 MR을 확인하지 못했습니다. MR이 이 소스의 파일을 바꿨다면 그 변경은 다음 게시에서 빠집니다.",
-        workflowLine: ".gitlab-ci.yml에서 이 소스의 job을 지우세요. 그대로 두면 다음 파이프라인이 실패하고 그 뒤 소스도 멈춥니다.",
-        workflowStep: (link: ReactNode): ReactNode => <>{link}에서 CI 파일의 이 소스 job을 지우세요.</>,
+        workflowLine: ".gitlab-ci.yml에서 이 소스의 작업을 지우세요. 그대로 두면 다음 파이프라인이 실패하고 그 뒤 소스도 멈춥니다.",
+        workflowStep: (link: ReactNode): ReactNode => <>{link}에서 CI 파일의 이 소스 작업을 지우세요.</>,
       },
-      firstImport: "첫 동기화가 아직 끝나지 않았습니다. 소스를 추가해도 CI job이 자동으로 연결되지는 않습니다.",
-      pendingHelp: "CI에서 기준 언어를 지정했다면 .gitlab-ci.yml의 job 값도 새 언어로 변경하세요.",
-      notImportedHelp: "이 파일의 키와 언어가 아직 동기화되지 않았습니다. 소스를 추가해도 CI가 자동으로 연결되지는 않습니다 — 문자열은 리포지토리의 CI job이 보냅니다.",
+      firstImport: "첫 동기화가 아직 끝나지 않았습니다. 소스를 추가해도 CI 작업이 자동으로 연결되지는 않습니다.",
+      pendingHelp: "CI에서 기준 언어를 지정했다면 .gitlab-ci.yml에서 이 소스 작업의 값도 새 언어로 변경하세요.",
+      notImportedHelp: "이 파일의 키와 언어가 아직 동기화되지 않았습니다. 소스를 추가해도 CI가 자동으로 연결되지는 않습니다 — 문자열은 리포지토리의 CI 작업이 보냅니다.",
       workflow: "설정에서 CI 파일을 고쳐 추가한 소스를 포함하세요.",
     },
   },
@@ -1889,7 +1889,7 @@ export const ko = {
     },
     onGitLab: {
       field: {
-        help: "원문을 작성한 언어입니다. 바꾸면 동기화 버튼이 아니라 리포지토리의 GitLab CI 파이프라인이 다음에 동기화할 때 적용됩니다 — job의 MALMOI_I18N_BASE 값도 맞게 고치세요.",
+        help: "원문을 작성한 언어입니다. 바꾸면 동기화 버튼이 아니라 리포지토리의 GitLab CI 파이프라인이 다음에 동기화할 때 적용됩니다 — CI 작업의 MALMOI_I18N_BASE 값도 맞게 고치세요.",
       },
     },
   },
@@ -2121,7 +2121,7 @@ export const ko = {
         saveAs: "이 작업을 리포지토리 루트의 이 파일에 추가하세요. 파일이 이미 있으면 그 안에 덧붙이세요.",
         hookHint: (hook: ReactNode, wrapper: ReactNode, doc: ReactNode): ReactNode => (
           <>
-            훅({hook})으로 번역을 읽는 리포지토리는 CI job의 {wrapper} 변수도 채워야 합니다 — {doc} 문서를 보세요.
+            훅({hook})으로 번역을 읽는 리포지토리는 CI 작업의 {wrapper} 변수도 채워야 합니다 — {doc} 문서를 보세요.
           </>
         ),
         hookDoc: "GitLab CI 작업 추가",
@@ -2155,9 +2155,9 @@ export const ko = {
         fields: { branchHelp: "동기화는 이 브랜치를 읽고, MR은 이 브랜치를 대상으로 열립니다." },
       },
       ci: {
-        description: "머지할 때마다 CI job이 번역 파일을 Malmoi로 보냅니다.",
+        description: "머지할 때마다 CI 작업이 번역 파일을 Malmoi로 보냅니다.",
         workflow: "CI 파일",
-        sourcesLead: "CI job 묶음 하나가 모든 소스를 다룹니다. 소스 추가·수정:",
+        sourcesLead: "CI 작업 묶음 하나가 모든 소스를 다룹니다. 소스 추가·수정:",
         stale: "일부 소스가 아직 동기화되지 않았습니다. CI 파일에 포함되었는지 확인하세요.",
         noSources: "CI 파일을 받으려면 소스를 추가하세요.",
       },
