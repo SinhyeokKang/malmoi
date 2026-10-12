@@ -4,7 +4,8 @@ import { z } from "zod";
 import { getProjectAccess, loadMembers, loadPendingInvitations } from "@/lib/auth/query";
 import { encodeCursor, parseLogFilter } from "@/lib/events/filter";
 import { loadEvents } from "@/lib/events/query";
-import { loadConnectionHealth } from "@/lib/github";
+import { loadConnectionHealth } from "@/lib/repo-host";
+import { repoTargetOf } from "@/lib/repo-host/target";
 import { logFailure } from "@/lib/github-connect/log";
 import { en } from "@/messages/en";
 import { loadProjectListAggregates, loadSurfaceCounts } from "@/lib/keys/query";
@@ -46,7 +47,7 @@ export const getProject = defineTool({
       loadProjectListAggregates(prisma, [access.projectId]),
       loadSurfaceCounts(prisma, access.projectId),
       // Home과 같은 판단 — GitHub 설정 오류(던짐)가 조회 전체를 죽이지 않는다. 모르면 `unknown`이다.
-      loadConnectionHealth(project).catch((error: unknown) => { logFailure("mcp-connection-health", error); return { status: "unknown" as const }; }),
+      loadConnectionHealth(repoTargetOf(project)).catch((error: unknown) => { logFailure("mcp-connection-health", error); return { status: "unknown" as const }; }),
     ]);
     const keysOf = new Map(counts.map(c => [c.surfaceId, c.keys]));
     return ok({

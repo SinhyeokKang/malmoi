@@ -9,7 +9,7 @@ import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 
 import { PrismaClient } from "@/generated/prisma/client";
 import { optionalEnv } from "@/lib/env";
-import type { RepoReader } from "@/lib/github";
+import type { RepoReader } from "@/lib/repo-host/reader";
 import type { GitClient } from "@/lib/pull/client";
 import { createFakeGitClient } from "@/lib/pull/__tests__/fake-client";
 import { countPending } from "@/lib/protection/where";
@@ -37,7 +37,7 @@ import type { ApiTokenSubject } from "@/lib/mcp/token-store";
 
 const db = vi.hoisted(() => ({ client: undefined as GitClient | undefined, reader: undefined as RepoReader | undefined }));
 vi.mock("@/lib/projects/open-pr", () => ({ loadOpenPrUrl: async () => null, loadOpenPrForImportGate: async () => null }));
-vi.mock("@/lib/github", () => ({
+vi.mock("@/lib/repo-host", () => ({
   createGitClient: async () => { if (db.client === undefined) throw new Error("no fake client"); return db.client; },
   openRepoReader: async () => { if (db.reader === undefined) throw new Error("no fake reader"); return db.reader; },
   // MCP `get_project`의 연결 상태 — 이 스위트가 재는 것이 아니다.

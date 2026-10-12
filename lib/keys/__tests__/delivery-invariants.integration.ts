@@ -10,7 +10,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 
 import { PrismaClient } from "@/generated/prisma/client";
 import { optionalEnv } from "@/lib/env";
-import type { RepoReader } from "@/lib/github";
+import { sizesFromSnapshot, type RepoReader } from "@/lib/repo-host/reader";
 import { blobSha } from "@/lib/githash";
 import { readDiscardApproval } from "@/lib/import/approval";
 import { runRepositoryImportFromReader } from "@/lib/import/run";
@@ -33,7 +33,7 @@ import { publishFingerprint } from "@/lib/publish/fingerprint";
 import { applyKeySave } from "../save-key";
 
 const github = vi.hoisted(() => ({ client: null as unknown }));
-vi.mock("@/lib/github", async importOriginal => ({ ...(await importOriginal<object>()), createGitClient: async () => github.client }));
+vi.mock("@/lib/repo-host", async importOriginal => ({ ...(await importOriginal<object>()), createGitClient: async () => github.client }));
 import { executeKeyRevert, previewKeyRevert } from "../revert";
 
 /**
@@ -112,7 +112,7 @@ const tokensOf = async (key: string) => (await prisma.translation.findMany({ whe
 
 /** 수동 Sync의 리포 — 경로별 내용. 함수면 호출 순서로 다르게 줄 수 있다. */
 function reader(files: Record<string, string | undefined | (() => string | undefined)>, pause?: { entered: () => void; release: Promise<void> }): RepoReader {
-  return {
+  return { sizes: async (snapshot, paths) => sizesFromSnapshot(snapshot, paths),
     snapshot: vi.fn<RepoReader["snapshot"]>(async () => {
       if (pause) { pause.entered(); await pause.release; }
       return { status: "ok", headSha: "c".repeat(40), headCommittedAt: "2026-09-16T00:00:00Z", files: Object.keys(files).map(path => ({ path, sha: path, size: 100 })) };
@@ -390,7 +390,7 @@ describe("#3 · D3 — 보류 셀이 있는 Publish 뒤에도 OWNER Revert가 �
     github.client = fake.client;
     const outcome = await runSync(prisma, { projectId: "p", slug: "fixture", trigger: "cron", requestedBy: null, credential: undefined });
     expect(outcome).toMatchObject({ status: "skipped", reason: "no-changes", closedPr: { number: 4 } });
-    expect(fake.calls.map(c => c.method).filter(m => m === "closePr" || m === "updateRefForce")).toEqual(["closePr", "updateRefForce"]);
+    expect(fake.calls.map(c => c.method).filter(m => m === "closePr" || m === "resetSyncBranch")).toEqual(["closePr", "resetSyncBranch"]);
     expect(await prisma.syncRun.findFirst({ where: { projectId: "p", trigger: "CRON" } })).toMatchObject({ status: "SKIPPED", prUrl: "https://github.com/o/r/pull/4", changed: 0, changedValues: 0 });
     const [row] = (await loadEvents(prisma, en, "p", { ...parseLogFilter({}) }, { timeZone: "UTC" })).rows.filter(r => r.kind === "PUBLISH");
     expect(row).toMatchObject({ result: "nothingToSend", run: { prUrl: "https://github.com/o/r/pull/4" } });
@@ -507,7 +507,7 @@ describe("Publish 지문 — 미리보기 뒤 바뀐 export 입력은 reconfirm 
     expect(injected).toBe(true);
     expect((await cellOf("key0", "ko"))?.pendingEditToken).toBeNull();
     expect(await cellOf("key1", "fr")).toMatchObject({ value: "Edited", pendingEditToken: "after-compare-key1-fr" });
-    const tree = fake.calls.find(c => c.method === "createTree")?.args[0] as { path: string; content?: string }[] | undefined;
+    const tree = fake.calls.find(c => c.method === "publishSnapshot")?.args[0] as { changes: { path: string; content?: string }[] } | undefined;
     expect(JSON.stringify(tree ?? [])).not.toMatch(/"key1":\s*"Edited"/);
   });
 

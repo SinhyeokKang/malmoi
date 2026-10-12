@@ -712,7 +712,7 @@ it("CI route preserves a no-changes delivery completed during its PR preflight",
 
 // R1 uses the production runSync -> triggerPull -> runPull -> confirmation path; only GitHub is fake.
 let latePullClient: import("@/lib/pull/client").GitClient;
-vi.doMock("@/lib/github", () => ({ createGitClient: async () => latePullClient }));
+vi.doMock("@/lib/repo-host", () => ({ createGitClient: async () => latePullClient }));
 
 it.each([{ prior: false, loss: "branch" }, { prior: true, loss: "branch" },
   { prior: false, loss: "authority" }, { prior: true, loss: "authority" }])("R1 actual POST preserves late no-changes after $loss loss (prior=$prior)", async ({ prior, loss }) => {

@@ -23,6 +23,9 @@ vi.mock("@/lib/github-connect/user", async (orig) => ({
 vi.mock("@/lib/github", async (orig) => ({
   ...(await orig<object>()),
   probeRepo: async () => ({ status: "ok", installationId: "1", repositoryId: "100", fullName: "o/r", defaultBranch: "main" }),
+}));
+vi.mock("@/lib/repo-host", async (orig) => ({
+  ...(await orig<object>()),
   listBranches: async () => ({ status: "ok", names: ["main"], truncated: false }),
 }));
 

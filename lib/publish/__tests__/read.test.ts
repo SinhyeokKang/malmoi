@@ -11,7 +11,7 @@ let lastSnapshot: { state: unknown } | undefined;
 const snapshotOf = () => lastSnapshot!.state as never;
 vi.mock("@/lib/pull/load", () => ({ loadPreviewSnapshot: mocks.snapshot }));
 vi.mock("server-only", () => ({}));
-vi.mock("@/lib/github", () => ({ createGitClient: async () => mocks.client }));
+vi.mock("@/lib/repo-host", () => ({ createGitClient: async () => mocks.client }));
 vi.mock("@/lib/projects/open-pr", () => ({ loadOpenPrUrl: mocks.open }));
 vi.mock("@/lib/keys/query", () => ({ loadActors: async () => new Map() }));
 import { readPublishPreview } from "../read";
@@ -292,7 +292,7 @@ it.each([
     createClient: async () => client, saveLastPulledAt: async () => {}, invalidateDelivery: async () => {}, syncBranch: "malmoi-i18n/sync-acme",
   });
   expect(pulled).toMatchObject({ status: "committed", delivered: 1 });
-  const written = (calls.find(c => c.method === "createTree")?.args[0] as { tree: { content: string }[] }).tree[0]?.content;
+  const written = (calls.find(c => c.method === "publishSnapshot")?.args[0] as { changes: { content: string }[] }).changes[0]?.content;
   expect(written).toBe(source.replace("old", "new"));
   db.translation.findMany.mockResolvedValue([{ ...rows[0], stringKey: { key: pairKey } }]);
   mocks.client.getBlobText.mockResolvedValue(pairSource);

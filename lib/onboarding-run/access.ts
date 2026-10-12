@@ -8,6 +8,7 @@ import type { ConnectError } from "@/lib/github-connect/message";
 import { ensureUserToken } from "@/lib/github-connect/token-store";
 import { type InstallationRepo, listInstallationRepos, listUserInstallations } from "@/lib/github-connect/user";
 import type { OnboardError } from "@/lib/onboarding/message";
+import { unreachable, type RepoLocator } from "@/lib/repo-host/target";
 
 /**
  * **두 GitHub 자격증명이 만나는 코어** (mcp-connector T4-c — design §1.3 · ARCHITECTURE §3.1). 리포 읽기는 App installation 토큰
@@ -44,14 +45,27 @@ export function listFailure(errors: readonly unknown[]): { ok: false; error: "re
 export async function checkRepoAccess(
   prisma: PrismaClient,
   userId: string,
-  owner: string,
-  repo: string,
-  /** `planRepoConnect`의 넷째 조건(리포 쓰기 권한). 기본값이 없다 — `false`는 재적재뿐이다. */
-  requirePush: boolean,
-): Promise<
-  | { status: "ok"; connect: RepoConnect; repositoryId: string; installationId: string; repoOwner: string; repoName: string; defaultBranch: string }
-  | { status: "rejected"; error: OnboardFailure }
-> {
+  target: RepoLocator,
+  /** `requirePush`는 `planRepoConnect`의 넷째 조건(리포 쓰기 권한)이다. 기본값이 없다 — `false`는 재적재·설정 브랜치 목록뿐이다. */
+  options: { requirePush: boolean },
+): Promise<RepoAccess> {
+  switch (target.host) {
+    case "github":
+      return checkGitHubAccess(prisma, userId, target.owner, target.name, options.requirePush);
+    default:
+      return unreachable(target.host);
+  }
+}
+
+/**
+ * 호출자 리포 권한의 결과. **호스트 전용 필드는 그 호스트 갈래 안에만 둔다** — GitHub의 `installationId`·`connect`는 설치 단위 연결의 증거다.
+ * 프로젝트 대조는 `sameAccessedRepository`(`lib/repo-host/target.ts`)가 한다.
+ */
+export type RepoAccess =
+  | { status: "ok"; host: "github"; connect: RepoConnect; repositoryId: string; installationId: string; repoOwner: string; repoName: string; defaultBranch: string }
+  | { status: "rejected"; error: OnboardFailure };
+
+async function checkGitHubAccess(prisma: PrismaClient, userId: string, owner: string, repo: string, requirePush: boolean): Promise<RepoAccess> {
   const token = await ensureUserToken(prisma, userId, new Date());
   if (token.status !== "ok") return { status: "rejected", error: token.status };
 
@@ -129,6 +143,7 @@ export async function checkRepoAccess(
 
   return {
     status: "ok",
+    host: "github",
     connect,
     // ⚠️ **null 폴백을 두지 않는다** — 위에서 `probe.status`를 좁혔으므로 여기서 부재를 표현하면
     // 고정되지 않은 프로젝트를 **새로 만드는** 경로가 생긴다 (sec-audit-2 발견 34).

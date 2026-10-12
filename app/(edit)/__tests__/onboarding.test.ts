@@ -1,5 +1,6 @@
 import { en } from "@/messages/en";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { sizesFromSnapshot, type RepoSnapshot } from "@/lib/repo-host/reader";
 
 import type { ProbeResult } from "@/lib/github-connect/health";
 import type { InstallationRepo } from "@/lib/github-connect/user";
@@ -67,8 +68,9 @@ vi.mock("server-only", () => ({}));
 vi.mock("@/auth", () => ({ auth: async () => hoisted.session }));
 vi.mock("@/lib/db", () => ({ getPrisma: () => hoisted.prisma }));
 vi.mock("next/cache", () => ({ revalidatePath: hoisted.revalidatePath }));
-vi.mock("@/lib/github", () => ({
-  probeRepo: hoisted.probeRepo,
+// probe는 GitHub 전용 흐름(설치 확인)이라 호스트 구현에 남는다. 리포 I/O는 경계(`lib/repo-host`)에서 바꿔 끼운다.
+vi.mock("@/lib/github", () => ({ probeRepo: hoisted.probeRepo }));
+vi.mock("@/lib/repo-host", () => ({
   openRepoReader: hoisted.openRepoReader,
   listBranches: hoisted.listBranches,
   // `app/(edit)/actions.ts` → `lib/pull/trigger` 체인이 이 이름을 가져온다. 빠지면 import가 던진다.
@@ -160,6 +162,7 @@ function reader(over: { snapshot?: unknown; blobs?: Map<string, string> } = {}) 
   return {
     snapshot: vi.fn(async () => over.snapshot ?? { status: "ok", headSha: HEAD_SHA, headCommittedAt: HEAD_AT, files: TREE }),
     blob: vi.fn(async (sha: string) => blobs.get(sha)),
+    sizes: vi.fn(async (snapshot: Extract<RepoSnapshot, { status: "ok" }>, paths: readonly string[]) => sizesFromSnapshot(snapshot, paths)),
   };
 }
 
@@ -634,7 +637,7 @@ describe("detectRepoFormats — 3중 검증을 지난 뒤 2패스로 탐지한�
     await detectRepoFormats({ owner: "acme", repo: "web" });
 
     // 온보딩엔 Project 행이 없어 probe가 준 저장소 ID로 읽기 토큰을 좁힌다 (sec-audit-3 #16).
-    expect(hoisted.openRepoReader).toHaveBeenCalledWith("acme", "web", "77", "1035512");
+    expect(hoisted.openRepoReader).toHaveBeenCalledWith({ host: "github", owner: "acme", name: "web", installationId: "77", repositoryId: "1035512" });
     const created = await hoisted.openRepoReader.mock.results[0]?.value;
     expect(created.snapshot).toHaveBeenCalledWith("develop");
   });
@@ -737,7 +740,7 @@ describe("listRepoBranches — ①의 브랜치 목록 (DESIGN §6.7)", () => {
       truncated: false,
     });
     expect(hoisted.listBranches).toHaveBeenCalledTimes(1);
-    expect(hoisted.listBranches).toHaveBeenCalledWith("acme", "web", "77", "1035512");
+    expect(hoisted.listBranches).toHaveBeenCalledWith({ host: "github", owner: "acme", name: "web", installationId: "77", repositoryId: "1035512" });
   });
 
   it("`checkRepoAccess`를 그대로 지난다 — 내 설치에 없으면 브랜치를 읽지도 않는다", async () => {
@@ -1332,6 +1335,8 @@ describe("runFirstIngest — awaiting_first_sync에서만 돈다 (PRODUCT §7.5)
     db.projects[0]!.repoName = "web";
     db.projects[0]!.baseBranch = "develop";
     db.projects[0]!.installationId = "77";
+    // 온보딩이 만든 행은 언제나 리포 id가 고정돼 있다 — 리더는 고정된 연결로만 열린다(`repoTargetOf`).
+    db.projects[0]!.repositoryId = "1035512";
     db.surfaces[0]!.pathTemplate = "i18n/{locale}.json";
   });
 

@@ -14,7 +14,7 @@ import { loadProjectListAggregates } from "@/lib/keys/query";
 import { summaryQueue } from "@/lib/projects/list";
 import { isImportFailureCode } from "@/lib/projects/import-status";
 import { optionalEnv } from "@/lib/env";
-import type { RepoReader } from "@/lib/github";
+import { sizesFromSnapshot, type RepoReader } from "@/lib/repo-host/reader";
 import { applyPush } from "@/lib/push/apply";
 import { createFakeGitClient, type FakeGitOptions } from "@/lib/pull/__tests__/fake-client";
 import type { GitClient } from "@/lib/pull/client";
@@ -31,7 +31,7 @@ import type { GitClient } from "@/lib/pull/client";
  */
 
 const fakes = vi.hoisted(() => ({ client: undefined as GitClient | undefined, reader: undefined as RepoReader | undefined }));
-vi.mock("@/lib/github", () => ({
+vi.mock("@/lib/repo-host", () => ({
   createGitClient: async () => { if (fakes.client === undefined) throw new Error("no fake client"); return fakes.client; },
   openRepoReader: async () => { if (fakes.reader === undefined) throw new Error("no fake reader"); return fakes.reader; },
 }));
@@ -104,7 +104,7 @@ function github(options: FakeGitOptions) {
   const fake = createFakeGitClient({ refSha: { "heads/main": MERGE }, ...options });
   fakes.client = fake.client;
   // 머지 커밋의 트리 — Malmoi PR이 번역을 바꿔 둔 상태다.
-  fakes.reader = {
+  fakes.reader = { sizes: async (snapshot, paths) => sizesFromSnapshot(snapshot, paths),
     snapshot: vi.fn<RepoReader["snapshot"]>(async () => ({ status: "ok", headSha: MERGE, headCommittedAt: mergeAt,
       files: ["en", "ko"].map((locale) => ({ path: `i18n/${locale}.json`, sha: locale, size: 50 })) })),
     blob: vi.fn(async (sha: string) => sha === "en" ? '{"hello":"Hello"}' : '{"hello":"안녕하세요"}'),
@@ -274,7 +274,7 @@ it("(a) 한 로케일 내려받기 실패 → partial → 같은 head에서 정�
   const files = ["en", "ko", "fr"].map((locale) => ({ path: `i18n/${locale}.json`, sha: locale, size: 50 }));
   const content: Record<string, string> = { en: '{"hello":"Hello"}', ko: '{"hello":"안녕하세요"}', fr: '{"hello":"Bonjour"}' };
   let frDown = true;
-  fakes.reader = {
+  fakes.reader = { sizes: async (snapshot, paths) => sizesFromSnapshot(snapshot, paths),
     snapshot: vi.fn<RepoReader["snapshot"]>(async () => ({ status: "ok", headSha: MERGE, headCommittedAt: mergeAt, files })),
     blob: vi.fn(async (sha: string) => (sha === "fr" && frDown ? undefined : content[sha])),
   };

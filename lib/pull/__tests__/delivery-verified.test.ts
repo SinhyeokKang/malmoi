@@ -40,8 +40,8 @@ async function run(surface: Omit<Surface, "id" | "slug" | "keys" | "localeCodes"
     invalidateDelivery: async () => {},
     syncBranch: "malmoi-i18n/sync-acme",
   });
-  const created = calls.find((c) => c.method === "createTree")?.args[0] as { tree: { path: string; content: string }[] } | undefined;
-  return { result, saved, written: new Map((created?.tree ?? []).map((t) => [t.path, t.content])) };
+  const created = calls.find((c) => c.method === "publishSnapshot")?.args[0] as { changes: { path: string; content: string }[] } | undefined;
+  return { result, saved, written: new Map((created?.changes ?? []).map((t) => [t.path, t.content])) };
 }
 
 describe("B3.1 A — 재생성 어댑터: 기존 비-base 파일의 마지막 번역을 비우면 `{}`를 쓴다", () => {

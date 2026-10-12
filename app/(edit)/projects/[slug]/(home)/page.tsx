@@ -20,7 +20,8 @@ import { getPrisma } from "@/lib/db";
 import { parseLogFilter, type LogSearchParams } from "@/lib/events/filter";
 import { getDateStyle, getMessages, getUiLocale } from "@/lib/i18n/server";
 import { HOME_EVENT_LIMIT, loadEvent, loadEvents } from "@/lib/events/query";
-import { loadConnectionHealth } from "@/lib/github";
+import { loadConnectionHealth } from "@/lib/repo-host";
+import { repoTargetOf } from "@/lib/repo-host/target";
 import { logFailure } from "@/lib/github-connect/log";
 import { attentionItems, neverFilledLocales } from "@/lib/home/attention";
 import { cardLandings, countCards, planHomeHold, surfaceQueues } from "@/lib/home/cards";
@@ -144,6 +145,7 @@ export default async function ProjectHomePage({
    * ⚠️ **연결 조회는 `installationId`가 있을 때만 GitHub을 친다** — `loadConnectionHealth`가 그
    * 가드를 든다. GitHub 장애는 값(`unknown`)으로 오므로 이 화면이 그것에 죽지 않는다.
    */
+  const target = repoTargetOf(project);
   const [aggregates, events, review, openEvent, health, runs, writeLock] = await Promise.all([
     loadProjectListAggregates(prisma, [projectId]),
     /**
@@ -166,7 +168,7 @@ export default async function ProjectHomePage({
      * 여기서는 `unknown`이라 배너가 안 서고, 원인은 로그에만 남는다.
      */
     // 메모를 켠다 (malmoi#107 ①) — 사건 상세를 열 때마다 GitHub 2홉을 다시 기다렸다. 설정 화면은 끈 채다.
-    loadConnectionHealth(project, { memo: true }).catch((error: unknown) => {
+    loadConnectionHealth(target, { memo: true }).catch((error: unknown) => {
       logFailure("home-connection-health", error);
       return { status: "unknown" } as const;
     }),

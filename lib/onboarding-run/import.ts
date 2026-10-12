@@ -5,7 +5,8 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { getProjectAccess } from "@/lib/auth/query";
 import type { Subject } from "@/lib/auth/subject";
 import { recordImportRefusal } from "@/lib/events/record";
-import { openRepoReader } from "@/lib/github";
+import { openRepoReader } from "@/lib/repo-host";
+import { repoLocatorOf, repoTargetOf, sameAccessedRepository } from "@/lib/repo-host/target";
 import { logFailure } from "@/lib/github-connect/log";
 import type { RepositoryImportError, RepositoryImportOutcome } from "@/lib/import/result";
 import { runRepositoryImportFromReader } from "@/lib/import/run";
@@ -54,15 +55,17 @@ async function runAuthorized(prisma: PrismaClient, subject: Subject, projectId: 
     if (project.archivedAt !== null) return await refuse("archived");
     if (planProjectReadiness(project) !== "ready") return await refuse("not-ready");
     // ⚠️ **`not-connected`가 아니다** (ux-drift-unify r1) — 그 코드는 아래 `checkRepoAccess`가 "계정이 연결되지 않았다"로 낸다. 설치 없음은 readiness가 먼저 걸렀다.
-    if (project.installationId === null || project.repositoryId === null) return { ok: false, error: "unpinned" };
+    const connection = repoTargetOf(project);
+    if (connection.status !== "ok") return { ok: false, error: "unpinned" };
     // 재적재는 리포를 읽기만 한다 — 쓰기 권한 없이 초대된 OWNER도 여기선 통과한다 (sec-audit-3 1a 범위 밖).
-    const connected = await checkRepoAccess(prisma, userId, project.repoOwner, project.repoName, false);
+    const connected = await checkRepoAccess(prisma, userId, repoLocatorOf(project), { requirePush: false });
     if (connected.status !== "ok") return await refuse(connected.error);
-    if (connected.repositoryId !== project.repositoryId || connected.installationId !== project.installationId) return await refuse("repo-replaced");
-    const { installationId, repositoryId } = project;
+    if (!sameAccessedRepository(connected, connection.target)) return await refuse("repo-replaced");
+    const { installationId, repositoryId } = connection.target;
+    // 호출자 접근을 확인한 뒤에도 리더는 **프로젝트 쪽 연결**로 연다.
     return await runRepositoryImportFromReader(prisma, { projectId, userId, approval, credential: subject.credential,
       repository: { repositoryId, installationId, repoOwner: project.repoOwner, repoName: project.repoName, baseBranch: project.baseBranch },
-    }, () => openRepoReader(project.repoOwner, project.repoName, installationId, repositoryId));
+    }, () => openRepoReader(connection.target));
   } catch (error) {
     logFailure("repository-import-action", error);
     return { ok: false, error: "ingest-failed" };

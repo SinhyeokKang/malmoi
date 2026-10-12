@@ -13,7 +13,7 @@ const hoisted = vi.hoisted(() => ({
   invalidateDeliveryConfirmations: vi.fn(),
   withheldRevertable: vi.fn(async () => false),
 }));
-vi.mock("@/lib/github", () => ({ createGitClient: hoisted.createGitClient }));
+vi.mock("@/lib/repo-host", () => ({ createGitClient: hoisted.createGitClient }));
 vi.mock("../load", () => ({
   loadPullState: hoisted.loadPullState,
   saveLastPulledAt: hoisted.saveLastPulledAt,

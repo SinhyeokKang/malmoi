@@ -9,7 +9,7 @@ import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 
 import { PrismaClient } from "@/generated/prisma/client";
 import { optionalEnv } from "@/lib/env";
-import type { RepoReader } from "@/lib/github";
+import { sizesFromSnapshot, type RepoReader } from "@/lib/repo-host/reader";
 import { readDiscardApproval } from "@/lib/import/approval";
 import { runRepositoryImportFromReader } from "@/lib/import/run";
 import { applyPush } from "@/lib/push/apply";
@@ -74,7 +74,7 @@ async function editedFixture() {
 }
 
 function reader(): RepoReader {
-  return {
+  return { sizes: async (snapshot, paths) => sizesFromSnapshot(snapshot, paths),
     snapshot: vi.fn<RepoReader["snapshot"]>(async () => ({ status: "ok", headSha: "c".repeat(40), headCommittedAt: commitAt,
       files: LOCALES.map(locale => ({ path: `i18n/${locale}.json`, sha: locale, size: 100 })) })),
     blob: vi.fn().mockResolvedValue('{"key0":"Repository"}'),

@@ -10,7 +10,8 @@ import type { AccessError } from "@/lib/auth/message";
 import { getProjectAccess } from "@/lib/auth/query";
 import type { Subject } from "@/lib/auth/subject";
 import { requireEnv } from "@/lib/env";
-import { openRepoReader } from "@/lib/github";
+import { openRepoReader } from "@/lib/repo-host";
+import { repoLocatorOf, repoTargetOf, sameAccessedRepository } from "@/lib/repo-host/target";
 import { readFiles, snapshotError } from "@/lib/import/read";
 import { IngestBudgetError } from "@/lib/onboarding/budget";
 import { planConfirmedFormat, templatePaths } from "@/lib/onboarding/confirm";
@@ -41,7 +42,7 @@ export async function detectFormats(prisma: PrismaClient, subject: Subject, inpu
   // ③까지 가서 생성이 거부되지 않게 여기서 막는다 (malmoi#126).
   if (ref !== undefined && isSyncBranchName(ref)) return { ok: false, error: "sync-branch" };
 
-  const access = await checkRepoAccess(prisma, userId, owner, repo, true);
+  const access = await checkRepoAccess(prisma, userId, { host: "github", owner, name: repo }, { requirePush: true });
   if (access.status !== "ok") return { ok: false, error: access.error };
   return detectIn(userId, access, ref ?? access.defaultBranch);
 }
@@ -60,11 +61,12 @@ export async function detectProjectFormats(prisma: PrismaClient, subject: Subjec
     select: { repoOwner: true, repoName: true, installationId: true, repositoryId: true, baseBranch: true },
   });
   if (row === null) return { ok: false, error: "not-found" };
-  if (row.installationId === null || row.repositoryId === null) return { ok: false, error: "repo-not-installed" };
-  const access = await checkRepoAccess(prisma, userId, row.repoOwner, row.repoName, true);
+  const connection = repoTargetOf(row);
+  if (connection.status !== "ok") return { ok: false, error: "repo-not-installed" };
+  const access = await checkRepoAccess(prisma, userId, repoLocatorOf(row), { requirePush: true });
   if (access.status !== "ok") return { ok: false, error: access.error };
   // 같은 이름의 **다른** 리포는 이 프로젝트가 아니다 — 고정된 신원으로 대조한다(`listLinkedBranches`와 같은 규칙).
-  if (access.repositoryId !== row.repositoryId || access.installationId !== row.installationId) return { ok: false, error: "repo-forbidden" };
+  if (!sameAccessedRepository(access, connection.target)) return { ok: false, error: "repo-forbidden" };
   return detectIn(userId, access, row.baseBranch);
 }
 
@@ -74,7 +76,8 @@ async function detectIn(
   access: { repoOwner: string; repoName: string; installationId: string; repositoryId: string },
   ref: string,
 ): Promise<DetectResult> {
-  const reader = await openRepoReader(access.repoOwner, access.repoName, access.installationId, access.repositoryId);
+  // 프로젝트가 있으면 위에서 같은 설치·리포임을 대조했다 — 확인한 접근이 곧 연결이다.
+  const reader = await openRepoReader({ host: "github", owner: access.repoOwner, name: access.repoName, installationId: access.installationId, repositoryId: access.repositoryId });
   const snapshot = await reader.snapshot(ref);
   if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
 

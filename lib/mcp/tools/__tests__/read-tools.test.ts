@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { RepoTargetResult } from "@/lib/repo-host/target";
 
 import { createHarness } from "@/app/(edit)/__tests__/harness";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -31,10 +32,11 @@ vi.mock("@/lib/keys/query", async (orig) => ({ ...(await orig<object>()),
   loadProjectListAggregates: async () => ({ locales: [], keyTotals: new Map(), cells: [], newKeys: new Map(), unsent: new Map(), unsentSurfaces: new Map() }),
   loadSurfaceCounts: async () => [] }));
 // 저장된 두 컬럼이 끝내는 갈래(`not-connected`·`unpinned`)는 실제 판정을 지나고, probe가 필요한 쪽만 `ok`로 둔다.
-vi.mock("@/lib/github", async (orig) => {
-  const { storedConnection } = await import("@/lib/github-connect/health");
-  return { ...(await orig<object>()), loadConnectionHealth: async (project: { installationId: string | null; repositoryId: string | null }) => storedConnection(project) ?? { status: "ok" } };
-});
+// 저장된 연결 판정(`repoTargetOf`)은 실물이 돌고, 원격 확인만 ok로 바꿔 끼운다.
+vi.mock("@/lib/repo-host", async (orig) => ({
+  ...(await orig<object>()),
+  loadConnectionHealth: async (result: RepoTargetResult) => result.status === "ok" ? { status: "ok" } : { status: result.status },
+}));
 
 const { TOOLS } = await import("..");
 const tool = (name: string) => {

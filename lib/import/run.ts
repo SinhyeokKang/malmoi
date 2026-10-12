@@ -2,7 +2,8 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 import type { Prisma, PrismaClient, Project, TranslationSurface } from "@/generated/prisma/client";
-import type { RepoReader } from "@/lib/github";
+import type { RepoReader } from "@/lib/repo-host/reader";
+import { repoTargetOf, sameRepoTarget } from "@/lib/repo-host/target";
 import { isAdapterName } from "@/lib/adapters";
 import { lockCredential } from "@/lib/auth/lock";
 import type { Credential } from "@/lib/auth/subject";
@@ -90,8 +91,11 @@ async function acquire(prisma: PrismaClient, input: CoreInput): Promise<Acquired
     const surfaces = await tx.translationSurface.findMany({ where: { projectId: input.projectId }, orderBy: { slug: "asc" } });
     const expected = input.repository;
     // 설치 없음은 readiness가 먼저 `not-ready`로 거른다 — 여기 닿는 null은 리포 id 미고정이다(`unpinned`, ux-drift-unify r1).
-    const identity = project.repositoryId === null || project.installationId === null ? "unpinned" :
-      project.repositoryId !== expected.repositoryId || project.installationId !== expected.installationId || project.repoOwner !== expected.repoOwner ||
+    // 연결 증거까지 대조한다(`sameRepoTarget`) — 잠금 전에 읽은 리포와 지금 행이 재연결로 갈렸으면 남의 리포 값으로 덮지 않는다.
+    const now = repoTargetOf(project);
+    const then = repoTargetOf(expected);
+    const identity = now.status !== "ok" ? "unpinned" :
+      then.status !== "ok" || !sameRepoTarget(now.target, then.target) || project.repoOwner !== expected.repoOwner ||
       project.repoName !== expected.repoName || project.baseBranch !== expected.baseBranch ? "repo-replaced" : "ok";
     const startedAt = new Date();
     // Publish가 스냅샷을 뜨는 중에 리포 값으로 덮으면 절반만 덮인 DB가 PR로 나간다 — 같은 Project 잠금 안에서 읽는다 (ARCHITECTURE §5.6.1).

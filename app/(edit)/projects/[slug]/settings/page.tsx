@@ -12,8 +12,8 @@ import { Alert } from "@/components/ui/alert";
 import { requireProjectAccess } from "@/lib/auth/session";
 import { getPrisma } from "@/lib/db";
 import { optionalEnv } from "@/lib/env";
-import { loadConnectionHealth } from "@/lib/github";
-import { storedConnection } from "@/lib/github-connect/health";
+import { loadConnectionHealth } from "@/lib/repo-host";
+import { repoTargetOf } from "@/lib/repo-host/target";
 import { loadAccountView } from "@/lib/github-connect/account-view";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
 import { getDateStyle, getMessages } from "@/lib/i18n/server";
@@ -48,12 +48,13 @@ export default async function SettingsPage({ params, searchParams }: { params: P
     ⚠️ **거부를 삼키지 않는다** — `loadConnectionHealth`가 던지는 것은 환경변수 누락뿐이고 그것은 이 화면에서 500이
     정직하다(`probeRepo` 주석). 풀린 promise의 거부는 `use`가 가장 가까운 오류 경계로 올린다.
   */
-  const health = loadConnectionHealth(project);
+  const connection = repoTargetOf(project);
+  const health = loadConnectionHealth(connection);
   const account = loadAccountView(prisma, userId);
   const openPrUrl = loadOpenPrUrl(slug, project);
   const archived = project.archivedAt !== null;
   // 연결 행의 Disconnected와 같은 DB 판정이다(D1) — 브랜치 목록·토큰 회전이 거부될 요청을 부르지 않는다(malmoi#159).
-  const unpinned = storedConnection(project)?.status === "unpinned";
+  const unpinned = connection.status === "unpinned";
   const archive = <Card title={archived ? m.archive.restore : m.archive.title}>
     <div className="flex items-center justify-between gap-4 px-4 py-row-y @max-form:grid @max-form:grid-cols-[28px_1fr] @max-form:items-start @max-form:[&>[data-archive-card]]:col-start-2 @max-form:[&>[data-archive-card]]:justify-self-start">
       <IconTile><Archive aria-hidden /></IconTile><p className="text-muted-foreground flex-1 text-xs">{archived ? m.archive.archivedBy(<time dateTime={project.archivedAt!.toISOString()}>{formatDay(project.archivedAt!, style)}</time>) : m.archive.description}</p>

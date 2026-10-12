@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { RepoReader, RepoSnapshot } from "@/lib/github";
+import type { RepoReader, RepoSnapshot } from "@/lib/repo-host/reader";
 import { adapterFor } from "@/lib/adapters";
 import { compareKeys } from "@/lib/adapters/shared";
 import { adapterErrorKind, type AdapterName } from "@/lib/adapters/types";

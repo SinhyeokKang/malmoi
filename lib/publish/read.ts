@@ -2,7 +2,8 @@ import "server-only";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { adapterFor } from "@/lib/adapters";
 import { adapterErrorKind } from "@/lib/adapters/types";
-import { createGitClient } from "@/lib/github";
+import { createGitClient } from "@/lib/repo-host";
+import { repoTargetOf } from "@/lib/repo-host/target";
 import { loadActors } from "@/lib/keys/query";
 import { actorLabel } from "@/lib/keys/view";
 import { loadOpenPrUrl } from "@/lib/projects/open-pr";
@@ -25,10 +26,11 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
   const project = state.project;
   // slug가 가리키는 프로젝트가 인가된 그 프로젝트여야 한다 — 다르면 남의 행을 보여 주게 된다.
   if (project.id !== projectId) throw new Error("Project changed");
-  if (!project.installationId || !project.repositoryId) throw new Error("Repository unavailable");
+  const connection = repoTargetOf(project);
+  if (connection.status !== "ok") throw new Error("Repository unavailable");
   const [client, rawPr] = await Promise.all([
-    createGitClient(project.repoOwner, project.repoName, project.installationId, project.repositoryId).then(cachedBlobs),
-    loadOpenPrUrl(slug, { ...project, repositoryId: project.repositoryId, archivedAt }),
+    createGitClient(connection.target).then(cachedBlobs),
+    loadOpenPrUrl(slug, { ...project, repositoryId: connection.target.repositoryId, archivedAt }),
   ]);
   const head = await client.getRefSha(`heads/${project.baseBranch}`);
   if (head === null) throw new Error("Base unavailable");

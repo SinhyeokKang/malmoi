@@ -3,7 +3,7 @@
 
 import { parseGithubPrUrl } from "@/lib/projects/pr-url";
 
-import { logCaught } from "@/lib/failure";
+import { fail, logCaught } from "@/lib/failure";
 import { inviteMembers, InvitationsInput, toMessages, type InvitationsResult } from "@/lib/invitation-email/create";
 import { reissueInvitation } from "@/lib/invitation-email/issue";
 import { readInvitationEmailConfigFromEnv, sendInvitationEmails } from "@/lib/invitation-email/send";
@@ -30,7 +30,9 @@ import { getPrisma } from "@/lib/db";
 import { runTokenFor } from "@/lib/events/payload";
 import { finishRun, recordRun } from "@/lib/events/record";
 import { optionalEnv, requireEnv } from "@/lib/env";
-import { openRepoReader, probeRepo } from "@/lib/github";
+import { probeRepo } from "@/lib/github";
+import { openRepoReader } from "@/lib/repo-host";
+import { repoTargetOf } from "@/lib/repo-host/target";
 import { APP_ACCOUNT_PROVIDER } from "@/lib/github-connect/account-link";
 import { installWithStateUrl } from "@/lib/github-connect/installation-url";
 import { logFailure } from "@/lib/github-connect/log";
@@ -488,9 +490,9 @@ export async function loadCandidateSample(raw: {
   if (session.status === "unavailable") return { ok: false, error: "unavailable" };
   if (session.status === "none") return { ok: false, error: "unauthorized" };
   const { userId } = session;
-  const access = await checkRepoAccess(getPrisma(), userId, input.owner, input.repo, true);
+  const access = await checkRepoAccess(getPrisma(), userId, { host: "github", owner: input.owner, name: input.repo }, { requirePush: true });
   if (access.status !== "ok") return { ok: false, error: access.error };
-  const reader = await openRepoReader(access.repoOwner, access.repoName, access.installationId, access.repositoryId);
+  const reader = await openRepoReader({ host: "github", owner: access.repoOwner, name: access.repoName, installationId: access.installationId, repositoryId: access.repositoryId });
   const snapshot = await reader.snapshot(input.ref);
   if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
 
@@ -548,9 +550,9 @@ export async function confirmManualFormat(raw: {
   if (session.status === "unavailable") return { ok: false, error: "unavailable" };
   if (session.status === "none") return { ok: false, error: "unauthorized" };
   const { userId } = session;
-  const access = await checkRepoAccess(getPrisma(), userId, input.owner, input.repo, true);
+  const access = await checkRepoAccess(getPrisma(), userId, { host: "github", owner: input.owner, name: input.repo }, { requirePush: true });
   if (access.status !== "ok") return { ok: false, error: access.error };
-  const reader = await openRepoReader(access.repoOwner, access.repoName, access.installationId, access.repositoryId);
+  const reader = await openRepoReader({ host: "github", owner: access.repoOwner, name: access.repoName, installationId: access.installationId, repositoryId: access.repositoryId });
   const snapshot = await reader.snapshot(input.ref);
   if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
   const paths = snapshot.files.map((file) => file.path);
@@ -742,7 +744,10 @@ export async function runFirstIngest(raw: { slug: string; surfaceSlug?: string }
   };
 
   try {
-    const reader = await openRepoReader(project.repoOwner, project.repoName, installationId, project.repositoryId);
+    // 리포 id가 고정되지 않은 행은 리더 열기가 거부한다 — 지금처럼 아래 catch가 실패로 닫는다.
+    const connection = repoTargetOf(project);
+    if (connection.status !== "ok") fail("repository identity is not pinned; reconnect the project", "not-installed");
+    const reader = await openRepoReader(connection.target);
     const snapshot = await reader.snapshot(project.baseBranch);
     if (snapshot.status !== "ok") {
       await failRun();

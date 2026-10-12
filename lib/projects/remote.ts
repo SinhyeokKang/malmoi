@@ -2,7 +2,8 @@ import "server-only";
 
 import { isAdapterName } from "@/lib/adapters";
 import { AppError, logCaught } from "@/lib/failure";
-import { createGitClient } from "@/lib/github";
+import { createGitClient } from "@/lib/repo-host";
+import { repoTargetOf } from "@/lib/repo-host/target";
 import { GITHUB_WAIT_MS } from "@/lib/github-wait";
 import type { GitClient } from "@/lib/pull/client";
 import { changedLocaleFileCount, pullNumberFrom } from "./remote-plan";
@@ -73,8 +74,12 @@ export async function loadRemoteSignals(
 ): Promise<Map<string, RemoteSignals>> {
   const createClient =
     options.createClient ??
-    ((target: RemoteTarget) =>
-      createGitClient(target.repoOwner, target.repoName, target.installationId ?? "", target.repositoryId ?? ""));
+    ((target: RemoteTarget) => {
+      // `signalsFor`가 연결 없는 행을 이미 걸렀다 — 여기 오는 행은 ok다. 빈 문자열 폴백으로 토큰을 받으러 가지 않는다.
+      const connection = repoTargetOf(target);
+      if (connection.status !== "ok") throw new AppError(`unreachable: remote signals without a connection (${connection.status})`);
+      return createGitClient(connection.target);
+    });
 
   const signals = await withDeadline(
     mapWithLimit(targets, CONCURRENCY, (target) => signalsFor(target, createClient)),
@@ -89,7 +94,7 @@ export async function loadRemoteSignals(
  * 묻는다). ⚠️ 게이트가 서지 않는다는 뜻이 아니다 — 실제 게이트(`loadOpenPrUrl`)는 `lastPrUrl`과 무관하게 sync 브랜치를 `findOpenPr`로 본다(DESIGN §2.4 알려진 틈 4).
  */
 function pullNumberToCheck(target: RemoteTarget): number | null {
-  if (target.archived || target.installationId === null || target.repositoryId === null) return null;
+  if (target.archived || repoTargetOf(target).status !== "ok") return null;
   return pullNumberFrom(target.lastPrUrl);
 }
 
@@ -104,8 +109,8 @@ async function signalsFor(
 ): Promise<RemoteSignals> {
   // 보관은 멈춘 것이다 — 멈춘 프로젝트에 원격을 물을 이유가 없다.
   if (target.archived) return NONE;
-  // 설치나 리포 id가 없으면 클라이언트를 만들 수 없다. 행은 목록에 남고 DB 상태로 표시된다.
-  if (target.installationId === null || target.repositoryId === null) return NONE;
+  // 연결이 없으면(설치 없음·리포 id 미고정) 클라이언트를 만들 수 없다. 행은 목록에 남고 DB 상태로 표시된다.
+  if (repoTargetOf(target).status !== "ok") return NONE;
 
   const pullNumber = pullNumberToCheck(target);
   const formats = target.surfaces.flatMap(s =>

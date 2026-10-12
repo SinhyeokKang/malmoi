@@ -21,6 +21,7 @@ const PROJECT = {
   repoName: "r",
   baseBranch: "dev",
   installationId: "123",
+  repositoryId: "456",
   adapterName: "json-catalog",
   pathTemplate: "i18n/{locale}.json",
   nested: false,
@@ -267,10 +268,10 @@ describe("runPull — 2층 스킵에서 sync 브랜치를 base로 되돌린다",
     const { deps } = makeDeps({}, { client, calls });
     const result = await runPull(deps);
 
-    const forced = calls.filter((c) => c.method === "updateRefForce");
-    expect(forced).toEqual([{ method: "updateRefForce", args: ["malmoi-i18n/sync", "basehead"] }]);
+    const forced = calls.filter((c) => c.method === "resetSyncBranch");
+    expect(forced).toEqual([{ method: "resetSyncBranch", args: ["malmoi-i18n/sync", "basehead"] }]);
     // 되돌리는 것뿐이다 — 커밋·트리·PR 경로로 가지 않는다.
-    expect(calls.map((c) => c.method)).not.toContain("createCommit");
+    expect(calls.map((c) => c.method)).not.toContain("publishSnapshot");
     expect(calls.map((c) => c.method)).not.toContain("createPr");
     expect(result).toEqual({ status: "skipped", reason: "no-changes" });
   });
@@ -287,8 +288,8 @@ describe("runPull — 2층 스킵에서 sync 브랜치를 base로 되돌린다",
     const { deps } = makeDeps({ invalidateDelivery: async () => void order.push("invalidate") }, { client, calls });
     const result = await runPull(deps);
     expect(result).toEqual({ status: "skipped", reason: "no-changes", closedPr: { number: 4, url: openPr.url } });
-    const writes = calls.map(c => c.method).filter(m => m === "closePr" || m === "updateRefForce");
-    expect(writes).toEqual(["closePr", "updateRefForce"]);
+    const writes = calls.map(c => c.method).filter(m => m === "closePr" || m === "resetSyncBranch");
+    expect(writes).toEqual(["closePr", "resetSyncBranch"]);
     const comment = String(calls.find(c => c.method === "closePr")?.args[1]);
     expect(comment).toContain("dev");
     expect(comment).toContain("<!-- malmoi-i18n -->");
@@ -315,7 +316,7 @@ describe("runPull — 2층 스킵에서 sync 브랜치를 base로 되돌린다",
     const { client, calls } = cleanClient({ "heads/dev": "basehead", "heads/malmoi-i18n/sync": "stale" }, { openPr, failOn: "closePr" });
     const { deps, writes } = makeDeps({}, { client, calls });
     await expect(runPull(deps)).rejects.toThrow();
-    expect(calls.map(c => c.method)).not.toContain("updateRefForce");
+    expect(calls.map(c => c.method)).not.toContain("resetSyncBranch");
     expect(writes).toEqual([]);
   });
 
@@ -323,7 +324,7 @@ describe("runPull — 2층 스킵에서 sync 브랜치를 base로 되돌린다",
     const { client, calls } = cleanClient({ "heads/dev": "basehead", "heads/malmoi-i18n/sync": "basehead" });
     const { deps } = makeDeps({}, { client, calls });
     await runPull(deps);
-    expect(calls.map((c) => c.method)).not.toContain("updateRefForce");
+    expect(calls.map((c) => c.method)).not.toContain("resetSyncBranch");
   });
 
   /** 브랜치가 아직 없는 것은 정상 상태다(첫 실행 전) — 되돌릴 것이 없고 만들지도 않는다. */
@@ -331,8 +332,8 @@ describe("runPull — 2층 스킵에서 sync 브랜치를 base로 되돌린다",
     const { client, calls } = cleanClient({ "heads/dev": "basehead" });
     const { deps } = makeDeps({}, { client, calls });
     await runPull(deps);
-    expect(calls.map((c) => c.method)).not.toContain("createRef");
-    expect(calls.map((c) => c.method)).not.toContain("updateRefForce");
+    expect(calls.map((c) => c.method)).not.toContain("publishSnapshot");
+    expect(calls.map((c) => c.method)).not.toContain("resetSyncBranch");
   });
 
   it("되돌린 뒤에도 lastPulledAt은 갱신한다 — export == base가 검증된 순간이다", async () => {
@@ -356,17 +357,14 @@ describe("runPull — 2층 스킵에서 sync 브랜치를 base로 되돌린다",
 });
 
 describe("runPull — 커밋·PR 경로", () => {
-  it("변경이 있으면 트리→커밋→ref→PR 순으로 부른다", async () => {
+  it("변경이 있으면 스냅샷→PR 순으로 부른다", async () => {
     const { deps, calls } = makeDeps();
     const result = await runPull(deps);
 
     expect(calls.map((c) => c.method)).toEqual([
       "getRefSha",
       "getTree",
-      "createTree",
-      "createCommit",
-      "getRefSha",
-      "createRef",
+      "publishSnapshot",
       "findOpenPr",
       "createPr",
     ]);
@@ -421,34 +419,38 @@ describe("runPull — 커밋·PR 경로", () => {
     expect(await runPull(deps)).toMatchObject({ status: "committed", pr: "updated" });
   });
 
-  it("트리 페이로드에 base_tree가 들어간다", async () => {
+  it("스냅샷은 sync 브랜치에, 고정 base head 위에 올린다 — 요약은 파일 수다", async () => {
     const { deps, calls } = makeDeps();
     await runPull(deps);
-    expect(calls.find((c) => c.method === "createTree")?.args[0]).toMatchObject({
-      base_tree: "basehead",
+    expect(calls.find((c) => c.method === "publishSnapshot")?.args[0]).toMatchObject({
+      branch: "malmoi-i18n/sync",
+      baseSha: "basehead",
+      summary: "2 files",
     });
   });
 
-  it("커밋 parents가 base head 하나이고 메시지에 [skip-malmoi-i18n]이 있다", async () => {
-    const { deps, calls } = makeDeps();
-    await runPull(deps);
-    const payload = calls.find((c) => c.method === "createCommit")?.args[0] as {
-      parents: string[];
-      message: string;
-    };
-    expect(payload.parents).toEqual(["basehead"]);
-    expect(payload.message).toContain(SKIP_MARKER);
-  });
-
-  it("malmoi-i18n/sync가 없으면 createRef, 있으면 updateRefForce다", async () => {
+  it("sync 브랜치가 이미 있어도 같은 스냅샷 한 번이다 — 생성·강제 이동의 갈림은 호스트 구현이 든다", async () => {
     const { client, calls } = createFakeGitClient({
       refSha: { "heads/dev": "basehead", "heads/malmoi-i18n/sync": "oldsync" },
       tree: { basehead: [] },
     });
     const { deps } = makeDeps({}, { client, calls });
     await runPull(deps);
-    expect(calls.map((c) => c.method)).toContain("updateRefForce");
-    expect(calls.map((c) => c.method)).not.toContain("createRef");
+    expect(calls.filter((c) => c.method === "publishSnapshot")).toHaveLength(1);
+    expect(calls.map((c) => c.method)).not.toContain("resetSyncBranch");
+  });
+
+  it("변경 파일마다 base 트리에 있는지(inBase)를 싣는다 — 생성과 갱신을 가르는 호스트가 있다", async () => {
+    const { client, calls } = createFakeGitClient({
+      refSha: { "heads/dev": "basehead" },
+      tree: { basehead: [{ path: "i18n/en.json", sha: blobSha(EN_CONTENT) }] },
+      blobs: { [blobSha(EN_CONTENT)]: EN_CONTENT },
+    });
+    const { deps } = makeDeps({}, { client, calls });
+    await runPull(deps);
+    const input = calls.find((c) => c.method === "publishSnapshot")?.args[0] as { changes: { path: string; inBase: boolean }[] };
+    expect(input.changes.map(({ path, inBase }) => ({ path, inBase }))).toEqual(expect.arrayContaining([{ path: "i18n/ko.json", inBase: false }]));
+    expect(input.changes.every(change => change.inBase === (change.path === "i18n/en.json"))).toBe(true);
   });
 
   it("열린 PR이 있으면 재사용한다 — 새로 만들지 않는다", async () => {
@@ -463,10 +465,10 @@ describe("runPull — 커밋·PR 경로", () => {
     expect(result).toMatchObject({ prUrl: "https://github.com/o/r/pull/7" });
   });
 
-  it("PR 조회 head가 owner:branch 형식이다 — 브랜치명만 넘기면 필터가 조용히 무시된다", async () => {
+  it("PR 조회는 sync 브랜치 이름만 넘긴다 — `owner:branch` 조립은 호스트 구현이 든다(호출부마다 조립하던 함정)", async () => {
     const { deps, calls } = makeDeps();
     await runPull(deps);
-    expect(calls.find((c) => c.method === "findOpenPr")?.args).toEqual(["o:malmoi-i18n/sync"]);
+    expect(calls.find((c) => c.method === "findOpenPr")?.args).toEqual(["malmoi-i18n/sync"]);
   });
 
   /**
@@ -510,10 +512,10 @@ describe("runPull — 실패 처리", () => {
     const { client, calls } = createFakeGitClient({
       refSha: { "heads/dev": "basehead" },
       tree: { basehead: [] },
-      failOn: "createCommit",
+      failOn: "publishSnapshot",
     });
     const { deps, writes } = makeDeps({}, { client, calls });
-    await expect(runPull(deps)).rejects.toThrow(/createCommit/);
+    await expect(runPull(deps)).rejects.toThrow(/publishSnapshot/);
     expect(writes).toEqual([]);
   });
 
@@ -614,14 +616,14 @@ ko:
       invalidateDelivery: async () => {},
       syncBranch: "malmoi-i18n/sync",
     });
-    const created = calls.find((c) => c.method === "createTree");
+    const created = calls.find((c) => c.method === "publishSnapshot");
     const body = JSON.stringify(created?.args ?? {});
     expect(body).toContain("사람이 넣은 주석");
     expect(body).toContain("하나!");
     // "값만 바뀐" — 편집한 줄 외에는 원본과 같아야 한다. 전에는 포함 여부만 봐서 통짜 재작성이
     // 통과했다 (2026-09-04 audit #24). yaml `doc.toString()` 결함(TASKS)이 정확히 이 경로다.
-    const payload = created?.args[0] as { tree: Array<{ path: string; content: string }> };
-    const written = payload.tree.find((t) => t.path === "config/locales/ko.yml")?.content ?? "";
+    const payload = created?.args[0] as { changes: Array<{ path: string; content: string }> };
+    const written = payload.changes.find((t) => t.path === "config/locales/ko.yml")?.content ?? "";
     const before = yamlSource.split("\n");
     const after = written.split("\n");
     const changed = after.filter((line, i) => line !== before[i]);
@@ -721,11 +723,11 @@ export const ns = { ko, en };
       syncBranch: "malmoi-i18n/sync",
     });
 
-    const tree = calls.find((c) => c.method === "createTree")?.args[0] as {
-      tree: { path: string; content: string }[];
+    const tree = calls.find((c) => c.method === "publishSnapshot")?.args[0] as {
+      changes: { path: string; content: string }[];
     };
-    const a = tree.tree.find((t) => t.path === "src/i18n/ns/a.ts");
-    const b = tree.tree.find((t) => t.path === "src/i18n/ns/b.ts");
+    const a = tree.changes.find((t) => t.path === "src/i18n/ns/a.ts");
+    const b = tree.changes.find((t) => t.path === "src/i18n/ns/b.ts");
     expect(a?.content).toContain('"하나!"');
     expect(b?.content).toContain('"비!"');
   });
@@ -756,11 +758,11 @@ export const ns = { ko, en };
       syncBranch: "malmoi-i18n/sync",
     });
 
-    const tree = calls.find((c) => c.method === "createTree")?.args[0] as {
-      tree: { content: string }[];
+    const tree = calls.find((c) => c.method === "publishSnapshot")?.args[0] as {
+      changes: { content: string }[];
     };
-    expect(tree.tree[0]?.content).toContain('"하나"');
-    expect(tree.tree[0]?.content).not.toContain('"a.one": ""');
+    expect(tree.changes[0]?.content).toContain('"하나"');
+    expect(tree.changes[0]?.content).not.toContain('"a.one": ""');
   });
 });
 
@@ -785,7 +787,7 @@ describe("runPull — writer가 값을 버리면 GitHub에 쓰기 전에 멈춘�
     expect(warning).toMatchObject({ surfaceSlug: "default", path: "i18n/en.json" });
     expect(typeof warning?.code).toBe("string");
     expect(warning).not.toHaveProperty("locale");
-    const writes = ["createTree", "createCommit", "createRef", "updateRefForce", "createPr", "updatePrTitle"];
+    const writes = ["publishSnapshot", "resetSyncBranch", "createPr", "updatePrTitle"];
     expect(calls.map((c) => c.method).filter((m) => writes.includes(m))).toEqual([]);
     expect(saved).toEqual([]);
   });
@@ -794,7 +796,7 @@ describe("runPull — writer가 값을 버리면 GitHub에 쓰기 전에 멈춘�
     const { deps, calls } = makeDeps();
     const result = await runPull(deps);
     expect(result.status).toBe("committed");
-    expect(calls.map((c) => c.method)).toContain("createCommit");
+    expect(calls.map((c) => c.method)).toContain("publishSnapshot");
   });
 
   it("버린 항목이 없으면 warnings 필드 자체가 없다 — 성공 결과에는 경고 자리가 없다", async () => {
@@ -910,7 +912,7 @@ describe("runPull — 보류 셀 (per-locale 수술적 · 비-base 파일 부재
       [{ path: "config/locales/en.yml", content: EN }, { path: "config/locales/ko.yml", content: KO }]);
     const result = await promise;
     expect(result).toMatchObject({ status: "committed", delivered: 1, withheld: { file: 1, key: 0 } });
-    expect(calls.map(c => c.method)).toContain("createCommit");
+    expect(calls.map(c => c.method)).toContain("publishSnapshot");
     expect(saved).toEqual([{ delivered: [koEdit], contexts: CONTEXTS, withheld: [frEdit] }]);
   });
 
@@ -919,7 +921,7 @@ describe("runPull — 보류 셀 (per-locale 수술적 · 비-base 파일 부재
       { en: { value: "one" }, ko: { value: "하나" }, fr: { value: "un" } },
       [{ path: "config/locales/en.yml", content: EN }, { path: "config/locales/ko.yml", content: KO }]);
     expect(await promise).toEqual({ status: "skipped", reason: "withheld", withheld: { file: 1, key: 0 } });
-    const writes = ["createTree", "createCommit", "createRef", "updateRefForce", "createPr"];
+    const writes = ["publishSnapshot", "resetSyncBranch", "createPr"];
     expect(calls.map(c => c.method).filter(m => writes.includes(m))).toEqual([]);
     expect(saved).toEqual([]);
   });
@@ -999,8 +1001,7 @@ describe("runPull — 로케일 모양이 아닌 저장된 행 (sec-audit-3 1b)"
     }, { client, calls });
 
     await expect(runPull(deps)).rejects.toThrow(/locale-shaped/);
-    expect(calls.map((c) => c.method)).not.toContain("createTree");
-    expect(calls.map((c) => c.method)).not.toContain("createCommit");
+    expect(calls.map((c) => c.method)).not.toContain("publishSnapshot");
     expect(JSON.stringify(calls)).not.toContain("curl evil");
     expect(writes).toEqual([]);
   });
@@ -1013,7 +1014,7 @@ describe("runPull — 로케일 모양이 아닌 저장된 행 (sec-audit-3 1b)"
  * 입력은 기존 경로(committed)를 짝으로 든다 — 짝이 없으면 "늘 reconfirm"도 green이다.
  */
 describe("runPull — expectedFingerprint (mcp-connector T6.5)", () => {
-  const MUTATING = ["createTree", "createCommit", "createRef", "updateRefForce", "createPr", "updatePrTitle", "updatePrBase", "closePr"];
+  const MUTATING = ["publishSnapshot", "resetSyncBranch", "createPr", "updatePrTitle", "updatePrBase", "closePr"];
   const previewState = (): PullState => ({
     project: { ...PROJECT },
     surfaces: [{ ...PROJECT, id: "s1", slug: "default", localeCodes: ["en", "ko"],
@@ -1249,7 +1250,7 @@ it("미리보기 없는 Publish도 뒤 shorthand에 가린 편집을 전달 확�
   }) }, made);
   expect(await runPull(deps)).toMatchObject({ status: "skipped", reason: "writer-warnings" });
   expect(writes).toEqual([]);
-  expect(calls.some(call => ["createTree", "createCommit", "updateRefForce"].includes(call.method))).toBe(false);
+  expect(calls.some(call => ["publishSnapshot", "resetSyncBranch"].includes(call.method))).toBe(false);
 });
 
 it.each(["120000", "160000", "040000", "unknown"])("rejects unsupported catalog mode %s before any GitHub write or confirmation", async (mode) => {
@@ -1271,7 +1272,7 @@ it("ignores unrelated symlinks and continues exporting regular catalogs", async 
   const { deps, writes, calls } = makeDeps({}, fake);
   expect(await runPull(deps)).toMatchObject({ status: "committed" });
   expect(writes).toHaveLength(1);
-  expect(calls.find(call => call.method === "createTree")?.args[0]).toMatchObject({ tree: expect.arrayContaining([expect.objectContaining({ path: "i18n/ko.json", mode: "100644" })]) });
+  expect(calls.find(call => call.method === "publishSnapshot")?.args[0]).toMatchObject({ changes: expect.arrayContaining([expect.objectContaining({ path: "i18n/ko.json" })]) });
 });
 
 it("ts-dict Publish does not acknowledge a literal hidden by final shorthand", async () => {
@@ -1286,7 +1287,7 @@ it("ts-dict Publish does not acknowledge a literal hidden by final shorthand", a
   }) }, made);
   expect(await runPull(deps)).toMatchObject({ status: "skipped", reason: "writer-warnings" });
   expect(writes).toEqual([]);
-  expect(calls.some(call => ["createTree", "createCommit", "createRef", "updateRefForce", "createPr", "closePr"].includes(call.method))).toBe(false);
+  expect(calls.some(call => ["publishSnapshot", "resetSyncBranch", "createPr", "closePr"].includes(call.method))).toBe(false);
 });
 
 it.each(["120000", "160000"])("a %s ancestor cannot be replaced with a generated catalog directory", async (mode) => {
@@ -1341,7 +1342,7 @@ it.each(["...rest", "[key]: runtime"])("ts-dict %s 뒤의 마지막 리터럴은
   }) }, made);
   expect(await runPull(deps)).toMatchObject({ status: "committed", delivered: 1 });
   expect(writes).toHaveLength(1);
-  expect(calls.find(call => call.method === "createTree")?.args[0]).toMatchObject({ tree: [expect.objectContaining({ content: source.replace("a: 'Final'", "a: 'Edited'") })] });
+  expect(calls.find(call => call.method === "publishSnapshot")?.args[0]).toMatchObject({ changes: [expect.objectContaining({ content: source.replace("a: 'Final'", "a: 'Edited'") })] });
 });
 
 it.each([
@@ -1354,7 +1355,7 @@ it.each([
   const source = `const en = { ['__proto__']: 'Source' }; const ko = { ${body} };`;
   const made = createFakeGitClient({ refSha: { "heads/dev": "basehead" },
     tree: { basehead: [{ path: "ns/x.ts", sha: blobSha(source) }] }, blobs: { [blobSha(source)]: source } });
-  const createTree = vi.spyOn(made.client, "createTree");
+  const publishSnapshot = vi.spyOn(made.client, "publishSnapshot");
   const edit = { id: "t1", token: "pending", cell: { surfaceId: "s1", keyId: "k1", localeCode: "ko", restoreValue: "Edited" } };
   const saveLastPulledAt = vi.fn();
   const invalidateDelivery = vi.fn();
@@ -1377,10 +1378,11 @@ it.each([
   expect(saveLastPulledAt).toHaveBeenCalledTimes(1);
   expect(saveLastPulledAt.mock.calls[0]?.[3]).toEqual([edit]);
   const expected = source.replace("'Actual'", "'Edited'");
-  expect(calls.find(call => call.method === "createTree")?.args[0]).toMatchObject({ tree: [expect.objectContaining({ content: expected })] });
+  expect(calls.find(call => call.method === "publishSnapshot")?.args[0]).toMatchObject({ changes: [expect.objectContaining({ content: expected })] });
   // 고정한 테스트 픽스처만 실행해 AST 판정과 실제 own property 의미를 독립적으로 견준다.
-  const emitted = createTree.mock.calls[0]?.[0].tree[0]?.content;
+  const emitted = publishSnapshot.mock.calls[0]?.[0].changes[0]?.content;
   expect(emitted).toBe(expected);
   const runtime: unknown = new Function(`${emitted}; return ko;`)();
   expect(Object.getOwnPropertyDescriptor(runtime, "__proto__")?.value).toBe("Edited");
 });
+

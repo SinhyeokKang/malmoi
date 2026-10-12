@@ -13,7 +13,7 @@ import { render } from "./helpers/dom";
 const state = vi.hoisted(() => ({ archived: false, find: vi.fn(), archive: vi.fn(), unarchive: vi.fn() }));
 vi.mock("@/lib/auth/session", () => ({ requireProjectAccess: async () => ({ projectId: "p1", userId: "u1" }) }));
 vi.mock("@/lib/db", () => ({ getPrisma: () => ({ project: { findUnique: state.find } }) }));
-vi.mock("@/lib/github", () => ({ loadConnectionHealth: async () => ({ status: "ok" }) }));
+vi.mock("@/lib/repo-host", () => ({ loadConnectionHealth: async () => ({ status: "ok" }) }));
 vi.mock("@/lib/github-connect/account-view", () => ({ loadAccountView: async () => ({ status: "ok", login: "owner" }) }));
 vi.mock("@/lib/projects/open-pr", () => ({ loadOpenPrUrl: async () => null }));
 vi.mock("@/lib/keys/query", () => ({ loadSurfaceCounts: async () => [] }));

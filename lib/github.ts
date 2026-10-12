@@ -12,7 +12,8 @@ import { planConnectionHealth, probeFromError, storedConnection, type Connection
 import { logFailure } from "@/lib/github-connect/log";
 import { createProbeMemo, probeMemoKey, PROBE_MEMO_MAX, PROBE_MEMO_TTL_MS } from "@/lib/github-connect/probe-memo";
 import type { GitClient, GitTreeBlob, GitTreeEntry } from "@/lib/pull/client";
-import type { CommitPayload, TreePayload } from "@/lib/pull/payload";
+import { buildCommitPayload, buildTreePayload } from "@/lib/pull/payload";
+import { sizesFromSnapshot, type BranchList, type RepoReader, type RepoSnapshot } from "@/lib/repo-host/reader";
 import type { PublishExecution } from "@/lib/sync/execution";
 
 /**
@@ -181,31 +182,11 @@ export async function loadConnectionHealth(project: {
 const homeProbeMemo = createProbeMemo({ ttlMs: PROBE_MEMO_TTL_MS, max: PROBE_MEMO_MAX });
 
 /**
- * 리포를 여러 번 읽는 동안 **설치 토큰을 한 번만 발급**하는 리더. 온보딩의 탐지·첫 적재가 이것을 쓴다.
+ * 리포를 여러 번 읽는 동안 **설치 토큰을 한 번만 발급**하는 리더(`RepoReader` — 계약은 `lib/repo-host/reader.ts`). 온보딩의 탐지·첫 적재가 이것을 쓴다.
  *
  * ⚠️ **읽기마다 새로 열지 않는다** — 토큰 캐시가 App 인스턴스에 붙어 있어 매번 열면 호출이 2배다
  * (code-review 2026-09-07 🔴2).
- *
- * `blob`은 못 읽으면 `undefined`다. 후보를 떨어뜨리는 대신 "키 수 확인 실패"로 표시하는 것이 호출부의
- * 규칙이라(ARCHITECTURE §4의 연장) 여기서 던지지 않는다 — 대신 실패는 **로그에 남는다**.
  */
-export type RepoReader = {
-  snapshot(baseBranch: string): Promise<RepoSnapshot>;
-  /** 트리 항목의 `sha`로 읽는다 — contents API의 1MB 상한이 없다. */
-  blob(sha: string): Promise<string | undefined>;
-};
-
-/**
- * 온보딩이 보는 리포 스냅샷 (ARCHITECTURE §3.1). **잘림·브랜치 부재·장애를 값으로 준다** — 온보딩은 그것을
- * "파일이 너무 많아 자동 탐지를 할 수 없어요"처럼 **말해야** 하고, pull은 같은 상황에서 **던져야** 한다
- * (부분 트리로 blob SHA를 비교하면 전부 틀어진다). 그래서 판정이 아니라 값이고, `GitClient.getTree`가
- * 이 위에서 던진다 — `lib/pull/client.ts`의 계약은 그대로다.
- */
-export type RepoSnapshot =
-  | { status: "ok"; headSha: string; headCommittedAt: string; files: GitTreeBlob[] }
-  | { status: "truncated" }
-  | { status: "base-branch-missing" }
-  | { status: "unavailable" };
 
 /**
  * ①의 브랜치 목록 (DESIGN §6.7). **installation 토큰이다** — 읽기이지만 리포 내용이고,
@@ -221,7 +202,6 @@ export type RepoSnapshot =
  * 실패가 값인 이유는 **①을 막지 않기 위해서**다. 404도 마찬가지다 — GitHub은 권한 없는 리소스에도
  * 404를 주므로 "브랜치가 없다"로 단정할 수 없다 (POSTMORTEM 2026-09-03).
  */
-export type BranchList = { status: "ok"; names: string[]; truncated: boolean } | { status: "unavailable" };
 
 /** 한 페이지 100개 × 최대 3페이지. 넘으면 목록이 답이 아니므로 화면이 자유 입력으로 바꾼다. */
 const BRANCH_PAGES = 3;
@@ -326,6 +306,11 @@ export async function openRepoReader(
       }
     },
 
+    // 트리 응답에 크기가 이미 있다 — 호출 0.
+    async sizes(snapshot, paths) {
+      return sizesFromSnapshot(snapshot, paths);
+    },
+
     async blob(sha: string): Promise<string | undefined> {
       try {
         const res = await octokit.request("GET /repos/{owner}/{repo}/git/blobs/{file_sha}", {
@@ -361,24 +346,36 @@ export async function createGitClient(
   const identity = await octokit.request("GET /repos/{owner}/{repo}", { owner, repo });
   requireSameRepository(pinned, String(identity.data.id));
   const base = { owner, repo };
+  async function getRefSha(ref: string): Promise<string | null> {
+    try {
+      // ⚠️ **슬래시를 직접 인코딩하지 않는다.** octokit이 `{ref}`를 URL에 넣을 때 이미
+      // `heads/dev` → `heads%2Fdev`로 바꾼다. 먼저 인코딩하면 `%252F`가 되어 **조용한 404**다
+      // (실측: `heads%2Fdev`를 넘기면 404). ARCHITECTURE §3의 인코딩 함정은 raw fetch 기준이다.
+      const res = await octokit.request("GET /repos/{owner}/{repo}/git/ref/{ref}", {
+        ...base,
+        ref,
+      });
+      return res.data.object.sha;
+    } catch (error) {
+      // 브랜치 부재는 정상 입력이다 — `malmoi-i18n/sync`가 없으면 첫 실행 경로를 탄다.
+      if (isNotFound(error)) return null;
+      throw error;
+    }
+  }
+
+  const forceRef = async (branch: string, sha: string) => {
+    await octokit.request("PATCH /repos/{owner}/{repo}/git/refs/{ref}", {
+      ...base,
+      // 인코딩하지 않는다 — octokit이 담당한다 (위 getRefSha 주석).
+      ref: `heads/${branch}`,
+      sha,
+      // 스냅샷 브랜치이므로 force가 의도된 것이다 (ARCHITECTURE §3).
+      force: true,
+    });
+  };
 
   return {
-    async getRefSha(ref) {
-      try {
-        // ⚠️ **슬래시를 직접 인코딩하지 않는다.** octokit이 `{ref}`를 URL에 넣을 때 이미
-        // `heads/dev` → `heads%2Fdev`로 바꾼다. 먼저 인코딩하면 `%252F`가 되어 **조용한 404**다
-        // (실측: `heads%2Fdev`를 넘기면 404). ARCHITECTURE §3의 인코딩 함정은 raw fetch 기준이다.
-        const res = await octokit.request("GET /repos/{owner}/{repo}/git/ref/{ref}", {
-          ...base,
-          ref,
-        });
-        return res.data.object.sha;
-      } catch (error) {
-        // 브랜치 부재는 정상 입력이다 — `malmoi-i18n/sync`가 없으면 첫 실행 경로를 탄다.
-        if (isNotFound(error)) return null;
-        throw error;
-      }
-    },
+    getRefSha,
 
     async getTree(commitSha) {
       const res = await octokit.request("GET /repos/{owner}/{repo}/git/trees/{tree_sha}", {
@@ -412,50 +409,37 @@ export async function createGitClient(
       return Buffer.from(res.data.content, "base64").toString("utf8");
     },
 
-    async createTree(payload: TreePayload) {
-      const res = await octokit.request("POST /repos/{owner}/{repo}/git/trees", {
-        ...base,
-        ...payload,
-      });
-      return res.data.sha;
+    /**
+     * Git Data API 네 단계 — 트리(항목의 `content`가 blob을 암묵 생성한다) → 커밋(parent = base head 하나) → sync ref 생성 또는 강제 이동.
+     * 트리 생성이 첫 외부 쓰기다 — 호출부가 그 앞에서 전달 확인을 무효화한다(`run.ts`).
+     * `inBase`는 보지 않는다 — 트리 항목은 생성·갱신을 가르지 않는다. 모든 파일을 `100644`로 쓴다(`buildTreePayload`).
+     */
+    async publishSnapshot({ branch, baseSha, changes, summary }) {
+      const tree = await octokit.request("POST /repos/{owner}/{repo}/git/trees", { ...base, ...buildTreePayload(changes, baseSha) });
+      const commit = await octokit.request("POST /repos/{owner}/{repo}/git/commits", { ...base, ...buildCommitPayload(tree.data.sha, baseSha, summary) });
+      const commitSha = commit.data.sha;
+      // 브랜치가 없으면 생성, 있으면 force로 옮긴다. `malmoi-i18n/sync`는 누적 히스토리가 아니라 "현재 DB 상태의 스냅샷"이다 (ARCHITECTURE §3).
+      if (await getRefSha(`heads/${branch}`) === null) {
+        // 생성은 `refs/heads/...` **전체 경로**를 본문에 담는다. 여기선 인코딩하지 않는다 — URL 파라미터가 아니라 JSON 값이다.
+        await octokit.request("POST /repos/{owner}/{repo}/git/refs", { ...base, ref: `refs/heads/${branch}`, sha: commitSha });
+      } else {
+        await forceRef(branch, commitSha);
+      }
+      return commitSha;
     },
 
-    async createCommit(payload: CommitPayload) {
-      const res = await octokit.request("POST /repos/{owner}/{repo}/git/commits", {
-        ...base,
-        ...payload,
-      });
-      return res.data.sha;
+    async resetSyncBranch(branch, baseSha) {
+      await forceRef(branch, baseSha);
     },
 
-    async createRef(branch, sha) {
-      // 생성은 `refs/heads/...` **전체 경로**를 본문에 담는다. 여기선 인코딩하지 않는다 —
-      // URL 파라미터가 아니라 JSON 값이다.
-      await octokit.request("POST /repos/{owner}/{repo}/git/refs", {
-        ...base,
-        ref: `refs/heads/${branch}`,
-        sha,
-      });
-    },
-
-    async updateRefForce(branch, sha) {
-      await octokit.request("PATCH /repos/{owner}/{repo}/git/refs/{ref}", {
-        ...base,
-        // 인코딩하지 않는다 — octokit이 담당한다 (위 getRefSha 주석).
-        ref: `heads/${branch}`,
-        sha,
-        // 스냅샷 브랜치이므로 force가 의도된 것이다 (ARCHITECTURE §3).
-        force: true,
-      });
-    },
-
-    async findOpenPr(head) {
+    async findOpenPr(branch) {
       const res = await octokit.request("GET /repos/{owner}/{repo}/pulls", {
         ...base,
         // `owner:branch` 형식이어야 필터가 걸린다. 브랜치명만 넘기면 GitHub이 필터를 조용히
         // 무시해 전체 목록이 오고, 재사용 판정이 무너져 PR이 중복 생성된다.
         // ⚠️ `base`로 거르지 않는다 — base를 바꾼 뒤 옛 PR을 못 찾아 하나 더 연다 (`GitClient.findOpenPr`).
-        head,
+        // 조립은 여기서 한다 — 호출부마다 조립하면 한 곳이 빠뜨린다.
+        head: `${owner}:${branch}`,
         state: "open",
       });
       const pr = res.data[0];

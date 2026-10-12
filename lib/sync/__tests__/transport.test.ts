@@ -34,14 +34,14 @@ it("실제 Octokit의 closePr 두 번째 쓰기는 첫 응답 뒤 기한이 끝�
   expect(calls.filter(call => call.startsWith("PATCH"))).toHaveLength(0);
   expect(execution.mutationDispatched).toBe(true);
 });
-it.each([403, 429, 500])("mutation 오류 %i는 자동 재전송하지 않고 종료 뒤 force ref도 막는다", async status => {
+it.each([403, 429, 500])("mutation 오류 %i는 자동 재전송하지 않고 종료 뒤 sync 브랜치 수렴(force ref)도 막는다", async status => {
   const execution = createPublishExecution();
   const fetcher = vi.fn<typeof fetch>(async (_url, init) => init?.method === "PATCH" ? json({ message: "fixture" }, status) : json({ id: 42 }));
   vi.stubGlobal("fetch", fetcher);
   const client = await createGitClient("o", "r", "1", "42", execution);
-  await expect(execution.run(() => client.updateRefForce("branch", "sha"))).rejects.toThrow();
+  await expect(execution.run(() => client.resetSyncBranch("branch", "sha"))).rejects.toThrow();
   expect(fetcher).toHaveBeenCalledTimes(2);
-  await expect(client.updateRefForce("branch", "sha")).rejects.toThrow();
+  await expect(client.resetSyncBranch("branch", "sha")).rejects.toThrow();
   expect(fetcher).toHaveBeenCalledTimes(2);
 });
 it("늦은 설치 토큰 반환 뒤에는 리포 요청이 시작되지 않는다", async () => {

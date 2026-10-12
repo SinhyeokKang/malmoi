@@ -6,7 +6,8 @@ import { isAdapterName } from "@/lib/adapters";
 import type { AccessError } from "@/lib/auth/message";
 import { getProjectAccess } from "@/lib/auth/query";
 import type { Subject } from "@/lib/auth/subject";
-import { openRepoReader } from "@/lib/github";
+import { openRepoReader } from "@/lib/repo-host";
+import { repoLocatorOf, repoTargetOf, sameAccessedRepository } from "@/lib/repo-host/target";
 import { requireEnv } from "@/lib/env";
 import { logFailure } from "@/lib/github-connect/log";
 import type { ConnectError } from "@/lib/github-connect/message";
@@ -58,10 +59,12 @@ export async function addSources(
   const inputs: AddSurfaceSnapshot[] = [];
   let results: import("@/lib/surfaces/plan-add").SurfaceAdded[];
   try {
-    const repo = await checkRepoAccess(prisma, userId, project.repoOwner, project.repoName, true);
+    const repo = await checkRepoAccess(prisma, userId, repoLocatorOf(project), { requirePush: true });
     if (repo.status !== "ok") return { ok: false, error: repo.error };
-    if (repo.repositoryId !== project.repositoryId || repo.installationId !== project.installationId) return { ok: false, error: "repo-replaced" };
-    const reader = await openRepoReader(repo.repoOwner, repo.repoName, repo.installationId, repo.repositoryId);
+    const connection = repoTargetOf(project);
+    if (connection.status !== "ok" || !sameAccessedRepository(repo, connection.target)) return { ok: false, error: "repo-replaced" };
+    // 같은 설치·리포임을 위에서 대조했다 — GitHub은 지금처럼 확인한 접근의 주소로 연다(리네임 뒤의 정규 이름).
+    const reader = await openRepoReader({ host: "github", owner: repo.repoOwner, name: repo.repoName, installationId: repo.installationId, repositoryId: repo.repositoryId });
     const snapshot = await reader.snapshot(project.baseBranch);
     if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
     if (options.confirmations !== undefined && secret !== null) {

@@ -29,7 +29,7 @@ vi.mock("@/lib/events/ci", async () => ({
   ...(await vi.importActual<typeof import("@/lib/events/ci")>("@/lib/events/ci")),
   recordCiImport: state.record,
 }));
-vi.mock("@/lib/github", () => ({ createGitClient: state.createGitClient }));
+vi.mock("@/lib/repo-host", () => ({ createGitClient: state.createGitClient }));
 // 마감만 짧은 실물 사본 — 이긴 뒤 타이머를 끈다(손 사본이 안 꺼서 파일 뒤에 로그가 나갔다, PR #171).
 vi.mock("@/lib/github-wait", () => import("@/lib/__tests__/fast-github-wait"));
 
@@ -66,7 +66,7 @@ describe("열린 PR 게이트", () => {
     const json = await response.json();
     expect(json).toEqual({ status: "deferred", reason: "open-pr", projectId: "p1", commitSha: body.commitSha });
     expect(json).not.toHaveProperty("pendingCount");
-    expect(state.findOpenPr).toHaveBeenCalledWith("o:malmoi-i18n/sync-acme");
+    expect(state.findOpenPr).toHaveBeenCalledWith("malmoi-i18n/sync-acme");
     expect(state.apply).not.toHaveBeenCalled();
     // 진행 표시(`markImportStarted` = 표면 update)도 없다 — 게이트가 그 뒤로 옮겨 가면 여기서 red다.
     expect(h.spies.updateSurface).not.toHaveBeenCalled();

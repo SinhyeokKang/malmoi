@@ -12,7 +12,7 @@ import { runTokenFor } from "@/lib/events/payload";
 import { recordEvent, recordRun } from "@/lib/events/record";
 import { requireEnv } from "@/lib/env";
 import { isUniqueViolation } from "@/lib/failure";
-import { openRepoReader } from "@/lib/github";
+import { openRepoReader } from "@/lib/repo-host";
 import { logFailure } from "@/lib/github-connect/log";
 import { FileContentBudgetError, readFiles, snapshotError } from "@/lib/import/read";
 import { IngestBudgetError } from "@/lib/onboarding/budget";
@@ -113,7 +113,7 @@ export async function createProjectFromRepo(
   // 자유 입력(300개 초과)·직접 호출도 막는다 — 목록 필터는 안내일 뿐이다 (malmoi#126).
   if (isSyncBranchName(input.baseBranch)) return { ok: false, error: "sync-branch" };
 
-  const access = await checkRepoAccess(prisma, userId, input.owner, input.repo, true);
+  const access = await checkRepoAccess(prisma, userId, { host: "github", owner: input.owner, name: input.repo }, { requirePush: true });
   if (access.status === "rejected") return { ok: false, error: access.error };
 
   const [ownerCount, operator, existing] = await Promise.all([
@@ -143,7 +143,7 @@ export async function createProjectFromRepo(
   });
   if (plan.status !== "ok") return { ok: false, error: plan.status };
 
-  const reader = await openRepoReader(plan.repoOwner, plan.repoName, plan.installationId, access.repositoryId);
+  const reader = await openRepoReader({ host: "github", owner: plan.repoOwner, name: plan.repoName, installationId: plan.installationId, repositoryId: access.repositoryId });
   // ⚠️ **탐지와 저장이 같은 ref여야 한다** — 다른 트리로 재검증하면 통과한 포맷이 저장 브랜치에 없을 수 있다.
   const baseBranch = input.baseBranch;
   const snapshot = await reader.snapshot(baseBranch);

@@ -1,9 +1,10 @@
 import "server-only";
 
-import type { RepoReader, RepoSnapshot } from "@/lib/github";
+import type { RepoReader, RepoSnapshot } from "@/lib/repo-host/reader";
 import type { AdapterFile } from "@/lib/adapters/types";
 import type { OnboardError } from "@/lib/onboarding/message";
 import { IngestBudgetError, checkDownloadBudget, checkContentBudget } from "@/lib/onboarding/budget";
+import { AppError } from "@/lib/failure";
 
 /** 합집합 다운로드에서도 실패한 소스 안내를 유지한다. 경로는 같은 리포의 선택 파일이다. */
 export class FileContentBudgetError extends IngestBudgetError {
@@ -21,7 +22,10 @@ export async function readFiles(
   snapshot: Extract<RepoSnapshot, { status: "ok" }>,
   paths: readonly string[],
 ): Promise<AdapterFile[]> {
-  checkDownloadBudget(paths, snapshot.files);
+  // 크기는 리더가 준다 — 트리에 크기가 실리는 호스트는 호출 0이다(`sizesFromSnapshot`). 모르는 크기를 0으로 세지 않는다.
+  const sized = await reader.sizes(snapshot, paths);
+  if (sized.status !== "ok") throw new AppError(`locale file sizes unavailable (${sized.status})`);
+  checkDownloadBudget(paths, [...sized.sizes].map(([path, size]) => ({ path, size })));
   let totalBytes = 0;
   const shaByPath = new Map(snapshot.files.map((f) => [f.path, f.sha]));
   const out: AdapterFile[] = [];

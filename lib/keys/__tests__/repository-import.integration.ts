@@ -120,7 +120,7 @@ it("1446키 벌크 upsert의 기존 값 읽기가 ANALYZE 전·후 모두 (keyId
 // Tests below must fail before the repository import implementation exists.
 import { runRepositoryImportFromReader } from "@/lib/import/run";
 import { applyPush } from "@/lib/push/apply";
-import type { RepoReader } from "@/lib/github";
+import { sizesFromSnapshot, type RepoReader } from "@/lib/repo-host/reader";
 
 function deferred() {
   let resolve!: () => void;
@@ -128,7 +128,7 @@ function deferred() {
   return { promise, resolve };
 }
 function reader(content = '{"hello":"Repository"}', pause?: { entered: ReturnType<typeof deferred>; release: ReturnType<typeof deferred> }): RepoReader {
-  return {
+  return { sizes: async (snapshot, paths) => sizesFromSnapshot(snapshot, paths),
     snapshot: vi.fn<RepoReader["snapshot"]>(async () => {
       if (pause) { pause.entered.resolve(); await pause.release.promise; }
       return { status: "ok", headSha: "c".repeat(40), headCommittedAt: commitAt, files: ["en", "ko", "fr"].map(locale => ({ path: `i18n/${locale}.json`, sha: locale, size: 100 })) };
@@ -303,7 +303,7 @@ it("첫 표면을 확정한 뒤 둘째 표면을 읽는 동안에도 실행권�
   await seed();
   await prisma.translationSurface.create({ data: { id: "second", projectId: "p", slug: "second", adapterName: "json-catalog", pathTemplate: "second/{locale}.json", baseLocale: "en" } });
   const entered = deferred(); const release = deferred();
-  const repo: RepoReader = {
+  const repo: RepoReader = { sizes: async (snapshot, paths) => sizesFromSnapshot(snapshot, paths),
     snapshot: vi.fn().mockResolvedValue({ status: "ok", headSha: "c".repeat(40), headCommittedAt: commitAt,
       files: ["i18n", "second"].flatMap(dir => ["en", "ko"].map(locale => ({ path: `${dir}/${locale}.json`, sha: `${dir}-${locale}`, size: 100 }))),
     }),

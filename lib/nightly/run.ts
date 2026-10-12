@@ -5,8 +5,9 @@ import { isAdapterName } from "@/lib/adapters";
 import { importEventPayload } from "@/lib/events/payload";
 import { importOutcomeFields } from "@/lib/projects/import-status";
 import { recordEvent } from "@/lib/events/record";
-import { AppError, logCaught } from "@/lib/failure";
-import { createGitClient, openRepoReader } from "@/lib/github";
+import { AppError, fail, logCaught } from "@/lib/failure";
+import { createGitClient, openRepoReader } from "@/lib/repo-host";
+import { repoTargetOf, sameRepoTarget } from "@/lib/repo-host/target";
 import { GITHUB_WAIT_MS, withinGithubWait } from "@/lib/github-wait";
 import { closeExpiredImportRuns, runAutomationImport } from "@/lib/import/run";
 import { openPrGateApplies } from "@/lib/protection/plan";
@@ -114,8 +115,13 @@ export async function runNightly(prisma: PrismaClient, target: NightlyTarget, el
       const { installationId, repositoryId } = target;
       if (installationId === null) throw new AppError(`nightly import without installation: ${target.slug}`);
       const repository = { repositoryId, installationId, repoOwner: target.repoOwner, repoName: target.repoName, baseBranch: target.baseBranch };
+      // 리더는 열 때 연결을 판정한다 — 리포 id가 없으면 지금처럼 리더 열기가 거부한다(적재 코어가 그 실패를 결과로 남긴다).
       const result = await runAutomationImport(prisma, { projectId: target.id, repository, expectedLastPublishedAt: snapshot.lastPublishedAt, expectedDeliveryRevision },
-        () => openRepoReader(target.repoOwner, target.repoName, installationId, repositoryId));
+        async () => {
+          const connection = repoTargetOf(target);
+          if (connection.status !== "ok") fail("repository identity is not pinned; reconnect the project", "not-installed");
+          return openRepoReader(connection.target);
+        });
       return { action: "import", ...result };
     }
     case "skip": {
@@ -146,8 +152,10 @@ export async function runNightly(prisma: PrismaClient, target: NightlyTarget, el
           // 늦은 원격 관측은 사건으로 보존하되 새 설정·성공 적재의 현재 건강성을 덮지 않는다.
           await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${target.id} FOR UPDATE`;
           const current = await tx.project.findUnique({ where: { id: target.id } });
+          const now = current === null ? null : repoTargetOf(current);
+          const then = repoTargetOf(target);
           if (current !== null && current.archivedAt === null
-            && current.repositoryId === target.repositoryId && current.installationId === target.installationId
+            && now?.status === "ok" && then.status === "ok" && sameRepoTarget(now.target, then.target)
             && current.repoOwner === target.repoOwner && current.repoName === target.repoName && current.baseBranch === target.baseBranch) {
             const ids = active.map(surface => surface.id).sort();
             await tx.$executeRaw`SELECT "id" FROM "TranslationSurface" WHERE "projectId" = ${target.id} AND "id" = ANY(${ids}::text[]) ORDER BY "id" FOR UPDATE`;
@@ -186,12 +194,12 @@ export async function runNightly(prisma: PrismaClient, target: NightlyTarget, el
  * ⚠️ **base head 대비**다 — sync 브랜치 상태와 섞지 않는다(POSTMORTEM 2026-09-09).
  */
 async function readHead(target: NightlyTarget): Promise<{ client: GitClient | null; head: NonNullable<NightlyInput["head"]> }> {
-  const { installationId, repositoryId } = target;
   // `selectPullTargets`가 이미 거른다 — 여기 오면 조회할 수 없으므로 못 읽은 것이다.
-  if (installationId === null || repositoryId === null) return { client: null, head: { ok: false } };
+  const connection = repoTargetOf(target);
+  if (connection.status !== "ok") return { client: null, head: { ok: false } };
   return withinGithubWait((async () => {
     try {
-      const client = await createGitClient(target.repoOwner, target.repoName, installationId, repositoryId);
+      const client = await createGitClient(connection.target);
       return { client, head: { ok: true as const, sha: await client.getRefSha(`heads/${target.baseBranch}`) } };
     } catch (error) {
       // 설정 오류(개인키 누락 등)도 여기서 값이 된다 — 던지지 않는 대신 `failed.base-unreadable` 카운터와 이 로그가 그것을 말한다.
@@ -213,7 +221,7 @@ async function readOpenPr(target: NightlyTarget, client: GitClient | null): Prom
   if (client === null) return undefined;
   return withinGithubWait((async () => {
     try {
-      const pr = await client.findOpenPr(`${target.repoOwner}:${syncBranchFor(target.slug)}`);
+      const pr = await client.findOpenPr(syncBranchFor(target.slug));
       return pr === null ? null : pr.url;
     } catch (error) {
       logCaught("nightly", "open-pr", error);

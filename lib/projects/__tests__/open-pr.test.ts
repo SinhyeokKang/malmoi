@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 const client = vi.hoisted(() => vi.fn());
-vi.mock("@/lib/github", () => ({ createGitClient: client }));
+vi.mock("@/lib/repo-host", () => ({ createGitClient: client }));
 import { loadOpenPrUrl } from "../open-pr";
 
 /**

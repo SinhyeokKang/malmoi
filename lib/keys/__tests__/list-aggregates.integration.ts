@@ -721,7 +721,10 @@ async function creationFixture() {
     files: paths.map(path => ({ path, sha: path, size: 20 })) }));
   vi.doMock("@/lib/github", () => ({
     probeRepo: async () => ({ status: "ok", installationId: "77", repositoryId: "123", fullName: "acme/web", defaultBranch: "main" }),
-    openRepoReader: async () => ({ snapshot, blob: async (sha: string) => blobs.get(sha) }),
+  }));
+  const { sizesFromSnapshot } = await import("@/lib/repo-host/reader");
+  vi.doMock("@/lib/repo-host", () => ({
+    openRepoReader: async () => ({ snapshot, blob: async (sha: string) => blobs.get(sha), sizes: async (snap: Parameters<typeof sizesFromSnapshot>[0], paths: readonly string[]) => sizesFromSnapshot(snap, paths) }),
   }));
   const { createProject } = await import("@/app/(edit)/projects/actions");
   const input = { slug: "create-action", name: "Create", owner: "acme", repo: "web", baseBranch: "main",

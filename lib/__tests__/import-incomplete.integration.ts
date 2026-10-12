@@ -9,7 +9,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 
 import { PrismaClient } from "@/generated/prisma/client";
 import { optionalEnv } from "@/lib/env";
-import type { RepoReader } from "@/lib/github";
+import { sizesFromSnapshot, type RepoReader } from "@/lib/repo-host/reader";
 import { readDiscardApproval } from "@/lib/import/approval";
 import { runRepositoryImportFromReader } from "@/lib/import/run";
 import { countPending } from "@/lib/protection/where";
@@ -73,7 +73,7 @@ let heads = 0;
 function reader(files: Record<string, string | undefined>): RepoReader {
   heads += 1;
   const headSha = String(heads).padStart(40, "c");
-  return {
+  return { sizes: async (snapshot, paths) => sizesFromSnapshot(snapshot, paths),
     snapshot: vi.fn<RepoReader["snapshot"]>(async () => ({ status: "ok", headSha, headCommittedAt: new Date(Date.UTC(2026, 8, 16, 0, heads)).toISOString(),
       files: Object.keys(files).map(path => ({ path, sha: path, size: 100 })) })),
     blob: vi.fn(async (sha: string) => files[sha]),

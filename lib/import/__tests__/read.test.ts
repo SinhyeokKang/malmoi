@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { RepoReader, RepoSnapshot } from "@/lib/github";
+import { sizesFromSnapshot, type RepoReader, type RepoSnapshot } from "@/lib/repo-host/reader";
 import { IngestBudgetError } from "@/lib/onboarding/budget";
 import { readFiles, snapshotError } from "../read";
 
@@ -7,7 +7,7 @@ const snapshot: Extract<RepoSnapshot, { status: "ok" }> = {
   status: "ok", headSha: "a".repeat(40), headCommittedAt: "2026-09-15T00:00:00Z",
   files: [{ path: "en.json", sha: "en-blob", size: 20 }, { path: "ko.json", sha: "ko-blob", size: 20 }],
 };
-const reader = (blob = vi.fn<RepoReader["blob"]>().mockResolvedValue('{}')): RepoReader => ({
+const reader = (blob = vi.fn<RepoReader["blob"]>().mockResolvedValue('{}')): RepoReader => ({ sizes: async (snapshot, paths) => sizesFromSnapshot(snapshot, paths),
   snapshot: vi.fn(), blob,
 });
 

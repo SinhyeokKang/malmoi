@@ -57,7 +57,7 @@ vi.mock("@/lib/db", () => {
   };
   return { getPrisma: () => db };
 });
-vi.mock("@/lib/github", () => ({ createGitClient: state.createGitClient, openRepoReader: state.openRepoReader }));
+vi.mock("@/lib/repo-host", () => ({ createGitClient: state.createGitClient, openRepoReader: state.openRepoReader }));
 vi.mock("@/lib/sync/run", () => ({ runSync: state.runSync }));
 vi.mock("@/lib/import/run", () => ({ runAutomationImport: state.runAutomationImport, closeExpiredImportRuns: state.closeExpiredImportRuns }));
 // 마감만 짧은 실물 사본 — 이긴 뒤 타이머를 끈다(손 사본이 안 꺼서 파일 뒤에 로그가 나갔다, PR #171).
@@ -97,7 +97,7 @@ beforeEach(() => {
   state.restores = [];
   state.surfaceFailures = [];
   state.clients = {};
-  state.createGitClient.mockImplementation(async (_owner: string, repo: string) => {
+  state.createGitClient.mockImplementation(async ({ name: repo }: { name: string }) => {
     const found = state.clients[repo];
     if (found === undefined) throw new Error(`no fake client: ${repo}`);
     return found;
@@ -148,7 +148,7 @@ describe("갈래별 호출", () => {
     const { results } = await call();
     expect(results).toEqual([{ slug: "moved", action: "import", recorded: true, result: "imported", deferReason: null }]);
     expect(calls.map((c) => c.method)).toEqual(["getRefSha", "findOpenPr"]);
-    expect(calls[1]?.args).toEqual(["o:malmoi-i18n/sync-moved"]);
+    expect(calls[1]?.args).toEqual(["malmoi-i18n/sync-moved"]);
     expect(state.createGitClient).toHaveBeenCalledTimes(1);
     expect(state.runAutomationImport).toHaveBeenCalledWith(expect.anything(), {
       projectId: p.id, expectedLastPublishedAt: null, expectedDeliveryRevision: "[]", repository: { repositoryId: "r-moved", installationId: "77", repoOwner: "o", repoName: "moved", baseBranch: "main" },

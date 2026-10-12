@@ -89,7 +89,8 @@ const ONBOARDING_SOURCES = [
  * 2홉 뒤에 사용자 토큰을 물어도 green이었다 (POSTMORTEM "2홉은 못 본다").
  */
 // `lib/nightly` — 야간 판정이 head·열린 PR을 installation 토큰으로 읽는다(nightly-sync).
-const APP_TOKEN_SOURCES = ["lib/pull", "lib/push", "lib/projects", "lib/publish", "lib/import", "lib/nightly"].flatMap((dir) => sourcesIn(join(ROOT, dir), dir));
+// `lib/repo-host` — 리포 호스트 경계(gitlab-repositories). 소비자가 `lib/github.ts` 대신 이것을 문다 — 경계 자신도 사용자 토큰을 모른다.
+const APP_TOKEN_SOURCES = ["lib/pull", "lib/push", "lib/projects", "lib/publish", "lib/import", "lib/nightly", "lib/repo-host"].flatMap((dir) => sourcesIn(join(ROOT, dir), dir));
 /**
  * **두 자격증명이 만나는 코어** (mcp-connector T4-c — design §1.3). Server Action과 MCP 도구가 같은 코어를 부르므로 만남점이 Server Action
  * 하나가 아니게 됐다. 규칙은 Server Action과 같다 — **둘 다 import할 수 있고, 쓰기는 App 토큰 경로(`@/lib/github`)만** 한다: App 개인키를
@@ -99,8 +100,11 @@ const APP_TOKEN_SOURCES = ["lib/pull", "lib/push", "lib/projects", "lib/publish"
 // `lib/mcp` — MCP 도구(T6·T7)가 `ensureUserToken`(GET)과 App 토큰 경로 코어를 함께 부른다(design §1.3 · §6 불변식 6).
 const MEETING_ROOTS = ["lib/onboarding-run", "lib/mcp"];
 const MEETING_SOURCES = MEETING_ROOTS.flatMap((dir) => sourcesIn(join(ROOT, dir), dir));
-/** 커밋 경로(App 토큰) 모듈. 온보딩이 이걸 물면 두 자격증명이 한 파일에서 만날 길이 열린다. */
-const COMMIT_PATH_IMPORT = /from\s+["'](@\/lib\/github|\.\.\/github)["']/;
+/**
+ * 커밋 경로(App 토큰) 모듈. 온보딩이 이걸 물면 두 자격증명이 한 파일에서 만날 길이 열린다.
+ * 리포 호스트 경계(`@/lib/repo-host`)도 같은 경로다 — 그 뒤에 `lib/github.ts`가 있다. 순수 잎(`/target`·`/reader`)은 아니다.
+ */
+const COMMIT_PATH_IMPORT = /from\s+["'](@\/lib\/github|\.\.\/github|@\/lib\/repo-host)["']/;
 
 /**
  * 주석은 뺀다 — 경계를 설명하는 문장이 그 이름을 인용한다. 블록 주석은 **통째로** 지운다:
@@ -152,6 +156,8 @@ describe("검사식이 실제로 잡는다 — 스캐너가 공허하게 통과�
   it("커밋 경로 import 검사식이 실제로 잡는다", () => {
     expect(COMMIT_PATH_IMPORT.test('import { readRepoSnapshot } from "@/lib/github";')).toBe(true);
     expect(COMMIT_PATH_IMPORT.test('import { probeRepo } from "../github";')).toBe(true);
+    expect(COMMIT_PATH_IMPORT.test('import { createGitClient } from "@/lib/repo-host";')).toBe(true);
+    expect(COMMIT_PATH_IMPORT.test('import { repoTargetOf } from "@/lib/repo-host/target";')).toBe(false);
     // 이웃 디렉터리는 다른 모듈이다 — 넓게 잡으면 방어선이 항상 red가 된다.
     expect(COMMIT_PATH_IMPORT.test('import { probeFromError } from "@/lib/github-connect/health";')).toBe(false);
     expect(COMMIT_PATH_IMPORT.test('import { logFailure } from "@/lib/github-connect/log";')).toBe(false);

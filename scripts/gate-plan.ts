@@ -43,6 +43,10 @@ const POSTGRES_SUITES: readonly { step: GateStep; triggers: readonly string[] }[
       "lib/mcp/",
       "lib/oauth-server/",
       "lib/onboarding-run/",
+      // 리포 호스트 경계와 GitLab 구현(gitlab-repositories D15) — 통합 테스트가 직접 지나는 생산 경로다. 비어 있는 GitLab 디렉터리도 미리 둔다.
+      "lib/repo-host/",
+      "lib/gitlab/",
+      "lib/gitlab-connect/",
       // 상한 재집계(복원·승격·수락)와 운영자 판정 — 동시 복원·생성 시나리오가 `lib/keys/`에 있다.
       "lib/projects/owner-limit.ts",
       "lib/projects/archive.ts",

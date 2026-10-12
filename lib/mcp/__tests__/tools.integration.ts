@@ -37,11 +37,18 @@ const FILES = ["i18n/en.json", "i18n/ko.json", "second/en.json", "second/ko.json
 vi.mock("@/lib/github", async (orig) => ({
   ...(await orig<typeof import("@/lib/github")>()),
   probeRepo: async () => ({ status: "ok", installationId: "77", repositoryId: "123", fullName: "acme/web", defaultBranch: "main" }),
-  openRepoReader: async () => ({
-    snapshot: async () => ({ status: "ok", headSha: h.snapshotHead, headCommittedAt: "2026-09-28T00:00:00Z", files: FILES.map(path => ({ path, sha: path, size: 20 })) }),
-    blob: async () => '{"hello":"Hello"}',
-  }),
 }));
+vi.mock("@/lib/repo-host", async (orig) => {
+  const { sizesFromSnapshot } = await import("@/lib/repo-host/reader");
+  return {
+    ...(await orig<typeof import("@/lib/repo-host")>()),
+    openRepoReader: async () => ({
+      snapshot: async () => ({ status: "ok", headSha: h.snapshotHead, headCommittedAt: "2026-09-28T00:00:00Z", files: FILES.map(path => ({ path, sha: path, size: 20 })) }),
+      blob: async () => '{"hello":"Hello"}',
+      sizes: async (snapshot: Parameters<typeof sizesFromSnapshot>[0], paths: readonly string[]) => sizesFromSnapshot(snapshot, paths),
+    }),
+  };
+});
 
 // 소스 제거 미리보기의 열린 PR 줄 — GitHub 없이 "없음"이다. 이 파일의 다른 도구는 이 함수를 부르지 않는다.
 vi.mock("@/lib/projects/open-pr", async (orig) => ({ ...(await orig<object>()), loadOpenPrUrl: async () => null }));
