@@ -51,6 +51,7 @@
 | D26 | MCP 필드 호환 = **호스트 어휘**: GitHub 프로젝트 응답은 바이트 불변 + `repositoryHost:'github'`, GitLab 프로젝트는 `newFromGitLab`·`lastPublishMergeRequest`·`mergeRequest` + `repositoryHost:'gitlab'`. `connection-unusable`·`connection-removed`는 GitHub `unpinned`과 같은 MCP 값 `not-connected`로 접는다(MCP에 재연결 갈래 값이 따로 없다 — D2 구현, R-Edoc 🟡6 정정; `app-uninstalled`은 별개 값). `GITLAB_CI_RELEASE.sha` 미발행이면 `get_workflow` 거부 `workflow-unavailable`. 연결 없음·만료는 `needs-browser`(`gitlab-not-connected`·`gitlab-reconnect`). MCP에 PAT·재연결 도구 없음 | 지휘자 판단(D2 `ask`) — 기존 클라이언트는 GitHub 프로젝트만 알아 깨지는 소비자 0 · spec 완료 조건 9 |
 | D27 | `scripts/smoke-gitlab.ts`의 `GITLAB_TEST_TOKEN`·`GITLAB_TEST_PROJECT` 직접 읽기는 `self-hosted-gates.test.ts`의 `DIRECT_READS_ALLOWED`에 `{ "*": 1 }` 한 행(env 맵을 순수 파서에 한 번 주입 — `scripts/preflight.ts` 선례) — 개발자 스모크 전용, `.env.example`·preflight·`lib/env.ts`에 넣지 않는다 | 지휘자 판단(F `ask`) — 운영자 설정이 아닌 이름을 운영 표면에 올리지 않는다 |
 | D28 | `githubAppConfigured`(D4a 화면 갈래)는 **자격증명 넷(ID·PRIVATE_KEY·CLIENT_ID·CLIENT_SECRET)** 으로 판정한다 — `GITHUB_APP_SLUG`는 지금처럼 설치 링크만 가른다(CLAUDE.md "없으면 조용히 사라진다"). 셀프 호스팅 preflight는 다섯 all-or-none 그대로 | 지휘자 판단(R-Edoc) — SLUG 하나 빠진 hosted에서 GitHub 카드가 통째로 사라지는 회귀를 막는다. 코드는 E-ui fix2 |
+| D29 | 런타임 QA(`/runtime-test` + `/roundtrip` + D1 실물 CI)를 **Codex Astra(medium) 단일 워커**로 — main 체크아웃, ego-browser(`~/.agents/skills/ego-browser`)·BugShot. 수정은 소유 Claude 워커, 재실측도 같은 Astra 워커 | 사용자 2026-10-13 — D18 교차 허가 확장, 토큰 분산. 시안 대조(DS)는 Opus가 끝냈다 |
 
 ## 배치·파일 소유권
 
@@ -68,7 +69,7 @@
 | E-ui 화면·사전 | §5 둘·셋·다섯·일곱째 항목 + 여섯째의 (E-ui) 하위 항목 | `lib/status/canon.ts` · `components/onboarding|settings|account|home|projects|logs|shell/*` · `messages/{en,ko,es}.tsx` · `lib/invitation-email/template.ts` | D2 · E0 · E-sh | opus / high — 문장 분기·접근성·375 | 대기 |
 | E-doc 정본·가이드 | §5 여섯째의 (E-doc) 하위 항목 | `docs/{PRODUCT,ARCHITECTURE,DIRECTORY,OPERATIONS}.md` · `README.md` · `guide/{en,ko,es}/`(셀프 호스팅 제외) · OPERATIONS 롤백 줄(D6a) | E-ui | opus / medium — 불변식 6·11 재서술·결정 27건을 정본으로 올림(sonnet에서 올림) | 대기 |
 | DS 시안 대조 | §5 "시안 대상 신규 UI는 `/design-sync`" | main 체크아웃, 리포트 전용(computed style·접근성 트리) — 대상: ① GitLab 탭·PAT 입력 shell · `/account` GitLab 카드 · 설정 재연결 카드 · Home Platform 행. 불일치는 E-ui 워커가 고친다 | E-ui 통합 | opus / medium | 대기 |
-| QA 런타임 | §5 [수동] · §6 + D1 [수동](실제 GitLab CI) | main 체크아웃, 읽기 전용(`/runtime-test` · `/roundtrip`) | push 후 | opus / medium | 대기 |
+| QA 런타임 | §5 [수동] · §6 + D1 [수동](실제 GitLab CI) | main 체크아웃, 읽기 전용(`/runtime-test` · `/roundtrip`) | push 후 | **codex astra / medium**(D29) | 대기 |
 | R 독립 리뷰 | — | 읽기 전용, `.scratch/review-<batch>.md` | 각 배치 인계 | opus / medium(A·B·C는 high) · **R-C는 codex astra 교차 리뷰 추가**(D18) | — |
 
 ## 파일 겹침·실행 순서
