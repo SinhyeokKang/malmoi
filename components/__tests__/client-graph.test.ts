@@ -112,6 +112,7 @@ const CLIENT_LIB_FILES = [
   "lib/github-connect/installation-url.ts",
   "lib/github-connect/message.ts",
   // GitLab 연결 거부 문구 — 사전과 `errors.ts`(코드 union, 잎)만 문다. 연결 코어(`connection.ts`·transport)는 서버 쪽이다.
+  "lib/gitlab-connect/errors.ts",
   "lib/gitlab-connect/message.ts",
   // `SlowNotice`가 지연 선으로 읽는 상수 하나 — import가 0개인 잎이다 (audit-ux U7 r1). octokit은 `lib/github.ts` 쪽이다.
   "lib/github-wait.ts",
@@ -125,6 +126,8 @@ const CLIENT_LIB_FILES = [
   // 헤더·사이드바·`/inbox` 읽음 섬이 나눠 쓰는 탭 안 안 읽음 수 store(inbox-page D2) — import는 `react` 하나인 잎이다.
   "lib/inbox/unread-store.ts",
   "lib/i18n/adapter-errors.ts",
+  // 리포 호스트별 문장 덮기(`onGitLab`) — import 0 잎.
+  "lib/i18n/host.ts",
   "lib/i18n/index.ts",
   // 공개 푸터의 언어 스위처가 지원 집합·endonym·국기 매핑을 값으로 읽는다(ui-locales F2) — import 0인 잎이다(아래 잎 검사).
   "lib/i18n/locales.ts",

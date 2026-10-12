@@ -1,8 +1,9 @@
 import { CodeBlock } from "@/components/ui/code-block";
 import type { Messages } from "@/lib/i18n";
+import { forHost } from "@/lib/i18n/host";
 
-/** 대상 리포에 둘 자리 — 블록 머리의 파일명 바가 든다. */
-const WORKFLOW_PATH = ".github/workflows/malmoi-i18n.yml";
+/** 대상 리포에 둘 자리 — 블록 머리의 파일명 바가 든다. GitLab은 리포 루트의 `.gitlab-ci.yml`이다(D5 · design-brief G7). */
+const WORKFLOW_PATH = { github: ".github/workflows/malmoi-i18n.yml", gitlab: ".gitlab-ci.yml" } as const;
 
 /**
  * 복사용 워크플로 YAML (DESIGN §6.6) — **`/docs` 원고와 같은 `CodeBlock`이다**(2026-10-01 사용자 — 앱 쪽이 docs 형으로
@@ -14,12 +15,19 @@ const WORKFLOW_PATH = ".github/workflows/malmoi-i18n.yml";
  * 실재하는 빚이지만, **그 사실이 드러나는 시점은 첫 CI push 뒤**다 — 아직 아무것도 안 돌린 ④에서
  * 미리 말하면 그 화면이 읽어야 할 것(토큰·YAML) 옆에 지금 할 수 없는 일이 나란히 선다.
  * **설정 화면이 든다** — 거기는 참조가 0인 것을 이미 볼 수 있는 자리다.
+ *
+ * ⚠️ **GitLab은 `yaml`이 빈 문자열일 수 있다** — 릴리스 SHA(`GITLAB_CI_RELEASE.sha`)가 40자 hex가 아니면 서버가 템플릿을 내지 않는다
+ * (R-D1 계약: 박힌 SHA 없는 파일은 붙이면 red다). 그때 블록 대신 그 사실과 지금의 길(Sync)을 말한다. 변수 등록 단계는 GitLab만이다.
  */
-export function WorkflowBlock({ yaml, m }: { yaml: string; m: Messages }) {
+export function WorkflowBlock({ yaml, m, host = "github" }: { yaml: string; m: Messages; host?: "github" | "gitlab" }) {
+  if (host === "gitlab" && yaml === "") {
+    return <p className="text-muted-foreground shrink-0 text-xs leading-body">{m.settings.workflow.gitlabUnavailable}</p>;
+  }
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
-      <p className="text-muted-foreground shrink-0 text-xs leading-body">{m.settings.workflow.saveAs}</p>
-      <CodeBlock code={yaml} filename={WORKFLOW_PATH} fill />
+      <p className="text-muted-foreground shrink-0 text-xs leading-body">{forHost(m.settings.workflow, host).saveAs}</p>
+      {host === "gitlab" && <p className="text-muted-foreground shrink-0 text-xs leading-body">{m.settings.workflow.gitlabVariable}</p>}
+      <CodeBlock code={yaml} filename={WORKFLOW_PATH[host]} fill />
     </div>
   );
 }

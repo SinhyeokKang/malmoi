@@ -36,6 +36,8 @@ const GITLAB_ACCESS_ERRORS = {
   "gitlab-repo-unsupported": "This GitLab project uses SHA-256 object format, which Malmoi doesn't support.",
   "gitlab-project-disconnected": "This project's GitLab connection was removed. A project owner can reconnect it in the project's settings.",
 } as const;
+/** GitLab CI 원본의 릴리스 SHA가 아직 없다(`GITLAB_CI_RELEASE`) — 설정·온보딩 화면과 MCP `get_workflow` 거부가 같은 문장이다(문구 두 벌 금지). */
+const GITLAB_CI_UNAVAILABLE = "The GitLab CI file isn't available in this version of Malmoi yet. For now, sync from Malmoi to load repository changes.";
 
 export const en = {
   search: {
@@ -2341,6 +2343,9 @@ export const en = {
          * ⚠️ **워크플로를 "계속 받으려면 필요한 것"으로 말하지 않는다** — 이제 커밋마다 받는 선택지다(PRODUCT §7.4).
          */
         description: "Every night, Malmoi sends translations not yet sent to the repository as a pull request, or picks up new commits. To pick up changes on every commit instead, add the push token and the workflow to the repository.",
+        onGitLab: {
+          description: "Every night, Malmoi sends translations not yet sent to the repository as a merge request, or picks up new commits. To pick up changes on every commit instead, add the push token and the CI jobs to the repository.",
+        },
       },
     },
 
@@ -2400,6 +2405,20 @@ export const en = {
     },
 
     /** ② 리포 고르기 */
+    /** ① 리포 호스트 탭 (gitlab-repositories 시안 G1) — 탭 이름은 고유명사 그대로다. GitHub App이 없는 설치는 탭 줄 없이 GitLab 단독이다(D4a). */
+    host: { label: "Repository host", github: "GitHub", gitlab: "GitLab" },
+    /** ① GitLab 탭의 상태 shell (design-brief "GitLab 탭 상태") — GitHub `empty.*`과 같은 틀(제목 + 문장 + 액션). PAT 입력은 `account.gitlab.form`이다. */
+    gitlab: {
+      connect: { title: "Connect GitLab", description: "Paste a personal access token to see the GitLab projects you maintain." },
+      reconnect: { title: "Replace your GitLab token", description: "Your GitLab token can't be used anymore. It may have expired or been revoked — paste a new one." },
+      repos: {
+        title: "No GitLab projects to add",
+        description: "Malmoi lists GitLab projects where you have the Maintainer role or higher. Get that role in GitLab, then try again.",
+        action: "Try again",
+      },
+      /** 목록 위 연결 계정 줄(G2e) — 만료일은 `account.gitlab.expires`, 교체는 `account.gitlab.replace`를 함께 쓴다. */
+      account: (username: string): string => `Connected as @${username}`,
+    },
     repo: {
       /** 리포 목록의 그룹 이름 — `RadioGroup`이 접근 이름 없이 서면 "라디오 그룹"으로만 읽힌다. */
       list: "Repositories",
@@ -2420,6 +2439,11 @@ export const en = {
        */
       searchEmpty: (q: string): string => `No repositories match “${q}”`,
       clearSearch: "Clear search",
+      /** GitLab 탭 — 목록은 Maintainer 이상인 프로젝트이고(design §2), 시각은 `last_activity_at`이다(push 시각이 아니다). */
+      onGitLab: {
+        loading: "Looking for GitLab projects you maintain…",
+        pushedAt: (rel: string): string => `Active ${rel}`,
+      },
     },
 
     /** ③ 후보 · 기준 언어 · 수동 지정 */
@@ -2514,6 +2538,14 @@ export const en = {
           <strong className="text-foreground font-normal">The address can't be changed later.</strong>
         </>
       ),
+      onGitLab: {
+        hint: (address: ReactNode, branch: ReactNode): ReactNode => (
+          <>
+            Opens at {address}. Translations come back as a merge request on {branch}.{" "}
+            <strong className="text-foreground font-normal">The address can&apos;t be changed later.</strong>
+          </>
+        ),
+      },
       create: "Create project",
       creating: "Creating project and syncing all selected files…",
       nothingCreated: "Nothing was created.",
@@ -2575,6 +2607,16 @@ export const en = {
             rotate it in Settings.
           </>
         ),
+        /** GitLab — 프로젝트의 CI/CD 변수다(masked·protected, design-brief G7). 보호 변수는 보호 브랜치에만 노출된다. */
+        onGitLab: {
+          description: (secret: ReactNode): ReactNode => (
+            <>
+              Add this to the project&apos;s CI/CD variables as {secret} with Protect variable and Mask variable checked.{" "}
+              <strong className="text-foreground font-normal">You won&apos;t see it again after you leave this page.</strong> If you lose it,
+              rotate it in Settings.
+            </>
+          ),
+        },
       },
       ingest: {
         retry: "Try again",
@@ -3622,6 +3664,12 @@ export const en = {
     workflow: {
       /** 경로를 싣지 않는다 — 코드 블록 머리의 파일명 바가 든다(2026-10-01, 온보딩 ④와 설정이 같은 문장). */
       saveAs: "Save this file in your repository.",
+      /** GitLab — 기존 `.gitlab-ci.yml`이 있으면 덧붙인다(job 이름에 프로젝트 slug가 들어 겹치지 않는다 — `lib/onboarding/gitlab-ci.ts`). */
+      onGitLab: { saveAs: "Add these jobs to this file at the root of your repository. If the file already exists, add them to it." },
+      /** GitLab CI/CD 변수 등록 단계(design-brief G7) — 보호 변수는 보호 브랜치에만 노출되므로 base 브랜치가 보호돼야 한다. */
+      gitlabVariable: "The jobs read the push token from the PUSH_TOKEN CI/CD variable. Add it in Settings › CI/CD › Variables with Protect variable and Mask variable checked — protected variables only reach protected branches, so the base branch must be protected.",
+      /** 릴리스 SHA가 없으면 CI 파일을 내지 않는다(R-D1 계약) — 박힌 SHA 없는 파일은 붙이면 red다. */
+      gitlabUnavailable: GITLAB_CI_UNAVAILABLE,
       /** ⚠️ 훅으로 번역을 읽는 리포는 `wrapper` 없이는 코드 참조가 조용히 0이다 (ARCHITECTURE §4). */
       hookHint: (hook: ReactNode, wrapper: ReactNode, doc: ReactNode): ReactNode => (
         <>
@@ -3775,7 +3823,7 @@ export const en = {
       // `read_docs`의 없는 page — 공용 `not-found`는 프로젝트 문장이라 쓰지 않는다. 다음 행동(목차 부르기)을 함께 말한다.
       "docs-page-not-found": "No guide page with that name. Call read_docs with no arguments to list pages.",
       // GitLab CI 원본의 릴리스 SHA가 아직 없다(`GITLAB_CI_RELEASE`) — 박힌 SHA 없는 파일을 내지 않는다. 그동안의 길(앱에서 Sync)을 함께 말한다.
-      "workflow-unavailable": "The GitLab CI file isn't available in this version of Malmoi yet. For now, sync from Malmoi to load repository changes.",
+      "workflow-unavailable": GITLAB_CI_UNAVAILABLE,
       /**
        * GitLab에만 있는 리포 거부(`GitLabAccessError`) — 화면 `errors.gitlab`과 같은 상수(`GITLAB_ACCESS_ERRORS`)다(같은 거부에 문구 두 벌 금지).
        * 연결 없음·토큰 교체는 needs-browser라 거부 문장이 아니다.

@@ -1,6 +1,6 @@
 "use server";
 
-
+import { ciFileOf } from "@/lib/mcp/tools/ci-file";
 import { parseGithubPrUrl } from "@/lib/projects/pr-url";
 
 import { fail, logCaught } from "@/lib/failure";
@@ -633,8 +633,17 @@ export async function createProject(raw: NewRepoInput & {
   if (session.status === "none") return { ok: false, error: "unauthorized" };
   const { userId } = session;
 
-  const result = await createProjectFromRepo(getPrisma(), { userId }, input, { origin: await appOrigin() });
-  if (!result.ok) return result;
+  const origin = await appOrigin();
+  const created = await createProjectFromRepo(getPrisma(), { userId }, input, { origin });
+  if (!created.ok) return created;
+  /*
+   * GitLab 프로젝트의 CI 템플릿은 화면 쪽이 고른다(코어는 GitHub 워크플로만 만든다 — `create.ts`). 릴리스 SHA가 없으면 빈 문자열이고
+   * ⑤가 "아직 없다"를 말한다(R-D1 계약). 생성기는 MCP와 같은 `ciFileOf`다 — 같은 입력이면 두 표면이 같은 파일을 낸다.
+   */
+  const result = "host" in input
+    ? { ...created, yaml: ciFileOf("gitlab", { slug: created.slug, baseBranch: created.baseBranch, origin,
+        surfaces: created.surfaces.map((s) => ({ surfaceSlug: s.surfaceSlug, pathTemplate: s.pathTemplate, adapter: s.adapter, baseLocale: s.baseLocale })) })?.yaml ?? "" }
+    : created;
   settleRevalidate("create-project", () => revalidatePath("/projects"));
   // ⚠️ **`/projects/new`도 지운다.** 모달 뒤에 목록이 있으므로 그 라우트도 같은 목록을 그리는데,
   // 위가 **접두가 아니라 경로 하나**라 여기를 안 덮는다 (POSTMORTEM 2026-09-09).

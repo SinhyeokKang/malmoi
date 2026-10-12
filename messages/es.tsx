@@ -1070,6 +1070,9 @@ export const es = {
       result: {
         title: "Malmoi está listo",
         description: "Cada noche, Malmoi envía al repositorio las traducciones que aún no se han enviado como una pull request, o recoge los commits nuevos. Para recoger los cambios con cada commit, añade el token de push y el flujo de trabajo al repositorio.",
+        onGitLab: {
+          description: "Cada noche, Malmoi envía al repositorio las traducciones que aún no se han enviado como una merge request, o recoge los commits nuevos. Para recoger los cambios con cada commit, añade el token de push y los jobs de CI al repositorio.",
+        },
       },
     },
 
@@ -1111,6 +1114,17 @@ export const es = {
       listFailed: "No pudimos cargar tus repositorios.",
     },
 
+    host: { label: "Proveedor del repositorio", github: "GitHub", gitlab: "GitLab" },
+    gitlab: {
+      connect: { title: "Conectar GitLab", description: "Pega un token de acceso personal para ver los proyectos de GitLab que mantienes." },
+      reconnect: { title: "Reemplaza tu token de GitLab", description: "Tu token de GitLab ya no se puede usar. Puede que haya caducado o se haya revocado: pega uno nuevo." },
+      repos: {
+        title: "No hay proyectos de GitLab para añadir",
+        description: "Malmoi muestra los proyectos de GitLab en los que tienes el rol Maintainer o superior. Consigue ese rol en GitLab y vuelve a intentarlo.",
+        action: "Intentar de nuevo",
+      },
+      account: (username: string): string => `Conectado como @${username}`,
+    },
     repo: {
       list: "Repositorios",
       search: { label: "Buscar repositorios", placeholder: "Buscar repositorios…" },
@@ -1123,6 +1137,10 @@ export const es = {
       loading: "Buscando repositorios que tengan instalada la GitHub App…",
       searchEmpty: (q: string): string => `Ningún repositorio coincide con “${q}”`,
       clearSearch: "Borrar búsqueda",
+      onGitLab: {
+        loading: "Buscando proyectos de GitLab en los que eres Maintainer…",
+        pushedAt: (rel: string): string => `Actividad ${rel}`,
+      },
     },
 
     files: {
@@ -1176,6 +1194,14 @@ export const es = {
           <strong className="text-foreground font-normal">La dirección no se puede cambiar más adelante.</strong>
         </>
       ),
+      onGitLab: {
+        hint: (address: ReactNode, branch: ReactNode): ReactNode => (
+          <>
+            Se abre en {address}. Las traducciones vuelven como una merge request en {branch}.{" "}
+            <strong className="text-foreground font-normal">La dirección no se puede cambiar más adelante.</strong>
+          </>
+        ),
+      },
       create: "Crear proyecto",
       creating: "Creando el proyecto y sincronizando todos los archivos seleccionados…",
       nothingCreated: "No se creó nada.",
@@ -1213,6 +1239,15 @@ export const es = {
             rótalo en Configuración.
           </>
         ),
+        onGitLab: {
+          description: (secret: ReactNode): ReactNode => (
+            <>
+              Añádelo a las variables de CI/CD del proyecto como {secret}, con Protect variable y Mask variable marcadas.{" "}
+              <strong className="text-foreground font-normal">No lo volverás a ver cuando salgas de esta página.</strong> Si lo pierdes,
+              rótalo en Configuración.
+            </>
+          ),
+        },
       },
       ingest: {
         retry: "Intentar de nuevo",
@@ -1906,6 +1941,9 @@ export const es = {
 
     workflow: {
       saveAs: "Guarda este archivo en tu repositorio.",
+      onGitLab: { saveAs: "Añade estos jobs a este archivo en la raíz del repositorio. Si el archivo ya existe, añádelos a él." },
+      gitlabVariable: "Los jobs leen el token de push de la variable de CI/CD PUSH_TOKEN. Añádela en Settings › CI/CD › Variables con Protect variable y Mask variable marcadas: las variables protegidas solo llegan a ramas protegidas, así que la rama base debe estar protegida.",
+      gitlabUnavailable: "El archivo de CI de GitLab aún no está disponible en esta versión de Malmoi. Mientras tanto, sincroniza desde Malmoi para cargar los cambios del repositorio.",
       hookHint: (hook: ReactNode, wrapper: ReactNode, doc: ReactNode): ReactNode => (
         <>
           Los repositorios que leen las traducciones mediante un hook ({hook}) también necesitan la entrada {wrapper} — consulta {doc}.

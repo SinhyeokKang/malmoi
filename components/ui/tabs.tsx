@@ -26,15 +26,20 @@ import { cn } from "@/lib/utils";
  */
 const SelectedContext = createContext<string | null>(null);
 
-export function Tabs({ defaultValue, className, children }: {
+export function Tabs({ defaultValue, onValueChange, className, children }: {
   defaultValue: string;
+  /**
+   * 선택이 바뀔 때 — 패널 밖 상태를 탭이 고르는 소비자(①의 리포 호스트 탭: 고른 리포·브랜치가 모달 상태다)가 듣는다.
+   * 선택은 여전히 이 컴포넌트가 든다.
+   */
+  onValueChange?: (value: string) => void;
   className?: string;
   children: ComponentProps<typeof Primitive.Root>["children"];
 }) {
   const [value, setValue] = useState(defaultValue);
   return (
     <SelectedContext.Provider value={value}>
-      <Primitive.Root value={value} onValueChange={setValue} className={className}>
+      <Primitive.Root value={value} onValueChange={(next) => { setValue(next); onValueChange?.(next); }} className={className}>
         {children}
       </Primitive.Root>
     </SelectedContext.Provider>

@@ -1078,6 +1078,9 @@ export const ko = {
       result: {
         title: "Malmoi 준비 완료",
         description: "Malmoi는 매일 밤 미전송 변경 사항을 PR로 보내거나 리포지토리의 새 커밋을 가져옵니다. 커밋할 때마다 바로 반영하려면 리포지토리에 푸시 토큰과 워크플로를 추가하세요.",
+        onGitLab: {
+          description: "Malmoi는 매일 밤 미전송 변경 사항을 MR로 보내거나 리포지토리의 새 커밋을 가져옵니다. 커밋할 때마다 바로 반영하려면 리포지토리에 푸시 토큰과 CI 작업을 추가하세요.",
+        },
       },
     },
 
@@ -1119,6 +1122,17 @@ export const ko = {
       listFailed: "리포지토리 목록을 불러오지 못했습니다.",
     },
 
+    host: { label: "리포지토리 호스트", github: "GitHub", gitlab: "GitLab" },
+    gitlab: {
+      connect: { title: "GitLab 연결", description: "개인 액세스 토큰을 붙여 넣으면 관리하는 GitLab 프로젝트를 볼 수 있습니다." },
+      reconnect: { title: "GitLab 토큰 교체", description: "GitLab 토큰을 더 이상 쓸 수 없습니다. 만료되었거나 철회되었을 수 있습니다 — 새 토큰을 붙여 넣으세요." },
+      repos: {
+        title: "추가할 GitLab 프로젝트 없음",
+        description: "Malmoi는 Maintainer 이상 역할이 있는 GitLab 프로젝트만 보여 줍니다. GitLab에서 그 역할을 받은 뒤 다시 시도하세요.",
+        action: "다시 시도",
+      },
+      account: (username: string): string => `연결된 계정 @${username}`,
+    },
     repo: {
       list: "리포지토리",
       search: { label: "리포지토리 검색", placeholder: "리포지토리 검색…" },
@@ -1131,6 +1145,10 @@ export const ko = {
       loading: "GitHub App이 설치된 리포지토리를 찾는 중…",
       searchEmpty: (q: string): string => `“${q}”에 해당하는 리포지토리 없음`,
       clearSearch: "검색어 지우기",
+      onGitLab: {
+        loading: "Maintainer 이상인 GitLab 프로젝트를 찾는 중…",
+        pushedAt: (rel: string): string => `${rel} 활동`,
+      },
     },
 
     files: {
@@ -1184,6 +1202,14 @@ export const ko = {
           <strong className="text-foreground font-normal">주소는 나중에 바꿀 수 없습니다.</strong>
         </>
       ),
+      onGitLab: {
+        hint: (address: ReactNode, branch: ReactNode): ReactNode => (
+          <>
+            {address} 주소에서 열립니다. 번역은 {branch} 브랜치로 보내는 MR에 담깁니다.{" "}
+            <strong className="text-foreground font-normal">주소는 나중에 바꿀 수 없습니다.</strong>
+          </>
+        ),
+      },
       create: "프로젝트 만들기",
       creating: "프로젝트를 만들고 선택한 파일을 모두 동기화하는 중…",
       nothingCreated: "프로젝트는 생성되지 않았습니다.",
@@ -1222,6 +1248,15 @@ export const ko = {
             설정에서 교체하세요.
           </>
         ),
+        onGitLab: {
+          description: (secret: ReactNode): ReactNode => (
+            <>
+              이 값을 프로젝트의 CI/CD 변수 {secret} 항목으로 추가하고 Protect variable과 Mask variable을 켜세요.{" "}
+              <strong className="text-foreground font-normal">이 페이지를 떠나면 다시 볼 수 없습니다.</strong> 잃어버렸다면
+              설정에서 교체하세요.
+            </>
+          ),
+        },
       },
       ingest: {
         retry: "다시 시도",
@@ -1913,6 +1948,9 @@ export const ko = {
 
     workflow: {
       saveAs: "이 파일을 리포지토리에 저장하세요.",
+      onGitLab: { saveAs: "이 작업을 리포지토리 루트의 이 파일에 추가하세요. 파일이 이미 있으면 그 안에 덧붙이세요." },
+      gitlabVariable: "작업은 CI/CD 변수 PUSH_TOKEN에서 푸시 토큰을 읽습니다. Settings › CI/CD › Variables에서 Protect variable과 Mask variable을 켜고 추가하세요. 보호 변수는 보호 브랜치에만 전달되므로 기준 브랜치가 보호되어 있어야 합니다.",
+      gitlabUnavailable: "이 버전의 Malmoi에서는 아직 GitLab CI 파일을 쓸 수 없습니다. 그동안에는 Malmoi에서 동기화해 리포지토리 변경 사항을 가져오세요.",
       hookHint: (hook: ReactNode, wrapper: ReactNode, doc: ReactNode): ReactNode => (
         <>
           훅({hook})으로 번역을 읽는 리포지토리는 {wrapper} 입력도 필요합니다 — {doc} 문서를 보세요.

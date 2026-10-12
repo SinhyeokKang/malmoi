@@ -8,14 +8,18 @@ import type { Adapter, AdapterName } from "@/lib/adapters/types";
  * `components/__tests__/client-graph.test.ts`가 그 그래프를 센다). 라벨·예시·글리프 갈래는 서버가 내려준다.
  */
 
-/** ①의 리포 행. `suggestedSlug`는 `normalizeProjectSlug`, `pushedAt`은 GitHub 응답 그대로(ISO)다. */
+/**
+ * ①의 리포 행. `suggestedSlug`는 `normalizeProjectSlug`, `pushedAt`은 GitHub 응답 그대로(ISO)다.
+ * GitLab 행(gitlab-repositories)은 `host: "gitlab"` + 숫자 `repositoryId`를 들고 Action에는 그 id로만 간다(이름은 표시용 — design §5).
+ * `owner`는 namespace 전체(`group/subgroup`), `pushedAt`은 `last_activity_at`이다.
+ */
 export type RepoOption = {
   owner: string;
   repo: string;
   fullName: string;
   suggestedSlug: string;
   pushedAt: string | null;
-};
+} & ({ host?: undefined } | { host: "gitlab"; repositoryId: string });
 
 /**
  * ②의 수동 지정 셀렉트 선택지. `formatLabel`(DESIGN §6.7)이 만든다.
