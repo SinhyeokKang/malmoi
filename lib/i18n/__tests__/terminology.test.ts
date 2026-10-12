@@ -48,9 +48,9 @@ function walk(value: unknown, path: string, out: Found[]): void {
   }
 }
 
-const strings = (): Found[] => {
+const strings = (dictionary: unknown = en): Found[] => {
   const out: Found[] = [];
-  walk(en, "", out);
+  walk(dictionary, "", out);
   return out;
 };
 
@@ -187,6 +187,15 @@ const CONCEPT_BANNED: readonly Ban[] = [
   ["it is", /(?<!\bas )\bit is\b/i],
 ];
 
+/**
+ * **ko 사전의 개념 색인** — 위 색인은 영어 낱말이라 ko 사전을 보지 않는다. GitLab CI의 job은 ko에서 "작업"(`CI 작업`) 하나다(결정 R5 — 가이드 h1·
+ * `hookDoc`이 이미 "작업"이고 ko 사전은 영어 낱말을 피한다, DESIGN §10). 설정 CI 모달 한 문단 안에서 `CI job`과 `CI 작업`이 갈렸다(감사 U4).
+ * ⚠️ **사전만 센다** — 원고는 GitHub 화면 라벨(`Set up job`)을 인용하므로 사전·원고 공용인 `banned-terms`에 넣지 않는다.
+ */
+const KO_CONCEPT_BANNED: readonly Ban[] = [
+  ["job (ko: 작업)", /\bjobs?\b/i],
+];
+
 /** 개인정보 방침 본문 — 문구를 고치면 개정 이력·시행일이 따라가는 문서라(policy-gate) 화면 문체 규칙을 소급하지 않는다. */
 const CONTRACTIONS = ["could not", "did not", "cannot", "is not", "was not", "were not", "are not", "does not", "do not", "has not", "you are", "it is"] as const;
 
@@ -283,6 +292,12 @@ describe("화면 용어 — DESIGN §10.1의 표를 사전 전체가 따른다 (
 
   it("상태 낱말 개념 색인의 금지어가 사전에 없다 (DESIGN §2.4 · ux-drift-unify)", () => {
     expect(violations(strings(), CONCEPT_BANNED)).toEqual([]);
+  });
+
+  it("ko 개념 색인의 금지어가 ko 사전에 없다 — GitLab CI의 job은 \"작업\"이다 (결정 R5)", () => {
+    expect(violations(strings(ko), KO_CONCEPT_BANNED, {})).toEqual([]);
+    // 카나리아 — 색인이 실제로 문다
+    expect(violations([{ path: "x", text: "CI job이 처음 실행된 뒤" }], KO_CONCEPT_BANNED, {})).not.toEqual([]);
   });
 
   it("ALLOWED의 경로가 사전에 실재한다 — 키 이름이 바뀌면 예외가 조용히 죽는다", () => {
