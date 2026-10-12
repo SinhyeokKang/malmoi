@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-import { SECTION_LEGACY_ANCHORS } from "@/lib/guide/legacy-anchors";
+import { LEGACY_PAGES, SECTION_LEGACY_ANCHORS } from "@/lib/guide/legacy-anchors";
 
 /**
  * **리포 호스트마다 절차가 갈리는 가이드는 페이지가 갈린다** (2026-10-13 사용자 — gitlab-repositories 뒤).
@@ -18,8 +18,11 @@ import { SECTION_LEGACY_ANCHORS } from "@/lib/guide/legacy-anchors";
 const ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 const LOCALES = ["en", "ko", "es"] as const;
 
-const GITHUB_ONLY = ["setup/connect-github", "setup/workflow", "setup/allowed-actions", "sync/merging"] as const;
-const GITLAB_ONLY = ["setup/connect-gitlab", "setup/gitlab-ci", "sync/merging-gitlab"] as const;
+// 2026-10-13 사용자: 프로젝트 만들기를 Set up에서 떼어 호스트별 장(`create/`)으로 — 브랜치 이후 단계는 두 페이지에 중복돼도 된다.
+const GITHUB_ONLY = ["create/github", "create/workflow", "create/allowed-actions", "sync/merging"] as const;
+const GITLAB_ONLY = ["create/gitlab", "create/gitlab-ci", "sync/merging-gitlab"] as const;
+/** Set up 장에 남는 것 — 만들기가 끝난 프로젝트를 다루는 페이지만. */
+const SETUP_PAGES = ["setup/members", "setup/sources", "setup/archive"] as const;
 
 const page = (locale: string, slug: string) => readFileSync(join(ROOT, "guide", locale, `${slug}.md`), "utf8");
 /** 링크 문구·대상·코드 스팬을 뺀 본문 — 다른 호스트 페이지로 보내는 링크는 허용한다. */
@@ -39,12 +42,35 @@ describe("호스트별 가이드 분리", () => {
     for (const slug of GITLAB_ONLY) expect(prose(page(locale, slug)), `${locale}/${slug}`).not.toMatch(/github/i);
   });
 
-  it("옛 절 id는 새 페이지로 간다", () => {
-    expect(SECTION_LEGACY_ANCHORS["setup/create-project"]).toMatchObject({
-      "connect-github": "/docs/setup/connect-github#connect-github",
-      "connect-gitlab": "/docs/setup/connect-gitlab#connect-gitlab",
+  it.each(LOCALES)("%s SUMMARY는 Create 장과 Set up 장을 가른다", (locale) => {
+    const summary = readFileSync(join(ROOT, "guide", locale, "SUMMARY.md"), "utf8");
+    const at = (slug: string) => summary.indexOf(`(${slug}.md)`);
+    expect(at("create/README"), "create 장 개요").toBeGreaterThan(-1);
+    expect(at("setup/README"), "setup 장 개요").toBeGreaterThan(-1);
+    for (const slug of [...GITHUB_ONLY, ...GITLAB_ONLY].filter((s) => s.startsWith("create/"))) {
+      expect(at(slug), slug).toBeGreaterThan(at("create/README"));
+      expect(at(slug), slug).toBeLessThan(at("setup/README"));
+    }
+    for (const slug of SETUP_PAGES) expect(at(slug), slug).toBeGreaterThan(at("setup/README"));
+    for (const gone of ["setup/create-project", "setup/connect-github", "setup/connect-gitlab", "setup/workflow", "setup/allowed-actions", "setup/gitlab-ci"]) {
+      expect(summary, gone).not.toContain(`(${gone}.md)`);
+    }
+  });
+
+  it("옛 페이지는 새 페이지로 가고, 옛 절 id는 새 절로 간다", () => {
+    expect(LEGACY_PAGES).toMatchObject({
+      "setup/create-project": "/docs/create",
+      "setup/connect-github": "/docs/create/github",
+      "setup/connect-gitlab": "/docs/create/gitlab",
+      "setup/workflow": "/docs/create/workflow",
+      "setup/allowed-actions": "/docs/create/allowed-actions",
+      "setup/gitlab-ci": "/docs/create/gitlab-ci",
     });
-    expect(SECTION_LEGACY_ANCHORS["setup/workflow"]).toMatchObject({ "gitlab-ci": "/docs/setup/gitlab-ci#gitlab-ci" });
+    expect(SECTION_LEGACY_ANCHORS["create"]).toMatchObject({
+      "connect-github": "/docs/create/github#connect-github",
+      "connect-gitlab": "/docs/create/gitlab#connect-gitlab",
+    });
+    expect(SECTION_LEGACY_ANCHORS["create/workflow"]).toMatchObject({ "gitlab-ci": "/docs/create/gitlab-ci#gitlab-ci" });
     expect(SECTION_LEGACY_ANCHORS["sync/merging"]).toMatchObject({ "merging-gitlab": "/docs/sync/merging-gitlab#merging-gitlab" });
   });
 });
