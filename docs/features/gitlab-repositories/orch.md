@@ -43,7 +43,7 @@
 | 배치 | tasks | 소유 파일(요지) | 선행 | 모델 / effort | 상태 |
 | --- | --- | --- | --- | --- | --- |
 | W0 재개 확정 | §0 | `docs/features/gitlab-repositories/{spec,design,design-brief,tasks,consumers}.md` · `.scratch/gitlab-measure/`(원문) | 없음 | opus / high — 실물 API 판정·전수 표·경계 확정 | 인계 |
-| A 공통 경계 | §1 | 리포 호스트 경계 모듈(신규) · `lib/github.ts` 소비자 이관 · 가짜 클라이언트(`createFakeGitClient`·`vi.mock("@/lib/github")` 소비자) · `scripts/gate-plan.ts`(**`lib/repo-host/`·GitLab 디렉터리 트리거를 A가 한 번에 등록** — C는 건드리지 않는다) · `vitest.*.config.ts` | W0 | opus / high — 소비자 55파일 이관, 지문 바이트 불변 | 대기 |
+| A 공통 경계 | §1 | 리포 호스트 경계 모듈(신규) · `lib/github.ts` 소비자 이관 · 가짜 클라이언트(`createFakeGitClient`·`vi.mock("@/lib/github")` 소비자) · `scripts/gate-plan.ts`(**`lib/repo-host/`·GitLab 디렉터리 트리거를 A가 한 번에 등록** — C는 건드리지 않는다) · `vitest.*.config.ts` | W0 | opus / high — 소비자 59파일(직접 56 + 간접 3, consumers.md) 이관, 지문 바이트 불변 | 대기 |
 | E0 용어 정본 | §5 첫·넷째 항목 | `docs/DESIGN.md`(§10.1·§2.4·§6·§6.2·§6.8) · `lib/i18n/__tests__/helpers/banned-terms.ts` · `lib/i18n/__tests__/terminology.test.ts` · `components/signin/brand-icons.tsx` · `components/__tests__/gitlab-glyph.test.ts` | W0 | opus / medium — ko 조사 규칙·금지어 회귀 | 대기 |
 | D1 CI 템플릿 | §4 첫 항목 + §1 "CI 입력" 순수 함수 | GitLab 템플릿 생성기(`lib/onboarding/` 짝) · 템플릿 원본(W0가 위치 확정) · `lib/pull/__tests__/skip-marker.test.ts` · `docs/ACTIONS.md` GitLab 절 | W0 | opus / medium — 루프 가드 두 겹·불변 참조·`api-url` | 대기 |
 | B 스키마·연결 | §2 B1·B2 | `prisma/schema.prisma` · `prisma/migrations/<new>/` · PAT 연결 Server Action · 연결 참조 · `credential-separation.test.ts` · `locked-access.test.ts` · **최소 GitLab transport(읽기 GET·숫자 id 주소·`execution.fetch` 주입점·오류 분류)** · `lib/privacy/collected.ts` 등재(새 필드) · **App 구성 여부 판정 헬퍼(D4a)** · `connectRepository` 호스트 가드 | A | opus / high — 봉투·잠금·인가 | 대기 |
@@ -51,8 +51,8 @@
 | C GitLab I/O | §3 | GitLab 쓰기·Publish·MR(B의 transport 위)·가짜 · Publish/Sync/야간 배선 · `lib/pull`·`lib/sync`·`lib/import`·`lib/nightly` GitLab 경로 · 연결 상태 `*.integration.ts` | B | opus / high — 실행 수명·중복 MR·fork MR | 대기 |
 | F 스모크·roundtrip | §6 첫 항목 | `scripts/smoke-gitlab.ts` · `package.json`(script 한 줄) · `.claude/commands/roundtrip.md`(+ 미러) | C | sonnet / medium | 대기 |
 | D2 MCP | §4 둘째 항목 | `lib/mcp/tools/*` · MCP 응답 문구(`messages/{en,ko,es}.tsx`의 `mcp` 절 — 새 키면 세 사전) | C · E-sh | opus / medium — 호환 정책·인가 | 대기 |
-| E-ui 화면·사전 | §5 둘·셋·다섯·일곱째 항목 | `lib/status/canon.ts` · `components/onboarding|settings|account|home|projects|logs|shell/*` · `messages/{en,ko,es}.tsx` · `lib/invitation-email/template.ts` | D2 · E0 · E-sh | opus / high — 문장 분기·접근성·375 | 대기 |
-| E-doc 정본·가이드 | §5 여섯째 항목 | `docs/{PRODUCT,ARCHITECTURE,DIRECTORY,OPERATIONS}.md` · `README.md` · `guide/{en,ko,es}/`(셀프 호스팅 제외) · OPERATIONS 롤백 줄(D6a) | E-ui | sonnet / medium — 결정(D3)대로 문장 갱신 + `/translate` ① | 대기 |
+| E-ui 화면·사전 | §5 둘·셋·다섯·일곱째 항목 + 여섯째의 (E-ui) 하위 항목 | `lib/status/canon.ts` · `components/onboarding|settings|account|home|projects|logs|shell/*` · `messages/{en,ko,es}.tsx` · `lib/invitation-email/template.ts` | D2 · E0 · E-sh | opus / high — 문장 분기·접근성·375 | 대기 |
+| E-doc 정본·가이드 | §5 여섯째의 (E-doc) 하위 항목 | `docs/{PRODUCT,ARCHITECTURE,DIRECTORY,OPERATIONS}.md` · `README.md` · `guide/{en,ko,es}/`(셀프 호스팅 제외) · OPERATIONS 롤백 줄(D6a) | E-ui | sonnet / medium — 결정(D3)대로 문장 갱신 + `/translate` ① | 대기 |
 | QA 런타임 | §5 [수동] · §6 + D1 [수동](실제 GitLab CI) | main 체크아웃, 읽기 전용(`/runtime-test` · `/roundtrip`) | push 후 | opus / medium | 대기 |
 | R 독립 리뷰 | — | 읽기 전용, `.scratch/review-<batch>.md` | 각 배치 인계 | opus / medium | — |
 
@@ -86,3 +86,4 @@
 - 2026-10-12: 인테이크 — 결정 D1~D12 기록. W0 착수.
 - 2026-10-12: W0 인계(커밋 6, 문서만) → dev 통합 `54543ce0..c92ab4a5`. 결정 D6a(지휘자)·D13(사용자) 추가. R-W0(경계 서명 리뷰)·E0·D1 병렬 착수, A는 R-W0 뒤.
 - 2026-10-12: R-W0 리뷰 🔴5·🟡多 — 서명 둘(`repoTargetOf` 상태 구분·GitLab 숫자 id 주소)은 A 착수 전 W0 fix1로 design에, 배치 경계 다섯은 이 문서 배치 표로 반영(B가 최소 transport·`collected.ts`·D4a 헬퍼·`connectRepository` 가드를 가진다).
+- 2026-10-12: W0 fix1(커밋 3) dev 통합. A 착수.
