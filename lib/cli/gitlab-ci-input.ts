@@ -1,3 +1,4 @@
+import { HOSTED_PRODUCTION_ORIGIN } from "@/lib/deployment/mode";
 import { SKIP_MARKER } from "@/lib/pull/payload";
 import { syncBranchFor } from "@/lib/pull/sync-branch";
 
@@ -20,7 +21,7 @@ export type GitlabCiPlan =
   | { kind: "run"; projectSlug: string; target: string; args: readonly string[] };
 
 /** action v3 `api-url` 기본값과 같다. 셀프 호스팅 설치가 만든 job은 `MALMOI_I18N_API_URL`을 항상 든다(생성기 책임). */
-const DEFAULT_API_URL = "https://mal-moi.com";
+const DEFAULT_API_URL = HOSTED_PRODUCTION_ORIGIN;
 
 /** GitLab은 정의된 빈 변수를 `""`로 넘긴다 — action의 `default: ""`처럼 없는 것으로 읽는다. */
 const value = (env: Env, name: string): string | undefined => {

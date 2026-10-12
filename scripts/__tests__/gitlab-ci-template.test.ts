@@ -54,8 +54,8 @@ describe("run.ts", () => {
     const specs = valueImports(run);
     expect(specs.length).toBeGreaterThan(0);
     for (const s of specs) expect(s === "../../lib/cli/gitlab-ci-input" || s?.startsWith("node:")).toBe(true);
-    // 순수 모듈의 import도 잎 둘뿐이다 — 늘면 여기서 그래프를 다시 본다.
-    expect(valueImports(readFileSync(join("lib", "cli", "gitlab-ci-input.ts"), "utf8")).sort()).toEqual(["@/lib/pull/payload", "@/lib/pull/sync-branch"]);
+    // 순수 모듈의 import도 잎 셋뿐이다 — 늘면 여기서 그래프를 다시 본다.
+    expect(valueImports(readFileSync(join("lib", "cli", "gitlab-ci-input.ts"), "utf8")).sort()).toEqual(["@/lib/deployment/mode", "@/lib/pull/payload", "@/lib/pull/sync-branch"]);
   });
 
   it("생산자는 push:local이다 — 페이로드를 여기서 조립하지 않는다", () => {

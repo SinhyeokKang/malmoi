@@ -76,8 +76,14 @@ const IDENT_EXCEPTIONS = new Set(['"User-Agent": "malmoi"', '"malmoi": {', "-d m
  * 대문자로 남는 자리 — **환경변수 이름**이다(셸 관례가 대문자다). 사용자가 셸에 두는 이름이라 화면 문장에도 그대로 선다
  * (`Set it as MALMOI_TOKEN in your shell`). 암호 문맥의 식별자(`malmoi/pii`)를 대문자로 올리지 않는다는 규칙과 축이 다르다.
  * self-hosted 설정 셋(`MALMOI_ORIGIN`·`MALMOI_UPLOAD_DIR`·`MALMOI_PRIVACY_URL`)과 compose가 보간하는 `MALMOI_IMAGE`도 운영자가 env에 두는 이름이다.
+ * GitLab CI job 변수 열하나(`MALMOI_I18N_*` — `lib/onboarding/gitlab-ci.ts`가 대상 리포의 `.gitlab-ci.yml`에 박고 `lib/cli/gitlab-ci-input.ts`가
+ * 읽는다)도 사용자 리포의 CI 변수 이름이라 같은 축이다. ⚠️ **접두 규칙이 아니라 정확한 이름이다** — 오타가 red로 남게(D17).
  */
-const UPPER_EXCEPTIONS = new Set(["MALMOI_TOKEN", "MALMOI_ORIGIN", "MALMOI_UPLOAD_DIR", "MALMOI_PRIVACY_URL", "MALMOI_IMAGE"]);
+const GITLAB_CI_VARIABLES = [
+  "MALMOI_I18N_PUSH_TAG", "MALMOI_I18N_PUSH_SHA", "MALMOI_I18N_BASE_BRANCH", "MALMOI_I18N_PROJECT", "MALMOI_I18N_API_URL", "MALMOI_I18N_SURFACE",
+  "MALMOI_I18N_PATH_TEMPLATE", "MALMOI_I18N_ADAPTER", "MALMOI_I18N_BASE", "MALMOI_I18N_TARGET", "MALMOI_I18N_WRAPPER",
+];
+const UPPER_EXCEPTIONS = new Set(["MALMOI_TOKEN", "MALMOI_ORIGIN", "MALMOI_UPLOAD_DIR", "MALMOI_PRIVACY_URL", "MALMOI_IMAGE", ...GITLAB_CI_VARIABLES]);
 
 /** 한 파일의 위반 목록 — 규칙 자체를 아래 메타 테스트가 고정한다. */
 function brandViolations(source: string): string[] {
@@ -161,6 +167,11 @@ describe("제품 이름 표기 — 화면은 Malmoi, 식별자는 malmoi", () =>
     expect(brandViolations('"MALMOI_TOKENS"')).toHaveLength(1);
     expect(brandViolations('"MALMOI rocks"')).toHaveLength(1);
     expect(brandViolations('const other = "malmoi";')).toHaveLength(1);
+  });
+
+  it("GitLab CI 변수는 등록한 열하나만 예외다 — 접두가 같아도 목록 밖 이름은 위반이다", () => {
+    expect(brandViolations(GITLAB_CI_VARIABLES.map((name) => `"${name}"`).join(" "))).toEqual([]);
+    expect(brandViolations('"MALMOI_I18N_TOKEN" "MALMOI_I18N_" "MALMOI_I18N_BASES"')).toHaveLength(3);
   });
 
   it("셀프 호스팅 명령의 `-d malmoi `와 `MALMOI_IMAGE`만 예외다 — 변형과 산문의 소문자는 여전히 틀리다", () => {
