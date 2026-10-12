@@ -43,12 +43,13 @@ describe("planGitlabCiPush — 스킵", () => {
 });
 
 describe("planGitlabCiPush — 실행 인자", () => {
+  // `--repo-host gitlab` — CLI의 보류 경고가 merge request를 말한다(#259). 서버 계약은 그대로다.
   it("최소 설정 — action v3 기본값과 같다(api-url 프로덕션 · surface default · 대상은 체크아웃 루트)", () => {
     expect(planGitlabCiPush(base)).toEqual({
       kind: "run",
       projectSlug: "order-check",
       target: "/builds/group/sub/app",
-      args: ["--url", "https://mal-moi.com", "--project", "order-check", "--surface", "default"],
+      args: ["--url", "https://mal-moi.com", "--project", "order-check", "--surface", "default", "--repo-host", "gitlab"],
     });
   });
 
@@ -71,6 +72,7 @@ describe("planGitlabCiPush — 실행 인자", () => {
         "--url", "https://malmoi.example.com",
         "--project", "order-check",
         "--surface", "web",
+        "--repo-host", "gitlab",
         "--path-template", "web/{locale}.json",
         "--adapter", "json-catalog",
         "--base", "en",
@@ -82,7 +84,7 @@ describe("planGitlabCiPush — 실행 인자", () => {
 
   it("빈 문자열 변수는 없는 것과 같다 — GitLab은 정의된 빈 변수를 그대로 넘긴다", () => {
     const plan = planGitlabCiPush({ ...base, MALMOI_I18N_API_URL: "", MALMOI_I18N_SURFACE: "", MALMOI_I18N_ADAPTER: "", MALMOI_I18N_BASE: "", MALMOI_I18N_TARGET: "" });
-    expect(plan).toMatchObject({ kind: "run", target: "/builds/group/sub/app", args: ["--url", "https://mal-moi.com", "--project", "order-check", "--surface", "default"] });
+    expect(plan).toMatchObject({ kind: "run", target: "/builds/group/sub/app", args: ["--url", "https://mal-moi.com", "--project", "order-check", "--surface", "default", "--repo-host", "gitlab"] });
   });
 });
 
