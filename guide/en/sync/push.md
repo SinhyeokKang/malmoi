@@ -8,7 +8,7 @@ On a GitLab project, the workflow is the CI jobs in `.gitlab-ci.yml`, and Malmoi
 
 ## Update from the repository {#repository-changes}
 
-Run the generated workflow on the base branch. The workflow checks the push token, the commit, and the files. If the commit is older than the last one Malmoi read for that source, or the files do not match its configuration, that step fails without replacing the source's translations. Earlier source steps in the same workflow may already have succeeded.
+Run the generated workflow on the base branch. The workflow checks the push token, the commit, and the files. If the commit is older than the last one Malmoi read for that source, or the files do not match its configuration, that step fails without replacing the source's translations. Earlier source steps in the same workflow may already have succeeded. On GitLab, each source has its own job, so the other sources' jobs aren't affected.
 
 After an update, Home's **Sync** tab shows the last sync, its result, and how many values it changed. **Sync logs** lists every sync.
 

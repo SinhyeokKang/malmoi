@@ -22,7 +22,7 @@ Abre **Fuentes** desde la navegación del proyecto. Cada fila muestra el estado 
 
 1. Abre los detalles de la fuente desde **Fuentes** y elige **Quitar fuente**. Solo está disponible para los propietarios del proyecto, y no para la última fuente de un proyecto.
 2. Lee la confirmación y elige **Quitar fuente** otra vez. Si la fuente tiene ediciones sin enviar, el cuadro dice cuántas; si la vuelves a añadir más adelante, se reemplazarán con los valores del repositorio. Si hay una pull request de Malmoi abierta, avisa de que los cambios de esa fuente en ella quedarán fuera en la próxima publicación.
-3. Quita el paso de la fuente del archivo de workflow de tu repositorio. Hasta que lo hagas, la próxima ejecución falla y detiene las fuentes que vienen después.
+3. Quita el paso de la fuente del archivo de workflow de tu repositorio. Hasta que lo hagas, la próxima ejecución falla y detiene las fuentes que vienen después. En GitLab, quita el job de la fuente de `.gitlab-ci.yml`; hasta que lo hagas, solo falla ese job, y los jobs de las demás fuentes siguen actualizándolas.
 
 Quitar una fuente detiene su sincronización. Los archivos de tu repositorio no cambian, y la fuente desaparece de **Fuentes**, de Publicar y de la actualización nocturna. Sus claves, traducciones e historial se conservan.
 

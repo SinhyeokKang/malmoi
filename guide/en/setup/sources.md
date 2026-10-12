@@ -22,7 +22,7 @@ Open **Sources** from the project navigation. Each row shows the source's status
 
 1. Open the source's details from **Sources** and choose **Remove source**. It is available to project owners only, and not for the last source in a project.
 2. Read the confirmation, then choose **Remove source** again. If the source has unsent edits, the dialog says how many; re-adding the source later replaces them with the repository's values. If a Malmoi pull request is open, the dialog says the source's changes in it drop out at the next publish.
-3. Remove the source's step from your repository's workflow file. Until you do, the next run fails and stops the sources after it.
+3. Remove the source's step from your repository's workflow file. Until you do, the next run fails and stops the sources after it. On GitLab, remove the source's job from `.gitlab-ci.yml`; until you do, only that job fails, and the other sources' jobs still update them.
 
 Removing a source stops syncing it. Files in your repository aren't changed, and the source disappears from **Sources**, Publish, and the nightly update. Its keys, translations, and history are kept.
 

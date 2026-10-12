@@ -8,7 +8,7 @@ En un proyecto de GitLab, el workflow son los jobs de CI de `.gitlab-ci.yml`, y 
 
 ## Actualiza desde el repositorio {#repository-changes}
 
-Ejecuta el workflow generado en la rama base. El workflow comprueba el token de push, el commit y los archivos. Si el commit es anterior al último que Malmoi leyó para esa fuente, o los archivos no coinciden con su configuración, ese paso falla sin reemplazar las traducciones de la fuente. Es posible que los pasos de fuentes anteriores del mismo workflow ya hayan terminado bien.
+Ejecuta el workflow generado en la rama base. El workflow comprueba el token de push, el commit y los archivos. Si el commit es anterior al último que Malmoi leyó para esa fuente, o los archivos no coinciden con su configuración, ese paso falla sin reemplazar las traducciones de la fuente. Es posible que los pasos de fuentes anteriores del mismo workflow ya hayan terminado bien. En GitLab, cada fuente tiene su propio job, así que los jobs de las demás fuentes no se ven afectados.
 
 Tras una actualización, la pestaña **Sincronizar** de Inicio muestra la última sincronización, su resultado y cuántos valores cambió. **Registros de sincronización** lista todas las sincronizaciones.
 
