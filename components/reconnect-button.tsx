@@ -3,13 +3,15 @@
 import { RefreshCw } from "lucide-react";
 import { useState } from "react";
 
-import { connectRepository } from "@/app/(edit)/projects/[slug]/settings/actions";
+import { connectRepository, reconnectGitLabRepository } from "@/app/(edit)/projects/[slug]/settings/actions";
 import { useCommitWait } from "@/components/commit-wait";
 import { Alert } from "@/components/ui/alert";
 import { Button, type ButtonProps } from "@/components/ui/button";
 import { accessErrorMessage, isAccessError, type AccessError } from "@/lib/auth/message";
 import { settingsAccessMessage } from "@/lib/settings/message";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
+import { isGitLabConnectError } from "@/lib/gitlab-connect/errors";
+import { gitlabConnectErrorMessage } from "@/lib/gitlab-connect/message";
 import { useMessages } from "@/components/i18n/messages-provider";
 import type { Messages } from "@/lib/i18n";
 
@@ -20,8 +22,13 @@ import type { Messages } from "@/lib/i18n";
  * ⚠️ **성공 문구를 따로 두지 않는다.** `revalidatePath`가 서버에서 돌아 건강성 문구가 `ok`로
  * 바뀌는 것이 곧 성공 신호다 — 문구를 하나 더 두면 그 상태와 어긋날 수 있다.
  */
-export function ReconnectButton({ slug, label, variant, spinnerSize, onFailure, server }: {
+export function ReconnectButton({ slug, label, variant, spinnerSize, onFailure, server, host = "github" }: {
   slug: string;
+  /**
+   * 리포 호스트 — GitLab은 `reconnectGitLabRepository`(호출자 자신의 계정 GitLab 연결로 참조를 바꾼다 — 명의가 바뀐다, 시안 G6c)다.
+   * ⚠️ GitHub `connectRepository`를 GitLab 프로젝트에 부르지 않는다 — `invalid input`만 낸다(B 인계 · POSTMORTEM 2026-09-19 형).
+   */
+  host?: string;
   label: string;
   /**
    * ⚠️ **Home의 미연결 배너에서만 `primary`다** (캔버스 `2c`) — 그 화면에서 할 수 있는 일이 이것
@@ -57,7 +64,7 @@ export function ReconnectButton({ slug, label, variant, spinnerSize, onFailure, 
             // 거부는 값으로 온다 (ARCHITECTURE §6.3). ⚠️ **통신 실패는 던진다** (audit #24) — 그것도 같은 자리로 접는다.
             let error: string | null;
             try {
-              const result = await connectRepository({ slug });
+              const result = host === "gitlab" ? await reconnectGitLabRepository({ slug }) : await connectRepository({ slug });
               error = result.ok ? null : result.error;
             } catch { error = FAILED; }
             if (error === null) commit.wait();
@@ -88,6 +95,7 @@ const FAILED = "thrown";
  */
 function messageFor(m: Messages, error: string, access: typeof accessErrorMessage = accessErrorMessage): string {
   if (isAccessError(error)) return access(m, error);
+  if (isGitLabConnectError(error)) return gitlabConnectErrorMessage(m, error);
   if (isConnectError(error)) return connectErrorMessage(m, error);
   return m.settings.repository.connectFailed;
 }

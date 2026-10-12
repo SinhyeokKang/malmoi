@@ -249,7 +249,9 @@ const ALLOWED: Readonly<Record<string, readonly string[]>> = {
 };
 
 /** 접두(`.*`)면 그 아래 자식만, 아니면 정확히 그 경로만. */
-function allows(path: string, name: string, allowed: Readonly<Record<string, readonly string[]>> = ALLOWED): boolean {
+function allows(raw: string, name: string, allowed: Readonly<Record<string, readonly string[]>> = ALLOWED): boolean {
+  // 리포 호스트 덮기(`onGitLab` — `lib/i18n/host.ts`)는 같은 키의 GitLab 문장이다 — 허용 근거가 같은 키를 따라간다.
+  const path = raw.replaceAll(".onGitLab", "");
   return Object.entries(allowed).some(([key, names]) => {
     if (!names.includes(name)) return false;
     if (!key.endsWith(".*")) return path === key;

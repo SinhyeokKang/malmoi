@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { createContext, use, useContext, useMemo, type ComponentType, type ReactNode } from "react";
 
 import type { DateStyle } from "@/lib/date-format";
+import { withRepoHost } from "@/lib/i18n/host";
 import type { Messages } from "@/lib/i18n";
 import type { UiLocale } from "@/lib/i18n/locales";
 import type { TimeZone } from "@/lib/time-zone/zones";
@@ -84,6 +85,18 @@ export function MessagesProvider({ uiLocale, timeZone, children }: { uiLocale: U
       <Inner uiLocale={uiLocale} timeZone={timeZone}>{children}</Inner>
     </>
   );
+}
+
+/**
+ * **프로젝트 화면의 리포 호스트 범위** (gitlab-repositories). 그 아래 `useMessages()`가 호스트로 덮은 사전(`withRepoHost`)을 돌려준다 — GitLab
+ * 프로젝트의 클라이언트 조각이 낱말마다 호스트를 고르지 않아도 merge request·GitLab 문장을 말한다. 페이지가 **인가 뒤** 프로젝트 행에서 읽은
+ * `repoHost`로 감싼다(레이아웃은 서버 데이터를 읽지 않는다 — `[slug]/layout.tsx`). DOM을 만들지 않는다.
+ * ⚠️ 호스트가 섞인 화면(목록·Inbox)은 감싸지 않는다 — 행마다 `forHost`다.
+ */
+export function RepoHostScope({ host, children }: { host: string; children: ReactNode }) {
+  const parent = useContext(MessagesContext);
+  const value = useMemo(() => (host === "gitlab" ? { ...parent, m: withRepoHost(parent.m, host) } : parent), [parent, host]);
+  return <MessagesContext value={value}>{children}</MessagesContext>;
 }
 
 export function useMessages(): Messages {

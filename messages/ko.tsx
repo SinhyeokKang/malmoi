@@ -113,6 +113,11 @@ export const ko = {
       owner: (branch: string): string => `기준 브랜치(${branch})가 더 이상 리포지토리에 없습니다 — 설정에서 다른 기준 브랜치를 고르세요`,
       editor: (branch: string): string => `기준 브랜치(${branch})가 더 이상 리포지토리에 없습니다 — 프로젝트 소유자에게 다른 기준 브랜치를 골라 달라고 요청하세요`,
     },
+    onGitLab: {
+      openPr: (n: number, branch: string): string => `MR !${n}의 변경 사항은 아직 ${branch} 브랜치에 반영되지 않았습니다. 이 내용도 덮어씁니다.`,
+      prChecking: "열린 MR을 확인하는 중…",
+      prUnknown: "열린 MR을 확인하지 못했습니다.",
+    },
   },
   notFound: {
     title: "페이지를 찾을 수 없음",
@@ -396,6 +401,8 @@ export const ko = {
     meta: {
       title: "프로젝트",
       tabs: { list: "프로젝트 정보", project: "프로젝트", sync: "동기화", publish: "게시" },
+      platform: "플랫폼",
+      platforms: { github: "GitHub", gitlab: "GitLab" },
       repository: "리포지토리",
       connection: "연결",
       branch: "브랜치",
@@ -471,6 +478,13 @@ export const ko = {
         title: "보관된 프로젝트입니다",
         body: "편집, 게시, 리포지토리 동기화가 중단된 상태입니다. 다시 작업하려면 프로젝트를 복원하세요.",
         editor: "프로젝트 소유자에게 복원을 요청하세요.",
+      },
+    },
+    onGitLab: {
+      cards: { held: { "open-pr": "MR이 머지되거나 닫힐 때까지 보류", "pr-check-failed": "보류 — 열린 MR을 확인하지 못했습니다" } },
+      banner: {
+        notConnected: { body: "동기화하고 게시하려면 설정에서 이 프로젝트를 GitLab에 연결하세요. 기존 번역은 보존됩니다." },
+        wrongRepository: { body: "이 주소의 리포지토리가 처음 연결했을 때와 다릅니다. GitLab에서 확인한 뒤 리포지토리가 변경된 것이 맞다면 새 프로젝트로 연결하세요." },
       },
     },
   },
@@ -739,6 +753,38 @@ export const ko = {
       "surface-removed": "이 소스는 프로젝트에서 제거되었습니다. GitHub 워크플로에서 이 소스의 단계(step)를 지우세요.",
       fallback: "실행이 시작되기 전에 거부되었습니다.",
     },
+    onGitLab: {
+      deferReasons: {
+        "open-pr": "Malmoi MR이 아직 열려 있습니다. 아무것도 동기화하지 않았습니다 — MR이 머지되거나 닫히면 동기화가 다시 시작됩니다.",
+        "pr-check-failed": "GitLab에서 열린 Malmoi MR을 확인하지 못해 아무것도 동기화하지 않았습니다. 다음 실행에서 다시 확인합니다.",
+      },
+      meta: { noPullRequest: "MR 없음" },
+      sentence: {
+        publish: {
+          running: (who: ReactNode): ReactNode => <>{who} — 번역을 GitLab에 보내는 중입니다</>,
+          sent: (who: ReactNode): ReactNode => <>{who} — 번역을 GitLab에 보냈습니다</>,
+        },
+        import: {
+          held: {
+            "open-pr": (who: ReactNode): ReactNode => <>{who} — 동기화를 보류했습니다. Malmoi MR이 아직 열려 있습니다</>,
+            "pr-check-failed": (who: ReactNode): ReactNode => <>{who} — 동기화를 보류했습니다. GitLab이 MR 확인에 응답하지 않았습니다</>,
+          },
+        },
+      },
+      detail: {
+        labels: { pullRequest: "MR", closedPullRequest: "닫은 MR" },
+        actions: { openRepository: "GitLab에서 열기" },
+        notes: { publish: "실패한 실행도 GitLab에 일부 반영되었을 수 있습니다. MR이 생성되었는지 리포지토리를 확인하세요." },
+      },
+      reasons: {
+        "github-error": `GitLab이 응답하지 않았습니다. ${NIGHTLY_RETRY}`,
+        "not-installed": "이 프로젝트의 GitLab 연결이 해제되었거나 쓸 수 없습니다. 프로젝트 소유자가 설정에서 다시 연결할 수 있습니다.",
+      },
+      refusals: {
+        "surface-removed": "이 소스는 프로젝트에서 제거되었습니다. .gitlab-ci.yml에서 이 소스의 job을 지우세요.",
+        "not-installed": "이 프로젝트의 GitLab 연결이 해제되었거나 쓸 수 없습니다.",
+      },
+    },
   },
 
   archive: {
@@ -832,6 +878,15 @@ export const ko = {
       partialImport: "마지막 동기화에서 일부 번역 파일이 빠졌습니다.",
       importFailed: "마지막 동기화를 완료하지 못했습니다.",
       ownerRetries: "프로젝트 소유자만 다시 시도할 수 있습니다.",
+    },
+    onGitLab: {
+      summary: { newFromGithub: "GitLab의 새 키" },
+      meter: { note: { setup: "계속하려면 이 프로젝트를 GitLab에 연결하세요." } },
+      banner: {
+        prOpen: (n: number): string => `MR !${n} 열림 — 머지하면 반영됩니다.`,
+        prCheckFailed: "열린 MR을 확인하지 못했습니다.",
+        action: { viewPr: "GitLab에서 열기" },
+      },
     },
   },
 
@@ -1414,6 +1469,62 @@ export const ko = {
       unsentCount: (n: number): string => `미전송 변경 사항 ${n.toLocaleString("ko-KR")}건`,
       viewResult: "결과 보기",
       viewLink: "PR 보기",
+      onGitLab: {
+        viewLink: "MR 보기",
+        previewIntro: (repo: string): string => `변경 사항을 MR 하나로 ${repo} 리포지토리에 보냅니다.`,
+        previewIntroPartial: (repo: string): string => `보낼 수 있는 변경 사항을 MR 하나로 ${repo} 리포지토리에 보냅니다.`,
+        same: {
+          undoes: (n: number): string => `!${n}의 변경 사항을 되돌림`,
+          closesTitle: (n: number): string => `게시하면 MR !${n} 닫힘`,
+          closesBody: (n: number, branch: string): string =>
+            `현재 번역이 다시 ${branch} 브랜치와 같아져 !${n}에는 머지할 내용이 남지 않습니다. Malmoi가 이유를 담은 댓글과 함께 닫습니다.`,
+          closeAction: (n: number): string => `MR !${n} 닫기`,
+          nothingBody: "현재 번역이 이미 리포지토리와 같아 MR이 열리지 않습니다. 게시하면 전송된 것으로 표시됩니다.",
+        },
+        nothingSendable: { body: "필요한 언어 파일이나 키가 없어 변경 사항을 보낼 수 없습니다. MR은 변경되지 않습니다." },
+        otherFile: { body: "이 파일은 Malmoi의 현재 번역으로 다시 씁니다. 코드에서 삭제한 키는 제외하고, 머지되지 않은 이전 MR의 값은 다시 포함합니다." },
+        prOpen: {
+          title: (n: number): string => `MR !${n} 열려 있음 — 게시하면 그 내용을 교체함`,
+          body: (n: number, changes: number): ReactNode => (
+            <>
+              두 번째 MR은 열리지 않습니다. !{n}에는 이번 변경 사항{" "}
+              {changes.toLocaleString("ko-KR")}건만이 아니라{" "}
+              <span className="text-foreground">미전송 변경 사항 전체</span>가 담깁니다.
+            </>
+          ),
+        },
+        prNone: { title: (repo: string): string => `${repo} 리포지토리에 새 MR이 열림` },
+        prUnknown: { title: "열린 MR을 확인하지 못했습니다" },
+        openPr: "MR 열기",
+        replacePr: (n: number): string => `MR !${n} 교체`,
+        progressDescription: "번역 파일을 쓰고 MR을 엽니다. 보통 몇 초 걸립니다.",
+        progress: (branch: string): readonly string[] => ["번역 파일 생성", `${branch} 브랜치에 커밋`, "MR 열기"],
+        createdDescription: (n: number): string => `변경 사항 ${n.toLocaleString("ko-KR")}건을 MR에 담았습니다. 머지되면 서비스에 반영됩니다.`,
+        prMeta: (n: number, files: number): string => `MR !${n} · 파일 ${files.toLocaleString("ko-KR")}개 변경됨`,
+        accessNote: "MR 수정이나 닫기는 GitLab에서 할 수 있습니다. GitLab 접근 권한이 없다면 프로젝트 소유자에게 요청하세요.",
+        updated: "기존 MR을 업데이트했습니다",
+        updatedDescription: (n: number, changes: number): string =>
+          `!${n} MR이 아직 열려 있어 Malmoi가 두 번째를 열지 않고 그 내용을 교체했습니다. 이제 오늘의 변경 사항 ${changes.toLocaleString("ko-KR")}건만이 아니라 미전송 변경 사항 전체를 담고 있습니다.`,
+        replacedBody: (branch: string, base: string): ReactNode => (
+          <>
+            {branch} 브랜치는 항상{" "}
+            <span className="text-foreground">{base} 브랜치에서 커밋 하나</span>만 앞서므로, 이 MR은
+            그동안 더해진 내용의 이력이 아니라 미전송 변경 사항 전체의 스냅샷입니다.
+          </>
+        ),
+        tellReviewer: (n: number): string => `!${n} MR이 오래 열려 있었다면 검토자에게 내용이 바뀌었다고 알려 주세요.`,
+        noChangesDescription: "변경 사항이 이미 리포지토리에 있어 MR이 필요하지 않았습니다.",
+        closedPr: {
+          description: (branch: string): string => `변경 사항이 이제 ${branch} 브랜치와 같아 이전 MR을 닫았습니다.`,
+          line: (n: number, branch: string): string => `MR !${n}에 ${branch} 브랜치와 다른 내용이 더 이상 없어 닫았습니다.`,
+          view: (n: number): string => `!${n} 보기`,
+        },
+        transientError: "GitLab이 응답하지 않았습니다",
+        transientErrorDescription: "GitLab으로 보낸 요청이 중간에 실패했습니다. 변경 사항은 여기에 그대로 저장되어 있습니다.",
+        tooSoonBody: "MR이 연달아 열리지 않도록 게시 사이에 잠시 대기합니다.",
+        previewFailedBody: (n: number): string =>
+          `변경 사항 ${n.toLocaleString("ko-KR")}건은 보존되어 있습니다. MR에 반영될 내용을 확인할 수 있도록 미리보기를 불러온 뒤 게시할 수 있습니다.`,
+      },
       nothing: "보낼 내용이 없습니다. 모든 변경 사항을 이미 보냈습니다.",
       paused: "지금은 게시할 수 없습니다.",
 
@@ -1633,6 +1744,15 @@ export const ko = {
       previewFailedHint:
         "문제가 계속되면 리포지토리 연결을 확인하세요 — 프로젝트 소유자가 설정에서 확인할 수 있습니다.",
     },
+    onGitLab: {
+      workspace: { filters: { state: { new: "GitLab의 새 키" } } },
+      banner: {
+        basePending: (locale: string): string =>
+          `기준 언어를 ${locale} 언어로 변경하도록 요청했습니다. ` +
+          "리포지토리의 GitLab CI 파이프라인이 다음에 동기화할 때 바뀌며, 동기화 버튼으로는 적용되지 않습니다. " +
+          "미전송 변경 사항이 있으면 동기화가 보류되므로 먼저 게시하세요.",
+      },
+    },
   },
   sources: {
     screenLoading: "소스를 불러오는 중…",
@@ -1720,6 +1840,18 @@ export const ko = {
     // 결과 줄 `{slug} 동기화 실패` 조각 — 동기화 실패의 배지 낱말이다.
     addedFailed: "동기화 실패",
     resultKeep: "상태가 업데이트되어도 이 결과는 직접 닫을 때까지 표시됩니다.",
+    onGitLab: {
+      removal: {
+        openPr: "열린 MR이 이 소스의 파일을 바꿨다면 그 변경은 다음 게시에서 빠집니다.",
+        prUnknown: "열린 MR을 확인하지 못했습니다. MR이 이 소스의 파일을 바꿨다면 그 변경은 다음 게시에서 빠집니다.",
+        workflowLine: ".gitlab-ci.yml에서 이 소스의 job을 지우세요. 그대로 두면 다음 파이프라인이 실패하고 그 뒤 소스도 멈춥니다.",
+        workflowStep: (link: ReactNode): ReactNode => <>{link}에서 CI 파일의 이 소스 job을 지우세요.</>,
+      },
+      firstImport: "첫 동기화가 아직 끝나지 않았습니다. 소스를 추가해도 CI job이 자동으로 연결되지는 않습니다.",
+      pendingHelp: "CI에서 기준 언어를 지정했다면 .gitlab-ci.yml의 job 값도 새 언어로 변경하세요.",
+      notImportedHelp: "이 파일의 키와 언어가 아직 동기화되지 않았습니다. 소스를 추가해도 CI가 자동으로 연결되지는 않습니다 — 문자열은 리포지토리의 CI job이 보냅니다.",
+      workflow: "설정에서 CI 파일을 고쳐 추가한 소스를 포함하세요.",
+    },
   },
 
   locales: {
@@ -1741,6 +1873,11 @@ export const ko = {
     },
     pending: {
       copy: "줄 복사",
+    },
+    onGitLab: {
+      field: {
+        help: "원문을 작성한 언어입니다. 바꾸면 동기화 버튼이 아니라 리포지토리의 GitLab CI 파이프라인이 다음에 동기화할 때 적용됩니다 — job의 MALMOI_I18N_BASE 값도 맞게 고치세요.",
+      },
     },
   },
 
@@ -1894,6 +2031,16 @@ export const ko = {
     openRepo: "GitHub에서 열기",
 
     repository: {
+      gitlab: {
+        connectedVia: (username: string): string => `@${username}의 GitLab 토큰으로 동기화하고 게시합니다.`,
+        tokenLine: (username: string): string => `@${username}의 토큰`,
+        unusable: "이 프로젝트의 GitLab 토큰을 쓸 수 없습니다. 만료·철회되었거나 토큰 주인이 리포지토리 권한을 잃었을 수 있습니다. 다시 연결할 때까지 동기화와 게시가 멈춥니다.",
+        removed: "이 프로젝트의 GitLab 연결이 해제되었습니다 — 연결한 사람이 GitLab 연결을 해제했거나 프로젝트를 떠났습니다. 프로젝트 소유자가 다시 연결할 때까지 동기화와 게시가 멈춥니다.",
+        useMine: "내 GitLab 연결 사용",
+        useMineHint: (owner: string | null, me: string): string =>
+          owner === null ? `이후 동기화와 게시는 @${me} 명의로 기록됩니다.` : `@${owner}의 토큰 대신 내 GitLab 토큰을 씁니다 — 이후 동기화와 게시는 @${me} 명의로 기록됩니다.`,
+        connectFirst: "이 프로젝트를 다시 연결하려면 내 GitLab 토큰을 연결하세요.",
+      },
       disconnected: "연결 끊김", notConnected: "연결 안 됨", unknown: "확인하지 못함", wrongRepository: "다른 리포지토리",
       movedHint: "새 이름을 저장하려면 다시 연결하세요. 그동안에도 동기화는 계속 작동합니다.",
       paused: "다시 연결할 때까지 동기화와 게시가 멈춥니다. 기존 번역은 모두 보존됩니다.",
@@ -1968,6 +2115,31 @@ export const ko = {
       disconnectLabel: "GitHub App 연결 해제",
       disconnectConfirm: "앱 연결 해제",
       disconnectFailed: "연결을 해제하지 못했습니다. 잠시 후 다시 시도하세요.",
+    },
+    onGitLab: {
+      sources: { rerun: "GitLab에서 파이프라인을 다시 실행하세요." },
+      recovery: "동기화는 계속 실행됩니다. 이 리포지토리를 다시 연결하거나 소스를 추가하려면 계정에서 GitLab 토큰을 관리하세요.",
+      openRepo: "GitLab에서 열기",
+      repository: {
+        health: { "repo-replaced": "이 주소의 리포지토리가 처음 연결했을 때와 다릅니다. GitLab에서 확인한 뒤 리포지토리가 변경된 것이 맞다면 새 프로젝트로 연결하세요." },
+        fields: { branchHelp: "동기화는 이 브랜치를 읽고, MR은 이 브랜치를 대상으로 열립니다." },
+      },
+      ci: {
+        description: "머지할 때마다 CI job이 번역 파일을 Malmoi로 보냅니다.",
+        workflow: "CI 파일",
+        sourcesLead: "CI job 묶음 하나가 모든 소스를 다룹니다. 소스 추가·수정:",
+        stale: "일부 소스가 아직 동기화되지 않았습니다. CI 파일에 포함되었는지 확인하세요.",
+        noSources: "CI 파일을 받으려면 소스를 추가하세요.",
+      },
+      token: {
+        description: (secret: ReactNode): ReactNode => (
+          <>
+            교체하면 지금 토큰이 즉시 무효가 됩니다 — 프로젝트의 {secret} CI/CD 변수를 업데이트할 때까지 CI가
+            실패합니다.
+          </>
+        ),
+        confirmBody: "방금 복사한 토큰도 교체 즉시 사용할 수 없게 됩니다. 프로젝트의 PUSH_TOKEN CI/CD 변수에 새 토큰을 넣을 때까지 CI가 실패합니다.",
+      },
     },
   },
 

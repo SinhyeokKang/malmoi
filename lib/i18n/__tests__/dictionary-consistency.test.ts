@@ -90,6 +90,8 @@ const SAME_AS_EN: Readonly<Record<Translated, readonly string[]>> = {
     "account.gitlab.rowName",
     "newProject.host.github",
     "newProject.host.gitlab",
+    "home.meta.platforms.github",
+    "home.meta.platforms.gitlab",
     "link.providers.github",
     "link.providers.google",
     // 입력 예시 — 사용자가 칠 경로·코드·주소다
@@ -107,7 +109,6 @@ const SAME_AS_EN: Readonly<Record<Translated, readonly string[]>> = {
     "home.attention.neverFilled.title",
     "home.meta.memberCount",
     "home.meta.pr",
-    "home.meta.onGitLab.pr",
     "newProject.files.preview.option",
     "newProject.baseLocale.row",
     "translations.cellLabel",
@@ -124,7 +125,6 @@ const SAME_AS_EN: Readonly<Record<Translated, readonly string[]>> = {
     "changelog.releases",
     "home.meta.ci",
     "home.meta.pullRequest",
-    "home.meta.onGitLab.pullRequest",
     "logs.none",
     "logs.detail.labels.pullRequest",
     "logs.trigger.ci",
@@ -136,6 +136,8 @@ const SAME_AS_EN: Readonly<Record<Translated, readonly string[]>> = {
     "account.gitlab.rowName",
     "newProject.host.github",
     "newProject.host.gitlab",
+    "home.meta.platforms.github",
+    "home.meta.platforms.gitlab",
     "locales.base",
     "settings.general.title",
     "link.providers.github",
@@ -155,7 +157,6 @@ const SAME_AS_EN: Readonly<Record<Translated, readonly string[]>> = {
     "home.attention.neverFilled.title",
     "home.meta.memberCount",
     "home.meta.pr",
-    "home.meta.onGitLab.pr",
     "newProject.files.preview.option",
     "newProject.baseLocale.row",
     "translations.cellLabel",
@@ -169,7 +170,7 @@ const enLeaves = new Map(leaves(en).map(({ path, text }) => [path, text]));
 
 /** ① en과 같은 문장 중 허용 목록 밖의 경로. */
 const untranslated = (found: readonly Leaf[], lang: Translated): string[] =>
-  found.filter(({ path, text }) => enLeaves.get(path) === text && !SAME_AS_EN[lang].some((allowed) => covers(allowed, path))).map(({ path }) => path);
+  found.filter(({ path, text }) => enLeaves.get(path) === text && !SAME_AS_EN[lang].some((allowed) => covers(allowed, path.replaceAll(".onGitLab", "")))).map(({ path }) => path);
 /** ③ en이 비어 있지 않은 자리의 빈 문장. */
 const emptied = (found: readonly Leaf[]): string[] =>
   found.filter(({ path, text }) => text.trim() === "" && (enLeaves.get(path) ?? "").trim() !== "").map(({ path }) => path);

@@ -159,6 +159,8 @@ const CLIENT_LIB_FILES = [
   "lib/onboarding/next-enabled.ts",
   "lib/onboarding/select-surfaces.ts",
   "lib/onboarding/slug.ts",
+  // 리포 호스트의 웹 주소(`/projects` 띠의 compare) — import 0 잎.
+  "lib/projects/repo-web.ts",
   "lib/projects/import-failure.ts",
   // 프로젝트 목록이 검색을 로컬에서 거른다 (audit-ux #17) — 갈래·검색·하이라이트가 전부 I/O 없는 순수 함수다.
   "lib/projects/list.ts",

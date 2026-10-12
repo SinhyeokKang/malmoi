@@ -69,8 +69,12 @@ export const STATE: Readonly<Record<StateKey, { tone: StateTone; variant: StateV
   removedFromRepository: { tone: "danger", variant: "soft-red" },
 };
 
-/** 상태의 낱말 — 사전 값을 가리킨다. 새 문자열을 만들지 않는다(테스트가 사전 전수와 대조한다). */
-export function stateLabel(m: Messages, key: StateKey): string {
+/**
+ * 상태의 낱말 — 사전 값을 가리킨다. 새 문자열을 만들지 않는다(테스트가 사전 전수와 대조한다).
+ * `host`는 리포 호스트다 — **PR/MR 분기는 여기 한 곳에서 한다**(design §2 톤 표 · POSTMORTEM 2026-10-08): GitLab 프로젝트의 `prCheckFailed`는
+ * merge request 문장이고 키·톤은 같다. 화면은 호스트만 넘기고 낱말을 고르지 않는다. 없으면 GitHub이다.
+ */
+export function stateLabel(m: Messages, key: StateKey, host = "github"): string {
   const labels: Readonly<Record<StateKey, string>> = {
     synced: m.settings.sources.imported,
     syncing: m.settings.sources.importing,
@@ -80,7 +84,8 @@ export function stateLabel(m: Messages, key: StateKey): string {
     held: m.logs.status.deferred,
     unsent: m.translations.workspace.list.notSent,
     prOpen: m.translations.publish.prState,
-    prCheckFailed: m.home.meta.prCheckFailed,
+    // ⚠️ `forHost`를 부르지 않는다 — 이 파일은 import 0 잎이다(`client-graph.test.ts`). 덮는 키 하나라 직접 고른다.
+    prCheckFailed: host === "gitlab" ? m.home.meta.onGitLab.prCheckFailed : m.home.meta.prCheckFailed,
     connected: m.settings.repository.health.ok,
     notConnected: m.settings.repository.notConnected,
     disconnected: m.settings.repository.disconnected,

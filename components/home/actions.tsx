@@ -199,7 +199,7 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
   role: "OWNER" | "EDITOR";
   branch: string;
   /** ⚠️ **서버가 만든다** — `syncBranch`의 규칙이 사는 모듈은 클라이언트가 물면 안 된다(번들 7.2MB). */
-  repo: { owner: string; name: string; branch: string; syncBranch: string };
+  repo: { owner: string; name: string; branch: string; syncBranch: string; /** 리포 호스트 — PR/MR 문장을 고른다(`forHost`). 없으면 GitHub이다. */ host?: string };
   /** 미발송 수 — 모달의 조회 전 갈래(`1a` 스켈레톤·`1k`)가 그것을 말한다. */
   unsent: number;
   failedSurface: string | null;
@@ -282,7 +282,7 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
           variant={STATE[banner].tone === "warning" ? "warning" : "neutral"}
           title={problem === "disconnected" ? m.home.banner.disconnected.title : m.home.banner.notConnected.title}
           /* ⚠️ **이 화면에서만 검정이 Publish가 아니다** (캔버스 `2c`) — 할 수 있는 일이 하나뿐이다. */
-          actions={owner ? <ReconnectButton slug={slug} server={repo} variant="primary" label={problem === "disconnected" ? m.home.banner.disconnected.action : m.home.banner.notConnected.action} /> : undefined}
+          actions={owner ? <ReconnectButton slug={slug} server={repo} host={repo.host} variant="primary" label={problem === "disconnected" ? m.home.banner.disconnected.action : m.home.banner.notConnected.action} /> : undefined}
         >
           {problem === "disconnected" ? m.home.banner.disconnected.body : m.home.banner.notConnected.body}
           {!owner && <> {problem === "disconnected" ? m.home.banner.disconnected.editor : m.home.banner.notConnected.editor}</>}

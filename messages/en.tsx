@@ -306,6 +306,12 @@ export const en = {
       owner: (branch: string): string => `The base branch ${branch} isn't in the repository anymore — pick another base branch in Settings`,
       editor: (branch: string): string => `The base branch ${branch} isn't in the repository anymore — ask a project owner to pick another base branch`,
     },
+    /** GitLab 프로젝트의 Sync 확인 문장 (gitlab-repositories D7) — `withRepoHost`가 프로젝트 화면에 덮는다. */
+    onGitLab: {
+      openPr: (n: number, branch: string): string => `Edits in merge request !${n} aren't in ${branch} yet — they will be replaced too.`,
+      prChecking: "Checking whether anything is still waiting in a merge request…",
+      prUnknown: "We couldn't check whether anything is still waiting in a merge request.",
+    },
   },
   /**
    * not-found 경계 문구 (audit #16·#17). ⚠️ **무엇을 잃었는지 단정하지 않는다** — 프로젝트 세그먼트와 루트가 함께 쓰고,
@@ -1143,6 +1149,9 @@ export const en = {
       title: "Project",
       /** 탭 셋 — 착지할 때마다 `Project`다. 목록 이름은 "무엇의 탭인가"를 말한다(첫 탭과 랜드마크가 같은 `Project`라서). */
       tabs: { list: "Project details", project: "Project", sync: "Sync", publish: "Publish" },
+      /** 리포 호스트 행(시안 G5a — 두 호스트 모두). 값은 고유명사다. */
+      platform: "Platform",
+      platforms: { github: "GitHub", gitlab: "GitLab" },
       repository: "Repository",
       connection: "Connection",
       branch: "Branch",
@@ -1256,6 +1265,14 @@ export const en = {
          */
         body: "Editing and publishing are off, and syncs from your repository are refused. Restore it to work on it again.",
         editor: "Ask a project owner to restore it.",
+      },
+    },
+    /** GitLab 프로젝트 Home — 보류 사유·연결 배너(gitlab-repositories). 코드 키 표(`held`)는 부모에서 일부만 덮는다(`withRepoHost`는 깊다). */
+    onGitLab: {
+      cards: { held: { "open-pr": "held until the merge request is merged or closed", "pr-check-failed": "held — couldn't check for an open merge request" } },
+      banner: {
+        notConnected: { body: "Connect this project to GitLab in Settings to sync and publish. Everything already translated is safe." },
+        wrongRepository: { body: "This address now holds a different repository than the one this project was connected to. Check it on GitLab — if the repository really was replaced, create a new project for it." },
       },
     },
   },
@@ -1654,6 +1671,39 @@ export const en = {
       "surface-removed": "This source was removed from the project. Remove its step from your GitHub workflow.",
       fallback: "The run was refused before it started.",
     },
+    /** GitLab 프로젝트의 Logs 문장 — merge request · GitLab · `.gitlab-ci.yml`(gitlab-repositories). 연결 끊김(`not-installed`)은 App이 아니라 GitLab 연결이다. */
+    onGitLab: {
+      deferReasons: {
+        "open-pr": "A Malmoi merge request is still open. Nothing was synced — syncing resumes once it's merged or closed.",
+        "pr-check-failed": "We couldn't check GitLab for an open Malmoi merge request, so nothing was synced. The next run checks again.",
+      },
+      meta: { noPullRequest: "no merge request" },
+      sentence: {
+        publish: {
+          running: (who: ReactNode): ReactNode => <>{who} is sending translations to GitLab</>,
+          sent: (who: ReactNode): ReactNode => <>{who} sent translations to GitLab</>,
+        },
+        import: {
+          held: {
+            "open-pr": (who: ReactNode): ReactNode => <>{who} held the sync — a Malmoi merge request is still open</>,
+            "pr-check-failed": (who: ReactNode): ReactNode => <>{who} held the sync — GitLab didn&rsquo;t answer about merge requests</>,
+          },
+        },
+      },
+      detail: {
+        labels: { pullRequest: "Merge request", closedPullRequest: "Closed merge request" },
+        actions: { openRepository: "Open on GitLab" },
+        notes: { publish: "A failed run does not prove that nothing reached GitLab. Check the repository if you expect a merge request." },
+      },
+      reasons: {
+        "github-error": `GitLab didn't answer. ${NIGHTLY_RETRY}`,
+        "not-installed": "This project's GitLab connection was removed or can't be used. A project owner can reconnect it in Settings.",
+      },
+      refusals: {
+        "surface-removed": "This source was removed from the project. Remove its job from your .gitlab-ci.yml.",
+        "not-installed": "This project's GitLab connection was removed or can't be used.",
+      },
+    },
   },
 
   /**
@@ -1896,6 +1946,16 @@ export const en = {
       partialImport: "Some translation files were left out of the last sync.",
       importFailed: "The last sync couldn't finish.",
       ownerRetries: "Only project owners can try it again.",
+    },
+    /** GitLab 프로젝트 — Home 카운트 카드·셋업 줄은 `withRepoHost`가, 호스트가 섞인 목록의 띠는 행마다 `forHost`가 고른다. */
+    onGitLab: {
+      summary: { newFromGithub: "New from GitLab" },
+      meter: { note: { setup: "Connect this project to GitLab to continue." } },
+      banner: {
+        prOpen: (n: number): string => `Merge request !${n} is open — merge it to finish.`,
+        prCheckFailed: "Couldn't check for an open merge request.",
+        action: { viewPr: "Open on GitLab" },
+      },
     },
   },
 
@@ -2842,6 +2902,68 @@ export const en = {
       unsentCount: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "unsent edit" : "unsent edits"}`,
       viewResult: "View result",
       viewLink: "View pull request",
+      /**
+       * GitLab 프로젝트의 Publish 문장 (gitlab-repositories D7) — merge request · 번호 `!128` · GitLab. `withRepoHost`가 프로젝트 화면 전체에 덮는다.
+       * ⚠️ 문장을 통째로 둔다 — 호스트 이름·호칭을 보간하지 않는다(ko 조사가 갈린다).
+       */
+      onGitLab: {
+        viewLink: "View merge request",
+        previewIntro: (repo: string): string => `Everything you've edited goes to ${repo} as one merge request.`,
+        previewIntroPartial: (repo: string): string => `The edits that can be sent go to ${repo} as one merge request.`,
+        same: {
+          undoes: (n: number): string => `Undoes the change in !${n}`,
+          closesTitle: (n: number): string => `Publishing closes merge request !${n}`,
+          closesBody: (n: number, branch: string): string =>
+            `Every edit here matches ${branch} again, so !${n} has nothing left to merge. Malmoi closes it with a comment saying why.`,
+          closeAction: (n: number): string => `Close merge request !${n}`,
+          nothingBody: "Every edit here already matches the repository, so no merge request opens. Publishing marks them as sent.",
+        },
+        nothingSendable: { body: "Every unsent edit is waiting for its language file or key, so no merge request would change." },
+        otherFile: { body: "This file is rewritten from Malmoi's current translations. Keys removed from the code drop out, and values from an earlier merge request that wasn't merged go out again." },
+        prOpen: {
+          title: (n: number): string => `!${n} is open \u2014 this replaces what it holds`,
+          body: (n: number, changes: number): ReactNode => (
+            <>
+              A second merge request isn&apos;t opened. !{n} will hold{" "}
+              <span className="text-foreground">everything unsent</span>, not just{" "}
+              {changes === 1 ? "this one" : `these ${changes.toLocaleString("en-US")}`}.
+            </>
+          ),
+        },
+        prNone: { title: (repo: string): string => `A new merge request opens on ${repo}` },
+        prUnknown: { title: "Couldn't check for an open merge request" },
+        openPr: "Open merge request",
+        replacePr: (n: number): string => `Replace merge request !${n}`,
+        progressDescription: "Writing the translation files and opening a merge request. This usually takes a few seconds.",
+        progress: (branch: string): readonly string[] => ["Rendering the translation files", `Committing to ${branch}`, "Opening the merge request"],
+        createdDescription: (n: number): string =>
+          `${n.toLocaleString("en-US")} ${n === 1 ? "change is" : "changes are"} in a merge request. ${n === 1 ? "It reaches" : "They reach"} the product once someone on the team merges it.`,
+        prMeta: (n: number, files: number): string =>
+          `Merge request !${n} \u00b7 ${files.toLocaleString("en-US")} ${files === 1 ? "file" : "files"} changed`,
+        accessNote: "Editing or closing this merge request happens on GitLab. If you don't have access there, ask a project owner.",
+        updated: "Your earlier merge request now holds this",
+        updatedDescription: (n: number, changes: number): string =>
+          `!${n} was still open, so Malmoi replaced its contents instead of opening a second one. It now holds everything unsent, not just ${changes === 1 ? "today's one" : `today's ${changes.toLocaleString("en-US")}`}.`,
+        replacedBody: (branch: string, base: string): ReactNode => (
+          <>
+            {branch} always holds{" "}
+            <span className="text-foreground">one commit off {base}</span>, so this merge request is a
+            snapshot of everything unsent — not a history of what was added since.
+          </>
+        ),
+        tellReviewer: (n: number): string => `If !${n} has been waiting a while, it may be worth telling the reviewer it changed.`,
+        noChangesDescription: "Your edits were already in the repository, so no merge request was needed.",
+        closedPr: {
+          description: (branch: string): string => `Your edits now match ${branch}, so the earlier merge request was closed.`,
+          line: (n: number, branch: string): string => `Merge request !${n} was closed because nothing in it differs from ${branch} any more.`,
+          view: (n: number): string => `View !${n}`,
+        },
+        transientError: "GitLab didn't answer",
+        transientErrorDescription: "The request to GitLab failed partway. Your edits are still saved here.",
+        tooSoonBody: "Malmoi waits a moment between merge requests so the repository doesn't get two in a row.",
+        previewFailedBody: (n: number): string =>
+          `Your ${n.toLocaleString("en-US")} ${n === 1 ? "change is" : "changes are"} still here. Publishing stays off until this list can be shown \u2014 sending without it would skip the one step that says what a merge request replaces.`,
+      },
       nothing: "Nothing to send — every edit is already sent.",
       paused: "Publishing is currently unavailable.",
 
@@ -3148,6 +3270,16 @@ export const en = {
      * 초대 — **6a에서는 번역 화면 툴바의 `Dialog`다.** 멤버 관리 화면은 6b이고, 이 폼이 없으면
      * `createInvitation`에 호출부가 없다.
      */
+    /** GitLab 프로젝트 번역 화면 — 키 상태 필터·기준 언어 배너(gitlab-repositories). Publish 문장은 `publish.onGitLab`이다. */
+    onGitLab: {
+      workspace: { filters: { state: { new: "New from GitLab" } } },
+      banner: {
+        basePending: (locale: string): string =>
+          `The base language is changing to ${locale}. ` +
+          "It switches on the next sync from your repository's GitLab CI pipeline — the Sync button doesn't apply it. " +
+          "That sync waits while there are unsent edits, so publish them first.",
+      },
+    },
   },
 
   /**
@@ -3279,6 +3411,19 @@ export const en = {
     /** 추가 결과 줄의 조각 — `{slug} sync failed`. 동기화 실패의 배지 낱말이다(DESIGN §2.4). */
     addedFailed: "sync failed",
     resultKeep: "This stays until you dismiss it, so the result doesn't disappear when a status changes below.",
+    /** GitLab 프로젝트 Sources — merge request · `.gitlab-ci.yml`의 job(gitlab-repositories D5). */
+    onGitLab: {
+      removal: {
+        openPr: "If the open merge request changes its files, those changes drop out at the next publish.",
+        prUnknown: "We couldn't check for an open merge request. If one changes its files, those changes drop out at the next publish.",
+        workflowLine: "Remove its job from your .gitlab-ci.yml — otherwise the next pipeline fails and stops the sources after it.",
+        workflowStep: (link: ReactNode): ReactNode => <>Remove its job from the CI file in {link}.</>,
+      },
+      firstImport: "The first sync hasn't finished yet. Adding a source doesn't connect its CI job.",
+      pendingHelp: "If your CI passes the base language for this source, update its job in .gitlab-ci.yml to the requested language.",
+      notImportedHelp: "No keys or languages have arrived from this file yet. Adding a source doesn't connect CI on its own — the CI jobs in your repository send the strings.",
+      workflow: "Update the CI file in Settings to include the added sources.",
+    },
   },
 
   locales: {
@@ -3306,6 +3451,11 @@ export const en = {
     },
     pending: {
       copy: "Copy line",
+    },
+    onGitLab: {
+      field: {
+        help: "The language your source strings are written in. Changing it takes effect on the next sync from your repository's GitLab CI pipeline, not the Sync button — update the job's MALMOI_I18N_BASE value to match.",
+      },
     },
   },
 
@@ -3582,6 +3732,21 @@ export const en = {
     openRepo: "Open on GitHub",
 
     repository: {
+      /**
+       * GitLab 연결 카드 (gitlab-repositories 시안 G6) — 덮기가 아니라 GitLab에만 있는 문장이다(연결자·토큰·재연결 명의). 끊김 사유 둘은 D21·D22:
+       * 참조가 빈 것(`connection-removed`)과 토큰을 못 쓰는 것(`connection-unusable`).
+       */
+      gitlab: {
+        connectedVia: (username: string): string => `Syncs and publishes use @${username}'s GitLab token.`,
+        tokenLine: (username: string): string => `@${username}'s token`,
+        unusable: "This project's GitLab token can't be used. It may have expired or been revoked, or its owner may have lost access to the repository. Syncs and publishes stop until it's reconnected.",
+        removed: "This project's GitLab connection was removed — the person who connected it disconnected GitLab or left the project. Syncs and publishes stop until a project owner reconnects it.",
+        useMine: "Use my GitLab connection",
+        /** ⚠️ 명의가 바뀐다는 문장이 버튼 앞에 선다(시안 G6c) — 이후 GitLab 쓰기의 작성자가 누른 사람이다. */
+        useMineHint: (owner: string | null, me: string): string =>
+          owner === null ? `Syncs and publishes are then written as @${me}.` : `Your GitLab token replaces @${owner}'s — syncs and publishes are then written as @${me}.`,
+        connectFirst: "Connect your GitLab token to reconnect this project.",
+      },
       disconnected: "Disconnected", notConnected: "Not connected", unknown: "Couldn't check", wrongRepository: "Wrong repository",
       movedHint: "Reconnect to store the new name. Syncs keep working in the meantime.",
       paused: "Syncs and publishes stop until it's reconnected. Everything already translated is safe.",
@@ -3706,6 +3871,32 @@ export const en = {
        */
       disconnectConfirm: "Disconnect app",
       disconnectFailed: "We couldn't disconnect. Try again in a moment.",
+    },
+    /** GitLab 프로젝트 설정 — CI 카드·토큰·리포 줄(gitlab-repositories). GitLab 연결 카드 전용 문장은 `repository.gitlab`이다(덮기가 아니다). */
+    onGitLab: {
+      sources: { rerun: "Re-run the pipeline in GitLab." },
+      recovery: "Syncs keep running. Manage your GitLab token in Account to reconnect this repository or add sources.",
+      openRepo: "Open on GitLab",
+      repository: {
+        health: { "repo-replaced": "This address now holds a different repository than the one this project was connected to. Check it on GitLab — if the repository really was replaced, create a new project for it." },
+        fields: { branchHelp: "Syncs read this branch, and merge requests open against it." },
+      },
+      ci: {
+        description: "Your CI jobs push source strings into Malmoi on every merge.",
+        workflow: "CI file",
+        sourcesLead: "One set of CI jobs covers every source. Add or change sources in",
+        stale: "Some sources haven't been synced yet. Check that the CI file includes them.",
+        noSources: "Add a source to get the CI file.",
+      },
+      token: {
+        description: (secret: ReactNode): ReactNode => (
+          <>
+            Rotating makes the current token invalid immediately — CI stays broken until you update the
+            project&apos;s {secret} CI/CD variable.
+          </>
+        ),
+        confirmBody: "The current token stops working immediately, including one you just copied. CI fails until the project's PUSH_TOKEN CI/CD variable has the new one.",
+      },
     },
   },
 

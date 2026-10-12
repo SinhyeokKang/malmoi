@@ -13,3 +13,45 @@
 export function forHost<T extends { readonly onGitLab: Partial<Omit<T, "onGitLab">> }>(node: T, host: string): T {
   return host === "gitlab" ? { ...node, ...node.onGitLab } : node;
 }
+
+/**
+ * **사전 전체를 리포 호스트로 덮는다** — `onGitLab`을 가진 모든 노드에 `forHost`를 적용한 사전. 프로젝트 화면은 인가 뒤 이 사전을 쓴다(서버:
+ * `withRepoHost(await getMessages(), project.repoHost)` · 클라이언트: `RepoHostScope`) — 그러면 그 프로젝트의 화면 전체가 한 호스트의 문장을
+ * 말하고, 컴포넌트가 낱말마다 호스트를 고르지 않는다(한 프로젝트 화면에 두 호스트 낱말이 섞이지 않는다 — DESIGN §10.1).
+ *
+ * ⚠️ 호스트가 섞인 화면(`/projects` 목록·Inbox)은 이것을 쓰지 않고 행마다 `forHost`를 부른다. ⚠️ 같은 사전 객체면 같은 결과 객체다(memo) —
+ * 클라이언트 context 값이 렌더마다 바뀌지 않는다. ⚠️ JSX 값(`$$typeof`)·배열·함수는 그대로 둔다 — 덮기는 평범한 객체 노드만이다.
+ */
+const overlaid = new WeakMap<object, object>();
+
+export function withRepoHost<T extends object>(m: T, host: string): T {
+  if (host !== "gitlab") return m;
+  const found = overlaid.get(m);
+  if (found !== undefined) return found as T;
+  const made = overlay(m) as T;
+  overlaid.set(m, made);
+  return made;
+}
+
+function plain(node: unknown): node is Record<string, unknown> {
+  return node !== null && typeof node === "object" && !Array.isArray(node) && !("$$typeof" in node);
+}
+
+function overlay(node: unknown): unknown {
+  if (!plain(node)) return node;
+  const out: Record<string, unknown> = {};
+  for (const [key, child] of Object.entries(node)) out[key] = key === "onGitLab" ? child : overlay(child);
+  return Object.hasOwn(node, "onGitLab") ? merge(out, overlay(node.onGitLab)) : out;
+}
+
+/**
+ * ⚠️ **덮기는 깊다** — `onGitLab: { held: { "open-pr": … } }`처럼 코드 키 표(`held`·`deferReasons`)의 **일부만** 덮을 수 있다. 코드 키 표 안에
+ * `onGitLab`을 두면 그 표를 코드로 훑는 소비자(`satisfies Record<…>`·`pick`)가 낯선 키를 만난다 — 그래서 덮기는 표의 부모에 둔다.
+ * (`forHost`는 얕다 — 타입이 같은 이름·같은 형을 강제하는 단순한 자리용이다.)
+ */
+function merge(base: Record<string, unknown>, top: unknown): Record<string, unknown> {
+  if (!plain(top)) return base;
+  const out: Record<string, unknown> = { ...base };
+  for (const [key, value] of Object.entries(top)) out[key] = plain(value) && plain(out[key]) ? merge(out[key], value) : value;
+  return out;
+}

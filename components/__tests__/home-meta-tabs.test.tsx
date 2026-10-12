@@ -139,6 +139,8 @@ describe("메타 열 — Project 탭", () => {
   it("행과 값", async () => {
     const { rows } = await setup();
     expect(rows()).toEqual({
+      // 리포 호스트 행은 두 호스트 모두에 선다(gitlab-repositories 시안 G5a) — 호스트 없음 = GitHub
+      [en.home.meta.platform]: en.home.meta.platforms.github,
       [en.home.meta.repository]: "acme/web",
       [en.home.meta.connection]: `[${stateLabel(en, "connected")}]`,
       [en.home.meta.branch]: "main",
@@ -154,7 +156,7 @@ describe("메타 열 — Project 탭", () => {
   it("브랜치 행 라벨은 Branch다", async () => {
     const { panel } = await setup();
     const labels = [...panel().querySelectorAll("dt")].map((dt) => dt.textContent);
-    expect(labels.slice(0, 4)).toEqual(["Repository", "Connection", "Branch", "CI"]);
+    expect(labels.slice(0, 5)).toEqual(["Platform", "Repository", "Connection", "Branch", "CI"]);
   });
 
   it("대기 초대가 없어도 `(0)`이다 · CI 미설정", async () => {

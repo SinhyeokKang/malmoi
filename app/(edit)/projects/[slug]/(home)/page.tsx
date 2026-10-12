@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 
+import { RepoHostScope } from "@/components/i18n/messages-provider";
+import { withRepoHost } from "@/lib/i18n/host";
 import { syncBranchFor } from "@/lib/pull/sync-branch";
 
 import { HOME_GRID } from "@/components/home/grid";
@@ -39,7 +41,7 @@ import { planProjectReadiness } from "@/lib/onboarding/readiness";
 import { isImportFailureCode } from "@/lib/projects/import-status";
 import { reviewByLocale, summaryQueue, worstFailingSurface } from "@/lib/projects/list";
 import { loadOpenPrUrlMemo } from "@/lib/projects/open-pr";
-import { pullNumberFrom } from "@/lib/projects/remote-plan";
+import { repoWebUrl } from "@/lib/projects/repo-web";
 import { openPrGateApplies } from "@/lib/protection/plan";
 import { routes } from "@/lib/routes";
 
@@ -88,7 +90,7 @@ export default async function ProjectHomePage({
 }) {
   const uiLocale = await getUiLocale();
   const style = await getDateStyle();
-  const m = await getMessages();
+  const messages = await getMessages();
   const { slug } = await params;
   const { projectId, role, archived } = await requireProjectAccess({ slug, permission: "translation:write" });
   const openRef = parseLogFilter(await searchParams).event;
@@ -129,6 +131,8 @@ export default async function ProjectHomePage({
   if (projectRow === null) redirect(routes.projects({ e: "not-found" }));
   const { pushTokenHash, ...project } = projectRow;
   const ciConfigured = pushTokenHash !== null;
+  // 이 프로젝트의 화면 전체가 그 리포 호스트의 문장을 말한다(merge request · GitLab — `withRepoHost`). 클라이언트 조각은 아래 `RepoHostScope`가 같은 사전을 준다.
+  const m = withRepoHost(messages, project.repoHost);
 
   /**
    * 첫 적재 전에는 볼 것이 없다. **정책과 문구는 `ProjectNotReady`가 든다** — 번역 화면도 같은
@@ -260,7 +264,7 @@ export default async function ProjectHomePage({
    */
   const meta = metaTabs({
     // 설정 카드와 같은 판정이다 — 연결 확인 실패(`unknown`)는 끊김이 아니라 `Couldn't check`다.
-    repository: { owner: project.repoOwner, name: project.repoName, branch: project.baseBranch, connection: repositoryConnectionState(health.status, connectionProblem(health.status)) },
+    repository: { owner: project.repoOwner, name: project.repoName, branch: project.baseBranch, host: project.repoHost, connection: repositoryConnectionState(health.status, connectionProblem(health.status)) },
     ciConfigured,
     surfaceCount: surfaces.length,
     keys,
@@ -286,6 +290,7 @@ export default async function ProjectHomePage({
       Provider를 같은 자리로 화해시킨다. 없으면 A에서 낸 결과 Alert가 **A의 브랜치 이름을 단 채로**
       B의 Home에 남고 진행 중 잠금까지 넘어온다 (handoff §T9 · `home-screen.test.ts`가 센다).
     */
+    <RepoHostScope host={project.repoHost}>
     <HomeActions key={slug} slug={slug} writeLock={writeLock}>
       <PanelHeader>
         {/* 640 미만이면 제목 첫 줄 · Sync·Publish 둘째 줄 오른쪽(`PANEL_HEAD_ROW` — 시안 AT1a). 프로젝트 이름이 버튼에 밀려 잘리지 않는다. */}
@@ -333,7 +338,7 @@ export default async function ProjectHomePage({
             role={role}
             branch={project.baseBranch}
             /* ⚠️ **`syncBranchFor`를 서버가 부른다** — 그 모듈은 `lib/failure`(node:crypto)를 물어 클라이언트가 물면 안 된다. */
-            repo={{ owner: project.repoOwner, name: project.repoName, branch: project.baseBranch, syncBranch: syncBranchFor(slug) }}
+            repo={{ owner: project.repoOwner, name: project.repoName, branch: project.baseBranch, syncBranch: syncBranchFor(slug), host: project.repoHost }}
             unsent={counts.toSend}
             failedSurface={failed?.slug ?? null}
             reason={failed?.importError ?? null}
@@ -391,12 +396,13 @@ export default async function ProjectHomePage({
               now={now}
               archived={archived}
               canOpenSettings={canPerform(role, "project:settings")}
-              repoUrl={`https://github.com/${project.repoOwner}/${project.repoName}`}
+              repoUrl={repoWebUrl(project.repoHost, project.repoOwner, project.repoName)}
               translationHref={translationHref} style={style} m={m}
             />
           )}
         </EventDialog>
       )}
     </HomeActions>
+    </RepoHostScope>
   );
 }

@@ -75,7 +75,7 @@ export type WorkspaceProps = {
   /** `null`은 선택 없음, `absent`는 URL의 키가 사라졌다(부재 안내 — 다른 키로 바꾸지 않는다). */
   detail: DetailView | { absent: true; surfaceSlug: string } | null;
   unpublished: number;
-  publish: { repo: { owner: string; name: string; branch: string; syncBranch: string }; lastSentLabel: string | null; lastPrUrl: string | null };
+  publish: { repo: { owner: string; name: string; branch: string; syncBranch: string; host?: string }; lastSentLabel: string | null; lastPrUrl: string | null };
   sync: { name: string; branch: string };
   /** 기준 로케일의 **현실**과 **선언** — 대기 배너의 조건이다 (6b-3, `basePending`). 옛 헤더에서 옮겨 왔다. */
   baseLocale: string | null;

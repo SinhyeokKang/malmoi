@@ -1,4 +1,5 @@
 import { readPayload, type ActorKind, type EventKind } from "@/lib/events/payload";
+import { repoWebUrl } from "@/lib/projects/repo-web";
 import { triggerOf, type Trigger } from "@/lib/events/view";
 import type { HoldReason } from "@/lib/protection/plan";
 
@@ -104,7 +105,8 @@ export function homeLastSync(
 }
 
 export type MetaTabsInput = {
-  repository: { owner: string; name: string; branch: string; connection: RepositoryConnectionState };
+  /** `host`는 리포 호스트(`Project.repoHost`) — 없으면 GitHub이다. Platform 행·리포 주소·PR/MR 번호가 이것을 따른다. */
+  repository: { owner: string; name: string; branch: string; connection: RepositoryConnectionState; host?: string };
   /** `pushTokenHash !== null` — ⚠️ **해시는 입력에 없다**. 서버가 select 직후 boolean으로 접는다(RSC 페이로드에 싣지 않는다). */
   ciConfigured: boolean;
   /** 비보관 소스 수 — Project `Sources` 행 · Sync/Publish `Sources` 행의 "둘 이상" 판정. */
@@ -129,6 +131,8 @@ export type MetaTabsInput = {
  * 허용해 파랑 글자인데 포커스를 못 받는 요소가 설 수 있었던 것과 같은 조합이 이 형에선 생기지 않는다.
  */
 export type ProjectTabRow =
+  /** 어느 리포 호스트의 프로젝트인가 — **두 호스트 모두** 선다(시안 G5a · design-brief 시안 검토 2: GitLab에만 서면 "행이 없다 = GitHub"이 숨은 규칙이 된다). 링크가 아니다. */
+  | { kind: "platform"; host: "github" | "gitlab" }
   | { kind: "repository"; owner: string; name: string; href: string; linked: boolean }
   | { kind: "connection"; state: RepositoryConnectionState }
   | { kind: "branch"; branch: string }
@@ -166,6 +170,8 @@ export type MetaTabs = {
   publish: PublishTabRow[][];
   /** 늦게 오는 Hold가 Sync 마지막 묶음 끝에 붙을 수 있는가 — 첫 렌더의 `hold` 행과 같은 판정이다. 첫 Sync 전이면 `false`. */
   lateHold: boolean;
+  /** 리포 호스트 — PR/MR 라벨·번호(`#128`·`!128`)를 화면이 고른다(사전 `forHost`). */
+  host: "github" | "gitlab";
 };
 
 /**
@@ -178,13 +184,15 @@ export type MetaTabs = {
  */
 export function metaTabs(input: MetaTabsInput): MetaTabs {
   const { owner, name, branch, connection } = input.repository;
+  const host = input.repository.host === "gitlab" ? "gitlab" : "github";
   // 지금 읽을 수 없는 자리를 링크로 두면 화면이 거짓말한다. 모름(`couldNotCheck`)은 끊김이 아니다.
   const linked = connection === "connected" || connection === "couldNotCheck";
   const multiSource = input.surfaceCount > 1;
 
   const project: ProjectTabRow[][] = [
     [
-      { kind: "repository", owner, name, href: `https://github.com/${owner}/${name}`, linked },
+      { kind: "platform", host },
+      { kind: "repository", owner, name, href: repoWebUrl(host, owner, name), linked },
       { kind: "connection", state: connection },
       { kind: "branch", branch },
       { kind: "ci", configured: input.ciConfigured },
@@ -207,7 +215,7 @@ export function metaTabs(input: MetaTabsInput): MetaTabs {
   const lateHold = input.lastSync !== null;
   if (lateHold && input.held !== null) sync.at(-1)?.push({ kind: "hold", reason: input.held });
 
-  return { project, sync, publish: publishTab(input, linked, multiSource), lateHold };
+  return { project, sync, publish: publishTab(input, linked, multiSource), lateHold, host };
 }
 
 function syncTab(run: MetaTabsInput["lastSync"], multiSource: boolean): SyncTabRow[][] {

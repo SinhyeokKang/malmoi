@@ -26,6 +26,6 @@ describe("Settings — 고정 폭은 상한이다", () => {
   });
 
   it("CI 카드의 워크플로 경로는 감긴다", () => {
-    expect(read("components/settings/ci-card.tsx")).toMatch(/text-muted-foreground text-xs break-all">\.github\/workflows\/malmoi-i18n\.yml/);
+    expect(read("components/settings/ci-card.tsx")).toMatch(/text-muted-foreground text-xs break-all">\{CI_PATH\[host\]\}/);
   });
 });

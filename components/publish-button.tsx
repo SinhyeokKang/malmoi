@@ -416,7 +416,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
    * ⚠️ **호스트가 넘긴다** — 조회가 실패한 갈래(`1k`·`1h`)도 리포 이름을 말해야 하고,
    * 브랜치 이름은 서버가 만든다(그 모듈을 클라이언트가 물면 번들에 octokit·ts-morph가 온다).
    */
-  repo: { owner: string; name: string; branch: string; syncBranch: string };
+  repo: { owner: string; name: string; branch: string; syncBranch: string; /** 리포 호스트 — PR/MR 문장을 고른다(`forHost`). 없으면 GitHub이다. */ host?: string };
 }) {
   const style = useDateStyle();
   const m = useMessages();
