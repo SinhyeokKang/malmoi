@@ -11,7 +11,7 @@ Before you start: Open your avatar menu at the top right and choose **Account**.
 
 The picture is resized automatically and the original file is not kept.
 
-![The Account page with the profile, sign-in methods, and GitHub App sections](/guide/account.webp "Update your profile and sign-in methods in Account.")
+![The Account page with the profile, sign-in methods, GitHub App, and GitLab PAT sections](/guide/account.webp "Update your profile and sign-in methods in Account.")
 
 ## Manage sign-in methods {#sign-in-methods}
 

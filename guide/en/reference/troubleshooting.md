@@ -19,6 +19,8 @@ If the repository is not listed, in Malmoi choose **Add repositories**, then in 
 
 In project **Settings**, a GitLab project's repository card shows whose token syncs and publishes use, and when that token expires. Within 14 days of its expiry date, a notice at the top of the card says how many days are left and the card shows **Expires soon**; after the date, the notice says the token expired and the card shows **Disconnected**.
 
+![The Repository card in a GitLab project's Settings showing the project as Connected, whose token it uses, and when that token expires](/guide/gitlab-repository-card.webp "Check whose token the project uses and when it expires.")
+
 - If the token is yours, the card shows a token field: paste a new token for the same GitLab account into **Personal access token** and choose **Replace token**. It updates every project that uses your connection.
 - If the token is another person's, choose **Use my GitLab connection**. Syncs and publishes are then written as your GitLab account. If you haven't connected GitLab yet, paste your token in the card first.
 

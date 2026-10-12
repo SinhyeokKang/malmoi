@@ -25,6 +25,8 @@ If your code reads translations through a wrapper function, fill in `MALMOI_I18N
 
 If Malmoi says the GitLab CI file isn't available in this version of Malmoi yet, there are no jobs to copy. Keep the push token anyway; until the CI file is available, the [nightly run](../sync/nightly.md#repository-changes) and **Sync** load repository changes.
 
+![The CI file dialog in Malmoi Settings saying the GitLab CI file isn't available in this version of Malmoi yet](/guide/gitlab-ci-file.webp "Until the CI file is available, keep the push token; the nightly run and Sync load repository changes.")
+
 ## Run and check it {#first-run}
 
 Committing the jobs on the base branch starts them. To run them again, run the job again from its pipeline. Check the job log: `applied` means the files were loaded and **Sources** is updated in Malmoi. A successful job can also report `deferred` when there are unsent edits — the update is held, and Logs shows it as **Held**; see [When code changes](../sync/push.md#deferred). A failed job shows its reason in the log. In Malmoi, Home's **Sync** tab shows the latest sync: **CI sync** as the **Last sync**, its **Result**, and how many translations it changed under **Changed**. **Sync logs** lists every sync.

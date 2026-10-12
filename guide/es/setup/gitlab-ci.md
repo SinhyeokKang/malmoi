@@ -25,6 +25,8 @@ Si tu código lee las traducciones mediante una función envoltorio, rellena `MA
 
 Si Malmoi indica que el archivo de CI de GitLab aún no está disponible en esta versión de Malmoi, no hay jobs que copiar. Guarda igualmente el token de push; hasta que el archivo de CI esté disponible, la [ejecución nocturna](../sync/nightly.md#repository-changes) y **Sincronizar** cargan los cambios del repositorio.
 
+![El diálogo Archivo de CI en la Configuración de Malmoi indica que el archivo de CI de GitLab aún no está disponible en esta versión de Malmoi](/guide/gitlab-ci-file.webp "Hasta que el archivo de CI esté disponible, guarda el token de push; la ejecución nocturna y Sincronizar cargan los cambios del repositorio.")
+
 ## Ejecútalo y compruébalo {#first-run}
 
 Al hacer commit de los jobs en la rama base, se inician. Para ejecutarlos de nuevo, vuelve a ejecutar el job desde su pipeline. Revisa el registro del job: `applied` significa que los archivos se cargaron y **Fuentes** está actualizado en Malmoi. Un job correcto también puede informar `deferred` cuando hay ediciones sin enviar — la actualización se retiene y Registros la muestra como **Retenido**; consulta [Cuando cambia el código](../sync/push.md#deferred). Un job fallido muestra su motivo en el registro. En Malmoi, la pestaña **Sincronizar** de Inicio muestra la última sincronización: **Sincronización de CI** como **Última sincronización**, su **Resultado** y cuántas traducciones cambió en **Cambiados**. **Registros de sincronización** lista todas las sincronizaciones.

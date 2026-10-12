@@ -14,6 +14,8 @@ Malmoi se conecta a GitLab.com con un token de acceso personal de tu propia cuen
 4. Malmoi lista los proyectos de GitLab en los que tienes el rol Maintainer o superior. Si no hay ninguno, muestra **No hay proyectos de GitLab para añadir**: consigue ese rol en GitLab y luego elige **Intentar de nuevo**.
 5. Selecciona el repositorio, elige la **Rama** que contiene tus archivos de traducción y elige **Siguiente**. Las traducciones vuelven como una merge request contra esta rama.
 
+![El paso 1 de 4 de Nuevo proyecto en la pestaña GitLab, con la cuenta conectada y la caducidad del token sobre la lista, un proyecto seleccionado y main como rama](/guide/gitlab-connect.webp "Selecciona el proyecto de GitLab y su rama y luego elige Siguiente.")
+
 Debajo del cuadro de búsqueda, Malmoi muestra qué cuenta de GitLab está conectada y cuándo caduca su token. Para usar un token nuevo de la misma cuenta, elige **Reemplazar token**. También puedes gestionar el token en [Cuenta](../account/profile.md#gitlab-token). El proyecto publica con el token de quien lo conectó, así que los commits y las merge requests en GitLab quedan a nombre de esa cuenta de GitLab.
 
 ## Qué pasa después {#next}
