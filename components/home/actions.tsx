@@ -10,7 +10,7 @@ import { ProjectThumbnail } from "@/components/ui/project-thumbnail";
 import { ReconnectButton } from "@/components/reconnect-button";
 import { ArchiveCard } from "@/components/settings/archive-card";
 import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { landFocus } from "@/components/ui/focus";
 import { useMessages, useUiLocale } from "@/components/i18n/messages-provider";
@@ -19,6 +19,7 @@ import { homeBannerState, type ConnectionProblem, type HomeState } from "@/lib/h
 import { importFailureMessage } from "@/lib/projects/import-failure";
 import type { ImportFailureCode } from "@/lib/projects/import-status";
 import { relativeTime } from "@/lib/relative-time";
+import { routes } from "@/lib/routes";
 import { STATE } from "@/lib/status/canon";
 
 /**
@@ -282,7 +283,14 @@ export function HomeNotices({ slug, name, state, role, branch, repo, unsent, fai
           variant={STATE[banner].tone === "warning" ? "warning" : "neutral"}
           title={problem === "disconnected" ? m.home.banner.disconnected.title : m.home.banner.notConnected.title}
           /* ⚠️ **이 화면에서만 검정이 Publish가 아니다** (캔버스 `2c`) — 할 수 있는 일이 하나뿐이다. */
-          actions={owner ? <ReconnectButton slug={slug} server={repo} host={repo.host} variant="primary" label={problem === "disconnected" ? m.home.banner.disconnected.action : m.home.banner.notConnected.action} /> : undefined}
+          /*
+            ⚠️ **GitLab은 설정 Repository 카드로 가는 링크다** (감사 U2 · 결정 R4) — GitLab 재연결은 쓰기 명의를 누른 사람으로 바꾸고, 그 문장(시안 G6c)과
+            보는 사람별 갈래(내 연결 사용 · 토큰 주인의 교체 · PAT 입력)는 그 카드에만 있다. 여기서 바로 부르면 경고 없이 명의가 바뀌거나, 만료된 토큰
+            주인에게 실패하는 버튼이 선다.
+          */
+          actions={owner ? repo.host === "gitlab"
+            ? <ButtonLink variant="primary" href={routes.settings(slug)}>{problem === "disconnected" ? m.home.banner.disconnected.action : m.home.banner.notConnected.action}</ButtonLink>
+            : <ReconnectButton slug={slug} server={repo} variant="primary" label={problem === "disconnected" ? m.home.banner.disconnected.action : m.home.banner.notConnected.action} /> : undefined}
         >
           {problem === "disconnected" ? m.home.banner.disconnected.body : m.home.banner.notConnected.body}
           {!owner && <> {problem === "disconnected" ? m.home.banner.disconnected.editor : m.home.banner.notConnected.editor}</>}
