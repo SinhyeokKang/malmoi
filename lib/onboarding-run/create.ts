@@ -13,7 +13,7 @@ import { recordEvent, recordRun } from "@/lib/events/record";
 import { requireEnv } from "@/lib/env";
 import { isUniqueViolation } from "@/lib/failure";
 import { openRepoReader } from "@/lib/repo-host";
-import { connectionEvidence, targetOfAccess } from "@/lib/repo-host/target";
+import { connectionEvidence, newRepoTarget } from "@/lib/repo-host/target";
 import { logFailure } from "@/lib/github-connect/log";
 import { FileContentBudgetError, readFiles, snapshotError } from "@/lib/import/read";
 import { IngestBudgetError } from "@/lib/onboarding/budget";
@@ -149,7 +149,7 @@ export async function createProjectFromRepo(
     : planCreateSlot({ ownerCount, slugTaken: existing !== null, limit });
   if (slot !== "ok") return { ok: false, error: slot };
   // 새 리포 — 프로젝트가 없으니 호출자 자신의 접근으로 연다. GitHub 값은 연결 계획과 같다(`checkGitHubAccess`가 `connect`에서 채운다).
-  const target = targetOfAccess(access);
+  const target = newRepoTarget(access);
 
   const reader = await openRepoReader(target);
   // ⚠️ **탐지와 저장이 같은 ref여야 한다** — 다른 트리로 재검증하면 통과한 포맷이 저장 브랜치에 없을 수 있다.

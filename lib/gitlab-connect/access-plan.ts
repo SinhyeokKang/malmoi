@@ -18,7 +18,10 @@ import type { RemoteResult } from "./verify";
 export const MAINTAINER = 40;
 export const REPORTER = 20;
 
-const Member = z.object({ access_level: z.number().int() });
+const Member = z.object({ access_level: z.number().int(), state: z.string().optional(), membership_state: z.string().optional() });
+
+/** 대기·차단이 아닌 멤버 상태 — 실측 응답은 `state`·`membership_state` 둘 다 `active`다. 필드가 없으면 판정하지 않는다(옛 인스턴스). */
+const ACTIVE = new Set(["active"]);
 
 export type MemberAccessVerdict = "ok" | "read-only" | "forbidden" | "reconnect" | "unavailable";
 
@@ -32,6 +35,9 @@ export function planMemberAccess(result: RemoteResult, requirePush: boolean): Me
   }
   const parsed = Member.safeParse(result.body);
   if (!parsed.success) return "unavailable";
+  // ⚠️ 초대 수락·승인 대기(`awaiting`)·차단 멤버도 `access_level`이 실린다 — 대기를 통과시키면 쓰기가 늦게 403/404로 드러난다(R-B ⚪3).
+  const { state, membership_state } = parsed.data;
+  if ((state !== undefined && !ACTIVE.has(state)) || (membership_state !== undefined && !ACTIVE.has(membership_state))) return "forbidden";
   const level = parsed.data.access_level;
   if (level < REPORTER) return "forbidden";
   if (requirePush && level < MAINTAINER) return "read-only";

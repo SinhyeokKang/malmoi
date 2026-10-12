@@ -39,10 +39,11 @@ export async function loadOpenPrUrl(
   // 쓰이지 않는 값을 위해 GitHub 왕복(리포 확인 + PR 목록)을 늘리는 셈이다.
   if (project.archivedAt !== null) return null;
   // 연결이 없으면 PR도 없다(GitHub — 설치 없이는 PR을 낸 적이 없다). 리포 id가 고정되지 않았으면 모른다 — 이름만 맞는 리포에 묻지 않는다.
-  // ⚠️ GitLab의 연결 없음은 "모름"이다 — 연결자가 떠나기 전에 연 MR이 남아 있을 수 있고 물을 토큰이 없다. "없음"으로 읽으면 게이트가 열린다.
+  // ⚠️ GitLab 참조 비움(`connection-removed`)은 "모름"이다 — 연결자가 떠나기 전에 연 MR이 남아 있을 수 있고 물을 토큰이 없다.
+  // "없음"으로 읽으면 게이트가 열린다.
   const connection = repoTargetOf(project);
-  if (connection.status === "not-connected") return project.repoHost === "gitlab" ? undefined : null;
-  if (connection.status === "unpinned") return undefined;
+  if (connection.status === "not-connected") return null;
+  if (connection.status === "unpinned" || connection.status === "connection-removed") return undefined;
   const { target } = connection;
   // ⚠️ **마감이 probe와 같다** (`GITHUB_WAIT_MS`) — 넘기면 실패와 같은 `undefined`("확인하지 못했다")다.
   return withinGithubWait((async () => {

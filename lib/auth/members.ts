@@ -11,6 +11,7 @@ import { planMemberChange } from "./membership";
 import { getProjectAccess } from "./query";
 import type { Subject } from "./subject";
 import { isExpired } from "@/lib/expiry";
+import { recordConnectionRemoved } from "@/lib/gitlab-connect/removal";
 
 /**
  * **멤버·초대 변경의 공유 코어** (mcp-connector T4-b — ARCHITECTURE §6.02). 편집 UI와 MCP `revoke_invitation`·`change_member`가 같은
@@ -142,7 +143,12 @@ export async function changeMemberRole(prisma: PrismaClient, subject: Subject, i
      * `projectId`로 좁힌다 — 그 사람이 연결자인 다른 프로젝트는 그대로다.
      */
     if (input.nextRole === null) {
-      await tx.project.updateMany({ where: { id: projectId, gitlabConnection: { userId: input.targetUserId } }, data: { gitlabConnectionId: null } });
+      const cleared = await tx.project.updateMany({ where: { id: projectId, gitlabConnection: { userId: input.targetUserId } }, data: { gitlabConnectionId: null } });
+      // 끊긴 사실을 같은 tx에서 남긴다(D20) — 행위자는 제거한 사람이다. 연결자가 아닌 멤버의 제거는 0행이라 사건이 없다.
+      if (cleared.count > 0) {
+        const address = await tx.project.findUniqueOrThrow({ where: { id: projectId }, select: { repoOwner: true, repoName: true } });
+        await recordConnectionRemoved(tx, { projectId, actorUserId: userId, ...address });
+      }
     }
 
     // 제거와 역할 변경이 **같은 사건 계열**이다 — `after`가 null이면 제거다(판정이 하나인 것과 같은 축).

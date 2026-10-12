@@ -49,7 +49,7 @@ export function planHomeState(input: {
 
 /** 이 연결로는 Sync·Publish가 돌 수 없다 — `planHomeState`의 `not_connected`와 `planActionAvailability`가 같은 술어를 쓴다. */
 function blocksActions(status: ConnectionHealth["status"]): boolean {
-  return status === "not-connected" || status === "unpinned" || status === "app-uninstalled" || status === "installation-changed" || status === "repo-replaced";
+  return status === "not-connected" || status === "unpinned" || status === "connection-removed" || status === "app-uninstalled" || status === "installation-changed" || status === "repo-replaced";
 }
 
 /**
@@ -73,7 +73,8 @@ export type ConnectionProblem = "not-connected" | "disconnected" | "wrong-reposi
 
 export function connectionProblem(status: ConnectionHealth["status"]): ConnectionProblem | null {
   if (status === "not-connected") return "not-connected";
-  if (status === "unpinned" || status === "app-uninstalled" || status === "installation-changed") return "disconnected";
+  // GitLab 연결 참조 비움(`connection-removed`, D21)도 끊김이다 — 목록의 `needs_reconnect`와 같은 결론.
+  if (status === "unpinned" || status === "connection-removed" || status === "app-uninstalled" || status === "installation-changed") return "disconnected";
   if (status === "repo-replaced") return "wrong-repository";
   return null;
 }
@@ -106,7 +107,7 @@ export function repositoryConnectionState(status: ConnectionHealth["status"], pr
     case "ok": case "repo-moved": return "connected";
     // 문제 갈래는 위의 `problem`에서 끝난다 — 여기 닿는 것은 `problem`이 판정과 어긋나게 들어온 경우(교차 행렬 카나리아)뿐이고,
     // 그때 Connected를 내므로 행렬이 red를 낸다.
-    case "not-connected": case "unpinned": case "app-uninstalled": case "installation-changed": case "repo-replaced": return "connected";
+    case "not-connected": case "unpinned": case "connection-removed": case "app-uninstalled": case "installation-changed": case "repo-replaced": return "connected";
     default: return status satisfies never;
   }
 }

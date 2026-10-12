@@ -5,6 +5,7 @@ import { logFailure } from "@/lib/github-connect/log";
 import { createGitLabTransport } from "@/lib/gitlab/transport";
 
 import type { GitLabTokenError } from "./errors";
+import { recordConnectionRemoved } from "./removal";
 import { isTokenShaped, planGitLabUser, planPatVerification, type RemoteResult } from "./verify";
 
 /**
@@ -106,13 +107,42 @@ async function replace(
 }
 
 /**
- * 연결 해제 — 행을 지우면 FK `SetNull`이 참조하던 프로젝트를 **같은 문장에서** 끊는다(`Disconnected`). 연결자가 떠나면 끊긴다(design §2 7단계).
+ * 연결 해제 — 참조하던 프로젝트마다 **같은 tx에서** 참조를 비우고 사건을 남긴 뒤 행을 지운다(D20 — 연결자가 떠나면 끊긴다, design §2 7단계).
  * 원격(GitLab의 토큰 철회)은 부르지 않는다 — 토큰의 주인은 사용자이고, GitLab에서 직접 철회한다.
+ *
+ * ⚠️ **잠금 순서: 참조 프로젝트(id 정렬) → 연결 행** — 재연결·생성은 `Project`를 잡은 뒤 참조를 쓰며 연결 행에 FK 공유 잠금을 건다. 같은 순서라 교착이
+ * 없고, 연결 행을 `FOR UPDATE`로 잡은 뒤에는 새 참조가 생기지 못한다 — 그 뒤 다시 읽은 목록이 이 tx가 비울 전부다.
+ * FK `SET NULL`은 계정 삭제(사건 없음, D20 범위 밖)의 그물로만 남는다 — 여기서는 지우기 전에 참조가 이미 비었다.
  */
 export async function disconnectGitLabAccount(prisma: PrismaClient, userId: string): Promise<{ ok: true; disconnected: boolean } | { ok: false; error: "unavailable" }> {
   try {
-    const removed = await prisma.gitLabConnection.deleteMany({ where: { userId } });
-    return { ok: true, disconnected: removed.count > 0 };
+    const disconnected = await prisma.$transaction(async (tx) => {
+      const connection = await tx.gitLabConnection.findUnique({ where: { userId }, select: { id: true } });
+      if (connection === null) return false;
+      const referencing = () => tx.project.findMany({ where: { gitlabConnectionId: connection.id }, select: { id: true }, orderBy: { id: "asc" } });
+      const locked = new Set<string>();
+      const lock = async (ids: readonly { id: string }[]) => {
+        for (const { id } of ids) {
+          if (locked.has(id)) continue;
+          await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${id} FOR UPDATE`;
+          locked.add(id);
+        }
+      };
+      await lock(await referencing());
+      await tx.$executeRaw`SELECT "id" FROM "GitLabConnection" WHERE "id" = ${connection.id} FOR UPDATE`;
+      // 첫 조회와 연결 행 잠금 사이에 커밋된 참조 — 이제 더는 생기지 못한다.
+      await lock(await referencing());
+      const projects = await tx.project.findMany({
+        where: { id: { in: [...locked] }, gitlabConnectionId: connection.id }, select: { id: true, repoOwner: true, repoName: true }, orderBy: { id: "asc" },
+      });
+      for (const project of projects) {
+        await tx.project.update({ where: { id: project.id }, data: { gitlabConnectionId: null } });
+        await recordConnectionRemoved(tx, { projectId: project.id, actorUserId: userId, repoOwner: project.repoOwner, repoName: project.repoName });
+      }
+      await tx.gitLabConnection.deleteMany({ where: { id: connection.id } });
+      return true;
+    });
+    return { ok: true, disconnected };
   } catch (error) {
     logFailure("gitlab-disconnect", error);
     return { ok: false, error: "unavailable" };

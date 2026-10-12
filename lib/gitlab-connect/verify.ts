@@ -45,7 +45,8 @@ export function planPatVerification(result: RemoteResult): PatVerdict {
   const self = parsed.data;
   if (!self.active || self.revoked) return { status: "token-invalid" };
   // ⚠️ fine-grained 판정이 스코프보다 먼저다 — fine-grained 토큰의 `scopes`가 비어 "스코프 부족"으로 안내하면 레거시 PAT로 가라는 말이 빠진다.
-  if (self.granular === true || self.granular_scopes !== undefined) return { status: "token-fine-grained" };
+  // 레거시 응답에 `granular_scopes`가 null·빈 배열로 실려도 레거시다 — 실측 레거시 응답엔 필드가 없지만 생기는 순간 전부 거부되지 않게(R-B ⚪2).
+  if (self.granular === true || (Array.isArray(self.granular_scopes) && self.granular_scopes.length > 0)) return { status: "token-fine-grained" };
   if (!self.scopes.includes(REQUIRED_SCOPE)) return { status: "token-scope-missing" };
   const expiresAt = self.expires_at === null ? null : parseExpiry(self.expires_at);
   if (expiresAt === undefined) return { status: "unavailable" };

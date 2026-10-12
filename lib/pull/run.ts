@@ -346,7 +346,8 @@ export async function runPull(deps: PullDeps, expectedFingerprint?: string): Pro
   if (connection.status === "not-connected") {
     fail(`Project.installationId is empty (${project.slug}) — install the app`, "not-installed");
   }
-  if (connection.status === "unpinned") fail("repository identity is not pinned; reconnect the project", "not-installed");
+  // GitLab 연결 참조 비움(`connection-removed`, D21)도 재연결이 고친다 — 같은 코드·같은 자리.
+  if (connection.status === "unpinned" || connection.status === "connection-removed") fail("repository identity is not pinned; reconnect the project", "not-installed");
 
   const formats = projectFormats(surfaces);
   const client = await deps.createClient(connection.target);

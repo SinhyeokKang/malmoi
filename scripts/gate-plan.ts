@@ -50,6 +50,9 @@ const POSTGRES_SUITES: readonly { step: GateStep; triggers: readonly string[] }[
       // 상한 재집계(복원·승격·수락)와 운영자 판정 — 동시 복원·생성 시나리오가 `lib/keys/`에 있다.
       "lib/projects/owner-limit.ts",
       "lib/projects/archive.ts",
+      // GitLab 연결 시나리오가 직접 지나는 경로(gitlab-repositories D21) — 멤버 제거의 연결 참조 비우기 · 목록 판정.
+      "lib/auth/members.ts",
+      "lib/projects/list.ts",
       "lib/operator/",
       "app/(edit)/actions.ts",
       "app/(edit)/projects/actions.ts",

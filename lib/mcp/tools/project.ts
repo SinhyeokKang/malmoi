@@ -59,7 +59,8 @@ export const getProject = defineTool({
       repository: `${project.repoOwner}/${project.repoName}`,
       baseBranch: project.baseBranch,
       // ⚠️ **출력 값 목록을 넓히지 않는다** (ux-drift-unify Q12) — 화면의 `unpinned`(설치 있음·리포 id 없음)는 외부 계약에서 `not-connected`다.
-      connection: health.status === "unpinned" ? "not-connected" : health.status,
+      // GitLab 참조 비움(`connection-removed`)도 외부 계약을 넓히지 않는다 — MCP 필드 정책은 D2가 정한다.
+      connection: health.status === "unpinned" || health.status === "connection-removed" ? "not-connected" : health.status,
       toSend: aggregates.unsent.get(access.projectId) ?? 0,
       newFromGitHub: aggregates.newKeys.get(access.projectId) ?? 0,
       // ⚠️ **마지막 Publish의 PR이지 열린 PR이 아니다** (#144) — 성공한 Publish가 쓴 값이고 그 뒤 닫혔을 수 있다. Home의 "Last publish: Pull request #N"과

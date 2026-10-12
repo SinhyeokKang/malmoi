@@ -54,7 +54,8 @@ export default async function SettingsPage({ params, searchParams }: { params: P
   const openPrUrl = loadOpenPrUrl(slug, project);
   const archived = project.archivedAt !== null;
   // 연결 행의 Disconnected와 같은 DB 판정이다(D1) — 브랜치 목록·토큰 회전이 거부될 요청을 부르지 않는다(malmoi#159).
-  const unpinned = connection.status === "unpinned";
+  // GitLab 참조 비움(`connection-removed`, D21)도 같은 Disconnected다 — 브랜치 목록·토큰 회전이 거부될 요청을 부르지 않는다.
+  const unpinned = connection.status === "unpinned" || connection.status === "connection-removed";
   const archive = <Card title={archived ? m.archive.restore : m.archive.title}>
     <div className="flex items-center justify-between gap-4 px-4 py-row-y @max-form:grid @max-form:grid-cols-[28px_1fr] @max-form:items-start @max-form:[&>[data-archive-card]]:col-start-2 @max-form:[&>[data-archive-card]]:justify-self-start">
       <IconTile><Archive aria-hidden /></IconTile><p className="text-muted-foreground flex-1 text-xs">{archived ? m.archive.archivedBy(<time dateTime={project.archivedAt!.toISOString()}>{formatDay(project.archivedAt!, style)}</time>) : m.archive.description}</p>

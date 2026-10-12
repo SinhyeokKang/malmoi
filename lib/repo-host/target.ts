@@ -44,8 +44,12 @@ export const REPO_COLUMNS = {
 /**
  * 연결 증거가 없으면 **이유를 가른다** — GitHub `unpinned`(설치 id 있음 + 리포 id 없음)와 `not-connected`를 한 null로 접지 않는다.
  * sec-audit-2 #34의 [Reconnect] 안내가 `unpinned` 갈래에 선다(설정·Home·번역·MCP). GitLab에는 `unpinned`가 없다 — 리포 id는 생성 때 항상 있다.
+ *
+ * `connection-removed` — **GitLab 프로젝트의 연결 참조가 비었다**(연결자가 떠났거나 연결을 해제했다 — D21). 모든 화면에서 `Disconnected`(재연결 필요,
+ * GitHub `unpinned`과 같은 톤)이고 복구 컨트롤은 GitLab 재연결(`reconnectGitLabRepository`)이다. `not-connected`(설치 없음 — Connect)로 접으면
+ * 설정이 GitHub Connect를 띄우고 그 Action은 GitLab을 거부한다 — 복구 컨트롤이 실패만 내는 화면이 된다(POSTMORTEM 2026-09-19).
  */
-export type RepoTargetResult = { status: "ok"; target: RepoTarget } | { status: "not-connected" } | { status: "unpinned" };
+export type RepoTargetResult = { status: "ok"; target: RepoTarget } | { status: "not-connected" } | { status: "unpinned" } | { status: "connection-removed" };
 
 /**
  * 저장된 열 → 경계 입력. GitHub 판정은 `storedConnection`(`lib/github-connect/health.ts`)과 같다 — 연결 화면의 첫 렌더와 I/O가 한 판정을 지난다
@@ -63,9 +67,10 @@ export function repoTargetOf(project: ProjectRepoColumns): RepoTargetResult {
         target: { host, owner: project.repoOwner, name: project.repoName, installationId: project.installationId, repositoryId: project.repositoryId },
       };
     case "gitlab":
-      // ⚠️ 참조가 비면 끊긴 것이다 — 연결자가 떠났거나 연결을 해제했다(`Project.gitlabConnectionId`). 남은 OWNER가 재연결한다.
       // 리포 id 없는 GitLab 행은 만들어지지 않는다 — 있다면 손상이고, 이름으로 부르지 않으므로 연결 없음으로 읽는다.
-      if (project.gitlabConnectionId === null || project.repositoryId === null) return { status: "not-connected" };
+      if (project.repositoryId === null) return { status: "not-connected" };
+      // ⚠️ 참조가 비면 끊긴 것이다 — 연결자가 떠났거나 연결을 해제했다(`Project.gitlabConnectionId`). 남은 OWNER가 재연결한다(D21).
+      if (project.gitlabConnectionId === null) return { status: "connection-removed" };
       return {
         status: "ok",
         target: { host, owner: project.repoOwner, name: project.repoName, repositoryId: project.repositoryId, connectionId: project.gitlabConnectionId },
@@ -189,16 +194,24 @@ export function sameAccessedRepository(access: AccessedRepository, project: Repo
 /**
  * **새 리포**(①·탐지·샘플·생성) — 호출자 자신의 접근으로 연다. 아직 프로젝트가 없으므로 열 수 있는 연결은 호출자의 것뿐이다.
  * 확인한 접근의 주소(GitHub 리네임 뒤의 정규 이름)를 쓴다.
+ *
+ * ⚠️ **연결된 프로젝트 경로에서 부르지 않는다** — GitLab `connectionId`가 **호출자의** 연결이라, 연결자가 아닌 OWNER의 소스 추가·재탐지·브랜치 목록이
+ * 조용히 그 OWNER 명의로 읽힌다(design §3 "접근 확인 뒤 I/O는 프로젝트 참조 연결로"). 그 경로는 `projectReadTarget`이다.
+ * 부르는 자리는 새 리포 경로 다섯뿐이다 — `credential-separation.test.ts`가 `파일#함수` 허용 목록으로 센다(D21).
  */
-export function targetOfAccess(access: AccessedRepository): RepoTarget {
+export function newRepoTarget(access: AccessedRepository): RepoTarget {
   switch (access.host) {
     case "github":
-      return { host: "github", owner: access.repoOwner, name: access.repoName, installationId: access.installationId, repositoryId: access.repositoryId };
+      return githubTargetOf(access);
     case "gitlab":
       return { host: "gitlab", owner: access.repoOwner, name: access.repoName, repositoryId: access.repositoryId, connectionId: access.connectionId };
     default:
       return unreachable(access);
   }
+}
+
+function githubTargetOf(access: Extract<AccessedRepository, { host: "github" }>): RepoTarget {
+  return { host: "github", owner: access.repoOwner, name: access.repoName, installationId: access.installationId, repositoryId: access.repositoryId };
 }
 
 /**
@@ -209,7 +222,7 @@ export function targetOfAccess(access: AccessedRepository): RepoTarget {
 export function projectReadTarget(access: AccessedRepository, project: RepoTarget): RepoTarget {
   switch (access.host) {
     case "github":
-      return targetOfAccess(access);
+      return githubTargetOf(access);
     case "gitlab":
       return project;
     default:

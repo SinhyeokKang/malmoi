@@ -11,7 +11,7 @@ import { getProjectAccess } from "@/lib/auth/query";
 import type { Subject } from "@/lib/auth/subject";
 import { requireEnv } from "@/lib/env";
 import { openRepoReader } from "@/lib/repo-host";
-import { connectionEvidence, projectReadTarget, REPO_COLUMNS, repoLocatorOf, repoTargetOf, sameAccessedRepository, targetOfAccess, type RepoTarget } from "@/lib/repo-host/target";
+import { connectionEvidence, projectReadTarget, REPO_COLUMNS, repoLocatorOf, repoTargetOf, sameAccessedRepository, newRepoTarget, type RepoTarget } from "@/lib/repo-host/target";
 import { readFiles, snapshotError } from "@/lib/import/read";
 import { IngestBudgetError } from "@/lib/onboarding/budget";
 import { planConfirmedFormat, templatePaths } from "@/lib/onboarding/confirm";
@@ -53,7 +53,7 @@ export async function detectFormats(
   const access = await checkRepoAccess(prisma, userId, newRepoLocator(input), { requirePush: true });
   if (access.status !== "ok") return { ok: false, error: access.error };
   // 새 리포 — 프로젝트가 없으니 호출자 자신의 연결로 연다.
-  return detectIn(userId, targetOfAccess(access), ref ?? access.defaultBranch);
+  return detectIn(userId, newRepoTarget(access), ref ?? access.defaultBranch);
 }
 
 /**

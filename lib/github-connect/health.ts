@@ -37,6 +37,11 @@ export type ConnectionHealth =
    * 나가지 않는다 — 출력 경계가 `not-connected`로 접는다(외부 계약 불변, `lib/mcp/tools/project.ts`).
    */
   | { status: "unpinned" }
+  /**
+   * **GitLab 프로젝트의 연결 참조가 비었다** (gitlab-repositories D21 — `repoTargetOf`의 같은 갈래). 끊김이다(재연결 필요) — `unpinned`과 같은 톤.
+   * 이 파일의 GitHub 판정(`planConnectionHealth`)은 만들지 않는다 — 경계(`lib/repo-host`)가 원격 호출 0으로 돌려준다.
+   */
+  | { status: "connection-removed" }
   | { status: "app-uninstalled" }
   | { status: "installation-changed"; installationId: string }
   | { status: "repo-moved"; fullName: string }

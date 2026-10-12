@@ -46,6 +46,8 @@ export async function rotateToken(prisma: PrismaClient, subject: Subject, input:
   // ⚠️ **설치는 있고 리포 id만 없으면 `unpinned`다** (malmoi#159) — 같은 카드가 Disconnected·Reconnect를 말하는데
   // "App을 설치하라"로 거부하면 원인이 둘이 된다. 고정은 [Reconnect]가 한다.
   if (connection.status === "unpinned") return { ok: false, error: "unpinned" };
+  // GitLab 참조 비움 — 설정에서 GitLab 재연결이 고친다(D21).
+  if (connection.status === "connection-removed") return { ok: false, error: "gitlab-project-disconnected" };
   const repo = await checkRepoAccess(prisma, userId, repoLocatorOf(project), { requirePush: true });
   if (repo.status !== "ok") return { ok: false, error: repo.error };
   // 같은 이름의 **다른** 리포에 쓸 수 있는 것은 근거가 아니다 — 고정된 신원으로 대조한다.

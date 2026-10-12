@@ -32,7 +32,7 @@ import { finishRun, recordRun } from "@/lib/events/record";
 import { optionalEnv, requireEnv } from "@/lib/env";
 import { probeRepo } from "@/lib/github";
 import { openRepoReader } from "@/lib/repo-host";
-import { connectionEvidence, hasRepoConnection, REPO_COLUMNS, repoTargetOf, targetOfAccess } from "@/lib/repo-host/target";
+import { connectionEvidence, hasRepoConnection, REPO_COLUMNS, repoTargetOf, newRepoTarget } from "@/lib/repo-host/target";
 import { APP_ACCOUNT_PROVIDER } from "@/lib/github-connect/account-link";
 import { installWithStateUrl } from "@/lib/github-connect/installation-url";
 import { logFailure } from "@/lib/github-connect/log";
@@ -513,7 +513,7 @@ export async function loadCandidateSample(raw: NewRepoInput & {
   const { userId } = session;
   const access = await checkRepoAccess(getPrisma(), userId, newRepoLocator(input), { requirePush: true });
   if (access.status !== "ok") return { ok: false, error: access.error };
-  const target = targetOfAccess(access);
+  const target = newRepoTarget(access);
   const reader = await openRepoReader(target);
   const snapshot = await reader.snapshot(input.ref);
   if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };
@@ -574,7 +574,7 @@ export async function confirmManualFormat(raw: NewRepoInput & {
   const { userId } = session;
   const access = await checkRepoAccess(getPrisma(), userId, newRepoLocator(input), { requirePush: true });
   if (access.status !== "ok") return { ok: false, error: access.error };
-  const target = targetOfAccess(access);
+  const target = newRepoTarget(access);
   const reader = await openRepoReader(target);
   const snapshot = await reader.snapshot(input.ref);
   if (snapshot.status !== "ok") return { ok: false, error: snapshotError(snapshot) };

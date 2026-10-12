@@ -64,6 +64,8 @@ const PLANS: Partial<Record<string, ImportRefusalPlan>> = {
   "base-branch-missing": { tone: "warning", dismissible: false, action: "settings" },
   /** 리포 id가 고정되지 않았다 — 목록·Home·Settings와 같은 Disconnected이고 고칠 자리는 [Reconnect]다(ux-drift-unify D1). */
   "unpinned": { tone: "warning", dismissible: false, action: "reconnect" },
+  /** GitLab 연결 참조가 비었다(연결자가 떠남·해제 — gitlab-repositories D21) — `unpinned`과 같은 Disconnected이고 고칠 자리는 GitLab 재연결이다. */
+  "gitlab-project-disconnected": { tone: "warning", dismissible: false, action: "reconnect" },
   /**
    * ⚠️ **이 사람의 GitHub 계정이 연결되지 않았다**(ConnectError, `checkRepoAccess` → `ensureUserToken`) — 리포는 멀쩡하다(ux-drift-unify r1).
    * [Reconnect]가 아니라 이 사람의 GitHub 연결이 사는 Account 화면으로 보낸다 — 문장("connect it in Account")과 버튼이 같은 곳을 가리킨다(ux-drift-unify fix1).

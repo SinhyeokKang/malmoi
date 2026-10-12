@@ -4,7 +4,7 @@ import type { AccessError } from "@/lib/auth/message";
 import { getProjectAccess } from "@/lib/auth/query";
 import type { Subject } from "@/lib/auth/subject";
 import { listBranches } from "@/lib/repo-host";
-import { projectReadTarget, REPO_COLUMNS, repoLocatorOf, repoTargetOf, sameRepository, targetOfAccess } from "@/lib/repo-host/target";
+import { projectReadTarget, REPO_COLUMNS, repoLocatorOf, repoTargetOf, sameRepository, newRepoTarget } from "@/lib/repo-host/target";
 
 import { projectDisconnected } from "@/lib/gitlab-connect/errors";
 import { checkRepoAccess, type OnboardFailure } from "./access";
@@ -32,7 +32,7 @@ export async function listNewRepoBranches(prisma: PrismaClient, subject: Subject
   if (access.status !== "ok") return { ok: false, error: access.error };
 
   // 아직 프로젝트가 없다 — 방금 확인한 접근(GitHub 설치·리포 id / 호출자의 GitLab 연결)이 곧 이 리포의 연결이다.
-  const list = await listBranches(targetOfAccess(access));
+  const list = await listBranches(newRepoTarget(access));
   // 조회 실패는 ①을 막지 않는다 — 화면이 default branch 하나로 접고 그 사실을 말한다 (예외 D).
   if (list.status !== "ok") return { ok: false, error: "unavailable", defaultBranch: access.defaultBranch };
 
