@@ -8,7 +8,7 @@
 
 업데이트는 순서대로 한 번에 한 릴리스씩, 최신 릴리스로만 합니다. 릴리스를 건너뛰는 업데이트는 아직 검증하지 않았습니다. 마이그레이션은 web을 다시 만들기 전에 끝나야 낡은 앱이 새 데이터베이스를 읽는 일이 없습니다. 새 버전이 확인을 통과할 때까지 외부 트래픽과 스케줄러는 꺼 둡니다. 그래야 백업으로 되돌아가더라도 그사이 누가 저장한 내용을 잃지 않습니다.
 
-GitLab 지원 전 버전으로 롤백하기 전에 GitLab 프로젝트의 CI 파이프라인을 멈추거나, 그 프로젝트들의 `PUSH_TOKEN`을 회전하고 CI에는 새 값을 넣지 마세요. 구버전 `/api/push`는 열린 GitLab MR을 확인하지 않으므로, 실행 중인 파이프라인이 MR이 열린 동안 번역을 덮어쓸 수 있습니다.
+GitLab 지원 전 버전으로 롤백하기 전에 GitLab 프로젝트의 CI 파이프라인을 멈추거나, 그 프로젝트들의 `PUSH_TOKEN`을 회전하고 CI에는 새 값을 넣지 마세요. 구버전 `/api/push`는 열린 GitLab MR을 확인하지 않으므로, 실행 중인 파이프라인이 MR이 열린 동안 번역을 덮어쓸 수 있습니다. GitLab 전용 설치에서 `GITHUB_APP_*` 다섯 값을 모두 비웠다면 구버전 preflight가 이 값들을 필수로 요구해 기동을 거부하므로, 롤백하려면 다섯 값을 다시 채워야 합니다.
 
 1. 앱을 멈추고 [백업](#backup) 명령으로 백업을 만들고, `backup ok`가 찍혔을 때만 다음으로 넘어갑니다. 끝난 뒤 `docker compose up -d`를 실행하지 않습니다.
 2. 새 태그의 `deploy/`를 지금 것과 비교해(`.env`는 그대로 둡니다) Compose·nginx·스케줄러의 변경을 반영하고, `.env`의 `MALMOI_IMAGE`를 새 태그와 digest로 바꿉니다. 값은 릴리스 노트의 `Self-hosting image` 줄에서 라벨을 뺀 이미지 참조를 복사하고, 찾을 수 없으면 `docker buildx imagetools inspect ghcr.io/sinhyeokkang/malmoi:v<x.y.z>`로 확인합니다. `deploy/scheduler/`가 바뀌었다면 `docker compose build scheduler`를 실행합니다.

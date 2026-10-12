@@ -56,7 +56,7 @@ describe("preflight — 전부 있을 때만 통과한다", () => {
 
   it("필수 값은 하나씩 빠지면 그 이름이 missing이다 — 빈 문자열·공백도", () => {
     const required = Object.entries(SELF_HOSTED_ENV).filter(([, kind]) => kind === "required").map(([name]) => name);
-    expect(required).toContain("DATABASE_URL");
+    expect(required).toHaveLength(17);
     for (const name of required) {
       for (const blank of [undefined, "", "  "]) {
         const env = { ...VALID, [name]: blank };
