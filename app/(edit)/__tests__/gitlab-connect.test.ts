@@ -10,13 +10,22 @@ import { createHarness, sessionFor } from "./harness";
 
 const hoisted = vi.hoisted(() => ({
   session: null as { user: { id: string } } | null,
+  /** 세션 저장소 장애 — `auth.ts`의 `logger.error`처럼 `noteAuthError`를 부르고 `null`을 돌려준다. */
+  outage: false,
   prisma: undefined as unknown,
   fetch: vi.fn(),
   revalidatePath: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
-vi.mock("@/auth", () => ({ auth: async () => hoisted.session }));
+vi.mock("@/auth", async () => {
+  const { noteAuthError } = await import("@/lib/auth/outage");
+  return { auth: async () => {
+    if (!hoisted.outage) return hoisted.session;
+    noteAuthError(Object.assign(new Error("session store down"), { type: "SessionTokenError" }));
+    return null;
+  } };
+});
 vi.mock("@/lib/db", () => ({ getPrisma: () => hoisted.prisma }));
 vi.mock("next/cache", () => ({ revalidatePath: hoisted.revalidatePath }));
 
@@ -35,6 +44,7 @@ beforeEach(() => {
   });
   hoisted.prisma = db.prisma;
   hoisted.session = sessionFor("u-owner");
+  hoisted.outage = false;
   vi.stubGlobal("fetch", hoisted.fetch);
 });
 
@@ -62,5 +72,18 @@ describe("세션 — Action마다 다시 읽는다", () => {
     hoisted.session = null;
     expect(await connectGitLab({ token: "glpat bad" })).toEqual({ ok: false, error: "unauthorized" });
     expect(hoisted.fetch).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * **세션 저장소 장애는 GitLab 장애와 다른 코드다** (감사 U6 · 리뷰 C ⚪6). 코어(`connectGitLabAccount`)의 `unavailable`은 GitLab·DB 장애이고 폼이
+ * "GitLab didn't answer"로 말한다 — 세션을 못 읽은 것까지 그 코드로 접으면 GitLab을 부르지도 않았는데 GitLab 탓이 된다.
+ */
+describe("connectGitLab — 세션 저장소 장애", () => {
+  it("세션을 못 읽으면 session-unavailable이고 GitLab·DB를 부르지 않는다 — 로그아웃(unauthorized)과도 다르다", async () => {
+    hoisted.outage = true;
+    expect(await connectGitLab({ token: "glpat-abcdefghijklmnopqrst" })).toEqual({ ok: false, error: "session-unavailable" });
+    expect(hoisted.fetch).not.toHaveBeenCalled();
+    expect(hoisted.revalidatePath).not.toHaveBeenCalled();
   });
 });

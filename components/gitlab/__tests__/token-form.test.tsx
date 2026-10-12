@@ -114,6 +114,8 @@ it("빈 값은 보내지 않는다", async () => {
 it.each([
   ["unauthorized", en.errors.access.unauthorized],
   ["invalid input", en.account.gitlab.form.invalidInput],
+  // 세션 저장소 장애 — GitLab을 부르지 않았다. 다른 Action의 세션 장애와 같은 문장이다(리뷰 C ⚪6).
+  ["session-unavailable", en.errors.access.unavailable],
 ] as const)("Action 거부 %s는 GitLab 문장이 아니라 그 원인의 문장이다", async (error, text) => {
   connectGitLab.mockResolvedValue({ ok: false, error });
   const { container, input, button } = await form();
