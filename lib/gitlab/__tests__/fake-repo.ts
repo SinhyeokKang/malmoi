@@ -1,0 +1,215 @@
+import { createHash } from "node:crypto";
+
+import { blobSha } from "@/lib/githash";
+
+import { violatesAddressContract, type FakeCall } from "./fake-fetch";
+
+/**
+ * **상태를 가진 GitLab 가짜 리포** (gitlab-repositories tasks §3 첫 항목 — 호출 기록·실패 주입·페이지네이션). 경로별 고정 응답(`fake-fetch.ts`)으로는
+ * "no-changes 두 번째 실행의 쓰기 0"처럼 **앞 실행이 바꾼 상태 위의 다음 실행**을 잴 수 없다 — 그래서 브랜치·트리·MR을 들고 W0 실측(design §2 Publish 표)대로
+ * 답한다: `force: true` 커밋은 parent = `start_sha` · 같은 source의 열린 MR이 있으면 MR 생성 409 · 브랜치 삭제는 그 브랜치의 열린 MR을 닫는다 ·
+ * 없는 브랜치 삭제 404. blob id는 실제 git blob SHA다(2층 비교가 로컬 `git hash-object`와 같은 값을 본다).
+ *
+ * ⚠️ 주소 계약(`violatesAddressContract`)을 같이 잰다 — 이 가짜를 쓰는 테스트는 모두 숫자 id 주소를 단언한다.
+ */
+
+export type FakeMergeRequest = {
+  iid: number; title: string; source_branch: string; target_branch: string; state: "opened" | "closed" | "merged";
+  source_project_id: number; target_project_id: number; web_url: string; description?: string;
+};
+
+export type FakeRepoOptions = {
+  repositoryId: string;
+  pathWithNamespace?: string;
+  archived?: boolean;
+  /** 브랜치 → head 커밋. */
+  branches: Record<string, string>;
+  /** 커밋 → 파일(경로 → 내용). 트리 항목 id는 내용의 blob SHA다. 디렉터리 항목은 경로에서 만든다. */
+  commits: Record<string, Record<string, string>>;
+  mergeRequests?: FakeMergeRequest[];
+  /** 호출자 권한 — GitLab 사용자 id → 유효 access level(`members/all`). 없는 사용자는 404(멤버 아님). */
+  members?: Record<string, number>;
+  /** 트리 페이지 크기(keyset). 기본 100. */
+  treePageSize?: number;
+  /** `METHOD /path-pattern` 키가 n번째(1부터, 없으면 매번) 불릴 때 그 상태로 답한다. 패턴의 `:x`는 조각 하나다. */
+  failOn?: { key: string; nth?: number; status: number; body?: unknown }[];
+};
+
+export function createFakeGitLabRepo(options: FakeRepoOptions) {
+  const id = options.repositoryId;
+  const base = `/projects/${id}`;
+  const branches = new Map(Object.entries(options.branches));
+  const commits = new Map(Object.entries(options.commits).map(([sha, files]) => [sha, new Map(Object.entries(files))]));
+  const parents = new Map<string, string>();
+  const blobs = new Map<string, string>();
+  for (const files of commits.values()) for (const content of files.values()) blobs.set(blobSha(content), content);
+  const mergeRequests: FakeMergeRequest[] = options.mergeRequests?.map((mr) => ({ ...mr })) ?? [];
+  const notes: { iid: number; body: string }[] = [];
+  const calls: FakeCall[] = [];
+  const hits = new Map<string, number>();
+  const pageSize = options.treePageSize ?? 100;
+  const web = `https://gitlab.com/${options.pathWithNamespace ?? "g/sub/app"}`;
+
+  function respond(body: unknown, status = 200, headers: Record<string, string> = {}): Response {
+    return new Response(body === undefined ? null : JSON.stringify(body), { status, headers: { "content-type": "application/json", ...headers } });
+  }
+
+  function treeOf(sha: string): { id: string; path: string; type: string; mode: string; name: string }[] {
+    const files = commits.get(sha);
+    if (files === undefined) return [];
+    const dirs = new Set<string>();
+    for (const path of files.keys()) {
+      const parts = path.split("/");
+      for (let depth = 1; depth < parts.length; depth += 1) dirs.add(parts.slice(0, depth).join("/"));
+    }
+    const entries = [
+      ...[...dirs].map((path) => ({ id: createHash("sha1").update(`tree:${sha}:${path}`).digest("hex"), path, type: "tree", mode: "040000", name: path.split("/").at(-1)! })),
+      ...[...files].map(([path, content]) => ({ id: blobSha(content), path, type: "blob", mode: "100644", name: path.split("/").at(-1)! })),
+    ];
+    return entries.sort((a, b) => (a.path < b.path ? -1 : 1));
+  }
+
+  function matchRoute(method: string, path: string): { key: string; params: string[] } | null {
+    const patterns = [
+      ["GET", ""], ["GET", "/repository/branches/:b"], ["DELETE", "/repository/branches/:b"], ["GET", "/repository/branches"], ["GET", "/repository/tree"],
+      ["GET", "/repository/blobs/:s"], ["POST", "/repository/commits"], ["GET", "/repository/compare"], ["GET", "/merge_requests"], ["POST", "/merge_requests"],
+      ["GET", "/merge_requests/:n"], ["PUT", "/merge_requests/:n"], ["POST", "/merge_requests/:n/notes"], ["GET", "/members/all/:u"],
+    ] as const;
+    if (method === "POST" && path === "/api/graphql") return { key: "POST /api/graphql", params: [] };
+    if (!path.startsWith(base)) return null;
+    const rest = path.slice(base.length);
+    for (const [m, pattern] of patterns) {
+      if (m !== method) continue;
+      const regex = new RegExp(`^${pattern.replace(/:[a-z]/g, "([^/]+)")}$`);
+      const matched = regex.exec(rest);
+      if (matched !== null) return { key: `${m} ${pattern}`, params: matched.slice(1).map(decodeURIComponent) };
+    }
+    return null;
+  }
+
+  const fetch = (async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    const url = new URL(input instanceof Request ? input.url : String(input));
+    const body = typeof init?.body === "string" ? init.body : null;
+    const method = (init?.method ?? "GET").toUpperCase();
+    calls.push({ method, url, headers: new Headers(init?.headers), body });
+    if (violatesAddressContract(url, body)) throw new Error(`address contract: GitLab must be addressed by numeric id — ${url.pathname}`);
+    const path = url.pathname.replace(/^\/api\/v4/, "");
+    const route = matchRoute(method, path);
+    if (route === null) throw new Error(`unexpected GitLab request: ${method} ${path}`);
+    const hit = (hits.get(route.key) ?? 0) + 1;
+    hits.set(route.key, hit);
+    const failure = options.failOn?.find((f) => f.key === route.key && (f.nth === undefined || f.nth === hit));
+    if (failure !== undefined) return respond(failure.body ?? { message: "fake failure" }, failure.status);
+    const json = (): Record<string, unknown> => (body === null ? {} : JSON.parse(body) as Record<string, unknown>);
+    const q = url.searchParams;
+
+    switch (route.key) {
+      case "GET ":
+        return respond({ id: Number(id), path_with_namespace: options.pathWithNamespace ?? "g/sub/app", default_branch: "main", archived: options.archived ?? false, repository_object_format: "sha1", runners_token: "GR-fake" });
+      case "GET /repository/branches/:b": {
+        const sha = branches.get(route.params[0]!);
+        return sha === undefined ? respond({ message: "404 Branch Not Found" }, 404) : respond({ name: route.params[0], commit: { id: sha, committed_date: "2026-10-12T08:47:45.000+00:00" } });
+      }
+      case "GET /repository/branches":
+        return respond([...branches.keys()].map((name) => ({ name })), 200, { "x-next-page": "" });
+      case "DELETE /repository/branches/:b": {
+        const name = route.params[0]!;
+        if (!branches.has(name)) return respond({ message: "404 Branch Not Found" }, 404);
+        branches.delete(name);
+        // W0 실측: source 브랜치를 지우면 열린 MR이 스스로 닫힌다.
+        for (const mr of mergeRequests) if (mr.source_branch === name && mr.state === "opened") mr.state = "closed";
+        return respond(undefined, 204);
+      }
+      case "GET /repository/tree": {
+        const entries = treeOf(q.get("ref") ?? "");
+        const start = Number(q.get("page_token") ?? "0");
+        const page = entries.slice(start, start + pageSize);
+        const next: Record<string, string> = start + pageSize < entries.length ? { link: `<https://gitlab.com/api/v4${base}/repository/tree?page_token=${start + pageSize}&pagination=keyset&per_page=${pageSize}&recursive=true&ref=${q.get("ref")}>; rel="next"` } : {};
+        return respond(page, 200, next);
+      }
+      case "GET /repository/blobs/:s": {
+        const content = blobs.get(route.params[0]!);
+        return content === undefined ? respond({ message: "404 Blob Not Found" }, 404) : respond({ size: Buffer.byteLength(content), encoding: "base64", content: Buffer.from(content).toString("base64"), sha: route.params[0] });
+      }
+      case "POST /repository/commits": {
+        const { branch, start_sha, force, actions } = json() as { branch: string; start_sha: string; force?: boolean; actions: { action: string; file_path: string; content: string }[] };
+        if (branches.has(branch) && force !== true) return respond({ message: `A branch called '${branch}' already exists.` }, 400);
+        const files = new Map(commits.get(start_sha) ?? []);
+        for (const action of actions) {
+          if (action.action === "create" && files.has(action.file_path)) return respond({ message: "A file with this name already exists" }, 400);
+          if (action.action === "update" && !files.has(action.file_path)) return respond({ message: "A file with this name doesn't exist" }, 400);
+          files.set(action.file_path, action.content);
+          blobs.set(blobSha(action.content), action.content);
+        }
+        // 실물처럼 같은 내용도 새 커밋이다(커밋 시각이 다르다) — 순번을 섞는다.
+        const sha = createHash("sha1").update(`${start_sha}:${commits.size}:${body}`).digest("hex");
+        commits.set(sha, files);
+        parents.set(sha, start_sha);
+        branches.set(branch, sha);
+        return respond({ id: sha, parent_ids: [start_sha] }, 201);
+      }
+      case "GET /repository/compare":
+        return respond({ commits: [], diffs: [], compare_timeout: false });
+      case "GET /merge_requests": {
+        const rows = mergeRequests.filter((mr) => (q.get("state") === null || mr.state === q.get("state")) && (q.get("source_branch") === null || mr.source_branch === q.get("source_branch")));
+        return respond(rows, 200, { "x-next-page": "" });
+      }
+      case "POST /merge_requests": {
+        const { source_branch, target_branch, title, description } = json() as { source_branch: string; target_branch: string; title: string; description: string };
+        const open = mergeRequests.find((mr) => mr.state === "opened" && mr.source_branch === source_branch && mr.source_project_id === Number(id));
+        if (open !== undefined) return respond({ message: [`Another open merge request already exists for this source branch: !${open.iid}`] }, 409);
+        if (!branches.has(source_branch)) return respond({ message: { source_branch: ["does not exist"] } }, 400);
+        const iid = Math.max(0, ...mergeRequests.map((mr) => mr.iid)) + 1;
+        const mr: FakeMergeRequest = { iid, title, description, source_branch, target_branch, state: "opened", source_project_id: Number(id), target_project_id: Number(id), web_url: `${web}/-/merge_requests/${iid}` };
+        mergeRequests.push(mr);
+        return respond(mr, 201);
+      }
+      case "GET /merge_requests/:n": {
+        const mr = mergeRequests.find((row) => row.iid === Number(route.params[0]));
+        return mr === undefined ? respond({ message: "404 Not found" }, 404) : respond(mr);
+      }
+      case "PUT /merge_requests/:n": {
+        const mr = mergeRequests.find((row) => row.iid === Number(route.params[0]));
+        if (mr === undefined) return respond({ message: "404 Not found" }, 404);
+        const update = json() as { title?: string; target_branch?: string; state_event?: string };
+        if (update.title !== undefined) mr.title = update.title;
+        if (update.target_branch !== undefined) mr.target_branch = update.target_branch;
+        if (update.state_event === "close") mr.state = "closed";
+        return respond(mr);
+      }
+      case "GET /members/all/:u": {
+        const level = options.members?.[route.params[0]!];
+        return level === undefined ? respond({ message: "404 Not found" }, 404) : respond({ id: Number(route.params[0]), username: `u${route.params[0]}`, access_level: level, state: "active", membership_state: "active" });
+      }
+      case "POST /api/graphql": {
+        // `repository.blobs` — 숫자 id 주소(`projects(ids:)`)로만 답한다. 크기는 문자열이다(실측).
+        const { variables } = json() as { variables: { ids: string[]; ref: string; paths: string[] } };
+        if (variables.ids[0] !== `gid://gitlab/Project/${id}`) return respond({ data: { projects: { nodes: [] } } });
+        const files = commits.get(variables.ref) ?? new Map<string, string>();
+        const nodes = variables.paths.flatMap((path) => {
+          const content = files.get(path);
+          return content === undefined ? [] : [{ path, size: String(Buffer.byteLength(content)), lfsOid: null, oid: blobSha(content) }];
+        });
+        return respond({ data: { projects: { nodes: [{ id: variables.ids[0], repository: { blobs: { pageInfo: { hasNextPage: false }, nodes } } }] } } });
+      }
+      case "POST /merge_requests/:n/notes":
+        notes.push({ iid: Number(route.params[0]), body: String(json().body) });
+        return respond({ id: notes.length }, 201);
+      default:
+        throw new Error(`unhandled fake route ${route.key}`);
+    }
+  }) as typeof globalThis.fetch;
+
+  return {
+    fetch,
+    calls,
+    branches,
+    commits,
+    parents,
+    mergeRequests,
+    notes,
+    /** 비GET 호출(쓰기) — "쓰기 0회" 단언이 이것을 본다. GraphQL 크기 조회(POST)는 읽기라 뺀다. */
+    writes: () => calls.filter((call) => call.method !== "GET" && !call.url.pathname.endsWith("/api/graphql")),
+    reset: () => { calls.length = 0; },
+  };
+}

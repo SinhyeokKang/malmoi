@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { planConnectionHealth, type ProbeResult } from "@/lib/github-connect/health";
+import { planConnectionHealth, type ConnectionHealth, type ProbeResult } from "@/lib/github-connect/health";
 import { metaTabs } from "@/lib/home/meta";
 import { connectionProblem, homeBannerState, planActionAvailability, planHomeState, repositoryConnectionState } from "@/lib/home/state";
 import { en } from "@/messages/en";
@@ -77,6 +77,8 @@ type Fixture = {
   /** 열린 Malmoi PR 삼상태 — `undefined`는 확인 못 함(조회 실패·마감). */
   openPr: { number: number; url: string } | null | undefined;
   probe: ProbeResult;
+  /** GitLab 연결 건강성의 원격 결과(`loadGitLabHealth` — 참조가 있을 때만 부른다). 없으면 정상(`ok`)이다. */
+  gitlabHealth?: ConnectionHealth;
 };
 
 const PR = { number: 7, url: "https://github.com/acme/web/pull/7" };
@@ -139,7 +141,7 @@ function observe(f: Fixture, J: Judgments): Observed {
 
   // GitHub은 지금처럼 저장값 + probe(`planConnectionHealth`), GitLab은 `loadConnectionHealth`의 경계 판정(ok가 아니면 그 갈래 그대로).
   const health = f.repoHost === "github" ? J.planConnectionHealth({ project, probe: f.probe })
-    : stored.status === "ok" ? { status: "ok" as const } : { status: stored.status };
+    : stored.status === "ok" ? f.gitlabHealth ?? { status: "ok" as const } : { status: stored.status };
   const problem = J.connectionProblem(health.status);
   const readiness = J.planProjectReadiness(project);
 
@@ -284,6 +286,17 @@ const MATRIX: Row[] = [
     settings: "disconnected",
     sources: na("sources", "connection"),
     refusal: { error: "unpinned", word: "disconnected" },
+  },
+  {
+    // ⚠️ GitLab 토큰을 쓸 수 없음(D22·D24 — 철회·만료·주인의 접근 상실·보관, probe가 안다). Home·설정은 연결자 떠남과 같은 Disconnected다.
+    // 목록은 DB만 본다 — 참조는 있으니 Active다. GitHub의 probe 전용 상태(`app-uninstalled`·`installation-changed`)도 목록엔 같은 축으로 선다.
+    input: "GitLab 토큰 못 씀(probe)",
+    fixture: fixture({ repoHost: "gitlab", installationId: null, gitlabConnectionId: "conn-a", gitlabHealth: { status: "connection-unusable" } }),
+    list: { chip: "active", banner: null },
+    home: { banner: "disconnected" },
+    settings: "disconnected",
+    sources: ["synced"],
+    refusal: { error: "none" },
   },
   {
     input: "partial-import",

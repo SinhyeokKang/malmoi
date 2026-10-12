@@ -25,6 +25,25 @@ describe("readFiles", () => {
   it("실제 UTF-8 바이트도 검사한다", async () => {
     await expect(readFiles(reader(vi.fn().mockResolvedValue('한'.repeat(700_000))), snapshot, ["en.json"])).rejects.toBeInstanceOf(IngestBudgetError);
   });
+  it("⚠️ 파일 수 상한은 크기 조회보다 먼저다 — 크기를 원격으로 묻는 호스트(GitLab GraphQL)가 상한 초과 목록에 원격을 부르지 않는다", async () => {
+    const sizes = vi.fn<RepoReader["sizes"]>();
+    const repo = { ...reader(), sizes };
+    const many = Array.from({ length: 201 }, (_, i) => `l/${i}.json`);
+    await expect(readFiles(repo, { ...snapshot, files: many.map((path) => ({ path, sha: path, size: 1 })) }, many)).rejects.toBeInstanceOf(IngestBudgetError);
+    expect(sizes).not.toHaveBeenCalled();
+  });
+  it("⚠️ 크기 조회가 LFS 포인터를 알리면 예산 거부(resource-limit)다 — 포인터를 내려받아 파싱하지 않는다", async () => {
+    const repo = { ...reader(), sizes: vi.fn<RepoReader["sizes"]>().mockResolvedValue({ status: "lfs", path: "en.json" }) };
+    await expect(readFiles(repo, snapshot, ["en.json"])).rejects.toBeInstanceOf(IngestBudgetError);
+    expect(repo.blob).not.toHaveBeenCalled();
+  });
+  it("크기 조회 실패(unavailable)는 예산 초과가 아니다 — 원격 장애로 남는다(design §2)", async () => {
+    const repo = { ...reader(), sizes: vi.fn<RepoReader["sizes"]>().mockResolvedValue({ status: "unavailable" }) };
+    const error = await readFiles(repo, snapshot, ["en.json"]).catch((caught: unknown) => caught);
+    expect(error).not.toBeInstanceOf(IngestBudgetError);
+    expect(error).toBeInstanceOf(Error);
+    expect(repo.blob).not.toHaveBeenCalled();
+  });
   it("reader 예외를 빈 다운로드로 숨기지 않는다", async () => {
     const error = new Error("offline");
     await expect(readFiles(reader(vi.fn().mockRejectedValue(error)), snapshot, ["en.json"])).rejects.toBe(error);
