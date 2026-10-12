@@ -72,7 +72,7 @@ describe("renderProjectGitlabCiYaml — 모양", () => {
     expect(Object.keys(jobs(yml))).toEqual([".malmoi-i18n-order-check", "malmoi-i18n-order-check-default", "malmoi-i18n-order-check-web"]);
     expect(jobs(yml)["malmoi-i18n-order-check-web"]).toEqual({
       extends: ".malmoi-i18n-order-check",
-      variables: { MALMOI_I18N_SURFACE: "web", MALMOI_I18N_PATH_TEMPLATE: "web/{locale}.json" },
+      variables: { MALMOI_I18N_SURFACE: "web", MALMOI_I18N_PATH_TEMPLATE: "web/{locale}.json", MALMOI_I18N_WRAPPER: "" },
     });
   });
 

@@ -370,6 +370,8 @@ malmoi-i18n-order-check-default:
     MALMOI_I18N_PATH_TEMPLATE: "i18n/{locale}.json"
     MALMOI_I18N_ADAPTER: "json-catalog"
     MALMOI_I18N_BASE: "en"
+    # Repositories that read translations through a hook: list wrapper specs (module#export), one per line.
+    MALMOI_I18N_WRAPPER: ""
 ```
 
 ⚠️ **위 블록이 정본이다** — `lib/onboarding/__tests__/gitlab-ci.test.ts`가 `<!-- gitlab-ci -->` 뒤 첫 YAML 블록을 주석·빈 줄을 뺀 채 생성기 출력과 줄 단위로 대조한다(§2의 GitHub 블록과 같은 결). 2026-10-12 GitLab CI lint API(`POST /projects/:id/ci/lint`, `dry_run`)로 이 모양이 valid이고 base가 아닌 브랜치에서는 job이 0개임을 확인했다 — 실제 러너 실행은 아직이다.

@@ -78,6 +78,9 @@ export function renderProjectGitlabCiYaml(input: {
       `    MALMOI_I18N_PATH_TEMPLATE: ${quote(surface.pathTemplate)}`,
       ...(surface.adapter === undefined ? [] : [`    MALMOI_I18N_ADAPTER: ${quote(surface.adapter)}`]),
       ...(surface.baseLocale === undefined ? [] : [`    MALMOI_I18N_BASE: ${quote(surface.baseLocale)}`]),
+      // action v3 `wrapper` 입력의 짝 — 빈 값이면 플래그가 없다(`lib/cli/gitlab-ci-input.ts`). 사용자 리포에 복사되는 주석이라 영어다.
+      "    # Repositories that read translations through a hook: list wrapper specs (module#export), one per line.",
+      '    MALMOI_I18N_WRAPPER: ""',
     );
   }
   return `${lines.join("\n")}\n`;
