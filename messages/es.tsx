@@ -2112,7 +2112,14 @@ export const es = {
 
     workflow: {
       saveAs: "Guarda este archivo en tu repositorio.",
-      onGitLab: { saveAs: "Añade estos jobs a este archivo en la raíz del repositorio. Si el archivo ya existe, añádelos a él." },
+      onGitLab: {
+        saveAs: "Añade estos jobs a este archivo en la raíz del repositorio. Si el archivo ya existe, añádelos a él.",
+        hookHint: (hook: ReactNode, wrapper: ReactNode, doc: ReactNode): ReactNode => (
+          <>
+            Los repositorios que leen las traducciones mediante un hook ({hook}) también necesitan la variable {wrapper} en sus jobs de CI — consulta {doc}.
+          </>
+        ),
+      },
       gitlabVariable: "Los jobs leen el token de push de la variable de CI/CD PUSH_TOKEN. Añádela en Settings › CI/CD › Variables con Protect variable y Mask variable marcadas: las variables protegidas solo llegan a ramas protegidas, así que la rama base debe estar protegida.",
       gitlabUnavailable: "El archivo de CI de GitLab aún no está disponible en esta versión de Malmoi. Mientras tanto, sincroniza desde Malmoi para cargar los cambios del repositorio.",
       hookHint: (hook: ReactNode, wrapper: ReactNode, doc: ReactNode): ReactNode => (

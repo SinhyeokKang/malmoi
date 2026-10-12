@@ -3861,7 +3861,15 @@ export const en = {
       /** 경로를 싣지 않는다 — 코드 블록 머리의 파일명 바가 든다(2026-10-01, 온보딩 ④와 설정이 같은 문장). */
       saveAs: "Save this file in your repository.",
       /** GitLab — 기존 `.gitlab-ci.yml`이 있으면 덧붙인다(job 이름에 프로젝트 slug가 들어 겹치지 않는다 — `lib/onboarding/gitlab-ci.ts`). */
-      onGitLab: { saveAs: "Add these jobs to this file at the root of your repository. If the file already exists, add them to it." },
+      onGitLab: {
+        saveAs: "Add these jobs to this file at the root of your repository. If the file already exists, add them to it.",
+        /** GitLab은 action 입력이 아니라 생성 job의 변수다(`MALMOI_I18N_WRAPPER` — 호출부가 이름을 넘긴다). */
+        hookHint: (hook: ReactNode, wrapper: ReactNode, doc: ReactNode): ReactNode => (
+          <>
+            Repositories that read translations through a hook ({hook}) also need the {wrapper} variable in their CI jobs — see {doc}.
+          </>
+        ),
+      },
       /** GitLab CI/CD 변수 등록 단계(design-brief G7) — 보호 변수는 보호 브랜치에만 노출되므로 base 브랜치가 보호돼야 한다. */
       gitlabVariable: "The jobs read the push token from the PUSH_TOKEN CI/CD variable. Add it in Settings › CI/CD › Variables with Protect variable and Mask variable checked — protected variables only reach protected branches, so the base branch must be protected.",
       /** 릴리스 SHA가 없으면 CI 파일을 내지 않는다(R-D1 계약) — 박힌 SHA 없는 파일은 붙이면 red다. */

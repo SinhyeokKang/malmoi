@@ -354,6 +354,7 @@ export const FUNCTION_ARGS: { readonly [P in FunctionPaths<Messages>]: Parameter
   "settings.token.description": ["X"],
   "settings.onGitLab.token.description": ["X"],
   "settings.workflow.hookHint": ["X", "X", "X"],
+  "settings.workflow.onGitLab.hookHint": ["X", "X", "X"],
   "invite.signInHint": ["X"],
   "invite.sentTo": ["X"],
   "link.description": ["X", "X"],

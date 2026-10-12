@@ -2117,7 +2117,14 @@ export const ko = {
 
     workflow: {
       saveAs: "이 파일을 리포지토리에 저장하세요.",
-      onGitLab: { saveAs: "이 작업을 리포지토리 루트의 이 파일에 추가하세요. 파일이 이미 있으면 그 안에 덧붙이세요." },
+      onGitLab: {
+        saveAs: "이 작업을 리포지토리 루트의 이 파일에 추가하세요. 파일이 이미 있으면 그 안에 덧붙이세요.",
+        hookHint: (hook: ReactNode, wrapper: ReactNode, doc: ReactNode): ReactNode => (
+          <>
+            훅({hook})으로 번역을 읽는 리포지토리는 CI job의 {wrapper} 변수도 채워야 합니다 — {doc} 문서를 보세요.
+          </>
+        ),
+      },
       gitlabVariable: "작업은 CI/CD 변수 PUSH_TOKEN에서 푸시 토큰을 읽습니다. Settings › CI/CD › Variables에서 Protect variable과 Mask variable을 켜고 추가하세요. 보호 변수는 보호 브랜치에만 전달되므로 기준 브랜치가 보호되어 있어야 합니다.",
       gitlabUnavailable: "이 버전의 Malmoi에서는 아직 GitLab CI 파일을 쓸 수 없습니다. 그동안에는 Malmoi에서 동기화해 리포지토리 변경 사항을 가져오세요.",
       hookHint: (hook: ReactNode, wrapper: ReactNode, doc: ReactNode): ReactNode => (

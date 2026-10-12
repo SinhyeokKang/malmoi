@@ -47,8 +47,11 @@ export function CiCard({ slug, host = "github", archived, unpinned = false, stal
     {/* ⚠️ 모달 `description`을 두지 않는다 — 저장 경로 문장은 `WorkflowBlock` 머리(Copy 옆)가 든다. 온보딩 ④와 같은 형이다(#120). */}
     <LargeModal open={open && !archived} onClose={() => setOpen(false)} returnFocusRef={trigger} bodyScroll="hidden" title={m.settings.ci.workflow} className="h-[min(640px,calc(100svh-var(--spacing-modal-gutter)))] min-h-0" actions={<Button size="lg" onClick={() => setOpen(false)}>{m.common.close}</Button>}>
       {children}
-      {/* 훅 안내는 GitHub action의 `wrapper` input이다 — GitLab CI job에는 그 변수가 없어 서지 않는다. */}
-      {host === "github" && <p className="text-muted-foreground text-xs leading-body">{m.settings.workflow.hookHint("useTranslations()", "wrapper", <InlineLink href={routes.docs("setup/workflow", "workflow")}>{m.settings.workflow.hookDoc}</InlineLink>)}</p>}
+      {/*
+        훅 안내 — 두 호스트 모두 선다. GitHub은 action 입력 `wrapper`, GitLab은 생성 job의 변수 `MALMOI_I18N_WRAPPER`다(fix2가 표면 job에 빈 값으로 넣었다).
+        문장은 `RepoHostScope`가 덮은 사전(`settings.workflow.onGitLab.hookHint` — "input" ↔ "variable")이 고르고, 이름만 호출부가 넘긴다.
+      */}
+      <p className="text-muted-foreground text-xs leading-body">{m.settings.workflow.hookHint("useTranslations()", host === "gitlab" ? "MALMOI_I18N_WRAPPER" : "wrapper", <InlineLink href={routes.docs("setup/workflow", "workflow")}>{m.settings.workflow.hookDoc}</InlineLink>)}</p>
     </LargeModal>
   </Card>;
 }
