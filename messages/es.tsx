@@ -1309,7 +1309,7 @@ export const es = {
         onGitLab: {
           description: (secret: ReactNode): ReactNode => (
             <>
-              Añádelo a las variables de CI/CD del proyecto como {secret}, con Protect variable y Mask variable marcadas.{" "}
+              Añádelo a las variables de CI/CD del proyecto como {secret}: selecciona Protect variable y deja Visibility en Masked.{" "}
               <strong className="text-foreground font-normal">No lo volverás a ver cuando salgas de esta página.</strong> Si lo pierdes,
               rótalo en Configuración.
             </>
@@ -2120,7 +2120,7 @@ export const es = {
           </>
         ),
       },
-      gitlabVariable: "Los jobs leen el token de push de la variable de CI/CD PUSH_TOKEN. Añádela en Settings › CI/CD › Variables con Protect variable y Mask variable marcadas: las variables protegidas solo llegan a ramas protegidas, así que la rama base debe estar protegida.",
+      gitlabVariable: "Los jobs leen el token de push de la variable de CI/CD PUSH_TOKEN. Añádela en Settings › CI/CD › Variables: selecciona Protect variable y deja Visibility en Masked; las variables protegidas solo llegan a ramas protegidas, así que la rama base debe estar protegida.",
       gitlabUnavailable: "El archivo de CI de GitLab aún no está disponible en esta versión de Malmoi. Mientras tanto, sincroniza desde Malmoi para cargar los cambios del repositorio.",
       hookHint: (hook: ReactNode, wrapper: ReactNode, doc: ReactNode): ReactNode => (
         <>

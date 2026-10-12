@@ -1318,7 +1318,7 @@ export const ko = {
         onGitLab: {
           description: (secret: ReactNode): ReactNode => (
             <>
-              이 값을 프로젝트의 CI/CD 변수 {secret} 항목으로 추가하고 Protect variable과 Mask variable을 켜세요.{" "}
+              이 값을 프로젝트의 CI/CD 변수 {secret} 항목으로 추가하고 Protect variable을 선택하며 Visibility는 Masked로 두세요.{" "}
               <strong className="text-foreground font-normal">이 페이지를 떠나면 다시 볼 수 없습니다.</strong> 잃어버렸다면
               설정에서 교체하세요.
             </>
@@ -2125,7 +2125,7 @@ export const ko = {
           </>
         ),
       },
-      gitlabVariable: "작업은 CI/CD 변수 PUSH_TOKEN에서 푸시 토큰을 읽습니다. Settings › CI/CD › Variables에서 Protect variable과 Mask variable을 켜고 추가하세요. 보호 변수는 보호 브랜치에만 전달되므로 기준 브랜치가 보호되어 있어야 합니다.",
+      gitlabVariable: "작업은 CI/CD 변수 PUSH_TOKEN에서 푸시 토큰을 읽습니다. Settings › CI/CD › Variables에서 Protect variable을 선택하고 Visibility는 Masked로 두어 추가하세요. 보호 변수는 보호 브랜치에만 전달되므로 기준 브랜치가 보호되어 있어야 합니다.",
       gitlabUnavailable: "이 버전의 Malmoi에서는 아직 GitLab CI 파일을 쓸 수 없습니다. 그동안에는 Malmoi에서 동기화해 리포지토리 변경 사항을 가져오세요.",
       hookHint: (hook: ReactNode, wrapper: ReactNode, doc: ReactNode): ReactNode => (
         <>

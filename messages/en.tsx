@@ -2689,7 +2689,7 @@ export const en = {
         onGitLab: {
           description: (secret: ReactNode): ReactNode => (
             <>
-              Add this to the project&apos;s CI/CD variables as {secret} with Protect variable and Mask variable checked.{" "}
+              Add this to the project&apos;s CI/CD variables as {secret}: select Protect variable and set Visibility to Masked.{" "}
               <strong className="text-foreground font-normal">You won&apos;t see it again after you leave this page.</strong> If you lose it,
               rotate it in Settings.
             </>
@@ -3871,7 +3871,7 @@ export const en = {
         ),
       },
       /** GitLab CI/CD 변수 등록 단계(design-brief G7) — 보호 변수는 보호 브랜치에만 노출되므로 base 브랜치가 보호돼야 한다. */
-      gitlabVariable: "The jobs read the push token from the PUSH_TOKEN CI/CD variable. Add it in Settings › CI/CD › Variables with Protect variable and Mask variable checked — protected variables only reach protected branches, so the base branch must be protected.",
+      gitlabVariable: "The jobs read the push token from the PUSH_TOKEN CI/CD variable. Add it in Settings › CI/CD › Variables: select Protect variable and set Visibility to Masked — protected variables only reach protected branches, so the base branch must be protected.",
       /** 릴리스 SHA가 없으면 CI 파일을 내지 않는다(R-D1 계약) — 박힌 SHA 없는 파일은 붙이면 red다. */
       gitlabUnavailable: GITLAB_CI_UNAVAILABLE,
       /** ⚠️ 훅으로 번역을 읽는 리포는 `wrapper` 없이는 코드 참조가 조용히 0이다 (ARCHITECTURE §4). */
