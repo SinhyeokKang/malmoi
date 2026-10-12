@@ -6,16 +6,16 @@ El agente solo puede hacer lo que tú puedes hacer en un proyecto, y solo lo que
 
 Un token o una aplicación conectada nunca añade un permiso: si eres traductor (rol Editor) en un proyecto, **Configuración del proyecto** y **Miembros** no hacen nada ahí.
 
-Un token sin acciones permitidas aún puede leer traducciones, actividad y miembros en los proyectos que cubre su alcance. Los propietarios del proyecto también pueden previsualizar una sincronización o una reversión y leer el archivo de workflow sin ninguna. Solo listar tus repositorios de GitHub y sus ramas para un proyecto nuevo, y leer archivos del repositorio, necesitan una acción permitida.
+Un token sin acciones permitidas aún puede leer traducciones, actividad y miembros en los proyectos que cubre su alcance. Los propietarios del proyecto también pueden previsualizar una sincronización o una reversión y leer el archivo de workflow sin ninguna. Solo listar tus repositorios de GitHub o GitLab y sus ramas para un proyecto nuevo, y leer archivos del repositorio, necesitan una acción permitida.
 
 ### Acciones permitidas y roles {#allowed-actions}
 
 | Acción permitida | Qué puede hacer el agente | Quién puede usarla |
 | --- | --- | --- |
-| **Traducir y publicar** | Guardar traducciones y publicarlas como un pull request. | Propietarios y Editores |
+| **Traducir y publicar** | Guardar traducciones y publicarlas como un pull request (una merge request en GitLab). | Propietarios y Editores |
 | **Configuración del proyecto** | Añadir fuentes y rotar el token de push (ambas requieren también acceso de escritura al repositorio), quitar una fuente, detectar formatos en el repositorio conectado, sincronizar desde el repositorio, revertir al último valor publicado, cambiar el nombre, la rama base o el idioma base, archivar o restaurar. | Propietarios |
 | **Miembros** | Invitar a personas, cancelar invitaciones, cambiar roles, quitar miembros. | Propietarios |
-| **Crear proyectos** | Listar tus repositorios y ramas de GitHub, detectar formatos y crear proyectos (crear también requiere acceso de escritura al repositorio). | Cualquier persona con sesión iniciada, hasta el [límite de proyectos](../reference/limits.md#limits) |
+| **Crear proyectos** | Listar tus repositorios y ramas de GitHub o GitLab, detectar formatos y crear proyectos (crear también requiere acceso de escritura al repositorio). | Cualquier persona con sesión iniciada, hasta el [límite de proyectos](../reference/limits.md#limits) |
 
 **Todos mis proyectos** cubre todos los proyectos de los que eres miembro, incluidos aquellos a los que te unas más adelante. **Proyectos elegidos** cubre solo los proyectos que elijas. Un proyecto que el agente crea con **Proyectos elegidos** se añade a ese token o conexión, y a ningún otro.
 

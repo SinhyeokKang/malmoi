@@ -1,12 +1,12 @@
 # Publica tus cambios
 
-Revisa los cambios de traducción guardados y publícalos para que el equipo de desarrollo los revise en GitHub.
+Revisa los cambios de traducción guardados y publícalos para que el equipo de desarrollo los revise en GitHub o GitLab.
 
 Antes de empezar: guarda los valores que quieres publicar. Publicar incluye todas las ediciones guardadas sin enviar del proyecto, no solo las tuyas.
 
 ## Previsualiza los cambios guardados {#preview}
 
-Malmoi reúne los archivos en una única solicitud de cambios (un *pull request* en GitHub). No necesitas una cuenta de GitHub; el equipo de desarrollo lo revisa y lo fusiona.
+Malmoi reúne los archivos en una única solicitud de cambios (un *pull request* en GitHub, o una *merge request* en GitLab). No necesitas una cuenta de GitHub ni de GitLab; el equipo de desarrollo lo revisa y lo fusiona.
 
 ![La página de inicio de un proyecto con una edición por enviar y un botón Publicar activo que muestra el recuento](/guide/home-publish.webp "Publicar está en la parte superior de Inicio.")
 
@@ -18,6 +18,8 @@ Malmoi reúne los archivos en una única solicitud de cambios (un *pull request*
 ## Publica los cambios {#publish}
 
 Elige **Abrir pull request** o Reemplazar pull request #N. Si tus cambios ya coinciden con los archivos y no hay ningún pull request abierto, el botón es **Publicar**. Cuando hay un pull request abierto y los archivos coinciden, la acción es Cerrar pull request #N.
+
+En un proyecto de GitLab, los mismos botones nombran una merge request, numerada como `!128`: **Abrir merge request**, Reemplazar merge request !N y Cerrar merge request !N.
 
 Si Publicar está desactivado, puede que no haya ediciones sin enviar o que publicar no esté disponible temporalmente. Espera a que termine una sincronización en curso; pregunta a un propietario del proyecto si sigue sin estar disponible.
 
@@ -35,6 +37,8 @@ El resultado puede decir:
 - **GitHub no respondió** — tus valores guardados se conservan; inténtalo de nuevo más tarde.
 - **No pudimos confirmar si tus cambios se enviaron.** Revisa **Registros** antes de intentarlo de nuevo.
 
+En un proyecto de GitLab, los resultados nombran una merge request y GitLab, como **Tu merge request anterior ahora contiene esto** y **GitLab no respondió**.
+
 ![El resultado de publicación que indica que los archivos no cambiaron porque las ediciones ya estaban en el repositorio](/guide/publish-result.webp "Lee el resultado antes de cerrarlo.")
 
 ## Publicación automática {#nightly}
@@ -49,4 +53,4 @@ Tus valores publicados están a salvo mientras el pull request espera revisión.
 
 El equipo de desarrollo revisa el pull request y lo fusiona en el repositorio.
 
-Para consultarlo más tarde, abre la pestaña **Publicar** de Inicio. **Última publicación** muestra cómo se envió la publicación más reciente, **Publicado** muestra cuándo y **Cambiados** muestra cuántas traducciones cambió en los archivos. Cuando aparece, **Estado de la PR** indica si el pull request sigue abierto. **Registros de publicación** lista todas las publicaciones.
+Para consultarlo más tarde, abre la pestaña **Publicar** de Inicio. **Última publicación** muestra cómo se envió la publicación más reciente, **Publicado** muestra cuándo y **Cambiados** muestra cuántas traducciones cambió en los archivos. Cuando aparece, **Estado de la PR** indica si el pull request sigue abierto. En un proyecto de GitLab, estas filas son **Merge request** y **Estado de la MR**. **Registros de publicación** lista todas las publicaciones.

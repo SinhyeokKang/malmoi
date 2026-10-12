@@ -1,12 +1,12 @@
 # Publish your changes
 
-Review saved translation changes and publish them for the development team to review in GitHub.
+Review saved translation changes and publish them for the development team to review in GitHub or GitLab.
 
 Before you start: Save the values you want to publish. Publish includes all saved unsent edits in the project, not only yours.
 
 ## Preview saved changes {#preview}
 
-Malmoi puts the files into one change request (a *pull request* on GitHub). You do not need a GitHub account; the development team reviews and merges it.
+Malmoi puts the files into one change request (a *pull request* on GitHub, or a *merge request* on GitLab). You do not need a GitHub or GitLab account; the development team reviews and merges it.
 
 ![A project's Home with one change to send and an active Publish button showing the count](/guide/home-publish.webp "Publish is at the top of Home.")
 
@@ -18,6 +18,8 @@ Malmoi puts the files into one change request (a *pull request* on GitHub). You 
 ## Publish the changes {#publish}
 
 Choose **Open pull request** or Replace pull request #N. If your changes already match the files and no pull request is open, the button is **Publish**. When a pull request is open and the files match, the action is Close pull request #N.
+
+On a GitLab project, the same buttons name a merge request, numbered like `!128`: **Open merge request**, Replace merge request !N, and Close merge request !N.
 
 If Publish is turned off, there may be no unsent edits, or publishing may be temporarily unavailable. Wait for an ongoing sync to finish; ask a project owner if it stays unavailable.
 
@@ -35,6 +37,8 @@ The result can say:
 - **GitHub didn't answer** — your saved values are kept; try again later.
 - **We couldn't confirm whether your changes were sent.** Check **Logs** before trying again.
 
+On a GitLab project, the results name a merge request and GitLab instead, such as **Your earlier merge request now holds this** and **GitLab didn't answer**.
+
 ![The Publish result saying nothing changed in the files because the edits were already in the repository](/guide/publish-result.webp "Read the result before you close it.")
 
 ## Automatic publishing {#nightly}
@@ -49,4 +53,4 @@ Your published values are safe while the pull request waits for review. Malmoi h
 
 The development team reviews the pull request and merges it into the repository.
 
-To check on it later, open the **Publish** tab on Home. **Last publish** shows how the latest publish was sent, **Published** shows when, and **Changed** shows how many translations it changed in the files. When shown, **PR state** says whether the pull request is still open. **Publish logs** lists every publish.
+To check on it later, open the **Publish** tab on Home. **Last publish** shows how the latest publish was sent, **Published** shows when, and **Changed** shows how many translations it changed in the files. When shown, **PR state** says whether the pull request is still open. On a GitLab project, these rows are **Merge request** and **MR state**. **Publish logs** lists every publish.

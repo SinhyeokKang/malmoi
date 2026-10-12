@@ -6,16 +6,16 @@ The agent can do only what you can do in a project, and only what you allowed it
 
 A token or a connected app never adds a permission: if you are a translator (Editor role) in a project, **Project settings** and **Members** do nothing there.
 
-A token with no allowed actions can still read translations, activity, and members in the projects its scope covers. Project owners can also preview a sync or a revert and read the workflow file without one. Only listing your GitHub repositories and their branches for a new project, and reading repository files, need an allowed action.
+A token with no allowed actions can still read translations, activity, and members in the projects its scope covers. Project owners can also preview a sync or a revert and read the workflow file without one. Only listing your GitHub or GitLab repositories and their branches for a new project, and reading repository files, need an allowed action.
 
 ### Allowed actions and roles {#allowed-actions}
 
 | Allowed action | What the agent can do | Who can use it |
 | --- | --- | --- |
-| **Translate & publish** | Save translations and publish them as a pull request. | Owners and Editors |
+| **Translate & publish** | Save translations and publish them as a pull request (a merge request on GitLab). | Owners and Editors |
 | **Project settings** | Add sources and rotate the push token (both also need write access to the repository), remove a source, detect formats in the connected repository, sync from the repository, revert to the last published value, change the name, base branch, or base language, archive or restore. | Owners |
 | **Members** | Invite people, cancel invitations, change roles, remove members. | Owners |
-| **Create projects** | List your GitHub repositories and branches, detect formats, and create projects (creating also needs write access to the repository). | Anyone signed in, up to the [project limit](../reference/limits.md#limits) |
+| **Create projects** | List your GitHub or GitLab repositories and branches, detect formats, and create projects (creating also needs write access to the repository). | Anyone signed in, up to the [project limit](../reference/limits.md#limits) |
 
 **All my projects** covers every project you are a member of, including ones you join later. **Chosen projects** covers only the projects you pick. A project the agent creates with **Chosen projects** is added to that token or connection, and to no other.
 

@@ -10,7 +10,7 @@ Un proyecto debe estar activo, conectado a un repositorio y tener al menos una f
 
 ## Publicación automática {#nightly}
 
-Si hay alguna edición guardada sin enviar, la ejecución nocturna publica los cambios guardados del proyecto mediante una solicitud de cambios (un *pull request* en GitHub). Un pull request abierto se actualiza en lugar de abrir un segundo. Esa noche el proyecto no se actualiza desde el repositorio.
+Si hay alguna edición guardada sin enviar, la ejecución nocturna publica los cambios guardados del proyecto mediante una solicitud de cambios (un *pull request* en GitHub, o una *merge request* en GitLab). Si ya hay una abierta, se actualiza en lugar de abrir una segunda. Esa noche el proyecto no se actualiza desde el repositorio.
 
 Los valores guardados que no se pueden publicar permanecen en Malmoi. Si tus cambios no se publicaron durante la noche, revisa **Registros** y pregunta a un propietario del proyecto por cualquier fallo informado.
 
@@ -28,14 +28,14 @@ Si alguien guarda una traducción mientras se ejecuta la actualización nocturna
 La ejecución nocturna retiene la actualización — el proyecto no se actualiza y **Registros** muestra **Retenido** con el motivo — cuando:
 
 - Sigue abierto un pull request de Malmoi. Sus traducciones aún no están en el repositorio, así que una actualización las sobrescribiría. Fusiona o cierra el pull request; la siguiente ejecución nocturna recoge los cambios. La pestaña **Sincronizar** de Inicio muestra **Retenido** en su fila **Espera**, y la tarjeta Por enviar explica el motivo.
-- GitHub no respondió si ese pull request está abierto. Malmoi no adivina; Inicio muestra **Retenido** y la siguiente ejecución vuelve a comprobarlo.
+- GitHub o GitLab no respondió si esa solicitud de cambios está abierta. Malmoi no adivina; Inicio muestra **Retenido** y la siguiente ejecución vuelve a comprobarlo.
 - El cambio es demasiado grande para una sincronización en el servidor. Las actualizaciones nocturnas usan el mismo presupuesto de archivos que la creación de un proyecto (consulta [Límites](../reference/limits.md#files)). Reduce el tamaño de los archivos o entrega el cambio con el workflow del repositorio.
 
-Si la ejecución nocturna no puede leer la rama del repositorio, o GitHub no responde a tiempo, el evento muestra **Fallida** en **Registros** en lugar de una retención. Si la rama ya no existe, Inicio también muestra la sincronización como fallida hasta la siguiente sincronización correcta; si GitHub solo falló al responder, Inicio no cambia y la siguiente ejecución lo intenta de nuevo. Un propietario del proyecto puede comprobar la rama y la conexión con GitHub en **Configuración** del proyecto.
+Si la ejecución nocturna no puede leer la rama del repositorio, o GitHub o GitLab no responde a tiempo, el evento muestra **Fallida** en **Registros** en lugar de una retención. Si la rama ya no existe, Inicio también muestra la sincronización como fallida hasta la siguiente sincronización correcta; si GitHub o GitLab solo falló al responder, Inicio no cambia y la siguiente ejecución lo intenta de nuevo. Un propietario del proyecto puede comprobar la rama y la conexión con el repositorio en **Configuración** del proyecto.
 
 ## Sincronización nocturna o workflow {#workflow}
 
-El workflow es opcional. Sin él, la ejecución nocturna recoge los cambios del repositorio una vez al día. Con [el workflow](../setup/workflow.md), el GitHub Actions de tu repositorio envía los cambios en cada commit a esa rama y también recoge referencias de código. En **Registros**, las ejecuciones del workflow se marcan como **CI**; CI es el workflow de tu repositorio.
+El workflow es opcional. Sin él, la ejecución nocturna recoge los cambios del repositorio una vez al día. Con [el workflow](../setup/workflow.md), el workflow de GitHub Actions de tu repositorio, o sus jobs de GitLab CI, entregan los cambios en cada commit a esa rama y también recogen referencias de código. En **Registros**, las ejecuciones del workflow se marcan como **CI**; CI es el workflow de tu repositorio.
 
 ## Qué pasa después {#next}
 

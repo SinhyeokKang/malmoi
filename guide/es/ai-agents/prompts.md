@@ -8,7 +8,7 @@ Esto es lo que hace el agente ante algunas peticiones habituales, y qué comprob
 
 El agente lista tus repositorios, detecta los archivos de traducción y crea el proyecto con su primera sincronización, como [Crea un proyecto](../setup/create-project.md) en el navegador. El resultado incluye el archivo de workflow y un token de push. Pide al agente que haga commit del archivo de workflow en la rama base que elegiste, después de guardar el token de push.
 
-Si falta tu conexión con GitHub o la GitHub App, el agente devuelve un enlace a **Cuenta**. Termina allí en el navegador y pide al agente que lo intente de nuevo. Si no se encuentran archivos de traducción, el enlace abre la configuración del proyecto en el navegador, donde puedes elegir el formato tú mismo.
+Si falta tu conexión con GitHub, la GitHub App o tu token de GitLab, el agente devuelve un enlace a **Cuenta**. Termina allí en el navegador y pide al agente que lo intente de nuevo. Si no se encuentran archivos de traducción, el enlace abre la configuración del proyecto en el navegador, donde puedes elegir el formato tú mismo.
 
 ### Guarda el token de push {#push-token}
 
@@ -18,7 +18,7 @@ El token de push aparece una sola vez en la conversación del agente, que tu age
 gh secret set PUSH_TOKEN --repo OWNER/REPO
 ```
 
-Sustituye `OWNER/REPO` por el repositorio. No añadas `--body`; `--body -` guardaría un único guion. El nombre debe seguir siendo `PUSH_TOKEN`, porque el workflow lee ese secreto. Consulta [Añade el workflow](../setup/workflow.md#push-token) para el resto de la configuración.
+Sustituye `OWNER/REPO` por el repositorio. No añadas `--body`; `--body -` guardaría un único guion. El nombre debe seguir siendo `PUSH_TOKEN`, porque el workflow lee ese secreto. Consulta [Añade el workflow](../setup/workflow.md#push-token) para el resto de la configuración. En un proyecto de GitLab, el resultado incluye en su lugar jobs para `.gitlab-ci.yml`; guarda el token de push como la variable de CI/CD `PUSH_TOKEN` protegida y enmascarada, como en [Añade los jobs de GitLab CI](../setup/workflow.md#gitlab-ci).
 
 ### Rellena las traducciones vacías en fr y publica {#fill-and-publish}
 
