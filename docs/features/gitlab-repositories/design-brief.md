@@ -6,7 +6,7 @@
 
 새 프로젝트 모달 ① 맨 위에 **GitHub / GitLab 탭**을 두고, GitLab 탭은 **개인 액세스 토큰(PAT)을 붙여 넣는** 연결 흐름으로 그린다. GitHub 탭은 지금 ① 그대로다. 두 리포 호스트가 섞인 뒤 **프로젝트 목록·프로젝트 Home·프로젝트 설정·Sources·`/account`에서 어느 플랫폼의 프로젝트인지가 어떻게 보일지**도 이 시안에서 정한다.
 
-**시안**: [GitLab Repositories](https://claude.ai/design/p/b99d54cd-3034-44f1-8446-0a864da9d767?file=GitLab+Repositories.dc.html) (2026-10-12 수령 · v3 검토 — 아래 "시안 검토")
+**시안**: [GitLab Repositories](https://claude.ai/design/p/b99d54cd-3034-44f1-8446-0a864da9d767?file=GitLab+Repositories.dc.html) (2026-10-12 수령 · v3 검토 → v4 반영 확인 — 아래 "시안 검토")
 
 ## 확정 기준
 
@@ -140,3 +140,5 @@ DOM 글자·구조로 검토했다(화면 캡처 불가 — 간격·색 판정�
 7. **`/account`에도 [Connect]** — G8b 미연결 카드에 같은 PAT 입력 shell을 둔다(계정 연결이 정본이라).
 
 그 밖: G2d(일시 장애)의 버튼 라벨 Connect → Try again은 유지해도 된다. 스코프 셋은 tasks §0 실물 확인 뒤 도움말 한 줄만 고친다.
+
+**v4 확인 (2026-10-12)**: 위 3·5·7이 반영됐다(G5b2 삭제 · 날짜 오프셋 제거 · G8b 카드 안 PAT 입력). 남은 것 — G6b·G6c 재연결이 보는 사람을 가르지 않는다. 계정 토큰 참조 모델에서는 토큰 주인이면 [Replace token](참조하는 프로젝트 전부), 다른 OWNER이고 연결이 있으면 [Use my GitLab connection](명의 변경), 연결이 없으면 지금의 붙여 넣기 형이다. 다른 OWNER가 이 카드에 붙여 넣으면 그 사람의 계정 연결이 교체돼 그 사람의 다른 프로젝트까지 바뀐다.
