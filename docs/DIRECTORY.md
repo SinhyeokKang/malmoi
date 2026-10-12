@@ -267,6 +267,9 @@ components/
                         FIELD_BUTTON_CLASS를 export한다 — 랜딩 목업의 비상호작용 캡슐(<span>)이 같은 값을 읽고 h-10만 덮는다(손 사본 대신, buttonClass 선례)
   ui/text-trigger.tsx  TextTrigger — 누르는 글자(ui-locales). 공개 푸터 언어 스위처의 트리거 — Button이 아닌 이유는 라벨 500 강제(이웃 푸터 링크 400).
                         busy는 aria-disabled + aria-busy(진짜 disabled면 메뉴가 닫힐 때 포커스가 body로 빠진다) · 앞 글리프를 스피너로 교체(glyphSlot)
+  ui/input-element.tsx  Input의 네이티브 `<input>` — 핸들러(포인터 포커스 표시 `data-pointer-focus`)를 가진 유일한 조각이라 클라이언트 잎으로
+                        떼었다(2026-10-12). input.tsx는 `/account`·라우트 골격 같은 서버 컴포넌트가 그리고 서버가 fieldClass를 값으로 읽어 "use client"를 달 수 없다 —
+                        인라인 핸들러가 input.tsx에 남으면 서버 렌더가 "Event handlers cannot be passed to Client Component props"로 죽는다(server-render-graph.test.ts가 센다)
   ui/input-clear-button.tsx  InputClearButton — Input의 지우기 X(클라이언트). input.tsx는 fieldClass를 서버가 읽어 "use client"를 달 수 없어서 떼었다
   ui/dialog.tsx       기존 440 Dialog + 형제 CommandDialog · DrawerContent(측면 서랍 — 2026-10-10, 공개 내비가 첫 소비자 · 앱 LNB 서랍이 둘째, 세로 고정 바닥 `pinned`).
                         확인 Dialog는 `lg` 미만에서 좌우 16 · 본문만 스크롤 · footer 감김이다(2026-10-11 responsive-app — `max-lg:` 토큰뿐이라 `lg` 이상 바이트 불변).
@@ -642,8 +645,9 @@ lib/
                         preflight(순수 판정 — env 맵과 디렉터리 probe를 주입받는다. `SELF_HOSTED_ENV`가 `lib/env.ts`가 읽는 이름을
                         required · optional · hosted-only · command로 분류하고 `.env.example`과 키가 일치해야 한다. ⚠️ 결과에 값을 싣지 않는다 — 이름과 사유 코드뿐) ·
                         schedule(`NIGHTLY_PULL` — 야간 pull의 경로·시각. `vercel.json`과의 일치를 테스트가 센다) ·
-                        github-app(githubAppConfigured — `GITHUB_APP_*` 다섯이 다 있나, 2026-10-12 D4a. ①·`/account`·설정이 이것 하나로 GitHub 카드·조회를
-                        0으로 만든다 — App 없는 셀프 호스팅은 GitLab 전용 설치다. 반쪽 판정(기동 거부)은 preflight가 든다)
+                        github-app(planGitHubAppConfig·githubAppConfigured — 2026-10-12 D4a. ①·`/account`·설정이 githubAppConfigured 하나로 GitHub 카드·조회를
+                        0으로 만든다 — App 없는 셀프 호스팅은 GitLab 전용 설치다. 반쪽 판정(기동 거부, 다섯 all-or-none)은 preflight가 든다. ⚠️ 화면 판정은 D28에 따라
+                        자격증명 넷으로 옮겨 SLUG는 설치 링크만 가른다 — 2026-10-13 현재 코드는 아직 SLUG까지 다섯을 요구한다(E-ui fix2))
   upload/               프로필·프로젝트 이미지. image(형식·크기·키·삭제 allowlist 판정 +
                         planImagePick — 클라이언트 선검사 + imageSrc — 저장 URL → /api/images/<key> +
                         isStoredImageKey·storedImageContentType — 프록시가 받는 키의 술어).
