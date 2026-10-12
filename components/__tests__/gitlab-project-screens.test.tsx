@@ -125,6 +125,25 @@ describe("설정 › Repository — GitLab 카드 (시안 G6)", () => {
     expect(c.textContent).not.toMatch(GITHUB_WORDS);
   });
 
+  /**
+   * R-Eui 🟡2 — 같은 id·다른 경로(`repo-moved`)는 GitHub 카드와 같은 형이다: 새 주소 Alert · `movedHint` · [Reconnect](새 이름 저장 — GitLab 재연결) ·
+   * [Open on GitLab]은 새 주소. 복구 컨트롤 0개 상태 금지(POSTMORTEM 2026-09-19).
+   */
+  it("주소가 바뀌면 새 주소 Alert와 GitLab [Reconnect]가 서고 링크는 새 주소다 (repo-moved)", async () => {
+    mocks.reconnectGitLabRepository.mockResolvedValue({ ok: true });
+    const c = await card({ status: "repo-moved", fullName: "group/renamed-project" } as ConnectionHealth, { token: { username: "ox", expiresAt: null, viewerIsOwner: true }, viewer: { username: "ox" } });
+    // 새 주소 Alert — GitHub 카드와 같은 사전 문장(`health.moved`)이다.
+    expect(c.querySelector("[data-card-notice]")?.textContent).toBe("This repository moved to group/renamed-project");
+    expect(c.textContent).toContain(en.settings.repository.movedHint);
+    const open = [...c.querySelectorAll("a")].find((a) => a.textContent === gl.settings.openRepo)!;
+    expect(open.href).toBe("https://gitlab.com/group/renamed-project");
+    const reconnect = [...c.querySelectorAll("button")].find((b) => b.textContent?.includes(en.settings.repository.reconnect))!;
+    await act(async () => { reconnect.click(); });
+    expect(mocks.reconnectGitLabRepository).toHaveBeenCalledWith({ slug: "acme" });
+    expect(mocks.connectRepository).not.toHaveBeenCalled();
+    expect(c.textContent).not.toMatch(GITHUB_WORDS);
+  });
+
   it("조회 실패는 Couldn't check이고 끊김으로 접지 않는다 — 복구 컨트롤이 없다", async () => {
     const c = await card({ status: "unknown" } as ConnectionHealth, { token: { username: "ox", expiresAt: null, viewerIsOwner: false }, viewer: { username: "me" } });
     expect(c.textContent).toContain(en.settings.repository.unknown);
