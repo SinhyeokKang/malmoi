@@ -4,7 +4,7 @@
 
 ## 운영 방식 {#workflow}
 
-- 이 문서의 원고 경로(`README.md`·`setup/workflow.md` …)는 언어 트리 기준이다 — `guide/<언어>/` 아래 같은 경로가 세 벌 있다.
+- 이 문서의 원고 경로(`README.md`·`create/workflow.md` …)는 언어 트리 기준이다 — `guide/<언어>/` 아래 같은 경로가 세 벌 있다.
 - `guide/<언어>/SUMMARY.md`가 페이지·순서·계층의 정본이다. 페이지를 추가하거나 옮기면 세 언어의 SUMMARY와 내부 링크를 함께 고친다.
 - `README.md`는 개요이고 `<chapter>/README.md`는 장 개요다. 각 페이지는 H1 하나와 바로 다음 독립 도입 문단(1–2문장)으로 시작한다. 도입에는 굵은 글씨나 링크를 넣지 않으며 카드 설명으로도 쓴다. 작업 페이지에는 필요한 사전 조건, 사용자가 고르는 것과 화면에 보이는 것을 함께 쓰는 번호 단계, `What happens next` 절을 둔다. 설명·참조 페이지에는 번호 단계가 없어도 된다.
 - 개요의 두 갈래 카드와 나머지 장 목록, 장 개요의 하위 목록은 SUMMARY와 각 페이지의 도입 문단에서 생성한다. 원고에 카드·목록을 중복 작성하지 않는다. 개요는 H1과 도입, 그리고 대표 화면 스크린샷 한 장만 둔다(카드보다 위에 선다). 장 개요는 H1과 도입에 필요한 본문만 둔다.
@@ -33,13 +33,13 @@
 | --- | --- | --- |
 | `README.md` | Malmoi | 공통 |
 | `faq.md` | FAQ | 공통 |
+| `create/README.md` | Create a project | 개발자 |
+| `create/github.md` | Create a project with GitHub | 개발자 |
+| `create/workflow.md` | Add the workflow | 개발자 |
+| `create/allowed-actions.md` | Allow the actions | 개발자 |
+| `create/gitlab.md` | Create a project with GitLab | 개발자 |
+| `create/gitlab-ci.md` | Add the GitLab CI jobs | 개발자 |
 | `setup/README.md` | Set up a project | 개발자 |
-| `setup/connect-github.md` | Connect GitHub | 개발자 |
-| `setup/connect-gitlab.md` | Connect GitLab | 개발자 |
-| `setup/create-project.md` | Create a project | 개발자 |
-| `setup/workflow.md` | Add the workflow | 개발자 |
-| `setup/allowed-actions.md` | Allow the actions | 개발자 |
-| `setup/gitlab-ci.md` | Add the GitLab CI jobs | 개발자 |
 | `setup/members.md` | Invite translators | 개발자 |
 | `setup/sources.md` | Add sources | 개발자 |
 | `setup/archive.md` | Archive a project | 개발자 |
@@ -65,7 +65,8 @@
 | `reference/README.md` | Reference | 공통 |
 | `reference/formats.md` | Supported file formats | 개발자 |
 | `reference/limits.md` | Limits | 공통 |
-| `reference/troubleshooting.md` | Troubleshooting | 개발자 |
+| `reference/troubleshooting-github.md` | Troubleshoot GitHub | 개발자 |
+| `reference/troubleshooting-gitlab.md` | Troubleshoot GitLab | 개발자 |
 | `self-hosting/README.md` | Self-hosting | 운영자(셀프 호스팅 설치를 운영하는 개발자) |
 | `self-hosting/install.md` | Install | 운영자 |
 | `self-hosting/operate.md` | Update, back up, and restore | 운영자 |
@@ -121,27 +122,31 @@
 | Repository access | GitHub App installation | GitHub App installation settings |
 | Only select repositories | GitHub App installation | GitHub App installation settings |
 | Run workflow | GitHub Actions workflow page | GitHub Actions workflow page |
+| Configure | GitHub App installation target | 2026-10-13 실물 대조(`github.com/apps/malmoi-sync/installations/select_target` — 이미 설치된 계정 행) |
+| Install & Authorize | GitHub App installation | 2026-10-13 실물 대조(설치 중 인가가 켜진 App의 설치 화면 버튼) |
 | Customize | claude.ai connector settings | 2026-09-29 T1 실측(개인 Free 계정, `claude.ai/customize/connectors` — mcp-oauth design §0.1) |
 | Connectors | claude.ai connector settings | 2026-09-29 T1 실측(개인 Free 계정, `claude.ai/customize/connectors` — mcp-oauth design §0.1) |
 | Add | claude.ai connector settings | 2026-09-29 T1 실측(개인 Free 계정, `claude.ai/customize/connectors` — mcp-oauth design §0.1) |
 | Add custom connector | claude.ai connector settings | 2026-09-29 T1 실측(개인 Free 계정, `claude.ai/customize/connectors` — mcp-oauth design §0.1) |
 | Connect | claude.ai connector settings | 2026-09-29 T1 실측(개인 Free 계정, `claude.ai/customize/connectors` — mcp-oauth design §0.1) |
 | Allow *OWNER*, and select non-*OWNER*, actions and reusable workflows | GitHub Actions policy | [GitHub Actions policy documentation](https://docs.github.com/en/organizations/managing-organization-settings/disabling-or-limiting-github-actions-for-your-organization); 문서 대조 2026-09-26, 실물 대조 2026-09-27(조직 소유 리포 설정 화면 — 문구 일치) |
-| Settings | GitLab project settings | [GitLab CI/CD variables documentation](https://docs.gitlab.com/ci/variables/#for-a-project) — 문서 대조 2026-10-13(실물 화면 미대조) |
-| CI/CD | GitLab project settings › CI/CD › Variables | [GitLab CI/CD variables documentation](https://docs.gitlab.com/ci/variables/#for-a-project) — 문서 대조 2026-10-13(실물 화면 미대조) |
-| Variables | GitLab project settings › CI/CD › Variables | [GitLab CI/CD variables documentation](https://docs.gitlab.com/ci/variables/#for-a-project) — 문서 대조 2026-10-13(실물 화면 미대조) |
-| Add variable | GitLab project settings › CI/CD › Variables | [GitLab CI/CD variables documentation](https://docs.gitlab.com/ci/variables/#for-a-project) — 문서 대조 2026-10-13(실물 화면 미대조) |
-| Protect variable | GitLab project settings › CI/CD › Variables | [GitLab CI/CD variables documentation](https://docs.gitlab.com/ci/variables/#for-a-project) — 문서 대조 2026-10-13(실물 화면 미대조) |
-| Visibility | GitLab project settings › CI/CD › Variables | [GitLab CI/CD variables documentation](https://docs.gitlab.com/ci/variables/#for-a-project) — 문서 대조 2026-10-13(실물 화면 미대조) |
-| Masked | GitLab project settings › CI/CD › Variables | [GitLab CI/CD variables documentation](https://docs.gitlab.com/ci/variables/#for-a-project) — 문서 대조 2026-10-13(실물 화면 미대조) |
+| Settings | GitLab project settings | [GitLab CI/CD variables documentation](https://docs.gitlab.com/ci/variables/#for-a-project) — 문서 대조 2026-10-13, 실물 대조 2026-10-13(`ox501501/malmoi-gitlab-test` 설정 화면) |
+| CI/CD | GitLab project settings › CI/CD › Variables | [GitLab CI/CD variables documentation](https://docs.gitlab.com/ci/variables/#for-a-project) — 문서 대조 2026-10-13, 실물 대조 2026-10-13(`ox501501/malmoi-gitlab-test` 설정 화면) |
+| Variables | GitLab project settings › CI/CD › Variables | [GitLab CI/CD variables documentation](https://docs.gitlab.com/ci/variables/#for-a-project) — 문서 대조 2026-10-13, 실물 대조 2026-10-13(`ox501501/malmoi-gitlab-test` 설정 화면) |
+| Add variable | GitLab project settings › CI/CD › Variables | [GitLab CI/CD variables documentation](https://docs.gitlab.com/ci/variables/#for-a-project) — 문서 대조 2026-10-13, 실물 대조 2026-10-13(`ox501501/malmoi-gitlab-test` 설정 화면) |
+| Protect variable | GitLab project settings › CI/CD › Variables | [GitLab CI/CD variables documentation](https://docs.gitlab.com/ci/variables/#for-a-project) — 문서 대조 2026-10-13, 실물 대조 2026-10-13(`ox501501/malmoi-gitlab-test` 설정 화면) |
+| Visibility | GitLab project settings › CI/CD › Variables | [GitLab CI/CD variables documentation](https://docs.gitlab.com/ci/variables/#for-a-project) — 문서 대조 2026-10-13, 실물 대조 2026-10-13(`ox501501/malmoi-gitlab-test` 설정 화면) |
+| Masked | GitLab project settings › CI/CD › Variables | [GitLab CI/CD variables documentation](https://docs.gitlab.com/ci/variables/#for-a-project) — 문서 대조 2026-10-13, 실물 대조 2026-10-13(`ox501501/malmoi-gitlab-test` 설정 화면) |
+| Generate token | GitLab user settings › Personal access tokens › Generate legacy token | 2026-10-13 실물 대조(`gitlab.com/-/user_settings/personal_access_tokens/legacy/new` — 앱의 프리필 링크가 여기로 간다) |
 
 ## 앵커와 링크 {#anchors}
 
 - 모든 H2 끝에 ` {#id}`를 붙인다. 예시는 `## Add the workflow {#workflow}`다. H3의 앵커는 선택이다.
 - id는 `[a-z0-9-]+`이고 페이지 안에서 중복되지 않는다. 제목을 바꿔도 공개된 id는 유지한다. 앵커 문법 자체를 설명할 때는 반드시 인라인 코드 안에 둔다.
-- 페이지 링크는 `../setup/workflow.md#workflow`처럼 상대 `.md` 경로로 쓴다. `/docs/...` 절대경로를 원고에 넣지 않는다. 같은 페이지의 앵커 링크는 `#workflow`처럼 쓸 수 있다.
+- 페이지 링크는 `../create/workflow.md#workflow`처럼 상대 `.md` 경로로 쓴다. `/docs/...` 절대경로를 원고에 넣지 않는다. 같은 페이지의 앵커 링크는 `#workflow`처럼 쓸 수 있다.
 - **한 페이지를 섹션으로 나누면 옛 절 id 전부를 `SECTION_LEGACY_ANCHORS`(같은 파일)에 그 장 slug로 등재한다** — 공유된 `/docs/<장>#<id>`가 개요 맨 위에 멈춘다(malmoi#152, `ai-agents`). 절 일부만 새 페이지로 옮기면 옮긴 id만 남은 페이지의 slug로 등재하고, 남은 페이지에 그 id를 다시 쓰지 않는다(`structure.test.ts`).
-- **리포 호스트마다 절차가 갈리는 흐름(연결·CI·머지)은 페이지가 갈린다**(2026-10-13) — GitHub 전용(`setup/connect-github`·`setup/workflow`·`setup/allowed-actions`·`sync/merging`)과 GitLab 전용(`setup/connect-gitlab`·`setup/gitlab-ci`·`sync/merging-gitlab`) 페이지의 본문에는 다른 호스트 이름을 쓰지 않는다 — 링크 문구·대상과 코드 스팬만 예외다(`host-split.test.ts`). 낱말만 다른 페이지(Publish·push·nightly)는 한 페이지에 둔다.
+- **리포 호스트마다 절차가 갈리는 흐름(만들기·CI·머지·문제 해결)은 페이지가 갈린다**(2026-10-13) — GitHub 전용(`create/github`·`create/workflow`·`create/allowed-actions`·`sync/merging`·`reference/troubleshooting-github`)과 GitLab 전용(`create/gitlab`·`create/gitlab-ci`·`sync/merging-gitlab`·`reference/troubleshooting-gitlab`) 페이지의 본문에는 다른 호스트 이름을 쓰지 않는다 — 링크 문구·대상과 코드 스팬만 예외다(`host-split.test.ts`). 만들기는 첫 단계부터 끝까지 호스트마다 한 페이지이고 브랜치 뒤 단계(파일·세부·마무리)는 두 페이지에 중복된다(사용자 승인) — 고칠 때 두 페이지를 같이 고친다. 낱말만 다른 페이지(Publish·push·nightly)는 한 페이지에 둔다.
+- **페이지째 옮기면 옛 slug를 `LEGACY_PAGES`에 등재한다** — 서버 리다이렉트라 해시가 따라오므로, 대상 페이지에 없는 옛 절 id는 대상 slug의 `SECTION_LEGACY_ANCHORS`가 받는다(`structure.test.ts`가 옛 id 전부를 대조한다).
 - 옛 해시 일곱은 `lib/guide/legacy-anchors.ts`가 정본이다. 개요에 본문을 중복하지 않도록 `how-it-works`는 `sync/README.md`의 같은 id로 옮긴다. 나머지 절도 매핑된 페이지에 같은 id를 보존한다.
 
 ## 표 이름 {#tables}
@@ -172,14 +177,13 @@
 
 | 페이지 | 확인할 사실 | 대조 소스 |
 | --- | --- | --- |
-| `README.md`, `setup/README.md`, `translate/README.md`, `account/README.md`, `reference/README.md` | 독자별 진입·장 구성·도입 설명 | `guide/SUMMARY.md`, 각 하위 페이지 도입, `docs/PRODUCT.md` §3·§7.7 |
-| `setup/connect-github.md` | GitHub 연결·설치·리포 선택(생성 ①) | `components/onboarding/`, `lib/github-connect/`, `docs/PRODUCT.md` §7.1–§7.5 |
-| `setup/connect-gitlab.md` | GitLab 토큰 연결·교체·리포 선택(생성 ①) | `components/onboarding/`(`new-project.tsx`의 호스트 탭), `components/account/`, `messages/en.tsx`의 `newProject`·`account.gitlab` |
-| `setup/create-project.md` | 생성 ②–④, 첫 적재 | `components/onboarding/`, `lib/onboarding/`, `lib/github-connect/`, `app/(edit)/projects/actions.ts`, `docs/PRODUCT.md` §7.1–§7.5 |
+| `README.md`, `create/README.md`, `setup/README.md`, `translate/README.md`, `account/README.md`, `reference/README.md` | 독자별 진입·장 구성·도입 설명 | `guide/SUMMARY.md`, 각 하위 페이지 도입, `docs/PRODUCT.md` §3·§7.7 |
+| `create/github.md` | GitHub 연결·설치·리포 선택(생성 ①), 생성 ②–④·첫 적재. 설치 화면 라벨은 외부 라벨 표 | `components/onboarding/`, `lib/onboarding/`, `lib/github-connect/`, `app/(edit)/projects/actions.ts`, `docs/PRODUCT.md` §7.1–§7.5 |
+| `create/gitlab.md` | GitLab 토큰 발급·연결·교체·리포 선택(생성 ①), 생성 ②–④(④의 CI 갈래)·첫 적재 | `components/onboarding/`(`new-project.tsx`의 호스트 탭), `components/account/`, `components/gitlab/token-form.tsx`(`GITLAB_TOKEN_URL` — 프리필 링크), `lib/onboarding/`, `app/(edit)/projects/actions.ts`, `messages/en.tsx`의 `newProject`·`account.gitlab` |
 | `setup/sources.md` | 소스 추가, 상태·기준 언어 선언, OWNER 제한 | `app/(edit)/projects/[slug]/sources/page.tsx`, 같은 디렉터리 `actions.ts`, `components/sources/`, `lib/sources/`, `lib/surfaces/`, `docs/PRODUCT.md` §7.1 |
-| `setup/workflow.md` | 생성 YAML, 파일 경로, `PUSH_TOKEN`, 첫 실행 | `lib/onboarding/workflow.ts`, `components/settings/ci-card.tsx`, `.github/actions/malmoi-i18n-push/action.yml`, `docs/ACTIONS.md` |
-| `setup/gitlab-ci.md` | 생성 job, `.gitlab-ci.yml`, CI/CD 변수 `PUSH_TOKEN`, 보호 브랜치, `MALMOI_I18N_WRAPPER`, 미릴리스 CI 파일 | `lib/onboarding/gitlab-ci.ts`, `lib/onboarding/ci-file.ts`, `lib/cli/gitlab-ci-input.ts`, `components/settings/ci-card.tsx`, `messages/en.tsx`의 `settings.workflow`(`gitlabVariable`·`gitlabUnavailable`) |
-| `setup/allowed-actions.md` | 실행 action 넷과 제한된 GitHub Actions 설정 | `lib/guide/__tests__/helpers/allowed-actions.ts`, `lib/onboarding/workflow.ts`, `.github/actions/malmoi-i18n-push/action.yml`, `docs/ACTIONS.md`; 외부 화면의 현재 라벨은 별도 확인 |
+| `create/workflow.md` | 생성 YAML, 파일 경로, `PUSH_TOKEN`, 첫 실행 | `lib/onboarding/workflow.ts`, `components/settings/ci-card.tsx`, `.github/actions/malmoi-i18n-push/action.yml`, `docs/ACTIONS.md` |
+| `create/gitlab-ci.md` | 생성 job, `.gitlab-ci.yml`, CI/CD 변수 `PUSH_TOKEN`, 보호 브랜치, `MALMOI_I18N_WRAPPER`, 미릴리스 CI 파일 | `lib/onboarding/gitlab-ci.ts`, `lib/onboarding/ci-file.ts`, `lib/cli/gitlab-ci-input.ts`, `components/settings/ci-card.tsx`, `messages/en.tsx`의 `settings.workflow`(`gitlabVariable`·`gitlabUnavailable`) |
+| `create/allowed-actions.md` | 실행 action 넷과 제한된 GitHub Actions 설정 | `lib/guide/__tests__/helpers/allowed-actions.ts`, `lib/onboarding/workflow.ts`, `.github/actions/malmoi-i18n-push/action.yml`, `docs/ACTIONS.md`; 외부 화면의 현재 라벨은 별도 확인 |
 | `setup/members.md` | 역할, 초대 메일·재발급·멤버 관리 | `lib/auth/permission.ts`, `lib/auth/invitation.ts`, `lib/invitation-email/`, `app/(edit)/projects/actions.ts`, `components/members/`, `docs/PRODUCT.md` §3·§4.1 |
 | `setup/archive.md` | 보관·복원, 열린 PR 유지, 이력 읽기 | `components/settings/archive-card.tsx`, `app/(edit)/projects/actions.ts`, `lib/auth/permission.ts`, `docs/PRODUCT.md` §7.9 |
 | `translate/join.md` | 초대 주소·로그인·수락·거부 | `app/invite/`, `lib/auth/invitation.ts`, `lib/login-link/`, `docs/PRODUCT.md` §3 |
@@ -193,7 +197,7 @@
 | `sync/revert.md` | OWNER 전용 복원·수동 Sync, 지문 확인·미전달 처리 | `lib/keys/revert.ts`, `lib/protection/`, `lib/sync/`, `app/(edit)/actions.ts`, `docs/ARCHITECTURE.md` §5.8 |
 | `sync/logs.md` | 필터(행위자 `CI`·`Nightly`)·상세(`Values`·`Held because`)·수동 갱신·보관 이력 | `app/(edit)/projects/[slug]/logs/page.tsx`, `components/logs/`, `lib/events/`(`triggerOf`·`trigger-where.ts`), `docs/ARCHITECTURE.md` §5.7 |
 | `account/profile.md` | 프로필·로그인 수단·GitHub 연결·전체 로그아웃 | `app/(edit)/account/`, `components/account/`, `lib/account-connect/`, `lib/login-link/`, `lib/session-revocation/`, `docs/PRODUCT.md` §4.1·§7.7 |
-| `account/preferences.md` | 공개 푸터 스위처·Preferences Language 카드·판정 순서(계정 > 기기 쿠키 > English)·실패 문구·가이드와 방침의 제공 언어 · Theme 카드(계정 > 기기 쿠키 > Light, 푸터 스위처 없음) | `components/i18n/locale-switcher.tsx`, `components/public-shell/footer.tsx`, `components/preferences/language-card.tsx`, `components/preferences/time-zone-card.tsx`, `components/preferences/theme-card.tsx`, `lib/color-scheme/scheme.ts`(`resolveColorScheme`), `app/ui-locale/actions.ts`, `app/(edit)/preferences/actions.ts`, `lib/date-format.ts`, `lib/i18n/locales.ts`(`resolveUiLocale`·`planUiLocaleWrite`), `lib/shell/nav.ts`, `app/privacy/page.tsx`, `app/docs/layout.tsx`, `messages/{en,ko,es}.tsx`의 `uiLocale`·`preferences` |
+| `account/preferences.md` | 공개 푸터 스위처·Preferences Language 카드·판정 순서(계정 > 기기 쿠키 > English)·실패 문구·가이드와 방침의 제공 언어 · Theme 카드(계정 > 기기 쿠키 > Light, 공개 푸터의 테마 메뉴 `components/color-scheme/theme-switcher.tsx` — v1.3.1) | `components/i18n/locale-switcher.tsx`, `components/public-shell/footer.tsx`, `components/preferences/language-card.tsx`, `components/preferences/time-zone-card.tsx`, `components/preferences/theme-card.tsx`, `lib/color-scheme/scheme.ts`(`resolveColorScheme`), `app/ui-locale/actions.ts`, `app/(edit)/preferences/actions.ts`, `lib/date-format.ts`, `lib/i18n/locales.ts`(`resolveUiLocale`·`planUiLocaleWrite`), `lib/shell/nav.ts`, `app/privacy/page.tsx`, `app/docs/layout.tsx`, `messages/{en,ko,es}.tsx`의 `uiLocale`·`preferences` |
 | `faq.md` | 질문마다 짧은 답 + 자세한 페이지 링크. **답은 정본에서만 쓴다** — 포지셔닝·역할·비범위(기계 번역·승인 단계·과금 없음)는 PRODUCT, "그러면 어떻게 되나"(병합 없음·보류·키 보존·고정 PR)는 ARCHITECTURE §0, 저장 항목·삭제 절차는 `/privacy` 본문. 링크한 페이지와 숫자·낱말이 갈리면 그 페이지가 정본이다. 가격·로드맵을 약속하지 않는다 | `docs/PRODUCT.md` §2·§3·§4.2, `docs/ARCHITECTURE.md` §0, `messages/en.tsx`의 `publicDocs.privacy`(`collected`·`purposes`·`deletion`), 각 답이 링크한 가이드 페이지 |
 | `ai-agents/README.md` | 연결 방식 둘·MCP 주소·사전 조건 | `app/(edit)/mcp/`, `docs/ARCHITECTURE.md` §6.45, `docs/PRODUCT.md` §4.1 |
 | `ai-agents/browser.md` | 브라우저 로그인 연결(조각 둘·claude.ai 커넥터 단계·동의 화면·재동의 대체·요청 10분), Connected apps·끊기 | `app/oauth/authorize/`, `components/oauth/`, `lib/oauth/authorize-view.ts`, `app/(edit)/mcp/`, `components/mcp/`, 가이드 조각이 정본(2026-09-30 앱 안 사본인 Connect 카드를 걷었다 — `content.test.ts`는 `MALMOI_TOKEN` 참조만 본다), `messages/en.tsx`의 `mcpConnector` |
@@ -202,7 +206,7 @@
 | `ai-agents/prompts.md` | 에이전트 프로젝트 생성·push 토큰 secret 저장·번역 채워 Publish | `lib/mcp/tools/`, `lib/onboarding/workflow.ts`, `docs/ARCHITECTURE.md` §6.45 |
 | `reference/formats.md` | 지원 포맷 다섯·경로·보존 특성 | `lib/adapters/index.ts`, `lib/adapters/`, `lib/onboarding/detect.ts`, `docs/ARCHITECTURE.md` §1 |
 | `reference/limits.md` | 프로젝트·멤버·slug·초대 상한, 파일·적재 예산 | `lib/onboarding/create-plan.ts` (`PROJECT_LIMIT`), `lib/projects/owner-limit.ts` (`lockOwnerSlots` — 복원·OWNER 승격·OWNER 초대 수락의 상한), `messages/en.tsx` (`errors.access["owner-limit-reached"]`·`errors.invite["limit-reached"]` — 거부 문구의 결), `lib/auth/invitation.ts` (`MEMBER_LIMIT`), `lib/onboarding/slug.ts` (`PROJECT_SLUG_MAX`), `lib/invitation-email/limits.ts` (`INVITATION_HOURLY_LIMIT`), `lib/onboarding/budget.ts`, `lib/push/plan.ts` |
-| `reference/troubleshooting.md` | 설치 누락·stale commit 409·payload 400·사용자 복구 경로 | `app/api/push/route.ts`, `lib/push/guard.ts`, `lib/push/plan.ts`, `docs/ACTIONS.md` §3, `lib/github-connect/message.ts`, `lib/onboarding/message.ts`, `messages/en.tsx` |
+| `reference/troubleshooting-github.md`, `reference/troubleshooting-gitlab.md` | 설치 누락·리포 목록 누락·토큰 거부·만료 임박·stale commit 409·payload 400·사용자 복구 경로 | `app/api/push/route.ts`, `lib/push/guard.ts`, `lib/push/plan.ts`, `docs/ACTIONS.md` §3, `lib/github-connect/message.ts`, `lib/onboarding/message.ts`, `messages/en.tsx` |
 | `self-hosting/README.md`, `self-hosting/install.md`, `self-hosting/operate.md`, `self-hosting/troubleshooting.md` | 지원 범위·hosted 비교·외부 앱 등록·설정 표·Compose 설치·업데이트·백업/복원·키 회전·preflight 사유 코드·운영자 개인정보 재료. **명령은 실습으로 확인한 꼴을 지킨다**(SELF-HOSTING.md "셀프 호스팅 실습 기록") — 고치면 그 표에 미실행으로 남는다. 개인정보 재료 표는 `collected.ts`와 필드 단위 일대일이고 화면이 없어 스크린샷이 없다 | `deploy/**`(compose·`.env.example`·nginx·bootstrap·scheduler), `Dockerfile`, `lib/deployment/`(`preflight.ts`의 `SELF_HOSTED_ENV`·사유 코드), `scripts/preflight.ts`, `lib/credentials/`, `lib/privacy/collected.ts`, `lib/invitation-email/`, `docs/PRODUCT.md` §4.1 "셀프 호스팅", `docs/ARCHITECTURE.md` §7 "self-hosted DB", `docs/SELF-HOSTING.md` "셀프 호스팅 실습 기록" |
 | 모든 페이지 | 정확한 UI 라벨·화면 용어 | 그 원고 언어의 사전(`messages/en.tsx`·`ko.tsx`·`es.tsx`), `lib/guide/dictionary.ts`, 실제 컴포넌트의 역할별 분기, `docs/DESIGN.md` §10·§10.0·§10.1 |
 
