@@ -27,7 +27,7 @@ If your code reads translations through a wrapper function, fill in `MALMOI_I18N
 
 ## If the CI file isn't available {#ci-unavailable}
 
-If Malmoi says the GitLab CI file isn't available in this version of Malmoi yet, there are no jobs to copy. Keep the push token anyway; until the CI file is available, the [nightly run](../sync/nightly.md#repository-changes) and **Sync** load repository changes.
+If Malmoi says the GitLab CI file isn't available in this version of Malmoi yet, there are no jobs to copy. Keep the push token anyway; until the CI file is available, the [nightly run](../sync/nightly.md#repository-changes) and **Sync** load repository changes. A [base language change](../setup/sources.md#base-language) applies only through the CI jobs, so it waits until you add them.
 
 ![The CI file dialog in Malmoi Settings saying the GitLab CI file isn't available in this version of Malmoi yet](/guide/gitlab-ci-file.webp "Until the CI file is available, keep the push token; the nightly run and Sync load repository changes.")
 

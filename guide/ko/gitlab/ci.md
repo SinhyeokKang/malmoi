@@ -27,7 +27,7 @@
 
 ## CI 파일을 쓸 수 없을 때 {#ci-unavailable}
 
-Malmoi에 이 버전의 Malmoi에서는 아직 GitLab CI 파일을 쓸 수 없다고 표시되면 복사할 작업이 없습니다. 그래도 푸시 토큰은 보관해 두세요. CI 파일을 쓸 수 있게 될 때까지는 [야간 실행](../sync/nightly.md#repository-changes)과 **동기화**가 리포지토리 변경 사항을 가져옵니다.
+Malmoi에 이 버전의 Malmoi에서는 아직 GitLab CI 파일을 쓸 수 없다고 표시되면 복사할 작업이 없습니다. 그래도 푸시 토큰은 보관해 두세요. CI 파일을 쓸 수 있게 될 때까지는 [야간 실행](../sync/nightly.md#repository-changes)과 **동기화**가 리포지토리 변경 사항을 가져옵니다. [기준 언어 변경](../setup/sources.md#base-language)은 CI 작업으로만 적용되므로, 작업을 추가할 때까지 기다립니다.
 
 ![이 버전의 Malmoi에서는 아직 GitLab CI 파일을 쓸 수 없다고 알려 주는 Malmoi 설정의 CI 파일 대화상자](/guide/gitlab-ci-file.webp "CI 파일을 쓸 수 있을 때까지 푸시 토큰을 보관해 두면 야간 실행과 동기화가 리포지토리 변경 사항을 가져옵니다.")
 

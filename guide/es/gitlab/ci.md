@@ -27,7 +27,7 @@ Si tu código lee las traducciones mediante una función envoltorio, rellena `MA
 
 ## Si el archivo de CI no está disponible {#ci-unavailable}
 
-Si Malmoi indica que el archivo de CI de GitLab aún no está disponible en esta versión de Malmoi, no hay jobs que copiar. Guarda igualmente el token de push; hasta que el archivo de CI esté disponible, la [ejecución nocturna](../sync/nightly.md#repository-changes) y **Sincronizar** cargan los cambios del repositorio.
+Si Malmoi indica que el archivo de CI de GitLab aún no está disponible en esta versión de Malmoi, no hay jobs que copiar. Guarda igualmente el token de push; hasta que el archivo de CI esté disponible, la [ejecución nocturna](../sync/nightly.md#repository-changes) y **Sincronizar** cargan los cambios del repositorio. Un [cambio de idioma base](../setup/sources.md#base-language) solo se aplica mediante los jobs de CI, así que espera hasta que los añadas.
 
 ![El diálogo Archivo de CI en la Configuración de Malmoi indica que el archivo de CI de GitLab aún no está disponible en esta versión de Malmoi](/guide/gitlab-ci-file.webp "Hasta que el archivo de CI esté disponible, guarda el token de push; la ejecución nocturna y Sincronizar cargan los cambios del repositorio.")
 
