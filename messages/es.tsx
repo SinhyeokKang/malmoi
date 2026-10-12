@@ -2037,8 +2037,17 @@ export const es = {
 
     repository: {
       gitlab: {
-        connectedVia: (username: string): string => `Las sincronizaciones y publicaciones usan el token de GitLab de @${username}.`,
-        tokenLine: (username: string): string => `Token de @${username}`,
+        connectedWith: (username: string, expires: string | null): string =>
+          expires === null ? `Conectado con el token de @${username}` : `Conectado con el token de @${username} · caduca el ${expires}`,
+        connectedWithYours: (expires: string | null): string => (expires === null ? "Conectado con tu token" : `Conectado con tu token · caduca el ${expires}`),
+        expiresSoonYours: (days: number, date: string): string =>
+          `Tu token de GitLab caduca en ${days.toLocaleString("es")} ${days === 1 ? "día" : "días"}, el ${date}. Reemplázalo antes para que este proyecto siga sincronizándose.`,
+        expiresSoonOther: (owner: string, days: number, date: string): string =>
+          `El token de GitLab de @${owner} caduca en ${days.toLocaleString("es")} ${days === 1 ? "día" : "días"}, el ${date}. Su propietario puede reemplazarlo o puedes usar tu propia conexión de GitLab.`,
+        expiredYours: (date: string): string => `Tu token de GitLab caducó el ${date}. Reemplázalo para volver a conectar este proyecto.`,
+        expiredOther: (owner: string, date: string): string => `El token de GitLab de @${owner} caducó el ${date}. Las sincronizaciones y publicaciones se detienen hasta que se vuelva a conectar.`,
+        usedByUpdates: (n: number): string => (n === 1 ? "Lo usa 1 proyecto. Al reemplazarlo se actualiza." : `Lo usan ${n.toLocaleString("es")} proyectos. Al reemplazarlo se actualizan todos.`),
+        usedByReconnects: (n: number): string => (n === 1 ? "Lo usa 1 proyecto. Al reemplazarlo se vuelve a conectar." : `Lo usan ${n.toLocaleString("es")} proyectos. Al reemplazarlo se vuelven a conectar todos.`),
         unusable: "El token de GitLab de este proyecto no se puede usar. Puede que haya caducado o se haya revocado, o que su propietario haya perdido el acceso al repositorio. Las sincronizaciones y publicaciones se detienen hasta que se vuelva a conectar.",
         removed: "Se quitó la conexión de GitLab de este proyecto: quien la conectó desconectó GitLab o dejó el proyecto. Las sincronizaciones y publicaciones se detienen hasta que un propietario del proyecto la vuelva a conectar.",
         useMine: "Usar mi conexión de GitLab",

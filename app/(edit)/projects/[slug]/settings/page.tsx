@@ -44,7 +44,7 @@ export default async function SettingsPage({ params, searchParams }: { params: P
     name: true, image: true, repoOwner: true, repoName: true, repoHost: true, installationId: true, gitlabConnectionId: true, repositoryId: true,
     surfaces: { where: { archivedAt: null }, orderBy: { slug: "asc" } }, baseBranch: true, archivedAt: true,
     // GitLab 연결 카드의 토큰 줄 — 참조하는 연결의 주인·만료일(DB 값, D21). 토큰 봉투는 읽지 않는다.
-    gitlabConnection: { select: { username: true, expiresAt: true, userId: true } },
+    gitlabConnection: { select: { username: true, expiresAt: true, userId: true, _count: { select: { projects: true } } } },
   } });
   if (project === null) redirect(routes.projects({ e: "not-found" }));
   // 이 프로젝트의 화면 전체가 그 리포 호스트의 문장을 말한다(`withRepoHost` — 클라이언트 조각은 `RepoHostScope`).
@@ -91,7 +91,7 @@ export default async function SettingsPage({ params, searchParams }: { params: P
       <GeneralCard slug={slug} name={project.name} image={project.image} archived={archived} />
       <RepositoryCard slug={slug} owner={project.repoOwner} repo={project.repoName} branch={project.baseBranch} archived={archived} unpinned={unpinned} health={health} account={account} appSlug={optionalEnv("GITHUB_APP_SLUG")}
         gitlab={gitlabHost ? {
-          token: project.gitlabConnection === null ? null : { username: project.gitlabConnection.username, expiresAt: project.gitlabConnection.expiresAt?.toISOString() ?? null, viewerIsOwner: project.gitlabConnection.userId === userId },
+          token: project.gitlabConnection === null ? null : { username: project.gitlabConnection.username, expiresAt: project.gitlabConnection.expiresAt?.toISOString() ?? null, viewerIsOwner: project.gitlabConnection.userId === userId, projectCount: project.gitlabConnection._count.projects },
           viewer: viewerGitLab === null ? null : { username: viewerGitLab.username },
         } : undefined} />
       <CiCard slug={slug} host={ciHost} archived={archived} unpinned={unpinned} stale={planWorkflowStale(project.surfaces)}>{workflow}</CiCard>

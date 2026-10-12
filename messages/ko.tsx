@@ -2042,8 +2042,17 @@ export const ko = {
 
     repository: {
       gitlab: {
-        connectedVia: (username: string): string => `@${username}의 GitLab 토큰으로 동기화하고 게시합니다.`,
-        tokenLine: (username: string): string => `@${username}의 토큰`,
+        connectedWith: (username: string, expires: string | null): string =>
+          expires === null ? `@${username}의 토큰으로 연결됨` : `@${username}의 토큰으로 연결됨 · ${expires} 만료`,
+        connectedWithYours: (expires: string | null): string => (expires === null ? "내 토큰으로 연결됨" : `내 토큰으로 연결됨 · ${expires} 만료`),
+        expiresSoonYours: (days: number, date: string): string =>
+          `내 GitLab 토큰이 ${days.toLocaleString("ko-KR")}일 뒤(${date})에 만료됩니다. 이 프로젝트가 계속 동기화되도록 그 전에 교체하세요.`,
+        expiresSoonOther: (owner: string, days: number, date: string): string =>
+          `@${owner}의 GitLab 토큰이 ${days.toLocaleString("ko-KR")}일 뒤(${date})에 만료됩니다. 토큰 주인이 교체하거나, 내 GitLab 연결을 쓸 수 있습니다.`,
+        expiredYours: (date: string): string => `내 GitLab 토큰이 ${date}에 만료되었습니다. 이 프로젝트를 다시 연결하려면 토큰을 교체하세요.`,
+        expiredOther: (owner: string, date: string): string => `@${owner}의 GitLab 토큰이 ${date}에 만료되었습니다. 다시 연결할 때까지 동기화와 게시가 멈춥니다.`,
+        usedByUpdates: (n: number): string => `프로젝트 ${n.toLocaleString("ko-KR")}개가 이 토큰을 씁니다. 교체하면 모두 업데이트됩니다.`,
+        usedByReconnects: (n: number): string => `프로젝트 ${n.toLocaleString("ko-KR")}개가 이 토큰을 씁니다. 교체하면 모두 다시 연결됩니다.`,
         unusable: "이 프로젝트의 GitLab 토큰을 쓸 수 없습니다. 만료·철회되었거나 토큰 주인이 리포지토리 권한을 잃었을 수 있습니다. 다시 연결할 때까지 동기화와 게시가 멈춥니다.",
         removed: "이 프로젝트의 GitLab 연결이 해제되었습니다 — 연결한 사람이 GitLab 연결을 해제했거나 프로젝트를 떠났습니다. 프로젝트 소유자가 다시 연결할 때까지 동기화와 게시가 멈춥니다.",
         useMine: "내 GitLab 연결 사용",

@@ -4,8 +4,6 @@ import { Suspense, use, useState } from "react";
 import { Link2, Unplug } from "lucide-react";
 import { GithubIcon, GitlabIcon } from "@/components/signin/brand-icons";
 import { GitLabTokenForm } from "@/components/gitlab/token-form";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { formatDay } from "@/lib/date-format";
 import { repoWebUrl } from "@/lib/projects/repo-web";
@@ -35,7 +33,7 @@ import { STATE } from "@/lib/status/canon";
  * 참조가 비었으면 `null`이다(D21). `viewer`는 보는 사람(설정 = OWNER)의 계정 GitLab 연결 — 재연결은 그 연결로 참조를 바꾼다(명의가 바뀐다).
  */
 export type GitLabCardContext = {
-  token: { username: string; expiresAt: string | null; viewerIsOwner: boolean } | null;
+  token: { username: string; expiresAt: string | null; viewerIsOwner: boolean; projectCount: number } | null;
   viewer: { username: string } | null;
 };
 
@@ -52,7 +50,7 @@ export function RepositoryCard({ slug, owner, repo, branch, archived, unpinned =
   const shown = failure && !archived ? failure : null;
   // 머리 아래 선은 `Card`가 notice 아래에 긋는다(2026-10-01 4-Y1) — 비어 도착하는 Suspense notice도 선을 따로 들지 않는다.
   if (gitlab !== undefined) return <Card title={m.settings.repository.title} notice={
-    <Suspense fallback={null}><GitLabNotice health={health} failure={shown} /></Suspense>
+    <Suspense fallback={null}><GitLabNotice health={health} failure={shown} gitlab={gitlab} /></Suspense>
   }>
     <Suspense fallback={<ConnectionRowPending />}>
       <GitLabConnectionRow health={health} slug={slug} owner={owner} repo={repo} archived={archived} gitlab={gitlab} onFailure={setFailure} />
@@ -76,12 +74,27 @@ export function RepositoryCard({ slug, owner, repo, branch, archived, unpinned =
  * GitLab 카드 머리 아래 Alert — 끊김 사유 둘(D21·D22: 참조가 빈 것 · 토큰을 못 쓰는 것)과 주소 이동(`repo-moved` — 같은 id·다른 경로, GitHub 카드와
  * 같은 `health.moved` 문장·톤). 끊김은 Disconnected 톤(호박)이고 문장이 원인을 가른다.
  */
-function GitLabNotice({ health: pending, failure }: { health: Promise<ConnectionHealth>; failure: string | null }) {
+function GitLabNotice({ health: pending, failure, gitlab }: { health: Promise<ConnectionHealth>; failure: string | null; gitlab: GitLabCardContext }) {
   const m = useMessages();
+  const style = useDateStyle();
   const health = use(pending);
+  const { token } = gitlab;
+  const expiresAt = token?.expiresAt == null ? null : new Date(token.expiresAt);
+  const now = new Date();
+  const expiry = tokenExpiryState(expiresAt, now);
+  const g = m.settings.repository.gitlab;
+  /*
+    토큰 만료가 원인이면 날짜를 말한다(시안 G6b1·G6c1 · #251·#252) — 임박(연결 정상)도 warning 띠다. 주인이 보면 `Your …`, 다른 OWNER는 주인 이름이다.
+    그 밖의 못 씀(철회·접근 상실·보관)은 일반 문장이다.
+  */
+  const date = expiresAt === null ? "" : formatDay(expiresAt, style);
+  const days = expiresAt === null ? 0 : Math.max(1, Math.ceil((expiresAt.getTime() - now.getTime()) / 86_400_000));
   const reason = health.status === "repo-moved" ? m.settings.repository.health.moved(health.fullName)
-    : health.status === "connection-removed" ? m.settings.repository.gitlab.removed
-    : health.status === "connection-unusable" ? m.settings.repository.gitlab.unusable : null;
+    : health.status === "connection-removed" ? g.removed
+    : token !== null && expiry === "expired" ? (token.viewerIsOwner ? g.expiredYours(date) : g.expiredOther(token.username, date))
+    : health.status === "connection-unusable" ? g.unusable
+    : token !== null && expiry === "expiresSoon" && health.status === "ok" ? (token.viewerIsOwner ? g.expiresSoonYours(days, date) : g.expiresSoonOther(token.username, days, date))
+    : null;
   if (reason === null && failure === null) return null;
   return <>{reason !== null && <Alert inset variant="warning">{reason}</Alert>}{failure !== null && <Alert inset variant="danger">{failure}</Alert>}</>;
 }
@@ -100,58 +113,49 @@ function GitLabConnectionRow({ health: pending, slug, owner, repo, archived, git
   const m = useMessages();
   const style = useDateStyle();
   const router = useRouter();
-  const [replacing, setReplacing] = useState(false);
   const health = use(pending);
   const problem = connectionProblem(health.status);
-  const state = repositoryConnectionState(health.status, problem);
   const { token, viewer } = gitlab;
   const expiresAt = token?.expiresAt == null ? null : new Date(token.expiresAt);
   const expiry = tokenExpiryState(expiresAt, new Date());
-  // 끊김이거나 토큰이 곧(또는 이미) 만료면 복구를 보인다 — 연결 정상 + 만료 먼 토큰은 [Open on GitLab]뿐이다.
-  const recover = problem !== null || expiry !== "valid";
+  const g = m.settings.repository.gitlab;
   /*
-    ⚠️ **주소 이동은 끊김이 아니지만 복구 컨트롤이 있다** (R-Eui 🟡2 · POSTMORTEM 2026-09-19) — 쓰기는 숫자 id라 계속 되지만 화면의 주소·링크는 옛 이름이다.
-    GitHub 카드와 같은 형: `movedHint` + [Reconnect](GitLab 재연결이 새 `repoOwner/repoName`을 저장한다) + 새 주소로 [Open on GitLab].
+    ⚠️ **한 행이다** (시안 G6a · #250) — 토큰 주인·만료일은 행 보조줄이 든다. 연결이 정상인데 토큰이 곧 만료면 행이 `Expires soon`(호박)이다(G6b1 —
+    이 카드는 프로젝트 Connection과 토큰 자리를 한 행에 접는다. Home 메타의 Connection 행은 `connected` 그대로다 — design §2 톤 표).
   */
+  const base = repositoryConnectionState(health.status, problem);
+  const state = base === "connected" && expiry === "expiresSoon" ? "expiresSoon" : base;
+  const recover = problem !== null || expiry !== "valid";
   const moved = health.status === "repo-moved" ? health.fullName : null;
+  const expiryDate = expiresAt === null ? null : formatDay(expiresAt, style);
   const detail = health.status === "unknown" ? m.settings.repository.health.unknown
     : moved !== null ? m.settings.repository.movedHint
     : problem !== null ? m.settings.repository.paused
-    : token !== null ? m.settings.repository.gitlab.connectedVia(token.username) : null;
+    : token === null ? null
+    : token.viewerIsOwner ? g.connectedWithYours(expiryDate) : g.connectedWith(token.username, expiryDate);
   return <>
-    <div className={ROW}>
+    <div className={ROW} data-gitlab-row="">
       <IconTile tone={STATE[state].tone}>{problem === "disconnected" ? <Unplug className="size-4" aria-hidden /> : <GitlabIcon className="size-4" />}</IconTile>
       <div className="min-w-0 flex-1 space-y-copy-gap"><p className="text-base break-all"><span className="font-medium">{owner}/{repo}</span><StatusBadge state={state} className="ml-2 align-middle" /></p>{detail && <p className="text-muted-foreground text-xs">{detail}</p>}</div>
       {moved !== null && <fieldset disabled={archived}><ReconnectButton host="gitlab" spinnerSize="sm" onFailure={onFailure} slug={slug} server={health} label={m.settings.repository.reconnect} /></fieldset>}
       {(health.status === "ok" || moved !== null) && <ButtonLink variant="default" size="md" external href={moved !== null ? repoWebUrl("gitlab", moved.slice(0, moved.lastIndexOf("/")), moved.slice(moved.lastIndexOf("/") + 1)) : repoWebUrl("gitlab", owner, repo)} newTab rel="noreferrer">{m.settings.openRepo}</ButtonLink>}
     </div>
-    {token !== null && (
-      <div className={ROW}>
-        <IconTile tone={expiry === "valid" ? undefined : STATE[expiry === "expired" ? "expired" : "expiresSoon"].tone}><GitlabIcon className="size-4" /></IconTile>
-        <div className="min-w-0 flex-1 space-y-copy-gap">
-          <p className="text-base break-all"><span className="font-medium">{m.settings.repository.gitlab.tokenLine(token.username)}</span>
-            {expiry !== "valid" && <StatusBadge state={expiry === "expired" ? "expired" : "expiresSoon"} className="ml-2 align-middle" />}</p>
-          <p className="text-muted-foreground text-xs">{expiresAt === null ? m.account.gitlab.noExpiry : expiry === "expired" ? m.account.gitlab.expiredOn(formatDay(expiresAt, style)) : m.account.gitlab.expires(formatDay(expiresAt, style))}</p>
-        </div>
-        {token.viewerIsOwner && (
-          <fieldset disabled={archived}>
-            <Dialog open={replacing} onOpenChange={setReplacing}>
-              <DialogTrigger asChild><Button>{m.account.gitlab.replace}</Button></DialogTrigger>
-              <DialogContent title={m.account.gitlab.replaceTitle} description={m.account.gitlab.replaceHint(token.username)}>
-                <GitLabTokenForm autoFocus submitLabel={m.account.gitlab.replace} onConnected={() => { setReplacing(false); router.refresh(); }} />
-              </DialogContent>
-            </Dialog>
-          </fieldset>
-        )}
-      </div>
+    {/*
+      토큰 주인의 교체 — 인라인 PAT 폼이다(시안 G6b1·G6c1 · #251). 행 이름선(56)에서 시작하고, 교체가 이 연결을 쓰는 프로젝트 전부에 닿는다는 문장을 단다.
+      정상 + 만료 먼 토큰엔 서지 않는다(#250 — 교체는 `/account`에서도 된다).
+    */}
+    {recover && token?.viewerIsOwner === true && moved === null && (
+      <fieldset disabled={archived} className="pr-4 pb-4 pl-14">
+        <GitLabTokenForm submitLabel={m.account.gitlab.replace} note={problem !== null || expiry === "expired" ? g.usedByReconnects(token.projectCount) : g.usedByUpdates(token.projectCount)} onConnected={() => router.refresh()} />
+      </fieldset>
     )}
-    {recover && !token?.viewerIsOwner && (
+    {recover && token?.viewerIsOwner !== true && moved === null && (
       <div className="border-divider space-y-3 border-t px-4 py-row-y">
         {viewer !== null ? <>
-          <p className="text-muted-foreground text-xs">{m.settings.repository.gitlab.useMineHint(token?.username ?? null, viewer.username)}</p>
-          <fieldset disabled={archived}><ReconnectButton host="gitlab" spinnerSize="sm" onFailure={onFailure} slug={slug} server={health} label={m.settings.repository.gitlab.useMine} variant="primary" /></fieldset>
+          <p className="text-muted-foreground text-xs">{g.useMineHint(token?.username ?? null, viewer.username)}</p>
+          <fieldset disabled={archived}><ReconnectButton host="gitlab" spinnerSize="sm" onFailure={onFailure} slug={slug} server={health} label={g.useMine} variant="primary" /></fieldset>
         </> : <>
-          <p className="text-muted-foreground text-xs">{m.settings.repository.gitlab.connectFirst}</p>
+          <p className="text-muted-foreground text-xs">{g.connectFirst}</p>
           <fieldset disabled={archived}><GitLabTokenForm submitLabel={m.account.gitlab.form.connect} onConnected={() => router.refresh()} /></fieldset>
         </>}
       </div>

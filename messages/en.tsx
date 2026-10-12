@@ -3751,8 +3751,20 @@ export const en = {
        * 참조가 빈 것(`connection-removed`)과 토큰을 못 쓰는 것(`connection-unusable`).
        */
       gitlab: {
-        connectedVia: (username: string): string => `Syncs and publishes use @${username}'s GitLab token.`,
-        tokenLine: (username: string): string => `@${username}'s token`,
+        /** 연결 행 보조줄(시안 G6a) — 토큰 주인과 만료일. 주인이 보면 `your token`이다(G6b1·G6c1). */
+        connectedWith: (username: string, expires: string | null): string =>
+          expires === null ? `Connected with @${username}'s token` : `Connected with @${username}'s token · expires ${expires}`,
+        connectedWithYours: (expires: string | null): string => (expires === null ? "Connected with your token" : `Connected with your token · expires ${expires}`),
+        /** 머리 warning Alert(시안 G6b1·G6c1) — 남은 일수와 날짜. 다른 OWNER에게는 주인 이름으로 말한다. */
+        expiresSoonYours: (days: number, date: string): string =>
+          `Your GitLab token expires in ${days.toLocaleString("en-US")} ${days === 1 ? "day" : "days"}, on ${date}. Replace it before then to keep this project syncing.`,
+        expiresSoonOther: (owner: string, days: number, date: string): string =>
+          `@${owner}'s GitLab token expires in ${days.toLocaleString("en-US")} ${days === 1 ? "day" : "days"}, on ${date}. They can replace it, or you can use your own GitLab connection.`,
+        expiredYours: (date: string): string => `Your GitLab token expired on ${date}. Replace it to reconnect this project.`,
+        expiredOther: (owner: string, date: string): string => `@${owner}'s GitLab token expired on ${date}. Syncs and publishes stop until it's reconnected.`,
+        /** 인라인 교체 폼의 도움말 뒤 — 교체가 이 연결을 쓰는 프로젝트 전부에 닿는다(계정 연결 참조 모델). */
+        usedByUpdates: (n: number): string => `Used by ${n.toLocaleString("en-US")} ${n === 1 ? "project" : "projects"}. Replacing it updates all of them.`,
+        usedByReconnects: (n: number): string => `Used by ${n.toLocaleString("en-US")} ${n === 1 ? "project" : "projects"}. Replacing it reconnects all of them.`,
         unusable: "This project's GitLab token can't be used. It may have expired or been revoked, or its owner may have lost access to the repository. Syncs and publishes stop until it's reconnected.",
         removed: "This project's GitLab connection was removed — the person who connected it disconnected GitLab or left the project. Syncs and publishes stop until a project owner reconnects it.",
         useMine: "Use my GitLab connection",

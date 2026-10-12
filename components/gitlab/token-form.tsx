@@ -26,8 +26,10 @@ type Connected = Extract<Awaited<ReturnType<typeof connectGitLab>>, { ok: true }
  * ⚠️ **입력 중엔 서버로 보내지 않는다** — [Connect]만 보낸다(검증이 GitLab을 부른다). ⚠️ **성공하면 값을 비운다** — 붙여 넣은 원문은
  * 연결 뒤 다시 보이지 않는다(보여 주는 형은 `push-token-panel` 하나뿐이다). ⚠️ 일시 장애는 "무효"로 접지 않는다 — 같은 값으로 다시 누르면 된다.
  */
-export function GitLabTokenForm({ submitLabel, onConnected, autoFocus = false }: {
+export function GitLabTokenForm({ submitLabel, onConnected, autoFocus = false, note }: {
   submitLabel: string;
+  /** 도움말 뒤에 붙는 한 문장 — 설정 카드의 교체가 "이 연결을 쓰는 프로젝트 N개 전부"에 닿는다고 말한다(시안 G6b1·G6c1). */
+  note?: string;
   onConnected: (connection: Connected) => void;
   /** Dialog 안(토큰 교체)이면 입력이 할 일이라 첫 포커스다(`primitive-focus.test.tsx` — Dialog 소비자는 첫 포커스를 정한다). */
   autoFocus?: boolean;
@@ -66,7 +68,7 @@ export function GitLabTokenForm({ submitLabel, onConnected, autoFocus = false }:
   const describedBy = [helpId, pending ? statusId : null, error !== null ? errorId : null].filter((part) => part !== null).join(" ");
   return (
     <form onSubmit={submit} className="space-y-2">
-      <FormGroup label={m.account.gitlab.form.label} htmlFor={id} help={m.account.gitlab.form.help}>
+      <FormGroup label={m.account.gitlab.form.label} htmlFor={id} help={note === undefined ? m.account.gitlab.form.help : `${m.account.gitlab.form.help} ${note}`}>
         {() => (
           <div className="flex w-[480px] max-w-full items-start gap-2 @max-form:w-full">
             <Input
