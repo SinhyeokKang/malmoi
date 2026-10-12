@@ -5,7 +5,7 @@
 ## 시작점·권한
 
 - 시작 dev: `b7c58993` (= origin/dev). 범위는 tasks §0~§6. **프로덕션 배포·prod `db:deploy`·GitLab 활성화(tasks §6 마지막 항목)는 `/merge` 몫이라 이 런 밖이다.**
-- 지휘자: Claude Code. 워커는 Orca Task/Dispatch, 모델 패밀리는 **Claude Sonnet·Opus만**(effort ≤ high). Codex 교차 허가 없음.
+- 지휘자: Claude Code. 워커는 Orca Task/Dispatch, 모델 패밀리는 Claude Sonnet·Opus(effort ≤ high). **Codex 교차 허가(사용자 2026-10-12, D18): E-sh·F 구현 + R-C 교차 리뷰만, Astra(`gpt-6-astra`) effort medium.** 그 밖 배치는 Claude.
 - 사용자: `/orchestrate gitlab-repositories` 호출(2026-10-12) — 이것이 spec §6 "구현 시점" 재결정이다.
 - **push는 한 번이다** — tasks 서문 "커밋 A·B1·B2·C·D·E는 같은 `/push` 배치 하나"(2026-10-12 사용자 결정). 지휘자는 배치를 로컬 dev에 cherry-pick + `pnpm gate`로 쌓고, **E까지 통합된 뒤에** dev DB 마이그레이션(`/db` 5단계) → `git push` → CI를 본다. 그 뒤 런타임 QA.
 - 작업 트리: 인테이크 때 clean.
@@ -40,6 +40,7 @@
 | D15 | 디렉터리 = `lib/repo-host/`(경계) · `lib/gitlab/`(B transport + C client·reader·publish) · `lib/gitlab-connect/`(B2 PAT 연결, `lib/github-connect/` 짝). `lib/github.ts`는 제자리. 트리거: 앞 둘은 `test:projects:postgres`, `gitlab-connect`는 `github-connect`와 같은 스위트 | 지휘자 판단(A `ask`) — 기존 `github-connect` 대칭 |
 | D16 | 호출자 접근 대조(onboarding-run `import`·`add`·`detect`)는 `sameRepository` + **GitHub 갈래는 `installationId` 동일까지** — 헬퍼 하나(`lib/repo-host/`). App 재설치 뒤에도 지금처럼 `repo-replaced`/`repo-forbidden` | 지휘자 판단(A `ask`) — A의 목표가 GitHub 동작 변화 0 |
 | D17 | GitLab CI 변수 `MALMOI_I18N_*` 11개는 `brand-spelling.test.ts`의 `UPPER_EXCEPTIONS`에 **정확한 이름으로** 등재(접두 규칙 아님, D1이 그 파일을 고친다) | 지휘자 판단(D1 `ask`) — 기존 예외가 정확한 이름 목록이라 오타가 red로 남는다 |
+| D18 | Codex 교차 허가 — **E-sh·F 구현, R-C 교차 리뷰(Opus 리뷰와 별도)** 에만 Astra(`gpt-6-astra`, effort medium 상한). 재시도·수정 라운드도 같은 워커·같은 effort | 사용자 2026-10-12 — 토큰 분산, 계약이 확정된 곁가지 배치 |
 
 ## 배치·파일 소유권
 
@@ -50,14 +51,14 @@
 | E0 용어 정본 | §5 첫·넷째 항목 | `docs/DESIGN.md`(§10.1·§2.4·§6·§6.2·§6.8) · `lib/i18n/__tests__/helpers/banned-terms.ts` · `lib/i18n/__tests__/terminology.test.ts` · `components/signin/brand-icons.tsx` · `components/__tests__/gitlab-glyph.test.ts` | W0 | opus / medium — ko 조사 규칙·금지어 회귀 | 대기 |
 | D1 CI 템플릿 | §4 첫 항목 + §1 "CI 입력" 순수 함수 | GitLab 템플릿 생성기(`lib/onboarding/` 짝) · 템플릿 원본(W0가 위치 확정) · `lib/pull/__tests__/skip-marker.test.ts` · `docs/ACTIONS.md` GitLab 절 | W0 | opus / medium — 루프 가드 두 겹·불변 참조·`api-url` | 대기 |
 | B 스키마·연결 | §2 B1·B2 | `prisma/schema.prisma` · `prisma/migrations/<new>/` · PAT 연결 Server Action · 연결 참조 · `credential-separation.test.ts` · `locked-access.test.ts` · **최소 GitLab transport(읽기 GET·숫자 id 주소·`execution.fetch` 주입점·오류 분류)** · `lib/privacy/collected.ts` 등재(새 필드) · **App 구성 여부 판정 헬퍼(D4a)** · `connectRepository` 호스트 가드 | A | opus / high — 봉투·잠금·인가 | 대기 |
-| E-sh 셀프 호스팅·개인정보 | §5 여덟·아홉째 항목 | `lib/deployment/preflight.ts`(D4) · `deploy/.env.example` · `lib/credentials/conversion.ts` · `guide/*/self-hosting/` · `/privacy` 본문(`messages/ko-privacy.tsx`·en `publicDocs.privacy` 절 — 그 절만 E-sh 소유)·`lib/privacy/`(collected.ts는 B) | B | opus / medium | 대기 |
+| E-sh 셀프 호스팅·개인정보 | §5 여덟·아홉째 항목 | `lib/deployment/preflight.ts`(D4) · `deploy/.env.example` · `lib/credentials/conversion.ts` · `guide/*/self-hosting/` · `/privacy` 본문(`messages/ko-privacy.tsx`·en `publicDocs.privacy` 절 — 그 절만 E-sh 소유)·`lib/privacy/`(collected.ts는 B) | B | **codex astra / medium**(D18) | 대기 |
 | C GitLab I/O | §3 | GitLab 쓰기·Publish·MR(B의 transport 위)·가짜 · Publish/Sync/야간 배선 · `lib/pull`·`lib/sync`·`lib/import`·`lib/nightly` GitLab 경로 · 연결 상태 `*.integration.ts` | B | opus / high — 실행 수명·중복 MR·fork MR | 대기 |
-| F 스모크·roundtrip | §6 첫 항목 | `scripts/smoke-gitlab.ts` · `package.json`(script 한 줄) · `.claude/commands/roundtrip.md`(+ 미러) | C | sonnet / medium | 대기 |
+| F 스모크·roundtrip | §6 첫 항목 | `scripts/smoke-gitlab.ts` · `package.json`(script 한 줄) · `.claude/commands/roundtrip.md`(+ 미러) | C | **codex astra / medium**(D18) | 대기 |
 | D2 MCP | §4 둘째 항목 | `lib/mcp/tools/*` · MCP 응답 문구(`messages/{en,ko,es}.tsx`의 `mcp` 절 — 새 키면 세 사전) | C · E-sh | opus / medium — 호환 정책·인가 | 대기 |
 | E-ui 화면·사전 | §5 둘·셋·다섯·일곱째 항목 + 여섯째의 (E-ui) 하위 항목 | `lib/status/canon.ts` · `components/onboarding|settings|account|home|projects|logs|shell/*` · `messages/{en,ko,es}.tsx` · `lib/invitation-email/template.ts` | D2 · E0 · E-sh | opus / high — 문장 분기·접근성·375 | 대기 |
 | E-doc 정본·가이드 | §5 여섯째의 (E-doc) 하위 항목 | `docs/{PRODUCT,ARCHITECTURE,DIRECTORY,OPERATIONS}.md` · `README.md` · `guide/{en,ko,es}/`(셀프 호스팅 제외) · OPERATIONS 롤백 줄(D6a) | E-ui | sonnet / medium — 결정(D3)대로 문장 갱신 + `/translate` ① | 대기 |
 | QA 런타임 | §5 [수동] · §6 + D1 [수동](실제 GitLab CI) | main 체크아웃, 읽기 전용(`/runtime-test` · `/roundtrip`) | push 후 | opus / medium | 대기 |
-| R 독립 리뷰 | — | 읽기 전용, `.scratch/review-<batch>.md` | 각 배치 인계 | opus / medium | — |
+| R 독립 리뷰 | — | 읽기 전용, `.scratch/review-<batch>.md` | 각 배치 인계 | opus / medium(A·B·C는 high) · **R-C는 codex astra 교차 리뷰 추가**(D18) | — |
 
 ## 파일 겹침·실행 순서
 
@@ -94,3 +95,4 @@
 - 2026-10-12: E0 통합 뒤 `pnpm gate` = `FAILED at test` — `components/__tests__/api-contract.test.ts` 5건, 병렬 워커 부하 타임아웃(단독 재실행 54/54 green). push 전 무부하 `gate: ok`를 다시 근거로 쓴다.
 - 2026-10-12: D1 인계(커밋 5, gate ok) → R-D1 🔴0·🟡3 → D1 fix1(tsconfig include `.gitlab/**/*.ts` · push.sh 마커·SHA 줄 실행 테스트). **E-ui 브리프 필수**(R-D1 🟡2): `GITLAB_CI_RELEASE.sha=null`이면 화면이 GitLab CI 템플릿을 내지 않는다. **`/merge` 준비물**: 태그 `malmoi-i18n-push-gitlab-v1` 발행 + `GITLAB_CI_RELEASE.sha` 채움(그 전엔 GitLab CI job이 fail-closed).
 - 2026-10-12: D1 fix1(커밋 2, gate ok) → dev 통합. E-ui 계약: `GITLAB_CI_RELEASE.sha`가 40자 hex가 아니면 GitLab CI 템플릿을 내지 않는다.
+- 2026-10-12: A 인계(커밋 3, gate ok, 75파일) → R-A(opus high) 🔴1(테스트 두 곳의 쓰기 0 단언이 삭제된 메서드 문자열을 들어 공허)·🟡1·⚪8, GitHub 동작 보존 위반 0 → A fix1. B 브리프에 ⚪2(`targetOfAccess`)·⚪4(credentials 트리거 인계). C 브리프 몫: ⚪3(`sizes` 앞 `MAX_FILES` 판정)·⚪8(publishSnapshot 중간 실패 GitHub 사례). E-doc 몫: ⚪7(ARCHITECTURE §3 `createRef` 서술).
