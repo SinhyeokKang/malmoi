@@ -136,3 +136,45 @@
 - 2026-10-13: E-ui fix3(hook 힌트, gate ok 14359) → 통합. **무부하 최종 게이트 `gate: ok`**(14359 · projects 689 · credentials 70 · build · 미러 — 검색 성능 재측정 통과로 부하 플레이크 확정). **push `b7c58993..f3bdda0f`(130커밋)**, dev CI run 38271715455 green. QA(Codex Astra 단일, main 체크아웃) 착수 — 실제 GitLab 파이프라인·Docker 셀프 호스팅 왕복은 CI 태그 미발행이라 범위 밖.
 - 2026-10-13: QA(Astra) 완료 — GitLab merge !5·squash !6·fast-forward !7 왕복(사전 렌더 해시 = 원격 blob · 스킵 마커 보존 · 재적재 값) · no-changes !8(MR 닫기·브랜치 삭제, 재실행 쓰기 0) · `/api/push` 적재·deferred·409·failure 204 · 연결 해제/재연결·Logs 문장 · GitHub 회귀 PR #21 머지·재Sync 907키·렌더 diff 0 · 375·다크. 결함 #258(CI 변수 라벨)·#259(CLI 보류 경고 PR 낱말) → E-ui 수정 통합. **미실행**: 긴 하위 그룹 실물 픽스처 · 일시 장애 주입 · Reporter 강등(주인 하나) · MCP 왕복(세션에 MCP 없음) · Docker 셀프 호스팅 · 실제 GitLab CI(태그 미발행). 게이트 `gate: ok`(14374). E-doc 워크트리 정리.
 - 2026-10-13: QA 재확인 — #258·#259 닫힘(설정 CI 모달의 #258 갈래는 SHA 미발행이라 라이브 미도달, 테스트로 덮음). 두 번째 push `f3bdda0f..4449ffb6` CI run 38276050774 green. 워커 전원 해제·워크트리 정리. tasks 체크 41/45(남은 넷: 실제 GitLab CI · 셀프 호스팅 설치본 · 실물 실패 주입 · prod 배포). POSTMORTEM 추가(`9b62ec0e`) — 후속 후보: `button`·`list-row`·`segmented-control`의 삼항 인라인 핸들러. 런 종료.
+
+---
+
+# 감사 리팩터 런 (2026-10-13)
+
+원본: [audit.md](./audit.md)(GitLab 전체 감사 — 🔴0 · 🟡22 · ⚪28). 범위 = audit의 🟡 전부 + "사용자 결정" 둘(U5·B⚪1) + ⚪ 처리 요약의 "수정"·"피어 뒤" 항목. "기록만"은 범위 밖. 끝은 dev(`/merge` 없음).
+
+- 시작 dev: `4fb546b9`(가이드 Create 장 분리 push + CI green 뒤). 지휘자 Claude Code, 워커 Claude Sonnet·Opus(effort ≤ high). 교차 허가 없음.
+- 사용자: "orch로 refactor 시작해"(2026-10-13) · 수정은 main 체크아웃 기준 dev 위에서(워커 워크트리는 orch 규칙대로).
+
+## 결정 기록 (감사 런)
+
+| ID | 결정 | 근거 |
+| --- | --- | --- |
+| R1 | PAT 만료일(날짜 전용)은 **UTC 날짜**로 찍는다 — `FIXED_UTC`·ARCHITECTURE §6.356·DESIGN에 예외 | 사용자 2026-10-13 (audit U5) |
+| R2 | 저장 만료일이 지난 GitLab 연결은 **야간 대상에서 제외** | 사용자 2026-10-13 (audit B⚪1) |
+| R3 | B1(끊긴 GitLab 프로젝트의 CI 보류): **판정은 그대로, 문구만** — 서버가 원인을 아는 경우(참조 비움·저장 만료) Logs·CI 경고가 재연결을 말한다. 사유 값 추가 대신 GitLab `pr-check-failed` 문장에 재연결 절을 붙이는 쪽을 우선(응답 계약·CLI 허용 목록 불변) | 지휘자 판단 — 외부 계약(`/api/push` 사유 값)을 늘리지 않는 쪽이 작다 |
+| R4 | U2(Home GitLab [Reconnect]): GitLab 갈래는 설정 Repository 카드로 가는 링크 버튼 — 명의 변경 문장(G6c)은 설정 카드 한 곳에만 | 지휘자 판단 — D25 "재연결 컨트롤"은 링크로 충족, 문장의 집을 하나로 |
+| R5 | U4: ko의 GitLab job 낱말은 **"작업"**(`CI 작업`)으로 통일 | 지휘자 판단 — 가이드 h1·`hookDoc`이 이미 "작업", ko 사전은 영어 낱말을 피한다(DESIGN §10) |
+| R6 | E4: 연결자 쪽 실패(만료·철회·보관)에서의 Sync는 리더 열기 전 **거부**(`ingest-failed` 아님) — 기존 거부 코드·문장 재사용을 우선 | 지휘자 판단 — D25(Home은 Sync 비활성)와 같은 결과를 MCP·Action 직접 호출에도 |
+| R7 | ⚪ "기록만" 항목(A9·B4·B5·C5-6·C5-8·E6·E7·E10·E12·U7·U8)은 이 런에서 고치지 않는다 | audit 처리 요약 |
+
+## 배치
+
+| 배치 | audit 항목 | 소유 파일(요지) | 모델 / effort | 상태 |
+| --- | --- | --- | --- | --- |
+| S 경계·테스트 | A1·A8 · A2~A7 · E1·E2·E3·E5 · E8(코드 주석·테스트 이름) · E9 | `lib/gitlab/transport.ts`(+test) · `lib/github-connect/__tests__/credential-separation.test.ts` · `lib/onboarding-run/{access.ts 주석, __tests__/*}` · `lib/projects/__tests__/remote*` · 가짜 리포 compare · `app/(edit)/account/actions.ts` 주석 · `lib/gitlab-connect/__tests__/*` 이름 | opus / high — 보안 경계 스캐너(ts-morph)·뮤테이션 확인 | 대기 |
+| C 문구·동작 | B1(R3) · U1 · U2(R4) · U4(R5) · G-2(사전) · U6 · U9 · E4(R6) | `messages/{en,ko,es}.tsx` · `lib/i18n/__tests__/terminology.test.ts` · `lib/cli/push-response.ts` · `lib/mcp/tools/sources.ts` · `components/home/actions.tsx` · `components/gitlab/token-form.tsx`·`lib/gitlab-connect/message.ts` · `lib/onboarding-run/import.ts`·`lib/import/run.ts` | opus / high — 세 사전·거부 라우팅 | 대기 |
+| L 로직 | U3 · B2 · U5(R1) · B⚪1(R2) · E11 | `lib/pull/run.ts`(closedPrComment) · `lib/pull/payload.ts` · `lib/pull/targets.ts`(+입력 생산자) · PAT 만료일 표시 컴포넌트 셋(account gitlab-section · settings repository-card · onboarding steps/repo) · `lib/__tests__/date-format-consumers.test.ts` · `gitlabTokenExpiresAt` 타입·생산자 | opus / medium — 국소 수정 | 대기 |
+| D 문서 | C5-1 · D7-1~D7-4 · B3 · C5-2(문서) · C5-3 · C5-7 · R1의 ARCHITECTURE §6.356 줄 | `docs/{SELF-HOSTING,DIRECTORY,ACTIONS,ARCHITECTURE}.md` · `CLAUDE.md`(+미러) · `deploy/compose.yaml`(+게이트 테스트) · `lib/deployment/github-app.ts` 주석 | sonnet / high — 사실 정정, 판단 적음 | 대기 |
+| G 가이드·DESIGN | G-1 · G-2(가이드) · G-3 · C5-4 · C5-5 · G-4 · DESIGN §10.1 행(R5) · DESIGN R1 예외 | `guide/{en,ko,es}/**`(새 Create 장 경로 기준) · `docs/DESIGN.md` | opus / medium — 세 언어 원고·AUTHORING 규칙 | 대기 |
+| R 리뷰 | 각 배치 | 읽기 전용, `.scratch/ga/review-<batch>.md` | opus / medium(S는 high) | — |
+| QA 런타임 | U2 링크 · PAT 만료일 표시 · PAT 폼 세션 거부 문장 · Logs 보류 문장 | main 체크아웃, `/runtime-test`, BugShot | opus / medium | 대기 |
+
+### 파일 겹침·순서
+
+- S·C·L·D·G **병렬**. 겹침 없음: `messages/*`는 C 단독(L·G·D는 사전을 건드리지 않는다), `ARCHITECTURE`·`CLAUDE.md`는 D 단독, `DESIGN.md`·`guide/**`는 G 단독, `credential-separation.test.ts`는 S 단독(C·L이 새 GitLab 호출 자리를 만들면 S 통합 뒤 지휘자가 게이트로 본다).
+- `lib/onboarding-run/access.ts`(S 주석) vs `import.ts`(C) — 다른 파일. C가 `access.ts`를 고쳐야 하면 미룬 항목으로 남긴다.
+- 통합 순서: 끝나는 대로 cherry-pick → `pnpm gate` → push(배치마다 또는 묶어서) → CI. QA는 전 배치 통합 뒤.
+
+## 진행 기록 (감사 런)
+
