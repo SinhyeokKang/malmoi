@@ -112,8 +112,9 @@ describe("withSkipMarker — 재사용 PR 제목에 마커를 되돌린다", () 
     expect(withSkipMarker("Translations for 2.0")).toBe(`Translations for 2.0 ${SKIP_MARKER}`);
   });
 
-  it("덧붙이면 GitHub 제목 상한(256자)을 넘는 경우에만 기본 제목으로 폴백한다 — 422로 pull이 죽지 않게", () => {
-    const longest = "x".repeat(256 - SKIP_MARKER.length - 1);
+  it("덧붙이면 두 호스트의 공통 상한(255자 — GitLab MR, GitHub은 256)을 넘는 경우에만 기본 제목으로 폴백한다 — 422·400으로 pull이 죽지 않게", () => {
+    // audit B2: GitHub 기준 256이면 사람이 고친 237자 MR 제목에 마커를 붙여 256자가 되고 GitLab `PUT merge_requests`가 거부한다.
+    const longest = "x".repeat(255 - SKIP_MARKER.length - 1);
     expect(withSkipMarker(longest)).toBe(`${longest} ${SKIP_MARKER}`);
     expect(withSkipMarker(`${longest}y`)).toBe(PR_TITLE);
   });
