@@ -3725,35 +3725,48 @@ export const en = {
       "duplicate-key": "The same key appears more than once. Send each key once per call.",
       // `read_docs`의 없는 page — 공용 `not-found`는 프로젝트 문장이라 쓰지 않는다. 다음 행동(목차 부르기)을 함께 말한다.
       "docs-page-not-found": "No guide page with that name. Call read_docs with no arguments to list pages.",
+      // GitLab CI 원본의 릴리스 SHA가 아직 없다(`GITLAB_CI_RELEASE`) — 박힌 SHA 없는 파일을 내지 않는다. 그동안의 길(앱에서 Sync)을 함께 말한다.
+      "workflow-unavailable": "The GitLab CI file isn't available in this version of Malmoi yet. Until it is, sync from Malmoi to load repository changes.",
+      /**
+       * GitLab에만 있는 리포 거부(`GitLabAccessError`) — 화면 사전에 아직 문장이 없어 MCP가 여기서 든다. ⚠️ 화면 문장이 생기면(E-ui) 그쪽으로
+       * 옮기고 이 절을 지운다 — 같은 거부에 문구가 두 벌이면 안 된다. 연결 없음·토큰 교체는 needs-browser라 거부 문장이 아니다.
+       */
+      gitlab: {
+        "gitlab-not-connected": "Connect your GitLab account on the Account page first.",
+        "gitlab-reconnect": "Your GitLab token can't be used anymore. Replace it on the Account page.",
+        "gitlab-repo-archived": "This GitLab project is archived. Unarchive it in GitLab, then try again.",
+        "gitlab-repo-unsupported": "This GitLab project uses SHA-256 object format, which Malmoi doesn't support.",
+        "gitlab-project-disconnected": "This project's GitLab connection was removed. An owner can reconnect it in the project's settings.",
+      },
     },
     /** 도구 설명(`tools/list`의 `description`) — 에이전트가 도구를 고르는 근거다. 핸들이 필요한 도구는 무엇을 먼저 부르는지 말한다. */
     tools: {
       whoami: "Show who this token belongs to, whether GitHub is connected, and what the token may do (permissions, projects, expiry).",
       list_projects: "List the projects you can use with this token, with your role, repository, and whether each is ready.",
-      get_project: "Show a project's overview: sources, languages, key counts, changes to send, the last publish's pull request, and repository connection. Whether a pull request is open now comes from preview_publish.",
-      list_repositories: "List the GitHub repositories you can connect to a new project. Needs the Create projects permission.",
-      list_branches: "List a repository's branches. Pass { owner, repo } for a new project or { slug } for an existing one, not both.",
-      detect_formats: "Find the translation files in a repository. Pass { owner, repo, ref? } for a new project or { slug } for an existing one. Returns candidates with a confirmation to pass to create_project or add_sources.",
+      get_project: "Show a project's overview: sources, languages, key counts, changes to send, the last publish's pull request (lastPublishMergeRequest for a GitLab project — repositoryHost says which), and repository connection. Whether one is open now comes from preview_publish.",
+      list_repositories: "List the repositories you can connect to a new project — GitHub by default, or GitLab with host: \"gitlab\" (uses the GitLab token connected on your Account page). Needs the Create projects permission.",
+      list_branches: "List a repository's branches. Pass { owner, repo } for a new GitHub project, { host: \"gitlab\", repositoryId } for a new GitLab project, or { slug } for an existing one — only one of them.",
+      detect_formats: "Find the translation files in a repository. Pass { owner, repo, ref? } for a new GitHub project, { host: \"gitlab\", repositoryId, ref? } for a new GitLab project, or { slug } for an existing one. Returns candidates with a confirmation to pass to create_project or add_sources.",
       list_keys: "List translation keys with their completion. Covers all of the project's sources unless the query sets scope to source or namespace (ns picks the namespace). The query takes completion (incomplete, missing with missingLocale, or complete), state (unsent, review, or new), and q to search keys, source text, and translations, plus a cursor for the next page.",
       get_key: "Show one key: its source text, every language's value, review and unsent flags, and where the code uses it.",
-      preview_publish: "Preview what Publish would send in a pull request. Returns a fingerprint to pass to publish, and pullRequest: open (with its url), none, or unknown when GitHub couldn't be checked.",
+      preview_publish: "Preview what Publish would send in a pull request (a merge request for a GitLab project). Returns a fingerprint to pass to publish, and pullRequest (mergeRequest for GitLab): open (with its url), none, or unknown when the repository couldn't be checked.",
       preview_sync: "Preview a sync from the repository and how many unsent edits it would discard. Returns an approval to pass to sync_repository.",
       preview_revert: "Preview reverting one key to the version last confirmed as sent. Returns a confirmation to pass to revert_to_last_sent.",
-      preview_source_removal: "Preview removing a source: how many unsent edits it has, and whether a Malmoi pull request is open (open, none, or unknown). Returns an approval to pass to remove_source when there are unsent edits.",
+      preview_source_removal: "Preview removing a source: how many unsent edits it has, and whether a Malmoi pull request is open (open, none, or unknown — mergeRequest for a GitLab project). Returns an approval to pass to remove_source when there are unsent edits.",
       list_events: "List a project's activity log, newest first. Takes the same filters as the Logs screen and a cursor.",
-      get_workflow: "Get the GitHub Actions workflow file for the project's repository. It reads the push token from the PUSH_TOKEN secret.",
+      get_workflow: "Get the CI file for the project's repository: the GitHub Actions workflow, or .gitlab-ci.yml for a GitLab project. It reads the push token from PUSH_TOKEN (a GitHub secret or a GitLab CI/CD variable).",
       list_members: "List a project's members with masked email labels. Owners also see pending invitations.",
       read_docs: "Read Malmoi's user guide (the Docs at /docs). Call it first when a refusal, a concept, or how to do something in Malmoi is unclear — permissions, Publish, the translation screen. With no arguments it returns the contents. Pass page with a value from the contents (the same as the path after /docs/ in a guide URL) for the whole page, or query to search sections. Pass page or query, not both.",
-      create_project: "Create a project from a repository using the candidates and confirmations from detect_formats, and run the first sync. Returns a push token once. Set it with gh secret set PUSH_TOKEN --repo OWNER/REPO, passing the token on standard input — don't use --body (--body - stores a literal \"-\").",
+      create_project: "Create a project from a repository using the candidates and confirmations from detect_formats, and run the first sync. Pass { owner, repo } for GitHub or { host: \"gitlab\", repositoryId } for GitLab. Returns a push token once. For GitHub, set it with gh secret set PUSH_TOKEN --repo OWNER/REPO, passing the token on standard input — don't use --body (--body - stores a literal \"-\"). For GitLab, add it as the PUSH_TOKEN CI/CD variable (Protected and Masked).",
       add_sources: "Add translation sources to a project using the candidates and confirmations from detect_formats({ slug }), and run their first sync.",
       set_translations: "Save translations for up to 100 keys in one call. A rejected key is skipped and the rest are saved; while a sync is running, the whole call is refused with the time to try again.",
-      publish: "Send saved changes to the repository as a pull request. Call preview_publish first and pass its fingerprint.",
+      publish: "Send saved changes to the repository as a pull request (a merge request for a GitLab project). Call preview_publish first and pass its fingerprint.",
       sync_repository: "Load the repository's values into Malmoi, discarding unsent edits. Call preview_sync first and pass its approval.",
       revert_to_last_sent: "Revert one key's unsent languages to the version last confirmed as sent. Call preview_revert first and pass its confirmation.",
       update_project: "Change a project's name or base branch.",
       set_base_locale: "Declare a source's base language. It takes effect after the next sync from the repository.",
       remove_source: "Remove a source from the project. Its keys, translations, and history are kept, and files in the repository aren't changed. Adding the same path with the same file format again brings it back and replaces its unsent edits with the repository's values, only where the repository has a value. If it has unsent edits, call preview_source_removal first and pass its approval. The last source can't be removed.",
-      rotate_push_token: "Issue a new push token. The old one stops working at once. Set it with gh secret set PUSH_TOKEN --repo OWNER/REPO, passing the token on standard input — don't use --body (--body - stores a literal \"-\").",
+      rotate_push_token: "Issue a new push token. The old one stops working at once. For GitHub, set it with gh secret set PUSH_TOKEN --repo OWNER/REPO, passing the token on standard input — don't use --body (--body - stores a literal \"-\"). For GitLab, update the PUSH_TOKEN CI/CD variable.",
       invite_members: "Invite people by email. Each invitation goes out by email and the link isn't returned.",
       revoke_invitation: "Revoke a pending invitation.",
       change_member: "Change a member's role, or remove them with nextRole: null. The last owner can't be removed.",
@@ -3814,6 +3827,26 @@ export const en = {
       // 0건은 거부가 아니다 — 다음 행동(목차)을 붙인다. ⚠️ `No … match “q”` 꼴이 아니다: 그 꼴은 화면 0건 **제목** 형(C23, 마침표 없음)이고
       // 이것은 다른 summary처럼 건수로 시작하는 문장이다.
       guideNoMatches: (q: string): string => `0 guide sections match “${q}”. Call read_docs with no arguments to see the contents.`,
+      /**
+       * GitLab 프로젝트의 요약 — 같은 결과를 GitLab 어휘(merge request · CI/CD 변수 · `.gitlab-ci.yml`)로 말한다(D26). GitHub 요약은 위 그대로다.
+       * `WithoutCi`는 CI 원본 릴리스 SHA가 아직 없을 때다(`workflow-unavailable`과 같은 판정).
+       */
+      gitlab: {
+        workflow: "CI file for the repository. Store the push token as the PUSH_TOKEN CI/CD variable (Protected and Masked).",
+        publishPreview: (n: number): string => n === 0 ? "Nothing to send." : `${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"} would be sent in a merge request. Publish with this fingerprint.`,
+        published: (view: string): string =>
+          view === "created" ? "Sent for review in a new merge request."
+          : view === "updated" ? "Updated the open merge request."
+          : view === "partial" ? "Some changes weren't sent. See the result for why."
+          : "Nothing changed — the repository already has these values.",
+        pushToken: "New push token issued. The old one stopped working. Update the PUSH_TOKEN CI/CD variable in the GitLab project's settings.",
+        created: (slug: string, keys: number): string =>
+          `Created ${slug} with ${keys.toLocaleString("en-US")} ${keys === 1 ? "key" : "keys"}. Add the push token as the PUSH_TOKEN CI/CD variable (Protected and Masked) first, then commit the jobs to .gitlab-ci.yml.`,
+        createdWithoutCi: (slug: string, keys: number): string =>
+          `Created ${slug} with ${keys.toLocaleString("en-US")} ${keys === 1 ? "key" : "keys"}. Keep the push token for the PUSH_TOKEN CI/CD variable — the GitLab CI file isn't available yet, so sync from Malmoi until it is.`,
+        sourcesAdded: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "source" : "sources"} added. Get the updated .gitlab-ci.yml with get_workflow and replace the Malmoi jobs with it.`,
+        sourcesAddedWithoutCi: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "source" : "sources"} added. The GitLab CI file isn't available yet, so sync from Malmoi to load repository changes.`,
+      },
       syncPreview: (unsent: number): string => unsent === 0
         ? "Sync will load the repository's values. No unsent edits will be discarded."
         : `Sync will load the repository's values and discard ${unsent.toLocaleString("en-US")} ${unsent === 1 ? "unsent edit" : "unsent edits"}.`,
@@ -3826,6 +3859,9 @@ export const en = {
       "not-connected": "Connect your GitHub account in your browser, then call this tool again.",
       reauthorize: "Your GitHub authorization expired. Reauthorize in your browser, then call this tool again.",
       "no-installations": "Install the GitHub App in your browser, then call this tool again.",
+      // GitLab은 계정 연결(PAT)이 `/account`에 있다 — 도구는 PAT를 받지 않는다(개인 토큰이 자격증명을 만들지 않는다).
+      "gitlab-not-connected": "Connect your GitLab account with a personal access token in your browser, then call this tool again.",
+      "gitlab-reconnect": "Your GitLab token can't be used anymore. Replace it in your browser, then call this tool again.",
       // 수동 포맷 확정 도구는 없다(spec 비목표) — 브라우저의 수동 설정이 그 길이다.
       "no-candidates": "We couldn't find translation files automatically. Set up the format manually in your browser.",
     },

@@ -34,6 +34,7 @@ vi.mock("@/lib/onboarding-run/rotate-token", () => ({ rotateToken: core("rotate"
 vi.mock("@/lib/onboarding-run/import", async (orig) => ({ ...(await orig<object>()), importRepository: core("sync") }));
 vi.mock("@/lib/sync/publish", () => ({ publishProject: core("publish") }));
 vi.mock("@/lib/publish/load-preview", () => ({ loadPreview: core("preview") }));
+vi.mock("@/lib/surfaces/remove", async (orig) => ({ ...(await orig<object>()), previewSurfaceRemoval: core("removalPreview") }));
 vi.mock("@/lib/keys/query", async (orig) => ({ ...(await orig<object>()),
   loadProjectListAggregates: async () => ({ locales: [], keyTotals: new Map(), cells: [], newKeys: new Map([["g1", 3], ["p1", 2]]), unsent: new Map(), unsentSurfaces: new Map() }),
   loadSurfaceCounts: async () => [] }));
@@ -156,7 +157,8 @@ describe("list_branches · detect_formats — GitLab 새 리포 입력", () => {
 describe("create_project — GitLab", () => {
   const PICK = { adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en", confirmation: "c" };
   const INPUT = { host: "gitlab", repositoryId: "87515176", slug: "glab-new", name: "App", baseBranch: "main", surfaces: [PICK] };
-  const CREATED = { ok: true, slug: "glab", defaultSurfaceSlug: "default", pushToken: "raw-token", baseBranch: "main", surfaces: [], count: 4, yaml: "" };
+  const CREATED = { ok: true, slug: "glab", defaultSurfaceSlug: "default", pushToken: "raw-token", baseBranch: "main",
+    surfaces: [{ surfaceSlug: "default", pathTemplate: "i18n/{locale}.json", adapter: "json-catalog", baseLocale: "en" }], count: 4, yaml: "" };
 
   it("코어 입력은 GitLab 모양이고 owner·repo를 만들지 않는다", async () => {
     h.core.mockResolvedValueOnce(CREATED);
@@ -220,7 +222,7 @@ describe("GitLab 프로젝트 대상 도구 — 호스트 어휘", () => {
 
   it("GitHub 프로젝트의 get_project는 기존 이름 그대로 + repositoryHost", async () => {
     const outcome = await call("get_project", subject("owner"), { slug: "acme" });
-    expect(outcome).toMatchObject({ status: "ok", data: { repositoryHost: "github", newFromGitHub: 2, lastPublishPullRequest: null } });
+    expect(outcome).toMatchObject({ status: "ok", data: { repositoryHost: "github", newFromGitHub: 2, lastPublishPullRequest: "https://github.com/o/r/pull/7" } });
     expect(outcome.status === "ok" && "newFromGitLab" in outcome.data).toBe(false);
   });
 
@@ -257,6 +259,15 @@ describe("GitLab 프로젝트 대상 도구 — 호스트 어휘", () => {
     expect(outcome.status === "ok" && outcome.summary).not.toMatch(NO_GITHUB);
   });
 
+  it("preview_source_removal은 mergeRequest로 싣는다 — GitHub 프로젝트는 pullRequest 그대로", async () => {
+    h.core.mockResolvedValue({ ok: true, pendingCount: 0, approval: null, openPr: "none" });
+    const gitlab = await call("preview_source_removal", subject("owner"), { slug: "glab", surfaceSlug: "default" });
+    expect(gitlab).toMatchObject({ status: "ok", data: { mergeRequest: "none" } });
+    expect(gitlab.status === "ok" && "pullRequest" in gitlab.data).toBe(false);
+    expect(wire(gitlab)).not.toMatch(NO_GITHUB);
+    expect(await call("preview_source_removal", subject("owner"), { slug: "acme", surfaceSlug: "default" })).toMatchObject({ status: "ok", data: { pullRequest: "none" } });
+  });
+
   it("rotate_push_token은 CI/CD 변수로 안내한다", async () => {
     h.core.mockResolvedValueOnce({ ok: true, pushToken: "raw" });
     const outcome = await call("rotate_push_token", subject("owner"), { slug: "glab" });
@@ -271,18 +282,23 @@ describe("GitLab 프로젝트 대상 도구 — 호스트 어휘", () => {
     expect(JSON.stringify(result)).not.toMatch(NO_GITHUB);
   });
 
-  it("add_sources는 GitHub step 대신 .gitlab-ci.yml 전체를 낸다(발행 전이면 null)", async () => {
+  /**
+   * 소스가 늘면 GitLab은 job 파일 전체를 다시 붙인다(ACTIONS §5). 쓰기가 끝난 뒤 표면을 다시 읽는 조회가 실패하면 결과(추가된 소스)가 장애로
+   * 접히므로 파일을 싣지 않고 `get_workflow`로 보낸다 — GitHub step(`uses: …/.github/…`)은 GitLab 리포에 붙일 수 없으니 싣지 않는다.
+   */
+  it("add_sources는 GitHub step을 싣지 않고 get_workflow로 보낸다(발행 전이면 Sync 안내)", async () => {
     const added = { ok: true, results: [{ surfaceSlug: "web" }], yaml: "      - uses: SinhyeokKang/malmoi/.github/actions/malmoi-i18n-push@malmoi-i18n-push-v3" };
+    const input = { slug: "glab", picks: [{ adapter: "json-catalog", pathTemplate: "web/{locale}.json", baseLocale: "en", confirmation: "c" }] };
     h.core.mockResolvedValueOnce(added);
-    const before = await call("add_sources", subject("owner"), { slug: "glab", picks: [{ adapter: "json-catalog", pathTemplate: "web/{locale}.json", baseLocale: "en", confirmation: "c" }] });
-    expect(before).toMatchObject({ status: "ok", data: { workflow: null }, summary: en.mcp.summary.gitlab.sourcesAddedWithoutCi(1) });
-    expect(before.status === "ok" && "workflowSteps" in before.data).toBe(false);
+    const before = await call("add_sources", subject("owner"), input);
+    expect(before).toEqual({ status: "ok", data: { sources: added.results }, summary: en.mcp.summary.gitlab.sourcesAddedWithoutCi(1) });
     expect(wire(before)).not.toMatch(NO_GITHUB);
 
     h.release.sha = SHA;
     h.core.mockResolvedValueOnce(added);
-    const after = await call("add_sources", subject("owner"), { slug: "glab", picks: [{ adapter: "json-catalog", pathTemplate: "web/{locale}.json", baseLocale: "en", confirmation: "c" }] });
-    expect(after).toMatchObject({ status: "ok", data: { workflow: { path: ".gitlab-ci.yml" } }, summary: en.mcp.summary.gitlab.sourcesAdded(1) });
+    const after = await call("add_sources", subject("owner"), input);
+    expect(after).toEqual({ status: "ok", data: { sources: added.results }, summary: en.mcp.summary.gitlab.sourcesAdded(1) });
+    expect(en.mcp.summary.gitlab.sourcesAdded(1)).toContain("get_workflow");
   });
 });
 

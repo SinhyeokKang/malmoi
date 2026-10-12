@@ -5,6 +5,7 @@ import { decodeUser, readable } from "@/lib/credentials/records";
 import { APP_ACCOUNT_PROVIDER } from "@/lib/github-connect/account-link";
 import { en } from "@/messages/en";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
+import { parseRepoHost } from "@/lib/repo-host/target";
 
 import { inScope } from "../grant";
 import { defineTool, ok } from "./define";
@@ -68,6 +69,8 @@ export const listProjects = defineTool({
       name: project.name,
       role,
       repository: `${project.repoOwner}/${project.repoName}`,
+      // 응답의 다른 필드 이름이 이 값의 어휘를 따른다(D26) — 에이전트가 어느 도구 입력·CI 안내를 쓸지 여기서 안다.
+      repositoryHost: parseRepoHost(project.repoHost) === "gitlab" ? "gitlab" : "github",
       baseBranch: project.baseBranch,
       archived: project.archivedAt !== null,
       readiness: planProjectReadiness(project),
