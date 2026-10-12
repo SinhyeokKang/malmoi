@@ -65,7 +65,7 @@
 | F 스모크·roundtrip | §6 첫 항목 | `scripts/smoke-gitlab.ts` · `package.json`(script 한 줄) · `.claude/commands/roundtrip.md`(+ 미러) | C | **codex astra / medium**(D18) | 대기 |
 | D2 MCP | §4 둘째 항목 | `lib/mcp/tools/*` · MCP 응답 문구(`messages/{en,ko,es}.tsx`의 `mcp` 절 — 새 키면 세 사전) | C · E-sh | opus / medium — 호환 정책·인가 | 대기 |
 | E-ui 화면·사전 | §5 둘·셋·다섯·일곱째 항목 + 여섯째의 (E-ui) 하위 항목 | `lib/status/canon.ts` · `components/onboarding|settings|account|home|projects|logs|shell/*` · `messages/{en,ko,es}.tsx` · `lib/invitation-email/template.ts` | D2 · E0 · E-sh | opus / high — 문장 분기·접근성·375 | 대기 |
-| E-doc 정본·가이드 | §5 여섯째의 (E-doc) 하위 항목 | `docs/{PRODUCT,ARCHITECTURE,DIRECTORY,OPERATIONS}.md` · `README.md` · `guide/{en,ko,es}/`(셀프 호스팅 제외) · OPERATIONS 롤백 줄(D6a) | E-ui | sonnet / medium — 결정(D3)대로 문장 갱신 + `/translate` ① | 대기 |
+| E-doc 정본·가이드 | §5 여섯째의 (E-doc) 하위 항목 | `docs/{PRODUCT,ARCHITECTURE,DIRECTORY,OPERATIONS}.md` · `README.md` · `guide/{en,ko,es}/`(셀프 호스팅 제외) · OPERATIONS 롤백 줄(D6a) | E-ui | opus / medium — 불변식 6·11 재서술·결정 27건을 정본으로 올림(sonnet에서 올림) | 대기 |
 | DS 시안 대조 | §5 "시안 대상 신규 UI는 `/design-sync`" | main 체크아웃, 리포트 전용(computed style·접근성 트리) — 대상: ① GitLab 탭·PAT 입력 shell · `/account` GitLab 카드 · 설정 재연결 카드 · Home Platform 행. 불일치는 E-ui 워커가 고친다 | E-ui 통합 | opus / medium | 대기 |
 | QA 런타임 | §5 [수동] · §6 + D1 [수동](실제 GitLab CI) | main 체크아웃, 읽기 전용(`/runtime-test` · `/roundtrip`) | push 후 | opus / medium | 대기 |
 | R 독립 리뷰 | — | 읽기 전용, `.scratch/review-<batch>.md` | 각 배치 인계 | opus / medium(A·B·C는 high) · **R-C는 codex astra 교차 리뷰 추가**(D18) | — |
@@ -119,3 +119,4 @@
 - 2026-10-12: R-F 🔴0·🟡2(순수 테스트 밖 `resolveId`·MR 루프, 실물 roundtrip에서 `transport.send` PUT 머지 경로 확인 — QA 몫) → F dev 통합. F 워크트리 정리.
 - 2026-10-12: D2 인계(커밋 3, gate ok: 14020 · projects 689, GitLab 거절 코드가 재시도 가능 `unavailable`로 접히던 잠복 버그 수정) → dev 통합. E-ui(opus high) 착수, R-D2(opus medium) 병렬 — D2 수정 라운드는 `lib/mcp`·`mcp` 절만이라 E-ui와 안 겹친다.
 - 2026-10-12: R-D2 🔴0·🟡2(publish too-soon 문구가 GitLab에 "pull requests" · `en.mcp.errors.gitlab` 중복 문구 — 둘 다 E-ui로 전달). D2 워크트리 정리. QA 메모: `get_workflow`는 GitLab CI SHA 발행 전엔 `workflow-unavailable`만 낸다.
+- 2026-10-12: E-ui 인계(13커밋, gate ok: 14300 · projects 689) → dev 통합. dev DB에 B 마이그레이션 적용(`migrate deploy` → `db:status` 최신, anon·authenticated USAGE·CREATE 네 칸 false, GRANT 0). DS(main 체크아웃)·R-Eui·E-doc 병렬 착수 — DS가 main에서 `pnpm dev` 중이므로 그동안 cherry-pick·build 금지.
