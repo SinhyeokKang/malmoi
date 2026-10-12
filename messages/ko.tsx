@@ -484,7 +484,6 @@ export const ko = {
       cards: { held: { "open-pr": "MR이 머지되거나 닫힐 때까지 보류", "pr-check-failed": "보류 — 열린 MR을 확인하지 못했습니다" } },
       banner: {
         notConnected: { body: "동기화하고 게시하려면 설정에서 이 프로젝트를 GitLab에 연결하세요. 기존 번역은 보존됩니다." },
-        wrongRepository: { body: "이 주소의 리포지토리가 처음 연결했을 때와 다릅니다. GitLab에서 확인한 뒤 리포지토리가 변경된 것이 맞다면 새 프로젝트로 연결하세요." },
       },
     },
   },
@@ -2152,7 +2151,6 @@ export const ko = {
       recovery: "동기화는 계속 실행됩니다. 이 리포지토리를 다시 연결하거나 소스를 추가하려면 계정에서 GitLab 토큰을 관리하세요.",
       openRepo: "GitLab에서 열기",
       repository: {
-        health: { "repo-replaced": "이 주소의 리포지토리가 처음 연결했을 때와 다릅니다. GitLab에서 확인한 뒤 리포지토리가 변경된 것이 맞다면 새 프로젝트로 연결하세요." },
         fields: { branchHelp: "동기화는 이 브랜치를 읽고, MR은 이 브랜치를 대상으로 열립니다." },
       },
       ci: {

@@ -1272,7 +1272,6 @@ export const en = {
       cards: { held: { "open-pr": "held until the merge request is merged or closed", "pr-check-failed": "held — couldn't check for an open merge request" } },
       banner: {
         notConnected: { body: "Connect this project to GitLab in Settings to sync and publish. Everything already translated is safe." },
-        wrongRepository: { body: "This address now holds a different repository than the one this project was connected to. Check it on GitLab — if the repository really was replaced, create a new project for it." },
       },
     },
   },
@@ -3927,7 +3926,6 @@ export const en = {
       recovery: "Syncs keep running. Manage your GitLab token in Account to reconnect this repository or add sources.",
       openRepo: "Open on GitLab",
       repository: {
-        health: { "repo-replaced": "This address now holds a different repository than the one this project was connected to. Check it on GitLab — if the repository really was replaced, create a new project for it." },
         fields: { branchHelp: "Syncs read this branch, and merge requests open against it." },
       },
       ci: {

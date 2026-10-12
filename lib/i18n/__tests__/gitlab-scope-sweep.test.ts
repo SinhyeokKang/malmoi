@@ -27,6 +27,9 @@ const NOT_ON_GITLAB_SCREENS: Readonly<Record<string, string>> = {
   "settings.account.disconnectLabel": "GitHub App disconnect on /account only",
   // GitHub 사용자 토큰이 없는 Sync 거부 — GitLab 프로젝트의 Sync는 `gitlab-*` 코드로 거부된다(R-D2 확인).
   "repositorySync.errors.not-connected": "GitHub user-token refusal only",
+  // 다른 리포(`repo-replaced`)는 GitHub 건강성만 낸다 — GitLab은 숫자 id라 같은 id·다른 경로가 `repo-moved`다(`planGitLabHealth`). 소비자 없는 덮기를 두지 않는다.
+  "home.banner.wrongRepository.body": "repo-replaced is GitHub-only health",
+  "settings.repository.health.repo-replaced": "repo-replaced is GitHub-only health",
   // 호스트가 섞인 목록의 빈 상태 — 프로젝트가 아직 없어 호스트 문맥이 없다(D3 †: 두 호스트 병기).
   "projects.empty.description": "no project yet — names both hosts",
 };
