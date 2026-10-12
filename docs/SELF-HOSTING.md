@@ -134,4 +134,4 @@ SH-10 등 [수동] 항목의 실행 증거를 남기는 자리다(**릴리스 �
 
 ### GitLab 리포 (2026-10-12)
 
-§3 대조: 새 env 0(`GITLAB_TEST_*`는 개발자 스모크 입력이라 preflight·`.env.example`에 없다) · 새 패키지 0(SDK 없이 `fetch`) · 마이그레이션 `20261012120000_add_gitlab_connection` additive(새 테이블 + `Project.gitlabConnectionId` NULL 허용 컬럼 — 백필 없음, 건너뛴 업그레이드에서도 안전) · 새 cron 0 · 토큰이 경로에 실리는 URL 0(PAT는 Server Action 본문으로만 온다). 새 외부 전송처 gitlab.com은 방침·가이드 운영자 개인정보 재료에 등재돼 있다. GitLab 연결 자체는 앱 설치와 무관해 `GITHUB_APP_*`가 비어도 동작한다.
+§3 대조: 새 env 0(`GITLAB_TEST_*`는 개발자 스모크 입력이라 preflight·`.env.example`에 없다) · 새 패키지 0(SDK 없이 `fetch`) · 마이그레이션 `20261012120000_add_gitlab_connection` additive(새 테이블 + `Project.gitlabConnectionId` NULL 허용 컬럼 + `Project.repoHost TEXT NOT NULL DEFAULT 'github'` — 기존 행은 기본값이 SQL 안에서 채우므로 앱 백필이 없고, 건너뛴 업그레이드에서도 안전) · 새 cron 0 · 토큰이 경로에 실리는 URL 0(PAT는 Server Action 본문으로만 온다). 새 외부 전송처 gitlab.com은 방침·가이드 운영자 개인정보 재료에 등재돼 있다. GitLab 연결 자체는 앱 설치와 무관해 `GITHUB_APP_*`가 비어도 동작한다.
