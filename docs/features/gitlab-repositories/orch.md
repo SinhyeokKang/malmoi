@@ -15,6 +15,7 @@
 - 파일: `~/.config/malmoi/gitlab-test.env` (리포 밖). 키: `GITLAB_TEST_TOKEN`(PAT — `api`·`read_repository`·`write_repository`) · `GITLAB_TEST_PROJECT`(`namespace/path`, 폐기용).
 - ⚠️ **값을 출력하지 않는다** — `set -a; . ~/.config/malmoi/gitlab-test.env; set +a` 뒤 `curl -H "PRIVATE-TOKEN: $GITLAB_TEST_TOKEN"`로만 쓴다. 응답을 기록할 때 토큰이 실린 헤더·URL을 지운다. `.env.local`과 같은 이유다(CLAUDE.md "새 머신 셋업").
 - 파일이 아직 없으면 W0는 실물 항목을 "미룬 항목"으로 남기고 나머지를 끝낸다 — 기다리지 않는다.
+- 2026-10-12 지휘자가 ego(GitHub OAuth → GitLab 계정 `ox501501`, 사용자 허가 — 테스트용 계정, 실측에 계속 쓴다)로 만들었다: 프로젝트 `ox501501/malmoi-gitlab-test`(id 87515176, private, `main`, `README.md` + `locales/{en,ko,fr}.json`) · 레거시 PAT `malmoi-gitlab-test`(`api`·`read_repository`·`write_repository`, 만료 2026-11-11). W0 실측 뒤 닫힌 MR !1 이력이 남고 러너 등록 토큰이 재발급됐다(W0 터미널에 1회 노출 → 즉시 회전, PAT는 노출 없음).
 
 ## 결정 기록
 
@@ -82,3 +83,4 @@
 ## 실행 기록
 
 - 2026-10-12: 인테이크 — 결정 D1~D12 기록. W0 착수.
+- 2026-10-12: W0 인계(커밋 6, 문서만) → dev 통합 `54543ce0..c92ab4a5`. 결정 D6a(지휘자)·D13(사용자) 추가. R-W0(경계 서명 리뷰)·E0·D1 병렬 착수, A는 R-W0 뒤.
