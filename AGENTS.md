@@ -88,6 +88,7 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | 로그인 | Auth.js v5 **DB 세션** — GitHub + Google. 로그인은 **검증된 이메일만** 요구하고 그것이 아무것도 열지 않는다 — 인가는 `ProjectMember`다. **같은 주소에 두 번째 로그인 수단을 붙이는 challenge 왕복은 `lib/login-link/`**(세션이 없는 채로 도는 흐름이라 진정성은 Auth.js의 state 쿠키가 든다), **세션 폐기는 `lib/session-revocation/`**(challenge에 세션·state 지문을 담는다) — 형은 같고 증명이 다르니 섞지 않는다. ⚠️ **Google 동의 화면은 External + 게시(In production)다** — Internal로 바꾸면 조직 밖 계정을 `403 org_internal`로 막아 초대 경로가 통째로 죽는다(게시 절차는 OPERATIONS) |
 | 리포 쓰기 | GitHub App **installation 토큰** — `octokit`의 `App` |
 | 계정 연결 | 같은 App의 **user-to-server 토큰** — `@octokit/oauth-app`(`octokit`이 재수출하는 `OAuthApp`으로는 안 된다) |
+| GitLab 리포 (2026-10-12) | **GitLab.com만** — 연결자가 붙여 넣는 **레거시 PAT(스코프 `api`)** 하나가 연결이자 쓰기 신원이다. SDK 없이 `fetch`(`lib/gitlab/transport.ts`) — ⚠️ **숫자 project id로만 주소한다**(PAT에는 리포 한정 층이 없다 — 불변식 11). 호스트 구현을 고르는 자리는 `lib/repo-host/` 하나다(ARCHITECTURE §3.02·§6.41) |
 | 파일 저장 | Vercel Blob — **공개 읽기 + 키에 난수**(self-hosted는 `MALMOI_UPLOAD_DIR` 볼륨 — `lib/upload/file-store.ts`가 같은 세 동작을 든다). 소비자는 프로필 사진·프로젝트 썸네일 둘이다(ARCHITECTURE §6.7·§6.75) |
 | 초대 메일 | Resend REST API — **SDK 없이 `fetch`**. 환경변수 셋이 전부 `optionalEnv`다. 누락·발신자/origin 오류는 발급 전 `email-unavailable`, 잘못된 API 키는 발급 후 `email-rejected`이며 부팅·로그인·멤버 조회는 유지된다 |
 | 방문 집계 | Vercel Web Analytics(self-hosted는 서버 레이아웃이 렌더하지 않는다) — **공개 페이지 페이지뷰 하나**(쿠키·커스텀 이벤트 없음). ⚠️ **`lib/seo/analytics.ts`의 추적 경로 허용 목록이 유일한 거름망이다** — 앱 URL엔 초대 토큰·slug·검색어가 실린다 |
@@ -139,6 +140,8 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | 테마 바꾸기(`setColorScheme`) | **Server Action** (`app/color-scheme/actions.ts`) — **공개** | 공개 푸터 스위처(비로그인 포함)와 `/preferences` Theme 카드 — 그래서 보호 경로 밖에 산다(`setUiLocale`과 같은 형). 입력은 `system`·`light`·`dark` 하나(`parseColorScheme` 불통과면 `invalid`)이고 **계정에 쓰는 대상은 세션이 정한다**. 비로그인은 쿠키만 쓴다. 세션을 못 읽었거나(`unavailable`) 계정 쓰기가 실패하면 아무것도 쓰지 않고 `failed`다. 순서 고정 계정 → 쿠키(`malmoi-color-scheme`, http-only — 로그아웃 뒤 공개 페이지도 같은 테마) → `revalidateAfterCommit`(루트 레이아웃이 `<html data-theme>`을 싣는다). 두 호출부가 같은 `applyColorScheme`으로 Action보다 먼저 `data-theme`을 바꾸고 `ok`가 아니면 되돌린다. 코드(`ok`·`invalid`·`failed`)를 돌려준다 |
 | 초대 수락 | **Server Action** (`app/invite/actions.ts`) | 초대 링크 — **인가 예외**, 토큰이 대신한다 |
 | 계정 — 프로필·로그인 수단 연결·해제·세션 폐기 | **Server Action** (`app/(edit)/account/actions.ts`) | `/account` — `requireUser`만 |
+| GitLab PAT 연결·교체·해제(`connectGitLab`·`disconnectGitLab`) | **Server Action** (`app/(edit)/account/actions.ts`) | ①의 GitLab 탭 · `/account` GitLab PAT 카드 — `requireUser`만, `userId`로 좁힌다. PAT는 본문으로만 오고 **원문을 돌려주지 않는다**(사용자명·만료일·스코프뿐). 교체는 같은 GitLab 사용자만(`account-mismatch`). 해제는 FK `SetNull`로 참조 프로젝트를 끊고 그 프로젝트마다 같은 tx에서 사건을 남긴다. **callback·Route Handler가 없다** |
+| GitLab 리포 목록(`listConnectableGitLabRepos`) · 재연결(`reconnectGitLabRepository`) | **Server Action** (`app/(edit)/projects/actions.ts` · `app/(edit)/projects/[slug]/settings/actions.ts`) | ① 목록은 호출자 자신의 PAT로 Maintainer 이상 프로젝트를 읽는다(표시용 — 생성이 다시 본다). 재연결은 `project:settings` → 호출자 PAT의 Maintainer 확인 → 잠금 뒤 조건부 쓰기 + 사건이고, **이후 GitLab 쓰기의 명의가 누른 사람으로 바뀐다** |
 | MCP 개인 토큰 발급·폐기, OAuth 연결 끊기 | **Server Action** (`app/(edit)/mcp/actions.ts`) | `/mcp` — `requireUser`만, `userId`로 좁힌다. 발급 = 기존 행 삭제 + 삽입 한 tx라 Create·Rotate가 같은 Action이다. ⚠️ **MCP 도구에 개인 토큰 발급·폐기가 없다** — 개인 토큰이 개인 토큰을 만들지 않는다(프로젝트 push 토큰 회전 `rotate_push_token`은 별개) |
 | OAuth 동의 — Authorize·Deny | **Server Action** (`app/oauth/authorize/actions.ts`) | `/oauth/authorize` — 세션을 Action 안에서 다시 읽는다(화면을 그린 뒤 끝났을 수 있다). 판정·소비는 `lib/oauth-server/` |
 | Inbox 배지 조회(`loadAttentionBadgeAction`) | **Server Action** (`app/inbox/actions.ts`) — 편집 셸 헤더와 로그인한 공개 셸 헤더가 같이 부른다(그래서 보호 경로 밖이다) | 입력 없이 `readSession`의 userId로 비보관 멤버 프로젝트만 조회한다. 개수만 반환하고 `revalidatePath` 없음(ARCHITECTURE §6.365) |
@@ -167,6 +170,8 @@ Claude Code에만 있는 자동 안전망이 Codex 세션에는 없다. 아래�
 | GitHub App **installation** 토큰 | `lib/github.ts` (`GITHUB_APP_ID`·`GITHUB_APP_PRIVATE_KEY`) | **쓰기** — 커밋·PR |
 
 OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사람이 org를 떠나면 파이프라인이 깨진다. 경계를 넘는 코드가 보이면 리뷰에서 막고, `lib/github-connect/__tests__/credential-separation.test.ts`가 소스에서 상시로 센다.
+
+**GitLab PAT는 넷째이고 섞지 않는다** (2026-10-12, gitlab-repositories) — 연결 증명이자 쓰기 신원이라 GitHub의 셋처럼 갈리지 않는다(불변식 6의 예외 — 쓰기는 연결자 개인 명의). 대신 지키는 경계가 다르다: **Sync·Publish·야간 쓰기는 그 프로젝트가 참조하는 연결(`Project.gitlabConnectionId`)의 PAT만 쓰고 호출자의 연결을 쓰지 않는다** — 호출자 PAT는 권한 조회(GET)에만 쓴다. 같은 `credential-separation.test.ts`가 센다. 봉투 키는 GitHub 연결 토큰과 같은 토큰 키다(OPERATIONS §1).
 
 여기에 `GITHUB_APP_SLUG` 하나가 더 붙는데 자격증명이 아니다 — 설치 링크 조립용이고 `optionalEnv`다. ⚠️ **2026-09-18부터 ①(새 프로젝트)의 주 경로다** — 없으면 설치 버튼이 서지 않고 "관리자에게 요청하라"로 떨어져 **설치가 없는 신규 사용자는 화면 안에서 온보딩을 끝낼 수 없다**(연결만 된다). 나머지 소비자(`/account`·설정의 설치 설정 링크)는 조용히 사라진다.
 
@@ -245,7 +250,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 - **`version`은 `/merge` 4단계만 바꾼다.** 그 bump 커밋(`chore(release): v<x.y.z>`)이 **`/push`를 거치지 않는 유일한 dev 커밋**이다 — 볼 코드가 없고 PR CI가 그 SHA를 막는다.
 - **태그는 `gh release create --target <squash SHA>`가 서버에서 Release와 함께 만든다** — 로컬 `git tag`·draft·`--generate-notes`를 쓰지 않는다. 노트는 둘이다: PR body = 개발자용 변경 목록, Release = 사용자 체감 변화 + `/merge` 9-b가 붙이는 이미지 줄 하나(`**Self-hosting image:**` — 손으로 쓰지 않는다).
 - **매 앱 태그마다 셀프 호스팅 이미지를 GHCR(`ghcr.io/sinhyeokkang/malmoi:v<x.y.z>`)에 발행한다** (2026-10-09, self-hosting → 2026-10-12, image-publish-workflow) — **발행은 `.github/workflows/image.yml`이 한다**: `/merge` 9단계의 `gh release create`가 만든 Release 이벤트가 깨우고, `scripts/publish-image.sh`가 태그 커밋의 `git archive`를 `linux/amd64`로 빌드·push한다(이미 있는 태그는 덮지 않고 `exists`로 끝난다). **9-b는 확인·기입만 한다** — run 대기 → 패키지 API digest → `scripts/release-image-note.ts`로 Release 본문에 `**Self-hosting image:**` 줄 기입 → 리포트. run이 red면 `workflow_dispatch`(`gh workflow run image.yml -f tag=v<x.y.z>`)로 다시 돌린다(`mismatch`는 재실행 금지). 발행 머신 전제(Docker·Colima·`ghcr.io` 로그인)는 Actions 장애 때의 비상 경로로만 남는다. 이미지 태그는 action 태그와 독립이다.
-- ⚠️ **앱 태그 `v<x.y.z>`와 action 태그 `malmoi-i18n-push-vN`은 별개 축이다** — 앱 버전이 올라도 action 태그는 안 움직인다. `git describe --tags`는 action 태그를 주므로 직전 릴리스를 찾는 데 쓰지 않는다.
+- ⚠️ **앱 태그 `v<x.y.z>`와 action 태그 `malmoi-i18n-push-vN`은 별개 축이다** — 앱 버전이 올라도 action 태그는 안 움직인다. **GitLab CI 원본 태그 `malmoi-i18n-push-gitlab-vN`이 셋째 축이다**(2026-10-12 — 생성 job이 박는 40자 SHA와 함께 움직인다, 절차는 OPERATIONS "GitLab CI 원본 릴리스"). `git describe --tags`는 action 태그를 주므로 직전 릴리스를 찾는 데 쓰지 않는다.
 
 ### 게이트가 어디에 서 있나
 
