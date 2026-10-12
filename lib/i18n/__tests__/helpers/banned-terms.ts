@@ -61,6 +61,15 @@ export const BANNED_TERMS: Readonly<Record<"ko" | "es", readonly (readonly [bann
     ["GitHub은 ", "GitHub는"],
     ["GitHub을 ", "GitHub를"],
     ["GitHub으로", "GitHub로"],
+    // GitLab[깃랩]은 받침(ㅂ)으로 끝나 받침 있는 조사를 쓴다(gitlab-repositories).
+    ["GitLab가", "GitLab이"],
+    ["GitLab는", "GitLab은"],
+    ["GitLab를", "GitLab을"],
+    ["GitLab로", "GitLab으로"],
+    // GitLab의 merge request는 PR과 대칭으로 `MR`이다(D7·D14 — 가이드 첫 언급만 `MR(GitLab의 merge request)`). 음차·번역어를 쓰지 않는다.
+    ["머지 리퀘스트", "MR"],
+    ["머지 요청", "MR"],
+    ["병합 요청", "MR"],
     // 합니다체에서 축약형과 본딧말이 한 화면에 섞이지 않게 본딧말로 맞춘다.
     ["됐", "되었"],
     ["돼 ", "되어 "],
@@ -99,5 +108,10 @@ export const BANNED_TERMS: Readonly<Record<"ko" | "es", readonly (readonly [bann
     ["Ver toda la documentación", "Ir a la documentación"],
     ["No se encontraron", "Ningún {objeto} coincide con “{q}”"],
     ["Archivado —", "Archivado el {date}"],
+    // merge request는 pull request처럼 영어 고유명사 그대로다(D7 — 시안 G11b `las merge requests`).
+    ["solicitud de fusión", "merge request"],
+    ["Solicitud de fusión", "merge request"],
+    ["solicitud de combinación", "merge request"],
+    ["Solicitud de combinación", "merge request"],
   ],
 };

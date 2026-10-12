@@ -165,6 +165,13 @@ const CONCEPT_BANNED: readonly Ban[] = [
   ["browse all docs", /\bbrowse all docs\b/i],
   ["View on GitHub", /\bview on GitHub\b/i],
   ["Open repository", /^open repository[.!]?$/i],
+  // 열린 PR/MR 조회 실패는 목적어를 붙인다 — 홀로 선 "Couldn't check"는 연결 확인 실패 낱말이다(§2.4). 자리가 금지를 가른다:
+  // PR·MR 조회 키(`prCheckFailed`·`pr-check-failed`·`prUnknown`과 GitLab 짝 `mr…`)에서 목적어 없이 끝나는 문장만 잡는다.
+  // 목적어 `pull request`는 `scrub`이 지워도 "for an open "이 남아 홀로 서지 않는다 — merge request도 같다(gitlab-repositories D7).
+  ["bare Couldn't check (PR/MR)", /\bcould(?:n['’]t| not) check\s*[.!]?\s*$/i, /(?<![a-z])(?:pr|mr)(?:-check|Check|-unknown|Unknown)/],
+  // merge request는 GitLab의 고유명사라 표기 하나다(pull request와 같은 근거) — 문장 중간 대문자·하이픈형이 갈리지 않게
+  ["Merge Request (mid-sentence)", /\S\s+Merge Requests?\b/],
+  ["merge-request", /\bmerge-requests?\b/i],
   // 축약형 (DESIGN §10) — 강조가 필요한 부정만 ALLOWED가 든다
   ["could not", /\bcould not\b/i],
   ["did not", /\bdid not\b/i],
