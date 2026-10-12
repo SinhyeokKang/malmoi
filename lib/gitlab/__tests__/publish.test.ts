@@ -41,7 +41,7 @@ const ownMr = (over: Partial<FakeMergeRequest> = {}): FakeMergeRequest => ({
   web_url: "https://gitlab.com/g/sub/app/-/merge_requests/1", ...over,
 });
 
-function setup(over: Partial<FakeRepoOptions> = {}, options: { state?: PullState; fetch?: (repoFetch: typeof fetch) => typeof fetch } = {}) {
+function setup(over: Partial<FakeRepoOptions> = {}, options: { state?: PullState; fetch?: (repoFetch: typeof fetch) => typeof fetch; requireWrite?: boolean } = {}) {
   const repo = createFakeGitLabRepo({ repositoryId: REPO, branches: { main: BASE }, commits: { [BASE]: { "locales/en.json": EN, "locales/ko.json": KO_OLD } }, ...over });
   const order: string[] = [];
   const saved: { prUrl?: string }[] = [];
@@ -53,7 +53,7 @@ function setup(over: Partial<FakeRepoOptions> = {}, options: { state?: PullState
     loadState: async () => options.state ?? state(),
     createClient: (target) => {
       if (target.host !== "gitlab") throw new Error("unexpected host");
-      return createGitLabClient(target, { token: "glpat-connector", expiresAt: null }, { fetch: options.fetch?.(traced) ?? traced });
+      return createGitLabClient(target, { token: "glpat-connector", expiresAt: null, gitlabUserId: "101" }, { fetch: options.fetch?.(traced) ?? traced, requireWrite: options.requireWrite });
     },
     saveLastPulledAt: async (_id, _at, published) => { saved.push(published ?? {}); },
     invalidateDelivery: async () => { order.push("invalidate"); },
@@ -179,6 +179,33 @@ describe("no-changes 수렴 — 닫기 → sync 브랜치 삭제 (D9)", () => {
     await expect(runPull(deps)).rejects.toThrow();
     expect(repo.branches.has(SYNC)).toBe(true);
     expect(saved).toEqual([]);
+  });
+});
+
+describe("토큰 주인의 쓰기 권한 — 쓰기 전에 막는다 (R-C Astra 🟡1)", () => {
+  it("⚠️ Reporter로 강등된 주인: 클라이언트 생성에서 멈춘다 — 무효화·쓰기·확정 0(편집 토큰 보존)", async () => {
+    const { repo, deps, order, saved } = setup({ members: { 101: 20 } }, { requireWrite: true });
+    await expect(runPull(deps)).rejects.toMatchObject({ code: "not-installed" });
+    expect(repo.writes()).toEqual([]);
+    expect(order).not.toContain("invalidate");
+    expect(saved).toEqual([]);
+  });
+
+  it("⚠️ no-changes 정리(닫기·브랜치 삭제)도 같은 문에서 멈춘다", async () => {
+    const stale = "s".repeat(40);
+    const { repo, deps } = setup({
+      members: { 101: 20 }, branches: { main: BASE, [SYNC]: stale },
+      commits: { [BASE]: { "locales/en.json": EN, "locales/ko.json": KO }, [stale]: { "locales/en.json": EN } }, mergeRequests: [ownMr()],
+    }, { requireWrite: true });
+    await expect(runPull(deps)).rejects.toMatchObject({ code: "not-installed" });
+    expect(repo.writes()).toEqual([]);
+    expect(repo.branches.has(SYNC)).toBe(true);
+  });
+
+  it("Developer 주인 + 보호 브랜치(403)는 정상 연결의 Publish 실패다 — 사전 검사를 지나 커밋 POST에서 실패한다", async () => {
+    const { repo, deps } = setup({ members: { 101: 30 }, failOn: [{ key: "POST /repository/commits", status: 403 }] }, { requireWrite: true });
+    await expect(runPull(deps)).rejects.toThrow(/403/);
+    expect(write(repo)).toEqual(["POST /repository/commits"]);
   });
 });
 

@@ -108,6 +108,28 @@ describe("planGate", () => {
     expect(planGate([path])).toEqual(["db:generate", "typecheck", "test", "test:projects:postgres", "build", "sync:agents:check"]);
   });
 
+  /**
+   * **GitLab I/O 시나리오가 지나는 생산 경로** (gitlab-repositories C 인계 · R-C 🟡1 · R-C Astra ⚪1 · POSTMORTEM 2026-10-07) —
+   * `lib/gitlab/__tests__/connection-state.integration.ts`가 열린 MR 게이트·Publish 코어·실행 수명·오류 분류·건강성·공유 마감·적재 예산을 직접 지난다.
+   * 그 파일만 고친 diff도 시나리오를 돌린다.
+   */
+  it.each([
+    "lib/projects/open-pr.ts",
+    "lib/sync/publish.ts",
+    "lib/sync/execution.ts",
+    "lib/sync/plan.ts",
+    "lib/github-connect/health.ts",
+    "lib/github-connect/probe-memo.ts",
+    "lib/github-wait.ts",
+    "lib/onboarding/budget.ts",
+  ])("GitLab I/O 시나리오의 생산 경로 %s 단독 변경도 projects 스위트를 실행한다", path => {
+    expect(planGate([path])).toEqual(["db:generate", "typecheck", "test", "test:projects:postgres", "build", "sync:agents:check"]);
+  });
+
+  it("⚠️ 봉투 함수(`lib/credentials/storage.ts`)는 두 스위트를 다 깨운다 — GitLab 시나리오가 `sealGitLabToken`을 직접 쓴다(R-C 🟡1)", () => {
+    expect(planGate(["lib/credentials/storage.ts"])).toEqual(["db:generate", "typecheck", "test", "test:projects:postgres", "test:credentials:postgres", "build", "sync:agents:check"]);
+  });
+
   it("둘 다 건드리면 둘 다 — projects가 먼저다", () => {
     expect(planGate(["lib/credentials/rotate.ts", "lib/import/run.ts"])).toEqual([
       "db:generate",

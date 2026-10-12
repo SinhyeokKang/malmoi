@@ -2,13 +2,35 @@ import { describe, expect, it } from "vitest";
 
 import { GitLabHttpError } from "@/lib/gitlab/transport";
 
-import { planMemberAccess, planProjectMeta } from "../access-plan";
+import { planConnectionPushAccess, planMemberAccess, planProjectMeta } from "../access-plan";
 
 /**
  * 호출자 GitLab 리포 권한 (design §3 `checkRepoAccess` · tasks §2 B2). 입력은 `members/all/<user id>`(상속 포함 유효 권한)와 `GET /projects/<id>`다.
  */
 const member = (level: number) => ({ ok: true as const, body: { id: 31337, username: "ox501501", access_level: level } });
 const failed = (status: number, scope = false) => ({ ok: false as const, error: new GitLabHttpError("/projects/1/members/all/2", status, scope) });
+
+/**
+ * **프로젝트가 참조하는 연결의 토큰 주인** — 쓰기 명의(design §2 사례 표). sync 브랜치 push·MR은 Developer(30)면 된다("주인이 Developer로 강등 → 연결 정상"),
+ * Reporter(20) 이하는 쓸 수 없다(R-C Astra 🟡1). 생성·재연결 시점의 Maintainer 요구(`planMemberAccess(…, true)`)와 기준이 다르다.
+ */
+describe("planConnectionPushAccess", () => {
+  it("Developer 이상은 ok · ⚠️ Reporter는 read-only(읽기만 — Publish 불가) · Guest·멤버 아님은 forbidden", () => {
+    expect(planConnectionPushAccess(member(30))).toBe("ok");
+    expect(planConnectionPushAccess(member(50))).toBe("ok");
+    expect(planConnectionPushAccess(member(20))).toBe("read-only");
+    expect(planConnectionPushAccess(member(10))).toBe("forbidden");
+    expect(planConnectionPushAccess(failed(404))).toBe("forbidden");
+  });
+
+  it("401·스코프는 reconnect · 일시 장애·모양 오류는 unavailable(끊김으로 접지 않는다) · 대기 멤버는 forbidden", () => {
+    expect(planConnectionPushAccess(failed(401))).toBe("reconnect");
+    expect(planConnectionPushAccess(failed(403, true))).toBe("reconnect");
+    expect(planConnectionPushAccess(failed(503))).toBe("unavailable");
+    expect(planConnectionPushAccess({ ok: true, body: { id: 1 } })).toBe("unavailable");
+    expect(planConnectionPushAccess({ ok: true, body: { id: 1, access_level: 50, state: "awaiting" } })).toBe("forbidden");
+  });
+});
 
 describe("planMemberAccess", () => {
   it("쓰기는 Maintainer(40) 이상 — 그룹에서 상속한 Maintainer도 members/all이 40으로 준다", () => {

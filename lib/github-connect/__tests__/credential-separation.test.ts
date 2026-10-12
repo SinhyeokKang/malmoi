@@ -307,7 +307,17 @@ const ALLOWED_CALLER_CONNECTION = new Set(["lib/onboarding-run/access.ts", "lib/
  * 비GET 요청 — `fetch(…, { method: "POST" })`·transport의 쓰기 메서드. GitLab은 Octokit 입구가 없어 메서드 리터럴이 쓰기의 표지다.
  * ⚠️ `\.delete\(`는 Prisma `x.delete(`도 잡는다(거짓 red) — `lib/gitlab-connect/`의 DB 삭제는 `deleteMany`로 쓴다(R-B ⚪6).
  */
-const GITLAB_WRITE = /method\s*:\s*["'`](POST|PUT|PATCH|DELETE)["'`]|\.(post|put|patch|delete)\(/i;
+const GITLAB_WRITE = /method\s*:\s*["'`](POST|PUT|PATCH|DELETE)["'`]|\.(post|put|patch|delete)\(|\.send\(\s*["'`](POST|PUT|PATCH|DELETE)["'`]|\.graphql\(/i;
+/**
+ * **PAT를 여는 호출 자리 전부** (R-C 🟡2) — `파일#함수` 정확 집합이다. `CALLER_CONNECTION`은 `{ userId }` 리터럴 문법만 보므로 변수 간접
+ * (`const by = { userId }; openGitLabConnection(prisma, by)`)을 못 잡는다 — 문법이 아니라 **자리**를 센다(`NEW_REPO_TARGET_SITES` 선례).
+ * 호출자 연결 둘(그 사람이 무엇을 볼 수 있나 — 쓰지 않는다)과 프로젝트 참조 연결 하나(리포 I/O — `{ connectionId }`). 새 자리가 생기면 red다.
+ */
+const PAT_OPEN_SITES = [
+  "lib/onboarding-run/access.ts#checkGitLabAccess",
+  "lib/onboarding-run/gitlab-repos.ts#listGitLabRepositories",
+  "lib/repo-host/index.ts#projectConnection",
+];
 /** GitLab 클라이언트 모듈 import — 완전성 검사의 기준. */
 const GITLAB_CLIENT_IMPORT = /from\s+["'](@\/lib\/gitlab\/[^"']+|@\/lib\/gitlab-connect\/connection|(\.\.?\/)+gitlab\/[^"']+|\.\/connection)["']/;
 
@@ -321,7 +331,11 @@ describe("GitLab 경계 — 쓰기는 프로젝트가 참조하는 연결로만"
     for (const line of ['await fetch(url, { method: "POST", body })', "await send(url, { method: 'DELETE' })", "await transport.post(path, body)", 'fetch(u, {method:`PUT`})']) {
       expect(GITLAB_WRITE.test(line), line).toBe(true);
     }
-    for (const line of ['await send(url, { method: "GET", headers })', "await transport.get(projectPath(id))"]) expect(GITLAB_WRITE.test(line), line).toBe(false);
+    // C가 더한 transport 쓰기 입구 — 동사마다 red여야 한다(R-C Astra 🟡2). GraphQL도 POST라 연결 경로에서는 쓰기로 센다(연결 경로는 GraphQL을 쓸 이유가 없다).
+    for (const line of ['await transport.send("POST", projectPath(id, "repository/commits"), { body })', "await transport.send('PUT', mr(iid), { body })", 'await t.send(`DELETE`, branchPath(id, b))', "await transport.graphql(QUERY, { ids })"]) {
+      expect(GITLAB_WRITE.test(line), line).toBe(true);
+    }
+    for (const line of ['await send(url, { method: "GET", headers })', "await transport.get(projectPath(id))", "const sent = await mailer.sendMail(x)"]) expect(GITLAB_WRITE.test(line), line).toBe(false);
     expect(GITLAB_CLIENT_IMPORT.test('import { createGitLabTransport } from "@/lib/gitlab/transport";')).toBe(true);
     expect(GITLAB_CLIENT_IMPORT.test('import { openGitLabConnection } from "@/lib/gitlab-connect/connection";')).toBe(true);
     // 순수 판정·오류 갈래는 클라이언트가 아니다.
@@ -345,8 +359,20 @@ describe("GitLab 경계 — 쓰기는 프로젝트가 참조하는 연결로만"
     expect(appSources.filter((f) => /\bopenGitLabConnection\b|\bopenGitLabToken\b/.test(codeOnly(f.source))).map((f) => f.rel)).toEqual([]);
   });
 
-  it("lib/gitlab-connect/는 GET만 부른다 — PAT 검증·권한 조회뿐이다", () => {
+  it("lib/gitlab-connect/와 호출자 연결을 여는 자리는 GET만 부른다 — PAT 검증·권한 조회·① 목록뿐이다", () => {
     expect(GITLAB_CONNECT_SOURCES.filter((f) => GITLAB_WRITE.test(codeOnly(f.source))).map((f) => f.rel)).toEqual([]);
+    const callerSites = sourcesIn(join(ROOT, "lib"), "lib").filter((f) => ALLOWED_CALLER_CONNECTION.has(f.rel));
+    expect(callerSites.map((f) => f.rel).sort()).toEqual([...ALLOWED_CALLER_CONNECTION].sort());
+    expect(callerSites.filter((f) => GITLAB_WRITE.test(codeOnly(f.source))).map((f) => f.rel)).toEqual([]);
+  });
+
+  it("⚠️ PAT를 여는 호출 자리가 허용 목록과 정확히 같다 — 변수 간접으로 호출자 연결을 열어도 새 자리라 red다", () => {
+    const sites = [...sourcesIn(join(ROOT, "lib"), "lib"), ...sourcesIn(join(ROOT, "app"), "app")].flatMap((f) => callSites(f.rel, f.source, "openGitLabConnection"));
+    expect([...new Set(sites)].sort()).toEqual([...PAT_OPEN_SITES].sort());
+    // 뮤테이션 픽스처(R-C 🟡2): 쓰기 경로 파일에 간접 호출을 넣으면 그 자리가 목록 밖으로 나온다.
+    const mutated = "export async function loadPullState() { const by = { userId: session.userId }; return openGitLabConnection(getPrisma(), by); }";
+    expect(CALLER_CONNECTION.test(mutated)).toBe(false);
+    expect(callSites("lib/pull/load.ts", mutated, "openGitLabConnection").filter((site) => !PAT_OPEN_SITES.includes(site))).toEqual(["lib/pull/load.ts#loadPullState"]);
   });
 
   it("GitLab 경로는 GitHub 자격증명을 모른다 — App 개인키·사용자 토큰·커밋 경로 import 없음", () => {

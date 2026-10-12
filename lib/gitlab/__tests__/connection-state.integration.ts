@@ -23,7 +23,8 @@ import { createFakeGitLabRepo, type FakeRepoOptions } from "./fake-repo";
 /**
  * **GitLab 연결 상태 시나리오** (gitlab-repositories tasks §3 마지막 항목 · B 인계의 "C 몫"). 진입점 코어 → 가짜 GitLab(전역 fetch) → 격리 PG →
  * **화면 판정 출력**(설정 연결 배지 `repositoryConnectionState` · Home 배너 `homeBannerState` · Home 메타 Connection 행 `metaTabs` · Logs `eventSentence`·
- * `eventFailureMessage` · Sync/브랜치/소스 추가 결과 코드)으로 단언한다. DB 행에서 멈춘 단언이 없다.
+ * `eventFailureMessage` · Inbox `loadAttentionInbox`(→ `collectAttention`) · Sync/브랜치/소스 추가 결과 코드)으로 단언한다. 화면이 읽지 않는 DB 행에서
+ * 멈춘 단언은 없다 — 남은 DB 단언(`pendingEditToken`·`SyncRun.errorCode`·키 수)은 뷰 단언과 **함께** 그 근거를 고정한다(R-C Astra ⚪2).
  *
  * ⚠️ **`pnpm test`에 없다** (`vitest.projects.config.ts`). 공유 dev/prod 접속 변수는 읽지 않는다. 토큰 봉투 키는 `vitest.setup.ts`의 테스트 키다.
  */
@@ -46,6 +47,13 @@ const { loadConnectionHealth } = await import("@/lib/repo-host");
 const { publishProject } = await import("@/lib/sync/publish");
 const { runNightly } = await import("@/lib/nightly/run");
 const { loadOpenPrForImportGate } = await import("@/lib/projects/open-pr");
+const { loadAttentionInbox } = await import("@/lib/inbox/load");
+
+/** Inbox가 그 사용자에게 그 프로젝트로 보이는 항목 종류 — Inbox 화면의 뷰 모델(`planInbox`)이다. */
+async function inboxKinds(userId: string, slug = "p1"): Promise<string[]> {
+  const plan = await loadAttentionInbox(prisma, userId);
+  return plan.groups.find((group) => group.project.slug === slug)?.items.map((item) => item.kind) ?? [];
+}
 
 beforeAll(async () => {
   binaries = optionalEnv("CREDENTIAL_PG_BIN") ?? "/opt/homebrew/opt/postgresql@17/bin";
@@ -331,10 +339,13 @@ describe("자동 적재 보호 — 열린 MR 게이트 · 야간 (fork MR 제외
     expect(await prisma.stringKey.count({ where: { projectId: "p1" } })).toBe(0);
   });
 
-  it("야간: fork MR만 있으면 연결자 PAT로 적재한다", async () => {
+  it("야간: fork MR만 있으면 연결자 PAT로 적재한다 — 앞선 실패가 Inbox에서 내려간다", async () => {
     await seed();
+    await prisma.translationSurface.update({ where: { id: "p1-s" }, data: { lastImportError: "import-failed", lastImportFailedAt: new Date("2026-10-10T00:00:00Z") } });
+    expect(await inboxKinds("owner-a")).toContain("import_failed");
     const repo = serve({ mergeRequests: [{ ...own, source_project_id: 999 }] });
     expect(await runNightly(prisma, await target(), () => 0)).toMatchObject({ action: "import" });
+    expect(await inboxKinds("owner-a")).not.toContain("import_failed");
     expect(await prisma.stringKey.count({ where: { projectId: "p1", orphaned: false } })).toBe(1);
     expect(tokensFor(repo, () => true)).toEqual([TOKEN_A]);
   });
@@ -344,6 +355,46 @@ describe("자동 적재 보호 — 열린 MR 게이트 · 야간 (fork MR 제외
     serve({ branches: { trunk: BASE } });
     expect(await runNightly(prisma, await target(), () => 0)).toMatchObject({ action: "skip", outcome: "failed", reason: "base-unreadable", branchMissing: true });
     expect((await prisma.translationSurface.findUniqueOrThrow({ where: { id: "p1-s" } })).lastImportError).toBe("import-failed");
+    // Inbox가 그 실패를 말한다 — 연결자(OWNER)는 직접 다시 시도한다.
+    expect(await inboxKinds("owner-a")).toEqual(["import_failed"]);
     expect((await importRepository(prisma, { userId: "owner-a" }, { slug: "p1", approval: null })).outcome).toMatchObject({ ok: false, error: "base-branch-missing" });
+  });
+});
+
+describe("토큰 주인의 권한 강등 (R-C Astra 🟡1)", () => {
+  async function pendingKo() {
+    await prisma.locale.createMany({ data: ["en", "ko"].map((code) => ({ projectId: "p1", surfaceId: "p1-s", code, name: code, isBase: code === "en", orphaned: false })) });
+    await prisma.stringKey.create({ data: { id: "k1", projectId: "p1", surfaceId: "p1-s", key: "hello", namespace: "_root", sourceText: "Hello", sourceHash: "h" } });
+    await prisma.translation.create({ data: { id: "t-en", projectId: "p1", surfaceId: "p1-s", keyId: "k1", localeCode: "en", value: "Hello", updatedBy: null } });
+    await prisma.translation.create({ data: { id: "t-ko", projectId: "p1", surfaceId: "p1-s", keyId: "k1", localeCode: "ko", value: "반가워", updatedBy: "owner-a", pendingEditToken: "tok-1" } });
+  }
+
+  it("⚠️ 주인이 Reporter로 강등: Home·설정 Disconnected · Publish는 쓰기 전에 거부(편집 보존) · 수동 Sync는 성공(읽기)", async () => {
+    await seed();
+    await pendingKo();
+    const repo = serve({ members: { 101: 20 } });
+    expect(await screens()).toEqual({ health: "connection-unusable", settings: "disconnected", home: "disconnected", meta: "disconnected" });
+
+    const { outcome } = await publishProject(prisma, { userId: "owner-b" }, { slug: "p1" });
+    expect(outcome).toMatchObject({ status: "failed", retryable: false });
+    expect(repo.writes()).toEqual([]);
+    expect((await prisma.syncRun.findFirstOrThrow({ where: { projectId: "p1" } })).errorCode).toBe("not-installed");
+    expect((await prisma.translation.findUniqueOrThrow({ where: { id: "t-ko" } })).pendingEditToken).toBe("tok-1");
+
+    // Sync는 읽기다 — 읽기 전용 OWNER 계약(#123)은 토큰 주인이 Reporter여도 선다. 리포 값이 DB를 덮는 strict 적재라 미전달 편집이 있으면 보류된다 — 여기선 편집을 비운다.
+    await prisma.translation.update({ where: { id: "t-ko" }, data: { pendingEditToken: null } });
+    expect((await importRepository(prisma, { userId: "owner-a" }, { slug: "p1", approval: null })).outcome).toMatchObject({ ok: true });
+    expect(repo.writes()).toEqual([]);
+  });
+
+  it("Developer 주인 + 보호 브랜치: 연결은 정상(Connected)이고 Publish만 커밋 POST에서 실패한다 — 끊김으로 말하지 않는다", async () => {
+    await seed();
+    await pendingKo();
+    const repo = serve({ members: { 101: 30 }, failOn: [{ key: "POST /repository/commits", status: 403, body: { message: "403 Forbidden - You are not allowed to push into this branch" } }] });
+    expect((await screens()).settings).toBe("connected");
+    const { outcome } = await publishProject(prisma, { userId: "owner-a" }, { slug: "p1" });
+    expect(outcome).toMatchObject({ status: "failed" });
+    expect(repo.writes().map((call) => call.url.pathname.split("/").slice(-2).join("/"))).toEqual(["repository/commits"]);
+    expect((await prisma.translation.findUniqueOrThrow({ where: { id: "t-ko" } })).pendingEditToken).toBe("tok-1");
   });
 });

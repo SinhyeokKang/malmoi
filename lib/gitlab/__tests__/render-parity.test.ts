@@ -45,7 +45,7 @@ async function viaGitlab(s: PullState, files: Record<string, string>): Promise<{
   const repo = createFakeGitLabRepo({ repositoryId: REPO, branches: { main: BASE }, commits: { [BASE]: files } });
   const result = await runPull(deps(s, async (target) => {
     if (target.host !== "gitlab") throw new Error("unexpected host");
-    return createGitLabClient(target, { token: "t", expiresAt: null }, { fetch: repo.fetch });
+    return createGitLabClient(target, { token: "t", expiresAt: null, gitlabUserId: "101" }, { fetch: repo.fetch });
   }));
   const commit = repo.writes().find((call) => call.url.pathname.endsWith("/repository/commits"));
   const actions = commit === undefined ? [] : (JSON.parse(commit.body!) as { actions: { file_path: string; content: string }[] }).actions;

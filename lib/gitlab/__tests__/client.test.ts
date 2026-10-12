@@ -14,7 +14,9 @@ import { createFakeGitLabFetch, json, type FakeCall, type FakeRoute } from "./fa
 const REPO = "87515176";
 const P = `/projects/${REPO}`;
 const TARGET = { host: "gitlab" as const, owner: "g/sub", name: "app", repositoryId: REPO, connectionId: "conn-1" };
-const CREDENTIAL = { token: "glpat-connector", expiresAt: null };
+const CREDENTIAL = { token: "glpat-connector", expiresAt: null, gitlabUserId: "101" };
+/** 토큰 주인(GitLab 101)의 유효 권한 — `members/all`(상속 포함). */
+const OWNER = (level: number): Record<string, FakeRoute> => ({ [`GET ${P}/members/all/101`]: { status: 200, body: { id: 101, username: "alice", access_level: level, state: "active", membership_state: "active" } } });
 const META = { id: Number(REPO), path_with_namespace: "g/sub/app", default_branch: "main", archived: false, repository_object_format: "sha1", runners_token: "GR-secret" };
 const BASE = "b".repeat(40);
 const SYNC = "malmoi-i18n/sync-app";
@@ -60,7 +62,7 @@ describe("createGitLabClient — 생성 때 GET /projects/<id> 한 번(불변식
 
   it("⚠️ 저장된 만료일이 지났으면 원격을 한 번도 부르지 않고 재연결 필요다", async () => {
     const fake = createFakeGitLabFetch({});
-    const error = await createGitLabClient(TARGET, { token: "t", expiresAt: new Date("2026-10-01T00:00:00Z") }, { fetch: fake.fetch, now: new Date("2026-10-12T00:00:00Z") }).catch((caught: unknown) => caught);
+    const error = await createGitLabClient(TARGET, { token: "t", expiresAt: new Date("2026-10-01T00:00:00Z"), gitlabUserId: "101" }, { fetch: fake.fetch, now: new Date("2026-10-12T00:00:00Z") }).catch((caught: unknown) => caught);
     expect(classifySyncError(error)).toMatchObject({ code: "not-installed" });
     expect(fake.calls).toEqual([]);
   });
@@ -305,7 +307,7 @@ describe("listGitLabBranches — ①·설정의 브랜치 목록", () => {
 describe("loadGitLabHealth — 연결 건강성(설정·Home·번역·MCP)", () => {
   it("⚠️ 만료일이 지났으면 원격 0으로 connection-unusable", async () => {
     const fake = createFakeGitLabFetch({});
-    expect(await loadGitLabHealth(TARGET, { token: "t", expiresAt: new Date("2026-10-01T00:00:00Z") }, { fetch: fake.fetch, now: new Date("2026-10-12T00:00:00Z") })).toEqual({ status: "connection-unusable" });
+    expect(await loadGitLabHealth(TARGET, { token: "t", expiresAt: new Date("2026-10-01T00:00:00Z"), gitlabUserId: "101" }, { fetch: fake.fetch, now: new Date("2026-10-12T00:00:00Z") })).toEqual({ status: "connection-unusable" });
     expect(fake.calls).toEqual([]);
   });
 
@@ -319,7 +321,47 @@ describe("loadGitLabHealth — 연결 건강성(설정·Home·번역·MCP)", () 
     [{ status: 503 }, { status: "unknown" }],
   ])("%j → %j", async (route, health) => {
     vi.spyOn(console, "error").mockImplementation(() => {});
-    expect(await loadGitLabHealth(TARGET, CREDENTIAL, { fetch: createFakeGitLabFetch({ [`GET ${P}`]: route as FakeRoute }).fetch })).toEqual(health);
+    expect(await loadGitLabHealth(TARGET, CREDENTIAL, { fetch: createFakeGitLabFetch({ [`GET ${P}`]: route as FakeRoute, ...OWNER(30) }).fetch })).toEqual(health);
     vi.restoreAllMocks();
+  });
+
+  it.each([
+    ["Developer(30) — sync 브랜치 push·MR이 된다", OWNER(30), { status: "ok" }],
+    ["⚠️ Reporter(20)로 강등 — 읽기만 된다: Disconnected(R-C Astra 🟡1)", OWNER(20), { status: "connection-unusable" }],
+    ["멤버 아님(404)", { [`GET ${P}/members/all/101`]: { status: 404 } }, { status: "connection-unusable" }],
+    ["권한 조회 401", { [`GET ${P}/members/all/101`]: { status: 401 } }, { status: "connection-unusable" }],
+    ["⚠️ 권한 조회 일시 장애 — 끊김으로 접지 않는다", { [`GET ${P}/members/all/101`]: { status: 503 } }, { status: "unknown" }],
+  ] as const)("토큰 주인의 유효 권한: %s", async (_label, member, health) => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const fake = createFakeGitLabFetch({ [`GET ${P}`]: { status: 200, body: META }, ...member });
+    expect(await loadGitLabHealth(TARGET, CREDENTIAL, { fetch: fake.fetch })).toEqual(health);
+    // 묻는 사람은 토큰 주인 자신이다 — 호출자가 아니다(연결의 GitLab 사용자 id·PAT).
+    expect(fake.calls.at(-1)?.url.pathname).toBe(`/api/v4${P}/members/all/101`);
+    expect(fake.calls.every((call) => call.headers.get("PRIVATE-TOKEN") === "glpat-connector")).toBe(true);
+    vi.restoreAllMocks();
+  });
+});
+
+describe("쓰기 클라이언트의 사전 검사 — 토큰 주인이 쓸 수 있나 (`requireWrite`)", () => {
+  it("⚠️ Reporter 주인이면 쓰기 클라이언트를 주지 않는다 — 재연결 필요(not-installed), 쓰기 0", async () => {
+    const fake = createFakeGitLabFetch({ [`GET ${P}`]: { status: 200, body: META }, ...OWNER(20) });
+    const error = await createGitLabClient(TARGET, CREDENTIAL, { fetch: fake.fetch, requireWrite: true }).catch((caught: unknown) => caught);
+    expect(classifySyncError(error)).toMatchObject({ code: "not-installed", retryable: false });
+    expect(fake.calls.filter((call) => call.method !== "GET")).toEqual([]);
+  });
+
+  it("Developer 주인은 연다 · 권한 조회 일시 장애는 원래 오류(github-error, 재시도)", async () => {
+    const ok = createFakeGitLabFetch({ [`GET ${P}`]: { status: 200, body: META }, ...OWNER(30) });
+    await expect(createGitLabClient(TARGET, CREDENTIAL, { fetch: ok.fetch, requireWrite: true })).resolves.toBeDefined();
+    const flaky = createFakeGitLabFetch({ [`GET ${P}`]: { status: 200, body: META }, [`GET ${P}/members/all/101`]: { status: 503 } });
+    const error = await createGitLabClient(TARGET, CREDENTIAL, { fetch: flaky.fetch, requireWrite: true }).catch((caught: unknown) => caught);
+    expect(classifySyncError(error)).toMatchObject({ code: "github-error", retryable: true });
+  });
+
+  it("읽기 용도(게이트·원격 신호·리더)는 묻지 않는다 — Reporter 주인이어도 열린 MR 조회·Sync는 돈다", async () => {
+    const fake = createFakeGitLabFetch({ [`GET ${P}`]: { status: 200, body: META }, ...OWNER(20) });
+    await createGitLabClient(TARGET, CREDENTIAL, { fetch: fake.fetch });
+    await openGitLabReader(TARGET, CREDENTIAL, { fetch: fake.fetch });
+    expect(fake.calls.filter((call) => call.url.pathname.includes("/members/all/"))).toEqual([]);
   });
 });
