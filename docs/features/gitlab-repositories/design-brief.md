@@ -6,11 +6,11 @@
 
 새 프로젝트 모달 ① 맨 위에 **GitHub / GitLab 탭**을 두고, GitLab 탭은 **개인 액세스 토큰(PAT)을 붙여 넣는** 연결 흐름으로 그린다. GitHub 탭은 지금 ① 그대로다. 두 리포 호스트가 섞인 뒤 **프로젝트 목록·프로젝트 Home·프로젝트 설정·Sources·`/account`에서 어느 플랫폼의 프로젝트인지가 어떻게 보일지**도 이 시안에서 정한다.
 
-**시안**: [GitLab Repositories](https://claude.ai/design/p/b99d54cd-3034-44f1-8446-0a864da9d767?file=GitLab+Repositories.dc.html) (2026-10-12 수령 — 검토 전)
+**시안**: [GitLab Repositories](https://claude.ai/design/p/b99d54cd-3034-44f1-8446-0a864da9d767?file=GitLab+Repositories.dc.html) (2026-10-12 수령 · v3 검토 — 아래 "시안 검토")
 
 ## 확정 기준
 
-- **GitHub 화면은 바꾸지 않는다** — GitHub 탭 내용, GitHub App 설치·연결 흐름, GitHub 프로젝트의 기존 화면은 현행 그대로다. 이 시안은 GitLab 변형과 **두 플랫폼이 섞일 때 구분을 주는 요소**만 그린다.
+- **GitHub 화면은 바꾸지 않는다** (예외 하나 — Home 메타의 Platform 행은 두 호스트 모두에 선다, 시안 검토 2) — GitHub 탭 내용, GitHub App 설치·연결 흐름, GitHub 프로젝트의 기존 화면은 현행 그대로다. 이 시안은 GitLab 변형과 **두 플랫폼이 섞일 때 구분을 주는 요소**만 그린다.
 - GitLab 연결은 PAT 붙여 넣기다(2026-10-12 사용자 결정 — [spec.md](spec.md) §1). OAuth 왕복·설치 승인 같은 단계는 없다.
 - 편집 화면(번역 워크스페이스)은 그리지 않는다 — 편집자가 보는 차이는 리포 호스트 이름·링크·PR/MR 호칭뿐이고 문구 분기로 낸다.
 - 문구는 **리포 호스트별 문장 분기**다(2026-10-12 사용자 결정). 호스트 이름을 끼워 넣지 않는다 — ko 조사가 GitHub(가·는)와 GitLab(이·은)에서 반대다.
@@ -126,3 +126,17 @@ GitHub의 `waiting`(조직 소유자 승인 대기)은 GitLab에 대응이 없�
 - Self-Managed GitLab 주소 입력(spec §5 비목표).
 - 리포 호스트 전환·미러링 UI(spec §5 비목표).
 - 말모이 자체 리포 링크(공개 헤더·푸터·`/changelog`) — 바꾸지 않는다.
+
+## 시안 검토 (2026-10-12, v3)
+
+DOM 글자·구조로 검토했다(화면 캡처 불가 — 간격·색 판정은 하지 않았다). 사용자 결정:
+
+1. **토큰 보관 = 계정 연결 참조** — 프로젝트는 연결자의 계정 GitLab 연결을 참조한다(사본 없음). G8의 "Replace it to keep them running" · "used by N projects"가 이 모델과 맞다. 연결자가 떠나면 끊기고 남은 OWNER가 재연결한다(G6c "Your token replaces @…'s"). 봇 토큰은 쓰지 않는다(design §2).
+2. **Platform 행은 두 호스트 모두**(G5a1·G5a2) — "GitHub 화면 불변"의 예외로 받는다. GitLab에만 서면 "행이 없다 = GitHub"라는 숨은 규칙이 생긴다.
+3. **MR 번호 `!128`**(G5b1). GitHub는 `#128` 그대로.
+4. **CI YAML(G7a·b·c)은 레이아웃 자리**다 — `ghcr.io/sinhyeokkang/malmoi-cli:1`·`malmoi push`는 실재하지 않고 `:1`은 바뀌는 태그다. 본문은 spec §6 "CI 배포 형태" 결정 뒤 채우며, 요건은 불변 태그/SHA 고정 · `[skip-malmoi-i18n]` 루프 가드 · 설정된 base branch 조건 · 셀프 호스팅이면 `api-url`이다. 시안의 YAML을 구현 근거로 쓰지 않는다.
+5. **날짜는 코드 규칙** — 만료일은 `formatDay`(`expires Mar 4, 2027`, 오프셋 라벨 없음). 시안의 `(UTC+09:00)` 표기는 쓰지 않는다.
+6. **`/account` 카드 제목은 시안 그대로 "GitLab PAT"**.
+7. **`/account`에도 [Connect]** — G8b 미연결 카드에 같은 PAT 입력 shell을 둔다(계정 연결이 정본이라).
+
+그 밖: G2d(일시 장애)의 버튼 라벨 Connect → Try again은 유지해도 된다. 스코프 셋은 tasks §0 실물 확인 뒤 도움말 한 줄만 고친다.

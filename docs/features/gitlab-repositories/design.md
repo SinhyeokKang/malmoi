@@ -45,8 +45,11 @@ GitHub 연결(App 설치 + 사용자 연결 → installation 토큰)은 **바꾸
 2. 서버가 그 PAT로 `GET /user`와 토큰 메타(만료일·스코프 — 확인 필요 `GET /personal_access_tokens/self`)를 읽어 **검증**한다. 실패 사유를 가른다: 무효·만료·스코프 부족·네트워크(일시 장애는 "무효"로 접지 않는다).
 3. 통과하면 PAT를 **계정 단위로 봉해 보관**한다(`/account`의 GitLab 연결 — 다음 ①에서 다시 붙여 넣지 않게 하는 목록용). 원문은 응답·로그·이벤트에 싣지 않는다.
 4. ①의 리포 목록은 그 PAT로 조회한 **Maintainer 이상 프로젝트**다(멤버십 필터). Free 플랜 리포도 같다.
-5. 프로젝트 생성(또는 재연결) 시 그 PAT의 **프로젝트 쓰기 사본**을 프로젝트에 봉해 저장한다. 이후 Sync·Publish·야간은 이 사본만 쓴다 — 계정 PAT를 교체해도 프로젝트는 재연결 전까지 옛 사본을 쓴다(GitHub에서 사용자 연결과 installation 토큰이 갈리는 것과 같은 모양). 쓰기 작성자는 토큰 주인이다(spec §3).
-6. 만료 임박·만료·철회·스코프 부족·주인의 권한 상실은 연결 상태로 보이고(아래 톤 표), 복구는 OWNER가 프로젝트 설정에서 **재연결**(자기 계정 PAT로 사본 교체)한다.
+5. 프로젝트 생성(또는 재연결) 시 프로젝트는 **연결자의 계정 GitLab 연결을 참조**한다(2026-10-12 사용자 결정 — 사본을 두지 않는다). 이후 Sync·Publish·야간은 **그 프로젝트가 참조하는 연결**의 PAT로 쓴다(호출자의 연결이 아니다). 쓰기 작성자는 토큰 주인이다(spec §3). PAT는 어차피 개인 명의라 사본이 주는 독립성이 없고, 계정에서 [Replace token] 한 번이면 그 연결을 참조하는 프로젝트가 전부 복구된다(시안 G8).
+6. 만료 임박·만료·철회·스코프 부족·주인의 권한 상실은 연결 상태로 보이고(아래 톤 표), 복구는 둘이다: 토큰 주인이 계정에서 **토큰 교체**(참조하는 프로젝트 전부 복구) · 다른 OWNER가 프로젝트 설정에서 **재연결**(자기 계정 연결로 참조를 바꿈 — 명의가 바뀐다는 문장을 먼저 보인다, 시안 G6c).
+7. **연결자가 떠나면 끊긴다**(2026-10-12 결정): 참조 주인이 그 프로젝트의 `ProjectMember`에서 빠지거나 계정을 지우거나 GitLab 연결을 해제하면 참조가 비고 프로젝트는 `Disconnected`다. 남은 OWNER가 재연결한다. 떠난 사람의 토큰으로 계속 쓰지 않는다.
+
+**GitLab 봇 토큰을 쓰지 않는 이유**(2026-10-12 검토 · 사용자 결정): 연결자 PAT로 `POST /projects/:id/access_tokens`를 불러 프로젝트 봇 토큰을 발급하면 봇 명의 쓰기·리포 한정·자가 회전(`/access_tokens/self/rotate`)이 다 된다(공식 문서 확인). 그러나 GitLab.com에서 프로젝트 액세스 토큰은 **Premium 이상**이라 Free 리포가 막히고, 두 경로를 두면 복잡도가 배가 된다 — 모든 플랜에서 연결자 PAT 하나로 간다.
 
 ### 적재와 Sync
 
@@ -116,7 +119,7 @@ rg -l 'GithubIcon|github\.com|GitPullRequest' components app
 |---|---|
 | `translations` — Publish 모달, 키 상태 필터 `New from GitHub`(en `:2550`), 기준 언어 배너의 "GitHub Actions workflow" | 문장 분기 · URL |
 | `summary` — Home 카운트 카드 제목 `newFromGithub`(`components/home/count-cards.tsx:26`, en `:1742` — 버튼이 아니다) | 문장 분기 |
-| `home` — `meta.pullRequest`·`prState`·`prCheckFailed`(en `:1143-1145`), `meta-column.tsx`·`hold-later.tsx`·`sync-result.tsx` | 문장 분기 · 번호 표기 |
+| `home` — `meta.pullRequest`·`prState`·`prCheckFailed`(en `:1143-1145`), `meta-column.tsx`·`hold-later.tsx`·`sync-result.tsx` | 문장 분기 · 번호 표기(GitLab `!128`, GitHub `#128` — 2026-10-12 결정) · **Platform 행 신설(두 호스트 모두 — 시안 G5a, 2026-10-12 결정)** |
 | `logs` — `Open on GitHub`·`sent translations to GitHub`·`pr-check-failed`(en `:1371`·`:1448`·`:1544`) | 문장 분기 · URL |
 | `settings` — `The GitHub App is installed…`·`Authorize GitHub App`(en `:3483`·`:3588`), `components/settings/repository-card.tsx`(GithubIcon) | 흐름 분기 |
 | `account`·`errors` — `components/account/github-section.tsx`, `components/github-account.tsx`, `components/reconnect-button.tsx` | 흐름 분기 |
@@ -187,7 +190,7 @@ strict 적재·미전달 보호·렌더·전달 확인은 기존 순수 함수�
 - repository id의 identity는 `(리포 호스트, canonical host, repositoryId)`다. 현재 `repositoryId`에 unique가 없어 같은 숫자 id가 DB에서 즉시 충돌하지 않는다 — additive로 충분하다. DB의 전역 unique 추가 여부는 기존 동일 리포 연결 정책을 확인한 뒤 정하며 임의로 한 리포 한 프로젝트 제약을 만들지 않는다.
 - GitHub `installationId`는 GitHub 전용 nullable 정보로 유지한다. GitLab을 통과시키려고 가짜 설치 id를 쓰지 않는다.
 - GitLab namespace는 `group/subgroup`을 보존해야 한다. 기존 owner/name 검증을 전수 확인하고 부족한 주소 필드를 additive로 추가한다. repositoryId는 주소와 분리한다.
-- PAT 저장은 **둘**이다(위 "GitLab 연결"): 계정 단위 GitLab 연결(사용자당 하나 — 목록·재연결용, 만료일·스코프·주인 표시용 메타 포함)과 프로젝트 쓰기 사본(프로젝트당 하나 — 연결자 user id·만료일 포함). 둘 다 새 테이블/열이고 원문 저장·로그 출력 없이 기존 봉투 암호화/회전 원칙을 따른다. **로그인 `Account`에 섞지 않는다** — GitLab은 로그인 공급자가 아니다. 연결자가 프로젝트를 떠날 때 사본 처리는 spec §6 결정 행.
+- PAT 저장은 **하나**다(위 "GitLab 연결"): 계정 단위 GitLab 연결(사용자당 하나 — PAT 봉투 + GitLab 사용자명·만료일·스코프 메타). 프로젝트는 그 연결을 **참조하는 열**(연결 id, nullable)만 든다. 원문 저장·로그 출력 없이 기존 봉투 암호화/회전 원칙을 따른다. 참조 주인이 멤버에서 빠지거나 연결을 해제하면 참조를 같은 트랜잭션에서 비운다. **로그인 `Account`에 섞지 않는다** — GitLab은 로그인 공급자가 아니다. 연결자가 프로젝트를 떠날 때 사본 처리는 spec §6 결정 행.
 - `lastPrUrl`·실행 이력은 기존 저장을 활용할 수 있으나 URL 판정·payload 스키마·UI 문구를 리포 호스트에 맞춘다. 이름 변경만을 위한 전면 열 rename은 하지 않는다.
 
 배포 순서: additive migration → 기존 GitHub 행 검증 → 두 리포 호스트를 이해하는 모든 reader/writer 배포 → GitLab 생성 활성화. 구현은 **A~E 한 `/push` 배치**다(2026-10-12 결정 — dev에 화면 없는 GitLab 경로가 열리는 창을 만들지 않는다). ⚠️ **셀프 호스팅 설치본은 버전을 건너뛰어 업데이트할 수 있다** — 백필은 앱 코드가 아니라 **마이그레이션 SQL 안에서** 끝낸다(SELF-HOSTING §3-1). "기존 GitHub 행 검증"이 앱 코드 백필을 전제하면 건너뛴 설치본에서 깨진다. dev DB는 `/push` 전에 `/db`로, prod DB는 `/merge` 1단계(`db:deploy`·`db:status:prod`)에서 넓힌다. 활성화 방식(env 스위치 vs `/merge` 분할)은 spec §6 미결이다. 구버전이 GitLab 프로젝트를 읽는 혼합 배포·롤백을 허용하지 않도록 활성화/롤백 절차를 확정한다. 구 필드 제거가 필요해지면 소비자 이관과 별도 배포로 나눈다. 현재 마이그레이션을 만들거나 실행하지 않는다.
@@ -196,7 +199,7 @@ strict 적재·미전달 보호·렌더·전달 확인은 기존 순수 함수�
 
 **GitHub는 불변식 6의 로그인/연결/쓰기 분리를 그대로 유지한다.** GitLab은 2026-10-12 결정으로 **연결자 PAT가 연결 증명이자 쓰기 신원**이다 — 분리하지 않는 대가(개인 명의 커밋·만료·퇴사 시 끊김)는 spec §3에 적었다. 불변식 6 문장은 "GitHub에서는 분리, GitLab에서는 연결자 PAT"로 다시 쓴다(spec §6 정본 문구 행).
 
-이 분리를 상시로 세는 `lib/github-connect/__tests__/credential-separation.test.ts`는 Octokit 형태(`App` import, `rest.*.create`, `paginate("POST`)만 정규식으로 세고, `app/`을 스캔하지 않으며, 완전성 검사도 "`@/lib/github`를 import하는 lib 파일"만 대상으로 한다. GitLab은 Octokit이 아니라 `fetch`로 쓰므로 등록만으로는 지나간다. GitLab 쪽에서 이 테스트가 지킬 경계는 다르다 — **계정 PAT는 목록·검증·재연결(사본 교체)에만 쓰고, Sync·Publish·야간 쓰기는 프로젝트 사본만 쓴다.** 완전성 검사의 기준(GitLab 클라이언트 모듈 import)과 fetch 기반 쓰기 패턴(비GET `fetch`)을 정의하고, 쓰기 경로가 계정 PAT를 읽으면 red로 만든다(tasks §2).
+이 분리를 상시로 세는 `lib/github-connect/__tests__/credential-separation.test.ts`는 Octokit 형태(`App` import, `rest.*.create`, `paginate("POST`)만 정규식으로 세고, `app/`을 스캔하지 않으며, 완전성 검사도 "`@/lib/github`를 import하는 lib 파일"만 대상으로 한다. GitLab은 Octokit이 아니라 `fetch`로 쓰므로 등록만으로는 지나간다. GitLab 쪽에서 이 테스트가 지킬 경계는 다르다 — **Sync·Publish·야간 쓰기는 "그 프로젝트가 참조하는 연결"의 PAT만 쓰고, 호출자(요청한 사람)의 연결을 쓰지 않는다.** 호출자 연결로 쓰면 다른 사람의 프로젝트에 내 명의로 쓰게 된다. 완전성 검사의 기준(GitLab 클라이언트 모듈 import)과 fetch 기반 쓰기 패턴(비GET `fetch`)을 정의하고, 쓰기 경로가 호출자 세션에서 연결을 고르면 red로 만든다(tasks §2).
 
 불변식 11의 세 층의 GitLab 대응: ① 토큰을 리포 하나로 좁히는 층은 **PAT에 없다**(사용자가 접근하는 모든 프로젝트에 쓸 수 있다) — 그래서 ② **쓰기 직전 project id 재대조**와 ③ 화면의 `repo-replaced`가 필수 층이 된다. ②를 빼면 이름 재사용으로 남의 리포에 쓴다.
 
@@ -206,7 +209,7 @@ strict 적재·미전달 보호·렌더·전달 확인은 기존 순수 함수�
 
 **셀프 호스팅 유지보수 계약**(SELF-HOSTING §3 체크리스트 — 셀프 호스팅도 지원 범위다, spec §3):
 - preflight 분류표(`lib/deployment/preflight.ts:27-60`)에 GitLab env를 등록하고(반쪽 설정은 기동 거부) `deploy/.env.example`에 같이 넣는다 — 빠지면 SH-15 ②가 red다. `GITHUB_APP_*` 필수 여부는 spec §6 결정 행.
-- PAT를 봉하는 키와 회전: `credentials:{dev,prod,self-hosted}`의 `rotate-token`·`verify`에 새 열 둘(계정 연결·프로젝트 사본) 등록, 셀프 호스팅 운영 가이드의 키 회전·백업 절.
+- PAT를 봉하는 키와 회전: `credentials:{dev,prod,self-hosted}`의 `rotate-token`·`verify`에 새 열(계정 GitLab 연결) 등록, 셀프 호스팅 운영 가이드의 키 회전·백업 절.
 - PAT는 요청 본문(Server Action)으로만 오고 URL에 실리지 않는다 — nginx 접근 로그 마스킹(`deploy/nginx/`)에 새 경로는 없다. 이 전제가 깨지면(쿼리로 받는 경로가 생기면) 마스킹에 등록한다.
 - 운영자 개인정보 재료(가이드)에 GitLab 전송처를 넣는다.
 

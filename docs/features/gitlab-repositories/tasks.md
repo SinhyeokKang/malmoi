@@ -47,12 +47,12 @@
   - 검증: [자동] 연결 변경 중 적재/Publish, 제거된 멤버, 보관 프로젝트, 다른 리포 id, 같은 숫자 id의 다른 리포 호스트, **연결 흐름 도중 세션 만료**(Action이 세션을 다시 읽는 경로)에 대한 PG 통합 테스트 통과. 잠금 호출을 지운 뮤테이션에서 locked-access가 red.
 - [ ] 호출자의 리포 권한 검사를 경로별로 보존한다. 수동 Sync와 연결된 프로젝트의 base branch 목록·저장(`updateRepositorySettings`)은 읽기 권한, 생성·재연결·소스 추가·push 토큰 회전은 쓰기 권한을 요구한다. `requirePush`는 기본값 없는 필수 인자로 둔다.
   - 검증: [자동] 두 리포 호스트 모두 읽기 전용 OWNER의 Sync·base branch 목록·저장은 성공하고, 쓰기 권한이 필요한 네 경로는 거부된다. 서버 쓰기 자격증명의 존재만으로 호출자의 권한을 인정하지 않는다. 401 → 재인가 경로가 있고 복구 컨트롤 0개인 화면 상태가 없다(POSTMORTEM 2026-09-19).
-- [ ] `lib/github-connect/__tests__/credential-separation.test.ts`에 GitLab 경계를 등록한다 — **계정 PAT는 목록·검증·재연결에만, 쓰기(Sync·Publish·야간)는 프로젝트 사본만**. 완전성 검사의 기준(GitLab 클라이언트 모듈 import)과 fetch 기반 쓰기 패턴(비GET `fetch`)을 정의한다.
-  - 검증: [자동] 쓰기 경로가 계정 PAT를 읽는 픽스처, 연결 경로에 비GET `fetch`를 넣은 픽스처에서 각각 red, 원복 시 green.
+- [ ] `lib/github-connect/__tests__/credential-separation.test.ts`에 GitLab 경계를 등록한다 — **쓰기(Sync·Publish·야간)는 그 프로젝트가 참조하는 연결의 PAT만, 호출자 세션의 연결은 쓰지 않는다**. 완전성 검사의 기준(GitLab 클라이언트 모듈 import)과 fetch 기반 쓰기 패턴(비GET `fetch`)을 정의한다.
+  - 검증: [자동] 쓰기 경로가 호출자 연결을 고르는 픽스처, 연결 경로에 비GET `fetch`를 넣은 픽스처에서 각각 red, 원복 시 green.
 - [ ] 새 Route Handler가 없음을 확인한다(design §5 "새 진입점 없음"). 구현 중 생기면 인가 스캐너 `app/__tests__/entry-points.test.ts`의 `guard(` 집계에 등록한다(POSTMORTEM 2026-09-18).
   - 검증: [자동] `app/api/` 아래 새 파일 0, 생겼다면 `guard(` 호출을 지운 뮤테이션에서 red.
-- [ ] PAT 입력·검증·보관·교체·해제 Server Action을 만든다(계정 단위 GitLab 연결 + 프로젝트 쓰기 사본, design §2 "GitLab 연결"). 검증 사유를 가르는 순수 함수(무효·만료·스코프 부족·네트워크)를 먼저 테스트한다.
-  - 검증: [자동] 사유별 분류 테스트(네트워크 오류를 "무효"로 접지 않음), 원문 PAT가 응답·로그·`ProjectEvent`·MCP 응답에 0건(spec 완료 조건 11), 해제 뒤 봉투 행 0, 계정 PAT 교체가 기존 프로젝트 사본을 바꾸지 않음, 재연결이 사본을 교체함.
+- [ ] PAT 입력·검증·보관·교체·해제 Server Action과 프로젝트의 연결 참조(생성·재연결)를 만든다(design §2 "GitLab 연결" — 저장은 계정 하나, 프로젝트는 참조). 검증 사유를 가르는 순수 함수(무효·만료·스코프 부족·네트워크)를 먼저 테스트한다.
+  - 검증: [자동] 사유별 분류 테스트(네트워크 오류를 "무효"로 접지 않음), 원문 PAT가 응답·로그·`ProjectEvent`·MCP 응답에 0건(spec 완료 조건 11), 해제 뒤 봉투 행 0 + 참조하던 프로젝트가 `Disconnected`, 계정 토큰 교체 뒤 참조하는 프로젝트 전부가 새 토큰으로 쓰기, 참조 주인이 멤버에서 빠지면 같은 tx에서 참조가 빔, 다른 OWNER의 재연결이 참조를 자기 연결로 바꿈.
 
 ## 3. GitLab I/O·Sync·Publish — 커밋 C
 
@@ -88,7 +88,7 @@
   - 검증: [자동] banned-terms·terminology 테스트 green(머지 리퀘스트 표기 변형·GitLab 조사 오용·홀로 선 "Couldn't check"가 MR 목적어에도 걸림). [수동] 톤 표에 "미결" 0행.
 - [ ] 상태 라벨 분기를 `lib/status/canon.ts`의 `STATE` 한 곳에서 한다(`prOpen`·`prCheckFailed` 재사용/추가, 만료 임박 새 상태 행 warning). 만료일은 `lib/date-format.ts`, 남은 기간은 `lib/relative-time.ts`.
   - 검증: [자동] 화면 컴포넌트에 MR/PR 상태 문구 직접 분기 0(grep), `date-format-consumers.test.ts` green.
-- [ ] 기존 프리미티브로 ① GitHub / GitLab 탭(`components/ui/tabs.tsx` — GitHub 탭은 현행 그대로)·GitLab 탭의 PAT 입력과 상태 shell·`/account`의 GitLab 연결·설정·상태·PR/MR 표시, 프로젝트 목록·Home·설정의 리포 호스트 맥락, `workflow-block`·`ci-card`의 GitLab CI 안내를 구현한다. 시안(§0)을 따른다. 문구는 **리포 호스트별 문장 분기**이고 호스트 이름 + 조사 보간이 없다.
+- [ ] 기존 프리미티브로 ① GitHub / GitLab 탭(`components/ui/tabs.tsx` — GitHub 탭은 현행 그대로)·GitLab 탭의 PAT 입력과 상태 shell·`/account`의 GitLab 연결(**미연결이면 [Connect]** — 같은 PAT 입력 shell, 2026-10-12 결정)·설정·상태·PR/MR 표시(GitLab `!128`), 프로젝트 목록·Home(**Platform 행 — 두 호스트 모두**)·설정의 리포 호스트 맥락, `workflow-block`·`ci-card`의 GitLab CI 안내를 구현한다. 시안(§0)을 따른다. 문구는 **리포 호스트별 문장 분기**이고 호스트 이름 + 조사 보간이 없다.
   - 검증: [자동] DOM 테스트에서 GitLab 프로젝트 스코프 화면에 `GitHub`·`pull request`·`github.com` 0건(말모이 자체 리포 링크·로그인 공급자 이름 제외), 호스트가 글리프만이 아니라 텍스트/접근 이름으로 드러난다, 나란히 선 Disconnect의 접근 이름이 축을 든다, PAT 입력의 라벨·오류가 `aria-describedby`로 이어진다, 탭 전환이 GitHub 탭의 기존 상태(리포 검색어·선택)를 잃지 않는다. [수동] `/runtime-test`로 렌더·포커스·라이트/다크·**375 폭에서 긴 하위 그룹 주소**(리포 목록·Home 메타·Sync Dialog·설정 행).
 - [ ] GitLab 브랜드 글리프를 `components/signin/brand-icons.tsx`에 추가하고 `components/__tests__/gitlab-glyph.test.ts`를 새로 둔다. 다색이면 DESIGN §6.2·§6.8 예외 문장에 등재한다. `GitPullRequest*` 일반 글리프는 유지한다.
   - 검증: [자동] gitlab-glyph·`visual-system.test.ts` green. [수동] 다색이면 DESIGN 두 절에 등재 문장이 있다(`visual-system`은 `brand-icons.tsx`를 면제하므로 테스트가 못 잡는다).
