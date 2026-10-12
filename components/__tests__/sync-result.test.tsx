@@ -310,7 +310,8 @@ const PAIRS: [string, RepositoryImportOutcome, string][] = [
   ["일부 표면 밀림", { ok: true, remainingEdits: 0, surfaces: [surface("imported"), { ...surface("superseded", "superseded"), surfaceSlug: "emails" }] }, t.issues],
   ["전 표면 실패", { ok: true, remainingEdits: 0, surfaces: [surface("failed", "parse-failed")] }, t.nothingReplaced],
   ["전 표면 밀림", { ok: true, remainingEdits: 0, surfaces: [surface("superseded", "superseded")] }, t.nothingReplaced],
-  ...(["reconfirm", "already-running", "unauthorized", "invalid input", "not-ready", "no-surfaces", "unpinned", "repo-replaced", "forbidden", "not-found", "archived"] as const)
+  // `gitlab-project-disconnected`의 생산자 둘(참조 비움 · 주인 쪽 리더 열기 실패, 감사 E4)은 모두 실행권 전 거부다(리뷰 C ⚪4).
+  ...(["reconfirm", "already-running", "unauthorized", "invalid input", "not-ready", "no-surfaces", "unpinned", "repo-replaced", "gitlab-project-disconnected", "forbidden", "not-found", "archived"] as const)
     .map(error => [error, { ok: false, error }, t.didntRun] as [string, RepositoryImportOutcome, string]),
   ...(["unavailable", "ingest-failed", "not-connected", "base-branch-missing", "reauthorize", "repo-not-installed"] as const)
     .map(error => [error, { ok: false, error }, t.failed] as [string, RepositoryImportOutcome, string]),
