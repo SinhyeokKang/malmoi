@@ -31,7 +31,7 @@ Un workflow que usa `malmoi-i18n-push-v1` o `malmoi-i18n-push-v2` sigue funciona
 
 Un proyecto de GitLab usa jobs de CI en `.gitlab-ci.yml` en lugar de un workflow de GitHub Actions. [Permite las acciones](allowed-actions.md) no se aplica.
 
-1. En GitLab, abre la configuración del proyecto, ve a CI/CD y luego a Variables, y añade una variable llamada `PUSH_TOKEN` con el token de push como valor. Marca Protect variable y Mask variable.
+1. En GitLab, abre **Settings** › **CI/CD** del proyecto, despliega **Variables** y selecciona **Add variable**. Llámala `PUSH_TOKEN`, pega el token de push como valor, selecciona **Protect variable** y deja **Visibility** en **Masked**.
 2. Comprueba que la rama base que elegiste está protegida en GitLab; GitLab protege la rama predeterminada salvo que lo hayas cambiado. Una variable protegida solo llega a ramas protegidas, así que en una rama sin proteger los jobs fallan sin `PUSH_TOKEN`.
 3. Copia los jobs de la página **Malmoi está listo**, o más tarde desde **Configuración** con **Archivo de CI**, y añádelos a `.gitlab-ci.yml` en la raíz del repositorio. Si el archivo ya existe, añádelos a él.
 4. Haz commit del archivo en la rama base.

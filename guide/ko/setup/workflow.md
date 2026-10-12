@@ -31,7 +31,7 @@
 
 GitLab 프로젝트는 GitHub Actions 워크플로 대신 `.gitlab-ci.yml`의 CI 작업을 씁니다. [action 허용](allowed-actions.md)은 해당하지 않습니다.
 
-1. GitLab에서 프로젝트 설정의 CI/CD, 이어서 Variables로 가서 이름이 `PUSH_TOKEN`이고 값이 푸시 토큰인 변수를 추가합니다. Protect variable과 Mask variable을 켭니다.
+1. GitLab에서 프로젝트의 **Settings** › **CI/CD**로 가서 **Variables**를 펼치고 **Add variable**을 누릅니다. 이름은 `PUSH_TOKEN`, 값은 푸시 토큰으로 넣고 **Protect variable**을 선택하며 **Visibility**는 **Masked**로 둡니다.
 2. 고른 기준 브랜치가 GitLab에서 보호 브랜치인지 확인합니다. 따로 바꾸지 않았다면 GitLab은 기본 브랜치를 보호합니다. 보호 변수는 보호 브랜치에만 전달되므로, 보호되지 않은 브랜치에서는 `PUSH_TOKEN`이 없어 작업이 실패합니다.
 3. **Malmoi 준비 완료** 페이지에서, 또는 나중에 **설정**의 **CI 파일**에서 작업을 복사해 리포지토리 루트의 `.gitlab-ci.yml`에 추가합니다. 파일이 이미 있으면 그 안에 덧붙입니다.
 4. 기준 브랜치에 파일을 커밋합니다.

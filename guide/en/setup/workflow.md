@@ -31,7 +31,7 @@ A workflow that uses `malmoi-i18n-push-v1` or `malmoi-i18n-push-v2` keeps workin
 
 A GitLab project uses CI jobs in `.gitlab-ci.yml` instead of a GitHub Actions workflow. [Allow the actions](allowed-actions.md) doesn't apply to it.
 
-1. In GitLab, open the project's settings, go to CI/CD, then Variables, and add a variable named `PUSH_TOKEN` with the push token as its value. Check Protect variable and Mask variable.
+1. In GitLab, open the project's **Settings** › **CI/CD**, expand **Variables**, and select **Add variable**. Name it `PUSH_TOKEN`, paste the push token as its value, select **Protect variable**, and keep **Visibility** at **Masked**.
 2. Make sure the base branch you chose is protected in GitLab; GitLab protects the default branch unless you changed it. A protected variable reaches only protected branches, so on an unprotected branch the jobs fail without `PUSH_TOKEN`.
 3. Copy the jobs from the **Malmoi is ready** page, or later from **Settings** with **CI file**, and add them to `.gitlab-ci.yml` at the root of the repository. If the file already exists, add the jobs to it.
 4. Commit the file on the base branch.
