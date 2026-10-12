@@ -10,7 +10,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { PrismaClient } from "@/generated/prisma/client";
 import { changeMemberRole } from "@/lib/auth/members";
 import { optionalEnv } from "@/lib/env";
-import { createFakeGitLabFetch, type FakeRoute } from "@/lib/gitlab/__tests__/fake-fetch";
+import { createFakeGitLabFetch, json, type FakeRoute } from "@/lib/gitlab/__tests__/fake-fetch";
 import { runRepositoryImportFromReader } from "@/lib/import/run";
 import { reconnectGitLabProject } from "@/lib/onboarding-run/gitlab-reconnect";
 import { rotateToken } from "@/lib/onboarding-run/rotate-token";
@@ -255,6 +255,74 @@ describe("연결자가 떠나면 끊긴다 · 다른 OWNER의 재연결", () => 
     vi.stubGlobal("fetch", fake.fetch);
     expect(await reconnectGitLabProject(prisma, { userId: "owner-b" }, { slug: "p1" })).toEqual({ ok: false, error: "gitlab-not-connected" });
     expect(fake.calls).toEqual([]);
+  });
+
+  /** 재연결 경합 픽스처 — owner-a가 연결자, owner-b가 재연결하는 OWNER, editor-c의 연결은 "다른 OWNER가 먼저 붙인" 연결로만 쓴다. */
+  async function seedReconnectRace() {
+    await connect("owner-a", TOKEN_A, 101, "alice");
+    await connect("owner-b", TOKEN_B, 202, "bob");
+    await connect("editor-c", "glpat-editor-c", 303, "carol");
+    const [a, c] = await Promise.all(["owner-a", "editor-c"].map((userId) => prisma.gitLabConnection.findUniqueOrThrow({ where: { userId } })));
+    await seedGitLabProject("p1", a!.id, [{ userId: "owner-a", role: "OWNER" }, { userId: "owner-b", role: "OWNER" }]);
+    return { a: a!, c: c! };
+  }
+  const reconnectEvents = () => prisma.projectEvent.count({ where: { projectId: "p1", subtype: "settings.repositoryConnected" } });
+
+  it("⚠️ 원격 왕복 동안 참조가 바뀌면 잠금 뒤 조건부 쓰기가 0행이다 — repo-forbidden, 먼저 끝난 참조를 덮지 않고 사건 0(audit E2)", async () => {
+    const { c } = await seedReconnectRace();
+    const routes = accessRoutes(202, 40);
+    const member = routes[`GET /projects/${REPO}/members/all/202`] as { status: number; body: unknown };
+    routes[`GET /projects/${REPO}/members/all/202`] = async () => {
+      // 다른 OWNER의 재연결이 이 왕복 사이에 끝났다.
+      await prisma.project.update({ where: { id: "p1" }, data: { gitlabConnectionId: c.id } });
+      return json(member.body, member.status);
+    };
+    vi.stubGlobal("fetch", createFakeGitLabFetch(routes).fetch);
+    expect(await reconnectGitLabProject(prisma, { userId: "owner-b" }, { slug: "p1" })).toEqual({ ok: false, error: "repo-forbidden" });
+    expect((await prisma.project.findUniqueOrThrow({ where: { id: "p1" } })).gitlabConnectionId).toBe(c.id);
+    expect(await reconnectEvents()).toBe(0);
+  });
+
+  it("⚠️ 원격 왕복 동안 강등되면 잠금 안 재인가가 거부한다 — forbidden, 참조·사건 그대로", async () => {
+    const { a } = await seedReconnectRace();
+    const routes = accessRoutes(202, 40);
+    const member = routes[`GET /projects/${REPO}/members/all/202`] as { status: number; body: unknown };
+    routes[`GET /projects/${REPO}/members/all/202`] = async () => {
+      await prisma.projectMember.update({ where: { projectId_userId: { projectId: "p1", userId: "owner-b" } }, data: { role: "EDITOR" } });
+      return json(member.body, member.status);
+    };
+    vi.stubGlobal("fetch", createFakeGitLabFetch(routes).fetch);
+    expect(await reconnectGitLabProject(prisma, { userId: "owner-b" }, { slug: "p1" })).toEqual({ ok: false, error: "forbidden" });
+    expect((await prisma.project.findUniqueOrThrow({ where: { id: "p1" } })).gitlabConnectionId).toBe(a.id);
+    expect(await reconnectEvents()).toBe(0);
+  });
+
+  it("GitHub 프로젝트는 원격 호출 0으로 invalid input이다 — GitLab 참조를 박은 혼종 행이 생기지 않는다", async () => {
+    await connect("owner-b", TOKEN_B, 202, "bob");
+    await prisma.project.create({ data: {
+      id: "gh", slug: "gh", name: "gh", repoHost: "github", repoOwner: "acme", repoName: "app", repositoryId: REPO, installationId: "9", baseBranch: "main",
+      members: { create: [{ userId: "owner-b", role: "OWNER" }] },
+    } });
+    const fake = createFakeGitLabFetch({});
+    vi.stubGlobal("fetch", fake.fetch);
+    expect(await reconnectGitLabProject(prisma, { userId: "owner-b" }, { slug: "gh" })).toEqual({ ok: false, error: "invalid input" });
+    expect(fake.calls).toEqual([]);
+    expect((await prisma.project.findUniqueOrThrow({ where: { id: "gh" } })).gitlabConnectionId).toBeNull();
+  });
+
+  it("호출자 PAT 401·저장 만료는 gitlab-reconnect, GitLab에서 보관된 리포는 gitlab-repo-archived다 — 참조 그대로", async () => {
+    const { a } = await seedReconnectRace();
+    vi.stubGlobal("fetch", createFakeGitLabFetch({ [`GET /projects/${REPO}`]: { status: 401, body: { message: "401 Unauthorized" } } }).fetch);
+    expect(await reconnectGitLabProject(prisma, { userId: "owner-b" }, { slug: "p1" })).toEqual({ ok: false, error: "gitlab-reconnect" });
+    vi.stubGlobal("fetch", createFakeGitLabFetch(accessRoutes(202, 40, { archived: true })).fetch);
+    expect(await reconnectGitLabProject(prisma, { userId: "owner-b" }, { slug: "p1" })).toEqual({ ok: false, error: "gitlab-repo-archived" });
+    await prisma.gitLabConnection.update({ where: { userId: "owner-b" }, data: { expiresAt: new Date("2020-01-01T00:00:00Z") } });
+    const fake = createFakeGitLabFetch({});
+    vi.stubGlobal("fetch", fake.fetch);
+    expect(await reconnectGitLabProject(prisma, { userId: "owner-b" }, { slug: "p1" })).toEqual({ ok: false, error: "gitlab-reconnect" });
+    expect(fake.calls).toEqual([]);
+    expect((await prisma.project.findUniqueOrThrow({ where: { id: "p1" } })).gitlabConnectionId).toBe(a.id);
+    expect(await reconnectEvents()).toBe(0);
   });
 
   it("제거된 멤버·EDITOR·보관 프로젝트는 원격 호출 전에 거부된다", async () => {
