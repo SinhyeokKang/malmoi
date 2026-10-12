@@ -4,6 +4,7 @@ import { useId, useState, useTransition, type FormEvent } from "react";
 
 import { connectGitLab } from "@/app/(edit)/account/actions";
 import { useMessages } from "@/components/i18n/messages-provider";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { FormGroup } from "@/components/ui/form-group";
 import { Input } from "@/components/ui/input";
@@ -53,10 +54,20 @@ export function GitLabTokenForm({ submitLabel, onConnected, autoFocus = false }:
     });
   }
 
+  /*
+    ⚠️ **거부는 도움말 아래 danger Alert다** (시안 G2c·G2d · #246) — 필드 오류(`FormGroup` error)는 도움말을 대신하는데, 거부의 다음 행동이
+    도움말(스코프 `api` · 역할)과 토큰 만들기 링크라 둘이 함께 남아야 한다. Alert·도움말·상태 줄이 전부 입력의 `aria-describedby`다.
+    ⚠️ **빈 입력의 [Connect]는 꺼진 형이다** (G2a · #244) — `aria-disabled`라 포커스는 받고, 도움말이 이유(무엇을 붙여 넣나)를 말한다.
+  */
+  const helpId = `${id}-help`;
+  const statusId = `${id}-status`;
+  const errorId = `${id}-error`;
+  const empty = token.trim() === "";
+  const describedBy = [helpId, pending ? statusId : null, error !== null ? errorId : null].filter((part) => part !== null).join(" ");
   return (
     <form onSubmit={submit} className="space-y-2">
-      <FormGroup label={m.account.gitlab.form.label} htmlFor={id} help={m.account.gitlab.form.help} error={error ?? undefined}>
-        {(describe) => (
+      <FormGroup label={m.account.gitlab.form.label} htmlFor={id} help={m.account.gitlab.form.help}>
+        {() => (
           <div className="flex w-[480px] max-w-full items-start gap-2 @max-form:w-full">
             <Input
               width="full"
@@ -69,14 +80,16 @@ export function GitLabTokenForm({ submitLabel, onConnected, autoFocus = false }:
               value={token}
               readOnly={pending}
               aria-invalid={error !== null}
-              aria-describedby={describe()}
+              aria-describedby={describedBy}
               onChange={(event) => setToken(event.target.value)}
             />
-            <Button type="submit" variant="primary" busy={pending} className="shrink-0">{submitLabel}</Button>
+            <Button type="submit" variant="primary" busy={pending} aria-disabled={empty || undefined} aria-describedby={empty ? helpId : undefined} className="shrink-0">{submitLabel}</Button>
           </div>
         )}
       </FormGroup>
-      {/* ⚠️ 오류가 도움말을 대신해도 이 링크는 남는다 — fine-grained·스코프 거부의 다음 행동이 "새 토큰 만들기"다(design-brief G2c). 새 탭이다(모달로 돌아와 붙여 넣는다). */}
+      {pending && <p id={statusId} role="status" className="text-muted-foreground text-xs leading-body">{m.account.gitlab.form.checking}</p>}
+      {error !== null && <Alert id={errorId} variant="danger">{error}</Alert>}
+      {/* 토큰 만들기 링크 — fine-grained·스코프 거부의 다음 행동이 "새 토큰 만들기"다(design-brief G2c). 새 탭이다(모달로 돌아와 붙여 넣는다). */}
       <p className="text-xs leading-prose"><InlineLink href={GITLAB_TOKEN_URL} target="_blank" rel="noreferrer">{m.account.gitlab.form.create}</InlineLink></p>
     </form>
   );

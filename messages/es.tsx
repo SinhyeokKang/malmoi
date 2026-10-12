@@ -937,6 +937,7 @@ export const es = {
         help: "Usa un token de acceso personal clásico con el alcance api. Los proyectos que conectes necesitan el rol Maintainer o superior.",
         create: "Crear un token en GitLab",
         connect: "Conectar",
+        checking: "Comprobando el token con GitLab…",
       },
     },
     sessionsSection: {

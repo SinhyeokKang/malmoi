@@ -2120,6 +2120,8 @@ export const en = {
         help: "Use a legacy personal access token with the api scope. Projects you connect need the Maintainer role or higher.",
         create: "Create a token in GitLab",
         connect: "Connect",
+        /** 검증 중 상태 줄(시안 G2b) — 입력 잠김 + 버튼 스피너 옆에서 무엇을 기다리는지 말한다. */
+        checking: "Checking the token with GitLab…",
       },
     },
     /** 구역 헤더 — 항목 둘(이 기기 / 모든 기기)이 한 리스트에 선다. */

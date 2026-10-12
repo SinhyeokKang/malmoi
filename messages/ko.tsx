@@ -945,6 +945,7 @@ export const ko = {
         help: "api 스코프가 있는 레거시 개인 액세스 토큰을 쓰세요. 연결할 프로젝트에는 Maintainer 이상의 역할이 필요합니다.",
         create: "GitLab에서 토큰 만들기",
         connect: "연결",
+        checking: "GitLab에서 토큰을 확인하는 중…",
       },
     },
     sessionsSection: {
