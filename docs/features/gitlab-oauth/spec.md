@@ -47,6 +47,13 @@ GitLab.com 계정으로 말모이에 로그인할 수 있게 한다. Auth.js에 
 12. **GitLab 단독 self-hosted**: `AUTH_GITLAB_*` 쌍만 있고 GitHub·Google 쌍이 없는 설정이 preflight를 통과하고, `/signin`에 GitLab 버튼 하나만 primary로 선다. [단위 — `preflight` 행렬 · `signInButtons`]
 13. **callback 가로채기 셋(병합 확인·세션 회수·수단 연결)이 `/api/auth/callback/gitlab`도 잡는다** — `lib/auth/roundtrip.ts`의 callback 판정이 `LOGIN_PROVIDERS`에서 파생된다. 빠지면 GitLab callback이 세 가로채기를 우회해 평범한 로그인으로 흐른다. [단위 — `oauth-callback-contract.test.ts` `/callback/gitlab` 사례 · 격리 PG]
 14. **`/account`에서 GitLab 로그인 수단 행과 GitLab PAT 카드가 이름으로 갈린다** — PAT 카드의 해제 접근 이름·확인 제목·미연결 행 이름이 "토큰"을 든다(design §4 J8). 네 상태(둘 다 미연결 · 로그인만 · PAT만 · 둘 다)에서 같은 이름·같은 확인 제목이 두 번 서지 않는다. [DOM — `account/__tests__/structure.test.tsx` · 실물 T6]
+15. **브랜드 글리프가 브랜드 색으로 선다**(design §4 D6 · §5 "브랜드 글리프")
+    - 대상 자리: 로그인 버튼 세 화면, `/signin/link` 배지, 카드 행 `IconTile` 다섯 자리(`/account`의 로그인 수단 · GitHub App · GitLab PAT, 설정 리포 카드 GitHub·GitLab)
+    - 형: GitLab은 공식 3색 tanuki, Google은 4색, GitHub는 버튼 안에선 버튼 글자색 상속이고 칸 안에선 `text-foreground`
+    - 상태 칸(`tone` 경고·실패)에서도 글리프는 상태 색을 받지 않는다
+    - 인라인 작은 글리프(목록·메타·탭)는 단색 그대로
+    - 라이트·다크 두 테마에서 대비가 유지된다
+    - 검증: [단위 — `gitlab-glyph.test.ts`(두 글리프 분리) · DOM `tone` 비상속 단언 · 실물 T6 체크리스트]
 
 ## 5. 비목표
 
@@ -67,5 +74,6 @@ GitLab.com 계정으로 말모이에 로그인할 수 있게 한다. Auth.js에 
 | 2026-10-13 | 착수는 v1.4.0 `/merge` 뒤 | 사용자 결정(브리프) — 감사 리팩터 런과 겹치지 않게. **충족**(v1.4.0 `456e0e1f`) |
 | 2026-10-13 | 설계 결정 D1~D5 — REST `confirmed_at` · 순서 `github → gitlab → google` · 아바타 안 받음 · `prompt` 인자는 T0 뒤 · hosted 켬(그룹 소유 앱) | design §4 "사용자 결정" 표 |
 | 2026-10-13 | `/feature-review` 반영 — 우주 게이트는 `google` 토큰 판정 · callback 정규식 파생 · 사전 키 `link.providers.gitlab`은 커밋 A, 테스트 기본 env는 커밋 D · J8은 PAT 카드 문구로 지금 닫는다 · 앱 하나 · D2 유지 + 대가 기록 · T0 ⑥은 `ox501501`(그룹 비멤버)로 잰다 · `reauthParams`는 T0 조건부 · J6 번호 없음 · design-brief 불필요 | `/feature-review` 사용자 답변 |
+| 2026-10-13 | 로그인 공급자 자리와 카드 행 `IconTile`의 브랜드 글리프는 브랜드 색 — GitLab 공식 3색 tanuki, Google 4색, GitHub 공식 단색(칸 안에선 `text-foreground`). 인라인 작은 글리프는 단색 유지 | 사용자 결정(착수 직전) — design §4 D6 |
 
 남은 열린 지점은 T0 실측(D1 재개 조건 · D4 확정 · ⑤ 판정)뿐이다.

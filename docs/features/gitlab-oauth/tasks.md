@@ -71,6 +71,16 @@
 
 - [ ] `brand-icons.tsx`에 `ProviderIcon({ provider })`(공급자 → 글리프 `Record<LoginProvider, …>`, `LoginProvider`는 `import type`) — 다섯 글리프 삼항 자리(design §5)를 이관, 라벨 삼항 셋은 `m.signIn[provider]`. ⚠️ **`ProviderButton` 함수 이름을 바꾸지 않는다**(`normal-login.test.tsx`가 `type.name`으로 찾는다 — POSTMORTEM 2026-09-10). `gitlab-glyph.test.ts`(경로는 이 파일에만·색 리터럴 0) 유지.
   - 검증: [자동] `rg -n 'github" \? ' app components` 0.
+- [ ] **브랜드 글리프 (D6)** — design §5 "브랜드 글리프" 표대로 바꾼다.
+  - `brand-icons.tsx`에 공식 3색 `GitlabBrandIcon`을 둔다. path는 GitLab 공식 press kit에서 가져오고, 출처·라이선스·고정 버전/SHA를 파일 머리에 적는다. 단색 `GitlabIcon`은 인라인 자리용으로 남긴다.
+  - `ProviderIcon`의 gitlab → `GitlabBrandIcon`.
+  - 카드 행 브랜드 조각(예: `BrandGlyph({ host })` — GitHub는 `text-foreground`)을 둔다. 다섯 자리를 이 조각으로 이관한다: `login-methods.tsx:101` · `github-section.tsx:72` · `gitlab-section.tsx:89` · `repository-card.tsx:138`·`:198`. `/signin/link` 배지(`[challenge]/page.tsx:103`)도 같은 형이다.
+  - 인라인 다섯 자리(`project-list.tsx:288` · `sources-screen.tsx:94` · `meta-column.tsx:132` · `new-project.tsx:619` · `steps/repo.tsx`)는 건드리지 않는다.
+  - 검증: [자동]
+    - `gitlab-glyph.test.ts`를 두 글리프로 나눈다 — `GitlabIcon`은 `currentColor`와 색 리터럴 0, `GitlabBrandIcon`은 색 리터럴 집합이 `#E24329`·`#FC6D26`·`#FCA326`과 **정확히** 같다. tanuki path는 `brand-icons.tsx`에만 있다.
+    - DOM — 위 다섯 카드 자리에서 `tone="warning"`·`"danger"` 칸이어도 브랜드 글리프가 `text-*` 상태 색을 상속하지 않는다(GitHub는 `text-foreground`, GitLab·Google은 path `fill` hex).
+    - `visual-system.test.ts` green.
+    - 뮤테이션: `GitlabBrandIcon`에 `currentColor`를 되넣으면 red이고, 카드 조각에서 `text-foreground`를 빼면 red다.
 - [ ] 테스트 기본 env — `vitest.setup.ts:13`에 `AUTH_GITLAB_ID`·`AUTH_GITLAB_SECRET`(hosted D5와 맞춘다). 함께 바뀌는 기대:
   - `lib/credentials/__tests__/sign-in.test.ts:20`(`toHaveLength(2)` → 3)
   - `components/__tests__/provider-progress.test.tsx` `:50`(루프) · `:56`(`toHaveLength` — **페이지당 `ProviderButton` 수 = 공급자 수**, 3) · `:64`(라벨 삼항)
@@ -85,6 +95,15 @@
   - `/signin`·`/invite/[token]`·`/oauth/authorize` 세 버튼 — **375폭 · 라이트 · 다크** 각각(시안이 없으므로 표현 층은 여기서 본다)
   - GitLab 로그인 왕복 · 초대 링크 → GitLab 로그인 → 수락
   - `/account` — GitLab 로그인 행 × PAT 카드 **네 상태**(둘 다 미연결 · 로그인만 · PAT만 · 둘 다): 이름·해제 확인 제목이 겹치지 않는가(J8) · [Connect]·해제·`Continue to GitLab` 회수
+  - **브랜드 글리프 체크리스트 (D6)** — 라이트·다크 각각:
+    - [ ] `/signin` — GitHub 버튼이 primary 채움 위 흰색이다. GitLab 버튼은 3색 tanuki, Google 버튼은 4색 G다.
+    - [ ] `/invite/[token]`·`/oauth/authorize` — 위와 같다.
+    - [ ] (self-hosted GitLab 단독 구성) GitLab이 primary 채움 위에서도 3색이고 대비가 유지된다.
+    - [ ] `/signin/link/<challenge>` 배지 — 브랜드 색이다.
+    - [ ] `/account` 로그인 수단 카드 — GitHub 칸은 회색이 아니라 잉크(라이트 검정 / 다크 흰색)다. GitLab은 3색, Google은 4색이다.
+    - [ ] `/account` GitHub App 카드 · GitLab PAT 카드 — 연결 상태에서 브랜드 색이다. GitLab PAT 만료 임박(경고 칸)에서 칸 면만 호박색이고 tanuki는 3색 그대로다.
+    - [ ] 설정 리포 카드(GitHub·GitLab 프로젝트 각각) — 정상 상태와 경고·실패 상태 모두에서 글리프가 브랜드 색이다. 연결이 끊긴 상태는 `Unplug`가 상태 색을 받는다.
+    - [ ] 인라인 자리(프로젝트 목록 · 소스 화면 · 홈 메타 · 새 프로젝트 GitLab 탭)는 단색 그대로다.
   - 미확인 이메일 거부는 실물로 재현할 수 없다(gitlab.com은 가입 시 확인 강제) — 격리 PG(§2)가 맡고, 초대 복귀 경로는 공급자 중립이라 생략한다
   - 검증: [수동] 시나리오별 통과/결함 이슈. 결함은 BugShot으로.
 
@@ -98,7 +117,7 @@
 - [ ] **PRODUCT** — §4.2 "GitLab 로그인"(`:485`) 제거(바로 윗줄 `:484` "GitLab OAuth 앱 연결"은 남기되 "리포 연결용"임을 한 구절로) · §4.1에 로그인 공급자 셋째(GitLab.com만, Self-Managed 없음) · §4.1 셀프 호스팅 "그대로인 것"의 로그인 공급자 목록(`:442`) · §4.3 ① "1차 로그인은 … 둘뿐"(`:519`) · `:228` "로그인 방식이 역할을 정하지 않는다" 예시 · `:231`·`:527`·`:531`.
 - [ ] **ARCHITECTURE** — §6 표 로그인 행(`:2361`) · §6.2 GitLab 검증 단락(`confirmed_at` 근거·T0 실측 결과) · `checks` 셋(`:2728`) · 계정 병합 절 `linkAccount` "github/google"(`:2782`) · "켜진 로그인 공급자"(`:2801-2813` — 순서, `:2807` canUnlink 반례, 우주 사본 절 `:2811`을 "하나로 모았다 + `provider-universe.test.ts`(google 토큰 판정)"로 교체, `:2810`) · 토큰 비저장(`:1592`) · `:2838` · `:4240` · CSP `form-action`·"아바타 호스트 둘"(`:4271-4273`) · 회수 절에 T0 ⑤ 판정 · §6.41(GitLab 연결)에 "GitLab 로그인 `Account`와 `GitLabConnection`은 별개 — 서로를 만들거나 지우지 않는다" 한 문장(지금 이 문장의 반대 단언이 `schema.prisma:637` 주석에 있었다 — 커밋 A에서 고친다).
 - [ ] **CLAUDE.md** — 스택 표 로그인 행 "GitHub + Google" → 셋 · 자격증명 절 GitLab 단락에 J6 문장(번호 없이: "GitLab 로그인 토큰은 GitHub 표의 OAuth App 토큰 행과 같은 지위다 — 콜백 안에서만 살고 저장하지 않으며 리포 API를 부르지 않는다"). 편집 뒤 `pnpm sync:agents`(훅이 미러를 재생성한다).
-- [ ] **DESIGN** — §6.62 "hosted는 둘" → 셋 · §6.8 `:2204` "provider GitHub·Google" · 브랜드 로고 규칙 `:2240` · 브랜드 아이콘 행에 GitLab(`ProviderIcon`) · §6.67 `:2040` "hosted는 언제나 둘"과 본문 예시 · `:2046` 접근 이름 행에 PAT 카드 짝(J8).
+- [ ] **DESIGN** — §6.62 "hosted는 둘" → 셋 · §6.8 `:2204` "provider GitHub·Google" · 브랜드 로고 규칙 `:2240` · 브랜드 아이콘 행에 GitLab(`ProviderIcon`) · §6.67 `:2040` "hosted는 언제나 둘"과 본문 예시 · `:2046` 접근 이름 행에 PAT 카드 짝(J8) · **브랜드 글리프(D6)**: §6.8의 "GitLab tanuki는 단색" 문장을 자리별 규칙으로 바꾼다(로그인·카드 칸은 브랜드 색, 인라인은 단색). §6.2 raw 색 예외에 GitLab 공식 hex 셋을 Google과 나란히 등재한다. §6.8 "색은 상속"의 예외에 "칸 안 브랜드 GitHub는 `text-foreground`"를 더한다. §2.4 아이콘 칸 열에는 "상태 칸에서도 브랜드 글리프는 `tone`을 받지 않는다"를 더한다.
 - [ ] **OPERATIONS** — "GitLab 로그인 앱" 절(design §8 — Vercel 투입 스크립트 절차 포함) · "새 머신 셋업"에 GitLab 줄 · `:376`.
 - [ ] **SELF-HOSTING** — §4 게이트 문장 · `:118` · §7 "로그인 공급자 단독 구성" 행에 GitLab 단독.
 - [ ] **README** — `:206` 로그인 목록 · `:219`·`:224` 전송처 목적.

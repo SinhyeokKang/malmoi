@@ -90,18 +90,32 @@ ARCHITECTURE "켜진 로그인 공급자"(`:2801`, 사본을 일부러 남긴 �
 | D3 | GitLab 아바타(`avatar_url`) → `User.image` | **받지 않는다**(`image: null`) (추천 채택) | `avatar_url`은 gitlab.com 업로드이거나 gravatar(GitLab 기본 폴백)라, 받으면 보는 사람의 브라우저가 새 제3자 호스트에 붙고 CSP `img-src`·방침 전송처가 는다. 사진은 `/account` 업로드로 올린다 — GitLab으로 처음 가입한 사람만 이니셜로 시작한다. 그래서 **`img-src` 무변경, 방침 아바타 줄(en `:814`·`:888`)은 GitHub·Google 그대로**이고, 수집 표 `:742`("name, email and profile picture ← GitHub or Google")는 사진 출처를 갈라 적는다(§7) |
 | D4 | 회수·[Connect] 왕복의 `prompt: "select_account"`를 GitLab에도 | **T0 실측 뒤 확정 — 오류를 낼 때만 갈린다** (`/feature-review`에서 단순화) | T0 ③에서 GitLab이 그 인자를 오류 없이 무시하면 지금 호출(`actions.ts:180·:261`)을 그대로 두고 아무것도 만들지 않는다. 오류를 낼 때만 `Record<LoginProvider, Record<string, string>>` 상수 하나를 두어 두 Action이 공유한다 — 함수보다 단순하고 공급자를 빠뜨리면 typecheck가 잡는다 |
 | D5 | hosted에서 켤까 · 앱 소유 | **켠다 · 그룹 소유 앱 하나** (추천 채택) | `/merge` 뒤 Production env 투입. GitLab 그룹 Settings → Applications에 앱 하나, redirect URI 셋(prod · `dev.mal-moi.com` · localhost) — 등록자가 떠나도 앱이 남는다(불변식 6 근거와 같은 결). 그룹 소유자는 사용자 계정이고 테스트 계정 `ox501501`은 그 그룹의 멤버가 아니다(T0 ⑥의 전제). **앱은 2026-10-13 사용자가 등록했고 ID·secret을 `.env.local`에 넣었다** — 에이전트는 값을 읽지 않는다. 방침 개정이 env 투입보다 먼저거나 같은 배포여야 한다(§7) |
+| D6 | 브랜드 글리프의 색 (2026-10-13 착수 직전 추가) | **로그인 공급자 자리와 카드 행 `IconTile` 자리의 브랜드 글리프는 브랜드 색 그대로** — GitLab은 **공식 3색 tanuki**, Google은 지금의 4색, GitHub는 공식 단색(밝은 면엔 검정 · 어두운 면엔 흰색). 인라인 작은 글리프(텍스트 옆 `size-3.5`)는 단색 상속 그대로 | gitlab-repositories D10("GitLab은 단색 `currentColor`")을 **이 두 종류의 자리에 한해** 뒤집는다. 자리와 형은 §5 "브랜드 글리프" |
 
 ## 5. 화면
 
 **design-brief 없음** — `/feature-review`(2026-10-13) CPO·CDO가 `.claude/commands/feature.md`의 산출 조건 셋(새 UI 표면의 첫 구현 · 레이아웃·정보 구조 재구현 · 사용자 지시) 어디에도 걸리지 않는다고 판정했다.
 - 로그인 버튼은 켜진 공급자만 그리는 기존 `ProviderSubmit` 세로 스택(`flex w-full flex-col gap-2`, 버튼 `w-full size="lg"` — `app/signin/page.tsx:69`·`invite/[token]/page.tsx:135`·`oauth/authorize/page.tsx:125`)에 한 줄 더 쌓인다. primary는 `signInButtons`가 index 0으로 정한다(DESIGN §6.62 "버튼이 하나여도 화면이 읽힌다" — 개수에 중립인 골격).
 - `/account` 수단 카드도 행이 하나 는다(DESIGN §6.67 "행 = 켜진 공급자"). GitLab 두 행의 혼동은 레이아웃이 아니라 문구 문제라 J8에서 닫는다.
-- 글리프는 이미 있는 `GitlabIcon`(`components/signin/brand-icons.tsx:52`, 단색 `currentColor` — gitlab-repositories D10, `gitlab-glyph.test.ts`)을 쓴다. 단색 + 다색 Google 공존은 GitHub + Google의 선례이고, GitLab이 primary가 돼도 `currentColor`라 반전색을 따른다. 새 색·`dark:` 없음.
+- 글리프 색은 아래 "브랜드 글리프"(D6)를 따른다. `dark:`는 쓰지 않는다. 새 raw 색은 GitLab 공식 hex 셋뿐이고, DESIGN §6.2·§6.8에 Google과 같은 예외로 등재한다.
 - 시안 없이 가는 대가(POSTMORTEM 2026-09-15 — 시안 없이 만든 화면이 네 곳에서 어긋났다)는 실물 T6이 받는다 — `/signin`·`/invite`·`/oauth/authorize`를 375폭·라이트·다크로, `/account`를 GitLab 로그인 행 × PAT 카드 네 상태로 본다(tasks §4).
 
 **손 사본 정리**: 공급자 → 글리프 2갈래 삼항이 다섯 자리다 — `app/signin/page.tsx:132` · `app/invite/[token]/page.tsx:240` · `app/oauth/authorize/page.tsx:288` · `app/signin/link/[challenge]/page.tsx:103` · `components/account/login-methods.tsx:101`. 라벨 삼항이 셋(`app/signin/page.tsx:75` · `invite:238` · `authorize:286`). 셋째 갈래를 여덟 번 더 쓰지 않고 `brand-icons.tsx`(비테스트 소비자 20곳이 공유하는 글리프 자산 모듈 — 프리미티브가 아니라 `components/ui/`로 옮길 이유가 없다)에 `ProviderIcon({ provider })`(공급자 → 글리프 `Record<LoginProvider, …>`, `LoginProvider`는 `import type`)를 두고 이관한다 — 실재하는 사본의 이관이다(CLAUDE.md 작업 원칙). 라벨은 `m.signIn[provider]`로 인덱싱한다.
 - ⚠️ **`ProviderButton` 함수 이름을 유지한다** — `app/signin/page.tsx:106`·`app/signin/link/[challenge]/page.tsx:128-131`이 이름을 바꾸지 말라고 경고하고, `normal-login.test.tsx`가 `type.name === "ProviderButton"`으로 찾는다(POSTMORTEM 2026-09-10의 방어선).
 - `provider-progress.test.tsx:56`의 `toHaveLength(2)`는 **한 페이지의 `ProviderButton` 개수 = 켜진 공급자 수**다(`:36-44`) — 셋이면 3. `:50`의 `["github","google"]` 루프·`:64` 라벨 삼항도 바뀐다.
+
+**브랜드 글리프 (D6)** — 지금까지 GitHub·GitLab은 단색 `currentColor`라서 `IconTile` 안에서는 칸의 회색(`text-muted-foreground`, `icon-tile.tsx` `TONE.muted`)이나 상태 색(`tone`)을 받았다. 이번에 두 종류의 자리에서 브랜드 색으로 고정한다.
+
+| 자리 | GitHub | GitLab | Google |
+|---|---|---|---|
+| **로그인 버튼** — `/signin`·`/invite/[token]`·`/oauth/authorize`의 `ProviderButton` | 버튼 글자색을 상속한다(지금 그대로). primary 버튼은 채움이 어두워 흰색이고 default 버튼은 검정이라, GitHub의 "밝은 면엔 검정, 어두운 면엔 흰색" 규칙과 같다 | **공식 3색 tanuki**(`#E24329`·`#FC6D26`·`#FCA326`) — primary 버튼 위에서도 3색 그대로 | 4색 그대로 |
+| **카드 행 `IconTile`** — `/account` 로그인 수단 행(`login-methods.tsx:101`) · GitHub App 카드(`github-section.tsx:72`) · GitLab PAT 카드(`gitlab-section.tsx:89`) · 설정 리포 카드(`repository-card.tsx:138`·`:198`) · `/signin/link` 배지(`[challenge]/page.tsx:103`) | **`text-foreground` 잉크** — 칸의 회색 상속을 끊는다. 테마 잉크라 라이트에선 검정, 다크에선 흰색이고 새 raw 색이 아니다 | 3색 tanuki | 4색 |
+| **인라인 작은 글리프** — 프로젝트 목록(`project-list.tsx:288`) · 소스 화면(`sources-screen.tsx:94`) · 홈 메타(`meta-column.tsx:132`) · 새 프로젝트 탭(`new-project.tsx:619`) · 온보딩 리포 후보(`steps/repo.tsx`) | 단색 상속 그대로 | 단색 `GitlabIcon` 그대로 | — |
+
+- **상태 칸에서도 글리프 색은 브랜드다.** `tone`(경고·실패)은 **칸의 면**만 칠하고 글리프 색은 덮지 않는다. 연결이 끊긴 상태처럼 글리프 자체가 `Unplug`·`Link2`로 바뀌는 자리는 지금처럼 lucide 아이콘이 상태 색을 받는다.
+- **형** — `brand-icons.tsx`에 공식 3색 `GitlabBrandIcon`을 더한다. 기존 단색 `GitlabIcon`은 인라인 자리를 위해 남긴다. path는 GitLab 공식 press kit에서 가져오고 출처·라이선스·고정 버전(또는 SHA)을 파일 머리에 적는다(로고는 상표라 모양을 바꾸지 않는다). `ProviderIcon`은 gitlab → `GitlabBrandIcon`. 카드 행은 브랜드 글리프 하나를 감싸는 작은 조각(예: `BrandGlyph({ host })` — GitHub는 `text-foreground`)으로 다섯 자리가 같은 형을 쓴다. 손으로 다섯 번 `className`을 다는 사본을 만들지 않는다(CLAUDE.md "UI 프리미티브 먼저").
+- **게이트** — `gitlab-glyph.test.ts`는 두 글리프로 나눠 센다. `GitlabIcon`은 `currentColor` + 색 리터럴 0을 유지하고, `GitlabBrandIcon`은 색 리터럴이 공식 hex 셋 **정확히**와 같다. tanuki path가 `brand-icons.tsx` 하나에만 있다는 규칙은 그대로다. 브랜드 자리의 글리프가 상태 칸에서 `tone` 색을 상속하지 않는다는 DOM 단언(`login-methods`·`github-section`·`gitlab-section`·`repository-card`)을 추가한다.
+- **J8에 주는 영향** — 이제 `/account`의 로그인 수단 행과 PAT 카드가 둘 다 3색 tanuki다. 글리프로는 둘이 갈리지 않으므로 둘을 가르는 일은 문구(J8)만 한다.
 
 **새 사전 키**(en → ko·es 같은 커밋, `/translate` 모드 ①):
 - `link.providers.gitlab`: `GitLab` — **커밋 A**(`lib/login-link/message.ts:19`의 `m.link.providers[provider]`가 `{github, google}` 리터럴이라 우주에 gitlab이 들어가는 순간 TS7053이다). `dictionary-consistency.test.ts:94-96`·`:144`의 "en과 같아도 되는 키" 허용 목록에 함께 올린다.
