@@ -15,7 +15,7 @@ In project **Settings**, a GitLab project's repository card shows whose token sy
 
 The connection shows **Disconnected**, and syncs and publishes stop until a project owner reconnects it as above, when:
 
-- the person who connected the project disconnected GitLab or left the project, or
+- the person who connected the project disconnected their GitLab token or left the project, or
 - the token can't be used: it expired, was revoked, or its owner lost access to the repository.
 
 ## Fix a refused token {#token-refused}
@@ -25,7 +25,7 @@ When you connect or replace a token, Malmoi checks it with GitLab and shows the 
 - A token that GitLab doesn't accept — mistyped, expired, or revoked — is refused. Create a new token and paste it again.
 - A fine-grained token is refused. Create a legacy personal access token with the `api` scope.
 - A token without the `api` scope is refused. Create a new token with that scope.
-- **Replace token** refuses a token from a different GitLab account. Disconnect GitLab in **Account** first, then connect the other account.
+- **Replace token** refuses a token from a different GitLab account. Disconnect your GitLab token in **Account** first, then connect the other account.
 - If your GitLab top-level group blocks legacy personal access tokens, Malmoi can't connect repositories in that group.
 - An archived GitLab project must be unarchived in GitLab first. A project that uses the SHA-256 object format isn't supported.
 - Only GitLab.com is supported, not GitLab Self-Managed or GitLab Dedicated.
