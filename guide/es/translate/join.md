@@ -2,12 +2,12 @@
 
 Abre el correo de invitación e inicia sesión con la dirección de correo invitada para unirte a tu equipo.
 
-Una invitación está ligada a la dirección que la recibió. Puedes iniciar sesión con GitHub o Google.
+Una invitación está ligada a la dirección que la recibió. Puedes iniciar sesión con GitHub, GitLab o Google.
 
 ## Acepta una invitación {#join}
 
 1. Abre el enlace del correo.
-2. Inicia sesión con la dirección invitada. Con GitHub, la dirección invitada debe ser el correo principal de tu cuenta de GitHub.
+2. Inicia sesión con la dirección invitada. Con GitHub y GitLab, debe ser el correo principal verificado de esa cuenta; las direcciones secundarias no sirven.
 3. Elige **Aceptar invitación**. Malmoi abre el proyecto.
 
 ![Una página de invitación con la dirección de correo invitada, el proyecto con el rol Editor y un botón Aceptar invitación](/guide/accept-invitation.webp "Comprueba la dirección y luego acepta la invitación.")

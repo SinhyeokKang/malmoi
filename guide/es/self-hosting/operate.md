@@ -103,10 +103,10 @@ Otros secretos y comprobaciones:
 
 ## Desactiva un proveedor de inicio de sesión {#sign-in-providers}
 
-Deja al menos un proveedor activo. Desactivar uno oculta su botón y su fila en **Métodos de inicio de sesión**; no borra nada, y al volver a activarlo regresan los métodos conectados.
+Deja activo al menos uno de GitHub, GitLab y Google. Desactivar uno oculta su botón y su fila en **Métodos de inicio de sesión**; no borra nada, y al volver a activarlo regresan los métodos conectados. Desactivar el inicio de sesión con GitLab no borra sus métodos vinculados ni afecta a los tokens de acceso personal de GitLab o a las conexiones con repositorios.
 
 1. Pide a todos los que inician sesión con ese proveedor que conecten uno que siga activo: **Cuenta** → **Métodos de inicio de sesión** → **Conectar**. El otro proveedor tiene que verificar la misma dirección de correo.
-2. Vacía los dos valores del proveedor en `deploy/.env` (por ejemplo `AUTH_GITHUB_ID=` y `AUTH_GITHUB_SECRET=`).
+2. Vacía los dos valores del proveedor en `deploy/.env` (por ejemplo `AUTH_GITLAB_ID=` y `AUTH_GITLAB_SECRET=`).
 3. Ejecuta `docker compose up -d --force-recreate web` y comprueba que la pantalla de inicio de sesión muestra solo los proveedores activos.
 
 Las sesiones ya abiertas siguen iniciadas, y esas personas aún pueden conectar un proveedor restante desde **Cuenta**. Quien solo tenía el proveedor que desactivaste ve “Tu método de inicio de sesión no está disponible aquí. Pídele ayuda a quien administre Malmoi.” al iniciar sesión. Para dejarle entrar, rellena otra vez el par, recrea web, pídele que conecte otro proveedor y vuelve a desactivarlo.

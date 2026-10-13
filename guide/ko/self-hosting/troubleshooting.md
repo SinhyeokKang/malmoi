@@ -9,8 +9,8 @@ web 컨테이너는 `pnpm preflight && next start`로 시작합니다. 검사가
 | 사유 | 뜻 | 고칠 곳 |
 | --- | --- | --- |
 | `missing` | 필수 이름이 없거나 비어 있습니다 | `deploy/.env`. Compose가 채우는 이름이면 Compose의 `environment` 목록 |
-| `incomplete-pair` | 로그인 공급자의 두 값 중 하나만 있습니다. 줄에 빠진 쪽 이름(예: `AUTH_GOOGLE_SECRET`)이 찍힙니다 | 빠진 값을 채우거나, 그 공급자를 끄려면 두 값을 모두 비웁니다 |
-| `no-login-provider` | 켜진 로그인 공급자가 없습니다. 두 줄이 `AUTH_GITHUB_ID`와 `AUTH_GOOGLE_ID`를 가리킵니다 | 완전한 쌍을 하나 이상 채웁니다([설정](install.md#settings)) |
+| `incomplete-pair` | 로그인 공급자의 두 값 중 하나만 있습니다. 줄에 빠진 쪽 이름(예: `AUTH_GITLAB_SECRET`)이 찍힙니다 | 빠진 값을 채우거나, 그 공급자를 끄려면 두 값을 모두 비웁니다 |
+| `no-login-provider` | 켜진 로그인 공급자가 없습니다. 세 줄이 `AUTH_GITHUB_ID`, `AUTH_GITLAB_ID`, `AUTH_GOOGLE_ID`를 가리킵니다 | 완전한 쌍을 하나 이상 채웁니다([설정](install.md#settings)) |
 | `incomplete-group` | `GITHUB_APP_*` 다섯 중 일부만 채웠습니다 | GitHub 리포지토리를 쓰면 다섯을 모두 채우고, GitLab만 쓰면 모두 비웁니다 |
 | `invalid-format` | 모양이 틀렸습니다. `RESEND_API_KEY`는 `re_`로 시작, `INVITATION_EMAIL_FROM`은 `이름 <주소>`나 주소, `GITHUB_APP_SLUG`는 `[a-z0-9-]`, `AUTH_TRUST_HOST`는 `true`만 | 해당 값 |
 | `malformed` · `not-https` · `userinfo` | `MALMOI_ORIGIN`이나 `MALMOI_PRIVACY_URL`의 모양 문제입니다. 공백·역슬래시나 읽을 수 없는 URL, `http://`, `user:pw@` | 사용자 정보 없는 `https://` URL로 |
@@ -70,9 +70,9 @@ web 컨테이너는 `pnpm preflight && next start`로 시작합니다. 검사가
 
 | 모델 | 무엇인가 | 수집 | 보관 기간 | 쿠키 | 개인정보 아님 |
 | --- | --- | --- | --- | --- | --- |
-| `User` | 로그인한 사람. 이름·이메일·사진은 GitHub나 Google이 준 값이고 PII 키로 암호화합니다. 이메일 색인은 그 주소의 HMAC입니다. 화면 설정 셋과 받은편지함 열람 시각은 계정에 저장하는 설정입니다 | `id`, `name`, `email`, `emailLookup`, `emailVerified`, `image`, `createdAt`, `uiLocale`, `timeZone`, `colorScheme`, `attentionSeenAt` | — | — | — |
-| `Account` | 연결한 로그인 수단(GitHub나 Google). 공급자 계정 ID와, 리포지토리를 연결할 때 받는 GitHub App 사용자 토큰(토큰 키로 암호화)과 만료 시각 | `userId`, `installRequestedAt`, `provider`, `providerAccountId`, `refresh_token`, `access_token`, `expires_at` | — | — | `type` |
-| `GitLabConnection` | 계정의 GitLab 연결. PAT는 토큰 키로 암호화하고 GitLab 사용자 ID·사용자명·만료일·권한 범위는 암호화하지 않습니다. 연결 해제나 계정 삭제까지 보관하며 교체하면 PAT와 그 정보를 덮어씁니다. 만료·폐기는 접근을 막지만 저장된 행은 지우지 않습니다 | `id`, `userId`, `token`, `gitlabUserId`, `username`, `expiresAt`, `scopes`, `createdAt`, `updatedAt` | — | — | — |
+| `User` | 로그인한 사람. 이름과 이메일은 GitHub·GitLab·Google에서, 사진은 GitHub나 Google에서 받습니다. GitLab에서는 사진을 받지 않습니다. 이 값들은 PII 키로 암호화합니다. 이메일 색인은 그 주소의 HMAC입니다. 화면 설정 셋과 받은편지함 열람 시각은 계정에 저장하는 설정입니다 | `id`, `name`, `email`, `emailLookup`, `emailVerified`, `image`, `createdAt`, `uiLocale`, `timeZone`, `colorScheme`, `attentionSeenAt` | — | — | — |
+| `Account` | 연결한 로그인 수단(GitHub·GitLab·Google)의 공급자 계정 ID. 로그인 토큰은 저장하지 않습니다. 별도 GitHub App 행에는 리포지토리를 연결할 때 받은 사용자 토큰(토큰 키로 암호화)과 만료 시각을 저장합니다 | `userId`, `installRequestedAt`, `provider`, `providerAccountId`, `refresh_token`, `access_token`, `expires_at` | — | — | `type` |
+| `GitLabConnection` | GitLab 로그인과 별개인 계정의 GitLab PAT 연결. PAT는 토큰 키로 암호화하고 GitLab 사용자 ID·사용자명·만료일·권한 범위는 암호화하지 않습니다. 연결 해제나 계정 삭제까지 보관하며 교체하면 PAT와 그 정보를 덮어씁니다. 만료·폐기는 접근을 막지만 저장된 행은 지우지 않습니다 | `id`, `userId`, `token`, `gitlabUserId`, `username`, `expiresAt`, `scopes`, `createdAt`, `updatedAt` | — | — | — |
 | `Session` | 로그인 세션. 쿠키 값의 다이제스트만 저장하고 마지막 활동 뒤 24시간에 만료됩니다 | — | `expires` | `sessionToken`, `userId` | — |
 | `VerificationToken` | 로그인 수단 연결과 다른 세션 로그아웃의 확인 절차. `identifier`가 사용자 ID와 공급자 계정 ID를 JSON 문자열 하나에 담습니다. 5~10분 | `identifier`, `token` | `expires` | — | — |
 | `ProjectMember` | 프로젝트 멤버십과 역할 | `userId`, `role`, `createdAt`, `updatedAt` | — | — | `projectId` |
@@ -115,7 +115,7 @@ web 컨테이너는 `pnpm preflight && next start`로 시작합니다. 검사가
 | 전송처 | 보내는 것 | 이유 |
 | --- | --- | --- |
 | GitHub | GitHub 로그인을 켰을 때 로그인하며 받는 프로필과 확인된 이메일. 내 GitHub App을 통한 리포지토리 읽기와 브랜치·커밋·PR 쓰기(커밋은 사람이 아니라 앱 명의). 연결한 사람의 GitHub App 사용자 토큰은 읽기에만 씁니다 | 로그인 · 리포지토리 연결과 게시 |
-| GitLab(`gitlab.com`) | 사용자 PAT로 사용자와 리포지토리 접근 권한을 확인하고 파일을 읽으며, 프로젝트에 연결된 계정으로 번역 커밋과 MR을 만듭니다 | 리포지토리 연결과 번역 게시 |
+| GitLab(`gitlab.com`) | GitLab 로그인을 켜면 OAuth 요청으로 로그인하고 계정 ID, 이름(없으면 사용자명), 확인된 기본 이메일을 받습니다. 프로필 사진은 받지 않습니다. 이와 별개로 사용자 PAT로 사용자와 리포지토리 접근 권한을 확인하고 파일을 읽으며, 프로젝트에 연결된 계정으로 번역 커밋과 MR을 만듭니다 | 로그인 · 리포지토리 연결과 번역 게시 |
 | Google | Google 로그인을 켰을 때 Google로 로그인한 사람의 프로필과 확인된 이메일 | 로그인 |
 | Resend | 초대받는 주소와 메시지(초대 링크, 프로젝트 이름, 프로젝트 사진 주소, 역할 — 보낸 사람은 쓰지 않습니다). 열람·클릭 추적은 끕니다 | 초대 메일. Resend는 발송 기록을 플랜 기간 동안(Free는 30일) 보관하므로 내 플랜을 확인해 방침에 적습니다 |
 

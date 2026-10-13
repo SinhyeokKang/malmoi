@@ -6,7 +6,7 @@ Claude Code, Codex, and claude.ai can connect by signing in to Malmoi in your br
 
 1. Add the server address to your agent. To copy it, choose **Copy server URL** on the **Connected apps** card of the **MCP connector** page, then use it in place of `SERVER_URL` in the snippets below. They have no token in them.
 2. Start the sign-in from your agent (see the next line under each snippet). Your browser opens **Connect an app to Malmoi**.
-3. If you aren't signed in to Malmoi, choose **Continue with GitHub** or **Continue with Google**. You come back to the same screen. If the account shown isn't yours, choose **Not you?** to switch.
+3. If you aren't signed in to Malmoi, choose **Continue with GitHub**, **Continue with GitLab**, or **Continue with Google**. You come back to the same screen. If the account shown isn't yours, choose **Not you?** to switch.
 4. Check the app's name and the address under it. The app chose the name itself, so the address is what tells you which app is asking.
 5. Choose **Expires in**, **Allowed actions**, and **Scope**, the same choices as a [personal token](token.md#token).
 6. Choose **Authorize**. Your browser hands the agent back its connection, and you return to the agent. **Deny** sends the agent away without a connection.

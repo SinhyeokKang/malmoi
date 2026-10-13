@@ -6,7 +6,7 @@ Claude Code, Codex y claude.ai pueden conectarse iniciando sesión en Malmoi en 
 
 1. Añade la dirección del servidor a tu agente. Para copiarla, elige **Copiar URL del servidor** en la tarjeta **Apps conectadas** de la página **Conector MCP** y úsala en lugar de `SERVER_URL` en los fragmentos de abajo. No llevan ningún token.
 2. Inicia el inicio de sesión desde tu agente (consulta la línea siguiente bajo cada fragmento). Tu navegador abre **Conectar una app a Malmoi**.
-3. Si no has iniciado sesión en Malmoi, elige **Continuar con GitHub** o **Continuar con Google**. Vuelves a la misma pantalla. Si la cuenta que aparece no es la tuya, elige **¿No eres tú?** para cambiar.
+3. Si no has iniciado sesión en Malmoi, elige **Continuar con GitHub**, **Continuar con GitLab** o **Continuar con Google**. Vuelves a la misma pantalla. Si la cuenta que aparece no es la tuya, elige **¿No eres tú?** para cambiar.
 4. Comprueba el nombre de la aplicación y la dirección que aparece debajo. La aplicación eligió el nombre por sí misma, así que la dirección es lo que te indica qué aplicación lo pide.
 5. Elige **Caduca en**, **Acciones permitidas** y **Alcance**, las mismas opciones que en un [token personal](token.md#token).
 6. Elige **Autorizar**. Tu navegador devuelve al agente su conexión y vuelves al agente. **Denegar** despide al agente sin una conexión.

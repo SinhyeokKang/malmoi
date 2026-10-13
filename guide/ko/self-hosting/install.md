@@ -9,14 +9,15 @@
 | 무엇 | 만드는 곳 | 설정 | `deploy/.env`에 넣을 값 |
 | --- | --- | --- | --- |
 | HTTPS 도메인 | DNS와 인증서 | 도메인 루트 · A/AAAA를 서버로 · 80/443 포트 개방 · 공개 CA 인증서를 `deploy/certs/fullchain.pem`과 `privkey.pem`으로 · `deploy/nginx/malmoi.conf`의 `server_name`(두 곳)을 이 도메인으로 | `MALMOI_ORIGIN=https://<domain>` — 경로·query·사용자 정보가 없어야 하고 IPv6 리터럴과 비ASCII 도메인은 받지 않습니다 |
-| GitHub OAuth App(로그인, Google을 켜면 선택) | GitHub Developer settings → OAuth Apps | Homepage `<ORIGIN>` · Authorization callback `<ORIGIN>/api/auth/callback/github` | `AUTH_GITHUB_ID` · `AUTH_GITHUB_SECRET` |
+| GitHub OAuth App(로그인, GitLab이나 Google을 켜면 선택) | GitHub Developer settings → OAuth Apps | Homepage `<ORIGIN>` · Authorization callback `<ORIGIN>/api/auth/callback/github` | `AUTH_GITHUB_ID` · `AUTH_GITHUB_SECRET` |
 | GitHub App(선택, GitHub 리포지토리 읽기·쓰기, 계정 연결) | GitHub Developer settings → GitHub Apps | Public(아니면 소유 계정에만 설치됩니다) · Callback URL `<ORIGIN>/api/github/callback` · Request user authorization (OAuth) during installation 켬 · Redirect on update 켬 · Setup URL 비움 · Webhook 끔 · 권한: Contents 읽기·쓰기, Pull requests 읽기·쓰기(Metadata 읽기는 자동) | `GITHUB_APP_ID`(숫자) · `GITHUB_APP_CLIENT_ID`(`Iv…`, ID와 다른 값) · `GITHUB_APP_CLIENT_SECRET` · `GITHUB_APP_SLUG` · `GITHUB_APP_PRIVATE_KEY`(PEM을 한 줄로, 줄바꿈은 `\n`으로) |
-| Google OAuth(로그인, GitHub를 켜면 선택) | Google Cloud Console → OAuth 동의 화면과 사용자 인증 정보 | 동의 화면 External, In production(Internal이면 조직 밖 사람이 모두 `403 org_internal`로 막히고, 테스트 모드면 등록한 테스트 사용자만 들어옵니다) · 범위 `email`·`profile` · 승인된 리디렉션 URI `<ORIGIN>/api/auth/callback/google` · 개인정보처리방침 URL = `MALMOI_PRIVACY_URL` | `AUTH_GOOGLE_ID` · `AUTH_GOOGLE_SECRET` |
+| GitLab OAuth 앱(로그인, GitHub나 Google을 켜면 선택) | GitLab.com 그룹 → Settings → Applications | 이름 Malmoi · Redirect URI `<ORIGIN>/api/auth/callback/gitlab` · Confidential 켬 · `read_user` 범위만 선택 | `AUTH_GITLAB_ID` · `AUTH_GITLAB_SECRET` |
+| Google OAuth(로그인, GitHub나 GitLab을 켜면 선택) | Google Cloud Console → OAuth 동의 화면과 사용자 인증 정보 | 동의 화면 External, In production(Internal이면 조직 밖 사람이 모두 `403 org_internal`로 막히고, 테스트 모드면 등록한 테스트 사용자만 들어옵니다) · 범위 `email`·`profile` · 승인된 리디렉션 URI `<ORIGIN>/api/auth/callback/google` · 개인정보처리방침 URL = `MALMOI_PRIVACY_URL` | `AUTH_GOOGLE_ID` · `AUTH_GOOGLE_SECRET` |
 | Resend 발신 도메인(초대 메일, 필수) | Resend → Domains와 API Keys | 도메인 인증(SPF·DKIM) · 열람·클릭 추적 끔(추적은 초대 링크를 바꿉니다) · TLS Enforced 권장 · 그 도메인으로 한정한 Sending access API 키 | `RESEND_API_KEY` · `INVITATION_EMAIL_FROM="Malmoi <invite@<verified domain>>"` |
 
 - GitHub App 권한은 앱이 실제로 부르는 기능에 필요한 최소 집합입니다. 설치마다 Repository access의 리포지토리 목록이 Malmoi가 닿을 수 있는 리포지토리를 정하고, 목록에 없는 리포지토리는 설치되지 않은 것으로 보입니다.
-- 로그인 공급자를 하나 이상 켜세요. GitHub, Google, 또는 둘 다입니다. 공급자는 ID와 시크릿이 둘 다 있을 때 켜지고, 로그인 화면에는 켜진 공급자의 버튼만 나옵니다. 번역자에게 GitHub 계정이 없으면 Google을 켜세요.
-- GitLab 리포지토리만 쓰면 GitHub App은 선택입니다. `GITHUB_APP_*` 다섯 값을 모두 비우세요. GitHub 리포지토리를 쓰려면 다섯 값을 모두 채우세요. 일부만 채우면 `incomplete-group`으로 기동이 멈춥니다. 로그인 설정은 별개이므로 GitHub나 Google 로그인 공급자는 하나 이상 필요합니다. GitLab.com 연결에는 사용자가 계정에 등록한 `api` 권한 범위의 개인 액세스 토큰(PAT)을 쓰며, GitLab 환경변수는 없습니다.
+- GitHub, GitLab, Google 중 로그인 공급자를 하나 이상 켜세요. 공급자는 ID와 시크릿이 둘 다 있을 때 켜지고, 로그인 화면에는 켜진 공급자의 버튼만 나옵니다. 팀원이 쓸 수 있는 공급자를 고르세요. GitLab 로그인은 GitLab.com만 지원합니다.
+- GitLab 리포지토리만 쓰면 GitHub App은 선택입니다. `GITHUB_APP_*` 다섯 값을 모두 비우세요. GitHub 리포지토리를 쓰려면 다섯 값을 모두 채우세요. 일부만 채우면 `incomplete-group`으로 기동이 멈춥니다. 로그인 설정은 별개입니다. GitLab만 쓰는 설치본은 로그인용으로 `AUTH_GITLAB_ID`와 `AUTH_GITLAB_SECRET` 쌍만 넣어도 기동합니다. 리포지토리 연결에는 여전히 사용자가 계정에 등록한 `api` 권한 범위의 개인 액세스 토큰(PAT)을 쓰며, GitLab 로그인 앱이 이 토큰을 대신하지 않습니다.
 
 ## 설정 값 채우기 {#settings}
 
@@ -29,7 +30,7 @@
 | `MALMOI_UPLOAD_DIR` | Compose(`/data/uploads`) | `uploads` 볼륨이 여기에 마운트됩니다. 검사가 존재와 쓰기 권한을 확인합니다 |
 | `AUTH_URL` · `AUTH_TRUST_HOST` | Compose(`${MALMOI_ORIGIN}` · `true`) | `AUTH_URL`은 `MALMOI_ORIGIN`과 같아야 합니다 |
 | `AUTH_SECRET` | 운영자 | `openssl rand -base64 32` |
-| `AUTH_GITHUB_ID` · `AUTH_GITHUB_SECRET` · `AUTH_GOOGLE_ID` · `AUTH_GOOGLE_SECRET` | 운영자 | 완전한 쌍이 하나 이상 있어야 합니다. 공급자를 끄려면 두 값을 모두 비웁니다. 둘 중 하나만 채우면 기동이 멈춥니다 |
+| `AUTH_GITHUB_ID` · `AUTH_GITHUB_SECRET` · `AUTH_GITLAB_ID` · `AUTH_GITLAB_SECRET` · `AUTH_GOOGLE_ID` · `AUTH_GOOGLE_SECRET` | 운영자 | 완전한 쌍이 하나 이상 있어야 합니다. 공급자를 끄려면 두 값을 모두 비웁니다. 둘 중 하나만 채우면 기동이 멈춥니다 |
 | `APP_SIGNING_SECRET` | 운영자 | `node -e 'console.log(require("crypto").randomBytes(32).toString("base64url"))'` — `AUTH_SECRET`·암호화 키와 다른 값 |
 | `DATABASE_URL` | Compose | 런타임 롤 `malmoi_app`과 `RUNTIME_DB_PASSWORD` |
 | `GITHUB_APP_ID` · `GITHUB_APP_PRIVATE_KEY` · `GITHUB_APP_CLIENT_ID` · `GITHUB_APP_CLIENT_SECRET` · `GITHUB_APP_SLUG` | 운영자 | 선택 그룹입니다. GitHub 리포지토리를 쓰면 다섯을 모두 채우고, GitLab만 쓰면 모두 비웁니다. slug는 `[a-z0-9-]`입니다 |

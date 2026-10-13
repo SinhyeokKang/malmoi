@@ -9,22 +9,24 @@ Antes de empezar: abre el menú de tu avatar, arriba a la derecha, y elige **Cue
 1. Edita tu nombre y elige **Guardar**. **Guardado** confirma el cambio.
 2. Para cambiar tu foto, elige **Subir** y selecciona un PNG o JPEG de hasta 3 MB. Tu avatar se actualiza cuando la subida termina bien.
 
-La foto se redimensiona automáticamente y el archivo original no se conserva.
+La foto se redimensiona automáticamente y el archivo original no se conserva. Malmoi no obtiene fotos de GitLab; si te registras por primera vez con GitLab, tu avatar muestra la primera letra de tu nombre. Puedes subir una foto aquí.
 
 ![La página Cuenta con las secciones de perfil, métodos de inicio de sesión, GitHub App y GitLab PAT](/guide/account.webp "Actualiza tu perfil y tus métodos de inicio de sesión en Cuenta.")
 
 ## Gestiona los métodos de inicio de sesión {#sign-in-methods}
 
-Elige **Conectar** en otro proveedor e inicia sesión con la misma dirección de correo electrónico. No se puede quitar el último método; Cuenta indica **Es tu única forma de iniciar sesión.**
+En mal-moi.com están disponibles GitHub, GitLab y Google, en ese orden. En tu propia instalación solo aparecen los proveedores activos. Elige **Conectar** en otro proveedor e inicia sesión con la misma dirección de correo electrónico. No se puede quitar el último método; Cuenta indica **Es tu única forma de iniciar sesión.**
 
 ## Conexiones de repositorios {#connections}
 
-Para el acceso a repositorios, consulta [Gestiona la conexión con GitHub](../github/connection.md) o [Gestiona el token y la conexión de GitLab](../gitlab/connection.md). Iniciar sesión y conectar un repositorio son acciones independientes.
+Para el acceso a repositorios, consulta [Gestiona la conexión con GitHub](../github/connection.md) o [Gestiona el token y la conexión de GitLab](../gitlab/connection.md). Iniciar sesión y conectar un repositorio son acciones independientes. En **GitLab PAT**, la fila de un token sin conectar se llama **Token de GitLab**.
+
+Iniciar sesión con GitLab no conecta un token, y quitar GitLab de tus métodos de inicio de sesión no borra un token conectado. Para quitar el token, elige **Desconectar** en la sección GitLab PAT y después **Desconectar token** en el diálogo de confirmación. Los proyectos que usan ese token dejan de sincronizar y publicar hasta que un propietario del proyecto los vuelva a conectar. Quitar el token no elimina tu método de inicio de sesión con GitLab.
 
 ## Cierra sesiones {#sessions}
 
 1. Elige **Cerrar sesión en todas partes**.
-2. Usa el botón de confirmación del cuadro de diálogo, Continuar con GitHub o Continuar con Google. Malmoi elige uno de tus métodos de inicio de sesión conectados; sigue su confirmación de inicio de sesión.
+2. Usa el botón de confirmación del cuadro de diálogo, Continuar a GitHub, Continuar a GitLab o Continuar a Google. Malmoi elige uno de tus métodos de inicio de sesión conectados; sigue su confirmación de inicio de sesión.
 
 Esto también cierra la sesión del dispositivo que estás usando.
 
