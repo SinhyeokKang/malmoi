@@ -10,16 +10,16 @@
 
 ## 0. 결정·실측 — 코드 전
 
-- [ ] design §4 "확인 필요" D1~D5를 사용자가 닫는다.
-  - 검증: [수동] design §4 표의 각 행에 결정·날짜가 적혀 있다.
-- [ ] **T0 실측** — dev용 GitLab 애플리케이션을 등록하고(⚠️ 외부 등록 — 사용자 확인 뒤. 그룹 소유 여부는 D5) 테스트 계정 `ox501501`(ego 브라우저, gitlab.com에 "Sign in with GitHub")로 로컬 왕복을 밟는다. 재는 것: ① `read_user` 토큰의 `GET /api/v4/user`에 `email`·`confirmed_at`이 실리나(design §2 — 없으면 D1을 다시 연다) ② authorize URL에 `code_challenge_method=S256`이 나가고 교환이 통과하나(J2) ③ `prompt=select_account`를 붙인 authorize가 오류 없이 지나는지·무시되는지(D4) ④ `avatar_url` 호스트(D3) ⑤ 이미 인가한 앱으로 다시 왕복할 때 GitLab 인가 화면이 다시 뜨는지(회수 왕복의 체감) ⑥ 등록 직후 앱 소유 계정이 아닌 계정으로 인가되는지(게시 단계 부재, design §8).
+- [x] design §4 D1~D5를 사용자가 닫는다.
+  - 검증: [수동] design §4 표의 각 행에 결정·날짜가 적혀 있다. → 완료(2026-10-13).
+- [ ] **T0 실측** — dev용 GitLab 애플리케이션을 등록하고(⚠️ 외부 등록 — 사용자 확인 뒤. 그룹 소유 — D5) 테스트 계정 `ox501501`(ego 브라우저, gitlab.com에 "Sign in with GitHub")로 로컬 왕복을 밟는다. 재는 것: ① `read_user` 토큰의 `GET /api/v4/user`에 `email`·`confirmed_at`이 실리나(design §2 — 없으면 D1을 다시 연다) ② authorize URL에 `code_challenge_method=S256`이 나가고 교환이 통과하나(J2) ③ `prompt=select_account`를 붙인 authorize가 오류 없이 지나는지·무시되는지(D4) ④ `avatar_url` 호스트(D3) ⑤ 이미 인가한 앱으로 다시 왕복할 때 GitLab 인가 화면이 다시 뜨는지(회수 왕복의 체감) ⑥ 등록 직후 앱 소유 계정이 아닌 계정으로 인가되는지(게시 단계 부재, design §8).
   - 검증: [수동] design §2·§4에 실측 결과(필드 유무·응답 코드·호스트)가 적히고 "실측 전" 표기가 0이다. 토큰·secret 원문은 어디에도 적지 않는다. 실측용 코드는 `.scratch/`에만 둔다.
 
 ## 1. 공급자 우주·env — 커밋 A (`feat(auth): add GitLab to the login provider universe`)
 
 순수 함수 먼저(`/tdd interface`).
 
-- [ ] `LoginProvider`·`LOGIN_PROVIDERS`에 `gitlab`(순서 D2), `LOGIN_PROVIDER_ENV.gitlab`, `loginProviderStates`·`enabledLoginProviders`의 리터럴 `optionalEnv("AUTH_GITLAB_*")` 둘. 테스트: `lib/auth/__tests__/login-providers.test.ts`(`:18-26`·`:35-37`·`:47`·`:58`), `lib/login-link/__tests__/policy.test.ts`(`pickLoginAccount`·`loginMethodRows` 총수·`signInButtons` primary·`canUnlink` — 연결 `[github, gitlab]`·켜짐 `[gitlab]`에서 GitLab 해제 거부 사례 포함).
+- [ ] `LoginProvider`·`LOGIN_PROVIDERS`에 `gitlab` — 순서 `github → gitlab → google`(D2), `LOGIN_PROVIDER_ENV.gitlab`, `loginProviderStates`·`enabledLoginProviders`의 리터럴 `optionalEnv("AUTH_GITLAB_*")` 둘. 테스트: `lib/auth/__tests__/login-providers.test.ts`(`:18-26`·`:35-37`·`:47`·`:58`), `lib/login-link/__tests__/policy.test.ts`(`pickLoginAccount`·`loginMethodRows` 총수·`signInButtons` primary·`canUnlink` — 연결 `[github, gitlab]`·켜짐 `[gitlab]`에서 GitLab 해제 거부 사례 포함).
   - 검증: [자동] red 관측 뒤 구현, `pnpm test` green.
 - [ ] preflight — `SELF_HOSTED_ENV`에 `AUTH_GITLAB_ID`·`AUTH_GITLAB_SECRET` `"optional"`. 테스트: `preflight.test.ts:199-249` 행렬을 공급자 셋으로(`pair(prefix)` 인자형 확장, `NONE` 세 이름), `:274-275`, `scripts/__tests__/preflight-entry.test.ts:85-93`의 stderr 세 줄.
   - 검증: [자동] `pnpm test` green — 반쪽 GitLab이 `incomplete-pair AUTH_GITLAB_SECRET`, 전부 없음이 세 ID 이름의 `no-login-provider`.
@@ -30,7 +30,7 @@
 
 ## 2. provider·검증된 이메일 — 커밋 B (`feat(auth): sign in with GitLab`)
 
-- [ ] `verifiedEmailFrom`의 gitlab 갈래(`email` 정규화 + `confirmed_at` 비어 있지 않은 문자열) · `freshVerifiedEmail` gitlab 갈래(raw 응답) · 순수 `gitlabProfile(raw)`(id 부재에서 던짐, 아바타 D3). 위치: `lib/auth/email.ts` · `lib/auth/profile.ts`. 테스트: `lib/auth/__tests__/email.test.ts`(`confirmed_at` null·없음·빈 문자열 → 거부, 대소문자·공백 정규화, `"apple"` → null 유지), `profile.test.ts`(id 숫자/문자열/부재).
+- [ ] `verifiedEmailFrom`의 gitlab 갈래(`email` 정규화 + `confirmed_at` 비어 있지 않은 문자열) · `freshVerifiedEmail` gitlab 갈래(raw 응답) · 순수 `gitlabProfile(raw)`(id 부재에서 던짐, `image: null` — D3). 위치: `lib/auth/email.ts` · `lib/auth/profile.ts`. 테스트: `lib/auth/__tests__/email.test.ts`(`confirmed_at` null·없음·빈 문자열 → 거부, 대소문자·공백 정규화, `"apple"` → null 유지), `profile.test.ts`(id 숫자/문자열/부재).
   - 검증: [자동] red 뒤 green.
 - [ ] `auth.ts` — `GitLab({ checks: ["pkce", "state"], profile: gitlabProfile })`, `withEnabled([github, google, gitlab], enabled)`. `provider-config.test.ts:59-62`(이름)·`:73`(정규식) 갱신, `:27`(`allowDangerousEmailAccountLinking` 부재) 유지. `lib/credentials/__tests__/sign-in.test.ts`가 gitlab의 `checks`도 고정한다.
   - 검증: [자동] `pnpm test` green. `withEnabled` 행동 테스트에 "gitlab 꺼짐 → providers에 없음" 사례.
@@ -38,7 +38,7 @@
   - 검증: [자동] green.
 - [ ] 격리 PG — `lib/credentials/__tests__/postgres.integration.ts`의 `["github","google"]` 루프(`:178`·`:224`·`:273`·`:457-466`·`:533`·`:551`·`:874`·`:942`·`:958`·`:967`)를 `LOGIN_PROVIDERS`로. 신규 시나리오: GitLab 첫 로그인 → 같은 이메일 GitHub User가 있으면 challenge(행 0) · 확인 뒤 `Account(gitlab)` 토큰 null · 미확인 이메일 → User/Account/Session 0.
   - 검증: [자동] `pnpm test:credentials:postgres` green(`pnpm gate`가 붙인다).
-- [ ] CSP — `lib/security-headers.ts` `form-action`에 `https://gitlab.com`(+ D3이 받으면 `img-src`). `lib/__tests__/security-headers.test.ts:94·:106`.
+- [ ] CSP — `lib/security-headers.ts` `form-action`에 `https://gitlab.com`(`img-src` 무변경 — D3). `lib/__tests__/security-headers.test.ts:94·:106`.
   - 검증: [자동] green.
 
 ## 3. 경계 테스트 — 커밋 C (`test(credentials): keep GitLab sign-in apart from the GitLab PAT`)
@@ -49,7 +49,7 @@
 ## 4. 화면 — 커밋 D (`feat(signin): show the GitLab sign-in button`)
 
 - [ ] `brand-icons.tsx`에 `ProviderIcon({ provider })`(공급자 → 글리프 `Record<LoginProvider, …>`) — 다섯 삼항 자리(design §5)를 이관, 라벨 삼항 셋은 `m.signIn[provider]`. `gitlab-glyph.test.ts`(경로는 이 파일에만·색 리터럴 0) 유지.
-  - 검증: [자동] `rg -n 'github" \? ' app components` 0. DOM 테스트 — `normal-login.test.tsx:101`(`[github primary, google default, gitlab default]`) · `provider-progress.test.tsx`(`:50`·`:56`·`:64`) · `account/__tests__/structure.test.tsx`(`:193-203` rows 셋) · `oauth/authorize/__tests__/page.test.tsx`(`:179`) · `action-throws.test.tsx:153` 갱신 green.
+  - 검증: [자동] `rg -n 'github" \? ' app components` 0. DOM 테스트 — `normal-login.test.tsx:101`(`[github primary, gitlab default, google default]`) · `provider-progress.test.tsx`(`:50`·`:56`·`:64`) · `account/__tests__/structure.test.tsx`(`:193-203` rows 셋) · `oauth/authorize/__tests__/page.test.tsx`(`:179`) · `action-throws.test.tsx:153` 갱신 green.
 - [ ] 사전 — `signIn.gitlab` · `link.providers.gitlab` en·ko·es 같은 커밋(`/translate` 모드 ①).
   - 검증: [자동] `dictionary-consistency`·`banned-terms`·`no-korean-ui` green.
 - [ ] 실물 — `/runtime-test`(로컬, T0 앱) : `/signin` 세 버튼(라이트·다크·375폭) · GitLab 로그인 왕복 · 초대 링크 → GitLab 로그인 → 수락 · 초대 링크 → 미확인 이메일 거부 → 초대 복귀(POSTMORTEM 2026-09-12) · `/account` GitLab 행 [Connect]·해제·`Continue to GitLab` 회수 · GitLab PAT 카드와 나란히 선 모습(J8) · `/oauth/authorize` 버튼.
@@ -58,7 +58,7 @@
 ## 5. 개인정보 방침 — 커밋 E (`docs(privacy): add GitLab as a sign-in provider`)
 
 - [ ] en·ko 본문(design §7 줄 목록) · `REVISIONS` 새 행 · en·ko `effectiveDate`·`changes` · `policy-gate.test.tsx:310` 리터럴 날짜 · `collected.ts:150-154` 주석.
-  - 검증: [자동] `policy-gate.test.tsx` green. [수동] `/push` 4단계 — 새 목적(로그인) 판정, 아바타 줄이 D3과 맞는지(거짓 문장 0).
+  - 검증: [자동] `policy-gate.test.tsx` green. [수동] `/push` 4단계 — 새 목적(로그인) 판정, 아바타 줄이 GitHub·Google 그대로인지(D3 — 거짓 문장 0).
 
 ## 6. 정본 문서 — 문서별 커밋(`docs(<scope>): …`)
 

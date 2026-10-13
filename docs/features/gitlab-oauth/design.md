@@ -10,11 +10,11 @@ push·pull·편집 UI의 데이터 경로는 **건드리지 않는다**. 붙는 
 |---|---|
 | `auth.ts` | `GitLab(...)` provider 추가 — `checks: ["pkce", "state"]`, `profile()`이 검증 판정(§2) |
 | `lib/auth/login-providers.ts` | `LOGIN_PROVIDER_ENV.gitlab`, `loginProviderStates`·`enabledLoginProviders`에 리터럴 `optionalEnv("AUTH_GITLAB_ID")`·`optionalEnv("AUTH_GITLAB_SECRET")` (SH-15 AST 게이트가 리터럴을 뽑는다 — `:52` 주석) |
-| `lib/login-link/policy.ts` | `LoginProvider = "github" \| "google" \| "gitlab"`, `LOGIN_PROVIDERS`에 `gitlab` 추가(순서 §4 D2) |
+| `lib/login-link/policy.ts` | `LoginProvider = "github" \| "gitlab" \| "google"`, `LOGIN_PROVIDERS = ["github", "gitlab", "google"]`(§4 D2) |
 | `lib/auth/email.ts` | `EmailProof`에 `{ provider: "gitlab"; email; confirmedAt }`, `freshVerifiedEmail`의 gitlab 갈래 |
 | 우주 하드코딩 사본 | §3 — 전부 `LOGIN_PROVIDERS` 파생으로 바꾼다 |
 | `lib/deployment/preflight.ts` | `SELF_HOSTED_ENV`에 `AUTH_GITLAB_*` 둘 `"optional"` — 쌍 판정 로직은 `LOGIN_PROVIDERS` 순회라 그대로 |
-| `lib/security-headers.ts` | `form-action`에 `https://gitlab.com` (+ 아바타 D3이 받으면 `img-src`) |
+| `lib/security-headers.ts` | `form-action`에 `https://gitlab.com` (`img-src`는 무변경 — §4 D3) |
 | 화면 | 2갈래 삼항(`github ? … : google`) 일곱 자리를 공급자 → 글리프·라벨 대응 하나로(§5) |
 | `app/(edit)/account/actions.ts:180·:261` | `signIn(provider, …, { prompt: "select_account" })` — GitLab에 넘길 인자는 실측 T0 뒤 확정(§4 D4) |
 | 사전 en·ko·es | `signIn.gitlab` · `link.providers.gitlab` 새 키, 방침 본문 |
@@ -36,7 +36,7 @@ push·pull·편집 UI의 데이터 경로는 **건드리지 않는다**. 붙는 
 - `id`가 숫자·문자열이 아니면 **던진다**(POSTMORTEM 2026-09-03 재발 — `profile.id.toString()`이 `Configuration`으로 접힌 계열. `githubUserinfo`와 같은 형).
 - `email` = `verifiedEmailFrom({ provider: "gitlab", email: raw.email, confirmedAt: raw.confirmed_at }) ?? ""` — 실패는 빈 문자열이고 `signIn`이 거부한다(기존 계약).
 - `name` = `name ?? username`(Auth.js 기본과 같다).
-- `image` = §4 D3.
+- `image` = `null` — 아바타를 받지 않는다(§4 D3).
 
 `freshVerifiedEmail(provider, profile)`의 gitlab 갈래는 **raw 응답**을 받는다(Google 갈래와 같다 — `profile` 인자는 `userinfo` 원본이다). 이 갈래가 없으면 `null`이 돌아와 [Connect]가 `authorizeConnect`의 이메일 대조에서 실패하고 `planEmailRefresh`가 영영 `keep`이다.
 
@@ -59,7 +59,7 @@ ARCHITECTURE "켜진 로그인 공급자"(`:2795`)가 **일부러 안 바꾼** �
 
 **게이트**: 소스(`app`·`lib`·`components`·`auth.ts`, 테스트 제외)에서 `"github",\s*"google"` 꼴과 `=== "google"` 비교가 `lib/auth/email.ts`(공급자별 증명 갈래)·`login-providers.ts`(env 리터럴)·`auth.ts` 밖에서 0인지 세는 테스트를 하나 둔다 — 다음 공급자 때 같은 사본이 다시 숨지 않게. 위치는 `lib/auth/__tests__/provider-universe.test.ts`(신규).
 
-## 4. 결정 — 판단과 확인 필요
+## 4. 결정 — 판단과 사용자 결정
 
 ### 판단 — 정본·코드가 답한다
 
@@ -74,15 +74,15 @@ ARCHITECTURE "켜진 로그인 공급자"(`:2795`)가 **일부러 안 바꾼** �
 | J7 | Self-Managed 로그인 없음, 발급자 고정 | spec §3 |
 | J8 | `/account`에서 "GitLab"(로그인 수단 행)과 "GitLab PAT"(연결 카드)가 나란히 선다 — 라벨을 바꾸지 않는다 | 카드 제목이 이미 `GitLab PAT`(`m.account.gitlab`)라 갈린다. 수단 행의 해제 라벨은 `Disconnect GitLab as a sign-in method`(`link.methods.disconnectLabel`)이고 PAT 카드는 `Disconnect GitLab` — 실물(T6)에서 혼동이 보이면 그때 문구를 고친다 |
 
-### 확인 필요 — 추천 하나 + 이유
+### 사용자 결정 (2026-10-13 — D1~D5 닫음)
 
-| # | 질문 | 추천 | 이유 |
+| # | 질문 | 결정 | 근거·귀결 |
 |---|---|---|---|
-| D1 | 이메일 근거를 REST(`read_user` + `confirmed_at`)로 볼까 OIDC(`openid email` + `email_verified`)로 볼까 | **REST** | OIDC 클레임은 공개 이메일이 없는 사용자에게서 빠질 수 있고 `email_verified`의 기준을 문서가 말하지 않는다(§2). 실측 T0이 `confirmed_at` 부재를 보이면 다시 연다 |
-| D2 | `LOGIN_PROVIDERS` 순서 — 버튼 순서·primary·확인 상대 우선순위가 이 순서다 | **`github` → `google` → `gitlab`** (끝에 붙인다) | hosted의 primary(GitHub)·확인 상대 우선순위가 지금과 같아 기존 사용자 화면·테스트 기대가 안 움직인다. GitLab 전용 설치는 켜진 것이 GitLab뿐이면 그것이 primary가 된다(`signInButtons`가 켜진 집합의 첫째) |
-| D3 | GitLab 아바타(`avatar_url`)를 `User.image`로 받을까 | **받지 않는다**(`image: null`) | `avatar_url`은 gitlab.com 업로드이거나 **gravatar**이고(GitLab이 gravatar를 기본 폴백으로 쓴다), gravatar면 보는 사람의 브라우저가 새 제3자 호스트에 붙는다 — CSP `img-src`·방침 전송처가 둘 다 는다. 사진은 `/account` 업로드가 이미 있고, GitLab으로 처음 가입한 사람만 이니셜로 시작한다. 받기로 하면 gitlab.com 호스트만 받고 나머지는 null로 접는 순수 함수가 하나 더 생긴다 |
-| D4 | 회수·[Connect] 왕복의 `prompt: "select_account"`를 GitLab에도 넘길까 | **실측(T0) 뒤 확정 — 기본은 GitLab에 넘기지 않는다** | GitLab authorize는 OIDC가 아닌 요청의 `prompt`를 무시하는 것으로 보이나 문서 근거가 없다. 인자가 오류를 내면 회수·연결 왕복이 GitLab에서만 죽는다. 공급자별 인자를 고르는 순수 함수 `reauthParams(provider)` 하나로 두 Action이 공유한다 |
-| D5 | hosted에서 GitLab 로그인을 켤까(GitLab OAuth 앱 등록) | **켠다** — 프로덕션 반영은 `/merge` 뒤 env 투입 | 범위를 연 사용자 결정의 직접 결과다. 끄고 출시하면 셀프 호스팅만 받는 기능이 된다. GitLab 앱은 사용자 소유가 아니라 **그룹 소유**(Settings → Applications)로 등록한다 — 등록자가 떠나도 앱이 남는다(OAuth App의 개인 명의 교훈, 불변식 6 근거와 같은 결) |
+| D1 | 이메일 근거 — REST(`read_user` + `confirmed_at`) vs OIDC(`openid email` + `email_verified`) | **REST** (추천 채택) | OIDC 클레임은 공개 이메일이 없는 사용자에게서 빠질 수 있고 `email_verified`의 기준을 문서가 말하지 않는다(§2). ⚠️ 실측 T0이 `confirmed_at` 부재를 보이면 이 결정을 다시 연다 |
+| D2 | `LOGIN_PROVIDERS` 순서 — 버튼 순서·primary·확인 상대 우선순위 | **`github` → `gitlab` → `google`** (추천 `github → google → gitlab`을 **뒤집었다** — Git 호스트 둘을 앞에 묶는다) | hosted primary는 여전히 GitHub. 바뀌는 것 둘: ① hosted `/signin`·초대·`/oauth/authorize` 버튼 순서가 GitHub · GitLab · Google이 된다 ② 확인 상대 우선순위(`pickLoginAccount` — 전체 세션 회수·병합 확인·병합 안내)가 `github` → `gitlab` → `google`이라, **GitLab과 Google을 둘 다 연결하고 GitHub이 없는 사용자**는 확인 상대가 GitLab이다(지금 그런 사용자는 0 — GitLab 수단이 아직 없다). 기존 `[github, google]` 사용자의 확인 상대는 그대로 GitHub. 테스트 기대(`normal-login.test.tsx:101` 등)는 세 번째 행 삽입 위치가 가운데다 |
+| D3 | GitLab 아바타(`avatar_url`) → `User.image` | **받지 않는다**(`image: null`) (추천 채택) | `avatar_url`은 gitlab.com 업로드이거나 gravatar(GitLab 기본 폴백)라, 받으면 보는 사람의 브라우저가 새 제3자 호스트에 붙고 CSP `img-src`·방침 전송처가 는다. 사진은 `/account` 업로드로 올린다 — GitLab으로 처음 가입한 사람만 이니셜로 시작한다. 그래서 **`img-src` 무변경, 방침 아바타 줄(`:814`·`:888`)은 GitHub·Google 그대로** |
+| D4 | 회수·[Connect] 왕복의 `prompt: "select_account"`를 GitLab에도 | **T0 실측 뒤 확정 — 기본은 넘기지 않는다** (추천 채택) | 문서 근거가 없고, 오류를 내면 회수·연결 왕복이 GitLab에서만 죽는다. 공급자별 인자는 순수 함수 `reauthParams(provider)` 하나로 두 Action이 공유한다 |
+| D5 | hosted에서 켤까 · 앱 소유 | **켠다 · 그룹 소유 앱** (추천 채택) | `/merge` 뒤 Production env 투입. GitLab 그룹 Settings → Applications에 앱 하나, redirect URI 셋(prod · `dev.mal-moi.com` · localhost) — 등록자가 떠나도 앱이 남는다(불변식 6 근거와 같은 결). 방침 개정이 env 투입보다 먼저거나 같은 배포여야 한다(§7) |
 
 ## 5. 화면
 
@@ -109,7 +109,7 @@ ARCHITECTURE "켜진 로그인 공급자"(`:2795`)가 **일부러 안 바꾼** �
 
 gitlab.com은 이미 전송처다(`messages/en.tsx:880` — PAT 연결). 새 **전송처는 없고 새 목적이 있다**(로그인) — `/push` 4단계 사람 판정 넷 중 "새 목적"에 걸린다.
 
-- 본문 en(`messages/en.tsx:706-968`)·ko(`messages/ko-privacy.tsx`): "GitHub or Google"로 로그인을 말하는 자리 전부(`:742`·`:751-753`·`:768`·`:814`·`:881`·`:888`·`:912`·`:924`·`:941` — ko 대응 `:35`·`:44-46`·`:61`·`:107`·`:174`·`:181`·`:204`·`:216`·`:226`)를 셋으로. GitLab 전송처 줄(`:880`)에 "signing you in, if you choose GitLab" 목적을 더한다. 아바타 줄(`:814`·`:888`)은 D3이 "받지 않는다"면 GitHub·Google 그대로 둔다 — 거짓 문장을 만들지 않는다(POSTMORTEM 2026-09-19).
+- 본문 en(`messages/en.tsx:706-968`)·ko(`messages/ko-privacy.tsx`): "GitHub or Google"로 로그인을 말하는 자리 전부(`:742`·`:751-753`·`:768`·`:814`·`:881`·`:888`·`:912`·`:924`·`:941` — ko 대응 `:35`·`:44-46`·`:61`·`:107`·`:174`·`:181`·`:204`·`:216`·`:226`)를 셋으로. GitLab 전송처 줄(`:880`)에 "signing you in, if you choose GitLab" 목적을 더한다. 아바타 줄(`:814`·`:888`)은 GitHub·Google 그대로 둔다(D3 — 받지 않는다) — 거짓 문장을 만들지 않는다(POSTMORTEM 2026-09-19).
 - `lib/privacy/collected.ts` — `Account`를 재사용하므로 **새 필드가 없다**(typecheck가 요구하지 않는다). `:150-154` 주석의 "GitHub·Google 연결"만 고친다.
 - `lib/privacy/__tests__/policy-gate.test.tsx` — `REVISIONS`에 새 행(시행일·digest·koDigest), en·ko `effectiveDate`·`changes`. ⚠️ **`:310`이 `body.effectiveDate`를 리터럴 `"2026-10-12"`로 고정한다** — 같이 고친다(에이전트 조사로 확인).
 - 셀프 호스팅 운영자 재료(가이드 `self-hosting/troubleshooting.md` 저장 필드·전송처 표, en·ko·es): Account 행 "GitHub or Google" → 셋, GitLab 전송처 행에 로그인 목적.

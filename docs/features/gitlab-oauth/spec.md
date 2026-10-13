@@ -40,7 +40,7 @@ GitLab.com 계정으로 말모이에 로그인할 수 있게 한다. Auth.js에 
 4. 같은 검증 이메일의 User가 이미 GitHub·Google 수단을 가졌을 때 GitLab으로 처음 로그인하면 `/signin/link/<challenge>`로 가고, 기존 수단으로 확인해야 GitLab `Account`가 붙는다. 역방향(GitLab 계정이 먼저)도 같다. `allowDangerousEmailAccountLinking`은 어느 공급자에도 없다. [단위 — `planLinkOffer`·`provider-config` · 격리 PG `test:credentials:postgres`]
 5. `/account` 로그인 수단 카드에 GitLab 행이 서고(켜졌을 때만), [Connect]·해제·전체 세션 회수(`Continue to GitLab`)가 GitHub·Google과 같은 규칙으로 동작한다 — 해제 뒤 켜진 수단이 하나 이상 남아야 하고, 확인 상대 우선순위가 결정적이다. [단위 — `canUnlink`·`pickLoginAccount`·`loginMethodRows` · 격리 PG · 실물 T0]
 6. **GitLab 로그인과 GitLab PAT 연결은 서로를 만들거나 지우지 않는다** — GitLab 로그인 수단을 해제해도 `GitLabConnection`이 남고, PAT 연결을 해제해도 GitLab `Account`가 남는다. 로그인 코드는 `lib/gitlab/*`·`lib/gitlab-connect/*`를 import하지 않고 GitLab 쓰기 코드는 `Account` 행을 읽지 않는다. [`credential-separation.test.ts` 확장]
-7. CSP가 GitLab 로그인 왕복을 막지 않는다 — `form-action`에 `https://gitlab.com`. [단위 — `security-headers`] 아바타는 design §4 D3 결정을 따른다.
+7. CSP가 GitLab 로그인 왕복을 막지 않는다 — `form-action`에 `https://gitlab.com`. [단위 — `security-headers`] GitLab 아바타는 받지 않는다 — `Account(gitlab)`로 가입한 `User.image`는 null이고 `img-src`는 그대로다(design §4 D3).
 8. 우주(universe) 하드코딩 사본(`["github", "google"]` 꼴)이 소스에 0이고 전부 `LOGIN_PROVIDERS`에서 파생된다. [grep 게이트 — design §3]
 9. 개인정보 방침(en·ko)이 GitLab을 로그인 목적의 전송처로, GitLab 계정 id를 수집 항목으로 말하고, 개정 이력·시행일이 움직인다. 셀프 호스팅 운영자 개인정보 재료(가이드 en·ko·es)도 같다. [`policy-gate.test.tsx` · `/push` 4단계 사람 판정]
 10. 세 사전(en·ko·es)에 새 키가 같은 커밋에 있고, 가이드·README·정본 문서의 "GitHub or Google" 로그인 목록이 셋으로 갱신된다. [`dictionary-consistency` · `pnpm test` 가이드 게이트 · `/doc-check` 대상]
@@ -64,4 +64,6 @@ GitLab.com 계정으로 말모이에 로그인할 수 있게 한다. Auth.js에 
 | 2026-10-13 | PRODUCT §4.2의 "GitLab 로그인"을 범위로 옮긴다. "GitLab OAuth 앱 연결"은 비범위 유지 | 사용자 결정(브리프). 리포 지원이 선 뒤 GitLab 전용 개발자·GitLab 전용 셀프 호스팅 설치가 로그인용 계정을 따로 둬야 한다 |
 | 2026-10-13 | 착수는 v1.4.0 `/merge` 뒤 | 사용자 결정(브리프) — 감사 리팩터 런과 겹치지 않게 |
 
-열린 결정은 design §4의 "확인 필요" 표가 든다.
+| 2026-10-13 | 설계 결정 D1~D5 — REST `confirmed_at` · 순서 `github → gitlab → google` · 아바타 안 받음 · `prompt` 인자는 T0 뒤 · hosted 켬(그룹 소유 앱) | design §4 "사용자 결정" 표 |
+
+남은 열린 지점은 T0 실측(D1 재개 조건 · D4 확정)뿐이다.
