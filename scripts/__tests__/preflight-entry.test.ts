@@ -90,8 +90,18 @@ describe("pnpm preflight", () => {
     expect(half.stderr.trim().split("\n")).toEqual(["preflight: AUTH_GITHUB_SECRET incomplete-pair"]);
     const none = run({ ...VALID, AUTH_GITHUB_ID: "", AUTH_GITHUB_SECRET: "", AUTH_GOOGLE_ID: "", AUTH_GOOGLE_SECRET: "" });
     expect(none.status).toBe(1);
-    expect(none.stderr.trim().split("\n")).toEqual(["preflight: AUTH_GITHUB_ID no-login-provider", "preflight: AUTH_GOOGLE_ID no-login-provider"]);
-    expect(`${half.stdout}${half.stderr}${none.stdout}${none.stderr}`).not.toMatch(/SENTINEL/);
+    expect(none.stderr.trim().split("\n")).toEqual([
+      "preflight: AUTH_GITHUB_ID no-login-provider",
+      "preflight: AUTH_GITLAB_ID no-login-provider",
+      "preflight: AUTH_GOOGLE_ID no-login-provider",
+    ]);
+    // GitLab 단독 설치 (gitlab-oauth spec §4-12) — GitHub·Google 쌍 없이 GitLab 쌍 하나로 뜨고, 반쪽 GitLab은 빠진 쪽 이름으로 막는다.
+    const gitlabOnly = { ...VALID, AUTH_GITHUB_ID: "", AUTH_GITHUB_SECRET: "", AUTH_GOOGLE_ID: "", AUTH_GOOGLE_SECRET: "", AUTH_GITLAB_ID: "gl-SENTINEL", AUTH_GITLAB_SECRET: "gls-SENTINEL" };
+    expect(run(gitlabOnly).status).toBe(0);
+    const gitlabHalf = run({ ...gitlabOnly, AUTH_GITLAB_SECRET: "" });
+    expect(gitlabHalf.status).toBe(1);
+    expect(gitlabHalf.stderr.trim().split("\n")).toEqual(["preflight: AUTH_GITLAB_SECRET incomplete-pair"]);
+    expect(`${half.stdout}${half.stderr}${none.stdout}${none.stderr}${gitlabHalf.stdout}${gitlabHalf.stderr}`).not.toMatch(/SENTINEL/);
   }, 120_000);
 
   it("MALMOI_ORIGIN이 없으면(hosted 설정) 기동을 막는다", () => {

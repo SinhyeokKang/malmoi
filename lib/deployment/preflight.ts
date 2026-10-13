@@ -19,7 +19,7 @@ import { resolveDeploymentMode, type OriginRejection } from "./mode";
  * self-hosted에서 각 env 이름이 무엇인가. `requireEnv`·`optionalEnv`가 읽는 이름과 `.env.example`의 키가 전부 여기 분류된다(SH-15 ②).
  *
  * - `required` — preflight가 요구한다(web 컨테이너)
- * - `optional` — 없어도 기동한다. ⚠️ 로그인 공급자 넷(`AUTH_GITHUB_*`·`AUTH_GOOGLE_*`)은 단독으로 optional이고 **쌍 제약은 `preflight()`의
+ * - `optional` — 없어도 기동한다. ⚠️ 로그인 공급자 여섯(`AUTH_GITHUB_*`·`AUTH_GITLAB_*`·`AUTH_GOOGLE_*`)은 단독으로 optional이고 **쌍 제약은 `preflight()`의
  *   쌍 규칙이 든다** — 완전한 쌍 하나 이상 + 반쪽 0(optional-login-providers design §2.2). 새 분류를 만들지 않은 이유: compose·`.env.example`
  *   대조 필터(`required || optional`)가 그대로 맞는다. `GITHUB_APP_*` 다섯도 optional + all-or-none 그룹이다
  * - `hosted-only` — self-hosted는 읽지 않는다. `INVITATION_EMAIL_ORIGIN`만 있으면 거부한다(`MALMOI_ORIGIN`에서 파생 — 정본 둘 방지)
@@ -34,6 +34,8 @@ export const SELF_HOSTED_ENV = {
   AUTH_SECRET: "required",
   AUTH_GITHUB_ID: "optional",
   AUTH_GITHUB_SECRET: "optional",
+  AUTH_GITLAB_ID: "optional",
+  AUTH_GITLAB_SECRET: "optional",
   AUTH_GOOGLE_ID: "optional",
   AUTH_GOOGLE_SECRET: "optional",
   APP_SIGNING_SECRET: "required",

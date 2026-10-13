@@ -15,6 +15,12 @@ it("확인 요청은 사용자·공급자 계정·세션·OAuth state를 담되 
 it("모호한 ID·잘못된 목적·알 수 없는 provider·여분 필드를 거부한다", () => {
   for (const value of ["{}", "[]", "null", challengeIdentifier(context).replace("v1", "v2"), challengeIdentifier(context).replace("github", "github-app"), challengeIdentifier(context).replace(/]$/, ',"extra"]')]) expect(parseChallengeIdentifier(value)).toBeNull();
 });
+it("GitLab 수단으로도 회수 challenge가 왕복한다 — 우주는 LOGIN_PROVIDERS 파생이다", () => {
+  const gitlab = { ...context, provider: "gitlab" as const, providerAccountId: "gl1" };
+  expect(parseChallengeIdentifier(challengeIdentifier(gitlab))).toEqual(gitlab);
+  expect(checkChallenge(gitlab, { ...input, provider: "gitlab", providerAccountId: "gl1" })).toBe("ok");
+  expect(checkChallenge(gitlab, input)).toBe("wrong-account");
+});
 it("현재 세션·state·공급자 ID가 일치한 미만료 요청만 통과한다", () => {
   expect(checkChallenge(context, input)).toBe("ok");
   expect(checkChallenge(context, { ...input, now: new Date(100) })).toBe("expired");

@@ -3995,7 +3995,7 @@ export const en = {
    * 다르게 읽히지 않는다.
    */
   link: {
-    providers: { github: "GitHub", google: "Google" },
+    providers: { github: "GitHub", gitlab: "GitLab", google: "Google" },
     title: "This email already has an account",
     /** 무엇으로 들어왔고 무엇으로 만들어졌는지를 한 줄로 — 둘 다 말하지 않으면 다음 클릭을 못 고른다. */
     description: (pending: string, have: string): string =>

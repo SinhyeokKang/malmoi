@@ -3,6 +3,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { beginRevocation, finishRevocation } from "../store";
 import { challengeIdentifier, nonceHash, stateHash } from "../policy";
 import { hashSessionToken } from "@/lib/credentials/crypto";
+import { LOGIN_PROVIDERS } from "@/lib/login-link/policy";
 const nonce = Buffer.alloc(32, 12).toString("base64url");
 const input = { nonce, sessionToken: "raw", state: "state", provider: "github" as const, providerAccountId: "gh", enabled: ["github", "google"] as const };
 function fixture() {
@@ -33,6 +34,16 @@ it.each(["missing-session", "no-account", "not-the-picked-account"])("start reje
   const proof = failure === "not-the-picked-account" ? { ...input, provider: "google" as const, providerAccountId: "g" } : input;
   expect(await beginRevocation(db, { ...proof, userId: "u" })).toBe("invalid");
   expect(tx.verificationToken.create).not.toHaveBeenCalled();
+});
+
+/** GitLab 수단 (gitlab-oauth design §4 D2) — GitHub이 없으면 GitLab이 Google보다 앞이고, 조회는 우주 전체(`LOGIN_PROVIDERS`)다. */
+it("start confirms against gitlab when the user has gitlab and google but no github", async () => {
+  const { db, tx } = fixture();
+  tx.account.findMany.mockResolvedValue([{ provider: "google", providerAccountId: "g", userId: "u" }, { provider: "gitlab", providerAccountId: "gl", userId: "u" }]);
+  const all = ["github", "gitlab", "google"] as const;
+  expect(await beginRevocation(db, { ...input, provider: "gitlab", providerAccountId: "gl", enabled: all, userId: "u" })).toBe("ready");
+  expect(tx.account.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { userId: "u", provider: { in: [...LOGIN_PROVIDERS] } } }));
+  expect(await beginRevocation(db, { ...input, provider: "google", providerAccountId: "g", enabled: all, userId: "u" })).toBe("invalid");
 });
 
 /** 수단이 둘이어도 회수가 시작된다 — `github` 우선으로 고정된 상대를 서버가 고른다. */

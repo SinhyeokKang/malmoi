@@ -72,6 +72,24 @@ describe.each(WRAPPERS)("$scope", (w) => {
     expect(cleared(response)).toEqual(expect.arrayContaining([w.nonce(true), w.nonce(false), w.state(true), w.state(false)].map((c) => c.name)));
   });
 
+  /**
+   * **callback 판정은 `LOGIN_PROVIDERS` 파생이다** (gitlab-oauth spec §4-13). 손 사본 `(github|google)`이 남으면 GitLab callback이
+   * 이 가로채기를 우회해 평범한 로그인으로 흐른다 — 병합 확인·회수·수단 연결의 보안 경계다.
+   */
+  it("/api/auth/callback/gitlab도 가로챈다 — run()이 던지면 303 고정 착지 · 쿠키 정리", async () => {
+    const at = new NextRequest("https://localhost/api/auth/callback/gitlab?state=s", { headers: request(w).headers });
+    const response = await w.wrap(at, async () => { throw new Error("boom"); });
+    expect(response.status).toBe(303);
+    expect(cleared(response)).toEqual(expect.arrayContaining([w.nonce(true), w.nonce(false), w.state(true), w.state(false)].map((c) => c.name)));
+  });
+
+  it("짝: 로그인 공급자가 아닌 callback(github-app)은 가로채지 않는다 — run()의 응답이 그대로 나간다", async () => {
+    const at = new NextRequest("https://localhost/api/auth/callback/github-app?state=s", { headers: request(w).headers });
+    const response = await w.wrap(at, async () => new Response(null, { status: 302 }));
+    expect(response.status).toBe(302);
+    expect(cleared(response)).toEqual([]);
+  });
+
   it("짝: 허용된 호스트에서는 같은 요청이 run()을 부른다", async () => {
     const run = vi.fn(async () => new Response(null, { status: 302 }));
     await w.wrap(request(w), run);

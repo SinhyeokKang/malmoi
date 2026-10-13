@@ -19,7 +19,7 @@ import { routes } from "@/lib/routes";
 
 const PURPOSE = "malmoi/login-link";
 
-export type LoginProvider = "github" | "google";
+export type LoginProvider = "github" | "gitlab" | "google";
 
 /**
  * ⚠️ **`github-app`은 로그인 수단이 아니다** — 리포 쓰기 연결이고 그 행은 이 판정을 지나지 않는다.
@@ -27,8 +27,11 @@ export type LoginProvider = "github" | "google";
  * ⚠️ **우주(universe)다 — 이 설치에서 켜진 집합이 아니다** (optional-login-providers design §2.3). DB 조회·challenge 파싱은 꺼진
  * 공급자의 행도 읽어야 아래 판정이 "숨김"을 정할 수 있다. 켜진 집합은 `lib/auth/login-providers.ts`가 서버에서 구해 **인자로**
  * 내려보낸다 — 이 파일은 클라이언트 그래프라 그 모듈(`lib/env` → `node:crypto`)을 import하지 않는다(`client-graph.test.ts`).
+ *
+ * ⚠️ **순서가 곧 버튼 순서·primary·확인 상대 우선순위다** (gitlab-oauth design §4 D2 — Git 호스트 둘을 앞에 묶는다). 그리고 **이 배열이
+ * 우주의 유일한 사본이다** — 다른 판정은 전부 여기서 파생하고 손으로 다시 적지 않는다(`lib/auth/__tests__/provider-universe.test.ts`).
  */
-export const LOGIN_PROVIDERS: readonly LoginProvider[] = ["github", "google"];
+export const LOGIN_PROVIDERS: readonly LoginProvider[] = ["github", "gitlab", "google"];
 
 export function isLoginProvider(value: string): value is LoginProvider {
   // 배열 `includes`다 — provider 문자열이 남이 정한 값이라 객체 조회는 프로토타입 키를 통과시킨다.
@@ -129,8 +132,8 @@ export function checkChallenge(
 }
 
 /**
- * 확인 상대를 **결정적으로** 고른다 — **켜진** 연결 수단 중 `github` 우선, 없으면 `google` (design ③ · optional-login-providers
- * spec §4.7). 꺼진 공급자로는 확인 왕복이 성립하지 않는다(Auth.js `providers`에 없다). 없으면 `null`.
+ * 확인 상대를 **결정적으로** 고른다 — **켜진** 연결 수단 중 `LOGIN_PROVIDERS` 순서(`github` → `gitlab` → `google`)로 첫째
+ * (design ③ · optional-login-providers spec §4.7 · gitlab-oauth design §4 D2). 꺼진 공급자로는 확인 왕복이 성립하지 않는다(Auth.js `providers`에 없다). 없으면 `null`.
  *
  * 두 수단 모두 소유 증명이라 확인 상대로 동등하고, 필요한 것은 결정성 하나다. 클라이언트가
  * 고르게 하면 공격자가 확인 상대를 고르게 된다.

@@ -45,6 +45,10 @@ describe("planGate", () => {
     expect(planGate(["lib/auth/cookie.ts"])).not.toContain("test:projects:postgres");
   });
 
+  it("인증 경계 밖의 lib/auth 파일은 credentials 스위트를 깨우지 않는다 — 트리거는 디렉터리가 아니라 파일 셋이다", () => {
+    expect(planGate(["lib/auth/cookie.ts"])).not.toContain("test:credentials:postgres");
+  });
+
   it("lib/credentials를 건드리면 test:credentials:postgres가 선다", () => {
     expect(planGate(["lib/credentials/rotate.ts"])).toEqual(["db:generate", "typecheck", "test", "test:credentials:postgres", "build", "sync:agents:check"]);
   });
@@ -64,6 +68,8 @@ describe("planGate", () => {
     "lib/account-connect/store.ts", "lib/account-connect/http.ts",
     "lib/login-link/store.ts", "lib/login-link/http.ts", "lib/login-link/policy.ts",
     "lib/session-revocation/store.ts", "lib/session-revocation/http.ts",
+    // 통합 테스트가 그 동작을 단언하는 인증 경계(gitlab-oauth design §1 · POSTMORTEM 2026-09-10) — provider 목록 · linkAccount 게이트 · callback 판정.
+    "auth.ts", "lib/auth/safe-adapter.ts", "lib/auth/roundtrip.ts",
   ])("자격증명 통합 테스트가 직접 부르는 %s 단독 변경도 credentials 스위트를 실행한다", path => {
     expect(planGate([path])).toContain("test:credentials:postgres");
   });

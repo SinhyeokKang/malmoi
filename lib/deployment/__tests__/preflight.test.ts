@@ -192,28 +192,30 @@ describe("preflight — 출력에 비밀 값이 없다", () => {
 });
 
 /**
- * 로그인 공급자 쌍 규칙 (optional-login-providers spec §4.1 · design §2.2) — 넷은 단독으로는 `optional`이고, **완전한 쌍이 하나 이상 +
- * 반쪽 0**일 때만 통과한다. 반쪽은 빠진 쪽 이름으로 `incomplete-pair`(Q2: 조용히 끄지 않는다 — 거의 언제나 오타·누락이다), 쌍이 0이면
- * 두 ID 이름으로 `no-login-provider`. 반쪽과 0이 함께면 `incomplete-pair`만 낸다 — 고칠 자리 하나를 가리킨다.
+ * 로그인 공급자 쌍 규칙 (optional-login-providers spec §4.1 · design §2.2 · gitlab-oauth spec §4-1·§4-12) — 여섯은 단독으로는
+ * `optional`이고, **완전한 쌍이 하나 이상 + 반쪽 0**일 때만 통과한다. 반쪽은 빠진 쪽 이름으로 `incomplete-pair`(Q2: 조용히 끄지 않는다 —
+ * 거의 언제나 오타·누락이다), 쌍이 0이면 세 ID 이름으로 `no-login-provider`. 반쪽과 0이 함께면 `incomplete-pair`만 낸다 — 고칠 자리 하나를 가리킨다.
  */
 describe("preflight — 로그인 공급자 쌍", () => {
   type State = "enabled" | "absent" | "partial";
   /** 반쪽은 ID만 있는 꼴(빠진 쪽 = SECRET)로 만든다 — 반대 꼴은 아래 별도 사례가 본다. */
-  function pair(prefix: "GITHUB" | "GOOGLE", state: State): Record<string, string | undefined> {
+  function pair(prefix: "GITHUB" | "GITLAB" | "GOOGLE", state: State): Record<string, string | undefined> {
     const id = `AUTH_${prefix}_ID`, secret = `AUTH_${prefix}_SECRET`;
-    if (state === "enabled") return { [id]: VALID[id], [secret]: VALID[secret] };
+    if (state === "enabled") return { [id]: VALID[id] ?? `${id}-SENTINEL`, [secret]: VALID[secret] ?? `${secret}-SENTINEL` };
     if (state === "absent") return { [id]: undefined, [secret]: undefined };
-    return { [id]: VALID[id], [secret]: "" };
+    return { [id]: VALID[id] ?? `${id}-SENTINEL`, [secret]: "" };
   }
-  function problems(g: State, o: State) {
-    const result = preflight({ ...VALID, ...pair("GITHUB", g), ...pair("GOOGLE", o) }, okDir);
+  function problems(g: State, o: State, l: State = "absent") {
+    const result = preflight({ ...VALID, ...pair("GITHUB", g), ...pair("GITLAB", l), ...pair("GOOGLE", o) }, okDir);
     return result.ok ? [] : result.problems;
   }
   const NONE = [
     { name: "AUTH_GITHUB_ID", reason: "no-login-provider" },
+    { name: "AUTH_GITLAB_ID", reason: "no-login-provider" },
     { name: "AUTH_GOOGLE_ID", reason: "no-login-provider" },
   ];
   const GH_HALF = { name: "AUTH_GITHUB_SECRET", reason: "incomplete-pair" };
+  const GL_HALF = { name: "AUTH_GITLAB_SECRET", reason: "incomplete-pair" };
   const GO_HALF = { name: "AUTH_GOOGLE_SECRET", reason: "incomplete-pair" };
 
   it.each([
@@ -226,12 +228,25 @@ describe("preflight — 로그인 공급자 쌍", () => {
     ["partial", "enabled", [GH_HALF]],
     ["partial", "absent", [GH_HALF]],
     ["partial", "partial", [GH_HALF, GO_HALF]],
-  ] as [State, State, { name: string; reason: string }[]][])("GitHub %s × Google %s", (g, o, want) => {
+  ] as [State, State, { name: string; reason: string }[]][])("GitHub %s × Google %s (GitLab absent)", (g, o, want) => {
     expect(problems(g, o)).toEqual(want);
   });
 
-  it("넷 다 단독으로는 optional이다 — missing을 내지 않는다", () => {
-    for (const name of ["AUTH_GITHUB_ID", "AUTH_GITHUB_SECRET", "AUTH_GOOGLE_ID", "AUTH_GOOGLE_SECRET"]) {
+  /** GitLab 단독 self-hosted가 기동한다 (gitlab-oauth spec §4-12) — GitHub·Google 쌍 없이 GitLab 쌍 하나면 통과한다. */
+  it.each([
+    ["enabled", "absent", "absent", []],
+    ["partial", "absent", "absent", [GL_HALF]],
+    ["absent", "absent", "absent", NONE],
+    ["enabled", "enabled", "enabled", []],
+    ["partial", "enabled", "enabled", [GL_HALF]],
+    ["enabled", "partial", "absent", [GH_HALF]],
+    ["partial", "partial", "partial", [GH_HALF, GL_HALF, GO_HALF]],
+  ] as [State, State, State, { name: string; reason: string }[]][])("GitLab %s × GitHub %s × Google %s", (l, g, o, want) => {
+    expect(problems(g, o, l)).toEqual(want);
+  });
+
+  it("여섯 다 단독으로는 optional이다 — missing을 내지 않는다", () => {
+    for (const name of ["AUTH_GITHUB_ID", "AUTH_GITHUB_SECRET", "AUTH_GITLAB_ID", "AUTH_GITLAB_SECRET", "AUTH_GOOGLE_ID", "AUTH_GOOGLE_SECRET"]) {
       expect(SELF_HOSTED_ENV[name as keyof typeof SELF_HOSTED_ENV], name).toBe("optional");
     }
   });
@@ -272,6 +287,6 @@ describe("GitHub App 그룹 — GitLab 전용 설치", () => {
     const env = { ...VALID, ...Object.fromEntries(names.map(name => [name, "  "])) };
     expect(preflight(env, okDir)).toEqual({ ok: true });
     for (const name of ["AUTH_GITHUB_ID", "AUTH_GITHUB_SECRET", "AUTH_GOOGLE_ID", "AUTH_GOOGLE_SECRET"]) delete env[name];
-    expect(reasons(env)).toEqual({ AUTH_GITHUB_ID: "no-login-provider", AUTH_GOOGLE_ID: "no-login-provider" });
+    expect(reasons(env)).toEqual({ AUTH_GITHUB_ID: "no-login-provider", AUTH_GITLAB_ID: "no-login-provider", AUTH_GOOGLE_ID: "no-login-provider" });
   });
 });

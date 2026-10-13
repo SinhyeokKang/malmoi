@@ -35,7 +35,8 @@ it("어댑터 게이트가 그대로이고 직접 쓰는 자리가 하나뿐이�
     .replace(/\/\*[\s\S]*?\*\//g, "")
     .replace(/\/\/.*$/gm, "");
   expect(adapter).toContain("additional login accounts are disabled");
-  expect(adapter).not.toContain("login-link");
+  // 우주(`LOGIN_PROVIDERS`·`isLoginProvider`)는 policy 하나에서 파생한다(gitlab-oauth design §3) — 병합 흐름(store·http)에는 기대지 않는다.
+  expect(adapter.replace('from "@/lib/login-link/policy"', "")).not.toContain("login-link");
 
   /**
    * ⚠️ **`Account` 행을 만드는 자리의 허용 목록이다.** 셋의 축이 각각 다르다:

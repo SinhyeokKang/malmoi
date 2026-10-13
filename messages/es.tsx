@@ -2180,7 +2180,7 @@ export const es = {
   },
 
   link: {
-    providers: { github: "GitHub", google: "Google" },
+    providers: { github: "GitHub", gitlab: "GitLab", google: "Google" },
     title: "Este correo ya tiene una cuenta",
     description: (pending: string, have: string): string =>
       `Acabas de iniciar sesión con ${pending}, pero esta dirección se creó con ${have}.`,

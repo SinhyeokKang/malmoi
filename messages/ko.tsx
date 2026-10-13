@@ -2186,7 +2186,7 @@ export const ko = {
   },
 
   link: {
-    providers: { github: "GitHub", google: "Google" },
+    providers: { github: "GitHub", gitlab: "GitLab", google: "Google" },
     title: "이미 가입된 이메일입니다",
     description: (pending: string, have: string): string =>
       `${pending} 계정으로 로그인을 시도했습니다. 이 이메일은 ${have} 계정으로 이미 가입되어 있습니다.`,

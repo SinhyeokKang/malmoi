@@ -6,11 +6,19 @@
  * 한쪽만 조용히 틀리는 조각뿐이다 — 정규식 셋, nonce 검사 둘, 쿠키 만료 루프 넷이 그랬다.
  */
 
-const OAUTH_CALLBACK = /^\/api\/auth\/callback\/(github|google)$/;
+import { isLoginProvider } from "@/lib/login-link/policy";
 
-/** Auth.js의 로그인 공급자 callback인가 — 세 가로채기가 이 경로에서만 판정한다. */
+const CALLBACK_PREFIX = "/api/auth/callback/";
+
+/**
+ * Auth.js의 로그인 공급자 callback인가 — 세 가로채기가 이 경로에서만 판정한다.
+ *
+ * ⚠️ **공급자 목록을 여기 적지 않는다 — `LOGIN_PROVIDERS`에서 파생한다** (gitlab-oauth spec §4-13). 손 사본 `(github|google)`이 남으면
+ * 셋째 공급자의 callback이 병합 확인·회수·수단 연결 가로채기를 **우회해** 평범한 로그인으로 흐른다 — 보안 경계다.
+ * 꺼진 공급자도 우주에 있으면 잡는다: 가로채기는 우리 쿠키가 있을 때만 일하고, 꺼진 공급자의 callback은 Auth.js가 어차피 거부한다.
+ */
 export function isOAuthCallback(pathname: string): boolean {
-  return OAUTH_CALLBACK.test(pathname);
+  return pathname.startsWith(CALLBACK_PREFIX) && isLoginProvider(pathname.slice(CALLBACK_PREFIX.length));
 }
 
 /** 왕복 증명 nonce는 canonical 32바이트 base64url이다 — 패딩·비정규 끝 비트를 거부한다. */

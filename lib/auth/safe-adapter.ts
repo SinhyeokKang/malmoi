@@ -2,6 +2,7 @@ import "server-only";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import type { Adapter } from "next-auth/adapters";
 import type { PrismaClient } from "@/generated/prisma/client";
+import { isLoginProvider, LOGIN_PROVIDERS } from "@/lib/login-link/policy";
 
 /**
  * `PrismaAdapter`를 **`linkAccount` 한 자리에서** 감싼다 (2026-09-10, sec-audit-2 발견 31·39).
@@ -44,18 +45,18 @@ export function safePrismaAdapter(prisma: PrismaClient): Adapter {
      * challenge. **그 조건을 적을 수 없는 진입점은 만들지 않는다** — `/account`에 [Connect]가 없는
      * 이유이고, 여기를 열어 그것을 대신하려는 시도는 sec-audit-2 #31을 되돌리는 것이다.
      *
-     * ⚠️ **토큰을 저장하지 않는다** (발견 39). 로그인용 `github`·`google`의 access/refresh/id 토큰은
+     * ⚠️ **토큰을 저장하지 않는다** (발견 39). 로그인용 공급자(`LOGIN_PROVIDERS`)의 access/refresh/id 토큰은
      * 로그인 이후 한 번도 쓰이지 않는다 — 남겨 두면 DB 유출 시 노출 범위만 넓어진다. 실제로 쓰는
      * 것은 `github-app` 연결 토큰이고 그쪽은 이 어댑터를 지나지 않는다(`api/github/callback`).
      */
     async linkAccount(account) {
-      if (account.provider !== "github" && account.provider !== "google") throw new Error("unsupported login provider");
+      if (!isLoginProvider(account.provider)) throw new Error("unsupported login provider");
       await prisma.$transaction(async (tx) => {
         // ⚠️ **첫 로그인도 직렬화한다** — 같은 User에 대한 callback 둘이 동시에 "계정 없음"을 보면
         // 둘 다 만들어져 정책이 쓰기에서 깨진다. `(provider, providerAccountId)` 유일 제약은
         // provider가 다르면 안 걸린다.
         await tx.$executeRaw`SELECT "id" FROM "User" WHERE "id" = ${account.userId} FOR UPDATE`;
-        const linked = await tx.account.findFirst({ where: { userId: account.userId, provider: { in: ["github", "google"] } }, select: { provider: true } });
+        const linked = await tx.account.findFirst({ where: { userId: account.userId, provider: { in: [...LOGIN_PROVIDERS] } }, select: { provider: true } });
         if (linked !== null) throw new Error("additional login accounts are disabled");
         await tx.account.create({ data: { userId: account.userId, type: account.type, provider: account.provider, providerAccountId: account.providerAccountId } });
       });

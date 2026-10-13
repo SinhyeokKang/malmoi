@@ -111,7 +111,7 @@ export function planEmailRefresh(input: {
   stored: string;
   fresh: string | null;
   takenByOther: boolean;
-  /** 로그인 `Account` 행 수 (`github`·`google`만). `github-app`은 로그인 수단이 아니다. */
+  /** 로그인 `Account` 행 수 (`LOGIN_PROVIDERS`만). `github-app`은 로그인 수단이 아니다. */
   loginMethods: number;
 }): EmailRefresh {
   /**
