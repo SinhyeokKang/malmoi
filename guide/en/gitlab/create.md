@@ -51,7 +51,7 @@ The project is ready immediately. The last step says **Malmoi is ready**, and yo
 ## Finish setup {#finish-setup}
 
 1. Copy the push token shown on the ready page. It is shown once; rotate it later in **Settings** if you lose it.
-2. Add the CI jobs and the `PUSH_TOKEN` variable by following [Add the GitLab CI jobs](ci.md). If the ready page says the CI file isn't available yet, keep the push token for later.
+2. Add the CI jobs and the `PUSH_TOKEN` variable by following [Add the GitLab CI jobs](ci.md).
 3. Choose **Open project** to go to the project's Home page.
 
 The creator becomes **Owner**.

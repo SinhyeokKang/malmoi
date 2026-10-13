@@ -66,6 +66,10 @@ export const SECTION_LEGACY_ANCHORS: Readonly<Record<string, Readonly<Record<str
   "github/troubleshooting": {
     "gitlab-access": "/docs/gitlab/troubleshooting#gitlab-access",
   },
+  // 2026-10-13 — GitLab CI 원본이 발행돼(`GITLAB_CI_RELEASE.sha` 고정) "아직 없다" 절을 지웠다. 옛 링크는 CI 파일을 받는 절로 간다.
+  "gitlab/ci": {
+    "ci-unavailable": "/docs/gitlab/ci#gitlab-ci",
+  },
 };
 
 /**
