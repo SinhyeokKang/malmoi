@@ -30,6 +30,7 @@ import SignIn from "@/app/signin/page";
 import InvitePage from "@/app/invite/[token]/page";
 import OAuthAuthorizePage from "@/app/oauth/authorize/page";
 import { ProviderSubmit } from "@/components/signin/provider-button";
+import { LOGIN_PROVIDERS } from "@/lib/login-link/policy";
 import { en } from "@/messages/en";
 
 type ProviderProps = { provider: string; children?: ReactNode };
@@ -47,13 +48,14 @@ const pages = {
   invite: () => InvitePage({ params: Promise.resolve({ token: "invite-token" }), searchParams: Promise.resolve({}) }),
   oauth: () => OAuthAuthorizePage({ searchParams: Promise.resolve({ request: "req_1" }) }),
 };
-const cases = (Object.keys(pages) as (keyof typeof pages)[]).flatMap(entry => (["github", "google"] as const).map(provider => ({ entry, provider })));
+const cases = (Object.keys(pages) as (keyof typeof pages)[]).flatMap(entry => LOGIN_PROVIDERS.map(provider => ({ entry, provider })));
 beforeEach(() => { vi.clearAllMocks(); });
 
 // 실제 서버 페이지의 ProviderButton과 실제 form action/useFormStatus를 렌더한다.
 it.each(cases)("$entry/$provider keeps one glyph, its label and native submit lock", async ({ entry, provider }) => {
   const callers = providers(await pages[entry]());
-  expect(callers).toHaveLength(2);
+  // 한 페이지의 `ProviderButton` 수 = 켜진 공급자 수(테스트 기본 hosted 셋).
+  expect(callers).toHaveLength(3);
   const caller = callers.find(node => node.props.provider === provider)!;
   const form = Reflect.apply(caller.type as Function, null, [caller.props]) as ReactElement<{ children: ReactElement<Parameters<typeof ProviderSubmit>[0]> }>;
   expect(form.props.children.type).toBe(ProviderSubmit);
@@ -61,7 +63,7 @@ it.each(cases)("$entry/$provider keeps one glyph, its label and native submit lo
   mocks.signIn.mockReturnValue(new Promise<void>(resolve => { finish = resolve; }));
   const { container } = await render(form);
   const button = find<HTMLButtonElement>(container, "button");
-  const text = provider === "github" ? en.signIn.github : en.signIn.google;
+  const text = en.signIn[provider];
   expect(button.textContent).toBe(text);
   expect(button.querySelectorAll("svg")).toHaveLength(1);
   expect(button.disabled).toBe(false);

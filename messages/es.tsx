@@ -175,6 +175,7 @@ export const es = {
     backToInvitation: "Volver a la invitación",
     backToAuthorization: "Volver a la autorización de la app",
     github: "Continuar con GitHub",
+    gitlab: "Continuar con GitLab",
     google: "Continuar con Google",
     consent: { before: "Al hacer clic en Continuar con un servicio externo, aceptas la ", link: "Política de privacidad", after: " de este sitio." },
     footer: { copyright: "© 2026 Malmoi", github: "GitHub", privacy: "Política de privacidad" },
@@ -918,7 +919,7 @@ export const es = {
     gitlab: {
       expiresSoon: "Caduca pronto",
       title: "GitLab PAT",
-      rowName: "GitLab",
+      rowName: "Token de GitLab",
       hintNotConnected: "Conecta un token de acceso personal de GitLab para crear proyectos a partir de repositorios de GitLab.",
       expires: (date: string): string => `Caduca el ${date}.`,
       expiredOn: (date: string): string => `Caducó el ${date}. Reemplaza el token para que los proyectos que lo usan sigan funcionando.`,
@@ -927,11 +928,11 @@ export const es = {
       replace: "Reemplazar token",
       replaceTitle: "Reemplazar el token de GitLab",
       replaceHint: (username: string): string => `Pega un token nuevo para @${username}. Los proyectos que usan esta conexión pasan a usarlo enseguida.`,
-      disconnectLabel: "Desconectar GitLab",
-      confirmDisconnect: "¿Desconectar GitLab de Malmoi?",
+      disconnectLabel: "Desconectar el token de GitLab",
+      confirmDisconnect: "¿Desconectar este token de GitLab?",
       confirmHint: "Malmoi elimina el token guardado. Los proyectos que usan esta conexión dejan de sincronizarse y publicarse hasta que un propietario del proyecto los vuelva a conectar.",
       disconnectFailed: "No se pudo desconectar GitLab. Vuelve a intentarlo.",
-      disconnectConfirm: "Desconectar GitLab",
+      disconnectConfirm: "Desconectar token",
       expiresSoonNotice: (days: number, date: string): string =>
         `Tu token de GitLab caduca en ${days.toLocaleString("es")} ${days === 1 ? "día" : "días"}, el ${date}. Reemplázalo antes para que los proyectos que lo usan sigan funcionando.`,
       form: {
@@ -1924,7 +1925,7 @@ export const es = {
     invite: {
       open: "Invitar miembro",
       title: "Invitar miembros",
-      description: "Envía invitaciones por correo electrónico y elige un rol para cada persona. Usa la dirección con la que inician sesión — en GitHub, su correo principal.",
+      description: "Envía invitaciones por correo electrónico y elige un rol para cada persona. Usa la dirección con la que inician sesión — en GitHub y GitLab, su correo principal.",
       columns: { email: "Correo electrónico", role: "Rol" },
       placeholder: "nombre@empresa.com",
       roleHint: {

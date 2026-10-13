@@ -7,7 +7,7 @@ import { signIn } from "@/auth";
 import { SubmitButton } from "@/components/submit-button";
 import { AuthColumn, AuthHeading } from "@/components/signin/auth-column";
 import { AuthLayout } from "@/components/signin/auth-layout";
-import { GithubIcon, GoogleIcon } from "@/components/signin/brand-icons";
+import { BrandGlyph } from "@/components/signin/brand-icons";
 import { Alert } from "@/components/ui/alert";
 import { EntityCard } from "@/components/ui/entity-card";
 import { ButtonLink } from "@/components/ui/button";
@@ -100,7 +100,7 @@ export default async function LinkAccountPage({
           avatarName={view.name ?? view.emailLabel}
           image={view.image}
           description={<>{providerLabel(m, view.have)} · <time dateTime={view.joined.toISOString()}>{joinedLabel(m, uiLocale, view.joined)}</time></>}
-          badge={view.have === "github" ? <GithubIcon className="size-4" /> : <GoogleIcon className="size-4" />}
+          badge={<BrandGlyph brand={view.have} />}
         />
 
         <div className="flex w-full flex-col gap-2">

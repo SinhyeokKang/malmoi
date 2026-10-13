@@ -178,6 +178,7 @@ export const ko = {
     backToInvitation: "초대로 돌아가기",
     backToAuthorization: "앱 승인으로 돌아가기",
     github: "GitHub로 계속하기",
+    gitlab: "GitLab으로 계속하기",
     google: "Google로 계속하기",
     consent: { before: "계속하면 ", link: "개인정보 처리방침", after: "에 동의하게 됩니다." },
     footer: { copyright: "© 2026 Malmoi", github: "GitHub", privacy: "개인정보 처리방침" },
@@ -926,7 +927,7 @@ export const ko = {
     gitlab: {
       expiresSoon: "만료 예정",
       title: "GitLab PAT",
-      rowName: "GitLab",
+      rowName: "GitLab 토큰",
       hintNotConnected: "GitLab 개인 액세스 토큰을 연결하면 GitLab 리포지토리로 프로젝트를 만들 수 있습니다.",
       expires: (date: string): string => `${date}에 만료됩니다.`,
       expiredOn: (date: string): string => `${date}에 만료되었습니다. 이 연결을 쓰는 프로젝트가 계속 동작하도록 토큰을 교체하세요.`,
@@ -935,11 +936,11 @@ export const ko = {
       replace: "토큰 교체",
       replaceTitle: "GitLab 토큰 교체",
       replaceHint: (username: string): string => `@${username}의 새 토큰을 붙여 넣으세요. 이 연결을 쓰는 프로젝트는 바로 새 토큰을 씁니다.`,
-      disconnectLabel: "GitLab 연결 해제",
-      confirmDisconnect: "Malmoi에서 GitLab 연결을 해제할까요?",
+      disconnectLabel: "GitLab 토큰 연결 해제",
+      confirmDisconnect: "이 GitLab 토큰의 연결을 해제할까요?",
       confirmHint: "저장된 토큰이 삭제됩니다. 이 연결을 쓰는 프로젝트는 프로젝트 소유자가 다시 연결할 때까지 동기화와 게시가 멈춥니다.",
       disconnectFailed: "GitLab 연결을 해제하지 못했습니다. 다시 시도하세요.",
-      disconnectConfirm: "GitLab 연결 해제",
+      disconnectConfirm: "토큰 연결 해제",
       expiresSoonNotice: (days: number, date: string): string =>
         `내 GitLab 토큰이 ${days.toLocaleString("ko-KR")}일 뒤(${date})에 만료됩니다. 이 토큰을 쓰는 프로젝트가 계속 동작하도록 그 전에 교체하세요.`,
       form: {
@@ -1928,7 +1929,7 @@ export const ko = {
     invite: {
       open: "멤버 초대",
       title: "멤버 초대",
-      description: "초대할 이메일과 역할을 입력하세요. 로그인에 사용하는 이메일이어야 하며, GitHub는 기본(primary) 이메일을 사용합니다.",
+      description: "초대할 이메일과 역할을 입력하세요. 로그인에 사용하는 이메일이어야 하며, GitHub와 GitLab은 기본(primary) 이메일을 사용합니다.",
       columns: { email: "이메일", role: "역할" },
       placeholder: "name@company.com",
       roleHint: {

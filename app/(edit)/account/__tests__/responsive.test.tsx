@@ -68,8 +68,8 @@ it("이름·이메일 필드는 320이되 카드 안폭을 넘지 않고 좁으�
 it("카드 행의 동작은 좁은 카드에서 둘째 줄 오른쪽이다 — 수단 · GitHub · Sessions 모든 행, DOM 순서 그대로", async () => {
   const container = await screen();
   const rows = [...container.querySelectorAll<HTMLElement>("li")].filter(li => li.querySelector("[data-row-copy]") !== null);
-  // 수단 둘 + GitHub 하나 + GitLab 하나 + Sessions 둘.
-  expect(rows).toHaveLength(6);
+  // 수단 셋(hosted 기본) + GitHub 하나 + GitLab 하나 + Sessions 둘.
+  expect(rows).toHaveLength(7);
   for (const row of rows) {
     has(row, ROW);
     expect(row.lastElementChild?.matches("div")).toBe(true);

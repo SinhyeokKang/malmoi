@@ -9,7 +9,7 @@ import { signIn, signOut } from "@/auth";
 import { InviteProjectCard } from "@/components/invite/project-card";
 import { AuthColumn, AuthHeading } from "@/components/signin/auth-column";
 import { AuthLayout } from "@/components/signin/auth-layout";
-import { GithubIcon, GoogleIcon } from "@/components/signin/brand-icons";
+import { ProviderIcon } from "@/components/signin/brand-icons";
 import { ProviderSubmit } from "@/components/signin/provider-button";
 import { Alert } from "@/components/ui/alert";
 import { Button, ButtonLink } from "@/components/ui/button";
@@ -235,9 +235,9 @@ function ProviderButton({ m, provider, variant, token }: { m: Messages; provider
       }}
     >
       <ProviderSubmit
-        label={provider === "github" ? m.signIn.github : m.signIn.google}
+        label={m.signIn[provider]}
         variant={variant}
-        icon={provider === "github" ? <GithubIcon aria-hidden className="size-4" /> : <GoogleIcon aria-hidden className="size-4" />}
+        icon={<ProviderIcon provider={provider} aria-hidden className="size-4" />}
       />
     </form>
   );

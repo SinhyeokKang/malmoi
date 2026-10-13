@@ -73,14 +73,14 @@ describe("withEnabled", () => {
 });
 
 describe("enabledLoginProviders", () => {
-  it("테스트 기본(setup)은 GitHub·Google 두 쌍이 켜져 있고 GitLab은 비어 있다", () => {
-    expect(enabledLoginProviders()).toEqual(["github", "google"]);
+  it("테스트 기본(setup)은 hosted 세 쌍이 켜져 있다 — 순서 github → gitlab → google (D2·D5)", () => {
+    expect(enabledLoginProviders()).toEqual(["github", "gitlab", "google"]);
   });
 
-  it("GitLab 쌍을 넣으면 가운데 자리에 켜진다 — 순서 github → gitlab → google", () => {
+  it("GitLab 쌍을 빼면 그 자리만 빠진다 — 나머지 순서 그대로", () => {
+    vi.stubEnv("AUTH_GITLAB_ID", "");
+    expect(enabledLoginProviders()).toEqual(["github", "google"]);
     vi.stubEnv("AUTH_GITLAB_ID", "gl");
-    vi.stubEnv("AUTH_GITLAB_SECRET", "secret");
-    expect(enabledLoginProviders()).toEqual(["github", "gitlab", "google"]);
     vi.stubEnv("AUTH_GITHUB_ID", "");
     vi.stubEnv("AUTH_GOOGLE_SECRET", "");
     expect(enabledLoginProviders()).toEqual(["gitlab"]);
@@ -89,6 +89,7 @@ describe("enabledLoginProviders", () => {
   it("호출 시점의 env를 읽는다 — import가 값을 굳히지 않는다", () => {
     vi.stubEnv("AUTH_GITHUB_ID", "");
     vi.stubEnv("AUTH_GITHUB_SECRET", "");
+    vi.stubEnv("AUTH_GITLAB_SECRET", "");
     expect(enabledLoginProviders()).toEqual(["google"]);
     vi.stubEnv("AUTH_GITHUB_ID", "gh");
     vi.stubEnv("AUTH_GITHUB_SECRET", "secret");
@@ -98,6 +99,7 @@ describe("enabledLoginProviders", () => {
 
   it("반쪽은 꺼진 것이다", () => {
     vi.stubEnv("AUTH_GITHUB_SECRET", " ");
+    vi.stubEnv("AUTH_GITLAB_ID", "");
     expect(enabledLoginProviders()).toEqual(["google"]);
   });
 });

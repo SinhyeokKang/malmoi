@@ -18,7 +18,8 @@ it("production signIn callback distinguishes storage outages from unverified ema
 
 it("production providers require both state and PKCE", async () => {
   const config = await state.factory!();
-  expect(config.providers).toHaveLength(2);
+  // 테스트 기본 env = hosted 세 쌍(`vitest.setup.ts`) — 수가 맞아야 아래 루프가 GitLab까지 돈다.
+  expect(config.providers).toHaveLength(3);
   for (const provider of config.providers) expect(provider).toMatchObject({ options: { checks: ["pkce", "state"] } });
 });
 

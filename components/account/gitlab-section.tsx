@@ -7,7 +7,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { disconnectGitLab } from "@/app/(edit)/account/actions";
 import { GitLabTokenForm } from "@/components/gitlab/token-form";
 import { useMessages, useUiLocale } from "@/components/i18n/messages-provider";
-import { GitlabIcon } from "@/components/signin/brand-icons";
+import { BrandGlyph } from "@/components/signin/brand-icons";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardRows } from "@/components/ui/card";
@@ -86,7 +86,7 @@ export function GitLabSection({ connection }: { connection: GitLabConnectionSumm
             stackActions
             as="li"
             className="border-border border-t first:border-t-0"
-            icon={<IconTile tone={attention ? STATE[state].tone : undefined}>{connected ? <GitlabIcon className="size-4" /> : <Link2 className="text-muted-foreground size-4" aria-hidden />}</IconTile>}
+            icon={<IconTile tone={attention ? STATE[state].tone : undefined}>{connected ? <BrandGlyph brand="gitlab" /> : <Link2 className="text-muted-foreground size-4" aria-hidden />}</IconTile>}
             title={<span className="flex min-w-0 items-center gap-2 text-base"><span className="truncate font-medium">{connected ? `@${connection.username}` : m.account.gitlab.rowName}</span><StatusBadge state={state} className="shrink-0" /></span>}
             description={description}
             actions={connected ? <>

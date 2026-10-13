@@ -9,7 +9,7 @@ import { ListRow } from "@/components/ui/list-row";
 import { Card, CardRows } from "@/components/ui/card";
 import { DisconnectGithubButton } from "@/components/github-account";
 import { ConnectGithubButton } from "@/components/onboarding/connect-github";
-import { GithubIcon } from "@/components/signin/brand-icons";
+import { BrandGlyph } from "@/components/signin/brand-icons";
 import { Alert } from "@/components/ui/alert";
 import { landFocus } from "@/components/ui/focus";
 import { ButtonLink } from "@/components/ui/button";
@@ -69,7 +69,7 @@ export function GithubSection({
         stackActions
         as="li"
         className="border-border border-t first:border-t-0"
-        icon={<IconTile>{connected ? <GithubIcon className="size-4" /> : <Link2 className="text-muted-foreground size-4" aria-hidden />}</IconTile>}
+        icon={<IconTile>{connected ? <BrandGlyph brand="github" /> : <Link2 className="text-muted-foreground size-4" aria-hidden />}</IconTile>}
         title={<span className="flex min-w-0 items-center gap-2 text-base"><span className="truncate font-medium">{connected ? `@${account.login}` : m.account.github.rowName}</span><StatusBadge state={account.status === "reauthorize" ? "expired" : account.status === "unavailable" ? "couldNotCheck" : connected ? "connected" : "notConnected"} className="shrink-0" /></span>}
         description={account.status === "reauthorize" ? m.account.github.hintReauthorize
           : account.status === "unavailable" ? m.account.github.hintUnavailable

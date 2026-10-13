@@ -1,7 +1,9 @@
-import type { SVGProps } from "react";
+import type { ComponentType, SVGProps } from "react";
+
+import type { LoginProvider } from "@/lib/login-link/policy";
 
 /**
- * 브랜드 로고 셋 — provider 둘(8-1b) + MCP(2026-09-29) + GitLab(gitlab-repositories). ⚠️ **`GithubIcon`이 이 리포의 유일한 GitHub 글리프다** (2026-09-28 사용자) — 로그인 버튼뿐 아니라
+ * 브랜드 로고 셋 — provider 둘(8-1b) + MCP(2026-09-29) + GitLab(gitlab-repositories · 3색은 gitlab-oauth D6). ⚠️ **`GithubIcon`이 이 리포의 유일한 GitHub 글리프다** (2026-09-28 사용자) — 로그인 버튼뿐 아니라
  * 랜딩 CTA · 프로젝트 목록 · Sources 머리 · `/changelog`의 View on GitHub가 모두 이것을 쓴다. `components/sources/`의 옛 lucide 외곽선
  * 글리프와 두 벌이던 것을 합쳤다 — 늘리지 말고 여기서 가져다 쓴다(`components/__tests__/github-glyph.test.ts`가 소스에서 센다).
  *
@@ -11,7 +13,7 @@ import type { SVGProps } from "react";
  *
  * ⚠️ **`lucide-react`에 브랜드 아이콘이 없다** — 그 라이브러리가 브랜드 글리프를 제외한다.
  *
- * ⚠️ **Google의 4색은 DESIGN §6.2 "새 raw 색을 늘리지 않는다"의 예외다.** 브랜드 색은 우리가
+ * ⚠️ **Google의 4색과 GitLab 3색(`GitlabBrandIcon`)은 DESIGN §6.2 "새 raw 색을 늘리지 않는다"의 예외다.** 브랜드 색은 우리가
  * 고르는 값이 아니라 남의 자산이라 토큰으로 접을 수 없다. 같은 이유로 §6.8의 *"색은 상속
  * (`currentColor`)"*도 여기서만 깨진다.
  */
@@ -47,7 +49,8 @@ export function McpIcon(props: SVGProps<SVGSVGElement>) {
  * 출처: simple-icons 16.33.0 `icons/gitlab.svg` — 데이터 라이선스 **CC0-1.0**. 로고는 상표라 **모양을 바꾸지 않는다**.
  *
  * ⚠️ **단색 `currentColor`다 — 공식 주황 셋이 아니다.** 옆에 서는 `GithubIcon`과 같은 형이고, 다색이면 DESIGN §6.2 raw 색 예외를
- * 늘려야 한다(Google만 예외다). `visual-system.test.ts`는 이 파일을 면제하므로 색 리터럴 0은 `gitlab-glyph.test.ts`가 센다.
+ * 늘려야 한다(공식 3색은 `GitlabBrandIcon`이 예외로 든다). `visual-system.test.ts`는 이 파일을 면제하므로 색 리터럴 0은 `gitlab-glyph.test.ts`가 센다.
+ * **인라인 자리**(텍스트 옆 `size-3.5` — 프로젝트 목록·소스·홈 메타·새 프로젝트 탭) 전용이다. 로그인 버튼·카드 칸은 `GitlabBrandIcon`(D6).
  */
 export function GitlabIcon(props: SVGProps<SVGSVGElement>) {
   return (
@@ -67,4 +70,53 @@ export function GoogleIcon(props: SVGProps<SVGSVGElement>) {
       <path d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.44-3.44C17.95 1.18 15.23 0 12 0A12 12 0 0 0 1.28 6.62l4 3.11C6.22 6.89 8.87 4.75 12 4.75z" fill="#EA4335" />
     </svg>
   );
+}
+
+/**
+ * **공식 3색 tanuki** (gitlab-oauth D6 — 로그인 버튼과 카드 칸의 GitLab. 인라인 자리는 단색 `GitlabIcon` 그대로다).
+ * 출처: GitLab press kit `https://about.gitlab.com/images/press/gitlab-logo-500-rgb.svg`(2026-10-13 취득, sha256
+ * `d8522f9bb83b35bcf0ab6e7fc25a312c26120028af308bec1dd9d20e15c1a615`) — path·색은 원본 그대로이고 원본의 380 여백 상자만
+ * `viewBox`로 tanuki 둘레에 맞췄다. 사용 조건: GitLab Trademark Guidelines(handbook.gitlab.com …/trademark-guidelines) — GitLab을
+ * 가리키는 지명적 사용이고 로고는 상표라 **모양·색을 바꾸지 않는다**.
+ *
+ * ⚠️ **색 리터럴 셋은 DESIGN §6.2 raw 색 예외다**(Google 4색과 같은 근거). `currentColor`로 접으면 칸의 상태 색(`tone`)을 받아
+ * 로고가 아니게 된다 — `gitlab-glyph.test.ts`가 색 집합을 정확히 센다.
+ */
+export function GitlabBrandIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="112 112 156 156" aria-hidden focusable="false" {...props}>
+      <path d="M265.26416,174.37243l-.2134-.55822-21.19899-55.30908c-.4236-1.08359-1.18542-1.99642-2.17699-2.62689-.98837-.63373-2.14749-.93253-3.32305-.87014-1.1689.06239-2.29195.48925-3.20809,1.21821-.90957.73554-1.56629,1.73047-1.87493,2.85346l-14.31327,43.80662h-57.90965l-14.31327-43.80662c-.30864-1.12299-.96536-2.11791-1.87493-2.85346-.91614-.72895-2.03911-1.15582-3.20809-1.21821-1.17548-.06239-2.33468.23641-3.32297.87014-.99166.63047-1.75348,1.5433-2.17707,2.62689l-21.19891,55.31237-.21348.55493c-6.28158,16.38521-.92929,34.90803,13.05891,45.48782.02621.01641.04922.03611.07552.05582l.18719.14119,32.29094,24.17392,15.97151,12.09024,9.71951,7.34871c2.34117,1.77316,5.57877,1.77316,7.92002,0l9.71943-7.34871,15.96822-12.09024,32.48142-24.31511c.02958-.02299.05588-.04269.08538-.06568,13.97834-10.57977,19.32735-29.09604,13.04905-45.47796Z" fill="#E24329" />
+      <path d="M265.26416,174.37243l-.2134-.55822c-10.5174,2.16062-20.20405,6.6099-28.49844,12.81593-.1346.0985-25.20497,19.05805-46.55171,35.19699,15.84998,11.98517,29.6477,22.40405,29.6477,22.40405l32.48142-24.31511c.02958-.02299.05588-.04269.08538-.06568,13.97834-10.57977,19.32735-29.09604,13.04905-45.47796Z" fill="#FC6D26" />
+      <path d="M160.34962,244.23117l15.97151,12.09024,9.71951,7.34871c2.34117,1.77316,5.57877,1.77316,7.92002,0l9.71943-7.34871,15.96822-12.09024s-13.79772-10.41888-29.6477-22.40405c-15.85327,11.98517-29.65099,22.40405-29.65099,22.40405Z" fill="#FCA326" />
+      <path d="M143.44561,186.63014c-8.29111-6.20274-17.97446-10.65531-28.49507-12.81264l-.21348.55493c-6.28158,16.38521-.92929,34.90803,13.05891,45.48782.02621.01641.04922.03611.07552.05582l.18719.14119,32.29094,24.17392s13.79772-10.41888,29.65099-22.40405c-21.34673-16.13894-46.42031-35.09848-46.55499-35.19699Z" fill="#FC6D26" />
+    </svg>
+  );
+}
+
+/**
+ * **공급자 → 글리프 대응은 이 표 하나다** (gitlab-oauth design §5) — 로그인 버튼 셋·`/account` 수단 행·`/signin/link` 배지가 2갈래 삼항
+ * (`github ? … : google`)을 손으로 들던 것을 모았다. 셋째 갈래가 삼항에 빠지면 GitLab이 Google 글리프로 떨어진다 —
+ * `provider-universe.test.ts`가 이 파일 밖의 `GoogleIcon` 참조를 센다.
+ */
+const PROVIDER_GLYPH: Readonly<Record<LoginProvider, ComponentType<SVGProps<SVGSVGElement>>>> = {
+  github: GithubIcon,
+  gitlab: GitlabBrandIcon,
+  google: GoogleIcon,
+};
+
+/** 로그인 버튼의 공급자 글리프 — GitHub는 버튼 글자색을 상속한다(primary 채움 위 흰색 · default 위 잉크, D6). */
+export function ProviderIcon({ provider, ...props }: SVGProps<SVGSVGElement> & { provider: LoginProvider }) {
+  const Glyph = PROVIDER_GLYPH[provider];
+  return <Glyph {...props} />;
+}
+
+/**
+ * **카드 칸(`IconTile`)의 브랜드 글리프** (gitlab-oauth D6) — `/account` 수단 행·GitHub App 카드·GitLab PAT 카드·설정 리포 카드·`/signin/link` 배지.
+ *
+ * ⚠️ **`text-foreground`가 칸의 색 상속을 끊는다.** `IconTile`은 글자색으로 회색(`muted`)이나 상태 색(`tone`)을 싣고, 단색 GitHub는 그것을
+ * `currentColor`로 받아 회색·호박색 로고가 됐다. 잉크(라이트 검정 · 다크 흰색)는 테마 토큰이라 새 raw 색이 아니다. GitLab·Google은 path
+ * `fill`이 hex라 이 클래스와 무관하다. **`tone`은 칸의 면만 칠한다**(DESIGN §2.4).
+ */
+export function BrandGlyph({ brand }: { brand: LoginProvider }) {
+  return <ProviderIcon provider={brand} className="size-4 text-foreground" />;
 }

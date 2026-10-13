@@ -10,7 +10,7 @@ import { AppCard } from "@/components/oauth/app-card";
 import { ConsentPanel, type ConsentAccount } from "@/components/oauth/consent-panel";
 import { AuthColumn, AuthHeading } from "@/components/signin/auth-column";
 import { AuthLayout } from "@/components/signin/auth-layout";
-import { GithubIcon, GoogleIcon } from "@/components/signin/brand-icons";
+import { ProviderIcon } from "@/components/signin/brand-icons";
 import { ProviderSubmit } from "@/components/signin/provider-button";
 import { Alert } from "@/components/ui/alert";
 import { ButtonLink } from "@/components/ui/button";
@@ -283,9 +283,9 @@ function ProviderButton({ m, provider, variant, requestId, autoFocus }: { m: Mes
       }}
     >
       <ProviderSubmit
-        label={provider === "github" ? m.signIn.github : m.signIn.google}
+        label={m.signIn[provider]}
         variant={variant}
-        icon={provider === "github" ? <GithubIcon aria-hidden className="size-4" /> : <GoogleIcon aria-hidden className="size-4" />}
+        icon={<ProviderIcon provider={provider} aria-hidden className="size-4" />}
         autoFocus={autoFocus}
       />
     </form>

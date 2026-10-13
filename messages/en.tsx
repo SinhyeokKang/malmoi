@@ -493,6 +493,7 @@ export const en = {
     // 동의 화면에서 시작한 로그인이 취소·오류로 여기 착지했을 때의 복귀 링크(mcp-oauth design §6.1) — `backToInvitation`과 같은 자리·형.
     backToAuthorization: "Back to app authorization",
     github: "Continue with GitHub",
+    gitlab: "Continue with GitLab",
     google: "Continue with Google",
     /** 약관 — 링크 앞뒤로 갈린다. Terms는 만들지 않는다(유료 서비스가 아니다). */
     consent: { before: "By clicking Continue through a third party you accept the ", link: "Privacy Policy", after: "." },
@@ -2102,8 +2103,11 @@ export const en = {
       expiresSoon: "Expires soon",
       /** 카드 제목 — 시안 그대로(design-brief 확정 6). 붙어 있는 것이 계정이 아니라 토큰이다. */
       title: "GitLab PAT",
-      /** 미연결 행의 제목 자리 — 글리프는 `aria-hidden`이라 호스트 이름이 글자로 선다. */
-      rowName: "GitLab",
+      /**
+       * 미연결 행의 제목 자리 — 글리프는 `aria-hidden`이라 호스트 이름이 글자로 선다. ⚠️ **"token"을 든다** (gitlab-oauth J8) — 같은 화면의
+       * Sign-in methods에 `GitLab` 행이 서고 둘 다 3색 tanuki라, 둘 다 미연결이면 `GitLab · Not connected`가 두 번 선다. 로그인 수단 행은 그대로다.
+       */
+      rowName: "GitLab token",
       hintNotConnected: "Connect a GitLab personal access token to create projects from GitLab repositories.",
       /** 보조 줄 — 만료일(`formatDay`, 오프셋 라벨 없음)과 이 연결을 참조하는 프로젝트 수. 둘 다 토큰을 바꿀지의 근거다. */
       expires: (date: string): string => `Expires ${date}.`,
@@ -2114,13 +2118,16 @@ export const en = {
       replace: "Replace token",
       replaceTitle: "Replace GitLab token",
       replaceHint: (username: string): string => `Paste a new token for @${username}. Projects that use this connection switch to it right away.`,
-      /** ⚠️ 접근 이름이 축을 든다 — 같은 화면에 GitHub App의 [Disconnect]가 나란히 선다(DESIGN §6.646). */
-      disconnectLabel: "Disconnect GitLab",
-      confirmDisconnect: "Disconnect GitLab from Malmoi?",
+      /**
+       * ⚠️ 접근 이름이 축을 든다 — 같은 화면에 GitHub App의 [Disconnect]와 GitLab 로그인 수단의 [Disconnect]가 나란히 선다(DESIGN §6.646).
+       * 로그인 수단 쪽은 `Disconnect GitLab as a sign-in method`·`Disconnect GitLab?`이라, 이 카드가 "token"을 들어 둘을 가른다(gitlab-oauth J8).
+       */
+      disconnectLabel: "Disconnect GitLab token",
+      confirmDisconnect: "Disconnect this GitLab token?",
       confirmHint: "Malmoi deletes the saved token. Projects that use this connection stop syncing and publishing until a project owner reconnects them.",
       disconnectFailed: "GitLab wasn't disconnected. Try again.",
       /** 해제 확인 버튼 — GitHub App의 `Disconnect app`을 쓰지 않는다(이 카드는 앱이 아니라 토큰이다). */
-      disconnectConfirm: "Disconnect GitLab",
+      disconnectConfirm: "Disconnect token",
       /** 만료 임박 띠(시안 G8) — 남은 일수와 날짜, 그리고 무엇이 멈추는가. */
       expiresSoonNotice: (days: number, date: string): string =>
         `Your GitLab token expires in ${days.toLocaleString("en-US")} ${days === 1 ? "day" : "days"}, on ${date}. Replace it before then to keep the projects that use it running.`,
@@ -3588,10 +3595,10 @@ export const en = {
       /** ⚠️ **여러 명이다** (핸드오프 `1a`) — 한 폼이 여러 행을 보낸다. */
       title: "Invite members",
       /**
-       * ⚠️ **둘째 문장이 수락 조건이다** (launch-readiness L2.8) — 수락은 로그인 계정의 주소와 대조하고 GitHub은
+       * ⚠️ **둘째 문장이 수락 조건이다** (launch-readiness L2.8) — 수락은 로그인 계정의 주소와 대조하고 GitHub·GitLab은
        * primary 주소 하나만 쓴다(`lib/auth/email.ts`). 거부 문구는 초대 주소를 일부러 안 밝히므로 행동할 수 있는 쪽은 초대자다.
        */
-      description: "Send invitations by email and choose a role for each person. Use the address they sign in with — for GitHub, their primary email.",
+      description: "Send invitations by email and choose a role for each person. Use the address they sign in with — for GitHub and GitLab, their primary email.",
       /** 열 머리 둘 — 빈 행 하나로 열리면 두 번째 컨트롤이 무엇인지 값만으로는 안 읽힌다. */
       columns: { email: "Email", role: "Role" },
       placeholder: "name@company.com",
