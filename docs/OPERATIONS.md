@@ -239,6 +239,9 @@ MCP `create_project`·`add_sources`는 `sample-expired`를 받고 `detect_format
   ```
   prod는 명령 이름만 `:prod`로 바꾸고 §1처럼 `.env.prod.local`을 source한다. finalize도 먼저 `verify`를 돌아 그것이
   실패하면 아무것도 적용하지 않는다(`scripts/finalize-credentials.ts`).
+  ⚠️ **2026-09-10 cutover 이전 상태의 DB에서는 finalize가 실패한다** — 그 `verify`가 `migrate deploy` 전에 `GitLabConnection`(2026-10-12 마이그레이션)을
+  조회한다(`lib/credentials/conversion.ts`). dev·prod·모든 셀프 호스팅 설치가 이미 cutover를 지나 대상 DB가 없어 고치지 않았다(gitlab-repositories D23) —
+  그런 백업을 복원해야 할 일이 생기면 그때 이 순서를 다시 설계한다.
 - 마이그레이션 실패 시 `_prisma_migrations`와 실제 DDL을 대조한다. 전부 롤백된 것이 확인된 경우에만
   검토 후 `migrate resolve --rolled-back <name>`으로 재시도하고, **체크섬 수정·무조건 applied·DB
   reset으로 통과시키지 않는다.**
@@ -492,6 +495,9 @@ GitLab 프로젝트의 생성 job은 이 리포를 그 태그로 clone하고 **�
 3. **태그를 옮길 때도 SHA를 함께 바꾼다** — 옮긴 태그와 옛 SHA가 갈리면 그 판으로 생성된 job이 전부 대조에서 red다(의도된 방어). 이미 붙인 job은
    그 SHA의 코드를 계속 돌리므로, 소비자가 새 판을 받으려면 `.gitlab-ci.yml`을 다시 복사한다. 호환이 깨지면 `-v2`를 새로 끊고 옛 태그는 그대로 둔다.
 4. ⚠️ `git describe --tags`는 이 태그나 action 태그를 줄 수 있다 — 직전 앱 릴리스를 찾는 데 쓰지 않는다.
+5. **첫 발행 뒤 실제 GitLab CI를 한 번 밟는다 — 2026-10-13 현재 미실행**(job 원본이 단위 테스트와 실물 `/api/push` 호출로만 검증됐다). 폐기용 GitLab
+   프로젝트에 생성 job을 붙이고: 정상 적재 · 미전달 편집이 있을 때 200 `deferred` · 로케일 파일을 못 읽을 때 실패 보고(`/api/push/failure`) · 오래된 커밋 409 ·
+   재실행 · merge·squash·fast-forward 각 방식으로 Publish MR을 머지한 뒤 push가 스킵되는지(마커). 결과는 이 단계에 날짜와 함께 적는다.
 
 ## 5. 자격증명 전면 재발급
 
