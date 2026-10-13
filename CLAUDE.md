@@ -65,7 +65,7 @@
 | 배포 | Vercel — **dev push = preview / main 머지 = 프로덕션**(`https://mal-moi.com`). **이 표의 Vercel·Supabase 단언은 호스팅 서비스의 것이다** — 같은 이미지가 `MALMOI_ORIGIN`을 주면 self-hosted(Docker Compose)로 돈다. 모드 판정은 `lib/deployment/mode.ts` 하나이고 `VERCEL_ENV`와 함께 있으면 무효(fail-closed)다(PRODUCT §4.1 "셀프 호스팅" · ARCHITECTURE §7) |
 | DB | Supabase Postgres **둘** — prod(`malmoi`, ref `xgsyyapzkpbdtkrprlmn`) / dev(`malmoi-dev`, ref `bfugwmjubgmmroevrave`). **self-hosted는 일반 Postgres 17 하나** — 마이그레이션 롤(DB 소유 비-superuser)과 `deploy/bootstrap.sql`이 만드는 런타임 롤을 가른다 |
 | ORM | Prisma 7 — **접속 URL이 스키마에 없다**(아래 절) |
-| 로그인 | Auth.js v5 **DB 세션** — GitHub + Google. 로그인은 **검증된 이메일만** 요구하고 그것이 아무것도 열지 않는다 — 인가는 `ProjectMember`다. **같은 주소에 두 번째 로그인 수단을 붙이는 challenge 왕복은 `lib/login-link/`**(세션이 없는 채로 도는 흐름이라 진정성은 Auth.js의 state 쿠키가 든다), **세션 폐기는 `lib/session-revocation/`**(challenge에 세션·state 지문을 담는다) — 형은 같고 증명이 다르니 섞지 않는다. ⚠️ **Google 동의 화면은 External + 게시(In production)다** — Internal로 바꾸면 조직 밖 계정을 `403 org_internal`로 막아 초대 경로가 통째로 죽는다(게시 절차는 OPERATIONS) |
+| 로그인 | Auth.js v5 **DB 세션** — GitHub + GitLab + Google. 로그인은 **검증된 이메일만** 요구하고 그것이 아무것도 열지 않는다 — 인가는 `ProjectMember`다. **같은 주소에 두 번째 로그인 수단을 붙이는 challenge 왕복은 `lib/login-link/`**(세션이 없는 채로 도는 흐름이라 진정성은 Auth.js의 state 쿠키가 든다), **세션 폐기는 `lib/session-revocation/`**(challenge에 세션·state 지문을 담는다) — 형은 같고 증명이 다르니 섞지 않는다. ⚠️ **Google 동의 화면은 External + 게시(In production)다** — Internal로 바꾸면 조직 밖 계정을 `403 org_internal`로 막아 초대 경로가 통째로 죽는다(게시 절차는 OPERATIONS) |
 | 리포 쓰기 | GitHub App **installation 토큰** — `octokit`의 `App` |
 | 계정 연결 | 같은 App의 **user-to-server 토큰** — `@octokit/oauth-app`(`octokit`이 재수출하는 `OAuthApp`으로는 안 된다) |
 | GitLab 리포 (2026-10-12) | **GitLab.com만** — 연결자가 붙여 넣는 **레거시 PAT(스코프 `api`)** 하나가 연결이자 쓰기 신원이다. SDK 없이 `fetch`(`lib/gitlab/transport.ts`) — ⚠️ **숫자 project id로만 주소한다**(PAT에는 리포 한정 층이 없다 — 불변식 11). 호스트 구현을 고르는 자리는 `lib/repo-host/` 하나다(ARCHITECTURE §3.02·§6.41) |
@@ -151,7 +151,7 @@
 
 OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사람이 org를 떠나면 파이프라인이 깨진다. 경계를 넘는 코드가 보이면 리뷰에서 막고, `lib/github-connect/__tests__/credential-separation.test.ts`가 소스에서 상시로 센다.
 
-**GitLab PAT는 넷째이고 섞지 않는다** (2026-10-12, gitlab-repositories) — 연결 증명이자 쓰기 신원이라 GitHub의 셋처럼 갈리지 않는다(불변식 6의 예외 — 쓰기는 연결자 개인 명의). 대신 지키는 경계가 다르다: **Sync·Publish·야간 쓰기는 그 프로젝트가 참조하는 연결(`Project.gitlabConnectionId`)의 PAT만 쓰고 호출자의 연결을 쓰지 않는다** — 호출자 PAT는 권한 조회(GET)에만 쓴다. 같은 `credential-separation.test.ts`가 센다. 봉투 키는 GitHub 연결 토큰과 같은 토큰 키다(OPERATIONS §1).
+**GitLab PAT는 로그인 자격증명과 섞지 않는다** (2026-10-12, gitlab-repositories) — 연결 증명이자 쓰기 신원이라 GitHub의 셋처럼 갈리지 않는다(불변식 6의 예외 — 쓰기는 연결자 개인 명의). 대신 지키는 경계가 다르다: **Sync·Publish·야간 쓰기는 그 프로젝트가 참조하는 연결(`Project.gitlabConnectionId`)의 PAT만 쓰고 호출자의 연결을 쓰지 않는다** — 호출자 PAT는 권한 조회(GET)에만 쓴다. 같은 `credential-separation.test.ts`가 센다. 봉투 키는 GitHub 연결 토큰과 같은 토큰 키다(OPERATIONS §1). **GitLab 로그인 토큰은 GitHub 표의 OAuth App 토큰 행과 같은 지위다 — 콜백 안에서만 살고 저장하지 않으며 리포 API를 부르지 않는다.** GitLab 로그인 `Account`와 `GitLabConnection`은 서로를 만들거나 지우지 않는다.
 
 여기에 `GITHUB_APP_SLUG` 하나가 더 붙는데 자격증명이 아니다 — 설치 링크 조립용이고 `optionalEnv`다. ⚠️ **2026-09-18부터 ①(새 프로젝트)의 주 경로다** — 없으면 설치 버튼이 서지 않고 "관리자에게 요청하라"로 떨어져 **설치가 없는 신규 사용자는 화면 안에서 온보딩을 끝낼 수 없다**(연결만 된다). 나머지 소비자(`/account`·설정의 설치 설정 링크)는 조용히 사라진다.
 
@@ -219,7 +219,7 @@ OAuth 토큰으로 커밋하면 커밋이 특정 개인 명의가 되고 그 사
 
 - **GitHub default branch는 `main`이다** (2026-09-26 — 공개 리포라 방문자·기여자가 보는 브랜치가 프로덕션이어야 하고, `dev`는 `/sync`가 force push해 그 위에 뜬 fork·PR이 깨진다). ⚠️ **대상 리포의 composite action 참조는 `@malmoi-i18n-push-v3`(불변 태그 — v1·v2는 워크플로를 다시 복사하지 않은 기존 소비자용으로 옮기지 않는다)이고 `@main`이 아니다** — 그 스텝에 `secrets.PUSH_TOKEN`이 들어가므로 `main`에 닿는 커밋 하나가 대상 리포 러너에서 즉시 돈다. 그 태그를 옮기는 것이 action 릴리스다(앱 릴리스와 별개 — 아래 "릴리스 & 버전").
 - **`main`에 직접 커밋·푸시하지 않는다.**
-- **preview는 dev DB를 본다.** dev 브랜치 고정 URL은 **`https://dev.mal-moi.com`**이다. ⚠️ **로그인은 이 URL에서만 된다** — 배포별 URL(`malmoi-<hash>-…`)은 매 푸시마다 바뀌어 OAuth에 등록할 수 없고, Auth.js가 요청 헤더로 origin을 만들어 그 URL이 `redirect_uri`로 나가 공급자가 거부한다. **GitHub과 Google이 동시에 거부하면 자격증명이 아니라 URL 문제다.** ⚠️ **새 호스트를 늘리면 `lib/github-connect/origin.ts`의 `ALLOWED_HOSTS`도 함께 늘린다** — 빠뜨리면 그 호스트에서 병합 확인이 `/signin?error=Unavailable`로, callback이 실패 착지로 떨어진다(경위는 POSTMORTEM). ⚠️ **preview는 Vercel SSO 뒤에 있다** — `curl`로 찌르면 `vercel.com/sso-api`로 가는 302가 온다(앱이 깨진 것으로 오진하기 쉽다).
+- **preview는 dev DB를 본다.** dev 브랜치 고정 URL은 **`https://dev.mal-moi.com`**이다. ⚠️ **로그인은 이 URL에서만 된다** — 배포별 URL(`malmoi-<hash>-…`)은 매 푸시마다 바뀌어 OAuth에 등록할 수 없고, Auth.js가 요청 헤더로 origin을 만들어 그 URL이 `redirect_uri`로 나가 공급자가 거부한다. **로그인 공급자들이 동시에 거부하면 자격증명이 아니라 URL 문제다.** ⚠️ **새 호스트를 늘리면 `lib/github-connect/origin.ts`의 `ALLOWED_HOSTS`도 함께 늘린다** — 빠뜨리면 그 호스트에서 병합 확인이 `/signin?error=Unavailable`로, callback이 실패 착지로 떨어진다(경위는 POSTMORTEM). ⚠️ **preview는 Vercel SSO 뒤에 있다** — `curl`로 찌르면 `vercel.com/sso-api`로 가는 302가 온다(앱이 깨진 것으로 오진하기 쉽다).
 - **되돌리는 유일한 방법은 다음 배포다.** revert 커밋을 dev에 얹어 같은 경로로 보낸다.
 - **`git push --force`는 main에 금지.** dev는 `/sync`가 머지 후 force update하지만 그 스킬의 안전 검사 3개를 지나야 한다.
 
