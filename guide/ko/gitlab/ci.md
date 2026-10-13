@@ -21,6 +21,8 @@
 1. **Malmoi 준비 완료** 페이지에서, 또는 나중에 **설정**의 **CI 파일**에서 작업을 복사해 리포지토리 루트의 `.gitlab-ci.yml`에 추가합니다. 파일이 이미 있으면 그 안에 덧붙입니다.
 2. 기준 브랜치에 파일을 커밋합니다.
 
+![생성된 .gitlab-ci.yml 작업과 복사 버튼이 있는 Malmoi 설정의 CI 파일 대화상자](/guide/gitlab-ci-file.webp "작업을 복사해 기준 브랜치의 .gitlab-ci.yml에 추가합니다.")
+
 소스마다 작업이 하나씩 있고, 작업 이름에 프로젝트 주소가 들어가므로 한 리포지토리의 두 프로젝트가 서로의 작업을 덮어쓰지 않습니다. 작업은 기준 브랜치에 새 커밋이 들어올 때만 실행되며, `[skip-malmoi-i18n]`이 든 커밋은 건너뜁니다. 작업은 `test` 단계(stage)를 씁니다. 파일에 `stages:`를 직접 정의했다면 그 목록에 `test`를 남겨 두세요. 러너는 `github.com`(작업마다 고정된 버전의 Malmoi 스크립트를 받아 옵니다), `registry.npmjs.org`, Docker Hub(작업은 공식 Node.js 이미지를 씁니다), Malmoi에 접속할 수 있어야 합니다.
 
 코드가 래퍼 함수로 번역을 읽는다면 그 소스 작업의 `variables:`에 있는 `MALMOI_I18N_WRAPPER`(기본은 빈 값)를 채우고, 한 줄에 하나씩 씁니다. 일반 함수는 `module#export`로, 훅은 `next-intl#useTranslations()`처럼 끝에 `()`를 붙여 씁니다. 이 값은 Malmoi가 코드 사용처를 찾는 데 도움을 줄 뿐, 어떤 번역 키가 있는지를 정하지는 않습니다. 나중에 기준 브랜치를 바꾸려면 **설정**에서 **기준 브랜치**를 바꾸고 `MALMOI_I18N_BASE_BRANCH` 값을 고칩니다. 소스를 추가하면 **설정**에서 파일 전체를 다시 복사해 Malmoi 작업을 그것으로 교체합니다.
@@ -28,8 +30,6 @@
 ## CI 파일을 쓸 수 없을 때 {#ci-unavailable}
 
 Malmoi에 이 버전의 Malmoi에서는 아직 GitLab CI 파일을 쓸 수 없다고 표시되면 복사할 작업이 없습니다. 그래도 푸시 토큰은 보관해 두세요. CI 파일을 쓸 수 있게 될 때까지는 [야간 실행](../sync/nightly.md#repository-changes)과 **동기화**가 리포지토리 변경 사항을 가져옵니다. [기준 언어 변경](../setup/sources.md#base-language)은 CI 작업으로만 적용되므로, 작업을 추가할 때까지 기다립니다.
-
-![이 버전의 Malmoi에서는 아직 GitLab CI 파일을 쓸 수 없다고 알려 주는 Malmoi 설정의 CI 파일 대화상자](/guide/gitlab-ci-file.webp "CI 파일을 쓸 수 있을 때까지 푸시 토큰을 보관해 두면 야간 실행과 동기화가 리포지토리 변경 사항을 가져옵니다.")
 
 ## 실행하고 확인하기 {#first-run}
 
