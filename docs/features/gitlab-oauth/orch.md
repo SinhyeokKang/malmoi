@@ -45,4 +45,16 @@
 - 2026-10-13 03:44Z — wave ① 착수: T0 `ctx_e7ae7d207aca`(Opus medium, main) · A `ctx_8f1a4da7f238`(Opus high, `go-A`) · C `ctx_2d7f10d46ce2`(Astra medium, `go-C`) · E `ctx_3d811160c131`(Astra medium, `go-E`). launch.effective = requested 확인.
 - 03:5xZ — C 질문: 규칙 1이 `lib/auth/members.ts:14`의 `@/lib/gitlab-connect/removal` import로 red. **지휘자 판단 — 승인**: members.ts는 로그인 경로가 아니라 멤버 변경 코어(인가·사건)다. `lib/auth` 전체 스캔 유지 + 그 import 한 쌍만 정확 집합 허용(파일 제외 금지). F(정본)는 ARCHITECTURE 경계 문장에 이 예외를 적는다.
 - 04:xxZ — T0 1차 차단: 앱 Callback URL 불일치 → 사용자 수정 → 재개. **T0 완료**(`worker_done` succeeded): ①② ✅(D1 유지·J2 통과) · ③ prompt 무시 → D4 코드 없음(tasks §2 해당 항목 삭제) · ④ gravatar(D3 유지) · ⑤ 재인증 화면 생략·계정 전환 불가 → ARCHITECTURE 회수 절 한계(F) · ⑥ **미측정**(`ox501501`이 그룹 Owner). design·tasks에 반영. T0 워커 해제.
+- T0 ⑥ — **사용자 결정: 미측정으로 두고 프로덕션 실물(spec #11)에서 확인**.
+- C `worker_done` outcome=failed — 커밋 `eafe8f65`(대상 42 green, 뮤테이션 둘 red 관측). failed 사유는 전체 gate의 timeout 8건(api-contract·hand-copies·guide content·mcp docs — 단독 재실행 261 green)뿐 → 부하 flake로 판정, 작업 수용. 워커 retain. 리뷰 R-C `ctx_7c70deff1804`(Opus medium) 착수.
+- E 게이트 timeout(Changelog·MCP docs) → 지휘자: 한 번 재실행, timeout만이면 커밋하고 통합 게이트에서 재판정.
+- R-C 완료(🔴 0 · 🟡2 — 규칙 2가 Account 우회 꼴 여섯을 놓침 · 템플릿 리터럴 동적 import · ⚪ 다섯). C fix1 `ctx_8235c7237aa3`(같은 터미널) — 🟡 둘 + ⚪1·4·5. ⚪2(전이 import)·⚪3(로그인 범위 확장)은 설계 범위 밖으로 제외(지휘자 판단). R-C 해제.
+- E `worker_done` succeeded — `a9979db4`(4 files), 재실행 `gate: ok`. 워커 retain. 리뷰 R-E `ctx_fbb945cc6a16`(Opus medium) 착수.
+- A `worker_done` — `e6142bee`(tasks §1 전부). 게이트 `FAILED at test:projects:postgres`: ① `lib/mcp/__tests__/gitlab-tools.integration.ts` 2건이 **dev에 원래 있던 stale**(`89b27c21`이 `GITLAB_CI_RELEASE.sha`를 박았는데 기대는 `workflow: null`) ② 성능 측정 2건(부하 avg ~30). 나머지 단계는 따로 green(credentials PG 70/70 · build · mirror). → **A fix0** `ctx_d65cbfcd712f`(A 터미널, stale 테스트 갱신 — 지휘자 판단: 범위 밖이지만 통합 게이트를 막는다) · **R-A** `ctx_cf48f6a8bcec`(리뷰 전용 워크트리 `go-RA`, base `e6142bee` — A 워커의 fix0과 뮤테이션이 섞이지 않게).
+- R-E 완료(🔴 0 · 🟡 1 — PAT 행·보관 줄의 'connect/disconnect GitLab'이 로그인 해제로 읽힌다 · ⚪ 4). **E fix1** `ctx_93b08556beab`. R-E 해제.
+- C fix1 `worker_done` — `1138e6ba`(우회 꼴 14 표본 red→green · 실파일 뮤테이션 10회 red · `gate: ok`). R-C 🔴 0에서 시작한 🟡 수정이라 재리뷰 생략(지휘자 판단 — 증거가 뮤테이션 로그로 남음). **C 통합 대기**(A·E와 한 번에).
+- R-A 완료(🔴 0 · 🟡 2 · ⚪ 4 — 보고서 사본 `.scratch/orch-gitlab-oauth/review-A.md`). 🟡1(우주 게이트가 2갈래 삼항을 못 본다 — 화면 여덟 자리가 gitlab을 Google로 떨어뜨린다)·🟡2(게이트 스캔 파일 수 하한)는 **D로 넘긴다**(지휘자 판단 — D가 그 삼항을 이관하며 `provider-universe.test.ts`를 같이 만진다; A 통합 뒤라 소유 이전). R-A 해제.
+- E fix1 게이트: translation-workspace.test.tsx:432 타이밍 1건(단독 38/38) → 지휘자: 커밋·기록, 통합 게이트가 판정.
+- E fix1 `worker_done` — `abe6b405`(Y1·W1~W3, 같은 2026-10-13 개정). **E 통합 대기.**
+- A fix0 `worker_done` — `9bc8e520`(stale 기대 갱신, 앱 코드 무변경 — 동작이 맞음을 먼저 확인) · `gate: ok`(projects PG 697/697 · credentials PG 70/70). **A·C·E 통합 착수.**
 
