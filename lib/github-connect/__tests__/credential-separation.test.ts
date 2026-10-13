@@ -307,6 +307,12 @@ const GITLAB_CONNECT_SOURCES = sourcesIn(join(ROOT, "lib/gitlab-connect"), "lib/
 const GITLAB_IO_SOURCES = sourcesIn(join(ROOT, "lib/gitlab"), "lib/gitlab");
 /** 자리 고정 검사의 범위 — 서버 컴포넌트(`.tsx`)·`components/`·개발자 스크립트까지(A7). */
 const BOUNDARY_SOURCES = ["lib", "app", "components", "scripts"].flatMap((dir) => sourcesIn(join(ROOT, dir), dir));
+/** 로그인과 PAT는 별개다(gitlab-oauth design §6). 루트 auth.ts는 BOUNDARY_SOURCES 밖이라 직접 읽는다. */
+const LOGIN_SOURCES = [
+  { rel: "auth.ts", source: readFileSync(join(ROOT, "auth.ts"), "utf8") },
+  ...["lib/auth", "lib/login-link", "lib/account-connect", "lib/session-revocation"].flatMap((dir) => sourcesIn(join(ROOT, dir), dir)),
+];
+const GITLAB_PAT_SOURCES = [...GITLAB_IO_SOURCES, ...GITLAB_CONNECT_SOURCES, ...sourcesIn(join(ROOT, "lib/repo-host"), "lib/repo-host")];
 /** 호출자 자신의 계정 연결을 여는 형태. 프로젝트 쪽은 `{ connectionId }`로 연다. */
 const CALLER_CONNECTION = /openGitLabConnection\(\s*[^,]+,\s*\{\s*userId\b/;
 /** 호출자 연결을 열어도 되는 자리 — 호출자의 리포 권한(`checkRepoAccess`)과 ①의 리포 목록. 둘 다 그 사람이 무엇을 볼 수 있나를 묻는다(쓰지 않는다). */
@@ -453,6 +459,111 @@ function resolveModule(rel: string, specifier: string): string | null {
   if (!specifier.startsWith(".")) return null;
   return posix.join(posix.dirname(rel), specifier).replace(/\.(ts|tsx)$/, "");
 }
+
+/** 클라이언트뿐 아니라 errors·타입까지 모든 PAT 하위 모듈을 막는다. 상대 경로·재수출·동적 import도 같은 경계다. */
+function gitLabPatImports(rel: string, source: string): string[] {
+  const found = new Set<string>();
+  walk(parse(rel, source), (node) => {
+    const specifier = ts.isImportDeclaration(node) || ts.isExportDeclaration(node)
+      ? node.moduleSpecifier
+      : ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference) ? node.moduleReference.expression
+      : ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword ? node.arguments[0] : undefined;
+    if (specifier === undefined || !ts.isStringLiteralLike(specifier)) return;
+    const module = resolveModule(rel, specifier.text);
+    if (module !== null && ["lib/gitlab", "lib/gitlab-connect"].some((root) => module === root || module.startsWith(`${root}/`))) found.add(module);
+  });
+  return [...found].sort();
+}
+
+function hasName(node: ts.Node | undefined, name: string): boolean {
+  if (node === undefined) return false;
+  if (ts.isComputedPropertyName(node)) return hasName(node.expression, name);
+  return (ts.isIdentifier(node) || ts.isStringLiteralLike(node)) && node.text === name;
+}
+
+/** 수신자 이름에 기대지 않는다 — 모델 별칭·구조 분해·User 관계 조회와 raw SQL도 같은 Account 접근이다. */
+function accessesLoginAccount(rel: string, source: string): boolean {
+  let found = /"Account"/.test(codeOnly(source));
+  walk(parse(rel, source), (node) => {
+    // account.gitlab.*는 사전 네임스페이스다 — Prisma Account 델리게이트에는 gitlab 속성이 없다.
+    if (node.parent !== undefined && ts.isPropertyAccessExpression(node.parent) && node.parent.expression === node && node.parent.name.text === "gitlab") return;
+    if (
+      (ts.isPropertyAccessExpression(node) && hasName(node.name, "account")) ||
+      (ts.isElementAccessExpression(node) && hasName(node.argumentExpression, "account")) ||
+      (ts.isBindingElement(node) && ts.isObjectBindingPattern(node.parent) && hasName(node.propertyName ?? node.name, "account")) ||
+      ((ts.isPropertyAssignment(node) || ts.isShorthandPropertyAssignment(node)) && hasName(node.name, "accounts"))
+    ) found = true;
+  });
+  return found;
+}
+
+describe("GitLab 로그인과 PAT 연결은 서로의 자격증명을 모른다", () => {
+  it("로그인 경로는 루트 auth.ts를 포함하며 PAT 하위 모듈을 import하지 않는다 — 멤버 제거 사건만 예외", () => {
+    expect(LOGIN_SOURCES.some((f) => f.rel === "auth.ts")).toBe(true);
+    for (const dir of ["lib/auth/", "lib/login-link/", "lib/account-connect/", "lib/session-revocation/"]) {
+      expect(LOGIN_SOURCES.some((f) => f.rel.startsWith(dir)), dir).toBe(true);
+    }
+    // members.ts는 로그인 아닌 멤버 변경 코어다 — 멤버 제거 tx의 연결 참조 제거 사건만 허용한다.
+    expect(LOGIN_SOURCES.flatMap((f) => gitLabPatImports(f.rel, f.source).map((module) => `${f.rel}#${module}`)).sort()).toEqual([
+      "lib/auth/members.ts#lib/gitlab-connect/removal",
+    ]);
+  });
+
+  it("GitLab 쓰기·연결 경로는 로그인 Account 모델에 접근하지 않는다", () => {
+    for (const dir of ["lib/gitlab/", "lib/gitlab-connect/", "lib/repo-host/"]) {
+      expect(GITLAB_PAT_SOURCES.some((f) => f.rel.startsWith(dir)), dir).toBe(true);
+    }
+    expect(GITLAB_PAT_SOURCES.filter((f) => accessesLoginAccount(f.rel, f.source)).map((f) => f.rel)).toEqual([]);
+  });
+
+  it("errors·타입·상대 경로 import도 잡고 주석·문자열은 import로 세지 않는다", () => {
+    for (const source of [
+      'import { isGitLabConnectError } from "@/lib/gitlab-connect/errors";',
+      'import type { GitLabTarget } from "@/lib/gitlab/client";',
+      'import "../gitlab-connect/errors";',
+      'export * from "@/lib/gitlab-connect/errors";',
+      'const client = await import("../gitlab/client");',
+    ]) expect(gitLabPatImports("lib/auth/profile.ts", source).length, source).toBe(1);
+    for (const source of [
+      'import GitLab from "next-auth/providers/gitlab";',
+      '// import "@/lib/gitlab-connect/errors";',
+      'const example = \'import "@/lib/gitlab/client";\';',
+    ]) expect(gitLabPatImports("auth.ts", source), source).toEqual([]);
+  });
+
+  it.each([
+    'const client = await import(`@/lib/gitlab/client`);',
+    'import client = require("@/lib/gitlab/client");',
+    'import "@/lib/gitlab";',
+    'import "@/lib/gitlab-connect";',
+  ])("PAT import 우회 구문을 잡는다: %s", (source) => {
+    expect(gitLabPatImports("lib/auth/members.ts", source)).toHaveLength(1);
+  });
+
+  it.each([
+    'tx.user.findUnique({ select: { accounts: true } });',
+    'tx.user.findUnique({ include: { "accounts": true } });',
+    'tx.$queryRaw`SELECT * FROM "Account"`;',
+    "const { account } = tx;",
+    "const { account: loginAccount } = tx;",
+    "client.account.findMany();",
+    "db.account.findMany();",
+    'tx["account"].findMany();',
+    "tx?.account.findMany();",
+    'tx?.["account"].findMany();',
+  ])("Account 행 접근 우회 구문을 잡는다: %s", (source) => {
+    expect(accessesLoginAccount("lib/repo-host/index.ts", source), source).toBe(true);
+  });
+
+  it("prisma.account·tx.account 접근을 잡고 다른 모델과 주석은 제외한다", () => {
+    for (const source of ["await prisma.account.findMany();", "await tx . account.deleteMany();"]) {
+      expect(accessesLoginAccount("lib/repo-host/index.ts", source), source).toBe(true);
+    }
+    for (const source of ["await tx.gitLabConnection.findMany();", "// await prisma.account.findMany();", "await prisma.accountProfile.findMany();", "m.account.gitlab.form.x;"]) {
+      expect(accessesLoginAccount("lib/repo-host/index.ts", source), source).toBe(false);
+    }
+  });
+});
 
 /** `module`을 **값으로** 무는 import·재수출·동적 import가 있나. `import type`(절 전체 또는 이름 전부가 type)은 세지 않는다. */
 function importsModuleValue(rel: string, source: string, module: string): boolean {

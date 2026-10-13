@@ -13,7 +13,7 @@ import { en } from "@/messages/en";
  * **여는 버튼**이고, 그것이 없으면 사용자는 그 Dialog에 도달할 길이 없다.
  */
 const render = (outcome: string | undefined) =>
-  renderToStaticMarkup(<SessionsSection outcome={outcome} signOut={() => {}} confirmProvider="GitHub" />);
+  renderToStaticMarkup(<SessionsSection outcome={outcome} signOut={() => {}} confirmProvider="github" />);
 
 it.each([
   ["cancelled", en.account.sessions.cancelled], ["wrong-account", en.account.sessions.wrongAccount],

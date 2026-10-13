@@ -4,6 +4,8 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { render } from "@/components/__tests__/helpers/dom";
 import { en } from "@/messages/en";
+import { es } from "@/messages/es";
+import { ko } from "@/messages/ko";
 import { encodeUserFields } from "@/lib/credentials/records";
 
 const mocks = vi.hoisted(() => ({ requireUser: vi.fn(), getPrisma: vi.fn(), loadAccountView: vi.fn(), loadInstalledRepoCount: vi.fn() }));
@@ -48,6 +50,8 @@ async function screen(
    * 통과한다(2026-09-14에 실제로 그렇게 한 번 green이었다).
    */
   image: string | null = null,
+  /** GitLab PAT 연결 — 기본은 없음(카드가 미연결 행이다). */
+  gitlab: { username: string; expiresAt: Date | null } | null = null,
 ) {
   mocks.requireUser.mockResolvedValue({ userId: "owner" });
   mocks.loadAccountView.mockResolvedValue(view);
@@ -55,7 +59,7 @@ async function screen(
   mocks.getPrisma.mockReturnValue({
     user: { findUnique: async () => ({ id: "owner", ...encodeUserFields("owner", { email: "a@x.com", name: "Jane", image }) }) },
     account: { findMany: async () => methods },
-    gitLabConnection: { findUnique: async () => null },
+    gitLabConnection: { findUnique: async () => (gitlab === null ? null : { ...gitlab, scopes: ["api"], updatedAt: new Date() }) },
     project: { count: async () => 0 },
   });
   const { container } = await render(await AccountPage({ searchParams: Promise.resolve(params) }));
@@ -224,7 +228,8 @@ it("연결 행의 상태는 배지이고 대시가 없다 — 연결됨 초록 �
   }
   const methods = [...card(container, en.link.methods.title).querySelectorAll("li")];
   const pills = methods.map((row) => row.querySelector(".rounded-full"));
-  expect(pills.map((p) => p?.textContent)).toEqual([en.link.methods.connected, en.link.methods.connected]);
+  // 기본 hosted 세 행 — 연결된 GitHub·Google 사이에 미연결 GitLab(D2 순서).
+  expect(pills.map((p) => p?.textContent)).toEqual([en.link.methods.connected, en.link.methods.notConnected, en.link.methods.connected]);
   expect(pills[0]!.className).toContain("bg-success-soft");
 });
 
@@ -271,7 +276,7 @@ it("카드 다섯 중 넷이 행 목록을 들고, 항목이 자기 래퍼를 �
   const container = await screen();
   const lists = [...container.querySelectorAll("ul")];
   expect(lists).toHaveLength(4);
-  expect(lists.map((list) => list.querySelectorAll(":scope > li").length)).toEqual([2, 1, 1, 2]);
+  expect(lists.map((list) => list.querySelectorAll(":scope > li").length)).toEqual([3, 1, 1, 2]);
   // `<li>` 안에 또 다른 목록 래퍼가 생기면 그 순간 갤러리다.
   for (const list of lists) expect(list.querySelectorAll("ul")).toHaveLength(0);
 });
@@ -283,11 +288,11 @@ it("카드 다섯 중 넷이 행 목록을 들고, 항목이 자기 래퍼를 �
 it("수단 카드 헤더가 연결 수를 들고, 다른 카드에는 배지가 없다", async () => {
   const container = await screen({}, [{ provider: "github" }]);
   expect(card(container, en.link.methods.title).querySelector("h2")!.parentElement!.textContent)
-    .toContain(en.link.methods.count(1, 2));
+    .toContain(en.link.methods.count(1, 3));
 
   const both = await screen({}, [{ provider: "github" }, { provider: "google" }]);
   expect(card(both, en.link.methods.title).querySelector("h2")!.parentElement!.textContent)
-    .toContain(en.link.methods.count(2, 2));
+    .toContain(en.link.methods.count(2, 3));
   /**
    * 배지는 수단 카드에만 있다 — app 카드는 연결이 하나이고 세션 카드는 동작 둘이라 셀 값이 없다.
    * ⚠️ **헤더 텍스트 전체를 비교하지 않는다** — 오른쪽 설명 한 줄이 같은 머리에 살아서, 그 문구를
@@ -325,10 +330,10 @@ it("되돌릴 수 없는 것마다 확인이 붙고, 직접 제출하는 것이 
    * ⚠️ **남은 폼이 되돌릴 수 있는 것뿐이다.** 확인을 지나는 것은 Dialog 안에서 제출하므로 닫힌
    * 화면의 트리에 없다 — 여기 보이는 `<form>`이 하나라도 늘면 확인 없이 제출하는 자리가 생긴 것이다.
    * **로그아웃은 확인이 없다**(ux-drift-unify Q4 — 셸 메뉴와 같은 동작, 잃는 것이 재로그인 한 번이다). 미연결 GitLab 카드의 PAT [Connect]도
-   * 되돌릴 수 있다(해제가 있다). 그래서 폼이 셋이다.
+   * 되돌릴 수 있다(해제가 있다). 미연결 로그인 수단(기본 hosted의 GitLab 행)의 [Connect]도 왕복 뒤 해제가 있다. 그래서 폼이 넷이다.
    */
   const forms = [...container.querySelectorAll("form")];
-  expect(forms.map((form) => form.querySelector("button")?.textContent)).toEqual([en.account.profile.save, en.account.gitlab.form.connect, en.common.nav.signOut]);
+  expect(forms.map((form) => form.querySelector("button")?.textContent)).toEqual([en.account.profile.save, en.link.methods.connect, en.account.gitlab.form.connect, en.common.nav.signOut]);
 });
 
 it("마지막 수단은 확인이 아니라 비활성이다 — 지날 문이 없다", async () => {
@@ -339,6 +344,57 @@ it("마지막 수단은 확인이 아니라 비활성이다 — 지날 문이 �
   expect(labels).not.toContain(en.link.methods.disconnectLabel(en.link.providers.github));
   // 남는 확인은 둘이다 — Sign out everywhere · GitHub App 해제(로그아웃은 확인이 없다, Q4).
   expect(labels).toHaveLength(2);
+});
+
+/**
+ * **GitLab 로그인 수단 행과 GitLab PAT 카드는 이름으로 갈린다** (gitlab-oauth J8). 둘 다 3색 tanuki라 글리프로는 안 갈리고(D6), 전엔 둘 다
+ * 미연결이면 `GitLab · Not connected · Connect`가 두 번 섰고 PAT 해제 확인이 로그인 수단까지 끊는 것처럼 읽혔다. 네 상태(둘 다 미연결 ·
+ * 로그인만 · PAT만 · 둘 다)에서 행 이름·[Connect]·[Disconnect]의 접근 이름이 겹치지 않고, 둘 다 연결이면 두 해제 확인의 제목도 다르다.
+ */
+it.each([
+  ["둘 다 미연결", [{ provider: "github" }], null],
+  ["로그인만", [{ provider: "github" }, { provider: "gitlab" }], null],
+  ["PAT만", [{ provider: "github" }], { username: "ox", expiresAt: null }],
+  ["둘 다", [{ provider: "github" }, { provider: "gitlab" }], { username: "ox", expiresAt: null }],
+] as const)("GitLab 로그인 행과 PAT 카드의 이름이 겹치지 않는다 — %s (J8)", async (_label, methods, gitlab) => {
+  const container = await screen({}, [...methods], undefined, null, gitlab);
+  const login = [...card(container, en.link.methods.title).querySelectorAll("li")].find((row) => bodyLines(row)[0]?.textContent?.includes(en.link.providers.gitlab))!;
+  const pat = card(container, en.account.gitlab.title).querySelector("li")!;
+  expect(login).toBeDefined();
+  const name = (row: Element) => bodyLines(row)[0]!.querySelector(".truncate")!.textContent;
+  expect(name(pat)).not.toBe(name(login));
+  const controls = (row: Element) => [...row.querySelectorAll("button")].map((b) => b.getAttribute("aria-label") ?? b.textContent ?? "");
+  for (const control of controls(pat)) expect(controls(login)).not.toContain(control);
+  // 이 화면의 접근 이름 전체에서도 겹침이 없다 — 같은 이름의 두 컨트롤은 음성 입력·스크린리더가 고르지 못한다.
+  const named = [...container.querySelectorAll("button")].map((b) => b.getAttribute("aria-label")).filter((v): v is string => v !== null);
+  expect(new Set(named).size).toBe(named.length);
+});
+
+/**
+ * 위 DOM 단언은 en으로만 그린다 — `dictionary-consistency`는 키·시그니처만 묶어서, ko·es 한쪽만 옛 낱말로 돌아가도 green이었다(R-D 🟡2).
+ * 그래서 세 사전마다 PAT 카드의 네 낱말이 GitLab 로그인 수단의 같은 자리 낱말과 다른지 렌더 없이 잰다.
+ */
+it.each([["en", en], ["ko", ko], ["es", es]] as const)("%s — PAT 카드 낱말이 GitLab 로그인 수단 낱말과 겹치지 않는다 (J8)", (_locale, m) => {
+  const gitlab = m.link.providers.gitlab;
+  expect(m.account.gitlab.rowName).not.toBe(gitlab);
+  expect(m.account.gitlab.disconnectLabel).not.toBe(m.link.methods.disconnectLabel(gitlab));
+  expect(m.account.gitlab.confirmDisconnect).not.toBe(m.link.methods.confirmDisconnect(gitlab));
+  expect(m.account.gitlab.disconnectConfirm).not.toBe(m.link.methods.disconnectConfirm);
+});
+
+it("둘 다 연결이면 로그인 수단 해제와 PAT 해제의 확인 제목이 다르다 (J8)", async () => {
+  const container = await screen({}, [{ provider: "github" }, { provider: "gitlab" }], undefined, null, { username: "ox", expiresAt: null });
+  const titles: string[] = [];
+  for (const label of [en.link.methods.disconnectLabel(en.link.providers.gitlab), en.account.gitlab.disconnectLabel]) {
+    const trigger = container.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)!;
+    expect(trigger, label).not.toBeNull();
+    await act(async () => { trigger.click(); });
+    const dialog = container.ownerDocument.querySelector('[role="dialog"]')!;
+    titles.push(dialog.querySelector("h2")!.textContent ?? "");
+    await act(async () => { dialog.ownerDocument.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })); });
+  }
+  expect(titles).toEqual([en.link.methods.confirmDisconnect(en.link.providers.gitlab), en.account.gitlab.confirmDisconnect]);
+  expect(new Set(titles).size).toBe(2);
 });
 
 /**
@@ -661,12 +717,13 @@ it("연결된 행이 프로젝트 수를 말하지 않는다", async () => {
 
 /**
  * 공급자를 끈 설치 (optional-login-providers spec §4.4·§4.10) — 수단 카드는 켜진 공급자 행만 그리고 배지 분모가 켜진 수다.
- * 꺼진 공급자로 연결된 행은 **숨길 뿐** 지우지 않는다(다시 켜면 돌아온다). 테스트 기본(setup)은 hosted 두 쌍이다.
+ * 꺼진 공급자로 연결된 행은 **숨길 뿐** 지우지 않는다(다시 켜면 돌아온다). 테스트 기본(setup)은 hosted 세 쌍이다.
  */
 afterEach(() => vi.unstubAllEnvs());
 
 it("Google만 켜진 설치에서는 수단 행이 하나이고 배지가 1 of 1이다 — 꺼진 GitHub 행은 숨는다", async () => {
   vi.stubEnv("AUTH_GITHUB_ID", "");
+  vi.stubEnv("AUTH_GITLAB_ID", "");
   const container = await screen({}, [{ provider: "github" }, { provider: "google" }]);
   const methods = card(container, en.link.methods.title);
   const rows = [...methods.querySelectorAll("li")];
@@ -690,9 +747,9 @@ it("켜진 연결 수단이 없으면 Sign out everywhere가 사유와 함께 �
   expect(trigger.getAttribute("aria-haspopup")).toBeNull();
   const reason = container.ownerDocument.getElementById(trigger.getAttribute("aria-describedby")!);
   expect(reason?.textContent).toBe(en.account.sessions.needsMethod);
-  // 같은 화면에 [Connect]가 있다 — 사유가 가리키는 다음 행동이다.
+  // 같은 화면에 [Connect]가 있다 — 사유가 가리키는 다음 행동이다(켜진 첫 미연결 행 — D2 순서로 GitLab).
   const connect = card(container, en.link.methods.title).querySelector('button[type="submit"]');
-  expect(connect?.getAttribute("aria-label")).toBe(en.link.methods.connectLabel(en.link.providers.google));
+  expect(connect?.getAttribute("aria-label")).toBe(en.link.methods.connectLabel(en.link.providers.gitlab));
 });
 
 it("켜진 연결 수단이 있으면 Sign out everywhere는 확인을 지난다 — hosted 그대로", async () => {

@@ -225,10 +225,10 @@ Save 재검증이 한계를 넘었지만(ARCHITECTURE §1.95) 사용자가 받�
 변경) 또는 새로고침·재진입에만 다시 계산한다. ⚠️ **예외: 전 소스 검색 결과에서 다른 소스의 키를 고르면** 화면이 그 소스로 옮겨 가 재마운트되므로
 같은 결과가 다시 오되 저장으로 빠진 행(`+n saved`)은 사라진다(2026-10-01 사용자 수용 — translation-tree-range). 같은 소스의 키는 목록 세대가 남는다.
 
-**로그인 방식이 역할을 정하지 않는다.** GitHub으로 로그인한 EDITOR도, Google로 로그인한 OWNER도
+**로그인 방식이 역할을 정하지 않는다.** GitHub·GitLab·Google 어느 공급자로 로그인해도 EDITOR와 OWNER 모두
 성립한다. 권한은 `ProjectMember.role`만 결정한다.
 운영자 판정의 이메일 주소도 **식별자일 뿐 역할이 아니다** — 계정 병합과 같은 기준(정규화한 주소 하나 = 한 사람)이라
-GitHub·Google 어느 쪽으로 들어와도 같은 사람을 가리키고, 프로젝트 권한은 늘지 않는다.
+GitHub·GitLab·Google 어느 쪽으로 들어와도 같은 사람을 가리키고, 프로젝트 권한은 늘지 않는다.
 
 번역 편집자가 **알 필요 없는 것**: `adapterName` · `pathTemplate` · `layout` · `writeStrategy` ·
 `nestedByPath` · blob SHA · Git Data API · OAuth 토큰과 installation token의 차이.
@@ -356,6 +356,7 @@ GitHub·Google 어느 쪽으로 들어와도 같은 사람을 가리키고, 프�
   **`lib/auth/read-session.ts`의 `SessionRead`** 하나이고, 잇는 비용은 네 자리에 필드 하나다 —
   **세션 페이로드는 안 커진다.** 남겨 두면 다음 사람이 같은 비용을 다시 계산하고 같은 결론을 안 낸다.
   셸이 사진을 안 실으면 `/account`는 사진, 셸은 이니셜이라 **같은 계정이 두 얼굴**이 된다
+- **GitLab 로그인** (2026-10-13, gitlab-oauth) — GitHub·GitLab·Google 순서로 켜진 공급자만 보인다. GitLab.com만 받으며 Self-Managed·Dedicated 로그인은 지원하지 않는다. GitLab이 확인한 주 이메일로 로그인·초대 대조·수단 연결·전체 세션 회수를 하고, 권한은 `ProjectMember`가 정한다. **로그인은 PAT 연결을 만들거나 대신하지 않는다** — 로그인 앱과 PAT는 env·토큰·코드 경로가 갈려 PAT 만료가 로그인을 막지 않는다. 대가: 개발자 동선을 앞에 두어 Google 버튼이 셋째로 내려간다.
 - **로그인 수단 연결 — `/account`의 [Connect]** (판정 2026-09-13 · **2026-09-14 프로덕션**). §4.3 ④가
   "없다"로 닫아 둔 자리를 연다. 뒤집는 근거: 붙이는 문이 **로그인 시도 자체**뿐이라 화면에 흔적이
   없었고, 사용자는 "여기서 못 하는 일"과 "할 수 없는 일"을 구별할 수 없었다. ⚠️ **sec-audit-2 #31의
@@ -439,7 +440,7 @@ GitHub·Google 어느 쪽으로 들어와도 같은 사람을 가리키고, 프�
   배포 모드는 `MALMOI_ORIGIN`의 존재로 판정한다 — 있으면 self-hosted이고 `VERCEL_ENV`와 함께 있으면 무효(fail-closed)다.
   호스팅 서비스에서 달라지는 것: 업로드는 Vercel Blob 대신 볼륨 · 야간 동기화는 Vercel Cron 대신 스케줄러 컨테이너 · DB는 Supabase 대신 일반 Postgres(런타임 롤은 비-superuser) ·
   `/privacy`는 운영자 정책 URL로 redirect · 페이지는 noindex · Analytics 없음 · 생성 워크플로는 **항상 `api-url`을 든다**(없으면 push 토큰이 호스팅 서비스로 간다 — ACTIONS).
-  **그대로인 것**: 로그인(운영자가 켠 공급자로 — GitHub OAuth App·Google OAuth 중 **완전한 쌍(ID·SECRET) 최소 하나**, 반쪽은 기동 거부. 화면은 켠 공급자의 버튼만 그린다 — 2026-10-09, optional-login-providers. 리포 연결용 GitHub App 등록은 **선택**이다 — `GITHUB_APP_*` 다섯은 all-or-none이고 반쪽은 기동 거부, 다섯 다 없으면 **GitLab 전용 설치**로
+  **그대로인 것**: 로그인(운영자가 켠 공급자로 — GitHub OAuth App·GitLab OAuth 앱·Google OAuth 중 **완전한 쌍(ID·SECRET) 최소 하나**, 반쪽은 기동 거부. 화면은 켠 공급자의 버튼만 그린다 — 2026-10-09, optional-login-providers. 리포 연결용 GitHub App 등록은 **선택**이다 — `GITHUB_APP_*` 다섯은 all-or-none이고 반쪽은 기동 거부, 다섯 다 없으면 **GitLab 전용 설치**로
   기동해 ①은 탭 줄 없이 GitLab 단독, `/account`·설정의 GitHub 연결 카드·설치 링크를 그리지 않는다. 화면 갈래는 자격증명 넷(ID·PRIVATE_KEY·CLIENT_ID·CLIENT_SECRET)으로 판정하고 `GITHUB_APP_SLUG`는 설치 링크만 가른다 — 2026-10-12, gitlab-repositories D4·D4a·D28)·인가(`ProjectMember`)·번역 보존 규칙·push/편집/pull 계약. 가입은 호스팅 서비스와 같이
   열려 있어 검증 이메일을 가진 누구나 `User` 행을 얻고 비운영자는 프로젝트 상한 3이다(운영자는 `OPERATOR_EMAILS`).
   **대상 리포의 CI는 상류 리포의 action 태그를 실행한다**(공급망 의존 — ACTIONS). `/changelog`는 상류 Release를 보여 "Latest"가 설치본 버전이 아닐 수 있다.
@@ -481,8 +482,8 @@ GitHub·Google 어느 쪽으로 들어와도 같은 사람을 가리키고, 프�
 - **조직 계층** — account 개념을 두더라도 개인/조직 구분까지다. 팀·하위 그룹은 없다.
 - **GitLab 지원의 확장** (2026-10-12, gitlab-repositories) — GitLab Self-Managed·Dedicated·사용자 지정 호스트(리포 호스트는 GitLab.com 하나) ·
   **fine-grained PAT**(받지 않고 분명한 사유로 거부한다 — 계정 단위 연결을 여러 프로젝트가 참조하는 모델과 프로젝트 한정 토큰이 맞지 않고 프리필이 없다.
-  ⚠️ 대가: 최상위 그룹 Owner가 레거시 PAT를 막은 조직은 연결할 수 없다) · **GitLab OAuth 앱 연결**(결국 연결자 명의라 PAT와 쓰기 신원이 같고 callback·origin
-  경계만 는다) · **봇 토큰**(프로젝트·그룹 액세스 토큰·서비스 계정 — GitLab.com Premium 이상이라 Free를 막고 경로가 둘이 된다) · PAT 자동 회전 · GitLab 로그인 ·
+  ⚠️ 대가: 최상위 그룹 Owner가 레거시 PAT를 막은 조직은 연결할 수 없다) · **리포 연결용 GitLab OAuth 앱 연결**(결국 연결자 명의라 PAT와 쓰기 신원이 같고 callback·origin
+  경계만 는다) · **봇 토큰**(프로젝트·그룹 액세스 토큰·서비스 계정 — GitLab.com Premium 이상이라 Free를 막고 경로가 둘이 된다) · PAT 자동 회전 ·
   webhook · SHA-256 리포(연결 때 거부) · GitHub↔GitLab 미러링·기존 프로젝트의 호스트 전환 · 세 번째 리포 호스트를 위한 플러그인 구조.
 - **번역 메모리·기계 번역·AI 번역** — 이 도구의 축이 아니다. ⚠️ **MCP 커넥터(§4.1)는 이것이 아니다** — Malmoi는 LLM을
   부르지 않고, 외부 에이전트의 저장은 `Save`를 누른 편집자의 저장이다(2026-09-28 사용자 확정). 이 비범위는 Malmoi가 번역을
@@ -516,7 +517,7 @@ IA 확정(§7.7)이 더했고 2026-09-28에 열렸다(④에 이어 둘째). ⚠
 
 #### ① 이메일 매직링크 로그인 → 뺀다
 
-**1차 로그인은 GitHub OAuth + Google OAuth 둘뿐이다.**
+**로그인 공급자는 GitHub OAuth + GitLab OAuth + Google OAuth 셋이다**(2026-10-13, gitlab-oauth).
 
 근거: 이메일 로그인은 코드가 아니라 **메일 인프라 운영**을 끌고 온다 — SPF·DKIM·DMARC, 반송 처리,
 스팸 분류 모니터링, 발송 rate limit, 보안 스캐너가 링크를 먼저 열어 토큰을 소비하는 문제. 얻는 것에
@@ -524,11 +525,11 @@ IA 확정(§7.7)이 더했고 2026-09-28에 열렸다(④에 이어 둘째). ⚠
 길다.
 
 **초대는 메일로 링크를 보내지만 로그인은 메일에 기대지 않는다** (2026-09-23 — 그 전에는 OWNER가 링크를
-**직접 전달**했다): 받은 사람이 GitHub이나 Google로 로그인하면 **그 provider가 검증한 이메일**로 초대 대상과
+**직접 전달**했다): 받은 사람이 GitHub·GitLab·Google로 로그인하면 **그 provider가 검증한 이메일**로 초대 대상과
 대조한다. 초대 메일이 깨지면 **초대가 지연될 뿐 로그인은 그대로다** — 매직링크 로그인을 여전히 빼는 근거가
 그 비대칭이다.
 
-2차에 열 조건: 사내 비개발자가 GitHub·Google 계정을 못 쓰는 상황이 실제로 나올 때.
+2차에 열 조건: 사내 비개발자가 GitHub·GitLab·Google 계정을 못 쓰는 상황이 실제로 나올 때.
 
 #### ② GitHub push webhook → 뺀다
 

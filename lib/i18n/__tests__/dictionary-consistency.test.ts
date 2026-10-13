@@ -93,6 +93,7 @@ const SAME_AS_EN: Readonly<Record<Translated, readonly string[]>> = {
     "home.meta.platforms.github",
     "home.meta.platforms.gitlab",
     "link.providers.github",
+    "link.providers.gitlab",
     "link.providers.google",
     // 입력 예시 — 사용자가 칠 경로·코드·주소다
     "newProject.formats.chrome-locales.example",
@@ -141,6 +142,7 @@ const SAME_AS_EN: Readonly<Record<Translated, readonly string[]>> = {
     "locales.base",
     "settings.general.title",
     "link.providers.github",
+    "link.providers.gitlab",
     "link.providers.google",
     // 입력 예시 — 사용자가 칠 경로·코드·주소다
     "newProject.formats.chrome-locales.example",

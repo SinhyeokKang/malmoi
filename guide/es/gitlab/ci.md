@@ -21,6 +21,8 @@ Antes de empezar: ten a mano el token de push de la página **Malmoi está listo
 1. Copia los jobs de la página **Malmoi está listo**, o más tarde desde **Configuración** con **Archivo de CI**, y añádelos a `.gitlab-ci.yml` en la raíz del repositorio. Si el archivo ya existe, añádelos a él.
 2. Haz commit del archivo en la rama base.
 
+![El diálogo Archivo de CI en la Configuración de Malmoi con los jobs de .gitlab-ci.yml generados y un botón Copiar](/guide/gitlab-ci-file.webp "Copia los jobs y añádelos a .gitlab-ci.yml en la rama base.")
+
 Hay un job por cada fuente, y los nombres de los jobs incluyen la dirección del proyecto, así que dos proyectos de un mismo repositorio no sobrescriben los jobs del otro. Los jobs solo se ejecutan con commits nuevos en la rama base y omiten los commits que contienen `[skip-malmoi-i18n]`. Usan la etapa `test`; si tu archivo define su propia lista `stages:`, conserva `test` en ella. El runner debe poder llegar a `github.com` (cada job descarga el script de Malmoi en una versión fija), `registry.npmjs.org`, Docker Hub (los jobs usan la imagen oficial de Node.js) y Malmoi.
 
 Si tu código lee las traducciones mediante una función envoltorio, rellena `MALMOI_I18N_WRAPPER` (vacío de forma predeterminada) en el `variables:` del job de esa fuente, con un envoltorio por línea. Usa `module#export` para una función directa, o añade `()` para un hook, como `next-intl#useTranslations()`. Ayuda a Malmoi a encontrar referencias de código; no decide qué claves de traducción existen. Para cambiar la rama base más adelante, cambia **Rama base** en **Configuración** y edita el valor `MALMOI_I18N_BASE_BRANCH`. Cuando añadas fuentes, vuelve a copiar el archivo completo desde **Configuración** y reemplaza con él los jobs de Malmoi.
@@ -28,8 +30,6 @@ Si tu código lee las traducciones mediante una función envoltorio, rellena `MA
 ## Si el archivo de CI no está disponible {#ci-unavailable}
 
 Si Malmoi indica que el archivo de CI de GitLab aún no está disponible en esta versión de Malmoi, no hay jobs que copiar. Guarda igualmente el token de push; hasta que el archivo de CI esté disponible, la [ejecución nocturna](../sync/nightly.md#repository-changes) y **Sincronizar** cargan los cambios del repositorio. Un [cambio de idioma base](../setup/sources.md#base-language) solo se aplica mediante los jobs de CI, así que espera hasta que los añadas.
-
-![El diálogo Archivo de CI en la Configuración de Malmoi indica que el archivo de CI de GitLab aún no está disponible en esta versión de Malmoi](/guide/gitlab-ci-file.webp "Hasta que el archivo de CI esté disponible, guarda el token de push; la ejecución nocturna y Sincronizar cargan los cambios del repositorio.")
 
 ## Ejecútalo y compruébalo {#first-run}
 

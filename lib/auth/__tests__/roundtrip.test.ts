@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { LOGIN_PROVIDERS } from "@/lib/login-link/policy";
+
 import { expireBothVariants, isOAuthCallback, validNonce } from "../roundtrip";
 
 /**
@@ -8,10 +10,20 @@ import { expireBothVariants, isOAuthCallback, validNonce } from "../roundtrip";
  * 사본이 갈리면 한쪽만 조용히 틀리는 조각뿐이다.
  */
 describe("isOAuthCallback", () => {
-  it("로그인 공급자 둘의 callback만 가로챈다", () => {
-    expect(isOAuthCallback("/api/auth/callback/github")).toBe(true);
-    expect(isOAuthCallback("/api/auth/callback/google")).toBe(true);
-    for (const path of ["/api/auth/session", "/api/auth/callback/github/", "/api/auth/callback/githubx", "/x/api/auth/callback/github", "/api/github/callback"]) {
+  it("로그인 공급자 우주의 callback만 가로챈다", () => {
+    for (const provider of LOGIN_PROVIDERS) expect(isOAuthCallback(`/api/auth/callback/${provider}`)).toBe(true);
+    expect(isOAuthCallback("/api/auth/callback/gitlab")).toBe(true);
+    for (const path of [
+      "/api/auth/session",
+      "/api/auth/callback/github/",
+      "/api/auth/callback/githubx",
+      "/x/api/auth/callback/github",
+      "/api/github/callback",
+      "/api/auth/callback/github-app",
+      "/api/auth/callback/gitlab%2F",
+      "/api/auth/callback/__proto__",
+      "/api/auth/callback/",
+    ]) {
       expect(isOAuthCallback(path)).toBe(false);
     }
   });

@@ -2,11 +2,12 @@ import { routes } from "@/lib/routes";
 
 import { createHash } from "node:crypto";
 import { hashSessionToken } from "@/lib/credentials/crypto";
+import { isLoginProvider, type LoginProvider } from "@/lib/login-link/policy";
 
 const PURPOSE = "malmoi/session-revocation";
 export type Challenge = {
   userId: string;
-  provider: "github" | "google";
+  provider: LoginProvider;
   providerAccountId: string;
   sessionDigest: string;
   stateDigest: string;
@@ -24,7 +25,7 @@ export function parseChallengeIdentifier(identifier: string): Challenge | null {
     if (!Array.isArray(a) || a.length !== 7) return null;
     const [purpose, version, userId, provider, providerAccountId, sessionDigest, stateDigest] = a;
     if (purpose !== PURPOSE || version !== "v1" || typeof userId !== "string" || !userId ||
-      (provider !== "github" && provider !== "google") || typeof providerAccountId !== "string" || !providerAccountId ||
+      typeof provider !== "string" || !isLoginProvider(provider) || typeof providerAccountId !== "string" || !providerAccountId ||
       typeof sessionDigest !== "string" || !/^sha256:v1:[a-f0-9]{64}$/.test(sessionDigest) ||
       typeof stateDigest !== "string" || !/^[a-f0-9]{64}$/.test(stateDigest)) return null;
     const result = { userId, provider, providerAccountId, sessionDigest, stateDigest };

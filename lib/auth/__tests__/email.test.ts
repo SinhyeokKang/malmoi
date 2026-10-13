@@ -102,9 +102,22 @@ describe("freshVerifiedEmail — signIn 콜백의 profile에서 현재 검증 �
     expect(freshVerifiedEmail("google", { email: "g@x.com", email_verified: false })).toBeNull();
   });
 
+  /**
+   * gitlab 갈래는 **raw `/api/v4/user` 응답**을 받는다(Google과 같다 — `signIn` 콜백의 `profile`은 userinfo 원본이다).
+   * 이 갈래가 없으면 [Connect]가 이메일 대조에서 실패하고 `planEmailRefresh`가 영영 `keep`이다(gitlab-oauth design §2).
+   */
+  it("gitlab: confirmed_at이 있을 때만 raw 응답의 email을 낸다", () => {
+    expect(freshVerifiedEmail("gitlab", { id: 1, email: "L@x.com", confirmed_at: "2026-10-13T03:00:00.000Z", public_email: null })).toBe("l@x.com");
+    expect(freshVerifiedEmail("gitlab", { id: 1, email: "l@x.com", confirmed_at: null })).toBeNull();
+    expect(freshVerifiedEmail("gitlab", { id: 1, email: "l@x.com" })).toBeNull();
+    // public_email은 보지 않는다 — 사용자가 고르는 공개 표시값이다.
+    expect(freshVerifiedEmail("gitlab", { id: 1, public_email: "p@x.com", confirmed_at: "2026-10-13T03:00:00.000Z" })).toBeNull();
+  });
+
   it("모르는 provider·비객체 profile은 null", () => {
     expect(freshVerifiedEmail("apple", { email: "x@y.com" })).toBeNull();
     expect(freshVerifiedEmail("github", undefined)).toBeNull();
+    expect(freshVerifiedEmail("gitlab", null)).toBeNull();
   });
 });
 

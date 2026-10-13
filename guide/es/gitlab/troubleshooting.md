@@ -15,7 +15,7 @@ En **Configuración** de un proyecto de GitLab, la tarjeta del repositorio muest
 
 La conexión muestra **Desconectado**, y las sincronizaciones y publicaciones se detienen hasta que un propietario del proyecto la vuelva a conectar como se indica arriba, cuando:
 
-- quien conectó el proyecto desconectó GitLab o dejó el proyecto, o
+- quien conectó el proyecto desconectó su token de GitLab o dejó el proyecto, o
 - el token no se puede usar: caducó, se revocó o su propietario perdió el acceso al repositorio.
 
 ## Corrige un token rechazado {#token-refused}
@@ -25,7 +25,7 @@ Al conectar o reemplazar un token, Malmoi lo comprueba con GitLab y, si lo recha
 - Un token que GitLab no acepta —mal escrito, caducado o revocado— se rechaza. Crea un token nuevo y pégalo de nuevo.
 - Un token detallado (fine-grained) se rechaza. Crea un token de acceso personal clásico con el alcance `api`.
 - Un token sin el alcance `api` se rechaza. Crea un token nuevo con ese alcance.
-- **Reemplazar token** rechaza un token de otra cuenta de GitLab. Desconecta GitLab en **Cuenta** primero y luego conecta la otra cuenta.
+- **Reemplazar token** rechaza un token de otra cuenta de GitLab. Desconecta tu token de GitLab en **Cuenta** primero y luego conecta la otra cuenta.
 - Si el grupo principal de GitLab bloquea los tokens de acceso personal clásicos, Malmoi no puede conectar los repositorios de ese grupo.
 - Un proyecto de GitLab archivado debe desarchivarse primero en GitLab. Un proyecto que usa el formato de objetos SHA-256 no es compatible.
 - Solo se admite GitLab.com, no GitLab Self-Managed ni GitLab Dedicated.

@@ -9,22 +9,33 @@ import { enabledLoginProviders, LOGIN_PROVIDER_ENV, loginProviderStates, present
 
 afterEach(() => vi.unstubAllEnvs());
 
-const BOTH = { AUTH_GITHUB_ID: "gh-id", AUTH_GITHUB_SECRET: "gh-secret", AUTH_GOOGLE_ID: "go-id", AUTH_GOOGLE_SECRET: "go-secret" };
+const ALL = {
+  AUTH_GITHUB_ID: "gh-id",
+  AUTH_GITHUB_SECRET: "gh-secret",
+  AUTH_GITLAB_ID: "gl-id",
+  AUTH_GITLAB_SECRET: "gl-secret",
+  AUTH_GOOGLE_ID: "go-id",
+  AUTH_GOOGLE_SECRET: "go-secret",
+};
 
 describe("loginProviderStates", () => {
   it("공급자마다 enabled · absent · partial", () => {
-    expect(loginProviderStates(BOTH)).toEqual({ github: "enabled", google: "enabled" });
-    expect(loginProviderStates({})).toEqual({ github: "absent", google: "absent" });
-    expect(loginProviderStates({ AUTH_GITHUB_ID: "x" })).toEqual({ github: "partial", google: "absent" });
-    expect(loginProviderStates({ AUTH_GITHUB_SECRET: "x" })).toEqual({ github: "partial", google: "absent" });
-    expect(loginProviderStates({ AUTH_GOOGLE_ID: "x", AUTH_GOOGLE_SECRET: "y" })).toEqual({ github: "absent", google: "enabled" });
-    expect(loginProviderStates({ ...BOTH, AUTH_GOOGLE_SECRET: undefined })).toEqual({ github: "enabled", google: "partial" });
+    expect(loginProviderStates(ALL)).toEqual({ github: "enabled", gitlab: "enabled", google: "enabled" });
+    expect(loginProviderStates({})).toEqual({ github: "absent", gitlab: "absent", google: "absent" });
+    expect(loginProviderStates({ AUTH_GITHUB_ID: "x" })).toEqual({ github: "partial", gitlab: "absent", google: "absent" });
+    expect(loginProviderStates({ AUTH_GITHUB_SECRET: "x" })).toEqual({ github: "partial", gitlab: "absent", google: "absent" });
+    expect(loginProviderStates({ AUTH_GOOGLE_ID: "x", AUTH_GOOGLE_SECRET: "y" })).toEqual({ github: "absent", gitlab: "absent", google: "enabled" });
+    expect(loginProviderStates({ ...ALL, AUTH_GOOGLE_SECRET: undefined })).toEqual({ github: "enabled", gitlab: "enabled", google: "partial" });
+    expect(loginProviderStates({ AUTH_GITLAB_ID: "x", AUTH_GITLAB_SECRET: "y" })).toEqual({ github: "absent", gitlab: "enabled", google: "absent" });
+    expect(loginProviderStates({ ...ALL, AUTH_GITLAB_ID: undefined })).toEqual({ github: "enabled", gitlab: "partial", google: "enabled" });
   });
 
   it("공백만 있는 값은 빈 값이다 — preflight와 같은 `present` 하나를 쓴다", () => {
-    expect(loginProviderStates({ ...BOTH, AUTH_GITHUB_ID: "   " })).toEqual({ github: "partial", google: "enabled" });
-    expect(loginProviderStates({ AUTH_GITHUB_ID: " ", AUTH_GITHUB_SECRET: "\t", AUTH_GOOGLE_ID: "", AUTH_GOOGLE_SECRET: "" }))
-      .toEqual({ github: "absent", google: "absent" });
+    expect(loginProviderStates({ ...ALL, AUTH_GITHUB_ID: "   " })).toEqual({ github: "partial", gitlab: "enabled", google: "enabled" });
+    expect(loginProviderStates({ ...ALL, AUTH_GITLAB_SECRET: " " })).toEqual({ github: "enabled", gitlab: "partial", google: "enabled" });
+    expect(
+      loginProviderStates({ AUTH_GITHUB_ID: " ", AUTH_GITHUB_SECRET: "\t", AUTH_GITLAB_ID: " ", AUTH_GITLAB_SECRET: "", AUTH_GOOGLE_ID: "", AUTH_GOOGLE_SECRET: "" }),
+    ).toEqual({ github: "absent", gitlab: "absent", google: "absent" });
     expect(present("  ")).toBeUndefined();
     expect(present("")).toBeUndefined();
     expect(present(undefined)).toBeUndefined();
@@ -34,6 +45,7 @@ describe("loginProviderStates", () => {
   it("env 이름 표 — preflight와 SH-15 게이트가 같은 표를 본다", () => {
     expect(LOGIN_PROVIDER_ENV).toEqual({
       github: { id: "AUTH_GITHUB_ID", secret: "AUTH_GITHUB_SECRET" },
+      gitlab: { id: "AUTH_GITLAB_ID", secret: "AUTH_GITLAB_SECRET" },
       google: { id: "AUTH_GOOGLE_ID", secret: "AUTH_GOOGLE_SECRET" },
     });
   });
@@ -41,6 +53,7 @@ describe("loginProviderStates", () => {
 
 describe("withEnabled", () => {
   const github = { id: "github", name: "GitHub" };
+  const gitlab = { id: "gitlab", name: "GitLab" };
   const google = { id: "google", name: "Google" };
 
   it("켜진 것만 남기고 입력 순서를 지킨다", () => {
@@ -51,16 +64,32 @@ describe("withEnabled", () => {
     // 켜진 집합의 순서가 아니라 provider 목록의 순서다.
     expect(withEnabled([github, google], ["google", "github"])).toEqual([github, google]);
   });
+
+  it("gitlab — 꺼지면 providers에 없고, 켜지면 입력 순서 자리에 선다", () => {
+    expect(withEnabled([github, gitlab, google], ["github", "google"])).toEqual([github, google]);
+    expect(withEnabled([github, gitlab, google], ["github", "gitlab", "google"])).toEqual([github, gitlab, google]);
+    expect(withEnabled([github, gitlab, google], ["gitlab"])).toEqual([gitlab]);
+  });
 });
 
 describe("enabledLoginProviders", () => {
-  it("테스트 기본(setup)은 hosted — 두 쌍 다 켜져 있다", () => {
+  it("테스트 기본(setup)은 hosted 세 쌍이 켜져 있다 — 순서 github → gitlab → google (D2·D5)", () => {
+    expect(enabledLoginProviders()).toEqual(["github", "gitlab", "google"]);
+  });
+
+  it("GitLab 쌍을 빼면 그 자리만 빠진다 — 나머지 순서 그대로", () => {
+    vi.stubEnv("AUTH_GITLAB_ID", "");
     expect(enabledLoginProviders()).toEqual(["github", "google"]);
+    vi.stubEnv("AUTH_GITLAB_ID", "gl");
+    vi.stubEnv("AUTH_GITHUB_ID", "");
+    vi.stubEnv("AUTH_GOOGLE_SECRET", "");
+    expect(enabledLoginProviders()).toEqual(["gitlab"]);
   });
 
   it("호출 시점의 env를 읽는다 — import가 값을 굳히지 않는다", () => {
     vi.stubEnv("AUTH_GITHUB_ID", "");
     vi.stubEnv("AUTH_GITHUB_SECRET", "");
+    vi.stubEnv("AUTH_GITLAB_SECRET", "");
     expect(enabledLoginProviders()).toEqual(["google"]);
     vi.stubEnv("AUTH_GITHUB_ID", "gh");
     vi.stubEnv("AUTH_GITHUB_SECRET", "secret");
@@ -68,8 +97,9 @@ describe("enabledLoginProviders", () => {
     expect(enabledLoginProviders()).toEqual(["github"]);
   });
 
-  it("반쪽은 꺼진 것이다 — 순서는 언제나 github → google", () => {
+  it("반쪽은 꺼진 것이다", () => {
     vi.stubEnv("AUTH_GITHUB_SECRET", " ");
+    vi.stubEnv("AUTH_GITLAB_ID", "");
     expect(enabledLoginProviders()).toEqual(["google"]);
   });
 });

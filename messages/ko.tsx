@@ -178,6 +178,7 @@ export const ko = {
     backToInvitation: "초대로 돌아가기",
     backToAuthorization: "앱 승인으로 돌아가기",
     github: "GitHub로 계속하기",
+    gitlab: "GitLab으로 계속하기",
     google: "Google로 계속하기",
     consent: { before: "계속하면 ", link: "개인정보 처리방침", after: "에 동의하게 됩니다." },
     footer: { copyright: "© 2026 Malmoi", github: "GitHub", privacy: "개인정보 처리방침" },
@@ -926,7 +927,7 @@ export const ko = {
     gitlab: {
       expiresSoon: "만료 예정",
       title: "GitLab PAT",
-      rowName: "GitLab",
+      rowName: "GitLab 토큰",
       hintNotConnected: "GitLab 개인 액세스 토큰을 연결하면 GitLab 리포지토리로 프로젝트를 만들 수 있습니다.",
       expires: (date: string): string => `${date}에 만료됩니다.`,
       expiredOn: (date: string): string => `${date}에 만료되었습니다. 이 연결을 쓰는 프로젝트가 계속 동작하도록 토큰을 교체하세요.`,
@@ -935,11 +936,11 @@ export const ko = {
       replace: "토큰 교체",
       replaceTitle: "GitLab 토큰 교체",
       replaceHint: (username: string): string => `@${username}의 새 토큰을 붙여 넣으세요. 이 연결을 쓰는 프로젝트는 바로 새 토큰을 씁니다.`,
-      disconnectLabel: "GitLab 연결 해제",
-      confirmDisconnect: "Malmoi에서 GitLab 연결을 해제할까요?",
+      disconnectLabel: "GitLab 토큰 연결 해제",
+      confirmDisconnect: "이 GitLab 토큰의 연결을 해제할까요?",
       confirmHint: "저장된 토큰이 삭제됩니다. 이 연결을 쓰는 프로젝트는 프로젝트 소유자가 다시 연결할 때까지 동기화와 게시가 멈춥니다.",
-      disconnectFailed: "GitLab 연결을 해제하지 못했습니다. 다시 시도하세요.",
-      disconnectConfirm: "GitLab 연결 해제",
+      disconnectFailed: "GitLab 토큰 연결을 해제하지 못했습니다. 다시 시도하세요.",
+      disconnectConfirm: "토큰 연결 해제",
       expiresSoonNotice: (days: number, date: string): string =>
         `내 GitLab 토큰이 ${days.toLocaleString("ko-KR")}일 뒤(${date})에 만료됩니다. 이 토큰을 쓰는 프로젝트가 계속 동작하도록 그 전에 교체하세요.`,
       form: {
@@ -960,7 +961,11 @@ export const ko = {
       confirmHint: "로그인 계정으로 본인 확인을 마치면 이 기기를 포함한 모든 기기에서 로그아웃됩니다.",
       // provider 이름 뒤 조사를 피하려고 "~에서 계속"으로 쓴다(DESIGN §10.0).
       confirmAction: (provider: string): string => `${provider}에서 계속`,
-      confirmDetail: (provider: string): string => `로그아웃 전에 ${provider} 화면에서 본인 확인을 진행합니다.`,
+      confirmDetail: {
+        github: "로그아웃 전에 GitHub 화면에서 본인 확인을 진행합니다.",
+        gitlab: "GitLab으로 이동합니다. 이미 GitLab에 로그인되어 있으면 바로 돌아오고 모든 세션이 종료됩니다.",
+        google: "로그아웃 전에 Google 화면에서 본인 확인을 진행합니다.",
+      },
       willConfirm: "로그인 서비스로 이동해 확인한 뒤 이 화면으로 돌아옵니다.",
       complete: "모든 기기에서 로그아웃되었습니다. 계속하려면 다시 로그인하세요.",
       failed: "모든 기기에서 로그아웃하지 못했습니다. 다시 시도하세요.",
@@ -1928,7 +1933,7 @@ export const ko = {
     invite: {
       open: "멤버 초대",
       title: "멤버 초대",
-      description: "초대할 이메일과 역할을 입력하세요. 로그인에 사용하는 이메일이어야 하며, GitHub는 기본(primary) 이메일을 사용합니다.",
+      description: "초대할 이메일과 역할을 입력하세요. 로그인에 사용하는 이메일이어야 하며, GitHub와 GitLab은 기본(primary) 이메일을 사용합니다.",
       columns: { email: "이메일", role: "역할" },
       placeholder: "name@company.com",
       roleHint: {
@@ -2057,7 +2062,7 @@ export const ko = {
         usedByUpdates: (n: number): string => `프로젝트 ${n.toLocaleString("ko-KR")}개가 이 토큰을 씁니다. 교체하면 모두 업데이트됩니다.`,
         usedByReconnects: (n: number): string => `프로젝트 ${n.toLocaleString("ko-KR")}개가 이 토큰을 씁니다. 교체하면 모두 다시 연결됩니다.`,
         unusable: "이 프로젝트의 GitLab 토큰을 쓸 수 없습니다. 만료·철회되었거나 토큰 주인이 리포지토리 권한을 잃었을 수 있습니다. 다시 연결할 때까지 동기화와 게시가 멈춥니다.",
-        removed: "이 프로젝트의 GitLab 연결이 해제되었습니다 — 연결한 사람이 GitLab 연결을 해제했거나 프로젝트를 떠났습니다. 프로젝트 소유자가 다시 연결할 때까지 동기화와 게시가 멈춥니다.",
+        removed: "이 프로젝트의 GitLab 연결이 해제되었습니다 — 연결한 사람이 GitLab 토큰 연결을 해제했거나 프로젝트를 떠났습니다. 프로젝트 소유자가 다시 연결할 때까지 동기화와 게시가 멈춥니다.",
         useMine: "내 GitLab 연결 사용",
         useMineHint: (owner: string | null, me: string): string =>
           owner === null ? `이후 동기화와 게시는 @${me} 명의로 기록됩니다.` : `@${owner}의 토큰 대신 내 GitLab 토큰을 씁니다 — 이후 동기화와 게시는 @${me} 명의로 기록됩니다.`,
@@ -2186,7 +2191,7 @@ export const ko = {
   },
 
   link: {
-    providers: { github: "GitHub", google: "Google" },
+    providers: { github: "GitHub", gitlab: "GitLab", google: "Google" },
     title: "이미 가입된 이메일입니다",
     description: (pending: string, have: string): string =>
       `${pending} 계정으로 로그인을 시도했습니다. 이 이메일은 ${have} 계정으로 이미 가입되어 있습니다.`,
@@ -2297,7 +2302,7 @@ export const ko = {
       "token-invalid": "GitLab이 이 토큰을 받지 않았습니다. 만료되었거나 철회되었을 수 있습니다 — 새 토큰을 만들어 붙여 넣으세요.",
       "token-fine-grained": "fine-grained 토큰입니다. Malmoi에는 api 스코프가 있는 레거시 개인 액세스 토큰이 필요합니다 — 새로 만들어 붙여 넣으세요.",
       "token-scope-missing": "이 토큰에는 api 스코프가 없습니다. api 스코프로 새 토큰을 만들어 붙여 넣으세요.",
-      "account-mismatch": "다른 GitLab 계정의 토큰입니다. 먼저 계정에서 GitLab 연결을 해제한 뒤 그 계정을 연결하세요.",
+      "account-mismatch": "다른 GitLab 계정의 토큰입니다. 먼저 계정에서 GitLab 토큰 연결을 해제한 뒤 그 계정을 연결하세요.",
       "gitlab-not-connected": "먼저 계정에서 GitLab 계정을 연결하세요.",
       "gitlab-reconnect": "GitLab 토큰을 더 이상 쓸 수 없습니다. 계정에서 토큰을 교체하세요.",
       "gitlab-repo-archived": "보관된 GitLab 프로젝트입니다. GitLab에서 보관을 해제한 뒤 다시 시도하세요.",

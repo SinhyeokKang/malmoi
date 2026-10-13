@@ -39,7 +39,8 @@ export function normalizeEmail(raw: string): string {
  */
 export type EmailProof =
   | { provider: "google"; email: unknown; emailVerified: unknown }
-  | { provider: "github"; addresses: unknown };
+  | { provider: "github"; addresses: unknown }
+  | { provider: "gitlab"; email: unknown; confirmedAt: unknown };
 
 /**
  * 검증된 이메일을 **정규화해서** 내거나 `null`.
@@ -53,6 +54,14 @@ export function verifiedEmailFrom(proof: EmailProof): string | null {
     // 불리언과 문자열 둘 다 받는다 — OIDC 스펙은 불리언이지만 어느 쪽으로 와도 로그인이 깨지지
     // 않게 한다. 이 값은 provider가 서명해 보낸 것이라 관대해도 구멍이 생기지 않는다.
     if (proof.emailVerified !== true && proof.emailVerified !== "true") return null;
+    return normalizedOrNull(proof.email);
+  }
+
+  if (proof.provider === "gitlab") {
+    // `email`은 주 이메일이다. GitLab은 주 이메일을 바꾸면 새 주소를 `unconfirmed_email`에 두고 확인 뒤에야 옮기므로
+    // `email`이 미확인이 되는 길은 계정 자체가 미확인인 경우뿐이고, 그것을 `confirmed_at`이 가른다(gitlab-oauth design §2).
+    // `public_email`로 넘어가지 않는다 — GitHub의 "primary이면서 verified"와 같은 판정이다.
+    if (typeof proof.confirmedAt !== "string" || proof.confirmedAt.trim() === "") return null;
     return normalizedOrNull(proof.email);
   }
 
@@ -82,7 +91,8 @@ function normalizedOrNull(value: unknown): string | null {
  * `signIn` 콜백의 `profile`에서 **지금** provider가 검증한 이메일을 꺼낸다.
  *
  * GitHub은 `auth.ts`의 `userinfo.request`가 만든 객체라 `email`이 이미 검증 결과다(실패면 `""`).
- * Google은 raw OIDC profile이라 `email_verified`를 봐야 한다. 모르는 provider는 `null` — 부재는 갱신이 아니다.
+ * Google은 raw OIDC profile이라 `email_verified`를, GitLab은 raw `/api/v4/user` 응답이라 `confirmed_at`을 봐야 한다.
+ * 모르는 provider는 `null` — 부재는 갱신이 아니다.
  */
 export function freshVerifiedEmail(provider: string | undefined, profile: unknown): string | null {
   if (typeof profile !== "object" || profile === null) return null;
@@ -90,6 +100,9 @@ export function freshVerifiedEmail(provider: string | undefined, profile: unknow
   if (provider === "github") return normalizedOrNull(record["email"]);
   if (provider === "google") {
     return verifiedEmailFrom({ provider: "google", email: record["email"], emailVerified: record["email_verified"] });
+  }
+  if (provider === "gitlab") {
+    return verifiedEmailFrom({ provider: "gitlab", email: record["email"], confirmedAt: record["confirmed_at"] });
   }
   return null;
 }
@@ -111,7 +124,7 @@ export function planEmailRefresh(input: {
   stored: string;
   fresh: string | null;
   takenByOther: boolean;
-  /** 로그인 `Account` 행 수 (`github`·`google`만). `github-app`은 로그인 수단이 아니다. */
+  /** 로그인 `Account` 행 수 (`LOGIN_PROVIDERS`만). `github-app`은 로그인 수단이 아니다. */
   loginMethods: number;
 }): EmailRefresh {
   /**

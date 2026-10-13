@@ -8,7 +8,7 @@ Malmoi is a translation management (i18n) tool for GitHub and GitLab.com reposit
 
 ## Do translators need Git or a GitHub account? {#translators}
 
-No. Translators sign in with GitHub or Google, edit in the browser, and choose **Publish**; they never use Git. See [Join a project](translate/join.md#join).
+No. Translators sign in with GitHub, GitLab, or Google, edit in the browser, and choose **Publish**; they never use Git. See [Join a project](translate/join.md#join).
 
 ## Which roles are there? {#roles}
 
@@ -68,7 +68,7 @@ Yes, in **Preferences**. These change only how Malmoi looks to you, not the lang
 
 ## What does Malmoi store about me? {#privacy}
 
-Your name, email address, and profile picture from GitHub or Google, your project memberships, and who last changed each translation. If you connect GitLab, it also stores your GitLab user ID, username, and token. Names, email addresses, and connection tokens are stored encrypted, and on mal-moi.com, Malmoi does not sell your data or use it for advertising. The **Privacy Policy** of the site you use lists everything; it is linked in the page footer.
+Your name and email address from GitHub, GitLab, or Google, your profile picture from GitHub or Google, your project memberships, and who last changed each translation. Malmoi does not take a profile picture from GitLab. If you connect a GitLab personal access token, it also stores your GitLab user ID, username, and token. Names, email addresses, and connection tokens are stored encrypted, and on mal-moi.com, Malmoi does not sell your data or use it for advertising. The **Privacy Policy** of the site you use lists everything; it is linked in the page footer.
 
 ## How do I delete my account? {#delete-account}
 

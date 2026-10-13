@@ -98,6 +98,7 @@ logs-rework (ARCHITECTURE §5.7). **운영 차단이 없다** — 새 테이블�
 2. `pnpm install`
 3. `cp .env.example .env.local` 후 값을 채운다. ⚠️ **암호화 키 셋(환경변수 여섯)이 비면 로그인·초대·멤버 조회가 통째로 죽는다** — TOKEN·PII는 `*_ENCRYPTION_KEYS`와 `*_ACTIVE_KEY_ID` 쌍이고 EMAIL_LOOKUP만 `EMAIL_LOOKUP_KEY`·`_KEY_ID`다. ⚠️ **서명 키 `APP_SIGNING_SECRET`도 비면 GitHub 연결(시작·callback)과 온보딩 탐지·샘플이 500이다**(MCP 탐지·생성 도구는 `unavailable`) — 로그인은 된다. 초대 메일 셋(`RESEND_API_KEY` 등)은 비어도 되고 그때 초대 발급만 막힌다. **⚠️ 이 파일은 에이전트가 편집하지 않는다** — 편집하면 하네스가 "파일이 바뀌었다" 알림으로 **전문을 컨텍스트에 넣어** 시크릿이 트랜스크립트에 남는다(2026-09-04에 실제로 유출돼 전면 재발급했다). 구조가 필요하면 **다른 경로에 템플릿을 쓰고** 사람이 값을 채워 옮긴다. ⚠️ **`vercel env pull`로는 못 가져온다** — 전부 Vercel의 **Sensitive**라 CLI도 대시보드도 값을 못 읽는다. **다른 머신의 `.env.local`을 옮기는 것이 정상 경로**다.
    - **GitHub OAuth 앱은 하나(`malmoi`)이고 세 환경이 같은 값을 쓴다** — Google과 같은 모양이다. ⚠️ **2026-09-14 이전 기록에 "앱이 셋"이 나오면 그건 낡았다**: GitHub이 OAuth App에 **Add redirect URI**를 열어 "callback URL은 앱당 하나"가 거짓이 됐고, 그래서 `malmoi-dev`·`malmoi-local`을 접었다.
+   - **GitLab 로그인 앱도 하나다** — 그룹 Applications의 `Malmoi`, `AUTH_GITLAB_ID`·`AUTH_GITLAB_SECRET`을 세 환경에 같이 둔다. 등록·회전·Vercel 투입은 아래 "GitLab 로그인 앱" 절. 리포 연결 PAT와는 별개다.
    - prod 키 작업(`credentials:prod`·`credentials:finalize:prod`)을 할 머신이면 **`.env.prod.local`도 옮긴다** — prod 키를 담는 파일이고 같은 이유로 gitignore다(§1).
    - ⚠️ **Google도 클라이언트가 하나다** — redirect URI를 여러 개 등록할 수 있어 로컬·preview·프로덕션 셋을 한 클라이언트에 넣고 같은 값을 세 곳에 둔다.
 4. `pnpm db:status`(dev) · `pnpm db:status:prod`(prod)로 접속을 확인한다. ⚠️ 두 출력이 **같아 보인다**(pooler 호스트가 같고 ref는 사용자명에 있다) — 구별 신호는 **적용된 마이그레이션 개수**다.
@@ -306,6 +307,53 @@ App 설정 > General (2026-09-18, install-and-connect):
 - ⚠️ **GitHub App이 `Make public`이어야 한다 — 2026-09-17까지 private이었다.** private 앱은 **소유 계정(`SinhyeokKang`)에만 설치된다**: 그 사이 다른 계정·조직은 설치 링크에서 GitHub이 막아 **새 사용자의 프로젝트 생성이 통째로 불가능했다**(초대받은 번역자는 설치가 필요 없어 안 드러났다). 증상이 malmoi 쪽에 아무 로그도 안 남기고, 오너 계정으로 검증하면 항상 통과한다 — **"다른 계정에서 설치가 안 된다"를 들으면 앱 설정 Advanced부터 본다.** ⚠️ **앱이 둘이다** (2026-09-27, launch-readiness L2.10): 프로덕션은 `malmoi-sync`(개인키는 Vercel **Production**에만), 로컬·preview는 `malmoi-sync-dev`(`.env.local` + Vercel **Preview**, **폐기용 리포에만 설치**). 두 앱의 권한·설정(설치 중 인가 켬 · Setup URL 비움 · Redirect on update · public)은 같게 유지한다. 앱을 바꾸면 설치 ID가 달라 그 환경의 모든 프로젝트 `installationId`가 무효가 되고 [Reconnect]로 복구된다(malmoi#52). ⚠️ **Vercel의 `GITHUB_APP_*`는 환경별 변수여야 한다** — Production·Preview를 한 변수로 묶어 두면 `vercel env rm <name> preview`가 **Production까지 지운다**(2026-09-27 실측, 곧바로 복구했다).
 - ⚠️ **App 설치가 `Only select repositories`면** **DB에 `Project` 행을 만드는 것만으로는 부족하고** GitHub 설치의 선택 목록에도 그 리포를 넣어야 한다. 설치 범위 자체는 여기 적지 않는다(자주 바뀐다 — 콘솔이 정본). 안 넣으면 `probeRepo`가 `not-installed`를 주고 야간 pull은 "base 브랜치를 읽을 수 없다"를 낸다. ⚠️ **리포를 만들었다고 목록에 든 것이 아니다** — 둘은 다른 화면이고, 그 간극이 `not-installed`를 만난 사람을 엉뚱한 곳으로 보낸다. **`not-installed`를 보면 앱 설정의 Repository access를 먼저 연다.** ⚠️ **그 목록을 여기 적지 않는다** — GitHub 콘솔이 정본이고 문서 사본은 실물보다 앞서거나 뒤처지기만 했다(2026-09-23에 걷었다). 폐기용 리포 각각이 **왜 필요한지**는 `.claude/commands/roundtrip.md` 전제 조건 1과 `runtime-test.md` §7.1이 든다.
 
+## GitLab 로그인 앱 (2026-10-13)
+
+**GitLab.com 그룹의 Settings → Applications에서 `Malmoi` 앱 하나를 관리한다.** Confidential을 켜고 스코프는 `read_user` 하나다. 로그인 전용이며 리포 쓰기용 PAT와 무관하다. Self-Managed·Dedicated 발급자 설정은 없다. redirect URI는 줄마다 하나씩 세 개를 등록한다:
+
+```text
+http://localhost:3000/api/auth/callback/gitlab
+https://dev.mal-moi.com/api/auth/callback/gitlab
+https://mal-moi.com/api/auth/callback/gitlab
+```
+
+세 환경은 같은 Application ID·Secret을 쓴다. Google의 게시(In production)·도메인 소유권 검증 같은 별도 게시 단계가 없고 첫 로그인에서 사용자가 인가한다. **그룹 밖 사용자도 로그인할 수 있어야 한다** — 최초 검증 때 그룹 비멤버 계정으로 왕복을 확인한다. Preview 로그인은 등록한 `dev.mal-moi.com`에서만 검증한다(임의 Vercel preview 호스트는 callback 목록 밖이다).
+
+**Vercel 투입은 사용자가 로컬 CLI 스크립트로 한다.** 에이전트는 `.env.local`을 열람하지 않는다. Production·Preview를 한 변수로 묶지 않고 환경별로 각각 넣는다 — 묶인 변수를 Preview에서 지우면 Production까지 지워지는 함정은 GitHub App과 같다. 저장 값은 Sensitive라 `vercel env pull`로 복구하지 못한다.
+
+아래 스크립트는 리포 루트에서 **사용자가** 실행한다. `gitlab_login_env`에 `preview` 또는 `production`을 지정해 환경을 하나씩 처리한다. 투입과 목록 확인은 같은 변수를 쓴다. `.env.local`을 셸로 source하지 않고 dotenv로 읽어 값만 stdin으로 보낸다. CLI 출력에는 값을 싣지 않고 성공 여부만 출력한다. 이미 있으면 자동 삭제·덮어쓰지 않고 멈춘다.
+
+```sh
+gitlab_login_env=preview
+node --input-type=module - "$gitlab_login_env" <<'NODE'
+import { readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { parse } from 'dotenv';
+
+const target = process.argv[2];
+if (!['preview', 'production'].includes(target)) throw new Error('Choose preview or production');
+const values = parse(readFileSync('.env.local'));
+const names = ['AUTH_GITLAB_ID', 'AUTH_GITLAB_SECRET'];
+for (const name of names) {
+  if (!values[name]?.trim()) throw new Error(`Missing ${name}`);
+}
+for (const name of names) {
+  const result = spawnSync('vercel', ['env', 'add', name, target, '--sensitive', '--yes'], {
+    input: values[name], stdio: ['pipe', 'pipe', 'pipe'],
+  });
+  if (result.error || result.status !== 0) throw new Error(`Failed to add ${name} to ${target}; inspect env names before retrying`);
+  console.log(`Added ${name} to ${target}`);
+}
+NODE
+vercel env ls "$gitlab_login_env"
+```
+
+**성공 메시지를 근거로 삼지 않는다.** `vercel env ls "$gitlab_login_env"`에서 지정한 환경에 두 이름이 모두 존재하는지 확인한다. Preview·Production 각각 이 절차를 반복한다. 갱신이면 대상 환경에만 속한 변수임을 먼저 확인하고 `vercel env rm <NAME> <environment> --yes` 후 다시 넣는다(위 "새 머신 셋업"의 `--force` 함정). 해당 환경을 재배포한 뒤 `/signin`의 GitLab 버튼과 실제 왕복을 확인한다. Production 반영·배포는 `/merge` 절차에서 한다.
+
+**쌍 중 하나만 들어갔으면 그 환경부터 정리한다.** ID 추가 뒤 SECRET 추가가 실패할 수 있다. Hosted에는 preflight가 없어 이 반쪽 설정에서는 GitLab 버튼이 조용히 사라진다. `vercel env ls "$gitlab_login_env"`로 두 이름의 존재와 대상 환경을 확인하고, **존재하는 쪽을 각각** `vercel env rm <NAME> "$gitlab_login_env" --yes`로 지운 뒤 위 스크립트를 다시 실행한다. 다른 환경과 묶인 변수라면 삭제 전에 환경별 변수로 분리한다. **최종 상태는 둘 다 넣거나 둘 다 지운 상태여야 한다** — 복구를 미루면 남은 쪽도 지우고, 두 이름이 모두 없는지 같은 환경의 목록으로 확인한다. 정리·재투입 뒤 해당 환경을 재배포한다. 값은 조회하거나 화면·로그에 출력하지 않는다.
+
+**Secret 회전**: 그룹 Applications에서 해당 앱의 **Renew secret**을 누른 뒤 새 Secret을 로컬·Preview·Production의 `AUTH_GITLAB_SECRET`에 넣고 각 배포를 갱신한다. 기존 DB 세션·PAT 연결은 영향을 받지 않으며, 옛 Secret을 쓰는 로그인 왕복은 실패한다(진행 중인 왕복뿐 아니라 배포 갱신 전 새 로그인도 포함). 회전 뒤 각 origin의 왕복으로 마무리한다. GitLab은 인가 후 재왕복에서 `prompt`를 무시하므로 계정 선택·비밀번호 재입력을 확인 근거로 삼지 않는다(ARCHITECTURE 회수 절).
+
 ## Google OAuth 동의 화면 — 게시와 도메인 소유권 (2026-09-19)
 
 **상태: External + 게시(In production).** 그 전까지 테스트 모드였고 **등록된 테스트 사용자만** 로그인됐다 — 초대받은 비개발자 동료가 목록에 없으면 막혔다는 뜻이다. ⚠️ **Internal로 바꾸지 않는다** — 조직 밖 계정이 `403 org_internal`로 막혀 초대 경로가 통째로 죽는다.
@@ -373,7 +421,7 @@ CLAUDE.md) ④ 재배포 ⑤ 초대 한 통을 지정 수신자로 보내 접수
 ## 운영자 지정 — `OPERATOR_EMAILS` (2026-10-03, operator-account)
 
 **무엇**: 운영자(사용자당 프로젝트 상한 면제 — PRODUCT §3·§4.2, 판정은 ARCHITECTURE §6.2.2)를 정하는 정적 allowlist다. 값은 쉼표로 구분한
-**이메일 주소 전체**이고(`me@example.com,other@example.com`), 운영자가 **로그인한 계정의 주소**를 넣는다 — GitHub·Google 어느 쪽으로 들어와도
+**이메일 주소 전체**이고(`me@example.com,other@example.com`), 운영자가 **로그인한 계정의 주소**를 넣는다 — GitHub·GitLab·Google 어느 쪽으로 들어와도
 같은 `User`라 하나면 된다. 도메인 단위 지정은 없다. 비거나 없으면 운영자 0명이다(fail-closed — 다른 동작은 그대로).
 
 ⚠️ **값은 개인정보다** — Vercel에 **Sensitive**로 넣고, 로그·채팅·커밋에 값을 찍지 않는다(`cat`·`echo` 금지). `.env.example`에는 빈 값과 주석만 있다.
@@ -484,8 +532,8 @@ push 토큰을 회전하고 CI 변수 `PUSH_TOKEN`은 갱신하지 않는다.** 
 ## GitLab CI 원본 릴리스 — 태그 `malmoi-i18n-push-gitlab-vN` (2026-10-12, gitlab-repositories D5)
 
 **앱 릴리스(`v<x.y.z>`)와 GitHub action 태그(`malmoi-i18n-push-vN`)와 별개 축이다** — 형은 action 릴리스와 같다(ACTIONS §2 "태그를 옮기는 것은 릴리스다").
-GitLab 프로젝트의 생성 job은 이 리포를 그 태그로 clone하고 **생성 때 박힌 40자 SHA**와 `HEAD`를 대조한다. ⚠️ **2026-10-12 현재 발행 전이다** —
-`GITLAB_CI_RELEASE.sha`(`lib/onboarding/gitlab-ci.ts`)가 `null`인 동안 화면은 템플릿 대신 "아직 없다"를 말하고, MCP `get_workflow`는 `workflow-unavailable`이다.
+GitLab 프로젝트의 생성 job은 이 리포를 그 태그로 clone하고 **생성 때 박힌 40자 SHA**와 `HEAD`를 대조한다. **v1 발행 2026-10-13** — 태그는 `v1.4.0` squash 커밋 `456e0e1f`이고 SHA는 후속 커밋으로 상수에 들어가 다음 앱 릴리스로 나간다.
+`GITLAB_CI_RELEASE.sha`(`lib/onboarding/gitlab-ci.ts`)가 `null`인 판(발행 전 · 그 이전 버전의 설치본)에서는 화면은 템플릿 대신 "아직 없다"를 말하고, MCP `get_workflow`는 `workflow-unavailable`이다.
 
 1. `.gitlab/malmoi-i18n-push/`(또는 그것이 부르는 `push:local`·`lib/cli/gitlab-ci-input.ts`)의 변경이 **`main`에 머지된 뒤** 그 커밋에 태그를 만든다 —
    첫 발행은 `malmoi-i18n-push-gitlab-v1`.

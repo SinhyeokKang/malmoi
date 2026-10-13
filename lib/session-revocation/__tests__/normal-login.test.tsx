@@ -1,4 +1,5 @@
 import { Children, isValidElement, type ReactElement, type ReactNode } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, expect, it, vi } from "vitest";
 const s = vi.hoisted(() => ({ set: vi.fn(), signIn: vi.fn() }));
 vi.mock("@/auth", () => ({ signIn: s.signIn }));
@@ -44,11 +45,11 @@ const LINK = ["malmoi-login-link", "__Host-malmoi-login-link", "malmoi-link-stat
  * callback을 가로채면 그 로그인이 병합 실패 화면으로 샌다 (ARCHITECTURE "계정 병합").
  */
 const ENTRIES = [
-  { entry: "root", buttons: 2, cleared: [...REVOCATION, ...LINK, ...CONNECT], destination: "/projects" },
-  { entry: "invite", buttons: 2, cleared: [...REVOCATION, ...LINK, ...CONNECT], destination: "/invite/invite-token" },
+  { entry: "root", buttons: 3, cleared: [...REVOCATION, ...LINK, ...CONNECT], destination: "/projects" },
+  { entry: "invite", buttons: 3, cleared: [...REVOCATION, ...LINK, ...CONNECT], destination: "/invite/invite-token" },
   { entry: "link", buttons: 1, cleared: [...REVOCATION, ...LINK, ...CONNECT], destination: "/projects" },
   // mcp-oauth design §6.1 — 동의 화면의 로그인도 일반 로그인 진입점이다. 목적지는 요청 ID 정규형 하나(`e` 없이).
-  { entry: "oauth", buttons: 2, cleared: [...REVOCATION, ...LINK, ...CONNECT], destination: "/oauth/authorize?request=req_1" },
+  { entry: "oauth", buttons: 3, cleared: [...REVOCATION, ...LINK, ...CONNECT], destination: "/oauth/authorize?request=req_1" },
 ] as const;
 
 async function render(entry: (typeof ENTRIES)[number]["entry"]) {
@@ -72,7 +73,7 @@ it.each(ENTRIES)("$entry login clears abandoned confirmation cookies and preserv
       expect(s.set).toHaveBeenCalledWith(name, "", expect.objectContaining({ path: "/", maxAge: 0 }));
     }
     expect(s.set.mock.invocationCallOrder[0]).toBeLessThan(s.signIn.mock.invocationCallOrder[0]!);
-    expect(s.signIn).toHaveBeenCalledWith(expect.stringMatching(/^(github|google)$/), { redirectTo: destination });
+    expect(s.signIn).toHaveBeenCalledWith(expect.stringMatching(/^(github|gitlab|google)$/), { redirectTo: destination });
   }
 });
 
@@ -88,7 +89,7 @@ it("link confirmation carries the challenge token in its own cookie", async () =
 
 /**
  * 켜진 공급자만 그린다 (optional-login-providers spec §4.2) — 버튼 소비자 셋(`/signin`·`/invite`·`/oauth/authorize`)이 같은 판정
- * (`signInButtons`)을 쓴다. 테스트 기본(setup)은 hosted 두 쌍이고, 단독은 env를 비워 만든다.
+ * (`signInButtons`)을 쓴다. 테스트 기본(setup)은 hosted 세 쌍이고, 단독은 env를 비워 만든다.
  */
 const BUTTON_ENTRIES = ["root", "invite", "oauth"] as const;
 const shape = (buttons: ReactElement[]) => buttons.map((b) => {
@@ -97,12 +98,30 @@ const shape = (buttons: ReactElement[]) => buttons.map((b) => {
 });
 afterEach(() => vi.unstubAllEnvs());
 
-it.each(BUTTON_ENTRIES)("%s draws both providers on hosted — GitHub primary", async (entry) => {
+it.each(BUTTON_ENTRIES)("%s draws all three providers on hosted — GitHub primary, GitLab in the middle (D2)", async (entry) => {
+  expect(shape(providers(await render(entry)))).toEqual([["github", "primary"], ["gitlab", "default"], ["google", "default"]]);
+});
+
+/** GitLab env 투입 전 prod 모양(R-D ⚪4) — 셋째 버튼이 서지 않고 GitHub primary · Google default 그대로다. */
+it.each(BUTTON_ENTRIES)("%s draws GitHub and Google only when GitLab is off — the pre-rollout hosted shape", async (entry) => {
+  vi.stubEnv("AUTH_GITLAB_ID", "");
   expect(shape(providers(await render(entry)))).toEqual([["github", "primary"], ["google", "default"]]);
+});
+
+it.each(BUTTON_ENTRIES)("%s draws only GitLab when it is the sole provider — GitLab is primary", async (entry) => {
+  vi.stubEnv("AUTH_GITHUB_SECRET", "");
+  vi.stubEnv("AUTH_GOOGLE_SECRET", "");
+  const buttons = providers(await render(entry));
+  expect(shape(buttons)).toEqual([["gitlab", "primary"]]);
+  s.signIn.mockClear();
+  const form = Reflect.apply(buttons[0]!.type as Function, null, [buttons[0]!.props]) as ReactElement<{ action: () => Promise<void> }>;
+  await form.props.action();
+  expect(s.signIn).toHaveBeenCalledWith("gitlab", expect.anything());
 });
 
 it.each(BUTTON_ENTRIES)("%s draws only the enabled provider — Google alone is primary", async (entry) => {
   vi.stubEnv("AUTH_GITHUB_SECRET", "");
+  vi.stubEnv("AUTH_GITLAB_SECRET", "");
   const buttons = providers(await render(entry));
   expect(shape(buttons)).toEqual([["google", "primary"]]);
   s.signIn.mockClear();
@@ -111,7 +130,8 @@ it.each(BUTTON_ENTRIES)("%s draws only the enabled provider — Google alone is 
   expect(s.signIn).toHaveBeenCalledWith("google", expect.anything());
 });
 
-it.each(BUTTON_ENTRIES)("%s draws only GitHub when Google is off", async (entry) => {
+it.each(BUTTON_ENTRIES)("%s draws only GitHub when GitLab and Google are off", async (entry) => {
+  vi.stubEnv("AUTH_GITLAB_ID", "");
   vi.stubEnv("AUTH_GOOGLE_ID", "");
   expect(shape(providers(await render(entry)))).toEqual([["github", "primary"]]);
 });
@@ -129,4 +149,25 @@ it("signin shows the MethodUnavailable message, not OAuthAccountNotLinked", asyn
     return hit;
   })(page);
   expect(toast?.props.error).toBe("Your sign-in method isn't available here. Ask your administrator.");
+});
+
+/**
+ * `/signin/link` 배지는 카드 칸과 같은 `BrandGlyph`다(gitlab-oauth D6, R-D ⚪1) — 단색 GitHub가 잉크(`text-foreground`)를 들어야 배지 칸의 색을
+ * 받지 않는다. `ProviderIcon`으로 바꾸면 잉크가 빠진다.
+ */
+it("link badge draws the brand glyph with ink, not the bare provider icon", async () => {
+  const page = await render("link");
+  const badge = (function find(node: ReactNode): ReactNode {
+    let hit: ReactNode;
+    Children.forEach(node, (child) => {
+      if (hit !== undefined || !isValidElement<{ children?: ReactNode; badge?: ReactNode }>(child)) return;
+      if (child.props.badge !== undefined) hit = child.props.badge;
+      else hit = find(child.props.children);
+    });
+    return hit;
+  })(page);
+  expect(badge).toBeDefined();
+  const markup = renderToStaticMarkup(<>{badge}</>);
+  expect(markup).toMatch(/<svg[^>]*class="[^"]*\btext-foreground\b/);
+  expect(markup).toContain('fill="currentColor"');
 });

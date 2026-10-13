@@ -115,6 +115,6 @@ describe("disabled provider", () => {
     s.signIn.mockResolvedValue("https://accounts.google.com/o/oauth2/v2/auth?state=fresh");
     await expect(startSessionRevocation()).rejects.toThrow("REDIRECT:https://accounts.google.com");
     expect(s.signIn).toHaveBeenCalledWith("google", expect.anything(), expect.anything());
-    expect(s.begin).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ provider: "google", providerAccountId: "g", enabled: ["google"] }));
+    expect(s.begin).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ provider: "google", providerAccountId: "g", enabled: ["gitlab", "google"] }));
   });
 });

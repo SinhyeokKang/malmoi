@@ -1,6 +1,7 @@
 import "server-only";
 import { normalizeEmail } from "@/lib/auth/email";
 import { requireEnv } from "@/lib/env";
+import { isLoginProvider } from "@/lib/login-link/policy";
 import { CredentialError } from "./crypto";
 import { lookupEmail, openPii, openToken, sealPii, sealToken } from "./storage";
 
@@ -13,7 +14,7 @@ type AccountPatch = Pick<AccountFields, "access_token" | "refresh_token">;
 // ⚠️ **`plan*`이 아니다** — 이 리포의 `plan*`은 순수 함수인데 이 둘은 봉투를 열고 다시 봉인한다(키를 env에서 읽는다, launch-readiness L7.1).
 export function migrateAccountFields(row: AccountFields, mode: MigrationMode): AccountPatch | null {
   const hasSecrets = [row.access_token, row.refresh_token].some(v => v !== null);
-  if (row.provider === "github" || row.provider === "google") {
+  if (isLoginProvider(row.provider)) {
     if (!hasSecrets) return null;
     if (mode !== "backfill") throw new CredentialError();
     return { access_token: null, refresh_token: null };

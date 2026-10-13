@@ -1,6 +1,7 @@
 import "server-only";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { requireEnv } from "@/lib/env";
+import { isLoginProvider } from "@/lib/login-link/policy";
 import { credentialIO } from "./access";
 import { CredentialError } from "./crypto";
 import { assertUniqueEmails, isHashedSession, migrateAccountFields, migratePersonalFields, type MigrationMode } from "./migration";
@@ -61,7 +62,7 @@ export async function convertCredentials(prisma: PrismaClient, options: Conversi
     }
     const oldKey = (value: string | null | undefined, kind: "PII" | "TOKEN") => typeof value === "string" && value.startsWith("enc:") && value.split(":")[2] !== requireEnv(`${kind}_ENCRYPTION_ACTIVE_KEY_ID`);
     return { users: users.length, invitations: invitations.length, accounts: accounts.length, sessions: sessions.length,
-      loginAccounts: accounts.filter(a => a.provider === "github" || a.provider === "google").length,
+      loginAccounts: accounts.filter(a => isLoginProvider(a.provider)).length,
       appAccounts: owners.size,
       oldPiiKey: [...users.flatMap(u => [u.email, u.name, u.image]), ...invitations.map(i => i.email)].filter(v => oldKey(v, "PII")).length,
       oldTokenKey: [...accounts.flatMap(a => [a.access_token, a.refresh_token]), ...gitlabConnections.map(c => c.token)].filter(v => oldKey(v, "TOKEN")).length,

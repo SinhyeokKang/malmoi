@@ -2,8 +2,8 @@ import { optionalEnv } from "@/lib/env";
 import { LOGIN_PROVIDERS, type LoginProvider } from "@/lib/login-link/policy";
 
 /**
- * 로그인 공급자의 **켜진 집합** (optional-login-providers spec §4). 운영자가 자격증명 쌍을 넣은 공급자만 켜진다 — hosted는 둘 다
- * 넣으므로 결과가 지금과 같다(Q1: 모드별로 가르지 않는다).
+ * 로그인 공급자의 **켜진 집합** (optional-login-providers spec §4). 운영자가 자격증명 쌍을 넣은 공급자만 켜진다 — hosted는 셋 다
+ * 넣는다(Q1: 모드별로 가르지 않는다 · gitlab-oauth design §4 D5).
  *
  * ⚠️ **모듈 최상위에서 env를 읽지 않는다** (POSTMORTEM 2026-08-31 + 🔁 2건) — 켜진 집합은 요청마다 `enabledLoginProviders()`로 얻는다.
  *
@@ -17,6 +17,7 @@ export type LoginProviderState = "enabled" | "absent" | "partial";
 /** env 이름 표 — preflight의 쌍 규칙과 SH-15 ②-c 게이트가 같은 표를 본다. */
 export const LOGIN_PROVIDER_ENV: Record<LoginProvider, { id: string; secret: string }> = {
   github: { id: "AUTH_GITHUB_ID", secret: "AUTH_GITHUB_SECRET" },
+  gitlab: { id: "AUTH_GITLAB_ID", secret: "AUTH_GITLAB_SECRET" },
   google: { id: "AUTH_GOOGLE_ID", secret: "AUTH_GOOGLE_SECRET" },
 };
 
@@ -35,7 +36,7 @@ export function loginProviderStates(env: Record<string, string | undefined>): Re
     const count = [names.id, names.secret].filter((name) => present(env[name]) !== undefined).length;
     return count === 2 ? "enabled" : count === 0 ? "absent" : "partial";
   };
-  return { github: state("github"), google: state("google") };
+  return { github: state("github"), gitlab: state("gitlab"), google: state("google") };
 }
 
 /**
@@ -47,14 +48,16 @@ export function withEnabled<T extends { id: string }>(all: readonly T[], enabled
 }
 
 /**
- * 호출 시점의 켜진 집합 — 순서는 `LOGIN_PROVIDERS`(github → google).
+ * 호출 시점의 켜진 집합 — 순서는 `LOGIN_PROVIDERS`(github → gitlab → google).
  *
- * ⚠️ **이름 리터럴 넷으로 읽는다** — SH-15 ②가 `optionalEnv` 인자를 AST로 뽑아 preflight 표와 대조한다. 템플릿은 `unresolved`로 red다.
+ * ⚠️ **이름 리터럴 여섯으로 읽는다** — SH-15 ②가 `optionalEnv` 인자를 AST로 뽑아 preflight 표와 대조한다. 템플릿은 `unresolved`로 red다.
  */
 export function enabledLoginProviders(): LoginProvider[] {
   const states = loginProviderStates({
     AUTH_GITHUB_ID: optionalEnv("AUTH_GITHUB_ID"),
     AUTH_GITHUB_SECRET: optionalEnv("AUTH_GITHUB_SECRET"),
+    AUTH_GITLAB_ID: optionalEnv("AUTH_GITLAB_ID"),
+    AUTH_GITLAB_SECRET: optionalEnv("AUTH_GITLAB_SECRET"),
     AUTH_GOOGLE_ID: optionalEnv("AUTH_GOOGLE_ID"),
     AUTH_GOOGLE_SECRET: optionalEnv("AUTH_GOOGLE_SECRET"),
   });

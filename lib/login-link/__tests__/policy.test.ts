@@ -1,4 +1,4 @@
-import { expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import {
   CHALLENGE_TTL_MINUTES,
@@ -11,6 +11,7 @@ import {
   isLoginProvider,
   linkCookie,
   linkStateCookie,
+  LOGIN_PROVIDERS,
   loginMethodRows,
   methodCounts,
   outcomeUrl,
@@ -161,6 +162,69 @@ it("로그인 버튼은 켜진 공급자만, 첫째가 primary다", () => {
     { provider: "github", variant: "primary" },
     { provider: "google", variant: "default" },
   ]);
+});
+
+/**
+ * 셋째 공급자 GitLab (gitlab-oauth design §4 D2) — 우주 순서 `github → gitlab → google`. 확인 상대·행·버튼·해제가 같은 판정을 지나고,
+ * **기존 `[github, google]` 사용자의 확인 상대는 GitHub 그대로다**(spec §4-5).
+ */
+describe("GitLab — 우주의 가운데 자리", () => {
+  const ALL: readonly LoginProvider[] = ["github", "gitlab", "google"];
+  const github = { provider: "github", providerAccountId: "gh" };
+  const gitlab = { provider: "gitlab", providerAccountId: "gl" };
+  const google = { provider: "google", providerAccountId: "g" };
+
+  it("우주는 github → gitlab → google이다", () => {
+    expect(LOGIN_PROVIDERS).toEqual(["github", "gitlab", "google"]);
+    expect(isLoginProvider("gitlab")).toBe(true);
+  });
+
+  it("확인 상대 — GitHub이 없으면 GitLab이 Google보다 앞이고, 기존 [github, google]은 GitHub 그대로다", () => {
+    expect(pickLoginAccount([google, gitlab], ALL)).toEqual(gitlab);
+    expect(pickLoginAccount([github, google], ALL)).toEqual(github);
+    expect(pickLoginAccount([google, gitlab, github], ALL)).toEqual(github);
+    // GitLab이 꺼졌으면 확인 상대가 될 수 없다.
+    expect(pickLoginAccount([google, gitlab], ["github", "google"])).toEqual(google);
+  });
+
+  it("수단 행은 켜진 셋, GitLab이 가운데다", () => {
+    expect(loginMethodRows([{ provider: "gitlab" }], ALL)).toEqual([
+      { provider: "github", connected: false },
+      { provider: "gitlab", connected: true },
+      { provider: "google", connected: false },
+    ]);
+    expect(methodCounts(loginMethodRows([{ provider: "gitlab" }, { provider: "google" }], ALL))).toEqual({ connected: 2, total: 3 });
+    // 꺼진 GitLab 행은 숨긴다 — 분모에서도 빠진다.
+    expect(methodCounts(loginMethodRows([{ provider: "gitlab" }, { provider: "google" }], BOTH))).toEqual({ connected: 1, total: 2 });
+  });
+
+  it("로그인 버튼 — GitLab 단독이면 GitLab이 primary다", () => {
+    expect(signInButtons(ALL)).toEqual([
+      { provider: "github", variant: "primary" },
+      { provider: "gitlab", variant: "default" },
+      { provider: "google", variant: "default" },
+    ]);
+    expect(signInButtons(["gitlab"])).toEqual([{ provider: "gitlab", variant: "primary" }]);
+    expect(signInButtons(["google", "gitlab"])).toEqual([
+      { provider: "gitlab", variant: "primary" },
+      { provider: "google", variant: "default" },
+    ]);
+  });
+
+  it("해제 — 켜진 연결 수단이 하나 이상 남을 때만이다", () => {
+    expect(canUnlink(["github", "gitlab"], "gitlab", ALL)).toBe(true);
+    // 연결은 둘이어도 켜진 것이 GitLab 하나면 그것을 해제할 수 없다.
+    expect(canUnlink(["github", "gitlab"], "gitlab", ["gitlab"])).toBe(false);
+    expect(canUnlink(["gitlab", "google"], "google", ["gitlab", "google"])).toBe(true);
+  });
+
+  it("challenge는 gitlab을 붙일 수단으로 왕복하고, gitlab으로 확인할 수 있다", () => {
+    const live = { expires: new Date(100), now: new Date(99) };
+    const c = { ...challenge, provider: "gitlab" as const };
+    expect(parseChallengeIdentifier(challengeIdentifier(c))).toEqual(c);
+    expect(checkChallenge(c, { ...live, confirming: "gitlab" })).toBe("invalid");
+    expect(checkChallenge(challenge, { ...live, confirming: "gitlab" })).toBe("ok");
+  });
 });
 
 /**

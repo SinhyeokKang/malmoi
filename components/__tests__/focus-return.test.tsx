@@ -139,7 +139,7 @@ describe("Dialog 트리거 — 진행 중에도 포커스를 지킨다 (#32·#32
   it("모든 기기 로그아웃 확정 뒤 포커스가 트리거에 남고, 진행 중엔 Dialog가 다시 열리지 않는다", async () => {
     const response = deferred<void>();
     mocks.startSessionRevocation.mockReturnValue(response.promise);
-    await render(<SessionsSection outcome={undefined} signOut={() => {}} confirmProvider="GitHub" />);
+    await render(<SessionsSection outcome={undefined} signOut={() => {}} confirmProvider="github" />);
     await click(byText(en.account.sessions.title));
     await click(byText(en.account.sessions.confirmAction("GitHub")));
     const trigger = byText(en.account.sessions.title);

@@ -9,7 +9,7 @@ import { signIn } from "@/auth";
 import { AuthColumn, AuthHeading } from "@/components/signin/auth-column";
 import { AuthLayout } from "@/components/signin/auth-layout";
 import { AuthToast } from "@/components/signin/auth-toast";
-import { GithubIcon, GoogleIcon } from "@/components/signin/brand-icons";
+import { ProviderIcon } from "@/components/signin/brand-icons";
 import { ProviderSubmit } from "@/components/signin/provider-button";
 import { MalmoiMark } from "@/components/ui/malmoi-mark";
 import { signInErrorMessage } from "@/lib/auth/message";
@@ -72,7 +72,7 @@ export default async function SignIn({
             꺼진 공급자의 버튼은 누르면 실패하므로 그리지 않는다(optional-login-providers spec §4.2).
           */}
           {signInButtons(enabledLoginProviders()).map(({ provider, variant }) => (
-            <ProviderButton key={provider} provider={provider} label={provider === "github" ? m.signIn.github : m.signIn.google} variant={variant} />
+            <ProviderButton key={provider} provider={provider} label={m.signIn[provider]} variant={variant} />
           ))}
 
           {dest.kind === "invite" && (
@@ -129,7 +129,7 @@ function ProviderButton({
       <ProviderSubmit
         label={label}
         variant={variant}
-        icon={provider === "github" ? <GithubIcon aria-hidden className="size-4" /> : <GoogleIcon aria-hidden className="size-4" />}
+        icon={<ProviderIcon provider={provider} aria-hidden className="size-4" />}
       />
     </form>
   );

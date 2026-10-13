@@ -4,7 +4,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { hashInviteToken } from "@/lib/auth/invitation";
 
 import { beginLink, challengeTokenHash, finishLink, loadLinkOffer } from "../store";
-import { challengeIdentifier } from "../policy";
+import { challengeIdentifier, LOGIN_PROVIDERS } from "../policy";
 import { encodeUserFields } from "@/lib/credentials/records";
 
 /** ⚠️ **해시 규칙이 한 곳이다** — 초대 토큰과 같은 함수를 쓴다 (ARCHITECTURE "계정 병합"). */
@@ -156,7 +156,7 @@ it("연결 수단이 전부 꺼져 있으면 method-unavailable이고, 켜져 �
   expect(await loadLinkOffer(db, { ...input, enabled: ["google"] })).toEqual({ kind: "method-unavailable" });
   expect(await loadLinkOffer(db, { ...input, enabled: ["github", "google"] })).toEqual({ kind: "offer", userId: "u1", have: "github" });
   // 꺼진 공급자의 행도 읽는다 — 판정이 "숨김"을 결정하려면 우주 전체를 봐야 한다.
-  expect(findMany).toHaveBeenCalledWith({ where: { userId: "u1", provider: { in: ["github", "google"] } }, select: { provider: true } });
+  expect(findMany).toHaveBeenCalledWith({ where: { userId: "u1", provider: { in: [...LOGIN_PROVIDERS] } }, select: { provider: true } });
 });
 
 // 장애가 null·"unavailable"로 접히는 자리다 — 원인을 볼 곳이 서버 로그 한 줄뿐이다 (launch-readiness L5.2).

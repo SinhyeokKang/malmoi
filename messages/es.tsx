@@ -175,6 +175,7 @@ export const es = {
     backToInvitation: "Volver a la invitación",
     backToAuthorization: "Volver a la autorización de la app",
     github: "Continuar con GitHub",
+    gitlab: "Continuar con GitLab",
     google: "Continuar con Google",
     consent: { before: "Al hacer clic en Continuar con un servicio externo, aceptas la ", link: "Política de privacidad", after: " de este sitio." },
     footer: { copyright: "© 2026 Malmoi", github: "GitHub", privacy: "Política de privacidad" },
@@ -918,7 +919,7 @@ export const es = {
     gitlab: {
       expiresSoon: "Caduca pronto",
       title: "GitLab PAT",
-      rowName: "GitLab",
+      rowName: "Token de GitLab",
       hintNotConnected: "Conecta un token de acceso personal de GitLab para crear proyectos a partir de repositorios de GitLab.",
       expires: (date: string): string => `Caduca el ${date}.`,
       expiredOn: (date: string): string => `Caducó el ${date}. Reemplaza el token para que los proyectos que lo usan sigan funcionando.`,
@@ -927,11 +928,11 @@ export const es = {
       replace: "Reemplazar token",
       replaceTitle: "Reemplazar el token de GitLab",
       replaceHint: (username: string): string => `Pega un token nuevo para @${username}. Los proyectos que usan esta conexión pasan a usarlo enseguida.`,
-      disconnectLabel: "Desconectar GitLab",
-      confirmDisconnect: "¿Desconectar GitLab de Malmoi?",
+      disconnectLabel: "Desconectar el token de GitLab",
+      confirmDisconnect: "¿Desconectar este token de GitLab?",
       confirmHint: "Malmoi elimina el token guardado. Los proyectos que usan esta conexión dejan de sincronizarse y publicarse hasta que un propietario del proyecto los vuelva a conectar.",
-      disconnectFailed: "No se pudo desconectar GitLab. Vuelve a intentarlo.",
-      disconnectConfirm: "Desconectar GitLab",
+      disconnectFailed: "No se pudo desconectar el token de GitLab. Vuelve a intentarlo.",
+      disconnectConfirm: "Desconectar token",
       expiresSoonNotice: (days: number, date: string): string =>
         `Tu token de GitLab caduca en ${days.toLocaleString("es")} ${days === 1 ? "día" : "días"}, el ${date}. Reemplázalo antes para que los proyectos que lo usan sigan funcionando.`,
       form: {
@@ -951,7 +952,11 @@ export const es = {
       confirmTitle: "¿Cerrar sesión en todas partes?",
       confirmHint: "Lo confirmarás con la cuenta con la que inicias sesión y después se cerrará la sesión en todos los dispositivos, incluido este.",
       confirmAction: (provider: string): string => `Continuar a ${provider}`,
-      confirmDetail: (provider: string): string => `${provider} te pedirá que lo confirmes antes de que cambie nada.`,
+      confirmDetail: {
+        github: "GitHub te pedirá que lo confirmes antes de que cambie nada.",
+        gitlab: "Te enviaremos a GitLab. Si ya iniciaste sesión allí, vuelves enseguida y se cierran todas las sesiones.",
+        google: "Google te pedirá que lo confirmes antes de que cambie nada.",
+      },
       willConfirm: "Te llevaremos a tu proveedor para que lo confirmes y después te traeremos de vuelta aquí.",
       complete: "Se cerró tu sesión en todas partes. Vuelve a iniciar sesión para continuar.",
       failed: "No se pudo cerrar tu sesión en todas partes. Vuelve a intentarlo.",
@@ -1924,7 +1929,7 @@ export const es = {
     invite: {
       open: "Invitar miembro",
       title: "Invitar miembros",
-      description: "Envía invitaciones por correo electrónico y elige un rol para cada persona. Usa la dirección con la que inician sesión — en GitHub, su correo principal.",
+      description: "Envía invitaciones por correo electrónico y elige un rol para cada persona. Usa la dirección con la que inician sesión — en GitHub y GitLab, su correo principal.",
       columns: { email: "Correo electrónico", role: "Rol" },
       placeholder: "nombre@empresa.com",
       roleHint: {
@@ -2052,7 +2057,7 @@ export const es = {
         usedByUpdates: (n: number): string => (n === 1 ? "Lo usa 1 proyecto. Al reemplazarlo se actualiza." : `Lo usan ${n.toLocaleString("es")} proyectos. Al reemplazarlo se actualizan todos.`),
         usedByReconnects: (n: number): string => (n === 1 ? "Lo usa 1 proyecto. Al reemplazarlo se vuelve a conectar." : `Lo usan ${n.toLocaleString("es")} proyectos. Al reemplazarlo se vuelven a conectar todos.`),
         unusable: "El token de GitLab de este proyecto no se puede usar. Puede que haya caducado o se haya revocado, o que su propietario haya perdido el acceso al repositorio. Las sincronizaciones y publicaciones se detienen hasta que se vuelva a conectar.",
-        removed: "Se quitó la conexión de GitLab de este proyecto: quien la conectó desconectó GitLab o dejó el proyecto. Las sincronizaciones y publicaciones se detienen hasta que un propietario del proyecto la vuelva a conectar.",
+        removed: "Se quitó la conexión de GitLab de este proyecto: quien la conectó desconectó su token de GitLab o dejó el proyecto. Las sincronizaciones y publicaciones se detienen hasta que un propietario del proyecto la vuelva a conectar.",
         useMine: "Usar mi conexión de GitLab",
         useMineHint: (owner: string | null, me: string): string =>
           owner === null ? `A partir de entonces, las sincronizaciones y publicaciones quedan a nombre de @${me}.` : `Tu token de GitLab reemplaza el de @${owner}: a partir de entonces, las sincronizaciones y publicaciones quedan a nombre de @${me}.`,
@@ -2180,7 +2185,7 @@ export const es = {
   },
 
   link: {
-    providers: { github: "GitHub", google: "Google" },
+    providers: { github: "GitHub", gitlab: "GitLab", google: "Google" },
     title: "Este correo ya tiene una cuenta",
     description: (pending: string, have: string): string =>
       `Acabas de iniciar sesión con ${pending}, pero esta dirección se creó con ${have}.`,
@@ -2289,7 +2294,7 @@ export const es = {
       "token-invalid": "GitLab no aceptó este token. Puede que haya caducado o se haya revocado: crea uno nuevo y pégalo aquí.",
       "token-fine-grained": "Este es un token detallado (fine-grained). Malmoi necesita un token de acceso personal clásico con el alcance api: crea uno y pégalo aquí.",
       "token-scope-missing": "Este token no tiene el alcance api. Crea un token nuevo con el alcance api y pégalo aquí.",
-      "account-mismatch": "Este token es de otra cuenta de GitLab. Primero desconecta GitLab en Cuenta y después conecta la otra cuenta.",
+      "account-mismatch": "Este token es de otra cuenta de GitLab. Primero desconecta tu token de GitLab en Cuenta y después conecta la otra cuenta.",
       "gitlab-not-connected": "Primero conecta tu cuenta de GitLab en Cuenta.",
       "gitlab-reconnect": "Tu token de GitLab ya no se puede usar. Reemplázalo en Cuenta.",
       "gitlab-repo-archived": "Este proyecto de GitLab está archivado. Desarchívalo en GitLab y vuelve a intentarlo.",

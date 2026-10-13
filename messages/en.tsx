@@ -493,6 +493,7 @@ export const en = {
     // 동의 화면에서 시작한 로그인이 취소·오류로 여기 착지했을 때의 복귀 링크(mcp-oauth design §6.1) — `backToInvitation`과 같은 자리·형.
     backToAuthorization: "Back to app authorization",
     github: "Continue with GitHub",
+    gitlab: "Continue with GitLab",
     google: "Continue with Google",
     /** 약관 — 링크 앞뒤로 갈린다. Terms는 만들지 않는다(유료 서비스가 아니다). */
     consent: { before: "By clicking Continue through a third party you accept the ", link: "Privacy Policy", after: "." },
@@ -712,7 +713,7 @@ export const en = {
        * ⚠️ **여기서 이름을 대는 저장 항목은 `lib/privacy/collected.ts`의 등재와 절 id로 묶인다** —
        * 표는 필드 여럿을 한 행으로 접으므로 대조 단위가 라벨이 아니라 절이다.
        */
-      effectiveDate: "2026-10-12",
+      effectiveDate: "2026-10-13",
       /**
        * 목차 이름 — ⚠️ **`sections` 밖에 둔다**: `policy-gate.test.tsx`가 `sections`를 해시하므로 안에 넣으면 개정 이력이 요구된다.
        */
@@ -739,7 +740,7 @@ export const en = {
                 rows: [
                   [
                     "Your name, email address and profile picture",
-                    "GitHub or Google, when you sign in",
+                    "Name and email: GitHub, GitLab or Google when you sign in (GitLab supplies your username if no name is set). Profile picture: GitHub or Google only; Malmoi does not receive a profile picture from GitLab",
                     "Identifying you to your teammates",
                   ],
                   [
@@ -748,8 +749,8 @@ export const en = {
                     "Matching an invitation to the account that accepts it, without comparing addresses in the clear",
                   ],
                   [
-                    "Which GitHub or Google account you signed in with, as the account id at that provider",
-                    "GitHub or Google, when you sign in",
+                    "Which GitHub, GitLab or Google account you signed in with, as the account id at that provider",
+                    "GitHub, GitLab or Google, when you sign in",
                     "Recognizing you the next time. Malmoi keeps no sign-in tokens — the id is all it stores",
                   ],
                   [
@@ -759,13 +760,13 @@ export const en = {
                   ],
                   [
                     "A GitLab personal access token (PAT), your GitLab user ID and username, the token's expiry date and scopes, and when the connection was created or updated",
-                    "You and GitLab, when you connect your GitLab account",
+                    "You and GitLab, when you connect a GitLab personal access token",
                     "Checking your repository access, reading files, and publishing translations using the account connected to the project",
                   ],
                   [
                     "Sign-in state: your session, and short-lived challenges for linking an account or signing other sessions out",
                     "Created by Malmoi",
-                    "Keeping you signed in, and proving that a reply from GitHub or Google belongs to a round trip you started",
+                    "Keeping you signed in, and proving that a reply from GitHub, GitLab or Google belongs to a round trip you started",
                   ],
                   [
                     "Your project membership and any invitation sent to your address",
@@ -853,7 +854,7 @@ export const en = {
             {
               ul: [
                 "Your account and its connections: kept until you ask us to delete them.",
-                "Your GitLab connection and encrypted PAT: kept until you disconnect GitLab or ask us to delete your account. Replacing the PAT overwrites the previous token and its metadata. An expired or revoked token stops working but stays stored until replacement or disconnection. Disconnecting in Malmoi does not revoke the token at GitLab.",
+                "Your GitLab token connection and encrypted PAT: kept until you disconnect your GitLab token or ask us to delete your account. Removing GitLab as a sign-in method does not remove the token connection or stored PAT. Replacing the PAT overwrites the previous token and its metadata. An expired or revoked token stops working but stays stored until replacement or token disconnection. Disconnecting the token in Malmoi does not revoke it at GitLab.",
                 "The language you choose: kept with your account until you choose another or ask us to delete your account. On a browser, the language cookie lasts a year from the last time you chose a language or signed in with a language saved to your account.",
                 "The time zone you choose: kept with your account until you choose another or ask us to delete your account. It is not stored in a cookie.",
                 "The theme you choose: kept with your account until you choose another or ask us to delete your account. On a browser, the theme cookie lasts a year from the last time you chose a theme or signed in with a theme saved to your account.",
@@ -877,7 +878,7 @@ export const en = {
             {
               ul: [
                 "GitHub — signing you in, and reading and writing the repository a project is connected to. Translations are committed and opened as a pull request by Malmoi's GitHub App, not under your own account.",
-                "GitLab (gitlab.com) — if you connect it, Malmoi sends your PAT to verify your identity and repository access, read repository files, and write translation commits and merge requests. Publishing uses the GitLab account whose connection is saved on the project; commits and merge requests are attributed to that account.",
+                "GitLab (gitlab.com) — signing you in, and reading and writing the repository a project is connected to. If you connect a GitLab personal access token, Malmoi sends it to verify your identity and repository access, read repository files, and write translation commits and merge requests. Publishing uses the GitLab account whose connection is saved on the project; commits and merge requests are attributed to that account.",
                 "Google — signing you in, if you choose Google.",
                 "Supabase — the database, hosted in Tokyo.",
                 "Vercel — hosting for the app, storage for uploaded profile pictures and project pictures, and counting visits to the public pages (Web Analytics, described under What we collect). Vercel records requests to the service, including IP addresses, as part of running it.",
@@ -921,7 +922,7 @@ export const en = {
           heading: "Cookies",
           blocks: [
             {
-              p: "Every cookie Malmoi sets is needed to sign you in, to finish a round trip to GitHub or Google, or to remember the language and theme you chose for Malmoi's screens and whether you collapsed the sidebar. There are no analytics, advertising or tracking cookies, so there is nothing here to consent to or turn off. All of them except the sidebar cookie are http-only, which means scripts cannot read them. The sidebar cookie holds only whether the sidebar is collapsed, so Malmoi's pages write it directly.",
+              p: "Every cookie Malmoi sets is needed to sign you in, to finish a round trip to GitHub, GitLab or Google, or to remember the language and theme you chose for Malmoi's screens and whether you collapsed the sidebar. There are no analytics, advertising or tracking cookies, so there is nothing here to consent to or turn off. All of them except the sidebar cookie are http-only, which means scripts cannot read them. The sidebar cookie holds only whether the sidebar is collapsed, so Malmoi's pages write it directly.",
             },
             {
               table: {
@@ -938,7 +939,7 @@ export const en = {
                   [
                     "Sign-in state",
                     "15 minutes",
-                    "Proves that the reply from GitHub or Google belongs to the sign-in you started",
+                    "Proves that the reply from GitHub, GitLab or Google belongs to the sign-in you started",
                   ],
                   ["Repository connection state", "10 minutes", "The same, for connecting a repository"],
                   [
@@ -961,7 +962,7 @@ export const en = {
             {
               p: "The effective date at the top belongs to the text below it: whenever this policy changes, that date moves and the change is listed here.",
             },
-            { ul: ["2026-10-12 — GitLab repositories are supported. This policy now covers GitLab account identifiers, encrypted personal access tokens, expiry dates and scopes, connection retention, and transfers to gitlab.com.", "2026-10-09 — the “Needs your attention” list in the header is now called Inbox, and it also has its own page. Viewing that page counts as looking at your Inbox, the same as opening the list in the header.", "2026-10-07 — Malmoi remembers whether you collapsed the sidebar in a cookie on this browser. It is the only cookie that scripts can read, and it holds nothing else.", "2026-10-05 — the “Needs your attention” list in the header marks items that are new since you last opened it. Malmoi keeps one time per account — when you last opened the list — and no record of which items you saw.", "2026-10-05 — you can choose Malmoi's theme: System, Light or Dark. Malmoi remembers your choice with your account and in a cookie on this browser, and signing in copies the theme saved to your account into that cookie.", "2026-10-05 — you can choose the time zone Malmoi uses for dates and times. Malmoi remembers your choice with your account only, not in a cookie. Public pages always use UTC.", "2026-10-05 — you can choose the language of Malmoi's screens: English, Korean or Spanish. Malmoi remembers your choice with your account and in a cookie on this browser, and signing in copies the language saved to your account into that cookie. This policy is also published in Korean.", "2026-09-29 — you can also connect an app such as Claude Code or Codex by signing in through your browser, with no token to copy. Malmoi keeps the connection — the app's name and address, the actions and projects you allowed, when it was used — and only hashes of the tokens it issued; you can disconnect it on the MCP connector page.", "2026-09-29 — you can create a personal token for AI agents on the MCP connector page. Malmoi stores only a hash of it, with the actions and projects you allowed and when it was used.", "2026-09-28 — invitation emails show the name and picture of the project you are invited to, and your role in it. They still do not say who invited you.", "2026-09-27 — visits to the public pages are counted with Vercel Web Analytics, without cookies.", "2026-09-26 — the product name is written Malmoi. No change to what we collect or share.", "2026-09-24 — invitations can be sent by email through Resend.", "2026-09-19 — first version."] },
+            { ul: ["2026-10-13 — GitLab is also a sign-in provider. This policy now covers receiving your name (or username), email address and GitLab account id for sign-in, and using gitlab.com for that purpose. Malmoi does not receive a profile picture from GitLab.", "2026-10-12 — GitLab repositories are supported. This policy now covers GitLab account identifiers, encrypted personal access tokens, expiry dates and scopes, connection retention, and transfers to gitlab.com.", "2026-10-09 — the “Needs your attention” list in the header is now called Inbox, and it also has its own page. Viewing that page counts as looking at your Inbox, the same as opening the list in the header.", "2026-10-07 — Malmoi remembers whether you collapsed the sidebar in a cookie on this browser. It is the only cookie that scripts can read, and it holds nothing else.", "2026-10-05 — the “Needs your attention” list in the header marks items that are new since you last opened it. Malmoi keeps one time per account — when you last opened the list — and no record of which items you saw.", "2026-10-05 — you can choose Malmoi's theme: System, Light or Dark. Malmoi remembers your choice with your account and in a cookie on this browser, and signing in copies the theme saved to your account into that cookie.", "2026-10-05 — you can choose the time zone Malmoi uses for dates and times. Malmoi remembers your choice with your account only, not in a cookie. Public pages always use UTC.", "2026-10-05 — you can choose the language of Malmoi's screens: English, Korean or Spanish. Malmoi remembers your choice with your account and in a cookie on this browser, and signing in copies the language saved to your account into that cookie. This policy is also published in Korean.", "2026-09-29 — you can also connect an app such as Claude Code or Codex by signing in through your browser, with no token to copy. Malmoi keeps the connection — the app's name and address, the actions and projects you allowed, when it was used — and only hashes of the tokens it issued; you can disconnect it on the MCP connector page.", "2026-09-29 — you can create a personal token for AI agents on the MCP connector page. Malmoi stores only a hash of it, with the actions and projects you allowed and when it was used.", "2026-09-28 — invitation emails show the name and picture of the project you are invited to, and your role in it. They still do not say who invited you.", "2026-09-27 — visits to the public pages are counted with Vercel Web Analytics, without cookies.", "2026-09-26 — the product name is written Malmoi. No change to what we collect or share.", "2026-09-24 — invitations can be sent by email through Resend.", "2026-09-19 — first version."] },
           ],
         },
       ],
@@ -2102,8 +2103,11 @@ export const en = {
       expiresSoon: "Expires soon",
       /** 카드 제목 — 시안 그대로(design-brief 확정 6). 붙어 있는 것이 계정이 아니라 토큰이다. */
       title: "GitLab PAT",
-      /** 미연결 행의 제목 자리 — 글리프는 `aria-hidden`이라 호스트 이름이 글자로 선다. */
-      rowName: "GitLab",
+      /**
+       * 미연결 행의 제목 자리 — 글리프는 `aria-hidden`이라 호스트 이름이 글자로 선다. ⚠️ **"token"을 든다** (gitlab-oauth J8) — 같은 화면의
+       * Sign-in methods에 `GitLab` 행이 서고 둘 다 3색 tanuki라, 둘 다 미연결이면 `GitLab · Not connected`가 두 번 선다. 로그인 수단 행은 그대로다.
+       */
+      rowName: "GitLab token",
       hintNotConnected: "Connect a GitLab personal access token to create projects from GitLab repositories.",
       /** 보조 줄 — 만료일(`formatDay`, 오프셋 라벨 없음)과 이 연결을 참조하는 프로젝트 수. 둘 다 토큰을 바꿀지의 근거다. */
       expires: (date: string): string => `Expires ${date}.`,
@@ -2114,13 +2118,16 @@ export const en = {
       replace: "Replace token",
       replaceTitle: "Replace GitLab token",
       replaceHint: (username: string): string => `Paste a new token for @${username}. Projects that use this connection switch to it right away.`,
-      /** ⚠️ 접근 이름이 축을 든다 — 같은 화면에 GitHub App의 [Disconnect]가 나란히 선다(DESIGN §6.646). */
-      disconnectLabel: "Disconnect GitLab",
-      confirmDisconnect: "Disconnect GitLab from Malmoi?",
+      /**
+       * ⚠️ 접근 이름이 축을 든다 — 같은 화면에 GitHub App의 [Disconnect]와 GitLab 로그인 수단의 [Disconnect]가 나란히 선다(DESIGN §6.646).
+       * 로그인 수단 쪽은 `Disconnect GitLab as a sign-in method`·`Disconnect GitLab?`이라, 이 카드가 "token"을 들어 둘을 가른다(gitlab-oauth J8).
+       */
+      disconnectLabel: "Disconnect GitLab token",
+      confirmDisconnect: "Disconnect this GitLab token?",
       confirmHint: "Malmoi deletes the saved token. Projects that use this connection stop syncing and publishing until a project owner reconnects them.",
-      disconnectFailed: "GitLab wasn't disconnected. Try again.",
+      disconnectFailed: "The GitLab token wasn't disconnected. Try again.",
       /** 해제 확인 버튼 — GitHub App의 `Disconnect app`을 쓰지 않는다(이 카드는 앱이 아니라 토큰이다). */
-      disconnectConfirm: "Disconnect GitLab",
+      disconnectConfirm: "Disconnect token",
       /** 만료 임박 띠(시안 G8) — 남은 일수와 날짜, 그리고 무엇이 멈추는가. */
       expiresSoonNotice: (days: number, date: string): string =>
         `Your GitLab token expires in ${days.toLocaleString("en-US")} ${days === 1 ? "day" : "days"}, on ${date}. Replace it before then to keep the projects that use it running.`,
@@ -2154,8 +2161,15 @@ export const en = {
       /**
        * Dialog의 **검은 줄** — *지금 참인 값*을 말한다(회색 설명문은 *무엇을 잃나*를 말한다).
        * 확인이 둘이 되는 것을 미리 알려 두 번째가 실패로 읽히지 않게 한다.
+       *
+       * ⚠️ **공급자마다 문장이 다르다 — 이름 보간이 아니다** (#262 · DESIGN §10.1). GitLab은 이미 인가한 앱에 화면 없이 바로 돌아오고 계정
+       * 선택을 강제할 파라미터가 없다(gitlab-oauth T0 ⑤ · design D4) — "확인을 묻는다"고 약속하면 누르는 순간 모든 세션이 끝나 거짓이 된다.
        */
-      confirmDetail: (provider: string): string => `${provider} will ask you to confirm before anything changes.`,
+      confirmDetail: {
+        github: "GitHub will ask you to confirm before anything changes.",
+        gitlab: "We'll send you to GitLab. If you're already signed in there, you come straight back and every session ends.",
+        google: "Google will ask you to confirm before anything changes.",
+      },
       /**
        * 행 본문의 `— {범위}` 자리 (2026-09-16). ⚠️ **`description`을 대신한다** — 그 문장
        * (`Confirm with the account you use to sign in. …`)은 확인 왕복을 설명했고, 그 말은 이제
@@ -3588,10 +3602,10 @@ export const en = {
       /** ⚠️ **여러 명이다** (핸드오프 `1a`) — 한 폼이 여러 행을 보낸다. */
       title: "Invite members",
       /**
-       * ⚠️ **둘째 문장이 수락 조건이다** (launch-readiness L2.8) — 수락은 로그인 계정의 주소와 대조하고 GitHub은
+       * ⚠️ **둘째 문장이 수락 조건이다** (launch-readiness L2.8) — 수락은 로그인 계정의 주소와 대조하고 GitHub·GitLab은
        * primary 주소 하나만 쓴다(`lib/auth/email.ts`). 거부 문구는 초대 주소를 일부러 안 밝히므로 행동할 수 있는 쪽은 초대자다.
        */
-      description: "Send invitations by email and choose a role for each person. Use the address they sign in with — for GitHub, their primary email.",
+      description: "Send invitations by email and choose a role for each person. Use the address they sign in with — for GitHub and GitLab, their primary email.",
       /** 열 머리 둘 — 빈 행 하나로 열리면 두 번째 컨트롤이 무엇인지 값만으로는 안 읽힌다. */
       columns: { email: "Email", role: "Role" },
       placeholder: "name@company.com",
@@ -3779,7 +3793,7 @@ export const en = {
         usedByUpdates: (n: number): string => `Used by ${n.toLocaleString("en-US")} ${n === 1 ? "project" : "projects"}. Replacing it updates all of them.`,
         usedByReconnects: (n: number): string => `Used by ${n.toLocaleString("en-US")} ${n === 1 ? "project" : "projects"}. Replacing it reconnects all of them.`,
         unusable: "This project's GitLab token can't be used. It may have expired or been revoked, or its owner may have lost access to the repository. Syncs and publishes stop until it's reconnected.",
-        removed: "This project's GitLab connection was removed — the person who connected it disconnected GitLab or left the project. Syncs and publishes stop until a project owner reconnects it.",
+        removed: "This project's GitLab connection was removed — the person who connected it disconnected their GitLab token or left the project. Syncs and publishes stop until a project owner reconnects it.",
         useMine: "Use my GitLab connection",
         /** ⚠️ 명의가 바뀐다는 문장이 버튼 앞에 선다(시안 G6c) — 이후 GitLab 쓰기의 작성자가 누른 사람이다. */
         useMineHint: (owner: string | null, me: string): string =>
@@ -3995,7 +4009,7 @@ export const en = {
    * 다르게 읽히지 않는다.
    */
   link: {
-    providers: { github: "GitHub", google: "Google" },
+    providers: { github: "GitHub", gitlab: "GitLab", google: "Google" },
     title: "This email already has an account",
     /** 무엇으로 들어왔고 무엇으로 만들어졌는지를 한 줄로 — 둘 다 말하지 않으면 다음 클릭을 못 고른다. */
     description: (pending: string, have: string): string =>
@@ -4346,7 +4360,7 @@ export const en = {
       "token-invalid": "GitLab didn't accept this token. It may have expired or been revoked — create a new one and paste it here.",
       "token-fine-grained": "This is a fine-grained token. Malmoi needs a legacy personal access token with the api scope — create one and paste it here.",
       "token-scope-missing": "This token doesn't have the api scope. Create a new token with the api scope and paste it here.",
-      "account-mismatch": "This token belongs to a different GitLab account. Disconnect GitLab on the Account page first, then connect the other account.",
+      "account-mismatch": "This token belongs to a different GitLab account. Disconnect your GitLab token on the Account page first, then connect the other account.",
       ...GITLAB_ACCESS_ERRORS,
       unavailable: "GitLab didn't answer. Try again in a moment.",
       fallback: "The GitLab connection failed. Try again.",

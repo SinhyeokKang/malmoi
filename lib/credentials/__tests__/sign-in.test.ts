@@ -4,6 +4,7 @@ const state = vi.hoisted(() => ({ factory: undefined as (() => Promise<NextAuthC
 vi.mock("next-auth", () => ({ default: (factory: () => Promise<NextAuthConfig>) => { state.factory = factory; return {}; } }));
 vi.mock("@/lib/db", () => ({ getPrisma: () => ({ account: { findUnique: state.findUnique }, $transaction: state.transaction }) }));
 await import("@/auth");
+const { gitlabProfile } = await import("@/lib/auth/profile");
 it("production signIn callback distinguishes storage outages from unverified email", async () => {
   const callback = (await state.factory!()).callbacks!.signIn!;
   const input = { user: { id: "u1", email: "old@example.com" }, account: { provider: "github", providerAccountId: "gh1", type: "oauth" as const }, profile: { email: "fresh@example.com" } };
@@ -17,8 +18,39 @@ it("production signIn callback distinguishes storage outages from unverified ema
 
 it("production providers require both state and PKCE", async () => {
   const config = await state.factory!();
-  expect(config.providers).toHaveLength(2);
+  // 테스트 기본 env = hosted 세 쌍(`vitest.setup.ts`) — 수가 맞아야 아래 루프가 GitLab까지 돈다.
+  expect(config.providers).toHaveLength(3);
   for (const provider of config.providers) expect(provider).toMatchObject({ options: { checks: ["pkce", "state"] } });
+});
+
+/**
+ * ⚠️ **GitLab을 켜고 먼저 목록에 있음을 단언한다** — 위 루프는 켜진 provider만 돌아서, 테스트 기본 env에 GitLab 쌍이 없으면
+ * GitLab에 대해 공허하게 통과한다(POSTMORTEM 2026-09-07 계열). 기본형은 pkce만 건다(`@auth/core/providers.js`) — state는 우리가 명시한다.
+ */
+it("production GitLab provider requires both state and PKCE and replaces the default profile", async () => {
+  vi.stubEnv("AUTH_GITLAB_ID", "test-AUTH_GITLAB_ID");
+  vi.stubEnv("AUTH_GITLAB_SECRET", "test-AUTH_GITLAB_SECRET");
+  try {
+    const config = await state.factory!();
+    const ids = config.providers.map((provider) => (provider as { id: string }).id);
+    expect(ids).toEqual(["github", "gitlab", "google"]);
+    const gitlab = config.providers.find((provider) => (provider as { id: string }).id === "gitlab") as { options: { checks: unknown; profile: unknown } };
+    expect(gitlab.options.checks).toEqual(["pkce", "state"]);
+    expect(gitlab.options.profile).toBe(gitlabProfile);
+  } finally {
+    vi.unstubAllEnvs();
+  }
+});
+
+it("production providers omit GitLab when its pair is absent", async () => {
+  vi.stubEnv("AUTH_GITLAB_ID", "");
+  vi.stubEnv("AUTH_GITLAB_SECRET", "");
+  try {
+    const ids = (await state.factory!()).providers.map((provider) => (provider as { id: string }).id);
+    expect(ids).not.toContain("gitlab");
+  } finally {
+    vi.unstubAllEnvs();
+  }
 });
 
 it("production signIn stops a revocation flow before email refresh even without a nonce", async () => {

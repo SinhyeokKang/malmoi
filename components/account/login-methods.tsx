@@ -11,7 +11,7 @@ import { ListRow } from "@/components/ui/list-row";
 import { Card, CardRows } from "@/components/ui/card";
 import type { ConnectOutcome } from "@/lib/account-connect/plan";
 import { Alert } from "@/components/ui/alert";
-import { GithubIcon, GoogleIcon } from "@/components/signin/brand-icons";
+import { BrandGlyph } from "@/components/signin/brand-icons";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { useLandAfter } from "@/components/ui/focus";
@@ -98,7 +98,7 @@ function MethodRow({ row, removable, onUnconfirmed }: { row: { provider: LoginPr
         stackActions
         as="li"
         className="border-border border-t first:border-t-0"
-        icon={<IconTile>{row.provider === "github" ? <GithubIcon className="size-4" /> : <GoogleIcon className="size-4" />}</IconTile>}
+        icon={<IconTile><BrandGlyph brand={row.provider} /></IconTile>}
         title={<span className="flex min-w-0 items-center gap-2 text-base"><span className="truncate font-medium">{label}</span><StatusBadge state={row.connected ? "connected" : "notConnected"} className="shrink-0" /></span>}
         actions={<div ref={controls} className="contents">
         {!row.connected ? (

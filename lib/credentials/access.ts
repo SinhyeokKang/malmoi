@@ -6,6 +6,7 @@ import { decodeUser, encodeUserFields, verifyLookupEmail } from "./records";
 import { logCredentialFailure } from "./log";
 import { lookupEmail } from "./storage";
 import { isUniqueViolation } from "@/lib/failure";
+import { LOGIN_PROVIDERS } from "@/lib/login-link/policy";
 
 type Client = PrismaClient | Prisma.TransactionClient;
 /** Prisma 인자나 암호 입력이 예외에 실려 새지 않게 한다. */
@@ -45,7 +46,7 @@ export async function refreshVerifiedEmail(prisma: PrismaClient, provider: strin
       const taken = await findUserByEmail(tx, fresh);
       // ⚠️ **수단이 둘 이상이면 주소를 옮기지 않는다** (ARCHITECTURE "계정 병합") — 병합한 계정에서
       // `User.email`이 로그인한 provider에 따라 뒤집히면 초대 대조가 그 위에서 흔들린다.
-      const loginMethods = await tx.account.count({ where: { userId: user.id, provider: { in: ["github", "google"] } } });
+      const loginMethods = await tx.account.count({ where: { userId: user.id, provider: { in: [...LOGIN_PROVIDERS] } } });
       const plan = planEmailRefresh({ stored: user.email, fresh, takenByOther: taken !== null && taken.id !== user.id, loginMethods });
       if (plan === "update") await tx.user.update({ where: { id: user.id }, data: encodeUserFields(user.id, { email: fresh }) });
       return plan;

@@ -3,7 +3,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 
 import { encodeUserFields } from "@/lib/credentials/records";
 
-import { challengeIdentifier, type Challenge } from "../policy";
+import { challengeIdentifier, LOGIN_PROVIDERS, type Challenge } from "../policy";
 import { challengeTokenHash } from "../store";
 import { loadChallengeView } from "../view";
 
@@ -43,7 +43,7 @@ it("꺼진 공급자만 연결돼 있으면 null이다 — 확인 왕복이 성�
   const { db, findMany } = fixture([{ provider: "github" }]);
   expect(await loadChallengeView(db, TOKEN, new Date(), ["google"])).toBeNull();
   // 우주 전체를 읽는다 — 숨김은 판정이 정한다.
-  expect(findMany).toHaveBeenCalledWith({ where: { userId: "u1", provider: { in: ["github", "google"] } }, select: { provider: true } });
+  expect(findMany).toHaveBeenCalledWith({ where: { userId: "u1", provider: { in: [...LOGIN_PROVIDERS] } }, select: { provider: true } });
 });
 
 it("켜진 집합이 비면 null이다", async () => {

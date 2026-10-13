@@ -103,10 +103,10 @@ Other secrets and checks:
 
 ## Turn a sign-in provider off {#sign-in-providers}
 
-Keep at least one provider on. Turning one off hides its button and its row under **Sign-in methods**; it doesn't delete anything, and turning it back on brings the linked methods back.
+Keep at least one of GitHub, GitLab, and Google on. Turning one off hides its button and its row under **Sign-in methods**; it doesn't delete anything, and turning it back on brings the linked methods back. Turning off GitLab sign-in does not delete its linked sign-in methods or affect GitLab personal access tokens and repository connections.
 
 1. Ask everyone who signs in with that provider to connect one that stays on: **Account** → **Sign-in methods** → **Connect**. The other provider has to verify the same email address.
-2. Empty both values of the provider in `deploy/.env` (for example `AUTH_GITHUB_ID=` and `AUTH_GITHUB_SECRET=`).
+2. Empty both values of the provider in `deploy/.env` (for example `AUTH_GITLAB_ID=` and `AUTH_GITLAB_SECRET=`).
 3. Run `docker compose up -d --force-recreate web` and check that the sign-in screen shows only the providers that are on.
 
 Sessions that are already open stay signed in, and those people can still connect a remaining provider from **Account**. Someone who had only the provider you turned off sees “Your sign-in method isn't available here. Ask your administrator.” when signing in. To let them in, fill in the pair again, recreate web, have them connect another provider, and turn it off again.

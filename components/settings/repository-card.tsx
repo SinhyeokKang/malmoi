@@ -2,7 +2,7 @@
 import { Link as InlineLink } from "@/components/ui/link";
 import { Suspense, use, useState } from "react";
 import { Link2, Unplug } from "lucide-react";
-import { GithubIcon, GitlabIcon } from "@/components/signin/brand-icons";
+import { BrandGlyph } from "@/components/signin/brand-icons";
 import { GitLabTokenForm } from "@/components/gitlab/token-form";
 import { useRouter } from "next/navigation";
 import { formatDateOnly } from "@/lib/date-format";
@@ -135,7 +135,7 @@ function GitLabConnectionRow({ health: pending, slug, owner, repo, archived, git
     : token.viewerIsOwner ? g.connectedWithYours(expiryDate) : g.connectedWith(token.username, expiryDate);
   return <>
     <div className={ROW} data-gitlab-row="">
-      <IconTile tone={STATE[state].tone}>{problem === "disconnected" ? <Unplug className="size-4" aria-hidden /> : <GitlabIcon className="size-4" />}</IconTile>
+      <IconTile tone={STATE[state].tone}>{problem === "disconnected" ? <Unplug className="size-4" aria-hidden /> : <BrandGlyph brand="gitlab" />}</IconTile>
       <div className="min-w-0 flex-1 space-y-copy-gap"><p className="text-base break-all"><span className="font-medium">{owner}/{repo}</span><StatusBadge state={state} className="ml-2 align-middle" /></p>{detail && <p className="text-muted-foreground text-xs">{detail}</p>}</div>
       {moved !== null && <fieldset disabled={archived}><ReconnectButton host="gitlab" spinnerSize="sm" onFailure={onFailure} slug={slug} server={health} label={m.settings.repository.reconnect} /></fieldset>}
       {(health.status === "ok" || moved !== null) && <ButtonLink variant="default" size="md" external href={moved !== null ? repoWebUrl("gitlab", moved.slice(0, moved.lastIndexOf("/")), moved.slice(moved.lastIndexOf("/") + 1)) : repoWebUrl("gitlab", owner, repo)} newTab rel="noreferrer">{m.settings.openRepo}</ButtonLink>}
@@ -195,7 +195,7 @@ function ConnectionRow({ health: pending, slug, owner, repo, archived, onFailure
   const state = repositoryConnectionState(health.status, problem);
   const detail = health.status === "ok" ? m.settings.installed : health.status === "unknown" ? m.settings.repository.health.unknown : problem === "not-connected" ? m.settings.repository.health["not-connected"] : health.status === "repo-moved" ? m.settings.repository.movedHint : disconnected ? m.settings.repository.paused : null;
   return <div className={ROW}>
-    <IconTile tone={STATE[state].tone}>{disconnected ? <Unplug className="size-4" aria-hidden /> : problem === "not-connected" ? <Link2 className="size-4" aria-hidden /> : <GithubIcon className="size-4" />}</IconTile>
+    <IconTile tone={STATE[state].tone}>{disconnected ? <Unplug className="size-4" aria-hidden /> : problem === "not-connected" ? <Link2 className="size-4" aria-hidden /> : <BrandGlyph brand="github" />}</IconTile>
     <div className="min-w-0 flex-1 space-y-copy-gap"><p className="text-base break-all"><span className="font-medium">{owner}/{repo}</span><StatusBadge state={state} className="ml-2 align-middle" /></p>{detail && <p className="text-muted-foreground text-xs">{detail}</p>}</div>
     {canConnect ? <fieldset disabled={archived}><ReconnectButton spinnerSize="sm" onFailure={onFailure} slug={slug} server={health} label={problem === "not-connected" ? m.settings.repository.connect : m.settings.repository.reconnect} variant={health.status === "repo-moved" ? undefined : "primary"} /></fieldset>
       : health.status === "ok" && <ButtonLink variant="default" size="md" external href={`https://github.com/${owner}/${repo}`} newTab rel="noreferrer">{m.settings.openRepo}</ButtonLink>}

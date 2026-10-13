@@ -86,7 +86,18 @@ const POSTGRES_SUITES: readonly { step: GateStep; triggers: readonly string[] }[
   },
   {
     step: "test:credentials:postgres",
-    triggers: ["lib/credentials/", "lib/account-connect/", "lib/login-link/", "lib/session-revocation/", "vitest.credentials.config.ts"],
+    triggers: [
+      "lib/credentials/",
+      "lib/account-connect/",
+      "lib/login-link/",
+      "lib/session-revocation/",
+      // `postgres.integration.ts`가 그 동작을 단언하는 인증 경계 셋 — provider 목록 · `linkAccount` 게이트 · callback 가로채기 판정. 디렉터리가
+      // 아니라 파일이다(`lib/auth/`의 나머지는 그 스위트가 부르지 않는다). 빠지면 그 경로만 바꾼 커밋에서 스위트가 안 붙는다(POSTMORTEM 2026-09-10).
+      "auth.ts",
+      "lib/auth/safe-adapter.ts",
+      "lib/auth/roundtrip.ts",
+      "vitest.credentials.config.ts",
+    ],
   },
 ];
 

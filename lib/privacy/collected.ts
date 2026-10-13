@@ -122,11 +122,11 @@ type FieldPath = { [M in PersonalModel]: `${M}.${ScalarFieldsOf[M]}` }[PersonalM
  * **개인정보 모델의 스칼라 전수 → 방침의 어느 절이 말하는가.** 빠뜨리면 "없는 키", 오타를 내면
  * "있을 수 없는 키"로 각각 red다.
  *
- * 절 배정 규칙: `collected`는 수집 항목 표가 이름을 대는 값 · `third-parties`는 GitHub·Google 때문에만
+ * 절 배정 규칙: `collected`는 수집 항목 표가 이름을 대는 값 · `third-parties`는 GitHub·GitLab·Google 때문에만
  * 존재하는 값 · `cookies`는 쿠키가 나르는 값 · `retention`은 보관 기간을 정하는 값이다.
  *
  * ⚠️ **입도가 방침의 표와 일부러 다르다** — 여기는 필드별 1:1이고 표는 여럿을 한 행으로 접는다.
- * 읽는 사람은 `Account.refresh_token`이 아니라 "GitHub·Google 연결"을 이해한다. 그래서 (B) 검사의
+ * 읽는 사람은 `Account.refresh_token`이 아니라 "GitHub·GitLab·Google 연결"을 이해한다. 그래서 (B) 검사의
  * **대조 단위는 절 id이지 항목 라벨이 아니다.**
  */
 export const CLASSIFIED: Record<FieldPath, Classification> = {

@@ -146,8 +146,11 @@ describe("?request= — 세션", () => {
     expect(autofocused(await html({ request: "req_1", e: "signed-out" }))).toEqual([]);
     vi.stubEnv("AUTH_GITHUB_ID", "");
     try {
+      const gitlab = await html({ request: "req_1", e: "switch" });
+      expect(gitlab).not.toContain("Continue with GitHub");
+      expect(autofocused(gitlab)).toEqual(["Continue with GitLab"]);
+      vi.stubEnv("AUTH_GITLAB_ID", "");
       const google = await html({ request: "req_1", e: "switch" });
-      expect(google).not.toContain("Continue with GitHub");
       expect(autofocused(google)).toEqual(["Continue with Google"]);
     } finally {
       vi.unstubAllEnvs();

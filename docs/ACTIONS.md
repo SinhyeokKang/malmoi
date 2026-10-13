@@ -353,7 +353,7 @@ GitLab 리포의 CI 적재는 composite action 대신 **생성 job이 말모이 
   interruptible: true
   variables:
     MALMOI_I18N_PUSH_TAG: malmoi-i18n-push-gitlab-v1
-    MALMOI_I18N_PUSH_SHA: "unreleased"   # 릴리스 때 태그 커밋의 40자 SHA로 채운다(아래 "릴리스 축")
+    MALMOI_I18N_PUSH_SHA: "456e0e1f25514cf7ed7357958b4d0b2dd6723fd8"   # 태그 커밋의 40자 SHA(아래 "릴리스 축")
     MALMOI_I18N_BASE_BRANCH: "main"       # 대상 리포의 base 브랜치 — 설정 화면에서 바꾸면 이 줄도 고친다
     MALMOI_I18N_PROJECT: "order-check"
   script:
@@ -384,7 +384,7 @@ malmoi-i18n-order-check-default:
 - **push 파이프라인만** 돈다 — `workflow_dispatch`에 해당하는 수동 실행(`web`)은 rules가 거른다. 다시 돌리려면 그 파이프라인의 job을 Retry한다(소스는 `push` 그대로다).
 - **루프 가드가 두 겹**이다 — rules의 정규식(첫 겹)과 `push.sh`의 `*"[skip-malmoi-i18n]"*`(둘째 겹, 의존성 설치 전). `lib/cli/gitlab-ci-input.ts`가 push·base·마커를 한 번 더 본다(손으로 고친 rules 대비). 리터럴 소비자 집계는 `lib/pull/__tests__/skip-marker.test.ts`가 든다.
 
-**릴리스 축** — 태그 `malmoi-i18n-push-gitlab-vN`은 앱 태그 `v<x.y.z>`·GitHub action 태그 `malmoi-i18n-push-vN`과 별개다. ⚠️ **아직 발행 전이다**(2026-10-12) — 생성기의 상수 `GITLAB_CI_RELEASE`(`lib/onboarding/gitlab-ci.ts`)가 `sha: null`이고, 그동안 생성 job은 `MALMOI_I18N_PUSH_SHA: "unreleased"`를 박아 **대조에서 실패한다**(fail-closed — 박힌 SHA 없이 태그 코드를 돌리는 길을 만들지 않는다). 첫 발행은 action 릴리스와 같은 절차다: `main`에 머지된 커밋에 태그를 만들고 → 그 40자 SHA를 상수와 이 문서 블록에 같은 커밋으로 넣는다. **태그를 옮길 때도 SHA를 함께 바꾼다** — 옮긴 태그와 옛 SHA가 갈리면 그 판의 job이 전부 대조에서 red다(그것이 의도된 방어다). 호환이 깨지는 변경이면 `-v2`를 새로 끊는다.
+**릴리스 축** — 태그 `malmoi-i18n-push-gitlab-vN`은 앱 태그 `v<x.y.z>`·GitHub action 태그 `malmoi-i18n-push-vN`과 별개다. **v1은 2026-10-13 발행** — `v1.4.0` squash 커밋 `456e0e1f`에 태그를 만들고 그 SHA를 생성기 상수 `GITLAB_CI_RELEASE`(`lib/onboarding/gitlab-ci.ts`)에 넣었다(화면에는 그 상수를 실은 다음 앱 릴리스부터 나온다). 상수가 `sha: null`인 판(발행 전)의 생성 job은 `MALMOI_I18N_PUSH_SHA: "unreleased"`를 박아 **대조에서 실패한다**(fail-closed — 박힌 SHA 없이 태그 코드를 돌리는 길을 만들지 않는다). 첫 발행은 action 릴리스와 같은 절차다: `main`에 머지된 커밋에 태그를 만들고 → 그 40자 SHA를 상수와 이 문서 블록에 같은 커밋으로 넣는다. **태그를 옮길 때도 SHA를 함께 바꾼다** — 옮긴 태그와 옛 SHA가 갈리면 그 판의 job이 전부 대조에서 red다(그것이 의도된 방어다). 호환이 깨지는 변경이면 `-v2`를 새로 끊는다.
 
 **이미지** — Node 24 공식 이미지(`bookworm` — clone에 `git`이 필요하다)를 버전 태그 + 인덱스 digest로 고정한다. 러너는 `github.com`(clone)·`registry.npmjs.org`(pnpm·의존성)·말모이 배포(`api-url`)에 나갈 수 있어야 한다. `push.sh`는 `.nvmrc`의 major와 다르면 경고만 한다.
 

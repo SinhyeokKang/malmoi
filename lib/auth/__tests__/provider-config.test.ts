@@ -32,7 +32,7 @@ describe("auth.ts — 자동 계정 병합을 켜지 않는다", () => {
   });
 });
 
-describe("auth.ts — DB 세션과 provider 둘", () => {
+describe("auth.ts — DB 세션과 provider 셋", () => {
   it("세션 전략이 database다 — JWT는 권한 회수가 최대 24시간 지연됐다 (ARCHITECTURE §6.00 ④)", () => {
     expect(AUTH_TS).toMatch(/strategy:\s*"database"/);
     expect(AUTH_TS).not.toMatch(/strategy:\s*"jwt"/);
@@ -56,9 +56,19 @@ describe("auth.ts — DB 세션과 provider 둘", () => {
     expect(AUTH_TS).toContain("credentialAdapter(");
   });
 
-  it("GitHub과 Google 둘 다 등록돼 있다 — provider가 하나면 계정 병합 경로를 검증할 수 없다", () => {
-    expect(AUTH_TS).toContain("GitHub");
-    expect(AUTH_TS).toContain("Google");
+  it("GitHub·GitLab·Google 셋이 등록돼 있다 — provider가 하나면 계정 병합 경로를 검증할 수 없다", () => {
+    expect(AUTH_TS).toContain('from "next-auth/providers/github"');
+    expect(AUTH_TS).toContain('from "next-auth/providers/gitlab"');
+    expect(AUTH_TS).toContain('from "next-auth/providers/google"');
+  });
+
+  /**
+   * GitLab 기본 `profile()`은 이메일을 검증하지 않고 아바타를 받는다 — 대체하지 않으면 미확인 계정이 통과한다(gitlab-oauth design §2).
+   * 거르기 자체는 `gitlabProfile` 단위 테스트가 지고, 여기는 그것이 provider에 배선됐는지만 본다.
+   */
+  it("GitLab provider가 기본 profile을 gitlabProfile로 대체한다", () => {
+    const code = AUTH_TS.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/gm, "$1");
+    expect(code).toMatch(/GitLab\(\{[^}]*profile:\s*gitlabProfile[^}]*\}\)/);
   });
 
   /**
@@ -70,7 +80,7 @@ describe("auth.ts — DB 세션과 provider 둘", () => {
    */
   it("providers가 켜진 집합으로 거른 목록이다 — withEnabled 호출", () => {
     const code = AUTH_TS.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/gm, "$1");
-    expect(code).toMatch(/providers:\s*withEnabled\(\s*\[\s*github\s*,\s*google\s*\]\s*,\s*enabled\s*\)/);
+    expect(code).toMatch(/providers:\s*withEnabled\(\s*\[\s*github\s*,\s*gitlab\s*,\s*google\s*\]\s*,\s*enabled\s*\)/);
     expect(code).toMatch(/const enabled = enabledLoginProviders\(\)/);
     expect(code).not.toMatch(/providers:\s*\[/);
     // 병합 안내도 같은 켜진 집합을 받는다 — 요청 하나에서 한 번 읽는다.
