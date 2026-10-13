@@ -131,3 +131,39 @@ describe("verifiedEmailFrom — GitHub", () => {
     ).toBeNull();
   });
 });
+
+/**
+ * **GitLab은 `/api/v4/user`의 `email` + `confirmed_at`이다** (gitlab-oauth design §2 · D1). `email`은 주 이메일이고,
+ * GitLab은 주 이메일을 바꾸면 새 주소를 `unconfirmed_email`에 두므로 `email`이 미확인이 되는 길은 **계정 자체가 미확인**인
+ * 경우뿐이다 — 그것을 `confirmed_at`이 가른다. `public_email`은 보지 않는다(T0 실측에서 null이었다).
+ */
+describe("verifiedEmailFrom — GitLab", () => {
+  const confirmedAt = "2026-10-13T03:00:00.000Z";
+
+  it("email이 있고 confirmed_at이 비어 있지 않은 문자열이면 낸다", () => {
+    expect(verifiedEmailFrom({ provider: "gitlab", email: "a@b.com", confirmedAt })).toBe("a@b.com");
+  });
+
+  it("정규화해서 낸다 — 대소문자·공백", () => {
+    expect(verifiedEmailFrom({ provider: "gitlab", email: " A@B.com ", confirmedAt })).toBe("a@b.com");
+  });
+
+  it("confirmed_at이 null·없음·빈 문자열이면 null이다 — 미확인 계정을 통과시키지 않는다", () => {
+    expect(verifiedEmailFrom({ provider: "gitlab", email: "a@b.com", confirmedAt: null })).toBeNull();
+    expect(verifiedEmailFrom({ provider: "gitlab", email: "a@b.com", confirmedAt: undefined })).toBeNull();
+    expect(verifiedEmailFrom({ provider: "gitlab", email: "a@b.com", confirmedAt: "" })).toBeNull();
+    expect(verifiedEmailFrom({ provider: "gitlab", email: "a@b.com", confirmedAt: "   " })).toBeNull();
+  });
+
+  it("confirmed_at이 문자열이 아니면 null이다 — 참 같은 값을 통과로 읽지 않는다", () => {
+    expect(verifiedEmailFrom({ provider: "gitlab", email: "a@b.com", confirmedAt: true })).toBeNull();
+    expect(verifiedEmailFrom({ provider: "gitlab", email: "a@b.com", confirmedAt: 1 })).toBeNull();
+  });
+
+  it("email이 없거나 비면 null이다", () => {
+    expect(verifiedEmailFrom({ provider: "gitlab", email: undefined, confirmedAt })).toBeNull();
+    expect(verifiedEmailFrom({ provider: "gitlab", email: "", confirmedAt })).toBeNull();
+    expect(verifiedEmailFrom({ provider: "gitlab", email: "  ", confirmedAt })).toBeNull();
+    expect(verifiedEmailFrom({ provider: "gitlab", email: 42, confirmedAt })).toBeNull();
+  });
+});

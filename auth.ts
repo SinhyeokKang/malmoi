@@ -7,6 +7,7 @@ import NextAuth from "next-auth";
 import { authorizeRevocation, withRevocation, revocationAuthCookies } from "@/lib/session-revocation/http";
 import type { NextRequest } from "next/server";
 import GitHub from "next-auth/providers/github";
+import GitLab from "next-auth/providers/gitlab";
 import Google from "next-auth/providers/google";
 
 import { freshVerifiedEmail, verifiedEmailFrom } from "@/lib/auth/email";
@@ -17,7 +18,7 @@ import { beginLink, loadLinkOffer } from "@/lib/login-link/store";
 import { cookies } from "next/headers";
 import { recordDeviceCookiesAtSignIn, withDeviceCookieSync } from "@/lib/device-cookies/sign-in";
 import { authErrorLabel, noteAuthError } from "@/lib/auth/outage";
-import { githubApi, githubUserinfo } from "@/lib/auth/profile";
+import { githubApi, githubUserinfo, gitlabProfile } from "@/lib/auth/profile";
 import { publicSession } from "@/lib/auth/public-session";
 import { getPrisma } from "@/lib/db";
 import { routes } from "@/lib/routes";
@@ -48,6 +49,14 @@ const github = GitHub({
     },
   },
 });
+
+/**
+ * GitLab.com 고정이다 — `baseUrl`을 주지 않는다(Self-Managed 로그인은 비범위, gitlab-oauth spec §3). 스코프는 기본 `read_user`.
+ * 기본형은 `checks`가 없어 pkce만 걸린다 — state를 명시한다. 기본 `profile()`은 `email`을 검증 없이 넘기므로 대체한다
+ * (`gitlabProfile` — `confirmed_at`, 아바타 안 받음). 로그인 토큰은 콜백 안에서만 살고 리포 API를 부르지 않는다 —
+ * GitLab 쓰기 신원은 `Project.gitlabConnectionId`의 PAT다(불변식 6).
+ */
+const gitlab = GitLab({ checks: ["pkce", "state"], profile: gitlabProfile });
 
 const google = Google({
   checks: ["pkce", "state"],
@@ -89,7 +98,7 @@ const google = Google({
 const authConfig = NextAuth(async () => {
   /**
    * ⚠️ **켜진 집합은 요청마다 여기서 한 번 읽는다** (optional-login-providers design §2.4) — `providers`와 병합 안내가 같은 값을 봐야
-   * 한다. 위 `github`·`google` 객체는 env를 읽지 않으므로(Auth.js가 요청 때 `AUTH_<P>_*`를 채운다) 최상위에 두고, 거르는 것만 여기다.
+   * 한다. 위 `github`·`gitlab`·`google` 객체는 env를 읽지 않으므로(Auth.js가 요청 때 `AUTH_<P>_*`를 채운다) 최상위에 두고, 거르는 것만 여기다.
    */
   const enabled = enabledLoginProviders();
   return {
@@ -104,7 +113,7 @@ const authConfig = NextAuth(async () => {
      * 꺼진 공급자는 목록에 없다 — `/api/auth/signin/<p>`·callback이 성립하지 않아 화면 숨김이 유일한 방어선이 아니다(spec §4.3).
      * `provider-config.test.ts`가 이 호출형을 센다(POSTMORTEM 2026-09-18).
      */
-    providers: withEnabled([github, google], enabled),
+    providers: withEnabled([github, gitlab, google], enabled),
     /**
      * `maxAge` 24시간은 이제 **"마지막 활동 뒤 24시간"** 이다 (2026-09-06 결정). 전에는 `updateAge`를
      * 안 줘서 Auth.js 기본값(24h)이 `maxAge`와 같았고, 그러면 `session.js:81-87`의 갱신 시점이 `expires`와

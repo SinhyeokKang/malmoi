@@ -88,9 +88,9 @@ export function buildCsp(env: CspEnvironment, options: { nonce: string }): strin
     ["img-src", ["'self'", "data:", "https://avatars.githubusercontent.com", "https://lh3.googleusercontent.com"]],
     // HMR 웹소켓 — Safari는 `'self'`를 ws로 넓히지 않는다.
     ["connect-src", ["'self'", ...(env === "development" ? ["ws:", "wss:"] : [])]],
-    // ⚠️ `form-action`은 폼 제출 뒤의 302에도 걸린다 — GitHub(OAuth·App 설치)과 Google 로그인
-    // (POST → `accounts.google.com`)이 빠지면 그 로그인만 조용히 멈춘다.
-    ["form-action", ["'self'", "https://github.com", "https://accounts.google.com"]],
+    // ⚠️ `form-action`은 폼 제출 뒤의 302에도 걸린다 — GitHub(OAuth·App 설치)·GitLab·Google 로그인
+    // (POST → `gitlab.com`·`accounts.google.com`)이 빠지면 그 로그인만 조용히 멈춘다.
+    ["form-action", ["'self'", "https://github.com", "https://gitlab.com", "https://accounts.google.com"]],
     ["object-src", ["'none'"]],
     ["base-uri", ["'self'"]],
     // `<meta>`로 표현할 수 없는 지시어라 헤더가 유일한 자리다. 우리 화면은 iframe에 들어가지 않는다.

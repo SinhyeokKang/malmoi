@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { githubApi, githubUserinfo } from "../profile";
+import { githubApi, githubUserinfo, gitlabProfile } from "../profile";
 
 /**
  * GitHub 두 응답(`/user` + `/user/emails`)을 provider가 쓸 profile 하나로 합친다.
@@ -110,5 +110,53 @@ describe("githubApi — 조회 실패는 던진다", () => {
     }) as unknown as typeof fetch;
     await githubApi("/user", "tok", spy);
     expect(seen?.headers).toMatchObject({ Authorization: "Bearer tok", Accept: "application/vnd.github+json" });
+  });
+});
+
+/**
+ * GitLab `/api/v4/user` → Auth.js profile (gitlab-oauth design §2). **기본 `profile()`을 대체한다** — 기본형은 `email`을
+ * 검증 없이 넘기고 `avatar_url`을 `image`로 넣는다.
+ *
+ * ⚠️ **id 부재는 던진다** (POSTMORTEM 2026-09-03 재발 방지). 안 던지면 Auth.js가 `providerAccountId`를 `crypto.randomUUID()`로
+ * 채워 로그인마다 새 `Account`가 생긴다. 이메일 미확인은 정상적인 거부라 `email`을 비우고 던지지 않는다 — `signIn`이 막는다.
+ */
+describe("gitlabProfile", () => {
+  const raw = { id: 42, username: "octo", name: "Octo Cat", email: "Octo@X.com", confirmed_at: "2026-10-13T03:00:00.000Z", public_email: null, avatar_url: "https://secure.gravatar.com/avatar/x" };
+
+  it("숫자 id를 문자열로, 확인된 주 이메일을 정규화해 낸다", () => {
+    expect(gitlabProfile(raw)).toEqual({ id: "42", name: "Octo Cat", email: "octo@x.com", image: null });
+  });
+
+  it("문자열 id도 받는다", () => {
+    expect(gitlabProfile({ ...raw, id: "42" })).toMatchObject({ id: "42" });
+  });
+
+  it("image는 언제나 null이다 — 아바타를 받지 않는다(D3: gravatar가 새 제3자 호스트다)", () => {
+    expect(gitlabProfile(raw).image).toBeNull();
+    expect(gitlabProfile({ ...raw, avatar_url: "https://gitlab.com/uploads/a.png" }).image).toBeNull();
+  });
+
+  it("name이 없으면 username, 둘 다 없으면 null", () => {
+    expect(gitlabProfile({ ...raw, name: undefined }).name).toBe("octo");
+    expect(gitlabProfile({ ...raw, name: null }).name).toBe("octo");
+    expect(gitlabProfile({ ...raw, name: "", username: "octo" }).name).toBe("octo");
+    expect(gitlabProfile({ id: 1, email: "a@b.com", confirmed_at: "2026-10-13T03:00:00.000Z" }).name).toBeNull();
+  });
+
+  it("미확인 계정(confirmed_at null)은 email을 비우고 던지지 않는다 — signIn이 거부한다", () => {
+    expect(gitlabProfile({ ...raw, confirmed_at: null })).toMatchObject({ id: "42", email: "" });
+    expect(gitlabProfile({ ...raw, confirmed_at: undefined }).email).toBe("");
+    expect(gitlabProfile({ ...raw, email: "" }).email).toBe("");
+  });
+
+  it("id가 없거나 숫자·문자열이 아니면 던진다", () => {
+    expect(() => gitlabProfile({ ...raw, id: undefined })).toThrow(/gitlab/i);
+    expect(() => gitlabProfile({ ...raw, id: null })).toThrow(/gitlab/i);
+    expect(() => gitlabProfile({ ...raw, id: { n: 1 } })).toThrow(/gitlab/i);
+  });
+
+  it("응답이 객체가 아니면 던진다", () => {
+    expect(() => gitlabProfile(null)).toThrow(/gitlab/i);
+    expect(() => gitlabProfile("boom")).toThrow(/gitlab/i);
   });
 });

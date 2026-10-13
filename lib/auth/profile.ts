@@ -33,6 +33,30 @@ export function githubUserinfo(input: { user: unknown; addresses: unknown }): Re
 }
 
 /**
+ * GitLab `/api/v4/user` → Auth.js profile. **provider 기본 `profile()`을 대체한다** — 기본형은 `email`을 검증 없이 넘기고
+ * `avatar_url`을 `image`로 넣는다(`@auth/core/providers/gitlab.js`).
+ *
+ * - **id 부재는 던진다** (POSTMORTEM 2026-09-03). 기본형은 `profile.id?.toString()`이라 던지지 않고 `undefined`를 내고,
+ *   그러면 Auth.js가 `providerAccountId`를 `crypto.randomUUID()`로 채워 로그인마다 새 `Account`가 생긴다.
+ * - **이메일 미확인은 정상적인 거부**라 `email`을 비워 보낸다 — `signIn`이 막는다(`githubUserinfo`와 같은 계약).
+ * - **`image`는 언제나 `null`이다** (gitlab-oauth design §4 D3) — `avatar_url`은 gitlab.com 업로드이거나 gravatar라, 받으면
+ *   보는 사람의 브라우저가 새 제3자 호스트에 붙고 CSP `img-src`·방침 전송처가 는다.
+ */
+export function gitlabProfile(raw: unknown): { id: string; name: string | null; email: string; image: string | null } {
+  if (typeof raw !== "object" || raw === null) fail("gitlab: /api/v4/user lookup failed (response is not an object)");
+  const record = raw as Record<string, unknown>;
+  const id = record["id"];
+  if (typeof id !== "number" && typeof id !== "string") fail("gitlab: /api/v4/user response has no id");
+  const name = [record["name"], record["username"]].find((value): value is string => typeof value === "string" && value !== "");
+  return {
+    id: String(id),
+    name: name ?? null,
+    email: verifiedEmailFrom({ provider: "gitlab", email: record["email"], confirmedAt: record["confirmed_at"] }) ?? "",
+    image: null,
+  };
+}
+
+/**
  * GitHub REST 조회. **HTTP 실패는 던진다 — 거부로 접지 않는다.**
  *
  * 전에는 non-OK를 `null`로 돌려 `/user/emails` 실패가 "검증된 이메일 없음"이 되고, 사용자는

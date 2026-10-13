@@ -105,8 +105,9 @@ describe("buildCsp", () => {
     expect(directive(prod, "font-src")).toEqual(["'self'"]);
     expect(directive(prod, "img-src")).toEqual(["'self'", "data:", "https://avatars.githubusercontent.com", "https://lh3.googleusercontent.com"]);
     expect(directive(prod, "connect-src")).toEqual(["'self'"]);
-    // ⚠️ Google 로그인은 폼 POST → 302 `accounts.google.com`이다 — `form-action`은 그 리다이렉트에도 걸린다.
-    expect(directive(prod, "form-action")).toEqual(["'self'", "https://github.com", "https://accounts.google.com"]);
+    // ⚠️ Google·GitLab 로그인은 폼 POST → 302 `accounts.google.com`·`gitlab.com`이다 — `form-action`은 그 리다이렉트에도 걸린다.
+    // GitLab 아바타는 받지 않으므로(gitlab-oauth D3) `img-src`엔 gitlab 호스트가 없다 — 위 두 줄이 그대로인 것이 그 단언이다.
+    expect(directive(prod, "form-action")).toEqual(["'self'", "https://github.com", "https://gitlab.com", "https://accounts.google.com"]);
     expect(directive(prod, "object-src")).toEqual(["'none'"]);
     expect(directive(prod, "base-uri")).toEqual(["'self'"]);
     expect(directive(prod, "frame-ancestors")).toEqual(["'none'"]);
