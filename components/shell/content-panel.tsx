@@ -31,9 +31,10 @@ import { cn } from "@/lib/utils";
  * 둘**이 된다. 그래서 `PanelHeader`는 평범한 `div`다.
  */
 // 라우트 트리가 겹칠 때 애니메이션 중인 자손을 자기 패널 안에 가둔다.
+// `relative` — `overflow-hidden`은 이 요소를 포함 블록으로 삼는 자손만 자른다. 없으면 스크롤러 아래 `position:absolute`(sr-only 등)가 문서 높이를 늘린다(#260, 공개 셸과 같은 형).
 export function ContentPanel({ children }: { children: ReactNode }) {
   return (
-    <main className="isolate col-start-1 row-start-1 border-border-subtle bg-background shadow-low flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl border">
+    <main className="isolate relative col-start-1 row-start-1 border-border-subtle bg-background shadow-low flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl border">
       {children}
     </main>
   );
