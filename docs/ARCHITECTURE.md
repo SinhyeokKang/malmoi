@@ -1078,6 +1078,22 @@ GitLab 사본은 없다. 구현을 고르는 자리는 `lib/repo-host/index.ts` 
 - **전달 문맥 지문**(`deliveryContextFingerprint` — `DeliveryConfirmation`에 **저장된다**)은 GitLab일 때만 리포 호스트를 섞는다. GitHub 행의 입력·출력은
   바이트 그대로다 — 일괄로 바꾸면 배포 순간 기존 전달 확인이 전부 무효가 된다. 저장되지 않는 지문 중 폐기 승인(`discardFingerprint`)·Publish(`publishFingerprint`)는 호스트를
   입력에 둔다. 소스 제거 승인(`removalFingerprint`)은 리포 입력이 없다(사용자·프로젝트·소스·미전달 토큰만).
+- **수용한 창과 미실측** (2026-10-13 GitLab 감사 — 기록만, 고치지 않았다):
+  - **실행 중 Publish는 연 PAT로 끝까지 쓴다** — 클라이언트가 생성 때 연 원문을 실행 수명(최대 240초) 동안 든다. 그 사이 주인이 Disconnect해 참조가
+    비어도 남은 commit·MR 요청은 그 PAT로 나간다. GitHub 설치 토큰에도 같은 창이 있다. 닫으려면 첫 쓰기 직전에 `gitlabConnectionId`를 재대조한다.
+  - **Logs `github-error`의 GitLab 문장("didn't answer")은 확정 4xx에도 쓰인다**(보호 브랜치·MR 비활성 403 등) — GitHub 문장과 같은 수준이다. 고친다면 호스트 중립 문장.
+  - **프로젝트 이전(경로 변경, id 유지) 뒤 열린 MR 링크는 "모름"이다** — `parseGitLabMrUrl`(`lib/projects/pr-url.ts`)이 저장된 `repoOwner/repoName`과 대조한다.
+    쓰기·게이트는 숫자 id와 원문 URL이라 영향이 없고, 재연결이 주소를 갱신한다(설정 카드가 `repo-moved`에서 그 컨트롤을 세운다 — GitHub 리네임과 같다).
+  - **MR 제목 상한 255는 미실측이다** — 마커를 붙인 제목이 넘으면 기본 제목으로 폴백하는 문턱(`lib/pull/payload.ts` `PR_TITLE_MAX`)은 GitLab `TITLE_LENGTH_MAX`의 기억값이다. 더 작으면
+    `PUT merge_requests`가 400이고 커밋 뒤라 `execution-uncertain`이 Publish마다 되풀이된다. 열린 sync MR 제목을 긴 값으로 고쳐 Publish해 본다.
+  - **실물로 밟지 않은 것**(2026-10-13 QA 기준 — 실측한 것은 merge·squash·fast-forward 왕복, no-changes 수렴, `/api/push` 적재·`deferred`·409·failure,
+    연결 해제·재연결): 실제 GitLab CI 파이프라인(태그 미발행 — OPERATIONS "GitLab CI 원본 릴리스" 5) · 두 리포 호스트의 일시 장애(5xx·429·네트워크) 주입 ·
+    토큰 주인 Reporter 강등(주인 계정이 하나뿐) · 긴 하위 그룹 실물 프로젝트 · MCP 도구 왕복 · Logs의 GitLab 보류(`pr-check-failed`) 문장(보류 사건을 만들 수
+    없었다) · PAT 연결의 `session-unavailable`(세션 저장소 장애가 필요). 판정은 단위·격리 PG 테스트가 고정한다.
+  - **후속 후보(부채)**: `lib/gitlab/client.ts`의 드문 오류 분기(`findOpenPr` 10쪽 소진, 2xx인데 모양이 다른 커밋·MR 응답) 테스트 없음 ·
+    `connectGitLabAccount`·`disconnectGitLabAccount` 경합 갈래(P2002 → replace, replace 0행 → `unavailable`) 테스트 없음 · 손 사본 셋(`remote()`
+    RemoteResult 래퍼 3벌 · `path_with_namespace` 분할 2벌의 가장자리 규칙 차이 · fork MR 제외 2벌) · `Array.isArray(unknown)` 뒤 암묵 `any` 접근
+    (`lib/gitlab/client.ts` 브랜치 목록 · `scripts/smoke-gitlab.ts`).
 
 ### 3.05 cron은 **전 프로젝트를 순회한다** (`lib/pull/targets.ts`, SaaS 5단계)
 
@@ -3503,6 +3519,8 @@ PAT는 URL에 실리지 않는다(셀프 호스팅 nginx 마스킹에 새 경로
   GitLab 전용 설치). 화면 갈래는 `githubAppConfigured()` 하나이고 **자격증명 넷(`GITHUB_APP_ID`·`PRIVATE_KEY`·`CLIENT_ID`·`CLIENT_SECRET`)이 있으면 GitHub
   연결 화면이 선다** — `GITHUB_APP_SLUG`는 지금처럼 설치 링크만 가른다(SLUG 하나 빠진 hosted에서 GitHub 카드가 통째로 사라지지 않게). 넷이 없으면 ①·`/account`·설정이
   GitHub 카드·조회를 0으로 만든다. preflight의 그룹 판정(`planGitHubAppConfig`)과 화면 판정(`githubAppConfigured`)은 같은 파일의 다른 함수다(`lib/deployment/github-app.ts`).
+  ⚠️ **MCP `list_repositories`는 `host`를 생략하면 GitHub이다** — App 없는 설치에서는 연결 없음으로 `needs-browser`를 돌리는데 브라우저에 GitHub 연결 컨트롤이
+  없다(D4a는 화면 한정). 크래시는 아니고 문구 관찰로만 남겼다(2026-10-13 감사 C5-8, 미실측).
 - **상시 검사**: `lib/github-connect/__tests__/credential-separation.test.ts`가 GitLab 경계를 센다 — GitLab 클라이언트 모듈 import가 완전성 기준이다.
   ① **PAT를 여는 호출 자리**(`openGitLabConnection`)는 `파일#함수` 정확 집합 `PAT_OPEN_SITES` 셋이다 — 호출자 연결 둘(`checkGitLabAccess`·`listGitLabRepositories`,
   그 사람이 무엇을 볼 수 있나 — 쓰지 않는다)과 프로젝트 참조 연결 하나(`lib/repo-host/index.ts#projectConnection` — `{ connectionId }`). 변수 간접으로 열어도 새
