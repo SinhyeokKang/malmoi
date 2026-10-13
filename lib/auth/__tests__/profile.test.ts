@@ -155,6 +155,17 @@ describe("gitlabProfile", () => {
     expect(() => gitlabProfile({ ...raw, id: { n: 1 } })).toThrow(/gitlab/i);
   });
 
+  /**
+   * ⚠️ **빈 문자열 id는 `??`를 지난다** — Auth.js가 `providerAccountId: profile.id ?? randomUUID()`라 `""`이 그대로 저장되고, 그런
+   * 응답의 사용자 전원이 같은 `Account(gitlab, "")`로 수렴한다(R-B 🟡4). GitLab id는 양의 정수다(T0 ① — number).
+   */
+  it("양의 정수가 아닌 id는 던진다 — 빈·공백 문자열, 0, 음수, 소수", () => {
+    for (const id of ["", "  ", "abc", "1.5", "-1", "0", 0, -1, 1.5]) {
+      expect(() => gitlabProfile({ ...raw, id }), String(id)).toThrow(/gitlab/i);
+    }
+    expect(gitlabProfile({ ...raw, id: "7" }).id).toBe("7");
+  });
+
   it("응답이 객체가 아니면 던진다", () => {
     expect(() => gitlabProfile(null)).toThrow(/gitlab/i);
     expect(() => gitlabProfile("boom")).toThrow(/gitlab/i);

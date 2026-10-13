@@ -36,8 +36,14 @@ export function githubUserinfo(input: { user: unknown; addresses: unknown }): Re
  * GitLab `/api/v4/user` → Auth.js profile. **provider 기본 `profile()`을 대체한다** — 기본형은 `email`을 검증 없이 넘기고
  * `avatar_url`을 `image`로 넣는다(`@auth/core/providers/gitlab.js`).
  *
- * - **id 부재는 던진다** (POSTMORTEM 2026-09-03). 기본형은 `profile.id?.toString()`이라 던지지 않고 `undefined`를 내고,
- *   그러면 Auth.js가 `providerAccountId`를 `crypto.randomUUID()`로 채워 로그인마다 새 `Account`가 생긴다.
+ * - **양의 정수가 아닌 id는 던진다** (POSTMORTEM 2026-09-03). 기본형은 `profile.id?.toString()`이라 던지지 않고 `undefined`를
+ *   내고, 그러면 Auth.js가 `providerAccountId`를 `crypto.randomUUID()`로 채워 로그인마다 새 `Account`가 생긴다. 빈 문자열은
+ *   그 `??`를 지나 그대로 저장되므로 모든 그런 응답이 `Account(gitlab, "")` 하나로 수렴한다 — 그래서 존재가 아니라 모양을 본다.
+ *   ⚠️ **착지는 `githubUserinfo`와 다르다** — 이 함수는 `userinfo.request`가 아니라 provider `profile()`이라, Auth.js가 예외를
+ *   `OAuthProfileParseError`로 로그만 하고 삼킨다(`@auth/core` `getUserAndAccount`의 catch). 그 뒤 `callback/index.js`의
+ *   `!userFromProvider` 갈래가 **오류 코드 없이** `${요청 URL}/signin`(callback URL 뒤에 `/signin`이 붙은 꼴)으로 보내며 state·PKCE
+ *   쿠키를 지우고, 브라우저가 그것을 따라가면 검사 쿠키가 없어 `/signin?error=Configuration`("잠시 뒤 다시")에 닿는다. 행은 0이다
+ *   (격리 PG가 두 홉을 잰다). 실물 GitLab은 id를 양의 정수로 주므로 이 갈래는 비정상 응답에서만 탄다.
  * - **이메일 미확인은 정상적인 거부**라 `email`을 비워 보낸다 — `signIn`이 막는다(`githubUserinfo`와 같은 계약).
  * - **`image`는 언제나 `null`이다** (gitlab-oauth design §4 D3) — `avatar_url`은 gitlab.com 업로드이거나 gravatar라, 받으면
  *   보는 사람의 브라우저가 새 제3자 호스트에 붙고 CSP `img-src`·방침 전송처가 는다.
@@ -46,7 +52,8 @@ export function gitlabProfile(raw: unknown): { id: string; name: string | null; 
   if (typeof raw !== "object" || raw === null) fail("gitlab: /api/v4/user lookup failed (response is not an object)");
   const record = raw as Record<string, unknown>;
   const id = record["id"];
-  if (typeof id !== "number" && typeof id !== "string") fail("gitlab: /api/v4/user response has no id");
+  const valid = typeof id === "number" ? Number.isSafeInteger(id) && id > 0 : typeof id === "string" && /^[1-9]\d*$/.test(id);
+  if (!valid) fail("gitlab: /api/v4/user response has no valid id");
   const name = [record["name"], record["username"]].find((value): value is string => typeof value === "string" && value !== "");
   return {
     id: String(id),

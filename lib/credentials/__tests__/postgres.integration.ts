@@ -233,6 +233,8 @@ it("PII/token rotation, partial reindex, missing-key recovery and backup restore
  *
  * ⚠️ **gitlab 가짜는 프로덕션 `gitlabProfile`과 `/api/v4/user` 모양을 쓴다** (POSTMORTEM 2026-09-05 "가짜가 관대") — 다른 가짜처럼
  * 이메일을 그대로 넘기면 `confirmed_at` 거부가 이 스위트에서 원리적으로 안 밟힌다. `gitlabConfirmedAt`이 그 값이다.
+ * GitLab id는 양의 정수라 응답에는 숫자를 싣고(`gitlabProfile`이 모양을 판정한다), 판정을 지난 뒤에만 id를 `identity`로 바꾼다 —
+ * 픽스처가 `providerAccountId`를 이름(`merge`·`same`…)으로 찾기 때문이다. `identity`가 빈 문자열이면 응답 id도 빈 문자열이다.
  */
 function fakeAuth(provider: LoginProvider, identity: string, revocation = false, link = false, connect = false, enabled: readonly LoginProvider[] = LOGIN_PROVIDERS, gitlabConfirmedAt: string | null = CONFIRMED_AT) {
   const intercepted = revocation || link || connect;
@@ -241,9 +243,9 @@ function fakeAuth(provider: LoginProvider, identity: string, revocation = false,
     [customFetch]: async (input: string | URL | Request) => new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url).pathname === "/token"
       ? Response.json({ access_token: "oauth-access", refresh_token: "oauth-refresh", token_type: "bearer", expires_in: 3600 })
       : Response.json(id === "gitlab"
-        ? { id: identity, username: identity, name: "Fixture", email: `${identity}@example.com`, confirmed_at: gitlabConfirmedAt, public_email: null }
+        ? { id: identity === "" ? "" : 4242, username: identity, name: "Fixture", email: `${identity}@example.com`, confirmed_at: gitlabConfirmedAt, public_email: null }
         : { id: identity, email: `${identity}@example.com`, email_verified: true, name: "Fixture" }),
-    profile: (profile: Record<string, unknown>) => id === "gitlab" ? gitlabProfile(profile)
+    profile: (profile: Record<string, unknown>) => id === "gitlab" ? { ...gitlabProfile(profile), id: identity }
       : ({ id: String(profile.id), email: String(profile.email), name: String(profile.name), image: null }),
   });
   const handlers = NextAuth(() => ({
@@ -272,7 +274,8 @@ function fakeAuth(provider: LoginProvider, identity: string, revocation = false,
         // `auth.ts`와 같다 — profile이 검증에 실패하면 email이 비고 여기서 거부된다(AccessDenied).
         if (typeof user.email !== "string" || user.email === "") return false;
         if (!link || !account) return true;
-        const refresh = await refreshVerifiedEmail(prisma, account.provider, account.providerAccountId, user.email);
+        // 프로덕션과 같은 입력이다 — 기존 사용자면 `user`는 DB 행이라 그 email은 옛 주소다(갱신이 no-op이 된다).
+        const refresh = await refreshVerifiedEmail(prisma, account.provider, account.providerAccountId, freshVerifiedEmail(account.provider, profile));
         if (refresh !== "unlinked" || !isLoginProvider(account.provider)) return true;
         const offer = await loadLinkOffer(prisma, { provider: account.provider, providerAccountId: account.providerAccountId, verifiedEmail: user.email, enabled });
         // `auth.ts`와 같은 자리다 — `offer` 갈래보다 앞이고, 문자열 반환이라 User·Account·Session이 0회 쓰인다.
@@ -300,7 +303,8 @@ it.each(LOGIN_PROVIDERS)("installed Auth.js %s callback stores digest, rejects d
   const session = await prisma.session.findUniqueOrThrow({ where: { sessionToken: hashSessionToken(raw) } });
   expect(session.sessionToken).not.toBe(raw);
   const account = await prisma.account.findFirstOrThrow();
-  expect(account).toMatchObject({ access_token: null, refresh_token: null });
+  // 토큰 컬럼 셋 전부 — 가짜 토큰 엔드포인트가 `expires_in`을 주므로 Auth.js가 넘기는 `account`에는 `expires_at`이 실린다(J4).
+  expect(account).toMatchObject({ access_token: null, refresh_token: null, expires_at: null });
   const stored = await prisma.user.findUniqueOrThrow({ where: { id: session.userId } });
   expect(stored.email).toMatch(/^enc:v1:/);
   const read = (value: string) => handlers.GET(new NextRequest("http://localhost/api/auth/session", { headers: { cookie: `authjs.session-token=${value}` } }));
@@ -1069,8 +1073,48 @@ it("an unconfirmed GitLab account (confirmed_at null) is denied without any User
   // 같은 하네스에서 확인된 계정은 로그인된다 — 위 거부가 하네스 고장이 아니다.
   const confirmed = await fakeAuth("gitlab", "unconfirmed").GET(new NextRequest("http://localhost/api/auth/callback/gitlab?code=fixture"));
   expect(confirmed.headers.get("location")).toBe("http://localhost");
-  expect(await prisma.account.findFirstOrThrow()).toMatchObject({ provider: "gitlab", providerAccountId: "unconfirmed", access_token: null, refresh_token: null });
+  expect(await prisma.account.findFirstOrThrow()).toMatchObject({ provider: "gitlab", providerAccountId: "unconfirmed", access_token: null, refresh_token: null, expires_at: null });
   expect((await prisma.user.findFirstOrThrow()).image).toBeNull();
+});
+
+/**
+ * `gitlabProfile`이 던지면(양의 정수가 아닌 id) Auth.js가 `OAuthProfileParseError`로 로그만 하고 삼킨다 — `githubUserinfo`의
+ * `userinfo.request` 착지와 다르다(R-B 🟡1). 실측한 착지는 두 홉이다(state·PKCE가 켜진 왕복, 프로덕션과 같다):
+ * ① `callback/index.js`의 `!userFromProvider` 갈래가 `${요청 URL}/signin`으로 302 — callback URL 뒤에 `/signin`이 붙은 꼴이고
+ *    state·PKCE 쿠키를 지운다(오류 코드 없음) ② 브라우저가 그것을 따라가면 검사 쿠키가 없어 `error=Configuration`
+ *    (프로덕션은 `pages.error`가 `/signin`이라 "잠시 뒤 다시" 문구). 어느 홉도 행을 쓰지 않고, 빈 id가 `Account(gitlab, "")`로 수렴하지 않는다.
+ */
+it("a GitLab response without a valid id writes nothing and ends on a Configuration error", async () => {
+  const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+  try {
+    const handlers = fakeAuth("gitlab", "", false, true);
+    const first = await plainSignIn(handlers, "gitlab");
+    const location = first.headers.get("location")!;
+    expect(location).toMatch(/^http:\/\/localhost\/api\/auth\/callback\/gitlab\?code=fixture&state=[^&]+\/signin$/);
+    expect(first.headers.getSetCookie().some(c => c.startsWith("authjs.session-token="))).toBe(false);
+    // 브라우저 쿠키 통은 첫 응답이 state·PKCE를 지운 상태다.
+    const jar = first.headers.getSetCookie().map(c => c.split(";")[0]!).filter(c => !c.endsWith("=")).join("; ");
+    const second = await handlers.GET(new NextRequest(location, { headers: { cookie: jar } }));
+    expect(second.headers.get("location")).toBe("http://localhost/api/auth/error?error=Configuration");
+  } finally { spy.mockRestore(); }
+  expect(await prisma.user.count()).toBe(0);
+  expect(await prisma.account.count()).toBe(0);
+  expect(await prisma.session.count()).toBe(0);
+});
+
+/**
+ * 기존 GitLab 사용자가 주 이메일을 바꾸고 다시 로그인한다 — 갱신 입력은 raw `/api/v4/user`의 `confirmed_at` 판정이다
+ * (`freshVerifiedEmail`, 프로덕션 `auth.ts`와 같다). `user`(DB 행)의 옛 주소를 넘기면 갱신이 no-op이 된다(R-B 🟡3).
+ */
+it("a returning GitLab user's confirmed new primary email replaces the stored one", async () => {
+  const adapter = credentialAdapter(prisma);
+  const user = await adapter.createUser!({ id: "ignored", email: "old-address@example.com", emailVerified: null });
+  await adapter.linkAccount!({ userId: user.id, provider: "gitlab", providerAccountId: "mover", type: "oauth" });
+  const response = await plainSignIn(fakeAuth("gitlab", "mover", false, true), "gitlab");
+  expect(response.headers.get("location")).toBe("http://localhost/projects");
+  const stored = decodeUser(await prisma.user.findUniqueOrThrow({ where: { id: user.id }, select: { id: true, name: true, email: true } }));
+  expect(stored.email).toBe("mover@example.com");
+  expect(await prisma.user.count()).toBe(1);
 });
 
 /**
