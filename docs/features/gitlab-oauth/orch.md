@@ -13,7 +13,7 @@
 | O4 | E(방침)는 wave 1에서 병렬 — `messages/en.tsx`는 A·D와 같은 파일이지만 **소유 구역이 갈린다**(E: 방침 `:706-968` + `ko-privacy.tsx` / A: `link.providers` `:3998` + ko·es 대응 / D: `signIn`·`account.gitlab` `:2100-2135`·`:3594` + ko·es 대응). 구역 밖을 건드리지 않는다고 브리프에 적는다 | 같은 파일·다른 hunk — cherry-pick 충돌 없음. 지휘자 판단 |
 | O5 | DS 행 없음 — design-brief·시안 핸드오프가 없고 신규 화면이 없다(`/feature-review` 판정). 시안 대조 대신 QA의 D6 체크리스트 + 375폭·라이트·다크 레이아웃 | §0 4.5. 지휘자 판단 |
 | O6 | T0는 **main 체크아웃**에서 돈다(`.env.local`의 앱 값이 필요) — 앱 코드 없이 `.scratch/` 단독 OAuth 왕복 스크립트(포트 3000, callback `/api/auth/callback/gitlab`)로 잰다. 값·토큰은 출력하지 않는다. T0가 main 체크아웃을 쓰는 동안 cherry-pick·build 금지 | `.env.local` 복사 금지 + 워크트리에 없음 |
-| O7 | 가이드 스크린샷(tasks §7 둘째)·`/merge` 뒤 Production env·디렉터리 삭제(tasks §8 둘째·셋째)는 **이 런 밖** — `/merge`를 지휘자가 부르지 않으므로 | 스킬 금지 사항 |
+| O7 | ~~가이드 스크린샷(tasks §7 둘째)·~~ **(정정 2026-10-13 사용자: 스크린샷은 `/merge` 전에 로컬에서 찍는다 — GS 행)** `/merge` 뒤 Production env·디렉터리 삭제(tasks §8 둘째·셋째)는 **이 런 밖** — `/merge`를 지휘자가 부르지 않으므로 | 스킬 금지 사항 |
 | O8 | Preview env 투입(tasks §8 첫째)은 **사용자가** CLI 스크립트로 한다 — push 직전에 요청하고 `vercel env ls`(이름만) 확인은 지휘자가 한다 | 사용자 2026-10-13 · `.env.local` 비열람 |
 
 ## 배치
@@ -87,4 +87,8 @@
 - **Vercel env 투입**(사용자 지시 2026-10-13 — "prod 환경까지 vercel cli로 직접"): OPERATIONS 스크립트(값 stdin, 비출력)로 `AUTH_GITLAB_ID`·`AUTH_GITLAB_SECRET`을 Preview·Production 각각 환경별 변수로. `vercel env ls preview`·`production`으로 두 이름씩 확인. Production은 지금 배포(v1.4.0)에 GitLab provider가 없어 `/merge` 배포부터 효과 — 방침 개정과 같은 배포라 시행 순서(design §7) 충족.
 - `pnpm gate && git push` 진행.
 - **push** `89b27c21..11f12ba0`(`gate: ok` 뒤) · dev CI **success**(run 38360649826). **P** preview 확인 통과 — `dev.mal-moi.com` 버튼 GitHub·GitLab·Google · 3색 tanuki · GitLab 왕복(동의 화면 자동 승인) → OWNER로 `/projects` · CSP 위반 0 · dev DB `Account(gitlab)` 2행 토큰 3컬럼 전부 null. 워커 전부 해제(reclaimable 0). **런 종료 — 다음 `/merge`(사용자)**.
+- **정정**: O7이 스크린샷을 "hosted 켠 뒤"로 미룬 것은 순서가 반대였다(사용자). 로컬 dev에 GitLab 앱이 있어 지금 찍을 수 있다 → **GS** `ctx_f626d89b9552`(stale 12컷/17건, main 체크아웃). 끝나면 gate → push → `/merge` 준비.
+- GS `worker_done` — `3129064f`(7컷 재촬영 · 5컷 SHA 갱신 · gitlab-ci-file을 YAML 모달로 다시 찍고 `#gitlab-ci` 절로 이동, stale 0). `#ci-unavailable` 절은 v1.4.0 빌드에서만 뜬다(조건문이라 거짓 아님) — 다음 릴리스 뒤 축소 여부는 `/guide` 후속(이 런 밖). **GS fix1** — account.webp alt가 컷 밖 PAT 카드를 말함.
+- 사용자 지시(2026-10-13): "merge까지 이어붙여 진행해. patch. prod에서 깃랩 로그인 런타임 체크 진행까지 하고 오케스트레이션 마무리" → GS fix1 → gate·push → `/merge`(patch) → prod 런타임(PR) → 정리.
+- GS fix1 `worker_done` — `00777ca0`(account.webp alt 세 언어). GS 해제. → gate·push.
 

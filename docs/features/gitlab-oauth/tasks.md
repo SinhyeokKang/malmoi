@@ -129,7 +129,7 @@
 
 - [x] 원고 en·ko·es 같은 커밋 — `faq.md:11·:71` · `translate/README.md:3` · `translate/join.md:5·:10`(GitLab은 주 이메일로 초대) · `ai-agents/browser.md:9` · `account/profile.md:16-27` · `self-hosting/install.md:12-19·:30-32`(`:12`·`:14` optional 조건, `:18` "GitHub, Google, or both", `:19` "still required … no GitLab environment variables" 교체, GitLab OAuth 앱 행) · `self-hosting/README.md:20·:27` · `self-hosting/operate.md:104-112` · `self-hosting/troubleshooting.md:12-13·:73-77·:117-122`(운영자 개인정보 재료 — SELF-HOSTING §3-8).
   - 검증: [자동] `pnpm test` 가이드 게이트 green. [수동] `/guide` 리포트.
-- [ ] 스크린샷 — `/signin`·`/account` 수단 카드·GitLab PAT 카드가 찍힌 컷.
+- [x] 스크린샷 — `/signin`·`/account` 수단 카드·GitLab PAT 카드가 찍힌 컷. (2026-10-13 GS — 7컷 재촬영·5컷 SHA, `/merge` 전 로컬)
   - 검증: [자동] `pnpm guide:check` stale 0(hosted에 GitLab이 켜진 뒤 촬영 — 그 전엔 컷이 바뀌지 않는다).
 
 ## 8. 배포 — `/push` → `/merge` → env
