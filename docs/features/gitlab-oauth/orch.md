@@ -62,4 +62,10 @@
 - B `worker_done` — `32149310`(§2 + §3 PG 시나리오, credentials PG 70→101, 뮤테이션 넷 red, `gate: ok`). B retain. **R-B** `ctx_2e2f5f7a8962`(리뷰 전용 워크트리 `go-RB`). D 브리프 준비(R-A 🟡 둘 포함).
 - 사용자: gitlab.com 외부 테스트 계정 생성(**ox501tube@gmail.com**, Google OAuth 가입 — 그룹 `malmoi` 비멤버). → T0 ⑥을 프로덕션 대신 **Q(로컬 runtime-test)에서 잰다**(지휘자 판단 — 계정이 생겨 앞당길 수 있다). 같은 이메일의 Google EDITOR 사용자가 dev DB에 있으면 GitLab 첫 로그인이 병합 확인(`/signin/link`)을 밟는다 — spec #4 실물 사례로 Q에 넣는다.
 - R-B 완료(🔴 0 · 🟡 4 · ⚪ 5 — 사본 `.scratch/orch-gitlab-oauth/review-B.md`, credentials PG 101 green, 뮤테이션 9 중 8 PG red · M8(expires_at)만 단위 red). **B fix1** `ctx_2c532d826edc` — 🟡 넷(throw 착지 주석·PG `expires_at`·fakeAuth 갱신 입력·빈 id). R-B 해제·워크트리 정리.
+- **B 통합**: `1569b15e`·`dbf5b47e`. `pnpm gate` **ok**(14564 · projects PG 697 · credentials PG 103 · build · mirror). B 인계 보존(`.scratch/orch-gitlab-oauth/handoffs/`). ⚠️ A·C·E 인계 원본은 워크트리 정리와 함께 사라졌다 — A의 런타임 (b) 목록은 worker_done 요약·R-A로 갈음(실질 항목 없음), E 사람 판정 목록은 지휘자 보존본.
+- wave ③ — **D** `ctx_02779b576050`(Opus medium, `go-D`, base `dbf5b47e`).
+- D `worker_done` — `281d0fb2`(24 files · 뮤테이션 9 red · `gate: ok` 14596 · R-A 🟡 둘 닫음). D retain, 인계 보존. **R-D** `ctx_4c9d4c2e661d`(리뷰 워크트리 `go-RD`).
+- wave ④ 앞당김 — **F** `ctx_ee134488640a` · **G** `ctx_72b6d9450f46`(Astra medium, base `281d0fb2` — 문서·가이드만이라 D 리뷰와 병렬. R-D가 낱말을 바꾸면 F·G에 후속 Task).
+- R-D 완료(🔴 0 · 🟡 2 · ⚪ 5 — 뮤테이션 21, 글리프 출처 press kit 바이트 일치). 🟡1 J8 낱말이 카드 밖(account-mismatch·사건·disconnectFailed)에 남음 · 🟡2 J8 비중복 단언이 en만. **D fix1** — 🟡 둘 + ⚪1·2·4, ⚪3·5는 Q 관찰. R-D 해제·정리. ⚠️ D fix1이 낱말을 바꾸므로 G에 후속(바뀐 낱말 표) 필요.
+- F `worker_done` — 문서 9커밋(`fa31a63f`..`612a23a7`), pnpm test 14596 green · 게이트는 timeout 6(단독 68 green). F retain, 인계 보존. **R-F** `ctx_3ac3bec9c0be`(사실 오류 대조).
 
