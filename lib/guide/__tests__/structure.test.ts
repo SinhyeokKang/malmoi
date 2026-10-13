@@ -113,6 +113,16 @@ describe("실물 가이드 구조", () => {
   });
 
   /**
+   * **GitLab CI 원본이 발행된 뒤 `#ci-unavailable` 절을 지웠다** (2026-10-13 — `GITLAB_CI_RELEASE.sha`가 상수로 박혀 지금 빌드는 그 안내를
+   * 내지 않는다. v1.4.0 설치는 자기 판의 가이드를 서빙한다). 옛 링크·북마크는 CI 파일을 받는 절로 간다.
+   */
+  it("옛 gitlab/ci#ci-unavailable은 #gitlab-ci로 간다", () => {
+    const table = SECTION_LEGACY_ANCHORS["gitlab/ci"] ?? {};
+    expect(legacyAnchorTarget("#ci-unavailable", table)).toBe("/docs/gitlab/ci#gitlab-ci");
+    expect(headings(read("gitlab/ci.md")).map(({ id }) => id)).not.toContain("ci-unavailable");
+  });
+
+  /**
    * **옛 절 id 표 전부가 실재하는 절로 가고, 옛 페이지에는 그 id가 남지 않는다** (2026-10-13, 호스트별 페이지 분리).
    * 옛 페이지에 같은 id가 다시 생기면 그 절로 가던 링크가 다른 페이지로 튕긴다 — 표가 원고보다 오래 사는 것을 막는다.
    */

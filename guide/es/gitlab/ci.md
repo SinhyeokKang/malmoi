@@ -27,10 +27,6 @@ Hay un job por cada fuente, y los nombres de los jobs incluyen la dirección del
 
 Si tu código lee las traducciones mediante una función envoltorio, rellena `MALMOI_I18N_WRAPPER` (vacío de forma predeterminada) en el `variables:` del job de esa fuente, con un envoltorio por línea. Usa `module#export` para una función directa, o añade `()` para un hook, como `next-intl#useTranslations()`. Ayuda a Malmoi a encontrar referencias de código; no decide qué claves de traducción existen. Para cambiar la rama base más adelante, cambia **Rama base** en **Configuración** y edita el valor `MALMOI_I18N_BASE_BRANCH`. Cuando añadas fuentes, vuelve a copiar el archivo completo desde **Configuración** y reemplaza con él los jobs de Malmoi.
 
-## Si el archivo de CI no está disponible {#ci-unavailable}
-
-Si Malmoi indica que el archivo de CI de GitLab aún no está disponible en esta versión de Malmoi, no hay jobs que copiar. Guarda igualmente el token de push; hasta que el archivo de CI esté disponible, la [ejecución nocturna](../sync/nightly.md#repository-changes) y **Sincronizar** cargan los cambios del repositorio. Un [cambio de idioma base](../setup/sources.md#base-language) solo se aplica mediante los jobs de CI, así que espera hasta que los añadas.
-
 ## Ejecútalo y compruébalo {#first-run}
 
 Al hacer commit de los jobs en la rama base, se inician. Para ejecutarlos de nuevo, vuelve a ejecutar el job desde su pipeline. Revisa el registro del job: `applied` significa que los archivos se cargaron y **Fuentes** está actualizado en Malmoi. Un job correcto también puede informar `deferred` cuando hay ediciones sin enviar — la actualización se retiene y Registros la muestra como **Retenido**; consulta [Cuando cambia el código](../sync/push.md#deferred). Un job fallido muestra su motivo en el registro. En Malmoi, la pestaña **Sincronizar** de Inicio muestra la última sincronización: **Sincronización de CI** como **Última sincronización**, su **Resultado** y cuántas traducciones cambió en **Cambiados**. **Registros de sincronización** lista todas las sincronizaciones.

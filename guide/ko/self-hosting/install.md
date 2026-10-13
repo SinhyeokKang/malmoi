@@ -1,10 +1,10 @@
 # 설치
 
-외부 서비스를 내 계정으로 등록하고, 설정 값을 채운 뒤 Docker Compose로 Malmoi를 띄웁니다.
+외부 서비스를 내 계정으로 등록하고, 설정값을 채운 뒤 Docker Compose로 Malmoi를 띄웁니다.
 
 ## 외부 서비스 등록 {#external-apps}
 
-아래에서 필요한 서비스는 내 계정으로 만듭니다. mal-moi.com의 OAuth 앱, GitHub App, Resend 도메인, 키를 가져다 쓰지 마세요. `<ORIGIN>`은 내 `MALMOI_ORIGIN`입니다.
+아래에서 필요한 서비스는 내 계정으로 등록합니다. mal-moi.com의 OAuth 앱, GitHub App, Resend 도메인, 키를 가져다 쓰지 마세요. `<ORIGIN>`은 내 `MALMOI_ORIGIN`입니다.
 
 | 무엇 | 만드는 곳 | 설정 | `deploy/.env`에 넣을 값 |
 | --- | --- | --- | --- |
@@ -15,25 +15,25 @@
 | Google OAuth(로그인, GitHub나 GitLab을 켜면 선택) | Google Cloud Console → OAuth 동의 화면과 사용자 인증 정보 | 동의 화면 External, In production(Internal이면 조직 밖 사람이 모두 `403 org_internal`로 막히고, 테스트 모드면 등록한 테스트 사용자만 들어옵니다) · 범위 `email`·`profile` · 승인된 리디렉션 URI `<ORIGIN>/api/auth/callback/google` · 개인정보처리방침 URL = `MALMOI_PRIVACY_URL` | `AUTH_GOOGLE_ID` · `AUTH_GOOGLE_SECRET` |
 | Resend 발신 도메인(초대 메일, 필수) | Resend → Domains와 API Keys | 도메인 인증(SPF·DKIM) · 열람·클릭 추적 끔(추적은 초대 링크를 바꿉니다) · TLS Enforced 권장 · 그 도메인으로 한정한 Sending access API 키 | `RESEND_API_KEY` · `INVITATION_EMAIL_FROM="Malmoi <invite@<verified domain>>"` |
 
-- GitHub App 권한은 앱이 실제로 부르는 기능에 필요한 최소 집합입니다. 설치마다 Repository access의 리포지토리 목록이 Malmoi가 닿을 수 있는 리포지토리를 정하고, 목록에 없는 리포지토리는 설치되지 않은 것으로 보입니다.
+- GitHub App 권한은 앱이 실제로 사용하는 기능에 필요한 최소한의 권한입니다. 설치마다 Repository access의 리포지토리 목록이 Malmoi가 접근할 수 있는 리포지토리를 정하고, 목록에 없는 리포지토리는 설치되지 않은 것으로 보입니다.
 - GitHub, GitLab, Google 중 로그인 공급자를 하나 이상 켜세요. 공급자는 ID와 시크릿이 둘 다 있을 때 켜지고, 로그인 화면에는 켜진 공급자의 버튼만 나옵니다. 팀원이 쓸 수 있는 공급자를 고르세요. GitLab 로그인은 GitLab.com만 지원합니다.
-- GitLab 리포지토리만 쓰면 GitHub App은 선택입니다. `GITHUB_APP_*` 다섯 값을 모두 비우세요. GitHub 리포지토리를 쓰려면 다섯 값을 모두 채우세요. 일부만 채우면 `incomplete-group`으로 기동이 멈춥니다. 로그인 설정은 별개입니다. GitLab만 쓰는 설치본은 로그인용으로 `AUTH_GITLAB_ID`와 `AUTH_GITLAB_SECRET` 쌍만 넣어도 기동합니다. 리포지토리 연결에는 여전히 사용자가 계정에 등록한 `api` 권한 범위의 개인 액세스 토큰(PAT)을 쓰며, GitLab 로그인 앱이 이 토큰을 대신하지 않습니다.
+- GitLab 리포지토리만 쓰면 GitHub App은 선택입니다. `GITHUB_APP_*` 다섯 값을 모두 비우세요. GitHub 리포지토리를 쓰려면 다섯 값을 모두 채우세요. 일부만 채우면 `incomplete-group` 오류로 시작하지 못합니다. 로그인 설정은 별개입니다. GitLab만 쓰는 설치본은 로그인용으로 `AUTH_GITLAB_ID`와 `AUTH_GITLAB_SECRET` 쌍만 넣어도 시작할 수 있습니다. 리포지토리 연결에는 여전히 사용자가 계정에 등록한 `api` 권한 범위의 개인 액세스 토큰(PAT)을 쓰며, GitLab 로그인 앱이 이 토큰을 대신하지 않습니다.
 
-## 설정 값 채우기 {#settings}
+## 설정값 입력 {#settings}
 
-값은 모두 `deploy/.env`에 넣습니다. web 컨테이너는 시작할 때마다 아래 이름을 확인하고, 필수 값이 비었거나 모양이 틀리거나 그룹이 불완전하면 시작하지 않습니다([시작 검사](troubleshooting.md#startup-checks)). 일부는 Compose가 직접 채우므로 건드리지 마세요.
+값은 모두 `deploy/.env`에 넣습니다. web 컨테이너는 시작할 때마다 아래 환경 변수를 확인하고, 필수 값이 비었거나 형식이 맞지 않거나 그룹의 일부 값이 빠져 있으면 시작하지 않습니다([시작 검사](troubleshooting.md#startup-checks)). 일부는 Compose가 직접 채우므로 건드리지 마세요.
 
 | 이름 | 채우는 쪽 | 참고 |
 | --- | --- | --- |
 | `MALMOI_ORIGIN` | 운영자 | nginx 파일의 `server_name`과 같은 호스트 |
 | `MALMOI_PRIVACY_URL` | 운영자 | HTTPS, 사용자 정보 없음, 이 설치본의 `/privacy`가 아님 |
-| `MALMOI_UPLOAD_DIR` | Compose(`/data/uploads`) | `uploads` 볼륨이 여기에 마운트됩니다. 검사가 존재와 쓰기 권한을 확인합니다 |
+| `MALMOI_UPLOAD_DIR` | Compose(`/data/uploads`) | `uploads` 볼륨이 여기에 마운트됩니다. 시작 검사에서 디렉터리의 존재 여부와 쓰기 권한을 확인합니다 |
 | `AUTH_URL` · `AUTH_TRUST_HOST` | Compose(`${MALMOI_ORIGIN}` · `true`) | `AUTH_URL`은 `MALMOI_ORIGIN`과 같아야 합니다 |
 | `AUTH_SECRET` | 운영자 | `openssl rand -base64 32` |
-| `AUTH_GITHUB_ID` · `AUTH_GITHUB_SECRET` · `AUTH_GITLAB_ID` · `AUTH_GITLAB_SECRET` · `AUTH_GOOGLE_ID` · `AUTH_GOOGLE_SECRET` | 운영자 | 완전한 쌍이 하나 이상 있어야 합니다. 공급자를 끄려면 두 값을 모두 비웁니다. 둘 중 하나만 채우면 기동이 멈춥니다 |
+| `AUTH_GITHUB_ID` · `AUTH_GITHUB_SECRET` · `AUTH_GITLAB_ID` · `AUTH_GITLAB_SECRET` · `AUTH_GOOGLE_ID` · `AUTH_GOOGLE_SECRET` | 운영자 | 완전한 쌍이 하나 이상 있어야 합니다. 공급자를 끄려면 두 값을 모두 비웁니다. 둘 중 하나만 채우면 시작하지 못합니다 |
 | `APP_SIGNING_SECRET` | 운영자 | `node -e 'console.log(require("crypto").randomBytes(32).toString("base64url"))'` — `AUTH_SECRET`·암호화 키와 다른 값 |
 | `DATABASE_URL` | Compose | 런타임 롤 `malmoi_app`과 `RUNTIME_DB_PASSWORD` |
-| `GITHUB_APP_ID` · `GITHUB_APP_PRIVATE_KEY` · `GITHUB_APP_CLIENT_ID` · `GITHUB_APP_CLIENT_SECRET` · `GITHUB_APP_SLUG` | 운영자 | 선택 그룹입니다. GitHub 리포지토리를 쓰면 다섯을 모두 채우고, GitLab만 쓰면 모두 비웁니다. slug는 `[a-z0-9-]`입니다 |
+| `GITHUB_APP_ID` · `GITHUB_APP_PRIVATE_KEY` · `GITHUB_APP_CLIENT_ID` · `GITHUB_APP_CLIENT_SECRET` · `GITHUB_APP_SLUG` | 운영자 | 선택 그룹입니다. GitHub 리포지토리를 쓰면 다섯 값을 모두 채우고, GitLab만 쓰면 모두 비웁니다. slug는 `[a-z0-9-]`입니다 |
 | `CRON_SECRET` | 운영자 | web과 스케줄러 컨테이너가 같은 값을 받습니다 — `openssl rand -hex 32` |
 | `TOKEN_ENCRYPTION_KEYS` · `TOKEN_ENCRYPTION_ACTIVE_KEY_ID` · `PII_ENCRYPTION_KEYS` · `PII_ENCRYPTION_ACTIVE_KEY_ID` · `EMAIL_LOOKUP_KEY` · `EMAIL_LOOKUP_KEY_ID` | 운영자 | 키링 JSON은 작은따옴표로 감쌉니다: `TOKEN_ENCRYPTION_KEYS='{"k1":"<32-byte base64>"}'`. 세 키 값은 서로 달라야 합니다(각각 `openssl rand -base64 32`) |
 | `RESEND_API_KEY` · `INVITATION_EMAIL_FROM` | 운영자 | `re_`로 시작 · `이름 <주소>` |
@@ -44,13 +44,13 @@ Compose는 `MALMOI_IMAGE`, `POSTGRES_PASSWORD`, `MIGRATE_DB_PASSWORD`, `RUNTIME_
 ## 설치하기 {#install}
 
 1. 최신 앱 릴리스 `v<x.y.z>`를 고르고, 리포지토리의 같은 태그를 받아 그 `deploy/` 디렉터리를 씁니다: `git clone --depth 1 --branch v<x.y.z> https://github.com/SinhyeokKang/malmoi.git`. 그 릴리스 노트(`https://github.com/SinhyeokKang/malmoi/releases/tag/v<x.y.z>`)의 `Self-hosting image` 줄에서 라벨을 뺀 이미지 참조(`ghcr.io/…@sha256:…`)를 복사해 `MALMOI_IMAGE` 값으로 고정합니다: `MALMOI_IMAGE=ghcr.io/sinhyeokkang/malmoi:v<x.y.z>@sha256:<digest>`. v1.3.0 이후 릴리스에 그 줄이 있습니다. 찾을 수 없으면 `docker buildx imagetools inspect ghcr.io/sinhyeokkang/malmoi:v<x.y.z>`로 이미지 digest를 확인합니다.
-2. `cd deploy && cp .env.example .env && chmod 600 .env`를 실행하고 값을 채웁니다([설정 값](#settings)). 이 파일에는 키와 비밀번호가 전부 들어 있으므로 리포지토리·메신저·암호화하지 않은 백업에 평문 사본을 두지 마세요. `$`가 든 값은 작은따옴표로 감쌉니다.
+2. `cd deploy && cp .env.example .env && chmod 600 .env`를 실행하고 값을 채웁니다([설정값](#settings)). 이 파일에는 키와 비밀번호가 전부 들어 있으므로 리포지토리·메신저·암호화하지 않은 백업에 평문 사본을 두지 마세요. `$`가 든 값은 작은따옴표로 감쌉니다.
 3. 인증서를 `deploy/certs/`에 두고(`chmod 600 privkey.pem`) `nginx/malmoi.conf`의 `server_name`을 고칩니다. 80·443 포트만 열고 PostgreSQL과 앱 포트는 공개하지 않습니다.
 4. `docker compose config -q`로 문법 오류와 빠진 필수 값을 확인한 뒤 `docker compose up -d`를 실행합니다.
-5. `docker compose ps`를 확인합니다. postgres가 healthy, migrate가 코드 0으로 종료, web이 healthy, proxy와 scheduler가 실행 중이어야 합니다. `docker compose logs migrate`에는 마이그레이션 적용과 bootstrap 무오류가 보입니다. web이 계속 다시 시작되면 `docker compose logs web`의 `preflight: <name> <reason>` 줄이 원인을 알려 줍니다([문제 해결](troubleshooting.md#startup-checks)).
+5. `docker compose ps`를 확인합니다. postgres가 healthy, migrate가 코드 0으로 종료, web이 healthy, proxy와 scheduler가 실행 중이어야 합니다. `docker compose logs migrate`로 마이그레이션이 적용되었고 bootstrap 오류가 없는지 확인합니다. web이 계속 다시 시작되면 `docker compose logs web`의 `preflight: <name> <reason>` 줄이 원인을 알려 줍니다([문제 해결](troubleshooting.md#startup-checks)).
 6. `https://<domain>/`을 열어 켠 공급자마다 로그인해 보고, 프로젝트를 만든 뒤 생성된 워크플로 파일에 `api-url: "https://<domain>"` (GitHub Actions) 또는 `MALMOI_I18N_API_URL: "https://<domain>"` (GitLab CI)이 있는지 확인합니다. 프로필 사진을 올려 보고 테스트 주소로 초대 메일을 한 통 보냅니다.
-7. 바로 첫 백업을 만듭니다([백업](operate.md#backup)). 이 순간부터 `.env`의 키 여섯은 데이터베이스와 짝입니다. 키를 잃으면 누구의 이름과 이메일도 복구할 수 없습니다.
+7. 바로 첫 백업을 만듭니다([백업](operate.md#backup)). 이후 데이터베이스를 복원하려면 `.env`의 키 여섯이 함께 필요합니다. 키를 잃으면 누구의 이름과 이메일도 복구할 수 없습니다.
 
 ## 다음 단계 {#next}
 
-정기적으로 백업하고, 새 릴리스가 나오면 업데이트합니다([업데이트·백업·복원](operate.md#update)). web이 계속 다시 시작되거나 로그인이 깨지면 [문제 해결](troubleshooting.md#startup-checks)부터 봅니다.
+정기적으로 백업하고, 새 릴리스가 나오면 업데이트합니다([업데이트·백업·복원](operate.md#update)). web이 계속 다시 시작되거나 로그인할 수 없으면 [문제 해결](troubleshooting.md#startup-checks)부터 봅니다.

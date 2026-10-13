@@ -239,7 +239,7 @@ model StringKey {
   /// 번역이 그대로 살아 돌아와야 한다. export에서만 빠진다.
   orphaned    Boolean @default(false)
 
-  /// 키가 **처음 들어온** 시각. 목록의 `New from GitHub`가 프로젝트의 `lastPulledAt`과 견준다
+  /// 키가 **처음 들어온** 시각. 목록의 `New keys`가 프로젝트의 `lastPulledAt`과 견준다
   /// (DESIGN §6.63). ⚠️ **신규 INSERT에서만 채운다** — 재push나 orphaned 복구의 UPDATE가
   /// 건드리면 살아 돌아온 키가 매번 "새 키"로 다시 잡힌다.
   ///

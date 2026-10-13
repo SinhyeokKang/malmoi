@@ -28,6 +28,8 @@ description: guide/ 사용자 가이드(en 원문 + ko·es 번역)를 AUTHORING.
 
 **가장 먼저 `guide/AUTHORING.md`를 전문으로 읽는다.** 이 단계를 건너뛰고 작성하지 않는다 — 표기 규약(굵게 = UI 라벨·정확 일치), 앵커·표 이름 규칙, 화면 문구 규칙, EDITOR 규칙, `Needs review`를 플래그로만 쓰는 규칙이 전부 거기 있고 대부분이 `pnpm test`로 red가 난다.
 
+ko 원고를 작성·수정할 때는 AUTHORING `#tone-ko`가 가리키는 `CLAUDE.md` "한국어 작성 공통 규칙"도 읽는다.
+
 ### 1. 대상 결정
 
 - 인자 또는 직전 컨텍스트에서 갱신 대상 페이지를 확정한다.
@@ -57,6 +59,8 @@ description: guide/ 사용자 가이드(en 원문 + ko·es 번역)를 AUTHORING.
 이번 변경이 **작성 기준 자체**를 바꿨으면(새 페이지 → IA 표, 새 사실 소스 → 사실 대조 표, 새 외부 라벨 → 허용 목록) AUTHORING의 해당 표도 함께 고친다.
 
 ### 5. 검증
+
+ko 원고는 AUTHORING `#verification`의 의미 대조를 먼저 마친다.
 
 **`pnpm test`** — 구조(SUMMARY↔트리·H1·`{#id}`)·링크·앵커 해소·플레이스홀더 0·라벨 ⊂ 사전 ∪ 허용 목록·표 이름 중복·정본 상수 대조·이미지 게이트·한글/브랜드/용어 게이트가 전부 여기 있다. 사람이 grep 체크리스트를 돌리지 않는다.
 

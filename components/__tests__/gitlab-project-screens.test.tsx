@@ -59,7 +59,7 @@ describe("Home 메타 — GitLab 프로젝트 (시안 G5)", () => {
     return container;
   }
 
-  it("Platform 행이 GitLab을 글자로 말하고 리포 링크는 gitlab.com이다 — GitHub 낱말 0건", async () => {
+  it("Host 행이 GitLab을 글자로 말하고 리포 링크는 gitlab.com이다 — GitHub 낱말 0건", async () => {
     const c = await column();
     const platform = [...c.querySelectorAll("dl > div")].find((row) => row.querySelector("dt")?.textContent === en.home.meta.platform)!;
     expect(platform.querySelector("dd")!.textContent).toBe("GitLab");

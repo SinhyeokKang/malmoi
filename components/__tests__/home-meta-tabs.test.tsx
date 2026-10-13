@@ -156,7 +156,7 @@ describe("메타 열 — Project 탭", () => {
   it("브랜치 행 라벨은 Branch다", async () => {
     const { panel } = await setup();
     const labels = [...panel().querySelectorAll("dt")].map((dt) => dt.textContent);
-    expect(labels.slice(0, 5)).toEqual(["Platform", "Repository", "Connection", "Branch", "CI"]);
+    expect(labels.slice(0, 5)).toEqual(["Host", "Repository", "Connection", "Branch", "CI"]);
   });
 
   it("대기 초대가 없어도 `(0)`이다 · CI 미설정", async () => {

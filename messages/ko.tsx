@@ -35,7 +35,7 @@ export const ko = {
     label: "받은편지함",
     labelUnread: (n: number): string => `받은편지함, 읽지 않은 항목 ${n.toLocaleString("ko-KR")}개`,
     unread: "읽지 않음",
-    emptyDescription: "모든 프로젝트에 확인할 항목이 없습니다.",
+    emptyDescription: "어느 프로젝트에도 확인할 항목이 없습니다.",
     failed: "목록을 불러오지 못했습니다.",
     loading: "항목을 불러오는 중…",
   },
@@ -67,20 +67,20 @@ export const ko = {
     ),
     unsentCount: (n: number): string => `미전송 변경 사항 ${n.toLocaleString("ko-KR")}건`,
     unsent: (n: number, edits: ReactNode): ReactNode => (
-      <>동기화하면 {edits} 전부 버리고 리포지토리의 번역으로 덮어씁니다.</>
+      <>동기화하면 {edits} 모두 사라지고 리포지토리의 번역으로 바뀝니다.</>
     ),
     openPr: (n: number, branch: string): string =>
-      `PR #${n}의 변경 사항은 아직 ${branch} 브랜치에 반영되지 않았습니다. 이 내용도 덮어씁니다.`,
+      `PR #${n}의 변경 사항은 아직 ${branch} 브랜치에 반영되지 않았습니다. 이 변경 사항도 덮어씁니다.`,
     prChecking: "열린 PR을 확인하는 중…",
     prUnknown: "열린 PR을 확인하지 못했습니다.",
     sendFirst: "먼저 게시",
     sendHint: (n: number, link: ReactNode): ReactNode => <>변경 사항을 보존하려면 {link}하세요. 번역 화면으로 이동합니다.</>,
     nothingUnsent: "모든 변경 사항을 이미 보냈습니다.",
-    seeOpen: "열린 내용 보기",
+    seeOpen: "열린 요청 보기",
     completed: (n: number, branch: string): string => `${branch} 브랜치에서 키 ${n.toLocaleString("ko-KR")}개를 동기화함`,
     syncedKeys: (n: number): string => `키 ${n.toLocaleString("ko-KR")}개를 동기화함`,
     unreadable: (n: number): string => `소스 ${n.toLocaleString("ko-KR")}개를 읽지 못함`,
-    notReplaced: (n: number): string => `소스 ${n.toLocaleString("ko-KR")}개가 바뀌지 않음`,
+    notReplaced: (n: number): string => `소스 ${n.toLocaleString("ko-KR")}개의 값을 교체하지 않음`,
     withIssue: (base: string, issue: string): string => `${base} · ${issue}`,
     partial: (n: number): string => `항목 ${n.toLocaleString("ko-KR")}개가 동기화되지 않았습니다. 아래 상세 내용을 확인하세요.`,
     kept: (n: number): string => `미전송 변경 사항 ${n.toLocaleString("ko-KR")}건을 유지했습니다. 이 내용을 보낼 때까지 리포지토리 업데이트를 보류합니다.`,
@@ -114,7 +114,7 @@ export const ko = {
       editor: (branch: string): string => `기준 브랜치(${branch})가 더 이상 리포지토리에 없습니다 — 프로젝트 소유자에게 다른 기준 브랜치를 골라 달라고 요청하세요`,
     },
     onGitLab: {
-      openPr: (n: number, branch: string): string => `MR !${n}의 변경 사항은 아직 ${branch} 브랜치에 반영되지 않았습니다. 이 내용도 덮어씁니다.`,
+      openPr: (n: number, branch: string): string => `MR !${n}의 변경 사항은 아직 ${branch} 브랜치에 반영되지 않았습니다. 이 변경 사항도 덮어씁니다.`,
       prChecking: "열린 MR을 확인하는 중…",
       prUnknown: "열린 MR을 확인하지 못했습니다.",
     },
@@ -203,7 +203,7 @@ export const ko = {
     },
     theme: {
       title: "테마",
-      description: "Malmoi 화면의 밝기를 정합니다.",
+      description: "Malmoi 화면의 테마를 고릅니다.",
       help: "시스템은 기기의 화면 모드 설정을 따릅니다.",
       options: { system: "시스템", light: "라이트", dark: "다크" },
       failed: "테마를 바꾸지 못했습니다. 다시 시도하세요.",
@@ -222,7 +222,7 @@ export const ko = {
     hero: {
       title: ["흩어진 말을 모아,", "함께 번역하고 전달하세요"] as const,
       // 첫 문장이 정의다 — 홈 description·og:description으로도 나가므로 분량을 늘리지 않는다.
-      body: "Malmoi는 GitHub 리포지토리의 번역을 관리하는 도구입니다. 팀원들과 브라우저에서 번역 파일을 편집하고, 변경 사항을 PR 하나로 보낼 수 있습니다.",
+      body: "Malmoi는 GitHub 또는 GitLab 리포지토리의 번역을 관리하는 도구입니다. 팀원들과 브라우저에서 번역 파일을 편집하고, 변경 사항을 PR 하나로 보낼 수 있습니다.",
       fact: "유료 플랜이 없으며 MIT 라이선스로 공개한 오픈 소스입니다.",
       latest: (version: string) => (version === "" ? "최신 변경 기록" : `v${version} 업데이트`),
     },
@@ -230,7 +230,7 @@ export const ko = {
       label: "Malmoi 작동 방식",
       captions: [
         "Malmoi가 리포지토리에 이미 있는 번역 파일을 읽습니다.",
-        "아직 번역하지 않은 언어를 채웁니다.",
+        "비어 있는 번역을 언어별로 채웁니다.",
         "번역을 저장하면 게시할 변경 사항에 추가됩니다.",
         "보내기 전에 모든 변경 사항을 diff로 확인합니다.",
         "변경 사항을 PR 하나로 보냅니다.",
@@ -326,8 +326,8 @@ export const ko = {
     intro: (releases: ReactNode): ReactNode => (
       <>Malmoi의 릴리스별 변경 사항을 최신순으로 보여 줍니다. 날짜는 UTC 기준입니다. 같은 내용을 {releases}에서도 볼 수 있습니다.</>
     ),
-    failed: (releases: ReactNode): ReactNode => <>지금은 GitHub에서 변경 기록을 불러오지 못했습니다. {releases}에서 확인하세요.</>,
-    empty: (releases: ReactNode): ReactNode => <>아직 게시된 릴리스가 없습니다. 새 버전은 이곳과 {releases}에 나타납니다.</>,
+    failed: (releases: ReactNode): ReactNode => <>지금은 GitHub에서 변경 기록을 불러올 수 없습니다. {releases}에서 확인하세요.</>,
+    empty: (releases: ReactNode): ReactNode => <>아직 게시된 릴리스가 없습니다. 새 버전이 나오면 이곳과 {releases}에 표시됩니다.</>,
     truncated: (releases: ReactNode): ReactNode => <>이전 릴리스는 {releases}에 있습니다.</>,
   },
 
@@ -350,7 +350,7 @@ export const ko = {
         "pending-edits": "리포지토리 업데이트 보류",
         "open-pr": "PR이 머지되거나 닫힐 때까지 보류",
         "pr-check-failed": "보류 — 열린 PR을 확인하지 못했습니다",
-        "publish-raced": "보류 — 동기화 확인 뒤 Publish가 완료되었습니다",
+        "publish-raced": "보류 — 동기화 전 확인을 마친 뒤 게시가 완료되었습니다",
       },
       frozen: "보관 시점에 고정됨",
       neverSent: "전송 이력 없음",
@@ -372,8 +372,8 @@ export const ko = {
       review: {
         title: (surface: string, locale: string): string => `${surface} · ${locale}`,
         body: (n: number): string => `번역 ${n.toLocaleString("ko-KR")}개를 검토해야 합니다`,
-        // 이름 뒤 조사를 피하려고 "마지막 변경 사항: 이름" 꼴로 쓴다.
-        tail: (who: string): string => ` — 이 언어의 마지막 변경 사항: ${who} 님.`,
+        // 이름 뒤에 고정 호칭을 두어 받침에 따라 조사가 달라지지 않게 한다.
+        tail: (who: string): string => ` — ${who} 님이 이 언어의 마지막 변경 사항을 저장했습니다.`,
       },
       neverFilled: {
         title: (surface: string, locale: string): string => `${surface} · ${locale}`,
@@ -402,7 +402,7 @@ export const ko = {
     meta: {
       title: "프로젝트",
       tabs: { list: "프로젝트 정보", project: "프로젝트", sync: "동기화", publish: "게시" },
-      platform: "플랫폼",
+      platform: "호스트",
       platforms: { github: "GitHub", gitlab: "GitLab" },
       repository: "리포지토리",
       connection: "연결",
@@ -450,8 +450,8 @@ export const ko = {
           `Malmoi가 ${branch} 브랜치의 ${surface} 소스를 읽지 못했습니다. ${reason}`,
         safe: (when: string | null): string =>
           when === null
-            ? "기존 번역은 보존되어 있습니다. 현재 보이는 값은 이번 동기화 이전의 값입니다."
-            : `기존 번역은 보존되어 있습니다. 현재 보이는 값은 마지막 동기화 성공 시점(${when})의 값입니다.`,
+            ? "기존 번역은 그대로 남아 있습니다. 현재 보이는 값은 이번 동기화 이전의 값입니다."
+            : `기존 번역은 그대로 남아 있습니다. 현재 보이는 값은 마지막 동기화 성공 시점(${when})의 값입니다.`,
         action: "다시 시도",
         editor: "프로젝트 소유자에게 동기화를 다시 실행해 달라고 요청하세요.",
       },
@@ -469,7 +469,7 @@ export const ko = {
         title: "이 리포지토리의 연결이 끊어졌습니다",
         body: "Malmoi와 리포지토리의 연결이 끊어졌습니다. 다시 연결할 때까지 동기화와 게시가 멈춥니다 — 기존 번역은 보존됩니다.",
         action: "다시 연결",
-        editor: "프로젝트 소유자에게 다시 연결을 요청하세요.",
+        editor: "프로젝트 소유자에게 다시 연결해 달라고 요청하세요.",
       },
       wrongRepository: {
         title: "다른 리포지토리에 연결되어 있습니다",
@@ -531,7 +531,7 @@ export const ko = {
       from: "시작",
       to: "끝",
       apply: "기간 적용",
-      description: "시작일과 종료일을 선택하세요. 한쪽을 비우면 해당 날짜의 제한 없이 조회합니다.",
+      description: "시작일과 종료일을 선택하세요. 시작일을 비우면 이전 기록도, 종료일을 비우면 이후 기록도 포함합니다.",
       zoneNote: (zone: string) => `날짜는 ${zone} 기준입니다.`,
     },
     search: { label: "로그 검색", placeholder: "로그 검색…" },
@@ -556,14 +556,14 @@ export const ko = {
       yesterday: "어제",
     },
     none: "—",
-    warnings: (count: number): string => `${count.toLocaleString("ko-KR")}개 버림`,
+    warnings: (count: number): string => `${count.toLocaleString("ko-KR")}개 제외됨`,
     deferredReason: (count: number): string =>
       `미전송 변경 사항 ${count.toLocaleString("ko-KR")}건 때문에 동기화를 보류했습니다. 아무것도 동기화하지 않았습니다.`,
     deferReasons: {
       "open-pr": "Malmoi PR이 아직 열려 있습니다. 아무것도 동기화하지 않았습니다 — PR이 머지되거나 닫히면 동기화가 다시 시작됩니다.",
       "pr-check-failed": "GitHub에서 열린 Malmoi PR을 확인하지 못해 아무것도 동기화하지 않았습니다. 다음 실행에서 다시 확인합니다.",
-      "publish-raced": "동기화 확인 뒤 Publish가 완료되어 아무것도 동기화하지 않았습니다. 다음 실행에서 다시 확인합니다.",
-      "too-large": "리포지토리 변경이 서버 동기화 한도를 초과했습니다. 아무것도 동기화하지 않았습니다. 파일 크기를 줄이거나 리포지토리 워크플로로 전달하세요.",
+      "publish-raced": "동기화 전 확인을 마친 뒤 게시가 완료되어 아무것도 동기화하지 않았습니다. 다음 실행에서 다시 확인합니다.",
+      "too-large": "리포지토리의 변경 사항이 서버 동기화 한도를 초과했습니다. 아무것도 동기화하지 않았습니다. 파일 크기를 줄이거나 리포지토리 워크플로로 전달하세요.",
     },
     empty: {
       title: "아직 활동이 없습니다",
@@ -577,7 +577,7 @@ export const ko = {
       `전체 활동 이력은 ${date}부터 볼 수 있습니다. 그 이전 기록에는 게시 실행만 있습니다.`,
     queryError: {
       title: "활동을 불러오지 못했습니다",
-      description: "이력을 불러오는 중 문제가 생겼습니다. 기존 기록은 보존되어 있으니 다시 시도하세요.",
+      description: "이력을 불러오는 중 문제가 생겼습니다. 기존 기록은 그대로 있으니 다시 시도하세요.",
       retry: "다시 시도",
     },
     loading: { list: "활동을 불러오는 중…" },
@@ -638,8 +638,8 @@ export const ko = {
         held: {
           "open-pr": (who: ReactNode): ReactNode => <>{who} — 동기화를 보류했습니다. Malmoi PR이 아직 열려 있습니다</>,
           "pr-check-failed": (who: ReactNode): ReactNode => <>{who} — 동기화를 보류했습니다. GitHub가 PR 확인에 응답하지 않았습니다</>,
-          "publish-raced": (who: ReactNode): ReactNode => <>{who} — 동기화를 보류했습니다. 동기화 확인 뒤 Publish가 완료되었습니다</>,
-          "too-large": (who: ReactNode): ReactNode => <>{who} — 동기화를 보류했습니다. 변경이 서버 동기화 한도를 초과했습니다</>,
+          "publish-raced": (who: ReactNode): ReactNode => <>{who} — 동기화를 보류했습니다. 동기화 전 확인을 마친 뒤 게시가 완료되었습니다</>,
+          "too-large": (who: ReactNode): ReactNode => <>{who} — 동기화를 보류했습니다. 변경 사항이 서버 동기화 한도를 초과했습니다</>,
         },
       },
       member: {
@@ -692,7 +692,7 @@ export const ko = {
         withheld: "제외됨",
         closedPullRequest: "닫은 PR",
       },
-      closedPullRequest: "기준 브랜치와 더 이상 다른 내용이 없어서 Malmoi가 닫았습니다.",
+      closedPullRequest: "기준 브랜치와 다른 내용이 더 이상 없어 Malmoi가 닫았습니다.",
       withheld: (n: number): string =>
         `언어 파일이나 키가 아직 리포지토리에 없어서 변경 사항 ${n.toLocaleString("ko-KR")}건이 Malmoi에 남았습니다.`,
       actions: {
@@ -706,7 +706,7 @@ export const ko = {
       notes: {
         publish: "실패한 실행도 GitHub에 일부 반영되었을 수 있습니다. PR이 생성되었는지 리포지토리를 확인하세요.",
         import: "여기에 표시된 수는 키 개수입니다. 소스 추가와 동기화는 별도로 기록되며, 이 기록은 동기화 내역입니다.",
-        token: "토큰 값은 일부라도 로그에 저장하지 않습니다.",
+        token: "토큰 값은 로그에 전혀 저장하지 않습니다.",
       },
       noResult: "서버가 결과를 기록하지 않았습니다.",
       notRecordedForRun: "이 실행에서는 기록하지 않음",
@@ -747,7 +747,7 @@ export const ko = {
     refusals: {
       archived: "프로젝트가 보관되었습니다.",
       "not-ready": "첫 동기화가 아직 끝나지 않았습니다.",
-      "stale-commit": "더 새로운 버전의 리포지토리가 이미 동기화되었습니다.",
+      "stale-commit": "리포지토리의 더 최신 버전이 이미 동기화되었습니다.",
       "wrong-format": "리포지토리의 파일 형식이 설정과 더 이상 맞지 않습니다.",
       "repo-replaced": "연결된 리포지토리가 바뀌었습니다.",
       "not-installed": "앱이 리포지토리에 연결되어 있지 않았습니다.",
@@ -758,7 +758,7 @@ export const ko = {
       deferReasons: {
         "open-pr": "Malmoi MR이 아직 열려 있습니다. 아무것도 동기화하지 않았습니다 — MR이 머지되거나 닫히면 동기화가 다시 시작됩니다.",
         "pr-check-failed": "GitLab에서 열린 Malmoi MR을 확인하지 못해 아무것도 동기화하지 않았습니다. 이 프로젝트의 GitLab 연결이 해제되었거나 쓸 수 없다면 프로젝트 소유자가 설정에서 다시 연결할 수 있습니다. 그렇지 않다면 다음 실행에서 다시 확인합니다.",
-        "too-large": "리포지토리 변경이 서버 동기화 한도를 초과했습니다. 아무것도 동기화하지 않았습니다. 파일 크기를 줄이거나 리포지토리의 GitLab CI 작업으로 전달하세요.",
+        "too-large": "리포지토리의 변경 사항이 서버 동기화 한도를 초과했습니다. 아무것도 동기화하지 않았습니다. 파일 크기를 줄이거나 리포지토리의 GitLab CI 작업으로 전달하세요.",
       },
       meta: { noPullRequest: "MR 없음" },
       sentence: {
@@ -825,7 +825,7 @@ export const ko = {
         "리포지토리를 연결하면 번역 파일을 찾습니다. 변경 사항은 PR(GitLab은 MR)로만 리포지토리에 보냅니다. 프로젝트에 초대받았다면 초대 메일의 링크를 여세요.",
     },
     summary: {
-      newFromGithub: "GitHub의 새 키",
+      newFromGithub: "새 키",
       toTranslate: "번역할 내용",
       toReview: "검토할 내용",
       toSend: "보낼 내용",
@@ -883,7 +883,6 @@ export const ko = {
       ownerRetries: "프로젝트 소유자만 다시 시도할 수 있습니다.",
     },
     onGitLab: {
-      summary: { newFromGithub: "GitLab의 새 키" },
       meter: { note: { setup: "계속하려면 이 프로젝트를 GitLab에 연결하세요." } },
       banner: {
         prOpen: (n: number): string => `MR !${n} 열림 — 머지하면 반영됩니다.`,
@@ -935,7 +934,7 @@ export const ko = {
       usedBy: (n: number): string => `프로젝트 ${n.toLocaleString("ko-KR")}개가 이 연결을 씁니다.`,
       replace: "토큰 교체",
       replaceTitle: "GitLab 토큰 교체",
-      replaceHint: (username: string): string => `@${username}의 새 토큰을 붙여 넣으세요. 이 연결을 쓰는 프로젝트는 바로 새 토큰을 씁니다.`,
+      replaceHint: (username: string): string => `@${username}의 새 토큰을 붙여 넣으세요. 이 연결을 사용하는 프로젝트에 새 토큰이 바로 적용됩니다.`,
       disconnectLabel: "GitLab 토큰 연결 해제",
       confirmDisconnect: "이 GitLab 토큰의 연결을 해제할까요?",
       confirmHint: "저장된 토큰이 삭제됩니다. 이 연결을 쓰는 프로젝트는 프로젝트 소유자가 다시 연결할 때까지 동기화와 게시가 멈춥니다.",
@@ -962,11 +961,11 @@ export const ko = {
       // provider 이름 뒤 조사를 피하려고 "~에서 계속"으로 쓴다(DESIGN §10.0).
       confirmAction: (provider: string): string => `${provider}에서 계속`,
       confirmDetail: {
-        github: "로그아웃 전에 GitHub 화면에서 본인 확인을 진행합니다.",
+        github: "로그아웃하기 전에 GitHub 화면에서 본인 여부를 확인합니다.",
         gitlab: "GitLab으로 이동합니다. 이미 GitLab에 로그인되어 있으면 바로 돌아오고 모든 세션이 종료됩니다.",
-        google: "로그아웃 전에 Google 화면에서 본인 확인을 진행합니다.",
+        google: "로그아웃하기 전에 Google 화면에서 본인 여부를 확인합니다.",
       },
-      willConfirm: "로그인 서비스로 이동해 확인한 뒤 이 화면으로 돌아옵니다.",
+      willConfirm: "로그인 서비스에서 본인 확인을 마친 뒤 이 화면으로 돌아옵니다.",
       complete: "모든 기기에서 로그아웃되었습니다. 계속하려면 다시 로그인하세요.",
       failed: "모든 기기에서 로그아웃하지 못했습니다. 다시 시도하세요.",
       cancelled: "확인이 취소되었습니다. 로그인 상태는 그대로입니다. 필요하면 다시 시도하세요.",
@@ -1060,11 +1059,11 @@ export const ko = {
     result: {
       title: "개인 토큰",
       copyNow: "지금 복사하세요 — 다시 표시되지 않습니다.",
-      setEnv: "셸에 MALMOI_TOKEN으로 설정한 뒤 에이전트에 Malmoi를 추가하세요 — 방법은 AI 에이전트 연결에 있습니다.",
+      setEnv: "토큰을 셸의 MALMOI_TOKEN 환경 변수에 설정한 뒤 에이전트에 Malmoi를 추가하세요. 자세한 방법은 ‘AI 에이전트 연결’ 문서를 참고하세요.",
     },
     revoke: {
       title: "토큰을 철회할까요?",
-      body: "이 토큰을 쓰는 모든 에이전트가 즉시 멈춥니다. 되돌릴 수 없습니다.",
+      body: "이 토큰을 쓰는 모든 에이전트가 즉시 접근 권한을 잃습니다. 되돌릴 수 없습니다.",
       confirm: "토큰 철회",
     },
   },
@@ -1086,7 +1085,7 @@ export const ko = {
     returnTo: (host: string): string => `${host} 사이트로 돌아갑니다.`,
     deny: "거부",
     authorize: "승인",
-    failed: "이 승인을 저장하지 못했습니다. 고른 항목은 그대로 있습니다 — 다시 시도하세요.",
+    failed: "이 승인을 저장하지 못했습니다. 선택한 항목은 그대로입니다 — 다시 시도하세요.",
     unconfirmed: "처리되었는지 확인하지 못했습니다. 다시 진행하기 전에 요청을 확인하세요.",
     checkRequest: "요청 확인",
     sessionEnded: "로그아웃되었습니다. 계속하려면 다시 로그인하세요 — 이 요청은 아직 유효합니다.",
@@ -1097,7 +1096,7 @@ export const ko = {
         title: "이미 응답한 요청입니다",
         body: "앞서 승인되었거나 거부되었습니다. 앱을 확인하고, 연결되어 있지 않으면 그 앱에서 Malmoi에 다시 연결하세요.",
       },
-      unavailable: { title: "이 요청을 불러오지 못했습니다", body: "Malmoi 쪽에서 문제가 생겼습니다. 요청이 아직 열려 있을 수 있습니다 — 잠시 후 다시 시도하세요." },
+      unavailable: { title: "이 요청을 불러오지 못했습니다", body: "Malmoi 쪽에서 문제가 생겼습니다. 요청이 아직 유효할 수 있습니다 — 잠시 후 다시 시도하세요." },
       invalid: {
         title: "이 앱은 연결할 수 없습니다",
         body: "Malmoi가 요청의 출처를 확인하지 못해 연결을 중단했습니다. 앱에 전달된 정보는 없습니다.",
@@ -1133,7 +1132,7 @@ export const ko = {
         title: "번역 파일 선택",
         description: (n: number, repo: string, branch: string): string =>
           `${repo} · ${branch}에서 번역 파일 후보 ${n.toLocaleString("ko-KR")}개를 찾았습니다. 계속하기 전에 키를 확인하세요.`,
-        loading: (repo: string, branch: string): string => `${repo} · ${branch} 읽는 중…`,
+        loading: (repo: string, branch: string): string => `${repo} · ${branch} 브랜치를 읽는 중…`,
         emptyTitle: "번역 파일 경로 지정",
         emptyDescription: (repo: string, branch: string): string =>
           `${repo} · ${branch}에서 지원하는 번역 파일을 찾지 못했습니다. 경로를 지정하면 Malmoi가 확인합니다.`,
@@ -1217,7 +1216,7 @@ export const ko = {
       searchEmpty: (q: string): string => `“${q}”에 해당하는 리포지토리 없음`,
       clearSearch: "검색어 지우기",
       onGitLab: {
-        loading: "Maintainer 이상인 GitLab 프로젝트를 찾는 중…",
+        loading: "Maintainer 이상 역할이 있는 GitLab 프로젝트를 찾는 중…",
         pushedAt: (rel: string): string => `${rel} 활동`,
         search: { label: "프로젝트 검색", placeholder: "프로젝트 검색…" },
       },
@@ -1248,9 +1247,9 @@ export const ko = {
         format: "파일 형식",
         path: "경로",
         pathHint: {
-          "per-locale": (token: ReactNode): ReactNode => <>{token} 자리표시에 언어가 들어갑니다.</>,
+          "per-locale": (token: ReactNode): ReactNode => <>{token} 자리에 언어 코드가 들어갑니다.</>,
           "multi-locale": (token: ReactNode): ReactNode => (
-            <>이 형식은 모든 언어를 파일 하나에 담으므로 경로에 언어 자리표시가 없습니다. 파일 경로에는 {token} 패턴을 쓸 수 있습니다.</>
+            <>이 형식은 모든 언어를 파일 하나에 담으므로 경로에 언어를 나타내는 자리가 없습니다. 파일 경로에는 {token} 패턴을 쓸 수 있습니다.</>
           ),
         },
         baseLocale: "기준 언어",
@@ -1294,7 +1293,7 @@ export const ko = {
         [code, keys, mostKeys ? "키가 가장 많음" : undefined].filter((part) => part !== undefined).join(" · "),
       // 언어 코드 뒤에 받침 조사를 붙이지 않으려고 "언어"를 붙인다(DESIGN §10.0).
       keyGap: (lang: string, n: number, base: string): string =>
-        `${lang} 언어는 ${base} 언어보다 키가 ${n.toLocaleString("ko-KR")}개 적습니다. ${lang} 언어를 기준으로 하면 그 키들이 빠집니다.`,
+        `${lang} 언어는 ${base} 언어보다 키가 ${n.toLocaleString("ko-KR")}개 적습니다. ${lang} 언어를 기준으로 하면 해당 키는 포함되지 않습니다.`,
       slugTaken: (alt: string | undefined): string =>
         alt === undefined
           ? "이미 사용 중인 주소입니다. 다른 주소를 입력하세요."
@@ -1323,7 +1322,7 @@ export const ko = {
         onGitLab: {
           description: (secret: ReactNode): ReactNode => (
             <>
-              이 값을 프로젝트의 CI/CD 변수 {secret} 항목으로 추가하고 Protect variable을 선택하며 Visibility는 Masked로 두세요.{" "}
+              이 값을 프로젝트의 CI/CD 변수 {secret} 항목에 추가하세요. Protect variable을 선택하고 Visibility는 Masked로 설정하세요.{" "}
               <strong className="text-foreground font-normal">이 페이지를 떠나면 다시 볼 수 없습니다.</strong> 잃어버렸다면
               설정에서 교체하세요.
             </>
@@ -1346,7 +1345,7 @@ export const ko = {
 
     workspace: {
       filters: {
-        state: { axis: "상태", any: "모든 키", incomplete: "미완료", review: "검토 필요", unsent: "미전송", new: "GitHub의 새 키", newHint: "마지막 파일 확인 이후 추가된 키입니다." },
+        state: { axis: "상태", any: "모든 키", incomplete: "미완료", review: "검토 필요", unsent: "미전송", new: "새 키", newHint: "마지막 파일 확인 이후 추가된 키입니다." },
         clear: "필터 지우기",
         search: "키 검색",
         searchPlaceholder: "모든 소스 검색…",
@@ -1385,14 +1384,14 @@ export const ko = {
         unsaved: (n: number): string => `저장하지 않은 변경 사항 ${n.toLocaleString("ko-KR")}건`,
         saved: "저장됨",
         savedNotSent: "저장됨 · 미전송",
-        savedSince: (n: number): string => `저장됨 · 이후 변경 사항 ${n.toLocaleString("ko-KR")}건`,
+        savedSince: (n: number): string => `저장됨 · 저장 버튼을 누른 뒤 생긴 변경 사항 ${n.toLocaleString("ko-KR")}건`,
         save: "저장",
         tryAgain: "다시 시도",
         saveFailed: { title: "이 키를 저장하지 못했습니다", body: "입력한 텍스트는 그대로 있습니다. 다시 시도하거나 잠시 후 저장하세요." },
         saveUnknown: { title: "저장되었는지 확인하지 못했습니다", body: "입력한 텍스트는 그대로 있습니다. 다시 저장하기 전에 현재 값을 확인하세요." },
         cannotClear: {
-          title: (locales: string): string => `${locales} 언어는 비워 둘 수 없습니다`,
-          body: "이 파일 형식은 번역을 지울 수 없어 아무것도 저장하지 않았습니다. 값을 입력하거나 변경을 취소하세요.",
+          title: (locales: string): string => `${locales} 번역은 비워 둘 수 없습니다`,
+          body: "이 파일 형식에서는 번역을 비울 수 없어 아무것도 저장하지 않았습니다. 값을 입력하거나 변경을 취소하세요.",
         },
         archived: "보관된 프로젝트는 편집할 수 없습니다",
         lostAccess: "더 이상 이 프로젝트에 접근할 수 없습니다",
@@ -1410,7 +1409,7 @@ export const ko = {
         button: "마지막으로 보낸 값으로 되돌리기",
         title: "마지막으로 보낸 값으로 되돌릴까요?",
         body: (n: number, list: string): string =>
-          `언어 ${n.toLocaleString("ko-KR")}개(${list})의 미전송 변경 사항이 마지막으로 전송이 확인된 값으로 돌아갑니다. 그 뒤에 저장한 내용은 버려집니다.`,
+          `언어 ${n.toLocaleString("ko-KR")}개(${list})의 미전송 변경 사항을 마지막으로 전송이 확인된 값으로 되돌립니다. 그 뒤에 저장한 내용은 버려집니다.`,
         confirm: "번역 되돌리기",
         unavailable: "변경된 언어 중 일부는 이전에 보낸 값이 없습니다.",
         unsaved: "먼저 변경을 저장하거나 취소하세요.",
@@ -1430,14 +1429,14 @@ export const ko = {
       publish: {
         title: "변경을 저장하지 않고 게시할까요?",
         body: (project: string, list: string, key: string, n: number): string =>
-          `게시는 ${project} 프로젝트에 저장된 모든 값을 보냅니다. ${key} 키의 저장하지 않은 ${list} 번역(언어 ${n.toLocaleString("ko-KR")}개)은 초안으로 여기에 남습니다.`,
+          `게시는 ${project} 프로젝트에 저장된 모든 값을 보냅니다. ${key} 키에서 아직 저장하지 않은 번역(${list}, 언어 ${n.toLocaleString("ko-KR")}개)은 이 화면에 초안으로 남습니다.`,
         keep: "계속 편집",
         preview: "저장된 변경 미리보기",
       },
       discard: {
         title: "변경을 취소할까요?",
         body: (key: string, list: string, n: number): string =>
-          `${key} 키의 저장하지 않은 ${list} 번역(${n.toLocaleString("ko-KR")}개)이 사라집니다.`,
+          `${key} 키에서 아직 저장하지 않은 번역(${list}, ${n.toLocaleString("ko-KR")}개)이 사라집니다.`,
         keep: "계속 편집",
         discard: "변경 취소",
         leave: "변경 취소 후 이동",
@@ -1495,7 +1494,7 @@ export const ko = {
           undoes: (n: number): string => `!${n}의 변경 사항을 되돌림`,
           closesTitle: (n: number): string => `게시하면 MR !${n} 닫힘`,
           closesBody: (n: number, branch: string): string =>
-            `현재 번역이 다시 ${branch} 브랜치와 같아져 !${n}에는 머지할 내용이 남지 않습니다. Malmoi가 이유를 담은 댓글과 함께 닫습니다.`,
+            `현재 번역이 다시 ${branch} 브랜치와 같아져 MR !${n}에는 머지할 내용이 없습니다. Malmoi가 이유를 댓글로 남기고 MR을 닫습니다.`,
           closeAction: (n: number): string => `MR !${n} 닫기`,
           nothingBody: "현재 번역이 이미 리포지토리와 같아 MR이 열리지 않습니다. 게시하면 전송된 것으로 표시됩니다.",
         },
@@ -1515,22 +1514,22 @@ export const ko = {
         prUnknown: { title: "열린 MR을 확인하지 못했습니다" },
         openPr: "MR 열기",
         replacePr: (n: number): string => `MR !${n} 교체`,
-        progressDescription: "번역 파일을 쓰고 MR을 엽니다. 보통 몇 초 걸립니다.",
+        progressDescription: "번역 파일을 만들고 MR을 엽니다. 보통 몇 초 걸립니다.",
         progress: (branch: string): readonly string[] => ["번역 파일 생성", `${branch} 브랜치에 커밋`, "MR 열기"],
         createdDescription: (n: number): string => `변경 사항 ${n.toLocaleString("ko-KR")}건을 MR에 담았습니다. 머지되면 서비스에 반영됩니다.`,
         prMeta: (n: number, files: number): string => `MR !${n} · 파일 ${files.toLocaleString("ko-KR")}개 변경됨`,
-        accessNote: "MR 수정이나 닫기는 GitLab에서 할 수 있습니다. GitLab 접근 권한이 없다면 프로젝트 소유자에게 요청하세요.",
+        accessNote: "MR을 수정하거나 닫으려면 GitLab에서 진행하세요. GitLab 접근 권한이 없다면 프로젝트 소유자에게 요청하세요.",
         updated: "기존 MR을 업데이트했습니다",
         updatedDescription: (n: number, changes: number): string =>
-          `!${n} MR이 아직 열려 있어 Malmoi가 두 번째를 열지 않고 그 내용을 교체했습니다. 이제 오늘의 변경 사항 ${changes.toLocaleString("ko-KR")}건만이 아니라 미전송 변경 사항 전체를 담고 있습니다.`,
+          `새 MR을 만들지 않고 아직 열려 있던 MR !${n}의 내용을 교체했습니다. 오늘의 변경 사항 ${changes.toLocaleString("ko-KR")}건을 포함해 미전송 변경 사항 전체가 담겨 있습니다.`,
         replacedBody: (branch: string, base: string): ReactNode => (
           <>
             {branch} 브랜치는 항상{" "}
-            <span className="text-foreground">{base} 브랜치에서 커밋 하나</span>만 앞서므로, 이 MR은
-            그동안 더해진 내용의 이력이 아니라 미전송 변경 사항 전체의 스냅샷입니다.
+            <span className="text-foreground">{base} 브랜치보다 커밋 하나</span>만 앞섭니다. 이 MR에는
+            변경 이력을 누적하지 않고 미전송 변경 사항 전체를 담습니다.
           </>
         ),
-        tellReviewer: (n: number): string => `!${n} MR이 오래 열려 있었다면 검토자에게 내용이 바뀌었다고 알려 주세요.`,
+        tellReviewer: (n: number): string => `MR !${n} 검토를 오래 기다렸다면 검토자에게 내용이 바뀌었다고 알려 주세요.`,
         noChangesDescription: "변경 사항이 이미 리포지토리에 있어 MR이 필요하지 않았습니다.",
         closedPr: {
           description: (branch: string): string => `변경 사항이 이제 ${branch} 브랜치와 같아 이전 MR을 닫았습니다.`,
@@ -1541,7 +1540,7 @@ export const ko = {
         transientErrorDescription: "GitLab으로 보낸 요청이 중간에 실패했습니다. 변경 사항은 여기에 그대로 저장되어 있습니다.",
         tooSoonBody: "MR이 연달아 열리지 않도록 게시 사이에 잠시 대기합니다.",
         previewFailedBody: (n: number): string =>
-          `변경 사항 ${n.toLocaleString("ko-KR")}건은 보존되어 있습니다. MR에 반영될 내용을 확인할 수 있도록 미리보기를 불러온 뒤 게시할 수 있습니다.`,
+          `변경 사항 ${n.toLocaleString("ko-KR")}건은 보존되어 있습니다. MR에 반영될 내용을 확인할 수 있도록 미리보기를 불러와야 게시할 수 있습니다.`,
       },
       nothing: "보낼 내용이 없습니다. 모든 변경 사항을 이미 보냈습니다.",
       paused: "지금은 게시할 수 없습니다.",
@@ -1556,7 +1555,7 @@ export const ko = {
         already: "이미 리포지토리에 있음",
         closesTitle: (n: number): string => `게시하면 PR #${n} 닫힘`,
         closesBody: (n: number, branch: string): string =>
-          `현재 번역이 다시 ${branch} 브랜치와 같아져 #${n}에는 머지할 내용이 남지 않습니다. Malmoi가 이유를 담은 댓글과 함께 닫습니다.`,
+          `현재 번역이 다시 ${branch} 브랜치와 같아져 PR #${n}에는 머지할 내용이 없습니다. Malmoi가 이유를 댓글로 남기고 PR을 닫습니다.`,
         closeAction: (n: number): string => `PR #${n} 닫기`,
         nothingTitle: (branch: string): string => `${branch} 브랜치와 다른 내용 없음`,
         nothingBody: "현재 번역이 이미 리포지토리와 같아 PR이 열리지 않습니다. 게시하면 전송된 것으로 표시됩니다.",
@@ -1567,7 +1566,7 @@ export const ko = {
         body: "필요한 언어 파일이나 키가 없어 변경 사항을 보낼 수 없습니다. PR은 변경되지 않습니다.",
       },
       previewCounts: (n: number, keys: number): string =>
-        `키 ${keys.toLocaleString("ko-KR")}개에 변경 사항 ${n.toLocaleString("ko-KR")}건.`,
+        `키 ${keys.toLocaleString("ko-KR")}개 · 변경 사항 ${n.toLocaleString("ko-KR")}건`,
       previewSummary: (n: number, keys: number, files: number): string =>
         `변경 사항 ${n.toLocaleString("ko-KR")}건 · 키 ${keys.toLocaleString("ko-KR")}개 · 파일 ${files.toLocaleString("ko-KR")}개`,
       changes: (n: number): string => `변경 사항 ${n.toLocaleString("ko-KR")}건`,
@@ -1587,12 +1586,12 @@ export const ko = {
       withoutFile: (n: number): string =>
         `언어 파일이 아직 리포지토리에 없어 변경 사항 ${n.toLocaleString("ko-KR")}건은 목록에 없습니다. 파일이 생길 때까지 여기에 남습니다.`,
       withoutKey: (n: number): string =>
-        `언어 파일에 키가 없어 변경 사항 ${n.toLocaleString("ko-KR")}건은 목록에 없습니다. 파일에 그 키가 생길 때까지 여기에 남습니다.`,
+        `언어 파일에 키가 없어 변경 사항 ${n.toLocaleString("ko-KR")}건은 목록에 없습니다. 파일에 해당 키가 추가될 때까지 여기에 남습니다.`,
       withheld: {
         file: (n: number): string =>
           `언어 파일이 리포지토리에 없어 변경 사항 ${n.toLocaleString("ko-KR")}건을 보내지 않았습니다. 파일이 생길 때까지 여기에 남습니다.`,
         key: (n: number): string =>
-          `언어 파일에 키가 없어 변경 사항 ${n.toLocaleString("ko-KR")}건을 보내지 않았습니다. 파일에 그 키가 생길 때까지 여기에 남습니다.`,
+          `언어 파일에 키가 없어 변경 사항 ${n.toLocaleString("ko-KR")}건을 보내지 않았습니다. 파일에 해당 키가 추가될 때까지 여기에 남습니다.`,
         editor: "프로젝트 소유자에게 요청하세요.",
         owner: {
           file: "리포지토리에 파일을 추가하거나, ‘마지막으로 보낸 값으로 되돌리기’를 선택하세요.",
@@ -1615,7 +1614,7 @@ export const ko = {
       prNone: {
         title: (repo: string): string => `${repo} 리포지토리에 새 PR이 열림`,
         body: (changes: number): string =>
-          `지금 열린 것이 없어 변경 사항 ${changes.toLocaleString("ko-KR")}건을 새로 보냅니다.`,
+          `현재 열린 요청이 없어 변경 사항 ${changes.toLocaleString("ko-KR")}건을 새 요청으로 보냅니다.`,
       },
       prUnknown: {
         title: "열린 PR을 확인하지 못했습니다",
@@ -1626,7 +1625,7 @@ export const ko = {
 
       progressTitle: (n: number): string => `변경 사항 ${n.toLocaleString("ko-KR")}건 게시 중`,
       progressDescription:
-        "번역 파일을 쓰고 PR을 엽니다. 보통 몇 초 걸립니다.",
+        "번역 파일을 만들고 PR을 엽니다. 보통 몇 초 걸립니다.",
       progress: (branch: string): readonly string[] => [
         "번역 파일 생성",
         `${branch} 브랜치에 커밋`,
@@ -1643,29 +1642,29 @@ export const ko = {
       holdsEverything: "미전송 변경 사항 전체를 담음",
       prState: "열림",
       accessNote:
-        "PR 수정이나 닫기는 GitHub에서 할 수 있습니다. GitHub 접근 권한이 없다면 프로젝트 소유자에게 요청하세요.",
+        "PR을 수정하거나 닫으려면 GitHub에서 진행하세요. GitHub 접근 권한이 없다면 프로젝트 소유자에게 요청하세요.",
 
       updated: "기존 PR을 업데이트했습니다",
       updatedDescription: (n: number, changes: number): string =>
-        `#${n} PR이 아직 열려 있어 Malmoi가 두 번째를 열지 않고 그 내용을 교체했습니다. 이제 오늘의 변경 사항 ${changes.toLocaleString("ko-KR")}건만이 아니라 미전송 변경 사항 전체를 담고 있습니다.`,
+        `새 PR을 만들지 않고 아직 열려 있던 PR #${n}의 내용을 교체했습니다. 오늘의 변경 사항 ${changes.toLocaleString("ko-KR")}건을 포함해 미전송 변경 사항 전체가 담겨 있습니다.`,
       replacedTitle: "브랜치 내용을 교체했습니다",
       replacedBody: (branch: string, base: string): ReactNode => (
         <>
           {branch} 브랜치는 항상{" "}
-          <span className="text-foreground">{base} 브랜치에서 커밋 하나</span>만 앞서므로, 이 PR은
-          그동안 더해진 내용의 이력이 아니라 미전송 변경 사항 전체의 스냅샷입니다.
+          <span className="text-foreground">{base} 브랜치보다 커밋 하나</span>만 앞섭니다. 이 PR에는
+          변경 이력을 누적하지 않고 미전송 변경 사항 전체를 담습니다.
         </>
       ),
       tellReviewer: (n: number): string =>
-        `#${n} PR이 오래 열려 있었다면 검토자에게 내용이 바뀌었다고 알려 주세요.`,
+        `PR #${n} 검토를 오래 기다렸다면 검토자에게 내용이 바뀌었다고 알려 주세요.`,
 
       noChanges: "파일 변경 없음",
       noChangesDescription:
         "변경 사항이 이미 리포지토리에 있어 PR이 필요하지 않았습니다.",
       noChangesBody: (branch: string): ReactNode => (
         <>
-          Malmoi가 쓸 내용을{" "}
-          <span className="text-foreground">{branch}</span> 브랜치와 비교했더니 둘이 같았습니다. 같은 값이
+          Malmoi가 파일에 쓸 내용이{" "}
+          <span className="text-foreground">{branch}</span> 브랜치의 내용과 같습니다. 같은 값이
           리포지토리에서 동기화되었거나, 보내기 전에 변경 사항을 되돌렸을 때 이렇게 됩니다.
         </>
       ),
@@ -1709,7 +1708,7 @@ export const ko = {
       transientErrorBody: (): ReactNode => (
         <>
           보통 일시적인 문제이고 다시 시도해도 안전합니다. Malmoi는{" "}
-          <span className="font-medium">같은 브랜치를 교체</span>하므로 다시 시도해도 중복이 생기지
+          <span className="font-medium">같은 브랜치의 내용을 교체</span>하므로 다시 시도해도 중복이 생기지
           않습니다.
         </>
       ),
@@ -1723,7 +1722,7 @@ export const ko = {
       baseFileMissing: {
         title: "기준 언어 파일이 리포지토리에 없습니다",
         description: (path: string, branch: string): string =>
-          `Malmoi는 ${branch} 브랜치의 ${path} 경로에서 이 파일을 찾으며, 파일을 찾지 못해 아무것도 보내지 않았습니다.`,
+          `${branch} 브랜치의 ${path} 경로에서 파일을 찾지 못해 아무것도 보내지 않았습니다.`,
         owner: "해당 브랜치에 파일을 복원하거나, 설정에서 경로나 브랜치를 바꾸세요.",
         editor: "프로젝트 소유자에게 파일을 복원하거나 설정에서 경로를 바꿔 달라고 요청하세요.",
       },
@@ -1758,12 +1757,11 @@ export const ko = {
         `변경 사항을 미리 보여 주기 위해 ${branch} 브랜치의 번역 파일을 요청했지만 응답을 받지 못했습니다.`,
       previewFailedTitle: (branch: string): string => `${branch} 브랜치의 파일을 읽을 수 없습니다`,
       previewFailedBody: (n: number): string =>
-        `변경 사항 ${n.toLocaleString("ko-KR")}건은 보존되어 있습니다. PR에 반영될 내용을 확인할 수 있도록 미리보기를 불러온 뒤 게시할 수 있습니다.`,
+        `변경 사항 ${n.toLocaleString("ko-KR")}건은 보존되어 있습니다. PR에 반영될 내용을 확인할 수 있도록 미리보기를 불러와야 게시할 수 있습니다.`,
       previewFailedHint:
         "문제가 계속되면 리포지토리 연결을 확인하세요 — 프로젝트 소유자가 설정에서 확인할 수 있습니다.",
     },
     onGitLab: {
-      workspace: { filters: { state: { new: "GitLab의 새 키" } } },
       banner: {
         basePending: (locale: string): string =>
           `기준 언어를 ${locale} 언어로 변경하도록 요청했습니다. ` +
@@ -1787,19 +1785,19 @@ export const ko = {
       reasons: {
         "last-source": "프로젝트에는 소스가 하나 이상 있어야 합니다.",
         importing: "이 소스는 동기화 중입니다. 끝난 뒤 다시 시도하세요.",
-        "stale-approval": "확인한 내용이 지금도 그대로인지 확인하지 못해 아무것도 제거하지 않았습니다. 제거 창을 다시 열어 확인하세요.",
+        "stale-approval": "검토한 내용이 여전히 최신인지 확인하지 못해 아무것도 제거하지 않았습니다. 제거 창을 다시 열어 확인하세요.",
       },
       action: "소스 제거",
-      title: (slug: string): string => `${slug}을(를) 이 프로젝트에서 제거할까요?`,
-      body: "이 프로젝트에서 동기화가 멈춥니다. 리포지토리의 파일은 바뀌지 않습니다. 언제든 다시 추가하면 번역이 돌아옵니다.",
-      unsent: (n: number, count: ReactNode): ReactNode => <>나중에 다시 추가하면 {count}이 리포지토리의 값으로 바뀝니다.</>,
+      title: (slug: string): string => `${slug} 소스를 이 프로젝트에서 제거할까요?`,
+      body: "이 소스의 동기화가 멈춥니다. 리포지토리의 파일은 바뀌지 않습니다. 언제든 다시 추가하면 번역이 돌아옵니다.",
+      unsent: (n: number, count: ReactNode): ReactNode => <>나중에 다시 추가하면 {count} 중 리포지토리에 값이 있는 항목은 그 값으로 바뀝니다.</>,
       openPr: "열린 PR이 이 소스의 파일을 바꿨다면 그 변경은 다음 게시에서 빠집니다.",
       prUnknown: "열린 PR을 확인하지 못했습니다. PR이 이 소스의 파일을 바꿨다면 그 변경은 다음 게시에서 빠집니다.",
-      workflowLine: "GitHub 워크플로에서 이 소스의 단계(step)를 지우세요. 그대로 두면 다음 실행이 실패하고 그 뒤 소스도 멈춥니다.",
+      workflowLine: "GitHub 워크플로에서 이 소스의 단계(step)를 지우세요. 그대로 두면 다음 실행이 실패하고 이후 단계의 소스도 동기화되지 않습니다.",
       previewFailed: "이 소스의 미전송 변경 사항을 확인하지 못했습니다. 제거하기 전에 다시 시도하세요.",
       unconfirmed: "제거되었는지 확인하지 못했습니다. 목록이 현재 상태입니다.",
-      removed: (slug: string): string => `${slug}을(를) 제거했습니다.`,
-      workflowStep: (link: ReactNode): ReactNode => <>{link}에서 워크플로의 이 소스 단계를 지우세요.</>,
+      removed: (slug: string): string => `${slug} 소스를 제거했습니다.`,
+      workflowStep: (link: ReactNode): ReactNode => <>{link}의 워크플로에서 이 소스에 해당하는 단계를 지우세요.</>,
     },
     files: "파일",
     path: "경로 패턴",
@@ -1813,7 +1811,7 @@ export const ko = {
     loading: "소스 상세를 불러오는 중…",
     unavailable: "이 소스를 불러오지 못했습니다. 다시 시도하세요.",
     rejected: "이 소스를 볼 수 없습니다. 이 창을 닫고 페이지를 새로고침하세요.",
-    latestFailed: "변경은 완료되었지만 최신 상태를 불러오지 못했습니다. 상세를 다시 불러오세요.",
+    latestFailed: "변경은 완료되었지만 최신 상태를 불러오지 못했습니다. 상세 정보를 다시 불러오세요.",
     emptyTitle: "아직 소스가 없습니다",
     emptyOwner: "문자열이 담긴 파일을 추가하면 Malmoi가 기준 브랜치에서 읽습니다. 첫 동기화가 끝나면 키와 언어가 여기에 나타납니다.",
     emptyEditor: "번역 파일은 프로젝트 소유자가 추가합니다. 첫 동기화가 끝나면 여기에서 언어를 확인하고 번역을 시작할 수 있습니다.",
@@ -1832,7 +1830,7 @@ export const ko = {
     orphanStrip: (code: string): string => `${code} 언어는 리포지토리에서 제거되었습니다.`,
     orphanStripRest: (translations: number, active: number): string =>
       `번역 ${translations.toLocaleString("ko-KR")}개는 보존되며 읽기 전용입니다. 리포지토리에 이 언어가 다시 생기고 다음 동기화가 실행되면 돌아옵니다. 활성 언어 ${active.toLocaleString("ko-KR")}개에는 포함되지 않습니다.`,
-    statusHelp: "리포지토리에서 오는 동기화로 업데이트됩니다.",
+    statusHelp: "리포지토리와 동기화할 때 업데이트됩니다.",
     baseHelp: "기준 언어의 파일로 이 소스의 키 목록을 정합니다.",
     languagesHelp: "언어 목록은 리포지토리에서 읽습니다. 파일 추가·제거는 리포지토리에서 하세요.",
     baseRow: "키 목록의 기준",
@@ -1844,7 +1842,7 @@ export const ko = {
     lastSuccess: "마지막 동기화 성공",
     archivedOwner: "번역은 보존됩니다. 프로젝트를 복원할 때까지 동기화가 멈추고 소스를 보거나 바꿀 수 없습니다.",
     archivedEditor: "번역은 보존됩니다. 프로젝트 소유자가 복원할 수 있으며, 그때 소스와 번역이 돌아옵니다.",
-    discardTitle: "기준 언어 변경을 버릴까요?",
+    discardTitle: "기준 언어 변경을 취소할까요?",
     discardBody: (requested: string, applied: string): string =>
       `${requested} 언어를 골랐지만 저장하지 않았습니다. 기준 언어는 ${applied} 언어로 유지됩니다.`,
     keepEditing: "계속 편집",
@@ -1863,10 +1861,10 @@ export const ko = {
         openPr: "열린 MR이 이 소스의 파일을 바꿨다면 그 변경은 다음 게시에서 빠집니다.",
         prUnknown: "열린 MR을 확인하지 못했습니다. MR이 이 소스의 파일을 바꿨다면 그 변경은 다음 게시에서 빠집니다.",
         workflowLine: ".gitlab-ci.yml에서 이 소스의 작업을 지우세요. 그대로 두면 다음 파이프라인에서 이 작업이 실패합니다. 다른 소스는 계속 동기화됩니다.",
-        workflowStep: (link: ReactNode): ReactNode => <>{link}에서 CI 파일의 이 소스 작업을 지우세요.</>,
+        workflowStep: (link: ReactNode): ReactNode => <>{link}의 CI 파일에서 이 소스에 해당하는 작업을 지우세요.</>,
       },
       firstImport: "첫 동기화가 아직 끝나지 않았습니다. 소스를 추가해도 CI 작업이 자동으로 연결되지는 않습니다.",
-      pendingHelp: "CI에서 기준 언어를 지정했다면 .gitlab-ci.yml에서 이 소스 작업의 값도 새 언어로 변경하세요.",
+      pendingHelp: "CI에서 기준 언어를 지정했다면 .gitlab-ci.yml에서 이 소스에 해당하는 작업의 값도 새 언어로 변경하세요.",
       notImportedHelp: "이 파일의 키와 언어가 아직 동기화되지 않았습니다. 소스를 추가해도 CI가 자동으로 연결되지는 않습니다 — 문자열은 리포지토리의 CI 작업이 보냅니다.",
       workflow: "설정에서 CI 파일을 고쳐 추가한 소스를 포함하세요.",
     },
@@ -1878,7 +1876,7 @@ export const ko = {
       badge: "리포지토리에서 제거됨",
     },
     empty: {
-      description: "첫 동기화가 번역 파일을 읽으면 나타납니다.",
+      description: "첫 동기화로 번역 파일을 읽으면 언어 목록이 표시됩니다.",
     },
     field: {
       label: "기준 언어",
@@ -1909,7 +1907,7 @@ export const ko = {
     unreadableHint: "이 멤버의 이름과 이메일을 복호화하지 못했습니다. 역할과 가입일에는 영향이 없습니다.",
     roleLocked: {
       pending: (role: string): string =>
-        `${role} 역할은 초대를 만들 때 정해졌습니다. 바꾸려면 철회하고 다시 초대하세요.`,
+        `초대할 때 ${role} 역할로 지정했습니다. 바꾸려면 철회하고 다시 초대하세요.`,
       editor: (role: string): string => `${role} 역할 — 프로젝트 소유자만 역할을 바꿀 수 있습니다.`,
     },
     joined: (when: string): string => `가입 ${when}`,
@@ -1924,7 +1922,7 @@ export const ko = {
     confirmRemoveHint: "프로젝트에 접근할 수 없게 됩니다. 작성한 번역과 이력의 이름은 유지됩니다.",
     cancel: "취소",
     changeFailed: "변경을 적용하지 못했습니다. 페이지를 새로고침한 뒤 다시 시도하세요.",
-    confirmRole: (who: string, role: string): string => `${who} 님의 역할을 ${role} 역할로 바꿀까요?`,
+    confirmRole: (who: string, role: string): string => `${who} 님을 ${role} 역할로 바꿀까요?`,
     confirmRoleHint: "새 역할은 즉시 적용됩니다.",
     confirmSelfDemote: "즉시 멤버와 설정을 관리할 수 없게 되며, 프로젝트 소유자만 그 권한을 되돌려 줄 수 있습니다.",
     confirmRoleAction: "역할 변경",
@@ -1933,7 +1931,7 @@ export const ko = {
     invite: {
       open: "멤버 초대",
       title: "멤버 초대",
-      description: "초대할 이메일과 역할을 입력하세요. 로그인에 사용하는 이메일이어야 하며, GitHub와 GitLab은 기본(primary) 이메일을 사용합니다.",
+      description: "초대할 사람의 이메일을 입력하고 역할을 고르세요. 로그인에 사용하는 이메일이어야 하며, GitHub와 GitLab은 기본(primary) 이메일을 사용합니다.",
       columns: { email: "이메일", role: "역할" },
       placeholder: "name@company.com",
       roleHint: {
@@ -1953,21 +1951,21 @@ export const ko = {
         invalidEmail: "이메일 주소 형식이 아닙니다.",
         invalidRole: "이 주소의 역할을 고르세요.",
         duplicate: (row: number): string => `이미 ${row.toLocaleString("ko-KR")}번째 행에 있습니다. 이 행을 제거하세요.`,
-        roleConflict: (row: number, role: string): string => `${row.toLocaleString("ko-KR")}번째 행에도 ${role} 역할로 있습니다. 이 주소에는 역할을 하나만 남기세요.`,
+        roleConflict: (row: number, role: string): string => `같은 주소가 ${row.toLocaleString("ko-KR")}번째 행에도 ${role} 역할로 입력되어 있습니다. 이 주소에는 역할을 하나만 남기세요.`,
       },
-      alreadyMember: "이 이메일은 이미 이 프로젝트의 멤버입니다.",
+      alreadyMember: "이 이메일을 쓰는 사람은 이미 이 프로젝트의 멤버입니다.",
       limit: {
         title: "초대 한도 초과",
         project: (limit: number, used: number, n: number, time: string): string =>
           `프로젝트당 1시간에 초대를 ${limit.toLocaleString("ko-KR")}건까지 발급할 수 있으며, 최근 1시간 동안 ${used.toLocaleString("ko-KR")}건을 발급했습니다. ${n === 1 ? "이 초대는" : `이 ${n.toLocaleString("ko-KR")}건은`} ${time} 이후에 보낼 수 있습니다.`,
-        address: (email: string, time: string): string => `${email} 주소는 1분 이내에 초대되었습니다. ${time} 이후에 다시 보낼 수 있습니다.`,
+        address: (email: string, time: string): string => `${email} 주소로 초대한 지 아직 1분이 지나지 않았습니다. ${time} 이후에 다시 보낼 수 있습니다.`,
         user: (limit: number, used: number, n: number, time: string): string =>
           `모든 프로젝트를 합쳐 1시간에 초대를 ${limit.toLocaleString("ko-KR")}건까지 발급할 수 있으며, 최근 1시간 동안 ${used.toLocaleString("ko-KR")}건을 발급했습니다. ${n === 1 ? "이 초대는" : `이 ${n.toLocaleString("ko-KR")}건은`} ${time} 이후에 보낼 수 있습니다.`,
       },
       tooMany: (limit: number): string => `한 번에 최대 ${limit.toLocaleString("ko-KR")}명까지 초대할 수 있습니다.`,
       unconfirmed: {
         title: "초대 메일 발송 여부를 확인하지 못했습니다",
-        body: "일부 초대가 보내졌을 수 있습니다. 다시 보내면 이전 링크를 대체합니다.",
+        body: "일부 초대는 이미 발송되었을 수 있습니다. 다시 보내면 이전 링크를 대체합니다.",
       },
       sendFailed: "초대 메일을 보내지 못했습니다. 다시 보내면 이번 시도의 링크를 대체합니다.",
       emailUnavailable: "지금은 이메일을 보낼 수 없습니다. 나중에 다시 시도하세요.",
@@ -1985,7 +1983,7 @@ export const ko = {
       resendLabel: (who: string): string => `${who} 주소로 초대 다시 보내기`,
       resentToast: (who: string): string => `${who} 주소로 초대를 다시 보냈습니다`,
       resendFailed: (who: string, time: string): string => `${who} 주소로 초대를 다시 보내지 못했습니다. ${time} 이후에 다시 시도할 수 있습니다.`,
-      resendLimited: (who: string, time: string): string => `${who} 주소는 1분 이내에 초대되었습니다. ${time} 이후에 다시 보낼 수 있습니다.`,
+      resendLimited: (who: string, time: string): string => `${who} 주소로 초대한 지 아직 1분이 지나지 않았습니다. ${time} 이후에 다시 보낼 수 있습니다.`,
       resendProjectLimited: (who: string, limit: number, time: string): string =>
         `${who} 주소로 다시 보내지 못했습니다: 이 프로젝트가 최근 1시간 동안 초대를 ${limit.toLocaleString("ko-KR")}건 발급했습니다. ${time} 이후에 다시 보낼 수 있습니다.`,
       resendUserLimited: (who: string, limit: number, time: string): string =>
@@ -1999,12 +1997,12 @@ export const ko = {
       revoked: (who: string): string => `${who} 주소의 초대를 철회했습니다`,
       revokeFailed: "초대를 철회하지 못했습니다. 페이지를 새로고침한 뒤 다시 시도하세요.",
       confirmRevoke: (who: string): string => `${who} 주소의 초대를 철회할까요?`,
-      confirmRevokeHint: "링크는 즉시 작동을 멈춥니다. 같은 주소를 다시 초대할 수 있습니다.",
+      confirmRevokeHint: "초대 링크는 즉시 사용할 수 없게 됩니다. 같은 주소로 다시 초대할 수 있습니다.",
       confirmRevokeAction: "초대 철회",
       revokeUnconfirmed: "초대가 철회되었는지 확인하지 못했습니다. 새로고침해 확인하세요.",
       empty: {
         title: "대기 중인 초대 없음",
-        description: "초대한 사람이 모두 가입했거나 링크가 만료되었습니다.",
+        description: "초대받은 사람이 모두 가입했거나 링크가 만료되었습니다.",
       },
     },
   },
@@ -2037,7 +2035,7 @@ export const ko = {
       manualReason: "확인하려면 파일 경로와 기준 언어를 입력하세요.",
       step: (n: number): string => `2단계 중 ${n.toLocaleString("ko-KR")}단계`,
       baseTitle: "기준 언어 고르기",
-      baseDescription: "소스마다 작성된 언어를 고르세요.",
+      baseDescription: "각 소스의 원문을 작성한 언어를 고르세요.",
       conflictBack: "뒤로 돌아가 선택을 바꾸세요.",
     },
     ci: { description: "머지할 때마다 워크플로가 번역 파일을 Malmoi로 보냅니다.", title: "CI 연동", workflow: "워크플로 파일", sourcesLead: "워크플로 하나가 모든 소스를 다룹니다. 소스 추가·수정:", stale: "일부 소스가 아직 동기화되지 않았습니다. 워크플로에 포함되었는지 확인하세요.",
@@ -2056,12 +2054,12 @@ export const ko = {
         expiresSoonYours: (days: number, date: string): string =>
           `내 GitLab 토큰이 ${days.toLocaleString("ko-KR")}일 뒤(${date})에 만료됩니다. 이 프로젝트가 계속 동기화되도록 그 전에 교체하세요.`,
         expiresSoonOther: (owner: string, days: number, date: string): string =>
-          `@${owner}의 GitLab 토큰이 ${days.toLocaleString("ko-KR")}일 뒤(${date})에 만료됩니다. 토큰 주인이 교체하거나, 내 GitLab 연결을 쓸 수 있습니다.`,
+          `@${owner}의 GitLab 토큰이 ${days.toLocaleString("ko-KR")}일 뒤(${date})에 만료됩니다. 토큰 소유자가 교체하거나, 내 GitLab 연결로 바꿀 수 있습니다.`,
         expiredYours: (date: string): string => `내 GitLab 토큰이 ${date}에 만료되었습니다. 이 프로젝트를 다시 연결하려면 토큰을 교체하세요.`,
         expiredOther: (owner: string, date: string): string => `@${owner}의 GitLab 토큰이 ${date}에 만료되었습니다. 다시 연결할 때까지 동기화와 게시가 멈춥니다.`,
         usedByUpdates: (n: number): string => `프로젝트 ${n.toLocaleString("ko-KR")}개가 이 토큰을 씁니다. 교체하면 모두 업데이트됩니다.`,
         usedByReconnects: (n: number): string => `프로젝트 ${n.toLocaleString("ko-KR")}개가 이 토큰을 씁니다. 교체하면 모두 다시 연결됩니다.`,
-        unusable: "이 프로젝트의 GitLab 토큰을 쓸 수 없습니다. 만료·철회되었거나 토큰 주인이 리포지토리 권한을 잃었을 수 있습니다. 다시 연결할 때까지 동기화와 게시가 멈춥니다.",
+        unusable: "이 프로젝트의 GitLab 토큰을 쓸 수 없습니다. 만료·철회되었거나 토큰 소유자가 리포지토리 접근 권한을 잃었을 수 있습니다. 다시 연결할 때까지 동기화와 게시가 멈춥니다.",
         removed: "이 프로젝트의 GitLab 연결이 해제되었습니다 — 연결한 사람이 GitLab 토큰 연결을 해제했거나 프로젝트를 떠났습니다. 프로젝트 소유자가 다시 연결할 때까지 동기화와 게시가 멈춥니다.",
         useMine: "내 GitLab 연결 사용",
         useMineHint: (owner: string | null, me: string): string =>
@@ -2077,8 +2075,8 @@ export const ko = {
       connectFailed: "연결을 시작하지 못했습니다. 잠시 후 다시 시도하세요.",
       health: {
         ok: "연결됨",
-        "not-connected": "아직 연결된 설치가 없습니다.",
-        "app-uninstalled": "앱이 제거 또는 일시 중단되었거나, 이 리포지토리에 대한 앱의 접근 권한이 회수되었습니다.",
+        "not-connected": "아직 리포지토리가 연결되지 않았습니다.",
+        "app-uninstalled": "앱이 제거되었거나 사용이 중단되었거나, 이 리포지토리에 대한 접근 권한이 회수되었습니다.",
         "installation-changed": "앱이 다시 설치되었습니다 — 다시 연결하세요.",
         moved: (fullName: ReactNode): ReactNode => <>이 리포지토리는 {fullName} 리포지토리로 옮겨졌습니다</>,
         "repo-replaced": "이 주소의 리포지토리가 처음 연결했을 때와 다릅니다. GitHub에서 확인한 뒤 리포지토리가 변경된 것이 맞다면 새 프로젝트로 연결하세요.",
@@ -2089,7 +2087,7 @@ export const ko = {
 
       fields: {
         branch: "기준 브랜치",
-        branchHelp: "동기화는 이 브랜치를 읽고, PR은 이 브랜치를 대상으로 열립니다.",
+        branchHelp: "이 브랜치의 번역 파일을 동기화하고, 이 브랜치를 대상으로 PR을 엽니다.",
         branchDisconnected: "기준 브랜치를 바꾸려면 리포지토리를 다시 연결하세요.",
         save: "저장",
         saved: "저장됨",
@@ -2106,7 +2104,7 @@ export const ko = {
       title: "푸시 토큰",
       description: (secret: ReactNode): ReactNode => (
         <>
-          교체하면 지금 토큰이 즉시 무효가 됩니다 — 리포지토리의 {secret} 시크릿을 업데이트할 때까지 CI가
+          교체하면 기존 토큰이 즉시 무효가 됩니다 — 리포지토리의 {secret} 시크릿을 업데이트할 때까지 CI가
           실패합니다.
         </>
       ),
@@ -2114,7 +2112,7 @@ export const ko = {
       disconnected: "토큰을 교체하려면 리포지토리를 다시 연결하세요.",
       warning: "이 페이지를 떠나면 다시 볼 수 없습니다. 잃어버리면 다시 교체하세요.",
       failed: "토큰을 교체하지 못했습니다. 잠시 후 다시 시도하세요.",
-      unconfirmed: "교체를 확인하지 못했습니다. 지금 토큰은 이미 무효일 수 있습니다 — 새 토큰을 받으려면 다시 교체하세요.",
+      unconfirmed: "토큰이 교체되었는지 확인하지 못했습니다. 기존 토큰은 이미 무효일 수 있습니다 — 새 토큰을 받으려면 다시 교체하세요.",
       confirmTitle: "푸시 토큰을 교체할까요?",
       confirmBody: "방금 복사한 토큰도 교체 즉시 사용할 수 없게 됩니다. 리포지토리의 PUSH_TOKEN 시크릿에 새 토큰을 넣을 때까지 CI가 실패합니다.",
       confirmAction: "교체하고 새 토큰 보기",
@@ -2157,7 +2155,7 @@ export const ko = {
       openRepo: "GitLab에서 열기",
       repository: {
         health: { "repo-replaced": "이 주소의 리포지토리가 처음 연결했을 때와 다릅니다. GitLab에서 확인한 뒤 리포지토리가 변경된 것이 맞다면 새 프로젝트로 연결하세요." },
-        fields: { branchHelp: "동기화는 이 브랜치를 읽고, MR은 이 브랜치를 대상으로 열립니다." },
+        fields: { branchHelp: "이 브랜치의 번역 파일을 동기화하고, 이 브랜치를 대상으로 MR을 엽니다." },
       },
       ci: {
         description: "머지할 때마다 CI 작업이 번역 파일을 Malmoi로 보냅니다.",
@@ -2169,7 +2167,7 @@ export const ko = {
       token: {
         description: (secret: ReactNode): ReactNode => (
           <>
-            교체하면 지금 토큰이 즉시 무효가 됩니다 — 프로젝트의 {secret} CI/CD 변수를 업데이트할 때까지 CI가
+            교체하면 기존 토큰이 즉시 무효가 됩니다 — 프로젝트의 {secret} CI/CD 변수를 업데이트할 때까지 CI가
             실패합니다.
           </>
         ),
@@ -2227,13 +2225,13 @@ export const ko = {
     },
     connectMethod: {
       connected: "로그인 수단을 추가했습니다. 다음 로그인부터 쓸 수 있습니다.",
-      "email-mismatch": "이메일이 이 계정과 일치하지 않습니다. 같은 인증된 이메일을 쓰는 계정으로 시도하세요.",
+      "email-mismatch": "이메일 주소가 이 계정에 등록된 주소와 다릅니다. 같은 이메일 주소로 인증받은 계정으로 시도하세요.",
       "already-connected": "이미 추가된 로그인 수단입니다. 이 수단으로 로그인할 수 있습니다.",
       "taken-by-other": "이 로그인 수단은 다른 Malmoi 계정에 속해 있습니다. 다른 계정으로 시도하세요.",
       expired: "이 요청은 만료되었거나 새 요청으로 대체되었습니다. 로그인 수단 목록에서 다시 시작하세요.",
-      cancelled: "로그인 수단 추가가 취소되었습니다. 준비되면 다시 시작하세요.",
+      cancelled: "로그인 수단 추가가 취소되었습니다. 필요하면 다시 시작하세요.",
       unverified: "인증된 이메일이 전달되지 않았습니다. 다시 시도하기 전에 해당 서비스에서 이메일을 인증하세요.",
-      "wrong-user": "요청 중에 세션이 바뀌었습니다. 로그인 수단 목록에서 다시 시작하세요.",
+      "wrong-user": "요청 중에 로그인 상태가 바뀌었습니다. 로그인 수단 목록에서 다시 시작하세요.",
       failed: "로그인 수단을 추가하지 못했습니다. 잠시 후 다시 시도하세요.",
     },
     access: {
@@ -2257,7 +2255,7 @@ export const ko = {
       "already-member": "이미 이 프로젝트의 멤버입니다.",
       archived: "이 프로젝트는 보관되었습니다. 초대한 사람에게 복원을 요청한 뒤 이 링크를 다시 여세요.",
       "limit-reached": (limit: number): string =>
-        `이미 활성 프로젝트를 ${limit.toLocaleString("ko-KR")}개 이상 소유하고 있습니다. 소유한 프로젝트가 ${limit.toLocaleString("ko-KR")}개보다 적어질 때까지 보관한 뒤 이 링크를 다시 여세요.`,
+        `이미 활성 프로젝트를 ${limit.toLocaleString("ko-KR")}개 이상 소유하고 있습니다. 활성 프로젝트가 ${limit.toLocaleString("ko-KR")}개 미만이 되도록 기존 프로젝트를 보관한 뒤 이 링크를 다시 여세요.`,
       unavailable: "문제가 생겼습니다. 잠시 후 다시 시도하세요.",
       fallback: "초대를 수락하지 못했습니다. 초대한 사람에게 새 링크를 요청하세요.",
     },
@@ -2266,18 +2264,18 @@ export const ko = {
       "wrong-account": "다른 계정입니다. 처음 가입할 때 사용한 계정을 고른 뒤 다시 시도하세요.",
       "already-linked": "이 로그인 수단은 이미 이 계정에 있습니다. 그 수단으로 로그인해 보세요.",
       invalid: "본인 확인을 완료하지 못했습니다. 로그인 화면에서 다시 시작하세요.",
-      cancelled: "확인이 취소되었습니다. 바뀐 것은 없습니다 — 필요하면 다시 시도하세요.",
+      cancelled: "확인이 취소되었습니다. 변경된 내용은 없습니다. 필요하면 다시 시도하세요.",
       unavailable: "문제가 생겼습니다. 잠시 후 다시 시도하세요.",
       "last-method": "유일한 로그인 수단은 연결을 해제할 수 없습니다.",
       fallback: "본인 확인을 완료하지 못했습니다. 다시 시도하세요.",
     },
 
     signIn: {
-      OAuthAccountNotLinked: "이 이메일은 이미 다른 로그인 수단으로 등록되어 있습니다. 가입할 때 쓴 수단을 쓰세요.",
+      OAuthAccountNotLinked: "이 이메일은 이미 다른 로그인 수단으로 등록되어 있습니다. 가입할 때 사용한 로그인 수단으로 로그인하세요.",
       AccessDenied: "이 계정으로는 로그인할 수 없습니다. 이메일이 인증되지 않았을 수 있습니다.",
       Unavailable: "문제가 생겼습니다. 잠시 후 다시 열어 보세요.",
       LinkExpired: "본인 확인 요청이 더 이상 유효하지 않습니다. 계속하려면 다시 로그인하세요.",
-      MethodUnavailable: "쓰던 로그인 수단을 여기서는 쓸 수 없습니다. 관리자에게 문의하세요.",
+      MethodUnavailable: "기존 로그인 수단을 이 서비스에서는 사용할 수 없습니다. 관리자에게 문의하세요.",
       fallback: "로그인하지 못했습니다. 잠시 후 다시 시도하세요.",
     },
 
@@ -2292,14 +2290,14 @@ export const ko = {
       "not-connected": "먼저 GitHub App을 승인하세요 — 아래에서 ‘GitHub App 승인’을 선택하세요.",
       reauthorize: "GitHub App 승인이 만료되었습니다. ‘GitHub App 다시 승인’을 선택하세요.",
       "repo-not-installed": "이 리포지토리에 앱이 설치되어 있지 않습니다. 설치한 뒤 다시 연결하세요.",
-      "installation-forbidden": "이 계정으로는 그 설치에 접근할 수 없습니다. 리포지토리 소유자에게 접근 권한을 요청하세요.",
+      "installation-forbidden": "이 계정으로는 설치된 GitHub App에 접근할 수 없습니다. 리포지토리 소유자에게 접근 권한을 요청하세요.",
       "repo-forbidden": "이 계정으로는 그 리포지토리에 접근할 수 없습니다. 리포지토리 소유자에게 접근 권한을 요청하세요.",
       "repo-read-only": "이 계정은 그 리포지토리를 읽기만 할 수 있습니다. 연결하려면 쓰기 권한이 필요합니다 — 리포지토리 소유자에게 요청하세요.",
       unavailable: "문제가 생겼습니다. 잠시 후 다시 시도하세요.",
       fallback: "GitHub 연결에 실패했습니다. 다시 시도하세요.",
     },
     gitlab: {
-      "token-invalid": "GitLab이 이 토큰을 받지 않았습니다. 만료되었거나 철회되었을 수 있습니다 — 새 토큰을 만들어 붙여 넣으세요.",
+      "token-invalid": "GitLab이 이 토큰을 거부했습니다. 만료되었거나 철회되었을 수 있습니다 — 새 토큰을 만들어 붙여 넣으세요.",
       "token-fine-grained": "fine-grained 토큰입니다. Malmoi에는 api 스코프가 있는 레거시 개인 액세스 토큰이 필요합니다 — 새로 만들어 붙여 넣으세요.",
       "token-scope-missing": "이 토큰에는 api 스코프가 없습니다. api 스코프로 새 토큰을 만들어 붙여 넣으세요.",
       "account-mismatch": "다른 GitLab 계정의 토큰입니다. 먼저 계정에서 GitLab 토큰 연결을 해제한 뒤 그 계정을 연결하세요.",
@@ -2322,7 +2320,7 @@ export const ko = {
       "key-count-failed": "키 개수를 알 수 없음",
       "manual-no-match": "그 경로에 해당 형식의 파일이 없습니다. 경로와 형식을 확인하세요.",
       "sample-expired": "이 미리보기는 만료되었습니다. 보려면 파일을 다시 찾으세요.",
-      "slug-taken": "이미 쓰이는 주소입니다. 다른 주소를 고르세요.",
+      "slug-taken": "이미 사용 중인 주소입니다. 다른 주소를 고르세요.",
       "limit-reached": (limit: number): string => `프로젝트는 최대 ${limit.toLocaleString("ko-KR")}개까지 만들 수 있습니다.`,
       "invalid-slug": (max: number): string =>
         `주소에는 영문 소문자, 숫자, '-', '.', '_'를 최대 ${max.toLocaleString("ko-KR")}자까지 쓸 수 있습니다. 'new'는 예약되어 있습니다.`,
@@ -2358,14 +2356,14 @@ export const ko = {
     "shorthand-property": "단축 속성이라 값을 읽을 수 없습니다 — 다른 모듈에서 import한 참조로 보입니다.",
     "not-property-assignment": "속성 할당이 아닙니다.",
     "duplicate-key": "키가 중복되어 두 값 중 하나가 누락됩니다.",
-    "duplicate-property": "키가 두 번 정의되어 있습니다. Malmoi는 편집하는 쪽을 쓰고 다른 쪽은 그대로 둡니다.",
-    "key-shadowed": "다른 키나 속성이 이 키의 자리를 가려 값을 안전하게 쓸 수 없습니다.",
+    "duplicate-property": "키가 두 번 정의되어 있습니다. Malmoi는 편집 대상으로 삼은 값을 사용하고 다른 값은 그대로 둡니다.",
+    "key-shadowed": "다른 키나 속성이 이 키를 가리고 있어 값을 안전하게 쓸 수 없습니다.",
     "write-parse-failed": "파일을 해석하지 못해 변경하지 않았습니다.",
     "write-no-default-export": "이 파일에 default export 객체가 없어 변경하지 않았습니다.",
-    "write-locale-object-missing": "이 언어가 파일에 없어 번역을 쓰지 않았습니다.",
-    "write-empty-unsupported": "이 형식에서는 빈 값을 보낼 수 없습니다. 값을 입력한 뒤 내보내세요.",
+    "write-locale-object-missing": "파일에 이 언어의 항목이 없어 번역을 쓰지 않았습니다.",
+    "write-empty-unsupported": "이 형식에서는 빈 값을 보낼 수 없습니다. 값을 입력한 뒤 게시하세요.",
     "write-slot-not-string-literal": "값이 일반 텍스트 자리에 있지 않아 쓰지 않았습니다.",
-    "write-slot-not-scalar": "값이 일반 텍스트 자리에 있지 않아(별칭, 맵 또는 목록) 쓰지 않았습니다.",
+    "write-slot-not-scalar": "값이 일반 텍스트가 아니라 별칭, 맵 또는 목록이어서 쓰지 않았습니다.",
     "write-slot-missing": "이 키를 쓸 위치가 없어 건너뛰었습니다. 파일 구조를 수정해야 합니다.",
     "original-file-missing": "리포지토리에 기존 파일이 없어 이 언어는 전송에서 제외했습니다.",
     "download-failed": "파일을 내려받지 못했습니다.",

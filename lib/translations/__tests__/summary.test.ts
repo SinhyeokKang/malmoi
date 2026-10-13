@@ -153,7 +153,7 @@ describe("keyMatches — 완성도 · 상태 AND", () => {
     expect(keyMatches(k, { completion: "missing", missingLocale: "ja" }, { lastPulledAt: at })).toBe(false);
   });
 
-  it("상태: Not sent = pending, Needs review = review, New from GitHub = lastPulledAt 이후 생성", () => {
+  it("상태: Not sent = pending, Needs review = review, New keys = lastPulledAt 이후 생성", () => {
     expect(keyMatches(key({ summary: summary("k", 0, false, { hasPending: true }) }), { completion: "all", state: "unsent" }, { lastPulledAt: at })).toBe(true);
     expect(keyMatches(key(), { completion: "all", state: "unsent" }, { lastPulledAt: at })).toBe(false);
     expect(keyMatches(key({ summary: summary("k", 0, true) }), { completion: "all", state: "review" }, { lastPulledAt: at })).toBe(true);
@@ -165,7 +165,7 @@ describe("keyMatches — 완성도 · 상태 AND", () => {
     expect(keyMatches(key({ createdAt: at }), { completion: "all", state: "new" }, { lastPulledAt: at })).toBe(false);
   });
 
-  it("lastPulledAt이 null이면 활성 키 전체가 New from GitHub다", () => {
+  it("lastPulledAt이 null이면 활성 키 전체가 New keys다", () => {
     expect(keyMatches(key(), { completion: "all", state: "new" }, { lastPulledAt: null })).toBe(true);
   });
 

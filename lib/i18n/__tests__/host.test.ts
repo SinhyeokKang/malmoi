@@ -147,3 +147,25 @@ describe("withRepoHost — 프로젝트 화면의 사전 전체", () => {
     }
   });
 });
+
+/**
+ * **호스트를 말하지 않는 라벨** (2026-10-14). 키는 코드에서만 들어오므로 "어느 호스트에서 왔나"는 정보가 없다 — 새 키 라벨은
+ * 두 호스트가 같은 낱말이고 `onGitLab` 덮기가 없다. Home 메타의 호스트 행 라벨은 새 프로젝트 탭(`newProject.host.label`)과 같은 낱말 `Host`다.
+ */
+describe("호스트 중립 라벨", () => {
+  const NEW_KEYS = { en: "New keys", ko: "새 키", es: "Claves nuevas" } as const;
+  const HOST = { en: "Host", ko: "호스트", es: "Proveedor" } as const;
+
+  it.each(DICTIONARIES)("%s — 새 키 라벨은 호스트 이름이 없고 GitLab도 같은 문장이다", (lang, dict) => {
+    const want = NEW_KEYS[lang as keyof typeof NEW_KEYS];
+    const gitlab = withRepoHost(dict, "gitlab");
+    expect(dict.projects.summary.newFromGithub).toBe(want);
+    expect(dict.translations.workspace.filters.state.new).toBe(want);
+    expect(gitlab.projects.summary.newFromGithub).toBe(want);
+    expect(gitlab.translations.workspace.filters.state.new).toBe(want);
+  });
+
+  it.each(DICTIONARIES)("%s — Home 메타의 호스트 행 라벨은 Host다", (lang, dict) => {
+    expect(dict.home.meta.platform).toBe(HOST[lang as keyof typeof HOST]);
+  });
+});

@@ -23,7 +23,7 @@ export function FilterMenu({ axis, label, on, size, options, value, onSelect, di
   value: string;
   onSelect: (value: string) => void;
   disabled?: boolean;
-  /** 메뉴 바닥의 설명 한 줄(`New from GitHub`의 기준). */
+  /** 메뉴 바닥의 설명 한 줄(`New keys`의 기준). */
   hint?: ReactNode;
   /** 메뉴 정렬 — 패널 머리 오른쪽 끝의 트리거는 `end`다(시작 정렬이면 트리거보다 넓은 메뉴가 화면 끝 쪽으로 자란다). 자리는 호출부가 안다. */
   align?: "start" | "end";

@@ -94,7 +94,7 @@ export async function triggerPullAction(slug: string): Promise<PullOutcome> {
   if (!attempted) return outcome;
   /**
    * ⚠️ **Publish가 목록의 셋을 동시에 움직인다** (DESIGN §6.63): `lastPulledAt`이 전진해
-   * `To send`와 `New from GitHub`의 기준이 바뀌고, `lastPrUrl`이 `pr_open` 띠를 세운다.
+   * `To send`와 `New keys`의 기준이 바뀌고, `lastPrUrl`이 `pr_open` 띠를 세운다.
    * **스킵·실패에도 지운다** — 어느 쪽이든 목록이 보여 주던 값이 더 이상 최신이 아니고,
    * 성공만 지우면 "실패한 Publish 뒤에 옛 띠가 남는" 갈래가 생긴다. 지우는 경로는 저장과 같은 셋이다.
    */

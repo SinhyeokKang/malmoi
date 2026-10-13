@@ -469,7 +469,7 @@ export const en = {
    */
   seo: {
     /** 랜딩 `<title>` — absolute라 템플릿(`%s · Malmoi`)을 안 지나므로 브랜드를 스스로 담는다. */
-    homeTitle: "Malmoi: Localization for GitHub repositories",
+    homeTitle: "Malmoi: Localization for GitHub or GitLab repositories",
     /**
      * `public/og.png`의 대체 텍스트 — 제목 반복이 아니라 이미지 내용 묘사다. ⚠️ 이미지는 사용자가 준 자산이다(launch-readiness L2.12) —
      * 그림이 바뀌면 이 문장도 같이 고친다.
@@ -581,7 +581,7 @@ export const en = {
        * ⚠️ **첫 문장이 정의다**(seo-geo T12a) — 이 값이 홈 description·`og:description`·`llms.txt` 머리·JSON-LD 설명으로도 나간다.
        * 분량을 늘리지 않는다(히어로 줄 수).
        */
-      body: "Malmoi is a localization tool for GitHub repos: it finds your translation files, lets teammates edit them in the browser, and sends every change back as one pull request.",
+      body: "Malmoi is a localization tool for GitHub or GitLab repos: it finds your translation files, lets teammates edit them in the browser, and sends every change back as one pull request.",
       fact: "No paid plans. Open source under the MIT License.",
       /** h1 위 알약(2026-09-30 사용자) — 배포된 앱 버전(`APP_VERSION`)이 비면 버전 없는 문구다. */
       latest: (version: string) => (version === "" ? "Latest changelog" : `What's new in v${version}`),
@@ -713,7 +713,7 @@ export const en = {
        * ⚠️ **여기서 이름을 대는 저장 항목은 `lib/privacy/collected.ts`의 등재와 절 id로 묶인다** —
        * 표는 필드 여럿을 한 행으로 접으므로 대조 단위가 라벨이 아니라 절이다.
        */
-      effectiveDate: "2026-10-13",
+      effectiveDate: "2026-10-14",
       /**
        * 목차 이름 — ⚠️ **`sections` 밖에 둔다**: `policy-gate.test.tsx`가 `sections`를 해시하므로 안에 넣으면 개정 이력이 요구된다.
        */
@@ -962,7 +962,7 @@ export const en = {
             {
               p: "The effective date at the top belongs to the text below it: whenever this policy changes, that date moves and the change is listed here.",
             },
-            { ul: ["2026-10-13 — GitLab is also a sign-in provider. This policy now covers receiving your name (or username), email address and GitLab account id for sign-in, and using gitlab.com for that purpose. Malmoi does not receive a profile picture from GitLab.", "2026-10-12 — GitLab repositories are supported. This policy now covers GitLab account identifiers, encrypted personal access tokens, expiry dates and scopes, connection retention, and transfers to gitlab.com.", "2026-10-09 — the “Needs your attention” list in the header is now called Inbox, and it also has its own page. Viewing that page counts as looking at your Inbox, the same as opening the list in the header.", "2026-10-07 — Malmoi remembers whether you collapsed the sidebar in a cookie on this browser. It is the only cookie that scripts can read, and it holds nothing else.", "2026-10-05 — the “Needs your attention” list in the header marks items that are new since you last opened it. Malmoi keeps one time per account — when you last opened the list — and no record of which items you saw.", "2026-10-05 — you can choose Malmoi's theme: System, Light or Dark. Malmoi remembers your choice with your account and in a cookie on this browser, and signing in copies the theme saved to your account into that cookie.", "2026-10-05 — you can choose the time zone Malmoi uses for dates and times. Malmoi remembers your choice with your account only, not in a cookie. Public pages always use UTC.", "2026-10-05 — you can choose the language of Malmoi's screens: English, Korean or Spanish. Malmoi remembers your choice with your account and in a cookie on this browser, and signing in copies the language saved to your account into that cookie. This policy is also published in Korean.", "2026-09-29 — you can also connect an app such as Claude Code or Codex by signing in through your browser, with no token to copy. Malmoi keeps the connection — the app's name and address, the actions and projects you allowed, when it was used — and only hashes of the tokens it issued; you can disconnect it on the MCP connector page.", "2026-09-29 — you can create a personal token for AI agents on the MCP connector page. Malmoi stores only a hash of it, with the actions and projects you allowed and when it was used.", "2026-09-28 — invitation emails show the name and picture of the project you are invited to, and your role in it. They still do not say who invited you.", "2026-09-27 — visits to the public pages are counted with Vercel Web Analytics, without cookies.", "2026-09-26 — the product name is written Malmoi. No change to what we collect or share.", "2026-09-24 — invitations can be sent by email through Resend.", "2026-09-19 — first version."] },
+            { ul: ["2026-10-14 — Revised the Korean wording. No change to data collection, use, retention, sharing or deletion.", "2026-10-13 — GitLab is also a sign-in provider. This policy now covers receiving your name (or username), email address and GitLab account id for sign-in, and using gitlab.com for that purpose. Malmoi does not receive a profile picture from GitLab.", "2026-10-12 — GitLab repositories are supported. This policy now covers GitLab account identifiers, encrypted personal access tokens, expiry dates and scopes, connection retention, and transfers to gitlab.com.", "2026-10-09 — the “Needs your attention” list in the header is now called Inbox, and it also has its own page. Viewing that page counts as looking at your Inbox, the same as opening the list in the header.", "2026-10-07 — Malmoi remembers whether you collapsed the sidebar in a cookie on this browser. It is the only cookie that scripts can read, and it holds nothing else.", "2026-10-05 — the “Needs your attention” list in the header marks items that are new since you last opened it. Malmoi keeps one time per account — when you last opened the list — and no record of which items you saw.", "2026-10-05 — you can choose Malmoi's theme: System, Light or Dark. Malmoi remembers your choice with your account and in a cookie on this browser, and signing in copies the theme saved to your account into that cookie.", "2026-10-05 — you can choose the time zone Malmoi uses for dates and times. Malmoi remembers your choice with your account only, not in a cookie. Public pages always use UTC.", "2026-10-05 — you can choose the language of Malmoi's screens: English, Korean or Spanish. Malmoi remembers your choice with your account and in a cookie on this browser, and signing in copies the language saved to your account into that cookie. This policy is also published in Korean.", "2026-09-29 — you can also connect an app such as Claude Code or Codex by signing in through your browser, with no token to copy. Malmoi keeps the connection — the app's name and address, the actions and projects you allowed, when it was used — and only hashes of the tokens it issued; you can disconnect it on the MCP connector page.", "2026-09-29 — you can create a personal token for AI agents on the MCP connector page. Malmoi stores only a hash of it, with the actions and projects you allowed and when it was used.", "2026-09-28 — invitation emails show the name and picture of the project you are invited to, and your role in it. They still do not say who invited you.", "2026-09-27 — visits to the public pages are counted with Vercel Web Analytics, without cookies.", "2026-09-26 — the product name is written Malmoi. No change to what we collect or share.", "2026-09-24 — invitations can be sent by email through Resend.", "2026-09-19 — first version."] },
           ],
         },
       ],
@@ -1152,7 +1152,7 @@ export const en = {
       /** 탭 셋 — 착지할 때마다 `Project`다. 목록 이름은 "무엇의 탭인가"를 말한다(첫 탭과 랜드마크가 같은 `Project`라서). */
       tabs: { list: "Project details", project: "Project", sync: "Sync", publish: "Publish" },
       /** 리포 호스트 행(시안 G5a — 두 호스트 모두). 값은 고유명사다. */
-      platform: "Platform",
+      platform: "Host",
       platforms: { github: "GitHub", gitlab: "GitLab" },
       repository: "Repository",
       connection: "Connection",
@@ -1826,7 +1826,7 @@ export const en = {
      */
     summary: {
       /** 마지막 pull 이후 리포에서 들어온 활성 키. 첫 pull 전에는 활성 키 전체다. */
-      newFromGithub: "New from GitHub",
+      newFromGithub: "New keys",
       toTranslate: "To translate",
       toReview: "To review",
       toSend: "To send",
@@ -1957,9 +1957,8 @@ export const en = {
       importFailed: "The last sync couldn't finish.",
       ownerRetries: "Only project owners can try it again.",
     },
-    /** GitLab 프로젝트 — Home 카운트 카드·셋업 줄은 `withRepoHost`가, 호스트가 섞인 목록의 띠는 행마다 `forHost`가 고른다. */
+    /** GitLab 프로젝트 — Home 셋업 줄은 `withRepoHost`가, 호스트가 섞인 목록의 띠는 행마다 `forHost`가 고른다. */
     onGitLab: {
-      summary: { newFromGithub: "New from GitLab" },
       meter: { note: { setup: "Connect this project to GitLab to continue." } },
       banner: {
         prOpen: (n: number): string => `Merge request !${n} is open — merge it to finish.`,
@@ -2745,7 +2744,7 @@ export const en = {
          * **필터 축은 Status 하나다** (translation-tree-range — 2026-10-01 사용자). 범위는 트리가, 검색은 전 소스가 든다.
          * ⚠️ 키 이름이 `state`인 것은 `guide/SHOOTING.md`의 `state-filter.webp` 매핑(`dict:…filters.state.*`)이 여기를 가리키기 때문이다 — 축 이름은 `Status`다.
          */
-        state: { axis: "Status", any: "All keys", incomplete: "Incomplete", review: "Needs review", unsent: "Unsent", new: "New from GitHub", newHint: "Keys that arrived after Malmoi last confirmed your files." },
+        state: { axis: "Status", any: "All keys", incomplete: "Incomplete", review: "Needs review", unsent: "Unsent", new: "New keys", newHint: "Keys that arrived after Malmoi last confirmed your files." },
         clear: "Clear filters",
         /** 검색 입력의 접근 이름 — 위치로 좁힌 검색 중에도 참이어야 해서 범위를 말하지 않는다. 범위는 플레이스홀더(입력이 빌 때만 보인다 — 그때 새 검색은 언제나 전 소스다)가 말한다. */
         search: "Search keys",
@@ -3310,9 +3309,8 @@ export const en = {
      * 초대 — **6a에서는 번역 화면 툴바의 `Dialog`다.** 멤버 관리 화면은 6b이고, 이 폼이 없으면
      * `createInvitation`에 호출부가 없다.
      */
-    /** GitLab 프로젝트 번역 화면 — 키 상태 필터·기준 언어 배너(gitlab-repositories). Publish 문장은 `publish.onGitLab`이다. */
+    /** GitLab 프로젝트 번역 화면 — 기준 언어 배너(gitlab-repositories). Publish 문장은 `publish.onGitLab`이다. */
     onGitLab: {
-      workspace: { filters: { state: { new: "New from GitLab" } } },
       banner: {
         basePending: (locale: string): string =>
           `The base language is changing to ${locale}. ` +

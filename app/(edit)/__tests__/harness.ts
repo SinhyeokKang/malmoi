@@ -121,7 +121,7 @@ export type KeySeed = {
   sortIndex: number | null;
   orphaned: boolean;
   /**
-   * 키가 처음 들어온 시각. **목록의 `New from GitHub`가 `lastPulledAt`과 견준다** —
+   * 키가 처음 들어온 시각. **목록의 `New keys`가 `lastPulledAt`과 견준다** —
    * 시드가 안 주면 아래에서 기준선 이전의 값을 심는다(기존 키는 신규가 아니다).
    */
   createdAt?: Date;

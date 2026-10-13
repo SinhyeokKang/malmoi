@@ -516,7 +516,7 @@ computed style로 잰 것이다.
 **패널마다 자기를 좁히는 필터를 든다** (2026-10-02 사용자) — 트리 = 범위 · 키 목록 = Status · 번역값 = 언어. **툴바는 검색 입력 하나뿐이고 왼쪽에
 선다**(`ml-auto` 없음, `w-80`) — 검색은 어느 패널의 것도 아니라 전 소스를 본다. **Status는 키 목록 머리 오른쪽 끝**의 `FilterMenu size="sm"`이다
 (번역값 패널 머리의 언어 메뉴와 같은 자리·같은 크기. 축 이름 `Status`는 접근 이름에만 — `All keys`·`Incomplete`·`Needs review`·`Unsent`·
-`New from GitHub`). **목록 제목은 `Keys`로 고정**이다 — Status는 메뉴 라벨이 말한다(옛 `Incomplete keys` 전환은 걷었다). 범위 콤보·툴바 `Clear filters`·
+`New keys`). **목록 제목은 `Keys`로 고정**이다 — Status는 메뉴 라벨이 말한다(옛 `Incomplete keys` 전환은 걷었다). 범위 콤보·툴바 `Clear filters`·
 `Untranslated in` 대체 안내가 없다. ⚠️ **좁은 폭(목록 336)에서 머리가 겹치거나 잘리지 않는다** — 잘리는 것은 **범위 라벨(접힌 레이아웃) 하나**다(#170 — 정렬 문구와 함께 줄었다). `+n saved`와 메뉴 트리거는 라벨보다 좁아지지 않는다(`FilterMenu`가 `shrink-0`).
 검색 입력은 **label과 placeholder가 갈린다** — 접근 이름 `Search keys`(위치로 좁힌 검색 중에도 참), 플레이스홀더 `Search all sources…`(빈 입력에서만
 보이고 그때 새 검색은 언제나 전 소스다 — §10).
@@ -618,7 +618,7 @@ computed style로 잰 것이다.
 | `surface-subtle` | 흰 카드 안 한 단계 꺼진 면 | `neutral-50`(`#fafafa`) | `#121212` | Logs 상세의 `Before` 면과 값이 아닌 상태의 점선 블록 **둘뿐**. ⚠️ **`--muted`(#f5f5f5)로 대신하지 않는다** — 흰 `After`와 나란히 서고 두 면의 차이가 "같은 값의 두 시점"을 말하는 유일한 신호다. 새 자리에 번지게 하지 않는다 — 리포의 회색 면은 여전히 `--muted`다 |
 | `hue-rose` … `hue-fuchsia`(8) + `on-hue` | 프로젝트·사람 **식별색**과 그 위 글자·글리프 | `-600` 여덟 · `white` | 테마 불변 | `ui/tone.ts`의 `hueFill`만 — 아래 "이름에서 뽑는 색 8종" |
 | `scrim` | 오버레이(어둡게 덮기) — `/40`(Dialog) · `/32`(LargeModal · logs 상세 · 랜딩 목업) | `--foreground`와 같은 값 | `black`(#187) | ⚠️ **`--foreground`를 가리키지 않는다** — 글자색은 테마를 따라 밝아질 수 있지만 덮개는 계속 어두워야 한다. `--foreground` 알파의 나머지 관용구(hover `/[0.03]` · 선택 `/[0.07]` · `text-foreground/60` 등)는 "표면 위에 글자색을 얇게 깐다"는 뜻이라 그대로다 |
-| `link` | 외부 링크 · 검색 일치 · `New from GitHub` | `blue-600` | `blue-400` | §6.3 · 아래 "목록 재설계가 데려온 넷". `--signin-dot`이 같은 값이다 |
+| `link` | 외부 링크 · 검색 일치 · `New keys` | `blue-600` | `blue-400` | §6.3 · 아래 "목록 재설계가 데려온 넷". `--signin-dot`이 같은 값이다 |
 | `gray-light` | 라디오·**체크박스** 지시자의 비선택 테두리 · 번역 빈 칸의 **점선 상자** · 멤버 역할 칩의 **자물쇠**(§6.65) | `neutral-300`(`#d4d4d4`) | `neutral-700` | 16px 원·사각에서 `--input`(#e5e5e5)은 안 보인다. 자리는 아래 B6 표 |
 | `gray-dim` | `--muted-foreground`(#737373)보다 한 단계 **물러난** 층 — 라벨·시각·비활성 글리프 | `neutral-400`(`#a1a1a1` — v4) | `neutral-500` | ⚠️ **본문 금지**(흰 배경 2.58:1 · canvas 2.39:1, 다크 3.78 · 4.17 — 두 테마 모두 4.5 미달, **대비 수용 예외** §7) — 옆의 값이 뜻을 완성하는 자리만. 등재된 이탈 둘: `/projects` 보관 행의 이름·메타(§6.63) · 검색 Dialog 그룹 머리(§6.54). 자리는 아래 B6·Home 표 |
 | `gray-strong` | `--muted-foreground`보다 한 단계 **진한** "한 단계 아래" 글리프 | `neutral-600`(`#525252`) | `neutral-300` | Home sync 버튼 · 번역 작업 화면 글리프(B6) · Sync 확인 Dialog의 브랜치 · 랜딩 목업 |
@@ -678,7 +678,7 @@ logs 상세 `components/logs/event-dialog.tsx`(2026-09-24, §6.68), 그리고 �
 | 색 | 자리 | 용도·값을 나눈 근거 |
 |---|---|---|
 | ~~`red-800` (`#991b1b`)~~ | ~~임포트 실패 띠의 `triangle-alert`~~ — **소비자 0**(실패 띠는 `BannerLine danger` + `CircleX`, §2.4 글리프 열 — 2026-10-01). 옛 근거: | `--destructive`는 red-600이라 값이 다르다. 띠는 Alert가 아니라 **한 줄**이고 배경이 2%뿐이라 그 위에서 red-600은 경고보다 장식으로 읽힌다 |
-| `link` (`#2563eb`) | `New from GitHub`의 글리프·숫자 — 지금은 **Home 카운트 카드**(`home/count-cards.tsx`)다 | 이미 §6.2에 있던 값이지만 **숫자에 색을 쓰는 첫 자리**다. 넷 중 유일하게 "내가 만들지 않은 변화"라 그 하나만 색을 든다 |
+| `link` (`#2563eb`) | `New keys`의 글리프·숫자 — 지금은 **Home 카운트 카드**(`home/count-cards.tsx`)다 | 이미 §6.2에 있던 값이지만 **숫자에 색을 쓰는 첫 자리**다. 넷 중 유일하게 "내가 만들지 않은 변화"라 그 하나만 색을 든다 |
 | `link/[0.14]` | `components/ui/highlight.tsx`의 검색 일치 구간(`<mark>`) | 강조가 배경이라 알파가 필요하다. `radius 3` · `padding 0 1px`로 글자 사이를 안 벌린다 |
 | `gray-strong` (`#525252`) | ~~무색 배지의 글자(`Setup`·`Pending`)~~(2026-10-01 — 호출부 덮개를 걷어 `Badge soft-neutral` 그대로다, `StatusBadge`) · **Home 머리 `[Sync]`의 `ArrowDownToLine` 글리프** · **Sync 확인 Dialog 설명문의 브랜치**(2026-09-15 실측. ⚠️ 2026-09-23까지 mono였다 — 지금은 색만 남았다) | `Badge soft-neutral`의 기본은 foreground이라 호출부에서 내린다 — 프리미티브를 바꾸면 이 화면 밖 배지가 함께 움직인다. 뒤의 둘은 **한 단계 아래**를 표시하는 같은 쓰임이다(버튼 라벨 `#0a0a0a`보다 글리프가, 설명문 `#737373`보다 브랜치가) |
 
@@ -1399,7 +1399,7 @@ computed style과 CDP 접근성 트리로 **실측한** 것이다.
 | 로그 행 | ⚠️ **옛 레일(점 10 + 세로선)과 파랑 조각은 사라졌다** — 행은 §6.68의 `event-row`를 그대로 쓰고 선은 `Card` 규칙이다(머리↔첫 행 `#f0f0f0` · 행↔행 `--border` — 2026-10-01 4-Y4: 같은 행이 Home과 Logs에서 반대 색이었다). 결과 배지는 행 오른쪽이다(§6.68 Recent logs)(`components/home/logs-card.tsx`). 목적지는 바닥의 `All logs`다 |
 | 바닥 링크 | `All logs ›` · `Settings ›`(`m.home.meta.settings`) 둘 다 **중앙 정렬** padding `12px 16px` 14 + chevron. 화면 **안**으로 가는 이동은 전부 chevron이다 | — ⚠️ **메타 열의 바닥 링크는 탭마다 하나다**(2026-10-04 project-card-tabs): Project 탭 `Settings ›`(OWNER만) · Sync 탭 `Sync logs ›` → `routes.logs(slug, { kind: "imports" })` · Publish 탭 `Publish logs ›` → `{ kind: "publish" }`. 뒤 둘은 **전 역할 · 보관 중에도 · 이력이 없어도** 선다(빈 목록은 Logs의 빈 상태가 말한다). `kind`는 Logs가 읽는 화면 낱말(`LOG_KINDS`)이고 `entry-points.test.ts`가 대조한다. 바닥 링크는 패널 안에 있어 **열 높이가 탭을 따른다**
 | 메타 열 (2026-10-04, project-card-tabs — 정본 시안 `Project Home Meta Tabs v3`) | radius 12 · **탭 셋 `Project` · `Sync` · `Publish`**(`Tabs` §6.4) — 착지마다 `Project`, 탭에 상태 점 없음, 선택을 URL·저장소에 남기지 않는다. **카드 머리가 없고 탭 목록이 머리다**(padding 12 · 높이 60 · 아래 선 `--divider`). 패널은 **묶음**(구분선 단위 — 첫 묶음은 머리 선을 쓴다) padding `14px 16px` 행 gap 10 · **라벨 width 96** 13 `neutral-400` + 값 14 **오른쪽 정렬**(`Fact align="end"` — 라벨 폭이 고정이라 값의 끝이 한 열로 선다. 옛 판의 "`justify-between` 금지"와 다른 형이다). ⚠️ **한 행 = 라벨 하나 + 사실 하나** — 값 안에 `·`로 이은 둘째 사실이 없다(예외는 `Members` `4 (2)` — 멤버 수 + 대기 초대 수, **초대 0이어도 `(0)`**). 배지는 그 행의 사실 자체일 때만 선다. 파랑은 리포 호스트(GitHub · GitLab)로 나가는 것뿐(Repository · Pull request / GitLab 프로젝트는 Merge request — 연결이 정상이 아니면 평문), 앱 안 이동(`Sources` · 바닥 링크)은 검정 + chevron. **Project 탭** `[Repository · Connection · Branch · CI] / [Sources · Keys · Members] / [Created · Archived?]` — Connection은 설정 카드와 같은 판정(`repositoryConnectionState`)의 **다섯 값**: `connected`(초록) · `notConnected`(회색) · `disconnected`(호박) · `wrongRepository`(빨강) · **`couldNotCheck`**(호박 — 연결 조회 실패 `unknown`; 끊김으로 접지 않고 Repository·Pull request는 링크로 남는다). CI = `Configured` / `Not set up`(push 토큰 유무 — 해시는 서버에서 boolean으로 접는다). `Sources`는 소스 1개여도 선다(Keys가 몇 개의 합인지 말한다). **로케일 행이 없다** — Sources 상세가 소유한다(PRODUCT §7.7 결정 4). **Sync 탭** `[Last sync · Synced · Result] / [Changed? · Keys seen? · Sources?]` — **시각을 전진시킨 마지막 IMPORT 실행 하나**의 사실이다(다른 소스의 시각·실패가 한 탭에 섞이지 않는다). `Synced`는 그 실행의 종료(사건 `finishedAt`), `Result`는 `Synced`(초록)/`Partially synced`(호박), `Changed` `128 values`, `Sources`는 소스가 둘 이상일 때만. 첫 Sync 전이면 `Last sync` 한 행이 `Not synced yet` 배지, 사건 기록(2026-09-20) 이전 적재는 회색 평문 `Not recorded`(값 톤 **muted #737373** — 라벨 톤 `gray-dim`이 아니다. 같은 톤이면 값이 둘째 라벨처럼 읽힌다, malmoi#180). **실패·진행 중은 이 열을 바꾸지 않는다** — 배너가 든다. **Publish 탭** `[Last publish · Published · Pull request? · PR state?] / [Changed? · Sources?]` — 마지막 성공 Publish 하나. `Changed`는 `SyncRun.changedValues`(열린 PR 갱신이면 PR 누적), 기록 이전이면 행 없음. 발송 전이면 회색 평문 `Never`(muted) 한 행. 브랜치 행 라벨은 **`Branch`**(시안 v3·spec, malmoi#179 — Settings 편집 폼의 `Base branch`와 다른 자리다. 화면 간 낱말 차이는 `/ux-audit` 후보) |
-| 메타 열 Platform 행 (2026-10-12, gitlab-repositories 시안 G5a) | Project 탭 첫 묶음에 **`Platform` 행이 두 호스트 모두 선다** — 값은 글리프 14(`aria-hidden`) + 호스트 이름(`m.home.meta.platforms`). 글리프만으로 호스트를 가르지 않는다. GitLab 프로젝트는 리포·MR 링크가 gitlab.com이고 번호가 `!128`, 재연결 버튼도 그 호스트의 것이다(`ReconnectButton host`) |
+| 메타 열 Host 행 (2026-10-12, gitlab-repositories 시안 G5a · 2026-10-14 `Platform`→`Host`) | Project 탭 첫 묶음에 **`Host` 행이 두 호스트 모두 선다** — 값은 글리프 14(`aria-hidden`) + 호스트 이름(`m.home.meta.platforms`). 글리프만으로 호스트를 가르지 않는다. GitLab 프로젝트는 리포·MR 링크가 gitlab.com이고 번호가 `!128`, 재연결 버튼도 그 호스트의 것이다(`ReconnectButton host`) |
 | 메타 열 주체 · 늦게 오는 행 (2026-09-30 nightly-sync · 2026-10-04 탭) | **주체는 `Last sync`·`Last publish` 행의 값 자체다** — 실행 종류 배지(`Manual sync`·`Nightly sync`·`CI sync`·`Manual publish` …, Logs 보조줄과 같은 낱말 `m.logs.meta.runType`, 판정 `triggerOf` §6.68). 옛 한 줄(`[Nightly sync] 12 hours ago · [Sync failed] 10m ago · [Held]`)은 주체 · 시각 · 실패 · 보류가 붙어 어느 조각이 어느 사실인지 안 읽혔다 — 시각은 `Synced`·`Published` 행으로, 실패는 배너로, 보류는 `Hold` 행으로 갈랐다. **Hold**(Sync 탭)는 지금의 판정(`planHoldNotice` §2.4)이고 `Held` 배지 하나다(사유 문장은 `To send` 카드 보조 줄) — **자리를 잡지 않고 마지막 묶음 끝에 붙는다**. **PR state**(Publish 탭)는 `prOpen` 배지 / 평문 `Not open` / `couldNotCheck` 배지 — **새 GitHub 호출이 없다**: 보류 판정이 PR을 조회하는 갈래(편집 0 · 게이트 있음)에서만 행이 서고 **56px 스켈레톤이 자리를 먼저 잡는다**. 둘 다 같은 promise의 결론(`homeLate`)이 늦게 채운다. ⚠️ **늦게 오는 값은 탭 껍데기(`meta-tabs.tsx`)가 한 번 구독해 패널로 내린다** — Radix가 비활성 패널의 자식을 언마운트해 패널 안에서 구독하면 탭을 갔다 올 때마다 한 프레임 비운다(`useArrived`는 `null`에서 시작). `use()`로 받지 않는다(전환이 조회를 기다린다) |
 | 빈 상태 | 할 일·로그 카드 모두 `EmptyState placement="inset"`(4-Y14 — padding 32 · gap 10 · 칩 `IconTile lg` 40 · 글리프 20 · 제목 15). **액션 없음** |
 | 역할 | 게이트는 **`translation:write`**. ⚠️ **`[Sync]`는 EDITOR에게 부재다**(누를 수 없는 버튼을 주지 않는다 — §6.69와 같은 규칙) · **미연결·끊김·보관에서는 비활성이고 부재가 아니다**(OWNER가 가진 동작이 지금 멈춘 것이다). ⚠️ **판정은 `planActionAvailability({ archived, connection })` 하나다**(2026-10-01) — Home과 번역 화면이 같은 함수를 부른다. 번역 화면은 설치·`repositoryId`로 **첫 렌더부터** 끄고(DB 판정 — `not-connected`·`unpinned`), App 제거·설치 교체·리포 교체는 연결 조회가 스트리밍으로 도착한 뒤 끈다. **조회 실패(`unknown`)는 끄지 않는다** — 누르면 서버가 다시 판정한다 · `[Publish]`는 EDITOR도 누른다 |
@@ -1412,7 +1412,7 @@ computed style과 CDP 접근성 트리로 **실측한** 것이다.
 
 | 노드 | role | 이름 |
 |---|---|---|
-| 카드 링크 | `link` | `New from GitHub +907 keys · synced 6 days ago` (name-from-content) |
+| 카드 링크 | `link` | `New keys +907 keys · synced 6 days ago` (name-from-content) |
 | 할 일 카드 | `region` | `Needs your attention` |
 | 로그 카드 | `region` | `Recent logs` |
 | 메타 열 | `complementary` | `Project` — **`aria-label`이 든다**(2026-10-04 — 보이는 머리가 없어 `aria-labelledby`로 가리킬 `h2`가 없다) |
@@ -1450,7 +1450,7 @@ computed style과 CDP 접근성 트리로 **실측한** 것이다.
 | 아트보드 | 상태 | 밟는 방법 |
 |---|---|---|
 | `2a` 기본 | ✅ 실측(computed style + CDP) | dev의 `bugshot-i18n-test-qa` |
-| `2a` 빈 | ⚠️ **절반** — 할 일·로그의 `EmptyState`는 봤지만 **카드 넷이 전부 0인 화면**은 못 봤다(`New from GitHub`이 907로 남아 있다) | 전부 발송·전부 번역된 프로젝트가 필요하다 — **만드는 방법이 정해지지 않았다** |
+| `2a` 빈 | ⚠️ **절반** — 할 일·로그의 `EmptyState`는 봤지만 **카드 넷이 전부 0인 화면**은 못 봤다(`New keys`가 907로 남아 있다) | 전부 발송·전부 번역된 프로젝트가 필요하다 — **만드는 방법이 정해지지 않았다** |
 | `2b` Sync 실패 | ✅ 실측(2026-09-16) — danger 배너 · 제목 `The last sync could not finish`(2026-10-01부터 `The last sync couldn't finish` — 실패 문장 하나, §2.4. ⚠️ **일부 반영은 이 배너가 아니다** — warning `Partially synced`) · 본문이 **무엇이 안전한지까지 말한다**(`Nothing was lost — the cells you see are from the last successful sync, {시각}` — 이전 적재가 없으면 `…from before this sync.`) · `[Try again]`이 확인 Dialog를 연다 | `i18n-format-check`의 `locales/ja.yml`을 깨뜨려 커밋하고 Sync. **되돌림 커밋 + 재Sync로 복구**된다 |
 | `2c` 미연결 | ❌ 단위·DOM 테스트뿐 | GitHub App 설치 목록에서 리포를 뺀다 — ⚠️ **되돌리는 절차를 같이 적고 시작한다** |
 | `2d` 보관 | ❌ 단위·DOM 테스트뿐 | 설정 화면에서 보관 → 복원 (되돌릴 수 있다) |
@@ -2376,6 +2376,8 @@ Supabase를 골랐던 이유(2026-09-05)는 "개발자 도구이면서 비개발
 
 `messages/ko.tsx`·`messages/es.tsx`는 `en`과 같은 키·같은 시그니처의 번역이고, 위 규칙(마침표·느낌표·줄임표 U+2026·곡선 따옴표·"please/sorry" 금지·다음 행동을 말하는 오류·git 어휘 금지)을 그대로 따른다. 언어마다 더하는 것만 적는다. 낱말은 아래 §10.1 표의 ko·es 열이 정본이다.
 
+한국어 공통 표현·의미 보존 기준은 [CLAUDE.md의 한국어 작성 공통 규칙](../CLAUDE.md#한국어-작성-공통-규칙)을 따른다. 화면의 말투·표기·용어는 이 절과 §10.1이 정한다.
+
 **이 절과 §10.1을 사전·원고에 적용하는 절차는 `/translate` 스킬(`.claude/commands/translate.md`)이다** — 규칙은 여기에만 두고 스킬은 절차·체크리스트만 든다.
 
 - **ko — 합니다체.** 완전 문장(help·Alert 본문·오류·토스트)은 `~합니다`·`~습니다`로 끝낸다. 해요체 평서(`~해요`)·반말을 쓰지 않는다. 지시는 `~하세요`(합니다체 문장 옆에 서는 한국어 UI의 관용 — `~하십시오`는 쓰지 않는다), 확인 모달의 질문은 `~할까요?`·`~바꿀까요?`처럼 짧고 자연스럽게 쓴다(2026-10-05 사용자 — ko 톤 검수).
@@ -2446,7 +2448,7 @@ Supabase를 골랐던 이유(2026-09-05)는 "개발자 도구이면서 비개발
 | GitLab CI job (2026-10-13, 결정 R5 — audit U4) | **job** / **CI job**(소스마다 하나 — `.gitlab-ci.yml`의 job) | — | **작업** / **CI 작업**(가이드 h1 `GitLab CI 작업 추가`와 같은 낱말) | job(GitLab 문맥의 영어 낱말) | **job** / **job de CI**(영어 그대로) | trabajo, tarea |
 | 리포 호스트로 나가는 링크 (2026-10-12, gitlab-repositories) | **Open on GitHub** · **Open on GitLab** — 프로젝트의 호스트 하나. 리뷰 요청 링크는 **View pull request** · **View merge request** | — | **GitHub에서 열기** · **GitLab에서 열기** / **PR 보기** · **MR 보기** | — | **Abrir en GitHub** · **Abrir en GitLab** / **Ver pull request** · **Ver merge request** | — |
 | 토큰 만료 임박 (2026-10-12, D11 — 만료 14일 이내, warning) | **Expires soon** — 토큰의 자리(`/account` GitLab PAT 카드 · 설정 토큰 줄)에만 선다. 프로젝트 Connection 행은 `Connected` 그대로다 | — | **만료 예정** | — | **Caduca pronto** | — |
-| 리포 호스트 이름 행 | Home 메타 **Platform**(두 호스트 모두) | — | **플랫폼** | — | **Plataforma** | — |
+| 리포 호스트 이름 행 (2026-10-14) | Home 메타 **Host**(두 호스트 모두 — 새 프로젝트 탭 `Repository host`와 같은 낱말) | Platform | **호스트** | 플랫폼 | **Proveedor**(새 프로젝트 `Proveedor del repositorio`와 같은 낱말) | Plataforma |
 | App 호칭 | 처음 **the GitHub App**, 이어서 **the app** — 두 배포 공통(self-hosted에서 App의 소유자는 운영자다) | Malmoi app · Malmoi GitHub App | 처음 **GitHub App**, 이어서 **앱** | Malmoi 앱 · Malmoi GitHub App | primero **la GitHub App**, luego **la app** | app de Malmoi · Malmoi GitHub App · GitHub App de Malmoi |
 | 계정 화면 | **Account** | account settings | **계정** | 계정 설정 | **Cuenta** | configuración de la cuenta |
 | 화면 테마 (2026-10-05, color-scheme) | **Theme** — 옵션 **System** · **Light** · **Dark**(식별자 `colorScheme`은 코드에만) | Color scheme, Dark mode | **테마** — **시스템** · **라이트** · **다크** | 색 구성표, 다크 모드 | **Tema** — **Sistema** · **Claro** · **Oscuro** | esquema de colores, modo oscuro |

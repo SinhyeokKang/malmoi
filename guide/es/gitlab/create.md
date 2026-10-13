@@ -51,7 +51,7 @@ El proyecto queda listo al instante. El último paso dice **Malmoi está listo**
 ## Termina la configuración {#finish-setup}
 
 1. Copia el token de push que aparece en la página de finalización. Solo se muestra una vez; si lo pierdes, rótalo más tarde en **Configuración**.
-2. Añade los jobs de CI y la variable `PUSH_TOKEN` siguiendo [Añade los jobs de GitLab CI](ci.md). Si la página de finalización indica que el archivo de CI aún no está disponible, guarda el token de push para más adelante.
+2. Añade los jobs de CI y la variable `PUSH_TOKEN` siguiendo [Añade los jobs de GitLab CI](ci.md).
 3. Elige **Abrir proyecto** para ir a la página de Inicio del proyecto.
 
 Quien lo crea pasa a ser **Propietario**.

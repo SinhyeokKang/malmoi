@@ -620,7 +620,7 @@ describe("push 흐름 — 키 생성 시각과 임포트 결과", () => {
     return stub;
   };
 
-  it("신규 키 INSERT가 createdAt을 싣는다 — 목록의 `New from GitHub`가 이 값을 센다", async () => {
+  it("신규 키 INSERT가 createdAt을 싣는다 — 목록의 `New keys`가 이 값을 센다", async () => {
     const { captured } = await run();
     const cols = columnsOf(stmt(captured, 'INSERT INTO "StringKey"'));
     expect(Object.keys(cols)).toContain("createdAt");

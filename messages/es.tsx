@@ -218,7 +218,7 @@ export const es = {
     },
     hero: {
       title: ["Reúne tus textos,", "traduce y publica en equipo"] as const,
-      body: "Malmoi es una herramienta de localización para repositorios de GitHub: encuentra tus archivos de traducción, permite que tu equipo los edite en el navegador y devuelve todos los cambios en una sola pull request.",
+      body: "Malmoi es una herramienta de localización para repositorios de GitHub o GitLab: encuentra tus archivos de traducción, permite que tu equipo los edite en el navegador y devuelve todos los cambios en una sola pull request.",
       fact: "No tiene planes de pago. Es código abierto con licencia MIT.",
       latest: (version: string) => (version === "" ? "Últimas novedades" : `Novedades de la v${version}`),
     },
@@ -396,7 +396,7 @@ export const es = {
     meta: {
       title: "Proyecto",
       tabs: { list: "Detalles del proyecto", project: "Proyecto", sync: "Sincronizar", publish: "Publicar" },
-      platform: "Plataforma",
+      platform: "Proveedor",
       platforms: { github: "GitHub", gitlab: "GitLab" },
       repository: "Repositorio",
       connection: "Conexión",
@@ -818,7 +818,7 @@ export const es = {
         "Conecta un repositorio y Malmoi encontrará los archivos de traducción por ti; solo escribe en él abriendo una pull request (una merge request en GitLab). ¿Te invitaron al proyecto de otra persona? Abre el enlace de tu correo de invitación.",
     },
     summary: {
-      newFromGithub: "Nuevo desde GitHub",
+      newFromGithub: "Claves nuevas",
       toTranslate: "Para traducir",
       toReview: "Para revisar",
       toSend: "Para enviar",
@@ -876,7 +876,6 @@ export const es = {
       ownerRetries: "Solo los propietarios del proyecto pueden intentarlo de nuevo.",
     },
     onGitLab: {
-      summary: { newFromGithub: "Nuevo desde GitLab" },
       meter: { note: { setup: "Conecta este proyecto a GitLab para continuar." } },
       banner: {
         prOpen: (n: number): string => `La merge request !${n} está abierta: fusiónala para terminar.`,
@@ -1336,7 +1335,7 @@ export const es = {
 
     workspace: {
       filters: {
-        state: { axis: "Estado", any: "Todas las claves", incomplete: "Incompletas", review: "Por revisar", unsent: "Sin enviar", new: "Nuevas desde GitHub", newHint: "Claves que llegaron después de la última vez que Malmoi confirmó tus archivos." },
+        state: { axis: "Estado", any: "Todas las claves", incomplete: "Incompletas", review: "Por revisar", unsent: "Sin enviar", new: "Claves nuevas", newHint: "Claves que llegaron después de la última vez que Malmoi confirmó tus archivos." },
         clear: "Borrar filtros",
         search: "Buscar claves",
         searchPlaceholder: "Buscar en todas las fuentes…",
@@ -1760,7 +1759,6 @@ export const es = {
     },
 
     onGitLab: {
-      workspace: { filters: { state: { new: "Nuevas desde GitLab" } } },
       banner: {
         basePending: (locale: string): string =>
           `El idioma base va a cambiar a ${locale}. ` +
