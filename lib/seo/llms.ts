@@ -16,7 +16,7 @@ import { SITE_ORIGIN } from "./site";
 const url = (slug: readonly string[]) => `${SITE_ORIGIN}${docHref(slug)}`;
 
 const FACTS =
-  "Malmoi currently has no paid plans and is open source under the MIT License. It works with GitHub repositories and supports external AI agents over MCP. It does not provide translation memory, built-in machine or AI translation, ICU plural or select syntax, approval workflows, fine-grained permissions, real-time co-editing, in-context editing, screenshot attachments, or translator notes.";
+  "Malmoi currently has no paid plans and is open source under the MIT License. It works with GitHub and GitLab.com repositories and supports external AI agents over MCP. It does not provide translation memory, built-in machine or AI translation, ICU plural or select syntax, approval workflows, fine-grained permissions, real-time co-editing, in-context editing, screenshot attachments, or translator notes.";
 
 const OPTIONAL = [
   "## Optional",

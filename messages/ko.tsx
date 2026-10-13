@@ -222,7 +222,7 @@ export const ko = {
     hero: {
       title: ["흩어진 말을 모아,", "함께 번역하고 전달하세요"] as const,
       // 첫 문장이 정의다 — 홈 description·og:description으로도 나가므로 분량을 늘리지 않는다.
-      body: "Malmoi는 GitHub 리포지토리의 번역을 관리하는 도구입니다. 팀원들과 브라우저에서 번역 파일을 편집하고, 변경 사항을 PR 하나로 보낼 수 있습니다.",
+      body: "Malmoi는 GitHub 또는 GitLab 리포지토리의 번역을 관리하는 도구입니다. 팀원들과 브라우저에서 번역 파일을 편집하고, 변경 사항을 PR 하나로 보낼 수 있습니다.",
       fact: "유료 플랜이 없으며 MIT 라이선스로 공개한 오픈 소스입니다.",
       latest: (version: string) => (version === "" ? "최신 변경 기록" : `v${version} 업데이트`),
     },

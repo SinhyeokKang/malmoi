@@ -14,7 +14,7 @@
 
 <p align="center">
   <strong>Connect your projects, translate &amp; ship together.</strong><br/>
-  Malmoi is a localization tool for GitHub repositories. It finds the translation files already in your repo,
+  Malmoi is a localization tool for GitHub or GitLab repositories. It finds the translation files already in your repo,
   lets teammates edit them in the browser, and sends every change back as one pull request.
   Coding agents can do the same work over MCP — sign in through your browser, no token to copy.
 </p>

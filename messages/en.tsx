@@ -469,7 +469,7 @@ export const en = {
    */
   seo: {
     /** 랜딩 `<title>` — absolute라 템플릿(`%s · Malmoi`)을 안 지나므로 브랜드를 스스로 담는다. */
-    homeTitle: "Malmoi: Localization for GitHub repositories",
+    homeTitle: "Malmoi: Localization for GitHub or GitLab repositories",
     /**
      * `public/og.png`의 대체 텍스트 — 제목 반복이 아니라 이미지 내용 묘사다. ⚠️ 이미지는 사용자가 준 자산이다(launch-readiness L2.12) —
      * 그림이 바뀌면 이 문장도 같이 고친다.
@@ -581,7 +581,7 @@ export const en = {
        * ⚠️ **첫 문장이 정의다**(seo-geo T12a) — 이 값이 홈 description·`og:description`·`llms.txt` 머리·JSON-LD 설명으로도 나간다.
        * 분량을 늘리지 않는다(히어로 줄 수).
        */
-      body: "Malmoi is a localization tool for GitHub repos: it finds your translation files, lets teammates edit them in the browser, and sends every change back as one pull request.",
+      body: "Malmoi is a localization tool for GitHub or GitLab repos: it finds your translation files, lets teammates edit them in the browser, and sends every change back as one pull request.",
       fact: "No paid plans. Open source under the MIT License.",
       /** h1 위 알약(2026-09-30 사용자) — 배포된 앱 버전(`APP_VERSION`)이 비면 버전 없는 문구다. */
       latest: (version: string) => (version === "" ? "Latest changelog" : `What's new in v${version}`),
