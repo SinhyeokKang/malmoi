@@ -68,4 +68,10 @@
 - wave ④ 앞당김 — **F** `ctx_ee134488640a` · **G** `ctx_72b6d9450f46`(Astra medium, base `281d0fb2` — 문서·가이드만이라 D 리뷰와 병렬. R-D가 낱말을 바꾸면 F·G에 후속 Task).
 - R-D 완료(🔴 0 · 🟡 2 · ⚪ 5 — 뮤테이션 21, 글리프 출처 press kit 바이트 일치). 🟡1 J8 낱말이 카드 밖(account-mismatch·사건·disconnectFailed)에 남음 · 🟡2 J8 비중복 단언이 en만. **D fix1** — 🟡 둘 + ⚪1·2·4, ⚪3·5는 Q 관찰. R-D 해제·정리. ⚠️ D fix1이 낱말을 바꾸므로 G에 후속(바뀐 낱말 표) 필요.
 - F `worker_done` — 문서 9커밋(`fa31a63f`..`612a23a7`), pnpm test 14596 green · 게이트는 timeout 6(단독 68 green). F retain, 인계 보존. **R-F** `ctx_3ac3bec9c0be`(사실 오류 대조).
+- D fix1 `worker_done` — `9689d020`(J8 낱말 카드 밖 셋 · 세 사전 단언 · ⚪1·2·4, M13~16 red, 2회차 `gate: ok`). **D 통합**: `5558d3a0`·`be794ef4`, 통합 게이트 진행.
+- G `worker_done` — `f3365977`(가이드 9종 × en·ko·es, pnpm test green · 게이트 api-contract timeout만). **G fix1** — D fix1 낱말 따라가기(rebase `9689d020`).
+- R-F 완료(🔴 0 · 🟡 1 OPERATIONS Vercel 스크립트(환경 하드코딩·반쪽 쌍 정리) · ⚪ 5). **F fix1** `ctx_13d452ff978e`. R-F 해제·정리.
+- F fix1 `worker_done` — 문서 5커밋 추가(총 14), pnpm test 14596 · mirror green. **F 통합 대기**(Q 뒤 — QA가 main 체크아웃을 쓰는 동안 cherry-pick 금지).
+- D 통합 게이트 1회차 `FAILED at test:projects:postgres` — `search-performance.integration.ts` 중앙값 401·407ms > 300(병렬 워커 게이트 부하 — A·B 인계가 이미 보고한 같은 flake, 단위 14604 green). 부하 낮은 지금 전체 재실행. G fix1 `worker_done` — `03bd8252`·`9d10ee74`, `gate: ok`. **R-G** `ctx_86b6d64da522`.
+- R-G 완료(🔴 0 · 🟡 1 install.md 앱 등록 자리가 그룹만 · ⚪ 3). **G fix2** `ctx_fa123f5f3498`(🟡 + ⚪3 재인증 화면 생략 한 줄). R-G 해제·정리.
 
