@@ -17,6 +17,8 @@ La foto se redimensiona automáticamente y el archivo original no se conserva. M
 
 En mal-moi.com están disponibles GitHub, GitLab y Google, en ese orden. En tu propia instalación solo aparecen los proveedores activos. Elige **Conectar** en otro proveedor e inicia sesión con la misma dirección de correo electrónico. No se puede quitar el último método; Cuenta indica **Es tu única forma de iniciar sesión.**
 
+Si ya has autorizado Malmoi en GitLab, GitLab puede devolverte aquí sin mostrar otra pantalla.
+
 ## Conexiones de repositorios {#connections}
 
 Para el acceso a repositorios, consulta [Gestiona la conexión con GitHub](../github/connection.md) o [Gestiona el token y la conexión de GitLab](../gitlab/connection.md). Iniciar sesión y conectar un repositorio son acciones independientes. En **GitLab PAT**, la fila de un token sin conectar se llama **Token de GitLab**.
@@ -27,6 +29,8 @@ Iniciar sesión con GitLab no conecta un token, y quitar GitLab de tus métodos 
 
 1. Elige **Cerrar sesión en todas partes**.
 2. Usa el botón de confirmación del cuadro de diálogo, Continuar a GitHub, Continuar a GitLab o Continuar a Google. Malmoi elige uno de tus métodos de inicio de sesión conectados; sigue su confirmación de inicio de sesión.
+
+Si ya has autorizado Malmoi en GitLab, GitLab puede devolverte aquí sin mostrar otra pantalla.
 
 Esto también cierra la sesión del dispositivo que estás usando.
 

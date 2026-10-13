@@ -17,6 +17,8 @@ The picture is resized automatically and the original file is not kept. Malmoi d
 
 The available providers on mal-moi.com are GitHub, GitLab, and Google, in that order. On your own installation, only enabled providers appear. Choose **Connect** for another provider and sign in with the same email address. The last method cannot be removed; Account says **This is your only way to sign in.**
 
+If you've already authorized Malmoi in GitLab, GitLab may return you here without showing another screen.
+
 ## Repository connections {#connections}
 
 For repository access, see [Manage the GitHub connection](../github/connection.md) or [Manage the GitLab token and connection](../gitlab/connection.md). Signing in and connecting a repository are separate. In **GitLab PAT**, an unconnected token row is named **GitLab token**.
@@ -27,6 +29,8 @@ Signing in with GitLab does not connect a token, and removing GitLab from your s
 
 1. Choose **Sign out everywhere**.
 2. Use the dialog's confirmation button, Continue to GitHub, Continue to GitLab, or Continue to Google. Malmoi chooses one of your connected sign-in methods; follow its sign-in confirmation.
+
+If you've already authorized Malmoi in GitLab, GitLab may return you here without showing another screen.
 
 This also signs out the device you are using.
 
