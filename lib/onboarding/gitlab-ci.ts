@@ -8,13 +8,13 @@ import type { WorkflowSurface } from "./workflow";
  * 생성 job이 이 태그로 말모이 리포를 shallow clone하고 `HEAD`를 `sha`와 대조한다 — 태그가 옮겨져도 박힌 SHA 밖의 코드는
  * `PUSH_TOKEN`을 든 남의 러너에서 돌지 않는다.
  *
- * ⚠️ **`sha: null` = 아직 발행 전이다.** 태그를 처음 만드는 것은 action 릴리스와 같은 절차이고(`docs/ACTIONS.md` GitLab 절), 그때 이
+ * ⚠️ **`sha: null` = 발행 전이다**(v1은 2026-10-13 `v1.4.0` squash 커밋에 발행). 태그를 처음 만드는 것은 action 릴리스와 같은 절차이고(`docs/ACTIONS.md` GitLab 절), 그때 이
  * 값을 태그 커밋의 40자 SHA로 채운다. 채우기 전의 생성 job은 `MALMOI_I18N_PUSH_SHA: "unreleased"`를 박아 **대조에서 실패한다**
  * (fail-closed — 박힌 SHA 없이 태그 코드를 돌리는 길을 만들지 않는다).
  */
 export const GITLAB_CI_RELEASE: { readonly tag: string; readonly sha: string | null } = {
   tag: "malmoi-i18n-push-gitlab-v1",
-  sha: null,
+  sha: "456e0e1f25514cf7ed7357958b4d0b2dd6723fd8",
 };
 
 /**
