@@ -1,0 +1,43 @@
+# GitLab sign-in — 지휘 계획 (`/orchestrate`)
+
+작성: 2026-10-13 · 지휘: Claude Code(Opus 5.5) · 원본: [tasks.md](tasks.md)(체크 항목) · [design.md](design.md) · [spec.md](spec.md) — 여기에 복제하지 않는다.
+시작 dev: `0a57f981`(origin/dev `89b27c21` + 문서 커밋 둘, 미푸시) · Orca run: (생성 뒤 기입)
+
+## 결정 기록
+
+| # | 결정 | 근거 |
+|---|---|---|
+| O1 | 워커 패밀리 = Claude Code(Opus 5.5·Sonnet 5.5, effort ≤ high) 기본. **교차 허가: C·E·F·G 네 배치는 Codex Astra(`gpt-6-astra`, effort medium)** — 그 밖(T0·A·B·D·Q·리뷰)은 Claude. 리뷰는 같은 패밀리 규칙대로 Opus — Astra 배치의 리뷰가 곧 교차 검증이다 | 사용자 허가(2026-10-13 "astra좀 적당히 섞자" → C·E·F·G 승인). Astra effort 상한 medium |
+| O2 | **A~E는 한 번에 push** — 각 배치는 로컬 dev에 통합(cherry-pick + `pnpm gate`)하고, push는 A·B·C·D·E가 모두 들어간 뒤 한 번 | tasks "배치 경계"(방침이 코드보다 늦으면 거짓). 지휘자 판단 |
+| O3 | C의 격리 PG 시나리오(해제 독립)는 B로 옮긴다 — `postgres.integration.ts` 소유자는 B 하나 | 파일 겹침. 지휘자 판단 |
+| O4 | E(방침)는 wave 1에서 병렬 — `messages/en.tsx`는 A·D와 같은 파일이지만 **소유 구역이 갈린다**(E: 방침 `:706-968` + `ko-privacy.tsx` / A: `link.providers` `:3998` + ko·es 대응 / D: `signIn`·`account.gitlab` `:2100-2135`·`:3594` + ko·es 대응). 구역 밖을 건드리지 않는다고 브리프에 적는다 | 같은 파일·다른 hunk — cherry-pick 충돌 없음. 지휘자 판단 |
+| O5 | DS 행 없음 — design-brief·시안 핸드오프가 없고 신규 화면이 없다(`/feature-review` 판정). 시안 대조 대신 QA의 D6 체크리스트 + 375폭·라이트·다크 레이아웃 | §0 4.5. 지휘자 판단 |
+| O6 | T0는 **main 체크아웃**에서 돈다(`.env.local`의 앱 값이 필요) — 앱 코드 없이 `.scratch/` 단독 OAuth 왕복 스크립트(포트 3000, callback `/api/auth/callback/gitlab`)로 잰다. 값·토큰은 출력하지 않는다. T0가 main 체크아웃을 쓰는 동안 cherry-pick·build 금지 | `.env.local` 복사 금지 + 워크트리에 없음 |
+| O7 | 가이드 스크린샷(tasks §7 둘째)·`/merge` 뒤 Production env·디렉터리 삭제(tasks §8 둘째·셋째)는 **이 런 밖** — `/merge`를 지휘자가 부르지 않으므로 | 스킬 금지 사항 |
+| O8 | Preview env 투입(tasks §8 첫째)은 **사용자가** CLI 스크립트로 한다 — push 직전에 요청하고 `vercel env ls`(이름만) 확인은 지휘자가 한다 | 사용자 2026-10-13 · `.env.local` 비열람 |
+
+## 배치
+
+| 배치 | 항목(tasks) | 파일 소유 | 선행 | 모델·effort | 자리 | 상태 |
+|---|---|---|---|---|---|---|
+| **T0** 실측 | §0 T0 ①~⑥ | `.scratch/t0-gitlab/`만(코드 없음) | — | Opus 5.5 · medium — 브라우저 + 판정 | main 체크아웃 | 대기 |
+| **A** 우주·env | §1 전부 | `lib/login-link/{policy,message}.ts` · `lib/auth/{login-providers,safe-adapter,roundtrip}.ts` · `lib/auth/email.ts`(`:114` 주석만) · `lib/credentials/{access,migration,conversion}.ts` · `lib/session-revocation/{policy,store}.ts` · `lib/deployment/preflight.ts` · `scripts/gate-plan.ts` · `prisma/schema.prisma`(`:637` 주석만) · `.env.example` · `deploy/{.env.example,compose.yaml}` · `messages/{en,ko,es}.tsx`(`link.providers`만) · 신규 `lib/auth/__tests__/provider-universe.test.ts` + 해당 테스트들 | — | Opus 5.5 · high — 보안 경계(callback 가로채기)·게이트 설계 | 워크트리 | 대기 |
+| **C** 경계 정적 | §3 정적 규칙 둘(PG 시나리오는 B — O3) | `lib/github-connect/__tests__/credential-separation.test.ts` | — | **Codex Astra · medium** — 테스트 하나, 기계적 | 워크트리 | 대기 |
+| **E** 방침 | §5 | `messages/en.tsx`(방침 구역만 — O4) · `messages/ko-privacy.tsx` · `lib/privacy/collected.ts`(주석) · `lib/privacy/__tests__/policy-gate.test.tsx` | — | **Codex Astra · medium** — 줄 목록이 design §7에 고정. 거짓 문장은 R-E(Opus)·`/push` 4단계가 거른다 | 워크트리 | 대기 |
+| **B** provider·이메일 | §2 전부 + §3 PG 시나리오(O3) | `lib/auth/{email,profile}.ts` · `auth.ts` · `lib/credentials/__tests__/{sign-in.test.ts,postgres.integration.ts}` · `lib/security-headers.ts` · `app/(edit)/account/actions.ts`(D4 조건부) · 해당 테스트 | **A 통합 + T0 ①②③** | Opus 5.5 · high — 인증 경계 | 워크트리 | 대기 |
+| **D** 화면·글리프 | §4 코드 항목 전부(ProviderIcon · 브랜드 글리프 D6 · 테스트 기본 env · 사전 · J8) | `components/signin/brand-icons.tsx` · `app/signin/**` · `app/invite/[token]/page.tsx` · `app/oauth/authorize/page.tsx` · `components/account/{login-methods,github-section,gitlab-section}.tsx` · `components/settings/repository-card.tsx` · `vitest.setup.ts` · `messages/{en,ko,es}.tsx`(`signIn`·`account.gitlab`·초대 안내 — O4) · 해당 테스트(`sign-in.test.ts:20` 포함 — B 뒤라 겹침 없음) | **B 통합** | Opus 5.5 · medium — UI 이관 + 다수 테스트 갱신 | 워크트리 | 대기 |
+| **F** 정본 문서 | §6 전부(PRODUCT · ARCHITECTURE · CLAUDE.md · DESIGN · OPERATIONS · SELF-HOSTING · README · DIRECTORY) — 문서별 커밋 | `docs/*.md`(features 제외) · `CLAUDE.md`(+ 미러 재생성) · `README.md` | **D 통합 + T0** | **Codex Astra · medium** — 분량이 가장 크고 코드 위험 0 | 워크트리 | 대기 |
+| **G** 가이드 원고 | §7 첫째(en·ko·es) | `guide/{en,ko,es}/**` | **D 통합**(PAT 카드 최종 낱말) | **Codex Astra · medium** — `/guide` 미러 | 워크트리 | 대기 |
+| **R-<배치>** 리뷰 | 각 배치 diff 독립 리뷰(§3) | 리포트 전용 | 그 배치 `worker_done` | Opus 5.5 · medium | 워크트리 없음(브랜치 diff 읽기) | — |
+| **Q** 런타임 QA | §4 실물(`/runtime-test` — 세 화면 375·라이트·다크 · 왕복 · 초대 · `/account` 네 상태 · **D6 체크리스트 8줄**) | 리포트 + BugShot 이슈 | A~E 통합(push 전, 로컬) | Opus 5.5 · medium | main 체크아웃, 단일 워커 | 대기 |
+| **P** push + preview | §8 첫째 — 사용자 Preview env 투입(O8) → `git push` → CI → `dev.mal-moi.com` GitLab 왕복 · `Account(gitlab)` 토큰 null(dev DB) | 지휘자 + (왕복은 Q 워커 재사용) | Q 통과 | — | main 체크아웃 | 대기 |
+
+**겹침 판정**: A↔B(`lib/auth/email.ts` — A는 `:114` 주석만, B는 본문 → B가 A 뒤라 직렬) · A↔D(`messages/*` 다른 구역 + D는 `LoginProvider` 셋을 전제 → 직렬) · B↔D(`sign-in.test.ts` → 직렬) · A↔E·C↔*(겹침 없음 또는 O4 구역 분리 → 병렬) · F↔G(겹침 없음 → 병렬).
+
+**wave**: ① T0 · A · C · E 동시 → ② A 통합 + T0 결과 → B → ③ B 통합 → D → ④ D 통합 → F · G 동시 · Q(로컬) → ⑤ P(push) → F·G 통합 뒤 다시 push.
+
+**주인 없는 항목 대조**(tasks 체크 ↔ 배치): §0 결정·앱 등록(완료) · T0 → T0 · §1 → A · §2 → B · §3 → C(+B) · §4 코드 → D · §4 실물 → Q · §5 → E · §6 → F · §7 원고 → G · §7 스크린샷 → O7(런 밖) · §8 push·preview → P · §8 prod·삭제 → O7(런 밖). **0건.**
+
+## 진행 로그
+
+(통합 커밋·검증 결과·라운드·이슈를 시간순으로 적는다.)
