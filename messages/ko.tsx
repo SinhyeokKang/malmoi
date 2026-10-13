@@ -961,7 +961,11 @@ export const ko = {
       confirmHint: "로그인 계정으로 본인 확인을 마치면 이 기기를 포함한 모든 기기에서 로그아웃됩니다.",
       // provider 이름 뒤 조사를 피하려고 "~에서 계속"으로 쓴다(DESIGN §10.0).
       confirmAction: (provider: string): string => `${provider}에서 계속`,
-      confirmDetail: (provider: string): string => `로그아웃 전에 ${provider} 화면에서 본인 확인을 진행합니다.`,
+      confirmDetail: {
+        github: "로그아웃 전에 GitHub 화면에서 본인 확인을 진행합니다.",
+        gitlab: "GitLab으로 이동합니다. 이미 GitLab에 로그인되어 있으면 바로 돌아오고 모든 세션이 종료됩니다.",
+        google: "로그아웃 전에 Google 화면에서 본인 확인을 진행합니다.",
+      },
       willConfirm: "로그인 서비스로 이동해 확인한 뒤 이 화면으로 돌아옵니다.",
       complete: "모든 기기에서 로그아웃되었습니다. 계속하려면 다시 로그인하세요.",
       failed: "모든 기기에서 로그아웃하지 못했습니다. 다시 시도하세요.",

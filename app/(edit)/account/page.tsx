@@ -130,7 +130,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
    */
   const enabled = enabledLoginProviders();
   const confirming = pickLoginAccount(methods, enabled);
-  const confirmProvider = confirming !== null && isLoginProvider(confirming.provider) ? providerLabel(m, confirming.provider) : null;
+  const confirmProvider = confirming !== null && isLoginProvider(confirming.provider) ? confirming.provider : null;
 
   // Server Action을 클라이언트 컴포넌트에 **참조로** 넘긴다 — 셸의 로그아웃과 같은 형이다.
   // ⚠️ **`/`가 맞다 — 이관 누락이 아니다** (2026-09-10 사용자): 로그아웃은 랜딩으로 간다.

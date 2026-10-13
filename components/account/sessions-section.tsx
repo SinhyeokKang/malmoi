@@ -13,6 +13,8 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { useMessages } from "@/components/i18n/messages-provider";
+import { providerLabel } from "@/lib/login-link/message";
+import type { LoginProvider } from "@/lib/login-link/policy";
 import { sessionRevocationMessage } from "@/lib/session-revocation/message";
 
 /**
@@ -29,10 +31,10 @@ export function SessionsSection({ outcome, signOut, confirmProvider }: {
   outcome: string | undefined;
   signOut: () => void;
   /**
-   * 확인 상대는 서버가 결정적으로 고른다(`pickLoginAccount`) — 화면은 그 이름만 쓴다. ⚠️ **`null`이면 켜진 연결 수단이 없다**(운영자가
+   * 확인 상대는 서버가 결정적으로 고른다(`pickLoginAccount`) — 화면은 그 공급자의 이름과 공급자별 검은 줄(`confirmDetail`)을 쓴다. ⚠️ **`null`이면 켜진 연결 수단이 없다**(운영자가
    * 그 공급자를 껐다) — 누르면 영원히 `unavailable`인 재시도 루프라 트리거를 사유와 함께 막는다(optional-login-providers spec §4.10).
    */
-  confirmProvider: string | null;
+  confirmProvider: LoginProvider | null;
 }) {
   const m = useMessages();
   const reasonId = useId();
@@ -97,14 +99,14 @@ export function SessionsSection({ outcome, signOut, confirmProvider }: {
                   {/* 실패 Alert는 구역에 선다 — Dialog가 닫힌 뒤에도 사유가 보인다(절차 (a), DESIGN §6.4). */}
                   <DialogClose asChild>
                     <Button variant="danger" onClick={() => startTransition(submit)}>
-                      {m.account.sessions.confirmAction(confirmProvider)}
+                      {m.account.sessions.confirmAction(providerLabel(m, confirmProvider))}
                     </Button>
                   </DialogClose>
                 </>
               }
             >
               {/* 검은 줄 — *지금 참인 값*이다. 확인 상대가 없으면 위 갈래가 Dialog를 세우지 않으므로 여기선 언제나 있다. */}
-              {m.account.sessions.confirmDetail(confirmProvider)}
+              {m.account.sessions.confirmDetail[confirmProvider]}
             </DialogContent>
           </Dialog>} />
       </CardRows>

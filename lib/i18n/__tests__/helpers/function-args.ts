@@ -163,7 +163,6 @@ export const FUNCTION_ARGS: { readonly [P in FunctionPaths<Messages>]: Parameter
   "account.profile.errors.tooLong": [2],
   "account.github.installedOn": [2],
   "account.sessions.confirmAction": ["X"],
-  "account.sessions.confirmDetail": ["X"],
   "mcpConnector.token.projects": [2],
   "mcpConnector.apps.count": [2],
   "mcpConnector.apps.disconnectLabel": ["X", "X"],

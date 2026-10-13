@@ -161,7 +161,7 @@ const CONFIRMS: { name: string; file: string[]; ui: () => ReactNode; trigger: ()
   },
   {
     name: "Sign out everywhere", file: ["components/account/sessions-section.tsx"],
-    ui: () => <SessionsSection outcome={undefined} signOut={() => {}} confirmProvider="GitHub" />, trigger: () => buttonByText(en.account.sessions.title),
+    ui: () => <SessionsSection outcome={undefined} signOut={() => {}} confirmProvider="github" />, trigger: () => buttonByText(en.account.sessions.title),
   },
   {
     name: "프로젝트 Archive", file: ["components/settings/archive-card.tsx"],

@@ -952,7 +952,11 @@ export const es = {
       confirmTitle: "¿Cerrar sesión en todas partes?",
       confirmHint: "Lo confirmarás con la cuenta con la que inicias sesión y después se cerrará la sesión en todos los dispositivos, incluido este.",
       confirmAction: (provider: string): string => `Continuar a ${provider}`,
-      confirmDetail: (provider: string): string => `${provider} te pedirá que lo confirmes antes de que cambie nada.`,
+      confirmDetail: {
+        github: "GitHub te pedirá que lo confirmes antes de que cambie nada.",
+        gitlab: "Te enviaremos a GitLab. Si ya iniciaste sesión allí, vuelves enseguida y se cierran todas las sesiones.",
+        google: "Google te pedirá que lo confirmes antes de que cambie nada.",
+      },
       willConfirm: "Te llevaremos a tu proveedor para que lo confirmes y después te traeremos de vuelta aquí.",
       complete: "Se cerró tu sesión en todas partes. Vuelve a iniciar sesión para continuar.",
       failed: "No se pudo cerrar tu sesión en todas partes. Vuelve a intentarlo.",

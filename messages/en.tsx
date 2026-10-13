@@ -2161,8 +2161,15 @@ export const en = {
       /**
        * Dialog의 **검은 줄** — *지금 참인 값*을 말한다(회색 설명문은 *무엇을 잃나*를 말한다).
        * 확인이 둘이 되는 것을 미리 알려 두 번째가 실패로 읽히지 않게 한다.
+       *
+       * ⚠️ **공급자마다 문장이 다르다 — 이름 보간이 아니다** (#262 · DESIGN §10.1). GitLab은 이미 인가한 앱에 화면 없이 바로 돌아오고 계정
+       * 선택을 강제할 파라미터가 없다(gitlab-oauth T0 ⑤ · design D4) — "확인을 묻는다"고 약속하면 누르는 순간 모든 세션이 끝나 거짓이 된다.
        */
-      confirmDetail: (provider: string): string => `${provider} will ask you to confirm before anything changes.`,
+      confirmDetail: {
+        github: "GitHub will ask you to confirm before anything changes.",
+        gitlab: "We'll send you to GitLab. If you're already signed in there, you come straight back and every session ends.",
+        google: "Google will ask you to confirm before anything changes.",
+      },
       /**
        * 행 본문의 `— {범위}` 자리 (2026-09-16). ⚠️ **`description`을 대신한다** — 그 문장
        * (`Confirm with the account you use to sign in. …`)은 확인 왕복을 설명했고, 그 말은 이제
