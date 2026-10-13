@@ -1,6 +1,6 @@
 # GitLab sign-in — 태스크
 
-작성: 2026-10-13 · 상태: **구현·로컬 QA 완료, dev push 대기**(2026-10-13 `/orchestrate` — orch.md) · 이전 상태: 착수 가능(v1.4.0 main `456e0e1f` · GitLab 앱 등록·`.env.local` 투입 완료 — T0 실측부터). 짝: [spec.md](spec.md) · [design.md](design.md) · `/feature-review` 반영(2026-10-13)
+작성: 2026-10-13 · 상태: **dev push·preview 확인 완료 — `/merge` 대기**(2026-10-13 `/orchestrate` — orch.md) · 이전 상태: 착수 가능(v1.4.0 main `456e0e1f` · GitLab 앱 등록·`.env.local` 투입 완료 — T0 실측부터). 짝: [spec.md](spec.md) · [design.md](design.md) · `/feature-review` 반영(2026-10-13)
 
 검증 줄 표기: **[자동]** 명령 결과로 판정 · **[수동]** 스킬·절차로 사람이 판정. 커밋마다 `pnpm gate` green — 출력을 `| grep`·`| head`로 거르지 않는다(POSTMORTEM 2026-09-30). `lib/credentials/`·`lib/login-link/`·`lib/session-revocation/`·`lib/account-connect/`를 건드리는 커밋은 `pnpm gate`가 `test:credentials:postgres`를 스스로 붙인다(`scripts/gate-plan.ts:89`). 이번 배치는 `origin/dev...HEAD` 누적 diff라 `auth.ts`·`lib/auth/`만 바꾼 커밋도 결국 붙지만, 트리거 자체는 커밋 A에서 넓힌다(아래).
 
@@ -134,9 +134,9 @@
 
 ## 8. 배포 — `/push` → `/merge` → env
 
-- [ ] `/push` — 위 A~E + 문서. Preview env에 **같은 앱**의 `AUTH_GITLAB_*`를 사용자가 CLI 스크립트로 투입(design §8 — 값을 stdin으로 넘기고 찍지 않는다, Preview 환경별 변수) → `vercel env ls`로 Preview 범위에 둘 다 있음을 확인(성공 메시지를 근거로 삼지 않는다) → 재배포 뒤 `https://dev.mal-moi.com`에서 GitLab 로그인 왕복.
+- [x] `/push` — 위 A~E + 문서. Preview env에 **같은 앱**의 `AUTH_GITLAB_*`를 사용자가 CLI 스크립트로 투입(design §8 — 값을 stdin으로 넘기고 찍지 않는다, Preview 환경별 변수) → `vercel env ls`로 Preview 범위에 둘 다 있음을 확인(성공 메시지를 근거로 삼지 않는다) → 재배포 뒤 `https://dev.mal-moi.com`에서 GitLab 로그인 왕복.
   - 검증: [수동] `vercel env ls` Preview 두 이름 · preview 왕복 성공 · `Account(gitlab)` 토큰 null(dev DB 조회).
-- [ ] `/merge` 뒤 프로덕션 env(`AUTH_GITLAB_*` Production) 투입 — 방침 시행일이 이미 지났거나 같은 배포인지 먼저 본다(design §7). 같은 스크립트로 Production 환경별 변수 → `vercel env ls`로 확인.
+- [ ] `/merge` 뒤 프로덕션 확인 — **env는 2026-10-13에 이미 투입**(사용자 지시, Production 환경별 변수) · 남은 것은 `/merge` 배포 뒤 실물 왕복. 원문: 프로덕션 env(`AUTH_GITLAB_*` Production) 투입 — 방침 시행일이 이미 지났거나 같은 배포인지 먼저 본다(design §7). 같은 스크립트로 Production 환경별 변수 → `vercel env ls`로 확인.
   - 검증: [수동] `https://mal-moi.com/signin`에 `Continue with GitLab`, 실물 왕복 성공.
 - [ ] 이 디렉터리를 지운다 — 결론이 §6 정본에 올라간 뒤.
   - 검증: [자동] `ls docs/features/gitlab-oauth` 없음.

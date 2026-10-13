@@ -84,4 +84,7 @@
 - **최종 통합 게이트 ok**(14613 · projects PG 697 · credentials PG 103 · build · mirror). dev 로컬 = A~G 전부, 미푸시.
 - **Q2** — #262 재실측(Q 터미널 재사용).
 - **Q2** — #262 재실측 통과 · 이슈 닫음(관찰: 공통 회색 줄 'You'll confirm with the account you sign in with'은 결함 아님). D·F·G·Q 워커 해제, 워크트리 전부 정리(reclaimable 0). tasks §1~§6·§7 원고 체크. **남은 것: P(Preview env 투입 → push → CI → preview 왕복)**.
+- **Vercel env 투입**(사용자 지시 2026-10-13 — "prod 환경까지 vercel cli로 직접"): OPERATIONS 스크립트(값 stdin, 비출력)로 `AUTH_GITLAB_ID`·`AUTH_GITLAB_SECRET`을 Preview·Production 각각 환경별 변수로. `vercel env ls preview`·`production`으로 두 이름씩 확인. Production은 지금 배포(v1.4.0)에 GitLab provider가 없어 `/merge` 배포부터 효과 — 방침 개정과 같은 배포라 시행 순서(design §7) 충족.
+- `pnpm gate && git push` 진행.
+- **push** `89b27c21..11f12ba0`(`gate: ok` 뒤) · dev CI **success**(run 38360649826). **P** preview 확인 통과 — `dev.mal-moi.com` 버튼 GitHub·GitLab·Google · 3색 tanuki · GitLab 왕복(동의 화면 자동 승인) → OWNER로 `/projects` · CSP 위반 0 · dev DB `Account(gitlab)` 2행 토큰 3컬럼 전부 null. 워커 전부 해제(reclaimable 0). **런 종료 — 다음 `/merge`(사용자)**.
 
