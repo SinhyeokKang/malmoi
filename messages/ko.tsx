@@ -402,7 +402,7 @@ export const ko = {
     meta: {
       title: "프로젝트",
       tabs: { list: "프로젝트 정보", project: "프로젝트", sync: "동기화", publish: "게시" },
-      platform: "플랫폼",
+      platform: "호스트",
       platforms: { github: "GitHub", gitlab: "GitLab" },
       repository: "리포지토리",
       connection: "연결",
@@ -825,7 +825,7 @@ export const ko = {
         "리포지토리를 연결하면 번역 파일을 찾습니다. 변경 사항은 PR(GitLab은 MR)로만 리포지토리에 보냅니다. 프로젝트에 초대받았다면 초대 메일의 링크를 여세요.",
     },
     summary: {
-      newFromGithub: "GitHub의 새 키",
+      newFromGithub: "새 키",
       toTranslate: "번역할 내용",
       toReview: "검토할 내용",
       toSend: "보낼 내용",
@@ -883,7 +883,6 @@ export const ko = {
       ownerRetries: "프로젝트 소유자만 다시 시도할 수 있습니다.",
     },
     onGitLab: {
-      summary: { newFromGithub: "GitLab의 새 키" },
       meter: { note: { setup: "계속하려면 이 프로젝트를 GitLab에 연결하세요." } },
       banner: {
         prOpen: (n: number): string => `MR !${n} 열림 — 머지하면 반영됩니다.`,
@@ -1346,7 +1345,7 @@ export const ko = {
 
     workspace: {
       filters: {
-        state: { axis: "상태", any: "모든 키", incomplete: "미완료", review: "검토 필요", unsent: "미전송", new: "GitHub의 새 키", newHint: "마지막 파일 확인 이후 추가된 키입니다." },
+        state: { axis: "상태", any: "모든 키", incomplete: "미완료", review: "검토 필요", unsent: "미전송", new: "새 키", newHint: "마지막 파일 확인 이후 추가된 키입니다." },
         clear: "필터 지우기",
         search: "키 검색",
         searchPlaceholder: "모든 소스 검색…",
@@ -1763,7 +1762,6 @@ export const ko = {
         "문제가 계속되면 리포지토리 연결을 확인하세요 — 프로젝트 소유자가 설정에서 확인할 수 있습니다.",
     },
     onGitLab: {
-      workspace: { filters: { state: { new: "GitLab의 새 키" } } },
       banner: {
         basePending: (locale: string): string =>
           `기준 언어를 ${locale} 언어로 변경하도록 요청했습니다. ` +

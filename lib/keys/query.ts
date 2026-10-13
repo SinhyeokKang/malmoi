@@ -567,7 +567,7 @@ export async function loadProjectListAggregates(
     }]),
     /**
      * ⚠️ **소비자가 지금 없다 — 지우지 않는다** (2026-09-15). 목록의 Summary가 사라지면서 이 raw
-     * 집계(④)를 읽는 화면이 0이 됐고, Home의 `New from GitHub` 카드가 그것을 받는다
+     * 집계(④)를 읽는 화면이 0이 됐고, Home의 `New keys` 카드가 그것을 받는다
      * (DESIGN §6.64).
      *
      * ⚠️ **지웠다 다시 만들면 미발송 술어의 넷째 벌을 만드는 셈이다** — CLAUDE.md가 명시적으로

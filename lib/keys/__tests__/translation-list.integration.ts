@@ -215,7 +215,7 @@ describe("loadTranslationList — oracle 대조", () => {
     expect(result.rows.map(r => r.keyId)).toEqual(["a2"]);
   });
 
-  it("New from GitHub는 lastPulledAt 이후 생성된 키다", async () => {
+  it("New keys는 lastPulledAt 이후 생성된 키다", async () => {
     expect((await list(q({ state: "new" }))).rows.map(r => r.keyId)).toEqual(["w4"]);
     expect((await list(q({}))).rows.find(r => r.keyId === "w4")?.isNew).toBe(true);
   });

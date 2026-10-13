@@ -105,7 +105,7 @@ export function homeLastSync(
 }
 
 export type MetaTabsInput = {
-  /** `host`는 리포 호스트(`Project.repoHost`) — 없으면 GitHub이다. Platform 행·리포 주소·PR/MR 번호가 이것을 따른다. */
+  /** `host`는 리포 호스트(`Project.repoHost`) — 없으면 GitHub이다. Host 행·리포 주소·PR/MR 번호가 이것을 따른다. */
   repository: { owner: string; name: string; branch: string; connection: RepositoryConnectionState; host?: string };
   /** `pushTokenHash !== null` — ⚠️ **해시는 입력에 없다**. 서버가 select 직후 boolean으로 접는다(RSC 페이로드에 싣지 않는다). */
   ciConfigured: boolean;

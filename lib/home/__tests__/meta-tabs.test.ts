@@ -315,11 +315,11 @@ describe("homeLate — 보류 결론 → Hold · PR state", () => {
 });
 
 /**
- * 리포 호스트 (gitlab-repositories 시안 G5a·G5b1). **Platform 행은 두 호스트 모두에 선다** — GitLab에만 서면 "행이 없다 = GitHub"이
+ * 리포 호스트 (gitlab-repositories 시안 G5a·G5b1). **Host 행은 두 호스트 모두에 선다** — GitLab에만 서면 "행이 없다 = GitHub"이
  * 숨은 규칙이 된다(design-brief 시안 검토 2). 리포 주소는 그 호스트의 웹 주소이고 하위 그룹을 보존한다.
  */
 describe("metaTabs — 리포 호스트", () => {
-  it("GitHub 프로젝트도 Platform 행이 첫 행이다 (호스트 없음 = GitHub)", () => {
+  it("GitHub 프로젝트도 Host 행이 첫 행이다 (호스트 없음 = GitHub)", () => {
     expect(find(base, "project", "platform")).toEqual({ kind: "platform", host: "github" });
     expect(metaTabs(base).host).toBe("github");
     expect(find(base, "project", "repository")).toMatchObject({ href: "https://github.com/acme/web" });

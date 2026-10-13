@@ -52,7 +52,7 @@ export function CountCards({ cards, slug, surfaceSlugs, now, heldLater, uiLocale
       카드 넷 사이만 8이다 — 블록 사이(20)보다 좁아야 넷이 **한 덩어리**로 읽힌다 (캔버스 `2a`).
 
       ⚠️ **뷰포트가 아니라 컨테이너로 접는다.** 캔버스는 칸 폭 240을 전제하고 4열을 못 박았는데,
-      칸이 좁아지면 `New from GitHub`이 두 줄로 접혀 **카드마다 수치의 세로 위치가 어긋난다**
+      칸이 좁아지면 `New keys`이 두 줄로 접혀 **카드마다 수치의 세로 위치가 어긋난다**
       (2026-09-15 실물, 컨테이너 531 → 칸 127). 임계값 672는 가장 긴 제목(14px) + 글리프 16 +
       gap 8 + padding 28 = 162를 네 칸 세운 값이다.
 
@@ -110,7 +110,7 @@ export function CountCards({ cards, slug, surfaceSlugs, now, heldLater, uiLocale
                 <span className="flex flex-col gap-0.5">
                   {/*
                     ⚠️ **숫자에 색을 쓰는 유일한 자리다** (DESIGN §6.2 — 이미 등재돼 있다). 넷 중
-                    `New from GitHub`만 **내가 만들지 않은 변화**라 그 하나가 색을 든다.
+                    `New keys`만 **내가 만들지 않은 변화**라 그 하나가 색을 든다.
                     ⚠️ **0이면 `gray-dim`이다** — 값을 지우지 않는 것이 규칙이고(0이 곧 정보다)
                     대신 무게를 뺀다.
                   */}

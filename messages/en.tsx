@@ -1152,7 +1152,7 @@ export const en = {
       /** 탭 셋 — 착지할 때마다 `Project`다. 목록 이름은 "무엇의 탭인가"를 말한다(첫 탭과 랜드마크가 같은 `Project`라서). */
       tabs: { list: "Project details", project: "Project", sync: "Sync", publish: "Publish" },
       /** 리포 호스트 행(시안 G5a — 두 호스트 모두). 값은 고유명사다. */
-      platform: "Platform",
+      platform: "Host",
       platforms: { github: "GitHub", gitlab: "GitLab" },
       repository: "Repository",
       connection: "Connection",
@@ -1826,7 +1826,7 @@ export const en = {
      */
     summary: {
       /** 마지막 pull 이후 리포에서 들어온 활성 키. 첫 pull 전에는 활성 키 전체다. */
-      newFromGithub: "New from GitHub",
+      newFromGithub: "New keys",
       toTranslate: "To translate",
       toReview: "To review",
       toSend: "To send",
@@ -1957,9 +1957,8 @@ export const en = {
       importFailed: "The last sync couldn't finish.",
       ownerRetries: "Only project owners can try it again.",
     },
-    /** GitLab 프로젝트 — Home 카운트 카드·셋업 줄은 `withRepoHost`가, 호스트가 섞인 목록의 띠는 행마다 `forHost`가 고른다. */
+    /** GitLab 프로젝트 — Home 셋업 줄은 `withRepoHost`가, 호스트가 섞인 목록의 띠는 행마다 `forHost`가 고른다. */
     onGitLab: {
-      summary: { newFromGithub: "New from GitLab" },
       meter: { note: { setup: "Connect this project to GitLab to continue." } },
       banner: {
         prOpen: (n: number): string => `Merge request !${n} is open — merge it to finish.`,
@@ -2745,7 +2744,7 @@ export const en = {
          * **필터 축은 Status 하나다** (translation-tree-range — 2026-10-01 사용자). 범위는 트리가, 검색은 전 소스가 든다.
          * ⚠️ 키 이름이 `state`인 것은 `guide/SHOOTING.md`의 `state-filter.webp` 매핑(`dict:…filters.state.*`)이 여기를 가리키기 때문이다 — 축 이름은 `Status`다.
          */
-        state: { axis: "Status", any: "All keys", incomplete: "Incomplete", review: "Needs review", unsent: "Unsent", new: "New from GitHub", newHint: "Keys that arrived after Malmoi last confirmed your files." },
+        state: { axis: "Status", any: "All keys", incomplete: "Incomplete", review: "Needs review", unsent: "Unsent", new: "New keys", newHint: "Keys that arrived after Malmoi last confirmed your files." },
         clear: "Clear filters",
         /** 검색 입력의 접근 이름 — 위치로 좁힌 검색 중에도 참이어야 해서 범위를 말하지 않는다. 범위는 플레이스홀더(입력이 빌 때만 보인다 — 그때 새 검색은 언제나 전 소스다)가 말한다. */
         search: "Search keys",
@@ -3310,9 +3309,8 @@ export const en = {
      * 초대 — **6a에서는 번역 화면 툴바의 `Dialog`다.** 멤버 관리 화면은 6b이고, 이 폼이 없으면
      * `createInvitation`에 호출부가 없다.
      */
-    /** GitLab 프로젝트 번역 화면 — 키 상태 필터·기준 언어 배너(gitlab-repositories). Publish 문장은 `publish.onGitLab`이다. */
+    /** GitLab 프로젝트 번역 화면 — 기준 언어 배너(gitlab-repositories). Publish 문장은 `publish.onGitLab`이다. */
     onGitLab: {
-      workspace: { filters: { state: { new: "New from GitLab" } } },
       banner: {
         basePending: (locale: string): string =>
           `The base language is changing to ${locale}. ` +

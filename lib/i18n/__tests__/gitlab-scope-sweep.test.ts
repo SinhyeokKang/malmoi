@@ -18,8 +18,8 @@ import { ko } from "@/messages/ko";
 const SCOPES = ["home", "translations", "sources", "logs", "settings", "repositorySync", "projects", "locales"] as const;
 
 const NOT_ON_GITLAB_SCREENS: Readonly<Record<string, string>> = {
-  // 호스트 이름 표 — Platform 행이 `platforms[host]`로 고른다(GitLab 프로젝트는 `gitlab`).
-  "home.meta.platforms.github": "Platform row picks platforms[host]",
+  // 호스트 이름 표 — Host 행이 `platforms[host]`로 고른다(GitLab 프로젝트는 `gitlab`).
+  "home.meta.platforms.github": "Host row picks platforms[host]",
   // 설정 GitHub 카드 전용 — GitLab 프로젝트는 `RepositoryCard`의 GitLab 갈래가 그린다(이 키를 읽지 않는다).
   "settings.installed": "GitHub repository card only",
   "settings.account.connect": "GitHub account recovery only",
