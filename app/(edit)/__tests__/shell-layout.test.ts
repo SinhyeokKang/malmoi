@@ -45,6 +45,15 @@ describe("셸 레이아웃 — 뷰포트 고정", () => {
   });
 
   /**
+   * ⚠️ **셸 루트가 위치 지정 조상이다** (#260 같은 부류 — POSTMORTEM 2026-10-13). `overflow-hidden`은 그 요소를 포함 블록으로 삼는 자손만
+   * 자른다 — 루트가 `static`이면 `<main>` 바깥(사이드바 스크롤러의 `CountBadge` sr-only 등)의 `position:absolute` 포함 블록이 초기 포함 블록이
+   * 되어, 사이드바가 넘칠 때 문서 높이를 늘린다. `<main>`의 `relative`(아래)는 그 안쪽만 덮는다.
+   */
+  it("셸 루트가 `relative`다 — `<main>` 바깥(사이드바·헤더)의 absolute 자손(sr-only)도 셸 안에 가둬 문서 높이를 늘리지 않게 한다", () => {
+    expect(layout).toMatch(/className="[^"]*\brelative\b[^"]*\bh-svh\b[^"]*\boverflow-hidden\b/);
+  });
+
+  /**
    * ⚠️ **스크롤이 패널이 아니라 `PanelBody`에 있다** (2026-09-11 사용자). 패널이 통째로 스크롤하면
    * 제목·툴바가 콘텐츠와 함께 올라가는데, 그 둘은 "지금 보고 있는 것이 무엇인지"를 말하므로 화면에
    * 붙어 있어야 한다. 패널은 `overflow-hidden`으로 **경계만** 만들고, 문서가 스크롤되면 셸이 딸려
