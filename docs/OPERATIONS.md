@@ -321,10 +321,11 @@ https://mal-moi.com/api/auth/callback/gitlab
 
 **Vercel 투입은 사용자가 로컬 CLI 스크립트로 한다.** 에이전트는 `.env.local`을 열람하지 않는다. Production·Preview를 한 변수로 묶지 않고 환경별로 각각 넣는다 — 묶인 변수를 Preview에서 지우면 Production까지 지워지는 함정은 GitHub App과 같다. 저장 값은 Sensitive라 `vercel env pull`로 복구하지 못한다.
 
-아래 스크립트는 리포 루트에서 **사용자가** 실행한다. 마지막 인자 `preview`를 `production`으로 바꿔 환경을 하나씩 처리한다. `.env.local`을 셸로 source하지 않고 dotenv로 읽어 값만 stdin으로 보낸다. CLI 출력에는 값을 싣지 않고 성공 여부만 출력한다. 이미 있으면 자동 삭제·덮어쓰지 않고 멈춘다.
+아래 스크립트는 리포 루트에서 **사용자가** 실행한다. `gitlab_login_env`에 `preview` 또는 `production`을 지정해 환경을 하나씩 처리한다. 투입과 목록 확인은 같은 변수를 쓴다. `.env.local`을 셸로 source하지 않고 dotenv로 읽어 값만 stdin으로 보낸다. CLI 출력에는 값을 싣지 않고 성공 여부만 출력한다. 이미 있으면 자동 삭제·덮어쓰지 않고 멈춘다.
 
 ```sh
-node --input-type=module - preview <<'NODE'
+gitlab_login_env=preview
+node --input-type=module - "$gitlab_login_env" <<'NODE'
 import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { parse } from 'dotenv';
@@ -344,10 +345,12 @@ for (const name of names) {
   console.log(`Added ${name} to ${target}`);
 }
 NODE
-vercel env ls preview
+vercel env ls "$gitlab_login_env"
 ```
 
-**성공 메시지를 근거로 삼지 않는다.** `vercel env ls preview`와 `vercel env ls production`에서 두 이름이 환경별로 존재하는지 확인한다. 갱신이면 대상 환경에만 속한 변수임을 먼저 확인하고 `vercel env rm <NAME> <environment> --yes` 후 다시 넣는다(위 "새 머신 셋업"의 `--force` 함정). 해당 환경을 재배포한 뒤 `/signin`의 GitLab 버튼과 실제 왕복을 확인한다. Production 반영·배포는 `/merge` 절차에서 한다.
+**성공 메시지를 근거로 삼지 않는다.** `vercel env ls "$gitlab_login_env"`에서 지정한 환경에 두 이름이 모두 존재하는지 확인한다. Preview·Production 각각 이 절차를 반복한다. 갱신이면 대상 환경에만 속한 변수임을 먼저 확인하고 `vercel env rm <NAME> <environment> --yes` 후 다시 넣는다(위 "새 머신 셋업"의 `--force` 함정). 해당 환경을 재배포한 뒤 `/signin`의 GitLab 버튼과 실제 왕복을 확인한다. Production 반영·배포는 `/merge` 절차에서 한다.
+
+**쌍 중 하나만 들어갔으면 그 환경부터 정리한다.** ID 추가 뒤 SECRET 추가가 실패할 수 있다. Hosted에는 preflight가 없어 이 반쪽 설정에서는 GitLab 버튼이 조용히 사라진다. `vercel env ls "$gitlab_login_env"`로 두 이름의 존재와 대상 환경을 확인하고, **존재하는 쪽을 각각** `vercel env rm <NAME> "$gitlab_login_env" --yes`로 지운 뒤 위 스크립트를 다시 실행한다. 다른 환경과 묶인 변수라면 삭제 전에 환경별 변수로 분리한다. **최종 상태는 둘 다 넣거나 둘 다 지운 상태여야 한다** — 복구를 미루면 남은 쪽도 지우고, 두 이름이 모두 없는지 같은 환경의 목록으로 확인한다. 정리·재투입 뒤 해당 환경을 재배포한다. 값은 조회하거나 화면·로그에 출력하지 않는다.
 
 **Secret 회전**: 그룹 Applications에서 해당 앱의 **Renew secret**을 누른 뒤 새 Secret을 로컬·Preview·Production의 `AUTH_GITLAB_SECRET`에 넣고 각 배포를 갱신한다. 기존 DB 세션·PAT 연결은 영향을 받지 않으며, 옛 Secret을 쓰는 로그인 왕복은 실패한다(진행 중인 왕복뿐 아니라 배포 갱신 전 새 로그인도 포함). 회전 뒤 각 origin의 왕복으로 마무리한다. GitLab은 인가 후 재왕복에서 `prompt`를 무시하므로 계정 선택·비밀번호 재입력을 확인 근거로 삼지 않는다(ARCHITECTURE 회수 절).
 
