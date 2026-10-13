@@ -74,4 +74,11 @@
 - F fix1 `worker_done` — 문서 5커밋 추가(총 14), pnpm test 14596 · mirror green. **F 통합 대기**(Q 뒤 — QA가 main 체크아웃을 쓰는 동안 cherry-pick 금지).
 - D 통합 게이트 1회차 `FAILED at test:projects:postgres` — `search-performance.integration.ts` 중앙값 401·407ms > 300(병렬 워커 게이트 부하 — A·B 인계가 이미 보고한 같은 flake, 단위 14604 green). 부하 낮은 지금 전체 재실행. G fix1 `worker_done` — `03bd8252`·`9d10ee74`, `gate: ok`. **R-G** `ctx_86b6d64da522`.
 - R-G 완료(🔴 0 · 🟡 1 install.md 앱 등록 자리가 그룹만 · ⚪ 3). **G fix2** `ctx_fa123f5f3498`(🟡 + ⚪3 재인증 화면 생략 한 줄). R-G 해제·정리.
+- D 통합 게이트 재실행 **ok**(14604 · projects PG 697 · credentials PG 103 · build · mirror). A~E 코드 전부 로컬 dev(`be794ef4`), 미푸시.
+- **Q** `ctx_1c7b440e4992`(Opus medium, main 체크아웃) 착수 — 이 동안 main 체크아웃 cherry-pick·build 금지. F·G 통합은 Q 뒤.
+- G fix2 `worker_done` — `06da2f65`, `gate: ok`. **G 통합 대기**(Q 뒤).
+- Q 이슈 **#262** — Sign out everywhere 확인 창이 GitLab 확인 화면을 약속하지만 T0 ⑤대로 화면 없이 즉시 회수(문구 거짓). → **D fix2** `ctx_165ba1590f10`(공급자별 참인 문장, `Refs #262`).
+- D fix2 `worker_done` — `6c1de6ec`(Refs #262, 공급자별 `confirmDetail` 키, 9 사례 red→green, `gate: ok`). 통합은 Q 뒤, #262 재확인은 재실측 QA.
+- **Q 완료** — 전 범위 통과, 결함은 #262 하나(D fix2로 수정됨). T0 ⑥ ✅(외부 비멤버 ox501tube 인가 화면 → `/signin/link`로 기존 Google 사용자에 연결, 새 User 없음). 미측정: GitHub 리포 카드 경고·실패 상태(설치를 깨야 함) · `/oauth/authorize` 로그인 뒤 동의 단계. dev DB 잔여(Account(gitlab) 2 · 수락 초대 · 사건)는 인계 표. Q 인계 보존.
+- **통합 ②**: D fix2 + F 14 + G 3 → 게이트.
 
