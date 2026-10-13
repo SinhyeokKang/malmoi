@@ -54,6 +54,15 @@ describe("셸 레이아웃 — 뷰포트 고정", () => {
    * 줄어들어 패널이 통째로 늘어나고, 스크롤이 본문이 아니라 바깥에 생겨 **머리가 다시 같이
    * 올라간다.** 눈으로는 "스크롤은 되네"로 보여서 못 알아챈다.
    */
+  /**
+   * ⚠️ **패널 `<main>`이 위치 지정 조상이다** (#260 — QA2 실측 `/projects` scrollHeight 1551 vs innerHeight 900). `overflow-hidden`은 그 요소를
+   * 포함 블록으로 삼는 자손만 자른다 — `<main>`이 `static`이면 `position:absolute`인 `.sr-only`(목록 행·카운트 배지 등)의 포함 블록이 초기
+   * 포함 블록이 되어, 스크롤러(`PanelBody`·번역 키 목록) 아래 자기 자리에서 잘리지 않고 문서 높이를 늘린다. 공개 셸 `<main>`과 같은 형이다.
+   */
+  it("패널 `<main>`이 `relative`다 — 스크롤러 아래 absolute 자손(sr-only)을 셸 안에 가둬 문서 높이를 늘리지 않게 한다", () => {
+    expect(contentPanel).toMatch(/<main className="[^"]*\brelative\b[^"]*\boverflow-hidden\b/);
+  });
+
   it("패널은 넘침을 가두고, 스크롤은 `PanelBody`가 든다", () => {
     expect(contentPanel).toMatch(/<main className="[^"]*\boverflow-hidden\b/);
     expect(contentPanel).not.toMatch(/<main className="[^"]*\boverflow-y-auto\b/);
