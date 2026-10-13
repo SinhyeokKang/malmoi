@@ -2695,7 +2695,7 @@ login-link · session-revocation · `acceptInvitation`이다. 두지 않는 이�
 
 `lib/session-revocation/http.ts`는 요청별 AsyncLocalStorage로 Auth.js state 쿠키를 별도 이름과 salt로 분리한다(기본 15분). nonce가 사라지거나 확인 요청이 교체/소비돼도 일반 로그인으로 전환되지 않는다. signIn의 고정 URL 반환이 handleLoginOrRegister 전에 끝내므로 새 세션·계정·이메일 갱신이 없다. 응답 wrapper는 내부 완료 결과만 성공 근거로 삼아 nonce/state 쿠키를 지우고, 성공 때만 세션 쿠키도 지운다. 일반 로그인 두 시작(`/signin`, 초대)은 이전 회수 쿠키를 정리한다. 시작과 완료의 Secure 판정은 host/forwarded-proto를 함께 사용한다. ✅ **프로덕션에서 실물 확인했다** — 그 사용자의 세션 둘이 지워지고 다른 사용자의 세션은 남았으며 새 세션은 생기지 않았다. 남은 실물 확인은 Google 왕복·취소 경로·키보드/포커스다.
 
-⚠️ **GitLab 회수·[Connect]의 재인증은 살아 있는 GitLab 세션만 증명한다**(2026-10-13 T0 실측). 최초 인가 뒤 재왕복은 화면 없이 돌아오며 `prompt=select_account`·`login`·`consent`를 오류 없이 무시한다. 계정 전환 파라미터가 없어 별도 `reauthParams`를 만들지 않고 기존 호출을 유지했다. 새 비밀번호 입력이나 계정 선택을 강제했다는 뜻이 아니다. 세션/state에 묶인 challenge·계정 id 대조·단일 소비는 그대로지만, 공유 브라우저의 살아 있는 GitLab 세션을 쓸 수 있는 사람을 이 왕복만으로 구별하지 못한다.
+⚠️ **GitLab 회수·[Connect]의 재인증은 살아 있는 GitLab 세션만 증명한다**(2026-10-13 T0 실측). 최초 인가 뒤 재왕복은 화면 없이 돌아오며 `prompt=select_account`·`login`·`consent`를 오류 없이 무시한다. 계정 전환 파라미터가 없어 공급자별 재인증 인자를 만들지 않고 기존 호출을 유지했다. 새 비밀번호 입력이나 계정 선택을 강제했다는 뜻이 아니다. 세션/state에 묶인 challenge·계정 id 대조·단일 소비는 그대로지만, 공유 브라우저의 살아 있는 GitLab 세션을 쓸 수 있는 사람을 이 왕복만으로 구별하지 못한다.
 
 #### 6.1.15 ⚠️ 키 부재는 던지고 행 하나는 살린다 — **순서가 판정이다** (2026-09-10)
 
@@ -2806,7 +2806,7 @@ challenge**가 그 둘을 묶을 것. 셋을 다 통과한 뒤에야 `Account`�
 
 ### 켜진 로그인 공급자 (2026-10-09, optional-login-providers)
 
-**공급자 상태는 env 한 쌍이 정한다** — `AUTH_<P>_ID`·`AUTH_<P>_SECRET`이 둘 다 값이 있으면 `enabled`, 둘 다 비면 `absent`, 하나만 있으면 `partial`(공백만 있는 값은 빈 값 — preflight `present`와 **같은 함수**를 쓴다. 두 벌이면 preflight와 런타임이 갈린다). **켜진 집합** = `enabled`인 공급자, 순서는 언제나 `github` → `gitlab` → `google`(`lib/auth/login-providers.ts` — `loginProviderStates`·`enabledLoginProviders`·`LOGIN_PROVIDER_ENV`). self-hosted preflight는 `partial`을 `incomplete-pair`(빠진 쪽 이름)로, `enabled` 0개를 `no-login-provider`(세 ID 이름)로 거부한다. hosted엔 preflight가 없어 반쪽이면 그 버튼이 **조용히 사라진다** — 우리가 env를 넣고 `/signin` 첫 화면에서 바로 보이므로 신호를 따로 만들지 않는다. 판정은 모드로 가르지 않는다(hosted는 세 쌍을 넣는다).
+**공급자 상태는 env 한 쌍이 정한다** — `AUTH_<P>_ID`·`AUTH_<P>_SECRET`이 둘 다 값이 있으면 `enabled`, 둘 다 비면 `absent`, 하나만 있으면 `partial`(공백만 있는 값은 빈 값 — preflight `present`와 **같은 함수**를 쓴다. 두 벌이면 preflight와 런타임이 갈린다). **켜진 집합** = `enabled`인 공급자, 순서는 언제나 `github` → `gitlab` → `google`(`lib/auth/login-providers.ts` — `loginProviderStates`·`enabledLoginProviders`·`LOGIN_PROVIDER_ENV`). self-hosted preflight는 `partial`을 `incomplete-pair`(빠진 쪽 이름)로, 반쪽이 없고 `enabled`가 0개면 `no-login-provider`(세 ID 이름)로 거부한다. hosted엔 preflight가 없어 반쪽이면 그 버튼이 **조용히 사라진다** — 우리가 env를 넣고 `/signin` 첫 화면에서 바로 보이므로 신호를 따로 만들지 않는다. 판정은 모드로 가르지 않는다(hosted는 세 쌍을 넣는다).
 
 - **Auth.js `providers`에 켜진 것만 들어간다**(`auth.ts` config 함수 안 `withEnabled`). 꺼진 공급자의 `/api/auth/signin/<p>`·callback은 성립하지 않는다 — **화면 숨김이 유일한 방어선이 아니다.** ⚠️ 방어선은 `withEnabled` 행동 테스트가 지고 `auth.ts`는 주석을 벗긴 **호출형**만 센다(POSTMORTEM 2026-09-18). ⚠️ 켜진 집합은 **요청마다 함수 호출로** 얻는다 — 모듈 최상위에서 env를 읽지 않는다(POSTMORTEM 2026-08-31).
 - ⚠️ **`LOGIN_PROVIDERS`(`lib/login-link/policy.ts`)는 우주(universe)로 남는다** — DB 조회·challenge 파싱·`safe-adapter`의 "추가 연결 금지"는 꺼진 공급자의 행도 읽어야 숨김을 판정할 수 있다. 판정 함수(`pickLoginAccount`·`loginMethodRows`·`canUnlink`·`signInButtons`·`planLinkOffer`)는 켜진 집합을 **기본값 없는 인자**로 받는다 — 기본값이 우주면 새 호출부가 꺼진 공급자를 조용히 통과시킨다. ⚠️ **policy는 `login-providers.ts`를 import하지 않는다** — 수단 카드(클라이언트)의 그래프라 `lib/env` → `node:crypto`가 번들에 실린다(POSTMORTEM 2026-09-07). 켜진 집합은 서버 진입점이 구해 인자·props로 내린다.
