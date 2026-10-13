@@ -81,4 +81,7 @@
 - D fix2 `worker_done` — `6c1de6ec`(Refs #262, 공급자별 `confirmDetail` 키, 9 사례 red→green, `gate: ok`). 통합은 Q 뒤, #262 재확인은 재실측 QA.
 - **Q 완료** — 전 범위 통과, 결함은 #262 하나(D fix2로 수정됨). T0 ⑥ ✅(외부 비멤버 ox501tube 인가 화면 → `/signin/link`로 기존 Google 사용자에 연결, 새 User 없음). 미측정: GitHub 리포 카드 경고·실패 상태(설치를 깨야 함) · `/oauth/authorize` 로그인 뒤 동의 단계. dev DB 잔여(Account(gitlab) 2 · 수락 초대 · 사건)는 인계 표. Q 인계 보존.
 - **통합 ②**: D fix2 + F 14 + G 3 → 게이트.
+- **최종 통합 게이트 ok**(14613 · projects PG 697 · credentials PG 103 · build · mirror). dev 로컬 = A~G 전부, 미푸시.
+- **Q2** — #262 재실측(Q 터미널 재사용).
+- **Q2** — #262 재실측 통과 · 이슈 닫음(관찰: 공통 회색 줄 'You'll confirm with the account you sign in with'은 결함 아님). D·F·G·Q 워커 해제, 워크트리 전부 정리(reclaimable 0). tasks §1~§6·§7 원고 체크. **남은 것: P(Preview env 투입 → push → CI → preview 왕복)**.
 
