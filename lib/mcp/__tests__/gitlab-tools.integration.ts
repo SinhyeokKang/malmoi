@@ -11,6 +11,7 @@ import { PrismaClient } from "@/generated/prisma/client";
 import { sealGitLabToken } from "@/lib/credentials/storage";
 import { optionalEnv } from "@/lib/env";
 import { createFakeGitLabRepo } from "@/lib/gitlab/__tests__/fake-repo";
+import { GITLAB_CI_RELEASE } from "@/lib/onboarding/gitlab-ci";
 import { routes } from "@/lib/routes";
 import { en } from "@/messages/en";
 
@@ -152,12 +153,18 @@ describe("새 GitLab 리포 — 목록·탐지·생성이 웹과 같은 코어�
       surfaces: [{ adapter: candidate!.adapter, pathTemplate: candidate!.pathTemplate, baseLocale: candidate!.baseLocale, confirmation: candidate!.confirmation }],
     });
     expect(created.isError).toBe(false);
-    // CI 원본이 발행 전(`GITLAB_CI_RELEASE.sha: null`)이라 파일은 없고, 요약이 그동안의 길을 말한다.
-    expect(created.structuredContent).toMatchObject({ slug: "p2", variableName: "PUSH_TOKEN", workflow: null, keys: 1 });
-    expect(created.content[0].text).toBe(en.mcp.summary.gitlab.createdWithoutCi("p2", 1));
+    // CI 원본은 발행됐다(`GITLAB_CI_RELEASE.sha` — v1, `89b27c21`) — 생성 결과에 `.gitlab-ci.yml`이 실리고 그 job이 박힌 SHA를 든다.
+    // 발행 전 갈래(`workflow: null` · `createdWithoutCi`)는 릴리스를 mock하는 단위 테스트(`lib/mcp/tools/__tests__/gitlab-tools.test.ts`)가 잰다.
+    expect(created.structuredContent).toMatchObject({ slug: "p2", variableName: "PUSH_TOKEN", workflow: { path: ".gitlab-ci.yml" }, keys: 1 });
+    const workflow = created.structuredContent.workflow as { yaml: string };
+    expect(workflow.yaml).toContain("malmoi-i18n-p2-i18n:");
+    expect(workflow.yaml).toContain(`MALMOI_I18N_PUSH_SHA: "${GITLAB_CI_RELEASE.sha}"`);
+    expect(created.content[0].text).toBe(en.mcp.summary.gitlab.created("p2", 1));
     expect(await prisma.project.findUniqueOrThrow({ where: { slug: "p2" }, select: { repoHost: true, repositoryId: true } })).toEqual({ repoHost: "gitlab", repositoryId: REPO });
 
-    for (const result of [listed, detected, created]) expect(JSON.stringify(result)).not.toMatch(NO_GITHUB);
+    // CI 파일은 말모이 리포를 clone한다 — 그 URL(github.com)만 예외다(spec 9 "말모이 자체 리포를 가리키는 링크"). 나머지 바이트엔 GitHub이 없다.
+    const { workflow: _workflow, ...createdRest } = created.structuredContent;
+    for (const result of [listed, detected, { ...created, structuredContent: createdRest }]) expect(JSON.stringify(result)).not.toMatch(NO_GITHUB);
     // 대조: PAT가 실제로 원격에 실렸다 — 그 위에서 응답·로그 0건이다.
     expect(server.tokens()).toEqual([TOKEN_A]);
     expectNoPat(listed, detected, created);
@@ -220,14 +227,17 @@ describe("연결된 GitLab 프로젝트", () => {
     expect(server.tokens()).toEqual([]);
   });
 
-  it("get_workflow는 CI 원본 발행 전이면 workflow-unavailable 거부다(GitHub 워크플로를 내지 않는다)", async () => {
+  /** CI 원본이 발행됐다(`GITLAB_CI_RELEASE.sha`) — 발행 전의 `workflow-unavailable` 거부는 릴리스를 mock하는 단위 테스트가 잰다. */
+  it("get_workflow는 .gitlab-ci.yml과 CI/CD 변수 이름을 낸다(GitHub 워크플로를 내지 않는다)", async () => {
     await seed();
     serve();
     const result = await exec("get_workflow", await token("owner-a"), { slug: "p1" });
-    expect(result).toEqual({
-      isError: true,
-      content: [{ type: "text", text: en.mcp.errors["workflow-unavailable"] }],
-      structuredContent: { status: "workflow-unavailable", message: en.mcp.errors["workflow-unavailable"] },
-    });
+    expect(result.isError).toBe(false);
+    expect(result.content).toEqual([{ type: "text", text: en.mcp.summary.gitlab.workflow }]);
+    const { yaml, ...rest } = result.structuredContent as { yaml: string };
+    expect(rest).toEqual({ path: ".gitlab-ci.yml", variableName: "PUSH_TOKEN" });
+    expect(yaml).toContain(`MALMOI_I18N_PUSH_SHA: "${GITLAB_CI_RELEASE.sha}"`);
+    expect(yaml).not.toContain(".github/workflows");
+    expect(JSON.stringify({ rest, content: result.content })).not.toMatch(NO_GITHUB);
   });
 });
