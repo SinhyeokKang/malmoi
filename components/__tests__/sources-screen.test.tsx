@@ -14,8 +14,8 @@ vi.mock("@/app/(edit)/projects/actions", () => ({ runFirstIngest: mocks.runFirst
 vi.mock("@/components/sources/add-sources-modal", () => ({ AddSourcesModal: ({ open, onAdded, onClose }: { open: boolean; onAdded: (r: unknown[]) => void; onClose: () => void }) => open ? <button onClick={() => { onAdded([{ surfaceSlug: "mobile", count: 9, failed: 2 }]); onClose(); }}>Finish adding</button> : null }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh, replace: mocks.replace, push: mocks.push }) }));
 const source = { id: "s", slug: "web", baseLocale: "en", declaredBaseLocale: null, lastCommitSha: "abc1234", lastCommitAt: new Date("2026-09-20T00:00:00Z"), lastImportStartedAt: null, lastImportError: null, lastImportFailedAt: null, lastImportedAt: new Date("2026-09-20T00:05:00Z"), createdAt: new Date("2026-09-19T00:00:00Z"), keys: 248, locales: 1, orphanedLocales: 1, progress: { total: 248, done: 210, review: 12, percent: 84 } };
-const data: SourcesData = { installed: true, sources: [source] };
-const detail: SourceDetail = { ...source, installed: true, importActive: false, languages: [{ code: "en", isBase: true, orphaned: false, total: 248, translated: 210, needsReview: 12, untranslated: 26, percent: 84 }, { code: "ja", isBase: false, orphaned: true, total: 248, translated: 0, needsReview: 0, untranslated: 248, percent: 0 }] };
+const data: SourcesData = { installed: true, repoHost: "github", sources: [source] };
+const detail: SourceDetail = { ...source, installed: true, repoHost: "github", importActive: false, languages: [{ code: "en", isBase: true, orphaned: false, total: 248, translated: 210, needsReview: 12, untranslated: 26, percent: 84 }, { code: "ja", isBase: false, orphaned: true, total: 248, translated: 0, needsReview: 0, untranslated: 248, percent: 0 }] };
 const button = (text: string) => [...document.querySelectorAll('button')].find(node => node.textContent === text)!;
 const open = async () => { await act(async () => { await userEvent.setup().click(document.querySelector('[data-source-row]')!); }); };
 beforeEach(() => { vi.clearAllMocks(); mocks.load.mockResolvedValue({ ok: true, detail }); });
@@ -175,7 +175,7 @@ it("저장 중 닫기와 모든 번역 진입을 잠그고 거부 뒤 다시 연
   expect(dialog.querySelector('a[href*="language=en"]')).not.toBeNull();
 });
 it.each(["OWNER", "EDITOR"] as const)("소스가 없을 때 안내와 추가 권한 %s", async role => {
-  await render(<SourcesScreen slug="p" role={role} data={{ installed: true, sources: [] }} adapters={[]} now={new Date()} />);
+  await render(<SourcesScreen slug="p" role={role} data={{ installed: true, repoHost: "github", sources: [] }} adapters={[]} now={new Date()} />);
   expect(document.querySelector('[data-source-row]')).toBeNull();
   expect(!!button('Add sources')).toBe(role === 'OWNER');
   expect(document.body.textContent).toContain('No sources yet');
@@ -228,7 +228,7 @@ it("행 chevron은 다른 행과 같은 muted이고, 선택·hover 면은 `/[0.0
   expect(chevron.getAttribute("class")).toContain("text-muted-foreground");
 });
 it("소스 0개는 카드 안 `EmptyRowCard inset`이다 — 손 조립 중앙 블록이 아니다 (4-Y14)", async () => {
-  await render(<SourcesScreen slug="p" role="OWNER" data={{ installed: true, sources: [] }} adapters={[]} now={new Date()} />);
+  await render(<SourcesScreen slug="p" role="OWNER" data={{ installed: true, repoHost: "github", sources: [] }} adapters={[]} now={new Date()} />);
   const empty = [...document.querySelectorAll("p")].find(node => node.textContent === en.sources.emptyTitle)!;
   expect(empty.className).toContain("text-base font-medium");
   expect(document.querySelector("section")!.innerHTML).not.toContain("max-w-[460px]");

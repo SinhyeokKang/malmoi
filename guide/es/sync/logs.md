@@ -15,9 +15,11 @@ En **Automatización**, el filtro **Cualquier persona** ofrece **CI** para las e
 
 Si los filtros ocultan todos los eventos, la lista lo indica; elige **Borrar filtros** para verlo todo.
 
+![La página Registros con sus filtros y la búsqueda sobre los eventos agrupados por fecha, cada uno con su hora, quién lo hizo y qué cambió](/guide/logs-list.webp "Acota la lista con los filtros o la búsqueda.")
+
 ## Lee los detalles de un evento {#event-details}
 
-Abre un evento para inspeccionar sus detalles sin cambiar los filtros de la lista. Los eventos de traducción identifican la clave y la fuente; los eventos de sincronización y de Publicar muestran su resultado observado. En **Valores**, una sincronización muestra cuántas traducciones cambió, y una publicación muestra cuántas cambió en los archivos del repositorio. Una sincronización retenida por ediciones sin enviar las muestra en **Ediciones sin enviar**; una retenida por otro motivo, como una solicitud de cambios de Publicar que sigue abierta (un *pull request* en GitHub), lo explica en **Retenido porque**.
+Abre un evento para inspeccionar sus detalles sin cambiar los filtros de la lista. Los eventos de traducción identifican la clave y la fuente; los eventos de sincronización y de Publicar muestran su resultado observado. En **Valores**, una sincronización muestra cuántas traducciones cambió, y una publicación muestra cuántas cambió en los archivos del repositorio. Una sincronización retenida por ediciones sin enviar las muestra en **Ediciones sin enviar**; una retenida por otro motivo, como una solicitud de cambios de Publicar que sigue abierta (un *pull request* en GitHub, o una *merge request* en GitLab), lo explica en **Retenido porque**. Cuando se quita la conexión de un proyecto de GitLab porque quien la conectó desconectó GitLab o fue quitado del proyecto, Registros lo anota con el nombre de quien lo hizo: la persona que desconectó GitLab, o un propietario del proyecto que la quitó.
 
 ![Un evento abierto desde Registros: una publicación que envió dos archivos a GitHub, con su desencadenante y un enlace a la pull request](/guide/logs-event.webp "Abre un evento para ver sus detalles.")
 

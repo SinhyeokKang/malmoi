@@ -30,6 +30,8 @@ const EXPECTED_MESSAGE: Record<ToolRejection, string> = {
   "duplicate-key": en.mcp.errors["duplicate-key"],
   // 적재 lease 중 번역 쓰기 거부(sync-lock C4) — Sync 결과 화면의 문장이다. 다시 열리는 시각은 `detail`이 든다.
   "sync-running": en.repositorySync.errors["already-running"],
+  // GitLab CI 원본이 발행 전이다(gitlab-repositories) — 붙이면 red가 되는 파일을 내지 않는다.
+  "workflow-unavailable": en.mcp.errors["workflow-unavailable"],
 };
 
 describe("toToolResult — 성공", () => {

@@ -712,13 +712,13 @@ it("CI route preserves a no-changes delivery completed during its PR preflight",
 
 // R1 uses the production runSync -> triggerPull -> runPull -> confirmation path; only GitHub is fake.
 let latePullClient: import("@/lib/pull/client").GitClient;
-vi.doMock("@/lib/github", () => ({ createGitClient: async () => latePullClient }));
+vi.doMock("@/lib/repo-host", () => ({ createGitClient: async () => latePullClient }));
 
 it.each([{ prior: false, loss: "branch" }, { prior: true, loss: "branch" },
   { prior: false, loss: "authority" }, { prior: true, loss: "authority" }])("R1 actual POST preserves late no-changes after $loss loss (prior=$prior)", async ({ prior, loss }) => {
   const { changeBaseBranch } = await import("@/lib/settings/update");
   const { runSync } = await import("@/lib/sync/run");
-  const { createFakeGitClient } = await import("@/lib/pull/__tests__/fake-client");
+  const { createFakeGitClient, isGitMutation } = await import("@/lib/pull/__tests__/fake-client");
   const { blobSha } = await import("@/lib/githash");
   await seed("p", { lastPulledAt: PULLED, cells: [
     { key: "k1", locale: "en", value: "k1" }, { key: "k2", locale: "en", value: "k2" },
@@ -753,7 +753,7 @@ it.each([{ prior: false, loss: "branch" }, { prior: true, loss: "branch" },
     } };
     publish = await runSync(prisma, { projectId: "p", slug: "p", trigger: "manual", requestedBy: "owner", credential: undefined });
     if (loss === "branch") expect(await changeBaseBranch(prisma, { userId: "owner" }, { slug: "p", baseBranch: "main" })).toEqual({ ok: true });
-    expect(fake.calls.some(call => ["createTree", "createCommit", "createRef", "updateRefForce"].includes(call.method))).toBe(false);
+    expect(fake.calls.some(call => isGitMutation(call.method))).toBe(false);
     return null;
   });
   const response = await post(ciPayload());

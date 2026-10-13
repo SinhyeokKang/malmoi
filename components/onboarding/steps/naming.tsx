@@ -5,6 +5,7 @@ import { FormGroup } from "@/components/ui/form-group";
 import { Input } from "@/components/ui/input";
 import { useMessages } from "@/components/i18n/messages-provider";
 import type { Messages } from "@/lib/i18n";
+import { forHost } from "@/lib/i18n/host";
 import { planSlug, PROJECT_SLUG_MAX } from "@/lib/onboarding/slug";
 import { SYNC_BRANCH_PREFIX } from "@/lib/pull/ref-slug";
 
@@ -34,6 +35,8 @@ export type NamingStepState = {
   pathTemplate: string;
   branch: string;
   banner: string | null;
+  /** 리포 호스트 — PR/MR 문장을 고른다(gitlab-repositories). 없으면 GitHub이다. */
+  host?: string;
 };
 
 export function NamingStep({
@@ -81,7 +84,7 @@ export function NamingStep({
           ⚠️ **mono가 아니다** (핸드오프 1c). 이 둘은 **읽는 값**이지 사람이 옮겨 적는 값이 아니다 —
           mono는 푸시 토큰·워크플로 YAML처럼 그대로 베껴야 하는 것에만 남는다. 시안은 색만 올린다.
         */
-        help={m.newProject.naming.hint(
+        help={forHost(m.newProject.naming, state.host ?? "github").hint(
           // ⚠️ **호스트를 말하지 않는다** (launch-readiness L7.5) — 박아 두면 dev·로컬에서도 프로덕션 주소가 보인다.
           // 힌트가 전하려는 것은 slug가 경로와 브랜치에 박힌다는 것이라 경로만으로 참이다.
           <span className="text-foreground">/projects/{slug || "…"}</span>,

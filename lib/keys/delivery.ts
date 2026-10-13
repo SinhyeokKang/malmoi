@@ -23,9 +23,9 @@ export async function readDeliveryState(tx: Prisma.TransactionClient, projectId:
     select: { revision: true, invalidatedAt: true, contextFingerprint: true, syncRun: { select: { startedAt: true } } },
   });
   if (row === null) return null;
-  const project = await tx.project.findUniqueOrThrow({ where: { id: projectId }, select: { repositoryId: true, baseBranch: true } });
+  const project = await tx.project.findUniqueOrThrow({ where: { id: projectId }, select: { repoHost: true, repositoryId: true, baseBranch: true } });
   const surface = await tx.translationSurface.findFirstOrThrow({ where: { id: surfaceId, projectId } });
-  const current = deliveryContextFingerprint({ repositoryId: project.repositoryId, baseBranch: project.baseBranch, surface });
+  const current = deliveryContextFingerprint({ repoHost: project.repoHost, repositoryId: project.repositoryId, baseBranch: project.baseBranch, surface });
   return { revision: row.revision, valid: confirmationValid(row, current), runStartedAt: row.syncRun.startedAt, contextFingerprint: row.contextFingerprint };
 }
 

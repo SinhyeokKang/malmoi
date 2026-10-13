@@ -3,6 +3,8 @@ import { z } from "zod";
 
 import { listLinkedBranches, listNewRepoBranches } from "@/lib/onboarding-run/branches";
 import { detectFormats, detectProjectFormats, DetectInput } from "@/lib/onboarding-run/detect";
+import { listGitLabRepositories } from "@/lib/onboarding-run/gitlab-repos";
+import { GitLabRepoInput, type NewRepoInput } from "@/lib/onboarding-run/locator";
 import { listRepositories } from "@/lib/onboarding-run/repos";
 import { isSyncBranchName } from "@/lib/pull/ref-slug";
 import { routes } from "@/lib/routes";
@@ -20,7 +22,11 @@ import { appUrl, coreSubject, defineTool, ok, type ToolContext } from "./define"
  * `/account` 하나이고(검수 Q) 서명·nonce를 싣지 않는다. 권한 거부·GitHub 장애·예산 초과는 브라우저 전환으로 숨기지 않는다.
  */
 
-const BROWSER: Partial<Record<string, NeedsBrowserReason>> = { "not-connected": "not-connected", reauthorize: "reauthorize", "no-installations": "no-installations" };
+const BROWSER: Partial<Record<string, NeedsBrowserReason>> = {
+  "not-connected": "not-connected", reauthorize: "reauthorize", "no-installations": "no-installations",
+  // GitLab 계정 연결(PAT)도 `/account`가 받는다 — 도구가 PAT를 받지 않는다(개인 토큰이 자격증명을 만들지 않는다).
+  "gitlab-not-connected": "gitlab-not-connected", "gitlab-reconnect": "gitlab-reconnect",
+};
 
 function refusedOrBrowser(ctx: ToolContext, code: string): ToolOutcome {
   const reason = Object.hasOwn(BROWSER, code) ? BROWSER[code] : undefined;
@@ -29,11 +35,18 @@ function refusedOrBrowser(ctx: ToolContext, code: string): ToolOutcome {
 
 export const listRepositoriesTool = defineTool({
   name: "list_repositories",
-  inputSchema: z.object({}),
-  async run(ctx) {
+  // `host`가 없으면 GitHub이다 — 기존 클라이언트의 `{}` 호출이 그대로 통한다.
+  inputSchema: z.object({ host: z.enum(["github", "gitlab"]).optional() }),
+  async run(ctx, input) {
     const { prisma, subject } = ctx;
     const gate = checkCreateTool(subject, { name: "list_repositories" });
     if (gate.status !== "ok") return gate;
+    if (input.host === "gitlab") {
+      // 호출자 **자신의** 계정 연결로 읽는다 — 표시용이고, 생성이 제출 시점에 권한을 다시 본다(`listGitLabRepositories`).
+      const gitlab = await listGitLabRepositories(prisma, coreSubject(subject));
+      if (!gitlab.ok) return refusedOrBrowser(ctx, gitlab.error);
+      return ok({ repositories: gitlab.repos, truncated: gitlab.truncated }, en.mcp.summary.repositories(gitlab.repos.length));
+    }
     const result = await listRepositories(prisma, coreSubject(subject));
     if (!result.ok) return refusedOrBrowser(ctx, result.error);
     return ok({ repositories: result.repos, installRequestPending: result.pending }, en.mcp.summary.repositories(result.repos.length));
@@ -41,18 +54,34 @@ export const listRepositoriesTool = defineTool({
 });
 
 /**
- * 신규(`{ owner, repo }`)와 기존(`{ slug }`)의 두 입력 — **섞으면 입력 오류다**. 한쪽이 거부됐다고 다른 경로로 폴백하지 않는다: 기존
- * 프로젝트 탐지가 막힌 OWNER가 같은 리포를 신규 경로로 읽으면 grant 판정을 우회한다.
+ * 신규 GitHub(`{ owner, repo }`)·신규 GitLab(`{ host: "gitlab", repositoryId }`)·기존(`{ slug }`)의 세 입력 — **섞으면 입력 오류다**. 한쪽이
+ * 거부됐다고 다른 경로로 폴백하지 않는다: 기존 프로젝트 탐지가 막힌 OWNER가 같은 리포를 신규 경로로 읽으면 grant 판정을 우회한다.
+ * GitLab은 숫자 id만 받는다 — 이름은 재사용·이전되고 PAT에는 리포를 좁히는 층이 없어 id가 첫 층이다(`lib/onboarding-run/locator`).
  */
-const RepoOrSlug = z.object({
+export const NewRepoFields = {
   owner: z.string().min(1).max(200).optional(),
   repo: z.string().min(1).max(200).optional(),
-  slug: z.string().min(1).max(200).optional(),
-});
-function variantOf(input: z.infer<typeof RepoOrSlug> & { ref?: string }): { kind: "new"; owner: string; repo: string } | { kind: "existing"; slug: string } | null {
-  const repoForm = input.owner !== undefined || input.repo !== undefined || input.ref !== undefined;
+  host: GitLabRepoInput.shape.host.optional(),
+  repositoryId: GitLabRepoInput.shape.repositoryId.optional(),
+};
+const RepoOrSlug = z.object({ ...NewRepoFields, slug: z.string().min(1).max(200).optional() });
+
+type NewRepoForm = { owner?: string; repo?: string; host?: "gitlab"; repositoryId?: string };
+
+/** 신규 리포 입력 → 코어 입력(웹 Action과 같은 모양). GitHub 필드와 GitLab 필드가 섞이거나 한쪽이 덜 차면 `null`이다. */
+export function newRepoOf(input: NewRepoForm): NewRepoInput | null {
+  const github = input.owner !== undefined || input.repo !== undefined;
+  const gitlab = input.host !== undefined || input.repositoryId !== undefined;
+  if (github && gitlab) return null;
+  if (gitlab) return input.host === "gitlab" && input.repositoryId !== undefined ? { host: "gitlab", repositoryId: input.repositoryId } : null;
+  return input.owner !== undefined && input.repo !== undefined ? { owner: input.owner, repo: input.repo } : null;
+}
+
+function variantOf(input: z.infer<typeof RepoOrSlug> & { ref?: string }): { kind: "new"; repo: NewRepoInput } | { kind: "existing"; slug: string } | null {
+  const repoForm = input.owner !== undefined || input.repo !== undefined || input.host !== undefined || input.repositoryId !== undefined || input.ref !== undefined;
   if (input.slug !== undefined) return repoForm ? null : { kind: "existing", slug: input.slug };
-  return input.owner !== undefined && input.repo !== undefined ? { kind: "new", owner: input.owner, repo: input.repo } : null;
+  const repo = newRepoOf(input);
+  return repo === null ? null : { kind: "new", repo };
 }
 
 export const listBranches = defineTool({
@@ -66,7 +95,7 @@ export const listBranches = defineTool({
     if (target.kind === "new") {
       const gate = checkCreateTool(subject, { name: "list_branches", variant: "newProject" });
       if (gate.status !== "ok") return gate;
-      result = await listNewRepoBranches(prisma, coreSubject(subject), target);
+      result = await listNewRepoBranches(prisma, coreSubject(subject), target.repo);
     } else {
       // 기존 프로젝트의 브랜치 목록은 읽기 예외다(PRODUCT §3) — OWNER 역할만 보고 grant를 요구하지 않는다(검수 K).
       const gate = await checkProjectTool(prisma, subject, { name: "list_branches", variant: "existingProject", slug: target.slug });
@@ -91,7 +120,7 @@ export const detectFormatsTool = defineTool({
     if (target.kind === "new") {
       const gate = checkCreateTool(subject, { name: "detect_formats", variant: "newProject" });
       if (gate.status !== "ok") return gate;
-      result = await detectFormats(prisma, coreSubject(subject), { owner: target.owner, repo: target.repo, ref: input.ref });
+      result = await detectFormats(prisma, coreSubject(subject), { ...target.repo, ref: input.ref });
     } else {
       // 기존 경로는 저장된 리포·base branch만 읽는다 — ref를 받지 않는다(위 `variantOf`가 섞인 입력을 거부했다).
       const gate = await checkProjectTool(prisma, subject, { name: "detect_formats", variant: "existingProject", slug: target.slug });

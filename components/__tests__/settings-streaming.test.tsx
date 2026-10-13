@@ -22,7 +22,7 @@ const state = vi.hoisted(() => ({
 }));
 vi.mock("@/lib/auth/session", () => ({ requireProjectAccess: async () => ({ projectId: "p1", userId: "u1" }) }));
 vi.mock("@/lib/db", () => ({ getPrisma: () => ({ project: { findUnique: async () => ({ name: "Acme", image: null, repoOwner: "owner", repoName: "repo", installationId: "1", repositoryId: "r1", baseBranch: "main", archivedAt: null, surfaces: [] }) } }) }));
-vi.mock("@/lib/github", () => ({ loadConnectionHealth: () => state.health }));
+vi.mock("@/lib/repo-host", () => ({ loadConnectionHealth: () => state.health }));
 vi.mock("@/lib/github-connect/account-view", () => ({ loadAccountView: () => state.account }));
 vi.mock("@/lib/projects/open-pr", () => ({ loadOpenPrUrl: () => state.pr }));
 vi.mock("@/app/(edit)/projects/actions", () => ({ listProjectBranches: vi.fn(async () => ({ ok: true, names: ["main"], defaultBranch: "main", truncated: false })), rotatePushToken: vi.fn(), archiveProject: vi.fn(), unarchiveProject: vi.fn() }));

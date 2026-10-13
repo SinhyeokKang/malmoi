@@ -8,6 +8,7 @@ import { baseLocaleLine } from "@/lib/onboarding/workflow";
 import { formatLabel } from "@/lib/onboarding/detect";
 import type { Messages } from "@/lib/i18n";
 import { hasActiveImport } from "@/lib/import/plan";
+import { hasRepoConnection } from "@/lib/repo-host/target";
 
 const sourceSelect = {
   id: true, slug: true, adapterName: true, pathTemplate: true, baseLocale: true, declaredBaseLocale: true,
@@ -25,9 +26,11 @@ function sourceView(m: Messages, source: SourceRecord, role: Role) {
     ...(canPerform(role, "project:settings") ? { connection: { adapterName: source.adapterName, pathTemplate: source.pathTemplate, format: source.adapterName !== null && isAdapterName(source.adapterName) ? formatLabel(m, source.adapterName).label : null } } : {}),
   };
 }
-const projectSelect = { repoOwner: true, repoName: true, baseBranch: true, installationId: true } as const;
-function projectView(project: { repoOwner: string; repoName: string; baseBranch: string; installationId: string | null }, role: Role) {
-  return { installed: project.installationId !== null, ...(canPerform(role, "project:settings") ? { repository: { repoOwner: project.repoOwner, repoName: project.repoName, baseBranch: project.baseBranch } } : {}) };
+const projectSelect = { repoOwner: true, repoName: true, baseBranch: true, repoHost: true, installationId: true, repositoryId: true } as const;
+function projectView(project: { repoOwner: string; repoName: string; baseBranch: string; repoHost: string; installationId: string | null; repositoryId: string | null }, role: Role) {
+  // `installed`는 readiness의 연결 증거다 — GitHub 설치·GitLab 고정 리포(`hasRepoConnection`). 이름은 화면 계약이라 그대로 둔다.
+  // `repoHost`는 화면 문장(`RepoHostScope`)과 머리 글리프를 고른다 — 역할과 무관한 프로젝트 사실이다(주소는 OWNER만).
+  return { installed: hasRepoConnection(project), repoHost: project.repoHost, ...(canPerform(role, "project:settings") ? { repository: { repoOwner: project.repoOwner, repoName: project.repoName, baseBranch: project.baseBranch } } : {}) };
 }
 
 export async function loadSources(prisma: PrismaClient, m: Messages, projectId: string, role: Role) {

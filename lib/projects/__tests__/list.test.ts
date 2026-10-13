@@ -18,6 +18,7 @@ import {
   searchProjects,
   summaryQueue,
   type ProjectStatus,
+  type ProjectStatusInput,
 } from "../list";
 
 describe("searchProjects", () => {
@@ -68,8 +69,28 @@ describe("searchProjects", () => {
   });
 });
 
+describe("projectStatus — GitLab 저장 만료일 (D24)", () => {
+  const NOW = new Date("2026-10-12T00:00:00Z");
+  const GITLAB = { archivedAt: null, repoHost: "gitlab", installationId: null, gitlabConnectionId: "conn-a", surfaces: [{ archivedAt: null, lastCommitSha: "sha" }], repositoryId: "42" };
+  it.each([
+    ["만료일 없음", null, "active"],
+    ["만료 임박(5일) — 연결은 정상이다", new Date("2026-10-17T00:00:00Z"), "active"],
+    ["만료일 지남 — 원격 호출 없이 끊김", new Date("2026-10-11T00:00:00Z"), "needs_reconnect"],
+  ] as const)("%s", (_name, expiresAt, status) => {
+    expect(projectStatus({ ...GITLAB, gitlabTokenExpiresAt: expiresAt }, NOW)).toBe(status);
+  });
+  it("⚠️ 만료일 필드를 빠뜨린 입력은 typecheck가 막는다 — 새 생산자가 잊으면 만료된 프로젝트가 조용히 `active`다(audit E11)", () => {
+    // @ts-expect-error -- `gitlabTokenExpiresAt`은 필수 `Date | null`이다. GitHub·연결 없음도 `null`을 명시한다.
+    const input: ProjectStatusInput = GITLAB;
+    expect(input).toBe(GITLAB);
+  });
+  it("GitHub 프로젝트는 GitLab 만료일을 보지 않는다", () => {
+    expect(projectStatus({ ...GITLAB, repoHost: "github", installationId: "inst", gitlabConnectionId: null, gitlabTokenExpiresAt: new Date("2000-01-01T00:00:00Z") }, NOW)).toBe("active");
+  });
+});
+
 describe("projectStatus", () => {
-  const READY = { archivedAt: null, installationId: "1", surfaces: [{ archivedAt: null, lastCommitSha: "a".repeat(40) }], repositoryId: "42" };
+  const READY = { archivedAt: null, repoHost: "github", gitlabConnectionId: null, gitlabTokenExpiresAt: null, installationId: "1", surfaces: [{ archivedAt: null, lastCommitSha: "a".repeat(40) }], repositoryId: "42" };
 
   it("준비된 프로젝트는 `active`다 — 이 화면에서만 `ready`가 침묵이 아니다", () => {
     expect(projectStatus(READY)).toBe("active");
@@ -83,7 +104,7 @@ describe("projectStatus", () => {
   it("보관이 readiness를 이긴다", () => {
     expect(projectStatus({ ...READY, archivedAt: new Date() })).toBe("archived");
     expect(
-      projectStatus({ archivedAt: new Date(), installationId: null, surfaces: [{ archivedAt: null, lastCommitSha: null }], repositoryId: null }),
+      projectStatus({ archivedAt: new Date(), repoHost: "github", gitlabConnectionId: null, gitlabTokenExpiresAt: null, installationId: null, surfaces: [{ archivedAt: null, lastCommitSha: null }], repositoryId: null }),
     ).toBe("archived");
   });
 
@@ -163,7 +184,7 @@ describe("상태 문구", () => {
 /** 표면 하나의 적재 상태 — 행은 **표면 배열을 그대로** 든다(ux-drift-unify §3.2, 평탄화하면 A 동기화 중이 B 실패를 가렸다). */
 const S = { archivedAt: null, lastCommitSha: "s", importError: null, importing: false } as const;
 const FIRST = { ...S, lastCommitSha: null } as const;
-const READY = { installationId: "i", surfaces: [S], repositoryId: "r", archivedAt: null } as const;
+const READY = { repoHost: "github", gitlabConnectionId: null, gitlabTokenExpiresAt: null, installationId: "i", surfaces: [S], repositoryId: "r", archivedAt: null } as const;
 const QUIET = { review: 0, unsent: 0, openPr: null, repoAheadFiles: 0 } as const;
 const row = (over: Partial<Parameters<typeof rowBanner>[0]> = {}) => ({ ...READY, ...QUIET, ...over });
 const failed = (importError: "parse-failed" | "partial-import" | "import-failed", importing = false) => ({ surfaces: [{ ...S, importError, importing }] });
@@ -181,7 +202,7 @@ describe("projectGroup — 상태표의 그룹 열과 1:1 (DESIGN §6.63)", () =
     ["unsent edits", { unsent: 24 }],
     ["repo moved ahead", { repoAheadFiles: 3 }],
     ["awaiting first sync", { surfaces: [FIRST] }],
-    ["setup", { installationId: null }],
+    ["setup", { repoHost: "github", gitlabConnectionId: null, installationId: null }],
     ["needs reconnect", { repositoryId: null }],
     ["import failed", failed("parse-failed")],
   ])("%s은 Needs attention이다", (_label, over) => {
@@ -224,7 +245,7 @@ describe("rowBanner — 겹치면 하나만 (DESIGN §6.63 띠 우선순위)", (
   });
 
   it("setup은 자기 띠를 갖고, 첫 적재 대기는 안 갖는다 — 그 문장은 Meter 자리가 든다", () => {
-    expect(rowBanner(row({ installationId: null }))).toEqual({ kind: "setup" });
+    expect(rowBanner(row({ repoHost: "github", gitlabConnectionId: null, installationId: null }))).toEqual({ kind: "setup" });
     expect(rowBanner(row({ surfaces: [FIRST] }))).toBeNull();
   });
 
@@ -306,9 +327,9 @@ describe("rowChip — 끊김 > 실패 > 일부 반영 > readiness", () => {
     ["A 동기화 중 + B 실패", { surfaces: [{ ...S, importing: true }, { ...S, importError: "parse-failed" as const }] }, "sync_failed"],
     ["A partial + B failed", { surfaces: [{ ...S, importError: "partial-import" as const }, { ...S, importError: "import-failed" as const }] }, "sync_failed"],
     ["첫 적재 실패", { surfaces: [{ ...FIRST, importError: "parse-failed" as const }] }, "sync_failed"],
-    ["setup + 실패", { installationId: null, ...failed("parse-failed") }, "sync_failed"],
+    ["setup + 실패", { repoHost: "github", gitlabConnectionId: null, installationId: null, ...failed("parse-failed") }, "sync_failed"],
     ["첫 적재 대기", { surfaces: [FIRST] }, "awaiting_first_sync"],
-    ["setup", { installationId: null }, "setup"],
+    ["setup", { repoHost: "github", gitlabConnectionId: null, installationId: null }, "setup"],
     ["정상", {}, "active"],
     ["보관 + 끊김 + 실패", { archivedAt: new Date(0), repositoryId: null, ...failed("parse-failed") }, "archived"],
   ] as const)("%s → %s", (_label, over, chip) => {
@@ -323,7 +344,7 @@ describe("rowChip — 끊김 > 실패 > 일부 반영 > readiness", () => {
     [{ ...failed("partial-import"), unsent: 3 }],
     [{ surfaces: [{ ...S, importing: true }, { ...S, importError: "parse-failed" as const }], review: 2 }],
     [{ surfaces: [{ ...S, importError: "partial-import" as const }, { ...S, importError: "import-failed" as const }] }],
-    [{ installationId: null, ...failed("parse-failed") }],
+    [{ repoHost: "github", gitlabConnectionId: null, installationId: null, ...failed("parse-failed") }],
   ])("칩과 띠가 같은 상태를 말한다 %#", (over) => {
     const chip = rowChip(row(over));
     const banner = rowBanner(row(over));
@@ -342,7 +363,7 @@ describe("meterSlot — 0% 바를 금지하는 것이 계약이다 (DESIGN §6.6
   });
 
   it.each([
-    ["setup", { installationId: null }, "setup"],
+    ["setup", { repoHost: "github", gitlabConnectionId: null, installationId: null }, "setup"],
     ["첫 적재 대기", { surfaces: [FIRST] }, "waiting"],
     ["적재 진행 중", { surfaces: [{ ...FIRST, importing: true }] }, "importing"],
     ["첫 적재 실패", { surfaces: [{ ...FIRST, importError: "parse-failed" as const }] }, "failed"],

@@ -30,7 +30,9 @@ export const previewSourceRemovalTool = defineTool({
     if (gate.status !== "ok") return gate;
     const preview = await previewSurfaceRemoval(prisma, coreSubject(subject), input);
     if (!preview.ok) return refused(preview.error);
-    return ok({ approval: preview.approval, unsentEdits: preview.pendingCount, pullRequest: preview.openPr }, en.mcp.summary.sourceRemovalPreview(preview.pendingCount));
+    // 필드 이름은 리포 호스트의 어휘다(D26 — `preview_publish`와 같은 규칙). 값(open·none·unknown)은 같다.
+    const openReview = gate.repoHost === "gitlab" ? { mergeRequest: preview.openPr } : { pullRequest: preview.openPr };
+    return ok({ approval: preview.approval, unsentEdits: preview.pendingCount, ...openReview }, en.mcp.summary.sourceRemovalPreview(preview.pendingCount));
   },
 });
 
@@ -48,6 +50,8 @@ export const removeSourceTool = defineTool({
       revalidatePath(`/projects/${input.slug}`, "layout");
       revalidatePath("/projects");
     });
-    return ok({ removed: input.surfaceSlug }, en.mcp.summary.sourceRemoved(input.surfaceSlug));
+    // 요약은 리포 호스트의 어휘다(D26) — GitLab은 워크플로 step이 아니라 `.gitlab-ci.yml`의 job이다.
+    const summary = gate.repoHost === "gitlab" ? en.mcp.summary.gitlab.sourceRemoved : en.mcp.summary.sourceRemoved;
+    return ok({ removed: input.surfaceSlug }, summary(input.surfaceSlug));
   },
 });

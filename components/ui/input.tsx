@@ -1,6 +1,7 @@
 import type { InputHTMLAttributes, ReactNode, Ref } from "react";
 
 import { InputClearButton } from "./input-clear-button";
+import { InputElement } from "./input-element";
 
 import { cn } from "@/lib/utils";
 
@@ -53,12 +54,11 @@ export function Input({ className, width, size = "md", variant = "default", icon
   onClear?: () => void;
 }) {
   const hasValue = props.value !== undefined && String(props.value).length > 0;
-  const field = <input className={cn(
+  // 링과 읽기 전용 필드의 포인터 포커스 링 끄기(`data-pointer-focus`)는 네이티브 태그와 함께 `InputElement`(클라이언트 잎)가 든다 — 이 파일은 서버가 렌더한다.
+  const field = <InputElement ring={variant !== "bare"} className={cn(
     fieldClass, INPUT_SIZE[size], width === undefined ? undefined : fieldWidthClass[width],
     "read-only:bg-muted read-only:text-foreground read-only:cursor-default",
-    variant === "bare"
-      ? "border-0 bg-transparent px-1 shadow-none focus-visible:ring-0 focus-visible:outline-none"
-      : "focus-visible:border-ring focus-visible:ring-ring focus-visible:ring-1 focus-visible:outline-none aria-[invalid=true]:focus-visible:border-destructive aria-[invalid=true]:focus-visible:ring-destructive",
+    variant === "bare" && "border-0 bg-transparent px-1 shadow-none focus-visible:ring-0 focus-visible:outline-none",
     icon && "pl-8", clearable && "pr-8", className,
   )} {...props} />;
   if (!icon && !clearable) return field;

@@ -11,7 +11,7 @@ let lastSnapshot: { state: unknown } | undefined;
 const snapshotOf = () => lastSnapshot!.state as never;
 vi.mock("@/lib/pull/load", () => ({ loadPreviewSnapshot: mocks.snapshot }));
 vi.mock("server-only", () => ({}));
-vi.mock("@/lib/github", () => ({ createGitClient: async () => mocks.client }));
+vi.mock("@/lib/repo-host", () => ({ createGitClient: async () => mocks.client }));
 vi.mock("@/lib/projects/open-pr", () => ({ loadOpenPrUrl: mocks.open }));
 vi.mock("@/lib/keys/query", () => ({ loadActors: async () => new Map() }));
 import { readPublishPreview } from "../read";
@@ -21,7 +21,7 @@ vi.mock("@/lib/auth/query", () => ({ getProjectAccess: async () => ({ status: "o
 vi.mock("@/lib/db", () => ({ getPrisma: () => db }));
 import { publishFingerprint } from "../fingerprint";
 const surface = { id: "s", slug: "web", adapterName: "json-catalog", pathTemplate: "{locale}.json", baseLocale: "en", nested: false, nestedByPath: {}, locales: [{ code: "en" }] };
-const project = { id: "p", repoOwner: "o", repoName: "r", baseBranch: "main", installationId: "1", repositoryId: "2", lastPulledAt: null, archivedAt: null, surfaces: [surface] };
+const project = { id: "p", repoOwner: "o", repoName: "r", baseBranch: "main", repoHost: "github", gitlabConnectionId: null, installationId: "1", repositoryId: "2", lastPulledAt: null, archivedAt: null, surfaces: [surface] };
 const rows = [{ surfaceId: "s", keyId: "k", localeCode: "en", value: "new", updatedBy: "editor", updatedAt: new Date(), stringKey: { key: "hello" } }];
 const db = { project: { findUniqueOrThrow: vi.fn() }, translation: { findMany: vi.fn(), count: vi.fn(), groupBy: vi.fn() } };
 beforeEach(() => { vi.clearAllMocks(); db.project.findUniqueOrThrow.mockResolvedValue(project); db.translation.findMany.mockResolvedValue(rows); db.translation.count.mockResolvedValue(1); db.translation.groupBy.mockResolvedValue([{ keyId: "k" }]); mocks.client.getRefSha.mockResolvedValue("head"); mocks.client.getTree.mockResolvedValue([{ path: "en.json", mode: "100644", sha: "blob" }]); mocks.client.getBlobText.mockResolvedValue('{"hello":"old"}'); mocks.open.mockResolvedValue("https://github.com/o/r/pull/12"); mocks.load.mockResolvedValue({ project: { ...project, slug: "acme" }, surfaces: [], maxUpdatedAt: null, unpublished: 0, pendingEdits: [] });
@@ -292,7 +292,7 @@ it.each([
     createClient: async () => client, saveLastPulledAt: async () => {}, invalidateDelivery: async () => {}, syncBranch: "malmoi-i18n/sync-acme",
   });
   expect(pulled).toMatchObject({ status: "committed", delivered: 1 });
-  const written = (calls.find(c => c.method === "createTree")?.args[0] as { tree: { content: string }[] }).tree[0]?.content;
+  const written = (calls.find(c => c.method === "publishSnapshot")?.args[0] as { changes: { content: string }[] }).changes[0]?.content;
   expect(written).toBe(source.replace("old", "new"));
   db.translation.findMany.mockResolvedValue([{ ...rows[0], stringKey: { key: pairKey } }]);
   mocks.client.getBlobText.mockResolvedValue(pairSource);

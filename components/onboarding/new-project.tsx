@@ -4,6 +4,7 @@ import {
   createProject,
   confirmManualFormat,
   detectRepoFormats,
+  listConnectableGitLabRepos,
   listRepoBranches,
   loadCandidateSample,
 } from "@/app/(edit)/projects/actions";
@@ -13,6 +14,10 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 
 import { useMessages } from "@/components/i18n/messages-provider";
+import { GithubIcon, GitlabIcon } from "@/components/signin/brand-icons";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { forHost } from "@/lib/i18n/host";
+import { normalizeProjectSlug } from "@/lib/onboarding/slug";
 import { ingestHeadline } from "@/lib/onboarding/message";
 import { planBranchChoice, type BranchChoice } from "@/lib/onboarding/branch";
 import type { CandidateSummary } from "@/lib/onboarding/detect";
@@ -30,7 +35,8 @@ import { failureText, isAccessLost, isRepoScopedRefusal } from "./failure";
 import { LargeModal } from "@/components/ui/large-modal";
 import { FilesStep, failedPreview, previewFailureText, samplePreview, type ManualEntry, type PreviewState } from "./steps/files";
 import { NamingStep } from "./steps/naming";
-import { RepoStep } from "./steps/repo";
+import { repoInputOf } from "./repo-input";
+import { RepoStep, type GitLabAccountLine } from "./steps/repo";
 import { ResultStep } from "./steps/result";
 
 /**
@@ -55,6 +61,8 @@ export function NewProject({
   initialError,
   backQuery,
   closeMode,
+  githubEnabled = true,
+  gitlab = null,
 }: {
   repos: RepoOption[] | undefined;
   listError: string | undefined;
@@ -69,6 +77,10 @@ export function NewProject({
   backQuery: { q?: string };
   /** 경로가 문맥을 지정한다 — 인터셉트 뒤의 목록은 보존하고 딥링크는 목록 주소로 복귀한다. */
   closeMode: "back" | "list";
+  /** GitHub App이 구성된 설치인가(D4a) — 아니면 탭 줄 없이 GitLab 단독이다. hosted는 언제나 true다. */
+  githubEnabled?: boolean;
+  /** 호출자의 계정 GitLab 연결(DB 값 — 원격 호출 없이 서버가 읽는다). 없으면 GitLab 탭이 PAT 입력에서 시작한다. */
+  gitlab?: GitLabAccountLine | null;
 }) {
   const m = useMessages();
   const router = useRouter();
@@ -83,6 +95,20 @@ export function NewProject({
   const [accessLost, setAccessLost] = useState<string | null>(null);
   const [banner, setBanner] = useState<string | null>(initialError ?? null);
   const [announce, setAnnounce] = useState<string | undefined>(undefined);
+
+  /**
+   * ① 리포 호스트 탭 (gitlab-repositories 시안 G1). 기본은 GitHub이고 기억하지 않는다(design-brief 동작 주석).
+   * ⚠️ **탭마다 검색어·고른 리포를 따로 든다** — 탭을 바꿔도 모달이 닫힐 때까지 남는다. 고른 리포는 탭으로 돌아오면 다시 고른다
+   * (브랜치 목록을 다시 받는다 — ②③은 리포가 바뀐 것과 같이 무효다).
+   */
+  const [host, setHost] = useState<"github" | "gitlab">(githubEnabled ? "github" : "gitlab");
+  const picked = useRef<{ github?: RepoOption; gitlab?: RepoOption }>({});
+  const [gitlabAccount, setGitlabAccount] = useState<GitLabAccountLine | null>(gitlab);
+  const [gitlabRepos, setGitlabRepos] = useState<RepoOption[] | undefined>(undefined);
+  const [gitlabError, setGitlabError] = useState<string | undefined>(gitlab === null ? "gitlab-not-connected" : undefined);
+  const [gitlabQuery, setGitlabQuery] = useState("");
+  const gitlabRequest = useRef(0);
+  const gitlabStarted = useRef(false);
 
   // ① 리포·브랜치
   const [repoQuery, setRepoQuery] = useState("");
@@ -151,9 +177,9 @@ export function NewProject({
 
   const state: NextState = {
     sessionExpired: accessLost !== null || (banner !== null && isAccessLost(banner)),
-    repoSelected: repo !== undefined && !branchLoading && repo.fullName.toLowerCase().includes(repoQuery.trim().toLowerCase()),
+    repoSelected: repo !== undefined && !branchLoading && repo.fullName.toLowerCase().includes((host === "gitlab" ? gitlabQuery : repoQuery).trim().toLowerCase()),
     repoAccessDenied: accessError !== undefined,
-    repoListLoading: repos === undefined && listError === undefined,
+    repoListLoading: host === "gitlab" ? gitlabRepos === undefined && gitlabError === undefined : repos === undefined && listError === undefined,
     detecting,
     detectFailed: detectError !== undefined,
     candidateSelected: selection.formats.length > 0 && selection.conflicts.length === 0,
@@ -185,7 +211,7 @@ export function NewProject({
     setBranchLoading(true);
     // 리포가 바뀌면 ②③이 통째로 무효다 — 옛 후보의 값이 남으면 다른 리포의 결정이 된다.
     resetDownstream();
-    void listRepoBranches({ owner: next.owner, repo: next.repo }).then(
+    void listRepoBranches(repoInputOf(next)).then(
       (result) => {
         if (request !== repoRequest.current) return;
         setBranchLoading(false);
@@ -247,7 +273,7 @@ export function NewProject({
     setDetecting(true);
     setDetectError(undefined);
     setBanner(null);
-    void detectRepoFormats({ owner: repo.owner, repo: repo.repo, ref: branchValue || undefined }).then(
+    void detectRepoFormats({ ...repoInputOf(repo), ref: branchValue || undefined }).then(
       (result) => {
         if (request !== detectRequest.current) return;
         setDetecting(false);
@@ -300,8 +326,7 @@ export function NewProject({
     const generation = sampleGeneration.current;
     setSamples((prev) => ({ ...prev, [key]: { status: "loading" } }));
     void loadCandidateSample({
-      owner: repo.owner,
-      repo: repo.repo,
+      ...repoInputOf(repo),
       ref: branchValue,
       adapter: candidate?.adapter ?? manual.adapter,
       pathTemplate,
@@ -365,7 +390,7 @@ export function NewProject({
     const timer = setTimeout(() => {
       setSamples((prev) => ({ ...prev, [key]: { status: "loading" } }));
       void confirmManualFormat({
-        owner: repo.owner, repo: repo.repo, ref: branchValue,
+        ...repoInputOf(repo), ref: branchValue,
         adapter: manual.adapter, pathTemplate: template, baseLocale: code,
       }).then(
         (result) => {
@@ -415,8 +440,7 @@ export function NewProject({
     startTransition(async () => {
       let result: CreateProjectResult;
       try { result = await createProject({
-        owner: repo.owner,
-        repo: repo.repo,
+        ...repoInputOf(repo),
         manual: usingManual,
         surfaces: usingManual ? [{ adapter: manual.adapter, pathTemplate: manual.pathTemplate.trim(), baseLocale }] : selection.formats,
         slug,
@@ -442,6 +466,54 @@ export function NewProject({
     });
   }
 
+  /**
+   * GitLab 탭의 목록 — 탭이 처음 열릴 때(또는 연결·교체·[Try again] 뒤) 한 번 부른다. GitHub 목록과 달리 서버가 미리 읽지 않는다 —
+   * GitLab 원격 호출이 GitHub 탭의 첫 화면을 기다리게 하지 않으려고. 빈 목록은 `gitlab-no-repos` 막힘이다(검색 0건과 다르다).
+   */
+  function loadGitLab() {
+    gitlabStarted.current = true;
+    const request = ++gitlabRequest.current;
+    setGitlabRepos(undefined);
+    setGitlabError(undefined);
+    const done = (error: string | undefined, repos?: RepoOption[]) => {
+      if (request !== gitlabRequest.current) return;
+      setGitlabError(error);
+      setGitlabRepos(repos);
+    };
+    void listConnectableGitLabRepos().then(
+      (result) => {
+        if (!result.ok) return done(result.error);
+        if (result.repos.length === 0) return done("gitlab-no-repos");
+        done(undefined, result.repos.map((r): RepoOption => ({
+          host: "gitlab", repositoryId: r.repositoryId, owner: r.owner, repo: r.name, fullName: r.fullName,
+          suggestedSlug: normalizeProjectSlug(r.name), pushedAt: r.lastActivityAt,
+        })));
+      },
+      () => done("unavailable"),
+    );
+  }
+  useEffect(() => {
+    if (host === "gitlab" && gitlabAccount !== null && !gitlabStarted.current) loadGitLab();
+    // eslint 없는 리포 — loadGitLab은 매 렌더 새 함수지만 시작은 ref가 한 번으로 묶는다.
+  }, [host, gitlabAccount]);
+
+  /** 탭 전환 — 떠나는 탭의 선택을 남기고, 돌아가는 탭의 선택을 다시 고른다(없으면 ①을 비운다). */
+  function switchHost(next: "github" | "gitlab") {
+    if (next === host) return;
+    if (repo !== undefined) picked.current[host] = repo;
+    setHost(next);
+    const back = picked.current[next];
+    if (back !== undefined) { selectRepo(back); return; }
+    repoRequest.current += 1;
+    setRepo(undefined);
+    setBranch(undefined);
+    setBranchValue("");
+    setBranchLoading(false);
+    setAccessError(undefined);
+    setRepoScanning(false);
+    resetDownstream();
+  }
+
   function close() {
     if (closeMode === "back") router.back();
     else router.replace(routes.projects(backQuery));
@@ -463,8 +535,8 @@ export function NewProject({
         ? m.newProject.steps.files.emptyDescription(repoLabel, branchValue)
         : m.newProject.steps.files.description(candidates.length, repoLabel, branchValue),
     3: m.newProject.steps.naming.description,
-    4: created === undefined ? m.newProject.steps.result.description
-      : `${ingestHeadline(m, created.count, 0)} ${m.newProject.steps.result.description}`,
+    4: created === undefined ? forHost(m.newProject.steps.result, host).description
+      : `${ingestHeadline(m, created.count, 0)} ${forHost(m.newProject.steps.result, host).description}`,
   } as const;
 
   return (
@@ -514,33 +586,43 @@ export function NewProject({
         }}
       />}
     >
-      {step === 1 && (
-        <RepoStep
-          state={{
-            repos,
-            query: repoQuery,
-            listError,
-            installUrl,
-            backQuery,
-            now,
-            selected: repo?.fullName,
-            branch,
-            branchLoading,
-            branchValue,
-            accessError,
-            banner: accessLost ?? banner,
-            pending: installPending,
-          }}
-          onAnnounce={setAnnounce}
-          onQueryChange={setRepoQuery}
-          onSelect={selectRepo}
-          onScan={fullName => setRepoScanning(fullName !== repo?.fullName)}
-          onBranchChange={(value) => {
-            setBranchValue(value);
-            resetDownstream();
-          }}
-        />
-      )}
+      {step === 1 && (() => {
+        const shared = { backQuery, now, selected: repo?.fullName, branch, branchLoading, branchValue, accessError, banner: accessLost ?? banner };
+        const handlers = {
+          onAnnounce: setAnnounce,
+          onSelect: selectRepo,
+          onScan: (fullName: string) => setRepoScanning(fullName !== repo?.fullName),
+          onBranchChange: (value: string) => { setBranchValue(value); resetDownstream(); },
+        };
+        const githubStep = (
+          <RepoStep {...handlers} onQueryChange={setRepoQuery}
+            state={{ ...shared, host: "github", repos, query: repoQuery, listError, installUrl, pending: installPending, gitlabAccount: null }} />
+        );
+        const gitlabStep = (
+          <RepoStep {...handlers} onQueryChange={setGitlabQuery}
+            onGitLabConnected={(connection) => {
+              setGitlabAccount({ username: connection.username, expiresAt: connection.expiresAt === null ? null : new Date(connection.expiresAt).toISOString() });
+              loadGitLab();
+            }}
+            onGitLabRetry={loadGitLab}
+            state={{ ...shared, host: "gitlab", repos: gitlabRepos, query: gitlabQuery, listError: gitlabError, installUrl: null, pending: false, gitlabAccount }} />
+        );
+        /*
+          ⚠️ **App이 없는 설치는 탭 줄이 없다**(D4a) — 쓸 수 없는 탭을 그리지 않는다. 탭 글리프는 장식이고 이름이 호스트를 말한다(글리프만으로 가르지 않는다).
+          ⚠️ 비활성 패널은 언마운트된다(`Tabs`) — 그래서 상태는 전부 이 컨테이너가 든다.
+        */
+        if (!githubEnabled) return gitlabStep;
+        return (
+          <Tabs defaultValue={host} onValueChange={(value) => switchHost(value === "gitlab" ? "gitlab" : "github")} className="flex flex-1 flex-col gap-4">
+            <TabsList label={m.newProject.host.label} className="shrink-0">
+              <TabsTrigger value="github" label={m.newProject.host.github} icon={<GithubIcon className="size-4 shrink-0" />} />
+              <TabsTrigger value="gitlab" label={m.newProject.host.gitlab} icon={<GitlabIcon className="size-4 shrink-0" />} />
+            </TabsList>
+            <TabsContent value="github" className="flex flex-1 flex-col">{githubStep}</TabsContent>
+            <TabsContent value="gitlab" className="flex flex-1 flex-col">{gitlabStep}</TabsContent>
+          </Tabs>
+        );
+      })()}
 
       {step === 2 && (
         <FilesStep
@@ -619,6 +701,7 @@ export function NewProject({
               pathTemplate: usingManual ? pathTemplate
                 : selectedCandidates.map(({ item }) => item.pathTemplate).join(", ") || pathTemplate,
               branch: branchValue,
+              host,
               // 생성 거부가 이미 같은 사유를 알렸어도 접근 상실 상태는 Back 뒤 차단에 남겨 둔다 (#199).
               banner: creationFailure !== null && creationFailure !== "unknown" && creationFailure.error === (accessLost ?? banner)
                 ? null : accessLost ?? banner,
@@ -641,6 +724,7 @@ export function NewProject({
 
       {step === 4 && created !== undefined && (
         <ResultStep
+          host={host}
           pushToken={created.pushToken}
           yaml={created.yaml}
         />

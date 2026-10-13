@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { blobSha } from "@/lib/githash";
 import { publishFingerprint } from "@/lib/publish/fingerprint";
 import { runPull, type DeliveryContext, type PullDeps, type PullState } from "../run";
-import { createFakeGitClient, type FakeCall } from "./fake-client";
+import { createFakeGitClient, isGitMutation, type FakeCall } from "./fake-client";
 import type { GitClient } from "../client";
 
 /**
@@ -14,7 +14,7 @@ import type { GitClient } from "../client";
  * DB 쓰기를 만들고, 쓰기 없는 동등 확인이 기준을 이유 없이 잃는다.
  */
 const PROJECT = {
-  id: "p1", slug: "demo", repoOwner: "o", repoName: "r", baseBranch: "dev", installationId: "123",
+  id: "p1", slug: "demo", repoOwner: "o", repoName: "r", baseBranch: "dev", repoHost: "github", gitlabConnectionId: null, installationId: "123", repositoryId: "456",
   adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", nested: false, nestedByPath: null, baseLocale: "en",
   lastPulledAt: null as Date | null,
 };
@@ -53,10 +53,9 @@ const sameAsBase = (sync?: string) => createFakeGitClient({
   blobs: { [blobSha(KO)]: KO, [blobSha(EN)]: EN },
 });
 
-const MUTATIONS = ["createTree", "createCommit", "createRef", "updateRefForce", "createPr", "updatePrTitle", "updatePrBase"];
 
 describe("runPull — 첫 외부 쓰기 전에 전달 확인을 무효화한다", () => {
-  it("커밋 경로: 무효화가 createTree보다 먼저 한 번 일어난다", async () => {
+  it("커밋 경로: 무효화가 publishSnapshot보다 먼저 한 번 일어난다", async () => {
     const fake = committing();
     const log: string[] = [];
     const deps: PullDeps = {
@@ -68,7 +67,7 @@ describe("runPull — 첫 외부 쓰기 전에 전달 확인을 무효화한다"
     };
     const result = await runPull(deps);
     expect(result.status).toBe("committed");
-    const firstWrite = fake.calls.findIndex(c => MUTATIONS.includes(c.method));
+    const firstWrite = fake.calls.findIndex(c => isGitMutation(c.method));
     expect(log).toEqual([`invalidate@${firstWrite}`]);
   });
 
@@ -76,7 +75,7 @@ describe("runPull — 첫 외부 쓰기 전에 전달 확인을 무효화한다"
     const fake = committing();
     const { deps, saved } = harness(fake, { invalidateDelivery: async () => { throw new Error("db down"); } });
     await expect(runPull(deps)).rejects.toThrow(/db down/);
-    expect(fake.calls.map(c => c.method).filter(m => MUTATIONS.includes(m))).toEqual([]);
+    expect(fake.calls.map(c => c.method).filter(isGitMutation)).toEqual([]);
     expect(saved).toEqual([]);
   });
 
@@ -91,12 +90,27 @@ describe("runPull — 첫 외부 쓰기 전에 전달 확인을 무효화한다"
       syncBranch: "malmoi-i18n/sync",
     };
     expect(await runPull(deps)).toEqual({ status: "skipped", reason: "no-changes" });
-    const force = fake.calls.findIndex(c => c.method === "updateRefForce");
+    const force = fake.calls.findIndex(c => c.method === "resetSyncBranch");
     expect(force).toBeGreaterThanOrEqual(0);
     // 무효화와 force 사이에는 열린 PR 조회(읽기)만 낀다 — 무효화 시점까지 쓰기가 0회여야 한다(B1 r3가 닫기를 그 사이에 넣었다).
     const at = Number(log[0]?.split("@")[1]);
     expect(at).toBeLessThanOrEqual(force);
-    expect(fake.calls.slice(0, at).map(c => c.method).filter(m => ["updateRefForce", "closePr", "createTree", "createRef"].includes(m))).toEqual([]);
+    expect(fake.calls.slice(0, at).map(c => c.method).filter(isGitMutation)).toEqual([]);
+  });
+
+  it("no-changes + 열린 PR: 첫 비읽기 메서드(closePr)가 무효화 뒤다", async () => {
+    const fake = createFakeGitClient({
+      refSha: { "heads/dev": "basehead", "heads/malmoi-i18n/sync": "stale" },
+      tree: { basehead: [{ path: "i18n/ko.json", sha: blobSha(KO) }, { path: "i18n/en.json", sha: blobSha(EN) }] },
+      blobs: { [blobSha(KO)]: KO, [blobSha(EN)]: EN },
+      openPr: { url: "https://github.com/o/r/pull/4", number: 4, title: "t [skip-malmoi-i18n]" },
+    });
+    let at: number | undefined;
+    const { deps } = harness(fake, { invalidateDelivery: async () => { at ??= fake.calls.length; } });
+    await runPull(deps);
+    const first = fake.calls.findIndex(c => isGitMutation(c.method));
+    expect(fake.calls[first]?.method).toBe("closePr");
+    expect(at).toBeLessThanOrEqual(first);
   });
 
   it("쓰기 없는 no-changes는 무효화하지 않는다 — 동등 확인이 기준을 이유 없이 잃지 않는다", async () => {
@@ -152,7 +166,7 @@ describe("runPull — reconfirm은 무효화도 확정도 없다 (mcp-connector 
     const { deps, order } = harness(fake);
     expect(await runPull(deps, "not-the-preview")).toEqual({ status: "skipped", reason: "reconfirm" });
     expect(order).toEqual([]);
-    expect(fake.calls.map(c => c.method).filter(m => MUTATIONS.includes(m))).toEqual([]);
+    expect(fake.calls.map(c => c.method).filter(isGitMutation)).toEqual([]);
   });
 
   it("같은 지문이면 무효화 → 확정 순서가 그대로다 (짝)", async () => {

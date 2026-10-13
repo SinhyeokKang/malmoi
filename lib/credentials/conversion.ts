@@ -4,15 +4,15 @@ import { requireEnv } from "@/lib/env";
 import { credentialIO } from "./access";
 import { CredentialError } from "./crypto";
 import { assertUniqueEmails, isHashedSession, migrateAccountFields, migratePersonalFields, type MigrationMode } from "./migration";
-import { validateCredentialKeys } from "./storage";
+import { openGitLabToken, sealGitLabToken, validateCredentialKeys } from "./storage";
 export type ConversionOptions = { mode: MigrationMode; apply?: boolean; trafficBlocked?: boolean; writersDrained?: boolean };
 type ConversionReport = { users: number; invitations: number; accounts: number; sessions: number; loginAccounts: number; appAccounts: number; oldPiiKey: number; oldTokenKey: number; changes: number; applied: number };
 export async function convertCredentials(prisma: PrismaClient, options: ConversionOptions): Promise<ConversionReport> {
   return credentialIO(async () => {
     validateCredentialKeys();
     if (options.apply && (!options.trafficBlocked || !options.writersDrained || options.mode === "verify")) throw new CredentialError();
-    const [users, invitations, accounts, sessions] = await Promise.all([
-      prisma.user.findMany(), prisma.projectInvitation.findMany(), prisma.account.findMany(), prisma.session.findMany(),
+    const [users, invitations, accounts, sessions, gitlabConnections] = await Promise.all([
+      prisma.user.findMany(), prisma.projectInvitation.findMany(), prisma.account.findMany(), prisma.session.findMany(), prisma.gitLabConnection.findMany(),
     ]);
     assertUniqueEmails(users);
     const owners = new Set<string>();
@@ -33,6 +33,15 @@ export async function convertCredentials(prisma: PrismaClient, options: Conversi
     for (const row of accounts) {
       const data = migrateAccountFields(row, options.mode);
       if (data) writes.push(() => prisma.account.updateMany({ where: { provider: row.provider, providerAccountId: row.providerAccountId, userId: row.userId, access_token: row.access_token, refresh_token: row.refresh_token, expires_at: row.expires_at }, data }));
+    }
+    // PAT는 처음부터 봉투만 저장한다 — backfill도 평문을 받아들이지 않는다. 모든 모드에서 AAD·키를 검증한다.
+    for (const row of gitlabConnections) {
+      const ctx = { userId: row.userId };
+      const plain = openGitLabToken(row.token, ctx);
+      if (options.mode === "rotate-token" && row.token.split(":")[2] !== requireEnv("TOKEN_ENCRYPTION_ACTIVE_KEY_ID")) {
+        const token = sealGitLabToken(plain, ctx);
+        writes.push(() => prisma.gitLabConnection.updateMany({ where: { id: row.id, userId: row.userId, token: row.token }, data: { token } }));
+      }
     }
     for (const row of sessions) {
       if (isHashedSession(row.sessionToken)) continue;
@@ -55,7 +64,7 @@ export async function convertCredentials(prisma: PrismaClient, options: Conversi
       loginAccounts: accounts.filter(a => a.provider === "github" || a.provider === "google").length,
       appAccounts: owners.size,
       oldPiiKey: [...users.flatMap(u => [u.email, u.name, u.image]), ...invitations.map(i => i.email)].filter(v => oldKey(v, "PII")).length,
-      oldTokenKey: accounts.flatMap(a => [a.access_token, a.refresh_token]).filter(v => oldKey(v, "TOKEN")).length,
+      oldTokenKey: [...accounts.flatMap(a => [a.access_token, a.refresh_token]), ...gitlabConnections.map(c => c.token)].filter(v => oldKey(v, "TOKEN")).length,
       changes: writes.length, applied };
   });
 }

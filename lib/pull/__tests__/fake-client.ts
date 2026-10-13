@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
 import type { GitClient, GitTreeBlob } from "../client";
-import type { CommitPayload, TreePayload } from "../payload";
 
 /**
  * 테스트용 `GitClient`. **`.test.ts`가 아니라 vitest의 include에 걸리지 않는다**
@@ -12,6 +11,22 @@ import type { CommitPayload, TreePayload } from "../payload";
 
 export type FakeCall = { method: keyof GitClient; args: unknown[] };
 
+/**
+ * 경계(`GitClient`)의 메서드를 읽기와 쓰기로 **빠짐없이** 가른다 — "쓰기 0회"·"첫 쓰기는 무효화 뒤" 단언이 이 목록 하나를 쓴다.
+ * ⚠️ 이름을 문자열로 손에 들면 메서드가 사라지거나 바뀌어도 typecheck가 못 보고 단언이 공허해진다(gitlab-repositories R-A 🔴1 —
+ * 삭제된 `createTree`…`updateRefForce`가 목록에 남아 스냅샷 커밋을 쓰기로 세지 않았다). 아래 `satisfies`가 없는 키를, `Unclassified`가
+ * 어느 쪽에도 없는 새 키를 red로 만든다.
+ */
+export const GIT_READS = ["getRefSha", "getTree", "getBlobText", "findOpenPr", "compareToBase", "isPullRequestOpen"] as const satisfies readonly (keyof GitClient)[];
+export const GIT_MUTATIONS = ["publishSnapshot", "resetSyncBranch", "closePr", "createPr", "updatePrTitle", "updatePrBase"] as const satisfies readonly (keyof GitClient)[];
+type Unclassified = Exclude<keyof GitClient, (typeof GIT_READS)[number] | (typeof GIT_MUTATIONS)[number]>;
+const everyMethodClassified: [Unclassified] extends [never] ? true : Unclassified = true;
+void everyMethodClassified;
+
+export function isGitMutation(method: keyof GitClient): boolean {
+  return (GIT_MUTATIONS as readonly string[]).includes(method);
+}
+
 export type FakeGitOptions = {
   /** ref → 커밋 SHA. 없는 ref는 `null`이 되어 첫 실행 경로를 태운다. */
   refSha?: Record<string, string>;
@@ -21,8 +36,13 @@ export type FakeGitOptions = {
   blobs?: Record<string, string>;
   /** 열린 PR. 없으면 `null`이 되어 생성 경로를 태운다. `title`은 마커 유무 판정의 입력이다. */
   openPr?: { url: string; number: number; title: string; base?: string };
-  /** 이 메서드가 호출되면 던진다. 실패 후 상태(`lastPulledAt` 미갱신)를 검증하는 입력이다. */
-  failOn?: keyof GitClient;
+  /**
+   * 이 메서드가 호출되면 던진다. 실패 후 상태(`lastPulledAt` 미갱신)를 검증하는 입력이다.
+   * 객체로 주면 `nth`번째 호출(1부터)만 던지고, `status`가 있으면 그 HTTP 상태를 실은 오류다(`httpStatus`가 읽는다) — 분류기가 상태로 가르는 경로의 입력이다.
+   */
+  failOn?: keyof GitClient | { method: keyof GitClient; nth?: number; status?: number };
+  /** `isPullRequestOpen`의 답. PR 번호 → 열림. 없는 번호는 닫힘(`false`)이다. */
+  prOpen?: Record<number, boolean>;
 };
 
 export function createFakeGitClient(opts: FakeGitOptions): {
@@ -31,10 +51,14 @@ export function createFakeGitClient(opts: FakeGitOptions): {
 } {
   const calls: FakeCall[] = [];
 
+  const failure = typeof opts.failOn === "string" ? { method: opts.failOn } : opts.failOn;
+
   /** 실패한 호출도 기록에 남긴다 — 어디까지 갔는지 봐야 실패 지점을 판정할 수 있다. */
   function record(method: keyof GitClient, args: unknown[]): void {
     calls.push({ method, args });
-    if (opts.failOn === method) throw new Error(`fake 실패 주입: ${method}`);
+    if (failure?.method !== method) return;
+    if (failure.nth !== undefined && calls.filter(call => call.method === method).length !== failure.nth) return;
+    throw Object.assign(new Error(`fake 실패 주입: ${method}`), failure.status === undefined ? {} : { status: failure.status });
   }
 
   /** 같은 내용 → 같은 가짜 SHA. 실제 blob SHA와 다르지만 결정적이어야 재실행 비교가 성립한다. */
@@ -58,22 +82,15 @@ export function createFakeGitClient(opts: FakeGitOptions): {
       if (text === undefined) throw new Error(`fake에 주입되지 않은 blob: ${sha}`);
       return text;
     },
-    async createTree(payload: TreePayload) {
-      record("createTree", [payload]);
-      return fakeSha("tree", JSON.stringify(payload));
+    async publishSnapshot(input) {
+      record("publishSnapshot", [input]);
+      return fakeSha("commit", JSON.stringify(input));
     },
-    async createCommit(payload: CommitPayload) {
-      record("createCommit", [payload]);
-      return fakeSha("commit", JSON.stringify(payload));
+    async resetSyncBranch(branch, baseSha) {
+      record("resetSyncBranch", [branch, baseSha]);
     },
-    async createRef(branch, sha) {
-      record("createRef", [branch, sha]);
-    },
-    async updateRefForce(branch, sha) {
-      record("updateRefForce", [branch, sha]);
-    },
-    async findOpenPr(head) {
-      record("findOpenPr", [head]);
+    async findOpenPr(branch) {
+      record("findOpenPr", [branch]);
       // base를 안 주면 테스트 프로젝트의 기본 base(`dev`)다 — 어긋남 경로는 명시할 때만 탄다.
       return opts.openPr === undefined ? null : { ...opts.openPr, base: opts.openPr.base ?? "dev" };
     },
@@ -97,7 +114,7 @@ export function createFakeGitClient(opts: FakeGitOptions): {
     },
     async isPullRequestOpen(pullNumber) {
       record("isPullRequestOpen", [pullNumber]);
-      return false;
+      return opts.prOpen?.[pullNumber] ?? false;
     },
   };
 

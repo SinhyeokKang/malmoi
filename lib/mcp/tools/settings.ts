@@ -85,7 +85,10 @@ export const rotatePushToken = defineTool({
      * ⚠️ **원문이 도구 결과로 나간다** (2026-09-28 사용자 확정) — 프로젝트 한정·`/api/push` 한 곳의 쓰기·재발급이 곧 폐기다. 안내는 원문을
      * `gh secret set PUSH_TOKEN`의 **표준입력**으로 넘기게 한다(`--body` 생략 — `--body -`는 문자 `-`를 저장한다). 생성 YAML의 secret 이름과 같다.
      */
-    return ok({ pushToken: result.pushToken, secretName: "PUSH_TOKEN" }, en.mcp.summary.pushToken);
+    // GitLab은 같은 이름의 CI/CD 변수다(docs/ACTIONS.md §5) — 필드 이름·안내가 호스트 어휘를 따른다(D26).
+    return gate.repoHost === "gitlab"
+      ? ok({ pushToken: result.pushToken, variableName: "PUSH_TOKEN" }, en.mcp.summary.gitlab.pushToken)
+      : ok({ pushToken: result.pushToken, secretName: "PUSH_TOKEN" }, en.mcp.summary.pushToken);
   },
 });
 

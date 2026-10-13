@@ -1,12 +1,14 @@
 "use client";
 import { ButtonLink } from "@/components/ui/button";
 import { Link as InlineLink } from "@/components/ui/link";
-import { Archive, Clock, FolderGit2, GitBranch, Link2, Search } from "lucide-react";
+import { Archive, Clock, FolderGit2, GitBranch, KeyRound, Link2, Search } from "lucide-react";
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 
-import { GithubIcon } from "@/components/signin/brand-icons";
+import { GithubIcon, GitlabIcon } from "@/components/signin/brand-icons";
+import { GitLabTokenForm } from "@/components/gitlab/token-form";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { useGithubConnect } from "@/components/onboarding/connect-github";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -17,6 +19,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { SelectRow } from "@/components/ui/select-row";
 import { useMessages, useUiLocale } from "@/components/i18n/messages-provider";
+import { formatDateOnly } from "@/lib/date-format";
+import { forHost } from "@/lib/i18n/host";
 import type { BranchChoice } from "@/lib/onboarding/branch";
 import type { RepoOption } from "@/lib/onboarding/types";
 import { PROJECT_LIMIT } from "@/lib/onboarding/create-plan";
@@ -36,7 +40,16 @@ import { IconTile } from "@/components/ui/icon-tile";
  * ⚠️ **예외 B′(검색 0건)를 예외 B(설치에 리포 없음)와 가른다.** 요구하는 일이 다르다: 검색어를
  * 지워라 / 설치에 리포를 넣어라 (DESIGN §6.7).
  */
+/** GitLab 탭 위 연결 계정 줄(G2e)의 값 — 서버 DB 값이다(만료일은 ISO). */
+export type GitLabAccountLine = { username: string; expiresAt: string | null };
+
+type Connected = Parameters<Parameters<typeof GitLabTokenForm>[0]["onConnected"]>[0];
+
 export type RepoStepState = {
+  /** 어느 탭의 ①인가 — GitLab은 막힘 갈래·로딩 문장·시각 낱말이 다르고 설치 링크가 없다. 없으면 GitHub이다. */
+  host?: "github" | "gitlab";
+  /** GitLab 탭의 연결 계정 — GitHub 탭은 없다. */
+  gitlabAccount?: GitLabAccountLine | null;
   repos: RepoOption[] | undefined;
   query: string;
   listError: string | undefined;
@@ -62,8 +75,14 @@ export function RepoStep({
   onQueryChange,
   onBranchChange,
   onAnnounce,
+  onGitLabConnected,
+  onGitLabRetry,
 }: {
   state: RepoStepState;
+  /** GitLab PAT 연결·교체가 끝났다 — 컨테이너가 계정 줄을 바꾸고 목록을 다시 읽는다. */
+  onGitLabConnected?: (connection: Connected) => void;
+  /** GitLab 목록을 다시 읽는다 — 일시 장애·리포 없음의 [Try again]. */
+  onGitLabRetry?: () => void;
   onSelect: (repo: RepoOption) => void;
   /** 미확정 행을 훑는 동안 Next가 이전 리포로 진행하지 않게 한다. */
   onScan: (fullName: string) => void;
@@ -112,6 +131,10 @@ export function RepoStep({
     search.current?.querySelector("input")?.focus();
   }, [listed]);
 
+  if (listError !== undefined && state.host === "gitlab") {
+    return <GitLabBlocked error={listError} account={state.gitlabAccount ?? null} onConnected={onGitLabConnected} onRetry={onGitLabRetry} />;
+  }
+
   if (listError !== undefined) {
     return (
       <Blocked
@@ -154,7 +177,7 @@ export function RepoStep({
             </li>
           ))}
         </ul>
-        <p className="text-muted-foreground text-xs leading-body">{m.newProject.repo.loading}</p>
+        <p className="text-muted-foreground text-xs leading-body">{forHost(m.newProject.repo, state.host ?? "github").loading}</p>
       </div>
     );
   }
@@ -179,12 +202,14 @@ export function RepoStep({
         <Input width="full" icon={<Search />} clearable
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
-          placeholder={m.newProject.repo.search.placeholder}
-          aria-label={m.newProject.repo.search.label}
+          placeholder={forHost(m.newProject.repo, state.host ?? "github").search.placeholder}
+          aria-label={forHost(m.newProject.repo, state.host ?? "github").search.label}
         />
       </div>
 
       {/* ⚠️ **목록 위다** — 목록 아래 두면 리포가 많을 때 스크롤해야 보인다. 검색 0건이면 빈 상태 블록 안의 것이 대신 선다. */}
+      {/* 캡션 슬롯(검색 아래 · 목록 위) — GitHub은 설치 힌트, GitLab은 연결 계정 줄이다(시안 G2e · #248). */}
+      {state.gitlabAccount != null && <GitLabAccount account={state.gitlabAccount} onConnected={onGitLabConnected} />}
       {shown.length > 0 && <InstallHint installUrl={installUrl} />}
 
       {shown.length === 0 ? (
@@ -259,7 +284,7 @@ export function RepoStep({
                           */}
                           <span className={cn("block truncate text-sm", active ? "text-foreground/60" : "text-muted-foreground")}>
                             {repo.owner}
-                            {repo.pushedAt !== null && ` · ${m.newProject.repo.pushedAt(relativeTime(new Date(repo.pushedAt), new Date(now), uiLocale))}`}
+                            {repo.pushedAt !== null && ` · ${forHost(m.newProject.repo, state.host ?? "github").pushedAt(relativeTime(new Date(repo.pushedAt), new Date(now), uiLocale))}`}
                           </span>
                         </span>
                       </>
@@ -272,6 +297,76 @@ export function RepoStep({
         </RadioGroup>
       )}
     </div>
+  );
+}
+
+/**
+ * GitLab 탭의 연결 계정 줄 (시안 G2e · #248) — **검색 아래 캡션 슬롯**(GitHub `Don't see a repository?` 자리와 같은 형 — muted 12, 문장 + 인라인 링크):
+ * 누구의 토큰으로 목록을 읽었고 언제 만료되는지, 그리고 [Replace token]. 교체는 `/account`와 같은 PAT 입력이다(같은 GitLab 계정만 — D19).
+ * ⚠️ 만료일은 `formatDateOnly`(오프셋 라벨 없음 — design-brief 확정 5 · 시각 없는 날짜라 UTC 날짜 — 결정 R1).
+ */
+function GitLabAccount({ account, onConnected }: { account: GitLabAccountLine; onConnected?: (connection: Connected) => void }) {
+  const m = useMessages();
+  const uiLocale = useUiLocale();
+  const [open, setOpen] = useState(false);
+  return (
+    <p className="text-muted-foreground shrink-0 text-xs leading-body">
+      {m.newProject.gitlab.account(account.username, account.expiresAt === null ? null : formatDateOnly(new Date(account.expiresAt), uiLocale))}{" "}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          <Button variant="link" size="sm" className="h-auto px-0 align-baseline text-xs">{m.account.gitlab.replace}</Button>
+        </DialogTrigger>
+        <DialogContent title={m.account.gitlab.replaceTitle} description={m.account.gitlab.replaceHint(account.username)}>
+          <GitLabTokenForm autoFocus submitLabel={m.account.gitlab.replace} onConnected={(connection) => { setOpen(false); onConnected?.(connection); }} />
+        </DialogContent>
+      </Dialog>
+    </p>
+  );
+}
+
+/**
+ * ① GitLab 탭의 막힘 갈래 (design-brief "GitLab 탭 상태"). GitHub `Blocked`와 같은 틀(빈 상태 블록 + 액션)이고 갈래가 다르다:
+ * 연결 전(PAT 입력) · 토큰 못 씀(다시 붙여 넣기) · Maintainer 프로젝트 없음 · 상한(공유) · 그 밖(목록 실패 Alert).
+ * GitHub의 승인 대기(`waiting`)는 GitLab에 대응이 없다.
+ */
+function GitLabBlocked({ error, account, onConnected, onRetry }: { error: string; account: GitLabAccountLine | null; onConnected?: (connection: Connected) => void; onRetry?: () => void }) {
+  const m = useMessages();
+  const uiLocale = useUiLocale();
+  if (error === "limit-reached") {
+    return (
+      <BlockShell icon={Archive} title={m.newProject.empty.limit.title} description={m.newProject.empty.limit.description(PROJECT_LIMIT)}
+        action={<ButtonLink variant="primary" href={routes.projects()}>{m.newProject.empty.limit.action}</ButtonLink>} secondary={null} error={null} />
+    );
+  }
+  if (error === "gitlab-not-connected" || error === "gitlab-reconnect") {
+    /*
+      칩은 key-round다(시안 G2a·G2f · #247) — 연결하는 것은 플랫폼이 아니라 계정 토큰이다(탭이 이미 GitLab을 말한다). 저장 만료일이 지났으면 그 날짜를
+      말하고, 만료일 전인데 못 쓰면(철회·스코프 상실) 같은 블록에 설명만 다르다(#249).
+    */
+    const expiredAt = error === "gitlab-reconnect" && account?.expiresAt != null && new Date(account.expiresAt).getTime() <= Date.now() ? new Date(account.expiresAt) : null;
+    const copy = error === "gitlab-not-connected" ? m.newProject.gitlab.connect : m.newProject.gitlab.reconnect;
+    const description = expiredAt !== null ? m.newProject.gitlab.reconnect.expiredOn(formatDateOnly(expiredAt, uiLocale)) : copy.description;
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-4">
+        <EmptyState icon={KeyRound} title={copy.title} description={description} />
+        {/* 입력은 빈 상태 블록 밖, 아래다 — 블록의 액션 칸은 가로 flex라 폼이 버튼 옆에 눌린다(`BlockShell` 보조 줄과 같은 이유). */}
+        <div className="w-full max-w-[480px]">
+          <GitLabTokenForm submitLabel={m.account.gitlab.form.connect} onConnected={(connection) => onConnected?.(connection)} />
+        </div>
+      </div>
+    );
+  }
+  if (error === "gitlab-no-repos") {
+    return (
+      <BlockShell icon={FolderGit2} title={m.newProject.gitlab.repos.title} description={m.newProject.gitlab.repos.description}
+        action={<Button variant="primary" onClick={onRetry}>{m.newProject.gitlab.repos.action}</Button>} secondary={null} error={null} />
+    );
+  }
+  return (
+    <Alert variant="danger" title={m.newProject.empty.listFailed}
+      actions={onRetry === undefined ? undefined : <Button size="sm" onClick={onRetry}>{m.newProject.gitlab.repos.action}</Button>}>
+      {failureText(m, error)}
+    </Alert>
   );
 }
 

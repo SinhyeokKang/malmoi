@@ -7,6 +7,13 @@ import { describe, expect, it } from "vitest";
 import { relativeTime } from "@/lib/relative-time";
 import { buildPermalink, localeProgress } from "../view";
 
+describe("buildPermalink — GitLab 코드 참조 (gitlab-repositories)", () => {
+  it("GitLab은 하위 그룹을 보존한 `/-/blob/<sha>/<path>#L<n>`이다", () => {
+    expect(buildPermalink({ repoHost: "gitlab", repoOwner: "group/sub", repoName: "web", lastCommitSha: "abc" }, { path: "src/[locale].ts", line: 3 }))
+      .toBe("https://gitlab.com/group/sub/web/-/blob/abc/src/%5Blocale%5D.ts#L3");
+  });
+});
+
 describe("buildPermalink — GitHub 코드 참조", () => {
   const project = { repoOwner: "acme", repoName: "app", lastCommitSha: "a".repeat(40) };
 

@@ -267,6 +267,9 @@ components/
                         FIELD_BUTTON_CLASS를 export한다 — 랜딩 목업의 비상호작용 캡슐(<span>)이 같은 값을 읽고 h-10만 덮는다(손 사본 대신, buttonClass 선례)
   ui/text-trigger.tsx  TextTrigger — 누르는 글자(ui-locales). 공개 푸터 언어 스위처의 트리거 — Button이 아닌 이유는 라벨 500 강제(이웃 푸터 링크 400).
                         busy는 aria-disabled + aria-busy(진짜 disabled면 메뉴가 닫힐 때 포커스가 body로 빠진다) · 앞 글리프를 스피너로 교체(glyphSlot)
+  ui/input-element.tsx  Input의 네이티브 `<input>` — 핸들러(포인터 포커스 표시 `data-pointer-focus`)를 가진 유일한 조각이라 클라이언트 잎으로
+                        떼었다(2026-10-12). input.tsx는 `/account`·라우트 골격 같은 서버 컴포넌트가 그리고 서버가 fieldClass를 값으로 읽어 "use client"를 달 수 없다 —
+                        인라인 핸들러가 input.tsx에 남으면 서버 렌더가 "Event handlers cannot be passed to Client Component props"로 죽는다(server-render-graph.test.ts가 센다)
   ui/input-clear-button.tsx  InputClearButton — Input의 지우기 X(클라이언트). input.tsx는 fieldClass를 서버가 읽어 "use client"를 달 수 없어서 떼었다
   ui/dialog.tsx       기존 440 Dialog + 형제 CommandDialog · DrawerContent(측면 서랍 — 2026-10-10, 공개 내비가 첫 소비자 · 앱 LNB 서랍이 둘째, 세로 고정 바닥 `pinned`).
                         확인 Dialog는 `lg` 미만에서 좌우 16 · 본문만 스크롤 · footer 감김이다(2026-10-11 responsive-app — `max-lg:` 토큰뿐이라 `lg` 이상 바이트 불변).
@@ -451,8 +454,10 @@ components/
                         ⚠️ **maskEmail 금지선이 이 디렉터리를 전수로 훑는다** — 마스킹은 서버의 일이고,
                         파일 목록을 손으로 적던 검사가 파일이 넷이 되자 신설분을 놓쳤다
   account/              계정 화면 — 공유 ui/card의 구역/목록과 ui/panel-card의 프로필 사실 grid PanelFacts를 조립하는 화면.
-                        login-methods · github-section · sessions-section · profile-name-form ·
+                        login-methods · github-section · gitlab-section(GitLab PAT 카드 — 2026-10-12) · sessions-section · profile-name-form ·
                         profile-picture · dismissible-alert
+  gitlab/token-form.tsx PAT 입력 shell 하나(2026-10-12) — ①의 GitLab 탭 · `/account` GitLab PAT 카드 · 설정 재연결이 같은 형을 쓴다(라벨·오류
+                        aria-describedby, 생성 링크가 이름·scopes=api 프리필). 원문은 Action 본문으로만 나가고 다시 보이지 않는다
                         ⚠️ **구역이 자기 리스트와 Alert를 함께 든다** — 구역 Alert 자리가 헤더 아래·
                         래퍼 위라, 화면이 조립하면 그 자리가 두 컴포넌트에 걸친다
                         ⚠️ **항목의 우측 클러스터가 shrink-0이다** — 실패 Alert를 그 안에 두면 좌측
@@ -492,6 +497,8 @@ components/
   onboarding/new-project.tsx
                         생성 흐름의 상태를 소유하고 LargeModal + WizardFooter로 단계 본문·바닥을 조립한다.
                         이전 onboarding/modal.tsx 재수출과 ui/modal.tsx 경로는 제거했다
+  onboarding/repo-input.ts
+                        repoInputOf — ① 리포 행 → Action 입력(GitHub { owner, repo } · GitLab 숫자 id 하나). 모달의 다섯 호출이 이 함수 하나로 입력을 만든다
   sources/              sources-screen · source-detail-modal · source-status · base-language-form · add-sources-modal ·
                         remove-source-dialog · sources-archived 일곱 + row-layout.ts(행 적층 클래스 상수 — 카드 640 미만 상태가 이름 아래, 실물·골격 공유).
                         remove-source-dialog는 상세 모달 바닥 왼쪽 [Remove source]의 확인 창이다(Sync 확인 창 형 — 지문은
@@ -639,7 +646,10 @@ lib/
                         코드와 hosted 도메인 리터럴의 집이 여기 하나다 — 다음 기능이 리터럴을 하나 더 박으면 self-hosted-gates가 red) ·
                         preflight(순수 판정 — env 맵과 디렉터리 probe를 주입받는다. `SELF_HOSTED_ENV`가 `lib/env.ts`가 읽는 이름을
                         required · optional · hosted-only · command로 분류하고 `.env.example`과 키가 일치해야 한다. ⚠️ 결과에 값을 싣지 않는다 — 이름과 사유 코드뿐) ·
-                        schedule(`NIGHTLY_PULL` — 야간 pull의 경로·시각. `vercel.json`과의 일치를 테스트가 센다)
+                        schedule(`NIGHTLY_PULL` — 야간 pull의 경로·시각. `vercel.json`과의 일치를 테스트가 센다) ·
+                        github-app(planGitHubAppConfig·githubAppConfigured — 2026-10-12 D4a. ①·`/account`·설정이 githubAppConfigured 하나로 GitHub 카드·조회를
+                        0으로 만든다 — App 없는 셀프 호스팅은 GitLab 전용 설치다. 반쪽 판정(기동 거부, 다섯 all-or-none)은 preflight가 든다. ⚠️ 화면 판정(githubAppConfigured)은
+                        자격증명 넷이다(D28) — SLUG는 설치 링크만 가른다. 다섯 all-or-none(planGitHubAppConfig)은 preflight 전용이다)
   upload/               프로필·프로젝트 이미지. image(형식·크기·키·삭제 allowlist 판정 +
                         planImagePick — 클라이언트 선검사 + imageSrc — 저장 URL → /api/images/<key> +
                         isStoredImageKey·storedImageContentType — 프록시가 받는 키의 술어).
@@ -751,7 +761,8 @@ lib/
   status/               **상태 톤·낱말의 코드판 정본** (2026-10-01, ux-drift-unify — DESIGN §2.4가 가리킨다). canon(StateTone · StateKey ·
                         STATE — 행마다 { tone, variant, label }, label은 사전 값). ⚠️ 잎이다 — 사전만 문다(클라이언트가 값으로 읽는다,
                         client-graph). ⚠️ lib/는 Tailwind를 모른다 — 클래스는 components/ui/가 든다. ⚠️ 소비자가 있는 키만 둔다.
-                        __tests__/cross-screen은 목록·Home·Settings·Sources·거부 문구가 같은 입력에서 같은 상태를 말하는지 한 행렬로 잰다
+                        __tests__/cross-screen은 목록·Home·Settings·Sources·거부 문구가 같은 입력에서 같은 상태를 말하는지 한 행렬로 잰다 ·
+                        token-expiry(tokenExpiryState — GitLab PAT의 만료 임박(14일)·만료 판정, 잎. 목록·`/account`·설정이 같은 경계를 읽는다)
   expiry.ts             ⚠️ 잎. isExpired(expiresAt, now) — 초대·MCP 토큰의 만료 경계 하나(정각 = 만료). 인증 경계와 카드 표시가 같은 식이어야
                         카드가 "활성"이라 말하는 순간에 401이 나지 않는다. OAuth 인라인 비교는 범위 밖이다
   publish/              Publish 모달이 읽는 순수 판정 다섯. diff(셀 단위 조립·키 병합·상한) ·
@@ -804,6 +815,18 @@ lib/
                         localeOfTemplatePath가 templatePaths와 같은 패턴으로 든다)
   github.ts             Git Data API 래퍼(App installation 토큰). openRepoReader가 토큰을 한 번만 발급한다
                         getTree는 path·sha·mode의 전체 GitTreeEntry를 보존하고, snapshot.files는 기존 blob 목록이다
+  repo-host/            **리포 호스트 경계** (2026-10-12, gitlab-repositories) — target(Project 행 → RepoTarget·RepoTargetResult
+                        판정, sameRepoTarget·sameRepository·sameAccessedRepository · 잎, server-only 없음) · reader(RepoReader 계약) ·
+                        index(호스트 구현을 고르는 **유일한 자리** — createGitClient·openRepoReader·listBranches·loadConnectionHealth).
+                        ⚠️ 소비자는 lib/github.ts·lib/gitlab/client.ts를 직접 import하지 않는다(GitHub App·사용자 연결 같은 호스트 전용
+                        흐름만 예외). 입력은 늘 repoTargetOf(project)다 — 호출자 접근을 확인한 뒤에도 I/O는 프로젝트가 참조하는 연결로 연다.
+                        호스트가 늘면 각 switch에 갈래 하나 — default의 never 검사가 빠뜨린 자리를 typecheck로 알린다
+  gitlab/               **GitLab I/O** — transport(REST·GraphQL 전송 하나. ⚠️ 숫자 project id로만 주소한다 — `%2F`·fullPath 주소는 전송 전에
+                        던진다(PAT에는 리포 한정 층이 없어 이 주소 규칙이 첫 층이다, ARCHITECTURE 불변식 11) · 자체 재시도·자체 fetch 없음 — Publish는
+                        execution.fetch()를 넘긴다 · 응답을 통째로 로그하지 않는다(GET /projects에 runners_token이 실린다)) · client(GitClient·
+                        RepoReader·브랜치·건강성의 GitLab 구현, DB를 모른다 — 토큰은 lib/repo-host가 참조 연결에서 열어 넘긴다) · plan(원격 응답의
+                        순수 판정 — 모양이 다른 응답을 "없음"·"빈 목록"으로 접지 않는다). server-only를 붙이지 않은 것은 lib/github.ts와 같은 이유다
+                        (smoke-gitlab이 프로덕션 경로를 지난다)
   github-wait.ts        GitHub 대기 마감(GITHUB_WAIT_MS 8초) 하나 — 목록 원격 신호·probe·열린 PR·계정 조회가 같은 값을
                         읽는다(ARCHITECTURE §6.5.2). octokit을 물지 않는 잎이라 lib/github를 mock한 테스트에서도 실물이 돈다
   github-connect/       사용자 토큰 전담 — App 개인키를 모른다. origin · state · account-link ·
@@ -820,6 +843,12 @@ lib/
                         ⚠️ installation-url이 설치 링크의 유일한 조립처다 — installationSettingsUrl(설치 설정)·
                         installWithStateUrl(state를 실은 설치). 호출부 넷(new-project-modal · projects/actions ·
                         account · settings/repository-card)이 전부 이것을 import한다
+  gitlab-connect/       **계정 GitLab 연결(PAT)** — lib/github-connect의 짝(2026-10-12). verify(`/personal_access_tokens/self` 판정 — 순수,
+                        일시 장애를 "무효"로 접지 않는다 · last_used_ips를 읽지 않는다) · connection(봉투 저장·교체·해제와 경합 — 원문 PAT는
+                        openGitLabConnection 밖으로 안 나간다, 연결 경로는 GET만) · access-plan(호출자 권한 Maintainer 40 / 읽기 Reporter 20 ·
+                        토큰 주인 쓰기 Developer 30 — 순수) · errors(GitLab에만 있는 거부 코드) · message(거부 → 문구, 모르는 값은 GitLab 폴백 —
+                        GitHub 폴백 문장이 GitLab 화면에서 거짓이라서) · removal(참조가 빈 프로젝트의 사건 — 같은 tx, D20).
+                        ⚠️ credential-separation.test.ts가 github-connect와 함께 센다(쓰기는 참조 연결의 PAT만)
   credentials/ session-revocation/ login-link/ account-connect/
                         저장 시 암호화 / 전체 세션 회수 / 계정 병합 / 로그인 수단 추가.
                         credentials/log는 삼킨 실패의 한 줄(`[credentials]`) — 원인이 CredentialError로
@@ -834,10 +863,13 @@ lib/
   i18n/                 화면 언어의 입구(ui-locales — ARCHITECTURE §6.355). index(⚠️ 잎 — Messages 타입 = Widen<en>에서 영어 고정 절을 뺀 것 · pick) ·
                         locales(⚠️ 잎, import 0 — UI_LOCALES·endonym·국기·parseUiLocale(Object.hasOwn)·resolveUiLocale(계정 > 쿠키 > en, Accept-Language
                         입력 없음)·planUiLocaleWrite · no-korean-ui 허용(endonym 한국어)) · server(server-only — getUiLocale(React cache)·getMessages·getDateStyle(React cache — 세션의 timeZone, 밖은 UTC) ·
-                        ko·es 사전의 서버 import 자리) · adapter-errors(어댑터 오류·pull 경고 코드 → 문장, 사전을 인자로 받는다 · withWarningLines는 외부 계약용)
+                        ko·es 사전의 서버 import 자리) · host(withRepoHost·forHost — 사전의 `onGitLab` 덮기, 2026-10-12. 프로젝트 화면이 인가 뒤 사전 전체를
+                        그 호스트로 덮는다 — 컴포넌트가 낱말마다 호스트를 고르지 않는다, ARCHITECTURE §6.355) · adapter-errors(어댑터 오류·pull 경고 코드 → 문장, 사전을 인자로 받는다 · withWarningLines는 외부 계약용)
   onboarding/ survey/ scan/ projects/ shell/ settings/ signin/ cli/
                         (onboarding/files-layout — Files 단계 두 판·순차 판 판정, 입력은 잰 본문 폭이고 608 미만이 순차 판. 2026-10-11 responsive-app)
                         (cli/push-response — `/api/push` 응답을 CI 로그·exit로 옮긴다. deferred면 exit 0 + ::warning 한 줄 ·
+                        cli/gitlab-ci-input — GitLab CI 변수 → push-local 입력·열린 MR 사전 안내의 순수 판정. ⚠️ 러너에는 prisma generate가 없어
+                        .gitlab/malmoi-i18n-push/run.ts가 node 내장과 이 모듈만 문다 ·
                         cli/push-url — `push-local --url` 판정. 토큰 원문을 싣는 요청이라 http는 루프백 셋만, 위반은 exit 2)
                         각 기능의 순수 판정층
                         scan/ast는 직접 래퍼·훅 import·반환 변수의 파일 내부 lexical symbol을 비교한다. 일반 선언 shadowing은
@@ -875,8 +907,11 @@ lib/
                         import는 lib/auth/email 하나) · user(isOperatorUser — server-only, User.emailLookup × OPERATOR_EMAILS).
                         ⚠️ lib/auth/에 두지 않는 이유가 축이다 — 운영자는 인가가 아니라 계정 축 쿼터 판정이고, 상한 소비는
                         onboarding-run/·projects/owner-limit에 남는다. user를 import하는 소스는 그 셋뿐이다(소스 스캔 테스트가 센다)
-  onboarding-run/       **두 GitHub 자격증명이 만나는 조립**(2026-09-28 T4-c — ARCHITECTURE §3.1). Server Action과 MCP 도구가
-                        같이 부른다: access(checkRepoAccess) · repos · branches · detect · add · create · import · rotate-token.
+  onboarding-run/       **리포 자격증명이 만나는 조립**(GitHub 둘 · GitLab 호출자 PAT와 참조 연결)(2026-09-28 T4-c — ARCHITECTURE §3.1). Server Action과 MCP 도구가
+                        같이 부른다: access(checkRepoAccess) · repos · branches · detect · add · create · import · rotate-token ·
+                        gitlab-repos(① GitLab 목록 — 호출자 PAT로 Maintainer 이상 프로젝트를 읽는 표시용) · gitlab-reconnect(GitLab 재연결 코어 —
+                        호출자 PAT로 쓰기 권한을 보고 참조를 자기 연결로 바꾼다) · locator(새 리포 입력 → 대상, GitLab은 숫자 id만).
+                        GitLab은 호출자 PAT(권한 조회 GET)와 프로젝트가 참조하는 연결(I/O)을 가른다.
                         ⚠️ lib/onboarding/에 두지 않는 이유가 이 디렉터리의 존재 이유다 — 그 루트는 "두 자격증명 import 없음"이라
                         credential-separation이 red다. 여기는 Server Action과 같은 규칙 집합(MEETING_ROOTS)이다.
                         access는 요청 리포를 못 찾은 설치별 실패에서 401→reauthorize를 우선한다. 요청 리포를 찾으면 부분 성공은 유지한다.
@@ -946,13 +981,22 @@ lib/
                         alsoLock은 세지 않고 잠그기만 한다(승격의 행위자 — 사건 FK 잠금과의 순환 방지, ARCHITECTURE §3.1).
                         User를 id 순으로 잠그고 → 활성 OWNER 수를 세고 → 상한에 닿은 사람만 운영자인지 본다(ARCHITECTURE §3.1).
                         ⚠️ 생성의 재집계는 여기로 옮기지 않았다 — onboarding-run/create가 이미 잠그고 같은 판정 단위를 쓴다
-  projects/pr-url.ts    parseGithubPrUrl(순수). ⚠️ 저장된 URL을 **그 프로젝트의 owner/name으로 다시 검증**한다
-                        — DB 문자열을 그대로 링크로 내면 남의 리포를 가리키는 값이 화면에 선다
+  projects/pr-url.ts    parseReviewUrl(순수 — 호스트로 parseGithubPrUrl · parseGitLabMrUrl을 고른다). ⚠️ 저장된 URL을 **그 프로젝트의
+                        owner/name으로 다시 검증**한다 — DB 문자열을 그대로 링크로 내면 남의 리포를 가리키는 값이 화면에 선다
+  projects/repo-web.ts  리포 호스트의 웹 URL 조립(잎) — repoWebUrl · repoCompareUrl(GitLab `/-/compare`) · repoBlobUrl(`/-/blob/…`).
+                        호스트별 URL 모양을 컴포넌트가 손으로 조립하지 않는다
   projects/import-failure.ts
                         화면용 실패 어휘 여섯과 문구·톤을 드는 client-safe 모듈이다. 외부 보고 가능한 넷은
                         REPORTED_IMPORT_FAILURES로 분리하고 검증(닫힌 보고 스키마)은 import-status.ts에 남는다 — 갈라 두지 않으면 서버만 아는 판정
                         (partial-import)이 외부 계약으로 새어 나가 아무것도 안 들어간 프로젝트가
                         부분 성공으로 보인다
+  onboarding/gitlab-ci.ts
+                        GitLab CI 생성기(onboarding/workflow.ts의 짝, 2026-10-12 D5) — 대상 리포의 `.gitlab-ci.yml` job과 원본 릴리스 축
+                        GITLAB_CI_RELEASE(태그 malmoi-i18n-push-gitlab-vN + 40자 SHA). ⚠️ sha가 null(발행 전)이면 job이 "unreleased"를 박아 대조에서
+                        실패하고(fail-closed) 화면은 템플릿 대신 "아직 없다"를 말한다. 이미지는 Node 24 태그 + 인덱스 digest 고정.
+  onboarding/ci-file.ts ciFileOf·gitlabCiReleased·경로 상수 둘(GITHUB_WORKFLOW_PATH·GITLAB_CI_PATH) — 리포 호스트별 CI 파일(server-only).
+                        화면(설정 CI 모달·온보딩 ⑤)과 MCP 도구(get_workflow·create_project)가 둘 다 여기를 import한다 — MCP 층에 있던 옛 집은 걷었다.
+                        ⚠️ GitLab은 릴리스 SHA가 40자 hex일 때만 파일을 낸다(null이면 호출부가 not-ready·workflow-unavailable을 고른다)
   onboarding/branch.ts  ⚠️ planBranchChoice — 목록/자유 입력/읽기 전용 셋을 가른다. 조회 실패를
                         "브랜치가 없다"로 읽지 않는 것이 요지다(POSTMORTEM 2026-09-03)
   onboarding/select-surfaces.ts
@@ -1111,7 +1155,9 @@ deploy/                 **self-hosted 설치 배포물** (self-hosting). 이 디
                         ⚠️ `CRON_SECRET`을 명령줄이 아니라 umask 077 헤더 파일(`curl -H @file`)로 넘긴다 — `ps`에 비밀이 안 보인다
 scripts/                adapter-survey · sync-agents · copy-fonts · scan · ingest · push-local · preflight(pnpm preflight — self-hosted 기동 전 판정의 진입. 사유 코드만 찍고 실패면 exit 1) ·
                         guide-check(pnpm guide:check — SHOOTING #shots 표 vs 작업 트리 git hash-object. 읽기 전용, exit 0 · 인자 오류만 2) ·
-                        smoke-github · smoke-blob(⚠️ pnpm smoke:blob에 NODE_OPTIONS=--conditions=react-server가
+                        smoke-github · smoke-gitlab(pnpm smoke:gitlab — 읽기 전용·DB 없음 실 API 스모크, 2026-10-12. GITLAB_TEST_TOKEN·GITLAB_TEST_PROJECT는
+                        **개발자 테스트 입력이지 운영 설정이 아니다** — .env.example·preflight·lib/env.ts에 없고 self-hosted-gates의 DIRECT_READS_ALLOWED 한 행이다.
+                        응답 본문·경로·토큰을 찍지 않는다. reader와 Publish 클라이언트가 같은 커밋을 blob id까지 같게 보는지 대조한다) · smoke-blob(⚠️ pnpm smoke:blob에 NODE_OPTIONS=--conditions=react-server가
                         붙는다 — PII 복호 모듈이 server-only라 그 조건 없이는 import에서 죽는다) ·
                         credentials · finalize-credentials · backfill-pending-edit-token ·
                         local(loadLocalEnv 재수출 · scriptPrisma — ⚠️ log: []. lib/db.ts는 server-only라 못 쓴다) ·
@@ -1140,6 +1186,12 @@ types/next-auth.d.ts    session.user.id를 싣는 모듈 확장. ⚠️ `login`(
                         **대상 리포가 참조하는 composite action**(외부 계약, 정본은 ACTIONS.md).
                         ⚠️ 참조는 불변 태그 @malmoi-i18n-push-v3다(v1·v2는 기존 소비자용으로 고정) — 태그를 옮기는 것이 릴리스다.
                         셋업 계약은 scripts/__tests__/action-setup이 센다(store 캐시 없음 · setup-node 자동 캐시 끔)
+.gitlab/malmoi-i18n-push/push.sh · run.ts
+                        **GitLab 프로젝트의 CI가 실행하는 원본**(action.yml의 짝, 2026-10-12 D5). 대상 리포의 생성 job이 이 리포를 불변 태그
+                        malmoi-i18n-push-gitlab-vN으로 shallow clone하고 박힌 40자 SHA와 HEAD를 대조한 뒤에만 push.sh를 부른다 — 바뀌는 참조로
+                        말모이 코드를 받으면 커밋 하나가 PUSH_TOKEN을 든 남의 러너에서 돈다. ⚠️ 루프 가드 둘째 겹(첫 겹은 job의 rules) · 페이로드는
+                        셸에서 조립하지 않는다(push-local → lib/push/payload.ts 하나). GitHub 리포 안의 .gitlab/은 GitHub에서 아무것도 하지 않는다.
+                        태그를 옮기는 것이 릴리스다(앱 태그·action 태그와 별개 축 — OPERATIONS)
 .github/workflows/ci.yml
                         이 리포의 **게이트 CI** — job verify 하나(트리거·게이트 의미는 CLAUDE.md CI 절이 정본). 발행 워크플로 image.yml과 별개다.
                         ⚠️ permissions: contents: read가 job에 박혀 있다 — pnpm test로 임의 프로젝트 코드를 돈다. uses:는 40자 SHA 핀(workflow-pins)

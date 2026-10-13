@@ -1,4 +1,5 @@
 import { compareKeys } from "@/lib/adapters/shared";
+import { repoBlobUrl } from "@/lib/projects/repo-web";
 import { maskEmail } from "@/lib/auth/email";
 import { isPathSafeRepoPath } from "@/lib/locale-code";
 
@@ -47,13 +48,15 @@ export function actorLabel(updatedBy: string | null, actors: ReadonlyMap<string,
 }
 
 export type PermalinkProject = {
+  /** 리포 호스트 — GitLab은 `/-/blob/…`이다(gitlab-repositories). 없으면 GitHub이다. */
+  repoHost?: string;
   repoOwner: string;
   repoName: string;
   lastCommitSha: string | null;
 };
 
 /**
- * GitHub 코드 참조 링크.
+ * 코드 참조 링크 — 리포 호스트의 blob 주소(`repoBlobUrl`).
  *
  * @returns 커밋 SHA가 없으면 `null`. **브랜치명으로 대체하지 않는다** — 브랜치는 움직여서
  *   줄 번호가 어긋나고, 그러면 permalink의 요지가 사라진다.
@@ -61,11 +64,11 @@ export type PermalinkProject = {
 export function buildPermalink(project: PermalinkProject, ref: KeyRefRow): string | null {
   if (!project.lastCommitSha) return null;
   // ⚠️ **2층이다** (sec-audit-3 발견 17) — push 스키마가 같은 규칙을 걸지만 그 전에 저장된 행이 있다. `..`는
-  // `encodeURIComponent`를 그대로 지나 브라우저가 정규화하므로 github.com의 다른 경로를 가리킨다.
+  // `encodeURIComponent`를 그대로 지나 브라우저가 정규화하므로 리포 호스트의 다른 경로를 가리킨다.
   if (!isPathSafeRepoPath(ref.path)) return null;
   // 경로의 `/`는 디렉터리 구분자라 살리고, `[locale]` 같은 특수문자만 인코딩한다.
   const path = ref.path.split("/").map(encodeURIComponent).join("/");
-  return `https://github.com/${project.repoOwner}/${project.repoName}/blob/${project.lastCommitSha}/${path}#L${ref.line}`;
+  return repoBlobUrl(project.repoHost ?? "github", project.repoOwner, project.repoName, project.lastCommitSha, path, ref.line);
 }
 
 /**

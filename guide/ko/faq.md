@@ -4,7 +4,7 @@ Malmoi에 대해 자주 묻는 질문에 짧게 답하고, 자세히 설명하�
 
 ## Malmoi는 무엇을 하나요? {#what-is-malmoi}
 
-Malmoi는 GitHub 리포지토리용 번역 관리(i18n) 도구입니다. 기존 번역 파일을 찾아 팀이 브라우저에서 편집하게 하고, 파일 구성을 바꾸지 않은 채 저장한 변경 사항을 PR로 돌려보냅니다. [동기화의 원리](sync/README.md#how-it-works)를 참고하세요.
+Malmoi는 GitHub와 GitLab.com 리포지토리용 번역 관리(i18n) 도구입니다. 기존 번역 파일을 찾아 팀이 브라우저에서 편집하게 하고, 파일 구성을 바꾸지 않은 채 저장한 변경 사항을 PR(GitLab에서는 MR)로 돌려보냅니다. [동기화의 원리](sync/README.md#how-it-works)를 참고하세요.
 
 ## 번역자에게 Git이나 GitHub 계정이 필요한가요? {#translators}
 
@@ -24,7 +24,7 @@ JSON·YAML 카탈로그, Chrome 확장 메시지, TypeScript·JavaScript 코드 
 
 ## 번역은 어떻게 리포지토리로 돌아가나요? {#pull-request}
 
-**게시**하면 저장한 변경 사항이 PR 하나에 담기고, 개발팀이 검토해 머지합니다. 그 PR이 열려 있는 동안 다음 게시는 새 PR을 열지 않고 같은 PR을 업데이트합니다. [변경 사항 게시](translate/publish.md#publish)를 참고하세요.
+**게시**하면 저장한 변경 사항이 PR(GitLab에서는 MR) 하나에 담기고, 개발팀이 검토해 머지합니다. 그 PR이 열려 있는 동안 다음 게시는 새 PR을 열지 않고 같은 PR을 업데이트합니다. [변경 사항 게시](translate/publish.md#publish)를 참고하세요.
 
 ## 번역하는 동안 코드가 바뀌면 어떻게 되나요? {#code-changes}
 
@@ -37,6 +37,10 @@ Malmoi는 두 쪽을 병합하지 않습니다. 미전송 변경 사항이 있�
 ## 워크플로를 꼭 추가해야 하나요? {#workflow}
 
 아니요. 워크플로가 없으면 야간 실행이 하루 한 번 리포지토리 변경을 가져옵니다. 워크플로를 추가하면 커밋할 때마다 변경이 들어옵니다. [야간 동기화 또는 워크플로](sync/nightly.md#workflow)를 참고하세요.
+
+## GitLab에서도 쓸 수 있나요? {#gitlab}
+
+네, GitLab.com의 리포지토리라면 쓸 수 있습니다. 프로젝트 소유자가 `api` 스코프가 있는 레거시 GitLab 개인 액세스 토큰을 연결하며, 그 GitLab 프로젝트에서 Maintainer 이상의 역할이 필요합니다. 번역은 MR(GitLab의 *merge request*)로 돌아오고, 프로젝트가 쓰는 토큰의 GitLab 계정 이름으로 남습니다. GitLab Self-Managed와 GitLab Dedicated는 지원하지 않습니다. [GitLab 연결](gitlab/create.md#connect-gitlab)을 참고하세요.
 
 ## Malmoi에 유료 플랜이 있나요? {#pricing}
 
@@ -52,7 +56,7 @@ Malmoi는 두 쪽을 병합하지 않습니다. 미전송 변경 사항이 있�
 
 ## Malmoi가 지원하지 않는 기능은 무엇인가요? {#not-supported}
 
-ICU 복수형, 동시 편집, 세밀한 권한, 인컨텍스트 편집, 스크린샷 첨부, 번역자 노트, 승인 워크플로, 번역 메모리, 내장 기계 번역·AI 번역은 지원하지 않습니다.
+ICU 복수형, 동시 편집, 세밀한 권한, 인컨텍스트 편집, 스크린샷 첨부, 번역자 노트, 승인 워크플로, 번역 메모리, 내장 기계 번역·AI 번역, GitLab Self-Managed와 GitLab Dedicated는 지원하지 않습니다.
 
 ## 프로젝트와 멤버는 몇 개까지 되나요? {#limits}
 
@@ -64,7 +68,7 @@ ICU 복수형, 동시 편집, 세밀한 권한, 인컨텍스트 편집, 스크�
 
 ## Malmoi는 나에 대해 무엇을 저장하나요? {#privacy}
 
-GitHub나 Google에서 받은 이름, 이메일 주소, 프로필 사진과 프로젝트 멤버십, 그리고 각 번역을 마지막으로 바꾼 사람을 저장합니다. 이름, 이메일 주소, 연결 토큰은 암호화해 저장하며, mal-moi.com의 Malmoi는 데이터를 팔거나 광고에 쓰지 않습니다. 전체 목록은 사용하는 사이트의 **개인정보 처리방침**에 있으며, 페이지 하단에 링크가 있습니다.
+GitHub나 Google에서 받은 이름, 이메일 주소, 프로필 사진과 프로젝트 멤버십, 그리고 각 번역을 마지막으로 바꾼 사람을 저장합니다. GitLab을 연결하면 GitLab 사용자 ID, 사용자 이름, 토큰도 저장합니다. 이름, 이메일 주소, 연결 토큰은 암호화해 저장하며, mal-moi.com의 Malmoi는 데이터를 팔거나 광고에 쓰지 않습니다. 전체 목록은 사용하는 사이트의 **개인정보 처리방침**에 있으며, 페이지 하단에 링크가 있습니다.
 
 ## 계정은 어떻게 삭제하나요? {#delete-account}
 

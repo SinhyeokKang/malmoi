@@ -1,4 +1,6 @@
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
+import { repoConnectionPinned } from "@/lib/repo-host/target";
+import { tokenExpiryState } from "@/lib/status/token-expiry";
 import { importFailureTone } from "@/lib/projects/import-failure";
 import type { ImportFailureCode } from "@/lib/projects/import-status";
 import { matchesAllTokens, searchTokens } from "@/lib/search/match";
@@ -31,9 +33,15 @@ export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
 /** `projectStatus`가 보는 네 컬럼. 그룹·띠 판정도 같은 것을 받는다 — 판정이 한 곳이라야 한다. */
 export type ProjectStatusInput = {
   archivedAt: Date | null;
-  installationId: string | null;
+  repoHost: string; installationId: string | null; gitlabConnectionId: string | null;
   surfaces: readonly { archivedAt: Date | null; lastCommitSha: string | null }[];
   repositoryId: string | null;
+  /**
+   * GitLab 프로젝트가 참조하는 연결의 저장 만료일(D24) — 지났으면 원격 호출 없이 끊김이다(Home·설정의 `connection-unusable`과 같은 결론을 목록·Inbox가
+   * DB만으로 낸다). 원격으로만 아는 철회·접근 상실은 목록이 모른다(GitHub `app-uninstalled`과 같은 선례). GitHub·연결 없음은 `null`이다.
+   * ⚠️ **필수다**(audit E11) — 선택 필드였을 땐 새 생산자가 빠뜨리면 만료된 GitLab 프로젝트가 `active`로 보이는데 typecheck가 침묵했다.
+   */
+  gitlabTokenExpiresAt: Date | null;
 };
 
 /**
@@ -69,7 +77,7 @@ export function searchProjects<T extends { name: string }>(rows: readonly T[], q
  * ⚠️ **보관이 readiness보다 앞이다** — 멈춘 프로젝트에서 "첫 적재를 기다리는 중"은 답할 질문이
  * 아니다 (`planProjectAccess`가 권한 → 보관 순으로 보는 것과 같은 결).
  */
-export function projectStatus(row: ProjectStatusInput): ProjectStatus {
+export function projectStatus(row: ProjectStatusInput, now: Date = new Date()): ProjectStatus {
   if (row.archivedAt !== null) return "archived";
   const readiness = planProjectReadiness(row);
   if (readiness !== "ready") return readiness;
@@ -81,7 +89,11 @@ export function projectStatus(row: ProjectStatusInput): ProjectStatus {
    * ⚠️ **`ready`일 때만 본다.** 첫 적재조차 안 끝난 프로젝트에서 "다시 연결하라"는 답할 질문이
    * 아니다 — 이 컬럼이 막는 것은 **되돌려보내기**이고, ready가 아니면 되돌려보낼 것이 없다.
    */
-  return row.repositoryId === null ? "needs_reconnect" : "active";
+  // GitLab은 연결 참조가 빈 행도 여기다(연결자가 떠났다 — gitlab-repositories). GitHub은 지금처럼 리포 id 하나다.
+  if (!repoConnectionPinned(row)) return "needs_reconnect";
+  // 만료 임박(14일)은 목록 상태가 아니다 — 연결은 정상이라 `Active`이고, 임박은 토큰의 자리(`/account`·설정 카드)가 말한다(design §2 톤 표).
+  if (row.repoHost === "gitlab" && tokenExpiryState(row.gitlabTokenExpiresAt, now) === "expired") return "needs_reconnect";
+  return "active";
 }
 
 /**

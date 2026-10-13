@@ -38,6 +38,17 @@ model Project {
   /// 각각 막는다. OWNER가 설정에서 [다시 연결]을 한 번 누르면 채워진다.
   repositoryId   String?
 
+  /// 리포 호스트(gitlab-repositories) — `"github"` · `"gitlab"`. 앱 층 어휘라 enum이 아니다(`SyncRun.errorCode`와 같은 근거).
+  /// ⚠️ **기본값이 기존 행의 백필이다** — 이 열이 생기기 전 행은 전부 GitHub이고, 셀프 호스팅은 버전을 건너뛰어 올라오므로 앱 코드가
+  /// 아니라 `ADD COLUMN … DEFAULT 'github'`가 채운다(SELF-HOSTING §3-1). 판정은 `repoTargetOf`(`lib/repo-host/target.ts`) 하나다.
+  repoHost String @default("github")
+  /// GitLab 프로젝트가 쓰는 **계정 GitLab 연결의 참조** — 사본을 두지 않는다(PAT는 어차피 개인 명의다). Sync·Publish·야간은 호출자가 아니라
+  /// 이 연결의 PAT로 쓴다. null이면 연결이 끊긴 것이다(`repoTargetOf` → `not-connected`). GitHub 행은 항상 null이다.
+  /// ⚠️ **연결자가 떠나면 끊긴다** — 연결 해제·계정 삭제는 FK `SetNull`이, 참조 주인이 멤버에서 빠지는 것은 멤버 변경 tx가 비운다.
+  /// ⚠️ GitLab 행에는 `installationId`가 없다 — 통과시키려고 가짜 설치 id를 넣지 않는다. `repositoryId`(GitLab project id)는 생성 때 항상 있다.
+  gitlabConnectionId String?
+  gitlabConnection   GitLabConnection? @relation(fields: [gitlabConnectionId], references: [id], onDelete: SetNull)
+
   /// Manual repository import ownership spans all surfaces and network preparation.
   repositoryImportToken     String?
   repositoryImportStartedAt DateTime?
@@ -108,6 +119,9 @@ model Project {
   invitations ProjectInvitation[]
   syncRuns    SyncRun[]
   events      ProjectEvent[]
+
+  /// 연결 해제·계정 삭제의 `SetNull`이 참조하는 프로젝트를 찾는다.
+  @@index([gitlabConnectionId])
 }
 
 /// 프로젝트 안의 비중첩 번역 표면. 포맷·적재 상태는 이 행이 소유하고 Publish는 Project가 소유한다.
@@ -588,6 +602,7 @@ model User {
   syncRuns        SyncRun[]
   events          ProjectEvent[]
   apiToken        ApiToken?
+  gitlabConnection GitLabConnection?
   oauthConnections OAuthConnection[]
   oauthCodes       OAuthCode[]
 }
@@ -615,6 +630,33 @@ model ApiToken {
   expiresAt   DateTime
   /// 토큰은 자격증명이라 사건과 달리 보존할 이유가 없다 — 사용자 삭제와 함께 사라진다.
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// **계정 GitLab 연결** (gitlab-repositories design §2 "GitLab 연결") — 레거시 PAT(스코프 `api`) 하나를 **사용자당 하나** 봉해 둔다.
+/// 프로젝트는 이 행을 참조만 한다(`Project.gitlabConnectionId`) — 토큰 교체 한 번이면 참조하는 프로젝트 전부가 새 토큰으로 쓴다.
+/// **로그인 `Account`에 섞지 않는다** — GitLab은 로그인 공급자가 아니고, `Account`의 snake_case 칸은 GitHub App 토큰 전용이다.
+///
+/// ⚠️ **사용자 축 모델이다** — 인덱스가 `projectId` 선두가 아니다(`ApiToken`과 같다). 모든 조회는 세션의 `userId`로 좁힌다.
+/// ⚠️ **같은 행의 교체는 같은 GitLab 사용자만** 받는다(D19) — 다른 계정의 PAT로 바꾸면 참조 프로젝트 전부의 쓰기 명의가 재검사 없이 바뀐다.
+model GitLabConnection {
+  id           String    @id @default(cuid())
+  userId       String    @unique
+  /// PAT 원문의 AES-GCM 봉투 — **토큰 키**(`TOKEN_ENCRYPTION_KEYS`, D8)로 봉한다(`sealGitLabToken`). 원문은 응답·로그·사건에 싣지 않는다.
+  token        String
+  /// GitLab 사용자 id(`/personal_access_tokens/self`의 `user_id`). 호출자 권한 조회(`members/all/<id>`)와 교체 대조(D19)의 입력이다.
+  gitlabUserId String
+  /// GitLab 사용자명 — 공개 핸들이라 평문이다(D19). 연결자 표시용.
+  username     String
+  /// PAT 만료일(그날 자정 UTC). 만료 임박·만료를 호출 없이 판정한다. GitLab.com은 만료일이 필수지만 인스턴스 설정에 따라 없을 수 있다.
+  expiresAt    DateTime?
+  /// 검증 시점의 스코프. `api` 없는 토큰은 저장되지 않는다. `/self`의 `last_used_ips`는 저장하지 않는다.
+  scopes       String[]
+  createdAt    DateTime  @default(now())
+  /// 마지막 토큰 교체 시각.
+  updatedAt    DateTime  @updatedAt
+  /// 자격증명이라 보존할 이유가 없다 — 사용자 삭제와 함께 사라지고, 참조하던 프로젝트는 FK `SetNull`로 끊긴다.
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projects     Project[]
 }
 
 /// **MCP OAuth 연결** (mcp-oauth design §4) — 클라이언트별 "연결"이고 개인 토큰(`ApiToken`)의 형제다. 권한 어휘·범위·만료가 개인 토큰과

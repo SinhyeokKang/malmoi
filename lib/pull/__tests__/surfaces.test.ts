@@ -3,7 +3,7 @@ import { runPull } from "../run";
 import { createFakeGitClient } from "./fake-client";
 
 it("publishes both surfaces from one snapshot and rejects overlap before writes", async () => {
-  const project = { id: "p", slug: "demo", repoOwner: "o", repoName: "r", baseBranch: "main", installationId: "1", lastPulledAt: null };
+  const project = { id: "p", slug: "demo", repoOwner: "o", repoName: "r", baseBranch: "main", repoHost: "github", gitlabConnectionId: null, installationId: "1", repositoryId: "2", lastPulledAt: null };
   const surface = (id: string, pathTemplate: string) => ({
     id, slug: id, adapterName: "json-catalog", pathTemplate, baseLocale: "en", nested: false, nestedByPath: null,
     localeCodes: ["en"], keys: [{ key: "hello", sourceText: id, orphaned: false, cells: { en: { value: id } } }],
@@ -15,15 +15,14 @@ it("publishes both surfaces from one snapshot and rejects overlap before writes"
       createClient: async () => client, saveLastPulledAt: async () => {}, invalidateDelivery: async () => {}, syncBranch: "malmoi-i18n/sync-demo" });
     if (overlap) {
       await expect(promise).rejects.toThrow(/a\/en.json/);
-      expect(calls.filter(c => c.method.startsWith("create"))).toEqual([]);
+      expect(calls.filter(c => c.method === "publishSnapshot" || c.method === "createPr")).toEqual([]);
     } else {
       expect(await promise).toMatchObject({ status: "committed", changed: ["a/en.json", "b/en.json"] });
       expect(calls.filter(c => c.method === "getTree")).toHaveLength(1);
-      expect(calls.filter(c => c.method === "createTree")).toHaveLength(1);
-      expect(calls.filter(c => c.method === "createCommit")).toHaveLength(1);
+      expect(calls.filter(c => c.method === "publishSnapshot")).toHaveLength(1);
       expect(calls.filter(c => c.method === "createPr")).toHaveLength(1);
     }
-    return calls.find(c => c.method === "createTree");
+    return calls.find(c => c.method === "publishSnapshot");
   }
   expect(await run(false)).toEqual(await run(true));
   await run(false, true);
@@ -36,10 +35,10 @@ it("does not publish or advance the watermark when the second surface blob fails
   ] }, blobs: { a: '{"hello":"old"}' } });
   const saveLastPulledAt = vi.fn();
   await expect(runPull({ loadState: async () => ({
-    project: { id: "p", slug: "demo", repoOwner: "o", repoName: "r", baseBranch: "main", installationId: "1", lastPulledAt: null },
+    project: { id: "p", slug: "demo", repoOwner: "o", repoName: "r", baseBranch: "main", repoHost: "github", gitlabConnectionId: null, installationId: "1", repositoryId: "2", lastPulledAt: null },
     surfaces: ["a", "b"].map(id => ({ id, slug: id, adapterName: "json-catalog", pathTemplate: `${id}/{locale}.json`, baseLocale: "en", nested: false, nestedByPath: null,
       localeCodes: ["en"], keys: [{ key: "hello", sourceText: id, orphaned: false, cells: { en: { value: id } } }] })), maxUpdatedAt: new Date(), unpublished: 1, pendingEdits: [],
   }), createClient: async () => client, saveLastPulledAt, invalidateDelivery: async () => {}, syncBranch: "malmoi-i18n/sync-demo" })).rejects.toThrow();
-  expect(calls.filter(c => c.method.startsWith("create") || c.method === "updateRefForce")).toEqual([]);
+  expect(calls.filter(c => c.method === "publishSnapshot" || c.method === "resetSyncBranch" || c.method === "createPr")).toEqual([]);
   expect(saveLastPulledAt).not.toHaveBeenCalled();
 });

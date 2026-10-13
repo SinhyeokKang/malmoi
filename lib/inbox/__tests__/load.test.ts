@@ -8,7 +8,7 @@ const at = new Date("2026-10-01T00:00:00Z");
 const locale = { code: "ko", name: "Korean", orphaned: false, createdAt: at };
 function member(id: string, overrides = {}) {
   return { role: "OWNER", user: { attentionSeenAt: null }, project: {
-    id, slug: id, name: id, image: null, installationId: "1", repositoryId: "1", archivedAt: null, createdAt: at,
+    id, slug: id, name: id, image: null, repoHost: "github", gitlabConnectionId: null, installationId: "1", repositoryId: "1", archivedAt: null, createdAt: at,
     surfaces: [{ id: `s-${id}`, slug: "web", archivedAt: null, lastCommitSha: "a", lastImportError: null, lastImportFailedAt: null, lastImportStartedAt: null, locales: [locale] }],
     ...overrides,
   } };
@@ -46,7 +46,7 @@ it("표면 실패를 평탄화하지 않고 설정·첫 적재 대기를 같은 
   const base = member("p").project.surfaces[0]!;
   const { prisma } = database([
     member("p", { surfaces: [{ ...base, lastImportError: "parse-failed", lastImportFailedAt: at }, { ...base, id: "s2", slug: "mail", lastImportError: "parse-failed", lastImportStartedAt: at }] }),
-    member("setup", { installationId: null, surfaces: [] }),
+    member("setup", { repoHost: "github", gitlabConnectionId: null, installationId: null, surfaces: [] }),
     member("awaiting", { surfaces: [{ ...base, lastCommitSha: null }] }),
   ]);
   const plan = await loadAttentionInbox(prisma, "user");

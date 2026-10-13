@@ -350,15 +350,15 @@ describe("행 축 (8-4)", () => {
 });
 
 /**
- * **연결 판정의 배선** (ux-drift-unify T20 · 🔴 F) — 첫 렌더는 DB 판정(`storedConnection`), GitHub 판정은 promise로 내려 기다리지 않는다.
+ * **연결 판정의 배선** (ux-drift-unify T20 · 🔴 F) — 첫 렌더는 DB 판정(`repoTargetOf` — `storedConnection`과 같은 판정), 원격 판정은 promise로 내려 기다리지 않는다.
  * ⚠️ 메모를 켠다(U7 r1 — Home과 둘, `probe-memo.test.ts`) — 키 클릭·저장마다 다시 렌더된다. ⚠️ 페이지가 GitHub 판정을 await하면 ARCHITECTURE §1.95의 착지가 는다.
  */
 describe("번역 화면 — 연결 판정", () => {
   const page = read(PAGE);
 
   it("DB 판정이 먼저이고 GitHub 판정은 기다리지 않는 promise다", () => {
-    expect(page).toContain("storedConnection(project)");
-    expect(page).toContain("later: loadConnectionHealth(project, { memo: true })");
+    expect(page).toContain("repoTargetOf(project)");
+    expect(page).toContain("later: loadConnectionHealth(target, { memo: true })");
     expect(page).not.toMatch(/await loadConnectionHealth/);
     expect(page).toMatch(/connection=\{connection\}/);
   });

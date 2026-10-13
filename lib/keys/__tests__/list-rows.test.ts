@@ -16,7 +16,7 @@ const surface = (over: Partial<ProjectListMemberRow["project"]["surfaces"][numbe
 const member = (surfaces: ProjectListMemberRow["project"]["surfaces"], over: Partial<ProjectListMemberRow["project"]> = {}): ProjectListMemberRow => ({
   role: "OWNER",
   project: {
-    id: "p1", slug: "acme", name: "Acme", image: null, installationId: "1", archivedAt: null, repoOwner: "o", repoName: "r",
+    id: "p1", slug: "acme", name: "Acme", image: null, repoHost: "github", gitlabConnectionId: null, installationId: "1", archivedAt: null, repoOwner: "o", repoName: "r",
     repositoryId: "10", baseBranch: "main", lastPrUrl: null, _count: { members: 1 }, surfaces, ...over,
   },
 });

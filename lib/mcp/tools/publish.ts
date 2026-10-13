@@ -1,4 +1,5 @@
 import "server-only";
+import { withRepoHost } from "@/lib/i18n/host";
 import { z } from "zod";
 
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -8,6 +9,7 @@ import { pullWarningLine, withWarningLines } from "@/lib/i18n/adapter-errors";
 import { revalidateTranslationReaders } from "@/lib/keys/revalidate-readers";
 import { loadPreview } from "@/lib/publish/load-preview";
 import { planPublishView } from "@/lib/publish/plan";
+import type { RepoHost } from "@/lib/repo-host/target";
 import { publishProject } from "@/lib/sync/publish";
 import { en } from "@/messages/en";
 
@@ -39,14 +41,16 @@ export const previewPublish = defineTool({
       return { status: "refused", code: result.reason, message: copy.description(result.path, result.branch) };
     }
     const { preview } = result;
+    const gitlab = gate.repoHost === "gitlab";
     return ok({
       fingerprint: preview.fingerprint,
       sendable: preview.sendable,
       changedFiles: preview.changedFiles,
       unsent: { total: preview.total, keys: preview.keys, withoutFile: preview.withoutFile, withoutKey: preview.withoutKey },
-      pullRequest: pullRequestState(preview.openPr),
+      // 필드 이름은 리포 호스트의 어휘다(D26) — GitHub은 기존 `pullRequest` 그대로, GitLab은 `mergeRequest`. 값의 세 상태는 같다.
+      ...(gitlab ? { mergeRequest: pullRequestState(preview.openPr) } : { pullRequest: pullRequestState(preview.openPr) }),
       groups: preview.groups,
-    }, en.mcp.summary.publishPreview(preview.sendable.total));
+    }, gitlab ? en.mcp.summary.gitlab.publishPreview(preview.sendable.total) : en.mcp.summary.publishPreview(preview.sendable.total));
   },
 });
 
@@ -59,7 +63,7 @@ export const publish = defineTool({
     const { outcome, attempted } = await publishProject(prisma, coreSubject(subject), { slug, expectedFingerprint: fingerprint });
     // 실행기에 닿았으면 스킵·실패에도 지운다 — 웹 Publish와 같은 셋이다(`triggerPullAction`).
     if (attempted) revalidateTranslationReaders(slug);
-    return publishOutcome(outcome, () => repoLabel(prisma, slug));
+    return publishOutcome(outcome, () => repoLabel(prisma, slug), gate.repoHost);
   },
 });
 
@@ -94,6 +98,7 @@ async function repoLabel(prisma: PrismaClient, slug: string): Promise<{ label: s
 async function publishOutcome(
   outcome: Awaited<ReturnType<typeof publishProject>>["outcome"],
   repoOf: () => Promise<{ label: string; branch: string }>,
+  repoHost: RepoHost,
 ): Promise<ToolOutcome> {
   if (outcome.status === "skipped" && outcome.reason === "reconfirm") return { status: "refused", code: "reconfirm", message: en.logs.reasons.reconfirm };
   if (outcome.status === "failed") {
@@ -101,7 +106,7 @@ async function publishOutcome(
     if (outcome.error === "publish-unsettled") return { status: "refused", code: outcome.error, message: en.translations.publish.unsettledBody, detail: { delivery, retryAfterSeconds: outcome.retryAfterSeconds } };
     if (outcome.error === "already-running") return { status: "refused", code: outcome.error, message: en.translations.publish.alreadyRunningBody, detail: { delivery } };
     if (outcome.error === "too-soon") {
-      return { status: "refused", code: outcome.error, message: en.translations.publish.tooSoonBody,
+      return { status: "refused", code: outcome.error, message: withRepoHost(en, repoHost).translations.publish.tooSoonBody,
         detail: { delivery, ...(outcome.retryAfterSeconds === undefined ? {} : { retryAfterSeconds: outcome.retryAfterSeconds }) } };
     }
     if (outcome.code !== undefined) {
@@ -117,5 +122,6 @@ async function publishOutcome(
   }
   const view = planPublishView(outcome);
   // 실행은 writer 경고를 코드로 싣는다(ui-locales B1′) — 도구 응답의 계약은 영어 문장이라 여기서 en으로 조립한다.
-  return ok({ result: view, outcome: withWarningLines(outcome, en.adapterErrors) }, en.mcp.summary.published(view));
+  const summary = repoHost === "gitlab" ? en.mcp.summary.gitlab.published(view) : en.mcp.summary.published(view);
+  return ok({ result: view, outcome: withWarningLines(outcome, en.adapterErrors) }, summary);
 }

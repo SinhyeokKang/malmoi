@@ -5,12 +5,15 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { getProjectAccess } from "@/lib/auth/query";
 import type { Subject } from "@/lib/auth/subject";
 import { recordImportRefusal } from "@/lib/events/record";
-import { openRepoReader } from "@/lib/github";
+import { openRepoReader } from "@/lib/repo-host";
+import type { RepoReader } from "@/lib/repo-host/reader";
+import { repoLocatorOf, repoTargetOf, sameAccessedRepository } from "@/lib/repo-host/target";
 import { logFailure } from "@/lib/github-connect/log";
 import type { RepositoryImportError, RepositoryImportOutcome } from "@/lib/import/result";
 import { runRepositoryImportFromReader } from "@/lib/import/run";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
 import { forgetOpenPr } from "@/lib/projects/open-pr-memo";
+import { classifySyncError } from "@/lib/sync/plan";
 
 import { checkRepoAccess } from "./access";
 
@@ -54,15 +57,34 @@ async function runAuthorized(prisma: PrismaClient, subject: Subject, projectId: 
     if (project.archivedAt !== null) return await refuse("archived");
     if (planProjectReadiness(project) !== "ready") return await refuse("not-ready");
     // ⚠️ **`not-connected`가 아니다** (ux-drift-unify r1) — 그 코드는 아래 `checkRepoAccess`가 "계정이 연결되지 않았다"로 낸다. 설치 없음은 readiness가 먼저 걸렀다.
-    if (project.installationId === null || project.repositoryId === null) return { ok: false, error: "unpinned" };
+    const connection = repoTargetOf(project);
+    // GitLab의 연결 없음은 연결자가 떠난 것이다 — 설정에서 재연결한다(GitHub `unpinned`의 짝).
+    if (connection.status !== "ok") return { ok: false, error: project.repoHost === "gitlab" ? "gitlab-project-disconnected" : "unpinned" };
     // 재적재는 리포를 읽기만 한다 — 쓰기 권한 없이 초대된 OWNER도 여기선 통과한다 (sec-audit-3 1a 범위 밖).
-    const connected = await checkRepoAccess(prisma, userId, project.repoOwner, project.repoName, false);
+    const connected = await checkRepoAccess(prisma, userId, repoLocatorOf(project), { requirePush: false });
     if (connected.status !== "ok") return await refuse(connected.error);
-    if (connected.repositoryId !== project.repositoryId || connected.installationId !== project.installationId) return await refuse("repo-replaced");
-    const { installationId, repositoryId } = project;
+    if (!sameAccessedRepository(connected, connection.target)) return await refuse("repo-replaced");
+    // 호출자 접근을 확인한 뒤에도 리더는 **프로젝트 쪽 연결**로 연다. 잠금 안 재검증이 이 대상과 저장된 열을 다시 대조한다.
+    const target = connection.target;
+    let openReader = () => openRepoReader(target);
+    if (target.host === "gitlab") {
+      /*
+        ⚠️ **GitLab 리더는 실행권 전에 연다** (감사 E4 · 결정 R6) — 위 호출자 확인은 호출자 PAT라 토큰 주인 쪽(저장 만료·철회·보관)을 못 본다. 실행권을
+        얻은 뒤 리더 열기에서 드러나면 모든 소스가 실패 상태(`ingest-failed`)로 남았다 — 재연결이 고치는 것(`not-installed`)은 거부로 돌린다.
+        건강성 판정(`loadConnectionHealth`)을 쓰지 않는다: 그것은 주인의 push 권한까지 보지만 Sync는 읽기라 Reporter 주인에서도 돈다(#123).
+        일시 장애는 거부로 접지 않고 실행이 지금처럼 실패로 기록한다. 연 리더는 실행이 그대로 쓴다(원격 왕복을 한 번 더 하지 않는다).
+      */
+      const opened = await openRepoReader(target).then(
+        (reader): { ok: true; reader: RepoReader } => ({ ok: true, reader }),
+        (error: unknown): { ok: false; error: unknown } => ({ ok: false, error }),
+      );
+      if (!opened.ok && classifySyncError(opened.error).code === "not-installed") return await refuse("gitlab-project-disconnected");
+      openReader = opened.ok ? () => Promise.resolve(opened.reader) : () => Promise.reject(opened.error);
+    }
     return await runRepositoryImportFromReader(prisma, { projectId, userId, approval, credential: subject.credential,
-      repository: { repositoryId, installationId, repoOwner: project.repoOwner, repoName: project.repoName, baseBranch: project.baseBranch },
-    }, () => openRepoReader(project.repoOwner, project.repoName, installationId, repositoryId));
+      repository: { repoHost: project.repoHost, repositoryId: project.repositoryId, installationId: project.installationId, gitlabConnectionId: project.gitlabConnectionId,
+        repoOwner: project.repoOwner, repoName: project.repoName, baseBranch: project.baseBranch },
+    }, openReader);
   } catch (error) {
     logFailure("repository-import-action", error);
     return { ok: false, error: "ingest-failed" };

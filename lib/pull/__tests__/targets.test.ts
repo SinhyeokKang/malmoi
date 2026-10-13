@@ -15,7 +15,10 @@ import { selectPullTargets } from "../targets";
 const project = (
   over: Partial<{
     slug: string;
+    repoHost: string;
     installationId: string | null;
+    gitlabConnectionId: string | null;
+    gitlabConnection: { expiresAt: Date | null } | null;
     repositoryId: string | null;
     surfaces: { archivedAt: Date | null; lastCommitSha: string | null }[];
     archivedAt: Date | null;
@@ -23,7 +26,8 @@ const project = (
   }> = {},
 ) => ({
   slug: "acme",
-  installationId: "1",
+  repoHost: "github", gitlabConnectionId: null, installationId: "1",
+  gitlabConnection: null as { expiresAt: Date | null } | null,
   repositoryId: "1035512",
   surfaces: [{ archivedAt: null, lastCommitSha: "a".repeat(40) }],
   archivedAt: null,
@@ -38,7 +42,7 @@ describe("selectPullTargets — 준비된 프로젝트만", () => {
   });
 
   it("`installationId`가 null이면 뺀다 — `runPull`이 던지는 자리를 미리 막는다", () => {
-    expect(selectPullTargets([project({ installationId: null })], 50).targets).toEqual([]);
+    expect(selectPullTargets([project({ repoHost: "github", gitlabConnectionId: null, installationId: null })], 50).targets).toEqual([]);
   });
 
   it("⚠️ 리포 ID가 고정 안 된 옛 행도 뺀다 — `createClient`가 확실히 던지는 자리다", () => {
@@ -54,10 +58,31 @@ describe("selectPullTargets — 준비된 프로젝트만", () => {
 
   it("`skillflo-web` 모양(설치 없음 + 더미 SHA)은 **의도적으로** 빠진다 (ARCHITECTURE §3.05)", () => {
     const rows = [
-      project({ slug: "skillflo-web", installationId: null, surfaces: [{ archivedAt: null, lastCommitSha: "deadbeef" }] }),
+      project({ slug: "skillflo-web", repoHost: "github", gitlabConnectionId: null, installationId: null, surfaces: [{ archivedAt: null, lastCommitSha: "deadbeef" }] }),
       project({ slug: "order-check" }),
     ];
     expect(selectPullTargets(rows, 50).targets).toEqual(["order-check"]);
+  });
+
+  describe("GitLab 연결의 저장 만료일 (audit B⚪1 · 결정 R2)", () => {
+    const NOW = new Date("2026-10-13T18:00:00Z");
+    const gitlab = (slug: string, expiresAt: Date | null) =>
+      project({ slug, repoHost: "gitlab", installationId: null, gitlabConnectionId: "conn-a", gitlabConnection: { expiresAt } });
+
+    it("⚠️ 저장 만료일이 지난 연결의 프로젝트는 뺀다 — GitHub 미고정 행과 같이 매일 밤 실패가 확정된 자리다", () => {
+      // 만료일은 그날 자정 UTC다 — 바로 그 시각부터 만료다(`tokenExpiryState`의 `<= 0`).
+      const rows = [gitlab("expired", new Date("2026-10-13T00:00:00Z")), gitlab("edge", NOW), gitlab("live", new Date("2026-10-14T00:00:00Z"))];
+      expect(selectPullTargets(rows, 50, NOW).targets).toEqual(["live"]);
+    });
+
+    it("만료일이 없는 토큰·만료 임박은 대상이다 — 임박은 연결이 아직 산다", () => {
+      const rows = [gitlab("never", null), gitlab("soon", new Date("2026-10-15T00:00:00Z"))];
+      expect(selectPullTargets(rows, 50, NOW).targets).toEqual(["never", "soon"]);
+    });
+
+    it("GitHub 행은 만료일을 보지 않는다", () => {
+      expect(selectPullTargets([project({ gitlabConnection: { expiresAt: new Date("2000-01-01T00:00:00Z") } })], 50, NOW).targets).toEqual(["acme"]);
+    });
   });
 
   it("빈 목록은 빈 배열이다 — 대상 0개가 오류가 아니다", () => {
@@ -118,7 +143,7 @@ describe("selectPullTargets — 순회 상한 (sec-audit 26)", () => {
   });
 
   it("준비 안 된 프로젝트는 상한을 안 먹는다 — 필터가 자르기보다 앞이다", () => {
-    const rows = [...many(2), project({ slug: "zzz", installationId: null })];
+    const rows = [...many(2), project({ slug: "zzz", repoHost: "github", gitlabConnectionId: null, installationId: null })];
     expect(selectPullTargets(rows, 2)).toEqual({ targets: ["p000", "p001"], unprocessed: 0 });
   });
 });

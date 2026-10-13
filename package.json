@@ -21,6 +21,7 @@
     "push:local": "tsx scripts/push-local.ts",
     "smoke:blob": "NODE_OPTIONS=--conditions=react-server tsx scripts/smoke-blob.ts",
     "smoke:github": "tsx scripts/smoke-github.ts",
+    "smoke:gitlab": "tsx scripts/smoke-gitlab.ts",
     "adapter-survey": "tsx scripts/adapter-survey.ts",
     "guide:check": "tsx scripts/guide-check.ts",
     "preflight": "tsx scripts/preflight.ts",
@@ -92,5 +93,5 @@
     "yaml": "2.9.0",
     "zod": "^4.5.4"
   },
-  "version": "1.3.4"
+  "version": "1.4.0"
 }

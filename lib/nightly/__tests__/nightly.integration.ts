@@ -14,7 +14,7 @@ import { loadProjectListAggregates } from "@/lib/keys/query";
 import { summaryQueue } from "@/lib/projects/list";
 import { isImportFailureCode } from "@/lib/projects/import-status";
 import { optionalEnv } from "@/lib/env";
-import type { RepoReader } from "@/lib/github";
+import { sizesFromSnapshot, type RepoReader } from "@/lib/repo-host/reader";
 import { applyPush } from "@/lib/push/apply";
 import { createFakeGitClient, type FakeGitOptions } from "@/lib/pull/__tests__/fake-client";
 import type { GitClient } from "@/lib/pull/client";
@@ -31,7 +31,7 @@ import type { GitClient } from "@/lib/pull/client";
  */
 
 const fakes = vi.hoisted(() => ({ client: undefined as GitClient | undefined, reader: undefined as RepoReader | undefined }));
-vi.mock("@/lib/github", () => ({
+vi.mock("@/lib/repo-host", () => ({
   createGitClient: async () => { if (fakes.client === undefined) throw new Error("no fake client"); return fakes.client; },
   openRepoReader: async () => { if (fakes.reader === undefined) throw new Error("no fake reader"); return fakes.reader; },
 }));
@@ -78,7 +78,7 @@ const OLD = "a".repeat(40);
 const MERGE = "d".repeat(40);
 const oldAt = new Date("2026-09-10T00:00:00Z");
 const mergeAt = "2026-09-29T09:00:00Z";
-const repository = { repositoryId: "123", installationId: "456", repoOwner: "o", repoName: "r", baseBranch: "main" };
+const repository = { repositoryId: "123", repoHost: "github", gitlabConnectionId: null, installationId: "456", repoOwner: "o", repoName: "r", baseBranch: "main" };
 
 async function seed() {
   await prisma.project.create({ data: { id: "p", slug: "fixture", name: "Fixture", ...repository,
@@ -94,7 +94,7 @@ async function seed() {
 /** `/api/pull`이 고른 행과 같은 모양 — 라우트의 `select`를 그대로 읽는다. */
 async function target() {
   const row = await prisma.project.findUniqueOrThrow({ where: { id: "p" }, select: {
-    id: true, slug: true, repoOwner: true, repoName: true, baseBranch: true, installationId: true, repositoryId: true, lastNightlyAt: true,
+    id: true, slug: true, repoOwner: true, repoName: true, baseBranch: true, repoHost: true, gitlabConnectionId: true, installationId: true, repositoryId: true, lastNightlyAt: true,
     surfaces: { select: { id: true, slug: true, archivedAt: true, lastCommitSha: true, adapterName: true, pathTemplate: true, baseLocale: true, lastImportError: true, importRevision: true } },
   } });
   return row;
@@ -104,7 +104,7 @@ function github(options: FakeGitOptions) {
   const fake = createFakeGitClient({ refSha: { "heads/main": MERGE }, ...options });
   fakes.client = fake.client;
   // 머지 커밋의 트리 — Malmoi PR이 번역을 바꿔 둔 상태다.
-  fakes.reader = {
+  fakes.reader = { sizes: async (snapshot, paths) => sizesFromSnapshot(snapshot, paths),
     snapshot: vi.fn<RepoReader["snapshot"]>(async () => ({ status: "ok", headSha: MERGE, headCommittedAt: mergeAt,
       files: ["en", "ko"].map((locale) => ({ path: `i18n/${locale}.json`, sha: locale, size: 50 })) })),
     blob: vi.fn(async (sha: string) => sha === "en" ? '{"hello":"Hello"}' : '{"hello":"안녕하세요"}'),
@@ -205,13 +205,13 @@ it("마감으로 멈춘 프로젝트는 다음 밤 제때 방문한 프로젝트
   github({ refSha: { "heads/main": OLD } });
   // q는 제때 방문했다(upToDate) — 방문 기록이 지금으로 전진한다.
   const q = await prisma.project.findUniqueOrThrow({ where: { id: "q" }, select: {
-    id: true, slug: true, repoOwner: true, repoName: true, baseBranch: true, installationId: true, repositoryId: true, lastNightlyAt: true,
+    id: true, slug: true, repoOwner: true, repoName: true, baseBranch: true, repoHost: true, gitlabConnectionId: true, installationId: true, repositoryId: true, lastNightlyAt: true,
     surfaces: { select: { id: true, slug: true, archivedAt: true, lastCommitSha: true, adapterName: true, pathTemplate: true, baseLocale: true, lastImportError: true, importRevision: true } } } });
   expect(await runNightly(prisma, q, () => 0)).toEqual({ action: "skip", outcome: "upToDate" });
   // p는 마감으로 멈췄다.
   github({});
   await late();
-  const rows = await prisma.project.findMany({ select: { slug: true, installationId: true, repositoryId: true, archivedAt: true, lastNightlyAt: true,
+  const rows = await prisma.project.findMany({ select: { slug: true, repoHost: true, gitlabConnectionId: true, gitlabConnection: { select: { expiresAt: true } }, installationId: true, repositoryId: true, archivedAt: true, lastNightlyAt: true,
     surfaces: { select: { archivedAt: true, lastCommitSha: true } } } });
   expect(selectPullTargets(rows, 50).targets).toEqual(["fixture", "other"]);
   expect(await stampOf("q")).not.toEqual(before);
@@ -274,7 +274,7 @@ it("(a) 한 로케일 내려받기 실패 → partial → 같은 head에서 정�
   const files = ["en", "ko", "fr"].map((locale) => ({ path: `i18n/${locale}.json`, sha: locale, size: 50 }));
   const content: Record<string, string> = { en: '{"hello":"Hello"}', ko: '{"hello":"안녕하세요"}', fr: '{"hello":"Bonjour"}' };
   let frDown = true;
-  fakes.reader = {
+  fakes.reader = { sizes: async (snapshot, paths) => sizesFromSnapshot(snapshot, paths),
     snapshot: vi.fn<RepoReader["snapshot"]>(async () => ({ status: "ok", headSha: MERGE, headCommittedAt: mergeAt, files })),
     blob: vi.fn(async (sha: string) => (sha === "fr" && frDown ? undefined : content[sha])),
   };

@@ -43,10 +43,10 @@ loadLocalEnv();
 
 const argv = process.argv.slice(2);
 /** 값을 뒤에 하나 더 먹는 플래그. 대상 디렉터리를 고를 때 그 자리를 건너뛰어야 한다 (`lib/cli/args.ts`). */
-const VALUE_FLAGS = new Set(["--url", "--wrapper", "--adapter", "--project", "--base", "--surface", "--path-template"]);
+const VALUE_FLAGS = new Set(["--url", "--wrapper", "--adapter", "--project", "--base", "--surface", "--path-template", "--repo-host"]);
 
 const USAGE =
-  "사용법: pnpm push:local <대상 디렉터리> --project <slug> [--surface <slug>] [--path-template <template>] [--url ...] [--wrapper <module>#<export>[()]]... [--adapter <name>] [--base <locale>]";
+  "사용법: pnpm push:local <대상 디렉터리> --project <slug> [--surface <slug>] [--path-template <template>] [--url ...] [--wrapper <module>#<export>[()]]... [--adapter <name>] [--base <locale>] [--repo-host gitlab]";
 
 const target = findTarget(argv, VALUE_FLAGS);
 if (!target) {
@@ -250,7 +250,8 @@ const res = await fetch(`${baseUrl}/api/push`, {
 });
 const text = await res.text();
 // 보류(`deferred`)는 200·exit 0이고 `::warning` 한 줄이 붙는다 — 판정은 `lib/cli/push-response.ts`가 든다 (sync-edit-protection T16).
-const report = reportPushResponse(res.status, text);
+// `--repo-host gitlab`는 GitLab 러너가 싣는다(#259) — 보류 경고의 리뷰 요청 낱말만 가른다. 없으면 GitHub 문장 그대로다.
+const report = reportPushResponse(res.status, text, flagValue(argv, "--repo-host"));
 console.log(`\n${baseUrl}`);
 for (const line of report.lines) console.log(line);
 process.exitCode = report.exitCode;

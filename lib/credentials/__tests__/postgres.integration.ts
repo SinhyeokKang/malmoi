@@ -17,7 +17,7 @@ import { convertCredentials } from "../conversion";
 import { encodeUserFields, decodeUser } from "../records";
 import { refreshVerifiedEmail } from "../access";
 import { hashSessionToken } from "../crypto";
-import { lookupEmail, openToken } from "../storage";
+import { lookupEmail, openToken, sealGitLabToken, openGitLabToken } from "../storage";
 import { FINALIZE_MIGRATION } from "../finalize";
 import { noteAuthError, withOutageFlag } from "@/lib/auth/outage";
 import { publicSession } from "@/lib/auth/public-session";
@@ -981,4 +981,34 @@ it("provider cancellation returns a connect reason", async () => {
   const { callback, jar } = await connectOAuth("google");
   expect((await callback(jar, "error=access_denied")).headers.get("location")).toBe("http://localhost/account?connect=cancelled");
   expect(await prisma.account.count()).toBe(1);
+});
+
+
+it("GitLab PAT 회전·검증·백업 복원이 계정 AAD와 연결 메타를 보존한다", async () => {
+  await legacy();
+  await convertCredentials(prisma, { mode: "backfill", ...cutover });
+  const data = { userId: ids.u1, token: sealGitLabToken("fixture-gitlab-pat", { userId: ids.u1 }), gitlabUserId: "42", username: "fixture", expiresAt: new Date("2030-01-01"), scopes: ["api"] };
+  const connection = await prisma.gitLabConnection.create({ data });
+  const backup = join(directory, "gitlab-backup.sql");
+  execFileSync(join(binaries, "pg_dump"), ["-h", directory, "-p", "55479", "-U", "postgres", "-f", backup, "postgres"], { stdio: "pipe" });
+  const old = process.env.TOKEN_ENCRYPTION_KEYS!;
+  const next = randomBytes(32).toString("base64");
+  vi.stubEnv("TOKEN_ENCRYPTION_KEYS", JSON.stringify({ ...JSON.parse(old), next }));
+  vi.stubEnv("TOKEN_ENCRYPTION_ACTIVE_KEY_ID", "next");
+  try {
+    expect(await convertCredentials(prisma, { mode: "verify" })).toMatchObject({ oldTokenKey: 3 });
+    expect(await convertCredentials(prisma, { mode: "rotate-token", ...cutover })).toMatchObject({ oldTokenKey: 0, changes: 2 });
+    const rotated = await prisma.gitLabConnection.findUniqueOrThrow({ where: { id: connection.id } });
+    expect(rotated).toMatchObject({ ...data, token: expect.stringMatching(/^enc:v1:next:/) });
+    vi.stubEnv("TOKEN_ENCRYPTION_KEYS", JSON.stringify({ next }));
+    expect(openGitLabToken(rotated.token, { userId: ids.u1 })).toBe("fixture-gitlab-pat");
+    expect(await convertCredentials(prisma, { mode: "verify" })).toMatchObject({ oldTokenKey: 0 });
+    await pool.query('DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public');
+    execFileSync(join(binaries, "psql"), ["-h", directory, "-p", "55479", "-U", "postgres", "-d", "postgres", "-v", "ON_ERROR_STOP=1", "-f", backup], { stdio: "pipe" });
+    await expect(convertCredentials(prisma, { mode: "verify" })).rejects.toThrow();
+    vi.stubEnv("TOKEN_ENCRYPTION_KEYS", JSON.stringify({ ...JSON.parse(old), next }));
+    expect(await convertCredentials(prisma, { mode: "verify" })).toMatchObject({ oldTokenKey: 3 });
+    const restored = await prisma.gitLabConnection.findUniqueOrThrow({ where: { id: connection.id } });
+    expect(openGitLabToken(restored.token, { userId: ids.u1 })).toBe("fixture-gitlab-pat");
+  } finally { vi.unstubAllEnvs(); }
 });

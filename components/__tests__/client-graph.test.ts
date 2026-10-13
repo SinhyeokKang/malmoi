@@ -111,6 +111,9 @@ const CLIENT_LIB_FILES = [
   // Settings recovery now owns its card notice; this leaf only assembles public URLs.
   "lib/github-connect/installation-url.ts",
   "lib/github-connect/message.ts",
+  // GitLab 연결 거부 문구 — 사전과 `errors.ts`(코드 union, 잎)만 문다. 연결 코어(`connection.ts`·transport)는 서버 쪽이다.
+  "lib/gitlab-connect/errors.ts",
+  "lib/gitlab-connect/message.ts",
   // `SlowNotice`가 지연 선으로 읽는 상수 하나 — import가 0개인 잎이다 (audit-ux U7 r1). octokit은 `lib/github.ts` 쪽이다.
   "lib/github-wait.ts",
   // `/docs` 개요의 옛 해시 잎이 값으로 읽는다 — import 0인 잎이고, 표는 서버가 prop으로 넘긴다.
@@ -123,6 +126,8 @@ const CLIENT_LIB_FILES = [
   // 헤더·사이드바·`/inbox` 읽음 섬이 나눠 쓰는 탭 안 안 읽음 수 store(inbox-page D2) — import는 `react` 하나인 잎이다.
   "lib/inbox/unread-store.ts",
   "lib/i18n/adapter-errors.ts",
+  // 리포 호스트별 문장 덮기(`onGitLab`) — import 0 잎.
+  "lib/i18n/host.ts",
   "lib/i18n/index.ts",
   // 공개 푸터의 언어 스위처가 지원 집합·endonym·국기 매핑을 값으로 읽는다(ui-locales F2) — import 0인 잎이다(아래 잎 검사).
   "lib/i18n/locales.ts",
@@ -154,6 +159,8 @@ const CLIENT_LIB_FILES = [
   "lib/onboarding/next-enabled.ts",
   "lib/onboarding/select-surfaces.ts",
   "lib/onboarding/slug.ts",
+  // 리포 호스트의 웹 주소(`/projects` 띠의 compare) — import 0 잎.
+  "lib/projects/repo-web.ts",
   "lib/projects/import-failure.ts",
   // 프로젝트 목록이 검색을 로컬에서 거른다 (audit-ux #17) — 갈래·검색·하이라이트가 전부 I/O 없는 순수 함수다.
   "lib/projects/list.ts",
@@ -179,6 +186,8 @@ const CLIENT_LIB_FILES = [
   "lib/pull/ref-slug.ts",
   "lib/mcp/brand.ts",
   "lib/relative-time.ts",
+  // readiness의 연결 증거(`hasRepoConnection`, gitlab-repositories) — import 0인 잎이다. I/O는 형제 `./index`가 들고 여기는 판정뿐이다.
+  "lib/repo-host/target.ts",
   "lib/routes.ts",
   // D5 Command의 순환·활성 보존 판정 — import 0인 잎이다. 다른 검색 모듈은 E의 실제 소비 때 등록한다.
   "lib/search/keys.ts",
@@ -208,6 +217,8 @@ const CLIENT_LIB_FILES = [
   "lib/signin/dot-field.ts",
   // 상태 톤·낱말의 정본(ux-drift-unify §3.6) — `lib/i18n`만 무는 잎이다(아래 잎 검사). Sources 상태 판정이 톤을 여기서 읽는다.
   "lib/status/canon.ts",
+  // GitLab PAT 만료 판정(D11) — import 0 잎. `/account` 카드와 서버 목록이 같은 경계를 쓴다.
+  "lib/status/token-expiry.ts",
   "lib/sources/actions.ts",
   // Add sources의 꺼진 사유 (malmoi#93) — `lib/i18n` 하나만 문다.
   "lib/sources/add-block.ts",

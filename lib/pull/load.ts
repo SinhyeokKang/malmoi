@@ -56,7 +56,7 @@ async function loadSnapshot(prisma: Prisma.TransactionClient, slug: string): Pro
       repoOwner: true,
       repoName: true,
       baseBranch: true,
-      installationId: true,
+      repoHost: true, installationId: true, gitlabConnectionId: true,
       repositoryId: true,
       lastPulledAt: true,
       // ⚠️ **사라진 로케일은 빼고 읽는다.** 안 빼면 개발자가 지운 로케일 파일을 pull이 되살린다 —
@@ -172,10 +172,10 @@ export async function withheldRevertable(prisma: PrismaClient, projectId: string
 }
 
 function contextOf(
-  project: { repositoryId: string | null; baseBranch: string },
+  project: { repoHost: string; repositoryId: string | null; baseBranch: string },
   surface: { id: string; importRevision: number; adapterName: string | null; pathTemplate: string | null; nested: boolean | null; nestedByPath: unknown; baseLocale: string | null },
 ): string {
-  return deliveryContextFingerprint({ repositoryId: project.repositoryId, baseBranch: project.baseBranch, surface });
+  return deliveryContextFingerprint({ repoHost: project.repoHost, repositoryId: project.repositoryId, baseBranch: project.baseBranch, surface });
 }
 
 /**
@@ -315,7 +315,7 @@ async function confirmDelivery(
   if (run?.status !== "RUNNING") fail(UNCONFIRMED_DELIVERY);
 
   // 순차로 읽는다 — 대화형 트랜잭션은 커넥션 하나라 `Promise.all`이 왕복을 줄이지 못한다(POSTMORTEM 2026-09-16).
-  const owner = await tx.project.findUniqueOrThrow({ where: { id: projectId }, select: { repositoryId: true, baseBranch: true } });
+  const owner = await tx.project.findUniqueOrThrow({ where: { id: projectId }, select: { repoHost: true, repositoryId: true, baseBranch: true } });
   const rows = await tx.translationSurface.findMany({ where: { projectId, id: { in: surfaceIds }, archivedAt: null } });
   const confirmed = delivery.contexts.map(context => {
     const row = rows.find(row => row.id === context.surfaceId);

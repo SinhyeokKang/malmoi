@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { PrismaClient } from "@/generated/prisma/client";
 import { loadPullState } from "@/lib/pull/load";
-import type { TreePayload } from "@/lib/pull/payload";
+import type { GitClient } from "@/lib/pull/client";
 import { runPull } from "@/lib/pull/run";
 import { createFakeGitClient } from "@/lib/pull/__tests__/fake-client";
 
@@ -54,15 +54,16 @@ async function pullFiles(prisma: PrismaClient, opts: { lastPulledAt?: Date } = {
   const result = await runPull({
     loadState: async () => {
       const state = await loadPullState(prisma, "acme");
-      return { ...state, project: { ...state.project, lastPulledAt: opts.lastPulledAt ?? null } };
+      // 하네스 기본 행은 리포 id가 비어 있다 — Publish는 고정된 연결(`repoTargetOf`)로만 클라이언트를 연다.
+      return { ...state, project: { ...state.project, repositoryId: state.project.repositoryId ?? "1035512", lastPulledAt: opts.lastPulledAt ?? null } };
     },
     createClient: async () => client,
     saveLastPulledAt: async () => {},
     invalidateDelivery: async () => {},
     syncBranch: "malmoi-i18n/sync",
   });
-  const tree = calls.find((c) => c.method === "createTree")?.args[0] as TreePayload | undefined;
-  const byPath = Object.fromEntries((tree?.tree ?? []).map((e) => [e.path, e.content]));
+  const tree = calls.find((c) => c.method === "publishSnapshot")?.args[0] as Parameters<GitClient["publishSnapshot"]>[0] | undefined;
+  const byPath = Object.fromEntries((tree?.changes ?? []).map((e) => [e.path, e.content]));
   return { result, byPath, calls };
 }
 

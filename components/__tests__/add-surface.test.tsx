@@ -24,7 +24,7 @@ const props = {
     samples: [{ locale: "en", total: 1, rows: [{ key: "old", value: "Hello" }] }], confirmation: "signed" }] },
 };
 beforeEach(() => { vi.clearAllMocks(); mocks.detect.mockResolvedValue(props.initial); });
-const screen = () => <SourcesScreen slug={props.slug} adapters={props.adapters} role="OWNER" data={{ installed: true, sources: [], repository: { repoOwner: "o", repoName: "r", baseBranch: "main" } }} now={new Date()} initialOpen />;
+const screen = () => <SourcesScreen slug={props.slug} adapters={props.adapters} role="OWNER" data={{ installed: true, repoHost: "github", sources: [], repository: { repoOwner: "o", repoName: "r", baseBranch: "main" } }} now={new Date()} initialOpen />;
 async function draw() {
   const view = await render(screen());
   /** 재검증이 싣고 온 새 서버 트리 — `data`가 새 객체가 된다. 추가 뒤 닫기가 그것을 기다린다(malmoi#107). */

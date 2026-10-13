@@ -1,6 +1,6 @@
 # Malmoi
 
-Malmoi encuentra los archivos de traducción de un repositorio de GitHub, permite editarlos en el navegador sin Git y devuelve los cambios guardados en una sola pull request.
+Malmoi encuentra los archivos de traducción de un repositorio de GitHub o GitLab.com, permite editarlos en el navegador sin Git y devuelve los cambios guardados en una pull request o merge request.
 
 En la década de 1910, un proyecto para compilar un diccionario coreano reunió palabras dispersas en una sola colección; este producto toma su nombre de ese trabajo.
 

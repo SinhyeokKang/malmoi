@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { RepoHostScope } from "@/components/i18n/messages-provider";
 import { SourcesScreen } from "@/components/sources/sources-screen";
 import { SourcesArchived } from "@/components/sources/sources-archived";
 import { Alert } from "@/components/ui/alert";
@@ -26,10 +27,11 @@ export default async function SourcesPage({ params, searchParams }: { params: Pr
   const canEdit = canPerform(role, "project:settings");
   const data = await loadSources(getPrisma(), m, projectId, role);
   if (data === null) notFound();
-  return <>
+  // 이 프로젝트의 화면 전체가 그 리포 호스트의 문장을 말한다(제거 안내의 MR·`.gitlab-ci.yml` — `RepoHostScope`).
+  return <RepoHostScope host={data.repoHost}>
     {isConnectError(e) && <Alert variant="danger">{connectErrorMessage(m, e)}</Alert>}
     {add === "sources" && !canEdit && <Alert variant="warning">{m.sources.ownerOnly}</Alert>}
     <SourcesScreen slug={slug} role={role} data={data} now={new Date()} initialOpen={canEdit && add === "sources"}
       adapters={canEdit ? ADAPTERS.map(a => ({ adapter: a.name, layout: a.layout, ...formatLabel(m, a.name) })) : []} />
-  </>;
+  </RepoHostScope>;
 }

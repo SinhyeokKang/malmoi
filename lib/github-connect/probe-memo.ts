@@ -1,4 +1,5 @@
 import type { ProbeResult } from "./health";
+import type { ProjectRepoColumns } from "@/lib/repo-host/target";
 
 /**
  * **Home의 연결 확인을 짧게 기억한다** (malmoi#107 ①). Home은 `probeRepo`(GitHub 2홉)의 결과로 카드·할 일·배너·머리의
@@ -18,20 +19,25 @@ export const PROBE_MEMO_MAX = 500;
 /**
  * ⚠️ **저장된 `installationId`·`repositoryId`가 키에 든다** — 없으면 Reconnect로 저장값이 바뀐 직후 옛 probe를 새 저장값과
  * 견줘 `installation-changed`를 거짓으로 보인다. JSON 배열이라 `/`가 든 이름끼리 겹치지 않는다.
+ * ⚠️ **리포 호스트와 GitLab 연결 참조도 든다**(gitlab-repositories 0단계 판정) — 같은 숫자 id·이름이 두 호스트에 있을 수 있고, GitLab 재연결은
+ * 설치 id가 아니라 연결 참조를 바꾼다.
  */
-export function probeMemoKey(project: { repoOwner: string; repoName: string; installationId: string | null; repositoryId: string | null }): string {
-  return JSON.stringify([project.repoOwner, project.repoName, project.installationId, project.repositoryId]);
+export function probeMemoKey(project: ProjectRepoColumns): string {
+  return JSON.stringify([project.repoHost, project.repoOwner, project.repoName, project.installationId, project.gitlabConnectionId, project.repositoryId]);
 }
 
-export function createProbeMemo({ ttlMs, max }: { ttlMs: number; max: number }) {
-  const entries = new Map<string, { at: number; value: ProbeResult }>();
-  return async function memo(key: string, load: () => Promise<ProbeResult>, now: number = Date.now()): Promise<ProbeResult> {
+/**
+ * @param transient 기억하지 않는 갈래 — GitHub probe는 `error`, GitLab 연결 건강성은 `unknown`(gitlab-repositories — 같은 메모를 두 호스트가 쓴다).
+ */
+export function createProbeMemo<T extends { status: string } = ProbeResult>({ ttlMs, max, transient = "error" }: { ttlMs: number; max: number; transient?: string }) {
+  const entries = new Map<string, { at: number; value: T }>();
+  return async function memo(key: string, load: () => Promise<T>, now: number = Date.now()): Promise<T> {
     const hit = entries.get(key);
     if (hit !== undefined && now - hit.at < ttlMs) return hit.value;
     const value = await load();
     // 다시 넣어 삽입 순서를 갱신한다 — 버리는 쪽이 "가장 오래 전에 확인한 것"이 된다.
     entries.delete(key);
-    if (value.status !== "error") {
+    if (value.status !== transient) {
       entries.set(key, { at: now, value });
       for (const oldest of entries.keys()) {
         if (entries.size <= max) break;

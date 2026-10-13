@@ -2,11 +2,13 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { loadPullState } from "../load";
-import type { TreePayload } from "../payload";
-import type { GitTreeBlob } from "../client";
+import type { GitClient, GitTreeBlob } from "../client";
 import { runPull, type PullDeps, type PullState } from "../run";
 import type { RenderKey } from "../render";
 import { createFakeGitClient } from "./fake-client";
+
+/** Publish가 올린 스냅샷 — 렌더 결과(경로·내용)가 실린다. */
+type Snapshot = Parameters<GitClient["publishSnapshot"]>[0];
 
 /**
  * **L1 — 진입점 회귀** (ARCHITECTURE §1.1).
@@ -26,7 +28,8 @@ const PROJECT = {
   repoOwner: "o",
   repoName: "r",
   baseBranch: "dev",
-  installationId: "123",
+  repoHost: "github", gitlabConnectionId: null, installationId: "123",
+  repositoryId: "456",
   adapterName: "json-catalog",
   pathTemplate: "i18n/{locale}.json",
   nested: false,
@@ -42,7 +45,7 @@ const SCRAMBLED: RenderKey[] = [
   { key: "mango", sourceText: "M", sortIndex: 2, orphaned: false, cells: { en: { value: "M" }, ko: { value: "망고" } } },
 ];
 
-function depsFor(keys: readonly RenderKey[]): { deps: PullDeps; trees: TreePayload[] } {
+function depsFor(keys: readonly RenderKey[]): { deps: PullDeps; trees: Snapshot[] } {
   const { client, calls } = createFakeGitClient({
     refSha: { "heads/dev": "basehead" },
     tree: { basehead: [] },
@@ -59,20 +62,20 @@ function depsFor(keys: readonly RenderKey[]): { deps: PullDeps; trees: TreePaylo
     invalidateDelivery: async () => {},
     syncBranch: "malmoi-i18n/sync",
   };
-  const trees: TreePayload[] = [];
+  const trees: Snapshot[] = [];
   // `calls`는 실행 후에 채워지므로 getter로 넘긴다.
   return {
     deps,
     get trees() {
       trees.length = 0;
-      for (const c of calls) if (c.method === "createTree") trees.push(c.args[0] as TreePayload);
+      for (const c of calls) if (c.method === "publishSnapshot") trees.push(c.args[0] as Snapshot);
       return trees;
     },
   };
 }
 
-const contentOf = (trees: readonly TreePayload[], path: string): string | undefined =>
-  trees[0]?.tree.find((e) => e.path === path)?.content;
+const contentOf = (trees: readonly Snapshot[], path: string): string | undefined =>
+  trees[0]?.changes.find((e) => e.path === path)?.content;
 
 describe("L1 — runPull이 sortIndex 순서로 파일을 낸다", () => {
   it("커밋에 실린 base 파일이 **코드 유닛 순이 아니라 sortIndex 순**이다", async () => {
@@ -197,7 +200,7 @@ describe("L1 — runPull이 파일별 중첩 여부를 지킨다", () => {
       refSha: { "heads/dev": "basehead" },
       tree: { basehead: [] },
     });
-    const trees: TreePayload[] = [];
+    const trees: Snapshot[] = [];
     return {
       deps: {
         loadState: async (): Promise<PullState> => ({
@@ -214,7 +217,7 @@ describe("L1 — runPull이 파일별 중첩 여부를 지킨다", () => {
       },
       get trees() {
         trees.length = 0;
-        for (const c of calls) if (c.method === "createTree") trees.push(c.args[0] as TreePayload);
+        for (const c of calls) if (c.method === "publishSnapshot") trees.push(c.args[0] as Snapshot);
         return trees;
       },
     };
@@ -261,7 +264,7 @@ describe("L1 — runPull이 원본 들여쓰기를 지킨다", () => {
       tree: { basehead: opts.tree ?? [{ path: "i18n/en.json", sha: "blob-en" }] },
       blobs: opts.blobs ?? { "blob-en": FOUR },
     });
-    const trees: TreePayload[] = [];
+    const trees: Snapshot[] = [];
     return {
       deps: {
         loadState: async (): Promise<PullState> => ({
@@ -280,7 +283,7 @@ describe("L1 — runPull이 원본 들여쓰기를 지킨다", () => {
       },
       get trees() {
         trees.length = 0;
-        for (const c of calls) if (c.method === "createTree") trees.push(c.args[0] as TreePayload);
+        for (const c of calls) if (c.method === "publishSnapshot") trees.push(c.args[0] as Snapshot);
         return trees;
       },
       calls,

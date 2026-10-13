@@ -1,5 +1,7 @@
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
+import { isGitLabConnectError } from "@/lib/gitlab-connect/errors";
+import { gitlabConnectErrorMessage } from "@/lib/gitlab-connect/message";
 import type { Messages } from "@/lib/i18n";
 import { isOnboardError, onboardErrorMessage } from "@/lib/onboarding/message";
 
@@ -10,6 +12,8 @@ import { isOnboardError, onboardErrorMessage } from "@/lib/onboarding/message";
  */
 export function failureText(m: Messages, error: string, created = false): string {
   if (error === "unauthorized") return created ? m.newProject.errors.sessionLostAfterCreate : m.newProject.errors.sessionLost;
+  // GitLab 갈래가 먼저다 — `OnboardFailure`가 이 코드들을 품지만 문장은 GitLab 사전이 든다(gitlab-repositories).
+  if (isGitLabConnectError(error)) return gitlabConnectErrorMessage(m, error);
   if (isOnboardError(error)) return onboardErrorMessage(m, error);
   if (isConnectError(error)) return connectErrorMessage(m, error);
   if (isAccessError(error)) return accessErrorMessage(m, error);
@@ -22,7 +26,9 @@ export function failureText(m: Messages, error: string, created = false): string
  */
 export function isAccessLost(error: string): boolean {
   return ["unauthorized", "forbidden", "not-found", "not-connected", "reauthorize",
-    "repo-not-installed", "installation-forbidden", "repo-forbidden", "repo-read-only"].includes(error);
+    "repo-not-installed", "installation-forbidden", "repo-forbidden", "repo-read-only",
+    // GitLab — 호출자 연결이 없거나 못 쓴다(계정 축) · 리포 한 곳의 거부(보관·SHA-256)
+    "gitlab-not-connected", "gitlab-reconnect", "gitlab-repo-archived", "gitlab-repo-unsupported"].includes(error);
 }
 
 /**
@@ -30,5 +36,5 @@ export function isAccessLost(error: string): boolean {
  * 배너로 올리지 않는다(malmoi#122 — 둘 다 세우면 같은 문장이 한 화면에 두 번이다).
  */
 export function isRepoScopedRefusal(error: string): boolean {
-  return ["repo-not-installed", "installation-forbidden", "repo-forbidden", "repo-read-only"].includes(error);
+  return ["repo-not-installed", "installation-forbidden", "repo-forbidden", "repo-read-only", "gitlab-repo-archived", "gitlab-repo-unsupported"].includes(error);
 }

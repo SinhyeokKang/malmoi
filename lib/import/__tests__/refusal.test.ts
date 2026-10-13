@@ -142,6 +142,13 @@ describe("planImportRefusal", () => {
       "state-mismatch", "state-expired", "wrong-user", "denied", "exchange-failed", "taken-by-other",
       // MCP 토큰 주체만 낸다(`lockProjectAccess`) — 화면 경로엔 생산자가 없고, 같은 토큰으로 다시 눌러도 같다.
       "token-scope",
+      /*
+        GitLab 연결(gitlab-repositories) — 사람이 토큰을 바꾸거나 연결·리포를 손대야 풀린다. 이 경로의 생산자는 `checkRepoAccess`의 GitLab 갈래
+        (`gitlab-not-connected`·`gitlab-reconnect`·`gitlab-repo-unsupported`)다. 나머지 넷은 PAT 입력·쓰기 경로 전용이라 여기 생산자가 없다 —
+        `RepositoryImportError`가 `GitLabConnectError`를 통째로 합집합에 넣어 분류를 강요받을 뿐이다(위 ConnectError 여섯과 같은 사정).
+      */
+      "gitlab-not-connected", "gitlab-reconnect", "gitlab-repo-unsupported",
+      "gitlab-repo-archived", "gitlab-project-disconnected", "token-invalid", "token-fine-grained", "token-scope-missing", "account-mismatch",
     ] as const satisfies readonly RepositoryImportError[];
     /** 기다리거나 다시 누르면 답이 달라진다. */
     const transient = ["publish-unsettled", "already-running", "ingest-failed", "unavailable", "unconfirmed", "reconfirm", "unauthorized"] as const satisfies readonly RepositoryImportError[];

@@ -9,7 +9,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 
 import { PrismaClient } from "@/generated/prisma/client";
 import { optionalEnv } from "@/lib/env";
-import type { RepoReader } from "@/lib/github";
+import { sizesFromSnapshot, type RepoReader } from "@/lib/repo-host/reader";
 import { readDiscardApproval } from "@/lib/import/approval";
 import { runAutomationImport, runRepositoryImportFromReader } from "@/lib/import/run";
 import { loadProject } from "@/lib/keys/query";
@@ -41,7 +41,7 @@ beforeAll(async () => {
   prisma = new PrismaClient({ adapter: new PrismaPg(config), log: [] });
 });
 
-const repository = { repositoryId: "123", installationId: "456", repoOwner: "o", repoName: "r", baseBranch: "main" };
+const repository = { repositoryId: "123", repoHost: "github", gitlabConnectionId: null, installationId: "456", repoOwner: "o", repoName: "r", baseBranch: "main" };
 
 beforeEach(async () => {
   await pool.query("DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public");
@@ -100,7 +100,7 @@ function deferred() {
 }
 
 function reader(pause?: { entered: ReturnType<typeof deferred>; release: ReturnType<typeof deferred> }): RepoReader {
-  return {
+  return { sizes: async (snapshot, paths) => sizesFromSnapshot(snapshot, paths),
     snapshot: vi.fn<RepoReader["snapshot"]>(async () => {
       if (pause) { pause.entered.resolve(); await pause.release.promise; }
       return { status: "ok", headSha: "c".repeat(40), headCommittedAt: "2026-09-15T00:00:00Z", files: ["en", "ko"].map(locale => ({ path: `i18n/${locale}.json`, sha: locale, size: 100 })) };

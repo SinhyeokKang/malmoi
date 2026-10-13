@@ -19,7 +19,7 @@ vi.mock("@/lib/i18n/server", async () => ({ getUiLocale: async () => "en", getMe
  */
 const BASE: ProjectListRow = {
   image: null, slug: "acme", reviewSurfaceSlug: "default", unsentSurfaceSlug: "default", repoAheadFrom: "s", name: "Acme", role: "OWNER",
-  installationId: "i", surfaces: [{ archivedAt: null, lastCommitSha: "s", importError: null, importing: false }], archivedAt: null,
+  repoHost: "github", gitlabConnectionId: null, gitlabTokenExpiresAt: null, installationId: "i", surfaces: [{ archivedAt: null, lastCommitSha: "s", importError: null, importing: false }], archivedAt: null,
   repoOwner: "o", repoName: "r", repositoryId: "9001", memberCount: 2, baseBranch: "release", lastPrUrl: "https://github.com/o/r/pull/142",
   meters: [], review: 0, unsent: 0, openPr: null, repoAheadFiles: 0,
 };

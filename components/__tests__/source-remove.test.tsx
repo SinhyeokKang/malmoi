@@ -21,10 +21,10 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh, 
 const web = { id: "s-web", slug: "web", baseLocale: "en", declaredBaseLocale: null, lastCommitSha: "abc1234", lastCommitAt: new Date("2026-09-20T00:00:00Z"), lastImportStartedAt: null, lastImportError: null, lastImportFailedAt: null, lastImportedAt: new Date("2026-09-20T00:05:00Z"), createdAt: new Date("2026-09-19T00:00:00Z"), keys: 248, locales: 2, orphanedLocales: 0, progress: { total: 248, done: 210, review: 12, percent: 84 } };
 const emails = { ...web, id: "s-emails", slug: "emails" };
 const repository = { repoOwner: "o", repoName: "r", baseBranch: "main" };
-const two: SourcesData = { installed: true, repository, sources: [emails, web] };
-const one: SourcesData = { installed: true, repository, sources: [web] };
+const two: SourcesData = { installed: true, repoHost: "github", repository, sources: [emails, web] };
+const one: SourcesData = { installed: true, repoHost: "github", repository, sources: [web] };
 const detail = (over: Partial<SourceDetail> = {}): SourceDetail => ({
-  ...web, installed: true, importActive: false,
+  ...web, installed: true, repoHost: "github", importActive: false,
   languages: [
     { code: "en", isBase: true, orphaned: false, total: 248, translated: 248, needsReview: 0, untranslated: 0, percent: 100 },
     { code: "ko", isBase: false, orphaned: false, total: 248, translated: 210, needsReview: 12, untranslated: 26, percent: 84 },

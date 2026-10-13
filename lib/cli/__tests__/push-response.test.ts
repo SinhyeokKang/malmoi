@@ -131,3 +131,48 @@ it("Publish 경합은 GitHub 장애나 미전달 0건이 아닌 독립된 보류
     expect.stringContaining("Publish finished after the import checks"),
   ]);
 });
+
+/**
+ * **리포 호스트별 문장** (#259 · gitlab-repositories D7) — GitLab 러너(`.gitlab/malmoi-i18n-push/run.ts`)가 `push:local`에 `--repo-host gitlab`를 실어
+ * 보낸다(`planGitlabCiPush`). GitLab이면 merge request를 말하고, **GitHub(호스트 없음 포함) 출력은 바이트 단위로 그대로다** — action v3와 기존
+ * 사용자가 그 줄을 읽는다(아래 golden은 #259 수정 전 출력 그대로다).
+ */
+describe("reportPushResponse — 리포 호스트 (#259)", () => {
+  const held = (body: object) => JSON.stringify({ status: "deferred", ...body });
+  const warning = (text: string, host?: string) => reportPushResponse(200, text, host).lines.find(line => line.startsWith("::warning"));
+  const CASES = [{ reason: "open-pr" }, { reason: "pr-check-failed" }, { reason: "publish-raced" }, { reason: "pending-edits", pendingCount: 3 }] as const;
+  const GOLDEN = [
+      "::warning title=Malmoi import deferred::a Malmoi pull request is still open — repository changes were not imported, so the translations in it aren't overwritten. Review the pull request and merge or close it; a new push from the current head or the nightly sync imports the latest repository state.",
+      "::warning title=Malmoi import deferred::couldn't check whether the Malmoi pull request is still open — repository changes were not imported. Once the check is available, a new push from the current head or the nightly sync imports the latest repository state.",
+      "::warning title=Malmoi import deferred::Publish finished after the import checks — repository changes were not imported. After any Malmoi pull request is merged or closed, a new push from the current head or the nightly sync imports the latest repository state.",
+      "::warning title=Malmoi import deferred::3 unsent translation changes in Malmoi — repository changes were not imported. Send them with Publish in Malmoi. For edits Publish can't send (their file or key is missing from the repository), add the file or key back to the repository, or discard them with Sync (or Revert to last sent where available). After any Malmoi pull request is merged or closed, a new push from the current head or the nightly sync imports the latest repository state."
+  ];
+
+  it.each(CASES.map((body, i) => [body.reason, body, GOLDEN[i]] as const))("GitHub %s 경고는 수정 전과 바이트 단위로 같다 — 호스트 없음·github 둘 다", (_reason, body, golden) => {
+    expect(warning(held(body))).toBe(golden);
+    expect(warning(held(body), "github")).toBe(golden);
+  });
+
+  it.each(CASES.map((body) => [body.reason, body] as const))("GitLab %s 경고는 merge request를 말하고 pull request가 0건이다", (_reason, body) => {
+    const line = warning(held(body), "gitlab")!;
+    expect(line.startsWith("::warning title=Malmoi import deferred::")).toBe(true);
+    expect(line).not.toMatch(/pull request/i);
+    expect(line).toMatch(/merge request/);
+  });
+
+  /**
+   * 연결이 끊긴(참조 비움·저장 만료·철회) GitLab 프로젝트는 재연결 전까지 같은 이유로 보류된다 — 야간 대상에서도 빠진다(audit B1 · 결정 R3).
+   * 사유 값·응답 계약은 그대로 두고 GitLab 문장이 재연결 절을 든다. CI 로그만 보는 개발자가 "기다리면 풀린다"로 읽지 않게 한다.
+   */
+  it("GitLab pr-check-failed 경고는 연결이 끊긴 경우 프로젝트 설정의 재연결을 말한다", () => {
+    const line = warning(held({ reason: "pr-check-failed" }), "gitlab")!;
+    expect(line).toMatch(/reconnect/i);
+    expect(line).toContain("Settings");
+    expect(line).toContain("current head");
+    expect(line).toContain("nightly sync");
+  });
+
+  it("모르는 호스트 값은 GitHub 문장이다", () => {
+    expect(warning(held({ reason: "open-pr" }), "bitbucket")).toBe(GOLDEN[0]);
+  });
+});

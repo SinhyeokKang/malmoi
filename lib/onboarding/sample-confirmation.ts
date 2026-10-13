@@ -1,9 +1,13 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 
-/** 파일 내용은 내보내지 않는다. 읽기에 필요한 포맷만 서명한다. */
+/**
+ * 파일 내용은 내보내지 않는다. 읽기에 필요한 포맷만 서명한다.
+ * `connection`은 읽은 연결의 증거다(`connectionEvidence` — `github:<설치 id>` · `gitlab:<연결 id>`) — 다른 연결로 다시 읽은 스냅샷에 옛 확인값이
+ * 통하지 않는다. 호스트 접두가 같은 숫자 id의 두 호스트를 가른다(gitlab-repositories). 옛 `installationId` 모양은 파싱에서 떨어져 재탐지로 풀린다.
+ */
 const Confirmation = z.object({
-  userId: z.string(), repositoryId: z.string(), installationId: z.string(), ref: z.string(), headSha: z.string(),
+  userId: z.string(), repositoryId: z.string(), connection: z.string(), ref: z.string(), headSha: z.string(),
   format: z.object({ adapter: z.string(), pathTemplate: z.string(), locales: z.array(z.string()) }),
   issuedAt: z.number(),
 });
@@ -39,7 +43,7 @@ export function verifySampleConfirmation(token: string, context: Context, secret
     if (!result.success) return null;
     const data = result.data;
     if (data.userId !== context.userId || data.repositoryId !== context.repositoryId ||
-        data.installationId !== context.installationId || data.ref !== context.ref || data.headSha !== context.headSha) return null;
+        data.connection !== context.connection || data.ref !== context.ref || data.headSha !== context.headSha) return null;
     // 미래 시각도 거부한다 — 서명이 맞는 한 우리 서버가 만든 값이라, 미래면 시계가 틀렸거나 키가 새었다.
     const age = now.getTime() - data.issuedAt;
     if (age < 0 || age > SAMPLE_CONFIRMATION_TTL_MS) return null;

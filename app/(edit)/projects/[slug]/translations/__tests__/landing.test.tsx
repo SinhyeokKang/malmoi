@@ -21,7 +21,7 @@ vi.mock("next/navigation", () => ({ redirect: state.redirect }));
 vi.mock("@/lib/surfaces/access", () => ({ requireSurfaceAccess: async ({ surfaceSlug }: { surfaceSlug: string }) => ({ projectId: "p", surfaceId: surfaceSlug === "app" ? "s2" : "s", role: "EDITOR", archived: false, userId: "u" }) }));
 vi.mock("@/lib/db", () => ({ getPrisma: () => ({}) }));
 vi.mock("@/lib/keys/query", () => ({
-  loadProject: async () => ({ id: "p", name: "Demo", surfaces: [{ id: "s", slug: "default", archivedAt: null, lastCommitSha: "sha", pathTemplate: "i18n/{locale}.json" }], slug: "demo", repoOwner: "o", repoName: "r", baseBranch: "main", installationId: "1", lastCommitSha: "sha", baseLocale: "en", declaredBaseLocale: "en", lastPulledAt: null, lastPublishedAt: null, lastPrUrl: null, locales: [] }),
+  loadProject: async () => ({ id: "p", name: "Demo", surfaces: [{ id: "s", slug: "default", archivedAt: null, lastCommitSha: "sha", pathTemplate: "i18n/{locale}.json" }], slug: "demo", repoOwner: "o", repoName: "r", baseBranch: "main", repoHost: "github", gitlabConnectionId: null, installationId: "1", lastCommitSha: "sha", baseLocale: "en", declaredBaseLocale: "en", lastPulledAt: null, lastPublishedAt: null, lastPrUrl: null, locales: [] }),
   loadActors: async () => new Map(),
   countUnpublishedBySurface: async () => new Map([["s", 2]]),
 }));

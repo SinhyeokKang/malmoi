@@ -2,7 +2,8 @@ import { fail } from "@/lib/failure";
 import type { PullChange } from "./plan";
 
 /**
- * Git Data API 요청 본문 조립. **반환 타입을 명시하는 것이 이 파일의 요지다.**
+ * Git Data API 요청 본문 조립. **반환 타입을 명시하는 것이 이 파일의 요지다.** 트리·커밋 본문의 소비자는 GitHub 구현의
+ * `publishSnapshot`(`lib/github.ts`) 하나다 — 경계(`GitClient`)는 스냅샷 단위라 호출부는 이 본문을 보지 않는다.
  *
  * POSTMORTEM 2026-08-31: `/api/push` 페이로드를 리터럴로 조립해 필수 필드가 늘어도 컴파일러가
  * 침묵했다. 여기는 **외부 계약**(GitHub REST)이라 같은 함정이 그대로 열려 있고, 그중 `base_tree`
@@ -26,8 +27,12 @@ export const SKIP_MARKER = "[skip-malmoi-i18n]";
  */
 export const PR_TITLE = `malmoi-i18n: sync translations ${SKIP_MARKER}`;
 
-/** GitHub이 PR 제목에 허용하는 최대 길이. 넘기면 `PATCH /pulls`가 422다. */
-const PR_TITLE_MAX = 256;
+/**
+ * 마커를 붙인 제목의 최대 길이 — 두 호스트의 작은 쪽이다. GitHub PR은 256(넘기면 `PATCH /pulls`가 422), GitLab MR은
+ * `TITLE_LENGTH_MAX = 255`(감사 추정 — 실측 전, audit B2 — 넘기면 `PUT merge_requests`가 400이고, 커밋 뒤라 `execution-uncertain`이 Publish마다 되풀이된다).
+ * GitHub에서 한 자 일찍 폴백해도 잃는 것은 사람이 고친 제목 하나다.
+ */
+const PR_TITLE_MAX = 255;
 
 /**
  * 재사용하는 PR의 제목에 마커를 되돌린다. **원래 제목을 버리지 않는다** — 사람이 "Translations for 2.0"으로
@@ -94,10 +99,18 @@ export function buildCommitPayload(
   // parents가 비면 리포의 루트 커밋이 되어 base의 히스토리 전체가 떨어져 나간다.
   if (parentSha === "") fail("parent SHA is empty (must be the base head)");
 
-  const body = summary === "" ? "sync translations" : `sync translations (${summary})`;
   return {
-    message: `malmoi-i18n: ${body} ${SKIP_MARKER}`,
+    message: commitMessage(summary),
     tree: treeSha,
     parents: [parentSha],
   };
+}
+
+/**
+ * Publish 커밋 메시지. **호스트와 무관하다** — 마커가 커밋 메시지에 실려야 하는 것은 대상 리포 CI의 루프 가드이지 Git Data API가
+ * 아니다. 커밋을 한 번에 만드는 호스트(GitLab 커밋 API)도 이 문자열을 싣는다.
+ */
+export function commitMessage(summary: string): string {
+  const body = summary === "" ? "sync translations" : `sync translations (${summary})`;
+  return `malmoi-i18n: ${body} ${SKIP_MARKER}`;
 }

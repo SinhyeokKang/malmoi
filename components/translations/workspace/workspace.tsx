@@ -27,7 +27,7 @@ import { planActionAvailability } from "@/lib/home/state";
 import { connectionReason } from "@/lib/translations/connection-reason";
 import { importRevalidates, type RepositoryImportOutcome } from "@/lib/import/result";
 import type { TranslationList, TranslationListRow, TranslationTree } from "@/lib/keys/translation-list";
-import { useMessages } from "@/components/i18n/messages-provider";
+import { RepoHostScope, useMessages } from "@/components/i18n/messages-provider";
 import type { Messages } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
 import { dirtyLocales, initKeyDraft, planDraftRecovery, reduceKeyDraft, type KeyDraftAction, type KeyDraftState } from "@/lib/translations/draft";
@@ -75,7 +75,7 @@ export type WorkspaceProps = {
   /** `null`은 선택 없음, `absent`는 URL의 키가 사라졌다(부재 안내 — 다른 키로 바꾸지 않는다). */
   detail: DetailView | { absent: true; surfaceSlug: string } | null;
   unpublished: number;
-  publish: { repo: { owner: string; name: string; branch: string; syncBranch: string }; lastSentLabel: string | null; lastPrUrl: string | null };
+  publish: { repo: { owner: string; name: string; branch: string; syncBranch: string; host?: string }; lastSentLabel: string | null; lastPrUrl: string | null };
   sync: { name: string; branch: string };
   /** 기준 로케일의 **현실**과 **선언** — 대기 배너의 조건이다 (6b-3, `basePending`). 옛 헤더에서 옮겨 왔다. */
   baseLocale: string | null;
@@ -182,7 +182,15 @@ const LOW_DETAIL_SCROLL = "[@media(max-height:519px)]:overflow-y-auto [@media(ma
 const storageKey = (userId: string, slug: string) => `malmoi.translation-draft.${userId}.${slug}`;
 const widthKey = (userId: string, slug: string) => `malmoi.translation-panels.${userId}.${slug}`;
 
+/**
+ * 번역 화면 — 그 프로젝트의 리포 호스트 범위 안에서 그린다(`RepoHostScope` — Publish 모달·Sync 확인·키 필터가 merge request·GitLab 문장을 말한다).
+ * 범위를 페이지가 아니라 여기서 두는 것은 화면 본체가 첫 줄에서 `useMessages()`를 읽기 때문이다 — 범위가 그 위에 서야 한다.
+ */
 export function TranslationWorkspace(props: WorkspaceProps) {
+  return <RepoHostScope host={props.publish.repo.host ?? "github"}><WorkspaceBody {...props} /></RepoHostScope>;
+}
+
+function WorkspaceBody(props: WorkspaceProps) {
   const m = useMessages();
   const { slug, routeSurfaceSlug, role, userId, tree, list } = props;
   const router = useRouter();

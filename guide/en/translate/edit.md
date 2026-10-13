@@ -14,7 +14,7 @@ In the key list, the arrow keys move between rows and Enter opens the row; Tab m
 
 When the screen is too narrow for both, the key list and the translations take turns. Select a row to open its translations, and choose **Keys** at the top left to go back to the list. Going back keeps the key selected, your unsaved text, and your place in the list, and the page address doesn't change; select the same row again to continue where you left off. The search box and the sources button stay with the list.
 
-The **Sources** panel sets which keys the list shows. Select **All namespaces** under a source to list all of its keys, or select a group to list only that group. The filter at the top right of the key list shows its current choice: **All keys**, **Incomplete**, **Needs review**, **Unsent**, or **New from GitHub**. Needs review marks translations whose source text changed; it is not an approval step. Selecting a group keeps the filter, and changing the filter keeps the group. The filter narrows only the key list; it doesn't change the numbers in the **Sources** panel.
+The **Sources** panel sets which keys the list shows. Select **All namespaces** under a source to list all of its keys, or select a group to list only that group. The filter at the top right of the key list shows its current choice: **All keys**, **Incomplete**, **Needs review**, **Unsent**, or **New from GitHub** (**New from GitLab** on a GitLab project). Needs review marks translations whose source text changed; it is not an approval step. Selecting a group keeps the filter, and changing the filter keeps the group. The filter narrows only the key list; it doesn't change the numbers in the **Sources** panel.
 
 Search looks through every source in the project. While you search in a project with several sources, **All sources** appears at the top of the **Sources** panel, and the list shows each key's source before its name. In a project with only one source, use **All namespaces** to search the whole source. Each source and group also shows how many of its keys match the search, and groups with no matches are dimmed and can't be selected. Select **All namespaces** under a source, or a group, to narrow the results to it, or **All sources** to search everywhere again; typing a new search always searches everywhere. If you select a key from another source, the screen moves to that source. Clear the search to go back to the group of the key you selected. When nothing matches, choose **Search all sources** to widen a narrowed search, or **Clear search**. **Clear filters** sets the filter back to **All keys** and keeps your search text.
 
@@ -33,6 +33,8 @@ Key results exclude archived projects and sources, sources that haven't finished
 If part of the search fails, a line under the search box says which part failed and how to try again, and the other groups stay usable. If your session ended, sign in again to search your projects; the docs remain searchable.
 
 With an empty search, you see previews of **Projects**, **Pages**, and **Docs**. **Pages** takes you to screens in Malmoi, such as a project's Translations. **Projects** includes archived projects, while key results do not. Choose **Go to your projects** to see all of your projects, or **Go to docs** to open the docs. **Docs** searches guide titles and text and opens the matching section. Escape closes the search. Malmoi doesn't keep your search text in history or browser storage.
+
+![The search dialog with the word order typed, showing matching keys from two sources and matching Docs sections](/guide/global-search.webp "Select a key to open it in Translations.")
 
 ## See what needs you across projects {#inbox}
 
@@ -60,9 +62,13 @@ While a sync from the repository is running (a project owner's **Sync** or the n
 
 Some projects do not allow an empty translation. If Malmoi refuses an empty field, enter a value or press Escape in that field to undo the edit, then save any other changes. Nothing is saved while the invalid empty edit remains.
 
+![Translations with a French value typed for a key, marked Not saved, and the Save button at the bottom of the panel](/guide/translation-edit.webp "Type the translation, then choose Save.")
+
 ## Leave unsaved changes {#unsaved-changes}
 
 If you change keys, filters, or pages with an unsaved edit, choose **Keep editing** or **Discard changes**. **Save** is locked while **Publish** is running. Refreshing or closing the page can also ask the browser to confirm.
+
+![The Discard your changes? dialog over Translations with Keep editing and Discard changes buttons](/guide/unsaved-changes.webp "Choose Keep editing to go back and save.")
 
 ## What happens next {#next}
 

@@ -1,6 +1,6 @@
 # Malmoi
 
-Malmoi finds a GitHub repository's translation files, lets teammates edit them in the browser without Git, and sends saved changes back in one pull request.
+Malmoi finds a GitHub or GitLab.com repository's translation files, lets teammates edit them in the browser without Git, and sends saved changes back in one pull request or merge request.
 
 In the 1910s, a Korean dictionary compilation project called Malmoi gathered scattered words into one collection; this product takes its name from that work.
 

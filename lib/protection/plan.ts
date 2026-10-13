@@ -46,8 +46,14 @@ export function planOpenPrGate(input: { openPr: string | null | undefined }): Op
  * `null`(게이트 없음)이다. CI 게이트(`loadOpenPrForImportGate`)와 야간 판정(`runNightly`)이 이 판정 하나를 쓴다 — 사본을 두면 한쪽만 옛 행을
  * 영구 보류한다(`loadOpenPrUrl`은 `repositoryId null`을 `undefined`로 읽는다).
  */
-export function openPrGateApplies(project: { installationId: string | null; repositoryId: string | null }): boolean {
-  return project.installationId !== null && project.repositoryId !== null;
+export function openPrGateApplies(project: { repoHost: string; installationId: string | null; repositoryId: string | null; gitlabConnectionId: string | null }): boolean {
+  // 이 파일은 화면이 읽는 잎이라 경계 모듈을 물지 않고 손으로 쓴다(`open-pr-gate.test.ts`가 판정표를 고정한다).
+  if (project.repositoryId === null) return false;
+  if (project.repoHost === "github") return project.installationId !== null;
+  // ⚠️ GitLab은 **연결 참조가 비어도 게이트가 선다** — 연결자가 떠나기 전에 연 MR이 남아 있을 수 있다. 조회할 토큰이 없으니 `loadOpenPrUrl`이
+  // "모름"(`undefined`)을 주고 게이트는 `pr-check-failed`로 보류한다(fail-closed). 게이트를 빼면 열린 MR 위로 리포 값이 DB를 덮는다(D6a와 같은 결).
+  if (project.repoHost === "gitlab") return true;
+  return false;
 }
 
 export type HoldReason = "pending-edits" | "open-pr" | "pr-check-failed";

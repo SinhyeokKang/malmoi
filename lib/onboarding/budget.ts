@@ -29,6 +29,14 @@ const MAX_FILE_BYTES = 2_000_000;
 const MAX_TOTAL_BYTES = 10_000_000;
 
 /**
+ * 파일 수 상한만 — **크기를 묻기 전에** 부른다(`lib/import/read.ts`). 크기를 원격으로 묻는 호스트(GitLab GraphQL)가 상한을 넘는 목록에 원격을 부르지 않게
+ * 한다(gitlab-repositories R-A ⚪3). `checkDownloadBudget`도 같은 판정으로 시작한다.
+ */
+export function checkFileCount(paths: readonly string[]): void {
+  if (paths.length > MAX_FILES) fail("too many locale files");
+}
+
+/**
  * **내려받기 전에** 판정한다 — 트리 응답이 이미 파일별 `size`를 들고 있으므로 바이트를 받아 보고
  * 재는 것은 그 자체가 비용이다.
  *
@@ -36,7 +44,7 @@ const MAX_TOTAL_BYTES = 10_000_000;
  * 2026-09-03의 "실패한 조회를 '없음'으로 읽는다"와 같은 부류).
  */
 export function checkDownloadBudget(paths: readonly string[], files: readonly { path: string; size?: number }[]): void {
-  if (paths.length > MAX_FILES) fail("too many locale files");
+  checkFileCount(paths);
   const sizes = new Map(files.map(file => [file.path, file.size]));
   let total = 0;
   for (const path of paths) {

@@ -115,7 +115,7 @@ logs-rework (ARCHITECTURE §5.7). **운영 차단이 없다** — 새 테이블�
 
 | 무엇 | 환경변수 | 무엇을 여나 |
 |---|---|---|
-| 토큰 | `TOKEN_ENCRYPTION_KEYS`·`_ACTIVE_KEY_ID` | GitHub App **연결 토큰**(access·refresh) |
+| 토큰 | `TOKEN_ENCRYPTION_KEYS`·`_ACTIVE_KEY_ID` | GitHub App **연결 토큰**(access·refresh) · **GitLab PAT**(`GitLabConnection.token` — 2026-10-12, 같은 "리포 연결 자격증명" 부류라 새 키를 만들지 않았다. `rotate-token`이 함께 다시 봉하고 `verify`의 `oldTokenKey`가 함께 센다 — 0이 되기 전에 옛 키를 폐기하지 않는다. 키 회전이지 PAT 회전이 아니다) |
 | 개인정보 | `PII_ENCRYPTION_KEYS`·`_ACTIVE_KEY_ID` | `User.email`·`name`·`image` · 초대 email |
 | 검색 | `EMAIL_LOOKUP_KEY`·`_KEY_ID` | 정확 일치 조회용 HMAC (**복호화가 아니다** — 되돌릴 수 없다) |
 
@@ -239,6 +239,9 @@ MCP `create_project`·`add_sources`는 `sample-expired`를 받고 `detect_format
   ```
   prod는 명령 이름만 `:prod`로 바꾸고 §1처럼 `.env.prod.local`을 source한다. finalize도 먼저 `verify`를 돌아 그것이
   실패하면 아무것도 적용하지 않는다(`scripts/finalize-credentials.ts`).
+  ⚠️ **2026-09-10 cutover 이전 상태의 DB에서는 finalize가 실패한다** — 그 `verify`가 `migrate deploy` 전에 `GitLabConnection`(2026-10-12 마이그레이션)을
+  조회한다(`lib/credentials/conversion.ts`). dev·prod·모든 셀프 호스팅 설치가 이미 cutover를 지나 대상 DB가 없어 고치지 않았다(gitlab-repositories D23) —
+  그런 백업을 복원해야 할 일이 생기면 그때 이 순서를 다시 설계한다.
 - 마이그레이션 실패 시 `_prisma_migrations`와 실제 DDL을 대조한다. 전부 롤백된 것이 확인된 경우에만
   검토 후 `migrate resolve --rolled-back <name>`으로 재시도하고, **체크섬 수정·무조건 applied·DB
   reset으로 통과시키지 않는다.**
@@ -468,6 +471,33 @@ Hobby 플랜이라 `--duration`·system bypass를 못 쓴다. ⚠️ **`/oauth/t
 ⚠️ **일시중지를 막는 것이 야간 cron 하나뿐이고, 그것은 보장이 아니다.** `/api/pull`이 매일 DB를 조회하므로 비활성 카운터가 리셋되지만, cron은 **프로덕션 배포에만** 붙는다 — 프로덕션 배포가 멈추거나 cron이 실패로 돌지 않으면 그 keepalive도 같이 사라진다. **프로덕션이 실사용에 들어가기 전에 Supabase를 Pro로 올린다**(일시중지 제거 + PITR). 그때까지는 일시중지에서 깨어난 뒤 첫 요청이 느린 것을 장애로 오진하지 않는다.
 
 ⚠️ **백업 절차가 없다.** Free는 일 단위 백업만 제공하고 PITR이 없으므로, 키 회전(§2)이나 마이그레이션(`db:deploy`) 전에 되돌릴 지점이 필요하면 **손으로 덤프를 뜬다** — `pg_dump`를 `DIRECT_URL_PROD`(5432)로 돌린다. 암호화 키를 잃으면 덤프가 있어도 PII는 복구되지 않는다(§1).
+
+## GitLab 릴리스 이전으로 되돌리기 (2026-10-12, gitlab-repositories D6a)
+
+되돌리는 길은 다음 배포다(CLAUDE.md). **GitLab 지원 이전 버전으로 되돌리기 전에 GitLab 프로젝트의 CI 파이프라인을 멈추거나, 그 프로젝트들의
+push 토큰을 회전하고 CI 변수 `PUSH_TOKEN`은 갱신하지 않는다.** 구버전은 GitLab 행(`installationId = null`·`repositoryId` 있음)을
+`setup`·`not-installed`·`failed`(재연결 probe는 `repo-forbidden`)로 읽어 GitHub에 쓰거나 죽지 않지만, **구버전 `/api/push`에는 그 행의 열린 MR 게이트가 없다** — 미전달·`publish-raced`
+게이트만 남아, 돌던 파이프라인이 MR이 열린 동안 strict 적재로 번역을 덮을 수 있다. 재전진 뒤 CI를 다시 켜거나 새 토큰을 CI 변수에 넣는다.
+⚠️ **셀프 호스팅의 GitLab 전용 설치**(`GITHUB_APP_*` 다섯이 비어 있다)는 구버전 preflight가 다섯을 요구해 기동을 거부한다 — 되돌리기 전에 다섯을
+다시 채운다. 운영자 절차의 정본은 가이드 `guide/<언어>/self-hosting/operate.md`다.
+
+## GitLab CI 원본 릴리스 — 태그 `malmoi-i18n-push-gitlab-vN` (2026-10-12, gitlab-repositories D5)
+
+**앱 릴리스(`v<x.y.z>`)와 GitHub action 태그(`malmoi-i18n-push-vN`)와 별개 축이다** — 형은 action 릴리스와 같다(ACTIONS §2 "태그를 옮기는 것은 릴리스다").
+GitLab 프로젝트의 생성 job은 이 리포를 그 태그로 clone하고 **생성 때 박힌 40자 SHA**와 `HEAD`를 대조한다. ⚠️ **2026-10-12 현재 발행 전이다** —
+`GITLAB_CI_RELEASE.sha`(`lib/onboarding/gitlab-ci.ts`)가 `null`인 동안 화면은 템플릿 대신 "아직 없다"를 말하고, MCP `get_workflow`는 `workflow-unavailable`이다.
+
+1. `.gitlab/malmoi-i18n-push/`(또는 그것이 부르는 `push:local`·`lib/cli/gitlab-ci-input.ts`)의 변경이 **`main`에 머지된 뒤** 그 커밋에 태그를 만든다 —
+   첫 발행은 `malmoi-i18n-push-gitlab-v1`.
+2. 태그를 만든 **뒤 후속 커밋 하나**에서 그 태그 커밋의 40자 SHA를 `GITLAB_CI_RELEASE.sha`와 ACTIONS §5의 `<!-- gitlab-ci -->` 블록에 **함께** 넣는다
+   (SHA는 태그 커밋 자신에 들어갈 수 없다 — 커밋 SHA가 내용에 달려 있다). 생성기 출력과 그 블록은
+   `lib/onboarding/__tests__/gitlab-ci.test.ts`가 줄 단위로 대조한다. 이 커밋이 다음 앱 릴리스(`/merge`)로 나가야 화면이 템플릿을 낸다.
+3. **태그를 옮길 때도 SHA를 함께 바꾼다** — 옮긴 태그와 옛 SHA가 갈리면 그 판으로 생성된 job이 전부 대조에서 red다(의도된 방어). 이미 붙인 job은
+   그 SHA의 코드를 계속 돌리므로, 소비자가 새 판을 받으려면 `.gitlab-ci.yml`을 다시 복사한다. 호환이 깨지면 `-v2`를 새로 끊고 옛 태그는 그대로 둔다.
+4. ⚠️ `git describe --tags`는 이 태그나 action 태그를 줄 수 있다 — 직전 앱 릴리스를 찾는 데 쓰지 않는다.
+5. **첫 발행 뒤 실제 GitLab CI를 한 번 밟는다 — 2026-10-13 현재 미실행**(job 원본이 단위 테스트와 실물 `/api/push` 호출로만 검증됐다). 폐기용 GitLab
+   프로젝트에 생성 job을 붙이고: 정상 적재 · 미전달 편집이 있을 때 200 `deferred` · 로케일 파일을 못 읽을 때 실패 보고(`/api/push/failure`) · 오래된 커밋 409 ·
+   재실행 · merge·squash·fast-forward 각 방식으로 Publish MR을 머지한 뒤 push가 스킵되는지(마커). 결과는 이 단계에 날짜와 함께 적는다.
 
 ## 5. 자격증명 전면 재발급
 

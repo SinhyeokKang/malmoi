@@ -10,6 +10,7 @@ import {
   addDays,
   dayKeyAt,
   formatClock,
+  formatDateOnly,
   formatDay,
   formatDayKey,
   formatMinute,
@@ -257,6 +258,16 @@ it.each([
   expect(formatDayKey(key, "en")).toBe(en);
   expect(formatDayKey(key, "ko")).toBe(ko);
   expect(formatDayKey(key, "es")).toBe(es);
+});
+
+// GitLab PAT 만료일처럼 시각 없는 날짜 값(그날 00:00 UTC로 저장)은 보는 사람 시간대로 옮기지 않는다 — 서쪽에선 하루 이르다(audit U5 · 결정 R1).
+it("formatDateOnly — 시각 없는 날짜 값은 UTC 날짜 그대로다(런타임 TZ·고른 시간대와 무관)", () => {
+  const at = new Date("2026-11-12T00:00:00.000Z");
+  expect(formatDateOnly(at, "en")).toBe("Nov 12, 2026");
+  expect(formatDateOnly(at, "ko")).toBe("2026년 11월 12일");
+  expect(formatDateOnly(at, "es")).toBe("12 nov 2026");
+  // 같은 순간을 서쪽 시간대로 옮기면 하루 이르다 — 그 차이가 이 생산자를 따로 둔 이유다.
+  expect(formatDay(at, { uiLocale: "en", timeZone: "America/Los_Angeles" })).toBe("Nov 11, 2026");
 });
 
 it("formatDayKey — 키 모양이 아니면 그대로 돌려준다(던지지 않는다)", () => {

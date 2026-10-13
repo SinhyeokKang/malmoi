@@ -1,16 +1,16 @@
 // 클라이언트의 옛 해시 복귀용 잎 상수다. 파서·파일 읽기 모듈을 import하지 않는다.
 export const LEGACY_ANCHORS = {
   "how-it-works": "/docs/sync#how-it-works",
-  workflow: "/docs/setup/workflow#workflow",
-  "allowed-actions": "/docs/setup/allowed-actions#allowed-actions",
+  workflow: "/docs/github/workflow#workflow",
+  "allowed-actions": "/docs/github/allowed-actions#allowed-actions",
   formats: "/docs/reference/formats#formats",
   limits: "/docs/reference/limits#limits",
-  merging: "/docs/sync/merging#merging",
+  merging: "/docs/github/merging#merging",
   nightly: "/docs/sync/nightly#nightly",
 } as const;
 
 /**
- * **섹션으로 나뉜 페이지의 옛 절 id** — 키는 그 섹션 개요의 slug다 (malmoi#152). `ai-agents.md` 한 페이지를 `ai-agents/`로
+ * **섹션·페이지로 나뉜 페이지의 옛 절 id** — 키는 옛 절이 있던 페이지(지금은 그 장 개요이거나 남은 페이지)의 slug다 (malmoi#152). `ai-agents.md` 한 페이지를 `ai-agents/`로
  * 나눈 뒤 옛 `/docs/ai-agents#<id>`가 개요 맨 위에 멈췄다. `#next`는 옛 원고의 마지막 절이라 마지막 페이지(prompts)의 것으로 간다.
  */
 export const SECTION_LEGACY_ANCHORS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
@@ -38,9 +38,33 @@ export const SECTION_LEGACY_ANCHORS: Readonly<Record<string, Readonly<Record<str
   account: {
     profile: "/docs/account/profile#profile",
     "sign-in-methods": "/docs/account/profile#sign-in-methods",
-    "github-connection": "/docs/account/profile#github-connection",
+    "github-connection": "/docs/github/connection#github-connection",
     sessions: "/docs/account/profile#sessions",
     next: "/docs/account/profile#next",
+  },
+  "account/profile": {
+    "github-connection": "/docs/github/connection#github-connection",
+    "gitlab-token": "/docs/gitlab/connection#gitlab-token",
+  },
+  // 프로젝트 만들기가 호스트별 장(`create/`)으로 갈렸다(2026-10-13, `host-split.test.ts`). 옛 `setup/create-project`는
+  // `LEGACY_PAGES`가 장 개요로 보내고 해시는 남는다 — 개요엔 절이 없으니 옛 절 id 전부를 주 호스트(GitHub) 페이지로 보낸다.
+  create: {
+    "connect-github": "/docs/github/create#connect-github",
+    "connect-gitlab": "/docs/gitlab/create#connect-gitlab",
+    "choose-files": "/docs/github/create#choose-files",
+    "confirm-project": "/docs/github/create#confirm-project",
+    "finish-setup": "/docs/github/create#finish-setup",
+    next: "/docs/github/create#next",
+  },
+  "github/workflow": {
+    "gitlab-ci": "/docs/gitlab/ci#gitlab-ci",
+  },
+  "github/merging": {
+    "merging-gitlab": "/docs/gitlab/merging#merging-gitlab",
+  },
+  // `reference/troubleshooting`이 호스트별 두 페이지로 갈렸다 — 옛 페이지는 `LEGACY_PAGES`가 GitHub 쪽으로 보내고, GitLab 절만 여기서 옮긴다.
+  "github/troubleshooting": {
+    "gitlab-access": "/docs/gitlab/troubleshooting#gitlab-access",
   },
 };
 
@@ -51,4 +75,22 @@ export const SECTION_LEGACY_ANCHORS: Readonly<Record<string, Readonly<Record<str
  */
 export const LEGACY_PAGES: Readonly<Record<string, string>> = {
   language: "/docs/account/preferences",
+  "create/github": "/docs/github/create",
+  "create/workflow": "/docs/github/workflow",
+  "create/allowed-actions": "/docs/github/allowed-actions",
+  "create/gitlab": "/docs/gitlab/create",
+  "create/gitlab-ci": "/docs/gitlab/ci",
+  "sync/merging": "/docs/github/merging",
+  "sync/merging-gitlab": "/docs/gitlab/merging",
+  "reference/troubleshooting-github": "/docs/github/troubleshooting",
+  "reference/troubleshooting-gitlab": "/docs/gitlab/troubleshooting",
+
+  // 2026-10-13 — 프로젝트 만들기를 호스트별 장(`create/`)으로 옮겼다. 옛 절 id는 `SECTION_LEGACY_ANCHORS`의 `create`가 받는다.
+  "setup/create-project": "/docs/create",
+  "setup/connect-github": "/docs/github/create",
+  "setup/connect-gitlab": "/docs/gitlab/create",
+  "setup/workflow": "/docs/github/workflow",
+  "setup/allowed-actions": "/docs/github/allowed-actions",
+  "setup/gitlab-ci": "/docs/gitlab/ci",
+  "reference/troubleshooting": "/docs/github/troubleshooting",
 };

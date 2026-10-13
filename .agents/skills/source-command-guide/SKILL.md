@@ -18,7 +18,7 @@ Use this skill when the user asks to run the migrated source command `guide`.
 ## 사용
 
 - `/guide` — 직전 컨텍스트(방금 구현한 기능, "가이드 영향" 플래그)에서 갱신 대상 추론.
-- `/guide <페이지 경로 또는 설명>` — 대상 명시. 예: `/guide setup/workflow`, `/guide 초대 한도 안내`.
+- `/guide <페이지 경로 또는 설명>` — 대상 명시. 예: `/guide create/workflow`, `/guide 초대 한도 안내`.
 - `/guide sync` — 전체 대조. AUTHORING 사실 대조 표의 소스 전부를 현재 코드와 견줘 낡은 페이지를 모두 갱신.
 - `/guide new <절>` — 페이지·절 추가(IA 변경) — 세 언어의 `guide/<언어>/SUMMARY.md`와 AUTHORING IA 표까지.
 

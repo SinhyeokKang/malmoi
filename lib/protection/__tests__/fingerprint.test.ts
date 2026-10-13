@@ -10,7 +10,7 @@ import { discardFingerprint, removalFingerprint, sameFingerprint, type DiscardFi
 const BASE: DiscardFingerprintInput = {
   userId: "owner",
   projectId: "p1",
-  repository: { repositoryId: "123", installationId: "456", repoOwner: "o", repoName: "r", baseBranch: "main" },
+  repository: { repositoryId: "123", repoHost: "github", gitlabConnectionId: null, installationId: "456", repoOwner: "o", repoName: "r", baseBranch: "main" },
   surfaces: [
     { id: "s1", importRevision: 3, adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en" },
     { id: "s2", importRevision: 0, adapterName: "yaml-catalog", pathTemplate: "config/{locale}.yml", baseLocale: "en" },
@@ -71,7 +71,7 @@ describe("discardFingerprint", () => {
       { repoOwner: "other" },
       { repoName: "r2" },
       { repositoryId: "999" },
-      { installationId: "789" },
+      { repoHost: "github", gitlabConnectionId: null, installationId: "789" },
     ]) {
       expect(discardFingerprint({ ...BASE, repository: { ...BASE.repository, ...changed } })).not.toBe(discardFingerprint(BASE));
     }

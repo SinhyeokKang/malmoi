@@ -1,3 +1,3 @@
 # Set up a project
 
-Connect a GitHub repository, choose your translation files, and invite your team. Creating a project requires write access to the repository.
+Invite your team, add or remove sources, and archive a project after you create it. These tasks are for project owners.

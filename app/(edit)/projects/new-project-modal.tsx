@@ -4,7 +4,12 @@ import "server-only";
 import { Suspense } from "react";
 import { NewProject } from "@/components/onboarding/new-project";
 import { ADAPTERS } from "@/lib/adapters";
+import { requireUser } from "@/lib/auth/session";
+import { getPrisma } from "@/lib/db";
+import { githubAppConfigured } from "@/lib/deployment/github-app";
 import { optionalEnv } from "@/lib/env";
+import { readGitLabConnection } from "@/lib/gitlab-connect/connection";
+import type { GitLabAccountLine } from "@/components/onboarding/steps/repo";
 import { installationSettingsUrl } from "@/lib/github-connect/installation-url";
 import { formatLabel } from "@/lib/onboarding/detect";
 import { normalizeProjectSlug } from "@/lib/onboarding/slug";
@@ -19,6 +24,12 @@ export async function NewProjectModal({ initialError, backQuery, closeMode }: {
   closeMode: "back" | "list";
 }) {
   const m = await getMessages();
+  /*
+   * ⚠️ **GitHub App이 없는 설치(D4a)는 GitHub 목록을 읽지 않고 탭 줄도 없다** — 쓸 수 없는 컨트롤을 그리지 않는다.
+   * GitLab 연결은 DB 한 행이다(원격 호출 0) — GitLab 목록은 탭이 열릴 때 클라이언트가 부른다(GitHub 탭의 첫 화면을 기다리게 하지 않는다).
+   */
+  const githubEnabled = githubAppConfigured();
+  const gitlab = await gitlabAccount();
   // 어댑터 그래프는 서버에 남겨야 클라이언트 번들로 파서가 따라오지 않는다.
   const adapters: AdapterChoice[] = ADAPTERS.map((adapter) => ({
     adapter: adapter.name, layout: adapter.layout, ...formatLabel(m, adapter.name),
@@ -28,9 +39,12 @@ export async function NewProjectModal({ initialError, backQuery, closeMode }: {
     <Suspense fallback={
       <NewProject repos={undefined} listError={undefined} adapters={adapters}
         installUrl={installUrl()} now={new Date().toISOString()}
-        initialError={initialError} backQuery={backQuery} closeMode={closeMode} />
+        initialError={initialError} backQuery={backQuery} closeMode={closeMode} githubEnabled={githubEnabled} gitlab={gitlab} />
     }>
-      <RepoLoader adapters={adapters} initialError={initialError} backQuery={backQuery} closeMode={closeMode} />
+      {githubEnabled
+        ? <RepoLoader adapters={adapters} initialError={initialError} backQuery={backQuery} closeMode={closeMode} gitlab={gitlab} />
+        : <NewProject repos={undefined} listError={undefined} adapters={adapters} installUrl={null} now={new Date().toISOString()}
+            initialError={initialError} backQuery={backQuery} closeMode={closeMode} githubEnabled={false} gitlab={gitlab} />}
     </Suspense>
   );
 }
@@ -40,11 +54,13 @@ async function RepoLoader({
   initialError,
   backQuery,
   closeMode,
+  gitlab,
 }: {
   adapters: AdapterChoice[];
   initialError: string | undefined;
   backQuery: { q?: string };
   closeMode: "back" | "list";
+  gitlab: GitLabAccountLine | null;
 }) {
   const listed = await listConnectableRepos();
 
@@ -64,8 +80,16 @@ async function RepoLoader({
       initialError={initialError}
       backQuery={backQuery}
       closeMode={closeMode}
+      gitlab={gitlab}
     />
   );
+}
+
+/** 호출자의 계정 GitLab 연결 — 목록 위 계정 줄과 "연결 전이면 PAT 입력부터"를 정한다. 만료일은 직렬화 경계라 ISO다. */
+async function gitlabAccount(): Promise<GitLabAccountLine | null> {
+  const { userId } = await requireUser();
+  const row = await readGitLabConnection(getPrisma(), userId);
+  return row === null ? null : { username: row.username, expiresAt: row.expiresAt?.toISOString() ?? null };
 }
 
 /**

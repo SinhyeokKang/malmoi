@@ -4,8 +4,8 @@ Repository changes bring app text into Malmoi, and publishing sends saved transl
 
 ## How it works {#how-it-works}
 
-The repository decides which pieces of app text — keys — exist. Malmoi holds the translated values between updates. Each update from the repository replaces the values in Malmoi with the repository's; it does not merge two values or choose a winner. This is a no-merge flow. Automatic updates are held while there are unsent edits or a Malmoi change request (pull request) is still open. Updates come from your repository's workflow on every commit, or from the [nightly run](nightly.md#repository-changes) once a day.
+The repository decides which pieces of app text — keys — exist. Malmoi holds the translated values between updates. Each update from the repository replaces the values in Malmoi with the repository's; it does not merge two values or choose a winner. This is a no-merge flow. Automatic updates are held while there are unsent edits or a Malmoi change request (a pull request, or a merge request on GitLab) is still open. Updates come from your repository's workflow on every commit, or from the [nightly run](nightly.md#repository-changes) once a day.
 
-**Publish** puts Malmoi's values into a change request (a *pull request* on GitHub) for the development team to review and merge.
+**Publish** puts Malmoi's values into a change request (a *pull request* on GitHub, or a *merge request* on GitLab) for the development team to review and merge.
 
-Read [When code changes](push.md) for the incoming direction and [Merging the pull request](merging.md) for the return path.
+Read [When code changes](push.md) for the incoming direction and [Merging the pull request](../github/merging.md) or [Merging the merge request](../gitlab/merging.md) for the return path.

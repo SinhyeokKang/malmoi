@@ -4,7 +4,7 @@ Respuestas breves a preguntas habituales sobre Malmoi, con un enlace a la págin
 
 ## ¿Qué hace Malmoi? {#what-is-malmoi}
 
-Malmoi es una herramienta de gestión de traducciones (i18n) para repositorios de GitHub. Encuentra tus archivos de traducción, permite que tu equipo los edite en el navegador y devuelve los cambios guardados como un pull request sin cambiar su organización. Consulta [Cómo funciona la sincronización](sync/README.md#how-it-works).
+Malmoi es una herramienta de gestión de traducciones (i18n) para repositorios de GitHub y GitLab.com. Encuentra tus archivos de traducción, permite que tu equipo los edite en el navegador y devuelve los cambios guardados como un pull request (una merge request en GitLab) sin cambiar su organización. Consulta [Cómo funciona la sincronización](sync/README.md#how-it-works).
 
 ## ¿Los traductores necesitan Git o una cuenta de GitHub? {#translators}
 
@@ -24,7 +24,7 @@ Malmoi aporta los valores, y el archivo existente conserva su forma: los catálo
 
 ## ¿Cómo vuelven las traducciones a mi repositorio? {#pull-request}
 
-**Publicar** reúne los cambios guardados en un pull request para que tu equipo de desarrollo lo revise y lo fusione. Mientras ese pull request está abierto, la siguiente publicación lo actualiza en lugar de abrir otro. Consulta [Publica tus cambios](translate/publish.md#publish).
+**Publicar** reúne los cambios guardados en un pull request (una merge request en GitLab) para que tu equipo de desarrollo lo revise y lo fusione. Mientras ese pull request está abierto, la siguiente publicación lo actualiza en lugar de abrir otro. Consulta [Publica tus cambios](translate/publish.md#publish).
 
 ## ¿Qué pasa si el código cambia mientras se traduce? {#code-changes}
 
@@ -37,6 +37,10 @@ Se conservan. Si la clave vuelve en un commit posterior, sus traducciones vuelve
 ## ¿Tengo que añadir el workflow? {#workflow}
 
 No. Sin él, la ejecución nocturna recoge los cambios del repositorio una vez al día. Con él, los cambios llegan en cada commit. Consulta [Sincronización nocturna o workflow](sync/nightly.md#workflow).
+
+## ¿Malmoi funciona con GitLab? {#gitlab}
+
+Sí, con repositorios de GitLab.com. Un propietario del proyecto conecta un token de acceso personal clásico de GitLab con el alcance `api` y necesita el rol Maintainer o superior en el proyecto de GitLab. Las traducciones vuelven como una merge request, a nombre de la cuenta de GitLab cuyo token usa el proyecto. GitLab Self-Managed y GitLab Dedicated no son compatibles. Consulta [Conecta GitLab](gitlab/create.md#connect-gitlab).
 
 ## ¿Malmoi tiene planes de pago? {#pricing}
 
@@ -52,7 +56,7 @@ No. **Por revisar** solo marca las traducciones cuyo texto de origen cambió, y 
 
 ## ¿Qué no admite Malmoi? {#not-supported}
 
-Malmoi no admite plurales ICU, edición simultánea, permisos detallados, edición en contexto, capturas adjuntas, notas para traductores, flujos de aprobación, memoria de traducción ni traducción automática o con IA integrada.
+Malmoi no admite plurales ICU, edición simultánea, permisos detallados, edición en contexto, capturas adjuntas, notas para traductores, flujos de aprobación, memoria de traducción, traducción automática o con IA integrada, ni GitLab Self-Managed y GitLab Dedicated.
 
 ## ¿Cuántos proyectos y miembros puedo tener? {#limits}
 
@@ -64,7 +68,7 @@ Sí, en **Preferencias**. Estos cambios solo afectan a cómo ves Malmoi, no a lo
 
 ## ¿Qué guarda Malmoi sobre mí? {#privacy}
 
-Tu nombre, tu dirección de correo y tu foto de perfil de GitHub o Google, tus membresías de proyecto y quién cambió por última vez cada traducción. Los nombres, las direcciones de correo y los tokens de conexión se guardan cifrados, y en mal-moi.com Malmoi no vende tus datos ni los usa para publicidad. La **Política de privacidad** del sitio que usas lo detalla todo; tiene un enlace en el pie de página.
+Tu nombre, tu dirección de correo y tu foto de perfil de GitHub o Google, tus membresías de proyecto y quién cambió por última vez cada traducción. Si conectas GitLab, también guarda tu ID de usuario, tu nombre de usuario y tu token de GitLab. Los nombres, las direcciones de correo y los tokens de conexión se guardan cifrados, y en mal-moi.com Malmoi no vende tus datos ni los usa para publicidad. La **Política de privacidad** del sitio que usas lo detalla todo; tiene un enlace en el pie de página.
 
 ## ¿Cómo elimino mi cuenta? {#delete-account}
 

@@ -30,7 +30,7 @@ const START = new Date("2026-09-24T18:00:00Z");
 const ready = (slug: string) => ({
   id: `id-${slug}`,
   slug,
-  installationId: "77",
+  repoHost: "github", gitlabConnectionId: null, installationId: "77",
   repositoryId: "r1",
   surfaces: [{ archivedAt: null, lastCommitSha: "a".repeat(40) }],
   archivedAt: null,

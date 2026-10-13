@@ -20,7 +20,7 @@ const key = (id: string, name: string, cells: Key["cells"], extra: Partial<Key> 
 
 function base(): PullState {
   return {
-    project: { id: "p1", slug: "acme", repoOwner: "o", repoName: "r", baseBranch: "main", installationId: "i1", repositoryId: "r1", lastPulledAt: null },
+    project: { id: "p1", slug: "acme", repoOwner: "o", repoName: "r", baseBranch: "main", repoHost: "github", gitlabConnectionId: null, installationId: "i1", repositoryId: "r1", lastPulledAt: null },
     surfaces: [
       {
         id: "s1", slug: "web", adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", nested: true,

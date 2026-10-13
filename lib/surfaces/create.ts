@@ -7,6 +7,7 @@ import { adapterFor, isAdapterName } from "@/lib/adapters";
 import { lockCredential } from "@/lib/auth/lock";
 import type { Credential } from "@/lib/auth/subject";
 import { templatePaths } from "@/lib/onboarding/confirm";
+import { repoTargetOf, sameRepoTarget, type ProjectRepoColumns } from "@/lib/repo-host/target";
 import { prepareFirstSnapshot, type FirstSnapshotInput } from "@/lib/onboarding/ingest";
 import { runTokenFor } from "@/lib/events/payload";
 import { recordEvent, recordRun } from "@/lib/events/record";
@@ -27,7 +28,8 @@ export class SurfaceCreationError extends Error {
 
 export type AddSurfaceSnapshot = Omit<FirstSnapshotInput, "surfaceId" | "surfaceSlug" | "startedAt" | "token" | "projectSlug"> & {
   userId: string;
-  repository: { repositoryId: string; installationId: string; repoOwner: string; repoName: string; baseBranch: string };
+  /** 읽을 때의 연결 열 — 잠금 뒤 `sameRepoTarget`으로 재대조한다(호스트·GitLab 연결 참조까지). */
+  repository: ProjectRepoColumns & { baseBranch: string };
 };
 
 /** GitHub I/O는 호출부가 끝낸다. 잠금 후 재조회한 경계와 첫 적재만 원자적으로 확정한다. */
@@ -54,8 +56,11 @@ export async function addSurfacesFromSnapshot(prisma: PrismaClient, input: { pro
     if (project.archivedAt !== null) throw new SurfaceCreationError("archived");
     // grant는 멤버십·역할·보관 뒤다(`planToolAccess`와 같은 순서).
     if (token.grant === "token-scope") throw new SurfaceCreationError("token-scope");
+    // 읽은 리포와 잠금 뒤의 행이 같은 연결이어야 한다(`sameRepoTarget` — 재연결 감지). 연결이 없으면 대조할 것이 없으니 바뀐 것이다.
+    const now = repoTargetOf(project);
     for (const { repository: expected } of input.inputs) {
-      if (project.repositoryId !== expected.repositoryId || project.installationId !== expected.installationId || project.repoOwner !== expected.repoOwner || project.repoName !== expected.repoName || project.baseBranch !== expected.baseBranch) throw new SurfaceCreationError("repo-replaced");
+      const then = repoTargetOf(expected);
+      if (now.status !== "ok" || then.status !== "ok" || !sameRepoTarget(now.target, then.target) || project.repoOwner !== expected.repoOwner || project.repoName !== expected.repoName || project.baseBranch !== expected.baseBranch) throw new SurfaceCreationError("repo-replaced");
     }
     const surfaces = await tx.translationSurface.findMany({ where: { projectId: first.projectId }, include: { locales: { where: { orphaned: false } } } });
     const slugs = surfaces.map(surface => surface.slug);

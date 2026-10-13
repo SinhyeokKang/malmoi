@@ -8,6 +8,12 @@ import type { ConnectError } from "@/lib/github-connect/message";
 import { ensureUserToken } from "@/lib/github-connect/token-store";
 import { type InstallationRepo, listInstallationRepos, listUserInstallations } from "@/lib/github-connect/user";
 import type { OnboardError } from "@/lib/onboarding/message";
+import type { GitLabConnectError } from "@/lib/gitlab-connect/errors";
+import { openGitLabConnection } from "@/lib/gitlab-connect/connection";
+import { planMemberAccess, planProjectMeta } from "@/lib/gitlab-connect/access-plan";
+import { tokenExpired, type RemoteResult } from "@/lib/gitlab-connect/verify";
+import { createGitLabTransport, isGitLabProjectId, projectPath } from "@/lib/gitlab/transport";
+import { unreachable, type RepoLocator } from "@/lib/repo-host/target";
 
 /**
  * **두 GitHub 자격증명이 만나는 코어** (mcp-connector T4-c — design §1.3 · ARCHITECTURE §3.1). 리포 읽기는 App installation 토큰
@@ -18,8 +24,11 @@ import type { OnboardError } from "@/lib/onboarding/message";
  * ⚠️ **인가가 GitHub 조회보다 먼저다** — 거부될 요청이 남의 레이트 리밋을 태우지 않는다.
  */
 
-/** 온보딩의 실패는 두 union에서 온다 — `/projects/new`가 `isOnboardError`·`isConnectError` 둘로 읽는다 (§3.6). */
-export type OnboardFailure = OnboardError | ConnectError | "invalid input";
+/**
+ * 온보딩의 실패는 세 union에서 온다 — `/projects/new`가 `isOnboardError`·`isConnectError`·`isGitLabConnectError`로 읽는다 (§3.6).
+ * GitLab 갈래의 문구는 E-ui가 사전에 붙인다 — 그 전에는 화면 폴백이다.
+ */
+export type OnboardFailure = OnboardError | ConnectError | GitLabConnectError | "invalid input";
 
 /**
  * 목록 조회 실패 → 사유. **401이 있으면 그것이 이긴다** (ARCHITECTURE §6.4): 사용자가 GitHub에서 App
@@ -44,14 +53,99 @@ export function listFailure(errors: readonly unknown[]): { ok: false; error: "re
 export async function checkRepoAccess(
   prisma: PrismaClient,
   userId: string,
-  owner: string,
-  repo: string,
-  /** `planRepoConnect`의 넷째 조건(리포 쓰기 권한). 기본값이 없다 — `false`는 재적재뿐이다. */
-  requirePush: boolean,
-): Promise<
-  | { status: "ok"; connect: RepoConnect; repositoryId: string; installationId: string; repoOwner: string; repoName: string; defaultBranch: string }
-  | { status: "rejected"; error: OnboardFailure }
-> {
+  target: RepoLocator,
+  /** `requirePush`는 `planRepoConnect`의 넷째 조건(리포 쓰기 권한)이다. 기본값이 없다 — `false`는 재적재·설정 브랜치 목록뿐이다. */
+  options: { requirePush: boolean },
+): Promise<RepoAccess> {
+  switch (target.host) {
+    case "github":
+      return checkGitHubAccess(prisma, userId, target.owner, target.name, options.requirePush);
+    case "gitlab":
+      return checkGitLabAccess(prisma, userId, target.repositoryId, options.requirePush);
+    default:
+      return unreachable(target);
+  }
+}
+
+/**
+ * 호출자 리포 권한의 결과. **호스트 전용 필드는 그 호스트 갈래 안에만 둔다** — GitHub의 `installationId`·`connect`는 설치 단위 연결의 증거다.
+ * 프로젝트 대조는 `sameAccessedRepository`(`lib/repo-host/target.ts`)가 한다.
+ */
+export type RepoAccess =
+  | { status: "ok"; host: "github"; connect: RepoConnect; repositoryId: string; installationId: string; repoOwner: string; repoName: string; defaultBranch: string }
+  /** `connectionId`는 **호출자 자신의** 계정 GitLab 연결이다 — 새 리포(①)만 이것으로 열고, 연결된 프로젝트는 프로젝트의 참조로 연다. */
+  | { status: "ok"; host: "gitlab"; connectionId: string; repositoryId: string; repoOwner: string; repoName: string; defaultBranch: string }
+  | { status: "rejected"; error: OnboardFailure };
+
+/**
+ * **GitLab 갈래** (design §3 `checkRepoAccess`). 호출자 **자신의** 계정 연결 PAT로 묻는다 — 서버 쓰기 자격증명(프로젝트가 참조하는 연결)의
+ * 존재만으로 호출자의 권한을 인정하지 않는다.
+ *
+ * 순서: 연결 → 만료(저장 메타, 호출 0) → `GET /projects/<id>`(주소·object format·보관) → `GET /projects/<id>/members/all/<user id>`(유효 권한).
+ * ⚠️ **숫자 id로만 부른다** — 이름으로 찾지 않는다. ⚠️ 응답 전문을 로그·저장하지 않는다(`runners_token`).
+ * ⚠️ **보관은 여기서 쓰기 검사(`requirePush` — 생성·재연결·토큰 회전)만 거부한다** — 읽기 검사(수동 Sync·브랜치 목록)는 통과시키되 보관이 읽기를
+ * 허용하는 것은 아니다(D25 ② "보관 = 읽기도 거부"). 읽기의 보관 거부는 프로젝트 참조 연결로 여는 리더(`openProject` — `lib/gitlab/client.ts`)가 든다.
+ */
+async function checkGitLabAccess(prisma: PrismaClient, userId: string, repositoryId: string, requirePush: boolean): Promise<RepoAccess> {
+  if (!isGitLabProjectId(repositoryId)) return { status: "rejected", error: "invalid input" };
+  const connection = await openGitLabConnection(prisma, { userId }).catch((error: unknown) => {
+    logFailure("gitlab-access", error);
+    return "unavailable" as const;
+  });
+  if (connection === "unavailable") return { status: "rejected", error: "unavailable" };
+  if (connection === null) return { status: "rejected", error: "gitlab-not-connected" };
+  if (tokenExpired(connection.expiresAt, new Date())) return { status: "rejected", error: "gitlab-reconnect" };
+
+  const transport = createGitLabTransport(connection.token);
+  const meta = planProjectMeta(await remote("gitlab-access", () => transport.get(projectPath(repositoryId))), repositoryId);
+  switch (meta.status) {
+    case "ok":
+      break;
+    case "reconnect":
+      return { status: "rejected", error: "gitlab-reconnect" };
+    case "forbidden":
+      // ⚠️ 404는 "없다"가 아니라 "이 사람이 못 본다"다 — GitLab도 권한 없음을 404로 숨긴다.
+      return { status: "rejected", error: "repo-forbidden" };
+    case "unsupported":
+      return { status: "rejected", error: "gitlab-repo-unsupported" };
+    case "unavailable":
+      return { status: "rejected", error: "unavailable" };
+    default:
+      return unreachable(meta);
+  }
+  if (requirePush && meta.archived) return { status: "rejected", error: "gitlab-repo-archived" };
+
+  const member = planMemberAccess(
+    await remote("gitlab-access", () => transport.get(projectPath(repositoryId, `members/all/${encodeURIComponent(connection.gitlabUserId)}`))),
+    requirePush,
+  );
+  switch (member) {
+    case "ok":
+      return { status: "ok", host: "gitlab", connectionId: connection.connectionId, repositoryId, repoOwner: meta.owner, repoName: meta.name, defaultBranch: meta.defaultBranch };
+    case "read-only":
+      return { status: "rejected", error: "repo-read-only" };
+    case "forbidden":
+      return { status: "rejected", error: "repo-forbidden" };
+    case "reconnect":
+      return { status: "rejected", error: "gitlab-reconnect" };
+    case "unavailable":
+      return { status: "rejected", error: "unavailable" };
+    default:
+      return unreachable(member);
+  }
+}
+
+/** 원격 읽기 하나를 값으로 — 실패는 분류만 로그에 남긴다(본문·URL 없음). */
+async function remote(stage: string, work: () => Promise<{ body: unknown }>): Promise<RemoteResult> {
+  try {
+    return { ok: true, body: (await work()).body };
+  } catch (error) {
+    logFailure(stage, error);
+    return { ok: false, error };
+  }
+}
+
+async function checkGitHubAccess(prisma: PrismaClient, userId: string, owner: string, repo: string, requirePush: boolean): Promise<RepoAccess> {
   const token = await ensureUserToken(prisma, userId, new Date());
   if (token.status !== "ok") return { status: "rejected", error: token.status };
 
@@ -129,6 +223,7 @@ export async function checkRepoAccess(
 
   return {
     status: "ok",
+    host: "github",
     connect,
     // ⚠️ **null 폴백을 두지 않는다** — 위에서 `probe.status`를 좁혔으므로 여기서 부재를 표현하면
     // 고정되지 않은 프로젝트를 **새로 만드는** 경로가 생긴다 (sec-audit-2 발견 34).

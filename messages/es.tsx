@@ -110,6 +110,11 @@ export const es = {
       owner: (branch: string): string => `La rama base ${branch} ya no está en el repositorio — elige otra rama base en Configuración`,
       editor: (branch: string): string => `La rama base ${branch} ya no está en el repositorio — pide a un propietario del proyecto que elija otra rama base`,
     },
+    onGitLab: {
+      openPr: (n: number, branch: string): string => `Las ediciones de la merge request !${n} aún no están en ${branch} — también se reemplazarán.`,
+      prChecking: "Comprobando si queda algo pendiente en una merge request…",
+      prUnknown: "No se pudo comprobar si queda algo pendiente en una merge request.",
+    },
   },
   notFound: {
     title: "Página no encontrada",
@@ -228,7 +233,7 @@ export const es = {
     },
     closing: {
       title: "Empieza con los archivos que ya tienes",
-      body: "Conecta un repositorio de GitHub con archivos de traducción JSON, YAML, JS/TS o de extensiones de Chrome, invita a tu equipo y permite que agentes de IA trabajen en los mismos proyectos mediante MCP.",
+      body: "Conecta un repositorio de GitHub o GitLab.com con archivos de traducción JSON, YAML, JS/TS o de extensiones de Chrome, invita a tu equipo y permite que agentes de IA trabajen en los mismos proyectos mediante MCP.",
       links: { label: "Más información", formats: "Formatos compatibles", aiAgents: "Agentes de IA", faq: "Preguntas frecuentes" },
     },
     mockup: {
@@ -390,6 +395,8 @@ export const es = {
     meta: {
       title: "Proyecto",
       tabs: { list: "Detalles del proyecto", project: "Proyecto", sync: "Sincronizar", publish: "Publicar" },
+      platform: "Plataforma",
+      platforms: { github: "GitHub", gitlab: "GitLab" },
       repository: "Repositorio",
       connection: "Conexión",
       branch: "Rama",
@@ -421,6 +428,12 @@ export const es = {
       unrecorded: "Sin registro",
       notOpen: "No abierta",
       pr: (n: number): string => `#${n}`,
+      onGitLab: {
+        pullRequest: "Merge request",
+        prState: "Estado de la MR",
+        prCheckFailed: "No se pudo comprobar si hay una merge request abierta",
+        pr: (n: number): string => `!${n}`,
+      },
     },
 
     banner: {
@@ -459,6 +472,12 @@ export const es = {
         title: "Este proyecto está archivado",
         body: "La edición y la publicación están desactivadas, y se rechazan las sincronizaciones desde tu repositorio. Restáuralo para volver a trabajar en él.",
         editor: "Pide a un propietario del proyecto que lo restaure.",
+      },
+    },
+    onGitLab: {
+      cards: { held: { "open-pr": "retenido hasta que se fusione o se cierre la merge request", "pr-check-failed": "retenido — no se pudo comprobar si hay una merge request abierta" } },
+      banner: {
+        notConnected: { body: "Conecta este proyecto a GitLab en Configuración para sincronizar y publicar. Todo lo que ya está traducido está a salvo." },
       },
     },
   },
@@ -634,6 +653,7 @@ export const es = {
         name: (who: ReactNode): ReactNode => <>{who} cambió el nombre del proyecto</>,
         baseBranch: (who: ReactNode): ReactNode => <>{who} cambió la rama base</>,
         repository: (who: ReactNode): ReactNode => <>{who} volvió a conectar el repositorio</>,
+        repositoryDisconnected: (who: ReactNode): ReactNode => <>{who} quitó la conexión de GitLab que usaba este proyecto</>,
         pushToken: (who: ReactNode): ReactNode => <>{who} renovó el token de push</>,
         image: (who: ReactNode): ReactNode => <>{who} cambió la imagen del proyecto</>,
         imageRemoved: (who: ReactNode): ReactNode => <>{who} quitó la imagen del proyecto</>,
@@ -726,6 +746,40 @@ export const es = {
       "surface-removed": "Esta fuente se quitó del proyecto. Quita su paso de tu workflow de GitHub.",
       fallback: "La ejecución se rechazó antes de empezar.",
     },
+    onGitLab: {
+      deferReasons: {
+        "open-pr": "Todavía hay una merge request de Malmoi abierta. No se sincronizó nada: la sincronización se reanuda cuando se fusione o se cierre.",
+        "pr-check-failed": "No se pudo comprobar en GitLab si hay una merge request de Malmoi abierta, así que no se sincronizó nada. Si la conexión de GitLab de este proyecto se quitó o no se puede usar, un propietario del proyecto puede volver a conectarla en Configuración. Si no, la próxima ejecución lo vuelve a comprobar.",
+        "too-large": "El cambio del repositorio es demasiado grande para una sincronización desde el servidor. No se sincronizó nada. Reduce el tamaño de los archivos o entrégalo con los jobs de GitLab CI del repositorio.",
+      },
+      meta: { noPullRequest: "sin merge request" },
+      sentence: {
+        publish: {
+          running: (who: ReactNode): ReactNode => <>{who} está enviando traducciones a GitLab</>,
+          sent: (who: ReactNode): ReactNode => <>{who} envió traducciones a GitLab</>,
+        },
+        import: {
+          held: {
+            "open-pr": (who: ReactNode): ReactNode => <>{who} retuvo la sincronización: todavía hay una merge request de Malmoi abierta</>,
+            "pr-check-failed": (who: ReactNode): ReactNode => <>{who} retuvo la sincronización: no se pudo comprobar si hay una merge request abierta</>,
+          },
+        },
+      },
+      detail: {
+        labels: { pullRequest: "Merge request", closedPullRequest: "Merge request cerrada" },
+        actions: { openRepository: "Abrir en GitLab" },
+        notes: { publish: "Que una ejecución falle no demuestra que nada haya llegado a GitLab. Revisa el repositorio si esperas una merge request." },
+      },
+      reasons: {
+        "github-error": `GitLab no respondió. ${NIGHTLY_RETRY}`,
+        "base-unreadable": "No pudimos leer tu repositorio. Pide a tus desarrolladores que revisen el acceso del token de GitLab.",
+        "not-installed": "La conexión de GitLab de este proyecto se quitó o no se puede usar. Un propietario del proyecto puede volver a conectarla en Configuración.",
+      },
+      refusals: {
+        "surface-removed": "Esta fuente se quitó del proyecto. Quita su job de tu .gitlab-ci.yml.",
+        "not-installed": "La conexión de GitLab de este proyecto se quitó o no se puede usar.",
+      },
+    },
   },
 
   archive: {
@@ -760,7 +814,7 @@ export const es = {
     empty: {
       title: "Todavía no hay proyectos",
       description:
-        "Conecta un repositorio y Malmoi encontrará los archivos de traducción por ti; solo escribe en él abriendo una pull request. ¿Te invitaron al proyecto de otra persona? Abre el enlace de tu correo de invitación.",
+        "Conecta un repositorio y Malmoi encontrará los archivos de traducción por ti; solo escribe en él abriendo una pull request (una merge request en GitLab). ¿Te invitaron al proyecto de otra persona? Abre el enlace de tu correo de invitación.",
     },
     summary: {
       newFromGithub: "Nuevo desde GitHub",
@@ -820,6 +874,15 @@ export const es = {
       importFailed: "La última sincronización no pudo terminar.",
       ownerRetries: "Solo los propietarios del proyecto pueden intentarlo de nuevo.",
     },
+    onGitLab: {
+      summary: { newFromGithub: "Nuevo desde GitLab" },
+      meter: { note: { setup: "Conecta este proyecto a GitLab para continuar." } },
+      banner: {
+        prOpen: (n: number): string => `La merge request !${n} está abierta: fusiónala para terminar.`,
+        prCheckFailed: "No se pudo comprobar si hay una merge request abierta.",
+        action: { viewPr: "Abrir en GitLab" },
+      },
+    },
   },
   account: {
     loading: "Cargando cuenta…",
@@ -851,6 +914,34 @@ export const es = {
       rowName: "GitHub",
       confirmDisconnect: "¿Desconectar la GitHub App?",
       confirmHint: "No podrás añadir ni volver a conectar repositorios hasta que vuelvas a conectarte. Los proyectos que ya están conectados siguen sincronizándose.",
+    },
+    gitlab: {
+      expiresSoon: "Caduca pronto",
+      title: "GitLab PAT",
+      rowName: "GitLab",
+      hintNotConnected: "Conecta un token de acceso personal de GitLab para crear proyectos a partir de repositorios de GitLab.",
+      expires: (date: string): string => `Caduca el ${date}.`,
+      expiredOn: (date: string): string => `Caducó el ${date}. Reemplaza el token para que los proyectos que lo usan sigan funcionando.`,
+      noExpiry: "No caduca.",
+      usedBy: (n: number): string => (n === 1 ? "Lo usa 1 proyecto." : `Lo usan ${n.toLocaleString("es")} proyectos.`),
+      replace: "Reemplazar token",
+      replaceTitle: "Reemplazar el token de GitLab",
+      replaceHint: (username: string): string => `Pega un token nuevo para @${username}. Los proyectos que usan esta conexión pasan a usarlo enseguida.`,
+      disconnectLabel: "Desconectar GitLab",
+      confirmDisconnect: "¿Desconectar GitLab de Malmoi?",
+      confirmHint: "Malmoi elimina el token guardado. Los proyectos que usan esta conexión dejan de sincronizarse y publicarse hasta que un propietario del proyecto los vuelva a conectar.",
+      disconnectFailed: "No se pudo desconectar GitLab. Vuelve a intentarlo.",
+      disconnectConfirm: "Desconectar GitLab",
+      expiresSoonNotice: (days: number, date: string): string =>
+        `Tu token de GitLab caduca en ${days.toLocaleString("es")} ${days === 1 ? "día" : "días"}, el ${date}. Reemplázalo antes para que los proyectos que lo usan sigan funcionando.`,
+      form: {
+        label: "Token de acceso personal",
+        help: "Usa un token de acceso personal clásico con el alcance api. Los proyectos que conectes necesitan el rol Maintainer o superior.",
+        create: "Crear un token en GitLab",
+        connect: "Conectar",
+        checking: "Comprobando el token con GitLab…",
+        invalidInput: "Eso no es un token de acceso personal de GitLab. Pega el token que creaste en GitLab.",
+      },
     },
     sessionsSection: {
       title: "Sesiones",
@@ -910,10 +1001,10 @@ export const es = {
       },
     },
     grants: {
-      "translation:write": { label: "Traducir y publicar", hint: "Guardar traducciones y abrir pull requests de publicación." },
+      "translation:write": { label: "Traducir y publicar", hint: "Guardar traducciones y publicarlas en el repositorio." },
       "project:settings": { label: "Configuración del proyecto", hint: "Fuentes, sincronización, rama base, token de push, archivado." },
       "member:manage": { label: "Miembros", hint: "Invitar, cambiar roles, quitar." },
-      "project:create": { label: "Crear proyectos", hint: "Ver tus repositorios de GitHub y configurar proyectos nuevos." },
+      "project:create": { label: "Crear proyectos", hint: "Ver tus repositorios de GitHub y GitLab y configurar proyectos nuevos." },
     },
     apps: {
       title: "Apps conectadas",
@@ -1041,6 +1132,9 @@ export const es = {
       result: {
         title: "Malmoi está listo",
         description: "Cada noche, Malmoi envía al repositorio las traducciones que aún no se han enviado como una pull request, o recoge los commits nuevos. Para recoger los cambios con cada commit, añade el token de push y el flujo de trabajo al repositorio.",
+        onGitLab: {
+          description: "Cada noche, Malmoi envía al repositorio las traducciones que aún no se han enviado como una merge request, o recoge los commits nuevos. Para recoger los cambios con cada commit, añade el token de push y los jobs de CI al repositorio.",
+        },
       },
     },
 
@@ -1082,6 +1176,21 @@ export const es = {
       listFailed: "No pudimos cargar tus repositorios.",
     },
 
+    host: { label: "Proveedor del repositorio", github: "GitHub", gitlab: "GitLab" },
+    gitlab: {
+      connect: { title: "Conectar GitLab", description: "Pega un token de acceso personal para ver los proyectos de GitLab que mantienes." },
+      reconnect: {
+        title: "Volver a conectar GitLab",
+        description: "Tu token de GitLab ya no se puede usar. Puede que se haya revocado: pega uno nuevo.",
+        expiredOn: (date: string): string => `Tu token de GitLab caducó el ${date}. Pega uno nuevo para ver tus proyectos.`,
+      },
+      repos: {
+        title: "No hay proyectos de GitLab para añadir",
+        description: "Malmoi muestra los proyectos de GitLab en los que tienes el rol Maintainer o superior. Consigue ese rol en GitLab y vuelve a intentarlo.",
+        action: "Intentar de nuevo",
+      },
+      account: (username: string, expires: string | null): string => (expires === null ? `Conectado como @${username}` : `Conectado como @${username} · el token caduca el ${expires}`),
+    },
     repo: {
       list: "Repositorios",
       search: { label: "Buscar repositorios", placeholder: "Buscar repositorios…" },
@@ -1094,6 +1203,11 @@ export const es = {
       loading: "Buscando repositorios que tengan instalada la GitHub App…",
       searchEmpty: (q: string): string => `Ningún repositorio coincide con “${q}”`,
       clearSearch: "Borrar búsqueda",
+      onGitLab: {
+        loading: "Buscando proyectos de GitLab en los que eres Maintainer…",
+        pushedAt: (rel: string): string => `Actividad ${rel}`,
+        search: { label: "Buscar proyectos", placeholder: "Buscar proyectos…" },
+      },
     },
 
     files: {
@@ -1147,6 +1261,14 @@ export const es = {
           <strong className="text-foreground font-normal">La dirección no se puede cambiar más adelante.</strong>
         </>
       ),
+      onGitLab: {
+        hint: (address: ReactNode, branch: ReactNode): ReactNode => (
+          <>
+            Se abre en {address}. Las traducciones vuelven como una merge request en {branch}.{" "}
+            <strong className="text-foreground font-normal">La dirección no se puede cambiar más adelante.</strong>
+          </>
+        ),
+      },
       create: "Crear proyecto",
       creating: "Creando el proyecto y sincronizando todos los archivos seleccionados…",
       nothingCreated: "No se creó nada.",
@@ -1184,10 +1306,20 @@ export const es = {
             rótalo en Configuración.
           </>
         ),
+        onGitLab: {
+          description: (secret: ReactNode): ReactNode => (
+            <>
+              Añádelo a las variables de CI/CD del proyecto como {secret}: selecciona Protect variable y deja Visibility en Masked.{" "}
+              <strong className="text-foreground font-normal">No lo volverás a ver cuando salgas de esta página.</strong> Si lo pierdes,
+              rótalo en Configuración.
+            </>
+          ),
+        },
       },
       ingest: {
         retry: "Intentar de nuevo",
         refsHint: "Las referencias en el código llegan después de la primera ejecución de tu flujo de trabajo de CI. Ya puedes empezar a traducir.",
+        onGitLab: { refsHint: "Las referencias en el código llegan después de la primera ejecución de tus jobs de CI. Ya puedes empezar a traducir." },
         open: "Abrir proyecto",
       },
       failed: "No se pudo terminar. Vuelve a intentarlo en un momento.",
@@ -1341,6 +1473,64 @@ export const es = {
       unsentCount: (n: number): string => `${n.toLocaleString("es")} ${n === 1 ? "edición sin enviar" : "ediciones sin enviar"}`,
       viewResult: "Ver resultado",
       viewLink: "Ver pull request",
+      onGitLab: {
+        viewLink: "Ver merge request",
+        previewIntro: (repo: string): string => `Todo lo que editaste va a ${repo} en una sola merge request.`,
+        previewIntroPartial: (repo: string): string => `Las ediciones que se pueden enviar van a ${repo} en una sola merge request.`,
+        same: {
+          undoes: (n: number): string => `Deshace el cambio de !${n}`,
+          closesTitle: (n: number): string => `Publicar cierra la merge request !${n}`,
+          closesBody: (n: number, branch: string): string =>
+            `Todas las ediciones de aquí vuelven a coincidir con ${branch}, así que a !${n} no le queda nada que fusionar. Malmoi la cierra con un comentario que explica el motivo.`,
+          closeAction: (n: number): string => `Cerrar la merge request !${n}`,
+          nothingBody: "Todas las ediciones de aquí ya coinciden con el repositorio, así que no se abre ninguna merge request. Publicar las marca como enviadas.",
+        },
+        nothingSendable: { body: "Cada edición sin enviar está esperando su archivo de idioma o su clave, así que ninguna merge request cambiaría." },
+        otherFile: { body: "Este archivo se reescribe a partir de las traducciones actuales de Malmoi. Las claves quitadas del código desaparecen, y los valores de una merge request anterior que no se fusionó vuelven a salir." },
+        prOpen: {
+          title: (n: number): string => `!${n} está abierta — esto reemplaza lo que contiene`,
+          body: (n: number, changes: number): ReactNode => (
+            <>
+              No se abre una segunda merge request. !{n} contendrá{" "}
+              <span className="text-foreground">todo lo que está sin enviar</span>, no solo{" "}
+              {changes === 1 ? "este cambio" : `estos ${changes.toLocaleString("es")}`}.
+            </>
+          ),
+        },
+        prNone: { title: (repo: string): string => `Se abre una nueva merge request en ${repo}` },
+        prUnknown: { title: "No se pudo comprobar si hay una merge request abierta" },
+        openPr: "Abrir merge request",
+        replacePr: (n: number): string => `Reemplazar la merge request !${n}`,
+        progressDescription: "Escribiendo los archivos de traducción y abriendo una merge request. Normalmente tarda unos segundos.",
+        progress: (branch: string): readonly string[] => ["Generando los archivos de traducción", `Haciendo commit en ${branch}`, "Abriendo la merge request"],
+        createdDescription: (n: number): string =>
+          `${n.toLocaleString("es")} ${n === 1 ? "cambio está" : "cambios están"} en una merge request. ${n === 1 ? "Llega" : "Llegan"} al producto cuando alguien del equipo la fusione.`,
+        prMeta: (n: number, files: number): string =>
+          `Merge request !${n} · ${files.toLocaleString("es")} ${files === 1 ? "archivo modificado" : "archivos modificados"}`,
+        accessNote: "Editar o cerrar esta merge request se hace en GitLab. Si no tienes acceso ahí, pide ayuda a un propietario del proyecto.",
+        updated: "Tu merge request anterior ahora contiene esto",
+        updatedDescription: (n: number, changes: number): string =>
+          `!${n} seguía abierta, así que Malmoi reemplazó su contenido en lugar de abrir una segunda. Ahora contiene todo lo que está sin enviar, no solo ${changes === 1 ? "el cambio de hoy" : `los ${changes.toLocaleString("es")} de hoy`}.`,
+        replacedBody: (branch: string, base: string): ReactNode => (
+          <>
+            {branch} siempre contiene{" "}
+            <span className="text-foreground">un solo commit sobre {base}</span>, así que esta merge request es una
+            instantánea de todo lo que está sin enviar — no un historial de lo que se añadió desde entonces.
+          </>
+        ),
+        tellReviewer: (n: number): string => `Si !${n} lleva un tiempo esperando, quizá convenga avisar al revisor de que cambió.`,
+        noChangesDescription: "Tus ediciones ya estaban en el repositorio, así que no hizo falta ninguna merge request.",
+        closedPr: {
+          description: (branch: string): string => `Tus ediciones ahora coinciden con ${branch}, así que se cerró la merge request anterior.`,
+          line: (n: number, branch: string): string => `La merge request !${n} se cerró porque ya no tiene nada que difiera de ${branch}.`,
+          view: (n: number): string => `Ver !${n}`,
+        },
+        transientError: "GitLab no respondió",
+        transientErrorDescription: "La solicitud a GitLab falló a mitad de camino. Tus ediciones siguen guardadas aquí.",
+        tooSoonBody: "Malmoi espera un momento entre merge requests para que el repositorio no reciba dos seguidas.",
+        previewFailedBody: (n: number): string =>
+          `${n === 1 ? "Tu cambio sigue" : `Tus ${n.toLocaleString("es")} cambios siguen`} aquí. Publicar queda desactivado hasta que se pueda mostrar esta lista — enviar sin ella se saltaría el único paso que dice qué reemplaza una merge request.`,
+      },
       nothing: "No hay nada que enviar — todas las ediciones ya se enviaron.",
       paused: "Publicar no está disponible en este momento.",
 
@@ -1564,6 +1754,15 @@ export const es = {
         "Si esto sigue pasando, revisa la conexión con el repositorio — un propietario del proyecto puede comprobarla en Configuración.",
     },
 
+    onGitLab: {
+      workspace: { filters: { state: { new: "Nuevas desde GitLab" } } },
+      banner: {
+        basePending: (locale: string): string =>
+          `El idioma base va a cambiar a ${locale}. ` +
+          "El cambio se aplica en la próxima sincronización desde el pipeline de GitLab CI de tu repositorio — el botón Sincronizar no lo aplica. " +
+          "Esa sincronización espera mientras haya ediciones sin enviar, así que publícalas primero.",
+      },
+    },
   },
 
   sources: {
@@ -1651,6 +1850,18 @@ export const es = {
     addedOne: (count: number): string => `${count.toLocaleString("es")} claves sincronizadas`,
     addedFailed: "sincronización fallida",
     resultKeep: "Esto se queda hasta que lo cierres, para que el resultado no desaparezca cuando cambie un estado más abajo.",
+    onGitLab: {
+      removal: {
+        openPr: "Si la merge request abierta cambia sus archivos, esos cambios quedarán fuera en la próxima publicación.",
+        prUnknown: "No se pudo comprobar si hay una merge request abierta. Si alguna cambia sus archivos, esos cambios quedarán fuera en la próxima publicación.",
+        workflowLine: "Quita su job de tu .gitlab-ci.yml; si no, ese job fallará en el próximo pipeline. Las demás fuentes se siguen sincronizando.",
+        workflowStep: (link: ReactNode): ReactNode => <>Quita su job del archivo de CI en {link}.</>,
+      },
+      firstImport: "La primera sincronización todavía no terminó. Añadir una fuente no conecta su job de CI.",
+      pendingHelp: "Si tu CI pasa el idioma base de esta fuente, actualiza su job en .gitlab-ci.yml al idioma solicitado.",
+      notImportedHelp: "Todavía no llegó ninguna clave ni ningún idioma de este archivo. Añadir una fuente no conecta la CI por sí solo — los jobs de CI de tu repositorio envían los textos.",
+      workflow: "Actualiza el archivo de CI en Configuración para incluir las fuentes añadidas.",
+    },
   },
 
   locales: {
@@ -1672,6 +1883,11 @@ export const es = {
     },
     pending: {
       copy: "Copiar línea",
+    },
+    onGitLab: {
+      field: {
+        help: "El idioma en el que están escritos tus textos de origen. Cambiarlo surte efecto en la próxima sincronización desde el pipeline de GitLab CI de tu repositorio, no con el botón Sincronizar — actualiza el valor MALMOI_I18N_BASE del job para que coincida.",
+      },
     },
   },
   members: {
@@ -1823,6 +2039,25 @@ export const es = {
     openRepo: "Abrir en GitHub",
 
     repository: {
+      gitlab: {
+        connectedWith: (username: string, expires: string | null): string =>
+          expires === null ? `Conectado con el token de @${username}` : `Conectado con el token de @${username} · caduca el ${expires}`,
+        connectedWithYours: (expires: string | null): string => (expires === null ? "Conectado con tu token" : `Conectado con tu token · caduca el ${expires}`),
+        expiresSoonYours: (days: number, date: string): string =>
+          `Tu token de GitLab caduca en ${days.toLocaleString("es")} ${days === 1 ? "día" : "días"}, el ${date}. Reemplázalo antes para que este proyecto siga sincronizándose.`,
+        expiresSoonOther: (owner: string, days: number, date: string): string =>
+          `El token de GitLab de @${owner} caduca en ${days.toLocaleString("es")} ${days === 1 ? "día" : "días"}, el ${date}. Su propietario puede reemplazarlo o puedes usar tu propia conexión de GitLab.`,
+        expiredYours: (date: string): string => `Tu token de GitLab caducó el ${date}. Reemplázalo para volver a conectar este proyecto.`,
+        expiredOther: (owner: string, date: string): string => `El token de GitLab de @${owner} caducó el ${date}. Las sincronizaciones y publicaciones se detienen hasta que se vuelva a conectar.`,
+        usedByUpdates: (n: number): string => (n === 1 ? "Lo usa 1 proyecto. Al reemplazarlo se actualiza." : `Lo usan ${n.toLocaleString("es")} proyectos. Al reemplazarlo se actualizan todos.`),
+        usedByReconnects: (n: number): string => (n === 1 ? "Lo usa 1 proyecto. Al reemplazarlo se vuelve a conectar." : `Lo usan ${n.toLocaleString("es")} proyectos. Al reemplazarlo se vuelven a conectar todos.`),
+        unusable: "El token de GitLab de este proyecto no se puede usar. Puede que haya caducado o se haya revocado, o que su propietario haya perdido el acceso al repositorio. Las sincronizaciones y publicaciones se detienen hasta que se vuelva a conectar.",
+        removed: "Se quitó la conexión de GitLab de este proyecto: quien la conectó desconectó GitLab o dejó el proyecto. Las sincronizaciones y publicaciones se detienen hasta que un propietario del proyecto la vuelva a conectar.",
+        useMine: "Usar mi conexión de GitLab",
+        useMineHint: (owner: string | null, me: string): string =>
+          owner === null ? `A partir de entonces, las sincronizaciones y publicaciones quedan a nombre de @${me}.` : `Tu token de GitLab reemplaza el de @${owner}: a partir de entonces, las sincronizaciones y publicaciones quedan a nombre de @${me}.`,
+        connectFirst: "Conecta tu token de GitLab para volver a conectar este proyecto.",
+      },
       disconnected: "Desconectado", notConnected: "No conectado", unknown: "No se pudo comprobar", wrongRepository: "Repositorio incorrecto",
       movedHint: "Vuelve a conectar para guardar el nuevo nombre. Mientras tanto, las sincronizaciones siguen funcionando.",
       paused: "Las sincronizaciones y publicaciones se detienen hasta que se vuelva a conectar. Todo lo ya traducido está a salvo.",
@@ -1877,6 +2112,17 @@ export const es = {
 
     workflow: {
       saveAs: "Guarda este archivo en tu repositorio.",
+      onGitLab: {
+        saveAs: "Añade estos jobs a este archivo en la raíz del repositorio. Si el archivo ya existe, añádelos a él.",
+        hookHint: (hook: ReactNode, wrapper: ReactNode, doc: ReactNode): ReactNode => (
+          <>
+            Los repositorios que leen las traducciones mediante un hook ({hook}) también necesitan la variable {wrapper} en sus jobs de CI — consulta {doc}.
+          </>
+        ),
+        hookDoc: "Añade los jobs de GitLab CI",
+      },
+      gitlabVariable: "Los jobs leen el token de push de la variable de CI/CD PUSH_TOKEN. Añádela en Settings › CI/CD › Variables: selecciona Protect variable y deja Visibility en Masked; las variables protegidas solo llegan a ramas protegidas, así que la rama base debe estar protegida.",
+      gitlabUnavailable: "El archivo de CI de GitLab aún no está disponible en esta versión de Malmoi. Mientras tanto, sincroniza desde Malmoi para cargar los cambios del repositorio.",
       hookHint: (hook: ReactNode, wrapper: ReactNode, doc: ReactNode): ReactNode => (
         <>
           Los repositorios que leen las traducciones mediante un hook ({hook}) también necesitan la entrada {wrapper} — consulta {doc}.
@@ -1893,6 +2139,31 @@ export const es = {
       disconnectLabel: "Desconectar la GitHub App",
       disconnectConfirm: "Desconectar app",
       disconnectFailed: "No pudimos desconectar. Vuelve a intentarlo en un momento.",
+    },
+    onGitLab: {
+      sources: { rerun: "Vuelve a ejecutar el pipeline en GitLab." },
+      recovery: "Las sincronizaciones siguen funcionando. Gestiona tu token de GitLab en Cuenta para volver a conectar este repositorio o añadir fuentes.",
+      openRepo: "Abrir en GitLab",
+      repository: {
+        health: { "repo-replaced": "Esta dirección ahora contiene un repositorio distinto del que se conectó a este proyecto. Compruébalo en GitLab — si el repositorio realmente se reemplazó, crea un proyecto nuevo para él." },
+        fields: { branchHelp: "Las sincronizaciones leen esta rama, y las merge requests se abren contra ella." },
+      },
+      ci: {
+        description: "Tus jobs de CI envían las cadenas de origen a Malmoi con cada merge.",
+        workflow: "Archivo de CI",
+        sourcesLead: "Un solo conjunto de jobs de CI cubre todas las fuentes. Añade o cambia fuentes en",
+        stale: "Algunas fuentes aún no se han sincronizado. Comprueba que el archivo de CI las incluya.",
+        noSources: "Añade una fuente para obtener el archivo de CI.",
+      },
+      token: {
+        description: (secret: ReactNode): ReactNode => (
+          <>
+            Rotarlo invalida el token actual de inmediato — la CI seguirá fallando hasta que actualices la
+            variable de CI/CD {secret} del proyecto.
+          </>
+        ),
+        confirmBody: "El token actual deja de funcionar de inmediato, incluido el que acabas de copiar. La CI fallará hasta que la variable de CI/CD PUSH_TOKEN del proyecto tenga el nuevo.",
+      },
     },
   },
 
@@ -2013,6 +2284,19 @@ export const es = {
       "repo-read-only": "Esta cuenta solo puede leer ese repositorio. Para conectarlo se necesita acceso de escritura; pídeselo al propietario del repositorio.",
       unavailable: "Algo salió mal. Vuelve a intentarlo en un momento.",
       fallback: "Falló la conexión con GitHub. Vuelve a intentarlo.",
+    },
+    gitlab: {
+      "token-invalid": "GitLab no aceptó este token. Puede que haya caducado o se haya revocado: crea uno nuevo y pégalo aquí.",
+      "token-fine-grained": "Este es un token detallado (fine-grained). Malmoi necesita un token de acceso personal clásico con el alcance api: crea uno y pégalo aquí.",
+      "token-scope-missing": "Este token no tiene el alcance api. Crea un token nuevo con el alcance api y pégalo aquí.",
+      "account-mismatch": "Este token es de otra cuenta de GitLab. Primero desconecta GitLab en Cuenta y después conecta la otra cuenta.",
+      "gitlab-not-connected": "Primero conecta tu cuenta de GitLab en Cuenta.",
+      "gitlab-reconnect": "Tu token de GitLab ya no se puede usar. Reemplázalo en Cuenta.",
+      "gitlab-repo-archived": "Este proyecto de GitLab está archivado. Desarchívalo en GitLab y vuelve a intentarlo.",
+      "gitlab-repo-unsupported": "Este proyecto de GitLab usa el formato de objetos SHA-256, que Malmoi no admite.",
+      "gitlab-project-disconnected": "La conexión de GitLab de este proyecto se quitó o no se puede usar. Un propietario del proyecto puede volver a conectarla en la configuración del proyecto.",
+      unavailable: "GitLab no respondió. Vuelve a intentarlo en un momento.",
+      fallback: "Falló la conexión con GitLab. Vuelve a intentarlo.",
     },
 
     onboarding: {

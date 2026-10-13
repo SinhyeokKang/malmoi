@@ -14,7 +14,7 @@ En la lista de claves, las flechas del teclado se mueven entre filas y Intro abr
 
 Cuando la pantalla es demasiado estrecha para ambos, la lista de claves y las traducciones se turnan. Selecciona una fila para abrir sus traducciones y elige **Claves** arriba a la izquierda para volver a la lista. Al volver se mantienen la clave seleccionada, el texto sin guardar y tu posición en la lista, y la dirección de la página no cambia; selecciona la misma fila otra vez para seguir donde lo dejaste. El cuadro de búsqueda y el botón de fuentes están con la lista.
 
-El panel **Fuentes** define qué claves muestra la lista. Selecciona **Todos los espacios de nombres** bajo una fuente para listar todas sus claves, o selecciona un grupo para listar solo ese grupo. El filtro de la parte superior derecha de la lista de claves muestra la opción actual: **Todas las claves**, **Incompletas**, **Por revisar**, **Sin enviar** o **Nuevas desde GitHub**. Por revisar marca las traducciones cuyo texto de origen cambió; no es un paso de aprobación. Al seleccionar un grupo se conserva el filtro, y al cambiar el filtro se conserva el grupo. El filtro solo acota la lista de claves; no cambia los números del panel **Fuentes**.
+El panel **Fuentes** define qué claves muestra la lista. Selecciona **Todos los espacios de nombres** bajo una fuente para listar todas sus claves, o selecciona un grupo para listar solo ese grupo. El filtro de la parte superior derecha de la lista de claves muestra la opción actual: **Todas las claves**, **Incompletas**, **Por revisar**, **Sin enviar** o **Nuevas desde GitHub** (**Nuevas desde GitLab** en un proyecto de GitLab). Por revisar marca las traducciones cuyo texto de origen cambió; no es un paso de aprobación. Al seleccionar un grupo se conserva el filtro, y al cambiar el filtro se conserva el grupo. El filtro solo acota la lista de claves; no cambia los números del panel **Fuentes**.
 
 La búsqueda recorre todas las fuentes del proyecto. Mientras buscas en un proyecto con varias fuentes, aparece **Todas las fuentes** en la parte superior del panel **Fuentes**, y la lista muestra la fuente de cada clave antes de su nombre. En un proyecto con una sola fuente, usa **Todos los espacios de nombres** para buscar en toda la fuente. Cada fuente y grupo también muestra cuántas de sus claves coinciden con la búsqueda, y los grupos sin coincidencias se atenúan y no se pueden seleccionar. Selecciona **Todos los espacios de nombres** bajo una fuente, o un grupo, para acotar los resultados a ello, o **Todas las fuentes** para volver a buscar en todas partes; escribir una búsqueda nueva siempre busca en todas partes. Si seleccionas una clave de otra fuente, la pantalla pasa a esa fuente. Borra la búsqueda para volver al grupo de la clave que seleccionaste. Cuando nada coincide, elige **Buscar en todas las fuentes** para ampliar una búsqueda acotada, o **Borrar búsqueda**. **Borrar filtros** devuelve el filtro a **Todas las claves** y conserva el texto de tu búsqueda.
 
@@ -33,6 +33,8 @@ Los resultados de claves excluyen los proyectos y las fuentes archivados, las fu
 Si una parte de la búsqueda falla, una línea bajo el cuadro de búsqueda indica qué parte falló y cómo reintentarlo, y los demás grupos siguen siendo utilizables. Si tu sesión terminó, inicia sesión de nuevo para buscar en tus proyectos; la documentación sigue siendo buscable.
 
 Con la búsqueda vacía, ves vistas previas de **Proyectos**, **Páginas** y **Documentación**. **Páginas** te lleva a pantallas de Malmoi, como las Traducciones de un proyecto. **Proyectos** incluye los proyectos archivados, mientras que los resultados de claves no. Elige **Ir a tus proyectos** para ver todos tus proyectos, o **Ir a la documentación** para abrirla. **Documentación** busca en los títulos y el texto de la guía y abre la sección que coincide. Escape cierra la búsqueda. Malmoi no guarda el texto de tu búsqueda en el historial ni en el almacenamiento del navegador.
+
+![El diálogo de búsqueda con la palabra order escrita, que muestra claves coincidentes de dos fuentes y secciones coincidentes de la documentación](/guide/global-search.webp "Selecciona una clave para abrirla en Traducciones.")
 
 ## Mira lo que requiere tu atención en todos tus proyectos {#inbox}
 
@@ -60,9 +62,13 @@ Mientras se ejecuta una sincronización desde el repositorio (la **Sincronizar**
 
 Algunos proyectos no permiten una traducción vacía. Si Malmoi rechaza un campo vacío, introduce un valor o pulsa Escape en ese campo para deshacer la edición y luego guarda los demás cambios. No se guarda nada mientras siga la edición vacía no válida.
 
+![Traducciones con un valor en francés escrito para una clave, marcado como No guardado, y el botón Guardar al pie del panel](/guide/translation-edit.webp "Escribe la traducción y elige Guardar.")
+
 ## Salir con cambios sin guardar {#unsaved-changes}
 
 Si cambias de claves, filtros o páginas con una edición sin guardar, elige **Seguir editando** o **Descartar cambios**. **Guardar** está bloqueado mientras **Publicar** se está ejecutando. Actualizar o cerrar la página también puede hacer que el navegador pida confirmación.
+
+![El diálogo para descartar los cambios sobre Traducciones, con los botones Seguir editando y Descartar cambios](/guide/unsaved-changes.webp "Elige Seguir editando para volver y guardar.")
 
 ## Qué pasa después {#next}
 

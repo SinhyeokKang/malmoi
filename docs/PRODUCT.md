@@ -28,7 +28,7 @@
 제품의 단일 완료 조건은 하나다.
 
 > **낯선 리포를 연결한 사용자가 10분 안에 로케일을 발견하고, 번역을 수정하고, 기존 리포에 결정적인
-> pull request로 반영할 수 있다.**
+> pull request(GitLab은 merge request)로 반영할 수 있다.**
 
 초기의 완료 조건이 "값이 손실 없이 도는가"였다면 지금은 **"설명 없이 제3자가 혼자 완주하는가"** 다.
 엔진을 더 넓히는 것이 아니라 **온보딩·테넌트 인가·운영 상태 표시**를 닫는 쪽이다.
@@ -51,6 +51,11 @@ Crowdin·Tolgee의 대체품으로 설명하면 번역 메모리·기계 번역�
 - 같은 DB 상태와 같은 원본 파일에서 같은 바이트를 만든다.
 - 변경된 파일만 고정 PR 하나에 반영한다.
 - JSON·YAML·TS/JS 딕셔너리의 **구조와 표현을 보존**한다.
+
+**GitHub이 주이고 GitLab.com을 병기한다** (2026-10-12, gitlab-repositories). GitLab.com 리포도 같은 왕복을 돈다 —
+연결은 개발자가 붙여 넣는 레거시 PAT(스코프 `api`)이고, 재사용되는 리뷰 요청은 merge request(`!128`)이며, CI는 생성된
+`.gitlab-ci.yml`이다. 랜딩·SEO 헤드라인은 GitHub 그대로이고 기능·포맷 절만 GitLab.com을 함께 말한다. 한 프로젝트는 한
+리포 호스트의 한 리포다 — 호스트 전환·미러링은 없다(§4.2).
 
 ## 3. 사용자와 역할
 
@@ -81,6 +86,13 @@ Crowdin·Tolgee의 대체품으로 설명하면 번역 메모리·기계 번역�
 있어야 한다** (2026-09-27, sec-audit-3 발견 1a · 결정 I — ARCHITECTURE §6.4). push 토큰이 리포에 커밋되는 내용을
 정하므로, 읽기만 할 수 있는 사람은 OWNER여도 `repo-read-only`로 거부된다. **리포 재적재(Sync)와 연결된 프로젝트의 base branch
 목록·저장은 예외다**(malmoi#123) — 리포를 읽기만 하는 경로라 OWNER면 읽기 권한으로 된다.
+
+⚠️ **GitLab에서 "호출자의 리포 권한"은 호출자 자신이 연결한 PAT로 읽은 access level이다** (2026-10-12, gitlab-repositories).
+쓰기 = **Maintainer(40)** 이상, 읽기 = Reporter(20) 이상(상속·공유 그룹을 포함한 유효 권한). 위 두 갈래가 그대로 이 문턱에
+선다. **쓰기 명의는 별개다** — Sync·Publish·야간의 GitLab 쓰기는 프로젝트가 참조하는 연결(만든 사람 또는 마지막으로 재연결한
+OWNER)의 PAT로 나가고, 그 토큰 주인은 **Developer(30)** 이상이면 된다(보호되지 않은 sync 브랜치 push·MR 생성의 최소). 주인이
+권한을 잃거나·토큰이 만료·철회되거나·프로젝트를 떠나면 `Disconnected`이고 남은 OWNER가 자기 연결로 재연결한다(명의가 바뀐다는
+문장을 버튼 앞에 보인다). GitLab 역할을 말모이 역할로 승격하지 않는다 — 역할은 여전히 `ProjectMember`다.
 
 ⚠️ **Home 메타 열은 역할과 무관하게 같은 행이다** (2026-10-04, project-card-tabs — 사용자 허용). EDITOR에게 새로 보이는 사실은
 CI 설정 여부(`Configured`/`Not set up` — push 토큰의 유무만이고 해시는 화면·RSC 페이로드에 싣지 않는다)와 Connection 상태다.
@@ -299,6 +311,14 @@ GitHub·Google 어느 쪽으로 들어와도 같은 사람을 가리키고, 프�
   - **대가** (2026-09-30 사용자 판정): 실패로 남은 소스는 같은 커밋이어도 **매일 다시 받는다** — 부분 적재도 적재 커밋을 앞당기므로 커밋 일치만으로는
     다 받았다고 할 수 없다. 일시 실패는 스스로 풀리지만, 영구히 깨진 로케일 파일이 있으면 고칠 때까지 밤마다 `partial` 한 행이 선다.
 - **GitHub 설치 연결** — OAuth 계정 ↔ installation ↔ repository 3중 검증
+- **GitLab.com 연결** (2026-10-12, gitlab-repositories) — 개발자가 **레거시 PAT(스코프 `api` 하나)**를 붙여 넣는다(①의 GitLab 탭 ·
+  `/account` GitLab PAT 카드 — 생성 페이지 링크가 이름·스코프를 프리필한다). 계정당 연결 하나를 봉해 두고 프로젝트는 그 연결을
+  **참조**한다 — 주인이 [Replace token] 한 번이면 참조하는 프로젝트가 전부 복구된다(교체는 같은 GitLab 사용자의 토큰만 받는다).
+  ①의 GitLab 목록은 Maintainer 이상인 비보관 프로젝트다. 만료 14일 전부터 `Expires soon`, 지나면 `Expired`이고 프로젝트는
+  `Disconnected`다. **쓰기는 연결자 개인 명의다** — GitHub의 쓰기 신원 분리(ARCHITECTURE 불변식 6)를 GitLab에서는 하지 않는 것이
+  이 기능이 고른 대가다(봇 토큰은 Premium 이상이라 Free를 막는다). Publish는 고정 브랜치의 열린 MR 하나를 재사용하고, 보낼 것이 없어지면
+  MR을 닫고 sync 브랜치를 지운다. CI는 ①·설정이 내주는 `.gitlab-ci.yml`(protected·masked `PUSH_TOKEN`)이다 — 원본이 불변 태그
+  `malmoi-i18n-push-gitlab-vN`으로 발행되기 전에는 화면이 템플릿 대신 "아직 없다"를 말한다(ACTIONS GitLab 절).
 - **탐지 기반 프로젝트 생성** — 후보를 보여주고 사용자가 확정
 - **프로젝트 단위 번역 UI** — 동결을 풀고 인가 경계 위에서 다시 만든다
 - **Publish 경험** — 미배포 수, PR 상태, 버린 값 보고. **범위가 2026-09-16에 확정됐다**:
@@ -419,10 +439,11 @@ GitHub·Google 어느 쪽으로 들어와도 같은 사람을 가리키고, 프�
   배포 모드는 `MALMOI_ORIGIN`의 존재로 판정한다 — 있으면 self-hosted이고 `VERCEL_ENV`와 함께 있으면 무효(fail-closed)다.
   호스팅 서비스에서 달라지는 것: 업로드는 Vercel Blob 대신 볼륨 · 야간 동기화는 Vercel Cron 대신 스케줄러 컨테이너 · DB는 Supabase 대신 일반 Postgres(런타임 롤은 비-superuser) ·
   `/privacy`는 운영자 정책 URL로 redirect · 페이지는 noindex · Analytics 없음 · 생성 워크플로는 **항상 `api-url`을 든다**(없으면 push 토큰이 호스팅 서비스로 간다 — ACTIONS).
-  **그대로인 것**: 로그인(운영자가 켠 공급자로 — GitHub OAuth App·Google OAuth 중 **완전한 쌍(ID·SECRET) 최소 하나**, 반쪽은 기동 거부. 화면은 켠 공급자의 버튼만 그린다 — 2026-10-09, optional-login-providers. 리포 연결용 GitHub App 등록은 어느 쪽이든 필수)·인가(`ProjectMember`)·번역 보존 규칙·push/편집/pull 계약. 가입은 호스팅 서비스와 같이
+  **그대로인 것**: 로그인(운영자가 켠 공급자로 — GitHub OAuth App·Google OAuth 중 **완전한 쌍(ID·SECRET) 최소 하나**, 반쪽은 기동 거부. 화면은 켠 공급자의 버튼만 그린다 — 2026-10-09, optional-login-providers. 리포 연결용 GitHub App 등록은 **선택**이다 — `GITHUB_APP_*` 다섯은 all-or-none이고 반쪽은 기동 거부, 다섯 다 없으면 **GitLab 전용 설치**로
+  기동해 ①은 탭 줄 없이 GitLab 단독, `/account`·설정의 GitHub 연결 카드·설치 링크를 그리지 않는다. 화면 갈래는 자격증명 넷(ID·PRIVATE_KEY·CLIENT_ID·CLIENT_SECRET)으로 판정하고 `GITHUB_APP_SLUG`는 설치 링크만 가른다 — 2026-10-12, gitlab-repositories D4·D4a·D28)·인가(`ProjectMember`)·번역 보존 규칙·push/편집/pull 계약. 가입은 호스팅 서비스와 같이
   열려 있어 검증 이메일을 가진 누구나 `User` 행을 얻고 비운영자는 프로젝트 상한 3이다(운영자는 `OPERATOR_EMAILS`).
   **대상 리포의 CI는 상류 리포의 action 태그를 실행한다**(공급망 의존 — ACTIONS). `/changelog`는 상류 Release를 보여 "Latest"가 설치본 버전이 아닐 수 있다.
-  **하지 않는 것**: Kubernetes·다중 인스턴스·고가용성·무중단/자동 업데이트 · 폐쇄망·GitHub Enterprise·GitLab · 로컬 비밀번호·SAML·이메일 로그인 · Resend 외 메일 transport ·
+  **하지 않는 것**: Kubernetes·다중 인스턴스·고가용성·무중단/자동 업데이트 · 폐쇄망·GitHub Enterprise·GitLab Self-Managed · 로컬 비밀번호·SAML·이메일 로그인 · Resend 외 메일 transport ·
   호스팅 서비스와 설치본 사이 계정·프로젝트 이전 · 관리 콘솔·설치 마법사·화이트라벨 · self-hosted용 sitemap·llms 산출물 · 앱 안 rate limit(proxy 예제가 든다).
   ⚠️ llms가 빠진 이유는 hosted origin을 가리키는 산출물이라서다 — MCP `read_docs`(위 "MCP 커넥터" ⑤)는 설치 origin으로 링크를 만들므로 이 항목과 겹치지 않는다.
 
@@ -458,6 +479,11 @@ GitHub·Google 어느 쪽으로 들어와도 같은 사람을 가리키고, 프�
     키 **20,000** · 로케일 **200** · 값 한 건 **10,000자** · 행 **200,000**. 넘으면 `/api/push`가
     **400**이고 사유가 응답에 실려 대상 리포의 Actions 로그로 간다. 근거는 실측 20배 여유다.
 - **조직 계층** — account 개념을 두더라도 개인/조직 구분까지다. 팀·하위 그룹은 없다.
+- **GitLab 지원의 확장** (2026-10-12, gitlab-repositories) — GitLab Self-Managed·Dedicated·사용자 지정 호스트(리포 호스트는 GitLab.com 하나) ·
+  **fine-grained PAT**(받지 않고 분명한 사유로 거부한다 — 계정 단위 연결을 여러 프로젝트가 참조하는 모델과 프로젝트 한정 토큰이 맞지 않고 프리필이 없다.
+  ⚠️ 대가: 최상위 그룹 Owner가 레거시 PAT를 막은 조직은 연결할 수 없다) · **GitLab OAuth 앱 연결**(결국 연결자 명의라 PAT와 쓰기 신원이 같고 callback·origin
+  경계만 는다) · **봇 토큰**(프로젝트·그룹 액세스 토큰·서비스 계정 — GitLab.com Premium 이상이라 Free를 막고 경로가 둘이 된다) · PAT 자동 회전 · GitLab 로그인 ·
+  webhook · SHA-256 리포(연결 때 거부) · GitHub↔GitLab 미러링·기존 프로젝트의 호스트 전환 · 세 번째 리포 호스트를 위한 플러그인 구조.
 - **번역 메모리·기계 번역·AI 번역** — 이 도구의 축이 아니다. ⚠️ **MCP 커넥터(§4.1)는 이것이 아니다** — Malmoi는 LLM을
   부르지 않고, 외부 에이전트의 저장은 `Save`를 누른 편집자의 저장이다(2026-09-28 사용자 확정). 이 비범위는 Malmoi가 번역을
   **생성하는** 기능에 남는다.
@@ -801,7 +827,7 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 ── Your work (사용자 축 — 인가는 requireUser) ────────────────────
 /projects                      목록 + 생성 진입
 /projects/new                  ✅ 생성 — **`/projects` 위의 모달 딥링크** (뒤에 목록이 그대로 있다) ← new-project-modal (2026-09-13)
-/account                       ✅ 프로필 편집·사진 · 로그인 수단 목록/연결/해제 · GitHub App 연동/해제 · **전체 세션 회수** ← 6b-4 · account-linking · account-connect · account-settings
+/account                       ✅ 프로필 편집·사진 · 로그인 수단 목록/연결/해제 · GitHub App 연동/해제 · GitLab PAT 연결·교체·해제 · **전체 세션 회수** ← 6b-4 · account-linking · account-connect · account-settings
 /mcp                           MCP connector — Connected apps(OAuth 연결 목록·끊기) + 개인 토큰 발급·재발급·폐기 + 연결 예시(방식 둘) (사이드바 `Inbox` 아래) ← mcp-connector (2026-09-28) · mcp-oauth (2026-09-29)
 /preferences                   Preferences — Language · Time zone · Theme 카드 셋(고르는 즉시 적용 · 저장 버튼 없음) ← ui-locales (2026-10-05) · user-timezone (2026-10-05) · color-scheme (2026-10-05)
 /inbox                         Inbox — 헤더 드롭다운과 같은 목록을 프로젝트마다 카드 하나로 · 마운트 뒤 읽음 기록 (사이드바 `Projects` 바로 아래, 안 읽음 배지) ← inbox-page (2026-10-09)
@@ -817,7 +843,7 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
 /projects/:slug/surfaces/new   → 권한 검사 후 /sources?add=sources redirect (OAuth 오류 e 보존)
 /projects/:slug/members        멤버
 /projects/:slug/logs           ✅ 프로젝트 전체 활동 이력 (?event= 상세)  ← logs-rework (ProjectEvent 소비자)
-/projects/:slug/settings       나머지 프로젝트 설정 전부
+/projects/:slug/settings       나머지 프로젝트 설정 전부 — GitLab 프로젝트는 토큰 줄·재연결(Use my GitLab connection)·`.gitlab-ci.yml` (2026-10-12, gitlab-repositories)
 ```
 
 **`/changelog`가 판정 셋을 뒤집었다** (2026-09-28 사용자). ① 사이드바 하단·사용자 메뉴의 `Release notes`(GitHub Releases

@@ -1,7 +1,8 @@
 import "server-only";
 
 import { AppError, logCaught } from "@/lib/failure";
-import { createGitClient } from "@/lib/github";
+import { createGitClient } from "@/lib/repo-host";
+import { repoTargetOf } from "@/lib/repo-host/target";
 import { GITHUB_WAIT_MS, withinGithubWait } from "@/lib/github-wait";
 import { homeOpenPrMemo } from "@/lib/projects/open-pr-memo";
 import { openPrGateApplies } from "@/lib/protection/plan";
@@ -13,7 +14,7 @@ import { syncBranchFor } from "@/lib/pull/sync-branch";
  */
 export async function loadOpenPrForImportGate(
   slug: string,
-  project: { repoOwner: string; repoName: string; installationId: string | null; repositoryId: string | null; archivedAt: Date | null },
+  project: { repoOwner: string; repoName: string; repoHost: string; installationId: string | null; gitlabConnectionId: string | null; repositoryId: string | null; archivedAt: Date | null },
 ): Promise<string | null | undefined> {
   if (!openPrGateApplies(project)) return null;
   return loadOpenPrUrl(slug, project);
@@ -29,7 +30,7 @@ export async function loadOpenPrUrl(
   project: {
     repoOwner: string;
     repoName: string;
-    installationId: string | null;
+    repoHost: string; installationId: string | null; gitlabConnectionId: string | null;
     repositoryId: string | null;
     archivedAt: Date | null;
   },
@@ -37,14 +38,18 @@ export async function loadOpenPrUrl(
   // ⚠️ **이미 보관됐으면 묻지 않는다** — 그 상태의 카드는 [Restore project] 하나이고 Dialog가 없다.
   // 쓰이지 않는 값을 위해 GitHub 왕복(리포 확인 + PR 목록)을 늘리는 셈이다.
   if (project.archivedAt !== null) return null;
-  if (project.installationId === null) return null;
-  if (project.repositoryId === null) return undefined;
-  const { installationId, repositoryId } = project;
+  // 연결이 없으면 PR도 없다(GitHub — 설치 없이는 PR을 낸 적이 없다). 리포 id가 고정되지 않았으면 모른다 — 이름만 맞는 리포에 묻지 않는다.
+  // ⚠️ GitLab 참조 비움(`connection-removed`)은 "모름"이다 — 연결자가 떠나기 전에 연 MR이 남아 있을 수 있고 물을 토큰이 없다.
+  // "없음"으로 읽으면 게이트가 열린다.
+  const connection = repoTargetOf(project);
+  if (connection.status === "not-connected") return null;
+  if (connection.status === "unpinned" || connection.status === "connection-removed") return undefined;
+  const { target } = connection;
   // ⚠️ **마감이 probe와 같다** (`GITHUB_WAIT_MS`) — 넘기면 실패와 같은 `undefined`("확인하지 못했다")다.
   return withinGithubWait((async () => {
     try {
-      const client = await createGitClient(project.repoOwner, project.repoName, installationId, repositoryId);
-      const pr = await client.findOpenPr(`${project.repoOwner}:${syncBranchFor(slug)}`);
+      const client = await createGitClient(target);
+      const pr = await client.findOpenPr(syncBranchFor(slug));
       return pr === null ? null : pr.url;
     } catch (error) {
       logCaught("open-pr", "find", error);

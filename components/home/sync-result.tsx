@@ -6,6 +6,8 @@ import { Alert } from "@/components/ui/alert";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
+import { isGitLabConnectError } from "@/lib/gitlab-connect/errors";
+import { gitlabConnectErrorMessage } from "@/lib/gitlab-connect/message";
 import { useMessages } from "@/components/i18n/messages-provider";
 import { adapterErrorMessage } from "@/lib/i18n/adapter-errors";
 import { planImportRefusal } from "@/lib/import/refusal";
@@ -19,9 +21,11 @@ import type { Messages } from "@/lib/i18n";
  * ⚠️ **화면 전용 문구를 먼저 본다** — `not-ready`·`not-connected`는 온보딩·연결 사전에도 있지만
  * 그쪽 문장이 그 화면의 컨트롤을 가리킨다("use Authorize GitHub App below"). 여기엔 그 아래가 없다.
  */
-function reasonMessage(m: Messages, reason: RepositoryImportError | SurfaceImportReason): string {
+export function reasonMessage(m: Messages, reason: RepositoryImportError | SurfaceImportReason): string {
   if (Object.hasOwn(m.repositorySync.errors, reason)) return m.repositorySync.errors[reason as keyof typeof m.repositorySync.errors];
   if (isAccessError(reason)) return accessErrorMessage(m, reason);
+  // GitLab 프로젝트의 거부(참조 비움·보관·토큰 못 씀) — GitHub 연결 문장("Authorize GitHub App")으로 떨어지지 않게 먼저 본다.
+  if (isGitLabConnectError(reason)) return gitlabConnectErrorMessage(m, reason);
   if (isOnboardError(reason)) return onboardErrorMessage(m, reason);
   if (isConnectError(reason)) return connectErrorMessage(m, reason);
   if (isImportFailureCode(reason)) return importFailureMessage(m, reason);
@@ -34,9 +38,10 @@ function reasonMessage(m: Messages, reason: RepositoryImportError | SurfaceImpor
  */
 /**
  * 실행 전 거부 — 세션·입력(Action 껍데기) · 인가(`isAccessError`) · `acquire`의 판정(`planSyncStart` · 식별 · 폐기 지문). 여기 없는 거부는 단계를
- * 모른다(`unavailable`은 세션 저장소와 저장소 접근 둘에서, `ingest-failed`는 lease 뒤 바깥 catch에서 나온다).
+ * 모른다(`unavailable`은 세션 저장소와 저장소 접근 둘에서, `ingest-failed`는 lease 뒤 바깥 catch에서 나온다). `gitlab-project-disconnected`는
+ * 참조 비움과 토큰 주인 쪽 리더 열기 실패(`onboarding-run/import.ts`) 둘 다 실행권 전이다.
  */
-const PRE_RUN: ReadonlySet<string> = new Set(["reconfirm", "already-running", "unauthorized", "invalid input", "not-ready", "no-surfaces", "unpinned", "repo-replaced"]);
+const PRE_RUN: ReadonlySet<string> = new Set(["reconfirm", "already-running", "unauthorized", "invalid input", "not-ready", "no-surfaces", "unpinned", "repo-replaced", "gitlab-project-disconnected"]);
 export function syncResultTitle(m: Messages, outcome: RepositoryImportOutcome): string {
   const t = m.repositorySync.resultTitle;
   if (!outcome.ok) {

@@ -31,7 +31,7 @@
 | 이미지 발행 | **매 앱 태그 `v<x.y.z>`마다** `.github/workflows/image.yml`이 `ghcr.io/sinhyeokkang/malmoi:v<x.y.z>`(linux/amd64)를 발행한다 — `/merge` 9단계의 Release `published` 이벤트가 깨우고(2026-10-12, image-publish-workflow), 로직은 `scripts/publish-image.sh` 하나다. `/merge` 9-b는 run 확인·digest 읽기·Release 본문의 `**Self-hosting image:**` 줄 기입만 한다. 이미지 태그 = 앱 태그, action 태그와 독립 |
 | 지원 대상 | 최신 앱 태그 하나. 창구는 GitHub Issues, best-effort(개발자 1명 — PRODUCT §0) |
 | 업그레이드 | 어느 과거 태그에서든 최신 이미지의 `prisma migrate deploy`가 남은 마이그레이션을 **한 번에 이어서** 적용한다 → §3의 마이그레이션 규칙 |
-| action 호환 | 서버는 발행된 action 태그(v1·v2·v3)의 `/api/push` 요청을 계속 받는다. 설치본은 자기 생성기가 낸 태그를 쓰므로 "구버전 서버 + 신버전 action"은 지원 범위 밖이다 |
+| action 호환 | 서버는 발행된 action 태그(v1·v2·v3)의 `/api/push` 요청을 계속 받는다. 설치본은 자기 생성기가 낸 태그를 쓰므로 "구버전 서버 + 신버전 action"은 지원 범위 밖이다. **GitLab CI 원본 태그(`malmoi-i18n-push-gitlab-vN`)도 같은 축이다**(2026-10-12, gitlab-repositories) — 그 태그의 `.gitlab/malmoi-i18n-push/`가 같은 `/api/push`·`/api/push/failure`를 부르므로 서버는 발행된 GitLab 태그의 요청도 계속 받는다. GitLab 전용 설치(`GITHUB_APP_*` 다섯이 비어 있는 기동)도 설치본이 지원해야 하는 구성이다 |
 | 상시 게이트 | **머지 전 게이트로서의 컨테이너 CI는 두지 않는다**(push·PR마다 이미지 빌드 없음) — hosted 전용 전제가 새로 들어오는 순간을 `pnpm test`가 잡는다(§4). 이미지 발행 워크플로(`image.yml`)는 게이트가 아니라 **Release 뒤의 발행자**라 이 문장과 충돌하지 않는다 — 이미지 빌드 실패가 머지 뒤에야 드러나는 것은 그대로다 |
 | 운영자 개인정보 재료 | 가이드 `troubleshooting.md#stored-fields`(세 언어)는 `lib/privacy/collected.ts` 등재부와 필드 단위 일대일이다 — 자동 대조가 없으니 같은 커밋에서 손으로 고친다 |
 
@@ -59,7 +59,7 @@
 |---|---|---|
 | hosted 도메인 리터럴·`MALMOI_ORIGIN`·`VERCEL_ENV` 직접 읽기(허용 목록 밖, `app/.well-known` 포함) | `pnpm test` (SH-15 ①) | `lib/deployment/__tests__/self-hosted-gates.test.ts` |
 | env 이름 ↔ preflight 표 ↔ `.env.example` ↔ compose(해석 못 하는 인자도 red) | `pnpm test` (SH-15 ②) | 같은 파일 |
-| 로그인 공급자 — `auth.ts`의 provider마다 `LOGIN_PROVIDER_ENV`에 등재되고 그 이름이 preflight `optional`(쌍 규칙은 preflight가 든다) · 로그인 넷이 `deploy/compose.yaml`에서 `${X:-}` 꼴(2026-10-09, optional-login-providers) | `pnpm test` (SH-15 ②-c) | 같은 파일 |
+| 로그인 공급자 — `auth.ts`의 provider마다 `LOGIN_PROVIDER_ENV`에 등재되고 그 이름이 preflight `optional`(쌍 규칙은 preflight가 든다) · 로그인 넷과 `GITHUB_APP_*` 다섯이 `deploy/compose.yaml`에서 `${X:-}` 꼴(2026-10-09, optional-login-providers · 2026-10-13, gitlab-repositories 감사 C5-3 — GitLab 전용 설치가 다섯을 비운다) | `pnpm test` (SH-15 ②-c) | 같은 파일 |
 | Dockerfile Node 메이저·pnpm·`.npmrc`·psql≥15 배포판·비밀 ENV·non-root·GHCR 리포 연결 라벨 | `pnpm test` (SH-15 ③) | 같은 파일 |
 | compose 의존 순서·healthcheck 형태·업로드 볼륨 단일 마운트·nginx 불변식(Host·HSTS·rate limit·마스킹 로그·resolver) | `pnpm test` | 같은 파일 |
 | 스케줄러 식 ≠ `vercel.json` | `pnpm test` | `lib/deployment/__tests__/schedule.test.ts` |
@@ -78,6 +78,8 @@
 - **nginx 에러 로그**(컨테이너 stderr)는 502·rate limit 때 요청 줄(쿼리 포함)을 남긴다 — nginx로 끌 수 없고 docker 권한이 있어야 읽는다. 접근 로그는 쿼리·referer를 버리고 토큰 경로를 가린다.
 - **스케줄러 컨테이너 Config.Env의 `CRON_SECRET`** — `docker inspect`·`exec env`에 보인다(docker 접근 = root). 프로세스 인자·crond 환경엔 없다.
 - **대상 리포 CI가 상류 action 태그(`SinhyeokKang/malmoi@malmoi-i18n-push-vN`)를 실행한다** — 설치본 push 토큰이 그 실행에 들어간다. 공급망 의존을 수용하고 가이드에 적었다.
+- **GitLab CI job도 상류 코드를 실행한다** — 생성 job이 이 리포를 불변 태그 `malmoi-i18n-push-gitlab-vN`으로 `.malmoi`에 clone해 `PUSH_TOKEN`과 함께 돈다(`.gitlab/malmoi-i18n-push/push.sh`). 완화는 생성 때 박힌 **40자 SHA와 `HEAD`를 대조한 뒤에만** 부르는 것이다 — 태그가 옮겨져도 박힌 SHA 밖의 코드는 돌지 않는다. 그래도 공급망 의존이고 태그를 옮기는 것은 릴리스다(OPERATIONS "GitLab CI 원본 릴리스").
+- **이미지 발행 job(`image.yml` `publish`)이 이 리포 CI의 유일한 쓰기 권한이다**(`packages: write` — `contents: write`는 두지 않고 Release 기입은 `/merge` 9-b가 사용자 토큰으로 한다). 노출을 줄이는 근거: 방아쇠가 Release 생성·dispatch(리포 write 권한자)뿐이라 PR·fork 코드가 돌지 않고, 서드파티 action 없이 SHA 고정 `actions/checkout` 하나이며, 태그 커밋의 설치·빌드 스크립트는 BuildKit 컨테이너 RUN 안에서 돌아 러너 env·docker 소켓·`.git` 자격증명에 닿지 않는다. **수용한 위험 둘** — `docker-container` 드라이버가 받는 `moby/buildkit` 이미지가 digest로 고정되지 않았는데 그 컨테이너가 쓰기 자격증명으로 push한다(고정은 `--driver-opt image=moby/buildkit:<ver>@sha256:…`), base 이미지(`node:24-bookworm-slim`)도 digest 고정이 아니다(2026-10-12, image-publish-workflow).
 - 앱 안 rate limit은 없다 — nginx 예제가 `/api/images/`·`/oauth/authorize` IP당 600/60s를 든다(hosted WAF와 같은 값). 예제를 바꾸면 보호가 사라진다.
 
 ## 6. 상류 유지자 할 일
@@ -88,6 +90,7 @@
 - **복원 실습은 운영 스택이 없는 다른 호스트에서만** 한다 — compose 프로젝트명이 `malmoi`로 고정이라 같은 호스트에서는 운영 볼륨을 친다(가이드 `operate.md#restore`의 경고). 실습 결과는 아래 "셀프 호스팅 실습 기록" 표에 남긴다.
 - **가이드의 명령을 고치면 그 명령은 실측이 아니다** — 아래 표의 실측은 그 시점 명령 꼴의 것이다. 2026-10-09 B6c가 리뷰 결함을 고치며 바꾼 것(업데이트의 정지 유지 → migrate → 포트를 운영자 IP로 제한한 smoke → scheduler·포트 재개, 백업 manifest 명령, 계정 삭제의 `export PROJECT_IDS`·빈 값 처리, DB 비밀번호 psql의 `-X`)과, 그 뒤 리뷰로 다시 바꾼 백업 블록(subshell `set -eu` · `backup ok` 확인 · `pg_restore -l` 검증 · root 실행 전제)·업데이트 9단계의 `deploy/` 롤백은 **다음 실습에서 다시 밟는다**. 외부 OAuth·GitHub App·초대 메일·MCP 왕복(SH-03·04·05·07)도 아직 한 번도 실측하지 않았다 — 다음 실습에 폐기용 도메인·앱을 준비해 채운다.
 - **수집 항목 표 대조** — 가이드 `troubleshooting.md#stored-fields`(세 언어)는 `lib/privacy/collected.ts`의 등재부와 필드 단위로 일대일이다. 그 등재부가 바뀌는 커밋에서 세 언어 표를 함께 고친다(자동 게이트가 표를 대조하지 않는다).
+- **서버 아웃바운드 목록이 가이드에 없다**(2026-10-13 GitLab 감사 C5-6 — 기록만) — `Before you install`은 인바운드·러너 도달만 말한다. 아웃바운드를 허용 목록으로 묶는 운영자가 GitLab(`gitlab.com`)을 빼면 GitLab 연결이 일시 장애(`unavailable`)로만 실패해 원인 단서가 없다. 고친다면 세 언어 `README.md#requirements`에 "서버가 HTTPS로 나가야 하는 곳: GitHub(App을 쓰면) · gitlab.com(GitLab을 쓰면) · Resend" 한 줄.
 - **SH-11(이연)** — 두 번째 지원 릴리스에서 이전 릴리스 → 최신 업데이트를 실측하고 아래 표에 남긴다. 그 전까지 가이드는 "건너뛴 릴리스는 미검증"이라고 말한다.
 - **릴리스 머신 전제는 비상 경로에만 있다**: 정상 경로는 Docker·`ghcr.io` 로그인이 필요 없다(워크플로가 빌드·push한다). Actions 장애 때만 `/merge` 9-b의 비상 경로 단락대로 같은 `scripts/publish-image.sh`를 이 머신에서 돌리고, 그때는 Docker(이 머신은 Colima vz+Rosetta — 재부팅 뒤 `colima start`)와 `ghcr.io` 로그인이 필요하다. 머지 전 한 번, GHCR 패키지 `malmoi`의 *Manage Actions access*에 이 리포의 Write가 있어야 워크플로가 push할 수 있다. 발행이 빠지면 그 태그는 설치할 수 없는 릴리스다.
 
@@ -111,7 +114,9 @@ SH-10 등 [수동] 항목의 실행 증거를 남기는 자리다(**릴리스 �
 | 2026-10-09 | 백업 → `down -v` → 빈 볼륨 복원(이 절 절차 그대로, 운영 스택 없는 머신) — pg_restore 오류 0 · 행 수 동일(User 2·초대 2·Account 1) · bootstrap이 런타임 롤 생성·PUBLIC USAGE f · 업로드 이미지 200 · PII·토큰 복호화(회전된 키 포함) · `verify` 0 | `sha256:cfb37a8f…4e52b84`(로컬 빌드 `linux/amd64`, 레지스트리 digest 아님) | 17.6 | 42 = 42 | 정지~백업 17초 · 복원 1~6단계 약 30초 | 성공 |
 | 2026-10-09 | 계정 삭제 절차 — HMAC 색인 스니펫이 대상 `User`·미수락 초대를 찾음 · 트랜잭션: OWNER 판정 0행 → 멤버 1·보낸 초대 1·받은 초대 1·User 1 삭제, Account cascade | `sha256:cfb37a8f…4e52b84`(로컬 빌드 `linux/amd64`, 레지스트리 digest 아님) | 17.6 | 42 | — | 성공 |
 | — | 로그인 공급자 단독 구성(2026-10-09, optional-login-providers) — GitHub 단독·Google 단독 기동과 각자의 실제 OAuth 왕복 · 반쪽 쌍(`incomplete-pair`)·0개(`no-login-provider`) preflight 로그 · 단독 설치의 `/signin`·`/invite`·`/oauth/authorize` 버튼 하나 · 꺼진 공급자 `/api/auth/signin/<p>` 직접 호출이 로그인을 만들지 않음 | — | — | — | — | 미실행(다음 실습 회차) |
-| — | 로그인(GitHub·Google)·프로젝트 생성·생성 워크플로 `api-url`·초대 메일·MCP 연결·`/projects` 스트리밍·GHCR 발행 | — | — | — | — | 미실행(외부 OAuth·App·메일 없음) |
+| — | GitLab 전용 설치(2026-10-12, gitlab-repositories) — `GITHUB_APP_*` 다섯을 비운 채 기동(preflight·compose 경고 없음) · GitLab PAT 연결 · Publish MR · GitLab CI job(상류 clone + SHA 대조 → `/api/push`) · Disconnected 복구 | — | — | — | — | 미실행(GitLab 왕복 — 실물 설치·gitlab.com 프로젝트 없음) |
+| — | 로그인(GitHub·Google)·프로젝트 생성·생성 워크플로 `api-url`·초대 메일·MCP 연결·`/projects` 스트리밍 | — | — | — | — | 미실행(외부 OAuth·App·메일 없음) |
+| 2026-10-12 | GHCR 발행(image-publish-workflow) — v1.3.4 Release `published` 이벤트로 `image.yml` run [38191525670](https://github.com/SinhyeokKang/malmoi/actions/runs/38191525670)이 `published` · run summary digest = 익명 레지스트리 조회 digest · `release-image-note.ts` 기입 exit 0, 재실행 exit 3 · 소급 dispatch v1.3.0~v1.3.3 넷 다 `exists`(main 스크립트로 구 태그 처리, 새 push 없음) + 네 Release 본문 기입 · `/changelog`·Release·GHCR 화면 사용자 확인 | `sha256:30b25726…0917`(v1.3.4) | — | — | 발행 2분, 소급 run 각 15초 안팎 | 성공. 패키지 API 버전 수 대조는 미실행(gh 토큰에 `read:packages` 없음) · 로그아웃 `docker pull`은 데몬 없어 익명 `imagetools inspect`로 대신 |
 | 2026-10-09 | 감사 후 운영 절차 수정 — 독립 subshell 안 정지·백업·성공 표시, 복원 전 방화벽 제한·백업 경로 선택·세션 폐기, 권한 검토 뒤 공개 재개 | — | — | — | — | Docker 복원·방화벽 실습 미실행. 백업 셸은 외부 명령 대역으로 78건 통과(실제 Docker 검증 아님) |
 
 실습에서 본 것(절차·동작 차이, 2026-10-09):
@@ -127,3 +132,7 @@ SH-10 등 [수동] 항목의 실행 증거를 남기는 자리다(**릴리스 �
 업그레이드·롤백은 기존 web·scheduler를 정지하고, 마지막 실행 시작부터 300초 창이 지난 뒤 대상 버전을 시작한다. 구버전은 결과 미확인 FAILED 차단을 모르므로 새·구 프로세스를 함께 운영하지 않는다. 롤백에서도 같은 정지·대기 순서를 따른다.
 
 검증: 격리 PostgreSQL에서 Project 잠금 대기 중 종료된 무효화·성공 확정의 롤백, 실패 후 Import·Revert·저장 기준을 확인했다. 같은 Next 16.3.3의 별도 최소 검증 앱을 `next build --webpack` → `next start`(Node 24, 127.0.0.1 전용)로 실행해 실제 수명 모듈을 관측했다. 호출은 240,002ms에 종료됐고 301,001ms에 재개한 콜백은 차단됐으며 가짜 transport 전송은 0건이었다. 이 실측은 전체 Malmoi 로그인·실제 GitHub·Docker 업그레이드 실습을 대신하지 않는다. GitHub가 이미 수신한 요청의 종료는 검증 범위가 아니다.
+
+### GitLab 리포 (2026-10-12)
+
+§3 대조: 새 env 0(`GITLAB_TEST_*`는 개발자 스모크 입력이라 preflight·`.env.example`에 없다) · 새 패키지 0(SDK 없이 `fetch`) · 마이그레이션 `20261012120000_add_gitlab_connection` additive(새 테이블 + `Project.gitlabConnectionId` NULL 허용 컬럼 + `Project.repoHost TEXT NOT NULL DEFAULT 'github'` — 기존 행은 기본값이 SQL 안에서 채우므로 앱 백필이 없고, 건너뛴 업그레이드에서도 안전) · 새 cron 0 · 토큰이 경로에 실리는 URL 0(PAT는 Server Action 본문으로만 온다). 새 외부 전송처 gitlab.com은 방침·가이드 운영자 개인정보 재료에 등재돼 있다. GitLab 연결 자체는 앱 설치와 무관해 `GITHUB_APP_*`가 비어도 동작한다.

@@ -26,7 +26,6 @@ const FILES = ["lib/pull/run.ts", "lib/pull/plan.ts", "lib/pull/trigger.ts", "li
 /** 코드를 **들어야** 하는 자리. 키는 메시지의 고유 조각이다. */
 const CODED: ReadonlyArray<readonly [needle: string, code: string]> = [
   ["Project.installationId is empty", "not-installed"],
-  ["installationId is missing", "not-installed"],
   ["repository identity is not pinned", "not-installed"],
   ["cannot read the base branch", "base-unreadable"],
   ["the glob matched no files", "glob-matched-nothing"],

@@ -2,7 +2,8 @@ import { AppError, fail } from "@/lib/failure";
 import { adapterFor } from "@/lib/adapters";
 import type { AdapterError } from "@/lib/adapters/types";
 import type { GitClient } from "./client";
-import { PR_TITLE, buildCommitPayload, buildTreePayload, withSkipMarker } from "./payload";
+import { PR_TITLE, withSkipMarker } from "./payload";
+import { repoTargetOf, type RepoTarget } from "@/lib/repo-host/target";
 import {
   formatFromProject,
   planPullChanges,
@@ -32,8 +33,10 @@ export type PullProject = {
   repoOwner: string;
   repoName: string;
   baseBranch: string;
+  repoHost: string;
   installationId: string | null;
-  repositoryId?: string | null;
+  repositoryId: string | null;
+  gitlabConnectionId: string | null;
   lastPulledAt: Date | null;
 };
 
@@ -66,7 +69,8 @@ export type PullState = {
 
 export type PullDeps = {
   loadState(): Promise<PullState>;
-  createClient(project: PullProject): Promise<GitClient>;
+  /** 1층·연결 판정을 지난 뒤에만 부른다 — 입력은 `repoTargetOf(project)`다(호스트 구현을 고르는 것은 `lib/repo-host`). */
+  createClient(target: RepoTarget): Promise<GitClient>;
   /**
    * 2층까지 통과했을 때 부른다 — 커밋이 나갔든(성공 후), 변경이 없었든(export == base 트리가 검증된
    * 순간). **실패 경로에서는 부르지 않는다** — 먼저 쓰면 그 편집이 영영 스킵된다 (아래 두 호출 주석).
@@ -156,9 +160,12 @@ export type PullResult =
 
 /**
  * 닫는 PR에 남기는 코멘트. 영문이다 — 대상 리포에 남는 문자열이다(PR title/body와 같은 규칙). 첫 줄의 HTML 주석이 malmoi가 쓴 것임을 표시한다.
+ * ⚠️ **낱말은 호스트가 고른다**(audit U3) — GitLab MR 화면에 "pull request"가 남으면 DESIGN §10.1 리포 호스트 행과 어긋난다. 모르는 호스트는
+ * 클라이언트를 만들지 못해(`repoTargetOf` → `not-connected`) 여기 오지 않으므로 GitLab이 아니면 GitHub 낱말이다.
  */
-export function closedPrComment(baseBranch: string): string {
-  return `<!-- malmoi-i18n -->\nClosed by Malmoi: the translation DB now matches \`${baseBranch}\`, so this pull request has nothing left to merge.\n\nThe next Publish with changes opens a new pull request.`;
+export function closedPrComment(baseBranch: string, repoHost: string): string {
+  const noun = repoHost === "gitlab" ? "merge request" : "pull request";
+  return `<!-- malmoi-i18n -->\nClosed by Malmoi: the translation DB now matches \`${baseBranch}\`, so this ${noun} has nothing left to merge.\n\nThe next Publish with changes opens a new ${noun}.`;
 }
 
 /** blob 동시 읽기 수. GitHub 2차 rate limit(동시 요청)을 피하면서 106파일을 60초 안에 든다. */
@@ -336,13 +343,17 @@ export async function runPull(deps: PullDeps, expectedFingerprint?: string): Pro
   // 편집이 다음 실행에서 영영 스킵된다.
   const captured = maxUpdatedAt;
 
-  // GitHub을 부르기 전에 막는다 — 설치가 안 됐으면 조용히 빈 PR을 내는 대신 즉시 알린다.
-  if (project.installationId === null) {
+  // 리포 호스트를 부르기 전에 막는다 — 연결이 없으면 조용히 빈 PR을 내는 대신 즉시 알린다. 저장 코드는 둘 다 `not-installed`다
+  // ("그 프로젝트에 쓸 연결 자격증명이 없음" — `SYNC_ERROR_CODES`). 클라이언트 생성(첫 원격 호출)은 이 판정 **뒤**다.
+  const connection = repoTargetOf(project);
+  if (connection.status === "not-connected") {
     fail(`Project.installationId is empty (${project.slug}) — install the app`, "not-installed");
   }
+  // GitLab 연결 참조 비움(`connection-removed`, D21)도 재연결이 고친다 — 같은 코드·같은 자리.
+  if (connection.status === "unpinned" || connection.status === "connection-removed") fail("repository identity is not pinned; reconnect the project", "not-installed");
 
   const formats = projectFormats(surfaces);
-  const client = await deps.createClient(project);
+  const client = await deps.createClient(connection.target);
   /**
    * ⚠️ **대조는 head 한 번 읽은 직후다** — 트리·blob을 읽기 전이라 reconfirm이 읽기도 최소다. 1층(no-edits)보다 뒤인 것은 의도다: 보낼 것이 없으면
    * 지문과 무관하게 GitHub 0회로 끝난다. 읽은 head를 렌더에 넘긴다 — 다시 읽으면 대조한 head와 커밋의 부모가 갈릴 수 있다.
@@ -411,12 +422,12 @@ export async function runPull(deps: PullDeps, expectedFingerprint?: string): Pro
        * 스냅샷 불변식은 그대로 지키고, **되돌리기 전에** 이유를 남겨 명시적으로 닫는다 — 먼저 되돌리면 자동 종료가 앞서 "merged"가 남을 수 있다.
        * 닫기가 실패하면 되돌리지 않고 던진다 — `lastPulledAt`도 토큰도 그대로라 다음 실행이 같은 판정을 다시 한다.
        */
-      const open = await client.findOpenPr(`${project.repoOwner}:${deps.syncBranch}`);
+      const open = await client.findOpenPr(deps.syncBranch);
       if (open !== null) {
-        await client.closePr(open.number, closedPrComment(project.baseBranch));
+        await client.closePr(open.number, closedPrComment(project.baseBranch, project.repoHost));
         closedPr = { number: open.number, url: open.url };
       }
-      await client.updateRefForce(deps.syncBranch, baseHead);
+      await client.resetSyncBranch(deps.syncBranch, baseHead);
     }
     // **커밋이 안 나갔어도 갱신한다** — 그 순간 export == base 트리가 검증된 상태다.
     // 안 하면 값 불변 push 한 번 뒤 매일 밤 트리(그리고 수술적이면 blob 파일 수만큼)를 다시 읽는다.
@@ -432,24 +443,18 @@ export async function runPull(deps: PullDeps, expectedFingerprint?: string): Pro
   // 쓰기 전에 센다 — 렌더가 끝난 순간의 base 원문(`current`)과 새 원문을 견주는 관측이고, 아래 쓰기는 이 값을 보지 않는다.
   const changedValues = countChangedValuesOf(resolved, current, changes);
   const summary = `${changes.length} file${changes.length === 1 ? "" : "s"}`;
-  // ⚠️ **createTree가 첫 외부 쓰기다** — 여기까지는 읽기뿐이라, 무효화가 실패하면 GitHub에 아무것도 남지 않는다.
+  // ⚠️ **`publishSnapshot`이 첫 외부 쓰기다** — 여기까지는 읽기뿐이라, 무효화가 실패하면 리포에 아무것도 남지 않는다.
   await deps.invalidateDelivery(project.id);
-  const treeSha = await client.createTree(buildTreePayload(changes, baseHead));
-  const commitSha = await client.createCommit(buildCommitPayload(treeSha, baseHead, summary));
+  // 고정 base 위의 스냅샷 하나다 — parent는 base head이고 sync 브랜치는 그 커밋으로 강제로 맞춰진다 (ARCHITECTURE §3).
+  const inBase = new Set(tree.map(entry => entry.path));
+  const commitSha = await client.publishSnapshot({
+    branch: deps.syncBranch,
+    baseSha: baseHead,
+    changes: changes.map(change => ({ ...change, inBase: inBase.has(change.path) })),
+    summary,
+  });
 
-  // 브랜치가 없으면 생성, 있으면 force로 옮긴다. `malmoi-i18n/sync`는 누적 히스토리가 아니라
-  // "현재 DB 상태의 스냅샷"이다 (ARCHITECTURE §3).
-  const syncHead = await client.getRefSha(`heads/${deps.syncBranch}`);
-  if (syncHead === null) {
-    await client.createRef(deps.syncBranch, commitSha);
-  } else {
-    await client.updateRefForce(deps.syncBranch, commitSha);
-  }
-
-  // `owner:branch` 형식이어야 필터가 걸린다 — 브랜치명만 넘기면 GitHub이 조용히 무시해
-  // 전체 목록이 오고, 재사용 판정이 무너져 PR이 중복 생성된다.
-  const head = `${project.repoOwner}:${deps.syncBranch}`;
-  const existing = await client.findOpenPr(head);
+  const existing = await client.findOpenPr(deps.syncBranch);
   let prUrl: string;
   if (existing === null) {
     prUrl = await client.createPr(

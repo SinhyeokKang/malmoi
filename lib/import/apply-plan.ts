@@ -1,8 +1,9 @@
 import { isDeepStrictEqual } from "node:util";
 import { hasActiveImport } from "./plan";
 
+/** 연결 열 전부가 든다 — 다운로드 동안 재연결(GitHub 재설치·GitLab 다른 OWNER의 재연결)이 끼면 `superseded`다. */
 export type ImportSettings = {
-  repositoryId: string | null; installationId: string | null;
+  repoHost: string; repositoryId: string | null; installationId: string | null; gitlabConnectionId: string | null;
   repoOwner: string; repoName: string; baseBranch: string;
   adapterName: string | null; pathTemplate: string | null; baseLocale: string | null;
   nested: boolean | null; nestedByPath: unknown;

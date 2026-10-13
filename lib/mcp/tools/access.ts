@@ -1,6 +1,7 @@
 import "server-only";
 import type { PrismaClient } from "@/generated/prisma/client";
 import type { ArchivedPolicy } from "@/lib/auth/access";
+import { parseRepoHost, type RepoHost } from "@/lib/repo-host/target";
 
 import { toolCatalog, type ToolRequirement } from "../catalog";
 import { planCreateAccess, planToolAccess } from "../grant";
@@ -25,17 +26,20 @@ export function requirementOf(name: string, variant?: Variant): ToolRequirement 
   return spec.access[variant];
 }
 
-/** 프로젝트 대상 도구. `ok`면 코어로 넘어간다 — 그 밖은 결과로 바로 돌려줄 거부다. */
+/**
+ * 프로젝트 대상 도구. `ok`면 코어로 넘어간다 — 그 밖은 결과로 바로 돌려줄 거부다. `ok`는 리포 호스트를 함께 준다 — 응답의 낱말·필드
+ * 이름이 호스트 어휘를 따르므로(gitlab-repositories D26) 같은 조회에서 읽는다. **인가에는 쓰지 않는다**(코어가 다시 판정한다).
+ */
 export async function checkProjectTool(
   prisma: PrismaClient,
   subject: ApiTokenSubject,
   input: { name: string; slug: string; variant?: Variant; archivedPolicy?: ArchivedPolicy },
-): Promise<{ status: "ok" } | ToolOutcome> {
+): Promise<{ status: "ok"; repoHost: RepoHost } | Exclude<ToolOutcome, { status: "ok" }>> {
   const requirement = requirementOf(input.name, input.variant);
   // ⚠️ 역할이 없는 요구는 프로젝트 도구가 아니다 — 카탈로그와 구현이 어긋났다(설정 오류라 던진다).
   if (requirement.rolePermission === null) throw new Error(`MCP tool ${input.name} has no project role requirement`);
   // `getProjectAccess`와 같은 두 조회 — 프로젝트 부재와 멤버 아님을 한 갈래로 접는다.
-  const project = await prisma.project.findUnique({ where: { slug: input.slug }, select: { id: true, archivedAt: true } });
+  const project = await prisma.project.findUnique({ where: { slug: input.slug }, select: { id: true, archivedAt: true, repoHost: true } });
   const member = project === null ? null : await prisma.projectMember.findUnique({
     where: { projectId_userId: { projectId: project.id, userId: subject.userId } },
     select: { projectId: true, role: true },
@@ -44,7 +48,9 @@ export async function checkProjectTool(
     token: subject, member, archivedAt: project?.archivedAt ?? null, archivedPolicy: input.archivedPolicy,
     rolePermission: requirement.rolePermission, tokenGrant: requirement.tokenGrant,
   });
-  return access.status === "ok" ? { status: "ok" } : { status: "refused", code: access.status };
+  if (access.status !== "ok") return { status: "refused", code: access.status };
+  // 모르는 호스트 값은 낱말만 기존(GitHub) 어휘로 말한다 — 연결 판정은 코어의 `repoTargetOf`가 fail-closed로 한다.
+  return { status: "ok", repoHost: parseRepoHost(project?.repoHost ?? "github") ?? "github" };
 }
 
 /** 프로젝트가 생기기 전의 도구(`list_repositories`·신규 `list_branches`·신규 `detect_formats`·`create_project`). */

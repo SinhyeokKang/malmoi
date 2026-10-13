@@ -1,8 +1,12 @@
+import { hasRepoConnection, type ProjectRepoColumns } from "@/lib/repo-host/target";
+
 /**
  * `ready` 판정 — 컬럼을 만들지 않고 기존 두 컬럼으로 판정한다 (PRODUCT §7.5).
  *
  * ```
- * setup               installationId == null   연결 전 — 온보딩이 만들면 이 상태로 안 남는다. skillflo-web이 여기다
+ * setup               연결 증거 없음           연결 전 — 온보딩이 만들면 이 상태로 안 남는다. skillflo-web이 여기다
+ *                     (GitHub installationId == null · GitLab repositoryId == null — GitLab 행은 생성 때 연결된 채로 태어나 여기 오지 않는다.
+ *                      연결자가 떠난 GitLab 프로젝트는 `ready` 그대로이고 [Reconnect]가 고친다 — `repoConnectionPinned`)
  * awaiting_first_sync lastCommitSha == null    행은 있는데 적재가 안 끝났다
  * ready               lastCommitSha != null
  * ```
@@ -15,20 +19,22 @@
 
 export type ProjectReadiness = "setup" | "awaiting_first_sync" | "ready";
 
-export function planProjectReadiness(project: {
-  installationId: string | null;
+export function planProjectReadiness(project: Pick<ProjectRepoColumns, "repoHost" | "installationId" | "repositoryId"> & {
   surfaces: readonly { archivedAt: Date | null; lastCommitSha: string | null }[];
 }): ProjectReadiness {
-  // 연결이 먼저다 — 더미 SHA가 있어도 설치가 없으면 pull이 돌 수 없다.
-  if (project.installationId === null) return "setup";
-  if (!project.surfaces.some(surface => surface.archivedAt === null && planSurfaceReadiness({ installationId: project.installationId, surface }) === "ready")) return "awaiting_first_sync";
+  // 연결이 먼저다 — 더미 SHA가 있어도 연결이 없으면 pull이 돌 수 없다. GitHub은 설치, GitLab은 고정된 리포다(`hasRepoConnection` —
+  // 참조가 빈 GitLab 프로젝트는 `setup`이 아니라 [Reconnect]다).
+  const connected = hasRepoConnection(project);
+  if (!connected) return "setup";
+  if (!project.surfaces.some(surface => surface.archivedAt === null && planSurfaceReadiness({ connected, surface }) === "ready")) return "awaiting_first_sync";
   return "ready";
 }
 
+/** @param connected `hasRepoConnection(project)` — 프로젝트의 연결 증거가 있는가. */
 export function planSurfaceReadiness(input: {
-  installationId: string | null;
+  connected: boolean;
   surface: { lastCommitSha: string | null };
 }): ProjectReadiness {
-  if (input.installationId === null) return "setup";
+  if (!input.connected) return "setup";
   return input.surface.lastCommitSha === null ? "awaiting_first_sync" : "ready";
 }

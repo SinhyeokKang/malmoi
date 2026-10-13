@@ -12,24 +12,26 @@ import { planProjectReadiness } from "../readiness";
 
 describe("planProjectReadiness", () => {
   it("requires one successful active surface, not the legacy project baseline", () => {
-    expect(planProjectReadiness({ installationId: "1", surfaces: [{ archivedAt: new Date(0), lastCommitSha: "sha" }, { archivedAt: null, lastCommitSha: null }] })).toBe("awaiting_first_sync");
-    expect(planProjectReadiness({ installationId: "1", surfaces: [{ archivedAt: null, lastCommitSha: null }, { archivedAt: null, lastCommitSha: "sha" }] })).toBe("ready");
+    expect(planProjectReadiness({ repoHost: "github", repositoryId: "42", installationId: "1", surfaces: [{ archivedAt: new Date(0), lastCommitSha: "sha" }, { archivedAt: null, lastCommitSha: null }] })).toBe("awaiting_first_sync");
+    expect(planProjectReadiness({ repoHost: "github", repositoryId: "42", installationId: "1", surfaces: [{ archivedAt: null, lastCommitSha: null }, { archivedAt: null, lastCommitSha: "sha" }] })).toBe("ready");
   });
   it("installationId가 null이면 `setup`이다 — 연결 전. skillflo-web이 여기다", () => {
-    expect(planProjectReadiness({ installationId: null, surfaces: [{ archivedAt: null, lastCommitSha: null }] })).toBe("setup");
+    expect(planProjectReadiness({ repoHost: "github", repositoryId: "42", installationId: null, surfaces: [{ archivedAt: null, lastCommitSha: null }] })).toBe("setup");
   });
 
   it("installationId가 null이면 lastCommitSha가 있어도 `setup`이다 — 더미 SHA가 준비 상태를 만들지 않는다", () => {
-    expect(planProjectReadiness({ installationId: null, surfaces: [{ archivedAt: null, lastCommitSha: "deadbeef" }] })).toBe("setup");
+    expect(planProjectReadiness({ repoHost: "github", repositoryId: "42", installationId: null, surfaces: [{ archivedAt: null, lastCommitSha: "deadbeef" }] })).toBe("setup");
   });
 
   it("연결됐는데 lastCommitSha가 null이면 `awaiting_first_sync`다", () => {
-    expect(planProjectReadiness({ installationId: "123", surfaces: [{ archivedAt: null, lastCommitSha: null }] })).toBe("awaiting_first_sync");
+    expect(planProjectReadiness({ repoHost: "github", repositoryId: "42", installationId: "123", surfaces: [{ archivedAt: null, lastCommitSha: null }] })).toBe("awaiting_first_sync");
   });
 
   it("설정만 저장된 프로젝트는 `ready`가 아니다 (불변식 8) — 어댑터·경로가 있어도 적재 증거가 없다", () => {
     // Project 행 모양 — 판정 함수는 두 컬럼만 보지만, 행 전체를 넘겨도 된다는 것을 고정한다.
     const configured = {
+      repoHost: "github",
+      repositoryId: "42",
       installationId: "123",
       surfaces: [{ archivedAt: null, lastCommitSha: null }],
       adapterName: "json-catalog",
@@ -40,7 +42,7 @@ describe("planProjectReadiness", () => {
   });
 
   it("lastCommitSha가 있어야만 `ready`다", () => {
-    expect(planProjectReadiness({ installationId: "123", surfaces: [{ archivedAt: null, lastCommitSha: "abc123" }] })).toBe("ready");
+    expect(planProjectReadiness({ repoHost: "github", repositoryId: "42", installationId: "123", surfaces: [{ archivedAt: null, lastCommitSha: "abc123" }] })).toBe("ready");
   });
 });
 
@@ -50,3 +52,21 @@ describe("planProjectReadiness", () => {
  * 지금은 `lib/projects/list.ts`의 `projectStatus`가 보관까지 함께 보고 갈래를 넷으로 낸다.
  * "내부 이름을 화면에 흘리지 않는다"는 검사도 그쪽으로 따라갔다.
  */
+
+describe("planProjectReadiness — GitLab (gitlab-repositories)", () => {
+  const gitlab = { repoHost: "gitlab", installationId: null, surfaces: [{ archivedAt: null, lastCommitSha: "sha" }] };
+
+  it("설치 id 없이도 고정된 리포면 연결된 것이다 — 가짜 설치 id가 필요 없다", () => {
+    expect(planProjectReadiness({ ...gitlab, repositoryId: "87515176" })).toBe("ready");
+  });
+
+  it("⚠️ 연결자가 떠나 참조가 빈 프로젝트도 `setup`이 아니다 — readiness는 그대로 두고 [Reconnect]가 고친다(GitHub unpinned와 같은 자리)", () => {
+    // readiness 입력에 연결 참조가 없다 — 참조 유무로 setup에 떨어지면 Home이 서지 않아 끊긴 연결을 고칠 자리가 사라진다.
+    expect(planProjectReadiness({ ...gitlab, repositoryId: "87515176" })).toBe("ready");
+    expect(planProjectReadiness({ ...gitlab, repositoryId: null })).toBe("setup");
+  });
+
+  it("모르는 호스트는 `setup`이다 — fail-closed", () => {
+    expect(planProjectReadiness({ ...gitlab, repoHost: "bitbucket", repositoryId: "1" })).toBe("setup");
+  });
+});

@@ -4,6 +4,7 @@ import { PanelFacts } from "@/components/ui/panel-card";
 import { Card } from "@/components/ui/card";
 import { DismissibleAlert } from "@/components/account/dismissible-alert";
 import { GithubSection } from "@/components/account/github-section";
+import { GitLabSection } from "@/components/account/gitlab-section";
 import { LoginMethods } from "@/components/account/login-methods";
 import { ProfileNameForm } from "@/components/account/profile-name-form";
 import { ProfilePicture } from "@/components/account/profile-picture";
@@ -15,7 +16,9 @@ import { Input } from "@/components/ui/input";
 import { requireUser } from "@/lib/auth/session";
 import { displayName } from "@/lib/account/plan";
 import { getPrisma } from "@/lib/db";
+import { githubAppConfigured } from "@/lib/deployment/github-app";
 import { optionalEnv } from "@/lib/env";
+import { readGitLabConnection } from "@/lib/gitlab-connect/connection";
 import { loadAccountView } from "@/lib/github-connect/account-view";
 import { installationSettingsUrl } from "@/lib/github-connect/installation-url";
 import { loadInstalledRepoCount } from "@/lib/github-connect/installed-repos";
@@ -86,10 +89,17 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
    * ⚠️ **넷이 독립적으로 실패한다** — 프로필은 우리 DB, GitHub 상태는 사용자 토큰이라 묶으면
    * GitHub 장애에 화면이 통째로 빈다 (설정 화면과 같은 판단, DESIGN §6.6).
    */
-  const [storedProfile, account, methods] = await Promise.all([
+  /**
+   * ⚠️ **GitHub App이 없는 설치(D4a)는 GitHub 카드를 그리지 않는다** — 쓸 수 없는 컨트롤을 그리지 않는다. 그때는 GitHub 조회도 하지 않는다.
+   * GitLab 카드는 DB만 읽는다(원격 호출 0 — 만료는 저장한 날짜로 판정한다).
+   */
+  const withGithub = githubAppConfigured();
+  const [storedProfile, account, methods, gitlab, gitlabProjects] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, select: { id: true, name: true, email: true, emailLookup: true, image: true } }),
-    loadAccountView(prisma, userId),
+    withGithub ? loadAccountView(prisma, userId) : null,
     prisma.account.findMany({ where: { userId, provider: { in: [...LOGIN_PROVIDERS] } }, select: { provider: true } }),
+    readGitLabConnection(prisma, userId),
+    prisma.project.count({ where: { gitlabConnection: { userId } } }),
   ]);
 
   /**
@@ -106,7 +116,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
    * 이 로더는 `Account` 행 하나가 아니라 GitHub을 두 번(설치 목록 + 설치별 리포) 친다.
    */
   const installedRepoCount =
-    account.status === "ok" && account.login !== null ? await loadInstalledRepoCount(prisma, userId) : null;
+    account !== null && account.status === "ok" && account.login !== null ? await loadInstalledRepoCount(prisma, userId) : null;
 
   const profile = storedProfile === null ? null : decodeUser(storedProfile);
   const name = profile?.name ?? "";
@@ -209,10 +219,17 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
         */}
         <LoginMethods outcome={connectOutcome(connect)} rows={loginMethodRows(methods, enabled)} unlinkFailure={unlinkFailure} />
 
-        <GithubSection
-          account={account}
-          installedRepoCount={installedRepoCount}
-          settingsUrl={installationSettingsUrl(optionalEnv("GITHUB_APP_SLUG"))}
+        {account !== null && (
+          <GithubSection
+            account={account}
+            installedRepoCount={installedRepoCount}
+            settingsUrl={installationSettingsUrl(optionalEnv("GITHUB_APP_SLUG"))}
+          />
+        )}
+
+        {/* 리포 쓰기 수단이 둘이다 — GitHub App(설치)과 GitLab PAT(토큰). 카드 제목이 축을 말한다(시안 G8). */}
+        <GitLabSection
+          connection={gitlab === null ? null : { username: gitlab.username, expiresAt: gitlab.expiresAt?.toISOString() ?? null, projectCount: gitlabProjects }}
         />
 
         <SessionsSection outcome={sessionRevocation} signOut={signOutAction} confirmProvider={confirmProvider} />

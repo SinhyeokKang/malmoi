@@ -29,7 +29,7 @@ export type SampleConfirmationPlan =
 export function planSampleConfirmations(input: {
   candidates: readonly ConfirmedCandidate[];
   /** 인가 뒤 읽은 리포 스냅샷 — 적재에 쓸 **같은** head다(검증과 적재가 다른 head를 보지 않는다). */
-  context: { userId: string; repositoryId: string; installationId: string; ref: string; headSha: string };
+  context: { userId: string; repositoryId: string; connection: string; ref: string; headSha: string };
   secret: string;
   now: Date;
 }): SampleConfirmationPlan {

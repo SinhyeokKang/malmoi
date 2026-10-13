@@ -37,6 +37,17 @@ export type ConnectionHealth =
    * 나가지 않는다 — 출력 경계가 `not-connected`로 접는다(외부 계약 불변, `lib/mcp/tools/project.ts`).
    */
   | { status: "unpinned" }
+  /**
+   * **GitLab 프로젝트의 연결 참조가 비었다** (gitlab-repositories D21 — `repoTargetOf`의 같은 갈래). 끊김이다(재연결 필요) — `unpinned`과 같은 톤.
+   * 이 파일의 GitHub 판정(`planConnectionHealth`)은 만들지 않는다 — 경계(`lib/repo-host`)가 원격 호출 0으로 돌려준다.
+   */
+  | { status: "connection-removed" }
+  /**
+   * **GitLab 연결 참조는 있는데 그 토큰으로 이 리포를 쓸 수 없다** (gitlab-repositories D22) — 저장된 만료일 지남(원격 0) · 401·403 스코프(철회·만료) ·
+   * 404·403(주인의 접근 상실) · 보관 · SHA-256. 끊김이다(재연결 필요) — `connection-removed`과 같은 톤·낱말. 일시 장애는 여기 오지 않는다(`unknown`).
+   * 이 파일의 GitHub 판정은 만들지 않는다 — `lib/gitlab/plan.ts`의 `planGitLabHealth`가 만든다.
+   */
+  | { status: "connection-unusable" }
   | { status: "app-uninstalled" }
   | { status: "installation-changed"; installationId: string }
   | { status: "repo-moved"; fullName: string }

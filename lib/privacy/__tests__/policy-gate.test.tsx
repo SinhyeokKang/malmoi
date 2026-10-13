@@ -55,6 +55,8 @@ const REVISIONS: readonly { effectiveDate: string; digest?: string; koDigest?: s
   { effectiveDate: "2026-10-07", digest: "9e7a7fe3769cc6e6e848c9ee84d909ecdcb9c64eba364cbf48242090cad57d83", koDigest: "fde6d9f89ade893e75810be5389923e7d99f88d43c46d29484cdb8f932a0388d" },
   // inbox-page — 헤더 목록 이름이 Inbox가 되고 `/inbox` 페이지를 보는 것도 열람으로 기록한다(같은 `User.attentionSeenAt` · 새 필드·쿠키 없음). 머지일이 바뀌면 날짜를 옮긴다.
   { effectiveDate: "2026-10-09", digest: "93ef1af16b1d01bad8684674ce4e0f3090a384b00b3c890581e24c81b40f9c62", koDigest: "ba4125e3dfef10e445332fa60cf0804326a0e06766111cf673d75f68a871b674" },
+  // gitlab-repositories — PAT 봉투·계정 식별자·수명·gitlab.com 전송. 머지일이 바뀌면 날짜를 옮긴다.
+  { effectiveDate: "2026-10-12", digest: "58caced24190ea57c942c8d44d287a30d745b14d2d9beeb367f8d520fa171acf", koDigest: "7e663a9ca85ec2e48fa0f315891ffd8200c24eecb4814fca47d5ff3f14faf0b5" },
 ];
 
 const privacy = en.publicDocs.privacy;
@@ -235,7 +237,7 @@ describe("방침 두 본(en·ko) — 사실 대조", () => {
     en: [[/\d+\s*minutes?\b/g, "unit:minute"], [/\d+\s*hours?\b/g, "unit:hour"], [/\d+\s*days?\b/g, "unit:day"], [/\d+\s*months?\b/g, "unit:month"], [/\d+\s*years?\b/g, "unit:year"]],
     ko: [[/\d+\s*분/g, "unit:minute"], [/\d+\s*시간/g, "unit:hour"], [/\d+\s*일/g, "unit:day"], [/\d+\s*개월/g, "unit:month"], [/\d+\s*년/g, "unit:year"]],
   };
-  const NAMES = ["GitHub", "Google", "Supabase", "Vercel", "Web Analytics", "Resend", "Claude Code", "Codex", "MCP", "Tokyo", "mal-moi.com", "http-only"];
+  const NAMES = ["GitHub", "GitLab", "gitlab.com", "Google", "Supabase", "Vercel", "Web Analytics", "Resend", "Claude Code", "Codex", "MCP", "Tokyo", "mal-moi.com", "http-only"];
 
   /**
    * 한 단위의 사실 토큰 — **집합**이다. 다중집합이면 번역이 주어를 한 번 생략한 것(`Vercel … Vercel uses` ↔ `Vercel이 … 쓰며`)까지 red가 된다 —
@@ -296,4 +298,15 @@ describe("Inbox 열람 시각 행 — 헤더 목록과 페이지 둘 다", () =>
     expect(cells, first).toBeDefined();
     expect(String(cells![1])).toContain(page);
   });
+});
+
+
+it("GitLab 수집·전송·보존과 시행일을 두 방침에 명시한다", () => {
+  for (const body of [privacy, koPrivacy]) {
+    for (const id of ["collected", "purposes", "retention", "third-parties"]) {
+      expect(docText(body.sections.filter(s => s.id === id)), id).toContain("GitLab");
+    }
+    expect(docText(body.sections)).toContain("gitlab.com");
+    expect(body.effectiveDate).toBe("2026-10-12");
+  }
 });

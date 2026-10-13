@@ -1,8 +1,7 @@
 // `server-only`를 붙이지 않는다 — `__tests__/trigger.test.ts`가 GitHub·DB만 바꿔 끼우고 이 조립을
 // 직접 지난다. 클라이언트 유입은 `lib/db.ts`·`lib/keys/query.ts`의 `server-only`가 막는다.
-import { fail } from "@/lib/failure";
 import type { PrismaClient } from "@/generated/prisma/client";
-import { createGitClient } from "@/lib/github";
+import { createGitClient } from "@/lib/repo-host";
 import type { PublishExecution } from "@/lib/sync/execution";
 import { invalidatePublishDelivery, loadPullState, saveLastPulledAt, withheldRevertable } from "./load";
 import { runPull, type PullResult } from "./run";
@@ -34,12 +33,8 @@ export async function triggerPull(prisma: PrismaClient, slug: string, runId: str
   execution.check();
   const result = await runPull({
     loadState: () => loadPullState(prisma, slug),
-    createClient: async (project) => {
-      // `runPull`이 이미 null을 걸렀다 — 여기 오면 값이 있다.
-      if (project.installationId === null) fail("installationId is missing", "not-installed");
-      if (!project.repositoryId) fail("repository identity is not pinned; reconnect the project", "not-installed");
-      return createGitClient(project.repoOwner, project.repoName, project.installationId, project.repositoryId, execution);
-    },
+    // `runPull`이 연결 판정(`repoTargetOf`)을 지난 대상만 넘긴다.
+    createClient: (target) => createGitClient(target, execution),
     saveLastPulledAt: (projectId, at, published, delivered, contexts, withheld) =>
       saveLastPulledAt(prisma, projectId, at, published, delivered, { runId, contexts, withheld, execution }),
     invalidateDelivery: (projectId) => invalidatePublishDelivery(prisma, projectId, { runId, execution }),

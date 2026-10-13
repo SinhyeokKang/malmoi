@@ -11,6 +11,7 @@ El contenedor web arranca con `pnpm preflight && next start`. Cuando la comproba
 | `missing` | Falta un nombre obligatorio o está vacío | `deploy/.env`, o la lista `environment` de Compose para los nombres que rellena Compose |
 | `incomplete-pair` | Un proveedor de inicio de sesión tiene solo uno de sus dos valores; la línea nombra el que falta (como `AUTH_GOOGLE_SECRET`) | Rellena el valor que falta, o vacía los dos para desactivar ese proveedor |
 | `no-login-provider` | No hay ningún proveedor de inicio de sesión activo; dos líneas nombran `AUTH_GITHUB_ID` y `AUTH_GOOGLE_ID` | Rellena al menos un par completo ([configuración](install.md#settings)) |
+| `incomplete-group` | Solo están definidos algunos de los cinco valores `GITHUB_APP_*` | Completa los cinco para repositorios de GitHub o vacía los cinco si solo usas GitLab |
 | `invalid-format` | Formato incorrecto: `RESEND_API_KEY` debe empezar por `re_`, `INVITATION_EMAIL_FROM` debe ser `Nombre <dirección>` o una dirección, `GITHUB_APP_SLUG` es `[a-z0-9-]`, `AUTH_TRUST_HOST` debe ser `true` | Ese valor |
 | `malformed` · `not-https` · `userinfo` | Un problema de forma en `MALMOI_ORIGIN` o `MALMOI_PRIVACY_URL`: espacios, barras invertidas o una URL ilegible, `http://`, `user:pw@` | Una URL `https://` sin datos de usuario |
 | `path` · `query` · `fragment` · `ipv6` · `idn` | Solo `MALMOI_ORIGIN` (una ruta o query en la URL de privacidad está bien): una ruta, `?`, `#`, un literal IPv6, un dominio no ASCII | `MALMOI_ORIGIN=https://<domain>` |
@@ -57,7 +58,7 @@ Ejecútala una vez ahora con `docker compose exec scheduler /usr/local/bin/night
 
 ## GitHub {#github}
 
-Si una cuenta nueva no puede instalar la GitHub App, comprueba que la app sea Public. Si un repositorio aparece como no instalado, revisa Repository access en esa instalación.
+Si los cinco valores `GITHUB_APP_*` están vacíos, los controles de repositorios de GitHub no se muestran. Esto no desactiva el inicio de sesión con GitHub. Si una cuenta nueva no puede instalar la GitHub App, comprueba que la app sea Public. Si un repositorio aparece como no instalado, revisa Repository access en esa instalación.
 
 ## Materiales para tu política de privacidad {#privacy}
 
@@ -65,12 +66,13 @@ La política de privacidad de tu instalación la escribes tú. Su `/privacy` red
 
 ### Campos guardados {#stored-fields}
 
-Significado de las columnas — recopilado: valores que hay que declarar como recopilados; conservación: valores que fijan cuánto tiempo se guarda algo; cookies: valores que lleva una cookie; no personal: valores que no describen a una persona (trabajo de traducción y datos internos de las filas). Los correos, nombres, imágenes y tokens de GitHub se guardan con cifrado de sobre (las claves están fuera de la base de datos, en `.env`), y el índice de correo es un HMAC. Las sesiones, las invitaciones y los tokens de agentes de programación solo se guardan como hashes.
+Significado de las columnas — recopilado: valores que hay que declarar como recopilados; conservación: valores que fijan cuánto tiempo se guarda algo; cookies: valores que lleva una cookie; no personal: valores que no describen a una persona (trabajo de traducción y datos internos de las filas). Los correos, nombres, imágenes y tokens de GitHub y GitLab se guardan con cifrado de sobre (las claves están fuera de la base de datos, en `.env`), y el índice de correo es un HMAC. Las sesiones, las invitaciones y los tokens de agentes de programación solo se guardan como hashes.
 
 | Modelo | Qué es | Recopilado | Conservación | Cookies | No personal |
 | --- | --- | --- | --- | --- | --- |
 | `User` | Una persona que inició sesión. El nombre, el correo y la imagen vienen de GitHub o Google y se cifran con la clave PII; el índice de correo es un HMAC de la dirección. Los tres ajustes de visualización y la hora de lectura de la Bandeja de entrada son ajustes guardados en la cuenta | `id`, `name`, `email`, `emailLookup`, `emailVerified`, `image`, `createdAt`, `uiLocale`, `timeZone`, `colorScheme`, `attentionSeenAt` | — | — | — |
 | `Account` | Un método de inicio de sesión vinculado (GitHub o Google): el ID de cuenta del proveedor, más el token de usuario de la GitHub App recibido al conectar un repositorio (cifrado con la clave de tokens) y su caducidad | `userId`, `installRequestedAt`, `provider`, `providerAccountId`, `refresh_token`, `access_token`, `expires_at` | — | — | `type` |
+| `GitLabConnection` | Conexión de GitLab de una cuenta: el PAT se cifra con la clave de tokens; el ID de usuario de GitLab, el nombre de usuario, la caducidad y los alcances se guardan sin cifrar. Se conserva hasta la desconexión o eliminación de la cuenta; la sustitución sobrescribe el PAT y sus metadatos. La caducidad o revocación detiene el acceso, pero no elimina la fila guardada | `id`, `userId`, `token`, `gitlabUserId`, `username`, `expiresAt`, `scopes`, `createdAt`, `updatedAt` | — | — | — |
 | `Session` | Una sesión iniciada. Solo se guarda un resumen del valor de la cookie; caduca 24 horas después de la última actividad | — | `expires` | `sessionToken`, `userId` | — |
 | `VerificationToken` | Comprobaciones para vincular un método de inicio de sesión y para cerrar otras sesiones. `identifier` contiene el ID de usuario y el ID de cuenta del proveedor en una cadena JSON. De 5 a 10 minutos | `identifier`, `token` | `expires` | — | — |
 | `ProjectMember` | Pertenencia a un proyecto y rol | `userId`, `role`, `createdAt`, `updatedAt` | — | — | `projectId` |
@@ -108,11 +110,12 @@ La zona horaria se guarda solo en la cuenta, no en una cookie.
 
 ### Destinatarios {#recipients}
 
-La instalación envía datos a tres servicios. Supabase y Vercel (alojamiento, almacenamiento de archivos, recuento de visitas) de mal-moi.com no forman parte de ella.
+La instalación envía datos a cuatro servicios. Supabase y Vercel (alojamiento, almacenamiento de archivos, recuento de visitas) de mal-moi.com no forman parte de ella.
 
 | Destinatario | Qué se envía | Por qué |
 | --- | --- | --- |
 | GitHub | El perfil y el correo verificado recibidos al iniciar sesión, cuando el inicio de sesión con GitHub está activo. Lecturas de repositorios y escrituras de ramas, commits y pull requests mediante tu GitHub App (los commits los hace la app, no una persona). El token de usuario de la GitHub App de una persona conectada solo se usa para leer | Inicio de sesión · conectar repositorios y Publicar |
+| GitLab (`gitlab.com`) | El PAT del usuario verifica su identidad y acceso al repositorio, lee archivos y escribe commits de traducción y merge requests con la cuenta conectada al proyecto | Conectar repositorios y publicar traducciones |
 | Google | El perfil y el correo verificado de quienes inician sesión con Google, cuando el inicio de sesión con Google está activo | Inicio de sesión |
 | Resend | La dirección invitada y el mensaje (enlace de invitación, nombre del proyecto, dirección de la imagen del proyecto, rol — no quién lo envió). El seguimiento de aperturas y clics está desactivado | Correos de invitación. Resend guarda los registros de envío durante el periodo de tu plan (30 días en Free); revisa tu plan e inclúyelo en tu política |
 
@@ -123,7 +126,7 @@ La instalación envía datos a tres servicios. Supabase y Vercel (alojamiento, a
 
 ### Elimina una cuenta {#delete-account}
 
-No hay una pantalla de autoservicio para eliminar cuentas, así que este es un procedimiento manual para solicitudes de acceso, rectificación y supresión. Las filas de pertenencia y las invitaciones que envió la persona impiden eliminar su fila `User`, así que van primero. Al eliminar después la fila `User` desaparecen sus métodos de inicio de sesión, sesiones, tokens personales y agentes conectados, y se desvincula de los registros de sincronización y de la actividad. Los valores de traducción se quedan; solo se quita el vínculo con su autor.
+No hay una pantalla de autoservicio para eliminar cuentas, así que este es un procedimiento manual para solicitudes de acceso, rectificación y supresión. Las filas de pertenencia y las invitaciones que envió la persona impiden eliminar su fila `User`, así que van primero. Al eliminar después la fila `User` desaparecen sus métodos de inicio de sesión, sesiones, tokens personales, agentes conectados y conexión de GitLab, y se desvincula de los registros de sincronización y de la actividad. Los valores de traducción se quedan; solo se quita el vínculo con su autor. Los proyectos que usaban su conexión de GitLab muestran **Desconectado** hasta que un propietario del proyecto los vuelva a conectar, y ningún evento de Registros lo anota. El token de acceso personal sigue siendo válido en GitLab, así que pide a la persona que lo revoque allí.
 
 1. Haz primero una [copia de seguridad](operate.md#backup): la eliminación no se puede deshacer. Cómo confirmas la identidad de la persona lo decide tu política.
 2. Busca la cuenta. Los correos están cifrados, así que calcula en su lugar el índice de búsqueda (un HMAC). La dirección entra por el entorno, no por la línea de comandos (`EMAIL_LOOKUP_KEY` ya está en el contenedor web), y `PROJECT_IDS` enumera los proyectos cuyas invitaciones busca el paso 3. Sin proyectos queda vacío y solo se imprime la línea `user`:
@@ -155,7 +158,7 @@ No hay una pantalla de autoservicio para eliminar cuentas, así que este es un p
    DELETE FROM "ProjectInvitation" WHERE "acceptedAt" IS NULL AND "emailLookup" IN ('<invitation indexes from step 3>');  -- invitaciones pendientes para esta persona
    DELETE FROM "VerificationToken" WHERE "identifier" LIKE '%"' || :'uid' || '"%';   -- comprobaciones de vinculación y cierre de sesión
    UPDATE "Translation" SET "updatedBy" = NULL WHERE "updatedBy" = :'uid';       -- sin clave foránea, se desvincula a mano
-   DELETE FROM "User" WHERE "id" = :'uid';                                       -- cascada a Account, Session, ApiToken, OAuth*; SyncRun y ProjectEvent pasan a NULL
+   DELETE FROM "User" WHERE "id" = :'uid';                                       -- cascada a Account, Session, ApiToken, OAuth*, GitLabConnection; SyncRun y ProjectEvent pasan a NULL
    COMMIT;
    ```
 

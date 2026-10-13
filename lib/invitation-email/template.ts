@@ -2,8 +2,9 @@
  * 초대 메일 HTML — Claude Design 핸드오프 `email/invite.html`(2026-09-23)에서 출발했고, dev에 들어간 뒤로는
  * **이 코드가 정본이다**(CLAUDE.md `/design-sync` 절 — 새 시안은 변경 요청이다).
  *
- * ⚠️ 변수는 다섯이고 `message.ts`의 `fill`이 치환한다: `{{LOGO_URL}}` · `{{INVITE_URL}}`(버튼 · Outlook VML
- *   버튼 · 대체 링크 href · 표시 텍스트 네 자리) · `{{PROJECT_NAME}}` · `{{ROLE}}` · `{{TILE}}`. **사용자 값은 정확히
+ * ⚠️ 변수는 여섯이고 `message.ts`의 `fill`이 치환한다: `{{LOGO_URL}}` · `{{INVITE_URL}}`(버튼 · Outlook VML
+ *   버튼 · 대체 링크 href · 표시 텍스트 네 자리) · `{{PROJECT_NAME}}` · `{{ROLE}}` · `{{TILE}}` · `{{TAGLINE}}`(리포 호스트별
+ *   문장 — 아래 `INVITATION_EMAIL_TAGLINE`, 상수). **사용자 값은 정확히
  *   한 번만 들어가고 그 결과를 다시 훑지 않는다** — 연쇄 치환이면 `{{…}}`가 든 프로젝트 이름이 뒤 치환에서 다시
  *   전개된다. 다시 채우는 것은 `{{TILE}}` 하나뿐이다: 그 자리에 아래 조각(우리 상수) 둘 중 하나를 넣고 조각 안의
  *   `{{TILE_SRC}}`·`{{TILE_BG}}`를 풀며, 그 값도 상수 URL · allowlist를 지난 키 · hex뿐이다.
@@ -40,6 +41,15 @@ export const INVITATION_EMAIL_TILE_IMAGE = `<td width="32" align="center" valign
 /** 폴백 갈래 — 톤 셀 + 흰 Box 글리프(파일은 2x인 32×32). radius는 색을 든 안쪽 셀에 건다. */
 export const INVITATION_EMAIL_TILE_FALLBACK = `<td width="32" align="center" valign="middle" style="width:32px;"><table role="presentation" width="32" height="32" cellpadding="0" cellspacing="0" border="0" style="width:32px;height:32px;border-collapse:separate;"><tr><td width="32" height="32" align="center" valign="middle" bgcolor="{{TILE_BG}}" style="width:32px;height:32px;max-height:32px;line-height:0;font-size:0;overflow:hidden;background-color:{{TILE_BG}};border-radius:8px;"><img src="{{TILE_SRC}}" width="16" height="16" alt="" style="display:block;width:16px;height:16px;border:0;outline:none;text-decoration:none;"></td></tr></table></td>`;
 
+/**
+ * 서비스 소개 한 줄 — **초대 대상 프로젝트의 리포 호스트로 문장을 통째로 고른다**(gitlab-repositories tasks §5). 호스트 이름을 끼워
+ * 넣지 않는다 — 사전의 문장 분기 규칙과 같은 형이라 다른 호스트 이름이 메일에 0건이다(`message.test.ts`).
+ */
+export const INVITATION_EMAIL_TAGLINE = {
+  github: "Malmoi is where your team translates your app's text and sends it back to GitHub.",
+  gitlab: "Malmoi is where your team translates your app's text and sends it back to GitLab.",
+} as const;
+
 export const INVITATION_EMAIL_HTML = `<!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -71,7 +81,7 @@ export const INVITATION_EMAIL_HTML = `<!DOCTYPE html>
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         <tr><td class="mm-card-pad" align="center" style="padding:16px 0 24px 0;text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
           <h1 class="mm-h1" style="margin:0 0 8px 0;font-size:24px;line-height:32px;font-weight:600;letter-spacing:-0.01em;color:#0a0a0a;">You're invited to a project on Malmoi</h1>
-          <p style="margin:0 0 16px 0;font-size:15px;line-height:24px;color:#0a0a0a;">Malmoi is where your team translates your app's text and sends it back to GitHub.</p>
+          <p style="margin:0 0 16px 0;font-size:15px;line-height:24px;color:#0a0a0a;">{{TAGLINE}}</p>
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 16px 0;border:1px solid #e5e5e5;border-radius:12px;border-collapse:separate;">
             <tr><td style="padding:12px;text-align:left;">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0">

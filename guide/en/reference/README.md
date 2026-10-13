@@ -1,5 +1,3 @@
 # Reference
 
-Check supported file formats, fixed limits, and steps for resolving setup or syncing problems.
-
-Use Reference when you need a precise path, number, or recovery step.
+Look up supported translation file formats and project limits. For connection or CI problems, use the troubleshooting page in your repository host’s guide.

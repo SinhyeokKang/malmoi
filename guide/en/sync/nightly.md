@@ -10,7 +10,7 @@ A project must be active, connected to a repository, and have at least one sourc
 
 ## Automatic publishing {#nightly}
 
-If any saved edit is unsent, the nightly run publishes the project's saved changes through a change request (a *pull request* on GitHub). An open pull request is updated instead of opening a second one. That night the project is not updated from the repository.
+If any saved edit is unsent, the nightly run publishes the project's saved changes through a change request (a *pull request* on GitHub, or a *merge request* on GitLab). An open one is updated instead of opening a second one. That night the project is not updated from the repository.
 
 Saved values that cannot be published stay in Malmoi. If your changes were not published overnight, check **Logs** and ask a project owner about any reported failure.
 
@@ -28,14 +28,14 @@ If someone saves a translation while the nightly update is running, Malmoi stops
 The nightly run holds the update — the project is not updated, and **Logs** shows **Held** with the reason — when:
 
 - A Malmoi pull request is still open. Its translations are not in the repository yet, so an update would overwrite them. Merge or close the pull request; the next nightly run picks up the changes. Home's **Sync** tab shows **Held** in its **Hold** row, and the To send card says why.
-- GitHub didn't answer whether that pull request is open. Malmoi does not guess; Home shows **Held**, and the next run checks again.
+- GitHub or GitLab didn't answer whether that change request is open. Malmoi does not guess; Home shows **Held**, and the next run checks again.
 - The change is too large for a server-side sync. Nightly updates use the same file budget as creating a project (see [Limits](../reference/limits.md#files)). Reduce the files' size, or deliver the change with the repository workflow.
 
-If the nightly run can't read the repository's branch, or GitHub doesn't answer in time, the event shows **Failed** in **Logs** instead of a hold. If the branch no longer exists, Home also shows the sync as failed until the next successful sync; if GitHub only failed to answer, Home is unchanged and the next run tries again. A project owner can check the branch and the GitHub connection in project **Settings**.
+If the nightly run can't read the repository's branch, or GitHub or GitLab doesn't answer in time, the event shows **Failed** in **Logs** instead of a hold. If the branch no longer exists, Home also shows the sync as failed until the next successful sync; if GitHub or GitLab only failed to answer, Home is unchanged and the next run tries again. A project owner can check the branch and the repository connection in project **Settings**.
 
 ## Nightly sync or the workflow {#workflow}
 
-The workflow is optional. Without it, the nightly run picks up repository changes once a day. With [the workflow](../setup/workflow.md), your repository's GitHub Actions sends changes on every commit to that branch, and also collects code references. In **Logs**, workflow runs are marked **CI**; CI is your repository's workflow.
+The workflow is optional. Without it, the nightly run picks up repository changes once a day. With [the workflow](../github/workflow.md), your repository's GitHub Actions workflow, or its [GitLab CI jobs](../gitlab/ci.md), deliver changes on every commit to that branch, and also collect code references. In **Logs**, workflow runs are marked **CI**; CI is your repository's workflow.
 
 ## What happens next {#next}
 

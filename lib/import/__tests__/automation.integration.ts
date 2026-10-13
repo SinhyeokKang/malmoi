@@ -8,7 +8,7 @@ import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 
 import { PrismaClient } from "@/generated/prisma/client";
 import { optionalEnv } from "@/lib/env";
-import type { RepoReader } from "@/lib/github";
+import { sizesFromSnapshot, type RepoReader } from "@/lib/repo-host/reader";
 import { runAutomationImport, runRepositoryImportFromReader } from "@/lib/import/run";
 import { applyPush } from "@/lib/push/apply";
 
@@ -51,7 +51,7 @@ afterAll(async () => {
   rmSync(directory, { recursive: true, force: true });
 });
 
-const repository = { repositoryId: "123", installationId: "456", repoOwner: "o", repoName: "r", baseBranch: "main" };
+const repository = { repositoryId: "123", repoHost: "github", gitlabConnectionId: null, installationId: "456", repoOwner: "o", repoName: "r", baseBranch: "main" };
 const OLD = "a".repeat(40);
 const HEAD = "c".repeat(40);
 const oldAt = new Date("2026-09-10T00:00:00Z");
@@ -87,7 +87,7 @@ function reader(options: {
   content?: (slug: string) => string | undefined;
   snapshot?: "truncated" | "unavailable" | "base-branch-missing";
 } = {}): RepoReader {
-  return {
+  return { sizes: async (snapshot, paths) => sizesFromSnapshot(snapshot, paths),
     snapshot: vi.fn<RepoReader["snapshot"]>(async () => options.snapshot !== undefined ? { status: options.snapshot } : ({
       status: "ok", headSha: HEAD, headCommittedAt: headAt,
       files: SURFACES.flatMap(slug => LOCALES.map(locale => ({ path: `i18n/${slug}/${locale}.json`, sha: `${slug}:${locale}`, size: options.sizeOf?.(slug) ?? options.size ?? 100 }))),

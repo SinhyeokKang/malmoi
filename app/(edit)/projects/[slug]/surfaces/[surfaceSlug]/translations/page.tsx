@@ -4,8 +4,8 @@ import { ProjectArchived } from "@/components/project-archived";
 import { ProjectNotReady } from "@/components/project-not-ready";
 import { TranslationWorkspace } from "@/components/translations/workspace/workspace";
 import { getPrisma } from "@/lib/db";
-import { loadConnectionHealth } from "@/lib/github";
-import { storedConnection } from "@/lib/github-connect/health";
+import { loadConnectionHealth } from "@/lib/repo-host";
+import { repoTargetOf } from "@/lib/repo-host/target";
 import { logFailure } from "@/lib/github-connect/log";
 import { countUnpublishedBySurface, loadActors, loadProject } from "@/lib/keys/query";
 import { loadTranslationDetail, loadTranslationList, loadTranslationTree, withActorLabels } from "@/lib/keys/translation-list";
@@ -129,7 +129,7 @@ export default async function TranslationsPage({
           return {
             key: labeled.key,
             locales: labeled.locales.map(({ code, isBase, value, needsReview, pending, actorLabel }) => ({ code, isBase, value, needsReview, pending, actorLabel })),
-            refs: labeled.refs.map(ref => ({ ...ref, href: buildPermalink({ repoOwner: project.repoOwner, repoName: project.repoName, lastCommitSha: labeled.lastCommitSha }, ref) })),
+            refs: labeled.refs.map(ref => ({ ...ref, href: buildPermalink({ repoHost: project.repoHost, repoOwner: project.repoOwner, repoName: project.repoName, lastCommitSha: labeled.lastCommitSha }, ref) })),
           };
         })();
 
@@ -140,10 +140,10 @@ export default async function TranslationsPage({
     ⚠️ **`memo`를 켠다**(U7 r1 지휘자 결정 — Home과 둘) — 이 화면은 키 클릭·저장마다 다시 렌더되어, 메모 없이는 번역자마다 GitHub 1–2회가 설치 한도를
     먹는다. 표시 전용이라 괜찮다 — 누르면 서버가 다시 판정한다. ⚠️ 거부는 `unknown`으로 접는다 — 버튼을 끄지 않는다(Home과 같다).
   */
-  const stored = storedConnection(project);
-  const connection = stored !== null ? { status: stored.status } : {
+  const target = repoTargetOf(project);
+  const connection = target.status !== "ok" ? { status: target.status } : {
     status: "unknown" as const,
-    later: loadConnectionHealth(project, { memo: true }).catch((error: unknown) => {
+    later: loadConnectionHealth(target, { memo: true }).catch((error: unknown) => {
       logFailure("translations-connection-health", error);
       return { status: "unknown" } as const;
     }),
@@ -163,7 +163,7 @@ export default async function TranslationsPage({
       unpublished={[...unsentBySurface.values()].reduce((sum, n) => sum + n, 0)}
       publish={{
         /* ⚠️ **`syncBranchFor`를 서버가 부른다** — 그 모듈은 `lib/failure`(node:crypto)를 물어 클라이언트가 물면 안 된다. */
-        repo: { owner: project.repoOwner, name: project.repoName, branch: project.baseBranch, syncBranch: syncBranchFor(slug) },
+        repo: { owner: project.repoOwner, name: project.repoName, branch: project.baseBranch, syncBranch: syncBranchFor(slug), host: project.repoHost },
         lastSentLabel: project.lastPublishedAt === null ? null : relativeTime(project.lastPublishedAt, new Date(), uiLocale),
         lastPrUrl: project.lastPrUrl,
       }}

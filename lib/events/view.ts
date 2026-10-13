@@ -345,6 +345,8 @@ function settingsSentences(m: Messages): Record<string, (who: ReactNode) => Reac
     "settings.nameChanged": m.logs.sentence.settings.name,
     "settings.baseBranchChanged": m.logs.sentence.settings.baseBranch,
     "settings.repositoryConnected": m.logs.sentence.settings.repository,
+    // GitLab 연결 참조가 비었다(D20 — 연결자의 해제·멤버 제거, `lib/gitlab-connect/removal.ts`). 행위자는 해제·제거한 사람이다.
+    "settings.repositoryDisconnected": m.logs.sentence.settings.repositoryDisconnected,
     "settings.pushTokenRotated": m.logs.sentence.settings.pushToken,
     "settings.imageChanged": m.logs.sentence.settings.image,
     "settings.imageRemoved": m.logs.sentence.settings.imageRemoved,

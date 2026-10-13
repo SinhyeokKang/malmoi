@@ -139,8 +139,13 @@ const USER_SCOPED_ACTIONS = new Set([
   "account/actions.ts#deleteProfileImage",
   // The display name is the user's own — a person with no project still owns it.
   "account/actions.ts#updateProfileName",
+  // 계정 GitLab 연결은 사용자 소유다(gitlab-repositories) — 프로젝트가 없는 사용자도 ①에서 PAT를 붙여 넣고 `/account`에서 해제한다. 세션의 userId로만 좁힌다.
+  "account/actions.ts#connectGitLab",
+  "account/actions.ts#disconnectGitLab",
   // 생성 경로 — 아직 프로젝트가 없다 (ARCHITECTURE §6.1)
   "projects/actions.ts#listConnectableRepos",
+  // ①의 GitLab 리포 목록 — 호출자 자신의 연결로만 읽는다(gitlab-repositories).
+  "projects/actions.ts#listConnectableGitLabRepos",
   "projects/actions.ts#detectRepoFormats",
   "projects/actions.ts#listRepoBranches",
   "projects/actions.ts#loadCandidateSample",
@@ -186,6 +191,8 @@ const DELEGATED_CORES = new Map([
   ["addSources", "lib/onboarding-run/add.ts"],
   ["importRepository", "lib/onboarding-run/import.ts"],
   ["rotateToken", "lib/onboarding-run/rotate-token.ts"],
+  // GitLab 재연결 — 코어가 `getProjectAccess`(project:settings) → 잠금 안 재판정을 든다(gitlab-repositories).
+  ["reconnectGitLabProject", "lib/onboarding-run/gitlab-reconnect.ts"],
 ]);
 
 /** 멤버 프로젝트 조인은 프로젝트별 가드와 다른 인가 경계다. */
@@ -225,6 +232,8 @@ function exportGuarded(body: string, id: string): boolean {
 /**
  * readSession 호출만으로는 부족하다 — 비로그인·장애 두 갈래가 즉시 반환해야 인증이다.
  * 결과 코드만 돌려주는 Action(`setTimeZone`)은 두 갈래를 `!== "ok"` 한 줄로 함께 끊는다 — `ok` 밖이 전부 거부라 빠지는 갈래가 없다.
+ * 장애 갈래의 코드는 `unavailable` 또는 `session-unavailable`이다 — 코어가 `unavailable`을 다른 장애(GitLab·DB)에 쓰는 Action(`connectGitLab`)이
+ * 세션 장애를 가른다(감사 U6).
  */
 function hasUserGuard(body: string): boolean {
   if (body.includes("requireUser(")) return true;
@@ -232,7 +241,7 @@ function hasUserGuard(body: string): boolean {
   if (/if \(session\.status !== "ok"\) return "failed";/.test(body)) return true;
   if (/if \(session\.status !== "ok"\) return \{ status: "failed" \};/.test(body)) return true;
   return /if \(session.status === "none"\) return \{ ok: false, error: "unauthorized" \}/.test(body) &&
-    /if \(session.status === "unavailable"\) return \{ ok: false, error: "unavailable" \}/.test(body);
+    /if \(session.status === "unavailable"\) return \{ ok: false, error: "(?:session-)?unavailable" \}/.test(body);
 }
 
 /**
@@ -256,6 +265,10 @@ it("사용자 Action의 readSession은 두 거부 반환 없이는 인증으로 
   expect(hasUserGuard(read + none)).toBe(false);
   expect(hasUserGuard(read + outage)).toBe(false);
   expect(hasUserGuard(read + none + outage)).toBe(true);
+  const sessionOutage = 'if (session.status === "unavailable") return { ok: false, error: "session-unavailable" };';
+  expect(hasUserGuard(read + none + sessionOutage)).toBe(true);
+  expect(hasUserGuard(read + sessionOutage)).toBe(false);
+  expect(hasUserGuard(read + none + 'if (session.status === "unavailable") return { ok: false, error: "gitlab-unavailable" };')).toBe(false);
   // 코드를 돌려주는 Action은 `ok` 밖을 한 줄로 끊는다 — 한 갈래만 끊는 줄(`=== "none"`)은 인정하지 않는다.
   expect(hasUserGuard(read + 'if (session.status !== "ok") return "failed";')).toBe(true);
   expect(hasUserGuard(read + 'if (session.status === "none") return "failed";')).toBe(false);
@@ -937,7 +950,7 @@ describe("보호 라우트가 1차 차단에 걸린다 — matcher는 전 페이
    * ⚠️ **하드코딩이다** — `PROTECTED`는 `(edit)/` 아래에서만 만들어지므로, 여기 등재하지 않으면
    * "보호 경로가 아니다"를 재는 대상이 아예 없다 (POSTMORTEM 2026-09-07).
    */
-  const PUBLIC = ["/", "/signin", "/signin/link/sample", "/invite/sample", "/oauth/authorize", "/privacy", "/changelog", "/docs", "/docs/setup/workflow"];
+  const PUBLIC = ["/", "/signin", "/signin/link/sample", "/invite/sample", "/oauth/authorize", "/privacy", "/changelog", "/docs", "/docs/github/workflow"];
 
   /** Next matcher의 `source` — 이 모양(정규식 그룹 하나)은 path-to-regexp와 JS 정규식이 같게 읽는다. */
   const MATCHERS = (middlewareConfig.matcher as readonly string[]).map((source) => new RegExp(`^${source}$`));

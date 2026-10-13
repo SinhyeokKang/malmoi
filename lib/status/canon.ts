@@ -25,7 +25,7 @@ export type StateKey =
   | "prOpen" | "prCheckFailed" | "connected" | "notConnected" | "disconnected" | "wrongRepository" | "couldNotCheck"
   | "archived" | "setup" | "active"
   | "logsSynced" | "logsSent" | "logsFailed" | "publishing" | "nothingToSend" | "heldBack" | "superseded" | "notStarted" | "upToDate"
-  | "expired" | "waitingToApply" | "removedFromRepository";
+  | "expired" | "expiresSoon" | "waitingToApply" | "removedFromRepository";
 
 /** 톤과 variant — 언어와 무관하다. 낱말은 `stateLabel`이 그 화면의 사전에서 고른다. */
 export const STATE: Readonly<Record<StateKey, { tone: StateTone; variant: StateVariant }>> = {
@@ -63,12 +63,18 @@ export const STATE: Readonly<Record<StateKey, { tone: StateTone; variant: StateV
   notStarted: { tone: "warning", variant: "soft-amber" },
   upToDate: { tone: "muted", variant: "soft-neutral" },
   expired: { tone: "warning", variant: "soft-amber" },
+  // GitLab PAT 만료 임박(만료일 ≤ 14일, D11) — 토큰의 자리(`/account`·설정 GitLab 카드)에만 선다. 프로젝트 Connection 행은 `connected` 그대로다(design §2 톤 표).
+  expiresSoon: { tone: "warning", variant: "soft-amber" },
   waitingToApply: { tone: "warning", variant: "soft-amber" },
   removedFromRepository: { tone: "danger", variant: "soft-red" },
 };
 
-/** 상태의 낱말 — 사전 값을 가리킨다. 새 문자열을 만들지 않는다(테스트가 사전 전수와 대조한다). */
-export function stateLabel(m: Messages, key: StateKey): string {
+/**
+ * 상태의 낱말 — 사전 값을 가리킨다. 새 문자열을 만들지 않는다(테스트가 사전 전수와 대조한다).
+ * `host`는 리포 호스트다 — **PR/MR 분기는 여기 한 곳에서 한다**(design §2 톤 표 · POSTMORTEM 2026-10-08): GitLab 프로젝트의 `prCheckFailed`는
+ * merge request 문장이고 키·톤은 같다. 화면은 호스트만 넘기고 낱말을 고르지 않는다. 없으면 GitHub이다.
+ */
+export function stateLabel(m: Messages, key: StateKey, host = "github"): string {
   const labels: Readonly<Record<StateKey, string>> = {
     synced: m.settings.sources.imported,
     syncing: m.settings.sources.importing,
@@ -78,7 +84,8 @@ export function stateLabel(m: Messages, key: StateKey): string {
     held: m.logs.status.deferred,
     unsent: m.translations.workspace.list.notSent,
     prOpen: m.translations.publish.prState,
-    prCheckFailed: m.home.meta.prCheckFailed,
+    // ⚠️ `forHost`를 부르지 않는다 — 이 파일은 import 0 잎이다(`client-graph.test.ts`). 덮는 키 하나라 직접 고른다.
+    prCheckFailed: host === "gitlab" ? m.home.meta.onGitLab.prCheckFailed : m.home.meta.prCheckFailed,
     connected: m.settings.repository.health.ok,
     notConnected: m.settings.repository.notConnected,
     disconnected: m.settings.repository.disconnected,
@@ -97,6 +104,7 @@ export function stateLabel(m: Messages, key: StateKey): string {
     notStarted: m.logs.status.notStarted,
     upToDate: m.logs.status.upToDate,
     expired: m.mcpConnector.token.expired,
+    expiresSoon: m.account.gitlab.expiresSoon,
     waitingToApply: m.sources.waiting,
     removedFromRepository: m.sources.missingRepo,
   };

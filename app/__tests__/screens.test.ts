@@ -61,7 +61,8 @@ describe("설정 화면 — revalidate가 결과를 씻지 않는다 (POSTMORTEM
    */
   it("건강성과 계정을 병렬로 읽는다 — 한쪽 장애가 다른 쪽을 막지 않는다", () => {
     expect(src).toMatch(/const health = loadConnectionHealth\(/);
-    expect(src).toMatch(/const account = loadAccountView\(/);
+    // GitLab 프로젝트·App 없는 설치는 GitHub을 부르지 않는다(gitlab-repositories D4a) — 부를 때는 여전히 await 없이 promise다.
+    expect(src).toMatch(/const account = [^;\n]*loadAccountView\(/);
     expect(src).not.toMatch(/await (?:Promise\.all\(\[\s*)?load(?:ConnectionHealth|AccountView|OpenPrUrl)\(/);
     // ⚠️ **6b-4에서 이 로더가 `lib/github-connect/account-view.ts`로 내려갔다** — `/account`가 같은
     // 3갈래를 필요로 하고, 사본을 두면 두 화면이 갈린다. 이름을 고정해 사본이 돌아오는 것을 막는다.

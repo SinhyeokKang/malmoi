@@ -86,6 +86,12 @@ const SAME_AS_EN: Readonly<Record<Translated, readonly string[]>> = {
     "logs.trigger.ci",
     "account.github.title",
     "account.github.rowName",
+    "account.gitlab.title",
+    "account.gitlab.rowName",
+    "newProject.host.github",
+    "newProject.host.gitlab",
+    "home.meta.platforms.github",
+    "home.meta.platforms.gitlab",
     "link.providers.github",
     "link.providers.google",
     // 입력 예시 — 사용자가 칠 경로·코드·주소다
@@ -126,6 +132,12 @@ const SAME_AS_EN: Readonly<Record<Translated, readonly string[]>> = {
     "account.profile.avatar",
     "account.github.title",
     "account.github.rowName",
+    "account.gitlab.title",
+    "account.gitlab.rowName",
+    "newProject.host.github",
+    "newProject.host.gitlab",
+    "home.meta.platforms.github",
+    "home.meta.platforms.gitlab",
     "locales.base",
     "settings.general.title",
     "link.providers.github",
@@ -158,7 +170,7 @@ const enLeaves = new Map(leaves(en).map(({ path, text }) => [path, text]));
 
 /** ① en과 같은 문장 중 허용 목록 밖의 경로. */
 const untranslated = (found: readonly Leaf[], lang: Translated): string[] =>
-  found.filter(({ path, text }) => enLeaves.get(path) === text && !SAME_AS_EN[lang].some((allowed) => covers(allowed, path))).map(({ path }) => path);
+  found.filter(({ path, text }) => enLeaves.get(path) === text && !SAME_AS_EN[lang].some((allowed) => covers(allowed, path.replaceAll(".onGitLab", "")))).map(({ path }) => path);
 /** ③ en이 비어 있지 않은 자리의 빈 문장. */
 const emptied = (found: readonly Leaf[]): string[] =>
   found.filter(({ path, text }) => text.trim() === "" && (enLeaves.get(path) ?? "").trim() !== "").map(({ path }) => path);

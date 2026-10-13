@@ -9,7 +9,7 @@ import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 
 import { PrismaClient } from "@/generated/prisma/client";
 import { optionalEnv } from "@/lib/env";
-import type { RepoReader } from "@/lib/github";
+import { sizesFromSnapshot, type RepoReader } from "@/lib/repo-host/reader";
 import { runAutomationImport, runRepositoryImportFromReader } from "@/lib/import/run";
 import { applyPush } from "@/lib/push/apply";
 import { hashPushToken } from "@/lib/push/token";
@@ -55,7 +55,7 @@ afterAll(async () => {
   rmSync(directory, { recursive: true, force: true });
 });
 
-const repository = { repositoryId: "123", installationId: "456", repoOwner: "o", repoName: "r", baseBranch: "main" };
+const repository = { repositoryId: "123", repoHost: "github", gitlabConnectionId: null, installationId: "456", repoOwner: "o", repoName: "r", baseBranch: "main" };
 const pushToken = "isolated-changed-values-fixture";
 const format = { adapter: "json-catalog" as const, pathTemplate: "i18n/{locale}.json", baseLocale: "en", nested: false };
 let commitClock = Date.parse("2026-09-10T00:00:00Z");
@@ -118,7 +118,7 @@ it("토큰 있어 안 덮인 셀은 세지 않는다 — 쓰이지 않은 행은
 });
 
 function reader(content: string): RepoReader {
-  return {
+  return { sizes: async (snapshot, paths) => sizesFromSnapshot(snapshot, paths),
     snapshot: vi.fn<RepoReader["snapshot"]>(async () => ({ status: "ok", headSha: "c".repeat(40), headCommittedAt: new Date(commitClock + 3_600_000).toISOString(),
       files: ["en", "ko"].map(locale => ({ path: `i18n/${locale}.json`, sha: locale, size: 100 })) })),
     blob: vi.fn(async (sha: string) => sha === "en" ? content : '{"a":"가","b":"나"}'),
@@ -181,7 +181,7 @@ it("생산자 — 야간 적재의 import.nightly 사건", async () => {
 it("실패로 닫힌 실행은 0이 아니라 null이다", async () => {
   await seed();
   await apply(BASE);
-  const failing: RepoReader = { snapshot: vi.fn<RepoReader["snapshot"]>(async () => { throw new Error("boom"); }), blob: vi.fn() };
+  const failing: RepoReader = { sizes: async (snapshot, paths) => sizesFromSnapshot(snapshot, paths), snapshot: vi.fn<RepoReader["snapshot"]>(async () => { throw new Error("boom"); }), blob: vi.fn() };
   await runRepositoryImportFromReader(prisma, { projectId: "p", userId: "owner", repository, approval: null, credential: undefined }, async () => failing);
   expect(await importEvent("import.run")).toMatchObject({ changedValues: null });
 });

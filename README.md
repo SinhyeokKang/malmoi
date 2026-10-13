@@ -30,11 +30,11 @@ Translators never touch Git: they sign in, edit, and hit **Publish**.
 ## How it works
 
 ```text
-       push to the base branch (GitHub Actions) or nightly
+   push to the base branch (GitHub Actions / GitLab CI) or nightly
   Repository  ──────────────────────────────────────────────▶  Malmoi
   decides which keys exist                         teammates edit values
       ▲                                                          │
-      │            one pull request (Publish or nightly)         │
+      │   one pull request / merge request (Publish or nightly)  │
       └──────────────────────────────────────────────────────────┘
 ```
 
@@ -46,7 +46,11 @@ The two sides are never merged: an update replaces Malmoi's values with the
 repository's (unless edits are waiting or a Malmoi pull request is still open),
 and Publish writes Malmoi's values back.
 
-[Create your first project →](https://mal-moi.com/docs/setup/create-project)
+GitLab.com repositories work the same way. You connect GitLab with a personal
+access token (`api` scope), Publish opens one merge request, and Malmoi
+generates a `.gitlab-ci.yml` job instead of a GitHub Actions workflow.
+
+[Create your first project →](https://mal-moi.com/docs/create)
 
 ## Features
 
@@ -100,7 +104,8 @@ kept for the life of the project.
 
 ### One workflow file
 
-Malmoi generates the GitHub Actions workflow. Every push to the base branch
+Malmoi generates the GitHub Actions workflow, or the `.gitlab-ci.yml` job for a
+GitLab project. Every push to the base branch
 brings new keys into Malmoi and marks translations whose source text changed as
 **Needs review** — unless unsent edits are holding syncing back. It also
 collects code references, so each key shows where your code uses it.
@@ -157,7 +162,7 @@ collects code references, so each key shows where your code uses it.
 YAML catalogs and code dictionaries keep comments, blank lines, and key order;
 JSON catalogs and Chrome messages keep indentation, one-line containers,
 escapes, and field order. Values come from Malmoi. Detection supports a single language, so you can edit source text before adding translations. One project can hold several sources, in any mix of formats; Publish
-sends them in one pull request.
+sends them in one pull request (one merge request on GitLab).
 [Limits →](https://mal-moi.com/docs/reference/limits)
 
 ## What Malmoi doesn't do
@@ -180,9 +185,12 @@ files, so Publish can compare file hashes (Git blob SHAs) and commit only the
 files that changed. A non-deterministic writer would open a meaningless pull
 request every night.
 
-**Commits come from the GitHub App, not from people.** Sign-in and repository
-writes use separate GitHub credentials, so a translator leaving the
-organization doesn't break the pipeline.
+**On GitHub, commits come from the GitHub App, not from people.** Sign-in and
+repository writes use separate GitHub credentials, so a translator leaving the
+organization doesn't break the pipeline. GitLab has no equivalent for every
+plan, so a GitLab project writes as the person whose token it uses; if that
+token expires or its owner leaves, the project shows **Disconnected** until a
+project owner reconnects it with their own token.
 
 More in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (Korean).
 
@@ -195,25 +203,25 @@ Use mal-moi.com, or run the same app on your own server.
 | Infrastructure | Run for you | One Linux server with Docker Compose: the app, PostgreSQL 17, an upload volume, a nightly scheduler, behind your HTTPS proxy |
 | Updates | Every release goes live on its own | You update one release at a time; every app release `v<x.y.z>` publishes `ghcr.io/sinhyeokkang/malmoi:v<x.y.z>` |
 | Where data lives | Supabase (Tokyo) and Vercel | Your server's database and upload volume |
-| Sign-in and email | GitHub and Google sign-in; invitations through Resend | GitHub sign-in, Google sign-in, or both, through OAuth apps you register; a GitHub App and a Resend domain you register (Resend is required) |
+| Sign-in and email | GitHub and Google sign-in; invitations through Resend | GitHub sign-in, Google sign-in, or both, through OAuth apps you register; a Resend domain you register (required); a GitHub App you register to connect GitHub repositories (optional — without it, the installation connects GitLab.com only) |
 | Limits | 3 active owned projects per person | The same, except for operators you list in `OPERATOR_EMAILS` |
 | Support | GitHub Issues | The latest release only, through GitHub Issues, best effort |
 | Cost | Free | Free software; you pay for the server, domain, and Resend |
 | Analytics and SEO | Cookieless page-view counts; public pages indexed | No page-view counting; every page `noindex` |
 
 Kubernetes, multiple instances, air-gapped networks, GitHub Enterprise, and
-GitLab aren't supported. Installing, updating, backups, key rotation, and
+GitLab Self-Managed aren't supported. Installing, updating, backups, key rotation, and
 troubleshooting are in the
 [self-hosting guide](https://mal-moi.com/docs/self-hosting).
 
 ## Privacy
 
-On mal-moi.com, Malmoi sends data to five services and no one else: GitHub, Google (if you sign
+On mal-moi.com, Malmoi sends data to six services and no one else: GitHub, GitLab (if you connect it), Google (if you sign
 in with it), Supabase (database, Tokyo), Vercel (hosting, profile and project pictures, cookieless page-view counts on the public pages), and Resend
 (invitation emails, tracking off).
 [Full policy →](https://mal-moi.com/privacy)
 
-A self-hosted installation sends data to GitHub, Google (if you sign in with it),
+A self-hosted installation sends data to GitHub, GitLab (if you connect it), Google (if you sign in with it),
 and Resend (invitation emails) — plus wherever its operator runs the server,
 database, and uploads. It has no page-view counting. Its privacy policy is the
 operator's own, linked from that site's `/privacy`.

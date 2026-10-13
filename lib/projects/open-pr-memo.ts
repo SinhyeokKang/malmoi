@@ -1,4 +1,5 @@
 import { PROBE_MEMO_MAX, PROBE_MEMO_TTL_MS } from "@/lib/github-connect/probe-memo";
+import type { ProjectRepoColumns } from "@/lib/repo-host/target";
 
 /**
  * **Home의 열린 PR 조회를 짧게 기억한다** (ux-drift-unify U15 — T18 실측: 편집 0인 프로젝트는 Home 착지·`?event=` 상세마다
@@ -18,7 +19,7 @@ import { PROBE_MEMO_MAX, PROBE_MEMO_TTL_MS } from "@/lib/github-connect/probe-me
 export const OPEN_PR_MEMO_TTL_MS = PROBE_MEMO_TTL_MS;
 export const OPEN_PR_MEMO_MAX = PROBE_MEMO_MAX;
 
-type Identity = { repoOwner: string; repoName: string; installationId: string | null; repositoryId: string | null };
+type Identity = ProjectRepoColumns;
 
 export function createOpenPrMemo({ ttlMs, max }: { ttlMs: number; max: number }) {
   /**
@@ -31,7 +32,8 @@ export function createOpenPrMemo({ ttlMs, max }: { ttlMs: number; max: number })
 
   return {
     async load(slug: string, project: Identity, lookup: () => Promise<string | null | undefined>, now: number = Date.now()): Promise<string | null | undefined> {
-      const key = JSON.stringify([slug, project.repoOwner, project.repoName, project.installationId, project.repositoryId]);
+      // 호스트·GitLab 연결 참조도 든다(gitlab-repositories) — 같은 숫자 id의 다른 호스트, 다른 OWNER의 GitLab 재연결 뒤 옛 답이 붙지 않는다.
+      const key = JSON.stringify([slug, project.repoHost, project.repoOwner, project.repoName, project.installationId, project.gitlabConnectionId, project.repositoryId]);
       const hit = entries.get(key);
       if (hit !== undefined && now - hit.at < ttlMs) return hit.value;
       const started = epoch;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCommitPayload, buildTreePayload } from "../payload";
+import { httpStatus } from "@/lib/failure";
 import { createFakeGitClient } from "./fake-client";
 
 /**
@@ -74,31 +74,43 @@ describe("createFakeGitClient — 응답 주입", () => {
 });
 
 describe("createFakeGitClient — 쓰기 경로", () => {
-  it("createTree가 받은 페이로드를 기록한다 — base_tree 누락을 여기서 잡는다", async () => {
-    const { client, calls } = createFakeGitClient({});
-    const payload = buildTreePayload([{ path: "i18n/ko.json", content: "x" }], "basetree");
-    await client.createTree(payload);
-    expect(calls.find((c) => c.method === "createTree")?.args[0]).toEqual(payload);
-  });
+  const snapshot = { branch: "malmoi-i18n/sync", baseSha: "basehead", changes: [{ path: "i18n/ko.json", content: "x", inBase: true }], summary: "1 file" };
 
-  it("createCommit이 받은 페이로드를 기록한다 — [skip-malmoi-i18n]과 parents를 여기서 본다", async () => {
+  it("publishSnapshot이 받은 입력을 기록하고 결정적인 커밋 SHA를 준다 — 같은 입력의 재실행 비교가 성립한다", async () => {
     const { client, calls } = createFakeGitClient({});
-    await client.createCommit(buildCommitPayload("tree", "basehead", "1 file"));
-    const arg = calls.find((c) => c.method === "createCommit")?.args[0];
-    expect(arg).toMatchObject({ parents: ["basehead"] });
+    const first = await client.publishSnapshot(snapshot);
+    expect(calls.find((c) => c.method === "publishSnapshot")?.args[0]).toEqual(snapshot);
+    await expect(createFakeGitClient({}).client.publishSnapshot(snapshot)).resolves.toBe(first);
   });
 
   it("주입한 실패를 던진다 — lastPulledAt 미갱신을 검증하려면 실패를 만들 수 있어야 한다", async () => {
-    const { client } = createFakeGitClient({ failOn: "createCommit" });
-    await expect(client.createCommit(buildCommitPayload("t", "b", ""))).rejects.toThrow(
-      /createCommit/,
-    );
+    const { client } = createFakeGitClient({ failOn: "publishSnapshot" });
+    await expect(client.publishSnapshot(snapshot)).rejects.toThrow(/publishSnapshot/);
   });
 
   it("실패한 호출도 기록에 남는다 — 어디까지 갔는지 봐야 한다", async () => {
-    const { client, calls } = createFakeGitClient({ failOn: "createCommit" });
-    await expect(client.createCommit(buildCommitPayload("t", "b", ""))).rejects.toThrow();
-    expect(calls.map((c) => c.method)).toEqual(["createCommit"]);
+    const { client, calls } = createFakeGitClient({ failOn: "publishSnapshot" });
+    await expect(client.publishSnapshot(snapshot)).rejects.toThrow();
+    expect(calls.map((c) => c.method)).toEqual(["publishSnapshot"]);
+  });
+
+  it("N번째 호출만 실패시킬 수 있다 — 앞선 호출은 성공한다", async () => {
+    const { client } = createFakeGitClient({ failOn: { method: "getRefSha", nth: 2 }, refSha: { "heads/dev": "h" } });
+    await expect(client.getRefSha("heads/dev")).resolves.toBe("h");
+    await expect(client.getRefSha("heads/dev")).rejects.toThrow(/getRefSha/);
+    await expect(client.getRefSha("heads/dev")).resolves.toBe("h");
+  });
+
+  it("상태 코드를 실은 실패를 만든다 — 분류기(`httpStatus`)가 그 상태를 읽는다", async () => {
+    const { client } = createFakeGitClient({ failOn: { method: "findOpenPr", status: 429 } });
+    const error = await client.findOpenPr("malmoi-i18n/sync").catch((caught: unknown) => caught);
+    expect(httpStatus(error)).toBe(429);
+  });
+
+  it("resetSyncBranch는 브랜치와 base를 기록한다", async () => {
+    const { client, calls } = createFakeGitClient({});
+    await client.resetSyncBranch("malmoi-i18n/sync", "basehead");
+    expect(calls).toEqual([{ method: "resetSyncBranch", args: ["malmoi-i18n/sync", "basehead"] }]);
   });
 });
 
@@ -106,12 +118,12 @@ describe("createFakeGitClient — PR", () => {
   it("열린 PR이 있으면 URL·번호·제목을 준다", async () => {
     const pr = { url: "https://github.com/o/r/pull/1", number: 1, title: "t", base: "main" };
     const { client } = createFakeGitClient({ openPr: pr });
-    await expect(client.findOpenPr("o:malmoi-i18n/sync")).resolves.toEqual(pr);
+    await expect(client.findOpenPr("malmoi-i18n/sync")).resolves.toEqual(pr);
   });
 
   it("열린 PR이 없으면 null이다 — 생성 경로를 태우는 입력이다", async () => {
     const { client } = createFakeGitClient({});
-    await expect(client.findOpenPr("o:malmoi-i18n/sync")).resolves.toBeNull();
+    await expect(client.findOpenPr("malmoi-i18n/sync")).resolves.toBeNull();
   });
 
   it("createPr이 URL을 돌려주고 호출이 기록된다", async () => {
@@ -119,5 +131,13 @@ describe("createFakeGitClient — PR", () => {
     const url = await client.createPr("malmoi-i18n/sync", "dev", "제목", "본문");
     expect(url).toMatch(/^https:\/\//);
     expect(calls.map((c) => c.method)).toContain("createPr");
+  });
+});
+
+describe("createFakeGitClient — PR 열림", () => {
+  it("지정한 PR 번호만 열려 있다 — 없는 번호는 닫힘이다", async () => {
+    const { client } = createFakeGitClient({ prOpen: { 7: true } });
+    await expect(client.isPullRequestOpen(7)).resolves.toBe(true);
+    await expect(client.isPullRequestOpen(8)).resolves.toBe(false);
   });
 });

@@ -89,7 +89,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         // 열린 PR 게이트(nightly-sync) — 조회 대상 리포와 installation 토큰 범위.
         repoOwner: true,
         repoName: true,
-        installationId: true,
+        repoHost: true, installationId: true, gitlabConnectionId: true,
         repositoryId: true,
       },
     });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { changedLocaleFileCount, pullNumberFrom } from "../remote-plan";
+import { changedLocaleFileCount, pullNumberFrom, reviewNumberFrom } from "../remote-plan";
 
 /**
  * **"base가 앞섰다"의 숫자는 키가 아니라 로케일 파일 수다**.
@@ -125,5 +125,21 @@ describe("pullNumberFrom", () => {
     ["https://github.com/o/r/issues/142"],
   ])("%s → null", (url) => {
     expect(pullNumberFrom(url)).toBeNull();
+  });
+});
+
+/** 호스트별 번호 — 목록의 원격 신호(`lib/projects/remote.ts`)가 프로젝트 호스트로 고른다(gitlab-repositories). */
+describe("reviewNumberFrom", () => {
+  it("GitLab은 `/-/merge_requests/<iid>`, GitHub은 `/pull/<n>` — 다른 호스트 모양은 null(요청 0)", () => {
+    expect(reviewNumberFrom("https://gitlab.com/g/sub/app/-/merge_requests/9", "gitlab")).toBe(9);
+    expect(reviewNumberFrom("https://gitlab.com/g/sub/app/-/merge_requests/9/diffs", "gitlab")).toBe(9);
+    expect(reviewNumberFrom("https://github.com/o/r/pull/9", "github")).toBe(9);
+    // GitLab 그룹 이름이 `pull`이어도 PR로 읽지 않는다.
+    expect(reviewNumberFrom("https://gitlab.com/pull/5/-/merge_requests/3", "gitlab")).toBe(3);
+    expect(reviewNumberFrom("https://github.com/o/r/pull/9", "gitlab")).toBeNull();
+    expect(reviewNumberFrom("https://gitlab.com/g/app/-/merge_requests/9", "github")).toBeNull();
+    expect(reviewNumberFrom("https://gitlab.com/g/app/-/merge_requests/0", "gitlab")).toBeNull();
+    expect(reviewNumberFrom(null, "gitlab")).toBeNull();
+    expect(reviewNumberFrom("https://github.com/o/r/pull/9", "unknown")).toBeNull();
   });
 });

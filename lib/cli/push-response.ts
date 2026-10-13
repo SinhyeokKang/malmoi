@@ -9,20 +9,43 @@
  * 구 action 태그(`@malmoi-i18n-push-v1`)의 CLI도 본문을 그대로 찍고 `res.ok`로 exit 0이라 보류가 안전하다 — 이 줄만 없다.
  * ⚠️ **열린 PR 보류(`open-pr`·`pr-check-failed`)는 v3부터 경고한다** — v2 CLI는 `pendingCount`가 정수일 때만 경고해 이 사유에선 경고 없이 green이다.
  */
-export function reportPushResponse(status: number, text: string): { exitCode: 0 | 1; lines: string[] } {
+/**
+ * 보류 경고 문장 — **리포 호스트별로 통째로** 둔다(#259 · gitlab-repositories D7). GitLab 러너만 `--repo-host gitlab`를 싣고(`planGitlabCiPush`),
+ * 그 밖(GitHub action v3·호스트 없음·모르는 값)은 GitHub 문장이다. ⚠️ **GitHub 문장은 바이트 단위로 그대로다** — action v3와 기존 사용자가 그 줄을
+ * 읽는다(`push-response.test.ts` golden). 서버 계약(`/api/push` 응답)은 늘리지 않았다 — 호스트는 CLI를 부른 쪽이 이미 안다.
+ */
+const WARNINGS = {
+  github: {
+    openPr: "a Malmoi pull request is still open — repository changes were not imported, so the translations in it aren't overwritten. Review the pull request and merge or close it; a new push from the current head or the nightly sync imports the latest repository state.",
+    prCheckFailed: "couldn't check whether the Malmoi pull request is still open — repository changes were not imported. Once the check is available, a new push from the current head or the nightly sync imports the latest repository state.",
+    publishRaced: "Publish finished after the import checks — repository changes were not imported. After any Malmoi pull request is merged or closed, a new push from the current head or the nightly sync imports the latest repository state.",
+    afterAny: "After any Malmoi pull request is merged or closed, a new push from the current head or the nightly sync imports the latest repository state.",
+  },
+  gitlab: {
+    openPr: "a Malmoi merge request is still open — repository changes were not imported, so the translations in it aren't overwritten. Review the merge request and merge or close it; a new push from the current head or the nightly sync imports the latest repository state.",
+    // ⚠️ 연결이 끊긴 프로젝트(참조 비움·저장 만료·철회)도 이 사유다 — 재연결 전까지 같은 보류이고 야간 대상에서도 빠진다(감사 B1 · 결정 R3).
+    // 사유 값을 늘리지 않고(응답 계약·허용 목록 불변) 문장이 재연결을 말한다.
+    prCheckFailed: "couldn't check whether the Malmoi merge request is still open — repository changes were not imported. If the project's GitLab connection in Malmoi was removed or can't be used, a project owner reconnects it in the project's Settings. Once the check is available, a new push from the current head or the nightly sync imports the latest repository state.",
+    publishRaced: "Publish finished after the import checks — repository changes were not imported. After any Malmoi merge request is merged or closed, a new push from the current head or the nightly sync imports the latest repository state.",
+    afterAny: "After any Malmoi merge request is merged or closed, a new push from the current head or the nightly sync imports the latest repository state.",
+  },
+} as const;
+
+export function reportPushResponse(status: number, text: string, repoHost?: string): { exitCode: 0 | 1; lines: string[] } {
   const lines = [`POST /api/push → ${status}`, text.slice(0, 800)];
   const ok = status >= 200 && status < 300;
   const held = ok ? deferral(text) : null;
   if (held === null) return { exitCode: ok ? 0 : 1, lines };
+  const w = WARNINGS[repoHost === "gitlab" ? "gitlab" : "github"];
   if (held.reason === "open-pr") {
-    lines.push("::warning title=Malmoi import deferred::a Malmoi pull request is still open — repository changes were not imported, so the translations in it aren't overwritten. Review the pull request and merge or close it; a new push from the current head or the nightly sync imports the latest repository state.");
+    lines.push(`::warning title=Malmoi import deferred::${w.openPr}`);
   } else if (held.reason === "pr-check-failed") {
-    lines.push("::warning title=Malmoi import deferred::couldn't check whether the Malmoi pull request is still open — repository changes were not imported. Once the check is available, a new push from the current head or the nightly sync imports the latest repository state.");
+    lines.push(`::warning title=Malmoi import deferred::${w.prCheckFailed}`);
   } else if (held.reason === "publish-raced") {
-    lines.push("::warning title=Malmoi import deferred::Publish finished after the import checks — repository changes were not imported. After any Malmoi pull request is merged or closed, a new push from the current head or the nightly sync imports the latest repository state.");
+    lines.push(`::warning title=Malmoi import deferred::${w.publishRaced}`);
   } else {
     const { pendingCount } = held;
-    lines.push(`::warning title=Malmoi import deferred::${pendingCount} unsent translation change${pendingCount === 1 ? "" : "s"} in Malmoi — repository changes were not imported. Send them with Publish in Malmoi. For edits Publish can't send (their file or key is missing from the repository), add the file or key back to the repository, or discard them with Sync (or Revert to last sent where available). After any Malmoi pull request is merged or closed, a new push from the current head or the nightly sync imports the latest repository state.`);
+    lines.push(`::warning title=Malmoi import deferred::${pendingCount} unsent translation change${pendingCount === 1 ? "" : "s"} in Malmoi — repository changes were not imported. Send them with Publish in Malmoi. For edits Publish can't send (their file or key is missing from the repository), add the file or key back to the repository, or discard them with Sync (or Revert to last sent where available). ${w.afterAny}`);
   }
   return { exitCode: ok ? 0 : 1, lines };
 }

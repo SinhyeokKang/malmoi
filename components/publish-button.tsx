@@ -19,7 +19,7 @@ import { useDateStyle, useMessages } from "@/components/i18n/messages-provider";
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import { onboardErrorMessage, isOnboardError } from "@/lib/onboarding/message";
 import { pullRevalidates, UNCONFIRMED_PULL, type PullOutcome } from "@/lib/pull/message";
-import { parseGithubPrUrl } from "@/lib/projects/pr-url";
+import { parseReviewUrl } from "@/lib/projects/pr-url";
 import { routes } from "@/lib/routes";
 import type { PublishModalState, PublishPreview } from "@/lib/publish/preview";
 import { planPublishButton, planPublishView, planWithheldLines } from "@/lib/publish/plan";
@@ -213,12 +213,14 @@ function namespaceOf(key: string): string {
 }
 
 /** `1d`·`1e`·`1g`가 공유하는 PR 카드. ⚠️ **제목을 그리지 않는다** — `PullResult`에 없다(§10-6). */
-function PrCard({ repo, number, note }: { repo: string; number: number | null; note: string }) {
+export function PrCard({ repo, number, note }: { repo: string; number: number | null; note: string }) {
+  // 번호 표기는 리포 호스트의 것이다(GitHub `#3` · GitLab `!3`) — 사전이 든다(`home.meta.pr`, `RepoHostScope`가 덮는다). 손으로 `#`을 붙이지 않는다(#254).
+  const m = useMessages();
   return <div className="border-border flex shrink-0 items-center gap-3 rounded-lg border px-4 py-3.5">
     {/* 열린 PR은 정보다 — 회색(2026-09-30 상태 통일, /projects 띠와 같은 톤). 성공 초록은 결과(`Sent`)가 든다. */}
     <GitPullRequestArrow className="text-muted-foreground size-4 shrink-0" aria-hidden />
     <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-      <span className="truncate text-sm">{repo}{number !== null && ` #${number}`}</span>
+      <span className="truncate text-sm">{repo}{number !== null && ` ${m.home.meta.pr(number)}`}</span>
       <span className="text-muted-foreground text-xs">{note}</span>
     </span>
     <StatusBadge state="prOpen" />
@@ -416,7 +418,7 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
    * ⚠️ **호스트가 넘긴다** — 조회가 실패한 갈래(`1k`·`1h`)도 리포 이름을 말해야 하고,
    * 브랜치 이름은 서버가 만든다(그 모듈을 클라이언트가 물면 번들에 octokit·ts-morph가 온다).
    */
-  repo: { owner: string; name: string; branch: string; syncBranch: string };
+  repo: { owner: string; name: string; branch: string; syncBranch: string; /** 리포 호스트 — PR/MR 문장을 고른다(`forHost`). 없으면 GitHub이다. */ host?: string };
 }) {
   const style = useDateStyle();
   const m = useMessages();
@@ -534,9 +536,9 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
         {`${p.closedPr.line(closed.number, repo.branch)} ${role === "OWNER" ? p.closedPr.owner : p.closedPr.editor}`}{" "}
         <InlineLink href={closed.url} target="_blank" rel="noreferrer">{p.closedPr.view(closed.number)}</InlineLink>
       </p>;
-      // ⚠️ **번호를 새로 파싱하지 않는다** — origin·owner/repo 검증까지 `parseGithubPrUrl`이 든다(DESIGN §6.646).
+      // ⚠️ **번호를 새로 파싱하지 않는다** — origin·owner/repo 검증까지 `parseReviewUrl`이 리포 호스트로 든다(DESIGN §6.646 · GitLab `!n`).
       const number = outcome.status === "committed"
-        ? parseGithubPrUrl(outcome.prUrl, { repoOwner: repo.owner, repoName: repo.name })?.number ?? null
+        ? parseReviewUrl(outcome.prUrl, { repoHost: repo.host ?? "github", repoOwner: repo.owner, repoName: repo.name })?.number ?? null
         : null;
       const files = outcome.status === "committed" ? outcome.changed.length : 0;
       const viewPr = outcome.status === "committed"

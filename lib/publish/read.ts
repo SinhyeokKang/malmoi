@@ -2,11 +2,12 @@ import "server-only";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { adapterFor } from "@/lib/adapters";
 import { adapterErrorKind } from "@/lib/adapters/types";
-import { createGitClient } from "@/lib/github";
+import { createGitClient } from "@/lib/repo-host";
+import { repoTargetOf } from "@/lib/repo-host/target";
 import { loadActors } from "@/lib/keys/query";
 import { actorLabel } from "@/lib/keys/view";
 import { loadOpenPrUrl } from "@/lib/projects/open-pr";
-import { parseGithubPrUrl } from "@/lib/projects/pr-url";
+import { parseReviewUrl } from "@/lib/projects/pr-url";
 import { formatFromProject, resolveLocalePaths } from "@/lib/pull/plan";
 import { blockingErrors, keySlot } from "@/lib/pull/undeliverable";
 import { loadPreviewSnapshot } from "@/lib/pull/load";
@@ -25,10 +26,11 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
   const project = state.project;
   // slug가 가리키는 프로젝트가 인가된 그 프로젝트여야 한다 — 다르면 남의 행을 보여 주게 된다.
   if (project.id !== projectId) throw new Error("Project changed");
-  if (!project.installationId || !project.repositoryId) throw new Error("Repository unavailable");
+  const connection = repoTargetOf(project);
+  if (connection.status !== "ok") throw new Error("Repository unavailable");
   const [client, rawPr] = await Promise.all([
-    createGitClient(project.repoOwner, project.repoName, project.installationId, project.repositoryId).then(cachedBlobs),
-    loadOpenPrUrl(slug, { ...project, repositoryId: project.repositoryId, archivedAt }),
+    createGitClient(connection.target).then(cachedBlobs),
+    loadOpenPrUrl(slug, { ...project, repositoryId: connection.target.repositoryId, archivedAt }),
   ]);
   const head = await client.getRefSha(`heads/${project.baseBranch}`);
   if (head === null) throw new Error("Base unavailable");
@@ -135,7 +137,7 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
     // 판정하지 않았으므로 나가는 쪽으로 센다 — `truncated`와 같이 읽힌다.
     changedFiles: changes.map(c => c.path),
     sendable: { total: total - withoutFile - withoutKey, keys: keys - [...heldKeys].filter(id => !cells.some(c => c.keyId === id)).length },
-    openPr: parseGithubPrUrl(rawPr, project),
+    openPr: parseReviewUrl(rawPr, project),
     // ⚠️ **셀 표시가 아니라 렌더가 쓴 스냅샷 전체 + 읽은 head다** (mcp-connector design §3.1) — 200행 상한 밖 편집·토큰 없는 export 변경도 바꾼다.
     fingerprint: publishFingerprint(state, head) };
 }

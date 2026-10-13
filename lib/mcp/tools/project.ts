@@ -4,14 +4,16 @@ import { z } from "zod";
 import { getProjectAccess, loadMembers, loadPendingInvitations } from "@/lib/auth/query";
 import { encodeCursor, parseLogFilter } from "@/lib/events/filter";
 import { loadEvents } from "@/lib/events/query";
-import { loadConnectionHealth } from "@/lib/github";
+import { loadConnectionHealth } from "@/lib/repo-host";
+import { parseRepoHost, repoTargetOf } from "@/lib/repo-host/target";
 import { logFailure } from "@/lib/github-connect/log";
 import { en } from "@/messages/en";
 import { loadProjectListAggregates, loadSurfaceCounts } from "@/lib/keys/query";
 import { planProjectReadiness } from "@/lib/onboarding/readiness";
-import { renderProjectWorkflowYaml, workflowApiUrl, workflowSurfaceOf } from "@/lib/onboarding/workflow";
+import { workflowSurfaceOf } from "@/lib/onboarding/workflow";
 
 import { checkProjectTool } from "./access";
+import { ciFileOf } from "@/lib/onboarding/ci-file";
 import { defineTool, ok } from "./define";
 
 /**
@@ -32,7 +34,7 @@ export const getProject = defineTool({
     const project = await prisma.project.findUnique({
       where: { id: access.projectId },
       select: {
-        slug: true, name: true, repoOwner: true, repoName: true, baseBranch: true, installationId: true, repositoryId: true,
+        slug: true, name: true, repoOwner: true, repoName: true, baseBranch: true, repoHost: true, installationId: true, gitlabConnectionId: true, repositoryId: true,
         archivedAt: true, lastPublishedAt: true, lastPrUrl: true,
         surfaces: {
           where: { archivedAt: null }, orderBy: { slug: "asc" },
@@ -46,9 +48,11 @@ export const getProject = defineTool({
       loadProjectListAggregates(prisma, [access.projectId]),
       loadSurfaceCounts(prisma, access.projectId),
       // Home과 같은 판단 — GitHub 설정 오류(던짐)가 조회 전체를 죽이지 않는다. 모르면 `unknown`이다.
-      loadConnectionHealth(project).catch((error: unknown) => { logFailure("mcp-connection-health", error); return { status: "unknown" as const }; }),
+      loadConnectionHealth(repoTargetOf(project)).catch((error: unknown) => { logFailure("mcp-connection-health", error); return { status: "unknown" as const }; }),
     ]);
     const keysOf = new Map(counts.map(c => [c.surfaceId, c.keys]));
+    const gitlab = parseRepoHost(project.repoHost) === "gitlab";
+    const newKeys = aggregates.newKeys.get(access.projectId) ?? 0;
     return ok({
       slug: project.slug,
       name: project.name,
@@ -56,14 +60,19 @@ export const getProject = defineTool({
       archived: project.archivedAt !== null,
       readiness: planProjectReadiness(project),
       repository: `${project.repoOwner}/${project.repoName}`,
+      repositoryHost: gitlab ? "gitlab" : "github",
       baseBranch: project.baseBranch,
       // ⚠️ **출력 값 목록을 넓히지 않는다** (ux-drift-unify Q12) — 화면의 `unpinned`(설치 있음·리포 id 없음)는 외부 계약에서 `not-connected`다.
-      connection: health.status === "unpinned" ? "not-connected" : health.status,
+      // GitLab의 참조 비움(`connection-removed`)·못 쓰는 토큰(`connection-unusable`)도 화면에서 같은 Disconnected라 같은 값으로 접는다(D26).
+      connection: health.status === "unpinned" || health.status === "connection-removed" || health.status === "connection-unusable" ? "not-connected" : health.status,
       toSend: aggregates.unsent.get(access.projectId) ?? 0,
-      newFromGitHub: aggregates.newKeys.get(access.projectId) ?? 0,
-      // ⚠️ **마지막 Publish의 PR이지 열린 PR이 아니다** (#144) — 성공한 Publish가 쓴 값이고 그 뒤 닫혔을 수 있다. Home의 "Last publish: Pull request #N"과
-      // 같은 값이다. 지금 열려 있는지는 `preview_publish`가 GitHub을 보고 답한다 — 여기서 GitHub을 부르지 않는다.
-      lastPublishPullRequest: project.lastPrUrl,
+      /**
+       * ⚠️ **필드 이름은 리포 호스트의 어휘다** (D26) — GitHub 프로젝트는 기존 이름 그대로(기존 클라이언트 호환), GitLab 프로젝트는 GitLab
+       * 이름이다. GitLab 프로젝트를 읽던 클라이언트는 없었으니 깨지는 소비자가 없다. 어느 쪽인지는 `repositoryHost`가 말한다.
+       * 마지막 Publish의 PR/MR이지 열린 것이 아니다 (#144) — 성공한 Publish가 쓴 값이고 그 뒤 닫혔을 수 있다. Home의 "Last publish"와 같은 값이다.
+       * 지금 열려 있는지는 `preview_publish`가 리포를 보고 답한다 — 여기서 리포를 부르지 않는다.
+       */
+      ...(gitlab ? { newFromGitLab: newKeys, lastPublishMergeRequest: project.lastPrUrl } : { newFromGitHub: newKeys, lastPublishPullRequest: project.lastPrUrl }),
       lastPublishedAt: project.lastPublishedAt?.toISOString() ?? null,
       sources: project.surfaces.map(surface => ({
         slug: surface.slug, adapter: surface.adapterName, pathTemplate: surface.pathTemplate, baseLocale: surface.baseLocale,
@@ -122,6 +131,7 @@ export const getWorkflow = defineTool({
   async run({ prisma, subject, origin }, { slug }) {
     const gate = await checkProjectTool(prisma, subject, { name: "get_workflow", slug });
     if (gate.status !== "ok") return gate;
+    const host = gate.repoHost;
     const access = await getProjectAccess(prisma, { userId: subject.userId, slug, permission: "project:settings" });
     if (access.status !== "ok") return { status: "refused", code: access.status };
     const project = await prisma.project.findUnique({
@@ -129,10 +139,11 @@ export const getWorkflow = defineTool({
       select: { baseBranch: true, surfaces: { where: { archivedAt: null }, orderBy: { slug: "asc" } } },
     });
     if (project === null || project.surfaces.length === 0) return { status: "refused", code: "not-ready" };
-    // push 토큰 원문은 없다 — YAML은 `${{ secrets.PUSH_TOKEN }}`만 가리킨다. 원문은 `rotate_push_token`의 결과에만 있다.
-    // `api-url`은 이 요청이 들어온 앱을 가리킨다 — 프로덕션·모르는 origin은 생략(`workflowApiUrl`).
-    const apiUrl = workflowApiUrl(origin);
-    const yaml = renderProjectWorkflowYaml({ slug, baseBranch: project.baseBranch, surfaces: project.surfaces.map(workflowSurfaceOf), ...(apiUrl === undefined ? {} : { apiUrl }) });
-    return ok({ path: ".github/workflows/malmoi-i18n.yml", yaml, secretName: "PUSH_TOKEN" }, en.mcp.summary.workflow);
+    // push 토큰 원문은 없다 — YAML은 `PUSH_TOKEN`(GitHub secret · GitLab CI/CD 변수)만 가리킨다. 원문은 `rotate_push_token`의 결과에만 있다.
+    const file = ciFileOf(host, { slug, baseBranch: project.baseBranch, surfaces: project.surfaces.map(workflowSurfaceOf), origin });
+    if (file === null) return { status: "workflow-unavailable" };
+    return host === "gitlab"
+      ? ok({ ...file, variableName: "PUSH_TOKEN" }, en.mcp.summary.gitlab.workflow)
+      : ok({ ...file, secretName: "PUSH_TOKEN" }, en.mcp.summary.workflow);
   },
 });

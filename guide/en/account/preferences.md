@@ -55,6 +55,8 @@ The time zone is saved to your account, so it is the same on every device you si
 
 If the change fails, the card shows **We couldn't change the time zone. Try again.** and the menu keeps the previous time zone.
 
+![Preferences with the Time zone menu open, UTC checked at the top, and time zones listed with their offsets](/guide/preferences-time-zone.webp "Pick a time zone; it applies right away.")
+
 ## Choose a theme {#theme}
 
 Malmoi follows your device's appearance setting (**System**) by default. Choose **Light** or **Dark** to set it yourself.
@@ -64,7 +66,7 @@ Before you start: Open your avatar menu at the top right and choose **Preference
 1. In the **Theme** card, open the menu and pick **System**, **Light**, or **Dark**. There is no Save button; the change applies right away.
 2. Malmoi switches every screen to the new theme. With **System**, Malmoi changes between light and dark whenever your device does.
 
-Malmoi uses the theme saved to your account while you're signed in, then the theme last chosen on this device, then **System**, which follows your device's light or dark setting, so your first visit matches your device. The choice is saved to your account and to this device, so after you sign out, the public pages on this device keep your theme. You can change the theme only in Preferences; the footer has no theme menu. The screenshots in this guide always show the light theme.
+Malmoi uses the theme saved to your account while you're signed in, then the theme last chosen on this device, then **System**, which follows your device's light or dark setting, so your first visit matches your device. The choice is saved to your account and to this device, so after you sign out, the public pages on this device keep your theme. You can also change it with the theme menu in the footer of public pages, such as these docs and the sign-in page, even before you sign in. The screenshots in this guide always show the light theme.
 
 If the change fails, the card shows **We couldn't change the theme. Try again.** and the screen goes back to the previous theme.
 

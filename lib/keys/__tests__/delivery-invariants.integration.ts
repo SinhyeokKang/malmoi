@@ -10,14 +10,14 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 
 import { PrismaClient } from "@/generated/prisma/client";
 import { optionalEnv } from "@/lib/env";
-import type { RepoReader } from "@/lib/github";
+import { sizesFromSnapshot, type RepoReader } from "@/lib/repo-host/reader";
 import { blobSha } from "@/lib/githash";
 import { readDiscardApproval } from "@/lib/import/approval";
 import { runRepositoryImportFromReader } from "@/lib/import/run";
 import { countPending } from "@/lib/protection/where";
 import { invalidateDeliveryConfirmations, loadPullState, saveLastPulledAt } from "@/lib/pull/load";
 import { runPull } from "@/lib/pull/run";
-import { createFakeGitClient } from "@/lib/pull/__tests__/fake-client";
+import { createFakeGitClient, isGitMutation } from "@/lib/pull/__tests__/fake-client";
 import { applyProtectedPush, applyPush } from "@/lib/push/apply";
 import { hashPushToken } from "@/lib/push/token";
 
@@ -33,7 +33,7 @@ import { publishFingerprint } from "@/lib/publish/fingerprint";
 import { applyKeySave } from "../save-key";
 
 const github = vi.hoisted(() => ({ client: null as unknown }));
-vi.mock("@/lib/github", async importOriginal => ({ ...(await importOriginal<object>()), createGitClient: async () => github.client }));
+vi.mock("@/lib/repo-host", async importOriginal => ({ ...(await importOriginal<object>()), createGitClient: async () => github.client }));
 import { executeKeyRevert, previewKeyRevert } from "../revert";
 
 /**
@@ -72,7 +72,7 @@ afterAll(async () => {
   rmSync(directory, { recursive: true, force: true });
 });
 
-const repository = { repositoryId: "123", installationId: "456", repoOwner: "o", repoName: "r", baseBranch: "main" };
+const repository = { repositoryId: "123", repoHost: "github", gitlabConnectionId: null, installationId: "456", repoOwner: "o", repoName: "r", baseBranch: "main" };
 const pulled = new Date("2026-09-10T00:00:00Z");
 const pushToken = "isolated-delivery-invariants";
 const LOCALES = ["en", "ko", "fr"];
@@ -112,7 +112,7 @@ const tokensOf = async (key: string) => (await prisma.translation.findMany({ whe
 
 /** 수동 Sync의 리포 — 경로별 내용. 함수면 호출 순서로 다르게 줄 수 있다. */
 function reader(files: Record<string, string | undefined | (() => string | undefined)>, pause?: { entered: () => void; release: Promise<void> }): RepoReader {
-  return {
+  return { sizes: async (snapshot, paths) => sizesFromSnapshot(snapshot, paths),
     snapshot: vi.fn<RepoReader["snapshot"]>(async () => {
       if (pause) { pause.entered(); await pause.release; }
       return { status: "ok", headSha: "c".repeat(40), headCommittedAt: "2026-09-16T00:00:00Z", files: Object.keys(files).map(path => ({ path, sha: path, size: 100 })) };
@@ -390,7 +390,7 @@ describe("#3 · D3 — 보류 셀이 있는 Publish 뒤에도 OWNER Revert가 �
     github.client = fake.client;
     const outcome = await runSync(prisma, { projectId: "p", slug: "fixture", trigger: "cron", requestedBy: null, credential: undefined });
     expect(outcome).toMatchObject({ status: "skipped", reason: "no-changes", closedPr: { number: 4 } });
-    expect(fake.calls.map(c => c.method).filter(m => m === "closePr" || m === "updateRefForce")).toEqual(["closePr", "updateRefForce"]);
+    expect(fake.calls.map(c => c.method).filter(m => m === "closePr" || m === "resetSyncBranch")).toEqual(["closePr", "resetSyncBranch"]);
     expect(await prisma.syncRun.findFirst({ where: { projectId: "p", trigger: "CRON" } })).toMatchObject({ status: "SKIPPED", prUrl: "https://github.com/o/r/pull/4", changed: 0, changedValues: 0 });
     const [row] = (await loadEvents(prisma, en, "p", { ...parseLogFilter({}) }, { timeZone: "UTC" })).rows.filter(r => r.kind === "PUBLISH");
     expect(row).toMatchObject({ result: "nothingToSend", run: { prUrl: "https://github.com/o/r/pull/4" } });
@@ -414,14 +414,13 @@ describe("#3 · D3 — 보류 셀이 있는 Publish 뒤에도 OWNER Revert가 �
  * 새 미리보기가 커밋하는 짝을 든다 — 짝이 없으면 "늘 reconfirm"도 green이다.
  */
 describe("Publish 지문 — 미리보기 뒤 바뀐 export 입력은 reconfirm (mcp-connector T6.5)", () => {
-  const MUTATIONS = ["createTree", "createCommit", "createRef", "updateRefForce", "createPr", "updatePrTitle", "updatePrBase", "closePr"];
   let fake: ReturnType<typeof createFakeGitClient>;
   function repo(head = "basehead") {
     fake = createFakeGitClient({ refSha: { "heads/main": head }, tree: { [head]: [] } });
     github.client = fake.client;
     return fake;
   }
-  const writes = () => fake.calls.map(c => c.method).filter(m => MUTATIONS.includes(m));
+  const writes = () => fake.calls.map(c => c.method).filter(isGitMutation);
   const manual = (expectedFingerprint?: string) =>
     runSync(prisma, { projectId: "p", slug: "fixture", trigger: "manual", requestedBy: "owner", credential: undefined, expectedFingerprint });
   const preview = () => readPublishPreview(prisma, "p", "fixture");
@@ -507,8 +506,11 @@ describe("Publish 지문 — 미리보기 뒤 바뀐 export 입력은 reconfirm 
     expect(injected).toBe(true);
     expect((await cellOf("key0", "ko"))?.pendingEditToken).toBeNull();
     expect(await cellOf("key1", "fr")).toMatchObject({ value: "Edited", pendingEditToken: "after-compare-key1-fr" });
-    const tree = fake.calls.find(c => c.method === "createTree")?.args[0] as { path: string; content?: string }[] | undefined;
-    expect(JSON.stringify(tree ?? [])).not.toMatch(/"key1":\s*"Edited"/);
+    // 원문을 직접 본다 — 스냅샷을 `JSON.stringify`하면 내용 안의 따옴표가 `\"`로 바뀌어 이 정규식이 결코 맞지 않았다(R-A ⚪5).
+    const snapshot = fake.calls.find(c => c.method === "publishSnapshot")?.args[0] as { changes: { path: string; content: string }[] } | undefined;
+    const fr = snapshot?.changes.find(change => change.path.includes("fr"));
+    expect(fr?.content).toBeDefined();
+    expect(fr?.content).not.toMatch(/"key1":\s*"Edited"/);
   });
 
   it("already-running · too-soon은 지문과 무관하게 그대로 거부하고 GitHub을 부르지 않는다", async () => {

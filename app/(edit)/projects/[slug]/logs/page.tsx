@@ -1,4 +1,7 @@
 import { History, RotateCcw } from "lucide-react";
+import { RepoHostScope } from "@/components/i18n/messages-provider";
+import { withRepoHost } from "@/lib/i18n/host";
+import { repoWebUrl } from "@/lib/projects/repo-web";
 import { redirect } from "next/navigation";
 
 import { EventDetail } from "@/components/logs/event-detail";
@@ -47,7 +50,7 @@ export default async function LogsPage({
 }) {
   // 날짜 카드·Today·구간 경계·행 시각이 전부 보는 사람의 시간대다(user-timezone) — 같은 값 하나를 조회와 그리기에 쓴다.
   const style = await getDateStyle();
-  const m = await getMessages();
+  const messages = await getMessages();
   const { slug } = await params;
   const { projectId, role, archived } = await requireProjectAccess({
     slug,
@@ -59,10 +62,12 @@ export default async function LogsPage({
   const prisma = getPrisma();
   const project = await prisma.project.findUnique({
     where: { id: projectId },
-    select: { repoOwner: true, repoName: true, archivedAt: true, activityCoverageStartedAt: true },
+    select: { repoOwner: true, repoName: true, repoHost: true, archivedAt: true, activityCoverageStartedAt: true },
   });
   // 인가는 지났는데 행이 없다 — 그 사이에 지워진 경우다. 문구가 존재 여부를 말하지 않는 곳으로 보낸다.
   if (project === null) redirect(routes.projects({ e: "not-found" }));
+  // 이 프로젝트의 Logs 전체가 그 리포 호스트의 문장을 말한다(merge request · GitLab — `withRepoHost`). 상세 Dialog의 클라이언트 조각은 `RepoHostScope`.
+  const m = withRepoHost(messages, project.repoHost);
 
   const [sources, actors, page, openEvent] = await Promise.all([
     // 제거된 소스도 싣는다 — 사건은 지우지 않으므로 그 소스로 거를 길도 남는다(sources-add-remove · 시안 L1).
@@ -95,7 +100,7 @@ export default async function LogsPage({
   let index = 0;
 
   return (
-    <>
+    <RepoHostScope host={project.repoHost}>
       {/*
         ⚠️ **머리와 본문이 형제다** — 머리는 고정, 본문만 스크롤한다 (`content-panel.tsx`).
         ⚠️ **총계 배지가 없다** — 키셋 페이지네이션이라 셀 수 있는 총계가 없고, 지어낸 총계·성공률
@@ -210,12 +215,12 @@ export default async function LogsPage({
               now={now}
               archived={archived}
               canOpenSettings={canPerform(role, "project:settings")}
-              repoUrl={`https://github.com/${project.repoOwner}/${project.repoName}`}
+              repoUrl={repoWebUrl(project.repoHost, project.repoOwner, project.repoName)}
               translationHref={translationHref} style={style} m={m}
             />
           )}
         </EventDialog>
       )}
-    </>
+    </RepoHostScope>
   );
 }

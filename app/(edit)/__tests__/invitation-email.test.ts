@@ -38,7 +38,7 @@ const { createInvitations, resendInvitation } = await import("../projects/action
 
 const READY = { status: "ready", apiKey: "re_k", from: "malmoi <invite@notify.mal-moi.com>", origin: "https://mal-moi.com" };
 const RETRY = new Date("2026-09-23T12:01:00.000Z");
-const PROJECT = { name: "Alpha", image: null };
+const PROJECT = { name: "Alpha", image: null, repoHost: "github" };
 
 function seeded() {
   return createHarness({

@@ -4,7 +4,7 @@ Short answers to common questions about Malmoi, with a link to the page that exp
 
 ## What does Malmoi do? {#what-is-malmoi}
 
-Malmoi is a translation management (i18n) tool for GitHub repositories. It finds your existing translation files, lets your team edit them in the browser, and sends saved changes back as a pull request without changing the file layout. See [How syncing works](sync/README.md#how-it-works).
+Malmoi is a translation management (i18n) tool for GitHub and GitLab.com repositories. It finds your existing translation files, lets your team edit them in the browser, and sends saved changes back as a pull request (a merge request on GitLab) without changing the file layout. See [How syncing works](sync/README.md#how-it-works).
 
 ## Do translators need Git or a GitHub account? {#translators}
 
@@ -24,7 +24,7 @@ Malmoi supplies the values, and the existing file keeps its shape: YAML catalogs
 
 ## How do translations get back to my repository? {#pull-request}
 
-**Publish** puts saved changes into one pull request for your development team to review and merge. While that pull request is open, the next Publish updates it instead of opening another. See [Publish your changes](translate/publish.md#publish).
+**Publish** puts saved changes into one pull request (a merge request on GitLab) for your development team to review and merge. While that pull request is open, the next Publish updates it instead of opening another. See [Publish your changes](translate/publish.md#publish).
 
 ## What happens if code changes while translators are editing? {#code-changes}
 
@@ -37,6 +37,10 @@ They are kept. If the key comes back in a later commit, its translations come ba
 ## Do I have to add the workflow? {#workflow}
 
 No. Without it, the nightly run picks up repository changes once a day. With it, changes arrive on every commit. See [Nightly sync or the workflow](sync/nightly.md#workflow).
+
+## Does Malmoi work with GitLab? {#gitlab}
+
+Yes, with repositories on GitLab.com. A project owner connects a legacy GitLab personal access token with the `api` scope and needs the Maintainer role or higher in the GitLab project. Translations come back as a merge request, attributed to the GitLab account whose token the project uses. GitLab Self-Managed and GitLab Dedicated are not supported. See [Connect GitLab](gitlab/create.md#connect-gitlab).
 
 ## Does Malmoi have paid plans? {#pricing}
 
@@ -52,7 +56,7 @@ No. **Needs review** only marks translations whose source text changed, and savi
 
 ## What doesn't Malmoi support? {#not-supported}
 
-Malmoi does not support ICU plural forms, concurrent editing, fine-grained permissions, in-context editing, screenshot attachments, translator notes, approval workflows, translation memory, or built-in machine or AI translation.
+Malmoi does not support ICU plural forms, concurrent editing, fine-grained permissions, in-context editing, screenshot attachments, translator notes, approval workflows, translation memory, built-in machine or AI translation, or GitLab Self-Managed and GitLab Dedicated.
 
 ## How many projects and members can I have? {#limits}
 
@@ -64,7 +68,7 @@ Yes, in **Preferences**. These change only how Malmoi looks to you, not the lang
 
 ## What does Malmoi store about me? {#privacy}
 
-Your name, email address, and profile picture from GitHub or Google, your project memberships, and who last changed each translation. Names, email addresses, and connection tokens are stored encrypted, and on mal-moi.com, Malmoi does not sell your data or use it for advertising. The **Privacy Policy** of the site you use lists everything; it is linked in the page footer.
+Your name, email address, and profile picture from GitHub or Google, your project memberships, and who last changed each translation. If you connect GitLab, it also stores your GitLab user ID, username, and token. Names, email addresses, and connection tokens are stored encrypted, and on mal-moi.com, Malmoi does not sell your data or use it for advertising. The **Privacy Policy** of the site you use lists everything; it is linked in the page footer.
 
 ## How do I delete my account? {#delete-account}
 

@@ -138,6 +138,28 @@ describe("connectRepository — 인가", () => {
   });
 });
 
+describe("connectRepository — GitLab 프로젝트 가드 (gitlab-repositories)", () => {
+  /**
+   * ⚠️ **slug만 받는 Action이라 화면에서 숨겨도 직접 호출된다.** 가드가 없으면 GitLab 프로젝트의 `<namespace>/<path>`로 GitHub을 probe하고,
+   * 숫자 id가 우연히 같은 GitHub 리포가 설치돼 있으면 GitLab 행이 설치 id가 박힌 혼종이 된다. probe 전에 거부한다.
+   */
+  it("GitLab 프로젝트 slug면 GitHub 호출 0 · 행 무변경 · invalid input", async () => {
+    db = createHarness({
+      projects: [{ id: "p1", slug: "acme", name: "Acme", repoHost: "gitlab", installationId: null, gitlabConnectionId: "conn-a", repositoryId: "87515176" }],
+      members: [{ projectId: "p1", userId: "u-owner", role: "OWNER" }],
+      users: [{ id: "u-owner", email: "o@a.com" }],
+      accounts: [{ userId: "u-owner", provider: "github-app", providerAccountId: "gh-1" }],
+    });
+    hoisted.prisma = db.prisma;
+
+    expect(await connectRepository({ slug: "acme" })).toEqual({ ok: false, error: "invalid input" });
+    expect(hoisted.probeRepo).not.toHaveBeenCalled();
+    expect(hoisted.ensureUserToken).not.toHaveBeenCalled();
+    expect(hoisted.listUserInstallations).not.toHaveBeenCalled();
+    expect(db.spies.updateProject).not.toHaveBeenCalled();
+  });
+});
+
 describe("connectRepository — 계정 연결 상태", () => {
   it("GitHub 계정이 없으면 not-connected다", async () => {
     hoisted.ensureUserToken.mockResolvedValue({ status: "not-connected" });
@@ -313,7 +335,8 @@ describe("connectRepository — 저장", () => {
     expect(result).toEqual({ ok: true });
     expect(db.spies.updateProject).toHaveBeenCalledTimes(1);
     const [args] = db.spies.updateProject.mock.calls[0] ?? [];
-    expect(args?.where).toEqual({ id: "p1", repositoryId: null, repoOwner: "o", repoName: "r" });
+    // ⚠️ 호스트도 `where`에 든다 — 판정과 쓰기 사이에 GitLab 행으로 바뀌었으면 쓰지 않는다(gitlab-repositories consumers.md #3).
+    expect(args?.where).toEqual({ id: "p1", repoHost: "github", repositoryId: null, repoOwner: "o", repoName: "r" });
   });
 
   it("저장하는 installationId는 **probe가 준 값**이다 — 클라이언트가 보낸 것이 아니다", async () => {

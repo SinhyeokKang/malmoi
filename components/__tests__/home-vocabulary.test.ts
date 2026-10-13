@@ -309,7 +309,8 @@ it("수를 세는 사전 함수는 전부 천단위 구분자를 쓴다", () => 
   for (const top of dictionaries) {
     const takers = numberTakers(top);
     for (const [path, text] of takers) {
-      if (Object.hasOwn(NOT_A_COUNT, path)) continue;
+      // 리포 호스트 덮기(`onGitLab`)는 같은 키의 GitLab 문장이다 — 예외 근거가 같은 키를 따라간다(`!128`도 MR 번호다).
+      if (Object.hasOwn(NOT_A_COUNT, path.replaceAll(".onGitLab", ""))) continue;
       checked += 1;
       if (!text.includes("toLocaleString")) offenders.push(`${path}: ${text.trim().split("\n")[0]}`);
     }

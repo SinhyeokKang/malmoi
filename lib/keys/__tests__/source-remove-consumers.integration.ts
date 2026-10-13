@@ -9,7 +9,7 @@ import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 
 import { PrismaClient } from "@/generated/prisma/client";
 import { optionalEnv } from "@/lib/env";
-import type { RepoReader } from "@/lib/github";
+import type { RepoReader } from "@/lib/repo-host/reader";
 import type { GitClient } from "@/lib/pull/client";
 import { createFakeGitClient } from "@/lib/pull/__tests__/fake-client";
 import { countPending } from "@/lib/protection/where";
@@ -37,7 +37,7 @@ import type { ApiTokenSubject } from "@/lib/mcp/token-store";
 
 const db = vi.hoisted(() => ({ client: undefined as GitClient | undefined, reader: undefined as RepoReader | undefined }));
 vi.mock("@/lib/projects/open-pr", () => ({ loadOpenPrUrl: async () => null, loadOpenPrForImportGate: async () => null }));
-vi.mock("@/lib/github", () => ({
+vi.mock("@/lib/repo-host", () => ({
   createGitClient: async () => { if (db.client === undefined) throw new Error("no fake client"); return db.client; },
   openRepoReader: async () => { if (db.reader === undefined) throw new Error("no fake reader"); return db.reader; },
   // MCP `get_project`의 연결 상태 — 이 스위트가 재는 것이 아니다.
@@ -72,7 +72,7 @@ afterAll(async () => {
 
 const HEAD = "a".repeat(40);
 const COMMIT_AT = new Date("2026-09-10T00:00:00Z");
-const REPOSITORY = { repositoryId: "123", installationId: "456", repoOwner: "o", repoName: "r", baseBranch: "main" };
+const REPOSITORY = { repositoryId: "123", repoHost: "github", gitlabConnectionId: null, installationId: "456", repoOwner: "o", repoName: "r", baseBranch: "main" };
 
 /**
  * 소스 둘 — `web`(기본, 미전달 편집 하나 · 검토 대기 · 적재 실패)과 `app`. 제거하는 쪽이 Inbox·Home·Publish의 모든 줄을 든다.
@@ -182,7 +182,7 @@ it("야간 방문은 제거된 소스를 대상에 넣지 않는다", async () =
   db.client = fake.client;
   db.reader = { snapshot: vi.fn(), blob: vi.fn() } as unknown as RepoReader;
   const target = await prisma.project.findUniqueOrThrow({ where: { id: "p" }, select: {
-    id: true, slug: true, repoOwner: true, repoName: true, baseBranch: true, installationId: true, repositoryId: true, lastNightlyAt: true,
+    id: true, slug: true, repoOwner: true, repoName: true, baseBranch: true, repoHost: true, gitlabConnectionId: true, installationId: true, repositoryId: true, lastNightlyAt: true,
     surfaces: { select: { id: true, slug: true, archivedAt: true, lastCommitSha: true, adapterName: true, pathTemplate: true, baseLocale: true, lastImportError: true, importRevision: true } },
   } });
   expect(target.surfaces.map(surface => surface.slug).sort()).toEqual(["app", "web"]);

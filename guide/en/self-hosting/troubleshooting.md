@@ -11,6 +11,7 @@ The web container starts with `pnpm preflight && next start`. When the check fai
 | `missing` | A required name is missing or empty | `deploy/.env`, or the `environment` list in Compose for names Compose fills |
 | `incomplete-pair` | A sign-in provider has only one of its two values; the line names the missing one (such as `AUTH_GOOGLE_SECRET`) | Fill in the missing value, or empty both values to turn that provider off |
 | `no-login-provider` | No sign-in provider is on; two lines name `AUTH_GITHUB_ID` and `AUTH_GOOGLE_ID` | Fill in at least one complete pair ([settings](install.md#settings)) |
+| `incomplete-group` | Only some of the five `GITHUB_APP_*` values are set | Set all five for GitHub repositories, or clear all five for GitLab only |
 | `invalid-format` | Wrong shape: `RESEND_API_KEY` must start with `re_`, `INVITATION_EMAIL_FROM` must be `Name <address>` or an address, `GITHUB_APP_SLUG` is `[a-z0-9-]`, `AUTH_TRUST_HOST` must be `true` | That value |
 | `malformed` · `not-https` · `userinfo` | A shape problem in `MALMOI_ORIGIN` or `MALMOI_PRIVACY_URL`: spaces or backslashes or an unparsable URL, `http://`, `user:pw@` | An `https://` URL without user info |
 | `path` · `query` · `fragment` · `ipv6` · `idn` | `MALMOI_ORIGIN` only (a path or query in the privacy URL is fine): a path, `?`, `#`, an IPv6 literal, a non-ASCII domain | `MALMOI_ORIGIN=https://<domain>` |
@@ -57,7 +58,7 @@ Run it once now with `docker compose exec scheduler /usr/local/bin/nightly-pull`
 
 ## GitHub {#github}
 
-If a new account can't install the GitHub App, check that the app is Public. If a repository shows as not installed, check Repository access on that installation.
+If all five `GITHUB_APP_*` values are empty, GitHub repository controls are hidden. This does not disable GitHub sign-in. If a new account can't install the GitHub App, check that the app is Public. If a repository shows as not installed, check Repository access on that installation.
 
 ## Privacy materials for your policy {#privacy}
 
@@ -65,12 +66,13 @@ You write the privacy policy for your installation. Its `/privacy` redirects to 
 
 ### Stored fields {#stored-fields}
 
-Column meanings: collected — values to disclose as collected; retention — values that set how long something is kept; cookies — values a cookie carries; not personal — values that don't describe a person (translation work and row bookkeeping). Emails, names, pictures, and GitHub tokens are stored with envelope encryption (the keys live outside the database, in `.env`), and the email index is an HMAC. Sessions, invitations, and coding-agent tokens are stored only as hashes.
+Column meanings: collected — values to disclose as collected; retention — values that set how long something is kept; cookies — values a cookie carries; not personal — values that don't describe a person (translation work and row bookkeeping). Emails, names, pictures, and GitHub and GitLab tokens are stored with envelope encryption (the keys live outside the database, in `.env`), and the email index is an HMAC. Sessions, invitations, and coding-agent tokens are stored only as hashes.
 
 | Model | What it is | Collected | Retention | Cookies | Not personal |
 | --- | --- | --- | --- | --- | --- |
 | `User` | A person who signed in. Name, email, and picture come from GitHub or Google and are encrypted with the PII key; the email index is an HMAC of the address. The three display settings and the Inbox read time are settings stored on the account | `id`, `name`, `email`, `emailLookup`, `emailVerified`, `image`, `createdAt`, `uiLocale`, `timeZone`, `colorScheme`, `attentionSeenAt` | — | — | — |
 | `Account` | A linked sign-in method (GitHub or Google): the provider's account ID, plus the GitHub App user token received when connecting a repository (encrypted with the token key) and its expiry | `userId`, `installRequestedAt`, `provider`, `providerAccountId`, `refresh_token`, `access_token`, `expires_at` | — | — | `type` |
+| `GitLabConnection` | An account’s GitLab connection: the PAT is encrypted with the token key; the GitLab user ID, username, expiry date and scopes are stored without encryption. Kept until disconnection or account deletion; replacement overwrites the PAT and its metadata. Expiry or revocation stops access but does not delete the stored row | `id`, `userId`, `token`, `gitlabUserId`, `username`, `expiresAt`, `scopes`, `createdAt`, `updatedAt` | — | — | — |
 | `Session` | A sign-in session. Only a digest of the cookie value is stored; it expires 24 hours after the last activity | — | `expires` | `sessionToken`, `userId` | — |
 | `VerificationToken` | Challenges for linking a sign-in method and for signing out other sessions. `identifier` holds the user ID and the provider account ID in one JSON string. 5 to 10 minutes | `identifier`, `token` | `expires` | — | — |
 | `ProjectMember` | Project membership and role | `userId`, `role`, `createdAt`, `updatedAt` | — | — | `projectId` |
@@ -108,11 +110,12 @@ The time zone is stored only on the account, not in a cookie.
 
 ### Recipients {#recipients}
 
-The installation sends data to three services. mal-moi.com's Supabase and Vercel (hosting, file storage, page-view counting) aren't part of it.
+The installation sends data to four services. mal-moi.com's Supabase and Vercel (hosting, file storage, page-view counting) aren't part of it.
 
 | Recipient | What goes there | Why |
 | --- | --- | --- |
 | GitHub | The profile and verified email received at sign-in, when GitHub sign-in is on. Repository reads and branch, commit, and pull request writes through your GitHub App (commits are made by the app, not by a person). A connected person's GitHub App user token is used only to read | Sign-in · connecting repositories and Publish |
+| GitLab (`gitlab.com`) | The user’s PAT verifies their identity and repository access, reads files, and writes translation commits and merge requests using the account connected to the project | Connect repositories and publish translations |
 | Google | The profile and verified email, for people who sign in with Google, when Google sign-in is on | Sign-in |
 | Resend | The invited address and the message (invitation link, project name, project picture address, role — not who sent it). Open and click tracking are off | Invitation emails. Resend keeps sending records for your plan's period (30 days on Free); check your plan and put it in your policy |
 
@@ -123,7 +126,7 @@ The installation sends data to three services. mal-moi.com's Supabase and Vercel
 
 ### Delete an account {#delete-account}
 
-There's no self-service screen for deletion, so this is a manual procedure for access, correction, and deletion requests. Membership rows and invitations someone sent block deleting their `User` row, so they go first. Deleting the `User` row then removes their sign-in methods, sessions, personal tokens, and connected agents, and clears them from sync records and activity. Translation values stay; only the link to their author is removed.
+There's no self-service screen for deletion, so this is a manual procedure for access, correction, and deletion requests. Membership rows and invitations someone sent block deleting their `User` row, so they go first. Deleting the `User` row then removes their sign-in methods, sessions, personal tokens, connected agents, and GitLab connection, and clears them from sync records and activity. Translation values stay; only the link to their author is removed. Projects that used their GitLab connection show **Disconnected** until a project owner reconnects them, and no Logs event records it. The personal access token itself stays valid at GitLab, so ask the person to revoke it there.
 
 1. Take a [backup](operate.md#backup) first — deletion can't be undone. How you confirm the person's identity is up to your policy.
 2. Find the account. Emails are encrypted, so compute the lookup index (an HMAC) instead. The address goes in through the environment, not the command line (`EMAIL_LOOKUP_KEY` is already in the web container), and `PROJECT_IDS` lists the projects whose invitations step 3 searches. With no projects it's empty, and only the `user` line prints:
@@ -155,7 +158,7 @@ There's no self-service screen for deletion, so this is a manual procedure for a
    DELETE FROM "ProjectInvitation" WHERE "acceptedAt" IS NULL AND "emailLookup" IN ('<invitation indexes from step 3>');  -- pending invitations to this person
    DELETE FROM "VerificationToken" WHERE "identifier" LIKE '%"' || :'uid' || '"%';   -- sign-in linking and sign-out challenges
    UPDATE "Translation" SET "updatedBy" = NULL WHERE "updatedBy" = :'uid';       -- no foreign key, so clear it by hand
-   DELETE FROM "User" WHERE "id" = :'uid';                                       -- cascades to Account, Session, ApiToken, OAuth*; SyncRun and ProjectEvent are set to NULL
+   DELETE FROM "User" WHERE "id" = :'uid';                                       -- cascades to Account, Session, ApiToken, OAuth*, GitLabConnection; SyncRun and ProjectEvent are set to NULL
    COMMIT;
    ```
 

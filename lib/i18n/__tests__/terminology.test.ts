@@ -15,6 +15,8 @@ import { es } from "@/messages/es";
 import { ko } from "@/messages/ko";
 import { stateLabel } from "@/lib/status/canon";
 
+import { BANNED_TERMS } from "./helpers/banned-terms";
+
 /**
  * **화면 용어 표** (DESIGN §10.1 — audit #29). 사전 전체를 걸어 **보이는 문장**만 센다.
  *
@@ -46,9 +48,9 @@ function walk(value: unknown, path: string, out: Found[]): void {
   }
 }
 
-const strings = (): Found[] => {
+const strings = (dictionary: unknown = en): Found[] => {
   const out: Found[] = [];
-  walk(en, "", out);
+  walk(dictionary, "", out);
   return out;
 };
 
@@ -163,6 +165,13 @@ const CONCEPT_BANNED: readonly Ban[] = [
   ["browse all docs", /\bbrowse all docs\b/i],
   ["View on GitHub", /\bview on GitHub\b/i],
   ["Open repository", /^open repository[.!]?$/i],
+  // 열린 PR/MR 조회 실패는 목적어를 붙인다 — 홀로 선 "Couldn't check"는 연결 확인 실패 낱말이다(§2.4). 자리가 금지를 가른다:
+  // PR·MR 조회 키(`prCheckFailed`·`pr-check-failed`·`prUnknown`과 GitLab 짝 `mr…`)에서 목적어 없이 끝나는 문장만 잡는다.
+  // 목적어 `pull request`는 `scrub`이 지워도 "for an open "이 남아 홀로 서지 않는다 — merge request도 같다(gitlab-repositories D7).
+  ["bare Couldn't check (PR/MR)", /\bcould(?:n['’]t| not) check\s*[.!]?\s*$/i, /(?<![a-z])(?:pr|mr)(?:-check|Check|-unknown|Unknown)/],
+  // merge request는 GitLab의 고유명사라 표기 하나다(pull request와 같은 근거) — 문장 중간 대문자·하이픈형이 갈리지 않게
+  ["Merge Request (mid-sentence)", /\S\s+Merge Requests?\b/],
+  ["merge-request", /\bmerge-requests?\b/i],
   // 축약형 (DESIGN §10) — 강조가 필요한 부정만 ALLOWED가 든다
   ["could not", /\bcould not\b/i],
   ["did not", /\bdid not\b/i],
@@ -176,6 +185,15 @@ const CONCEPT_BANNED: readonly Ban[] = [
   ["has not", /\bha(?:s|ve) not\b/i],
   ["you are", /\byou are\b/i],
   ["it is", /(?<!\bas )\bit is\b/i],
+];
+
+/**
+ * **ko 사전의 개념 색인** — 위 색인은 영어 낱말이라 ko 사전을 보지 않는다. GitLab CI의 job은 ko에서 "작업"(`CI 작업`) 하나다(결정 R5 — 가이드 h1·
+ * `hookDoc`이 이미 "작업"이고 ko 사전은 영어 낱말을 피한다, DESIGN §10). 설정 CI 모달 한 문단 안에서 `CI job`과 `CI 작업`이 갈렸다(감사 U4).
+ * ⚠️ **사전만 센다** — 원고는 GitHub 화면 라벨(`Set up job`)을 인용하므로 사전·원고 공용인 `banned-terms`에 넣지 않는다.
+ */
+const KO_CONCEPT_BANNED: readonly Ban[] = [
+  ["job (ko: 작업)", /\bjobs?\b/i],
 ];
 
 /** 개인정보 방침 본문 — 문구를 고치면 개정 이력·시행일이 따라가는 문서라(policy-gate) 화면 문체 규칙을 소급하지 않는다. */
@@ -240,7 +258,9 @@ const ALLOWED: Readonly<Record<string, readonly string[]>> = {
 };
 
 /** 접두(`.*`)면 그 아래 자식만, 아니면 정확히 그 경로만. */
-function allows(path: string, name: string, allowed: Readonly<Record<string, readonly string[]>> = ALLOWED): boolean {
+function allows(raw: string, name: string, allowed: Readonly<Record<string, readonly string[]>> = ALLOWED): boolean {
+  // 리포 호스트 덮기(`onGitLab` — `lib/i18n/host.ts`)는 같은 키의 GitLab 문장이다 — 허용 근거가 같은 키를 따라간다.
+  const path = raw.replaceAll(".onGitLab", "");
   return Object.entries(allowed).some(([key, names]) => {
     if (!names.includes(name)) return false;
     if (!key.endsWith(".*")) return path === key;
@@ -272,6 +292,12 @@ describe("화면 용어 — DESIGN §10.1의 표를 사전 전체가 따른다 (
 
   it("상태 낱말 개념 색인의 금지어가 사전에 없다 (DESIGN §2.4 · ux-drift-unify)", () => {
     expect(violations(strings(), CONCEPT_BANNED)).toEqual([]);
+  });
+
+  it("ko 개념 색인의 금지어가 ko 사전에 없다 — GitLab CI의 job은 \"작업\"이다 (결정 R5)", () => {
+    expect(violations(strings(ko), KO_CONCEPT_BANNED, {})).toEqual([]);
+    // 카나리아 — 색인이 실제로 문다
+    expect(violations([{ path: "x", text: "CI job이 처음 실행된 뒤" }], KO_CONCEPT_BANNED, {})).not.toEqual([]);
   });
 
   it("ALLOWED의 경로가 사전에 실재한다 — 키 이름이 바뀌면 예외가 조용히 죽는다", () => {
@@ -340,6 +366,30 @@ describe("화면 용어 — DESIGN §10.1의 표를 사전 전체가 따른다 (
     expect(sample("Delete", "settings.general.thumbnailRemove")).not.toEqual([]);
     expect(sample("Remove", "account.picture.delete")).toEqual([]);
     expect(sample("Delete", "x")).toEqual([]);
+    // 열린 PR/MR 조회 실패는 목적어를 붙인다 — 홀로 선 "Couldn't check"는 연결 확인 실패 낱말이다(§2.4, gitlab-repositories D7).
+    // 자리(PR·MR 조회 키)가 금지를 가르고, 목적어는 pull request·merge request 어느 쪽이어도 된다.
+    expect(sample("Couldn't check", "home.meta.mrCheckFailed")).not.toEqual([]);
+    expect(sample("Couldn't check.", "projects.banner.prCheckFailed")).not.toEqual([]);
+    expect(sample("couldn't check", "logs.deferredReason.mr-check-failed")).not.toEqual([]);
+    expect(sample("Couldn't check for an open merge request", "home.meta.mrCheckFailed")).toEqual([]);
+    expect(sample("Couldn't check for an open pull request.", "home.meta.prCheckFailed")).toEqual([]);
+    expect(sample("couldn't check for an open merge request", "logs.deferredReason.mr-check-failed")).toEqual([]);
+    expect(sample("We couldn't check what's still open for your developers.", "home.prUnknown")).toEqual([]);
+    expect(sample("Couldn't check", "settings.connection.unknown")).toEqual([]);
+    // merge request는 GitLab의 고유명사라 표기 하나다 — 문장 중간 대문자·하이픈형을 쓰지 않는다
+    for (const text of ["Open Merge Request !128", "The merge-request is open"]) caught(text);
+    for (const text of ["Merge request !128 is open", "View merge request", "the merge request waits for review"]) expect(sample(text), text).toEqual([]);
+  });
+
+  it("GitLab 조사·merge request 표기 변형을 ko·es 쓰지 않는 말이 잡는다 (banned-terms — gitlab-repositories D7·D14)", () => {
+    const hits = (lang: "ko" | "es", text: string) => BANNED_TERMS[lang].filter(([banned]) => text.includes(banned)).map(([banned]) => banned);
+    // GitLab[깃랩]은 받침(ㅂ)으로 끝나 이·은·을·으로를 쓴다
+    for (const text of ["GitLab가 응답하지 않았습니다", "GitLab는 지원합니다", "GitLab를 연결하세요", "GitLab로 이동"]) expect(hits("ko", text), text).not.toEqual([]);
+    for (const text of ["GitLab이 응답하지 않았습니다", "GitLab은 지원합니다", "GitLab을 연결하세요", "GitLab으로 이동", "MR !128 열림"]) expect(hits("ko", text), text).toEqual([]);
+    // ko는 PR과 대칭으로 MR(첫 언급 가이드만 풀어 쓴다) — 음차·번역어를 쓰지 않는다
+    for (const text of ["머지 리퀘스트를 엽니다", "머지 요청", "병합 요청을 닫습니다"]) expect(hits("ko", text), text).not.toEqual([]);
+    for (const text of ["Abre una solicitud de fusión", "Solicitud de fusión abierta", "la solicitud de combinación"]) expect(hits("es", text), text).not.toEqual([]);
+    expect(hits("es", "No se pudo comprobar si hay una merge request abierta")).toEqual([]);
   });
 
   it("쓰지 않는 말이 서빙되는 원고에 없다", () => {

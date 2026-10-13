@@ -43,9 +43,27 @@ const POSTGRES_SUITES: readonly { step: GateStep; triggers: readonly string[] }[
       "lib/mcp/",
       "lib/oauth-server/",
       "lib/onboarding-run/",
+      // 리포 호스트 경계와 GitLab 구현(gitlab-repositories D15) — 통합 테스트가 직접 지나는 생산 경로다. 비어 있는 GitLab 디렉터리도 미리 둔다.
+      "lib/repo-host/",
+      "lib/gitlab/",
+      "lib/gitlab-connect/",
       // 상한 재집계(복원·승격·수락)와 운영자 판정 — 동시 복원·생성 시나리오가 `lib/keys/`에 있다.
       "lib/projects/owner-limit.ts",
       "lib/projects/archive.ts",
+      // GitLab 연결 시나리오가 직접 지나는 경로(gitlab-repositories D21) — 멤버 제거의 연결 참조 비우기 · 목록 판정.
+      "lib/auth/members.ts",
+      "lib/projects/list.ts",
+      // GitLab I/O 시나리오(`lib/gitlab/__tests__/connection-state.integration.ts`)가 직접 지나는 경로(C 인계 · R-C 🟡1) — 열린 MR 게이트 · Publish 코어·
+      // 실행 수명·오류 분류 · 건강성·메모 · 공유 마감 · 적재 예산 · 봉투 함수(credentials 스위트와 함께 깨운다).
+      "lib/projects/open-pr.ts",
+      "lib/sync/publish.ts",
+      "lib/sync/execution.ts",
+      "lib/sync/plan.ts",
+      "lib/github-connect/health.ts",
+      "lib/github-connect/probe-memo.ts",
+      "lib/github-wait.ts",
+      "lib/onboarding/budget.ts",
+      "lib/credentials/storage.ts",
       "lib/operator/",
       "app/(edit)/actions.ts",
       "app/(edit)/projects/actions.ts",

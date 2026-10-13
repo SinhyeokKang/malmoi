@@ -61,3 +61,16 @@ export function pullNumberFrom(url: string | null): number | null {
   const parsed = Number(matched[1]);
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
 }
+
+/**
+ * 저장된 Publish 링크 → 리뷰 번호를 **프로젝트 호스트로** 고른다(gitlab-repositories). GitLab은 `/-/merge_requests/<iid>`다 — `/pull/`을 GitLab에 쓰면
+ * `pull`이라는 그룹 이름을 PR로 읽는다. 모르는 호스트는 `null`(요청 0)이다.
+ */
+export function reviewNumberFrom(url: string | null, repoHost: string): number | null {
+  if (repoHost === "github") return pullNumberFrom(url);
+  if (repoHost !== "gitlab" || url === null) return null;
+  const matched = /\/-\/merge_requests\/(\d+)(?:[/?#]|$)/.exec(url);
+  if (matched === null) return null;
+  const parsed = Number(matched[1]);
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+}

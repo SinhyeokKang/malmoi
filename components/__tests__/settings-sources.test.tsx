@@ -16,11 +16,11 @@ const source = { id: "s1", slug: "web", pathTemplate: "web/{locale}.json", lastC
 const candidate = (dir: string) => ({ adapter: "json-catalog", pathTemplate: `${dir}/{locale}.json`, outputPaths: [`${dir}/en.json`], label: "JSON", locales: ["en", "ko"], baseLocale: "en", keys: { status: "counted", count: 1 }, samples: [{ locale: "en", rows: [{ key: "x", value: "X" }], total: 1 }] });
 const oldProps = { slug: "acme", owner: "acme", repo: "web", branch: "main", installationId: "1", archived: false, sources: [source], counts: [{ surfaceId: "s1", keys: 5, locales: 2 }], adapters: [], now: new Date("2026-09-20T00:00:00Z") };
 const toSource = (s: typeof source) => ({ ...s, baseLocale: "en", declaredBaseLocale: null, lastImportedAt: null, createdAt: new Date("2026-09-19T00:00:00Z"), keys: 5, locales: 2, orphanedLocales: 0, progress: { total: 10, done: 0, review: 0, percent: 0 }, connection: { pathTemplate: s.pathTemplate, adapterName: "json-catalog", format: "JSON" } });
-const props = { sources: [source], installed: true, adapters: [] as AdapterChoice[] };
+const props = { sources: [source], installed: true, repoHost: "github", adapters: [] as AdapterChoice[] };
 function Screen({ sources = props.sources, installed = true, adapters = props.adapters }: { sources?: typeof source[]; installed?: boolean; adapters?: AdapterChoice[] }) {
-  return <SourcesScreen slug="acme" role="OWNER" data={{ installed, sources: sources.map(toSource), repository: { repoOwner: "acme", repoName: "web", baseBranch: "main" } }} adapters={adapters} now={oldProps.now} />;
+  return <SourcesScreen slug="acme" role="OWNER" data={{ installed, repoHost: "github", sources: sources.map(toSource), repository: { repoOwner: "acme", repoName: "web", baseBranch: "main" } }} adapters={adapters} now={oldProps.now} />;
 }
-beforeEach(() => { vi.resetAllMocks(); actions.load.mockResolvedValue({ ok: true, detail: { ...toSource(source), installed: true, languages: [] } }); actions.detectRepoFormats.mockResolvedValue({ ok: true, candidates: [candidate("web"), candidate("app")] }); });
+beforeEach(() => { vi.resetAllMocks(); actions.load.mockResolvedValue({ ok: true, detail: { ...toSource(source), installed: true, repoHost: "github", languages: [] } }); actions.detectRepoFormats.mockResolvedValue({ ok: true, candidates: [candidate("web"), candidate("app")] }); });
 const find = (label: string) => [...document.querySelectorAll("button")].find(b => b.textContent === label)!;
 /** ②로 넘어간다 — 확정 버튼은 소스별 기준 언어 단계에만 선다 (sources-add-remove A1). */
 const next = async () => { await act(async () => { await userEvent.setup().click(find(en.newProject.modal.next)); }); };
@@ -35,7 +35,7 @@ it("재시도는 한 소스만 보내고 리프레시 뒤에도 카드 결과를
   expect(container.querySelector('a button')).toBeNull();
 });
 it("설치가 없으면 재시도를 막는다", async () => {
-  actions.load.mockResolvedValue({ ok: true, detail: { ...toSource(source), installed: false, languages: [] } });
+  actions.load.mockResolvedValue({ ok: true, detail: { ...toSource(source), installed: false, repoHost: "github", languages: [] } });
   await render(<Screen {...props} installed={false} />);
   await act(async () => { await userEvent.setup().click(document.querySelector("[data-source-row]")!); });
   expect(find("Run first sync").disabled).toBe(true);

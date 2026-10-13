@@ -37,7 +37,11 @@ type Classification = DisclosureSection | typeof NOT_PERSONAL;
  * 개인정보를 담아도 게이트가 침묵한다 — 그것이 bugshot이 웹스토어 심사에서 탈락한 경로와 같은 형이다.
  */
 export const MODEL_CLASSES = {
-  /** 리포 좌표와 기계 자격증명뿐이다 — 생성자 컬럼이 없고 소유는 `ProjectMember`로만 표현된다. */
+  /**
+   * 리포 좌표와 기계 자격증명뿐이다 — 생성자 컬럼이 없고 소유는 `ProjectMember`로만 표현된다.
+   * ⚠️ `gitlabConnectionId`는 **불투명한 참조 id**다(D19) — 연결자가 누구인지는 가리키는 `GitLabConnection`(personal)이 들고,
+   * 참조 id 자체는 사람을 식별하지 않는다(`DeliveryConfirmation.syncRunId`와 같은 판정).
+   */
   Project: "not-personal",
   TranslationSurface: "not-personal",
   Locale: "not-personal",
@@ -71,6 +75,8 @@ export const MODEL_CLASSES = {
   TranslationBaseline: "not-personal",
   /** 사람의 자격증명과 그 사람이 위임한 권한·범위·사용 시각이다(mcp-connector). */
   ApiToken: "personal",
+  /** 그 사람의 GitLab PAT(봉투)와 GitLab 계정 식별자·만료·스코프다(gitlab-repositories). */
+  GitLabConnection: "personal",
   /** 사람의 자격증명(OAuth 연결)과 그 사람이 위임한 권한·범위·사용 시각이다 — `ApiToken`의 형제다(mcp-oauth). */
   OAuthConnection: "personal",
   /** 그 사람 연결의 소비된 refresh 해시와 회전 시각이다 — 연결을 거쳐 사람을 가리킨다(mcp-oauth design §4). */
@@ -104,6 +110,7 @@ interface ScalarFieldsOf extends Record<PersonalModel, string> {
   ProjectMember: Prisma.ProjectMemberScalarFieldEnum;
   ProjectInvitation: Prisma.ProjectInvitationScalarFieldEnum;
   ApiToken: Prisma.ApiTokenScalarFieldEnum;
+  GitLabConnection: Prisma.GitLabConnectionScalarFieldEnum;
   OAuthConnection: Prisma.OAuthConnectionScalarFieldEnum;
   OAuthRefreshHistory: Prisma.OAuthRefreshHistoryScalarFieldEnum;
   OAuthCode: Prisma.OAuthCodeScalarFieldEnum;
@@ -193,6 +200,22 @@ export const CLASSIFIED: Record<FieldPath, Classification> = {
   "ApiToken.createdAt": "collected",
   "ApiToken.lastUsedAt": "collected",
   "ApiToken.expiresAt": "retention",
+
+  /**
+   * 계정 GitLab 연결 (gitlab-repositories). PAT 봉투는 그 사람의 자격증명이고, GitLab 사용자 id·사용자명은 **GitLab 계정 식별자**다 —
+   * 사용자명은 공개 핸들이라 평문으로 두지만(D19) 사람을 가리키므로 밝힌다. 스코프는 그 사람이 토큰에 준 위임이다. 토큰 만료일이 보관 기간을
+   * 정하지 않는다(만료 뒤에도 해제·교체까지 행이 남는다) — 연결의 수명·사용 시각과 같이 `collected`다.
+   * ⚠️ `/privacy` 본문(GitLab 전송처·수집 항목)·개정 이력은 E-sh 배치가 든다.
+   */
+  "GitLabConnection.id": "collected",
+  "GitLabConnection.userId": "collected",
+  "GitLabConnection.token": "collected",
+  "GitLabConnection.gitlabUserId": "collected",
+  "GitLabConnection.username": "collected",
+  "GitLabConnection.expiresAt": "collected",
+  "GitLabConnection.scopes": "collected",
+  "GitLabConnection.createdAt": "collected",
+  "GitLabConnection.updatedAt": "collected",
 
   /**
    * MCP OAuth 연결 (mcp-oauth). 개인 토큰과 같은 판정이다 — 해시도 그 사람의 자격증명이고 권한·범위는 그 사람이 고른 위임, `lastUsedAt`은 활동 시각이다.

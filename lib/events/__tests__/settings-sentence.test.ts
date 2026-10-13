@@ -20,3 +20,13 @@ describe("eventSentence — settings.image*", () => {
     expect(text("settings.imageChanged")).toBe("Owner changed the project image");
   });
 });
+
+/**
+ * **GitLab 연결 참조가 빈 사건** (gitlab-repositories D20 — `settings.repositoryDisconnected`). 연결자가 계정의 GitLab 연결을 해제했거나 프로젝트에서
+ * 빠지면 같은 tx에서 남는다. 문장이 없으면 settings 폴백("changed Settings")으로 떨어져 Logs가 끊김을 말하지 못한다.
+ */
+describe("eventSentence — settings.repositoryDisconnected (D20)", () => {
+  it("GitLab 연결을 해제했다고 말하고 폴백이 아니다", () => {
+    expect(text("settings.repositoryDisconnected")).toBe("Owner removed the GitLab connection this project used");
+  });
+});

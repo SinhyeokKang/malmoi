@@ -46,7 +46,7 @@ describe("sitemapEntries — `/` · docs 전부 · `/changelog` · `/privacy`", 
     const urls = sitemapEntries(flat).map((entry) => entry.url);
     expect(urls).toContain("https://mal-moi.com/docs");
     expect(urls.filter((url) => url.endsWith("/"))).toEqual(["https://mal-moi.com/"]);
-    expect(urls.indexOf("https://mal-moi.com/docs/setup")).toBeLessThan(urls.indexOf("https://mal-moi.com/docs/setup/create-project"));
+    expect(urls.indexOf("https://mal-moi.com/docs/create")).toBeLessThan(urls.indexOf("https://mal-moi.com/docs/github/create"));
   });
 
   it("`/signin`이 없고 `lastModified`를 싣지 않는다 — 빌드 시각이면 매 배포 전부 바뀜이 된다", () => {

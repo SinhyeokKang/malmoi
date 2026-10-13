@@ -2,7 +2,8 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 import type { Prisma, PrismaClient, Project, TranslationSurface } from "@/generated/prisma/client";
-import type { RepoReader } from "@/lib/github";
+import type { RepoReader } from "@/lib/repo-host/reader";
+import { repoTargetOf, sameRepoTarget, type ProjectRepoColumns } from "@/lib/repo-host/target";
 import { isAdapterName } from "@/lib/adapters";
 import { lockCredential } from "@/lib/auth/lock";
 import type { Credential } from "@/lib/auth/subject";
@@ -26,7 +27,7 @@ import { snapshotError } from "./read";
 import { prepareSurfaceImport, type PreparedSurfaceImport } from "./surface";
 import type { RepositoryImportError, RepositoryImportOutcome, SurfaceImportResult } from "./result";
 
-type Repository = Pick<Project, "repositoryId" | "installationId" | "repoOwner" | "repoName" | "baseBranch">;
+type Repository = Pick<Project, keyof ProjectRepoColumns | "baseBranch">;
 /**
  * @param approval Dialog가 열릴 때 서버가 발급한 폐기 승인 지문(`readDiscardApproval`). 없으면 `null` — 미전달 편집이 있으면 reconfirm이다.
  */
@@ -54,7 +55,7 @@ class PendingEditsDuringImport extends Error {
 }
 
 function settings(project: Repository, surface: TranslationSurface): ImportSettings {
-  return { repositoryId: project.repositoryId, installationId: project.installationId,
+  return { repoHost: project.repoHost, repositoryId: project.repositoryId, installationId: project.installationId, gitlabConnectionId: project.gitlabConnectionId,
     repoOwner: project.repoOwner, repoName: project.repoName, baseBranch: project.baseBranch,
     adapterName: surface.adapterName, pathTemplate: surface.pathTemplate, baseLocale: surface.baseLocale,
     nested: surface.nested, nestedByPath: surface.nestedByPath };
@@ -90,15 +91,18 @@ async function acquire(prisma: PrismaClient, input: CoreInput): Promise<Acquired
     const surfaces = await tx.translationSurface.findMany({ where: { projectId: input.projectId }, orderBy: { slug: "asc" } });
     const expected = input.repository;
     // 설치 없음은 readiness가 먼저 `not-ready`로 거른다 — 여기 닿는 null은 리포 id 미고정이다(`unpinned`, ux-drift-unify r1).
-    const identity = project.repositoryId === null || project.installationId === null ? "unpinned" :
-      project.repositoryId !== expected.repositoryId || project.installationId !== expected.installationId || project.repoOwner !== expected.repoOwner ||
+    // 연결 증거까지 대조한다(`sameRepoTarget`) — 잠금 전에 읽은 리포와 지금 행이 재연결로 갈렸으면 남의 리포 값으로 덮지 않는다.
+    const now = repoTargetOf(project);
+    const then = repoTargetOf(expected);
+    const identity = now.status !== "ok" ? "unpinned" :
+      then.status !== "ok" || !sameRepoTarget(now.target, then.target) || project.repoOwner !== expected.repoOwner ||
       project.repoName !== expected.repoName || project.baseBranch !== expected.baseBranch ? "repo-replaced" : "ok";
     const startedAt = new Date();
     // Publish가 스냅샷을 뜨는 중에 리포 값으로 덮으면 절반만 덮인 DB가 PR로 나간다 — 같은 Project 잠금 안에서 읽는다 (ARCHITECTURE §5.6.1).
     const uncertain = await tx.syncRun.findFirst({ where: uncertainPublishWhere(project.id, new Date()), select: { id: true } });
     if (uncertain !== null) return { ok: false, error: "publish-unsettled" };
     const runningSync = await tx.syncRun.findFirst({ where: { projectId: project.id, status: "RUNNING" }, orderBy: { startedAt: "desc" }, select: { startedAt: true } });
-    const plan = planRepositoryImport({ ...project, now: startedAt, readiness: planProjectReadiness({ installationId: project.installationId, surfaces }), identity, surfaces, runningSync });
+    const plan = planRepositoryImport({ ...project, now: startedAt, readiness: planProjectReadiness({ ...project, surfaces }), identity, surfaces, runningSync });
     if (!plan.ok) {
       if (actor.kind === "USER") await recordImportRefusal(tx, { projectId: project.id, userId: actor.userId, error: plan.error });
       return plan;
@@ -270,7 +274,7 @@ async function finishSurface(prisma: PrismaClient, lease: Lease, surface: Transl
   return finished.surface;
 }
 
-/** callback은 실행 소유권을 원자적으로 얻은 뒤에만 설치 reader를 연다. */
+/** callback은 실행 소유권을 원자적으로 얻은 뒤에만 설치 reader를 연다. GitLab 수동 Sync는 재연결 거부를 가르려고 먼저 연 reader를 넘긴다(`onboarding-run/import.ts`). */
 export async function runRepositoryImportFromReader(prisma: PrismaClient, input: ImportRunInput, openReader: () => Promise<RepoReader>): Promise<RepositoryImportOutcome> {
   const outcome = await runImport(prisma, { projectId: input.projectId, repository: input.repository,
     actor: { kind: "USER", userId: input.userId, approval: input.approval, credential: input.credential } }, openReader, () => {});

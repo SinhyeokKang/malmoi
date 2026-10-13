@@ -1,6 +1,7 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { discardFingerprint } from "@/lib/protection/fingerprint";
 import { loadPendingEdits } from "@/lib/protection/where";
+import { REPO_COLUMNS } from "@/lib/repo-host/target";
 
 /**
  * 수동 Sync 폐기 승인의 **발급과 재계산이 같은 함수다** (sync-edit-protection — ARCHITECTURE §5.5.2의 폐기 승인). 발급은 Dialog가 열릴 때
@@ -17,7 +18,7 @@ export async function readDiscardApproval(
 ): Promise<{ fingerprint: string; pending: { id: string; token: string }[] }> {
   const repository = await db.project.findUniqueOrThrow({
     where: { id: input.projectId },
-    select: { repositoryId: true, installationId: true, repoOwner: true, repoName: true, baseBranch: true },
+    select: { ...REPO_COLUMNS, baseBranch: true },
   });
   const surfaces = await db.translationSurface.findMany({
     where: { projectId: input.projectId, archivedAt: null },

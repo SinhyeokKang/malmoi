@@ -67,6 +67,8 @@ it.each([
   ["expired", "Expired", "warning", "soft-amber"],
   ["waitingToApply", "Waiting to apply", "warning", "soft-amber"],
   ["removedFromRepository", "Removed from repository", "danger", "soft-red"],
+  // GitLab PAT 만료 임박(14일, D11) — 새 톤이 아니라 warning 상태 행이다(design §2 톤 표)
+  ["expiresSoon", "Expires soon", "warning", "soft-amber"],
 ] as const)("실제 소비자 상태 %s의 기존 낱말·색", (key, label, tone, variant) => {
   expect({ ...STATE[key], label: stateLabel(en, key) }).toEqual({ label, tone, variant });
 });
@@ -80,4 +82,23 @@ it.each([
   expect(stateLabel(m, "prCheckFailed")).toBe(label);
   expect(stateLabel(m, "couldNotCheck")).toBe(m.settings.repository.unknown);
   expect(stateLabel(m, "prCheckFailed")).not.toBe(stateLabel(m, "couldNotCheck"));
+});
+
+it.each([
+  [ko, "만료 예정"],
+  [es, "Caduca pronto"],
+] as const)("만료 임박 낱말이 §10.1 표와 같다", (m, label) => {
+  expect(stateLabel(m, "expiresSoon")).toBe(label);
+});
+
+it.each([
+  [en, "Couldn't check for an open merge request"],
+  [ko, "열린 MR을 확인하지 못했습니다"],
+  [es, "No se pudo comprobar si hay una merge request abierta"],
+] as const)("GitLab 프로젝트의 MR 조회 실패는 같은 키·같은 톤이고 낱말만 merge request다 (DESIGN §2.4 · D7)", (m, label) => {
+  expect(stateLabel(m, "prCheckFailed", "gitlab")).toBe(label);
+  // 호스트가 없거나 GitHub이면 지금 그대로다
+  expect(stateLabel(m, "prCheckFailed")).toBe(stateLabel(m, "prCheckFailed", "github"));
+  // 호스트와 무관한 상태는 호스트가 낱말을 바꾸지 않는다
+  expect(stateLabel(m, "prOpen", "gitlab")).toBe(stateLabel(m, "prOpen"));
 });

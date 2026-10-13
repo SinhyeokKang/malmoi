@@ -2,10 +2,11 @@ import "server-only";
 
 import { isAdapterName } from "@/lib/adapters";
 import { AppError, logCaught } from "@/lib/failure";
-import { createGitClient } from "@/lib/github";
+import { createGitClient } from "@/lib/repo-host";
+import { repoTargetOf } from "@/lib/repo-host/target";
 import { GITHUB_WAIT_MS } from "@/lib/github-wait";
 import type { GitClient } from "@/lib/pull/client";
-import { changedLocaleFileCount, pullNumberFrom } from "./remote-plan";
+import { changedLocaleFileCount, reviewNumberFrom } from "./remote-plan";
 
 /**
  * 목록의 **원격 신호 둘** — 열린 PR과 base 드리프트. 둘 다 목록 행 아래 띠로 선다 (DESIGN §6.63).
@@ -29,7 +30,7 @@ export type RemoteTarget = {
   projectId: string;
   repoOwner: string;
   repoName: string;
-  installationId: string | null;
+  repoHost: string; installationId: string | null; gitlabConnectionId: string | null;
   /** ⚠️ **리포의 정체성은 이름이 아니라 id다** (불변식 11). null이면 호출 자체를 건너뛴다. */
   repositoryId: string | null;
   baseBranch: string;
@@ -73,8 +74,12 @@ export async function loadRemoteSignals(
 ): Promise<Map<string, RemoteSignals>> {
   const createClient =
     options.createClient ??
-    ((target: RemoteTarget) =>
-      createGitClient(target.repoOwner, target.repoName, target.installationId ?? "", target.repositoryId ?? ""));
+    ((target: RemoteTarget) => {
+      // `signalsFor`가 연결 없는 행을 이미 걸렀다 — 여기 오는 행은 ok다. 빈 문자열 폴백으로 토큰을 받으러 가지 않는다.
+      const connection = repoTargetOf(target);
+      if (connection.status !== "ok") throw new AppError(`unreachable: remote signals without a connection (${connection.status})`);
+      return createGitClient(connection.target);
+    });
 
   const signals = await withDeadline(
     mapWithLimit(targets, CONCURRENCY, (target) => signalsFor(target, createClient)),
@@ -89,8 +94,8 @@ export async function loadRemoteSignals(
  * 묻는다). ⚠️ 게이트가 서지 않는다는 뜻이 아니다 — 실제 게이트(`loadOpenPrUrl`)는 `lastPrUrl`과 무관하게 sync 브랜치를 `findOpenPr`로 본다(DESIGN §2.4 알려진 틈 4).
  */
 function pullNumberToCheck(target: RemoteTarget): number | null {
-  if (target.archived || target.installationId === null || target.repositoryId === null) return null;
-  return pullNumberFrom(target.lastPrUrl);
+  if (target.archived || repoTargetOf(target).status !== "ok") return null;
+  return reviewNumberFrom(target.lastPrUrl, target.repoHost);
 }
 
 /** 확인하지 못한 행의 신호 — PR을 물었어야 하면 모름, 물을 수 없던 행은 없음. compare는 모름을 말할 자리가 없어 0이다. */
@@ -104,8 +109,8 @@ async function signalsFor(
 ): Promise<RemoteSignals> {
   // 보관은 멈춘 것이다 — 멈춘 프로젝트에 원격을 물을 이유가 없다.
   if (target.archived) return NONE;
-  // 설치나 리포 id가 없으면 클라이언트를 만들 수 없다. 행은 목록에 남고 DB 상태로 표시된다.
-  if (target.installationId === null || target.repositoryId === null) return NONE;
+  // 연결이 없으면(설치 없음·리포 id 미고정) 클라이언트를 만들 수 없다. 행은 목록에 남고 DB 상태로 표시된다.
+  if (repoTargetOf(target).status !== "ok") return NONE;
 
   const pullNumber = pullNumberToCheck(target);
   const formats = target.surfaces.flatMap(s =>

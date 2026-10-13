@@ -9,14 +9,14 @@ Use this skill when the user asks to run the migrated source command `roundtrip`
 
 ## Command Template
 
-**실물 리포·실물 DB·실물 GitHub API로 세 흐름을 한 바퀴 돌린다.** 단위 테스트가 전부 green인 채 기능이 멎은 사례가 `docs/POSTMORTEM.md`에 넷 있고, ARCHITECTURE §1.1이 **"단위 테스트가 원리적으로 못 보는 층이므로 이 확인을 대체할 수단이 없다"** 고 못 박은 자리가 여기다.
+**실물 리포·실물 DB·실물 GitHub/GitLab API로 세 흐름을 한 바퀴 돌린다.** 단위 테스트가 전부 green인 채 기능이 멎은 사례가 `docs/POSTMORTEM.md`에 넷 있고, ARCHITECTURE §1.1이 **"단위 테스트가 원리적으로 못 보는 층이므로 이 확인을 대체할 수단이 없다"** 고 못 박은 자리가 여기다.
 
 ## 사용
 
 - `/roundtrip <project-slug> --surface <slug> --path-template <template>` — 지정 표면으로 한 바퀴.
 - 두 표면 검증은 `--surface`·`--path-template` 쌍을 둘 지정하고, 각 표면 push·편집 뒤 Publish를 **한 번만** 한다.
 - `/roundtrip <project-slug> --dry` — **PR을 만들지 않고** 렌더 결과만 원본과 비교한다 (1·2단계까지).
-- `--merge <squash|merge|rebase>` — 4단계의 머지 방식. **기본 `squash`.** 루프 마커는 커밋 메시지와 PR 제목 둘 다에 있어 셋 다 가드를 지나야 하는데(ARCHITECTURE §3), 2026-09-17까지 이 스킬이 squash만 돌아 merge commit 회귀는 구조적으로 안 보였다(launch-readiness L1.2). `lib/pull/`을 고쳤으면 **`merge`로 한 번 더** 돈다.
+- `--merge <squash|merge|rebase>`(GitHub) / `--merge <merge|squash|fast-forward>`(GitLab) — 4단계의 머지 방식. **기본 `squash`.** 루프 마커는 커밋 메시지와 PR 제목 둘 다에 있어 셋 다 가드를 지나야 하는데(ARCHITECTURE §3), 2026-09-17까지 이 스킬이 squash만 돌아 merge commit 회귀는 구조적으로 안 보였다(launch-readiness L1.2). `lib/pull/`을 고쳤으면 **`merge`로 한 번 더** 돈다. GitLab은 `rebase`, GitHub는 `fast-forward` 인자를 거부한다. 호스트는 `Project.repoHost`로 정하며 GitLab의 세 방식은 아래 4단계 분기를 따른다.
 
 ## 언제 쓰나
 
@@ -28,8 +28,9 @@ Use this skill when the user asks to run the migrated source command `roundtrip`
 
 ## 전제 조건 (착수 전 확인 — 하나라도 어긋나면 중단)
 
-1. **대상은 폐기용 리포여야 한다.** 실물 오픈소스 리포에 검증 PR을 내면 흔적이 남는다 — 2026-09-03에 `bugshot-2`에 한 번 냈다가 닫고 되돌렸다(PR #226, `malmoi-i18n/sync` 삭제, DB 원복). 현재 폐기용 리포 **셋**: `bugshot-i18n-test`(ts-dict + _locales), `i18n-format-check`(yaml-catalog + code-dict), `i18n-order-check`(json-catalog — 23키 3로케일, **표현 5축이 섞이도록 재포맷돼 있다**: en 4칸 + 한 줄 컨테이너 + `\/`, ko 4칸 + 전 비ASCII `\uXXXX`, ja 탭). 재생성 어댑터를 고쳤으면 **이쪽**이다 — 나머지 둘은 수술적 어댑터 리포라 재생성 경로를 한 줄도 지나지 않는다.
-2. **`Project` 행이 있고 `installationId`가 채워져 있다.** GitHub App이 계정 전체(`all`)에 설치돼 있어도 설치 id는 컬럼에 있어야 한다.
+1. **대상은 폐기용 리포여야 한다.** 실물 오픈소스 리포에 검증 PR을 내면 흔적이 남는다 — 2026-09-03에 `bugshot-2`에 한 번 냈다가 닫고 되돌렸다(PR #226, `malmoi-i18n/sync` 삭제, DB 원복). 현재 GitHub 폐기용 리포 **셋**: `bugshot-i18n-test`(ts-dict + _locales), `i18n-format-check`(yaml-catalog + code-dict), `i18n-order-check`(json-catalog — 23키 3로케일, **표현 5축이 섞이도록 재포맷돼 있다**: en 4칸 + 한 줄 컨테이너 + `\/`, ko 4칸 + 전 비ASCII `\uXXXX`, ja 탭). 재생성 어댑터를 고쳤으면 **이쪽**이다 — 나머지 둘은 수술적 어댑터 리포라 재생성 경로를 한 줄도 지나지 않는다.
+   GitLab 폐기용 리포: **`ox501501/malmoi-gitlab-test`**. GitLab 검증은 이 리포만 쓰고, 실행 전 기본 브랜치·머지 설정·열린 MR·브랜치 목록을 필요한 필드만 기록한다.
+2. **`Project` 행이 있고 호스트별 연결이 유효하다.** `repoTargetOf(project)`가 `ok`여야 한다. GitHub는 설치·고정 리포 id, GitLab은 숫자 `repositoryId`와 `gitlabConnectionId`가 필요하며 참조된 PAT가 유효해야 한다. GitLab에 GitHub 설치를 요구하지 않는다.
 3. **대상 Project와 활성 Surface의 소유권을 확인한다.** 한 리포에 Project가 여럿 있어도 sync branch는
    `malmoi-i18n/sync-<project-slug>`로 분리된다. 이번 검증에 다른 프로젝트의 cron·Publish가 끼어 같은
    base 파일을 바꾸지 않게 하고, 한 Project의 두 표면은 비중첩 path-template으로 등록한다.
@@ -57,7 +58,15 @@ Use this skill when the user asks to run the migrated source command `roundtrip`
 - **프로덕션 env를 검증 때문에 바꾸지 않는다** — 애초에 바꿀 변수가 없다.
 - `pnpm push:local` 검증 명령은 project·surface·path-template 셋을 모두 명시한다. 최초 표면도 default라고 추정하지 않는다.
 
-`pnpm smoke:github <slug>`로 App 토큰 → base head → 트리 → 글롭 매칭을 먼저 확인한다. 여기서 실패하면 나머지가 무의미하다.
+GitHub는 `pnpm smoke:github <slug>`로 App 토큰 → base head → 트리 → 글롭 매칭을 먼저 확인한다. GitLab은 아래 읽기 전용 스모크로 PAT 검증 → 숫자 project id 재대조 → tree 끝까지 → sizes → 열린 MR 조회를 확인한다. 실패하면 중단한다.
+
+```sh
+(set -a; . ~/.config/malmoi/gitlab-test.env; set +a; pnpm smoke:gitlab)
+```
+
+`GITLAB_TEST_TOKEN`과 `GITLAB_TEST_PROJECT`(namespace/path 또는 숫자 project id)는 이 테스트 프로세스의 입력이다. DB·앱 env를 읽거나 고치지 않는다. 괄호 안에서만 export하므로 종료 후 셸에 남지 않는다. 토큰·응답 전문을 찍지 않는다(`/projects/:id` 응답에는 `runners_token`이 있다). 스모크는 GET·GraphQL 조회만 수행하며 `pnpm test`에서 실물 호출하지 않는다.
+
+아래 PR은 GitLab에서 MR로 읽는다. 두 호스트 모두 적재·편집·Publish·재적재의 같은 코어를 쓰며, 원격 읽기/쓰기에는 `lib/repo-host`가 고른 클라이언트를 쓴다. GitLab을 `gh`나 GitHub App 경로로 호출하지 않는다.
 
 ### 1. push — 리포 → DB
 
@@ -110,24 +119,34 @@ curl -s -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/pull
 
 ### 4. 머지 → 재pull 수렴
 
-**PR 머지는 이 스킬이 직접 한다** (2026-09-27 사용자 — "어차피 테스트 리포로 도는거라"). 대상이 전제 조건 1의 **폐기용 리포**일 때만이고, 아래 "머지 전 확인"을 통과한 뒤에 부른다. 폐기용 리포가 아니면 애초에 이 스킬을 돌리지 않는다.
+**PR/MR 머지는 이 스킬이 직접 한다** (2026-09-27 사용자 — "어차피 테스트 리포로 도는거라"). 대상이 전제 조건 1의 **폐기용 리포**일 때만이고, 아래 "머지 전 확인"을 통과한 뒤에 부른다. 폐기용 리포가 아니면 애초에 이 스킬을 돌리지 않는다.
+
+**GitHub 분기**:
 
 ```
 GH_TOKEN=$(gh auth token --user <owner>) gh pr merge <n> --repo <owner>/<repo> --<squash|merge|rebase> --delete-branch
 ```
 
-머지 전 확인할 것:
+**GitLab 분기** (`--merge` 인자를 그대로 실행한다 — squash로 고정하지 않는다):
+
+1. MR의 source/target project id가 고정 `repositoryId`와 같고, source가 이번 sync 브랜치·target이 `Project.baseBranch`인지 확인한다. MR 제목과 source head 커밋 메시지에 `[skip-malmoi-i18n]`이 있어야 한다.
+2. 폐기용 프로젝트의 원래 `merge_method`·`squash_option`을 기록한다. `merge`는 프로젝트 `merge_method=merge` + MR 수락의 `squash=false`, `squash`는 `merge_method=merge` + `squash=true`, `fast-forward`는 `merge_method=ff` + `squash=false`로 실행한다. 프로젝트가 squash를 강제/금지하면 이번 방식이 가능하도록 폐기용 설정을 바꾸고 6단계에서 원복한다. fast-forward 불가이면 중단하며 자동 rebase나 다른 방식으로 대체하지 않는다.
+3. `lib/gitlab/transport`로 숫자 id의 MR 수락 API(`PUT /projects/:id/merge_requests/:iid/merge`)를 호출한다. 조회한 source head를 `sha`로 고정하고 `should_remove_source_branch=true`를 넘긴다. merge·squash 커밋 메시지에는 명시적으로 마커를 넣는다(`merge_commit_message`·`squash_commit_message`). 응답 전문 대신 `state`·머지 SHA만 읽고 실제 `merged`가 될 때까지 확인한다.
+4. `Project.baseBranch`의 최종 head 메시지에 마커가 남고 sync 브랜치와 열린 MR이 사라졌는지 확인한다. fast-forward는 source 커밋의 마커, squash는 squash 메시지의 마커, merge는 merge 메시지의 마커를 검증한다. 그 뒤 공통 재적재·재pull 게이트를 진행한다.
+
+GitHub 머지 전 확인할 것:
 - **PR 제목에 `[skip-malmoi-i18n]`이 있다** (`gh pr view <n> --json title`). merge commit의 `head_commit.message`는 `Merge pull request #N …` + **PR 제목**이라 커밋 메시지의 마커가 실리지 않는다 — 제목의 마커가 그 방식의 유일한 가드다. 재사용된 옛 PR이면 이번 pull이 제목 뒤에 마커를 덧붙였어야 한다(`withSkipMarker`).
 
-머지 뒤 확인할 것:
-- `dev` head의 커밋 메시지에 **`[skip-malmoi-i18n]`** 이 있다 (없으면 대상 리포 CI가 다시 push를 돌려 무한 루프다). `--merge`면 그 메시지의 **둘째 문단(PR 제목)**에 있고, `--squash`·`--rebase`면 첫 줄에 있다 — 어느 자리든 가드는 부분 문자열만 본다
+공통 머지 뒤 확인할 것:
+- `Project.baseBranch` head의 커밋 메시지에 **`[skip-malmoi-i18n]`** 이 있다 (없으면 대상 리포 CI가 다시 push를 돌려 무한 루프다). GitHub의 `--merge`면 그 메시지의 **둘째 문단(PR 제목)**에 있고, `--squash`·`--rebase`면 첫 줄에 있다 — 어느 자리든 가드는 부분 문자열만 본다
 - `malmoi-i18n/sync-<project-slug>` 브랜치가 삭제됐다
 - checkout을 merge head로 갱신하고 두 표면을 각각 다시 push해 편집 값·구조·표현이 유지되는지 확인한다
-- 값 불변 재push 뒤 pull은 **`no-edits`** — 1층 스킵이고, **GitHub API를 한 번도 안 부른다.** 야간 cron이 변경 없는 날 도는 기본 경로가 이것이다. 값 고정점은 드라이런으로 본다(2단계)
+- **GitLab 재적재 확인: commit API가 바이트를 그대로 저장했는가 — 편집한 파일마다 원격 tree의 blob id == Publish에 넘긴 로컬 파일의 `git hash-object --no-filters <file>`여야 한다.** Publish 전에 로컬 렌더 결과를 보관해 비교한다(머지 후 checkout 파일만 해시하면 원격이 바꾼 바이트도 통과한다). 불일치면 중단하고 경로·해시만 기록한다.
+- 값 불변 재push 뒤 pull은 **`no-edits`** — 1층 스킵이고, **리포 호스트 API를 한 번도 안 부른다.** 야간 cron이 변경 없는 날 도는 기본 경로가 이것이다. 값 고정점은 드라이런으로 본다(2단계)
 
 ### 5. (선택) CI 방향 — 대상 리포에 워크플로가 붙어 있을 때만
 
-`docs/ACTIONS.md`를 따라 붙인다. `[skip-malmoi-i18n]` 커밋이 스킵되는지, 열린 `malmoi-i18n/sync-<project-slug>` PR 경고가 뜨는지 확인한다 — 후자는 대상 리포 워크플로에 `permissions: pull-requests: read`가 있어야 뜬다(없으면 조회 실패를 "PR 없음"으로 삼킨다 — POSTMORTEM 2026-09-03).
+GitHub는 `docs/ACTIONS.md`를 따라 붙인다. GitLab은 온보딩이 만든 `.gitlab-ci.yml`로 같은 마커 스킵·열린 MR 보류를 확인한다. 아래 GitHub 전용 `permissions` 설정을 GitLab에 옮기지 않는다. `[skip-malmoi-i18n]` 커밋이 스킵되는지, 열린 `malmoi-i18n/sync-<project-slug>` PR 경고가 뜨는지 확인한다 — 후자는 대상 리포 워크플로에 `permissions: pull-requests: read`가 있어야 뜬다(없으면 조회 실패를 "PR 없음"으로 삼킨다 — POSTMORTEM 2026-09-03).
 
 ✅ **두 리포의 CI를 동시에 받을 수 있다** (2026-09-07 — 토큰이 프로젝트를 정한다). 각 대상 리포의 secret `PUSH_TOKEN`이 **그 프로젝트의 토큰**이면 된다. CI 층 자체는 어댑터와 무관하므로, 어댑터 검증이 목적이면 이 단계를 건너뛴다.
 
@@ -138,6 +157,7 @@ GH_TOKEN=$(gh auth token --user <owner>) gh pr merge <n> --repo <owner>/<repo> -
 - **셸 히스토리를 확인한다.** 명령 앞에 토큰을 붙였으므로 `HISTFILE`에 원문이 남는다. 회수했으면 무효한 문자열이지만, 회수 전에 세션이 끝나면 유효한 값이 파일로 남는다 — 회수를 이 단계에서 **먼저** 한다.
 - 이번에 만든 일회성 `Project`만 정리한다. **상주 `bugshot-i18n-test-qa`와 그 표면·번역은 보존한다.**
   TRUNCATE 또는 프로젝트 전건 삭제는 하지 않는다.
+- GitLab 폐기용 프로젝트의 머지·squash 설정을 기록한 원래 값으로 복원하고, 이번 검증의 sync 브랜치·열린 MR이 남지 않았는지 확인한다. 읽기 전용 스모크만 돌렸다면 원격 원복은 없다.
 - dev 서버 종료
 - 편집을 되돌릴지 판단: PR을 머지했으면 DB와 리포가 일치하므로 그대로 둔다. **머지하지 않았으면 원복한다**
 - 실물 리포에 실수로 낸 PR이 있으면 닫고 `malmoi-i18n/sync-<project-slug>`를 삭제한다
@@ -148,12 +168,13 @@ GH_TOKEN=$(gh auth token --user <owner>) gh pr merge <n> --repo <owner>/<repo> -
 
 ```
 🔄 roundtrip: <slug> (<adapter>, <키>키 <로케일>로케일)
-전제: 폐기용 리포 <repo> / Project·Surface·경로 소유권 확인 / smoke:github OK
+전제: 폐기용 리포 <repo> / Project·Surface·경로 소유권 확인 / smoke:<github|gitlab> OK
 1 push:       200 — <n>키 / <n>번역 / <n>refs
 2 값 고정점:   드라이런 전 파일 = ✅ / ≠ ❌ (중단) · ⚠️ 표현 보존은 여기서 안 보인다
 3 편집 <n>건:  PR #<n> +<a> -<b> / <n>파일, hunk <n>
    보존:      주석 · 빈 줄 · 키 순서 · 인용 부호 · <포맷별 항목>
-4 머지 후:    --<방식> · PR 제목 마커 ✅ · dev head [skip-malmoi-i18n] ✅ / 재pull no-edits ✅
+4 머지 후:    --<방식> · PR/MR 제목 마커 ✅ · base head [skip-malmoi-i18n] ✅ / 재pull no-edits ✅
+   GitLab:    원격 blob id = 로컬 git hash-object ✅ / 미검증(사유)
 5 CI:         스킵(사유) / green
 6 정리:       토큰 회수 ✅ (.env.local 미편집 — 원복 불필요) / 검증용 행 삭제 ✅ / dev 종료 ✅ / <기타>
 ```

@@ -97,14 +97,14 @@ const settle = () => act(async () => { await new Promise((resolve) => setTimeout
 
 describe("Docs 내비 — 넓은 폭은 고정 264, 좁은 폭은 하단 캡슐 (PT2a · D1)", () => {
   it("고정 내비는 `lg` 이상에만, 캡슐은 `lg` 미만에만 선다", async () => {
-    await page(["setup", "workflow"]);
+    await page(["github", "workflow"]);
     const fixed = document.querySelector(`main > nav[aria-label="${en.publicDocs.docs.nav}"]`);
     expect(fixed?.classList.contains("max-lg:hidden")).toBe(true);
     expect(capsule().closest(".lg\\:hidden")).not.toBeNull();
   });
 
   it("캡슐 — 접근 이름 Docs · dialog를 연다 · 라벨은 현재 페이지 제목", async () => {
-    await page(["setup", "workflow"]);
+    await page(["github", "workflow"]);
     const button = capsule();
     expect(button.getAttribute("aria-haspopup")).toBe("dialog");
     expect(button.getAttribute("aria-expanded")).toBe("false");
@@ -126,7 +126,7 @@ describe("Docs 내비 — 넓은 폭은 고정 264, 좁은 폭은 하단 캡슐 
   });
 
   it("캡슐 형 — 44 · radius full · 연한 윤곽 · 바탕 면 · shadow-medium · 푸터 위 16 가운데", async () => {
-    await page(["setup", "workflow"]);
+    await page(["github", "workflow"]);
     const classes = [...capsule().classList];
     expect(classes).toEqual(expect.arrayContaining(["h-11", "rounded-full", "border", "border-border-subtle", "bg-background", "shadow-medium", "font-medium"]));
     expect(classes).not.toContain("shadow-low");
@@ -138,7 +138,7 @@ describe("Docs 내비 — 넓은 폭은 고정 264, 좁은 폭은 하단 캡슐 
 
 describe("Docs 내비 시트 — 캡슐이 여는 전체 화면 (PT2c · D14)", () => {
   it("열면 머리 제목 Docs의 시트가 서고 같은 SUMMARY 트리가 행 최소 40으로 선다", async () => {
-    await page(["setup", "workflow"]);
+    await page(["github", "workflow"]);
     await click(capsule());
     const dialog = sheet();
     expect(dialog).not.toBeNull();
@@ -152,10 +152,10 @@ describe("Docs 내비 시트 — 캡슐이 여는 전체 화면 (PT2c · D14)", 
   });
 
   it("열면 포커스가 현재 페이지 행에 선다", async () => {
-    await page(["setup", "workflow"]);
+    await page(["github", "workflow"]);
     await click(capsule());
     const current = sheetLinks().find((a) => a.getAttribute("aria-current") === "page");
-    expect(current?.getAttribute("href")).toBe(routes.docs("setup/workflow"));
+    expect(current?.getAttribute("href")).toBe(routes.docs("github/workflow"));
     expect(document.activeElement).toBe(current);
   });
 
@@ -167,7 +167,7 @@ describe("Docs 내비 시트 — 캡슐이 여는 전체 화면 (PT2c · D14)", 
   });
 
   it("Esc로 닫으면 캡슐로 돌아온다", async () => {
-    await page(["setup", "workflow"]);
+    await page(["github", "workflow"]);
     await click(capsule());
     await act(async () => { await userEvent.setup().keyboard("{Escape}"); });
     await settle();
@@ -176,7 +176,7 @@ describe("Docs 내비 시트 — 캡슐이 여는 전체 화면 (PT2c · D14)", 
   });
 
   it("닫기 버튼도 캡슐로 돌아온다", async () => {
-    await page(["setup", "workflow"]);
+    await page(["github", "workflow"]);
     await click(capsule());
     await click(sheet()!.querySelector(`button[aria-label="${en.common.close}"]`)!);
     await settle();
@@ -185,7 +185,7 @@ describe("Docs 내비 시트 — 캡슐이 여는 전체 화면 (PT2c · D14)", 
   });
 
   it("다른 페이지 링크로 닫히면 캡슐로 돌려주지 않는다 — 도착한 페이지의 스크롤러가 포커스를 가진다", async () => {
-    await page(["setup", "workflow"]);
+    await page(["github", "workflow"]);
     await click(capsule());
     await click(sheetLinks().find((a) => a.getAttribute("href") === routes.docs("translate"))!);
     await settle();
@@ -194,7 +194,7 @@ describe("Docs 내비 시트 — 캡슐이 여는 전체 화면 (PT2c · D14)", 
   });
 
   it("열린 채 `lg`를 넘으면 닫는다 — 리스너는 열린 동안만이다", async () => {
-    await page(["setup", "workflow"]);
+    await page(["github", "workflow"]);
     expect(listeners.size).toBe(0);
     await click(capsule());
     expect(listeners.size).toBe(1);
@@ -210,7 +210,7 @@ describe("Docs 내비 시트 — 캡슐이 여는 전체 화면 (PT2c · D14)", 
   });
 
   it("지금 페이지 행을 누르면 이동이 없으니 캡슐로 돌아온다", async () => {
-    await page(["setup", "workflow"]);
+    await page(["github", "workflow"]);
     await click(capsule());
     await click(sheetLinks().find((a) => a.getAttribute("aria-current") === "page")!);
     await settle();
@@ -221,7 +221,7 @@ describe("Docs 내비 시트 — 캡슐이 여는 전체 화면 (PT2c · D14)", 
 
 describe("목차 — 컨테이너 960 미만은 본문 앞 disclosure (PT2b)", () => {
   it("목차 인스턴스는 하나이고 disclosure 버튼이 그 안에 있다 — 기본 접힘", async () => {
-    await page(["setup", "workflow"]);
+    await page(["github", "workflow"]);
     const tocs = document.querySelectorAll(`nav[aria-labelledby]`);
     expect(tocs).toHaveLength(1);
     const toggle = tocs[0]!.querySelector<HTMLButtonElement>("button[aria-expanded]");
@@ -231,7 +231,7 @@ describe("목차 — 컨테이너 960 미만은 본문 앞 disclosure (PT2b)", (
   });
 
   it("목차는 DOM에서 본문 앞이다 — 좁은 폭에서 보이는 순서와 Tab 순서가 같다", async () => {
-    await page(["setup", "workflow"]);
+    await page(["github", "workflow"]);
     const toc = document.querySelector(`nav[aria-labelledby]`)!;
     const article = document.querySelector("article")!;
     expect(toc.compareDocumentPosition(article) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -247,7 +247,7 @@ describe("목차 — 컨테이너 960 미만은 본문 앞 disclosure (PT2b)", (
 
 describe("DocFrame — 컨테이너 판정 · 표시급 · 긴 표/URL (PT2a · D3)", () => {
   it("컨테이너 선언은 부모, 질의는 자식 grid다 — 960 이상만 두 열 · 640 미만 좌우 20", async () => {
-    await page(["setup", "workflow"]);
+    await page(["github", "workflow"]);
     const article = document.querySelector("article")!;
     const grid = article.parentElement!;
     const outer = grid.parentElement!;
@@ -260,7 +260,7 @@ describe("DocFrame — 컨테이너 판정 · 표시급 · 긴 표/URL (PT2a · 
   });
 
   it("`lg` 미만 위 여백 40 · h1 30 · 절 제목 20", async () => {
-    await page(["setup", "workflow"]);
+    await page(["github", "workflow"]);
     const grid = document.querySelector("article")!.parentElement!;
     expect([...grid.classList]).toEqual(expect.arrayContaining(["pt-16", "max-lg:pt-10"]));
     expect(document.querySelector("article h1")?.className).toBe(PAGE_TITLE);
@@ -269,19 +269,19 @@ describe("DocFrame — 컨테이너 판정 · 표시급 · 긴 표/URL (PT2a · 
   });
 
   it("본문은 긴 URL을 줄바꿈하고 표 안은 되돌린다 · 표는 자기 안에서만 가로 스크롤(최소 640)", async () => {
-    await page(["setup", "workflow"]);
+    await page(["github", "workflow"]);
     expect(document.querySelector("article")?.classList.contains("wrap-anywhere")).toBe(true);
     expect(DOC_TABLE.split(" ")).toEqual(expect.arrayContaining(["overflow-x-auto", "[&_table]:min-w-160", "[&_table]:wrap-normal"]));
   });
 
   it("이전/다음은 좁아도 두 칸이다", async () => {
-    await page(["setup", "workflow"]);
+    await page(["github", "workflow"]);
     const neighbours = document.querySelector(`nav[aria-label="${en.publicDocs.docs.pages}"]`);
     expect(neighbours?.classList.contains("grid-cols-2")).toBe(true);
   });
 
   it("페이지가 바뀌면 본문 스크롤러가 새로 마운트된다(§6.615)", async () => {
-    const first = await page(["setup", "workflow"]);
+    const first = await page(["github", "workflow"]);
     const before = first.container.querySelector("[data-public-scroller]");
     mocks.path = routes.docs("translate");
     const { default: Docs } = await import("@/app/docs/[[...slug]]/page");
@@ -299,7 +299,7 @@ describe("고정 내비 → 좁아짐", () => {
 
   it("포커스가 고정 내비 안에 있으면 캡슐로 옮긴다 — 리스너는 포커스가 안에 있는 동안만이다", async () => {
     wide = true;
-    await page(["setup", "workflow"]);
+    await page(["github", "workflow"]);
     expect(listeners.size).toBe(0);
     await act(async () => { fixedLinks()[2]!.focus(); });
     expect(listeners.size).toBe(1);
@@ -312,7 +312,7 @@ describe("고정 내비 → 좁아짐", () => {
   /** #214 재실측 — Chrome은 blur 없이 fixup으로 `body`로 옮긴다. `change` 때 이미 `body`여도 안에 있었으면 캡슐로 넘긴다. */
   it("blur 없이 body로 간 뒤의 `change`도 캡슐로 옮긴다", async () => {
     wide = true;
-    await page(["setup", "workflow"]);
+    await page(["github", "workflow"]);
     await act(async () => { fixedLinks()[2]!.focus(); });
     wide = false;
     Object.defineProperty(document, "activeElement", { configurable: true, get: () => document.body });
@@ -327,7 +327,7 @@ describe("고정 내비 → 좁아짐", () => {
 
   it("포커스가 밖에 있으면 건드리지 않고 리스너도 없다", async () => {
     wide = true;
-    await page(["setup", "workflow"]);
+    await page(["github", "workflow"]);
     await act(async () => { fixedLinks()[0]!.focus(); });
     const outside = document.querySelector<HTMLElement>("[data-public-scroller]")!;
     await act(async () => { outside.focus(); });

@@ -11,7 +11,9 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import type { LogKind } from "@/lib/events/payload";
 import type { Trigger } from "@/lib/events/view";
 import type { HomeLate, MetaTabs as Tabs, ProjectTabRow, PublishTabRow, SyncTabRow } from "@/lib/home/meta";
-import { pullNumberFrom } from "@/lib/projects/remote-plan";
+import { reviewNumberFrom } from "@/lib/projects/remote-plan";
+import { forHost } from "@/lib/i18n/host";
+import { GithubIcon, GitlabIcon } from "@/components/signin/brand-icons";
 import { relativeTime } from "@/lib/relative-time";
 import { cn } from "@/lib/utils";
 import { formatNumber } from "@/lib/number-format";
@@ -67,7 +69,7 @@ export function MetaColumn({ tabs, slug, now, canOpenSettings, late, uiLocale, m
           },
           {
             value: "publish", label: m.home.meta.tabs.publish,
-            panel: <Panel groups={tabs.publish.map((group) => group.map((row) => publishFact(m, uiLocale, row, now)))}
+            panel: <Panel groups={tabs.publish.map((group) => group.map((row) => publishFact(m, uiLocale, row, now, tabs.host)))}
               footer={<FooterLink href={logsOf(slug, "publish")}>{m.home.meta.publishLogs}</FooterLink>} />,
           },
         ]}
@@ -122,6 +124,14 @@ function Muted({ children }: { children: ReactNode }) {
 function projectFact(m: Messages, uiLocale: UiLocale, row: ProjectTabRow, slug: string, now: Date): ReactNode {
   const label = m.home.meta[row.kind];
   switch (row.kind) {
+    case "platform": {
+      /*
+        리포 호스트 (시안 G5a — 두 호스트 모두). ⚠️ **링크가 아니고 글리프는 장식이다** — 글리프가 링크 장식이 아니라 플랫폼 표시라는 것이 이 행이
+        따로 서는 이유다(DESIGN §6.3 "외부 링크에 글리프를 달지 않는다"와 충돌하지 않는다). 이름이 글자로 서므로 글리프는 `aria-hidden`이다.
+      */
+      const Glyph = row.host === "gitlab" ? GitlabIcon : GithubIcon;
+      return <Row key={row.kind} label={label}><span className="inline-flex items-center gap-1.5"><Glyph className="size-3.5 shrink-0" />{m.home.meta.platforms[row.host]}</span></Row>;
+    }
     case "repository":
       /*
         ⚠️ **외부 링크에 글리프를 달지 않는다** (DESIGN §6.3) — 나가는 신호는 색과 `target="_blank"`가 든다. `home-landmarks.test.tsx`가
@@ -190,8 +200,10 @@ function HoldRow({ m }: { m: Messages }) {
   return <Row label={m.home.meta.hold}><StatusBadge state="held" /></Row>;
 }
 
-function publishFact(m: Messages, uiLocale: UiLocale, row: PublishTabRow, now: Date): ReactNode {
-  const label = m.home.meta[row.kind];
+function publishFact(m: Messages, uiLocale: UiLocale, row: PublishTabRow, now: Date, host: "github" | "gitlab"): ReactNode {
+  // PR/MR 라벨·번호는 리포 호스트의 문장이다(`onGitLab` — `Merge request` · `!128`).
+  const meta = forHost(m.home.meta, host);
+  const label = meta[row.kind];
   switch (row.kind) {
     case "lastPublish":
       if (row.value === "never") return <Row key={row.kind} label={label}><Muted>{m.home.meta.never}</Muted></Row>;
@@ -200,12 +212,12 @@ function publishFact(m: Messages, uiLocale: UiLocale, row: PublishTabRow, now: D
       return <Row key={row.kind} label={label}>{relativeTime(row.at, now, uiLocale)}</Row>;
     case "pullRequest": {
       // ⚠️ 번호를 못 뽑으면 링크를 만들지 않는다 — 주소를 그대로 이름으로 읽히지 않는다.
-      const pr = pullNumberFrom(row.href);
+      const pr = reviewNumberFrom(row.href, host);
       // 리포 행과 같은 규칙 — 글리프 없이 색만, 연결이 정상이 아니면 평문.
       if (pr === null) return <Row key={row.kind} label={label}>—</Row>;
       return (
         <Row key={row.kind} label={label}>
-          {row.linked ? <InlineLink href={row.href} target="_blank" rel="noreferrer">{m.home.meta.pr(pr)}</InlineLink> : m.home.meta.pr(pr)}
+          {row.linked ? <InlineLink href={row.href} target="_blank" rel="noreferrer">{meta.pr(pr)}</InlineLink> : meta.pr(pr)}
         </Row>
       );
     }
@@ -215,7 +227,7 @@ function publishFact(m: Messages, uiLocale: UiLocale, row: PublishTabRow, now: D
         <Row key={row.kind} label={label}>
           <LatePrState
             pending={<Skeleton size="sm" className="w-14" />}
-            values={{ prOpen: <StatusBadge state="prOpen" />, notOpen: m.home.meta.notOpen, couldNotCheck: <StatusBadge state="prCheckFailed" /> }}
+            values={{ prOpen: <StatusBadge state="prOpen" />, notOpen: m.home.meta.notOpen, couldNotCheck: <StatusBadge state="prCheckFailed" host={host} /> }}
           />
         </Row>
       );

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { planImportApply, type ImportApplyInput } from "../apply-plan";
 const now = new Date("2026-09-15T00:10:00Z");
-const settings = { repositoryId: "1", installationId: "2", repoOwner: "o", repoName: "r", baseBranch: "main", adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en", nested: false, nestedByPath: null };
+const settings = { repositoryId: "1", repoHost: "github", gitlabConnectionId: null, installationId: "2", repoOwner: "o", repoName: "r", baseBranch: "main", adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en", nested: false, nestedByPath: null };
 const input = (over: Partial<ImportApplyInput> = {}): ImportApplyInput => ({ now, token: "mine", currentToken: "mine", startedAt: now, capturedRevision: 0, currentRevision: 0, authorized: true, archived: false, capturedSettings: settings, currentSettings: settings, ...over });
 
 describe("planImportApply", () => {

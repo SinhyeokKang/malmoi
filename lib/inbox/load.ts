@@ -16,7 +16,9 @@ export async function loadAttentionInbox(prisma: PrismaClient, userId: string): 
       user: { select: { attentionSeenAt: true } },
       project: { select: {
         id: true, slug: true, name: true, image: true, createdAt: true,
-        installationId: true, repositoryId: true, archivedAt: true,
+        repoHost: true, installationId: true, gitlabConnectionId: true, repositoryId: true, archivedAt: true,
+        // GitLab 저장 만료일 — Inbox 상태의 사전 판정(D24, 목록과 같은 `projectStatus`). 토큰 봉투는 읽지 않는다.
+        gitlabConnection: { select: { expiresAt: true } },
         surfaces: { where: { archivedAt: null }, orderBy: { slug: "asc" }, select: {
           id: true, slug: true, archivedAt: true, lastCommitSha: true,
           lastImportError: true, lastImportStartedAt: true, lastImportFailedAt: true,
@@ -51,7 +53,7 @@ export async function loadAttentionInbox(prisma: PrismaClient, userId: string): 
     const surfaceSlug = aggregates.unsentSurfaces.get(project.id);
     return {
       slug: project.slug, name: project.name, image: project.image, role: row.role,
-      status: projectStatus(project), createdAt: project.createdAt, attention,
+      status: projectStatus({ ...project, gitlabTokenExpiresAt: project.gitlabConnection?.expiresAt ?? null }), createdAt: project.createdAt, attention,
       unsent: count > 0 && surfaceSlug !== undefined ? { count, surfaceSlug, at: aggregates.unsentAt.get(project.id) ?? null } : null,
     };
   }) });

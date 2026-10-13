@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { planConnectionHealth, type ProbeResult } from "@/lib/github-connect/health";
+import { planConnectionHealth, type ConnectionHealth, type ProbeResult } from "@/lib/github-connect/health";
 import { metaTabs } from "@/lib/home/meta";
 import { connectionProblem, homeBannerState, planActionAvailability, planHomeState, repositoryConnectionState } from "@/lib/home/state";
 import { en } from "@/messages/en";
@@ -13,6 +13,8 @@ import { importFailureTone } from "@/lib/projects/import-failure";
 import { importOutcomeFields, isImportFailureCode, type ImportFailureCode } from "@/lib/projects/import-status";
 import { CHIP_STATE, rowBanner, rowChip, worstFailingSurface, type RowBanner } from "@/lib/projects/list";
 import { openPrGateApplies, planHoldNotice, type HoldReason } from "@/lib/protection/plan";
+
+import { repoTargetOf } from "@/lib/repo-host/target";
 
 import { STATE, stateLabel, type StateKey } from "../canon";
 
@@ -64,7 +66,9 @@ const failed = (slug: string): SurfaceRow => ({ ...synced(slug), ...importOutcom
 const syncing = (slug: string): SurfaceRow => ({ ...synced(slug), lastImportStartedAt: T1 });
 
 type Fixture = {
+  repoHost: string;
   installationId: string | null;
+  gitlabConnectionId: string | null;
   repositoryId: string | null;
   archivedAt: Date | null;
   surfaces: SurfaceRow[];
@@ -73,13 +77,17 @@ type Fixture = {
   /** 열린 Malmoi PR 삼상태 — `undefined`는 확인 못 함(조회 실패·마감). */
   openPr: { number: number; url: string } | null | undefined;
   probe: ProbeResult;
+  /** GitLab 연결 건강성의 원격 결과(`loadGitLabHealth` — 참조가 있을 때만 부른다). 없으면 정상(`ok`)이다. */
+  gitlabHealth?: ConnectionHealth;
+  /** 참조하는 GitLab 연결의 저장 만료일(D24) — 목록·Inbox가 DB만으로 끊김을 안다. */
+  gitlabTokenExpiresAt?: Date | null;
 };
 
 const PR = { number: 7, url: "https://github.com/acme/web/pull/7" };
 const PROBE_OK: ProbeResult = { status: "ok", installationId: "inst-1", repositoryId: "repo-1", fullName: "acme/web", defaultBranch: "main" };
 
 const fixture = (over: Partial<Fixture> = {}): Fixture => ({
-  installationId: "inst-1", repositoryId: "repo-1", archivedAt: null, surfaces: [synced("web")], pending: 0, openPr: null, probe: PROBE_OK, ...over,
+  repoHost: "github", gitlabConnectionId: null, installationId: "inst-1", repositoryId: "repo-1", archivedAt: null, surfaces: [synced("web")], pending: 0, openPr: null, probe: PROBE_OK, ...over,
 });
 
 // ── 화면 쪽 매핑의 사본 (위 머리 주석) ─────────────────────────────────────
@@ -115,15 +123,18 @@ type Observed = {
 const EMPTY: ProjectListAggregates = { locales: [], keyTotals: new Map(), cells: [], newKeys: new Map(), unsent: new Map(), unsentSurfaces: new Map(), unsentAt: new Map(), newKeysBySurface: new Map(), unsentBySurface: new Map() };
 
 function observe(f: Fixture, J: Judgments): Observed {
-  const project = { installationId: f.installationId, repositoryId: f.repositoryId, repoOwner: "acme", repoName: "web", surfaces: f.surfaces };
+  const project = { repoHost: f.repoHost, gitlabConnectionId: f.gitlabConnectionId, installationId: f.installationId, repositoryId: f.repositoryId, repoOwner: "acme", repoName: "web", surfaces: f.surfaces };
+  // 경계의 연결 판정 — `loadConnectionHealth`·`lib/import/run.ts`가 이것을 먼저 지난다(GitLab 갈래는 원격 호출 0으로 끝난다).
+  const stored = repoTargetOf(project);
   const archived = f.archivedAt !== null;
 
   // 목록 — 조회의 조립 층을 지난다(🔴 E의 결함은 판정이 아니라 조립에 있었다).
   const member: ProjectListMemberRow = {
     role: "OWNER",
     project: {
-      id: "p1", slug: "acme", name: "Acme", image: null, installationId: f.installationId, archivedAt: f.archivedAt, repoOwner: "acme", repoName: "web",
+      id: "p1", slug: "acme", name: "Acme", image: null, repoHost: f.repoHost, gitlabConnectionId: f.gitlabConnectionId, installationId: f.installationId, archivedAt: f.archivedAt, repoOwner: "acme", repoName: "web",
       repositoryId: f.repositoryId, baseBranch: "main", lastPrUrl: f.openPr === null ? null : PR.url, _count: { members: 1 }, surfaces: f.surfaces,
+      gitlabConnection: f.gitlabConnectionId === null ? null : { expiresAt: f.gitlabTokenExpiresAt ?? null },
     },
   };
   const [row] = assembleProjectListRows([member], { ...EMPTY, unsent: new Map([["p1", f.pending]]) }, new Map([["p1", { openPr: f.openPr, repoAheadFiles: 0 }]]));
@@ -131,7 +142,9 @@ function observe(f: Fixture, J: Judgments): Observed {
   // 칩은 화면이 `StatusBadge`에 넘기는 그 맵이다(ux-drift-unify T19 — 전엔 여기 사본이었다).
   const list = { chip: CHIP_STATE[J.rowChip(row)], banner: bannerKey(J.rowBanner(row)) };
 
-  const health = J.planConnectionHealth({ project, probe: f.probe });
+  // GitHub은 지금처럼 저장값 + probe(`planConnectionHealth`), GitLab은 `loadConnectionHealth`의 경계 판정(ok가 아니면 그 갈래 그대로).
+  const health = f.repoHost === "github" ? J.planConnectionHealth({ project, probe: f.probe })
+    : stored.status === "ok" ? f.gitlabHealth ?? { status: "ok" as const } : { status: stored.status };
   const problem = J.connectionProblem(health.status);
   const readiness = J.planProjectReadiness(project);
 
@@ -169,7 +182,7 @@ function observe(f: Fixture, J: Judgments): Observed {
   if (archived) refusal = { na: "archived-before-plan" };
   else {
     const plan = J.planRepositoryImport({
-      now: T1, readiness, identity: f.repositoryId === null || f.installationId === null ? "unpinned" : "ok",
+      now: T1, readiness, identity: stored.status !== "ok" ? "unpinned" : "ok",
       repositoryImportToken: null, repositoryImportStartedAt: null, runningSync: null,
       surfaces: f.surfaces.map((s) => ({ id: s.slug, slug: s.slug, archivedAt: null, adapterName: "json-catalog", pathTemplate: "locales/{locale}.json", baseLocale: "en", lastImportStartedAt: null })),
     });
@@ -250,12 +263,53 @@ const MATRIX: Row[] = [
   {
     // 설치 없음은 readiness가 `setup`이라 Home·적재 거부가 판정에 닿지 않는다 — 적재 거부 칸의 "Not connected 낱말"은 실제로 `not-ready`다(U2 노트).
     input: "설치 없음",
-    fixture: fixture({ installationId: null, repositoryId: null, surfaces: [{ ...synced("web"), lastCommitSha: null }] }),
+    fixture: fixture({ repoHost: "github", gitlabConnectionId: null, installationId: null, repositoryId: null, surfaces: [{ ...synced("web"), lastCommitSha: null }] }),
     list: { chip: "setup", banner: "setup" },
     home: { readiness: "setup" },
     settings: "notConnected",
     sources: na("sources", "connection"),
     refusal: { readiness: "not-ready" },
+  },
+  {
+    // GitLab 정상 — 설치 id 없이도 연결 참조로 연결됨(카나리아가 GitLab 행을 끊김으로 접지 않게).
+    input: "GitLab 연결됨",
+    fixture: fixture({ repoHost: "gitlab", installationId: null, gitlabConnectionId: "conn-a" }),
+    list: { chip: "active", banner: null },
+    home: { banner: null, hold: null },
+    settings: "connected",
+    sources: ["synced"],
+    refusal: { error: "none" },
+  },
+  {
+    // ⚠️ GitLab 연결자 떠남(D21) — 참조가 비었다. 모든 화면에서 GitHub `unpinned`과 같은 Disconnected다(설치 없음의 Not connected가 아니다).
+    input: "GitLab 연결자 떠남",
+    fixture: fixture({ repoHost: "gitlab", installationId: null, gitlabConnectionId: null }),
+    list: { chip: "disconnected", banner: "disconnected" },
+    home: { banner: "disconnected" },
+    settings: "disconnected",
+    sources: na("sources", "connection"),
+    refusal: { error: "unpinned", word: "disconnected" },
+  },
+  {
+    // ⚠️ GitLab 토큰을 쓸 수 없음(D22·D24 — 철회·만료·주인의 접근 상실·보관, probe가 안다). Home·설정은 연결자 떠남과 같은 Disconnected다.
+    // 목록은 DB만 본다 — 참조는 있으니 Active다. GitHub의 probe 전용 상태(`app-uninstalled`·`installation-changed`)도 목록엔 같은 축으로 선다.
+    input: "GitLab 토큰 못 씀(probe)",
+    fixture: fixture({ repoHost: "gitlab", installationId: null, gitlabConnectionId: "conn-a", gitlabHealth: { status: "connection-unusable" } }),
+    list: { chip: "active", banner: null },
+    home: { banner: "disconnected" },
+    settings: "disconnected",
+    sources: ["synced"],
+    refusal: { error: "none" },
+  },
+  {
+    // ⚠️ GitLab 토큰의 저장 만료일이 지났다(D24) — 목록도 DB만으로 Disconnected다(원격 호출 0). Home·설정은 경계가 `connection-unusable`로 안다.
+    input: "GitLab 토큰 만료(저장 만료일)",
+    fixture: fixture({ repoHost: "gitlab", installationId: null, gitlabConnectionId: "conn-a", gitlabTokenExpiresAt: new Date("2000-01-01T00:00:00Z"), gitlabHealth: { status: "connection-unusable" } }),
+    list: { chip: "disconnected", banner: "disconnected" },
+    home: { banner: "disconnected" },
+    settings: "disconnected",
+    sources: ["synced"],
+    refusal: { error: "none" },
   },
   {
     input: "partial-import",

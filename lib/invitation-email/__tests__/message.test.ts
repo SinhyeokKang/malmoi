@@ -16,7 +16,7 @@ import { INVITATION_EMAIL_HTML, INVITATION_EMAIL_TILE_FALLBACK, INVITATION_EMAIL
  * 여기의 `vercel-storage.com` 0건 단언이 유일한 방어선이다.
  */
 
-const project = { name: "Acme Web", image: null as string | null };
+const project = { name: "Acme Web", image: null as string | null, repoHost: "github" };
 const base = {
   from: "malmoi <invite@notify.mal-moi.com>",
   origin: "https://mal-moi.com",
@@ -71,7 +71,7 @@ describe("buildInvitationEmail", () => {
   });
 
   it("제목·preheader·text에 프로젝트 이름·역할이 없다 — 받은편지함 목록에 OWNER 입력이 서지 않는다", () => {
-    const email = buildInvitationEmail({ ...base, project: { name: "Zebra Launch", image: BLOB }, role: "OWNER" });
+    const email = buildInvitationEmail({ ...base, project: { name: "Zebra Launch", image: BLOB, repoHost: "github" }, role: "OWNER" });
     for (const part of [email.subject, preheader(email.html), email.text]) {
       expect(part).not.toContain("Zebra");
       expect(part).not.toMatch(/Owner|OWNER/);
@@ -134,7 +134,7 @@ describe("buildInvitationEmail — html", () => {
 
   it("Gmail 잘림(102KB) 아래다", () => {
     const longName = "가".repeat(200);
-    expect(Buffer.byteLength(buildInvitationEmail({ ...base, project: { name: longName, image: BLOB } }).html)).toBeLessThan(100 * 1024);
+    expect(Buffer.byteLength(buildInvitationEmail({ ...base, project: { name: longName, image: BLOB, repoHost: "github" } }).html)).toBeLessThan(100 * 1024);
   });
 
   it("로고 PNG가 public/email/에 80×80으로 있다 — 표시 40×40의 @2x", () => {
@@ -390,7 +390,7 @@ describe("buildInvitationEmail — 프로젝트 이름", () => {
       }
     }
     expect(name).not.toBe("");
-    const { html } = buildInvitationEmail({ ...base, project: { name, image: null } });
+    const { html } = buildInvitationEmail({ ...base, project: { name, image: null, repoHost: "github" } });
     expect(html).toContain(`bgcolor="${HUE_HEX[hueOf(name)]}"`);
   });
 });
@@ -647,5 +647,29 @@ describe("buildInvitationEmail — self-hosted", () => {
   it("hosted는 상대 경로 썸네일도 프로덕션 프록시로 싣는다 — 두 형태가 같은 키", () => {
     const { html } = buildInvitationEmail({ ...base, project: { ...project, image: "/api/images/projects/p_1/thumb-x.webp" } });
     expect(srcs(html)).toContain(PROXIED);
+  });
+});
+
+/**
+ * 리포 호스트별 문장 (gitlab-repositories tasks §5) — 메일은 사전 밖 영어 고정 표면이라 문장을 통째로 가른다(호스트 이름 보간 금지).
+ * 초대 대상 프로젝트의 호스트가 고르고, **다른 호스트 이름은 0건**이다.
+ */
+describe("buildInvitationEmail — 리포 호스트", () => {
+  it("GitHub 프로젝트 초대는 GitHub으로 돌려보낸다고 말하고 GitLab이 0건이다", () => {
+    const { html, text } = buildInvitationEmail(base);
+    expect(html).toContain("sends it back to GitHub.");
+    expect(html).not.toMatch(/gitlab/i);
+    expect(text).not.toMatch(/gitlab/i);
+  });
+
+  it("GitLab 프로젝트 초대는 GitLab으로 돌려보낸다고 말하고 GitHub이 0건이다", () => {
+    const { html, text } = buildInvitationEmail({ ...base, project: { ...project, repoHost: "gitlab" } });
+    expect(html).toContain("sends it back to GitLab.");
+    expect(html).not.toMatch(/github/i);
+    expect(text).not.toMatch(/github/i);
+  });
+
+  it("모르는 호스트 값은 GitHub 문장이다 — 기본 열 값과 같다", () => {
+    expect(buildInvitationEmail({ ...base, project: { ...project, repoHost: "bitbucket" } }).html).toContain("sends it back to GitHub.");
   });
 });

@@ -46,6 +46,14 @@ function piiAAD(ctx: PiiContext, kid: string): string {
 function tokenAAD(ctx: TokenContext, kid: string): string {
   return JSON.stringify(["malmoi/github-app-token", "v1", kid, ctx.userId, "github-app", ctx.providerAccountId, ctx.field]);
 }
+/**
+ * 계정 GitLab 연결의 PAT 봉투 AAD (gitlab-repositories D8 — **토큰 키**로 봉한다). 사용자당 연결이 하나라 `userId`가 행을 정한다 —
+ * 다른 사용자의 행으로 옮긴 봉투는 열리지 않는다. 접두가 GitHub App 토큰과 달라 두 봉투가 서로의 칸에서 열리지 않는다.
+ */
+function gitlabTokenAAD(ctx: GitLabTokenContext, kid: string): string {
+  return JSON.stringify(["malmoi/gitlab-pat", "v1", kid, ctx.userId]);
+}
+type GitLabTokenContext = { userId: string };
 function seal(value: string | null, kind: "PII" | "TOKEN", aad: (kid: string) => string): string | null {
   if (value === null) return null;
   const kid = requireEnv(`${kind}_ENCRYPTION_ACTIVE_KEY_ID`);
@@ -69,3 +77,5 @@ export function lookupEmail(email: string, projectId?: string): string {
   if (!key) throw new CredentialError();
   return emailLookup(email, projectId === undefined ? "user" : `invitation:${projectId}`, key, kid);
 }
+export function sealGitLabToken(value: string, ctx: GitLabTokenContext): string { return seal(value, "TOKEN", kid => gitlabTokenAAD(ctx, kid))!; }
+export function openGitLabToken(value: string, ctx: GitLabTokenContext): string { return open(value, "TOKEN", kid => gitlabTokenAAD(ctx, kid))!; }

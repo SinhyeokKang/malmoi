@@ -1,6 +1,7 @@
 import { accessErrorMessage, isAccessError } from "@/lib/auth/message";
 import type { Credential } from "@/lib/auth/subject";
 import { connectErrorMessage, isConnectError } from "@/lib/github-connect/message";
+import { isGitLabConnectError, type GitLabAccessError } from "@/lib/gitlab-connect/errors";
 import { en } from "@/messages/en";
 import { isOnboardError, onboardErrorMessage } from "@/lib/onboarding/message";
 import { isRepositorySettingsError, repositorySettingsErrorMessage } from "@/lib/settings/message";
@@ -23,11 +24,11 @@ import { BATCH_SAVE_LIMIT } from "./batch";
 export const TOOL_REJECTIONS = [
   "not-found", "forbidden", "archived", "unavailable", "token-scope",
   "repo-read-only", "sample-expired", "manual-no-match", "not-ready",
-  "reconfirm", "invalid-input", "too-many", "duplicate-key", "sync-running",
+  "reconfirm", "invalid-input", "too-many", "duplicate-key", "sync-running", "workflow-unavailable",
 ] as const;
 export type ToolRejection = (typeof TOOL_REJECTIONS)[number];
 
-export type NeedsBrowserReason = "not-connected" | "reauthorize" | "no-installations" | "no-candidates";
+export type NeedsBrowserReason = "not-connected" | "reauthorize" | "no-installations" | "no-candidates" | "gitlab-not-connected" | "gitlab-reconnect";
 
 export type ToolOutcome =
   | { status: "ok"; data: Record<string, unknown>; summary: string }
@@ -62,7 +63,14 @@ const MESSAGE = {
   "duplicate-key": en.mcp.errors["duplicate-key"],
   // 적재 lease 중 번역 쓰기 거부(sync-lock C4) — Sync 결과 화면의 문장이다. 다시 열리는 시각은 호출부가 `detail`로 싣는다.
   "sync-running": en.repositorySync.errors["already-running"],
+  "workflow-unavailable": en.mcp.errors["workflow-unavailable"],
 } satisfies Record<ToolRejection, string>;
+
+/**
+ * GitLab에만 있는 리포 거부의 문장 — 화면 사전에 아직 없어 MCP 절이 든다(`en.mcp.errors.gitlab`). 이게 없으면 그 코드가 "모르는 코드"로
+ * 장애(`unavailable`·재시도)에 접혀 에이전트가 보관된 리포를 되풀이해 두드린다. PAT 입력 거부(`GitLabTokenError`)는 MCP에 도구가 없어 닿지 않는다.
+ */
+const GITLAB_MESSAGE = en.mcp.errors.gitlab satisfies Record<GitLabAccessError, string>;
 
 const text = (value: string): ToolResult["content"] => [{ type: "text", text: value }];
 
@@ -73,6 +81,7 @@ const text = (value: string): ToolResult["content"] => [{ type: "text", text: va
 function rejectionMessage(code: string, credential: Credential["kind"] | undefined): string | null {
   if (code === "token-scope") return scopeMessage(credential);
   if (Object.hasOwn(MESSAGE, code)) return MESSAGE[code as ToolRejection];
+  if (isGitLabConnectError(code) && Object.hasOwn(GITLAB_MESSAGE, code)) return GITLAB_MESSAGE[code as GitLabAccessError];
   if (isAccessError(code)) return accessErrorMessage(en, code);
   if (isRepositorySettingsError(code)) return repositorySettingsErrorMessage(en, code);
   if (isOnboardError(code)) return onboardErrorMessage(en, code);

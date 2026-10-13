@@ -12,12 +12,13 @@ import { runTokenFor } from "@/lib/events/payload";
 import { recordEvent, recordRun } from "@/lib/events/record";
 import { requireEnv } from "@/lib/env";
 import { isUniqueViolation } from "@/lib/failure";
-import { openRepoReader } from "@/lib/github";
+import { openRepoReader } from "@/lib/repo-host";
+import { connectionEvidence, newRepoTarget } from "@/lib/repo-host/target";
 import { logFailure } from "@/lib/github-connect/log";
 import { FileContentBudgetError, readFiles, snapshotError } from "@/lib/import/read";
 import { IngestBudgetError } from "@/lib/onboarding/budget";
 import { planConfirmedFormat, templatePaths } from "@/lib/onboarding/confirm";
-import { planProjectCreate, projectLimitFor } from "@/lib/onboarding/create-plan";
+import { planCreateSlot, planProjectCreate, projectLimitFor } from "@/lib/onboarding/create-plan";
 import { ingestTargets } from "@/lib/onboarding/detect";
 import { prepareFirstSnapshot } from "@/lib/onboarding/ingest";
 import { planSlug } from "@/lib/onboarding/slug";
@@ -34,6 +35,7 @@ import { planSurfaceSlug, selectDefaultSurface, surfaceOwnership } from "@/lib/s
 import { planSampleConfirmations } from "@/lib/mcp/confirm";
 
 import { checkRepoAccess, type OnboardFailure } from "./access";
+import { GitLabRepoInput, newRepoLocator } from "./locator";
 import { ownedActiveProjects } from "./repos";
 
 export const CreateProjectInput = z.object({
@@ -50,6 +52,12 @@ export const CreateProjectInput = z.object({
   // (2026-09-07 리뷰 ⚪15).
   name: z.string().trim().min(1).max(PROJECT_NAME_MAX_CHARS),
 });
+
+/**
+ * GitLab ①의 생성 입력 — 리포가 숫자 project id다(`./locator`). 나머지 필드는 GitHub 입력과 같다. 웹 Action이 둘을 union으로 받는다
+ * (MCP `create_project`의 입력은 D2가 정한다 — 거기서 `CreateProjectInput`의 `.omit`·`.shape`를 쓰므로 union으로 바꾸지 않는다).
+ */
+export const CreateGitLabProjectInput = CreateProjectInput.omit({ owner: true, repo: true }).extend(GitLabRepoInput.shape);
 
 /**
  * 트랜잭션 안에서 던져 쓰기를 되돌리는 신호. 밖에서 잡아 `limit-reached`로 바꾼다 —
@@ -88,7 +96,7 @@ export type CreateProjectResult =
 export async function createProjectFromRepo(
   prisma: PrismaClient,
   subject: Subject,
-  input: z.infer<typeof CreateProjectInput>,
+  input: z.infer<typeof CreateProjectInput> | z.infer<typeof CreateGitLabProjectInput>,
   /**
    * MCP `create_project`만 — `detect_formats`가 준 샘플 확인값, `input.surfaces`와 같은 순서(design §2.2). 주면 인가 뒤 읽은 **같은 스냅샷**의
    * head로 전부 대조하고 하나라도 실패하면 쓰기 0건이다. 웹은 주지 않는다(파일을 다시 읽어 `planConfirmedFormat`으로 검증하는 기존 계약).
@@ -113,7 +121,7 @@ export async function createProjectFromRepo(
   // 자유 입력(300개 초과)·직접 호출도 막는다 — 목록 필터는 안내일 뿐이다 (malmoi#126).
   if (isSyncBranchName(input.baseBranch)) return { ok: false, error: "sync-branch" };
 
-  const access = await checkRepoAccess(prisma, userId, input.owner, input.repo, true);
+  const access = await checkRepoAccess(prisma, userId, newRepoLocator(input), { requirePush: true });
   if (access.status === "rejected") return { ok: false, error: access.error };
 
   const [ownerCount, operator, existing] = await Promise.all([
@@ -135,15 +143,15 @@ export async function createProjectFromRepo(
    */
   // allowlist는 정적이라 한 번 계산해 잠금 안 재집계에도 쓴다. ⚠️ 비교에만 쓴다 — 결과·문구에 싣지 않는다(`Infinity`).
   const limit = projectLimitFor(operator);
-  const plan = planProjectCreate({
-    repoConnect: access.connect,
-    ownerCount,
-    slugTaken: existing !== null,
-    limit,
-  });
-  if (plan.status !== "ok") return { ok: false, error: plan.status };
+  // GitHub은 연결 계획(`planRepoConnect`)이 함께 든 순서를 지난다. GitLab은 호출자 권한이 이미 ok라 제한 → 충돌만 남는다(같은 `planCreateSlot`).
+  const slot = access.host === "github"
+    ? planProjectCreate({ repoConnect: access.connect, ownerCount, slugTaken: existing !== null, limit }).status
+    : planCreateSlot({ ownerCount, slugTaken: existing !== null, limit });
+  if (slot !== "ok") return { ok: false, error: slot };
+  // 새 리포 — 프로젝트가 없으니 호출자 자신의 접근으로 연다. GitHub 값은 연결 계획과 같다(`checkGitHubAccess`가 `connect`에서 채운다).
+  const target = newRepoTarget(access);
 
-  const reader = await openRepoReader(plan.repoOwner, plan.repoName, plan.installationId, access.repositoryId);
+  const reader = await openRepoReader(target);
   // ⚠️ **탐지와 저장이 같은 ref여야 한다** — 다른 트리로 재검증하면 통과한 포맷이 저장 브랜치에 없을 수 있다.
   const baseBranch = input.baseBranch;
   const snapshot = await reader.snapshot(baseBranch);
@@ -152,7 +160,7 @@ export async function createProjectFromRepo(
     // ⚠️ 검증과 적재가 같은 head다 — 아래 준비는 이 스냅샷의 blob sha로만 읽는다. 확인 뒤 ref를 다시 읽지 않는다.
     const verdict = planSampleConfirmations({
       candidates: input.surfaces.map((surface, index) => ({ ...surface, confirmation: options.confirmations?.[index] })),
-      context: { userId, repositoryId: access.repositoryId, installationId: plan.installationId, ref: baseBranch, headSha: snapshot.headSha },
+      context: { userId, repositoryId: target.repositoryId, connection: connectionEvidence(target), ref: baseBranch, headSha: snapshot.headSha },
       secret: requireEnv("APP_SIGNING_SECRET"),
       now: new Date(),
     });
@@ -222,9 +230,10 @@ export async function createProjectFromRepo(
   if (!ownership.ok) return { ok: false, error: "path-conflict", conflicts: ownership.conflicts };
   const defaultSurface = selectDefaultSurface(prepared);
   if (defaultSurface === null) return { ok: false, error: "invalid input" };
-  const yaml = renderProjectWorkflowYaml({ slug: input.slug, baseBranch, surfaces: prepared.map(s => ({
+  // ⚠️ GitLab CI 템플릿(`lib/onboarding/gitlab-ci.ts`)은 화면이 고른다(E-ui — 릴리스 SHA가 없으면 내지 않는다). 여기서는 GitHub 워크플로만 만든다.
+  const yaml = target.host === "github" ? renderProjectWorkflowYaml({ slug: input.slug, baseBranch, surfaces: prepared.map(s => ({
     surfaceSlug: s.surface.surfaceSlug, pathTemplate: s.surface.pathTemplate, ...s.workflow,
-  })), ...apiUrlOf(options.origin) });
+  })), ...apiUrlOf(options.origin) }) : "";
   const pushToken = generatePushToken();
   let writingPath = defaultSurface.surface.pathTemplate;
 
@@ -251,14 +260,17 @@ export async function createProjectFromRepo(
           id: projectId,
           slug: input.slug,
           name: input.name,
-          // 이름은 **probe가 준 현재 값**이다 — 리네임된 리포도 지금 이름으로 붙는다.
-          repoOwner: plan.repoOwner,
-          repoName: plan.repoName,
+          // 이름은 **확인한 접근이 준 현재 값**이다(GitHub probe · GitLab `path_with_namespace`) — 리네임된 리포도 지금 이름으로 붙는다.
+          repoHost: target.host,
+          repoOwner: target.owner,
+          repoName: target.name,
           // ⚠️ default가 `"main"`이라 **반드시 채운다** — default branch가 `develop`인 리포의
           // pull이 `main`을 찾아 `base-branch-missing`으로 죽는다 (ARCHITECTURE §3.1).
           baseBranch,
-          installationId: plan.installationId,
-          repositoryId: access.repositoryId,
+          // ⚠️ GitLab 행에 설치 id를 넣지 않는다 — 연결 증거는 생성자 계정 GitLab 연결의 **참조**다(사본을 두지 않는다).
+          installationId: target.host === "github" ? target.installationId : null,
+          gitlabConnectionId: target.host === "gitlab" ? target.connectionId : null,
+          repositoryId: target.repositoryId,
           // 저장하는 것은 재탐지 결과다 — 클라이언트 입력이 아니다.
           pushTokenHash: hashPushToken(pushToken),
         },
@@ -285,7 +297,7 @@ export async function createProjectFromRepo(
         subtype: "settings.projectCreated",
         actor: { kind: "USER", userId },
         scope: "project-wide",
-        payload: { kind: "SETTINGS", field: "project", value: { before: null, after: `${plan.repoOwner}/${plan.repoName}` } },
+        payload: { kind: "SETTINGS", field: "project", value: { before: null, after: `${target.owner}/${target.name}` } },
       });
       let changedValues = 0;
       for (const item of prepared) {

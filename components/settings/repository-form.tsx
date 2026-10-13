@@ -1,5 +1,6 @@
 "use client";
 
+import { isGitLabConnectError } from "@/lib/gitlab-connect/errors";
 import { useEffect, useRef, useState, useTransition } from "react";
 
 import { updateRepositorySettings } from "@/app/(edit)/projects/[slug]/settings/actions";
@@ -50,6 +51,14 @@ export function RepositoryForm({ slug, owner, repo, baseBranch, disabled = false
     // 연결된 프로젝트의 목록은 읽기다 — 온보딩 ①의 `listRepoBranches`(쓰기 권한 요구)가 아니다 (#123).
     void listProjectBranches({ slug }).then(response => {
       if (!active) return;
+      /*
+        GitLab 연결을 못 쓴다(만료·철회·참조 비움) — 카드 머리 Alert와 교체 폼이 이미 원인과 할 일을 말한다(시안 G6c1 · #252). 이 행은 저장된 브랜치를
+        고른 그대로의 Select로 두고 빨간 계정 안내를 한 번 더 세우지 않는다(같은 거부가 한 카드에 두 번 서지 않는다).
+      */
+      if (!response.ok && isGitLabConnectError(response.error)) {
+        setChoice({ mode: "select", names: [baseBranch], selected: baseBranch });
+        return;
+      }
       // 설정은 리포 기본값이 아니라 저장된 값을 보존한다. 삭제된 브랜치도 조용히 바꾸지 않는다.
       setChoice(planBranchChoice({
         names: response.ok ? response.names : undefined,
