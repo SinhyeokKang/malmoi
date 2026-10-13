@@ -712,7 +712,7 @@ export const en = {
        * ⚠️ **여기서 이름을 대는 저장 항목은 `lib/privacy/collected.ts`의 등재와 절 id로 묶인다** —
        * 표는 필드 여럿을 한 행으로 접으므로 대조 단위가 라벨이 아니라 절이다.
        */
-      effectiveDate: "2026-10-12",
+      effectiveDate: "2026-10-13",
       /**
        * 목차 이름 — ⚠️ **`sections` 밖에 둔다**: `policy-gate.test.tsx`가 `sections`를 해시하므로 안에 넣으면 개정 이력이 요구된다.
        */
@@ -739,7 +739,7 @@ export const en = {
                 rows: [
                   [
                     "Your name, email address and profile picture",
-                    "GitHub or Google, when you sign in",
+                    "Name and email: GitHub, GitLab or Google when you sign in (GitLab supplies your username if no name is set). Profile picture: GitHub or Google only; Malmoi does not receive a profile picture from GitLab",
                     "Identifying you to your teammates",
                   ],
                   [
@@ -748,8 +748,8 @@ export const en = {
                     "Matching an invitation to the account that accepts it, without comparing addresses in the clear",
                   ],
                   [
-                    "Which GitHub or Google account you signed in with, as the account id at that provider",
-                    "GitHub or Google, when you sign in",
+                    "Which GitHub, GitLab or Google account you signed in with, as the account id at that provider",
+                    "GitHub, GitLab or Google, when you sign in",
                     "Recognizing you the next time. Malmoi keeps no sign-in tokens — the id is all it stores",
                   ],
                   [
@@ -765,7 +765,7 @@ export const en = {
                   [
                     "Sign-in state: your session, and short-lived challenges for linking an account or signing other sessions out",
                     "Created by Malmoi",
-                    "Keeping you signed in, and proving that a reply from GitHub or Google belongs to a round trip you started",
+                    "Keeping you signed in, and proving that a reply from GitHub, GitLab or Google belongs to a round trip you started",
                   ],
                   [
                     "Your project membership and any invitation sent to your address",
@@ -877,7 +877,7 @@ export const en = {
             {
               ul: [
                 "GitHub — signing you in, and reading and writing the repository a project is connected to. Translations are committed and opened as a pull request by Malmoi's GitHub App, not under your own account.",
-                "GitLab (gitlab.com) — if you connect it, Malmoi sends your PAT to verify your identity and repository access, read repository files, and write translation commits and merge requests. Publishing uses the GitLab account whose connection is saved on the project; commits and merge requests are attributed to that account.",
+                "GitLab (gitlab.com) — signing you in, and reading and writing the repository a project is connected to. If you connect it, Malmoi sends your PAT to verify your identity and repository access, read repository files, and write translation commits and merge requests. Publishing uses the GitLab account whose connection is saved on the project; commits and merge requests are attributed to that account.",
                 "Google — signing you in, if you choose Google.",
                 "Supabase — the database, hosted in Tokyo.",
                 "Vercel — hosting for the app, storage for uploaded profile pictures and project pictures, and counting visits to the public pages (Web Analytics, described under What we collect). Vercel records requests to the service, including IP addresses, as part of running it.",
@@ -921,7 +921,7 @@ export const en = {
           heading: "Cookies",
           blocks: [
             {
-              p: "Every cookie Malmoi sets is needed to sign you in, to finish a round trip to GitHub or Google, or to remember the language and theme you chose for Malmoi's screens and whether you collapsed the sidebar. There are no analytics, advertising or tracking cookies, so there is nothing here to consent to or turn off. All of them except the sidebar cookie are http-only, which means scripts cannot read them. The sidebar cookie holds only whether the sidebar is collapsed, so Malmoi's pages write it directly.",
+              p: "Every cookie Malmoi sets is needed to sign you in, to finish a round trip to GitHub, GitLab or Google, or to remember the language and theme you chose for Malmoi's screens and whether you collapsed the sidebar. There are no analytics, advertising or tracking cookies, so there is nothing here to consent to or turn off. All of them except the sidebar cookie are http-only, which means scripts cannot read them. The sidebar cookie holds only whether the sidebar is collapsed, so Malmoi's pages write it directly.",
             },
             {
               table: {
@@ -938,7 +938,7 @@ export const en = {
                   [
                     "Sign-in state",
                     "15 minutes",
-                    "Proves that the reply from GitHub or Google belongs to the sign-in you started",
+                    "Proves that the reply from GitHub, GitLab or Google belongs to the sign-in you started",
                   ],
                   ["Repository connection state", "10 minutes", "The same, for connecting a repository"],
                   [
@@ -961,7 +961,7 @@ export const en = {
             {
               p: "The effective date at the top belongs to the text below it: whenever this policy changes, that date moves and the change is listed here.",
             },
-            { ul: ["2026-10-12 — GitLab repositories are supported. This policy now covers GitLab account identifiers, encrypted personal access tokens, expiry dates and scopes, connection retention, and transfers to gitlab.com.", "2026-10-09 — the “Needs your attention” list in the header is now called Inbox, and it also has its own page. Viewing that page counts as looking at your Inbox, the same as opening the list in the header.", "2026-10-07 — Malmoi remembers whether you collapsed the sidebar in a cookie on this browser. It is the only cookie that scripts can read, and it holds nothing else.", "2026-10-05 — the “Needs your attention” list in the header marks items that are new since you last opened it. Malmoi keeps one time per account — when you last opened the list — and no record of which items you saw.", "2026-10-05 — you can choose Malmoi's theme: System, Light or Dark. Malmoi remembers your choice with your account and in a cookie on this browser, and signing in copies the theme saved to your account into that cookie.", "2026-10-05 — you can choose the time zone Malmoi uses for dates and times. Malmoi remembers your choice with your account only, not in a cookie. Public pages always use UTC.", "2026-10-05 — you can choose the language of Malmoi's screens: English, Korean or Spanish. Malmoi remembers your choice with your account and in a cookie on this browser, and signing in copies the language saved to your account into that cookie. This policy is also published in Korean.", "2026-09-29 — you can also connect an app such as Claude Code or Codex by signing in through your browser, with no token to copy. Malmoi keeps the connection — the app's name and address, the actions and projects you allowed, when it was used — and only hashes of the tokens it issued; you can disconnect it on the MCP connector page.", "2026-09-29 — you can create a personal token for AI agents on the MCP connector page. Malmoi stores only a hash of it, with the actions and projects you allowed and when it was used.", "2026-09-28 — invitation emails show the name and picture of the project you are invited to, and your role in it. They still do not say who invited you.", "2026-09-27 — visits to the public pages are counted with Vercel Web Analytics, without cookies.", "2026-09-26 — the product name is written Malmoi. No change to what we collect or share.", "2026-09-24 — invitations can be sent by email through Resend.", "2026-09-19 — first version."] },
+            { ul: ["2026-10-13 — GitLab is also a sign-in provider. This policy now covers receiving your name (or username), email address and GitLab account id for sign-in, and using gitlab.com for that purpose. Malmoi does not receive a profile picture from GitLab.", "2026-10-12 — GitLab repositories are supported. This policy now covers GitLab account identifiers, encrypted personal access tokens, expiry dates and scopes, connection retention, and transfers to gitlab.com.", "2026-10-09 — the “Needs your attention” list in the header is now called Inbox, and it also has its own page. Viewing that page counts as looking at your Inbox, the same as opening the list in the header.", "2026-10-07 — Malmoi remembers whether you collapsed the sidebar in a cookie on this browser. It is the only cookie that scripts can read, and it holds nothing else.", "2026-10-05 — the “Needs your attention” list in the header marks items that are new since you last opened it. Malmoi keeps one time per account — when you last opened the list — and no record of which items you saw.", "2026-10-05 — you can choose Malmoi's theme: System, Light or Dark. Malmoi remembers your choice with your account and in a cookie on this browser, and signing in copies the theme saved to your account into that cookie.", "2026-10-05 — you can choose the time zone Malmoi uses for dates and times. Malmoi remembers your choice with your account only, not in a cookie. Public pages always use UTC.", "2026-10-05 — you can choose the language of Malmoi's screens: English, Korean or Spanish. Malmoi remembers your choice with your account and in a cookie on this browser, and signing in copies the language saved to your account into that cookie. This policy is also published in Korean.", "2026-09-29 — you can also connect an app such as Claude Code or Codex by signing in through your browser, with no token to copy. Malmoi keeps the connection — the app's name and address, the actions and projects you allowed, when it was used — and only hashes of the tokens it issued; you can disconnect it on the MCP connector page.", "2026-09-29 — you can create a personal token for AI agents on the MCP connector page. Malmoi stores only a hash of it, with the actions and projects you allowed and when it was used.", "2026-09-28 — invitation emails show the name and picture of the project you are invited to, and your role in it. They still do not say who invited you.", "2026-09-27 — visits to the public pages are counted with Vercel Web Analytics, without cookies.", "2026-09-26 — the product name is written Malmoi. No change to what we collect or share.", "2026-09-24 — invitations can be sent by email through Resend.", "2026-09-19 — first version."] },
           ],
         },
       ],

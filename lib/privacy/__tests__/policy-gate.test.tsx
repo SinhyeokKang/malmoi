@@ -57,6 +57,8 @@ const REVISIONS: readonly { effectiveDate: string; digest?: string; koDigest?: s
   { effectiveDate: "2026-10-09", digest: "93ef1af16b1d01bad8684674ce4e0f3090a384b00b3c890581e24c81b40f9c62", koDigest: "ba4125e3dfef10e445332fa60cf0804326a0e06766111cf673d75f68a871b674" },
   // gitlab-repositories — PAT 봉투·계정 식별자·수명·gitlab.com 전송. 머지일이 바뀌면 날짜를 옮긴다.
   { effectiveDate: "2026-10-12", digest: "58caced24190ea57c942c8d44d287a30d745b14d2d9beeb367f8d520fa171acf", koDigest: "7e663a9ca85ec2e48fa0f315891ffd8200c24eecb4814fca47d5ff3f14faf0b5" },
+  // gitlab-oauth — 로그인 목적·수집 출처를 추가한다. GitLab 사진은 받지 않으며 로그인 활성화보다 먼저 시행한다.
+  { effectiveDate: "2026-10-13", digest: "73f0e3f44be7f3f2b80c2242cba000920c3ebf1e24b26719a908081988f86a12", koDigest: "fea06b654faf29d5ba2de15ded69675bce0307caf01c55d644fca3af75df2a33" },
 ];
 
 const privacy = en.publicDocs.privacy;
@@ -307,6 +309,6 @@ it("GitLab 수집·전송·보존과 시행일을 두 방침에 명시한다", (
       expect(docText(body.sections.filter(s => s.id === id)), id).toContain("GitLab");
     }
     expect(docText(body.sections)).toContain("gitlab.com");
-    expect(body.effectiveDate).toBe("2026-10-12");
+    expect(body.effectiveDate).toBe("2026-10-13");
   }
 });
