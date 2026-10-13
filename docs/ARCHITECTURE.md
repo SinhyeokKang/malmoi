@@ -1589,7 +1589,7 @@ namespace `"unresolved"`와 지역 이름 `unsupported`도 정상 사용자 문�
   면제되지만 env로 지정한 소수의 정적 계정이라 이 판정을 바꾸지 않는다.
   "인덱스는 전부 `projectId` 선두"(위 §5)를 여기서도 지키고, 실제로 느려지면 그때 예외를 만든다.
 
-**신규 github/google 로그인 Account는 OAuth 토큰을 저장하지 않는다** (2026-09-10).
+**신규 github/gitlab/google 로그인 Account는 OAuth 토큰을 저장하지 않는다** (2026-09-10 · GitLab 추가 2026-10-13).
 `safePrismaAdapter.linkAccount`가 `userId`·`type`·`provider`·`providerAccountId`만 저장한다.
 현재 credential 구현은 Session을 도메인 분리 SHA-256 digest로, GitHub App 토큰과 User.email/name/image·초대 email을 독립 AES-256-GCM 키로 저장한다. 검색은 별도 키의 HMAC emailLookup을 사용한다. User DTO는 서버에서 복호화하고 타인 이메일의 기존 마스킹을 유지한다. 조회·복호화 장애는 unavailable이며 자동 계정 생성이나 평문 fallback은 없다.
 
@@ -2358,7 +2358,7 @@ Logs 행위자·상세 Trigger·보조줄·Home 메타 열이 이것 하나를 �
 
 | 용도 | 자격증명 | 이유 |
 |---|---|---|
-| 편집 UI **로그인** | GitHub·Google OAuth **App** 중 **켜진 것** (Auth.js, DB 세션 / `AUTH_GITHUB_*`·`AUTH_GOOGLE_*` — 완전한 쌍 최소 하나, 아래 "켜진 로그인 공급자") | 신원 확인까지다 — **무엇을 할 수 있는지는 정하지 않는다**. GitHub 로그인을 끈 설치도 리포 연결은 GitHub App user-to-server 인가로 한다 — 로그인 자격증명이 그 자리를 대신하지 않는다 |
+| 편집 UI **로그인** | GitHub·GitLab·Google OAuth **App** 중 **켜진 것** (Auth.js, DB 세션 / `AUTH_GITHUB_*`·`AUTH_GITLAB_*`·`AUTH_GOOGLE_*` — 완전한 쌍 최소 하나, 아래 "켜진 로그인 공급자") | 신원 확인까지다 — **무엇을 할 수 있는지는 정하지 않는다**. GitHub 로그인을 끈 설치도 리포 연결은 GitHub App user-to-server 인가로 한다 — 로그인 자격증명이 그 자리를 대신하지 않는다 |
 | 편집 UI **인가** | `ProjectMember` 행 (`getProjectAccess`) | 로그인 provider가 권한을 정하지 않는다 (§0 불변식 7). 허용 핸들 목록은 2026-09-06에 사라졌다 |
 | 운영자 판정 (`isOperatorUser`, 2026-10-03) | `User.emailLookup` × `OPERATOR_EMAILS` | **인가 아님** — 사용자당 프로젝트 상한 면제 하나만 바꾼다. 로그인·`ProjectMember` 인가·화면 표시와 무관하다 (§6.2.2) |
 | `/api/search-index/[uiLocale]` | **공개 · 세션 없음 · `force-static`** | 그 언어 원고(`guide/<uiLocale>/`) SUMMARY에 등재된 공개 가이드만 빌드 때 JSON으로 만든다 — 언어별 정적 파일 셋(`generateStaticParams` = `guideLocales()`, `dynamicParams = false`). 인증·DB·쿠키 조회가 없고 원고 실패는 빌드를 실패시킨다. `entry-points.test.ts`의 `EXEMPT` 사유도 이 경계다 (§6.37) |
@@ -2695,6 +2695,8 @@ login-link · session-revocation · `acceptInvitation`이다. 두지 않는 이�
 
 `lib/session-revocation/http.ts`는 요청별 AsyncLocalStorage로 Auth.js state 쿠키를 별도 이름과 salt로 분리한다(기본 15분). nonce가 사라지거나 확인 요청이 교체/소비돼도 일반 로그인으로 전환되지 않는다. signIn의 고정 URL 반환이 handleLoginOrRegister 전에 끝내므로 새 세션·계정·이메일 갱신이 없다. 응답 wrapper는 내부 완료 결과만 성공 근거로 삼아 nonce/state 쿠키를 지우고, 성공 때만 세션 쿠키도 지운다. 일반 로그인 두 시작(`/signin`, 초대)은 이전 회수 쿠키를 정리한다. 시작과 완료의 Secure 판정은 host/forwarded-proto를 함께 사용한다. ✅ **프로덕션에서 실물 확인했다** — 그 사용자의 세션 둘이 지워지고 다른 사용자의 세션은 남았으며 새 세션은 생기지 않았다. 남은 실물 확인은 Google 왕복·취소 경로·키보드/포커스다.
 
+⚠️ **GitLab 회수·[Connect]의 재인증은 살아 있는 GitLab 세션만 증명한다**(2026-10-13 T0 실측). 최초 인가 뒤 재왕복은 화면 없이 돌아오며 `prompt=select_account`·`login`·`consent`를 오류 없이 무시한다. 계정 전환 파라미터가 없어 별도 `reauthParams`를 만들지 않고 기존 호출을 유지했다. 새 비밀번호 입력이나 계정 선택을 강제했다는 뜻이 아니다. 세션/state에 묶인 challenge·계정 id 대조·단일 소비는 그대로지만, 공유 브라우저의 살아 있는 GitLab 세션을 쓸 수 있는 사람을 이 왕복만으로 구별하지 못한다.
+
 #### 6.1.15 ⚠️ 키 부재는 던지고 행 하나는 살린다 — **순서가 판정이다** (2026-09-10)
 
 암호화 전환 뒤 목록 로더들이 행마다 복호화한다: `loadMembers`·`loadPendingInvitations`(`lib/auth/query.ts`) · `loadEvents`·`loadEventActors`(`lib/events/query.ts` — 옛 `loadSyncRuns`의 자리, 2026-09-24 삭제) · `loadActors`(`lib/keys/query.ts`).
@@ -2723,9 +2725,13 @@ login-link · session-revocation · `acceptInvitation`이다. 두지 않는 이�
 
 ⚠️ **GitHub provider의 기본 동작을 대체한다.** 그쪽은 공개 이메일이 없을 때만 `/user/emails`를 조회하고, 조회해도 `emails.find(e => e.primary) ?? emails[0]`로 **주소만 뽑고 `verified`를 버린다**. 우리는 항상 조회해 **primary이면서 verified**인 것만 받는다 — primary가 미검증이면 다른 검증 주소로 넘어가지 않고 거부한다(계정의 정본 주소는 primary 하나다). 대가는 **primary와 다른 주소로 초대받은 사람이 수락하지 못하는 것**이고, 회피는 primary 주소로 초대하는 것이다.
 
+**GitLab.com 로그인은 REST `read_user` + `/api/v4/user`다**(2026-10-13, gitlab-oauth) — OIDC·`openid`를 쓰지 않고 발급자도 고정한다. `gitlabProfile`이 기본 `profile()`을 대체해 **비어 있지 않은 `email`과 공백만이 아닌 문자열 `confirmed_at`**을 요구한다. 빠지면 이메일을 비워 `signIn`이 `AccessDenied`로 거부하며 `User`·`Account`·`Session`을 쓰지 않는다. T0 실측에서 `confirmed_at`은 ISO 문자열, `public_email`은 null이었다. GitLab은 주 이메일 변경 시 새 주소를 `unconfirmed_email`에 두고 확인 뒤 `email`로 옮기므로, 계정 확인 시각과 현재 주 이메일을 함께 본다. 공개·보조 주소는 읽지 않고 주 이메일만 쓴다. 재로그인 갱신과 수단 연결도 `freshVerifiedEmail`의 같은 증명을 지난다. 이름은 `name`이 비면 `username`, `image`는 항상 null이다 — 실측 아바타가 gravatar여서 받으면 보는 사람의 브라우저에 제3자 전송처와 CSP 호스트가 늘어난다.
+
+⚠️ **GitLab `profile()`의 무효 id는 두 홉 뒤 `Configuration`에 닿는다.** `gitlabProfile`은 숫자가 양의 안전한 정수가 아니거나 문자열이 `/^[1-9]\d*$/`가 아니면 던진다. 누락 id는 Auth.js의 난수 폴백으로 매번 다른 Account가 되고 빈 문자열은 폴백을 지나 모든 응답이 `Account(gitlab, "")`로 모이므로 모양까지 검사한다. `githubUserinfo`의 `userinfo.request` 예외와 달리 Auth.js가 이 예외를 `OAuthProfileParseError`로 로그만 하고 삼킨 뒤 오류 코드 없는 `<callback URL>/signin`으로 보내면서 state·PKCE 쿠키를 지운다. 그 홉을 따라가면 검사 쿠키가 없어 `/signin?error=Configuration`에 닿는다. **어느 홉도 `User`·`Account`·`Session`을 쓰지 않는다** — `test:credentials:postgres`가 두 홉을 잰다.
+
 ⚠️ **`allowDangerousEmailAccountLinking`을 어느 provider에도 켜지 않는다.** 어댑터는 이메일이 같은 User가 있고 그 provider의 Account가 없으면 `OAuthAccountNotLinked`를 던지는데, **이것은 이메일 기반 자동 병합을 거부하는 기본 방어선이다** (§6.2.1 — 잘못된 자동 병합은 불편이 아니라 계정 탈취). `lib/auth/__tests__/provider-config.test.ts`가 그 대입의 부재를 검사한다. ⚠️ **계정 병합(2026-09-12)이 그 옵션을 켜지 않는다** — 아래 절.
 
-⚠️ **두 provider에 `checks: ["pkce", "state"]`를 건다** (2026-09-10, sec-audit-2). Google은 OIDC PKCE를 지원하고, **GitHub도 `code_challenge`를 받는다** — 실물 왕복으로 확인했다(`code_challenge_method=S256`이 authorize URL에 실려 나가고 토큰 교환이 통과한다). `lib/credentials/__tests__/sign-in.test.ts`가 그 설정을 고정한다.
+⚠️ **세 provider에 `checks: ["pkce", "state"]`를 건다** (2026-09-10, sec-audit-2). Google은 OIDC PKCE를 지원하고, **GitHub도 `code_challenge`를 받는다** — 실물 왕복으로 확인했다(`code_challenge_method=S256`이 authorize URL에 실려 나가고 토큰 교환이 통과한다). GitLab도 2026-10-13 실측에서 PKCE S256 왕복을 통과했다. `lib/credentials/__tests__/sign-in.test.ts`가 그 설정을 고정한다.
 
 ## 계정 병합 — `signIn` 콜백의 갈래 둘 (2026-09-12, account-linking)
 
@@ -2779,7 +2785,7 @@ intent는 쿠키 존재로도 켜지므로, 연결 시작이 OAuth state를 쓴 
 
 **로그인된 세션에서 추가 provider를 연결하는 경로는 별도로 막는다** (sec-audit-2 #31).
 `safePrismaAdapter` 기반의 `credentialAdapter`는 OAuth callback의 `getSessionAndUser`부터 만료 세션을 반환하지 않고,
-현재도 만료인 행만 조건부 삭제한다. `linkAccount`는 User 행을 잠근 뒤 기존 github/google
+현재도 만료인 행만 조건부 삭제한다. `linkAccount`는 User 행을 잠근 뒤 기존 github/gitlab/google
 Account가 있으면 거부한다. 신규 로그인 Account는 식별자 네 필드만 저장해 OAuth 토큰을 남기지 않는다.
 GitHub App 연결은 별도 callback이며 User 행 잠금으로 직렬화하고 UPDATE/DELETE에 `userId`를
 포함한다. P2002 재조회는 실패한 트랜잭션 밖에서 수행한다.
@@ -2800,15 +2806,15 @@ challenge**가 그 둘을 묶을 것. 셋을 다 통과한 뒤에야 `Account`�
 
 ### 켜진 로그인 공급자 (2026-10-09, optional-login-providers)
 
-**공급자 상태는 env 한 쌍이 정한다** — `AUTH_<P>_ID`·`AUTH_<P>_SECRET`이 둘 다 값이 있으면 `enabled`, 둘 다 비면 `absent`, 하나만 있으면 `partial`(공백만 있는 값은 빈 값 — preflight `present`와 **같은 함수**를 쓴다. 두 벌이면 preflight와 런타임이 갈린다). **켜진 집합** = `enabled`인 공급자, 순서는 언제나 `github` → `google`(`lib/auth/login-providers.ts` — `loginProviderStates`·`enabledLoginProviders`·`LOGIN_PROVIDER_ENV`). self-hosted preflight는 `partial`을 `incomplete-pair`(빠진 쪽 이름)로, `enabled` 0개를 `no-login-provider`(두 ID 이름)로 거부한다. hosted엔 preflight가 없어 반쪽이면 그 버튼이 **조용히 사라진다** — 우리가 env를 넣고 `/signin` 첫 화면에서 바로 보이므로 신호를 따로 만들지 않는다. 판정은 모드로 가르지 않는다(hosted는 두 쌍이라 결과가 지금과 같다).
+**공급자 상태는 env 한 쌍이 정한다** — `AUTH_<P>_ID`·`AUTH_<P>_SECRET`이 둘 다 값이 있으면 `enabled`, 둘 다 비면 `absent`, 하나만 있으면 `partial`(공백만 있는 값은 빈 값 — preflight `present`와 **같은 함수**를 쓴다. 두 벌이면 preflight와 런타임이 갈린다). **켜진 집합** = `enabled`인 공급자, 순서는 언제나 `github` → `gitlab` → `google`(`lib/auth/login-providers.ts` — `loginProviderStates`·`enabledLoginProviders`·`LOGIN_PROVIDER_ENV`). self-hosted preflight는 `partial`을 `incomplete-pair`(빠진 쪽 이름)로, `enabled` 0개를 `no-login-provider`(세 ID 이름)로 거부한다. hosted엔 preflight가 없어 반쪽이면 그 버튼이 **조용히 사라진다** — 우리가 env를 넣고 `/signin` 첫 화면에서 바로 보이므로 신호를 따로 만들지 않는다. 판정은 모드로 가르지 않는다(hosted는 세 쌍을 넣는다).
 
 - **Auth.js `providers`에 켜진 것만 들어간다**(`auth.ts` config 함수 안 `withEnabled`). 꺼진 공급자의 `/api/auth/signin/<p>`·callback은 성립하지 않는다 — **화면 숨김이 유일한 방어선이 아니다.** ⚠️ 방어선은 `withEnabled` 행동 테스트가 지고 `auth.ts`는 주석을 벗긴 **호출형**만 센다(POSTMORTEM 2026-09-18). ⚠️ 켜진 집합은 **요청마다 함수 호출로** 얻는다 — 모듈 최상위에서 env를 읽지 않는다(POSTMORTEM 2026-08-31).
 - ⚠️ **`LOGIN_PROVIDERS`(`lib/login-link/policy.ts`)는 우주(universe)로 남는다** — DB 조회·challenge 파싱·`safe-adapter`의 "추가 연결 금지"는 꺼진 공급자의 행도 읽어야 숨김을 판정할 수 있다. 판정 함수(`pickLoginAccount`·`loginMethodRows`·`canUnlink`·`signInButtons`·`planLinkOffer`)는 켜진 집합을 **기본값 없는 인자**로 받는다 — 기본값이 우주면 새 호출부가 꺼진 공급자를 조용히 통과시킨다. ⚠️ **policy는 `login-providers.ts`를 import하지 않는다** — 수단 카드(클라이언트)의 그래프라 `lib/env` → `node:crypto`가 번들에 실린다(POSTMORTEM 2026-09-07). 켜진 집합은 서버 진입점이 구해 인자·props로 내린다.
-- **해제(`canUnlink`)는 해제 뒤 켜진 연결 수단이 하나 이상 남을 때만이다.** 반례가 이 기능의 보안 요지다 — 연결 `[github, google]`, 켜짐 `[google]`이면 Google 해제는 거부다(행 수로 세면 허용되고, 해제 즉시 그 계정은 다시 로그인할 수 없다). 꺼진 공급자의 해제 요청은 `last-method`가 아니라 `unavailable`이다 — `unlinkLoginMethod`가 켜진 집합 밖의 공급자를 판정 전에 거른다(우주 밖 값, 예컨대 `github-app`도 같다 — 그 행은 로그인 수단이 아니다). 연결 시작(`startLoginMethodConnect`)도 꺼진 공급자를 Auth.js에 닿기 전에 `?connect=failed`로 거부한다(쿠키·challenge 행을 만들지 않는다).
-- **확인 상대는 켜진 연결 수단 중에서만 고른다**(`github` 우선, 결정적) — 전체 로그아웃(`beginRevocation`)·병합 안내(`loadLinkOffer`)·병합 확인 화면(`loadChallengeView`). 없으면 전체 로그아웃은 `unavailable`(화면 트리거는 사유 동반 비활성), 확인 화면은 `/signin`, 병합 안내는 새 kind `method-unavailable` → **`/signin?error=MethodUnavailable`**이다. ⚠️ **`OAuthAccountNotLinked`로 보내지 않는다** — 그 문구는 "가입한 수단을 쓰라"고 하는데 그 버튼이 화면에 없다. 같은 공급자의 다른 계정은 기존 코드 그대로다. 구제가 아니라 안내다 — 이메일 일치로 붙이면 §6.2.1이 금지한 자동 병합이고, 복구는 운영자가 그 공급자를 다시 켜는 것이다. ⚠️ `beginRevocation`은 Action이 고른 상대와 store가 다시 고른 상대를 대조하므로 **한 요청에서 한 번 읽은 집합**을 둘에 넘긴다.
+- **해제(`canUnlink`)는 해제 뒤 켜진 연결 수단이 하나 이상 남을 때만이다.** 반례가 이 기능의 보안 요지다 — 연결 `[github, gitlab, google]`, 켜짐 `[google]`이면 Google 해제는 거부다(행 수로 세면 허용되고, 해제 즉시 그 계정은 다시 로그인할 수 없다). 꺼진 공급자의 해제 요청은 `last-method`가 아니라 `unavailable`이다 — `unlinkLoginMethod`가 켜진 집합 밖의 공급자를 판정 전에 거른다(우주 밖 값, 예컨대 `github-app`도 같다 — 그 행은 로그인 수단이 아니다). 연결 시작(`startLoginMethodConnect`)도 꺼진 공급자를 Auth.js에 닿기 전에 `?connect=failed`로 거부한다(쿠키·challenge 행을 만들지 않는다).
+- **확인 상대는 켜진 연결 수단 중에서만 고른다**(`github` → `gitlab` → `google`, 결정적 — 기존 `[github, google]`의 상대는 GitHub 그대로) — 전체 로그아웃(`beginRevocation`)·병합 안내(`loadLinkOffer`)·병합 확인 화면(`loadChallengeView`). 없으면 전체 로그아웃은 `unavailable`(화면 트리거는 사유 동반 비활성), 확인 화면은 `/signin`, 병합 안내는 새 kind `method-unavailable` → **`/signin?error=MethodUnavailable`**이다. ⚠️ **`OAuthAccountNotLinked`로 보내지 않는다** — 그 문구는 "가입한 수단을 쓰라"고 하는데 그 버튼이 화면에 없다. 같은 공급자의 다른 계정은 기존 코드 그대로다. 구제가 아니라 안내다 — 이메일 일치로 붙이면 §6.2.1이 금지한 자동 병합이고, 복구는 운영자가 그 공급자를 다시 켜는 것이다. ⚠️ `beginRevocation`은 Action이 고른 상대와 store가 다시 고른 상대를 대조하므로 **한 요청에서 한 번 읽은 집합**을 둘에 넘긴다.
 - **꺼진 공급자의 `Account` 행은 지우지 않고 숨긴다** — `/account` 수단 카드는 켜진 공급자 행만 그리고, 다시 켜면 그대로 돌아온다. 세션엔 공급자가 없어 공급자를 꺼도 살아 있는 세션은 끊기지 않는다(그 세션으로 켜진 공급자를 연결할 수 있다).
 - ⚠️ **이메일 갱신(`lib/credentials/access.ts`의 `loginMethods`)은 꺼진 행까지 센다** — 꺼진 GitHub 행이 남은 사용자가 Google로 로그인해도 `planEmailRefresh`는 `keep`이다. 다시 켜면 그대로 돌아온다는 보존과 같은 방향이라 의도다. 결함으로 오진하지 않는다.
-- 우주 하드코딩 사본(`beginRevocation`의 `["github", "google"]`·`lib/session-revocation/policy.ts`·`safe-adapter`·`lib/auth/email.ts`·`lib/credentials/*`)은 이 기능에서 바꾸지 않았다 — 한 곳만 켜진 집합으로 바꾸면 사본 간 정합만 깨진다.
+- **우주 하드코딩 사본은 `LOGIN_PROVIDERS` 하나로 모았다**(2026-10-13, gitlab-oauth). DB 조회·challenge 파싱·callback 가로채기(`lib/auth/roundtrip.ts`)가 모두 파생하므로 `/api/auth/callback/gitlab`도 회수·연결·병합 확인을 지난다. `provider-universe.test.ts`가 `app`·`components`·`lib`와 루트 `auth.ts`·`middleware.ts`를 AST로 훑어 허용 파일 밖의 `google` 문자열 토큰·정규식 교대 항을 센다. 2갈래 삼항의 google 꼬리(`GoogleIcon` 참조는 `brand-icons.tsx` 밖 0, 속성 접근 `.google`은 전체 0)도 세며, 루트별 파일 수 하한(`app ≥ 50`·`components ≥ 100`·`lib ≥ 200`)으로 빈 스캔을 막는다. 공급자별 증명·env 배선처럼 리터럴이 필요한 허용 집합은 테스트가 정본이다.
 
 **인가는 fail-closed다.** 로그인은 이제 **누구에게나 열려 있고**(검증된 이메일만 요구한다), 그것이 아무것도 열지 않는다 — 멤버십이 없는 사용자는 `/projects`에서 "어느 프로젝트의 멤버도 아니다"를 보고, 어떤 slug를 직접 쳐도 `not-found`로 돌아간다.
 
@@ -2835,7 +2841,7 @@ challenge**가 그 둘을 묶을 것. 셋을 다 통과한 뒤에야 `Account`�
   뿐이다** — 소스 스캔 테스트가 고정한다. 인가 경로가 운영자를 보기 시작하면 불변식 7의 단서가 깨진다. 백오피스가 오면 그
   목록을 늘린다.
 - **판정 기준은 계정 병합과 같은 `User.emailLookup`이다.** env 주소마다 병합·로그인과 같은 `lookupEmail`(스코프 `user`,
-  안에서 `normalizeEmail`)로 HMAC해 그 사용자 행(`where: { id: userId }`)의 값과 견준다. 그래서 GitHub·Google 어느 쪽으로
+  안에서 `normalizeEmail`)로 HMAC해 그 사용자 행(`where: { id: userId }`)의 값과 견준다. 그래서 GitHub·GitLab·Google 어느 쪽으로
   들어와도 같은 사람이고 대소문자·앞뒤 공백만 다른 env 주소도 맞는다. 평문 `User.email`(봉투)을 복호해 비교하지 않고,
   `User.id`(DB마다 다르고 dev 리셋마다 바뀐다)·이름·로그인 `Account`로 하지 않는다. `emailLookup`이 `null`인 행은 운영자가 아니다.
 - **파싱**: 쉼표 분리 · 조각마다 `normalizeEmail`(trim + 소문자 — gmail 점·`+` 태그를 접지 않는다) · `@`가 정확히 하나이고
@@ -3472,6 +3478,8 @@ GitHub의 refresh token은 **단일 사용**이다. 그래서 `ensureUserToken`�
 앞의 판정이고, ⚠️ **429는 4xx인데 `unavailable`이다**(영구 거부가 아니다).
 
 ### 6.41 GitLab 연결 — PAT 하나, 프로젝트는 참조 (2026-10-12, gitlab-repositories — `lib/gitlab-connect/`)
+
+**GitLab 로그인 `Account`와 `GitLabConnection`은 별개다 — 서로를 만들거나 지우지 않는다.** 로그인 앱 토큰은 콜백 userinfo 조회 뒤 버리고 PAT는 리포 연결·쓰기만 담당한다. 같은 GitLab 사용자인지도 대조하지 않는다. `credential-separation.test.ts`가 루트 `auth.ts`·`lib/auth`·`lib/login-link`·`lib/account-connect`·`lib/session-revocation`의 PAT 모듈 import를 막는다. 예외는 로그인 경로가 아닌 멤버 변경 코어 `lib/auth/members.ts` → `@/lib/gitlab-connect/removal` 한 쌍의 정확 집합뿐이다(파일 전체 제외 없음). 역방향 규칙은 `lib/gitlab`·`lib/gitlab-connect`·`lib/repo-host`의 Account 접근을 AST로 세어 별칭·구조 분해·대괄호·optional chaining·User의 `accounts` 관계 조회도 잡고 raw SQL의 `"Account"`도 센다. `m.account.gitlab…`는 사전 네임스페이스라 제외한다. 해제 독립은 격리 PG에서 실제 Action으로 검증한다.
 
 GitHub 연결(§6.4)과 달리 **왕복이 없다** — PAT를 Server Action 본문으로 받으므로 callback·state 서명·`ALLOWED_HOSTS` 갈래·새 Route Handler가 생기지 않는다.
 PAT는 URL에 실리지 않는다(셀프 호스팅 nginx 마스킹에 새 경로가 없다는 전제 — 쿼리로 받는 경로가 생기면 마스킹에 등록한다).
@@ -4238,7 +4246,7 @@ default ACL을 지우지 않고 닫는 층이라, 적용·확인이 끝나면 �
     시작"을 뒤집었다). **프로덕션**(그리고 판정 못 한 모든 환경 — 가장 좁은 쪽으로 접는다): `default-src 'self'` ·
     **`script-src 'self' 'nonce-<요청마다>' 'strict-dynamic'`** · `style-src 'self' 'unsafe-inline'` · `font-src 'self'` ·
     `img-src`에 `data:`·GitHub/Google 아바타 호스트 둘(⚠️ **업로드 이미지는 자사 출처라 여기 없다** — §6.7) · `connect-src 'self'` ·
-    `form-action 'self' https://github.com https://accounts.google.com` · `object-src 'none'` · `base-uri 'self'` ·
+    `form-action 'self' https://github.com https://gitlab.com https://accounts.google.com` · `object-src 'none'` · `base-uri 'self'` ·
     `frame-ancestors 'none'`. **`next dev`**: + script `'unsafe-eval'`(React 디버깅) · connect `ws:`·`wss:`(HMR).
     **preview**(`VERCEL_ENV=preview`): + Vercel Toolbar 호스트(Vercel 문서 "Using a Content Security Policy"의 목록 그대로 —
     `vercel.live`·`ws-us3.pusher.com`·`vercel.com`·`assets.vercel.com`·`blob:`, `frame-src 'self' https://vercel.live`).
@@ -4270,9 +4278,9 @@ default ACL을 지우지 않고 닫는 층이라, 적용·확인이 끝나면 �
     미들웨어가 아니라 그 라우트가 읽는다. 토큰(`BLOB_READ_WRITE_TOKEN`)에서 스토어 id를 파싱하지 않는다 — 문서화되지 않은 형식이다.
   - ⚠️ **`form-action`은 폼 제출 뒤의 302에도 걸린다** — Google 로그인은 폼 POST → 302 `accounts.google.com`이라
     그 호스트가 빠지면 Google 로그인만 **콘솔에만 남고** 멈춘다. 새 외부 왕복(공급자·설치 흐름)을 늘리면 여기부터 본다.
-  - ⚠️ **`img-src`는 공급자 아바타 호스트를 둘만 연다** — Google이 `lh3` 밖의 호스트를 주면 그 아바타가 깨진다.
+  - ⚠️ **`img-src`는 공급자 아바타 호스트를 둘만 연다** — GitLab은 아바타를 받지 않아 호스트를 늘리지 않는다. Google이 `lh3` 밖의 호스트를 주면 그 아바타가 깨진다.
   - ⚠️ **깨지는 방식이 조용하다** — 위반은 브라우저 콘솔에만 나고 렌더 테스트가 없어 `pnpm build`로도 못 본다.
-    정책을 바꿨으면 로컬 프로덕션 빌드(`pnpm build && pnpm start` — ⚠️ `pnpm dev`가 떠 있으면 먼저 내린다)에서 로그인 둘·계정 연결·
+    정책을 바꿨으면 로컬 프로덕션 빌드(`pnpm build && pnpm start` — ⚠️ `pnpm dev`가 떠 있으면 먼저 내린다)에서 로그인 셋·계정 연결·
     App 설치 링크·초대 수락·Publish·이미지 업로드(업로드한 사진이 **보이는지**)·토스트·모달(새 프로젝트)·`/docs`·랜딩을 한 바퀴 돌며
     콘솔 위반 0을 확인한다. 스크립트가 막히면 **화면은 뜨고 클릭만 죽는다** — 눈으로 "떴다"를 통과로 적지 않는다.
   - ⚠️ **HSTS의 `includeSubDomains`는 `*.mal-moi.com` 전부를 HTTPS에 묶는다**(`dev.mal-moi.com` 포함) — http로만 뜨는
