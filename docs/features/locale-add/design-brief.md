@@ -1,69 +1,99 @@
-# Add a language — Claude Design 브리프
+# Add and remove languages — 디자인 브리프
 
-> **신규 UI의 첫 구현 동안만 시안이 SoT이고, dev에 들어간 뒤로는 코드 + `docs/DESIGN.md`가 정본이다.**
-> 기능 정의는 `spec.md`, 데이터·판정은 `design.md`가 정본이다 — 이 문서는 그릴 것만 든다.
+> 신규 UI의 첫 구현 동안만 시안이 기준이고, dev 반영 뒤에는 코드 + docs/DESIGN.md가 정본이다. 동작은 spec.md, 상태 전이는 design.md가 정한다. 이 문서는 그릴 화면을 정의한다.
 
-## 한 줄
+작성: 2026-10-13 · 개정: 2026-10-14. 옛 추가 전용 시안을 대체한다. Codex는 사용자 제공 로컬 핸드오프를 사용한다.
 
-소스 상세 모달의 **Languages 카드 머리에 [Add language]**가 생기고, 누르면 작은 Dialog에서 언어 코드를 골라 추가한다. 추가된 언어는 리포에 파일이 생길 때까지 행에 **"Not in repository yet"** 상태를 단다.
+## 화면의 목적
 
-## 놓이는 자리 (실측 — `components/sources/source-detail-modal.tsx`)
+소스 상세 Languages 카드에서 언어를 추가·제거하고 잘못한 요청을 개별 취소한다. **파일 제거는 Publish 뒤 PR/MR 검토를 거친다. 번역은 보존된다.** “앱에서 요청함”, “PR/MR에 전달함”, “리포에 반영됨”을 같은 완료 상태로 그리지 않는다.
 
-- 바깥: `LargeModal`(제목 = 소스 slug, 설명 = "N keys · M languages · 포맷"). 본문 `@container space-y-4`.
-- Languages `Card`(177행): `title` "Languages" · `count` · `description` `languagesHelp`(지금 "Languages come from the repository. Add or remove the files there."). **`action` 슬롯이 비어 있다 — 여기에 버튼.**
-- 행(`li`): `flex items-center gap-4 px-4 py-row-y`, 구분선 `border-border border-t`. 열 셋 — ① 150px(`@max-[850px]` 120px): `LocaleFlag` + 코드 `text-base` + base면 `Badge soft-neutral` · ② 300px: 퍼센트·"x of y" `text-xs` + `Meter` · ③ flex-1 `text-xs`: 상태(`StatusBadge removedFromRepository` · `Badge soft-amber` 검토 수 · base 안내) · 끝: [Open] `ButtonLink size="sm"`.
-- orphaned 행은 깃발 `opacity-50`·코드 `text-muted-foreground`·Meter `dimmed`, 카드 바닥에 `border-divider` 띠("ja was removed from the repository.").
-- 모달 안 Dialog 선례: `components/sources/remove-source-dialog.tsx`(`Dialog` + `DialogContent` + `DialogClose`).
+## 기존 자리와 프리미티브
 
-## 프리미티브 (`components/ui/` — 새로 만들지 않는다)
+- `components/sources/source-detail-modal.tsx`: LargeModal 안 Languages Card. 머리 action에 Add language.
+- 기존 행의 깃발·코드·base 배지·진행률·상태·Open을 유지한다. 행 끝에 상태별 Remove language/Cancel addition/Cancel removal 동작을 넣는다. 좁은 폭에서 기존 버튼과 겹치지 않게 배치한다.
+- orphan 행은 기존 흐린 표시·진행률·복구 설명을 유지한다. REMOVE는 orphan과 다른 상태로 남기고 Open은 읽기 전용 상세를 연다.
+- 중첩 Dialog 선례는 `remove-source-dialog.tsx`. Button·Dialog·Input·Select·FormGroup·Facts/code-block·StatusBadge·Alert를 조립한다. 새 프리미티브나 raw 색을 추가하지 않는다. 다크는 기존 토큰으로 표현한다.
 
-`Button`(카드 action, `size="sm"`) · `Dialog`/`DialogContent`/`DialogClose` · `Input`(json-catalog 코드) · `Select`(chrome-locales 지원 목록) · `FormGroup`(라벨·도움말·오류) · `Facts` 또는 `code-block`(만들 파일 경로 미리보기 — 고르는 쪽이 시안 몫) · `StatusBadge`(새 상태 `notInRepositoryYet` — 기존 `removedFromRepository`와 같은 어휘 축) · `Alert`(거부·실패). 새 색이 필요하면 DESIGN §6.2 의미 토큰으로만 — 기대하지 않는다(중립 배지).
+## 상태와 동작
 
-## 상태·항목·문구
+| 언어 상태 | 표시 | OWNER 동작 | 번역 편집 |
+|---|---|---|---|
+| 일반 활성 | 기존 표시 | Remove language | 가능 |
+| 기준 언어 | Base | 제거 비활성 + 이유 | 가능 |
+| ADD 미전달 | Not in repository yet | Cancel addition | 가능 |
+| ADD 전달됨 | Addition sent + PR/MR 링크 | Cancel addition | 가능 |
+| REMOVE 미전달 | Removal pending | Cancel removal | 읽기 전용 |
+| REMOVE 전달됨 | Removal sent + PR/MR 링크 | Cancel removal | 읽기 전용 |
+| RESTORE 미전달 | Cancellation pending | Remove language | 가능 |
+| orphan | Removed from repository | 기존 재추가 경로 | 읽기 전용 |
 
-| 자리 | 상태 | 문구(en — 새 키) |
-|---|---|---|
-| 카드 action | OWNER · 지원 포맷 | `Add language` |
-| 카드 action | EDITOR | 같은 버튼 `aria-disabled` + sr-only 이유 `Only project owners can add languages.` |
-| 카드 action | 수술적 포맷(ts-dict·yaml·code-dict) | 같은 버튼 비활성 + 이유 `Languages for this format are added in the repository.` |
-| 카드 description | 공통 | `Add a language here; remove it in the repository.` |
-| Dialog 제목·설명 | — | `Add a language` · `Translators can start right away. Publishing creates the file in the repository.` |
-| 입력 라벨 | json-catalog | `Language code` · 도움말 `For example: ja, pt-BR, zh-Hant` |
-| 입력 | chrome-locales | `Select` — Chrome 지원 목록 중 이 소스에 없는 코드(코드 + 영어 이름) |
-| 경로 미리보기 | 입력 유효 | `File to create` + `locales/ja.json`(pathTemplate 치환) |
-| 되살림 안내 | orphaned 코드 입력 | `ja was removed from the repository. Adding it again brings back its N translations.` |
-| 오류(필드) | `invalid-code` · `exists` · `similar-exists` · `too-many-locales` | `Use a language code such as ja or pt-BR.` · `ja is already in this source.` · `pt_BR is already in this source — codes can't differ only by case or separator.` · `A source can have up to 200 languages.` |
-| 오류(Alert) | `archived` · 실패 | 기존 문구 재사용(보관·일반 실패) |
-| 버튼 | — | `Add language`(주) · `Cancel` |
-| 행 상태 | 제안 | `StatusBadge notInRepositoryYet` — 라벨 `Not in repository yet` |
-| 행 상태 | 제안 · 번역 0 | 위 배지 + 행 ③에 `Publishing creates the file once it has a translation.` |
+RESTORE는 “편집 복구됨, 원격 삭제 취소는 Publish 필요”다. 삭제 취소를 눌렀다는 이유만으로 원격 취소 성공 토스트를 내지 않는다. 반복 요청은 서버 상태를 다시 받은 뒤 표시한다. EDITOR에는 변경 동작을 비활성화하고 이유를 제공한다.
+
+## 추가 Dialog
+
+- 제목 Add a language. json-catalog는 Language code Input, chrome-locales는 지원 목록 Select.
+- 유효 입력에는 File to create와 서버 규칙으로 계산한 경로. orphan 코드면 복구할 번역 수 안내.
+- 오류: invalid-code, exists, similar-exists, too-many-locales, invalid-path. 보관·진행 중 Publish·일반 실패는 Alert.
+- 빈 제안 행에는 “Publishing creates the file once it has a translation.” 안내. 취소는 번역 0개에서도 가능.
+
+## 제거·취소 확인 Dialog
+
+제거 전에 서버 미리보기를 읽는다. 로딩 중에는 승인 불가, 실패하면 오류와 재시도, 지문이 낡았으면 갱신한 내용을 다시 확인한다.
+
+| 항목 | 표시 내용 |
+|---|---|
+| 제목 | Remove language / Cancel language addition |
+| 대상 | 언어 코드·소스 이름·정확한 파일 경로 |
+| 영향 | 보존되는 번역 수, 미전달 편집 수, 열린 PR/MR 전달 여부 |
+| 기존 언어 제거 설명 | “Publishing removes this language file from the repository. Saved translations are kept.” |
+| 미전달 제안 취소 설명 | “This language will become inactive. Saved translations are kept.” + 해당 미전달 편집 폐기 안내 |
+| 전달된 추가 취소 설명 | “Publish again to remove this addition from the open pull request.” (GitLab은 merge request 어휘) |
+| 기준 언어 거부 | “Choose another base language before removing this one.” |
+| 원격 상태 미확정 | 이전 Publish 결과 확인이 필요함. 제거/취소 버튼 비활성, 완료 문구 없음 |
+
+Remove language와 Cancel을 사용하고 제거 승인 버튼은 기존 파괴 동작 스타일을 따른다. “영구 삭제”나 “번역 삭제”라고 쓰지 않는다. 일반 제거 취소는 데이터를 버리지 않으므로 별도 파괴 확인을 추가하지 않는다. 전달된 제거 취소 뒤에는 “Publish to update the pull request.” 안내를 남긴다.
+
+## Publish와 Sync
+
+- Publish 미리보기에서 파일을 Added/Updated/Deleted로 구분한다. **번역 변경 0건·삭제 파일 1개**도 Publish 가능해야 한다.
+- 전달된 추가 취소는 base 기준 파일 diff 0개일 수 있다. 이 경우 “열린 PR/MR에서 추가를 취소”하는 작업을 보여주고 빈 화면/변경 없음으로 숨기지 않는다.
+- 삭제 파일의 번역을 “N translations published”에 더하지 않는다. 결과는 파일 제거 전달과 실제 리포 반영을 구분한다.
+- 제안 경로 충돌, 빈 제안, 원격 상태 불명은 각자 다른 안내를 쓴다.
+- 수동 Sync 확인에는 폐기할 언어 추가/제거/취소 목록과 셀 편집을 구분해 표시한다. 리포 파일 상태로 돌아가는 영향과 열린 PR 관련 기존 안내를 유지한다.
+- 카드 설명은 지원 포맷에서 “Add or remove languages here. Publish to update the repository.” 비지원 포맷에서는 리포에서 관리한다는 설명을 사용한다.
 
 ## 그릴 프레임
 
 | # | 프레임 |
 |---|---|
-| 1 | Languages 카드 기본(언어 3 · base 1) + [Add language] |
-| 2 | Dialog 빈 상태(json-catalog, 코드 Input) |
-| 3 | Dialog 유효 입력 + 경로 미리보기 + 저장 중(버튼 loading) |
-| 4 | Dialog 필드 오류(`similar-exists`) |
-| 5 | Dialog chrome-locales(`Select` 열림) |
-| 6 | Dialog 되살림 안내(orphaned 코드) |
-| 7 | 추가 뒤 카드 — 제안 행(0%, 배지, 번역 0 안내) |
-| 8 | EDITOR · 수술적 포맷 — 비활성 버튼 |
-| 9 | 좁은 폭(`@max-form`) — 카드·Dialog |
-| 10 | 다크 — 1·3·7 |
+| 1 | 기본 카드: 3언어·base 1, Add와 행별 Remove |
+| 2 | 추가 Dialog 빈 상태(json Input) |
+| 3 | 유효 입력·경로 미리보기·저장 중 |
+| 4 | similar-exists 필드 오류 |
+| 5 | Chrome Select 열림 |
+| 6 | orphan 코드 재추가·보존 번역 복구 안내 |
+| 7 | 빈 ADD 행·개별 취소 |
+| 8 | 제거 확인: 파일 경로·번역 수·미전달 편집 수 |
+| 9 | REMOVE 미전달: 읽기 전용·취소 |
+| 10 | ADD/REMOVE 전달됨: PR/MR 링크·취소 동작 |
+| 11 | RESTORE 미전달: 편집 복구·원격 취소 Publish 안내 |
+| 12 | 전달된 추가 취소: PR/MR 갱신 설명 |
+| 13 | Publish: 번역 0·파일 삭제만 있음 / 파일 diff 0·추가 취소 있음 |
+| 14 | 기준 언어·EDITOR·보관·비지원·실행 중 비활성 이유 |
+| 15 | 미리보기 로딩·실패·낡은 승인·원격 상태 미확정 |
+| 16 | 좁은 폭의 카드·추가/제거 Dialog·긴 코드/경로 |
+| 17 | 다크: 기본·추가·제거 확인·제거 예정·취소 전달 필요 |
 
-## 동작 주석
+## 접근성·상호작용
 
-- [Add language] → Dialog 열림, 포커스는 코드 Input(chrome은 Select 트리거). Esc·Cancel·바깥 클릭 = 닫기(입력 버림, 확인 없음 — 저장 전 상태라).
-- Enter = 추가. 저장 중엔 닫기·재제출 막음. 성공 → Dialog 닫힘, 포커스는 새 행의 [Open]으로, 카드 count +1.
-- 필드 오류는 입력 아래, 입력을 고치면 사라진다. 서버 거부도 같은 자리(코드별 문구).
-- IME 조합 중 Enter는 제출하지 않는다(`use-ime-guard.ts`).
-- 바깥 소스 모달에 미저장 기준 언어 초안이 있으면 Dialog를 열지 않는다(기존 `draft` 이탈 확인과 같은 축) — 시안은 1에서 버튼 상태만 보이면 된다.
+- 추가 열기 → Input/Select 포커스, 제거 열기 → 제목/안내를 읽는 기존 Dialog 패턴. Enter는 IME 조합 중 제출하지 않는다.
+- 저장 전 Esc·Cancel·바깥 클릭은 닫기. 저장 중 닫기·중복 제출 차단. 오류는 해당 필드 또는 Alert로 알린다.
+- 추가 성공은 새 행 Open으로 포커스 이동. 제거 예정은 같은 행 Cancel removal로, 즉시 제안 취소로 행이 비활성화되면 카드의 Add 또는 인접 유효 동작으로 복귀한다.
+- 제거 상태 변화를 현재 열린 번역 패널도 반영한다. 미저장 입력이 있으면 기존 이탈 확인을 적용하고 조용히 버리지 않는다.
+- 바깥 모달의 미저장 기준 언어 초안이 있으면 기존 이탈 확인을 먼저 지난다.
+- 키보드·스크린리더가 비활성 이유를 읽을 수 있게 aria-disabled와 설명을 연결한다. 색만으로 상태를 구분하지 않는다.
 
 ## 그리지 않는 것
 
-- 언어 삭제·제안 취소 버튼(철회는 Sync 확인 창이 말한다 — 별도 프레임 없음).
-- 여러 소스 동시 추가 · 여러 언어 한 번에 추가.
-- 번역 화면·Publish 모달의 변화(문구 한 줄 수준 — 코드가 기존 패턴으로 든다).
-- 로케일 이름 편집 · 깃발 선택.
+키 추가·삭제, 영구 삭제, 일괄 언어 변경, 수술적 포맷의 언어 객체 제거, 이름·깃발 편집, 로케일 파일 외 앱 설정 편집.
