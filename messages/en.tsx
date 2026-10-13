@@ -2125,7 +2125,7 @@ export const en = {
       disconnectLabel: "Disconnect GitLab token",
       confirmDisconnect: "Disconnect this GitLab token?",
       confirmHint: "Malmoi deletes the saved token. Projects that use this connection stop syncing and publishing until a project owner reconnects them.",
-      disconnectFailed: "GitLab wasn't disconnected. Try again.",
+      disconnectFailed: "The GitLab token wasn't disconnected. Try again.",
       /** 해제 확인 버튼 — GitHub App의 `Disconnect app`을 쓰지 않는다(이 카드는 앱이 아니라 토큰이다). */
       disconnectConfirm: "Disconnect token",
       /** 만료 임박 띠(시안 G8) — 남은 일수와 날짜, 그리고 무엇이 멈추는가. */
@@ -3786,7 +3786,7 @@ export const en = {
         usedByUpdates: (n: number): string => `Used by ${n.toLocaleString("en-US")} ${n === 1 ? "project" : "projects"}. Replacing it updates all of them.`,
         usedByReconnects: (n: number): string => `Used by ${n.toLocaleString("en-US")} ${n === 1 ? "project" : "projects"}. Replacing it reconnects all of them.`,
         unusable: "This project's GitLab token can't be used. It may have expired or been revoked, or its owner may have lost access to the repository. Syncs and publishes stop until it's reconnected.",
-        removed: "This project's GitLab connection was removed — the person who connected it disconnected GitLab or left the project. Syncs and publishes stop until a project owner reconnects it.",
+        removed: "This project's GitLab connection was removed — the person who connected it disconnected their GitLab token or left the project. Syncs and publishes stop until a project owner reconnects it.",
         useMine: "Use my GitLab connection",
         /** ⚠️ 명의가 바뀐다는 문장이 버튼 앞에 선다(시안 G6c) — 이후 GitLab 쓰기의 작성자가 누른 사람이다. */
         useMineHint: (owner: string | null, me: string): string =>
@@ -4353,7 +4353,7 @@ export const en = {
       "token-invalid": "GitLab didn't accept this token. It may have expired or been revoked — create a new one and paste it here.",
       "token-fine-grained": "This is a fine-grained token. Malmoi needs a legacy personal access token with the api scope — create one and paste it here.",
       "token-scope-missing": "This token doesn't have the api scope. Create a new token with the api scope and paste it here.",
-      "account-mismatch": "This token belongs to a different GitLab account. Disconnect GitLab on the Account page first, then connect the other account.",
+      "account-mismatch": "This token belongs to a different GitLab account. Disconnect your GitLab token on the Account page first, then connect the other account.",
       ...GITLAB_ACCESS_ERRORS,
       unavailable: "GitLab didn't answer. Try again in a moment.",
       fallback: "The GitLab connection failed. Try again.",

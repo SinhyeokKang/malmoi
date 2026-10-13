@@ -939,7 +939,7 @@ export const ko = {
       disconnectLabel: "GitLab 토큰 연결 해제",
       confirmDisconnect: "이 GitLab 토큰의 연결을 해제할까요?",
       confirmHint: "저장된 토큰이 삭제됩니다. 이 연결을 쓰는 프로젝트는 프로젝트 소유자가 다시 연결할 때까지 동기화와 게시가 멈춥니다.",
-      disconnectFailed: "GitLab 연결을 해제하지 못했습니다. 다시 시도하세요.",
+      disconnectFailed: "GitLab 토큰 연결을 해제하지 못했습니다. 다시 시도하세요.",
       disconnectConfirm: "토큰 연결 해제",
       expiresSoonNotice: (days: number, date: string): string =>
         `내 GitLab 토큰이 ${days.toLocaleString("ko-KR")}일 뒤(${date})에 만료됩니다. 이 토큰을 쓰는 프로젝트가 계속 동작하도록 그 전에 교체하세요.`,
@@ -2058,7 +2058,7 @@ export const ko = {
         usedByUpdates: (n: number): string => `프로젝트 ${n.toLocaleString("ko-KR")}개가 이 토큰을 씁니다. 교체하면 모두 업데이트됩니다.`,
         usedByReconnects: (n: number): string => `프로젝트 ${n.toLocaleString("ko-KR")}개가 이 토큰을 씁니다. 교체하면 모두 다시 연결됩니다.`,
         unusable: "이 프로젝트의 GitLab 토큰을 쓸 수 없습니다. 만료·철회되었거나 토큰 주인이 리포지토리 권한을 잃었을 수 있습니다. 다시 연결할 때까지 동기화와 게시가 멈춥니다.",
-        removed: "이 프로젝트의 GitLab 연결이 해제되었습니다 — 연결한 사람이 GitLab 연결을 해제했거나 프로젝트를 떠났습니다. 프로젝트 소유자가 다시 연결할 때까지 동기화와 게시가 멈춥니다.",
+        removed: "이 프로젝트의 GitLab 연결이 해제되었습니다 — 연결한 사람이 GitLab 토큰 연결을 해제했거나 프로젝트를 떠났습니다. 프로젝트 소유자가 다시 연결할 때까지 동기화와 게시가 멈춥니다.",
         useMine: "내 GitLab 연결 사용",
         useMineHint: (owner: string | null, me: string): string =>
           owner === null ? `이후 동기화와 게시는 @${me} 명의로 기록됩니다.` : `@${owner}의 토큰 대신 내 GitLab 토큰을 씁니다 — 이후 동기화와 게시는 @${me} 명의로 기록됩니다.`,
@@ -2298,7 +2298,7 @@ export const ko = {
       "token-invalid": "GitLab이 이 토큰을 받지 않았습니다. 만료되었거나 철회되었을 수 있습니다 — 새 토큰을 만들어 붙여 넣으세요.",
       "token-fine-grained": "fine-grained 토큰입니다. Malmoi에는 api 스코프가 있는 레거시 개인 액세스 토큰이 필요합니다 — 새로 만들어 붙여 넣으세요.",
       "token-scope-missing": "이 토큰에는 api 스코프가 없습니다. api 스코프로 새 토큰을 만들어 붙여 넣으세요.",
-      "account-mismatch": "다른 GitLab 계정의 토큰입니다. 먼저 계정에서 GitLab 연결을 해제한 뒤 그 계정을 연결하세요.",
+      "account-mismatch": "다른 GitLab 계정의 토큰입니다. 먼저 계정에서 GitLab 토큰 연결을 해제한 뒤 그 계정을 연결하세요.",
       "gitlab-not-connected": "먼저 계정에서 GitLab 계정을 연결하세요.",
       "gitlab-reconnect": "GitLab 토큰을 더 이상 쓸 수 없습니다. 계정에서 토큰을 교체하세요.",
       "gitlab-repo-archived": "보관된 GitLab 프로젝트입니다. GitLab에서 보관을 해제한 뒤 다시 시도하세요.",

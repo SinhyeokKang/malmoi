@@ -4,6 +4,8 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { render } from "@/components/__tests__/helpers/dom";
 import { en } from "@/messages/en";
+import { es } from "@/messages/es";
+import { ko } from "@/messages/ko";
 import { encodeUserFields } from "@/lib/credentials/records";
 
 const mocks = vi.hoisted(() => ({ requireUser: vi.fn(), getPrisma: vi.fn(), loadAccountView: vi.fn(), loadInstalledRepoCount: vi.fn() }));
@@ -366,6 +368,18 @@ it.each([
   // 이 화면의 접근 이름 전체에서도 겹침이 없다 — 같은 이름의 두 컨트롤은 음성 입력·스크린리더가 고르지 못한다.
   const named = [...container.querySelectorAll("button")].map((b) => b.getAttribute("aria-label")).filter((v): v is string => v !== null);
   expect(new Set(named).size).toBe(named.length);
+});
+
+/**
+ * 위 DOM 단언은 en으로만 그린다 — `dictionary-consistency`는 키·시그니처만 묶어서, ko·es 한쪽만 옛 낱말로 돌아가도 green이었다(R-D 🟡2).
+ * 그래서 세 사전마다 PAT 카드의 네 낱말이 GitLab 로그인 수단의 같은 자리 낱말과 다른지 렌더 없이 잰다.
+ */
+it.each([["en", en], ["ko", ko], ["es", es]] as const)("%s — PAT 카드 낱말이 GitLab 로그인 수단 낱말과 겹치지 않는다 (J8)", (_locale, m) => {
+  const gitlab = m.link.providers.gitlab;
+  expect(m.account.gitlab.rowName).not.toBe(gitlab);
+  expect(m.account.gitlab.disconnectLabel).not.toBe(m.link.methods.disconnectLabel(gitlab));
+  expect(m.account.gitlab.confirmDisconnect).not.toBe(m.link.methods.confirmDisconnect(gitlab));
+  expect(m.account.gitlab.disconnectConfirm).not.toBe(m.link.methods.disconnectConfirm);
 });
 
 it("둘 다 연결이면 로그인 수단 해제와 PAT 해제의 확인 제목이 다르다 (J8)", async () => {

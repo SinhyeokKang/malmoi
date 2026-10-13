@@ -931,7 +931,7 @@ export const es = {
       disconnectLabel: "Desconectar el token de GitLab",
       confirmDisconnect: "¿Desconectar este token de GitLab?",
       confirmHint: "Malmoi elimina el token guardado. Los proyectos que usan esta conexión dejan de sincronizarse y publicarse hasta que un propietario del proyecto los vuelva a conectar.",
-      disconnectFailed: "No se pudo desconectar GitLab. Vuelve a intentarlo.",
+      disconnectFailed: "No se pudo desconectar el token de GitLab. Vuelve a intentarlo.",
       disconnectConfirm: "Desconectar token",
       expiresSoonNotice: (days: number, date: string): string =>
         `Tu token de GitLab caduca en ${days.toLocaleString("es")} ${days === 1 ? "día" : "días"}, el ${date}. Reemplázalo antes para que los proyectos que lo usan sigan funcionando.`,
@@ -2053,7 +2053,7 @@ export const es = {
         usedByUpdates: (n: number): string => (n === 1 ? "Lo usa 1 proyecto. Al reemplazarlo se actualiza." : `Lo usan ${n.toLocaleString("es")} proyectos. Al reemplazarlo se actualizan todos.`),
         usedByReconnects: (n: number): string => (n === 1 ? "Lo usa 1 proyecto. Al reemplazarlo se vuelve a conectar." : `Lo usan ${n.toLocaleString("es")} proyectos. Al reemplazarlo se vuelven a conectar todos.`),
         unusable: "El token de GitLab de este proyecto no se puede usar. Puede que haya caducado o se haya revocado, o que su propietario haya perdido el acceso al repositorio. Las sincronizaciones y publicaciones se detienen hasta que se vuelva a conectar.",
-        removed: "Se quitó la conexión de GitLab de este proyecto: quien la conectó desconectó GitLab o dejó el proyecto. Las sincronizaciones y publicaciones se detienen hasta que un propietario del proyecto la vuelva a conectar.",
+        removed: "Se quitó la conexión de GitLab de este proyecto: quien la conectó desconectó su token de GitLab o dejó el proyecto. Las sincronizaciones y publicaciones se detienen hasta que un propietario del proyecto la vuelva a conectar.",
         useMine: "Usar mi conexión de GitLab",
         useMineHint: (owner: string | null, me: string): string =>
           owner === null ? `A partir de entonces, las sincronizaciones y publicaciones quedan a nombre de @${me}.` : `Tu token de GitLab reemplaza el de @${owner}: a partir de entonces, las sincronizaciones y publicaciones quedan a nombre de @${me}.`,
@@ -2290,7 +2290,7 @@ export const es = {
       "token-invalid": "GitLab no aceptó este token. Puede que haya caducado o se haya revocado: crea uno nuevo y pégalo aquí.",
       "token-fine-grained": "Este es un token detallado (fine-grained). Malmoi necesita un token de acceso personal clásico con el alcance api: crea uno y pégalo aquí.",
       "token-scope-missing": "Este token no tiene el alcance api. Crea un token nuevo con el alcance api y pégalo aquí.",
-      "account-mismatch": "Este token es de otra cuenta de GitLab. Primero desconecta GitLab en Cuenta y después conecta la otra cuenta.",
+      "account-mismatch": "Este token es de otra cuenta de GitLab. Primero desconecta tu token de GitLab en Cuenta y después conecta la otra cuenta.",
       "gitlab-not-connected": "Primero conecta tu cuenta de GitLab en Cuenta.",
       "gitlab-reconnect": "Tu token de GitLab ya no se puede usar. Reemplázalo en Cuenta.",
       "gitlab-repo-archived": "Este proyecto de GitLab está archivado. Desarchívalo en GitLab y vuelve a intentarlo.",

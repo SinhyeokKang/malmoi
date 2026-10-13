@@ -127,6 +127,16 @@ describe("로그인 공급자 우주 — google 토큰 판정", () => {
     for (const file of ROOT_FILES) expect(scanned.some((s) => s.path === file), file).toBe(true);
   });
 
+  /**
+   * 하한은 "필터가 넓어져 0파일"만 잡는다 — 이관한 여덟 자리의 파일 다섯이 표적 제외(`SKIP_DIR`에 `invite`·`oauth` 등)로 빠지면 하한을 넘긴 채
+   * 그 화면에 삼항이 돌아와도 green이었다(R-D ⚪2). 그래서 그 파일들이 스캔에 있음을 이름으로 단언한다.
+   */
+  it("손 삼항을 이관한 파일들이 스캔 범위에 있다", () => {
+    for (const file of ["app/signin/page.tsx", "app/invite/[token]/page.tsx", "app/oauth/authorize/page.tsx", "app/signin/link/[challenge]/page.tsx", "components/account/login-methods.tsx"]) {
+      expect(scanned.some((s) => s.path === file), file).toBe(true);
+    }
+  });
+
   it("루트마다 스캔 파일 수가 하한 이상이다 — 필터가 넓어져 공허하게 green이 되지 않는다", () => {
     expect(Object.keys(FLOOR).sort()).toEqual([...ROOTS].sort());
     for (const [root, floor] of Object.entries(FLOOR)) expect(scanned.filter((s) => s.path.startsWith(`${root}/`)).length, root).toBeGreaterThanOrEqual(floor);

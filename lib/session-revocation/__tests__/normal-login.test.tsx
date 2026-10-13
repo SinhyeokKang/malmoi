@@ -1,4 +1,5 @@
 import { Children, isValidElement, type ReactElement, type ReactNode } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, expect, it, vi } from "vitest";
 const s = vi.hoisted(() => ({ set: vi.fn(), signIn: vi.fn() }));
 vi.mock("@/auth", () => ({ signIn: s.signIn }));
@@ -101,6 +102,12 @@ it.each(BUTTON_ENTRIES)("%s draws all three providers on hosted — GitHub prima
   expect(shape(providers(await render(entry)))).toEqual([["github", "primary"], ["gitlab", "default"], ["google", "default"]]);
 });
 
+/** GitLab env 투입 전 prod 모양(R-D ⚪4) — 셋째 버튼이 서지 않고 GitHub primary · Google default 그대로다. */
+it.each(BUTTON_ENTRIES)("%s draws GitHub and Google only when GitLab is off — the pre-rollout hosted shape", async (entry) => {
+  vi.stubEnv("AUTH_GITLAB_ID", "");
+  expect(shape(providers(await render(entry)))).toEqual([["github", "primary"], ["google", "default"]]);
+});
+
 it.each(BUTTON_ENTRIES)("%s draws only GitLab when it is the sole provider — GitLab is primary", async (entry) => {
   vi.stubEnv("AUTH_GITHUB_SECRET", "");
   vi.stubEnv("AUTH_GOOGLE_SECRET", "");
@@ -142,4 +149,25 @@ it("signin shows the MethodUnavailable message, not OAuthAccountNotLinked", asyn
     return hit;
   })(page);
   expect(toast?.props.error).toBe("Your sign-in method isn't available here. Ask your administrator.");
+});
+
+/**
+ * `/signin/link` 배지는 카드 칸과 같은 `BrandGlyph`다(gitlab-oauth D6, R-D ⚪1) — 단색 GitHub가 잉크(`text-foreground`)를 들어야 배지 칸의 색을
+ * 받지 않는다. `ProviderIcon`으로 바꾸면 잉크가 빠진다.
+ */
+it("link badge draws the brand glyph with ink, not the bare provider icon", async () => {
+  const page = await render("link");
+  const badge = (function find(node: ReactNode): ReactNode {
+    let hit: ReactNode;
+    Children.forEach(node, (child) => {
+      if (hit !== undefined || !isValidElement<{ children?: ReactNode; badge?: ReactNode }>(child)) return;
+      if (child.props.badge !== undefined) hit = child.props.badge;
+      else hit = find(child.props.children);
+    });
+    return hit;
+  })(page);
+  expect(badge).toBeDefined();
+  const markup = renderToStaticMarkup(<>{badge}</>);
+  expect(markup).toMatch(/<svg[^>]*class="[^"]*\btext-foreground\b/);
+  expect(markup).toContain('fill="currentColor"');
 });
