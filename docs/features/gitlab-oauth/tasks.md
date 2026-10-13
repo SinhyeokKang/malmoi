@@ -97,14 +97,14 @@
   - **T0 ⑥** — 외부 테스트 계정(ox501tube@gmail.com, 그룹 `malmoi` 비멤버)으로 GitLab 인가가 통과하는가. 같은 이메일의 Google 사용자가 있으면 병합 확인(`/signin/link`) → 기존 Google 수단으로 확인 → `Account(gitlab)` 연결까지(spec §4-4)
   - `/account` — GitLab 로그인 행 × PAT 카드 **네 상태**(둘 다 미연결 · 로그인만 · PAT만 · 둘 다): 이름·해제 확인 제목이 겹치지 않는가(J8) · [Connect]·해제·`Continue to GitLab` 회수
   - **브랜드 글리프 체크리스트 (D6)** — 라이트·다크 각각:
-    - [ ] `/signin` — GitHub 버튼이 primary 채움 위 흰색이다. GitLab 버튼은 3색 tanuki, Google 버튼은 4색 G다.
-    - [ ] `/invite/[token]`·`/oauth/authorize` — 위와 같다.
-    - [ ] (self-hosted GitLab 단독 구성) GitLab이 primary 채움 위에서도 3색이고 대비가 유지된다.
-    - [ ] `/signin/link/<challenge>` 배지 — 브랜드 색이다.
-    - [ ] `/account` 로그인 수단 카드 — GitHub 칸은 회색이 아니라 잉크(라이트 검정 / 다크 흰색)다. GitLab은 3색, Google은 4색이다.
-    - [ ] `/account` GitHub App 카드 · GitLab PAT 카드 — 연결 상태에서 브랜드 색이다. GitLab PAT 만료 임박(경고 칸)에서 칸 면만 호박색이고 tanuki는 3색 그대로다.
-    - [ ] 설정 리포 카드(GitHub·GitLab 프로젝트 각각) — 정상 상태와 경고·실패 상태 모두에서 글리프가 브랜드 색이다. 연결이 끊긴 상태는 `Unplug`가 상태 색을 받는다.
-    - [ ] 인라인 자리(프로젝트 목록 · 소스 화면 · 홈 메타 · 새 프로젝트 GitLab 탭)는 단색 그대로다.
+    - [x] `/signin` — GitHub 버튼이 primary 채움 위 흰색이다. GitLab 버튼은 3색 tanuki, Google 버튼은 4색 G다.
+    - [x] `/invite/[token]`·`/oauth/authorize` — 위와 같다.
+    - [x] (self-hosted GitLab 단독 구성) GitLab이 primary 채움 위에서도 3색이고 대비가 유지된다.
+    - [x] `/signin/link/<challenge>` 배지 — 브랜드 색이다.
+    - [x] `/account` 로그인 수단 카드 — GitHub 칸은 회색이 아니라 잉크(라이트 검정 / 다크 흰색)다. GitLab은 3색, Google은 4색이다.
+    - [x] `/account` GitHub App 카드 · GitLab PAT 카드 — 연결 상태에서 브랜드 색이다. GitLab PAT 만료 임박(경고 칸)에서 칸 면만 호박색이고 tanuki는 3색 그대로다.
+    - [x] 설정 리포 카드(GitHub·GitLab 프로젝트 각각) — 정상 상태와 경고·실패 상태 모두에서 글리프가 브랜드 색이다. 연결이 끊긴 상태는 `Unplug`가 상태 색을 받는다. — Q: GitLab 카드 전 상태 ✅ · **GitHub 카드 경고·실패 상태는 미측정**(설치를 깨야 한다)
+    - [x] 인라인 자리(프로젝트 목록 · 소스 화면 · 홈 메타 · 새 프로젝트 GitLab 탭)는 단색 그대로다.
   - 미확인 이메일 거부는 실물로 재현할 수 없다(gitlab.com은 가입 시 확인 강제) — 격리 PG(§2)가 맡고, 초대 복귀 경로는 공급자 중립이라 생략한다
   - 검증: [수동] 시나리오별 통과/결함 이슈. 결함은 BugShot으로.
 
