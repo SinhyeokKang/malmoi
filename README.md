@@ -203,7 +203,7 @@ Use mal-moi.com, or run the same app on your own server.
 | Infrastructure | Run for you | One Linux server with Docker Compose: the app, PostgreSQL 17, an upload volume, a nightly scheduler, behind your HTTPS proxy |
 | Updates | Every release goes live on its own | You update one release at a time; every app release `v<x.y.z>` publishes `ghcr.io/sinhyeokkang/malmoi:v<x.y.z>` |
 | Where data lives | Supabase (Tokyo) and Vercel | Your server's database and upload volume |
-| Sign-in and email | GitHub and Google sign-in; invitations through Resend | GitHub sign-in, Google sign-in, or both, through OAuth apps you register; a Resend domain you register (required); a GitHub App you register to connect GitHub repositories (optional — without it, the installation connects GitLab.com only) |
+| Sign-in and email | GitHub, GitLab, and Google sign-in; invitations through Resend | One or more of GitHub, GitLab.com, and Google sign-in, through OAuth apps you register; a Resend domain you register (required); a GitHub App you register to connect GitHub repositories (optional — without it, the installation connects GitLab.com only) |
 | Limits | 3 active owned projects per person | The same, except for operators you list in `OPERATOR_EMAILS` |
 | Support | GitHub Issues | The latest release only, through GitHub Issues, best effort |
 | Cost | Free | Free software; you pay for the server, domain, and Resend |
@@ -216,12 +216,12 @@ troubleshooting are in the
 
 ## Privacy
 
-On mal-moi.com, Malmoi sends data to six services and no one else: GitHub, GitLab (if you connect it), Google (if you sign
+On mal-moi.com, Malmoi sends data to six services and no one else: GitHub, GitLab (if you sign in with it or connect a repository token), Google (if you sign
 in with it), Supabase (database, Tokyo), Vercel (hosting, profile and project pictures, cookieless page-view counts on the public pages), and Resend
 (invitation emails, tracking off).
 [Full policy →](https://mal-moi.com/privacy)
 
-A self-hosted installation sends data to GitHub, GitLab (if you connect it), Google (if you sign in with it),
+A self-hosted installation sends data to GitHub, GitLab (if you sign in with it or connect a repository token), Google (if you sign in with it),
 and Resend (invitation emails) — plus wherever its operator runs the server,
 database, and uploads. It has no page-view counting. Its privacy policy is the
 operator's own, linked from that site's `/privacy`.
