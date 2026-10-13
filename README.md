@@ -216,12 +216,12 @@ troubleshooting are in the
 
 ## Privacy
 
-On mal-moi.com, Malmoi sends data to six services and no one else: GitHub, GitLab (if you sign in with it or connect a repository token), Google (if you sign
+On mal-moi.com, Malmoi sends data to six services and no one else: GitHub, GitLab (if you sign in with it or connect a personal access token), Google (if you sign
 in with it), Supabase (database, Tokyo), Vercel (hosting, profile and project pictures, cookieless page-view counts on the public pages), and Resend
 (invitation emails, tracking off).
 [Full policy →](https://mal-moi.com/privacy)
 
-A self-hosted installation sends data to GitHub, GitLab (if you sign in with it or connect a repository token), Google (if you sign in with it),
+A self-hosted installation sends data to GitHub, GitLab (if you sign in with it or connect a personal access token), Google (if you sign in with it),
 and Resend (invitation emails) — plus wherever its operator runs the server,
 database, and uploads. It has no page-view counting. Its privacy policy is the
 operator's own, linked from that site's `/privacy`.
