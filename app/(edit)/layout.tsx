@@ -58,8 +58,11 @@ export default async function EditLayout({ children }: { children: React.ReactNo
      *
      * ⚠️ **폭 하한이 없다** (responsive-app A6 — 옛 `min-w-shell-min` 1280과 "좁은 창은 가로 스크롤" 규약을 걷었다). 375부터 셸이 실제로
      * 좁아지고, LNB는 `lg` 미만 서랍으로·화면은 각자 컨테이너 질의로 적층한다. 하한을 되살리면 좁은 배치가 전부 가로 스크롤 안에 갇힌다.
+     *
+     * ⚠️ **`relative`가 `overflow-hidden`의 짝이다** (#260) — 넘침은 이 요소를 포함 블록으로 삼는 자손만 잘린다. 없으면 사이드바 스크롤러의
+     * sr-only(`CountBadge`) 같은 `position:absolute`가 초기 포함 블록에 붙어 문서 높이를 늘린다. 셸 전체를 여기서 한 번에 가둔다.
      */
-    <div className="bg-canvas flex h-svh flex-col overflow-hidden px-2 pt-1.5 pb-2">
+    <div className="bg-canvas relative flex h-svh flex-col overflow-hidden px-2 pt-1.5 pb-2">
       {/* ⚠️ **`image`가 여기를 지난다** — 세션을 읽는 것이 이 파일이라 앞뒤만 고치면 값이 `undefined`로 흐른다. */}
       <Header m={m} name={name} email={session.email} image={session.image} signOut={signOutAction} memberships={navMemberships} />
       {/*
