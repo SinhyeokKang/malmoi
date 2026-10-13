@@ -759,7 +759,7 @@ export const en = {
                   ],
                   [
                     "A GitLab personal access token (PAT), your GitLab user ID and username, the token's expiry date and scopes, and when the connection was created or updated",
-                    "You and GitLab, when you connect your GitLab account",
+                    "You and GitLab, when you connect a GitLab personal access token",
                     "Checking your repository access, reading files, and publishing translations using the account connected to the project",
                   ],
                   [
@@ -853,7 +853,7 @@ export const en = {
             {
               ul: [
                 "Your account and its connections: kept until you ask us to delete them.",
-                "Your GitLab connection and encrypted PAT: kept until you disconnect GitLab or ask us to delete your account. Replacing the PAT overwrites the previous token and its metadata. An expired or revoked token stops working but stays stored until replacement or disconnection. Disconnecting in Malmoi does not revoke the token at GitLab.",
+                "Your GitLab token connection and encrypted PAT: kept until you disconnect your GitLab token or ask us to delete your account. Removing GitLab as a sign-in method does not remove the token connection or stored PAT. Replacing the PAT overwrites the previous token and its metadata. An expired or revoked token stops working but stays stored until replacement or token disconnection. Disconnecting the token in Malmoi does not revoke it at GitLab.",
                 "The language you choose: kept with your account until you choose another or ask us to delete your account. On a browser, the language cookie lasts a year from the last time you chose a language or signed in with a language saved to your account.",
                 "The time zone you choose: kept with your account until you choose another or ask us to delete your account. It is not stored in a cookie.",
                 "The theme you choose: kept with your account until you choose another or ask us to delete your account. On a browser, the theme cookie lasts a year from the last time you chose a theme or signed in with a theme saved to your account.",
@@ -877,7 +877,7 @@ export const en = {
             {
               ul: [
                 "GitHub — signing you in, and reading and writing the repository a project is connected to. Translations are committed and opened as a pull request by Malmoi's GitHub App, not under your own account.",
-                "GitLab (gitlab.com) — signing you in, and reading and writing the repository a project is connected to. If you connect it, Malmoi sends your PAT to verify your identity and repository access, read repository files, and write translation commits and merge requests. Publishing uses the GitLab account whose connection is saved on the project; commits and merge requests are attributed to that account.",
+                "GitLab (gitlab.com) — signing you in, and reading and writing the repository a project is connected to. If you connect a GitLab personal access token, Malmoi sends it to verify your identity and repository access, read repository files, and write translation commits and merge requests. Publishing uses the GitLab account whose connection is saved on the project; commits and merge requests are attributed to that account.",
                 "Google — signing you in, if you choose Google.",
                 "Supabase — the database, hosted in Tokyo.",
                 "Vercel — hosting for the app, storage for uploaded profile pictures and project pictures, and counting visits to the public pages (Web Analytics, described under What we collect). Vercel records requests to the service, including IP addresses, as part of running it.",
