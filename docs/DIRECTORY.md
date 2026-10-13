@@ -10,7 +10,7 @@
 app/
   page.tsx              랜딩(`/`). rootView가 세션이 있으면 /projects로 redirect, 없거나 못 읽으면 PublicShell(account = null, current 없음) + 히어로 + Stage + 마무리 CTA.
                         ⚠️ 로그인 상태면 /projects다 — 랜딩이 선 뒤에도 그렇다. 쿼리를 읽지 않는다
-  signin/page.tsx       로그인(GitHub·Google). Auth.js의 pages.signIn·pages.error가 여기다.
+  signin/page.tsx       로그인(GitHub·GitLab·Google). Auth.js의 pages.signIn·pages.error가 여기다.
                         ⚠️ 보호 경로(isProtectedPath)에 넣으면 로그인이 통째로 죽는다 — 목적지를 안 보므로
                         쿠키 없는 모든 요청이 자기 자신으로 307을 돈다(entry-points가 부정 단언으로 고정)
                         ⚠️ ?error= 없이도 세션이 unavailable이면 문구를 띄운다
@@ -390,6 +390,8 @@ components/
   oauth/                `/oauth/authorize` 조각(mcp-oauth) — app-card(앱 이름 + clientId 식별 줄, 말줄임 없음 · 칩 IconTile lg — 서버·클라이언트 공용) ·
                         consent-panel(계정·앱·권한 폼·행동 줄 — 결과 셋: 명시 거부 Alert · 결과 미확인 → Check request · 성공은 Action redirect).
                         ⚠️ 로고·제목·스크롤 영역은 페이지가 든다 — 정적 SVG import가 클라이언트 그래프에 들어오지 않게(client-graph)
+  signin/brand-icons.tsx 공급자 글리프 대응표 한 벌 — ProviderIcon(버튼) · BrandGlyph(칸·병합 배지).
+                        GitLab 3색과 인라인 단색을 가른다. __tests__/brand-glyph-tone.test.tsx가 상태색 비상속을 센다.
   sources/ settings/ onboarding/ projects/ signin/ account/ invite/
                         각 화면의 클라이언트 조각. ⚠️ 판정은 전부 lib/의 순수 함수가 하고 여기는
                         입력 상태만 든다
@@ -635,11 +637,13 @@ lib/
                         sign-out(로그아웃 Action 한 벌 — 앱 셸·공개 셸 헤더가 사용자 메뉴에 참조로 넘긴다. 함수 단위 "use server") ·
                         profile(⚠️ GitHub provider의 기본 userinfo를 대체한다 — @auth/core는 /user/emails에서
                         주소만 뽑고 verified를 버려, 검증한 주소와 저장되는 주소가 갈린다. /user 조회 실패는
-                        던지고 검증 실패는 email을 비워 signIn이 막게 한다) ·
-                        roundtrip(잎. 인증 왕복 셋이 사본으로 들던 원시 판정 — OAuth callback 경로 ·
+                        던지고 검증 실패는 email을 비워 signIn이 막게 한다. GitLab은 gitlabProfile이 양의 id와
+                        confirmed_at 기반 주 이메일을 검사하고 image를 null로 고정한다) ·
+                        roundtrip(잎. 인증 왕복 셋이 사본으로 들던 원시 판정 — LOGIN_PROVIDERS에서 파생한 OAuth callback 경로 ·
                         nonce 검사 · 쿠키 두 변형 만료. ⚠️ 흐름은 공유하지 않는다 — 가로채기 본체는 셋이 각자 든다) ·
                         roundtrip-cookies(server-only. 새 왕복이 시작될 때 병합·회수·연결의 **버려진 쿠키를
                         전부 선점 해제**한다 — 목적이 셋이라 남은 쿠키가 다음 왕복의 갈래를 바꾼다)
+                        __tests__/provider-universe.test.ts(우주 사본 방지 — google 토큰·GoogleIcon/.google 꼬리와 루트별 스캔 하한).
                         ⚠️ 판정은 순수 함수, 조회·세션은 얇은 껍데기라는 규칙이 이 디렉터리의 형이다
   deployment/           **배포 모드와 self-hosted 기동 판정** (self-hosting). mode(`MALMOI_ORIGIN`·`VERCEL_ENV` → hosted · self-hosted · invalid.
                         ⚠️ **import 없는 잎**이다: middleware(Edge)가 부르므로 `lib/env.ts`를 못 물고 `process.env`를 직접 읽는다. 이 env 둘을 읽는 비테스트
