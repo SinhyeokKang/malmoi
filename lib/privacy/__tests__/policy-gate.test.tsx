@@ -61,6 +61,8 @@ const REVISIONS: readonly { effectiveDate: string; digest?: string; koDigest?: s
   { effectiveDate: "2026-10-13", digest: "796390c3d7bcb3ca5f2abc26eeb30f1cf37e71a0737b1ade9650db3e10c10154", koDigest: "52e11a593bd14c3a77ef551b07b9041bc842310f8c5856b9332e291c842a0783" },
   // Korean wording review — collection, use, retention, sharing and deletion remain unchanged.
   { effectiveDate: "2026-10-14", digest: "10e3fc47465db9bac4016ee6d910cf03cde1f728c1216067dc2c3ca9a930e731", koDigest: "5f7edd24aa2a7979ac7508bd00cbe527c9e247026e33b067c1d18c4b6f9c1a29" },
+  // Second Korean wording review — distinguish granted permissions from allowed projects.
+  { effectiveDate: "2026-10-14", digest: "10e3fc47465db9bac4016ee6d910cf03cde1f728c1216067dc2c3ca9a930e731", koDigest: "bc09fac75a4b2b0cad2aee3ad748563d46d082fdafe6828f6520071f93dd32dc" },
 ];
 
 const privacy = en.publicDocs.privacy;
