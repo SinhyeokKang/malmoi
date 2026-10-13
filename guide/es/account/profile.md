@@ -11,7 +11,7 @@ Antes de empezar: abre el menú de tu avatar, arriba a la derecha, y elige **Cue
 
 La foto se redimensiona automáticamente y el archivo original no se conserva. Malmoi no obtiene fotos de GitLab; si te registras por primera vez con GitLab, tu avatar muestra la primera letra de tu nombre. Puedes subir una foto aquí.
 
-![La página Cuenta con las secciones de perfil, métodos de inicio de sesión, GitHub App y GitLab PAT](/guide/account.webp "Actualiza tu perfil y tus métodos de inicio de sesión en Cuenta.")
+![La página Cuenta con el perfil, los métodos de inicio de sesión de GitHub, GitLab y Google, y la sección GitHub App](/guide/account.webp "Actualiza tu perfil y tus métodos de inicio de sesión en Cuenta.")
 
 ## Gestiona los métodos de inicio de sesión {#sign-in-methods}
 

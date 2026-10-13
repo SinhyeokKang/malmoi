@@ -11,7 +11,7 @@ Before you start: Open your avatar menu at the top right and choose **Account**.
 
 The picture is resized automatically and the original file is not kept. Malmoi does not take a picture from GitLab; if you first sign up with GitLab, your avatar starts with the first letter of your name. You can upload a picture here.
 
-![The Account page with the profile, sign-in methods, GitHub App, and GitLab PAT sections](/guide/account.webp "Update your profile and sign-in methods in Account.")
+![The Account page with the profile, the GitHub, GitLab, and Google sign-in methods, and the GitHub App section](/guide/account.webp "Update your profile and sign-in methods in Account.")
 
 ## Manage sign-in methods {#sign-in-methods}
 

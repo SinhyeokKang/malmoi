@@ -11,7 +11,7 @@
 
 사진은 자동으로 크기가 조정되며, 올린 원본 파일은 보관하지 않습니다. GitLab에서는 사진을 받지 않습니다. GitLab으로 처음 가입하면 이름의 첫 글자가 표시됩니다. 사진은 여기서 올릴 수 있습니다.
 
-![프로필, 로그인 수단, GitHub App, GitLab PAT 영역이 있는 계정 페이지](/guide/account.webp "계정에서 프로필과 로그인 수단을 수정합니다.")
+![프로필, GitHub·GitLab·Google 로그인 수단, GitHub App 영역이 있는 계정 페이지](/guide/account.webp "계정에서 프로필과 로그인 수단을 수정합니다.")
 
 ## 로그인 수단 관리 {#sign-in-methods}
 
