@@ -21,7 +21,7 @@
 | 배치 | 항목(tasks) | 파일 소유 | 선행 | 모델·effort | 자리 | 상태 |
 |---|---|---|---|---|---|---|
 | **T0** 실측 | §0 T0 ①~⑥ | `.scratch/t0-gitlab/`만(코드 없음) | — | Opus 5.5 · medium — 브라우저 + 판정 | main 체크아웃 | ✅ ①~⑤ · ⑥ 미측정 |
-| **A** 우주·env | §1 전부 | `lib/login-link/{policy,message}.ts` · `lib/auth/{login-providers,safe-adapter,roundtrip}.ts` · `lib/auth/email.ts`(`:114` 주석만) · `lib/credentials/{access,migration,conversion}.ts` · `lib/session-revocation/{policy,store}.ts` · `lib/deployment/preflight.ts` · `scripts/gate-plan.ts` · `prisma/schema.prisma`(`:637` 주석만) · `.env.example` · `deploy/{.env.example,compose.yaml}` · `messages/{en,ko,es}.tsx`(`link.providers`만) · 신규 `lib/auth/__tests__/provider-universe.test.ts` + 해당 테스트들 | — | Opus 5.5 · high — 보안 경계(callback 가로채기)·게이트 설계 | 워크트리 | 대기 |
+| **A** 우주·env | §1 전부 | `lib/login-link/{policy,message}.ts` · `lib/auth/{login-providers,safe-adapter,roundtrip}.ts` · `lib/auth/email.ts`(`:114` 주석만) · `lib/credentials/{access,migration,conversion}.ts` · `lib/session-revocation/{policy,store}.ts` · `lib/deployment/preflight.ts` · `scripts/gate-plan.ts` · `prisma/schema.prisma`(`:637` 주석만) · `.env.example` · `deploy/{.env.example,compose.yaml}` · `messages/{en,ko,es}.tsx`(`link.providers`만) · 신규 `lib/auth/__tests__/provider-universe.test.ts` + 해당 테스트들 | — | Opus 5.5 · high — 보안 경계(callback 가로채기)·게이트 설계 | 워크트리 | ✅ dev 통합(R-A 🔴0) |
 | **C** 경계 정적 | §3 정적 규칙 둘(PG 시나리오는 B — O3) | `lib/github-connect/__tests__/credential-separation.test.ts` | — | **Codex Astra · medium** — 테스트 하나, 기계적 | 워크트리 | 대기 |
 | **E** 방침 | §5 | `messages/en.tsx`(방침 구역만 — O4) · `messages/ko-privacy.tsx` · `lib/privacy/collected.ts`(주석) · `lib/privacy/__tests__/policy-gate.test.tsx` | — | **Codex Astra · medium** — 줄 목록이 design §7에 고정. 거짓 문장은 R-E(Opus)·`/push` 4단계가 거른다 | 워크트리 | 대기 |
 | **B** provider·이메일 | §2 전부 + §3 PG 시나리오(O3) | `lib/auth/{email,profile}.ts` · `auth.ts` · `lib/credentials/__tests__/{sign-in.test.ts,postgres.integration.ts}` · `lib/security-headers.ts` · `app/(edit)/account/actions.ts`(D4 조건부) · 해당 테스트 | **A 통합 + T0 ①②③** | Opus 5.5 · high — 인증 경계 | 워크트리 | 대기 |
@@ -57,4 +57,9 @@
 - E fix1 게이트: translation-workspace.test.tsx:432 타이밍 1건(단독 38/38) → 지휘자: 커밋·기록, 통합 게이트가 판정.
 - E fix1 `worker_done` — `abe6b405`(Y1·W1~W3, 같은 2026-10-13 개정). **E 통합 대기.**
 - A fix0 `worker_done` — `9bc8e520`(stale 기대 갱신, 앱 코드 무변경 — 동작이 맞음을 먼저 확인) · `gate: ok`(projects PG 697/697 · credentials PG 70/70). **A·C·E 통합 착수.**
+- **A·C·E 통합**(로컬 dev, 미푸시 — O2): `50ee1361`·`f5a87740`(A) · `260f70dc`·`e28bcb37`(C) · `d32c1e43`·`ec595312`(E). `pnpm gate` **ok**(14547 · projects PG 697 · credentials PG 70 · build · mirror). A·C·E 워커 해제, 워크트리 정리.
+- wave ② — **B** `ctx_a05e1d9d1381`(Opus high, `go-B`, base `ec595312`).
+- B `worker_done` — `32149310`(§2 + §3 PG 시나리오, credentials PG 70→101, 뮤테이션 넷 red, `gate: ok`). B retain. **R-B** `ctx_2e2f5f7a8962`(리뷰 전용 워크트리 `go-RB`). D 브리프 준비(R-A 🟡 둘 포함).
+- 사용자: gitlab.com 외부 테스트 계정 생성(**ox501tube@gmail.com**, Google OAuth 가입 — 그룹 `malmoi` 비멤버). → T0 ⑥을 프로덕션 대신 **Q(로컬 runtime-test)에서 잰다**(지휘자 판단 — 계정이 생겨 앞당길 수 있다). 같은 이메일의 Google EDITOR 사용자가 dev DB에 있으면 GitLab 첫 로그인이 병합 확인(`/signin/link`)을 밟는다 — spec #4 실물 사례로 Q에 넣는다.
+- R-B 완료(🔴 0 · 🟡 4 · ⚪ 5 — 사본 `.scratch/orch-gitlab-oauth/review-B.md`, credentials PG 101 green, 뮤테이션 9 중 8 PG red · M8(expires_at)만 단위 red). **B fix1** `ctx_2c532d826edc` — 🟡 넷(throw 착지 주석·PG `expires_at`·fakeAuth 갱신 입력·빈 id). R-B 해제·워크트리 정리.
 

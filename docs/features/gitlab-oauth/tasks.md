@@ -21,7 +21,7 @@
   - ③ `prompt=select_account`를 붙인 authorize가 오류 없이 지나는지·무시되는지(D4 — 무시되면 코드를 만들지 않는다)
   - ④ `avatar_url` 호스트(D3)
   - ⑤ 이미 인가한 앱으로 다시 왕복할 때 GitLab 인가 화면이 다시 뜨는지. **판정 기준**: 화면 없이 바로 돌아오면 전체 세션 회수의 재인증은 "브라우저에 살아 있는 GitLab 세션"만 증명한다 — GitHub OAuth App이 이미 인가한 앱에서 화면을 생략하는 것과 같은 강도면 수용하고, 그보다 약하면(예: 계정 전환 길이 없다) ARCHITECTURE 회수 절에 한계로 적는다
-  - ⑥ 앱 소유 그룹의 비멤버로 인가되는지(게시 단계 부재, design §8) — **미측정**(`ox501501`은 Owner)
+  - ⑥ 앱 소유 그룹의 비멤버로 인가되는지(게시 단계 부재, design §8) — **미측정**(`ox501501`은 Owner) → 외부 테스트 계정(ox501tube@gmail.com, Google 가입 — 그룹 비멤버)으로 §4 실물에서 잰다
   - 검증: [수동] design §2·§4에 실측 결과(필드 유무·응답 코드·호스트·⑤ 판정)가 적히고 "실측 전" 표기가 0이다. 토큰·secret 원문은 어디에도 적지 않는다. 실측용 코드는 `.scratch/`에만 둔다.
 
 ## 1. 공급자 우주·env — 커밋 A (`feat(auth): add GitLab to the login provider universe`)
@@ -94,6 +94,7 @@
 - [ ] 실물 — `/runtime-test`(로컬, 등록된 앱):
   - `/signin`·`/invite/[token]`·`/oauth/authorize` 세 버튼 — **375폭 · 라이트 · 다크** 각각(시안이 없으므로 표현 층은 여기서 본다)
   - GitLab 로그인 왕복 · 초대 링크 → GitLab 로그인 → 수락
+  - **T0 ⑥** — 외부 테스트 계정(ox501tube@gmail.com, 그룹 `malmoi` 비멤버)으로 GitLab 인가가 통과하는가. 같은 이메일의 Google 사용자가 있으면 병합 확인(`/signin/link`) → 기존 Google 수단으로 확인 → `Account(gitlab)` 연결까지(spec §4-4)
   - `/account` — GitLab 로그인 행 × PAT 카드 **네 상태**(둘 다 미연결 · 로그인만 · PAT만 · 둘 다): 이름·해제 확인 제목이 겹치지 않는가(J8) · [Connect]·해제·`Continue to GitLab` 회수
   - **브랜드 글리프 체크리스트 (D6)** — 라이트·다크 각각:
     - [ ] `/signin` — GitHub 버튼이 primary 채움 위 흰색이다. GitLab 버튼은 3색 tanuki, Google 버튼은 4색 G다.
