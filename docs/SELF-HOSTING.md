@@ -90,6 +90,7 @@
 - **복원 실습은 운영 스택이 없는 다른 호스트에서만** 한다 — compose 프로젝트명이 `malmoi`로 고정이라 같은 호스트에서는 운영 볼륨을 친다(가이드 `operate.md#restore`의 경고). 실습 결과는 아래 "셀프 호스팅 실습 기록" 표에 남긴다.
 - **가이드의 명령을 고치면 그 명령은 실측이 아니다** — 아래 표의 실측은 그 시점 명령 꼴의 것이다. 2026-10-09 B6c가 리뷰 결함을 고치며 바꾼 것(업데이트의 정지 유지 → migrate → 포트를 운영자 IP로 제한한 smoke → scheduler·포트 재개, 백업 manifest 명령, 계정 삭제의 `export PROJECT_IDS`·빈 값 처리, DB 비밀번호 psql의 `-X`)과, 그 뒤 리뷰로 다시 바꾼 백업 블록(subshell `set -eu` · `backup ok` 확인 · `pg_restore -l` 검증 · root 실행 전제)·업데이트 9단계의 `deploy/` 롤백은 **다음 실습에서 다시 밟는다**. 외부 OAuth·GitHub App·초대 메일·MCP 왕복(SH-03·04·05·07)도 아직 한 번도 실측하지 않았다 — 다음 실습에 폐기용 도메인·앱을 준비해 채운다.
 - **수집 항목 표 대조** — 가이드 `troubleshooting.md#stored-fields`(세 언어)는 `lib/privacy/collected.ts`의 등재부와 필드 단위로 일대일이다. 그 등재부가 바뀌는 커밋에서 세 언어 표를 함께 고친다(자동 게이트가 표를 대조하지 않는다).
+- **서버 아웃바운드 목록이 가이드에 없다**(2026-10-13 GitLab 감사 C5-6 — 기록만) — `Before you install`은 인바운드·러너 도달만 말한다. 아웃바운드를 허용 목록으로 묶는 운영자가 GitLab(`gitlab.com`)을 빼면 GitLab 연결이 일시 장애(`unavailable`)로만 실패해 원인 단서가 없다. 고친다면 세 언어 `README.md#requirements`에 "서버가 HTTPS로 나가야 하는 곳: GitHub(App을 쓰면) · gitlab.com(GitLab을 쓰면) · Resend" 한 줄.
 - **SH-11(이연)** — 두 번째 지원 릴리스에서 이전 릴리스 → 최신 업데이트를 실측하고 아래 표에 남긴다. 그 전까지 가이드는 "건너뛴 릴리스는 미검증"이라고 말한다.
 - **릴리스 머신 전제는 비상 경로에만 있다**: 정상 경로는 Docker·`ghcr.io` 로그인이 필요 없다(워크플로가 빌드·push한다). Actions 장애 때만 `/merge` 9-b의 비상 경로 단락대로 같은 `scripts/publish-image.sh`를 이 머신에서 돌리고, 그때는 Docker(이 머신은 Colima vz+Rosetta — 재부팅 뒤 `colima start`)와 `ghcr.io` 로그인이 필요하다. 머지 전 한 번, GHCR 패키지 `malmoi`의 *Manage Actions access*에 이 리포의 Write가 있어야 워크플로가 push할 수 있다. 발행이 빠지면 그 태그는 설치할 수 없는 릴리스다.
 
