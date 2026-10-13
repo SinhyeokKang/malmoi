@@ -1,7 +1,7 @@
 # GitLab sign-in — 지휘 계획 (`/orchestrate`)
 
 작성: 2026-10-13 · 지휘: Claude Code(Opus 5.5) · 원본: [tasks.md](tasks.md)(체크 항목) · [design.md](design.md) · [spec.md](spec.md) — 여기에 복제하지 않는다.
-시작 dev: `0a57f981`(origin/dev `89b27c21` + 문서 커밋 둘, 미푸시) · Orca run: (생성 뒤 기입)
+시작 dev: `0a57f981`(origin/dev `89b27c21` + 문서 커밋 둘, 미푸시) · Orca run: `run_36e6d3a1dfc4`
 
 ## 결정 기록
 
@@ -20,7 +20,7 @@
 
 | 배치 | 항목(tasks) | 파일 소유 | 선행 | 모델·effort | 자리 | 상태 |
 |---|---|---|---|---|---|---|
-| **T0** 실측 | §0 T0 ①~⑥ | `.scratch/t0-gitlab/`만(코드 없음) | — | Opus 5.5 · medium — 브라우저 + 판정 | main 체크아웃 | 대기 |
+| **T0** 실측 | §0 T0 ①~⑥ | `.scratch/t0-gitlab/`만(코드 없음) | — | Opus 5.5 · medium — 브라우저 + 판정 | main 체크아웃 | ✅ ①~⑤ · ⑥ 미측정 |
 | **A** 우주·env | §1 전부 | `lib/login-link/{policy,message}.ts` · `lib/auth/{login-providers,safe-adapter,roundtrip}.ts` · `lib/auth/email.ts`(`:114` 주석만) · `lib/credentials/{access,migration,conversion}.ts` · `lib/session-revocation/{policy,store}.ts` · `lib/deployment/preflight.ts` · `scripts/gate-plan.ts` · `prisma/schema.prisma`(`:637` 주석만) · `.env.example` · `deploy/{.env.example,compose.yaml}` · `messages/{en,ko,es}.tsx`(`link.providers`만) · 신규 `lib/auth/__tests__/provider-universe.test.ts` + 해당 테스트들 | — | Opus 5.5 · high — 보안 경계(callback 가로채기)·게이트 설계 | 워크트리 | 대기 |
 | **C** 경계 정적 | §3 정적 규칙 둘(PG 시나리오는 B — O3) | `lib/github-connect/__tests__/credential-separation.test.ts` | — | **Codex Astra · medium** — 테스트 하나, 기계적 | 워크트리 | 대기 |
 | **E** 방침 | §5 | `messages/en.tsx`(방침 구역만 — O4) · `messages/ko-privacy.tsx` · `lib/privacy/collected.ts`(주석) · `lib/privacy/__tests__/policy-gate.test.tsx` | — | **Codex Astra · medium** — 줄 목록이 design §7에 고정. 거짓 문장은 R-E(Opus)·`/push` 4단계가 거른다 | 워크트리 | 대기 |
@@ -41,3 +41,8 @@
 ## 진행 로그
 
 (통합 커밋·검증 결과·라운드·이슈를 시간순으로 적는다.)
+
+- 2026-10-13 03:44Z — wave ① 착수: T0 `ctx_e7ae7d207aca`(Opus medium, main) · A `ctx_8f1a4da7f238`(Opus high, `go-A`) · C `ctx_2d7f10d46ce2`(Astra medium, `go-C`) · E `ctx_3d811160c131`(Astra medium, `go-E`). launch.effective = requested 확인.
+- 03:5xZ — C 질문: 규칙 1이 `lib/auth/members.ts:14`의 `@/lib/gitlab-connect/removal` import로 red. **지휘자 판단 — 승인**: members.ts는 로그인 경로가 아니라 멤버 변경 코어(인가·사건)다. `lib/auth` 전체 스캔 유지 + 그 import 한 쌍만 정확 집합 허용(파일 제외 금지). F(정본)는 ARCHITECTURE 경계 문장에 이 예외를 적는다.
+- 04:xxZ — T0 1차 차단: 앱 Callback URL 불일치 → 사용자 수정 → 재개. **T0 완료**(`worker_done` succeeded): ①② ✅(D1 유지·J2 통과) · ③ prompt 무시 → D4 코드 없음(tasks §2 해당 항목 삭제) · ④ gravatar(D3 유지) · ⑤ 재인증 화면 생략·계정 전환 불가 → ARCHITECTURE 회수 절 한계(F) · ⑥ **미측정**(`ox501501`이 그룹 Owner). design·tasks에 반영. T0 워커 해제.
+

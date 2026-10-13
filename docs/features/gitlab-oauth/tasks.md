@@ -15,13 +15,13 @@
 - [x] design §4 D1~D5를 사용자가 닫는다.
   - 검증: [수동] design §4 표의 각 행에 결정·날짜가 적혀 있다. → 완료(2026-10-13).
 - [x] GitLab OAuth 앱 등록 · `.env.local`에 `AUTH_GITLAB_ID`·`AUTH_GITLAB_SECRET` 투입 — 사용자(2026-10-13). 에이전트는 `.env.local`을 읽지 않는다.
-- [ ] **T0 실측** — 등록된 앱(앱 하나 — dev용 앱을 따로 두지 않는다, design §8)으로 테스트 계정 `ox501501`(ego 브라우저, gitlab.com에 "Sign in with GitHub" 가입, **앱 소유 그룹의 멤버가 아님**)이 로컬 왕복을 밟는다. 먼저 앱 설정을 GitLab 화면에서 대조한다: 그룹 소유 · 이름 `Malmoi` · Confidential · 스코프 `read_user` 하나 · redirect URI 셋(localhost · `dev.mal-moi.com` · `mal-moi.com`). 재는 것:
+- [x] **T0 실측**(2026-10-13 — ①~⑤ 완료, 결과는 design §2·§4 D1·D4·D5, ⑥만 미측정 → 아래 줄) — 등록된 앱(앱 하나 — dev용 앱을 따로 두지 않는다, design §8)으로 테스트 계정 `ox501501`(ego 브라우저, gitlab.com에 "Sign in with GitHub" 가입 — ⚠️ 실측해 보니 앱 소유 그룹 `malmoi`의 Owner였다)이 로컬 왕복을 밟는다. 먼저 앱 설정을 GitLab 화면에서 대조한다: 그룹 소유 · 이름 `Malmoi` · Confidential · 스코프 `read_user` 하나 · redirect URI 셋(localhost · `dev.mal-moi.com` · `mal-moi.com`). 재는 것:
   - ① `read_user` 토큰의 `GET /api/v4/user`에 `email`·`confirmed_at`이 실리나(design §2 — 없으면 D1을 다시 연다)
   - ② authorize URL에 `code_challenge_method=S256`이 나가고 교환이 통과하나(J2)
   - ③ `prompt=select_account`를 붙인 authorize가 오류 없이 지나는지·무시되는지(D4 — 무시되면 코드를 만들지 않는다)
   - ④ `avatar_url` 호스트(D3)
   - ⑤ 이미 인가한 앱으로 다시 왕복할 때 GitLab 인가 화면이 다시 뜨는지. **판정 기준**: 화면 없이 바로 돌아오면 전체 세션 회수의 재인증은 "브라우저에 살아 있는 GitLab 세션"만 증명한다 — GitHub OAuth App이 이미 인가한 앱에서 화면을 생략하는 것과 같은 강도면 수용하고, 그보다 약하면(예: 계정 전환 길이 없다) ARCHITECTURE 회수 절에 한계로 적는다
-  - ⑥ 앱 소유 그룹의 비멤버(`ox501501`)로 인가되는지(게시 단계 부재, design §8)
+  - ⑥ 앱 소유 그룹의 비멤버로 인가되는지(게시 단계 부재, design §8) — **미측정**(`ox501501`은 Owner)
   - 검증: [수동] design §2·§4에 실측 결과(필드 유무·응답 코드·호스트·⑤ 판정)가 적히고 "실측 전" 표기가 0이다. 토큰·secret 원문은 어디에도 적지 않는다. 실측용 코드는 `.scratch/`에만 둔다.
 
 ## 1. 공급자 우주·env — 커밋 A (`feat(auth): add GitLab to the login provider universe`)
@@ -51,7 +51,7 @@
   - 검증: [자동] red 뒤 green.
 - [ ] `auth.ts` — `GitLab({ checks: ["pkce", "state"], profile: gitlabProfile })`, `withEnabled([github, gitlab, google], enabled)`(D2 순서). `provider-config.test.ts:59-62`(이름)·`:73`(정규식) 갱신, `:27`(`allowDangerousEmailAccountLinking` 부재) 유지. `lib/credentials/__tests__/sign-in.test.ts` — **GitLab env를 stub하고 `config.providers`에 `gitlab`이 있음을 먼저 단언한 뒤** `checks`를 고정한다(지금 `:21`은 켜진 provider만 순회해 꺼진 GitLab에 대해 공허하게 통과한다 — POSTMORTEM 2026-09-07).
   - 검증: [자동] `pnpm test` green. `withEnabled` 행동 테스트에 "gitlab 꺼짐 → providers에 없음" 사례.
-- [ ] (T0 ③이 **오류**를 보일 때만) 회수·[Connect] Action의 재인증 인자 — `Record<LoginProvider, Record<string, string>>` 상수 하나를 `app/(edit)/account/actions.ts:180·:261`이 공유(D4). 무시되면 이 항목을 지우고 design D4에 결과만 적는다. 테스트: `lib/session-revocation/__tests__/action.test.ts:24`·`lib/account-connect/__tests__/action.test.ts:27`에 gitlab 사례.
+- [x] ~~(T0 ③이 **오류**를 보일 때만) 회수·[Connect] Action의 재인증 인자~~ — **T0 ③: 무시됨 → 할 일 없음**(design D4) — `Record<LoginProvider, Record<string, string>>` 상수 하나를 `app/(edit)/account/actions.ts:180·:261`이 공유(D4). 무시되면 이 항목을 지우고 design D4에 결과만 적는다. 테스트: `lib/session-revocation/__tests__/action.test.ts:24`·`lib/account-connect/__tests__/action.test.ts:27`에 gitlab 사례.
   - 검증: [자동] green. [수동] T0 ③ 결과가 design D4에 적혀 있다.
 - [ ] 격리 PG — `lib/credentials/__tests__/postgres.integration.ts`:
   - `["github","google"]` 루프(`:178`·`:224`·`:273`·`:457-466`·`:551`·`:958`·`:967`)와 타입 유니온(`:533`·`:874`·`:942`)을 `LOGIN_PROVIDERS`·`LoginProvider`로.
