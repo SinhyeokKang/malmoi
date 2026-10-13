@@ -16,7 +16,7 @@ Malmoi는 JSON·YAML 카탈로그, Chrome 확장 프로그램 메시지, TypeScr
 
 `{locale}`은 `en` 같은 언어 코드를 뜻하고, `*`는 그 디렉터리 안의 파일 이름 한 부분과 일치합니다.
 
-JSON 카탈로그는 언어 코드로 이름을 지은 `.json` 파일, `client.{locale}.json` 같은 접두사 파일, `{locale}/common.json` 같은 언어 디렉터리를 지원합니다. YAML 카탈로그는 언어 이름이나 접두사가 붙은 `.yml`·`.yaml` 파일을 지원합니다. Chrome 확장 프로그램 메시지의 경로는 `_locales/{locale}/messages.json`입니다.
+JSON 카탈로그는 언어 코드로 이름을 지은 `.json` 파일, `client.{locale}.json`처럼 접두사가 붙은 파일, `{locale}/common.json` 같은 언어 디렉터리를 지원합니다. YAML 카탈로그는 언어 이름으로 된 `.yml`·`.yaml` 파일과 그 이름 앞에 접두사가 붙은 파일을 지원합니다. Chrome 확장 프로그램 메시지의 경로는 `_locales/{locale}/messages.json`입니다.
 
 언어별 코드 사전은 `.ts`, `.tsx`, `.js`, `.mjs`를 지원합니다. 모든 언어를 한 파일에 둔 코드 사전은 `.ts`와 `.tsx`만 지원합니다.
 

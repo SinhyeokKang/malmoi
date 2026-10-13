@@ -4,7 +4,7 @@
 
 ## web이 계속 다시 시작될 때 {#startup-checks}
 
-web 컨테이너는 `pnpm preflight && next start`로 시작합니다. 시작 검사에 실패하면 stderr에 `preflight: <name> <reason>` 줄만 쓰고(값은 쓰지 않습니다) 종료하며, Compose가 계속 다시 시작하고 스케줄러는 시작하지 않습니다. `docker compose logs web`으로 읽습니다.
+web 컨테이너는 `pnpm preflight && next start`로 시작합니다. 시작 검사에 실패하면 stderr에 `preflight: <name> <reason>` 줄만 쓰고(값은 쓰지 않습니다) 종료합니다. 그러면 Compose가 web 컨테이너를 계속 다시 시작하고 스케줄러는 시작하지 않습니다. `docker compose logs web`으로 로그를 확인합니다.
 
 | 사유 | 뜻 | 고칠 곳 |
 | --- | --- | --- |
@@ -43,7 +43,7 @@ web 컨테이너는 `pnpm preflight && next start`로 시작합니다. 시작 �
 
 ## 프록시 뒤에서 {#proxy}
 
-- 로그인 뒤 `redirect_uri` 불일치, 나중에 다시 시도하라는 오류, 제출되지 않는 양식은 원래 호스트가 앱까지 오지 않았다는 뜻입니다. nginx 예제는 `Host $host`를 넘깁니다. `MALMOI_ORIGIN`에 기본값이 아닌 포트(예: `:8443`)가 있으면 `$host`가 포트를 떼므로, `deploy/nginx/proxy-common.conf`의 `Host`와 `X-Forwarded-Host`를 `$http_host`로 바꾸고 80 → 443 리디렉션(`return 301 https://$host…`)도 포트를 유지하게 고칩니다. 다른 프록시를 쓰더라도 앱이 받는 `Host`는 `MALMOI_ORIGIN`의 호스트(443이 아니면 포트 포함)와 정확히 같아야 합니다. 로그인 오류는 `docker compose logs web`에 Auth.js의 오류 종류와 함께 `[auth] <type>`으로 남습니다.
+- 로그인 뒤 `redirect_uri` 불일치, 나중에 다시 시도하라는 오류, 제출되지 않는 양식은 원래 호스트 정보가 앱에 전달되지 않았다는 뜻입니다. nginx 예제는 `Host $host`를 넘깁니다. `MALMOI_ORIGIN`에 기본값이 아닌 포트(예: `:8443`)가 있으면 `$host`가 포트를 떼므로, `deploy/nginx/proxy-common.conf`의 `Host`와 `X-Forwarded-Host`를 `$http_host`로 바꾸고 80 → 443 리디렉션(`return 301 https://$host…`)도 포트를 유지하게 고칩니다. 다른 프록시를 쓰더라도 앱이 받는 `Host`는 `MALMOI_ORIGIN`의 호스트(443이 아니면 포트 포함)와 정확히 같아야 합니다. 로그인 오류는 `docker compose logs web`에 Auth.js의 오류 종류와 함께 `[auth] <type>`으로 남습니다.
 - 큰 업데이트가 대상 리포지토리의 워크플로에서는 504인데 서버는 적재를 끝냈다면, 앱이 계속 처리하는 동안 nginx의 `proxy_read_timeout`(기본 60초)이 연결을 끊은 것입니다. 프로젝트의 로그에서 활동을 확인하고 워크플로를 다시 실행합니다. 요청 본문은 5 MB까지입니다(`client_max_body_size`).
 - nginx 앞에 로드 밸런서나 CDN을 두면 `$binary_remote_addr`가 그 장비의 주소라 누구나 rate limit 카운터 하나를 나눠 쓰고, `/api/images/`와 `/oauth/authorize`가 429를 돌려줍니다. 그 장비에 맞게 `real_ip_header`와 `set_real_ip_from`을 설정합니다.
 - `/api/images/*`가 404면 업로드 볼륨 권한(web 로그의 `EACCES`)부터 봅니다.
@@ -54,7 +54,7 @@ web 컨테이너는 `pnpm preflight && next start`로 시작합니다. 시작 �
 
 ## 로그인하지 못하는 사람이 있을 때 {#sign-in}
 
-로그인 화면에 “기존 로그인 수단을 이 서비스에서는 사용할 수 없습니다. 관리자에게 문의하세요.”가 뜨면, 그 사람이 꺼 둔 공급자로 가입했고 다른 로그인 수단을 연결하지 않았다는 뜻입니다. Malmoi는 그 이메일로 계정을 하나 더 만들어 주지 않습니다. 그 공급자를 다시 켜서 그 사람이 로그인해 남겨 둘 공급자를 연결하게 한 뒤, 다시 끄세요([로그인 공급자 끄기](operate.md#sign-in-providers)).
+로그인 화면에 “기존 로그인 수단을 이 서비스에서는 사용할 수 없습니다. 관리자에게 문의하세요.”가 뜨면, 운영자가 꺼 둔 공급자로 가입한 사람이 다른 로그인 수단을 연결하지 않았다는 뜻입니다. Malmoi는 그 이메일로 계정을 하나 더 만들어 주지 않습니다. 그 공급자를 다시 켜서 그 사람이 로그인해 남겨 둘 공급자를 연결하게 한 뒤, 다시 끄세요([로그인 공급자 끄기](operate.md#sign-in-providers)).
 
 ## GitHub {#github}
 
@@ -129,7 +129,7 @@ web 컨테이너는 `pnpm preflight && next start`로 시작합니다. 시작 �
 사용자가 직접 계정을 삭제하는 화면은 없으므로 열람·정정·삭제 요청은 아래 수동 절차로 처리합니다. 그 사람의 멤버십 행과 보낸 초대가 남아 있으면 `User` 행을 삭제할 수 없으므로 먼저 지웁니다. 그다음 `User` 행을 지우면 로그인 수단, 세션, 개인 토큰, 연결한 에이전트, GitLab 연결이 함께 사라지고 동기화 기록과 활동에서도 연결이 끊깁니다. 번역 값은 남고 작성자 연결만 지워집니다. 그 사람의 GitLab 연결을 쓰던 프로젝트는 프로젝트 소유자가 다시 연결할 때까지 **연결 끊김**으로 표시되고, 로그에는 이 일이 기록되지 않습니다. 개인 액세스 토큰 자체는 GitLab에서 계속 유효하므로, 당사자에게 GitLab에서 철회하도록 안내하세요.
 
 1. 먼저 [백업](operate.md#backup)을 만듭니다. 삭제는 되돌릴 수 없습니다. 본인 확인은 운영자의 방침에 따라 진행합니다.
-2. 계정을 찾습니다. 이메일이 암호화되어 있으므로 대신 조회 색인(HMAC)을 계산합니다. 주소는 명령줄이 아니라 환경 변수로 넘기고(`EMAIL_LOOKUP_KEY`는 web 컨테이너에 이미 있습니다), `PROJECT_IDS`는 3단계가 초대를 찾을 프로젝트 목록입니다. 프로젝트가 없으면 비어 있고 `user` 줄만 출력됩니다:
+2. 계정을 찾습니다. 이메일이 암호화되어 있으므로 대신 조회 색인(HMAC)을 계산합니다. 주소는 명령줄이 아니라 환경 변수로 넘기고(`EMAIL_LOOKUP_KEY`는 web 컨테이너에 이미 있습니다), `PROJECT_IDS`는 3단계에서 초대를 찾을 프로젝트 목록입니다. 프로젝트가 없으면 비어 있고 `user` 줄만 출력됩니다:
 
    ```sh
    read -r SUBJECT_EMAIL; export SUBJECT_EMAIL

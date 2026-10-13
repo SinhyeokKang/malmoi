@@ -32,7 +32,7 @@ Claude Code, Codex, claude.ai는 브라우저에서 Malmoi에 로그인하는 �
 
 그런 다음 Claude Code에서 `/mcp`를 실행하고 방금 추가한 서버를 골라 Authenticate를 선택합니다. 브라우저가 열리면 Malmoi에 로그인합니다.
 
-항목에 개인 토큰이 든 `headers` 줄이 이미 있다면 먼저 지우세요. 그 줄이 있는 동안 Claude Code는 계속 토큰을 씁니다.
+설정에 개인 토큰이 든 `headers` 줄이 이미 있다면 먼저 지우세요. 그 줄이 있는 동안 Claude Code는 계속 토큰을 씁니다.
 
 ### Codex {#browser-codex}
 
@@ -45,7 +45,7 @@ url = "SERVER_URL"
 
 그런 다음 `codex mcp login` 뒤에 설정 예시에 있는 서버 이름을 붙여 실행합니다. 브라우저가 열리면 Malmoi에 로그인합니다.
 
-항목에 `bearer_token_env_var` 줄이 이미 있다면 먼저 지우세요. 그 줄이 있는 동안 Codex는 계속 토큰을 씁니다.
+설정에 `bearer_token_env_var` 줄이 이미 있다면 먼저 지우세요. 그 줄이 있는 동안 Codex는 계속 토큰을 씁니다.
 
 ### claude.ai {#browser-claude-ai}
 
@@ -59,7 +59,7 @@ Team 또는 Enterprise 요금제에서는 claude.ai 조직의 소유자만 사�
 
 ## 연결된 앱 {#connected-apps}
 
-승인한 에이전트는 모두 **MCP 커넥터** 페이지의 **연결된 앱**에 앱마다 하나의 연결로 표시되며, 권한, 범위, 마지막 사용 시각, 만료 시각이 함께 표시됩니다.
+승인한 에이전트는 **MCP 커넥터** 페이지의 **연결된 앱**에 앱별로 하나씩 표시됩니다. 권한, 범위, 마지막 사용 시각, 만료 시각도 함께 확인할 수 있습니다.
 
 1. 사이드바에서 **MCP 커넥터**를 엽니다.
 2. 앱을 찾습니다. 두 연결의 이름이 같을 수 있으며, 이름 아래의 주소로 구별합니다.

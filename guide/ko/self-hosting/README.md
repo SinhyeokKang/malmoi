@@ -19,9 +19,9 @@ Linux 서버 한 대에서 Docker Compose로 Malmoi를 직접 운영할 수 있�
 | 데이터 위치 | Supabase(데이터베이스, 도쿄)와 Vercel(호스팅, 사진) | 내 서버의 데이터베이스와 업로드 볼륨 |
 | 로그인과 메일 | GitHub·GitLab·Google 로그인, Resend로 보내는 초대 메일 | GitHub·GitLab·Google 로그인 중 하나 이상을 직접 등록한 OAuth 앱으로 씁니다. Resend 도메인과, GitHub 리포지토리를 쓰면 GitHub App도 직접 등록합니다 |
 | 한도 | 한 사람이 소유한 활성 프로젝트 3개 | 같습니다. `OPERATOR_EMAILS`에 등록한 사람은 예외입니다 |
-| 지원 | GitHub Issues | 최신 릴리스에 한해 GitHub Issues에서 가능한 범위로 답변 |
+| 지원 | GitHub Issues | 최신 릴리스에 한해 GitHub Issues에서 가능한 만큼 답변 |
 | 비용 | 무료 | 소프트웨어는 무료이고 서버·도메인·Resend 요금은 직접 부담합니다 |
-| 개인정보 처리방침 | Malmoi의 방침 | 내 방침 — `/privacy`가 그쪽으로 이동합니다 |
+| 개인정보 처리방침 | Malmoi의 방침 | 내 방침 — `/privacy`에서 해당 페이지로 이동합니다 |
 | 검색 엔진과 방문 집계 | 공개 페이지가 색인되고 쿠키 없는 페이지뷰를 셉니다 | 모든 페이지에 `noindex`를 붙이고 페이지뷰를 세지 않습니다 |
 
 - 가입은 양쪽 모두 열려 있습니다. 켜 둔 로그인 공급자(GitHub·GitLab·Google)가 확인한 이메일 주소가 있으면 누구나 로그인해 초대 없이 프로젝트를 만들 수 있습니다. 앱에는 가입을 막는 기능이 없고, 프로젝트에는 멤버로 등록된 사람만 접근할 수 있습니다.
@@ -39,4 +39,4 @@ Linux 서버 한 대에서 Docker Compose로 Malmoi를 직접 운영할 수 있�
 
 GitHub 리포지토리의 워크플로는 `SinhyeokKang/malmoi`의 상류 action 태그 `malmoi-i18n-push-v3`를 실행하고, 그 단계에 프로젝트의 `PUSH_TOKEN`과 `GITHUB_TOKEN`이 들어갑니다. 이 태그가 가리키는 커밋은 설치한 버전과 상관없이 바뀔 수 있습니다. 받아들일 수 없다면 상류 리포지토리를 포크해 `uses:`를 포크의 커밋 SHA로 고정하세요.
 
-GitLab CI 작업은 상류 태그 `malmoi-i18n-push-gitlab-v1`을 받고, 해당 커밋이 생성된 설정의 `MALMOI_I18N_PUSH_SHA`와 같은지 확인한 뒤 `PUSH_TOKEN`으로 적재 스크립트를 실행합니다. SHA 검사를 유지하세요. `PUSH_TOKEN`은 보호·마스킹된 CI 변수로 저장하고 기준 브랜치를 보호하세요. 러너는 스크립트를 받을 GitHub와 업데이트를 보낼 설치본에 모두 접근할 수 있어야 합니다.
+GitLab CI 작업은 상류 태그 `malmoi-i18n-push-gitlab-v1`을 받고, 해당 커밋이 생성된 설정의 `MALMOI_I18N_PUSH_SHA`와 같은지 확인한 뒤 `PUSH_TOKEN`으로 동기화 스크립트를 실행합니다. SHA 검사를 유지하세요. `PUSH_TOKEN`은 보호·마스킹된 CI 변수로 저장하고 기준 브랜치를 보호하세요. 러너는 스크립트를 받을 GitHub와 업데이트를 보낼 설치본에 모두 접근할 수 있어야 합니다.
