@@ -185,7 +185,7 @@ Publish는 미저장을 **버리지 않는다** — 확인창에서 저장된 �
 **트리 = 목록 범위, 필터는 Status 하나, 검색은 전 소스** (2026-10-01 사용자: "설계 자체가 잘못됐다 — 소스 트리·키·번역값은 연동돼야 한다").
 - **트리가 목록 범위다.** 소스 아래 `All namespaces`는 그 소스 전체, 네임스페이스 행은 그 네임스페이스다(소스 행은 펼침 토글). 키를 고르면
   상세가 그 키다. 범위 콤보(옛 Scope)는 없다. 트리 클릭은 서버 왕복이고 새 범위의 첫 키(`@first`)로 착지한다.
-- **필터는 Status 하나다** — `All keys` · `Incomplete` · `Needs review` · `Unsent` · `New from GitHub`. 트리·키 선택은 Status를 바꾸지 않고(원래
+- **필터는 Status 하나다** — `All keys` · `Incomplete` · `Needs review` · `Unsent` · `New keys`(호스트를 말하지 않는다 — 키는 리포에서만 들어온다). 트리·키 선택은 Status를 바꾸지 않고(원래
   의도 ① — 아래 패널의 선택이 사용자가 켜지 않은 필터로 흘러들지 않는다), Status는 범위를 바꾸지 않는다.
 - **패널마다 자기를 좁히는 필터를 든다** (2026-10-02 사용자) — 트리 = 범위 · 키 목록 = Status(목록 머리) · 번역값 = 언어(상세 머리). 툴바는 검색
   하나뿐이다. 목록 제목은 `Keys`로 고정이다.
@@ -1029,7 +1029,7 @@ Sources의 Add sources 모달이 부르는 `addSurfaces`의 `project:settings`�
 지운다(`@missing`은 보존). 정규 주소는 redirect하지 않는다 — `ns=*`는 생략과 같다(Home 상태 링크가 싣는다).
 ⚠️ **MCP `list_keys`는 이 층을 지나지 않는다** — 동결된 파서(`parseTranslationQuery`)가 옛 해석 그대로다: `missing`은 요청값으로 남아 적용값을
 `effectiveCompletion`(`lib/translations/summary.ts`)이 계산한다(범위 안 소스 **전부**에 ja가 없으면 `Incomplete`, 일부에만 없으면 그 소스를 빼고 계산).
-상태 축(`state`)은 전 소스에서도 소스별 활성 셀로 판정한 뒤 합친다. **`New from GitHub`(`state=new`)은 `StringKey.createdAt > Project.lastPulledAt`이고**
+상태 축(`state`)은 전 소스에서도 소스별 활성 셀로 판정한 뒤 합친다. **`New keys`(`state=new`)는 `StringKey.createdAt > Project.lastPulledAt`이고**
 (`lastPulledAt`이 null이면 활성 키 전체) **Sync 시각이 아니다.**
 
 ⚠️ **`?e=`는 일부만 생성기를 지난다** (거부 사유 — 읽는 라우트: `projects`·`projects/new`·`account`·
