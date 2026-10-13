@@ -78,7 +78,9 @@ Use this skill when the user asks to run the migrated source command `orchestrat
 
 ## 2. 감시
 
-- `orchestration` 스킬의 `check --run <run> --wait`로 완료·질문·차단 메시지를 받는다. 도구 반환에 따라 실행 세션을 이어 기다리며, Claude 전용 `run_in_background`나 화면 마커 폴링을 필수로 삼지 않는다.
+- `orchestration` 스킬의 `check --run <run> --wait`로 완료·질문·차단 메시지를 받는다. 도구 반환에 따라 실행 세션을 이어 기다리며, 화면 마커 폴링을 필수로 삼지 않는다(상태 폴링 루프는 아래 항목).
+- ⚠️ **완료 알림만 믿지 않는다 — 워커를 띄우거나 push할 때마다 상태 폴링 루프를 백그라운드로 건다** (2026-10-13 gitlab 감사 런 — C fix3가 끝났는데 알림이 지휘자에게 닿지 않아 런이 멈췄고 사용자가 먼저 알아챘다. `check --wait --types worker_done,…`도 heartbeat로 돌아왔다).
+  루프는 셸 안에서 `worker-show --dispatch <id>`의 `status`(≠ `dispatched`)와 CI run 상태를 60초 간격으로 보고 **첫 변화에서 끝난다** — 끝날 때 한 번만 지휘자를 깨우므로 대기 중 토큰은 0이다(폴링 자체는 모델 호출이 아니다). 새 Dispatch·push가 생기면 루프를 새로 건다. Claude Code는 `run_in_background`, Codex는 그 런타임의 백그라운드 실행을 쓴다.
 - heartbeat·빈 대기·타임아웃은 완료나 실패가 아니다. 현재 Task/Dispatch와 보고서·실제 커밋을 대조한 뒤 다음 배치를 연결한다.
 - heartbeat만 온 알림은 `check` → `--ack` 뒤 **`<워커> hb`**(`A hb`·`B Q0 hb`)로만 답한다 — 문장·상태 설명을 쓰지 않는다(2026-10-05 사용자). 침묵(빈 응답)은 쓰지 않는다 — 하네스가 출력을 다시 요구해 루프가 생긴다.
 - 완료된 워커는 Delivery 확인 전에 다음 태스크로 재사용하거나 명시적으로 유지·해제한다. 새 태스크는 새 Dispatch로 보내며, 종료된 lifecycle ID로 계속 지시하지 않는다.
