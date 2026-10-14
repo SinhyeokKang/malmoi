@@ -20,6 +20,12 @@ export type KeyDraftState = {
   order: readonly string[];
   saved: Values;
   draft: Values;
+  /**
+   * 제거 예정 언어 — 읽기 전용으로 **얼린** 칸(locale-add design §6 · spec 23). 미저장 입력은 버리지 않고 `dirtyLocales`(이탈 확인·복구)에 남지만
+   * 편집·제출에서 빠진다. 버리는 길은 셀 `reset`이다. 다음 서버 갱신이 읽기 전용을 싣지 않으면(제거 취소) 그 입력을 그대로 편집한다.
+   * ⚠️ 막는 것은 서버 거부(`locale-removal-pending`)다 — 이 목록은 그 거부를 미리 피하는 표시일 뿐이다.
+   */
+  readOnly: readonly string[];
   inFlight?: { requestId: string; sent: Values };
 };
 
@@ -30,7 +36,7 @@ export type KeyDraftAction =
   | { type: "submit"; requestId: string }
   | { type: "success"; requestId: string; keyId: string; cells: readonly { localeCode: string; value: string }[] }
   | { type: "failure"; requestId: string }
-  | { type: "server"; keyId: string; values: Readonly<Values> };
+  | { type: "server"; keyId: string; values: Readonly<Values>; readOnly?: readonly string[] };
 
 function values(entries: Iterable<readonly [string, string]>): Values {
   const out = Object.create(null) as Values;
@@ -38,21 +44,33 @@ function values(entries: Iterable<readonly [string, string]>): Values {
   return out;
 }
 
-export function initKeyDraft(keyId: string, saved: Readonly<Values>): KeyDraftState {
-  const order = Object.keys(saved);
-  return { keyId, order, saved: values(order.map(code => [code, saved[code] ?? ""])), draft: values(order.map(code => [code, saved[code] ?? ""])) };
+/** 활성 순서를 따르는 읽기 전용 목록 — 순서 밖의 코드·중복은 버린다. */
+function readOnlyOf(order: readonly string[], readOnly: readonly string[]): string[] {
+  const codes = new Set(readOnly);
+  return order.filter(code => codes.has(code));
 }
 
+export function initKeyDraft(keyId: string, saved: Readonly<Values>, readOnly: readonly string[] = []): KeyDraftState {
+  const order = Object.keys(saved);
+  return { keyId, order, saved: values(order.map(code => [code, saved[code] ?? ""])), draft: values(order.map(code => [code, saved[code] ?? ""])), readOnly: readOnlyOf(order, readOnly) };
+}
+
+/** 미저장 — 얼린 칸도 센다(이탈 확인·세션 복구가 그 입력을 버리지 않는다). */
 export function dirtyLocales(state: KeyDraftState): string[] {
   return state.order.filter(code => state.draft[code] !== state.saved[code]);
+}
+
+/** 저장에 실을 수 있는 미저장 — 얼린 칸을 뺀다. 저장 버튼·제출이 이것을 본다. */
+export function savableLocales(state: KeyDraftState): string[] {
+  return dirtyLocales(state).filter(code => !state.readOnly.includes(code));
 }
 
 export function reduceKeyDraft(state: KeyDraftState, action: KeyDraftAction): KeyDraftState {
   switch (action.type) {
     case "discard":
-      return initKeyDraft(state.keyId, state.saved);
+      return initKeyDraft(state.keyId, state.saved, state.readOnly);
     case "edit": {
-      if (!Object.hasOwn(state.saved, action.locale)) return state;
+      if (!Object.hasOwn(state.saved, action.locale) || state.readOnly.includes(action.locale)) return state;
       return { ...state, draft: values([...Object.entries(state.draft), [action.locale, action.value]]) };
     }
     case "reset": {
@@ -60,7 +78,7 @@ export function reduceKeyDraft(state: KeyDraftState, action: KeyDraftAction): Ke
       return { ...state, draft: values([...Object.entries(state.draft), [action.locale, state.saved[action.locale] ?? ""]]) };
     }
     case "submit": {
-      const dirty = dirtyLocales(state);
+      const dirty = savableLocales(state);
       // 전송 중 중복 제출과 바뀐 것 없는 제출은 요청을 만들지 않는다.
       if (state.inFlight !== undefined || dirty.length === 0) return state;
       return { ...state, inFlight: { requestId: action.requestId, sent: values(dirty.map(code => [code, state.draft[code] ?? ""])) } };
@@ -84,11 +102,11 @@ export function reduceKeyDraft(state: KeyDraftState, action: KeyDraftAction): Ke
         saved[cell.localeCode] = cell.value;
         if (follows) draft[cell.localeCode] = cell.value;
       }
-      return { keyId: state.keyId, order: state.order, saved, draft };
+      return { keyId: state.keyId, order: state.order, saved, draft, readOnly: state.readOnly };
     }
     case "failure": {
       if (state.inFlight?.requestId !== action.requestId) return state;
-      return { keyId: state.keyId, order: state.order, saved: state.saved, draft: state.draft };
+      return { keyId: state.keyId, order: state.order, saved: state.saved, draft: state.draft, readOnly: state.readOnly };
     }
     case "server": {
       if (action.keyId !== state.keyId) return state;
@@ -101,7 +119,8 @@ export function reduceKeyDraft(state: KeyDraftState, action: KeyDraftAction): Ke
         draft[code] = !Object.hasOwn(state.saved, code) || state.draft[code] === state.saved[code] ? next : state.draft[code] ?? "";
         saved[code] = next;
       }
-      return { ...state, order, saved, draft };
+      // 읽기 전용은 매 갱신이 정한다 — 싣지 않으면 전부 편집 가능하다(제거 취소가 별도 복구 동작 없이 칸을 연다).
+      return { ...state, order, saved, draft, readOnly: readOnlyOf(order, action.readOnly ?? []) };
     }
   }
 }

@@ -6,7 +6,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { optionalEnv } from "@/lib/env";
-import { PrismaClient } from "@/generated/prisma/client";
+import { Prisma, PrismaClient } from "@/generated/prisma/client";
 import { loadSurfaceCounts } from "../query";
 // Unix 소켓 전용 새 클러스터. DATABASE_URL·DIRECT_URL을 절대 읽지 않는다.
 const directory = mkdtempSync(join(tmpdir(), "malmoi-source-counts-"));
@@ -71,9 +71,10 @@ it.each([1, 5])("%i표면 집계의 정답과 적재 직후/ANALYZE 뒤 500ms �
     expect(result).toHaveLength(size + 1);
     expect(result.find(row => row.surfaceId === "empty")).toMatchObject({ keys: 0, locales: 0 });
     for (let index = 0; index < size; index++) expect(result.find(row => row.surfaceId === `s${index}`)).toMatchObject({ keys: 20000, locales: 200 });
-    const [template, ...values] = spy.mock.calls[0]!;
+    const [template, ...parts] = spy.mock.calls[0]!;
     if (!Array.isArray(template)) throw new Error("Expected tagged query");
-    const sql = template.map((part, index) => part + (index < values.length ? `$${index + 1}` : "")).join("");
+    // 끼운 SQL 조각(`notRemoving`)까지 펼친다 — 손으로 `$n`을 이으면 조각이 값으로 바인딩된다.
+    const { text: sql, values } = Prisma.sql(template as unknown as TemplateStringsArray, ...parts);
     spy.mockRestore();
     const stats = (await pool.query(`SELECT relname, n_live_tup, last_analyze, last_autoanalyze FROM pg_stat_user_tables WHERE relname IN ('StringKey','Locale','Translation')`)).rows;
     for (const phase of ["before", "after"]) {

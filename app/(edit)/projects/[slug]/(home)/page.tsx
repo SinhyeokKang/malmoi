@@ -120,7 +120,7 @@ export default async function ProjectHomePage({
         select: {
           id: true, slug: true, archivedAt: true, lastCommitSha: true, lastCommitAt: true, lastImportedAt: true,
           lastImportError: true, lastImportStartedAt: true, lastImportFailedAt: true,
-          locales: { select: { code: true, name: true, isBase: true, orphaned: true, createdAt: true } },
+          locales: { select: { code: true, name: true, isBase: true, orphaned: true, createdAt: true, change: { select: { operation: true } } } },
         },
       },
       // 대기 초대 — 멤버 화면 목록과 같은 술어다(수락·만료 둘 다 뺀다, POSTMORTEM 2026-09-10).

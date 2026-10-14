@@ -17,6 +17,11 @@ import {
   type SourceRemovalError, type SourceRemovalPreview,
 } from "@/lib/surfaces/remove";
 import type { RepositorySettingsError } from "@/lib/settings/message";
+import {
+  AddLocaleInput, addLocale, CancelLocaleRemovalInput, cancelLocaleRemoval,
+  PreviewLocaleRemovalInput, previewLocaleRemoval, RemoveLocaleInput, removeLocale,
+  type AddLocaleResult, type CancelLocaleRemovalResult, type LocaleRemovalPreview, type RemoveLocaleResult,
+} from "@/lib/locales/change";
 
 /**
  * 기준 로케일 — **`/projects/:slug/sources`가 소유한다** (6b-5 · PRODUCT §7.7 결정 4).
@@ -119,4 +124,76 @@ export async function previewSourceRemoval(raw: { slug: string; surfaceSlug: str
     logFailure("source-removal-preview", error);
     return { ok: false, error: "unavailable" };
   }
+}
+
+/**
+ * 언어 추가·제거·취소 (locale-add design §3·§6). 본체는 공유 코어(`lib/locales/change.ts` — MCP `add_locale`·`remove_locale`·`cancel_locale_removal`과
+ * 같다)이고 Action은 세션·입력·무효화만 든다. 결과는 문장이 아니라 코드다(화면 문구는 시안 배치 몫).
+ * ⚠️ Action 이름이 코어와 다르다(`…SourceLocale…`) — 같은 이름이면 import에 별칭이 붙고, 진입점 검사(`entry-points.test.ts`)는 코어 이름의 호출만 센다.
+ * 무효화 범위는 소스 제거와 같다 — Sources·번역 화면·Home이 그 프로젝트 레이아웃 아래이고, 목록 진행률이 작업 언어를 다시 센다.
+ */
+/** Action 층의 거부 — 입력 모양과 세션 장애(`unavailable`). 나머지 코드는 코어의 `LocaleChangeError`다. */
+type LocaleInputError = { ok: false; error: "invalid input" | "unavailable" };
+
+function settleLocaleChange(slug: string) {
+  settleRevalidate("locale-change", () => {
+    revalidatePath(`/projects/${slug}`, "layout");
+    revalidatePath("/projects");
+  });
+}
+
+export async function addSourceLocale(raw: { slug: string; surfaceSlug: string; localeCode: string }): Promise<AddLocaleResult | LocaleInputError> {
+  const parsed = AddLocaleInput.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "invalid input" };
+  const session = await readSession();
+  if (session.status === "unavailable") return { ok: false, error: "unavailable" };
+  if (session.status === "none") return { ok: false, error: "unauthorized" };
+  const result = await addLocale(getPrisma(), { userId: session.userId }, parsed.data);
+  if (!result.ok) return redrawIfArchived(parsed.data.slug, result.error, result);
+  settleLocaleChange(parsed.data.slug);
+  return result;
+}
+
+/** 확인 창이 열릴 때 부른다 — **읽기만 한다**(`revalidatePath` 없음). 대상 경로·번역 수·미전달 수·전달 여부(`null` = 확인 안 됨)·지문을 준다. */
+export async function previewSourceLocaleRemoval(raw: { slug: string; surfaceSlug: string; localeCode: string }): Promise<LocaleRemovalPreview | LocaleInputError> {
+  const parsed = PreviewLocaleRemovalInput.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "invalid input" };
+  const session = await readSession();
+  if (session.status === "unavailable") return { ok: false, error: "unavailable" };
+  if (session.status === "none") return { ok: false, error: "unauthorized" };
+  try {
+    return await previewLocaleRemoval(getPrisma(), { userId: session.userId }, parsed.data);
+  } catch (error) {
+    logFailure("locale-removal-preview", error);
+    return { ok: false, error: "unavailable" };
+  }
+}
+
+/**
+ * 제거 요청 또는 추가 취소 — 어느 쪽인지는 코어가 그 언어의 상태로 정한다. ⚠️ `approval`은 `previewSourceLocaleRemoval`이 낸 지문이어야 한다 —
+ * 없거나 낡으면 거부되고 아무것도 안 바뀐다.
+ */
+export async function removeSourceLocale(raw: { slug: string; surfaceSlug: string; localeCode: string; approval: string | null }): Promise<RemoveLocaleResult | LocaleInputError> {
+  const parsed = RemoveLocaleInput.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "invalid input" };
+  const session = await readSession();
+  if (session.status === "unavailable") return { ok: false, error: "unavailable" };
+  if (session.status === "none") return { ok: false, error: "unauthorized" };
+  const result = await removeLocale(getPrisma(), { userId: session.userId }, parsed.data);
+  if (!result.ok) return redrawIfArchived(parsed.data.slug, result.error, result);
+  settleLocaleChange(parsed.data.slug);
+  return result;
+}
+
+/** 제거 취소. `delivered: true`면 이전 삭제가 PR/MR에 실려 있어 다음 Publish까지 Unsent다 — 화면이 "취소 완료"라고 말하지 않는다(spec 11). */
+export async function cancelSourceLocaleRemoval(raw: { slug: string; surfaceSlug: string; localeCode: string }): Promise<CancelLocaleRemovalResult | LocaleInputError> {
+  const parsed = CancelLocaleRemovalInput.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "invalid input" };
+  const session = await readSession();
+  if (session.status === "unavailable") return { ok: false, error: "unavailable" };
+  if (session.status === "none") return { ok: false, error: "unauthorized" };
+  const result = await cancelLocaleRemoval(getPrisma(), { userId: session.userId }, parsed.data);
+  if (!result.ok) return redrawIfArchived(parsed.data.slug, result.error, result);
+  settleLocaleChange(parsed.data.slug);
+  return result;
 }

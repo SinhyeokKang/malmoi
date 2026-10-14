@@ -62,7 +62,7 @@ describe.each(cases)("화면 수량 %s", (uiLocale, m, expected) => {
     const detail = props().detail!;
     if ("absent" in detail) throw new Error("Expected a key detail");
     const refs = Array.from({ length: 10001 }, () => ({ path: "src/a.tsx", line: 10000, href: null }));
-    const { container } = await render(<LocalePanel detail={{ ...detail, refs }} draft={{ keyId: detail.key.id, order: [], draft: {}, saved: {} }} language={undefined} onEdit={() => {}} onReset={() => {}} onSave={() => {}} copyHref="/projects/acme" readOnly footer={null} />, { uiLocale });
+    const { container } = await render(<LocalePanel detail={{ ...detail, refs }} draft={{ keyId: detail.key.id, order: [], draft: {}, saved: {}, readOnly: [] }} language={undefined} onEdit={() => {}} onReset={() => {}} onSave={() => {}} copyHref="/projects/acme" readOnly footer={null} />, { uiLocale });
     expect(container.textContent).toContain(` +${expected}`);
     expect(container.textContent).toContain("src/a.tsx:10000");
     expect(container.textContent).toContain(m.translations.workspace.detail.referenced(10001));

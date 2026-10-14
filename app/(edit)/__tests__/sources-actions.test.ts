@@ -85,13 +85,13 @@ it("보관 거부는 그 프로젝트 레이아웃을 다시 그린다", async (
 const locales = vi.hoisted(() => ({ add: vi.fn(), preview: vi.fn(), remove: vi.fn(), cancel: vi.fn() }));
 vi.mock("@/lib/locales/change", async (original) => ({ ...(await original<object>()),
   addLocale: locales.add, previewLocaleRemoval: locales.preview, removeLocale: locales.remove, cancelLocaleRemoval: locales.cancel }));
-import { addLocale, cancelLocaleRemoval, previewLocaleRemoval, removeLocale } from "../projects/[slug]/sources/actions";
+import { addSourceLocale as addLocale, cancelSourceLocaleRemoval as cancelLocaleRemoval, previewSourceLocaleRemoval as previewLocaleRemoval, removeSourceLocale as removeLocale } from "../projects/[slug]/sources/actions";
 
 const TARGET = { slug: "p", surfaceSlug: "web", localeCode: "fr" };
 const LOCALE_WRITES = [
-  { name: "addLocale", run: () => addLocale(TARGET), core: locales.add, input: TARGET, ok: { ok: true, action: "create", path: "web/fr.json", reissued: 0 } },
-  { name: "removeLocale", run: () => removeLocale({ ...TARGET, approval: "f" }), core: locales.remove, input: { ...TARGET, approval: "f" }, ok: { ok: true, kind: "request-removal", discarded: 2 } },
-  { name: "cancelLocaleRemoval", run: () => cancelLocaleRemoval(TARGET), core: locales.cancel, input: TARGET, ok: { ok: true, delivered: null } },
+  { name: "addSourceLocale", run: () => addLocale(TARGET), core: locales.add, input: TARGET, ok: { ok: true, action: "create", path: "web/fr.json", reissued: 0 } },
+  { name: "removeSourceLocale", run: () => removeLocale({ ...TARGET, approval: "f" }), core: locales.remove, input: { ...TARGET, approval: "f" }, ok: { ok: true, kind: "request-removal", discarded: 2 } },
+  { name: "cancelSourceLocaleRemoval", run: () => cancelLocaleRemoval(TARGET), core: locales.cancel, input: TARGET, ok: { ok: true, delivered: null } },
 ] as const;
 
 it.each(LOCALE_WRITES)("$name 성공은 세션 사용자로 코어를 부르고 그 프로젝트 레이아웃과 목록을 무효화한다", async ({ run, core, input, ok }) => {

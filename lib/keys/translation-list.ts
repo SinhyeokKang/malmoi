@@ -1,7 +1,8 @@
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import { actorLabel } from "@/lib/keys/view";
 import { firstMatchRange } from "@/lib/search/highlight";
-import { effectiveCompletion, type EffectiveCompletion } from "@/lib/translations/summary";
+import { effectiveCompletion, localeRole, type EffectiveCompletion } from "@/lib/translations/summary";
+import { notRemoving, workLocaleWhere } from "./work-locale";
 import { ALL_NAMESPACES, DEFAULT_TRANSLATION_QUERY, translationsHref, type TranslationQuery } from "@/lib/translations/query";
 import { decodeUrlToken, encodeUrlToken } from "@/lib/url-token";
 
@@ -28,7 +29,8 @@ const byCodeUnit = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 export async function loadTranslationTree(prisma: PrismaClient, projectId: string): Promise<TranslationTree> {
   const surfaces = await prisma.translationSurface.findMany({
     where: { projectId, archivedAt: null },
-    select: { id: true, slug: true, baseLocale: true, locales: { where: { orphaned: false }, select: { code: true } } },
+    // 트리의 언어 목록은 `Missing in {locale}` 선택지다 — 작업 언어만(제거 예정 제외, locale-add spec 22).
+    select: { id: true, slug: true, baseLocale: true, locales: { where: workLocaleWhere, select: { code: true } } },
   });
   const counts = surfaces.length === 0 ? [] : await prisma.stringKey.groupBy({
     by: ["surfaceId", "namespace"],
@@ -115,7 +117,7 @@ export async function loadTranslationList(
   const project = await prisma.project.findUniqueOrThrow({ where: { id: projectId }, select: { lastPulledAt: true } });
   const scope = await prisma.translationSurface.findMany({
     where: { projectId, archivedAt: null, ...(query.scope === "project" ? {} : { id: routeSurfaceId }) },
-    select: { id: true, locales: { where: { orphaned: false }, select: { code: true } } },
+    select: { id: true, locales: { where: workLocaleWhere, select: { code: true } } },
   });
   const effective = effectiveCompletion(query, scope.map(s => ({ surfaceId: s.id, locales: s.locales.map(l => l.code) })));
   const surfaceIds = scope.map(s => s.id).filter(id => !effective.excludedSurfaceIds.includes(id));
@@ -151,8 +153,8 @@ export async function loadTranslationList(
    */
   const filtered = Prisma.sql`
     WITH lc AS MATERIALIZED (
-      SELECT "surfaceId", count(*)::int AS n FROM "Locale"
-      WHERE "projectId" = ${projectId} AND NOT "orphaned" AND "surfaceId" = ANY(${surfaceIds}::text[]) GROUP BY 1
+      SELECT l."surfaceId", count(*)::int AS n FROM "Locale" l
+      WHERE l."projectId" = ${projectId} AND NOT l."orphaned" AND ${notRemoving("l")} AND l."surfaceId" = ANY(${surfaceIds}::text[]) GROUP BY 1
     ), cells AS MATERIALIZED (
       SELECT t."keyId", count(*) FILTER (WHERE t."value" <> '')::int AS filled,
         bool_or(t."needsReview" AND t."value" <> '') AS "review",
@@ -161,7 +163,7 @@ export async function loadTranslationList(
         ${pattern === null ? Prisma.sql`false` : Prisma.sql`bool_or(t."value" ILIKE ${pattern} ESCAPE '\\')`} AS "matchesTranslation"
       FROM "Translation" t
       WHERE t."projectId" = ${projectId} AND t."surfaceId" = ANY(${surfaceIds}::text[])
-        AND EXISTS (SELECT 1 FROM "Locale" l WHERE l."projectId" = t."projectId" AND l."surfaceId" = t."surfaceId" AND l."code" = t."localeCode" AND NOT l."orphaned")
+        AND EXISTS (SELECT 1 FROM "Locale" l WHERE l."projectId" = t."projectId" AND l."surfaceId" = t."surfaceId" AND l."code" = t."localeCode" AND NOT l."orphaned" AND ${notRemoving("l")})
       GROUP BY t."keyId"
     ), ks AS (
       SELECT k."id", s."slug" AS "surfaceSlug", k."namespace", k."key", k."sourceText", k."createdAt",
@@ -251,7 +253,7 @@ async function matchesFor(prisma: PrismaClient, projectId: string, rows: readonl
   */
   const cells = await prisma.$queryRaw<{ keyId: string; localeCode: string; value: string }[]>`
     SELECT DISTINCT ON (t."keyId") t."keyId", t."localeCode", t."value" FROM "Translation" t
-    JOIN "Locale" l ON l."projectId" = t."projectId" AND l."surfaceId" = t."surfaceId" AND l."code" = t."localeCode" AND NOT l."orphaned"
+    JOIN "Locale" l ON l."projectId" = t."projectId" AND l."surfaceId" = t."surfaceId" AND l."code" = t."localeCode" AND NOT l."orphaned" AND ${notRemoving("l")}
     WHERE t."projectId" = ${projectId} AND t."keyId" = ANY(${rest}::text[]) AND t."value" ILIKE ${pattern} ESCAPE '\\'
     ORDER BY t."keyId", t."localeCode" COLLATE "C"`;
   for (const cell of cells) {
@@ -268,12 +270,13 @@ export type TranslationDetail =
       key: { id: string; key: string; namespace: string; sourceText: string; description: string | null; surfaceSlug: string };
       lastCommitSha: string | null;
       refs: { path: string; line: number }[];
-      locales: { code: string; isBase: boolean; value: string | null; needsReview: boolean; pending: boolean; updatedBy: string | null; updatedAt: Date | null }[];
+      /** `readOnly` — 제거 예정 언어. 값은 보이되 편집·저장에서 빠진다(셀 얼리기의 재료 — `initKeyDraft`·`server`의 `readOnly`). */
+      locales: { code: string; isBase: boolean; readOnly: boolean; value: string | null; needsReview: boolean; pending: boolean; updatedBy: string | null; updatedAt: Date | null }[];
     }
   | { status: "absent" };
 
 /**
- * 선택 키 하나 × 그 소스의 활성 로케일. **base 우선 · 나머지 코드순**. pending은 boolean 투영만 낸다 — 토큰 원문은 서버 밖으로 나가지 않는다.
+ * 선택 키 하나 × 그 소스의 활성 로케일 — **제거 예정도 읽기 전용으로 싣는다**(locale-add design §6 · `localeRole`). orphan은 싣지 않는다. **base 우선 · 나머지 코드순**. pending은 boolean 투영만 낸다 — 토큰 원문은 서버 밖으로 나가지 않는다.
  * ⚠️ `updatedBy`는 원문 id다 — 화면에 내기 전에 `withActorLabels`로 마스킹된 라벨로 바꾼다.
  */
 export async function loadTranslationDetail(prisma: PrismaClient, input: { projectId: string; surfaceId: string; keyId: string }): Promise<TranslationDetail> {
@@ -288,9 +291,10 @@ export async function loadTranslationDetail(prisma: PrismaClient, input: { proje
     },
   });
   if (key === null) return { status: "absent" };
-  const locales = await prisma.locale.findMany({ where: { projectId, surfaceId, orphaned: false }, select: { code: true } });
+  const locales = await prisma.locale.findMany({ where: { projectId, surfaceId, orphaned: false }, select: { code: true, orphaned: true, change: { select: { operation: true } } } });
   const base = key.surface.baseLocale;
   const cellOf = new Map(key.translations.map(t => [t.localeCode, t]));
+  const readOnly = new Set(locales.filter(l => localeRole(l) === "read-only").map(l => l.code));
   const codes = locales.map(l => l.code).sort((a, b) => (a === base ? -1 : b === base ? 1 : byCodeUnit(a, b)));
   return {
     status: "ok",
@@ -300,7 +304,7 @@ export async function loadTranslationDetail(prisma: PrismaClient, input: { proje
     locales: codes.map(code => {
       const cell = cellOf.get(code);
       return {
-        code, isBase: code === base, value: cell?.value ?? null, needsReview: cell?.needsReview ?? false,
+        code, isBase: code === base, readOnly: readOnly.has(code), value: cell?.value ?? null, needsReview: cell?.needsReview ?? false,
         pending: (cell?.pendingEditToken ?? null) !== null, updatedBy: cell?.updatedBy ?? null, updatedAt: cell?.updatedAt ?? null,
       };
     }),

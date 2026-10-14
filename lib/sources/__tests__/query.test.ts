@@ -4,7 +4,8 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { loadSources, loadSource } from "../query";
 const surface = { id: "s", slug: "web", adapterName: "json-catalog", pathTemplate: "{locale}.json", baseLocale: "en", declaredBaseLocale: null, lastCommitSha: "sha", lastCommitAt: null, lastImportStartedAt: null, lastImportError: null, lastImportFailedAt: null, lastImportToken: "secret", nestedByPath: { private: true } };
 const project = { repoOwner: "owner", repoName: "repo", baseBranch: "main", installationId: "private", surfaces: [surface] };
-const mocks = { project: { findFirst: vi.fn() }, translationSurface: { findFirst: vi.fn() }, locale: { findMany: vi.fn() }, translation: { findMany: vi.fn(), groupBy: vi.fn() }, stringKey: { count: vi.fn() }, $queryRaw: vi.fn() };
+const mocks = { project: { findFirst: vi.fn() }, translationSurface: { findFirst: vi.fn() }, locale: { findMany: vi.fn() }, translation: { findMany: vi.fn(), groupBy: vi.fn() }, stringKey: { count: vi.fn() }, $queryRaw: vi.fn(),
+  localeChange: { findMany: vi.fn() }, deliveryConfirmation: { findMany: vi.fn(), findUnique: vi.fn() } };
 const db = mocks as unknown as PrismaClient;
 beforeEach(() => {
   vi.clearAllMocks();
@@ -15,6 +16,9 @@ beforeEach(() => {
   mocks.translation.findMany.mockResolvedValue([{ localeCode: "en", needsReview: false }]);
   mocks.stringKey.count.mockResolvedValue(3);
   mocks.$queryRaw.mockResolvedValue([{ surfaceId: "s", keys: 3, locales: 1 }]);
+  mocks.localeChange.findMany.mockResolvedValue([]);
+  mocks.deliveryConfirmation.findMany.mockResolvedValue([]);
+  mocks.deliveryConfirmation.findUnique.mockResolvedValue(null);
 });
 it.each([1, 5])("소스 %i개에서도 목록 호출 수가 같고 셀을 읽지 않는다", async size => {
   mocks.project.findFirst.mockResolvedValue({ ...project, surfaces: Array.from({ length: size }, (_, i) => ({ ...surface, id: `s${i}` })) });

@@ -8,6 +8,16 @@ export type KeyCellInput = { localeCode: string; value: string | null; needsRevi
 
 export type KeySummary = { keyId: string; totalLocales: number; missingCount: number; hasReview: boolean; hasPending: boolean };
 
+/**
+ * 언어의 역할 (locale-add design §5·§6 · spec 22). **작업**(진행률·결측·검색·Inbox의 분모)은 활성 + 추가 제안(ADD)이다. 제거 예정(REMOVE)은
+ * 작업에서 빠지되 번역 상세·Sources에 **읽기 전용** 상태 행으로 남는다. orphan은 의도 행이 남아 있어도 비활성이다 — 존재는 리포가 정한다.
+ * 취소로 행이 사라지면 그대로 작업으로 돌아온다(따로 복구할 것이 없다). SQL 사본은 `lib/keys/work-locale.ts`다.
+ */
+export function localeRole(locale: { orphaned: boolean; change: { operation: "ADD" | "REMOVE" } | null }): "work" | "read-only" | "inactive" {
+  if (locale.orphaned) return "inactive";
+  return locale.change?.operation === "REMOVE" ? "read-only" : "work";
+}
+
 /** 분모는 그 소스의 **활성** 로케일이다 — orphan 로케일 셀은 어느 쪽에도 들지 않는다. */
 export function summarizeKey(input: { activeLocales: readonly string[]; cells: readonly KeyCellInput[] }): Omit<KeySummary, "keyId"> {
   const byLocale = new Map(input.cells.map(cell => [cell.localeCode, cell]));
