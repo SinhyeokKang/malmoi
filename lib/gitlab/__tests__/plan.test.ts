@@ -170,7 +170,9 @@ describe("selectOwnMergeRequest — 자기 프로젝트의 열린 MR만", () => 
   });
 
   it("source·target project id가 둘 다 저장된 id인 MR을 고른다 — number는 iid다", () => {
-    expect(selectOwnMergeRequest([mr()], REPO, "malmoi-i18n/sync-app")).toEqual({ url: "https://gitlab.com/g/sub/app/-/merge_requests/7", number: 7, title: "t", base: "main" });
+    expect(selectOwnMergeRequest([mr()], REPO, "malmoi-i18n/sync-app")).toEqual({ url: "https://gitlab.com/g/sub/app/-/merge_requests/7", number: 7, title: "t", base: "main", body: "" });
+    // 설명이 있으면 그대로 — 열린 MR 본문 갱신의 비교 입력이다(locale-add R-B2 Y3).
+    expect(selectOwnMergeRequest([mr({ description: "d" })], REPO, "malmoi-i18n/sync-app")).toMatchObject({ body: "d" });
   });
 
   it("⚠️ 동명 fork MR(source_project_id가 다르다)은 재사용·닫기·보호 대상이 아니다", () => {

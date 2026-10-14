@@ -737,6 +737,7 @@ export const ko = {
       "base-unreadable": "리포지토리를 읽지 못했습니다. 개발자에게 앱의 접근 권한을 확인해 달라고 요청하세요.",
       "not-installed": "앱이 리포지토리에 연결되어 있지 않았습니다. 개발자에게 다시 연결해 달라고 요청하세요.",
       "glob-matched-nothing": "번역 파일이 예상한 위치에 없었습니다. 개발자에게 문의하세요.",
+      "locale-plan-refused": "언어 파일 경로를 쓸 수 없거나 다른 소스의 경로라 언어 변경을 보낼 수 없습니다. 개발자에게 소스의 파일 경로를 확인해 달라고 요청하세요.",
       "github-error": `GitHub가 응답하지 않았습니다. ${NIGHTLY_RETRY}`,
       "db-unavailable": `Malmoi 데이터베이스에 연결하지 못했습니다. ${NIGHTLY_RETRY}`,
       stale: "이 실행은 끝나기 전에 멈췄습니다.",

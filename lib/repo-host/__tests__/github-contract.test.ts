@@ -36,7 +36,7 @@ describe("GitHub GitClient — GitLab 계약과 대칭인 줄", () => {
     serve((route) => (route === "GET /repos/{owner}/{repo}" ? { id: 42 }
       : [{ html_url: "https://github.com/o/r/pull/2", number: 2, title: "t", base: { ref: "main" } }, { html_url: "https://github.com/o/r/pull/9", number: 9, title: "t", base: { ref: "main" } }]));
     const client = await createGitClient("o", "r", "10", "42");
-    expect(await client.findOpenPr("malmoi-i18n/sync-app")).toEqual({ url: "https://github.com/o/r/pull/2", number: 2, title: "t", base: "main" });
+    expect(await client.findOpenPr("malmoi-i18n/sync-app")).toEqual({ url: "https://github.com/o/r/pull/2", number: 2, title: "t", base: "main", body: "" });
     const list = mocks.request.mock.calls.find(([route]) => route === "GET /repos/{owner}/{repo}/pulls");
     expect(list?.[1]).toEqual({ owner: "o", repo: "r", head: "o:malmoi-i18n/sync-app", state: "open" });
   });

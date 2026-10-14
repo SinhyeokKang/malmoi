@@ -86,7 +86,7 @@ export type GitClient = {
    * @param branch **sync 브랜치 이름만** 넘긴다. GitHub 구현이 `owner:branch`를 조립한다 — 브랜치명만 넘기면 GitHub이 필터를
    *   조용히 무시하고 전체 목록을 주므로 재사용 판정이 무너져 PR이 중복 생성된다. 호출부마다 조립하던 함정을 경계 안으로 옮겼다.
    */
-  findOpenPr(branch: string): Promise<{ url: string; number: number; title: string; base: string } | null>;
+  findOpenPr(branch: string): Promise<{ url: string; number: number; title: string; base: string; body: string } | null>;
 
   createPr(headBranch: string, baseBranch: string, title: string, body: string): Promise<string>;
 
@@ -95,6 +95,12 @@ export type GitClient = {
 
   /** 재사용하는 PR의 base를 설정의 base로 옮긴다 — 어긋날 때만 부른다. */
   updatePrBase(pullNumber: number, base: string): Promise<void>;
+
+  /**
+   * 재사용하는 PR/MR의 본문을 이 스냅샷의 본문으로 다시 쓴다 — 다를 때만 부른다(locale-add R-B2 Y3). 열린 PR에 파일 삭제가 얹히면 앱 코드 정리 안내가
+   * 본문에 있어야 한다. 빈 본문은 `""`로 비교한다(`findOpenPr`의 `body`).
+   */
+  updatePr(pullNumber: number, body: string): Promise<void>;
 
   /**
    * 코멘트를 남기고 PR을 닫는다 (B1 r3). no-changes 경로가 sync 브랜치를 base로 되돌리기 **전에** 부른다 — 되돌리면 GitHub이 그 PR을 스스로

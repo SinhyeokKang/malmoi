@@ -59,13 +59,17 @@ export class PreviewWriterWarnings extends Error {
 export type PublishPreviewResult =
   | { status: "blocked"; warnings: PullWarning[] }
   | { status: "ok"; preview: PublishPreview }
-  | { status: "refused"; reason: "base-file-missing" | "base-file-unreadable" | "unsupported-file-kind"; path: string; branch: string }
+  /**
+   * `locale-plan-refused` — 언어 추가·제거의 파일 경로를 쓸 수 없거나 다른 소스의 것이다(locale-add R-B2 Y2). **코드만이다** — 화면·MCP 문구는 C1이 잇는다.
+   * 그 전까지 화면은 이 사유를 다른 거부 문구로 떨어뜨린다. 안전하지 않은 경로면 `path`가 비어 있다.
+   */
+  | { status: "refused"; reason: "base-file-missing" | "base-file-unreadable" | "unsupported-file-kind" | "locale-plan-refused"; path: string; branch: string }
   | { status: "rejected"; error: "unauthorized" | "forbidden" | "not-found" | "archived" | "invalid input" }
   | { status: "failed" };
 export type PublishModalState =
   | { kind: "preview-loading" }
   | { kind: "preview-ready"; preview: PublishPreview }
   | { kind: "preview-error" }
-  | { kind: "preview-refused"; reason: "base-file-missing" | "base-file-unreadable" | "unsupported-file-kind"; path: string; branch: string }
+  | { kind: "preview-refused"; reason: "base-file-missing" | "base-file-unreadable" | "unsupported-file-kind" | "locale-plan-refused"; path: string; branch: string }
   | { kind: "running" }
   | { kind: "result"; outcome: import("@/lib/pull/message").PullOutcome };

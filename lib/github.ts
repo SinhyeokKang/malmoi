@@ -443,7 +443,8 @@ export async function createGitClient(
         state: "open",
       });
       const pr = res.data[0];
-      return pr === undefined ? null : { url: pr.html_url, number: pr.number, title: pr.title, base: pr.base.ref };
+      // 본문은 열린 PR 갱신의 비교 입력이다 — 빈 본문은 GitHub이 `null`로 준다.
+      return pr === undefined ? null : { url: pr.html_url, number: pr.number, title: pr.title, base: pr.base.ref, body: pr.body ?? "" };
     },
 
     async updatePrTitle(pullNumber, title) {
@@ -459,6 +460,14 @@ export async function createGitClient(
         ...base,
         pull_number: pullNumber,
         base: baseBranch,
+      });
+    },
+
+    async updatePr(pullNumber, body) {
+      await octokit.request("PATCH /repos/{owner}/{repo}/pulls/{pull_number}", {
+        ...base,
+        pull_number: pullNumber,
+        body,
       });
     },
 

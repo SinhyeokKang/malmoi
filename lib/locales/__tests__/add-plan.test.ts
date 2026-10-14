@@ -80,10 +80,12 @@ describe("planLocaleAdd", () => {
     expect(planLocaleAdd(input({ code }))).toEqual({ ok: false, error });
   });
 
-  it("accepts the longest well-shaped code", () => {
+  // 모양은 맞아도 관측할 수 없는 코드는 거부한다(R-B2 R2) — 받는 가장 긴 모양은 언어 3자 + 서브태그 4자다.
+  it("refuses a well-shaped but unobservable long code, accepts the longest observable one", () => {
     const code = `zh-${"Hant1234-".repeat(3)}TW`;
     expect(code.length).toBeLessThanOrEqual(35);
-    expect(planLocaleAdd(input({ code }))).toMatchObject({ ok: true, action: "create" });
+    expect(planLocaleAdd(input({ code }))).toEqual({ ok: false, error: "invalid-code" });
+    expect(planLocaleAdd(input({ code: "fil-Latn" }))).toMatchObject({ ok: true, action: "create" });
   });
 
   it("rejects an already active code", () => {
@@ -93,8 +95,9 @@ describe("planLocaleAdd", () => {
   it.each([
     ["pt-BR", [{ code: "pt_br", orphaned: false }]],
     ["pt_br", [{ code: "pt-BR", orphaned: false }]],
-    ["PT-BR", [{ code: "pt-BR", orphaned: true }]],
-    ["EN", [{ code: "en", orphaned: false }]],
+    // 대문자 언어 부분(`PT-BR`·`EN`)은 이제 관측 불가로 먼저 거부된다 — 같은 충돌을 관측 가능한 철자로 잰다.
+    ["pt_BR", [{ code: "pt-br", orphaned: true }]],
+    ["en", [{ code: "EN", orphaned: false }]],
   ])("rejects %s as a collision with %j", (code, locales) => {
     expect(planLocaleAdd(input({ code, locales }))).toEqual({ ok: false, error: "locale-collision" });
   });

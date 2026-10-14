@@ -44,7 +44,7 @@ const UNCODED: readonly string[] = [
   "unreachable: passed the layer-1 check",
   "unreachable: upsert and delete on the same path", "unreachable: duplicate delete path",
   // 언어 변경 계획(locale-add) — 앞은 불변식 위반, 뒤는 경로 충돌·안전하지 않은 경로라 소스 설정을 고칠 일이다(sync 층에서 가를 이름이 없다).
-  "unreachable: locale plan outside REMOVE/ADD rows", "locale change cannot be published:",
+  "unreachable: locale plan outside REMOVE/ADD rows", "unreachable: locale plan saw an unreadable base", "unreachable: irregular locale file without a mode",
   "surface base locale is empty", "Surface path conflict:",
   "Project.adapterName is empty",
   "Project.pathTemplate is empty",
@@ -67,7 +67,8 @@ const UNCODED: readonly string[] = [
  * - `reconfirm` — `runPull`이 지문 불일치를 **반환**하고(`reason: "reconfirm"`) `planSyncFinish`가 SKIPPED 행에 싣는다(mcp-connector T6.5).
  *   리포에 아무것도 안 썼으므로 던지지 않는다 — 던지면 `delivery: "unknown"`이 되고 FAILED 행이 Revert settled 판정을 흔든다.
  */
-const UNTHROWN: readonly string[] = ["execution-uncertain", "github-error", "db-unavailable", "stale", "unknown", "reconfirm"];
+// - `locale-plan-refused` — `LocalePlanRefused`(구조화 오류, `lib/pull/run.ts`)가 생성자에서 코드를 든다 — `fail(` 자리가 아니다(locale-add R-B2 Y2).
+const UNTHROWN: readonly string[] = ["execution-uncertain", "github-error", "db-unavailable", "stale", "unknown", "reconfirm", "locale-plan-refused"];
 
 type Site = { file: string; args: string; hasCode: boolean };
 

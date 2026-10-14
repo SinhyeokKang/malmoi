@@ -1,5 +1,5 @@
 import { isChromeLocaleCode } from "./chrome-codes";
-import { isLocaleShaped, isPathSafeLocale, isPathSafeRepoPath } from "@/lib/locale-code";
+import { isLocaleShaped, isPathSafeLocale, isPathSafeRepoPath, looksLikeLocale } from "@/lib/locale-code";
 import { surfaceOwnership, type SurfacePaths } from "@/lib/surfaces/plan";
 
 /**
@@ -57,7 +57,9 @@ export type LocaleAddVerdict = { ok: true; action: "create" | "revive"; path: st
 export function planLocaleAdd(input: LocaleAddInput): LocaleAddVerdict {
   const { code, surface } = input;
   if (!supportsLocaleChanges(surface.adapterName)) return { ok: false, error: "unsupported-format" };
-  if (!isPathSafeLocale(code) || !isLocaleShaped(code)) return { ok: false, error: "invalid-code" };
+  // ⚠️ **관측할 수 있는 코드만 받는다** (R-B2 🔴 R2) — 적재·만료의 관측은 어댑터 `read`의 `looksLikeLocale`을 지난다. `es-419`·`zh-Hant-TW`처럼
+  // 그 밖의 코드는 파일을 만들어도 머지 뒤 관측되지 않아 만료가 orphan시킨다. 그런 언어는 리포에서 직접 추가하면 기존 적재가 받는다.
+  if (!isPathSafeLocale(code) || !isLocaleShaped(code) || !looksLikeLocale(code)) return { ok: false, error: "invalid-code" };
   if (surface.adapterName === "chrome-locales" && !isChromeLocaleCode(code)) return { ok: false, error: "unsupported-locale" };
   const same = input.locales.find(locale => locale.code === code);
   if (same !== undefined && !same.orphaned) return { ok: false, error: "already-active" };

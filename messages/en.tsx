@@ -1654,6 +1654,8 @@ export const en = {
       "base-unreadable": "We couldn't read your repository. Ask your developers to check the app's access.",
       "not-installed": "The app wasn't connected to the repository. Ask your developers to reconnect it.",
       "glob-matched-nothing": "The translation files weren't where we expected. Ask your developers.",
+      /** 언어 추가·제거의 파일 경로가 쓸 수 없거나 다른 소스의 것이다(locale-add R-B2 Y2) — 다시 해도 같다. */
+      "locale-plan-refused": "A language change can't be published because its file path is unusable or belongs to another source. Ask your developers to check the source's file path.",
       "github-error": `GitHub didn't answer. ${NIGHTLY_RETRY}`,
       "db-unavailable": `We couldn't reach our own storage. ${NIGHTLY_RETRY}`,
       stale: "This run stopped before it finished.",

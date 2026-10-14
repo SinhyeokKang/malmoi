@@ -89,6 +89,11 @@ export const SYNC_ERROR_CODES = [
    * 싣는다. `lib/sync/run.ts`의 `too-soon` 기준이 이 값으로 행을 뺀다.
    */
   "reconfirm",
+  /**
+   * 언어 추가·제거 계획이 결정적으로 거부됐다 — 경로 충돌·중복·안전하지 않은 경로(locale-add R-B2 Y2). 소스 설정을 고쳐야 풀리므로 재시도 불가다.
+   * 생산자는 `LocalePlanRefused`(`lib/pull/run.ts`)다. 비정규 파일 삭제는 기존 파일 종류 거부(`GitFileKindError`)로 접힌다.
+   */
+  "locale-plan-refused",
 ] as const;
 
 export type SyncErrorCode = (typeof SYNC_ERROR_CODES)[number];
@@ -107,6 +112,7 @@ const RETRYABLE: Readonly<Record<SyncErrorCode, boolean>> = {
   stale: true,
   unknown: true,
   reconfirm: true,
+  "locale-plan-refused": false,
 };
 
 export type SyncTriggerKind = "manual" | "cron";

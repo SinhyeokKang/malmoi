@@ -730,6 +730,7 @@ export const es = {
       "base-unreadable": "No pudimos leer tu repositorio. Pide a tus desarrolladores que revisen el acceso de la app.",
       "not-installed": "La app no estaba conectada al repositorio. Pide a tus desarrolladores que la vuelvan a conectar.",
       "glob-matched-nothing": "Los archivos de traducción no estaban donde esperábamos. Consulta a tus desarrolladores.",
+      "locale-plan-refused": "No se puede publicar un cambio de idioma porque la ruta de su archivo no es válida o pertenece a otra fuente. Pide a tus desarrolladores que revisen la ruta de archivo de la fuente.",
       "github-error": `GitHub no respondió. ${NIGHTLY_RETRY}`,
       "db-unavailable": `No se pudo acceder a nuestro propio almacenamiento. ${NIGHTLY_RETRY}`,
       stale: "Esta ejecución se detuvo antes de terminar.",

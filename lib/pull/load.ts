@@ -235,24 +235,27 @@ export async function invalidatePublishDelivery(
 }
 
 /**
- * **수동·MCP Publish의 스냅샷 전 만료** (locale-add design §1 — `PullDeps.expireLocales`). 열린 PR 조회·base 관측은 호출부(`runPull`)가 tx **밖에서** 했다.
+ * **모든 Publish의 스냅샷 전 만료** (locale-add design §1 — `PullDeps.expireLocales`). 열린 PR 조회·base 관측은 호출부(`runPull`)가 tx **밖에서** 했다.
  *
- * ⚠️ **`Project` 잠금을 먼저 쥔다** (review-B1 W3) — 사람 경로라 `lockProjectAccess`로 잡는다. `expireLocaleChanges`는 그 뒤 Surface를 잠그므로
- * 번역 저장·언어 변경과 같은 순서다. 접근을 잃었으면 던진다 — 실행권을 잡은 뒤의 권한 상실이고, Publish를 이어 가지 않는다.
+ * ⚠️ **`Project` 잠금을 먼저 쥔다** (review-B1 W3) — 사람 경로(웹·MCP)는 `lockProjectAccess`로 잡는다. 접근을 잃었으면 던진다 — 실행권을 잡은 뒤의
+ * 권한 상실이고, Publish를 이어 가지 않는다. **사람 주체가 없는 cron은 AUTOMATION으로 만료한다**(R-B2 🔴 R1) — `expireLocaleChanges`가 스스로
+ * `Project`→`Surface`를 잠그므로 순서는 같다. 빼면 머지 없이 닫힌 삭제가 야간 Publish에 다시 실리고 보류된 ADD는 영영 풀리지 않는다.
  */
 export async function expireLocalesForPublish(
   prisma: PrismaClient,
-  actor: { userId: string; credential: Credential | undefined },
+  actor: { userId: string; credential: Credential | undefined } | undefined,
   input: Parameters<NonNullable<PullDeps["expireLocales"]>>[0],
 ): Promise<number> {
   return prisma.$transaction(async tx => {
-    const locked = await lockProjectAccess(tx, { projectId: input.projectId, userId: actor.userId, permission: "translation:write", credential: actor.credential });
-    if (locked.status !== "ok") fail(`Publish access was lost before expiring locale changes: ${locked.status}`);
+    if (actor !== undefined) {
+      const locked = await lockProjectAccess(tx, { projectId: input.projectId, userId: actor.userId, permission: "translation:write", credential: actor.credential });
+      if (locked.status !== "ok") fail(`Publish access was lost before expiring locale changes: ${locked.status}`);
+    }
     let expired = 0;
     for (const surface of input.surfaces) {
       const result = await expireLocaleChanges(tx, {
         projectId: input.projectId, surfaceId: surface.surfaceId, surfaceSlug: surface.surfaceSlug,
-        pullRequest: input.pullRequest, observed: surface.observed, actor: { kind: "USER", userId: actor.userId },
+        pullRequest: input.pullRequest, observed: surface.observed, actor: actor === undefined ? { kind: "AUTOMATION" } : { kind: "USER", userId: actor.userId },
       });
       expired += result.expired.length;
     }

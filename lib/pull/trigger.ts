@@ -31,7 +31,7 @@ export { REF_SAFE_SLUG, isRefSafeSlug } from "./ref-slug";
  */
 /**
  * @param actor 사람(웹·MCP)이 연 실행의 주체. 있으면 스냅샷 전 언어 변경 만료를 그 주체의 `lockProjectAccess` 뒤에 돈다(locale-add design §1 — W3).
- *   cron은 넘기지 않는다 — 야간 경로가 적재와 함께 만료를 맡는다.
+ *   cron은 넘기지 않는다 — 그때는 AUTOMATION 주체로 만료한다(모든 Publish가 스냅샷 전에 만료한다, R-B2 R1).
  */
 export async function triggerPull(
   prisma: PrismaClient, slug: string, runId: string, expectedFingerprint: string | undefined, execution: PublishExecution,
@@ -46,7 +46,7 @@ export async function triggerPull(
     saveLastPulledAt: (projectId, at, published, delivered, contexts, withheld, locales) =>
       saveLastPulledAt(prisma, projectId, at, published, delivered, { runId, contexts, withheld, execution, locales }),
     invalidateDelivery: (projectId, surfaceIds) => invalidatePublishDelivery(prisma, projectId, { runId, execution }, surfaceIds),
-    ...(actor === undefined ? {} : { expireLocales: (input: Parameters<typeof expireLocalesForPublish>[2]) => expireLocalesForPublish(prisma, actor, input) }),
+    expireLocales: (input) => expireLocalesForPublish(prisma, actor, input),
     withheldRevertable: (projectId, withheld) => withheldRevertable(prisma, projectId, withheld),
     syncBranch: syncBranchFor(slug),
   }, expectedFingerprint);

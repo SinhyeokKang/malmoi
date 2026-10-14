@@ -57,7 +57,7 @@ export async function runSync(
   let outcome: PullOutcome;
   try {
     execution.bindStartedAt(started.startedAt);
-    // 사람이 연 실행(웹·MCP)만 스냅샷 전 언어 변경 만료를 돈다 — 그 주체의 접근 잠금 뒤다(locale-add design §1 · W3).
+    // 사람이 연 실행(웹·MCP)은 그 주체의 접근 잠금 뒤에 스냅샷 전 만료를 돈다(locale-add design §1 · W3). cron은 AUTOMATION으로 돈다.
     const actor = requestedBy === null ? undefined : { userId: requestedBy, credential: input.credential };
     const pulled = await execution.run(() => triggerPull(prisma, slug, runId, input.expectedFingerprint, execution, actor));
     result = pulled;

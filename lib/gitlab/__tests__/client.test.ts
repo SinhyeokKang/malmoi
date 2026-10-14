@@ -174,7 +174,7 @@ describe("MR 생명주기 — findOpenPr · createPr · updatePrTitle · updateP
     const pages = [json([mr({ iid: 9, source_project_id: 5 })], 200, { "x-next-page": "2" }), json([mr()], 200, { "x-next-page": "" })];
     let n = 0;
     const { fake, open } = client({ [`GET ${P}/merge_requests`]: () => pages[n++]! });
-    expect(await (await open()).findOpenPr(SYNC)).toEqual({ url: "https://gitlab.com/g/sub/app/-/merge_requests/3", number: 3, title: "t", base: "main" });
+    expect(await (await open()).findOpenPr(SYNC)).toEqual({ url: "https://gitlab.com/g/sub/app/-/merge_requests/3", number: 3, title: "t", base: "main", body: "" });
     const list = fake.calls.filter((call) => call.url.pathname.endsWith("/merge_requests"));
     expect(list.map((call) => [call.url.searchParams.get("state"), call.url.searchParams.get("source_branch"), call.url.searchParams.get("page")])).toEqual([["opened", SYNC, "1"], ["opened", SYNC, "2"]]);
   });

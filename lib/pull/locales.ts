@@ -1,5 +1,5 @@
 import { supportsLocaleChanges } from "@/lib/locales/add-plan";
-import type { LocaleEffect, LocaleOperation } from "@/lib/locales/effects";
+import { sameLocaleEffects, type LocaleEffect, type LocaleOperation } from "@/lib/locales/effects";
 import { planLocalePublish, type LocalePublishPlan } from "@/lib/locales/publish-plan";
 import { localeFromPath } from "@/lib/adapters/chrome-locales";
 import { compareCodeUnits } from "@/lib/compare";
@@ -90,6 +90,22 @@ export function planProjectLocales(formats: readonly FormatItem[], tree: readonl
     surfaces.push({ surfaceId: item.surface.id, surfaceSlug: item.surface.slug, exclude, creates, deletes, withheld, empty, captured });
   }
   return { ok: true, plan: { surfaces } };
+}
+
+/**
+ * **이 스냅샷이 실제로 보낼 수 있는 언어 작업 수** (R-B2 Y1) — 소스마다 캡처할 효과 목록이 전달 목록과 다르면 1이다(정규형 비교, `delivered: null`은
+ * 늘 다르다 — 확인 안 된 목록은 다시 확인해야 한다). `localeWorkOf`와 달리 보류된 ADD(`proposal-path-exists`)는 세지 않는다 — 그 ADD는 이번 스냅샷에
+ * 실리지 않으므로, 그것 때문에 Publish가 쓰기·PR 닫기·브랜치 되돌림까지 가면 "이 편집들 몫이 아니면 쓰지 않는다"가 깨진다.
+ */
+export function deliverableLocaleWork(plan: ProjectLocalePlan, surfaces: readonly { id: string; localeChanges?: SurfaceLocaleChanges }[]): number {
+  const captured = new Map(plan.surfaces.map(surface => [surface.surfaceId, surface.captured]));
+  let work = 0;
+  for (const surface of surfaces) {
+    const changes = surface.localeChanges;
+    if (changes === undefined) continue;
+    if (changes.delivered === null || !sameLocaleEffects(captured.get(surface.id) ?? [], changes.delivered)) work += 1;
+  }
+  return work;
 }
 
 /** 프로젝트의 언어 변경 작업 수 — 소스별 합. 셀 편집 수와 따로 싣는다(design §4 "집계·보호"). */

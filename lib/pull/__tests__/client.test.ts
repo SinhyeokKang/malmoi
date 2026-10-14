@@ -116,7 +116,7 @@ describe("createFakeGitClient — 쓰기 경로", () => {
 
 describe("createFakeGitClient — PR", () => {
   it("열린 PR이 있으면 URL·번호·제목을 준다", async () => {
-    const pr = { url: "https://github.com/o/r/pull/1", number: 1, title: "t", base: "main" };
+    const pr = { url: "https://github.com/o/r/pull/1", number: 1, title: "t", base: "main", body: "" };
     const { client } = createFakeGitClient({ openPr: pr });
     await expect(client.findOpenPr("malmoi-i18n/sync")).resolves.toEqual(pr);
   });

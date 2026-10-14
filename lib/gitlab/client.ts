@@ -218,6 +218,10 @@ export async function createGitLabClient(target: GitLabTarget, credential: GitLa
       await transport.send("PUT", mr(iid), { body: { target_branch: base } });
     },
 
+    async updatePr(iid, body) {
+      await transport.send("PUT", mr(iid), { body: { description: body } });
+    },
+
     /** 이유 노트 → 닫기. 노트가 먼저다 — 닫기가 성공하고 노트가 실패하면 이유 없이 닫힌 MR이 남는다(GitHub `closePr`과 같은 순서). */
     async closePr(iid, comment) {
       await transport.send("POST", mr(iid, "/notes"), { body: { body: comment } });

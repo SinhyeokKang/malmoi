@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { blobSha } from "@/lib/githash";
-import { PR_TITLE, SKIP_MARKER } from "@/lib/pull/payload";
+import { PR_TITLE, SKIP_MARKER, pullRequestBody } from "@/lib/pull/payload";
 import type { RenderKey } from "@/lib/pull/render";
 import { closedPrComment, runPull, type PullDeps, type PullState } from "@/lib/pull/run";
 import { createPublishExecution, planPublishFailure } from "@/lib/sync/execution";
@@ -116,7 +116,8 @@ describe("커밋 — 고정 base 위 스냅샷 + MR 하나", () => {
   });
 
   it("재사용 MR의 제목에 마커가 없으면 제목만, base가 바뀌었으면 target_branch만 PUT — 같으면 PUT 0", async () => {
-    const { repo, deps } = setup({ mergeRequests: [ownMr({ title: "sync translations", target_branch: "develop" })], branches: { main: BASE, [SYNC]: BASE } });
+    // 설명은 이 스냅샷의 본문과 같게 둔다 — 다르면 설명도 다시 쓴다(locale-add R-B2 Y3, 아래 "열린 MR 본문 갱신").
+    const { repo, deps } = setup({ mergeRequests: [ownMr({ title: "sync translations", target_branch: "develop", description: pullRequestBody([{ path: "locales/ko.json", kind: "updated" }]) })], branches: { main: BASE, [SYNC]: BASE } });
     await runPull(deps);
     const puts = repo.writes().filter((call) => call.method === "PUT").map((call) => JSON.parse(call.body!));
     expect(puts).toEqual([{ title: `sync translations ${SKIP_MARKER}` }, { target_branch: "main" }]);

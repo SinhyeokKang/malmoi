@@ -159,6 +159,8 @@ const MergeRequest = z.object({
   source_project_id: z.number().int(),
   target_project_id: z.number().int(),
   state: z.string(),
+  // 열린 MR 갱신의 비교 입력(locale-add R-B2 Y3) — 설명이 없으면 GitLab이 `null`을 준다.
+  description: z.string().nullable().optional(),
 });
 
 /**
@@ -169,12 +171,12 @@ const MergeRequest = z.object({
  * 서버 필터(`state`·`source_branch`)를 믿지 않고 다시 본다 — 필터가 조용히 무시되면 다른 MR이 섞인다(GitHub `head` 필터의 함정과 같은 형).
  * ⚠️ 모양이 다르면 **던진다** — `null`(없음)로 접으면 게이트가 열린다.
  */
-export function selectOwnMergeRequest(body: unknown, repositoryId: string, branch: string): { url: string; number: number; title: string; base: string } | null {
+export function selectOwnMergeRequest(body: unknown, repositoryId: string, branch: string): { url: string; number: number; title: string; base: string; body: string } | null {
   const parsed = z.array(MergeRequest).safeParse(body);
   if (!parsed.success) throw new AppError("unexpected GitLab merge request list");
   const id = Number(repositoryId);
   const own = parsed.data.find((mr) => mr.state === "opened" && mr.source_branch === branch && mr.source_project_id === id && mr.target_project_id === id);
-  return own === undefined ? null : { url: own.web_url, number: own.iid, title: own.title, base: own.target_branch };
+  return own === undefined ? null : { url: own.web_url, number: own.iid, title: own.title, base: own.target_branch, body: own.description ?? "" };
 }
 
 const Compare = z.object({

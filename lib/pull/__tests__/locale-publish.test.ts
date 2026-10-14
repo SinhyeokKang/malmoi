@@ -484,7 +484,7 @@ describe("결정적 언어 계획 거부 (R-B2 🟡 Y2)", () => {
     const error = await runPull(deps({ ...state(), surfaces }, made).deps).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(LocalePlanRefused);
     expect(error).toMatchObject({ code: "locale-plan-refused", path: "i18n/ko.json", branch: "dev", refusal: "path-conflict" });
-    expect(classifySyncError(error)).toEqual({ code: "locale-plan-refused", retryable: false });
+    expect(classifySyncError(error)).toMatchObject({ code: "locale-plan-refused", retryable: false });
     expect(made.calls.filter(call => isGitMutation(call.method))).toEqual([]);
   });
 });

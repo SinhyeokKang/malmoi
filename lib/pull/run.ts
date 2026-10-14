@@ -21,7 +21,7 @@ import { countFileChangedValues } from "./changed-values";
 import { blockingErrors, keySlot, readSlotFiles, slotlessCells, splitEdits, withheldCoordinates } from "./undeliverable";
 import type { LocaleEffect } from "@/lib/locales/effects";
 import {
-  NO_LOCALE_PLAN, capturedBySurface, hasLocaleRows, localeFingerprintInput, localeNotesOf, localeWorkOf, observedLocalesOf, planProjectLocales,
+  NO_LOCALE_PLAN, capturedBySurface, deliverableLocaleWork, hasLocaleRows, localeFingerprintInput, localeNotesOf, localeWorkOf, observedLocalesOf, planProjectLocales,
   type LocaleNotes, type ProjectLocalePlan, type SurfaceLocaleChanges,
 } from "./locales";
 
@@ -116,9 +116,10 @@ export type PullDeps = {
    */
   withheldRevertable?(projectId: string, withheld: readonly PendingEdit[]): Promise<boolean>;
   /**
-   * **스냅샷 전 언어 변경 만료** (locale-add design §1 "수동·MCP Publish도 스냅샷 전에 같은 판정을 지난다"). 행이 있는 프로젝트에서만, 열린 PR 조회와
-   * base 관측 **뒤에** 부른다. 반환은 만료한 행 수 — 0보다 크면 `runPull`이 스냅샷을 다시 읽는다. 없으면 만료하지 않는다(cron — 야간 경로가 맡는다).
-   * ⚠️ 구현은 `Project` 잠금을 쥔 tx 안에서 `expireLocaleChanges`를 부른다(W3 — 사람 경로는 `lockProjectAccess`).
+   * **스냅샷 전 언어 변경 만료** (locale-add design §1 "모든 Publish가 스냅샷 전에 같은 판정을 지난다"). 행이 있는 프로젝트에서만, 열린 PR 조회와
+   * base 관측 **뒤에** 부른다. 반환은 만료한 행 수 — 0보다 크면 `runPull`이 스냅샷을 다시 읽는다.
+   * ⚠️ **운영 조립(`triggerPull`)은 cron까지 늘 넘긴다** (R-B2 R1) — 선택인 것은 오케스트레이션 단위 테스트의 픽스처 때문이다. 빠지면 닫힌 요청이 다시 실린다.
+   * ⚠️ 구현은 `Project` 잠금을 쥔 tx 안에서 `expireLocaleChanges`를 부른다(W3 — 사람 경로는 `lockProjectAccess`, cron은 AUTOMATION).
    */
   expireLocales?(input: {
     projectId: string;
@@ -154,7 +155,8 @@ export type Withheld = {
   revertable?: true;
 };
 export type PullResult =
-  | { status: "skipped"; reason: "no-edits" }
+  /** `locales` — 셀 편집 0인데 언어 작업이 전부 보류(경로가 이미 있는 ADD)일 때만 있다. 그때도 쓰기는 0이다. */
+  | { status: "skipped"; reason: "no-edits"; locales?: LocaleNotes }
   /**
    * `closedPr` — 이 실행이 닫은 열린 PR (B1 r3). 렌더가 base와 같아 sync 브랜치를 base로 되돌릴 때 그 PR은 할 일이 없다 — 조용히 닫히게 두지 않고
    * 코멘트와 함께 닫은 뒤 결과·Logs(`SyncRun.prUrl`)가 그 사실을 말한다.
@@ -227,6 +229,17 @@ export function projectFormats(surfaces: PullState["surfaces"]) {
 export class GitFileKindError extends AppError {
   constructor(readonly path: string, readonly mode: string, readonly branch: string) {
     super(`unsupported Git file mode at ${path}: ${mode}`);
+  }
+}
+
+/**
+ * **결정적인 언어 계획 거부** (locale-add R-B2 Y2 — POSTMORTEM 2026-10-07 #200 계열) — 경로 충돌·중복·안전하지 않은 경로. 소스 설정을 고쳐야 풀리므로
+ * 실행은 재시도 불가 코드(`locale-plan-refused`)로, 미리보기는 같은 코드의 `refused`로 끝난다 — "다시 시도"로 안내하지 않는다.
+ * `path`는 소스 설정에서 계산한 경로라 화면에 실어도 된다(안전하지 않은 경로는 계산하지 못해 비어 있다).
+ */
+export class LocalePlanRefused extends AppError {
+  constructor(readonly refusal: "path-conflict" | "duplicate-path" | "unsafe-path", readonly path: string, readonly branch: string) {
+    super(`locale change cannot be published: ${refusal}${path === "" ? "" : ` (${path})`}`, "locale-plan-refused");
   }
 }
 
@@ -337,7 +350,10 @@ export function planLocales(project: Pick<PullProject, "baseBranch">, formats: P
   const planned = planProjectLocales(formats, tree);
   if (planned.ok) return planned.plan;
   if ("mode" in planned) throw new GitFileKindError(planned.path, planned.mode, project.baseBranch);
-  fail(`locale change cannot be published: ${planned.error}${"path" in planned ? ` (${planned.path})` : ""}`);
+  // 트리를 읽은 뒤의 계획이라 `base-unreadable`은 오지 않는다 — 와도 부재로 접지 않고 실패다.
+  if (planned.error === "base-unreadable") fail("unreachable: locale plan saw an unreadable base after reading the tree");
+  if (planned.error === "irregular-file") fail("unreachable: irregular locale file without a mode");
+  throw new LocalePlanRefused(planned.error, "path" in planned ? planned.path : "", project.baseBranch);
 }
 
 /** 미리보기와 실행이 같은 원본 자리·스냅샷으로 전달 가능 셀과 빈값 경고를 판정한다. */
@@ -465,7 +481,6 @@ export async function runPull(deps: PullDeps, expectedFingerprint?: string): Pro
   }
 
   const { surfaces, maxUpdatedAt, unpublished, pendingEdits, deliveryContexts = [] } = state;
-  const localeWork = localeWorkOf(surfaces);
   // 미발송 행이 하나라도 있으면 `Translation` 행이 있으므로 최대값도 있다. 조용한 폴백(`?? new Date(0)`)을
   // 두지 않는다 — 그 값이 DB에 들어가면 1층이 영구히 무력해진다. 셀 편집 없이 언어 작업만 있으면 `null`이 정상이다 —
   // 그때는 셀 확인이 없으므로 `lastPulledAt`을 건드리지 않는다(언어 목록 확인과 셀 확인을 가른다, design §4).
@@ -475,6 +490,13 @@ export async function runPull(deps: PullDeps, expectedFingerprint?: string): Pro
   const captured = maxUpdatedAt;
 
   const localePlan = hasLocaleRows(surfaces) ? planLocales(project, formats, await readTree()) : NO_LOCALE_PLAN;
+  /**
+   * 1층 뒤의 판정은 **이 스냅샷이 보낼 수 있는** 언어 작업으로 한다(R-B2 Y1). 1층의 `localeWorkOf`는 보류된 ADD도 작업으로 세서(그래야 계획을 세운다)
+   * 그대로 쓰면 보류 ADD 하나가 매 Publish를 쓰기·PR 닫기까지 끌고 간다.
+   */
+  const localeWork = deliverableLocaleWork(localePlan, surfaces);
+  const localeNotesEarly = localeNotesOf(localePlan);
+  if (unpublished === 0 && localeWork === 0) return { status: "skipped", reason: "no-edits", ...(localeNotesEarly === undefined ? {} : { locales: localeNotesEarly }) };
   if (expectedFingerprint !== undefined) {
     // 행이 있을 때만 base 입력(대상 blob·삭제 경로)이 선다 — 없으면 트리를 읽기 전에 대조한다.
     const locale = tree === undefined ? undefined : localeFingerprintInput(localePlan, formats, tree);
@@ -502,7 +524,7 @@ export async function runPull(deps: PullDeps, expectedFingerprint?: string): Pro
   const revertable = split.withheld.length > 0 && deps.withheldRevertable !== undefined && await deps.withheldRevertable(project.id, split.withheld);
   const withheldBy: Withheld = revertable ? { ...split.withheldBy, revertable: true } : split.withheldBy;
   const withheld = split.withheld.length === 0 ? {} : { withheld: withheldBy };
-  const notes = localeNotesOf(localePlan);
+  const notes = localeNotesEarly;
   const localeNotes = notes === undefined ? {} : { locales: notes };
   // 셀이 전부 보류여도 언어 작업이 있으면 진행한다 — 안전한 삭제·새 파일은 전달할 수 있다(design §4 조기 종료 ②).
   if (split.delivered.length === 0 && split.withheld.length > 0 && localeWork === 0) return { status: "skipped", reason: "withheld", withheld: withheldBy, ...localeNotes };
@@ -597,6 +619,10 @@ export async function runPull(deps: PullDeps, expectedFingerprint?: string): Pro
     if (title !== existing.title) await client.updatePrTitle(existing.number, title);
     // 설정에서 base를 바꾼 뒤의 PR이다 — 스냅샷 커밋은 이미 새 base 위에 있다 (launch-readiness L3.7).
     if (existing.base !== project.baseBranch) await client.updatePrBase(existing.number, project.baseBranch);
+    // 본문은 이 스냅샷의 파일 목록이다 — 열린 PR에 삭제가 얹히면 앱 코드 정리 안내가 거기 있어야 한다(locale-add R-B2 Y3 · spec 수락 기준 7).
+    // 같으면 쓰지 않는다 — 매 실행 PATCH를 만들지 않는다. 사람이 고친 본문도 다음 스냅샷이 다시 쓴다(본문은 스냅샷의 설명이다).
+    const body = pullRequestBody(files);
+    if (existing.body !== body) await client.updatePr(existing.number, body);
     prUrl = existing.url;
   }
 
