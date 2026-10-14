@@ -117,6 +117,35 @@ describe("readPayload — 빠지거나 모양이 틀린 필드는 폴백이다",
 });
 
 /**
+ * **언어 변경 사건의 맥락** (locale-add design §6). 옛 SURFACE payload에는 없어서 **없으면 필드 자체가 없다** — 위 정확 일치 단언이 그대로다.
+ */
+describe("readPayload — SURFACE localeChange", () => {
+  it("locale·operation·결과 필드를 읽는다", () => {
+    expect(readPayload("SURFACE", { surfaceSlug: "web", adapter: null, baseLocale: null,
+      localeChange: { locale: "fr", operation: "REMOVE", revived: null, discarded: 2, outcome: "orphan" } }))
+      .toEqual({ kind: "SURFACE", surfaceSlug: "web", adapter: null, baseLocale: null,
+        localeChange: { locale: "fr", operation: "REMOVE", revived: null, discarded: 2, outcome: "orphan" } });
+  });
+
+  it("모양이 틀리면 그 칸만 null이고, locale·operation이 없으면 맥락이 없다", () => {
+    expect(readPayload("SURFACE", { surfaceSlug: "web", localeChange: { locale: "fr", operation: "ADD", revived: "yes", discarded: "2", outcome: "gone" } }))
+      .toMatchObject({ localeChange: { locale: "fr", operation: "ADD", revived: null, discarded: null, outcome: null } });
+    expect(readPayload("SURFACE", { surfaceSlug: "web", localeChange: { locale: "fr", operation: "RENAME" } })).not.toHaveProperty("localeChange");
+    expect(readPayload("SURFACE", { surfaceSlug: "web", localeChange: "fr" })).not.toHaveProperty("localeChange");
+  });
+
+  it("상속된 필드는 없는 필드와 같다 — __proto__ 코드는 평범한 값이다", () => {
+    const inherited = Object.create({ localeChange: { locale: "fr", operation: "ADD" } }) as object;
+    expect(readPayload("SURFACE", inherited)).not.toHaveProperty("localeChange");
+    const inner = Object.create({ operation: "ADD" }) as Record<string, unknown>;
+    inner.locale = "fr";
+    expect(readPayload("SURFACE", { localeChange: inner })).not.toHaveProperty("localeChange");
+    expect(readPayload("SURFACE", { localeChange: { locale: "__proto__", operation: "ADD" } }))
+      .toMatchObject({ localeChange: { locale: "__proto__", operation: "ADD" } });
+  });
+});
+
+/**
  * ⚠️ **`Object.hasOwn`으로 읽는다** (POSTMORTEM 2026-09-08). `raw[key] ?? fallback`이면 `Object.prototype`의
  * 함수가 문자열 자리에 온다 — 번역 키·로케일이 이 안에 들어가므로 남이 정한 키가 실제로 닿는 자리다.
  */
