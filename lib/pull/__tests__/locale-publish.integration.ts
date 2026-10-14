@@ -392,6 +392,38 @@ describe("전달 후 취소 → 미머지 종료 → 같은 언어 재요청 (F1
   });
 });
 
+/**
+ * **취소의 `delivered`는 저장된 전달 목록으로 판정한다** (F1 fix2 — R-F1 Y1). 취소 뒤에는 행이 없어 판정용 목록이 저장 목록과 같아진다 — 취소 전의
+ * 좁힌 목록(확인 뒤 재요청이 옛 효과를 가림)으로 말하면 "보낼 것 없음"처럼 들리는데 취소 뒤 작업은 1이고 열린 PR에는 옛 삭제가 남아 있다.
+ */
+describe("확인 뒤 재요청을 다시 취소 — 취소 결과는 저장 목록으로 말한다 (F1 fix2)", () => {
+  const open = { openPr: { url: "https://github.com/o/r/pull/9", number: 9, title: "chore(i18n): sync [skip ci]", base: "main" } };
+
+  it("제거 → Publish → 취소 → (PR 열린 채) 재요청 → 다시 취소 → delivered:true · 작업 1 · 거둘 효과 delete ko", async () => {
+    await deliveredRemoval();
+    expect(await cancelLocaleRemoval(prisma, OWNER, { ...WEB, localeCode: "ko" })).toEqual({ ok: true, delivered: true });
+    await requestRemoval("ko");
+    expect(await cancelLocaleRemoval(prisma, OWNER, { ...WEB, localeCode: "ko" })).toEqual({ ok: true, delivered: true });
+    expect(await delivered()).toEqual([{ localeCode: "ko", effect: "delete" }]);
+    expect(await countLocaleWork(prisma, "p")).toBe(1);
+    fake({ "i18n/en.json": EN, "i18n/ko.json": KO }, open);
+    expect(await readPublishPreview(prisma, "p", "fixture")).toMatchObject({ fileChanges: [], withdrawnLocales: [{ surfaceSlug: "default", localeCode: "ko", effect: "delete" }] });
+  });
+
+  it("추가 → Publish → 추가 취소 → 재추가(값 되살림) → 추가 취소 미리보기 delivered:true — 열린 PR에 옛 새 파일이 있다", async () => {
+    await addLocale(prisma, OWNER, { ...WEB, localeCode: "fr" });
+    await save("hello", "fr", "Bonjour");
+    fake({ "i18n/en.json": EN, "i18n/ko.json": KO });
+    expect(await publish()).toMatchObject({ status: "committed" });
+    await ageRuns();
+    const first = await previewLocaleRemoval(prisma, OWNER, { ...WEB, localeCode: "fr" });
+    if (!first.ok) throw new Error("preview refused");
+    expect(await removeLocale(prisma, OWNER, { ...WEB, localeCode: "fr", approval: first.approval })).toMatchObject({ ok: true, kind: "cancel-add" });
+    expect(await addLocale(prisma, OWNER, { ...WEB, localeCode: "fr" })).toMatchObject({ ok: true });
+    expect(await previewLocaleRemoval(prisma, OWNER, { ...WEB, localeCode: "fr" })).toMatchObject({ ok: true, kind: "cancel-add", delivered: true });
+  });
+});
+
 describe("확인 뒤 요청이 현재 효과를 내지 않으면 옛 효과를 남긴다 (F1 fix1)", () => {
   it("전달된 추가 취소 → 재추가 후 값을 비움(값 0개 ADD) → 작업 1·거둘 효과 create fr — 열린 PR의 옛 새 파일을 Publish가 거둔다", async () => {
     await addLocale(prisma, OWNER, { ...WEB, localeCode: "fr" });
