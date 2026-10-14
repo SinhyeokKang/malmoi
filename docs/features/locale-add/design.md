@@ -61,15 +61,42 @@
 - 사용자 승인 지문은 언어 변경 행·그 언어 셀 토큰·소스 설정에 묶는다. Publish 미리보기는 base head·대상 blob·삭제 경로에도 묶고, 실행에서 달라지면 재확인한다.
 - base 파일을 읽지 못하면 파일 부재가 아니다. 삭제·만료를 수행하지 않고, 결과·사건은 실패/보류로 남긴다(“삭제 완료”·`no-changes` 금지).
 
+### Chrome 지원 목록 (확인일 2026-10-14)
+
+- 출처: https://developer.chrome.com/docs/extensions/reference/api/i18n#locales — 55개.
+  `ar am bg bn ca cs da de el en en_AU en_GB en_US es es_419 et fa fi fil fr gu he hi hr hu id it ja kn ko lt lv ml mr ms nl no pl pt_BR pt_PT ro ru sk sl sr sv sw ta te th tr uk vi zh_CN zh_TW`
+- Chromium은 이 55개가 아니라 ICU 지원 목록(`GetSupportedIcuLocales`)과 대조하며, 그 목록이 더 넓을 수 있다. **추가 입력은 문서의 55개로 좁힌다** — 보수적인 쪽이고, 목록 밖 언어는 리포에서 직접 추가하면 기존 적재가 받는다.
+- 목록 밖 디렉터리(unpacked): 거부·경고 없이 건너뛴다(`extension_l10n_util.cc` `GetValidLocales`, 릴리스 빌드에선 로그도 없음). 문서도 "unsupported locale은 무시"라고 쓴다.
+- 로드가 실패하는 경우: 지원 locale 디렉터리에 `messages.json`이 없을 때, 유효 locale이 하나도 없을 때, `default_locale`이 목록 밖이거나 디렉터리가 없을 때(`file_util.cc` `LoadMessageBundle`). → 기준 언어 제거 금지(§2 끝)가 마지막 경우를 막는다. 제거는 디렉터리가 아니라 `messages.json` 파일을 지우므로, **같은 디렉터리에 다른 파일이 남으면 빈 locale 디렉터리가 아니라 "카탈로그 없는 지원 locale"이 되어 로드가 실패할 수 있다** — 구현에서 실측한다(§9 왕복).
+- 웹스토어 업로드의 목록 밖 디렉터리 처리는 공식 출처를 찾지 못했다(`/docs/webstore/i18n` 404). 같은 Chromium 로직이라면 무시로 추정, 미확인.
+- 리포에는 Chrome locale 목록이 없다. 구현 때 목록 파일을 새로 만들고 머리 주석에 위 출처 URL·확인일을 적는다.
+
 ### Publish 변경 union
 
-`SnapshotChange = { kind: "upsert", path, content, sha, inBase } | { kind: "delete", path }`. delete는 경로가 base에 있을 때만 만든다. 세 가드를 함께 고친다.
+`SnapshotChange = { kind: "upsert", path, content, inBase } | { kind: "delete", path }`. delete는 경로가 base에 있을 때만 만든다. 세 가드를 함께 고친다. (현행 `PullChange = { path, content }`·`SnapshotChange = PullChange & { inBase }`에는 sha가 없고 소비자도 읽지 않는다 — blob SHA는 `planPullChanges` 안에서만 계산한다. 그래서 union에 sha를 두지 않는다. 2026-10-14 §0 조사로 정정)
 
 - 타입: GitHub `TreeEntry`가 `content: string`·`mode: "100644"` 고정이다. 삭제는 `base_tree` 위의 `sha: null` 항목으로 낸다.
 - 빈 변경: GitHub(`lib/pull/payload.ts`)·GitLab(`buildCommitActions`) 모두 변경 0이면 던진다. 삭제만 있는 변경도 통과하고, 변경 0은 기존 `no-changes` 경로로 간다.
 - 중복 경로: 같은 경로의 upsert·delete는 계획 오류다. 정렬은 기존 결정적 비교를 쓴다.
 
 GitLab은 `{action: "delete", file_path}`를 쓴다. blob SHA 비교(`planPullChanges`)는 delete를 “base에 있을 때만 변경”으로 다룬다. 렌더 결과에서 언어를 빼는 것만으로 삭제됐다고 판정하지 않는다.
+
+**소비자·가드 위치** (2026-10-14 조사, 줄 번호는 착수 시점 dev 기준):
+
+| 자리 | 현재 | 변경 |
+|---|---|---|
+| `lib/pull/plan.ts:239` `PullChange` · `lib/pull/client.ts:21` `SnapshotChange` | upsert만 | union |
+| `lib/pull/plan.ts:248-261` `planPullChanges` (유일한 생산자) | `content===null`은 건너뜀, base SHA 같으면 건너뜀, `compareKeys` 정렬(:260) | delete 의도를 **별도 입력**으로 받는다(`content===null`을 삭제로 읽지 않는다). base에 있을 때만 delete. 같은 경로 upsert·delete 계획 오류를 여기서 던진다 — GitHub 쪽엔 중복 검사가 없다 |
+| `lib/pull/plan.ts:244-246` · `lib/gitlab/plan.ts:22` | "삭제를 내지 않는다" 주석 | "명시적 의도만 삭제, `null`은 그대로 둠"으로 고침 |
+| `lib/pull/payload.ts:49-55` `TreeEntry` · `:66-80` `buildTreePayload` | `content: string` 고정 | 가드(a): delete → `sha: null` 항목. 가드(b) `:72` 빈 변경 throw는 유지(삭제만 있어도 통과) |
+| `lib/gitlab/plan.ts:19` `GitLabCommitAction` · `:26-35` `buildCommitActions` | create/update, `:27` 빈 변경 throw, `:28-32` 중복 throw(가드 c), `:30` 경로 안전 | delete 분기 `{action:"delete", file_path}`, 세 검사는 두 종류 모두 |
+| `lib/pull/run.ts:258` `renderProject` | `planPullChanges` 호출 | delete 의도 전달. `:215-225` 파일 종류 가드에 삭제 경로도 태운다 |
+| `lib/pull/run.ts:444 → 498-516` `countChangedValuesOf` | `.content` 읽음 | delete를 건너뛴다(번역 전달 수가 아니다 — §4) |
+| `lib/pull/run.ts:449`(:210) `inBase` 부착 · `:445` 요약 · `:465` PR 본문 · `:488` `changed` | 모든 change에 spread | kind로 좁힘. 본문·결과에 삭제 파일 구분 |
+| `lib/publish/read.ts:138` `changedFiles` | 경로만 | 미리보기에서 `Removed` 구분 |
+| `lib/github.ts:415` 주석 · `lib/gitlab/client.ts:167-175` | 통과 | 주석만 |
+| 테스트 fake: `lib/gitlab/__tests__/fake-repo.ts:136-149` | delete가 오면 `undefined`를 쓴다 | delete 처리(없는 파일 400, 있으면 제거) |
+| 테스트: `payload.test.ts`·`gitlab/plan.test.ts`·`pull/plan.test.ts`·`github-app.test.ts:195,221` | upsert만 | delete·삭제만·같은 경로 혼합 케이스. `Parameters<GitClient["publishSnapshot"]>[0]`로 타입을 건 테스트(edit-flow:65, entry-order:11·78, run.test:1393)는 kind로 좁혀야 컴파일된다 |
 
 **리포 파일 삭제는 DB 번역 삭제가 아니다.** 기준 언어 제거는 거부하고, 기준 변경 후보에서 ADD·REMOVE를 제외한다. base 변경과 제거는 같은 잠금 뒤 다시 판정한다.
 
@@ -114,6 +141,23 @@ GitLab은 `{action: "delete", file_path}`를 쓴다. blob SHA 비교(`planPullCh
 ### 집계·보호
 
 `unpublished`를 가짜 Translation 토큰으로 늘리지 않는다. 셀 편집 수와 **언어 변경 작업(목록 차이)** 을 따로 싣는다. 조기 종료 세 자리(§0)가 둘을 함께 본다.
+
+**`pendingWhere`·조기 종료 판정표** (2026-10-14 조사). `pendingWhere`를 직접 부르는 곳은 `lib/protection/where.ts`·`lib/pull/load.ts`·`lib/keys/revert.ts` 셋이고 나머지는 래퍼(`countPending`·`countPendingBySurface`·`loadPendingEdits`)나 손 사본이다. "언어 작업 추가"는 술어를 바꾸는 게 아니라 **그 자리의 판정이 목록 차이를 따로 본다**는 뜻이다.
+
+| 자리 | 판정 |
+|---|---|
+| `lib/protection/where.ts:13` `pendingWhere` · `:32/46/65` 래퍼 · `lib/protection/release-orphaned.ts:31` | 변경 없음 |
+| `lib/keys/query.ts:131`(Translations Unsent) · `:518`(목록 손 사본) · `lib/keys/translation-list.ts:159`(`pending`·`unsent` 필터) · `lib/keys/revert.ts:51` | 변경 없음 — 셀 편집 수다. 언어별 Unsent는 목록 비교로, REMOVE 중 쓰기 거부는 별도 가드로 |
+| `lib/pull/load.ts:111` `unpublished` · `:115-118` `pendingEdits` | 수는 변경 없음. 같은 RepeatableRead 스냅샷(`loadSnapshot` :50)에서 현재 효과 목록·전달 목록을 **별도 필드**로 읽는다 |
+| `lib/pull/load.ts:37-44` `loadPreviewSnapshot` · `lib/publish/read.ts:28` · `lib/publish/fingerprint.ts:16` | 언어 작업 추가 — `total=0`이어도 New file/Removed 표시, 지문에 언어 행·전달 목록 |
+| `lib/protection/fingerprint.ts:25/54` · `lib/import/approval.ts:27` · `lib/surfaces/remove.ts:45` `readRemoval` | 언어 작업 추가 — 수동 Sync 폐기·소스 제거 지문에 언어 행·전달 목록 |
+| `app/api/push/route.ts:238` · `lib/push/apply.ts:162/167` · `lib/import/run.ts:122` | 수는 변경 없음. 옆에 `locale-change-pending` 보류 게이트 추가(ADD만이면 orphan 대상에서 뺌). `lib/import/run.ts:265/357/398` 재집계는 변경 없음 |
+| `lib/nightly/run.ts:85` → `lib/nightly/plan.ts:57` | 언어 작업이 있으면 Publish를 고른다 |
+| 조기 종료 ① `lib/pull/plan.ts:30` `shouldSkipPull` (`run.ts:336`) | 셀 편집 0 **그리고** 언어 작업 0일 때만 `no-edits` |
+| `lib/pull/run.ts:341` `maxUpdatedAt === null` → unreachable | 언어 작업이 있으면 통과. `captured`(:344)는 셀 확인용이라 언어 목록 확인과 분리 |
+| `lib/pull/run.ts:380` `planProtectedPublish` | 셀 0·언어 작업 > 0에서 동작 확인(테스트) |
+| 조기 종료 ② `lib/pull/run.ts:387` 전부 보류 → `skipped/withheld` | 언어 작업도 0일 때만 |
+| 조기 종료 ③ `lib/nightly/plan.ts:70` `upToDate` | `LocaleChange` 행이 있는 소스는 이 출구 전에 PR/MR 조회·만료(:74 게이트 앞). 조회 실패는 `pr-check-failed` |
 
 - 모든 번역 셀이 보류여도 안전한 삭제만 전달할 수 있다.
 - `Translation` 행 자체가 없어 `maxUpdatedAt=null`이어도 언어 변경을 실행·확인할 수 있어야 한다. 셀 전달 확인과 언어 목록 확인을 분리한다.
