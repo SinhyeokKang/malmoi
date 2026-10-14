@@ -226,7 +226,11 @@ describe("expireLocaleChanges — 잠금 계약", () => {
       await client.query("COMMIT");
       expect(await pending).toEqual({ expired: [], held: null });
       expect(await locales()).toContainEqual({ code: "ko", orphaned: false });
-    } finally { client.release(); }
+    } finally {
+      // 단언이 실패해 COMMIT 전에 빠져나오면 잠금을 쥔 연결이 풀로 돌아가 다음 테스트를 막는다.
+      await client.query("ROLLBACK").catch(() => {});
+      client.release();
+    }
   }
 
   it("Project 행을 쥔 tx 뒤에서 기다린다", async () => {

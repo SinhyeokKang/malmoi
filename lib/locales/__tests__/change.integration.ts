@@ -511,7 +511,11 @@ describe("잠금 순서 — Project → TranslationSurface (CI 적재·Publish �
       await client.query("COMMIT");
       await pending;
       expect(settled).toBe(true);
-    } finally { client.release(); }
+    } finally {
+      // 단언이 실패해 COMMIT 전에 빠져나오면 잠금을 쥔 연결이 풀로 돌아가 다음 테스트를 막는다.
+      await client.query("ROLLBACK").catch(() => {});
+      client.release();
+    }
   }
 
   it("Project 행을 쥔 tx가 끝날 때까지 기다린다", async () => {
@@ -534,6 +538,10 @@ describe("잠금 순서 — Project → TranslationSurface (CI 적재·Publish �
       await client.query(`UPDATE "Translation" SET "pendingEditToken" = 'late' WHERE "projectId" = 'p' AND "surfaceId" = 's-web' AND "keyId" = 's-web-bye' AND "localeCode" = 'ko'`);
       await client.query("COMMIT");
       expect(await pending).toEqual({ ok: false, error: "stale-approval" });
-    } finally { client.release(); }
+    } finally {
+      // 단언이 실패해 COMMIT 전에 빠져나오면 잠금을 쥔 연결이 풀로 돌아가 다음 테스트를 막는다.
+      await client.query("ROLLBACK").catch(() => {});
+      client.release();
+    }
   });
 });
