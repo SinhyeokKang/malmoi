@@ -85,3 +85,6 @@
 - B3 fix2 질문: 관측 공통화가 리더 snapshot에 mode를 실어야 함 → **지휘자 판단 a+b 허용**(B2 fix2와 같은 파일이라 snapshot 줄만).
 - C1 질문: 새 필수 뷰모델 필드가 components 테스트 픽스처 5개를 깸 → **지휘자 판단 A**(픽스처 리터럴만).
 - B3 fix2 `worker_done` — `1c58cbcc`·`7b608a1b`·`4e6c0528`(관측 함수 `observeLocaleFiles` 하나, 리더 snapshot에 mode, `gate: ok` 15171 · PG 814). dev cherry-pick. **남은 차이(⚪, 기록만)**: strict 적재의 존재 판정(`localesToKeep`)은 아직 링크된 언어 파일을 센다 — 만료는 정규 파일만. 심볼릭 링크 언어 파일에서만 갈리고, 적재 코어 변경이라 이번 범위 밖. B3 해제·정리.
+- C2 `worker_done` — `461c747e`·`fda25040`·`66fb1f01`(MCP 도구 넷 + 조회 응답, `gate: ok` 15240 · PG 819). 남김: 가이드 MCP 표(시안 대기 `/guide` 몫이 아니라 §8 — 이 런에서 D가 다룰지 판단). C2 retain. **R-C2**.
+- R-C2 완료(🔴 0 · 🟡 0 · ⚪ 5, 변이 5/5). **C2 통합**(cherry-pick 3). ⚪ ARCHITECTURE §6.45 도구 수·가이드 권한 표 → D 메모. C2·R-C2 해제·정리.
+- B2 fix2 `worker_done` — `502c28e0`·`ed8ad232`(삭제 파일 집합이 바뀔 때만 본문 갱신, `gate: ok` 15175 · PG 810). 갱신이 필요할 때는 본문 전체를 바꾼다(그 순간 사람 문구는 사라짐 — 수용, 기록). dev cherry-pick. B2 해제·정리.
