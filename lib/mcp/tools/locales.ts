@@ -23,9 +23,15 @@ import { coreSubject, defineTool, ok } from "./define";
  */
 const bounded = { slug: z.string().min(1).max(200), surfaceSlug: z.string().min(1).max(200), localeCode: z.string().min(1).max(200) };
 
-/** 거부 → 결과. `not-found`만 언어 문장으로 바꾼다 — 입구가 프로젝트를 이미 확인했으니 여기의 not-found는 소스나 언어다. */
+/**
+ * 거부 → 결과. 언어 변경의 거부 문장은 여기서만 싣는다 — `path-conflict`·`stale-approval` 같은 코드를 다른 도구가 다른 뜻으로 쓰므로 결과 경계의
+ * 전역 조회에 두지 않는다. `not-found`도 언어 문장이다 — 입구가 프로젝트를 이미 확인했으니 여기의 not-found는 소스나 언어다.
+ * 인가 거부(`forbidden`·`archived` …)와 `sync-running`은 문장이 없어 결과 경계가 공용 문장을 붙인다.
+ */
 function refused(error: LocaleChangeError): ToolOutcome {
-  return { status: "refused", code: error, ...(error === "not-found" ? { message: en.mcp.errors.languages["not-found"] } : {}) };
+  const messages: Readonly<Record<string, unknown>> = en.mcp.errors.languages;
+  const message = Object.hasOwn(messages, error) ? messages[error] : undefined;
+  return { status: "refused", code: error, ...(typeof message === "string" ? { message } : {}) };
 }
 
 /** 웹 Action과 같은 둘 — 소스 상세·번역 화면(프로젝트 레이아웃 아래)과 목록의 언어 수. */

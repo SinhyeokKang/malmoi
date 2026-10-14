@@ -541,6 +541,15 @@ describe("언어 변경이 다른 도구에 낳는 거부", () => {
     }
   });
 
+  // 언어 전용 문장은 언어 도구만 싣는다 — 같은 코드를 다른 뜻으로 쓰는 도구(소스 경로 충돌·소스 제거 승인)에 새면 엉뚱한 파일을 고치게 된다.
+  it("다른 도구의 같은 코드(path-conflict·stale-approval·approval-required)에 언어 문장이 붙지 않는다", async () => {
+    h.core.mockResolvedValueOnce({ ok: false, error: "path-conflict", conflicts: [] });
+    expect(toToolResult(await run("add_sources", subject("owner"), { slug: "acme", picks: [CONFIRMED] })).content[0]?.text).not.toBe(en.mcp.errors.languages["path-conflict"]);
+    for (const code of ["stale-approval", "approval-required", "invalid-code"]) {
+      expect(toToolResult({ status: "refused", code }).content[0]?.text, code).not.toBe((en.mcp.errors.languages as Record<string, unknown>)[code]);
+    }
+  });
+
   it("set_translations — 제거 예정 언어의 키 거부는 그 언어를 말한다(일반 저장 실패 문장이 아니다)", async () => {
     h.core.mockResolvedValueOnce({ ok: true, results: [{ keyId: "k1", result: { ok: false, error: "locale-removal-pending", localeCodes: ["ko"] } }] });
     const outcome = await run("set_translations", subject("editor"), { ...S, entries: [{ keyId: "k1", changes: [{ localeCode: "ko", value: "v" }] }] });

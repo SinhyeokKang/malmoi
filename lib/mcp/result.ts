@@ -73,20 +73,15 @@ const MESSAGE = {
 const GITLAB_MESSAGE = en.mcp.errors.gitlab satisfies Record<GitLabAccessError, string>;
 
 /**
- * 화면 사전에 이미 있는 거부 — 다른 도구가 `message`를 넘기지 않아도 같은 문장이다(locale-add: 언어 변경 코어도 이 둘을 낸다).
- * ⚠️ 언어 변경의 나머지 거부는 `en.mcp.errors.languages`에 있다 — 화면 문구가 아직 없어서다. 문자열 값만 조회한다(함수 값은 호출부가 인자를 채운다).
+ * 뜻이 하나뿐인 언어 변경 쪽 거부 — 어느 도구가 내도 같은 문장이다(locale-add). 앞의 둘은 화면 사전의 문장이다.
+ * ⚠️ 언어 도구만의 거부(`path-conflict`·`stale-approval`·`invalid-code` …)는 여기 두지 않는다 — 같은 코드를 소스 경로·소스 제거가 다른 뜻으로 쓴다.
+ * 그 문장은 언어 도구(`tools/locales.ts`)가 `message`로 싣는다.
  */
-const SCREEN_MESSAGE: Readonly<Record<string, string>> = {
+const SHARED_MESSAGE: Readonly<Record<string, string>> = {
   "publish-unsettled": en.repositorySync.errors["publish-unsettled"],
   "locale-plan-refused": en.logs.reasons["locale-plan-refused"],
+  "locale-change-pending": en.mcp.errors.languages["locale-change-pending"],
 };
-
-function languageMessage(code: string): string | null {
-  if (Object.hasOwn(SCREEN_MESSAGE, code)) return SCREEN_MESSAGE[code] ?? null;
-  if (!Object.hasOwn(en.mcp.errors.languages, code)) return null;
-  const value: unknown = en.mcp.errors.languages[code as keyof typeof en.mcp.errors.languages];
-  return typeof value === "string" ? value : null;
-}
 
 const text = (value: string): ToolResult["content"] => [{ type: "text", text: value }];
 
@@ -97,8 +92,7 @@ const text = (value: string): ToolResult["content"] => [{ type: "text", text: va
 function rejectionMessage(code: string, credential: Credential["kind"] | undefined): string | null {
   if (code === "token-scope") return scopeMessage(credential);
   if (Object.hasOwn(MESSAGE, code)) return MESSAGE[code as ToolRejection];
-  const language = languageMessage(code);
-  if (language !== null) return language;
+  if (Object.hasOwn(SHARED_MESSAGE, code)) return SHARED_MESSAGE[code] ?? null;
   if (isGitLabConnectError(code) && Object.hasOwn(GITLAB_MESSAGE, code)) return GITLAB_MESSAGE[code as GitLabAccessError];
   if (isAccessError(code)) return accessErrorMessage(en, code);
   if (isRepositorySettingsError(code)) return repositorySettingsErrorMessage(en, code);
