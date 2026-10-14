@@ -93,3 +93,4 @@
 - R-C1 완료(🔴 0 · 🟡 2, 변이 8 중 7, dev에 깨끗이 cherry-pick). **C1 fix1** — Y1(저장 직후 낙관적 집계가 제거 중 언어를 셈 — MCP로 REMOVE가 생길 수 있어 지금 고침, 컴포넌트는 비시각 한 줄 예외 허용·지휘자 판단) · Y2(검색 하이라이트 술어 테스트). R-C1 해제·정리.
 - D `worker_done` — ARCHITECTURE §5.10 신설 · §6.45.5 도구 수 31→35 · DIRECTORY · ACTIONS · OPERATIONS · CLAUDE.md(+미러), README 변경 없음(`gate: ok`). D retain. **R-D**(사실 대조).
 - C1 fix1 `worker_done` — `2920845d`·`d5b1aa6d`(`gate: ok` 15307 · PG 828). **C1 통합**(cherry-pick). C1 해제·정리. 화면 배치 메모: `DetailView.locales`에 `readOnly` 타입 선언 추가 필요.
+- R-D 완료(🔴 1 · 🟡 5 · ⚪ 6). **D fix1** 전부. 가이드 MCP 권한 표는 ⏸ 시안 대기 `/guide` 행 소유로 유지. R-D 해제·정리.
