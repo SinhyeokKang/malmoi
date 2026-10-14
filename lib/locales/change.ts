@@ -16,9 +16,8 @@ import { planWriteLock } from "@/lib/sync/plan";
 import { planKeyRevert } from "@/lib/translations/baseline";
 
 import { planLocaleChange, type ApprovalState, type LocaleChangeRefusal, type LocaleChangeRequest, type LocaleTransition } from "./change-plan";
-import { localeEffects } from "./effects";
 import { localeChangeFingerprint } from "./fingerprint";
-import { deliveredForRequests, deliveredOf, readLocaleValueCounts } from "./work";
+import { deliveredOf, readLocaleValueCounts } from "./work";
 
 /**
  * **언어 추가·제거·취소의 공유 코어** (locale-add design §3 — tasks §3). 편집 UI의 Action과 MCP 도구(`add_locale`·`preview_locale_removal`·
@@ -102,7 +101,7 @@ async function readChangeState(db: Prisma.TransactionClient, scope: Scope, code:
   const restore = await readRestoreConfirmation(db, projectId, surfaceId, new Date());
   const confirmation = await db.deliveryConfirmation.findUnique({
     where: { projectId_surfaceId: { projectId, surfaceId } },
-    select: { revision: true, deliveredLocaleChanges: true, invalidatedAt: true, syncRun: { select: { startedAt: true } } },
+    select: { revision: true, deliveredLocaleChanges: true, invalidatedAt: true },
   });
   const counts = await readLocaleValueCounts(db, projectId, [surfaceId], [code]);
   return {
@@ -118,10 +117,10 @@ async function readChangeState(db: Prisma.TransactionClient, scope: Scope, code:
     /** 그 언어의 값 있는 번역 수(활성 키) — 미리보기 수이자 ADD 효과가 현재 목록에 있는지의 판정이다. */
     valueCount: counts.get(surfaceId)?.get(code) ?? 0,
     delivery: confirmation === null ? null : { revision: confirmation.revision, invalidated: confirmation.invalidatedAt !== null },
-    // 확인보다 뒤에 낸 요청의 코드는 견주지 않는다 — 작업 수·만료와 같은 규칙이다(`deliveredForRequests`). 판정이 보는 것은 이 언어 하나라
-    // 현재 효과도 이 언어의 행으로만 센다(값 수는 이 언어 것만 읽었다).
-    delivered: deliveredForRequests(deliveredOf(confirmation), changes, confirmation?.syncRun.startedAt ?? null,
-      localeEffects(changes.filter(change => change.localeCode === code), new Map([[code, counts.get(surfaceId)?.get(code) ?? 0]]))),
+    // ⚠️ **저장된 목록 그대로다** — 작업 수·만료의 `deliveredForRequests`(확인 뒤 요청의 옛 효과를 가림)를 쓰지 않는다(F1 fix2 — R-F1 Y1).
+    // 여기서 답하는 것은 취소의 결과("열린 PR에 그 효과가 남았나")이고, 취소 뒤에는 행이 없어 작업 판정도 저장 목록으로 돌아간다. 좁힌 목록으로
+    // 답하면 확인 뒤 재요청을 다시 취소했을 때 `delivered: false`라 말하는데 작업은 1이고 열린 PR에는 옛 삭제가 남는다. 새 요청은 `hasDelivered`가 가른다.
+    delivered: deliveredOf(confirmation),
     unsettled: await publishUnsettled(db, projectId),
   };
 }
@@ -223,7 +222,7 @@ function approvalState(approved: string | null, current: string | null): Approva
 }
 
 /**
- * 그 언어의 효과가 전달 목록에 있나. 확인이 무효화 중이면 `null` — "전달 안 됨"으로 말하지 않는다.
+ * 그 언어의 효과가 저장된 전달 목록에 있나 — 취소(`cancel-removal`·`cancel-add`)의 답이다. 확인이 무효화 중이면 `null` — "전달 안 됨"으로 말하지 않는다.
  * ⚠️ 행이 없으면(새 제거 요청의 미리보기) `false`다 — 아직 내지 않은 요청은 어느 확인보다도 뒤다. 남은 옛 목록(전달 후 취소)과 견주면 PR이 이미
  * 닫혔어도 "보냈다"고 말한다(F1 fix1).
  */
