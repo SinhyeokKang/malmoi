@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 
+import { jsonCatalog } from "@/lib/adapters/json-catalog";
+import { localeFromPath } from "@/lib/adapters/chrome-locales";
+import { CHROME_LOCALE_CODES } from "../chrome-codes";
 import { localeCollisionKey, localeFilePath, planLocaleAdd, supportsLocaleChanges, type LocaleAddInput } from "../add-plan";
 
 const json = { id: "s1", slug: "i18n", adapterName: "json-catalog", pathTemplate: "src/i18n/{locale}.json" } as const;
@@ -148,5 +151,26 @@ describe("planLocaleAdd", () => {
   it("ignores the target surface if it appears among the owners", () => {
     const otherSurfaces = [{ surfaceId: json.id, surfaceSlug: json.slug, paths: ["src/i18n/fr.json"] }];
     expect(planLocaleAdd(input({ otherSurfaces }))).toMatchObject({ ok: true });
+  });
+});
+
+/**
+ * **추가 가능 코드 ⊆ 관측 가능 코드** (R-B2 🔴 R2). 관측·적재는 `looksLikeLocale`을 지난다 — 숫자·다중 서브태그(`es-419`·`zh-Hant-TW`)는 파일을
+ * 만들어도 머지 뒤 관측되지 않아 만료가 orphan시킨다. 그래서 추가 입력에서 거부한다.
+ */
+describe("planLocaleAdd — addable codes are observable", () => {
+  it.each(["es-419", "es_419", "zh-Hant-TW", "sr-Latn-RS", "de-CH-1996"])("json-catalog %s → invalid-code", code => {
+    expect(planLocaleAdd(input({ code }))).toEqual({ ok: false, error: "invalid-code" });
+  });
+
+  // 생성 테스트 — 받는 코드는 전부 json-catalog `read`가 같은 코드로 되읽는다.
+  const CANDIDATES = [...new Set([...CHROME_LOCALE_CODES, "fr", "pt-BR", "zh-Hant", "zh_Hans", "sr-Latn", "fil", "yue", "en-US", "zhCN", "es-419", "zh-Hant-TW", "x-pig", "art-lojban"])];
+  it.each(CANDIDATES)("%s: accepted ⇒ round-trips through jsonCatalog.read", code => {
+    const verdict = planLocaleAdd(input({ code }));
+    if (!verdict.ok) return;
+    const template = json.pathTemplate;
+    expect(localeFromPath(template, verdict.path)).toBe(code);
+    const read = jsonCatalog.read({ adapter: "json-catalog", pathTemplate: template, locales: [code] }, [{ path: verdict.path, content: '{"a":"A"}' }]);
+    expect(read.locales.map(l => l.locale)).toEqual([code]);
   });
 });

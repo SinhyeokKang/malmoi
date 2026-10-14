@@ -302,3 +302,27 @@ describe("delete — 대상 파일만 지운다", () => {
     expect(repo.branches.has(SYNC)).toBe(false);
   });
 });
+
+/**
+ * **열린 MR을 갱신하는 Publish도 정리 안내를 싣는다** (locale-add R-B2 Y3 — spec 수락 기준 7). 보통은 이미 열린 Publish MR 위로 제거가 얹힌다.
+ * 본문이 같으면 다시 쓰지 않는다(매 실행 PUT을 만들지 않는다).
+ */
+describe("열린 MR 본문 갱신 — 삭제 정리 안내", () => {
+  const removing = (): PullState => ({ ...state(0), surfaces: [{ ...state(0).surfaces[0]!,
+    localeChanges: { rows: [{ localeCode: "ko", operation: "REMOVE", requestedAt: new Date(0) }], valueCounts: new Map(), delivered: [], work: 1 } }] });
+
+  it("열린 MR + 새 삭제 → MR 설명에 (removed)와 앱 코드 정리 안내", async () => {
+    const { repo, deps } = setup({ mergeRequests: [ownMr({ description: "Updated 1 file from the translation DB.\n\n- `locales/ko.json`" })] }, { state: removing() });
+    expect(await runPull(deps)).toMatchObject({ status: "committed", pr: "updated" });
+    const description = repo.mergeRequests[0]?.description ?? "";
+    expect(description).toContain("- `locales/ko.json` (removed)");
+    expect(description).toMatch(/app code/);
+  });
+
+  it("설명이 이미 같으면 PUT하지 않는다", async () => {
+    const body = "Updated 1 file from the translation DB.\n\n- `locales/ko.json` (removed)\n\nThis snapshot removes 1 language file. Before merging, remove references to that language in the app code (language lists, imports, routing) so the app does not load a missing catalog.\n\nThis branch is a snapshot, not a history: it is force-updated on every pull.";
+    const { repo, deps } = setup({ mergeRequests: [ownMr({ description: body })] }, { state: removing() });
+    await runPull(deps);
+    expect(write(repo).filter(call => call.startsWith("PUT /merge_requests"))).toEqual([]);
+  });
+});

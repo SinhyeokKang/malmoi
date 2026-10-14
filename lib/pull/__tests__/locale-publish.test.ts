@@ -5,7 +5,8 @@ import { publishFingerprint } from "@/lib/publish/fingerprint";
 import { planProjectLocales, localeWorkOf, observedLocalesOf, type SurfaceLocaleChanges } from "../locales";
 import { pullRequestBody } from "../payload";
 import { shouldSkipPull } from "../plan";
-import { projectFormats, renderProject, runPull, type PullDeps, type PullState } from "../run";
+import { LocalePlanRefused, projectFormats, renderProject, runPull, type PullDeps, type PullState } from "../run";
+import { classifySyncError } from "@/lib/sync/plan";
 import type { RenderKey } from "../render";
 import { createFakeGitClient, isGitMutation, type FakeGitOptions } from "./fake-client";
 
@@ -426,5 +427,64 @@ describe("수동·MCP Publish의 스냅샷 전 만료 (design §1 \"자동 적�
     await runPull(deps(state({ unpublished: 1 }), made, { expireLocales }).deps);
     expect(expireLocales).not.toHaveBeenCalled();
     expect(made.calls.some(call => call.method === "findOpenPr" && made.calls.indexOf(call) < made.calls.findIndex(c => c.method === "getBlobText"))).toBe(false);
+  });
+});
+
+describe("조기 종료 ②는 전달 가능한 언어 작업으로 판정한다 (R-B2 🟡 Y1)", () => {
+  const withFr = { "i18n/en.json": EN, "i18n/ko.json": KO, "i18n/fr.json": FR };
+  const heldAdd = (unpublished: number) => state({ localeCodes: ["en", "ko", "fr"], unpublished, localeChanges: changes([["fr", "ADD"]], [], [["fr", 1]]),
+    pendingEdits: unpublished === 0 ? [] : [{ id: "t1", token: "tok", cell: { surfaceId: "s1", keyId: "ka", localeCode: "fr", restoreValue: "" } }] });
+
+  it("보류된 ADD만 + 셀 보류 → 쓰기 0, `withheld` 스킵(그 ADD를 싣지 못하므로 언어 작업이 아니다)", async () => {
+    const made = fake(withFr, { refSha: { "heads/dev": "basehead", "heads/malmoi-i18n/sync-fixture": "stale" }, openPr: { url: "u", number: 7, title: "t" } });
+    const result = await runPull(deps(heldAdd(1), made).deps);
+    expect(result).toMatchObject({ status: "skipped", reason: "withheld", withheld: { file: 1, key: 0 },
+      locales: { withheld: [{ localeCode: "fr", reason: "proposal-path-exists" }] } });
+    expect(made.calls.filter(call => isGitMutation(call.method))).toEqual([]);
+  });
+
+  it("보류된 ADD만 + 셀 0 → 쓰기 0, 열린 PR·sync 브랜치를 건드리지 않는다", async () => {
+    const made = fake(withFr, { refSha: { "heads/dev": "basehead", "heads/malmoi-i18n/sync-fixture": "stale" }, openPr: { url: "u", number: 7, title: "t" } });
+    const { deps: d, saveLastPulledAt } = deps(heldAdd(0), made);
+    const result = await runPull(d);
+    expect(result).toMatchObject({ status: "skipped", reason: "no-edits", locales: { withheld: [{ localeCode: "fr" }] } });
+    expect(made.calls.filter(call => isGitMutation(call.method))).toEqual([]);
+    expect(saveLastPulledAt).not.toHaveBeenCalled();
+  });
+
+  it("확인 안 된 전달 목록(`null`)은 다른 것으로 센다 — 같은 효과라도 다시 확인한다", async () => {
+    const made = fake({ "i18n/en.json": EN });
+    const loaded = state({ localeChanges: { ...changes([["ko", "REMOVE"]], null), work: 1 } });
+    await expect(runPull(deps(loaded, made).deps)).resolves.toMatchObject({ status: "skipped", reason: "no-changes" });
+  });
+});
+
+describe("열린 PR 본문 갱신 — 정리 안내 (R-B2 🟡 Y3)", () => {
+  const files = { "i18n/en.json": EN, "i18n/ko.json": KO };
+  it("열린 PR + 새 삭제 → 본문을 다시 쓴다", async () => {
+    const made = fake(files, { openPr: { url: "u", number: 7, title: "chore [skip-malmoi-i18n]", body: "Updated 1 file from the translation DB.\n\n- `i18n/en.json`" } });
+    await runPull(deps(state({ localeChanges: changes([["ko", "REMOVE"]]) }), made).deps);
+    expect(made.calls.find(call => call.method === "updatePr")?.args).toEqual([7, pullRequestBody([{ path: "i18n/ko.json", kind: "removed" }])]);
+  });
+  it("본문이 이미 같으면 쓰지 않는다", async () => {
+    const body = pullRequestBody([{ path: "i18n/ko.json", kind: "removed" }]);
+    const made = fake(files, { openPr: { url: "u", number: 7, title: "chore [skip-malmoi-i18n]", body } });
+    await runPull(deps(state({ localeChanges: changes([["ko", "REMOVE"]]) }), made).deps);
+    expect(made.calls.some(call => call.method === "updatePr")).toBe(false);
+  });
+});
+
+describe("결정적 언어 계획 거부 (R-B2 🟡 Y2)", () => {
+  it("경로 충돌은 `LocalePlanRefused`(코드 locale-plan-refused) — 재시도 불가로 분류된다", async () => {
+    const surfaces = [
+      { ...PROJECT, id: "s1", slug: "default", localeCodes: ["en"], keys: KEYS, localeChanges: changes([["ko", "REMOVE"]]) },
+      { ...PROJECT, id: "s2", slug: "other", localeCodes: ["ko"], baseLocale: "ko", keys: [] },
+    ];
+    const made = fake({ "i18n/en.json": EN, "i18n/ko.json": KO });
+    const error = await runPull(deps({ ...state(), surfaces }, made).deps).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(LocalePlanRefused);
+    expect(error).toMatchObject({ code: "locale-plan-refused", path: "i18n/ko.json", branch: "dev", refusal: "path-conflict" });
+    expect(classifySyncError(error)).toEqual({ code: "locale-plan-refused", retryable: false });
+    expect(made.calls.filter(call => isGitMutation(call.method))).toEqual([]);
   });
 });

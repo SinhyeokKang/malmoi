@@ -129,6 +129,24 @@ describe("createGitClient.findOpenPr", () => {
     await expect(client.findOpenPr("malmoi-i18n/sync-acme")).resolves.toBeNull();
     expect(hoisted.request).toHaveBeenLastCalledWith("GET /repos/{owner}/{repo}/pulls", expect.objectContaining({ head: "o:malmoi-i18n/sync-acme", state: "open" }));
   });
+
+  // 본문까지 돌려준다 — 열린 PR을 갱신할 때 정리 안내가 빠졌는지 견준다(locale-add R-B2 Y3). 빈 본문은 GitHub이 `null`로 준다.
+  it("열린 PR의 본문을 돌려준다 — `null` 본문은 빈 문자열이다", async () => {
+    const client = await createGitClient("o", "r", "7", "9");
+    hoisted.request.mockResolvedValueOnce({ data: [{ html_url: "u", number: 3, title: "t", base: { ref: "main" }, body: null }] });
+    await expect(client.findOpenPr("b")).resolves.toEqual({ url: "u", number: 3, title: "t", base: "main", body: "" });
+    hoisted.request.mockResolvedValueOnce({ data: [{ html_url: "u", number: 3, title: "t", base: { ref: "main" }, body: "old" }] });
+    await expect(client.findOpenPr("b")).resolves.toMatchObject({ body: "old" });
+  });
+});
+
+describe("createGitClient.updatePr", () => {
+  it("PR 본문을 PATCH한다", async () => {
+    const client = await createGitClient("o", "r", "7", "9");
+    hoisted.request.mockResolvedValueOnce({ data: {} });
+    await client.updatePr(3, "new body");
+    expect(hoisted.request).toHaveBeenLastCalledWith("PATCH /repos/{owner}/{repo}/pulls/{pull_number}", expect.objectContaining({ pull_number: 3, body: "new body" }));
+  });
 });
 
 /**

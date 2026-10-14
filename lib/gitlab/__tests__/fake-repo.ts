@@ -186,8 +186,9 @@ export function createFakeGitLabRepo(options: FakeRepoOptions) {
       case "PUT /merge_requests/:n": {
         const mr = mergeRequests.find((row) => row.iid === Number(route.params[0]));
         if (mr === undefined) return respond({ message: "404 Not found" }, 404);
-        const update = json() as { title?: string; target_branch?: string; state_event?: string };
+        const update = json() as { title?: string; target_branch?: string; state_event?: string; description?: string };
         if (update.title !== undefined) mr.title = update.title;
+        if (update.description !== undefined) mr.description = update.description;
         if (update.target_branch !== undefined) mr.target_branch = update.target_branch;
         if (update.state_event === "close") mr.state = "closed";
         return respond(mr);

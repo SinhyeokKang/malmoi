@@ -225,13 +225,16 @@ describe("추가 → Publish — 새 파일은 기준 파일의 표현을 빌리
   });
 });
 
+/** 제거를 요청하고 한 번 Publish해 전달까지 확인한다. 실행 시각은 미확정 창 밖으로 민다. */
+async function deliveredRemoval() {
+  await requestRemoval("ko");
+  fake({ "i18n/en.json": EN, "i18n/ko.json": KO });
+  expect(await publish()).toMatchObject({ status: "committed" });
+  await ageRuns();
+}
+const cron = () => runSync(prisma, { projectId: "p", slug: "fixture", trigger: "cron", requestedBy: null, credential: undefined });
+
 describe("전달 뒤 — 다음 스냅샷·취소·만료", () => {
-  async function deliveredRemoval() {
-    await requestRemoval("ko");
-    fake({ "i18n/en.json": EN, "i18n/ko.json": KO });
-    expect(await publish()).toMatchObject({ status: "committed" });
-    await ageRuns();
-  }
 
   it("삭제 PR이 열린 채 다른 언어를 편집하고 다시 Publish해도 delete가 유지된다", async () => {
     await deliveredRemoval();
@@ -282,5 +285,63 @@ describe("전달 뒤 — 다음 스냅샷·취소·만료", () => {
     expect(snapshot(made)?.changes.map(change => change.kind)).toEqual(["upsert", "delete"]);
     expect(await prisma.localeChange.count({ where: { projectId: "p" } })).toBe(1);
     expect(made.calls.filter(call => isGitMutation(call.method)).length).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * **야간 cron Publish도 스냅샷 전에 만료한다** (R-B2 🔴 R1 — design §1 "모든 Publish"). 사람 주체가 없으니 AUTOMATION으로 만료한다.
+ * 안 하면 머지 없이 닫힌 삭제가 다른 셀 편집 하나에 실려 새 PR로 다시 나가고, 보류된 ADD는 영영 풀리지 않는다.
+ */
+describe("cron Publish의 스냅샷 전 만료", () => {
+  it("머지 없이 닫힌 삭제 + 다른 셀 편집 1 → 삭제 재전송 0, 행 만료, 언어 활성, 사건 주체는 AUTOMATION", async () => {
+    await deliveredRemoval();
+    await save("hello", "en", "Hello!");
+    const made = fake({ "i18n/en.json": EN, "i18n/ko.json": KO });
+    expect(await cron()).toMatchObject({ status: "committed" });
+    expect(snapshot(made)?.changes.map(change => [change.kind, change.path])).toEqual([["upsert", "i18n/en.json"]]);
+    expect(await prisma.localeChange.count({ where: { projectId: "p" } })).toBe(0);
+    expect(await prisma.locale.findFirst({ where: { projectId: "p", code: "ko" } })).toMatchObject({ orphaned: false });
+    expect(await prisma.projectEvent.findMany({ where: { projectId: "p", subtype: "surface.localeChangeResolved" }, select: { actorKind: true } })).toEqual([{ actorKind: "AUTOMATION" }]);
+  });
+
+  it("보류된 ADD + PR 닫힘 + cron → 관측된 파일로 활성 만료되고 그 언어 편집이 나간다", async () => {
+    await addLocale(prisma, OWNER, { ...WEB, localeCode: "fr" });
+    await save("hello", "fr", "Bonjour");
+    const files = { "i18n/en.json": EN, "i18n/ko.json": KO, "i18n/fr.json": '{\n    "hello": "Salut"\n}\n' };
+    const made = fake(files);
+    expect(await cron()).toMatchObject({ status: "committed", delivered: 1 });
+    expect(snapshot(made)?.changes).toEqual([{ kind: "upsert", path: "i18n/fr.json", content: '{\n    "hello": "Bonjour"\n}\n', inBase: true }]);
+    expect(await prisma.localeChange.count({ where: { projectId: "p" } })).toBe(0);
+    expect(await prisma.locale.findFirst({ where: { projectId: "p", code: "fr" } })).toMatchObject({ orphaned: false });
+  });
+
+  it("열린 PR 조회가 실패하면 cron Publish도 실패한다 — 만료·쓰기 0(fail-closed)", async () => {
+    await deliveredRemoval();
+    await save("hello", "en", "Hello!");
+    const made = fake({ "i18n/en.json": EN, "i18n/ko.json": KO }, { failOn: "findOpenPr" });
+    expect(await cron()).toMatchObject({ status: "failed" });
+    expect(made.calls.filter(call => isGitMutation(call.method))).toEqual([]);
+    expect(await prisma.localeChange.count({ where: { projectId: "p" } })).toBe(1);
+  });
+});
+
+/**
+ * **결정적 언어 계획 거부는 재시도 실패가 아니다** (R-B2 🟡 Y2 — POSTMORTEM 2026-10-07 #200 계열). 다른 소스가 추가한 언어의 경로를 쥐면
+ * 실행은 `locale-plan-refused`(재시도 불가)로, 미리보기는 같은 코드의 `refused`로 끝난다 — Try again이 아니다.
+ */
+describe("언어 계획 거부 코드", () => {
+  it("다른 소스가 같은 경로를 쥐면 실행 결과 코드가 locale-plan-refused·재시도 불가이고 미리보기는 refused다", async () => {
+    await addLocale(prisma, OWNER, { ...WEB, localeCode: "fr" });
+    await save("hello", "fr", "Bonjour");
+    // 추가 뒤에 다른 소스가 같은 템플릿으로 들어온다 — 추가 시점의 경로 판정은 이 경우를 못 본다.
+    await prisma.translationSurface.create({ data: { id: "s2", projectId: "p", slug: "other", adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "fr" } });
+    await prisma.locale.create({ data: { projectId: "p", surfaceId: "s2", code: "fr", name: "fr", isBase: true } });
+    const files = { "i18n/en.json": EN, "i18n/ko.json": KO };
+    fake(files);
+    const { loadPreview } = await import("@/lib/publish/load-preview");
+    expect(await loadPreview(prisma, { userId: "owner" }, { slug: "fixture" })).toMatchObject({ status: "refused", reason: "locale-plan-refused", path: "i18n/fr.json", branch: "main" });
+    const made = fake(files);
+    expect(await publish()).toMatchObject({ status: "failed", code: "locale-plan-refused", retryable: false });
+    expect(made.calls.filter(call => isGitMutation(call.method))).toEqual([]);
   });
 });
