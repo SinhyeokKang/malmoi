@@ -2381,6 +2381,15 @@ OWNER(`project:settings`)가 **`json-catalog`·`chrome-locales`**(언어마다 �
   `invalidatedAt`이 있으면 **"확인 안 됨"** 이다(`deliveredOf` → `null`). 확인 행이 없는 소스는 `[]`다.
 - **현재 효과 목록**은 같은 규칙으로 행에서 계산한다(`localeEffects`) — **값 0개 ADD는 파일을 내지 않으므로 목록에 없다.** **언어 변경 작업 = 현재 효과 목록 ≠ 전달 목록**
   (`localeWork`, `null`은 `[]`로 본다). 전이 이력·실행 참조는 따로 두지 않는다 — sync 브랜치를 매번 base에서 다시 만들므로 "이전에 무엇을 보냈나"는 이 목록 하나로 충분하다.
+- ⚠️ **확인보다 뒤에 낸 요청의 효과는 전달로 세지 않는다** (2026-10-14, locale-add F1). 전달 목록은 그 효과가 어느 요청의 것인지 모른다. 전달 후 취소로 행 없이 남은 목록은
+  PR이 머지 없이 닫혀도 만료할 행이 없어 그대로 남고, 그 뒤 같은 언어를 다시 요청하면 현재 = 전달이 되어 Publish가 싣지 않고 다음 방문이 새 요청을 지운다.
+  그래서 `requestedAt`이 확인 시각 이후(같은 밀리초 포함)인 행의 코드는 견줄 목록에서 뺀다(`deliveredForRequests`, `lib/locales/work.ts`). 작업 수·Publish 계획·만료·제거 미리보기의
+  `delivered`(`lib/locales/change.ts`)가 이 규칙 하나를 쓴다.
+  - **확인 시각 = 확인 행의 `syncRunId`가 가리키는 `SyncRun.startedAt`**이다. 실행 시작 tx가 `Project` 잠금 뒤에 찍고, 스냅샷 캡처는 그 뒤에 뜨며, 언어 요청도 같은 잠금 뒤에 쓴다.
+    그래서 이 시각보다 앞선 요청은 그 스냅샷에 실렸다. 시작 뒤·캡처 전의 요청은 실렸어도 미전달로 세는데, 그 대가는 Publish 한 번 더다(안전한 쪽).
+    ⚠️ 성공 확정 시각(`finishedAt`·`lastPublishedAt`)을 쓰면 캡처 뒤에 낸 요청이 전달로 세어져 같은 결함이 돌아온다.
+  - ⚠️ **그 요청이 현재 효과를 낼 때만 뺀다.** 값 0개 ADD처럼 파일을 내지 않는 요청까지 빼면, 열린 PR에 남았을 수 있는 옛 새 파일이 작업에서 사라져 Publish가 거두지 않는다.
+  - 판정은 뺀 목록으로 하고, 만료가 효과를 빼고 다시 쓸 때는 저장된 목록(`storedDelivered`)을 쓴다.
 - ⚠️ **`pendingWhere`는 바꾸지 않는다.** 제거 동안 편집이 잠기고 승인 폐기로 토큰이 0이라 셀 편집 수에 언어 변경을 섞지 않는다. 셀 편집 수와 **언어 변경 작업 수**(`countLocaleWork`)는
   따로 싣고, 조기 종료 세 자리(`shouldSkipPull`·`runPull`의 전부 보류 스킵·`planNightly`의 `upToDate`)가 둘을 함께 본다.
 - 전이:
@@ -2392,7 +2401,7 @@ OWNER(`project:settings`)가 **`json-catalog`·`chrome-locales`**(언어마다 �
 | ADD | 제거 = **추가 취소**(지문 승인) | ADD 행 삭제 + orphan. 그 언어 토큰만 비운다 — **값은 유지**한다(재추가가 되살린다) |
 | REMOVE | 제거 취소 | 행 삭제, 편집 허용. 전달된 적이 있으면 목록 차이로 다음 Publish 작업이 생긴다 |
 | 어느 행이든 | Publish가 PR/MR 경계까지 성공 | **스냅샷 때 캡처한 효과 목록**을 전달 목록으로 쓴다. 행은 유지 |
-| 어느 행이든 | 만료(5.10.2) | 행 삭제, base 관측으로 활성/orphan |
+| 어느 행이든 | 만료(5.10.2) | 행 삭제, base 관측으로 활성/orphan, **전달 목록에서 그 효과를 뺀다** |
 | 어느 행이든 | 승인한 수동 Sync 성공 | **승인된 행만** 삭제하고 리포 파일 집합대로 활성/orphan. **전달 목록은 유지**한다 |
 
 - ⚠️ **폐기는 값을 마지막 전달 값으로 되돌린다 — 제거에만.** 토큰만 비우면 값이 DB에 남아 제거를 취소한 뒤 다음 Publish에 추적 없이 실린다. 그래서 제거 폐기는
@@ -2413,6 +2422,11 @@ DB의 의도는 **아직 PR/MR로 나가지 않았거나 PR/MR이 열려 있는 
 - ⚠️ **관측된 로케일 파일이 0개면 만료하지 않고 보류한다**(`base-empty`) — 0개는 "비었다"는 증거가 아니다(POSTMORTEM 2026-09-15). `expireLocaleChanges`는 이를 `base-unreadable`로 접어 돌려준다(보류, 실패 아님).
   base를 못 읽은 것도 파일 부재가 아니다(2026-09-27).
 - **모순 행**(orphan인데 ADD 행 — 구버전 롤백 구간의 잔재)은 PR·목록과 무관하게 만료한다. base 관측은 여전히 요구한다.
+- ⚠️ **만료는 그 행의 효과를 전달 목록에서도 뺀다** (2026-10-14, locale-add RT #266). 만료 조건이 열린 PR 없음을 확인했으므로 그 효과는 더 이상 어느 PR에도 실려 있지 않다.
+  남겨 두면 미머지 종료 뒤 같은 언어를 다시 요청했을 때 현재 = 전달이 되어 Publish가 싣지 않고, 다음 방문이 새 요청을 지운다. 같은 tx에서 만료된 코드의 효과만 빼고
+  나머지는 정규형으로 남긴다. 그래서 만료 뒤 목록을 비우는 수렴 Publish가 따로 돌지 않는다. 무효화 중(`null`)인 목록은 무엇이 실렸는지 몰라 건드리지 않는다.
+  ⚠️ **`revision`은 바꾸지 않는다** — 새 전달 관측이 아니고, 자동 적재·야간 만료의 장벽(`readDeliveryRevision`)이 revision 변화를 "Publish가 끼었다"로 읽어 사전 판정을 마친 다른 소스의 적재를
+  `publish-raced`로 보류시킨다.
 - **누가 만료를 도는가** — 어디서든 `Project`→`TranslationSurface` 잠금 **안에서** 행·목록을 다시 읽고 판정한다(`expireLocaleChanges`, 호출 계약: Project 잠금 뒤의 tx에서만 부른다. 사람 경로는 `lockProjectAccess` 뒤. 함수가 `Project`→`Surface`를 스스로 다시 잠그지만 같은 tx의 재잠금은 대기하지 않는다):
   1. **자동 적재(CI·야간 적재)** — 적재 tx가 겸한다(`applyPushInTransaction`의 `localeChanges: "expire"`).
   2. **같은 base SHA라 적재를 건너뛰는 야간 방문** — `LocaleChange` 행이 있는 소스에 한해 PR/MR 조회와 만료를 `upToDate` 출구 앞에서 먼저 돈다(`lib/nightly/run.ts`). 행이 없는 프로젝트는 기존 순서 그대로 조회 0회다.
@@ -2462,6 +2476,10 @@ DB의 의도는 **아직 PR/MR로 나가지 않았거나 PR/MR이 열려 있는 
   ⚠️ **삭제 성공을 번역 전달로 세지 않는다** — delete는 `split.delivered`·`countChangedValuesOf`·baseline 확인 대상이 아니다.
 - **취소의 `no-changes` 수렴**: 전달 전 취소는 현재 목록이 전달 목록으로 돌아가 작업이 저절로 0이다. **전달 후 취소**(추가 취소·제거 취소)는 목록이 달라 다음 Publish가 정리한다 — 스냅샷이 base와 같으면 기존 `no-changes` 경로(sync 브랜치 reset + PR 닫기)가
   맡고, **그 정리가 끝나기 전에는 전달 목록을 갱신하지 않는다.** UI는 그 전까지 "취소 완료"라고 말하지 않는다(`cancelLocaleRemoval`의 `delivered: true`).
+- **미리보기의 거둘 효과** (`withdrawnLocales`, 2026-10-14 RT #265): 전달 후 취소로 되돌린 파일은 base와 같아 `fileChanges`에 없지만, 열린 PR에는 옛 삭제·새 파일이 남아 있고
+  Publish가 그것을 거둔다. 미리보기는 **전달 목록에 있는데 이번 캡처에 없는 효과**(`withdrawnLocalesOf`, `lib/pull/locales.ts` — 소스 slug·코드순)를 싣고, 비면 필드가 없다.
+  확인 안 된 목록(`null`)은 무엇이 실렸는지 몰라 말하지 않는다(그동안 취소는 거부된다). MCP `preview_publish`는 이를 `languages.withdrawn`으로 싣고, 파일 변경이 0이어도
+  "Nothing to send."가 아니라 이미 보낸 언어 변경을 되돌린다고 말한다. 웹 Publish 모달은 아직 읽지 않는다(표시는 시안 배치).
 - **결과 미확정 동안 언어 변경은 거부한다** — 새 사유 코드를 만들지 않고 기존 `publish-unsettled` 장벽(`planPublishBarrier`)과 RUNNING 실행권을 재사용한다. 응답이 유실된 실행은 원격에 새 파일·삭제를 실었을 수 있는데 전달 목록은 갱신되지 않아,
   그 사이 취소를 받으면 PR에 stale diff가 남는다. **확인이 무효화된 동안(`delivered: null`)도 같다** — 대상 행의 효과가 현재 목록에 있으면(REMOVE, 값 있는 ADD) 두 취소를 막는다. 새 요청(작업을 늘리는 쪽)과 값 0개 ADD의 취소는 막지 않는다.
 - **PR/MR 본문**: 삭제 파일이 있으면 `(removed)` 표시와 "앱 코드의 이 언어 참조(import·지원 언어 목록 등)를 정리해야 한다" 안내를 붙인다(`pullRequestBody` — 두 호스트 공통, 삭제가 없으면 옛 본문과 바이트 동일).
