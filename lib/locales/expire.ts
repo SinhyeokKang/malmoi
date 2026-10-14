@@ -1,4 +1,5 @@
 import type { Prisma } from "@/generated/prisma/client";
+import type { LocaleChangeSubtype } from "@/lib/events/payload";
 import type { EventActorInput } from "@/lib/events/record";
 import { recordEvents } from "@/lib/events/record";
 
@@ -57,7 +58,7 @@ export async function expireLocaleChanges(tx: Prisma.TransactionClient, input: L
     }
     await recordEvents(tx, plan.expired.map(item => ({
       projectId,
-      subtype: "surface.localeChangeResolved",
+      subtype: "surface.localeChangeResolved" satisfies LocaleChangeSubtype,
       actor: input.actor,
       surfaceIds: [surfaceId],
       payload: { kind: "SURFACE" as const, surfaceSlug: input.surfaceSlug, adapter: null, baseLocale: null,

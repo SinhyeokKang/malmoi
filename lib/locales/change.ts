@@ -6,7 +6,7 @@ import type { LockedAccess, ProjectAccess } from "@/lib/auth/access";
 import { lockProjectAccess } from "@/lib/auth/lock";
 import type { Subject } from "@/lib/auth/subject";
 import { recordEvent } from "@/lib/events/record";
-import type { LocaleChangeDetail } from "@/lib/events/payload";
+import type { LocaleChangeDetail, LocaleChangeSubtype } from "@/lib/events/payload";
 import { sameFingerprint } from "@/lib/protection/fingerprint";
 import { getSurfaceAccess } from "@/lib/surfaces/access";
 import type { SurfacePaths } from "@/lib/surfaces/plan";
@@ -151,7 +151,7 @@ function hasDelivered(state: ChangeState, code: string, effect: "create" | "dele
 }
 
 /** 같은 tx에 남기는 언어 변경 사건 — 실패하면 상태 변경과 함께 롤백된다. */
-async function recordLocaleEvent(tx: Prisma.TransactionClient, input: { scope: Scope; userId: string; surfaceSlug: string; subtype: string; detail: LocaleChangeDetail }) {
+async function recordLocaleEvent(tx: Prisma.TransactionClient, input: { scope: Scope; userId: string; surfaceSlug: string; subtype: LocaleChangeSubtype; detail: LocaleChangeDetail }) {
   await recordEvent(tx, {
     projectId: input.scope.projectId,
     subtype: input.subtype,

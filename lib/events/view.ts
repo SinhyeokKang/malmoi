@@ -10,7 +10,7 @@ import type { UiLocale } from "@/lib/i18n/locales";
 import { addDays, dayKeyAt, formatDayKey, type DateStyle } from "@/lib/date-format";
 
 import type { EventCursor } from "./filter";
-import { NIGHTLY_SUBTYPES, type ActorKind, type DeferReason, type EventKind, type EventPayload, type EventResult, type SurfaceOutcome } from "./payload";
+import { LOCALE_CHANGE_SUBTYPES, NIGHTLY_SUBTYPES, type ActorKind, type DeferReason, type EventKind, type EventPayload, type EventResult, type SurfaceOutcome } from "./payload";
 
 /**
  * Logs 행의 **순수 판정** (logs-rework design §6). 화면이 `kind`로 삼항을 엮으면 갈래가 JSX 안에 흩어지고 그 자리에는 누락을 잡는 장치가 없다.
@@ -209,9 +209,6 @@ export function eventGlyph(row: Pick<EventViewRow, "kind" | "result"> & { subtyp
   const tone = run && row.result !== null ? TONE_GLYPH[logsResultTone(row.result)] : KIND_GLYPH_TONE[row.kind];
   return { icon: glyphIcon(row.kind, row.subtype), tone };
 }
-
-/** 언어 변경 사건(locale-add design §6). 생산자는 `lib/locales/change.ts`·`lib/locales/expire.ts`다. */
-export const LOCALE_CHANGE_SUBTYPES = ["surface.localeAdded", "surface.localeRemovalRequested", "surface.localeChangeCancelled", "surface.localeChangeResolved"] as const;
 
 function isLocaleChangeSubtype(subtype: string): boolean {
   return (LOCALE_CHANGE_SUBTYPES as readonly string[]).includes(subtype);

@@ -86,6 +86,14 @@ export type DeferReason = (typeof DEFER_REASONS)[number];
 export const NIGHTLY_SUBTYPES = ["import.nightly", "nightly.skip"] as const;
 
 /**
+ * **언어 변경 사건의 subtype** (locale-add design §6). 생산자(`lib/locales/change.ts`·`lib/locales/expire.ts`)와 뷰(`./view`)가 이 목록 하나를
+ * 본다 — 철자가 갈리면 뷰 폴백이 그 사건을 "소스 추가"로 그린다.
+ */
+export const LOCALE_CHANGE_SUBTYPES = ["surface.localeAdded", "surface.localeRemovalRequested", "surface.localeChangeCancelled", "surface.localeChangeResolved"] as const;
+
+export type LocaleChangeSubtype = (typeof LOCALE_CHANGE_SUBTYPES)[number];
+
+/**
  * **언어 변경 사건의 맥락** (locale-add design §6) — SURFACE subtype `surface.localeAdded`·`surface.localeRemovalRequested`·
  * `surface.localeChangeCancelled`·`surface.localeChangeResolved`가 싣는다. 관측하지 않은 칸은 `null`이다.
  */
