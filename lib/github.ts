@@ -296,7 +296,7 @@ export async function openRepoReader(
         for (const entry of tree.data.tree) {
           if (entry.type !== "blob") continue;
           if (entry.path === undefined || entry.sha === undefined) continue;
-          files.push({ path: entry.path, sha: entry.sha, size: entry.size });
+          files.push({ path: entry.path, sha: entry.sha, size: entry.size, mode: entry.mode });
         }
         return { status: "ok", headSha, headCommittedAt: commit.data.committer.date, files };
       } catch (error) {

@@ -264,7 +264,7 @@ export async function openGitLabReader(target: GitLabTarget, credential: GitLabC
         const entries = await readTree(transport, id, head.sha);
         if (entries === null) return { status: "truncated" };
         // 크기는 트리에 없다 — `sizes`가 예산 대상 경로만 묻는다.
-        const files: GitTreeBlob[] = entries.filter((entry) => entry.type === "blob").map(({ path, sha }) => ({ path, sha }));
+        const files: GitTreeBlob[] = entries.filter((entry) => entry.type === "blob").map(({ path, sha, mode }) => ({ path, sha, mode }));
         return { status: "ok", headSha: head.sha, headCommittedAt: head.committedAt, files };
       } catch (error) {
         // 장애를 거부로 접지 않는다 — 화면이 "잠시 뒤 다시"를 말할 수 있는 유일한 갈래다.

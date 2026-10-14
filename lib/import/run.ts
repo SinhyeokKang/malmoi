@@ -26,6 +26,7 @@ import { readDiscardApproval } from "./approval";
 import { classifySnapshotFailure, classifySurfaceFailure, summarizeRun, type ImportEventSummary } from "./automation";
 import { planImportApply, type ImportSettings } from "./apply-plan";
 import { hasActiveImport, hasLiveInternalImport, planRepositoryImport } from "./plan";
+import { observeSurfaceLocales } from "./observe";
 import { snapshotError } from "./read";
 import { prepareSurfaceImport, type PreparedSurfaceImport } from "./surface";
 import type { RepositoryImportError, RepositoryImportOutcome, SurfaceImportResult } from "./result";
@@ -262,9 +263,12 @@ async function current(tx: Prisma.TransactionClient, lease: Lease, captured: Tra
  * 표면 적재가 언어 변경 의도를 다루는 법 (locale-add design §1). 자동화는 같은 잠금에서 만료를 겸하고, 지문 승인한 수동 Sync는 **빠진 파일이 없는
  * 적재에서만** 의도를 지운다 — 부분 적재는 리포 관측이 불완전해 의도를 남기고 빈 ADD를 지키는 기본(`keep`)으로 간다.
  */
-function localeHandling(lease: Lease, surfaceId: string, complete: boolean): LocaleChangeHandling {
+function localeHandling(lease: Lease, surface: TranslationSurface, snapshot: { files?: readonly { path: string; mode?: string }[] }, complete: boolean): LocaleChangeHandling {
   const { actor } = lease;
-  if (actor.kind === "AUTOMATION") return { kind: "expire", pullRequest: actor.pullRequest, actor: { kind: "AUTOMATION" } };
+  // 만료의 관측은 적재가 읽은 그 트리에서 Publish 쪽 만료와 같은 함수로 본다(R-B2 Y4) — `payload.locales`는 링크도 로케일로 센다.
+  if (actor.kind === "AUTOMATION") return { kind: "expire", pullRequest: actor.pullRequest, actor: { kind: "AUTOMATION" },
+    observed: snapshot.files === undefined ? { status: "unreadable" } : observeSurfaceLocales(snapshot.files, surface) };
+  const surfaceId = surface.id;
   if (!complete) return { kind: "keep" };
   const approved = lease.approvedLocaleChanges.filter(row => row.surfaceId === surfaceId).map(({ surfaceId: _surface, ...row }) => row);
   return { kind: "discard", actor: { kind: "USER", userId: actor.userId }, approved };
@@ -273,7 +277,7 @@ function localeHandling(lease: Lease, surfaceId: string, complete: boolean): Loc
 /** 커밋된 표면 트랜잭션이 실제로 바꾼 값 수의 합 — 롤백된 표면은 더하지 않는다(트랜잭션이 끝난 뒤에 더한다). */
 type Tally = { changedValues: number };
 
-async function finishSurface(prisma: PrismaClient, lease: Lease, surface: TranslationSurface, prepared: PreparedSurfaceImport, snapshot: { headSha: string; headCommittedAt: string }, tally: Tally): Promise<SurfaceImportResult> {
+async function finishSurface(prisma: PrismaClient, lease: Lease, surface: TranslationSurface, prepared: PreparedSurfaceImport, snapshot: { headSha: string; headCommittedAt: string; files?: readonly { path: string; mode?: string }[] }, tally: Tally): Promise<SurfaceImportResult> {
   const finished = await prisma.$transaction(async tx => {
     const check = await current(tx, lease, surface);
     if (!check.ok) return { surface: result(surface, "superseded", check.reason), changedValues: 0 };
@@ -284,7 +288,7 @@ async function finishSurface(prisma: PrismaClient, lease: Lease, surface: Transl
     let changedValues = 0;
     if (prepared.kind === "payload") {
       const applied = await applyPushInTransaction(tx, scope, prepared.payload, {
-        localeChanges: localeHandling(lease, surface.id, prepared.result.errors.length === 0),
+        localeChanges: localeHandling(lease, surface, snapshot, prepared.result.errors.length === 0),
         token: lease.token, startedAt: lease.startedAt, refsMode: "preserve", previousBaseLocale: surface.baseLocale,
         importOutcome: prepared.result.failed > 0 ? "partial-import" : null,
         // 승인 뒤에 저장된 셀은 토큰이 달라 여기서 안 덮인다 — 결과의 `remainingEdits`가 그 수를 말한다.

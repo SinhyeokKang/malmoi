@@ -36,9 +36,9 @@ describe("observeSurfaceLocales", () => {
   });
 
   it("⚠️ 템플릿에 맞는 경로의 mode를 모르면 관측할 수 없다 — 정규 파일로 가정하지 않는다(fail-closed)", () => {
-    expect(observeSurfaceLocales([{ path: "i18n/en.json", sha: "x" }], { adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json" })).toEqual({ status: "unreadable" });
+    expect(observeSurfaceLocales([{ path: "i18n/en.json" }], { adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json" })).toEqual({ status: "unreadable" });
     // 템플릿 밖 경로의 mode는 판정에 들지 않는다.
-    expect(observeSurfaceLocales([file("i18n/en.json"), { path: "docs/x.md", sha: "x" }], { adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json" }))
+    expect(observeSurfaceLocales([file("i18n/en.json"), { path: "docs/x.md" }], { adapterName: "json-catalog", pathTemplate: "i18n/{locale}.json" }))
       .toEqual({ status: "observed", locales: ["en"] });
   });
 

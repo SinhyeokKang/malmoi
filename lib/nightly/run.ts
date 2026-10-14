@@ -212,7 +212,7 @@ export async function runNightly(prisma: PrismaClient, target: NightlyTarget, el
 
 /**
  * **같은 head의 언어 변경 만료** (locale-add design §1 "자동 적재가 만료를 겸한다" — 적재를 건너뛰는 방문). 판정이 열린 PR/MR 없음을 성공한 조회로
- * 확인한 뒤에만 온다. base 트리를 읽고(내용은 읽지 않는다 — 존재는 경로가 정한다), `Project` 잠금 뒤 소스마다 `expireLocaleChanges`를 부른다.
+ * 확인한 뒤에만 온다. base 트리를 읽고(내용은 읽지 않는다 — 존재는 경로·mode가 정한다), `Project` 잠금 뒤 소스마다 `expireLocaleChanges`를 부른다.
  *
  * ⚠️ **원격 관측을 최신으로 취급하지 않는다** (POSTMORTEM 2026-10-07) — 잠금 뒤 리포 신원·기준 브랜치·Publish 완료 표식(`lastPublishedAt`·전달
  * revision)·실행 중/미확정 Publish를 다시 본다. 그 사이 Publish가 PR을 열었을 수 있으므로 하나라도 다르면 만료하지 않는다(다음 밤이 다시 본다).
@@ -227,12 +227,13 @@ async function expireAtHead(
 ): Promise<"expired" | "held" | "unreadable"> {
   const connection = repoTargetOf(target);
   if (connection.status !== "ok") return "unreadable";
-  let paths: string[];
+  // 경로와 mode를 함께 든다 — 링크(120000)도 리더에는 blob으로 오고, 정규 파일 판정이 Publish 쪽 만료와 같아야 한다(`observeLocaleFiles`, R-B2 Y4).
+  let entries: readonly { path: string; mode?: string }[];
   try {
     const reader = await openRepoReader(connection.target);
     const tree = await reader.snapshot(target.baseBranch);
     if (tree.status !== "ok") return "unreadable";
-    paths = tree.files.map((file) => file.path);
+    entries = tree.files;
   } catch (error) {
     logCaught("nightly", "locale-expiry-tree", error);
     return "unreadable";
@@ -255,7 +256,7 @@ async function expireAtHead(
     let unreadable = false;
     for (const surface of surfaces) {
       const result = await expireLocaleChanges(tx, { projectId: target.id, surfaceId: surface.id, surfaceSlug: surface.slug, pullRequest: "none-open",
-        observed: observeSurfaceLocales(paths, surface), actor: { kind: "AUTOMATION" } });
+        observed: observeSurfaceLocales(entries, surface), actor: { kind: "AUTOMATION" } });
       expired ||= result.expired.length > 0;
       // 행 있는 소스의 base를 근거로 쓸 수 없었다(관측 0개는 `expireLocaleChanges`가 이 사유로 접는다) — "받을 것 없음"과 갈라 실패 사건으로 남긴다.
       unreadable ||= result.held === "base-unreadable";

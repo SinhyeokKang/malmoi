@@ -11,7 +11,7 @@ import { planProtectedImport } from "@/lib/protection/plan";
 import { countPending } from "@/lib/protection/where";
 import { readDeliveryRevision } from "@/lib/pull/delivery-revision";
 import { liveLocalesOf, localePresence } from "@/lib/locales/presence";
-import { expireLocaleChanges } from "@/lib/locales/expire";
+import { expireLocaleChanges, type LocaleExpiryInput } from "@/lib/locales/expire";
 import type { PullRequestCheck } from "@/lib/locales/expiry";
 import { readLocaleStates } from "@/lib/locales/work";
 import type { LocaleChangeSubtype } from "@/lib/events/payload";
@@ -117,7 +117,8 @@ export type ApplyOptions = {
   /**
    * 이 소스의 **언어 변경 의도**(`LocaleChange`)를 이 적재가 어떻게 다루나 (locale-add design §1 "만료와 strict 적재" · 전이 표).
    * - `keep`(생략 시) — 남은 ADD 언어를 orphan 대상에서 뺀다. 의도를 지우지 않는다.
-   * - `expire` — 자동 적재(CI·야간). 같은 잠금 안에서 만료를 먼저 돌고(`expireLocaleChanges` — 관측 = 이 페이로드의 로케일), 남은 ADD를 뺀다.
+   * - `expire` — 자동 적재(CI·야간). 같은 잠금 안에서 만료를 먼저 돌고(`expireLocaleChanges`), 남은 ADD를 뺀다. 관측은 `observed`이고, 없으면 이 페이로드의
+   *   로케일이다(CI — 그것이 유일한 관측이다). 야간은 base 트리에서 Publish 쪽과 같은 함수로 본 관측을 넘긴다(`observeLocaleFiles`, R-B2 Y4).
    * - `discard` — 지문 승인한 수동 Sync의 완전한 적재. **승인한 의도 행(`approved` — 종류·요청 시각까지 일치)만** 지우고, 존재는 이 적재가 리포대로
    *   정한다. 승인 뒤 들어온 행은 남고 그 ADD는 orphan 대상에서 뺀다(R-B3 R1). 전달 목록은 남긴다.
    *
@@ -129,7 +130,7 @@ export type ApplyOptions = {
 
 export type LocaleChangeHandling =
   | { kind: "keep" }
-  | { kind: "expire"; pullRequest: PullRequestCheck; actor: EventActorInput }
+  | { kind: "expire"; pullRequest: PullRequestCheck; actor: EventActorInput; observed?: LocaleExpiryInput["observed"] }
   | { kind: "discard"; actor: EventActorInput; approved: readonly LocaleIntent[] };
 
 type LocaleIntent = { localeCode: string; operation: "ADD" | "REMOVE"; requestedAt: string };
@@ -226,7 +227,7 @@ export async function applyPushInTransaction(tx: Prisma.TransactionClient, scope
   // 만료가 먼저다 — 관측(이 페이로드의 로케일)으로 만료된 ADD는 아래 strict 판정이 다루고, 남은 ADD만 orphan 대상에서 뺀다.
   if (handling.kind === "expire") {
     await expireLocaleChanges(tx, { projectId: scope.projectId, surfaceId: scope.surfaceId, surfaceSlug: surface.slug,
-      pullRequest: handling.pullRequest, observed: { status: "observed", locales: payload.locales }, actor: handling.actor });
+      pullRequest: handling.pullRequest, observed: handling.observed ?? { status: "observed", locales: payload.locales }, actor: handling.actor });
   }
   const rows = await tx.localeChange.findMany({ where: { projectId: scope.projectId, surfaceId: scope.surfaceId }, select: { localeCode: true, operation: true, requestedAt: true } });
   const intents = rows.map(row => ({ localeCode: row.localeCode, operation: row.operation, requestedAt: row.requestedAt.toISOString() }));

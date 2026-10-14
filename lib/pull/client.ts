@@ -24,7 +24,8 @@ import type { PullChange } from "./plan";
 export type SnapshotChange = (Extract<PullChange, { kind: "upsert" }> & { inBase: boolean }) | Extract<PullChange, { kind: "delete" }>;
 
 /** 리포 읽기 스냅샷의 blob 하나. */
-export type GitTreeBlob = { path: string; sha: string; size?: number };
+/** `mode`는 리더 스냅샷이 싣는다(링크도 `type: blob`이다) — 언어 변경 만료의 정규 파일 판정 입력이다(`observeLocaleFiles`). */
+export type GitTreeBlob = { path: string; sha: string; size?: number; mode?: string };
 
 /** Publish 비교 트리는 비정규 경로도 보존한다 — 누락시키면 없는 파일로 오인해 재생성한다. */
 export type GitTreeEntry = GitTreeBlob & { mode: string };
