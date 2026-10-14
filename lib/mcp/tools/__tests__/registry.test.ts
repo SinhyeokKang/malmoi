@@ -55,6 +55,15 @@ describe("도구 레지스트리", () => {
     expect(text.indexOf("gh secret set")).toBeLessThan(text.indexOf("ommit the workflow"));
   });
 
+  // 도구는 Action의 형제 껍데기다 — Action(`app/**/actions.ts`)을 부르면 세션·쿠키 경로와 `redirect`가 MCP로 들어온다(ARCHITECTURE §6.45).
+  it.each(TOOL_FILES)("tools/%s는 app/(Server Action)을 import하지 않는다 — 같은 코어를 직접 부른다", file => {
+    expect(readFileSync(join(DIR, file), "utf8")).not.toMatch(/from\s+["']@\/app\//);
+  });
+
+  it("언어 변경 도구 넷은 공유 코어(lib/locales/change)를 부른다", () => {
+    expect(readFileSync(join(DIR, "locales.ts"), "utf8")).toMatch(/from\s+["']@\/lib\/locales\/change["']/);
+  });
+
   it("카탈로그가 도구 구현을 import하지 않는다", () => {
     const catalog = readFileSync(join(DIR, "..", "catalog.ts"), "utf8");
     expect(catalog).not.toMatch(/from\s+["'][^"']*tools/);
