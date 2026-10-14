@@ -71,3 +71,5 @@
 - wave ③ — **B2** `ctx_448ea080c5ad` · **B3** `ctx_5e54a287c240`(Opus high, base `87b9b3e6` rebase 확인) · **R-B1b** `ctx_89dc70688e89`(fix1·fix2 재리뷰, Opus medium — fix1이 커서 지휘자 판단으로 재리뷰). B1 retain(재리뷰 수정용).
 - B3 질문: `locale-change-pending`이 Logs에 닿으려면 사전 4슬롯×3 필요 → **지휘자 판단 허용**(기존 화면의 서버 사유 문장이라 시안 무관, ko·es는 `/translate` 초안 표시). CLI `push-response.ts`는 action 릴리스 축이라 미룸.
 - R-B1b 완료(🔴 0 · 🟡 1 · ⚪ 3, 변이 11 중 10 — 이전 지적 전부 닫힘). **Y5**(확인 행 없는 소스의 첫 Publish 미확인 → 취소가 작업 0으로 접힘) → **B2로**: 첫 외부 쓰기 전 무효화가 행 없는 캡처 소스에 무효화된 행을 만든다(`load.ts` B2 소유). Z1(폐기 저자 테스트)·Z2(폐기의 적재 lease 거부) → **B1 fix3**. Z3 design 문장 정정(탈출구는 Publish뿐).
+- B1 fix3 `worker_done` — `83c9f4f1`·`502bb13c`(`gate: ok`, 1회차 search-performance 314ms flake). dev에 cherry-pick. B1 해제·워크트리 정리.
+- B3 질문 2: 승인 수동 Sync가 전달 목록까지 비우면 열린 PR의 삭제가 남는다 → **지휘자 판단: 행만 지우고 전달 목록 유지**(다음 Publish가 no-changes로 수렴). design 전이 표 갱신.
