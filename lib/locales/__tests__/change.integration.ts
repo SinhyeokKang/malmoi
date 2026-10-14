@@ -256,6 +256,8 @@ describe("제거 미리보기·실행", () => {
     expect((await cells("s-web", "ko")).every(cell => cell.pendingEditToken === null)).toBe(true);
     // 폐기는 Revert와 같은 의미다 — 마지막 전달 값으로 되돌리고 기준 행을 지운다(design §3, R-B1 Y1).
     expect((await cells("s-web", "ko")).map(cell => [cell.keyId, cell.value])).toEqual([["s-web-bye", "bye-ko"], ["s-web-hello", "hello-ko"]]);
+    // 저자는 되돌린 사람이다 — Revert와 같다(R-B1b Z1).
+    expect((await cells("s-web", "ko")).map(cell => cell.updatedBy)).toEqual(["owner", "owner"]);
     expect(await prisma.translationBaseline.count({ where: { projectId: "p", surfaceId: "s-web", localeCode: "ko" } })).toBe(0);
     expect(await cells("s-web", "en")).toEqual(enBefore);
     // 제거 요청은 바로 orphan하지 않는다 — 취소하면 편집을 다시 허용해야 한다.
@@ -314,6 +316,20 @@ describe("제거 미리보기·실행", () => {
     const before = await state();
     expect(await removeLocale(prisma, OWNER, { ...WEB, localeCode: "ko", approval })).toEqual({ ok: false, error: "baseline-unknown" });
     expect(await state()).toEqual(before);
+  });
+
+  it("적재 lease 동안은 제거를 거부한다 — Revert와 같은 판정, 미리보기·실행 모두 쓰기 0 (R-B1b Z2)", async () => {
+    await confirm("s-web");
+    await save("s-web", "hello", "ko", "안녕");
+    const approval = await approvalFor("ko");
+    await prisma.project.update({ where: { id: "p" }, data: { repositoryImportToken: "lease", repositoryImportStartedAt: new Date() } });
+    const before = await state();
+    expect(await previewLocaleRemoval(prisma, OWNER, { ...WEB, localeCode: "ko" })).toEqual({ ok: false, error: "sync-running" });
+    expect(await removeLocale(prisma, OWNER, { ...WEB, localeCode: "ko", approval })).toEqual({ ok: false, error: "sync-running" });
+    expect(await state()).toEqual(before);
+    // 창이 지난 lease는 막지 않는다(`planWriteLock`).
+    await prisma.project.update({ where: { id: "p" }, data: { repositoryImportStartedAt: new Date(Date.now() - 600_000) } });
+    expect(await removeLocale(prisma, OWNER, { ...WEB, localeCode: "ko", approval })).toMatchObject({ ok: true, kind: "request-removal" });
   });
 
   it("확인이 무효화된 뒤의 미전달 편집은 기준이 낡아 제거를 거부한다", async () => {
