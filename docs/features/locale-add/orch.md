@@ -1,7 +1,7 @@
 # Add and remove languages — 지휘 계획 (`/orchestrate`)
 
 작성: 2026-10-14 · 지휘: Claude Code(Opus 5.5) · 원본: [tasks.md](tasks.md)(체크 항목) · [design.md](design.md) · [spec.md](spec.md) · [design-brief.md](design-brief.md) — 여기에 복제하지 않는다.
-시작 dev: `b5f8c9d8`(origin/dev `1f851139` + §0 문서 커밋, 미푸시) · Orca run: (착수 시 기입)
+시작 dev: `b5f8c9d8`(origin/dev `1f851139` + §0 문서 커밋, 미푸시) · Orca run: `run_2836e5d910eb`
 
 ## 착수 범위 — ⚠️ 디자인 시안 미확보
 
@@ -54,3 +54,5 @@
 ## 진행 로그
 
 (통합 커밋·검증 결과·라운드·이슈를 시간순으로 적는다.)
+
+- 2026-10-14 04:2xZ — wave ① 착수: A1 `ctx_b538aeda6cbc`(Opus high, `lo-A1`) · A2 `ctx_f7200ed12b30`(Opus medium, `lo-A2`). launch.effective = requested 확인. ⚠️ `new-top-level` 워크트리가 로컬 dev가 아니라 **origin/dev `1f851139`에서 갈라졌다** — 착수 직후 두 워크트리를 `git rebase dev`(→ `00aeb346`)로 맞추고 `send` + 터미널 입력으로 재독을 알림. 다음 wave부터 착수 직후 base를 확인한다.
