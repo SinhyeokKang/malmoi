@@ -12,7 +12,7 @@ import { formatFromProject, resolveLocalePaths } from "@/lib/pull/plan";
 import { blockingErrors, keySlot } from "@/lib/pull/undeliverable";
 import { loadPreviewSnapshot } from "@/lib/pull/load";
 import { planDelivery, planLocales, projectFormats, renderProject } from "@/lib/pull/run";
-import { NO_LOCALE_PLAN, hasLocaleRows, localeFingerprintInput, localeNotesOf } from "@/lib/pull/locales";
+import { NO_LOCALE_PLAN, hasLocaleRows, localeFingerprintInput, localeNotesOf, withdrawnLocalesOf } from "@/lib/pull/locales";
 import { publishFingerprint } from "./fingerprint";
 import { buildPublishDiff, PREVIEW_LIMIT, type BaseValues, type PublishCell } from "./diff";
 import { PreviewBaseFileMissing, PreviewBaseFileUnreadable, PreviewWriterWarnings, type PublishPreview } from "./preview";
@@ -147,6 +147,8 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
     // 실행 결과의 `files`와 같은 판정이다 — delete는 base에 있을 때만 생기고, upsert는 base에 있으면 갱신이다.
     fileChanges: changes.map(c => ({ path: c.path, kind: c.kind === "delete" ? "removed" as const : shas.has(c.path) ? "updated" as const : "new" as const })),
     ...((notes) => (notes === undefined ? {} : { locales: notes }))(localeNotesOf(localePlan)),
+    // 행이 없어도(전달 뒤 취소) 전달 목록만으로 생긴다 — 계획과 같은 스냅샷의 목록이라 실행의 수렴 판정(`deliverableLocaleWork`)과 같은 입력이다.
+    ...((withdrawn) => (withdrawn.length === 0 ? {} : { withdrawnLocales: withdrawn }))(withdrawnLocalesOf(localePlan, state.surfaces)),
     sendable: { total: total - withoutFile - withoutKey, keys: keys - [...heldKeys].filter(id => !cells.some(c => c.keyId === id)).length },
     openPr: parseReviewUrl(rawPr, project),
     // ⚠️ **셀 표시가 아니라 렌더가 쓴 스냅샷 전체 + 읽은 head다** (mcp-connector design §3.1) — 200행 상한 밖 편집·토큰 없는 export 변경도 바꾼다.

@@ -108,6 +108,30 @@ export function deliverableLocaleWork(plan: ProjectLocalePlan, surfaces: readonl
   return work;
 }
 
+/** 전달됐는데 이번 스냅샷이 싣지 않는 언어 효과 — Publish가 열린 PR에서 거둔다. */
+export type WithdrawnLocale = { surfaceSlug: string; localeCode: string; effect: LocaleEffect["effect"] };
+
+/**
+ * **거둘 언어 효과** (#265 — design-brief 프레임 13 "이전 변경 거두기"). 전달 목록에 있는데 이번 캡처에 없는 효과다. 전달된 의도를 취소하면 그 파일은
+ * base와 같아져 파일 diff가 0이지만, 열린 PR에는 옛 삭제·새 파일이 남아 있고 Publish가 그것을 거둔다(no-changes 수렴 또는 PR 갱신). 미리보기가
+ * 이 목록으로 "보낼 것 없음"과 가른다. 소스 slug·코드순이다.
+ * ⚠️ 확인 안 된 목록(`null`)은 무엇이 실렸는지 몰라 거둘 것을 말하지 않는다 — 취소는 그동안 거부된다(R2).
+ */
+export function withdrawnLocalesOf(plan: ProjectLocalePlan, surfaces: readonly { id: string; slug: string; localeChanges?: SurfaceLocaleChanges }[]): WithdrawnLocale[] {
+  const captured = new Map(plan.surfaces.map(surface => [surface.surfaceId, surface.captured]));
+  const out: WithdrawnLocale[] = [];
+  for (const surface of surfaces) {
+    const delivered = surface.localeChanges?.delivered;
+    if (delivered === undefined || delivered === null) continue;
+    const now = captured.get(surface.id) ?? [];
+    for (const effect of delivered) {
+      if (now.some(item => item.localeCode === effect.localeCode && item.effect === effect.effect)) continue;
+      out.push({ surfaceSlug: surface.slug, localeCode: effect.localeCode, effect: effect.effect });
+    }
+  }
+  return out.sort((a, b) => compareCodeUnits(a.surfaceSlug, b.surfaceSlug) || compareCodeUnits(a.localeCode, b.localeCode));
+}
+
 /** 프로젝트의 언어 변경 작업 수 — 소스별 합. 셀 편집 수와 따로 싣는다(design §4 "집계·보호"). */
 export function localeWorkOf(surfaces: readonly { localeChanges?: SurfaceLocaleChanges }[]): number {
   return surfaces.reduce((sum, surface) => sum + (surface.localeChanges?.work ?? 0), 0);

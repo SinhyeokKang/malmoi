@@ -4172,11 +4172,17 @@ export const en = {
       repositories: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "repository" : "repositories"}.`,
       branches: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "branch" : "branches"}.`,
       formats: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "translation file format" : "translation file formats"} found.`,
-      publishPreview: (n: number, languageFiles = 0): string => n === 0 && languageFiles === 0 ? "Nothing to send." : `${[
+      publishPreview: (n: number, languageFiles = 0, withdrawn = 0): string => {
         // 셀 편집과 언어 파일(새로 만들거나 지우는 파일)을 따로 센다 — 언어 파일만 있어도 "Nothing to send"가 아니다(locale-add).
-        ...(n === 0 ? [] : [`${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"}`]),
-        ...(languageFiles === 0 ? [] : [`${languageFiles.toLocaleString("en-US")} new or removed language ${languageFiles === 1 ? "file" : "files"}`]),
-      ].join(" and ")} would be sent in a pull request. Publish with this fingerprint.`,
+        const sent = [
+          ...(n === 0 ? [] : [`${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"}`]),
+          ...(languageFiles === 0 ? [] : [`${languageFiles.toLocaleString("en-US")} new or removed language ${languageFiles === 1 ? "file" : "files"}`]),
+        ];
+        // 전달된 언어 변경을 취소했으면 파일 diff가 0이어도 Publish가 그것을 거둔다(#265) — "Nothing to send."를 믿으면 취소한 변경이 PR에 남는다.
+        const undone = `${withdrawn.toLocaleString("en-US")} language ${withdrawn === 1 ? "change that was" : "changes that were"} already sent`;
+        if (sent.length === 0) return withdrawn === 0 ? "Nothing to send." : `No new changes to send, but publishing undoes ${undone}. Publish with this fingerprint.`;
+        return `${sent.join(" and ")} would be sent in a pull request${withdrawn === 0 ? "" : `, and ${undone} would be undone`}. Publish with this fingerprint.`;
+      },
       published: (view: string): string =>
         view === "created" ? "Sent for review in a new pull request."
         : view === "updated" ? "Updated the open pull request."
@@ -4218,11 +4224,17 @@ export const en = {
        */
       gitlab: {
         workflow: "CI file for the repository. Store the push token as the PUSH_TOKEN CI/CD variable (Protected and Masked).",
-        publishPreview: (n: number, languageFiles = 0): string => n === 0 && languageFiles === 0 ? "Nothing to send." : `${[
+        publishPreview: (n: number, languageFiles = 0, withdrawn = 0): string => {
           // 셀 편집과 언어 파일(새로 만들거나 지우는 파일)을 따로 센다 — 언어 파일만 있어도 "Nothing to send"가 아니다(locale-add).
-          ...(n === 0 ? [] : [`${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"}`]),
-          ...(languageFiles === 0 ? [] : [`${languageFiles.toLocaleString("en-US")} new or removed language ${languageFiles === 1 ? "file" : "files"}`]),
-        ].join(" and ")} would be sent in a merge request. Publish with this fingerprint.`,
+          const sent = [
+            ...(n === 0 ? [] : [`${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"}`]),
+            ...(languageFiles === 0 ? [] : [`${languageFiles.toLocaleString("en-US")} new or removed language ${languageFiles === 1 ? "file" : "files"}`]),
+          ];
+          // 전달된 언어 변경을 취소했으면 파일 diff가 0이어도 Publish가 그것을 거둔다(#265) — "Nothing to send."를 믿으면 취소한 변경이 PR에 남는다.
+          const undone = `${withdrawn.toLocaleString("en-US")} language ${withdrawn === 1 ? "change that was" : "changes that were"} already sent`;
+          if (sent.length === 0) return withdrawn === 0 ? "Nothing to send." : `No new changes to send, but publishing undoes ${undone}. Publish with this fingerprint.`;
+          return `${sent.join(" and ")} would be sent in a merge request${withdrawn === 0 ? "" : `, and ${undone} would be undone`}. Publish with this fingerprint.`;
+        },
         published: (view: string): string =>
           view === "created" ? "Sent for review in a new merge request."
           : view === "updated" ? "Updated the open merge request."

@@ -1,6 +1,6 @@
 import type { PullWarning } from "@/lib/pull/run";
 import type { PublishedFile } from "@/lib/pull/payload";
-import type { LocaleNotes } from "@/lib/pull/locales";
+import type { LocaleNotes, WithdrawnLocale } from "@/lib/pull/locales";
 import type { OpenImportPr } from "@/lib/import/confirm";
 import type { PublishDiff } from "./diff";
 /** `keys`는 **미발송 전체**의 키 수다 — 표에 실린 행이 아니라 바닥 요약이 드는 값이다. */
@@ -23,6 +23,11 @@ export type PublishPreview = PublishDiff & {
   fileChanges: PublishedFile[];
   /** 언어 보류 안내(경로가 이미 있는 ADD · 값 0개 ADD) — 실행 결과의 `locales`와 같은 값이다. 없으면 필드가 없다. */
   locales?: LocaleNotes;
+  /**
+   * **거둘 언어 효과** (#265) — 전달됐는데 이번 스냅샷이 싣지 않는 효과(`withdrawnLocalesOf`). 전달된 의도를 취소하면 파일 diff가 0이어도 Publish가 열린 PR에서
+   * 옛 삭제·새 파일을 거둔다 — 이 목록이 그 "보낼 것"이다. 데이터만이다(표시는 시안 배치). 없으면 필드가 없다.
+   */
+  withdrawnLocales?: WithdrawnLocale[];
   /** 실제로 나가는 편집·키 수 (#84). 제목·요약·PR 줄·실행 진행 제목이 이 수로 말한다 — `total`·`keys`는 보류를 포함한 미발송 전체다. */
   sendable: { total: number; keys: number };
   /**

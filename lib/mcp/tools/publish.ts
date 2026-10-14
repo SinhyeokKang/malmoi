@@ -46,18 +46,20 @@ export const previewPublish = defineTool({
     const gitlab = gate.repoHost === "gitlab";
     // 언어 파일(새로 만들거나 지우는 파일) — 셀 편집이 0이어도 보낼 것이 있다(locale-add). `updated`는 셀 편집이 바꾼 파일이다.
     const languageFiles = preview.fileChanges.filter(file => file.kind !== "updated").length;
+    // 전달된 언어 변경을 취소했으면 파일 diff가 0이어도 Publish가 열린 PR에서 거둔다(#265) — 화면과 같은 신호(`withdrawnLocales`)를 읽는다.
+    const withdrawn = preview.withdrawnLocales ?? [];
     return ok({
       fingerprint: preview.fingerprint,
       sendable: preview.sendable,
       changedFiles: preview.changedFiles,
       fileChanges: preview.fileChanges,
-      // 보류한 언어(경로가 이미 있는 추가)·값이 없어 파일을 내지 않는 추가 — 실행 결과의 `locales`와 같은 값이다.
-      languages: preview.locales ?? { withheld: [], empty: [] },
+      // 보류한 언어(경로가 이미 있는 추가)·값이 없어 파일을 내지 않는 추가 — 실행 결과의 `locales`와 같은 값이다. `withdrawn`은 거둘 전달된 효과다.
+      languages: { ...(preview.locales ?? { withheld: [], empty: [] }), withdrawn },
       unsent: { total: preview.total, keys: preview.keys, withoutFile: preview.withoutFile, withoutKey: preview.withoutKey },
       // 필드 이름은 리포 호스트의 어휘다(D26) — GitHub은 기존 `pullRequest` 그대로, GitLab은 `mergeRequest`. 값의 세 상태는 같다.
       ...(gitlab ? { mergeRequest: pullRequestState(preview.openPr) } : { pullRequest: pullRequestState(preview.openPr) }),
       groups: preview.groups,
-    }, gitlab ? en.mcp.summary.gitlab.publishPreview(preview.sendable.total, languageFiles) : en.mcp.summary.publishPreview(preview.sendable.total, languageFiles));
+    }, (gitlab ? en.mcp.summary.gitlab : en.mcp.summary).publishPreview(preview.sendable.total, languageFiles, withdrawn.length));
   },
 });
 
