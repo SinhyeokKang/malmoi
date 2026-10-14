@@ -17,12 +17,12 @@
 
 ## 0. 기준 확인·정본·계약 조사 — §1 착수 전 게이트
 
-- [ ] 로컬 체크아웃이 v1.4.0을 포함한다. 검증: `git merge-base --is-ancestor 456e0e1f HEAD` 성공, `lib/gitlab/` 존재.
-- [ ] PRODUCT §7.2 추가·삭제 해제와 ARCHITECTURE 불변식 1 예외 경계 문장(design §7)을 코드보다 먼저 고친다. 검증: 두 정본의 문장이 spec §3·design §7과 일치, 문서별 커밋.
-- [ ] GitHub 트리 삭제(`sha: null`)·GitLab commit `delete` 계약과 `PullChange`·`SnapshotChange` 소비자를 대조한다. 검증: design §2 union 절에 소비자 파일 목록과 세 가드 위치(파일:줄)를 커밋.
-- [ ] `deliveredLocaleChanges` 위치(DeliveryConfirmation 컬럼 vs 소스 행)와 Publish 성공 경계·`publish-unsettled` 장벽의 재사용 지점을 확정한다. 검증: design §1에 결정과 근거 커밋.
-- [ ] `pendingWhere` 소비자 12곳(`lib/keys/query.ts`·`revert.ts`·`translation-list.ts`, `lib/protection/*`, `lib/publish/read.ts`, `lib/pull/load.ts`·`plan.ts`·`run.ts`, `lib/push/apply.ts`, `lib/surfaces/remove.ts`)과 조기 종료 세 자리(`lib/pull/run.ts` withheld, `shouldSkipPull`, `lib/nightly/plan.ts` `upToDate`)를 design §0·§4 표로 고정한다. 검증: 각 자리에 “변경 없음/언어 작업 추가” 판정이 적힌 표 커밋.
-- [ ] Chrome 공식 지원 목록과 목록 밖 디렉터리 동작(unpacked·웹스토어)을 확인하고 출처·확인일을 기록한다. 검증: 목록 파일에 출처 URL·확인일.
+- [x] 로컬 체크아웃이 v1.4.0을 포함한다. 검증: `git merge-base --is-ancestor 456e0e1f HEAD` 성공, `lib/gitlab/` 존재.
+- [x] PRODUCT §7.2 추가·삭제 해제와 ARCHITECTURE 불변식 1 예외 경계 문장(design §7)을 코드보다 먼저 고친다. 검증: 두 정본의 문장이 spec §3·design §7과 일치, 문서별 커밋.
+- [x] GitHub 트리 삭제(`sha: null`)·GitLab commit `delete` 계약과 `PullChange`·`SnapshotChange` 소비자를 대조한다. 검증: design §2 union 절에 소비자 파일 목록과 세 가드 위치(파일:줄)를 커밋.
+- [x] `deliveredLocaleChanges` 위치(DeliveryConfirmation 컬럼 vs 소스 행)와 Publish 성공 경계·`publish-unsettled` 장벽의 재사용 지점을 확정한다. 검증: design §1에 결정과 근거 커밋.
+- [x] `pendingWhere` 소비자 12곳(`lib/keys/query.ts`·`revert.ts`·`translation-list.ts`, `lib/protection/*`, `lib/publish/read.ts`, `lib/pull/load.ts`·`plan.ts`·`run.ts`, `lib/push/apply.ts`, `lib/surfaces/remove.ts`)과 조기 종료 세 자리(`lib/pull/run.ts` withheld, `shouldSkipPull`, `lib/nightly/plan.ts` `upToDate`)를 design §0·§4 표로 고정한다. 검증: 각 자리에 “변경 없음/언어 작업 추가” 판정이 적힌 표 커밋.
+- [x] Chrome 공식 지원 목록과 목록 밖 디렉터리 동작(unpacked·웹스토어)을 확인하고 출처·확인일을 기록한다. 검증: 목록 파일에 출처 URL·확인일.
 - **위 산출물이 커밋되기 전에는 §1에 착수하지 않는다.**
 
 ## 1. 순수 판정 — 테스트 먼저
