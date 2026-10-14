@@ -170,6 +170,60 @@ describe("expireLocaleChanges", () => {
   });
 });
 
+/**
+ * **만료는 그 행의 효과를 전달 목록에서도 뺀다** (#266 — design §1). 만료 조건이 열린 PR 없음을 확인했으므로 그 효과는 어느 PR에도 실려 있지 않다.
+ * 남겨 두면 미머지 종료 뒤 같은 언어를 다시 요청했을 때 현재 = 전달이 되어 Publish가 싣지 않고, 다음 방문이 그 요청을 지운다.
+ */
+describe("expireLocaleChanges — 전달 목록 정리 (#266)", () => {
+  const confirmation = (surfaceId = "s-web") => prisma.deliveryConfirmation.findUniqueOrThrow({ where: { projectId_surfaceId: { projectId: "p", surfaceId } } });
+
+  it("머지 없이 닫힌 제거가 만료되면 전달 목록에서 그 삭제가 빠지고 언어 작업이 0이다 — 확인 revision은 그대로다", async () => {
+    await request("s-web", "ko", "REMOVE");
+    await deliver("s-web", [{ localeCode: "ko", effect: "delete" }]);
+    // 다른 소스의 같은 코드 효과는 이 만료가 건드리지 않는다.
+    await request("s-app", "ko", "REMOVE");
+    await deliver("s-app", [{ localeCode: "ko", effect: "delete" }]);
+    await expire({});
+    expect(await confirmation()).toMatchObject({ deliveredLocaleChanges: [], revision: "rev-s-web", invalidatedAt: null });
+    expect(await countLocaleWork(prisma, "p", "s-web")).toBe(0);
+    expect(await confirmation("s-app")).toMatchObject({ deliveredLocaleChanges: [{ localeCode: "ko", effect: "delete" }] });
+  });
+
+  it("관측된 ADD가 만료되면 그 create도 빠진다", async () => {
+    await prisma.locale.create({ data: { projectId: "p", surfaceId: "s-web", code: "de", name: "de" } });
+    await prisma.translation.create({ data: { projectId: "p", surfaceId: "s-web", keyId: "s-web-hello", localeCode: "de", value: "Hallo" } });
+    await request("s-web", "de", "ADD");
+    await deliver("s-web", [{ localeCode: "de", effect: "create" }]);
+    await expire({ observed: { status: "observed", locales: ["en", "ko", "fr", "de"] } });
+    expect(await confirmation()).toMatchObject({ deliveredLocaleChanges: [] });
+  });
+
+  it("만료된 행의 효과만 뺀다 — 남은 행의 효과는 정규 순서로 남는다", async () => {
+    // 열린 PR이 있어 ko 제거는 보류되고, 모순 행(orphan ADD)만 만료된다.
+    await prisma.locale.create({ data: { projectId: "p", surfaceId: "s-web", code: "de", name: "de", orphaned: true } });
+    await request("s-web", "de", "ADD");
+    await request("s-web", "ko", "REMOVE");
+    await deliver("s-web", [{ localeCode: "ko", effect: "delete" }, { localeCode: "de", effect: "create" }]);
+    expect(await expire({ pullRequest: "open" })).toEqual({ expired: [{ localeCode: "de", operation: "ADD", presence: "orphan" }], held: "pr-open" });
+    expect(await confirmation()).toMatchObject({ deliveredLocaleChanges: [{ localeCode: "ko", effect: "delete" }] });
+  });
+
+  it("보류된 만료는 전달 목록을 바꾸지 않는다", async () => {
+    await request("s-web", "ko", "REMOVE");
+    await deliver("s-web", [{ localeCode: "ko", effect: "delete" }]);
+    await expire({ pullRequest: "open" });
+    expect(await confirmation()).toMatchObject({ deliveredLocaleChanges: [{ localeCode: "ko", effect: "delete" }] });
+  });
+
+  it("무효화 중인 확인은 건드리지 않는다 — 확인 안 됨은 그대로 확인 안 됨이다", async () => {
+    await prisma.locale.create({ data: { projectId: "p", surfaceId: "s-web", code: "de", name: "de", orphaned: true } });
+    await request("s-web", "de", "ADD");
+    await deliver("s-web", [{ localeCode: "de", effect: "create" }], true);
+    expect(await expire({ pullRequest: "open" })).toMatchObject({ expired: [{ localeCode: "de" }] });
+    expect(await confirmation()).toMatchObject({ deliveredLocaleChanges: [{ localeCode: "de", effect: "create" }], invalidatedAt: expect.any(Date) });
+  });
+});
+
 describe("readLocaleStates · countLocaleWork", () => {
   it("값 수는 활성 키의 비지 않은 값만 센다 — 값 0개 ADD는 작업이 아니다", async () => {
     await prisma.locale.create({ data: { projectId: "p", surfaceId: "s-web", code: "de", name: "de" } });

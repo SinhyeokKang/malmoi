@@ -288,6 +288,99 @@ describe("전달 뒤 — 다음 스냅샷·취소·만료", () => {
   });
 });
 
+/** CI 적재(`/api/push`의 자동 적재) — 같은 잠금 안에서 만료를 먼저 돈다. 관측은 페이로드의 로케일이다. */
+let commitClock = Date.parse("2026-10-13T00:00:00.000Z");
+async function ciImport(locales: string[]) {
+  commitClock += 60_000;
+  const values: Record<string, Record<string, string>> = { en: { hello: "Hello", bye: "Bye" }, ko: { hello: "안녕", bye: "잘가" } };
+  await applyPush(prisma, { projectId: "p", surfaceId: "s" }, {
+    projectSlug: "fixture", surfaceSlug: "default", commitSha: "2".repeat(40), commitAt: new Date(commitClock).toISOString(),
+    format: { adapter: "json-catalog", pathTemplate: "i18n/{locale}.json", baseLocale: "en", nested: false },
+    locales,
+    keys: ["hello", "bye"].map(key => ({ key, namespace: "_root", sourceText: values.en![key]! })),
+    translations: locales.flatMap(locale => ["hello", "bye"].map(key => ({ key, locale, value: values[locale]![key]! }))),
+    refs: [],
+  }, { token: "ci", startedAt: new Date(), previousBaseLocale: "en", refsMode: "replace", localeChanges: { kind: "expire", pullRequest: "none-open", actor: { kind: "AUTOMATION" } } });
+}
+
+/**
+ * **미머지 종료 → 만료 → 같은 언어 재요청** (#266 — design §1 "만료는 그 행의 효과를 전달 목록에서도 뺀다"). 만료가 전달 목록을 남기면 새 요청의
+ * 현재 효과가 옛 전달 목록과 같아져 미리보기는 삭제를 보여 주는데 Publish는 `no-edits`로 끝나고, 다음 방문이 그 요청을 지운다.
+ * 만료 계기는 CI 적재다 — Publish 경로의 만료는 같은 실행이 수렴 Publish로 목록을 비워 이 결함을 가린다.
+ */
+describe("미머지 종료 뒤 같은 언어를 다시 제거 요청 (#266)", () => {
+  it("만료가 전달 목록에서 그 삭제를 빼므로 재요청은 미전달이다 — 미리보기·실행이 삭제를 싣고, 다음 방문은 열린 PR을 보고 만료하지 않는다", async () => {
+    await deliveredRemoval();
+    // PR이 머지 없이 닫혔다 — CI 적재가 열린 PR 없음 + 파일 관측으로 요청을 만료하고 ko는 활성으로 돌아온다.
+    await ciImport(["en", "ko"]);
+    expect(await prisma.localeChange.count({ where: { projectId: "p" } })).toBe(0);
+    expect(await delivered()).toEqual([]);
+    expect(await countLocaleWork(prisma, "p")).toBe(0);
+    // 만료 뒤 수렴용 Publish가 남지 않는다 — 원격 호출 0으로 끝난다.
+    const idle = fake({ "i18n/en.json": EN, "i18n/ko.json": KO });
+    expect(await publish()).toEqual({ status: "skipped", reason: "no-edits" });
+    expect(idle.calls).toEqual([]);
+
+    const preview = await previewLocaleRemoval(prisma, OWNER, { ...WEB, localeCode: "ko" });
+    expect(preview).toMatchObject({ ok: true, kind: "request-removal", delivered: false });
+    if (!preview.ok) throw new Error("preview refused");
+    expect(await removeLocale(prisma, OWNER, { ...WEB, localeCode: "ko", approval: preview.approval })).toMatchObject({ ok: true, kind: "request-removal" });
+    expect(await countLocaleWork(prisma, "p")).toBe(1);
+
+    const files = { "i18n/en.json": EN, "i18n/ko.json": KO };
+    fake(files);
+    const shown = await readPublishPreview(prisma, "p", "fixture");
+    expect(shown.fileChanges).toEqual([{ path: "i18n/ko.json", kind: "removed" }]);
+    const made = fake(files);
+    expect(await publish(shown.fingerprint)).toMatchObject({ status: "committed", files: [{ path: "i18n/ko.json", kind: "removed" }] });
+    expect(snapshot(made)?.changes).toEqual([{ kind: "delete", path: "i18n/ko.json" }]);
+    expect(await delivered()).toEqual([{ localeCode: "ko", effect: "delete" }]);
+
+    // 다음 방문 — 새 PR이 열려 있으니 요청이 살아 있다(이슈의 6단계).
+    await ageRuns();
+    fake(files, { openPr: { url: "https://github.com/o/r/pull/10", number: 10, title: "chore(i18n): sync [skip ci]", base: "main" } });
+    await cron();
+    expect(await prisma.localeChange.findMany({ where: { projectId: "p" }, select: { localeCode: true, operation: true } })).toEqual([{ localeCode: "ko", operation: "REMOVE" }]);
+  });
+});
+
+/**
+ * **전달된 의도를 취소하면 파일 diff가 0이어도 Publish할 일이 있다** (#265 — design-brief 프레임 13 "이전 변경 거두기"). 취소로 되돌린 파일은 base와
+ * 같아 `fileChanges`에 없지만, 열린 PR에는 옛 삭제·새 파일이 남아 있다. 미리보기가 그 거둘 효과를 데이터로 싣는다 — MCP 문장과 화면이 같은 신호를 읽는다.
+ */
+describe("전달된 의도 취소 뒤 미리보기 — 거둘 언어 효과 (#265)", () => {
+  const open = { openPr: { url: "https://github.com/o/r/pull/9", number: 9, title: "chore(i18n): sync [skip ci]", base: "main" } };
+
+  it("전달된 제거 취소 → 파일 변경 0, 거둘 효과 delete ko", async () => {
+    await deliveredRemoval();
+    expect(await cancelLocaleRemoval(prisma, OWNER, { ...WEB, localeCode: "ko" })).toEqual({ ok: true, delivered: true });
+    fake({ "i18n/en.json": EN, "i18n/ko.json": KO }, open);
+    const preview = await readPublishPreview(prisma, "p", "fixture");
+    expect(preview).toMatchObject({ sendable: { total: 0 }, fileChanges: [], withdrawnLocales: [{ surfaceSlug: "default", localeCode: "ko", effect: "delete" }] });
+  });
+
+  it("전달된 추가 취소 → 파일 변경 0, 거둘 효과 create fr", async () => {
+    await addLocale(prisma, OWNER, { ...WEB, localeCode: "fr" });
+    await save("hello", "fr", "Bonjour");
+    fake({ "i18n/en.json": EN, "i18n/ko.json": KO });
+    expect(await publish()).toMatchObject({ status: "committed" });
+    await ageRuns();
+    const removal = await previewLocaleRemoval(prisma, OWNER, { ...WEB, localeCode: "fr" });
+    expect(removal).toMatchObject({ ok: true, kind: "cancel-add", delivered: true });
+    if (!removal.ok) throw new Error("preview refused");
+    expect(await removeLocale(prisma, OWNER, { ...WEB, localeCode: "fr", approval: removal.approval })).toMatchObject({ ok: true, kind: "cancel-add" });
+    fake({ "i18n/en.json": EN, "i18n/ko.json": KO }, open);
+    const preview = await readPublishPreview(prisma, "p", "fixture");
+    expect(preview).toMatchObject({ sendable: { total: 0 }, fileChanges: [], withdrawnLocales: [{ surfaceSlug: "default", localeCode: "fr", effect: "create" }] });
+  });
+
+  it("전달된 의도가 그대로면 거둘 것이 없다 — 필드가 없다", async () => {
+    await deliveredRemoval();
+    fake({ "i18n/en.json": EN, "i18n/ko.json": KO }, open);
+    expect(await readPublishPreview(prisma, "p", "fixture")).not.toHaveProperty("withdrawnLocales");
+  });
+});
+
 /**
  * **야간 cron Publish도 스냅샷 전에 만료한다** (R-B2 🔴 R1 — design §1 "모든 Publish"). 사람 주체가 없으니 AUTOMATION으로 만료한다.
  * 안 하면 머지 없이 닫힌 삭제가 다른 셀 편집 하나에 실려 새 PR로 다시 나가고, 보류된 ADD는 영영 풀리지 않는다.

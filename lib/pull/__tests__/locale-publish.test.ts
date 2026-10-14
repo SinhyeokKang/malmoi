@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { blobSha } from "@/lib/githash";
 import { publishFingerprint } from "@/lib/publish/fingerprint";
-import { planProjectLocales, localeWorkOf, observedLocalesOf, type SurfaceLocaleChanges } from "../locales";
+import { NO_LOCALE_PLAN, planProjectLocales, localeWorkOf, observedLocalesOf, withdrawnLocalesOf, type ProjectLocalePlan, type SurfaceLocaleChanges } from "../locales";
 import { pullRequestBody, removedFilesStated } from "../payload";
 import { shouldSkipPull } from "../plan";
 import { LocalePlanRefused, projectFormats, renderProject, runPull, type PullDeps, type PullState } from "../run";
@@ -149,6 +149,42 @@ describe("localeWorkOf — 소스별 언어 작업의 합", () => {
   it("행이 없는 소스는 0", () => {
     expect(localeWorkOf(state().surfaces)).toBe(0);
     expect(localeWorkOf(state({ localeChanges: { ...changes([["ko", "REMOVE"]]), work: 1 } }).surfaces)).toBe(1);
+  });
+});
+
+/**
+ * **거둘 언어 효과** (#265) — 전달 목록에 있는데 이번 스냅샷이 싣지 않는 효과. 전달된 의도를 취소하면 그 파일은 base와 같아져 파일 diff가 0이지만,
+ * 열린 PR에는 옛 삭제·새 파일이 남아 Publish가 그것을 거둔다. 미리보기가 이 목록을 실어 "보낼 것 없음"과 가른다.
+ */
+describe("withdrawnLocalesOf — 전달됐는데 이번 스냅샷이 싣지 않는 효과 (#265)", () => {
+  const surface = (id: string, slug: string, localeChanges?: SurfaceLocaleChanges) => ({ id, slug, ...(localeChanges === undefined ? {} : { localeChanges }) });
+  const planOf = (captured: Record<string, { localeCode: string; effect: "create" | "delete" }[]>): ProjectLocalePlan => ({
+    surfaces: Object.entries(captured).map(([surfaceId, effects]) => ({ surfaceId, surfaceSlug: surfaceId, exclude: [], creates: [], deletes: [], withheld: [], empty: [], captured: effects })),
+  });
+
+  it("전달된 제거·추가를 취소(행 없음) → 그 delete·create를 거둔다 — 소스·코드순", () => {
+    expect(withdrawnLocalesOf(NO_LOCALE_PLAN, [
+      surface("s2", "web", changes([], [{ localeCode: "ko", effect: "delete" }])),
+      surface("s1", "app", changes([], [{ localeCode: "fr", effect: "create" }, { localeCode: "de", effect: "delete" }])),
+    ])).toEqual([
+      { surfaceSlug: "app", localeCode: "de", effect: "delete" },
+      { surfaceSlug: "app", localeCode: "fr", effect: "create" },
+      { surfaceSlug: "web", localeCode: "ko", effect: "delete" },
+    ]);
+  });
+
+  it("이번 스냅샷이 같은 효과를 다시 실으면 거둘 것이 없다 — 새로 싣는 효과도 거두기가 아니다", () => {
+    expect(withdrawnLocalesOf(planOf({ s1: [{ localeCode: "ko", effect: "delete" }, { localeCode: "fr", effect: "create" }] }),
+      [surface("s1", "app", changes([["ko", "REMOVE"], ["fr", "ADD"]], [{ localeCode: "ko", effect: "delete" }], [["fr", 1]]))])).toEqual([]);
+  });
+
+  it("값을 비운 전달된 추가(캡처 없음)는 그 create를 거둔다", () => {
+    expect(withdrawnLocalesOf(planOf({ s1: [] }), [surface("s1", "app", changes([["fr", "ADD"]], [{ localeCode: "fr", effect: "create" }]))]))
+      .toEqual([{ surfaceSlug: "app", localeCode: "fr", effect: "create" }]);
+  });
+
+  it("확인 안 됨(null)·빈 전달 목록·언어 상태 없는 소스는 거둘 것이 없다", () => {
+    expect(withdrawnLocalesOf(NO_LOCALE_PLAN, [surface("s1", "app", changes([["ko", "REMOVE"]], null)), surface("s2", "web", changes([], [])), surface("s3", "docs")])).toEqual([]);
   });
 });
 

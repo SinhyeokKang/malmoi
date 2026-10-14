@@ -320,9 +320,10 @@ describe.each<Host>(["github", "gitlab"])("야간 — 같은 head의 만료 (%s 
     expect(await rows()).toEqual([]);
     expect(await presence()).toMatchObject({ ko: "active" });
     expect((await resolved())[0]?.payload).toMatchObject({ localeChange: { locale: "ko", operation: "REMOVE", outcome: "active" } });
-    // 재전송 0 — 다음 Publish가 실을 현재 효과에 삭제가 없다(남은 차이는 전달 목록을 비우는 정리다).
-    const [state] = await readLocaleStates(prisma, "p", "s-web");
-    expect(state?.current).toEqual([]);
+    // 재전송 0 — 다음 Publish가 실을 현재 효과에 삭제가 없고, 만료가 전달 목록에서도 그 삭제를 뺐다(#266). 수렴용 Publish가 남지 않는다.
+    // 행도 전달 목록도 비었으니 상태 자체가 없다.
+    expect(await readLocaleStates(prisma, "p", "s-web")).toEqual([]);
+    expect(await countLocaleWork(prisma, "p")).toBe(0);
     expect(await prisma.projectEvent.count({ where: { projectId: "p", subtype: "nightly.skip", result: "upToDate" } })).toBe(1);
   });
 

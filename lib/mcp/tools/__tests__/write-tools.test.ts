@@ -583,4 +583,28 @@ describe("언어 변경이 다른 도구에 낳는 거부", () => {
     }, summary: en.mcp.summary.publishPreview(0, 1) });
     expect(en.mcp.summary.publishPreview(0, 1)).not.toBe(en.mcp.summary.publishPreview(0, 0));
   });
+
+  /**
+   * #265 — 전달된 의도를 취소하면 파일 diff가 0이어도 Publish가 열린 PR에서 옛 삭제·새 파일을 거둔다. "Nothing to send."를 믿은 에이전트가
+   * Publish하지 않으면 취소한 변경이 PR에 남는다(머지하면 그대로 나간다). 거둘 효과는 `languages.withdrawn`에 실리고 문장이 그것을 말한다.
+   */
+  it.each([["delete", "ko"], ["create", "fr"]] as const)("preview_publish — 전달된 %s 취소(파일 변경 0)는 거둘 언어 변경을 말한다, \"Nothing to send.\"가 아니다", async (effect, localeCode) => {
+    const withdrawn = [{ surfaceSlug: "default", localeCode, effect }];
+    h.core.mockResolvedValueOnce({ status: "ok", preview: { ...(RESULTS.preview as { preview: object }).preview, sendable: { total: 0, keys: 0 }, total: 0, keys: 0, withdrawnLocales: withdrawn } });
+    const outcome = await run("preview_publish", subject("editor", []), { slug: "acme" });
+    expect(outcome).toMatchObject({ status: "ok", data: { fileChanges: [], languages: { withheld: [], empty: [], withdrawn } }, summary: en.mcp.summary.publishPreview(0, 0, 1) });
+    expect(outcome.status === "ok" && outcome.summary).not.toContain("Nothing to send");
+  });
+
+  it("preview_publish — 거둘 것이 없으면 languages.withdrawn은 빈 목록이고 문장은 그대로다", async () => {
+    h.core.mockResolvedValueOnce({ status: "ok", preview: { ...(RESULTS.preview as { preview: object }).preview, sendable: { total: 0, keys: 0 } } });
+    expect(await run("preview_publish", subject("editor", []), { slug: "acme" })).toMatchObject({ status: "ok", data: { languages: { withdrawn: [] } }, summary: "Nothing to send." });
+  });
+
+  it("publishPreview 문장 — 거둘 언어 변경만 있을 때·편집과 함께일 때·GitLab", () => {
+    expect(en.mcp.summary.publishPreview(0, 0, 1)).toBe("No new changes to send, but publishing undoes 1 language change that was already sent. Publish with this fingerprint.");
+    expect(en.mcp.summary.publishPreview(2, 1, 2)).toBe("2 changes and 1 new or removed language file would be sent in a pull request, and 2 language changes that were already sent would be undone. Publish with this fingerprint.");
+    expect(en.mcp.summary.gitlab.publishPreview(1, 0, 1)).toBe("1 change would be sent in a merge request, and 1 language change that was already sent would be undone. Publish with this fingerprint.");
+    expect(en.mcp.summary.gitlab.publishPreview(0, 0, 1)).toBe(en.mcp.summary.publishPreview(0, 0, 1));
+  });
 });
