@@ -88,3 +88,8 @@
 - C2 `worker_done` — `461c747e`·`fda25040`·`66fb1f01`(MCP 도구 넷 + 조회 응답, `gate: ok` 15240 · PG 819). 남김: 가이드 MCP 표(시안 대기 `/guide` 몫이 아니라 §8 — 이 런에서 D가 다룰지 판단). C2 retain. **R-C2**.
 - R-C2 완료(🔴 0 · 🟡 0 · ⚪ 5, 변이 5/5). **C2 통합**(cherry-pick 3). ⚪ ARCHITECTURE §6.45 도구 수·가이드 권한 표 → D 메모. C2·R-C2 해제·정리.
 - B2 fix2 `worker_done` — `502c28e0`·`ed8ad232`(삭제 파일 집합이 바뀔 때만 본문 갱신, `gate: ok` 15175 · PG 810). 갱신이 필요할 때는 본문 전체를 바꾼다(그 순간 사람 문구는 사라짐 — 수용, 기록). dev cherry-pick. B2 해제·정리.
+- C1 `worker_done` — `61c1b258`·`11fbbce7`(Action 넷 · draft readOnly · summary · 공유 집계 술어, `gate: ok` 15219 · PG 814). C1 retain. **R-C1**.
+- **D** `ctx_b9c3f489e379`(Sonnet high, 정본 문서 — DESIGN·가이드 제외, base `9d4fb36b`). C1 리뷰와 병렬(지휘자 판단 — 문서는 C1 이름만 `lo-C1`에서 읽는다).
+- R-C1 완료(🔴 0 · 🟡 2, 변이 8 중 7, dev에 깨끗이 cherry-pick). **C1 fix1** — Y1(저장 직후 낙관적 집계가 제거 중 언어를 셈 — MCP로 REMOVE가 생길 수 있어 지금 고침, 컴포넌트는 비시각 한 줄 예외 허용·지휘자 판단) · Y2(검색 하이라이트 술어 테스트). R-C1 해제·정리.
+- D `worker_done` — ARCHITECTURE §5.10 신설 · §6.45.5 도구 수 31→35 · DIRECTORY · ACTIONS · OPERATIONS · CLAUDE.md(+미러), README 변경 없음(`gate: ok`). D retain. **R-D**(사실 대조).
+- C1 fix1 `worker_done` — `2920845d`·`d5b1aa6d`(`gate: ok` 15307 · PG 828). **C1 통합**(cherry-pick). C1 해제·정리. 화면 배치 메모: `DetailView.locales`에 `readOnly` 타입 선언 추가 필요.
