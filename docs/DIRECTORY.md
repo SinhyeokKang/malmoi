@@ -793,6 +793,7 @@ lib/
                         add-plan(코드·충돌·포맷·경로 → create | revive | 거부, localeFilePath · localeCollisionKey) · change-plan(planLocaleChange — 추가/제거·추가 취소/제거 취소 전이와 거부 순서,
                         planBaseLocaleCandidate) · effects(행 + 값 수 → 정규 효과 목록 · 목록 비교) · publish-plan(의도 × base 경로 → 생성·삭제·보류) ·
                         expiry(planLocaleExpiry — 만료 조건 · ADD 자기 증거 · 빈 관측 보류) · presence(strict 적재와 공유하는 존재 판정 liveLocalesOf/localePresence) ·
+                        reached(reachedRepository — 만료 뒤 존재로 리포가 요청대로인지, import 0인 잎이라 클라이언트 결과 갈래도 부른다) ·
                         chrome-codes(Chrome 지원 목록 54개 — 출처 URL·확인일이 머리 주석) · fingerprint(localeChangeFingerprint — 서버 발급 승인 지문, node:crypto)
                         / work(server-only 없음 — 전달 목록 읽기·localeWork·readLocaleStates·countLocaleWork) · expire(expireLocaleChanges — 잠금 안 만료 I/O,
                         적재·야간·모든 Publish가 같이 부른다) · change(**웹 Action·MCP가 같은 코어** — addLocale · previewLocaleRemoval · removeLocale · cancelLocaleRemoval, server-only)
@@ -831,7 +832,8 @@ lib/
   push/locale-gate.ts   planLocaleImportGate(소스별 언어 변경 작업 → apply | defer `locale-change-pending`) · keptAddLocales(orphan 대상에서 뺄 ADD 코드) — 잎. CI(route)·야간 적재가 같이 부른다
   pull/locales.ts       **언어 변경의 Publish 배선** — planProjectLocales(소스·트리 → lib/locales/publish-plan을 펴서 렌더 제외·delete·create·보류 계획, 거부는 locale-plan-refused) ·
                         observeLocaleFiles(**base 관측의 유일한 함수** — 정규 파일 100644·100755만, mode를 모르면 unreadable) · observedLocalesOf · deliverableLocaleWork(조기 종료 판정) ·
-                        capturedBySurface(확인 tx가 쓸 캡처 목록) · localeFingerprintInput(Publish 지문 입력). 순수
+                        capturedBySurface(확인 tx가 쓸 캡처 목록) · localeFingerprintInput(Publish 지문 입력) · expiryCheckApplies(1층 앞 만료 판정) ·
+                        expiringLocalesOf·afterExpiry(미리보기의 읽기 전용 만료 판정·만료 뒤 상태, #267). 순수
   github.ts             Git Data API 래퍼(App installation 토큰). openRepoReader가 토큰을 한 번만 발급한다
                         getTree는 path·sha·mode의 전체 GitTreeEntry를 보존하고, snapshot.files는 기존 blob 목록이다
   repo-host/            **리포 호스트 경계** (2026-10-12, gitlab-repositories) — target(Project 행 → RepoTarget·RepoTargetResult
