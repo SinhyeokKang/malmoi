@@ -73,3 +73,7 @@
 - R-B1b 완료(🔴 0 · 🟡 1 · ⚪ 3, 변이 11 중 10 — 이전 지적 전부 닫힘). **Y5**(확인 행 없는 소스의 첫 Publish 미확인 → 취소가 작업 0으로 접힘) → **B2로**: 첫 외부 쓰기 전 무효화가 행 없는 캡처 소스에 무효화된 행을 만든다(`load.ts` B2 소유). Z1(폐기 저자 테스트)·Z2(폐기의 적재 lease 거부) → **B1 fix3**. Z3 design 문장 정정(탈출구는 Publish뿐).
 - B1 fix3 `worker_done` — `83c9f4f1`·`502bb13c`(`gate: ok`, 1회차 search-performance 314ms flake). dev에 cherry-pick. B1 해제·워크트리 정리.
 - B3 질문 2: 승인 수동 Sync가 전달 목록까지 비우면 열린 PR의 삭제가 남는다 → **지휘자 판단: 행만 지우고 전달 목록 유지**(다음 Publish가 no-changes로 수렴). design 전이 표 갱신.
+- B3 `worker_done` — `4ce5db3a`·`085153db`·`3f92154d`·`1e9fe2a6`(`gate: ok` 14978 · PG 786). ⚠️ B2와 **함께 통합**해야 한다(야간 Publish 선택이 B2의 `shouldSkipPull` 변경에 기댄다). B3 retain. **R-B3** `ctx_dc9b453d53e3`(Opus high).
+- B2 `worker_done` — `2be4265b`·`fc974865`·`a2669bb4`(`gate: ok` 15000 · PG 766, Y5·F2·F3 포함). 자체 🟡 둘(결정적 거부가 재시도 가능 실패로 보임 · 정리 안내가 새 PR에만) + 관찰(만료가 전달 목록을 남겨 수렴 Publish 1회 추가)을 R-B2가 판정. B2 retain. **R-B2** — Opus high.
+- R-B3 완료(🔴 1 · 🟡 3 — 수동 Sync 도중 요청한 언어 변경을 승인 없이 지움). **B3 fix1** — R1(승인 행을 lease에 실음) · Y1 · Y2. Y3(B2와 같은 push)는 O2 계획대로. R-B3 해제·정리.
+- R-B2 완료(🔴 2 · 🟡 4, 변이 12/12, B3와 시험 병합 — harness.ts 사소한 충돌 하나). **B2 fix1** — R1(cron Publish도 스냅샷 전 만료) · R2(추가 코드를 관측 가능 코드로 좁힘, es_419 제외 — lib/locales 소유자 해제라 B2가 맡음) · Y1(조기 종료 ②를 전달 가능 작업으로) · Y2(구조화 오류 클래스·코드만, 문구는 C1) · Y3(열린 PR 본문 갱신 `updatePr` 두 호스트). **Y4**(base 관측 함수 둘) → B2·B3 통합 뒤 B3 fix2. design 갱신.
