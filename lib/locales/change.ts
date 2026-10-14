@@ -5,12 +5,14 @@ import type { Prisma, PrismaClient } from "@/generated/prisma/client";
 import type { LockedAccess, ProjectAccess } from "@/lib/auth/access";
 import { lockProjectAccess } from "@/lib/auth/lock";
 import type { Subject } from "@/lib/auth/subject";
-import { recordEvent } from "@/lib/events/record";
+import { recordEvent, recordEvents } from "@/lib/events/record";
+import { readRestoreConfirmation } from "@/lib/keys/revert";
 import type { LocaleChangeDetail, LocaleChangeSubtype } from "@/lib/events/payload";
 import { sameFingerprint } from "@/lib/protection/fingerprint";
 import { getSurfaceAccess } from "@/lib/surfaces/access";
 import type { SurfacePaths } from "@/lib/surfaces/plan";
 import { planPublishBarrier, uncertainPublishWhere } from "@/lib/sync/execution";
+import { planKeyRevert } from "@/lib/translations/baseline";
 
 import { planLocaleChange, type ApprovalState, type LocaleChangeRefusal, type LocaleChangeRequest, type LocaleTransition } from "./change-plan";
 import { localeChangeFingerprint } from "./fingerprint";
@@ -36,7 +38,11 @@ export const PreviewLocaleRemovalInput = LocaleTarget;
 export const RemoveLocaleInput = LocaleTarget.extend({ approval: z.string().min(1).nullable() });
 export const CancelLocaleRemovalInput = LocaleTarget;
 
-export type LocaleChangeError = Exclude<ProjectAccess, { status: "ok" }>["status"] | Exclude<LockedAccess, { status: "ok" }>["status"] | LocaleChangeRefusal;
+/**
+ * `baseline-unknown`·`baseline-stale` — 폐기할 미전달 셀에 마지막 전달 값(복원 기준)이 없거나 낡았다. Revert의 같은 이름 사유와 같은 판정이다(R-B1 Y1).
+ */
+export type LocaleChangeError = Exclude<ProjectAccess, { status: "ok" }>["status"] | Exclude<LockedAccess, { status: "ok" }>["status"] | LocaleChangeRefusal
+  | "baseline-unknown" | "baseline-stale";
 
 export type AddLocaleResult = { ok: true; action: "create" | "revive"; path: string; reissued: number } | { ok: false; error: LocaleChangeError };
 
@@ -45,13 +51,14 @@ export type AddLocaleResult = { ok: true; action: "create" | "revive"; path: str
  * `delivered`는 그 언어의 파일 변경이 이미 PR/MR에 실렸나다. `approval`은 실행이 다시 대조할 서버 지문이다 — 승인은 항상 요구한다.
  */
 export type LocaleRemovalPreview =
-  | { ok: true; kind: "request-removal" | "cancel-add"; path: string; translations: number; pendingCount: number; delivered: boolean; approval: string }
+  /** `delivered: null` — 확인이 무효화 중이라 실렸는지 모른다. */
+  | { ok: true; kind: "request-removal" | "cancel-add"; path: string; translations: number; pendingCount: number; delivered: boolean | null; approval: string }
   | { ok: false; error: LocaleChangeError };
 
 export type RemoveLocaleResult = { ok: true; kind: "request-removal" | "cancel-add"; discarded: number } | { ok: false; error: LocaleChangeError };
 
 /** `delivered` — 취소한 제거가 이미 PR/MR에 실렸다. 다음 Publish가 그 삭제를 지울 때까지 그 언어는 Unsent다(spec 11). */
-export type CancelLocaleRemovalResult = { ok: true; delivered: boolean } | { ok: false; error: LocaleChangeError };
+export type CancelLocaleRemovalResult = { ok: true; delivered: boolean | null } | { ok: false; error: LocaleChangeError };
 
 type Db = Prisma.TransactionClient | PrismaClient;
 type Scope = { projectId: string; surfaceId: string };
@@ -68,7 +75,7 @@ async function publishUnsettled(db: Db, projectId: string): Promise<boolean> {
  * 판정 입력 — 잠금 뒤(실행)와 스냅샷 읽기(미리보기)가 같은 질의를 지난다. 사본 둘이면 세는 집합이 갈린다.
  * ⚠️ 토큰은 그 소스·언어 전체에서 읽는다 — orphan 키 포함. 폐기가 바꾸는 집합과 지문·미리보기가 세는 집합이 같아야 한다.
  */
-async function readChangeState(db: Db, scope: Scope, code: string) {
+async function readChangeState(db: Prisma.TransactionClient, scope: Scope, code: string) {
   const { projectId, surfaceId } = scope;
   const project = await db.project.findUnique({ where: { id: projectId }, select: { archivedAt: true } });
   const surface = await db.translationSurface.findFirst({
@@ -81,11 +88,18 @@ async function readChangeState(db: Db, scope: Scope, code: string) {
     where: { projectId, archivedAt: null, id: { not: surfaceId } },
     select: { id: true, slug: true, pathTemplate: true, locales: { where: { orphaned: false }, select: { code: true } } },
   });
-  const pending = await db.translation.findMany({ where: { projectId, surfaceId, localeCode: code, pendingEditToken: { not: null } }, select: { id: true, pendingEditToken: true } });
+  const pending = await db.translation.findMany({
+    where: { projectId, surfaceId, localeCode: code, pendingEditToken: { not: null } },
+    select: { id: true, keyId: true, value: true, needsReview: true, pendingEditToken: true, stringKey: { select: { key: true } } },
+  });
+  // 폐기는 Revert와 같은 의미다 — 같은 기준 행·같은 확인 판정(`readRestoreConfirmation`)을 읽는다(design §3, R-B1 Y1).
+  const baselines = await db.translationBaseline.findMany({ where: { projectId, surfaceId, localeCode: code }, select: { keyId: true, restoreValue: true, revision: true } });
+  const restore = await readRestoreConfirmation(db, projectId, surfaceId, new Date());
   const confirmation = await db.deliveryConfirmation.findUnique({
     where: { projectId_surfaceId: { projectId, surfaceId } },
-    select: { deliveredLocaleChanges: true, invalidatedAt: true },
+    select: { revision: true, deliveredLocaleChanges: true, invalidatedAt: true },
   });
+  const counts = await readLocaleValueCounts(db, projectId, [surfaceId], [code]);
   return {
     surfaceId,
     project,
@@ -93,7 +107,12 @@ async function readChangeState(db: Db, scope: Scope, code: string) {
     locales,
     changes,
     otherSurfaces: others.map((other): SurfacePaths => ({ surfaceId: other.id, surfaceSlug: other.slug, paths: surfacePaths(other.pathTemplate, other.locales.map(locale => locale.code)) })),
-    pending: pending.flatMap(row => row.pendingEditToken === null ? [] : [{ id: row.id, token: row.pendingEditToken }]),
+    pending: pending.flatMap(row => row.pendingEditToken === null ? [] : [{ id: row.id, token: row.pendingEditToken, keyId: row.keyId, key: row.stringKey.key, value: row.value, needsReview: row.needsReview }]),
+    baselines,
+    restoreConfirmation: restore.confirmation,
+    /** 그 언어의 값 있는 번역 수(활성 키) — 미리보기 수이자 ADD 효과가 현재 목록에 있는지의 판정이다. */
+    valueCount: counts.get(surfaceId)?.get(code) ?? 0,
+    delivery: confirmation === null ? null : { revision: confirmation.revision, invalidated: confirmation.invalidatedAt !== null },
     delivered: deliveredOf(confirmation),
     unsettled: await publishUnsettled(db, projectId),
   };
@@ -118,19 +137,33 @@ function fingerprintOf(state: ChangeState, input: { userId: string; scope: Scope
     localeCode: input.code,
     change: row === undefined ? null : { operation: row.operation, requestedAt: row.requestedAt.toISOString() },
     surface: { adapterName: state.surface.adapterName, pathTemplate: state.surface.pathTemplate, baseLocale: state.surface.baseLocale, declaredBaseLocale: state.surface.declaredBaseLocale },
-    pending: state.pending,
+    delivery: state.delivery,
+    pending: state.pending.map(cell => ({ id: cell.id, token: cell.token })),
   });
 }
 
-function judge(state: ChangeState, request: LocaleChangeRequest, approval: ApprovalState) {
-  if (state.surface === null) return { ok: false, error: "not-found" } as const;
+type DiscardWrite = { keyId: string; key: string; before: string; value: string; token: string };
+type Judgement = { ok: true; transition: LocaleTransition; discard: DiscardWrite[] } | { ok: false; error: LocaleChangeError };
+
+/**
+ * 판정 = 전이(`planLocaleChange`) + 폐기 계획. 미리보기와 실행이 같은 함수를 지난다 — 미리보기가 통과한 것을 실행이 다른 이유로 거부하는 일은
+ * 그 사이 상태가 바뀐 경우뿐이다.
+ */
+function judge(state: ChangeState, request: LocaleChangeRequest, approval: ApprovalState): Judgement {
+  if (state.surface === null) return { ok: false, error: "not-found" };
   const { surface } = state;
-  return planLocaleChange({
+  const row = state.changes.find(change => change.localeCode === request.code);
+  const cancel = (request.kind === "remove" && row?.operation === "ADD") || (request.kind === "cancel-removal" && row?.operation === "REMOVE");
+  const inCurrent = row?.operation === "REMOVE" || (row?.operation === "ADD" && state.valueCount > 0);
+  const verdict = planLocaleChange({
     request,
     // 인가는 잠금(실행)·진입 판정(미리보기)이 이미 봤다 — 여기 닿으면 OWNER다.
     canManage: true,
     projectArchived: state.project === null || state.project.archivedAt !== null,
-    publishUnsettled: state.unsettled,
+    // ⚠️ **확인이 무효화된 동안(`delivered: null`)은 효과가 현재 목록에 있는 취소를 막는다** (design §3, R-B1 🔴 R1). 무효화는 시간으로 풀리지 않고
+    // 다음 성공 확인만 푼다 — 그 사이 취소를 받으면 작업이 0으로 접혀 Publish가 돌지 않고 열린 PR의 stale 파일이 남는다. 행이 남아 있으면 작업이
+    // 1 이상이라 Publish가 확인을 다시 세우고, 그 뒤 취소는 정상 경로다. 새 요청은 작업을 늘리는 쪽이고 값 0개 ADD는 보낸 파일이 없다.
+    publishUnsettled: state.unsettled || (cancel && inCurrent && state.delivered === null),
     // ⚠️ 선언된 기준 언어도 제거할 수 없다 — 다음 적재가 그 언어를 기준으로 세우는데 Publish가 그 파일을 지우면 기준 파일이 사라진다.
     surface: { id: state.surfaceId, adapterName: surface.adapterName, pathTemplate: surface.pathTemplate,
       baseLocale: request.kind === "remove" && surface.declaredBaseLocale === request.code ? request.code : surface.baseLocale },
@@ -139,6 +172,38 @@ function judge(state: ChangeState, request: LocaleChangeRequest, approval: Appro
     otherSurfaces: state.otherSurfaces,
     approval,
   });
+  if (!verdict.ok) return verdict;
+  if (verdict.transition.kind !== "request-removal" && verdict.transition.kind !== "cancel-add") return { ok: true, transition: verdict.transition, discard: [] };
+  const discard = planDiscard(state);
+  return discard.ok ? { ok: true, transition: verdict.transition, discard: discard.writes } : discard;
+}
+
+/**
+ * **폐기 = Revert** (design §3 "폐기는 값을 마지막 전달 값으로 되돌린다", R-B1 Y1). 토큰만 비우면 값이 DB에 남아 제거를 취소한 뒤 다음 Publish에 추적
+ * 없이 실린다. 판정은 Revert의 `planKeyRevert` 그대로다 — 기준이 없거나(`baseline-unknown`) 낡았거나(`baseline-stale`) 확인이 교체 실행 뒤에 서지
+ * 않았으면 쓰기 0으로 거부한다(fail-closed — 먼저 Publish 또는 Revert). 부분 폐기는 없다.
+ */
+function planDiscard(state: ChangeState): { ok: true; writes: DiscardWrite[] } | { ok: false; error: LocaleChangeError } {
+  if (state.pending.length === 0) return { ok: true, writes: [] };
+  const cells = new Map(state.pending.map(cell => [cell.keyId, cell]));
+  const plan = planKeyRevert({
+    // ⚠️ `planKeyRevert`는 키 하나의 언어들을 받는다 — 여기는 한 언어의 키들이라 식별자 자리(`localeCode`)에 keyId를 싣는다. 판정은 식별자를 비교만 한다.
+    targets: state.pending.map(cell => ({ localeCode: cell.keyId, token: cell.token, currentValue: cell.value, needsReview: cell.needsReview })),
+    baselines: new Map(state.baselines.map(baseline => [baseline.keyId, { restoreValue: baseline.restoreValue, revision: baseline.revision }])),
+    confirmation: state.restoreConfirmation,
+    canRevert: true,
+    draftDirty: false,
+    // 진행 중 Publish는 앞의 `publish-unsettled`가 막았다.
+    busy: false,
+  });
+  if (!plan.ok) return { ok: false, error: plan.reason === "baseline-stale" ? "baseline-stale" : plan.reason === "unsettled" ? "publish-unsettled" : "baseline-unknown" };
+  return {
+    ok: true,
+    writes: plan.writes.flatMap(write => {
+      const cell = cells.get(write.localeCode);
+      return cell === undefined ? [] : [{ keyId: cell.keyId, key: cell.key, before: cell.value, value: write.value, token: write.expectedToken }];
+    }),
+  };
 }
 
 function approvalState(approved: string | null, current: string | null): ApprovalState {
@@ -146,8 +211,10 @@ function approvalState(approved: string | null, current: string | null): Approva
   return current !== null && sameFingerprint(approved, current) ? "valid" : "stale";
 }
 
-function hasDelivered(state: ChangeState, code: string, effect: "create" | "delete"): boolean {
-  return (state.delivered ?? []).some(item => item.localeCode === code && item.effect === effect);
+/** 그 언어의 효과가 전달 목록에 있나. 확인이 무효화 중이면 `null` — "전달 안 됨"으로 말하지 않는다. */
+function hasDelivered(state: ChangeState, code: string, effect: "create" | "delete"): boolean | null {
+  if (state.delivered === null) return null;
+  return state.delivered.some(item => item.localeCode === code && item.effect === effect);
 }
 
 /** 같은 tx에 남기는 언어 변경 사건 — 실패하면 상태 변경과 함께 롤백된다. */
@@ -161,13 +228,30 @@ async function recordLocaleEvent(tx: Prisma.TransactionClient, input: { scope: S
   });
 }
 
-/** 승인된 그 언어의 토큰만 비운다 — 잠금 뒤 다시 읽어 지문으로 대조한 집합이다. 다른 언어·다른 소스는 대상이 아니다. */
-async function discardApproved(tx: Prisma.TransactionClient, scope: Scope, code: string, tokens: readonly string[]): Promise<number> {
-  if (tokens.length === 0) return 0;
-  return tx.$executeRaw`
-    UPDATE "Translation" SET "pendingEditToken" = NULL
-    WHERE "projectId" = ${scope.projectId} AND "surfaceId" = ${scope.surfaceId} AND "localeCode" = ${code}
-      AND "pendingEditToken" = ANY(${[...tokens]}::text[])`;
+/**
+ * 승인된 그 언어의 미전달 셀을 마지막 전달 값으로 되돌린다 — Revert의 쓰기와 같다(값 · 토큰 해제 · 저자는 되돌린 사람 · 기준 행 삭제 · `translation.reverted`).
+ * 잠금 뒤 다시 읽어 지문으로 대조한 집합이고, 토큰이 그대로인 셀만 쓴다 — 어긋나면 던져서 전부 롤백한다. 다른 언어·다른 소스는 대상이 아니다.
+ * ⚠️ 한 문장이다 — 한 언어의 미전달이 수백 셀일 수 있어 셀마다 왕복하면 잠금 tx가 길어진다(#145).
+ */
+async function discardApproved(tx: Prisma.TransactionClient, input: { scope: Scope; code: string; userId: string; surfaceSlug: string; writes: readonly DiscardWrite[] }): Promise<number> {
+  const { scope, code, writes } = input;
+  if (writes.length === 0) return 0;
+  const updated = await tx.$executeRaw`
+    UPDATE "Translation" AS t SET "value" = v."value", "pendingEditToken" = NULL, "updatedBy" = ${input.userId}, "updatedAt" = CURRENT_TIMESTAMP
+    FROM unnest(${writes.map(write => write.keyId)}::text[], ${writes.map(write => write.value)}::text[], ${writes.map(write => write.token)}::text[]) AS v("keyId", "value", "token")
+    WHERE t."projectId" = ${scope.projectId} AND t."surfaceId" = ${scope.surfaceId} AND t."localeCode" = ${code}
+      AND t."keyId" = v."keyId" AND t."pendingEditToken" = v."token"`;
+  if (updated !== writes.length) throw new Error("discard target changed under lock");
+  // 전달 기준은 미전달 셀의 작업 상태다 — 되돌린 셀은 더 이상 미전달이 아니다.
+  await tx.translationBaseline.deleteMany({ where: { projectId: scope.projectId, surfaceId: scope.surfaceId, localeCode: code, keyId: { in: writes.map(write => write.keyId) } } });
+  await recordEvents(tx, writes.map(write => ({
+    projectId: scope.projectId,
+    subtype: "translation.reverted",
+    actor: { kind: "USER" as const, userId: input.userId },
+    surfaceIds: [scope.surfaceId],
+    payload: { kind: "TRANSLATION" as const, surfaceSlug: input.surfaceSlug, key: write.key, locale: code, before: write.before, after: write.value },
+  })));
+  return writes.length;
 }
 
 export async function addLocale(prisma: PrismaClient, subject: Subject, input: z.infer<typeof AddLocaleInput>): Promise<AddLocaleResult> {
@@ -217,12 +301,11 @@ export async function previewLocaleRemoval(prisma: PrismaClient, subject: Subjec
     const transition = verdict.transition;
     const approval = fingerprintOf(state, { userId: subject.userId, scope, code });
     if ((transition.kind !== "request-removal" && transition.kind !== "cancel-add") || approval === null) return { ok: false, error: "not-found" } as const;
-    const counts = await readLocaleValueCounts(tx, scope.projectId, [scope.surfaceId], [code]);
     return {
       ok: true,
       kind: transition.kind,
       path: transition.path,
-      translations: counts.get(scope.surfaceId)?.get(code) ?? 0,
+      translations: state.valueCount,
       pendingCount: state.pending.length,
       delivered: hasDelivered(state, code, transition.kind === "cancel-add" ? "create" : "delete"),
       approval,
@@ -245,7 +328,7 @@ export async function removeLocale(prisma: PrismaClient, subject: Subject, input
     if (!verdict.ok) return { ok: false, error: verdict.error } as const;
     const transition: LocaleTransition = verdict.transition;
     if ((transition.kind !== "request-removal" && transition.kind !== "cancel-add") || state.surface === null) return { ok: false, error: "not-found" } as const;
-    const discarded = await discardApproved(tx, scope, code, state.pending.map(cell => cell.token));
+    const discarded = await discardApproved(tx, { scope, code, userId: subject.userId, surfaceSlug: state.surface.slug, writes: verdict.discard });
     const where = { projectId_surfaceId_localeCode: { projectId: scope.projectId, surfaceId: scope.surfaceId, localeCode: code } };
     if (transition.kind === "request-removal") {
       // 바로 orphan하지 않는다 — base에 파일이 있고 취소하면 편집을 다시 허용해야 한다(design §1).

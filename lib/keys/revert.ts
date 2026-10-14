@@ -41,6 +41,31 @@ type State =
   | { ok: false; blocked: Blocked }
   | { ok: true; key: string; writes: { localeCode: string; value: string; expectedToken: string }[]; before: Map<string, string>; fingerprint: string };
 
+/**
+ * **복원 기준의 확인 상태** — Revert와 언어 제거의 폐기(`lib/locales/change.ts`, R-B1 Y1)가 같은 판정(`planKeyRevert`)의 입력으로 쓴다.
+ * 기준 행의 revision이 유효한 확인과 같고, 그 확인이 교체·실패 실행 뒤에 섰을 때만 복원값이 "마지막 전달 값"이다.
+ */
+export async function readRestoreConfirmation(tx: Prisma.TransactionClient, projectId: string, surfaceId: string, now: Date) {
+  const delivery = await readDeliveryState(tx, projectId, surfaceId);
+  if (delivery === null) return { delivery, confirmation: null };
+  const activeSince = new Date(now.getTime() - STALE_AFTER_SECONDS * 1000);
+  // 확인을 세운 실행보다 먼저 시작해 실패한 실행 중 가장 늦은 것 — 그보다 이른 실행은 더 일찍 끝났다.
+  // ⚠️ 만료된 RUNNING도 실패와 같이 센다 — busy에서 빠진 흔적이 확인되지 않은 기준을 유효하게 만들면 안 된다.
+  const unsettled = await tx.syncRun.findFirst({
+    where: {
+      projectId,
+      OR: [
+        { status: "FAILED", errorCode: "execution-uncertain" },
+        { startedAt: { lte: delivery.runStartedAt }, OR: [{ status: "FAILED" }, { status: "RUNNING", startedAt: { lt: activeSince } }] },
+      ],
+    },
+    orderBy: { startedAt: "desc" },
+    select: { startedAt: true },
+  });
+  const settled = revertSettled({ unsettledRunStartedAt: unsettled?.startedAt ?? null, confirmationRunStartedAt: delivery.runStartedAt, staleAfterSeconds: STALE_AFTER_SECONDS });
+  return { delivery, confirmation: { revision: delivery.revision, valid: delivery.valid, settled } };
+}
+
 async function revertState(tx: Prisma.TransactionClient, target: RevertTarget): Promise<State> {
   const { projectId, surfaceId, keyId } = target;
   const key = await tx.stringKey.findFirst({ where: { id: keyId, projectId, surfaceId, orphaned: false }, select: { key: true } });
@@ -53,27 +78,14 @@ async function revertState(tx: Prisma.TransactionClient, target: RevertTarget): 
     orderBy: { localeCode: "asc" },
   });
   const baselines = await tx.translationBaseline.findMany({ where: { projectId, surfaceId, keyId }, select: { localeCode: true, restoreValue: true, revision: true } });
-  const delivery = await readDeliveryState(tx, projectId, surfaceId);
   // 실행 흔적은 공통 활성 경계(`isRunActive`)로만 막는다 — 강제 종료가 남긴 RUNNING·import 토큰이 Revert를 영구히 막지 않는다(감사 #9).
   const now = new Date();
+  const { delivery, confirmation } = await readRestoreConfirmation(tx, projectId, surfaceId, now);
   // `isRunActive`와 같은 창이다(같은 `STALE_AFTER_SECONDS`, 경계 정각은 활성) — 쿼리에 싣느라 인라인으로 풀었다.
   const activeSince = new Date(now.getTime() - STALE_AFTER_SECONDS * 1000);
   const running = await tx.syncRun.count({ where: { projectId, status: "RUNNING", startedAt: { gte: activeSince } } });
   const uncertain = await tx.syncRun.count({ where: uncertainPublishWhere(projectId, now) });
   const importing = await tx.project.findUnique({ where: { id: projectId }, select: { repositoryImportToken: true, repositoryImportStartedAt: true } });
-  // 확인을 세운 실행보다 먼저 시작해 실패한 실행 중 가장 늦은 것 — 그보다 이른 실행은 더 일찍 끝났다.
-  // ⚠️ 만료된 RUNNING도 실패와 같이 센다 — busy에서 빠진 흔적이 확인되지 않은 기준을 유효하게 만들면 안 된다.
-  const unsettled = delivery === null ? null : await tx.syncRun.findFirst({
-    where: {
-      projectId,
-      OR: [
-        { status: "FAILED", errorCode: "execution-uncertain" },
-        { startedAt: { lte: delivery.runStartedAt }, OR: [{ status: "FAILED" }, { status: "RUNNING", startedAt: { lt: activeSince } }] },
-      ],
-    },
-    orderBy: { startedAt: "desc" },
-    select: { startedAt: true },
-  });
 
   // 실행 경로에서는 `Project` 잠금 뒤에 읽은 lease다(`executeKeyRevert`) — 저장 거부와 같은 자리·같은 판정이다.
   const lock = importing === null ? null : planWriteLock({ now, ...importing });
@@ -90,11 +102,7 @@ async function revertState(tx: Prisma.TransactionClient, target: RevertTarget): 
   const plan = planKeyRevert({
     targets: cells,
     baselines: new Map(baselines.map(b => [b.localeCode, { restoreValue: b.restoreValue, revision: b.revision }])),
-    confirmation: delivery === null ? null : {
-      revision: delivery.revision,
-      valid: delivery.valid,
-      settled: revertSettled({ unsettledRunStartedAt: unsettled?.startedAt ?? null, confirmationRunStartedAt: delivery.runStartedAt, staleAfterSeconds: STALE_AFTER_SECONDS }),
-    },
+    confirmation,
     canRevert: true,
     draftDirty: false,
     busy: running > 0,
