@@ -256,8 +256,9 @@ export function planPullChanges(
   const changes: PullChange[] = [];
   const rendered = new Set<string>();
   for (const file of local) {
-    if (file.content === null) continue;
+    // `null`이어도 그 경로는 렌더가 맡는다 — 같은 경로의 삭제 의도는 계획 오류다.
     rendered.add(file.path);
+    if (file.content === null) continue;
     if (baseShas.get(file.path) === blobSha(file.content)) continue;
     changes.push({ kind: "upsert", path: file.path, content: file.content });
   }

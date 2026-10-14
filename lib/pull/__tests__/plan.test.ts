@@ -444,6 +444,10 @@ describe("planPullChanges — 2층 blob SHA 비교", () => {
     expect(() => planPullChanges([{ path: "i18n/ko.json", content: KO }], [{ path: "i18n/ko.json", sha: blobSha(KO) }], ["i18n/ko.json"])).toThrow(/upsert and delete/);
   });
 
+  it("렌더가 그 경로를 맡는 한(content null 포함) delete를 함께 내면 던진다", () => {
+    expect(() => planPullChanges([{ path: "i18n/ko.json", content: null }], [{ path: "i18n/ko.json", sha: blobSha(KO) }], ["i18n/ko.json"])).toThrow(/upsert and delete/);
+  });
+
   it("같은 경로의 delete 의도가 둘이면 던진다", () => {
     expect(() => planPullChanges([], [{ path: "i18n/ko.json", sha: blobSha(KO) }], ["i18n/ko.json", "i18n/ko.json"])).toThrow(/duplicate delete/);
   });

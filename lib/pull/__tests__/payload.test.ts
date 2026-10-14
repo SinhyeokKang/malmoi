@@ -45,6 +45,10 @@ describe("buildTreePayload — base_tree 누락이 리포 전체를 지운다", 
     ]);
   });
 
+  it.each(["", "/abs.json", "a//b.json", "a/../b.json", "./a.json", "a\\b.json", "a/\0.json", "a/"])("비정상 delete 경로 %j는 조립 전에 던진다 — GitLab과 같은 마지막 문", (path) => {
+    expect(() => buildTreePayload([{ kind: "delete", path }], "x")).toThrow(/unsafe repository path/);
+  });
+
   it("delete만 있는 변경도 통과한다 — 빈 변경 가드는 0개일 때만 던진다", () => {
     expect(buildTreePayload([{ kind: "delete", path: "i18n/ko.json" }], "x").tree).toEqual([
       { path: "i18n/ko.json", mode: "100644", type: "blob", sha: null },

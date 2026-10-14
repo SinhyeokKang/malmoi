@@ -1,4 +1,5 @@
 import { fail } from "@/lib/failure";
+import { isPathSafeRepoPath } from "@/lib/locale-code";
 import type { PullChange } from "./plan";
 
 /**
@@ -75,6 +76,9 @@ export function buildTreePayload(
   if (changes.length === 0) fail("no changes (nothing to build a tree from)");
   // 빈 문자열은 필드 누락과 구별되지 않는다 — GitHub이 조용히 base 없는 트리로 처리한다.
   if (baseSha === "") fail("base_tree is empty");
+
+  // 삭제 경로는 쓰기 직전의 마지막 문을 여기서 한 번 더 지난다 — GitLab `buildCommitActions`와 같은 방어다.
+  for (const c of changes) if (c.kind === "delete" && !isPathSafeRepoPath(c.path)) fail(`unsafe repository path for a tree delete: ${JSON.stringify(c.path)}`);
 
   return {
     base_tree: baseSha,
