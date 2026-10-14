@@ -19,14 +19,14 @@
 |---|---|
 | dev head | `2fc25ed4`(origin/dev와 같음, P3 + design-brief) |
 | 마이그레이션 | `20261014060000_locale_change` — **dev DB 적용 완료**(anon/authenticated USAGE·CREATE false, GRANT 0). **prod는 미적용** → `/merge` 1단계 `pnpm db:status:prod` → `pnpm db:deploy` → prod `has_schema_privilege` 확인 |
-| 살아 있는 워커 | **F2** `ctx_142f3ee77968`(워크트리 `lo-F2` — #267) · **RT** 터미널(retain, main 체크아웃 — F2 통합 뒤 #267 재실측용). 그 밖은 전부 해제·삭제 |
+| 살아 있는 워커 | **RT** 터미널(retain, main 체크아웃 — RT3: #267 실호스트 재실측·닫기). 그 밖은 전부 해제·삭제 |
 | RT가 도는 동안 | main 체크아웃에서 cherry-pick·`pnpm build`·`pnpm gate` 금지(dev 서버 HMR·`.next` 오염). RT 뒤 `rm -rf .next/dev`, 리포 밖 clone 확인 |
 | Orca run | `run_2836e5d910eb` — 새 세션은 새 run을 만들어도 된다(이 run의 Delivery는 모두 ack됨) |
 | 로컬 전용 자료 | `.scratch/orch-locale-add/`(브리프·인계·리뷰 원문) — **gitignore라 이 머신에만 있다.** 필요한 결론은 아래와 design.md·ARCHITECTURE §5.10에 옮겨 두었다 |
 
 ### 남은 일 (주인·순서)
 
-1. **RT 결함 수정·재실측** — RT 매트릭스 4/4 통과, 결함 둘: [#266](https://github.com/SinhyeokKang/malmoi/issues/266)(🔴 미머지 종료 뒤 재요청한 제거가 전달 목록과 같아져 PR에 안 실리고 다음 방문이 지운다) · [#265](https://github.com/SinhyeokKang/malmoi/issues/265)(🟡 MCP `preview_publish`가 전달 후 취소에서 "Nothing to send."). F1(+fix1·fix2, R-F1 리뷰)이 고쳐 dev에 통합·push(`9bca1c98`, CI success) → **RT2에서 두 호스트 4/4 통과, #266·#265 닫힘**. RT2가 새 결함 [#267](https://github.com/SinhyeokKang/malmoi/issues/267)(🟡 미머지 종료 뒤 만료 방문 전 Publish: 미리보기는 삭제를 약속, 실행은 1층 스킵으로 `no-edits` + 거짓 문구 — 1층 스킵이 스냅샷 전 만료보다 먼저라 R4가 안 선다)을 냈다 → **F2** 수정 중 → 리뷰 → 통합 → push → RT로 재실측·닫기 → tasks §9 셋째·넷째 체크.
+1. **RT 결함 수정·재실측** — RT 매트릭스 4/4 통과, 결함 둘: [#266](https://github.com/SinhyeokKang/malmoi/issues/266)(🔴 미머지 종료 뒤 재요청한 제거가 전달 목록과 같아져 PR에 안 실리고 다음 방문이 지운다) · [#265](https://github.com/SinhyeokKang/malmoi/issues/265)(🟡 MCP `preview_publish`가 전달 후 취소에서 "Nothing to send."). F1(+fix1·fix2, R-F1 리뷰)이 고쳐 dev에 통합·push(`9bca1c98`, CI success) → **RT2에서 두 호스트 4/4 통과, #266·#265 닫힘**. RT2가 새 결함 [#267](https://github.com/SinhyeokKang/malmoi/issues/267)(🟡 미머지 종료 뒤 만료 방문 전 Publish: 미리보기는 삭제를 약속, 실행은 1층 스킵으로 `no-edits` + 거짓 문구 — 1층 스킵이 스냅샷 전 만료보다 먼저라 R4가 안 선다)을 냈다 → F2(+fix1·fix2, R-F2·R-F2b 리뷰) 통합·push → **RT3 재실측 중** → 통과하면 #267 닫고 tasks §9 셋째·넷째 체크.
 2. **ko·es 초안 검수(`/translate`)** — 이 런이 넣은 사전 문구는 en 확정, ko·es는 초안: `logs.deferReasons["locale-change-pending"]` · `logs.sentence.import.held["locale-change-pending"]`(B3) · `logs.reasons["locale-plan-refused"]`(B2). ko 후보 문장은 R-B3 W6("아직 보내지 않은 언어 제거가 있어"). GitLab 변형 자리(`logs.gitlab.*`)는 호스트 낱말이 없어 덮지 않았다.
 3. **시안 도착 뒤(⏸ 행 전부)** — design-brief 프레임 **1~25**(2026-10-14 백엔드 계약 반영으로 21~25 추가). 아래 "화면 배치 데이터 계약"을 브리프에 그대로 넘긴다. 신규 Dialog가 생기므로 **DS(`/design-sync`) 행**을 UI 배치 통합 직후·push 전에 둔다. 이어서 DESIGN 갱신 · `/guide`(en·ko·es — "리포에서만 언어 추가·제거" 문구와 MCP 도구·권한 표) · `/guide-shots` · 화면 `/runtime-test`(tasks §9 둘째, 두 세션 외부 제거 포함).
 4. **`/merge`** — 3이 끝난 뒤 사용자가 부른다. 준비물: prod 마이그레이션(위 표), `lib/cli/push-response.ts`의 `locale-change-pending` CLI 경고는 **action 릴리스 축**(`malmoi-i18n-push-vN`)이라 앱 머지와 별개로 판단.
@@ -38,6 +38,7 @@
 - **거부 코드**: 접근(`forbidden`·`not-found`·`archived`·`unauthorized`·`unavailable`) · 판정(`publish-unsettled` — 무효화 중 취소 포함, `base-locale`, `removal-pending`, `no-removal`, `approval-required`, `stale-approval`, `invalid-code`, `unsupported-locale`, `already-active`, `locale-collision`, `unsafe-path`, `path-conflict`, `unsupported-format`) · 폐기(`baseline-unknown`·`baseline-stale` — 제거만, `sync-running`). 다른 화면: `locale-removal-pending`(번역 저장·Revert 거부, `localeCodes` 동반) · `locale-plan-refused`(Publish 미리보기 `refused`, 결정적 — Try again 없음) · `locale-change-pending`(기준 언어 선언·기준 브랜치 변경 거부, CI/야간 deferred).
 - **Publish 미리보기**: `withdrawnLocales` — 파일 diff가 0이어도 열린 PR에서 이전 언어 변경을 거둘 Publish가 필요하다는 신호(프레임 13). 웹 Publish 모달(`components/publish-button.tsx`)은 아직 읽지 않아 이 경우를 "보낼 것 없음"으로 그린다.
 - **번역 화면**: `loadTranslationDetail().locales[].readOnly`를 `initKeyDraft(keyId, values, readOnlyCodes)`와 서버 갱신 액션 `{type: "server", …, readOnly}`에 넘긴다. 저장 버튼은 `savableLocales(draft)`, 이탈 확인은 `dirtyLocales(draft)`. 진행률·결측은 `workLocaleCodes`·`detailFill`(`lib/translations/summary.ts`)만 쓴다. ⚠️ `DetailView.locales`(locale-panel.tsx)에 `readOnly` 타입을 선언해야 한다(지금은 두 함수가 `readOnly?` 임시 형).
+- **Publish 미리보기(추가)**: `expiringLocales` — 다음 방문에 만료될 요청(머지됨 = 이미 리포에 반영 / 머지 없이 닫힘 = 반영 없이 닫힘). 웹 "Not sent" 안내는 그 언어를 이름으로 말하지 않는다(R-F2b 🟡 — 문구는 시안 배치).
 - **지금 화면의 알려진 틈**(MCP로 요청을 만들 수 있으므로 이미 닿는다): 번역 화면이 제거 중 언어를 편집 가능하게 보이고 저장하면 키 전체가 `locale-removal-pending`으로 거부된다(일반 save-failed 문구) · Publish 버튼(`components/publish-button.tsx`)이 `locale-plan-refused`를 base 파일 문구로 폴백한다(MCP 쪽은 C2가 전용 영어 문장을 붙였다) · Logs의 언어 사건은 종류 폴백 문장(“changed Sources & languages”)이다.
 
 ### 알려진 잔여(고치지 않음 — 이유와 함께)
@@ -152,3 +153,4 @@
 - F2 fix1 `worker_done` — 5커밋(presence 전달 `lib/locales/reached.ts` · "이미 리포에 반영됨" vs "반영 없이 닫힘" · 웹 결과 · 지문 꼬리 제거 · ARCHITECTURE §5.10·DIRECTORY, `gate: ok` 15335 · PG 860). `components/publish-button.tsx` 한 줄 수정(소유 밖 — 재리뷰가 판정). **F2 fix2**(ad80605c 테스트) ∥ **R-F2b** 재리뷰.
 - F2 fix2 질문: `ad80605c` 필터는 도달 불가(지원 어댑터 둘 다 재생성이라 경고가 안 남) → **지휘자 판단: revert**(추측성 방어 코드 금지 — CLAUDE.md 작업 원칙).
 - R-F2b 완료(🔴 0 · 🟡 1 · ⚪ 4 — 통합 가능, revert 정당). 🟡 웹 "Not sent" 제목·설명이 빠진 언어 요청을 이름으로 말하지 않음 → **시안 배치**(문구). ⚪ ARCHITECTURE "API 0회" 줄에 §5.10 예외 포인터 → 지휘자 문서 커밋. R-F2b 해제·정리.
+- F2 fix2 `worker_done` — `22728b03`(도달 불가 필터 revert). **F2 통합**(cherry-pick 8) + ARCHITECTURE "API 0회" 예외 포인터(지휘자 문서 커밋) · main 체크아웃 `pnpm gate` **ok**. F2 해제·정리. push 뒤 **RT3**(#267 재실측).
