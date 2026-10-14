@@ -56,3 +56,6 @@
 (통합 커밋·검증 결과·라운드·이슈를 시간순으로 적는다.)
 
 - 2026-10-14 04:2xZ — wave ① 착수: A1 `ctx_b538aeda6cbc`(Opus high, `lo-A1`) · A2 `ctx_f7200ed12b30`(Opus medium, `lo-A2`). launch.effective = requested 확인. ⚠️ `new-top-level` 워크트리가 로컬 dev가 아니라 **origin/dev `1f851139`에서 갈라졌다** — 착수 직후 두 워크트리를 `git rebase dev`(→ `00aeb346`)로 맞추고 `send` + 터미널 입력으로 재독을 알림. 다음 wave부터 착수 직후 base를 확인한다.
+- A2 `worker_done` — `490ceefc`(`gate: ok` 14640 · PG 697). ⚠️ 워커가 `/ship`을 부르지 않고 같은 순서를 손으로 밟음 → 리뷰가 `/code-review`를 대신, 다음 브리프부터 `/ship bypass` 호출 강제. A2 retain. **R-A2** `ctx_8302fe1436c7`.
+- A1 `worker_done` — `d73f2c90`·`a1d033bb`(`gate: ok` 14848 · PG 697). 독자 결정 6건(빈 관측 = `unchanged` 만료 · 모순 행 무조건 만료 등)은 R-A1 판정. A1 retain. **R-A1** `ctx_fb08e5207414`.
+- R-A2 완료(🔴 0 · 🟡 3 · ⚪ 3, 변이 10 중 8 포착 — `.scratch/orch-locale-add/review-A2.md`). **A2 fix1** `ctx_e2a26bf23657` — F1(null 렌더 경로 + delete 같은 경로 검사) + GitHub delete 경로 `isSafeRepoPath`. **B2 브리프로 넘김**: F2(`renderProject` 진입에서 deletes ⊆ REMOVE 언어 resolved 경로 assert + 위반 테스트) · F3(`runPull` delete 분기 시나리오 테스트 둘) · F5(`run.ts:449·469·492`·`read.ts:138` 삭제 구분, 미리보기와 실행에 같은 deletes). **RT 체크리스트로 넘김**: F4(실행 비트 파일 삭제 실측). R-A2 해제·워크트리 정리.
