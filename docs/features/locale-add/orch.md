@@ -13,23 +13,24 @@
 
 ## 이어받기 — 다음 세션은 여기부터 읽는다 (갱신: 2026-10-14)
 
-**한 줄 상태**: 시안 없이 할 수 있는 배치(A1·A2·B1·B2·B3·C1·C2·D)는 전부 dev에 들어갔고 push됐다(P1·P2·P3, CI 모두 success). 남은 것은 ① RT 왕복 QA(진행 중) ② 시안이 와야 하는 화면 일체 ③ `/merge`(이 기능은 화면까지 끝나기 전 머지 금지)다.
+**한 줄 상태**: 시안 없이 할 수 있는 일은 모두 끝났다. 배치 A1·A2·B1·B2·B3·C1·C2·D와 RT에서 나온 수정 F1·F2가 전부 dev에 들어가 push됐고(마지막 `1bcadabd`, CI success), 실호스트 왕복(RT·RT2·RT3)이 GitHub·GitLab × json-catalog·chrome-locales에서 통과했다. 이번 런의 이슈 #265·#266·#267은 모두 고쳐서 닫았다. **남은 것은 시안이 와야 하는 화면 일체와 `/merge`뿐이다**(이 기능은 화면까지 끝나기 전 머지 금지).
 
 | 항목 | 상태 |
 |---|---|
-| dev head | `2fc25ed4`(origin/dev와 같음, P3 + design-brief) |
+| dev head | 이 문서를 담은 커밋(origin/dev와 같음). 코드 마지막 = `1bcadabd` |
 | 마이그레이션 | `20261014060000_locale_change` — **dev DB 적용 완료**(anon/authenticated USAGE·CREATE false, GRANT 0). **prod는 미적용** → `/merge` 1단계 `pnpm db:status:prod` → `pnpm db:deploy` → prod `has_schema_privilege` 확인 |
-| 살아 있는 워커 | **RT** 터미널(retain, main 체크아웃 — RT3: #267 실호스트 재실측·닫기). 그 밖은 전부 해제·삭제 |
-| RT가 도는 동안 | main 체크아웃에서 cherry-pick·`pnpm build`·`pnpm gate` 금지(dev 서버 HMR·`.next` 오염). RT 뒤 `rm -rf .next/dev`, 리포 밖 clone 확인 |
-| Orca run | `run_2836e5d910eb` — 새 세션은 새 run을 만들어도 된다(이 run의 Delivery는 모두 ack됨) |
-| 로컬 전용 자료 | `.scratch/orch-locale-add/`(브리프·인계·리뷰 원문) — **gitignore라 이 머신에만 있다.** 필요한 결론은 아래와 design.md·ARCHITECTURE §5.10에 옮겨 두었다 |
+| 살아 있는 워커 | 없음 — 모든 워커·워크트리 해제·삭제(reclaimable 0) |
+| Orca run | `run_2836e5d910eb` — Delivery 전부 ack. 새 세션은 새 run을 만든다 |
+| 열린 이슈 | 없음(`[locale-add]` 전부 닫힘) |
+| 로컬 전용 자료 | `.scratch/orch-locale-add/`(브리프·인계·리뷰 원문, RT 증거 표) — **gitignore라 이 머신에만 있다.** 필요한 결론은 이 문서·design.md·ARCHITECTURE §5.10에 옮겨 두었다 |
 
 ### 남은 일 (주인·순서)
 
-1. **RT 결함 수정·재실측** — RT 매트릭스 4/4 통과, 결함 둘: [#266](https://github.com/SinhyeokKang/malmoi/issues/266)(🔴 미머지 종료 뒤 재요청한 제거가 전달 목록과 같아져 PR에 안 실리고 다음 방문이 지운다) · [#265](https://github.com/SinhyeokKang/malmoi/issues/265)(🟡 MCP `preview_publish`가 전달 후 취소에서 "Nothing to send."). F1(+fix1·fix2, R-F1 리뷰)이 고쳐 dev에 통합·push(`9bca1c98`, CI success) → **RT2에서 두 호스트 4/4 통과, #266·#265 닫힘**. RT2가 새 결함 [#267](https://github.com/SinhyeokKang/malmoi/issues/267)(🟡 미머지 종료 뒤 만료 방문 전 Publish: 미리보기는 삭제를 약속, 실행은 1층 스킵으로 `no-edits` + 거짓 문구 — 1층 스킵이 스냅샷 전 만료보다 먼저라 R4가 안 선다)을 냈다 → F2(+fix1·fix2, R-F2·R-F2b 리뷰) 통합·push → **RT3 재실측 중** → 통과하면 #267 닫고 tasks §9 셋째·넷째 체크.
+1. ~~RT 결함 수정·재실측~~ **완료** — — RT 매트릭스 4/4 통과, 결함 둘: [#266](https://github.com/SinhyeokKang/malmoi/issues/266)(🔴 미머지 종료 뒤 재요청한 제거가 전달 목록과 같아져 PR에 안 실리고 다음 방문이 지운다) · [#265](https://github.com/SinhyeokKang/malmoi/issues/265)(🟡 MCP `preview_publish`가 전달 후 취소에서 "Nothing to send."). F1(+fix1·fix2, R-F1 리뷰)이 고쳐 dev에 통합·push(`9bca1c98`, CI success) → **RT2에서 두 호스트 4/4 통과, #266·#265 닫힘**. RT2가 새 결함 [#267](https://github.com/SinhyeokKang/malmoi/issues/267)(🟡 미머지 종료 뒤 만료 방문 전 Publish: 미리보기는 삭제를 약속, 실행은 1층 스킵으로 `no-edits` + 거짓 문구 — 1층 스킵이 스냅샷 전 만료보다 먼저라 R4가 안 선다)을 냈다 → F2(+fix1·fix2, R-F2·R-F2b 리뷰) 통합·push → RT3 두 호스트 통과 → #267 닫음. tasks §9 셋째·넷째 체크됨. **미측정으로 남은 것**: Chrome 확장 실제 로드(비-messages 파일 잔존), 실제 네트워크 단절, `/mcp` 화면 토큰 발급, 재요청 뒤 CI 적재 보류, 웹 Publish 모달 흐름(시안 배치에서).
 2. **ko·es 초안 검수(`/translate`)** — 이 런이 넣은 사전 문구는 en 확정, ko·es는 초안: `logs.deferReasons["locale-change-pending"]` · `logs.sentence.import.held["locale-change-pending"]`(B3) · `logs.reasons["locale-plan-refused"]`(B2). ko 후보 문장은 R-B3 W6("아직 보내지 않은 언어 제거가 있어"). GitLab 변형 자리(`logs.gitlab.*`)는 호스트 낱말이 없어 덮지 않았다.
 3. **시안 도착 뒤(⏸ 행 전부)** — design-brief 프레임 **1~25**(2026-10-14 백엔드 계약 반영으로 21~25 추가). 아래 "화면 배치 데이터 계약"을 브리프에 그대로 넘긴다. 신규 Dialog가 생기므로 **DS(`/design-sync`) 행**을 UI 배치 통합 직후·push 전에 둔다. 이어서 DESIGN 갱신 · `/guide`(en·ko·es — "리포에서만 언어 추가·제거" 문구와 MCP 도구·권한 표) · `/guide-shots` · 화면 `/runtime-test`(tasks §9 둘째, 두 세션 외부 제거 포함).
-4. **`/merge`** — 3이 끝난 뒤 사용자가 부른다. 준비물: prod 마이그레이션(위 표), `lib/cli/push-response.ts`의 `locale-change-pending` CLI 경고는 **action 릴리스 축**(`malmoi-i18n-push-vN`)이라 앱 머지와 별개로 판단.
+4. **POSTMORTEM** — RT가 잡은 #266·#265·#267(전달 목록이 "어느 요청의 효과인가"를 모르는 부류, 1층 스킵이 만료보다 먼저인 순서)을 `/postmortem`으로 남긴다.
+5. **`/merge`** — 3이 끝난 뒤 사용자가 부른다. 준비물: prod 마이그레이션(위 표), `lib/cli/push-response.ts`의 `locale-change-pending` CLI 경고는 **action 릴리스 축**(`malmoi-i18n-push-vN`)이라 앱 머지와 별개로 판단.
 
 ### 화면 배치 데이터 계약 (C1 인계에서 옮김 — 원문은 로컬 `handoff-C1.md`)
 
@@ -154,3 +155,4 @@
 - F2 fix2 질문: `ad80605c` 필터는 도달 불가(지원 어댑터 둘 다 재생성이라 경고가 안 남) → **지휘자 판단: revert**(추측성 방어 코드 금지 — CLAUDE.md 작업 원칙).
 - R-F2b 완료(🔴 0 · 🟡 1 · ⚪ 4 — 통합 가능, revert 정당). 🟡 웹 "Not sent" 제목·설명이 빠진 언어 요청을 이름으로 말하지 않음 → **시안 배치**(문구). ⚪ ARCHITECTURE "API 0회" 줄에 §5.10 예외 포인터 → 지휘자 문서 커밋. R-F2b 해제·정리.
 - F2 fix2 `worker_done` — `22728b03`(도달 불가 필터 revert). **F2 통합**(cherry-pick 8) + ARCHITECTURE "API 0회" 예외 포인터(지휘자 문서 커밋) · main 체크아웃 `pnpm gate` **ok**. F2 해제·정리. push 뒤 **RT3**(#267 재실측).
+- **RT3 완료** — GitHub·GitLab 둘 다 4/4: 머지 없이 닫힌 REMOVE·ADD("반영 없이 닫힘 — Publish가 요청을 버린다", 파일 약속 없음, PR #27/#29·MR !23/!24) · 머지된 REMOVE·ADD("이미 리포에 반영", PR #28/#30·MR !25/!26) · 평소 셀 편집 Publish 문구 불변(PR #31·MR !27). **#267 닫음**, 새 결함 0. 미측정: 웹 Publish 모달. RT 해제. tasks §9 셋째·넷째 체크. **런의 시안 없는 범위 종료.**
