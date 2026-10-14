@@ -392,6 +392,26 @@ describe("전달 후 취소 → 미머지 종료 → 같은 언어 재요청 (F1
   });
 });
 
+describe("확인 뒤 요청이 현재 효과를 내지 않으면 옛 효과를 남긴다 (F1 fix1)", () => {
+  it("전달된 추가 취소 → 재추가 후 값을 비움(값 0개 ADD) → 작업 1·거둘 효과 create fr — 열린 PR의 옛 새 파일을 Publish가 거둔다", async () => {
+    await addLocale(prisma, OWNER, { ...WEB, localeCode: "fr" });
+    await save("hello", "fr", "Bonjour");
+    fake({ "i18n/en.json": EN, "i18n/ko.json": KO });
+    expect(await publish()).toMatchObject({ status: "committed" });
+    await ageRuns();
+    const removal = await previewLocaleRemoval(prisma, OWNER, { ...WEB, localeCode: "fr" });
+    if (!removal.ok) throw new Error("preview refused");
+    expect(await removeLocale(prisma, OWNER, { ...WEB, localeCode: "fr", approval: removal.approval })).toMatchObject({ ok: true, kind: "cancel-add" });
+    expect(await addLocale(prisma, OWNER, { ...WEB, localeCode: "fr" })).toMatchObject({ ok: true });
+    // 되살린 값을 비운다 — 이 요청은 파일을 내지 않는다(값 0개 ADD).
+    await prisma.translation.updateMany({ where: { projectId: "p", localeCode: "fr" }, data: { value: "" } });
+    expect(await delivered()).toEqual([{ localeCode: "fr", effect: "create" }]);
+    expect(await countLocaleWork(prisma, "p")).toBe(1);
+    fake({ "i18n/en.json": EN, "i18n/ko.json": KO }, { openPr: { url: "https://github.com/o/r/pull/9", number: 9, title: "chore(i18n): sync [skip ci]", base: "main" } });
+    expect(await readPublishPreview(prisma, "p", "fixture")).toMatchObject({ fileChanges: [], withdrawnLocales: [{ surfaceSlug: "default", localeCode: "fr", effect: "create" }] });
+  });
+});
+
 /**
  * **전달된 의도를 취소하면 파일 diff가 0이어도 Publish할 일이 있다** (#265 — design-brief 프레임 13 "이전 변경 거두기"). 취소로 되돌린 파일은 base와
  * 같아 `fileChanges`에 없지만, 열린 PR에는 옛 삭제·새 파일이 남아 있다. 미리보기가 그 거둘 효과를 데이터로 싣는다 — MCP 문장과 화면이 같은 신호를 읽는다.

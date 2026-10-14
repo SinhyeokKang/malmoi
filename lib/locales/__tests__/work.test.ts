@@ -92,21 +92,27 @@ describe("deliveredForRequests", () => {
   const confirmedFrom = new Date("2026-10-14T10:00:00.000Z");
   const at = (iso: string) => new Date(iso);
   const delivered = [{ localeCode: "fr", effect: "create" as const }, { localeCode: "ko", effect: "delete" as const }];
+  const current = [{ localeCode: "fr", effect: "create" as const }, { localeCode: "ko", effect: "delete" as const }];
 
   it("확인한 실행이 시작된 뒤(같은 밀리초 포함)에 낸 요청의 코드는 전달 목록에서 견주지 않는다 — 다른 코드의 효과는 남는다", () => {
-    expect(deliveredForRequests(delivered, [{ localeCode: "ko", requestedAt: at("2026-10-14T10:00:00.001Z") }], confirmedFrom))
+    expect(deliveredForRequests(delivered, [{ localeCode: "ko", requestedAt: at("2026-10-14T10:00:00.001Z") }], confirmedFrom, current))
       .toEqual([{ localeCode: "fr", effect: "create" }]);
-    expect(deliveredForRequests(delivered, [{ localeCode: "ko", requestedAt: confirmedFrom }], confirmedFrom))
+    expect(deliveredForRequests(delivered, [{ localeCode: "ko", requestedAt: confirmedFrom }], confirmedFrom, current))
       .toEqual([{ localeCode: "fr", effect: "create" }]);
   });
 
   it("확인보다 앞선 요청은 그대로 견준다", () => {
-    expect(deliveredForRequests(delivered, [{ localeCode: "ko", requestedAt: at("2026-10-14T09:59:59.999Z") }, { localeCode: "fr", requestedAt: at("2026-10-01T00:00:00.000Z") }], confirmedFrom))
+    expect(deliveredForRequests(delivered, [{ localeCode: "ko", requestedAt: at("2026-10-14T09:59:59.999Z") }, { localeCode: "fr", requestedAt: at("2026-10-01T00:00:00.000Z") }], confirmedFrom, current))
+      .toEqual(delivered);
+  });
+
+  it("확인 뒤 요청이 현재 효과를 내지 않으면(값 0개 ADD) 옛 효과를 남긴다 — 열린 PR에 실렸을 수 있어 Publish가 거둬야 한다", () => {
+    expect(deliveredForRequests(delivered, [{ localeCode: "fr", requestedAt: at("2026-10-14T11:00:00.000Z") }], confirmedFrom, [{ localeCode: "ko", effect: "delete" }]))
       .toEqual(delivered);
   });
 
   it("확인 안 됨(null)은 그대로 null이다 — 확인 시각이 없으면(확인 행 없음) 목록 그대로다", () => {
-    expect(deliveredForRequests(null, [{ localeCode: "ko", requestedAt: at("2026-10-15T00:00:00.000Z") }], confirmedFrom)).toBeNull();
-    expect(deliveredForRequests([], [{ localeCode: "ko", requestedAt: at("2026-10-15T00:00:00.000Z") }], null)).toEqual([]);
+    expect(deliveredForRequests(null, [{ localeCode: "ko", requestedAt: at("2026-10-15T00:00:00.000Z") }], confirmedFrom, current)).toBeNull();
+    expect(deliveredForRequests([], [{ localeCode: "ko", requestedAt: at("2026-10-15T00:00:00.000Z") }], null, current)).toEqual([]);
   });
 });
