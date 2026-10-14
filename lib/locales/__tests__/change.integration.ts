@@ -17,10 +17,12 @@ import { applyKeySave } from "@/lib/keys/save-key";
 import { previewKeyRevert } from "@/lib/keys/revert";
 import { hashPushToken } from "@/lib/push/token";
 import { declareBaseLocale } from "@/lib/sources/base-locale";
+import { deliveryContextFingerprint } from "@/lib/translations/context";
 import { en } from "@/messages/en";
 
 import { addLocale, cancelLocaleRemoval, previewLocaleRemoval, removeLocale } from "../change";
 import { countLocaleWork } from "../work";
+import { waitForLockWait } from "./lock-wait";
 
 /**
  * **언어 추가·제거·취소의 공통 코어** (locale-add tasks §3 — design §1·§3).
@@ -126,6 +128,31 @@ async function approvalFor(localeCode: string, subject = OWNER) {
   return preview.approval;
 }
 
+/**
+ * 유효한 전달 확인 — 실제 지문이라 그 뒤의 저장이 복원 기준(`TranslationBaseline`)을 남긴다(Revert와 같은 전제).
+ * `effects`는 그 확인이 실은 파일 집합 변경이다.
+ */
+async function confirm(surfaceId: string, effects: { localeCode: string; effect: "create" | "delete" }[] = []) {
+  const run = await prisma.syncRun.create({ data: { projectId: "p", status: "SUCCEEDED", trigger: "MANUAL", startedAt: new Date(Date.now() - 600_000), finishedAt: new Date(Date.now() - 590_000) } });
+  const project = await prisma.project.findUniqueOrThrow({ where: { id: "p" } });
+  const surface = await prisma.translationSurface.findUniqueOrThrow({ where: { id: surfaceId } });
+  const contextFingerprint = deliveryContextFingerprint({ repoHost: project.repoHost, repositoryId: project.repositoryId, baseBranch: project.baseBranch, surface });
+  const data = { revision: `rev-${run.id}`, syncRunId: run.id, contextFingerprint, deliveredLocaleChanges: effects, invalidatedAt: null };
+  await prisma.deliveryConfirmation.upsert({ where: { projectId_surfaceId: { projectId: "p", surfaceId } }, create: { projectId: "p", surfaceId, ...data }, update: data });
+}
+
+/** Publish 성공 확정을 흉내 낸다 — 그 소스의 미전달 토큰·기준을 풀고 확인을 새로 세운다. */
+async function publishConfirmed(surfaceId: string, effects: { localeCode: string; effect: "create" | "delete" }[]) {
+  await prisma.translation.updateMany({ where: { projectId: "p", surfaceId }, data: { pendingEditToken: null } });
+  await prisma.translationBaseline.deleteMany({ where: { projectId: "p", surfaceId } });
+  await confirm(surfaceId, effects);
+}
+
+/** 다음 Publish가 첫 외부 쓰기 전에 거는 무효화(또는 설정 변경의 무효화) — 다음 성공 확인만 푼다. */
+async function invalidate(surfaceId: string) {
+  await prisma.deliveryConfirmation.updateMany({ where: { projectId: "p", surfaceId }, data: { invalidatedAt: new Date() } });
+}
+
 describe("addLocale — 새 언어", () => {
   it("Locale·ADD 행·사건이 한 tx에 생기고 바로 편집할 수 있다", async () => {
     expect(await addLocale(prisma, OWNER, { ...WEB, localeCode: "fr" })).toEqual({ ok: true, action: "create", path: "web/fr.json", reissued: 0 });
@@ -148,6 +175,9 @@ describe("addLocale — 새 언어", () => {
     await prisma.translation.create({ data: { projectId: "p", surfaceId: "s-web", keyId: "s-web-hello", localeCode: "de", value: "Hallo", updatedBy: "editor" } });
     await prisma.translation.create({ data: { projectId: "p", surfaceId: "s-web", keyId: "s-web-bye", localeCode: "de", value: "" } });
     await prisma.translation.create({ data: { projectId: "p", surfaceId: "s-web", keyId: "s-web-gone", localeCode: "de", value: "Weg" } });
+    // 소스 경계 그물(R-B1 Y2 · M8) — 다른 소스의 같은 코드 orphan 셀은 토큰을 받지 않는다.
+    await prisma.locale.create({ data: { projectId: "p", surfaceId: "s-app", code: "de", name: "de", orphaned: true } });
+    await prisma.translation.create({ data: { projectId: "p", surfaceId: "s-app", keyId: "s-app-hello", localeCode: "de", value: "App-Hallo" } });
     const before = await cells("s-web", "de");
 
     expect(await addLocale(prisma, OWNER, { ...WEB, localeCode: "de" })).toEqual({ ok: true, action: "revive", path: "web/de.json", reissued: 1 });
@@ -158,6 +188,8 @@ describe("addLocale — 새 언어", () => {
     expect(after.find(cell => cell.keyId === "s-web-gone")!.pendingEditToken).toBeNull();
     expect(await prisma.translationBaseline.count({ where: { projectId: "p" } })).toBe(0);
     expect((await prisma.locale.findUniqueOrThrow({ where: { projectId_surfaceId_code: { projectId: "p", surfaceId: "s-web", code: "de" } } })).orphaned).toBe(false);
+    expect(await cells("s-app", "de")).toMatchObject([{ keyId: "s-app-hello", pendingEditToken: null }]);
+    expect((await prisma.locale.findUniqueOrThrow({ where: { projectId_surfaceId_code: { projectId: "p", surfaceId: "s-app", code: "de" } } })).orphaned).toBe(true);
     const event = await prisma.projectEvent.findFirstOrThrow({ where: { projectId: "p", subtype: "surface.localeAdded" } });
     expect(event.payload).toMatchObject({ localeChange: { locale: "de", operation: "ADD", revived: true } });
   });
@@ -197,15 +229,19 @@ describe("addLocale — 새 언어", () => {
 
 describe("제거 미리보기·실행", () => {
   it("미리보기는 쓰지 않고 대상 경로·번역 수·그 언어 미전달 수·지문을 돌려준다", async () => {
+    await confirm("s-web");
     await save("s-web", "hello", "ko", "안녕");
     await save("s-web", "hello", "en", "Hi");
+    // 소스 경계 그물(R-B1 Y2 · M1) — 다른 소스의 같은 코드 편집은 이 소스의 미전달 수가 아니다.
+    await save("s-app", "hello", "ko", "앱");
     const before = await state();
     const preview = await previewLocaleRemoval(prisma, OWNER, { ...WEB, localeCode: "ko" });
     expect(preview).toMatchObject({ ok: true, kind: "request-removal", path: "web/ko.json", translations: 2, pendingCount: 1, delivered: false });
     expect(await state()).toEqual(before);
   });
 
-  it("승인 없음·낡은 승인은 거부하고, 유효한 승인은 REMOVE 행 + 그 언어 토큰만 폐기 + 사건", async () => {
+  it("승인 없음·낡은 승인은 거부하고, 유효한 승인은 REMOVE 행 + 그 언어 편집만 마지막 전달 값으로 폐기 + 사건", async () => {
+    await confirm("s-web");
     await save("s-web", "hello", "ko", "안녕");
     await save("s-web", "hello", "en", "Hi");
     const stale = await approvalFor("ko");
@@ -218,7 +254,9 @@ describe("제거 미리보기·실행", () => {
     const enBefore = await cells("s-web", "en");
     expect(await removeLocale(prisma, OWNER, { ...WEB, localeCode: "ko", approval: await approvalFor("ko") })).toEqual({ ok: true, kind: "request-removal", discarded: 2 });
     expect((await cells("s-web", "ko")).every(cell => cell.pendingEditToken === null)).toBe(true);
-    expect((await cells("s-web", "ko")).find(cell => cell.keyId === "s-web-hello")!.value).toBe("안녕");
+    // 폐기는 Revert와 같은 의미다 — 마지막 전달 값으로 되돌리고 기준 행을 지운다(design §3, R-B1 Y1).
+    expect((await cells("s-web", "ko")).map(cell => [cell.keyId, cell.value])).toEqual([["s-web-bye", "bye-ko"], ["s-web-hello", "hello-ko"]]);
+    expect(await prisma.translationBaseline.count({ where: { projectId: "p", surfaceId: "s-web", localeCode: "ko" } })).toBe(0);
     expect(await cells("s-web", "en")).toEqual(enBefore);
     // 제거 요청은 바로 orphan하지 않는다 — 취소하면 편집을 다시 허용해야 한다.
     expect((await prisma.locale.findUniqueOrThrow({ where: { projectId_surfaceId_code: { projectId: "p", surfaceId: "s-web", code: "ko" } } })).orphaned).toBe(false);
@@ -250,6 +288,39 @@ describe("제거 미리보기·실행", () => {
     await prisma.translationSurface.update({ where: { id: "s-web" }, data: { declaredBaseLocale: "ko" } });
     expect(await removeLocale(prisma, OWNER, { ...WEB, localeCode: "ko", approval })).toEqual({ ok: false, error: "base-locale" });
     expect(await prisma.localeChange.count()).toBe(0);
+  });
+
+  it("제거 → 제거 취소 뒤 폐기한 셀은 마지막 전달 값이고 추적이 없다 — 다음 Publish에 조용히 실리지 않는다", async () => {
+    await confirm("s-web");
+    await save("s-web", "hello", "ko", "미전달");
+    expect(await removeLocale(prisma, OWNER, { ...WEB, localeCode: "ko", approval: await approvalFor("ko") })).toEqual({ ok: true, kind: "request-removal", discarded: 1 });
+    expect(await cancelLocaleRemoval(prisma, OWNER, { ...WEB, localeCode: "ko" })).toEqual({ ok: true, delivered: false });
+    expect((await cells("s-web", "ko")).find(cell => cell.keyId === "s-web-hello")).toMatchObject({ value: "hello-ko", pendingEditToken: null });
+    expect(await countLocaleWork(prisma, "p")).toBe(0);
+    const reverted = await prisma.projectEvent.findMany({ where: { projectId: "p", subtype: "translation.reverted" } });
+    expect(reverted.map(event => event.payload)).toMatchObject([{ key: "hello", locale: "ko", before: "미전달", after: "hello-ko" }]);
+  });
+
+  it("복원 기준이 없는 미전달 셀이 있으면 제거를 거부한다 — 미리보기와 실행 모두, 쓰기 0", async () => {
+    // 확인 없이 저장 — 기준이 남지 않는다(Revert의 baseline-unknown과 같은 상태).
+    await save("s-web", "hello", "ko", "안녕");
+    expect(await previewLocaleRemoval(prisma, OWNER, { ...WEB, localeCode: "ko" })).toEqual({ ok: false, error: "baseline-unknown" });
+    // 승인을 받은 뒤 기준이 사라진 경우 — 실행이 잠금 뒤 다시 본다.
+    await prisma.translation.updateMany({ where: { projectId: "p", surfaceId: "s-web", localeCode: "ko" }, data: { pendingEditToken: null } });
+    await confirm("s-web");
+    await save("s-web", "hello", "ko", "다시");
+    const approval = await approvalFor("ko");
+    await prisma.translationBaseline.deleteMany({ where: { projectId: "p", surfaceId: "s-web", localeCode: "ko" } });
+    const before = await state();
+    expect(await removeLocale(prisma, OWNER, { ...WEB, localeCode: "ko", approval })).toEqual({ ok: false, error: "baseline-unknown" });
+    expect(await state()).toEqual(before);
+  });
+
+  it("확인이 무효화된 뒤의 미전달 편집은 기준이 낡아 제거를 거부한다", async () => {
+    await confirm("s-web");
+    await save("s-web", "hello", "ko", "안녕");
+    await invalidate("s-web");
+    expect(await previewLocaleRemoval(prisma, OWNER, { ...WEB, localeCode: "ko" })).toEqual({ ok: false, error: "baseline-stale" });
   });
 });
 
@@ -295,7 +366,7 @@ describe("제거 상태의 쓰기 거부 (저장 · Revert · 기준 언어)", (
   });
 
   it("전달된 제거를 취소하면 작업 1로 남는다 — 다음 Publish가 이전 삭제를 지운다", async () => {
-    await deliver("s-web", [{ localeCode: "ko", effect: "delete" }]);
+    await publishConfirmed("s-web", [{ localeCode: "ko", effect: "delete" }]);
     expect(await countLocaleWork(prisma, "p")).toBe(0);
     expect(await cancelLocaleRemoval(prisma, OWNER, { ...WEB, localeCode: "ko" })).toEqual({ ok: true, delivered: true });
     expect(await countLocaleWork(prisma, "p")).toBe(1);
@@ -309,13 +380,9 @@ describe("제거 상태의 쓰기 거부 (저장 · Revert · 기준 언어)", (
   });
 });
 
-async function deliver(surfaceId: string, effects: { localeCode: string; effect: "create" | "delete" }[]) {
-  const run = await prisma.syncRun.create({ data: { projectId: "p", status: "SUCCEEDED", trigger: "MANUAL", startedAt: new Date(Date.now() - 600_000), finishedAt: new Date(Date.now() - 590_000) } });
-  await prisma.deliveryConfirmation.create({ data: { projectId: "p", surfaceId, revision: `rev-${surfaceId}`, syncRunId: run.id, contextFingerprint: "ctx", deliveredLocaleChanges: effects } });
-}
-
 describe("추가 취소", () => {
-  it("ADD 행 삭제 + orphan + 그 언어 미전달 편집 승인 폐기 — 값과 다른 언어는 그대로다", async () => {
+  it("ADD 행 삭제 + orphan + 그 언어 미전달 편집을 마지막 전달 값으로 폐기 — 다른 언어는 그대로다", async () => {
+    await confirm("s-web");
     await addLocale(prisma, OWNER, { ...WEB, localeCode: "fr" });
     await save("s-web", "hello", "fr", "Bonjour");
     await save("s-web", "hello", "ko", "안녕");
@@ -325,21 +392,22 @@ describe("추가 취소", () => {
     expect(await removeLocale(prisma, OWNER, { ...WEB, localeCode: "fr", approval: preview.ok ? preview.approval : null })).toEqual({ ok: true, kind: "cancel-add", discarded: 1 });
     expect(await prisma.localeChange.count()).toBe(0);
     expect((await prisma.locale.findUniqueOrThrow({ where: { projectId_surfaceId_code: { projectId: "p", surfaceId: "s-web", code: "fr" } } })).orphaned).toBe(true);
-    expect(await cells("s-web", "fr")).toMatchObject([{ keyId: "s-web-hello", value: "Bonjour", pendingEditToken: null }]);
+    // 새 언어의 마지막 전달 값은 "없음"이다 — 비-base 부재는 `""`로 복원된다(`restoreValueOf`).
+    expect(await cells("s-web", "fr")).toMatchObject([{ keyId: "s-web-hello", value: "", pendingEditToken: null }]);
     expect(await cells("s-web", "ko")).toEqual(koBefore);
     expect(await countLocaleWork(prisma, "p")).toBe(0);
     const event = await prisma.projectEvent.findFirstOrThrow({ where: { projectId: "p", subtype: "surface.localeChangeCancelled" } });
     expect(event.payload).toMatchObject({ localeChange: { locale: "fr", operation: "ADD", discarded: 1 } });
 
-    // 재추가는 같은 행과 값을 되살리고 값 있는 셀에 토큰을 다시 준다.
-    expect(await addLocale(prisma, OWNER, { ...WEB, localeCode: "fr" })).toEqual({ ok: true, action: "revive", path: "web/fr.json", reissued: 1 });
-    expect(await cells("s-web", "fr")).toMatchObject([{ value: "Bonjour", pendingEditToken: expect.any(String) }]);
+    // 재추가는 같은 행을 되살린다 — 값이 빈 셀에는 토큰을 주지 않는다.
+    expect(await addLocale(prisma, OWNER, { ...WEB, localeCode: "fr" })).toEqual({ ok: true, action: "revive", path: "web/fr.json", reissued: 0 });
   });
 
   it("전달된 추가의 취소는 미리보기가 전달됨을 말하고 작업 1로 남는다", async () => {
+    await confirm("s-web");
     await addLocale(prisma, OWNER, { ...WEB, localeCode: "fr" });
     await save("s-web", "hello", "fr", "Bonjour");
-    await deliver("s-web", [{ localeCode: "fr", effect: "create" }]);
+    await publishConfirmed("s-web", [{ localeCode: "fr", effect: "create" }]);
     const preview = await previewLocaleRemoval(prisma, OWNER, { ...WEB, localeCode: "fr" });
     expect(preview).toMatchObject({ ok: true, kind: "cancel-add", delivered: true });
     await removeLocale(prisma, OWNER, { ...WEB, localeCode: "fr", approval: preview.ok ? preview.approval : null });
@@ -370,6 +438,57 @@ describe("결과 미확정 Publish와의 상호 배제", () => {
     }
   });
 
+  /**
+   * R-B1 🔴 R1 — 무효화는 시간으로 풀리지 않는다. 전달된 추가·제거를 그 사이 취소하면 작업이 0으로 접혀 열린 PR의 stale 파일이 남는다.
+   * 300초 창이 지난 미확인 실행 · 일반 실패 · 설정 변경 무효화 셋 모두 취소를 거부해야 한다.
+   */
+  const INVALIDATIONS: [string, () => Promise<void>][] = [
+    ["400초 전 미확인 실행 + 무효화", async () => {
+      await prisma.syncRun.create({ data: { projectId: "p", trigger: "MANUAL", status: "FAILED", errorCode: "execution-uncertain", startedAt: new Date(Date.now() - 400_000) } });
+      await invalidate("s-web");
+    }],
+    ["일반 실패 + 무효화", async () => {
+      await prisma.syncRun.create({ data: { projectId: "p", trigger: "MANUAL", status: "FAILED", errorCode: "github-error", startedAt: new Date(Date.now() - 1_000) } });
+      await invalidate("s-web");
+    }],
+    ["설정 변경 무효화만", () => invalidate("s-web")],
+  ];
+
+  it.each(INVALIDATIONS)("%s → 전달된 추가의 취소는 publish-unsettled, 쓰기 0", async (_label, invalidateNow) => {
+    await confirm("s-web");
+    await addLocale(prisma, OWNER, { ...WEB, localeCode: "fr" });
+    await save("s-web", "hello", "fr", "Bonjour");
+    await publishConfirmed("s-web", [{ localeCode: "fr", effect: "create" }]);
+    const approval = await approvalFor("fr");
+    await invalidateNow();
+    const before = await state();
+    expect(await previewLocaleRemoval(prisma, OWNER, { ...WEB, localeCode: "fr" })).toEqual({ ok: false, error: "publish-unsettled" });
+    expect(await removeLocale(prisma, OWNER, { ...WEB, localeCode: "fr", approval })).toEqual({ ok: false, error: "publish-unsettled" });
+    expect(await state()).toEqual(before);
+  });
+
+  it.each(INVALIDATIONS)("%s → 전달된 제거의 취소는 publish-unsettled, 쓰기 0", async (_label, invalidateNow) => {
+    await removeLocale(prisma, OWNER, { ...WEB, localeCode: "ko", approval: await approvalFor("ko") });
+    await publishConfirmed("s-web", [{ localeCode: "ko", effect: "delete" }]);
+    await invalidateNow();
+    const before = await state();
+    expect(await cancelLocaleRemoval(prisma, OWNER, { ...WEB, localeCode: "ko" })).toEqual({ ok: false, error: "publish-unsettled" });
+    expect(await state()).toEqual(before);
+  });
+
+  it("무효화 중에도 값 0개 ADD의 취소와 새 요청은 막지 않는다", async () => {
+    await confirm("s-web");
+    await addLocale(prisma, OWNER, { ...WEB, localeCode: "fr" });
+    await invalidate("s-web");
+    const preview = await previewLocaleRemoval(prisma, OWNER, { ...WEB, localeCode: "fr" });
+    expect(preview).toMatchObject({ ok: true, kind: "cancel-add", pendingCount: 0 });
+    // 확인 안 됨을 "전달 안 됨"으로 말하지 않는다.
+    expect(preview.ok && preview.delivered).toBeNull();
+    expect(await removeLocale(prisma, OWNER, { ...WEB, localeCode: "fr", approval: preview.ok ? preview.approval : null })).toMatchObject({ ok: true, kind: "cancel-add" });
+    expect(await addLocale(prisma, OWNER, { ...WEB, localeCode: "de" })).toMatchObject({ ok: true });
+    expect(await removeLocale(prisma, OWNER, { ...WEB, localeCode: "ko", approval: await approvalFor("ko") })).toMatchObject({ ok: true, kind: "request-removal" });
+  });
+
   it("제거 취소도 미확정 Publish 중에는 거부한다", async () => {
     await removeLocale(prisma, OWNER, { ...WEB, localeCode: "ko", approval: await approvalFor("ko") });
     await prisma.syncRun.create({ data: { projectId: "p", trigger: "MANUAL", status: "RUNNING" } });
@@ -386,7 +505,8 @@ describe("잠금 순서 — Project → TranslationSurface (CI 적재·Publish �
       await client.query(sql);
       let settled = false;
       const pending = write().finally(() => { settled = true; });
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // 고정 sleep이 아니라 잠금 대기를 관측한다(POSTMORTEM 2026-10-09).
+      await waitForLockWait(pool);
       expect(settled).toBe(false);
       await client.query("COMMIT");
       await pending;
@@ -410,7 +530,7 @@ describe("잠금 순서 — Project → TranslationSurface (CI 적재·Publish �
       await client.query("BEGIN");
       await client.query(`SELECT "id" FROM "Project" WHERE "id" = 'p' FOR UPDATE`);
       const pending = removeLocale(prisma, OWNER, { ...WEB, localeCode: "ko", approval });
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await waitForLockWait(pool);
       await client.query(`UPDATE "Translation" SET "pendingEditToken" = 'late' WHERE "projectId" = 'p' AND "surfaceId" = 's-web' AND "keyId" = 's-web-bye' AND "localeCode" = 'ko'`);
       await client.query("COMMIT");
       expect(await pending).toEqual({ ok: false, error: "stale-approval" });

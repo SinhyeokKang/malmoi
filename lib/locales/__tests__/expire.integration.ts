@@ -17,6 +17,7 @@ import { en } from "@/messages/en";
 
 import { expireLocaleChanges, type LocaleExpiryInput } from "../expire";
 import { countLocaleWork, readLocaleStates } from "../work";
+import { waitForLockWait } from "./lock-wait";
 
 /**
  * **언어 변경 의도 만료와 작업 수** (locale-add design §1 "만료와 strict 적재" · orch O4). 순수 판정(`planLocaleExpiry`)은 표 테스트가 덮고,
@@ -92,8 +93,11 @@ describe("expireLocaleChanges", () => {
   it("머지된 제거 — 전달 확인·열린 PR 없음·base에 파일 없음 → 행 삭제 + orphan + 사건", async () => {
     await request("s-web", "ko", "REMOVE");
     await deliver("s-web", [{ localeCode: "ko", effect: "delete" }]);
+    // 소스 경계 그물(R-B1 Y2 · M11) — 다른 소스의 같은 코드 의도 행은 이 만료가 지우지 않는다.
+    await request("s-app", "ko", "REMOVE");
+    await deliver("s-app", [{ localeCode: "ko", effect: "delete" }]);
     expect(await expire({ observed: { status: "observed", locales: ["en", "fr"] } })).toEqual({ expired: [{ localeCode: "ko", operation: "REMOVE", presence: "orphan" }], held: null });
-    expect(await prisma.localeChange.count()).toBe(0);
+    expect(await prisma.localeChange.findMany({ where: { projectId: "p" }, select: { surfaceId: true, localeCode: true } })).toEqual([{ surfaceId: "s-app", localeCode: "ko" }]);
     expect(await locales()).toEqual([{ code: "en", orphaned: false }, { code: "fr", orphaned: false }, { code: "ko", orphaned: true }]);
     const event = await prisma.projectEvent.findFirstOrThrow({ where: { projectId: "p", subtype: "surface.localeChangeResolved" } });
     expect(event).toMatchObject({ kind: "SURFACE", actorKind: "AUTOMATION", surfaceIds: ["s-web"], result: null });
@@ -198,5 +202,38 @@ describe("readLocaleStates · countLocaleWork", () => {
       return [first, await countLocaleWork(tx, "p")];
     });
     expect(counted).toEqual([1, 0]);
+  });
+});
+
+/**
+ * **만료가 스스로 잡는 잠금** (R-B1 Y3 · M13) — `Project`→`TranslationSurface`. 잠금 뒤 다시 읽어야 대기 중 커밋된 요청·취소를 본다.
+ * 대기는 고정 sleep이 아니라 `pg_stat_activity`로 관측한다.
+ */
+describe("expireLocaleChanges — 잠금 계약", () => {
+  async function waitsBehind(sql: string) {
+    await request("s-web", "ko", "REMOVE");
+    await deliver("s-web", [{ localeCode: "ko", effect: "delete" }]);
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query(sql);
+      let settled = false;
+      const pending = expire({ observed: { status: "observed", locales: ["en", "fr"] } }).finally(() => { settled = true; });
+      await waitForLockWait(pool);
+      expect(settled).toBe(false);
+      // 대기 중 커밋된 취소 — 잠금 뒤 다시 읽으므로 만료할 행이 없다.
+      await client.query(`DELETE FROM "LocaleChange" WHERE "projectId" = 'p' AND "surfaceId" = 's-web'`);
+      await client.query("COMMIT");
+      expect(await pending).toEqual({ expired: [], held: null });
+      expect(await locales()).toContainEqual({ code: "ko", orphaned: false });
+    } finally { client.release(); }
+  }
+
+  it("Project 행을 쥔 tx 뒤에서 기다린다", async () => {
+    await waitsBehind(`SELECT "id" FROM "Project" WHERE "id" = 'p' FOR UPDATE`);
+  });
+
+  it("그 소스 행을 쥔 tx 뒤에서 기다린다", async () => {
+    await waitsBehind(`SELECT "id" FROM "TranslationSurface" WHERE "projectId" = 'p' AND "id" = 's-web' FOR UPDATE`);
   });
 });

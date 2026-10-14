@@ -11,6 +11,7 @@ const BASE: LocaleChangeFingerprintInput = {
   localeCode: "fr",
   change: null,
   surface: { adapterName: "json-catalog", pathTemplate: "web/{locale}.json", baseLocale: "en", declaredBaseLocale: null },
+  delivery: { revision: "rev-1", invalidated: false },
   pending: [{ id: "t1", token: "a" }, { id: "t2", token: "b" }],
 };
 
@@ -31,6 +32,10 @@ describe("localeChangeFingerprint", () => {
     ["surface path", { surface: { ...BASE.surface, pathTemplate: "app/{locale}.json" } }],
     ["surface base", { surface: { ...BASE.surface, baseLocale: "ko" } }],
     ["declared base", { surface: { ...BASE.surface, declaredBaseLocale: "fr" } }],
+    // R-B1 W1 — 미리보기 뒤 Publish가 확인되면 미리보기가 말한 전달 상태와 실제가 갈린다.
+    ["delivery revision", { delivery: { revision: "rev-2", invalidated: false } }],
+    ["delivery invalidation", { delivery: { revision: "rev-1", invalidated: true } }],
+    ["first delivery", { delivery: null }],
     ["new edit", { pending: [...BASE.pending, { id: "t3", token: "c" }] }],
     ["re-edited cell", { pending: [{ id: "t1", token: "a" }, { id: "t2", token: "z" }] }],
   ])("changes when the %s changes", (_label, over) => {
