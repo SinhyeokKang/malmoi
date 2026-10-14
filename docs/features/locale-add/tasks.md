@@ -23,7 +23,6 @@
 - [ ] `deliveredLocaleChanges` 위치(DeliveryConfirmation 컬럼 vs 소스 행)와 Publish 성공 경계·`publish-unsettled` 장벽의 재사용 지점을 확정한다. 검증: design §1에 결정과 근거 커밋.
 - [ ] `pendingWhere` 소비자 12곳(`lib/keys/query.ts`·`revert.ts`·`translation-list.ts`, `lib/protection/*`, `lib/publish/read.ts`, `lib/pull/load.ts`·`plan.ts`·`run.ts`, `lib/push/apply.ts`, `lib/surfaces/remove.ts`)과 조기 종료 세 자리(`lib/pull/run.ts` withheld, `shouldSkipPull`, `lib/nightly/plan.ts` `upToDate`)를 design §0·§4 표로 고정한다. 검증: 각 자리에 “변경 없음/언어 작업 추가” 판정이 적힌 표 커밋.
 - [ ] Chrome 공식 지원 목록과 목록 밖 디렉터리 동작(unpacked·웹스토어)을 확인하고 출처·확인일을 기록한다. 검증: 목록 파일에 출처 URL·확인일.
-- [ ] design-brief 프레임 1~20의 로컬 핸드오프를 확보한다. 검증: 브리프의 모든 프레임이 핸드오프에 존재(권한·좁은 화면·라이트/다크·포커스 포함).
 - **위 산출물이 커밋되기 전에는 §1에 착수하지 않는다.**
 
 ## 1. 순수 판정 — 테스트 먼저
@@ -78,6 +77,8 @@
 ## 6. UI·집계
 
 - [ ] Server Action: 추가·미리보기·제거·제거 취소, 값 오류 코드와 성공 뒤 revalidate. 검증: 인증/권한/진입점 테스트 green, 미리보기에는 revalidate 없음.
+- [ ] design-brief 프레임 1~20의 로컬 핸드오프를 확보한다. 검증: 브리프의 모든 프레임이 핸드오프에 존재(권한·좁은 화면·라이트/다크·포커스 포함).
+- **위 핸드오프가 확보되기 전에는 아래 UI 퍼블리싱 태스크(Dialog·배지·번역 화면 DOM·Publish 표시·화면 문구·`/design-sync`)에 착수하지 않는다.** Server Action·reducer·`summary.ts`·집계는 핸드오프 없이 진행한다.
 - [ ] Sources Add Dialog·행 동작·확인 Dialog·상태 배지. 검증(DOM): design-brief 프레임의 상태별 배지·톤·버튼, base/EDITOR/보관/비지원/미확정 비활성 이유(`aria-disabled` + 설명), 정확한 파일 경로·미전달 수·앱 코드 정리 경고, Inactive danger 톤·Open 비활성·재추가 안내, 정렬과 `role="status"` 알림·포커스 규칙. 클릭 전 enabled 대기(POSTMORTEM 2829).
 - [ ] 번역 화면 셀 얼리기 — reducer(node): REMOVE 도착 시 dirty 셀 유지·readOnly·save payload 제외, 셀 reset, 제거 취소 시 편집 가능, 다른 언어만 저장. 검증: `draft` 테스트 green.
 - [ ] 번역 화면 셀 얼리기 — DOM(jsdom): 서버 갱신 주입 시 입력 보존, 저장 중 제거 거부 시 입력 유지·전용 footer 문구, 세션 만료 중 저장의 입력 보존, 이탈 확인에 얼린 입력 포함. 검증: transition 정리(POSTMORTEM 2187)·클릭 가능 대기를 포함한 DOM 테스트 green.
