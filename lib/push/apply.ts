@@ -1,7 +1,6 @@
 import "server-only";
 
 import { randomUUID } from "node:crypto";
-import { compareKeys } from "@/lib/adapters/shared";
 
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import { importOutcomeFields, type ImportFailureCode } from "@/lib/projects/import-status";
@@ -11,6 +10,7 @@ import { planPush, type ExistingKey, type PushPlan } from "./plan";
 import { planProtectedImport } from "@/lib/protection/plan";
 import { countPending } from "@/lib/protection/where";
 import { readDeliveryRevision } from "@/lib/pull/delivery-revision";
+import { liveLocalesOf } from "@/lib/locales/presence";
 
 /**
  * 계획(`plan.ts`)을 DB에 적용한다. **여기가 유일한 I/O 층이다.**
@@ -226,10 +226,9 @@ async function applyWith(
 
   // 2) Locale upsert — Translation의 FK 대상이라 먼저 있어야 한다.
   //    isBase는 payload의 baseLocale 하나만 true다.
-  // 정렬은 결정성용이다 — 이 배열이 SQL 인자로 가고 순서가 흔들리면 문장이 매번 달라진다.
-  // 중복도 접는다 — 같은 문장이 같은 행을 두 번 치면 `cannot affect row a second time`으로
-  // 트랜잭션 전체가 거부된다. keys·translations와 같은 규칙 (2026-09-04 audit #13).
-  const liveLocales = [...new Set(payload.locales)].sort(compareKeys);
+  // ⚠️ 존재 판정(관측 = 활성, 나머지 orphan, 빈 관측은 그대로)은 `localePresence`와 같은 규칙이다 — 언어 변경 만료가 그 함수로
+  // 같은 판정을 한다(locale-add). 아래 두 문장을 바꾸면 그 함수와 `presence.test.ts`도 함께 바꾼다.
+  const liveLocales = liveLocalesOf(payload.locales);
   const localeRows = liveLocales.map((code) => ({
     projectId,
     code,
