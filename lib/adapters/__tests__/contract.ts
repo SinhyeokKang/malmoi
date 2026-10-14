@@ -251,6 +251,13 @@ export function writerContractViolations(adapter: Adapter): string[] {
     if (surgical && without !== null) bad.push("원본 없이 파일을 만들었다 — 수술적 치환은 치환할 대상이 없으면 null이어야 한다 (§1.4)");
     if (!surgical && without === null) bad.push("원본이 없다고 null을 냈다 — 재생성은 원본 없이도 파일을 만들어야 한다 (신규 로케일)");
   }
+  // **원본 없음 + 표현 출처 있음 — 수술적은 출처를 보지 않는다** (locale-add design §4). 표현 출처는 재생성 writer가 새 파일의 표현만 빌리는
+  // 입력이라, 수술적 치환이 그것을 원본으로 읽으면 기준 언어 파일을 새 언어 경로에 치환해 낸다.
+  if (surgical) {
+    const donorText = formatFor(adapter).currentFiles?.[0]?.content;
+    const sourced = write(entriesFor(CONTRACT_KEYS), { ...fmt, currentFiles: undefined, representationSource: donorText });
+    if (sourced !== null) bad.push("표현 출처를 원본으로 읽었다 — 수술적 치환은 원본 없이 null이어야 한다 (§1.4)");
+  }
   // **원본 파일 둘.** per-locale writer는 원본을 `currentFiles?.[0]`이 아니라 **자기 경로로** 골라야
   // 한다. `render.ts`가 한 파일로 정규화해 넘기므로 지금은 잠복이지만, 호출부가 여러 파일을 실으면
   // 다른 로케일의 원본 위에 치환하거나 그 표현을 입는다 (launch-readiness L3.6). 남의 파일을 앞에 둔다.
@@ -408,6 +415,23 @@ export function writerContractViolations(adapter: Adapter): string[] {
         bad.push("원본의 **값**이 출력에 새어 나왔다 — 원본에서 읽는 것은 표현뿐이다 (병합 없음)");
       }
     }
+    // **원본 없음 + 표현 출처 있음** (locale-add design §4 — 새 언어 파일). 기준 언어 파일에서 **표현만** 빌린다: 4칸 원본을 주면 4칸이고,
+    // 그 파일의 값·키는 새지 않는다. 다음 Publish는 자기 파일을 원본으로 읽으므로 그 결과와 바이트가 같아야 한다(고정점) — 다르면 새 언어가
+    // 생긴 다음 날부터 값 편집 0건인 diff가 매번 난다. 원본이 있으면 출처는 무시된다.
+    const source = donor.currentFiles?.[0]?.content;
+    const ownPath = fmt.pathTemplate.replaceAll("{locale}", locale);
+    const created = adapter.write({ ...fmt, currentFiles: undefined, representationSource: source }, { locale, entries: entriesFor(CONTRACT_KEYS) });
+    if (created === null) {
+      bad.push("표현 출처: 원본 없이 출처만 줬더니 null을 냈다 — 새 언어 파일을 만들어야 한다");
+    } else {
+      const createdUnit = indentUnit(created);
+      if (createdUnit !== 4) bad.push(`표현 출처: 4칸 기준 파일을 출처로 줬는데 ${createdUnit ?? "없음"}칸이 나왔다`);
+      if (created.includes(STYLE_DONOR_VALUE) || at(created, "donor") !== -1) bad.push("표현 출처의 값·키가 새 파일에 새어 나왔다 — 출처에서 읽는 것은 표현뿐이다");
+      const again = adapter.write({ ...fmt, currentFiles: [{ path: ownPath, content: created }] }, { locale, entries: entriesFor(CONTRACT_KEYS) });
+      if (again !== created) bad.push("표현 출처 고정점: 새 파일을 원본으로 다시 썼더니 바이트가 달라졌다");
+    }
+    const owned = adapter.write({ ...fmt, currentFiles: [{ path: ownPath, content: plain }], representationSource: source }, { locale, entries: entriesFor(CONTRACT_KEYS) });
+    if (owned !== plain) bad.push("표현 출처: 원본이 있는데 출처가 출력을 바꿨다 — 원본이 있으면 출처를 보지 않는다");
     // **원본이 있는데 낼 것이 0개면 `{}`다** (audit #1 · launch-audit B3.1 A). `null`이면 호출부가 파일을 안 내 옛 값이 남는데,
     // 그 로케일의 마지막 번역을 비운 편집은 전달로 셌다. 원본의 값이 새지 않아야 하는 것은 위와 같다.
     // ⚠️ **writer 계약이지 파일 결과가 아니다** — writer는 `isBase`를 모르고, **base 파일은 `renderLocaleFiles`가 `null`로 접는다**(B3 r1 —
