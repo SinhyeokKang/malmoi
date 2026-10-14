@@ -136,3 +136,11 @@ SH-10 등 [수동] 항목의 실행 증거를 남기는 자리다(**릴리스 �
 ### GitLab 리포 (2026-10-12)
 
 §3 대조: 새 env 0(`GITLAB_TEST_*`는 개발자 스모크 입력이라 preflight·`.env.example`에 없다) · 새 패키지 0(SDK 없이 `fetch`) · 마이그레이션 `20261012120000_add_gitlab_connection` additive(새 테이블 + `Project.gitlabConnectionId` NULL 허용 컬럼 + `Project.repoHost TEXT NOT NULL DEFAULT 'github'` — 기존 행은 기본값이 SQL 안에서 채우므로 앱 백필이 없고, 건너뛴 업그레이드에서도 안전) · 새 cron 0 · 토큰이 경로에 실리는 URL 0(PAT는 Server Action 본문으로만 온다). 새 외부 전송처 gitlab.com은 방침·가이드 운영자 개인정보 재료에 등재돼 있다. GitLab 연결 자체는 앱 설치와 무관해 `GITHUB_APP_*`가 비어도 동작한다.
+
+### 언어 추가·제거 (2026-10-14, locale-add)
+
+§3 대조: 새 env 0 · 새 패키지 0 · 새 cron 0 · 토큰이 경로에 실리는 URL 0. 마이그레이션 `20261014060000_locale_change`는 additive다 — 새 enum
+`LocaleChangeOperation` + 새 테이블 `LocaleChange`(Locale 복합 FK Restrict) + `DeliveryConfirmation.deliveredLocaleChanges JSONB NULL`. 기존 행
+백필이 없어(NULL = 전달한 것 없음) 앱 코드 없이 SQL만 연달아 적용되는 건너뛴 업그레이드에서도 안전하다. 손 GRANT가 없고, bootstrap 뒤 적용된 이
+마이그레이션의 테이블·컬럼에 런타임 롤 CRUD가 서는지는 `self-hosted-bootstrap.integration.ts` ⑤가 잰다(default privileges). 새 외부 전송처·수집
+필드 없음(`LocaleChange`는 `not-personal`). 구버전으로 되돌릴 때의 영향은 OPERATIONS "언어 추가·제거 이전으로 되돌리기"다.
