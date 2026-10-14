@@ -529,6 +529,20 @@ push 토큰을 회전하고 CI 변수 `PUSH_TOKEN`은 갱신하지 않는다.** 
 ⚠️ **셀프 호스팅의 GitLab 전용 설치**(`GITHUB_APP_*` 다섯이 비어 있다)는 구버전 preflight가 다섯을 요구해 기동을 거부한다 — 되돌리기 전에 다섯을
 다시 채운다. 운영자 절차의 정본은 가이드 `guide/<언어>/self-hosting/operate.md`다.
 
+## 언어 추가·제거 이전으로 되돌리기 (2026-10-14, locale-add design §7)
+
+되돌리는 길은 다음 배포다. 마이그레이션 `*_locale_change`는 additive라 **되돌려도 테이블·컬럼을 지우지 않는다** — 구버전은 `LocaleChange`·
+`DeliveryConfirmation.deliveredLocaleChanges`를 모를 뿐 읽다 죽지 않는다. 데이터 손실은 없다. 구버전 구간에 생기는 일:
+
+- **추가한 언어**: 리포에 파일이 아직 없으면 다음 적재(CI·야간)가 그 언어를 orphan한다(값·행 보존). 구버전 Publish도 그 파일을 만들지 않는다.
+- **제거 요청**: 구버전 Publish는 삭제를 보내지 않고 그 언어 파일을 다시 렌더한다 — 삭제가 실린 PR/MR이 열려 있으면 구버전 재Publish가 그 삭제를
+  지운다. 구버전에는 제거 중 편집 잠금·`locale-change-pending` 보류도 없다.
+- **Logs**: 언어 사건(`surface.locale*`)이 구버전 폴백으로 "source added"처럼 보인다. 사건 행은 그대로라 재전진하면 다시 바르게 보인다.
+
+재전진 뒤: orphan인데 ADD 행이 남은 모순 행은 신버전 만료가 정리한다(PR·목록과 무관, base 관측만 필요). 제거 예정 언어에 구버전 구간의 편집
+토큰이 남았으면 그 언어는 편집이 잠긴 채 미전달로 세어져 자동 적재를 보류한다 — 제거를 취소하고 다시 요청해(승인 폐기) 정리하거나 수동 Sync로
+폐기한다. 셀프 호스팅 운영자 절차의 정본은 가이드 `guide/<언어>/self-hosting/operate.md`다.
+
 ## GitLab CI 원본 릴리스 — 태그 `malmoi-i18n-push-gitlab-vN` (2026-10-12, gitlab-repositories D5)
 
 **앱 릴리스(`v<x.y.z>`)와 GitHub action 태그(`malmoi-i18n-push-vN`)와 별개 축이다** — 형은 action 릴리스와 같다(ACTIONS §2 "태그를 옮기는 것은 릴리스다").
