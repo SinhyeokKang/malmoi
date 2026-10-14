@@ -9,6 +9,9 @@ import { pick } from "@/lib/i18n";
 import { settleRevalidate } from "@/lib/revalidate-after-commit";
 import { revalidatePath } from "next/cache";
 
+import { getProjectAccess } from "@/lib/auth/query";
+import { readLocaleStates } from "@/lib/locales/work";
+
 import { checkProjectTool } from "./access";
 import { coreSubject, defineTool, ok } from "./define";
 
@@ -26,7 +29,15 @@ export const previewSync = defineTool({
     // 입구를 지났는데 undefined면 조회 장애다 — 인가 거부는 위에서 이미 갈렸다.
     if (prepared === undefined) return { status: "unavailable" };
     const plan = planImportConfirmation({ unsent: prepared.unsent, openPr: undefined });
-    return ok({ approval: prepared.approval, unsentEdits: prepared.unsent, discardsEdits: plan.recommendSend }, en.mcp.summary.syncPreview(prepared.unsent));
+    // 승인 지문은 언어 변경 행도 묶는다(B3) — 완전한 Sync는 그 행을 지우고 리포대로 언어를 세운다. 무엇이 사라지는지 미리 말한다.
+    const access = await getProjectAccess(prisma, { userId: subject.userId, slug, permission: "project:settings" });
+    if (access.status !== "ok") return { status: "refused", code: access.status };
+    const slugs = new Map((await prisma.translationSurface.findMany({ where: { projectId: access.projectId }, select: { id: true, slug: true } })).map(s => [s.id, s.slug]));
+    const languageChanges = (await readLocaleStates(prisma, access.projectId)).flatMap(state => state.rows.map(row => ({
+      source: slugs.get(state.surfaceId) ?? "", language: row.localeCode, change: row.operation === "ADD" ? "add" : "remove",
+    })));
+    return ok({ approval: prepared.approval, unsentEdits: prepared.unsent, discardsEdits: plan.recommendSend, languageChanges },
+      en.mcp.summary.syncPreview(prepared.unsent, languageChanges.length));
   },
 });
 

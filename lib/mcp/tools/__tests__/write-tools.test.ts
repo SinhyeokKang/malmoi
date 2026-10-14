@@ -50,7 +50,7 @@ const subject = (userId: string, grants: TokenGrant[] = ALL, scope: TokenScope =
 const RESULTS: Record<string, unknown> = {
   save: { ok: true, results: [{ keyId: "k1", result: { ok: true, keyId: "k1", cells: [{ localeCode: "ko", value: "v" }] } }] },
   publish: { outcome: { status: "committed", pr: "created", delivered: 1, commitSha: "c", prUrl: "https://github.com/o/r/pull/1", changed: ["a.json"] }, attempted: true },
-  preview: { status: "ok", preview: { fingerprint: "f", sendable: { total: 1, keys: 1 }, changedFiles: [], total: 1, keys: 1, withoutFile: 0, withoutKey: 0, openPr: null, groups: [] } },
+  preview: { status: "ok", preview: { fingerprint: "f", sendable: { total: 1, keys: 1 }, changedFiles: [], fileChanges: [], total: 1, keys: 1, withoutFile: 0, withoutKey: 0, openPr: null, groups: [] } },
   sync: { outcome: { ok: true, surfaces: [], remainingEdits: 0 }, attempted: true },
   revert: { status: "reverted", cells: [] },
   rename: { ok: true, name: "New" }, branch: { ok: true }, base: { ok: true }, remove: { ok: true },
@@ -545,7 +545,7 @@ describe("언어 변경이 다른 도구에 낳는 거부", () => {
     h.core.mockResolvedValueOnce({ ok: true, results: [{ keyId: "k1", result: { ok: false, error: "locale-removal-pending", localeCodes: ["ko"] } }] });
     const outcome = await run("set_translations", subject("editor"), { ...S, entries: [{ keyId: "k1", changes: [{ localeCode: "ko", value: "v" }] }] });
     expect(outcome.status === "ok" && outcome.data.results).toEqual([
-      { keyId: "k1", status: "rejected", error: "locale-removal-pending", message: en.mcp.errors.languages["locale-removal-pending"](["ko"]), localeCodes: ["ko"] },
+      { keyId: "k1", status: "rejected", error: "locale-removal-pending", message: en.mcp.errors.languages["locale-removal-pending"]("ko"), localeCodes: ["ko"] },
     ]);
   });
 

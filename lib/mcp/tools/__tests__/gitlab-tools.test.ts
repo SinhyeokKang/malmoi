@@ -240,7 +240,7 @@ describe("GitLab 프로젝트 대상 도구 — 호스트 어휘", () => {
   });
 
   it("preview_publish는 mergeRequest로 싣고 요약이 merge request를 말한다", async () => {
-    h.core.mockResolvedValueOnce({ status: "ok", preview: { fingerprint: "f", sendable: { total: 2, keys: 1 }, changedFiles: [], total: 2, keys: 1, withoutFile: 0, withoutKey: 0, openPr: { number: 2, url: "https://gitlab.com/grp/app/-/merge_requests/2" }, groups: [] } });
+    h.core.mockResolvedValueOnce({ status: "ok", preview: { fingerprint: "f", sendable: { total: 2, keys: 1 }, changedFiles: [], fileChanges: [], total: 2, keys: 1, withoutFile: 0, withoutKey: 0, openPr: { number: 2, url: "https://gitlab.com/grp/app/-/merge_requests/2" }, groups: [] } });
     const outcome = await call("preview_publish", subject("owner"), { slug: "glab" });
     expect(outcome).toMatchObject({ status: "ok", data: { mergeRequest: { status: "open", number: 2 } }, summary: en.mcp.summary.gitlab.publishPreview(2) });
     expect(outcome.status === "ok" && "pullRequest" in outcome.data).toBe(false);
@@ -248,7 +248,7 @@ describe("GitLab 프로젝트 대상 도구 — 호스트 어휘", () => {
   });
 
   it("GitHub 프로젝트의 preview_publish는 pullRequest 그대로다", async () => {
-    h.core.mockResolvedValueOnce({ status: "ok", preview: { fingerprint: "f", sendable: { total: 1, keys: 1 }, changedFiles: [], total: 1, keys: 1, withoutFile: 0, withoutKey: 0, openPr: null, groups: [] } });
+    h.core.mockResolvedValueOnce({ status: "ok", preview: { fingerprint: "f", sendable: { total: 1, keys: 1 }, changedFiles: [], fileChanges: [], total: 1, keys: 1, withoutFile: 0, withoutKey: 0, openPr: null, groups: [] } });
     expect(await call("preview_publish", subject("owner"), { slug: "acme" })).toMatchObject({ status: "ok", data: { pullRequest: { status: "none" } }, summary: en.mcp.summary.publishPreview(1) });
   });
 

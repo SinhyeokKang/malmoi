@@ -37,20 +37,27 @@ export const previewPublish = defineTool({
       message: result.warnings.map(w => pullWarningLine(w, en.adapterErrors)).join("\n"), detail: { warnings: result.warnings } };
     if (result.status === "failed") return { status: "unavailable" };
     if (result.status === "refused") {
+      // 언어 변경의 파일 경로를 쓸 수 없다(locale-add) — base 파일 문장으로 떨어지면 엉뚱한 파일을 고치게 된다. Logs와 같은 문장이다.
+      if (result.reason === "locale-plan-refused") return { status: "refused", code: result.reason, message: en.logs.reasons["locale-plan-refused"], detail: { path: result.path, branch: result.branch } };
       const copy = result.reason === "unsupported-file-kind" ? en.translations.publish.unsupportedFileKind : result.reason === "base-file-missing" ? en.translations.publish.baseFileMissing : en.translations.publish.baseFileUnreadable;
       return { status: "refused", code: result.reason, message: copy.description(result.path, result.branch) };
     }
     const { preview } = result;
     const gitlab = gate.repoHost === "gitlab";
+    // 언어 파일(새로 만들거나 지우는 파일) — 셀 편집이 0이어도 보낼 것이 있다(locale-add). `updated`는 셀 편집이 바꾼 파일이다.
+    const languageFiles = preview.fileChanges.filter(file => file.kind !== "updated").length;
     return ok({
       fingerprint: preview.fingerprint,
       sendable: preview.sendable,
       changedFiles: preview.changedFiles,
+      fileChanges: preview.fileChanges,
+      // 보류한 언어(경로가 이미 있는 추가)·값이 없어 파일을 내지 않는 추가 — 실행 결과의 `locales`와 같은 값이다.
+      languages: preview.locales ?? { withheld: [], empty: [] },
       unsent: { total: preview.total, keys: preview.keys, withoutFile: preview.withoutFile, withoutKey: preview.withoutKey },
       // 필드 이름은 리포 호스트의 어휘다(D26) — GitHub은 기존 `pullRequest` 그대로, GitLab은 `mergeRequest`. 값의 세 상태는 같다.
       ...(gitlab ? { mergeRequest: pullRequestState(preview.openPr) } : { pullRequest: pullRequestState(preview.openPr) }),
       groups: preview.groups,
-    }, gitlab ? en.mcp.summary.gitlab.publishPreview(preview.sendable.total) : en.mcp.summary.publishPreview(preview.sendable.total));
+    }, gitlab ? en.mcp.summary.gitlab.publishPreview(preview.sendable.total, languageFiles) : en.mcp.summary.publishPreview(preview.sendable.total, languageFiles));
   },
 });
 
@@ -112,6 +119,8 @@ async function publishOutcome(
     if (outcome.code !== undefined) {
       // 장애 — 거부가 아니다(§6.00 ②). 문장은 싣지 않고(`internal (ref …)`일 수 있다) 코드·전송 여부만 싣는다. Logs가 같은 코드를 든다.
       if (outcome.retryable === true) return { status: "refused", code: "unavailable", detail: { code: outcome.code, delivery } };
+      // 언어 변경의 경로 거부(locale-add) — 리포 설정 일반 문장이 아니라 무엇이 막혔는지 말한다. 미리보기·Logs와 같은 문장이다.
+      if (outcome.code === "locale-plan-refused") return { status: "refused", code: outcome.code, message: en.logs.reasons["locale-plan-refused"], detail: { delivery } };
       const p = en.translations.publish;
       const repo = await repoOf();
       return { status: "refused", code: outcome.code, message: `${p.configError}. ${p.configErrorDescription(repo.label, repo.branch)}`,

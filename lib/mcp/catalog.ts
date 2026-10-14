@@ -31,7 +31,7 @@ const DESTRUCTIVE = { readOnlyHint: false, destructiveHint: true } as const;
 const req = (rolePermission: RolePermission | null, tokenGrant: Grant | null): ToolRequirement => ({ rolePermission, tokenGrant });
 
 const CATALOG: readonly ToolSpec[] = [
-  // 읽기 16 — grant 없는 토큰은 내 프로젝트 안의 데이터를 읽는다. GitHub 계정 열거·파일 다운로드만 grant를 요구한다.
+  // 읽기 17 — grant 없는 토큰은 내 프로젝트 안의 데이터를 읽는다. GitHub 계정 열거·파일 다운로드만 grant를 요구한다.
   { name: "whoami", annotations: READ, access: req(null, null) },
   { name: "list_projects", annotations: READ, access: req(null, null) },
   { name: "get_project", annotations: READ, access: req("translation:write", null) },
@@ -45,12 +45,14 @@ const CATALOG: readonly ToolSpec[] = [
   { name: "preview_sync", annotations: READ, access: req("project:settings", null) },
   { name: "preview_revert", annotations: READ, access: req("project:settings", null) },
   { name: "preview_source_removal", annotations: READ, access: req("project:settings", null) },
+  // 제거와 추가 취소 둘 다의 미리보기다 — 실행(`remove_locale`)이 이 지문을 돌려받는다(locale-add design §6).
+  { name: "preview_locale_removal", annotations: READ, access: req("project:settings", null) },
   { name: "list_events", annotations: READ, access: req("translation:write", null) },
   { name: "get_workflow", annotations: READ, access: req("project:settings", null) },
   { name: "list_members", annotations: READ, access: req("translation:write", null) },
   // 공개 가이드 원고 — 프로젝트 입력이 없어 역할·grant 둘 다 없다(`whoami`와 같다).
   { name: "read_docs", annotations: READ, access: req(null, null) },
-  // 쓰기 15 — 역할과 grant 둘 다 요구한다. `project:create`만 프로젝트 역할이 없다.
+  // 쓰기 18 — 역할과 grant 둘 다 요구한다. `project:create`만 프로젝트 역할이 없다.
   { name: "create_project", annotations: WRITE, access: req(null, "project:create") },
   { name: "add_sources", annotations: WRITE, access: req("project:settings", "project:settings") },
   { name: "set_translations", annotations: WRITE, access: req("translation:write", "translation:write") },
@@ -61,6 +63,10 @@ const CATALOG: readonly ToolSpec[] = [
   { name: "set_base_locale", annotations: WRITE, access: req("project:settings", "project:settings") },
   // 편집 폐기는 재추가 때 일어나지만 승인은 여기서 받는다 — 확인창 근거로 destructive다(`sync_repository`와 같다).
   { name: "remove_source", annotations: DESTRUCTIVE, access: req("project:settings", "project:settings") },
+  // 언어 변경 셋(locale-add) — 제거는 그 언어의 미전달 편집을 버리므로 destructive다. 추가·제거 취소는 아무것도 버리지 않는다.
+  { name: "add_locale", annotations: WRITE, access: req("project:settings", "project:settings") },
+  { name: "remove_locale", annotations: DESTRUCTIVE, access: req("project:settings", "project:settings") },
+  { name: "cancel_locale_removal", annotations: WRITE, access: req("project:settings", "project:settings") },
   { name: "rotate_push_token", annotations: DESTRUCTIVE, access: req("project:settings", "project:settings") },
   { name: "invite_members", annotations: WRITE, access: req("member:manage", "member:manage") },
   { name: "revoke_invitation", annotations: DESTRUCTIVE, access: req("member:manage", "member:manage") },

@@ -14,7 +14,6 @@ const state = (over: Partial<Parameters<typeof languageChangesOf>[0]> = {}): Par
     { localeCode: "ko", operation: "REMOVE", orphaned: false, requestedAt: at },
   ],
   delivered: [],
-  work: [{ localeCode: "ko", current: "delete", delivered: null }],
   ...over,
 });
 

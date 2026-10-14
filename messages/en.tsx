@@ -4087,19 +4087,47 @@ export const en = {
        * 연결 없음·토큰 교체는 needs-browser라 거부 문장이 아니다.
        */
       gitlab: GITLAB_ACCESS_ERRORS,
+      /**
+       * 언어 추가·제거·취소의 거부(locale-add — `LocaleChangeError`)와 언어 변경이 다른 도구에 낳는 거부. 화면 문구는 시안 배치가 정하므로 아직 화면 사전에 없다 —
+       * 그때 화면 키가 생기면 여기를 그 키로 바꾼다(같은 거부에 문구 두 벌 금지). 다음 행동을 함께 말한다 — 모르는 코드로 접히면 에이전트가 같은 호출을 되풀이한다.
+       */
+      languages: {
+        "unsupported-format": "Languages can be added or removed only for JSON catalog and Chrome extension messages sources.",
+        "invalid-code": "That isn't a language code Malmoi can read from a file name. Use a code like fr or pt-BR.",
+        "unsupported-locale": "Chrome extensions don't support that language code. Use one from Chrome's list of supported languages.",
+        "already-active": "That language is already in this source.",
+        "locale-collision": "This source already has that language, written with different capitalization or separators.",
+        "unsafe-path": "The file path for that language isn't safe to write. Ask your developers to check the source's file path.",
+        "path-conflict": "Another source already uses the file path for that language.",
+        "base-locale": "The base language can't be removed.",
+        // 입구가 프로젝트를 이미 확인했다 — 여기 닿는 not-found는 소스나 언어다. 공용 문장("You can't open this project")은 거짓이 된다.
+        "not-found": "That source or language isn't in this project. Check them with get_project.",
+        "removal-pending": "That language is already set to be removed. Cancel the removal with cancel_locale_removal instead.",
+        "no-removal": "That language isn't set to be removed.",
+        "approval-required": "Removing a language needs the approval from preview_locale_removal. Preview it first, then pass its approval.",
+        "stale-approval": "Something changed after the preview, so nothing was removed. Preview again, then pass the new approval.",
+        // 제거의 폐기는 Revert와 같다 — 되돌릴 마지막 전송 값이 없거나 낡았다. 길은 Publish 하나다(`lib/locales/change.ts` `planDiscard`).
+        "baseline-unknown": "Some unsent edits in that language have no sent version to go back to, so it can't be removed yet. Publish them first.",
+        "baseline-stale": "The sent version of some edits in that language is out of date, so it can't be removed yet. Publish first, then preview again.",
+        // 저장의 키 거부 — 키 단위 저장이라 같은 키의 다른 언어도 저장되지 않았다(B1 handoff).
+        "locale-removal-pending": (languages: string): string =>
+          `${languages} is set to be removed, so this key wasn't saved in any language. Cancel the removal to edit it, or save the key without that language.`,
+        // 기준 브랜치·기준 언어 — 의도는 지금 설정을 보고 승인됐다.
+        "locale-change-pending": "A language is still being added or removed here. Publish it or cancel that change first.",
+      },
     },
     /** 도구 설명(`tools/list`의 `description`) — 에이전트가 도구를 고르는 근거다. 핸들이 필요한 도구는 무엇을 먼저 부르는지 말한다. */
     tools: {
       whoami: "Show who this token belongs to, whether GitHub is connected, and what the token may do (permissions, projects, expiry).",
       list_projects: "List the projects you can use with this token, with your role, repository, and whether each is ready.",
-      get_project: "Show a project's overview: sources, languages, key counts, changes to send, the last publish's pull request (lastPublishMergeRequest for a GitLab project — repositoryHost says which), and repository connection. Whether one is open now comes from preview_publish.",
+      get_project: "Show a project's overview: sources, languages (with languageChanges: languages being added or removed and whether each was sent), key counts, changes to send, the last publish's pull request (lastPublishMergeRequest for a GitLab project — repositoryHost says which), and repository connection. Whether one is open now comes from preview_publish.",
       list_repositories: "List the repositories you can connect to a new project — GitHub by default, or GitLab with host: \"gitlab\" (uses the GitLab token connected on your Account page). Needs the Create projects permission.",
       list_branches: "List a repository's branches. Pass { owner, repo } for a new GitHub project, { host: \"gitlab\", repositoryId } for a new GitLab project, or { slug } for an existing one — only one of them.",
       detect_formats: "Find the translation files in a repository. Pass { owner, repo, ref? } for a new GitHub project, { host: \"gitlab\", repositoryId, ref? } for a new GitLab project, or { slug } for an existing one. Returns candidates with a confirmation to pass to create_project or add_sources.",
-      list_keys: "List translation keys with their completion. Covers all of the project's sources unless the query sets scope to source or namespace (ns picks the namespace). The query takes completion (incomplete, missing with missingLocale, or complete), state (unsent, review, or new), and q to search keys, source text, and translations, plus a cursor for the next page.",
+      list_keys: "List translation keys with their completion. Covers all of the project's sources unless the query sets scope to source or namespace (ns picks the namespace). The query takes completion (incomplete, missing with missingLocale, or complete), state (unsent, review, or new), and q to search keys, source text, and translations, plus a cursor for the next page. Also returns the source's languages being added or removed (languageChanges).",
       get_key: "Show one key: its source text, every language's value, review and unsent flags, and where the code uses it.",
-      preview_publish: "Preview what Publish would send in a pull request (a merge request for a GitLab project). Returns a fingerprint to pass to publish, and pullRequest (mergeRequest for GitLab): open (with its url), none, or unknown when the repository couldn't be checked.",
-      preview_sync: "Preview a sync from the repository and how many unsent edits it would discard. Returns an approval to pass to sync_repository.",
+      preview_publish: "Preview what Publish would send in a pull request (a merge request for a GitLab project). Returns a fingerprint to pass to publish, fileChanges (new, updated, or removed files), and pullRequest (mergeRequest for GitLab): open (with its url), none, or unknown when the repository couldn't be checked.",
+      preview_sync: "Preview a sync from the repository, how many unsent edits it would discard, and which pending language changes it would drop. Returns an approval to pass to sync_repository.",
       preview_revert: "Preview reverting one key to the version last confirmed as sent. Returns a confirmation to pass to revert_to_last_sent.",
       preview_source_removal: "Preview removing a source: how many unsent edits it has, and whether a Malmoi pull request is open (open, none, or unknown — mergeRequest for a GitLab project). Returns an approval to pass to remove_source when there are unsent edits.",
       list_events: "List a project's activity log, newest first. Takes the same filters as the Logs screen and a cursor.",
@@ -4115,6 +4143,10 @@ export const en = {
       update_project: "Change a project's name or base branch.",
       set_base_locale: "Declare a source's base language. It takes effect after the next sync from the repository.",
       remove_source: "Remove a source from the project. Its keys, translations, and history are kept, and files in the repository aren't changed. Adding the same path with the same file format again brings it back and replaces its unsent edits with the repository's values, only where the repository has a value. If it has unsent edits, call preview_source_removal first and pass its approval. The last source can't be removed.",
+      preview_locale_removal: "Preview removing a language from a source, or stopping a language that's being added: how many translations it has, how many unsent edits it has, and whether the change was already sent. Returns an approval to pass to remove_locale.",
+      add_locale: "Add a language to a source. Only JSON catalog and Chrome extension messages sources support it. Malmoi works out the file path from the source; Publish creates the file once the language has translations. Adding a language that was removed brings back its saved translations.",
+      remove_locale: "Remove a language from a source, or stop adding it. Call preview_locale_removal first and pass its approval. A removal deletes the language's file in the next Publish, and until then its translations can't be edited; its unsent edits go back to the last sent version. The base language can't be removed.",
+      cancel_locale_removal: "Cancel a pending language removal. If the removal was already sent, the next Publish puts the file back.",
       rotate_push_token: "Issue a new push token. The old one stops working at once. For GitHub, set it with gh secret set PUSH_TOKEN --repo OWNER/REPO, passing the token on standard input — don't use --body (--body - stores a literal \"-\"). For GitLab, update the PUSH_TOKEN CI/CD variable.",
       invite_members: "Invite people by email. Each invitation goes out by email and the link isn't returned.",
       revoke_invitation: "Revoke a pending invitation.",
@@ -4140,7 +4172,11 @@ export const en = {
       repositories: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "repository" : "repositories"}.`,
       branches: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "branch" : "branches"}.`,
       formats: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "translation file format" : "translation file formats"} found.`,
-      publishPreview: (n: number): string => n === 0 ? "Nothing to send." : `${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"} would be sent in a pull request. Publish with this fingerprint.`,
+      publishPreview: (n: number, languageFiles = 0): string => n === 0 && languageFiles === 0 ? "Nothing to send." : `${[
+        // 셀 편집과 언어 파일(새로 만들거나 지우는 파일)을 따로 센다 — 언어 파일만 있어도 "Nothing to send"가 아니다(locale-add).
+        ...(n === 0 ? [] : [`${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"}`]),
+        ...(languageFiles === 0 ? [] : [`${languageFiles.toLocaleString("en-US")} new or removed language ${languageFiles === 1 ? "file" : "files"}`]),
+      ].join(" and ")} would be sent in a pull request. Publish with this fingerprint.`,
       published: (view: string): string =>
         view === "created" ? "Sent for review in a new pull request."
         : view === "updated" ? "Updated the open pull request."
@@ -4182,7 +4218,11 @@ export const en = {
        */
       gitlab: {
         workflow: "CI file for the repository. Store the push token as the PUSH_TOKEN CI/CD variable (Protected and Masked).",
-        publishPreview: (n: number): string => n === 0 ? "Nothing to send." : `${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"} would be sent in a merge request. Publish with this fingerprint.`,
+        publishPreview: (n: number, languageFiles = 0): string => n === 0 && languageFiles === 0 ? "Nothing to send." : `${[
+          // 셀 편집과 언어 파일(새로 만들거나 지우는 파일)을 따로 센다 — 언어 파일만 있어도 "Nothing to send"가 아니다(locale-add).
+          ...(n === 0 ? [] : [`${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"}`]),
+          ...(languageFiles === 0 ? [] : [`${languageFiles.toLocaleString("en-US")} new or removed language ${languageFiles === 1 ? "file" : "files"}`]),
+        ].join(" and ")} would be sent in a merge request. Publish with this fingerprint.`,
         published: (view: string): string =>
           view === "created" ? "Sent for review in a new merge request."
           : view === "updated" ? "Updated the open merge request."
@@ -4198,9 +4238,23 @@ export const en = {
         // 소스마다 job이 따로 있어 병렬이다 — 남긴 job만 실패하고 다른 소스는 계속 들어온다(GitHub의 "뒤 step이 멈춘다"와 다르다).
         sourceRemoved: (slug: string): string => `Removed ${slug}. If .gitlab-ci.yml has a job for it, remove that job, or it fails in the next pipeline. The other sources still sync.`,
       },
-      syncPreview: (unsent: number): string => unsent === 0
+      syncPreview: (unsent: number, languageChanges = 0): string => (unsent === 0
         ? "Sync will load the repository's values. No unsent edits will be discarded."
-        : `Sync will load the repository's values and discard ${unsent.toLocaleString("en-US")} ${unsent === 1 ? "unsent edit" : "unsent edits"}.`,
+        : `Sync will load the repository's values and discard ${unsent.toLocaleString("en-US")} ${unsent === 1 ? "unsent edit" : "unsent edits"}.`)
+        + (languageChanges === 0 ? "" : ` It also drops ${languageChanges.toLocaleString("en-US")} pending language ${languageChanges === 1 ? "change" : "changes"}.`),
+      languageAdded: (language: string, path: string): string => `Added ${language}. Publish creates ${path} once it has translations.`,
+      /** `kind` — 제거 요청이면 파일 삭제를, 추가 취소면 보내지 않음을 말한다. 미전달 편집의 결과가 둘이 다르다(되돌림 vs 남지만 안 보냄). */
+      languageRemovalPreview: (kind: string, language: string, unsent: number): string => kind === "cancel-add"
+        ? `Adding ${language} can be stopped.${unsent === 0 ? "" : ` Its ${unsent.toLocaleString("en-US")} unsent ${unsent === 1 ? "edit stays" : "edits stay"} saved but won't be sent.`} Pass this approval to remove_locale.`
+        : `${language} can be removed. The next Publish deletes its file.${unsent === 0 ? "" : ` ${unsent.toLocaleString("en-US")} unsent ${unsent === 1 ? "edit goes" : "edits go"} back to the last sent version.`} Pass this approval to remove_locale.`,
+      languageRemoved: (kind: string, language: string): string => kind === "cancel-add"
+        ? `Stopped adding ${language}.`
+        : `${language} is set to be removed. Publish to delete its file; until then its translations can't be edited.`,
+      /** `delivered` — 이미 보낸 삭제를 취소했다면 다음 Publish가 그 파일을 되돌린다. `null`은 확인 무효화 중이라 모른다. */
+      languageRemovalCancelled: (language: string, delivered: boolean | null): string =>
+        delivered === true ? `Cancelled removing ${language}. The removal was already sent — publish again to keep its file.`
+        : delivered === null ? `Cancelled removing ${language}. We couldn't confirm whether the removal was already sent — preview_publish shows whether there's anything to send.`
+        : `Cancelled removing ${language}.`,
     },
     /**
      * 브라우저가 필요한 갈래 — 설치·인가는 state 쿠키가 방어선인 왕복이라 도구가 대신하지 않는다(ARCHITECTURE §6.4).

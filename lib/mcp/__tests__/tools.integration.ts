@@ -10,6 +10,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import { PrismaClient } from "@/generated/prisma/client";
 import { optionalEnv } from "@/lib/env";
 import { signSampleConfirmation } from "@/lib/onboarding/sample-confirmation";
+import { en } from "@/messages/en";
 
 import type { TokenGrant } from "../grant";
 import { hashApiToken } from "../token";
@@ -507,8 +508,9 @@ describe("언어 변경 도구 × 조회 도구", () => {
   });
 
   it("EDITOR는 forbidden · project:settings grant 없는 OWNER 토큰은 token-scope — 둘 다 아무것도 안 바뀐다(대조: 같은 OWNER의 전체 grant는 된다)", async () => {
-    expect(code(await call("add_locale", await token("editor"), target("fr")))).toBe("forbidden");
-    expect(code(await call("preview_locale_removal", await token("editor"), target("ko")))).toBe("forbidden");
+    const editor = await token("editor");
+    expect(code(await call("add_locale", editor, target("fr")))).toBe("forbidden");
+    expect(code(await call("preview_locale_removal", editor, target("ko")))).toBe("forbidden");
     const narrow = await token("owner", { grants: ["translation:write"] });
     for (const [name, input] of [["add_locale", target("fr")], ["remove_locale", { ...target("ko"), approval: null }], ["cancel_locale_removal", target("ko")]] as const) {
       expect(code(await call(name, narrow, input)), name).toBe("token-scope");
@@ -541,7 +543,7 @@ describe("언어 변경 도구 × 조회 도구", () => {
 
     // 저장 — 웹과 같은 거부, 영어 문장.
     const saved = await call("set_translations", owner, { slug: "p", surfaceSlug: "default", entries: [{ keyId: "k1", changes: [{ localeCode: "ko", value: "새" }] }] });
-    expect(data(saved).results).toEqual([{ keyId: "k1", status: "rejected", error: "locale-removal-pending", localeCodes: ["ko"], message: en.mcp.errors.languages["locale-removal-pending"](["ko"]) }]);
+    expect(data(saved).results).toEqual([{ keyId: "k1", status: "rejected", error: "locale-removal-pending", localeCodes: ["ko"], message: en.mcp.errors.languages["locale-removal-pending"]("ko") }]);
     expect(await koValue()).toBe("안녕");
 
     // 기준 브랜치 — 언어 변경이 남은 동안 바꾸지 않는다.
