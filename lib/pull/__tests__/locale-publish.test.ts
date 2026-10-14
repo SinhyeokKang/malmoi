@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { blobSha } from "@/lib/githash";
 import { publishFingerprint } from "@/lib/publish/fingerprint";
-import { NO_LOCALE_PLAN, planProjectLocales, localeWorkOf, observedLocalesOf, withdrawnLocalesOf, type ProjectLocalePlan, type SurfaceLocaleChanges } from "../locales";
+import { NO_LOCALE_PLAN, afterExpiry, expiringLocalesOf, expiryCheckApplies, planProjectLocales, localeWorkOf, observedLocalesOf, withdrawnLocalesOf, type ProjectLocalePlan, type SurfaceLocaleChanges } from "../locales";
 import { pullRequestBody, removedFilesStated } from "../payload";
 import { shouldSkipPull } from "../plan";
 import { LocalePlanRefused, projectFormats, renderProject, runPull, type PullDeps, type PullState } from "../run";
@@ -435,7 +435,7 @@ describe("수동·MCP Publish의 스냅샷 전 만료 (design §1 \"자동 적�
     const after = state({ unpublished: 1, pendingEdits: before.pendingEdits });
     after.surfaces[0]!.keys = [{ ...KEYS[0]!, cells: { ...KEYS[0]!.cells, en: { value: "A4" } } }, KEYS[1]!];
     const loads = [before, after];
-    const expireLocales = vi.fn<NonNullable<PullDeps["expireLocales"]>>(async () => 1);
+    const expireLocales = vi.fn<NonNullable<PullDeps["expireLocales"]>>(async () => [{ surfaceSlug: "default", localeCode: "ko", operation: "REMOVE" as const }]);
     const { deps: d } = deps(before, made, { loadState: async () => loads.shift()!, expireLocales });
     const result = await runPull(d);
     expect(expireLocales).toHaveBeenCalledWith({ projectId: "p1", pullRequest: "none-open",
@@ -446,23 +446,112 @@ describe("수동·MCP Publish의 스냅샷 전 만료 (design §1 \"자동 적�
   });
   it("열린 PR이 있으면 `open`을 넘긴다", async () => {
     const made = fake(files, { openPr: { url: "u", number: 3, title: "t" } });
-    const expireLocales = vi.fn<NonNullable<PullDeps["expireLocales"]>>(async () => 0);
+    const expireLocales = vi.fn<NonNullable<PullDeps["expireLocales"]>>(async () => []);
     await runPull(deps(state({ localeChanges: changes([["ko", "REMOVE"]]) }), made, { expireLocales }).deps);
     expect(expireLocales.mock.calls[0]?.[0].pullRequest).toBe("open");
   });
   it("PR 조회가 실패하면 Publish가 실패한다 — 종료된 요청을 다시 싣지 않는다(fail-closed)", async () => {
     const made = fake(files, { failOn: "findOpenPr" });
-    const expireLocales = vi.fn<NonNullable<PullDeps["expireLocales"]>>(async () => 0);
+    const expireLocales = vi.fn<NonNullable<PullDeps["expireLocales"]>>(async () => []);
     await expect(runPull(deps(state({ localeChanges: changes([["ko", "REMOVE"]]) }), made, { expireLocales }).deps)).rejects.toThrow();
     expect(expireLocales).not.toHaveBeenCalled();
     expect(made.calls.filter(call => isGitMutation(call.method))).toEqual([]);
   });
   it("행이 없는 프로젝트는 조회하지 않는다 — 기존 호출 순서 그대로", async () => {
     const made = fake(files);
-    const expireLocales = vi.fn<NonNullable<PullDeps["expireLocales"]>>(async () => 0);
+    const expireLocales = vi.fn<NonNullable<PullDeps["expireLocales"]>>(async () => []);
     await runPull(deps(state({ unpublished: 1 }), made, { expireLocales }).deps);
     expect(expireLocales).not.toHaveBeenCalled();
     expect(made.calls.some(call => call.method === "findOpenPr" && made.calls.indexOf(call) < made.calls.findIndex(c => c.method === "getBlobText"))).toBe(false);
+  });
+});
+
+/**
+ * **작업 0이어도 전달된 효과가 있으면 1층 앞에서 만료를 돈다** (#267). 전달된 제거의 PR이 머지 없이 닫힌 창은 현재 = 전달이라 작업이 0이다 — 1층이
+ * 먼저 끝나면 만료가 돌지 않고 결과가 "리포에 이미 있다"는 거짓을 말한다. 전달된 효과가 없는 행(값 0개 ADD)은 그대로 1층에서 끝난다(원격 0회).
+ */
+describe("작업 0 + 전달된 효과 — 1층 전 만료 (#267)", () => {
+  const files = { "i18n/en.json": EN, "i18n/ko.json": KO };
+  const deliveredRemove = { ...changes([["ko", "REMOVE"]], [{ localeCode: "ko", effect: "delete" }]), work: 0 };
+  const EXPIRED = [{ surfaceSlug: "default", localeCode: "ko", operation: "REMOVE" as const }];
+
+  it("만료가 있었으면 다시 읽고, 보낼 것이 없으면 no-edits + 버린 요청 — 쓰기 0", async () => {
+    const made = fake(files);
+    const loads = [state({ localeChanges: deliveredRemove }), state()];
+    const expireLocales = vi.fn<NonNullable<PullDeps["expireLocales"]>>(async () => EXPIRED);
+    const result = await runPull(deps(loads[0]!, made, { loadState: async () => loads.shift()!, expireLocales }).deps, "fingerprint-from-preview");
+    expect(expireLocales).toHaveBeenCalledWith({ projectId: "p1", pullRequest: "none-open",
+      surfaces: [{ surfaceId: "s1", surfaceSlug: "default", observed: { status: "observed", locales: ["en", "ko"] } }] });
+    expect(result).toEqual({ status: "skipped", reason: "no-edits", expired: EXPIRED });
+    expect(made.calls.filter(call => isGitMutation(call.method))).toEqual([]);
+  });
+
+  it("열린 PR이면 만료 0 — no-edits에 버린 요청이 없다, 쓰기 0", async () => {
+    const made = fake(files, { openPr: { url: "u", number: 3, title: "t" } });
+    const expireLocales = vi.fn<NonNullable<PullDeps["expireLocales"]>>(async () => []);
+    const result = await runPull(deps(state({ localeChanges: deliveredRemove }), made, { expireLocales }).deps);
+    expect(expireLocales.mock.calls[0]?.[0].pullRequest).toBe("open");
+    expect(result).toEqual({ status: "skipped", reason: "no-edits" });
+    expect(made.calls.filter(call => isGitMutation(call.method))).toEqual([]);
+  });
+
+  it("PR 조회가 실패하면 실패한다(fail-closed) — 만료하지 않는다", async () => {
+    const made = fake(files, { failOn: "findOpenPr" });
+    const expireLocales = vi.fn<NonNullable<PullDeps["expireLocales"]>>(async () => []);
+    await expect(runPull(deps(state({ localeChanges: deliveredRemove }), made, { expireLocales }).deps)).rejects.toThrow();
+    expect(expireLocales).not.toHaveBeenCalled();
+  });
+
+  it("전달된 효과가 없는 행(값 0개 ADD)은 1층에서 끝난다 — 원격 0회", async () => {
+    const made = fake(files);
+    const expireLocales = vi.fn<NonNullable<PullDeps["expireLocales"]>>(async () => []);
+    const result = await runPull(deps(state({ localeCodes: ["en", "ko", "de"], localeChanges: { ...changes([["de", "ADD"]]), work: 0 } }), made, { expireLocales }).deps);
+    expect(result).toEqual({ status: "skipped", reason: "no-edits" });
+    expect(made.calls).toEqual([]);
+    expect(expireLocales).not.toHaveBeenCalled();
+  });
+});
+
+describe("만료 판정의 읽기 전용 쪽 — 미리보기가 실행과 같은 판정을 쓴다 (#267)", () => {
+  const surface = (localeChanges: SurfaceLocaleChanges | undefined, localeCodes = ["en"]) =>
+    ({ ...PROJECT, id: "s1", slug: "default", localeCodes, keys: KEYS, ...(localeChanges === undefined ? {} : { localeChanges }) });
+  const deliveredRemove = { ...changes([["ko", "REMOVE"]], [{ localeCode: "ko", effect: "delete" }]), work: 0 };
+  const base = tree({ "i18n/en.json": EN, "i18n/ko.json": KO }).map(entry => ({ ...entry, mode: "100644" }));
+
+  it("expiryCheckApplies — 행이 없으면 아니다 · 작업이 있으면 그렇다 · 작업 0이면 전달된 효과가 있는 행 소스가 있을 때만", () => {
+    expect(expiryCheckApplies(1, [surface(undefined)])).toBe(false);
+    expect(expiryCheckApplies(1, [surface({ ...changes([["de", "ADD"]]), work: 0 })])).toBe(true);
+    expect(expiryCheckApplies(0, [surface(changes([["ko", "REMOVE"]]))])).toBe(true);
+    expect(expiryCheckApplies(0, [surface(deliveredRemove)])).toBe(true);
+    expect(expiryCheckApplies(0, [surface({ ...changes([["de", "ADD"]]), work: 0 })])).toBe(false);
+    // 확인 안 된 목록(`null`)은 만료할 수 없다 — 작업 0이면 1층 그대로다.
+    expect(expiryCheckApplies(0, [surface({ ...changes([["ko", "REMOVE"]], null), work: 0 })])).toBe(false);
+  });
+
+  it("expiringLocalesOf — 열린 PR 없음(성공한 조회) + 현재 = 전달 + 관측이면 만료로 판정한다. 열림·조회 실패·관측 불가는 0", () => {
+    const formats = projectFormats([surface(deliveredRemove)]);
+    expect(expiringLocalesOf(formats, "none-open", base)).toEqual([{ surfaceSlug: "default", localeCode: "ko", operation: "REMOVE" }]);
+    expect(expiringLocalesOf(formats, "open", base)).toEqual([]);
+    expect(expiringLocalesOf(formats, "failed", base)).toEqual([]);
+    expect(expiringLocalesOf(formats, "none-open", base.map(entry => ({ ...entry, mode: undefined })))).toEqual([]);
+    // 아직 보내지 않은 제거(현재 ≠ 전달)는 만료하지 않는다.
+    expect(expiringLocalesOf(projectFormats([surface(changes([["ko", "REMOVE"]]))]), "none-open", base)).toEqual([]);
+  });
+
+  it("afterExpiry — 만료할 코드의 행과 전달 효과를 뺀다. 나머지 소스·코드는 그대로다", () => {
+    const mixed = { ...changes([["ko", "REMOVE"], ["fr", "ADD"]], [{ localeCode: "fr", effect: "create" }, { localeCode: "ko", effect: "delete" }], [["fr", 1]]), work: 0 };
+    const [after] = afterExpiry([surface(mixed)], [{ surfaceSlug: "default", localeCode: "ko", operation: "REMOVE" }]);
+    expect(after?.localeChanges?.rows.map(row => row.localeCode)).toEqual(["fr"]);
+    expect(after?.localeChanges?.delivered).toEqual([{ localeCode: "fr", effect: "create" }]);
+    const untouched = [surface(mixed)];
+    expect(afterExpiry(untouched, [])).toBe(untouched);
+  });
+
+  it("publishFingerprint — 버려질 요청이 지문에 실린다. 없으면 바이트가 옛것 그대로다", () => {
+    const loaded = state({ localeChanges: deliveredRemove });
+    const plain = publishFingerprint(loaded, "head");
+    expect(publishFingerprint(loaded, "head", undefined, [])).toBe(plain);
+    expect(publishFingerprint(loaded, "head", undefined, [{ surfaceSlug: "default", localeCode: "ko", operation: "REMOVE" }])).not.toBe(plain);
   });
 });
 
