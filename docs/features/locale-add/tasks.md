@@ -36,21 +36,21 @@
 
 ## 2. 스키마·배포 경계
 
-- [ ] `/db --create-only`로 `LocaleChange`(enum·복합 FK·인덱스)와 `deliveredLocaleChanges` 생성. 검증: SQL 검토에서 additive·백필 없음·Locale/Translation FK Restrict 유지.
-- [ ] `scripts/gate-plan.ts`의 `test:projects:postgres` 트리거에 `lib/locales/`를 추가한다. 검증: gate-plan 테스트 갱신 green, `lib/locales/change.ts`만 바꾼 diff가 격리 PG를 붙임.
-- [ ] 런타임 롤 권한은 손 GRANT 없이 `deploy/bootstrap.sql` default privileges로 검증한다. 검증: `self-hosted-bootstrap.integration.ts` green.
+- [x] `/db --create-only`로 `LocaleChange`(enum·복합 FK·인덱스)와 `deliveredLocaleChanges` 생성. 검증: SQL 검토에서 additive·백필 없음·Locale/Translation FK Restrict 유지.
+- [x] `scripts/gate-plan.ts`의 `test:projects:postgres` 트리거에 `lib/locales/`를 추가한다. 검증: gate-plan 테스트 갱신 green, `lib/locales/change.ts`만 바꾼 diff가 격리 PG를 붙임.
+- [x] 런타임 롤 권한은 손 GRANT 없이 `deploy/bootstrap.sql` default privileges로 검증한다. 검증: `self-hosted-bootstrap.integration.ts` green.
 - [ ] 마이그레이션 순서: `/db --create-only` 검토 → dev 적용 → dev `has_schema_privilege` false 확인 → `/push` → (`/merge` 1단계) `pnpm db:status:prod` → `pnpm db:deploy` → prod `has_schema_privilege` false 확인 → 머지. prod에 `migrate dev` 금지. 검증: `/db`·`/merge` 보고에 각 단계 결과.
-- [ ] SELF-HOSTING §3 대조와 롤백·재배포 서술(design §7). 검증: 버전 건너뛰기 업그레이드 가능, 새 환경변수 없음, OPERATIONS에 구버전 구간 영향 기록.
+- [x] SELF-HOSTING §3 대조와 롤백·재배포 서술(design §7). 검증: 버전 건너뛰기 업그레이드 가능, 새 환경변수 없음, OPERATIONS에 구버전 구간 영향 기록.
 
 ## 3. 공통 변경 코어·사건
 
-- [ ] 추가/되살림: Project→Surface 잠금, Locale·변경 행·셀 토큰·사건 같은 tx. 검증(격리 PG): 값 있는 활성 셀만 토큰 재발급, 값/저자 유지, baseline 임의 생성 없음, 사건 실패 시 롤백.
-- [ ] 제거·추가 취소 미리보기·실행: 대상 경로·번역 수·미전달 수·서버 지문, 미전달 편집 승인 폐기. 검증(격리 PG): 다른 언어 미포함, 미리보기 쓰기 0, 오래된 지문 거부, 상태 쓰기·폐기·사건 원자성.
-- [ ] 제거 취소: 행 삭제·편집 허용. 검증: 전달 전이면 작업 0, 전달 후면 작업 1, 다른 언어 변경 없음.
-- [ ] 번역 저장·Revert·기준 언어 변경·MCP 쓰기에 제거 상태 판정. 검증(격리 PG): 렌더 뒤 제거/기준 변경 경합에서도 서버가 거부.
-- [ ] `publish-unsettled`·RUNNING 실행권과 언어 변경의 상호 배제. 검증(격리 PG): 잠금 순서 동일, 미확정 실행 중 변경 거부, 실행 중 새 요청이 확인 뒤에도 작업으로 남음.
+- [x] 추가/되살림: Project→Surface 잠금, Locale·변경 행·셀 토큰·사건 같은 tx. 검증(격리 PG): 값 있는 활성 셀만 토큰 재발급, 값/저자 유지, baseline 임의 생성 없음, 사건 실패 시 롤백.
+- [x] 제거·추가 취소 미리보기·실행: 대상 경로·번역 수·미전달 수·서버 지문, 미전달 편집 승인 폐기. 검증(격리 PG): 다른 언어 미포함, 미리보기 쓰기 0, 오래된 지문 거부, 상태 쓰기·폐기·사건 원자성.
+- [x] 제거 취소: 행 삭제·편집 허용. 검증: 전달 전이면 작업 0, 전달 후면 작업 1, 다른 언어 변경 없음.
+- [x] 번역 저장·Revert·기준 언어 변경·MCP 쓰기에 제거 상태 판정. 검증(격리 PG): 렌더 뒤 제거/기준 변경 경합에서도 서버가 거부.
+- [x] `publish-unsettled`·RUNNING 실행권과 언어 변경의 상호 배제. 검증(격리 PG): 잠금 순서 동일, 미확정 실행 중 변경 거부, 실행 중 새 요청이 확인 뒤에도 작업으로 남음.
 - [ ] CI push 적재와 언어 변경 tx의 잠금 순서. 검증(격리 PG): 같은 순서, 추가 tx 직후 적재가 빈 ADD를 orphan하지 않음(첫 red), REMOVE tx 직후 적재가 보류.
-- [ ] 사건 payload/view·query 필터와 `locked-access`·진입점 목록 갱신. 검증: 옛 payload 읽기 유지, locale 사건이 source-added로 표시되지 않음.
+- [x] 사건 payload/view·query 필터와 `locked-access`·진입점 목록 갱신. 검증: 옛 payload 읽기 유지, locale 사건이 source-added로 표시되지 않음.
 
 ## 4. 적재·Sync·수명주기
 
