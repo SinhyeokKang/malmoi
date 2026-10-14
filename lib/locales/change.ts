@@ -12,6 +12,7 @@ import { sameFingerprint } from "@/lib/protection/fingerprint";
 import { getSurfaceAccess } from "@/lib/surfaces/access";
 import type { SurfacePaths } from "@/lib/surfaces/plan";
 import { planPublishBarrier, uncertainPublishWhere } from "@/lib/sync/execution";
+import { planWriteLock } from "@/lib/sync/plan";
 import { planKeyRevert } from "@/lib/translations/baseline";
 
 import { planLocaleChange, type ApprovalState, type LocaleChangeRefusal, type LocaleChangeRequest, type LocaleTransition } from "./change-plan";
@@ -43,7 +44,9 @@ export const CancelLocaleRemovalInput = LocaleTarget;
  * (R-B1 Y1). 추가 취소는 값을 되돌리지 않으므로 이 거부가 없다.
  */
 export type LocaleChangeError = Exclude<ProjectAccess, { status: "ok" }>["status"] | Exclude<LockedAccess, { status: "ok" }>["status"] | LocaleChangeRefusal
-  | "baseline-unknown" | "baseline-stale";
+  | "baseline-unknown" | "baseline-stale"
+  /** 수동 Sync 적재 lease 중의 제거 — 저장·Revert와 같은 거부다(`planWriteLock`). */
+  | "sync-running";
 
 export type AddLocaleResult = { ok: true; action: "create" | "revive"; path: string; reissued: number } | { ok: false; error: LocaleChangeError };
 
@@ -78,7 +81,7 @@ async function publishUnsettled(db: Db, projectId: string): Promise<boolean> {
  */
 async function readChangeState(db: Prisma.TransactionClient, scope: Scope, code: string) {
   const { projectId, surfaceId } = scope;
-  const project = await db.project.findUnique({ where: { id: projectId }, select: { archivedAt: true } });
+  const project = await db.project.findUnique({ where: { id: projectId }, select: { archivedAt: true, repositoryImportToken: true, repositoryImportStartedAt: true } });
   const surface = await db.translationSurface.findFirst({
     where: { id: surfaceId, projectId },
     select: { slug: true, adapterName: true, pathTemplate: true, baseLocale: true, declaredBaseLocale: true },
@@ -176,6 +179,8 @@ function judge(state: ChangeState, request: LocaleChangeRequest, approval: Appro
   if (!verdict.ok) return verdict;
   // 되돌리는 폐기는 제거에만 건다 — 추가 취소는 토큰만 비우고 값을 남긴다(아래 `clearApprovedTokens`, design §3 2026-10-14 정정).
   if (verdict.transition.kind !== "request-removal") return { ok: true, transition: verdict.transition, discard: [] };
+  // 폐기 = Revert라 적재 lease 판정도 같다(`planWriteLock` — R-B1b Z2). 잠금 뒤 읽은 lease다.
+  if (state.project !== null && planWriteLock({ now: new Date(), ...state.project }) !== null) return { ok: false, error: "sync-running" };
   const discard = planDiscard(state);
   return discard.ok ? { ok: true, transition: verdict.transition, discard: discard.writes } : discard;
 }
