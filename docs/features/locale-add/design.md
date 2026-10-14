@@ -21,7 +21,7 @@
 | `operation` | `ADD`(새 파일 제안) 또는 `REMOVE`(파일 제외) |
 | `requestedAt` | 요청 시각. UI 표시와 승인 지문 입력 |
 
-소스별 전달 확인(`DeliveryConfirmation`, 소스당 행)에 **`deliveredLocaleChanges`** 를 additive로 둔다. 마지막으로 PR/MR 경계까지 확인된 Publish가 실은 파일 집합 변경의 정규화 목록이다. 원소는 `(localeCode, effect)`이고 effect는 `create`(값 있는 ADD) 또는 `delete`(REMOVE)이며 코드순으로 정렬한다. 목록 자체를 저장해 언어별 `Unsent`를 표시할 수 있게 한다. 위치(DeliveryConfirmation 컬럼 vs 소스 행)는 tasks §0에서 확정한다.
+소스별 전달 확인(`DeliveryConfirmation`, 소스당 행)에 **`deliveredLocaleChanges`** 를 additive로 둔다. 마지막으로 PR/MR 경계까지 확인된 Publish가 실은 파일 집합 변경의 정규화 목록이다. 원소는 `(localeCode, effect)`이고 effect는 `create`(값 있는 ADD) 또는 `delete`(REMOVE)이며 코드순으로 정렬한다. 목록 자체를 저장해 언어별 `Unsent`를 표시할 수 있게 한다. **위치: `DeliveryConfirmation`의 jsonb 컬럼** (2026-10-14 결정). 근거: revision을 새로 찍고 확인을 되살리는 upsert(`lib/pull/load.ts:354-363`, `confirmDelivery` 성공 tx)에서 같이 쓰므로, 첫 외부 쓰기 전 무효화(`invalidatePublishDelivery` `load.ts:194-207`, 호출 `run.ts:419`·`:447`)와 성공 경계(`run.ts:439` no-changes · `:479` PR/MR 뒤)를 그대로 따른다. 새 테이블은 같은 동기화를 따로 맞춰야 한다. ⚠️ 그 upsert는 `delivery.contexts`(`load.ts:305`)에 든 소스만 덮는다 — **언어 변경만 있는 소스도 캡처 컨텍스트에 넣어야** 행이 생긴다. 무효화 동안(`invalidatedAt` ≠ null) 전달 목록은 "확인 안 됨"으로 읽는다. 미확정 실행 장벽은 `publish-unsettled`(`lib/sync/run.ts:138-143`, `planPublishBarrier` `lib/sync/execution.ts:20`)를 재사용한다.
 
 **현재 효과 목록**은 같은 규칙으로 `LocaleChange`에서 계산한다. 값 0개 ADD는 파일을 내지 않으므로 목록에 들어가지 않는다. **언어 변경 작업 = 현재 효과 목록 ≠ 전달 목록.** 전이 이력이나 실행 참조를 따로 두지 않는다. sync 브랜치를 매번 base에서 다시 만들므로 “이전에 무엇을 보냈나”는 이 목록 하나로 충분하다.
 
