@@ -44,6 +44,7 @@
    UI에서 비운다. push 페이로드의 `""`·부재는 "모름"이지 "삭제"가 아니다(§5.5.2, 2026-09-17 명문화).
    ⚠️ **소스(표면) 제거도 삭제가 아니다** (2026-10-05, §5.9) — `archivedAt`을 세울 뿐 키·로케일·번역·이력 행은 그대로이고,
    재추가가 같은 행을 되살린다(`id`·`slug` 유지). 하드 삭제·보존 기간은 없다.
+   ⚠️ **언어 제거도 삭제가 아니다** (2026-10-14, locale-add · §5.10) — 리포 파일 삭제와 앱 비활성(`orphaned`)일 뿐 로케일 행·번역·이력은 그대로이고, 같은 코드의 재추가가 같은 행을 되살린다.
    ⚠️ **수술적 표면(`ts-dict`·`yaml-catalog`·`code-dict`)의 비-base 셀은 UI에서도 비울 수 없다** (2026-09-24, delivery-invariants D2) —
    저장이 `cannot-clear`로 거부한다. base도 폴백 원문이 빈 경우 같은 판정이다(2026-10-07). 이미 저장된 빈 편집은 미리보기와 실행의 공통 `planDelivery`가 `write-empty-unsupported`로 멈추고 토큰을 유지한다. 키·파일 부재로 이미 보류된 셀은 이 전체 거부에서 제외한다. 명시적 빈값 export(PRODUCT §10)가 생기기 전까지의 임시 규칙이다(§5.5.2).
 4. 같은 DB 상태와 **같은 원본 파일**은 **같은 바이트**를 만든다 — 원본은 구조·표현과 **base 키 집합**(B3.4)을 준다.
@@ -2440,7 +2441,7 @@ DB의 의도는 **PR/MR이 열려 있는 동안만** 파일 집합을 쥔다. �
 ### 5.10.4 Publish — 명시적 delete와 전달 확인
 
 - **변경 union**: `PullChange = { kind: "upsert", path, content } | { kind: "delete", path }`, `SnapshotChange`는 upsert에 `inBase`가 붙는다(`lib/pull/plan.ts`·`client.ts`). **삭제는 별도 의도 입력**으로만 만든다 —
-  출력에서 언어를 빼거나 `content === null`인 것만으로는 삭제가 되지 않는다(§3의 "삭제를 내지 않는다"는 이 명시적 의도 외에는 그대로다). delete는 **경로가 base에 있을 때만** 만들고,
+  출력에서 언어를 빼거나 `content === null`인 것만으로는 삭제가 되지 않는다(명시적 의도 외에는 Publish가 파일을 지우지 않는다). delete는 **경로가 base에 있을 때만** 만들고,
   같은 경로의 upsert·delete나 중복 delete는 계획 오류(`unreachable:`)다. 정렬은 기존 결정적 비교(`compareKeys`)다.
 - **호스트 가드 세 곳**: GitHub `TreeEntry`는 delete를 `base_tree` 위 `sha: null` 항목으로 내고(`buildTreePayload`, 삭제 경로도 `isPathSafeRepoPath`), GitLab `buildCommitActions`는 `{action: "delete", file_path}`를 낸다.
   **빈 변경 throw는 유지**하되 삭제만 있는 변경은 통과하고, 중복·경로 안전 검사는 두 종류 모두에 건다. 변경 0은 기존 `no-changes` 경로로 간다.
