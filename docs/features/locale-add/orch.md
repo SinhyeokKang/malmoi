@@ -63,3 +63,6 @@
 - A2 fix1 `worker_done` — `bfe60934`(`gate: ok`). 재리뷰 생략(지휘자 판단 — 두 건 다 red 선행, 범위 4파일). A2 해제·정리.
 - A1 fix1 `worker_done` — `605af158`(`gate: ok` 14861 · PG 697; 1회차 seo-metadata import timeout은 단독·재실행 green). 새 보류 코드 `base-empty` → **B1 메모: 사건·Logs 매핑에서 `base-unreadable`과 같이 다룬다.**
 - **wave ① 통합**(로컬 dev): A2 `055d9c9e`·`1697f0bb` · A1 `f9d35b2e`·`ae126f69`·`605af158`. main 체크아웃 `pnpm gate` **ok**. tasks §1 전부·§5 첫째·둘째 체크.
+- wave ② — **B1** `ctx_077ef6f24696`(Opus high, `lo-B1`, base `ecf4a5e5` 확인). P1 push `1f851139..ecf4a5e5`, CI run 38515201677 감시 중.
+- B1 `worker_done` — 6커밋(…`8b1ef661`), 마이그레이션 `20261014060000_locale_change`, `gate: ok`(14942 · PG 742). 미룬 것: apply 쪽 테스트 → B3, 전달 목록 캡처 → B2. B1 retain. **R-B1** `ctx_9f5f3469ec15`(Opus high — 범위가 커서 리뷰 effort 상향, 지휘자 판단).
+- R-B1 완료(🔴 1 · 🟡 4 · ⚪ 6, 변이 13 중 9 — `.scratch/orch-locale-add/review-B1.md`). **D3 사용자 결정**: 폐기 = 마지막 전달 값으로 되돌림(Revert 의미), baseline 없는 미전달 셀이 있으면 제거·추가 취소 거부. **지휘자 판단**: 🔴 R1 무효화 중 취소 거부(`publish-unsettled`). design 반영. **B1 fix1** — R1 · Y1(D3) · Y2 소스 경계 그물 셋 · Y3 만료 잠금 그물 · Y4 OPERATIONS 재전진 문단 · W1 지문에 확인 `revision`. **B2·B3 브리프로**: W3 호출 계약(Project 잠금 뒤에만 `expireLocaleChanges`, 사람 경로는 `lockProjectAccess` 뒤).
