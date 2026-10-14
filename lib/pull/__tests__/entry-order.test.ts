@@ -128,6 +128,9 @@ function captureFindMany(): { prisma: PrismaClient; args: Record<string, unknown
       }),
     },
     stringKey: { findMany },
+    // 언어 변경 의도·전달 목록(locale-add) — 이 스텁에는 없다. `args`를 오염시키지 않게 따로 둔다.
+    localeChange: { findMany: async () => [] },
+    deliveryConfirmation: { findMany: async () => [] },
     $queryRaw: async () => [],
     translation: { aggregate: async () => ({ _max: { updatedAt: null } }), count: async () => 0, findMany: async () => [] },
   } as unknown as PrismaClient;

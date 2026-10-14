@@ -1400,14 +1400,20 @@ it.each([
 
 /**
  * delete 의도의 파일 종류 가드 (locale-add design §2) — 렌더 경로와 같은 문을 지난다. 링크·서브모듈·디렉터리를 지우거나 링크 아래 경로를 지우는 계획은 읽기만 하고 던진다.
- * 호출부는 아직 빈 목록만 넘긴다(B2가 REMOVE 의도를 잇는다).
+ * 계획은 REMOVE 행에서만 온다 — 호출부는 `planLocales`로 세운다(locale-add B2).
  */
 describe("renderProject — delete 의도도 파일 종류 가드를 지난다", () => {
   const SURFACES: PullState["surfaces"] = [{ ...PROJECT, id: "s1", slug: "default", localeCodes: ["en", "ko"], keys: KEYS }];
   const render = (tree: { path: string; sha: string; mode: string }[], deletes?: readonly string[]) => {
     const made = createFakeGitClient({ refSha: { "heads/dev": "basehead" }, tree: { basehead: tree }, blobs: { en: EN_CONTENT, ko: KO_CONTENT, x: "x\n" } });
     const formats = projectFormats(SURFACES);
-    return { promise: deletes === undefined ? renderProject(PROJECT, formats, made.client) : renderProject(PROJECT, formats, made.client, undefined, deletes) };
+    // 삭제는 그 소스의 REMOVE 행에서만 온다(review-A2 F2) — 경로마다 행을 세운 계획으로 넘긴다.
+    const localeOf = (path: string) => (path.split("/").at(-1) ?? "").replace(/\.json$/, "");
+    const rows = (deletes ?? []).map(path => ({ localeCode: localeOf(path), operation: "REMOVE" as const, requestedAt: new Date(0) }));
+    const planned = projectFormats(SURFACES.map(s => ({ ...s, pathTemplate: deletes?.some(p => p.startsWith("legacy/")) ? "legacy/{locale}.json" : s.pathTemplate,
+      localeChanges: { rows, valueCounts: new Map(), delivered: [], work: rows.length } })));
+    const plan = { surfaces: deletes === undefined ? [] : [{ surfaceId: "s1", surfaceSlug: "default", exclude: [], creates: [], deletes: (deletes ?? []).map(path => ({ localeCode: localeOf(path), path })), withheld: [], empty: [], captured: [] }] };
+    return { promise: deletes === undefined ? renderProject(PROJECT, formats, made.client) : renderProject(PROJECT, planned, made.client, undefined, plan) };
   };
 
   it("base에 있는 일반 파일의 delete는 changes에 delete로 실린다", async () => {

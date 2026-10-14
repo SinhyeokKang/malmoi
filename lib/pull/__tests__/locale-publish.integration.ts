@@ -12,7 +12,7 @@ import { optionalEnv } from "@/lib/env";
 import { blobSha } from "@/lib/githash";
 import { applyKeySave } from "@/lib/keys/save-key";
 import { addLocale, cancelLocaleRemoval, previewLocaleRemoval, removeLocale } from "@/lib/locales/change";
-import { countLocaleWork, readLocaleStates } from "@/lib/locales/work";
+import { countLocaleWork, deliveredOf } from "@/lib/locales/work";
 import { readPublishPreview } from "@/lib/publish/read";
 import { applyPush } from "@/lib/push/apply";
 import { hashPushToken } from "@/lib/push/token";
@@ -60,7 +60,8 @@ const WEB = { slug: "fixture", surfaceSlug: "default" };
 const SYNC = "heads/malmoi-i18n/sync-fixture";
 /** 리포 base의 파일 — 4칸 들여쓰기라 새 언어 파일이 그 표현을 빌리는지 보인다. */
 const EN = '{\n    "hello": "Hello",\n    "bye": "Bye"\n}\n';
-const KO = '{\n    "hello": "안녕",\n    "bye": "잘가"\n}\n';
+// 비-base 파일은 원본 순서가 아니라 DB 순서로 다시 쓰인다 — 적재 키에 순서가 없어 코드 유닛 순이다. 같은 바이트여야 값 편집 0건이 diff 0이다.
+const KO = '{\n    "bye": "잘가",\n    "hello": "안녕"\n}\n';
 
 beforeEach(async () => {
   await pool.query("DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public");
@@ -96,14 +97,16 @@ function fake(files: Record<string, string>, extra: Partial<FakeGitOptions> = {}
 
 const publish = (expectedFingerprint?: string) =>
   runSync(prisma, { projectId: "p", slug: "fixture", trigger: "manual", requestedBy: "owner", credential: undefined, ...(expectedFingerprint === undefined ? {} : { expectedFingerprint }) });
-const delivered = async () => (await readLocaleStates(prisma, "p", "s"))[0]?.delivered;
+/** 그 소스의 전달 목록 — `[]`는 전달한 것 없음, `null`은 확인 안 됨(취소·작업 수가 읽는 값, `deliveredOf`). */
+const delivered = async () => deliveredOf(await prisma.deliveryConfirmation.findUnique({ where: { projectId_surfaceId: { projectId: "p", surfaceId: "s" } } }));
 const snapshot = (made: ReturnType<typeof fake>) =>
   made.calls.find(call => call.method === "publishSnapshot")?.args[0] as { changes: { kind: string; path: string; content?: string; inBase?: boolean }[] } | undefined;
 const keyId = async (key: string) => (await prisma.stringKey.findFirstOrThrow({ where: { projectId: "p", key } })).id;
 const save = async (key: string, localeCode: string, value: string) =>
   applyKeySave(prisma, { projectId: "p", surfaceId: "s", surfaceSlug: "default", keyId: await keyId(key), userId: "owner", credential: undefined, changes: [{ localeCode, value }] });
 /** 미확정 창(300초)을 지나게 한다 — 남는 장벽은 확인 무효화뿐이다. */
-const ageRuns = () => pool.query(`UPDATE "SyncRun" SET "startedAt" = now() - interval '400 seconds', "finishedAt" = now() - interval '390 seconds'`);
+// 시각은 JS로 넘긴다 — 컬럼이 시간대 없는 timestamp라 SQL `now()`는 세션 시간대만큼 어긋난다.
+const ageRuns = () => prisma.syncRun.updateMany({ where: { projectId: "p" }, data: { startedAt: new Date(Date.now() - 400_000), finishedAt: new Date(Date.now() - 390_000) } });
 
 async function requestRemoval(code: string) {
   const preview = await previewLocaleRemoval(prisma, OWNER, { ...WEB, localeCode: code });
@@ -174,7 +177,7 @@ describe("추가 → Publish — 새 파일은 기준 파일의 표현을 빌리
     fake(files);
     const preview = await readPublishPreview(prisma, "p", "fixture");
     expect(preview.fileChanges).toEqual([{ path: "i18n/fr.json", kind: "new" }]);
-    expect(preview.groups.flatMap(group => group.cells.map(cell => cell.path))).toEqual(["i18n/fr.json"]);
+    expect(preview.groups.map(group => group.path)).toEqual(["i18n/fr.json"]);
 
     const made = fake(files);
     expect(await publish(preview.fingerprint)).toMatchObject({ status: "committed", delivered: 1 });
@@ -183,21 +186,35 @@ describe("추가 → Publish — 새 파일은 기준 파일의 표현을 빌리
     expect(await countLocaleWork(prisma, "p")).toBe(0);
   });
 
+  /**
+   * 열린 PR이 있는 동안이다 — PR이 없으면 수동 Publish의 스냅샷 전 만료가 "리포에 파일이 생겼다"를 관측해 ADD를 활성 언어로 풀고(design §1 Y1),
+   * 그 뒤로는 보통의 활성 언어다(아래 짝).
+   */
   it("미전달 ADD의 경로가 base에 이미 있으면 그 언어만 보류 — 미리보기와 실행이 같은 이유·수를 말하고 나머지 편집은 나간다", async () => {
     await addLocale(prisma, OWNER, { ...WEB, localeCode: "fr" });
     await save("hello", "fr", "Bonjour");
     await save("bye", "ko", "또봐");
     const files = { "i18n/en.json": EN, "i18n/ko.json": KO, "i18n/fr.json": '{\n    "hello": "Salut"\n}\n' };
-    fake(files);
+    const open = { openPr: { url: "https://github.com/o/r/pull/9", number: 9, title: "chore(i18n): sync [skip ci]", base: "main" } };
+    fake(files, open);
     const preview = await readPublishPreview(prisma, "p", "fixture");
     const reason = { withheld: [{ surfaceSlug: "default", localeCode: "fr", path: "i18n/fr.json", reason: "proposal-path-exists" }], empty: [] };
     expect(preview).toMatchObject({ locales: reason, withoutFile: 1, sendable: { total: 1 } });
-    const made = fake(files);
+    const made = fake(files, open);
     expect(await publish(preview.fingerprint)).toMatchObject({ status: "committed", delivered: 1, withheld: { file: 1, key: 0 }, locales: reason });
     expect(snapshot(made)?.changes.map(change => change.path)).toEqual(["i18n/ko.json"]);
     // 보류된 ADD는 캡처하지 않는다 — 작업으로 남는다.
     expect(await delivered()).toEqual([]);
     expect(await countLocaleWork(prisma, "p")).toBe(1);
+
+    // 짝 — PR이 닫혔으면 스냅샷 전 만료가 관측한 파일로 ADD를 풀고, fr은 보통의 활성 언어로 미전달 편집을 싣는다.
+    await ageRuns();
+    const after = fake(files);
+    expect(await publish()).toMatchObject({ status: "committed", delivered: 1 });
+    // ko는 앞 PR이 머지되지 않아 base와 여전히 달라 다시 실린다 — 스냅샷은 늘 DB 전체 상태다.
+    expect(snapshot(after)?.changes).toContainEqual({ kind: "upsert", path: "i18n/fr.json", content: '{\n    "hello": "Bonjour"\n}\n', inBase: true });
+    expect(await prisma.localeChange.count({ where: { projectId: "p" } })).toBe(0);
+    expect(await countLocaleWork(prisma, "p")).toBe(0);
   });
 
   it("값 0개 ADD만 있으면 원격 호출 0 — 작업이 없다", async () => {

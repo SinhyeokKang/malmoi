@@ -1,4 +1,6 @@
 import type { PullWarning } from "@/lib/pull/run";
+import type { PublishedFile } from "@/lib/pull/payload";
+import type { LocaleNotes } from "@/lib/pull/locales";
 import type { OpenImportPr } from "@/lib/import/confirm";
 import type { PublishDiff } from "./diff";
 /** `keys`는 **미발송 전체**의 키 수다 — 표에 실린 행이 아니라 바닥 요약이 드는 값이다. */
@@ -17,6 +19,10 @@ export type PublishPreview = PublishDiff & {
    * 사는 파일이라 이보다 적을 수 있다 — 토큰 없이 바뀌는 파일(orphan 줄 제거, 앞서 닫힌 PR에 실렸던 값)이 여기에만 있다.
    */
   changedFiles: string[];
+  /** `changedFiles`와 같은 순서의 파일 종류(`new`·`updated`·`removed`) — 실행 결과의 `files`와 같은 판정이다. 데이터만이다(locale-add O5 — 표시는 시안 배치). */
+  fileChanges: PublishedFile[];
+  /** 언어 보류 안내(경로가 이미 있는 ADD · 값 0개 ADD) — 실행 결과의 `locales`와 같은 값이다. 없으면 필드가 없다. */
+  locales?: LocaleNotes;
   /** 실제로 나가는 편집·키 수 (#84). 제목·요약·PR 줄·실행 진행 제목이 이 수로 말한다 — `total`·`keys`는 보류를 포함한 미발송 전체다. */
   sendable: { total: number; keys: number };
   /**

@@ -2,11 +2,17 @@ import { randomUUID } from "node:crypto";
 
 import { fail } from "@/lib/failure";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
+import { lockProjectAccess } from "@/lib/auth/lock";
+import type { Credential } from "@/lib/auth/subject";
+import type { LocaleEffect } from "@/lib/locales/effects";
+import { expireLocaleChanges } from "@/lib/locales/expire";
+import { readLocaleStates } from "@/lib/locales/work";
+import { normalizeLocaleEffects } from "@/lib/locales/effects";
 import { countPending, pendingWhere } from "@/lib/protection/where";
 import { PUBLISH_BUDGET_MS, type PublishExecution } from "@/lib/sync/execution";
 import { planPublishBaselines, restoreValueOf } from "@/lib/translations/baseline";
 import { deliveryContextFingerprint } from "@/lib/translations/context";
-import type { DeliveryContext, PendingEdit, PullState } from "./run";
+import type { DeliveryContext, PendingEdit, PullDeps, PullState } from "./run";
 
 /**
  * pull이 필요한 DB 상태를 읽고, 성공 후 `lastPulledAt`을 쓴다.
@@ -117,11 +123,18 @@ async function loadSnapshot(prisma: Prisma.TransactionClient, slug: string): Pro
     select: { id: true, pendingEditToken: true, surfaceId: true, keyId: true, localeCode: true, value: true, stringKey: { select: { sourceText: true } } },
   });
   const surfaceById = new Map(surfaces.map(surface => [surface.id, surface]));
+  // 언어 변경 의도·전달 목록도 **같은 스냅샷**에서 읽는다(locale-add design §4 판정표) — 캡처한 효과 목록이 렌더한 파일 집합과 같은 시점이어야 확인이 참이다.
+  // 셀 편집 수(`unpublished`)와 섞지 않는다 — `pendingWhere`는 그대로다.
+  const localeStates = new Map((await readLocaleStates(prisma, project.id)).map(state => [state.surfaceId, state]));
 
   return {
     project: rest,
     surfaces: surfaces.map(surface => ({ ...surface,
     localeCodes: surface.locales.map((l) => l.code),
+    ...((locale) => (locale === undefined ? {} : { localeChanges: {
+      rows: locale.rows.map(row => ({ localeCode: row.localeCode, operation: row.operation, requestedAt: row.requestedAt })),
+      valueCounts: locale.valueCounts, delivered: locale.delivered, work: locale.work.length,
+    } }))(localeStates.get(surface.id)),
     keys: keys.filter(k => k.surfaceId === surface.id).map((k) => ({
       id: k.id,
       key: k.key,
@@ -195,6 +208,8 @@ export async function invalidatePublishDelivery(
   prisma: PrismaClient,
   projectId: string,
   authority: { runId: string; execution: PublishExecution },
+  /** 이 실행이 캡처한 소스. 확인 행이 아직 없는 소스는 무효화된 행으로 만든다 — 아래 주석. */
+  surfaceIds: readonly string[] = [],
 ): Promise<void> {
   await prisma.$transaction(async tx => {
     await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
@@ -202,7 +217,46 @@ export async function invalidatePublishDelivery(
     authority.execution.check();
     if (run === null || Date.now() - run.startedAt.getTime() >= PUBLISH_BUDGET_MS) fail(UNCONFIRMED_DELIVERY);
     await invalidateDeliveryConfirmations(tx, projectId);
+    /**
+     * ⚠️ **확인 행이 없는 소스도 "확인 안 됨"으로 남긴다** (review-B1b Y5 — locale-add design §3). 행이 없으면 `deliveredOf`가 "전달한 것 없음"(`[]`)으로
+     * 읽는데, 그 소스의 첫 Publish가 원격에 새 파일·삭제를 실은 채 미확인으로 끝나면 그 사이의 취소가 작업을 0으로 접어 열린 PR에 stale 파일이 남는다.
+     * 무효화된 행이 그 상태를 `null`로 말한다. 지문은 비워 둔다 — 어떤 context와도 같지 않아 복원·기준 재갱신의 자격이 되지 않는다.
+     * 성공 확정은 같은 행을 upsert로 되살린다.
+     */
+    if (surfaceIds.length > 0) {
+      const now = new Date();
+      await tx.deliveryConfirmation.createMany({
+        data: [...new Set(surfaceIds)].sort().map(surfaceId => ({ projectId, surfaceId, revision: randomUUID(), syncRunId: authority.runId, contextFingerprint: "", invalidatedAt: now })),
+        skipDuplicates: true,
+      });
+    }
     authority.execution.check();
+  });
+}
+
+/**
+ * **수동·MCP Publish의 스냅샷 전 만료** (locale-add design §1 — `PullDeps.expireLocales`). 열린 PR 조회·base 관측은 호출부(`runPull`)가 tx **밖에서** 했다.
+ *
+ * ⚠️ **`Project` 잠금을 먼저 쥔다** (review-B1 W3) — 사람 경로라 `lockProjectAccess`로 잡는다. `expireLocaleChanges`는 그 뒤 Surface를 잠그므로
+ * 번역 저장·언어 변경과 같은 순서다. 접근을 잃었으면 던진다 — 실행권을 잡은 뒤의 권한 상실이고, Publish를 이어 가지 않는다.
+ */
+export async function expireLocalesForPublish(
+  prisma: PrismaClient,
+  actor: { userId: string; credential: Credential | undefined },
+  input: Parameters<NonNullable<PullDeps["expireLocales"]>>[0],
+): Promise<number> {
+  return prisma.$transaction(async tx => {
+    const locked = await lockProjectAccess(tx, { projectId: input.projectId, userId: actor.userId, permission: "translation:write", credential: actor.credential });
+    if (locked.status !== "ok") fail(`Publish access was lost before expiring locale changes: ${locked.status}`);
+    let expired = 0;
+    for (const surface of input.surfaces) {
+      const result = await expireLocaleChanges(tx, {
+        projectId: input.projectId, surfaceId: surface.surfaceId, surfaceSlug: surface.surfaceSlug,
+        pullRequest: input.pullRequest, observed: surface.observed, actor: { kind: "USER", userId: actor.userId },
+      });
+      expired += result.expired.length;
+    }
+    return expired;
   });
 }
 
@@ -222,20 +276,25 @@ const UNCONFIRMED_DELIVERY = "Delivery could not be confirmed; unsent edits were
 export async function saveLastPulledAt(
   prisma: PrismaClient,
   projectId: string,
-  at: Date,
+  /** `null`이면 `lastPulledAt`을 쓰지 않는다 — 셀 확인이 없는 언어 변경만의 실행이다(locale-add design §4). */
+  at: Date | null,
   published: { prUrl: string } | undefined,
   delivered: readonly PendingEdit[],
   /**
    * 실행권과 캡처 context. 토큰 해제에는 필수다 — 없으면 확인 revision을 남길 수 없어 편집을 유지하고 실패한다.
    * `withheld`는 이번 PR에 못 실은 캡처 편집이다 — 토큰은 그대로 두고 기준 행의 revision만 새 확인으로 다시 찍는다.
    */
-  delivery?: { runId: string; contexts: readonly DeliveryContext[]; withheld?: readonly PendingEdit[]; execution?: PublishExecution },
+  delivery?: {
+    runId: string; contexts: readonly DeliveryContext[]; withheld?: readonly PendingEdit[]; execution?: PublishExecution;
+    /** 소스별 캡처 효과 목록(locale-add design §1). 주면 확인 행의 `deliveredLocaleChanges`를 그 값으로 쓴다 — 없는 소스는 `[]`다. */
+    locales?: ReadonlyMap<string, readonly LocaleEffect[]>;
+  },
 ): Promise<void> {
   if (delivery === undefined && delivered.length > 0) fail(UNCONFIRMED_DELIVERY);
   const project = {
     where: { id: projectId },
     data: {
-      lastPulledAt: at,
+      ...(at === null ? {} : { lastPulledAt: at }),
       ...(published === undefined ? {} : { lastPublishedAt: new Date(), lastPrUrl: published.prUrl }),
     },
   };
@@ -300,7 +359,7 @@ async function confirmDelivery(
   projectId: string,
   project: { where: { id: string }; data: Prisma.ProjectUpdateInput },
   delivered: readonly PendingEdit[],
-  delivery: { runId: string; contexts: readonly DeliveryContext[]; withheld?: readonly PendingEdit[]; execution?: PublishExecution },
+  delivery: NonNullable<Parameters<typeof saveLastPulledAt>[5]>,
 ): Promise<void> {
   const surfaceIds = [...new Set(delivery.contexts.map(c => c.surfaceId))].sort();
   await lockPublication(tx, projectId, project.data);
@@ -355,7 +414,9 @@ async function confirmDelivery(
       where: { projectId_surfaceId: { projectId, surfaceId: row.id } }, select: { revision: true, contextFingerprint: true },
     });
     if (prior !== null && prior.contextFingerprint === context.fingerprint) restamp.set(row.id, { from: prior.revision, to: revision });
-    const data = { revision, syncRunId: delivery.runId, contextFingerprint: context.fingerprint, invalidatedAt: null };
+    // 언어 목록도 이 upsert에서 함께 쓴다 — 무효화·성공 경계를 셀 확인과 그대로 공유한다(locale-add 결정 D1). 실패·응답 유실은 여기 오지 않는다.
+    const locales = delivery.locales === undefined ? {} : { deliveredLocaleChanges: normalizeLocaleEffects(delivery.locales.get(row.id) ?? []) };
+    const data = { revision, syncRunId: delivery.runId, contextFingerprint: context.fingerprint, invalidatedAt: null, ...locales };
     await tx.deliveryConfirmation.upsert({
       where: { projectId_surfaceId: { projectId, surfaceId: row.id } },
       create: { projectId, surfaceId: row.id, ...data },

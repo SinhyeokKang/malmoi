@@ -55,6 +55,9 @@ it("로케일·값·완료 기준을 repeatable-read 스냅샷으로 읽는다",
   const tx = {
     project: { findUnique: vi.fn(async () => ({ id: "p1", slug: "a", surfaces: [] })) },
     stringKey: { findMany: vi.fn(async () => []) },
+    // 언어 변경 의도·전달 목록(locale-add) — 이 픽스처에는 없다.
+    localeChange: { findMany: vi.fn(async () => []) },
+    deliveryConfirmation: { findMany: vi.fn(async () => []) },
     // JSON null placeholders 좌표 (audit #52) — 이 픽스처에는 없다.
     $queryRaw: vi.fn(async () => []),
     translation: {

@@ -47,6 +47,7 @@ describe("triggerPull — 조립", () => {
         baseLocale: "en",
         lastPulledAt: new Date("2026-09-04T00:00:00Z"),
       },
+      surfaces: [],
       localeCodes: ["en"],
       keys: [],
       maxUpdatedAt: new Date("2026-09-03T00:00:00Z"), unpublished: 0,
@@ -73,6 +74,7 @@ describe("triggerPull — 조립", () => {
         baseLocale: "en",
         lastPulledAt: null,
       },
+      surfaces: [],
       localeCodes: ["en"],
       keys: [],
       maxUpdatedAt: new Date("2026-09-03T00:00:00Z"), unpublished: 1,
@@ -168,9 +170,11 @@ describe("triggerPull — 전달 기준 배선", () => {
     hoisted.saveLastPulledAt.mockResolvedValue(undefined);
     const result = await triggerPull(prisma, "demo", "run-1", undefined, execution);
     expect(result.status).toBe("committed");
-    expect(hoisted.invalidateDeliveryConfirmations).toHaveBeenCalledWith(prisma, "p1", { runId: "run-1", execution });
+    // 캡처한 소스를 무효화에 넘긴다 — 확인 행이 없는 소스는 무효화된 행이 된다(review-B1b Y5).
+    expect(hoisted.invalidateDeliveryConfirmations).toHaveBeenCalledWith(prisma, "p1", { runId: "run-1", execution }, ["s1"]);
     const call = hoisted.saveLastPulledAt.mock.calls.at(-1);
-    expect(call?.[5]).toEqual({ runId: "run-1", contexts: [{ surfaceId: "s1", fingerprint: "ctx" }], withheld: [], execution });
+    // 소스별 캡처 효과 목록 — 언어 변경이 없으면 그 소스는 빈 목록이다(locale-add design §1).
+    expect(call?.[5]).toEqual({ runId: "run-1", contexts: [{ surfaceId: "s1", fingerprint: "ctx" }], withheld: [], execution, locales: new Map([["s1", []]]) });
   });
 
   it("실행 id가 없으면 쓰기 전에 거부한다", async () => {

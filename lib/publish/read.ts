@@ -11,7 +11,8 @@ import { parseReviewUrl } from "@/lib/projects/pr-url";
 import { formatFromProject, resolveLocalePaths } from "@/lib/pull/plan";
 import { blockingErrors, keySlot } from "@/lib/pull/undeliverable";
 import { loadPreviewSnapshot } from "@/lib/pull/load";
-import { planDelivery, projectFormats, renderProject } from "@/lib/pull/run";
+import { planDelivery, planLocales, projectFormats, renderProject } from "@/lib/pull/run";
+import { NO_LOCALE_PLAN, hasLocaleRows, localeFingerprintInput, localeNotesOf } from "@/lib/pull/locales";
 import { publishFingerprint } from "./fingerprint";
 import { buildPublishDiff, PREVIEW_LIMIT, type BaseValues, type PublishCell } from "./diff";
 import { PreviewBaseFileMissing, PreviewBaseFileUnreadable, PreviewWriterWarnings, type PublishPreview } from "./preview";
@@ -38,7 +39,10 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
   const shas = new Map(tree.map(t => [t.path, t.sha]));
   // 표시 경로를 찾기 전에 실행과 같은 거부를 판정한다. 키 가림·파일 종류 오류를 조회 장애로 오인하지 않게 한다(#200).
   // 같은 스냅샷·head·트리와 blob 캐시를 재사용하므로 중복 다운로드 없이 같은 지문 입력을 쓴다.
-  const { changes, rendered, resolved, current } = await renderProject(project, projectFormats(state.surfaces), client, { baseHead: head, tree });
+  // 언어 변경 계획도 실행과 같은 함수·같은 트리다 — 삭제·새 파일·보류가 미리보기와 실행에서 갈리지 않는다(locale-add design §2 "같은 deletes").
+  const formats = projectFormats(state.surfaces);
+  const localePlan = hasLocaleRows(state.surfaces) ? planLocales(project, formats, tree) : NO_LOCALE_PLAN;
+  const { changes, rendered, resolved, current } = await renderProject(project, formats, client, { baseHead: head, tree }, localePlan);
   for (const surface of rendered) {
     for (const file of surface.files) for (const error of file.errors ?? []) {
       if (error.locale !== surface.baseLocale) continue;
@@ -46,7 +50,9 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
       if (error.code === "write-parse-failed" && file.locale === surface.baseLocale) throw new PreviewBaseFileUnreadable(error.path, project.baseBranch);
     }
   }
-  const { warnings } = planDelivery(state.pendingEdits, { resolved, current, rendered });
+  const { warnings } = planDelivery(state.pendingEdits, { resolved, current, rendered, locales: localePlan });
+  /** 렌더에서 뺀 언어(REMOVE · 경로가 이미 있는 ADD · 값 0개 ADD) — 그 셀은 실행이 보류하므로 표에 약속하지 않는다. */
+  const excluded = new Set(localePlan.surfaces.flatMap(plan => plan.exclude.map(code => `${plan.surfaceId}\0${code}`)));
   warnings.push(...blockingErrors(rendered).map(({ surfaceSlug, error: { path, code, key, detail } }) => (
     { surfaceSlug, path, code, ...(key === undefined ? {} : { key }), ...(detail === undefined ? {} : { detail }) }
   )));
@@ -105,6 +111,8 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
     }
     for (const row of surfaceRows) {
       if (!surface.localeCodes.includes(row.localeCode)) throw new Error("Preview path unavailable");
+      // 실행의 `planDelivery`와 같은 판정이다 — 언어 통째 보류는 파일 보류로 센다(결과의 `withheld.file`).
+      if (excluded.has(`${surface.id}\0${row.localeCode}`)) { withoutFile++; heldKeys.add(row.keyId); continue; }
       // 수술적 치환은 원본이 없으면 그 파일을 안 낸다(`render.ts`) — 나가지 않을 셀을 약속하지 않는다. 실행은 그 셀을 보류한다.
       if (surgicalPerLocale) {
         const target = paths.find(p => p.locale === row.localeCode);
@@ -136,10 +144,13 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
     // ⚠️ **화면이 말하는 수는 나가는 수다** (#84 — POSTMORTEM 2026-09-17). 결과의 `delivered`·Logs와 같은 모집단이어야 한다. 상한(200행) 밖 행은
     // 판정하지 않았으므로 나가는 쪽으로 센다 — `truncated`와 같이 읽힌다.
     changedFiles: changes.map(c => c.path),
+    // 실행 결과의 `files`와 같은 판정이다 — delete는 base에 있을 때만 생기고, upsert는 base에 있으면 갱신이다.
+    fileChanges: changes.map(c => ({ path: c.path, kind: c.kind === "delete" ? "removed" as const : shas.has(c.path) ? "updated" as const : "new" as const })),
+    ...((notes) => (notes === undefined ? {} : { locales: notes }))(localeNotesOf(localePlan)),
     sendable: { total: total - withoutFile - withoutKey, keys: keys - [...heldKeys].filter(id => !cells.some(c => c.keyId === id)).length },
     openPr: parseReviewUrl(rawPr, project),
     // ⚠️ **셀 표시가 아니라 렌더가 쓴 스냅샷 전체 + 읽은 head다** (mcp-connector design §3.1) — 200행 상한 밖 편집·토큰 없는 export 변경도 바꾼다.
-    fingerprint: publishFingerprint(state, head) };
+    fingerprint: publishFingerprint(state, head, hasLocaleRows(state.surfaces) ? localeFingerprintInput(localePlan, formats, tree) : undefined) };
 }
 
 /** 같은 blob을 두 번 받지 않는다 — 미리보기 조회와 실행 렌더(`renderProject`)가 같은 트리의 같은 파일을 읽는다. */

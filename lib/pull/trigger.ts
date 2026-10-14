@@ -3,7 +3,8 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { createGitClient } from "@/lib/repo-host";
 import type { PublishExecution } from "@/lib/sync/execution";
-import { invalidatePublishDelivery, loadPullState, saveLastPulledAt, withheldRevertable } from "./load";
+import type { Credential } from "@/lib/auth/subject";
+import { expireLocalesForPublish, invalidatePublishDelivery, loadPullState, saveLastPulledAt, withheldRevertable } from "./load";
 import { runPull, type PullResult } from "./run";
 import { syncBranchFor } from "./sync-branch";
 
@@ -28,16 +29,24 @@ export { REF_SAFE_SLUG, isRefSafeSlug } from "./ref-slug";
  *   실행권과 로컬 수명은 필수다 — 실행권 없는 직접 쓰기는 허용하지 않는다.
  * @param expectedFingerprint MCP `publish`만 넘긴다 — `runPull`이 그대로 대조한다(mcp-connector design §3.1). cron·웹은 생략한다.
  */
-export async function triggerPull(prisma: PrismaClient, slug: string, runId: string, expectedFingerprint: string | undefined, execution: PublishExecution): Promise<PullResult> {
+/**
+ * @param actor 사람(웹·MCP)이 연 실행의 주체. 있으면 스냅샷 전 언어 변경 만료를 그 주체의 `lockProjectAccess` 뒤에 돈다(locale-add design §1 — W3).
+ *   cron은 넘기지 않는다 — 야간 경로가 적재와 함께 만료를 맡는다.
+ */
+export async function triggerPull(
+  prisma: PrismaClient, slug: string, runId: string, expectedFingerprint: string | undefined, execution: PublishExecution,
+  actor?: { userId: string; credential: Credential | undefined },
+): Promise<PullResult> {
   if (!runId) throw new Error("Publish execution authority is required");
   execution.check();
   const result = await runPull({
     loadState: () => loadPullState(prisma, slug),
     // `runPull`이 연결 판정(`repoTargetOf`)을 지난 대상만 넘긴다.
     createClient: (target) => createGitClient(target, execution),
-    saveLastPulledAt: (projectId, at, published, delivered, contexts, withheld) =>
-      saveLastPulledAt(prisma, projectId, at, published, delivered, { runId, contexts, withheld, execution }),
-    invalidateDelivery: (projectId) => invalidatePublishDelivery(prisma, projectId, { runId, execution }),
+    saveLastPulledAt: (projectId, at, published, delivered, contexts, withheld, locales) =>
+      saveLastPulledAt(prisma, projectId, at, published, delivered, { runId, contexts, withheld, execution, locales }),
+    invalidateDelivery: (projectId, surfaceIds) => invalidatePublishDelivery(prisma, projectId, { runId, execution }, surfaceIds),
+    ...(actor === undefined ? {} : { expireLocales: (input: Parameters<typeof expireLocalesForPublish>[2]) => expireLocalesForPublish(prisma, actor, input) }),
     withheldRevertable: (projectId, withheld) => withheldRevertable(prisma, projectId, withheld),
     syncBranch: syncBranchFor(slug),
   }, expectedFingerprint);

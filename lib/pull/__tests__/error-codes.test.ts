@@ -43,6 +43,8 @@ const CODED: ReadonlyArray<readonly [needle: string, code: string]> = [
 const UNCODED: readonly string[] = [
   "unreachable: passed the layer-1 check",
   "unreachable: upsert and delete on the same path", "unreachable: duplicate delete path",
+  // 언어 변경 계획(locale-add) — 앞은 불변식 위반, 뒤는 경로 충돌·안전하지 않은 경로라 소스 설정을 고칠 일이다(sync 층에서 가를 이름이 없다).
+  "unreachable: locale plan outside REMOVE/ADD rows", "locale change cannot be published:",
   "surface base locale is empty", "Surface path conflict:",
   "Project.adapterName is empty",
   "Project.pathTemplate is empty",

@@ -27,8 +27,12 @@ import { isLocaleShaped, isPathSafeLocale, isPathSafeRepoPath } from "@/lib/loca
  * cron이 편집 0건인 프로젝트에 GitHub 왕복을 만들었다. 미발송 술어로 판정하면 "사람이 만졌고 마지막
  * 판정 뒤 바뀐 행"이 0이면 끝이고, 첫 pull도 그 행이 없으면 빈 PR을 만들지 않는다.
  */
-export function shouldSkipPull(unpublished: number): boolean {
-  return unpublished === 0;
+/**
+ * @param localeWork 언어 변경 작업 수(locale-add design §4 — 현재 효과 목록 ≠ 전달 목록인 소스·언어). 셀 편집 수와 섞지 않고 따로 받는다 —
+ *   셀 편집이 0이어도 보낼 삭제·새 파일이 있으면 지나간다.
+ */
+export function shouldSkipPull(unpublished: number, localeWork = 0): boolean {
+  return unpublished === 0 && localeWork === 0;
 }
 
 // ── 포맷 재조립 ─────────────────────────────────────────────────────────────

@@ -189,11 +189,14 @@ function write(format: DetectedFormat, input: WriteInput): string | null {
   const original = format.currentFiles?.find((c) => c.path === path)?.content;
   // 원본이 있으면 `{}`다 — json-catalog와 같은 이유다(audit #1).
   if (usable.length === 0) return emptyCatalog(original);
-  const style = observeJsonStyle(original);
+  // 원본이 없는 새 언어 파일만 기준 언어 파일에서 표현·필드 순서를 빌린다(locale-add design §4). 그 파일의 description·placeholders는
+  // 엔트리(그 언어의 셀)에서만 온다 — 출처의 값을 복사하지 않는다.
+  const representation = original ?? format.representationSource;
+  const style = observeJsonStyle(representation);
 
   // `orderedEntries`가 낸 순서로 재조립한다 — `JSON.stringify`는 삽입 순서를 따른다(정규 정수
   // 키만 예외이고, chrome 키 이름 규칙상 여기선 생기지 않는다).
-  const fieldOrder = dominantFieldOrder(original);
+  const fieldOrder = dominantFieldOrder(representation);
 
   // ⚠️ **프로토타입 없는 객체다** (sec-audit 발견 17). `CHROME_KEY`(`/^[A-Za-z0-9_@]+$/`)가
   // `__proto__`를 통과시키므로 정규식을 고치는 것으로는 안 닫힌다 — 막아야 하는 것은 **대입 자리**다.

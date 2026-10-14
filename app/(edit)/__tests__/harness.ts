@@ -1068,7 +1068,9 @@ export function createHarness(seed: Seed = {}) {
       },
     },
     /** 전달 확인 무효화(`invalidateDeliveryConfirmations`)만 부른다 — 기록만 하고 행은 없다. */
-    deliveryConfirmation: { findMany: vi.fn(async () => []), updateMany: vi.fn(async () => ({ count: 0 })), findUnique: vi.fn(async () => null) },
+    deliveryConfirmation: { findMany: vi.fn(async () => []), updateMany: vi.fn(async () => ({ count: 0 })), findUnique: vi.fn(async () => null), createMany: vi.fn(async () => ({ count: 0 })) },
+    // 언어 변경 의도(locale-add) — 이 하네스의 프로젝트에는 없다. Publish 스냅샷이 같은 tx에서 읽는다.
+    localeChange: { findMany: vi.fn(async () => []) },
     projectMember: {
       findUnique: findMember,
       findMany: findManyMembers,

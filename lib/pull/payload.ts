@@ -47,6 +47,24 @@ export function withSkipMarker(title: string): string {
   return appended.length > PR_TITLE_MAX ? PR_TITLE : appended;
 }
 
+/** 이 Publish가 바꾼 파일 하나와 그 종류 — 결과·미리보기·PR 본문이 같은 값을 쓴다(locale-add design §4 · O5). 화면 문구는 시안 배치다. */
+export type PublishedFile = { path: string; kind: "new" | "updated" | "removed" };
+
+/**
+ * 새 PR/MR의 본문 — 두 호스트가 같은 `createPr` 인자로 받는다. 영문이다(대상 리포에 남는 문자열).
+ * 삭제 파일이 있으면 그 줄에 `(removed)`를 달고 **앱 코드의 언어 참조 정리** 안내를 붙인다(design §4 끝) — 파일만 지우고 머지하면 앱이
+ * 없는 카탈로그를 불러 깨질 수 있다. 삭제가 없으면 옛 본문과 바이트가 같다.
+ * ⚠️ 열린 PR을 갱신할 때는 본문을 다시 쓰지 않는다(경계에 본문 갱신이 없다) — 그 PR의 파일 목록이 낡는 것은 기존 동작과 같다.
+ */
+export function pullRequestBody(files: readonly PublishedFile[]): string {
+  const summary = `${files.length} file${files.length === 1 ? "" : "s"}`;
+  const lines = files.map(file => `- \`${file.path}\`${file.kind === "removed" ? " (removed)" : ""}`).join("\n");
+  const removed = files.filter(file => file.kind === "removed").length;
+  const cleanup = removed === 0 ? ""
+    : `\n\nThis snapshot removes ${removed} language file${removed === 1 ? "" : "s"}. Before merging, remove references to ${removed === 1 ? "that language" : "those languages"} in the app code (language lists, imports, routing) so the app does not load a missing catalog.`;
+  return `Updated ${summary} from the translation DB.\n\n${lines}${cleanup}\n\nThis branch is a snapshot, not a history: it is force-updated on every pull.`;
+}
+
 export type TreeEntry = {
   path: string;
   /** 일반 파일. 실행 권한·심링크를 낼 일이 없다. */
