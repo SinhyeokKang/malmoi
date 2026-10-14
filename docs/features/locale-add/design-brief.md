@@ -2,7 +2,7 @@
 
 > 신규 UI의 첫 구현 동안만 시안이 기준이고, dev 반영 뒤에는 코드 + docs/DESIGN.md가 정본이다. 동작은 spec.md, 상태 전이는 design.md가 정한다. 이 문서는 그릴 화면을 정의한다.
 
-작성: 2026-10-13 · 개정: 2026-10-14(2차 검수 반영). 옛 추가 전용 시안과 1차 개정의 상태별 라벨 8종을 대체한다. Codex는 사용자 제공 로컬 핸드오프를 사용한다.
+작성: 2026-10-13 · 개정: 2026-10-14(2차 검수 반영) · 2026-10-14(백엔드 구현 반영 — 서버가 돌려주는 상태·거부 코드·문구 자리를 실제 계약에 맞췄다). 옛 추가 전용 시안과 1차 개정의 상태별 라벨 8종을 대체한다. Codex는 사용자 제공 로컬 핸드오프를 사용한다.
 
 ## 화면의 목적
 
@@ -37,6 +37,7 @@
 | 그 언어의 변경이 아직 PR에 없음 | 기존 `Unsent` 배지 |
 | 전달됨, PR 열림 | 기존 `View pull request` 링크(GitLab판 어휘) |
 | PR 조회 실패 | 기존 `prCheckFailed` 배지·문구 |
+| 전달 확인 안 됨(직전 Publish 결과 미확정·실패로 확인이 무효화됨, `localeDelivery: "unconfirmed"`) | 전달 여부를 단정하지 않는 muted 한 줄. 이 상태에선 취소 두 종류가 거부된다(아래) |
 
 | 행 상태 | OWNER 동작 | 번역 편집 | Open |
 |---|---|---|---|
@@ -50,6 +51,8 @@
 
 - 취소를 눌렀다는 이유만으로 원격 취소 성공 토스트를 내지 않는다. 전달된 의도의 취소 뒤에는 “Publish to update the pull request.”를 남긴다.
 - EDITOR에는 변경 동작을 비활성화하고 이유를 제공한다.
+- **전달 확인 안 됨** 상태의 추가 취소·제거 취소는 서버가 거부한다(`publish-unsettled`). 행 동작은 비활성 + “Publish again first. The last publish didn't finish, so Malmoi can't tell what the pull request contains.” 계열 이유. 새 추가·제거 요청은 막지 않는다.
+- 저장소 Sync가 도는 동안(`sync-running`) 제거·추가 취소는 거부된다 — 일시적 거부라 Alert + `Try again`.
 - Inactive 하단 띠(`orphanStrip`)는 danger 톤을 유지하되 “was removed from the repository”를 원인 중립 문구로 바꾼다.
 
 ## 카드 설명
@@ -58,9 +61,11 @@
 
 ## 추가 Dialog
 
-- 제목 `Add a language to {source}`. json-catalog는 Language code Input, chrome-locales는 지원 목록 Select.
+- 제목 `Add a language to {source}`. json-catalog는 Language code Input, chrome-locales는 지원 목록 Select(54개 — Chrome 문서 목록에서 `es_419` 제외).
+- **받는 코드는 Malmoi가 리포에서 다시 읽을 수 있는 모양뿐이다**: 소문자 언어 2~3자 + 선택 지역 2~4자(`fr`, `pt-BR`, `zh_TW`). `es-419`·`zh-Hant-TW`·대문자 언어(`KO`)는 거부한다. 이유 안내: “Malmoi can't read this code back from the repository. Add the file in the repository instead.” 계열.
 - 유효 입력에는 File to create와 서버 규칙으로 계산한 경로. orphan 코드면 복구할 번역 수 안내.
-- 오류: invalid-code, exists, similar-exists, invalid-path. 보관·결과 미확정 Publish·일반 실패는 Alert.
+- 오류(서버 코드 → 표시 자리): `invalid-code`·`unsupported-locale`(필드), `already-active`(필드 — 이미 있음), `locale-collision`(필드 — `pt-BR`/`pt_br`처럼 같은 파일을 가리키는 철자), `unsafe-path`·`path-conflict`(필드 — 계산된 경로가 안전하지 않거나 다른 소스 경로와 겹침). `archived`·`publish-unsettled`·일반 실패는 Alert.
+- 재추가(`action: "revive"`)는 보존된 값을 되살리고 값 있는 칸을 다시 Unsent로 만든다(`reissued` 수). 성공 안내에 그 수를 쓴다.
 - 빈 제안 행에는 “Publishing creates the file once it has a translation.” 안내.
 
 ## 제거 확인 Dialog (제거·추가 취소 공용)
@@ -71,13 +76,17 @@
 |---|---|
 | 제목 | `Remove {code} from {source}?` |
 | 대상 | 언어 코드·소스 이름·정확한 파일 경로 |
-| 영향 | 보존되는 번역 수, 그 언어의 미전달 편집 수(있으면 “These unsent edits will be discarded.”), PR 전달 여부 |
+| 영향 | 보존되는 번역 수, 그 언어의 미전달 편집 수, PR 전달 여부(`delivered: true/false/null` — null이면 단정하지 않음) |
+| 미전달 편집 — 기존 언어 제거 | “These unsent edits will be discarded. Each one goes back to the value last sent to the repository.” — 폐기는 Revert와 같은 의미다(값이 마지막 전달 값으로 돌아간다) |
+| 미전달 편집 — 추가 취소 | 값은 남고 Unsent 표시만 사라진다. 다시 추가하면 값과 Unsent가 돌아온다 — “Unsent edits stop being tracked. Add the language again to bring them back.” 계열 |
+| 전달 기록 없는 미전달 편집(`baseline-unknown`·`baseline-stale`) | 제거 거부. “Publish first — some unsent edits in {code} were never sent, so there's no value to go back to.” 계열. Revert를 안내하지 않는다(같은 이유로 막힌다) |
 | 기존 언어 제거 설명 | “Publishing removes this language file from the repository. Saved translations are kept.” |
 | 앱 코드 경고(기존 언어 제거) | “Update any code that loads this language (imports, supported language lists) in the same pull request.” |
 | 전달 전 추가 취소 설명 | “This language will become inactive. Saved translations are kept.” |
 | 전달된 추가 취소 설명 | “Publish again to remove this file from the open pull request.”(GitLab판) |
 | 기준 언어 거부 | “Choose another base language before removing this one.” |
 | 결과 미확정 Publish | warning + 확인 방법(DESIGN §2.4 결과 미확인 형), 승인 버튼 비활성, 완료 문구 없음 |
+| 낡은 승인(`stale-approval`) | 미리보기를 다시 읽어 바뀐 수·경로를 보여 주고 다시 확인받는다 |
 
 승인 버튼은 트리거와 같은 파괴 스타일(DESIGN 짝 규칙)이다. 제거 취소는 데이터를 버리지 않으므로 별도 확인 Dialog가 없다.
 
@@ -86,6 +95,8 @@
 - 다른 세션의 제거가 도착하면 그 언어의 dirty 셀은 값을 유지한 채 읽기 전용으로 얼고, 셀 옆에 되돌리기(기존 셀 reset) 버튼이 보인다. 선택·복사는 된다.
 - 다른 활성 언어의 Save는 그대로 쓸 수 있고, 얼린 셀은 저장되지 않은 채 남는다.
 - 제거가 취소되면 얼린 셀이 그대로 편집 가능해진다. 자동 저장·자동 폐기하지 않는다.
+- Revert(`Revert to last sent`)도 제거 중 언어 칸에는 거부된다(`locale-removal-pending`) — 얼린 칸의 버리기는 셀 reset이다.
+- 진행률·결측 수는 제거 중 언어를 빼고 센다(서버 목록과 같은 분모).
 - 렌더와 저장 사이에 제거가 도착해 서버가 키 저장을 거부하면, 입력을 유지하고 footer에 “{code} is being removed. Nothing in this key was saved — save again.” 계열 문구를 띄운다.
 - 서버 갱신 자체를 이탈 확인으로 처리하지 않는다. 실제 이동 시 기존 이탈 확인이 얼린 입력도 센다.
 
@@ -95,8 +106,11 @@
 - **번역 변경 0건·삭제 파일 1개**도 Publish 가능해야 한다.
 - 전달된 추가·제거의 취소는 base 기준 파일 diff 0개일 수 있다. 이 경우 “열린 pull request에서 이전 변경을 거둔다”는 작업을 보여주고 빈 화면/변경 없음으로 숨기지 않는다.
 - 삭제 파일의 번역을 “N translations published”에 더하지 않는다.
-- 제안 경로 충돌, 빈 제안, PR 조회 실패는 각자 다른 안내를 쓴다.
-- 수동 Sync 확인에는 폐기할 언어 추가/제거 목록과 셀 편집을 구분해 표시한다.
+- 제안 경로 충돌, 빈 제안, PR 조회 실패는 각자 다른 안내를 쓴다. 경로 계획 거부(`locale-plan-refused` — 계산된 경로 충돌·중복·안전하지 않음)는 결정적 거부라 `Try again`을 두지 않고 원인을 고치라고 안내한다.
+- pull request 본문에는 삭제 파일이 있을 때 앱 코드 정리 안내가 붙고, 열린 pull request의 삭제 목록이 바뀌면 본문이 다시 쓰인다(화면 표시 대상 아님 — 미리보기 Removed 행의 안내와 같은 말을 쓴다).
+- 수동 Sync 확인에는 폐기할 언어 추가/제거 목록과 셀 편집을 구분해 표시한다. Sync 뒤 이미 pull request에 실린 변경이 있으면 그 행은 `Unsent`(PR 갱신 필요)로 남고, 다음 Publish가 pull request를 정리한다.
+- 언어 변경이 남아 있는 동안 막히는 기존 동작이 둘 있다: 그 언어를 기준 언어로 선언(소스 상세 base 선택), 리포 기준 브랜치 변경(설정). 둘 다 `locale-change-pending` — 기존 Alert 자리에 “Finish or cancel the language change first.” 계열.
+- 자동 적재(CI·야간)가 전달 전 제거 요청 때문에 보류되면 Logs에 `locale-change-pending` 사유 문장이 남는다(초안 문구는 사전에 있다 — ko·es는 `/translate` 검수 대기).
 - PR 상태는 서버가 마지막으로 관측한 결과만 그린다. “확인 중” 상태는 없다. 미머지 종료 뒤 제거가 풀려 활성으로 돌아온 행은 일반 활성으로 그리고, 닫힌 요청을 새 pull request에 다시 보낸다는 안내를 하지 않는다.
 
 ## 그릴 프레임
@@ -123,6 +137,11 @@
 | 18 | PR 조회 실패 배지, 미머지 종료 후 활성 복귀 행 — GitHub판·GitLab판 |
 | 19 | 번역 화면 외부 제거: 얼린 셀·reset·다른 언어 Save·저장 경합 footer·제거 취소 뒤 편집 가능 |
 | 20 | Inactive: 지원 포맷 OWNER Add language 복구, 비지원·EDITOR 안내 |
+| 21 | 전달 확인 안 됨 행: muted 안내 + 취소 동작 비활성 이유 |
+| 22 | 제거 확인 Dialog 거부 변형: `baseline-unknown`(먼저 Publish) / `sync-running`(Try again) |
+| 23 | 추가 Dialog 관측 불가 코드(`es-419`) 거부 · 재추가 성공(되살린 값 수) |
+| 24 | 기준 언어 선언·기준 브랜치 변경이 언어 변경 때문에 막힌 Alert |
+| 25 | Logs: 언어 사건 행(추가·되살림·제거 요청·취소·만료) + `locale-change-pending` 보류 행 — 지금은 종류 폴백 문장(“changed Sources & languages”)이라 전용 문장을 정한다 |
 
 ## 접근성·상호작용
 
