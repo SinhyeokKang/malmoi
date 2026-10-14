@@ -486,6 +486,21 @@ describe("클라이언트 그래프", () => {
     expect([...scheme.packages]).toEqual([]);
   });
 
+  /**
+   * ⚠️ **언어 추가·제거 판정 잎**(locale-add) — Sources의 Add Dialog·행 동작(클라이언트)이 목록·사전 차단 이유를 값으로 읽을 자리다.
+   * 소비자가 붙기 전에도 검사가 공허하지 않도록 여기서 직접 건다. 소비자가 생기면 닿는 파일을 `CLIENT_LIB_FILES`에 등재한다.
+   * `publish-plan`·`expiry`는 서버 판정이라 이 목록에 없다.
+   */
+  it("`lib/locales`의 클라이언트 잎은 패키지를 물지 않고 클라이언트 허용 파일만 닿는다", () => {
+    const leaves = ["lib/locales/chrome-codes.ts", "lib/locales/add-plan.ts", "lib/locales/change-plan.ts", "lib/locales/effects.ts"];
+    const { files, packages } = walk(leaves.map((leaf) => join(ROOT, leaf)));
+    const outside = [...files].map((file) => file.slice(ROOT.length))
+      .filter((rel) => !leaves.includes(rel) && rel !== "lib/locale-code.ts" && !CLIENT_LIB_FILES.includes(rel));
+    expect({ outside, packages: [...packages] }).toEqual({ outside: [], packages: [] });
+    const chrome = walk([join(ROOT, "lib/locales/chrome-codes.ts")]);
+    expect([...chrome.files].map((file) => file.slice(ROOT.length))).toEqual(["lib/locales/chrome-codes.ts"]);
+  });
+
   it("`lib/shell/breakpoint.ts`는 잎이다 — 아무것도 물지 않는다", () => {
     const query = walk([join(ROOT, "lib/shell/breakpoint.ts")]);
     expect([...query.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/shell/breakpoint.ts"]);
