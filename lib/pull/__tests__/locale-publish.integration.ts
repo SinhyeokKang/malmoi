@@ -13,6 +13,7 @@ import { blobSha } from "@/lib/githash";
 import { applyKeySave } from "@/lib/keys/save-key";
 import { addLocale, cancelLocaleRemoval, previewLocaleRemoval, removeLocale } from "@/lib/locales/change";
 import { countLocaleWork, deliveredOf } from "@/lib/locales/work";
+import { planPublishView } from "@/lib/publish/plan";
 import { readPublishPreview } from "@/lib/publish/read";
 import { applyPush } from "@/lib/push/apply";
 import { hashPushToken } from "@/lib/push/token";
@@ -548,7 +549,7 @@ describe("언어 계획 거부 코드", () => {
 describe.each(["github", "gitlab"] as const)("미머지 종료 뒤 만료 전 Publish (#267) — %s", host => {
   const files = { "i18n/en.json": EN, "i18n/ko.json": KO };
   const closedPr = { url: "https://example.test/o/r/pull/9", number: 9, title: "chore(i18n): sync [skip ci]", base: "main" };
-  const EXPIRED = [{ surfaceSlug: "default", localeCode: "ko", operation: "REMOVE" }];
+  const EXPIRED = [{ surfaceSlug: "default", localeCode: "ko", operation: "REMOVE", presence: "active" }];
 
   beforeEach(async () => {
     if (host === "github") return;
@@ -628,6 +629,77 @@ describe.each(["github", "gitlab"] as const)("미머지 종료 뒤 만료 전 Pu
     expect(await publish(preview.fingerprint)).toEqual({ status: "skipped", reason: "reconfirm" });
     expect(made.calls.filter(call => isGitMutation(call.method))).toEqual([]);
     expect(await prisma.localeChange.count({ where: { projectId: "p" } })).toBe(1);
+  });
+
+  /**
+   * **fix1 R1** — 머지된 제거 PR 뒤 방문 전 창(흔하다 — Malmoi PR은 `[skip-malmoi-i18n]`라 머지가 CI 적재를 깨우지 않는다). 만료는 ko를 orphan으로
+   * 둔다(파일이 base에 없다). 미리보기가 ko를 활성으로 남기면 지운 파일을 new로 다시 약속한다.
+   */
+  it("머지된 제거 — 미리보기가 파일을 약속하지 않고 요청이 리포에 반영됐다고 말한다(orphan), Publish가 같은 판정으로 끝난다", async () => {
+    await deliveredRemoval();
+    const merged = { "i18n/en.json": EN };
+    fake(merged);
+    const preview = await readPublishPreview(prisma, "p", "fixture");
+    const reached = [{ surfaceSlug: "default", localeCode: "ko", operation: "REMOVE", presence: "orphan" }];
+    expect(preview).toMatchObject({ sendable: { total: 0 }, changedFiles: [], fileChanges: [], expiringLocales: reached });
+    const made = fake(merged);
+    expect(await publish(preview.fingerprint)).toEqual({ status: "skipped", reason: "no-edits", expired: reached });
+    expect(made.calls.filter(call => isGitMutation(call.method))).toEqual([]);
+    expect(await prisma.locale.findFirst({ where: { projectId: "p", code: "ko" } })).toMatchObject({ orphaned: true });
+  });
+
+  /** **fix1 R2** — 전달된 추가의 PR/MR이 머지 없이 닫혔다. 만료는 fr을 orphan으로 둔다 — 미리보기가 fr.json new를 약속하면 같은 응답이 모순이다. */
+  it("미머지 종료된 추가 — 미리보기가 새 파일을 약속하지 않는다, 만료 뒤 fr은 비활성", async () => {
+    await addLocale(prisma, OWNER, { ...WEB, localeCode: "fr" });
+    await save("hello", "fr", "Bonjour");
+    fake(files);
+    expect(await publish()).toMatchObject({ status: "committed" });
+    await ageRuns();
+    fake(files);
+    const preview = await readPublishPreview(prisma, "p", "fixture");
+    const dropped = [{ surfaceSlug: "default", localeCode: "fr", operation: "ADD", presence: "orphan" }];
+    expect(preview).toMatchObject({ total: 0, sendable: { total: 0 }, changedFiles: [], fileChanges: [], expiringLocales: dropped });
+    const made = fake(files);
+    expect(await publish(preview.fingerprint)).toEqual({ status: "skipped", reason: "no-edits", expired: dropped });
+    expect(made.calls.filter(call => isGitMutation(call.method))).toEqual([]);
+    expect(await prisma.locale.findFirst({ where: { projectId: "p", code: "fr" } })).toMatchObject({ orphaned: true });
+  });
+
+  /** fix1 R2 변형 — 버려질 언어에 전달 뒤 편집이 더 있다. 만료 뒤 그 편집은 비활성 언어의 셀이라 나가지 않는다 — 미리보기가 보낼 수로 세지 않는다. 웹은 Not sent 틀이다. */
+  it("미머지 종료된 추가 + 그 언어의 미발송 편집 — 미리보기 보낼 것 0·미발송 0, Publish no-edits, 웹 결과는 No changes가 아니다", async () => {
+    await addLocale(prisma, OWNER, { ...WEB, localeCode: "fr" });
+    await save("hello", "fr", "Bonjour");
+    fake(files);
+    expect(await publish()).toMatchObject({ status: "committed" });
+    await ageRuns();
+    await save("bye", "fr", "Au revoir");
+    fake(files);
+    const preview = await readPublishPreview(prisma, "p", "fixture");
+    expect(preview).toMatchObject({ total: 0, keys: 0, sendable: { total: 0, keys: 0 }, fileChanges: [], groups: [] });
+    const made = fake(files);
+    const outcome = await publish(preview.fingerprint);
+    expect(outcome).toMatchObject({ status: "skipped", reason: "no-edits", expired: [{ localeCode: "fr", presence: "orphan" }] });
+    expect(made.calls.filter(call => isGitMutation(call.method))).toEqual([]);
+    expect(planPublishView(outcome)).toBe("partial");
+  });
+
+  it("머지된 추가 — 파일이 base에 있으면 활성으로 끝나고 미리보기는 아무 파일도 약속하지 않는다", async () => {
+    await addLocale(prisma, OWNER, { ...WEB, localeCode: "fr" });
+    await save("hello", "fr", "Bonjour");
+    fake(files);
+    const sent = fake(files);
+    expect(await publish()).toMatchObject({ status: "committed" });
+    const frFile = snapshot(sent)?.changes.find(change => change.path === "i18n/fr.json")?.content;
+    if (frFile === undefined) throw new Error("fr.json was not created");
+    await ageRuns();
+    const merged = { ...files, "i18n/fr.json": frFile };
+    fake(merged);
+    const preview = await readPublishPreview(prisma, "p", "fixture");
+    const reached = [{ surfaceSlug: "default", localeCode: "fr", operation: "ADD", presence: "active" }];
+    expect(preview).toMatchObject({ fileChanges: [], expiringLocales: reached });
+    fake(merged);
+    expect(await publish(preview.fingerprint)).toEqual({ status: "skipped", reason: "no-edits", expired: reached });
+    expect(await prisma.locale.findFirst({ where: { projectId: "p", code: "fr" } })).toMatchObject({ orphaned: false });
   });
 
   it("열린 PR 조회가 실패하면 Publish가 실패한다 — 만료·쓰기 0(fail-closed), 미리보기는 버려진다고 말하지 않는다", async () => {

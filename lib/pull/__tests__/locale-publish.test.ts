@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { blobSha } from "@/lib/githash";
 import { publishFingerprint } from "@/lib/publish/fingerprint";
-import { NO_LOCALE_PLAN, afterExpiry, expiringLocalesOf, expiryCheckApplies, planProjectLocales, localeWorkOf, observedLocalesOf, withdrawnLocalesOf, type ProjectLocalePlan, type SurfaceLocaleChanges } from "../locales";
+import { NO_LOCALE_PLAN, afterExpiry, expiringLocalesOf, expiryCheckApplies, planProjectLocales, reachedRepository, localeWorkOf, observedLocalesOf, withdrawnLocalesOf, type ProjectLocalePlan, type SurfaceLocaleChanges } from "../locales";
 import { pullRequestBody, removedFilesStated } from "../payload";
 import { shouldSkipPull } from "../plan";
 import { LocalePlanRefused, projectFormats, renderProject, runPull, type PullDeps, type PullState } from "../run";
@@ -435,7 +435,7 @@ describe("수동·MCP Publish의 스냅샷 전 만료 (design §1 \"자동 적�
     const after = state({ unpublished: 1, pendingEdits: before.pendingEdits });
     after.surfaces[0]!.keys = [{ ...KEYS[0]!, cells: { ...KEYS[0]!.cells, en: { value: "A4" } } }, KEYS[1]!];
     const loads = [before, after];
-    const expireLocales = vi.fn<NonNullable<PullDeps["expireLocales"]>>(async () => [{ surfaceSlug: "default", localeCode: "ko", operation: "REMOVE" as const }]);
+    const expireLocales = vi.fn<NonNullable<PullDeps["expireLocales"]>>(async () => [{ surfaceSlug: "default", localeCode: "ko", operation: "REMOVE" as const, presence: "active" as const }]);
     const { deps: d } = deps(before, made, { loadState: async () => loads.shift()!, expireLocales });
     const result = await runPull(d);
     expect(expireLocales).toHaveBeenCalledWith({ projectId: "p1", pullRequest: "none-open",
@@ -473,7 +473,7 @@ describe("수동·MCP Publish의 스냅샷 전 만료 (design §1 \"자동 적�
 describe("작업 0 + 전달된 효과 — 1층 전 만료 (#267)", () => {
   const files = { "i18n/en.json": EN, "i18n/ko.json": KO };
   const deliveredRemove = { ...changes([["ko", "REMOVE"]], [{ localeCode: "ko", effect: "delete" }]), work: 0 };
-  const EXPIRED = [{ surfaceSlug: "default", localeCode: "ko", operation: "REMOVE" as const }];
+  const EXPIRED = [{ surfaceSlug: "default", localeCode: "ko", operation: "REMOVE" as const, presence: "active" as const }];
 
   it("만료가 있었으면 다시 읽고, 보낼 것이 없으면 no-edits + 버린 요청 — 쓰기 0", async () => {
     const made = fake(files);
@@ -530,27 +530,39 @@ describe("만료 판정의 읽기 전용 쪽 — 미리보기가 실행과 같�
 
   it("expiringLocalesOf — 열린 PR 없음(성공한 조회) + 현재 = 전달 + 관측이면 만료로 판정한다. 열림·조회 실패·관측 불가는 0", () => {
     const formats = projectFormats([surface(deliveredRemove)]);
-    expect(expiringLocalesOf(formats, "none-open", base)).toEqual([{ surfaceSlug: "default", localeCode: "ko", operation: "REMOVE" }]);
+    expect(expiringLocalesOf(formats, "none-open", base)).toEqual([{ surfaceSlug: "default", localeCode: "ko", operation: "REMOVE", presence: "active" }]);
+    // 머지됐으면(파일이 base에 없다) orphan이다 — 실행의 `expireLocaleChanges`와 같은 존재 판정이다(fix1 R1).
+    expect(expiringLocalesOf(formats, "none-open", base.filter(entry => entry.path !== "i18n/ko.json"))).toEqual([{ surfaceSlug: "default", localeCode: "ko", operation: "REMOVE", presence: "orphan" }]);
     expect(expiringLocalesOf(formats, "open", base)).toEqual([]);
     expect(expiringLocalesOf(formats, "failed", base)).toEqual([]);
+    // 모순 행(orphan ADD — 구버전 잔재)은 판정이 PR 상태와 무관하게 만료로 보지만, 조회가 실패하면 실행이 먼저 실패한다 — 미리보기도 버린다고 말하지 않는다(fix1 W4).
+    expect(expiringLocalesOf(projectFormats([surface({ ...changes([["fr", "ADD"]]), work: 0 })]), "failed", base)).toEqual([]);
+    expect(expiringLocalesOf(projectFormats([surface({ ...changes([["fr", "ADD"]]), work: 0 })]), "open", base)).toEqual([{ surfaceSlug: "default", localeCode: "fr", operation: "ADD", presence: "orphan" }]);
     // 아직 보내지 않은 제거(현재 ≠ 전달)는 만료하지 않는다.
     expect(expiringLocalesOf(projectFormats([surface(changes([["ko", "REMOVE"]]))]), "none-open", base)).toEqual([]);
   });
 
-  it("afterExpiry — 만료할 코드의 행과 전달 효과를 뺀다. 나머지 소스·코드는 그대로다", () => {
+  it("afterExpiry — 만료할 코드의 행과 전달 효과를 빼고, 활성 목록을 만료 뒤 존재로 맞추고, 작업 수를 다시 센다", () => {
     const mixed = { ...changes([["ko", "REMOVE"], ["fr", "ADD"]], [{ localeCode: "fr", effect: "create" }, { localeCode: "ko", effect: "delete" }], [["fr", 1]]), work: 0 };
-    const [after] = afterExpiry([surface(mixed)], [{ surfaceSlug: "default", localeCode: "ko", operation: "REMOVE" }]);
-    expect(after?.localeChanges?.rows.map(row => row.localeCode)).toEqual(["fr"]);
-    expect(after?.localeChanges?.delivered).toEqual([{ localeCode: "fr", effect: "create" }]);
+    // 미머지 종료된 제거 — ko가 다시 활성이다.
+    const [revived] = afterExpiry([surface(mixed, ["en", "fr"])], [{ surfaceSlug: "default", localeCode: "ko", operation: "REMOVE", presence: "active" }]);
+    expect(revived?.localeChanges?.rows.map(row => row.localeCode)).toEqual(["fr"]);
+    expect(revived?.localeChanges?.delivered).toEqual([{ localeCode: "fr", effect: "create" }]);
+    expect(revived?.localeCodes).toEqual(["en", "fr", "ko"]);
+    expect(revived?.localeChanges?.work).toBe(0);
+    // 미머지 종료된 추가 — fr이 비활성이 된다.
+    const [dropped] = afterExpiry([surface(mixed, ["en", "fr"])], [{ surfaceSlug: "default", localeCode: "fr", operation: "ADD", presence: "orphan" }]);
+    expect(dropped?.localeCodes).toEqual(["en"]);
+    expect(dropped?.localeChanges?.delivered).toEqual([{ localeCode: "ko", effect: "delete" }]);
     const untouched = [surface(mixed)];
     expect(afterExpiry(untouched, [])).toBe(untouched);
   });
 
-  it("publishFingerprint — 버려질 요청이 지문에 실린다. 없으면 바이트가 옛것 그대로다", () => {
-    const loaded = state({ localeChanges: deliveredRemove });
-    const plain = publishFingerprint(loaded, "head");
-    expect(publishFingerprint(loaded, "head", undefined, [])).toBe(plain);
-    expect(publishFingerprint(loaded, "head", undefined, [{ surfaceSlug: "default", localeCode: "ko", operation: "REMOVE" }])).not.toBe(plain);
+  it("reachedRepository — 리포가 요청대로인가(제거는 orphan, 추가는 active)", () => {
+    expect(reachedRepository({ surfaceSlug: "s", localeCode: "ko", operation: "REMOVE", presence: "orphan" })).toBe(true);
+    expect(reachedRepository({ surfaceSlug: "s", localeCode: "ko", operation: "REMOVE", presence: "active" })).toBe(false);
+    expect(reachedRepository({ surfaceSlug: "s", localeCode: "fr", operation: "ADD", presence: "active" })).toBe(true);
+    expect(reachedRepository({ surfaceSlug: "s", localeCode: "fr", operation: "ADD", presence: "orphan" })).toBe(false);
   });
 });
 

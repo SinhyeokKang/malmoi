@@ -606,28 +606,42 @@ describe("언어 변경이 다른 도구에 낳는 거부", () => {
    * "리포에 이미 있다"(거짓)가 아니라 요청을 버렸다고 말한다.
    */
   it("preview_publish — 버려질 언어 요청을 languages.expiring에 싣고 문장이 그것을 말한다", async () => {
-    const expiring = [{ surfaceSlug: "default", localeCode: "ko", operation: "REMOVE" }];
+    const expiring = [{ surfaceSlug: "default", localeCode: "ko", operation: "REMOVE", presence: "active" }];
     h.core.mockResolvedValueOnce({ status: "ok", preview: { ...(RESULTS.preview as { preview: object }).preview, sendable: { total: 0, keys: 0 }, total: 0, keys: 0, expiringLocales: expiring } });
     const outcome = await run("preview_publish", subject("editor", []), { slug: "acme" });
-    expect(outcome).toMatchObject({ status: "ok", data: { fileChanges: [], languages: { expiring } }, summary: en.mcp.summary.publishPreview(0, 0, 0, 1) });
+    expect(outcome).toMatchObject({ status: "ok", data: { fileChanges: [], languages: { expiring } }, summary: en.mcp.summary.publishPreview(0, 0, 0, 1, 0) });
   });
 
-  it("publish — 요청을 버리고 보낼 것이 없으면 그 사실을 말한다, \"already has these values\"가 아니다", async () => {
-    const expired = [{ surfaceSlug: "default", localeCode: "ko", operation: "REMOVE" }];
+  it("preview_publish — 머지된 요청(리포가 요청대로)은 \"closed without\"라고 말하지 않는다 (fix1 R1)", async () => {
+    const expiring = [{ surfaceSlug: "default", localeCode: "ko", operation: "REMOVE", presence: "orphan" }];
+    h.core.mockResolvedValueOnce({ status: "ok", preview: { ...(RESULTS.preview as { preview: object }).preview, sendable: { total: 0, keys: 0 }, total: 0, keys: 0, expiringLocales: expiring } });
+    const outcome = await run("preview_publish", subject("editor", []), { slug: "acme" });
+    expect(outcome).toMatchObject({ status: "ok", summary: en.mcp.summary.publishPreview(0, 0, 0, 0, 1) });
+    expect(outcome.status === "ok" && outcome.summary).not.toContain("closed");
+  });
+
+  it.each([
+    [[{ surfaceSlug: "default", localeCode: "ko", operation: "REMOVE", presence: "active" }], [1, 0]],
+    [[{ surfaceSlug: "default", localeCode: "ko", operation: "REMOVE", presence: "orphan" }], [0, 1]],
+  ] as const)("publish — 버린·반영된 요청을 갈라 말한다, \"already has these values\"가 아니다 (%#)", async (expired, [dropped, reached]) => {
     h.core.mockResolvedValueOnce({ outcome: { status: "skipped", reason: "no-edits", expired }, attempted: true });
     const outcome = await run("publish", subject("editor"), { slug: "acme", fingerprint: "f" });
-    expect(outcome).toMatchObject({ status: "ok", data: { result: "no-changes", outcome: { expired } }, summary: en.mcp.summary.published("no-changes", 1) });
+    expect(outcome).toMatchObject({ status: "ok", data: { outcome: { expired } }, summary: en.mcp.summary.published(dropped > 0 ? "partial" : "no-changes", dropped, reached) });
     expect(outcome.status === "ok" && outcome.summary).not.toContain("already has these values");
   });
 
-  it("버린 요청 문장 — 미리보기·결과·GitLab", () => {
-    expect(en.mcp.summary.publishPreview(0, 0, 0, 1)).toBe("Nothing to send. The pull request for 1 language change was closed without merging, so publishing drops that change. Publish with this fingerprint.");
-    expect(en.mcp.summary.publishPreview(2, 0, 0, 2)).toBe("The pull request for 2 language changes was closed without merging, so publishing drops those changes first and asks you to preview again. After that, 2 changes would be sent in a pull request.");
-    expect(en.mcp.summary.gitlab.publishPreview(0, 0, 0, 1)).toBe("Nothing to send. The merge request for 1 language change was closed without merging, so publishing drops that change. Publish with this fingerprint.");
-    expect(en.mcp.summary.published("no-changes", 1)).toBe("Nothing was sent. The pull request for 1 language change was closed without merging, so Malmoi dropped that change.");
-    expect(en.mcp.summary.gitlab.published("no-changes", 2)).toBe("Nothing was sent. The merge request for 2 language changes was closed without merging, so Malmoi dropped those changes.");
+  it("버린·반영된 요청 문장 — 미리보기·결과·GitLab", () => {
+    expect(en.mcp.summary.publishPreview(0, 0, 0, 1)).toBe("Nothing to send. The pull request for 1 language change was closed without the change reaching the repository, so publishing drops it. Publish with this fingerprint.");
+    expect(en.mcp.summary.publishPreview(0, 0, 0, 0, 1)).toBe("Nothing to send. 1 language change already reached the repository, so publishing only clears its request. Publish with this fingerprint.");
+    expect(en.mcp.summary.publishPreview(2, 0, 0, 2)).toBe("The pull request for 2 language changes was closed without the changes reaching the repository, so publishing drops them first and asks you to preview again. After that, 2 changes would be sent in a pull request.");
+    expect(en.mcp.summary.publishPreview(2, 0, 0, 0, 1)).toBe("1 language change already reached the repository, so publishing clears its request first and asks you to preview again. After that, 2 changes would be sent in a pull request.");
+    expect(en.mcp.summary.gitlab.publishPreview(0, 0, 0, 1)).toBe("Nothing to send. The merge request for 1 language change was closed without the change reaching the repository, so publishing drops it. Publish with this fingerprint.");
+    expect(en.mcp.summary.published("partial", 1)).toBe("Nothing was sent. The pull request for 1 language change was closed without the change reaching the repository, so Malmoi dropped it.");
+    expect(en.mcp.summary.published("no-changes", 0, 2)).toBe("Nothing was sent. 2 language changes already reached the repository, so Malmoi cleared their requests.");
+    expect(en.mcp.summary.gitlab.published("partial", 2)).toBe("Nothing was sent. The merge request for 2 language changes was closed without the changes reaching the repository, so Malmoi dropped them.");
     // 버린 요청이 없으면 옛 문장 그대로다.
     expect(en.mcp.summary.published("no-changes")).toBe("Nothing changed — the repository already has these values.");
+    expect(en.mcp.summary.published("partial")).toBe("Some changes weren't sent. See the result for why.");
     expect(en.mcp.summary.publishPreview(0, 0, 0, 0)).toBe("Nothing to send.");
   });
 

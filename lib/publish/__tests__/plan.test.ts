@@ -107,3 +107,13 @@ it("base와 같은 값의 행은 same이고 diff가 그 수를 센다 · 다른 
   expect(rows.map(r => [r.key, r.same])).toEqual([["bye", false], ["hello", true]]);
   expect(diff.same).toBe(1);
 });
+
+/**
+ * fix1 Y1 (#267) — 머지 없이 닫힌 PR/MR의 언어 요청을 버리고 끝난 no-edits는 "파일이 같았다"가 아니다. 그 언어의 편집은 나가지 않았다 — Not sent 틀이다.
+ * 리포가 이미 요청대로였으면(머지) "이미 리포에 있다"가 참이라 No changes 그대로다.
+ */
+it("no-edits + 리포에 없는 채로 버린 언어 요청은 Not sent 틀이다 — 리포에 반영된 요청만이면 No changes", () => {
+  expect(planPublishView({ status: "skipped", reason: "no-edits", expired: [{ surfaceSlug: "s", localeCode: "fr", operation: "ADD", presence: "orphan" }] })).toBe("partial");
+  expect(planPublishView({ status: "skipped", reason: "no-edits", expired: [{ surfaceSlug: "s", localeCode: "ko", operation: "REMOVE", presence: "active" }] })).toBe("partial");
+  expect(planPublishView({ status: "skipped", reason: "no-edits", expired: [{ surfaceSlug: "s", localeCode: "ko", operation: "REMOVE", presence: "orphan" }] })).toBe("no-changes");
+});
