@@ -36,6 +36,7 @@
 - **Sources 상세** `loadSourceDetail` → `languages[]`: `change: { operation: "ADD"|"REMOVE"; requestedAt } | null`(배지 Adding/Removing · 동작 Remove language/Cancel removal) · `unsent: boolean`(그 언어 **파일** 변경이 마지막 전달과 다름 — 셀 Unsent와 별개, 값 0개 ADD는 false, 전달 후 제거 취소는 행이 없어도 true) · `localeDelivery: "confirmed"|"unconfirmed"`(무효화 중이면 전달 여부를 단정하지 않는다). `locales` 수는 REMOVE를 뺀다.
 - **Server Action**(`app/(edit)/projects/[slug]/sources/actions.ts`, 결과는 코드뿐): `addSourceLocale` → `{ok, action: "create"|"revive", path, reissued}` · `previewSourceLocaleRemoval` → `{ok, kind: "request-removal"|"cancel-add", path, translations, pendingCount, delivered: boolean|null, approval}` · `removeSourceLocale({…, approval})` → `{ok, kind, discarded}` · `cancelSourceLocaleRemoval` → `{ok, delivered: boolean|null}`(`true`면 다음 Publish 전까지 "취소 완료"라 말하지 않는다).
 - **거부 코드**: 접근(`forbidden`·`not-found`·`archived`·`unauthorized`·`unavailable`) · 판정(`publish-unsettled` — 무효화 중 취소 포함, `base-locale`, `removal-pending`, `no-removal`, `approval-required`, `stale-approval`, `invalid-code`, `unsupported-locale`, `already-active`, `locale-collision`, `unsafe-path`, `path-conflict`, `unsupported-format`) · 폐기(`baseline-unknown`·`baseline-stale` — 제거만, `sync-running`). 다른 화면: `locale-removal-pending`(번역 저장·Revert 거부, `localeCodes` 동반) · `locale-plan-refused`(Publish 미리보기 `refused`, 결정적 — Try again 없음) · `locale-change-pending`(기준 언어 선언·기준 브랜치 변경 거부, CI/야간 deferred).
+- **Publish 미리보기**: `withdrawnLocales` — 파일 diff가 0이어도 열린 PR에서 이전 언어 변경을 거둘 Publish가 필요하다는 신호(프레임 13). 웹 Publish 모달(`components/publish-button.tsx`)은 아직 읽지 않아 이 경우를 "보낼 것 없음"으로 그린다.
 - **번역 화면**: `loadTranslationDetail().locales[].readOnly`를 `initKeyDraft(keyId, values, readOnlyCodes)`와 서버 갱신 액션 `{type: "server", …, readOnly}`에 넘긴다. 저장 버튼은 `savableLocales(draft)`, 이탈 확인은 `dirtyLocales(draft)`. 진행률·결측은 `workLocaleCodes`·`detailFill`(`lib/translations/summary.ts`)만 쓴다. ⚠️ `DetailView.locales`(locale-panel.tsx)에 `readOnly` 타입을 선언해야 한다(지금은 두 함수가 `readOnly?` 임시 형).
 - **지금 화면의 알려진 틈**(MCP로 요청을 만들 수 있으므로 이미 닿는다): 번역 화면이 제거 중 언어를 편집 가능하게 보이고 저장하면 키 전체가 `locale-removal-pending`으로 거부된다(일반 save-failed 문구) · Publish 버튼(`components/publish-button.tsx`)이 `locale-plan-refused`를 base 파일 문구로 폴백한다(MCP 쪽은 C2가 전용 영어 문장을 붙였다) · Logs의 언어 사건은 종류 폴백 문장(“changed Sources & languages”)이다.
 
@@ -43,7 +44,6 @@
 
 - strict 적재의 존재 판정(`localesToKeep`)은 심볼릭 링크 언어 파일도 센다. 만료(`observeLocaleFiles`)는 정규 파일만 — 링크 언어 파일이 있는 리포에서만 갈린다. 적재 코어 변경이라 범위 밖.
 - 열린 PR 본문은 삭제 파일 집합이 바뀔 때만 다시 쓰지만, 다시 쓸 때는 본문 전체를 바꾼다(그 순간 사람이 넣은 문구는 사라진다).
-- 만료 뒤 전달 목록이 남아 수렴용 Publish(no-changes)가 한 번 더 돈다 — R-B2가 "유지"로 판정.
 - 확인 행이 없던 소스에서 미전달 편집이 있는 언어는 첫 Publish 전까지 제거가 `baseline-unknown`으로 막힌다(fail-closed, 탈출구는 Publish).
 
 ## 결정 기록
@@ -65,6 +65,7 @@
 | R3 | 승인 수동 Sync는 언어 변경 행만 지우고 **전달 목록은 유지**(다음 Publish가 no-changes로 수렴). 승인한 행만 지운다(Sync 도중 요청은 남김) | B3 질문 · R-B3 🔴 · `5bb3747a` |
 | R4 | **모든 Publish(야간 cron 포함)**가 스냅샷 전 만료. 추가 가능 코드 ⊆ 관측 가능 코드(Chrome 54개 — `es_419` 제외, `looksLikeLocale` 교집합) | R-B2 🔴 둘 · `8313e5a5` |
 | R5 | 결정적 언어 계획 거부는 비재시도 `locale-plan-refused` + Logs 최소 문구 · 열린 PR 본문은 삭제 집합 변동 때만 갱신 · base 관측 함수는 `observeLocaleFiles` 하나 | R-B2 Y2·Y3·Y4 · B2 fix2 · B3 fix2 |
+| R7 | 만료는 그 행의 효과를 전달 목록에서도 뺀다(#266) · 확인보다 뒤에 낸 요청은 전달로 세지 않는다(F1 발견) · 미리보기는 `withdrawnLocales`로 "파일 diff 0이어도 이전 변경을 거둘 Publish 필요"를 싣는다(#265) | RT #266·#265 · F1 · `2b2650cc` 외 |
 | R6 | 사전 문구는 typecheck가 강제하는 슬롯만(Logs 사유) 이 런에서 넣고 ko·es는 `/translate` 초안 · 컴포넌트는 테스트 픽스처와 비시각 집계 한 줄만 예외 | B3·B2·C1 질문 · 지휘자 판단 |
 | O8 | 스키마 SQL은 워커가 DB 없이 `prisma migrate diff`로 만들고(더미 `DIRECT_URL`), dev DB 적용·`has_schema_privilege` 확인은 지휘자. prod `db:deploy`는 `/merge` 1단계(런 밖) | 스킬 §1 |
 
@@ -140,3 +141,4 @@
 - P3 push `41935505..0e29da92` · CI success(38545758251). design-brief 백엔드 계약 반영(`68b00b47`, 프레임 21~25 추가) · push `..2fc25ed4`. **RT** `ctx_be8cc5bb90fd`(Opus medium, main 체크아웃, MCP로 추가·제거) — 이 동안 main 체크아웃 cherry-pick·build 금지.
 - **RT 완료** — 폐기용 프로젝트 넷(GitHub·GitLab × json-catalog·chrome-locales, 격리 base 브랜치)에서 MCP로 왕복. 매트릭스 4/4 통과(추가→번역→Publish→머지, 제거→재Publish 유지→취소→재요청→머지→orphan→재추가 값 복구) · 전달 후 취소 · 미머지 종료 만료 · base 선삭제 · 응답 유실 재시도 · 실행 비트 삭제(GitHub `sha:null`·GitLab `action:delete`) · PR/MR 본문 안내(생성·갱신) 통과. **결함**: #266 🔴 · #265 🟡(BugShot). **미측정**: Chrome `_locales/de/`에 비-messages 파일만 남은 확장 로드(시스템 Chrome 금지·ego로 unpacked 로드 불가) · 실제 네트워크 단절(서버 강제 종료로 대체) · `/mcp` 화면 토큰 발급(같은 코어로 발급). 테스트 프로젝트 보관·push 토큰 회전·원격 브랜치/PR·API 토큰 정리 완료. RT retain.
 - **지휘자 판단(design `2b2650cc`)**: #266 → 만료가 그 행의 효과를 전달 목록에서도 뺀다(R-B2의 "수렴 Publish 1회 유지" 판정 번복). **F1** `ctx_ec4e82e50708`(Opus high, #266·#265, `Refs #N`).
+- F1 `worker_done` — 3커밋(#266 만료가 전달 목록에서 효과 제거 · #265 미리보기 `withdrawnLocales` + MCP 문장, `gate: ok` 15315 · PG 837). 새 발견(같은 부류 — 행 없이 남은 전달 목록 + 미머지 종료 + 재요청) → **지휘자 판단: 확인보다 뒤에 낸 요청은 전달로 세지 않음**(design). **F1 fix1** — 그 규칙 + ARCHITECTURE §5.10 갱신(만료의 전달 목록 정리·`withdrawnLocales`·새 규칙).
