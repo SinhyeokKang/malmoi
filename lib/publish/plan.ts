@@ -1,5 +1,6 @@
 import type { PullOutcome } from "@/lib/pull/message";
 import type { Messages } from "@/lib/i18n";
+import { reachedRepository } from "@/lib/locales/reached";
 export type PublishView = "created" | "updated" | "partial" | "no-changes" | "config-error" | "transient-error" | "already-running" | "too-soon" | "publish-unsettled";
 export function planPublishView(outcome: PullOutcome): PublishView {
   switch (outcome.status) {
@@ -7,7 +8,9 @@ export function planPublishView(outcome: PullOutcome): PublishView {
     // writer 경고는 **보내지 않은** 결과다(sync-edit-protection T10) — `partial` 갈래가 "보내지 않았다"로 선다. 새 갈래를 늘리지 않는다.
     // 보류만 있고 실린 편집이 0이면 "No changes"(파일이 같았다)가 거짓이다 — 같은 Not sent 틀을 쓴다(delivery-invariants D7).
     // no-changes라도 보류가 있으면 같은 틀이다 — Logs가 SKIPPED + withheld > 0을 Not sent로 읽는다(#83). "이미 리포에 있었다"가 거짓이 된다.
-    case "skipped": return outcome.reason === "writer-warnings" || outcome.reason === "withheld" || (outcome.reason === "no-changes" && outcome.withheld !== undefined) ? "partial" : "no-changes";
+    // 리포에 닿지 못한 채 PR/MR이 닫힌 언어 요청을 정리하고 끝났으면 그 언어의 편집은 나가지 않았다 — "파일이 같았다"가 거짓이다(#267 fix1 Y1).
+    case "skipped": return outcome.reason === "writer-warnings" || outcome.reason === "withheld" || (outcome.reason === "no-changes" && outcome.withheld !== undefined)
+      || (outcome.reason === "no-edits" && (outcome.expired ?? []).some(request => !reachedRepository(request))) ? "partial" : "no-changes";
     case "failed":
       if (outcome.error === "publish-unsettled" || outcome.error === "already-running" || outcome.error === "too-soon") return outcome.error;
       return outcome.retryable ? "transient-error" : "config-error";

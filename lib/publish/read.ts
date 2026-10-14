@@ -12,7 +12,7 @@ import { formatFromProject, resolveLocalePaths } from "@/lib/pull/plan";
 import { blockingErrors, keySlot } from "@/lib/pull/undeliverable";
 import { loadPreviewSnapshot } from "@/lib/pull/load";
 import { planDelivery, planLocales, projectFormats, renderProject } from "@/lib/pull/run";
-import { NO_LOCALE_PLAN, afterExpiry, expiringLocalesOf, expiryCheckApplies, hasLocaleRows, localeFingerprintInput, localeNotesOf, withdrawnLocalesOf } from "@/lib/pull/locales";
+import { NO_LOCALE_PLAN, afterExpiry, expiringLocalesOf, expiryCheckApplies, hasLocaleRows, localeFingerprintInput, localeNotesOf, localeWorkOf, withdrawnLocalesOf } from "@/lib/pull/locales";
 import { publishFingerprint } from "./fingerprint";
 import { buildPublishDiff, PREVIEW_LIMIT, type BaseValues, type PublishCell } from "./diff";
 import { PreviewBaseFileMissing, PreviewBaseFileUnreadable, PreviewWriterWarnings, type PublishPreview } from "./preview";
@@ -41,13 +41,23 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
   // 같은 스냅샷·head·트리와 blob 캐시를 재사용하므로 중복 다운로드 없이 같은 지문 입력을 쓴다.
   // 언어 변경 계획도 실행과 같은 함수·같은 트리다 — 삭제·새 파일·보류가 미리보기와 실행에서 갈리지 않는다(locale-add design §2 "같은 deletes").
   /**
-   * ⚠️ **실행이 스냅샷 전에 버릴 요청을 먼저 판정한다** (#267) — 머지 없이 닫힌 PR/MR의 언어 요청은 실행이 만료하므로 그 삭제·새 파일을 약속하지 않는다.
-   * 읽기만이다: 같은 판정(`expiryCheckApplies` → `planLocaleExpiry`)을 같은 스냅샷·트리에 대 보고, 계획은 그 행을 뺀 상태로 세운다(`afterExpiry`).
-   * 열린 PR 조회는 표시용과 같은 결과다 — 모름(`undefined`)은 `failed`라 버린다고 말하지 않는다(실행도 그때 실패한다).
+   * ⚠️ **실행이 스냅샷 전에 정리할 요청을 먼저 판정한다** (#267) — PR/MR이 더 이상 열려 있지 않은 언어 요청은 실행이 만료하므로 그 삭제·새 파일을 약속하지 않는다.
+   * 읽기만이다: 같은 판정(`expiryCheckApplies` → `planLocaleExpiry`)을 같은 스냅샷·트리에 대 보고, 계획은 만료 뒤 상태로 세운다(`afterExpiry` — 존재까지).
+   * 열린 PR 조회는 표시용과 같은 결과다 — 모름(`undefined`)은 `failed`라 정리한다고 말하지 않는다(실행도 그때 실패한다).
    */
   const pullRequest = rawPr === undefined ? "failed" as const : rawPr === null ? "none-open" as const : "open" as const;
   const expiring = expiryCheckApplies(state.unpublished, state.surfaces) ? expiringLocalesOf(projectFormats(state.surfaces), pullRequest, tree) : [];
   const surfaces = afterExpiry(state.surfaces, expiring);
+  // 만료 뒤 비활성이 되는 언어의 미발송 편집은 나가지 않고 미발송에서도 빠진다(`pendingWhere`가 비활성 언어를 뺀다) — 보낼 수·미발송 수로 세지 않는다(fix1 R2).
+  const surfaceIdOf = new Map(state.surfaces.map(surface => [surface.slug, surface.id]));
+  const deactivated = new Set(expiring.filter(item => item.presence === "orphan").map(item => `${surfaceIdOf.get(item.surfaceSlug) ?? ""}\0${item.localeCode}`));
+  const isDeactivated = (cell: { surfaceId: string; localeCode: string }) => deactivated.has(`${cell.surfaceId}\0${cell.localeCode}`);
+  const droppedEdits = state.pendingEdits.flatMap(edit => edit.cell !== undefined && isDeactivated(edit.cell) ? [edit.cell] : []);
+  const keptKeys = new Set(state.pendingEdits.flatMap(edit => edit.cell !== undefined && !isDeactivated(edit.cell) ? [edit.cell.keyId] : []));
+  const sendTotal = total - droppedEdits.length;
+  const sendKeys = keys - new Set(droppedEdits.map(cell => cell.keyId).filter(id => !keptKeys.has(id))).size;
+  // 만료 뒤 보낼 것이 없으면 실행은 1층에서 `no-edits`로 끝난다 — 렌더가 base와 달라도(되살아난 언어 등) 파일을 약속하지 않는다.
+  const idle = expiring.length > 0 && state.unpublished - droppedEdits.length === 0 && localeWorkOf(surfaces) === 0;
   const formats = projectFormats(surfaces);
   const localePlan = hasLocaleRows(surfaces) ? planLocales(project, formats, tree) : NO_LOCALE_PLAN;
   const { changes, rendered, resolved, current } = await renderProject(project, formats, client, { baseHead: head, tree }, localePlan);
@@ -72,8 +82,9 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
   let withoutKey = 0;
   /** 보류된 셀이 하나라도 있는 키 — 실린 셀이 하나도 없으면 "보낼 수 있는 키"에서 빠진다(#84). */
   const heldKeys = new Set<string>();
-  for (const surface of state.surfaces) {
-    const surfaceRows = rows.filter(r => r.surfaceId === surface.id);
+  const shownRows = deactivated.size === 0 ? rows : rows.filter(r => !isDeactivated(r));
+  for (const surface of surfaces) {
+    const surfaceRows = shownRows.filter(r => r.surfaceId === surface.id);
     if (!surfaceRows.length) continue;
     const format = formatFromProject(surface, surface.localeCodes);
     const adapter = adapterFor(format);
@@ -148,21 +159,25 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
     }
   }
   // `truncated`는 상한 때문에 **조회하지 않은** 행만이다 — 뺀 셀은 `withoutFile`·`withoutKey`가 따로 말한다.
-  return { ...buildPublishDiff(cells, base), total, keys, truncated: Math.max(0, total - rows.length), withoutFile, withoutKey,
+  const sent = idle ? [] : changes;
+  return { ...buildPublishDiff(cells, base), total: sendTotal, keys: sendKeys, truncated: Math.max(0, sendTotal - shownRows.length), withoutFile, withoutKey,
     // ⚠️ **화면이 말하는 수는 나가는 수다** (#84 — POSTMORTEM 2026-09-17). 결과의 `delivered`·Logs와 같은 모집단이어야 한다. 상한(200행) 밖 행은
     // 판정하지 않았으므로 나가는 쪽으로 센다 — `truncated`와 같이 읽힌다.
-    changedFiles: changes.map(c => c.path),
+    changedFiles: sent.map(c => c.path),
     // 실행 결과의 `files`와 같은 판정이다 — delete는 base에 있을 때만 생기고, upsert는 base에 있으면 갱신이다.
-    fileChanges: changes.map(c => ({ path: c.path, kind: c.kind === "delete" ? "removed" as const : shas.has(c.path) ? "updated" as const : "new" as const })),
+    fileChanges: sent.map(c => ({ path: c.path, kind: c.kind === "delete" ? "removed" as const : shas.has(c.path) ? "updated" as const : "new" as const })),
     ...((notes) => (notes === undefined ? {} : { locales: notes }))(localeNotesOf(localePlan)),
     // 행이 없어도(전달 뒤 취소) 전달 목록만으로 생긴다 — 계획과 같은 스냅샷의 목록이라 실행의 수렴 판정(`deliverableLocaleWork`)과 같은 입력이다.
     ...((withdrawn) => (withdrawn.length === 0 ? {} : { withdrawnLocales: withdrawn }))(withdrawnLocalesOf(localePlan, surfaces)),
     ...(expiring.length === 0 ? {} : { expiringLocales: expiring }),
-    sendable: { total: total - withoutFile - withoutKey, keys: keys - [...heldKeys].filter(id => !cells.some(c => c.keyId === id)).length },
+    sendable: { total: sendTotal - withoutFile - withoutKey, keys: sendKeys - [...heldKeys].filter(id => !cells.some(c => c.keyId === id)).length },
     openPr: parseReviewUrl(rawPr, project),
     // ⚠️ **셀 표시가 아니라 렌더가 쓴 스냅샷 전체 + 읽은 head다** (mcp-connector design §3.1) — 200행 상한 밖 편집·토큰 없는 export 변경도 바꾼다.
-    // 지문의 언어 입력은 화면이 보여 준 계획(만료 뒤)이고, 버려질 요청은 꼬리로 싣는다 — 실행이 그 상태를 다시 만나지 않으므로 늘 다시 확인이다(`publishFingerprint`).
-    fingerprint: publishFingerprint(state, head, hasLocaleRows(surfaces) ? localeFingerprintInput(localePlan, formats, tree) : undefined, expiring) };
+    /**
+     * 지문은 만료 **전** 스냅샷(`state`)과 화면이 보여 준 계획(만료 뒤)의 언어 입력이다. 정리할 요청이 있으면 실행은 만료 뒤 다시 읽은 상태로 재므로 행·대상 경로가
+     * 갈려 늘 다시 확인이다 — 미리보기 뒤 PR/MR이 다시 열려 만료가 없어도 계획(대상·삭제)이 갈린다. 따로 꼬리를 싣지 않는다(review-F2 W1: 꼬리를 빼도 같았다).
+     */
+    fingerprint: publishFingerprint(state, head, hasLocaleRows(surfaces) ? localeFingerprintInput(localePlan, formats, tree) : undefined) };
 }
 
 /** 같은 blob을 두 번 받지 않는다 — 미리보기 조회와 실행 렌더(`renderProject`)가 같은 트리의 같은 파일을 읽는다. */

@@ -29,8 +29,9 @@ export type PublishPreview = PublishDiff & {
    */
   withdrawnLocales?: WithdrawnLocale[];
   /**
-   * **이 Publish가 버리는 언어 요청** (#267) — 그 PR/MR이 머지 없이 닫혀 실행이 스냅샷 전에 만료한다(`expiringLocalesOf`). 표·`fileChanges`는 그 요청을 뺀
-   * 계획이다(삭제·새 파일을 약속하지 않는다). 다른 보낼 것이 있으면 실행이 만료 뒤 다시 확인을 요구한다. 데이터만이다(표시는 시안 배치). 없으면 필드가 없다.
+   * **이 Publish가 정리하는 언어 요청** (#267) — 그 PR/MR이 더 이상 열려 있지 않아 실행이 스냅샷 전에 만료한다(`expiringLocalesOf`). `presence`는 만료 뒤
+   * 존재이고, 리포가 요청대로인지(머지)·아닌지(리포에 닿지 못한 채 닫힘)를 가른다(`reachedRepository`). 표·`fileChanges`·수는 만료 뒤 상태의 계획이다 —
+   * 삭제·새 파일을 약속하지 않고, 비활성이 되는 언어의 편집은 세지 않는다. 다른 보낼 것이 있으면 실행이 만료 뒤 다시 확인을 요구한다. 데이터만이다(표시는 시안 배치).
    */
   expiringLocales?: ExpiredLocaleRequest[];
   /** 실제로 나가는 편집·키 수 (#84). 제목·요약·PR 줄·실행 진행 제목이 이 수로 말한다 — `total`·`keys`는 보류를 포함한 미발송 전체다. */

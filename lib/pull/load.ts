@@ -258,7 +258,7 @@ export async function expireLocalesForPublish(
         projectId: input.projectId, surfaceId: surface.surfaceId, surfaceSlug: surface.surfaceSlug,
         pullRequest: input.pullRequest, observed: surface.observed, actor: actor === undefined ? { kind: "AUTOMATION" } : { kind: "USER", userId: actor.userId },
       });
-      expired.push(...result.expired.map(item => ({ surfaceSlug: surface.surfaceSlug, localeCode: item.localeCode, operation: item.operation })));
+      expired.push(...result.expired.map(item => ({ surfaceSlug: surface.surfaceSlug, localeCode: item.localeCode, operation: item.operation, presence: item.presence })));
     }
     return expired;
   });

@@ -157,8 +157,8 @@ export type Withheld = {
 export type PullResult =
   /**
    * `locales` — 셀 편집 0인데 언어 작업이 전부 보류(경로가 이미 있는 ADD)일 때만 있다. 그때도 쓰기는 0이다.
-   * `expired` — 이 실행이 스냅샷 전에 버린 언어 요청(PR/MR이 머지 없이 닫혔다, #267). 보낼 것이 없어 끝났을 때만 있다 — "리포에 이미 있다"가 아니라
-   * "닫혀서 버렸다"가 이 결과의 이유다.
+   * `expired` — 이 실행이 스냅샷 전에 정리한 언어 요청(PR/MR이 더 이상 열려 있지 않다, #267). 보낼 것이 없어 끝났을 때만 있다. 요청마다 `presence`가
+   * 리포가 요청대로였는지(머지)·아닌지(리포에 닿지 못한 채 닫힘)를 가른다(`reachedRepository`) — 뒤엣것이 있으면 "리포에 이미 있다"가 거짓이다.
    */
   | { status: "skipped"; reason: "no-edits"; locales?: LocaleNotes; expired?: ExpiredLocaleRequest[] }
   /**
@@ -461,7 +461,8 @@ export async function runPull(deps: PullDeps, expectedFingerprint?: string): Pro
   const client = await deps.createClient(connection.target);
   /**
    * ⚠️ **head는 한 번 읽어 끝까지 쓴다** — 지문 대조·만료 관측·렌더·커밋의 부모가 같은 head여야 한다. 지문 대조는 트리·blob을 읽기 전이라
-   * reconfirm이 읽기도 최소다(언어 변경 행이 없으면). 1층(no-edits)보다 뒤인 것은 의도다: 보낼 것이 없으면 지문과 무관하게 GitHub 0회로 끝난다.
+   * reconfirm이 읽기도 최소다(언어 변경 행이 없으면). 1층(no-edits)보다 뒤인 것은 의도다: 보낼 것이 없으면 지문과 무관하게 GitHub 0회로 끝난다 — 단 스냅샷 전 만료가 돌아야 하는 프로젝트
+   * (`expiryCheckApplies` — 전달된 언어 변경이 있고 그 PR/MR이 열렸는지 모른다)는 1층 앞에서 여기까지 온다(#267). 그때도 만료 뒤 보낼 것이 없으면 지문 전에 끝난다.
    */
   const baseHead = await readBaseHead(project, client);
   let tree: GitTreeEntry[] | undefined;

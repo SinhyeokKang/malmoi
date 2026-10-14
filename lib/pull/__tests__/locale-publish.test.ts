@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import { blobSha } from "@/lib/githash";
 import { publishFingerprint } from "@/lib/publish/fingerprint";
-import { NO_LOCALE_PLAN, afterExpiry, expiringLocalesOf, expiryCheckApplies, planProjectLocales, reachedRepository, localeWorkOf, observedLocalesOf, withdrawnLocalesOf, type ProjectLocalePlan, type SurfaceLocaleChanges } from "../locales";
+import { NO_LOCALE_PLAN, afterExpiry, expiringLocalesOf, expiryCheckApplies, planProjectLocales, localeWorkOf, observedLocalesOf, withdrawnLocalesOf, type ProjectLocalePlan, type SurfaceLocaleChanges } from "../locales";
+import { reachedRepository } from "@/lib/locales/reached";
 import { pullRequestBody, removedFilesStated } from "../payload";
 import { shouldSkipPull } from "../plan";
 import { LocalePlanRefused, projectFormats, renderProject, runPull, type PullDeps, type PullState } from "../run";
@@ -559,10 +560,10 @@ describe("만료 판정의 읽기 전용 쪽 — 미리보기가 실행과 같�
   });
 
   it("reachedRepository — 리포가 요청대로인가(제거는 orphan, 추가는 active)", () => {
-    expect(reachedRepository({ surfaceSlug: "s", localeCode: "ko", operation: "REMOVE", presence: "orphan" })).toBe(true);
-    expect(reachedRepository({ surfaceSlug: "s", localeCode: "ko", operation: "REMOVE", presence: "active" })).toBe(false);
-    expect(reachedRepository({ surfaceSlug: "s", localeCode: "fr", operation: "ADD", presence: "active" })).toBe(true);
-    expect(reachedRepository({ surfaceSlug: "s", localeCode: "fr", operation: "ADD", presence: "orphan" })).toBe(false);
+    expect(reachedRepository({ operation: "REMOVE", presence: "orphan" })).toBe(true);
+    expect(reachedRepository({ operation: "REMOVE", presence: "active" })).toBe(false);
+    expect(reachedRepository({ operation: "ADD", presence: "active" })).toBe(true);
+    expect(reachedRepository({ operation: "ADD", presence: "orphan" })).toBe(false);
   });
 });
 

@@ -144,6 +144,8 @@ const CLIENT_LIB_FILES = [
   "lib/landing/stage.ts",
   // 공개 셸 서랍의 GitHub 행이 헤더와 같은 저장소 URL을 읽는다 — `routes`와 사전 타입만 무는 잎이다.
   "lib/links.ts",
+  // Publish 결과 갈래가 정리한 언어 요청이 리포에 닿았는지 읽는다(#267) — import 0인 잎이다.
+  "lib/locales/reached.ts",
   // LNB 프로젝트 스위처·사용자 메뉴·LNB 목록 구역의 목록 판정 — `lib/search/match.ts`(import 0) 하나만 무는 잎이다.
   "lib/shell/switcher.ts",
   "lib/login-link/message.ts",

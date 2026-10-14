@@ -573,7 +573,8 @@ export function PublishModal({ slug, publish, fallbackFocusRef, count, repo, rol
           // 보류로 여기 온 결과는 writer가 값을 버린 것이 아니다 — 설명이 갈린다(#83). no-changes + 보류는 다른 편집이 이미 리포와 같았다.
           const reason = outcome.status === "skipped" ? outcome.reason : null;
           title = p.notSent;
-          description = reason === "withheld" ? p.withheldDescription.withheld
+          // 리포에 닿지 못한 언어 요청을 정리한 no-edits(#267)도 보류와 같은 설명이다 — 쓰지 않았고 그 편집은 여기 남는다. writer 경고 문장이 아니다.
+          description = reason === "withheld" || reason === "no-edits" ? p.withheldDescription.withheld
             : reason === "no-changes" ? (closed === undefined ? p.withheldDescription.noChanges : p.closedPr.description(repo.branch))
             : p.notSentDescription;
           actions = <Button variant="primary" size="lg" onClick={publish.close}>{p.close}</Button>;

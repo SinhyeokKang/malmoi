@@ -54,7 +54,8 @@ export async function triggerPull(
   // ⚠️ **경고가 있으면 쓰기 전에 멈추고 `lastPulledAt`을 안 쓴다** (sync-edit-protection T10, 2026-09-18). 2026-09-04 audit #35는
   // 반대를 골랐다 — `missingOriginal` 같은 **지속 상태** 경고에서 매일 밤 트리·blob 전량 읽기가 영구화된다는 근거였다.
   // 그 대가를 이제 감수한다: 경고를 실어 보내면 버린 값의 편집 토큰까지 전달 확인으로 비워져 보내지 않은 편집이 사라진다.
-  // 1층이 토큰으로 판정하므로 미전달 편집이 없는 프로젝트는 여전히 GitHub을 안 부른다. 로그에는 계속 남긴다 —
+  // 1층이 토큰으로 판정하므로 미전달 편집이 없는 프로젝트는 여전히 GitHub을 안 부른다 — 예외는 전달된 언어 변경이 PR/MR에 실린 동안의 사람 Publish다
+  // (스냅샷 전 만료가 1층보다 앞이다, #267 · `expiryCheckApplies`). cron은 작업 0이면 Publish를 부르지 않는다(`lib/nightly/plan.ts`). 로그에는 계속 남긴다 —
   // cron 응답 JSON을 놓쳐도 Vercel 로그에서 찾을 수 있어야 한다.
   if (result.status === "skipped" && result.reason === "writer-warnings") {
     // 코드로 남긴다 — `lib/pull`은 사전을 읽지 않는다(ui-locales B1′). 키·파서 원문이 있으면 그대로 붙여 grep으로 찾게 한다.

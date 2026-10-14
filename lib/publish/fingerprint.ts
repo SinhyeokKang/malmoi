@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
 
-import type { ExpiredLocaleRequest } from "@/lib/pull/locales";
 import type { PullState } from "@/lib/pull/run";
 
 /**
@@ -22,11 +21,6 @@ export function publishFingerprint(
    * 달라지면 승인을 다시 받는다. 행이 없으면 비어 있고, 그때 지문 바이트는 옛것 그대로다.
    */
   locale?: { targets: readonly (readonly [string, string | null])[]; deletes: readonly string[] },
-  /**
-   * 미리보기가 "버려진다"고 말한 언어 요청(#267 — `expiringLocalesOf`). 실행은 만료 뒤 다시 읽은 상태로 재므로 이 꼬리가 없다 — 그래서 버려질 요청을 말한
-   * 지문은 늘 `reconfirm`이다(만료는 이미 썼다). 미리보기 뒤 PR/MR이 다시 열려 만료가 없어도 같은 이유로 통하지 않는다. 비면 꼬리가 없어 바이트가 옛것 그대로다.
-   */
-  expiring: readonly ExpiredLocaleRequest[] = [],
 ): string {
   const { project } = state;
   // 언어 변경 행·전달 목록은 소스에 붙어 온다(`localeChanges`). 아무 소스에도 없고 base 입력도 비면 꼬리를 붙이지 않는다 — 언어 변경이 없는 프로젝트의 지문이 바뀌지 않는다.
@@ -59,7 +53,6 @@ export function publishFingerprint(
     [...state.pendingEdits].sort(byId).map(p => [p.id, p.token]),
     [...(state.deliveryContexts ?? [])].sort((a, b) => compare(a.surfaceId, b.surfaceId)).map(c => [c.surfaceId, c.fingerprint]),
     ...localeTail,
-    ...(expiring.length === 0 ? [] : [["expiring", [...expiring].sort((a, b) => compare(a.surfaceSlug, b.surfaceSlug) || compare(a.localeCode, b.localeCode)).map(e => [e.surfaceSlug, e.localeCode, e.operation])]]),
   ]);
   return createHash("sha256").update(canonical).digest("hex");
 }
