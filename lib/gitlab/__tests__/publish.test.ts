@@ -326,4 +326,27 @@ describe("열린 MR 본문 갱신 — 삭제 정리 안내", () => {
     await runPull(deps);
     expect(write(repo).filter(call => call.startsWith("PUT /merge_requests"))).toEqual([]);
   });
+
+  // 사람이 고친 설명을 덮지 않는다(B2 fix2) — 삭제 집합이 바뀔 때만 다시 쓴다.
+  const HUMAN = "Reviewer notes: please double-check the Korean wording before merging.";
+  it("사람이 고친 설명 + 삭제 변화 없음 → PUT 0", async () => {
+    const { repo, deps } = setup({ mergeRequests: [ownMr({ description: HUMAN })] });
+    expect(await runPull(deps)).toMatchObject({ status: "committed", pr: "updated" });
+    expect(write(repo).filter(call => call.startsWith("PUT /merge_requests"))).toEqual([]);
+    expect(repo.mergeRequests[0]?.description).toBe(HUMAN);
+  });
+  it("사람이 고친 설명 + 새 삭제 → 정리 안내", async () => {
+    const { repo, deps } = setup({ mergeRequests: [ownMr({ description: HUMAN })] }, { state: removing() });
+    await runPull(deps);
+    expect(repo.mergeRequests[0]?.description).toContain("- `locales/ko.json` (removed)");
+    expect(repo.mergeRequests[0]?.description).toMatch(/app code/);
+  });
+  it("삭제가 취소되면 정리 안내를 뺀다", async () => {
+    const stated = pullRequestBody([{ path: "locales/ko.json", kind: "removed" }]);
+    const { repo, deps } = setup({ mergeRequests: [ownMr({ description: stated })] });
+    await runPull(deps);
+    const description = repo.mergeRequests[0]?.description ?? "";
+    expect(description).not.toMatch(/\(removed\)|app code/);
+    expect(description).toContain("- `locales/ko.json`");
+  });
 });

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { blobSha } from "@/lib/githash";
 import { publishFingerprint } from "@/lib/publish/fingerprint";
 import { planProjectLocales, localeWorkOf, observedLocalesOf, type SurfaceLocaleChanges } from "../locales";
-import { pullRequestBody } from "../payload";
+import { pullRequestBody, removedFilesStated } from "../payload";
 import { shouldSkipPull } from "../plan";
 import { LocalePlanRefused, projectFormats, renderProject, runPull, type PullDeps, type PullState } from "../run";
 import { classifySyncError } from "@/lib/sync/plan";
@@ -471,6 +471,51 @@ describe("열린 PR 본문 갱신 — 정리 안내 (R-B2 🟡 Y3)", () => {
     const made = fake(files, { openPr: { url: "u", number: 7, title: "chore [skip-malmoi-i18n]", body } });
     await runPull(deps(state({ localeChanges: changes([["ko", "REMOVE"]]) }), made).deps);
     expect(made.calls.some(call => call.method === "updatePr")).toBe(false);
+  });
+
+  /**
+   * **사람이 고친 본문을 덮지 않는다** (B2 fix2). 본문을 다시 쓰는 것은 정리 안내를 더하거나 빼야 할 때 — 본문이 말하는 삭제 파일 집합이 이 스냅샷의
+   * 삭제 집합과 다를 때 — 뿐이다.
+   */
+  const HUMAN = "Reviewer notes: please double-check the French wording before merging.";
+  const editingEn = () => {
+    const loaded = state({ unpublished: 1, pendingEdits: [{ id: "t1", token: "tok", cell: { surfaceId: "s1", keyId: "ka", localeCode: "en", restoreValue: "A" } }] });
+    loaded.surfaces[0]!.keys = [{ ...KEYS[0]!, cells: { ...KEYS[0]!.cells, en: { value: "A2" } } }, KEYS[1]!];
+    return loaded;
+  };
+  it("사람이 고친 본문 + 삭제 변화 없음 → 본문을 건드리지 않는다", async () => {
+    const made = fake(files, { openPr: { url: "u", number: 7, title: "chore [skip-malmoi-i18n]", body: HUMAN } });
+    await expect(runPull(deps(editingEn(), made).deps)).resolves.toMatchObject({ status: "committed", pr: "updated" });
+    expect(made.calls.some(call => call.method === "updatePr")).toBe(false);
+  });
+  it("사람이 고친 본문이 같은 삭제를 이미 말하면 건드리지 않는다 — 다른 파일이 늘어도", async () => {
+    const body = `${pullRequestBody([{ path: "i18n/ko.json", kind: "removed" }])}\n\n${HUMAN}`;
+    const loaded = editingEn();
+    loaded.surfaces[0]!.localeChanges = changes([["ko", "REMOVE"]], [{ localeCode: "ko", effect: "delete" }]);
+    const made = fake(files, { openPr: { url: "u", number: 7, title: "chore [skip-malmoi-i18n]", body } });
+    await runPull(deps(loaded, made).deps);
+    expect(made.calls.some(call => call.method === "updatePr")).toBe(false);
+  });
+  it("사람이 고친 본문 + 새 삭제 → 정리 안내가 실린 본문으로 다시 쓴다", async () => {
+    const made = fake(files, { openPr: { url: "u", number: 7, title: "chore [skip-malmoi-i18n]", body: HUMAN } });
+    await runPull(deps(state({ localeChanges: changes([["ko", "REMOVE"]]) }), made).deps);
+    const body = made.calls.find(call => call.method === "updatePr")?.args[1];
+    expect(body).toContain("- `i18n/ko.json` (removed)");
+    expect(body).toMatch(/app code/);
+  });
+  it("삭제를 취소하면 정리 안내를 뺀 본문으로 다시 쓴다", async () => {
+    const made = fake(files, { openPr: { url: "u", number: 7, title: "chore [skip-malmoi-i18n]", body: pullRequestBody([{ path: "i18n/en.json", kind: "updated" }, { path: "i18n/ko.json", kind: "removed" }]) } });
+    await runPull(deps(editingEn(), made).deps);
+    const body = made.calls.find(call => call.method === "updatePr")?.args[1];
+    expect(body).toBe(pullRequestBody([{ path: "i18n/en.json", kind: "updated" }]));
+  });
+});
+
+describe("removedFilesStated — 본문이 말하는 삭제 파일", () => {
+  it("생성기가 쓴 `(removed)` 줄만 읽는다 — 사람 문장·다른 줄은 보지 않는다", () => {
+    const body = `${pullRequestBody([{ path: "i18n/en.json", kind: "updated" }, { path: "i18n/ko.json", kind: "removed" }, { path: "a b/fr.json", kind: "removed" }])}\n\nWe removed nothing else (removed)`;
+    expect(removedFilesStated(body)).toEqual(["a b/fr.json", "i18n/ko.json"]);
+    expect(removedFilesStated("")).toEqual([]);
   });
 });
 
