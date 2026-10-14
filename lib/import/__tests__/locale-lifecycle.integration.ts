@@ -351,6 +351,58 @@ describe.each<Host>(["github", "gitlab"])("야간 — 같은 head의 만료 (%s 
     expect(await prisma.translationSurface.count({ where: { projectId: "p", lastImportError: { not: null } } })).toBe(0);
   });
 
+  /**
+   * ⚠️ **잠금 뒤 재대조** (R-B3 Y1 · POSTMORTEM 2026-10-07 "야간 원격 관측을 최신으로 취급") — PR 조회(none-open) 뒤·잠금 전에 Publish가 제거를 실은
+   * PR을 열면, 그 관측으로 만료하는 순간 제거 요청이 사라지고 다음 Publish가 PR의 삭제를 되돌린다.
+   */
+  it("PR 조회 뒤 전달 확인이 바뀌면(revision) 만료하지 않는다 — 행 유지", async () => {
+    await seed(host);
+    await atHead();
+    await request("s-web", "ko", "REMOVE");
+    await deliver("s-web", [{ localeCode: "ko", effect: "delete" }]);
+    github({ refSha: { "heads/main": HEAD } });
+    const client = fakes.client!;
+    const findOpenPr = client.findOpenPr.bind(client);
+    // 조회 직후 다른 소스의 Publish 확인이 커밋된다 — 전달 revision 집합이 바뀐다.
+    client.findOpenPr = async branch => { const pr = await findOpenPr(branch); await deliver("s-app", []); return pr; };
+    fakes.reader = tree({ web: ["en", "ko", "ja"], app: ["en", "ko", "ja"] });
+    expect(await visit()).toEqual({ action: "skip", outcome: "upToDate" });
+    expect(await rows()).toEqual([{ surfaceId: "s-web", localeCode: "ko", operation: "REMOVE" }]);
+    expect(await resolved()).toEqual([]);
+  });
+
+  it("실행 중인 Publish(RUNNING, 창 안)가 있으면 만료하지 않는다 — 행 유지", async () => {
+    await seed(host);
+    await atHead();
+    await request("s-web", "ko", "REMOVE");
+    await deliver("s-web", [{ localeCode: "ko", effect: "delete" }]);
+    github({ refSha: { "heads/main": HEAD } });
+    const client = fakes.client!;
+    const findOpenPr = client.findOpenPr.bind(client);
+    // 조회 직후 Publish가 실행권을 잡는다 — 그 실행은 아직 확인을 쓰지 않았다(revision은 그대로).
+    client.findOpenPr = async branch => {
+      const pr = await findOpenPr(branch);
+      await prisma.syncRun.create({ data: { projectId: "p", status: "RUNNING", trigger: "MANUAL" } });
+      return pr;
+    };
+    fakes.reader = tree({ web: ["en", "ko", "ja"], app: ["en", "ko", "ja"] });
+    expect(await visit()).toEqual({ action: "skip", outcome: "upToDate" });
+    expect(await rows()).toEqual([{ surfaceId: "s-web", localeCode: "ko", operation: "REMOVE" }]);
+  });
+
+  it("행 있는 소스의 base 관측이 비면(로케일 0개) 실패 사건 `base-unreadable` — 만료 0 (A1·B1 `base-empty` 매핑)", async () => {
+    await seed(host);
+    await atHead();
+    await request("s-web", "ko", "REMOVE");
+    await deliver("s-web", [{ localeCode: "ko", effect: "delete" }]);
+    github({ refSha: { "heads/main": HEAD } });
+    fakes.reader = tree({ app: ["en", "ko", "ja"] });
+    expect(await visit()).toEqual({ action: "skip", outcome: "failed", reason: "base-unreadable", branchMissing: false });
+    expect(await rows()).toHaveLength(1);
+    expect(await presence()).toMatchObject({ ko: "active" });
+    expect(await prisma.translationSurface.count({ where: { projectId: "p", lastImportError: { not: null } } })).toBe(0);
+  });
+
   it("행 없는 프로젝트는 기존 스킵 그대로 — PR/MR 조회 0회", async () => {
     await seed(host);
     await atHead();
@@ -383,6 +435,27 @@ describe("야간 적재 — 잠금 안 재판정", () => {
     expect(await heldLine("import.nightly")).toEqual({ result: "deferred", deferReason: "locale-change-pending", text: en.logs.deferReasons["locale-change-pending"] });
     expect(summarizeNightly([{ slug: "fixture", action: "import", ...result }], 0).counts["deferred.locale-change-pending"]).toBe(1);
     expect(await prisma.translationSurface.findUniqueOrThrow({ where: { id: "s-web" } })).toMatchObject({ lastCommitSha: OLD });
+  });
+});
+
+describe("야간 적재 — 표면 tx 재판정 (R-B3 Y2)", () => {
+  it("실행 도중(파일을 읽는 동안) 요청된 제거도 적재 전체를 멈춘다 — 사건 `deferred`·`locale-change-pending`, 값 덮임 0", async () => {
+    await seed();
+    const reader = tree({ web: ["en", "ko", "ja"], app: ["en", "ko", "ja"] });
+    const snapshot = reader.snapshot;
+    reader.snapshot = async branch => {
+      const read = await snapshot(branch);
+      // 코어는 lease 동안 제거를 거부한다(`sync-running`) — lease 창 밖에서 커밋된 요청과 같은 행을 직접 심는다.
+      await request("s-web", "ko", "REMOVE");
+      return read;
+    };
+    const result = await runAutomationImport(prisma, { projectId: "p", repository: { ...HOSTS.github, repoOwner: "o", repoName: "r", baseBranch: "main" },
+      expectedLastPublishedAt: null, expectedDeliveryRevision: "[]", pullRequest: "none-open" }, async () => reader);
+    expect(result).toEqual({ recorded: true, result: "deferred", deferReason: "locale-change-pending" });
+    expect(await heldLine("import.nightly")).toMatchObject({ result: "deferred", deferReason: "locale-change-pending" });
+    expect(await prisma.translation.findMany({ where: { projectId: "p", keyId: { in: ["s-web-hello", "s-app-hello"] } }, select: { value: true } }))
+      .toEqual(expect.not.arrayContaining([{ value: "repo-ko" }]));
+    expect(await prisma.translationSurface.count({ where: { projectId: "p", lastCommitSha: OLD } })).toBe(2);
   });
 });
 
@@ -461,6 +534,33 @@ describe("수동 Sync — 승인 지문과 의도 정리", () => {
     expect(await prisma.deliveryConfirmation.findFirstOrThrow({ where: { projectId: "p", surfaceId: "s-web" } })).toMatchObject({ deliveredLocaleChanges: [{ localeCode: "ko", effect: "delete" }] });
     expect(await countLocaleWork(prisma, "p")).toBe(1);
     expect(await presence()).toMatchObject({ ko: "active" });
+  });
+
+  /**
+   * ⚠️ **승인한 의도 행만 지운다** (R-B3 🔴 R1) — 셀 편집의 `approvedTokens`와 같은 결. 승인 뒤(Sync가 파일을 읽는 동안) 들어온 추가·제거 요청은
+   * 승인받은 적이 없어 지우지 않고, 사건도 승인한 행에만 남는다.
+   */
+  it("Sync 실행 중에 요청된 추가·제거는 살아남는다 — 승인한 `ko`만 정리되고 USER 해결 사건도 `ko` 하나", async () => {
+    await seed();
+    await request("s-web", "ko", "REMOVE");
+    const approved = await approval();
+    const during: unknown[] = [];
+    const reader = tree({ web: ["en", "ko", "ja"], app: ["en", "ko", "ja"] });
+    const snapshot = reader.snapshot;
+    reader.snapshot = async branch => {
+      const read = await snapshot(branch);
+      during.push(await addLocale(prisma, OWNER, { ...WEB, localeCode: "fr" }));
+      // 제거 요청은 lease 동안 코어가 거부한다(`sync-running`) — 그래도 lease 창(300초) 밖에서 들어온 요청처럼 행이 생기면 같은 결속이 지켜야 한다.
+      during.push(await previewLocaleRemoval(prisma, OWNER, { ...WEB, localeCode: "ja" }));
+      await request("s-web", "ja", "REMOVE");
+      return read;
+    };
+    expect(await sync(approved, reader)).toMatchObject({ ok: true });
+    expect(during).toEqual([{ ok: true, action: "create", path: "web/fr.json", reissued: 0 }, { ok: false, error: "sync-running" }]);
+    expect(await rows()).toEqual([{ surfaceId: "s-web", localeCode: "fr", operation: "ADD" }, { surfaceId: "s-web", localeCode: "ja", operation: "REMOVE" }]);
+    expect(await presence("s-web")).toMatchObject({ fr: "active", ja: "active", ko: "active" });
+    const events = await resolved();
+    expect(events.map(event => [event.actorKind, (event.payload as { localeChange?: { locale: string } }).localeChange?.locale])).toEqual([["USER", "ko"]]);
   });
 
   it("부분 적재(파싱 못 한 파일)는 의도를 지우지 않고 빈 ADD도 orphan하지 않는다", async () => {
