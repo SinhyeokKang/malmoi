@@ -331,6 +331,8 @@ describe("미머지 종료 뒤 같은 언어를 다시 제거 요청 (#266)", ()
     fake(files);
     const shown = await readPublishPreview(prisma, "p", "fixture");
     expect(shown.fileChanges).toEqual([{ path: "i18n/ko.json", kind: "removed" }]);
+    // 앞의 실행들(no-edits 포함)이 남긴 간격 게이트를 지난다.
+    await ageRuns();
     const made = fake(files);
     expect(await publish(shown.fingerprint)).toMatchObject({ status: "committed", files: [{ path: "i18n/ko.json", kind: "removed" }] });
     expect(snapshot(made)?.changes).toEqual([{ kind: "delete", path: "i18n/ko.json" }]);
