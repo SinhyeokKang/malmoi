@@ -19,14 +19,14 @@
 |---|---|
 | dev head | `2fc25ed4`(origin/dev와 같음, P3 + design-brief) |
 | 마이그레이션 | `20261014060000_locale_change` — **dev DB 적용 완료**(anon/authenticated USAGE·CREATE false, GRANT 0). **prod는 미적용** → `/merge` 1단계 `pnpm db:status:prod` → `pnpm db:deploy` → prod `has_schema_privilege` 확인 |
-| 살아 있는 워커 | **F1** `ctx_ec4e82e50708`(워크트리 `lo-F1` — #266·#265 수정) · **RT** `ctx_be8cc5bb90fd`(retain — F1 통합 뒤 재실측·이슈 닫기용, main 체크아웃). 그 밖은 전부 해제·삭제 |
+| 살아 있는 워커 | **RT** `ctx_be8cc5bb90fd`(main 체크아웃 — RT2: #266·#265 실호스트 재실측·닫기, 브리프 `.scratch/orch-locale-add/brief-RT2.md`). 그 밖은 전부 해제·삭제 |
 | RT가 도는 동안 | main 체크아웃에서 cherry-pick·`pnpm build`·`pnpm gate` 금지(dev 서버 HMR·`.next` 오염). RT 뒤 `rm -rf .next/dev`, 리포 밖 clone 확인 |
 | Orca run | `run_2836e5d910eb` — 새 세션은 새 run을 만들어도 된다(이 run의 Delivery는 모두 ack됨) |
 | 로컬 전용 자료 | `.scratch/orch-locale-add/`(브리프·인계·리뷰 원문) — **gitignore라 이 머신에만 있다.** 필요한 결론은 아래와 design.md·ARCHITECTURE §5.10에 옮겨 두었다 |
 
 ### 남은 일 (주인·순서)
 
-1. **RT 결함 수정·재실측** — RT 매트릭스 4/4 통과, 결함 둘: [#266](https://github.com/SinhyeokKang/malmoi/issues/266)(🔴 미머지 종료 뒤 재요청한 제거가 전달 목록과 같아져 PR에 안 실리고 다음 방문이 지운다) · [#265](https://github.com/SinhyeokKang/malmoi/issues/265)(🟡 MCP `preview_publish`가 전달 후 취소에서 "Nothing to send."). **F1**이 고치는 중 → 리뷰 → 통합 → `pnpm gate` → push → RT 워커로 두 이슈 재실측·닫기 → tasks §9 셋째·넷째 체크.
+1. **RT 결함 수정·재실측** — RT 매트릭스 4/4 통과, 결함 둘: [#266](https://github.com/SinhyeokKang/malmoi/issues/266)(🔴 미머지 종료 뒤 재요청한 제거가 전달 목록과 같아져 PR에 안 실리고 다음 방문이 지운다) · [#265](https://github.com/SinhyeokKang/malmoi/issues/265)(🟡 MCP `preview_publish`가 전달 후 취소에서 "Nothing to send."). F1(+fix1·fix2, R-F1 리뷰)이 고쳐 dev에 통합·push됨 → **RT2 재실측 중** → 통과하면 두 이슈 닫고 tasks §9 셋째·넷째 체크.
 2. **ko·es 초안 검수(`/translate`)** — 이 런이 넣은 사전 문구는 en 확정, ko·es는 초안: `logs.deferReasons["locale-change-pending"]` · `logs.sentence.import.held["locale-change-pending"]`(B3) · `logs.reasons["locale-plan-refused"]`(B2). ko 후보 문장은 R-B3 W6("아직 보내지 않은 언어 제거가 있어"). GitLab 변형 자리(`logs.gitlab.*`)는 호스트 낱말이 없어 덮지 않았다.
 3. **시안 도착 뒤(⏸ 행 전부)** — design-brief 프레임 **1~25**(2026-10-14 백엔드 계약 반영으로 21~25 추가). 아래 "화면 배치 데이터 계약"을 브리프에 그대로 넘긴다. 신규 Dialog가 생기므로 **DS(`/design-sync`) 행**을 UI 배치 통합 직후·push 전에 둔다. 이어서 DESIGN 갱신 · `/guide`(en·ko·es — "리포에서만 언어 추가·제거" 문구와 MCP 도구·권한 표) · `/guide-shots` · 화면 `/runtime-test`(tasks §9 둘째, 두 세션 외부 제거 포함).
 4. **`/merge`** — 3이 끝난 뒤 사용자가 부른다. 준비물: prod 마이그레이션(위 표), `lib/cli/push-response.ts`의 `locale-change-pending` CLI 경고는 **action 릴리스 축**(`malmoi-i18n-push-vN`)이라 앱 머지와 별개로 판단.
@@ -144,3 +144,4 @@
 - F1 `worker_done` — 3커밋(#266 만료가 전달 목록에서 효과 제거 · #265 미리보기 `withdrawnLocales` + MCP 문장, `gate: ok` 15315 · PG 837). 새 발견(같은 부류 — 행 없이 남은 전달 목록 + 미머지 종료 + 재요청) → **지휘자 판단: 확인보다 뒤에 낸 요청은 전달로 세지 않음**(design). **F1 fix1** — 그 규칙 + ARCHITECTURE §5.10 갱신(만료의 전달 목록 정리·`withdrawnLocales`·새 규칙).
 - F1 fix1 `worker_done` — 5커밋(확인 뒤 요청 규칙: 확인 시각 = `syncRunId` 실행의 `startedAt`, 다섯 소비자 공유 · 좁힘 · ARCHITECTURE §5.10, `gate: ok` 15319 · PG 840). 의미 변경이 커서 **R-F1**(Opus high) 리뷰 후 통합(지휘자 판단).
 - R-F1 완료(🔴 0 · 🟡 1 · ⚪ 5, 변이 8 중 6). Y1: 취소→재요청→다시 취소(옛 PR 열림)에서 `delivered:false`(fix1 회귀). **F1 fix2** — Y1 + 회귀 테스트 + ARCHITECTURE 시계 전제·소비자 목록. R-F1 해제·정리.
+- F1 fix2 `worker_done` — `bee42168`·`f52865d0`·`a62af96a`(취소 결과는 저장된 전달 목록 기준 · ARCHITECTURE 시계 전제·소비자 목록, `gate: ok` 15319 · PG 842). **F1 통합**(cherry-pick 11) · main 체크아웃 `pnpm gate` **ok**. F1 해제·정리. push 뒤 **RT2**(RT 워커 재사용).
