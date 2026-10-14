@@ -529,11 +529,13 @@ push 토큰을 회전하고 CI 변수 `PUSH_TOKEN`은 갱신하지 않는다.** 
 ⚠️ **셀프 호스팅의 GitLab 전용 설치**(`GITHUB_APP_*` 다섯이 비어 있다)는 구버전 preflight가 다섯을 요구해 기동을 거부한다 — 되돌리기 전에 다섯을
 다시 채운다. 운영자 절차의 정본은 가이드 `guide/<언어>/self-hosting/operate.md`다.
 
-## 언어 추가·제거 이전으로 되돌리기 (2026-10-14, locale-add design §7)
+## 언어 추가·제거 배포 순서 (2026-10-14, locale-add)
 
-**배포 순서(앞으로 가는 쪽)**: additive-first다 — dev에서 `--create-only`로 SQL을 검토하고 적용 → dev `has_schema_privilege`(`anon`·`authenticated`)가 false인지 확인 → `/push` →
+additive-first다 — dev에서 `--create-only`로 SQL을 검토하고 적용 → dev `has_schema_privilege`(`anon`·`authenticated`)가 false인지 확인 → `/push` →
 (`/merge` 1단계) `pnpm db:status:prod` → `pnpm db:deploy` → prod `has_schema_privilege` false 확인 → 머지. 마이그레이션 `*_locale_change`는 새 테이블과 NULL 허용 컬럼뿐이고 백필이 없어,
 prod DB가 코드보다 앞서 있는 창에서도 구버전 앱이 그대로 돈다. prod에 `migrate dev`를 쓰지 않는다.
+
+## 언어 추가·제거 이전으로 되돌리기 (2026-10-14, locale-add design §7)
 
 되돌리는 길은 다음 배포다. 마이그레이션 `*_locale_change`는 additive라 **되돌려도 테이블·컬럼을 지우지 않는다** — 구버전은 `LocaleChange`·
 `DeliveryConfirmation.deliveredLocaleChanges`를 모를 뿐 읽다 죽지 않는다. 데이터 손실은 없다. 구버전 구간에 생기는 일:
