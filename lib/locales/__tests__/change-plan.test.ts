@@ -100,6 +100,11 @@ describe("planLocaleChange — refusals write nothing", () => {
 
   it.each<[string, LocaleChangeInput, string]>([
     ["EDITOR adds", input({ kind: "add", code: "fr" }, initial, { canManage: false }), "forbidden"],
+    // 거부 순서 고정 — 권한이 보관보다, 보관이 미확정 Publish보다 앞이다(R-A1 M4).
+    ["EDITOR on an archived project", input({ kind: "add", code: "fr" }, initial, { canManage: false, projectArchived: true }), "forbidden"],
+    ["archived with an unsettled publish", input({ kind: "add", code: "fr" }, initial, { projectArchived: true, publishUnsettled: true }), "archived"],
+    // 기준 언어를 모르는 소스는 어느 언어든 기준일 수 있다 — 제거를 기준 언어 거부로 막는다(R-A1 ⚪).
+    ["remove on a source without a base locale", input({ kind: "remove", code: "ko" }, initial, { surface: { ...surface, baseLocale: null } }), "base-locale"],
     ["EDITOR removes", input({ kind: "remove", code: "ko" }, initial, { canManage: false }), "forbidden"],
     ["EDITOR cancels a removal", input({ kind: "cancel-removal", code: "ko" }, removing, { canManage: false }), "forbidden"],
     ["archived add", input({ kind: "add", code: "fr" }, initial, { projectArchived: true }), "archived"],
@@ -136,6 +141,16 @@ describe("planLocaleChange — refusals write nothing", () => {
   // 거부 순서: 상태 판정이 지문보다 앞이다 — 낡은 지문으로 "이미 제거 중"을 가리지 않는다.
   it("reports the state refusal before the approval", () => {
     expect(planLocaleChange(input({ kind: "remove", code: "en" }, initial, { approval: "stale" }))).toEqual({ ok: false, error: "base-locale" });
+  });
+
+  // R-A1 Y3 — 추가 취소도 리포로 새로 보내는 것이 없는 축소 방향이다.
+  it("포맷이 비지원으로 바뀐 소스에서도 추가 취소를 허용한다", () => {
+    const value = input({ kind: "remove", code: "fr" }, adding, { surface: { ...surface, adapterName: "yaml-catalog" } });
+    expect(planLocaleChange(value)).toEqual({ ok: true, transition: { kind: "cancel-add", code: "fr", path: "src/i18n/fr.json", discardPending: true } });
+  });
+
+  it("기준 언어를 모르는 소스에서도 추가 취소는 허용한다", () => {
+    expect(planLocaleChange(input({ kind: "remove", code: "fr" }, adding, { surface: { ...surface, baseLocale: null } }))).toMatchObject({ ok: true, transition: { kind: "cancel-add" } });
   });
 
   it("allows cancelling a removal on a source whose format is no longer supported", () => {

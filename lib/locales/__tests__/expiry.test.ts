@@ -62,9 +62,12 @@ describe("planLocaleExpiry — PR × list × file", () => {
     expect(planLocaleExpiry(input({ rows, observed: { status: "unreadable" } }))).toEqual({ expired: [], held: "base-unreadable" });
   });
 
-  it("an empty observation leaves presence unchanged, like the strict import", () => {
-    expect(planLocaleExpiry(input({ observed: { status: "observed", locales: [] } })).expired)
-      .toEqual([{ localeCode: "ko", operation: "REMOVE", presence: "unchanged" }]);
+  // R-A1 Y2 — 로케일 파일 0개는 "비었다"는 증거가 아니다(POSTMORTEM 2026-09-15). strict 적재도 빈 목록을 받지 않는다.
+  it("빈 관측은 만료하지 않고 보류한다 — 모순 행도", () => {
+    expect(planLocaleExpiry(input({ observed: { status: "observed", locales: [] } }))).toEqual({ expired: [], held: "base-empty" });
+    const rows = [{ localeCode: "fr", operation: "ADD" as const, orphaned: true }];
+    expect(planLocaleExpiry(input({ rows, current: [created("fr")], delivered: [], observed: { status: "observed", locales: [] } })))
+      .toEqual({ expired: [], held: "base-empty" });
   });
 
   it("returns nothing for a source without rows", () => {
@@ -89,6 +92,50 @@ describe("planLocaleExpiry — PR × list × file", () => {
   it("handles __proto__ codes", () => {
     const value = input({ rows: [{ localeCode: "__proto__", operation: "REMOVE", orphaned: false }], current: [deleted("__proto__")], delivered: [deleted("__proto__")] });
     expect(planLocaleExpiry(value).expired).toEqual([{ localeCode: "__proto__", operation: "REMOVE", presence: "orphan" }]);
+  });
+});
+
+describe("planLocaleExpiry — ADD rows need their own evidence (R-A1 R1·Y1)", () => {
+  const fr = { localeCode: "fr", operation: "ADD" as const, orphaned: false };
+
+  // 값 0개 ADD는 효과 목록에 없다 — 목록이 같다는 것만으로 만료하면 첫 값 저장 전의 적재가 방금 추가한 언어를 orphan시킨다.
+  it("빈 ADD + 목록 일치 + PR 없음 → 보류", () => {
+    expect(planLocaleExpiry(input({ rows: [fr], current: [], delivered: [] }))).toEqual({ expired: [], held: "undelivered" });
+  });
+
+  it("빈 ADD는 같은 소스의 전달된 REMOVE가 만료될 때 함께 쓸려 나가지 않는다", () => {
+    const rows = [fr, { localeCode: "ko", operation: "REMOVE" as const, orphaned: false }];
+    expect(planLocaleExpiry(input({ rows, current: [deleted("ko")], delivered: [deleted("ko")] }))).toEqual({
+      expired: [{ localeCode: "ko", operation: "REMOVE", presence: "orphan" }],
+      held: "undelivered",
+    });
+  });
+
+  // 보류된 ADD(`proposal-path-exists`)는 전달 목록에 create가 없다 — 리포에 직접 생긴 파일을 관측하면 그대로 active로 푼다.
+  it("보류된 ADD의 파일이 base에 나타나면 active로 만료한다", () => {
+    const plan = planLocaleExpiry(input({ rows: [fr], current: [created("fr")], delivered: [], observed: { status: "observed", locales: ["en", "fr"] } }));
+    expect(plan).toEqual({ expired: [{ localeCode: "fr", operation: "ADD", presence: "active" }], held: null });
+  });
+
+  it("확인 안 된 전달 목록이어도 파일이 관측된 ADD는 active로 만료한다", () => {
+    const plan = planLocaleExpiry(input({ rows: [fr], current: [created("fr")], delivered: null, observed: { status: "observed", locales: ["en", "fr"] } }));
+    expect(plan).toEqual({ expired: [{ localeCode: "fr", operation: "ADD", presence: "active" }], held: null });
+  });
+
+  it("전달된 ADD + PR이 머지 없이 닫힘 + 파일 없음 → orphan으로 만료한다", () => {
+    const plan = planLocaleExpiry(input({ rows: [fr], current: [created("fr")], delivered: [created("fr")], observed: { status: "observed", locales: ["en"] } }));
+    expect(plan).toEqual({ expired: [{ localeCode: "fr", operation: "ADD", presence: "orphan" }], held: null });
+  });
+
+  it.each<PullRequestCheck>(["open", "failed"])("파일이 관측돼도 PR 조회가 %s면 보류한다", pullRequest => {
+    const plan = planLocaleExpiry(input({ pullRequest, rows: [fr], current: [created("fr")], delivered: [], observed: { status: "observed", locales: ["en", "fr"] } }));
+    expect(plan.expired).toEqual([]);
+  });
+
+  it("관측된 ADD를 빼고 나머지 목록이 다르면 나머지는 보류한다", () => {
+    const rows = [fr, { localeCode: "ko", operation: "REMOVE" as const, orphaned: false }];
+    const plan = planLocaleExpiry(input({ rows, current: [created("fr"), deleted("ko")], delivered: [], observed: { status: "observed", locales: ["en", "fr", "ko"] } }));
+    expect(plan).toEqual({ expired: [{ localeCode: "fr", operation: "ADD", presence: "active" }], held: "undelivered" });
   });
 });
 

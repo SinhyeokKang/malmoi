@@ -69,9 +69,8 @@ export function planLocaleChange(input: LocaleChangeInput): LocaleChangeVerdict 
     return { ok: true, transition: { kind: "cancel-removal", code: request.code } };
   }
 
-  if (!supportsLocaleChanges(input.surface.adapterName)) return { ok: false, error: "unsupported-format" };
-
   if (request.kind === "add") {
+    if (!supportsLocaleChanges(input.surface.adapterName)) return { ok: false, error: "unsupported-format" };
     if (row?.operation === "REMOVE") return { ok: false, error: "removal-pending" };
     if (row?.operation === "ADD") return { ok: false, error: "already-active" };
     const verdict = planLocaleAdd({ code: request.code, surface: input.surface, locales: input.locales, otherSurfaces: input.otherSurfaces });
@@ -79,18 +78,24 @@ export function planLocaleChange(input: LocaleChangeInput): LocaleChangeVerdict 
     return { ok: true, transition: { kind: "add", code: request.code, action: verdict.action, path: verdict.path } };
   }
 
-  if (request.code === input.surface.baseLocale) return { ok: false, error: "base-locale" };
-  if (row?.operation === "REMOVE") return { ok: false, error: "removal-pending" };
-  const locale = input.locales.find(candidate => candidate.code === request.code);
+  // 추가 취소는 제거 취소처럼 포맷·기준 언어를 보지 않는다(R-A1 Y3) — 리포로 새로 보내는 것이 없는 축소 방향이다.
   // ADD 행은 orphan이어도(롤백 잔재) 취소할 수 있다 — 행을 지우는 쪽이다.
-  if (row?.operation !== "ADD" && (locale === undefined || locale.orphaned)) return { ok: false, error: "not-found" };
+  const cancelAdd = row?.operation === "ADD";
+  if (!cancelAdd) {
+    if (!supportsLocaleChanges(input.surface.adapterName)) return { ok: false, error: "unsupported-format" };
+    // 기준 언어를 모르는 소스(첫 적재 전)는 어느 언어든 기준일 수 있다 — 기준 언어 거부로 막는다.
+    if (input.surface.baseLocale === null || request.code === input.surface.baseLocale) return { ok: false, error: "base-locale" };
+    if (row?.operation === "REMOVE") return { ok: false, error: "removal-pending" };
+    const locale = input.locales.find(candidate => candidate.code === request.code);
+    if (locale === undefined || locale.orphaned) return { ok: false, error: "not-found" };
+  }
   const path = input.surface.pathTemplate === null ? null : localeFilePath(input.surface.pathTemplate, request.code);
   if (path === null) return { ok: false, error: "unsafe-path" };
   if (input.approval === "missing") return { ok: false, error: "approval-required" };
   if (input.approval === "stale") return { ok: false, error: "stale-approval" };
   return {
     ok: true,
-    transition: row?.operation === "ADD"
+    transition: cancelAdd
       ? { kind: "cancel-add", code: request.code, path, discardPending: true }
       : { kind: "request-removal", code: request.code, path, discardPending: true },
   };
