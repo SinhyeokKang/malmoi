@@ -188,6 +188,20 @@ describe("언어 상태와 집계", () => {
     expect(view.localeDelivery).toBe("unconfirmed");
   });
 
+  /**
+   * 목록 검색 하이라이트(`matchesFor`, R-C1 🟡2). 행은 작업 언어 값으로 일치했는데 코드순 첫 일치 셀이 제거 예정 언어면, 하이라이트가 화면에서
+   * 편집할 수 없는 값을 가리킨다. 하이라이트도 작업 언어 셀에서만 고른다.
+   */
+  it("목록 검색의 일치 조각은 제거 예정 언어 값을 고르지 않는다", async () => {
+    await prisma.locale.create({ data: { projectId: "p", surfaceId: "s-web", code: "pt", name: "pt" } });
+    await prisma.translation.create({ data: { projectId: "p", surfaceId: "s-web", keyId: "k-hello", localeCode: "pt", value: "annyeong-pt" } });
+    const search = () => loadTranslationList(prisma, { projectId: "p", routeSurfaceId: "s-web", query: { ...DEFAULT_TRANSLATION_QUERY, q: "annyeong" }, pageSize: "all" });
+    // 대조: 평소에는 코드순 첫 일치(ko)가 하이라이트다.
+    expect((await search()).rows.map(row => [row.key, row.match?.localeCode])).toEqual([["hello", "ko"]]);
+    await remove("ko");
+    expect((await search()).rows.map(row => [row.key, row.match?.field, row.match?.localeCode, row.match?.text])).toEqual([["hello", "translation", "pt", "annyeong-pt"]]);
+  });
+
   it("orphan 언어는 상세에도 작업에도 없다", async () => {
     await prisma.locale.update({ where: { projectId_surfaceId_code: { projectId: "p", surfaceId: "s-web", code: "ja" } }, data: { orphaned: true } });
     const view = await views();
