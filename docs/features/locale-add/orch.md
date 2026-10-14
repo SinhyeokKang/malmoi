@@ -79,3 +79,5 @@
 - R-B2 완료(🔴 2 · 🟡 4, 변이 12/12, B3와 시험 병합 — harness.ts 사소한 충돌 하나). **B2 fix1** — R1(cron Publish도 스냅샷 전 만료) · R2(추가 코드를 관측 가능 코드로 좁힘, es_419 제외 — lib/locales 소유자 해제라 B2가 맡음) · Y1(조기 종료 ②를 전달 가능 작업으로) · Y2(구조화 오류 클래스·코드만, 문구는 C1) · Y3(열린 PR 본문 갱신 `updatePr` 두 호스트). **Y4**(base 관측 함수 둘) → B2·B3 통합 뒤 B3 fix2. design 갱신.
 - B2 fix1 질문: 새 SyncErrorCode가 Logs 사유 문구를 typecheck로 강제 → **지휘자 판단 A**(logs.reasons에 최소 문구만, B3 질문과 같은 근거).
 - B3 fix1 `worker_done` — `1f6b8fe8`·`4ddca468`(R1 승인 행 lease · Y1 · Y2 · W1, `gate: ok` 14979 · PG 795; 1회차 search-performance flake). B2 fix1 대기 → 함께 통합 → B3 fix2(Y4 관측 함수 통합).
+- B2 fix1 `worker_done` — `0e1dea4a`·`1aeb91db`·`5a5f271b`(`gate: ok` 15133 · PG 771). 관찰: 열린 PR 본문을 사람 수정까지 덮어씀 → **B2 fix2**(정리 안내 변동 때만 갱신).
+- **wave ③ 통합**: B2 6커밋 + B3 6커밋 cherry-pick, `harness.ts` 충돌은 양쪽 목 필드 합집합으로 해소(지휘자). main 체크아웃 `pnpm gate` **ok**. tasks §3 여섯째·§4·§5 체크.

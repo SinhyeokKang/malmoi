@@ -49,30 +49,30 @@
 - [x] 제거 취소: 행 삭제·편집 허용. 검증: 전달 전이면 작업 0, 전달 후면 작업 1, 다른 언어 변경 없음.
 - [x] 번역 저장·Revert·기준 언어 변경·MCP 쓰기에 제거 상태 판정. 검증(격리 PG): 렌더 뒤 제거/기준 변경 경합에서도 서버가 거부.
 - [x] `publish-unsettled`·RUNNING 실행권과 언어 변경의 상호 배제. 검증(격리 PG): 잠금 순서 동일, 미확정 실행 중 변경 거부, 실행 중 새 요청이 확인 뒤에도 작업으로 남음.
-- [ ] CI push 적재와 언어 변경 tx의 잠금 순서. 검증(격리 PG): 같은 순서, 추가 tx 직후 적재가 빈 ADD를 orphan하지 않음(첫 red), REMOVE tx 직후 적재가 보류.
+- [x] CI push 적재와 언어 변경 tx의 잠금 순서. 검증(격리 PG): 같은 순서, 추가 tx 직후 적재가 빈 ADD를 orphan하지 않음(첫 red), REMOVE tx 직후 적재가 보류.
 - [x] 사건 payload/view·query 필터와 `locked-access`·진입점 목록 갱신. 검증: 옛 payload 읽기 유지, locale 사건이 source-added로 표시되지 않음.
 
 ## 4. 적재·Sync·수명주기
 
-- [ ] 자동 적재: 빈 ADD orphan 제외, 실제 파일 관측 시 일반 로케일 전환. 검증: CI/야간/빈 페이로드/제안 0셀 매트릭스, 기존 응답 집계 일치.
-- [ ] 전달 전 REMOVE의 `locale-change-pending` 전체 보류와 전달 후 열린 PR 보호. 검증: deferred 응답·야간 결과·ACTIONS 사유 일치.
-- [ ] 만료: 적재가 겸하는 경로와 같은 SHA 야간 경로. 검증(`lib/pull/__tests__/fake-client.ts` 기반 `pnpm test`, GitHub·GitLab fake 각각): 미머지 종료 + 동일 base head + 다른 편집 없음/있음에서 종료된 요청 재전송 0, 조회 실패 시 보류와 `pr-check-failed` 기록, 행 없는 프로젝트의 기존 스킵 유지.
-- [ ] 승인 Sync 지문에 언어 변경과 전달 목록 포함. 검증: 추가/제거/취소/새 편집/전달 뒤 옛 승인 거부, 성공한 적재만 행·전달 목록 정리, 다음 Publish에 폐기 삭제 재등장 없음.
-- [ ] source 제거·재등록과 설정/연결 변경의 승인 또는 거부. 검증: 다른 source/다른 리포에 삭제 의도 유출 0, 옛 지문 재사용 거부.
-- [ ] 만료·취소 사건. 검증: 파일 삭제를 번역 전달 성공으로 기록하지 않음, 값·행·이력 보존, base 읽기 실패 시 사건 outcome이 실패/보류.
+- [x] 자동 적재: 빈 ADD orphan 제외, 실제 파일 관측 시 일반 로케일 전환. 검증: CI/야간/빈 페이로드/제안 0셀 매트릭스, 기존 응답 집계 일치.
+- [x] 전달 전 REMOVE의 `locale-change-pending` 전체 보류와 전달 후 열린 PR 보호. 검증: deferred 응답·야간 결과·ACTIONS 사유 일치.
+- [x] 만료: 적재가 겸하는 경로와 같은 SHA 야간 경로. 검증(`lib/pull/__tests__/fake-client.ts` 기반 `pnpm test`, GitHub·GitLab fake 각각): 미머지 종료 + 동일 base head + 다른 편집 없음/있음에서 종료된 요청 재전송 0, 조회 실패 시 보류와 `pr-check-failed` 기록, 행 없는 프로젝트의 기존 스킵 유지.
+- [x] 승인 Sync 지문에 언어 변경과 전달 목록 포함. 검증: 추가/제거/취소/새 편집/전달 뒤 옛 승인 거부, 성공한 적재만 행·전달 목록 정리, 다음 Publish에 폐기 삭제 재등장 없음.
+- [x] source 제거·재등록과 설정/연결 변경의 승인 또는 거부. 검증: 다른 source/다른 리포에 삭제 의도 유출 0, 옛 지문 재사용 거부.
+- [x] 만료·취소 사건. 검증: 파일 삭제를 번역 전달 성공으로 기록하지 않음, 값·행·이력 보존, base 읽기 실패 시 사건 outcome이 실패/보류.
 
 ## 5. Publish 계약·호스트 구현
 
 - [x] `SnapshotChange` upsert/delete union과 결정적 정렬. 검증: base에 있는 파일을 출력에서 뺀 경우와 실제 delete의 차이, 경로 중복 거부.
 - [x] GitHub `TreeEntry`·빈 변경 가드, GitLab `buildCommitActions`·빈 배열 가드와 fake client 갱신. 검증: 삭제만 있는 변경 통과, 대상 파일만 제거, Chrome 디렉터리 내 다른 파일 유지, 없는 경로는 delete 미생성, 양쪽 호스트 계약 테스트.
-- [ ] ADD 표현 출처: 기준 언어 파일에서 표현만, 구조는 `nestedByPath`. 검증: 4칸·CRLF·BOM·이스케이프·Chrome 필드 순서·한 줄 엔트리; 기준 파일이 빈 `{}`일 때 중첩 판정; Chrome `placeholders`·`description` 비복사와 되살린 `placeholders: null` 유지; 새 파일 read → write → read 바이트 동일; `contract.ts` 매트릭스 행 green.
-- [ ] 신규 경로 충돌 보류와 빈 ADD 안내. 검증: 미리보기·실행 같은 수·이유, 일부 보류일 때 나머지 전달, ADD 미리보기의 diff 경로 = 서버 계산 경로.
-- [ ] 조기 종료 세 자리와 미리보기·trigger 갱신. 검증: 미전달 편집 0과 Translation 행 0(`maxUpdatedAt=null`) 각각에서 REMOVE 실행·전달 확인; 번역 전부 보류 + 안전한 삭제는 전달; 빈 ADD만 있으면 원격 쓰기 0.
-- [ ] 전달된 REMOVE를 후속 스냅샷에도 반영. 검증: 삭제 PR이 열린 채 다른 언어 번역 → 재Publish → 삭제 diff 유지.
-- [ ] 전달된 추가 취소·제거 취소의 `no-changes` 수렴. 검증: stale sync diff가 reset되고 필요하면 기존 PR 닫기 완료; 그 전에 전달 목록 갱신 안 함.
-- [ ] 캡처 목록 전달 확인과 baseline 분리. 검증: committed/no-changes 실제 수렴만 기록, 실패·응답 유실 미기록, REMOVE 셀은 번역 전달 목록에서 제외, 재시도 멱등.
-- [ ] PR/MR 본문의 앱 코드 정리 안내. 검증: 삭제 파일이 있을 때만, GitHub·GitLab 본문 둘 다.
-- [ ] 미리보기/실행 base 지문·경로 소유 재확인. 검증: 대상 blob·설정 변경 시 재확인, 임의 파일·심볼릭 링크·공유 경로 삭제 0.
+- [x] ADD 표현 출처: 기준 언어 파일에서 표현만, 구조는 `nestedByPath`. 검증: 4칸·CRLF·BOM·이스케이프·Chrome 필드 순서·한 줄 엔트리; 기준 파일이 빈 `{}`일 때 중첩 판정; Chrome `placeholders`·`description` 비복사와 되살린 `placeholders: null` 유지; 새 파일 read → write → read 바이트 동일; `contract.ts` 매트릭스 행 green.
+- [x] 신규 경로 충돌 보류와 빈 ADD 안내. 검증: 미리보기·실행 같은 수·이유, 일부 보류일 때 나머지 전달, ADD 미리보기의 diff 경로 = 서버 계산 경로.
+- [x] 조기 종료 세 자리와 미리보기·trigger 갱신. 검증: 미전달 편집 0과 Translation 행 0(`maxUpdatedAt=null`) 각각에서 REMOVE 실행·전달 확인; 번역 전부 보류 + 안전한 삭제는 전달; 빈 ADD만 있으면 원격 쓰기 0.
+- [x] 전달된 REMOVE를 후속 스냅샷에도 반영. 검증: 삭제 PR이 열린 채 다른 언어 번역 → 재Publish → 삭제 diff 유지.
+- [x] 전달된 추가 취소·제거 취소의 `no-changes` 수렴. 검증: stale sync diff가 reset되고 필요하면 기존 PR 닫기 완료; 그 전에 전달 목록 갱신 안 함.
+- [x] 캡처 목록 전달 확인과 baseline 분리. 검증: committed/no-changes 실제 수렴만 기록, 실패·응답 유실 미기록, REMOVE 셀은 번역 전달 목록에서 제외, 재시도 멱등.
+- [x] PR/MR 본문의 앱 코드 정리 안내. 검증: 삭제 파일이 있을 때만, GitHub·GitLab 본문 둘 다.
+- [x] 미리보기/실행 base 지문·경로 소유 재확인. 검증: 대상 blob·설정 변경 시 재확인, 임의 파일·심볼릭 링크·공유 경로 삭제 0.
 
 ## 6. UI·집계
 
