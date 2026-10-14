@@ -45,8 +45,10 @@
 
 ### 종료 관측과 strict 적재
 
+- **PR/MR 관측이 먼저다.** 미해결 전달 문맥이 있으면 야간의 `pending > 0 → Publish`와 동일 head의 `upToDate` 스킵 전에 연결된 PR/MR의 상태를 확인한다. 수동·MCP Publish도 스냅샷을 만들기 전에 같은 종료 판정을 지난다. 순서는 원격 PR/MR·필요한 base 관측 → Project→Surface 잠금 뒤 token·revision·설정 재대조 → 일치하는 의도 복구/종료 → 셀 편집·언어 변경 재집계 → Publish/적재/스킵이다. 이 관측은 strict 값 적재와 분리해, 편집 보호가 적재를 보류해도 종료 판정에 도달하게 한다.
+- 미머지 종료는 base SHA를 바꾸지 않아도 다음 야간 방문에서 처리한다. 다른 언어에 미전달 편집이 있는 경우에도 종료된 ADD/REMOVE를 새 PR/MR에 그대로 재전송하지 않는다. 조회 실패·불명은 보류하며 과거 의도를 싣는 Publish로 진행하지 않는다. 미해결 전달 문맥이 없는 프로젝트는 기존 조회·스킵 순서를 유지한다.
 - 자동 적재는 pending REMOVE/RESTORE가 있으면 전체 보류한다. pending ADD는 orphan 대상에서만 제외하고 셀 편집이 있으면 기존 보호가 전체를 막는다.
-- 전달된 REMOVE의 셀 토큰은 남지만 자동 보호의 활성 편집 수에서는 제외한다. 열린 PR 보호가 그 기간을 맡는다. 닫힌 뒤에는 성공한 적재가 파일 존재를 확인하고, **없을 때만** 해당 토큰을 `locale-removed` 사유로 해제한다.
+- 전달된 REMOVE의 셀 토큰은 남지만 자동 보호의 활성 편집 수에서는 제외한다. 열린 PR 보호가 그 기간을 맡는다. 닫힌 뒤에는 성공한 base 관측으로 파일 존재를 확인하고, **없을 때만** 해당 토큰을 `locale-removed` 사유로 해제한다.
 - PR이 닫혔어도 base에 파일이 남으면 제거 미반영이다. 보존한 편집을 활성 복구한 뒤 다시 보호 판정한다. 미전달 셀이 있으면 그 적재의 strict 덮어쓰기는 보류한다. “닫혔다”만으로 값을 덮지 않는다.
 - ADD 전달 뒤 base에 없고 PR이 종료됐으면 orphan한다. 미전달 셀은 삭제 전달 성공으로 처리하지 않고 비활성 보존한다. 재추가 시 새 토큰을 발급한다.
 - 조회 실패·다른 PR·다른 브랜치·설정 변경·관측 뒤 새 Publish 경합이면 종료하지 않는다. Project→Surface 잠금 뒤 token과 DeliveryConfirmation revision/대상 설정을 재대조한다. 원격 결과를 잠금 밖에서 읽었어도 과거 결과가 새 요청을 닫지 못한다.
@@ -109,6 +111,7 @@
 `unpublished`를 가짜 Translation 토큰으로 늘리지 않는다. 셀 편집 수와 **미전달 언어 변경 수**를 별도로 싣고, `hasPublishWork`가 둘을 본다. REMOVE/RESTORE는 셀 0개여도 작업이고, 외부 전달 이력 없는 빈 ADD는 안내만 한다. 취소를 반복해 ADD로 돌아온 요청은 전달 문맥상 수렴이 필요하면 셀 0개여도 작업이다. 전달된 REMOVE는 단독 재실행을 만들지 않지만 다른 Publish의 스냅샷에는 계속 포함된다.
 
 - `shouldSkipPull`, `planProtectedPublish`, `split.delivered=0 && withheld>0` 조기 종료도 언어 변경 작업을 고려한다. 모든 번역 셀이 보류여도 안전한 제거만 전달할 수 있다.
+- `Translation` 행 자체가 없어 `maxUpdatedAt=null`이어도 REMOVE/RESTORE를 실행·확인할 수 있어야 한다. 번역 캡처 시각의 존재를 언어 작업의 전제로 두지 않고, 셀 전달 확인과 언어 token 확인을 분리한다.
 - `pendingWhere`의 편집 가능 대상과 언어 변경 보호를 함께 갱신한다. REMOVE 셀은 활성 편집 집계에서 빼되, 미전달 REMOVE가 적재 전체를 보류한다. RESTORE 셀은 복구된 미전달 편집으로 센다.
 - `publishFingerprint`, 수동 Sync 폐기 지문, 제거 소스 재등록 승인 지문에 변경 operation/token·전달 문맥을 넣는다. 오래된 승인은 거부한다.
 - 삭제 대상 셀은 `split.delivered`/번역 baseline 확인 대상에 넣지 않는다. 파일 제거 성공으로 셀 편집을 전달했다고 기록하지 않는다.
@@ -123,7 +126,7 @@
 | 소스 제거·재등록 | 제안/삭제/취소도 소스 지문에 포함. 이전 삭제가 새 설정/연결로 새어 나가지 않음 |
 | Revert | 셀 복원 계약 유지. REMOVE 중 쓰기 거부, 취소 시 복구. 언어 삭제의 취소를 셀 Revert로 구현하지 않음 |
 | 완료율·Home·Keys 검색·Inbox | ADD 포함, REMOVE 작업 대상 제외. RESTORE는 편집 가능, “취소 전달 필요” 표시 |
-| Sources | REMOVE 행 유지, 읽기 전용 열기·취소. orphan 행은 기존 복구 설명 유지 |
+| Sources | REMOVE 행 유지, 읽기 전용 열기·취소. orphan은 Inactive로 표시하고 지원 포맷은 Add language 재추가, 비지원은 리포 복구 후 Sync 안내 |
 | 기준 언어 후보 | ADD·REMOVE·RESTORE 제외, 서버에서도 판정 |
 | Publish 미리보기·결과 | 파일 add/update/delete, 언어 변경, 빈 ADD, 보류 이유, PR 갱신 필요를 표시 |
 | MCP 조회 | 상태와 전달 여부를 싣고 편집 불가 이유 노출 |
@@ -134,6 +137,10 @@ Sync는 기존 열린 PR 처리 계약을 유지한다. DB의 의도를 지웠�
 ## 6. UI·MCP·사건
 
 소스 상세 Languages 카드의 Add language와 행별 Remove language/Cancel addition/Cancel removal. 상세 프레임은 design-brief.md가 정본이다. OWNER만 변경하고 EDITOR는 상태·이유를 볼 수 있다. 비지원 소스는 추가·제거 모두 이유와 함께 비활성화한다.
+
+**열린 번역 화면의 미저장 입력:** 서버 갱신은 이동이 아니므로 기존 이탈 확인만으로 처리하지 않는다. REMOVE로 바뀐 언어의 draft를 목록 필터링·서버 재검증으로 지우지 않고 읽기 전용으로 유지한다. 저장 payload는 편집 가능한 활성 언어의 dirty 셀만 담으며, 저장 성공도 그 셀만 갱신한다. 보존 입력은 선택·복사 가능하고 해당 언어만 명시적으로 폐기할 수 있다. 제거 취소로 다시 활성화되면 보존 입력을 편집 가능한 draft로 복구하되 자동 저장하지 않는다. 보존 입력도 미저장 판정·기존 복구 사본·이탈 확인에 포함한다. 저장 도중 제거 경합으로 서버가 거부하면 입력을 유지하고 최신 상태를 반영한다. DB의 미전달 편집 토큰과 이 로컬 입력은 별개다.
+
+orphan의 Inactive 표시는 발생 원인을 단정하지 않는다. 영구 출처 필드를 새로 만들지 않고 기존 사건이 요청·취소·리포 반영 이력을 설명한다. 지원 포맷 OWNER에게 Add language 복구 경로를 제공하고 EDITOR에게는 OWNER가 재추가할 수 있음을 안내한다.
 
 MCP 도구는 `add_locale`, `preview_locale_removal`, `remove_locale`, `cancel_locale_change`다. 추가 제안 취소도 미리보기 지문을 사용한다. preview는 READ, 나머지는 WRITE이며 모두 `project:settings`를 요구한다. 토큰의 READ/WRITE 권한과 프로젝트 역할을 교차 검증한다. 코어는 Action을 부르지 않는다. 응답·오류는 영어 코드다.
 
