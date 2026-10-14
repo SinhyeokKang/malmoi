@@ -124,6 +124,7 @@ v2는 그 수정(`scripts/local-env.ts`) 뒤의 커밋이다 — `scripts/__test
 | `pending-edits` (`pendingCount` 있음) | exit 0 + 미전달 편집 경고 | 같다 |
 | `open-pr` | **exit 0, 경고 없음**(본문만 찍힌다) | exit 0 + `::warning title=Malmoi import deferred::a Malmoi pull request is still open — repository changes were not imported, so the translations in it aren't overwritten. Review the pull request and merge or close it; the next push or the nightly sync imports these changes.` |
 | `pr-check-failed` | **exit 0, 경고 없음** | exit 0 + `::warning title=Malmoi import deferred::couldn't check whether the Malmoi pull request is still open — repository changes were not imported. Re-run this job later.` |
+| `locale-change-pending` (locale-add) | **exit 0, 경고 없음** | **exit 0, 경고 없음** — 발행된 v3 CLI도 모르는 사유라 본문만 찍는다. 경고 줄은 다음 **action 릴리스**(`@malmoi-i18n-push-vN` 축, 앱 릴리스와 별개)에서 `lib/cli/push-response.ts`가 더한다 |
 
 ⚠️ **v2가 새 사유에서 경고 없이 green인 것은 의도다** — v2 CLI(`lib/cli/push-response.ts`의 옛 판정)는 `pendingCount`가 정수일 때만 경고하므로, 서버가 수를 싣지 않는 사유는 조용히 지나간다. 거짓 "0 unsent translation changes"보다 낫다. 본문(`"status":"deferred","reason":"open-pr"`)은 v2 run 로그에도 찍힌다. 경고 문구는 `lib/cli/__tests__/push-response.test.ts`가 고정한다.
 
