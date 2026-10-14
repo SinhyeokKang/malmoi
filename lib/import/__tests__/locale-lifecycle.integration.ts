@@ -107,6 +107,7 @@ async function seed(host: Host = "github") {
 beforeEach(async () => {
   fakes.client = undefined;
   fakes.reader = undefined;
+  for (const sha of Object.keys(headTrees)) delete headTrees[sha];
   await pool.query("DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public");
   for (const name of readdirSync("prisma/migrations").sort()) {
     if (name === "migration_lock.toml") continue;
@@ -130,20 +131,33 @@ async function deliver(surfaceId: string, effects: { localeCode: string; effect:
   await prisma.deliveryConfirmation.create({ data: { projectId: "p", surfaceId, revision: `rev-${surfaceId}-${run.id}`, syncRunId: run.id, contextFingerprint: "ctx", deliveredLocaleChanges: effects } });
 }
 
+/**
+ * fake 클라이언트의 `getTree` 응답 — `tree()`가 리더 스냅샷과 **같은 항목**(mode 포함)을 여기에 싣는다. 같은 head 만료는 클라이언트 트리를, 적재는 리더
+ * 스냅샷을 읽으므로 둘이 갈리면 같은 리포를 두 번 다르게 본다. 주입되지 않은 head를 물으면 fake가 던진다(트리 읽기 실패).
+ */
+const headTrees: Record<string, { path: string; sha: string; mode: string }[]> = {};
+
 function github(options: FakeGitOptions = {}) {
-  const fake = createFakeGitClient({ refSha: { "heads/main": HEAD }, ...options });
+  const fake = createFakeGitClient({ refSha: { "heads/main": HEAD }, tree: headTrees, ...options });
   fakes.client = fake.client;
   return fake.calls;
 }
 
-/** base 트리 — `files`의 로케일 파일만 있다. 내용은 `hello`의 값 하나다. */
-function tree(files: Record<string, readonly string[]>, options: { headSha?: string; fail?: boolean; unreadable?: readonly string[] } = {}): RepoReader {
-  const entries = Object.entries(files).flatMap(([slug, codes]) => codes.map(code => ({ path: `${slug}/${code}.json`, sha: `${slug}:${code}`, size: 40 })));
+/**
+ * base 트리 — `files`의 로케일 파일만 있다. 내용은 `hello`의 값 하나다. `linked`(`slug:code`)는 심볼릭 링크(120000)다 — 리더가 `type: blob`으로 싣는
+ * 그대로다(Git 트리에서 링크는 blob이다).
+ */
+function tree(files: Record<string, readonly string[]>, options: { headSha?: string; fail?: boolean; unreadable?: readonly string[]; linked?: readonly string[] } = {}): RepoReader {
+  const entries = Object.entries(files).flatMap(([slug, codes]) => codes.map(code => ({ path: `${slug}/${code}.json`, sha: `${slug}:${code}`, size: 40,
+    mode: options.linked?.includes(`${slug}:${code}`) ? "120000" : "100644" })));
+  const headSha = options.headSha ?? HEAD;
+  if (options.fail === true) delete headTrees[headSha];
+  else headTrees[headSha] = entries.map(({ path, sha, mode }) => ({ path, sha, mode }));
   return {
     sizes: async (snapshot, paths) => sizesFromSnapshot(snapshot, paths),
     snapshot: vi.fn<RepoReader["snapshot"]>(async () => {
       if (options.fail === true) throw new Error("tree unavailable");
-      return { status: "ok", headSha: options.headSha ?? HEAD, headCommittedAt: new Date(commitClock + 86_400_000).toISOString(), files: entries };
+      return { status: "ok", headSha, headCommittedAt: new Date(commitClock + 86_400_000).toISOString(), files: entries };
     }),
     blob: vi.fn(async (sha: string) => {
       // 파싱 실패 — 그 파일만 빠지는 부분 적재(`partial-import`)가 된다(내려받기 실패는 소스 전체 실패다).
@@ -401,6 +415,34 @@ describe.each<Host>(["github", "gitlab"])("야간 — 같은 head의 만료 (%s 
     expect(await rows()).toHaveLength(1);
     expect(await presence()).toMatchObject({ ko: "active" });
     expect(await prisma.translationSurface.count({ where: { projectId: "p", lastImportError: { not: null } } })).toBe(0);
+  });
+
+  /**
+   * **존재 판정은 Publish 스냅샷 전 만료와 같은 함수다** (R-B2 Y4) — 링크된 로케일 파일은 정규 파일이 아니라 관측이 아니다. 같은 트리에서 이 방문이 활성으로
+   * 돌리고 다음 Publish의 만료가 orphan으로 돌리는 일이 없다.
+   */
+  it("머지 없이 닫힌 제거 + base의 그 파일이 링크다 → 관측 아님, orphan으로 만료 (Publish 쪽 판정과 같다)", async () => {
+    await seed(host);
+    await atHead();
+    await request("s-web", "ko", "REMOVE");
+    await deliver("s-web", [{ localeCode: "ko", effect: "delete" }]);
+    github({ refSha: { "heads/main": HEAD } });
+    fakes.reader = tree({ web: ["en", "ko", "ja"], app: ["en", "ko", "ja"] }, { linked: ["web:ko"] });
+    expect(await visit()).toEqual({ action: "skip", outcome: "upToDate" });
+    expect(await rows()).toEqual([]);
+    expect(await presence()).toMatchObject({ ko: "orphan" });
+    expect((await resolved())[0]?.payload).toMatchObject({ localeChange: { locale: "ko", operation: "REMOVE", outcome: "orphan" } });
+  });
+
+  it("head가 앞선 적재 — base의 ADD 경로가 링크면 관측이 아니다: ADD는 만료되지 않고 orphan도 안 된다", async () => {
+    await seed(host);
+    await request("s-web", "fr", "ADD");
+    github({ refSha: { "heads/main": HEAD } });
+    fakes.reader = tree({ web: ["en", "ko", "ja", "fr"], app: ["en", "ko", "ja"] }, { linked: ["web:fr"] });
+    expect(await visit()).toMatchObject({ action: "import", recorded: true });
+    expect(await rows()).toEqual([{ surfaceId: "s-web", localeCode: "fr", operation: "ADD" }]);
+    expect(await presence()).toMatchObject({ fr: "active" });
+    expect(await resolved()).toEqual([]);
   });
 
   it("행 없는 프로젝트는 기존 스킵 그대로 — PR/MR 조회 0회", async () => {
