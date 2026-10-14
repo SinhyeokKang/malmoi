@@ -68,7 +68,9 @@ export async function readPublishPreview(prisma: PrismaClient, projectId: string
       if (error.code === "write-parse-failed" && file.locale === surface.baseLocale) throw new PreviewBaseFileUnreadable(error.path, project.baseBranch);
     }
   }
-  const { warnings } = planDelivery(state.pendingEdits, { resolved, current, rendered, locales: localePlan });
+  // 비활성이 될 언어의 편집은 실행이 싣지 않는다 — 그 셀로 경고를 세우지 않는다(실행은 만료 뒤 다시 읽은 편집으로 판정한다).
+  const { warnings } = planDelivery(droppedEdits.length === 0 ? state.pendingEdits : state.pendingEdits.filter(edit => edit.cell === undefined || !isDeactivated(edit.cell)),
+    { resolved, current, rendered, locales: localePlan });
   /** 렌더에서 뺀 언어(REMOVE · 경로가 이미 있는 ADD · 값 0개 ADD) — 그 셀은 실행이 보류하므로 표에 약속하지 않는다. */
   const excluded = new Set(localePlan.surfaces.flatMap(plan => plan.exclude.map(code => `${plan.surfaceId}\0${code}`)));
   warnings.push(...blockingErrors(rendered).map(({ surfaceSlug, error: { path, code, key, detail } }) => (
