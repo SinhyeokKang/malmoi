@@ -98,8 +98,8 @@ export type GitClient = {
   updatePrBase(pullNumber: number, base: string): Promise<void>;
 
   /**
-   * 재사용하는 PR/MR의 본문을 이 스냅샷의 본문으로 다시 쓴다 — 다를 때만 부른다(locale-add R-B2 Y3). 열린 PR에 파일 삭제가 얹히면 앱 코드 정리 안내가
-   * 본문에 있어야 한다. 빈 본문은 `""`로 비교한다(`findOpenPr`의 `body`).
+   * 재사용하는 PR/MR의 본문을 이 스냅샷의 본문으로 다시 쓴다(locale-add R-B2 Y3). **본문이 말하는 삭제 파일 집합이 바뀔 때만** 부른다(`bodyNeedsRefresh`) —
+   * 열린 PR에 파일 삭제가 얹히거나 빠지면 앱 코드 정리 안내가 따라가야 하고, 그 밖에는 리뷰어가 고친 본문을 덮지 않는다. 빈 본문은 `""`다(`findOpenPr`의 `body`).
    */
   updatePr(pullNumber: number, body: string): Promise<void>;
 

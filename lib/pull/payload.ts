@@ -65,6 +65,30 @@ export function pullRequestBody(files: readonly PublishedFile[]): string {
   return `Updated ${summary} from the translation DB.\n\n${lines}${cleanup}\n\nThis branch is a snapshot, not a history: it is force-updated on every pull.`;
 }
 
+/**
+ * 본문이 **말하는** 삭제 파일 — 생성기가 쓴 ``- `경로` (removed)`` 줄만 읽는다(코드순). 열린 PR 본문을 다시 쓸지의 판정 입력이다(`bodyNeedsRefresh`).
+ * 사람 문장은 보지 않는다 — 그 줄 모양이 아니면 삭제를 말한 것으로 치지 않는다.
+ */
+export function removedFilesStated(body: string): string[] {
+  const out = new Set<string>();
+  for (const line of body.split(/\r?\n/)) {
+    const match = /^- `(.+)` \(removed\)$/.exec(line);
+    if (match?.[1] !== undefined) out.add(match[1]);
+  }
+  return [...out].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+}
+
+/**
+ * **열린 PR/MR 본문을 다시 쓸 것인가** (locale-add B2 fix2). 정리 안내를 더하거나 빼야 할 때 — 본문이 말하는 삭제 파일 집합이 이 스냅샷의 삭제 집합과
+ * 다를 때 — 만이다. 그 밖의 차이(파일 목록이 낡음·리뷰어가 고친 문장)는 그대로 둔다: 매 Publish가 사람의 편집을 덮으면 안 된다. 기존 동작(본문을 갱신하지
+ * 않던 것)과 같은 쪽이고, 안내가 필요한 순간에만 다시 쓴다.
+ */
+export function bodyNeedsRefresh(body: string, files: readonly PublishedFile[]): boolean {
+  const stated = removedFilesStated(body);
+  const removed = [...new Set(files.filter(file => file.kind === "removed").map(file => file.path))].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  return stated.length !== removed.length || stated.some((path, i) => path !== removed[i]);
+}
+
 export type TreeEntry = {
   path: string;
   /** 일반 파일. 실행 권한·심링크를 낼 일이 없다. */

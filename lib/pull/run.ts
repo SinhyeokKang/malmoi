@@ -2,7 +2,7 @@ import { AppError, fail } from "@/lib/failure";
 import { adapterFor } from "@/lib/adapters";
 import type { AdapterError } from "@/lib/adapters/types";
 import type { GitClient, GitTreeEntry } from "./client";
-import { PR_TITLE, pullRequestBody, withSkipMarker, type PublishedFile } from "./payload";
+import { PR_TITLE, bodyNeedsRefresh, pullRequestBody, withSkipMarker, type PublishedFile } from "./payload";
 import { repoTargetOf, type RepoTarget } from "@/lib/repo-host/target";
 import {
   formatFromProject,
@@ -619,10 +619,9 @@ export async function runPull(deps: PullDeps, expectedFingerprint?: string): Pro
     if (title !== existing.title) await client.updatePrTitle(existing.number, title);
     // 설정에서 base를 바꾼 뒤의 PR이다 — 스냅샷 커밋은 이미 새 base 위에 있다 (launch-readiness L3.7).
     if (existing.base !== project.baseBranch) await client.updatePrBase(existing.number, project.baseBranch);
-    // 본문은 이 스냅샷의 파일 목록이다 — 열린 PR에 삭제가 얹히면 앱 코드 정리 안내가 거기 있어야 한다(locale-add R-B2 Y3 · spec 수락 기준 7).
-    // 같으면 쓰지 않는다 — 매 실행 PATCH를 만들지 않는다. 사람이 고친 본문도 다음 스냅샷이 다시 쓴다(본문은 스냅샷의 설명이다).
-    const body = pullRequestBody(files);
-    if (existing.body !== body) await client.updatePr(existing.number, body);
+    // 열린 PR에 삭제가 얹히거나 빠지면 앱 코드 정리 안내가 따라가야 한다(locale-add R-B2 Y3 · spec 수락 기준 7). **삭제 집합이 바뀔 때만** 다시 쓴다(B2 fix2) —
+    // 그 밖의 차이로 쓰면 리뷰어가 고친 본문을 매 Publish가 덮는다. 다시 쓸 때는 이 스냅샷의 본문 전체다.
+    if (bodyNeedsRefresh(existing.body, files)) await client.updatePr(existing.number, pullRequestBody(files));
     prUrl = existing.url;
   }
 
