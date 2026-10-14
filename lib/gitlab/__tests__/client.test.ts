@@ -238,9 +238,10 @@ describe("openGitLabReader — 온보딩·Sync의 스냅샷 (값으로 준다)",
     return { fake, open: () => openGitLabReader(TARGET, CREDENTIAL, { fetch: fake.fetch }) };
   };
 
+  // mode는 언어 변경 만료의 정규 파일 판정 입력이다(`observeLocaleFiles` — 링크도 blob으로 온다).
   it("snapshot: head·커밋 시각(ISO UTC)·blob만 — files[].size는 비어 있다(크기는 `sizes`)", async () => {
     const { open } = reader({ ...head, ...tree });
-    expect(await (await open()).snapshot("main")).toEqual({ status: "ok", headSha: BASE, headCommittedAt: "2026-10-12T08:47:45.000Z", files: [{ path: "locales/en.json", sha: "e1" }] });
+    expect(await (await open()).snapshot("main")).toEqual({ status: "ok", headSha: BASE, headCommittedAt: "2026-10-12T08:47:45.000Z", files: [{ path: "locales/en.json", sha: "e1", mode: "100644" }] });
   });
 
   it("snapshot: base 404는 base-branch-missing · 그 밖의 실패는 unavailable · 페이지 상한은 truncated", async () => {
