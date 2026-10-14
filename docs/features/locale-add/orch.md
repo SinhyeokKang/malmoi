@@ -77,3 +77,5 @@
 - B2 `worker_done` — `2be4265b`·`fc974865`·`a2669bb4`(`gate: ok` 15000 · PG 766, Y5·F2·F3 포함). 자체 🟡 둘(결정적 거부가 재시도 가능 실패로 보임 · 정리 안내가 새 PR에만) + 관찰(만료가 전달 목록을 남겨 수렴 Publish 1회 추가)을 R-B2가 판정. B2 retain. **R-B2** — Opus high.
 - R-B3 완료(🔴 1 · 🟡 3 — 수동 Sync 도중 요청한 언어 변경을 승인 없이 지움). **B3 fix1** — R1(승인 행을 lease에 실음) · Y1 · Y2. Y3(B2와 같은 push)는 O2 계획대로. R-B3 해제·정리.
 - R-B2 완료(🔴 2 · 🟡 4, 변이 12/12, B3와 시험 병합 — harness.ts 사소한 충돌 하나). **B2 fix1** — R1(cron Publish도 스냅샷 전 만료) · R2(추가 코드를 관측 가능 코드로 좁힘, es_419 제외 — lib/locales 소유자 해제라 B2가 맡음) · Y1(조기 종료 ②를 전달 가능 작업으로) · Y2(구조화 오류 클래스·코드만, 문구는 C1) · Y3(열린 PR 본문 갱신 `updatePr` 두 호스트). **Y4**(base 관측 함수 둘) → B2·B3 통합 뒤 B3 fix2. design 갱신.
+- B2 fix1 질문: 새 SyncErrorCode가 Logs 사유 문구를 typecheck로 강제 → **지휘자 판단 A**(logs.reasons에 최소 문구만, B3 질문과 같은 근거).
+- B3 fix1 `worker_done` — `1f6b8fe8`·`4ddca468`(R1 승인 행 lease · Y1 · Y2 · W1, `gate: ok` 14979 · PG 795; 1회차 search-performance flake). B2 fix1 대기 → 함께 통합 → B3 fix2(Y4 관측 함수 통합).
