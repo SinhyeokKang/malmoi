@@ -151,8 +151,9 @@ async function acquire(prisma: PrismaClient, input: CoreInput): Promise<Acquired
        */
       const approval = await readDiscardApproval(tx, { projectId: project.id, userId: actor.userId });
       const confirmation = planDiscardConfirmation({ role: member?.role ?? "EDITOR", fingerprintMatches: sameFingerprint(actor.approval, approval.fingerprint) });
-      // ⚠️ 편집이 0이어도 언어 변경 상태가 있으면 승인을 요구한다 — 완전한 적재가 그 의도·전달 목록을 지운다(locale-add design §1 전이 표).
-      const discards = approval.pending.length + approval.localeChanges.length;
+      // ⚠️ 편집이 0이어도 언어 변경 의도가 있으면 승인을 요구한다 — 완전한 적재가 그 행을 지운다(locale-add design §1 전이 표). 전달 목록만 있는
+      // 소스는 버릴 것이 없다(목록은 남는다) — 지문에는 묶여 있다.
+      const discards = approval.pending.length + approval.localeChanges.filter(state => state.rows.length > 0).length;
       const decision = planProtectedImport({ mode: "manual", pending: discards, approved: confirmation.action === "proceed" });
       if (decision.action !== "apply") return { ok: false, error: "reconfirm" };
       approvedTokens = approval.pending.map(edit => edit.token);

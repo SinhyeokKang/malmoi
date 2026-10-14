@@ -420,7 +420,7 @@ describe("수동 Sync — 승인 지문과 의도 정리", () => {
     expect(await sync(await approval(), reader)).toMatchObject({ ok: true });
   });
 
-  it("승인된 Sync의 성공한 strict 적재만 행·전달 목록을 지운다 — 리포대로 활성/orphan, 사건, 남는 작업 0", async () => {
+  it("승인된 Sync의 성공한 strict 적재만 의도 행을 지운다 — 리포대로 활성/orphan, 사건, 전달 목록은 남아 다음 Publish가 정리한다", async () => {
     await seed();
     await request("s-web", "ko", "REMOVE");
     await deliver("s-web", [{ localeCode: "ko", effect: "delete" }]);
@@ -430,11 +430,14 @@ describe("수동 Sync — 승인 지문과 의도 정리", () => {
     await deliver("s-app", [{ localeCode: "ja", effect: "delete" }]);
     expect(await sync(await approval(), tree({ web: ["en", "ko", "ja"], app: ["en", "ko"] }))).toMatchObject({ ok: true });
     expect(await rows()).toEqual([]);
-    expect(await prisma.deliveryConfirmation.findMany({ where: { projectId: "p" }, select: { deliveredLocaleChanges: true } })).toEqual([{ deliveredLocaleChanges: null }, { deliveredLocaleChanges: null }]);
     expect(await presence("s-web")).toEqual({ en: "active", fr: "orphan", ja: "active", ko: "active" });
     expect(await presence("s-app")).toMatchObject({ ja: "orphan" });
-    expect(await countLocaleWork(prisma, "p")).toBe(0);
-    expect(await readLocaleStates(prisma, "p")).toEqual([]);
+    // 재전송 0 — 현재 효과에 삭제·생성이 없다. 남은 차이는 전달 목록을 비우는 정리(`no-changes`)뿐이다.
+    const states = await readLocaleStates(prisma, "p");
+    expect(states.map(state => [state.surfaceId, state.current, state.work.map(item => [item.localeCode, item.current, item.delivered])])).toEqual([
+      ["s-app", [], [["ja", null, "delete"]]],
+      ["s-web", [], [["ko", null, "delete"]]],
+    ]);
     const events = await resolved();
     expect(events.map(event => [event.actorKind, (event.payload as { localeChange?: unknown }).localeChange])).toEqual(expect.arrayContaining([
       ["USER", expect.objectContaining({ locale: "ko", operation: "REMOVE", outcome: "active" })],
@@ -442,6 +445,22 @@ describe("수동 Sync — 승인 지문과 의도 정리", () => {
       ["USER", expect.objectContaining({ locale: "ja", operation: "REMOVE", outcome: "orphan" })],
     ]));
     expect(events).toHaveLength(3);
+  });
+
+  /**
+   * ⚠️ **전달 목록을 비우지 않는다** (R-B3 🟡1 · 지휘자 결정 2026-10-14 keep-delivered — design §1 전이 표의 "전달 목록 비움"을 대체). 제거가 PR로
+   * 나간 채 열려 있는데 Sync가 목록까지 비우면 작업이 0이라 아무도 sync 브랜치를 다시 만들지 않는다 — 그 PR을 머지하면 방금 버린 제거가 리포에 들어간다.
+   */
+  it("전달된 제거 + 열린 PR + 승인된 Sync → 행은 지우고 전달 목록은 남긴다 — 언어 작업 1이 다음 Publish를 부른다", async () => {
+    await seed();
+    await request("s-web", "ko", "REMOVE");
+    await deliver("s-web", [{ localeCode: "ko", effect: "delete" }]);
+    github({ openPr: { url: "https://example.test/pr/5", number: 5, title: "t" } });
+    expect(await sync(await approval(), tree({ web: ["en", "ko", "ja"], app: ["en", "ko", "ja"] }))).toMatchObject({ ok: true });
+    expect(await rows()).toEqual([]);
+    expect(await prisma.deliveryConfirmation.findFirstOrThrow({ where: { projectId: "p", surfaceId: "s-web" } })).toMatchObject({ deliveredLocaleChanges: [{ localeCode: "ko", effect: "delete" }] });
+    expect(await countLocaleWork(prisma, "p")).toBe(1);
+    expect(await presence()).toMatchObject({ ko: "active" });
   });
 
   it("부분 적재(파싱 못 한 파일)는 의도를 지우지 않고 빈 ADD도 orphan하지 않는다", async () => {

@@ -12,7 +12,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 
 /**
  * 소스 하나의 **언어 변경 상태** (locale-add design §4 "집계·보호") — 의도 행(요청 시각까지)과 마지막 전달 목록(`null`은 확인 안 됨).
- * 수동 Sync·소스 제거가 이것을 지우므로 승인에 묶는다 — 승인 뒤 추가·제거·취소·전달이 있으면 옛 승인이 통하지 않는다.
+ * 수동 Sync가 의도 행을, 소스 제거가 행·전달 목록을 지우므로 승인에 묶는다 — 승인 뒤 추가·제거·취소·전달이 있으면 옛 승인이 통하지 않는다.
  */
 export type LocaleChangeState = {
   surfaceId: string;
@@ -40,7 +40,7 @@ export type DiscardFingerprintInput = {
   repository: { repoHost: string; repositoryId: string | null; installationId: string | null; gitlabConnectionId: string | null; repoOwner: string; repoName: string; baseBranch: string };
   surfaces: readonly { id: string; importRevision: number; adapterName: string | null; pathTemplate: string | null; baseLocale: string | null }[];
   pending: readonly { id: string; token: string }[];
-  /** 활성 소스의 언어 변경 상태 — 성공한 strict 적재가 이것을 지운다(locale-add design §1 전이 표 마지막 행). */
+  /** 활성 소스의 언어 변경 상태 — 성공한 strict 적재가 의도 행을 지운다(locale-add design §1 전이 표 마지막 행). 전달 목록은 승인 뒤 전달을 가르려고 묶는다. */
   localeChanges: readonly LocaleChangeState[];
 };
 

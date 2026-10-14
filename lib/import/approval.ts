@@ -32,7 +32,7 @@ export async function readDiscardApproval(
 
 /**
  * 승인 지문이 묶는 **언어 변경 상태** — 활성 소스 중 의도 행이나 비지 않은 전달 목록이 있는 것만(`readLocaleStates`). 수동 Sync와 소스 제거가 같은
- * 읽기를 쓴다 — 둘 다 이것을 지우므로 승인 대상이다(locale-add design §4). 비면 언어 변경이 없다.
+ * 읽기를 쓴다 — 둘 다 의도를 지우므로 승인 대상이다(locale-add design §4). 비면 언어 변경이 없다.
  */
 export async function readLocaleChangeStates(db: Prisma.TransactionClient, projectId: string, surfaceId?: string): Promise<LocaleChangeState[]> {
   const states = await readLocaleStates(db, projectId, surfaceId);

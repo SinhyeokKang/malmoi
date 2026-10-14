@@ -118,7 +118,7 @@ export type ApplyOptions = {
    * 이 소스의 **언어 변경 의도**(`LocaleChange`)를 이 적재가 어떻게 다루나 (locale-add design §1 "만료와 strict 적재" · 전이 표).
    * - `keep`(생략 시) — 남은 ADD 언어를 orphan 대상에서 뺀다. 의도를 지우지 않는다.
    * - `expire` — 자동 적재(CI·야간). 같은 잠금 안에서 만료를 먼저 돌고(`expireLocaleChanges` — 관측 = 이 페이로드의 로케일), 남은 ADD를 뺀다.
-   * - `discard` — 지문 승인한 수동 Sync의 완전한 적재. 그 소스의 의도 행·전달 목록을 지우고, 존재는 이 적재가 리포대로 정한다.
+   * - `discard` — 지문 승인한 수동 Sync의 완전한 적재. 그 소스의 의도 행을 지우고, 존재는 이 적재가 리포대로 정한다. 전달 목록은 남긴다.
    *
    * ⚠️ **생략의 기본이 `keep`이다** — 빠졌을 때 의도를 보존하는 쪽이 안전하다(`approvedTokens`와 같은 근거). 기본을 strict로 두면 첫 적재·새 호출부
    * 하나가 방금 추가한 빈 언어를 orphan시킨다.
@@ -237,8 +237,11 @@ export async function applyPushInTransaction(tx: Prisma.TransactionClient, scope
 }
 
 /**
- * **승인된 수동 Sync가 의도를 지운다** (locale-add design §1 전이 표 마지막 행) — 행 삭제 · 전달 목록 비움 · 사건. 존재는 방금 strict 적재가
- * 리포대로 정했고, 사건의 `outcome`은 그 판정(`localePresence`)과 같은 값이다. 값·키·로케일 행은 지우지 않는다.
+ * **승인된 수동 Sync가 의도를 지운다** (locale-add design §1 전이 표 마지막 행) — 행 삭제 · 사건. 존재는 방금 strict 적재가 리포대로 정했고,
+ * 사건의 `outcome`은 그 판정(`localePresence`)과 같은 값이다. 값·키·로케일 행은 지우지 않는다.
+ * ⚠️ **전달 목록은 남긴다** (2026-10-14 지휘자 결정 keep-delivered) — 제거가 열린 PR에 실린 채 목록까지 비우면 작업이 0이라 아무도 sync 브랜치를 다시
+ * 만들지 않고, 그 PR을 머지하면 방금 버린 제거가 리포에 들어간다. 남은 차이가 언어 작업이 되어 다음 Publish가 `no-changes`로 PR을 정리하고 목록을
+ * 비운다(전달 뒤 취소와 같은 길). 소스 제거는 되살림 누수 때문에 목록을 비운다(`lib/surfaces/remove.ts`).
  * ⚠️ 이 적재와 같은 tx다 — 사건이 실패하면 적재도 롤백된다(상태 변경 사건).
  */
 async function discardLocaleChanges(
@@ -250,10 +253,8 @@ async function discardLocaleChanges(
   actor: EventActorInput,
 ): Promise<void> {
   const { projectId, surfaceId } = scope;
-  await tx.localeChange.deleteMany({ where: { projectId, surfaceId } });
-  // 전달 목록은 의도와 함께 비운다 — 남기면 지운 의도와의 차이가 "작업"으로 남아 다음 Publish가 이전 전달을 되돌린다.
-  await tx.$executeRaw`UPDATE "DeliveryConfirmation" SET "deliveredLocaleChanges" = NULL WHERE "projectId" = ${projectId} AND "surfaceId" = ${surfaceId}`;
   if (intents.length === 0) return;
+  await tx.localeChange.deleteMany({ where: { projectId, surfaceId } });
   const live = liveLocalesOf(observed);
   await recordEvents(tx, [...intents].sort((a, b) => (a.localeCode < b.localeCode ? -1 : a.localeCode > b.localeCode ? 1 : 0)).map(intent => {
     const presence = localePresence(live, intent.localeCode);
