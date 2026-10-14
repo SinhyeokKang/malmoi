@@ -929,7 +929,7 @@ sha1("blob " + byteLength + "\0" + content)
 
 clone하지 않는다.
 
-**판정과 I/O를 나눈다** (`lib/push/`와 같은 형태): `lib/pull/plan.ts`가 무엇을 낼지 정하고(1층 스킵·경로·entries·2층 SHA 비교), `lib/pull/render.ts`가 파일 내용을 만들고(어댑터 `write`도 I/O가 없어 이 층까지 순수하다), `lib/pull/payload.ts`가 요청 본문을 조립하고, `lib/pull/run.ts`가 순서를 잡고, `lib/github.ts`는 **보내기 + 연결 근거 읽기**(`probeRepo` — §6.5) + **온보딩 스냅샷 읽기**(`openRepoReader` — §3.1)를 한다. DB 조회는 `lib/pull/load.ts`다. 오케스트레이션이 클라이언트를 **인자로 주입받으므로**(`lib/pull/client.ts`의 `GitClient`) 테스트가 fake로 호출 수를 셀 수 있다 — "편집이 없으면 API 0회"를 판정할 다른 방법이 없다. `lib/github.ts`에 `server-only`를 붙이지 않은 것은 `scripts/smoke-github.ts`가 그 모듈의 실제 코드 경로를 검증해야 하기 때문이다(§5.5.4와 같은 축).
+**판정과 I/O를 나눈다** (`lib/push/`와 같은 형태): `lib/pull/plan.ts`가 무엇을 낼지 정하고(1층 스킵·경로·entries·2층 SHA 비교), `lib/pull/render.ts`가 파일 내용을 만들고(어댑터 `write`도 I/O가 없어 이 층까지 순수하다), `lib/pull/payload.ts`가 요청 본문을 조립하고, `lib/pull/run.ts`가 순서를 잡고, `lib/github.ts`는 **보내기 + 연결 근거 읽기**(`probeRepo` — §6.5) + **온보딩 스냅샷 읽기**(`openRepoReader` — §3.1)를 한다. DB 조회는 `lib/pull/load.ts`다. 오케스트레이션이 클라이언트를 **인자로 주입받으므로**(`lib/pull/client.ts`의 `GitClient`) 테스트가 fake로 호출 수를 셀 수 있다 — "편집이 없으면 API 0회"를 판정할 다른 방법이 없다. ⚠️ 예외 하나 — 언어 변경 효과가 전달된 소스는 1층 스킵 전에 스냅샷 전 만료(PR 조회)를 돈다(§5.10). `lib/github.ts`에 `server-only`를 붙이지 않은 것은 `scripts/smoke-github.ts`가 그 모듈의 실제 코드 경로를 검증해야 하기 때문이다(§5.5.4와 같은 축).
 
 순서 — ⚠️ **0단계가 리포 호스트 앞에 있다**: `repoTargetOf(project)`가 `ok`가 아니면(GitHub 설치 없음·리포 id 미고정 / GitLab 연결 참조 비어 있음) 부르기 전에 `not-installed`로 던진다(`lib/pull/run.ts`). 연결이 없는 프로젝트에 대해 조용히 빈 PR을 내는 대신 즉시 알린다. 그 결과가 `createGitClient`(`lib/repo-host` — 호스트 구현을 고르는 유일한 자리)의 인자다. 아래 1~6은 GitHub 구현이고, GitLab은 §3.02다.
 
