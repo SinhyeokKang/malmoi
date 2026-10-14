@@ -11,6 +11,41 @@
 - **시안 대기(이 런에서 착수하지 않음)**: §6 핸드오프 확보 · Sources Add Dialog·행 동작·확인 Dialog·상태 배지 · 번역 화면 셀 얼리기 DOM·수동 · Publish 미리보기·결과의 화면 표시 · 화면 문구(en·ko·es) · `/design-sync` · DESIGN 갱신 · `/guide`·`/guide-shots` · 화면을 거치는 §9 `/runtime-test`.
 - 시안이 오면 이 문서에 wave를 덧붙여 이어서 진행한다. **이 기능은 그 전까지 `/merge`하지 않는다**(tasks "배치와 머지 규칙").
 
+## 이어받기 — 다음 세션은 여기부터 읽는다 (갱신: 2026-10-14)
+
+**한 줄 상태**: 시안 없이 할 수 있는 배치(A1·A2·B1·B2·B3·C1·C2·D)는 전부 dev에 들어갔고 push됐다(P1·P2·P3, CI 모두 success). 남은 것은 ① RT 왕복 QA(진행 중) ② 시안이 와야 하는 화면 일체 ③ `/merge`(이 기능은 화면까지 끝나기 전 머지 금지)다.
+
+| 항목 | 상태 |
+|---|---|
+| dev head | `2fc25ed4`(origin/dev와 같음, P3 + design-brief) |
+| 마이그레이션 | `20261014060000_locale_change` — **dev DB 적용 완료**(anon/authenticated USAGE·CREATE false, GRANT 0). **prod는 미적용** → `/merge` 1단계 `pnpm db:status:prod` → `pnpm db:deploy` → prod `has_schema_privilege` 확인 |
+| 살아 있는 워커 | **RT** `ctx_be8cc5bb90fd`(main 체크아웃, 인계 `.scratch/orch-locale-add/handoffs/handoff-RT.md`). 그 밖의 워커·워크트리는 전부 해제·삭제(reclaimable 0) |
+| RT가 도는 동안 | main 체크아웃에서 cherry-pick·`pnpm build`·`pnpm gate` 금지(dev 서버 HMR·`.next` 오염). RT 뒤 `rm -rf .next/dev`, 리포 밖 clone 확인 |
+| Orca run | `run_2836e5d910eb` — 새 세션은 새 run을 만들어도 된다(이 run의 Delivery는 모두 ack됨) |
+| 로컬 전용 자료 | `.scratch/orch-locale-add/`(브리프·인계·리뷰 원문) — **gitignore라 이 머신에만 있다.** 필요한 결론은 아래와 design.md·ARCHITECTURE §5.10에 옮겨 두었다 |
+
+### 남은 일 (주인·순서)
+
+1. **RT 결과 처리** — 인계의 칸별 pass/fail/not measured를 이 문서 진행 로그에 옮기고, BugShot 이슈(`[locale-add]`)를 그 영역의 새 수정 워커로 보낸다(원 배치 워커는 모두 해제됨 — 브리프에 이 문서·design.md·ARCHITECTURE §5.10을 가리킨다). tasks §9 셋째·넷째를 결과에 따라 체크.
+2. **ko·es 초안 검수(`/translate`)** — 이 런이 넣은 사전 문구는 en 확정, ko·es는 초안: `logs.deferReasons["locale-change-pending"]` · `logs.sentence.import.held["locale-change-pending"]`(B3) · `logs.reasons["locale-plan-refused"]`(B2). ko 후보 문장은 R-B3 W6("아직 보내지 않은 언어 제거가 있어"). GitLab 변형 자리(`logs.gitlab.*`)는 호스트 낱말이 없어 덮지 않았다.
+3. **시안 도착 뒤(⏸ 행 전부)** — design-brief 프레임 **1~25**(2026-10-14 백엔드 계약 반영으로 21~25 추가). 아래 "화면 배치 데이터 계약"을 브리프에 그대로 넘긴다. 신규 Dialog가 생기므로 **DS(`/design-sync`) 행**을 UI 배치 통합 직후·push 전에 둔다. 이어서 DESIGN 갱신 · `/guide`(en·ko·es — "리포에서만 언어 추가·제거" 문구와 MCP 도구·권한 표) · `/guide-shots` · 화면 `/runtime-test`(tasks §9 둘째, 두 세션 외부 제거 포함).
+4. **`/merge`** — 3이 끝난 뒤 사용자가 부른다. 준비물: prod 마이그레이션(위 표), `lib/cli/push-response.ts`의 `locale-change-pending` CLI 경고는 **action 릴리스 축**(`malmoi-i18n-push-vN`)이라 앱 머지와 별개로 판단.
+
+### 화면 배치 데이터 계약 (C1 인계에서 옮김 — 원문은 로컬 `handoff-C1.md`)
+
+- **Sources 상세** `loadSourceDetail` → `languages[]`: `change: { operation: "ADD"|"REMOVE"; requestedAt } | null`(배지 Adding/Removing · 동작 Remove language/Cancel removal) · `unsent: boolean`(그 언어 **파일** 변경이 마지막 전달과 다름 — 셀 Unsent와 별개, 값 0개 ADD는 false, 전달 후 제거 취소는 행이 없어도 true) · `localeDelivery: "confirmed"|"unconfirmed"`(무효화 중이면 전달 여부를 단정하지 않는다). `locales` 수는 REMOVE를 뺀다.
+- **Server Action**(`app/(edit)/projects/[slug]/sources/actions.ts`, 결과는 코드뿐): `addSourceLocale` → `{ok, action: "create"|"revive", path, reissued}` · `previewSourceLocaleRemoval` → `{ok, kind: "request-removal"|"cancel-add", path, translations, pendingCount, delivered: boolean|null, approval}` · `removeSourceLocale({…, approval})` → `{ok, kind, discarded}` · `cancelSourceLocaleRemoval` → `{ok, delivered: boolean|null}`(`true`면 다음 Publish 전까지 "취소 완료"라 말하지 않는다).
+- **거부 코드**: 접근(`forbidden`·`not-found`·`archived`·`unauthorized`·`unavailable`) · 판정(`publish-unsettled` — 무효화 중 취소 포함, `base-locale`, `removal-pending`, `no-removal`, `approval-required`, `stale-approval`, `invalid-code`, `unsupported-locale`, `already-active`, `locale-collision`, `unsafe-path`, `path-conflict`, `unsupported-format`) · 폐기(`baseline-unknown`·`baseline-stale` — 제거만, `sync-running`). 다른 화면: `locale-removal-pending`(번역 저장·Revert 거부, `localeCodes` 동반) · `locale-plan-refused`(Publish 미리보기 `refused`, 결정적 — Try again 없음) · `locale-change-pending`(기준 언어 선언·기준 브랜치 변경 거부, CI/야간 deferred).
+- **번역 화면**: `loadTranslationDetail().locales[].readOnly`를 `initKeyDraft(keyId, values, readOnlyCodes)`와 서버 갱신 액션 `{type: "server", …, readOnly}`에 넘긴다. 저장 버튼은 `savableLocales(draft)`, 이탈 확인은 `dirtyLocales(draft)`. 진행률·결측은 `workLocaleCodes`·`detailFill`(`lib/translations/summary.ts`)만 쓴다. ⚠️ `DetailView.locales`(locale-panel.tsx)에 `readOnly` 타입을 선언해야 한다(지금은 두 함수가 `readOnly?` 임시 형).
+- **지금 화면의 알려진 틈**(MCP로 요청을 만들 수 있으므로 이미 닿는다): 번역 화면이 제거 중 언어를 편집 가능하게 보이고 저장하면 키 전체가 `locale-removal-pending`으로 거부된다(일반 save-failed 문구) · Publish 버튼과 MCP 밖 화면이 `locale-plan-refused`에 base 파일 문구로 폴백한다(`components/…/publish-button.tsx`) · Logs의 언어 사건은 종류 폴백 문장(“changed Sources & languages”)이다.
+
+### 알려진 잔여(고치지 않음 — 이유와 함께)
+
+- strict 적재의 존재 판정(`localesToKeep`)은 심볼릭 링크 언어 파일도 센다. 만료(`observeLocaleFiles`)는 정규 파일만 — 링크 언어 파일이 있는 리포에서만 갈린다. 적재 코어 변경이라 범위 밖.
+- 열린 PR 본문은 삭제 파일 집합이 바뀔 때만 다시 쓰지만, 다시 쓸 때는 본문 전체를 바꾼다(그 순간 사람이 넣은 문구는 사라진다).
+- 만료 뒤 전달 목록이 남아 수렴용 Publish(no-changes)가 한 번 더 돈다 — R-B2가 "유지"로 판정.
+- 확인 행이 없던 소스에서 미전달 편집이 있는 언어는 첫 Publish 전까지 제거가 `baseline-unknown`으로 막힌다(fail-closed, 탈출구는 Publish).
+
 ## 결정 기록
 
 | # | 결정 | 근거 |
@@ -19,29 +54,36 @@
 | D2 | 핸드오프 확보 게이트를 §0에서 §6 UI 퍼블리싱 앞으로 옮김 | 사용자 2026-10-14 (`15891783`) |
 | O1 | 워커 패밀리 = Claude Code(Opus 5.5·Sonnet 5.5, effort ≤ high)만. 교차 허가 없음 | 스킬 §0-3 기본 경계. 지휘자 판단 |
 | O2 | push는 tasks 배치 경계마다 한다 — tasks 배치 1(A1·A2) 통합 뒤 · 배치 2(B1~B3) 통합 + dev DB 마이그레이션 뒤 · 배치 3 비시각(C1·C2·D) 통합 뒤 | tasks "배치마다 `/push` 게이트". 배치 1은 동작 중립이라 먼저 내보낸다. 지휘자 판단 |
-| O3 | Chrome 추가 입력은 문서 55개 목록으로 좁힌다(ICU 목록이 아니다) | design §2 "Chrome 지원 목록". 지휘자 판단 — 보수적 쪽 |
+| O3 | Chrome 추가 입력은 문서 목록으로 좁힌다(ICU 목록이 아니다) — R4로 `es_419`를 빼 54개 | design §2 "Chrome 지원 목록". 지휘자 판단 — 보수적 쪽 |
 | O4 | 만료 I/O(`expireLocaleChanges`)와 언어 작업 수(`countLocaleWork` 꼴)는 **B1이 코어로 만든다** — B2(Publish)·B3(적재·야간)가 같이 부르므로 한 소유자에게 두어 B2∥B3를 연다 | 파일 겹침. 지휘자 판단 |
 | O5 | Publish 미리보기·결과의 `New file`/`Updated`/`Removed`는 **데이터·판정(B2)과 화면 표시(시안 대기)로 나눈다** | 착수 범위. 지휘자 판단 |
 | O6 | DS 행은 시안 대기 — 신규 Dialog가 생기므로 시안이 오면 DS 행을 둔다(스킬 §0-4.5) | 지휘자 판단 |
 | O7 | `/roundtrip`(§9 셋째·넷째)은 C2(MCP) 통합 뒤 **MCP 도구로 추가·제거를 걸어** 이 런에서 돈다 — 화면이 필요 없다. 화면 `/runtime-test`(§9 둘째)는 시안 대기 | 지휘자 판단 — 시안 없이 가능한 검증 |
+| D3 | **폐기 = 마지막 전달 값으로 되돌림**(Revert 의미) — **제거에만**. 추가 취소는 토큰만 비우고 값 유지(재추가가 되살림). 전달 기록 없는 미전달 셀이 있으면 제거 거부 | 사용자 2026-10-14(R-B1 Y1) + 지휘자 정정 `f7ed97d8` |
+| R1 | 값 0개 ADD 보호: ADD는 자기 create가 전달 목록에 있거나 경로가 관측될 때만 만료. 빈 관측은 만료하지 않고 보류 | R-A1 🔴 · 지휘자 판단 `a05c2c04` |
+| R2 | 확인이 무효화된 동안(`delivered: null`, 확인 행 없는 소스의 첫 Publish 미확정 포함) 추가 취소·제거 취소는 `publish-unsettled`로 거부 | R-B1 🔴 · R-B1b Y5 · `536cda9e`·`a6e7b230` |
+| R3 | 승인 수동 Sync는 언어 변경 행만 지우고 **전달 목록은 유지**(다음 Publish가 no-changes로 수렴). 승인한 행만 지운다(Sync 도중 요청은 남김) | B3 질문 · R-B3 🔴 · `5bb3747a` |
+| R4 | **모든 Publish(야간 cron 포함)**가 스냅샷 전 만료. 추가 가능 코드 ⊆ 관측 가능 코드(Chrome 54개 — `es_419` 제외, `looksLikeLocale` 교집합) | R-B2 🔴 둘 · `8313e5a5` |
+| R5 | 결정적 언어 계획 거부는 비재시도 `locale-plan-refused` + Logs 최소 문구 · 열린 PR 본문은 삭제 집합 변동 때만 갱신 · base 관측 함수는 `observeLocaleFiles` 하나 | R-B2 Y2·Y3·Y4 · B2 fix2 · B3 fix2 |
+| R6 | 사전 문구는 typecheck가 강제하는 슬롯만(Logs 사유) 이 런에서 넣고 ko·es는 `/translate` 초안 · 컴포넌트는 테스트 픽스처와 비시각 집계 한 줄만 예외 | B3·B2·C1 질문 · 지휘자 판단 |
 | O8 | 스키마 SQL은 워커가 DB 없이 `prisma migrate diff`로 만들고(더미 `DIRECT_URL`), dev DB 적용·`has_schema_privilege` 확인은 지휘자. prod `db:deploy`는 `/merge` 1단계(런 밖) | 스킬 §1 |
 
 ## 배치
 
 | 배치 | 항목(tasks) | 파일 소유 | 선행 | 모델·effort | 자리 | 상태 |
 |---|---|---|---|---|---|---|
-| **A1** 순수 판정 | §1 전부 | 신규 `lib/locales/{add-plan,change-plan,effects,chrome-codes,publish-plan,expiry}.ts` + `__tests__` · `components/__tests__/client-graph.test.ts`(잎 등록만) | — | Opus 5.5 · high — 전이 표·만료 조건이 불변식 1·2의 경계 | 워크트리 | 대기 |
-| **A2** Publish union | §5 첫째·둘째 | `lib/pull/{plan,client,payload}.ts` · `lib/pull/run.ts`(union 좁히기·`countChangedValuesOf` delete 건너뛰기만) · `lib/publish/read.ts`(`changedFiles` 좁히기만) · `lib/gitlab/plan.ts` · `lib/github.ts`(:415 주석) · fake(`lib/gitlab/__tests__/fake-repo.ts`) · design §2 소비자 표의 테스트들 | — | Opus 5.5 · medium — 표가 design §2에 고정, 기계적 비중 큼 | 워크트리 | 대기 |
-| **B1** 스키마·코어 | §2 첫째·둘째·셋째·다섯째 · §3 전부 · O4 공용 코어 | `prisma/schema.prisma` · 새 마이그레이션 SQL · `scripts/gate-plan.ts`(+테스트) · 신규 `lib/locales/{change,expire,work}.ts` · 번역 저장·Revert·기준 언어 변경·MCP 번역 쓰기의 제거 상태 가드(`app/(edit)/actions.ts` 코어 쪽 · `lib/keys/revert.ts` · `app/(edit)/projects/[slug]/sources/actions.ts`의 `updateBaseLocale` 코어 · 해당 MCP 도구) · 사건 payload/view(`lib/events/` 등) · `locked-access`·진입점 목록 · 격리 PG 시나리오 · OPERATIONS 구버전 구간 영향(§2 다섯째) | **A1 통합** | Opus 5.5 · high — 잠금 순서·원자성·셀프 호스팅 | 워크트리 | 대기 |
-| **B2** Publish 나머지 | §5 셋째~열째 | `lib/pull/{run,load,plan,trigger}.ts` · `lib/publish/{read,fingerprint}.ts` · `lib/adapters/{json-catalog,chrome-locales}.ts` + `__tests__/contract.ts` · PR/MR 본문 생성기 · `lib/sync/run.ts`(장벽 재사용 시) | **A2 + B1 통합** | Opus 5.5 · high — 전달 경계·결정성 | 워크트리 | 대기 |
-| **B3** 적재·Sync·수명주기 | §4 전부 + 야간 조기 종료(`lib/nightly/plan.ts:57·70`) | `app/api/push/route.ts` · `lib/push/apply.ts` · `lib/import/{run,approval}.ts` · `lib/nightly/{run,plan}.ts` · `lib/protection/fingerprint.ts` · `lib/surfaces/remove.ts` · 설정/연결 변경 승인 코어 · `docs/ACTIONS.md`(`locale-change-pending`) | **B1 통합** (B2와 병렬) | Opus 5.5 · high — fail-closed 보류·승인 지문 | 워크트리 | 대기 |
-| **C1** 비시각 UI | §6 Server Action · reducer · `summary.ts` · 집계 | `app/(edit)/projects/[slug]/sources/actions.ts`(새 Action) · 번역 화면 draft reducer(파일은 착수 때 확정, **DOM·컴포넌트 제외**) · `summary.ts` · `lib/keys/query.ts`·Home·Keys 검색·Inbox 집계 · **`messages/*` 금지**(문구는 시안 대기 — Action은 코드를 돌려준다) | **B2 + B3 통합** | Opus 5.5 · medium | 워크트리 | 대기 |
-| **C2** MCP | §7 전부 | `lib/mcp/tools/*`(신규 넷 + `get_project`·`list_keys`·preview 응답) · `lib/mcp/catalog.ts` · `lib/mcp/__tests__/*` · MCP 영어 문구(`messages/en.tsx`의 MCP 구역만 — 세 사전 규칙이 걸리면 ko·es는 en 사본 + `/translate` 대기 표시) | **B2 + B3 통합** (C1과 병렬) | Opus 5.5 · medium — 권한 등급·지문 | 워크트리 | 대기 |
-| **D** 정본 문서 | §8 첫째 · 둘째 중 DIRECTORY·ACTIONS 확인·OPERATIONS · 셋째(CLAUDE 데이터 경로 + `pnpm sync:agents`, README 검토) | `docs/{ARCHITECTURE,DIRECTORY,OPERATIONS}.md` · `CLAUDE.md`(+미러) · `README.md` — 문서별 커밋 | **C1 + C2 통합** | Sonnet 5.5 · high — 분량, 사실은 R-D(Opus)가 대조 | 워크트리 | 대기 |
+| **A1** 순수 판정 | §1 전부 | 신규 `lib/locales/{add-plan,change-plan,effects,chrome-codes,publish-plan,expiry}.ts` + `__tests__` · `components/__tests__/client-graph.test.ts`(잎 등록만) | — | Opus 5.5 · high — 전이 표·만료 조건이 불변식 1·2의 경계 | 워크트리 | ✅ dev(fix1) |
+| **A2** Publish union | §5 첫째·둘째 | `lib/pull/{plan,client,payload}.ts` · `lib/pull/run.ts`(union 좁히기·`countChangedValuesOf` delete 건너뛰기만) · `lib/publish/read.ts`(`changedFiles` 좁히기만) · `lib/gitlab/plan.ts` · `lib/github.ts`(:415 주석) · fake(`lib/gitlab/__tests__/fake-repo.ts`) · design §2 소비자 표의 테스트들 | — | Opus 5.5 · medium — 표가 design §2에 고정, 기계적 비중 큼 | 워크트리 | ✅ dev(fix1) |
+| **B1** 스키마·코어 | §2 첫째·둘째·셋째·다섯째 · §3 전부 · O4 공용 코어 | `prisma/schema.prisma` · 새 마이그레이션 SQL · `scripts/gate-plan.ts`(+테스트) · 신규 `lib/locales/{change,expire,work}.ts` · 번역 저장·Revert·기준 언어 변경·MCP 번역 쓰기의 제거 상태 가드(`app/(edit)/actions.ts` 코어 쪽 · `lib/keys/revert.ts` · `app/(edit)/projects/[slug]/sources/actions.ts`의 `updateBaseLocale` 코어 · 해당 MCP 도구) · 사건 payload/view(`lib/events/` 등) · `locked-access`·진입점 목록 · 격리 PG 시나리오 · OPERATIONS 구버전 구간 영향(§2 다섯째) | **A1 통합** | Opus 5.5 · high — 잠금 순서·원자성·셀프 호스팅 | 워크트리 | ✅ dev(fix1~3) |
+| **B2** Publish 나머지 | §5 셋째~열째 | `lib/pull/{run,load,plan,trigger}.ts` · `lib/publish/{read,fingerprint}.ts` · `lib/adapters/{json-catalog,chrome-locales}.ts` + `__tests__/contract.ts` · PR/MR 본문 생성기 · `lib/sync/run.ts`(장벽 재사용 시) | **A2 + B1 통합** | Opus 5.5 · high — 전달 경계·결정성 | 워크트리 | ✅ dev(fix1·2) |
+| **B3** 적재·Sync·수명주기 | §4 전부 + 야간 조기 종료(`lib/nightly/plan.ts:57·70`) | `app/api/push/route.ts` · `lib/push/apply.ts` · `lib/import/{run,approval}.ts` · `lib/nightly/{run,plan}.ts` · `lib/protection/fingerprint.ts` · `lib/surfaces/remove.ts` · 설정/연결 변경 승인 코어 · `docs/ACTIONS.md`(`locale-change-pending`) | **B1 통합** (B2와 병렬) | Opus 5.5 · high — fail-closed 보류·승인 지문 | 워크트리 | ✅ dev(fix1·2) |
+| **C1** 비시각 UI | §6 Server Action · reducer · `summary.ts` · 집계 | `app/(edit)/projects/[slug]/sources/actions.ts`(새 Action) · 번역 화면 draft reducer(파일은 착수 때 확정, **DOM·컴포넌트 제외**) · `summary.ts` · `lib/keys/query.ts`·Home·Keys 검색·Inbox 집계 · **`messages/*` 금지**(문구는 시안 대기 — Action은 코드를 돌려준다) | **B2 + B3 통합** | Opus 5.5 · medium | 워크트리 | ✅ dev(fix1) |
+| **C2** MCP | §7 전부 | `lib/mcp/tools/*`(신규 넷 + `get_project`·`list_keys`·preview 응답) · `lib/mcp/catalog.ts` · `lib/mcp/__tests__/*` · MCP 영어 문구(`messages/en.tsx`의 MCP 구역만 — 세 사전 규칙이 걸리면 ko·es는 en 사본 + `/translate` 대기 표시) | **B2 + B3 통합** (C1과 병렬) | Opus 5.5 · medium — 권한 등급·지문 | 워크트리 | ✅ dev |
+| **D** 정본 문서 | §8 첫째 · 둘째 중 DIRECTORY·ACTIONS 확인·OPERATIONS · 셋째(CLAUDE 데이터 경로 + `pnpm sync:agents`, README 검토) | `docs/{ARCHITECTURE,DIRECTORY,OPERATIONS}.md` · `CLAUDE.md`(+미러) · `README.md` — 문서별 커밋 | **C1 + C2 통합** | Sonnet 5.5 · high — 분량, 사실은 R-D(Opus)가 대조 | 워크트리 | ✅ dev(fix1) |
 | **R-<배치>** 리뷰 | 각 배치 diff 독립 리뷰 | 리포트 전용 | 그 배치 `worker_done` | Opus 5.5 · medium | 리뷰 전용 워크트리 | — |
-| **DB** dev 마이그레이션 | §2 넷째 중 dev 몫 | 지휘자 | B1 통합 | — | main 체크아웃 | 대기 |
-| **RT** 왕복 | §9 셋째·넷째(O7) | 리포트 + BugShot 이슈 | C2 통합 + push | Opus 5.5 · medium | main 체크아웃, 단일 워커 | 대기 |
-| **P** push | §9 첫째 | 지휘자 | O2의 세 시점 | — | main 체크아웃 | 대기 |
+| **DB** dev 마이그레이션 | §2 넷째 중 dev 몫 | 지휘자 | B1 통합 | — | main 체크아웃 | ✅ dev 적용 |
+| **RT** 왕복 | §9 셋째·넷째(O7) | 리포트 + BugShot 이슈 | C2 통합 + push | Opus 5.5 · medium | main 체크아웃, 단일 워커 | 🔄 진행 중 `ctx_be8cc5bb90fd` |
+| **P** push | §9 첫째 | 지휘자 | O2의 세 시점 | — | main 체크아웃 | ✅ P1 `ecf4a5e5` · P2 `41935505` · P3 `0e29da92` |
 | **⏸ 시안 대기** | §6 핸드오프 · Dialog·배지 · 셀 얼리기 DOM·수동 · Publish 표시 · 문구 · `/design-sync` · §8 DESIGN · `/guide`·`/guide-shots` · §9 `/runtime-test` | — | 시안 | — | — | 이 런 밖 |
 | **⏸ 런 밖** | §2 넷째의 prod 몫 · §9 다섯째(`/merge`) | 사용자 `/merge` | — | — | — | 이 런 밖 |
 
@@ -95,3 +137,4 @@
 - C1 fix1 `worker_done` — `2920845d`·`d5b1aa6d`(`gate: ok` 15307 · PG 828). **C1 통합**(cherry-pick). C1 해제·정리. 화면 배치 메모: `DetailView.locales`에 `readOnly` 타입 선언 추가 필요.
 - R-D 완료(🔴 1 · 🟡 5 · ⚪ 6). **D fix1** 전부. 가이드 MCP 권한 표는 ⏸ 시안 대기 `/guide` 행 소유로 유지. R-D 해제·정리.
 - **wave ④·⑤ 통합**: C2 · B2 fix2 · B3 fix2 · C1(+fix1) · D(+fix1). main 체크아웃 `pnpm gate` **ok**. tasks §6 비시각 넷 · §7 · §8 첫째·셋째 체크(§8 둘째는 DESIGN이 시안 대기라 미체크 — DIRECTORY·ACTIONS·OPERATIONS는 반영됨).
+- P3 push `41935505..0e29da92` · CI success(38545758251). design-brief 백엔드 계약 반영(`68b00b47`, 프레임 21~25 추가) · push `..2fc25ed4`. **RT** `ctx_be8cc5bb90fd`(Opus medium, main 체크아웃, MCP로 추가·제거) — 이 동안 main 체크아웃 cherry-pick·build 금지.
