@@ -147,3 +147,8 @@
 - F1 fix2 `worker_done` — `bee42168`·`f52865d0`·`a62af96a`(취소 결과는 저장된 전달 목록 기준 · ARCHITECTURE 시계 전제·소비자 목록, `gate: ok` 15319 · PG 842). **F1 통합**(cherry-pick 11) · main 체크아웃 `pnpm gate` **ok**. F1 해제·정리. push 뒤 **RT2**(RT 워커 재사용).
 - **RT2 완료** — GitHub `i18n-order-check`·GitLab `malmoi-gitlab-test`에서 F1 네 경로 모두 통과(재요청 새 PR #23/!21·#25/!22 · 전달 후 취소 미리보기 "undoes 1 language change" · 재취소 delivered + 다시 Publish 안내). **#266·#265 닫음**(증거 댓글). 새 결함 **#267**. 미측정: 재요청 뒤 CI 적재 `locale-change-pending` 보류(대상 리포 CI 미실행). GitLab 첫 방문 `base-unreadable` 일시 실패 1건(결함 아님). 테스트 프로젝트 보관·토큰 회전·브랜치/PR 정리. RT retain.
 - **F2** `ctx_142f3ee77968`(Opus high, #267 — Publish가 1층 스킵 전에 만료, 미리보기가 같은 만료 판정을 읽기 전용으로 반영).
+- F2 `worker_done` — `e03b6147`·`b48adfd9`(언어 효과가 전달된 소스는 1층 스킵 전에 만료 · 미리보기 `expiringLocales` 읽기 전용 · 정직한 결과 문장, `gate: ok` 15330 · PG 852). 남김: ARCHITECTURE §5.10·1층 "API 0회" 예외 문서, POSTMORTEM 항목. F2 retain. **R-F2**.
+- R-F2 완료(🔴 2 — 만료 판정의 presence를 버려 머지된 PR을 "미머지 종료"로 말하고 새 파일을 약속함(F2 회귀) · 미머지 종료된 ADD도 같은 증상). **F2 fix1** — presence 전달 · 웹 no-changes 문구 · 문서·주석. R-F2 해제·정리.
+- F2 fix1 `worker_done` — 5커밋(presence 전달 `lib/locales/reached.ts` · "이미 리포에 반영됨" vs "반영 없이 닫힘" · 웹 결과 · 지문 꼬리 제거 · ARCHITECTURE §5.10·DIRECTORY, `gate: ok` 15335 · PG 860). `components/publish-button.tsx` 한 줄 수정(소유 밖 — 재리뷰가 판정). **F2 fix2**(ad80605c 테스트) ∥ **R-F2b** 재리뷰.
+- F2 fix2 질문: `ad80605c` 필터는 도달 불가(지원 어댑터 둘 다 재생성이라 경고가 안 남) → **지휘자 판단: revert**(추측성 방어 코드 금지 — CLAUDE.md 작업 원칙).
+- R-F2b 완료(🔴 0 · 🟡 1 · ⚪ 4 — 통합 가능, revert 정당). 🟡 웹 "Not sent" 제목·설명이 빠진 언어 요청을 이름으로 말하지 않음 → **시안 배치**(문구). ⚪ ARCHITECTURE "API 0회" 줄에 §5.10 예외 포인터 → 지휘자 문서 커밋. R-F2b 해제·정리.
