@@ -197,7 +197,8 @@ describe("addLocale — 새 언어", () => {
   it.each<[string, { userId: string }, string, string]>([
     ["EDITOR", EDITOR, "fr", "forbidden"],
     ["이미 활성", OWNER, "ko", "already-active"],
-    ["대소문자 충돌", OWNER, "KO", "locale-collision"],
+    // 대문자 언어 부분은 관측할 수 없어 충돌 판정보다 먼저 거부된다(R-B2 R2) — 충돌 판정 자체는 add-plan 표 테스트가 관측 가능한 철자로 잰다.
+    ["대소문자만 다른 철자", OWNER, "KO", "invalid-code"],
     ["경로 이탈", OWNER, "../x", "invalid-code"],
     ["로케일 아닌 코드", OWNER, "package", "invalid-code"],
     ["__proto__", OWNER, "__proto__", "invalid-code"],
