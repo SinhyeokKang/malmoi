@@ -124,6 +124,7 @@ export const FUNCTION_ARGS: { readonly [P in FunctionPaths<Messages>]: Parameter
   "logs.sentence.import.held.pr-check-failed": ["X"],
   "logs.onGitLab.sentence.import.held.pr-check-failed": ["X"],
   "logs.sentence.import.held.publish-raced": ["X"],
+  "logs.sentence.import.held.locale-change-pending": ["X"],
   "logs.sentence.import.held.too-large": ["X"],
   "logs.sentence.member.invited": ["X", "X"],
   "logs.sentence.member.joined": ["X"],

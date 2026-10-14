@@ -28,6 +28,16 @@ export type NightlySurface = {
 
 export type NightlyInput = {
   pending: number;
+  /**
+   * 언어 변경 작업 수(소스별 현재 효과 ≠ 전달 효과 — `countLocaleWork`). 셀 편집 수와 **따로** 싣는다(locale-add design §4 판정표) —
+   * 가짜 편집 토큰으로 `pending`을 늘리지 않는다.
+   */
+  localeWork: number;
+  /**
+   * 활성 소스에 `LocaleChange` 행이 있다. 같은 head여도 `upToDate`로 끝내지 않고 PR/MR 조회 → 만료를 먼저 돈다 — 머지 없이 닫힌 PR의 요청이
+   * 남으면 다음 Publish가 종료된 요청을 다시 싣는다. 행이 없는 프로젝트는 기존 순서 그대로다(PR 조회 0회).
+   */
+  localeChanges: boolean;
   surfaces: readonly NightlySurface[];
   /** base head 조회 결과. 없으면 아직 안 물었다. `ok: false`는 조회가 던졌다. */
   head?: { ok: true; sha: string | null } | { ok: false };
@@ -42,6 +52,8 @@ export type NightlyInput = {
 
 export type NightlyPlan =
   | { action: "publish" }
+  /** 같은 head · 열린 PR/MR 없음(성공한 조회) · 언어 변경 행 있음 — 적재 없이 base 트리 관측으로 만료만 돈다(`expireLocaleChanges`). */
+  | { action: "expire" }
   | { action: "need"; input: "head" | "open-pr" }
   | { action: "import" }
   | { action: "skip"; outcome: "upToDate" }
@@ -54,7 +66,8 @@ export type NightlyPlan =
   | { action: "none"; counter: "notReady" | "unprocessed" };
 
 export function planNightly(input: NightlyInput): NightlyPlan {
-  if (input.pending > 0) return { action: "publish" };
+  // 언어 작업도 Publish다 — 파일 생성·삭제가 셀 편집 없이도 보낼 것이다. 편집과 같이 head를 묻지 않는다(GitHub 0회).
+  if (input.pending > 0 || input.localeWork > 0) return { action: "publish" };
 
   // ⚠️ 비교 대상을 좁힌다 — `lastCommitSha`가 null이거나 포맷이 불완전한 표면은 적재해도 전진하지 않으므로, 넣으면
   // `upToDate`가 영원히 안 서서 매일 전 표면을 다시 적재한다. 적재 자체는 수동 Sync와 같은 표면 집합을 돈다.
@@ -67,7 +80,17 @@ export function planNightly(input: NightlyInput): NightlyPlan {
   if (input.head.sha === null) return { action: "skip", outcome: "failed", reason: "base-unreadable", branchMissing: true };
   const head = input.head.sha;
   // ⚠️ 실패 상태가 남은 표면은 같은 head여도 "받을 것이 없다"가 아니다 — 게이트(PR·마감)는 그대로 지난다.
-  if (compared.every((surface) => surface.lastCommitSha === head && !surface.failed)) return { action: "skip", outcome: "upToDate" };
+  if (compared.every((surface) => surface.lastCommitSha === head && !surface.failed)) {
+    if (!input.localeChanges) return { action: "skip", outcome: "upToDate" };
+    // ⚠️ 마감 규칙은 적재 갈래와 같다 — 마감 뒤에는 PR을 묻지 않고 만료도 시작하지 않는다(다음 밤 정렬이 앞으로 가져온다).
+    if (input.elapsedMs > NIGHTLY_IMPORT_START_MS) return { action: "none", counter: "unprocessed" };
+    if (input.openPr === undefined) return { action: "need", input: "open-pr" };
+    // ⚠️ 조회 실패는 보류다(fail-closed) — 만료하면 아직 열린 PR의 삭제가 다음 Publish에서 빠진다(수락 기준 15).
+    if (input.openPr.url === undefined) return { action: "skip", outcome: "deferred", reason: "pr-check-failed" };
+    // 열린 PR은 만료 조건이 안 서고 받을 새 커밋도 없다 — 보류할 적재가 없으므로 `upToDate`다.
+    if (input.openPr.url !== null) return { action: "skip", outcome: "upToDate" };
+    return { action: "expire" };
+  }
 
   // ⚠️ **마감 뒤에는 PR을 묻지 않는다** — 루프 예산은 방문 시작 전에만 재므로, 늦게 시작한 방문이 head 대기 + PR 대기를 더 쓰면 `maxDuration`을
   // 넘겨 그 밤의 요약이 사라진다(POSTMORTEM 2026-09-06). 마감 뒤의 PR 조회는 어차피 적재를 못 시작한다 — 사건 없이 미처리로 세고 다음 밤 정렬이 앞으로 가져온다.

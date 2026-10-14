@@ -558,6 +558,7 @@ export const es = {
       "pr-check-failed": "No se pudo comprobar en GitHub si hay una pull request de Malmoi abierta, así que no se sincronizó nada. La próxima ejecución lo vuelve a comprobar.",
       "publish-raced": "Publish terminó después de las comprobaciones de sincronización, así que no se sincronizó nada. La próxima ejecución lo vuelve a comprobar.",
       "too-large": "El cambio del repositorio es demasiado grande para una sincronización desde el servidor. No se sincronizó nada. Reduce el tamaño de los archivos o entrégalo con el flujo de trabajo del repositorio.",
+      "locale-change-pending": "Hay una eliminación de idioma sin enviar en Malmoi, así que no se sincronizó nada. La sincronización se reanuda cuando se publique o se cancele la eliminación.",
     },
     empty: {
       title: "Todavía no hay actividad",
@@ -633,6 +634,7 @@ export const es = {
           "pr-check-failed": (who: ReactNode): ReactNode => <>{who} retuvo la sincronización: GitHub no respondió sobre las pull requests</>,
           "publish-raced": (who: ReactNode): ReactNode => <>{who} retuvo la sincronización: Publish terminó después de las comprobaciones de sincronización</>,
           "too-large": (who: ReactNode): ReactNode => <>{who} retuvo la sincronización: el cambio es demasiado grande para una sincronización desde el servidor</>,
+          "locale-change-pending": (who: ReactNode): ReactNode => <>{who} retuvo la sincronización: hay una eliminación de idioma sin enviar</>,
         },
       },
       member: {

@@ -10,6 +10,10 @@ import { createGitClient, openRepoReader } from "@/lib/repo-host";
 import { hasRepoConnection, repoTargetOf, sameRepoTarget } from "@/lib/repo-host/target";
 import { GITHUB_WAIT_MS, withinGithubWait } from "@/lib/github-wait";
 import { closeExpiredImportRuns, runAutomationImport } from "@/lib/import/run";
+import { observeSurfaceLocales } from "@/lib/import/observe";
+import { expireLocaleChanges } from "@/lib/locales/expire";
+import { readLocaleStates } from "@/lib/locales/work";
+import { planPublishBarrier, uncertainPublishWhere } from "@/lib/sync/execution";
 import { openPrGateApplies } from "@/lib/protection/plan";
 import { countPending } from "@/lib/protection/where";
 import { readDeliveryRevision } from "@/lib/pull/delivery-revision";
@@ -81,8 +85,12 @@ export async function runNightly(prisma: PrismaClient, target: NightlyTarget, el
   const snapshot = await prisma.project.findUniqueOrThrow({ where: { id: target.id }, select: { lastPublishedAt: true } });
   const expectedDeliveryRevision = await readDeliveryRevision(prisma, target.id);
   const active = target.surfaces.filter((surface) => surface.archivedAt === null);
+  // 언어 변경 상태는 셀 편집 수와 따로 센다(locale-add design §4) — 행이 없는 프로젝트는 입력이 0·false라 판정 순서가 그대로다.
+  const localeStates = await readLocaleStates(prisma, target.id);
   const input: NightlyInput = {
     pending: await countPending(prisma, target.id),
+    localeWork: localeStates.reduce((sum, state) => sum + state.work.length, 0),
+    localeChanges: localeStates.some((state) => state.rows.length > 0),
     surfaces: target.surfaces.map((surface) => ({
       active: surface.archivedAt === null,
       formatComplete: surface.adapterName !== null && isAdapterName(surface.adapterName) && !!surface.pathTemplate && !!surface.baseLocale,
@@ -116,13 +124,26 @@ export async function runNightly(prisma: PrismaClient, target: NightlyTarget, el
       const repository = { repoHost: target.repoHost, repositoryId: target.repositoryId, installationId: target.installationId, gitlabConnectionId: target.gitlabConnectionId,
         repoOwner: target.repoOwner, repoName: target.repoName, baseBranch: target.baseBranch };
       // 리더는 열 때 연결을 판정한다 — 리포 id가 없으면 지금처럼 리더 열기가 거부한다(적재 코어가 그 실패를 결과로 남긴다).
-      const result = await runAutomationImport(prisma, { projectId: target.id, repository, expectedLastPublishedAt: snapshot.lastPublishedAt, expectedDeliveryRevision },
+      // 적재 갈래는 열린 PR 게이트를 지났다 — 표면 적재가 같은 잠금 안에서 언어 변경 만료를 겸한다.
+      const result = await runAutomationImport(prisma, { projectId: target.id, repository, expectedLastPublishedAt: snapshot.lastPublishedAt, expectedDeliveryRevision, pullRequest: "none-open" },
         async () => {
           const connection = repoTargetOf(target);
           if (connection.status !== "ok") fail("repository identity is not pinned; reconnect the project", "not-installed");
           return openRepoReader(connection.target);
         });
       return { action: "import", ...result };
+    }
+    case "expire": {
+      // ⚠️ 사건은 방문 결과 하나다 — 만료된 의도는 각자 `surface.localeChangeResolved` 사건을 같은 tx에 남긴다(상태 변경 사건).
+      const read = await expireAtHead(prisma, target, { lastPublishedAt: snapshot.lastPublishedAt, deliveryRevision: expectedDeliveryRevision });
+      const event = {
+        projectId: target.id, subtype: "nightly.skip", actor: { kind: "AUTOMATION" }, surfaceIds: active.map((surface) => surface.id),
+        result: read === "unreadable" ? "failed" : "upToDate", finishedAt: new Date(),
+        payload: importEventPayload({ source: "nightly", surfaceSlugs: active.map((surface) => surface.slug), deferReason: null, errorCode: read === "unreadable" ? "base-unreadable" : null }),
+      } as const;
+      await recordEvent(prisma, event);
+      // base 트리를 못 읽은 것은 일시·설정 실패다 — 브랜치는 방금 head로 읽혔으므로 표면 실패 상태를 쓰지 않는다(`branchMissing: false`).
+      return read === "unreadable" ? { action: "skip", outcome: "failed", reason: "base-unreadable", branchMissing: false } : { action: "skip", outcome: "upToDate" };
     }
     case "skip": {
       const event = {
@@ -187,6 +208,56 @@ export async function runNightly(prisma: PrismaClient, target: NightlyTarget, el
       // 사건이 없는 갈래(비교 대상 0 · 적재 시작 마감) — 요약 카운터만 센다.
       return { action: "none", counter: plan.counter };
   }
+}
+
+/**
+ * **같은 head의 언어 변경 만료** (locale-add design §1 "자동 적재가 만료를 겸한다" — 적재를 건너뛰는 방문). 판정이 열린 PR/MR 없음을 성공한 조회로
+ * 확인한 뒤에만 온다. base 트리를 읽고(내용은 읽지 않는다 — 존재는 경로가 정한다), `Project` 잠금 뒤 소스마다 `expireLocaleChanges`를 부른다.
+ *
+ * ⚠️ **원격 관측을 최신으로 취급하지 않는다** (POSTMORTEM 2026-10-07) — 잠금 뒤 리포 신원·기준 브랜치·Publish 완료 표식(`lastPublishedAt`·전달
+ * revision)·실행 중/미확정 Publish를 다시 본다. 그 사이 Publish가 PR을 열었을 수 있으므로 하나라도 다르면 만료하지 않는다(다음 밤이 다시 본다).
+ * ⚠️ 트리를 못 읽으면 파일 부재가 아니다 — 아무것도 쓰지 않고 `unreadable`이다(POSTMORTEM 2026-09-27).
+ * ⚠️ 잠금 순서는 `Project` → 소스(id순)다 — `expireLocaleChanges`가 같은 tx에서 다시 잡는 것은 재진입이다(W3 호출 계약).
+ */
+async function expireAtHead(
+  prisma: PrismaClient,
+  target: NightlyTarget,
+  expected: { lastPublishedAt: Date | null; deliveryRevision: string },
+): Promise<"expired" | "held" | "unreadable"> {
+  const connection = repoTargetOf(target);
+  if (connection.status !== "ok") return "unreadable";
+  let paths: string[];
+  try {
+    const reader = await openRepoReader(connection.target);
+    const tree = await reader.snapshot(target.baseBranch);
+    if (tree.status !== "ok") return "unreadable";
+    paths = tree.files.map((file) => file.path);
+  } catch (error) {
+    logCaught("nightly", "locale-expiry-tree", error);
+    return "unreadable";
+  }
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${target.id} FOR UPDATE`;
+    const current = await tx.project.findUnique({ where: { id: target.id } });
+    if (current === null || current.archivedAt !== null) return "held";
+    const now = repoTargetOf(current);
+    if (now.status !== "ok" || !sameRepoTarget(now.target, connection.target) || current.repoOwner !== target.repoOwner
+      || current.repoName !== target.repoName || current.baseBranch !== target.baseBranch) return "held";
+    if ((current.lastPublishedAt?.getTime() ?? null) !== (expected.lastPublishedAt?.getTime() ?? null)
+      || await readDeliveryRevision(tx, target.id) !== expected.deliveryRevision) return "held";
+    const at = new Date();
+    if (await tx.syncRun.findFirst({ where: uncertainPublishWhere(target.id, at), select: { id: true } }) !== null) return "held";
+    const running = await tx.syncRun.findFirst({ where: { projectId: target.id, status: "RUNNING" }, orderBy: { startedAt: "desc" } });
+    if (running !== null && planPublishBarrier(running, at) !== null) return "held";
+    const surfaces = await tx.translationSurface.findMany({ where: { projectId: target.id, archivedAt: null }, orderBy: { id: "asc" } });
+    let expired = false;
+    for (const surface of surfaces) {
+      const result = await expireLocaleChanges(tx, { projectId: target.id, surfaceId: surface.id, surfaceSlug: surface.slug, pullRequest: "none-open",
+        observed: observeSurfaceLocales(paths, surface), actor: { kind: "AUTOMATION" } });
+      expired ||= result.expired.length > 0;
+    }
+    return expired ? "expired" : "held";
+  });
 }
 
 /**

@@ -564,6 +564,7 @@ export const ko = {
       "pr-check-failed": "GitHub에서 열린 Malmoi PR을 확인하지 못해 아무것도 동기화하지 않았습니다. 다음 실행에서 다시 확인합니다.",
       "publish-raced": "동기화 전 확인을 마친 뒤 게시가 완료되어 아무것도 동기화하지 않았습니다. 다음 실행에서 다시 확인합니다.",
       "too-large": "리포지토리의 변경 사항이 서버 동기화 한도를 초과했습니다. 아무것도 동기화하지 않았습니다. 파일 크기를 줄이거나 리포지토리 워크플로로 전달하세요.",
+      "locale-change-pending": "Malmoi에 미전송 언어 제거가 있어 아무것도 동기화하지 않았습니다. 게시하거나 제거를 취소하면 동기화가 다시 시작됩니다.",
     },
     empty: {
       title: "아직 활동이 없습니다",
@@ -640,6 +641,7 @@ export const ko = {
           "pr-check-failed": (who: ReactNode): ReactNode => <>{who} — 동기화를 보류했습니다. GitHub가 PR 확인에 응답하지 않았습니다</>,
           "publish-raced": (who: ReactNode): ReactNode => <>{who} — 동기화를 보류했습니다. 동기화 전 확인을 마친 뒤 게시가 완료되었습니다</>,
           "too-large": (who: ReactNode): ReactNode => <>{who} — 동기화를 보류했습니다. 변경 사항이 서버 동기화 한도를 초과했습니다</>,
+          "locale-change-pending": (who: ReactNode): ReactNode => <>{who} — 동기화를 보류했습니다. 미전송 언어 제거가 있습니다</>,
         },
       },
       member: {

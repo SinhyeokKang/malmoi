@@ -11,6 +11,8 @@ import { logFailure } from "@/lib/github-connect/log";
 import { loadOpenPrForImportGate } from "@/lib/projects/open-pr";
 import { abandonImportRun, finishImportRun, markImportStarted } from "@/lib/projects/import-status-store";
 import { applyProtectedPush, ApplyGuardError } from "@/lib/push/apply";
+import { planLocaleImportGate } from "@/lib/push/locale-gate";
+import { readLocaleStates } from "@/lib/locales/work";
 import { classifyMissingSurface } from "@/lib/push/surface-refusal";
 import type { PushResponse } from "@/lib/push/payload";
 import { planOpenPrGate } from "@/lib/protection/plan";
@@ -242,6 +244,18 @@ export async function POST(request: Request): Promise<NextResponse> {
     }
 
     /**
+     * **전달 안 된 언어 제거 게이트** (locale-add design §1 "보류"). 제거 요청이 PR로 나가기 전에 적재하면 리포의 옛 파일이 그 의도 위로
+     * 들어온다 — 적재 **전체**를 보류한다(셀을 고르지 않는다 — 병합이 아니다). ADD만 있으면 적재하고 그 언어를 orphan 대상에서 뺀다
+     * (`applyProtectedPush`). 전달된 뒤에는 아래 열린 PR 게이트가 맡는다.
+     * ⚠️ 열린 PR 게이트 **앞**이다 — 보류가 리포 호스트를 부르지 않는다. 잠금 안에서 한 번 더 본다(`applyProtectedPush`).
+     */
+    const localeGate = planLocaleImportGate(await readLocaleStates(prisma, project.id));
+    if (localeGate.action === "defer") {
+      await record({ surface, result: "deferred", deferReason: localeGate.reason });
+      return deferred(project.id, parsed.data.commitSha, { reason: localeGate.reason });
+    }
+
+    /**
      * **열린 Malmoi PR 게이트** (nightly-sync). Publish가 커밋에 성공하면 편집 토큰이 비워지므로, PR이 머지되기 전의 CI 적재는 사전
      * 집계 0을 보고 그 편집을 덮는다 — PR이 열린 동안은 적재 전체를 보류한다. 셀을 고르지 않으므로 병합이 아니다(`pending-edits`와 같은 부류).
      * ⚠️ **조회 실패·마감은 보류다**(fail-closed, POSTMORTEM 2026-09-03) — "PR 없음"으로 읽으면 장애 동안 편집이 덮인다.
@@ -264,6 +278,8 @@ export async function POST(request: Request): Promise<NextResponse> {
       result = await applyProtectedPush(prisma, scope, parsed.data, {
         refsMode: "replace", previousBaseLocale: surface.baseLocale,
         startedAt, token, pushTokenHash, expectedLastPublishedAt: project.lastPublishedAt, expectedDeliveryRevision,
+        // 위 게이트를 지났다 — 열린 PR이 없다고 확인됐거나 PR을 낼 수 없는 프로젝트다. 언어 변경 만료의 입력이다.
+        pullRequest: "none-open",
         // CI push는 전부 받거나 400이라 부분 실패가 없다 — 성공이면 이전 실패가 같은 트랜잭션에서 지워진다.
         importOutcome: null,
         /**
@@ -361,7 +377,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 function deferred(
   projectId: string,
   commitSha: string,
-  detail: { reason: "pending-edits"; pendingCount: number } | { reason: "open-pr" | "pr-check-failed" | "publish-raced" },
+  detail: { reason: "pending-edits"; pendingCount: number } | { reason: "open-pr" | "pr-check-failed" | "publish-raced" | "locale-change-pending" },
 ): NextResponse {
   return NextResponse.json<Extract<PushResponse, { status: "deferred" }>>({ status: "deferred", ...detail, projectId, commitSha });
 }

@@ -1420,6 +1420,8 @@ export const en = {
        * (`resource-limit` 문구와 같은 방향) · 예산 밖 경로인 리포 워크플로. 야간의 주 대상이 워크플로 없는 프로젝트라 앞엣것이 먼저다.
        */
       "too-large": "The repository change is too large for a server-side sync. Nothing was synced. Reduce the files' size, or deliver it with the repository workflow.",
+      /** 전달 안 된 언어 제거가 자동 적재 전체를 멈췄다(locale-add). 푸는 길은 둘 — Publish로 보내거나 제거를 취소한다. */
+      "locale-change-pending": "A language removal in Malmoi is still unsent, so nothing was synced. Syncing resumes once it's published or the removal is cancelled.",
     },
     empty: {
       title: "No activity yet",
@@ -1518,6 +1520,7 @@ export const en = {
           "pr-check-failed": (who: ReactNode): ReactNode => <>{who} held the sync — GitHub didn&rsquo;t answer about pull requests</>,
           "publish-raced": (who: ReactNode): ReactNode => <>{who} held the sync — Publish finished after the sync checks</>,
           "too-large": (who: ReactNode): ReactNode => <>{who} held the sync — the change is too large for a server-side sync</>,
+          "locale-change-pending": (who: ReactNode): ReactNode => <>{who} held the sync — a language removal is still unsent</>,
         },
       },
       member: {

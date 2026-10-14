@@ -1,5 +1,6 @@
 import type { Prisma } from "@/generated/prisma/client";
-import { discardFingerprint } from "@/lib/protection/fingerprint";
+import { readLocaleStates } from "@/lib/locales/work";
+import { discardFingerprint, type LocaleChangeState } from "@/lib/protection/fingerprint";
 import { loadPendingEdits } from "@/lib/protection/where";
 import { REPO_COLUMNS } from "@/lib/repo-host/target";
 
@@ -15,7 +16,7 @@ import { REPO_COLUMNS } from "@/lib/repo-host/target";
 export async function readDiscardApproval(
   db: Prisma.TransactionClient,
   input: { projectId: string; userId: string },
-): Promise<{ fingerprint: string; pending: { id: string; token: string }[] }> {
+): Promise<{ fingerprint: string; pending: { id: string; token: string }[]; localeChanges: LocaleChangeState[] }> {
   const repository = await db.project.findUniqueOrThrow({
     where: { id: input.projectId },
     select: { ...REPO_COLUMNS, baseBranch: true },
@@ -25,5 +26,19 @@ export async function readDiscardApproval(
     select: { id: true, importRevision: true, adapterName: true, pathTemplate: true, baseLocale: true },
   });
   const pending = await loadPendingEdits(db, input.projectId);
-  return { fingerprint: discardFingerprint({ userId: input.userId, projectId: input.projectId, repository, surfaces, pending }), pending };
+  const localeChanges = await readLocaleChangeStates(db, input.projectId);
+  return { fingerprint: discardFingerprint({ userId: input.userId, projectId: input.projectId, repository, surfaces, pending, localeChanges }), pending, localeChanges };
+}
+
+/**
+ * 승인 지문이 묶는 **언어 변경 상태** — 활성 소스 중 의도 행이나 비지 않은 전달 목록이 있는 것만(`readLocaleStates`). 수동 Sync와 소스 제거가 같은
+ * 읽기를 쓴다 — 둘 다 이것을 지우므로 승인 대상이다(locale-add design §4). 비면 언어 변경이 없다.
+ */
+export async function readLocaleChangeStates(db: Prisma.TransactionClient, projectId: string, surfaceId?: string): Promise<LocaleChangeState[]> {
+  const states = await readLocaleStates(db, projectId, surfaceId);
+  return states.map(state => ({
+    surfaceId: state.surfaceId,
+    rows: state.rows.map(row => ({ localeCode: row.localeCode, operation: row.operation, requestedAt: row.requestedAt.toISOString() })),
+    delivered: state.delivered,
+  }));
 }

@@ -32,6 +32,8 @@ const hoisted = vi.hoisted(() => ({
     // ⚠️ `update`·`updateMany`는 임포트 진행 표시가 쓴다 (PRODUCT §7.8) — 없으면
     // push 라우트가 적재에 닿기 전에 TypeError로 죽어 정상 경로가 통째로 500이 된다.
     deliveryConfirmation: { findMany: vi.fn(async () => []) },
+    // 언어 변경 게이트(locale-add) — 행이 없으면 기존 적재 경로다.
+    localeChange: { findMany: vi.fn(async () => []) },
     project: {
       findUnique: vi.fn(),
       findMany: vi.fn(),

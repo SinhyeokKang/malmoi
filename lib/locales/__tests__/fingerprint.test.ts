@@ -59,11 +59,11 @@ describe("localeChangeFingerprint", () => {
   });
 
   it("never equals the Sync or source-removal approval for the same tokens", () => {
-    const removal = removalFingerprint({ userId: "owner", projectId: "p", surfaceId: "s", pending: BASE.pending });
+    const removal = removalFingerprint({ userId: "owner", projectId: "p", surfaceId: "s", pending: BASE.pending, localeChanges: [] });
     const discard = discardFingerprint({
       userId: "owner", projectId: "p",
       repository: { repoHost: "github", repositoryId: "1", installationId: "2", gitlabConnectionId: null, repoOwner: "o", repoName: "r", baseBranch: "main" },
-      surfaces: [], pending: BASE.pending,
+      surfaces: [], pending: BASE.pending, localeChanges: [],
     });
     expect(localeChangeFingerprint(BASE)).not.toBe(removal);
     expect(localeChangeFingerprint(BASE)).not.toBe(discard);

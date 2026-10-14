@@ -10,6 +10,26 @@ import { createHash, timingSafeEqual } from "node:crypto";
  * ⚠️ `./plan`과 분리한 이유는 `node:crypto`다 — 판정 모듈은 화면이 값으로 읽는다.
  */
 
+/**
+ * 소스 하나의 **언어 변경 상태** (locale-add design §4 "집계·보호") — 의도 행(요청 시각까지)과 마지막 전달 목록(`null`은 확인 안 됨).
+ * 수동 Sync·소스 제거가 이것을 지우므로 승인에 묶는다 — 승인 뒤 추가·제거·취소·전달이 있으면 옛 승인이 통하지 않는다.
+ */
+export type LocaleChangeState = {
+  surfaceId: string;
+  rows: readonly { localeCode: string; operation: "ADD" | "REMOVE"; requestedAt: string }[];
+  delivered: readonly { localeCode: string; effect: "create" | "delete" }[] | null;
+};
+
+/** 순서에 흔들리지 않는 직렬형 — 소스 id순, 그 안은 코드(·효과)순이다. 배열 튜플이라 구분자 모호성이 없다. */
+function canonicalLocaleChanges(states: readonly LocaleChangeState[]): unknown[] {
+  const order = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+  return [...states].sort((a, b) => order(a.surfaceId, b.surfaceId)).map(state => [
+    state.surfaceId,
+    [...state.rows].sort((a, b) => order(a.localeCode, b.localeCode)).map(row => [row.localeCode, row.operation, row.requestedAt]),
+    state.delivered === null ? null : [...state.delivered].sort((a, b) => order(a.localeCode, b.localeCode) || order(a.effect, b.effect)).map(item => [item.localeCode, item.effect]),
+  ]);
+}
+
 export type DiscardFingerprintInput = {
   userId: string;
   projectId: string;
@@ -20,6 +40,8 @@ export type DiscardFingerprintInput = {
   repository: { repoHost: string; repositoryId: string | null; installationId: string | null; gitlabConnectionId: string | null; repoOwner: string; repoName: string; baseBranch: string };
   surfaces: readonly { id: string; importRevision: number; adapterName: string | null; pathTemplate: string | null; baseLocale: string | null }[];
   pending: readonly { id: string; token: string }[];
+  /** 활성 소스의 언어 변경 상태 — 성공한 strict 적재가 이것을 지운다(locale-add design §1 전이 표 마지막 행). */
+  localeChanges: readonly LocaleChangeState[];
 };
 
 export function discardFingerprint(input: DiscardFingerprintInput): string {
@@ -32,6 +54,7 @@ export function discardFingerprint(input: DiscardFingerprintInput): string {
     [input.repository.repoHost, input.repository.repositoryId, input.repository.installationId, input.repository.gitlabConnectionId, input.repository.repoOwner, input.repository.repoName, input.repository.baseBranch],
     [...input.surfaces].sort(byId).map(s => [s.id, s.importRevision, s.adapterName, s.pathTemplate, s.baseLocale]),
     [...input.pending].sort(byId).map(p => [p.id, p.token]),
+    canonicalLocaleChanges(input.localeChanges),
   ]);
   return createHash("sha256").update(canonical).digest("hex");
 }
@@ -45,6 +68,8 @@ export type RemovalFingerprintInput = {
    * `surfaceId` 전체라, 화면용 `pendingWhere`(활성만)로 세면 승인 안 받은 orphan 편집이 덮인다.
    */
   pending: readonly { id: string; token: string }[];
+  /** 그 소스의 언어 변경 상태(0 또는 1개) — 제거가 의도 행·전달 목록을 지운다(locale-add design §5 "소스 제거·재등록"). */
+  localeChanges: readonly LocaleChangeState[];
 };
 
 /**
@@ -53,7 +78,7 @@ export type RemovalFingerprintInput = {
  */
 export function removalFingerprint(input: RemovalFingerprintInput): string {
   const byId = (a: { id: string }, b: { id: string }) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
-  const canonical = JSON.stringify(["remove-surface", input.userId, input.projectId, input.surfaceId, [...input.pending].sort(byId).map(p => [p.id, p.token])]);
+  const canonical = JSON.stringify(["remove-surface", input.userId, input.projectId, input.surfaceId, [...input.pending].sort(byId).map(p => [p.id, p.token]), canonicalLocaleChanges(input.localeChanges)]);
   return createHash("sha256").update(canonical).digest("hex");
 }
 
