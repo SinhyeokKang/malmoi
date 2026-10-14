@@ -19,14 +19,14 @@
 |---|---|
 | dev head | `2fc25ed4`(origin/dev와 같음, P3 + design-brief) |
 | 마이그레이션 | `20261014060000_locale_change` — **dev DB 적용 완료**(anon/authenticated USAGE·CREATE false, GRANT 0). **prod는 미적용** → `/merge` 1단계 `pnpm db:status:prod` → `pnpm db:deploy` → prod `has_schema_privilege` 확인 |
-| 살아 있는 워커 | **RT** `ctx_be8cc5bb90fd`(main 체크아웃, 인계 `.scratch/orch-locale-add/handoffs/handoff-RT.md`). 그 밖의 워커·워크트리는 전부 해제·삭제(reclaimable 0) |
+| 살아 있는 워커 | **F1** `ctx_ec4e82e50708`(워크트리 `lo-F1` — #266·#265 수정) · **RT** `ctx_be8cc5bb90fd`(retain — F1 통합 뒤 재실측·이슈 닫기용, main 체크아웃). 그 밖은 전부 해제·삭제 |
 | RT가 도는 동안 | main 체크아웃에서 cherry-pick·`pnpm build`·`pnpm gate` 금지(dev 서버 HMR·`.next` 오염). RT 뒤 `rm -rf .next/dev`, 리포 밖 clone 확인 |
 | Orca run | `run_2836e5d910eb` — 새 세션은 새 run을 만들어도 된다(이 run의 Delivery는 모두 ack됨) |
 | 로컬 전용 자료 | `.scratch/orch-locale-add/`(브리프·인계·리뷰 원문) — **gitignore라 이 머신에만 있다.** 필요한 결론은 아래와 design.md·ARCHITECTURE §5.10에 옮겨 두었다 |
 
 ### 남은 일 (주인·순서)
 
-1. **RT 결과 처리** — 인계의 칸별 pass/fail/not measured를 이 문서 진행 로그에 옮기고, BugShot 이슈(`[locale-add]`)를 그 영역의 새 수정 워커로 보낸다(원 배치 워커는 모두 해제됨 — 브리프에 이 문서·design.md·ARCHITECTURE §5.10을 가리킨다). tasks §9 셋째·넷째를 결과에 따라 체크.
+1. **RT 결함 수정·재실측** — RT 매트릭스 4/4 통과, 결함 둘: [#266](https://github.com/SinhyeokKang/malmoi/issues/266)(🔴 미머지 종료 뒤 재요청한 제거가 전달 목록과 같아져 PR에 안 실리고 다음 방문이 지운다) · [#265](https://github.com/SinhyeokKang/malmoi/issues/265)(🟡 MCP `preview_publish`가 전달 후 취소에서 "Nothing to send."). **F1**이 고치는 중 → 리뷰 → 통합 → `pnpm gate` → push → RT 워커로 두 이슈 재실측·닫기 → tasks §9 셋째·넷째 체크.
 2. **ko·es 초안 검수(`/translate`)** — 이 런이 넣은 사전 문구는 en 확정, ko·es는 초안: `logs.deferReasons["locale-change-pending"]` · `logs.sentence.import.held["locale-change-pending"]`(B3) · `logs.reasons["locale-plan-refused"]`(B2). ko 후보 문장은 R-B3 W6("아직 보내지 않은 언어 제거가 있어"). GitLab 변형 자리(`logs.gitlab.*`)는 호스트 낱말이 없어 덮지 않았다.
 3. **시안 도착 뒤(⏸ 행 전부)** — design-brief 프레임 **1~25**(2026-10-14 백엔드 계약 반영으로 21~25 추가). 아래 "화면 배치 데이터 계약"을 브리프에 그대로 넘긴다. 신규 Dialog가 생기므로 **DS(`/design-sync`) 행**을 UI 배치 통합 직후·push 전에 둔다. 이어서 DESIGN 갱신 · `/guide`(en·ko·es — "리포에서만 언어 추가·제거" 문구와 MCP 도구·권한 표) · `/guide-shots` · 화면 `/runtime-test`(tasks §9 둘째, 두 세션 외부 제거 포함).
 4. **`/merge`** — 3이 끝난 뒤 사용자가 부른다. 준비물: prod 마이그레이션(위 표), `lib/cli/push-response.ts`의 `locale-change-pending` CLI 경고는 **action 릴리스 축**(`malmoi-i18n-push-vN`)이라 앱 머지와 별개로 판단.
@@ -138,3 +138,5 @@
 - R-D 완료(🔴 1 · 🟡 5 · ⚪ 6). **D fix1** 전부. 가이드 MCP 권한 표는 ⏸ 시안 대기 `/guide` 행 소유로 유지. R-D 해제·정리.
 - **wave ④·⑤ 통합**: C2 · B2 fix2 · B3 fix2 · C1(+fix1) · D(+fix1). main 체크아웃 `pnpm gate` **ok**. tasks §6 비시각 넷 · §7 · §8 첫째·셋째 체크(§8 둘째는 DESIGN이 시안 대기라 미체크 — DIRECTORY·ACTIONS·OPERATIONS는 반영됨).
 - P3 push `41935505..0e29da92` · CI success(38545758251). design-brief 백엔드 계약 반영(`68b00b47`, 프레임 21~25 추가) · push `..2fc25ed4`. **RT** `ctx_be8cc5bb90fd`(Opus medium, main 체크아웃, MCP로 추가·제거) — 이 동안 main 체크아웃 cherry-pick·build 금지.
+- **RT 완료** — 폐기용 프로젝트 넷(GitHub·GitLab × json-catalog·chrome-locales, 격리 base 브랜치)에서 MCP로 왕복. 매트릭스 4/4 통과(추가→번역→Publish→머지, 제거→재Publish 유지→취소→재요청→머지→orphan→재추가 값 복구) · 전달 후 취소 · 미머지 종료 만료 · base 선삭제 · 응답 유실 재시도 · 실행 비트 삭제(GitHub `sha:null`·GitLab `action:delete`) · PR/MR 본문 안내(생성·갱신) 통과. **결함**: #266 🔴 · #265 🟡(BugShot). **미측정**: Chrome `_locales/de/`에 비-messages 파일만 남은 확장 로드(시스템 Chrome 금지·ego로 unpacked 로드 불가) · 실제 네트워크 단절(서버 강제 종료로 대체) · `/mcp` 화면 토큰 발급(같은 코어로 발급). 테스트 프로젝트 보관·push 토큰 회전·원격 브랜치/PR·API 토큰 정리 완료. RT retain.
+- **지휘자 판단(design `2b2650cc`)**: #266 → 만료가 그 행의 효과를 전달 목록에서도 뺀다(R-B2의 "수렴 Publish 1회 유지" 판정 번복). **F1** `ctx_ec4e82e50708`(Opus high, #266·#265, `Refs #N`).
