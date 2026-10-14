@@ -25,8 +25,8 @@ const REPO = "87515176";
 describe("buildCommitActions — 고정 base 위 스냅샷 하나의 actions", () => {
   it("base에 있으면 update, 없으면 create — `execute_filemode`를 넣지 않는다(수정 파일 100644 — W0 실측)", () => {
     expect(buildCommitActions([
-      { path: "locales/ko.json", content: "{}\n", inBase: true },
-      { path: "locales/fr.json", content: "{}\n", inBase: false },
+      { kind: "upsert", path: "locales/ko.json", content: "{}\n", inBase: true },
+      { kind: "upsert", path: "locales/fr.json", content: "{}\n", inBase: false },
     ])).toEqual([
       { action: "update", file_path: "locales/ko.json", content: "{}\n", encoding: "text" },
       { action: "create", file_path: "locales/fr.json", content: "{}\n", encoding: "text" },
@@ -35,17 +35,33 @@ describe("buildCommitActions — 고정 base 위 스냅샷 하나의 actions", (
 
   it("경로는 본문(JSON) 값이라 인코딩하지 않는다 — 공백·유니코드·`%`가 왕복 동일하다", () => {
     const paths = ["locales/zh Hant.json", "locales/한국어.json", "locales/100%.json", "group/sub group/ko.json"];
-    const actions = buildCommitActions(paths.map((path) => ({ path, content: "x", inBase: true })));
+    const actions = buildCommitActions(paths.map((path) => ({ kind: "upsert" as const, path, content: "x", inBase: true })));
     expect(actions.map((action) => action.file_path)).toEqual(paths);
     expect(JSON.parse(JSON.stringify(actions)).map((action: { file_path: string }) => action.file_path)).toEqual(paths);
   });
 
   it.each(["", "/abs.json", "a//b.json", "a/../b.json", "./a.json", "a\\b.json", "a/\0.json", "a/"])("비정상 경로 %j는 조립 전에 던진다 — 리포 밖이나 다른 파일을 쓰지 않는다", (path) => {
-    expect(() => buildCommitActions([{ path, content: "x", inBase: false }])).toThrow();
+    expect(() => buildCommitActions([{ kind: "upsert", path, content: "x", inBase: false }])).toThrow();
+    expect(() => buildCommitActions([{ kind: "delete", path }])).toThrow();
   });
 
   it("같은 경로가 둘이면 던진다 — 한 커밋에서 같은 파일을 두 번 쓰면 GitLab이 400을 주거나 나중 것이 이긴다", () => {
-    expect(() => buildCommitActions([{ path: "a.json", content: "1", inBase: true }, { path: "a.json", content: "2", inBase: true }])).toThrow();
+    expect(() => buildCommitActions([{ kind: "upsert", path: "a.json", content: "1", inBase: true }, { kind: "upsert", path: "a.json", content: "2", inBase: true }])).toThrow();
+    expect(() => buildCommitActions([{ kind: "upsert", path: "a.json", content: "1", inBase: true }, { kind: "delete", path: "a.json" }])).toThrow();
+    expect(() => buildCommitActions([{ kind: "delete", path: "a.json" }, { kind: "delete", path: "a.json" }])).toThrow();
+  });
+
+  it("delete는 `{action: \"delete\", file_path}`이다 — 삭제만 있는 변경도 통과한다", () => {
+    expect(buildCommitActions([{ kind: "delete", path: "_locales/ko/messages.json" }])).toEqual([
+      { action: "delete", file_path: "_locales/ko/messages.json" },
+    ]);
+    expect(buildCommitActions([
+      { kind: "upsert", path: "locales/en.json", content: "{}\n", inBase: true },
+      { kind: "delete", path: "locales/ko.json" },
+    ])).toEqual([
+      { action: "update", file_path: "locales/en.json", content: "{}\n", encoding: "text" },
+      { action: "delete", file_path: "locales/ko.json" },
+    ]);
   });
 
   it("빈 변경은 던진다 — `actions: []`는 400이고 `allow_empty`는 수렴하지 않는 빈 커밋이다(W0 실측). 호출부는 2층에서 이미 멈춘다", () => {

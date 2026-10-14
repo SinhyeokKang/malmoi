@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { GitClient } from "@/lib/pull/client";
 
 const hoisted = vi.hoisted(() => ({
   request: vi.fn(),
@@ -192,10 +193,10 @@ it("getTree throws on a truncated tree — a partial tree turns base files into 
  * 리포의 나머지 파일이 남고, 커밋 parent는 base head 하나이며, 메시지에 루프 마커가 든다. sync 브랜치가 없으면 만들고 있으면 강제로 옮긴다.
  */
 describe("createGitClient.publishSnapshot", () => {
-  const input = { branch: "malmoi-i18n/sync-acme", baseSha: "basehead", changes: [{ path: "i18n/ko.json", content: "{}\n", inBase: true }], summary: "1 file" };
+  const input = { branch: "malmoi-i18n/sync-acme", baseSha: "basehead", changes: [{ kind: "upsert" as const, path: "i18n/ko.json", content: "{}\n", inBase: true }], summary: "1 file" };
   const routes = () => hoisted.request.mock.calls.map(([route]) => route as string);
 
-  async function publish(syncExists: boolean) {
+  async function publish(syncExists: boolean, changes: Parameters<GitClient["publishSnapshot"]>[0]["changes"] = input.changes) {
     const client = await createGitClient("o", "r", "7", "9");
     hoisted.request.mockReset();
     hoisted.request.mockImplementation(async (route: string) => {
@@ -207,7 +208,7 @@ describe("createGitClient.publishSnapshot", () => {
       }
       return { data: {} };
     });
-    return client.publishSnapshot(input);
+    return client.publishSnapshot({ ...input, changes });
   }
 
   it("sync 브랜치가 없으면 트리 → 커밋 → ref 조회 → ref 생성이고, 커밋 SHA를 돌려준다", async () => {
@@ -226,6 +227,13 @@ describe("createGitClient.publishSnapshot", () => {
     expect(commit.tree).toBe("tree-sha");
     expect(commit.message).toContain("[skip-malmoi-i18n]");
     expect(hoisted.request).toHaveBeenCalledWith("POST /repos/{owner}/{repo}/git/refs", expect.objectContaining({ ref: "refs/heads/malmoi-i18n/sync-acme", sha: "commit-sha" }));
+  });
+
+  it("delete만 있는 스냅샷: base_tree 위의 `sha: null` 항목 하나 — 그 경로만 빠지고 나머지 파일은 base_tree가 남긴다", async () => {
+    await expect(publish(false, [{ kind: "delete", path: "_locales/ko/messages.json" }])).resolves.toBe("commit-sha");
+    expect(hoisted.request).toHaveBeenCalledWith("POST /repos/{owner}/{repo}/git/trees", expect.objectContaining({
+      base_tree: "basehead", tree: [{ path: "_locales/ko/messages.json", mode: "100644", type: "blob", sha: null }],
+    }));
   });
 
   it("sync 브랜치가 있으면 강제로 옮긴다 — 누적 히스토리가 아니라 스냅샷이다", async () => {

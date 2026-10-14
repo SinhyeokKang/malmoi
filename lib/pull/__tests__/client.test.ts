@@ -74,7 +74,7 @@ describe("createFakeGitClient — 응답 주입", () => {
 });
 
 describe("createFakeGitClient — 쓰기 경로", () => {
-  const snapshot = { branch: "malmoi-i18n/sync", baseSha: "basehead", changes: [{ path: "i18n/ko.json", content: "x", inBase: true }], summary: "1 file" };
+  const snapshot = { branch: "malmoi-i18n/sync", baseSha: "basehead", changes: [{ kind: "upsert" as const, path: "i18n/ko.json", content: "x", inBase: true }], summary: "1 file" };
 
   it("publishSnapshot이 받은 입력을 기록하고 결정적인 커밋 SHA를 준다 — 같은 입력의 재실행 비교가 성립한다", async () => {
     const { client, calls } = createFakeGitClient({});

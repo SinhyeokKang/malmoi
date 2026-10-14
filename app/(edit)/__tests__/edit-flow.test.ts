@@ -63,7 +63,7 @@ async function pullFiles(prisma: PrismaClient, opts: { lastPulledAt?: Date } = {
     syncBranch: "malmoi-i18n/sync",
   });
   const tree = calls.find((c) => c.method === "publishSnapshot")?.args[0] as Parameters<GitClient["publishSnapshot"]>[0] | undefined;
-  const byPath = Object.fromEntries((tree?.changes ?? []).map((e) => [e.path, e.content]));
+  const byPath = Object.fromEntries((tree?.changes ?? []).flatMap((e) => (e.kind === "upsert" ? [[e.path, e.content]] : [])));
   return { result, byPath, calls };
 }
 

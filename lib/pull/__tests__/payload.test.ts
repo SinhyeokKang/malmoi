@@ -3,8 +3,8 @@ import { buildCommitPayload, buildTreePayload, SKIP_MARKER } from "../payload";
 
 describe("buildTreePayload — base_tree 누락이 리포 전체를 지운다", () => {
   const changes = [
-    { path: "i18n/en.json", content: '{\n  "a": "hi"\n}\n' },
-    { path: "i18n/ko.json", content: '{\n  "a": "안녕"\n}\n' },
+    { kind: "upsert" as const, path: "i18n/en.json", content: '{\n  "a": "hi"\n}\n' },
+    { kind: "upsert" as const, path: "i18n/ko.json", content: '{\n  "a": "안녕"\n}\n' },
   ];
 
   it("base_tree를 반드시 싣는다 — 빠지면 리포의 나머지 파일이 전부 삭제된 커밋이 된다", () => {
@@ -34,6 +34,21 @@ describe("buildTreePayload — base_tree 누락이 리포 전체를 지운다", 
 
   it("같은 입력 두 번 → 같은 페이로드 (결정성)", () => {
     expect(buildTreePayload(changes, "x")).toEqual(buildTreePayload(changes, "x"));
+  });
+
+  it("delete는 base_tree 위의 `sha: null` 항목이다 — 그 경로만 빠지고 나머지 파일은 base_tree가 남긴다", () => {
+    const payload = buildTreePayload([changes[0]!, { kind: "delete", path: "_locales/ko/messages.json" }], "basetree-sha");
+    expect(payload.base_tree).toBe("basetree-sha");
+    expect(payload.tree).toEqual([
+      { path: "i18n/en.json", mode: "100644", type: "blob", content: changes[0]!.content },
+      { path: "_locales/ko/messages.json", mode: "100644", type: "blob", sha: null },
+    ]);
+  });
+
+  it("delete만 있는 변경도 통과한다 — 빈 변경 가드는 0개일 때만 던진다", () => {
+    expect(buildTreePayload([{ kind: "delete", path: "i18n/ko.json" }], "x").tree).toEqual([
+      { path: "i18n/ko.json", mode: "100644", type: "blob", sha: null },
+    ]);
   });
 });
 

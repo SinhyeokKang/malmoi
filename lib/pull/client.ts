@@ -17,8 +17,11 @@ import type { PullChange } from "./plan";
  * GitHub 구현 안에 산다. **무효화 순서는 호출부(`run.ts`)가 든다** — 첫 비읽기 메서드가 `invalidateDelivery` 뒤다.
  */
 
-/** Publish 한 번에 올리는 파일 하나. `inBase`는 base 트리에 이미 있는가다 — 생성과 갱신을 가르는 호스트가 있다(GitHub은 보지 않는다). */
-export type SnapshotChange = PullChange & { inBase: boolean };
+/**
+ * Publish 한 번에 올리는 파일 하나. upsert의 `inBase`는 base 트리에 이미 있는가다 — 생성과 갱신을 가르는 호스트가 있다(GitHub은 보지 않는다).
+ * delete는 base에 있는 경로에만 생긴다(`planPullChanges`)라 `inBase`가 없다.
+ */
+export type SnapshotChange = (Extract<PullChange, { kind: "upsert" }> & { inBase: boolean }) | Extract<PullChange, { kind: "delete" }>;
 
 /** 리포 읽기 스냅샷의 blob 하나. */
 export type GitTreeBlob = { path: string; sha: string; size?: number };

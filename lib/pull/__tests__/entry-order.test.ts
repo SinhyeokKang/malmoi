@@ -74,8 +74,10 @@ function depsFor(keys: readonly RenderKey[]): { deps: PullDeps; trees: Snapshot[
   };
 }
 
-const contentOf = (trees: readonly Snapshot[], path: string): string | undefined =>
-  trees[0]?.changes.find((e) => e.path === path)?.content;
+const contentOf = (trees: readonly Snapshot[], path: string): string | undefined => {
+  const change = trees[0]?.changes.find((e) => e.path === path);
+  return change?.kind === "upsert" ? change.content : undefined;
+};
 
 describe("L1 — runPull이 sortIndex 순서로 파일을 낸다", () => {
   it("커밋에 실린 base 파일이 **코드 유닛 순이 아니라 sortIndex 순**이다", async () => {

@@ -16,21 +16,26 @@ import { GITLAB_API } from "./transport";
  */
 
 /** commit API의 action 하나. `execute_filemode`를 넣지 않는다 — 수정 파일이 `100644`로 남는다(W0 실측, GitHub `buildTreePayload`와 같은 동작). */
-export type GitLabCommitAction = { action: "create" | "update"; file_path: string; content: string; encoding: "text" };
+export type GitLabCommitAction =
+  | { action: "create" | "update"; file_path: string; content: string; encoding: "text" }
+  | { action: "delete"; file_path: string };
 
 /**
- * 고정 base 위 스냅샷의 actions. **삭제를 내지 않는다** — 호출부(`planPullChanges`)가 삭제를 만들지 않는 것과 같다.
+ * 고정 base 위 스냅샷의 actions. **명시적 삭제 의도만 delete가 된다** — `planPullChanges`가 의도 중 base에 있는 경로만 delete로 내고,
+ * writer의 `null`은 삭제로 읽지 않는다. 빈 변경·경로 안전·중복 검사는 두 종류 모두에 건다(같은 경로의 update+delete도 중복이다).
  * ⚠️ 경로는 JSON 본문 값이라 인코딩하지 않는다(왕복 동일). 대신 리포 밖·다른 파일을 가리키는 모양은 조립 전에 던진다 —
  * 경로는 이미 `resolveLocalePaths`를 지났지만, 쓰기 직전의 마지막 문이 여기다.
  */
 export function buildCommitActions(changes: readonly SnapshotChange[]): GitLabCommitAction[] {
   if (changes.length === 0) throw new AppError("unreachable: a GitLab commit needs at least one change");
   const seen = new Set<string>();
-  return changes.map(({ path, content, inBase }) => {
+  return changes.map((change): GitLabCommitAction => {
+    const { path } = change;
     if (!isSafeRepoPath(path)) throw new AppError(`unsafe repository path for a GitLab commit: ${JSON.stringify(path)}`);
     if (seen.has(path)) throw new AppError(`duplicate path in one GitLab commit: ${JSON.stringify(path)}`);
     seen.add(path);
-    return { action: inBase ? "update" : "create", file_path: path, content, encoding: "text" };
+    if (change.kind === "delete") return { action: "delete", file_path: path };
+    return { action: change.inBase ? "update" : "create", file_path: path, content: change.content, encoding: "text" };
   });
 }
 

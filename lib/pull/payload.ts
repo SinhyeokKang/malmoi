@@ -51,8 +51,11 @@ export type TreeEntry = {
   /** 일반 파일. 실행 권한·심링크를 낼 일이 없다. */
   mode: "100644";
   type: "blob";
-  content: string;
-};
+} & (
+  | { content: string }
+  /** 삭제 — `base_tree` 위에서 그 경로만 빠진다. 링크·서브모듈 경로는 `renderProject`의 파일 종류 가드가 먼저 막는다. */
+  | { sha: null }
+);
 
 export type TreePayload = {
   /**
@@ -68,14 +71,16 @@ export function buildTreePayload(
   /** base **커밋** SHA다 — GitHub이 `base_tree`에 커밋 SHA를 받으면 그 트리로 역참조한다. */
   baseSha: string,
 ): TreePayload {
-  // 낼 것이 없는데 트리를 만들면 base와 내용이 같은 빈 커밋이 나간다.
+  // 낼 것이 없는데 트리를 만들면 base와 내용이 같은 빈 커밋이 나간다. 삭제만 있는 변경은 낼 것이 있다.
   if (changes.length === 0) fail("no changes (nothing to build a tree from)");
   // 빈 문자열은 필드 누락과 구별되지 않는다 — GitHub이 조용히 base 없는 트리로 처리한다.
   if (baseSha === "") fail("base_tree is empty");
 
   return {
     base_tree: baseSha,
-    tree: changes.map((c) => ({ path: c.path, mode: "100644", type: "blob", content: c.content })),
+    tree: changes.map((c): TreeEntry => (c.kind === "upsert"
+      ? { path: c.path, mode: "100644", type: "blob", content: c.content }
+      : { path: c.path, mode: "100644", type: "blob", sha: null })),
   };
 }
 

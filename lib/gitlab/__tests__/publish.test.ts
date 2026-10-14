@@ -264,3 +264,41 @@ describe("실패 — 성공으로 확정하지 않는다 · 재시도 0", () => 
     expect(repo.writes().map((call) => call.url.pathname.split("/").slice(-2).join("/"))).toEqual(["repository/commits"]);
   });
 });
+
+/**
+ * **delete 계약** (locale-add design §2 Publish 변경 union) — 명시적 delete가 실제 GitLab 클라이언트를 지나 상태를 가진 가짜 리포에서 그 파일만 지운다.
+ * Chrome 디렉터리 레이아웃(`_locales/<code>/messages.json`)에서 같은 디렉터리의 다른 파일은 남아야 한다.
+ */
+describe("delete — 대상 파일만 지운다", () => {
+  const CHROME = { "_locales/en/messages.json": EN, "_locales/ko/messages.json": KO_OLD, "_locales/ko/notes.txt": "keep\n", "src/app.ts": "x\n" };
+  const open = (repo: ReturnType<typeof createFakeGitLabRepo>) =>
+    createGitLabClient({ host: "gitlab", owner: "g/sub", name: "app", repositoryId: REPO, connectionId: "conn-1" }, { token: "glpat-connector", expiresAt: null, gitlabUserId: "101" }, { fetch: repo.fetch });
+
+  it("삭제만 있는 스냅샷도 커밋된다 — 대상만 사라지고 같은 디렉터리의 다른 파일·나머지 리포는 그대로다", async () => {
+    const repo = createFakeGitLabRepo({ repositoryId: REPO, branches: { main: BASE }, commits: { [BASE]: CHROME } });
+    const git = await open(repo);
+    const head = await git.publishSnapshot({ branch: SYNC, baseSha: BASE, summary: "1 file", changes: [{ kind: "delete", path: "_locales/ko/messages.json" }] });
+    const files = repo.commits.get(head)!;
+    expect([...files.keys()].sort()).toEqual(["_locales/en/messages.json", "_locales/ko/notes.txt", "src/app.ts"]);
+    expect(repo.parents.get(head)).toBe(BASE);
+    const body = JSON.parse(repo.writes()[0]!.body!) as { actions: unknown[] };
+    expect(body.actions).toEqual([{ action: "delete", file_path: "_locales/ko/messages.json" }]);
+  });
+
+  it("upsert와 delete가 한 커밋에 같이 간다", async () => {
+    const repo = createFakeGitLabRepo({ repositoryId: REPO, branches: { main: BASE }, commits: { [BASE]: CHROME } });
+    const head = await (await open(repo)).publishSnapshot({ branch: SYNC, baseSha: BASE, summary: "2 files", changes: [
+      { kind: "upsert", path: "_locales/en/messages.json", content: KO, inBase: true },
+      { kind: "delete", path: "_locales/ko/messages.json" },
+    ] });
+    expect(repo.commits.get(head)!.get("_locales/en/messages.json")).toBe(KO);
+    expect(repo.commits.get(head)!.has("_locales/ko/messages.json")).toBe(false);
+    expect(repo.commits.get(head)!.get("_locales/ko/notes.txt")).toBe("keep\n");
+  });
+
+  it("없는 파일의 delete는 GitLab처럼 400이다 — 계획(`planPullChanges`)이 base에 있는 경로만 delete로 내는 이유다", async () => {
+    const repo = createFakeGitLabRepo({ repositoryId: REPO, branches: { main: BASE }, commits: { [BASE]: CHROME } });
+    await expect((await open(repo)).publishSnapshot({ branch: SYNC, baseSha: BASE, summary: "1 file", changes: [{ kind: "delete", path: "_locales/fr/messages.json" }] })).rejects.toThrow();
+    expect(repo.branches.has(SYNC)).toBe(false);
+  });
+});

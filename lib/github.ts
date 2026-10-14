@@ -412,7 +412,7 @@ export async function createGitClient(
     /**
      * Git Data API 네 단계 — 트리(항목의 `content`가 blob을 암묵 생성한다) → 커밋(parent = base head 하나) → sync ref 생성 또는 강제 이동.
      * 트리 생성이 첫 외부 쓰기다 — 호출부가 그 앞에서 전달 확인을 무효화한다(`run.ts`).
-     * `inBase`는 보지 않는다 — 트리 항목은 생성·갱신을 가르지 않는다. 모든 파일을 `100644`로 쓴다(`buildTreePayload`).
+     * `inBase`는 보지 않는다 — 트리 항목은 생성·갱신을 가르지 않는다. 모든 파일을 `100644`로 쓰고, delete는 `base_tree` 위의 `sha: null` 항목이다(`buildTreePayload`).
      */
     async publishSnapshot({ branch, baseSha, changes, summary }) {
       const tree = await octokit.request("POST /repos/{owner}/{repo}/git/trees", { ...base, ...buildTreePayload(changes, baseSha) });

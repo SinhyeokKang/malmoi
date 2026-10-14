@@ -3,7 +3,7 @@ import { adapterFor } from "@/lib/adapters";
 import { blobSha } from "@/lib/githash";
 import { SKIP_MARKER } from "../payload";
 import { publishFingerprint } from "@/lib/publish/fingerprint";
-import { closedPrComment, runPull, type PullDeps, type PullState } from "../run";
+import { closedPrComment, projectFormats, renderProject, runPull, type PullDeps, type PullState } from "../run";
 import { createFakeGitClient, isGitMutation, type FakeCall } from "./fake-client";
 import type { RenderKey } from "../render";
 import type { GitClient } from "../client";
@@ -1390,9 +1390,45 @@ it.each([
   const expected = source.replace("'Actual'", "'Edited'");
   expect(calls.find(call => call.method === "publishSnapshot")?.args[0]).toMatchObject({ changes: [expect.objectContaining({ content: expected })] });
   // 고정한 테스트 픽스처만 실행해 AST 판정과 실제 own property 의미를 독립적으로 견준다.
-  const emitted = publishSnapshot.mock.calls[0]?.[0].changes[0]?.content;
+  const first = publishSnapshot.mock.calls[0]?.[0].changes[0];
+  const emitted = first?.kind === "upsert" ? first.content : undefined;
   expect(emitted).toBe(expected);
   const runtime: unknown = new Function(`${emitted}; return ko;`)();
   expect(Object.getOwnPropertyDescriptor(runtime, "__proto__")?.value).toBe("Edited");
 });
 
+
+/**
+ * delete 의도의 파일 종류 가드 (locale-add design §2) — 렌더 경로와 같은 문을 지난다. 링크·서브모듈·디렉터리를 지우거나 링크 아래 경로를 지우는 계획은 읽기만 하고 던진다.
+ * 호출부는 아직 빈 목록만 넘긴다(B2가 REMOVE 의도를 잇는다).
+ */
+describe("renderProject — delete 의도도 파일 종류 가드를 지난다", () => {
+  const SURFACES: PullState["surfaces"] = [{ ...PROJECT, id: "s1", slug: "default", localeCodes: ["en", "ko"], keys: KEYS }];
+  const render = (tree: { path: string; sha: string; mode: string }[], deletes?: readonly string[]) => {
+    const made = createFakeGitClient({ refSha: { "heads/dev": "basehead" }, tree: { basehead: tree }, blobs: { en: EN_CONTENT, ko: KO_CONTENT, x: "x\n" } });
+    const formats = projectFormats(SURFACES);
+    return { promise: deletes === undefined ? renderProject(PROJECT, formats, made.client) : renderProject(PROJECT, formats, made.client, undefined, deletes) };
+  };
+
+  it("base에 있는 일반 파일의 delete는 changes에 delete로 실린다", async () => {
+    const { promise } = render([
+      { path: "i18n/en.json", sha: "en", mode: "100644" }, { path: "i18n/ko.json", sha: "ko", mode: "100644" }, { path: "i18n/fr.json", sha: "x", mode: "100644" },
+    ], ["i18n/fr.json"]);
+    expect((await promise).changes).toContainEqual({ kind: "delete", path: "i18n/fr.json" });
+  });
+
+  it.each(["120000", "160000", "040000"])("mode %s 항목의 delete는 던진다", async (mode) => {
+    const { promise } = render([{ path: "i18n/en.json", sha: "en", mode: "100644" }, { path: "i18n/fr.json", sha: "x", mode }], ["i18n/fr.json"]);
+    await expect(promise).rejects.toThrow(/unsupported Git file mode at i18n\/fr.json/);
+  });
+
+  it("링크 조상 아래 경로의 delete도 던진다", async () => {
+    const { promise } = render([{ path: "i18n/en.json", sha: "en", mode: "100644" }, { path: "legacy", sha: "x", mode: "120000" }], ["legacy/fr.json"]);
+    await expect(promise).rejects.toThrow(/unsupported Git file mode at legacy/);
+  });
+
+  it("빈 delete 목록은 인자를 안 준 현행 결과와 같다", async () => {
+    const tree = [{ path: "i18n/en.json", sha: "en", mode: "100644" }, { path: "i18n/ko.json", sha: "x", mode: "100644" }];
+    expect((await render(tree, []).promise).changes).toEqual((await render(tree).promise).changes);
+  });
+});

@@ -42,6 +42,7 @@ const CODED: ReadonlyArray<readonly [needle: string, code: string]> = [
  */
 const UNCODED: readonly string[] = [
   "unreachable: passed the layer-1 check",
+  "unreachable: upsert and delete on the same path", "unreachable: duplicate delete path",
   "surface base locale is empty", "Surface path conflict:",
   "Project.adapterName is empty",
   "Project.pathTemplate is empty",

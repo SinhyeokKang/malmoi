@@ -130,7 +130,7 @@ describe("쓰기 — publishSnapshot · resetSyncBranch (첫 외부 쓰기는 �
     const { fake, open } = client({ [`POST ${P}/repository/commits`]: { status: 201, body: { id: "c".repeat(40), parent_ids: [BASE] } } });
     const git = await open();
     const sha = await git.publishSnapshot({ branch: SYNC, baseSha: BASE, summary: "2 files", changes: [
-      { path: "locales/ko.json", content: "{}\n", inBase: true }, { path: "locales/fr.json", content: "{}\n", inBase: false },
+      { kind: "upsert", path: "locales/ko.json", content: "{}\n", inBase: true }, { kind: "upsert", path: "locales/fr.json", content: "{}\n", inBase: false },
     ] });
     expect(sha).toBe("c".repeat(40));
     expect(keys(writes(fake.calls))).toEqual([`POST ${P}/repository/commits`]);
@@ -151,7 +151,7 @@ describe("쓰기 — publishSnapshot · resetSyncBranch (첫 외부 쓰기는 �
   it("⚠️ 쓰기 실패(보호 브랜치 403·force 400·5xx)는 한 번만 보내고 던진다 — 재시도·우회 없음", async () => {
     for (const status of [403, 400, 502]) {
       const { fake, open } = client({ [`POST ${P}/repository/commits`]: { status, body: { message: "You are not allowed to push into this branch" } } });
-      await expect((await open()).publishSnapshot({ branch: SYNC, baseSha: BASE, summary: "1 file", changes: [{ path: "a.json", content: "x", inBase: true }] })).rejects.toThrow();
+      await expect((await open()).publishSnapshot({ branch: SYNC, baseSha: BASE, summary: "1 file", changes: [{ kind: "upsert", path: "a.json", content: "x", inBase: true }] })).rejects.toThrow();
       expect(writes(fake.calls), String(status)).toHaveLength(1);
     }
   });

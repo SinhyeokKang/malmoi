@@ -10,6 +10,7 @@ import {
   resolveLocalePaths,
   shouldSkipPull,
   type ProjectFormatColumns,
+  type PullChange,
 } from "./plan";
 import { renderLocaleFiles, type RenderKey } from "./render";
 import { compareSurfaces, surfaceOwnership } from "@/lib/surfaces/plan";
@@ -203,6 +204,8 @@ export async function renderProject(
   client: Pick<GitClient, "getRefSha" | "getTree" | "getBlobText">,
   /** 트리를 빼면 `baseHead`만 쓰고 트리는 여기서 읽는다 — 지문 대조가 head만 먼저 읽는 경로(`runPull`)다. */
   read?: { baseHead: string; tree?: Awaited<ReturnType<GitClient["getTree"]>> },
+  /** 명시적 삭제 의도(리포 경로). 렌더 경로와 같은 파일 종류 가드를 지나고, base에 있는 것만 delete가 된다(`planPullChanges`). */
+  deletes: readonly string[] = [],
 ) {
   const baseHead = read?.baseHead ?? await readBaseHead(project, client);
   const tree = read?.tree ?? await client.getTree(baseHead);
@@ -216,7 +219,8 @@ export async function renderProject(
   const paths = resolved.flatMap(item => item.paths);
   // 원본 blob 읽기·렌더보다 먼저 파일 종류를 확인한다. 링크를 파싱 실패/파일 부재로 접으면 재생성 writer가 덮어쓴다.
   const entryByPath = new Map(tree.map(entry => [entry.path, entry]));
-  for (const { path } of paths) {
+  // ⚠️ 삭제 경로도 같은 문을 지난다 — 링크·서브모듈을 지우거나 링크 아래 경로를 지우는 계획을 쓰기 전에 막는다.
+  for (const path of [...paths.map(p => p.path), ...deletes]) {
     const entry = entryByPath.get(path);
     if (entry !== undefined && entry.mode !== "100644" && entry.mode !== "100755") {
       throw new GitFileKindError(path, entry.mode, project.baseBranch);
@@ -255,7 +259,7 @@ export async function renderProject(
     files: renderLocaleFiles(item.format, item.layout, item.paths, item.surface.keys, item.baseLocale, current),
   }));
   const local = planMultiSurfacePull(rendered);
-  const changes = planPullChanges(local, tree.map((t) => ({ path: t.path, sha: t.sha })));
+  const changes = planPullChanges(local, tree.map((t) => ({ path: t.path, sha: t.sha })), deletes);
   return { baseHead, tree, resolved, current, rendered, local, changes };
 }
 
@@ -450,7 +454,7 @@ export async function runPull(deps: PullDeps, expectedFingerprint?: string): Pro
   const commitSha = await client.publishSnapshot({
     branch: deps.syncBranch,
     baseSha: baseHead,
-    changes: changes.map(change => ({ ...change, inBase: inBase.has(change.path) })),
+    changes: changes.map(change => (change.kind === "upsert" ? { ...change, inBase: inBase.has(change.path) } : change)),
     summary,
   });
 
@@ -498,9 +502,10 @@ export async function runPull(deps: PullDeps, expectedFingerprint?: string): Pro
 function countChangedValuesOf(
   resolved: Awaited<ReturnType<typeof renderProject>>["resolved"],
   current: ReadonlyMap<string, string>,
-  changes: readonly { path: string; content: string }[],
+  changes: readonly PullChange[],
 ): number | null {
-  const after = new Map(changes.map(c => [c.path, c.content]));
+  // 삭제 파일은 번역 전달 수가 아니다(locale-add design §4) — 바뀐 값 수에 넣지 않는다.
+  const after = new Map(changes.flatMap(c => (c.kind === "upsert" ? [[c.path, c.content] as const] : [])));
   let total = 0;
   try {
     for (const item of resolved) {
