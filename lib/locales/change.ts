@@ -39,7 +39,8 @@ export const RemoveLocaleInput = LocaleTarget.extend({ approval: z.string().min(
 export const CancelLocaleRemovalInput = LocaleTarget;
 
 /**
- * `baseline-unknown`·`baseline-stale` — 폐기할 미전달 셀에 마지막 전달 값(복원 기준)이 없거나 낡았다. Revert의 같은 이름 사유와 같은 판정이다(R-B1 Y1).
+ * `baseline-unknown`·`baseline-stale` — **제거가** 폐기할 미전달 셀에 마지막 전달 값(복원 기준)이 없거나 낡았다. Revert의 같은 이름 사유와 같은 판정이다
+ * (R-B1 Y1). 추가 취소는 값을 되돌리지 않으므로 이 거부가 없다.
  */
 export type LocaleChangeError = Exclude<ProjectAccess, { status: "ok" }>["status"] | Exclude<LockedAccess, { status: "ok" }>["status"] | LocaleChangeRefusal
   | "baseline-unknown" | "baseline-stale";
@@ -92,7 +93,7 @@ async function readChangeState(db: Prisma.TransactionClient, scope: Scope, code:
     where: { projectId, surfaceId, localeCode: code, pendingEditToken: { not: null } },
     select: { id: true, keyId: true, value: true, needsReview: true, pendingEditToken: true, stringKey: { select: { key: true } } },
   });
-  // 폐기는 Revert와 같은 의미다 — 같은 기준 행·같은 확인 판정(`readRestoreConfirmation`)을 읽는다(design §3, R-B1 Y1).
+  // 제거의 폐기는 Revert와 같은 의미다 — 같은 기준 행·같은 확인 판정(`readRestoreConfirmation`)을 읽는다(design §3, R-B1 Y1).
   const baselines = await db.translationBaseline.findMany({ where: { projectId, surfaceId, localeCode: code }, select: { keyId: true, restoreValue: true, revision: true } });
   const restore = await readRestoreConfirmation(db, projectId, surfaceId, new Date());
   const confirmation = await db.deliveryConfirmation.findUnique({
@@ -173,14 +174,15 @@ function judge(state: ChangeState, request: LocaleChangeRequest, approval: Appro
     approval,
   });
   if (!verdict.ok) return verdict;
-  if (verdict.transition.kind !== "request-removal" && verdict.transition.kind !== "cancel-add") return { ok: true, transition: verdict.transition, discard: [] };
+  // 되돌리는 폐기는 제거에만 건다 — 추가 취소는 토큰만 비우고 값을 남긴다(아래 `clearApprovedTokens`, design §3 2026-10-14 정정).
+  if (verdict.transition.kind !== "request-removal") return { ok: true, transition: verdict.transition, discard: [] };
   const discard = planDiscard(state);
   return discard.ok ? { ok: true, transition: verdict.transition, discard: discard.writes } : discard;
 }
 
 /**
- * **폐기 = Revert** (design §3 "폐기는 값을 마지막 전달 값으로 되돌린다", R-B1 Y1). 토큰만 비우면 값이 DB에 남아 제거를 취소한 뒤 다음 Publish에 추적
- * 없이 실린다. 판정은 Revert의 `planKeyRevert` 그대로다 — 기준이 없거나(`baseline-unknown`) 낡았거나(`baseline-stale`) 확인이 교체 실행 뒤에 서지
+ * **제거의 폐기 = Revert** (design §3 "폐기는 값을 마지막 전달 값으로 되돌린다", R-B1 Y1). 토큰만 비우면 값이 DB에 남아 제거를 취소한 뒤 다음 Publish에
+ * 추적 없이 실린다. 판정은 Revert의 `planKeyRevert` 그대로다 — 기준이 없거나(`baseline-unknown`) 낡았거나(`baseline-stale`) 확인이 교체 실행 뒤에 서지
  * 않았으면 쓰기 0으로 거부한다(fail-closed — 먼저 Publish 또는 Revert). 부분 폐기는 없다.
  */
 function planDiscard(state: ChangeState): { ok: true; writes: DiscardWrite[] } | { ok: false; error: LocaleChangeError } {
@@ -233,6 +235,19 @@ async function recordLocaleEvent(tx: Prisma.TransactionClient, input: { scope: S
  * 잠금 뒤 다시 읽어 지문으로 대조한 집합이고, 토큰이 그대로인 셀만 쓴다 — 어긋나면 던져서 전부 롤백한다. 다른 언어·다른 소스는 대상이 아니다.
  * ⚠️ 한 문장이다 — 한 언어의 미전달이 수백 셀일 수 있어 셀마다 왕복하면 잠금 tx가 길어진다(#145).
  */
+/**
+ * **추가 취소의 폐기** — 승인된 그 언어의 토큰만 비우고 값은 남긴다. 언어가 orphan으로 돌아가 렌더에서 빠지므로 값이 새지 않고, 재추가가 값 있는 셀에
+ * 토큰을 다시 발급해 되살린다(design §3 2026-10-14 정정). 그래서 복원 기준을 요구하지 않는다 — 첫 확인 전 소스에서도 취소할 수 있다.
+ * ⚠️ raw SQL이다 — 값이 안 바뀌었으니 `@updatedAt`을 올리지 않는다(`releaseOrphanedApproved`와 같은 이유). 기준 행은 건드리지 않는다.
+ */
+async function clearApprovedTokens(tx: Prisma.TransactionClient, scope: Scope, code: string, tokens: readonly string[]): Promise<number> {
+  if (tokens.length === 0) return 0;
+  return tx.$executeRaw`
+    UPDATE "Translation" SET "pendingEditToken" = NULL
+    WHERE "projectId" = ${scope.projectId} AND "surfaceId" = ${scope.surfaceId} AND "localeCode" = ${code}
+      AND "pendingEditToken" = ANY(${[...tokens]}::text[])`;
+}
+
 async function discardApproved(tx: Prisma.TransactionClient, input: { scope: Scope; code: string; userId: string; surfaceSlug: string; writes: readonly DiscardWrite[] }): Promise<number> {
   const { scope, code, writes } = input;
   if (writes.length === 0) return 0;
@@ -328,7 +343,9 @@ export async function removeLocale(prisma: PrismaClient, subject: Subject, input
     if (!verdict.ok) return { ok: false, error: verdict.error } as const;
     const transition: LocaleTransition = verdict.transition;
     if ((transition.kind !== "request-removal" && transition.kind !== "cancel-add") || state.surface === null) return { ok: false, error: "not-found" } as const;
-    const discarded = await discardApproved(tx, { scope, code, userId: subject.userId, surfaceSlug: state.surface.slug, writes: verdict.discard });
+    const discarded = transition.kind === "request-removal"
+      ? await discardApproved(tx, { scope, code, userId: subject.userId, surfaceSlug: state.surface.slug, writes: verdict.discard })
+      : await clearApprovedTokens(tx, scope, code, state.pending.map(cell => cell.token));
     const where = { projectId_surfaceId_localeCode: { projectId: scope.projectId, surfaceId: scope.surfaceId, localeCode: code } };
     if (transition.kind === "request-removal") {
       // 바로 orphan하지 않는다 — base에 파일이 있고 취소하면 편집을 다시 허용해야 한다(design §1).
