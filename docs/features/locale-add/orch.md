@@ -5,7 +5,7 @@
 
 ## 착수 범위 — ⚠️ 디자인 시안 미확보
 
-**design-brief 프레임 1~20의 핸드오프가 없다. 이 런은 시안 없이 할 수 있는 부분까지만 진행한다.**
+**design-brief 프레임 1~25의 핸드오프가 없다. 이 런은 시안 없이 할 수 있는 부분까지만 진행한다.**
 
 - **진행**: tasks 배치 1·2 전부(§1~§5), 배치 3 중 화면을 그리지 않는 항목(§6 Server Action · 셀 얼리기 reducer · `summary.ts` · 집계), §7 MCP 전부, §8 중 ARCHITECTURE·ACTIONS·OPERATIONS·DIRECTORY·CLAUDE·README.
 - **시안 대기(이 런에서 착수하지 않음)**: §6 핸드오프 확보 · Sources Add Dialog·행 동작·확인 Dialog·상태 배지 · 번역 화면 셀 얼리기 DOM·수동 · Publish 미리보기·결과의 화면 표시 · 화면 문구(en·ko·es) · `/design-sync` · DESIGN 갱신 · `/guide`·`/guide-shots` · 화면을 거치는 §9 `/runtime-test`.
