@@ -38,6 +38,27 @@ export function deliveredOf(row: { deliveredLocaleChanges: unknown; invalidatedA
   return parseDeliveredLocaleChanges(row.deliveredLocaleChanges);
 }
 
+/**
+ * **확인보다 뒤에 낸 요청의 효과는 전달로 세지 않는다** (F1 fix1 — design §1). 전달 목록은 "그 효과가 어느 요청의 것인가"를 모른다 — 전달 후 취소로
+ * 행 없이 남은 목록은 PR이 머지 없이 닫혀도 만료할 행이 없어 그대로이고, 그 뒤 같은 언어를 다시 요청하면 현재 = 전달이 되어 Publish가 싣지 않고 다음
+ * 방문이 새 요청을 지운다(#266과 같은 결과). 그래서 확인한 실행이 시작된 뒤(같은 밀리초 포함)에 낸 요청의 코드는 목록에서 빼고 견준다.
+ *
+ * 경계는 **확인 행의 `syncRunId`가 가리키는 `SyncRun.startedAt`**이다 — 실행 시작 tx가 `Project` 잠금 뒤에 찍고, 스냅샷 캡처는 그 뒤이며, 언어 요청도
+ * 같은 잠금 뒤에 쓴다. 그래서 이 시각보다 앞선 요청은 그 스냅샷에 실렸다. 시작 뒤·캡처 전의 요청은 실렸어도 미전달로 세지만 대가는 Publish 한 번
+ * 더다(안전한 쪽). ⚠️ 성공 확정 시각(`finishedAt`·`lastPublishedAt`)을 쓰면 캡처 뒤에 낸 요청이 전달로 셈해져 같은 결함이 돌아온다.
+ * 작업 수·Publish 계획·만료·제거 미리보기(`lib/locales/change.ts`)가 이 규칙 하나를 쓴다.
+ */
+export function deliveredForRequests(
+  delivered: readonly LocaleEffect[] | null,
+  rows: readonly { localeCode: string; requestedAt: Date }[],
+  confirmedFrom: Date | null,
+): LocaleEffect[] | null {
+  if (delivered === null) return null;
+  if (confirmedFrom === null) return [...delivered];
+  const fresh = new Set(rows.filter(row => row.requestedAt.getTime() >= confirmedFrom.getTime()).map(row => row.localeCode));
+  return delivered.filter(effect => !fresh.has(effect.localeCode));
+}
+
 export type LocaleWorkItem = { localeCode: string; current: LocaleEffect["effect"] | null; delivered: LocaleEffect["effect"] | null };
 
 /**
@@ -84,8 +105,10 @@ export type SurfaceLocaleState = {
   /** ADD 언어의 값 있는 번역 수 — 행이 없는 코드는 0이다. */
   valueCounts: Map<string, number>;
   current: LocaleEffect[];
-  /** `null`은 확인 안 됨(무효화 중). */
+  /** 견줄 전달 목록 — 확인보다 뒤에 낸 요청의 코드를 뺀 것이다(`deliveredForRequests`). `null`은 확인 안 됨(무효화 중). */
   delivered: LocaleEffect[] | null;
+  /** 저장된 전달 목록 그대로 — 만료가 그 효과를 빼고 다시 쓸 때만 읽는다. 판정에 쓰지 않는다. */
+  storedDelivered: LocaleEffect[] | null;
   work: LocaleWorkItem[];
 };
 
@@ -101,9 +124,10 @@ export async function readLocaleStates(db: Db, projectId: string, surfaceId?: st
   });
   const confirmations = await db.deliveryConfirmation.findMany({
     where: { projectId, ...(surfaceId === undefined ? {} : { surfaceId }), surface: surfaceWhere },
-    select: { surfaceId: true, deliveredLocaleChanges: true, invalidatedAt: true },
+    select: { surfaceId: true, deliveredLocaleChanges: true, invalidatedAt: true, syncRun: { select: { startedAt: true } } },
   });
   const deliveredBy = new Map(confirmations.map(row => [row.surfaceId, deliveredOf(row)]));
+  const confirmedFromBy = new Map(confirmations.map(row => [row.surfaceId, row.syncRun.startedAt]));
   const rowsBy = new Map<string, SurfaceLocaleState["rows"]>();
   for (const change of changes) {
     const rows = rowsBy.get(change.surfaceId) ?? [];
@@ -118,8 +142,9 @@ export async function readLocaleStates(db: Db, projectId: string, surfaceId?: st
     const valueCounts = counts.get(id) ?? new Map<string, number>();
     const current = localeEffects(rows, valueCounts);
     const confirmed = deliveredBy.get(id);
-    const delivered = confirmed === undefined ? [] : confirmed;
-    return { surfaceId: id, rows, valueCounts, current, delivered, work: localeWork(current, delivered) };
+    const storedDelivered = confirmed === undefined ? [] : confirmed;
+    const delivered = deliveredForRequests(storedDelivered, rows, confirmedFromBy.get(id) ?? null);
+    return { surfaceId: id, rows, valueCounts, current, delivered, storedDelivered, work: localeWork(current, delivered) };
   });
 }
 

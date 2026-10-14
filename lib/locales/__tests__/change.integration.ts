@@ -133,6 +133,8 @@ async function approvalFor(localeCode: string, subject = OWNER) {
  * `effects`는 그 확인이 실은 파일 집합 변경이다.
  */
 async function confirm(surfaceId: string, effects: { localeCode: string; effect: "create" | "delete" }[] = []) {
+  // 확인한 실행은 이미 있는 요청 뒤에 시작했다 — 확인보다 뒤에 낸 요청은 전달로 세지 않으므로(F1 fix1) 그 소스의 요청을 실행 앞으로 민다.
+  await prisma.localeChange.updateMany({ where: { projectId: "p", surfaceId }, data: { requestedAt: new Date(Date.now() - 660_000) } });
   const run = await prisma.syncRun.create({ data: { projectId: "p", status: "SUCCEEDED", trigger: "MANUAL", startedAt: new Date(Date.now() - 600_000), finishedAt: new Date(Date.now() - 590_000) } });
   const project = await prisma.project.findUniqueOrThrow({ where: { id: "p" } });
   const surface = await prisma.translationSurface.findUniqueOrThrow({ where: { id: surfaceId } });

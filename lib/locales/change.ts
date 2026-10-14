@@ -17,7 +17,7 @@ import { planKeyRevert } from "@/lib/translations/baseline";
 
 import { planLocaleChange, type ApprovalState, type LocaleChangeRefusal, type LocaleChangeRequest, type LocaleTransition } from "./change-plan";
 import { localeChangeFingerprint } from "./fingerprint";
-import { deliveredOf, readLocaleValueCounts } from "./work";
+import { deliveredForRequests, deliveredOf, readLocaleValueCounts } from "./work";
 
 /**
  * **언어 추가·제거·취소의 공유 코어** (locale-add design §3 — tasks §3). 편집 UI의 Action과 MCP 도구(`add_locale`·`preview_locale_removal`·
@@ -101,7 +101,7 @@ async function readChangeState(db: Prisma.TransactionClient, scope: Scope, code:
   const restore = await readRestoreConfirmation(db, projectId, surfaceId, new Date());
   const confirmation = await db.deliveryConfirmation.findUnique({
     where: { projectId_surfaceId: { projectId, surfaceId } },
-    select: { revision: true, deliveredLocaleChanges: true, invalidatedAt: true },
+    select: { revision: true, deliveredLocaleChanges: true, invalidatedAt: true, syncRun: { select: { startedAt: true } } },
   });
   const counts = await readLocaleValueCounts(db, projectId, [surfaceId], [code]);
   return {
@@ -117,7 +117,8 @@ async function readChangeState(db: Prisma.TransactionClient, scope: Scope, code:
     /** 그 언어의 값 있는 번역 수(활성 키) — 미리보기 수이자 ADD 효과가 현재 목록에 있는지의 판정이다. */
     valueCount: counts.get(surfaceId)?.get(code) ?? 0,
     delivery: confirmation === null ? null : { revision: confirmation.revision, invalidated: confirmation.invalidatedAt !== null },
-    delivered: deliveredOf(confirmation),
+    // 확인보다 뒤에 낸 요청의 코드는 견주지 않는다 — 작업 수·만료와 같은 규칙이다(`deliveredForRequests`).
+    delivered: deliveredForRequests(deliveredOf(confirmation), changes, confirmation?.syncRun.startedAt ?? null),
     unsettled: await publishUnsettled(db, projectId),
   };
 }
@@ -218,9 +219,14 @@ function approvalState(approved: string | null, current: string | null): Approva
   return current !== null && sameFingerprint(approved, current) ? "valid" : "stale";
 }
 
-/** 그 언어의 효과가 전달 목록에 있나. 확인이 무효화 중이면 `null` — "전달 안 됨"으로 말하지 않는다. */
+/**
+ * 그 언어의 효과가 전달 목록에 있나. 확인이 무효화 중이면 `null` — "전달 안 됨"으로 말하지 않는다.
+ * ⚠️ 행이 없으면(새 제거 요청의 미리보기) `false`다 — 아직 내지 않은 요청은 어느 확인보다도 뒤다. 남은 옛 목록(전달 후 취소)과 견주면 PR이 이미
+ * 닫혔어도 "보냈다"고 말한다(F1 fix1).
+ */
 function hasDelivered(state: ChangeState, code: string, effect: "create" | "delete"): boolean | null {
   if (state.delivered === null) return null;
+  if (!state.changes.some(change => change.localeCode === code)) return false;
   return state.delivered.some(item => item.localeCode === code && item.effect === effect);
 }
 

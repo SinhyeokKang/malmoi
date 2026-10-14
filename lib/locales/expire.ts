@@ -56,8 +56,9 @@ export async function expireLocaleChanges(tx: Prisma.TransactionClient, input: L
     // 다음 방문이 그 요청을 지운다(#266). 무효화 중(`null`)인 목록은 무엇이 실렸는지 모르므로 건드리지 않는다.
     // ⚠️ `revision`은 그대로 둔다 — 새 전달 관측이 아니다. 자동 적재·야간 만료의 장벽(`readDeliveryRevision`)이 revision 변화를 "Publish가 끼었다"로
     // 읽으므로, 바꾸면 사전 판정을 마친 다른 소스의 적재가 이유 없이 `publish-raced`로 보류된다(`surfaces/remove.ts`도 목록만 쓴다).
-    if (state.delivered !== null && state.delivered.some(effect => expiredCodes.has(effect.localeCode))) {
-      const kept = normalizeLocaleEffects(state.delivered.filter(effect => !expiredCodes.has(effect.localeCode)));
+    // 저장된 목록에서 뺀다 — 판정용 목록(`delivered`)은 확인 뒤 요청의 코드를 이미 뺀 것이라 그것으로 쓰면 다른 코드의 효과까지 사라진다.
+    if (state.storedDelivered !== null && state.storedDelivered.some(effect => expiredCodes.has(effect.localeCode))) {
+      const kept = normalizeLocaleEffects(state.storedDelivered.filter(effect => !expiredCodes.has(effect.localeCode)));
       await tx.deliveryConfirmation.updateMany({ where: { projectId, surfaceId }, data: { deliveredLocaleChanges: kept } });
     }
     for (const presence of ["active", "orphan"] as const) {
