@@ -2439,6 +2439,18 @@ DB의 의도는 **아직 PR/MR로 나가지 않았거나 PR/MR이 열려 있는 
   2. **같은 base SHA라 적재를 건너뛰는 야간 방문** — `LocaleChange` 행이 있는 소스에 한해 PR/MR 조회와 만료를 `upToDate` 출구 앞에서 먼저 돈다(`lib/nightly/run.ts`). 행이 없는 프로젝트는 기존 순서 그대로 조회 0회다.
   3. **모든 Publish(수동·MCP·야간 cron)가 스냅샷을 뜨기 전** — `expireLocalesForPublish`(`lib/pull/load.ts`). 사람 주체가 없는 cron은 AUTOMATION 주체로 만료한다. 만료가 있으면 스냅샷을 다시 읽는다.
      머지 없이 닫힌 REMOVE가 다음 Publish에 다시 실리지 않게 하는 자리다 — cron도 빠지지 않는다(2026-10-14, locale-add).
+     ⚠️ **1층 스킵보다 먼저다** (2026-10-14, #267) — 판정은 `expiryCheckApplies`(`lib/pull/locales.ts`) 하나다: 행이 있고, 작업이 있거나 **작업이 0이어도 그 행 소스의
+     전달 목록이 비지 않았으면** 돈다. 전달된 언어 변경의 PR/MR이 머지됐거나 머지 없이 닫힌 뒤 방문 전인 창은 현재 = 전달이라 작업이 0인데, 1층이 먼저 끝나면
+     만료가 돌지 않고 결과가 "리포에 이미 있다"는 거짓을 말했다. **1층 "API 0회"의 유일한 예외**다 — 그 창의 편집 없는 Publish는 head·열린 PR·트리(GET 셋,
+     blob 없음)를 읽는다. 전달된 효과가 없는 행(값 0개 ADD)·확인 안 된 목록(`null`)은 1층 그대로 0회다. 사람 Publish만 해당한다 — 야간 cron은 작업 0이면
+     Publish를 부르지 않는다(`lib/nightly/plan.ts`, 그 창은 2번 갈래가 맡는다). 열린 PR 조회 실패는 그대로 실패다(fail-closed). 만료 뒤 보낼 것이 없으면
+     결과는 `no-edits` + `expired`(요청마다 `presence`)이고 지문 대조 전에 끝난다.
+     **미리보기는 같은 판정을 읽기만 한다** — `expiringLocalesOf`가 같은 스냅샷·트리에 `planLocaleExpiry`를 대 보고(열린 PR 조회 모름이면 아무것도 말하지 않는다),
+     `afterExpiry`가 만료 뒤 상태(행·전달 효과 빼기 + **`presence`대로 활성 목록** + 작업 수)로 계획을 세운다. 비활성이 되는 언어의 미발송 편집은 보낼 수·미발송 수에서
+     빠지고, 만료 뒤 보낼 것이 없으면 파일 변경을 약속하지 않는다. 정리할 요청은 `expiringLocales`로 싣는다. ⚠️ **열린 PR 조회는 "열림/없음"만 안다** —
+     머지와 미머지 종료는 base 관측이 가른다(`reachedRepository`, `lib/locales/reached.ts` — 제거는 orphan, 추가는 active면 리포가 요청대로다). presence를 버리면
+     머지된 제거가 지운 파일을 new로, 머지 없이 닫힌 추가가 버린 파일을 new로 약속한다(review-F2 R1·R2). 리포에 닿지 못한 요청을 정리한 `no-edits`는
+     화면 결과 갈래가 Not sent 틀이다(`planPublishView` — 그 언어의 편집은 나가지 않았다).
 - **base 관측 함수는 하나다** — `observeLocaleFiles`(`lib/pull/locales.ts`). 어댑터 읽기(`localeFromPath`)가 읽는 경로 + **정규 파일(모드 100644·100755)만** 센다. 링크(120000)·하위 모듈(160000)은 관측이 아니고,
   템플릿에 맞는 경로의 mode를 모르거나 언어 변경을 받지 않는 어댑터·경로 미정이면 `unreadable`(fail-closed)이다. Publish(`observedLocalesOf`)·같은 head 야간(`observeSurfaceLocales`, `lib/import/observe.ts`)·야간 적재 만료가 모두 이 함수에 위임한다.
   CI `/api/push`는 트리가 없어 페이로드의 `locales`가 유일한 관측이다.
