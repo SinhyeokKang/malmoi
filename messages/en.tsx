@@ -4172,7 +4172,7 @@ export const en = {
       repositories: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "repository" : "repositories"}.`,
       branches: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "branch" : "branches"}.`,
       formats: (n: number): string => `${n.toLocaleString("en-US")} ${n === 1 ? "translation file format" : "translation file formats"} found.`,
-      publishPreview: (n: number, languageFiles = 0, withdrawn = 0): string => {
+      publishPreview: (n: number, languageFiles = 0, withdrawn = 0, expiring = 0): string => {
         // 셀 편집과 언어 파일(새로 만들거나 지우는 파일)을 따로 센다 — 언어 파일만 있어도 "Nothing to send"가 아니다(locale-add).
         const sent = [
           ...(n === 0 ? [] : [`${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"}`]),
@@ -4180,13 +4180,20 @@ export const en = {
         ];
         // 전달된 언어 변경을 취소했으면 파일 diff가 0이어도 Publish가 그것을 거둔다(#265) — "Nothing to send."를 믿으면 취소한 변경이 PR에 남는다.
         const undone = `${withdrawn.toLocaleString("en-US")} language ${withdrawn === 1 ? "change that was" : "changes that were"} already sent`;
-        if (sent.length === 0) return withdrawn === 0 ? "Nothing to send." : `No new changes to send, but publishing undoes ${undone}. Publish with this fingerprint.`;
-        return `${sent.join(" and ")} would be sent in a pull request${withdrawn === 0 ? "" : `, and ${undone} would be undone`}. Publish with this fingerprint.`;
+        // 머지 없이 닫힌 PR의 언어 요청은 Publish가 먼저 버린다(#267) — 다른 보낼 것이 있으면 그 실행은 버린 뒤 다시 확인을 요구한다(지문이 바뀐다).
+        const closed = `The pull request for ${expiring.toLocaleString("en-US")} language ${expiring === 1 ? "change" : "changes"} was closed without merging, so publishing drops ${expiring === 1 ? "that change" : "those changes"}`;
+        if (sent.length === 0 && withdrawn === 0) return expiring === 0 ? "Nothing to send." : `Nothing to send. ${closed}. Publish with this fingerprint.`;
+        const rest = sent.length === 0 ? `no new changes would be sent, but publishing undoes ${undone}` : `${sent.join(" and ")} would be sent in a pull request${withdrawn === 0 ? "" : `, and ${undone} would be undone`}`;
+        if (expiring > 0) return `${closed} first and asks you to preview again. After that, ${rest}.`;
+        if (sent.length === 0) return `No new changes to send, but publishing undoes ${undone}. Publish with this fingerprint.`;
+        return `${rest}. Publish with this fingerprint.`;
       },
-      published: (view: string): string =>
+      published: (view: string, expired = 0): string =>
         view === "created" ? "Sent for review in a new pull request."
         : view === "updated" ? "Updated the open pull request."
         : view === "partial" ? "Some changes weren't sent. See the result for why."
+        // 보낼 것 없이 닫힌 PR의 언어 요청만 버렸다(#267) — 리포에는 그 요청이 이루려던 삭제·새 파일이 없으니 "이미 있다"고 말하지 않는다.
+        : expired > 0 ? `Nothing was sent. The pull request for ${expired.toLocaleString("en-US")} language ${expired === 1 ? "change" : "changes"} was closed without merging, so Malmoi dropped ${expired === 1 ? "that change" : "those changes"}.`
         : "Nothing changed — the repository already has these values.",
       saved: (saved: number, rejected: number): string =>
         `Saved ${saved.toLocaleString("en-US")} ${saved === 1 ? "key" : "keys"}${rejected === 0 ? "" : `; ${rejected.toLocaleString("en-US")} ${rejected === 1 ? "key wasn't" : "keys weren't"} saved`}.`,
@@ -4224,7 +4231,7 @@ export const en = {
        */
       gitlab: {
         workflow: "CI file for the repository. Store the push token as the PUSH_TOKEN CI/CD variable (Protected and Masked).",
-        publishPreview: (n: number, languageFiles = 0, withdrawn = 0): string => {
+        publishPreview: (n: number, languageFiles = 0, withdrawn = 0, expiring = 0): string => {
           // 셀 편집과 언어 파일(새로 만들거나 지우는 파일)을 따로 센다 — 언어 파일만 있어도 "Nothing to send"가 아니다(locale-add).
           const sent = [
             ...(n === 0 ? [] : [`${n.toLocaleString("en-US")} ${n === 1 ? "change" : "changes"}`]),
@@ -4232,13 +4239,18 @@ export const en = {
           ];
           // 전달된 언어 변경을 취소했으면 파일 diff가 0이어도 Publish가 그것을 거둔다(#265) — "Nothing to send."를 믿으면 취소한 변경이 PR에 남는다.
           const undone = `${withdrawn.toLocaleString("en-US")} language ${withdrawn === 1 ? "change that was" : "changes that were"} already sent`;
-          if (sent.length === 0) return withdrawn === 0 ? "Nothing to send." : `No new changes to send, but publishing undoes ${undone}. Publish with this fingerprint.`;
-          return `${sent.join(" and ")} would be sent in a merge request${withdrawn === 0 ? "" : `, and ${undone} would be undone`}. Publish with this fingerprint.`;
+          const closed = `The merge request for ${expiring.toLocaleString("en-US")} language ${expiring === 1 ? "change" : "changes"} was closed without merging, so publishing drops ${expiring === 1 ? "that change" : "those changes"}`;
+          if (sent.length === 0 && withdrawn === 0) return expiring === 0 ? "Nothing to send." : `Nothing to send. ${closed}. Publish with this fingerprint.`;
+          const rest = sent.length === 0 ? `no new changes would be sent, but publishing undoes ${undone}` : `${sent.join(" and ")} would be sent in a merge request${withdrawn === 0 ? "" : `, and ${undone} would be undone`}`;
+          if (expiring > 0) return `${closed} first and asks you to preview again. After that, ${rest}.`;
+          if (sent.length === 0) return `No new changes to send, but publishing undoes ${undone}. Publish with this fingerprint.`;
+          return `${rest}. Publish with this fingerprint.`;
         },
-        published: (view: string): string =>
+        published: (view: string, expired = 0): string =>
           view === "created" ? "Sent for review in a new merge request."
           : view === "updated" ? "Updated the open merge request."
           : view === "partial" ? "Some changes weren't sent. See the result for why."
+          : expired > 0 ? `Nothing was sent. The merge request for ${expired.toLocaleString("en-US")} language ${expired === 1 ? "change" : "changes"} was closed without merging, so Malmoi dropped ${expired === 1 ? "that change" : "those changes"}.`
           : "Nothing changed — the repository already has these values.",
         pushToken: "New push token issued. The old one stopped working. Update the PUSH_TOKEN CI/CD variable in the GitLab project's settings.",
         created: (slug: string, keys: number): string =>

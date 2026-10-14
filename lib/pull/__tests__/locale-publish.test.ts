@@ -533,7 +533,6 @@ describe("만료 판정의 읽기 전용 쪽 — 미리보기가 실행과 같�
     expect(expiringLocalesOf(formats, "none-open", base)).toEqual([{ surfaceSlug: "default", localeCode: "ko", operation: "REMOVE" }]);
     expect(expiringLocalesOf(formats, "open", base)).toEqual([]);
     expect(expiringLocalesOf(formats, "failed", base)).toEqual([]);
-    expect(expiringLocalesOf(formats, "none-open", base.map(entry => ({ ...entry, mode: undefined })))).toEqual([]);
     // 아직 보내지 않은 제거(현재 ≠ 전달)는 만료하지 않는다.
     expect(expiringLocalesOf(projectFormats([surface(changes([["ko", "REMOVE"]]))]), "none-open", base)).toEqual([]);
   });

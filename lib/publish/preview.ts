@@ -1,6 +1,6 @@
 import type { PullWarning } from "@/lib/pull/run";
 import type { PublishedFile } from "@/lib/pull/payload";
-import type { LocaleNotes, WithdrawnLocale } from "@/lib/pull/locales";
+import type { ExpiredLocaleRequest, LocaleNotes, WithdrawnLocale } from "@/lib/pull/locales";
 import type { OpenImportPr } from "@/lib/import/confirm";
 import type { PublishDiff } from "./diff";
 /** `keys`는 **미발송 전체**의 키 수다 — 표에 실린 행이 아니라 바닥 요약이 드는 값이다. */
@@ -28,6 +28,11 @@ export type PublishPreview = PublishDiff & {
    * 옛 삭제·새 파일을 거둔다 — 이 목록이 그 "보낼 것"이다. 데이터만이다(표시는 시안 배치). 없으면 필드가 없다.
    */
   withdrawnLocales?: WithdrawnLocale[];
+  /**
+   * **이 Publish가 버리는 언어 요청** (#267) — 그 PR/MR이 머지 없이 닫혀 실행이 스냅샷 전에 만료한다(`expiringLocalesOf`). 표·`fileChanges`는 그 요청을 뺀
+   * 계획이다(삭제·새 파일을 약속하지 않는다). 다른 보낼 것이 있으면 실행이 만료 뒤 다시 확인을 요구한다. 데이터만이다(표시는 시안 배치). 없으면 필드가 없다.
+   */
+  expiringLocales?: ExpiredLocaleRequest[];
   /** 실제로 나가는 편집·키 수 (#84). 제목·요약·PR 줄·실행 진행 제목이 이 수로 말한다 — `total`·`keys`는 보류를 포함한 미발송 전체다. */
   sendable: { total: number; keys: number };
   /**

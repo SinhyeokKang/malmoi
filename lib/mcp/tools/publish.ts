@@ -48,18 +48,20 @@ export const previewPublish = defineTool({
     const languageFiles = preview.fileChanges.filter(file => file.kind !== "updated").length;
     // 전달된 언어 변경을 취소했으면 파일 diff가 0이어도 Publish가 열린 PR에서 거둔다(#265) — 화면과 같은 신호(`withdrawnLocales`)를 읽는다.
     const withdrawn = preview.withdrawnLocales ?? [];
+    // 머지 없이 닫힌 PR/MR의 언어 요청 — 실행이 스냅샷 전에 버린다(#267). 삭제를 약속하지 않고 그 사실을 말한다.
+    const expiring = preview.expiringLocales ?? [];
     return ok({
       fingerprint: preview.fingerprint,
       sendable: preview.sendable,
       changedFiles: preview.changedFiles,
       fileChanges: preview.fileChanges,
       // 보류한 언어(경로가 이미 있는 추가)·값이 없어 파일을 내지 않는 추가 — 실행 결과의 `locales`와 같은 값이다. `withdrawn`은 거둘 전달된 효과다.
-      languages: { ...(preview.locales ?? { withheld: [], empty: [] }), withdrawn },
+      languages: { ...(preview.locales ?? { withheld: [], empty: [] }), withdrawn, expiring },
       unsent: { total: preview.total, keys: preview.keys, withoutFile: preview.withoutFile, withoutKey: preview.withoutKey },
       // 필드 이름은 리포 호스트의 어휘다(D26) — GitHub은 기존 `pullRequest` 그대로, GitLab은 `mergeRequest`. 값의 세 상태는 같다.
       ...(gitlab ? { mergeRequest: pullRequestState(preview.openPr) } : { pullRequest: pullRequestState(preview.openPr) }),
       groups: preview.groups,
-    }, (gitlab ? en.mcp.summary.gitlab : en.mcp.summary).publishPreview(preview.sendable.total, languageFiles, withdrawn.length));
+    }, (gitlab ? en.mcp.summary.gitlab : en.mcp.summary).publishPreview(preview.sendable.total, languageFiles, withdrawn.length, expiring.length));
   },
 });
 
@@ -133,6 +135,8 @@ async function publishOutcome(
   }
   const view = planPublishView(outcome);
   // 실행은 writer 경고를 코드로 싣는다(ui-locales B1′) — 도구 응답의 계약은 영어 문장이라 여기서 en으로 조립한다.
-  const summary = repoHost === "gitlab" ? en.mcp.summary.gitlab.published(view) : en.mcp.summary.published(view);
+  // 보낼 것 없이 언어 요청만 버렸으면 그것이 이유다 — "리포에 이미 있다"가 아니다(#267).
+  const expired = outcome.status === "skipped" && outcome.reason === "no-edits" ? outcome.expired?.length ?? 0 : 0;
+  const summary = repoHost === "gitlab" ? en.mcp.summary.gitlab.published(view, expired) : en.mcp.summary.published(view, expired);
   return ok({ result: view, outcome: withWarningLines(outcome, en.adapterErrors) }, summary);
 }

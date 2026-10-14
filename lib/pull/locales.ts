@@ -1,5 +1,6 @@
 import { supportsLocaleChanges } from "@/lib/locales/add-plan";
-import { sameLocaleEffects, type LocaleEffect, type LocaleOperation } from "@/lib/locales/effects";
+import { localeEffects, sameLocaleEffects, type LocaleEffect, type LocaleOperation } from "@/lib/locales/effects";
+import { planLocaleExpiry, type PullRequestCheck } from "@/lib/locales/expiry";
 import { planLocalePublish, type LocalePublishPlan } from "@/lib/locales/publish-plan";
 import { localeFromPath } from "@/lib/adapters/chrome-locales";
 import { compareCodeUnits } from "@/lib/compare";
@@ -140,6 +141,62 @@ export function localeWorkOf(surfaces: readonly { localeChanges?: SurfaceLocaleC
 /** 행이 하나라도 있는 프로젝트인가 — 스냅샷 전 만료·지문의 base 입력이 이때만 선다(행이 없으면 기존 순서 그대로). */
 export function hasLocaleRows(surfaces: readonly { localeChanges?: SurfaceLocaleChanges }[]): boolean {
   return surfaces.some(surface => (surface.localeChanges?.rows.length ?? 0) > 0);
+}
+
+/** 머지 없이 닫힌 PR/MR 때문에 Publish가 버리는(버린) 언어 요청 — 실행 결과의 `expired`와 미리보기의 `expiringLocales`가 같은 형이다(#267). */
+export type ExpiredLocaleRequest = { surfaceSlug: string; localeCode: string; operation: LocaleOperation };
+
+/**
+ * **스냅샷 전 만료를 1층 스킵보다 먼저 돌아야 하나** (#267). 작업이 있으면 원래대로 돈다. 작업이 0이어도 전달된 효과가 있는 행 소스가 있으면 돈다 —
+ * 전달된 제거의 PR/MR이 머지 없이 닫힌 창은 현재 = 전달이라 작업이 0인데, 1층에서 끝나면 만료가 돌지 않고 결과가 "리포에 이미 있다"는 거짓을 말한다.
+ * ⚠️ 전달된 효과가 없는 행(값 0개 ADD)·확인 안 된 목록(`null` — 만료할 수 없다)은 1층 그대로다 — 원격 0회를 지킨다. 그 행의 관측 만료는 방문(CI·야간)이 맡는다.
+ * 실행(`runPull`)과 미리보기(`lib/publish/read.ts`)가 이 판정 하나를 쓴다 — 갈리면 미리보기가 버려질 요청을 말하는데 실행이 1층에서 끝난다.
+ */
+export function expiryCheckApplies(unpublished: number, surfaces: readonly { localeChanges?: SurfaceLocaleChanges }[]): boolean {
+  if (!hasLocaleRows(surfaces)) return false;
+  if (unpublished > 0 || localeWorkOf(surfaces) > 0) return true;
+  return surfaces.some(surface => (surface.localeChanges?.rows.length ?? 0) > 0 && (surface.localeChanges?.delivered?.length ?? 0) > 0);
+}
+
+/**
+ * **만료 판정의 읽기 전용 쪽** (#267) — 미리보기가 쓰기 없이 실행과 같은 `planLocaleExpiry`를 같은 스냅샷에 대 본다. 입력은 `readLocaleStates`가 잠금 뒤
+ * 다시 읽는 것과 같은 뜻이다: 현재 효과는 같은 `localeEffects`, 행의 orphan은 그 소스의 활성 목록에 없음(행의 로케일은 늘 그 소스의 행이다).
+ * ⚠️ `pullRequest`는 성공한 조회만 `none-open`이다 — 모름을 없음으로 접으면 열린 PR의 삭제를 "버려진다"고 말한다.
+ */
+export function expiringLocalesOf(
+  formats: readonly { surface: { slug: string; adapterName: string | null; localeCodes: readonly string[]; localeChanges?: SurfaceLocaleChanges }; format: DetectedFormat }[],
+  pullRequest: PullRequestCheck,
+  tree: readonly TreeEntry[],
+): ExpiredLocaleRequest[] {
+  return formats.flatMap(item => {
+    const changes = item.surface.localeChanges;
+    if (changes === undefined || changes.rows.length === 0) return [];
+    const plan = planLocaleExpiry({
+      pullRequest,
+      current: localeEffects(changes.rows, changes.valueCounts),
+      delivered: changes.delivered,
+      rows: changes.rows.map(row => ({ localeCode: row.localeCode, operation: row.operation, orphaned: !item.surface.localeCodes.includes(row.localeCode) })),
+      observed: observedLocalesOf(item, tree),
+    });
+    return plan.expired.map(expired => ({ surfaceSlug: item.surface.slug, localeCode: expired.localeCode, operation: expired.operation }));
+  });
+}
+
+/**
+ * 만료 뒤의 언어 변경 상태 — `expireLocaleChanges`가 쓰는 것 중 계획 입력인 둘(행 삭제 · 전달 목록에서 그 코드의 효과 빼기)만 메모리에서 흉내 낸다(#267).
+ * 미리보기가 버려질 삭제·새 파일을 약속하지 않게 하는 용도다. ⚠️ 활성/orphan 전환과 그 언어의 셀은 흉내 내지 않는다 — 되살아난 언어의 파일 차이는
+ * 보여 주지 못하지만, 그래서 실행이 다른 스냅샷을 만나면 지문이 달라 `reconfirm`이다(안전한 쪽). 만료가 없으면 입력을 그대로 돌려준다.
+ */
+export function afterExpiry<S extends { slug: string; localeChanges?: SurfaceLocaleChanges }>(surfaces: S[], expired: readonly ExpiredLocaleRequest[]): S[] {
+  if (expired.length === 0) return surfaces;
+  return surfaces.map(surface => {
+    const changes = surface.localeChanges;
+    const codes = new Set(expired.filter(item => item.surfaceSlug === surface.slug).map(item => item.localeCode));
+    if (changes === undefined || codes.size === 0) return surface;
+    return { ...surface, localeChanges: { ...changes,
+      rows: changes.rows.filter(row => !codes.has(row.localeCode)),
+      delivered: changes.delivered === null ? null : changes.delivered.filter(effect => !codes.has(effect.localeCode)) } };
+  });
 }
 
 export type LocaleObservation = { status: "observed"; locales: string[] } | { status: "unreadable" };

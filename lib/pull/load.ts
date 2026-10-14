@@ -12,6 +12,7 @@ import { countPending, pendingWhere } from "@/lib/protection/where";
 import { PUBLISH_BUDGET_MS, type PublishExecution } from "@/lib/sync/execution";
 import { planPublishBaselines, restoreValueOf } from "@/lib/translations/baseline";
 import { deliveryContextFingerprint } from "@/lib/translations/context";
+import type { ExpiredLocaleRequest } from "./locales";
 import type { DeliveryContext, PendingEdit, PullDeps, PullState } from "./run";
 
 /**
@@ -245,19 +246,19 @@ export async function expireLocalesForPublish(
   prisma: PrismaClient,
   actor: { userId: string; credential: Credential | undefined } | undefined,
   input: Parameters<NonNullable<PullDeps["expireLocales"]>>[0],
-): Promise<number> {
+): Promise<ExpiredLocaleRequest[]> {
   return prisma.$transaction(async tx => {
     if (actor !== undefined) {
       const locked = await lockProjectAccess(tx, { projectId: input.projectId, userId: actor.userId, permission: "translation:write", credential: actor.credential });
       if (locked.status !== "ok") fail(`Publish access was lost before expiring locale changes: ${locked.status}`);
     }
-    let expired = 0;
+    const expired: ExpiredLocaleRequest[] = [];
     for (const surface of input.surfaces) {
       const result = await expireLocaleChanges(tx, {
         projectId: input.projectId, surfaceId: surface.surfaceId, surfaceSlug: surface.surfaceSlug,
         pullRequest: input.pullRequest, observed: surface.observed, actor: actor === undefined ? { kind: "AUTOMATION" } : { kind: "USER", userId: actor.userId },
       });
-      expired += result.expired.length;
+      expired.push(...result.expired.map(item => ({ surfaceSlug: surface.surfaceSlug, localeCode: item.localeCode, operation: item.operation })));
     }
     return expired;
   });
