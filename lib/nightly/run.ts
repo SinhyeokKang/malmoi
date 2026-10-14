@@ -216,7 +216,8 @@ export async function runNightly(prisma: PrismaClient, target: NightlyTarget, el
  *
  * ⚠️ **원격 관측을 최신으로 취급하지 않는다** (POSTMORTEM 2026-10-07) — 잠금 뒤 리포 신원·기준 브랜치·Publish 완료 표식(`lastPublishedAt`·전달
  * revision)·실행 중/미확정 Publish를 다시 본다. 그 사이 Publish가 PR을 열었을 수 있으므로 하나라도 다르면 만료하지 않는다(다음 밤이 다시 본다).
- * ⚠️ 트리를 못 읽으면 파일 부재가 아니다 — 아무것도 쓰지 않고 `unreadable`이다(POSTMORTEM 2026-09-27).
+ * ⚠️ 트리를 못 읽으면 파일 부재가 아니다 — 아무것도 쓰지 않고 `unreadable`이다(POSTMORTEM 2026-09-27). 행 있는 소스의 관측이 비거나 경로가 로케일을
+ *   말하지 않아 보류된 것도 `unreadable`이다 — 그 소스의 만료는 안 썼고, 다른 소스의 만료는 같은 tx에 그대로 남는다(R-B3 W1).
  * ⚠️ 잠금 순서는 `Project` → 소스(id순)다 — `expireLocaleChanges`가 같은 tx에서 다시 잡는 것은 재진입이다(W3 호출 계약).
  */
 async function expireAtHead(
@@ -251,12 +252,15 @@ async function expireAtHead(
     if (running !== null && planPublishBarrier(running, at) !== null) return "held";
     const surfaces = await tx.translationSurface.findMany({ where: { projectId: target.id, archivedAt: null }, orderBy: { id: "asc" } });
     let expired = false;
+    let unreadable = false;
     for (const surface of surfaces) {
       const result = await expireLocaleChanges(tx, { projectId: target.id, surfaceId: surface.id, surfaceSlug: surface.slug, pullRequest: "none-open",
         observed: observeSurfaceLocales(paths, surface), actor: { kind: "AUTOMATION" } });
       expired ||= result.expired.length > 0;
+      // 행 있는 소스의 base를 근거로 쓸 수 없었다(관측 0개는 `expireLocaleChanges`가 이 사유로 접는다) — "받을 것 없음"과 갈라 실패 사건으로 남긴다.
+      unreadable ||= result.held === "base-unreadable";
     }
-    return expired ? "expired" : "held";
+    return unreadable ? "unreadable" : expired ? "expired" : "held";
   });
 }
 

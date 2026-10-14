@@ -118,7 +118,8 @@ export type ApplyOptions = {
    * 이 소스의 **언어 변경 의도**(`LocaleChange`)를 이 적재가 어떻게 다루나 (locale-add design §1 "만료와 strict 적재" · 전이 표).
    * - `keep`(생략 시) — 남은 ADD 언어를 orphan 대상에서 뺀다. 의도를 지우지 않는다.
    * - `expire` — 자동 적재(CI·야간). 같은 잠금 안에서 만료를 먼저 돌고(`expireLocaleChanges` — 관측 = 이 페이로드의 로케일), 남은 ADD를 뺀다.
-   * - `discard` — 지문 승인한 수동 Sync의 완전한 적재. 그 소스의 의도 행을 지우고, 존재는 이 적재가 리포대로 정한다. 전달 목록은 남긴다.
+   * - `discard` — 지문 승인한 수동 Sync의 완전한 적재. **승인한 의도 행(`approved` — 종류·요청 시각까지 일치)만** 지우고, 존재는 이 적재가 리포대로
+   *   정한다. 승인 뒤 들어온 행은 남고 그 ADD는 orphan 대상에서 뺀다(R-B3 R1). 전달 목록은 남긴다.
    *
    * ⚠️ **생략의 기본이 `keep`이다** — 빠졌을 때 의도를 보존하는 쪽이 안전하다(`approvedTokens`와 같은 근거). 기본을 strict로 두면 첫 적재·새 호출부
    * 하나가 방금 추가한 빈 언어를 orphan시킨다.
@@ -129,7 +130,9 @@ export type ApplyOptions = {
 export type LocaleChangeHandling =
   | { kind: "keep" }
   | { kind: "expire"; pullRequest: PullRequestCheck; actor: EventActorInput }
-  | { kind: "discard"; actor: EventActorInput };
+  | { kind: "discard"; actor: EventActorInput; approved: readonly LocaleIntent[] };
+
+type LocaleIntent = { localeCode: string; operation: "ADD" | "REMOVE"; requestedAt: string };
 
 type PushScope = { projectId: string; surfaceId: string };
 
@@ -225,14 +228,20 @@ export async function applyPushInTransaction(tx: Prisma.TransactionClient, scope
     await expireLocaleChanges(tx, { projectId: scope.projectId, surfaceId: scope.surfaceId, surfaceSlug: surface.slug,
       pullRequest: handling.pullRequest, observed: { status: "observed", locales: payload.locales }, actor: handling.actor });
   }
-  const intents = await tx.localeChange.findMany({ where: { projectId: scope.projectId, surfaceId: scope.surfaceId }, select: { localeCode: true, operation: true } });
+  const rows = await tx.localeChange.findMany({ where: { projectId: scope.projectId, surfaceId: scope.surfaceId }, select: { localeCode: true, operation: true, requestedAt: true } });
+  const intents = rows.map(row => ({ localeCode: row.localeCode, operation: row.operation, requestedAt: row.requestedAt.toISOString() }));
+  // 승인 집합과 종류·요청 시각까지 같은 행만 지운다 — 취소 뒤 다시 낸 요청도 시각이 달라 승인 밖이다.
+  const discarded = handling.kind === "discard"
+    ? intents.filter(intent => handling.approved.some(row => row.localeCode === intent.localeCode && row.operation === intent.operation && row.requestedAt === intent.requestedAt))
+    : [];
+  const kept = intents.filter(intent => !discarded.includes(intent));
   const outcome = await applyWith(tx, scope, payload, { ...options, previousBaseLocale: options.previousBaseLocale === null ? null : surface.baseLocale },
-    handling.kind === "discard" ? [] : keptAddLocales(intents), async statements => {
+    keptAddLocales(kept), async statements => {
       const results: unknown[] = [];
       for (const statement of statements) results.push(await statement);
       return results;
     });
-  if (handling.kind === "discard") await discardLocaleChanges(tx, scope, surface.slug, payload.locales, intents, handling.actor);
+  if (handling.kind === "discard") await discardLocaleChanges(tx, scope, surface.slug, payload.locales, discarded, handling.actor);
   return outcome;
 }
 
@@ -249,12 +258,13 @@ async function discardLocaleChanges(
   scope: PushScope,
   surfaceSlug: string,
   observed: readonly string[],
-  intents: readonly { localeCode: string; operation: "ADD" | "REMOVE" }[],
+  intents: readonly LocaleIntent[],
   actor: EventActorInput,
 ): Promise<void> {
   const { projectId, surfaceId } = scope;
   if (intents.length === 0) return;
-  await tx.localeChange.deleteMany({ where: { projectId, surfaceId } });
+  // 행마다 종류·요청 시각까지 걸어 지운다 — 표면 tx가 읽은 뒤의 상태가 아니라 승인한 행이 지울 대상이다.
+  await tx.localeChange.deleteMany({ where: { projectId, surfaceId, OR: intents.map(intent => ({ localeCode: intent.localeCode, operation: intent.operation, requestedAt: new Date(intent.requestedAt) })) } });
   const live = liveLocalesOf(observed);
   await recordEvents(tx, [...intents].sort((a, b) => (a.localeCode < b.localeCode ? -1 : a.localeCode > b.localeCode ? 1 : 0)).map(intent => {
     const presence = localePresence(live, intent.localeCode);
