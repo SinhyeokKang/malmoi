@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { deliveredOf, localeWork, parseDeliveredLocaleChanges } from "../work";
+import { deliveredForRequests, deliveredOf, localeWork, parseDeliveredLocaleChanges } from "../work";
 
 describe("parseDeliveredLocaleChanges", () => {
   it("NULL·빈 배열은 전달한 것이 없다", () => {
@@ -81,5 +81,32 @@ describe("localeWork", () => {
         { localeCode: "__proto__", current: "delete", delivered: null },
         { localeCode: "zh_TW", current: null, delivered: "create" },
       ]);
+  });
+});
+
+/**
+ * **확인보다 뒤에 낸 요청의 효과는 전달로 세지 않는다** (F1 fix1 — design §1). 전달 후 취소로 행 없이 남은 전달 목록은 PR이 머지 없이 닫혀도
+ * 정리되지 않는다 — 그 뒤 같은 언어를 다시 요청하면 현재 = 전달이 되어 Publish가 싣지 않고 다음 방문이 지운다. 경계는 확인한 실행의 시작 시각이다.
+ */
+describe("deliveredForRequests", () => {
+  const confirmedFrom = new Date("2026-10-14T10:00:00.000Z");
+  const at = (iso: string) => new Date(iso);
+  const delivered = [{ localeCode: "fr", effect: "create" as const }, { localeCode: "ko", effect: "delete" as const }];
+
+  it("확인한 실행이 시작된 뒤(같은 밀리초 포함)에 낸 요청의 코드는 전달 목록에서 견주지 않는다 — 다른 코드의 효과는 남는다", () => {
+    expect(deliveredForRequests(delivered, [{ localeCode: "ko", requestedAt: at("2026-10-14T10:00:00.001Z") }], confirmedFrom))
+      .toEqual([{ localeCode: "fr", effect: "create" }]);
+    expect(deliveredForRequests(delivered, [{ localeCode: "ko", requestedAt: confirmedFrom }], confirmedFrom))
+      .toEqual([{ localeCode: "fr", effect: "create" }]);
+  });
+
+  it("확인보다 앞선 요청은 그대로 견준다", () => {
+    expect(deliveredForRequests(delivered, [{ localeCode: "ko", requestedAt: at("2026-10-14T09:59:59.999Z") }, { localeCode: "fr", requestedAt: at("2026-10-01T00:00:00.000Z") }], confirmedFrom))
+      .toEqual(delivered);
+  });
+
+  it("확인 안 됨(null)은 그대로 null이다 — 확인 시각이 없으면(확인 행 없음) 목록 그대로다", () => {
+    expect(deliveredForRequests(null, [{ localeCode: "ko", requestedAt: at("2026-10-15T00:00:00.000Z") }], confirmedFrom)).toBeNull();
+    expect(deliveredForRequests([], [{ localeCode: "ko", requestedAt: at("2026-10-15T00:00:00.000Z") }], null)).toEqual([]);
   });
 });

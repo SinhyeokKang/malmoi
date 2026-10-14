@@ -69,8 +69,9 @@ async function request(surfaceId: string, localeCode: string, operation: "ADD" |
   await prisma.localeChange.create({ data: { projectId: "p", surfaceId, localeCode, operation } });
 }
 
-async function deliver(surfaceId: string, effects: { localeCode: string; effect: "create" | "delete" }[] | null, invalidated = false) {
-  const run = await prisma.syncRun.create({ data: { projectId: "p", status: "SUCCEEDED", trigger: "MANUAL" } });
+/** 성공한 확인 — 그 실행은 이미 있는 요청 뒤에 시작했다(확인보다 뒤에 낸 요청은 전달로 세지 않는다 — F1 fix1). `startedAt`으로 그 순서를 바꾼다. */
+async function deliver(surfaceId: string, effects: { localeCode: string; effect: "create" | "delete" }[] | null, invalidated = false, startedAt = new Date(Date.now() + 1_000)) {
+  const run = await prisma.syncRun.create({ data: { projectId: "p", status: "SUCCEEDED", trigger: "MANUAL", startedAt } });
   await prisma.deliveryConfirmation.create({ data: { projectId: "p", surfaceId, revision: `rev-${surfaceId}`, syncRunId: run.id, contextFingerprint: "ctx",
     ...(effects === null ? {} : { deliveredLocaleChanges: effects }), invalidatedAt: invalidated ? new Date() : null } });
 }
@@ -174,6 +175,19 @@ describe("expireLocaleChanges", () => {
  * **만료는 그 행의 효과를 전달 목록에서도 뺀다** (#266 — design §1). 만료 조건이 열린 PR 없음을 확인했으므로 그 효과는 어느 PR에도 실려 있지 않다.
  * 남겨 두면 미머지 종료 뒤 같은 언어를 다시 요청했을 때 현재 = 전달이 되어 Publish가 싣지 않고, 다음 방문이 그 요청을 지운다.
  */
+describe("expireLocaleChanges — 확인보다 뒤에 낸 요청 (F1 fix1)", () => {
+  it("확인한 실행이 시작된 뒤에 낸 제거는 옛 전달 목록과 견주지 않는다 — 열린 PR이 없어도 만료하지 않고 작업 1이다", async () => {
+    // 전달 후 취소로 행 없이 남은 목록 — 그 뒤 같은 언어를 다시 요청했다.
+    await deliver("s-web", [{ localeCode: "ko", effect: "delete" }], false, new Date(Date.now() - 60_000));
+    await request("s-web", "ko", "REMOVE");
+    expect(await expire({})).toEqual({ expired: [], held: "undelivered" });
+    expect(await prisma.localeChange.count()).toBe(1);
+    expect(await countLocaleWork(prisma, "p", "s-web")).toBe(1);
+    const [state] = await readLocaleStates(prisma, "p", "s-web");
+    expect(state?.work).toEqual([{ localeCode: "ko", current: "delete", delivered: null }]);
+  });
+});
+
 describe("expireLocaleChanges — 전달 목록 정리 (#266)", () => {
   const confirmation = (surfaceId = "s-web") => prisma.deliveryConfirmation.findUniqueOrThrow({ where: { projectId_surfaceId: { projectId: "p", surfaceId } } });
 

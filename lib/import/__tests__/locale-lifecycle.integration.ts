@@ -125,9 +125,14 @@ async function request(surfaceId: string, localeCode: string, operation: "ADD" |
   await prisma.localeChange.create({ data: { projectId: "p", surfaceId, localeCode, operation } });
 }
 
-/** 성공한 Publish 확인 — 그 확인이 실은 파일 집합 변경(`deliveredLocaleChanges`)까지. */
+/**
+ * 성공한 Publish 확인 — 그 확인이 실은 파일 집합 변경(`deliveredLocaleChanges`)까지. 실행은 한 시간 전에 시작했으므로 이미 있는 그 소스의 요청을
+ * 그보다 앞으로 민다 — 확인보다 뒤에 낸 요청은 전달로 세지 않는다(F1 fix1).
+ */
 async function deliver(surfaceId: string, effects: { localeCode: string; effect: "create" | "delete" }[]) {
-  const run = await prisma.syncRun.create({ data: { projectId: "p", status: "SUCCEEDED", trigger: "MANUAL", startedAt: new Date(Date.now() - 3_600_000) } });
+  const startedAt = new Date(Date.now() - 3_600_000);
+  await prisma.localeChange.updateMany({ where: { projectId: "p", surfaceId }, data: { requestedAt: new Date(startedAt.getTime() - 60_000) } });
+  const run = await prisma.syncRun.create({ data: { projectId: "p", status: "SUCCEEDED", trigger: "MANUAL", startedAt } });
   await prisma.deliveryConfirmation.create({ data: { projectId: "p", surfaceId, revision: `rev-${surfaceId}-${run.id}`, syncRunId: run.id, contextFingerprint: "ctx", deliveredLocaleChanges: effects } });
 }
 

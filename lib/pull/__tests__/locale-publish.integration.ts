@@ -104,9 +104,14 @@ const snapshot = (made: ReturnType<typeof fake>) =>
 const keyId = async (key: string) => (await prisma.stringKey.findFirstOrThrow({ where: { projectId: "p", key } })).id;
 const save = async (key: string, localeCode: string, value: string) =>
   applyKeySave(prisma, { projectId: "p", surfaceId: "s", surfaceSlug: "default", keyId: await keyId(key), userId: "owner", credential: undefined, changes: [{ localeCode, value }] });
-/** 미확정 창(300초)을 지나게 한다 — 남는 장벽은 확인 무효화뿐이다. */
-// 시각은 JS로 넘긴다 — 컬럼이 시간대 없는 timestamp라 SQL `now()`는 세션 시간대만큼 어긋난다.
-const ageRuns = () => prisma.syncRun.updateMany({ where: { projectId: "p" }, data: { startedAt: new Date(Date.now() - 400_000), finishedAt: new Date(Date.now() - 390_000) } });
+/**
+ * 미확정 창(300초)을 지나게 한다 — 남는 장벽은 확인 무효화뿐이다. 실행과 언어 요청을 **같은 폭으로** 민다 — 확인보다 뒤에 낸 요청은 전달로 세지
+ * 않으므로(F1 fix1) 실행만 밀면 그 전에 낸 요청이 확인 뒤의 요청이 된다. SQL 안의 상대 이동이라 세션 시간대와 무관하다.
+ */
+const ageRuns = async () => {
+  await pool.query(`UPDATE "SyncRun" SET "startedAt" = "startedAt" - interval '400 seconds', "finishedAt" = "finishedAt" - interval '400 seconds' WHERE "projectId" = 'p'`);
+  await pool.query(`UPDATE "LocaleChange" SET "requestedAt" = "requestedAt" - interval '400 seconds' WHERE "projectId" = 'p'`);
+};
 
 async function requestRemoval(code: string) {
   const preview = await previewLocaleRemoval(prisma, OWNER, { ...WEB, localeCode: code });
@@ -327,12 +332,12 @@ describe("미머지 종료 뒤 같은 언어를 다시 제거 요청 (#266)", ()
     expect(await removeLocale(prisma, OWNER, { ...WEB, localeCode: "ko", approval: preview.approval })).toMatchObject({ ok: true, kind: "request-removal" });
     expect(await countLocaleWork(prisma, "p")).toBe(1);
 
+    // 앞의 실행들(no-edits 포함)이 남긴 간격 게이트를 지난다. 요청 시각도 움직이므로 지문을 받기 전에 민다.
+    await ageRuns();
     const files = { "i18n/en.json": EN, "i18n/ko.json": KO };
     fake(files);
     const shown = await readPublishPreview(prisma, "p", "fixture");
     expect(shown.fileChanges).toEqual([{ path: "i18n/ko.json", kind: "removed" }]);
-    // 앞의 실행들(no-edits 포함)이 남긴 간격 게이트를 지난다.
-    await ageRuns();
     const made = fake(files);
     expect(await publish(shown.fingerprint)).toMatchObject({ status: "committed", files: [{ path: "i18n/ko.json", kind: "removed" }] });
     expect(snapshot(made)?.changes).toEqual([{ kind: "delete", path: "i18n/ko.json" }]);
@@ -341,6 +346,47 @@ describe("미머지 종료 뒤 같은 언어를 다시 제거 요청 (#266)", ()
     // 다음 방문 — 새 PR이 열려 있으니 요청이 살아 있다(이슈의 6단계).
     await ageRuns();
     fake(files, { openPr: { url: "https://github.com/o/r/pull/10", number: 10, title: "chore(i18n): sync [skip ci]", base: "main" } });
+    await cron();
+    expect(await prisma.localeChange.findMany({ where: { projectId: "p" }, select: { localeCode: true, operation: true } })).toEqual([{ localeCode: "ko", operation: "REMOVE" }]);
+  });
+});
+
+/**
+ * **확인보다 뒤에 낸 요청의 효과는 전달로 세지 않는다** (F1 fix1 — design §1). 전달 후 취소는 행 없이 전달 목록만 남기고, PR이 머지 없이 닫혀도
+ * 만료할 행이 없어 그 목록은 그대로다. 그 뒤 같은 언어를 다시 요청하면 현재 = 전달이 되어 Publish가 싣지 않고, 다음 방문이 새 요청을 지웠다(#266과 같은 결과).
+ */
+describe("전달 후 취소 → 미머지 종료 → 같은 언어 재요청 (F1 fix1)", () => {
+  it("확인 뒤에 낸 요청은 옛 전달 목록과 견주지 않는다 — 미리보기 delivered:false·작업 1·적재 방문이 만료하지 않고 Publish가 삭제를 싣고 다음 방문이 남긴다", async () => {
+    await deliveredRemoval();
+    expect(await cancelLocaleRemoval(prisma, OWNER, { ...WEB, localeCode: "ko" })).toEqual({ ok: true, delivered: true });
+    // PR이 머지 없이 닫혔다 — 만료할 행이 없어 전달 목록은 옛 삭제를 든 채 남는다.
+    expect(await delivered()).toEqual([{ localeCode: "ko", effect: "delete" }]);
+
+    const preview = await previewLocaleRemoval(prisma, OWNER, { ...WEB, localeCode: "ko" });
+    expect(preview).toMatchObject({ ok: true, kind: "request-removal", delivered: false });
+    if (!preview.ok) throw new Error("preview refused");
+    expect(await removeLocale(prisma, OWNER, { ...WEB, localeCode: "ko", approval: preview.approval })).toMatchObject({ ok: true, kind: "request-removal" });
+    expect(await countLocaleWork(prisma, "p")).toBe(1);
+    // 적재 방문(열린 PR 없음) — 새 요청은 아직 어느 PR에도 실리지 않았으니 만료하지 않는다.
+    await ciImport(["en", "ko"]);
+    expect(await prisma.localeChange.count({ where: { projectId: "p" } })).toBe(1);
+
+    // 간격 게이트를 지난다 — 요청 시각도 움직이므로 지문을 받기 전에 민다.
+    await ageRuns();
+    const files = { "i18n/en.json": EN, "i18n/ko.json": KO };
+    fake(files);
+    const shown = await readPublishPreview(prisma, "p", "fixture");
+    expect(shown.fileChanges).toEqual([{ path: "i18n/ko.json", kind: "removed" }]);
+    expect(shown).not.toHaveProperty("withdrawnLocales");
+    const made = fake(files);
+    expect(await publish(shown.fingerprint)).toMatchObject({ status: "committed", files: [{ path: "i18n/ko.json", kind: "removed" }] });
+    expect(snapshot(made)?.changes).toEqual([{ kind: "delete", path: "i18n/ko.json" }]);
+    expect(await delivered()).toEqual([{ localeCode: "ko", effect: "delete" }]);
+    // 이 Publish의 확인은 요청 뒤에 시작했다 — 이제 전달로 센다.
+    expect(await countLocaleWork(prisma, "p")).toBe(0);
+
+    await ageRuns();
+    fake(files, { openPr: { url: "https://github.com/o/r/pull/11", number: 11, title: "chore(i18n): sync [skip ci]", base: "main" } });
     await cron();
     expect(await prisma.localeChange.findMany({ where: { projectId: "p" }, select: { localeCode: true, operation: true } })).toEqual([{ localeCode: "ko", operation: "REMOVE" }]);
   });
