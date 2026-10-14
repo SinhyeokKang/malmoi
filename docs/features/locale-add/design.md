@@ -118,7 +118,7 @@ GitLab은 `{action: "delete", file_path}`를 쓴다. blob SHA 비교(`planPullCh
 
 쓰기는 `lockProjectAccess(project:settings)` → Surface 잠금 → 상태 재조회 → 판정 → Locale/LocaleChange/토큰/ProjectEvent를 같은 tx에서 변경한다. 미리보기는 읽기 전용이고 `revalidatePath` 없음. 성공한 웹 쓰기 뒤에만 revalidate한다.
 
-**폐기는 값을 마지막 전달 값으로 되돌린다** (2026-10-14 사용자 — R-B1 Y1). 토큰만 비우면 값이 DB에 남아, 제거를 취소한 뒤 다음 Publish에 추적 없이 실린다. 그래서 폐기는 Revert와 같은 의미다 — `TranslationBaseline`의 복원값으로 되돌리고 토큰을 비운다. 그 언어에 전달 기록(baseline)이 없는 미전달 셀이 있으면 제거·추가 취소를 거부한다(fail-closed, 먼저 Publish 또는 Revert). 추가 취소의 값 보존(spec 5)은 폐기 대상이 아닌 셀에만 해당한다.
+**폐기는 값을 마지막 전달 값으로 되돌린다** (2026-10-14 사용자 — R-B1 Y1). 토큰만 비우면 값이 DB에 남아, 제거를 취소한 뒤 다음 Publish에 추적 없이 실린다. 그래서 폐기는 Revert와 같은 의미다 — `TranslationBaseline`의 복원값으로 되돌리고 토큰을 비운다. 그 언어에 전달 기록(baseline)이 없는 미전달 셀이 있으면 제거를 거부한다(fail-closed, 먼저 Publish 또는 Revert). **이 되돌림은 제거(REMOVE)에만 적용한다** — 추가 취소는 언어를 orphan으로 돌려 렌더에서 빠지므로 값이 새지 않고, 재추가가 값 있는 셀에 토큰을 다시 발급해 되살린다(spec 보존 행). 그래서 추가 취소는 토큰만 비우고 값은 유지한다(2026-10-14 정정 — 처음 문장이 추가 취소까지 덮어 새 언어의 입력을 지웠다).
 
 **확인이 무효화된 동안(`delivered: null`)은 취소를 거부한다** (2026-10-14 R-B1 🔴 R1 · 지휘자 판단). 대상 행의 효과가 현재 목록에 있으면 추가 취소·제거 취소를 `publish-unsettled`로 거부한다. 무효화는 시간으로 풀리지 않고 다음 성공 확인만 푼다 — 그 사이 취소를 받으면 작업이 0으로 접혀 열린 PR의 stale 파일이 남는다. 새 요청(추가·제거 요청)은 작업을 늘리는 쪽이라 막지 않는다. 값 0개 ADD의 취소는 보낸 파일이 없어 허용한다.
 
