@@ -210,6 +210,13 @@ export function eventGlyph(row: Pick<EventViewRow, "kind" | "result"> & { subtyp
   return { icon: glyphIcon(row.kind, row.subtype), tone };
 }
 
+/** 언어 변경 사건(locale-add design §6). 생산자는 `lib/locales/change.ts`·`lib/locales/expire.ts`다. */
+export const LOCALE_CHANGE_SUBTYPES = ["surface.localeAdded", "surface.localeRemovalRequested", "surface.localeChangeCancelled", "surface.localeChangeResolved"] as const;
+
+function isLocaleChangeSubtype(subtype: string): boolean {
+  return (LOCALE_CHANGE_SUBTYPES as readonly string[]).includes(subtype);
+}
+
 function glyphIcon(kind: EventKind, subtype: string): GlyphIcon {
   switch (kind) {
     case "TRANSLATION":
@@ -219,8 +226,8 @@ function glyphIcon(kind: EventKind, subtype: string): GlyphIcon {
     case "PUBLISH":
       return "git-pull-request-arrow";
     case "SURFACE":
-      // 소스 추가는 **파일 모양**, 기준 언어는 **지구본** — 같은 종류 안에서 무엇이 바뀌었는지 가른다.
-      return subtype.startsWith("surface.baseLocale") ? "globe" : "file-json-2";
+      // 소스 추가는 **파일 모양**, 기준 언어는 **지구본** — 같은 종류 안에서 무엇이 바뀌었는지 가른다. 언어 변경도 언어 축이라 지구본이다.
+      return subtype.startsWith("surface.baseLocale") || isLocaleChangeSubtype(subtype) ? "globe" : "file-json-2";
     case "MEMBER":
       return "users";
     default:
@@ -323,6 +330,8 @@ export function eventSentence(
     case "SURFACE": {
       const slug = payload?.kind === "SURFACE" ? payload.surfaceSlug : m.logs.none;
       if (row.subtype === "surface.removed") return m.logs.sentence.surface.removed(actor, slug);
+      // ⚠️ 언어 변경을 "소스를 추가했다"로 그리지 않는다(locale-add). 전용 문장은 화면 문구 배치가 정한다 — 그 전까지 종류 폴백이다.
+      if (isLocaleChangeSubtype(row.subtype)) return m.logs.sentence.fallback(actor, m.logs.kinds.sources);
       return row.subtype.startsWith("surface.baseLocale")
         ? m.logs.sentence.surface.baseLocale(actor, slug)
         : m.logs.sentence.surface.added(actor, slug);
@@ -571,6 +580,10 @@ export function eventMeta(m: Messages, row: EventMetaRow, archived: boolean): Ev
     }
     case "SURFACE": {
       if (payload?.kind !== "SURFACE") break;
+      if (payload.localeChange !== undefined) {
+        parts.push({ kind: "locale", code: payload.localeChange.locale }, { kind: "badge", text: payload.surfaceSlug });
+        break;
+      }
       if (payload.adapter !== null) parts.push({ kind: "badge", text: payload.adapter });
       if (payload.baseLocale !== null) {
         parts.push(change(m, payload.baseLocale.before, payload.baseLocale.after));

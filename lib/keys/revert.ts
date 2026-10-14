@@ -22,7 +22,7 @@ import { readDeliveryState } from "./delivery";
  */
 export type RevertTarget = { projectId: string; surfaceId: string; surfaceSlug: string; keyId: string; userId: string };
 
-export type RevertBlockReason = Exclude<RevertPlan, { ok: true }>["reason"] | "key-unavailable" | "sync-running";
+export type RevertBlockReason = Exclude<RevertPlan, { ok: true }>["reason"] | "key-unavailable" | "sync-running" | "locale-removal-pending";
 
 /**
  * ⚠️ **적재 lease는 `busy`가 아니라 `sync-running`이다** (sync-lock R2) — 저장 거부와 같은 판정(`planWriteLock`)·같은 다시 열리는 시각이다.
@@ -80,6 +80,11 @@ async function revertState(tx: Prisma.TransactionClient, target: RevertTarget): 
   if (lock !== null) return { ok: false, blocked: { status: "blocked", reason: lock.reason, startedAt: lock.startedAt, reopensBy: lock.reopensBy } };
 
   if (uncertain > 0) return { ok: false, blocked: { status: "blocked", reason: "unsettled" } };
+
+  // 제거 예정 언어의 셀은 복원하지 않는다(locale-add spec 6) — 폐기 승인이 토큰을 비우므로 정상 경로로는 닿지 않는 마지막 방어선이다.
+  const removing = new Set((await tx.localeChange.findMany({ where: { projectId, surfaceId, operation: "REMOVE" }, select: { localeCode: true } })).map(row => row.localeCode));
+  const lockedCodes = [...new Set(targets.filter(t => removing.has(t.localeCode)).map(t => t.localeCode))];
+  if (lockedCodes.length > 0) return { ok: false, blocked: { status: "blocked", reason: "locale-removal-pending", localeCodes: lockedCodes } };
 
   const cells = targets.flatMap(t => t.pendingEditToken === null ? [] : [{ localeCode: t.localeCode, token: t.pendingEditToken, currentValue: t.value, needsReview: t.needsReview }]);
   const plan = planKeyRevert({

@@ -1,0 +1,68 @@
+import type { Prisma } from "@/generated/prisma/client";
+import type { EventActorInput } from "@/lib/events/record";
+import { recordEvents } from "@/lib/events/record";
+
+import { planLocaleExpiry, type ExpiredLocale, type ExpiryHold, type PullRequestCheck } from "./expiry";
+import { readLocaleStates } from "./work";
+
+/**
+ * **언어 변경 의도 만료의 I/O 껍데기** (locale-add design §1 "만료와 strict 적재" — orch O4). 자동 적재(B3)·같은 SHA 야간 방문(B3)·
+ * Publish 스냅샷 전(B2)이 부른다. 판정은 순수 함수 `planLocaleExpiry` 하나이고, 여기서는 잠금 뒤 다시 읽은 행·목록을 넘기고 결과대로
+ * 행 삭제·활성/orphan·사건을 **호출자의 tx**에 쓴다.
+ *
+ * ⚠️ **스스로 `Project`→`TranslationSurface`를 잠근다** — 같은 tx에서 이미 잠갔으면 다시 잡아도 대기하지 않는다. 잠금 전에 읽은 원격
+ * 관측(PR 상태·base 파일)은 입력이지만 DB 상태는 잠금 뒤 값이어야 한다(POSTMORTEM 2026-10-07 "야간 원격 관측을 최신으로 취급").
+ * ⚠️ **보류는 쓰지 않는다** — 행·로케일·사건 모두 그대로다. 보류 사유는 호출자의 실행 사건(적재 deferred · 야간 결과 · Publish)이 싣는다.
+ * ⚠️ `base-empty`(관측 로케일 0개)는 **`base-unreadable`로 접어 돌려준다** — 둘 다 "base를 근거로 쓸 수 없다"는 보류이고, 사건·Logs에
+ * 갈래를 둘로 만들 이유가 없다(A1 handoff). 판정 자체는 `planLocaleExpiry`가 가른다.
+ * ⚠️ `server-only`를 붙이지 않는다 — 격리 PG 통합 테스트가 직접 부른다.
+ */
+
+export type LocaleExpiryHold = Exclude<ExpiryHold, "base-empty">;
+
+export type LocaleExpiryInput = {
+  projectId: string;
+  surfaceId: string;
+  /** 사건 payload의 소스 이름 — 사건 당시 값이다. */
+  surfaceSlug: string;
+  /** 성공한 조회만 `none-open`이다. 실패·응답 유실·상태 불명은 `failed`(수락 기준 15). */
+  pullRequest: PullRequestCheck;
+  /** base head에서 관측한 이 소스의 로케일 — strict 적재의 `payload.locales`와 같은 뜻이다. 못 읽었으면 `unreadable`. */
+  observed: { status: "observed"; locales: readonly string[] } | { status: "unreadable" };
+  actor: EventActorInput;
+};
+
+export type LocaleExpiryResult = { expired: ExpiredLocale[]; held: LocaleExpiryHold | null };
+
+export async function expireLocaleChanges(tx: Prisma.TransactionClient, input: LocaleExpiryInput): Promise<LocaleExpiryResult> {
+  const { projectId, surfaceId } = input;
+  await tx.$executeRaw`SELECT "id" FROM "Project" WHERE "id" = ${projectId} FOR UPDATE`;
+  await tx.$executeRaw`SELECT "id" FROM "TranslationSurface" WHERE "projectId" = ${projectId} AND "id" = ${surfaceId} FOR UPDATE`;
+  const [state] = await readLocaleStates(tx, projectId, surfaceId);
+  if (state === undefined || state.rows.length === 0) return { expired: [], held: null };
+  const plan = planLocaleExpiry({
+    pullRequest: input.pullRequest,
+    current: state.current,
+    delivered: state.delivered,
+    rows: state.rows.map(row => ({ localeCode: row.localeCode, operation: row.operation, orphaned: row.orphaned })),
+    observed: input.observed,
+  });
+  if (plan.expired.length > 0) {
+    await tx.localeChange.deleteMany({ where: { projectId, surfaceId, localeCode: { in: plan.expired.map(item => item.localeCode) } } });
+    for (const presence of ["active", "orphan"] as const) {
+      const codes = plan.expired.filter(item => item.presence === presence).map(item => item.localeCode);
+      if (codes.length === 0) continue;
+      // strict 적재와 같은 존재 판정이다 — orphan이면 `isBase`도 내린다(`lib/push/apply.ts`의 orphan 문장과 같은 결).
+      await tx.locale.updateMany({ where: { projectId, surfaceId, code: { in: codes } }, data: presence === "active" ? { orphaned: false } : { orphaned: true, isBase: false } });
+    }
+    await recordEvents(tx, plan.expired.map(item => ({
+      projectId,
+      subtype: "surface.localeChangeResolved",
+      actor: input.actor,
+      surfaceIds: [surfaceId],
+      payload: { kind: "SURFACE" as const, surfaceSlug: input.surfaceSlug, adapter: null, baseLocale: null,
+        localeChange: { locale: item.localeCode, operation: item.operation, revived: null, discarded: null, outcome: item.presence } },
+    })));
+  }
+  return { expired: plan.expired, held: plan.held === "base-empty" ? "base-unreadable" : plan.held };
+}

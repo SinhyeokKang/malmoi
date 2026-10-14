@@ -35,7 +35,7 @@ function tokens(payload: EventPayload): (string | null)[] {
     case "PUBLISH":
       return [...payload.surfaceSlugs, payload.refusal];
     case "SURFACE":
-      return [payload.surfaceSlug, payload.adapter, payload.baseLocale?.before ?? null, payload.baseLocale?.after ?? null];
+      return [payload.surfaceSlug, payload.adapter, payload.baseLocale?.before ?? null, payload.baseLocale?.after ?? null, payload.localeChange?.locale ?? null];
     case "MEMBER":
       // 마스킹 라벨이다 — 원문 이메일은 payload에도 없다.
       return [payload.targetLabel, payload.role?.before ?? null, payload.role?.after ?? null];

@@ -6,13 +6,15 @@ import { lockProjectAccess } from "@/lib/auth/lock";
 import type { AccessError } from "@/lib/auth/message";
 import type { Subject } from "@/lib/auth/subject";
 import { recordEvent } from "@/lib/events/record";
+import { planBaseLocaleCandidate } from "@/lib/locales/change-plan";
 import { planBaseLocaleChange } from "@/lib/onboarding/base-locale";
 import type { RepositorySettingsError } from "@/lib/settings/message";
 import { getSurfaceAccess } from "@/lib/surfaces/access";
 
 export const BaseLocaleInput = z.object({ slug: z.string().min(1), surfaceSlug: z.string().min(1), baseLocale: z.string().min(1) });
 
-export type BaseLocaleDeclareResult = { ok: true } | { ok: false; error: RepositorySettingsError | AccessError };
+/** `locale-change-pending` — 추가 중·제거 예정 언어는 기준이 될 수 없다(locale-add design §2 끝). */
+export type BaseLocaleDeclareResult = { ok: true } | { ok: false; error: RepositorySettingsError | AccessError | "locale-change-pending" };
 
 /**
  * **기준 로케일 선언의 공유 코어** (mcp-connector T4-b). 편집 UI의 `updateBaseLocale`과 MCP `set_base_locale`이 같은 인가·잠금 tx·사건을
@@ -34,11 +36,17 @@ export async function declareBaseLocale(prisma: PrismaClient, subject: Subject, 
     if (locked.status !== "ok") return { ok: false, error: locked.status } as const;
     const project = await tx.translationSurface.findUnique({
       where: { id: surfaceId, projectId },
-      select: { baseLocale: true, declaredBaseLocale: true, locales: { select: { code: true, orphaned: true } } },
+      select: { baseLocale: true, declaredBaseLocale: true, locales: { select: { code: true, orphaned: true, change: { select: { operation: true } } } } },
     });
     if (project === null) return { ok: false, error: "not-found" } as const;
     const plan = planBaseLocaleChange({ current: project.baseLocale, next: baseLocale, locales: project.locales });
     if (plan === "unknown-locale" || plan === "orphaned-locale") return { ok: false, error: plan } as const;
+    if (plan === "ok") {
+      // 잠금 뒤 읽은 언어 변경 행(로케일과 같은 질의)으로 판정한다 — 렌더 뒤 도착한 추가·제거 요청도 여기서 거부된다.
+      const changes = project.locales.flatMap(locale => locale.change == null ? [] : [{ localeCode: locale.code, operation: locale.change.operation }]);
+      const candidate = planBaseLocaleCandidate(baseLocale, { locales: project.locales, changes });
+      if (!candidate.ok) return { ok: false, error: candidate.error === "not-found" ? "orphaned-locale" : candidate.error } as const;
+    }
     const declaredBaseLocale = plan === "ok" ? baseLocale : null;
     if (project.declaredBaseLocale === declaredBaseLocale) return { ok: true } as const;
     await tx.translationSurface.update({ where: { id: surfaceId, projectId }, data: { declaredBaseLocale } });

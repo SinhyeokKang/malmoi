@@ -32,7 +32,7 @@ import type { RepositorySettingsError } from "@/lib/settings/message";
 
 export type BaseLocaleResult =
   | { ok: true }
-  | { ok: false; error: RepositorySettingsError | AccessError | "invalid input" };
+  | { ok: false; error: RepositorySettingsError | AccessError | "invalid input" | "locale-change-pending" };
 
 /**
  * 본체는 공유 코어 `declareBaseLocale`이다(MCP `set_base_locale`과 같다) — 선언 컬럼에만 쓰는 규칙이 거기 있다.

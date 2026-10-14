@@ -85,6 +85,22 @@ export type DeferReason = (typeof DEFER_REASONS)[number];
  */
 export const NIGHTLY_SUBTYPES = ["import.nightly", "nightly.skip"] as const;
 
+/**
+ * **언어 변경 사건의 맥락** (locale-add design §6) — SURFACE subtype `surface.localeAdded`·`surface.localeRemovalRequested`·
+ * `surface.localeChangeCancelled`·`surface.localeChangeResolved`가 싣는다. 관측하지 않은 칸은 `null`이다.
+ */
+export type LocaleChangeDetail = {
+  locale: string;
+  /** 요청·취소·만료된 의도의 종류. 취소면 취소된 쪽이다. */
+  operation: "ADD" | "REMOVE";
+  /** 추가가 orphan 행을 되살렸나. */
+  revived: boolean | null;
+  /** 승인으로 폐기한 그 언어의 미전달 편집 수. */
+  discarded: number | null;
+  /** 만료 뒤 base 관측이 정한 상태. */
+  outcome: "active" | "orphan" | null;
+};
+
 /** 전후 값. **전문 그대로다** — 상한은 이미 저장 층이 10,000자로 든다 (결정 5). */
 export type ValueChange = { before: string | null; after: string | null };
 
@@ -147,6 +163,8 @@ export type EventPayload =
       surfaceSlug: string;
       adapter: string | null;
       baseLocale: ValueChange | null;
+      /** 언어 변경 사건만 — 옛 행·소스 사건에는 **필드가 없다**(읽는 쪽이 만들지 않는다). */
+      localeChange?: LocaleChangeDetail;
     }
   | {
       /** ⚠️ **원문 이메일이 아니라 마스킹 라벨이다** (sec-audit 발견 4). */
@@ -243,8 +261,10 @@ export function readPayload(kind: EventKind, value: unknown): EventPayload | nul
       };
     case "PUBLISH":
       return { kind, surfaceSlugs: strings(raw, "surfaceSlugs"), refusal: oneOfRaw(NOT_STARTED_REASONS, str(raw, "refusal")) };
-    case "SURFACE":
-      return { kind, surfaceSlug: str(raw, "surfaceSlug") ?? "", adapter: str(raw, "adapter"), baseLocale: change(raw, "baseLocale") };
+    case "SURFACE": {
+      const localeChange = localeChangeOf(raw);
+      return { kind, surfaceSlug: str(raw, "surfaceSlug") ?? "", adapter: str(raw, "adapter"), baseLocale: change(raw, "baseLocale"), ...(localeChange === null ? {} : { localeChange }) };
+    }
     case "MEMBER":
       return { kind, targetLabel: str(raw, "targetLabel") ?? "", role: change(raw, "role") };
     default:
@@ -272,6 +292,21 @@ function change(raw: Record<string, unknown>, key: string): ValueChange | null {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
   const inner = value as Record<string, unknown>;
   return { before: str(inner, "before"), after: str(inner, "after") };
+}
+
+const LOCALE_OPERATIONS = ["ADD", "REMOVE"] as const;
+const LOCALE_OUTCOMES = ["active", "orphan"] as const;
+
+/** `locale`·`operation`이 읽히지 않으면 맥락이 없다 — 다른 칸은 틀리면 그 칸만 `null`이다. */
+function localeChangeOf(raw: Record<string, unknown>): LocaleChangeDetail | null {
+  const value = Object.hasOwn(raw, "localeChange") ? raw.localeChange : undefined;
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
+  const inner = value as Record<string, unknown>;
+  const locale = str(inner, "locale");
+  const operation = oneOfRaw(LOCALE_OPERATIONS, str(inner, "operation"));
+  if (locale === null || operation === null) return null;
+  const revived = Object.hasOwn(inner, "revived") && typeof inner.revived === "boolean" ? inner.revived : null;
+  return { locale, operation, revived, discarded: num(inner, "discarded"), outcome: oneOfRaw(LOCALE_OUTCOMES, str(inner, "outcome")) };
 }
 
 function outcomes(raw: Record<string, unknown>): SurfaceOutcome[] {

@@ -69,6 +69,8 @@ const REVERT_BLOCKED = {
   nothing: en.translations.workspace.revert.failed.body,
   "key-unavailable": en.errors.access["not-found"],
   "sync-running": en.repositorySync.errors["already-running"],
+  // 제거 예정 언어(locale-add) — 전용 문장은 화면 문구 배치가 정한다. 그 전까지 화면의 "되돌릴 수 없음" 문장이다.
+  "locale-removal-pending": en.translations.workspace.revert.unavailable,
 } satisfies Record<RevertBlockReason, string>;
 
 export const revertToLastSent = defineTool({

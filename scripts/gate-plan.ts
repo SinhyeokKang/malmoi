@@ -36,6 +36,8 @@ const POSTGRES_SUITES: readonly { step: GateStep; triggers: readonly string[] }[
       "lib/publish/",
       "lib/import/",
       "lib/protection/",
+      // 언어 변경 코어(locale-add) — 잠금·사건·만료·작업 수 시나리오가 `lib/locales/__tests__/*.integration.ts`에 있다.
+      "lib/locales/",
       "lib/nightly/",
       "lib/home/",
       "lib/inbox/",
