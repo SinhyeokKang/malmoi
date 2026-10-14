@@ -13,6 +13,7 @@ import { useMessages, useUiLocale } from "@/components/i18n/messages-provider";
 import { formatNumber } from "@/lib/number-format";
 import { keyEditCommand, type KeyDraftState } from "@/lib/translations/draft";
 import { MISSING_LANGUAGES } from "@/lib/translations/query";
+import { detailFill } from "@/lib/translations/summary";
 import { cn } from "@/lib/utils";
 
 import { FilterMenu } from "./filter-menu";
@@ -107,8 +108,7 @@ export function LocalePanel({ detail, draft, language, onEdit, onReset, onSave, 
   const m = useMessages();
   const uiLocale = useUiLocale();
   const w = m.translations.workspace.detail;
-  const filled = detail.locales.filter(l => l.value !== null && l.value !== "").length;
-  const total = detail.locales.length;
+  const { filled, total } = detailFill(detail.locales);
   const base = detail.locales.find(l => l.isBase)?.code;
   // 언어 필터는 **보이는 행만** 거른다 — Save·Revert 대상은 여전히 전 언어의 draft·pending이다.
   const visible = detail.locales.filter(l => {

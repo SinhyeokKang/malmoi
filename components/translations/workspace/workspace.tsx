@@ -40,7 +40,7 @@ import {
 } from "@/lib/translations/query";
 import { applySavedRow, mergeServerRows, savedOutCount, startListGeneration, type ListGeneration } from "@/lib/translations/saved-rows";
 import { countTree, type NodeCount } from "@/lib/translations/tree-narrow";
-import { summarizeKey } from "@/lib/translations/summary";
+import { summarizeKey, workLocaleCodes } from "@/lib/translations/summary";
 import { cn } from "@/lib/utils";
 
 import { FilterMenu } from "./filter-menu";
@@ -545,7 +545,7 @@ function WorkspaceBody(props: WorkspaceProps) {
         // 목록 행은 자리에 남기고 수만 최신 저장값으로 — 조건 이탈 여부는 재검증(`mergeServerRows`)이 정한다.
         const saved = { ...draft.saved, ...Object.fromEntries(result.cells.map(c => [c.localeCode, c.value])) };
         const summary = summarizeKey({
-          activeLocales: detail.locales.map(l => l.code),
+          activeLocales: workLocaleCodes(detail.locales),
           cells: detail.locales.map(l => ({ localeCode: l.code, value: saved[l.code] ?? null, needsReview: l.needsReview && !result.cells.some(c => c.localeCode === l.code), pending: l.pending || result.cells.some(c => c.localeCode === l.code) })),
         });
         setRows(prev => {
