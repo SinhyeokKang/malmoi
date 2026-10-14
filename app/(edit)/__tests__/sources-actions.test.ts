@@ -77,3 +77,74 @@ it("보관 거부는 그 프로젝트 레이아웃을 다시 그린다", async (
   expect(await removeSource({ slug: "p", surfaceSlug: "web", approval: null })).toEqual({ ok: false, error: "archived" });
   expect(mocks.revalidate.mock.calls).toEqual([["/projects/p", "layout"]]);
 });
+
+/**
+ * 언어 추가·제거·취소 (locale-add tasks §6 첫째). 판정은 공유 코어(`lib/locales/change.ts` — 실 PG는 `change.integration.ts`)가 하고
+ * Action은 세션·입력·무효화만 든다. 결과는 문장이 아니라 코드다. **무효화는 커밋된 성공 뒤에만**, 미리보기는 무효화하지 않는다.
+ */
+const locales = vi.hoisted(() => ({ add: vi.fn(), preview: vi.fn(), remove: vi.fn(), cancel: vi.fn() }));
+vi.mock("@/lib/locales/change", async (original) => ({ ...(await original<object>()),
+  addLocale: locales.add, previewLocaleRemoval: locales.preview, removeLocale: locales.remove, cancelLocaleRemoval: locales.cancel }));
+import { addLocale, cancelLocaleRemoval, previewLocaleRemoval, removeLocale } from "../projects/[slug]/sources/actions";
+
+const TARGET = { slug: "p", surfaceSlug: "web", localeCode: "fr" };
+const LOCALE_WRITES = [
+  { name: "addLocale", run: () => addLocale(TARGET), core: locales.add, input: TARGET, ok: { ok: true, action: "create", path: "web/fr.json", reissued: 0 } },
+  { name: "removeLocale", run: () => removeLocale({ ...TARGET, approval: "f" }), core: locales.remove, input: { ...TARGET, approval: "f" }, ok: { ok: true, kind: "request-removal", discarded: 2 } },
+  { name: "cancelLocaleRemoval", run: () => cancelLocaleRemoval(TARGET), core: locales.cancel, input: TARGET, ok: { ok: true, delivered: null } },
+] as const;
+
+it.each(LOCALE_WRITES)("$name 성공은 세션 사용자로 코어를 부르고 그 프로젝트 레이아웃과 목록을 무효화한다", async ({ run, core, input, ok }) => {
+  core.mockResolvedValue(ok);
+  expect(await run()).toEqual(ok);
+  expect(core).toHaveBeenCalledWith({}, { userId: "u" }, input);
+  expect(mocks.revalidate.mock.calls).toEqual([["/projects/p", "layout"], ["/projects"]]);
+});
+it.each(LOCALE_WRITES.flatMap(write => ["forbidden", "publish-unsettled", "stale-approval", "base-locale", "sync-running", "baseline-unknown"].map(error => ({ ...write, error }))))(
+  "$name 거부 $error는 코드 그대로 돌려주고 무효화하지 않는다", async ({ run, core, error }) => {
+    core.mockResolvedValue({ ok: false, error });
+    expect(await run()).toEqual({ ok: false, error });
+    expect(mocks.revalidate).not.toHaveBeenCalled();
+  });
+it.each(LOCALE_WRITES)("$name 보관 거부는 그 프로젝트 레이아웃을 다시 그린다", async ({ run, core }) => {
+  core.mockResolvedValue({ ok: false, error: "archived" });
+  expect(await run()).toEqual({ ok: false, error: "archived" });
+  expect(mocks.revalidate.mock.calls).toEqual([["/projects/p", "layout"]]);
+});
+it.each(LOCALE_WRITES)("$name 세션이 없거나 못 읽으면 코어를 부르지 않는다", async ({ run, core }) => {
+  mocks.session.mockResolvedValue({ status: "none" });
+  expect(await run()).toEqual({ ok: false, error: "unauthorized" });
+  mocks.session.mockResolvedValue({ status: "unavailable" });
+  expect(await run()).toEqual({ ok: false, error: "unavailable" });
+  expect(core).not.toHaveBeenCalled();
+});
+it("언어 Action은 입력이 틀리면 세션도 코어도 보지 않는다", async () => {
+  expect(await addLocale({ slug: "p", surfaceSlug: "web", localeCode: "" })).toEqual({ ok: false, error: "invalid input" });
+  expect(await addLocale({ slug: "p", surfaceSlug: "web" } as never)).toEqual({ ok: false, error: "invalid input" });
+  expect(await removeLocale({ ...TARGET } as never)).toEqual({ ok: false, error: "invalid input" });
+  expect(await removeLocale({ ...TARGET, approval: "" })).toEqual({ ok: false, error: "invalid input" });
+  expect(await cancelLocaleRemoval({ slug: "p", surfaceSlug: "", localeCode: "fr" })).toEqual({ ok: false, error: "invalid input" });
+  expect(await previewLocaleRemoval({ slug: "", surfaceSlug: "web", localeCode: "fr" })).toEqual({ ok: false, error: "invalid input" });
+  expect(mocks.session).not.toHaveBeenCalled();
+  for (const core of Object.values(locales)) expect(core).not.toHaveBeenCalled();
+});
+it("제거 Action은 승인 없음(null)도 코어로 넘긴다 — 승인 판정은 코어가 한다", async () => {
+  locales.remove.mockResolvedValue({ ok: false, error: "approval-required" });
+  expect(await removeLocale({ ...TARGET, approval: null })).toEqual({ ok: false, error: "approval-required" });
+  expect(locales.remove).toHaveBeenCalledWith({}, { userId: "u" }, { ...TARGET, approval: null });
+});
+it("언어 제거 미리보기는 읽기만 한다 — 거부·성공 모두 무효화하지 않는다", async () => {
+  const preview = { ok: true, kind: "request-removal", path: "web/fr.json", translations: 3, pendingCount: 1, delivered: null, approval: "f" };
+  locales.preview.mockResolvedValue(preview);
+  expect(await previewLocaleRemoval(TARGET)).toEqual(preview);
+  expect(locales.preview).toHaveBeenCalledWith({}, { userId: "u" }, TARGET);
+  locales.preview.mockResolvedValue({ ok: false, error: "archived" });
+  expect(await previewLocaleRemoval(TARGET)).toEqual({ ok: false, error: "archived" });
+  expect(mocks.revalidate).not.toHaveBeenCalled();
+});
+it("언어 제거 미리보기 장애는 거부가 아니라 실패다", async () => {
+  locales.preview.mockRejectedValue(new Error("database"));
+  expect(await previewLocaleRemoval(TARGET)).toEqual({ ok: false, error: "unavailable" });
+  mocks.session.mockResolvedValue({ status: "none" });
+  expect(await previewLocaleRemoval(TARGET)).toEqual({ ok: false, error: "unauthorized" });
+});

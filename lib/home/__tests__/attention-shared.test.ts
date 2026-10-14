@@ -7,14 +7,24 @@ import { en } from "@/messages/en";
 
 const at = new Date("2026-10-01T00:00:00Z");
 const surfaces = [{ id: "s", slug: "web", locales: [
-  { code: "ko", name: "Korean", orphaned: false, createdAt: at },
-  { code: "ja", name: "Japanese", orphaned: true, createdAt: at },
-  { code: "es", name: "Spanish", orphaned: false, createdAt: at },
+  { code: "ko", name: "Korean", orphaned: false, createdAt: at, change: null },
+  { code: "ja", name: "Japanese", orphaned: true, createdAt: at, change: null },
+  { code: "es", name: "Spanish", orphaned: false, createdAt: at, change: null },
 ] }];
 it("빈 로케일은 활성 키와 현재 채움 수를 보고 생성 시각을 보존한다", () => {
   expect(neverFilledLocales(surfaces, { keyTotals: new Map(), cells: [] })).toEqual([]);
   expect(neverFilledLocales(surfaces, { keyTotals: new Map([["s", 3]]), cells: [{ surfaceId: "s", localeCode: "es", count: 1 }] })).toEqual([
     { surfaceSlug: "web", code: "ko", name: "Korean", keys: 3, at },
+  ]);
+});
+/** locale-add spec 22 — 제거 예정은 작업이 아니다. 추가 제안은 작업이다. */
+it("빈 로케일은 제거 예정을 빼고 추가 제안은 남긴다", () => {
+  const changing = [{ id: "s", slug: "web", locales: [
+    { code: "ko", name: "Korean", orphaned: false, createdAt: at, change: { operation: "REMOVE" as const } },
+    { code: "fr", name: "French", orphaned: false, createdAt: at, change: { operation: "ADD" as const } },
+  ] }];
+  expect(neverFilledLocales(changing, { keyTotals: new Map([["s", 3]]), cells: [] })).toEqual([
+    { surfaceSlug: "web", code: "fr", name: "French", keys: 3, at },
   ]);
 });
 it("공유 수집은 상한도 배너 제외도 없다", () => {

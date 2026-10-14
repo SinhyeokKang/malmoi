@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   effectiveCompletion,
   keyMatches,
+  localeRole,
   orderKeySummaries,
   summarizeKey,
   type KeyCellInput,
@@ -173,5 +174,33 @@ describe("keyMatches — 완성도 · 상태 AND", () => {
     const k = key({ summary: summary("k", 1, false, { hasPending: true }), missingLocales: ["ko"] });
     expect(keyMatches(k, { completion: "complete", state: "unsent" }, { lastPulledAt: at })).toBe(false);
     expect(keyMatches(k, { completion: "incomplete", state: "unsent" }, { lastPulledAt: at })).toBe(true);
+  });
+});
+
+/**
+ * 언어의 역할 (locale-add design §5·§6 · spec 22). 작업 대상(진행률·결측·검색·Inbox의 분모)은 **활성 + 추가 제안**이고, 제거 예정은
+ * 작업에서 빠지되 상세에 **읽기 전용**으로 남는다. orphan(Inactive)은 어느 쪽에도 없다. 취소로 행이 사라지면 작업으로 돌아온다.
+ */
+describe("localeRole", () => {
+  it.each([
+    [{ orphaned: false, change: null }, "work"],
+    [{ orphaned: false, change: { operation: "ADD" as const } }, "work"],
+    [{ orphaned: false, change: { operation: "REMOVE" as const } }, "read-only"],
+    [{ orphaned: true, change: null }, "inactive"],
+    // 모순 행(만료 대기) — 존재는 orphan이 정한다. 행이 남았다고 작업으로 되살리지 않는다.
+    [{ orphaned: true, change: { operation: "ADD" as const } }, "inactive"],
+    [{ orphaned: true, change: { operation: "REMOVE" as const } }, "inactive"],
+  ])("%o → %s", (locale, role) => {
+    expect(localeRole(locale)).toBe(role);
+  });
+
+  it("제거 예정 언어는 결측 분모에서 빠진다 — 호출부가 작업 언어만 넘긴다", () => {
+    const locales = [
+      { code: "en", orphaned: false, change: null },
+      { code: "ko", orphaned: false, change: { operation: "REMOVE" as const } },
+      { code: "fr", orphaned: false, change: { operation: "ADD" as const } },
+    ];
+    const activeLocales = locales.filter(locale => localeRole(locale) === "work").map(locale => locale.code);
+    expect(summarizeKey({ activeLocales, cells: [cell("en", "Hi"), cell("ko", "")] })).toMatchObject({ totalLocales: 2, missingCount: 1 });
   });
 });
