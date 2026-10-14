@@ -81,3 +81,7 @@
 - B3 fix1 `worker_done` — `1f6b8fe8`·`4ddca468`(R1 승인 행 lease · Y1 · Y2 · W1, `gate: ok` 14979 · PG 795; 1회차 search-performance flake). B2 fix1 대기 → 함께 통합 → B3 fix2(Y4 관측 함수 통합).
 - B2 fix1 `worker_done` — `0e1dea4a`·`1aeb91db`·`5a5f271b`(`gate: ok` 15133 · PG 771). 관찰: 열린 PR 본문을 사람 수정까지 덮어씀 → **B2 fix2**(정리 안내 변동 때만 갱신).
 - **wave ③ 통합**: B2 6커밋 + B3 6커밋 cherry-pick, `harness.ts` 충돌은 양쪽 목 필드 합집합으로 해소(지휘자). main 체크아웃 `pnpm gate` **ok**. tasks §3 여섯째·§4·§5 체크.
+- P2 push `ecf4a5e5..41935505` · CI run 38537190190 감시. wave ④ — **C1** `ctx_8568ff7f4be9` · **C2** `ctx_6fca1e6ac32f`(Opus medium, base `41935505`) · **B3 fix2** `ctx_cb568fc2d58a`(Y4 관측 함수 하나) · **B2 fix2** `ctx_7008bb97a07c`(PR 본문 갱신 범위).
+- B3 fix2 질문: 관측 공통화가 리더 snapshot에 mode를 실어야 함 → **지휘자 판단 a+b 허용**(B2 fix2와 같은 파일이라 snapshot 줄만).
+- C1 질문: 새 필수 뷰모델 필드가 components 테스트 픽스처 5개를 깸 → **지휘자 판단 A**(픽스처 리터럴만).
+- B3 fix2 `worker_done` — `1c58cbcc`·`7b608a1b`·`4e6c0528`(관측 함수 `observeLocaleFiles` 하나, 리더 snapshot에 mode, `gate: ok` 15171 · PG 814). dev cherry-pick. **남은 차이(⚪, 기록만)**: strict 적재의 존재 판정(`localesToKeep`)은 아직 링크된 언어 파일을 센다 — 만료는 정규 파일만. 심볼릭 링크 언어 파일에서만 갈리고, 적재 코어 변경이라 이번 범위 밖. B3 해제·정리.
