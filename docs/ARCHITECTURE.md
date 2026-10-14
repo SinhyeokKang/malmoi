@@ -2383,13 +2383,20 @@ OWNER(`project:settings`)가 **`json-catalog`·`chrome-locales`**(언어마다 �
   (`localeWork`, `null`은 `[]`로 본다). 전이 이력·실행 참조는 따로 두지 않는다 — sync 브랜치를 매번 base에서 다시 만들므로 "이전에 무엇을 보냈나"는 이 목록 하나로 충분하다.
 - ⚠️ **확인보다 뒤에 낸 요청의 효과는 전달로 세지 않는다** (2026-10-14, locale-add F1). 전달 목록은 그 효과가 어느 요청의 것인지 모른다. 전달 후 취소로 행 없이 남은 목록은
   PR이 머지 없이 닫혀도 만료할 행이 없어 그대로 남고, 그 뒤 같은 언어를 다시 요청하면 현재 = 전달이 되어 Publish가 싣지 않고 다음 방문이 새 요청을 지운다.
-  그래서 `requestedAt`이 확인 시각 이후(같은 밀리초 포함)인 행의 코드는 견줄 목록에서 뺀다(`deliveredForRequests`, `lib/locales/work.ts`). 작업 수·Publish 계획·만료·제거 미리보기의
-  `delivered`(`lib/locales/change.ts`)가 이 규칙 하나를 쓴다.
+  그래서 `requestedAt`이 확인 시각 이후(같은 밀리초 포함)인 행의 코드는 견줄 목록에서 뺀다(`deliveredForRequests`, `lib/locales/work.ts`). `readLocaleStates`를 지나는 소비자가
+  모두 이 규칙 하나를 쓴다 — 작업 수(`localeWork`·`countLocaleWork`), Publish 계획(`deliverableLocaleWork`·`planLocalePublish`), 거둘 효과(`withdrawnLocalesOf`),
+  적재 보류 게이트(`planLocaleImportGate`), 만료(`planLocaleExpiry`), MCP `get_project`·`list_keys`의 언어별 `delivered`(`lib/mcp/locale-view.ts`).
   - **확인 시각 = 확인 행의 `syncRunId`가 가리키는 `SyncRun.startedAt`**이다. 실행 시작 tx가 `Project` 잠금 뒤에 찍고, 스냅샷 캡처는 그 뒤에 뜨며, 언어 요청도 같은 잠금 뒤에 쓴다.
     그래서 이 시각보다 앞선 요청은 그 스냅샷에 실렸다. 시작 뒤·캡처 전의 요청은 실렸어도 미전달로 세는데, 그 대가는 Publish 한 번 더다(안전한 쪽).
     ⚠️ 성공 확정 시각(`finishedAt`·`lastPublishedAt`)을 쓰면 캡처 뒤에 낸 요청이 전달로 세어져 같은 결함이 돌아온다.
+  - ⚠️ **두 시각 모두 `Project` 잠금 뒤의 앱 시계다** — `startedAt`은 `startRun`이 잠금 뒤 `new Date()`로, `requestedAt`(`@default(now())`)은 Prisma 클라이언트가 잠금 뒤
+    `create` 시점에 채운다. 남는 틈은 서버리스 인스턴스 사이의 시계 차이뿐이다. **요청을 raw SQL `INSERT`로 쓰는 경로를 만들지 않는다** — DB `CURRENT_TIMESTAMP`는 트랜잭션
+    **시작** 시각(잠금 대기 전)이라 이 순서 논증이 깨진다.
   - ⚠️ **그 요청이 현재 효과를 낼 때만 뺀다.** 값 0개 ADD처럼 파일을 내지 않는 요청까지 빼면, 열린 PR에 남았을 수 있는 옛 새 파일이 작업에서 사라져 Publish가 거두지 않는다.
   - 판정은 뺀 목록으로 하고, 만료가 효과를 빼고 다시 쓸 때는 저장된 목록(`storedDelivered`)을 쓴다.
+  - ⚠️ **취소의 답은 저장된 목록으로 한다**(`lib/locales/change.ts` — 제거 취소 결과·추가 취소 미리보기의 `delivered`, 2026-10-14 F1 fix2). 취소 뒤에는 행이 없어 작업 판정도
+    저장 목록으로 돌아가므로, 뺀 목록으로 답하면 확인 뒤 재요청을 다시 취소했을 때 `delivered: false`라 말하는데 작업은 1이고 열린 PR에는 옛 삭제가 남는다.
+    새 제거 요청의 미리보기는 요청 행이 아직 없어 `false`다 — 아직 내지 않은 요청은 어느 확인보다도 뒤다.
 - ⚠️ **`pendingWhere`는 바꾸지 않는다.** 제거 동안 편집이 잠기고 승인 폐기로 토큰이 0이라 셀 편집 수에 언어 변경을 섞지 않는다. 셀 편집 수와 **언어 변경 작업 수**(`countLocaleWork`)는
   따로 싣고, 조기 종료 세 자리(`shouldSkipPull`·`runPull`의 전부 보류 스킵·`planNightly`의 `upToDate`)가 둘을 함께 본다.
 - 전이:
