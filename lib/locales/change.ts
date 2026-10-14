@@ -16,6 +16,7 @@ import { planWriteLock } from "@/lib/sync/plan";
 import { planKeyRevert } from "@/lib/translations/baseline";
 
 import { planLocaleChange, type ApprovalState, type LocaleChangeRefusal, type LocaleChangeRequest, type LocaleTransition } from "./change-plan";
+import { localeEffects } from "./effects";
 import { localeChangeFingerprint } from "./fingerprint";
 import { deliveredForRequests, deliveredOf, readLocaleValueCounts } from "./work";
 
@@ -117,8 +118,10 @@ async function readChangeState(db: Prisma.TransactionClient, scope: Scope, code:
     /** 그 언어의 값 있는 번역 수(활성 키) — 미리보기 수이자 ADD 효과가 현재 목록에 있는지의 판정이다. */
     valueCount: counts.get(surfaceId)?.get(code) ?? 0,
     delivery: confirmation === null ? null : { revision: confirmation.revision, invalidated: confirmation.invalidatedAt !== null },
-    // 확인보다 뒤에 낸 요청의 코드는 견주지 않는다 — 작업 수·만료와 같은 규칙이다(`deliveredForRequests`).
-    delivered: deliveredForRequests(deliveredOf(confirmation), changes, confirmation?.syncRun.startedAt ?? null),
+    // 확인보다 뒤에 낸 요청의 코드는 견주지 않는다 — 작업 수·만료와 같은 규칙이다(`deliveredForRequests`). 판정이 보는 것은 이 언어 하나라
+    // 현재 효과도 이 언어의 행으로만 센다(값 수는 이 언어 것만 읽었다).
+    delivered: deliveredForRequests(deliveredOf(confirmation), changes, confirmation?.syncRun.startedAt ?? null,
+      localeEffects(changes.filter(change => change.localeCode === code), new Map([[code, counts.get(surfaceId)?.get(code) ?? 0]]))),
     unsettled: await publishUnsettled(db, projectId),
   };
 }

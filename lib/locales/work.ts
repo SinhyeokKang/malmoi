@@ -46,16 +46,20 @@ export function deliveredOf(row: { deliveredLocaleChanges: unknown; invalidatedA
  * 경계는 **확인 행의 `syncRunId`가 가리키는 `SyncRun.startedAt`**이다 — 실행 시작 tx가 `Project` 잠금 뒤에 찍고, 스냅샷 캡처는 그 뒤이며, 언어 요청도
  * 같은 잠금 뒤에 쓴다. 그래서 이 시각보다 앞선 요청은 그 스냅샷에 실렸다. 시작 뒤·캡처 전의 요청은 실렸어도 미전달로 세지만 대가는 Publish 한 번
  * 더다(안전한 쪽). ⚠️ 성공 확정 시각(`finishedAt`·`lastPublishedAt`)을 쓰면 캡처 뒤에 낸 요청이 전달로 셈해져 같은 결함이 돌아온다.
+ * ⚠️ **그 요청이 현재 효과를 낼 때만 뺀다** — 값 0개 ADD처럼 파일을 내지 않는 요청까지 빼면 옛 효과(열린 PR에 남았을 수 있는 새 파일)가 작업에서
+ * 사라져 Publish가 그것을 거두지 않는다. 남겨 두면 현재 ≠ 전달이라 Publish가 한 번 돌아 수렴한다(안전한 쪽).
  * 작업 수·Publish 계획·만료·제거 미리보기(`lib/locales/change.ts`)가 이 규칙 하나를 쓴다.
  */
 export function deliveredForRequests(
   delivered: readonly LocaleEffect[] | null,
   rows: readonly { localeCode: string; requestedAt: Date }[],
   confirmedFrom: Date | null,
+  current: readonly LocaleEffect[],
 ): LocaleEffect[] | null {
   if (delivered === null) return null;
   if (confirmedFrom === null) return [...delivered];
-  const fresh = new Set(rows.filter(row => row.requestedAt.getTime() >= confirmedFrom.getTime()).map(row => row.localeCode));
+  const producing = new Set(current.map(effect => effect.localeCode));
+  const fresh = new Set(rows.filter(row => row.requestedAt.getTime() >= confirmedFrom.getTime() && producing.has(row.localeCode)).map(row => row.localeCode));
   return delivered.filter(effect => !fresh.has(effect.localeCode));
 }
 
@@ -143,7 +147,7 @@ export async function readLocaleStates(db: Db, projectId: string, surfaceId?: st
     const current = localeEffects(rows, valueCounts);
     const confirmed = deliveredBy.get(id);
     const storedDelivered = confirmed === undefined ? [] : confirmed;
-    const delivered = deliveredForRequests(storedDelivered, rows, confirmedFromBy.get(id) ?? null);
+    const delivered = deliveredForRequests(storedDelivered, rows, confirmedFromBy.get(id) ?? null, current);
     return { surfaceId: id, rows, valueCounts, current, delivered, storedDelivered, work: localeWork(current, delivered) };
   });
 }
