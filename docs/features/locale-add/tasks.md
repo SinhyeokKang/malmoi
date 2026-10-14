@@ -27,12 +27,12 @@
 
 ## 1. 순수 판정 — 테스트 먼저
 
-- [ ] `planLocaleAdd`: 잘못된 코드/경로, Chrome 목록, 중복·유사 코드, orphan 되살림, 보관·포맷 거부. 검증: `../x`, `package`, 빈 값, `__proto__`, 길이 초과, `pt-BR`/`pt_br` 표 테스트 green.
-- [ ] `planLocaleChange`: design 전이 표 전체, 기준 언어 제거, 변경 중 기준 승격, 권한·보관·미확정 실행·오래된 지문, 그 언어 미전달 편집의 지문 승인 폐기. 검증: 각 거부는 쓰기 0, 추가→취소→재추가·제거→취소→재제거 표 테스트 green.
-- [ ] `localeEffects`: 행 + 값 수 → 정규화 목록, 비교. 검증: 빈 ADD 제외, 코드순 정렬, 전달 전 취소 후 목록 = 전달 목록, 전달 후 취소 후 목록 ≠ 전달 목록, `__proto__` 코드.
-- [ ] `planLocalePublish`: ADD/REMOVE × 전달됨/미전달 × base 있음/없음, 경로 충돌·소유 불명·비정규 파일. 검증: REMOVE가 재Publish에서 유지, 빈 ADD 파일 0, upsert/delete 중복 거부, base 읽기 실패 시 delete·`no-changes` 0.
-- [ ] 만료 판정: 열린 PR 있음/없음/조회 실패 × 목록 일치/불일치 × 파일 있음/없음. 존재 판정은 적재의 함수를 재사용. 검증: 조회 실패·불일치는 만료 0, 미머지 종료 + 파일 있음 → 활성, 파일 없음 → orphan, “orphan인데 ADD 행” 모순 행 → 만료.
-- [ ] 판정 모듈 중 클라이언트가 읽는 잎만 `client-graph` 게이트에 반영한다. 검증: `client-graph.test.ts` green, 서버 I/O·어댑터 중량 의존성 유입 0.
+- [x] `planLocaleAdd`: 잘못된 코드/경로, Chrome 목록, 중복·유사 코드, orphan 되살림, 보관·포맷 거부. 검증: `../x`, `package`, 빈 값, `__proto__`, 길이 초과, `pt-BR`/`pt_br` 표 테스트 green.
+- [x] `planLocaleChange`: design 전이 표 전체, 기준 언어 제거, 변경 중 기준 승격, 권한·보관·미확정 실행·오래된 지문, 그 언어 미전달 편집의 지문 승인 폐기. 검증: 각 거부는 쓰기 0, 추가→취소→재추가·제거→취소→재제거 표 테스트 green.
+- [x] `localeEffects`: 행 + 값 수 → 정규화 목록, 비교. 검증: 빈 ADD 제외, 코드순 정렬, 전달 전 취소 후 목록 = 전달 목록, 전달 후 취소 후 목록 ≠ 전달 목록, `__proto__` 코드.
+- [x] `planLocalePublish`: ADD/REMOVE × 전달됨/미전달 × base 있음/없음, 경로 충돌·소유 불명·비정규 파일. 검증: REMOVE가 재Publish에서 유지, 빈 ADD 파일 0, upsert/delete 중복 거부, base 읽기 실패 시 delete·`no-changes` 0.
+- [x] 만료 판정: 열린 PR 있음/없음/조회 실패 × 목록 일치/불일치 × 파일 있음/없음. 존재 판정은 적재의 함수를 재사용. 검증: 조회 실패·불일치는 만료 0, 미머지 종료 + 파일 있음 → 활성, 파일 없음 → orphan, “orphan인데 ADD 행” 모순 행 → 만료.
+- [x] 판정 모듈 중 클라이언트가 읽는 잎만 `client-graph` 게이트에 반영한다. 검증: `client-graph.test.ts` green, 서버 I/O·어댑터 중량 의존성 유입 0.
 
 ## 2. 스키마·배포 경계
 
@@ -63,8 +63,8 @@
 
 ## 5. Publish 계약·호스트 구현
 
-- [ ] `SnapshotChange` upsert/delete union과 결정적 정렬. 검증: base에 있는 파일을 출력에서 뺀 경우와 실제 delete의 차이, 경로 중복 거부.
-- [ ] GitHub `TreeEntry`·빈 변경 가드, GitLab `buildCommitActions`·빈 배열 가드와 fake client 갱신. 검증: 삭제만 있는 변경 통과, 대상 파일만 제거, Chrome 디렉터리 내 다른 파일 유지, 없는 경로는 delete 미생성, 양쪽 호스트 계약 테스트.
+- [x] `SnapshotChange` upsert/delete union과 결정적 정렬. 검증: base에 있는 파일을 출력에서 뺀 경우와 실제 delete의 차이, 경로 중복 거부.
+- [x] GitHub `TreeEntry`·빈 변경 가드, GitLab `buildCommitActions`·빈 배열 가드와 fake client 갱신. 검증: 삭제만 있는 변경 통과, 대상 파일만 제거, Chrome 디렉터리 내 다른 파일 유지, 없는 경로는 delete 미생성, 양쪽 호스트 계약 테스트.
 - [ ] ADD 표현 출처: 기준 언어 파일에서 표현만, 구조는 `nestedByPath`. 검증: 4칸·CRLF·BOM·이스케이프·Chrome 필드 순서·한 줄 엔트리; 기준 파일이 빈 `{}`일 때 중첩 판정; Chrome `placeholders`·`description` 비복사와 되살린 `placeholders: null` 유지; 새 파일 read → write → read 바이트 동일; `contract.ts` 매트릭스 행 green.
 - [ ] 신규 경로 충돌 보류와 빈 ADD 안내. 검증: 미리보기·실행 같은 수·이유, 일부 보류일 때 나머지 전달, ADD 미리보기의 diff 경로 = 서버 계산 경로.
 - [ ] 조기 종료 세 자리와 미리보기·trigger 갱신. 검증: 미전달 편집 0과 Translation 행 0(`maxUpdatedAt=null`) 각각에서 REMOVE 실행·전달 확인; 번역 전부 보류 + 안전한 삭제는 전달; 빈 ADD만 있으면 원격 쓰기 0.
