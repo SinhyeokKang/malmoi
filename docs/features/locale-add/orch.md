@@ -94,3 +94,4 @@
 - D `worker_done` — ARCHITECTURE §5.10 신설 · §6.45.5 도구 수 31→35 · DIRECTORY · ACTIONS · OPERATIONS · CLAUDE.md(+미러), README 변경 없음(`gate: ok`). D retain. **R-D**(사실 대조).
 - C1 fix1 `worker_done` — `2920845d`·`d5b1aa6d`(`gate: ok` 15307 · PG 828). **C1 통합**(cherry-pick). C1 해제·정리. 화면 배치 메모: `DetailView.locales`에 `readOnly` 타입 선언 추가 필요.
 - R-D 완료(🔴 1 · 🟡 5 · ⚪ 6). **D fix1** 전부. 가이드 MCP 권한 표는 ⏸ 시안 대기 `/guide` 행 소유로 유지. R-D 해제·정리.
+- **wave ④·⑤ 통합**: C2 · B2 fix2 · B3 fix2 · C1(+fix1) · D(+fix1). main 체크아웃 `pnpm gate` **ok**. tasks §6 비시각 넷 · §7 · §8 첫째·셋째 체크(§8 둘째는 DESIGN이 시안 대기라 미체크 — DIRECTORY·ACTIONS·OPERATIONS는 반영됨).

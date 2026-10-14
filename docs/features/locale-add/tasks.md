@@ -76,29 +76,29 @@
 
 ## 6. UI·집계
 
-- [ ] Server Action: 추가·미리보기·제거·제거 취소, 값 오류 코드와 성공 뒤 revalidate. 검증: 인증/권한/진입점 테스트 green, 미리보기에는 revalidate 없음.
+- [x] Server Action: 추가·미리보기·제거·제거 취소, 값 오류 코드와 성공 뒤 revalidate. 검증: 인증/권한/진입점 테스트 green, 미리보기에는 revalidate 없음.
 - [ ] design-brief 프레임 1~20의 로컬 핸드오프를 확보한다. 검증: 브리프의 모든 프레임이 핸드오프에 존재(권한·좁은 화면·라이트/다크·포커스 포함).
 - **위 핸드오프가 확보되기 전에는 아래 UI 퍼블리싱 태스크(Dialog·배지·번역 화면 DOM·Publish 표시·화면 문구·`/design-sync`)에 착수하지 않는다.** Server Action·reducer·`summary.ts`·집계는 핸드오프 없이 진행한다.
 - [ ] Sources Add Dialog·행 동작·확인 Dialog·상태 배지. 검증(DOM): design-brief 프레임의 상태별 배지·톤·버튼, base/EDITOR/보관/비지원/미확정 비활성 이유(`aria-disabled` + 설명), 정확한 파일 경로·미전달 수·앱 코드 정리 경고, Inactive danger 톤·Open 비활성·재추가 안내, 정렬과 `role="status"` 알림·포커스 규칙. 클릭 전 enabled 대기(POSTMORTEM 2829).
-- [ ] 번역 화면 셀 얼리기 — reducer(node): REMOVE 도착 시 dirty 셀 유지·readOnly·save payload 제외, 셀 reset, 제거 취소 시 편집 가능, 다른 언어만 저장. 검증: `draft` 테스트 green.
+- [x] 번역 화면 셀 얼리기 — reducer(node): REMOVE 도착 시 dirty 셀 유지·readOnly·save payload 제외, 셀 reset, 제거 취소 시 편집 가능, 다른 언어만 저장. 검증: `draft` 테스트 green.
 - [ ] 번역 화면 셀 얼리기 — DOM(jsdom): 서버 갱신 주입 시 입력 보존, 저장 중 제거 거부 시 입력 유지·전용 footer 문구, 세션 만료 중 저장의 입력 보존, 이탈 확인에 얼린 입력 포함. 검증: transition 정리(POSTMORTEM 2187)·클릭 가능 대기를 포함한 DOM 테스트 green.
 - [ ] 번역 화면 셀 얼리기 — 수동: 두 세션·두 언어에서 외부 제거. 검증: `/runtime-test` 리포트에 결과.
-- [ ] `summary.ts`가 REMOVE 언어를 읽기 전용으로 싣는다. 검증: 상세 데이터 테스트에 REMOVE 언어 포함, orphan 제외.
-- [ ] 완료율·Home·Keys 검색·Inbox·Sources 수를 상태 술어에 맞춘다. 검증: ADD 포함, REMOVE 작업 제외/상태 행 유지, 취소 시 복구.
+- [x] `summary.ts`가 REMOVE 언어를 읽기 전용으로 싣는다. 검증: 상세 데이터 테스트에 REMOVE 언어 포함, orphan 제외.
+- [x] 완료율·Home·Keys 검색·Inbox·Sources 수를 상태 술어에 맞춘다. 검증: ADD 포함, REMOVE 작업 제외/상태 행 유지, 취소 시 복구.
 - [ ] Publish 미리보기·결과의 `New file`/`Updated`/`Removed`와 빈 ADD·보류·PR 갱신 필요. 검증: 파일 삭제 수를 번역 전달 수로 표시하지 않음, PR 반영 전 완료 문구 없음.
 - [ ] en·ko·es 문구를 호스트별(`onGitLab`) 어휘로 반영, `orphanStrip` 원인 중립화, 카드 설명 OWNER/EDITOR/비지원 분기. 검증: dictionary-consistency·banned-terms·no-korean-ui green.
 - [ ] `/design-sync`로 신규 UI 대조. 검증: 로컬 핸드오프와 computed style·접근성 트리, 키보드·IME·포커스 복귀·좁은 폭·라이트/다크 확인.
 
 ## 7. MCP
 
-- [ ] `add_locale`(WRITE), `preview_locale_removal`(READ), `remove_locale`(DESTRUCTIVE), `cancel_locale_removal`(WRITE) 등록. 검증: `lib/mcp/catalog.ts`의 등급·`req("project:settings", ...)`, EDITOR/권한 없는 토큰 거부, 서버 발급 지문 필요, Action 호출 없이 공통 코어 사용, `__proto__` 코드 입력.
-- [ ] `get_project`·`list_keys`·publish/sync preview에 언어 상태·전달 여부·작업 수 반영. 검증: 웹과 같은 판정/보류/거부, 영어 응답.
+- [x] `add_locale`(WRITE), `preview_locale_removal`(READ), `remove_locale`(DESTRUCTIVE), `cancel_locale_removal`(WRITE) 등록. 검증: `lib/mcp/catalog.ts`의 등급·`req("project:settings", ...)`, EDITOR/권한 없는 토큰 거부, 서버 발급 지문 필요, Action 호출 없이 공통 코어 사용, `__proto__` 코드 입력.
+- [x] `get_project`·`list_keys`·publish/sync preview에 언어 상태·전달 여부·작업 수 반영. 검증: 웹과 같은 판정/보류/거부, 영어 응답.
 
 ## 8. 정본·가이드
 
-- [ ] ARCHITECTURE: LocaleChange 전이, 전달 목록, 만료, 명시적 delete, `no-changes` 취소 수렴, 전달/머지 구분, MCP 계약(불변식 1 예외는 §0에서 완료).
+- [x] ARCHITECTURE: LocaleChange 전이, 전달 목록, 만료, 명시적 delete, `no-changes` 취소 수렴, 전달/머지 구분, MCP 계약(불변식 1 예외는 §0에서 완료).
 - [ ] DESIGN Sources·번역 읽기 전용·Publish 상태/문구, Inactive 문구 변경. DIRECTORY 새 모듈. ACTIONS `locale-change-pending`. OPERATIONS 마이그레이션 순서·구버전 구간 영향.
-- [ ] CLAUDE 데이터 변경 경로/소유 원칙과 `pnpm sync:agents`. README 기능 설명 검토.
+- [x] CLAUDE 데이터 변경 경로/소유 원칙과 `pnpm sync:agents`. README 기능 설명 검토.
 - [ ] `/guide`로 en·ko·es의 “리포에서만 언어 추가·제거” 문구와 MCP 표 갱신, `/guide-shots`로 stale 스크린샷 갱신.
 - 검증: 정본과 spec의 범위 일치, `pnpm sync:agents:check`, 문서 신선도 및 가이드 게이트 통과.
 
