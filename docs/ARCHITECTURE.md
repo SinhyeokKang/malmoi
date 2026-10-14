@@ -20,7 +20,8 @@
    ⚠️ **셋째 길 — 제거된 소스를 다시 추가하는 첫 적재** (2026-10-05, sources-add-remove · §5.9). 소스 제거는 번역을 건드리지 않고
    `TranslationSurface.archivedAt`만 세운다. 같은 경로·어댑터로 다시 추가하면 그 행이 되살아나고, 그 첫 적재가 **그 소스의 미전달 토큰
    전부를 승인**한 strict 적재라(수동 Sync와 같은 `approvedTokens` 장치) 남아 있던 편집을 리포 값으로 덮는다. 미전달 편집이 있으면 제거
-   자체가 **그 소스에만 묶인** 서버 발급 지문을 요구한다 — 사람의 승인은 제거 시점에 받는다. 셋 다 OWNER(`project:settings`) 전용이다.
+   자체가 **그 소스에만 묶인** 서버 발급 지문을 요구한다 — 사람의 승인은 제거 시점에 받는다.
+   ⚠️ **넷째 길 — 언어 제거·추가 취소** (2026-10-14, locale-add · §5.10). 그 소스·언어의 미전달 토큰만 서버 발급 지문으로 승인해 버린다. 제거는 마지막 전달 값으로 되돌리고(`translation.reverted`), 추가 취소는 토큰만 비우고 값은 유지한다. 넷 다 OWNER(`project:settings`) 전용이다.
    ⚠️ **Publish가 보내지 못한 셀도 유예를 잇는다** (2026-09-24, delivery-invariants) — 비-base 로케일 파일이 base에 없거나 ts-dict
    로케일 객체에 그 키의 자리가 없으면 그 셀은 **보류**되어 토큰이 남는다(§3). 풀리는 길은 파일 복구 뒤 Publish · Revert · 폐기 승인 Sync다.
    ⚠️ **셋째 경우: per-locale base 원본에 그 키가 없다** (2026-09-27, B3.4 — 코드에서 지웠다). base 키 집합은 원본이 정하므로 그 셀은 보류되고
@@ -2366,7 +2367,7 @@ Logs 행위자·상세 Trigger·보조줄·Home 메타 열이 이것 하나를 �
 OWNER(`project:settings`)가 **`json-catalog`·`chrome-locales`**(언어마다 파일이 따로인 재생성 어댑터) 소스에서 언어 하나를 추가·제거하고, 전달 전 요청을 취소한다.
 웹 Server Action 넷(`addSourceLocale`·`previewSourceLocaleRemoval`·`removeSourceLocale`·`cancelSourceLocaleRemoval` —
 `app/(edit)/projects/[slug]/sources/actions.ts`)과 MCP 도구 넷(§6.45.5)은 **같은 코어 `lib/locales/change.ts`의 형제 껍데기**이고 서로를 부르지 않는다.
-요청은 리포를 직접 바꾸지 않는다 — **기존 Publish PR/MR만 파일 집합 변경을 제안한다.** 정본 경계 문장은 §0 불변식 1·4·9의 locale-add 메모이고 이 절은 그 구현 계약이다.
+요청은 리포를 직접 바꾸지 않는다 — **기존 Publish PR/MR만 파일 집합 변경을 제안한다.** 정본 경계 문장은 §0 불변식 1·3·4·9의 locale-add 메모이고 이 절은 그 구현 계약이다.
 순수 판정은 `lib/locales/{add-plan,change-plan,effects,publish-plan,expiry,presence,chrome-codes}.ts`, I/O 코어는 `change.ts`·`expire.ts`·`work.ts`다(DIRECTORY).
 
 ### 5.10.1 상태 — 의도 한 행, 전달 목록 하나
@@ -2403,20 +2404,20 @@ OWNER(`project:settings`)가 **`json-catalog`·`chrome-locales`**(언어마다 �
 
 ### 5.10.2 만료 — 요청은 영구 소유가 아니다
 
-DB의 의도는 **PR/MR이 열려 있는 동안만** 파일 집합을 쥔다. 의도가 만료되면 최종 존재는 다시 리포 관측이 정하고, 그 판정은 strict 적재와 **같은 순수 함수**(`lib/locales/presence.ts`의 `localePresence` — 관측된 파일 집합에 경로가 있으면 활성, 없으면 orphan)다.
+DB의 의도는 **아직 PR/MR로 나가지 않았거나 PR/MR이 열려 있는 동안만** 파일 집합을 쥔다(만료 조건은 아래). 의도가 만료되면 최종 존재는 다시 리포 관측이 정하고, 그 판정은 strict 적재와 **같은 순수 함수**(`lib/locales/presence.ts`의 `localePresence` — 관측된 파일 집합에 경로가 있으면 활성, 없으면 orphan)다.
 의도와 리포를 견줘 고르는 코드는 없다.
 
 - **만료 조건** (`planLocaleExpiry` — 순수): 열린 sync PR/MR이 없다고 **성공한 조회로** 확인됨 ∧ 현재 효과 목록 = 전달 목록 ∧ 그 base head의 파일 트리를 관측함. 조회 실패(`pr-check-failed`)·응답 유실·확인 안 된 전달 목록은 **만료로 접지 않고 의도를 유지**한다.
 - ⚠️ **ADD 행은 자기 증거가 하나 더 필요하다** — 자기 `create` 효과가 전달 목록에 있거나 자기 경로가 base에서 관측될 때만 만료한다. 값 0개 ADD는 효과 목록에 없어 목록 일치만으로는 "보낼 것이 남았다"를 못 본다 —
-  이 조건이 없으면 첫 값 저장 전의 적재·야간 방문이 방금 추가한 언어를 orphan한다(R-A1 🔴). 경로가 관측된 ADD는 목록 비교 없이 관측 그대로 활성으로 만료한다 — 리포에 직접 만든 파일이 보류된 ADD(`proposal-path-exists`)를 푸는 길이다.
+  이 조건이 없으면 첫 값 저장 전의 적재·야간 방문이 방금 추가한 언어를 orphan한다(2026-10-14, locale-add). 경로가 관측된 ADD는 목록 비교 없이(PR 없음 확인은 여전히 필요하다) 관측 그대로 활성으로 만료한다 — 리포에 직접 만든 파일이 보류된 ADD(`proposal-path-exists`)를 푸는 길이다.
 - ⚠️ **관측된 로케일 파일이 0개면 만료하지 않고 보류한다**(`base-empty`) — 0개는 "비었다"는 증거가 아니다(POSTMORTEM 2026-09-15). `expireLocaleChanges`는 이를 `base-unreadable`로 접어 돌려준다(보류, 실패 아님).
   base를 못 읽은 것도 파일 부재가 아니다(2026-09-27).
 - **모순 행**(orphan인데 ADD 행 — 구버전 롤백 구간의 잔재)은 PR·목록과 무관하게 만료한다. base 관측은 여전히 요구한다.
-- **누가 만료를 도는가** — 어디서든 `Project`→`TranslationSurface` 잠금 **안에서** 행·목록을 다시 읽고 판정한다(`expireLocaleChanges`, 호출 계약: Project 잠금 뒤의 tx에서만 부른다. 사람 경로는 `lockProjectAccess` 뒤):
+- **누가 만료를 도는가** — 어디서든 `Project`→`TranslationSurface` 잠금 **안에서** 행·목록을 다시 읽고 판정한다(`expireLocaleChanges`, 호출 계약: Project 잠금 뒤의 tx에서만 부른다. 사람 경로는 `lockProjectAccess` 뒤. 함수가 `Project`→`Surface`를 스스로 다시 잠그지만 같은 tx의 재잠금은 대기하지 않는다):
   1. **자동 적재(CI·야간 적재)** — 적재 tx가 겸한다(`applyPushInTransaction`의 `localeChanges: "expire"`).
   2. **같은 base SHA라 적재를 건너뛰는 야간 방문** — `LocaleChange` 행이 있는 소스에 한해 PR/MR 조회와 만료를 `upToDate` 출구 앞에서 먼저 돈다(`lib/nightly/run.ts`). 행이 없는 프로젝트는 기존 순서 그대로 조회 0회다.
   3. **모든 Publish(수동·MCP·야간 cron)가 스냅샷을 뜨기 전** — `expireLocalesForPublish`(`lib/pull/load.ts`). 사람 주체가 없는 cron은 AUTOMATION 주체로 만료한다. 만료가 있으면 스냅샷을 다시 읽는다.
-     머지 없이 닫힌 REMOVE가 다음 Publish에 다시 실리지 않게 하는 자리다(R-B2 🔴 R1).
+     머지 없이 닫힌 REMOVE가 다음 Publish에 다시 실리지 않게 하는 자리다 — cron도 빠지지 않는다(2026-10-14, locale-add).
 - **base 관측 함수는 하나다** — `observeLocaleFiles`(`lib/pull/locales.ts`). 어댑터 읽기(`localeFromPath`)가 읽는 경로 + **정규 파일(모드 100644·100755)만** 센다. 링크(120000)·하위 모듈(160000)은 관측이 아니고,
   템플릿에 맞는 경로의 mode를 모르거나 언어 변경을 받지 않는 어댑터·경로 미정이면 `unreadable`(fail-closed)이다. Publish(`observedLocalesOf`)·같은 head 야간(`observeSurfaceLocales`, `lib/import/observe.ts`)·야간 적재 만료가 모두 이 함수에 위임한다.
   CI `/api/push`는 트리가 없어 페이로드의 `locales`가 유일한 관측이다.
@@ -2431,8 +2432,8 @@ DB의 의도는 **PR/MR이 열려 있는 동안만** 파일 집합을 쥔다. �
   200 `deferred` + 이 사유, 사건 `import.ci`/`import.nightly` `deferred`. 판정 위치는 미전달 편집 보류 **뒤**, 열린 PR 게이트 **앞**이고 보류해도 리포 호스트를 부르지 않는다. 잠금 뒤에 다시 판정한다.
   셀을 고르지 않고 적재 전체를 보류하므로 병합이 아니다. 전달된 뒤에는 기존 열린 PR 보호가 맡는다.
   **ADD만 있으면 보류하지 않는다** — 그 언어를 orphan 대상에서 빼고(`keptAddLocales`) 적재한다. 야간 적재는 표면 tx가 쓰기 전에 게이트를 다시 보고(`LocaleChangeDuringImport`), 걸리면 그 표면을 롤백하고 루프를 멈춘다.
-- **같은 이유로 거부하는 자리**: 기준 브랜치 변경(`changeBaseBranch`)과 기준 언어 선언(`planBaseLocaleCandidate`)은 행이 남아 있는 동안 `locale-change-pending`으로 거부한다 — 의도는 옛 브랜치·기준을 보고 승인됐다.
-  기준 언어는 **제거할 수 없고**(`base-locale`, 선언된 기준 포함), ADD·REMOVE 언어는 기준 후보에서 빠진다. 리포 연결 변경은 거부하지 않는다 — 리포 정체성(고정된 id)을 바꾸지 못해 삭제가 다른 리포로 새지 않는다.
+- **같은 이유로 거부하는 자리**: 기준 브랜치 변경(`changeBaseBranch`)은 비보관 소스 어디에든 행이 하나라도 남아 있으면 `locale-change-pending`으로 거부한다 — 의도는 옛 브랜치를 보고 승인됐다.
+  기준 언어 선언(`planBaseLocaleCandidate`)은 **추가 중·제거 예정인 그 언어만** 같은 코드로 거부한다(그 언어가 기준 후보에서 빠진다) — 다른 언어에 행이 있어도 선언된다. 기준 언어는 **제거할 수 없다**(`base-locale`, 선언된 기준 포함). 리포 연결 변경은 거부하지 않는다 — 리포 정체성(고정된 id)을 바꾸지 못해 삭제가 다른 리포로 새지 않는다.
 - **승인 지문이 언어 변경을 묶는다** — 수동 Sync 폐기 지문(`discardFingerprint`)·소스 제거 지문(`removalFingerprint`)에 소스별 `localeChanges`(코드·연산·`requestedAt`·전달 목록 또는 `null`)를 넣는다.
   셀 편집이 0이어도 언어 변경 행이 있으면 승인을 요구하고, 추가·제거·취소·새 편집·전달이 승인 뒤에 일어나면 `stale-approval`이다.
 - **번역 저장·Revert의 편집 잠금** — 제거 예정 언어 칸이 든 키 저장은 **키 단위로 전체 거부**한다(`locale-removal-pending` + `localeCodes`; 저장이 키 단위라 다른 언어도 저장되지 않는다). Revert도 같은 사유로 막는다.
@@ -2443,7 +2444,7 @@ DB의 의도는 **PR/MR이 열려 있는 동안만** 파일 집합을 쥔다. �
 - **변경 union**: `PullChange = { kind: "upsert", path, content } | { kind: "delete", path }`, `SnapshotChange`는 upsert에 `inBase`가 붙는다(`lib/pull/plan.ts`·`client.ts`). **삭제는 별도 의도 입력**으로만 만든다 —
   출력에서 언어를 빼거나 `content === null`인 것만으로는 삭제가 되지 않는다(명시적 의도 외에는 Publish가 파일을 지우지 않는다). delete는 **경로가 base에 있을 때만** 만들고,
   같은 경로의 upsert·delete나 중복 delete는 계획 오류(`unreachable:`)다. 정렬은 기존 결정적 비교(`compareKeys`)다.
-- **호스트 가드 세 곳**: GitHub `TreeEntry`는 delete를 `base_tree` 위 `sha: null` 항목으로 내고(`buildTreePayload`, 삭제 경로도 `isPathSafeRepoPath`), GitLab `buildCommitActions`는 `{action: "delete", file_path}`를 낸다.
+- **호스트 가드**: GitHub `TreeEntry`는 delete를 `base_tree` 위 `sha: null` 항목으로 내고(`buildTreePayload`, 삭제 경로도 `isPathSafeRepoPath`), GitLab `buildCommitActions`는 `{action: "delete", file_path}`를 낸다(경로 검사는 `lib/gitlab/plan.ts`의 자체 `isSafeRepoPath`).
   **빈 변경 throw는 유지**하되 삭제만 있는 변경은 통과하고, 중복·경로 안전 검사는 두 종류 모두에 건다. 변경 0은 기존 `no-changes` 경로로 간다.
 - **파일 집합의 목표** (`planProjectLocales` → `planLocalePublish`): 활성 일반 언어·ADD는 렌더 대상, REMOVE는 렌더에서 제외한다. **REMOVE 경로가 base에 있으면 delete를 추가하고 없으면 diff 항목이 없다.**
   ⚠️ **REMOVE는 행이 있는 한 매 스냅샷에 다시 적용한다** — sync 브랜치를 매번 base에서 재생성하므로 한 번 보낸 뒤 의도를 지우면 삭제가 사라진다. 그래서 삭제 PR이 열린 채 다른 언어를 편집해 재Publish해도 삭제 diff가 남는다.
@@ -2495,7 +2496,7 @@ webhook이 없으므로(PRODUCT §4.3 ②) 머지·종료의 반영은 다음 �
 - **사건**: `ProjectEvent` SURFACE subtype 넷 — `surface.localeAdded`·`surface.localeRemovalRequested`·`surface.localeChangeCancelled`·`surface.localeChangeResolved`(목록은 잎 `lib/events/payload.ts`의 `LOCALE_CHANGE_SUBTYPES`).
   payload의 선택 필드 `localeChange {locale, operation, revived, discarded, outcome}`이고 옛 행은 이 필드가 없다. 변경과 **같은 tx**에서 확정된다(§5.7). `result`는 `null`(실행이 아니다)이라 결과 필터에 안 잡히고 `kind=sources`에 잡힌다.
   ⚠️ **파일 삭제를 번역 전달 성공으로 기록하지 않는다.** base를 못 읽으면 결과·사건은 실패/보류다("삭제 완료"·`no-changes` 금지).
-- **스키마**: `LocaleChange`·`DeliveryConfirmation.deliveredLocaleChanges`는 additive이고 백필이 없다(마이그레이션 `20261014060000_locale_change`; 배포 순서·구버전 구간은 OPERATIONS "언어 추가·제거 이전으로 되돌리기"). `lib/privacy/collected.ts`에 `LocaleChange: "not-personal"`.
+- **스키마**: `LocaleChange`·`DeliveryConfirmation.deliveredLocaleChanges`는 additive이고 백필이 없다(마이그레이션 `20261014060000_locale_change`; 배포 순서는 OPERATIONS "언어 추가·제거 배포 순서", 구버전 구간은 "언어 추가·제거 이전으로 되돌리기"). `lib/privacy/collected.ts`에 `LocaleChange: "not-personal"`.
   새 환경변수·패키지·cron은 없다(SELF-HOSTING §3).
 - **잠금 순서**: 추가·제거·취소·만료·CI 적재 모두 `Project`→`TranslationSurface`이고 사건은 같은 tx다. 번역 저장이 같은 잠금 안에서 제거 예정 상태를 다시 읽으므로 렌더 뒤에 도착한 제거도 서버가 거부한다.
   `lib/locales/`가 `scripts/gate-plan.ts`의 격리 PG 트리거에 들어 있다.
