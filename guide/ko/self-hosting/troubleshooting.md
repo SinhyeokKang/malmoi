@@ -73,7 +73,7 @@ web 컨테이너는 `pnpm preflight && next start`로 시작합니다. 시작 �
 | `User` | 로그인한 사람. 이름과 이메일은 GitHub·GitLab·Google에서, 사진은 GitHub나 Google에서 받습니다. GitLab에서는 사진을 받지 않습니다. 이 값들은 PII 키로 암호화합니다. 이메일 색인은 그 주소의 HMAC입니다. 화면 설정 세 가지와 받은편지함 열람 시각도 계정에 저장합니다 | `id`, `name`, `email`, `emailLookup`, `emailVerified`, `image`, `createdAt`, `uiLocale`, `timeZone`, `colorScheme`, `attentionSeenAt` | — | — | — |
 | `Account` | 연결한 로그인 수단(GitHub·GitLab·Google)의 공급자 계정 ID. 로그인 토큰은 저장하지 않습니다. 별도 GitHub App 행에는 리포지토리를 연결할 때 받은 사용자 토큰(토큰 키로 암호화)과 만료 시각을 저장합니다 | `userId`, `installRequestedAt`, `provider`, `providerAccountId`, `refresh_token`, `access_token`, `expires_at` | — | — | `type` |
 | `GitLabConnection` | GitLab 로그인과 별개인 계정의 GitLab PAT 연결. PAT는 토큰 키로 암호화하고 GitLab 사용자 ID·사용자명·만료일·권한 범위는 암호화하지 않습니다. 연결 해제나 계정 삭제까지 보관하며 교체하면 PAT와 그 정보를 덮어씁니다. 만료·폐기는 접근을 막지만 저장된 행은 지우지 않습니다 | `id`, `userId`, `token`, `gitlabUserId`, `username`, `expiresAt`, `scopes`, `createdAt`, `updatedAt` | — | — | — |
-| `Session` | 로그인 세션. 쿠키 값의 다이제스트만 저장하고 마지막 활동으로부터 24시간 뒤에 만료됩니다 | — | `expires` | `sessionToken`, `userId` | — |
+| `Session` | 로그인 세션. 쿠키 값의 다이제스트만 저장하고 로그인한 때부터 7일 뒤에 만료되며 활동해도 연장되지 않습니다 | — | `expires` | `sessionToken`, `userId` | — |
 | `VerificationToken` | 로그인 수단 연결과 다른 세션 로그아웃의 확인 절차. `identifier`가 사용자 ID와 공급자 계정 ID를 JSON 문자열 하나에 담습니다. 5~10분 | `identifier`, `token` | `expires` | — | — |
 | `ProjectMember` | 프로젝트 멤버십과 역할 | `userId`, `role`, `createdAt`, `updatedAt` | — | — | `projectId` |
 | `ProjectInvitation` | 초대. 주소는 PII 키로 암호화하고 색인을 두며, 토큰은 해시입니다. 7일 뒤 만료되지만 행은 주소와 함께 남습니다 | `createdAt`, `email`, `emailLookup`, `role`, `tokenHash`, `acceptedAt`, `invitedBy` | `expiresAt` | — | `id`, `projectId` |
@@ -97,7 +97,7 @@ web 컨테이너는 `pnpm preflight && next start`로 시작합니다. 시작 �
 
 | 쿠키 | 수명 | 하는 일 |
 | --- | --- | --- |
-| `authjs.session-token` | 마지막 활동 뒤 24시간 | 로그인 유지 |
+| `authjs.session-token` | 로그인 뒤 7일 | 로그인 유지 |
 | `authjs.csrf-token` | 브라우저를 닫을 때까지 | 로그인 요청이 이 사이트에서 시작되었는지 확인 |
 | `authjs.callback-url` | 브라우저를 닫을 때까지 | 로그인 뒤 돌아갈 페이지 |
 | `authjs.state` · `authjs.pkce.code_verifier` | 15분 | 공급자의 응답이 해당 로그인 요청에 대한 것인지 확인 |

@@ -109,7 +109,7 @@ Keep at least one of GitHub, GitLab, and Google on. Turning one off hides its bu
 2. Empty both values of the provider in `deploy/.env` (for example `AUTH_GITLAB_ID=` and `AUTH_GITLAB_SECRET=`).
 3. Run `docker compose up -d --force-recreate web` and check that the sign-in screen shows only the providers that are on.
 
-Sessions that are already open stay signed in, and those people can still connect a remaining provider from **Account**. Someone who had only the provider you turned off sees “Your sign-in method isn't available here. Ask your administrator.” when signing in. To let them in, fill in the pair again, recreate web, have them connect another provider, and turn it off again.
+Sessions that are already open stay signed in for up to 7 days from when each person signed in, and those people can still connect a remaining provider from **Account**. Someone who had only the provider you turned off sees “Your sign-in method isn't available here. Ask your administrator.” when signing in. To let them in, fill in the pair again, recreate web, have them connect another provider, and turn it off again.
 
 ## What happens next {#next}
 

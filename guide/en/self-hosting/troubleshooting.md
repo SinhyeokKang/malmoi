@@ -73,7 +73,7 @@ Column meanings: collected — values to disclose as collected; retention — va
 | `User` | A person who signed in. Name and email come from GitHub, GitLab, or Google; pictures come from GitHub or Google, never GitLab. These values are encrypted with the PII key; the email index is an HMAC of the address. The three display settings and the Inbox read time are settings stored on the account | `id`, `name`, `email`, `emailLookup`, `emailVerified`, `image`, `createdAt`, `uiLocale`, `timeZone`, `colorScheme`, `attentionSeenAt` | — | — | — |
 | `Account` | A linked sign-in method (GitHub, GitLab, or Google): the provider's account ID. Sign-in tokens are not stored. Separate GitHub App rows store the user token received when connecting a repository (encrypted with the token key) and its expiry | `userId`, `installRequestedAt`, `provider`, `providerAccountId`, `refresh_token`, `access_token`, `expires_at` | — | — | `type` |
 | `GitLabConnection` | An account’s GitLab PAT connection, separate from GitLab sign-in: the PAT is encrypted with the token key; the GitLab user ID, username, expiry date and scopes are stored without encryption. Kept until disconnection or account deletion; replacement overwrites the PAT and its metadata. Expiry or revocation stops access but does not delete the stored row | `id`, `userId`, `token`, `gitlabUserId`, `username`, `expiresAt`, `scopes`, `createdAt`, `updatedAt` | — | — | — |
-| `Session` | A sign-in session. Only a digest of the cookie value is stored; it expires 24 hours after the last activity | — | `expires` | `sessionToken`, `userId` | — |
+| `Session` | A sign-in session. Only a digest of the cookie value is stored; it expires 7 days after sign-in and is not extended by activity | — | `expires` | `sessionToken`, `userId` | — |
 | `VerificationToken` | Challenges for linking a sign-in method and for signing out other sessions. `identifier` holds the user ID and the provider account ID in one JSON string. 5 to 10 minutes | `identifier`, `token` | `expires` | — | — |
 | `ProjectMember` | Project membership and role | `userId`, `role`, `createdAt`, `updatedAt` | — | — | `projectId` |
 | `ProjectInvitation` | An invitation. The address is encrypted (PII key) with an index; the token is a hash. It expires after 7 days but the row, address included, stays | `createdAt`, `email`, `emailLookup`, `role`, `tokenHash`, `acceptedAt`, `invitedBy` | `expiresAt` | — | `id`, `projectId` |
@@ -97,7 +97,7 @@ The prefixes `__Host-` and `__Secure-` are added over HTTPS (names below are wit
 
 | Cookie | Lifetime | Purpose |
 | --- | --- | --- |
-| `authjs.session-token` | 24 hours after the last activity | Keeps you signed in |
+| `authjs.session-token` | 7 days after sign-in | Keeps you signed in |
 | `authjs.csrf-token` | Until the browser closes | Confirms a sign-in request started on this site |
 | `authjs.callback-url` | Until the browser closes | The page to return to after sign-in |
 | `authjs.state` · `authjs.pkce.code_verifier` | 15 minutes | Proves a provider's answer belongs to the sign-in it started |
