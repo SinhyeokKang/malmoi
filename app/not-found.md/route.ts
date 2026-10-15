@@ -3,7 +3,7 @@ import { markdownNotFound } from "@/lib/seo/agent-errors";
 
 /**
  * **어떤 라우트에도 매칭되지 않는 경로 + `Accept`에 `text/markdown`** — `next.config.ts`의 fallback rewrite가 여기로 보낸다
- * (agent-readiness design §2.1). 직접 요청해도 늘 404라 거짓이 없다. **인가가 없다** — 공개 문서 링크만 낸다(`entry-points.test.ts`의 `EXEMPT`).
+ * (ARCHITECTURE §8.1). 직접 요청해도 늘 404라 거짓이 없다. **인가가 없다** — 공개 문서 링크만 낸다(`entry-points.test.ts`의 `EXEMPT`).
  *
  * ⚠️ **`force-dynamic`이다** — 본문이 배포 모드로 갈리는데 모드는 런타임 env다(같은 이미지가 self-hosted로 돈다). `force-static`이면
  * 빌드 시점 모드로 굳는다.

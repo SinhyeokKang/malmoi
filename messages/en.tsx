@@ -501,7 +501,7 @@ export const en = {
     /** `/signin` 탭 제목 — `signIn.title`("Sign in to Malmoi")을 쓰면 템플릿과 브랜드가 두 번 선다. */
     signInTitle: "Sign in",
     /**
-     * 어떤 라우트에도 매칭되지 않는 경로를 `Accept: text/markdown`으로 요청한 에이전트의 404 본문(agent-readiness design §2.4).
+     * 어떤 라우트에도 매칭되지 않는 경로를 `Accept: text/markdown`으로 요청한 에이전트의 404 본문(ARCHITECTURE §8.1).
      * 제목은 `notFound.title`, Docs 라벨은 `publicDocs.docs.title`을 재사용한다 — 같은 개념에 셋째 변형을 만들지 않는다.
      */
     agentNotFound: {

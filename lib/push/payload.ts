@@ -165,7 +165,7 @@ export function buildPushPayload(input: PushPayloadInput): BuiltPushPayload {
  * ⚠️ **이름 있는 타입이어야 한다** — 본문이 인라인 리터럴이던 동안은 산문에만 있는 union이라 `applied`가 빠져도
  * 컴파일러가 몰랐다. `deferred`는 큐에 넣었다는 뜻이 아니므로 202가 아니다. 실제 오류는 계속 4xx/5xx다.
  *
- * ⚠️ **정의는 이 Zod 하나이고 타입은 `z.infer`다** (agent-readiness 결정 6) — `/openapi.json`의 응답 스키마가 여기서 생성되므로 생산자
+ * ⚠️ **정의는 이 Zod 하나이고 타입은 `z.infer`다** (agent-readiness — ARCHITECTURE §8.1) — `/openapi.json`의 응답 스키마가 여기서 생성되므로 생산자
  * 타입과 공개 명세가 갈라질 수 없다. `z.object`(strict 아님)이고 명세는 `io: "input"`으로 뽑는다 — 생산자 타입은 닫혀 있되 명세는
  * 열린 형이라, 응답 필드 하나를 더해도 생성된 클라이언트 검증기가 깨지지 않는다. deferred 두 갈래는 `status`가 같아 판별 union이 안 된다.
  */

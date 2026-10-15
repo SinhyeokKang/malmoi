@@ -5,7 +5,7 @@ import { en } from "@/messages/en";
 import { SITE_ORIGIN } from "./site";
 
 /**
- * **에이전트가 읽는 404 본문** (agent-readiness design §2.4) — HTML 오류 화면은 에이전트가 못 읽는다. 영어 고정 표면이다.
+ * **에이전트가 읽는 404 본문** (ARCHITECTURE §8.1) — HTML 오류 화면은 에이전트가 못 읽는다. 영어 고정 표면이다.
  *
  * ⚠️ **hosted 밖에서는 hosted를 가리키지 않는다** — self-hosted에서 `llms.txt`는 middleware가 404로 내고(`pageResponse`), hosted origin을
  * 실으면 설치가 남의 것을 자기 것인 양 말한다. 그래서 상대 링크만 싣는다 — Host 헤더를 읽지 않고 요청 URL 기준으로 풀린다.

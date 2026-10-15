@@ -7,7 +7,7 @@ import { apiNotFoundBody, markdownNotFound } from "@/lib/seo/agent-errors";
 import { openApiDocument } from "@/lib/openapi/document";
 
 /**
- * **에이전트가 읽는 공개 route 셋의 배선** (agent-readiness design §2). 판정은 `lib/seo/__tests__/agent-errors.test.ts`·
+ * **에이전트가 읽는 공개 route 셋의 배선** (ARCHITECTURE §8.1). 판정은 `lib/seo/__tests__/agent-errors.test.ts`·
  * `lib/openapi/__tests__/document.test.ts`가 들고, 여기는 route가 그 판정을 부르는지 · 메서드 집합 · 헤더 · 렌더 방식을 본다.
  * 셋 다 무인증 공개 문서라 DB·쿠키·요청 헤더를 읽지 않는다(Accept 판정은 라우터가 한다 — `next.config.ts`).
  */

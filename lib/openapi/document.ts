@@ -6,9 +6,9 @@ import { PushResponseSchema } from "@/lib/push/payload";
 import { en } from "@/messages/en";
 
 /**
- * **`/openapi.json` — CI push API 두 엔드포인트의 OpenAPI 3.1 문서** (agent-readiness design §2.3).
+ * **`/openapi.json` — CI push API 두 엔드포인트의 OpenAPI 3.1 문서** (ARCHITECTURE §8.1).
  *
- * ⚠️ **형태의 파생본이고 의미의 정본은 `docs/ACTIONS.md`다**(결정 4) — 동작·red 조건·안정성은 거기 산문이 정한다. 그래서 오류 갈래
+ * ⚠️ **형태의 파생본이고 의미의 정본은 `docs/ACTIONS.md`다** — 동작·red 조건·안정성은 거기 산문이 정한다. 그래서 오류 갈래
  * (409 사유 다섯 등)를 열거하지 않고 `{ error: string }` + 추가 필드 허용으로만 적는다. 손 사본이 둘이 되면 하나가 낡는다.
  *
  * ⚠️ **스키마는 서버가 검증에 쓰는 Zod에서 생성한다** — 손으로 쓴 스키마는 낡는다(POSTMORTEM 2026-08-31). `io: "input"`이 필수다:

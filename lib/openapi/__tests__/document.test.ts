@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { openApiDocument } from "../document";
 
 /**
- * **CI push API의 OpenAPI 문서** (agent-readiness design §2.3). 형태는 서버가 검증에 쓰는 Zod에서 생성한 파생본이고, 의미의 정본은
+ * **CI push API의 OpenAPI 문서** (ARCHITECTURE §8.1). 형태는 서버가 검증에 쓰는 Zod에서 생성한 파생본이고, 의미의 정본은
  * `docs/ACTIONS.md`다. 골든 스냅샷이 계약 변화를 diff로 드러내고, 아래 구조 단언이 깨지면 안 되는 성질을 따로 고정한다.
  */
 

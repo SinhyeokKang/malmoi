@@ -57,7 +57,7 @@ const nextConfig: NextConfig = {
   },
 
   /**
-   * **매칭 없는 경로 + `Accept`에 `text/markdown` → Markdown 404** (agent-readiness design §2.1) — 에이전트는 HTML 오류 화면을 못 읽는다.
+   * **매칭 없는 경로 + `Accept`에 `text/markdown` → Markdown 404** (ARCHITECTURE §8.1) — 에이전트는 HTML 오류 화면을 못 읽는다.
    * 목적지 `app/not-found.md/route.ts`가 늘 404를 낸다.
    *
    * ⚠️ **`fallback`이어야 한다** — Next는 fallback rewrite를 파일시스템·정적·동적 라우트를 다 본 뒤에만 적용한다. 그래서 존재하는 경로의
@@ -67,7 +67,7 @@ const nextConfig: NextConfig = {
    * ⚠️ **`has.value`는 `^…$`로 감싸인 대소문자 구분 정규식이다** — q값을 해석하지 않아 `text/markdown;q=0`도 Markdown이고 `Text/Markdown`은
    * HTML이다. 받아들인 한계다(ARCHITECTURE §8.1). 판정 표는 `app/__tests__/rewrites.test.ts`가 고정한다.
    * ⚠️ **목적지는 자사 내부 경로만이다** (POSTMORTEM 2026-09-28) — 외부 rewrite는 프록시라 브라우저가 실은 쿠키·Authorization을 제3자 호스트로
-   * 넘긴다. 그 항목의 grep(`async rewrites`)이 이제 이 1건을 잡지만 목적지가 `/not-found.md`라 그 위험이 없다. 같은 테스트가 모든 목적지가
+   * 넘긴다. 그 항목의 재발 방지 grep이 이제 이 rewrite를 잡지만 목적지가 `/not-found.md`라 그 위험이 없다. 같은 테스트가 모든 목적지가
    * `/`로 시작하는지 상시로 센다.
    */
   async rewrites() {

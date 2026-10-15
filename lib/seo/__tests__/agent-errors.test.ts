@@ -8,7 +8,7 @@ import { apiNotFoundBody, markdownNotFound } from "../agent-errors";
 import { SITE_ORIGIN } from "../site";
 
 /**
- * **에이전트가 읽는 404 본문** (agent-readiness design §2.4). hosted는 `SITE_ORIGIN` 절대 링크 셋, self-hosted·무효는 hosted를
+ * **에이전트가 읽는 404 본문** (ARCHITECTURE §8.1). hosted는 `SITE_ORIGIN` 절대 링크 셋, self-hosted·무효는 hosted를
  * 가리키지 않는 상대 링크 둘이다 — 설치가 hosted 산출물(`llms.txt`)을 자기 것인 양 내지 않는다(`public-response.ts`와 같은 방향).
  */
 
