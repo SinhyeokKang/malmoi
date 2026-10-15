@@ -19,7 +19,7 @@
 | 배치 | 항목 | 소유 파일 | 선행 | 모델·effort | 위치 | 상태 |
 |---|---|---|---|---|---|---|
 | Q0 | T0 실측 | 없음(리포트 전용, `.scratch/`만) | — | Sonnet 5.5 high — 측정 절차가 정해져 있고 판단은 지휘자가 한다 | main 체크아웃 | 완료 — 전제 확인 |
-| A | T1–T6 | `lib/credentials/adapter.ts` · `lib/credentials/__tests__/{adapter.test.ts,postgres.integration.ts}` · `auth.ts` · `lib/auth/__tests__/provider-config.test.ts` · `messages/en.tsx` · `messages/ko-privacy.tsx` · `lib/privacy/__tests__/policy-gate.test.tsx` · `guide/{en,ko,es}/self-hosting/{troubleshooting,operate}.md` · `docs/ARCHITECTURE.md` | — (통합은 Q0 뒤) | Opus 5.5 medium — 인증 경계·방침 digest 절차·세 언어 가이드 | 워크트리 | T1–T6 완료(`7bf00b05`·`2ec04ceb`·`adb986f4`·`8341f4d9`, gate ok) — 리뷰 중 |
+| A | T1–T6 | `lib/credentials/adapter.ts` · `lib/credentials/__tests__/{adapter.test.ts,postgres.integration.ts}` · `auth.ts` · `lib/auth/__tests__/provider-config.test.ts` · `messages/en.tsx` · `messages/ko-privacy.tsx` · `lib/privacy/__tests__/policy-gate.test.tsx` · `guide/{en,ko,es}/self-hosting/{troubleshooting,operate}.md` · `docs/ARCHITECTURE.md` | — (통합은 Q0 뒤) | Opus 5.5 medium — 인증 경계·방침 digest 절차·세 언어 가이드 | 워크트리 | 완료 — fix1 뒤 dev 통합 |
 | A-T8 | T8 `/postmortem` | `docs/POSTMORTEM.md` | Q0 확인 | A 워커 재사용 | A 워크트리 | 완료(`8bbe89c5`·`24fd2a42`, gate ok) |
 | R | A 독립 리뷰 | 없음(리포트 전용) | A `worker_done` | Opus 5.5 medium | A 워크트리 읽기 | 완료 — 🔴 0 · 🟡 3 → A-fix1 |
 | Q1 | T7 실물 확인 | 없음(리포트·이슈 전용) | A dev 통합 | Sonnet 5.5 high | main 체크아웃 | 대기 |
@@ -35,3 +35,5 @@ tasks ↔ 배치 대조: T0→Q0 · T1–T6→A · T7→Q1 · T8→A-T8. 주인 
 - A-T8(`/postmortem` + §6.1.1 실측 한 줄)을 A 터미널에 새 Task로 보냄 · R(Opus medium, 리포트 전용) 시작.
 - **A-T8 완료** — `8bbe89c5` POSTMORTEM · `24fd2a42` §6.1.1 실측 문장, gate ok.
 - **R 완료** — 🔴 0 · 🟡 3: ① PG 테스트가 no-op 갱신에 닿지 않음(`:239-242` 설정만 증명, `:369` 공허) ② ARCHITECTURE:2665·`lib/auth/cookie.ts:4-6`의 "`auth()`가 갱신 쓰기" 거짓 ③ §6.1.1 쿠키 재발급이 갱신 조건과 무관(`/api/auth/session` 직접 호출 예외). 사본: `handoffs/review-A.md`. → A-fix1 보냄.
+- **A-fix1 완료** — `d762a25c` PG 테스트가 실제 행에서 `updateSession` no-op을 단언(+ callback 쿠키 Expires = DB `expires`), `6b8123f0` ARCHITECTURE·`lib/auth/cookie.ts` 서술 정정. red 증명: 옛 `updateMany` 복원 시 1 failed / 102 passed.
+- **dev 통합** — A 커밋 8개 cherry-pick(`5bd5a57e`..`6eee8276`), main 체크아웃 `pnpm gate` → `gate: ok`(credentials postgres 포함).
