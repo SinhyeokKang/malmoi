@@ -500,6 +500,17 @@ export const en = {
       "The headline Connect your projects, Translate & ship together above a synced GitHub project card for your-project (src/i18n/locales.json) and three translation key cards, welcome.title, team.invite and common.save, each with Korean, English and Japanese values",
     /** `/signin` 탭 제목 — `signIn.title`("Sign in to Malmoi")을 쓰면 템플릿과 브랜드가 두 번 선다. */
     signInTitle: "Sign in",
+    /**
+     * 어떤 라우트에도 매칭되지 않는 경로를 `Accept: text/markdown`으로 요청한 에이전트의 404 본문(agent-readiness design §2.4).
+     * 제목은 `notFound.title`, Docs 라벨은 `publicDocs.docs.title`을 재사용한다 — 같은 개념에 셋째 변형을 만들지 않는다.
+     */
+    agentNotFound: {
+      body: "There's no page at this address. Start from the docs, or read the machine-readable descriptions below.",
+      llms: "llms.txt",
+      openapi: "OpenAPI for the CI push API",
+    },
+    /** 어떤 route도 받지 않는 `/api/*`의 JSON 404 `message` — OpenAPI가 다루는 범위(CI push API)만 말한다. 전체 목록처럼 말하면 거짓이다. */
+    apiNotFound: "There's no API endpoint at this path. The CI push API is described in the OpenAPI document.",
   },
 
   /**

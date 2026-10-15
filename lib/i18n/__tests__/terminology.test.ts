@@ -238,6 +238,9 @@ const ALLOWED: Readonly<Record<string, readonly string[]>> = {
   "locales.field.help": ["locale"],
   // OG 이미지에 그려진 파일 경로(`src/i18n/locales.json`)를 그대로 묘사한다 — 화면 용어가 아니라 그림 속 글자다.
   "seo.ogImageAlt": ["locale"],
+  // 에이전트가 읽는 404 — 엔드포인트 이름 `/api/push`의 CI API를 가리킨다. 편집자 화면이 아니라 개발자 계약의 이름이다(agent-readiness).
+  "seo.agentNotFound.openapi": ["push"],
+  "seo.apiNotFound": ["push"],
 
   // ── 보류(Held) — 미전달 편집·열린 PR·PR 조회 실패·너무 큼 (DESIGN §2.4). held는 이 키들 아래만 선다.
   "logs.status.deferred": ["held"],
