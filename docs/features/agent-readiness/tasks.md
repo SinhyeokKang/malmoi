@@ -55,20 +55,20 @@
 
 `pnpm build && pnpm start`(hosted 모드)를 띄우고 쿠키 없이 요청한다. **`-L` 없이 첫 응답을 단언한다.**
 
-- [ ] `curl -sS -i -H 'Accept: text/markdown' localhost:3000/some-path-that-does-not-exist` → 404 · `text/markdown; charset=utf-8` · `Vary: Accept` · 링크 셋.
-- [ ] 같은 경로를 Accept 없이 요청하면 404 HTML이고, 초기 HTML 본문(script·style·Flight 제외)에 `Page not found`가 있다(POSTMORTEM 2026-10-08 절차).
-- [ ] `/docs/nope`을 Accept 유무 각각으로 요청한다 → 둘 다 지금과 같은 HTML 404·noindex·title이다(초기 본문은 §8.1의 기존 제한 그대로).
-- [ ] `/` · `/docs` · `/llms.txt` · `/sitemap.xml`을 Accept markdown으로 요청한다 → Accept 없을 때와 상태·content-type이 같다.
-- [ ] 경계 사례:
+- [x] `curl -sS -i -H 'Accept: text/markdown' localhost:3000/some-path-that-does-not-exist` → 404 · `text/markdown; charset=utf-8` · `Vary: Accept` · 링크 셋.
+- [x] 같은 경로를 Accept 없이 요청하면 404 HTML이고, 초기 HTML 본문(script·style·Flight 제외)에 `Page not found`가 있다(POSTMORTEM 2026-10-08 절차).
+- [x] `/docs/nope`을 Accept 유무 각각으로 요청한다 → 둘 다 지금과 같은 HTML 404·noindex·title이다(초기 본문은 §8.1의 기존 제한 그대로).
+- [x] `/` · `/docs` · `/llms.txt` · `/sitemap.xml`을 Accept markdown으로 요청한다 → Accept 없을 때와 상태·content-type이 같다.
+- [x] 경계 사례:
   - 비로그인 `/projects/nope`과 `/%70rojects/x`에 Accept markdown → 307 로그인(Markdown이 아니다)
   - `/nope/`(끝 슬래시) → 308 뒤 첫 응답
   - `-X HEAD` · `-X OPTIONS` · `-X POST` 미존재 경로 + Accept markdown → 404 Markdown(HEAD는 본문 없음)
   - `-H 'Accept: Text/Markdown'` → HTML(한계 확인)
-- [ ] API:
+- [x] API:
   - `/api` · `/api/nope` · `/api/auth`(맨 경로) · `-X POST /api/v1/x` · `/api/search-index/fr` → 404 JSON
   - `-X POST /api/push`는 401 `{"error":"unauthorized"}`, `GET /api/push`는 405로 무변경
-- [ ] `curl localhost:3000/openapi.json` → 200 JSON. `npx @redocly/cli@<2주 이상 된 정확한 버전> lint`를 통과한다(리포 의존성이 아니다).
-- [ ] self-hosted 모드(`MALMOI_ORIGIN` 지정)에서 확인한다.
+- [x] `curl localhost:3000/openapi.json` → 200 JSON. `npx @redocly/cli@<2주 이상 된 정확한 버전> lint`를 통과한다(리포 의존성이 아니다).
+- [x] self-hosted 모드(`MALMOI_ORIGIN` 지정)에서 확인한다.
   - 미존재 경로 + Accept markdown → `llms.txt`·`mal-moi.com`이 없고 상대 링크만 있다.
   - `/llms.txt` + Accept markdown → middleware의 빈 404 그대로다.
   - `/openapi.json` → 200, `servers`는 `/`다.
@@ -98,5 +98,5 @@
 
 ## 6. 배포 확인 (`/push` 뒤 preview, `/merge` 뒤 prod — 수동)
 
-- [ ] `https://dev.mal-moi.com`(SSO 뒤에 있어 `vercel curl`을 쓴다)과 `https://mal-moi.com`에서 §4의 hosted 항목을 반복한다. 검증: design §6-2를 닫는다.
-- [ ] 캐시 혼선을 점검한다. 같은 미존재 경로를 Accept markdown → 없음 → markdown 순으로 세 번 요청하고, 매번 기대한 content-type과 `x-vercel-cache`를 기록한다. 검증: 세 응답 모두 기대한 형이다.
+- [ ] `https://dev.mal-moi.com`(SSO 뒤에 있어 `vercel curl`을 쓴다)과 `https://mal-moi.com`에서 §4의 hosted 항목을 반복한다. 검증: design §6-2를 닫는다. — **preview 부분 통과(2026-10-15, Q1). prod 부분이 `/merge` 뒤에 남았다.** Vercel은 `Text/Markdown`도 Markdown으로 받는다(ARCHITECTURE §8.1에 반영).
+- [x] 캐시 혼선을 점검한다. 같은 미존재 경로를 Accept markdown → 없음 → markdown 순으로 세 번 요청하고, 매번 기대한 content-type과 `x-vercel-cache`를 기록한다. 검증: 세 응답 모두 기대한 형이다. — preview 통과(2026-10-15, 12요청 전부 기대한 형 · 전부 MISS). prod는 `/merge` 뒤.

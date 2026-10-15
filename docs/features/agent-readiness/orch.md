@@ -20,7 +20,7 @@
 |---|---|---|---|---|---|---|
 | A | tasks §0 실측 · §1 커밋 A · §2 커밋 B · §3 커밋 C · §5 문서(ARCHITECTURE·PRODUCT·ACTIONS·DIRECTORY, 문서별 커밋) | `messages/en.tsx` · `lib/seo/agent-errors.ts`(+테스트) · `lib/push/payload.ts` · `lib/openapi/`(+스냅샷) · `next.config.ts` · `app/not-found.md/` · `app/api/[[...path]]/` · `app/openapi.json/` · `app/__tests__/*`(EXEMPT 등 요구가 생기는 것) · 관련 테스트 · `docs/{ARCHITECTURE,PRODUCT,ACTIONS,DIRECTORY}.md` | — | Opus 5.5 medium — Next 라우팅 순서·Zod→JSON Schema·entry-point 게이트 판단 | 워크트리 | 완료 — fix1 뒤 dev 통합 |
 | R | A 독립 리뷰 | 없음(리포트 전용) | A `worker_done` | Opus 5.5 medium | A 워크트리 읽기 | 완료 — 🔴 0 · 🟡 4 → A-fix1 |
-| Q1 | tasks §4 built server 실측(hosted·self-hosted) → push 뒤 §6 preview 반복·캐시 혼선 점검 | 없음(리포트·이슈 전용) | A dev 통합(§6은 push 뒤) | Sonnet 5.5 high — 명령이 tasks에 정해져 있고 판정 기준이 명시적이다 | main 체크아웃 | 대기 |
+| Q1 | tasks §4 built server 실측(hosted·self-hosted) → push 뒤 §6 preview 반복·캐시 혼선 점검 | 없음(리포트·이슈 전용) | A dev 통합(§6은 push 뒤) | Sonnet 5.5 high — 명령이 tasks에 정해져 있고 판정 기준이 명시적이다 | main 체크아웃 | 완료 — §4·§6 preview 결함 0 |
 
 겹침: A 하나가 모든 코드·문서 파일을 소유한다. R·Q1은 코드를 고치지 않는다. Q1이 main 체크아웃에서 built server를 돌리는 동안 통합(cherry-pick·build)을 하지 않는다.
 
@@ -34,3 +34,7 @@ tasks ↔ 배치 대조: §0→A · §1→A · §2→A · §3→A · §4→Q1 ·
 - A-fix1 보냄 — 🟡 넷 + ⚪1(grep 주석)·⚪2(지워질 결정 번호 참조 → §8.1)·⚪3(b)(캐시 전제 한 문장).
 - **A-fix1 완료** — 커밋 6개(`4f737485`..`684b01e7`), `gate: ok`. 최상위 동적 세그먼트 fs 스캔은 `app/[probe2]`·`app/(edit)/[probe]` 두 뮤테이션에서 red를 확인했다. 지휘자가 diff를 직접 보고 재리뷰 없이 통합했다(🔴 0이었고 수정이 국소적이다).
 - **dev 통합** — A 커밋 13개 cherry-pick(`16014eb2`..`bcc97ed8`), main 체크아웃 `pnpm gate` → `gate: ok`(격리 postgres 트리거 없음). tasks §0–§3·§5(디렉터리 삭제 제외) 체크.
+- **push** — `d871487f..e84d8054`, dev CI run `38674266222` success. Vercel preview success.
+- **Q1 Part 1 완료(tasks §4)** — `e84d8054` built server(hosted·self-hosted)에서 §4 전 항목 통과, BugShot 이슈 0건. Redocly `@redocly/cli@2.57.0` lint valid(경고 `info-license` 하나 — 스펙 요구 아님, 조치 안 함: 지휘자 판단).
+- **Q1 Part 2 완료(tasks §6 preview)** — `dev.mal-moi.com`에서 hosted §4 반복 통과, md→없음→md 캐시 순서 12요청 전부 기대한 형(전부 MISS·`no-store`), Vercel도 Markdown 404에 `Vary: Accept`를 남긴다. **차이 둘**: ① Vercel은 `Accept: Text/Markdown`도 Markdown으로 받는다(Next 라우터는 HTML) → A-fix2로 주석·ARCHITECTURE §8.1 정정 ② 루트 HTML 404에 noindex meta가 Vercel에서 없다(로컬엔 있음) — 현행 prod도 같아 이 변경과 무관, 리포트에 이슈 후보로 남김. 사본: `handoffs/handoff-Q1.md`. Q1 해제.
+- **A-fix2 완료·통합** — `da4cbcb8`·`892fa73d`, main 체크아웃 `pnpm gate` → `gate: ok`.
