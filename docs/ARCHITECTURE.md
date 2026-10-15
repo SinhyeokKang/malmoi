@@ -3201,7 +3201,7 @@ state가 무효면 돌아갈 slug를 믿을 수 없어 callback이 거기로 보
   | **영어 고정 표면** | `import { en } from "@/messages/en"`로 **명시한다** — 이름이 `en`이라 "일부러 영어"가 코드에 보인다 |
 
 - **영어로 고정되는 표면**: MCP 도구 응답(`lib/mcp/**` — 에이전트가 읽는다) · 초대 메일(`lib/invitation-email/**` — 받는 사람의 언어를 모른다) ·
-  SEO 메타·정적 `metadata`(탭 제목 — 크롤러와 같은 축이라 `generateMetadata`로 바꾸지 않는다)·`llms*.txt`·sitemap · `/api/*` JSON(검색 색인은 언어별 정적 파일 —
+  SEO 메타·정적 `metadata`(탭 제목 — 크롤러와 같은 축이라 `generateMetadata`로 바꾸지 않는다)·`llms*.txt`·sitemap · Markdown 404(`/not-found.md` — §8.1)·`/openapi.json` · `/api/*` JSON(검색 색인은 언어별 정적 파일 —
   §6.37) · cron 응답·서버 로그 · CLI(`scripts/**`) · `app/global-error.tsx`(루트 레이아웃 밖이라 provider가 없다, `lang="en"`) · 방침 en 본(§6.035) ·
   리포에 남는 문장(PR 제목·본문·커밋 메시지 — 누가 Publish했느냐로 같은 DB 상태에서 다른 PR이 나오면 안 된다) ·
   저장되는 값(`ProjectEvent` payload — §5.7.4의 렌더 치환). 사전에서는 최상위 `mcp`·`seo`·`crash`와 중첩 `publicDocs.privacy`가 `Messages`에서 빠진다(ko·es는 그 절이 없다).
@@ -4055,6 +4055,7 @@ OAuth access로 부른 도구의 결과는 같은 grants·범위의 개인 토�
 - **무인증 authorize 남용은 코드가 아니라 Vercel WAF rate limit이다**(결정 기록) — `/oauth/authorize` IP 단위, log 모드로 시작해 실트래픽을 보고 429로 올린다.
   절차는 OPERATIONS. 작업 큐·자체 카운터를 만들지 않는다.
 - 새 환경변수는 없다 — 서명 키가 필요 없고, 요청은 DB 행이라 `APP_SIGNING_SECRET`도 쓰지 않는다(회전이 진행 중 동의를 깨지 않게).
+- **스코프를 선언하지 않는다** (2026-10-15, agent-readiness — Is Agentic 감사 항목 4를 건너뛰었다) — authorize가 `scope`를 읽지 않으므로 발견 문서의 `scopes_supported`나 OpenAPI 보안 스킴에 스코프를 광고하면 반영되지 않는 거짓 선언이다(`lib/oauth/metadata.ts` · §8.1 `/openapi.json`).
 
 #### 6.45.10 리포 호스트 어휘 (2026-10-12, gitlab-repositories — D26)
 
@@ -4551,6 +4552,12 @@ default ACL을 지우지 않고 닫는 층이라, 적용·확인이 끝나면 �
 - **JSON-LD에 평점·리뷰를 넣지 않는다** — 없는 데이터다.
   홈은 `SoftwareApplication`·`Organization`·`WebSite{name,url}` 세 엔티티다. 문서 JSON-LD의 제목·설명·`inLanguage`·breadcrumb 라벨은 **실제 본문 언어**를 따른다(영어 고정 SEO metadata와 다른 축). publisher 브랜드는 `Malmoi`다. 빈 부모 slug는 이미 있는 Docs 루트이므로 chapter로 다시 추가하지 않는다 — FAQ는 두 단계, 일반 하위 문서는 세 단계다.
 - **404 초기 HTML 제한(2026-10-08, 미해결)** — Next 16.3.3 built-server의 없는 docs slug는 404·noindex지만 초기 본문이 비고 title이 `Malmoi Docs · Malmoi`로 남았다. 컴포넌트 DOM이나 Flight 안의 문구만으로 SSR 완료를 판정하지 않는다. 프레임워크 변경 시 상태·noindex·title·script를 제외한 본문을 실제 HTTP로 다시 확인한다. middleware/CSP 확장·soft 200 우회는 채택하지 않았다(`seo-geo-audit-20261008/orch.md` D11, POSTMORTEM 2026-10-08).
+- **에이전트가 읽는 응답 셋 (2026-10-15, agent-readiness)** — Is Agentic 감사(55/100) 중 셋을 골랐다. 셋 다 **무인증 읽기 전용**이고 DB·쿠키·세션·요청 헤더를 읽지 않는다(`app/__tests__/agent-routes.test.ts`가 소스로 센다). 영어 고정이다(§6.355).
+  - **Markdown 404** — 어떤 라우트에도 매칭되지 않는 경로를 `Accept`에 `text/markdown`을 실어 요청하면 404 `text/markdown; charset=utf-8` · `Vary: Accept` · `no-store`다. 장치는 `next.config.ts`의 **fallback rewrite**(`has` accept) → `app/not-found.md/route.ts`이고, 본문은 `lib/seo/agent-errors.ts#markdownNotFound`다(hosted는 `SITE_ORIGIN` 절대 링크 Docs·`llms.txt`·`/openapi.json` — preview도 prod를 가리킨다, self-hosted·무효는 `llms.txt`를 빼고 상대 링크 둘). ⚠️ **fallback이어야 한다** — Next는 fallback rewrite를 파일시스템·동적 라우트를 다 본 뒤에만 적용하므로 존재하는 경로(`/`·`/docs`·`/llms.txt`·`/sitemap.xml`)는 Accept와 무관하게 그대로다(2026-10-15 built server 실측). middleware에서 Accept로 가르는 안은 버렸다 — 경로 존재를 몰라 라우트 표를 복제해야 한다. ⚠️ **최상위 동적 세그먼트를 새로 만들면 그 아래에서 이 장치가 조용히 꺼진다** — 그 세그먼트가 미존재 경로를 받아 `notFound()`로 끝낸다. 그래서 **라우트에 매칭된 뒤 `notFound()`로 끝나는 404**(`/docs/<없는 slug>` · `/invite/<bad>` · `/signin/link/<bad>`)는 HTML로 남고, 보호 경로는 지금처럼 로그인 307이다. ⚠️ **`has.value`는 `^…$`로 감싸인 대소문자 구분 정규식이다** — q값을 해석하지 않아 `text/markdown;q=0`도 Markdown이고 `Text/Markdown`은 HTML이다(받아들인 한계 — 라우터 정규식으로 q 파서를 못 만든다. 판정 표는 `app/__tests__/rewrites.test.ts`). ⚠️ **rewrite는 메서드를 가리지 않는다** — 목적지가 일곱 메서드를 다 낸다(GET만이면 미존재 경로 POST가 405였다 — 실측). 목적지가 자사 내부 경로라 POSTMORTEM 2026-09-28(외부 rewrite가 쿠키를 넘긴다)의 위험이 없고, 같은 테스트가 "모든 rewrite 목적지는 `/`로 시작한다"를 상시로 센다.
+  - **위 "`/docs/*` 404의 첫 응답" 항목의 "middleware rewrite·수동 HTML 응답·Next 변경 — 셋 다 하지 않는다"(D11)는 `/docs/*` 404의 HTML 본문 SSR에 한정된 결정이다.** Accept 분기 fallback rewrite는 별개 결정이고, middleware·CSP·matcher를 넓히지 않으며 HTML 404와 `/docs/*`를 건드리지 않는다(D11의 근거 문서 `seo-geo-audit-20261008/orch.md`는 v1.3.2에서 지워졌다).
+  - **JSON API 404** — 어떤 route도 받지 않는 `/api` 경로(`/api` 자신 포함)는 `app/api/[[...path]]/route.ts`가 모든 메서드에서 404 `{ "error": "not-found", "message": …, "openapi": "/openapi.json" }`로 받는다(Next 기본은 HTML 404였다). 정적·더 구체적인 세그먼트가 항상 이기므로 등록된 API(`/api/push` 401·405, `/api/auth/*`)는 무변경이다. ⚠️ **`dynamicParams = false` route의 목록 밖 요청도 여기로 온다**(`/api/search-index/fr`) — 그 route가 `NoFallbackError`를 던지면 라우터가 다음 후보로 다시 라우팅한다. ⚠️ `app/api` 바로 아래에 동적 세그먼트·`route.ts`를 만들면 이 catch-all과 충돌한다. 기존 API 오류 본문(`{ "error": … }`)에 `message`를 더하지 않았다 — composite action이 읽는 외부 계약이다.
+  - **`/openapi.json`** — `POST /api/push`·`POST /api/push/failure` 둘만 싣는 OpenAPI 3.1 문서(`lib/openapi/document.ts`, `force-static`). **형태의 파생본이고 의미(동작·red 조건·안정성)의 정본은 `docs/ACTIONS.md`다** — 그래서 오류 갈래(409 사유 등)를 열거하지 않고 `{ error: string }` + 추가 필드로만 적는다. 스키마는 서버가 검증에 쓰는 Zod에서 `z.toJSONSchema(…, { io: "input" })`로 생성한다 — output 모드는 `PushPayload.refs`의 `.transform`에서 던지고, `.refine`은 조용히 빠져 operation `description`에 남긴다. 응답은 `lib/push/payload.ts`의 `PushResponseSchema`(타입 `PushResponse`는 그 `z.infer`)라 생산자 타입과 명세가 갈라질 수 없고, `io: "input"`이라 응답 객체가 `additionalProperties: false` 없이 열린다(실패 보고 `strictObject`만 닫힌다 — 서버가 실제로 거부한다). **서버 URL은 상대 `/`**라 hosted·preview·self-hosted가 같은 바이트로 각자 자기 origin을 가리킨다. 보안 스킴은 push 토큰 http bearer 하나이고 **스코프 배열이 비어 있다**(push 토큰은 스코프가 없다). `info.version`은 앱 버전(서버 축)이고 action 태그(클라이언트 축)와 별개다. 골든은 `lib/openapi/__tests__/__snapshots__/openapi.json`이다. `/oauth/*`(RFC 8414가 이미 발견 문서)·`/api/mcp`(JSON-RPC)·`/api/pull`(cron 전용)은 싣지 않는다.
+- **홈 raw HTML 콘텐츠 비율(감사 항목 2, 2.6% → 5%)은 맞추지 않았다** (2026-10-15) — 홈은 이미 H1과 5,877자 본문을 SSR한다. 581KB 중 RSC 페이로드 304KB · 인라인 SVG 227개 100KB · class 속성 144KB라 비율만 미달이고, 맞추려면 랜딩 목업 마크업을 덜어내야 해서 시각 디자인 보존과 충돌한다.
 
 ## 9. sec-audit-2 저장소 쓰기·스냅샷 경계 (2026-09-10)
 
