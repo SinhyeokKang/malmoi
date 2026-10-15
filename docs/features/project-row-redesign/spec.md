@@ -1,51 +1,77 @@
 # project-row-redesign — spec
 
-> 2026-10-14 착수. `/projects` 목록의 **프로젝트 행 하나**를 다시 짠다 — 무엇을 보여 주나(메타), 어떤 상태를 말하나(상태), 어떻게 그리나(UI).
+> 2026-10-14 착수 · 2026-10-15 `/feature-review` 반영. `/projects` 목록의 **프로젝트 행 하나**를 다시 짠다. 다루는 것은 셋이다 — 무엇을 보여 주나(메타), 어떤 상태를 말하나(상태), 어떻게 그리나(UI). 함께 **Inbox 항목을 행의 띠와 같은 판정에 묶는다**.
 > 그릇(그룹 카드 셋·검색·빈 상태·머리)은 이번 범위가 아니다(DESIGN §6.63 그대로).
+> 짝 기능: `source-row-locale-meter`가 로케일 진행 막대(`LocaleMeter`)를 Sources 화면의 소스 행으로 가져간다. 이 스펙은 프로젝트 행에서 막대를 빼는 쪽만 맡는다(조율은 design.md §5).
 
 ## 사용자
 
 **둘 다다.** 목록은 로그인 직후 착지점이라 개발자(OWNER)와 번역 편집자(EDITOR)가 같은 행을 본다.
 - 개발자의 질문: "손볼 프로젝트가 있나 — 연결이 끊겼나, 동기화가 실패했나, 보낼 편집이 쌓였나."
-- 편집자의 질문: "어느 프로젝트의 어느 언어가 밀렸나."
+- 편집자의 질문: "어느 프로젝트에 할 일이 있나 — 검토가 쌓였나, 아직 손대지 않은 언어가 있나."
 
-두 질문이 한 행에서 충돌하지 않게 하는 것이 이번 재설계의 축이다 — **상태는 개발자의 질문에, 진행은 편집자의 질문에** 답한다.
+두 질문이 한 행에서 충돌하지 않게 하는 것이 이번 재설계의 축이다. **칩은 건강(개발자의 질문)에, 띠는 할 일(두 사람 모두의 질문)에** 답한다. 언어별 진행률("어느 언어가 몇 %인가")은 소스 단위 사실이라 행이 아니라 Sources 화면이 답한다(`source-row-locale-meter`).
 
 ## 문제 (관측된 사실)
 
 ### 1. 언어 막대가 프로젝트를 대표하지 않는다
-`rowLocaleProgress`(`lib/projects/list.ts:340`)가 (소스, 로케일) 쌍을 **소스 slug 알파벳순 → 소스 안 base 먼저 → 코드순**으로 세우고 앞 3개로 자른다.
+`rowLocaleProgress`(`lib/projects/list.ts:341`)는 (소스, 로케일) 쌍을 **소스 slug 알파벳순 → 소스 안 base 먼저 → 코드순**으로 세우고 앞 3개만 남긴다.
 - 첫 소스에 로케일이 셋 이상이면 그 소스가 칸을 다 차지하고 **둘째 소스는 행에서 사라진다.** 기본 소스 지정도 고려하지 않는다.
-- 라벨은 국기 + 코드뿐이라 두 소스의 `ko`가 나란히 서면 어느 소스의 것인지 모른다.
-- base 로케일은 늘 100%에 가까워 세 칸 중 한 칸을 정보 없는 막대가 쓴다.
-- 컴포넌트 주석과 DESIGN §6.63은 "숨기지 않는다 — 감긴다"고 말하지만 서버가 이미 3개로 자른다.
+- 라벨은 국기와 코드뿐이다. 두 소스의 `ko`가 나란히 서면 어느 소스의 것인지 알 수 없다.
+- base 로케일은 늘 100%에 가깝다. 세 칸 중 한 칸을 정보 없는 막대가 차지한다.
+- 컴포넌트 주석과 DESIGN §6.63은 "숨기지 않는다 — 감긴다"고 말하지만, 서버가 이미 3개로 자른다.
+
+(소스, 로케일) 단위 데이터를 프로젝트 행에 담는 것 자체가 원인이다(2026-10-15 사용자).
 
 ### 2. 칩·그룹·띠가 서로 다른 판정을 한다
-판정 함수 넷(`projectStatus`·`rowChip`·`projectGroup`·`rowBanner`)이 각자 우선순위를 든다.
-- **미발송 편집·리포 앞섬** → 그룹은 `Needs attention`인데 칩은 초록 `Active`다.
-- **열린 PR 조회 실패**(`pr_check_failed`) → 호박색 경고 띠가 서고 그 동안 CI 적재가 실제로 보류되는데(fail-closed) 그룹은 `All set`이다.
-- 칩 `Not synced yet` + 둘째 줄 `Not synced yet`, 칩 `Sync failed` + 둘째 줄 `Sync failed` — 같은 말이 한 행에 두 번 선다.
+판정 함수 넷(`projectStatus`·`rowChip`·`projectGroup`·`rowBanner`)이 각자 우선순위를 가진다.
+- **미발송 편집·리포 앞섬**: 그룹은 `Needs attention`인데 칩은 초록 `Active`다.
+- **열린 PR 조회 실패**(`pr_check_failed`): 미발송·리포 앞섬이 없는 행에서는 호박색 경고 띠가 서는데 그룹은 `All set`이다.
+- **같은 말이 한 행에 두 번 선다.**
+  - 첫 적재 대기는 칩 `Not synced yet`과 둘째 줄 `Not synced yet`이 겹친다. 적재 중이면 둘째 줄은 `Syncing…`이다.
+  - 적재 실패 danger는 칩 `Sync failed`, 둘째 줄 `Sync failed`, 띠까지 같은 사실을 세 번 말한다.
+  - 첫 적재가 `partial-import`이면 칩은 `Partially synced`인데 둘째 줄은 `Sync failed`라 서로 **모순**된다.
 
 ### 3. GitLab 행의 둘째 줄이 GitHub 문장이다
-`ProjectRow`가 `withRepoHost`를 거치지 않은 사전을 써서, 연결 전 GitLab 프로젝트의 둘째 줄이 `Connect the GitHub App to continue.`다(`onGitLab.meter.note.setup`은 사전에 있는데 띠만 그것을 쓴다).
+`ProjectRow`는 `withRepoHost`를 거치지 않은 사전을 쓴다. 지금 `withRepoHost`를 거치는 곳은 `ProjectBanner`(`project-list.tsx:347`)와 `BannerAction`(`:409`) 둘뿐이다. 그래서 연결 전 GitLab 프로젝트의 둘째 줄이 `Connect the GitHub App to continue.`로 나온다.
+
+### 4. Inbox와 행의 띠가 다른 할 일을 센다
+Inbox 항목(`lib/inbox/plan.ts`)과 행 띠(`rowBanner`)가 따로 판정한다.
+- **Inbox에만 있다**: `never_filled`(한 번도 채워지지 않은 언어).
+- **띠에만 있다**: `needs_reconnect`, 그리고 원격 신호 셋(`pr_open`·`pr_check_failed`·`repo_ahead`).
 
 ## 완료 조건 (검증 가능한 문장)
 
-1. **행의 진행 표시가 프로젝트 전체를 말한다** — 언어 진행은 로케일 코드별로 **모든 비보관 소스를 합친 값**이고, base인 (소스, 로케일)은 분모·분자에 들지 않는다. 소스가 둘 이상인 프로젝트에서 둘째 소스의 언어가 첫 소스 때문에 빠지는 일이 없다 — 순수 함수 테스트가 고정한다.
-2. **보이지 않는 언어가 있으면 그 수가 보인다** — 잘린 언어가 있으면 행이 "몇 개 더"를 말한다. 서버가 자른 사실을 화면이 숨기지 않는다.
-3. **칩·그룹·띠가 한 판정에서 나온다** — 함수 하나(`planProjectRow`)가 셋을 함께 돌려주고, 칩이 초록(`Active`)인 행은 `Needs attention` 그룹에 서지 않는다. 역으로 `Needs attention` 행의 칩은 그 사유를 말한다. 모든 입력 조합에 대해 이 일치를 표 테스트가 센다.
-4. **같은 사실이 한 행에 두 번 서지 않는다** — 칩이 말한 상태를 둘째 줄 문장이 되풀이하지 않는다(테스트: 칩 낱말과 둘째 줄 문장의 교집합 0).
-5. **GitLab 행의 모든 문장이 GitLab 문장이다** — 행 전체가 `withRepoHost(m, row.repoHost)`를 지난다. GitLab 행 렌더 결과에 `GitHub`이 0건이다(DOM 테스트).
-6. **대표 메타가 한 줄에 선다** — 리포(호스트·owner/repo) 외에 design.md "대표 메타"의 항목이 행에 서고, 그 값이 Home 메타 열·사이드바 배지와 같은 수다(같은 로더 값 — 교차 테스트).
-7. **Claude Design 시안이 있고 구현이 그것과 같다** — `/design-sync` 실측 일치 · 리뷰 지적 0.
-8. 기존 계약 유지 — 보관 행은 띠가 없고 이름·메타가 `gray-dim`, 행 전체가 링크이고 띠는 형제, focus 링 `ring-inset`, 검색 일치는 이름에서만 칠한다.
+1. **프로젝트 행에 언어 막대가 없다** — 행에 둘째 줄이 없고 `LocaleMeter`·`Meter`가 0개다(DOM 테스트). `LocaleMeter` 컴포넌트는 지우지 않는다(`source-row-locale-meter`가 이어받는다).
+2. **대표 메타가 리포 줄 아래 한 줄에 선다** — 순서는 `sources · keys · languages · synced`다.
+   - 소스 수·키 수·언어 수는 **Sources 화면·사이드바 배지와 같은 정의**다. 같은 fixture에서 같은 수가 나오는지 postgres 교차 테스트로 확인한다.
+   - 언어 수가 0이면 그 칸을 생략한다.
+   - 동기화 시각은 Home 카드와 같은 함수(`lastSyncTime`)에서 나온다. `null`·`"unrecorded"`면 칸을 생략한다.
+   - 좁으면 메타 줄은 감기고 숨지 않는다.
+3. **칩·그룹·띠가 한 판정에서 나온다** — 함수 하나(`planProjectRow`)가 셋을 함께 돌려준다. 입력 축(보관 × `projectStatus` × 적재 실패 톤 × 적재 중 × 열린 PR 셋 상태 × 미발송·리포 앞섬·검토·never_filled의 0/양수)의 모든 조합에서 표 테스트가 다음을 센다.
+   - 띠가 {`needs_reconnect`, `import_failed`, `setup`}이면 그룹은 `needs_attention`이다.
+   - 띠가 {`unsent`, `pr_open`, `pr_check_failed`, `repo_ahead`, `review`, `never_filled`}이면 칩은 `active`이고 그룹은 `all_set`이다.
+   - 칩이 `active`면 그룹은 `all_set`이고, 그룹이 `all_set`이면 칩은 `active`다.
+   - 보관이면 띠가 없다.
+4. **같은 사실이 한 행에 두 번 서지 않는다** — 칩 낱말(`stateLabel`)이 같은 행의 띠 문장에 그대로 들어가지 않는다. 메타 줄에는 `STATE` 낱말이 없다. DOM 표 테스트로 상태 표 전 행을 센다.
+5. **GitLab 행의 모든 문장이 GitLab 문장이다** — 행 전체가 `withRepoHost(m, row.repoHost)`를 지난다. GitLab setup 행과 GitLab PR 조회 실패 행의 렌더 결과가 `/github|pull request/i`에 0건이다(DOM 테스트).
+6. **Inbox 항목과 행의 띠가 같은 판정에서 나온다** — DB에서 정해지는 할 일(`needs_reconnect`·`import_failed`·`setup`·`unsent`·`review`·`never_filled`)을 순수 함수 하나가 내고, 행의 띠와 Inbox가 둘 다 그 결과를 쓴다. 표 테스트가 다음을 센다.
+   - 행 띠가 DB 할 일이면 그 종류가 같은 프로젝트의 Inbox 항목에 있다. 역할 예외는 design.md §4의 표를 따른다.
+   - 원격 신호 셋(`pr_open`·`pr_check_failed`·`repo_ahead`)은 행 띠 전용이다. Inbox·배지 경로는 호스트 API를 부르지 않는다.
+7. **Claude Design 시안이 있고 구현이 그것과 같다** — `/design-sync` 실측이 일치하고 리뷰 지적이 0건이다.
+8. **기존 계약을 유지한다** — 각각 DOM 단언으로 확인한다.
+   - 보관 행은 띠가 없고 이름·메타(새 메타 포함)가 `gray-dim`이다.
+   - 행 전체가 링크이고, 띠는 링크 밖의 형제다.
+   - focus 링은 `ring-inset`이다.
+   - 검색 일치는 이름에서만 칠한다.
 
 ## 비목표
 
-- **그릇** — 그룹 카드 셋의 존재·순서·헤더, 검색(`?q=`), 빈 상태 둘, 머리, 로딩 골격의 구조(행 치수가 바뀌면 골격 치수만 따라간다).
-- **새 데이터** — 스키마·마이그레이션 없음. 이미 저장된 값만 쓴다(design.md).
-- **역할·멤버 수의 복귀** — 2026-09-30 사용자 결정으로 행 메타에서 걷었다. 이번에 되살리지 않는다.
+- **그릇** — 그룹 카드 셋의 존재·순서·헤더, 검색(`?q=`), 빈 상태 둘, 머리, 로딩 골격의 구조는 그대로다. 행 치수가 바뀌면 골격 치수만 따라간다.
+- **새 데이터** — 스키마·마이그레이션이 없다. 이미 저장된 값만 쓴다(design.md).
+- **역할·멤버 수의 복귀** — 2026-09-30 사용자 결정으로 행 메타에서 걷었다. 이번에 되살리지 않는다. 그 근거는 T11에서 정본에 올린다.
 - **정렬·필터 추가** — 목록 정렬 순서(그룹 안 slug 순)와 필터 부재(DESIGN §6.63 "필터 탭이 사라졌다")는 그대로다.
-- **Home·Sources의 상태 판정** — Home `planHomeState`와 Sources는 손대지 않는다. 다만 새 행 판정과 같은 낱말·톤을 쓰는지는 교차 테스트로 본다(§2.4).
-- **Sources 화면** — 소스별 진행이 맞는 화면이라 손대지 않는다. ⚠️ DESIGN §6.63 머리는 `LocaleMeter`의 소비자를 "Projects와 Sources"라고 하지만 실제 import는 `project-list.tsx` 하나다(2026-10-14 확인) — 그 서술은 정본 갱신 때 고친다.
+- **Home의 상태 판정** — Home `planHomeState`·Attention 카드는 손대지 않는다. 다만 새 행 판정과 같은 낱말·톤을 쓰는지는 교차 테스트(`cross-screen.test.ts`)로 본다(§2.4).
+- **Sources 화면의 막대** — `source-row-locale-meter`가 맡는다.
+- **Inbox의 원격 신호** — 열린 PR·PR 조회 실패·리포 앞섬은 Inbox에 넣지 않는다. 배지 Action이 매 헤더에서 불리므로 호스트 API를 부르면 헤더마다 비용이 든다(2026-10-15 사용자).
 - **실시간 갱신·폴링** — 목록은 요청 시점 값이다.
