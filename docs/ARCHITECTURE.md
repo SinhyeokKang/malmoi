@@ -2869,11 +2869,24 @@ login-link · session-revocation · `acceptInvitation`이다. 두지 않는 이�
 
 **Server Action도 같은 계열이다** — Action 호출은 레이아웃을 지나지 않으므로 Action이 스스로 인증·인가·테넌트 격리를 한다 (`app/(edit)/actions.ts`). ⚠️ **예외가 하나다**: `app/invite/actions.ts`는 프로젝트 인가를 지나지 않고 **토큰이 그것을 대신한다**(단일 사용). `app/__tests__/entry-points.test.ts`의 **`EXEMPT_ACTIONS`**(`"invite/actions.ts#acceptInvitation"`)에 이름으로 고정돼 있고 — ⚠️ **같은 파일의 `EXEMPT`는 다른 목록이다**(인가를 안 지나는 **페이지·라우트** 열이고 Action이 아니다 — 2026-09-14 이후 `api/push/failure/route.ts`·`signin/link/[challenge]/page.tsx`가 더해졌다) — 같은 테스트의 `GUARDS`가 `requireUser`도 인정하므로 **세션만 확인하는 진입점**(두 부류다: **사용자 소유 자원**을 다루는 것(`/api/github/callback`·`/account` 계정 연결·`disconnectGithub`·전체 세션 회수 시작)과 **인가할 프로젝트가 아직 없는 생성 경로**(`/projects/new` + `projects/actions.ts`의 목록·탐지·브랜치·샘플·수동확정·생성 여섯))도 자동 검사를 통과한다. ⚠️ **그 예외는 파일이 아니라 `파일#export`로 고정된다** — 같은 파일의 **셋째 목록** `USER_SCOPED_ACTIONS`가 그것이고(`account/actions.ts` · `projects/actions.ts` · `mcp/actions.ts` — 이름 목록의 정본은 그 Set이다), 파일 단위였다면 export가 하나 늘 때마다 검사 밖으로 빠졌다. **여기 이름을 더하려면 둘 중 어느 쪽인지 적는다**: 행이 사용자 소유인가(`Account`·세션·프로필·`ApiToken`·`OAuthConnection`), 인가할 프로젝트가 아직 없는가(생성 경로). ⚠️ **넷째 목록 `DELEGATED_CORES`는 인가가 Action 본문이 아니라 공유 코어에 있는 Action이다**(mcp-connector — Action과 MCP 도구가 같은 코어를 부른다, §6.45). 그 코어를 부르는 export를 가드를 지난 것으로 세는 대신 **코어 본문이 프로젝트 가드를 직접 부르는지**를 따로 센다. ⚠️ **편집 중 저장 Action에서는 `redirect()`를 쓰지 않는다**: blur 저장 중의 redirect는 입력 중인 셀을 날린다. **나가는 OAuth 시작은 예외다** — `startGithubConnect`는 성공 시 GitHub으로 `redirect`하고 실패만 값으로 돌아온다(목적지가 우리 화면이 아니라 남의 사이트라 값으로 돌려줄 것이 없다). `getProjectAccess`가 결과를 union으로 돌려주고 화면이 문구로 보인다. **입력은 인가보다 먼저 zod로 거른다** — 타입 시그니처는 클라이언트를 구속하지 않고, 조작된 `role`이 Prisma enum에 닿으면 digest 오류가 된다(§6.3).
 
-#### 6.1.1 세션 정책 — 마지막 활동 뒤 24시간 (2026-09-06)
+#### 6.1.1 세션 정책 — 로그인 뒤 7일 고정 (2026-10-15)
 
-`credentialAdapter`는 32바이트 난수 세션 원문을 HttpOnly 쿠키와 Auth.js 내부 반환에만 유지하고 DB에는 `sha256:v1:<digest>`를 저장한다. 조회 입력을 항상 다시 해시하므로 DB digest를 쿠키로 제출해도 인증되지 않는다. 갱신은 현재 미만료 행만 바꾸고 삭제된 세션을 생성하지 않는다. 공개 `publicSession` 허용 목록은 그대로다.
+`credentialAdapter`는 32바이트 난수 세션 원문을 HttpOnly 쿠키와 Auth.js 내부 반환에만 유지하고 DB에는 `sha256:v1:<digest>`를 저장한다. 조회 입력을 항상 다시 해시하므로 DB digest를 쿠키로 제출해도 인증되지 않는다. 갱신(`updateSession`)은 DB를 읽지도 쓰지도 않고 `null`을 돌려준다(아래). 공개 `publicSession` 허용 목록은 그대로다.
 
-`session: { strategy: "database", maxAge: 24h, updateAge: 1h, generateSessionToken }`. ⚠️ **넷째 키가 위 문단의 "32바이트 난수 세션 원문"의 발신처다** — `() => randomBytes(32).toString("base64url")`이고, 이것을 빼면 Auth.js 기본 생성기로 조용히 떨어진다(길이·엔트로피의 근거가 이 한 줄이라 코드 리뷰 말고는 신호가 없다). ⚠️ **`updateAge`를 명시하지 않으면 기본값(24h)이 `maxAge`와 같아** `session.js`의 갱신 조건이 `expires <= now`가 되고 **세션이 한 번도 연장되지 않는다** — 로그인 정각 24시간 뒤 편집 도중 끊기고, 브라우저가 쿠키를 지워 blur 저장이 미들웨어에 걸렸다(Codex 감사 #6). 지금은 활동 중인 세션이 시간당 한 번 DB 쓰기로 연장된다. `provider-config.test.ts`가 `strategy: "database"`와 `updateAge` 리터럴을 고정한다 — ⚠️ **`maxAge`는 검사하지 않으므로** 7일로 바꿔도 green이다.
+`session: { strategy: "database", maxAge: 7d, updateAge: 7d, generateSessionToken }`. ⚠️ **넷째 키가 위 문단의 "32바이트 난수 세션 원문"의 발신처다** — `() => randomBytes(32).toString("base64url")`이고, 이것을 빼면 Auth.js 기본 생성기로 조용히 떨어진다(길이·엔트로피의 근거가 이 한 줄이라 코드 리뷰 말고는 신호가 없다).
+
+**세션은 로그인한 때부터 7일 뒤 끝나고, 활동으로 연장되지 않는다.** 쿠키와 DB `expires`가 같은 값이다.
+
+- ⚠️ **쿠키가 재발급되지 않는다 — 그래서 sliding은 이 앱에서 성립하지 않는다.** `@auth/core` `lib/actions/session.js`는 `expires − maxAge + updateAge <= now`면 `updateSession`을 부르고(반환값은 쓰지 않는다) 응답 쿠키를 `now + maxAge`로 다시 심는다. 그런데 `next-auth` `initAuth`의 인자 없는 `auth()`는 `getSession(...).then(parseSessionResponse)`만 하고 응답 헤더를 버린다 — 앱의 세션 읽기는 전부 그 호출(`lib/auth/read-session.ts`)이고 미들웨어는 `auth()`를 쓰지 않는다. 쿠키 만료를 정하는 것은 callback(로그인)이 심는 `expires: session.expires`뿐이다.
+- **2026-09-06 Codex 감사 #6의 수정은 DB에만 닿았다.** 그때 `updateAge`를 기본값(=`maxAge` 24h)에서 1시간으로 내려 "마지막 활동 뒤 24시간"이라 적었지만, 시간당 연장은 DB `expires`만 늘렸고 브라우저 쿠키는 로그인 + 24시간에 지워졌다 — 실제 수명은 그 뒤로도 로그인 뒤 24시간 고정이었고 방침·가이드의 문장이 틀려 있었다. 이번 변경은 그 고정 수명을 7일로 늘리고 문장을 실제에 맞춘다.
+- **연장 없음의 보증은 어댑터 no-op이 든다.** `updateAge = maxAge`면 위 공식의 갱신 시점이 `expires`와 같아 Auth.js가 `updateSession`을 부르지 않는다(만료 행은 그 전에 `getSessionAndUser`가 지운다). 그러나 공식에만 기대면 `expires == now` 경계의 호출이나 누군가 `updateAge`를 되돌리는 변경에서 DB만 조용히 늘어나는 상태가 돌아온다 — #6이 정확히 이 공식의 함정이었다. 그래서 `credentialAdapter.updateSession`이 아무것도 쓰지 않는다. `adapter.test.ts`가 "prisma `session`을 건드리지 않는다"를, `postgres.integration.ts`가 실제 Auth.js 경로로 읽은 뒤 `expires`가 그대로인 것을, `provider-config.test.ts`가 두 리터럴을 고정한다.
+- `expires`가 실제 만료 시각이므로 `expires > now`를 직접 보는 판정(`lib/session-revocation/store.ts`, `lib/account-connect/store.ts`, OAuth callback 경로의 `getSessionAndUser`)이 코드 변경 없이 같은 정책을 따른다. 술어는 `isSessionValid`(`lib/credentials/crypto.ts`) 하나다.
+
+기각한 대안:
+
+- **idle 7일 + absolute 30일** — 쿠키가 재발급되지 않아 idle이 브라우저에서 성립하지 않는다. 살리려면 아래 둘 중 하나가 필요하다.
+- **`maxAge` 30일 + 어댑터가 DB `expires`를 `now + 7d`로 자르고 1시간 스로틀** — callback이 쿠키 만료를 `createSession` 반환값으로 정하므로 어댑터가 DB와 다른 `expires`를 Auth.js에 돌려줘야 한다. `Session.createdAt` 열·마이그레이션·CAS도 따라온다.
+- **미들웨어가 렌더 요청마다 세션 쿠키를 다시 심기** — 인증 쿠키를 다루는 둘째 장치가 생기고, Auth.js 쿠키 속성(`__Secure-` 접두·sameSite·path)과 어긋나면 로그인이 깨진다.
 
 **`session` 콜백은 입력을 돌려주지 않는다.** DB 세션에서 콜백이 받는 `session`은 `Session` **행**이라 `sessionToken`이 들어 있고, 반환값이 곧 `/api/auth/session` 본문이다 — 입력에 `id`만 얹어 돌려주면 HttpOnly 쿠키의 값이 JSON으로 샌다(Codex 감사 #1, 2026-09-06까지 열려 있었다). `lib/auth/public-session.ts`가 `user.{id,name,email,image,uiLocale,timeZone,colorScheme}`·`expires`만 허용 목록으로 새 객체에 담는다.
 
