@@ -63,6 +63,8 @@ const REVISIONS: readonly { effectiveDate: string; digest?: string; koDigest?: s
   { effectiveDate: "2026-10-14", digest: "10e3fc47465db9bac4016ee6d910cf03cde1f728c1216067dc2c3ca9a930e731", koDigest: "5f7edd24aa2a7979ac7508bd00cbe527c9e247026e33b067c1d18c4b6f9c1a29" },
   // Second Korean wording review — distinguish granted permissions from allowed projects.
   { effectiveDate: "2026-10-14", digest: "10e3fc47465db9bac4016ee6d910cf03cde1f728c1216067dc2c3ca9a930e731", koDigest: "bc09fac75a4b2b0cad2aee3ad748563d46d082fdafe6828f6520071f93dd32dc" },
+  // session-absolute-timeout — 세션 수명이 "마지막 활동 뒤 24시간"에서 "로그인 뒤 7일 고정"으로(쿠키 보존). 머지일이 바뀌면 날짜를 옮긴다.
+  { effectiveDate: "2026-10-15", digest: "d4f79dfaa204fbe17431b4b3a1960466548f5f50016f012d7e3c104470deda4c", koDigest: "c4b3cd559c30d6d14493f3e4305689a62f6f74d9a97b7272cefea689d927cfd0" },
 ];
 
 const privacy = en.publicDocs.privacy;
@@ -313,6 +315,9 @@ it("GitLab 수집·전송·보존과 시행일을 두 방침에 명시한다", (
       expect(docText(body.sections.filter(s => s.id === id)), id).toContain("GitLab");
     }
     expect(docText(body.sections)).toContain("gitlab.com");
-    expect(body.effectiveDate).toBe("2026-10-14");
+    // 날짜를 못 박지 않는다 — 이후 개정마다 옮겨야 해서 GitLab과 무관한 개정이 이 테스트를 고치게 된다.
+    // 지키는 것은 GitLab 개정(저장소 2026-10-12 · 로그인 2026-10-13)이 시행일 안에 있고 변경 이력에 남는다는 것이다.
+    expect(body.effectiveDate >= "2026-10-13").toBe(true);
+    for (const date of ["2026-10-12", "2026-10-13"]) expect(docText(body.sections.filter(s => s.id === "changes")), date).toContain(`${date} — GitLab`);
   }
 });
