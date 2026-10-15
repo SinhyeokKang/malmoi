@@ -1,9 +1,12 @@
+import { readdirSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
 import { describe, expect, it } from "vitest";
 
 import nextConfig from "../../next.config";
 
 /**
- * **`next.config.ts`의 rewrite** (agent-readiness design §2.1). ⚠️ **`tsc`는 이 함수의 형태를 못 본다** — 설정을 **불러서** 검사한다
+ * **`next.config.ts`의 rewrite** (ARCHITECTURE §8.1). ⚠️ **`tsc`는 이 함수의 형태를 못 본다** — 설정을 **불러서** 검사한다
  * (`security-headers.test.ts`와 같은 형).
  */
 
@@ -36,7 +39,7 @@ describe("rewrites()", () => {
 
   /**
    * Next는 `has.value`를 `^…$`로 감싸고 대소문자를 구분한다(`prepare-destination.js`). Vercel 라우터도 같은 설정을 평가한다.
-   * q값·대소문자를 해석하지 않는 것은 받아들인 한계다(spec 결정 8).
+   * q값·대소문자를 해석하지 않는 것은 받아들인 한계다(ARCHITECTURE §8.1).
    */
   it.each([
     ["text/markdown", true],
@@ -54,5 +57,22 @@ describe("rewrites()", () => {
     expect(has).toHaveLength(1);
     expect(has[0]).toMatchObject({ type: "header", key: "accept" });
     expect(new RegExp(`^${has[0]?.value}$`).test(accept)).toBe(markdown);
+  });
+});
+
+/**
+ * ⚠️ **최상위 동적 세그먼트가 생기면 Markdown 404가 조용히 꺼진다** — 그 세그먼트가 미존재 경로를 받아 `notFound()`(HTML)로 끝내므로
+ * fallback rewrite까지 가지 않는다. build·typecheck는 green이고 증상은 Accept markdown이 HTML 404로 돌아가는 것뿐이라 여기서 센다.
+ * route group `(…)`은 URL에 안 실리므로 그 바로 아래도 최상위다.
+ */
+describe("최상위 동적 세그먼트", () => {
+  it("app/ 최상위와 route group 바로 아래에 `[`로 시작하는 디렉터리가 없다", () => {
+    const app = fileURLToPath(new URL("..", import.meta.url));
+    const dirs = (path: string) => readdirSync(path, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name);
+    const top = dirs(app);
+    const groups = top.filter((name) => name.startsWith("(") && name.endsWith(")"));
+    const segments = [...top, ...groups.flatMap((group) => dirs(`${app}/${group}`).map((name) => `${group}/${name}`))];
+    const dynamic = segments.filter((path) => path.split("/").at(-1)?.startsWith("["));
+    expect(dynamic, "최상위 동적 세그먼트가 Markdown 404(fallback rewrite)를 그 아래에서 끈다 — ARCHITECTURE §8.1").toEqual([]);
   });
 });
