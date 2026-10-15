@@ -22,7 +22,7 @@
 | A | T1–T6 | `lib/credentials/adapter.ts` · `lib/credentials/__tests__/{adapter.test.ts,postgres.integration.ts}` · `auth.ts` · `lib/auth/__tests__/provider-config.test.ts` · `messages/en.tsx` · `messages/ko-privacy.tsx` · `lib/privacy/__tests__/policy-gate.test.tsx` · `guide/{en,ko,es}/self-hosting/{troubleshooting,operate}.md` · `docs/ARCHITECTURE.md` | — (통합은 Q0 뒤) | Opus 5.5 medium — 인증 경계·방침 digest 절차·세 언어 가이드 | 워크트리 | 완료 — fix1 뒤 dev 통합 |
 | A-T8 | T8 `/postmortem` | `docs/POSTMORTEM.md` | Q0 확인 | A 워커 재사용 | A 워크트리 | 완료(`8bbe89c5`·`24fd2a42`, gate ok) |
 | R | A 독립 리뷰 | 없음(리포트 전용) | A `worker_done` | Opus 5.5 medium | A 워크트리 읽기 | 완료 — 🔴 0 · 🟡 3 → A-fix1 |
-| Q1 | T7 실물 확인 | 없음(리포트·이슈 전용) | A dev 통합 | Sonnet 5.5 high | main 체크아웃 | 대기 |
+| Q1 | T7 실물 확인 | 없음(리포트·이슈 전용) | A dev 통합 | Sonnet 5.5 high | main 체크아웃 | 완료 — 4/4 통과, 결함 0 |
 
 겹침: Q0·Q1은 코드를 고치지 않는다. A 하나가 모든 코드 파일을 소유한다. Q0가 main 체크아웃에서 `pnpm dev`를 돌리는 동안 통합(cherry-pick·build)을 하지 않는다.
 
@@ -37,3 +37,6 @@ tasks ↔ 배치 대조: T0→Q0 · T1–T6→A · T7→Q1 · T8→A-T8. 주인 
 - **R 완료** — 🔴 0 · 🟡 3: ① PG 테스트가 no-op 갱신에 닿지 않음(`:239-242` 설정만 증명, `:369` 공허) ② ARCHITECTURE:2665·`lib/auth/cookie.ts:4-6`의 "`auth()`가 갱신 쓰기" 거짓 ③ §6.1.1 쿠키 재발급이 갱신 조건과 무관(`/api/auth/session` 직접 호출 예외). 사본: `handoffs/review-A.md`. → A-fix1 보냄.
 - **A-fix1 완료** — `d762a25c` PG 테스트가 실제 행에서 `updateSession` no-op을 단언(+ callback 쿠키 Expires = DB `expires`), `6b8123f0` ARCHITECTURE·`lib/auth/cookie.ts` 서술 정정. red 증명: 옛 `updateMany` 복원 시 1 failed / 102 passed.
 - **dev 통합** — A 커밋 8개 cherry-pick(`5bd5a57e`..`6eee8276`), main 체크아웃 `pnpm gate` → `gate: ok`(credentials postgres 포함).
+- **push** — origin/dev가 locale-add 런으로 앞서 있어 rebase(충돌은 `docs/POSTMORTEM.md` append 하나 — 두 항목 모두 날짜순으로 남김), `db:status` 최신, `pnpm gate` → `gate: ok` 뒤 `5ec6294a..c843716d`. dev CI run `38670268558`.
+- **Q1 완료(T7)** — 4/4 통과, BugShot 이슈 0건. 로그인 직후 쿠키 Expires = DB `expires` = 로그인+7일(같은 초) · 보호 페이지 6곳 + Server Action + 옛 설정의 갱신 대상 상태(`expires` = now+6일)에서도 세션 Set-Cookie 0·DB 불변 · 만료 → `/signin` + 행 삭제 · 편집 중 만료 → draft 유지 + danger Alert, DB 셀 불변. 계획과 다른 점: 워크스페이스 저장 트리거는 blur가 아니라 [Save]다(design §1·T7 문구 정정). 사본: `handoffs/handoff-Q1.md`.
+- **정리** — Q0·R·Q1 워커 해제, A 워크트리·브랜치 삭제(handoff는 main `.scratch`에 사본).

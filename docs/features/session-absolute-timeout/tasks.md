@@ -21,11 +21,11 @@
 6. ✅ **ARCHITECTURE §6.1.1** — 제목("로그인 뒤 7일 고정"), `session:` 설정 줄, 쿠키가 재발급되지 않는 근거(design §2-3), Codex #6 서술 갱신(그때의 sliding은 DB에만 닿았다), 연장 없음의 보증이 어댑터 no-op이라는 것, 기각한 대안 셋.
    검증: `rg -n '24시간|24 hours|24 horas|마지막 활동|last activity|última actividad|슬라이딩' docs/ARCHITECTURE.md auth.ts messages guide lib/auth` 결과가 JWT 이력(`ARCHITECTURE.md:2429`·`auth.ts:83`·`provider-config.test.ts:36`)과 Analytics 두 줄뿐이다.
    ── `docs(ARCHITECTURE): fixed 7-day session lifetime`
-7. **실물 확인(로컬 dev)** — 대상은 **자기 세션 하나만**(상주 QA 사용자의 세션은 건드리지 않는다). 복구는 다시 로그인하면 된다.
+7. ✅ **실물 확인(로컬 dev)** — 대상은 **자기 세션 하나만**(상주 QA 사용자의 세션은 건드리지 않는다). 복구는 다시 로그인하면 된다.
    - 로그인 직후 쿠키 Expires와 DB `expires`가 같은 시각(로그인 + 7일)이다.
    - 1시간 넘게 활동한 뒤에도 DB `expires`가 그대로다(쓰기 없음).
    - DB `expires`를 1분 전으로 당기고 보호 페이지를 새로고침 → `/signin` 이동·행 삭제.
-   - 같은 상태를 다시 만든 뒤 번역 워크스페이스에서 셀을 blur 저장 → draft가 화면에 남고 세션 danger Alert가 뜬다.
+   - 같은 상태를 다시 만든 뒤 번역 워크스페이스에서 셀을 고치고 [Save]로 저장 → draft가 화면에 남고 세션 danger Alert가 뜬다.
    검증: 수동 — `/runtime-test` 리포트 또는 `/implement` 보고에 쿼리 결과·쿠키 값 첨부.
 8. ✅ **회고** — T0에서 쿠키 고정이 확인됐으면 `/postmortem`: 2026-09-06부터 방침·가이드·ARCHITECTURE가 "마지막 활동 뒤 24시간"이라 썼지만 실제는 로그인 뒤 24시간 고정이었다(Codex #6 수정이 DB에만 닿았다). 재발 방지 grep은 `rg -n '\bauth\(\)' app lib`(Set-Cookie를 버리는 호출부).
    검증: `docs/POSTMORTEM.md`에 항목 하나.

@@ -6,7 +6,7 @@ push·pull·export와 무관하다. **인증 경계**(ARCHITECTURE §6.1.1)의 �
 
 **만료 순간의 UI는 새로 만들지 않고 지금 만료·폐기된 세션의 경로를 그대로 탄다.** 달라지는 것은 그 순간이 로그인 24시간 뒤에서 7일 뒤로 옮겨 가는 것뿐이다:
 
-- 번역 워크스페이스 blur 저장 → `unauthorized` → draft가 화면에 남고 danger Alert, sessionStorage 사본(`components/translations/workspace/workspace.tsx:562`·`:1187-1192`, `lib/translations/draft.ts:89-91`).
+- 번역 워크스페이스 [Save] 저장(blur는 저장하지 않는다) → `unauthorized` → draft가 화면에 남고 danger Alert, sessionStorage 사본(`components/translations/workspace/workspace.tsx:562`·`:1187-1192`, `lib/translations/draft.ts:89-91`).
 - 모달·설정 Action → 입력을 유지한 채 `accessErrorMessage`(`lib/auth/message.ts:61`). 다시 로그인하는 링크·이탈 가드는 없다(기존 동작, 비목표).
 - ⚠️ 기존 동작이지만 기록한다: 워크스페이스 세션 Alert가 떠 있을 때 [Check](`workspace.tsx:1092`)나 onReview(`:1111`)를 누르면 refresh가 `/signin` redirect가 되어 화면의 draft가 사라진다(남는 것은 sessionStorage 사본). 코드 추론이며 이번 범위에서 고치지 않는다.
 
