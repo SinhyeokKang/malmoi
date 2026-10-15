@@ -38,8 +38,9 @@ describe("rewrites()", () => {
   });
 
   /**
-   * Next는 `has.value`를 `^…$`로 감싸고 대소문자를 구분한다(`prepare-destination.js`). Vercel 라우터도 같은 설정을 평가한다.
-   * q값·대소문자를 해석하지 않는 것은 받아들인 한계다(ARCHITECTURE §8.1).
+   * **이 표는 Next 라우터의 판정이다** — Next는 `has.value`를 `^…$`로 감싸고 대소문자를 구분한다(`prepare-destination.js`). 설정이 정하는 것이
+   * 이 정규식이라 여기서 센다. ⚠️ **Vercel 라우터는 대소문자를 구분하지 않는다** — `Text/Markdown`도 Markdown이다(2026-10-15 preview 실측).
+   * q값을 해석하지 않는 것은 받아들인 한계다(ARCHITECTURE §8.1).
    */
   it.each([
     ["text/markdown", true],
