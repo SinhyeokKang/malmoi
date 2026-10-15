@@ -13,7 +13,7 @@ Malmoi reúne los archivos en una única solicitud de cambios (un *pull request*
 1. Elige **Publicar** en la parte superior de **Inicio** o de **Traducciones**.
 2. Revisa en la vista previa los textos (claves) y los idiomas y usa la acción que se describe abajo.
 
-![La vista previa de publicación con un valor cambiado, el idioma y un botón para abrir una nueva pull request](/guide/publish-preview.webp "Revisa cada cambio antes de publicar.")
+![La vista previa de publicación con 14 cambios agrupados por archivo, cada uno con su clave, idioma, valor anterior y nuevo y quién lo editó, y un botón para abrir una nueva pull request](/guide/publish-preview.webp "Revisa cada cambio antes de publicar.")
 
 ## Publica los cambios {#publish}
 
