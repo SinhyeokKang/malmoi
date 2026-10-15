@@ -28,4 +28,7 @@ tasks ↔ 배치 대조: §0→A · §1→A · §2→A · §3→A · §4→Q1 ·
 
 ## 진행
 
-- (착수 전)
+- **A 완료** (2026-10-15) — 커밋 7개(`dc1401d0`..`6f5db770`), `pnpm gate --base dev` → `gate: ok`(15383 passed). §0 실측: fallback rewrite가 `/not-found.md`에 닿고(404 `text/markdown` · `Vary: Accept`) 존재 경로는 Accept 유무와 무관하게 같다 — Markdown 갈래 계속. HTML 404 본문은 워크트리에 DB env가 없어 500이라 Q1이 main에서 잰다. 계획과 다른 점 8개(terminology ALLOWED 두 키 · `PushResponseSchema`가 `z.object` + input 모드 등)는 R이 판정한다. handoff 사본: main `.scratch/orch-agent-readiness/handoffs/handoff-A.md`.
+- R(Opus 5.5 medium, 리포트 전용) 시작 — A 터미널은 수정 라운드용으로 남겨 둔다.
+- **R 완료** — 🔴 0 · 🟡 4 · ⚪ 8, 사용자 결정 없음. 🟡: ① DESIGN §10.1의 `push` 허용 자리가 둘로 적혀 있어 terminology ALLOWED와 갈림(허용 자체는 타당) ② OpenAPI push description이 refine 둘(로케일 모양·`pathTemplate`)을 빠뜨림 ③ "최상위 동적 세그먼트 없음" 전제를 주석만 지킴 → fs 스캔 테스트 ④ DIRECTORY 테스트 목록 누락. CLAUDE.md 데이터 경로 표에는 넣지 않는다(공개 문서·오류 응답은 그 표의 부류가 아니다 — 지휘자 판단, R 추천). 사본: `handoffs/review-A.md`. R 해제.
+- A-fix1 보냄 — 🟡 넷 + ⚪1(grep 주석)·⚪2(지워질 결정 번호 참조 → §8.1)·⚪3(b)(캐시 전제 한 문장).
