@@ -17,7 +17,7 @@
 
 | 배치 | 항목 | 소유 파일 | 선행 | 모델·effort | 위치 | 상태 |
 |---|---|---|---|---|---|---|
-| Q0 | T0 실측 | 없음(리포트 전용, `.scratch/`만) | — | Sonnet 5.5 high — 측정 절차가 정해져 있고 판단은 지휘자가 한다 | main 체크아웃 | 대기 |
+| Q0 | T0 실측 | 없음(리포트 전용, `.scratch/`만) | — | Sonnet 5.5 high — 측정 절차가 정해져 있고 판단은 지휘자가 한다 | main 체크아웃 | 완료 — 전제 확인 |
 | A | T1–T6 | `lib/credentials/adapter.ts` · `lib/credentials/__tests__/{adapter.test.ts,postgres.integration.ts}` · `auth.ts` · `lib/auth/__tests__/provider-config.test.ts` · `messages/en.tsx` · `messages/ko-privacy.tsx` · `lib/privacy/__tests__/policy-gate.test.tsx` · `guide/{en,ko,es}/self-hosting/{troubleshooting,operate}.md` · `docs/ARCHITECTURE.md` | — (통합은 Q0 뒤) | Opus 5.5 medium — 인증 경계·방침 digest 절차·세 언어 가이드 | 워크트리 | 대기 |
 | A-T8 | T8 `/postmortem` | `docs/POSTMORTEM.md` | Q0 확인 | A 워커 재사용 | A 워크트리 | 대기 |
 | R | A 독립 리뷰 | 없음(리포트 전용) | A `worker_done` | Opus 5.5 medium | A 워크트리 읽기 | 대기 |
@@ -29,4 +29,4 @@ tasks ↔ 배치 대조: T0→Q0 · T1–T6→A · T7→Q1 · T8→A-T8. 주인 
 
 ## 진행
 
-(통합 커밋·검증 결과·라운드를 여기에 쌓는다)
+- **Q0 완료 — PREMISE CONFIRMED** (2026-10-15). 자기 세션의 DB `expires`를 now+22h로 당겨 갱신 시점을 만든 뒤 `GET /projects`와 Server Action(`POST /preferences` 테마) 둘 다에서 DB `expires`가 요청 시각+24h로 늘었고, `authjs.session-token` Set-Cookie는 0건, 쿠키 Expires는 로그인 시각+24h(`2026-10-16T01:55:09.967Z`)에 그대로였다. 양성 대조: 같은 캡처가 `malmoi-color-scheme` Set-Cookie는 잡았다. 원본 handoff: main `.scratch/orch-session-absolute-timeout/handoffs/handoff-Q0.md`. 워커 해제.

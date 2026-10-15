@@ -2,7 +2,7 @@
 
 순서: 실측 → 테스트 → 어댑터·설정 → 문서·방침 → 실물 확인 → 회고. 커밋 경계는 `──`. 스키마 변경이 없어 `/db`·마이그레이션 순서 판정이 없다.
 
-0. **실측(구현 전, 로컬 dev)** — 로그인 직후 세션 쿠키의 Expires와 dev DB `Session.expires`를 기록한다. 1시간 넘게 화면을 오가며 활동한 뒤 응답에 `Set-Cookie: authjs.session-token`이 없는지, 쿠키 Expires가 그대로이고 DB `expires`만 늘었는지 본다.
+0. ✅ **실측(구현 전, 로컬 dev)** — 로그인 직후 세션 쿠키의 Expires와 dev DB `Session.expires`를 기록한다. 1시간 넘게 화면을 오가며 활동한 뒤 응답에 `Set-Cookie: authjs.session-token`이 없는지, 쿠키 Expires가 그대로이고 DB `expires`만 늘었는지 본다.
    검증: 수동 — 세 값(로그인 직후 쿠키 Expires · 1시간 뒤 쿠키 Expires · 1시간 뒤 DB `expires`)을 `/implement` 보고에 첨부. **쿠키가 재발급되고 있으면 여기서 멈추고 설계를 다시 본다**(design §2의 전제).
 1. **테스트 먼저(어댑터)** — `lib/credentials/__tests__/adapter.test.ts:39-44`("삭제된 세션을 갱신으로 생성하지 않는다", `where.expires: { gt }` 단언)를 **교체**한다: `updateSession`이 `null`을 돌려주고 prisma `session`의 어떤 메서드도 부르지 않는다. 격리 PG 스위트 `lib/credentials/__tests__/postgres.integration.ts` — fixture(`:254`)를 `maxAge`·`updateAge` 7일로, `:333-335`의 연장 단언을 "실제 Auth.js 경로로 `read(raw)`한 뒤에도 `expires`가 그대로"로 바꾼다.
    검증: `pnpm test lib/credentials/__tests__/adapter.test.ts` red(기존 구현은 `updateMany`를 부른다).
