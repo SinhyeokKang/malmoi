@@ -46,6 +46,9 @@ app/
                         ⚠️ sitemap이 guide/를 읽는데 트레이싱은 /docs 함수에만 싣는다 — 동적으로 바꾸면 Vercel에서만 500
   llms.txt/ · llms-full.txt/  route.ts — 가이드 목차·원고 전문(text/plain). force-static이 전제인 이유는 sitemap과 같다.
                         인가가 없다(entry-points의 EXEMPT에 이름으로 등재)
+  not-found.md/         route.ts — 매칭 없는 경로 + Accept text/markdown의 404 Markdown(agent-readiness 2026-10-15, ARCHITECTURE §8.1).
+                        next.config.ts의 fallback rewrite가 보내는 목적지이고 직접 요청해도 늘 404다. 일곱 메서드 · force-dynamic(본문이 런타임 배포 모드로 갈린다)
+  openapi.json/         route.ts — CI push API의 OpenAPI 3.1(lib/openapi). force-static · 인가 없음(EXEMPT). 의미의 정본은 docs/ACTIONS.md다
   not-found.tsx · error.tsx · global-error.tsx  셸 밖(/invite·/signin·오타 URL)의 경계. 앞 둘은 components/root-fallback.tsx를
                         쓰고, global-error는 루트 레이아웃을 대신하므로 html·body를 스스로 든 맨 HTML이다(전역 CSS 없음)
   fonts/geist/          Geist 정방향 가변 WOFF2 원본과 SIL OFL 라이선스·출처/SHA. git 추적 자산이며 next/font/local이 자사 호스트/swap/preload한다.
@@ -186,6 +189,9 @@ app/
                         인가·속도 제한 없음(EXEMPT에 등재) · 키는 isStoredImageKey만 · 실패는 전부 빈 404
   api/images/email/[...key]/  초대 메일 썸네일의 PNG 변환판(2026-09-28, #140) — 위와 같은 검증·읽기 뒤 emailThumbnailPng(96×96).
                         Gmail이 WebP 알파를 버린다. 프로젝트 썸네일 키만. /api/images/ 아래라 WAF 규칙이 그대로 덮는다
+  api/[[...path]]/      route.ts — 어떤 route도 받지 않는 /api 경로(/api 자신 포함)의 404 JSON, 일곱 메서드(agent-readiness 2026-10-15).
+                        더 구체적인 세그먼트가 항상 이기고, dynamicParams = false route의 목록 밖 요청(/api/search-index/fr)도 여기로 온다.
+                        ⚠️ app/api 바로 아래에 동적 세그먼트·route.ts를 두지 않는다(이 catch-all과 충돌)
   api/auth/[...nextauth]/  Auth.js 핸들러(auth.ts의 handlers를 그대로 내보낸다). 인가를 지나지 않는 것이
                         당연해서 entry-points의 면제 목록에 이름으로 든다
   api/github/callback/  ⚠️ matcher에 넣지 않는다 — 로그인 화면으로 302되면 code가 사라진다.
@@ -681,7 +687,7 @@ lib/
                         `N projects use this connection.`을 그리던 조회인데, 세던 것이 내가 OWNER인
                         **모든** 프로젝트라 이 연결에 의존하지 않는 것까지 들어갔다. 해제가 실제로
                         막는 것은 리포 (재)연결뿐이고 야간 pull·PR은 설치 토큰이 낸다
-  push/ pull/ sync/     payload(생산자 하나) · assemble · plan · apply · auth · guard · surface-refusal(활성 표면 미발견 → 제거됨/불일치) · token · json-bounds(placeholders 자원 상한) /
+  push/ pull/ sync/     payload(생산자 하나 · 응답 PushResponseSchema — 타입은 그 z.infer, /openapi.json이 같은 정의를 쓴다) · assemble · plan · apply · auth · guard · surface-refusal(활성 표면 미발견 → 제거됨/불일치) · token · json-bounds(placeholders 자원 상한) /
                         plan · run · render · load · client · targets · trigger · sync-branch · branch-name · ref-slug ·
                         message · payload · changed-values(2026-10-04 — Publish가 리포 파일에서 바꾼 엔트리 수, 수정+추가. 관측값이고 판정에 안 쓴다 →
                         SyncRun.changedValues) · delivery-revision(CI·야간의 전달 장벽 — 모든 소스 확인의 surfaceId·revision 집합, no-changes 포함) /
@@ -1071,7 +1077,11 @@ lib/
                         환경별로 안 바뀐다 · metadataOrigin(링크 미리보기 og/twitter의 metadataBase — 배포 모드 origin, canonical은 그대로) · OG_IMAGE · DOCS_TITLE · pageMetadata — 매번 완전한 객체, Next 병합이 얕다) · crawl(robotsFor —
                         production만 허용, 모르면 숨긴다 · sitemapEntries) · json-ld(jsonLdHtml — dangerouslySetInnerHTML의 유일한 입력 ·
                         LANDING_LD · docLd) · llms(llmsIndex · llmsFull — 결정적) · analytics(redactAnalyticsEvent — 추적 경로 허용 목록.
-                        ⚠️ 잎, 전 페이지 클라이언트 번들에 든다)
+                        ⚠️ 잎, 전 페이지 클라이언트 번들에 든다) · agent-errors(markdownNotFound — 모드별 Markdown 404 본문, self-hosted는 상대 링크만 ·
+                        apiNotFoundBody — /api JSON 404 본문. 영어 고정)
+  openapi/              document(openApiDocument(version) — CI push API의 OpenAPI 3.1. 스키마는 서버 검증 Zod에서 z.toJSONSchema(io: "input")로
+                        생성하고 의미는 docs/ACTIONS.md가 정본이다 — agent-readiness 2026-10-15, ARCHITECTURE §8.1). __tests__/__snapshots__/openapi.json이
+                        골든이다 — 계약이 바뀌면 이 파일의 diff로 드러난다
   app-version.ts        ⚠️ 잎. 현재 앱 버전 `x.y.z` — `next.config`의 `env`가 `package.json`의 version을 빌드 때 박은 `APP_VERSION`을 읽는다
                         (LNB Changelog 배지). `package.json`을 import하지 않는다 — 사이드바(클라이언트)가 의존성 목록까지 싣는다
   links.ts              외부 링크(GitHub 리포 좌표 GITHUB_REPO 하나에서 리포·Releases·API·releaseTagUrl을 파생)와 푸터 링크 목록 —
