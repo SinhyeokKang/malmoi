@@ -64,6 +64,8 @@ app/
                         · root-boundaries · seo-metadata · crawl-files · landing-page · docs-page · privacy-page · changelog-page
                         · docs-responsive(좁은 `/docs` — 캡슐 라벨·접근 이름·장 내비 시트 포커스·`lg` 넘김 정리, 2026-10-10 responsive-public)
                         · well-known(OAuth 발견 문서)
+                        · agent-routes(무인증 공개 응답 셋 — 메서드·헤더·소스 스캔) · rewrites(next.config를 불러서 — fallback 하나·내부 목적지·Accept 판정 표 ·
+                        최상위 동적 세그먼트 0)
                         · api/__tests__/ github-callback · push-failure · push-open-pr · pull-nightly · route-diagnostics ·
                         surface-boundary · mcp-route · images-route · images-email-route
   (edit)/               인증 필요. 1차 차단은 middleware, 본판정은 각 진입점
