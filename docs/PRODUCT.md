@@ -397,7 +397,7 @@ GitHub·GitLab·Google 어느 쪽으로 들어와도 같은 사람을 가리키�
   그래서 로그아웃 뒤·다음 로그인 직전 화면이 계정 값과 같다. 이 기기의 첫 로그인 순간 한 번의 전환은 남는다. "기기 설정 따르기" 같은 넷째 선택지는 없다.
   ③ **번역하는 것**: 앱·공개 셸의 화면 문구 전부, 화면 숫자(`formatNumber`, 화면 언어별 구분자)·날짜(형식만 — 시간대는 아래 "표시 시간대"이고 오프셋 라벨은 세 언어 모두 남는다)·상대 시각·언어 이름, `/docs` 원고(언어별 세 벌 — 스크린샷만 en 공유),
   `/privacy` 본문(**en·ko 두 벌 — es 화면은 en 본문**). **영어로 고정되는 것**: MCP 도구 응답 · 초대 메일(받는 사람의 언어를 모른다) · SEO 메타·탭 제목·
-  `llms*.txt`·sitemap(크롤러는 쿠키가 없다) · `/api/*` JSON · cron·서버 로그 · CLI 출력 · 가이드 스크린샷 · changelog 본문(GitHub Release) ·
+  `llms*.txt`·sitemap(크롤러는 쿠키가 없다) · Markdown 404·`/openapi.json`(에이전트가 읽는다) · `/api/*` JSON · cron·서버 로그 · CLI 출력 · 가이드 스크린샷 · changelog 본문(GitHub Release) ·
   리포에 남는 문장(PR 제목·본문·커밋 메시지 — 누가 Publish했느냐로 바뀌면 안 된다).
   ④ **검수**: ko(사전·가이드·방침)는 사용자가 검수하고 **es는 원어민 검수 없이 에이전트 초안으로 낸다**(사용자 결정 — 품질 위험을 감수했다).
   이 리포의 사전을 Malmoi 자신으로 관리하는 dogfooding은 하지 않는다 — 사전 값에 함수·ReactNode가 섞여 `ts-dict` 어댑터의 문자열 사전과 맞지 않는다.
@@ -489,6 +489,10 @@ GitHub·GitLab·Google 어느 쪽으로 들어와도 같은 사람을 가리키�
   부르지 않고, 외부 에이전트의 저장은 `Save`를 누른 편집자의 저장이다(2026-09-28 사용자 확정). 이 비범위는 Malmoi가 번역을
   **생성하는** 기능에 남는다.
 - **실시간 공동 편집** — 위 "동시 편집"의 연장.
+- **OpenAPI 대상 확장** (2026-10-15, agent-readiness) — `/openapi.json`은 CI push API 둘(`/api/push`·`/api/push/failure`)만 싣는다.
+  `/oauth/*`(RFC 8414 발견 문서가 이미 있다)·`/api/mcp`(JSON-RPC)·`/api/pull`(cron 전용)을 싣는 것과 오류 갈래 열거는 비범위다.
+- **일반 페이지의 Markdown 협상** (2026-10-15, agent-readiness) — `Accept: text/markdown`에 Markdown을 내는 것은 어떤 라우트에도 매칭되지 않는
+  경로의 404뿐이다. `/docs/*` 등 페이지를 Markdown으로 내지 않는다 — 원고는 이미 `/llms-full.txt`가 낸다.
 - **범용 알림 시스템** — 멤버 초대 메일(§4.1) 밖의 발송은 없다(ARCHITECTURE §6.00). 발송 이력·배달·발송물(메일)의 열람 추적, 자동 재시도·작업 큐, 캠페인 발송도 만들지 않는다.
   ⚠️ **Inbox(헤더 드롭다운 · `/inbox` 페이지)는 이것이 아니다** — 발송 없이 현재 상태를 모으며 읽음은 사용자당 시각 하나다. 항목별 읽음·발송·구독·사건 기반 알림을 더하는 순간 이 비범위에 든다.
 - **포맷별 무제한 설정 UI** — 어댑터 내부는 사용자에게 노출하지 않는다(§3).
@@ -835,6 +839,8 @@ super sidebar 레퍼런스를 고른 이유가 이것이다). 지금 사이드�
                                self-hosted는 Vercel이 아니라 `VERCEL_ENV`가 비어 늘 Disallow: / — 거기에 middleware가 모든 페이지에 noindex, sitemap·llms 세 경로를 404로 더한다(색인 계약은 hosted만의 것) ← self-hosting (2026-10-09)
 /sitemap.xml                   ✅ / · /docs/** 전부(SUMMARY 순서) · /changelog · /privacy — /signin은 noindex라 없다 ← seo-geo
 /llms.txt · /llms-full.txt     ✅ 가이드 목차·현재 도입 사실·Optional 링크 · 원고 전문(Source 줄·내부 문서 링크의 공개 절대 URL) — text/plain · en 원고만 ← seo-geo
+/openapi.json                  ✅ CI push API(POST /api/push · /api/push/failure)의 OpenAPI 3.1 — Zod에서 생성한 형태의 파생본(의미는 ACTIONS) · 서버 URL 상대 / · 무인증 ← agent-readiness (2026-10-15)
+                               매칭 없는 경로 + Accept text/markdown → 404 Markdown(Docs·llms.txt·/openapi.json 링크, self-hosted는 상대 링크 둘) · 어떤 route도 받지 않는 /api/* → 404 JSON ← agent-readiness
                                색인: 공개 다섯(/·/docs·/docs/:slug·/changelog·/privacy)만 canonical · /signin·/invite·/signin/link·/oauth/authorize는 noindex(robots.txt로는 안 막는다)
 
 ── Your work (사용자 축 — 인가는 requireUser) ────────────────────
@@ -1084,7 +1090,8 @@ Sources의 Add sources 모달이 부르는 `addSurfaces`의 `project:settings`�
 다시 돌리고, 적재된 뒤면 고칠 곳이 대상 리포의 CI다)로 선다. ⚠️ **새 토큰을 만들지 않았다**(같은
 `PUSH_TOKEN`이라 인증 경로가 늘지 않는다) ⚠️ **아무것도 적재하지 않는다**(`lastCommitSha`·
 `lastCommitAt`도 안 움직인다 — 전진시키면 다음 정상 push가 자기 커밋으로 `stale-commit` 409를
-받는다). 외부 계약의 정본은 [ACTIONS.md](./ACTIONS.md)다.
+받는다). 외부 계약의 정본은 [ACTIONS.md](./ACTIONS.md)다 — **의미(동작·red 조건·안정성)는 ACTIONS가 정하고,
+`/openapi.json`(§7.7)은 서버 검증 Zod에서 생성한 형태의 파생본이다**(2026-10-15, agent-readiness).
 
 ⚠️ **조회 방향이 중요하다** (2026-09-07 구현에서 확정):
 `sha256(Bearer)`로 **행을 찾고**, 페이로드의 `projectSlug`는 그 행의 slug와 **나중에** 대조한다. 페이로드
