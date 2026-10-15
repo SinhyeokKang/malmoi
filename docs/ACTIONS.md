@@ -4,6 +4,8 @@
 
 대상 리포는 워크플로 하나만 갖고, 실제 일은 말모이의 composite action(`.github/actions/malmoi-i18n-push`)이 한다. **페이로드를 셸·YAML로 조립하지 않는다** — 생산자는 `lib/push/payload.ts` 하나이고 action이 `scripts/push-local.ts`를 그대로 부른다 (POSTMORTEM 2026-08-31: 리터럴 조립이 계약 변경을 조용히 통과시켰다).
 
+**`/openapi.json`은 이 문서의 형태 파생본이고, 의미(동작·red 조건·안정성)의 정본은 이 문서다** (2026-10-15, agent-readiness) — 그 문서는 서버가 검증에 쓰는 Zod에서 생성한 `/api/push`·`/api/push/failure`의 요청·응답 형태만 싣고, 오류 갈래의 뜻은 여기 산문이 정한다.
+
 ## 1. 말모이 쪽 설정 (한 번만)
 
 **없다.** 말모이 리포가 public이라(2026-09-18) 어느 계정의 리포든 이 action을 참조할 수 있다. ⚠️ **private이던 동안에는** Settings > Actions > Access의 "Accessible from repositories owned by the user"가 필요했고 그 설정은 **소유자가 같은 리포만** 열어서, 다른 계정 리포는 자동 수집(push)이 원리적으로 안 돌았다 — `unable to resolve action`을 보면 리포가 다시 private이 됐는지부터 본다.
