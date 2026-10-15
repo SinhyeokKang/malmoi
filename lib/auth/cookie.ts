@@ -2,8 +2,8 @@
  * 미들웨어의 **1차 차단** 판정 (ARCHITECTURE §6.1).
  *
  * ⚠️ **`auth()` 래퍼를 쓰지 않는 이유.** DB 세션(`strategy: "database"`)에서 그 래퍼는
- * `adapter.getSessionAndUser`를 부르고 `updateAge`를 넘으면 세션 갱신 **쓰기**까지 한다
- * (`next-auth/lib/index.js`, `@auth/core/lib/actions/session.js`). 미들웨어가 Prisma·pg를 물게
+ * `adapter.getSessionAndUser`로 DB를 읽고, 만료된 행이면 `deleteSession`으로 **지우는 쓰기**까지 한다
+ * (`next-auth/lib/index.js`, `@auth/core/lib/actions/session.js` — 갱신은 어댑터 no-op이다, ARCHITECTURE §6.1.1). 미들웨어가 Prisma·pg를 물게
  * 되어 "값싼 1차 차단"이 거짓이 된다.
  *
  * ⚠️ **이건 차단이 아니라 값싼 거름이다.** 쿠키가 위조·만료됐는지 모르고 프로젝트 인가는 전혀
