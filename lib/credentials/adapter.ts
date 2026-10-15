@@ -63,13 +63,8 @@ export function credentialAdapter(prisma: PrismaClient, now: () => Date = () => 
       const { user, ...session } = row;
       return { session: { ...session, sessionToken: raw }, user: decodeUser(user) };
     },
-    async updateSession(data) {
-      const sessionToken = hashSessionToken(data.sessionToken);
-      const changed = await prisma.session.updateMany({ where: { sessionToken, expires: { gt: now() } }, data: { expires: data.expires } });
-      if (!changed.count) return null;
-      const row = await prisma.session.findUnique({ where: { sessionToken } });
-      return row === null ? null : { ...row, sessionToken: data.sessionToken };
-    },
+    // 세션은 로그인 뒤 고정 수명이다 — 연장하지 않는다. 근거·기각안은 ARCHITECTURE §6.1.1.
+    async updateSession() { return null; },
     async deleteSession(raw) { await prisma.session.deleteMany({ where: { sessionToken: hashSessionToken(raw) } }); },
   };
   // Auth.js는 어댑터 예외를 감싸고 원인을 로그에 찍을 수 있다 — 그 경계 전에 정리한다.

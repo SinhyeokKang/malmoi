@@ -251,7 +251,7 @@ function fakeAuth(provider: LoginProvider, identity: string, revocation = false,
   const handlers = NextAuth(() => ({
     cookies: revocationAuthCookies() ?? connectAuthCookies() ?? linkAuthCookies(),
     trustHost: true, secret: "fixture-secret-fixture-secret-fixture-secret", basePath: "/api/auth",
-    adapter: credentialAdapter(prisma), session: { strategy: "database", maxAge: 86400, updateAge: 3600, generateSessionToken: () => randomBytes(32).toString("base64url") },
+    adapter: credentialAdapter(prisma), session: { strategy: "database", maxAge: 60 * 60 * 24 * 7, updateAge: 60 * 60 * 24 * 7, generateSessionToken: () => randomBytes(32).toString("base64url") },
     // 프로덕션 `auth.ts`와 같은 호출이다 — 꺼진 공급자는 Auth.js 목록에 없다.
     providers: withEnabled(LOGIN_PROVIDERS.map(fake), enabled),
     callbacks: {
@@ -330,9 +330,11 @@ it.each(LOGIN_PROVIDERS)("installed Auth.js %s callback stores digest, rejects d
   expect((await prisma.user.findUniqueOrThrow({ where: { id: session.userId }, select: { name: true } })).name).toMatch(/^enc:v1:/);
   expect(await prisma.user.count()).toBe(1);
   expect(await prisma.account.count({ where: { userId: session.userId } })).toBe(1);
-  await prisma.session.update({ where: { sessionToken: session.sessionToken }, data: { expires: new Date(Date.now() + 10000) } });
-  await read(raw);
-  expect((await prisma.session.findUniqueOrThrow({ where: { sessionToken: session.sessionToken } })).expires.getTime()).toBeGreaterThan(Date.now() + 23 * 3600000);
+  // 세션은 로그인 뒤 고정 수명이다 — 실제 Auth.js 경로로 읽어도 만료가 움직이지 않는다.
+  const fixedExpires = new Date(Date.now() + 10000);
+  await prisma.session.update({ where: { sessionToken: session.sessionToken }, data: { expires: fixedExpires } });
+  expect(await (await read(raw)).json()).toMatchObject({ user: { id: session.userId } });
+  expect((await prisma.session.findUniqueOrThrow({ where: { sessionToken: session.sessionToken } })).expires).toEqual(fixedExpires);
   const csrfResponse = await handlers.GET(new NextRequest("http://localhost/api/auth/csrf"));
   const csrf = await csrfResponse.json();
   const csrfCookie = csrfResponse.headers.getSetCookie().map(v => v.split(";")[0]).join("; ");

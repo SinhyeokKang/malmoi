@@ -36,11 +36,11 @@ it("OAuth 조회도 만료를 거부하고 유효 user만 복호화한다", asyn
   await adapter.getSessionAndUser!(hashSessionToken("secret"));
   expect(findUnique).toHaveBeenLastCalledWith({ where: { sessionToken: hashSessionToken(hashSessionToken("secret")) }, include: { user: true } });
 });
-it("삭제된 세션을 갱신으로 생성하지 않는다", async () => {
-  const updateMany = vi.fn().mockResolvedValue({ count: 0 });
-  const adapter = credentialAdapter({ session: { updateMany } } as unknown as PrismaClient, () => new Date(100));
+// 세션은 로그인 뒤 고정 수명이다 — Auth.js 공식이 갱신을 부르더라도 어댑터가 연장을 막는다(ARCHITECTURE §6.1.1).
+it("세션 갱신은 DB를 건드리지 않고 null을 돌려준다", async () => {
+  const session = new Proxy({}, { get: (_, name) => { throw new Error(`session.${String(name)} called`); } });
+  const adapter = credentialAdapter({ session } as unknown as PrismaClient, () => new Date(100));
   expect(await adapter.updateSession!({ sessionToken: "secret", expires: new Date(1000) })).toBeNull();
-  expect(updateMany.mock.calls[0]![0].where.expires).toEqual({ gt: new Date(100) });
 });
 it("DB 장애를 세션 없음으로 삼키지 않는다", async () => {
   const adapter = credentialAdapter({ session: { findUnique: vi.fn().mockRejectedValue(new Error("db down")) } } as unknown as PrismaClient);
