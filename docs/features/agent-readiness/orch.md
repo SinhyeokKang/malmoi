@@ -18,8 +18,8 @@
 
 | 배치 | 항목 | 소유 파일 | 선행 | 모델·effort | 위치 | 상태 |
 |---|---|---|---|---|---|---|
-| A | tasks §0 실측 · §1 커밋 A · §2 커밋 B · §3 커밋 C · §5 문서(ARCHITECTURE·PRODUCT·ACTIONS·DIRECTORY, 문서별 커밋) | `messages/en.tsx` · `lib/seo/agent-errors.ts`(+테스트) · `lib/push/payload.ts` · `lib/openapi/`(+스냅샷) · `next.config.ts` · `app/not-found.md/` · `app/api/[[...path]]/` · `app/openapi.json/` · `app/__tests__/*`(EXEMPT 등 요구가 생기는 것) · 관련 테스트 · `docs/{ARCHITECTURE,PRODUCT,ACTIONS,DIRECTORY}.md` | — | Opus 5.5 medium — Next 라우팅 순서·Zod→JSON Schema·entry-point 게이트 판단 | 워크트리 | 대기 |
-| R | A 독립 리뷰 | 없음(리포트 전용) | A `worker_done` | Opus 5.5 medium | A 워크트리 읽기 | 대기 |
+| A | tasks §0 실측 · §1 커밋 A · §2 커밋 B · §3 커밋 C · §5 문서(ARCHITECTURE·PRODUCT·ACTIONS·DIRECTORY, 문서별 커밋) | `messages/en.tsx` · `lib/seo/agent-errors.ts`(+테스트) · `lib/push/payload.ts` · `lib/openapi/`(+스냅샷) · `next.config.ts` · `app/not-found.md/` · `app/api/[[...path]]/` · `app/openapi.json/` · `app/__tests__/*`(EXEMPT 등 요구가 생기는 것) · 관련 테스트 · `docs/{ARCHITECTURE,PRODUCT,ACTIONS,DIRECTORY}.md` | — | Opus 5.5 medium — Next 라우팅 순서·Zod→JSON Schema·entry-point 게이트 판단 | 워크트리 | 완료 — fix1 뒤 dev 통합 |
+| R | A 독립 리뷰 | 없음(리포트 전용) | A `worker_done` | Opus 5.5 medium | A 워크트리 읽기 | 완료 — 🔴 0 · 🟡 4 → A-fix1 |
 | Q1 | tasks §4 built server 실측(hosted·self-hosted) → push 뒤 §6 preview 반복·캐시 혼선 점검 | 없음(리포트·이슈 전용) | A dev 통합(§6은 push 뒤) | Sonnet 5.5 high — 명령이 tasks에 정해져 있고 판정 기준이 명시적이다 | main 체크아웃 | 대기 |
 
 겹침: A 하나가 모든 코드·문서 파일을 소유한다. R·Q1은 코드를 고치지 않는다. Q1이 main 체크아웃에서 built server를 돌리는 동안 통합(cherry-pick·build)을 하지 않는다.
@@ -32,3 +32,5 @@ tasks ↔ 배치 대조: §0→A · §1→A · §2→A · §3→A · §4→Q1 ·
 - R(Opus 5.5 medium, 리포트 전용) 시작 — A 터미널은 수정 라운드용으로 남겨 둔다.
 - **R 완료** — 🔴 0 · 🟡 4 · ⚪ 8, 사용자 결정 없음. 🟡: ① DESIGN §10.1의 `push` 허용 자리가 둘로 적혀 있어 terminology ALLOWED와 갈림(허용 자체는 타당) ② OpenAPI push description이 refine 둘(로케일 모양·`pathTemplate`)을 빠뜨림 ③ "최상위 동적 세그먼트 없음" 전제를 주석만 지킴 → fs 스캔 테스트 ④ DIRECTORY 테스트 목록 누락. CLAUDE.md 데이터 경로 표에는 넣지 않는다(공개 문서·오류 응답은 그 표의 부류가 아니다 — 지휘자 판단, R 추천). 사본: `handoffs/review-A.md`. R 해제.
 - A-fix1 보냄 — 🟡 넷 + ⚪1(grep 주석)·⚪2(지워질 결정 번호 참조 → §8.1)·⚪3(b)(캐시 전제 한 문장).
+- **A-fix1 완료** — 커밋 6개(`4f737485`..`684b01e7`), `gate: ok`. 최상위 동적 세그먼트 fs 스캔은 `app/[probe2]`·`app/(edit)/[probe]` 두 뮤테이션에서 red를 확인했다. 지휘자가 diff를 직접 보고 재리뷰 없이 통합했다(🔴 0이었고 수정이 국소적이다).
+- **dev 통합** — A 커밋 13개 cherry-pick(`16014eb2`..`bcc97ed8`), main 체크아웃 `pnpm gate` → `gate: ok`(격리 postgres 트리거 없음). tasks §0–§3·§5(디렉터리 삭제 제외) 체크.
