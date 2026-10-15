@@ -11,7 +11,7 @@
 2. **§0 실측은 A 워크트리에서 자기 포트로 built server를 띄워 잰다** — 지휘자 판단. 미존재 경로·`/llms.txt`·`/docs`는 DB 없이 응답한다(`.env.local` 없음 = hosted 모드). §0가 실패하면 A는 Markdown 갈래(fallback rewrite·`not-found.md` route·관련 문서)를 멈추고 `ask`로 보고한다 — 계속할지는 사용자가 정한다.
 3. **§4 built server 실측은 별도 QA 워커(Q1)가 main 체크아웃에서 한다** — 지휘자 판단. `/`·`/sitemap.xml` 무변경 비교와 비로그인 307 경계는 `.env.local`(dev DB)이 있어야 실물과 같다. curl 전용이라 ego 세션을 쓰지 않는다.
 4. **§6 배포 확인은 preview(`dev.mal-moi.com`)까지만 이 런에서 한다** — prod 확인은 `/merge` 뒤라 범위 밖이다. Q1이 push 뒤 이어서 한다.
-5. **기능 디렉터리 삭제(tasks §5 마지막 항목)는 이 런에서 하지 않는다** — 지휘자 판단. §6의 prod 확인이 `/merge` 뒤에 남아 tasks가 아직 쓰인다(선례: session-absolute-timeout 디렉터리도 push 뒤 남아 있다). 리포트에 남긴다.
+5. **기능 디렉터리 삭제(tasks §5 마지막 항목)는 이 런에서 하지 않는다** — 지휘자 판단. §6의 prod 확인이 `/merge` 뒤에 남아 tasks가 아직 쓰인다. prod 확인이 끝나면 지운다. (처음엔 session-absolute-timeout 디렉터리를 선례로 들었지만, 그 디렉터리는 삭제를 빠뜨린 것이었다 — 2026-10-15에 지웠다.)
 6. DS 행 없음 — design-brief·신규 화면이 없다(무화면 응답 셋). 가이드 영향 없음(화면이 바뀌지 않는다).
 
 ## 배치
