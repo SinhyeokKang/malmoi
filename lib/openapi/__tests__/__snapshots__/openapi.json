@@ -1,0 +1,541 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Malmoi CI push API",
+    "version": "0.0.0-test",
+    "description": "Machine-readable shape of the endpoints the Malmoi CI workflow calls. Behavior, refusal conditions and stability are defined in docs/ACTIONS.md of the Malmoi repository; this document is derived from the server's validation schemas."
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "paths": {
+    "/api/push": {
+      "post": {
+        "operationId": "push",
+        "summary": "Import a source's locale files from a repository commit",
+        "description": "Replaces the project's translations with the repository values for this source. Also checked beyond the schema: `format.baseLocale` must be in `locales`, every translation's locale must be in `locales`, locale codes must be path-safe, and `placeholders` must nest at most 8 levels and serialize to at most 16 KB. A 200 can be `deferred`, which means nothing was imported.",
+        "security": [
+          {
+            "pushToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PushPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Imported (`applied`) or held back (`deferred`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PushResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The body is too large, isn't JSON, or fails validation (`issues` lists what failed).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The bearer token is missing or isn't a project push token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request was refused (archived project, project or source mismatch, removed source, format or commit order). The meaning of each refusal is in docs/ACTIONS.md.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The server failed. `ref` identifies the failure in the server logs.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/push/failure": {
+      "post": {
+        "operationId": "reportPushFailure",
+        "summary": "Report that the CI run couldn't read its locale files",
+        "description": "Records the failure for the project. Imports nothing and doesn't move the source's last commit.",
+        "security": [
+          {
+            "pushToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportFailureReport"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Recorded."
+          },
+          "400": {
+            "description": "The body is too large, isn't JSON, or fails validation (`issues` lists what failed).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The bearer token is missing or isn't a project push token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request was refused (archived project, project or source mismatch, removed source, format or commit order). The meaning of each refusal is in docs/ACTIONS.md.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The server failed. `ref` identifies the failure in the server logs.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "pushToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "The project's push token, issued in the project's Settings in Malmoi."
+      }
+    },
+    "schemas": {
+      "PushPayload": {
+        "type": "object",
+        "properties": {
+          "projectSlug": {
+            "type": "string",
+            "minLength": 1
+          },
+          "surfaceSlug": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          },
+          "executionId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "commitSha": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{40}$"
+          },
+          "commitAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "format": {
+            "type": "object",
+            "properties": {
+              "adapter": {
+                "type": "string",
+                "enum": [
+                  "chrome-locales",
+                  "json-catalog",
+                  "yaml-catalog",
+                  "code-dict",
+                  "ts-dict"
+                ]
+              },
+              "pathTemplate": {
+                "type": "string",
+                "minLength": 1
+              },
+              "nested": {
+                "type": "boolean"
+              },
+              "nestedByPath": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "type": "boolean"
+                }
+              },
+              "baseLocale": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "adapter",
+              "pathTemplate",
+              "nested",
+              "baseLocale"
+            ]
+          },
+          "locales": {
+            "minItems": 1,
+            "maxItems": 200,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "keys": {
+            "minItems": 1,
+            "maxItems": 20000,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1000
+                },
+                "sourceText": {
+                  "type": "string",
+                  "maxLength": 10000
+                },
+                "namespace": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1000
+                },
+                "description": {
+                  "type": "string",
+                  "maxLength": 10000
+                },
+                "order": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "key",
+                "sourceText",
+                "namespace"
+              ]
+            }
+          },
+          "translations": {
+            "maxItems": 200000,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "locale": {
+                  "type": "string"
+                },
+                "key": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1000
+                },
+                "value": {
+                  "type": "string",
+                  "maxLength": 10000
+                },
+                "description": {
+                  "type": "string",
+                  "maxLength": 10000
+                },
+                "placeholders": {}
+              },
+              "required": [
+                "locale",
+                "key",
+                "value"
+              ]
+            }
+          },
+          "refs": {
+            "maxItems": 200000,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1000
+                },
+                "path": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 1000
+                },
+                "line": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "key",
+                "path",
+                "line"
+              ]
+            }
+          }
+        },
+        "required": [
+          "projectSlug",
+          "surfaceSlug",
+          "commitSha",
+          "commitAt",
+          "format",
+          "locales",
+          "keys",
+          "translations",
+          "refs"
+        ]
+      },
+      "PushResponse": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "const": "applied"
+              },
+              "projectId": {
+                "type": "string"
+              },
+              "commitSha": {
+                "type": "string"
+              },
+              "inserted": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "updated": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "orphaned": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "unorphaned": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "staleTranslations": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "translationsFilled": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "orphanedLocales": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "refs": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "status",
+              "projectId",
+              "commitSha",
+              "inserted",
+              "updated",
+              "orphaned",
+              "unorphaned",
+              "staleTranslations",
+              "translationsFilled",
+              "orphanedLocales",
+              "refs"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "const": "deferred"
+              },
+              "reason": {
+                "type": "string",
+                "const": "pending-edits"
+              },
+              "pendingCount": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "projectId": {
+                "type": "string"
+              },
+              "commitSha": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "status",
+              "reason",
+              "pendingCount",
+              "projectId",
+              "commitSha"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "const": "deferred"
+              },
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "open-pr",
+                  "pr-check-failed",
+                  "publish-raced",
+                  "locale-change-pending"
+                ]
+              },
+              "projectId": {
+                "type": "string"
+              },
+              "commitSha": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "status",
+              "reason",
+              "projectId",
+              "commitSha"
+            ]
+          }
+        ]
+      },
+      "ImportFailureReport": {
+        "type": "object",
+        "properties": {
+          "projectSlug": {
+            "type": "string",
+            "minLength": 1
+          },
+          "surfaceSlug": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          },
+          "commitSha": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{40}$"
+          },
+          "commitAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "parse-failed",
+              "parse-crashed",
+              "invalid-locale-data",
+              "prepare-failed"
+            ]
+          },
+          "executionId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        },
+        "required": [
+          "projectSlug",
+          "surfaceSlug",
+          "commitSha",
+          "commitAt",
+          "code"
+        ],
+        "additionalProperties": false
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error"
+        ]
+      }
+    }
+  }
+}
