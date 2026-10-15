@@ -18,9 +18,9 @@
 | 배치 | 항목 | 소유 파일 | 선행 | 모델·effort | 위치 | 상태 |
 |---|---|---|---|---|---|---|
 | Q0 | T0 실측 | 없음(리포트 전용, `.scratch/`만) | — | Sonnet 5.5 high — 측정 절차가 정해져 있고 판단은 지휘자가 한다 | main 체크아웃 | 완료 — 전제 확인 |
-| A | T1–T6 | `lib/credentials/adapter.ts` · `lib/credentials/__tests__/{adapter.test.ts,postgres.integration.ts}` · `auth.ts` · `lib/auth/__tests__/provider-config.test.ts` · `messages/en.tsx` · `messages/ko-privacy.tsx` · `lib/privacy/__tests__/policy-gate.test.tsx` · `guide/{en,ko,es}/self-hosting/{troubleshooting,operate}.md` · `docs/ARCHITECTURE.md` | — (통합은 Q0 뒤) | Opus 5.5 medium — 인증 경계·방침 digest 절차·세 언어 가이드 | 워크트리 | 대기 |
-| A-T8 | T8 `/postmortem` | `docs/POSTMORTEM.md` | Q0 확인 | A 워커 재사용 | A 워크트리 | 대기 |
-| R | A 독립 리뷰 | 없음(리포트 전용) | A `worker_done` | Opus 5.5 medium | A 워크트리 읽기 | 대기 |
+| A | T1–T6 | `lib/credentials/adapter.ts` · `lib/credentials/__tests__/{adapter.test.ts,postgres.integration.ts}` · `auth.ts` · `lib/auth/__tests__/provider-config.test.ts` · `messages/en.tsx` · `messages/ko-privacy.tsx` · `lib/privacy/__tests__/policy-gate.test.tsx` · `guide/{en,ko,es}/self-hosting/{troubleshooting,operate}.md` · `docs/ARCHITECTURE.md` | — (통합은 Q0 뒤) | Opus 5.5 medium — 인증 경계·방침 digest 절차·세 언어 가이드 | 워크트리 | T1–T6 완료(`7bf00b05`·`2ec04ceb`·`adb986f4`·`8341f4d9`, gate ok) — 리뷰 중 |
+| A-T8 | T8 `/postmortem` | `docs/POSTMORTEM.md` | Q0 확인 | A 워커 재사용 | A 워크트리 | 진행 중 |
+| R | A 독립 리뷰 | 없음(리포트 전용) | A `worker_done` | Opus 5.5 medium | A 워크트리 읽기 | 진행 중 |
 | Q1 | T7 실물 확인 | 없음(리포트·이슈 전용) | A dev 통합 | Sonnet 5.5 high | main 체크아웃 | 대기 |
 
 겹침: Q0·Q1은 코드를 고치지 않는다. A 하나가 모든 코드 파일을 소유한다. Q0가 main 체크아웃에서 `pnpm dev`를 돌리는 동안 통합(cherry-pick·build)을 하지 않는다.
@@ -30,3 +30,5 @@ tasks ↔ 배치 대조: T0→Q0 · T1–T6→A · T7→Q1 · T8→A-T8. 주인 
 ## 진행
 
 - **Q0 완료 — PREMISE CONFIRMED** (2026-10-15). 자기 세션의 DB `expires`를 now+22h로 당겨 갱신 시점을 만든 뒤 `GET /projects`와 Server Action(`POST /preferences` 테마) 둘 다에서 DB `expires`가 요청 시각+24h로 늘었고, `authjs.session-token` Set-Cookie는 0건, 쿠키 Expires는 로그인 시각+24h(`2026-10-16T01:55:09.967Z`)에 그대로였다. 양성 대조: 같은 캡처가 `malmoi-color-scheme` Set-Cookie는 잡았다. 원본 handoff: main `.scratch/orch-session-absolute-timeout/handoffs/handoff-Q0.md`. 워커 해제.
+- **A T1–T6 완료** — 커밋 4개, `pnpm gate --base dev` → `gate: ok`(test 14620 · credentials postgres 103). 계획과 다른 점: `policy-gate:316`을 `effectiveDate >= 2026-10-13` + GitLab `changes` 항목 단언으로 완화, `changes` 문장 추가, 가이드에 "활동해도 연장되지 않는다" 추가, T6 rg 추가 히트 둘(ARCHITECTURE의 Codex #6 이력 인용·자산 캐시). R이 판정한다. handoff 사본: main `.scratch/orch-session-absolute-timeout/handoffs/handoff-A.md`.
+- A-T8(`/postmortem` + §6.1.1 실측 한 줄)을 A 터미널에 새 Task로 보냄 · R(Opus medium, 리포트 전용) 시작.
