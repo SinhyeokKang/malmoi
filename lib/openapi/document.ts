@@ -59,7 +59,7 @@ export function openApiDocument(version: string) {
           operationId: "push",
           summary: "Import a source's locale files from a repository commit",
           description:
-            "Replaces the project's translations with the repository values for this source. Also checked beyond the schema: `format.baseLocale` must be in `locales`, every translation's locale must be in `locales`, locale codes must be path-safe, and `placeholders` must nest at most 8 levels and serialize to at most 16 KB. A 200 can be `deferred`, which means nothing was imported.",
+            "Replaces the project's translations with the repository values for this source. Also checked beyond the schema: `format.baseLocale` must be in `locales`, every translation's locale must be in `locales`, locale codes must be path-safe and look like a locale tag (a 2-3 letter language subtag, then `-` or `_` subtags of up to 8 characters), `format.pathTemplate` must stay inside the repository and within the glob budget, and `placeholders` must nest at most 8 levels and serialize to at most 16 KB. A 200 can be `deferred`, which means nothing was imported.",
           security: [{ pushToken: [] }],
           requestBody: { required: true, content: { "application/json": { schema: ref("PushPayload") } } },
           responses: { "200": jsonBody("PushResponse", "Imported (`applied`) or held back (`deferred`)."), ...ERROR_RESPONSES },
