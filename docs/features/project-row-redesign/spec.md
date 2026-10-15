@@ -4,6 +4,13 @@
 > 그릇(그룹 카드 셋·검색·빈 상태·머리)은 이번 범위가 아니다(DESIGN §6.63 그대로).
 > 짝 기능: `source-row-locale-meter`가 로케일 진행 막대(`LocaleMeter`)를 Sources 화면의 소스 행으로 가져간다. 이 스펙은 프로젝트 행에서 막대를 빼는 쪽만 맡는다(조율은 design.md §5).
 
+## 사전 조건
+
+**`source-row-locale-meter`가 dev에 먼저 들어가 있어야 착수한다**(2026-10-15 사용자).
+- 이 기능이 먼저 나가면 소스 행에 막대가 붙기 전까지 언어별 진행이 목록 어디에도 없는 창이 생긴다.
+- 그 기능이 `LocaleMeter` 입력을 `LocaleMeterValue`로 바꿔 두면 이 기능이 늦게 끝나는 쪽이 된다. 그래서 고아 타입 `RowLocaleProgress` 삭제와 DESIGN §6.63 소비자 서술 정정을 이 기능이 조건 없이 맡는다.
+- 확인: `rg -n "RowLocaleProgress" components/locale-meter.tsx`가 0이다. `/orchestrate`·`/ship` 착수 전에 이것을 본다.
+
 ## 사용자
 
 **둘 다다.** 목록은 로그인 직후 착지점이라 개발자(OWNER)와 번역 편집자(EDITOR)가 같은 행을 본다.

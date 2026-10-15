@@ -1,5 +1,6 @@
 # project-row-redesign — tasks
 
+> ⚠️ **사전 조건: `source-row-locale-meter`가 dev에 먼저 들어가 있다**(spec "사전 조건" — 확인 `rg -n "RowLocaleProgress" components/locale-meter.tsx` 0건).
 > 순서: 시안 수령 → 순수 함수(추가만) → 로더(추가만) → 목록 UI(교체·삭제) → Inbox → 대조 → 정본. 커밋 경계는 `──`로 표시한다.
 > ⚠️ **커밋 경계마다 `pnpm gate`가 green이어야 한다.** 그래서 옛 함수(`rowChip`·`projectGroup`·`rowBanner`·`meterSlot`·`rowLocaleProgress`)와 `meters`는 **UI 커밋(T6)에서** 지운다. T1–T4는 새 것을 더하기만 한다.
 > design.md "결정" 여덟(2026-10-14·15)이 브리프에 반영돼 있다. 결정 5(조회 실패 띠 문구)는 T0에서 시안 제안을 받아 확정한다.
@@ -59,7 +60,7 @@
   - 둘째 줄(막대·상태 문장)을 없애고, 리포 줄 아래 메타 줄을 둔다(감김).
   - 상대 시각은 `<time dateTime aria-label={formatMinute}>`이고, `now`는 서버 prop으로 받는다.
   - All set 띠는 muted로 둔다.
-  - 지울 것: `rowChip`·`projectGroup`·`rowBanner`(export)·`meterSlot`·`rowLocaleProgress`·`ProjectListRow.meters`. `RowLocaleProgress` 타입은 `source-row-locale-meter`가 아직 안 들어왔으면 남긴다(design §5). `messages/en.tsx:1874`·`lib/keys/query.ts:222`의 주석에 남은 옛 이름도 고친다.
+  - 지울 것: `rowChip`·`projectGroup`·`rowBanner`(export)·`meterSlot`·`rowLocaleProgress`·`ProjectListRow.meters`. `RowLocaleProgress` 타입도 지운다 — 사전 조건상 `LocaleMeter`는 이미 `LocaleMeterValue`를 받는다(design §5). `messages/en.tsx:1874`·`lib/keys/query.ts:222`의 주석에 남은 옛 이름도 고친다.
   - 검증(DOM 테스트):
     - GitLab setup 행과 GitLab PR 조회 실패 행에서 `/github|pull request/i`가 0건이다.
     - 상태 표 전 행에서 칩 낱말이 띠 문장에 들어가지 않는다.
@@ -108,11 +109,11 @@
     - §2.4: `:160` PR 조회 실패의 자리, `:179` 칩 순서에 `syncing`
     - §10.1: 새 낱말
     - `:1290`·`:1351`의 미터 서술
-    - §6.63 머리의 `LocaleMeter` 소비자 서술은 `source-row-locale-meter`와 늦게 끝나는 쪽이 고친다.
+    - §6.63 머리의 `LocaleMeter` 소비자 서술을 "Sources 소스 행(§6.66)"으로 고친다(이 기능이 늦게 끝나는 쪽이다 — design §5).
   - ARCHITECTURE: §6.36(`:3212,3215` — `projectGroup`), §6.365 Inbox 항목
   - PRODUCT: `:1133`(`rowBanner`), §4.1 `:431`(언어 미터 감김 문장), Inbox 항목 서술이 있으면 그것도
   - DIRECTORY: `:310,536`(`LocaleMeter`)
   - 그 뒤 `docs/features/project-row-redesign/`를 지운다.
-  - 검증: `/push` 4단계 문서 신선도를 통과한다. **디렉터리를 지운 뒤** `rg -n "meterSlot|rowChip|projectGroup|rowBanner|rowLocaleProgress|meter\.note|onGitLab\.meter" docs lib components app messages`가 0건이다(주석의 옛 이름 포함). `RowLocaleProgress`가 0이 되는 것은 두 기능이 다 들어간 뒤다.
+  - 검증: `/push` 4단계 문서 신선도를 통과한다. **디렉터리를 지운 뒤** `rg -n "meterSlot|rowChip|projectGroup|rowBanner|[rR]owLocaleProgress|meter\.note|onGitLab\.meter" docs lib components app messages`가 0건이다(주석의 옛 이름 포함. 타입 `ProjectGroup`은 남으므로 대소문자를 무시하지 않는다).
 - [ ] **T12 — 가이드 영향** — Inbox 항목 서술(`guide/en/translate/edit.md:43`)이 `needs_reconnect` 추가로 바뀐다. `/guide`로 en·ko·es 세 벌을 같은 커밋에서 고친다. `/projects` 행을 찍은 컷은 2026-10-14 기준 `guide/SHOOTING.md`에 매핑이 없다.
   - 검증: `pnpm test` green(가이드 게이트). `pnpm guide:check`에 이 기능 경로가 걸리면 `/guide-shots`.

@@ -129,8 +129,9 @@ function projectTodos(input: { status: ProjectStatus; surfaces; review; neverFil
 
 - `LocaleMeter` 컴포넌트는 **지우지 않는다.** 이 기능이 프로젝트 행에서 막대를 빼면, 남는 소비자는 그 기능의 소스 행 하나가 된다.
 - `rowLocaleProgress` 함수와 `ProjectListRow.meters`는 이 기능이 지운다. 그 기능은 둘 다 import하지 않는다(그쪽 design §6). 함께 움직이는 테스트: `lib/surfaces/__tests__/counts.test.ts:2,11`.
-- ⚠️ **`RowLocaleProgress` 타입은 `LocaleMeter`의 지금 입력 타입이다.** 그 기능의 T7이 입력을 `LocaleMeterValue`로 바꾸기 전에 이 기능이 머지되면 타입을 남긴다. **늦게 머지되는 쪽이 고아가 된 타입을 지운다.** `status-badges.test.tsx:48`·`parallel-p2-meter-error.test.tsx:22`가 그 모양을 넘긴다.
-- DESIGN §6.63 머리의 `LocaleMeter` 소비자 서술("Projects와 Sources")은 두 기능이 다 들어간 뒤 "Sources 소스 행(§6.66)"으로 고친다. 늦게 끝나는 쪽이 고친다(그쪽 tasks T9와 같은 규칙). 막대 자체(`components/ui/meter.tsx`)는 Sources 상세 모달도 쓰는 공유 프리미티브다.
+- **순서: 그 기능이 먼저다**(spec "사전 조건"). 그 기능의 T7이 `LocaleMeter` 입력을 `LocaleMeterValue`로 바꾼 뒤 이 기능이 들어간다. 그래서 이 기능이 늦게 끝나는 쪽이다.
+- `RowLocaleProgress` 타입은 이 기능이 T6에서 `rowLocaleProgress`와 함께 지운다. 그 시점에는 `LocaleMeter`가 이미 그 타입을 쓰지 않는다. `status-badges.test.tsx:48`·`parallel-p2-meter-error.test.tsx:22`가 넘기는 모양도 그 기능이 이미 옮겼는지 T6에서 확인한다.
+- DESIGN §6.63 머리의 `LocaleMeter` 소비자 서술("Projects와 Sources")은 이 기능이 T11에서 "Sources 소스 행(§6.66)"으로 고친다. 늦게 끝나는 쪽이 고친다는 규칙(그쪽 tasks T9)에 따른 결과다. 막대 자체(`components/ui/meter.tsx`)는 Sources 상세 모달도 쓰는 공유 프리미티브다.
 - 목록 골격(`app/(edit)/projects/(list)/loading.tsx`)의 미터 줄은 이 기능이 지운다. Sources 골격의 막대 줄은 그 기능이 더한다.
 
 ## 순수 함수 (`/tdd` 진입점)
