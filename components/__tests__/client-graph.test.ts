@@ -102,6 +102,8 @@ const CLIENT_LIB_FILES = [
   "lib/auth/membership.ts",
   "lib/auth/message.ts",
   "lib/auth/permission.ts",
+  // `/changelog`가 10개씩 드러낼 개수를 값으로 읽는다 — import 0인 잎이다(아래 잎 검사). 본문 렌더(`react-markdown`)는 서버에 남는다.
+  "lib/changelog/reveal.ts",
   "lib/compare.ts",
   // Logs의 필터 바가 값으로 읽는 잎 둘 — 조회(`lib/events/query.ts`)는 이 그래프에 없다.
   "lib/events/filter.ts",
@@ -460,6 +462,13 @@ describe("클라이언트 그래프", () => {
     const stage = walk([join(ROOT, "lib/landing/stage.ts")]);
     expect([...stage.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/landing/stage.ts"]);
     expect([...stage.packages]).toEqual([]);
+  });
+
+  /** `/changelog` 드러내기 판정 — 스테이지 수학과 같은 이유로 직접 건다. 파싱·로더(`./parse`·`./load`)를 물면 여기서 red다. */
+  it("`lib/changelog/reveal.ts`는 잎이다 — 아무것도 물지 않는다", () => {
+    const reveal = walk([join(ROOT, "lib/changelog/reveal.ts")]);
+    expect([...reveal.files].map((file) => file.slice(ROOT.length)).sort()).toEqual(["lib/changelog/reveal.ts"]);
+    expect([...reveal.packages]).toEqual([]);
   });
 
   /** `/privacy` TOC가 스크롤마다 값으로 읽는 판정 — 스테이지 수학과 같은 이유로 직접 건다. */
