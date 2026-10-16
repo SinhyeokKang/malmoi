@@ -136,14 +136,14 @@ describe("LargeModal — 소비자 코드 변경 없이 규칙을 받는다", ()
  * ⚠️ 암묵 조건(`actions` 없음)으로 바닥을 지우지 않는다 — Publish의 버튼 없는 갈래가 빈 바닥을 지금 그린다. 명시 prop 하나다.
  */
 /**
- * **#220 — 375에서 바닥이 넘쳤다**(소스 상세: Remove source + Close + Open translations = 394 > 375). 그릇이 `lg` 미만에서 감긴다 — 소비자는 고치지 않는다.
+ * **#220 — 375에서 바닥이 넘쳤다**(소스 상세: Detach source + Close + Open translations = 394 > 375). 그릇이 `lg` 미만에서 감긴다 — 소비자는 고치지 않는다.
  * ⚠️ 왼쪽 문구 칸은 `basis-0 grow`라 줄 나눔이 **최소 내용 폭**(글은 가장 긴 낱말, 버튼은 버튼 폭)으로 판정된다 — 글 문구(Publish 수 · Add sources 사유)는
- * 지금처럼 버튼 옆에서 줄바꿈하고, 버튼을 든 문구(Remove source)만 위 줄로 올라간다. 감기면 동작 묶음은 `ml-auto`로 오른쪽에 남는다.
+ * 지금처럼 버튼 옆에서 줄바꿈하고, 버튼을 든 문구(Detach source)만 위 줄로 올라간다. 감기면 동작 묶음은 `ml-auto`로 오른쪽에 남는다.
  * jsdom은 폭을 못 재므로 클래스로 든다 — 실제 배치(375 · 앱 모달 여덟)는 런타임 몫이다. `lg` 이상 클래스는 바이트로 그대로다.
  */
 describe("LargeModal 바닥 — `lg` 미만 감김 (#220)", () => {
   it("문구 칸은 `basis-0 grow`, 동작 묶음은 감기면 오른쪽 — `lg` 이상은 그대로다", async () => {
-    await render(<LargeModal open title="Source" onClose={() => {}} notice={<Button>Remove source</Button>} actions={<><Button>Close</Button><Button>Open translations</Button></>}><p>Body</p></LargeModal>);
+    await render(<LargeModal open title="Source" onClose={() => {}} notice={<Button>Detach source</Button>} actions={<><Button>Close</Button><Button>Open translations</Button></>}><p>Body</p></LargeModal>);
     const footer = find<HTMLElement>(document.body, '[role="dialog"] footer');
     const [notice, actions] = [...footer.children] as HTMLElement[];
     expect(wide(notice!.className)).toBe("text-muted-foreground text-xs leading-body");

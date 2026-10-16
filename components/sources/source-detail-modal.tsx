@@ -81,7 +81,7 @@ export function SourceDetailModal({ slug, sourceSlug, role, state, now, busy, im
     여기서는 "언제 더했나"(`createdAt`)를 따로 말한다 — 없으면 시각을 생략하고 추정하지 않는다.
   */
   /*
-    [Remove source]의 사전 차단 — 서버와 같은 판정·같은 문장이다(`planSurfaceRemoval`·`removalReason`). 보관은 이 화면에 오지 않는다(`archived` 거부).
+    [Detach source]의 사전 차단 — 서버와 같은 판정·같은 문장이다(`planSurfaceRemoval`·`removalReason`). 보관은 이 화면에 오지 않는다(`archived` 거부).
     ⚠️ **바쁨이 이긴다** — 지나가는 상태가 먼저고, 끝나면 마지막 소스 사유로 바뀐다(시안 R2). 문장은 옛 Open 꺼짐 자리의 것을 옮겼다.
   */
   const removal = detail === null ? null : planSurfaceRemoval({ targetId: detail.id, active: sources, defaultSurfaceId: null, projectArchived: false, importing: detail.importActive });

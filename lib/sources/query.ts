@@ -80,7 +80,7 @@ export async function loadSource(prisma: PrismaClient, m: Messages, projectId: s
     languages: localeProgress({ ...counts, locales }).map(row => ({ ...row, change: changeOf.get(row.code) ?? null, unsent: unsent.has(row.code) })),
     localeDelivery: (confirmation?.invalidatedAt ?? null) !== null ? "unconfirmed" as const : "confirmed" as const,
     /**
-     * 살아 있는 적재 표시 — [Remove source]의 사전 차단이 서버 판정(`removeSurface`의 `importing`)과 같은 입력을 쓰게 서버가 계산한다.
+     * 살아 있는 적재 표시 — [Detach source]의 사전 차단이 서버 판정(`removeSurface`의 `importing`)과 같은 입력을 쓰게 서버가 계산한다.
      * ⚠️ `lastImportStartedAt !== null`(목록 상태 판정)로 대신하지 않는다 — 만료된 표시는 제거를 막지 않는다. `hasActiveImport`는
      * `lib/adapters`를 끌어와 클라이언트 번들에 못 싣는다(`client-graph.test.ts`).
      */

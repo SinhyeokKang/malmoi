@@ -227,7 +227,7 @@ export function LargeModal({
 
           {/*
             ⚠️ **`lg` 미만은 감긴다**(#220 — 375 소스 상세 바닥이 394로 넘쳤다). 문구 칸은 `basis-0 grow`라 줄 나눔이 최소 내용 폭으로 판정된다 —
-            글 문구는 지금처럼 버튼 옆에서 줄바꿈하고, 버튼을 든 문구(Remove source)만 위 줄로 오른다. 감기면 동작 묶음은 `ml-auto`로 오른쪽에 남는다.
+            글 문구는 지금처럼 버튼 옆에서 줄바꿈하고, 버튼을 든 문구(Detach source)만 위 줄로 오른다. 감기면 동작 묶음은 `ml-auto`로 오른쪽에 남는다.
             소비자는 고치지 않는다. `lg` 이상 클래스는 그대로다.
           */}
           {!flush && <footer className="border-divider flex items-center justify-between gap-2 border-t px-8 py-6 max-lg:px-4 max-lg:flex-wrap max-lg:gap-y-3">

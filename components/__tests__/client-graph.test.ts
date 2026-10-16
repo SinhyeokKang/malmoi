@@ -178,7 +178,7 @@ const CLIENT_LIB_FILES = [
   // Analytics `beforeSend` 허용 목록 — 값 import 0인 잎이다(아래 잎 검사). `SITE_ORIGIN`·`m`도 물지 않는다.
   "lib/seo/analytics.ts",
   "lib/surfaces/plan-add.ts",
-  // 상세 모달의 [Remove source] 사전 차단 — 서버와 같은 판정·문장(sources-add-remove). `./plan`·`lib/auth/message`까지 잎이다.
+  // 상세 모달의 [Detach source] 사전 차단 — 서버와 같은 판정·문장(sources-add-remove). `./plan`·`lib/auth/message`까지 잎이다.
   "lib/surfaces/plan-removal.ts",
   "lib/projects/pr-url.ts",
   "lib/publish/plan.ts",
